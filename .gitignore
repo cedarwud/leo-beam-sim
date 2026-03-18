@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist
+
+# TypeScript
+*.tsbuildinfo
+src/**/*.js
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# claude
+.claude/
