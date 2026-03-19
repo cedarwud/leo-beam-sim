@@ -29,7 +29,7 @@ interface ShellBeamLayout {
   footprintRadiusKm: number;
   spacingKm: number;
   maxOffsetRadiusKm: number;
-  maxSteeringKm: number;
+  maxSteeringDistanceKm: number;
   maxCoverageRadiusKm: number;
   offsets: ReturnType<typeof generateBeamOffsetsKm>;
 }
@@ -137,18 +137,26 @@ export function useSimulation(
           (maxRadius, beam) => Math.max(maxRadius, Math.hypot(beam.dEastKm, beam.dNorthKm)),
           0,
         );
-        const maxSteeringKm = maxOffsetRadiusKm + geometry.spacingKm * MAX_STEERING_EXTRA_RINGS;
+        const geometryLimitedSteeringKm = maxOffsetRadiusKm + geometry.spacingKm * MAX_STEERING_EXTRA_RINGS;
+        const steeringAngleRad = (profile.antenna.maxSteeringAngleDeg * Math.PI) / 180;
+        const angleLimitedSteeringKm = shell.altitudeKm * Math.tan(steeringAngleRad);
+        const maxSteeringDistanceKm = Math.min(geometryLimitedSteeringKm, angleLimitedSteeringKm);
         return [shell.id, {
           footprintRadiusKm: geometry.footprintRadiusKm,
           spacingKm: geometry.spacingKm,
           maxOffsetRadiusKm,
-          maxSteeringKm,
-          maxCoverageRadiusKm: maxOffsetRadiusKm + maxSteeringKm + geometry.footprintRadiusKm,
+          maxSteeringDistanceKm,
+          maxCoverageRadiusKm: maxOffsetRadiusKm + maxSteeringDistanceKm + geometry.footprintRadiusKm,
           offsets,
         } satisfies ShellBeamLayout];
       }),
     );
-  }, [profile.antenna.beamwidth3dBRad, profile.beams.perSatellite, profile.orbit.shells]);
+  }, [
+    profile.antenna.beamwidth3dBRad,
+    profile.antenna.maxSteeringAngleDeg,
+    profile.beams.perSatellite,
+    profile.orbit.shells,
+  ]);
 
   const trajectoryCache = useMemo(() => {
     const elements = generateWalkerConstellation({
@@ -304,7 +312,7 @@ export function useSimulation(
         const nadirDistanceKm = Math.hypot(nadirEastKm, nadirNorthKm);
 
         const steeringScale = nadirDistanceKm > 1e-6
-          ? Math.min(layout.maxSteeringKm, nadirDistanceKm) / nadirDistanceKm
+          ? Math.min(layout.maxSteeringDistanceKm, nadirDistanceKm) / nadirDistanceKm
           : 0;
         const steeringEastKm = -nadirEastKm * steeringScale;
         const steeringNorthKm = -nadirNorthKm * steeringScale;
@@ -325,15 +333,20 @@ export function useSimulation(
 
         const allBeamCells = layout.offsets
           .map(beam => {
+            const scanOffsetEastKm = steeringEastKm + beam.dEastKm;
+            const scanOffsetNorthKm = steeringNorthKm + beam.dNorthKm;
+            const scanDistanceKm = Math.hypot(scanOffsetEastKm, scanOffsetNorthKm);
             const offsetEastKm = nadirEastKm + steeringEastKm + beam.dEastKm;
             const offsetNorthKm = nadirNorthKm + steeringNorthKm + beam.dNorthKm;
             return {
               beamId: beam.beamId,
               offsetEastKm,
               offsetNorthKm,
+              scanAngleDeg: (Math.atan(scanDistanceKm / Math.max(sat.altitudeKm, 1e-6)) * 180) / Math.PI,
               distanceToUeKm: Math.hypot(offsetEastKm, offsetNorthKm),
             };
-          });
+          })
+          .filter(beam => beam.scanAngleDeg <= profile.antenna.maxSteeringAngleDeg + 1e-6);
         const beamCellById = new Map(
           allBeamCells.map(beam => [beam.beamId, beam]),
         );
@@ -349,31 +362,17 @@ export function useSimulation(
           beamId: number;
           offsetEastKm: number;
           offsetNorthKm: number;
+          scanAngleDeg: number;
         }>();
 
         for (const requiredBeamId of requiredBeamIds) {
           const beam = beamCellById.get(requiredBeamId);
           if (!beam) continue;
-          const isActiveServingBeam =
-            state.satId === sat.id && state.beamId === requiredBeamId;
-          const isActivePendingBeam =
-            state.pendingTarget?.satId === sat.id
-            && state.pendingTarget.beamId === requiredBeamId;
-          const isRecentHoSourceBeam =
-            recentHo?.sourceSatId === sat.id && recentHo.sourceBeamId === requiredBeamId;
-          const isRecentHoTargetBeam =
-            recentHo?.targetSatId === sat.id && recentHo.targetBeamId === requiredBeamId;
           selectedBeamCells.set(beam.beamId, {
             beamId: beam.beamId,
-            // Keep active and lingering handover beams visually anchored on the UE.
-            offsetEastKm:
-              isActiveServingBeam || isActivePendingBeam || isRecentHoSourceBeam || isRecentHoTargetBeam
-                ? 0
-                : beam.offsetEastKm,
-            offsetNorthKm:
-              isActiveServingBeam || isActivePendingBeam || isRecentHoSourceBeam || isRecentHoTargetBeam
-                ? 0
-                : beam.offsetNorthKm,
+            offsetEastKm: beam.offsetEastKm,
+            offsetNorthKm: beam.offsetNorthKm,
+            scanAngleDeg: beam.scanAngleDeg,
           });
         }
 
@@ -384,6 +383,7 @@ export function useSimulation(
             beamId: beam.beamId,
             offsetEastKm: beam.offsetEastKm,
             offsetNorthKm: beam.offsetNorthKm,
+            scanAngleDeg: beam.scanAngleDeg,
           });
         }
 

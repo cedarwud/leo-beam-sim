@@ -25,6 +25,24 @@ interface BeamEntry {
   signalMw: number;
 }
 
+function computeSteeringLossDb(
+  scanAngleDeg: number,
+  maxSteeringAngleDeg: number,
+  scanLossAtMaxSteeringDb: number,
+): number {
+  if (
+    scanAngleDeg <= 0
+    || maxSteeringAngleDeg <= 0
+    || scanLossAtMaxSteeringDb <= 0
+  ) {
+    return 0;
+  }
+
+  const ratio = Math.min(scanAngleDeg / maxSteeringAngleDeg, 1);
+  // Approximate phased-array scan loss: gentle near boresight, harsher near the steering limit.
+  return scanLossAtMaxSteeringDb * ratio * ratio;
+}
+
 /**
  * Compute SINR for all visible beams relative to UE.
  */
@@ -61,6 +79,11 @@ export function computeLinkBudget(
       const offAxisDeg = computeOffAxisDeg(distKm, sat.altitudeKm);
       const beamGainDb = computeBeamGainDb(offAxisDeg, beamwidth3dBDeg, antenna.model);
       if (beamGainDb <= BEAM_GAIN_FLOOR_DB) continue;
+      const steeringLossDb = computeSteeringLossDb(
+        beam.scanAngleDeg,
+        antenna.maxSteeringAngleDeg,
+        antenna.scanLossAtMaxSteeringDb,
+      );
 
       const pathLossDb = computePathLossDb(
         sat.rangeKm,
@@ -71,7 +94,12 @@ export function computeLinkBudget(
 
       // RSRP = Pt + Gt(max) + beamGain + Gr - pathLoss
       // Assume UE antenna gain ≈ 0 dBi for simplicity
-      const rsrpDbm = channel.maxTxPowerDbm + antenna.maxGainDbi + beamGainDb - pathLossDb;
+      const rsrpDbm =
+        channel.maxTxPowerDbm
+        + antenna.maxGainDbi
+        + beamGainDb
+        - steeringLossDb
+        - pathLossDb;
 
       entries.push({
         sample: { satId: sat.id, beamId: beam.beamId, rsrpDbm, sinrDb: -Infinity },

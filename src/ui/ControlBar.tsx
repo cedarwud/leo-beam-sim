@@ -3,8 +3,10 @@ interface ControlBarProps {
   speed: number;
   effectiveSpeed: number;
   autoSlowActive: boolean;
+  autoSlowApplied: boolean;
   onTogglePause: () => void;
   onSpeedChange: (speed: number) => void;
+  onDismissAutoSlow: () => void;
 }
 
 export function ControlBar({
@@ -12,8 +14,10 @@ export function ControlBar({
   speed,
   effectiveSpeed,
   autoSlowActive,
+  autoSlowApplied,
   onTogglePause,
   onSpeedChange,
+  onDismissAutoSlow,
 }: ControlBarProps) {
   return (
     <div style={{
@@ -38,6 +42,15 @@ export function ControlBar({
         {paused ? 'Play' : 'Pause'}
       </button>
 
+      {autoSlowApplied && (
+        <button
+          onClick={onDismissAutoSlow}
+          style={{ cursor: 'pointer', background: '#1c2a3a', border: '1px solid #4d85c7', color: '#d7ebff', padding: '4px 12px', borderRadius: 4 }}
+        >
+          Resume Normal Speed
+        </button>
+      )}
+
       <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         Speed:
         <input
@@ -52,7 +65,7 @@ export function ControlBar({
       </label>
 
       <div style={{ color: autoSlowActive ? '#ffd84a' : '#9aa3b2', minWidth: 140 }}>
-        Scene: {effectiveSpeed.toFixed(1)}x{autoSlowActive ? ' (HO Slow)' : ''}
+        Scene: {effectiveSpeed.toFixed(1)}x{autoSlowApplied ? ' (HO Slow)' : autoSlowActive ? ' (HO Slow Off)' : ''}
       </div>
     </div>
   );

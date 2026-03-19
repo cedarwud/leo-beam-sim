@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { MainScene } from './scene/MainScene';
 import { loadProfile } from './profiles';
 import type { RuntimeConfig, SimState } from './scene/types';
@@ -11,7 +11,7 @@ const PROFILE = loadProfile(PROFILE_ID);
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 const DEMO_START = recommendDemoReplayStartOffsetSec(PROFILE, EPOCH_MS);
 const DEFAULT_BASE_SPEED = 10;
-const HANDOVER_FOCUS_SPEED = 0.75;
+const HANDOVER_FOCUS_SPEED = 2;
 
 const RUNTIME: RuntimeConfig = {
   presentationMode: 'demo-readability',
@@ -25,6 +25,7 @@ const RUNTIME: RuntimeConfig = {
 export function App() {
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(DEFAULT_BASE_SPEED);
+  const [autoSlowDismissed, setAutoSlowDismissed] = useState(false);
   const [simState, setSimState] = useState<SimState>({
     servingSatId: null,
     servingBeamId: null,
@@ -45,7 +46,12 @@ export function App() {
     simState.pendingTargetSatId !== null
     || simState.recentHoSourceSatId !== null
     || simState.recentHoTargetSatId !== null;
-  const effectiveSpeed = autoSlowActive ? Math.min(speed, HANDOVER_FOCUS_SPEED) : speed;
+  const autoSlowApplied = autoSlowActive && !autoSlowDismissed;
+  const effectiveSpeed = autoSlowApplied ? Math.min(speed, HANDOVER_FOCUS_SPEED) : speed;
+
+  useEffect(() => {
+    if (!autoSlowActive) setAutoSlowDismissed(false);
+  }, [autoSlowActive]);
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
@@ -61,8 +67,10 @@ export function App() {
         speed={speed}
         effectiveSpeed={effectiveSpeed}
         autoSlowActive={autoSlowActive}
+        autoSlowApplied={autoSlowApplied}
         onTogglePause={() => setPaused(p => !p)}
         onSpeedChange={setSpeed}
+        onDismissAutoSlow={() => setAutoSlowDismissed(true)}
       />
       <InfoPanel {...simState} />
     </div>

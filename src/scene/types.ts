@@ -43,7 +43,12 @@ export interface SimFrame {
   linkSamples: LinkSample[];
   activeAssignments: ActiveBeamAssignment[];
   displayAssignments: ActiveBeamAssignment[];
-  beamCellsBySatId: Map<string, { beamId: number; offsetEastKm: number; offsetNorthKm: number }[]>;
+  beamCellsBySatId: Map<string, {
+    beamId: number;
+    offsetEastKm: number;
+    offsetNorthKm: number;
+    scanAngleDeg: number;
+  }[]>;
   serving: { satId: string | null; beamId: number | null; sinrDb: number };
   pendingTargetSatId: string | null;
   pendingTargetBeamId: number | null;

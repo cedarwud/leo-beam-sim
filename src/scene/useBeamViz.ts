@@ -43,13 +43,6 @@ function centralBiasWeight(mode: PresentationMode): number {
   }
 }
 
-function sampleIsServing(
-  sample: SimFrame['linkSamples'][number],
-  sim: SimFrame,
-): boolean {
-  return sample.satId === sim.serving.satId && sample.beamId === sim.serving.beamId;
-}
-
 function primaryBeamIdForSat(
   satId: string,
   sim: SimFrame,
@@ -75,14 +68,12 @@ function isServingTransitionWindow(satId: string, sim: SimFrame): boolean {
   );
 }
 
-function isSingleBeamEventSat(
-  satId: string,
-  sim: SimFrame,
-  role: (VizFrame['eventRoles'] extends Map<string, infer T> ? T : never) | undefined,
-): boolean {
-  if (isServingTransitionWindow(satId, sim)) return true;
-  if (satId === sim.pendingTargetSatId && sim.pendingTargetSatId !== sim.serving.satId) return true;
-  return role === 'secondary' || role === 'post-ho';
+function isPreparedTransitionSat(satId: string, sim: SimFrame): boolean {
+  return satId === sim.pendingTargetSatId && sim.pendingTargetSatId !== sim.serving.satId;
+}
+
+function isRecentHoSourceSat(satId: string, sim: SimFrame): boolean {
+  return satId === sim.recentHoSourceSatId && satId !== sim.serving.satId;
 }
 
 export function useBeamViz(
@@ -202,9 +193,6 @@ export function useBeamViz(
     }
 
     const beamSatIds = new Set<string>(eventRoles.keys());
-    for (const satId of displayAssignmentsBySatId.keys()) {
-      beamSatIds.add(satId);
-    }
     if (beamSatIds.size === 0 && sim.serving.satId) beamSatIds.add(sim.serving.satId);
 
     const satBeams = new Map<string, VizFrame['satBeams'] extends Map<string, infer T> ? T : never>();
@@ -216,66 +204,38 @@ export function useBeamViz(
 
       const scale = FOOTPRINT_RADIUS_WORLD / Math.max(layout.footprintRadiusKm, 1e-6);
       const primaryBeamId = primaryBeamIdForSat(sat.id, sim, displayAssignmentsBySatId);
+      if (primaryBeamId === null) continue;
+
       const beamCells = new Map(
         (sim.beamCellsBySatId.get(sat.id) ?? []).map(beam => [beam.beamId, beam]),
       );
       const role = eventRoles.get(sat.id);
-      const beamLimit = isSingleBeamEventSat(sat.id, sim, role)
-        ? 1
-        : sat.id === sim.serving.satId || sat.id === sim.pendingTargetSatId
-          ? profile.beams.maxActivePerSat
-          : role
-            ? Math.min(2, profile.beams.maxActivePerSat)
-            : 1;
-      const satSamples = sim.linkSamples
-        .filter(sample => sample.satId === sat.id)
-        .filter(sample => beamCells.has(sample.beamId))
-        .sort((a, b) => {
-          const servingA = sampleIsServing(a, sim) ? 1 : 0;
-          const servingB = sampleIsServing(b, sim) ? 1 : 0;
-          const primaryA = a.beamId === primaryBeamId ? 1 : 0;
-          const primaryB = b.beamId === primaryBeamId ? 1 : 0;
-          return servingB - servingA || primaryB - primaryA || b.sinrDb - a.sinrDb;
-        })
-        .slice(0, beamLimit);
-      const sampleByBeamId = new Map(satSamples.map(sample => [sample.beamId, sample]));
-      const chosenBeamIds: number[] = [];
-      const pushBeamId = (beamId: number | null) => {
-        if (beamId === null) return;
-        if (!beamCells.has(beamId)) return;
-        if (chosenBeamIds.includes(beamId)) return;
-        chosenBeamIds.push(beamId);
-      };
-
-      pushBeamId(primaryBeamId);
-      for (const beamId of displayAssignmentsBySatId.get(sat.id) ?? []) {
-        pushBeamId(beamId);
-      }
-      for (const sample of satSamples) {
-        if (chosenBeamIds.length >= beamLimit) break;
-        pushBeamId(sample.beamId);
-      }
-
-      if (chosenBeamIds.length === 0) continue;
+      const primaryBeamCell = primaryBeamId !== null ? beamCells.get(primaryBeamId) : undefined;
+      const anchorToUe =
+        sat.id === sim.serving.satId
+        || isPreparedTransitionSat(sat.id, sim)
+        || isRecentHoSourceSat(sat.id, sim)
+        || sat.id === sim.recentHoTargetSatId;
+      if (!anchorToUe && !primaryBeamCell) continue;
+      const sample = sim.linkSamples.find(
+        entry => entry.satId === sat.id && entry.beamId === primaryBeamId,
+      );
+      const groundX = anchorToUe ? 0 : primaryBeamCell!.offsetEastKm * scale;
+      const groundZ = anchorToUe ? 0 : -primaryBeamCell!.offsetNorthKm * scale;
 
       satBeams.set(
         sat.id,
-        chosenBeamIds.flatMap(beamId => {
-          const beamCell = beamCells.get(beamId);
-          if (!beamCell) return [];
-          const sample = sampleByBeamId.get(beamId);
-
-          return [{
-            beamId,
-            groundX: beamCell.offsetEastKm * scale,
-            groundZ: -beamCell.offsetNorthKm * scale,
-            isServing: sat.id === sim.serving.satId && beamId === sim.serving.beamId,
-            isPrimary: beamId === primaryBeamId,
-            role,
-            isTransitioningSource: isTransitioningSourceSat(sat.id, sim),
-            sinrDb: sample?.sinrDb ?? null,
-          }];
-        }),
+        [{
+          beamId: primaryBeamId,
+          groundX,
+          groundZ,
+          isServing: sat.id === sim.serving.satId && primaryBeamId === sim.serving.beamId,
+          isPrimary: true,
+          showBeam: true,
+          role,
+          isTransitioningSource: isTransitioningSourceSat(sat.id, sim),
+          sinrDb: sample?.sinrDb ?? null,
+        }],
       );
     }
 

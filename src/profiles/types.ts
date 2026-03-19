@@ -26,6 +26,8 @@ export interface Profile {
     maxGainDbi: number;
     beamwidth3dBRad: number;
     efficiency: number;
+    maxSteeringAngleDeg: number;
+    scanLossAtMaxSteeringDb: number;
   };
 
   channel: {

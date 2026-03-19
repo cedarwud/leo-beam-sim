@@ -20,7 +20,9 @@
     "model": "bessel-j1-j3",
     "maxGainDbi": 40,
     "beamwidth3dBRad": 0.058,
-    "efficiency": 0.6
+    "efficiency": 0.6,
+    "maxSteeringAngleDeg": 12,
+    "scanLossAtMaxSteeringDb": 4
   },
   "channel": {
     "frequencyGHz": 28,

@@ -9,6 +9,7 @@ export interface BeamTarget {
   groundZ: number; // world Z
   isServing: boolean;
   isPrimary: boolean;
+  showBeam: boolean;
   role?: 'serving' | 'secondary' | 'prepared' | 'post-ho';
   isTransitioningSource?: boolean;
   sinrDb?: number | null;
@@ -225,14 +226,18 @@ export function SatelliteBeams({
 }: SatelliteBeamsProps) {
   return (
     <group>
-      {beams.map(beam => (
-        <BeamCone
-          key={`${satelliteId}-B${beam.beamId}`}
-          satellitePosition={satellitePosition}
-          beam={beam}
-          footprintRadius={footprintRadius}
-        />
-      ))}
+      {beams.map(beam => {
+        if (!beam.showBeam) return null;
+
+        return (
+          <BeamCone
+            key={`${satelliteId}-B${beam.beamId}`}
+            satellitePosition={satellitePosition}
+            beam={beam}
+            footprintRadius={footprintRadius}
+          />
+        );
+      })}
     </group>
   );
 }

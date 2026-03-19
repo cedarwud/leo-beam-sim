@@ -19,7 +19,12 @@ export interface SatelliteSnapshot {
   elevationDeg: number;
   azimuthDeg: number;
   /** Ground-projected beam cell centers in km offset from observer */
-  beamCellsKm: { beamId: number; offsetEastKm: number; offsetNorthKm: number }[];
+  beamCellsKm: {
+    beamId: number;
+    offsetEastKm: number;
+    offsetNorthKm: number;
+    scanAngleDeg: number;
+  }[];
 }
 
 export interface UEPosition {
