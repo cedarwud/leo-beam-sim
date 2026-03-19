@@ -56,6 +56,13 @@ function createEmptyFrame(simTimeSec: number): SimFrame {
     serving: { satId: null, beamId: null, sinrDb: -Infinity },
     pendingTargetSatId: null,
     pendingTargetBeamId: null,
+    pendingTargetSinrDb: null,
+    recentHoSourceBeamId: null,
+    recentHoTargetBeamId: null,
+    recentHoSourceSinrDb: null,
+    recentHoTargetSinrDb: null,
+    recentHoDeltaDb: null,
+    handoverTriggerProgressSec: 0,
     hoCount: 0,
     lastHoReason: '',
     simTimeSec,
@@ -200,8 +207,11 @@ export function useSimulation(
   const recentHoRef = useRef<{
     sourceSatId: string;
     sourceBeamId: number;
+    sourceSinrDb: number | null;
     targetSatId: string;
     targetBeamId: number;
+    targetSinrDb: number;
+    deltaDb: number | null;
     expiresAtSec: number;
   } | null>(null);
   const frameRef = useRef<SimFrame>(createEmptyFrame(simTimeRef.current));
@@ -227,6 +237,11 @@ export function useSimulation(
       } else {
         simTimeRef.current = Math.min(simTimeRef.current, maxTimeSec);
       }
+    }
+    const didLoopWrap = replay.loop && simTimeRef.current < previousSimTimeSec;
+    if (didLoopWrap) {
+      hoManager.reset();
+      recentHoRef.current = null;
     }
 
     const rawStep = simTimeRef.current / SIM_STEP_SEC;
@@ -463,8 +478,11 @@ export function useSimulation(
       recentHoRef.current = {
         sourceSatId: previousServingSatId,
         sourceBeamId: lastEvent!.fromBeamId!,
+        sourceSinrDb: lastEvent?.fromSinrDb ?? null,
         targetSatId: decision.target.satId,
         targetBeamId: decision.target.beamId,
+        targetSinrDb: lastEvent?.toSinrDb ?? hoManager.state.sinrDb,
+        deltaDb: lastEvent?.deltaDb ?? null,
         expiresAtSec: simTimeRef.current + RECENT_HO_LINGER_SEC,
       };
     }
@@ -483,6 +501,10 @@ export function useSimulation(
         ? recentHoRef.current
         : null;
     const postDecisionContext = buildLinkContext(hoManager.state, postDecisionRecentHo);
+    const pendingTargetSinrDb = hoManager.getTrackedSinrDb(
+      hoManager.state.pendingTarget?.satId ?? null,
+      hoManager.state.pendingTarget?.beamId ?? null,
+    );
 
     const frameActiveAssignments: ActiveBeamAssignment[] = [...postDecisionContext.activeAssignments];
     const displayAssignments = [...frameActiveAssignments];
@@ -512,6 +534,13 @@ export function useSimulation(
       },
       pendingTargetSatId: hoManager.state.pendingTarget?.satId ?? null,
       pendingTargetBeamId: hoManager.state.pendingTarget?.beamId ?? null,
+      pendingTargetSinrDb,
+      recentHoSourceBeamId: recentHoSourceSatId ? recentHoRef.current?.sourceBeamId ?? null : null,
+      recentHoTargetBeamId: recentHoTargetSatId ? recentHoRef.current?.targetBeamId ?? null : null,
+      recentHoSourceSinrDb: recentHoSourceSatId ? recentHoRef.current?.sourceSinrDb ?? null : null,
+      recentHoTargetSinrDb: recentHoTargetSatId ? recentHoRef.current?.targetSinrDb ?? null : null,
+      recentHoDeltaDb: recentHoRef.current?.deltaDb ?? null,
+      handoverTriggerProgressSec: hoManager.state.pendingTarget ? hoManager.state.triggerTimeSec : 0,
       hoCount: hoManager.eventLog.length,
       lastHoReason: decision.reason,
       simTimeSec: simTimeRef.current,

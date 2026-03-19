@@ -24,7 +24,24 @@ interface SceneContentProps {
   onSimUpdate: (state: SimState) => void;
 }
 
-const UI_UPDATE_INTERVAL_MS = 250;
+interface LatchedSignalState {
+  satId: string | null;
+  beamId: number | null;
+  sinrDb: number | null;
+}
+
+interface HandoverPanelSnapshot {
+  phase: 'pending' | 'recent-ho';
+  servingSatId: string;
+  servingBeamId: number;
+  servingSinrDb: number | null;
+  comparisonSatId: string;
+  comparisonBeamId: number;
+  comparisonSinrDb: number | null;
+}
+
+const UI_STABLE_UPDATE_INTERVAL_MS = 700;
+const UI_HANDOVER_UPDATE_INTERVAL_MS = 250;
 const SHOW_BEAMS = true;
 
 function hasUiStateChanged(previous: SimState | null, next: SimState): boolean {
@@ -33,10 +50,59 @@ function hasUiStateChanged(previous: SimState | null, next: SimState): boolean {
     || previous.servingBeamId !== next.servingBeamId
     || previous.pendingTargetSatId !== next.pendingTargetSatId
     || previous.pendingTargetBeamId !== next.pendingTargetBeamId
+    || previous.comparisonSatId !== next.comparisonSatId
+    || previous.comparisonBeamId !== next.comparisonBeamId
+    || previous.comparisonKind !== next.comparisonKind
     || previous.recentHoSourceSatId !== next.recentHoSourceSatId
     || previous.recentHoTargetSatId !== next.recentHoTargetSatId
     || previous.hoCount !== next.hoCount
-    || previous.lastHoReason !== next.lastHoReason;
+    || previous.handoverOffsetDb !== next.handoverOffsetDb
+    || previous.handoverTriggerSec !== next.handoverTriggerSec;
+}
+
+function isFinitePanelSinr(sinrDb: number | null): sinrDb is number {
+  return sinrDb !== null && Number.isFinite(sinrDb) && sinrDb > -100;
+}
+
+function resolveLatchedSinr(
+  latched: LatchedSignalState,
+  satId: string | null,
+  beamId: number | null,
+  nextSinrDb: number | null,
+): number | null {
+  if (!satId || beamId === null) {
+    latched.satId = null;
+    latched.beamId = null;
+    latched.sinrDb = null;
+    return null;
+  }
+
+  if (isFinitePanelSinr(nextSinrDb)) {
+    latched.satId = satId;
+    latched.beamId = beamId;
+    latched.sinrDb = nextSinrDb;
+    return nextSinrDb;
+  }
+
+  if (latched.satId === satId && latched.beamId === beamId) {
+    return latched.sinrDb;
+  }
+
+  latched.satId = satId;
+  latched.beamId = beamId;
+  latched.sinrDb = null;
+  return null;
+}
+
+function normalizePanelSignal(
+  satId: string | null,
+  beamId: number | null,
+  sinrDb: number | null,
+): { satId: string | null; beamId: number | null; sinrDb: number | null } {
+  if (!satId || beamId === null) {
+    return { satId: null, beamId: null, sinrDb: null };
+  }
+  return { satId, beamId, sinrDb };
 }
 
 function SceneContent({
@@ -51,27 +117,176 @@ function SceneContent({
   const viz = useBeamViz(sim, profile, runtime.presentationMode);
   const lastUiUpdateAtRef = useRef(0);
   const lastUiStateRef = useRef<SimState | null>(null);
+  const latchedServingSinrRef = useRef<LatchedSignalState>({ satId: null, beamId: null, sinrDb: null });
+  const latchedComparisonSinrRef = useRef<LatchedSignalState>({ satId: null, beamId: null, sinrDb: null });
+  const handoverPanelRef = useRef<HandoverPanelSnapshot | null>(null);
   const cells = useMemo(
     () => generateHexGrid({ rows: 4, cols: 5, cellRadius: 80, centerX: 0, centerZ: 0 }),
     [],
   );
 
   useEffect(() => {
+    const pendingTargetSinrDb = sim.pendingTargetSinrDb;
+    const liveServingSinrDb = resolveLatchedSinr(
+      latchedServingSinrRef.current,
+      sim.serving.satId,
+      sim.serving.beamId,
+      sim.serving.sinrDb,
+    );
+    const candidateComparisonSample = [...sim.linkSamples]
+      .filter(sample => sample.satId !== sim.serving.satId)
+      .sort((a, b) => b.sinrDb - a.sinrDb)[0] ?? null;
+    const idleComparisonSinrDb = resolveLatchedSinr(
+      latchedComparisonSinrRef.current,
+      candidateComparisonSample?.satId ?? null,
+      candidateComparisonSample?.beamId ?? null,
+      candidateComparisonSample?.sinrDb ?? null,
+    );
+    const previousHandoverPanel = handoverPanelRef.current;
+    let panelServingSatId = sim.serving.satId;
+    let panelServingBeamId = sim.serving.beamId;
+    let panelServingSinrDb = liveServingSinrDb;
+    let panelComparisonSatId = candidateComparisonSample?.satId ?? null;
+    let panelComparisonBeamId = candidateComparisonSample?.beamId ?? null;
+    let panelComparisonSinrDb = idleComparisonSinrDb;
+    let panelComparisonKind: SimState['comparisonKind'] = candidateComparisonSample ? 'candidate' : null;
+
+    if (
+      sim.pendingTargetSatId !== null
+      && sim.pendingTargetBeamId !== null
+      && sim.serving.satId !== null
+      && sim.serving.beamId !== null
+    ) {
+      const samePendingPair =
+        previousHandoverPanel?.phase === 'pending'
+        && previousHandoverPanel.servingSatId === sim.serving.satId
+        && previousHandoverPanel.servingBeamId === sim.serving.beamId
+        && previousHandoverPanel.comparisonSatId === sim.pendingTargetSatId
+        && previousHandoverPanel.comparisonBeamId === sim.pendingTargetBeamId;
+      const pendingServingSinrDb = isFinitePanelSinr(liveServingSinrDb)
+        ? liveServingSinrDb
+        : samePendingPair
+          ? previousHandoverPanel.servingSinrDb
+          : null;
+      const pendingComparisonSinrDb = isFinitePanelSinr(pendingTargetSinrDb)
+        ? pendingTargetSinrDb
+        : samePendingPair
+          ? previousHandoverPanel.comparisonSinrDb
+          : null;
+      handoverPanelRef.current = {
+        phase: 'pending',
+        servingSatId: sim.serving.satId,
+        servingBeamId: sim.serving.beamId,
+        servingSinrDb: pendingServingSinrDb,
+        comparisonSatId: sim.pendingTargetSatId,
+        comparisonBeamId: sim.pendingTargetBeamId,
+        comparisonSinrDb: pendingComparisonSinrDb,
+      };
+      panelServingSatId = handoverPanelRef.current.servingSatId;
+      panelServingBeamId = handoverPanelRef.current.servingBeamId;
+      panelServingSinrDb = handoverPanelRef.current.servingSinrDb;
+      panelComparisonSatId = handoverPanelRef.current.comparisonSatId;
+      panelComparisonBeamId = handoverPanelRef.current.comparisonBeamId;
+      panelComparisonSinrDb = handoverPanelRef.current.comparisonSinrDb;
+      panelComparisonKind = 'pending';
+    } else if (
+      sim.recentHoSourceSatId !== null
+      && sim.recentHoSourceBeamId !== null
+      && sim.recentHoTargetSatId !== null
+      && sim.recentHoTargetBeamId !== null
+    ) {
+      const sameRecentPair =
+        previousHandoverPanel?.phase === 'recent-ho'
+        && previousHandoverPanel.servingSatId === sim.recentHoSourceSatId
+        && previousHandoverPanel.servingBeamId === sim.recentHoSourceBeamId
+        && previousHandoverPanel.comparisonSatId === sim.recentHoTargetSatId
+        && previousHandoverPanel.comparisonBeamId === sim.recentHoTargetBeamId;
+      const matchesPreviousPendingPair =
+        previousHandoverPanel?.phase === 'pending'
+        && previousHandoverPanel.servingSatId === sim.recentHoSourceSatId
+        && previousHandoverPanel.servingBeamId === sim.recentHoSourceBeamId
+        && previousHandoverPanel.comparisonSatId === sim.recentHoTargetSatId
+        && previousHandoverPanel.comparisonBeamId === sim.recentHoTargetBeamId;
+      const recentServingSinrDb = isFinitePanelSinr(sim.recentHoSourceSinrDb)
+        ? sim.recentHoSourceSinrDb
+        : matchesPreviousPendingPair
+          ? previousHandoverPanel.servingSinrDb
+          : sameRecentPair
+            ? previousHandoverPanel.servingSinrDb
+            : null;
+      const recentComparisonSinrDb = isFinitePanelSinr(sim.recentHoTargetSinrDb)
+        ? sim.recentHoTargetSinrDb
+        : matchesPreviousPendingPair
+          ? previousHandoverPanel.comparisonSinrDb
+          : sameRecentPair
+            ? previousHandoverPanel.comparisonSinrDb
+            : null;
+      handoverPanelRef.current = {
+        phase: 'recent-ho',
+        servingSatId: sim.recentHoSourceSatId,
+        servingBeamId: sim.recentHoSourceBeamId,
+        servingSinrDb: recentServingSinrDb,
+        comparisonSatId: sim.recentHoTargetSatId,
+        comparisonBeamId: sim.recentHoTargetBeamId,
+        comparisonSinrDb: recentComparisonSinrDb,
+      };
+      panelServingSatId = handoverPanelRef.current.servingSatId;
+      panelServingBeamId = handoverPanelRef.current.servingBeamId;
+      panelServingSinrDb = handoverPanelRef.current.servingSinrDb;
+      panelComparisonSatId = handoverPanelRef.current.comparisonSatId;
+      panelComparisonBeamId = handoverPanelRef.current.comparisonBeamId;
+      panelComparisonSinrDb = handoverPanelRef.current.comparisonSinrDb;
+      panelComparisonKind = 'recent-ho';
+    } else {
+      handoverPanelRef.current = null;
+    }
+
+    const normalizedServing = normalizePanelSignal(
+      panelServingSatId,
+      panelServingBeamId,
+      panelServingSinrDb,
+    );
+    const normalizedComparison = normalizePanelSignal(
+      panelComparisonSatId,
+      panelComparisonBeamId,
+      panelComparisonSinrDb,
+    );
+    const panelSinrDeltaDb =
+      normalizedComparison.sinrDb !== null && normalizedServing.sinrDb !== null
+        ? normalizedComparison.sinrDb - normalizedServing.sinrDb
+        : null;
+
     const nextState: SimState = {
-      servingSatId: sim.serving.satId,
-      servingBeamId: sim.serving.beamId,
+      servingSatId: normalizedServing.satId,
+      servingBeamId: normalizedServing.beamId,
       pendingTargetSatId: sim.pendingTargetSatId,
       pendingTargetBeamId: sim.pendingTargetBeamId,
+      pendingTargetSinrDb,
+      comparisonSatId: normalizedComparison.satId,
+      comparisonBeamId: normalizedComparison.beamId,
+      comparisonSinrDb: normalizedComparison.sinrDb,
+      comparisonKind: normalizedComparison.satId ? panelComparisonKind : null,
+      sinrDeltaDb: panelSinrDeltaDb,
       recentHoSourceSatId: sim.recentHoSourceSatId,
       recentHoTargetSatId: sim.recentHoTargetSatId,
-      sinrDb: sim.serving.sinrDb,
+      sinrDb: normalizedServing.sinrDb ?? -Infinity,
+      handoverOffsetDb: profile.handover.offsetDb,
+      handoverTriggerProgressSec: sim.handoverTriggerProgressSec,
+      handoverTriggerSec: profile.handover.triggerTimeSec,
       hoCount: sim.hoCount,
       lastHoReason: sim.lastHoReason,
     };
     const nowMs = performance.now();
+    const handoverWindowActive =
+      sim.pendingTargetSatId !== null
+      || sim.recentHoSourceSatId !== null
+      || sim.recentHoTargetSatId !== null;
+    const uiIntervalMs = handoverWindowActive
+      ? UI_HANDOVER_UPDATE_INTERVAL_MS
+      : UI_STABLE_UPDATE_INTERVAL_MS;
     if (
       hasUiStateChanged(lastUiStateRef.current, nextState)
-      || nowMs - lastUiUpdateAtRef.current >= UI_UPDATE_INTERVAL_MS
+      || nowMs - lastUiUpdateAtRef.current >= uiIntervalMs
     ) {
       lastUiStateRef.current = nextState;
       lastUiUpdateAtRef.current = nowMs;

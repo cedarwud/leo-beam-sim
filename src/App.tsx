@@ -11,7 +11,7 @@ const PROFILE = loadProfile(PROFILE_ID);
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 const DEMO_START = recommendDemoReplayStartOffsetSec(PROFILE, EPOCH_MS);
 const DEFAULT_BASE_SPEED = 10;
-const HANDOVER_FOCUS_SPEED = 2;
+const HANDOVER_FOCUS_SPEED = 1;
 
 const RUNTIME: RuntimeConfig = {
   presentationMode: 'demo-readability',
@@ -31,9 +31,18 @@ export function App() {
     servingBeamId: null,
     pendingTargetSatId: null,
     pendingTargetBeamId: null,
+    pendingTargetSinrDb: null,
+    comparisonSatId: null,
+    comparisonBeamId: null,
+    comparisonSinrDb: null,
+    comparisonKind: null,
+    sinrDeltaDb: null,
     recentHoSourceSatId: null,
     recentHoTargetSatId: null,
     sinrDb: -Infinity,
+    handoverOffsetDb: PROFILE.handover.offsetDb,
+    handoverTriggerProgressSec: 0,
+    handoverTriggerSec: PROFILE.handover.triggerTimeSec,
     hoCount: 0,
     lastHoReason: '',
   });

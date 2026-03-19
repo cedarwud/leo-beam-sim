@@ -17,6 +17,7 @@ function createServingState(): ServingState {
 }
 
 export class HandoverManager {
+  private static readonly REATTACH_THRESHOLD_RELAX_DB = 3;
   private readonly sinrThresholdDb: number;
   private readonly offsetDb: number;
   private readonly triggerTimeSec: number;
@@ -60,6 +61,12 @@ export class HandoverManager {
     this.state = createServingState();
   }
 
+  getTrackedSinrDb(satId: string | null, beamId: number | null): number | null {
+    if (!satId || beamId === null) return null;
+    const key = beamAssignmentKey(satId, beamId);
+    return this.smoothedSinrByAssignment.get(key) ?? null;
+  }
+
   update(candidates: LinkSample[], dt: number, simTimeMs: number): HandoverDecision {
     const smoothedCandidates = this.smoothCandidates(candidates, dt);
     if (this.state.satId !== null) {
@@ -83,13 +90,16 @@ export class HandoverManager {
     if (this.state.satId === null) {
       this.clearPendingTarget();
       this.clearIntraSwitch();
-      if (best.sinrDb >= this.sinrThresholdDb) {
+      const attachThresholdDb = this.eventLog.length > 0
+        ? this.sinrThresholdDb - HandoverManager.REATTACH_THRESHOLD_RELAX_DB
+        : this.sinrThresholdDb;
+      if (best.sinrDb >= attachThresholdDb) {
         return this.commitDecision(
           'inter-handover',
           best,
           sorted,
           simTimeMs,
-          'initial attach',
+          this.eventLog.length > 0 ? 're-attach after service loss' : 'initial attach',
         );
       }
       return { action: 'stay', reason: 'no candidate above threshold' };
@@ -252,16 +262,20 @@ export class HandoverManager {
     simTimeMs: number,
     reason: string,
   ): HandoverDecision {
+    const fromSinrDb = this.state.satId !== null ? this.state.sinrDb : null;
+    const toSinrDb = candidates.find(
+      candidate => candidate.satId === target.satId && candidate.beamId === target.beamId,
+    )?.sinrDb ?? target.sinrDb;
     this.eventLog.push({
       timeMs: simTimeMs,
       action,
       fromSatId: this.state.satId,
       fromBeamId: this.state.beamId,
+      fromSinrDb,
       toSatId: target.satId,
       toBeamId: target.beamId,
-      sinrDb: candidates.find(
-        candidate => candidate.satId === target.satId && candidate.beamId === target.beamId,
-      )?.sinrDb ?? target.sinrDb,
+      toSinrDb,
+      deltaDb: fromSinrDb !== null ? toSinrDb - fromSinrDb : null,
     });
 
     this.state.satId = target.satId;

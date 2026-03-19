@@ -171,6 +171,23 @@ export function useBeamViz(
       if (sample.sinrDb > currentBest) bestSinrPerSat.set(sample.satId, sample.sinrDb);
     }
 
+    const labelSinrForSat = (satId: string): number | null => {
+      if (satId === sim.recentHoSourceSatId && sim.recentHoSourceSinrDb !== null) {
+        return sim.recentHoSourceSinrDb;
+      }
+      if (satId === sim.recentHoTargetSatId && sim.recentHoTargetSinrDb !== null) {
+        return sim.recentHoTargetSinrDb;
+      }
+      if (satId === sim.pendingTargetSatId && sim.pendingTargetSinrDb !== null) {
+        return sim.pendingTargetSinrDb;
+      }
+      if (satId === sim.serving.satId && Number.isFinite(sim.serving.sinrDb) && sim.serving.sinrDb > -100) {
+        return sim.serving.sinrDb;
+      }
+      const fallback = bestSinrPerSat.get(satId);
+      return fallback !== undefined && Number.isFinite(fallback) ? fallback : null;
+    };
+
     const prioritySatIds = [...new Set([
       sim.serving.satId,
       sim.pendingTargetSatId,
@@ -362,8 +379,8 @@ export function useBeamViz(
     const sinrLabels = [...beamSatIds]
       .map(satId => {
         const sat = shownSats.find(entry => entry.id === satId);
-        const sinrDb = bestSinrPerSat.get(satId);
-        if (!sat || sinrDb === undefined) return null;
+        const sinrDb = labelSinrForSat(satId);
+        if (!sat || sinrDb === null) return null;
         return {
           position: sat.world,
           sinrDb,

@@ -21,9 +21,18 @@ export interface SimState {
   servingBeamId: number | null;
   pendingTargetSatId: string | null;
   pendingTargetBeamId: number | null;
+  pendingTargetSinrDb: number | null;
+  comparisonSatId: string | null;
+  comparisonBeamId: number | null;
+  comparisonSinrDb: number | null;
+  comparisonKind: 'pending' | 'candidate' | 'recent-ho' | null;
+  sinrDeltaDb: number | null;
   recentHoSourceSatId: string | null;
   recentHoTargetSatId: string | null;
   sinrDb: number;
+  handoverOffsetDb: number;
+  handoverTriggerProgressSec: number;
+  handoverTriggerSec: number;
   hoCount: number;
   lastHoReason: string;
 }
@@ -52,6 +61,13 @@ export interface SimFrame {
   serving: { satId: string | null; beamId: number | null; sinrDb: number };
   pendingTargetSatId: string | null;
   pendingTargetBeamId: number | null;
+  pendingTargetSinrDb: number | null;
+  recentHoSourceBeamId: number | null;
+  recentHoTargetBeamId: number | null;
+  recentHoSourceSinrDb: number | null;
+  recentHoTargetSinrDb: number | null;
+  recentHoDeltaDb: number | null;
+  handoverTriggerProgressSec: number;
   hoCount: number;
   lastHoReason: string;
   simTimeSec: number;

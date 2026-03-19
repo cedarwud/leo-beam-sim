@@ -23,9 +23,11 @@ export interface HandoverEvent {
   action: HandoverAction;
   fromSatId: string | null;
   fromBeamId: number | null;
+  fromSinrDb: number | null;
   toSatId: string;
   toBeamId: number;
-  sinrDb: number;
+  toSinrDb: number;
+  deltaDb: number | null;
 }
 
 export interface HandoverPolicy {
