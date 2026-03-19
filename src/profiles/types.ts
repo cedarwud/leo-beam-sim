@@ -54,4 +54,7 @@ export interface Profile {
     maxActivePerSat: number;
     frequencyReuse: number;
   };
+
+  /** Pre-calculated or manually selected start time for the demo */
+  demoStartOffsetSec?: number;
 }

@@ -3,11 +3,11 @@ import type { Profile } from '../profiles/types';
 import { FOOTPRINT_RADIUS_WORLD, computeBeamGeometry } from './beam-layout';
 import type { PresentationMode, SimFrame, VizFrame, VisibleSat } from './types';
 
-const MAX_DISPLAY_SATS = 16;
-const MAX_EVENT_SATS = 6;
+const MAX_DISPLAY_SATS = 12;
+const MAX_EVENT_SATS = 8;
 const CENTRAL_CORE_RADIUS_WORLD = 180;
-const CENTRAL_FOCUS_RADIUS_WORLD = 360;
-const MIN_CENTER_ELEVATION_DEG = 40;
+const CENTRAL_FOCUS_RADIUS_WORLD = 500;
+const MIN_CENTER_ELEVATION_DEG = 45;
 const BEAM_HOP_SLOT_SEC = 0.75;
 
 interface ShellVizLayout {
@@ -33,9 +33,9 @@ function scoreCentralPass(sat: VisibleSat): number {
       1 - (centerRadiusWorld - CENTRAL_CORE_RADIUS_WORLD)
         / (CENTRAL_FOCUS_RADIUS_WORLD - CENTRAL_CORE_RADIUS_WORLD)
     );
-  const elevationScore =
-    (sat.topo.elevationDeg - MIN_CENTER_ELEVATION_DEG) * 1.4
-    + Math.max(sat.topo.elevationDeg - 60, 0) * 1.6;
+  
+  // Power-4 elevation score to extremely favor zenith satellites
+  const elevationScore = Math.pow(sat.topo.elevationDeg / 90, 4) * 500;
 
   return radialScore + elevationScore;
 }
@@ -43,11 +43,11 @@ function scoreCentralPass(sat: VisibleSat): number {
 function centralBiasWeight(mode: PresentationMode): number {
   switch (mode) {
     case 'research-default':
-      return 0;
+      return 0.5;
     case 'candidate-rich':
-      return 0.8;
+      return 2.0;
     case 'demo-readability':
-      return 1.35;
+      return 3.5;
   }
 }
 
@@ -210,11 +210,15 @@ export function useBeamViz(
       const prevB = previousDisplayIdsRef.current.has(b.id) ? 15 : 0;
       const centerA = scoreCentralPass(a) * centralBias;
       const centerB = scoreCentralPass(b) * centralBias;
-      const servingA = a.id === sim.serving.satId ? 1000 : 0;
-      const servingB = b.id === sim.serving.satId ? 1000 : 0;
+      const servingA = a.id === sim.serving.satId ? 10000 : 0;
+      const servingB = b.id === sim.serving.satId ? 10000 : 0;
+      
+      // Heavy edge penalty for satellites below 35 degrees
+      const edgePenaltyA = a.topo.elevationDeg < 35 ? -500 : 0;
+      const edgePenaltyB = b.topo.elevationDeg < 35 ? -500 : 0;
 
-      const scoreA = a.topo.elevationDeg + prevA + centerA + servingA + priorityA;
-      const scoreB = b.topo.elevationDeg + prevB + centerB + servingB + priorityB;
+      const scoreA = a.topo.elevationDeg + prevA + centerA + servingA + priorityA + edgePenaltyA;
+      const scoreB = b.topo.elevationDeg + prevB + centerB + servingB + priorityB + edgePenaltyB;
       return scoreB - scoreA || a.id.localeCompare(b.id);
     });
 

@@ -16,12 +16,12 @@ import type { Profile } from '../profiles/types';
 import { computeBeamGeometry, generateBeamOffsetsKm } from './beam-layout';
 import type { ReplayConfig, SimFrame, VisibleSat } from './types';
 
-export const MIN_ELEVATION_DEG = 5;
-export const CACHE_ELEVATION_DEG = 1;
+export const MIN_ELEVATION_DEG = 15;
+export const CACHE_ELEVATION_DEG = 10;
 export const SKY_DOME_H_RADIUS = 700;
 export const SKY_DOME_V_RADIUS = 400;
-export const SIM_DURATION_SEC = 3600;
-export const SIM_STEP_SEC = 10;
+export const SIM_DURATION_SEC = 1200;
+export const SIM_STEP_SEC = 20;
 const MAX_STEERING_EXTRA_RINGS = 3;
 const RECENT_HO_LINGER_SEC = 5;
 

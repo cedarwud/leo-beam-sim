@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MainScene } from './scene/MainScene';
 import { loadProfile } from './profiles';
 import type { RuntimeConfig, SimState } from './scene/types';
@@ -9,23 +9,31 @@ import { InfoPanel } from './ui/InfoPanel';
 const PROFILE_ID = 'hobs-2024-candidate-rich';
 const PROFILE = loadProfile(PROFILE_ID);
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
-const DEMO_START = recommendDemoReplayStartOffsetSec(PROFILE, EPOCH_MS);
 const DEFAULT_BASE_SPEED = 10;
 const HANDOVER_FOCUS_SPEED = 1;
-
-const RUNTIME: RuntimeConfig = {
-  presentationMode: 'demo-readability',
-  replay: {
-    epochUtcMs: EPOCH_MS,
-    startOffsetSec: DEMO_START,
-    loop: true,
-  },
-};
 
 export function App() {
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(DEFAULT_BASE_SPEED);
+  const [autoSlowEnabled, setAutoSlowEnabled] = useState(true);
   const [autoSlowDismissed, setAutoSlowDismissed] = useState(false);
+
+  // Memoize recommendation to prevent recalculating on every render,
+  // but this still runs during the first render. 
+  // Given we have localStorage cache now, it will be instant after the first run.
+  const demoStartOffset = useMemo(() => 
+    recommendDemoReplayStartOffsetSec(PROFILE, EPOCH_MS), 
+  []);
+
+  const runtime = useMemo((): RuntimeConfig => ({
+    presentationMode: 'demo-readability',
+    replay: {
+      epochUtcMs: EPOCH_MS,
+      startOffsetSec: demoStartOffset,
+      loop: true,
+    },
+  }), [demoStartOffset]);
+
   const [simState, setSimState] = useState<SimState>({
     servingSatId: null,
     servingBeamId: null,
@@ -55,7 +63,7 @@ export function App() {
     simState.pendingTargetSatId !== null
     || simState.recentHoSourceSatId !== null
     || simState.recentHoTargetSatId !== null;
-  const autoSlowApplied = autoSlowActive && !autoSlowDismissed;
+  const autoSlowApplied = autoSlowEnabled && autoSlowActive && !autoSlowDismissed;
   const effectiveSpeed = autoSlowApplied ? Math.min(speed, HANDOVER_FOCUS_SPEED) : speed;
 
   useEffect(() => {
@@ -68,7 +76,7 @@ export function App() {
         speed={effectiveSpeed}
         paused={paused}
         profileId={PROFILE_ID}
-        runtime={RUNTIME}
+        runtime={runtime}
         onSimUpdate={handleSimUpdate}
       />
       <ControlBar
@@ -77,9 +85,11 @@ export function App() {
         effectiveSpeed={effectiveSpeed}
         autoSlowActive={autoSlowActive}
         autoSlowApplied={autoSlowApplied}
+        autoSlowEnabled={autoSlowEnabled}
         onTogglePause={() => setPaused(p => !p)}
         onSpeedChange={setSpeed}
         onDismissAutoSlow={() => setAutoSlowDismissed(true)}
+        onToggleAutoSlow={() => setAutoSlowEnabled(e => !e)}
       />
       <InfoPanel {...simState} />
     </div>

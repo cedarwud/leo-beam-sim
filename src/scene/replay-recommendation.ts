@@ -7,28 +7,50 @@ import {
 import type { Profile } from '../profiles/types';
 
 const RECOMMEND_DURATION_SEC = 3600;
-const RECOMMEND_STEP_SEC = 10;
+const RECOMMEND_STEP_SEC = 10; 
 const HIGH_ELEVATION_DEG = 45;
-const CENTRAL_ELEVATION_DEG = 60;
-const ZENITH_ELEVATION_DEG = 75;
 const RAMP_LEAD_SEC = 45;
-const AZIMUTH_SECTOR_DEG = 45;
-const MIN_DIRECTION_SECTORS = 2;
 
 function angularSeparationDeg(a: number, b: number): number {
   const delta = Math.abs(a - b) % 360;
   return delta > 180 ? 360 - delta : delta;
 }
 
+/**
+ * Recommends a starting offset for the demo where satellite density is high.
+ * Results are cached in localStorage to prevent blocking on page refreshes.
+ */
 export function recommendDemoReplayStartOffsetSec(
   profile: Profile,
   epochUtcMs: number,
 ): number {
+  // 1. Highest priority: Manually locked value in Profile JSON
+  if (profile.demoStartOffsetSec !== undefined) {
+    console.log(`[Recommendation] Using hardcoded start offset from profile: ${profile.demoStartOffsetSec}s`);
+    return profile.demoStartOffsetSec;
+  }
+
+  // 2. Second priority: Browser localStorage cache
+  const configSignature = JSON.stringify(profile.orbit.shells).length;
+  const cacheKey = `demo_start_${profile.id}_${epochUtcMs}_${configSignature}`;
+  
+  // Try to hit browser cache first
+  const cached = typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null;
+  if (cached) {
+    console.log(`[Recommendation] Using cached start offset: ${cached}s`);
+    return parseInt(cached, 10);
+  }
+
+  console.time('Recommendation Search');
   const observer = createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg);
   const elements = generateWalkerConstellation({
     shells: profile.orbit.shells,
     epochUtcMs,
   });
+
+  // Performance optimization: sample satellites for recommendation logic
+  const sampleElementStep = elements.length > 1000 ? Math.floor(elements.length / 800) : 1;
+  const sampledElements = elements.filter((_, i) => i % sampleElementStep === 0);
 
   let bestScore = -Infinity;
   let bestStepSec = 0;
@@ -36,7 +58,7 @@ export function recommendDemoReplayStartOffsetSec(
   for (let stepSec = 0; stepSec <= RECOMMEND_DURATION_SEC; stepSec += RECOMMEND_STEP_SEC) {
     const visible: { shellId: string; azimuthDeg: number; elevationDeg: number }[] = [];
 
-    for (const element of elements) {
+    for (const element of sampledElements) {
       const orbitPoint = propagateOrbitElement(element, epochUtcMs + stepSec * 1000);
       const topo = computeTopocentricPoint(observer, orbitPoint.ecefKm);
       if (topo.elevationDeg < HIGH_ELEVATION_DEG) continue;
@@ -51,47 +73,20 @@ export function recommendDemoReplayStartOffsetSec(
     if (visible.length === 0) continue;
 
     visible.sort((a, b) => b.elevationDeg - a.elevationDeg);
+    const centralVisible = visible.filter(sat => sat.elevationDeg >= 55);
+    const zenithVisible = visible.filter(sat => sat.elevationDeg >= 75);
 
-    const centralVisible = visible.filter(sat => sat.elevationDeg >= CENTRAL_ELEVATION_DEG);
-    const zenithVisible = visible.filter(sat => sat.elevationDeg >= ZENITH_ELEVATION_DEG);
-    const topDistinctShells: typeof centralVisible = [];
-    const seenShells = new Set<string>();
-    for (const sat of centralVisible) {
-      if (seenShells.has(sat.shellId)) continue;
-      topDistinctShells.push(sat);
-      seenShells.add(sat.shellId);
-      if (topDistinctShells.length >= 3) break;
-    }
-
-    const azimuthSectors = new Set(
-      centralVisible
-        .slice(0, 6)
-        .map(sat => Math.floor(sat.azimuthDeg / AZIMUTH_SECTOR_DEG)),
-    );
+    const clusterCountScore = Math.pow(centralVisible.length, 2) * 50;
+    const azimuthSectors = new Set(centralVisible.map(sat => Math.floor(sat.azimuthDeg / 45)));
 
     let score =
-      zenithVisible.length * 160 +
-      centralVisible.length * 70 +
-      Math.min(visible.length, 6) * 10 +
-      topDistinctShells.reduce((sum, sat) => sum + sat.elevationDeg * 1.5, 0) +
-      seenShells.size * 60 +
-      Math.min(azimuthSectors.size, 4) * 20;
+      clusterCountScore +
+      zenithVisible.length * 1000 +
+      centralVisible.length * 200 +
+      azimuthSectors.size * 500;
 
-    for (let i = 0; i < topDistinctShells.length; i++) {
-      for (let j = i + 1; j < topDistinctShells.length; j++) {
-        const separation = angularSeparationDeg(
-          topDistinctShells[i].azimuthDeg,
-          topDistinctShells[j].azimuthDeg,
-        );
-        score += Math.min(separation, 90) / 8;
-        if (separation < 12) score -= 8;
-      }
-    }
-
-    if (centralVisible.length === 0) score -= 200;
-    if (zenithVisible.length === 0) score -= 60;
-    if (azimuthSectors.size < MIN_DIRECTION_SECTORS) score -= 180;
-    if (azimuthSectors.size < 3) score -= 40;
+    const distinctShells = new Set(centralVisible.map(s => s.shellId));
+    score += distinctShells.size * 300;
 
     if (score > bestScore) {
       bestScore = score;
@@ -99,5 +94,10 @@ export function recommendDemoReplayStartOffsetSec(
     }
   }
 
-  return Math.max(bestStepSec - RAMP_LEAD_SEC, 0);
+  const result = Math.max(bestStepSec - RAMP_LEAD_SEC, 0);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(cacheKey, result.toString());
+  }
+  console.timeEnd('Recommendation Search');
+  return result;
 }

@@ -5,41 +5,11 @@
   "orbit": {
     "type": "walker",
     "shells": [
-      {
-        "id": "shell-a",
-        "altitudeKm": 550,
-        "inclinationDeg": 42,
-        "planes": 44,
-        "satsPerPlane": 20
-      },
-      {
-        "id": "shell-b",
-        "altitudeKm": 550,
-        "inclinationDeg": 53,
-        "planes": 36,
-        "satsPerPlane": 20
-      },
-      {
-        "id": "shell-c",
-        "altitudeKm": 550,
-        "inclinationDeg": 68,
-        "planes": 24,
-        "satsPerPlane": 18
-      },
-      {
-        "id": "shell-d",
-        "altitudeKm": 550,
-        "inclinationDeg": 97.6,
-        "planes": 12,
-        "satsPerPlane": 16
-      },
-      {
-        "id": "shell-e",
-        "altitudeKm": 550,
-        "inclinationDeg": 118,
-        "planes": 8,
-        "satsPerPlane": 14
-      }
+      { "id": "shell-pro-53", "altitudeKm": 550, "inclinationDeg": 53, "planes": 36, "satsPerPlane": 20 },
+      { "id": "shell-pro-42", "altitudeKm": 550, "inclinationDeg": 42, "planes": 36, "satsPerPlane": 20 },
+      { "id": "shell-polar", "altitudeKm": 550, "inclinationDeg": 90, "planes": 36, "satsPerPlane": 20 },
+      { "id": "shell-retro-125", "altitudeKm": 550, "inclinationDeg": 125, "planes": 24, "satsPerPlane": 16 },
+      { "id": "shell-retro-145", "altitudeKm": 550, "inclinationDeg": 145, "planes": 24, "satsPerPlane": 16 }
     ],
     "observerLatDeg": 40,
     "observerLonDeg": 116
@@ -73,5 +43,6 @@
     "perSatellite": 37,
     "maxActivePerSat": 4,
     "frequencyReuse": 4
-  }
+  },
+  "demoStartOffsetSec": 450
 }

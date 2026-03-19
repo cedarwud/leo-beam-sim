@@ -27,9 +27,15 @@ export function generateWalkerConstellation(config: {
 
     for (let p = 0; p < shell.planes; p++) {
       const raanRad = (TWO_PI * p) / shell.planes;
+      const planePhaseOffset = (TWO_PI * p) / totalSats; 
+
       for (let s = 0; s < shell.satsPerPlane; s++) {
-        const meanAnomalyRad =
-          (TWO_PI * s) / shell.satsPerPlane + (TWO_PI * p) / Math.max(totalSats, 1);
+        // Add a cluster factor: perturbation to create bunches of satellites
+        // Seed-based pseudo-random to keep it deterministic for the cache
+        const seed = (p * 13 + s * 7) % 100;
+        const perturbation = (seed / 100 - 0.5) * (TWO_PI / shell.satsPerPlane) * 0.8;
+        
+        const meanAnomalyRad = (TWO_PI * s) / shell.satsPerPlane + planePhaseOffset + perturbation;
         elements.push({
           id: `${shell.id}-P${p}-S${s}`,
           shellId: shell.id,

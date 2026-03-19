@@ -4,9 +4,11 @@ interface ControlBarProps {
   effectiveSpeed: number;
   autoSlowActive: boolean;
   autoSlowApplied: boolean;
+  autoSlowEnabled: boolean;
   onTogglePause: () => void;
   onSpeedChange: (speed: number) => void;
   onDismissAutoSlow: () => void;
+  onToggleAutoSlow: () => void;
 }
 
 export function ControlBar({
@@ -15,9 +17,11 @@ export function ControlBar({
   effectiveSpeed,
   autoSlowActive,
   autoSlowApplied,
+  autoSlowEnabled,
   onTogglePause,
   onSpeedChange,
   onDismissAutoSlow,
+  onToggleAutoSlow,
 }: ControlBarProps) {
   return (
     <div style={{
@@ -42,6 +46,16 @@ export function ControlBar({
         {paused ? 'Play' : 'Pause'}
       </button>
 
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={autoSlowEnabled}
+          onChange={onToggleAutoSlow}
+          style={{ cursor: 'pointer' }}
+        />
+        HO Slow
+      </label>
+
       {autoSlowApplied && (
         <button
           onClick={onDismissAutoSlow}
@@ -50,7 +64,7 @@ export function ControlBar({
           Resume Normal Speed
         </button>
       )}
-
+...
       <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         Speed:
         <input
