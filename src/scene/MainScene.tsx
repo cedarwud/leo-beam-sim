@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo } from 'react';
+import { memo, Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { ACESFilmicToneMapping } from 'three';
@@ -7,6 +7,7 @@ import type { RuntimeConfig, SimState } from './types';
 import { useSimulation } from './useSimulation';
 import { useBeamViz } from './useBeamViz';
 import { EarthFixedCells, generateHexGrid } from '../viz/EarthFixedCells';
+import { HandoverLinks } from '../viz/HandoverLinks';
 import { SatelliteBeams } from '../viz/SatelliteBeams';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
 import { SinrOverlay } from '../viz/SinrOverlay';
@@ -23,6 +24,21 @@ interface SceneContentProps {
   onSimUpdate: (state: SimState) => void;
 }
 
+const UI_UPDATE_INTERVAL_MS = 250;
+const SHOW_BEAMS = true;
+
+function hasUiStateChanged(previous: SimState | null, next: SimState): boolean {
+  if (!previous) return true;
+  return previous.servingSatId !== next.servingSatId
+    || previous.servingBeamId !== next.servingBeamId
+    || previous.pendingTargetSatId !== next.pendingTargetSatId
+    || previous.pendingTargetBeamId !== next.pendingTargetBeamId
+    || previous.recentHoSourceSatId !== next.recentHoSourceSatId
+    || previous.recentHoTargetSatId !== next.recentHoTargetSatId
+    || previous.hoCount !== next.hoCount
+    || previous.lastHoReason !== next.lastHoReason;
+}
+
 function SceneContent({
   profileId,
   speed,
@@ -33,19 +49,34 @@ function SceneContent({
   const profile = useMemo(() => loadProfile(profileId), [profileId]);
   const sim = useSimulation(profile, runtime.replay, speed, paused);
   const viz = useBeamViz(sim, profile, runtime.presentationMode);
+  const lastUiUpdateAtRef = useRef(0);
+  const lastUiStateRef = useRef<SimState | null>(null);
   const cells = useMemo(
     () => generateHexGrid({ rows: 4, cols: 5, cellRadius: 80, centerX: 0, centerZ: 0 }),
     [],
   );
 
   useEffect(() => {
-    onSimUpdate({
+    const nextState: SimState = {
       servingSatId: sim.serving.satId,
       servingBeamId: sim.serving.beamId,
+      pendingTargetSatId: sim.pendingTargetSatId,
+      pendingTargetBeamId: sim.pendingTargetBeamId,
+      recentHoSourceSatId: sim.recentHoSourceSatId,
+      recentHoTargetSatId: sim.recentHoTargetSatId,
       sinrDb: sim.serving.sinrDb,
       hoCount: sim.hoCount,
       lastHoReason: sim.lastHoReason,
-    });
+    };
+    const nowMs = performance.now();
+    if (
+      hasUiStateChanged(lastUiStateRef.current, nextState)
+      || nowMs - lastUiUpdateAtRef.current >= UI_UPDATE_INTERVAL_MS
+    ) {
+      lastUiStateRef.current = nextState;
+      lastUiUpdateAtRef.current = nowMs;
+      onSimUpdate(nextState);
+    }
   }, [onSimUpdate, sim]);
 
   return (
@@ -88,17 +119,18 @@ function SceneContent({
 
       <GroundScene />
       <EarthFixedCells cells={cells} />
+      <HandoverLinks satellites={viz.displaySats} eventRoles={viz.eventRoles} />
 
       {viz.displaySats.map(sat => (
         <SatelliteMarker
           key={sat.id}
           position={sat.world}
           label={sat.id}
-          isServing={viz.eventRoles.get(sat.id) === 'serving' || viz.eventRoles.get(sat.id) === 'post-ho'}
+          eventRole={viz.eventRoles.get(sat.id)}
         />
       ))}
 
-      {viz.displaySats
+      {SHOW_BEAMS && viz.displaySats
         .filter(sat => viz.beamSatIds.has(sat.id))
         .map(sat => {
           const beams = viz.satBeams.get(sat.id);
@@ -128,7 +160,7 @@ interface MainSceneProps {
   onSimUpdate: (state: SimState) => void;
 }
 
-export function MainScene({
+export const MainScene = memo(function MainScene({
   speed,
   paused,
   profileId,
@@ -166,4 +198,6 @@ export function MainScene({
       </Canvas>
     </div>
   );
-}
+});
+
+MainScene.displayName = 'MainScene';

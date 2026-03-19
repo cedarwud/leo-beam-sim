@@ -7,7 +7,12 @@
  */
 
 import type { Profile } from '../../profiles/types';
-import type { LinkSample, SatelliteSnapshot, UEPosition } from './types';
+import type {
+  ActiveBeamAssignment,
+  LinkSample,
+  SatelliteSnapshot,
+  UEPosition,
+} from './types';
 import { computeBeamGainDb, computeOffAxisDeg, BEAM_GAIN_FLOOR_DB } from './beam-gain';
 import { computePathLossDb } from './path-loss';
 
@@ -30,9 +35,10 @@ export function computeLinkBudget(
     channel: Profile['channel'];
     antenna: Profile['antenna'];
     beams: Profile['beams'];
+    activeAssignments: ActiveBeamAssignment[];
   },
 ): LinkSample[] {
-  const { channel, antenna, beams: beamConfig } = config;
+  const { channel, antenna, beams: beamConfig, activeAssignments } = config;
 
   // Noise power: N = N0 * BW
   const bandwidthHz = channel.bandwidthMHz * 1e6;
@@ -41,6 +47,9 @@ export function computeLinkBudget(
 
   const beamwidth3dBDeg = (antenna.beamwidth3dBRad * 180) / Math.PI;
   const entries: BeamEntry[] = [];
+  const activeBeamKeys = new Set(
+    activeAssignments.map(assignment => `${assignment.satId}:${assignment.beamId}`),
+  );
 
   for (const sat of satellites) {
     for (const beam of sat.beamCellsKm) {
@@ -81,6 +90,8 @@ export function computeLinkBudget(
     let interferenceMw = 0;
     for (let j = 0; j < entries.length; j++) {
       if (j === idx) continue;
+      const otherKey = `${entries[j].sample.satId}:${entries[j].sample.beamId}`;
+      if (!activeBeamKeys.has(otherKey)) continue;
       // Same frequency reuse group → interfering
       if (reuseGroups <= 1 || (entries[j].sample.beamId % reuseGroups) === (entry.sample.beamId % reuseGroups)) {
         interferenceMw += entries[j].signalMw;

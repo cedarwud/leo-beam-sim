@@ -5,6 +5,11 @@ export interface LinkSample {
   sinrDb: number;
 }
 
+export interface ActiveBeamAssignment {
+  satId: string;
+  beamId: number;
+}
+
 export interface SatelliteSnapshot {
   id: string;
   shellId: string;

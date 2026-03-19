@@ -8,23 +8,37 @@
       {
         "id": "shell-a",
         "altitudeKm": 550,
-        "inclinationDeg": 53,
-        "planes": 22,
+        "inclinationDeg": 42,
+        "planes": 44,
         "satsPerPlane": 20
       },
       {
         "id": "shell-b",
         "altitudeKm": 550,
-        "inclinationDeg": 97.6,
-        "planes": 18,
-        "satsPerPlane": 18
+        "inclinationDeg": 53,
+        "planes": 36,
+        "satsPerPlane": 20
       },
       {
         "id": "shell-c",
         "altitudeKm": 550,
-        "inclinationDeg": 70,
-        "planes": 18,
+        "inclinationDeg": 68,
+        "planes": 24,
         "satsPerPlane": 18
+      },
+      {
+        "id": "shell-d",
+        "altitudeKm": 550,
+        "inclinationDeg": 97.6,
+        "planes": 12,
+        "satsPerPlane": 16
+      },
+      {
+        "id": "shell-e",
+        "altitudeKm": 550,
+        "inclinationDeg": 118,
+        "planes": 8,
+        "satsPerPlane": 14
       }
     ],
     "observerLatDeg": 40,
@@ -47,8 +61,11 @@
     "policy": "sinr-offset",
     "sinrThresholdDb": -5,
     "offsetDb": 3,
-    "triggerTimeSec": 2,
-    "pingPongGuardSec": 5
+    "triggerTimeSec": 3.5,
+    "pingPongGuardSec": 5,
+    "pendingTargetHoldSec": 1.5,
+    "intraSwitchTimeSec": 0.75,
+    "sinrSmoothingSec": 0.5
   },
   "beams": {
     "perSatellite": 37,

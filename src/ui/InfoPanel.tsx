@@ -1,10 +1,4 @@
-interface InfoPanelProps {
-  servingSatId: string | null;
-  servingBeamId: number | null;
-  sinrDb: number;
-  hoCount: number;
-  lastHoReason: string;
-}
+import type { SimState } from '../scene/types';
 
 function sinrColor(sinrDb: number): string {
   if (sinrDb >= 20) return '#00ff00';
@@ -13,7 +7,17 @@ function sinrColor(sinrDb: number): string {
   return '#ff4444';
 }
 
-export function InfoPanel({ servingSatId, servingBeamId, sinrDb, hoCount, lastHoReason }: InfoPanelProps) {
+export function InfoPanel({
+  servingSatId,
+  servingBeamId,
+  pendingTargetSatId,
+  pendingTargetBeamId,
+  recentHoSourceSatId,
+  recentHoTargetSatId,
+  sinrDb,
+  hoCount,
+  lastHoReason,
+}: SimState) {
   return (
     <div style={{
       position: 'absolute',
@@ -30,6 +34,13 @@ export function InfoPanel({ servingSatId, servingBeamId, sinrDb, hoCount, lastHo
     }}>
       <div style={{ marginBottom: 8, fontWeight: 'bold', fontSize: 15 }}>LEO Beam Sim</div>
       <div>Serving: {servingSatId ? `${servingSatId} B${servingBeamId}` : 'none'}</div>
+      <div>Pending: {pendingTargetSatId ? `${pendingTargetSatId} B${pendingTargetBeamId}` : '—'}</div>
+      <div>
+        Recent HO:{' '}
+        {recentHoSourceSatId || recentHoTargetSatId
+          ? `${recentHoSourceSatId ?? '—'} → ${recentHoTargetSatId ?? '—'}`
+          : '—'}
+      </div>
       <div>
         SINR:{' '}
         <span style={{ color: sinrColor(sinrDb) }}>

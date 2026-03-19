@@ -25,29 +25,20 @@ export function generateBeamOffsetsKm(
   spacingKm: number,
   maxBeams: number,
 ): BeamOffsetKm[] {
+  if (maxBeams <= 0) return [];
+
   const beams: BeamOffsetKm[] = [];
   let id = 1;
 
   beams.push({ beamId: id++, dEastKm: 0, dNorthKm: 0 });
-
-  if (beams.length < maxBeams) {
-    for (let i = 0; i < 6 && beams.length < maxBeams; i++) {
-      const angle = (i / 6) * Math.PI * 2;
+  for (let ring = 1; beams.length < maxBeams; ring++) {
+    const ringBeams = 6 * ring;
+    for (let i = 0; i < ringBeams && beams.length < maxBeams; i++) {
+      const angle = (i / ringBeams) * Math.PI * 2;
       beams.push({
         beamId: id++,
-        dEastKm: Math.cos(angle) * spacingKm,
-        dNorthKm: Math.sin(angle) * spacingKm,
-      });
-    }
-  }
-
-  if (beams.length < maxBeams) {
-    for (let i = 0; i < 12 && beams.length < maxBeams; i++) {
-      const angle = (i / 12) * Math.PI * 2;
-      beams.push({
-        beamId: id++,
-        dEastKm: Math.cos(angle) * spacingKm * 2,
-        dNorthKm: Math.sin(angle) * spacingKm * 2,
+        dEastKm: Math.cos(angle) * spacingKm * ring,
+        dNorthKm: Math.sin(angle) * spacingKm * ring,
       });
     }
   }

@@ -33,8 +33,11 @@
     "policy": "sinr-offset",
     "sinrThresholdDb": -5,
     "offsetDb": 3,
-    "triggerTimeSec": 2,
-    "pingPongGuardSec": 5
+    "triggerTimeSec": 3.5,
+    "pingPongGuardSec": 5,
+    "pendingTargetHoldSec": 1.5,
+    "intraSwitchTimeSec": 0.75,
+    "sinrSmoothingSec": 0.5
   },
   "beams": {
     "perSatellite": 37,

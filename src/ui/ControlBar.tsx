@@ -1,21 +1,19 @@
-import { profiles } from '../profiles';
-
 interface ControlBarProps {
   paused: boolean;
   speed: number;
-  profileId: string;
+  effectiveSpeed: number;
+  autoSlowActive: boolean;
   onTogglePause: () => void;
   onSpeedChange: (speed: number) => void;
-  onProfileChange: (id: string) => void;
 }
 
 export function ControlBar({
   paused,
   speed,
-  profileId,
+  effectiveSpeed,
+  autoSlowActive,
   onTogglePause,
   onSpeedChange,
-  onProfileChange,
 }: ControlBarProps) {
   return (
     <div style={{
@@ -45,7 +43,7 @@ export function ControlBar({
         <input
           type="range"
           min={1}
-          max={100}
+          max={20}
           value={speed}
           onChange={e => onSpeedChange(Number(e.target.value))}
           style={{ width: 80 }}
@@ -53,15 +51,9 @@ export function ControlBar({
         <span>{speed}x</span>
       </label>
 
-      <select
-        value={profileId}
-        onChange={e => onProfileChange(e.target.value)}
-        style={{ background: '#333', color: 'white', border: '1px solid #666', padding: '4px 8px', borderRadius: 4 }}
-      >
-        {Object.keys(profiles).map(id => (
-          <option key={id} value={id}>{id}</option>
-        ))}
-      </select>
+      <div style={{ color: autoSlowActive ? '#ffd84a' : '#9aa3b2', minWidth: 140 }}>
+        Scene: {effectiveSpeed.toFixed(1)}x{autoSlowActive ? ' (HO Slow)' : ''}
+      </div>
     </div>
   );
 }

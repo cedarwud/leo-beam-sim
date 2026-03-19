@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { TopocentricPoint } from '../engine/orbit';
-import type { LinkSample } from '../engine/signal/types';
+import type { ActiveBeamAssignment, LinkSample } from '../engine/signal/types';
 import type { BeamTarget } from '../viz/SatelliteBeams';
 
 export type PresentationMode = 'research-default' | 'candidate-rich' | 'demo-readability';
@@ -19,6 +19,10 @@ export interface RuntimeConfig {
 export interface SimState {
   servingSatId: string | null;
   servingBeamId: number | null;
+  pendingTargetSatId: string | null;
+  pendingTargetBeamId: number | null;
+  recentHoSourceSatId: string | null;
+  recentHoTargetSatId: string | null;
   sinrDb: number;
   hoCount: number;
   lastHoReason: string;
@@ -37,10 +41,16 @@ export interface VisibleSat {
 export interface SimFrame {
   satellites: VisibleSat[];
   linkSamples: LinkSample[];
+  activeAssignments: ActiveBeamAssignment[];
+  displayAssignments: ActiveBeamAssignment[];
+  beamCellsBySatId: Map<string, { beamId: number; offsetEastKm: number; offsetNorthKm: number }[]>;
   serving: { satId: string | null; beamId: number | null; sinrDb: number };
+  pendingTargetSatId: string | null;
+  pendingTargetBeamId: number | null;
   hoCount: number;
   lastHoReason: string;
   simTimeSec: number;
+  recentHoSourceSatId: string | null;
   recentHoTargetSatId: string | null;
 }
 

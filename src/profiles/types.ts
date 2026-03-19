@@ -42,6 +42,9 @@ export interface Profile {
     offsetDb: number;
     triggerTimeSec: number;
     pingPongGuardSec: number;
+    pendingTargetHoldSec: number;
+    intraSwitchTimeSec: number;
+    sinrSmoothingSec: number;
   };
 
   beams: {
