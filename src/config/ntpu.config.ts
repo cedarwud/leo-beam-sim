@@ -1,9 +1,9 @@
 export const NTPU_CONFIG = {
   observer: {
-    name: 'National Taipei University',
-    latitude: 24.9441667,    // 度
-    longitude: 121.3713889,  // 度
-    altitude: 50,            // 米
+    name: 'Beijing Observer',
+    latitude: 40,            // 度 (paper consensus: 40°N)
+    longitude: 116,          // 度 (116°E)
+    altitude: 0,             // 米
   },
   scene: {
     modelPath: '/scenes/NTPU.glb',
