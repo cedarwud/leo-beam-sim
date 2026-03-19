@@ -8,9 +8,17 @@ const MAX_EVENT_SATS = 6;
 const CENTRAL_CORE_RADIUS_WORLD = 180;
 const CENTRAL_FOCUS_RADIUS_WORLD = 360;
 const MIN_CENTER_ELEVATION_DEG = 40;
+const BEAM_HOP_SLOT_SEC = 0.75;
 
 interface ShellVizLayout {
   footprintRadiusKm: number;
+}
+
+interface BeamCellViz {
+  beamId: number;
+  offsetEastKm: number;
+  offsetNorthKm: number;
+  scanAngleDeg: number;
 }
 
 function scoreCentralPass(sat: VisibleSat): number {
@@ -76,6 +84,42 @@ function isRecentHoSourceSat(satId: string, sim: SimFrame): boolean {
   return satId === sim.recentHoSourceSatId && satId !== sim.serving.satId;
 }
 
+function beamHopSeed(satId: string): number {
+  let hash = 0;
+  for (let i = 0; i < satId.length; i++) {
+    hash = (hash * 31 + satId.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function selectHoppingAuxiliaryBeamIds(
+  beamCells: BeamCellViz[],
+  primaryBeamId: number,
+  beamLimit: number,
+  satId: string,
+  simTimeSec: number,
+): number[] {
+  if (beamLimit <= 1) return [];
+
+  const auxiliaries = beamCells
+    .filter(beam => beam.beamId !== primaryBeamId)
+    .sort((a, b) => a.beamId - b.beamId);
+  if (auxiliaries.length === 0) return [];
+
+  const slotIndex = Math.floor(simTimeSec / BEAM_HOP_SLOT_SEC);
+  const startIndex = (slotIndex + beamHopSeed(satId)) % auxiliaries.length;
+  const step = Math.max(1, Math.floor(auxiliaries.length / Math.max(beamLimit - 1, 1)));
+  const chosen: number[] = [];
+
+  for (let i = 0; i < auxiliaries.length && chosen.length < beamLimit - 1; i++) {
+    const beam = auxiliaries[(startIndex + i * step) % auxiliaries.length];
+    if (chosen.includes(beam.beamId)) continue;
+    chosen.push(beam.beamId);
+  }
+
+  return chosen;
+}
+
 export function useBeamViz(
   sim: SimFrame,
   profile: Profile,
@@ -83,9 +127,32 @@ export function useBeamViz(
 ): VizFrame {
   const previousDisplayIdsRef = useRef<Set<string>>(new Set());
   const previousEventIdsRef = useRef<Set<string>>(new Set());
+  const beamHopStateRef = useRef<{
+    slotIndex: number;
+    perSat: Map<string, {
+      auxiliaryBeamIds: number[];
+      positionsByBeamId: Map<number, { groundX: number; groundZ: number }>;
+    }>;
+  }>({
+    slotIndex: -1,
+    perSat: new Map(),
+  });
 
   return useMemo(() => {
     const centralBias = centralBiasWeight(mode);
+    const handoverWindowActive =
+      sim.pendingTargetSatId !== null
+      || sim.recentHoSourceSatId !== null
+      || sim.recentHoTargetSatId !== null;
+    const interSatHandoverActive =
+      sim.pendingTargetSatId !== null && sim.pendingTargetSatId !== sim.serving.satId;
+    const slotIndex = Math.floor(sim.simTimeSec / BEAM_HOP_SLOT_SEC);
+    if (beamHopStateRef.current.slotIndex !== slotIndex) {
+      beamHopStateRef.current = {
+        slotIndex,
+        perSat: new Map(),
+      };
+    }
     const shellLayouts = new Map<string, ShellVizLayout>(
       profile.orbit.shells.map(shell => {
         const geometry = computeBeamGeometry(shell.altitudeKm, profile.antenna.beamwidth3dBRad);
@@ -192,7 +259,12 @@ export function useBeamViz(
       displayAssignmentsBySatId.set(assignment.satId, satAssignments);
     }
 
-    const beamSatIds = new Set<string>(eventRoles.keys());
+    const beamSatIds = interSatHandoverActive
+      ? new Set(
+        [sim.serving.satId, sim.pendingTargetSatId]
+          .filter((satId): satId is string => satId !== null),
+      )
+      : new Set<string>(eventRoles.keys());
     if (beamSatIds.size === 0 && sim.serving.satId) beamSatIds.add(sim.serving.satId);
 
     const satBeams = new Map<string, VizFrame['satBeams'] extends Map<string, infer T> ? T : never>();
@@ -217,25 +289,73 @@ export function useBeamViz(
         || isRecentHoSourceSat(sat.id, sim)
         || sat.id === sim.recentHoTargetSatId;
       if (!anchorToUe && !primaryBeamCell) continue;
-      const sample = sim.linkSamples.find(
-        entry => entry.satId === sat.id && entry.beamId === primaryBeamId,
+
+      const beamLimit = handoverWindowActive
+        ? 1
+        : sat.id === sim.serving.satId || sat.id === sim.pendingTargetSatId
+          ? profile.beams.maxActivePerSat
+          : 1;
+      const sampleByBeamId = new Map(
+        sim.linkSamples
+          .filter(entry => entry.satId === sat.id)
+          .map(entry => [entry.beamId, entry]),
       );
-      const groundX = anchorToUe ? 0 : primaryBeamCell!.offsetEastKm * scale;
-      const groundZ = anchorToUe ? 0 : -primaryBeamCell!.offsetNorthKm * scale;
+      const beamCellList = [...beamCells.values()];
+      const auxiliaryBeamIds = selectHoppingAuxiliaryBeamIds(
+        beamCellList,
+        primaryBeamId,
+        beamLimit,
+        sat.id,
+        sim.simTimeSec,
+      );
+      const satHopState = beamHopStateRef.current.perSat.get(sat.id);
+      const nextHopState = satHopState ?? {
+        auxiliaryBeamIds,
+        positionsByBeamId: new Map<number, { groundX: number; groundZ: number }>(),
+      };
+      if (!satHopState) {
+        for (const beamId of auxiliaryBeamIds) {
+          const beamCell = beamCells.get(beamId) as BeamCellViz | undefined;
+          if (!beamCell) continue;
+          nextHopState.positionsByBeamId.set(beamId, {
+            groundX: beamCell.offsetEastKm * scale,
+            groundZ: -beamCell.offsetNorthKm * scale,
+          });
+        }
+        beamHopStateRef.current.perSat.set(sat.id, nextHopState);
+      }
+      const chosenBeamIds = [primaryBeamId, ...nextHopState.auxiliaryBeamIds];
 
       satBeams.set(
         sat.id,
-        [{
-          beamId: primaryBeamId,
-          groundX,
-          groundZ,
-          isServing: sat.id === sim.serving.satId && primaryBeamId === sim.serving.beamId,
-          isPrimary: true,
-          showBeam: true,
-          role,
-          isTransitioningSource: isTransitioningSourceSat(sat.id, sim),
-          sinrDb: sample?.sinrDb ?? null,
-        }],
+        chosenBeamIds.flatMap(beamId => {
+          const beamCell = beamCells.get(beamId) as BeamCellViz | undefined;
+          const sample = sampleByBeamId.get(beamId);
+          const isPrimary = beamId === primaryBeamId;
+          if (!isPrimary && !beamCell) return [];
+
+          const hoppedPosition = !isPrimary
+            ? nextHopState.positionsByBeamId.get(beamId)
+            : null;
+          const groundX = isPrimary
+            ? (anchorToUe ? 0 : beamCell!.offsetEastKm * scale)
+            : (hoppedPosition?.groundX ?? beamCell!.offsetEastKm * scale);
+          const groundZ = isPrimary
+            ? (anchorToUe ? 0 : -beamCell!.offsetNorthKm * scale)
+            : (hoppedPosition?.groundZ ?? -beamCell!.offsetNorthKm * scale);
+
+          return [{
+            beamId,
+            groundX,
+            groundZ,
+            isServing: sat.id === sim.serving.satId && beamId === sim.serving.beamId,
+            isPrimary,
+            showBeam: true,
+            role,
+            isTransitioningSource: isTransitioningSourceSat(sat.id, sim),
+            sinrDb: sample?.sinrDb ?? null,
+          }];
+        }),
       );
     }
 
