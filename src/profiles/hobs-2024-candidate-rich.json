@@ -1,0 +1,58 @@
+{
+  "id": "hobs-2024-candidate-rich",
+  "paper": "Chen et al., Energy-Efficient Joint Handover and Beam Switching Scheme for Multi-LEO Networks, VTC2024-Spring",
+  "profileClass": "candidate-rich",
+  "orbit": {
+    "type": "walker",
+    "shells": [
+      {
+        "id": "shell-a",
+        "altitudeKm": 550,
+        "inclinationDeg": 53,
+        "planes": 22,
+        "satsPerPlane": 20
+      },
+      {
+        "id": "shell-b",
+        "altitudeKm": 550,
+        "inclinationDeg": 97.6,
+        "planes": 18,
+        "satsPerPlane": 18
+      },
+      {
+        "id": "shell-c",
+        "altitudeKm": 550,
+        "inclinationDeg": 70,
+        "planes": 18,
+        "satsPerPlane": 18
+      }
+    ],
+    "observerLatDeg": 40,
+    "observerLonDeg": 116
+  },
+  "antenna": {
+    "model": "bessel-j1-j3",
+    "maxGainDbi": 40,
+    "beamwidth3dBRad": 0.058,
+    "efficiency": 0.6
+  },
+  "channel": {
+    "frequencyGHz": 28,
+    "bandwidthMHz": 100,
+    "maxTxPowerDbm": 50,
+    "noisePsdDbmHz": -174,
+    "pathLossComponents": ["fspl", "atmospheric", "scintillation", "shadow-fading"]
+  },
+  "handover": {
+    "policy": "sinr-offset",
+    "sinrThresholdDb": -5,
+    "offsetDb": 3,
+    "triggerTimeSec": 2,
+    "pingPongGuardSec": 5
+  },
+  "beams": {
+    "perSatellite": 37,
+    "maxActivePerSat": 4,
+    "frequencyReuse": 4
+  }
+}

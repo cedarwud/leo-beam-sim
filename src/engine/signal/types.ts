@@ -7,6 +7,8 @@ export interface LinkSample {
 
 export interface SatelliteSnapshot {
   id: string;
+  shellId: string;
+  altitudeKm: number;
   ecefKm: [number, number, number];
   rangeKm: number;
   elevationDeg: number;

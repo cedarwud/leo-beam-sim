@@ -30,10 +30,9 @@ export function computeLinkBudget(
     channel: Profile['channel'];
     antenna: Profile['antenna'];
     beams: Profile['beams'];
-    orbit: { altitudeKm: number };
   },
 ): LinkSample[] {
-  const { channel, antenna, beams: beamConfig, orbit } = config;
+  const { channel, antenna, beams: beamConfig } = config;
 
   // Noise power: N = N0 * BW
   const bandwidthHz = channel.bandwidthMHz * 1e6;
@@ -50,7 +49,7 @@ export function computeLinkBudget(
       const dNorth = ue.offsetNorthKm - beam.offsetNorthKm;
       const distKm = Math.hypot(dEast, dNorth);
 
-      const offAxisDeg = computeOffAxisDeg(distKm, orbit.altitudeKm);
+      const offAxisDeg = computeOffAxisDeg(distKm, sat.altitudeKm);
       const beamGainDb = computeBeamGainDb(offAxisDeg, beamwidth3dBDeg, antenna.model);
       if (beamGainDb <= BEAM_GAIN_FLOOR_DB) continue;
 
@@ -73,8 +72,6 @@ export function computeLinkBudget(
   }
 
   if (entries.length === 0) return [];
-
-
 
   // Compute SINR: signal / (co-frequency interference + noise)
   // With frequencyReuse=1, all beams interfere with each other

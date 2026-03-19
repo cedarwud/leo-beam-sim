@@ -1,8 +1,10 @@
 import type { Profile } from './types';
-import hobsJson from './hobs-2024.json';
+import paperDefaultJson from './hobs-2024-paper-default.json';
+import candidateRichJson from './hobs-2024-candidate-rich.json';
 
 export const profiles: Record<string, Profile> = {
-  'hobs-2024': hobsJson as Profile,
+  'hobs-2024-paper-default': paperDefaultJson as Profile,
+  'hobs-2024-candidate-rich': candidateRichJson as Profile,
 };
 
 export function loadProfile(id: string): Profile {

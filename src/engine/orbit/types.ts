@@ -1,5 +1,7 @@
 export interface OrbitElement {
   id: string;
+  shellId: string;
+  altitudeKm: number;
   epochUtcMs: number;
   eccentricity: number;
   inclinationRad: number;

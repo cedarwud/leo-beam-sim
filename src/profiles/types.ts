@@ -1,18 +1,24 @@
 export type GainModel = 'bessel-j1-j3' | 'bessel-j1' | 'flat';
+export type ProfileClass = 'paper-default' | 'candidate-rich';
+
+export interface Shell {
+  id: string;
+  altitudeKm: number;
+  inclinationDeg: number;
+  planes: number;
+  satsPerPlane: number;
+}
 
 export interface Profile {
   id: string;
   paper: string;
+  profileClass: ProfileClass;
 
   orbit: {
     type: 'walker';
-    altitudeKm: number;
-    inclinationDeg: number;
-    planes: number;
-    satsPerPlane: number;
+    shells: Shell[];
     observerLatDeg: number;
     observerLonDeg: number;
-    servingRadiusKm: number;
   };
 
   antenna: {
@@ -31,7 +37,7 @@ export interface Profile {
   };
 
   handover: {
-    policy: 'sinr-offset' | 'rsrp-a3' | 'elevation';
+    policy: 'sinr-offset';
     sinrThresholdDb: number;
     offsetDb: number;
     triggerTimeSec: number;
