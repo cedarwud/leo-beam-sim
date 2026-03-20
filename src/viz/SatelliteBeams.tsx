@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
+import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
+import { formatBeamLabel } from '../utils/formatSatelliteLabel';
 
 /** A beam with its ground-projected center in world coordinates. */
 export interface BeamTarget {
@@ -8,6 +10,7 @@ export interface BeamTarget {
   groundX: number; // world X
   groundZ: number; // world Z
   isServing: boolean;
+  isScheduledActive: boolean;
   isPrimary: boolean;
   showBeam: boolean;
   role?: 'serving' | 'secondary' | 'prepared' | 'post-ho';
@@ -26,9 +29,23 @@ const SEGMENTS = 32;
 const POLARIZATION_A_COLOR = '#ff8844';
 const POLARIZATION_B_COLOR = '#44aaff';
 const CURRENT_SERVICE_COLOR = '#0088ff';
-const TARGET_HANDOVER_COLOR = '#00ff88';
+const TARGET_HANDOVER_COLOR = '#ffb000';
 const SECONDARY_EVENT_COLOR = '#6f7785';
 const LABEL_OUTLINE_DARK = '#071018';
+
+function sinrColor(sinrDb: number): string {
+  if (sinrDb >= 20) return '#00ff00';
+  if (sinrDb >= 10) return '#aaff00';
+  if (sinrDb >= 5) return '#ffaa00';
+  return '#ff4444';
+}
+
+function formatBeamSinr(sinrDb?: number | null): string | null {
+  if (sinrDb === null || sinrDb === undefined || !Number.isFinite(sinrDb) || sinrDb <= MIN_VISIBLE_SINR_DB) {
+    return null;
+  }
+  return `${sinrDb.toFixed(1)} dB`;
+}
 
 function baseBeamColor(beamId: number): string {
   return beamId % 2 === 1 ? POLARIZATION_A_COLOR : POLARIZATION_B_COLOR;
@@ -51,9 +68,19 @@ function beamColor(beam: BeamTarget): string {
 function beamOpacity(beam: BeamTarget): { cone: number; disc: number; line: number; width: number; dashed: boolean } {
   if (beam.isServing) {
     if (beam.isTransitioningSource) {
+      if (!beam.isScheduledActive) {
+        return { cone: 0.2, disc: 0.12, line: 0.92, width: 3.6, dashed: true };
+      }
       return { cone: 0.28, disc: 0.18, line: 0.92, width: 3.6, dashed: false };
     }
+    if (!beam.isScheduledActive) {
+      return { cone: 0.22, disc: 0.14, line: 0.96, width: 4, dashed: true };
+    }
     return { cone: 0.35, disc: 0.22, line: 1, width: 4, dashed: false };
+  }
+
+  if (!beam.isScheduledActive) {
+    return { cone: 0.08, disc: 0.05, line: 0.38, width: 1.8, dashed: true };
   }
 
   switch (beam.role) {
@@ -172,6 +199,11 @@ function BeamCone({
     const ground = new THREE.Vector3(gx, 0, gz);
     return new THREE.Vector3(sx, sy, sz).lerp(ground, 0.35);
   }, [sx, sy, sz, gx, gz]);
+  const beamRoleLabel = beam.isPrimary && beam.role ? ` ${beam.role}` : '';
+  const beamLabel = `${formatBeamLabel(beam.beamId)}${beam.isServing ? ' ★' : beam.isPrimary ? ' ◎' : ''}${!beam.isScheduledActive ? ' off-slot' : ''}${beamRoleLabel}`;
+  const sinrLabel = formatBeamSinr(beam.sinrDb);
+  const beamLabelFontSize = beam.isServing || beam.isPrimary || beam.role === 'post-ho' ? 14 : 10;
+  const sinrFontSize = beam.isServing || beam.isPrimary || beam.role === 'post-ho' ? 11 : 8;
 
   return (
     <group>
@@ -212,16 +244,36 @@ function BeamCone({
       />
 
       <Text
-        position={[labelPos.x, labelPos.y, labelPos.z]}
-        fontSize={beam.isServing || beam.isPrimary || beam.role === 'post-ho' ? 14 : 10}
+        position={[labelPos.x, labelPos.y + (sinrLabel ? 5 : 0), labelPos.z]}
+        fontSize={beamLabelFontSize}
         color={color}
         anchorX="center"
         anchorY="middle"
         outlineWidth={beam.isServing || beam.isPrimary || beam.role === 'post-ho' ? 2.5 : 1.5}
         outlineColor={beam.isServing || beam.isPrimary ? '#ffffff' : LABEL_OUTLINE_DARK}
+        renderOrder={20}
+        material-depthTest={false}
+        material-depthWrite={false}
       >
-        {`B${beam.beamId}${beam.isServing ? ' ★' : beam.isPrimary ? ' ◎' : ''}${beam.role ? ` ${beam.role}` : ''}`}
+        {beamLabel}
       </Text>
+
+      {sinrLabel && (
+        <Text
+          position={[labelPos.x, labelPos.y - 8, labelPos.z]}
+          fontSize={sinrFontSize}
+          color={sinrColor(beam.sinrDb!)}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={1.2}
+          outlineColor="#000000"
+          renderOrder={30}
+          material-depthTest={false}
+          material-depthWrite={false}
+        >
+          {sinrLabel}
+        </Text>
+      )}
     </group>
   );
 }

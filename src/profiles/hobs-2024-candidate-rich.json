@@ -44,5 +44,12 @@
     "maxActivePerSat": 4,
     "frequencyReuse": 4
   },
+  "beamHopping": {
+    "enabled": true,
+    "slotSec": 2.5,
+    "maxActiveBeamsPerSlot": 4,
+    "scheduler": "round-robin",
+    "frameLengthSlots": 37
+  },
   "demoStartOffsetSec": 450
 }

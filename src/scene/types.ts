@@ -19,11 +19,15 @@ export interface RuntimeConfig {
 export interface SimState {
   servingSatId: string | null;
   servingBeamId: number | null;
+  servingElevationDeg: number | null;
+  servingRangeKm: number | null;
   pendingTargetSatId: string | null;
   pendingTargetBeamId: number | null;
   pendingTargetSinrDb: number | null;
   comparisonSatId: string | null;
   comparisonBeamId: number | null;
+  comparisonElevationDeg: number | null;
+  comparisonRangeKm: number | null;
   comparisonSinrDb: number | null;
   comparisonKind: 'pending' | 'candidate' | 'recent-ho' | null;
   sinrDeltaDb: number | null;
@@ -35,6 +39,12 @@ export interface SimState {
   handoverTriggerSec: number;
   hoCount: number;
   lastHoReason: string;
+  beamHopEnabled: boolean;
+  beamHopSlotIndex: number;
+  beamHopSlotSec: number;
+  servingBeamActiveThisSlot: boolean | null;
+  servingSatActiveBeamIds: number[];
+  pendingTargetActiveBeamIds: number[];
 }
 
 export interface VisibleSat {
@@ -47,17 +57,32 @@ export interface VisibleSat {
   lonDeg: number;
 }
 
+export interface BeamCellState {
+  beamId: number;
+  offsetEastKm: number;
+  offsetNorthKm: number;
+  scanAngleDeg: number;
+}
+
+export interface SatBeamHopState {
+  satId: string;
+  slotIndex: number;
+  frameSlotIndex: number;
+  activeBeamIds: number[];
+  candidateBeamIds: number[];
+}
+
 export interface SimFrame {
   satellites: VisibleSat[];
   linkSamples: LinkSample[];
   activeAssignments: ActiveBeamAssignment[];
   displayAssignments: ActiveBeamAssignment[];
-  beamCellsBySatId: Map<string, {
-    beamId: number;
-    offsetEastKm: number;
-    offsetNorthKm: number;
-    scanAngleDeg: number;
-  }[]>;
+  beamCellsBySatId: Map<string, BeamCellState[]>;
+  beamHopSlotIndex: number;
+  beamHopSlotStartSec: number;
+  beamHopSlotSec: number;
+  beamHopEnabled: boolean;
+  beamHopStatesBySatId: Map<string, SatBeamHopState>;
   serving: { satId: string | null; beamId: number | null; sinrDb: number };
   pendingTargetSatId: string | null;
   pendingTargetBeamId: number | null;

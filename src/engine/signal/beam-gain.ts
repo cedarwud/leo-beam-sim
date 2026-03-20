@@ -5,7 +5,7 @@
 
 import type { GainModel } from '../../profiles/types';
 
-const GAIN_FLOOR_DB = -20;
+const GAIN_FLOOR_DB = -40;
 const ALPHA_3DB_BESSEL_J1 = 1.6137411963697343;
 const BESSEL_J1_J3_BORESIGHT_ENVELOPE = 1.75;
 const ALPHA_3DB_BESSEL_J1_J3 = 1.835239914925094;

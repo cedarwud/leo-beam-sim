@@ -4,6 +4,10 @@
 
 LEO multi-beam handover simulator with real-time 3D visualization.
 
+Beam hopping is **not** yet part of the baseline architecture described in this
+document. The design note for introducing beam hopping as simulation truth is
+tracked separately in `docs/beam-hopping-mini-sdd.md`.
+
 **Goals:**
 - Simulate LEO satellite passes across the observer's sky with physically correct arc trajectories
 - Render beam cones from satellites to ground with oblique-cone geometry

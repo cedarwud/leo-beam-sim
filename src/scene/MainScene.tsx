@@ -2,6 +2,7 @@ import { memo, Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { ACESFilmicToneMapping } from 'three';
+import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
 import { loadProfile } from '../profiles';
 import type { RuntimeConfig, SimState } from './types';
 import { useSimulation } from './useSimulation';
@@ -12,6 +13,7 @@ import { SatelliteBeams } from '../viz/SatelliteBeams';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
 import { SinrOverlay } from '../viz/SinrOverlay';
 import { GroundScene } from '../viz/GroundScene';
+import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import { NTPUScene } from '../components/scene/NTPUScene';
 import { UAV } from '../components/scene/UAV';
 import { Starfield } from '../components/ui/Starfield';
@@ -28,6 +30,13 @@ interface LatchedSignalState {
   satId: string | null;
   beamId: number | null;
   sinrDb: number | null;
+}
+
+interface LatchedTopoState {
+  satId: string | null;
+  beamId: number | null;
+  elevationDeg: number | null;
+  rangeKm: number | null;
 }
 
 interface HandoverPanelSnapshot {
@@ -57,11 +66,21 @@ function hasUiStateChanged(previous: SimState | null, next: SimState): boolean {
     || previous.recentHoTargetSatId !== next.recentHoTargetSatId
     || previous.hoCount !== next.hoCount
     || previous.handoverOffsetDb !== next.handoverOffsetDb
-    || previous.handoverTriggerSec !== next.handoverTriggerSec;
+    || previous.handoverTriggerSec !== next.handoverTriggerSec
+    || previous.beamHopEnabled !== next.beamHopEnabled
+    || previous.beamHopSlotIndex !== next.beamHopSlotIndex
+    || previous.beamHopSlotSec !== next.beamHopSlotSec
+    || previous.servingBeamActiveThisSlot !== next.servingBeamActiveThisSlot
+    || previous.servingSatActiveBeamIds.join(',') !== next.servingSatActiveBeamIds.join(',')
+    || previous.pendingTargetActiveBeamIds.join(',') !== next.pendingTargetActiveBeamIds.join(',');
 }
 
 function isFinitePanelSinr(sinrDb: number | null): sinrDb is number {
-  return sinrDb !== null && Number.isFinite(sinrDb) && sinrDb > -100;
+  return sinrDb !== null && Number.isFinite(sinrDb) && sinrDb > MIN_VISIBLE_SINR_DB;
+}
+
+function isFinitePanelMetric(value: number | null): value is number {
+  return value !== null && Number.isFinite(value);
 }
 
 function resolveLatchedSinr(
@@ -94,6 +113,40 @@ function resolveLatchedSinr(
   return null;
 }
 
+function resolveLatchedTopo(
+  latched: LatchedTopoState,
+  satId: string | null,
+  beamId: number | null,
+  nextElevationDeg: number | null,
+  nextRangeKm: number | null,
+): { elevationDeg: number | null; rangeKm: number | null } {
+  if (!satId || beamId === null) {
+    latched.satId = null;
+    latched.beamId = null;
+    latched.elevationDeg = null;
+    latched.rangeKm = null;
+    return { elevationDeg: null, rangeKm: null };
+  }
+
+  if (isFinitePanelMetric(nextElevationDeg) && isFinitePanelMetric(nextRangeKm)) {
+    latched.satId = satId;
+    latched.beamId = beamId;
+    latched.elevationDeg = nextElevationDeg;
+    latched.rangeKm = nextRangeKm;
+    return { elevationDeg: nextElevationDeg, rangeKm: nextRangeKm };
+  }
+
+  if (latched.satId === satId && latched.beamId === beamId) {
+    return { elevationDeg: latched.elevationDeg, rangeKm: latched.rangeKm };
+  }
+
+  latched.satId = satId;
+  latched.beamId = beamId;
+  latched.elevationDeg = null;
+  latched.rangeKm = null;
+  return { elevationDeg: null, rangeKm: null };
+}
+
 function normalizePanelSignal(
   satId: string | null,
   beamId: number | null,
@@ -114,18 +167,22 @@ function SceneContent({
 }: SceneContentProps) {
   const profile = useMemo(() => loadProfile(profileId), [profileId]);
   const sim = useSimulation(profile, runtime.replay, speed, paused);
-  const viz = useBeamViz(sim, profile, runtime.presentationMode);
   const lastUiUpdateAtRef = useRef(0);
   const lastUiStateRef = useRef<SimState | null>(null);
   const latchedServingSinrRef = useRef<LatchedSignalState>({ satId: null, beamId: null, sinrDb: null });
   const latchedComparisonSinrRef = useRef<LatchedSignalState>({ satId: null, beamId: null, sinrDb: null });
+  const latchedServingTopoRef = useRef<LatchedTopoState>({ satId: null, beamId: null, elevationDeg: null, rangeKm: null });
+  const latchedComparisonTopoRef = useRef<LatchedTopoState>({ satId: null, beamId: null, elevationDeg: null, rangeKm: null });
+  const latchedBeamSinrByKeyRef = useRef<Map<string, number>>(new Map());
   const handoverPanelRef = useRef<HandoverPanelSnapshot | null>(null);
   const cells = useMemo(
     () => generateHexGrid({ rows: 4, cols: 5, cellRadius: 80, centerX: 0, centerZ: 0 }),
     [],
   );
+  const viz = useBeamViz(sim, profile, runtime.presentationMode, latchedBeamSinrByKeyRef.current);
 
   useEffect(() => {
+    const topoBySatId = new Map(sim.satellites.map(sat => [sat.id, sat.topo]));
     const pendingTargetSinrDb = sim.pendingTargetSinrDb;
     const liveServingSinrDb = resolveLatchedSinr(
       latchedServingSinrRef.current,
@@ -251,19 +308,98 @@ function SceneContent({
       panelComparisonBeamId,
       panelComparisonSinrDb,
     );
+    const servingTopo = normalizedServing.satId
+      ? topoBySatId.get(normalizedServing.satId)
+      : undefined;
+    const comparisonTopo = normalizedComparison.satId
+      ? topoBySatId.get(normalizedComparison.satId)
+      : undefined;
+    const normalizedServingTopo = resolveLatchedTopo(
+      latchedServingTopoRef.current,
+      normalizedServing.satId,
+      normalizedServing.beamId,
+      servingTopo?.elevationDeg ?? null,
+      servingTopo?.rangeKm ?? null,
+    );
+    const normalizedComparisonTopo = resolveLatchedTopo(
+      latchedComparisonTopoRef.current,
+      normalizedComparison.satId,
+      normalizedComparison.beamId,
+      comparisonTopo?.elevationDeg ?? null,
+      comparisonTopo?.rangeKm ?? null,
+    );
+    const visibleBeamKeys = new Set<string>();
+    const pushVisibleBeamKey = (satId: string | null, beamId: number | null) => {
+      if (!satId || beamId === null) return;
+      visibleBeamKeys.add(`${satId}:${beamId}`);
+    };
+
+    for (const [satId, beamCells] of sim.beamCellsBySatId.entries()) {
+      for (const beam of beamCells) {
+        visibleBeamKeys.add(`${satId}:${beam.beamId}`);
+      }
+    }
+
+    pushVisibleBeamKey(normalizedServing.satId, normalizedServing.beamId);
+    pushVisibleBeamKey(normalizedComparison.satId, normalizedComparison.beamId);
+    pushVisibleBeamKey(sim.pendingTargetSatId, sim.pendingTargetBeamId);
+    pushVisibleBeamKey(sim.recentHoSourceSatId, sim.recentHoSourceBeamId);
+    pushVisibleBeamKey(sim.recentHoTargetSatId, sim.recentHoTargetBeamId);
+
+    const nextLatchedBeamSinrByKey = new Map<string, number>();
+    for (const key of visibleBeamKeys) {
+      const previousSinrDb = latchedBeamSinrByKeyRef.current.get(key);
+      if (previousSinrDb !== undefined && isFinitePanelSinr(previousSinrDb)) {
+        nextLatchedBeamSinrByKey.set(key, previousSinrDb);
+      }
+    }
+
+    for (const sample of sim.linkSamples) {
+      const key = `${sample.satId}:${sample.beamId}`;
+      if (!visibleBeamKeys.has(key) || !isFinitePanelSinr(sample.sinrDb)) continue;
+      nextLatchedBeamSinrByKey.set(key, sample.sinrDb);
+    }
+
+    const syncLatchedBeamSinr = (
+      satId: string | null,
+      beamId: number | null,
+      sinrDb: number | null,
+    ) => {
+      if (!satId || beamId === null || !isFinitePanelSinr(sinrDb)) return;
+      nextLatchedBeamSinrByKey.set(`${satId}:${beamId}`, sinrDb);
+    };
+
+    syncLatchedBeamSinr(normalizedServing.satId, normalizedServing.beamId, normalizedServing.sinrDb);
+    syncLatchedBeamSinr(normalizedComparison.satId, normalizedComparison.beamId, normalizedComparison.sinrDb);
+    latchedBeamSinrByKeyRef.current = nextLatchedBeamSinrByKey;
+
     const panelSinrDeltaDb =
       normalizedComparison.sinrDb !== null && normalizedServing.sinrDb !== null
         ? normalizedComparison.sinrDb - normalizedServing.sinrDb
+        : null;
+    const servingSatBeamHopState = normalizedServing.satId
+      ? sim.beamHopStatesBySatId.get(normalizedServing.satId)
+      : undefined;
+    const pendingTargetBeamHopState = sim.pendingTargetSatId
+      ? sim.beamHopStatesBySatId.get(sim.pendingTargetSatId)
+      : undefined;
+    const servingBeamActiveThisSlot =
+      normalizedServing.satId && normalizedServing.beamId !== null
+        ? servingSatBeamHopState?.activeBeamIds.includes(normalizedServing.beamId) ?? false
         : null;
 
     const nextState: SimState = {
       servingSatId: normalizedServing.satId,
       servingBeamId: normalizedServing.beamId,
+      servingElevationDeg: normalizedServingTopo.elevationDeg,
+      servingRangeKm: normalizedServingTopo.rangeKm,
       pendingTargetSatId: sim.pendingTargetSatId,
       pendingTargetBeamId: sim.pendingTargetBeamId,
       pendingTargetSinrDb,
       comparisonSatId: normalizedComparison.satId,
       comparisonBeamId: normalizedComparison.beamId,
+      comparisonElevationDeg: normalizedComparisonTopo.elevationDeg,
+      comparisonRangeKm: normalizedComparisonTopo.rangeKm,
       comparisonSinrDb: normalizedComparison.sinrDb,
       comparisonKind: normalizedComparison.satId ? panelComparisonKind : null,
       sinrDeltaDb: panelSinrDeltaDb,
@@ -275,6 +411,12 @@ function SceneContent({
       handoverTriggerSec: profile.handover.triggerTimeSec,
       hoCount: sim.hoCount,
       lastHoReason: sim.lastHoReason,
+      beamHopEnabled: sim.beamHopEnabled,
+      beamHopSlotIndex: sim.beamHopSlotIndex,
+      beamHopSlotSec: sim.beamHopSlotSec,
+      servingBeamActiveThisSlot,
+      servingSatActiveBeamIds: servingSatBeamHopState?.activeBeamIds ?? [],
+      pendingTargetActiveBeamIds: pendingTargetBeamHopState?.activeBeamIds ?? [],
     };
     const nowMs = performance.now();
     const handoverWindowActive =
@@ -301,7 +443,7 @@ function SceneContent({
         enableDamping
         dampingFactor={0.05}
         rotateSpeed={0.3}
-        zoomSpeed={0.2}
+        zoomSpeed={0.45}
         panSpeed={0.3}
         minDistance={50}
         maxDistance={3000}
@@ -340,7 +482,7 @@ function SceneContent({
         <SatelliteMarker
           key={sat.id}
           position={sat.world}
-          label={sat.id}
+          label={formatSatelliteLabel(sat.id)}
           eventRole={viz.eventRoles.get(sat.id)}
         />
       ))}

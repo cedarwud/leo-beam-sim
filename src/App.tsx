@@ -9,7 +9,7 @@ import { InfoPanel } from './ui/InfoPanel';
 const PROFILE_ID = 'hobs-2024-candidate-rich';
 const PROFILE = loadProfile(PROFILE_ID);
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
-const DEFAULT_BASE_SPEED = 10;
+const DEFAULT_BASE_SPEED = 5;
 const HANDOVER_FOCUS_SPEED = 1;
 
 export function App() {
@@ -37,11 +37,15 @@ export function App() {
   const [simState, setSimState] = useState<SimState>({
     servingSatId: null,
     servingBeamId: null,
+    servingElevationDeg: null,
+    servingRangeKm: null,
     pendingTargetSatId: null,
     pendingTargetBeamId: null,
     pendingTargetSinrDb: null,
     comparisonSatId: null,
     comparisonBeamId: null,
+    comparisonElevationDeg: null,
+    comparisonRangeKm: null,
     comparisonSinrDb: null,
     comparisonKind: null,
     sinrDeltaDb: null,
@@ -53,16 +57,19 @@ export function App() {
     handoverTriggerSec: PROFILE.handover.triggerTimeSec,
     hoCount: 0,
     lastHoReason: '',
+    beamHopEnabled: PROFILE.beamHopping.enabled,
+    beamHopSlotIndex: -1,
+    beamHopSlotSec: PROFILE.beamHopping.slotSec,
+    servingBeamActiveThisSlot: null,
+    servingSatActiveBeamIds: [],
+    pendingTargetActiveBeamIds: [],
   });
 
   const handleSimUpdate = useCallback((state: SimState) => {
     setSimState(state);
   }, []);
 
-  const autoSlowActive =
-    simState.pendingTargetSatId !== null
-    || simState.recentHoSourceSatId !== null
-    || simState.recentHoTargetSatId !== null;
+  const autoSlowActive = simState.pendingTargetSatId !== null;
   const autoSlowApplied = autoSlowEnabled && autoSlowActive && !autoSlowDismissed;
   const effectiveSpeed = autoSlowApplied ? Math.min(speed, HANDOVER_FOCUS_SPEED) : speed;
 

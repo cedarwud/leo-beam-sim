@@ -1,5 +1,6 @@
 export type GainModel = 'bessel-j1-j3' | 'bessel-j1' | 'flat';
 export type ProfileClass = 'paper-default' | 'candidate-rich';
+export type BeamHoppingScheduler = 'round-robin' | 'distance-priority';
 
 export interface Shell {
   id: string;
@@ -53,6 +54,14 @@ export interface Profile {
     perSatellite: number;
     maxActivePerSat: number;
     frequencyReuse: number;
+  };
+
+  beamHopping: {
+    enabled: boolean;
+    slotSec: number;
+    maxActiveBeamsPerSlot: number;
+    scheduler: BeamHoppingScheduler;
+    frameLengthSlots: number;
   };
 
   /** Pre-calculated or manually selected start time for the demo */

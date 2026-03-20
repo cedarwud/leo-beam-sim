@@ -45,5 +45,12 @@
     "perSatellite": 37,
     "maxActivePerSat": 4,
     "frequencyReuse": 4
+  },
+  "beamHopping": {
+    "enabled": false,
+    "slotSec": 0.75,
+    "maxActiveBeamsPerSlot": 4,
+    "scheduler": "round-robin",
+    "frameLengthSlots": 37
   }
 }
