@@ -15,10 +15,14 @@ import type {
 } from './types';
 import { computeBeamGainDb, computeOffAxisDeg, BEAM_GAIN_FLOOR_DB } from './beam-gain';
 import { computePathLossDb } from './path-loss';
+import { sampleLosStateTr38811 } from './los-probability';
 
 function dbmToMw(dbm: number): number {
   return Math.pow(10, dbm / 10);
 }
+
+const TR38811_ENVIRONMENT = 'suburban';
+const TR38811_NLOS_CLUTTER_LOSS_DB = 20;
 
 interface BeamEntry {
   sample: LinkSample;
@@ -50,13 +54,23 @@ export function computeLinkBudget(
   ue: UEPosition,
   satellites: SatelliteSnapshot[],
   config: {
+    formulaFamily: Profile['formulaFamily'];
     channel: Profile['channel'];
     antenna: Profile['antenna'];
     beams: Profile['beams'];
     activeAssignments: ActiveBeamAssignment[];
+    simTimeSec: number;
   },
 ): LinkSample[] {
-  const { channel, antenna, beams: beamConfig, activeAssignments } = config;
+  const {
+    formulaFamily,
+    channel,
+    antenna,
+    beams: beamConfig,
+    activeAssignments,
+    simTimeSec,
+  } = config;
+  const usesTr38811Path = formulaFamily === 'hobs-tr38811';
 
   // Noise power: N = N0 * BW
   const bandwidthHz = channel.bandwidthMHz * 1e6;
@@ -84,12 +98,20 @@ export function computeLinkBudget(
         antenna.maxSteeringAngleDeg,
         antenna.scanLossAtMaxSteeringDb,
       );
+      const losSeedKey = `${sat.id}|${beam.beamId}|${Math.floor(simTimeSec)}`;
+      const isLos = usesTr38811Path
+        ? sampleLosStateTr38811(sat.elevationDeg, TR38811_ENVIRONMENT, losSeedKey)
+        : true;
 
       const pathLossDb = computePathLossDb(
         sat.rangeKm,
         channel.frequencyGHz,
         sat.elevationDeg,
         channel.pathLossComponents,
+        {
+          isLos,
+          nlosClutterLossDb: TR38811_NLOS_CLUTTER_LOSS_DB,
+        },
       );
 
       // RSRP = Pt + Gt(max) + beamGain + Gr - pathLoss
@@ -115,17 +137,26 @@ export function computeLinkBudget(
   const reuseGroups = beamConfig.frequencyReuse;
 
   return entries.map((entry, idx) => {
-    let interferenceMw = 0;
+    const servingSignalMw = entry.signalMw;
+    let intraSatInterferenceMw = 0;
+    let interSatInterferenceMw = 0;
+
     for (let j = 0; j < entries.length; j++) {
       if (j === idx) continue;
       const otherKey = `${entries[j].sample.satId}:${entries[j].sample.beamId}`;
       if (!activeBeamKeys.has(otherKey)) continue;
       // Same frequency reuse group → interfering
       if (reuseGroups <= 1 || (entries[j].sample.beamId % reuseGroups) === (entry.sample.beamId % reuseGroups)) {
-        interferenceMw += entries[j].signalMw;
+        if (entries[j].sample.satId === entry.sample.satId) {
+          intraSatInterferenceMw += entries[j].signalMw;
+        } else {
+          interSatInterferenceMw += entries[j].signalMw;
+        }
       }
     }
-    const sinrDb = 10 * Math.log10(Math.max(entry.signalMw / (interferenceMw + noiseMw), 1e-12));
+
+    const interferenceMw = intraSatInterferenceMw + interSatInterferenceMw;
+    const sinrDb = 10 * Math.log10(Math.max(servingSignalMw / (interferenceMw + noiseMw), 1e-12));
     return { ...entry.sample, sinrDb };
   });
 }

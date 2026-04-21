@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "validate:hobs-tr38811-phase1": "node --import tsx/esm scripts/validate-hobs-tr38811-phase1.ts",
+    "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts"
   },
   "keywords": [
     "3d",
@@ -31,6 +33,7 @@
     "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "^5.1.0",
     "sass": "^1.93.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.12"
   }

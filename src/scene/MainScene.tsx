@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { ACESFilmicToneMapping } from 'three';
 import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
-import { loadProfile } from '../profiles';
+import { getFormulaFamilyLabel, loadProfile } from '../profiles';
 import type { RuntimeConfig, SimState } from './types';
 import { useSimulation } from './useSimulation';
 import { useBeamViz } from './useBeamViz';
@@ -55,7 +55,9 @@ const SHOW_BEAMS = true;
 
 function hasUiStateChanged(previous: SimState | null, next: SimState): boolean {
   if (!previous) return true;
-  return previous.servingSatId !== next.servingSatId
+  return previous.profileId !== next.profileId
+    || previous.formulaFamilyLabel !== next.formulaFamilyLabel
+    || previous.servingSatId !== next.servingSatId
     || previous.servingBeamId !== next.servingBeamId
     || previous.pendingTargetSatId !== next.pendingTargetSatId
     || previous.pendingTargetBeamId !== next.pendingTargetBeamId
@@ -314,19 +316,25 @@ function SceneContent({
     const comparisonTopo = normalizedComparison.satId
       ? topoBySatId.get(normalizedComparison.satId)
       : undefined;
+    const servingRangeKm = normalizedServing.satId
+      ? sim.linkRangeKmBySatId.get(normalizedServing.satId) ?? servingTopo?.rangeKm ?? null
+      : null;
+    const comparisonRangeKm = normalizedComparison.satId
+      ? sim.linkRangeKmBySatId.get(normalizedComparison.satId) ?? comparisonTopo?.rangeKm ?? null
+      : null;
     const normalizedServingTopo = resolveLatchedTopo(
       latchedServingTopoRef.current,
       normalizedServing.satId,
       normalizedServing.beamId,
       servingTopo?.elevationDeg ?? null,
-      servingTopo?.rangeKm ?? null,
+      servingRangeKm,
     );
     const normalizedComparisonTopo = resolveLatchedTopo(
       latchedComparisonTopoRef.current,
       normalizedComparison.satId,
       normalizedComparison.beamId,
       comparisonTopo?.elevationDeg ?? null,
-      comparisonTopo?.rangeKm ?? null,
+      comparisonRangeKm,
     );
     const visibleBeamKeys = new Set<string>();
     const pushVisibleBeamKey = (satId: string | null, beamId: number | null) => {
@@ -389,6 +397,8 @@ function SceneContent({
         : null;
 
     const nextState: SimState = {
+      profileId: profile.id,
+      formulaFamilyLabel: getFormulaFamilyLabel(profile.formulaFamily),
       servingSatId: normalizedServing.satId,
       servingBeamId: normalizedServing.beamId,
       servingElevationDeg: normalizedServingTopo.elevationDeg,

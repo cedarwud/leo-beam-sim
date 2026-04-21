@@ -10,6 +10,7 @@ import {
 } from '../engine/orbit';
 import type { ActiveBeamAssignment, SatelliteSnapshot } from '../engine/signal/types';
 import { computeLinkBudget } from '../engine/signal/link-budget';
+import { computeTr38811SlantRangeKm } from '../engine/signal/slant-range';
 import { HandoverManager } from '../engine/handover/handover-manager';
 import type { ServingState } from '../engine/handover/types';
 import type { Profile } from '../profiles/types';
@@ -75,6 +76,7 @@ function createEmptyFrame(simTimeSec: number): SimFrame {
     activeAssignments: [],
     displayAssignments: [],
     beamCellsBySatId: new Map(),
+    linkRangeKmBySatId: new Map(),
     beamHopSlotIndex: -1,
     beamHopSlotStartSec: 0,
     beamHopSlotSec: 0,
@@ -588,12 +590,16 @@ export function useSimulation(
           candidateBeamIds,
         });
 
+        const linkRangeKm = profile.formulaFamily === 'hobs-tr38811'
+          ? computeTr38811SlantRangeKm(sat.topo.elevationDeg, sat.altitudeKm)
+          : sat.topo.rangeKm;
+
         snapshots.push({
           id: sat.id,
           shellId: sat.shellId,
           altitudeKm: sat.altitudeKm,
           ecefKm: [0, 0, 0] as [number, number, number],
-          rangeKm: sat.topo.rangeKm,
+          rangeKm: linkRangeKm,
           elevationDeg: sat.topo.elevationDeg,
           azimuthDeg: sat.topo.azimuthDeg,
           beamCellsKm: activeBeamCells,
@@ -626,16 +632,22 @@ export function useSimulation(
       const beamCellsBySatId = new Map(
         snapshots.map(satellite => [satellite.id, satellite.beamCellsKm]),
       );
+      const linkRangeKmBySatId = new Map(
+        snapshots.map(satellite => [satellite.id, satellite.rangeKm]),
+      );
       const linkSamples = computeLinkBudget(ue, snapshots, {
+        formulaFamily: profile.formulaFamily,
         channel: profile.channel,
         antenna: profile.antenna,
         beams: profile.beams,
         activeAssignments,
+        simTimeSec: simTimeRef.current,
       });
 
       return {
         linkSamples,
         beamCellsBySatId,
+        linkRangeKmBySatId,
         beamHopStatesBySatId,
         availableBeamAssignments,
         activeAssignments,
@@ -716,6 +728,7 @@ export function useSimulation(
       activeAssignments: frameActiveAssignments,
       displayAssignments,
       beamCellsBySatId: postDecisionContext.beamCellsBySatId,
+      linkRangeKmBySatId: postDecisionContext.linkRangeKmBySatId,
       beamHopSlotIndex,
       beamHopSlotStartSec,
       beamHopSlotSec,

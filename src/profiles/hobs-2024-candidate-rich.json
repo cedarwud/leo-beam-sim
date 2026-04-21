@@ -2,6 +2,7 @@
   "id": "hobs-2024-candidate-rich",
   "paper": "Chen et al., Energy-Efficient Joint Handover and Beam Switching Scheme for Multi-LEO Networks, VTC2024-Spring",
   "profileClass": "candidate-rich",
+  "formulaFamily": "hobs-legacy",
   "orbit": {
     "type": "walker",
     "shells": [

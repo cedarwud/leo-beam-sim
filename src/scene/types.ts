@@ -17,6 +17,8 @@ export interface RuntimeConfig {
 }
 
 export interface SimState {
+  profileId?: string;
+  formulaFamilyLabel?: string;
   servingSatId: string | null;
   servingBeamId: number | null;
   servingElevationDeg: number | null;
@@ -78,6 +80,7 @@ export interface SimFrame {
   activeAssignments: ActiveBeamAssignment[];
   displayAssignments: ActiveBeamAssignment[];
   beamCellsBySatId: Map<string, BeamCellState[]>;
+  linkRangeKmBySatId: Map<string, number>;
   beamHopSlotIndex: number;
   beamHopSlotStartSec: number;
   beamHopSlotSec: number;

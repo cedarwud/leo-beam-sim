@@ -8,6 +8,11 @@ Beam hopping is **not** yet part of the baseline architecture described in this
 document. The design note for introducing beam hopping as simulation truth is
 tracked separately in `docs/beam-hopping-mini-sdd.md`.
 
+HOBS + TR 38.811 SINR/channel hardening is also **not** yet part of the
+baseline architecture described in this document. The minimum design contract
+for that upgrade path is tracked separately in
+`docs/hobs-tr38811-sinr-mini-sdd.md`.
+
 **Goals:**
 - Simulate LEO satellite passes across the observer's sky with physically correct arc trajectories
 - Render beam cones from satellites to ground with oblique-cone geometry
@@ -272,6 +277,11 @@ combined elements with shell-prefixed IDs (e.g. `A-P3-S7`, `B-P0-S12`).
 ### 4.3 Signal Engine (`src/engine/signal/`)
 
 **No changes from v1.** Pure functions, profile-driven.
+
+Research-grade HOBS + TR 38.811 channel hardening is intentionally tracked
+outside this baseline document in `docs/hobs-tr38811-sinr-mini-sdd.md` so the
+future signal-path upgrade does not silently rewrite the existing demo and
+candidate-rich contracts.
 
 - `beam-gain.ts` — Bessel J1/J3 antenna gain with alpha>10 clamp (76 lines)
 - `path-loss.ts` — FSPL + atmospheric + scintillation + shadow fading (61 lines)

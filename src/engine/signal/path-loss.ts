@@ -34,11 +34,17 @@ function shadowFadingLossDb(): number {
 /**
  * Compute composite path loss in dB.
  */
+export interface PathLossOptions {
+  isLos?: boolean;
+  nlosClutterLossDb?: number;
+}
+
 export function computePathLossDb(
   rangeKm: number,
   frequencyGHz: number,
   elevationDeg: number,
   components: string[],
+  options: PathLossOptions = {},
 ): number {
   let loss = computeFsplDb(rangeKm, frequencyGHz);
 
@@ -55,6 +61,10 @@ export function computePathLossDb(
         break;
       // 'fspl' is already included as base
     }
+  }
+
+  if (options.isLos === false) {
+    loss += options.nlosClutterLossDb ?? 0;
   }
 
   return loss;

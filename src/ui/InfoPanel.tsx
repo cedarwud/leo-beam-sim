@@ -61,6 +61,8 @@ function MetricTile({
 }
 
 export function InfoPanel({
+  profileId,
+  formulaFamilyLabel,
   servingSatId,
   servingBeamId,
   servingElevationDeg,
@@ -123,6 +125,25 @@ export function InfoPanel({
       width: 320,
     }}>
       <div style={{ display: 'grid', gap: 14 }}>
+        {(profileId || formulaFamilyLabel) && (
+          <div style={{
+            padding: '10px 12px',
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 10,
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.6, marginBottom: 4 }}>
+              SIGNAL PROFILE
+            </div>
+            <div style={{ fontSize: 15, color: '#ffffff', marginBottom: 2 }}>
+              {formulaFamilyLabel ?? '—'}
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)' }}>
+              {profileId ?? '—'}
+            </div>
+          </div>
+        )}
+
         <div style={{
           padding: '12px 14px',
           background: 'linear-gradient(180deg, rgba(0, 136, 255, 0.56), rgba(0, 136, 255, 0.28))',
