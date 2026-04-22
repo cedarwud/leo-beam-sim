@@ -13,6 +13,9 @@ baseline architecture described in this document. The minimum design contract
 for that upgrade path is tracked separately in
 `docs/hobs-tr38811-sinr-mini-sdd.md`.
 
+The current implementation/status rollup for that upgrade path is tracked in
+`docs/hobs-tr38811-current-status.md`.
+
 **Goals:**
 - Simulate LEO satellite passes across the observer's sky with physically correct arc trajectories
 - Render beam cones from satellites to ground with oblique-cone geometry

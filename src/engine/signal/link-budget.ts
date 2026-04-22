@@ -9,6 +9,7 @@
 import type { Profile } from '../../profiles/types';
 import type {
   ActiveBeamAssignment,
+  BeamPowerOverrideDbmByKey,
   LinkSample,
   SatelliteSnapshot,
   UEPosition,
@@ -60,6 +61,7 @@ export function computeLinkBudget(
     beams: Profile['beams'];
     activeAssignments: ActiveBeamAssignment[];
     simTimeSec: number;
+    beamPowerOverrideDbmByKey?: BeamPowerOverrideDbmByKey;
   },
 ): LinkSample[] {
   const {
@@ -69,6 +71,7 @@ export function computeLinkBudget(
     beams: beamConfig,
     activeAssignments,
     simTimeSec,
+    beamPowerOverrideDbmByKey,
   } = config;
   const usesTr38811Path = formulaFamily === 'hobs-tr38811';
 
@@ -113,11 +116,13 @@ export function computeLinkBudget(
           nlosClutterLossDb: TR38811_NLOS_CLUTTER_LOSS_DB,
         },
       );
+      const txPowerDbm = beamPowerOverrideDbmByKey?.get(`${sat.id}:${beam.beamId}`)
+        ?? channel.maxTxPowerDbm;
 
       // RSRP = Pt + Gt(max) + beamGain + Gr - pathLoss
       // Assume UE antenna gain ≈ 0 dBi for simplicity
       const rsrpDbm =
-        channel.maxTxPowerDbm
+        txPowerDbm
         + antenna.maxGainDbi
         + beamGainDb
         - steeringLossDb

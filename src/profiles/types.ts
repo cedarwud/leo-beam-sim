@@ -2,6 +2,15 @@ export type GainModel = 'bessel-j1-j3' | 'bessel-j1' | 'flat';
 export type ProfileClass = 'paper-default' | 'candidate-rich';
 export type BeamHoppingScheduler = 'round-robin' | 'distance-priority';
 export type FormulaFamily = 'hobs-legacy' | 'hobs-tr38811';
+export type BeamPowerControlMode = 'dpc';
+
+export interface BeamPowerControlConfig {
+  mode: BeamPowerControlMode;
+  updatePeriodSec: number;
+  stepDb: number;
+  minTxPowerDbm: number;
+  sinrThresholdDb: number;
+}
 
 export interface Shell {
   id: string;
@@ -39,6 +48,7 @@ export interface Profile {
     maxTxPowerDbm: number;
     noisePsdDbmHz: number;
     pathLossComponents: string[];
+    beamPowerControl?: BeamPowerControlConfig;
   };
 
   handover: {

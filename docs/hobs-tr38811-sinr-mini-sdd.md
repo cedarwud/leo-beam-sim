@@ -277,7 +277,6 @@ current flat-sum behavior to within floating-point tolerance because
 
 The following are intentionally deferred unless separately promoted:
 
-- beam-associated DPC power override
 - Doppler ICI degradation
 - full `ntn-sim-core` energy/power coupling
 - multi-UE channel truth beyond the current single-UE observer-centered use case
@@ -286,7 +285,44 @@ The following are intentionally deferred unless separately promoted:
 These can be added later, but they must not block the first research-grade
 `HOBS + TR 38.811` channel closure.
 
-### 8.1 Known Phase 1 Simplifications
+### 8.1 Promoted Phase 2 Slice: Beam-Level Power Override / DPC
+
+The first promoted Phase 2 slice adds a **research-profile-only**
+beam-associated transmit-power override path. It exists to make `P_{n,m}(t)` a
+first-class runtime input to the HOBS SINR skeleton without changing the
+front-end contract or widening scope into energy coupling, scheduler redesign,
+or DAPS.
+
+Minimum contract:
+
+- only `formulaFamily = 'hobs-tr38811'` may opt into beam-level power control
+- legacy profiles continue to use uniform `channel.maxTxPowerDbm`
+- `computeLinkBudget()` accepts an additive per-beam power-override map keyed by
+  `satId:beamId`
+- `useSimulation.ts` owns the runtime DPC state and updates it in deterministic
+  time buckets before the link budget is evaluated for the next bucket
+
+The first local DPC rule is intentionally simplified but still paper-shaped:
+
+- `P_{n,m}(t) = P_{n,m}(t-Δt) + ξ^P_{n,m}(t)`
+- the sign of `ξ^P` flips when the current per-beam EE proxy does not improve
+- if the current beam SINR falls below the configured threshold, `ξ^P` is forced
+  positive
+- beam power is clamped to a bounded local range
+
+Explicit Phase 2 deviations from the paper:
+
+- the current simulator is single-UE observer-centered, so per-beam EE uses the
+  local proxy `log2(1 + γ) / P` rather than a multi-user sum-rate term
+- the first slice does **not** implement the paper's per-satellite `Pmax`
+  normalization; it only enforces bounded per-beam power
+- the first slice uses a bounded floor above `0 dBm` to keep the research path
+  numerically stable while the rest of the power/energy model remains deferred
+
+These are accepted deviations for this slice as long as they are documented and
+kept profile-scoped.
+
+### 8.2 Known Phase 1 Simplifications
 
 The following remain acceptable Phase 1 simplifications as long as the research
 profile does not claim full `ntn-sim-core` parity:
@@ -398,3 +434,18 @@ Phase 1 is complete when:
    Evidence: two runs with the same profile / epoch / replay settings produce identical logged or serialized research-profile snapshots for a fixed timestamp window.
 8. performance impact is measured and documented before any default-profile change
    Evidence: benchmark note reporting current candidate-rich median frame time, research-profile median frame time, and the percentage delta against the +25% budget.
+
+### 12.1 Phase 2 Slice: Beam-Level Power Override / DPC
+
+The first Phase 2 slice is complete when:
+
+1. the research profile exposes an explicit beam-power-control config without changing legacy profiles
+   Evidence: `src/profiles/hobs-2024-tr38811-research.json` adds a bounded `beamPowerControl` block and legacy profiles remain uniform-power only.
+2. the signal engine can consume beam-specific transmit power without changing front-end contracts
+   Evidence: `computeLinkBudget()` accepts an additive override map while `LinkSample`, `SimFrame`, selector flow, and info-panel flow remain stable.
+3. runtime DPC updates are deterministic for the same bucket sequence
+   Evidence: repeated harness runs produce identical per-beam overrides and identical serialized link snapshots.
+4. beam-level power override changes both own-link power and peer interference in the research path
+   Evidence: targeted validation shows at least one beam power backoff, reduced RSRP on that beam, and improved SINR on at least one affected peer beam.
+5. the slice is explicitly documented as a bounded simplification rather than full HOBS-P parity
+   Evidence: the mini-SDD and Phase 2 validation note call out the EE proxy and the absence of per-satellite `Pmax` normalization.

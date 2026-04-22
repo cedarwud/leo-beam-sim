@@ -8,8 +8,13 @@ import {
   generateWalkerConstellation,
   propagateOrbitElement,
 } from '../engine/orbit';
-import type { ActiveBeamAssignment, SatelliteSnapshot } from '../engine/signal/types';
+import type { ActiveBeamAssignment, LinkSample, SatelliteSnapshot } from '../engine/signal/types';
 import { computeLinkBudget } from '../engine/signal/link-budget';
+import {
+  buildBeamPowerOverrideDbmByKey,
+  type BeamPowerControlState,
+  updateBeamPowerControlStates,
+} from '../engine/signal/power-control';
 import { computeTr38811SlantRangeKm } from '../engine/signal/slant-range';
 import { HandoverManager } from '../engine/handover/handover-manager';
 import type { ServingState } from '../engine/handover/types';
@@ -67,6 +72,20 @@ interface ScheduledBeamSelection {
 interface LatticeSteeringSolution {
   steeringEastKm: number;
   steeringNorthKm: number;
+}
+
+interface BeamPowerControlRuntime {
+  statesByKey: Map<string, BeamPowerControlState>;
+  lastBucketIndex: number | null;
+  lastBucketSamples: LinkSample[];
+}
+
+function createEmptyBeamPowerControlRuntime(): BeamPowerControlRuntime {
+  return {
+    statesByKey: new Map(),
+    lastBucketIndex: null,
+    lastBucketSamples: [],
+  };
 }
 
 function createEmptyFrame(simTimeSec: number): SimFrame {
@@ -366,6 +385,7 @@ export function useSimulation(
     expiresAtSec: number;
   } | null>(null);
   const frameRef = useRef<SimFrame>(createEmptyFrame(simTimeRef.current));
+  const beamPowerControlRef = useRef<BeamPowerControlRuntime>(createEmptyBeamPowerControlRuntime());
   const [, setVersion] = useState(0);
 
   useEffect(() => {
@@ -374,8 +394,9 @@ export function useSimulation(
     simTimeRef.current = startOffset;
     recentHoRef.current = null;
     frameRef.current = createEmptyFrame(startOffset);
+    beamPowerControlRef.current = createEmptyBeamPowerControlRuntime();
     setVersion(v => v + 1);
-  }, [hoManager, maxTimeSec, replay.epochUtcMs, replay.loop, replay.startOffsetSec]);
+  }, [hoManager, maxTimeSec, profile.id, replay.epochUtcMs, replay.loop, replay.startOffsetSec]);
 
   useFrame((_, delta) => {
     if (trajectoryCache.length === 0) return;
@@ -393,6 +414,7 @@ export function useSimulation(
     if (didLoopWrap) {
       hoManager.reset();
       recentHoRef.current = null;
+      beamPowerControlRef.current = createEmptyBeamPowerControlRuntime();
     }
 
     const rawStep = simTimeRef.current / SIM_STEP_SEC;
@@ -453,11 +475,38 @@ export function useSimulation(
     const cosObsLat = Math.cos((observer.latDeg * Math.PI) / 180);
     const linkSats = visibleSats.filter(s => s.topo.elevationDeg >= MIN_ELEVATION_DEG);
     const beamHopEnabled = profile.beamHopping.enabled;
+    const beamPowerControl = profile.channel.beamPowerControl;
+    const usesBeamPowerControl =
+      profile.formulaFamily === 'hobs-tr38811'
+      && beamPowerControl !== undefined;
     const beamHopSlotSec = beamHopEnabled ? Math.max(profile.beamHopping.slotSec, 1e-6) : 0;
     const beamHopSlotIndex = beamHopEnabled ? Math.floor(simTimeRef.current / beamHopSlotSec) : -1;
     const beamHopSlotStartSec = beamHopEnabled && beamHopSlotIndex >= 0
       ? beamHopSlotIndex * beamHopSlotSec
       : 0;
+    if (usesBeamPowerControl && beamPowerControl) {
+      const bucketIndex = Math.floor(
+        simTimeRef.current / Math.max(beamPowerControl.updatePeriodSec, 1e-6),
+      );
+
+      if (beamPowerControlRef.current.lastBucketIndex === null) {
+        beamPowerControlRef.current.lastBucketIndex = bucketIndex;
+      } else if (bucketIndex !== beamPowerControlRef.current.lastBucketIndex) {
+        beamPowerControlRef.current = {
+          statesByKey: updateBeamPowerControlStates(
+            beamPowerControlRef.current.lastBucketSamples,
+            beamPowerControlRef.current.statesByKey,
+            beamPowerControl,
+            profile.channel,
+          ),
+          lastBucketIndex: bucketIndex,
+          lastBucketSamples: beamPowerControlRef.current.lastBucketSamples,
+        };
+      }
+    }
+    const beamPowerOverrideDbmByKey = usesBeamPowerControl
+      ? buildBeamPowerOverrideDbmByKey(beamPowerControlRef.current.statesByKey)
+      : undefined;
     const pushUniqueAssignment = (
       assignments: ActiveBeamAssignment[],
       satId: string | null,
@@ -642,6 +691,7 @@ export function useSimulation(
         beams: profile.beams,
         activeAssignments,
         simTimeSec: simTimeRef.current,
+        beamPowerOverrideDbmByKey,
       });
 
       return {
@@ -702,6 +752,9 @@ export function useSimulation(
         ? recentHoRef.current
         : null;
     const postDecisionContext = buildLinkContext(hoManager.state, postDecisionRecentHo);
+    if (usesBeamPowerControl) {
+      beamPowerControlRef.current.lastBucketSamples = postDecisionContext.linkSamples;
+    }
     const pendingTargetSinrDb = hoManager.getTrackedSinrDb(
       hoManager.state.pendingTarget?.satId ?? null,
       hoManager.state.pendingTarget?.beamId ?? null,

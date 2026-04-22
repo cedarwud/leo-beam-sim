@@ -30,7 +30,14 @@
     "bandwidthMHz": 100,
     "maxTxPowerDbm": 50,
     "noisePsdDbmHz": -174,
-    "pathLossComponents": ["fspl", "atmospheric", "scintillation", "shadow-fading"]
+    "pathLossComponents": ["fspl", "atmospheric", "scintillation", "shadow-fading"],
+    "beamPowerControl": {
+      "mode": "dpc",
+      "updatePeriodSec": 1,
+      "stepDb": 0.5,
+      "minTxPowerDbm": 44,
+      "sinrThresholdDb": -5
+    }
   },
   "handover": {
     "policy": "sinr-offset",

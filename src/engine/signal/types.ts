@@ -5,6 +5,8 @@ export interface LinkSample {
   sinrDb: number;
 }
 
+export type BeamPowerOverrideDbmByKey = ReadonlyMap<string, number>;
+
 export interface ActiveBeamAssignment {
   satId: string;
   beamId: number;
