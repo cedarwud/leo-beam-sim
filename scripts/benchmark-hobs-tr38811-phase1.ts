@@ -14,6 +14,7 @@ import { loadProfile } from '../src/profiles/index.ts';
 import type { Profile } from '../src/profiles/types.ts';
 import { recommendDemoReplayStartOffsetSec } from '../src/scene/replay-recommendation.ts';
 import { computeBeamGeometry, generateBeamOffsetsKm } from '../src/scene/beam-layout.ts';
+import { scheduleBeamCells } from '../src/scene/beam-scheduler.ts';
 
 const EPOCH_UTC_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 const BENCHMARK_DELTA_SEC = 0.2;
@@ -97,13 +98,6 @@ interface RecentHoState {
   expiresAtSec: number;
 }
 
-interface ScheduledBeamSelection {
-  activeBeamCells: BeamCellState[];
-  activeBeamIds: number[];
-  candidateBeamIds: number[];
-  frameSlotIndex: number;
-}
-
 interface LatticeSteeringSolution {
   steeringEastKm: number;
   steeringNorthKm: number;
@@ -185,14 +179,6 @@ function beamAssignmentKey(satId: string, beamId: number): string {
   return `${satId}:${beamId}`;
 }
 
-function beamHopSeed(satId: string): number {
-  let hash = 0;
-  for (let i = 0; i < satId.length; i++) {
-    hash = (hash * 31 + satId.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
-
 function resolveLatticeSteering(
   nadirEastKm: number,
   nadirNorthKm: number,
@@ -222,91 +208,6 @@ function resolveLatticeSteering(
   return {
     steeringEastKm: bestTargetEastKm * steeringScale,
     steeringNorthKm: bestTargetNorthKm * steeringScale,
-  };
-}
-
-function scheduleBeamCells(
-  candidateBeamCells: CandidateBeamCell[],
-  requiredBeamCells: CandidateBeamCell[],
-  satId: string,
-  slotIndex: number,
-  config: Profile['beamHopping'],
-): ScheduledBeamSelection {
-  if (candidateBeamCells.length === 0 && requiredBeamCells.length === 0) {
-    return {
-      activeBeamCells: [],
-      activeBeamIds: [],
-      candidateBeamIds: [],
-      frameSlotIndex: -1,
-    };
-  }
-
-  const requiredBeamStates = [...new Map(
-    requiredBeamCells.map(beam => [beam.beamId, {
-      beamId: beam.beamId,
-      offsetEastKm: beam.offsetEastKm,
-      offsetNorthKm: beam.offsetNorthKm,
-      scanAngleDeg: beam.scanAngleDeg,
-    } satisfies BeamCellState]),
-  ).values()];
-  const requiredBeamIdSet = new Set(requiredBeamStates.map(beam => beam.beamId));
-  const candidateBeamIds = [...new Set([
-    ...candidateBeamCells.map(beam => beam.beamId),
-    ...requiredBeamStates.map(beam => beam.beamId),
-  ])];
-  const baseBeamLimit = Math.max(
-    1,
-    Math.min(
-      config.maxActiveBeamsPerSlot,
-      Math.max(candidateBeamCells.length, requiredBeamStates.length),
-    ),
-  );
-  const beamLimit = Math.max(baseBeamLimit, requiredBeamStates.length);
-
-  if (config.scheduler === 'distance-priority') {
-    const activeBeamCells = [...requiredBeamStates];
-    for (const beam of candidateBeamCells) {
-      if (activeBeamCells.length >= beamLimit) break;
-      if (requiredBeamIdSet.has(beam.beamId)) continue;
-      const { distanceToUeKm: _distanceToUeKm, ...beamState } = beam;
-      activeBeamCells.push(beamState);
-    }
-    return {
-      activeBeamCells,
-      activeBeamIds: activeBeamCells.map(beam => beam.beamId),
-      candidateBeamIds,
-      frameSlotIndex: slotIndex,
-    };
-  }
-
-  const ordered = [...candidateBeamCells].sort((a, b) => a.beamId - b.beamId);
-  const frameLengthSlots = Math.max(1, config.frameLengthSlots);
-  const frameSlotIndex = ((slotIndex % frameLengthSlots) + frameLengthSlots) % frameLengthSlots;
-  const activeBeamCells: BeamCellState[] = [...requiredBeamStates];
-  if (ordered.length === 0) {
-    return {
-      activeBeamCells,
-      activeBeamIds: activeBeamCells.map(beam => beam.beamId),
-      candidateBeamIds,
-      frameSlotIndex,
-    };
-  }
-
-  const startIndex = (frameSlotIndex * beamLimit + beamHopSeed(satId)) % ordered.length;
-  for (let i = 0; i < ordered.length && activeBeamCells.length < beamLimit; i++) {
-    const beam = ordered[(startIndex + i) % ordered.length];
-    if (requiredBeamIdSet.has(beam.beamId) || activeBeamCells.some(active => active.beamId === beam.beamId)) {
-      continue;
-    }
-    const { distanceToUeKm: _distanceToUeKm, ...beamState } = beam;
-    activeBeamCells.push(beamState);
-  }
-
-  return {
-    activeBeamCells,
-    activeBeamIds: activeBeamCells.map(beam => beam.beamId),
-    candidateBeamIds,
-    frameSlotIndex,
   };
 }
 
@@ -569,6 +470,10 @@ function buildLinkContext(
     }
 
     let activeBeamCells: BeamCellState[] = [];
+    const isProtectedBeamSat = state.satId === sat.id || state.pendingTarget?.satId === sat.id;
+    const protectedMinimumActiveBeamCount = isProtectedBeamSat
+      ? profile.beamHopping.maxActiveBeamsPerSlot
+      : 1;
     if (beamHopEnabled) {
       const scheduled = scheduleBeamCells(
         candidateBeamCells,
@@ -576,6 +481,10 @@ function buildLinkContext(
         sat.id,
         beamHopSlotIndex,
         profile.beamHopping,
+        {
+          minimumActiveBeamCount: protectedMinimumActiveBeamCount,
+          fallbackBeamCells: allBeamCells,
+        },
       );
       activeBeamCells = scheduled.activeBeamCells;
     } else {

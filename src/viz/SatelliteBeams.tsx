@@ -13,7 +13,7 @@ export interface BeamTarget {
   isScheduledActive: boolean;
   isPrimary: boolean;
   showBeam: boolean;
-  role?: 'serving' | 'secondary' | 'prepared' | 'post-ho';
+  role?: 'serving' | 'secondary' | 'approach' | 'prepared' | 'post-ho';
   isTransitioningSource?: boolean;
   sinrDb?: number | null;
 }
@@ -30,6 +30,7 @@ const POLARIZATION_A_COLOR = '#ff8844';
 const POLARIZATION_B_COLOR = '#44aaff';
 const CURRENT_SERVICE_COLOR = '#0088ff';
 const TARGET_HANDOVER_COLOR = '#ffb000';
+const APPROACH_BEAM_COLOR = '#d8ff6b';
 const SECONDARY_EVENT_COLOR = '#6f7785';
 const LABEL_OUTLINE_DARK = '#071018';
 
@@ -54,6 +55,8 @@ function baseBeamColor(beamId: number): string {
 function beamColor(beam: BeamTarget): string {
   if (beam.isServing) return CURRENT_SERVICE_COLOR;
   switch (beam.role) {
+    case 'approach':
+      return beam.isPrimary ? APPROACH_BEAM_COLOR : baseBeamColor(beam.beamId);
     case 'prepared':
       return beam.isPrimary ? TARGET_HANDOVER_COLOR : baseBeamColor(beam.beamId);
     case 'post-ho':
@@ -84,6 +87,10 @@ function beamOpacity(beam: BeamTarget): { cone: number; disc: number; line: numb
   }
 
   switch (beam.role) {
+    case 'approach':
+      return beam.isPrimary
+        ? { cone: 0.24, disc: 0.16, line: 0.82, width: 2.8, dashed: true }
+        : { cone: 0.1, disc: 0.07, line: 0.46, width: 1.9, dashed: true };
     case 'post-ho':
       return beam.isPrimary
         ? { cone: 0.3, disc: 0.2, line: 0.95, width: 3.6, dashed: false }

@@ -31,6 +31,14 @@ function roleStyle(role: EventRole): {
         dashed: true,
         opacity: 0.85,
       };
+    case 'approach':
+      return {
+        color: '#d8ff6b',
+        label: 'approach',
+        lineWidth: 2,
+        dashed: true,
+        opacity: 0.65,
+      };
     case 'post-ho':
       return {
         color: '#4f8cff',

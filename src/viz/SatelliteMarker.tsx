@@ -16,6 +16,8 @@ function roleColor(role?: EventRole): string {
   switch (role) {
     case 'serving':
       return '#18f0ff';
+    case 'approach':
+      return '#d8ff6b';
     case 'prepared':
       return '#ff9d1c';
     case 'post-ho':
@@ -32,6 +34,8 @@ function roleScale(role?: EventRole): number {
     case 'serving':
     case 'post-ho':
       return 7;
+    case 'approach':
+      return 5.8;
     case 'prepared':
       return 6;
     case 'secondary':
@@ -47,6 +51,7 @@ export function SatelliteMarker({ position, label, eventRole }: SatelliteMarkerP
   const scale = roleScale(eventRole);
   const isPrimaryEvent = eventRole === 'serving' || eventRole === 'post-ho';
   const isPrepared = eventRole === 'prepared';
+  const isApproach = eventRole === 'approach';
 
   const cloned = useMemo(() => {
     const c = SkeletonUtils.clone(scene);
@@ -62,8 +67,8 @@ export function SatelliteMarker({ position, label, eventRole }: SatelliteMarkerP
   return (
     <group position={position}>
       <primitive object={cloned} scale={scale} />
-      {(isPrimaryEvent || isPrepared) && (
-        <pointLight color={accent} intensity={isPrimaryEvent ? 1 : 0.6} distance={80} decay={2} />
+      {(isPrimaryEvent || isPrepared || isApproach) && (
+        <pointLight color={accent} intensity={isPrimaryEvent ? 1 : isPrepared ? 0.6 : 0.4} distance={80} decay={2} />
       )}
       <Text
         position={[0, 20, 0]}

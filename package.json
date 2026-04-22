@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
+    "validate:beam-floor": "node --import tsx/esm scripts/validate-serving-pending-beam-floor.ts",
     "validate:hobs-tr38811-phase1": "node --import tsx/esm scripts/validate-hobs-tr38811-phase1.ts",
     "validate:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/validate-hobs-tr38811-phase2-dpc.ts",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",

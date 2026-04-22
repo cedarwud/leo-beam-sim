@@ -103,7 +103,7 @@ export interface SimFrame {
   recentHoTargetSatId: string | null;
 }
 
-export type EventRole = 'serving' | 'secondary' | 'prepared' | 'post-ho';
+export type EventRole = 'serving' | 'secondary' | 'approach' | 'prepared' | 'post-ho';
 
 export interface SinrLabel {
   position: THREE.Vector3;

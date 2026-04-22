@@ -6,9 +6,15 @@ import type { PresentationMode, SimFrame, VizFrame, VisibleSat } from './types';
 
 const MAX_DISPLAY_SATS = 12;
 const MAX_EVENT_SATS = 8;
+const MAX_APPROACH_SATS = 2;
 const CENTRAL_CORE_RADIUS_WORLD = 180;
 const CENTRAL_FOCUS_RADIUS_WORLD = 500;
 const MIN_CENTER_ELEVATION_DEG = 45;
+const APPROACH_DISTANCE_FACTOR = 2.4;
+const APPROACH_RELEASE_DISTANCE_FACTOR = 2.8;
+const APPROACH_CLOSING_FOOTPRINT_RATIO = 0.08;
+const APPROACH_MIN_CLOSING_KM = 4;
+const APPROACH_RECEDING_GRACE_RATIO = 0.35;
 
 interface ShellVizLayout {
   footprintRadiusKm: number;
@@ -19,6 +25,23 @@ interface BeamCellViz {
   offsetEastKm: number;
   offsetNorthKm: number;
   scanAngleDeg: number;
+}
+
+function beamDistanceToUeKm(beam: BeamCellViz): number {
+  return Math.hypot(beam.offsetEastKm, beam.offsetNorthKm);
+}
+
+function nearestBeamCell(beamCells: BeamCellViz[]): BeamCellViz | null {
+  let nearest: BeamCellViz | null = null;
+  let nearestDistanceKm = Infinity;
+  for (const beam of beamCells) {
+    const distanceKm = beamDistanceToUeKm(beam);
+    if (distanceKm < nearestDistanceKm) {
+      nearest = beam;
+      nearestDistanceKm = distanceKm;
+    }
+  }
+  return nearest;
 }
 
 function scoreCentralPass(sat: VisibleSat): number {
@@ -54,15 +77,17 @@ function centralBiasWeight(mode: PresentationMode): number {
 function primaryBeamIdForSat(
   satId: string,
   sim: SimFrame,
-  activeAssignmentsBySatId: Map<string, Set<number>>,
+  displayAssignmentsBySatId: Map<string, Set<number>>,
+  beamCellsBySatId: Map<string, BeamCellViz[]>,
 ): number | null {
   if (satId === sim.serving.satId) return sim.serving.beamId;
   if (satId === sim.pendingTargetSatId) return sim.pendingTargetBeamId;
   if (satId === sim.recentHoSourceSatId) return sim.recentHoSourceBeamId;
   if (satId === sim.recentHoTargetSatId) return sim.recentHoTargetBeamId;
-  const activeBeamIds = activeAssignmentsBySatId.get(satId);
-  if (!activeBeamIds || activeBeamIds.size === 0) return null;
-  return [...activeBeamIds][0] ?? null;
+  const displayBeamIds = displayAssignmentsBySatId.get(satId);
+  if (displayBeamIds && displayBeamIds.size > 0) return [...displayBeamIds][0] ?? null;
+  const nearestBeam = nearestBeamCell(beamCellsBySatId.get(satId) ?? []);
+  return nearestBeam?.beamId ?? null;
 }
 
 function isTransitioningSourceSat(satId: string, sim: SimFrame): boolean {
@@ -87,6 +112,8 @@ export function useBeamViz(
 ): VizFrame {
   const previousDisplayIdsRef = useRef<Set<string>>(new Set());
   const previousEventIdsRef = useRef<Set<string>>(new Set());
+  const previousApproachIdsRef = useRef<Set<string>>(new Set());
+  const previousNearestBeamDistanceBySatRef = useRef<Map<string, number>>(new Map());
 
   return useMemo(() => {
     const centralBias = centralBiasWeight(mode);
@@ -108,6 +135,24 @@ export function useBeamViz(
     for (const sample of sim.linkSamples) {
       const currentBest = bestSinrPerSat.get(sample.satId) ?? -Infinity;
       if (sample.sinrDb > currentBest) bestSinrPerSat.set(sample.satId, sample.sinrDb);
+    }
+
+    const beamCellsBySatId = new Map<string, BeamCellViz[]>(
+      [...sim.beamCellsBySatId.entries()].map(([satId, beamCells]) => [
+        satId,
+        beamCells.map(beam => ({
+          beamId: beam.beamId,
+          offsetEastKm: beam.offsetEastKm,
+          offsetNorthKm: beam.offsetNorthKm,
+          scanAngleDeg: beam.scanAngleDeg,
+        })),
+      ]),
+    );
+    const nextNearestBeamDistanceBySat = new Map<string, number>();
+    for (const [satId, beamCells] of beamCellsBySatId.entries()) {
+      const nearestBeam = nearestBeamCell(beamCells);
+      if (!nearestBeam) continue;
+      nextNearestBeamDistanceBySat.set(satId, beamDistanceToUeKm(nearestBeam));
     }
 
     const labelSinrForSat = (satId: string): number | null => {
@@ -177,21 +222,68 @@ export function useBeamViz(
       return null;
     };
 
+    const blockedApproachSatIds = new Set<string>([
+      sim.serving.satId,
+      sim.pendingTargetSatId,
+      sim.recentHoTargetSatId,
+      sim.recentHoSourceSatId,
+    ].filter((satId): satId is string => satId !== null));
+    const approachCandidates = [...sim.satellites]
+      .filter(sat => !blockedApproachSatIds.has(sat.id))
+      .flatMap(sat => {
+        const layout = shellLayouts.get(sat.shellId);
+        const nearestDistanceKm = nextNearestBeamDistanceBySat.get(sat.id);
+        if (!layout || nearestDistanceKm === undefined) return [];
+
+        const previousDistanceKm = previousNearestBeamDistanceBySatRef.current.get(sat.id);
+        const closingKm = previousDistanceKm === undefined ? 0 : previousDistanceKm - nearestDistanceKm;
+        const withinApproachWindow = nearestDistanceKm <= layout.footprintRadiusKm * APPROACH_DISTANCE_FACTOR;
+        const trackedApproach =
+          previousApproachIdsRef.current.has(sat.id)
+          && nearestDistanceKm <= layout.footprintRadiusKm * APPROACH_RELEASE_DISTANCE_FACTOR;
+        const minimumClosingKm = Math.max(
+          layout.footprintRadiusKm * APPROACH_CLOSING_FOOTPRINT_RATIO,
+          APPROACH_MIN_CLOSING_KM,
+        );
+        const isApproaching = closingKm >= minimumClosingKm;
+        const keepTrackedApproach = trackedApproach && closingKm >= -minimumClosingKm * APPROACH_RECEDING_GRACE_RATIO;
+        if ((!withinApproachWindow || !isApproaching) && !keepTrackedApproach) return [];
+
+        return [{
+          satId: sat.id,
+          nearestDistanceKm,
+          closingKm,
+          bestSinrDb: bestSinrPerSat.get(sat.id) ?? -Infinity,
+        }];
+      })
+      .sort((a, b) =>
+        a.nearestDistanceKm - b.nearestDistanceKm
+        || b.closingKm - a.closingKm
+        || b.bestSinrDb - a.bestSinrDb
+        || a.satId.localeCompare(b.satId))
+      .slice(0, MAX_APPROACH_SATS);
+    const approachSatIds = approachCandidates.map(candidate => candidate.satId);
+    const approachSatIdSet = new Set(approachSatIds);
     const prioritySatIds = [...new Set([
       sim.serving.satId,
       sim.pendingTargetSatId,
       sim.recentHoTargetSatId,
       sim.recentHoSourceSatId,
+      ...approachSatIds,
     ].filter((satId): satId is string => satId !== null))];
 
     const displaySats = [...sim.satellites].sort((a, b) => {
       const priorityA = a.id === sim.pendingTargetSatId || a.id === sim.recentHoTargetSatId
         ? 45
+        : approachSatIdSet.has(a.id)
+          ? 34
         : a.id === sim.recentHoSourceSatId
           ? 38
           : 0;
       const priorityB = b.id === sim.pendingTargetSatId || b.id === sim.recentHoTargetSatId
         ? 45
+        : approachSatIdSet.has(b.id)
+          ? 34
         : b.id === sim.recentHoSourceSatId
           ? 38
           : 0;
@@ -243,6 +335,9 @@ export function useBeamViz(
     ) {
       eventRoles.set(sim.recentHoSourceSatId, 'secondary');
     }
+    for (const satId of approachSatIds) {
+      if (!eventRoles.has(satId)) eventRoles.set(satId, 'approach');
+    }
 
     const eventSatIds = new Set<string>(eventRoles.keys());
     const rankedCandidates = [...shownSats]
@@ -285,12 +380,10 @@ export function useBeamViz(
       if (!layout) continue;
 
       const scale = FOOTPRINT_RADIUS_WORLD / Math.max(layout.footprintRadiusKm, 1e-6);
-      const primaryBeamId = primaryBeamIdForSat(sat.id, sim, displayAssignmentsBySatId);
+      const primaryBeamId = primaryBeamIdForSat(sat.id, sim, displayAssignmentsBySatId, beamCellsBySatId);
       if (primaryBeamId === null) continue;
 
-      const beamCells = new Map(
-        (sim.beamCellsBySatId.get(sat.id) ?? []).map(beam => [beam.beamId, beam]),
-      );
+      const beamCells = new Map((beamCellsBySatId.get(sat.id) ?? []).map(beam => [beam.beamId, beam]));
       const role = eventRoles.get(sat.id);
       const primaryBeamCell = primaryBeamId !== null ? beamCells.get(primaryBeamId) : undefined;
       const anchorToUe =
@@ -299,6 +392,8 @@ export function useBeamViz(
         || isRecentHoSourceSat(sat.id, sim)
         || sat.id === sim.recentHoTargetSatId;
       if (!anchorToUe && !primaryBeamCell) continue;
+      const anchorOffsetEastKm = anchorToUe ? (primaryBeamCell?.offsetEastKm ?? 0) : 0;
+      const anchorOffsetNorthKm = anchorToUe ? (primaryBeamCell?.offsetNorthKm ?? 0) : 0;
 
       const sampleByBeamId = new Map(
         sim.linkSamples
@@ -317,12 +412,12 @@ export function useBeamViz(
           if (!isPrimary && !beamCell) return [];
 
           const isScheduledActive = scheduledActiveBeamIds.includes(beamId);
-          const groundX = isPrimary
-            ? (anchorToUe ? 0 : beamCell!.offsetEastKm * scale)
-            : beamCell!.offsetEastKm * scale;
-          const groundZ = isPrimary
-            ? (anchorToUe ? 0 : -beamCell!.offsetNorthKm * scale)
-            : -beamCell!.offsetNorthKm * scale;
+          // Anchor the whole beam set to the primary beam for event-focused sats so
+          // common-mode steering translation does not read as sideways "sliding".
+          const beamOffsetEastKm = beamCell?.offsetEastKm ?? anchorOffsetEastKm;
+          const beamOffsetNorthKm = beamCell?.offsetNorthKm ?? anchorOffsetNorthKm;
+          const groundX = (beamOffsetEastKm - anchorOffsetEastKm) * scale;
+          const groundZ = -(beamOffsetNorthKm - anchorOffsetNorthKm) * scale;
 
           return [{
             beamId,
@@ -355,6 +450,8 @@ export function useBeamViz(
 
     previousDisplayIdsRef.current = new Set(shownSats.map(sat => sat.id));
     previousEventIdsRef.current = new Set(eventSatIds);
+    previousApproachIdsRef.current = new Set(approachSatIds);
+    previousNearestBeamDistanceBySatRef.current = nextNearestBeamDistanceBySat;
 
     return {
       displaySats: shownSats,
