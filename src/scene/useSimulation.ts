@@ -85,6 +85,7 @@ function createEmptyFrame(simTimeSec: number): SimFrame {
     activeAssignments: [],
     displayAssignments: [],
     beamCellsBySatId: new Map(),
+    steeringBeamCellsBySatId: new Map(),
     linkRangeKmBySatId: new Map(),
     beamHopSlotIndex: -1,
     beamHopSlotStartSec: 0,
@@ -199,6 +200,7 @@ export function useSimulation(
   replay: ReplayConfig,
   speed: number,
   paused: boolean,
+  signalResetKey?: string,
 ): SimFrame {
   const observer = useMemo(
     () => createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg),
@@ -286,6 +288,7 @@ export function useSimulation(
   } | null>(null);
   const frameRef = useRef<SimFrame>(createEmptyFrame(simTimeRef.current));
   const beamPowerControlRef = useRef<BeamPowerControlRuntime>(createEmptyBeamPowerControlRuntime());
+  const publishNextFrameRef = useRef(true);
   const [, setVersion] = useState(0);
 
   useEffect(() => {
@@ -295,8 +298,23 @@ export function useSimulation(
     recentHoRef.current = null;
     frameRef.current = createEmptyFrame(startOffset);
     beamPowerControlRef.current = createEmptyBeamPowerControlRuntime();
+    publishNextFrameRef.current = true;
     setVersion(v => v + 1);
   }, [hoManager, maxTimeSec, profile.id, replay.epochUtcMs, replay.loop, replay.startOffsetSec]);
+
+  useEffect(() => {
+    hoManager.reset();
+    recentHoRef.current = null;
+    frameRef.current = createEmptyFrame(simTimeRef.current);
+    beamPowerControlRef.current = createEmptyBeamPowerControlRuntime();
+    publishNextFrameRef.current = true;
+    setVersion(v => v + 1);
+  }, [hoManager, signalResetKey]);
+
+  useEffect(() => {
+    // Profile-backed SINR controls must refresh the React UI even when simulation time is paused.
+    publishNextFrameRef.current = true;
+  }, [profile]);
 
   useFrame((_, delta) => {
     if (trajectoryCache.length === 0) return;
@@ -426,6 +444,7 @@ export function useSimulation(
     ) => {
       const snapshots: SatelliteSnapshot[] = [];
       const beamHopStatesBySatId = new Map<string, SatBeamHopState>();
+      const steeringBeamCellsBySatId = new Map<string, BeamCellState[]>();
 
       for (const sat of linkSats) {
         const layout = beamLayoutsByShellId.get(sat.shellId);
@@ -482,6 +501,16 @@ export function useSimulation(
         if (nadirDistanceKm > layout.maxCoverageRadiusKm && requiredBeamIds.size === 0) {
           continue;
         }
+
+        steeringBeamCellsBySatId.set(
+          sat.id,
+          allBeamCells.map(beam => ({
+            beamId: beam.beamId,
+            offsetEastKm: beam.offsetEastKm,
+            offsetNorthKm: beam.offsetNorthKm,
+            scanAngleDeg: beam.scanAngleDeg,
+          })),
+        );
 
         let activeBeamCells: BeamCellState[] = [];
         let activeBeamIds: number[] = [];
@@ -596,6 +625,7 @@ export function useSimulation(
         formulaFamily: profile.formulaFamily,
         channel: profile.channel,
         antenna: profile.antenna,
+        ueAntenna: profile.ueAntenna,
         beams: profile.beams,
         activeAssignments,
         simTimeSec: simTimeRef.current,
@@ -605,6 +635,7 @@ export function useSimulation(
       return {
         linkSamples,
         beamCellsBySatId,
+        steeringBeamCellsBySatId,
         linkRangeKmBySatId,
         beamHopStatesBySatId,
         availableBeamAssignments,
@@ -689,6 +720,7 @@ export function useSimulation(
       activeAssignments: frameActiveAssignments,
       displayAssignments,
       beamCellsBySatId: postDecisionContext.beamCellsBySatId,
+      steeringBeamCellsBySatId: postDecisionContext.steeringBeamCellsBySatId,
       linkRangeKmBySatId: postDecisionContext.linkRangeKmBySatId,
       beamHopSlotIndex,
       beamHopSlotStartSec,
@@ -716,7 +748,8 @@ export function useSimulation(
       recentHoTargetSatId,
     };
 
-    if (simTimeRef.current !== previousSimTimeSec) {
+    if (simTimeRef.current !== previousSimTimeSec || publishNextFrameRef.current) {
+      publishNextFrameRef.current = false;
       setVersion(v => v + 1);
     }
   });

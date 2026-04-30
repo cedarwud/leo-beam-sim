@@ -146,6 +146,7 @@ function computeFixtureSamples(
     formulaFamily: profile.formulaFamily,
     channel: profile.channel,
     antenna: profile.antenna,
+    ueAntenna: profile.ueAntenna,
     beams: profile.beams,
     activeAssignments: buildResearchFixtureAssignments(),
     simTimeSec,

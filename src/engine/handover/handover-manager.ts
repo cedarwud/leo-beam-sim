@@ -217,7 +217,8 @@ export class HandoverManager {
 
   private smoothCandidates(candidates: LinkSample[], dt: number): LinkSample[] {
     const activeKeys = new Set<string>();
-    const alpha = this.sinrSmoothingSec <= 0
+    // Paused runtime tuning should not advance timers, but it must expose the current raw formula output.
+    const alpha = this.sinrSmoothingSec <= 0 || dt <= 0
       ? 1
       : Math.min(1, dt / (this.sinrSmoothingSec + dt));
 

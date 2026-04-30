@@ -3,6 +3,7 @@ export type ProfileClass = 'paper-default' | 'candidate-rich';
 export type BeamHoppingScheduler = 'round-robin' | 'distance-priority';
 export type FormulaFamily = 'hobs-legacy' | 'hobs-tr38811';
 export type BeamPowerControlMode = 'dpc';
+export type PathLossComponent = 'fspl' | 'atmospheric' | 'scintillation' | 'shadow-fading';
 
 export interface BeamPowerControlConfig {
   mode: BeamPowerControlMode;
@@ -42,12 +43,16 @@ export interface Profile {
     scanLossAtMaxSteeringDb: number;
   };
 
+  ueAntenna: {
+    maxGainDbi: number;
+  };
+
   channel: {
     frequencyGHz: number;
     bandwidthMHz: number;
     maxTxPowerDbm: number;
     noisePsdDbmHz: number;
-    pathLossComponents: string[];
+    pathLossComponents: PathLossComponent[];
     beamPowerControl?: BeamPowerControlConfig;
   };
 

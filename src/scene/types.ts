@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { BeamCodeRole } from '../constants/beamRoleTokens';
 import type { TopocentricPoint } from '../engine/orbit';
 import type { ActiveBeamAssignment, LinkSample } from '../engine/signal/types';
 import type { BeamTarget } from '../viz/SatelliteBeams';
@@ -14,11 +15,48 @@ export interface ReplayConfig {
 export interface RuntimeConfig {
   presentationMode: PresentationMode;
   replay: ReplayConfig;
+  signalResetKey?: string;
+}
+
+export interface LinkBudgetTerms {
+  signalDbm: number;
+  intraInterferenceDbm: number;
+  interInterferenceDbm: number;
+  noiseDbm: number;
+  denominatorDbm: number;
+  txPowerDbm: number;
+  pathLossDb: number;
+  beamGainDb: number;
+  steeringLossDb: number;
+  receiverGainDbi: number;
+}
+
+export type SignalTruthStatus = 'live' | 'latched' | 'recent-ho' | 'derived' | 'none';
+
+export interface SignalSourceState {
+  satId: string | null;
+  beamId: number | null;
+  sinrDb: number | null;
+  elevationDeg: number | null;
+  rangeKm: number | null;
+  status: SignalTruthStatus;
+}
+
+export interface PanelPrimaryState extends SignalSourceState {
+  role: 'serving' | 'ho-source' | 'none';
+}
+
+export interface PanelComparisonState extends SignalSourceState {
+  role: 'pending' | 'candidate' | 'ho-target' | 'none';
 }
 
 export interface SimState {
   profileId?: string;
   formulaFamilyLabel?: string;
+  physicalServing: SignalSourceState;
+  panelPrimary: PanelPrimaryState;
+  panelComparison: PanelComparisonState;
+  /** Backward-compatible right-panel primary fields; prefer the explicit contract fields above. */
   servingSatId: string | null;
   servingBeamId: number | null;
   servingElevationDeg: number | null;
@@ -36,6 +74,8 @@ export interface SimState {
   recentHoSourceSatId: string | null;
   recentHoTargetSatId: string | null;
   sinrDb: number;
+  physicalServingBudget: LinkBudgetTerms | null;
+  servingBudget: LinkBudgetTerms | null;
   handoverOffsetDb: number;
   handoverTriggerProgressSec: number;
   handoverTriggerSec: number;
@@ -80,6 +120,7 @@ export interface SimFrame {
   activeAssignments: ActiveBeamAssignment[];
   displayAssignments: ActiveBeamAssignment[];
   beamCellsBySatId: Map<string, BeamCellState[]>;
+  steeringBeamCellsBySatId: Map<string, BeamCellState[]>;
   linkRangeKmBySatId: Map<string, number>;
   beamHopSlotIndex: number;
   beamHopSlotStartSec: number;
@@ -103,7 +144,7 @@ export interface SimFrame {
   recentHoTargetSatId: string | null;
 }
 
-export type EventRole = 'serving' | 'secondary' | 'approach' | 'prepared' | 'post-ho';
+export type EventRole = BeamCodeRole;
 
 export interface SinrLabel {
   position: THREE.Vector3;

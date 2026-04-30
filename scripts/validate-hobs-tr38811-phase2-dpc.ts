@@ -27,7 +27,7 @@ function buildResearchFixtureSnapshots(): SatelliteSnapshot[] {
       azimuthDeg: 0,
       beamCellsKm: [
         { beamId: 1, offsetEastKm: 0, offsetNorthKm: 0, scanAngleDeg: 0 },
-        { beamId: 5, offsetEastKm: 40, offsetNorthKm: 0, scanAngleDeg: 4 },
+        { beamId: 4, offsetEastKm: 40, offsetNorthKm: 0, scanAngleDeg: 4 },
       ],
     },
     {
@@ -60,7 +60,7 @@ function buildResearchFixtureSnapshots(): SatelliteSnapshot[] {
 function buildResearchFixtureAssignments(): ActiveBeamAssignment[] {
   return [
     { satId: 'sat-a', beamId: 1 },
-    { satId: 'sat-a', beamId: 5 },
+    { satId: 'sat-a', beamId: 4 },
     { satId: 'sat-b', beamId: 1 },
     { satId: 'sat-z', beamId: 1 },
   ];
@@ -82,6 +82,7 @@ function computeFixtureSamples(
     formulaFamily: profile.formulaFamily,
     channel: profile.channel,
     antenna: profile.antenna,
+    ueAntenna: profile.ueAntenna,
     beams: profile.beams,
     activeAssignments: buildResearchFixtureAssignments(),
     simTimeSec: 60.2,
@@ -153,9 +154,9 @@ function run(): void {
   assert.deepEqual(secondOverridesSerialized, firstOverridesSerialized);
 
   const baselineServing = firstBaselineSerialized.find(sample => sample.satId === 'sat-a' && sample.beamId === 1);
-  const baselinePeer = firstBaselineSerialized.find(sample => sample.satId === 'sat-a' && sample.beamId === 5);
+  const baselinePeer = firstBaselineSerialized.find(sample => sample.satId === 'sat-a' && sample.beamId === 4);
   const dpcServing = firstDpcSerialized.find(sample => sample.satId === 'sat-a' && sample.beamId === 1);
-  const dpcPeer = firstDpcSerialized.find(sample => sample.satId === 'sat-a' && sample.beamId === 5);
+  const dpcPeer = firstDpcSerialized.find(sample => sample.satId === 'sat-a' && sample.beamId === 4);
   assert.ok(baselineServing && baselinePeer && dpcServing && dpcPeer, 'expected fixture samples missing');
 
   const servingOverride = firstRun.beamPowerOverrideDbmByKey.get('sat-a:1');
@@ -163,7 +164,7 @@ function run(): void {
   assert.equal(roundValue(servingOverride ?? NaN), 49.5);
   assert.equal(roundValue(weakOverride ?? NaN), 50);
   assert.equal(roundValue(baselineServing.rsrpDbm - dpcServing.rsrpDbm), 0.5);
-  assert.ok(dpcPeer.sinrDb > baselinePeer.sinrDb, 'reduced peer interference should improve sat-a:5 SINR');
+  assert.ok(dpcPeer.sinrDb > baselinePeer.sinrDb, 'reduced peer interference should improve sat-a:4 SINR');
 
   console.log('HOBS + TR 38.811 Phase 2 DPC validation passed.');
   console.log(JSON.stringify({

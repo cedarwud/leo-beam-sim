@@ -9,6 +9,7 @@ export interface BeamOffsetKm {
   dNorthKm: number;
 }
 
+export const MAX_BEAMS_PER_SATELLITE = 7;
 export const FOOTPRINT_RADIUS_WORLD = 56;
 
 export function computeBeamGeometry(
@@ -25,15 +26,16 @@ export function generateBeamOffsetsKm(
   spacingKm: number,
   maxBeams: number,
 ): BeamOffsetKm[] {
-  if (maxBeams <= 0) return [];
+  const beamLimit = Math.min(Math.floor(maxBeams), MAX_BEAMS_PER_SATELLITE);
+  if (beamLimit <= 0) return [];
 
   const beams: BeamOffsetKm[] = [];
   let id = 1;
 
   beams.push({ beamId: id++, dEastKm: 0, dNorthKm: 0 });
-  for (let ring = 1; beams.length < maxBeams; ring++) {
+  for (let ring = 1; beams.length < beamLimit; ring++) {
     const ringBeams = 6 * ring;
-    for (let i = 0; i < ringBeams && beams.length < maxBeams; i++) {
+    for (let i = 0; i < ringBeams && beams.length < beamLimit; i++) {
       const angle = (i / ringBeams) * Math.PI * 2;
       beams.push({
         beamId: id++,

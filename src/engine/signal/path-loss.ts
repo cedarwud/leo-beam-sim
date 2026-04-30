@@ -5,6 +5,8 @@
  * Source: PAP-2024-HOBS, ITU-R P.676-13
  */
 
+import type { PathLossComponent } from '../../profiles/types';
+
 /** Free-space path loss in dB. L_fs = 20log(f_c) + 20log(d) - 147.55 */
 export function computeFsplDb(rangeKm: number, frequencyGHz: number): number {
   return 92.45 + 20 * Math.log10(Math.max(rangeKm, 0.001)) + 20 * Math.log10(frequencyGHz);
@@ -43,12 +45,15 @@ export function computePathLossDb(
   rangeKm: number,
   frequencyGHz: number,
   elevationDeg: number,
-  components: string[],
+  components: readonly PathLossComponent[],
   options: PathLossOptions = {},
 ): number {
-  let loss = computeFsplDb(rangeKm, frequencyGHz);
+  const enabledComponents = new Set(components);
+  let loss = enabledComponents.has('fspl')
+    ? computeFsplDb(rangeKm, frequencyGHz)
+    : 0;
 
-  for (const comp of components) {
+  for (const comp of enabledComponents) {
     switch (comp) {
       case 'atmospheric':
         loss += atmosphericLossDb(elevationDeg);
@@ -59,7 +64,8 @@ export function computePathLossDb(
       case 'shadow-fading':
         loss += shadowFadingLossDb();
         break;
-      // 'fspl' is already included as base
+      case 'fspl':
+        break;
     }
   }
 

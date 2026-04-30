@@ -3,15 +3,24 @@ import { Canvas } from '@react-three/fiber';
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { ACESFilmicToneMapping } from 'three';
 import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
-import { getFormulaFamilyLabel, loadProfile } from '../profiles';
-import type { RuntimeConfig, SimState } from './types';
+import type { LinkSample } from '../engine/signal/types';
+import { getFormulaFamilyLabel } from '../profiles';
+import type { Profile } from '../profiles/types';
+import type {
+  LinkBudgetTerms,
+  PanelComparisonState,
+  PanelPrimaryState,
+  RuntimeConfig,
+  SignalSourceState,
+  SignalTruthStatus,
+  SimState,
+} from './types';
 import { useSimulation } from './useSimulation';
 import { useBeamViz } from './useBeamViz';
 import { EarthFixedCells, generateHexGrid } from '../viz/EarthFixedCells';
 import { HandoverLinks } from '../viz/HandoverLinks';
 import { SatelliteBeams } from '../viz/SatelliteBeams';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
-import { SinrOverlay } from '../viz/SinrOverlay';
 import { GroundScene } from '../viz/GroundScene';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import { NTPUScene } from '../components/scene/NTPUScene';
@@ -19,7 +28,7 @@ import { UAV } from '../components/scene/UAV';
 import { Starfield } from '../components/ui/Starfield';
 
 interface SceneContentProps {
-  profileId: string;
+  profile: Profile;
   speed: number;
   paused: boolean;
   runtime: RuntimeConfig;
@@ -53,10 +62,51 @@ const UI_STABLE_UPDATE_INTERVAL_MS = 700;
 const UI_HANDOVER_UPDATE_INTERVAL_MS = 250;
 const SHOW_BEAMS = true;
 
+function hasNumericDelta(
+  previous: number | null,
+  next: number | null,
+  tolerance = 0.4,
+): boolean {
+  if (previous === null || next === null) return previous !== next;
+  if (!Number.isFinite(previous) || !Number.isFinite(next)) return previous !== next;
+  return Math.abs(previous - next) > tolerance;
+}
+
+function hasBudgetChanged(
+  previous: LinkBudgetTerms | null,
+  next: LinkBudgetTerms | null,
+): boolean {
+  if (!previous || !next) return previous !== next;
+  return hasNumericDelta(previous.signalDbm, next.signalDbm, 0.2)
+    || hasNumericDelta(previous.intraInterferenceDbm, next.intraInterferenceDbm, 0.2)
+    || hasNumericDelta(previous.interInterferenceDbm, next.interInterferenceDbm, 0.2)
+    || hasNumericDelta(previous.noiseDbm, next.noiseDbm, 0.2)
+    || hasNumericDelta(previous.denominatorDbm, next.denominatorDbm, 0.2)
+    || hasNumericDelta(previous.txPowerDbm, next.txPowerDbm, 0.2)
+    || hasNumericDelta(previous.pathLossDb, next.pathLossDb, 0.2)
+    || hasNumericDelta(previous.beamGainDb, next.beamGainDb, 0.2)
+    || hasNumericDelta(previous.steeringLossDb, next.steeringLossDb, 0.2)
+    || hasNumericDelta(previous.receiverGainDbi, next.receiverGainDbi, 0.2);
+}
+
+function hasSignalSourceChanged(previous: SignalSourceState, next: SignalSourceState): boolean {
+  return previous.satId !== next.satId
+    || previous.beamId !== next.beamId
+    || previous.status !== next.status
+    || hasNumericDelta(previous.sinrDb, next.sinrDb)
+    || hasNumericDelta(previous.elevationDeg, next.elevationDeg)
+    || hasNumericDelta(previous.rangeKm, next.rangeKm);
+}
+
 function hasUiStateChanged(previous: SimState | null, next: SimState): boolean {
   if (!previous) return true;
   return previous.profileId !== next.profileId
     || previous.formulaFamilyLabel !== next.formulaFamilyLabel
+    || hasSignalSourceChanged(previous.physicalServing, next.physicalServing)
+    || hasSignalSourceChanged(previous.panelPrimary, next.panelPrimary)
+    || previous.panelPrimary.role !== next.panelPrimary.role
+    || hasSignalSourceChanged(previous.panelComparison, next.panelComparison)
+    || previous.panelComparison.role !== next.panelComparison.role
     || previous.servingSatId !== next.servingSatId
     || previous.servingBeamId !== next.servingBeamId
     || previous.pendingTargetSatId !== next.pendingTargetSatId
@@ -69,6 +119,12 @@ function hasUiStateChanged(previous: SimState | null, next: SimState): boolean {
     || previous.hoCount !== next.hoCount
     || previous.handoverOffsetDb !== next.handoverOffsetDb
     || previous.handoverTriggerSec !== next.handoverTriggerSec
+    || hasNumericDelta(previous.sinrDb, next.sinrDb)
+    || hasNumericDelta(previous.pendingTargetSinrDb, next.pendingTargetSinrDb)
+    || hasNumericDelta(previous.comparisonSinrDb, next.comparisonSinrDb)
+    || hasNumericDelta(previous.sinrDeltaDb, next.sinrDeltaDb)
+    || hasBudgetChanged(previous.physicalServingBudget, next.physicalServingBudget)
+    || hasBudgetChanged(previous.servingBudget, next.servingBudget)
     || previous.beamHopEnabled !== next.beamHopEnabled
     || previous.beamHopSlotIndex !== next.beamHopSlotIndex
     || previous.beamHopSlotSec !== next.beamHopSlotSec
@@ -79,6 +135,10 @@ function hasUiStateChanged(previous: SimState | null, next: SimState): boolean {
 
 function isFinitePanelSinr(sinrDb: number | null): sinrDb is number {
   return sinrDb !== null && Number.isFinite(sinrDb) && sinrDb > MIN_VISIBLE_SINR_DB;
+}
+
+function isFiniteBeamSinr(sinrDb: number | null | undefined): sinrDb is number {
+  return sinrDb !== null && sinrDb !== undefined && Number.isFinite(sinrDb);
 }
 
 function isFinitePanelMetric(value: number | null): value is number {
@@ -160,19 +220,47 @@ function normalizePanelSignal(
   return { satId, beamId, sinrDb };
 }
 
+function resolveSignalStatus(
+  satId: string | null,
+  beamId: number | null,
+  rawSinrDb: number | null,
+  displayedSinrDb: number | null,
+): SignalTruthStatus {
+  if (!satId || beamId === null) return 'none';
+  if (isFinitePanelSinr(rawSinrDb)) return 'live';
+  if (displayedSinrDb !== null && Number.isFinite(displayedSinrDb)) return 'latched';
+  return 'latched';
+}
+
+function extractBudgetTerms(sample: LinkSample | null): LinkBudgetTerms | null {
+  if (!sample) return null;
+  return {
+    signalDbm: sample.signalDbm,
+    intraInterferenceDbm: sample.intraInterferenceDbm,
+    interInterferenceDbm: sample.interInterferenceDbm,
+    noiseDbm: sample.noiseDbm,
+    denominatorDbm: sample.denominatorDbm,
+    txPowerDbm: sample.txPowerDbm,
+    pathLossDb: sample.pathLossDb,
+    beamGainDb: sample.beamGainDb,
+    steeringLossDb: sample.steeringLossDb,
+    receiverGainDbi: sample.receiverGainDbi,
+  };
+}
+
 function SceneContent({
-  profileId,
+  profile,
   speed,
   paused,
   runtime,
   onSimUpdate,
 }: SceneContentProps) {
-  const profile = useMemo(() => loadProfile(profileId), [profileId]);
-  const sim = useSimulation(profile, runtime.replay, speed, paused);
+  const sim = useSimulation(profile, runtime.replay, speed, paused, runtime.signalResetKey);
   const lastUiUpdateAtRef = useRef(0);
   const lastUiStateRef = useRef<SimState | null>(null);
   const latchedServingSinrRef = useRef<LatchedSignalState>({ satId: null, beamId: null, sinrDb: null });
   const latchedComparisonSinrRef = useRef<LatchedSignalState>({ satId: null, beamId: null, sinrDb: null });
+  const latchedPhysicalServingTopoRef = useRef<LatchedTopoState>({ satId: null, beamId: null, elevationDeg: null, rangeKm: null });
   const latchedServingTopoRef = useRef<LatchedTopoState>({ satId: null, beamId: null, elevationDeg: null, rangeKm: null });
   const latchedComparisonTopoRef = useRef<LatchedTopoState>({ satId: null, beamId: null, elevationDeg: null, rangeKm: null });
   const latchedBeamSinrByKeyRef = useRef<Map<string, number>>(new Map());
@@ -191,6 +279,24 @@ function SceneContent({
       sim.serving.satId,
       sim.serving.beamId,
       sim.serving.sinrDb,
+    );
+    const physicalServingSignal = normalizePanelSignal(
+      sim.serving.satId,
+      sim.serving.beamId,
+      liveServingSinrDb,
+    );
+    const physicalServingTopo = physicalServingSignal.satId
+      ? topoBySatId.get(physicalServingSignal.satId)
+      : undefined;
+    const physicalServingRangeKm = physicalServingSignal.satId
+      ? sim.linkRangeKmBySatId.get(physicalServingSignal.satId) ?? physicalServingTopo?.rangeKm ?? null
+      : null;
+    const normalizedPhysicalServingTopo = resolveLatchedTopo(
+      latchedPhysicalServingTopoRef.current,
+      physicalServingSignal.satId,
+      physicalServingSignal.beamId,
+      physicalServingTopo?.elevationDeg ?? null,
+      physicalServingRangeKm,
     );
     const candidateComparisonSample = [...sim.linkSamples]
       .filter(sample => sample.satId !== sim.serving.satId)
@@ -357,14 +463,14 @@ function SceneContent({
     const nextLatchedBeamSinrByKey = new Map<string, number>();
     for (const key of visibleBeamKeys) {
       const previousSinrDb = latchedBeamSinrByKeyRef.current.get(key);
-      if (previousSinrDb !== undefined && isFinitePanelSinr(previousSinrDb)) {
+      if (isFiniteBeamSinr(previousSinrDb)) {
         nextLatchedBeamSinrByKey.set(key, previousSinrDb);
       }
     }
 
     for (const sample of sim.linkSamples) {
       const key = `${sample.satId}:${sample.beamId}`;
-      if (!visibleBeamKeys.has(key) || !isFinitePanelSinr(sample.sinrDb)) continue;
+      if (!visibleBeamKeys.has(key) || !isFiniteBeamSinr(sample.sinrDb)) continue;
       nextLatchedBeamSinrByKey.set(key, sample.sinrDb);
     }
 
@@ -373,7 +479,7 @@ function SceneContent({
       beamId: number | null,
       sinrDb: number | null,
     ) => {
-      if (!satId || beamId === null || !isFinitePanelSinr(sinrDb)) return;
+      if (!satId || beamId === null || !isFiniteBeamSinr(sinrDb)) return;
       nextLatchedBeamSinrByKey.set(`${satId}:${beamId}`, sinrDb);
     };
 
@@ -385,20 +491,100 @@ function SceneContent({
       normalizedComparison.sinrDb !== null && normalizedServing.sinrDb !== null
         ? normalizedComparison.sinrDb - normalizedServing.sinrDb
         : null;
-    const servingSatBeamHopState = normalizedServing.satId
-      ? sim.beamHopStatesBySatId.get(normalizedServing.satId)
+    const servingSatBeamHopState = physicalServingSignal.satId
+      ? sim.beamHopStatesBySatId.get(physicalServingSignal.satId)
       : undefined;
     const pendingTargetBeamHopState = sim.pendingTargetSatId
       ? sim.beamHopStatesBySatId.get(sim.pendingTargetSatId)
       : undefined;
     const servingBeamActiveThisSlot =
-      normalizedServing.satId && normalizedServing.beamId !== null
-        ? servingSatBeamHopState?.activeBeamIds.includes(normalizedServing.beamId) ?? false
+      physicalServingSignal.satId && physicalServingSignal.beamId !== null
+        ? servingSatBeamHopState?.activeBeamIds.includes(physicalServingSignal.beamId) ?? false
         : null;
+    const physicalServingSample = physicalServingSignal.satId && physicalServingSignal.beamId !== null
+      ? sim.linkSamples.find(
+        sample =>
+          sample.satId === physicalServingSignal.satId
+          && sample.beamId === physicalServingSignal.beamId,
+      ) ?? null
+      : null;
+    const servingSample = normalizedServing.satId && normalizedServing.beamId !== null
+      ? sim.linkSamples.find(
+        sample =>
+          sample.satId === normalizedServing.satId
+          && sample.beamId === normalizedServing.beamId,
+      ) ?? null
+      : null;
+    const panelPrimaryRole: PanelPrimaryState['role'] = normalizedServing.satId
+      ? panelComparisonKind === 'recent-ho' ? 'ho-source' : 'serving'
+      : 'none';
+    const panelPrimaryStatus: SignalTruthStatus = panelPrimaryRole === 'ho-source'
+      ? 'recent-ho'
+      : resolveSignalStatus(
+        normalizedServing.satId,
+        normalizedServing.beamId,
+        sim.serving.sinrDb,
+        normalizedServing.sinrDb,
+      );
+    const panelComparisonRole: PanelComparisonState['role'] =
+      normalizedComparison.satId === null
+        ? 'none'
+        : panelComparisonKind === 'pending'
+          ? 'pending'
+          : panelComparisonKind === 'recent-ho'
+            ? 'ho-target'
+            : 'candidate';
+    const panelComparisonStatus: SignalTruthStatus =
+      panelComparisonRole === 'none'
+        ? 'none'
+        : panelComparisonRole === 'ho-target'
+          ? 'recent-ho'
+          : panelComparisonRole === 'candidate'
+            ? 'derived'
+            : resolveSignalStatus(
+              normalizedComparison.satId,
+              normalizedComparison.beamId,
+              pendingTargetSinrDb,
+              normalizedComparison.sinrDb,
+            );
+    const physicalServing: SignalSourceState = {
+      satId: physicalServingSignal.satId,
+      beamId: physicalServingSignal.beamId,
+      sinrDb: physicalServingSignal.sinrDb,
+      elevationDeg: normalizedPhysicalServingTopo.elevationDeg,
+      rangeKm: normalizedPhysicalServingTopo.rangeKm,
+      status: resolveSignalStatus(
+        physicalServingSignal.satId,
+        physicalServingSignal.beamId,
+        sim.serving.sinrDb,
+        physicalServingSignal.sinrDb,
+      ),
+    };
+    const panelPrimary: PanelPrimaryState = {
+      role: panelPrimaryRole,
+      satId: normalizedServing.satId,
+      beamId: normalizedServing.beamId,
+      sinrDb: normalizedServing.sinrDb,
+      elevationDeg: normalizedServingTopo.elevationDeg,
+      rangeKm: normalizedServingTopo.rangeKm,
+      status: panelPrimaryStatus,
+    };
+    const panelComparison: PanelComparisonState = {
+      role: panelComparisonRole,
+      satId: normalizedComparison.satId,
+      beamId: normalizedComparison.beamId,
+      sinrDb: normalizedComparison.sinrDb,
+      elevationDeg: normalizedComparisonTopo.elevationDeg,
+      rangeKm: normalizedComparisonTopo.rangeKm,
+      status: panelComparisonStatus,
+    };
 
     const nextState: SimState = {
       profileId: profile.id,
       formulaFamilyLabel: getFormulaFamilyLabel(profile.formulaFamily),
+      physicalServing,
+      panelPrimary,
+      panelComparison,
       servingSatId: normalizedServing.satId,
       servingBeamId: normalizedServing.beamId,
       servingElevationDeg: normalizedServingTopo.elevationDeg,
@@ -416,6 +602,8 @@ function SceneContent({
       recentHoSourceSatId: sim.recentHoSourceSatId,
       recentHoTargetSatId: sim.recentHoTargetSatId,
       sinrDb: normalizedServing.sinrDb ?? -Infinity,
+      physicalServingBudget: extractBudgetTerms(physicalServingSample),
+      servingBudget: extractBudgetTerms(servingSample),
       handoverOffsetDb: profile.handover.offsetDb,
       handoverTriggerProgressSec: sim.handoverTriggerProgressSec,
       handoverTriggerSec: profile.handover.triggerTimeSec,
@@ -486,7 +674,7 @@ function SceneContent({
 
       <GroundScene />
       <EarthFixedCells cells={cells} />
-      <HandoverLinks satellites={viz.displaySats} eventRoles={viz.eventRoles} />
+      <HandoverLinks satellites={viz.displaySats} eventRoles={viz.eventRoles} satBeams={viz.satBeams} />
 
       {viz.displaySats.map(sat => (
         <SatelliteMarker
@@ -513,8 +701,6 @@ function SceneContent({
             />
           );
         })}
-
-      <SinrOverlay beams={viz.sinrLabels} />
     </>
   );
 }
@@ -522,7 +708,7 @@ function SceneContent({
 interface MainSceneProps {
   speed: number;
   paused: boolean;
-  profileId: string;
+  profile: Profile;
   runtime: RuntimeConfig;
   onSimUpdate: (state: SimState) => void;
 }
@@ -530,7 +716,7 @@ interface MainSceneProps {
 export const MainScene = memo(function MainScene({
   speed,
   paused,
-  profileId,
+  profile,
   runtime,
   onSimUpdate,
 }: MainSceneProps) {
@@ -555,7 +741,7 @@ export const MainScene = memo(function MainScene({
       >
         <Suspense fallback={<Html center><div style={{ color: 'white', fontSize: 20 }}>Loading...</div></Html>}>
           <SceneContent
-            profileId={profileId}
+            profile={profile}
             speed={speed}
             paused={paused}
             runtime={runtime}

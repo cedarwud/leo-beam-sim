@@ -25,6 +25,9 @@
     "maxSteeringAngleDeg": 12,
     "scanLossAtMaxSteeringDb": 4
   },
+  "ueAntenna": {
+    "maxGainDbi": 0
+  },
   "channel": {
     "frequencyGHz": 28,
     "bandwidthMHz": 100,
@@ -43,15 +46,15 @@
     "sinrSmoothingSec": 0.5
   },
   "beams": {
-    "perSatellite": 37,
-    "maxActivePerSat": 4,
-    "frequencyReuse": 4
+    "perSatellite": 7,
+    "maxActivePerSat": 7,
+    "frequencyReuse": 3
   },
   "beamHopping": {
     "enabled": false,
     "slotSec": 0.75,
-    "maxActiveBeamsPerSlot": 4,
+    "maxActiveBeamsPerSlot": 7,
     "scheduler": "round-robin",
-    "frameLengthSlots": 37
+    "frameLengthSlots": 7
   }
 }

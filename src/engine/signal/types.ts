@@ -3,6 +3,16 @@ export interface LinkSample {
   beamId: number;
   rsrpDbm: number;
   sinrDb: number;
+  signalDbm: number;
+  intraInterferenceDbm: number;
+  interInterferenceDbm: number;
+  noiseDbm: number;
+  denominatorDbm: number;
+  txPowerDbm: number;
+  pathLossDb: number;
+  beamGainDb: number;
+  steeringLossDb: number;
+  receiverGainDbi: number;
 }
 
 export type BeamPowerOverrideDbmByKey = ReadonlyMap<string, number>;

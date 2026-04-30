@@ -17,9 +17,15 @@ import type {
 import { computeBeamGainDb, computeOffAxisDeg, BEAM_GAIN_FLOOR_DB } from './beam-gain';
 import { computePathLossDb } from './path-loss';
 import { sampleLosStateTr38811 } from './los-probability';
+import { getBeamFrequencyIndex } from '../../utils/beamFrequency';
 
 function dbmToMw(dbm: number): number {
   return Math.pow(10, dbm / 10);
+}
+
+function mwToDbm(mw: number): number {
+  if (mw <= 0) return -Infinity;
+  return 10 * Math.log10(mw);
 }
 
 const TR38811_ENVIRONMENT = 'suburban';
@@ -28,6 +34,7 @@ const TR38811_NLOS_CLUTTER_LOSS_DB = 20;
 interface BeamEntry {
   sample: LinkSample;
   signalMw: number;
+  interferenceMw: number;
 }
 
 function computeSteeringLossDb(
@@ -58,6 +65,7 @@ export function computeLinkBudget(
     formulaFamily: Profile['formulaFamily'];
     channel: Profile['channel'];
     antenna: Profile['antenna'];
+    ueAntenna: Profile['ueAntenna'];
     beams: Profile['beams'];
     activeAssignments: ActiveBeamAssignment[];
     simTimeSec: number;
@@ -68,12 +76,14 @@ export function computeLinkBudget(
     formulaFamily,
     channel,
     antenna,
+    ueAntenna,
     beams: beamConfig,
     activeAssignments,
     simTimeSec,
     beamPowerOverrideDbmByKey,
   } = config;
   const usesTr38811Path = formulaFamily === 'hobs-tr38811';
+  const receiverGainDbi = ueAntenna.maxGainDbi;
 
   // Noise power: N = N0 * BW
   const bandwidthHz = channel.bandwidthMHz * 1e6;
@@ -119,49 +129,77 @@ export function computeLinkBudget(
       const txPowerDbm = beamPowerOverrideDbmByKey?.get(`${sat.id}:${beam.beamId}`)
         ?? channel.maxTxPowerDbm;
 
-      // RSRP = Pt + Gt(max) + beamGain + Gr - pathLoss
-      // Assume UE antenna gain ≈ 0 dBi for simplicity
-      const rsrpDbm =
+      const linkSignalBeforeReceiverGainDbm =
         txPowerDbm
         + antenna.maxGainDbi
         + beamGainDb
         - steeringLossDb
         - pathLossDb;
+      // Phase 4B keeps G^R as a numerator-only research override, so it
+      // shifts desired signal power without rewriting interference terms.
+      const rsrpDbm = linkSignalBeforeReceiverGainDbm + receiverGainDbi;
 
       entries.push({
-        sample: { satId: sat.id, beamId: beam.beamId, rsrpDbm, sinrDb: -Infinity },
+        sample: {
+          satId: sat.id,
+          beamId: beam.beamId,
+          rsrpDbm,
+          sinrDb: -Infinity,
+          signalDbm: rsrpDbm,
+          intraInterferenceDbm: -Infinity,
+          interInterferenceDbm: -Infinity,
+          noiseDbm,
+          denominatorDbm: noiseDbm,
+          txPowerDbm,
+          pathLossDb,
+          beamGainDb,
+          steeringLossDb,
+          receiverGainDbi,
+        },
         signalMw: dbmToMw(rsrpDbm),
+        interferenceMw: dbmToMw(linkSignalBeforeReceiverGainDbm),
       });
     }
   }
 
   if (entries.length === 0) return [];
 
-  // Compute SINR: signal / (co-frequency interference + noise)
-  // With frequencyReuse=1, all beams interfere with each other
+  // Compute SINR: signal / (co-frequency interference + noise).
+  // Beam colors and interference use the same F1..Fn reuse index:
+  // B1 -> F1, B2 -> F2, ..., wrapping after the configured reuse count.
   const reuseGroups = beamConfig.frequencyReuse;
 
   return entries.map((entry, idx) => {
     const servingSignalMw = entry.signalMw;
     let intraSatInterferenceMw = 0;
     let interSatInterferenceMw = 0;
+    const entryFrequencyIndex = getBeamFrequencyIndex(entry.sample.beamId, reuseGroups);
 
     for (let j = 0; j < entries.length; j++) {
       if (j === idx) continue;
       const otherKey = `${entries[j].sample.satId}:${entries[j].sample.beamId}`;
       if (!activeBeamKeys.has(otherKey)) continue;
-      // Same frequency reuse group → interfering
-      if (reuseGroups <= 1 || (entries[j].sample.beamId % reuseGroups) === (entry.sample.beamId % reuseGroups)) {
+      const otherFrequencyIndex = getBeamFrequencyIndex(entries[j].sample.beamId, reuseGroups);
+      // Same frequency reuse group -> interfering.
+      if (reuseGroups <= 1 || otherFrequencyIndex === entryFrequencyIndex) {
         if (entries[j].sample.satId === entry.sample.satId) {
-          intraSatInterferenceMw += entries[j].signalMw;
+          intraSatInterferenceMw += entries[j].interferenceMw;
         } else {
-          interSatInterferenceMw += entries[j].signalMw;
+          interSatInterferenceMw += entries[j].interferenceMw;
         }
       }
     }
 
     const interferenceMw = intraSatInterferenceMw + interSatInterferenceMw;
-    const sinrDb = 10 * Math.log10(Math.max(servingSignalMw / (interferenceMw + noiseMw), 1e-12));
-    return { ...entry.sample, sinrDb };
+    const denominatorMw = interferenceMw + noiseMw;
+    const sinrDb = 10 * Math.log10(Math.max(servingSignalMw / denominatorMw, 1e-12));
+    return {
+      ...entry.sample,
+      sinrDb,
+      intraInterferenceDbm: mwToDbm(intraSatInterferenceMw),
+      interInterferenceDbm: mwToDbm(interSatInterferenceMw),
+      noiseDbm,
+      denominatorDbm: mwToDbm(denominatorMw),
+    };
   });
 }

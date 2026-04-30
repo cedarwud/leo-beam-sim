@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useGLTF, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { operatorLabelForEventRole, tokenForEventRole } from '../constants/beamRoleTokens';
 import type { EventRole } from '../scene/types';
 
 interface SatelliteMarkerProps {
@@ -12,46 +13,12 @@ interface SatelliteMarkerProps {
 
 const SAT_MODEL_PATH = '/models/sat.glb';
 
-function roleColor(role?: EventRole): string {
-  switch (role) {
-    case 'serving':
-      return '#18f0ff';
-    case 'approach':
-      return '#d8ff6b';
-    case 'prepared':
-      return '#ff9d1c';
-    case 'post-ho':
-      return '#4f8cff';
-    case 'secondary':
-      return '#ff5ab3';
-    default:
-      return '#aaccff';
-  }
-}
-
-function roleScale(role?: EventRole): number {
-  switch (role) {
-    case 'serving':
-    case 'post-ho':
-      return 7;
-    case 'approach':
-      return 5.8;
-    case 'prepared':
-      return 6;
-    case 'secondary':
-      return 5.5;
-    default:
-      return 5;
-  }
-}
-
 export function SatelliteMarker({ position, label, eventRole }: SatelliteMarkerProps) {
   const { scene } = useGLTF(SAT_MODEL_PATH);
-  const accent = roleColor(eventRole);
-  const scale = roleScale(eventRole);
-  const isPrimaryEvent = eventRole === 'serving' || eventRole === 'post-ho';
-  const isPrepared = eventRole === 'prepared';
-  const isApproach = eventRole === 'approach';
+  const roleToken = tokenForEventRole(eventRole);
+  const roleLabel = operatorLabelForEventRole(eventRole, true);
+  const accent = eventRole ? roleToken.color : '#aaccff';
+  const scale = eventRole ? roleToken.markerScale : 5;
 
   const cloned = useMemo(() => {
     const c = SkeletonUtils.clone(scene);
@@ -67,19 +34,19 @@ export function SatelliteMarker({ position, label, eventRole }: SatelliteMarkerP
   return (
     <group position={position}>
       <primitive object={cloned} scale={scale} />
-      {(isPrimaryEvent || isPrepared || isApproach) && (
-        <pointLight color={accent} intensity={isPrimaryEvent ? 1 : isPrepared ? 0.6 : 0.4} distance={80} decay={2} />
+      {roleToken.markerLightIntensity > 0 && (
+        <pointLight color={accent} intensity={roleToken.markerLightIntensity} distance={80} decay={2} />
       )}
       <Text
         position={[0, 20, 0]}
-        fontSize={isPrimaryEvent ? 12 : 10}
+        fontSize={eventRole ? roleToken.markerFontSize : 10}
         color={accent}
         anchorX="center"
         anchorY="middle"
         outlineWidth={1}
         outlineColor="#000000"
       >
-        {eventRole ? `${label} (${eventRole})` : label}
+        {roleLabel ? `${label} ${roleLabel}` : label}
       </Text>
     </group>
   );

@@ -1,8 +1,12 @@
 import { useMemo } from 'react';
-import { Line, Text } from '@react-three/drei';
+import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
-import { formatBeamLabel } from '../utils/formatSatelliteLabel';
+import {
+  frequencyReuseColor,
+  resolveBeamVisualEncoding,
+  type BeamCodeRole,
+} from '../constants/beamRoleTokens';
+import { formatBeamIdentityLabel } from '../utils/beamFrequency';
 
 /** A beam with its ground-projected center in world coordinates. */
 export interface BeamTarget {
@@ -13,7 +17,8 @@ export interface BeamTarget {
   isScheduledActive: boolean;
   isPrimary: boolean;
   showBeam: boolean;
-  role?: 'serving' | 'secondary' | 'approach' | 'prepared' | 'post-ho';
+  frequencyIndex: number;
+  role?: BeamCodeRole;
   isTransitioningSource?: boolean;
   sinrDb?: number | null;
 }
@@ -26,92 +31,10 @@ interface SatelliteBeamsProps {
 }
 
 const SEGMENTS = 32;
-const POLARIZATION_A_COLOR = '#ff8844';
-const POLARIZATION_B_COLOR = '#44aaff';
-const CURRENT_SERVICE_COLOR = '#0088ff';
-const TARGET_HANDOVER_COLOR = '#ffb000';
-const APPROACH_BEAM_COLOR = '#d8ff6b';
-const SECONDARY_EVENT_COLOR = '#6f7785';
-const LABEL_OUTLINE_DARK = '#071018';
 
-function sinrColor(sinrDb: number): string {
-  if (sinrDb >= 20) return '#00ff00';
-  if (sinrDb >= 10) return '#aaff00';
-  if (sinrDb >= 5) return '#ffaa00';
-  return '#ff4444';
-}
-
-function formatBeamSinr(sinrDb?: number | null): string | null {
-  if (sinrDb === null || sinrDb === undefined || !Number.isFinite(sinrDb) || sinrDb <= MIN_VISIBLE_SINR_DB) {
-    return null;
-  }
+function formatBeamSinr(sinrDb?: number | null): string {
+  if (sinrDb === null || sinrDb === undefined || !Number.isFinite(sinrDb)) return '-- dB';
   return `${sinrDb.toFixed(1)} dB`;
-}
-
-function baseBeamColor(beamId: number): string {
-  return beamId % 2 === 1 ? POLARIZATION_A_COLOR : POLARIZATION_B_COLOR;
-}
-
-function beamColor(beam: BeamTarget): string {
-  if (beam.isServing) return CURRENT_SERVICE_COLOR;
-  switch (beam.role) {
-    case 'approach':
-      return beam.isPrimary ? APPROACH_BEAM_COLOR : baseBeamColor(beam.beamId);
-    case 'prepared':
-      return beam.isPrimary ? TARGET_HANDOVER_COLOR : baseBeamColor(beam.beamId);
-    case 'post-ho':
-      return beam.isPrimary ? CURRENT_SERVICE_COLOR : baseBeamColor(beam.beamId);
-    case 'secondary':
-      return beam.isPrimary ? SECONDARY_EVENT_COLOR : baseBeamColor(beam.beamId);
-    default:
-      return baseBeamColor(beam.beamId);
-  }
-}
-
-function beamOpacity(beam: BeamTarget): { cone: number; disc: number; line: number; width: number; dashed: boolean } {
-  if (beam.isServing) {
-    if (beam.isTransitioningSource) {
-      if (!beam.isScheduledActive) {
-        return { cone: 0.2, disc: 0.12, line: 0.92, width: 3.6, dashed: true };
-      }
-      return { cone: 0.28, disc: 0.18, line: 0.92, width: 3.6, dashed: false };
-    }
-    if (!beam.isScheduledActive) {
-      return { cone: 0.22, disc: 0.14, line: 0.96, width: 4, dashed: true };
-    }
-    return { cone: 0.35, disc: 0.22, line: 1, width: 4, dashed: false };
-  }
-
-  if (!beam.isScheduledActive) {
-    return { cone: 0.08, disc: 0.05, line: 0.38, width: 1.8, dashed: true };
-  }
-
-  switch (beam.role) {
-    case 'approach':
-      return beam.isPrimary
-        ? { cone: 0.24, disc: 0.16, line: 0.82, width: 2.8, dashed: true }
-        : { cone: 0.1, disc: 0.07, line: 0.46, width: 1.9, dashed: true };
-    case 'post-ho':
-      return beam.isPrimary
-        ? { cone: 0.3, disc: 0.2, line: 0.95, width: 3.6, dashed: false }
-        : { cone: 0.14, disc: 0.1, line: 0.55, width: 2, dashed: true };
-    case 'prepared':
-      return beam.isPrimary
-        ? { cone: 0.3, disc: 0.2, line: 0.9, width: 3.4, dashed: true }
-        : { cone: 0.12, disc: 0.08, line: 0.5, width: 2, dashed: true };
-    case 'secondary':
-      return beam.isPrimary
-        ? { cone: 0.2, disc: 0.14, line: 0.7, width: 2.4, dashed: true }
-        : { cone: 0.1, disc: 0.06, line: 0.42, width: 1.7, dashed: true };
-    default:
-      return {
-        cone: beam.isPrimary ? 0.2 : 0.12,
-        disc: beam.isPrimary ? 0.12 : 0.06,
-        line: beam.isPrimary ? 0.72 : 0.5,
-        width: beam.isPrimary ? 2.4 : 2,
-        dashed: !beam.isPrimary,
-      };
-  }
 }
 
 function createObliqueConeSide(
@@ -177,6 +100,41 @@ function createGroundDisc(
   return geo;
 }
 
+function createCalloutLayout(
+  beam: BeamTarget,
+  footprintRadius: number,
+): {
+  points: [number, number, number][];
+  labelPosition: [number, number, number];
+} {
+  const radialLength = Math.hypot(beam.groundX, beam.groundZ);
+  const fallbackAngle = ((beam.beamId - 1) / 7) * Math.PI * 2 - Math.PI / 2;
+  const dirX = radialLength > 1e-6 ? beam.groundX / radialLength : Math.cos(fallbackAngle);
+  const dirZ = radialLength > 1e-6 ? beam.groundZ / radialLength : Math.sin(fallbackAngle);
+  const outwardDistance = footprintRadius * (beam.isPrimary || beam.isServing ? 1.7 : 1.45);
+  const elbowDistance = footprintRadius * 0.58;
+  const height = 28 + (beam.frequencyIndex % 3) * 5 + (beam.isPrimary || beam.isServing ? 6 : 0);
+  const elbow: [number, number, number] = [
+    beam.groundX + dirX * elbowDistance,
+    height * 0.55,
+    beam.groundZ + dirZ * elbowDistance,
+  ];
+  const labelPosition: [number, number, number] = [
+    beam.groundX + dirX * outwardDistance,
+    height,
+    beam.groundZ + dirZ * outwardDistance,
+  ];
+
+  return {
+    points: [
+      [beam.groundX, 4, beam.groundZ],
+      elbow,
+      labelPosition,
+    ],
+    labelPosition,
+  };
+}
+
 function BeamCone({
   satellitePosition,
   beam,
@@ -186,8 +144,14 @@ function BeamCone({
   beam: BeamTarget;
   footprintRadius: number;
 }) {
-  const color = beamColor(beam);
-  const style = beamOpacity(beam);
+  const style = resolveBeamVisualEncoding({
+    role: beam.role,
+    isPrimary: beam.isPrimary,
+    isServing: beam.isServing,
+    isScheduledActive: beam.isScheduledActive,
+    frequencyColor: frequencyReuseColor(beam.frequencyIndex),
+  });
+  const color = style.color;
   // Destructure to primitives so useMemo deps are stable between renders
   const sx = satellitePosition.x, sy = satellitePosition.y, sz = satellitePosition.z;
   const gx = beam.groundX, gz = beam.groundZ;
@@ -202,15 +166,14 @@ function BeamCone({
     [gx, gz, footprintRadius],
   );
 
-  const labelPos = useMemo(() => {
-    const ground = new THREE.Vector3(gx, 0, gz);
-    return new THREE.Vector3(sx, sy, sz).lerp(ground, 0.35);
-  }, [sx, sy, sz, gx, gz]);
-  const beamRoleLabel = beam.isPrimary && beam.role ? ` ${beam.role}` : '';
-  const beamLabel = `${formatBeamLabel(beam.beamId)}${beam.isServing ? ' ★' : beam.isPrimary ? ' ◎' : ''}${!beam.isScheduledActive ? ' off-slot' : ''}${beamRoleLabel}`;
+  const callout = useMemo(
+    () => createCalloutLayout(beam, footprintRadius),
+    [beam, footprintRadius],
+  );
+  const beamIdentityLabel = formatBeamIdentityLabel(beam.frequencyIndex, beam.beamId);
   const sinrLabel = formatBeamSinr(beam.sinrDb);
-  const beamLabelFontSize = beam.isServing || beam.isPrimary || beam.role === 'post-ho' ? 14 : 10;
-  const sinrFontSize = beam.isServing || beam.isPrimary || beam.role === 'post-ho' ? 11 : 8;
+  const isEmphasized = style.isEmphasized;
+  const endpointRingOpacity = Math.max(style.endpointOpacity, style.isEventPrimary ? 0.5 : 0.28);
 
   return (
     <group>
@@ -218,7 +181,7 @@ function BeamCone({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={style.cone}
+          opacity={style.coneOpacity}
           side={THREE.DoubleSide}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
@@ -229,7 +192,7 @@ function BeamCone({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={style.disc}
+          opacity={style.discOpacity}
           side={THREE.DoubleSide}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
@@ -242,45 +205,90 @@ function BeamCone({
           [beam.groundX, 0, beam.groundZ],
         ]}
         color={color}
-        lineWidth={style.width}
+        lineWidth={style.lineWidth}
         transparent
-        opacity={style.line}
+        opacity={style.lineOpacity}
         dashed={style.dashed}
         dashSize={15}
         gapSize={10}
       />
 
-      <Text
-        position={[labelPos.x, labelPos.y + (sinrLabel ? 5 : 0), labelPos.z]}
-        fontSize={beamLabelFontSize}
-        color={color}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={beam.isServing || beam.isPrimary || beam.role === 'post-ho' ? 2.5 : 1.5}
-        outlineColor={beam.isServing || beam.isPrimary ? '#ffffff' : LABEL_OUTLINE_DARK}
-        renderOrder={20}
-        material-depthTest={false}
-        material-depthWrite={false}
-      >
-        {beamLabel}
-      </Text>
-
-      {sinrLabel && (
-        <Text
-          position={[labelPos.x, labelPos.y - 8, labelPos.z]}
-          fontSize={sinrFontSize}
-          color={sinrColor(beam.sinrDb!)}
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={1.2}
-          outlineColor="#000000"
-          renderOrder={30}
-          material-depthTest={false}
-          material-depthWrite={false}
-        >
-          {sinrLabel}
-        </Text>
+      <mesh position={[beam.groundX, 5, beam.groundZ]} renderOrder={24}>
+        <sphereGeometry args={[style.endpointRadius, 16, 10]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={style.endpointFilled ? style.endpointOpacity : Math.min(style.endpointOpacity, 0.36)}
+          depthTest={false}
+          depthWrite={false}
+        />
+      </mesh>
+      {!style.endpointFilled && (
+        <mesh position={[beam.groundX, 5.25, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={25}>
+          <ringGeometry args={[style.endpointRadius * 1.08, style.endpointRadius * 1.44, 32]} />
+          <meshBasicMaterial
+            color={color}
+            transparent
+            opacity={endpointRingOpacity}
+            depthTest={false}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
       )}
+
+      <Line
+        points={callout.points}
+        color={color}
+        lineWidth={beam.isServing || beam.isPrimary ? 1.6 : 1.1}
+        transparent
+        opacity={isEmphasized ? 0.92 : Math.max(style.lineOpacity, 0.42)}
+        dashed={style.dashed || !beam.isScheduledActive}
+        dashSize={8}
+        gapSize={6}
+        depthWrite={false}
+      />
+
+      <Html
+        position={callout.labelPosition}
+        center
+        zIndexRange={[80, 20]}
+        style={{
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        <div
+          style={{
+            minWidth: style.calloutMinWidth,
+            padding: isEmphasized ? '5px 7px' : '4px 6px',
+            borderRadius: 4,
+            border: `1px solid ${color}`,
+            borderLeft: `4px solid ${color}`,
+            background: 'rgba(2, 9, 18, 0.82)',
+            boxShadow: `0 0 ${style.calloutGlowPx}px ${color}66`,
+            color: '#ffffff',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+            fontSize: isEmphasized ? 12 : 11,
+            lineHeight: 1.05,
+            letterSpacing: 0,
+            textAlign: 'center',
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.9)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {style.operatorLabel && (
+            <div style={{ color, fontWeight: 800 }}>{style.operatorLabel}</div>
+          )}
+          <div style={{ color: style.operatorLabel ? '#ffffff' : color, fontWeight: isEmphasized ? 800 : 700 }}>
+            {beamIdentityLabel}
+          </div>
+          {style.slotStateLabel && (
+            <div style={{ color: '#dbeafe', fontSize: 10, fontWeight: 800 }}>{style.slotStateLabel}</div>
+          )}
+          <div style={{ fontWeight: isEmphasized ? 700 : 600 }}>{sinrLabel}</div>
+        </div>
+      </Html>
     </group>
   );
 }

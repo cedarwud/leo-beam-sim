@@ -218,6 +218,7 @@ function buildLinkContext(
     formulaFamily: profile.formulaFamily,
     channel: profile.channel,
     antenna: profile.antenna,
+    ueAntenna: profile.ueAntenna,
     beams: profile.beams,
     activeAssignments,
     simTimeSec,
