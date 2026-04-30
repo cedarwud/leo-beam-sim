@@ -337,7 +337,7 @@ function useSimulation(
 - Two elevation thresholds: CACHE_EL=1° (smooth visual exit), LINK_EL=5° (physics)
 - Replay progression is controlled by `replay.startOffsetSec` and `replay.loop`
 
-#### `src/scene/useBeamViz.ts` (~80 lines)
+#### `src/scene/useBeamViz.ts`
 
 **Responsibility:** Convert SimFrame → viz-ready data. Pure display logic.
 
@@ -355,7 +355,7 @@ interface VizFrame {
   beamSatIds: Set<string>;
   /** Per-sat beam targets in world coordinates */
   satBeams: Map<string, BeamTarget[]>;
-  /** SINR labels to show */
+  /** Satellite-level SINR labels retained for non-beam surfaces */
   sinrLabels: SinrLabel[];
 }
 
@@ -363,6 +363,7 @@ function useBeamViz(
   sim: SimFrame,
   profile: Profile,
   mode: PresentationMode,
+  latchedBeamSinrByKey?: Map<string, number>,
 ): VizFrame;
 ```
 
@@ -371,10 +372,12 @@ function useBeamViz(
 - `event set` — small emphasized subset
   - Phase 1 / HOBS: serving / just-switched target
   - Phase 2 / CHO extension: secondary / prepared may also appear
-- `MAX_DISPLAY_SATS = 8` — show top 8 by elevation, serving sat always included
-- `MAX_EVENT_SATS = 3` — of those, at most 3 event-relevant satellites are foregrounded
-- `MAX_BEAM_SATS = 3` — beam cones follow the event set, not the full display set
-- Beam ground targets: satellite dome ground projection + beam offset × visual scale
+- `MAX_DISPLAY_SATS = 12` — show top 12 by elevation, serving sat always included
+- `MAX_EVENT_SATS = 8` — foreground serving, pending/recent, approach, and ranked candidates
+- `MAX_BEAM_SATS = 3` — beam cones are limited to the serving/candidate focus group
+- Beam ground targets: steering-valid beam cells from simulation, capped at seven beams per satellite
+- Beam color encodes frequency reuse only: B1/F1, B2/F2, B3/F3, then wraps
+- Per-beam SINR is rendered as an anchored in-scene callout with the same frequency color and beam id
 - Stable filtering: avoid frame-to-frame jitter by preferring previously-shown sats
 - `candidateSatelliteLimit`-style HO logic must not, by itself, collapse the broader display set
 
@@ -395,8 +398,7 @@ function SceneContent({ profile, speed, paused, runtime, onSimUpdate }) {
       <NTPUScene /><UAV />
       <GroundScene /><EarthFixedCells />
       {viz.displaySats.map(s => <SatelliteMarker ... />)}
-      {viz beam cones}
-      <SinrOverlay />
+      {viz beam cones with anchored SINR callouts}
     </>
   );
 }
@@ -590,8 +592,10 @@ All visual-only constants are centralized and documented:
 | CACHE_ELEVATION_DEG | 1 | useSimulation | Cache threshold (smooth visual exit) |
 | SIM_DURATION_SEC | 3600 | useSimulation | Trajectory cache window (1 hour) |
 | SIM_STEP_SEC | 10 | useSimulation | Cache step interval |
-| MAX_DISPLAY_SATS | 8 | useBeamViz | Max satellite markers shown |
-| MAX_EVENT_SATS | 3 | useBeamViz | Max event-emphasized satellites shown in focus corridor |
+| MAX_BEAMS_PER_SATELLITE | 7 | beam-layout | Physical/visual beam-count cap per satellite |
+| FREQUENCY_REUSE | 3 | profile beams | Beam color and co-channel grouping count |
+| MAX_DISPLAY_SATS | 12 | useBeamViz | Max satellite markers shown |
+| MAX_EVENT_SATS | 8 | useBeamViz | Max event-emphasized satellites shown in focus corridor |
 | MAX_BEAM_SATS | 3 | useBeamViz | Max satellites with beam cones |
 | FOCUS_CORRIDOR_Y_CENTER | TBD | useBeamViz | Visual center of handover-readable high-elevation band (finalize during implementation) |
 | FOCUS_CORRIDOR_Y_HALFSPAN | TBD | useBeamViz | Acceptable vertical half-span for event emphasis (finalize during implementation) |

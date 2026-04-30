@@ -41,10 +41,10 @@ Observed research snapshot at `simTimeSec = 60.2`:
 
 ```json
 [
-  { "satId": "sat-a", "beamId": 1, "rsrpDbm": -93.631007, "sinrDb": -2.578975 },
-  { "satId": "sat-a", "beamId": 5, "rsrpDbm": -98.902984, "sinrDb": -9.275425 },
-  { "satId": "sat-b", "beamId": 1, "rsrpDbm": -95.896588, "sinrDb": -5.723989 },
-  { "satId": "sat-z", "beamId": 1, "rsrpDbm": -121.061924, "sinrDb": -31.916598 }
+  { "satId": "sat-a", "beamId": 1, "rsrpDbm": -93.631007, "sinrDb": -1.800919 },
+  { "satId": "sat-a", "beamId": 5, "rsrpDbm": -98.902984, "sinrDb": -4.902984 },
+  { "satId": "sat-b", "beamId": 1, "rsrpDbm": -95.896588, "sinrDb": -5.09939 },
+  { "satId": "sat-z", "beamId": 1, "rsrpDbm": -121.061924, "sinrDb": -31.431242 }
 ]
 ```
 

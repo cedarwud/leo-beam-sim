@@ -261,11 +261,11 @@ The research path should make the following separation explicit:
 - `I^a`: same-satellite co-channel beam interference
 - `I^b`: other-satellite beam interference
 
-The split is orthogonal to frequency reuse. Phase 1 keeps
-`beams.frequencyReuse = 4` for the research profile so channel hardening does
-not also retune interference policy. The current reuse-group filter remains the
-first co-channel gate; after that gate, the surviving interferers are separated
-into `I^a` and `I^b`.
+The split is orthogonal to frequency reuse. The current visualization/reuse
+slice uses `beams.frequencyReuse = 3` for the research profile so the renderer
+can map B1/B2/B3 to F1/F2/F3 and wrap the seven-beam footprint deterministically.
+The current reuse-group filter remains the first co-channel gate; after that
+gate, the surviving interferers are separated into `I^a` and `I^b`.
 
 The split is implemented as unconditional code refactoring in the signal path,
 but only `formulaFamily = 'hobs-tr38811'` relies on the named `I^a` / `I^b`

@@ -81,6 +81,13 @@ npm run preview
 | `npm run preview` | 本地預覽 `dist/` 建置產物 |
 | `npm run lint` | 執行 TypeScript 型別檢查（不輸出檔案） |
 
+## 研究文件
+
+- `docs/SDD.md` — 目前場景、模擬、渲染的整體設計說明
+- `docs/hobs-tr38811-sinr-mini-sdd.md` — HOBS + TR 38.811 的 SINR 研究設計補充
+- `docs/sinr-runtime-parameter-contract.md` — 左側可調 SINR 參數面板的權威對照表；包含論文符號、internal field、可調範圍、即時重算與 reset 規則。後續 agent 若要新增參數 UI，先看這份
+- `docs/frontend-ux-redesign-sdd.md` — 前端整體 UX / 視覺語義改善計畫；包含左右面板資料真實性、`G^R` 模型缺口、beam 顏色語義與 presentation/diagnostics 分層
+
 ## 專案結構
 
 ```
@@ -283,6 +290,13 @@ The dev server auto-opens the browser and binds to `0.0.0.0:3000`, making it acc
 | `npm run build` | TypeScript type check + Vite production build |
 | `npm run preview` | Preview the `dist/` build output locally |
 | `npm run lint` | Run TypeScript type checking (no file output) |
+
+## Research Docs
+
+- `docs/SDD.md` — current scene, simulation, and rendering design
+- `docs/hobs-tr38811-sinr-mini-sdd.md` — HOBS + TR 38.811 SINR research design supplement
+- `docs/sinr-runtime-parameter-contract.md` — authority file for left-side SINR runtime controls; includes paper labels, internal field mapping, safe ranges, and recompute/reset guidance
+- `docs/frontend-ux-redesign-sdd.md` — frontend UX / visual-semantics improvement plan covering panel truth, the `G^R` model gap, beam colors, and presentation/diagnostics layering
 
 ## Project Structure
 

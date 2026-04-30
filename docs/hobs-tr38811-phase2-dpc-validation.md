@@ -55,7 +55,7 @@ Observed overrides after two buckets:
 ```json
 {
   "sat-a:1": 49.5,
-  "sat-a:5": 50,
+  "sat-a:4": 50,
   "sat-b:1": 50,
   "sat-z:1": 50
 }
@@ -66,7 +66,7 @@ Observed research snapshot before DPC:
 ```json
 [
   { "satId": "sat-a", "beamId": 1, "rsrpDbm": -93.631007, "sinrDb": -2.578975 },
-  { "satId": "sat-a", "beamId": 5, "rsrpDbm": -98.902984, "sinrDb": -9.275425 },
+  { "satId": "sat-a", "beamId": 4, "rsrpDbm": -98.902984, "sinrDb": -9.275425 },
   { "satId": "sat-b", "beamId": 1, "rsrpDbm": -95.896588, "sinrDb": -5.723989 },
   { "satId": "sat-z", "beamId": 1, "rsrpDbm": -121.061924, "sinrDb": -31.916598 }
 ]
@@ -77,7 +77,7 @@ Observed research snapshot after the DPC override:
 ```json
 [
   { "satId": "sat-a", "beamId": 1, "rsrpDbm": -94.131007, "sinrDb": -3.078975 },
-  { "satId": "sat-a", "beamId": 5, "rsrpDbm": -98.902984, "sinrDb": -9.083367 },
+  { "satId": "sat-a", "beamId": 4, "rsrpDbm": -98.902984, "sinrDb": -9.083367 },
   { "satId": "sat-b", "beamId": 1, "rsrpDbm": -95.896588, "sinrDb": -5.505594 },
   { "satId": "sat-z", "beamId": 1, "rsrpDbm": -121.061924, "sinrDb": -31.745128 }
 ]
