@@ -7,6 +7,7 @@ import {
 } from '../src/profiles/index.ts';
 import type { Profile } from '../src/profiles/types.ts';
 import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
+import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
@@ -124,8 +125,15 @@ function renderTuningText(profile: Profile): string {
       currentSinrDb={state.physicalServing.sinrDb ?? -Infinity}
       formulaBudget={state.physicalServingBudget}
       formulaSource={state.physicalServing}
+      handoverDraft={createHandoverPolicyTuningState(profile)}
+      appliedHandoverPolicy={createHandoverPolicyTuningState(profile)}
+      hasHandoverDraftChanges={false}
+      hasHandoverOverrides={false}
       onTuningChange={() => {}}
       onReset={() => {}}
+      onHandoverDraftChange={() => {}}
+      onApplyHandoverPolicy={() => {}}
+      onResetHandoverPolicy={() => {}}
     />,
   ));
 }

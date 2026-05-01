@@ -5,6 +5,7 @@ import { HandoverManager } from '../src/engine/handover/handover-manager.ts';
 import type { LinkSample } from '../src/engine/signal/types.ts';
 import { loadProfile } from '../src/profiles/index.ts';
 import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
+import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
@@ -209,17 +210,28 @@ function run(): void {
       currentSinrDb={simState.physicalServing.sinrDb ?? -Infinity}
       formulaBudget={simState.physicalServingBudget}
       formulaSource={simState.physicalServing}
+      handoverDraft={createHandoverPolicyTuningState(profile)}
+      appliedHandoverPolicy={createHandoverPolicyTuningState(profile)}
+      hasHandoverDraftChanges={false}
+      hasHandoverOverrides={false}
       onTuningChange={() => {}}
       onReset={() => {}}
+      onHandoverDraftChange={() => {}}
+      onApplyHandoverPolicy={() => {}}
+      onResetHandoverPolicy={() => {}}
     />,
   ));
 
-  assertContains(tuningText, 'Physical Serving Check');
-  assertContains(tuningText, 'Physical serving formula terms');
+  assertContains(tuningText, 'Formula Verification');
+  assertContains(tuningText, 'selected source formula result');
+  assertContains(tuningText, 'physical serving source');
+  assertContains(tuningText, 'Formula term evidence');
   assertContains(tuningText, targetLabel);
-  assertContains(tuningText, 'Research Override');
+  assertContains(tuningText, 'receiver gain');
   assertContains(tuningText, '0.0 dBi');
-  assertContains(tuningText, 'HOBS paper parameter table does not provide');
+  assertContains(tuningText, 'Receiver Gain');
+  assertNotContains(tuningText, 'HOBS paper parameter table does not provide');
+  assertNotContains(tuningText, 'Research Override / teaching control');
   assertNotContains(tuningText, '0 dBi fixed');
   assertNotContains(tuningText, sourceLabel);
   assertNotContains(tuningText, 'Current formula terms');
@@ -233,7 +245,7 @@ function run(): void {
     physicalServing: { satId: TARGET_SAT_ID, label: targetLabel, beamId: TARGET_BEAM_ID },
     asserted: {
       rightPanel: ['HO SOURCE', 'previous source', 'HO TARGET', 'recent target / serving now'],
-      leftPanel: ['Physical Serving Check', 'Physical serving formula terms', `${targetLabel} only`, 'G^R research override copy'],
+      leftPanel: ['Formula Verification', 'selected source formula result', 'physical serving source', `${targetLabel} only`, 'G^R receiver gain copy'],
       forbiddenLeftPanelCopy: ['Current formula terms', 'ACTIVE SERVING', 'HO SOURCE', sourceLabel],
     },
   }, null, 2));

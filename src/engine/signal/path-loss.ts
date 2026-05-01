@@ -5,7 +5,11 @@
  * Source: PAP-2024-HOBS, ITU-R P.676-13
  */
 
-import type { PathLossComponent } from '../../profiles/types';
+import {
+  DEFAULT_CHANNEL_LOSS_OVERRIDES,
+  type ChannelLossOverrides,
+  type PathLossComponent,
+} from '../../profiles/types';
 
 /** Free-space path loss in dB. L_fs = 20log(f_c) + 20log(d) - 147.55 */
 export function computeFsplDb(rangeKm: number, frequencyGHz: number): number {
@@ -13,24 +17,20 @@ export function computeFsplDb(rangeKm: number, frequencyGHz: number): number {
 }
 
 /** Atmospheric gas absorption (elevation-dependent approximation). */
-function atmosphericLossDb(elevationDeg: number): number {
-  // ITU-R P.676: ~0.1 dB at zenith for Ka-band, increases at low elevation
-  const zenithLoss = 0.1;
+function atmosphericLossDb(elevationDeg: number, zenithLossDb: number): number {
   const sinEl = Math.sin(Math.max(elevationDeg, 5) * Math.PI / 180);
-  return zenithLoss / Math.max(sinEl, 0.087); // capped at ~5° min
+  return zenithLossDb / Math.max(sinEl, 0.087); // capped at ~5° min
 }
 
 /** Tropospheric scintillation (elevation-dependent). */
-function scintillationLossDb(elevationDeg: number): number {
-  // Typical Ka-band scintillation: ~0.5 dB at 10° elevation, less at higher angles
+function scintillationLossDb(elevationDeg: number, scaleDb: number): number {
   const sinEl = Math.sin(Math.max(elevationDeg, 5) * Math.PI / 180);
-  return 0.05 / Math.max(sinEl, 0.087);
+  return scaleDb / Math.max(sinEl, 0.087);
 }
 
 /** Shadow fading (deterministic mean for link budget; no random draw). */
-function shadowFadingLossDb(): number {
-  // Log-normal mean in dB domain = 0; use a representative margin
-  return 2.0; // typical Ka-band shadow fading margin
+function shadowFadingLossDb(marginDb: number): number {
+  return marginDb;
 }
 
 /**
@@ -39,6 +39,16 @@ function shadowFadingLossDb(): number {
 export interface PathLossOptions {
   isLos?: boolean;
   nlosClutterLossDb?: number;
+  overrides?: Partial<ChannelLossOverrides>;
+}
+
+function resolveLossOverrides(
+  overrides: Partial<ChannelLossOverrides> | undefined,
+): ChannelLossOverrides {
+  return {
+    ...DEFAULT_CHANNEL_LOSS_OVERRIDES,
+    ...overrides,
+  };
 }
 
 export function computePathLossDb(
@@ -49,6 +59,7 @@ export function computePathLossDb(
   options: PathLossOptions = {},
 ): number {
   const enabledComponents = new Set(components);
+  const lossOverrides = resolveLossOverrides(options.overrides);
   let loss = enabledComponents.has('fspl')
     ? computeFsplDb(rangeKm, frequencyGHz)
     : 0;
@@ -56,13 +67,13 @@ export function computePathLossDb(
   for (const comp of enabledComponents) {
     switch (comp) {
       case 'atmospheric':
-        loss += atmosphericLossDb(elevationDeg);
+        loss += atmosphericLossDb(elevationDeg, lossOverrides.atmosphericZenithLossDb);
         break;
       case 'scintillation':
-        loss += scintillationLossDb(elevationDeg);
+        loss += scintillationLossDb(elevationDeg, lossOverrides.scintillationScaleDb);
         break;
       case 'shadow-fading':
-        loss += shadowFadingLossDb();
+        loss += shadowFadingLossDb(lossOverrides.shadowFadingMarginDb);
         break;
       case 'fspl':
         break;

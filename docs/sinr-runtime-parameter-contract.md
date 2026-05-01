@@ -74,8 +74,13 @@ Important current implementation facts:
   teaching control only. It is not a paper-backed HOBS parameter because the
   HOBS paper parameter table does not provide a receiver / UE antenna gain
   value.
-- `TR 38.811` LoS environment is currently hard-coded to `suburban`.
-- NLoS clutter loss is currently hard-coded to `20 dB`.
+- `TR 38.811` LoS environment remains read-only / profile-defaulted to
+  `suburban` in Phase 8B.
+- NLoS clutter loss is runtime-adjustable as a TR 38.811-gated
+  `Research Override`, default `20 dB`.
+- Gas-loss, scintillation, and deterministic shadow-fading constants are
+  runtime-adjustable `Research Override` / teaching controls, with defaults
+  matching the pre-Phase-8B hard-coded values.
 - `antenna.efficiency` exists in profiles but is not currently used by the live
   SINR calculation.
 - The runtime tuning UI should show a live serving-SINR readout and changed
@@ -125,8 +130,9 @@ where they enter the HOBS SINR expression:
 - `Power`: controls numerator power terms, the approved receiver-gain research
   override, and the thermal-noise term `σ²`. This tab owns `P_t`,
   `G_{t,max}`, `G^R` as `Research Override`, `B`, and `N_0`.
-- `Loss`: controls path gain / path loss `H` and `L`. This tab owns `f_c` and
-  `L_{fs}`, `L_g`, `L_{sc}`, `L_{sf}` toggles.
+- `Loss`: controls path gain / path loss `H` and `L`. This tab owns `f_c`,
+  `L_{fs}`, `L_g`, `L_{sc}`, `L_{sf}` toggles, and a separated
+  `Research Override` section for simulator sensitivity constants.
 - `Beam`: controls the transmit antenna pattern and scan loss `G(θ)` /
   `L_{scan}`. This tab owns `θ_{3dB}`, `G(θ)`, `θ_{max}`, and
   `L_{scan,max}`.
@@ -153,7 +159,8 @@ The current V1 panel covers every profile-backed field that directly feeds the
 live `computeLinkBudget()` path:
 
 - `P_t`: `channel.maxTxPowerDbm`
-- `H` / `L`: `channel.frequencyGHz`, `channel.pathLossComponents`
+- `H` / `L`: `channel.frequencyGHz`, `channel.pathLossComponents`,
+  `channel.lossOverrides.*`, and `channel.tr38811.nlosClutterLossDb`
 - `G^T`: `antenna.maxGainDbi`, `antenna.beamwidth3dBRad`,
   `antenna.model`, `antenna.maxSteeringAngleDeg`,
   `antenna.scanLossAtMaxSteeringDb`
@@ -162,11 +169,10 @@ live `computeLinkBudget()` path:
 - `I^a` / `I^b`: `beams.frequencyReuse`
 - `σ²`: `channel.bandwidthMHz`, `channel.noisePsdDbmHz`
 
-Fields not covered by V1 are intentionally excluded because they are not
+Fields still not covered by V1 are intentionally excluded because they are not
 currently profile-backed live controls in the SINR path:
 
-- TR 38.811 environment: hard-coded to `suburban`
-- NLoS clutter loss: hard-coded to `20 dB`
+- TR 38.811 environment: read-only / profile-defaulted to `suburban`
 - `antenna.efficiency`: profile field exists but is not used by the live SINR
   calculation
 - `formulaFamily`: research / mode control rather than a scalar paper-facing
@@ -195,6 +201,10 @@ These are the recommended first-wave controls for a live SINR panel.
 | `L_g` | Enable atmospheric gas loss | `channel.pathLossComponents` includes `atmospheric` | toggle | checkbox | on/off | next-frame recompute | propagation component |
 | `L_{sc}` | Enable scintillation loss | `channel.pathLossComponents` includes `scintillation` | toggle | checkbox | on/off | next-frame recompute | propagation component |
 | `L_{sf}` | Enable shadow fading margin | `channel.pathLossComponents` includes `shadow-fading` | toggle | checkbox | on/off | next-frame recompute | deterministic margin in current implementation |
+| `L_{g,z}` | Atmospheric zenith loss | `channel.lossOverrides.atmosphericZenithLossDb` | dB | slider / numeric input | `0` to `1` | next-frame recompute | `Research Override`; inactive while `L_g` is off; default `0.1 dB` |
+| `L_{sc,scale}` | Scintillation scale | `channel.lossOverrides.scintillationScaleDb` | dB | slider / numeric input | `0` to `1` | next-frame recompute | `Research Override`; inactive while `L_{sc}` is off; default `0.05 dB` |
+| `L_{sf,margin}` | Shadow fading margin | `channel.lossOverrides.shadowFadingMarginDb` | dB | slider / numeric input | `0` to `10` | next-frame recompute | deterministic `Research Override`; inactive while `L_{sf}` is off; default `2 dB` |
+| `L_{cl,NLoS}` | NLoS clutter loss | `channel.tr38811.nlosClutterLossDb` | dB | slider / numeric input | `0` to `40` | next-frame recompute | TR 38.811-gated `Research Override`; applies only in `hobs-tr38811` and only to seeded NLoS samples; default `20 dB` |
 
 ## Approved Research Override / Teaching Control
 
@@ -206,6 +216,10 @@ paper-backed parameter.
 | UI label class | Internal field | Default | Unit shown in UI | Recommended control | Simulator guardrail | Runtime effect | Paper note |
 |---|---|---:|---|---|---|---|---|
 | `Research Override` / teaching control | `ueAntenna.maxGainDbi` | `0` | dBi | slider / numeric input | `-10` to `20` | next-frame recompute; shifts `signalDbm` / numerator by the same dB amount | not paper-backed; HOBS parameter table does not provide receiver / UE gain |
+| `Research Override` / teaching control | `channel.lossOverrides.atmosphericZenithLossDb` | `0.1` | dB | slider / numeric input | `0` to `1` | next-frame recompute; scales the deterministic gas-loss approximation when `L_g` is enabled | simulator sensitivity value; not a HOBS paper-backed range |
+| `Research Override` / teaching control | `channel.lossOverrides.scintillationScaleDb` | `0.05` | dB | slider / numeric input | `0` to `1` | next-frame recompute; scales the deterministic scintillation approximation when `L_{sc}` is enabled | simulator sensitivity value; not a stochastic fading model |
+| `Research Override` / teaching control | `channel.lossOverrides.shadowFadingMarginDb` | `2` | dB | slider / numeric input | `0` to `10` | next-frame recompute; adds deterministic margin when `L_{sf}` is enabled | deterministic simulator margin; not a random shadow-fading draw |
+| `Research Override` / teaching control, TR 38.811-gated | `channel.tr38811.nlosClutterLossDb` | `20` | dB | slider / numeric input | `0` to `40` | next-frame recompute; applies only when `formulaFamily === 'hobs-tr38811'` and the seeded LoS state is NLoS | assumption-backed suburban clutter proxy, not a full environment/elevation table |
 
 ## Research Overrides With No Stable Paper Symbol Mapping Yet
 
@@ -217,8 +231,7 @@ symbol mapping is already verified from the paper set.
 | `G^R` receiver / UE gain | `ueAntenna.maxGainDbi` | HOBS includes `G^R` in the expression, but its parameter table does not provide receiver / UE antenna gain | next-frame recompute; numerator-only teaching override in this simulator |
 | `Formula family` | `formulaFamily` | codebase-level mode switch, not one stable scalar parameter | next-frame recompute |
 | `Beam power control` | `channel.beamPowerControl.*` | DPC terms exist, but the repo does not yet maintain a verified UI symbol map for every field | next-frame recompute plus DPC state reset recommended |
-| `TR 38.811 environment` | hard-coded in `link-budget.ts` | not exposed in profile yet | requires code promotion first |
-| `NLoS clutter loss` | hard-coded in `link-budget.ts` | not exposed in profile yet | requires code promotion first |
+| `TR 38.811 environment` | `channel.tr38811.environment` | LoS probability table selector rather than one scalar `L` term | read-only / profile-defaulted in Phase 8B; editable selector remains out of scope |
 
 ## Parameters That Should Not Be In The SINR Panel
 
@@ -235,8 +248,7 @@ These may still be adjustable elsewhere, but not inside the SINR-parameter UI.
 | Internal field / behavior | Current state | Guidance |
 |---|---|---|
 | `antenna.efficiency` | profile field exists but not used in the live SINR path | do not expose until implementation is added |
-| `TR38811_ENVIRONMENT` | hard-coded to `suburban` | promote to config first if runtime control is desired |
-| `TR38811_NLOS_CLUTTER_LOSS_DB` | hard-coded to `20 dB` | promote to config first if runtime control is desired |
+| `channel.tr38811.environment` | profile/default-backed but read-only in Phase 8B | do not expose an editable environment selector without a separate Simulation Setting plan |
 
 ## Runtime Integration Notes For Future Agents
 

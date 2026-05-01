@@ -221,6 +221,7 @@ export function InfoPanel({
     || sinrDeltaDb !== null
     || handoverTriggerProgressSec > 0;
   const showDiagnostics = uiMode === 'diagnostics';
+  const showHandoverPolicyReadout = showDiagnostics;
   const beamPowerControl = profile.channel.beamPowerControl;
   const showDpcStatus =
     showDiagnostics
@@ -268,7 +269,7 @@ export function InfoPanel({
           </div>
         )}
 
-        <div style={{
+        <div data-testid="info-panel-primary-sinr-status" data-ownership="operational-sinr-status" style={{
           padding: '12px 14px',
           background: UI_TOKENS.color.semantic.serving.background,
           borderRadius: UI_TOKENS.radius.lg,
@@ -311,7 +312,7 @@ export function InfoPanel({
           </div>
         </div>
 
-        <div style={{
+        <div data-testid="info-panel-comparison-sinr-status" data-ownership="operational-sinr-status" style={{
           padding: '12px 14px',
           background: UI_TOKENS.color.semantic.candidate.background,
           borderRadius: UI_TOKENS.radius.lg,
@@ -399,6 +400,35 @@ export function InfoPanel({
           Physical Serving Beam Active: {servingBeamActiveThisSlot === null ? '—' : servingBeamActiveThisSlot ? 'yes' : 'no'}
         </div>
       </div>
+
+      {showHandoverPolicyReadout && (
+        <div
+          data-testid="handover-policy-readout"
+          style={{
+            marginTop: 10,
+            padding: '11px 12px',
+            borderRadius: UI_TOKENS.radius.lg,
+            background: 'rgba(255, 176, 0, 0.06)',
+            border: '1px solid rgba(255, 210, 100, 0.16)',
+            fontSize: 12,
+            lineHeight: 1.45,
+          }}
+        >
+          <div style={{ color: UI_TOKENS.color.semantic.fixed, fontWeight: 800, letterSpacing: 0.7, marginBottom: 7 }}>
+            Handover policy (effective)
+          </div>
+          <div style={{ display: 'grid', gap: 5 }}>
+            <DebugRow label="policy" value={`${profile.handover.policy} (read-only)`} />
+            <DebugRow label="Offset margin" value={formatDb(profile.handover.offsetDb)} />
+            <DebugRow label="Trigger time" value={`${profile.handover.triggerTimeSec.toFixed(1)} s`} />
+            <DebugRow label="Ping-pong guard" value={`${profile.handover.pingPongGuardSec.toFixed(1)} s`} />
+            <DebugRow label="Decision smoothing" value={`${profile.handover.sinrSmoothingSec.toFixed(1)} s`} />
+            <DebugRow label="Same-sat dwell" value={`${profile.handover.intraSwitchTimeSec.toFixed(1)} s`} />
+            <DebugRow label="Pending hold" value={`${profile.handover.pendingTargetHoldSec.toFixed(1)} s`} />
+            <DebugRow label="Handover attach threshold" value={formatDb(profile.handover.sinrThresholdDb)} />
+          </div>
+        </div>
+      )}
 
       {showDpcStatus && beamPowerControl && (
         <div

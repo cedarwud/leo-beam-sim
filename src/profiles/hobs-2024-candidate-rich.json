@@ -31,7 +31,16 @@
     "bandwidthMHz": 100,
     "maxTxPowerDbm": 50,
     "noisePsdDbmHz": -174,
-    "pathLossComponents": ["fspl", "atmospheric", "scintillation", "shadow-fading"]
+    "pathLossComponents": ["fspl", "atmospheric", "scintillation", "shadow-fading"],
+    "lossOverrides": {
+      "atmosphericZenithLossDb": 0.1,
+      "scintillationScaleDb": 0.05,
+      "shadowFadingMarginDb": 2
+    },
+    "tr38811": {
+      "environment": "suburban",
+      "nlosClutterLossDb": 20
+    }
   },
   "handover": {
     "policy": "sinr-offset",

@@ -201,6 +201,7 @@ export function useSimulation(
   speed: number,
   paused: boolean,
   signalResetKey?: string,
+  handoverResetKey?: string,
 ): SimFrame {
   const observer = useMemo(
     () => createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg),
@@ -300,7 +301,7 @@ export function useSimulation(
     beamPowerControlRef.current = createEmptyBeamPowerControlRuntime();
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
-  }, [hoManager, maxTimeSec, profile.id, replay.epochUtcMs, replay.loop, replay.startOffsetSec]);
+  }, [maxTimeSec, profile.id, replay.epochUtcMs, replay.loop, replay.startOffsetSec]);
 
   useEffect(() => {
     hoManager.reset();
@@ -309,7 +310,15 @@ export function useSimulation(
     beamPowerControlRef.current = createEmptyBeamPowerControlRuntime();
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
-  }, [hoManager, signalResetKey]);
+  }, [signalResetKey]);
+
+  useEffect(() => {
+    hoManager.reset();
+    recentHoRef.current = null;
+    frameRef.current = createEmptyFrame(simTimeRef.current);
+    publishNextFrameRef.current = true;
+    setVersion(v => v + 1);
+  }, [handoverResetKey]);
 
   useEffect(() => {
     // Profile-backed SINR controls must refresh the React UI even when simulation time is paused.

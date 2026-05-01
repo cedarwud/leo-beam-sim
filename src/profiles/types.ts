@@ -4,6 +4,29 @@ export type BeamHoppingScheduler = 'round-robin' | 'distance-priority';
 export type FormulaFamily = 'hobs-legacy' | 'hobs-tr38811';
 export type BeamPowerControlMode = 'dpc';
 export type PathLossComponent = 'fspl' | 'atmospheric' | 'scintillation' | 'shadow-fading';
+export type Tr38811LosEnvironment = 'suburban';
+
+export interface ChannelLossOverrides {
+  atmosphericZenithLossDb: number;
+  scintillationScaleDb: number;
+  shadowFadingMarginDb: number;
+}
+
+export interface Tr38811ChannelConfig {
+  environment: Tr38811LosEnvironment;
+  nlosClutterLossDb: number;
+}
+
+export const DEFAULT_CHANNEL_LOSS_OVERRIDES: ChannelLossOverrides = {
+  atmosphericZenithLossDb: 0.1,
+  scintillationScaleDb: 0.05,
+  shadowFadingMarginDb: 2,
+};
+
+export const DEFAULT_TR38811_CHANNEL: Tr38811ChannelConfig = {
+  environment: 'suburban',
+  nlosClutterLossDb: 20,
+};
 
 export interface BeamPowerControlConfig {
   mode: BeamPowerControlMode;
@@ -53,6 +76,8 @@ export interface Profile {
     maxTxPowerDbm: number;
     noisePsdDbmHz: number;
     pathLossComponents: PathLossComponent[];
+    lossOverrides?: Partial<ChannelLossOverrides>;
+    tr38811?: Partial<Tr38811ChannelConfig>;
     beamPowerControl?: BeamPowerControlConfig;
   };
 

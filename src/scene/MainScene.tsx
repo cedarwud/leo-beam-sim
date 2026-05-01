@@ -255,7 +255,14 @@ function SceneContent({
   runtime,
   onSimUpdate,
 }: SceneContentProps) {
-  const sim = useSimulation(profile, runtime.replay, speed, paused, runtime.signalResetKey);
+  const sim = useSimulation(
+    profile,
+    runtime.replay,
+    speed,
+    paused,
+    runtime.signalResetKey,
+    runtime.handoverResetKey,
+  );
   const lastUiUpdateAtRef = useRef(0);
   const lastUiStateRef = useRef<SimState | null>(null);
   const latchedServingSinrRef = useRef<LatchedSignalState>({ satId: null, beamId: null, sinrDb: null });
@@ -270,6 +277,18 @@ function SceneContent({
     [],
   );
   const viz = useBeamViz(sim, profile, runtime.presentationMode, latchedBeamSinrByKeyRef.current);
+
+  useEffect(() => {
+    lastUiUpdateAtRef.current = 0;
+    lastUiStateRef.current = null;
+    latchedServingSinrRef.current = { satId: null, beamId: null, sinrDb: null };
+    latchedComparisonSinrRef.current = { satId: null, beamId: null, sinrDb: null };
+    latchedPhysicalServingTopoRef.current = { satId: null, beamId: null, elevationDeg: null, rangeKm: null };
+    latchedServingTopoRef.current = { satId: null, beamId: null, elevationDeg: null, rangeKm: null };
+    latchedComparisonTopoRef.current = { satId: null, beamId: null, elevationDeg: null, rangeKm: null };
+    latchedBeamSinrByKeyRef.current = new Map();
+    handoverPanelRef.current = null;
+  }, [runtime.handoverResetKey]);
 
   useEffect(() => {
     const topoBySatId = new Map(sim.satellites.map(sat => [sat.id, sat.topo]));

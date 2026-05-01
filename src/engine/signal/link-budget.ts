@@ -6,7 +6,10 @@
  * Source: PAP-2024-HOBS
  */
 
-import type { Profile } from '../../profiles/types';
+import {
+  DEFAULT_TR38811_CHANNEL,
+  type Profile,
+} from '../../profiles/types';
 import type {
   ActiveBeamAssignment,
   BeamPowerOverrideDbmByKey,
@@ -27,9 +30,6 @@ function mwToDbm(mw: number): number {
   if (mw <= 0) return -Infinity;
   return 10 * Math.log10(mw);
 }
-
-const TR38811_ENVIRONMENT = 'suburban';
-const TR38811_NLOS_CLUTTER_LOSS_DB = 20;
 
 interface BeamEntry {
   sample: LinkSample;
@@ -84,6 +84,9 @@ export function computeLinkBudget(
   } = config;
   const usesTr38811Path = formulaFamily === 'hobs-tr38811';
   const receiverGainDbi = ueAntenna.maxGainDbi;
+  const tr38811Environment = channel.tr38811?.environment ?? DEFAULT_TR38811_CHANNEL.environment;
+  const tr38811NlosClutterLossDb =
+    channel.tr38811?.nlosClutterLossDb ?? DEFAULT_TR38811_CHANNEL.nlosClutterLossDb;
 
   // Noise power: N = N0 * BW
   const bandwidthHz = channel.bandwidthMHz * 1e6;
@@ -113,7 +116,7 @@ export function computeLinkBudget(
       );
       const losSeedKey = `${sat.id}|${beam.beamId}|${Math.floor(simTimeSec)}`;
       const isLos = usesTr38811Path
-        ? sampleLosStateTr38811(sat.elevationDeg, TR38811_ENVIRONMENT, losSeedKey)
+        ? sampleLosStateTr38811(sat.elevationDeg, tr38811Environment, losSeedKey)
         : true;
 
       const pathLossDb = computePathLossDb(
@@ -123,7 +126,8 @@ export function computeLinkBudget(
         channel.pathLossComponents,
         {
           isLos,
-          nlosClutterLossDb: TR38811_NLOS_CLUTTER_LOSS_DB,
+          nlosClutterLossDb: tr38811NlosClutterLossDb,
+          overrides: channel.lossOverrides,
         },
       );
       const txPowerDbm = beamPowerOverrideDbmByKey?.get(`${sat.id}:${beam.beamId}`)

@@ -16,6 +16,7 @@ export interface RuntimeConfig {
   presentationMode: PresentationMode;
   replay: ReplayConfig;
   signalResetKey?: string;
+  handoverResetKey?: string;
 }
 
 export interface LinkBudgetTerms {
