@@ -1,0 +1,109 @@
+import assert from 'node:assert/strict';
+import {
+  SATELLITE_GLYPH_LIBRARY,
+  createGlyphOutlinePoints,
+  glyphSymbolForKind,
+  satelliteGlyph,
+} from '../src/viz/glyphs.ts';
+import { satelliteTintIndex } from '../src/constants/beamRoleTokens.ts';
+import { assertCanvasNonBlank, sampleCanvas, withVc2Browser } from './_vc2-browser-fixture.ts';
+
+function assertGlyphMapping(): void {
+  const satIds = ['shell-pro-53-P0-S0', 'shell-pro-53-P0-S1', 'shell-pro-53-P0-S2', 'shell-pro-53-P0-S3'];
+  const mapped = satIds.map((satId, displayOrder) => {
+    const visualIndex = satelliteTintIndex(satId, displayOrder);
+    return satelliteGlyph(visualIndex);
+  });
+  assert.deepEqual(
+    mapped,
+    SATELLITE_GLYPH_LIBRARY.map(entry => entry.kind),
+    'glyph assignment must share the Phase 2A satellite visual index',
+  );
+}
+
+function assertShapeDistinctness(): void {
+  const signatures = SATELLITE_GLYPH_LIBRARY.map(entry => {
+    const points = createGlyphOutlinePoints(entry.kind, 12);
+    const xs = points.map(point => point[0]);
+    const ys = points.map(point => point[1]);
+    return {
+      kind: entry.kind,
+      symbol: glyphSymbolForKind(entry.kind),
+      pointCount: points.length,
+      width: Math.round(Math.max(...xs) - Math.min(...xs)),
+      height: Math.round(Math.max(...ys) - Math.min(...ys)),
+    };
+  });
+  const uniqueSignatures = new Set(signatures.map(signature =>
+    `${signature.pointCount}:${signature.width}:${signature.height}:${signature.symbol}`,
+  ));
+
+  assert.equal(uniqueSignatures.size, SATELLITE_GLYPH_LIBRARY.length, 'endpoint glyph silhouettes are not pairwise distinct');
+}
+
+async function assertBrowserFixture() {
+  return withVc2Browser(async page => {
+    const result = await page.evaluate(async () => window.__renderVc2NonTextChannelsFixture());
+    const sample = await sampleCanvas(page);
+    assertCanvasNonBlank(sample, 'Phase 2B');
+
+    const expectedSymbols = SATELLITE_GLYPH_LIBRARY.map(entry => entry.symbol).join('');
+    assert.equal(result.inlineGlyphText, expectedSymbols, 'callout inline glyph echo did not render all four symbols');
+    assert.equal(result.fallbackGlyphText, expectedSymbols, 'font fallback fixture did not render all four glyph symbols');
+
+    const fallbackStyle = await page.locator('[data-testid="vc2-glyph-fallback-probe"]').evaluate(element => {
+      const style = getComputedStyle(element);
+      return {
+        fontFamily: style.fontFamily,
+        fontFeatureSettings: style.fontFeatureSettings,
+      };
+    });
+    assert.match(fallbackStyle.fontFamily, /monospace/i, 'glyph fallback fixture did not retain monospace fallback');
+    assert.notEqual(fallbackStyle.fontFeatureSettings, 'normal', 'glyph fallback fixture did not disable ligatures');
+
+    for (const beam of result.beams) {
+      assert.equal(
+        beam.satelliteGlyph,
+        satelliteGlyph(beam.satelliteVisualIndex),
+        `${beam.satId} glyph did not match the Phase 2A visual index`,
+      );
+      assert.equal(
+        beam.satelliteGlyphSymbol,
+        glyphSymbolForKind(beam.satelliteGlyph),
+        `${beam.satId} inline glyph symbol mismatch`,
+      );
+    }
+
+    return {
+      sample,
+      inlineGlyphText: result.inlineGlyphText,
+      fallbackGlyphText: result.fallbackGlyphText,
+      fixtureBeams: result.beams.map(beam => ({
+        satId: beam.satId,
+        glyph: beam.satelliteGlyph,
+        symbol: beam.satelliteGlyphSymbol,
+      })),
+    };
+  });
+}
+
+async function main(): Promise<void> {
+  assertGlyphMapping();
+  assertShapeDistinctness();
+  const browser = await assertBrowserFixture();
+
+  console.log('Visual Clarity Phase 2B endpoint-glyph validation passed.');
+  console.log(JSON.stringify({
+    v1: {
+      glyphMapping: 'passed',
+      shapeDistinctness: 'passed',
+    },
+    v3: browser,
+    result: 'PASS',
+  }, null, 2));
+}
+
+main().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

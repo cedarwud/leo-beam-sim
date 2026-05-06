@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {
+  BEAM_PULSE_SPECS,
+  BEAM_ROLE_TOKENS,
   beamVisualRoleForEventRole,
   frequencyReuseColor,
   operatorLabelForEventRole,
@@ -174,22 +176,32 @@ function assertNonColorEncoding(rendered: RenderedFixture): void {
 
   switch (fixture.name) {
     case 'pending handover':
-      assert.equal(encoding.dashed, true, 'pending handover must use a dashed transition cue');
+      assert.equal(encoding.dashed, false, 'pending handover must be solid after Phase 2 dash reassignment');
+      assert.equal(encoding.pulse, 'breathe', 'pending handover must use the breathe pulse cue');
+      assert.equal(BEAM_PULSE_SPECS.breathe.periodSec, 2.4, 'pending breathe period drifted');
+      assert.equal(BEAM_PULSE_SPECS.breathe.amplitude, 0.06, 'pending breathe amplitude drifted');
       assert.ok(encoding.lineWidth > 2, 'pending handover must use more than color for line emphasis');
       assert.equal(encoding.endpointFilled, true, 'pending handover must use filled endpoint emphasis');
       break;
     case 'approach / pre-illumination':
-      assert.equal(encoding.dashed, true, 'approach must use a dashed preview cue');
+      assert.equal(encoding.dashed, false, 'approach must be solid after Phase 2 dash reassignment');
+      assert.equal(encoding.pulse, 'pulse', 'approach must use the pulse cue');
+      assert.equal(BEAM_PULSE_SPECS.pulse.periodSec, 1.4, 'approach pulse period drifted');
+      assert.equal(BEAM_PULSE_SPECS.pulse.amplitude, 0.05, 'approach pulse amplitude drifted');
       assert.equal(encoding.endpointFilled, false, 'approach must use hollow endpoint encoding');
       assert.ok(encoding.coneOpacity < 0.3, 'approach must use reduced opacity/fade encoding');
       break;
     case 'recent HO source':
-      assert.equal(encoding.dashed, true, 'recent HO source must use a dashed source cue');
+      assert.equal(encoding.dashed, false, 'recent HO source must be solid after Phase 2 dash reassignment');
+      assert.equal(encoding.pulse, 'fade', 'recent HO source must use the linger fade cue');
+      assert.equal(BEAM_PULSE_SPECS.fade.periodSec, 2, 'recent HO fade window drifted');
+      assert.equal(BEAM_PULSE_SPECS.fade.amplitude, 0.06, 'recent HO fade amplitude drifted');
       assert.equal(encoding.endpointFilled, false, 'recent HO source must use outline endpoint encoding');
       assert.ok(encoding.lineOpacity < 0.7, 'recent HO source must use fade/opacity de-emphasis');
       break;
     case 'inactive / unscheduled primary beam':
       assert.equal(encoding.dashed, true, 'unscheduled primary beam must use dashed inactive encoding');
+      assert.equal(encoding.pulse, 'breathe', 'off-slot pending keeps the role pulse while dash remains a slot-state override');
       assert.equal(encoding.endpointFilled, false, 'unscheduled primary beam must use hollow endpoint encoding');
       assert.ok(encoding.lineOpacity < 0.7, 'unscheduled primary beam must use reduced line opacity');
       assert.ok(
@@ -202,8 +214,21 @@ function assertNonColorEncoding(rendered: RenderedFixture): void {
   }
 }
 
+function assertDashContract(): void {
+  for (const [visualRole, token] of Object.entries(BEAM_ROLE_TOKENS)) {
+    if (visualRole === 'inactive') {
+      assert.equal(token.dashed, true, 'inactive must remain the only role-level dashed token');
+      assert.equal(token.pulse, 'none', 'inactive must not pulse');
+      continue;
+    }
+
+    assert.equal(token.dashed, false, `${visualRole} must not own the dash channel`);
+  }
+}
+
 function run(): void {
   const renderedFixtures = fixtures.map(renderFixture);
+  assertDashContract();
 
   for (const rendered of renderedFixtures) {
     assertExpectedRoleLabels(rendered);
@@ -222,6 +247,7 @@ function run(): void {
       nonColorEncoding: {
         lineWidth: rendered.encoding.lineWidth,
         dashed: rendered.encoding.dashed,
+        pulse: rendered.encoding.pulse,
         endpointFilled: rendered.encoding.endpointFilled,
         lineOpacity: rendered.encoding.lineOpacity,
         coneOpacity: rendered.encoding.coneOpacity,

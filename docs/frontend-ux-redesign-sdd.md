@@ -121,6 +121,18 @@ Current values and recommended destination:
 | Active beam ID lists | scheduler state | real | diagnostics | useful for debug, too verbose in main UI |
 | Last HO reason | handover manager reason | real debug string | diagnostics | should not be unstructured bottom text |
 
+Current implementation update:
+
+- In `tuning` and `diagnostics` UI modes, the right panel owns the current
+  physical-serving SINR formula readout. It shows the `γ` result plus
+  `computeLinkBudget()` terms for the physical serving source:
+  `P_t·H·G^T·G^R`, effective `P_t`, `G^T`, `G^R`, path loss, scan loss,
+  `I^a`, `I^b`, `σ²`, and the denominator.
+- The left tuning rail no longer repeats serving/candidate satellite status or
+  the full formula-term evidence. This avoids showing the same operational
+  values in both sidebars and leaves the left rail focused on editable
+  formula-owned controls.
+
 ## SINR Parameter Coverage
 
 The current tuning panel covers every profile-backed field that directly feeds
@@ -207,10 +219,15 @@ Interaction intent:
 ### Primary Viewport
 
 - 3D scene remains central.
-- Top-left: compact playback controls.
-- Top-right: primary signal status with two dominant blocks:
+- Top-left: compact playback controls using the same dark telemetry material
+  as the sidebars.
+- Right rail: a single `Signal snapshot` section owns the operational status
+  instead of rendering two detached status cards. It contains two compact
+  side-by-side tiles:
   - Active serving / HO source
   - Candidate / pending / HO target
+- Right rail below the snapshot: `SINR Formula Terms`, grouped as scan-friendly
+  two-column rows under `Signal path`, `Loss`, and `Interference + noise`.
 - Bottom or small status strip:
   - beam hopping state
   - handover trigger progress only when pending
@@ -219,12 +236,13 @@ Interaction intent:
 ### Left Tuning Rail
 
 - Default collapsed to a compact `SINR Controls` affordance.
-- Expanded rail uses formula tabs:
-  - Power / Noise
-  - Loss
-  - Beam
-  - Interference
-  - Fixed Terms
+- Expanded rail uses compact formula tabs directly under the SINR expression:
+  - Power / `P_t`
+  - Loss / `H(L)`
+  - Beam / `G^T(θ)`
+  - Receiver / `G^R`
+  - Interference / `I^a, I^b`
+  - Noise / `σ²`
 - `Fixed Terms` should show, until Phase 4B implements the approved research
   override:
   - `G^R = 0 dBi`
@@ -233,6 +251,31 @@ Interaction intent:
   - TR 38.811 environment
   - NLoS clutter loss
   - antenna efficiency not wired
+- The expanded rail puts the HOBS SINR expression first, then the compact
+  formula tab row immediately below it. The active tab's local formula fragment
+  and controls follow before long explanatory or audit content.
+- Numeric sliders must show visible `Min ...` and `Max ...` endpoint badges
+  immediately above the track, not only inside ARIA labels.
+- Formula-map and coverage material stay discoverable but low-prominence below
+  the active controls, so users can start from the equation and adjust the
+  corresponding term without scrolling through live readouts first.
+
+### Visual Hierarchy For Beginner Use
+
+- Use a dark orbital cockpit palette as the default tuning/diagnostics
+  surface: deep navy/black panel fills, bright readable text, and restrained
+  semantic color. Do not switch sidebars to pale panels on an otherwise dark
+  site.
+- Use color to separate meaning, not decoration:
+  - teal for desired signal / numerator controls
+  - blue for loss/noise terms
+  - amber for candidate / fixed / research sensitivity surfaces
+  - muted red-orange for interference
+- Avoid long undifferentiated text stacks in the first visible region. Put
+  operational values in the right rail, formula controls in the left rail, and
+  audit/provenance text behind low-prominence disclosures.
+- Compact tab buttons should look clickable through borders, active underlines,
+  hover/focus affordance, and clear selected state.
 
 ### Diagnostics Drawer
 
@@ -241,7 +284,8 @@ Move the following out of the main right panel:
 - Slot index and slot duration.
 - Serving/pending active beam ID lists.
 - Recent HO count and last reason.
-- Full formula terms and override list, unless tuning rail is open.
+- Runtime override list and extended formula-map/audit details. The compact
+  current formula terms remain in the right panel during tuning/diagnostics.
 
 ## Beam Color And Encoding Requirements
 

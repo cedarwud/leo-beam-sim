@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
 import { loadProfile } from '../src/profiles/index.ts';
-import type { LinkBudgetTerms, SignalSourceState } from '../src/scene/types.ts';
-import { createSignalTuningState, type SignalTuningState } from '../src/signalTuning.ts';
-import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
+import type { Profile } from '../src/profiles/types.ts';
+import { createInitialSimState } from '../src/scene/initialSimState.ts';
+import type { LinkBudgetTerms, SignalSourceState, SimState } from '../src/scene/types.ts';
+import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-paper-default';
 const EXPECTED_TERMS = [
@@ -83,50 +83,53 @@ function createWaitingFormulaSource(): SignalSourceState {
   };
 }
 
-function createEditedTuning(base: SignalTuningState): SignalTuningState {
-  return {
-    ...base,
-    maxTxPowerDbm: base.maxTxPowerDbm + 1,
-    bandwidthMHz: base.bandwidthMHz + 5,
-  };
-}
-
 function renderPanel({
   formulaBudget,
   formulaSource,
   isFormulaEvidenceStale = false,
-  editedTuning = false,
 }: {
   formulaBudget: LinkBudgetTerms | null;
   formulaSource: SignalSourceState;
   isFormulaEvidenceStale?: boolean;
-  editedTuning?: boolean;
 }) {
   const profile = loadProfile(PROFILE_ID);
-  const baseTuning = createSignalTuningState(profile);
-  const tuning = editedTuning ? createEditedTuning(baseTuning) : baseTuning;
+  const state = createPanelState(profile, formulaSource, formulaBudget);
   const markup = renderToStaticMarkup(
-    <SignalTuningPanel
-      baseProfile={profile}
-      tuning={tuning}
-      hasOverrides={editedTuning}
-      currentSinrDb={formulaSource.sinrDb ?? -Infinity}
-      formulaBudget={formulaBudget}
-      formulaSource={formulaSource}
+    <InfoPanel
+      {...state}
+      uiMode="tuning"
+      profile={profile}
       isFormulaEvidenceStale={isFormulaEvidenceStale}
-      handoverDraft={createHandoverPolicyTuningState(profile)}
-      appliedHandoverPolicy={createHandoverPolicyTuningState(profile)}
-      hasHandoverDraftChanges={false}
-      hasHandoverOverrides={false}
-      onTuningChange={() => {}}
-      onReset={() => {}}
-      onHandoverDraftChange={() => {}}
-      onApplyHandoverPolicy={() => {}}
-      onResetHandoverPolicy={() => {}}
     />,
   );
 
   return { markup, text: decodeHtmlText(markup) };
+}
+
+function createPanelState(
+  profile: Profile,
+  formulaSource: SignalSourceState,
+  formulaBudget: LinkBudgetTerms | null,
+): SimState {
+  const base = createInitialSimState(profile);
+  const hasFormulaSource = formulaSource.satId !== null && formulaSource.beamId !== null;
+
+  return {
+    ...base,
+    physicalServing: formulaSource,
+    panelPrimary: {
+      ...formulaSource,
+      role: hasFormulaSource ? 'serving' : 'none',
+    },
+    servingSatId: formulaSource.satId,
+    servingBeamId: formulaSource.beamId,
+    servingElevationDeg: formulaSource.elevationDeg,
+    servingRangeKm: formulaSource.rangeKm,
+    sinrDb: formulaSource.sinrDb ?? -Infinity,
+    physicalServingBudget: formulaBudget,
+    servingBudget: formulaBudget,
+    servingBeamActiveThisSlot: hasFormulaSource,
+  };
 }
 
 function extractTermOrder(markup: string): string[] {
@@ -156,7 +159,7 @@ function run(): void {
     formulaSource: createCurrentFormulaSource(),
   });
   assertStableEvidenceShell(current.markup, 'current');
-  assertContains(current.text, 'Current computeLinkBudget term values for the selected formula source.');
+  assertContains(current.text, 'Current computeLinkBudget term values for the physical serving formula source.');
   assertContains(current.text, 'numerator / signalDbm');
   assertContains(current.text, 'effective transmit power');
   assertContains(current.text, 'transmit gain pattern');
@@ -182,23 +185,21 @@ function run(): void {
     formulaBudget: createBudgetTerms(),
     formulaSource: createCurrentFormulaSource(),
     isFormulaEvidenceStale: true,
-    editedTuning: true,
   });
   assertStableEvidenceShell(stale.markup, 'stale');
   assertContains(stale.text, 'Formula evidence is stale after a runtime edit');
   assertContains(stale.text, '-88.5 dBm stale');
-  assertContains(stale.text, 'last-known stale');
+  assertContains(stale.text, 'last-known values are labeled stale');
   assertNotContains(stale.markup, 'data-formula-evidence-status="current"');
   assertNotContains(stale.text, 'Current computeLinkBudget term values');
 
   const waiting = renderPanel({
     formulaBudget: null,
     formulaSource: createWaitingFormulaSource(),
-    editedTuning: true,
   });
   assertStableEvidenceShell(waiting.markup, 'waiting');
-  assertContains(waiting.text, 'No selected formula source yet');
-  assertContains(waiting.text, 'Waiting for a selected formula source');
+  assertContains(waiting.text, 'No physical serving source yet');
+  assertContains(waiting.text, 'Waiting for a physical serving formula source');
   assert.equal((waiting.text.match(/\bwaiting\b/g) ?? []).length >= EXPECTED_TERMS.length, true);
   assertNotContains(waiting.markup, 'data-formula-evidence-status="current"');
   assertNotContains(waiting.text, 'Current computeLinkBudget term values');

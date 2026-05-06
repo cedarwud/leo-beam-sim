@@ -10,6 +10,8 @@ export type BeamVisualRole =
   | 'otherActive'
   | 'inactive';
 
+export type BeamPulseKind = 'none' | 'breathe' | 'pulse' | 'fade';
+
 export interface BeamRoleToken {
   operatorLabel: string | null;
   markerLabel: string | null;
@@ -23,6 +25,7 @@ export interface BeamRoleToken {
   endpointOpacity: number;
   endpointFilled: boolean;
   dashed: boolean;
+  pulse: BeamPulseKind;
   calloutMinWidth: number;
   calloutGlowPx: number;
   markerScale: number;
@@ -33,6 +36,7 @@ export interface BeamRoleToken {
 export interface BeamVisualEncoding extends BeamRoleToken {
   visualRole: BeamVisualRole;
   color: string;
+  frequencySwatchColor: string;
   slotStateLabel: 'SLOT OFF' | 'UNSCHEDULED' | null;
   isEventPrimary: boolean;
   isEmphasized: boolean;
@@ -46,6 +50,25 @@ export const BEAM_FREQUENCY_COLORS = [
   '#b991ff',
   '#d98564',
 ] as const;
+
+export const SATELLITE_TINT_PALETTE = [
+  '#ffffff',
+  '#f2d7a0',
+  '#d9b6e8',
+  '#c7d1d8',
+] as const;
+
+export const RECENT_HO_FADE_WINDOW_SEC = 2;
+
+export const BEAM_PULSE_SPECS: Record<BeamPulseKind, {
+  periodSec: number | null;
+  amplitude: number;
+}> = {
+  none: { periodSec: null, amplitude: 0 },
+  breathe: { periodSec: 2.4, amplitude: 0.06 },
+  pulse: { periodSec: 1.4, amplitude: 0.05 },
+  fade: { periodSec: RECENT_HO_FADE_WINDOW_SEC, amplitude: 0.06 },
+};
 
 export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
   serving: {
@@ -61,6 +84,7 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     endpointOpacity: 0.96,
     endpointFilled: true,
     dashed: false,
+    pulse: 'none',
     calloutMinWidth: 88,
     calloutGlowPx: 20,
     markerScale: 7,
@@ -79,7 +103,8 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     endpointRadius: 4.6,
     endpointOpacity: 0.9,
     endpointFilled: true,
-    dashed: true,
+    dashed: false,
+    pulse: 'breathe',
     calloutMinWidth: 88,
     calloutGlowPx: 18,
     markerScale: 6.2,
@@ -98,7 +123,8 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     endpointRadius: 4,
     endpointOpacity: 0.72,
     endpointFilled: false,
-    dashed: true,
+    dashed: false,
+    pulse: 'pulse',
     calloutMinWidth: 92,
     calloutGlowPx: 14,
     markerScale: 5.8,
@@ -117,7 +143,8 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     endpointRadius: 4.1,
     endpointOpacity: 0.62,
     endpointFilled: false,
-    dashed: true,
+    dashed: false,
+    pulse: 'fade',
     calloutMinWidth: 82,
     calloutGlowPx: 10,
     markerScale: 5.6,
@@ -137,6 +164,7 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     endpointOpacity: 0.72,
     endpointFilled: true,
     dashed: false,
+    pulse: 'none',
     calloutMinWidth: 66,
     calloutGlowPx: 10,
     markerScale: 5,
@@ -156,6 +184,7 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     endpointOpacity: 0.34,
     endpointFilled: false,
     dashed: true,
+    pulse: 'none',
     calloutMinWidth: 66,
     calloutGlowPx: 6,
     markerScale: 5,
@@ -168,6 +197,37 @@ export function frequencyReuseColor(frequencyIndex: number): string {
   const index = ((Math.floor(frequencyIndex) % BEAM_FREQUENCY_COLORS.length) + BEAM_FREQUENCY_COLORS.length)
     % BEAM_FREQUENCY_COLORS.length;
   return BEAM_FREQUENCY_COLORS[index];
+}
+
+export function satelliteTintIndex(_satId: string, displayOrder: number): number {
+  const order = Number.isFinite(displayOrder) ? Math.floor(displayOrder) : 0;
+  return ((order % SATELLITE_TINT_PALETTE.length) + SATELLITE_TINT_PALETTE.length) % SATELLITE_TINT_PALETTE.length;
+}
+
+export function satelliteTint(satId: string, displayOrder: number): string {
+  return SATELLITE_TINT_PALETTE[satelliteTintIndex(satId, displayOrder)];
+}
+
+export function resolveBeamPulseOpacity(input: {
+  baseOpacity: number;
+  pulse: BeamPulseKind;
+  elapsedSec: number;
+  reducedMotion?: boolean;
+  roleAgeSec?: number;
+}): number {
+  const base = input.baseOpacity;
+  if (input.reducedMotion || input.pulse === 'none') return base;
+
+  const spec = BEAM_PULSE_SPECS[input.pulse];
+  if (input.pulse === 'fade') {
+    const age = Math.max(0, input.roleAgeSec ?? input.elapsedSec);
+    const progress = Math.min(age / RECENT_HO_FADE_WINDOW_SEC, 1);
+    return Math.max(0, base + spec.amplitude * (1 - progress * 2));
+  }
+
+  if (!spec.periodSec || spec.amplitude <= 0) return base;
+  const phase = (input.elapsedSec / spec.periodSec) * Math.PI * 2;
+  return Math.max(0, base + Math.sin(phase) * spec.amplitude);
 }
 
 export function beamVisualRoleForEventRole(role?: BeamCodeRole): BeamVisualRole | null {
@@ -215,6 +275,7 @@ export function resolveBeamVisualEncoding(input: {
   const base = BEAM_ROLE_TOKENS[visualRole];
   const eventHue = visualRole !== 'otherActive' && visualRole !== 'inactive';
   const color = eventHue ? base.color : input.isScheduledActive ? input.frequencyColor : BEAM_ROLE_TOKENS.inactive.color;
+  const frequencySwatchColor = input.isScheduledActive ? input.frequencyColor : BEAM_ROLE_TOKENS.inactive.color;
   const slotStateLabel = !input.isScheduledActive && isPrimaryEvent
     ? visualRole === 'serving' || visualRole === 'pending'
       ? 'SLOT OFF'
@@ -226,6 +287,7 @@ export function resolveBeamVisualEncoding(input: {
       ...base,
       visualRole,
       color,
+      frequencySwatchColor,
       lineWidth: Math.max(1.5, base.lineWidth - 0.6),
       coneOpacity: Math.min(base.coneOpacity, isPrimaryEvent ? 0.18 : 0.08),
       discOpacity: Math.min(base.discOpacity, isPrimaryEvent ? 0.11 : 0.05),
@@ -244,6 +306,7 @@ export function resolveBeamVisualEncoding(input: {
       ...base,
       visualRole,
       color,
+      frequencySwatchColor,
       lineWidth: 1.9,
       coneOpacity: 0.1,
       discOpacity: 0.07,
@@ -260,6 +323,8 @@ export function resolveBeamVisualEncoding(input: {
     ...base,
     visualRole,
     color,
+    frequencySwatchColor,
+    discOpacity: eventHue ? Math.min(base.discOpacity, 0.18) : base.discOpacity,
     slotStateLabel,
     isEventPrimary: isPrimaryEvent,
     isEmphasized: isPrimaryEvent || input.isPrimary,

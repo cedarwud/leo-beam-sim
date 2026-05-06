@@ -2,7 +2,7 @@ import { Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { tokenForEventRole } from '../constants/beamRoleTokens';
 import type { EventRole, VisibleSat } from '../scene/types';
-import { formatBeamIdentityLabel } from '../utils/beamFrequency';
+import { formatBeamIdentityByIndex } from '../utils/formatSatelliteLabel';
 import type { BeamTarget } from './SatelliteBeams';
 
 interface HandoverLinksProps {
@@ -13,9 +13,9 @@ interface HandoverLinksProps {
 
 const UE_ANCHOR: [number, number, number] = [0, 6, 0];
 
-function primaryBeamLabel(beams: BeamTarget[] | undefined): string | null {
+function primaryBeamLabel(satId: string, beams: BeamTarget[] | undefined): string | null {
   const beam = beams?.find(entry => entry.isServing) ?? beams?.find(entry => entry.isPrimary);
-  return beam ? formatBeamIdentityLabel(beam.frequencyIndex, beam.beamId) : null;
+  return beam ? formatBeamIdentityByIndex({ satId, beamId: beam.beamId, frequencyIndex: beam.frequencyIndex }) : null;
 }
 
 export function HandoverLinks({ satellites, eventRoles, satBeams }: HandoverLinksProps) {
@@ -31,8 +31,8 @@ export function HandoverLinks({ satellites, eventRoles, satBeams }: HandoverLink
           if (!role) return null;
 
           const style = tokenForEventRole(role);
-          const beamLabel = primaryBeamLabel(satBeams.get(satellite.id));
-          const label = [style.operatorLabel, beamLabel].filter(Boolean).join(' ');
+          const beamLabel = primaryBeamLabel(satellite.id, satBeams.get(satellite.id));
+          const label = [style.operatorLabel, beamLabel].filter(Boolean).join(' · ');
           const midpoint = new THREE.Vector3(...UE_ANCHOR).lerp(satellite.world, 0.42);
 
           return (

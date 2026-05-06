@@ -83,9 +83,15 @@ Important current implementation facts:
   matching the pre-Phase-8B hard-coded values.
 - `antenna.efficiency` exists in profiles but is not currently used by the live
   SINR calculation.
-- The runtime tuning UI should show a live serving-SINR readout and changed
-  runtime overrides so users can verify that controls feed the calculation.
-- The runtime tuning UI should also expose the current serving formula terms:
+- The right-side tuning/diagnostics status panel should show the live
+  physical-serving SINR readout and current formula terms so users can verify
+  that controls feed the calculation without duplicating serving/candidate
+  status in the left tuning rail.
+- Right-side operational status should be grouped for beginner scanning:
+  `Signal snapshot` for serving/candidate state, then `SINR Formula Terms`
+  grouped as two-column rows under `Signal path`, `Loss`, and
+  `Interference + noise`.
+- The UI should expose the current serving formula terms:
   `P_t · H · G^T · G^R`, `I^a`, `I^b`, and `σ²`. A parameter can be wired
   correctly even when the final SINR barely moves, for example when thermal
   noise is far below co-channel interference.
@@ -124,20 +130,21 @@ Good examples:
 
 ## Formula-Guided Tab Model
 
-The left-side runtime UI should stay compact by grouping controls according to
-where they enter the HOBS SINR expression:
+The left-side runtime UI should stay compact by grouping controls directly under
+the HOBS SINR expression according to where each parameter enters the formula:
 
-- `Power`: controls numerator power terms, the approved receiver-gain research
-  override, and the thermal-noise term `σ²`. This tab owns `P_t`,
-  `G_{t,max}`, `G^R` as `Research Override`, `B`, and `N_0`.
+- `Power`: controls numerator transmit power. This tab owns `P_t`.
 - `Loss`: controls path gain / path loss `H` and `L`. This tab owns `f_c`,
   `L_{fs}`, `L_g`, `L_{sc}`, `L_{sf}` toggles, and a separated
   `Research Override` section for simulator sensitivity constants.
 - `Beam`: controls the transmit antenna pattern and scan loss `G(θ)` /
   `L_{scan}`. This tab owns `θ_{3dB}`, `G(θ)`, `θ_{max}`, and
   `L_{scan,max}`.
+- `Receiver`: controls the receive-side numerator gain `G^R`.
 - `Interference`: controls co-channel interference terms `I^a` and `I^b`.
   This tab owns the frequency reuse factor `K`.
+- `Noise`: controls the thermal-noise term `σ²`. This tab owns `B`, `N_0`,
+  and the read-only computed noise-floor evidence.
 
 Each tab should include:
 
@@ -145,8 +152,12 @@ Each tab should include:
 - one short explanation of when the user should adjust that group
 - per-control impact text that explains the qualitative effect of increasing
   or decreasing the value
-- a live calculation check showing current serving SINR and active overrides
-- a current formula-term inspector showing which part of the ratio changed
+- compact controls directly under the formula tab row
+- visible `Min ...` and `Max ...` endpoint labels around every slider
+
+The current formula-term inspector belongs in the right-side tuning/diagnostics
+status panel. Do not place a long live formula-term grid above the editable tab
+controls in the left rail.
 
 Do not add new controls by appending them to a long single-column list. Place
 them in the tab that corresponds to their formula term. If no formula term is

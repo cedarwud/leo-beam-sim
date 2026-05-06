@@ -3,8 +3,12 @@ import type { BeamCodeRole } from '../constants/beamRoleTokens';
 import type { TopocentricPoint } from '../engine/orbit';
 import type { ActiveBeamAssignment, LinkSample } from '../engine/signal/types';
 import type { BeamTarget } from '../viz/SatelliteBeams';
+import type { GlyphKind } from '../viz/glyphs';
 
 export type PresentationMode = 'research-default' | 'candidate-rich' | 'demo-readability';
+export type BeamDensity = 'event-only' | 'event-plus-1' | 'all';
+export type CinematicMode = 'off' | 'spotlight';
+export type CameraPreset = 'zenith' | 'oblique' | 'chase';
 
 export interface ReplayConfig {
   epochUtcMs: number;
@@ -12,11 +16,34 @@ export interface ReplayConfig {
   loop: boolean;
 }
 
+export interface RuntimeEffectsEnabled {
+  spineParticles: boolean;
+  orbitTrail: boolean;
+  servingRipple: boolean;
+  pendingRipple: boolean;
+}
+
+export interface RuntimeViewport {
+  width: number;
+  height: number;
+}
+
+export interface RuntimeCameraCommand {
+  preset: CameraPreset;
+  issuedAtMs: number;
+}
+
 export interface RuntimeConfig {
   presentationMode: PresentationMode;
   replay: ReplayConfig;
   signalResetKey?: string;
   handoverResetKey?: string;
+  beamDensity: BeamDensity;
+  effectsEnabled: RuntimeEffectsEnabled;
+  cinematicMode: CinematicMode;
+  cameraCommand?: RuntimeCameraCommand;
+  reducedMotion: boolean;
+  viewport: RuntimeViewport;
 }
 
 export interface LinkBudgetTerms {
@@ -54,6 +81,7 @@ export interface PanelComparisonState extends SignalSourceState {
 export interface SimState {
   profileId?: string;
   formulaFamilyLabel?: string;
+  satelliteVisualIdentityById: Record<string, SatelliteVisualIdentity>;
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;
@@ -98,6 +126,15 @@ export interface VisibleSat {
   topo: TopocentricPoint;
   latDeg: number;
   lonDeg: number;
+  satelliteTintColor?: string;
+  satelliteGlyph?: GlyphKind;
+  satelliteVisualIndex?: number;
+}
+
+export interface SatelliteVisualIdentity {
+  satelliteTintColor: string;
+  satelliteGlyph: GlyphKind;
+  satelliteVisualIndex: number;
 }
 
 export interface BeamCellState {
@@ -153,12 +190,22 @@ export interface SinrLabel {
   isServing: boolean;
 }
 
+export interface AmbientRing {
+  satelliteId: string;
+  beamId: number;
+  groundX: number;
+  groundZ: number;
+  footprintRadiusKm: number;
+  frequencyIndex: number;
+}
+
 export interface VizFrame {
   displaySats: VisibleSat[];
   eventSatIds: Set<string>;
   eventRoles: Map<string, EventRole>;
   beamSatIds: Set<string>;
   satBeams: Map<string, BeamTarget[]>;
+  ambientRings: AmbientRing[];
   sinrLabels: SinrLabel[];
   footprintRadiusWorld: number;
 }

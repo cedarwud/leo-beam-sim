@@ -25,6 +25,7 @@ export function NTPUScene() {
                   color: mat.color,
                   map: mat.map,
                 });
+                // Phase 3E: leave fog enabled so the campus fades with spotlight mode.
                 mat.dispose();
                 return newMat;
               }
@@ -36,6 +37,7 @@ export function NTPUScene() {
               color: basicMat.color,
               map: basicMat.map,
             });
+            // Phase 3E: default MeshStandardMaterial fog behavior is intentional.
             basicMat.dispose();
           }
         }

@@ -7,23 +7,21 @@ import {
   type PathLossComponent,
   type Profile,
 } from '../profiles/types';
-import type { LinkBudgetTerms, SignalSourceState, SignalTruthStatus } from '../scene/types';
+import type { LinkBudgetTerms } from '../scene/types';
 import type { HandoverPolicyTuningState } from '../handoverPolicyTuning';
 import {
   PATH_LOSS_COMPONENT_ORDER,
-  createSignalTuningState,
   type SignalTuningState,
 } from '../signalTuning';
 import { HandoverPolicyControls } from './HandoverPolicyControls';
-import { formatBeamLabel, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
+import type { UiMode } from './uiMode';
 
 interface SignalTuningPanelProps {
   baseProfile: Profile;
   tuning: SignalTuningState;
   hasOverrides: boolean;
-  currentSinrDb: number;
+  uiMode: UiMode;
   formulaBudget: LinkBudgetTerms | null;
-  formulaSource: SignalSourceState;
   isFormulaEvidenceStale?: boolean;
   initialActiveTab?: TuningTabKey;
   handoverDraft: HandoverPolicyTuningState;
@@ -58,6 +56,7 @@ interface NumericControlProps {
 type TuningTabKey = 'signal-power' | 'loss' | 'beam' | 'receiver-gain' | 'interference' | 'thermal-noise';
 type TuningPageKey = 'sinr-formula' | 'handover-policy';
 type FormulaEvidenceStatus = 'current' | 'stale' | 'waiting';
+type SignalDrawerState = 'collapsed' | 'tuning' | 'diagnostics';
 
 interface TuningTab {
   key: TuningTabKey;
@@ -66,12 +65,6 @@ interface TuningTab {
   subtitle: string;
   formula: ReactNode;
   note: string;
-}
-
-interface TuningChangeSummary {
-  symbol: ReactNode;
-  before: string;
-  after: string;
 }
 
 interface TuningPage {
@@ -176,11 +169,8 @@ const PATH_LOSS_LABELS: Record<PathLossComponent, { symbol: ReactNode; label: st
 };
 
 const panelStyle: CSSProperties = {
-  position: 'absolute',
-  top: 76,
-  left: 12,
-  zIndex: 10,
   width: 'min(520px, calc(100vw - 24px))',
+  minWidth: 0,
   maxWidth: 'calc(100vw - 24px)',
   maxHeight: 'calc(100vh - 88px)',
   overflowY: 'auto',
@@ -190,11 +180,29 @@ const panelStyle: CSSProperties = {
   border: `1px solid ${UI_TOKENS.color.border.tuningPanel}`,
   borderRadius: UI_TOKENS.radius.panel,
   boxShadow: UI_TOKENS.shadow.tuningPanel,
-  padding: UI_TOKENS.space.rail,
+  padding: 20,
   color: UI_TOKENS.color.text.panel,
   boxSizing: 'border-box',
   display: 'grid',
-  gap: UI_TOKENS.space.panelLg,
+  gap: 16,
+};
+
+const collapsedPanelStyle: CSSProperties = {
+  ...panelStyle,
+  display: 'flex',
+  alignItems: 'stretch',
+  justifyContent: 'center',
+  gap: 0,
+  overflow: 'hidden',
+  overflowY: 'hidden',
+  padding: 0,
+};
+
+const drawerContentStyle: CSSProperties = {
+  display: 'grid',
+  gap: 16,
+  minWidth: 0,
+  width: '100%',
 };
 
 const dividerStyle: CSSProperties = {
@@ -204,12 +212,12 @@ const dividerStyle: CSSProperties = {
 
 const controlStackStyle: CSSProperties = {
   display: 'grid',
-  gap: UI_TOKENS.space.panelLg,
+  gap: 14,
 };
 
 const pagePanelStyle: CSSProperties = {
   display: 'grid',
-  gap: UI_TOKENS.space.panelLg,
+  gap: 15,
 };
 
 const hiddenPagePanelStyle: CSSProperties = {
@@ -231,13 +239,20 @@ const formulaTextStyle: CSSProperties = {
   lineHeight: 1.35,
 };
 
+const srOnlyStyle: CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+};
+
 function formatWithUnit(value: number, unit: string, digits = 1): string {
   return `${value.toFixed(digits)} ${unit}`;
-}
-
-function formatSinrDb(sinrDb: number): string {
-  if (!Number.isFinite(sinrDb)) return '—';
-  return `${sinrDb.toFixed(1)} dB`;
 }
 
 function formatDbm(value: number): string {
@@ -248,110 +263,6 @@ function formatDbm(value: number): string {
 function formatDbi(value: number): string {
   if (!Number.isFinite(value)) return '—';
   return `${value.toFixed(1)} dBi`;
-}
-
-function formatDb(value: number): string {
-  if (!Number.isFinite(value)) return '—';
-  return `${value.toFixed(1)} dB`;
-}
-
-function formatTruthStatus(status: SignalTruthStatus): string {
-  switch (status) {
-    case 'live':
-      return 'live';
-    case 'latched':
-      return 'latched';
-    case 'recent-ho':
-      return 'recent HO';
-    case 'derived':
-      return 'derived';
-    case 'none':
-      return 'none';
-  }
-}
-
-function formatFormulaSourceProvenance(status: SignalTruthStatus): string {
-  switch (status) {
-    case 'live':
-      return 'physical serving source';
-    case 'latched':
-      return 'latched selected source';
-    case 'recent-ho':
-      return 'recent-HO selected source';
-    case 'derived':
-      return 'derived selected source';
-    case 'none':
-      return 'no selected source';
-  }
-}
-
-function summarizePathLossComponents(components: readonly PathLossComponent[]): string {
-  return components.map(component => {
-    switch (component) {
-      case 'fspl':
-        return 'Lfs';
-      case 'atmospheric':
-        return 'Lg';
-      case 'scintillation':
-        return 'Lsc';
-      case 'shadow-fading':
-        return 'Lsf';
-    }
-  }).join(', ') || 'none';
-}
-
-function samePathLossComponents(a: readonly PathLossComponent[], b: readonly PathLossComponent[]): boolean {
-  return summarizePathLossComponents(a) === summarizePathLossComponents(b);
-}
-
-function buildChangeSummaries(
-  base: SignalTuningState,
-  tuning: SignalTuningState,
-): TuningChangeSummary[] {
-  const changes: TuningChangeSummary[] = [];
-  const pushNumeric = (
-    symbol: ReactNode,
-    before: number,
-    after: number,
-    format: (value: number) => string,
-  ) => {
-    if (before === after) return;
-    changes.push({ symbol, before: format(before), after: format(after) });
-  };
-
-  pushNumeric(<>P<sub>t</sub></>, base.maxTxPowerDbm, tuning.maxTxPowerDbm, value => `${value.toFixed(1)} dBm`);
-  pushNumeric(<>G<sub>t,max</sub></>, base.maxGainDbi, tuning.maxGainDbi, value => `${value.toFixed(1)} dBi`);
-  pushNumeric(<>G<sup>R</sup></>, base.ueAntennaMaxGainDbi, tuning.ueAntennaMaxGainDbi, value => `${value.toFixed(1)} dBi`);
-  pushNumeric(<>B</>, base.bandwidthMHz, tuning.bandwidthMHz, value => `${value.toFixed(0)} MHz`);
-  pushNumeric(<>N<sub>0</sub></>, base.noisePsdDbmHz, tuning.noisePsdDbmHz, value => `${value.toFixed(1)} dBm/Hz`);
-  pushNumeric(<>f<sub>c</sub></>, base.frequencyGHz, tuning.frequencyGHz, value => `${value.toFixed(1)} GHz`);
-  pushNumeric(<>L<sub>g,z</sub></>, base.atmosphericZenithLossDb, tuning.atmosphericZenithLossDb, value => `${value.toFixed(2)} dB`);
-  pushNumeric(<>L<sub>sc,scale</sub></>, base.scintillationScaleDb, tuning.scintillationScaleDb, value => `${value.toFixed(2)} dB`);
-  pushNumeric(<>L<sub>sf,margin</sub></>, base.shadowFadingMarginDb, tuning.shadowFadingMarginDb, value => `${value.toFixed(1)} dB`);
-  pushNumeric(<>L<sub>cl,NLoS</sub></>, base.tr38811NlosClutterLossDb, tuning.tr38811NlosClutterLossDb, value => `${value.toFixed(1)} dB`);
-  pushNumeric(<>θ<sub>3dB</sub></>, base.beamwidth3dBDeg, tuning.beamwidth3dBDeg, value => `${value.toFixed(1)}°`);
-  pushNumeric(<>θ<sub>max</sub></>, base.maxSteeringAngleDeg, tuning.maxSteeringAngleDeg, value => `${value.toFixed(1)}°`);
-  pushNumeric(
-    <>L<sub>scan,max</sub></>,
-    base.scanLossAtMaxSteeringDb,
-    tuning.scanLossAtMaxSteeringDb,
-    value => `${value.toFixed(1)} dB`,
-  );
-  pushNumeric(<>K</>, base.frequencyReuse, tuning.frequencyReuse, value => `${value.toFixed(0)}`);
-
-  if (base.model !== tuning.model) {
-    changes.push({ symbol: <>G(θ)</>, before: base.model, after: tuning.model });
-  }
-
-  if (!samePathLossComponents(base.pathLossComponents, tuning.pathLossComponents)) {
-    changes.push({
-      symbol: <>L</>,
-      before: summarizePathLossComponents(base.pathLossComponents),
-      after: summarizePathLossComponents(tuning.pathLossComponents),
-    });
-  }
-
-  return changes;
 }
 
 function getActiveTabConfig(activeTab: TuningTabKey): TuningTab {
@@ -369,17 +280,22 @@ function MathSymbol({
 }
 
 function FormulaContext({ tab }: { tab: TuningTab }) {
+  const accent = getFormulaTabAccent(tab.key);
+
   return (
     <div style={{
       display: 'grid',
-      gap: 10,
-      padding: '15px 16px',
+      gap: 8,
+      padding: '12px 14px',
       borderRadius: UI_TOKENS.radius.lg,
-      background: 'rgba(120, 228, 207, 0.07)',
-      border: '1px solid rgba(120, 228, 207, 0.16)',
+      background: `linear-gradient(180deg, ${accent}17, rgba(6, 18, 28, 0.72))`,
+      border: `1px solid ${accent}40`,
+      borderLeft: `4px solid ${accent}`,
     }}>
-      <div style={formulaTextStyle}>{tab.formula}</div>
-      <div style={{ fontSize: UI_TOKENS.type.size.bodyLg, lineHeight: 1.55, color: 'rgba(238, 249, 255, 0.82)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
+        <div style={{ ...formulaTextStyle, fontSize: 21, color: accent }}>{tab.formula}</div>
+      </div>
+      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: UI_TOKENS.color.text.secondary }}>
         {tab.note}
       </div>
     </div>
@@ -647,8 +563,8 @@ function FormulaSideControlSection({
         gap: 14,
         padding: '14px 15px',
         borderRadius: UI_TOKENS.radius.lg,
-        background: isNumerator ? 'rgba(120, 228, 207, 0.05)' : 'rgba(93, 166, 255, 0.055)',
-        border: isNumerator ? '1px solid rgba(120, 228, 207, 0.16)' : '1px solid rgba(93, 166, 255, 0.16)',
+        background: isNumerator ? 'rgba(21, 96, 88, 0.22)' : 'rgba(31, 67, 122, 0.24)',
+        border: isNumerator ? '1px solid rgba(118, 234, 215, 0.2)' : '1px solid rgba(123, 167, 255, 0.22)',
       }}
     >
       <div style={{ display: 'grid', gap: 6 }}>
@@ -662,7 +578,7 @@ function FormulaSideControlSection({
         <div style={formulaTextStyle}>{formula}</div>
         <div style={{
           fontSize: UI_TOKENS.type.size.body,
-          color: 'rgba(255,255,255,0.66)',
+          color: UI_TOKENS.color.text.secondary,
           lineHeight: 1.5,
         }}>
           {subtitle}
@@ -692,7 +608,7 @@ function NoiseFloorReadout({
         gap: 8,
         padding: '12px 13px',
         borderRadius: UI_TOKENS.radius.md,
-        background: 'rgba(255,255,255,0.04)',
+        background: UI_TOKENS.color.surface.card,
         border: `1px solid ${UI_TOKENS.color.border.subtle}`,
       }}
     >
@@ -710,8 +626,8 @@ function NoiseFloorReadout({
         <div style={{
           padding: '5px 8px',
           borderRadius: UI_TOKENS.radius.md,
-          background: 'rgba(93, 166, 255, 0.1)',
-          border: '1px solid rgba(93, 166, 255, 0.2)',
+          background: 'rgba(123, 167, 255, 0.12)',
+          border: '1px solid rgba(123, 167, 255, 0.22)',
           color: hasCurrentNoiseFloor ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.faint,
           fontSize: UI_TOKENS.type.size.bodyLg,
           fontWeight: UI_TOKENS.type.weight.heavy,
@@ -731,365 +647,6 @@ function NoiseFloorReadout({
   );
 }
 
-function LiveCheck({
-  currentSinrDb,
-  formulaBudget,
-  formulaSource,
-  isFormulaEvidenceStale = false,
-  receiverGainDbi,
-  changes,
-}: {
-  currentSinrDb: number;
-  formulaBudget: LinkBudgetTerms | null;
-  formulaSource: SignalSourceState;
-  isFormulaEvidenceStale?: boolean;
-  receiverGainDbi: number;
-  changes: TuningChangeSummary[];
-}) {
-  const hasFormulaSource = formulaSource.satId !== null && formulaSource.beamId !== null;
-  const formulaEvidenceStatus: FormulaEvidenceStatus = isFormulaEvidenceStale
-    ? 'stale'
-    : formulaBudget !== null && hasFormulaSource
-      ? 'current'
-      : 'waiting';
-  const formulaResultDb = formulaSource.sinrDb ?? currentSinrDb;
-  const hasCurrentFormulaResult = formulaEvidenceStatus === 'current' && Number.isFinite(formulaResultDb);
-  const hasStaleFormulaResult = formulaEvidenceStatus === 'stale' && Number.isFinite(formulaResultDb);
-  const formulaResultLabel = hasCurrentFormulaResult
-    ? formatSinrDb(formulaResultDb)
-    : hasStaleFormulaResult
-      ? `${formatSinrDb(formulaResultDb)} stale`
-      : formulaEvidenceStatus;
-  const sourceProvenance = formulaEvidenceStatus === 'current'
-    ? formatFormulaSourceProvenance(formulaSource.status)
-    : formulaEvidenceStatus === 'stale'
-      ? 'stale after edit; waiting for next recomputed frame'
-      : 'waiting for selected formula source';
-  const visibleChanges = changes.slice(0, 3);
-  const remainingChanges = Math.max(changes.length - visibleChanges.length, 0);
-
-  return (
-    <div
-      data-testid="formula-verification-card"
-      data-formula-evidence-status={formulaEvidenceStatus}
-      style={{
-      display: 'grid',
-      gap: 12,
-      padding: '16px',
-      borderRadius: UI_TOKENS.radius.lg,
-      background: UI_TOKENS.color.surface.card,
-      border: `1px solid ${UI_TOKENS.color.border.soft}`,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'start' }}>
-        <div>
-          <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.semantic.tuning, letterSpacing: 1.1, textTransform: 'uppercase' }}>
-            Formula Verification
-          </div>
-          <div style={{ marginTop: 5, fontSize: UI_TOKENS.type.size.bodyLg, color: UI_TOKENS.color.text.label, lineHeight: 1.45 }}>
-            {hasFormulaSource
-              ? `${formatSatelliteLabel(formulaSource.satId)} ${formatBeamLabel(formulaSource.beamId)}`
-              : 'No selected formula source yet'}
-          </div>
-          <div style={{ marginTop: 5, fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.faint, lineHeight: 1.4 }}>
-            {sourceProvenance}
-          </div>
-        </div>
-        <div
-          data-testid="formula-result-readout"
-          data-ownership="formula-verification"
-          data-visual-weight="secondary"
-          style={{
-            display: 'grid',
-            gap: 4,
-            justifyItems: 'end',
-            minWidth: 118,
-            padding: '8px 10px',
-            borderRadius: UI_TOKENS.radius.md,
-            background: 'rgba(120, 228, 207, 0.07)',
-            border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-            color: hasCurrentFormulaResult ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.faint,
-          }}
-        >
-          <div style={{
-            fontSize: UI_TOKENS.type.size.tiny,
-            color: UI_TOKENS.color.semantic.tuningSoft,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-            letterSpacing: 0.6,
-            textTransform: 'uppercase',
-            textAlign: 'right',
-          }}>
-            selected source formula result
-          </div>
-          <div style={{
-            fontSize: UI_TOKENS.type.size.bodyLg,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-            whiteSpace: 'nowrap',
-          }}>
-            {formulaResultLabel}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <span style={{
-          padding: '4px 8px',
-          borderRadius: UI_TOKENS.radius.pill,
-          background: formulaEvidenceStatus === 'current' ? 'rgba(125, 226, 209, 0.12)' : 'rgba(255, 214, 125, 0.1)',
-          border: formulaEvidenceStatus === 'current' ? '1px solid rgba(125, 226, 209, 0.28)' : '1px solid rgba(255, 214, 125, 0.28)',
-          color: formulaEvidenceStatus === 'current' ? '#bcfff5' : UI_TOKENS.color.semantic.fixed,
-          fontSize: UI_TOKENS.type.size.caption,
-          fontWeight: UI_TOKENS.type.weight.heavy,
-          letterSpacing: 0.5,
-          textTransform: 'uppercase',
-        }}>
-          {formulaEvidenceStatus === 'current' ? formatTruthStatus(formulaSource.status) : formulaEvidenceStatus}
-        </span>
-        <span style={{
-          padding: '4px 8px',
-          borderRadius: UI_TOKENS.radius.pill,
-          background: 'rgba(255, 214, 125, 0.1)',
-          border: '1px solid rgba(255, 214, 125, 0.22)',
-          color: UI_TOKENS.color.semantic.fixed,
-          fontSize: UI_TOKENS.type.size.caption,
-          fontWeight: UI_TOKENS.type.weight.heavy,
-          letterSpacing: 0.5,
-        }}>
-          G<sup>R</sup> = {formatDbi(receiverGainDbi)} · receiver gain
-        </span>
-      </div>
-
-      <div
-        data-testid="formula-term-evidence"
-        data-ownership="formula-verification"
-        data-visual-weight="primary"
-        data-formula-evidence-status={formulaEvidenceStatus}
-        style={{
-        display: 'grid',
-        gap: 8,
-        padding: '12px 13px',
-        borderRadius: 9,
-        background: UI_TOKENS.color.surface.fieldSoft,
-        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-      }}>
-        <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.semantic.tuningSoft, letterSpacing: 0.6, textTransform: 'uppercase' }}>
-          Formula term evidence
-        </div>
-        <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.muted, lineHeight: 1.45 }}>
-          {formulaEvidenceStatus === 'current'
-            ? 'Current computeLinkBudget term values for the selected formula source.'
-            : formulaEvidenceStatus === 'stale'
-              ? 'Formula evidence is stale after a runtime edit; last-known values are labeled stale until the next recomputed frame.'
-              : 'Waiting for a selected formula source; placeholders keep the evidence structure stable.'}
-        </div>
-        <div
-          data-testid="formula-term-grid"
-          data-formula-evidence-status={formulaEvidenceStatus}
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 8 }}
-        >
-          <BudgetTerm
-            dataTerm="signalDbm"
-            status={formulaEvidenceStatus}
-            symbol={<>P<sub>t</sub>·H·G<sup>T</sup>·G<sup>R</sup></>}
-            label="numerator / signalDbm"
-            value={formulaBudget?.signalDbm ?? null}
-          />
-          <BudgetTerm
-            dataTerm="effectiveTxPower"
-            status={formulaEvidenceStatus}
-            symbol={<>P<sub>t</sub></>}
-            label="effective transmit power"
-            value={formulaBudget?.txPowerDbm ?? null}
-          />
-          <BudgetTerm
-            dataTerm="transmitGain"
-            status={formulaEvidenceStatus}
-            symbol={<>G<sup>T</sup></>}
-            label="transmit gain pattern"
-            value={formulaBudget?.beamGainDb ?? null}
-            unit="dB"
-          />
-          <BudgetTerm
-            dataTerm="receiverGain"
-            status={formulaEvidenceStatus}
-            symbol={<>G<sup>R</sup></>}
-            label="receiver gain"
-            value={formulaBudget?.receiverGainDbi ?? null}
-            unit="dBi"
-            tone="fixed"
-          />
-          <BudgetTerm
-            dataTerm="pathLoss"
-            status={formulaEvidenceStatus}
-            symbol={<>L</>}
-            label="path loss"
-            value={formulaBudget?.pathLossDb ?? null}
-            unit="dB"
-          />
-          <BudgetTerm
-            dataTerm="scanLoss"
-            status={formulaEvidenceStatus}
-            symbol={<>L<sub>scan</sub></>}
-            label="scan loss"
-            value={formulaBudget?.steeringLossDb ?? null}
-            unit="dB"
-          />
-          <BudgetTerm
-            dataTerm="intraInterference"
-            status={formulaEvidenceStatus}
-            symbol={<>I<sup>a</sup></>}
-            label="intra interference"
-            value={formulaBudget?.intraInterferenceDbm ?? null}
-          />
-          <BudgetTerm
-            dataTerm="interInterference"
-            status={formulaEvidenceStatus}
-            symbol={<>I<sup>b</sup></>}
-            label="inter interference"
-            value={formulaBudget?.interInterferenceDbm ?? null}
-          />
-          <BudgetTerm
-            dataTerm="noiseDbm"
-            status={formulaEvidenceStatus}
-            symbol={<>σ²</>}
-            label="noise σ² / noiseDbm"
-            value={formulaBudget?.noiseDbm ?? null}
-          />
-          <BudgetTerm
-            dataTerm="denominator"
-            status={formulaEvidenceStatus}
-            symbol={<>I<sup>a</sup>+I<sup>b</sup>+σ²</>}
-            label="denominator"
-            value={formulaBudget?.denominatorDbm ?? null}
-          />
-        </div>
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gap: 8,
-        paddingTop: 2,
-      }}>
-        {changes.length === 0 ? (
-          <div style={{ fontSize: UI_TOKENS.type.size.body, color: 'rgba(255,255,255,0.6)' }}>
-            No runtime overrides. Current values match the selected profile baseline.
-          </div>
-        ) : (
-          <>
-            <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.semantic.tuningSoft, letterSpacing: 0.6, textTransform: 'uppercase' }}>
-              Overrides feeding computeLinkBudget
-            </div>
-            {visibleChanges.map((change, index) => (
-              <div
-                key={index}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '64px 1fr',
-                  gap: 10,
-                  alignItems: 'center',
-                  fontSize: UI_TOKENS.type.size.body,
-                  color: '#edf8ff',
-                }}
-              >
-                <MathSymbol size={22}>{change.symbol}</MathSymbol>
-                <span>
-                  {change.before}
-                  <span style={{ color: UI_TOKENS.color.semantic.tuning }}> → </span>
-                  {change.after}
-                </span>
-              </div>
-            ))}
-            {remainingChanges > 0 && (
-              <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.muted }}>
-                +{remainingChanges} more changed parameter{remainingChanges === 1 ? '' : 's'}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-type BudgetTermUnit = 'dBm' | 'dB' | 'dBi';
-
-function BudgetTerm({
-  dataTerm,
-  status,
-  symbol,
-  label,
-  value,
-  unit = 'dBm',
-  tone = 'default',
-}: {
-  dataTerm?: string;
-  status: FormulaEvidenceStatus;
-  symbol: ReactNode;
-  label: string;
-  value: number | null;
-  unit?: BudgetTermUnit;
-  tone?: 'default' | 'fixed';
-}) {
-  const hasValue = value !== null && Number.isFinite(value);
-  const formattedValue = hasValue
-    ? unit === 'dBi'
-      ? formatDbi(value)
-      : unit === 'dB'
-        ? formatDb(value)
-        : formatDbm(value)
-    : null;
-  const valueLabel = status === 'current'
-    ? formattedValue ?? '—'
-    : status === 'stale'
-      ? formattedValue ? `${formattedValue} stale` : 'stale waiting'
-      : 'waiting';
-  const stateLabel = status === 'current'
-    ? 'current'
-    : status === 'stale'
-      ? 'last-known stale'
-      : 'waiting';
-
-  return (
-    <div data-term={dataTerm} data-formula-evidence-status={status} style={{
-      display: 'grid',
-      gap: 4,
-      padding: '9px 10px',
-      borderRadius: UI_TOKENS.radius.md,
-      background: tone === 'fixed' ? 'rgba(255, 214, 125, 0.055)' : 'rgba(255,255,255,0.045)',
-      border: tone === 'fixed' ? '1px solid rgba(255, 214, 125, 0.14)' : '1px solid transparent',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0 }}>
-        <MathSymbol size={17}>{symbol}</MathSymbol>
-        <span style={{ fontSize: UI_TOKENS.type.size.small, color: UI_TOKENS.color.text.muted, textTransform: 'uppercase' }}>
-          {label}
-        </span>
-      </div>
-      <div style={{
-        fontSize: UI_TOKENS.type.size.metric,
-        color: status === 'current'
-          ? tone === 'fixed' ? UI_TOKENS.color.semantic.fixed : UI_TOKENS.color.text.primary
-          : UI_TOKENS.color.text.faint,
-        fontWeight: UI_TOKENS.type.weight.heavy,
-      }}>
-        {valueLabel}
-      </div>
-      <div style={{
-        width: 'fit-content',
-        padding: '2px 6px',
-        borderRadius: UI_TOKENS.radius.pill,
-        background: status === 'current' ? 'rgba(125, 226, 209, 0.1)' : 'rgba(255, 214, 125, 0.08)',
-        border: status === 'current' ? '1px solid rgba(125, 226, 209, 0.2)' : '1px solid rgba(255, 214, 125, 0.16)',
-        color: status === 'current' ? UI_TOKENS.color.semantic.tuningSoft : UI_TOKENS.color.semantic.fixed,
-        fontSize: UI_TOKENS.type.size.tiny,
-        fontWeight: UI_TOKENS.type.weight.heavy,
-        letterSpacing: 0.4,
-        textTransform: 'uppercase',
-      }}>
-        {stateLabel}
-      </div>
-    </div>
-  );
-}
-
 function CoverageAssumptionsDisclosure() {
   return (
     <details data-testid="sinr-coverage-assumptions-disclosure" data-demotion="collapsed" data-readonly="true" data-prominence="low" style={{
@@ -1097,9 +654,9 @@ function CoverageAssumptionsDisclosure() {
       gap: 8,
       padding: '9px 11px',
       borderRadius: UI_TOKENS.radius.lg,
-      background: 'rgba(255, 255, 255, 0.026)',
-      border: '1px solid rgba(255, 214, 125, 0.11)',
-      color: 'rgba(248, 234, 192, 0.78)',
+      background: 'rgba(117, 74, 10, 0.16)',
+      border: '1px solid rgba(247, 217, 123, 0.16)',
+      color: 'rgba(255, 230, 173, 0.78)',
       fontSize: UI_TOKENS.type.size.body,
       lineHeight: 1.5,
     }}>
@@ -1145,30 +702,47 @@ function NumericControl({
   testId,
   onChange,
 }: NumericControlProps) {
+  const formatRangeEndpoint = (endpoint: number) => (
+    formatValue ? formatValue(endpoint) : formatWithUnit(endpoint, unit)
+  );
+
   return (
     <div
       data-testid={testId}
       data-control-active={disabled ? 'false' : 'true'}
-      style={{ display: 'grid', gap: 12, opacity: disabled ? 0.58 : 1 }}
+      style={{
+        display: 'grid',
+        gap: 10,
+        opacity: disabled ? 0.58 : 1,
+        padding: '12px 13px',
+        borderRadius: UI_TOKENS.radius.lg,
+        background: UI_TOKENS.color.surface.card,
+        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+      }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'start' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 11, marginBottom: 5 }}>
             <MathSymbol>{symbol}</MathSymbol>
-            <span style={{ fontSize: UI_TOKENS.type.size.subheading, color: UI_TOKENS.color.text.controlLabel, lineHeight: 1.3, fontWeight: UI_TOKENS.type.weight.heavy }}>
+            <span
+              title={description}
+              style={{
+                fontSize: UI_TOKENS.type.size.bodyLg,
+                color: UI_TOKENS.color.text.controlLabel,
+                lineHeight: 1.3,
+                fontWeight: UI_TOKENS.type.weight.heavy,
+              }}
+            >
               {label}
             </span>
           </div>
-          <div style={{ fontSize: UI_TOKENS.type.size.body, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>
-            {description}
-          </div>
         </div>
         <div style={{
-          padding: '6px 9px',
+          padding: '6px 10px',
           borderRadius: UI_TOKENS.radius.md,
-          background: 'rgba(120, 228, 207, 0.1)',
+          background: `${accentColor}16`,
           border: `1px solid ${accentColor}33`,
-          color: UI_TOKENS.color.text.primary,
+          color: accentColor,
           fontSize: UI_TOKENS.type.size.bodyLg,
           fontWeight: UI_TOKENS.type.weight.heavy,
           whiteSpace: 'nowrap',
@@ -1176,20 +750,55 @@ function NumericControl({
           {formatValue ? formatValue(value) : formatWithUnit(value, unit)}
         </div>
       </div>
-      <input
-        className={UI_CLASSES.range}
-        type="range"
-        aria-label={`${label} (${unit})`}
-        disabled={disabled}
-        aria-disabled={disabled}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={event => onChange(Number(event.target.value))}
-        style={{ width: '100%', accentColor, cursor: disabled ? 'not-allowed' : 'pointer' }}
-      />
-      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.5, color: UI_TOKENS.color.semantic.tuningSoft }}>
+      <div style={{ display: 'grid', gap: 7 }}>
+        <div
+          data-testid={testId ? `${testId}-range-endpoints` : undefined}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 10,
+            color: UI_TOKENS.color.text.secondary,
+            fontSize: UI_TOKENS.type.size.caption,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+          }}
+        >
+          <span style={{
+            display: 'inline-flex',
+            padding: '4px 7px',
+            borderRadius: UI_TOKENS.radius.pill,
+            background: 'rgba(20, 135, 121, 0.08)',
+            border: '1px solid rgba(20, 135, 121, 0.2)',
+          }}>
+            Min {formatRangeEndpoint(min)}
+          </span>
+          <span style={{
+            display: 'inline-flex',
+            padding: '4px 7px',
+            borderRadius: UI_TOKENS.radius.pill,
+            background: 'rgba(20, 135, 121, 0.08)',
+            border: '1px solid rgba(20, 135, 121, 0.2)',
+          }}>
+            Max {formatRangeEndpoint(max)}
+          </span>
+        </div>
+        <input
+          className={UI_CLASSES.range}
+          type="range"
+          aria-label={`${label} (${unit})`}
+          disabled={disabled}
+          aria-disabled={disabled}
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={event => onChange(Number(event.target.value))}
+          style={{ width: '100%', accentColor, cursor: disabled ? 'not-allowed' : 'pointer' }}
+        />
+      </div>
+      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: UI_TOKENS.color.text.secondary }}>
+        {description}
+      </div>
+      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: UI_TOKENS.color.semantic.tuningSoft }}>
         {disabled && inactiveReason ? inactiveReason : effect}
       </div>
     </div>
@@ -1219,8 +828,8 @@ function LossControlSection({
         gap: 14,
         padding: '14px 15px',
         borderRadius: UI_TOKENS.radius.lg,
-        background: isResearch ? 'rgba(255, 214, 125, 0.055)' : 'rgba(120, 228, 207, 0.045)',
-        border: isResearch ? '1px solid rgba(255, 214, 125, 0.16)' : '1px solid rgba(120, 228, 207, 0.12)',
+        background: isResearch ? 'rgba(117, 74, 10, 0.2)' : 'rgba(21, 96, 88, 0.22)',
+        border: isResearch ? '1px solid rgba(247, 217, 123, 0.22)' : '1px solid rgba(118, 234, 215, 0.2)',
       }}
     >
       <div style={{ display: 'grid', gap: 5 }}>
@@ -1233,7 +842,7 @@ function LossControlSection({
         </div>
         <div style={{
           fontSize: UI_TOKENS.type.size.body,
-          color: isResearch ? 'rgba(248, 234, 192, 0.78)' : 'rgba(255,255,255,0.65)',
+          color: isResearch ? 'rgba(255, 230, 173, 0.78)' : UI_TOKENS.color.text.secondary,
           lineHeight: 1.5,
         }}>
           {subtitle}
@@ -1267,7 +876,7 @@ function SelectControl({
         <MathSymbol>{symbol}</MathSymbol>
         <span style={{ fontSize: UI_TOKENS.type.size.subheading, color: UI_TOKENS.color.text.controlLabel, fontWeight: UI_TOKENS.type.weight.heavy }}>{label}</span>
       </div>
-      <div style={{ fontSize: UI_TOKENS.type.size.body, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>
+      <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.secondary, lineHeight: 1.5 }}>
         {description}
       </div>
       <select
@@ -1324,10 +933,10 @@ function ToggleChip({
         textAlign: 'left',
         padding: '13px 14px',
         borderRadius: UI_TOKENS.radius.md,
-        border: active ? '1px solid rgba(120, 228, 207, 0.62)' : `1px solid ${UI_TOKENS.color.border.soft}`,
+        border: active ? '1px solid rgba(20, 135, 121, 0.44)' : `1px solid ${UI_TOKENS.color.border.soft}`,
         background: active
-          ? 'linear-gradient(180deg, rgba(31, 116, 100, 0.38), rgba(16, 67, 58, 0.2))'
-          : 'rgba(255,255,255,0.03)',
+          ? 'linear-gradient(180deg, rgba(42, 143, 129, 0.34), rgba(13, 52, 48, 0.24))'
+          : UI_TOKENS.color.surface.card,
         color: UI_TOKENS.color.text.primary,
         display: 'grid',
         gap: 7,
@@ -1335,13 +944,47 @@ function ToggleChip({
     >
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 9 }}>
         <MathSymbol size={21}>{symbol}</MathSymbol>
-        <span style={{ fontSize: UI_TOKENS.type.size.bodyLg, color: active ? '#e9fffb' : '#c6d2dc', fontWeight: UI_TOKENS.type.weight.heavy }}>{label}</span>
+        <span style={{ fontSize: UI_TOKENS.type.size.bodyLg, color: active ? UI_TOKENS.color.semantic.tuning : UI_TOKENS.color.text.controlLabel, fontWeight: UI_TOKENS.type.weight.heavy }}>{label}</span>
       </div>
-      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: active ? '#b8f6ea' : 'rgba(255,255,255,0.56)' }}>
+      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: active ? UI_TOKENS.color.text.secondary : UI_TOKENS.color.text.muted }}>
         {detail}
       </div>
     </button>
   );
+}
+
+function getFormulaTabAccent(tabKey: TuningTabKey): string {
+  switch (tabKey) {
+    case 'thermal-noise':
+      return UI_TOKENS.color.semantic.info;
+    case 'interference':
+      return '#ff8a6b';
+    case 'loss':
+      return '#58bff0';
+    case 'receiver-gain':
+      return UI_TOKENS.color.semantic.fixed;
+    case 'beam':
+      return '#6f7f21';
+    case 'signal-power':
+      return UI_TOKENS.color.semantic.tuning;
+  }
+}
+
+function getFormulaTabShortLabel(tabKey: TuningTabKey): string {
+  switch (tabKey) {
+    case 'signal-power':
+      return 'Power';
+    case 'loss':
+      return 'Loss';
+    case 'beam':
+      return 'Beam';
+    case 'receiver-gain':
+      return 'Receiver';
+    case 'interference':
+      return 'Interf.';
+    case 'thermal-noise':
+      return 'Noise';
+  }
 }
 
 function TuningPageTabs({
@@ -1359,11 +1002,11 @@ function TuningPageTabs({
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-        gap: 8,
+        gap: 6,
         padding: 4,
         borderRadius: UI_TOKENS.radius.lg,
-        background: 'rgba(255,255,255,0.04)',
-        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+        background: UI_TOKENS.color.surface.cardFaint,
+        border: `1px solid ${UI_TOKENS.color.border.soft}`,
       }}
     >
       {TUNING_PAGES.map(page => {
@@ -1377,32 +1020,26 @@ function TuningPageTabs({
             role="tab"
             aria-selected={active}
             aria-controls={`tuning-page-panel-${page.key}`}
+            title={page.subtitle}
             onClick={() => onChange(page.key)}
             style={{
               cursor: 'pointer',
-              minHeight: 68,
-              padding: '10px 12px',
+              minHeight: 40,
+              padding: '8px 10px',
               borderRadius: UI_TOKENS.radius.md,
-              border: active ? '1px solid rgba(120, 228, 207, 0.62)' : '1px solid transparent',
-              background: active ? 'rgba(120, 228, 207, 0.12)' : 'transparent',
+              border: active ? '1px solid rgba(118, 234, 215, 0.44)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
+              background: active ? 'rgba(118, 234, 215, 0.14)' : UI_TOKENS.color.surface.cardSubtle,
               color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
               display: 'grid',
-              gap: 5,
               textAlign: 'left',
+              alignItems: 'center',
             }}
           >
             <span style={{
-              fontSize: UI_TOKENS.type.size.bodyLg,
+              fontSize: UI_TOKENS.type.size.body,
               fontWeight: UI_TOKENS.type.weight.heavy,
             }}>
               {page.title}
-            </span>
-            <span style={{
-              fontSize: UI_TOKENS.type.size.body,
-              color: active ? UI_TOKENS.color.semantic.tuningSoft : UI_TOKENS.color.text.muted,
-              lineHeight: 1.35,
-            }}>
-              {page.subtitle}
             </span>
           </button>
         );
@@ -1411,13 +1048,17 @@ function TuningPageTabs({
   );
 }
 
+function getSignalDrawerState(uiMode: UiMode): SignalDrawerState {
+  if (uiMode === 'presentation') return 'collapsed';
+  return uiMode;
+}
+
 export function SignalTuningPanel({
   baseProfile,
   tuning,
   hasOverrides,
-  currentSinrDb,
+  uiMode,
   formulaBudget,
-  formulaSource,
   isFormulaEvidenceStale = false,
   initialActiveTab = 'signal-power',
   handoverDraft,
@@ -1432,9 +1073,8 @@ export function SignalTuningPanel({
 }: SignalTuningPanelProps) {
   const [activePage, setActivePage] = useState<TuningPageKey>('sinr-formula');
   const [activeTab, setActiveTab] = useState<TuningTabKey>(initialActiveTab);
+  const drawerState = getSignalDrawerState(uiMode);
   const activeTabConfig = getActiveTabConfig(activeTab);
-  const baseTuning = createSignalTuningState(baseProfile);
-  const changeSummaries = buildChangeSummaries(baseTuning, tuning);
   const isTr38811Formula = baseProfile.formulaFamily === 'hobs-tr38811';
   const atmosphericEnabled = tuning.pathLossComponents.includes('atmospheric');
   const scintillationEnabled = tuning.pathLossComponents.includes('scintillation');
@@ -1457,7 +1097,30 @@ export function SignalTuningPanel({
   };
 
   return (
-    <aside className="leo-signal-tuning-panel" style={panelStyle}>
+    <aside
+      className="leo-signal-tuning-panel"
+      data-drawer-state={drawerState}
+      aria-label="Signal tuning controls"
+      aria-expanded={drawerState !== 'collapsed'}
+      style={drawerState === 'collapsed' ? collapsedPanelStyle : panelStyle}
+    >
+      {drawerState === 'collapsed' && (
+        <div
+          className="leo-signal-tuning-handle"
+          data-testid="signal-tuning-drawer-handle"
+          aria-hidden="true"
+        >
+          <span className="leo-signal-tuning-handle-symbol">γ</span>
+          <span className="leo-signal-tuning-handle-rule" />
+          <span className="leo-signal-tuning-handle-symbol">K</span>
+        </div>
+      )}
+      <div
+        className="leo-signal-tuning-content"
+        data-testid="signal-tuning-drawer-content"
+        hidden={drawerState === 'collapsed'}
+        style={drawerState === 'collapsed' ? hiddenPagePanelStyle : drawerContentStyle}
+      >
       <TuningPageTabs activePage={activePage} onChange={setActivePage} />
 
       <section
@@ -1468,21 +1131,23 @@ export function SignalTuningPanel({
         hidden={activePage !== 'sinr-formula'}
         style={activePage === 'sinr-formula' ? pagePanelStyle : hiddenPagePanelStyle}
       >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'start' }}>
-        <div>
-          <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.semantic.tuning, letterSpacing: 1.1, textTransform: 'uppercase' }}>
-            SINR Formula Tuning
+      <div style={{
+        display: 'grid',
+        gap: 12,
+        padding: '14px 15px',
+        borderRadius: UI_TOKENS.radius.lg,
+        background: 'linear-gradient(180deg, rgba(9, 42, 49, 0.84), rgba(5, 16, 26, 0.74))',
+        border: '1px solid rgba(118, 234, 215, 0.2)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'start' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.semantic.tuning, letterSpacing: 1.1, textTransform: 'uppercase', fontWeight: UI_TOKENS.type.weight.heavy }}>
+              SINR Formula Tuning
+            </div>
+            <div style={{ marginTop: 7, ...formulaTextStyle, fontSize: 23 }}>
+              γ = <span style={{ color: UI_TOKENS.color.semantic.tuning }}>(P<sub>t</sub> · H · G<sup>T</sup> · G<sup>R</sup>)</span> / <span style={{ color: UI_TOKENS.color.semantic.info }}>(I<sup>a</sup> + I<sup>b</sup> + σ²)</span>
+            </div>
           </div>
-          <div style={{ marginTop: 7, ...formulaTextStyle }}>
-            γ = (P<sub>t</sub> · H · G<sup>T</sup> · G<sup>R</sup>) / (I<sup>a</sup> + I<sup>b</sup> + σ²)
-          </div>
-          <div style={{ marginTop: 7, fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.semantic.fixed, fontWeight: UI_TOKENS.type.weight.heavy }}>
-            G<sup>R</sup> = {formatDbi(tuning.ueAntennaMaxGainDbi)} · receiver gain
-          </div>
-          <div style={{ marginTop: 7, fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.secondary, lineHeight: 1.5 }}>
-            {getProfileLabel(baseProfile)} · {getFormulaFamilyLabel(baseProfile.formulaFamily)}
-          </div>
-        </div>
         <button
           className={UI_CLASSES.button}
           type="button"
@@ -1492,9 +1157,9 @@ export function SignalTuningPanel({
             cursor: hasOverrides ? 'pointer' : 'default',
             padding: '8px 10px',
             borderRadius: UI_TOKENS.radius.md,
-            border: hasOverrides ? '1px solid rgba(125, 226, 209, 0.44)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
-            background: hasOverrides ? 'rgba(14, 55, 48, 0.78)' : 'rgba(255,255,255,0.04)',
-            color: hasOverrides ? '#dffef7' : 'rgba(255,255,255,0.35)',
+            border: hasOverrides ? '1px solid rgba(20, 135, 121, 0.38)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
+            background: hasOverrides ? 'rgba(118, 234, 215, 0.16)' : UI_TOKENS.color.surface.cardFaint,
+            color: hasOverrides ? UI_TOKENS.color.semantic.tuning : UI_TOKENS.color.text.faint,
             fontSize: UI_TOKENS.type.size.body,
             fontWeight: UI_TOKENS.type.weight.strong,
           }}
@@ -1502,59 +1167,101 @@ export function SignalTuningPanel({
           Reset
         </button>
       </div>
-
-      <LiveCheck
-        currentSinrDb={currentSinrDb}
-        formulaBudget={formulaBudget}
-        formulaSource={formulaSource}
-        isFormulaEvidenceStale={isFormulaEvidenceStale}
-        receiverGainDbi={tuning.ueAntennaMaxGainDbi}
-        changes={changeSummaries}
-      />
-
-      <SinrFormulaMap receiverGainDbi={tuning.ueAntennaMaxGainDbi} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          <div style={{
+            padding: '8px 10px',
+            borderRadius: UI_TOKENS.radius.md,
+            background: 'rgba(118, 234, 215, 0.12)',
+            border: '1px solid rgba(118, 234, 215, 0.18)',
+          }}>
+            <div style={{ fontSize: UI_TOKENS.type.size.tiny, color: UI_TOKENS.color.semantic.tuning, fontWeight: UI_TOKENS.type.weight.heavy, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+              Signal side
+            </div>
+            <div style={{ marginTop: 3, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.caption, lineHeight: 1.3 }}>
+              P<sub>t</sub>, H, G<sup>T</sup>, G<sup>R</sup>
+            </div>
+          </div>
+          <div style={{
+            padding: '8px 10px',
+            borderRadius: UI_TOKENS.radius.md,
+            background: 'rgba(123, 167, 255, 0.12)',
+            border: '1px solid rgba(123, 167, 255, 0.18)',
+          }}>
+            <div style={{ fontSize: UI_TOKENS.type.size.tiny, color: UI_TOKENS.color.semantic.info, fontWeight: UI_TOKENS.type.weight.heavy, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+              Noise side
+            </div>
+            <div style={{ marginTop: 3, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.caption, lineHeight: 1.3 }}>
+              I<sup>a</sup>, I<sup>b</sup>, σ²
+            </div>
+          </div>
+        </div>
+        <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.text.secondary, lineHeight: 1.35 }}>
+          {getProfileLabel(baseProfile)} · {getFormulaFamilyLabel(baseProfile.formulaFamily)} · G<sup>R</sup> {formatDbi(tuning.ueAntennaMaxGainDbi)}
+        </div>
+      </div>
 
       <div
         data-testid="sinr-formula-tabs"
         role="tablist"
         aria-label="SINR parameter groups"
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(108px, 1fr))',
-          gap: 8,
+          overflowX: 'auto',
+          scrollbarGutter: 'stable',
+          paddingBottom: 2,
         }}
       >
-        {TUNING_TABS.map(tab => {
-          const active = tab.key === activeTab;
-          return (
-            <button
-              className={`${UI_CLASSES.button} ${UI_CLASSES.tab}`}
-              key={tab.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              title={tab.subtitle}
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                cursor: 'pointer',
-                minHeight: 94,
-                padding: '10px 9px',
-                borderRadius: UI_TOKENS.radius.md,
-                border: active ? '1px solid rgba(120, 228, 207, 0.7)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
-                background: active ? 'rgba(120, 228, 207, 0.13)' : 'rgba(255,255,255,0.035)',
-                color: active ? '#f8fffd' : 'rgba(255,255,255,0.66)',
-                display: 'grid',
-                gap: 5,
-                alignContent: 'center',
-              }}
-            >
-              <span style={{ ...formulaTextStyle, fontSize: 20, color: active ? '#f8fffd' : 'rgba(255,255,255,0.76)' }}>
-                {tab.symbol}
-              </span>
-              <span style={{ fontSize: UI_TOKENS.type.size.body, fontWeight: UI_TOKENS.type.weight.heavy }}>{tab.title}</span>
-            </button>
-          );
-        })}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(6, minmax(64px, 1fr))',
+          gap: 6,
+          minWidth: 420,
+        }}>
+          {TUNING_TABS.map(tab => {
+            const active = tab.key === activeTab;
+            const accent = getFormulaTabAccent(tab.key);
+            return (
+              <button
+                className={`${UI_CLASSES.button} ${UI_CLASSES.tab}`}
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                title={tab.subtitle}
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  cursor: 'pointer',
+                  minHeight: 46,
+                  padding: '6px 6px',
+                  borderRadius: UI_TOKENS.radius.md,
+                  border: active ? `1px solid ${accent}` : `1px solid ${UI_TOKENS.color.border.subtle}`,
+                  background: active ? `linear-gradient(180deg, ${accent}24, rgba(6, 18, 28, 0.84))` : UI_TOKENS.color.surface.card,
+                  color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
+                  boxShadow: active ? `inset 0 -3px 0 ${accent}, 0 8px 18px rgba(0, 0, 0, 0.18)` : 'inset 0 -2px 0 rgba(218, 244, 255, 0.06)',
+                  display: 'grid',
+                  gap: 2,
+                  alignContent: 'center',
+                  justifyItems: 'center',
+                  textAlign: 'center',
+                  transition: 'background 140ms ease, border-color 140ms ease, color 140ms ease',
+                }}
+              >
+                <span style={{ ...formulaTextStyle, fontSize: 17, color: accent }}>
+                  {tab.symbol}
+                </span>
+                <span style={{
+                  fontSize: UI_TOKENS.type.size.caption,
+                  fontWeight: UI_TOKENS.type.weight.heavy,
+                  lineHeight: 1.15,
+                }}>
+                  {getFormulaTabShortLabel(tab.key)}
+                  {getFormulaTabShortLabel(tab.key) !== tab.title && (
+                    <span style={srOnlyStyle}> {tab.title}</span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <FormulaContext tab={activeTabConfig} />
@@ -1684,7 +1391,7 @@ export function SignalTuningPanel({
                   Path-loss components
                 </span>
               </div>
-              <div style={{ fontSize: UI_TOKENS.type.size.body, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.secondary, lineHeight: 1.5 }}>
                 Toggle individual terms in the link-budget loss sum.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 9 }}>
@@ -1782,7 +1489,7 @@ export function SignalTuningPanel({
                 borderRadius: UI_TOKENS.radius.md,
                 background: 'rgba(255, 255, 255, 0.035)',
                 border: '1px solid rgba(255, 214, 125, 0.12)',
-                color: 'rgba(248, 234, 192, 0.78)',
+                color: 'rgba(255, 230, 173, 0.78)',
                 fontSize: UI_TOKENS.type.size.body,
                 lineHeight: 1.45,
               }}>
@@ -1881,7 +1588,7 @@ export function SignalTuningPanel({
             borderRadius: UI_TOKENS.radius.lg,
             background: 'rgba(255, 214, 125, 0.07)',
             border: '1px solid rgba(255, 214, 125, 0.16)',
-            color: '#f6e9b8',
+            color: 'rgba(255, 230, 173, 0.82)',
             fontSize: UI_TOKENS.type.size.body,
             lineHeight: 1.5,
           }}>
@@ -1892,6 +1599,33 @@ export function SignalTuningPanel({
       )}
 
       <CoverageAssumptionsDisclosure />
+
+      <details
+        data-testid="sinr-formula-map-disclosure"
+        style={{
+          display: 'grid',
+          gap: 10,
+          padding: '10px 11px',
+          borderRadius: UI_TOKENS.radius.lg,
+          background: 'rgba(255, 255, 255, 0.03)',
+          border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+          color: UI_TOKENS.color.text.secondary,
+        }}
+      >
+        <summary style={{
+          cursor: 'pointer',
+          color: UI_TOKENS.color.semantic.tuningSoft,
+          fontSize: UI_TOKENS.type.size.body,
+          fontWeight: UI_TOKENS.type.weight.heavy,
+          letterSpacing: 0.5,
+          textTransform: 'uppercase',
+        }}>
+          Formula term map
+        </summary>
+        <div style={{ paddingTop: 10 }}>
+          <SinrFormulaMap receiverGainDbi={tuning.ueAntennaMaxGainDbi} />
+        </div>
+      </details>
 
       <div style={dividerStyle} />
       </section>
@@ -1914,6 +1648,7 @@ export function SignalTuningPanel({
           onReset={onResetHandoverPolicy}
         />
       </section>
+      </div>
     </aside>
   );
 }

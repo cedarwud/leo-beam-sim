@@ -14,7 +14,8 @@ import {
   type PathLossComponent,
   type Profile,
 } from '../src/profiles/types.ts';
-import type { LinkBudgetTerms, SignalSourceState } from '../src/scene/types.ts';
+import { createInitialSimState } from '../src/scene/initialSimState.ts';
+import type { LinkBudgetTerms, SignalSourceState, SimState } from '../src/scene/types.ts';
 import {
   applySignalTuning,
   createSignalTuningState,
@@ -22,6 +23,7 @@ import {
   getSignalTuningResetKey,
   hasSignalTuningOverrides,
 } from '../src/signalTuning.ts';
+import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const EPSILON_DB = 1e-9;
@@ -344,6 +346,26 @@ function createFormulaSource(): SignalSourceState {
   };
 }
 
+function createInfoState(profile: Profile): SimState {
+  const source = createFormulaSource();
+  const budget = createBudgetTerms();
+  const base = createInitialSimState(profile);
+
+  return {
+    ...base,
+    physicalServing: source,
+    panelPrimary: { ...source, role: 'serving' },
+    servingSatId: source.satId,
+    servingBeamId: source.beamId,
+    servingElevationDeg: source.elevationDeg,
+    servingRangeKm: source.rangeKm,
+    sinrDb: source.sinrDb ?? -Infinity,
+    physicalServingBudget: budget,
+    servingBudget: budget,
+    servingBeamActiveThisSlot: true,
+  };
+}
+
 function renderLossPanelMarkup(profile: Profile, tuning = createSignalTuningState(profile)): string {
   return renderToStaticMarkup(
     <SignalTuningPanel
@@ -441,7 +463,7 @@ function assertPlacementCopyAndStaleMarkup(): void {
   assertNotContains(tuningSource, 'beamPowerControl');
 
   const profile = loadProfile('hobs-2024-paper-default');
-  const staleMarkup = renderToStaticMarkup(
+  const staleTuningMarkup = renderToStaticMarkup(
     <SignalTuningPanel
       baseProfile={profile}
       tuning={createSignalTuningState(profile)}
@@ -461,15 +483,27 @@ function assertPlacementCopyAndStaleMarkup(): void {
       onResetHandoverPolicy={() => {}}
     />,
   );
-  const staleText = decodeHtmlText(staleMarkup);
-  assertContains(staleMarkup, 'data-formula-evidence-status="stale"');
-  assertContains(staleText, 'stale after edit; waiting for next recomputed frame');
-  assertContains(staleText, 'Formula evidence is stale after a runtime edit');
-  assertContains(staleMarkup, 'data-testid="formula-term-evidence"');
-  assertContains(staleMarkup, 'data-testid="formula-term-grid"');
-  assertContains(staleMarkup, 'data-term="signalDbm"');
-  assertContains(staleMarkup, 'data-term="denominator"');
-  assertContains(staleText, 'last-known stale');
+  const staleTuningText = decodeHtmlText(staleTuningMarkup);
+  assertContains(staleTuningText, 'SINR Formula Tuning');
+  assertNotContains(staleTuningMarkup, 'data-testid="formula-term-evidence"');
+
+  const staleInfoMarkup = renderToStaticMarkup(
+    <InfoPanel
+      {...createInfoState(profile)}
+      uiMode="tuning"
+      profile={profile}
+      isFormulaEvidenceStale
+    />,
+  );
+  const staleInfoText = decodeHtmlText(staleInfoMarkup);
+  assertContains(staleInfoMarkup, 'data-formula-evidence-status="stale"');
+  assertContains(staleInfoText, 'stale after edit; waiting for next recomputed frame');
+  assertContains(staleInfoText, 'Formula evidence is stale after a runtime edit');
+  assertContains(staleInfoMarkup, 'data-testid="formula-term-evidence"');
+  assertContains(staleInfoMarkup, 'data-testid="formula-term-grid"');
+  assertContains(staleInfoMarkup, 'data-term="signalDbm"');
+  assertContains(staleInfoMarkup, 'data-term="denominator"');
+  assertContains(staleInfoText, '-91.0 dBm stale');
 }
 
 function assertResetAndRuntimeBoundaries(): void {

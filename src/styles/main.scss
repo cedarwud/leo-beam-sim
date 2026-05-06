@@ -29,6 +29,135 @@ canvas {
   outline: none;
 }
 
+.leo-app-shell {
+  --leo-left-drawer-width: 520px;
+
+  width: 100vw;
+  height: 100vh;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  overflow: hidden;
+  background: #020912;
+}
+
+.leo-app-shell[data-ui-mode="presentation"] {
+  --leo-left-drawer-width: 28px;
+}
+
+.leo-app-shell[data-ui-mode="diagnostics"] {
+  --leo-left-drawer-width: 360px;
+}
+
+.leo-shell-row {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-areas: "left canvas right";
+  grid-template-columns:
+    minmax(28px, var(--leo-left-drawer-width))
+    minmax(280px, 1fr)
+    460px;
+  gap: 12px;
+}
+
+.leo-shell-left,
+.leo-shell-canvas,
+.leo-shell-right {
+  min-width: 0;
+  min-height: 0;
+  pointer-events: auto;
+}
+
+.leo-shell-left {
+  grid-area: left;
+  display: flex;
+  overflow: hidden;
+}
+
+.leo-shell-canvas {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+}
+
+.leo-shell-right {
+  grid-area: right;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.leo-main-scene,
+.leo-shell-canvas canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.leo-shell-left > .leo-signal-tuning-panel,
+.leo-shell-right > .leo-info-panel,
+.leo-shell-right > .leo-diagnostics-drawer[data-drawer-state="expanded"] {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+.leo-app-shell[data-ui-mode="diagnostics"] .leo-shell-right {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 10px;
+}
+
+.leo-diagnostics-drawer {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.leo-shell-left > .leo-signal-tuning-panel[data-drawer-state="collapsed"] {
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  padding: 0 !important;
+}
+
+.leo-signal-tuning-content {
+  min-width: 0;
+  width: 100%;
+}
+
+.leo-signal-tuning-handle {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(118, 234, 215, 0.16), rgba(6, 18, 28, 0.84)),
+    rgba(5, 16, 26, 0.9);
+  color: #baf8ef;
+  user-select: none;
+}
+
+.leo-signal-tuning-handle-symbol {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.leo-signal-tuning-handle-rule {
+  width: 1px;
+  min-height: 42px;
+  background: linear-gradient(180deg, transparent, rgba(186, 248, 239, 0.72), transparent);
+}
+
 .leo-ui-button,
 .leo-ui-select,
 .leo-ui-range,
@@ -51,6 +180,7 @@ canvas {
 .leo-info-panel {
   max-height: calc(100vh - 24px);
   overflow-y: auto;
+  container-type: inline-size;
 }
 
 .leo-info-panel,
@@ -59,49 +189,153 @@ canvas {
   overscroll-behavior: contain;
 }
 
-@media (max-width: 900px) {
+.leo-duel-card {
+  container-type: inline-size;
+}
+
+.leo-duel-card-body {
+  grid-template-areas:
+    "serving"
+    "decision"
+    "comparison";
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.leo-duel-card-body > [data-duel-block="serving"] {
+  grid-area: serving;
+}
+
+.leo-duel-card-body > [data-duel-block="decision"] {
+  grid-area: decision;
+}
+
+.leo-duel-card-body > [data-duel-block="comparison"] {
+  grid-area: comparison;
+}
+
+.leo-duel-decision-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.leo-duel-trigger-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+@container (min-width: 380px) {
+  .leo-duel-card-body {
+    grid-template-areas:
+      "serving comparison"
+      "decision decision";
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+
+@container (min-width: 680px) {
+  .leo-duel-card-body {
+    grid-template-areas: "serving decision comparison";
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 0.64fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .leo-duel-decision-strip {
+    align-content: center !important;
+    padding: 10px 8px !important;
+  }
+
+  .leo-duel-decision-metrics {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .leo-duel-trigger-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .leo-shell-row {
+    grid-template-areas:
+      "canvas canvas"
+      "left right";
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(300px, 1fr) minmax(260px, 0.78fr);
+  }
+
   .leo-control-bar {
-    left: 12px !important;
-    right: 12px !important;
-    max-width: calc(100vw - 24px) !important;
+    width: 100% !important;
+    max-width: 100% !important;
     max-height: 84px !important;
     overflow-y: auto !important;
   }
 
   .leo-signal-tuning-panel {
-    top: 112px !important;
-    right: auto !important;
-    width: calc(100vw - 24px) !important;
-    height: 44vh !important;
+    width: 100% !important;
+    height: 100% !important;
     max-height: none !important;
     padding: 16px !important;
   }
 
   .leo-info-panel {
-    top: auto !important;
-    right: auto !important;
-    bottom: 12px !important;
-    left: 12px !important;
-    width: calc(100vw - 24px) !important;
-    height: 34vh !important;
+    width: 100% !important;
+    height: 100% !important;
     max-height: none !important;
     overflow-y: auto !important;
     padding: 12px 14px !important;
     font-size: 16px !important;
   }
+
+  .leo-app-shell[data-ui-mode="diagnostics"] .leo-shell-right {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 0.9fr);
+  }
+
+  .leo-diagnostics-drawer[data-drawer-state="expanded"] {
+    padding: 12px !important;
+  }
 }
 
 @media (max-width: 520px) {
+  .leo-app-shell {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .leo-shell-row {
+    grid-template-areas:
+      "canvas"
+      "left"
+      "right";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(250px, 1fr) minmax(180px, 0.58fr) minmax(170px, 0.54fr);
+    gap: 10px;
+  }
+
+  .leo-duel-decision-metrics,
+  .leo-duel-trigger-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .leo-control-bar {
     gap: 8px !important;
     padding: 8px 10px !important;
+    max-height: 98px !important;
   }
 
   .leo-signal-tuning-panel {
-    height: 43vh !important;
+    height: 100% !important;
   }
 
   .leo-info-panel {
-    height: 33vh !important;
+    height: 100% !important;
+  }
+
+  .leo-app-shell[data-ui-mode="diagnostics"] .leo-shell-right {
+    grid-template-rows: minmax(0, 0.78fr) minmax(0, 1fr);
   }
 }

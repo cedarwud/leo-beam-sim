@@ -212,53 +212,57 @@ function run(): void {
   assertContains(infoMarkup, 'data-testid="info-panel-primary-sinr-status"');
   assertContains(infoMarkup, 'data-testid="info-panel-comparison-sinr-status"');
   assertContains(infoMarkup, 'data-ownership="operational-sinr-status"');
+  assertContains(infoMarkup, 'data-testid="formula-result-readout"');
+  assertContains(infoMarkup, 'data-testid="formula-term-evidence"');
+  assertContains(infoMarkup, 'data-ownership="formula-verification"');
   assertContains(infoText, 'ACTIVE SERVING');
   assertContains(infoText, 'BEST CANDIDATE');
   assertContains(infoText, '13.4 dB');
   assertContains(infoText, '11.1 dB');
+  assertContains(infoText, 'SINR Formula Terms');
+  assertContains(infoText, 'γ result');
+  assertContains(infoText, 'numerator / signalDbm');
+  assertContains(infoText, 'intra interference');
+  assertContains(infoText, 'inter interference');
+  assertContains(infoText, 'noise σ² / noiseDbm');
+  assertContains(infoText, 'transmit gain pattern');
+  assertContains(infoText, 'receiver gain');
+  assertContains(infoText, 'path loss');
+  assertContains(infoText, 'effective transmit power');
+  assertContains(infoMarkup, 'data-term="signalDbm"');
+  assertContains(infoMarkup, 'data-term="transmitGain"');
+  assertContains(infoMarkup, 'data-term="receiverGain"');
+  assertContains(infoMarkup, 'data-term="pathLoss"');
+  assertContains(infoMarkup, 'data-term="intraInterference"');
+  assertContains(infoMarkup, 'data-term="interInterference"');
+  assertContains(infoMarkup, 'data-term="noiseDbm"');
 
   const { markup: tuningMarkup, text: tuningText } = renderTuningPanel(profile, operationalState);
-  assertContains(tuningMarkup, 'data-testid="formula-result-readout"');
-  assertContains(tuningMarkup, 'data-ownership="formula-verification"');
-  assertContains(tuningMarkup, 'data-visual-weight="secondary"');
-  assertContains(tuningMarkup, 'data-testid="formula-term-evidence"');
-  assertContains(tuningMarkup, 'data-visual-weight="primary"');
-  assertContains(tuningText, 'Formula Verification');
-  assertContains(tuningText, 'selected source formula result');
-  assertContains(tuningText, 'Formula term evidence');
-  assertContains(tuningText, 'numerator / signalDbm');
-  assertContains(tuningText, 'intra interference');
-  assertContains(tuningText, 'inter interference');
-  assertContains(tuningText, 'noise σ² / noiseDbm');
-  assertContains(tuningText, 'transmit gain pattern');
-  assertContains(tuningText, 'receiver gain');
-  assertContains(tuningText, 'path loss');
-  assertContains(tuningText, 'effective transmit power');
-  assertContains(tuningText, 'Overrides feeding computeLinkBudget');
-  assertContains(tuningMarkup, 'data-term="signalDbm"');
-  assertContains(tuningMarkup, 'data-term="transmitGain"');
-  assertContains(tuningMarkup, 'data-term="receiverGain"');
-  assertContains(tuningMarkup, 'data-term="pathLoss"');
-  assertContains(tuningMarkup, 'data-term="intraInterference"');
-  assertContains(tuningMarkup, 'data-term="interInterference"');
-  assertContains(tuningMarkup, 'data-term="noiseDbm"');
+  assertContains(tuningMarkup, 'data-testid="sinr-formula-tabs"');
+  assertContains(tuningText, 'SINR Formula Tuning');
+  assertContains(tuningText, 'Per-beam transmit power');
+  assertNotContains(tuningMarkup, 'data-testid="formula-result-readout"');
+  assertNotContains(tuningMarkup, 'data-testid="formula-term-evidence"');
   assertNotContains(tuningText, 'ACTIVE SERVING');
   assertNotContains(tuningText, 'BEST CANDIDATE');
   assertNotContains(tuningText, 'PENDING TARGET');
 
   const recentHoState = createRecentHoState(profile);
-  const recentInfoText = decodeHtmlText(renderToStaticMarkup(
+  const recentInfoMarkup = renderToStaticMarkup(
     <InfoPanel {...recentHoState} uiMode="tuning" profile={profile} />,
-  ));
+  );
+  const recentInfoText = decodeHtmlText(recentInfoMarkup);
   const recentTuningText = renderTuningPanel(profile, recentHoState).text;
   const physicalServingLabel = formatSatelliteLabel(SERVING_SAT_ID);
   const hoSourceLabel = formatSatelliteLabel(RECENT_SOURCE_SAT_ID);
 
   assertContains(recentInfoText, 'HO SOURCE');
   assertContains(recentInfoText, hoSourceLabel);
-  assertContains(recentTuningText, physicalServingLabel);
-  assertContains(recentTuningText, 'physical serving source');
+  assertContains(recentInfoText, physicalServingLabel);
+  assertContains(recentInfoText, 'physical serving source');
+  assertContains(recentInfoMarkup, 'data-testid="formula-term-evidence"');
   assertNotContains(recentTuningText, hoSourceLabel);
+  assertNotContains(recentTuningText, physicalServingLabel);
   assertNotContains(recentTuningText, 'HO SOURCE');
   assertNotContains(recentTuningText, 'ACTIVE SERVING');
 
@@ -269,16 +273,15 @@ function run(): void {
       rightPanel: [
         'Tuning-mode InfoPanel owns operational serving SINR status',
         'Tuning-mode InfoPanel owns operational candidate SINR status',
+        'Tuning-mode InfoPanel owns physical serving formula result and formula term evidence',
       ],
       leftPanel: [
-        'SignalTuningPanel labels SINR as selected source formula result',
-        'formula terms have primary visual-weight marker',
-        'final formula result has secondary visual-weight marker',
-        'active runtime overrides are shown as computeLinkBudget inputs',
+        'SignalTuningPanel keeps editable SINR formula tabs and controls',
+        'SignalTuningPanel no longer repeats operational serving/candidate or formula result readouts',
       ],
       recentHo: [
         'right panel may show recent HO source',
-        'left formula source remains physicalServing and does not call HO source active serving',
+        'right formula terms remain tied to physicalServing and do not depend on the recent-HO source card',
       ],
     },
   }, null, 2));

@@ -103,8 +103,8 @@ const sectionStyle: CSSProperties = {
   gap: UI_TOKENS.space.panel,
   padding: '16px',
   borderRadius: UI_TOKENS.radius.lg,
-  background: 'rgba(255, 176, 0, 0.055)',
-  border: '1px solid rgba(255, 210, 100, 0.18)',
+  background: 'linear-gradient(180deg, rgba(117, 74, 10, 0.22), rgba(24, 18, 8, 0.18))',
+  border: '1px solid rgba(255, 210, 100, 0.2)',
 };
 
 function formatPolicyValue(value: number, unit: string): string {
@@ -133,7 +133,7 @@ function PolicyNumericControl({
         gap: 10,
         padding: '13px 14px',
         borderRadius: UI_TOKENS.radius.md,
-        background: 'rgba(255,255,255,0.035)',
+        background: UI_TOKENS.color.surface.card,
         border: hasDraftChange ? '1px solid rgba(255, 210, 100, 0.36)' : `1px solid ${UI_TOKENS.color.border.soft}`,
       }}
     >
@@ -154,7 +154,7 @@ function PolicyNumericControl({
         <div style={{
           padding: '6px 9px',
           borderRadius: UI_TOKENS.radius.md,
-          background: hasDraftChange ? 'rgba(255, 210, 100, 0.14)' : 'rgba(255,255,255,0.07)',
+          background: hasDraftChange ? 'rgba(255, 210, 100, 0.16)' : UI_TOKENS.color.surface.cardSubtle,
           border: hasDraftChange ? '1px solid rgba(255, 210, 100, 0.34)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
           color: UI_TOKENS.color.text.primary,
           fontSize: UI_TOKENS.type.size.bodyLg,
@@ -175,7 +175,7 @@ function PolicyNumericControl({
         onChange={event => onChange(Number(event.target.value))}
         style={{ width: '100%', accentColor: UI_TOKENS.color.semantic.candidate.accent }}
       />
-      <div style={{ fontSize: UI_TOKENS.type.size.body, color: '#f4ddb0', lineHeight: 1.45 }}>
+      <div style={{ fontSize: UI_TOKENS.type.size.body, color: 'rgba(255, 230, 173, 0.82)', lineHeight: 1.45 }}>
         {config.effect}
       </div>
       {hasDraftChange && (
@@ -260,8 +260,8 @@ export function HandoverPolicyControls({
             padding: '10px 12px',
             borderRadius: UI_TOKENS.radius.md,
             border: hasDraftChanges ? '1px solid rgba(255, 210, 100, 0.5)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
-            background: hasDraftChanges ? 'rgba(116, 78, 10, 0.76)' : 'rgba(255,255,255,0.04)',
-            color: hasDraftChanges ? '#fff4d0' : 'rgba(255,255,255,0.38)',
+            background: hasDraftChanges ? 'rgba(116, 78, 10, 0.72)' : UI_TOKENS.color.surface.cardFaint,
+            color: hasDraftChanges ? '#fff2cf' : UI_TOKENS.color.text.faint,
             fontSize: UI_TOKENS.type.size.body,
             fontWeight: UI_TOKENS.type.weight.heavy,
           }}
@@ -277,9 +277,9 @@ export function HandoverPolicyControls({
             cursor: hasOverrides ? 'pointer' : 'default',
             padding: '10px 12px',
             borderRadius: UI_TOKENS.radius.md,
-            border: hasOverrides ? '1px solid rgba(255,255,255,0.24)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
-            background: hasOverrides ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-            color: hasOverrides ? UI_TOKENS.color.text.primary : 'rgba(255,255,255,0.38)',
+            border: hasOverrides ? `1px solid ${UI_TOKENS.color.border.soft}` : `1px solid ${UI_TOKENS.color.border.subtle}`,
+            background: hasOverrides ? UI_TOKENS.color.surface.card : UI_TOKENS.color.surface.cardFaint,
+            color: hasOverrides ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.faint,
             fontSize: UI_TOKENS.type.size.body,
             fontWeight: UI_TOKENS.type.weight.strong,
           }}

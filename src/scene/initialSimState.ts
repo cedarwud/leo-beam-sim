@@ -21,6 +21,7 @@ export function createInitialSimState(profile: Profile): SimState {
   return {
     profileId: profile.id,
     formulaFamilyLabel: getFormulaFamilyLabel(profile.formulaFamily),
+    satelliteVisualIdentityById: {},
     physicalServing: emptyPhysicalServing,
     panelPrimary: { ...emptyPanelPrimary, role: 'none' },
     panelComparison: { ...emptyPanelComparison, role: 'none' },

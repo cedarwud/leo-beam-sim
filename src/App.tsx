@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MainScene } from './scene/MainScene';
 import {
   getProfileLabel,
@@ -6,9 +6,17 @@ import {
   profileList,
 } from './profiles';
 import type { Profile } from './profiles/types';
-import type { PresentationMode, RuntimeConfig, SimState } from './scene/types';
+import type { BeamDensity, CameraPreset, CinematicMode, PresentationMode, RuntimeConfig, SimState } from './scene/types';
 import { createInitialSimState } from './scene/initialSimState';
 import { recommendDemoReplayStartOffsetSec } from './scene/replay-recommendation';
+import {
+  deriveRuntimeVisualSettings,
+  readPrefersReducedMotion,
+  readRuntimeViewport,
+  resolveRuntimeCinematicMode,
+  subscribeToReducedMotionPreference,
+  subscribeToRuntimeViewport,
+} from './scene/runtimeConfig';
 import {
   applyHandoverPolicyTuning,
   createHandoverPolicyTuningState,
@@ -26,6 +34,7 @@ import {
   type SignalTuningState,
 } from './signalTuning';
 import { ControlBar } from './ui/ControlBar';
+import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
 import { InfoPanel } from './ui/InfoPanel';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
@@ -55,6 +64,12 @@ export function App() {
   const [autoSlowEnabled, setAutoSlowEnabled] = useState(true);
   const [autoSlowDismissed, setAutoSlowDismissed] = useState(false);
   const [uiMode, setUiMode] = useState<UiMode>(() => readPersistedUiMode());
+  const [cinematicMode, setCinematicMode] = useState<CinematicMode>('off');
+  const [beamDensityOverride, setBeamDensityOverride] = useState<BeamDensity | null>(null);
+  const [cameraCommand, setCameraCommand] = useState<RuntimeConfig['cameraCommand']>();
+  const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
+  const [viewport, setViewport] = useState(() => readRuntimeViewport());
+  const cameraCommandSequenceRef = useRef(0);
   const baseProfile = useMemo(() => loadProfile(selectedProfileId), [selectedProfileId]);
   const [signalTuning, setSignalTuning] = useState<SignalTuningState>(() => createSignalTuningState(baseProfile));
   const [handoverPolicyState, setHandoverPolicyState] = useState<HandoverPolicyRuntimeState>(() => {
@@ -128,6 +143,14 @@ export function App() {
     [baseProfile],
   );
 
+  const runtimeVisualSettings = useMemo(
+    () => deriveRuntimeVisualSettings(uiMode, reducedMotion),
+    [reducedMotion, uiMode],
+  );
+  const effectiveCinematicMode = useMemo(
+    () => resolveRuntimeCinematicMode(uiMode, cinematicMode),
+    [cinematicMode, uiMode],
+  );
   const runtime = useMemo((): RuntimeConfig => ({
     presentationMode: resolvePresentationMode(effectiveProfile),
     replay: {
@@ -137,7 +160,22 @@ export function App() {
     },
     signalResetKey,
     handoverResetKey,
-  }), [demoStartOffset, effectiveProfile, handoverResetKey, signalResetKey]);
+    ...runtimeVisualSettings,
+    beamDensity: beamDensityOverride ?? runtimeVisualSettings.beamDensity,
+    cinematicMode: effectiveCinematicMode,
+    cameraCommand,
+    viewport,
+  }), [
+    beamDensityOverride,
+    cameraCommand,
+    demoStartOffset,
+    effectiveProfile,
+    effectiveCinematicMode,
+    handoverResetKey,
+    runtimeVisualSettings,
+    signalResetKey,
+    viewport,
+  ]);
 
   const [simState, setSimState] = useState<SimState>(() => createInitialSimState(baseProfile));
   const [staleFormulaEvidenceKey, setStaleFormulaEvidenceKey] = useState<string | null>(null);
@@ -145,7 +183,7 @@ export function App() {
   const handleSimUpdate = useCallback((state: SimState) => {
     setSimState(state);
     setStaleFormulaEvidenceKey(current => (
-      current === signalEvidenceKey ? null : current
+      current === signalEvidenceKey && state.physicalServingBudget !== null ? null : current
     ));
   }, [signalEvidenceKey]);
 
@@ -206,8 +244,26 @@ export function App() {
   }, [baseProfile, signalTunedProfile]);
 
   const handleUiModeChange = useCallback((nextMode: UiMode) => {
+    setBeamDensityOverride(null);
     setUiMode(nextMode);
     persistUiMode(nextMode);
+  }, []);
+
+  const handleBeamDensityChange = useCallback((nextDensity: BeamDensity) => {
+    setBeamDensityOverride(nextDensity);
+  }, []);
+
+  const handleCameraPresetSelect = useCallback((preset: CameraPreset) => {
+    cameraCommandSequenceRef.current += 1;
+    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    setCameraCommand({
+      preset,
+      issuedAtMs: nowMs + cameraCommandSequenceRef.current / 1000,
+    });
+  }, []);
+
+  const handleCinematicModeChange = useCallback((nextMode: CinematicMode) => {
+    setCinematicMode(nextMode);
   }, []);
 
   const autoSlowActive = simState.pendingTargetSatId !== null;
@@ -217,6 +273,10 @@ export function App() {
   useEffect(() => {
     if (!autoSlowActive) setAutoSlowDismissed(false);
   }, [autoSlowActive]);
+
+  useEffect(() => subscribeToReducedMotionPreference(setReducedMotion), []);
+
+  useEffect(() => subscribeToRuntimeViewport(setViewport), []);
 
   useEffect(() => {
     setSignalTuning(createSignalTuningState(baseProfile));
@@ -235,14 +295,7 @@ export function App() {
   }, [baseProfile]);
 
   return (
-    <div data-ui-mode={uiMode} style={{ width: '100%', height: '100vh', position: 'relative' }}>
-      <MainScene
-        speed={effectiveSpeed}
-        paused={paused}
-        profile={effectiveProfile}
-        runtime={runtime}
-        onSimUpdate={handleSimUpdate}
-      />
+    <div data-ui-mode={uiMode} className="leo-app-shell">
       <ControlBar
         selectedProfileId={selectedProfileId}
         profileOptions={profileOptions}
@@ -253,34 +306,63 @@ export function App() {
         autoSlowApplied={autoSlowApplied}
         autoSlowEnabled={autoSlowEnabled}
         uiMode={uiMode}
+        beamDensity={runtime.beamDensity}
+        cinematicMode={effectiveCinematicMode}
+        beamHopEnabled={simState.beamHopEnabled}
+        beamHopSlotIndex={simState.beamHopSlotIndex}
         onProfileChange={setSelectedProfileId}
         onUiModeChange={handleUiModeChange}
+        onBeamDensityChange={handleBeamDensityChange}
+        onCameraPresetSelect={handleCameraPresetSelect}
+        onCinematicModeChange={handleCinematicModeChange}
         onTogglePause={() => setPaused(p => !p)}
         onSpeedChange={setSpeed}
         onDismissAutoSlow={() => setAutoSlowDismissed(true)}
         onToggleAutoSlow={() => setAutoSlowEnabled(e => !e)}
       />
-      {uiMode === 'tuning' && (
-        <SignalTuningPanel
-          baseProfile={baseProfile}
-          tuning={signalTuning}
-          hasOverrides={hasSignalOverrides}
-          currentSinrDb={simState.physicalServing.sinrDb ?? -Infinity}
-          formulaBudget={simState.physicalServingBudget}
-          formulaSource={simState.physicalServing}
-          isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-          handoverDraft={handoverPolicyDraft}
-          appliedHandoverPolicy={appliedHandoverPolicy}
-          hasHandoverDraftChanges={hasHandoverDraftChanges}
-          hasHandoverOverrides={hasHandoverResetTarget}
-          onTuningChange={handleSignalTuningChange}
-          onReset={handleResetSignalTuning}
-          onHandoverDraftChange={handleHandoverPolicyDraftChange}
-          onApplyHandoverPolicy={handleApplyHandoverPolicy}
-          onResetHandoverPolicy={handleResetHandoverPolicy}
-        />
-      )}
-      <InfoPanel {...simState} uiMode={uiMode} profile={effectiveProfile} />
+      <div className="leo-shell-row">
+        <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
+          <SignalTuningPanel
+            baseProfile={baseProfile}
+            tuning={signalTuning}
+            hasOverrides={hasSignalOverrides}
+            uiMode={uiMode}
+            formulaBudget={simState.physicalServingBudget}
+            isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+            handoverDraft={handoverPolicyDraft}
+            appliedHandoverPolicy={appliedHandoverPolicy}
+            hasHandoverDraftChanges={hasHandoverDraftChanges}
+            hasHandoverOverrides={hasHandoverResetTarget}
+            onTuningChange={handleSignalTuningChange}
+            onReset={handleResetSignalTuning}
+            onHandoverDraftChange={handleHandoverPolicyDraftChange}
+            onApplyHandoverPolicy={handleApplyHandoverPolicy}
+            onResetHandoverPolicy={handleResetHandoverPolicy}
+          />
+        </aside>
+        <main className="leo-shell-canvas" data-testid="leo-shell-canvas">
+          <MainScene
+            speed={effectiveSpeed}
+            paused={paused}
+            profile={effectiveProfile}
+            runtime={runtime}
+            onSimUpdate={handleSimUpdate}
+          />
+        </main>
+        <aside className="leo-shell-right" aria-label="Signal status panel slot">
+          <InfoPanel
+            {...simState}
+            uiMode={uiMode}
+            profile={effectiveProfile}
+            isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+          />
+          <DiagnosticsDrawer
+            {...simState}
+            uiMode={uiMode}
+            profile={effectiveProfile}
+          />
+        </aside>
+      </div>
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { formatBeamIdentityLabel, getBeamFrequencyIndex } from './beamFrequency';
+
 function shellCodeFromShellId(shellId: string): string {
   const trailingDegrees = shellId.match(/(\d{2,3})$/)?.[1];
 
@@ -35,7 +37,35 @@ export function formatBeamLabel(beamId: number | null): string {
   return `Beam ${beamId}`;
 }
 
-export function formatHandoverReason(rawReason: string): string {
+export function formatBeamIdentityByIndex({
+  satId,
+  beamId,
+  frequencyIndex,
+}: {
+  satId: string | null;
+  beamId: number;
+  frequencyIndex: number;
+}): string {
+  return `${formatSatelliteLabel(satId)} · ${formatBeamIdentityLabel(frequencyIndex, beamId)}`;
+}
+
+export function formatBeamIdentity({
+  satId,
+  beamId,
+  frequencyReuse,
+}: {
+  satId: string | null;
+  beamId: number;
+  frequencyReuse: number;
+}): string {
+  return formatBeamIdentityByIndex({
+    satId,
+    beamId,
+    frequencyIndex: getBeamFrequencyIndex(beamId, frequencyReuse),
+  });
+}
+
+export function formatHandoverReason(rawReason: string, frequencyReuse?: number): string {
   if (!rawReason) return rawReason;
 
   return rawReason.replace(
@@ -43,6 +73,9 @@ export function formatHandoverReason(rawReason: string): string {
     (_match, satId: string, beamId?: string) => {
       const satelliteLabel = formatSatelliteLabel(satId);
       if (beamId === undefined) return satelliteLabel;
+      if (frequencyReuse !== undefined) {
+        return formatBeamIdentity({ satId, beamId: Number(beamId), frequencyReuse });
+      }
       return `${satelliteLabel} ${formatBeamLabel(Number(beamId))}`;
     },
   );

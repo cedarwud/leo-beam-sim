@@ -1,10 +1,23 @@
 import { useMemo, useRef } from 'react';
 import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
+import { satelliteTint, satelliteTintIndex } from '../constants/beamRoleTokens';
 import type { Profile } from '../profiles/types';
 import { scheduleBeamCells, type CandidateBeamCell } from './beam-scheduler';
 import { FOOTPRINT_RADIUS_WORLD, MAX_BEAMS_PER_SATELLITE, computeBeamGeometry } from './beam-layout';
-import type { PresentationMode, SimFrame, VizFrame, VisibleSat } from './types';
+import type { BeamTarget } from '../viz/SatelliteBeams';
+import type {
+  AmbientRing,
+  BeamDensity,
+  EventRole,
+  PresentationMode,
+  RuntimeConfig,
+  RuntimeViewport,
+  SimFrame,
+  VizFrame,
+  VisibleSat,
+} from './types';
 import { getBeamFrequencyIndex } from '../utils/beamFrequency';
+import { satelliteGlyph } from '../viz/glyphs';
 
 const MAX_DISPLAY_SATS = 12;
 const MAX_EVENT_SATS = 8;
@@ -22,6 +35,10 @@ const APPROACH_RELEASE_DISTANCE_FACTOR = 1.45;
 const APPROACH_IMPROVEMENT_FOOTPRINT_RATIO = 0.14;
 const APPROACH_MIN_IMPROVEMENT_KM = 6;
 const MIN_APPROACH_HOLD_SEC = 4;
+const EVENT_ONLY_CALLOUT_CAP = 4;
+const EVENT_PLUS_ONE_DESKTOP_CALLOUT_CAP = 6;
+const EVENT_PLUS_ONE_COMPACT_CALLOUT_CAP = 4;
+const EVENT_PLUS_ONE_DESKTOP_MIN_WIDTH = 1440;
 
 interface ShellVizLayout {
   footprintRadiusKm: number;
@@ -46,12 +63,68 @@ interface LatchedApproachState extends ApproachPreview {
   releaseAtSec: number;
 }
 
+interface BeamSelectionSpec {
+  beamId: number;
+  role?: EventRole;
+}
+
+interface ConeBeamEntry {
+  key: string;
+  satelliteId: string;
+  beam: BeamTarget;
+  order: number;
+}
+
+type VisibleSatWithIdentity = VisibleSat & Required<
+  Pick<VisibleSat, 'satelliteTintColor' | 'satelliteGlyph' | 'satelliteVisualIndex'>
+>;
+
 function beamDistanceToUeKm(beam: BeamCellViz): number {
   return Math.hypot(beam.offsetEastKm, beam.offsetNorthKm);
 }
 
 function isFiniteSinr(sinrDb: number | null | undefined): sinrDb is number {
   return sinrDb !== null && sinrDb !== undefined && Number.isFinite(sinrDb);
+}
+
+export function resolveConeBeamCalloutCap(
+  density: BeamDensity,
+  viewport: RuntimeViewport,
+): number {
+  switch (density) {
+    case 'event-only':
+      return EVENT_ONLY_CALLOUT_CAP;
+    case 'event-plus-1':
+      return viewport.width >= EVENT_PLUS_ONE_DESKTOP_MIN_WIDTH
+        ? EVENT_PLUS_ONE_DESKTOP_CALLOUT_CAP
+        : EVENT_PLUS_ONE_COMPACT_CALLOUT_CAP;
+    case 'all':
+      return Infinity;
+  }
+}
+
+function eventRolePriority(role?: EventRole): number {
+  switch (role) {
+    case 'serving':
+    case 'post-ho':
+      return 0;
+    case 'prepared':
+      return 1;
+    case 'approach':
+      return 2;
+    case 'secondary':
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+function coneEntryPriority(entry: ConeBeamEntry): number {
+  return eventRolePriority(entry.beam.role);
+}
+
+function coneEntryKey(satelliteId: string, beamId: number): string {
+  return `${satelliteId}:B${beamId}`;
 }
 
 function nearestBeamCell(beamCells: BeamCellViz[]): BeamCellViz | null {
@@ -130,7 +203,7 @@ function isRecentHoSourceSat(satId: string, sim: SimFrame): boolean {
 export function useBeamViz(
   sim: SimFrame,
   profile: Profile,
-  mode: PresentationMode,
+  runtime: RuntimeConfig,
   latchedBeamSinrByKey?: Map<string, number>,
 ): VizFrame {
   const previousDisplayIdsRef = useRef<Set<string>>(new Set());
@@ -138,6 +211,9 @@ export function useBeamViz(
   const latchedApproachBySatRef = useRef<Map<string, LatchedApproachState>>(new Map());
 
   return useMemo(() => {
+    const mode = runtime.presentationMode;
+    const beamDensity = runtime.beamDensity;
+    const calloutCap = resolveConeBeamCalloutCap(beamDensity, runtime.viewport);
     const centralBias = centralBiasWeight(mode);
     const approachHoldSec = Math.max(
       MIN_APPROACH_HOLD_SEC,
@@ -440,6 +516,16 @@ export function useBeamViz(
       }
     }
 
+    const shownSatsWithIdentity: VisibleSatWithIdentity[] = shownSats.map((sat, displayOrder) => {
+      const satelliteVisualIndex = satelliteTintIndex(sat.id, displayOrder);
+      return {
+        ...sat,
+        satelliteVisualIndex,
+        satelliteTintColor: satelliteTint(sat.id, displayOrder),
+        satelliteGlyph: satelliteGlyph(satelliteVisualIndex),
+      };
+    });
+
     const eventRoles = new Map<string, VizFrame['eventRoles'] extends Map<string, infer T> ? T : never>();
     if (sim.serving.satId) {
       eventRoles.set(
@@ -462,7 +548,7 @@ export function useBeamViz(
     }
 
     const eventSatIds = new Set<string>(eventRoles.keys());
-    const rankedCandidates = [...shownSats]
+    const rankedCandidates = [...shownSatsWithIdentity]
       .filter(sat => !eventSatIds.has(sat.id))
       .sort((a, b) => {
         const prevA = previousEventIdsRef.current.has(a.id) ? 8 : 0;
@@ -486,7 +572,7 @@ export function useBeamViz(
       displayAssignmentsBySatId.set(assignment.satId, satAssignments);
     }
 
-    const shownSatIds = new Set(shownSats.map(sat => sat.id));
+    const shownSatIds = new Set(shownSatsWithIdentity.map(sat => sat.id));
     const beamSatIdOrder = [
       sim.serving.satId,
       sim.pendingTargetSatId,
@@ -503,12 +589,84 @@ export function useBeamViz(
     }
     if (beamSatIds.size === 0 && sim.serving.satId) beamSatIds.add(sim.serving.satId);
 
-    const satBeams = new Map<string, VizFrame['satBeams'] extends Map<string, infer T> ? T : never>();
-    for (const sat of shownSats) {
+    let satBeams = new Map<string, BeamTarget[]>();
+    const ambientRings: AmbientRing[] = [];
+    const coneEntries: ConeBeamEntry[] = [];
+    const footprintRadiusKmBySatId = new Map<string, number>();
+    let coneOrder = 0;
+
+    const chooseHighestSinrActiveBeamId = (
+      beamIds: Iterable<number>,
+      sampleByBeamId: Map<number, { sinrDb: number }>,
+    ): number | null => {
+      let bestBeamId: number | null = null;
+      let bestSinrDb = -Infinity;
+
+      for (const beamId of beamIds) {
+        const sampleSinrDb = sampleByBeamId.get(beamId)?.sinrDb ?? -Infinity;
+        if (
+          bestBeamId === null
+          || sampleSinrDb > bestSinrDb
+          || (sampleSinrDb === bestSinrDb && beamId < bestBeamId)
+        ) {
+          bestBeamId = beamId;
+          bestSinrDb = sampleSinrDb;
+        }
+      }
+
+      return bestBeamId;
+    };
+
+    const createAmbientRingForSat = (sat: VisibleSat): AmbientRing | null => {
+      const layout = shellLayouts.get(sat.shellId);
+      if (!layout) return null;
+
+      const beamCells = new Map((steeringBeamCellsBySatId.get(sat.id) ?? []).map(beam => [beam.beamId, beam]));
+      if (beamCells.size === 0) return null;
+
+      const sampleByBeamId = new Map(
+        sim.linkSamples
+          .filter(entry => entry.satId === sat.id)
+          .map(entry => [entry.beamId, entry]),
+      );
+      const displayBeamIds = displayAssignmentsBySatId.get(sat.id) ?? new Set<number>();
+      const scheduledActiveBeamIds = sim.beamHopStatesBySatId.get(sat.id)?.activeBeamIds ?? [];
+      const candidateBeamIds = new Set<number>([
+        ...scheduledActiveBeamIds,
+        ...displayBeamIds,
+      ]);
+      const fallbackBeamId = primaryBeamIdForSat(
+        sat.id,
+        sim,
+        displayAssignmentsBySatId,
+        steeringBeamCellsBySatId,
+      );
+      if (fallbackBeamId !== null) candidateBeamIds.add(fallbackBeamId);
+
+      const selectedBeamId = chooseHighestSinrActiveBeamId(candidateBeamIds, sampleByBeamId)
+        ?? fallbackBeamId;
+      if (selectedBeamId === null) return null;
+
+      const beamCell = beamCells.get(selectedBeamId) ?? nearestBeamCell([...beamCells.values()]);
+      if (!beamCell) return null;
+
+      const scale = FOOTPRINT_RADIUS_WORLD / Math.max(layout.footprintRadiusKm, 1e-6);
+      return {
+        satelliteId: sat.id,
+        beamId: selectedBeamId,
+        groundX: beamCell.offsetEastKm * scale,
+        groundZ: -beamCell.offsetNorthKm * scale,
+        footprintRadiusKm: layout.footprintRadiusKm,
+        frequencyIndex: getBeamFrequencyIndex(selectedBeamId, profile.beams.frequencyReuse),
+      };
+    };
+
+    for (const sat of shownSatsWithIdentity) {
       if (!beamSatIds.has(sat.id)) continue;
 
       const layout = shellLayouts.get(sat.shellId);
       if (!layout) continue;
+      footprintRadiusKmBySatId.set(sat.id, layout.footprintRadiusKm);
 
       const scale = FOOTPRINT_RADIUS_WORLD / Math.max(layout.footprintRadiusKm, 1e-6);
       const approachPreview = selectedApproachPreviewBySatId.get(sat.id);
@@ -541,46 +699,134 @@ export function useBeamViz(
       const chosenBeamIds = role === 'approach'
         ? [...new Set([primaryBeamId, ...(approachPreview?.previewBeamIds ?? []), ...scheduledActiveBeamIds])]
         : [...new Set([primaryBeamId, ...scheduledActiveBeamIds])];
-      const cappedBeamIds = chosenBeamIds
-        .slice(0, MAX_BEAMS_PER_SATELLITE)
-        .sort((a, b) => a - b);
+      const selectionSpecs: BeamSelectionSpec[] = (() => {
+        if (beamDensity === 'all') {
+          return chosenBeamIds
+            .slice(0, MAX_BEAMS_PER_SATELLITE)
+            .sort((a, b) => a - b)
+            .map(beamId => ({ beamId, role }));
+        }
 
-      satBeams.set(
-        sat.id,
-        cappedBeamIds.flatMap(beamId => {
-          const beamCell = beamCells.get(beamId) as BeamCellViz | undefined;
-          const sample = sampleByBeamId.get(beamId);
-          const isPrimary = beamId === primaryBeamId;
-          if (!isPrimary && !beamCell) return [];
+        if (beamDensity === 'event-only') {
+          return role ? [{ beamId: primaryBeamId, role }] : [];
+        }
 
-          const isScheduledActive = scheduledActiveBeamIds.includes(beamId);
-          // Anchor the whole beam set to the primary beam for event-focused sats so
-          // common-mode steering translation does not read as sideways "sliding".
-          const beamOffsetEastKm = beamCell?.offsetEastKm ?? anchorOffsetEastKm;
-          const beamOffsetNorthKm = beamCell?.offsetNorthKm ?? anchorOffsetNorthKm;
-          const groundX = (beamOffsetEastKm - anchorOffsetEastKm) * scale;
-          const groundZ = -(beamOffsetNorthKm - anchorOffsetNorthKm) * scale;
+        const specs: BeamSelectionSpec[] = [];
+        const ambientCandidateBeamIds = new Set<number>([
+          ...scheduledActiveBeamIds,
+          ...(displayAssignmentsBySatId.get(sat.id) ?? new Set<number>()),
+        ]);
 
-          return [{
-            beamId,
-            groundX,
-            groundZ,
-            isServing: sat.id === sim.serving.satId && beamId === sim.serving.beamId,
-            isScheduledActive,
-            isPrimary,
-            showBeam: true,
-            role,
-            frequencyIndex: getBeamFrequencyIndex(beamId, profile.beams.frequencyReuse),
-            isTransitioningSource: isTransitioningSourceSat(sat.id, sim),
-            sinrDb: labelSinrForBeam(sat.id, beamId, sample?.sinrDb ?? null),
-          }];
-        }),
+        if (role) {
+          specs.push({ beamId: primaryBeamId, role });
+          ambientCandidateBeamIds.delete(primaryBeamId);
+        } else {
+          ambientCandidateBeamIds.add(primaryBeamId);
+        }
+
+        const bestAmbientBeamId = chooseHighestSinrActiveBeamId(ambientCandidateBeamIds, sampleByBeamId);
+        if (bestAmbientBeamId !== null) {
+          specs.push({ beamId: bestAmbientBeamId });
+        }
+
+        return specs.slice(0, MAX_BEAMS_PER_SATELLITE);
+      })();
+
+      const targets = selectionSpecs.flatMap(spec => {
+        const beamCell = beamCells.get(spec.beamId) as BeamCellViz | undefined;
+        const sample = sampleByBeamId.get(spec.beamId);
+        const isPrimary = spec.beamId === primaryBeamId;
+        if (!isPrimary && !beamCell) return [];
+
+        const isScheduledActive = scheduledActiveBeamIds.includes(spec.beamId);
+        // Anchor event-focused beam groups to the primary beam so common-mode
+        // steering translation does not read as sideways "sliding".
+        const beamOffsetEastKm = beamCell?.offsetEastKm ?? anchorOffsetEastKm;
+        const beamOffsetNorthKm = beamCell?.offsetNorthKm ?? anchorOffsetNorthKm;
+        const groundX = (beamOffsetEastKm - anchorOffsetEastKm) * scale;
+        const groundZ = -(beamOffsetNorthKm - anchorOffsetNorthKm) * scale;
+
+        return [{
+          beamId: spec.beamId,
+          groundX,
+          groundZ,
+          isServing: sat.id === sim.serving.satId && spec.beamId === sim.serving.beamId,
+          isScheduledActive,
+          isPrimary,
+          showBeam: true,
+          role: spec.role,
+          frequencyIndex: getBeamFrequencyIndex(spec.beamId, profile.beams.frequencyReuse),
+          satelliteTintColor: sat.satelliteTintColor,
+          satelliteGlyph: sat.satelliteGlyph,
+          satelliteVisualIndex: sat.satelliteVisualIndex,
+          isTransitioningSource: isTransitioningSourceSat(sat.id, sim),
+          sinrDb: labelSinrForBeam(sat.id, spec.beamId, sample?.sinrDb ?? null),
+        }];
+      });
+
+      if (targets.length > 0) {
+        satBeams.set(sat.id, targets);
+        for (const beam of targets) {
+          coneEntries.push({
+            key: coneEntryKey(sat.id, beam.beamId),
+            satelliteId: sat.id,
+            beam,
+            order: coneOrder,
+          });
+          coneOrder += 1;
+        }
+      }
+    }
+
+    if (beamDensity === 'event-plus-1') {
+      for (const sat of shownSatsWithIdentity) {
+        if (beamSatIds.has(sat.id)) continue;
+        const ring = createAmbientRingForSat(sat);
+        if (ring) ambientRings.push(ring);
+      }
+    }
+
+    if (Number.isFinite(calloutCap) && coneEntries.length > calloutCap) {
+      const keptKeys = new Set(
+        [...coneEntries]
+          .sort((a, b) =>
+            coneEntryPriority(a) - coneEntryPriority(b)
+            || (b.beam.sinrDb ?? -Infinity) - (a.beam.sinrDb ?? -Infinity)
+            || a.order - b.order)
+          .slice(0, calloutCap)
+          .map(entry => entry.key),
       );
+      const cappedSatBeams = new Map<string, BeamTarget[]>();
+
+      for (const [satelliteId, beams] of satBeams.entries()) {
+        const keptBeams: BeamTarget[] = [];
+        for (const beam of beams) {
+          const key = coneEntryKey(satelliteId, beam.beamId);
+          if (keptKeys.has(key)) {
+            keptBeams.push(beam);
+            continue;
+          }
+
+          if (beamDensity === 'event-plus-1') {
+            ambientRings.push({
+              satelliteId,
+              beamId: beam.beamId,
+              groundX: beam.groundX,
+              groundZ: beam.groundZ,
+              footprintRadiusKm: footprintRadiusKmBySatId.get(satelliteId) ?? 0,
+              frequencyIndex: beam.frequencyIndex,
+            });
+          }
+        }
+        if (keptBeams.length > 0) cappedSatBeams.set(satelliteId, keptBeams);
+      }
+
+      satBeams = cappedSatBeams;
     }
 
     const sinrLabels = [...beamSatIds]
       .map(satId => {
-        const sat = shownSats.find(entry => entry.id === satId);
+        const sat = shownSatsWithIdentity.find(entry => entry.id === satId);
         const sinrDb = labelSinrForSat(satId);
         if (!sat || sinrDb === null) return null;
         return {
@@ -591,17 +837,18 @@ export function useBeamViz(
       })
       .filter((label): label is NonNullable<typeof label> => label !== null);
 
-    previousDisplayIdsRef.current = new Set(shownSats.map(sat => sat.id));
+    previousDisplayIdsRef.current = new Set(shownSatsWithIdentity.map(sat => sat.id));
     previousEventIdsRef.current = new Set(eventSatIds);
 
     return {
-      displaySats: shownSats,
+      displaySats: shownSatsWithIdentity,
       eventSatIds,
       eventRoles,
       beamSatIds,
       satBeams,
+      ambientRings,
       sinrLabels,
       footprintRadiusWorld: FOOTPRINT_RADIUS_WORLD,
     };
-  }, [latchedBeamSinrByKey, mode, profile, sim]);
+  }, [latchedBeamSinrByKey, profile, runtime, sim]);
 }

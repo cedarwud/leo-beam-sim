@@ -9,6 +9,7 @@ import type { Profile } from '../src/profiles/types.ts';
 import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
 import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
+import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
@@ -111,7 +112,10 @@ function decodeHtmlText(markup: string): string {
 function renderInfoText(profile: Profile, uiMode: 'presentation' | 'tuning' | 'diagnostics'): string {
   const state = createSimState(profile, createBudgetTerms(47.5));
   return decodeHtmlText(renderToStaticMarkup(
-    <InfoPanel {...state} uiMode={uiMode} profile={profile} />,
+    <>
+      <InfoPanel {...state} uiMode={uiMode} profile={profile} />
+      <DiagnosticsDrawer {...state} uiMode={uiMode} profile={profile} />
+    </>,
   ));
 }
 
@@ -169,11 +173,18 @@ function run(): void {
   assertContains(diagnosticsText, '47.5 dBm physical-serving effective P_t');
 
   const missingBudgetText = decodeHtmlText(renderToStaticMarkup(
-    <InfoPanel
-      {...createSimState(researchProfile, null)}
-      uiMode="diagnostics"
-      profile={researchProfile}
-    />,
+    <>
+      <InfoPanel
+        {...createSimState(researchProfile, null)}
+        uiMode="diagnostics"
+        profile={researchProfile}
+      />
+      <DiagnosticsDrawer
+        {...createSimState(researchProfile, null)}
+        uiMode="diagnostics"
+        profile={researchProfile}
+      />
+    </>,
   ));
   assertContains(missingBudgetText, 'missing from current LinkBudgetTerms');
 

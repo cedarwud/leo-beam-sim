@@ -1,4 +1,5 @@
 import { UI_CLASSES, UI_TOKENS } from '../constants/uiTokens';
+import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
 import { UI_MODES, isUiMode, type UiMode } from './uiMode';
 
 interface ProfileOption {
@@ -16,8 +17,15 @@ interface ControlBarProps {
   autoSlowApplied: boolean;
   autoSlowEnabled: boolean;
   uiMode: UiMode;
+  beamDensity: BeamDensity;
+  cinematicMode: CinematicMode;
+  beamHopEnabled: boolean;
+  beamHopSlotIndex: number;
   onProfileChange: (profileId: string) => void;
   onUiModeChange: (mode: UiMode) => void;
+  onBeamDensityChange: (density: BeamDensity) => void;
+  onCameraPresetSelect: (preset: CameraPreset) => void;
+  onCinematicModeChange: (mode: CinematicMode) => void;
   onTogglePause: () => void;
   onSpeedChange: (speed: number) => void;
   onDismissAutoSlow: () => void;
@@ -32,6 +40,18 @@ const UI_MODE_LABELS: Record<UiMode, string> = {
   diagnostics: 'Diagnostics',
 };
 
+const DENSITY_OPTIONS: Array<{ label: string; density: BeamDensity }> = [
+  { label: 'few', density: 'event-only' },
+  { label: 'normal', density: 'event-plus-1' },
+  { label: 'many', density: 'all' },
+];
+
+const CAMERA_PRESETS: Array<{ label: string; preset: CameraPreset }> = [
+  { label: 'Zenith', preset: 'zenith' },
+  { label: 'Oblique', preset: 'oblique' },
+  { label: 'Chase', preset: 'chase' },
+];
+
 export function ControlBar({
   selectedProfileId,
   profileOptions,
@@ -42,8 +62,15 @@ export function ControlBar({
   autoSlowApplied,
   autoSlowEnabled,
   uiMode,
+  beamDensity,
+  cinematicMode,
+  beamHopEnabled,
+  beamHopSlotIndex,
   onProfileChange,
   onUiModeChange,
+  onBeamDensityChange,
+  onCameraPresetSelect,
+  onCinematicModeChange,
   onTogglePause,
   onSpeedChange,
   onDismissAutoSlow,
@@ -51,10 +78,10 @@ export function ControlBar({
 }: ControlBarProps) {
   return (
     <div className="leo-control-bar" style={{
-      position: 'absolute',
-      top: 12,
-      left: 12,
+      position: 'relative',
       zIndex: 10,
+      width: '100%',
+      maxWidth: '100%',
       display: 'flex',
       flexWrap: 'wrap',
       gap: 12,
@@ -62,6 +89,8 @@ export function ControlBar({
       background: UI_TOKENS.color.surface.controlBar,
       padding: '8px 16px',
       borderRadius: UI_TOKENS.radius.md,
+      border: `1px solid ${UI_TOKENS.color.border.panel}`,
+      boxShadow: '0 14px 32px rgba(0, 0, 0, 0.36)',
       color: UI_TOKENS.color.text.primary,
       fontSize: UI_TOKENS.type.size.body,
       fontFamily: UI_TOKENS.type.family.mono,
@@ -71,8 +100,8 @@ export function ControlBar({
         onClick={onTogglePause}
         style={{
           cursor: 'pointer',
-          background: 'none',
-          border: '1px solid #666',
+          background: paused ? 'rgba(118, 234, 215, 0.18)' : UI_TOKENS.color.surface.card,
+          border: `1px solid ${UI_TOKENS.color.border.soft}`,
           color: UI_TOKENS.color.text.primary,
           padding: '4px 12px',
           borderRadius: UI_TOKENS.radius.sm,
@@ -94,7 +123,7 @@ export function ControlBar({
           style={{
             cursor: 'pointer',
             background: UI_TOKENS.color.surface.field,
-            border: '1px solid rgba(141, 247, 229, 0.38)',
+            border: `1px solid ${UI_TOKENS.color.border.tuningPanel}`,
             color: UI_TOKENS.color.text.primary,
             padding: '4px 8px',
             borderRadius: UI_TOKENS.radius.sm,
@@ -109,6 +138,103 @@ export function ControlBar({
         </select>
       </label>
 
+      <div
+        role="group"
+        aria-label="Beam density"
+        data-testid="beam-density-control"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: 3,
+          border: `1px solid ${UI_TOKENS.color.border.soft}`,
+          borderRadius: UI_TOKENS.radius.sm,
+          background: 'rgba(255, 255, 255, 0.04)',
+        }}
+      >
+        {DENSITY_OPTIONS.map(option => {
+          const selected = beamDensity === option.density;
+          return (
+            <button
+              key={option.density}
+              className={UI_CLASSES.button}
+              type="button"
+              aria-label={`Set beam density to ${option.label}`}
+              aria-pressed={selected}
+              data-testid={`beam-density-${option.label}`}
+              onClick={() => onBeamDensityChange(option.density)}
+              style={{
+                cursor: 'pointer',
+                minWidth: 58,
+                background: selected ? 'rgba(118, 234, 215, 0.2)' : 'transparent',
+                border: `1px solid ${selected ? 'rgba(118, 234, 215, 0.46)' : 'transparent'}`,
+                color: selected ? '#d8fffa' : UI_TOKENS.color.text.secondary,
+                padding: '4px 9px',
+                borderRadius: UI_TOKENS.radius.sm,
+              }}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        role="group"
+        aria-label="Camera presets"
+        data-testid="camera-preset-control"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
+        {CAMERA_PRESETS.map(option => (
+          <button
+            key={option.preset}
+            className={UI_CLASSES.button}
+            type="button"
+            aria-label={`Set camera preset to ${option.label}`}
+            data-testid={`camera-preset-${option.preset}`}
+            onClick={() => onCameraPresetSelect(option.preset)}
+            style={{
+              cursor: 'pointer',
+              minWidth: 70,
+              background: UI_TOKENS.color.surface.card,
+              border: `1px solid ${UI_TOKENS.color.border.soft}`,
+              color: UI_TOKENS.color.text.primary,
+              padding: '4px 10px',
+              borderRadius: UI_TOKENS.radius.sm,
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          cursor: uiMode === 'presentation' ? 'pointer' : 'not-allowed',
+          opacity: uiMode === 'presentation' ? 1 : 0.62,
+        }}
+      >
+        <input
+          className={UI_CLASSES.checkbox}
+          type="checkbox"
+          aria-label="Spotlight mode"
+          checked={cinematicMode === 'spotlight'}
+          disabled={uiMode !== 'presentation'}
+          onChange={event => {
+            onCinematicModeChange(event.target.checked ? 'spotlight' : 'off');
+          }}
+          style={{ cursor: uiMode === 'presentation' ? 'pointer' : 'not-allowed' }}
+        />
+        Spotlight
+      </label>
+
       {SHOW_PROFILE_SELECTOR && (
         <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           Profile:
@@ -119,7 +245,7 @@ export function ControlBar({
             style={{
               cursor: 'pointer',
               background: UI_TOKENS.color.surface.field,
-              border: '1px solid #666',
+              border: `1px solid ${UI_TOKENS.color.border.soft}`,
               color: UI_TOKENS.color.text.primary,
               padding: '4px 8px',
               borderRadius: UI_TOKENS.radius.sm,
@@ -150,11 +276,11 @@ export function ControlBar({
         <button
           className={UI_CLASSES.button}
           onClick={onDismissAutoSlow}
-          style={{
-            cursor: 'pointer',
-            background: '#1c2a3a',
-            border: '1px solid #4d85c7',
-            color: '#d7ebff',
+        style={{
+          cursor: 'pointer',
+          background: 'rgba(123, 167, 255, 0.16)',
+          border: '1px solid rgba(123, 167, 255, 0.32)',
+          color: '#dbe7ff',
             padding: '4px 12px',
             borderRadius: UI_TOKENS.radius.sm,
           }}
@@ -177,8 +303,30 @@ export function ControlBar({
         <span>{speed}x</span>
       </label>
 
-      <div style={{ color: autoSlowActive ? UI_TOKENS.color.semantic.warning.accent : '#9aa3b2', minWidth: 140 }}>
+      <div style={{ color: autoSlowActive ? UI_TOKENS.color.semantic.warning.accent : UI_TOKENS.color.text.faint, minWidth: 140 }}>
         Scene: {effectiveSpeed.toFixed(1)}x{autoSlowApplied ? ' (HO Slow)' : autoSlowActive ? ' (HO Slow Off)' : ''}
+      </div>
+
+      <div
+        data-testid="beam-hop-status-pill"
+        style={{
+          marginLeft: 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          minWidth: 112,
+          justifyContent: 'center',
+          padding: '4px 10px',
+          borderRadius: UI_TOKENS.radius.sm,
+          border: `1px solid ${beamHopEnabled ? 'rgba(118, 234, 215, 0.42)' : UI_TOKENS.color.border.soft}`,
+          background: beamHopEnabled ? 'rgba(118, 234, 215, 0.14)' : 'rgba(255, 255, 255, 0.04)',
+          color: beamHopEnabled ? '#d8fffa' : UI_TOKENS.color.text.faint,
+          fontWeight: 700,
+          letterSpacing: 0,
+        }}
+      >
+        <span>BH</span>
+        <span>{beamHopEnabled ? `S${Math.max(beamHopSlotIndex, 0)}` : 'OFF'}</span>
       </div>
     </div>
   );

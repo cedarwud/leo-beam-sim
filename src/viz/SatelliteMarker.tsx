@@ -9,15 +9,30 @@ interface SatelliteMarkerProps {
   position: THREE.Vector3;
   label: string;
   eventRole?: EventRole;
+  satelliteTintColor?: string;
 }
 
 const SAT_MODEL_PATH = '/models/sat.glb';
+const SATELLITE_BODY_TINT_BLEND = 0.46;
 
-export function SatelliteMarker({ position, label, eventRole }: SatelliteMarkerProps) {
+export function resolveSatelliteTintedColor(baseColor: string, tintColor: string): string {
+  return `#${new THREE.Color(baseColor).lerp(new THREE.Color(tintColor), SATELLITE_BODY_TINT_BLEND).getHexString()}`;
+}
+
+function tintMaterial(material: THREE.Material, tintColor: string): THREE.Material {
+  const cloned = material.clone();
+  if ('color' in cloned && cloned.color instanceof THREE.Color) {
+    cloned.color.set(resolveSatelliteTintedColor(`#${cloned.color.getHexString()}`, tintColor));
+  }
+  return cloned;
+}
+
+export function SatelliteMarker({ position, label, eventRole, satelliteTintColor }: SatelliteMarkerProps) {
   const { scene } = useGLTF(SAT_MODEL_PATH);
   const roleToken = tokenForEventRole(eventRole);
   const roleLabel = operatorLabelForEventRole(eventRole, true);
   const accent = eventRole ? roleToken.color : '#aaccff';
+  const markerLightColor = satelliteTintColor ?? accent;
   const scale = eventRole ? roleToken.markerScale : 5;
 
   const cloned = useMemo(() => {
@@ -26,16 +41,21 @@ export function SatelliteMarker({ position, label, eventRole }: SatelliteMarkerP
       if ((obj as THREE.Mesh).isMesh) {
         const mesh = obj as THREE.Mesh;
         mesh.castShadow = true;
+        if (satelliteTintColor) {
+          mesh.material = Array.isArray(mesh.material)
+            ? mesh.material.map(material => tintMaterial(material, satelliteTintColor))
+            : tintMaterial(mesh.material, satelliteTintColor);
+        }
       }
     });
     return c;
-  }, [scene]);
+  }, [satelliteTintColor, scene]);
 
   return (
     <group position={position}>
       <primitive object={cloned} scale={scale} />
       {roleToken.markerLightIntensity > 0 && (
-        <pointLight color={accent} intensity={roleToken.markerLightIntensity} distance={80} decay={2} />
+        <pointLight color={markerLightColor} intensity={roleToken.markerLightIntensity} distance={80} decay={2} />
       )}
       <Text
         position={[0, 20, 0]}
