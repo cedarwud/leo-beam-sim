@@ -21,6 +21,7 @@
     "validate:phase9d:formula-evidence-stability": "node --import tsx/esm scripts/validate-phase9d-formula-evidence-stability.tsx",
     "validate:phase9f:formula-map": "node --import tsx/esm scripts/validate-phase9f-formula-map.tsx",
     "validate:phase9h:coverage-audit-demotion": "node --import tsx/esm scripts/validate-phase9h-coverage-audit-demotion.tsx",
+    "validate:vc-fixture:smoke": "node --import tsx/esm scripts/validate-vc-fixture-smoke.ts",
     "validate:hobs-tr38811-phase1": "node --import tsx/esm scripts/validate-hobs-tr38811-phase1.ts",
     "validate:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/validate-hobs-tr38811-phase2-dpc.ts",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
@@ -43,6 +44,7 @@
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/three": "^0.180.0",
