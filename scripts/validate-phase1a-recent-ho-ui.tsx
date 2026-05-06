@@ -7,6 +7,7 @@ import { loadProfile } from '../src/profiles/index.ts';
 import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
 import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
+import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 import { formatSatelliteLabel } from '../src/utils/formatSatelliteLabel.ts';
@@ -193,14 +194,23 @@ function run(): void {
   const sourceLabel = formatSatelliteLabel(SOURCE_SAT_ID);
   const targetLabel = formatSatelliteLabel(TARGET_SAT_ID);
 
-  const infoText = decodeHtmlText(renderToStaticMarkup(<InfoPanel {...simState} uiMode="diagnostics" profile={profile} />));
-  assertContains(infoText, 'HO SOURCE');
-  assertContains(infoText, 'previous source');
-  assertContains(infoText, 'HO TARGET');
-  assertContains(infoText, 'recent target / serving now');
-  assertContains(infoText, sourceLabel);
-  assertContains(infoText, targetLabel);
-  assertContains(infoText, 'DEBUG / VALIDATION');
+  const combinedMarkup = renderToStaticMarkup(
+    <>
+      <InfoPanel {...simState} uiMode="diagnostics" profile={profile} />
+      <DiagnosticsDrawer {...simState} uiMode="diagnostics" profile={profile} />
+    </>,
+  );
+  const combinedText = decodeHtmlText(combinedMarkup);
+  assertContains(combinedText, 'HO SOURCE');
+  assertContains(combinedText, 'previous source');
+  assertContains(combinedText, 'HO TARGET');
+  assertContains(combinedText, 'recent target / serving now');
+  assertContains(combinedText, sourceLabel);
+  assertContains(combinedText, targetLabel);
+  assertContains(combinedText, 'DEBUG / VALIDATION');
+  assertContains(combinedMarkup, 'data-testid="formula-term-evidence"');
+  assertContains(combinedText, 'SINR Formula Terms');
+  assertContains(combinedText, 'physical serving source');
 
   const tuningText = decodeHtmlText(renderToStaticMarkup(
     <SignalTuningPanel
@@ -222,19 +232,17 @@ function run(): void {
     />,
   ));
 
-  assertContains(tuningText, 'Formula Verification');
-  assertContains(tuningText, 'selected source formula result');
-  assertContains(tuningText, 'physical serving source');
-  assertContains(tuningText, 'Formula term evidence');
-  assertContains(tuningText, targetLabel);
   assertContains(tuningText, 'receiver gain');
   assertContains(tuningText, '0.0 dBi');
   assertContains(tuningText, 'Receiver Gain');
   assertNotContains(tuningText, 'HOBS paper parameter table does not provide');
   assertNotContains(tuningText, 'Research Override / teaching control');
   assertNotContains(tuningText, '0 dBi fixed');
+  assertNotContains(tuningText, targetLabel);
   assertNotContains(tuningText, sourceLabel);
   assertNotContains(tuningText, 'Current formula terms');
+  assertNotContains(tuningText, 'Formula Verification');
+  assertNotContains(tuningText, 'SINR Formula Terms');
   assertNotContains(tuningText, 'ACTIVE SERVING');
   assertNotContains(tuningText, 'HO SOURCE');
 
@@ -244,9 +252,9 @@ function run(): void {
     source: { satId: SOURCE_SAT_ID, label: sourceLabel, beamId: SOURCE_BEAM_ID },
     physicalServing: { satId: TARGET_SAT_ID, label: targetLabel, beamId: TARGET_BEAM_ID },
     asserted: {
-      rightPanel: ['HO SOURCE', 'previous source', 'HO TARGET', 'recent target / serving now'],
-      leftPanel: ['Formula Verification', 'selected source formula result', 'physical serving source', `${targetLabel} only`, 'G^R receiver gain copy'],
-      forbiddenLeftPanelCopy: ['Current formula terms', 'ACTIVE SERVING', 'HO SOURCE', sourceLabel],
+      rightPanel: ['HO SOURCE', 'previous source', 'HO TARGET', 'recent target / serving now', 'physical serving formula terms'],
+      leftPanel: ['SINR Formula Tuning', 'compact formula tabs', 'G^R receiver gain copy'],
+      forbiddenLeftPanelCopy: ['Formula Verification', 'SINR Formula Terms', 'Current formula terms', 'ACTIVE SERVING', 'HO SOURCE', sourceLabel, targetLabel],
     },
   }, null, 2));
 }

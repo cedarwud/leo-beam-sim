@@ -13,6 +13,7 @@ import {
 import { loadProfile } from '../src/profiles/index.ts';
 import { createInitialSimState } from '../src/scene/initialSimState.ts';
 import { createSignalTuningState, applySignalTuning } from '../src/signalTuning.ts';
+import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
@@ -149,7 +150,10 @@ function assertModeVisibility(): void {
   const profile = loadProfile(PROFILE_ID);
   const initialState = createInitialSimState(profile);
   const presentationText = decodeHtmlText(renderToStaticMarkup(
-    <InfoPanel {...initialState} uiMode="presentation" profile={profile} />,
+    <>
+      <InfoPanel {...initialState} uiMode="presentation" profile={profile} />
+      <DiagnosticsDrawer {...initialState} uiMode="presentation" profile={profile} />
+    </>,
   ));
   assertNotContains(presentationText, 'Handover Policy Research Controls');
   assertNotContains(presentationText, 'Apply policy changes');
@@ -157,7 +161,10 @@ function assertModeVisibility(): void {
   assertNotContains(presentationText, 'Handover policy (effective)');
 
   const diagnosticsText = decodeHtmlText(renderToStaticMarkup(
-    <InfoPanel {...initialState} uiMode="diagnostics" profile={profile} />,
+    <>
+      <InfoPanel {...initialState} uiMode="diagnostics" profile={profile} />
+      <DiagnosticsDrawer {...initialState} uiMode="diagnostics" profile={profile} />
+    </>,
   ));
   assertContains(diagnosticsText, 'Handover policy (effective)');
   assertContains(diagnosticsText, 'policy sinr-offset (read-only)');
