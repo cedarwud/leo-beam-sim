@@ -133,10 +133,7 @@ function assertTuningPlacementAndCopy(): void {
   assert.ok(tabIndex >= 0, 'expected SINR formula tab marker');
   assert.ok(tabIndex > sinrPageIndex, 'SINR formula tabs must live inside the SINR Formula page');
   assert.equal(coverageAuditIndex, -1, 'Phase 9H removes the old always-visible coverage audit block');
-  assert.ok(
-    coverageDisclosureIndex > tabIndex,
-    'Phase 9H keeps coverage / assumptions only as a demoted disclosure after formula tabs',
-  );
+  assert.equal(coverageDisclosureIndex, -1, 'coverage / assumptions is no longer a separate SINR-page disclosure');
   assert.ok(policyIndex > handoverPageIndex, 'handover policy controls must live inside the Handover Policy page');
 
   const sinrPageMarkup = markup.slice(sinrPageIndex, handoverPageIndex);

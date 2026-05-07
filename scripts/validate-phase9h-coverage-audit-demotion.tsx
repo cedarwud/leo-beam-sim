@@ -33,37 +33,6 @@ function assertNotContains(text: string, unexpected: string): void {
   assert.ok(!text.includes(unexpected), `expected content not to contain "${unexpected}"`);
 }
 
-function extractElementByTestId(markup: string, testId: string): string {
-  const attr = `data-testid="${testId}"`;
-  const attrIndex = markup.indexOf(attr);
-  assert.notEqual(attrIndex, -1, `expected markup to contain ${attr}`);
-
-  const start = markup.lastIndexOf('<', attrIndex);
-  assert.notEqual(start, -1, `expected opening tag for ${testId}`);
-
-  const tagMatch = /^<([a-zA-Z][\w:-]*)/.exec(markup.slice(start));
-  assert.ok(tagMatch, `expected tag name for ${testId}`);
-  const tagName = tagMatch[1];
-  const tagPattern = /<\/?([a-zA-Z][\w:-]*)(?:\s[^<>]*)?>/g;
-  tagPattern.lastIndex = start;
-
-  let depth = 0;
-  for (let match = tagPattern.exec(markup); match !== null; match = tagPattern.exec(markup)) {
-    const token = match[0];
-    const name = match[1];
-    if (name !== tagName) continue;
-
-    if (token.startsWith('</')) {
-      depth -= 1;
-      if (depth === 0) return markup.slice(start, match.index + token.length);
-    } else if (!token.endsWith('/>')) {
-      depth += 1;
-    }
-  }
-
-  assert.fail(`expected closing tag for ${testId}`);
-}
-
 function createBudgetTerms(): LinkBudgetTerms {
   return {
     signalDbm: -88.5,
@@ -116,38 +85,42 @@ function renderPanel(initialActiveTab: 'signal-power' | 'loss' = 'signal-power')
   return { markup, text: decodeHtmlText(markup) };
 }
 
-function assertCoverageSummaryIsDemoted(): void {
+function assertCoverageSummaryIsRemovedFromPrimaryFlow(): void {
   const { markup, text } = renderPanel('signal-power');
   const tabIndex = markup.indexOf('data-testid="sinr-formula-tabs"');
   const controlsIndex = markup.indexOf('data-testid="signal-power-controls"');
+  const ptControlIndex = markup.indexOf('data-testid="pt-signal-power-control"');
+  const formulaContextIndex = markup.indexOf('data-testid="signal-power-controls-formula-context"');
   const disclosureIndex = markup.indexOf('data-testid="sinr-coverage-assumptions-disclosure"');
 
   assert.ok(tabIndex >= 0, 'expected SINR formula tabs to render');
   assert.ok(controlsIndex > tabIndex, 'expected active formula controls after tabs');
-  assert.ok(disclosureIndex > controlsIndex, 'expected coverage / assumptions after primary formula controls');
+  assert.ok(ptControlIndex > controlsIndex, 'expected editable P_t control as the first content inside the signal-power section');
+  assert.ok(formulaContextIndex > ptControlIndex, 'expected section formula context after the editable P_t control');
+  assert.equal(disclosureIndex, -1, 'coverage / assumptions should not remain as a separate disclosure in the primary tuning flow');
   assertNotContains(markup, 'data-testid="sinr-coverage-audit"');
   assertNotContains(text, 'Coverage audit');
-
-  const disclosure = extractElementByTestId(markup, 'sinr-coverage-assumptions-disclosure');
-  const openingTag = disclosure.match(/^<details[^>]*>/)?.[0] ?? '';
-  assertContains(openingTag, 'data-demotion="collapsed"');
-  assertContains(openingTag, 'data-readonly="true"');
-  assertContains(openingTag, 'data-prominence="low"');
-  assertNotContains(openingTag, ' open');
-  assertContains(disclosure, 'data-testid="sinr-coverage-assumptions-summary"');
-  assertContains(decodeHtmlText(disclosure), 'Coverage / assumptions');
-  assertNotContains(disclosure, '<input');
-  assertNotContains(disclosure, '<select');
-  assertNotContains(disclosure, 'type="range"');
+  assertNotContains(text, 'Coverage / assumptions');
 }
 
-function assertCaveatsRemainDiscoverable(): void {
+function assertEssentialContextRemainsInline(): void {
   const signal = renderPanel('signal-power');
+  const ptControlIndex = signal.markup.indexOf('data-testid="pt-signal-power-control"');
+  const activeNotesIndex = signal.markup.indexOf('data-testid="active-tab-formula-context"');
+  const overviewIndex = signal.markup.indexOf('data-testid="sinr-overview-disclosure"');
+
   assertContains(signal.text, 'Receiver Gain');
-  assertContains(signal.text, 'Coverage / assumptions');
-  assertContains(signal.text, 'G R is controlled separately as receiver gain');
-  assertContains(signal.text, 'TR 38.811 environment stays read-only');
-  assertContains(signal.text, 'antenna efficiency remains future-only');
+  assertContains(signal.markup, '<details open="" data-testid="sinr-overview-disclosure"');
+  assertContains(signal.markup, '<details open="" data-testid="active-tab-formula-context"');
+  assert.ok(activeNotesIndex > ptControlIndex, 'expected active-tab notes after the primary editable control');
+  assert.ok(overviewIndex > activeNotesIndex, 'expected SINR overview below active-tab notes');
+  assertContains(signal.text, 'SINR overview');
+  assertContains(signal.text, 'Formula / notes');
+  assertContains(signal.text, 'P t starts the desired-signal numerator');
+  assertContains(signal.text, 'This tab controls transmit power only. Receiver gain has its own tab.');
+  assertContains(signal.text, 'Base transmit power before dynamic power control overrides.');
+  assertContains(signal.text, 'Raising it strengthens both the serving beam and any co-channel interferers.');
+  assertContains(signal.markup, 'data-testid="pt-signal-power-control-range-endpoints"');
   assertNotContains(signal.text, 'HOBS paper parameter table');
   assertNotContains(signal.text, 'Research Override / teaching control');
 
@@ -161,27 +134,29 @@ function assertSourceDoesNotKeepOldAuditSurface(): void {
   const source = readFileSync(new URL('../src/ui/SignalTuningPanel.tsx', import.meta.url), 'utf8');
   assertNotContains(source, 'function CoverageAudit');
   assertNotContains(source, 'sinr-coverage-audit');
-  assertContains(source, 'function CoverageAssumptionsDisclosure');
-  assertContains(source, 'sinr-coverage-assumptions-disclosure');
+  assertNotContains(source, 'function CoverageAssumptionsDisclosure');
+  assertNotContains(source, 'sinr-coverage-assumptions-disclosure');
 }
 
 function run(): void {
   assertSourceDoesNotKeepOldAuditSurface();
-  assertCoverageSummaryIsDemoted();
-  assertCaveatsRemainDiscoverable();
+  assertCoverageSummaryIsRemovedFromPrimaryFlow();
+  assertEssentialContextRemainsInline();
 
-  console.log('Phase 9H coverage audit demotion validation passed.');
+  console.log('Phase 9H coverage audit primary-flow removal validation passed.');
   console.log(JSON.stringify({
     asserted: {
       placement: [
         'old sinr-coverage-audit test id is gone',
-        'coverage / assumptions facts are retained only behind a collapsed low-emphasis disclosure',
-        'the disclosure renders after the active formula controls and has no editable inputs',
+        'coverage / assumptions no longer remains as a separate disclosure in the primary SINR tuning flow',
+        'editable parameter cards appear before section-level formula context',
+        'parameter cards keep first-use formula context inline next to the slider, value, and range',
+        'active-tab formula notes and SINR overview are expanded by default below the primary controls',
       ],
       preserved: [
         'G^R remains discoverable as a separate Receiver Gain control',
         'path-loss Research Override caveat remains visible in the Loss control group',
-        'fixed TR 38.811 environment and antenna-efficiency assumptions remain discoverable as read-only assumptions',
+        'transmit-power effect and dynamic-power-control caveat remain visible without opening a details disclosure',
       ],
     },
   }, null, 2));

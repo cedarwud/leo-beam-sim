@@ -252,6 +252,12 @@ const compactSummaryStyle: CSSProperties = {
   fontWeight: UI_TOKENS.type.weight.strong,
 };
 
+const explanatoryTextStyle: CSSProperties = {
+  color: UI_TOKENS.color.text.secondary,
+  fontSize: UI_TOKENS.type.size.body,
+  lineHeight: 1.48,
+};
+
 const srOnlyStyle: CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -303,14 +309,14 @@ function FormulaContext({ tab }: { tab: TuningTab }) {
       gap: 8,
       padding: '12px 14px',
       borderRadius: UI_TOKENS.radius.lg,
-      background: `linear-gradient(180deg, ${accent}17, rgba(6, 18, 28, 0.72))`,
-      border: `1px solid ${accent}40`,
+      background: 'rgba(255, 255, 255, 0.045)',
+      border: `1px solid ${accent}30`,
       borderLeft: `4px solid ${accent}`,
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
         <div style={{ ...formulaTextStyle, color: accent }}>{tab.formula}</div>
       </div>
-      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: UI_TOKENS.color.text.secondary }}>
+      <div style={explanatoryTextStyle}>
         {tab.note}
       </div>
     </div>
@@ -320,13 +326,15 @@ function FormulaContext({ tab }: { tab: TuningTab }) {
 function FormulaContextDisclosure({ tab }: { tab: TuningTab }) {
   return (
     <details
+      open
       data-testid="active-tab-formula-context"
+      data-prominence="primary-context"
       style={{
         display: 'grid',
         gap: 10,
         padding: '10px 11px',
         borderRadius: UI_TOKENS.radius.lg,
-        background: 'rgba(255, 255, 255, 0.03)',
+        background: UI_TOKENS.color.surface.cardFaint,
         border: `1px solid ${UI_TOKENS.color.border.subtle}`,
         color: UI_TOKENS.color.text.secondary,
       }}
@@ -427,7 +435,7 @@ function FormulaMapTile({
       <div style={{
         fontSize: UI_TOKENS.type.size.body,
         color: isResearch ? 'rgba(248, 234, 192, 0.78)' : 'rgba(255,255,255,0.64)',
-        lineHeight: 1.45,
+        lineHeight: explanatoryTextStyle.lineHeight,
       }}>
         {detail}
       </div>
@@ -610,41 +618,40 @@ function FormulaSideControlSection({
         gap: 14,
         padding: '14px 15px',
         borderRadius: UI_TOKENS.radius.lg,
-        background: `linear-gradient(180deg, ${sectionAccent}13, rgba(8, 24, 32, 0.46))`,
-        border: `1px solid ${sectionAccent}26`,
+        background: 'linear-gradient(180deg, rgba(9, 27, 36, 0.62), rgba(5, 15, 24, 0.5))',
+        border: `1px solid ${sectionAccent}24`,
       }}
     >
-      <div style={{
-        fontSize: UI_TOKENS.type.size.bodyLg,
-        color: UI_TOKENS.color.text.controlLabel,
-        fontWeight: UI_TOKENS.type.weight.heavy,
-      }}>
-        {title}
-      </div>
+      {children}
       <div
         data-testid={`${testId}-formula-context`}
+        data-prominence="secondary-context"
         style={{
           display: 'grid',
           gap: 6,
-          padding: '10px 11px',
-          borderRadius: UI_TOKENS.radius.md,
-          background: `${sectionAccent}0f`,
-          border: `1px solid ${sectionAccent}22`,
-          borderLeft: `3px solid ${sectionAccent}80`,
+        padding: '10px 12px',
+        borderRadius: UI_TOKENS.radius.md,
+          background: 'rgba(255, 255, 255, 0.035)',
+          border: `1px solid ${sectionAccent}1f`,
+          borderLeft: `3px solid ${sectionAccent}66`,
         }}
       >
+        <div style={{
+          fontSize: UI_TOKENS.type.size.body,
+          color: UI_TOKENS.color.text.controlLabel,
+          fontWeight: UI_TOKENS.type.weight.heavy,
+        }}>
+          {title}
+        </div>
         <div style={{ ...formulaTextStyle, fontSize: UI_TOKENS.type.size.subheading, lineHeight: 1.28, color: sectionAccent }}>
           {formula}
         </div>
         <div style={{
-          color: UI_TOKENS.color.text.secondary,
-          fontSize: UI_TOKENS.type.size.body,
-          lineHeight: 1.42,
+          ...explanatoryTextStyle,
         }}>
           {subtitle}
         </div>
       </div>
-      {children}
     </section>
   );
 }
@@ -696,7 +703,7 @@ function NoiseFloorReadout({
           {hasCurrentNoiseFloor ? formatDbm(formulaBudget.noiseDbm) : 'waiting'}
         </div>
       </div>
-      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.5, color: UI_TOKENS.color.semantic.noiseSoft }}>
+      <div style={{ ...explanatoryTextStyle, color: UI_TOKENS.color.semantic.noiseSoft }}>
         {isFormulaEvidenceStale
           ? 'Read-only σ² / noise floor evidence is stale after edit; waiting for the next recomputed frame.'
           : hasCurrentNoiseFloor
@@ -704,44 +711,6 @@ function NoiseFloorReadout({
             : 'Read-only σ² / noise floor appears after a selected formula frame is available.'}
       </div>
     </div>
-  );
-}
-
-function CoverageAssumptionsDisclosure() {
-  return (
-    <details data-testid="sinr-coverage-assumptions-disclosure" data-demotion="collapsed" data-readonly="true" data-prominence="low" style={{
-      display: 'grid',
-      gap: 8,
-      padding: '9px 11px',
-      borderRadius: UI_TOKENS.radius.lg,
-      background: 'rgba(117, 74, 10, 0.16)',
-      border: '1px solid rgba(247, 217, 123, 0.16)',
-      color: 'rgba(255, 230, 173, 0.78)',
-      fontSize: UI_TOKENS.type.size.body,
-      lineHeight: 1.5,
-    }}>
-      <summary data-testid="sinr-coverage-assumptions-summary" style={{
-        cursor: 'pointer',
-        color: UI_TOKENS.color.semantic.fixed,
-        fontSize: UI_TOKENS.type.size.body,
-        fontWeight: UI_TOKENS.type.weight.heavy,
-        letterSpacing: 0.6,
-        textTransform: 'uppercase',
-      }}>
-        Coverage / assumptions
-      </summary>
-      <div style={{ display: 'grid', gap: 8, paddingTop: 8 }}>
-        <div>
-          Adjustable formula groups: P<sub>t</sub>, H/L, path-loss sensitivity controls, G<sup>T</sup>, G<sup>R</sup>, I<sup>a</sup>/I<sup>b</sup>, σ², and K.
-        </div>
-        <div>
-          G<sup>R</sup> is controlled separately as receiver gain in the desired-signal numerator.
-        </div>
-        <div>
-          Path-loss constants in the Loss tab are sensitivity controls. Read-only assumptions: TR 38.811 environment stays read-only, and antenna efficiency remains future-only.
-        </div>
-      </div>
-    </details>
   );
 }
 
@@ -772,12 +741,19 @@ function NumericControl({
       data-control-active={disabled ? 'false' : 'true'}
       style={{
         display: 'grid',
-        gap: 10,
+        gap: 11,
         opacity: disabled ? 0.58 : 1,
-        padding: '12px 13px',
+        padding: '14px 15px',
         borderRadius: UI_TOKENS.radius.lg,
-        background: UI_TOKENS.color.surface.card,
-        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+        background: disabled
+          ? UI_TOKENS.color.surface.cardSubtle
+          : 'linear-gradient(180deg, rgba(15, 39, 48, 0.94), rgba(7, 20, 30, 0.9))',
+        border: disabled
+          ? `1px solid ${UI_TOKENS.color.border.subtle}`
+          : `1px solid ${accentColor}34`,
+        boxShadow: disabled
+          ? 'none'
+          : `inset 2px 0 0 ${accentColor}8f, inset 0 1px 0 rgba(255, 255, 255, 0.06)`,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'start' }}>
@@ -800,9 +776,9 @@ function NumericControl({
         <div style={{
           padding: '6px 10px',
           borderRadius: UI_TOKENS.radius.md,
-          background: `${accentColor}16`,
-          border: `1px solid ${accentColor}33`,
-          color: accentColor,
+          background: disabled ? 'rgba(132, 148, 163, 0.08)' : 'rgba(255, 255, 255, 0.055)',
+          border: disabled ? `1px solid ${UI_TOKENS.color.border.subtle}` : `1px solid ${accentColor}38`,
+          color: disabled ? UI_TOKENS.color.text.faint : UI_TOKENS.color.text.primary,
           fontSize: UI_TOKENS.type.size.bodyLg,
           fontWeight: UI_TOKENS.type.weight.heavy,
           whiteSpace: 'nowrap',
@@ -840,24 +816,24 @@ function NumericControl({
         </div>
       </div>
       <div
+        data-testid={testId ? `${testId}-details` : undefined}
+        data-prominence="inline-description"
+        style={{
+          ...explanatoryTextStyle,
+          color: disabled ? UI_TOKENS.color.text.faint : UI_TOKENS.color.text.secondary,
+        }}
+      >
+        {description}
+      </div>
+      <div
         data-testid={testId ? `${testId}-effect` : undefined}
         style={{
+          ...explanatoryTextStyle,
           color: disabled ? UI_TOKENS.color.text.faint : UI_TOKENS.color.text.secondary,
-          fontSize: UI_TOKENS.type.size.body,
-          lineHeight: 1.45,
         }}
       >
         {disabled && inactiveReason ? inactiveReason : effect}
       </div>
-      <details
-        data-testid={testId ? `${testId}-details` : undefined}
-        style={compactDetailsStyle}
-      >
-        <summary style={compactSummaryStyle}>Details</summary>
-        <div style={{ paddingTop: 8, color: UI_TOKENS.color.text.secondary }}>
-          {description}
-        </div>
-      </details>
     </div>
   );
 }
@@ -904,7 +880,7 @@ function LossControlSection({
           border: isResearch ? '1px solid rgba(247, 217, 123, 0.14)' : '1px solid rgba(88, 191, 240, 0.16)',
           color: isResearch ? 'rgba(255, 230, 173, 0.82)' : UI_TOKENS.color.text.secondary,
           fontSize: UI_TOKENS.type.size.body,
-          lineHeight: 1.42,
+          lineHeight: explanatoryTextStyle.lineHeight,
         }}
       >
         {subtitle}
@@ -969,17 +945,13 @@ function SelectControl({
         ))}
       </select>
       {activeOption?.detail && (
-        <div style={{
-          color: UI_TOKENS.color.text.secondary,
-          fontSize: UI_TOKENS.type.size.body,
-          lineHeight: 1.45,
-        }}>
+        <div style={explanatoryTextStyle}>
           {activeOption.detail}
         </div>
       )}
       <details style={compactDetailsStyle}>
         <summary style={compactSummaryStyle}>Details</summary>
-        <div style={{ paddingTop: 8, color: UI_TOKENS.color.text.secondary }}>
+        <div style={{ ...explanatoryTextStyle, paddingTop: 8 }}>
           {description}
         </div>
       </details>
@@ -1346,14 +1318,16 @@ export function SignalTuningPanel({
 
   const sinrOverview = (
     <details
+      open
       data-testid="sinr-overview-disclosure"
+      data-prominence="primary-context"
       style={{
         display: 'grid',
         gap: 10,
         padding: '10px 11px',
         borderRadius: UI_TOKENS.radius.lg,
-        background: 'linear-gradient(180deg, rgba(9, 42, 49, 0.52), rgba(5, 16, 26, 0.48))',
-        border: '1px solid rgba(118, 234, 215, 0.16)',
+        background: UI_TOKENS.color.surface.cardFaint,
+        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
         color: UI_TOKENS.color.text.secondary,
       }}
     >
@@ -1398,31 +1372,31 @@ export function SignalTuningPanel({
           <div style={{
             padding: '8px 10px',
             borderRadius: UI_TOKENS.radius.md,
-            background: 'rgba(118, 234, 215, 0.12)',
-            border: '1px solid rgba(118, 234, 215, 0.18)',
+            background: 'rgba(255, 255, 255, 0.035)',
+            border: '1px solid rgba(118, 234, 215, 0.16)',
           }}>
             <div style={{ fontSize: UI_TOKENS.type.size.tiny, color: UI_TOKENS.color.semantic.tuning, fontWeight: UI_TOKENS.type.weight.heavy, textTransform: 'uppercase', letterSpacing: 0.6 }}>
               Signal side
             </div>
-            <div style={{ marginTop: 3, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.body, lineHeight: 1.3 }}>
+            <div style={{ ...explanatoryTextStyle, marginTop: 3 }}>
               P<sub>t</sub>, H, G<sup>T</sup>, G<sup>R</sup>
             </div>
           </div>
           <div style={{
             padding: '8px 10px',
             borderRadius: UI_TOKENS.radius.md,
-            background: 'rgba(123, 167, 255, 0.12)',
-            border: '1px solid rgba(123, 167, 255, 0.18)',
+            background: 'rgba(255, 255, 255, 0.035)',
+            border: '1px solid rgba(142, 186, 255, 0.16)',
           }}>
             <div style={{ fontSize: UI_TOKENS.type.size.tiny, color: UI_TOKENS.color.semantic.noise, fontWeight: UI_TOKENS.type.weight.heavy, textTransform: 'uppercase', letterSpacing: 0.6 }}>
               Noise side
             </div>
-            <div style={{ marginTop: 3, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.body, lineHeight: 1.3 }}>
+            <div style={{ ...explanatoryTextStyle, marginTop: 3 }}>
               I<sup>a</sup>, I<sup>b</sup>, σ²
             </div>
           </div>
         </div>
-        <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.text.secondary, lineHeight: 1.35 }}>
+        <div style={explanatoryTextStyle}>
           {getProfileLabel(baseProfile)} · {getFormulaFamilyLabel(baseProfile.formulaFamily)} · G<sup>R</sup> {formatDbi(tuning.ueAntennaMaxGainDbi)}
         </div>
       </div>
@@ -1888,11 +1862,9 @@ export function SignalTuningPanel({
         </div>
       )}
 
-      {sinrOverview}
-
       <FormulaContextDisclosure tab={activeTabConfig} />
 
-      <CoverageAssumptionsDisclosure />
+      {sinrOverview}
 
       <details
         data-testid="sinr-formula-map-disclosure"
