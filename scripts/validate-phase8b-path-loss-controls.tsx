@@ -447,22 +447,83 @@ function assertPhase8DNlosClutterUx(): void {
 
 function assertPlacementCopyAndStaleMarkup(): void {
   const tuningSource = readFileSync(new URL('../src/ui/SignalTuningPanel.tsx', import.meta.url), 'utf8');
+  const tokenSource = readFileSync(new URL('../src/constants/uiTokens.ts', import.meta.url), 'utf8');
   assertContains(tuningSource, 'testId="loss-formula-controls"');
-  assertContains(tuningSource, 'title="Formula controls"');
+  assertContains(tuningSource, 'title="Path-loss stack"');
   assertContains(tuningSource, 'testId="loss-research-override"');
-  assertContains(tuningSource, 'title="Research Override"');
+  assertContains(tuningSource, 'title="TR 38.811 Research Override"');
   assertContains(tuningSource, 'not HOBS paper-backed parameter ranges');
-  assertContains(tuningSource, 'disabled={!atmosphericEnabled}');
-  assertContains(tuningSource, 'disabled={!scintillationEnabled}');
-  assertContains(tuningSource, 'disabled={!shadowFadingEnabled}');
+  assertContains(tuningSource, 'data-testid="sinr-overview-disclosure"');
+  assertContains(tuningSource, 'data-testid="active-tab-formula-context"');
+  assertContains(tuningSource, 'Formula / notes');
+  assertContains(tuningSource, 'data-testid={testId ? `${testId}-details` : undefined}');
+  assertContains(tuningSource, 'data-testid={testId ? `${testId}-range-endpoints` : undefined}');
+  assertContains(tuningSource, 'active={atmosphericEnabled}');
+  assertContains(tuningSource, 'active={scintillationEnabled}');
+  assertContains(tuningSource, 'active={shadowFadingEnabled}');
   assertContains(tuningSource, 'isTr38811Formula && (');
   assertContains(tuningSource, 'testId="lcl-nlos-control"');
+  assertContains(tuningSource, 'role="switch"');
+  assertContains(tuningSource, 'aria-checked={active}');
+  assertContains(tuningSource, 'ON');
+  assertContains(tuningSource, 'OFF');
+  assertContains(tuningSource, 'accentColor={UI_TOKENS.color.semantic.loss}');
+  assertNotContains(tuningSource, 'semantic.pathLoss');
   assertNotContains(tuningSource, 'NlosClutterInactiveCallout');
   assertContains(tuningSource, 'Read-only in Phase 8B; no editable environment selector');
   assertNotContains(tuningSource, 'TR 38.811 environment selector');
   assertNotContains(tuningSource, 'beamPowerControl');
+  assertContains(tokenSource, "loss: '#58bff0'");
+  assertContains(tokenSource, 'caption: 14');
+  assertContains(tokenSource, 'body: 17');
+  assertContains(tokenSource, 'bodyLg: 18');
+  assertContains(tokenSource, 'formula: 27');
 
   const profile = loadProfile('hobs-2024-paper-default');
+  const defaultSwitchMarkup = renderLossPanelMarkup(profile);
+  assertContains(defaultSwitchMarkup, 'data-testid="path-loss-term-fspl"');
+  assertContains(defaultSwitchMarkup, 'data-testid="path-loss-term-atmospheric"');
+  assertContains(defaultSwitchMarkup, 'data-testid="path-loss-term-scintillation"');
+  assertContains(defaultSwitchMarkup, 'data-testid="path-loss-term-shadow-fading"');
+  assertContains(defaultSwitchMarkup, 'data-testid="path-loss-term-scintillation-switch"');
+  assertContains(defaultSwitchMarkup, 'aria-label="Scale (dB)"');
+  assertContains(defaultSwitchMarkup, 'aria-label="Gas absorption path-loss component on"');
+  assertContains(defaultSwitchMarkup, 'role="switch"');
+  assertContains(defaultSwitchMarkup, 'data-path-loss-term-state="on"');
+
+  const scintillationRowStart = defaultSwitchMarkup.indexOf('data-testid="path-loss-term-scintillation"');
+  const shadowRowStart = defaultSwitchMarkup.indexOf('data-testid="path-loss-term-shadow-fading"');
+  assert.ok(scintillationRowStart >= 0 && shadowRowStart > scintillationRowStart, 'expected scintillation row before shadow-fading row');
+  const scintillationRow = defaultSwitchMarkup.slice(scintillationRowStart, shadowRowStart);
+  assertContains(scintillationRow, 'data-testid="path-loss-term-scintillation-switch"');
+  assertContains(scintillationRow, 'data-testid="path-loss-term-scintillation-range-meta"');
+  assertContains(scintillationRow, 'title="Adds a small elevation-dependent fading margin."');
+  assertContains(scintillationRow, 'aria-label="Scale (dB)"');
+  assertContains(scintillationRow, '0.05 dB');
+  assertContains(scintillationRow, 'Min 0.00 dB');
+  assertContains(scintillationRow, 'Max 1.00 dB');
+  assertNotContains(scintillationRow, '#f7d97b');
+  assertNotContains(scintillationRow, '#f6fbff');
+  assertContains(scintillationRow, '#58bff0');
+
+  const scintillationDetailsStart = scintillationRow.indexOf('data-testid="path-loss-term-scintillation-details"');
+  assert.ok(scintillationDetailsStart >= 0, 'expected scintillation details block');
+  const scintillationDetails = scintillationRow.slice(scintillationDetailsStart);
+  assertContains(scintillationDetails, 'Adds a small elevation-dependent fading margin.');
+  assertNotContains(scintillationDetails, 'Range ');
+  assertNotContains(scintillationDetails, 'Min ');
+  assertNotContains(scintillationDetails, 'Max ');
+
+  const offSwitchMarkup = renderLossPanelMarkup(profile, {
+    ...createSignalTuningState(profile),
+    pathLossComponents: ['fspl'],
+  });
+  assertContains(offSwitchMarkup, 'aria-label="Scintillation path-loss component off"');
+  assertContains(offSwitchMarkup, 'aria-checked="false"');
+  assertContains(offSwitchMarkup, 'data-path-loss-term-state="off"');
+  assertContains(offSwitchMarkup, 'data-state="off"');
+  assertContains(offSwitchMarkup, 'disabled=""');
+
   const staleTuningMarkup = renderToStaticMarkup(
     <SignalTuningPanel
       baseProfile={profile}
@@ -558,8 +619,8 @@ function run(): void {
         'default tuning state does not create runtime overrides',
       ],
       ui: [
-        'Loss tab contains Formula controls and Research Override sections',
-        'Research Override copy marks non-paper teaching / sensitivity controls',
+        'Loss tab colocates each path-loss component switch with its slider/value control',
+        'TR 38.811 Research Override remains separated from the common loss-term stack',
         'hobs-tr38811 renders editable L_cl,NLoS control and legacy profiles hide L_cl,NLoS entirely',
         'formula evidence is marked stale between edit and recompute',
       ],

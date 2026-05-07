@@ -1322,13 +1322,13 @@ export function InfoPanel({
             borderRadius: UI_TOKENS.radius.lg,
             border: `1px solid ${UI_TOKENS.color.border.subtle}`,
           }}>
-            <div style={{ fontSize: 12, color: UI_TOKENS.color.text.secondary, letterSpacing: 0.6, marginBottom: 4 }}>
+            <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.text.secondary, letterSpacing: 0.6, marginBottom: 4 }}>
               SIGNAL PROFILE
             </div>
             <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.primary, marginBottom: 2 }}>
               {formulaFamilyLabel ?? '—'}
             </div>
-            <div style={{ fontSize: 12, color: UI_TOKENS.color.text.secondary }}>
+            <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.text.secondary }}>
               {profileId ?? '—'}
             </div>
           </div>

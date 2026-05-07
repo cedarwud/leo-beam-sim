@@ -182,6 +182,7 @@ const panelStyle: CSSProperties = {
   boxShadow: UI_TOKENS.shadow.tuningPanel,
   padding: 20,
   color: UI_TOKENS.color.text.panel,
+  fontSize: UI_TOKENS.type.size.body,
   boxSizing: 'border-box',
   display: 'grid',
   gap: 16,
@@ -200,7 +201,7 @@ const collapsedPanelStyle: CSSProperties = {
 
 const drawerContentStyle: CSSProperties = {
   display: 'grid',
-  gap: 16,
+  gap: 0,
   minWidth: 0,
   width: '100%',
 };
@@ -239,6 +240,18 @@ const formulaTextStyle: CSSProperties = {
   lineHeight: 1.35,
 };
 
+const compactDetailsStyle: CSSProperties = {
+  color: UI_TOKENS.color.text.muted,
+  fontSize: UI_TOKENS.type.size.body,
+  lineHeight: 1.5,
+};
+
+const compactSummaryStyle: CSSProperties = {
+  cursor: 'pointer',
+  color: UI_TOKENS.color.text.secondary,
+  fontWeight: UI_TOKENS.type.weight.strong,
+};
+
 const srOnlyStyle: CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -272,11 +285,13 @@ function getActiveTabConfig(activeTab: TuningTabKey): TuningTab {
 function MathSymbol({
   children,
   size = 24,
+  color = UI_TOKENS.color.text.symbol,
 }: {
   children: ReactNode;
   size?: number;
+  color?: string;
 }) {
-  return <span style={{ ...symbolStyle, fontSize: size }}>{children}</span>;
+  return <span style={{ ...symbolStyle, fontSize: size, color }}>{children}</span>;
 }
 
 function FormulaContext({ tab }: { tab: TuningTab }) {
@@ -293,12 +308,41 @@ function FormulaContext({ tab }: { tab: TuningTab }) {
       borderLeft: `4px solid ${accent}`,
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
-        <div style={{ ...formulaTextStyle, fontSize: 21, color: accent }}>{tab.formula}</div>
+        <div style={{ ...formulaTextStyle, color: accent }}>{tab.formula}</div>
       </div>
       <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: UI_TOKENS.color.text.secondary }}>
         {tab.note}
       </div>
     </div>
+  );
+}
+
+function FormulaContextDisclosure({ tab }: { tab: TuningTab }) {
+  return (
+    <details
+      data-testid="active-tab-formula-context"
+      style={{
+        display: 'grid',
+        gap: 10,
+        padding: '10px 11px',
+        borderRadius: UI_TOKENS.radius.lg,
+        background: 'rgba(255, 255, 255, 0.03)',
+        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+        color: UI_TOKENS.color.text.secondary,
+      }}
+    >
+      <summary style={{
+        ...compactSummaryStyle,
+        color: UI_TOKENS.color.semantic.tuningSoft,
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+      }}>
+        Formula / notes
+      </summary>
+      <div style={{ paddingTop: 10 }}>
+        <FormulaContext tab={tab} />
+      </div>
+    </details>
   );
 }
 
@@ -326,7 +370,7 @@ function FormulaMapTile({
   const accent = isResearch
     ? UI_TOKENS.color.semantic.fixed
     : isDenominator
-      ? '#a9c9ff'
+      ? UI_TOKENS.color.semantic.noiseSoft
       : UI_TOKENS.color.semantic.tuningSoft;
 
   return (
@@ -354,7 +398,7 @@ function FormulaMapTile({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
-        <MathSymbol size={23}>{symbol}</MathSymbol>
+        <MathSymbol size={25}>{symbol}</MathSymbol>
         {badge && (
           <span style={{
             padding: '3px 7px',
@@ -497,8 +541,8 @@ function SinrFormulaMap({ receiverGainDbi }: { receiverGainDbi: number }) {
           gap: 10,
           padding: '12px',
           borderRadius: UI_TOKENS.radius.lg,
-          background: 'rgba(93, 166, 255, 0.035)',
-          border: '1px solid rgba(93, 166, 255, 0.12)',
+          background: `${UI_TOKENS.color.semantic.noise}08`,
+          border: `1px solid ${UI_TOKENS.color.semantic.noise}1f`,
         }}
       >
         <div style={{
@@ -544,6 +588,7 @@ function FormulaSideControlSection({
   side,
   children,
   testId,
+  accentColor,
 }: {
   title: string;
   subtitle: ReactNode;
@@ -551,8 +596,10 @@ function FormulaSideControlSection({
   side: 'numerator' | 'denominator';
   children: ReactNode;
   testId: string;
+  accentColor?: string;
 }) {
   const isNumerator = side === 'numerator';
+  const sectionAccent = accentColor ?? (isNumerator ? UI_TOKENS.color.semantic.tuning : UI_TOKENS.color.semantic.noise);
 
   return (
     <section
@@ -563,23 +610,36 @@ function FormulaSideControlSection({
         gap: 14,
         padding: '14px 15px',
         borderRadius: UI_TOKENS.radius.lg,
-        background: isNumerator ? 'rgba(21, 96, 88, 0.22)' : 'rgba(31, 67, 122, 0.24)',
-        border: isNumerator ? '1px solid rgba(118, 234, 215, 0.2)' : '1px solid rgba(123, 167, 255, 0.22)',
+        background: `linear-gradient(180deg, ${sectionAccent}13, rgba(8, 24, 32, 0.46))`,
+        border: `1px solid ${sectionAccent}26`,
       }}
     >
-      <div style={{ display: 'grid', gap: 6 }}>
-        <div style={{
-          fontSize: UI_TOKENS.type.size.bodyLg,
-          color: UI_TOKENS.color.text.controlLabel,
-          fontWeight: UI_TOKENS.type.weight.heavy,
-        }}>
-          {title}
+      <div style={{
+        fontSize: UI_TOKENS.type.size.bodyLg,
+        color: UI_TOKENS.color.text.controlLabel,
+        fontWeight: UI_TOKENS.type.weight.heavy,
+      }}>
+        {title}
+      </div>
+      <div
+        data-testid={`${testId}-formula-context`}
+        style={{
+          display: 'grid',
+          gap: 6,
+          padding: '10px 11px',
+          borderRadius: UI_TOKENS.radius.md,
+          background: `${sectionAccent}0f`,
+          border: `1px solid ${sectionAccent}22`,
+          borderLeft: `3px solid ${sectionAccent}80`,
+        }}
+      >
+        <div style={{ ...formulaTextStyle, fontSize: UI_TOKENS.type.size.subheading, lineHeight: 1.28, color: sectionAccent }}>
+          {formula}
         </div>
-        <div style={formulaTextStyle}>{formula}</div>
         <div style={{
-          fontSize: UI_TOKENS.type.size.body,
           color: UI_TOKENS.color.text.secondary,
-          lineHeight: 1.5,
+          fontSize: UI_TOKENS.type.size.body,
+          lineHeight: 1.42,
         }}>
           {subtitle}
         </div>
@@ -614,7 +674,7 @@ function NoiseFloorReadout({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
-          <MathSymbol size={22}>σ²</MathSymbol>
+          <MathSymbol size={22} color={UI_TOKENS.color.semantic.noise}>σ²</MathSymbol>
           <span style={{
             fontSize: UI_TOKENS.type.size.subheading,
             color: UI_TOKENS.color.text.controlLabel,
@@ -626,8 +686,8 @@ function NoiseFloorReadout({
         <div style={{
           padding: '5px 8px',
           borderRadius: UI_TOKENS.radius.md,
-          background: 'rgba(123, 167, 255, 0.12)',
-          border: '1px solid rgba(123, 167, 255, 0.22)',
+          background: `${UI_TOKENS.color.semantic.noise}14`,
+          border: `1px solid ${UI_TOKENS.color.semantic.noise}2e`,
           color: hasCurrentNoiseFloor ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.faint,
           fontSize: UI_TOKENS.type.size.bodyLg,
           fontWeight: UI_TOKENS.type.weight.heavy,
@@ -636,7 +696,7 @@ function NoiseFloorReadout({
           {hasCurrentNoiseFloor ? formatDbm(formulaBudget.noiseDbm) : 'waiting'}
         </div>
       </div>
-      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.5, color: UI_TOKENS.color.semantic.tuningSoft }}>
+      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.5, color: UI_TOKENS.color.semantic.noiseSoft }}>
         {isFormulaEvidenceStale
           ? 'Read-only σ² / noise floor evidence is stale after edit; waiting for the next recomputed frame.'
           : hasCurrentNoiseFloor
@@ -723,7 +783,7 @@ function NumericControl({
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'start' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 11, marginBottom: 5 }}>
-            <MathSymbol>{symbol}</MathSymbol>
+            <MathSymbol color={disabled ? UI_TOKENS.color.text.faint : accentColor}>{symbol}</MathSymbol>
             <span
               title={description}
               style={{
@@ -751,36 +811,6 @@ function NumericControl({
         </div>
       </div>
       <div style={{ display: 'grid', gap: 7 }}>
-        <div
-          data-testid={testId ? `${testId}-range-endpoints` : undefined}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 10,
-            color: UI_TOKENS.color.text.secondary,
-            fontSize: UI_TOKENS.type.size.caption,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-          }}
-        >
-          <span style={{
-            display: 'inline-flex',
-            padding: '4px 7px',
-            borderRadius: UI_TOKENS.radius.pill,
-            background: 'rgba(20, 135, 121, 0.08)',
-            border: '1px solid rgba(20, 135, 121, 0.2)',
-          }}>
-            Min {formatRangeEndpoint(min)}
-          </span>
-          <span style={{
-            display: 'inline-flex',
-            padding: '4px 7px',
-            borderRadius: UI_TOKENS.radius.pill,
-            background: 'rgba(20, 135, 121, 0.08)',
-            border: '1px solid rgba(20, 135, 121, 0.2)',
-          }}>
-            Max {formatRangeEndpoint(max)}
-          </span>
-        </div>
         <input
           className={UI_CLASSES.range}
           type="range"
@@ -794,13 +824,40 @@ function NumericControl({
           onChange={event => onChange(Number(event.target.value))}
           style={{ width: '100%', accentColor, cursor: disabled ? 'not-allowed' : 'pointer' }}
         />
+        <div
+          data-testid={testId ? `${testId}-range-endpoints` : undefined}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 10,
+            color: UI_TOKENS.color.text.secondary,
+            fontSize: UI_TOKENS.type.size.body,
+            lineHeight: 1.35,
+          }}
+        >
+          <span>Min {formatRangeEndpoint(min)}</span>
+          <span>Max {formatRangeEndpoint(max)}</span>
+        </div>
       </div>
-      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: UI_TOKENS.color.text.secondary }}>
-        {description}
-      </div>
-      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: UI_TOKENS.color.semantic.tuningSoft }}>
+      <div
+        data-testid={testId ? `${testId}-effect` : undefined}
+        style={{
+          color: disabled ? UI_TOKENS.color.text.faint : UI_TOKENS.color.text.secondary,
+          fontSize: UI_TOKENS.type.size.body,
+          lineHeight: 1.45,
+        }}
+      >
         {disabled && inactiveReason ? inactiveReason : effect}
       </div>
+      <details
+        data-testid={testId ? `${testId}-details` : undefined}
+        style={compactDetailsStyle}
+      >
+        <summary style={compactSummaryStyle}>Details</summary>
+        <div style={{ paddingTop: 8, color: UI_TOKENS.color.text.secondary }}>
+          {description}
+        </div>
+      </details>
     </div>
   );
 }
@@ -832,21 +889,25 @@ function LossControlSection({
         border: isResearch ? '1px solid rgba(247, 217, 123, 0.22)' : '1px solid rgba(118, 234, 215, 0.2)',
       }}
     >
-      <div style={{ display: 'grid', gap: 5 }}>
-        <div style={{
-          fontSize: UI_TOKENS.type.size.bodyLg,
-          color: UI_TOKENS.color.text.controlLabel,
-          fontWeight: UI_TOKENS.type.weight.heavy,
-        }}>
-          {title}
-        </div>
-        <div style={{
+      <div style={{
+        fontSize: UI_TOKENS.type.size.bodyLg,
+        color: UI_TOKENS.color.text.controlLabel,
+        fontWeight: UI_TOKENS.type.weight.heavy,
+      }}>
+        {title}
+      </div>
+      <div
+        style={{
+          padding: '8px 10px',
+          borderRadius: UI_TOKENS.radius.md,
+          background: isResearch ? 'rgba(247, 217, 123, 0.075)' : 'rgba(88, 191, 240, 0.08)',
+          border: isResearch ? '1px solid rgba(247, 217, 123, 0.14)' : '1px solid rgba(88, 191, 240, 0.16)',
+          color: isResearch ? 'rgba(255, 230, 173, 0.82)' : UI_TOKENS.color.text.secondary,
           fontSize: UI_TOKENS.type.size.body,
-          color: isResearch ? 'rgba(255, 230, 173, 0.78)' : UI_TOKENS.color.text.secondary,
-          lineHeight: 1.5,
-        }}>
-          {subtitle}
-        </div>
+          lineHeight: 1.42,
+        }}
+      >
+        {subtitle}
       </div>
       {children}
     </section>
@@ -859,6 +920,7 @@ function SelectControl({
   description,
   value,
   options,
+  accentColor = UI_TOKENS.color.semantic.tuning,
   onChange,
 }: {
   symbol: ReactNode;
@@ -866,18 +928,23 @@ function SelectControl({
   description: string;
   value: string;
   options: ReadonlyArray<{ value: string; label: string; detail?: string }>;
+  accentColor?: string;
   onChange: (value: string) => void;
 }) {
   const activeOption = options.find(option => option.value === value);
 
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div style={{
+      display: 'grid',
+      gap: 12,
+      padding: '12px 13px',
+      borderRadius: UI_TOKENS.radius.lg,
+      background: UI_TOKENS.color.surface.card,
+      border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+    }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 11 }}>
-        <MathSymbol>{symbol}</MathSymbol>
+        <MathSymbol color={accentColor}>{symbol}</MathSymbol>
         <span style={{ fontSize: UI_TOKENS.type.size.subheading, color: UI_TOKENS.color.text.controlLabel, fontWeight: UI_TOKENS.type.weight.heavy }}>{label}</span>
-      </div>
-      <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.secondary, lineHeight: 1.5 }}>
-        {description}
       </div>
       <select
         className={UI_CLASSES.select}
@@ -888,7 +955,7 @@ function SelectControl({
           cursor: 'pointer',
           width: '100%',
           borderRadius: UI_TOKENS.radius.md,
-          border: `1px solid ${UI_TOKENS.color.border.tuningPanel}`,
+          border: `1px solid ${accentColor}33`,
           background: UI_TOKENS.color.surface.field,
           color: UI_TOKENS.color.text.primary,
           padding: '12px 13px',
@@ -902,69 +969,236 @@ function SelectControl({
         ))}
       </select>
       {activeOption?.detail && (
-        <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.semantic.tuningSoft, lineHeight: 1.5 }}>
+        <div style={{
+          color: UI_TOKENS.color.text.secondary,
+          fontSize: UI_TOKENS.type.size.body,
+          lineHeight: 1.45,
+        }}>
           {activeOption.detail}
         </div>
       )}
+      <details style={compactDetailsStyle}>
+        <summary style={compactSummaryStyle}>Details</summary>
+        <div style={{ paddingTop: 8, color: UI_TOKENS.color.text.secondary }}>
+          {description}
+        </div>
+      </details>
     </div>
   );
 }
 
-function ToggleChip({
+function PathLossTermControl({
   active,
   symbol,
   label,
   detail,
-  onClick,
+  controlLabel,
+  unit,
+  value,
+  min,
+  max,
+  step,
+  effect,
+  inactiveReason,
+  accentColor = UI_TOKENS.color.semantic.tuning,
+  formatValue,
+  testId,
+  onToggle,
+  onChange,
 }: {
   active: boolean;
   symbol: ReactNode;
   label: string;
   detail: string;
-  onClick: () => void;
+  controlLabel: string;
+  unit: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  effect: string;
+  inactiveReason: string;
+  accentColor?: string;
+  formatValue?: (value: number) => string;
+  testId?: string;
+  onToggle: () => void;
+  onChange: (value: number) => void;
 }) {
+  const displayValue = formatValue ? formatValue(value) : formatWithUnit(value, unit);
+  const formatRangeEndpoint = (endpoint: number) => (
+    formatValue ? formatValue(endpoint) : formatWithUnit(endpoint, unit)
+  );
+  const termAccent = active ? UI_TOKENS.color.text.secondary : UI_TOKENS.color.text.faint;
+  const primaryText = active ? UI_TOKENS.color.text.label : UI_TOKENS.color.text.faint;
+  const secondaryText = active ? UI_TOKENS.color.text.muted : UI_TOKENS.color.text.faint;
+  const termBackground = active ? 'rgba(255, 255, 255, 0.045)' : 'rgba(132, 148, 163, 0.04)';
+
   return (
-    <button
-      className={`${UI_CLASSES.button} ${UI_CLASSES.toggle}`}
-      type="button"
-      onClick={onClick}
+    <section
+      className="leo-path-loss-term-row"
+      data-testid={testId}
+      data-path-loss-term-state={active ? 'on' : 'off'}
       style={{
-        cursor: 'pointer',
-        textAlign: 'left',
-        padding: '13px 14px',
-        borderRadius: UI_TOKENS.radius.md,
-        border: active ? '1px solid rgba(20, 135, 121, 0.44)' : `1px solid ${UI_TOKENS.color.border.soft}`,
-        background: active
-          ? 'linear-gradient(180deg, rgba(42, 143, 129, 0.34), rgba(13, 52, 48, 0.24))'
-          : UI_TOKENS.color.surface.card,
-        color: UI_TOKENS.color.text.primary,
         display: 'grid',
-        gap: 7,
+        gap: 9,
+        padding: '12px 13px',
+        borderRadius: UI_TOKENS.radius.lg,
+        border: `1px solid ${active ? 'rgba(218, 244, 255, 0.14)' : UI_TOKENS.color.border.subtle}`,
+        borderLeft: `3px solid ${active ? `${accentColor}66` : 'rgba(132, 148, 163, 0.24)'}`,
+        background: termBackground,
+        color: primaryText,
+        opacity: active ? 1 : 0.58,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 9 }}>
-        <MathSymbol size={21}>{symbol}</MathSymbol>
-        <span style={{ fontSize: UI_TOKENS.type.size.bodyLg, color: active ? UI_TOKENS.color.semantic.tuning : UI_TOKENS.color.text.controlLabel, fontWeight: UI_TOKENS.type.weight.heavy }}>{label}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: 12 }}>
+        <div
+          title={detail}
+          style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}
+        >
+          <MathSymbol size={24} color={termAccent}>{symbol}</MathSymbol>
+          <span style={{
+            fontSize: UI_TOKENS.type.size.bodyLg,
+            color: primaryText,
+            fontWeight: UI_TOKENS.type.weight.strong,
+            lineHeight: 1.25,
+          }}>
+            {label}
+          </span>
+        </div>
+        <button
+          className={`${UI_CLASSES.button} leo-path-loss-switch`}
+          type="button"
+          role="switch"
+          aria-checked={active}
+          aria-label={`${label} path-loss component ${active ? 'on' : 'off'}`}
+          data-state={active ? 'on' : 'off'}
+          data-testid={testId ? `${testId}-switch` : undefined}
+          onClick={onToggle}
+          style={{
+            cursor: 'pointer',
+            position: 'relative',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: active ? 'flex-start' : 'flex-end',
+            width: 66,
+            height: 30,
+            padding: '0 9px',
+            borderRadius: UI_TOKENS.radius.pill,
+            border: active ? `1px solid ${accentColor}38` : '1px solid rgba(132, 148, 163, 0.32)',
+            background: active ? 'rgba(255, 255, 255, 0.05)' : 'rgba(132, 148, 163, 0.10)',
+            color: active ? UI_TOKENS.color.text.label : UI_TOKENS.color.text.faint,
+            fontSize: UI_TOKENS.type.size.caption,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            letterSpacing: 0,
+            boxSizing: 'border-box',
+            touchAction: 'manipulation',
+          }}
+        >
+          <span>{active ? 'ON' : 'OFF'}</span>
+          <span
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: 4,
+              left: active ? 40 : 4,
+              width: 20,
+              height: 20,
+              borderRadius: UI_TOKENS.radius.pill,
+              background: active ? `${accentColor}b8` : UI_TOKENS.color.semantic.inactive,
+              boxShadow: active ? `0 0 4px ${accentColor}20` : 'none',
+            }}
+          />
+        </button>
       </div>
-      <div style={{ fontSize: UI_TOKENS.type.size.body, lineHeight: 1.45, color: active ? UI_TOKENS.color.text.secondary : UI_TOKENS.color.text.muted }}>
-        {detail}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: 12 }}>
+        <label style={{ display: 'grid', gap: 7, minWidth: 0 }}>
+          <span style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 10,
+            alignItems: 'baseline',
+            color: primaryText,
+            fontSize: UI_TOKENS.type.size.body,
+            fontWeight: UI_TOKENS.type.weight.strong,
+          }}>
+            <span>{controlLabel}</span>
+            <span style={{ fontSize: UI_TOKENS.type.size.small, color: secondaryText }}>
+              {active ? effect : inactiveReason}
+            </span>
+          </span>
+          <input
+            className={UI_CLASSES.range}
+            type="range"
+            aria-label={`${controlLabel} (${unit})`}
+            disabled={!active}
+            aria-disabled={!active}
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={event => onChange(Number(event.target.value))}
+            style={{ width: '100%', accentColor, cursor: active ? 'pointer' : 'not-allowed' }}
+          />
+          <span
+            data-testid={testId ? `${testId}-range-meta` : undefined}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: 10,
+              color: secondaryText,
+              fontSize: UI_TOKENS.type.size.body,
+              lineHeight: 1.35,
+            }}
+          >
+            <span>Min {formatRangeEndpoint(min)}</span>
+            <span>Max {formatRangeEndpoint(max)}</span>
+          </span>
+        </label>
+        <div style={{
+          minWidth: 84,
+          padding: '6px 9px',
+          borderRadius: UI_TOKENS.radius.md,
+          background: active ? 'rgba(255, 255, 255, 0.04)' : 'rgba(132, 148, 163, 0.05)',
+          border: active ? '1px solid rgba(218, 244, 255, 0.13)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
+          color: active ? UI_TOKENS.color.text.label : UI_TOKENS.color.text.faint,
+          fontSize: UI_TOKENS.type.size.bodyLg,
+          fontWeight: UI_TOKENS.type.weight.heavy,
+          textAlign: 'right',
+          whiteSpace: 'nowrap',
+        }}>
+          {displayValue}
+        </div>
       </div>
-    </button>
+
+      <details data-testid={testId ? `${testId}-details` : undefined} style={{
+        color: UI_TOKENS.color.text.muted,
+        fontSize: UI_TOKENS.type.size.body,
+        lineHeight: 1.55,
+      }}>
+        <summary style={{ cursor: 'pointer', color: secondaryText, fontWeight: UI_TOKENS.type.weight.strong }}>
+          Details
+        </summary>
+        <div style={{ display: 'grid', gap: 6, paddingTop: 8 }}>
+          <div>{detail}</div>
+        </div>
+      </details>
+    </section>
   );
 }
 
 function getFormulaTabAccent(tabKey: TuningTabKey): string {
   switch (tabKey) {
     case 'thermal-noise':
-      return UI_TOKENS.color.semantic.info;
+      return UI_TOKENS.color.semantic.noise;
     case 'interference':
       return '#ff8a6b';
     case 'loss':
-      return '#58bff0';
+      return UI_TOKENS.color.semantic.loss;
     case 'receiver-gain':
       return UI_TOKENS.color.semantic.fixed;
     case 'beam':
-      return '#6f7f21';
+      return UI_TOKENS.color.semantic.beam;
     case 'signal-power':
       return UI_TOKENS.color.semantic.tuning;
   }
@@ -1002,11 +1236,20 @@ function TuningPageTabs({
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+        gridAutoRows: 44,
+        height: 54,
         gap: 6,
         padding: 4,
-        borderRadius: UI_TOKENS.radius.lg,
+        borderRadius: activePage === 'sinr-formula'
+          ? `${UI_TOKENS.radius.lg}px ${UI_TOKENS.radius.lg}px 0 0`
+          : UI_TOKENS.radius.lg,
         background: UI_TOKENS.color.surface.cardFaint,
         border: `1px solid ${UI_TOKENS.color.border.soft}`,
+        borderBottomColor: activePage === 'sinr-formula'
+          ? 'rgba(218,244,255,0.08)'
+          : UI_TOKENS.color.border.soft,
+        boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
       {TUNING_PAGES.map(page => {
@@ -1024,7 +1267,8 @@ function TuningPageTabs({
             onClick={() => onChange(page.key)}
             style={{
               cursor: 'pointer',
-              minHeight: 40,
+              height: 44,
+              minHeight: 44,
               padding: '8px 10px',
               borderRadius: UI_TOKENS.radius.md,
               border: active ? '1px solid rgba(118, 234, 215, 0.44)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
@@ -1033,11 +1277,14 @@ function TuningPageTabs({
               display: 'grid',
               textAlign: 'left',
               alignItems: 'center',
+              lineHeight: 1.12,
+              boxSizing: 'border-box',
             }}
           >
             <span style={{
               fontSize: UI_TOKENS.type.size.body,
               fontWeight: UI_TOKENS.type.weight.heavy,
+              lineHeight: 1.12,
             }}>
               {page.title}
             </span>
@@ -1076,6 +1323,7 @@ export function SignalTuningPanel({
   const drawerState = getSignalDrawerState(uiMode);
   const activeTabConfig = getActiveTabConfig(activeTab);
   const isTr38811Formula = baseProfile.formulaFamily === 'hobs-tr38811';
+  const fsplEnabled = tuning.pathLossComponents.includes('fspl');
   const atmosphericEnabled = tuning.pathLossComponents.includes('atmospheric');
   const scintillationEnabled = tuning.pathLossComponents.includes('scintillation');
   const shadowFadingEnabled = tuning.pathLossComponents.includes('shadow-fading');
@@ -1095,6 +1343,91 @@ export function SignalTuningPanel({
       pathLossComponents: PATH_LOSS_COMPONENT_ORDER.filter(entry => selected.has(entry)),
     });
   };
+
+  const sinrOverview = (
+    <details
+      data-testid="sinr-overview-disclosure"
+      style={{
+        display: 'grid',
+        gap: 10,
+        padding: '10px 11px',
+        borderRadius: UI_TOKENS.radius.lg,
+        background: 'linear-gradient(180deg, rgba(9, 42, 49, 0.52), rgba(5, 16, 26, 0.48))',
+        border: '1px solid rgba(118, 234, 215, 0.16)',
+        color: UI_TOKENS.color.text.secondary,
+      }}
+    >
+      <summary style={{
+        ...compactSummaryStyle,
+        color: UI_TOKENS.color.semantic.tuning,
+        letterSpacing: 0.6,
+        textTransform: 'uppercase',
+      }}>
+        SINR overview
+      </summary>
+      <div style={{ display: 'grid', gap: 12, paddingTop: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'start' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.semantic.tuning, letterSpacing: 1.1, textTransform: 'uppercase', fontWeight: UI_TOKENS.type.weight.heavy }}>
+              SINR Formula Tuning
+            </div>
+            <div style={{ marginTop: 7, ...formulaTextStyle, fontSize: 23, lineHeight: 1.28 }}>
+              γ = <span style={{ color: UI_TOKENS.color.semantic.tuning }}>(P<sub>t</sub> · H · G<sup>T</sup> · G<sup>R</sup>)</span> / <span style={{ color: UI_TOKENS.color.semantic.noise }}>(I<sup>a</sup> + I<sup>b</sup> + σ²)</span>
+            </div>
+          </div>
+          <button
+            className={UI_CLASSES.button}
+            type="button"
+            onClick={onReset}
+            disabled={!hasOverrides}
+            style={{
+              cursor: hasOverrides ? 'pointer' : 'default',
+              padding: '8px 10px',
+              borderRadius: UI_TOKENS.radius.md,
+              border: hasOverrides ? '1px solid rgba(20, 135, 121, 0.38)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
+              background: hasOverrides ? 'rgba(118, 234, 215, 0.16)' : UI_TOKENS.color.surface.cardFaint,
+              color: hasOverrides ? UI_TOKENS.color.semantic.tuning : UI_TOKENS.color.text.faint,
+              fontSize: UI_TOKENS.type.size.body,
+              fontWeight: UI_TOKENS.type.weight.strong,
+            }}
+          >
+            Reset
+          </button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          <div style={{
+            padding: '8px 10px',
+            borderRadius: UI_TOKENS.radius.md,
+            background: 'rgba(118, 234, 215, 0.12)',
+            border: '1px solid rgba(118, 234, 215, 0.18)',
+          }}>
+            <div style={{ fontSize: UI_TOKENS.type.size.tiny, color: UI_TOKENS.color.semantic.tuning, fontWeight: UI_TOKENS.type.weight.heavy, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+              Signal side
+            </div>
+            <div style={{ marginTop: 3, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.body, lineHeight: 1.3 }}>
+              P<sub>t</sub>, H, G<sup>T</sup>, G<sup>R</sup>
+            </div>
+          </div>
+          <div style={{
+            padding: '8px 10px',
+            borderRadius: UI_TOKENS.radius.md,
+            background: 'rgba(123, 167, 255, 0.12)',
+            border: '1px solid rgba(123, 167, 255, 0.18)',
+          }}>
+            <div style={{ fontSize: UI_TOKENS.type.size.tiny, color: UI_TOKENS.color.semantic.noise, fontWeight: UI_TOKENS.type.weight.heavy, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+              Noise side
+            </div>
+            <div style={{ marginTop: 3, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.body, lineHeight: 1.3 }}>
+              I<sup>a</sup>, I<sup>b</sup>, σ²
+            </div>
+          </div>
+        </div>
+        <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.text.secondary, lineHeight: 1.35 }}>
+          {getProfileLabel(baseProfile)} · {getFormulaFamilyLabel(baseProfile.formulaFamily)} · G<sup>R</sup> {formatDbi(tuning.ueAntennaMaxGainDbi)}
+        </div>
+      </div>
+    </details>
+  );
 
   return (
     <aside
@@ -1131,75 +1464,6 @@ export function SignalTuningPanel({
         hidden={activePage !== 'sinr-formula'}
         style={activePage === 'sinr-formula' ? pagePanelStyle : hiddenPagePanelStyle}
       >
-      <div style={{
-        display: 'grid',
-        gap: 12,
-        padding: '14px 15px',
-        borderRadius: UI_TOKENS.radius.lg,
-        background: 'linear-gradient(180deg, rgba(9, 42, 49, 0.84), rgba(5, 16, 26, 0.74))',
-        border: '1px solid rgba(118, 234, 215, 0.2)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'start' }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.semantic.tuning, letterSpacing: 1.1, textTransform: 'uppercase', fontWeight: UI_TOKENS.type.weight.heavy }}>
-              SINR Formula Tuning
-            </div>
-            <div style={{ marginTop: 7, ...formulaTextStyle, fontSize: 23 }}>
-              γ = <span style={{ color: UI_TOKENS.color.semantic.tuning }}>(P<sub>t</sub> · H · G<sup>T</sup> · G<sup>R</sup>)</span> / <span style={{ color: UI_TOKENS.color.semantic.info }}>(I<sup>a</sup> + I<sup>b</sup> + σ²)</span>
-            </div>
-          </div>
-        <button
-          className={UI_CLASSES.button}
-          type="button"
-          onClick={onReset}
-          disabled={!hasOverrides}
-          style={{
-            cursor: hasOverrides ? 'pointer' : 'default',
-            padding: '8px 10px',
-            borderRadius: UI_TOKENS.radius.md,
-            border: hasOverrides ? '1px solid rgba(20, 135, 121, 0.38)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
-            background: hasOverrides ? 'rgba(118, 234, 215, 0.16)' : UI_TOKENS.color.surface.cardFaint,
-            color: hasOverrides ? UI_TOKENS.color.semantic.tuning : UI_TOKENS.color.text.faint,
-            fontSize: UI_TOKENS.type.size.body,
-            fontWeight: UI_TOKENS.type.weight.strong,
-          }}
-        >
-          Reset
-        </button>
-      </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-          <div style={{
-            padding: '8px 10px',
-            borderRadius: UI_TOKENS.radius.md,
-            background: 'rgba(118, 234, 215, 0.12)',
-            border: '1px solid rgba(118, 234, 215, 0.18)',
-          }}>
-            <div style={{ fontSize: UI_TOKENS.type.size.tiny, color: UI_TOKENS.color.semantic.tuning, fontWeight: UI_TOKENS.type.weight.heavy, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-              Signal side
-            </div>
-            <div style={{ marginTop: 3, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.caption, lineHeight: 1.3 }}>
-              P<sub>t</sub>, H, G<sup>T</sup>, G<sup>R</sup>
-            </div>
-          </div>
-          <div style={{
-            padding: '8px 10px',
-            borderRadius: UI_TOKENS.radius.md,
-            background: 'rgba(123, 167, 255, 0.12)',
-            border: '1px solid rgba(123, 167, 255, 0.18)',
-          }}>
-            <div style={{ fontSize: UI_TOKENS.type.size.tiny, color: UI_TOKENS.color.semantic.info, fontWeight: UI_TOKENS.type.weight.heavy, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-              Noise side
-            </div>
-            <div style={{ marginTop: 3, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.caption, lineHeight: 1.3 }}>
-              I<sup>a</sup>, I<sup>b</sup>, σ²
-            </div>
-          </div>
-        </div>
-        <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.text.secondary, lineHeight: 1.35 }}>
-          {getProfileLabel(baseProfile)} · {getFormulaFamilyLabel(baseProfile.formulaFamily)} · G<sup>R</sup> {formatDbi(tuning.ueAntennaMaxGainDbi)}
-        </div>
-      </div>
-
       <div
         data-testid="sinr-formula-tabs"
         role="tablist"
@@ -1207,7 +1471,13 @@ export function SignalTuningPanel({
         style={{
           overflowX: 'auto',
           scrollbarGutter: 'stable',
-          paddingBottom: 2,
+          marginTop: -1,
+          padding: 0,
+          background: UI_TOKENS.color.surface.cardFaint,
+          border: `1px solid ${UI_TOKENS.color.border.soft}`,
+          borderTop: 0,
+          borderRadius: `0 0 ${UI_TOKENS.radius.lg}px ${UI_TOKENS.radius.lg}px`,
+          boxSizing: 'border-box',
         }}
       >
         <div style={{
@@ -1215,6 +1485,7 @@ export function SignalTuningPanel({
           gridTemplateColumns: 'repeat(6, minmax(64px, 1fr))',
           gap: 6,
           minWidth: 420,
+          padding: '0 4px 4px',
         }}>
           {TUNING_TABS.map(tab => {
             const active = tab.key === activeTab;
@@ -1230,26 +1501,29 @@ export function SignalTuningPanel({
                 onClick={() => setActiveTab(tab.key)}
                 style={{
                   cursor: 'pointer',
-                  minHeight: 46,
-                  padding: '6px 6px',
+                  height: 50,
+                  minHeight: 50,
+                  padding: '5px 6px',
                   borderRadius: UI_TOKENS.radius.md,
                   border: active ? `1px solid ${accent}` : `1px solid ${UI_TOKENS.color.border.subtle}`,
-                  background: active ? `linear-gradient(180deg, ${accent}24, rgba(6, 18, 28, 0.84))` : UI_TOKENS.color.surface.card,
+                  background: active ? `linear-gradient(180deg, ${accent}1f, rgba(6, 18, 28, 0.82))` : UI_TOKENS.color.surface.card,
                   color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
-                  boxShadow: active ? `inset 0 -3px 0 ${accent}, 0 8px 18px rgba(0, 0, 0, 0.18)` : 'inset 0 -2px 0 rgba(218, 244, 255, 0.06)',
+                  boxShadow: active ? `inset 0 -3px 0 ${accent}` : 'inset 0 -2px 0 rgba(218, 244, 255, 0.06)',
                   display: 'grid',
                   gap: 2,
                   alignContent: 'center',
                   justifyItems: 'center',
                   textAlign: 'center',
                   transition: 'background 140ms ease, border-color 140ms ease, color 140ms ease',
+                  boxSizing: 'border-box',
+                  overflow: 'hidden',
                 }}
               >
-                <span style={{ ...formulaTextStyle, fontSize: 17, color: accent }}>
+                <span style={{ ...formulaTextStyle, fontSize: 20, color: accent, lineHeight: 1.04 }}>
                   {tab.symbol}
                 </span>
                 <span style={{
-                  fontSize: UI_TOKENS.type.size.caption,
+                  fontSize: UI_TOKENS.type.size.small,
                   fontWeight: UI_TOKENS.type.weight.heavy,
                   lineHeight: 1.15,
                 }}>
@@ -1263,10 +1537,6 @@ export function SignalTuningPanel({
           })}
         </div>
       </div>
-
-      <FormulaContext tab={activeTabConfig} />
-
-      <div style={dividerStyle} />
 
       {activeTab === 'signal-power' && (
         <div style={controlStackStyle}>
@@ -1302,6 +1572,7 @@ export function SignalTuningPanel({
             title="Receiver Gain / numerator"
             formula={<>S includes G<sup>R</sup> after transmit power, path loss, and transmit gain.</>}
             subtitle="This tab controls receive-side gain independently from P_t and G^T."
+            accentColor={UI_TOKENS.color.semantic.fixed}
           >
             <NumericControl
               testId="gr-receiver-gain-control"
@@ -1314,6 +1585,7 @@ export function SignalTuningPanel({
               step={0.5}
               description="Receive-side antenna gain in the SINR signal path."
               effect="Adjusting it shifts the desired-signal numerator without changing transmit power, satellite beam gain, interference grouping, or thermal noise."
+              accentColor={UI_TOKENS.color.semantic.fixed}
               formatValue={formatDbi}
               onChange={ueAntennaMaxGainDbi => update({ ueAntennaMaxGainDbi })}
             />
@@ -1329,11 +1601,8 @@ export function SignalTuningPanel({
             title="Thermal Noise / denominator"
             formula={<>σ² = N<sub>0</sub>B</>}
             subtitle={<>B and N<sub>0</sub> set the denominator noise floor. They are not transmit-power controls.</>}
+            accentColor={UI_TOKENS.color.semantic.noise}
           >
-            <NoiseFloorReadout
-              formulaBudget={formulaBudget}
-              isFormulaEvidenceStale={isFormulaEvidenceStale}
-            />
             <NumericControl
               testId="bandwidth-thermal-noise-control"
               symbol={<>B</>}
@@ -1345,6 +1614,7 @@ export function SignalTuningPanel({
               step={5}
               description="Bandwidth used in σ² = N₀B."
               effect="Wider bandwidth increases thermal noise when transmit power is held fixed."
+              accentColor={UI_TOKENS.color.semantic.noise}
               formatValue={value => `${value.toFixed(0)} MHz`}
               onChange={bandwidthMHz => update({ bandwidthMHz })}
             />
@@ -1359,7 +1629,12 @@ export function SignalTuningPanel({
               step={0.5}
               description="Thermal noise density before multiplying by bandwidth."
               effect="A less negative value raises the noise floor and lowers weak-link SINR."
+              accentColor={UI_TOKENS.color.semantic.noiseSoft}
               onChange={noisePsdDbmHz => update({ noisePsdDbmHz })}
+            />
+            <NoiseFloorReadout
+              formulaBudget={formulaBudget}
+              isFormulaEvidenceStale={isFormulaEvidenceStale}
             />
           </FormulaSideControlSection>
         </div>
@@ -1369,102 +1644,92 @@ export function SignalTuningPanel({
         <div style={controlStackStyle}>
           <LossControlSection
             testId="loss-formula-controls"
-            title="Formula controls"
-            subtitle="Paper-facing controls for the loss expression already represented in the live HOBS link budget."
+            title="Path-loss stack"
+            subtitle={<>L = L<sub>fs</sub> + L<sub>g</sub> + L<sub>sc</sub> + L<sub>sf</sub></>}
           >
-            <NumericControl
-              symbol={<>f<sub>c</sub></>}
-              label="Carrier frequency"
+            <PathLossTermControl
+              testId="path-loss-term-fspl"
+              active={fsplEnabled}
+              symbol={<>L<sub>fs</sub></>}
+              label="Free-space loss"
+              detail={PATH_LOSS_LABELS.fspl.detail}
+              controlLabel="Carrier frequency"
               unit="GHz"
               value={tuning.frequencyGHz}
               min={10}
               max={40}
               step={0.5}
-              description="Frequency term used by free-space and composite path loss."
-              effect="Higher frequency increases free-space loss in the current implementation."
+              effect="Higher frequency raises Lfs."
+              inactiveReason="Not contributing while Lfs is off."
+              accentColor={UI_TOKENS.color.semantic.loss}
+              formatValue={value => `${value.toFixed(1)} GHz`}
+              onToggle={() => togglePathLossComponent('fspl')}
               onChange={frequencyGHz => update({ frequencyGHz })}
             />
-            <div style={{ display: 'grid', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 11 }}>
-                <MathSymbol>L</MathSymbol>
-                <span style={{ fontSize: UI_TOKENS.type.size.subheading, color: UI_TOKENS.color.text.controlLabel, fontWeight: UI_TOKENS.type.weight.heavy }}>
-                  Path-loss components
-                </span>
-              </div>
-              <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.secondary, lineHeight: 1.5 }}>
-                Toggle individual terms in the link-budget loss sum.
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 9 }}>
-                {PATH_LOSS_COMPONENT_ORDER.map(component => {
-                  const config = PATH_LOSS_LABELS[component];
-                  return (
-                    <ToggleChip
-                      key={component}
-                      active={tuning.pathLossComponents.includes(component)}
-                      symbol={config.symbol}
-                      label={config.label}
-                      detail={config.detail}
-                      onClick={() => togglePathLossComponent(component)}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          </LossControlSection>
-
-          <LossControlSection
-            testId="loss-research-override"
-            title="Research Override"
-            tone="research"
-            subtitle="Teaching / sensitivity controls for simulator constants. These are not HOBS paper-backed parameter ranges."
-          >
-            <NumericControl
-              symbol={<>L<sub>g,z</sub></>}
-              label="Atmospheric zenith loss"
+            <PathLossTermControl
+              testId="path-loss-term-atmospheric"
+              active={atmosphericEnabled}
+              symbol={<>L<sub>g</sub></>}
+              label="Gas absorption"
+              detail={PATH_LOSS_LABELS.atmospheric.detail}
+              controlLabel="Zenith loss"
               unit="dB"
               value={tuning.atmosphericZenithLossDb}
               min={0}
               max={1}
               step={0.01}
-              description="Research Override for the current gas-loss zenith constant before elevation scaling."
-              effect="Increasing it raises pathLossDb through Lg when the atmospheric gas term is enabled."
-              disabled={!atmosphericEnabled}
-              inactiveReason="Inactive while L_g is off; this numeric override is not contributing."
-              accentColor={UI_TOKENS.color.semantic.fixed}
+              effect="Raises Lg when enabled."
+              inactiveReason="Not contributing while Lg is off."
+              accentColor={UI_TOKENS.color.semantic.loss}
               formatValue={value => `${value.toFixed(2)} dB`}
+              onToggle={() => togglePathLossComponent('atmospheric')}
               onChange={atmosphericZenithLossDb => update({ atmosphericZenithLossDb })}
             />
-            <NumericControl
-              symbol={<>L<sub>sc,scale</sub></>}
-              label="Scintillation scale"
+            <PathLossTermControl
+              testId="path-loss-term-scintillation"
+              active={scintillationEnabled}
+              symbol={<>L<sub>sc</sub></>}
+              label="Scintillation"
+              detail={PATH_LOSS_LABELS.scintillation.detail}
+              controlLabel="Scale"
               unit="dB"
               value={tuning.scintillationScaleDb}
               min={0}
               max={1}
               step={0.01}
-              description="Research Override for the deterministic scintillation scale used by this teaching model."
-              effect="Increasing it raises pathLossDb through Lsc when the scintillation term is enabled."
-              disabled={!scintillationEnabled}
-              inactiveReason="Inactive while L_sc is off; this numeric override is not contributing."
-              accentColor={UI_TOKENS.color.semantic.fixed}
+              effect="Raises Lsc when enabled."
+              inactiveReason="Not contributing while Lsc is off."
+              accentColor={UI_TOKENS.color.semantic.loss}
               formatValue={value => `${value.toFixed(2)} dB`}
+              onToggle={() => togglePathLossComponent('scintillation')}
               onChange={scintillationScaleDb => update({ scintillationScaleDb })}
             />
-            <NumericControl
-              symbol={<>L<sub>sf,margin</sub></>}
-              label="Shadow fading margin"
+            <PathLossTermControl
+              testId="path-loss-term-shadow-fading"
+              active={shadowFadingEnabled}
+              symbol={<>L<sub>sf</sub></>}
+              label="Shadow fading"
+              detail={PATH_LOSS_LABELS['shadow-fading'].detail}
+              controlLabel="Margin"
               unit="dB"
               value={tuning.shadowFadingMarginDb}
               min={0}
               max={10}
               step={0.1}
-              description="Research Override for the deterministic shadow-fading margin. It is not a random draw."
-              effect="Increasing it raises pathLossDb through Lsf when the shadow-fading term is enabled."
-              disabled={!shadowFadingEnabled}
-              inactiveReason="Inactive while L_sf is off; this numeric override is not contributing."
-              accentColor={UI_TOKENS.color.semantic.fixed}
+              effect="Raises Lsf when enabled."
+              inactiveReason="Not contributing while Lsf is off."
+              accentColor={UI_TOKENS.color.semantic.loss}
+              onToggle={() => togglePathLossComponent('shadow-fading')}
               onChange={shadowFadingMarginDb => update({ shadowFadingMarginDb })}
             />
+          </LossControlSection>
+
+          <LossControlSection
+            testId="loss-research-override"
+            title="TR 38.811 Research Override"
+            tone="research"
+            subtitle="Teaching / sensitivity controls for simulator constants; not HOBS paper-backed parameter ranges. TR 38.811 NLoS sensitivity control; common loss terms are grouped above with their switches."
+          >
             {isTr38811Formula && (
               <NumericControl
                 testId="lcl-nlos-control"
@@ -1505,65 +1770,79 @@ export function SignalTuningPanel({
 
       {activeTab === 'beam' && (
         <div style={controlStackStyle}>
-          <NumericControl
-            testId="gtmax-transmit-gain-control"
-            symbol={<>G<sub>t,max</sub></>}
-            label="Max transmit gain"
-            unit="dBi"
-            value={tuning.maxGainDbi}
-            min={20}
-            max={60}
-            step={0.5}
-            description="Peak satellite-beam gain before off-axis and scan losses."
-            effect="Raising it shifts the transmit-gain numerator factor for all beams in the current profile."
-            onChange={maxGainDbi => update({ maxGainDbi })}
-          />
-          <NumericControl
-            symbol={<>θ<sub>3dB</sub></>}
-            label="3 dB beamwidth"
-            unit="degrees"
-            value={tuning.beamwidth3dBDeg}
-            min={1}
-            max={8}
-            step={0.1}
-            description="Main-lobe width used by the gain pattern and beam footprint geometry."
-            effect="Changing it rebuilds beam layout and clears in-progress HO preparation."
-            formatValue={value => `${value.toFixed(1)}°`}
-            onChange={beamwidth3dBDeg => update({ beamwidth3dBDeg })}
-          />
-          <SelectControl
-            symbol={<>G(θ)</>}
-            label="Beam gain model"
-            description="Off-axis gain model applied after the UE-to-beam-center angle is known."
-            value={tuning.model}
-            options={GAIN_MODEL_OPTIONS}
-            onChange={model => update({ model: model as GainModel })}
-          />
-          <NumericControl
-            symbol={<>θ<sub>max</sub></>}
-            label="Max steering angle"
-            unit="degrees"
-            value={tuning.maxSteeringAngleDeg}
-            min={1}
-            max={20}
-            step={0.5}
-            description="Largest scan angle accepted when building steering-valid beam cells."
-            effect="A larger value can keep more candidate beams available, but edge beams may pay scan loss."
-            formatValue={value => `${value.toFixed(1)}°`}
-            onChange={maxSteeringAngleDeg => update({ maxSteeringAngleDeg })}
-          />
-          <NumericControl
-            symbol={<>L<sub>scan,max</sub></>}
-            label="Max scan loss"
-            unit="dB"
-            value={tuning.scanLossAtMaxSteeringDb}
-            min={0}
-            max={10}
-            step={0.25}
-            description="Loss applied quadratically as steering approaches θmax."
-            effect="Higher loss penalizes beams near the steering limit and can change the best candidate."
-            onChange={scanLossAtMaxSteeringDb => update({ scanLossAtMaxSteeringDb })}
-          />
+          <FormulaSideControlSection
+            testId="beam-gain-controls"
+            side="numerator"
+            title="Transmit Gain / numerator"
+            formula={<>G<sup>T</sup> = G<sub>t,max</sub> + G(θ) - L<sub>scan</sub></>}
+            subtitle="These controls shape the satellite-side gain term before receiver gain is applied."
+            accentColor={UI_TOKENS.color.semantic.beam}
+          >
+            <NumericControl
+              testId="gtmax-transmit-gain-control"
+              symbol={<>G<sub>t,max</sub></>}
+              label="Max transmit gain"
+              unit="dBi"
+              value={tuning.maxGainDbi}
+              min={20}
+              max={60}
+              step={0.5}
+              description="Peak satellite-beam gain before off-axis and scan losses."
+              effect="Raising it shifts the transmit-gain numerator factor for all beams in the current profile."
+              accentColor={UI_TOKENS.color.semantic.beam}
+              onChange={maxGainDbi => update({ maxGainDbi })}
+            />
+            <NumericControl
+              symbol={<>θ<sub>3dB</sub></>}
+              label="3 dB beamwidth"
+              unit="degrees"
+              value={tuning.beamwidth3dBDeg}
+              min={1}
+              max={8}
+              step={0.1}
+              description="Main-lobe width used by the gain pattern and beam footprint geometry."
+              effect="Changing it rebuilds beam layout and clears in-progress HO preparation."
+              accentColor={UI_TOKENS.color.semantic.beamSoft}
+              formatValue={value => `${value.toFixed(1)}°`}
+              onChange={beamwidth3dBDeg => update({ beamwidth3dBDeg })}
+            />
+            <SelectControl
+              symbol={<>G(θ)</>}
+              label="Beam gain model"
+              description="Off-axis gain model applied after the UE-to-beam-center angle is known."
+              value={tuning.model}
+              options={GAIN_MODEL_OPTIONS}
+              accentColor={UI_TOKENS.color.semantic.beamCool}
+              onChange={model => update({ model: model as GainModel })}
+            />
+            <NumericControl
+              symbol={<>θ<sub>max</sub></>}
+              label="Max steering angle"
+              unit="degrees"
+              value={tuning.maxSteeringAngleDeg}
+              min={1}
+              max={20}
+              step={0.5}
+              description="Largest scan angle accepted when building steering-valid beam cells."
+              effect="A larger value can keep more candidate beams available, but edge beams may pay scan loss."
+              accentColor={UI_TOKENS.color.semantic.beamCool}
+              formatValue={value => `${value.toFixed(1)}°`}
+              onChange={maxSteeringAngleDeg => update({ maxSteeringAngleDeg })}
+            />
+            <NumericControl
+              symbol={<>L<sub>scan,max</sub></>}
+              label="Max scan loss"
+              unit="dB"
+              value={tuning.scanLossAtMaxSteeringDb}
+              min={0}
+              max={10}
+              step={0.25}
+              description="Loss applied quadratically as steering approaches θmax."
+              effect="Higher loss penalizes beams near the steering limit and can change the best candidate."
+              accentColor={UI_TOKENS.color.semantic.beamLoss}
+              onChange={scanLossAtMaxSteeringDb => update({ scanLossAtMaxSteeringDb })}
+            />
+          </FormulaSideControlSection>
         </div>
       )}
 
@@ -1581,6 +1860,7 @@ export function SignalTuningPanel({
                 ? 'All active beams share one frequency group: harshest interference case.'
                 : `Beams are split across ${value} reuse groups, reducing co-channel collisions.`,
             }))}
+            accentColor={getFormulaTabAccent('interference')}
             onChange={frequencyReuse => update({ frequencyReuse: Number(frequencyReuse) })}
           />
           <div style={{
@@ -1592,11 +1872,25 @@ export function SignalTuningPanel({
             fontSize: UI_TOKENS.type.size.body,
             lineHeight: 1.5,
           }}>
-            Lower K makes handover harder because more active beams interfere. Higher K makes the scene cleaner,
-            but can overstate SINR if the reuse plan is too optimistic.
+            <details style={compactDetailsStyle}>
+              <summary style={{
+                ...compactSummaryStyle,
+                color: UI_TOKENS.color.semantic.fixed,
+              }}>
+                Reuse-plan note
+              </summary>
+              <div style={{ paddingTop: 8 }}>
+                Lower K makes handover harder because more active beams interfere. Higher K makes the scene cleaner,
+                but can overstate SINR if the reuse plan is too optimistic.
+              </div>
+            </details>
           </div>
         </div>
       )}
+
+      {sinrOverview}
+
+      <FormulaContextDisclosure tab={activeTabConfig} />
 
       <CoverageAssumptionsDisclosure />
 
