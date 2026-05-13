@@ -247,7 +247,7 @@ Post-doc scan commands:
 ```bash
 git diff --check
 rg -n -i "(19|37).{0,80}(trained|trained-baseline|baseline MODQN evidence|producer replay evidence)|trained-baseline.{0,80}(19|37)|trained baseline.{0,80}(19|37)" README.md docs scripts src package.json
-rg -n -i "HOBS/SINR.{0,120}MODQN replay evidence|MODQN replay evidence.{0,120}HOBS/SINR|HOBS/SINR live output.{0,120}MODQN" README.md docs scripts src package.json
+rg -n -i "HOBS/SINR.{0,120}MODQN replay evidence|MODQN replay evidence.{0,120}HOBS/SINR|HOBS/SINR live output.{0,120}MODQN" README.md docs scripts src package.json # boundary scan only; hits are not allowed claims
 pgrep -af "validate-modqn-phase7|leo-beam-sim-phase7|vite.*5173"
 ```
 

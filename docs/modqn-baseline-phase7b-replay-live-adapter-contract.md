@@ -20,7 +20,8 @@ replay evidence.
 
 Every future state model, adapter, UI panel, log, screenshot, and validator
 report must carry one explicit runtime/display mode. A frame must not be
-interpretable as both MODQN replay evidence and HOBS/SINR live output.
+MODQN replay evidence when it is HOBS/SINR live output; the modes remain
+distinct.
 
 | Mode key | Required user-facing label | Primary input | Allowed claim | Forbidden claim |
 | --- | --- | --- | --- | --- |
