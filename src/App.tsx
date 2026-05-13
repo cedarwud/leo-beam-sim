@@ -49,6 +49,7 @@ import {
 } from './ui/ModqnBaselineIntegrationPanel';
 import { ModqnReplayPlaybackShell } from './ui/ModqnReplayPlaybackShell';
 import { ModqnReplaySceneCues } from './ui/ModqnReplaySceneCues';
+import { ModqnReplaySceneOverlay } from './ui/ModqnReplaySceneOverlay';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import { SidebarTabShell, type SidebarTabItem } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
@@ -446,6 +447,10 @@ export function App() {
             profile={effectiveProfile}
             runtime={runtime}
             onSimUpdate={handleSimUpdate}
+          />
+          <ModqnReplaySceneOverlay
+            displayState={modqnReplayDisplayState}
+            failClosedReason={modqnReplayModelIssue?.message}
           />
         </main>
         <aside className="leo-shell-right" aria-label="Signal status panel slot">

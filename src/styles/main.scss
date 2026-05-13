@@ -99,6 +99,129 @@ canvas {
   height: 100%;
 }
 
+.leo-modqn-scene-overlay {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 18;
+  display: grid;
+  gap: 10px;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 12px;
+  pointer-events: none;
+  border: 1px solid rgba(118, 234, 215, 0.42);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(4, 22, 31, 0.9), rgba(2, 9, 15, 0.82)),
+    rgba(3, 10, 17, 0.88);
+  color: #eefaff;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.leo-modqn-scene-overlay[data-handover-event-kind="intra-satellite-beam-switch"] {
+  border-color: rgba(118, 234, 215, 0.62);
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.36),
+    inset 0 0 0 1px rgba(118, 234, 215, 0.12);
+}
+
+.leo-modqn-scene-overlay--blocked {
+  border-color: rgba(255, 190, 69, 0.42);
+  background:
+    linear-gradient(180deg, rgba(31, 20, 6, 0.9), rgba(3, 10, 17, 0.84)),
+    rgba(3, 10, 17, 0.88);
+}
+
+.leo-modqn-scene-overlay-header,
+.leo-modqn-scene-overlay-footer {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leo-modqn-scene-overlay-header span,
+.leo-modqn-scene-overlay-header strong,
+.leo-modqn-scene-overlay-footer span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.leo-modqn-scene-overlay-header span {
+  color: rgba(229, 244, 251, 0.72);
+  font-weight: 800;
+}
+
+.leo-modqn-scene-overlay-header strong {
+  color: #d8fffa;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.leo-modqn-scene-overlay-path {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.leo-modqn-scene-overlay-node {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid rgba(218, 244, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.leo-modqn-scene-overlay-node span,
+.leo-modqn-scene-overlay-node strong,
+.leo-modqn-scene-overlay-node small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.leo-modqn-scene-overlay-node span,
+.leo-modqn-scene-overlay-node small,
+.leo-modqn-scene-overlay-footer {
+  color: rgba(229, 244, 251, 0.68);
+}
+
+.leo-modqn-scene-overlay-node strong {
+  color: #f6fbff;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.leo-modqn-scene-overlay-node--previous {
+  border-color: rgba(255, 190, 69, 0.34);
+  background: rgba(255, 190, 69, 0.08);
+}
+
+.leo-modqn-scene-overlay-node--selected {
+  border-color: rgba(118, 234, 215, 0.42);
+  background: rgba(118, 234, 215, 0.1);
+}
+
+.leo-modqn-scene-overlay-arrow {
+  min-width: 38px;
+  display: grid;
+  align-content: center;
+  justify-content: center;
+  color: #d8fffa;
+  font-size: 19px;
+  font-weight: 800;
+}
+
 .leo-mode-evidence-strip {
   position: relative;
   z-index: 9;
@@ -1268,6 +1391,13 @@ canvas {
     font-size: 16px !important;
   }
 
+  .leo-modqn-scene-overlay {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    max-width: 560px;
+  }
+
   .leo-replay-playback-shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
@@ -1501,6 +1631,47 @@ canvas {
 
   .leo-info-panel {
     height: 100% !important;
+  }
+
+  .leo-modqn-scene-overlay {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    gap: 6px;
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .leo-modqn-scene-overlay-header {
+    gap: 5px;
+  }
+
+  .leo-modqn-scene-overlay-header span {
+    font-size: 10px;
+  }
+
+  .leo-modqn-scene-overlay-header strong,
+  .leo-modqn-scene-overlay-node strong {
+    font-size: 12px;
+  }
+
+  .leo-modqn-scene-overlay-path {
+    gap: 5px;
+  }
+
+  .leo-modqn-scene-overlay-node {
+    gap: 2px;
+    padding: 6px;
+  }
+
+  .leo-modqn-scene-overlay-node small,
+  .leo-modqn-scene-overlay-footer {
+    display: none;
+  }
+
+  .leo-modqn-scene-overlay-arrow {
+    min-width: 22px;
+    font-size: 13px;
   }
 
 }

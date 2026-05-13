@@ -50,6 +50,7 @@ const REQUIRED_VISIBLE_TEXT = [
   'MODQN replay artifact cues',
   'scene-adjacent display only',
   'not live HOBS/SINR state',
+  'MODQN replay scene overlay',
 ];
 
 const VIEWPORTS = [
@@ -628,6 +629,7 @@ async function assertViewport(page, viewport) {
   await page.goto(page.url(), { waitUntil: 'domcontentloaded', timeout: UI_LOAD_TIMEOUT_MS });
   await requiredBox(page, '.leo-app-shell[data-ui-mode="presentation"]', `${viewport.name} presentation app shell`);
   await requiredBox(page, '.leo-shell-canvas canvas', `${viewport.name} scene canvas`);
+  await requiredBox(page, '[data-testid="modqn-replay-scene-overlay"]', `${viewport.name} canvas replay overlay`);
   await page.evaluate(() => {
     document
       .querySelectorAll('details[data-phase7h-open-for-validation="true"]')
@@ -646,6 +648,7 @@ async function assertViewport(page, viewport) {
   const evidenceBox = await requiredBox(page, '[data-testid="mode-evidence-strip"]', `${viewport.name} evidence strip`);
   const playbackBox = await requiredBox(page, '[data-testid="modqn-replay-playback-shell"]', `${viewport.name} playback shell`);
   const cueBox = await requiredBox(page, '[data-testid="modqn-replay-scene-cues"]', `${viewport.name} cue layer`);
+  const overlayBox = await requiredBox(page, '[data-testid="modqn-replay-scene-overlay"]', `${viewport.name} canvas replay overlay`);
   const shellRowBox = await requiredBox(page, '.leo-shell-row', `${viewport.name} shell row`);
   const canvasSlotBox = await requiredBox(page, '.leo-shell-canvas', `${viewport.name} canvas slot`);
   const liveTuningBox = await requiredBox(page, '.leo-shell-left', `${viewport.name} live tuning slot`);
@@ -667,6 +670,8 @@ async function assertViewport(page, viewport) {
   assert.ok(evidenceBox.width <= viewport.width + 1, `${viewport.name} evidence strip overflowed the viewport`);
   assert.ok(playbackBox.width <= viewport.width + 1, `${viewport.name} playback shell overflowed the viewport`);
   assert.ok(cueBox.width <= viewport.width + 1, `${viewport.name} cue layer overflowed the viewport`);
+  assert.ok(overlayBox.width <= viewport.width + 1, `${viewport.name} canvas replay overlay overflowed the viewport`);
+  assert.ok(overlayBox.height <= (viewport.name === 'narrow' ? 130 : 180), `${viewport.name} canvas replay overlay exceeded compact height`);
   assert.ok(evidenceBox.height <= 175, `${viewport.name} evidence strip exceeded compact height`);
   assert.ok(
     shellRowBox.y <= controlBarBox.y + controlBarBox.height + 18,
@@ -681,6 +686,7 @@ async function assertViewport(page, viewport) {
   assertBoxHorizontallyInside(modqnSidebarBox, evidenceBox, `${viewport.name} evidence strip`);
   assertBoxHorizontallyInside(modqnSidebarBox, playbackBox, `${viewport.name} playback shell`);
   assertBoxHorizontallyInside(modqnSidebarBox, cueBox, `${viewport.name} cue layer`);
+  assertBoxInside(canvasSlotBox, overlayBox, `${viewport.name} canvas replay overlay`);
   assert.ok(evidenceBox.y + evidenceBox.height <= cueBox.y + 1, `${viewport.name} cue layer overlapped evidence strip`);
   assert.ok(cueBox.y + cueBox.height <= playbackBox.y + 1, `${viewport.name} playback shell overlapped cue layer`);
 
@@ -745,6 +751,8 @@ async function assertViewport(page, viewport) {
 
   const playbackState = await page.locator('[data-testid="modqn-replay-playback-shell"]').getAttribute('data-replay-state');
   assert.notEqual(playbackState, 'fail-closed', `${viewport.name} valid selected artifact unexpectedly rendered fail closed`);
+  const overlayEventKind = await page.locator('[data-testid="modqn-replay-scene-overlay"]').getAttribute('data-handover-event-kind');
+  assert.equal(overlayEventKind, 'intra-satellite-beam-switch', `${viewport.name} canvas replay overlay did not surface the default intra-switch cue`);
   assert.ok(bodyText.includes('HOBS/SINR live is separate'), `${viewport.name} replay/live separation text missing`);
   assert.ok(!bodyText.includes('trained-baseline evidence for 19'), `${viewport.name} leaked 19-beam trained-baseline wording`);
   assert.ok(!bodyText.includes('trained-baseline evidence for 37'), `${viewport.name} leaked 37-beam trained-baseline wording`);
@@ -764,6 +772,7 @@ async function assertViewport(page, viewport) {
       evidenceStrip: true,
       playbackShell: true,
       cueLayer: true,
+      canvasReplayOverlay: true,
       sceneCanvas: true,
       liveSidePanels: true,
     },
