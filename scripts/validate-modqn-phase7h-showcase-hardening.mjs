@@ -681,8 +681,8 @@ async function assertViewport(page, viewport) {
   assertBoxHorizontallyInside(modqnSidebarBox, evidenceBox, `${viewport.name} evidence strip`);
   assertBoxHorizontallyInside(modqnSidebarBox, playbackBox, `${viewport.name} playback shell`);
   assertBoxHorizontallyInside(modqnSidebarBox, cueBox, `${viewport.name} cue layer`);
-  assert.ok(evidenceBox.y + evidenceBox.height <= playbackBox.y + 1, `${viewport.name} playback shell overlapped evidence strip`);
-  assert.ok(playbackBox.y + playbackBox.height <= cueBox.y + 1, `${viewport.name} cue layer overlapped playback shell`);
+  assert.ok(evidenceBox.y + evidenceBox.height <= cueBox.y + 1, `${viewport.name} cue layer overlapped evidence strip`);
+  assert.ok(cueBox.y + cueBox.height <= playbackBox.y + 1, `${viewport.name} playback shell overlapped cue layer`);
 
   for (const [label, box] of [
     ['control bar', controlBarBox],
@@ -694,6 +694,7 @@ async function assertViewport(page, viewport) {
   }
   assert.equal(rectOverlapArea(playbackBox, controlBarBox), 0, `${viewport.name} playback shell overlapped control bar`);
   assert.equal(rectOverlapArea(playbackBox, evidenceBox), 0, `${viewport.name} playback shell overlapped evidence strip`);
+  assert.equal(rectOverlapArea(playbackBox, cueBox), 0, `${viewport.name} playback shell overlapped cue layer`);
   assert.equal(rectOverlapArea(playbackBox, canvasSlotBox), 0, `${viewport.name} playback shell overlapped scene canvas`);
   assert.equal(rectOverlapArea(playbackBox, liveTuningBox), 0, `${viewport.name} playback shell overlapped HOBS/SINR tuning slot`);
 

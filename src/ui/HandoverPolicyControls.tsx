@@ -103,8 +103,8 @@ const sectionStyle: CSSProperties = {
   gap: 12,
   padding: '12px',
   borderRadius: UI_TOKENS.radius.lg,
-  background: 'linear-gradient(180deg, rgba(117, 74, 10, 0.22), rgba(24, 18, 8, 0.18))',
-  border: '1px solid rgba(255, 210, 100, 0.2)',
+  background: 'linear-gradient(180deg, rgba(6, 25, 35, 0.9), rgba(3, 10, 17, 0.82))',
+  border: '1px solid rgba(118, 234, 215, 0.24)',
 };
 
 function formatPolicyValue(value: number, unit: string): string {
@@ -231,12 +231,12 @@ export function HandoverPolicyControls({
           disabled={!hasDraftChanges}
           style={{
             cursor: hasDraftChanges ? 'pointer' : 'default',
-            padding: '10px 12px',
+            padding: '11px 13px',
             borderRadius: UI_TOKENS.radius.md,
-            border: hasDraftChanges ? '1px solid rgba(255, 210, 100, 0.5)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
-            background: hasDraftChanges ? 'rgba(116, 78, 10, 0.72)' : UI_TOKENS.color.surface.cardFaint,
-            color: hasDraftChanges ? '#fff2cf' : UI_TOKENS.color.text.faint,
-            fontSize: UI_TOKENS.type.size.body,
+            border: hasDraftChanges ? '1px solid rgba(118, 234, 215, 0.5)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
+            background: hasDraftChanges ? 'rgba(20, 93, 97, 0.72)' : UI_TOKENS.color.surface.cardFaint,
+            color: hasDraftChanges ? '#e8fffb' : UI_TOKENS.color.text.faint,
+            fontSize: UI_TOKENS.type.size.bodyLg,
             fontWeight: UI_TOKENS.type.weight.heavy,
           }}
         >
@@ -249,12 +249,12 @@ export function HandoverPolicyControls({
           disabled={!hasOverrides}
           style={{
             cursor: hasOverrides ? 'pointer' : 'default',
-            padding: '10px 12px',
+            padding: '11px 13px',
             borderRadius: UI_TOKENS.radius.md,
             border: hasOverrides ? `1px solid ${UI_TOKENS.color.border.soft}` : `1px solid ${UI_TOKENS.color.border.subtle}`,
             background: hasOverrides ? UI_TOKENS.color.surface.card : UI_TOKENS.color.surface.cardFaint,
             color: hasOverrides ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.faint,
-            fontSize: UI_TOKENS.type.size.body,
+            fontSize: UI_TOKENS.type.size.bodyLg,
             fontWeight: UI_TOKENS.type.weight.strong,
           }}
         >

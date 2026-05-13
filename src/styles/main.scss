@@ -795,6 +795,14 @@ canvas {
   overscroll-behavior: contain;
 }
 
+.leo-replay-scene-cues[data-handover-event-kind="intra-satellite-beam-switch"] {
+  border-color: rgba(118, 234, 215, 0.48);
+  background:
+    linear-gradient(180deg, rgba(7, 34, 43, 0.95), rgba(3, 14, 21, 0.88)),
+    rgba(3, 10, 17, 0.94);
+  box-shadow: inset 0 0 0 1px rgba(118, 234, 215, 0.1);
+}
+
 .leo-replay-scene-cues--fail-closed {
   border-color: rgba(255, 190, 69, 0.36);
 }
@@ -824,7 +832,7 @@ canvas {
 
 .leo-replay-scene-cues-header strong {
   color: #f6fbff;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .leo-replay-scene-cues-header small {
@@ -841,8 +849,8 @@ canvas {
 .leo-replay-scene-cue {
   min-width: 0;
   display: grid;
-  gap: 2px;
-  padding: 6px 7px;
+  gap: 3px;
+  padding: 8px 9px;
   border: 1px solid rgba(218, 244, 255, 0.12);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.045);
@@ -858,7 +866,7 @@ canvas {
 .leo-replay-scene-cue strong {
   min-width: 0;
   color: #f6fbff;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
@@ -874,8 +882,13 @@ canvas {
 }
 
 .leo-replay-scene-cue--event {
-  border-color: rgba(118, 234, 215, 0.32);
-  background: rgba(118, 234, 215, 0.07);
+  border-color: rgba(118, 234, 215, 0.48);
+  background: rgba(118, 234, 215, 0.11);
+}
+
+.leo-replay-scene-cues[data-handover-event-kind="intra-satellite-beam-switch"] .leo-replay-scene-cue--event strong {
+  color: #d8fffa;
+  font-size: 15px;
 }
 
 .leo-replay-scene-cue--focus {
@@ -928,8 +941,8 @@ canvas {
 }
 
 .leo-policy-section-title {
-  color: #ffe7aa;
-  font-size: 15px;
+  color: #d8fffa;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -939,11 +952,11 @@ canvas {
   width: fit-content;
   max-width: 100%;
   padding: 5px 9px;
-  border: 1px solid rgba(255, 210, 100, 0.24);
+  border: 1px solid rgba(118, 234, 215, 0.26);
   border-radius: 999px;
-  background: rgba(255, 210, 100, 0.1);
-  color: #ffd36b;
-  font-size: 13px;
+  background: rgba(118, 234, 215, 0.09);
+  color: #bffbf2;
+  font-size: 14px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
@@ -951,16 +964,16 @@ canvas {
 .leo-policy-control-card {
   min-width: 0;
   display: grid;
-  gap: 9px;
+  gap: 10px;
   padding: 12px;
-  border: 1px solid rgba(218, 244, 255, 0.16);
+  border: 1px solid rgba(118, 234, 215, 0.18);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(7, 24, 34, 0.72);
 }
 
 .leo-policy-control-card[data-draft-changed="true"] {
-  border-color: rgba(255, 210, 100, 0.42);
-  background: rgba(255, 210, 100, 0.075);
+  border-color: rgba(118, 234, 215, 0.48);
+  background: rgba(118, 234, 215, 0.09);
 }
 
 .leo-policy-control-heading {
@@ -980,27 +993,27 @@ canvas {
 }
 
 .leo-policy-control-label {
-  color: #fff1cf;
-  font-size: 15px;
+  color: #eefaff;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.25;
 }
 
 .leo-policy-control-applied {
   margin-top: 3px;
-  color: rgba(255, 230, 173, 0.72);
-  font-size: 12px;
+  color: rgba(191, 251, 242, 0.76);
+  font-size: 13.5px;
 }
 
 .leo-policy-control-value {
   flex: 0 0 auto;
   max-width: 44%;
-  padding: 6px 9px;
-  border: 1px solid rgba(255, 210, 100, 0.26);
+  padding: 7px 10px;
+  border: 1px solid rgba(118, 234, 215, 0.32);
   border-radius: 7px;
-  background: rgba(255, 210, 100, 0.1);
-  color: #fff8e7;
-  font-size: 17px;
+  background: rgba(118, 234, 215, 0.1);
+  color: #e8fffb;
+  font-size: 19px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -1009,15 +1022,16 @@ canvas {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  color: rgba(255, 230, 173, 0.62);
-  font-size: 12px;
+  color: rgba(191, 251, 242, 0.68);
+  font-size: 13px;
 }
 
 .leo-policy-control-details {
   padding: 7px 8px;
-  border-color: rgba(255, 210, 100, 0.16);
+  border-color: rgba(118, 234, 215, 0.18);
   background: rgba(0, 0, 0, 0.12);
-  color: rgba(255, 236, 190, 0.82);
+  color: rgba(229, 244, 251, 0.82);
+  font-size: 14px;
 }
 
 .leo-policy-control-details p {
@@ -1026,12 +1040,12 @@ canvas {
 }
 
 .leo-policy-control-details--section {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .leo-policy-control-draft-note {
-  color: rgba(255, 230, 173, 0.72);
-  font-size: 12.5px;
+  color: rgba(191, 251, 242, 0.76);
+  font-size: 13.5px;
 }
 
 .leo-policy-action-row {
@@ -1039,8 +1053,8 @@ canvas {
   flex-wrap: wrap;
   gap: 9px;
   align-items: center;
-  color: rgba(255, 230, 173, 0.72);
-  font-size: 13px;
+  color: rgba(229, 244, 251, 0.72);
+  font-size: 14px;
 }
 
 .leo-diagnostics-drawer {

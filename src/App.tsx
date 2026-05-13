@@ -400,6 +400,13 @@ export function App() {
           >
             {leftSidebarTab === 'handover' ? (
               <div className="leo-sidebar-content-stack">
+                <ModqnBaselineHandoverControls
+                  appliedHandoverPolicy={appliedHandoverPolicy}
+                  hasHandoverOverrides={hasHandoverAppliedOverrides}
+                  hasHandoverDraftChanges={hasHandoverDraftChanges}
+                  onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
+                  onResetHandoverPolicy={handleResetHandoverPolicy}
+                />
                 <HandoverPolicyControls
                   draft={handoverPolicyDraft}
                   applied={appliedHandoverPolicy}
@@ -408,13 +415,6 @@ export function App() {
                   onDraftChange={handleHandoverPolicyDraftChange}
                   onApply={handleApplyHandoverPolicy}
                   onReset={handleResetHandoverPolicy}
-                />
-                <ModqnBaselineHandoverControls
-                  appliedHandoverPolicy={appliedHandoverPolicy}
-                  hasHandoverOverrides={hasHandoverAppliedOverrides}
-                  hasHandoverDraftChanges={hasHandoverDraftChanges}
-                  onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
-                  onResetHandoverPolicy={handleResetHandoverPolicy}
                 />
               </div>
             ) : (
@@ -466,15 +466,15 @@ export function App() {
                   <summary>Claim boundaries</summary>
                   <ModeEvidenceStrip />
                 </details>
+                <ModqnReplaySceneCues
+                  displayState={modqnReplayDisplayState}
+                  failClosedReason={modqnReplayModelIssue?.message}
+                />
                 <ModqnBaselineReplayEvidence
                   replayDisplayState={modqnReplayDisplayState}
                   replayIssueMessage={modqnReplayModelIssue?.message}
                 />
                 <ModqnReplayPlaybackShell onDisplayStateChange={handleModqnReplayDisplayStateChange} />
-                <ModqnReplaySceneCues
-                  displayState={modqnReplayDisplayState}
-                  failClosedReason={modqnReplayModelIssue?.message}
-                />
               </section>
             ) : (
               <section className="leo-live-status-stack" aria-label="Live HOBS/SINR status">
