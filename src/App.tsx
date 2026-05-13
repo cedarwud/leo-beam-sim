@@ -372,11 +372,6 @@ export function App() {
         onToggleAutoSlow={() => setAutoSlowEnabled(e => !e)}
       />
       <ModeEvidenceStrip />
-      <ModqnReplayPlaybackShell onDisplayStateChange={handleModqnReplayDisplayStateChange} />
-      <ModqnReplaySceneCues
-        displayState={modqnReplayDisplayState}
-        failClosedReason={modqnReplayModelIssue?.message}
-      />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
           <ModqnBaselineHandoverControls
@@ -415,10 +410,17 @@ export function App() {
           />
         </main>
         <aside className="leo-shell-right" aria-label="Signal status panel slot">
-          <ModqnBaselineReplayEvidence
-            replayDisplayState={modqnReplayDisplayState}
-            replayIssueMessage={modqnReplayModelIssue?.message}
-          />
+          <section className="leo-modqn-sidebar-stack" aria-label="MODQN replay evidence and controls">
+            <ModqnBaselineReplayEvidence
+              replayDisplayState={modqnReplayDisplayState}
+              replayIssueMessage={modqnReplayModelIssue?.message}
+            />
+            <ModqnReplayPlaybackShell onDisplayStateChange={handleModqnReplayDisplayStateChange} />
+            <ModqnReplaySceneCues
+              displayState={modqnReplayDisplayState}
+              failClosedReason={modqnReplayModelIssue?.message}
+            />
+          </section>
           <InfoPanel
             {...simState}
             uiMode={uiMode}

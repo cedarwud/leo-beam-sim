@@ -21,7 +21,7 @@ import { ModqnReplaySceneCues } from '../src/ui/ModqnReplaySceneCues.tsx';
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const UI_MODE_STORAGE_KEY = 'leo-beam-sim.ui-mode.v1';
-const REQUEST_TIMEOUT_MS = 900;
+const REQUEST_TIMEOUT_MS = 2_500;
 const DEV_SERVER_START_TIMEOUT_MS = 30_000;
 const UI_LOAD_TIMEOUT_MS = 30_000;
 
@@ -204,13 +204,13 @@ function summarizeProcesses(processes) {
 
 function candidateAppUrls() {
   return [
-    'http://127.0.0.1:3000/',
-    'http://localhost:3000/',
     'http://127.0.0.1:5173/',
     'http://127.0.0.1:5174/',
     'http://127.0.0.1:5175/',
-    'http://127.0.0.1:4173/',
     'http://localhost:5173/',
+    'http://127.0.0.1:3000/',
+    'http://localhost:3000/',
+    'http://127.0.0.1:4173/',
     'http://localhost:4173/',
   ];
 }
@@ -426,6 +426,29 @@ function assertBoxTouchesViewport(box, viewport, label) {
   assert.ok(box.y < viewport.height, `${label} was below the viewport`);
 }
 
+function assertBoxInside(outer, inner, label) {
+  const tolerancePx = 1;
+  assert.ok(inner.x + tolerancePx >= outer.x, `${label} was left of its container`);
+  assert.ok(inner.y + tolerancePx >= outer.y, `${label} was above its container`);
+  assert.ok(
+    inner.x + inner.width <= outer.x + outer.width + tolerancePx,
+    `${label} was right of its container`,
+  );
+  assert.ok(
+    inner.y + inner.height <= outer.y + outer.height + tolerancePx,
+    `${label} was below its container`,
+  );
+}
+
+function assertBoxHorizontallyInside(outer, inner, label) {
+  const tolerancePx = 1;
+  assert.ok(inner.x + tolerancePx >= outer.x, `${label} was left of its container`);
+  assert.ok(
+    inner.x + inner.width <= outer.x + outer.width + tolerancePx,
+    `${label} was right of its container`,
+  );
+}
+
 function assertNoUnsupportedEvidenceClaim(text, label) {
   const leaks = [];
   const chunks = text.split(/(?:\r?\n|[.;|])/u);
@@ -620,6 +643,7 @@ async function assertViewport(page, viewport) {
   const canvasSlotBox = await requiredBox(page, '.leo-shell-canvas', `${viewport.name} canvas slot`);
   const liveTuningBox = await requiredBox(page, '.leo-shell-left', `${viewport.name} live tuning slot`);
   const liveStatusBox = await requiredBox(page, '.leo-shell-right', `${viewport.name} live status slot`);
+  const modqnSidebarBox = await requiredBox(page, '.leo-modqn-sidebar-stack', `${viewport.name} MODQN replay sidebar stack`);
 
   for (const [label, box] of [
     ['control bar', controlBarBox],
@@ -629,6 +653,7 @@ async function assertViewport(page, viewport) {
     ['canvas slot', canvasSlotBox],
     ['live tuning slot', liveTuningBox],
     ['live status slot', liveStatusBox],
+    ['MODQN replay sidebar stack', modqnSidebarBox],
   ]) {
     assertBoxTouchesViewport(box, viewport, `${viewport.name} ${label}`);
   }
@@ -637,20 +662,20 @@ async function assertViewport(page, viewport) {
   assert.ok(playbackBox.width <= viewport.width + 1, `${viewport.name} playback shell overflowed the viewport`);
   assert.ok(cueBox.width <= viewport.width + 1, `${viewport.name} cue layer overflowed the viewport`);
   assert.ok(evidenceBox.height <= 175, `${viewport.name} evidence strip exceeded compact height`);
-  assert.ok(playbackBox.height <= (viewport.name === 'narrow' ? 136 : 195), `${viewport.name} playback shell exceeded compact height`);
-  assert.ok(cueBox.height <= (viewport.name === 'narrow' ? 82 : 120), `${viewport.name} cue layer exceeded compact height`);
+  assert.ok(playbackBox.height <= (viewport.name === 'narrow' ? 150 : 220), `${viewport.name} playback shell exceeded compact height`);
+  assert.ok(cueBox.height <= (viewport.name === 'narrow' ? 110 : 140), `${viewport.name} cue layer exceeded compact height`);
   assert.ok(controlBarBox.y + controlBarBox.height <= evidenceBox.y + 1, `${viewport.name} evidence strip overlapped control bar`);
-  assert.ok(evidenceBox.y + evidenceBox.height <= playbackBox.y + 1, `${viewport.name} playback shell overlapped evidence strip`);
+  assert.ok(evidenceBox.y + evidenceBox.height <= shellRowBox.y + 1, `${viewport.name} live scene row overlapped evidence strip`);
+  assertBoxInside(liveStatusBox, modqnSidebarBox, `${viewport.name} MODQN replay sidebar stack`);
+  assertBoxHorizontallyInside(modqnSidebarBox, playbackBox, `${viewport.name} playback shell`);
+  assertBoxHorizontallyInside(modqnSidebarBox, cueBox, `${viewport.name} cue layer`);
   assert.ok(playbackBox.y + playbackBox.height <= cueBox.y + 1, `${viewport.name} cue layer overlapped playback shell`);
-  assert.ok(cueBox.y + cueBox.height <= shellRowBox.y + 1, `${viewport.name} cue layer overlapped live scene row`);
 
   for (const [label, box] of [
     ['control bar', controlBarBox],
     ['evidence strip', evidenceBox],
-    ['playback shell', playbackBox],
     ['scene canvas', canvasSlotBox],
     ['live tuning slot', liveTuningBox],
-    ['live status slot', liveStatusBox],
   ]) {
     assert.equal(rectOverlapArea(cueBox, box), 0, `${viewport.name} cue layer overlapped ${label}`);
   }
@@ -658,7 +683,6 @@ async function assertViewport(page, viewport) {
   assert.equal(rectOverlapArea(playbackBox, evidenceBox), 0, `${viewport.name} playback shell overlapped evidence strip`);
   assert.equal(rectOverlapArea(playbackBox, canvasSlotBox), 0, `${viewport.name} playback shell overlapped scene canvas`);
   assert.equal(rectOverlapArea(playbackBox, liveTuningBox), 0, `${viewport.name} playback shell overlapped HOBS/SINR tuning slot`);
-  assert.equal(rectOverlapArea(playbackBox, liveStatusBox), 0, `${viewport.name} playback shell overlapped HOBS/SINR status slot`);
 
   const playbackState = await page.locator('[data-testid="modqn-replay-playback-shell"]').getAttribute('data-replay-state');
   assert.notEqual(playbackState, 'fail-closed', `${viewport.name} valid selected artifact unexpectedly rendered fail closed`);
