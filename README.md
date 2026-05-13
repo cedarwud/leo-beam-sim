@@ -19,6 +19,40 @@ Omni Scope 是一個基於 Three.js 的 3D 互動場景視覺化專案，以國�
 
 技術架構採用 **React + TypeScript + Vite**，透過 **React Three Fiber** 將 Three.js 整合進 React 生態系，實現宣告式的 3D 場景管理。
 
+## NTN Showcase Stack 角色
+
+本專案現在也是 `modqn-paper-reproduction` / `ntn-sim-core` / `leo-beam-sim`
+三 repo showcase stack 的最終 visual-first host：
+
+1. replay/offline MODQN story：`modqn-paper-reproduction` 產生
+   `visual-showcase-v1.json`，用 `ntn-sim-core` 驗證，最後由本專案渲染。
+2. live-sim story：只在需要互動 runtime 時，按需 vendor 已驗證的
+   `ntn-sim-core/src/core` module。
+3. 本專案只擁有 camera、material、label、panel、timeline interaction 與
+   demo packaging；不得重算或改寫 SINR、handover、MODQN action、reward、
+   evidence status 或 provenance。
+
+外部 artifact handoff gate：
+
+```bash
+cd /home/u24/papers/ntn-sim-core
+npm run validate:visual-showcase:artifact -- /path/to/visual-showcase-v1.json
+```
+
+跨 repo 工作先讀：
+
+1. [/home/u24/papers/ntn-showcase-stack/README.md](/home/u24/papers/ntn-showcase-stack/README.md)
+2. [/home/u24/papers/ntn-showcase-stack/AGENTS.md](/home/u24/papers/ntn-showcase-stack/AGENTS.md)
+3. [/home/u24/papers/ntn-sim-core/docs/modqn-paper-reproduction-to-leo-beam-sim-handoff.md](/home/u24/papers/ntn-sim-core/docs/modqn-paper-reproduction-to-leo-beam-sim-handoff.md)
+
+補充 workspace skills 僅作為 focused checklist，不改變本專案的 renderer /
+artifact / vendor-on-demand 邊界：API 或 module 邊界用
+`/home/u24/papers/skill/module-boundary-design/SKILL.md`，MODQN artifact 或
+provenance handoff 用 `/home/u24/papers/skill/data-contract-review/SKILL.md`，
+高風險重構用 `/home/u24/papers/skill/safe-refactor/SKILL.md`，browser smoke /
+capture / degraded state 用
+`/home/u24/papers/skill/demo-operability/SKILL.md`。
+
 ## 快速開始
 
 ### 環境需求
@@ -228,6 +262,46 @@ index.html
 Omni Scope is a Three.js-based interactive 3D spatial visualization project featuring the National Taipei University (NTPU) campus as its scene, along with a UAV (drone) model for real-time 3D scene exploration and interactive controls.
 
 The tech stack uses **React + TypeScript + Vite**, with **React Three Fiber** integrating Three.js into the React ecosystem for declarative 3D scene management.
+
+## NTN Showcase Stack Role
+
+This project is also the final visual-first renderer and live-demo host for the
+`modqn-paper-reproduction` / `ntn-sim-core` / `leo-beam-sim` three-repo NTN
+Showcase Stack:
+
+1. Replay/offline MODQN stories flow from `modqn-paper-reproduction` producing
+   `visual-showcase-v1.json`, through `ntn-sim-core` validation, and finally
+   into this project for rendering.
+2. Replay artifacts are immutable display inputs. This project must not
+   recompute, infer, or rewrite SINR, handover events, MODQN actions, rewards,
+   geometry truth, evidence status, or provenance for presentation needs.
+3. Live-sim stories may vendor rigor-critical runtime behavior only on demand
+   from validated `ntn-sim-core/src/core` modules.
+4. This project owns camera, materials, labels, panels, timeline interaction,
+   and demo packaging.
+
+External artifact handoff gate:
+
+```bash
+cd /home/u24/papers/ntn-sim-core
+npm run validate:visual-showcase:artifact -- /path/to/visual-showcase-v1.json
+```
+
+Before cross-repo work, read:
+
+1. [/home/u24/papers/ntn-showcase-stack/README.md](/home/u24/papers/ntn-showcase-stack/README.md)
+2. [/home/u24/papers/ntn-showcase-stack/AGENTS.md](/home/u24/papers/ntn-showcase-stack/AGENTS.md)
+3. [/home/u24/papers/ntn-showcase-stack/docs/repo-roles.md](/home/u24/papers/ntn-showcase-stack/docs/repo-roles.md)
+4. [/home/u24/papers/ntn-sim-core/docs/modqn-paper-reproduction-to-leo-beam-sim-handoff.md](/home/u24/papers/ntn-sim-core/docs/modqn-paper-reproduction-to-leo-beam-sim-handoff.md)
+
+Workspace skills are focused checklists only; they do not change this repo's
+renderer, artifact, or vendor-on-demand boundaries. Use
+`/home/u24/papers/skill/module-boundary-design/SKILL.md` for API or module
+boundaries, `/home/u24/papers/skill/data-contract-review/SKILL.md` for MODQN
+artifacts or provenance handoff, `/home/u24/papers/skill/safe-refactor/SKILL.md`
+for high-risk refactors, and
+`/home/u24/papers/skill/demo-operability/SKILL.md` for browser smoke, capture,
+or degraded-state checks.
 
 ## Quick Start
 
