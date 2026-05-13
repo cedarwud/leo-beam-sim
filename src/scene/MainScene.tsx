@@ -7,6 +7,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
 import type { LinkSample } from '../engine/signal/types';
 import { getFormulaFamilyLabel } from '../profiles';
+import type { ModqnReplayPlaybackDisplayState } from '../modqn/replay-bundle/playback-shell';
 import type { Profile } from '../profiles/types';
 import type {
   LinkBudgetTerms,
@@ -20,6 +21,7 @@ import type {
 } from './types';
 import { useSimulation } from './useSimulation';
 import { useBeamViz } from './useBeamViz';
+import { ModqnReplaySceneLayer } from './ModqnReplaySceneLayer';
 import {
   EarthFixedCells,
   createCellCoverCandidate,
@@ -55,6 +57,7 @@ interface SceneContentProps {
   speed: number;
   paused: boolean;
   runtime: RuntimeConfig;
+  modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
   onSimUpdate: (state: SimState) => void;
 }
 
@@ -368,6 +371,7 @@ function SceneContent({
   speed,
   paused,
   runtime,
+  modqnReplayDisplayState,
   onSimUpdate,
 }: SceneContentProps) {
   const camera = useThree(state => state.camera);
@@ -994,6 +998,10 @@ function SceneContent({
       <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />
       <HandoverLinks satellites={viz.displaySats} eventRoles={viz.eventRoles} satBeams={viz.satBeams} />
       <BeamPulseClock reducedMotion={runtime.reducedMotion} />
+      <ModqnReplaySceneLayer
+        displayState={modqnReplayDisplayState}
+        reducedMotion={runtime.reducedMotion}
+      />
       {showOrbitTrail && (
         <OrbitTrail satellites={viz.displaySats} />
       )}
@@ -1049,6 +1057,7 @@ interface MainSceneProps {
   paused: boolean;
   profile: Profile;
   runtime: RuntimeConfig;
+  modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
   onSimUpdate: (state: SimState) => void;
 }
 
@@ -1057,6 +1066,7 @@ export const MainScene = memo(function MainScene({
   paused,
   profile,
   runtime,
+  modqnReplayDisplayState,
   onSimUpdate,
 }: MainSceneProps) {
   return (
@@ -1084,6 +1094,7 @@ export const MainScene = memo(function MainScene({
             speed={speed}
             paused={paused}
             runtime={runtime}
+            modqnReplayDisplayState={modqnReplayDisplayState}
             onSimUpdate={onSimUpdate}
           />
         </Suspense>

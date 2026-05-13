@@ -22,9 +22,36 @@ const REQUEST_TIMEOUT_MS = 900;
 const DEV_SERVER_START_TIMEOUT_MS = 30_000;
 const UI_LOAD_TIMEOUT_MS = 30_000;
 
-const REQUIRED_VISIBLE_TEXT = [
+const REQUIRED_DEFAULT_VISIBLE_TEXT = [
   'MODQN replay - 7-beam producer artifact',
   'accepted-7beam-baseline',
+  'MODQN replay',
+  'baseline evidence',
+  'Play replay',
+  'Reset',
+  'Loop',
+  'Scrub source slot',
+  'Replay/live boundary',
+  'Source slot details',
+  'Producer truth details',
+  'Baseline MODQN integrated in frontend',
+  'Replay evidence loaded',
+  'Live handover controls active',
+  'Open handover controls',
+];
+
+const REQUIRED_DISCLOSURE_TEXT = [
+  'newly regenerated / re-promoted',
+  'not recovered frozen artifact',
+  'not full paper-faithful reproduction',
+  'HOBS/SINR live',
+  'HOBS/SINR live is separate',
+  'HOBS/SINR controls do not modify MODQN replay artifact truth',
+  'Sensitivity/demo',
+  '7 = baseline MODQN evidence path',
+  '19/37 = sensitivity/demo only',
+  'Replay truth is read-only',
+  'adjustable live handover simulator',
   'read-only source-slot playback',
   'producer diagnostics present-from-producer',
   'HOBS/SINR live controls separated',
@@ -528,35 +555,67 @@ async function assertViewport(page, viewport) {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.goto(page.url(), { waitUntil: 'domcontentloaded', timeout: UI_LOAD_TIMEOUT_MS });
   await requiredBox(page, '.leo-app-shell[data-ui-mode="presentation"]', `${viewport.name} presentation app shell`);
-  await requiredBox(page, '[data-testid="mode-evidence-strip"]', `${viewport.name} evidence strip`);
   await requiredBox(page, '[data-testid="modqn-replay-playback-shell"]', `${viewport.name} replay playback shell`);
   await requiredBox(page, '.leo-shell-canvas canvas', `${viewport.name} scene canvas`);
 
-  const rawBodyText = await page.evaluate(() => document.body.innerText);
-  const bodyText = normalizeText(rawBodyText);
-  for (const expected of REQUIRED_VISIBLE_TEXT) {
-    assert.ok(bodyText.includes(expected), `${viewport.name} viewport missing visible playback text: ${expected}`);
+  const defaultRawBodyText = await page.evaluate(() => document.body.innerText);
+  const defaultBodyText = normalizeText(defaultRawBodyText);
+  for (const expected of REQUIRED_DEFAULT_VISIBLE_TEXT) {
+    assert.ok(defaultBodyText.includes(expected), `${viewport.name} viewport missing default playback text: ${expected}`);
+  }
+  for (const hiddenByDefault of [
+    'read-only source-slot playback',
+    'producer diagnostics present-from-producer',
+  ]) {
+    assert.ok(
+      !defaultBodyText.includes(hiddenByDefault),
+      `${viewport.name} disclosure detail was visible by default: ${hiddenByDefault}`,
+    );
   }
 
   const controlBarBox = await requiredBox(page, '.leo-control-bar', `${viewport.name} control bar`);
-  const evidenceBox = await requiredBox(page, '[data-testid="mode-evidence-strip"]', `${viewport.name} evidence strip`);
   const playbackBox = await requiredBox(page, '[data-testid="modqn-replay-playback-shell"]', `${viewport.name} replay playback shell`);
   const shellRowBox = await requiredBox(page, '.leo-shell-row', `${viewport.name} shell row`);
   const canvasSlotBox = await requiredBox(page, '.leo-shell-canvas', `${viewport.name} canvas slot`);
   const liveTuningBox = await requiredBox(page, '.leo-shell-left', `${viewport.name} live tuning slot`);
   const liveStatusBox = await requiredBox(page, '.leo-shell-right', `${viewport.name} live status slot`);
+  const modqnSidebarBox = await requiredBox(page, '.leo-modqn-sidebar-stack', `${viewport.name} MODQN replay sidebar stack`);
 
   assert.ok(playbackBox.width <= viewport.width + 1, `${viewport.name} playback shell overflowed the viewport`);
-  assert.ok(playbackBox.height <= 195, `${viewport.name} playback shell grew beyond compact shell height`);
-  assert.ok(controlBarBox.y + controlBarBox.height <= evidenceBox.y + 1, `${viewport.name} evidence strip overlapped control bar`);
-  assert.ok(evidenceBox.y + evidenceBox.height <= playbackBox.y + 1, `${viewport.name} playback shell overlapped evidence strip`);
-  assert.ok(playbackBox.y + playbackBox.height <= shellRowBox.y + 1, `${viewport.name} playback shell overlapped live scene row`);
+  assert.ok(
+    shellRowBox.y <= controlBarBox.y + controlBarBox.height + 18,
+    `${viewport.name} shell row did not start directly after the single control bar row`,
+  );
+  assert.ok(
+    playbackBox.x + 1 >= liveStatusBox.x
+      && playbackBox.x + playbackBox.width <= liveStatusBox.x + liveStatusBox.width + 1,
+    `${viewport.name} playback shell was not horizontally inside the right sidebar`,
+  );
+  assert.ok(
+    playbackBox.y + 1 >= liveStatusBox.y && playbackBox.y < liveStatusBox.y + liveStatusBox.height,
+    `${viewport.name} playback shell did not start inside the right sidebar`,
+  );
+  assert.ok(
+    modqnSidebarBox.y + 1 >= liveStatusBox.y && modqnSidebarBox.y < liveStatusBox.y + liveStatusBox.height,
+    `${viewport.name} MODQN sidebar stack did not start inside the right sidebar`,
+  );
 
   assert.equal(rectOverlapArea(playbackBox, controlBarBox), 0, `${viewport.name} playback shell overlapped control bar`);
-  assert.equal(rectOverlapArea(playbackBox, evidenceBox), 0, `${viewport.name} playback shell overlapped evidence labels`);
   assert.equal(rectOverlapArea(playbackBox, canvasSlotBox), 0, `${viewport.name} playback shell overlapped scene canvas`);
   assert.equal(rectOverlapArea(playbackBox, liveTuningBox), 0, `${viewport.name} playback shell overlapped HOBS/SINR live tuning slot`);
-  assert.equal(rectOverlapArea(playbackBox, liveStatusBox), 0, `${viewport.name} playback shell overlapped HOBS/SINR live status slot`);
+
+  await page.evaluate(() => {
+    document
+      .querySelectorAll('details[data-phase7h-open-for-validation="true"]')
+      .forEach(element => {
+        if (element instanceof HTMLDetailsElement) element.open = true;
+      });
+  });
+  const expandedRawBodyText = await page.evaluate(() => document.body.innerText);
+  const expandedBodyText = normalizeText(expandedRawBodyText);
+  for (const expected of REQUIRED_DISCLOSURE_TEXT) {
+    assert.ok(expandedBodyText.includes(expected), `${viewport.name} viewport missing expanded playback text: ${expected}`);
+  }
 
   const shellText = await textOf(page, '[data-testid="modqn-replay-playback-shell"]');
   assert.ok(shellText.includes('HOBS/SINR live controls separated'), `${viewport.name} replay/live separation label missing`);
@@ -580,8 +639,8 @@ async function assertViewport(page, viewport) {
     `${viewport.name} diagnostics summary`,
   );
 
-  assertNoUnsupportedEvidenceClaim(rawBodyText, `${viewport.name}-visible-text`);
-  assertNoHobsReplayEvidenceClaim(rawBodyText, `${viewport.name}-visible-text`);
+  assertNoUnsupportedEvidenceClaim(expandedRawBodyText, `${viewport.name}-visible-text`);
+  assertNoHobsReplayEvidenceClaim(expandedRawBodyText, `${viewport.name}-visible-text`);
 
   return {
     viewport: viewport.name,
@@ -595,6 +654,7 @@ async function assertViewport(page, viewport) {
       playPauseChangedSourceSlotOnly: true,
       resetReturnedToFirstSourceSlot: true,
     },
+    defaultDisclosureState: 'collapsed',
     replayLiveSeparationVisible: true,
   };
 }
@@ -641,7 +701,10 @@ async function assertBrowserReadout(appUrl) {
         appUrl,
         browserPid,
         viewports,
-        visibleTextAssertions: REQUIRED_VISIBLE_TEXT,
+        visibleTextAssertions: {
+          default: REQUIRED_DEFAULT_VISIBLE_TEXT,
+          expandedDisclosure: REQUIRED_DISCLOSURE_TEXT,
+        },
         consoleErrors: consoleErrors.length,
         pageErrors: pageErrors.length,
         unsupportedVisibleClaims: 0,

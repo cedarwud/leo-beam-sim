@@ -203,24 +203,6 @@ export function HandoverPolicyControls({
             policy: {applied.policy} - read-only
           </div>
         </div>
-        <details className="leo-policy-control-details leo-policy-control-details--section">
-          <summary>Scope and boundary</summary>
-          <p>
-            These staged policy values tune handover qualification and timers, not the HOBS SINR formula tabs.
-          </p>
-        </details>
-      </div>
-
-      <div className="leo-policy-control-list">
-        {POLICY_CONTROL_CONFIGS.map(config => (
-          <PolicyNumericControl
-            key={config.field}
-            config={config}
-            value={draft[config.field]}
-            appliedValue={applied[config.field]}
-            onChange={value => updateNumber(config.field, value)}
-          />
-        ))}
       </div>
 
       <div className="leo-policy-action-row">
@@ -264,6 +246,25 @@ export function HandoverPolicyControls({
           {hasDraftChanges ? 'Draft edits are staged.' : 'Draft matches the applied policy.'}
         </div>
       </div>
+
+      <div className="leo-policy-control-list">
+        {POLICY_CONTROL_CONFIGS.map(config => (
+          <PolicyNumericControl
+            key={config.field}
+            config={config}
+            value={draft[config.field]}
+            appliedValue={applied[config.field]}
+            onChange={value => updateNumber(config.field, value)}
+          />
+        ))}
+      </div>
+
+      <details className="leo-policy-control-details leo-policy-control-details--section">
+        <summary>Scope and boundary</summary>
+        <p>
+          These staged policy values tune handover qualification and timers, not the HOBS SINR formula tabs.
+        </p>
+      </details>
     </section>
   );
 }

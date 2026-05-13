@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
 import { spawn, execFile } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +7,6 @@ import { chromium } from '@playwright/test';
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const UI_MODE_STORAGE_KEY = 'leo-beam-sim.ui-mode.v1';
-const BROWSER_USER_DATA_PREFIX = 'leo-beam-sim-phase7e-browser-';
 const REQUEST_TIMEOUT_MS = 900;
 const DEV_SERVER_START_TIMEOUT_MS = 30_000;
 const UI_LOAD_TIMEOUT_MS = 30_000;
@@ -305,13 +302,26 @@ async function assertViewport(page, viewport) {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.goto(page.url(), { waitUntil: 'domcontentloaded', timeout: UI_LOAD_TIMEOUT_MS });
   await page.locator('.leo-app-shell[data-ui-mode="presentation"]').waitFor({ timeout: UI_LOAD_TIMEOUT_MS });
-  await page.locator('[data-testid="mode-evidence-strip"]').waitFor({ timeout: UI_LOAD_TIMEOUT_MS });
+  await page.locator('[data-testid="modqn-claim-boundaries-disclosure"]').waitFor({ timeout: UI_LOAD_TIMEOUT_MS });
+  await page.locator('[data-testid="mode-evidence-strip"]').waitFor({ state: 'attached', timeout: UI_LOAD_TIMEOUT_MS });
   await page.locator('.leo-shell-canvas canvas').waitFor({ timeout: UI_LOAD_TIMEOUT_MS });
 
+  const defaultBodyText = normalizeText(await page.locator('body').innerText());
+  assert.ok(
+    !defaultBodyText.includes('HOBS/SINR controls do not modify MODQN replay artifact truth'),
+    `${viewport.name} claim-boundary detail was visible before the disclosure was opened`,
+  );
+  await page.evaluate(() => {
+    document
+      .querySelectorAll('details[data-phase7h-open-for-validation="true"]')
+      .forEach(element => {
+        if (element instanceof HTMLDetailsElement) element.open = true;
+      });
+  });
   const rawBodyText = await page.locator('body').innerText();
   const bodyText = normalizeText(rawBodyText);
   for (const expected of REQUIRED_VISIBLE_TEXT) {
-    assert.ok(bodyText.includes(expected), `${viewport.name} viewport missing visible label text: ${expected}`);
+    assert.ok(bodyText.includes(expected), `${viewport.name} viewport missing expanded label text: ${expected}`);
   }
 
   const stripBox = await requiredBox(page, '[data-testid="mode-evidence-strip"]', `${viewport.name} evidence strip`);
@@ -323,16 +333,18 @@ async function assertViewport(page, viewport) {
   const controlBarBox = await requiredBox(page, '.leo-control-bar', `${viewport.name} control bar`);
   const leftSlotBox = await requiredBox(page, '.leo-shell-left', `${viewport.name} left slot`);
   const rightSlotBox = await requiredBox(page, '.leo-shell-right', `${viewport.name} right slot`);
+  const modqnSidebarBox = await requiredBox(page, '.leo-modqn-sidebar-stack', `${viewport.name} MODQN sidebar stack`);
 
   assert.ok(stripBox.width <= viewport.width + 1, `${viewport.name} evidence strip overflowed the viewport`);
   assert.ok(stripBox.height <= 175, `${viewport.name} evidence strip grew beyond compact label-strip height: ${JSON.stringify(stripBox)}`);
   assert.ok(
-    controlBarBox.y + controlBarBox.height <= stripBox.y + 1,
-    `${viewport.name} evidence strip overlapped or preceded the control bar unexpectedly`,
+    shellRowBox.y <= controlBarBox.y + controlBarBox.height + 18,
+    `${viewport.name} shell row did not start directly after the single control bar row`,
   );
   assert.ok(
-    stripBox.y + stripBox.height <= shellRowBox.y + 1,
-    `${viewport.name} evidence strip overlapped the scene/control row`,
+    stripBox.x + 1 >= modqnSidebarBox.x
+      && stripBox.x + stripBox.width <= modqnSidebarBox.x + modqnSidebarBox.width + 1,
+    `${viewport.name} evidence strip was not horizontally inside the MODQN sidebar`,
   );
 
   for (const [label, box] of [
@@ -347,7 +359,10 @@ async function assertViewport(page, viewport) {
   assert.equal(rectOverlapArea(stripBox, controlBarBox), 0, `${viewport.name} evidence strip overlapped the control bar`);
   assert.equal(rectOverlapArea(stripBox, canvasSlotBox), 0, `${viewport.name} evidence strip overlapped the scene canvas`);
   assert.equal(rectOverlapArea(stripBox, leftSlotBox), 0, `${viewport.name} evidence strip overlapped the live tuning slot`);
-  assert.equal(rectOverlapArea(stripBox, rightSlotBox), 0, `${viewport.name} evidence strip overlapped the signal status slot`);
+  assert.ok(
+    stripBox.y + stripBox.height >= rightSlotBox.y,
+    `${viewport.name} evidence strip was not in the right sidebar scroll path`,
+  );
 
   const liveText = normalizeText(await page.locator('[data-testid="hobs-sinr-live-label"]').innerText());
   assert.ok(
@@ -374,6 +389,7 @@ async function assertViewport(page, viewport) {
       live: true,
       sensitivity: true,
     },
+    defaultDisclosureState: 'collapsed',
     overlapsControlSurfaces: false,
   };
 }
@@ -381,24 +397,24 @@ async function assertViewport(page, viewport) {
 async function assertBrowserReadout(appUrl) {
   const consoleErrors = [];
   const pageErrors = [];
-  const userDataDir = await mkdtemp(join(tmpdir(), BROWSER_USER_DATA_PREFIX));
-  const context = await chromium.launchPersistentContext(userDataDir, {
-    viewport: { width: 1440, height: 900 },
+  const browser = await chromium.launch({
     args: [
       '--disable-dev-shm-usage',
       '--use-angle=swiftshader-webgl',
     ],
   });
-  const browser = context.browser();
-  const browserPid = browser && typeof browser.process === 'function'
+  const browserPid = typeof browser.process === 'function'
     ? browser.process()?.pid ?? null
     : null;
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+  });
 
   try {
     await context.addInitScript({
       content: `window.localStorage.setItem(${JSON.stringify(UI_MODE_STORAGE_KEY)}, 'presentation');`,
     });
-    const page = context.pages()[0] ?? await context.newPage();
+    const page = await context.newPage();
     page.on('console', message => {
       if (message.type() === 'error') consoleErrors.push(message.text());
     });
@@ -419,7 +435,6 @@ async function assertBrowserReadout(appUrl) {
       return {
         appUrl,
         browserPid,
-        browserUserDataDir: userDataDir,
         viewports,
         visibleTextAssertions: REQUIRED_VISIBLE_TEXT,
         consoleErrors: consoleErrors.length,
@@ -431,7 +446,7 @@ async function assertBrowserReadout(appUrl) {
     }
   } finally {
     await context.close().catch(() => {});
-    await rm(userDataDir, { recursive: true, force: true }).catch(() => {});
+    await browser.close().catch(() => {});
   }
 }
 
@@ -451,15 +466,16 @@ async function cleanupOwnedRuntimeProcesses(beforeProcesses) {
       isDevServerProcess(processInfo)
       && !beforePids.has(processInfo.pid)
     )),
-    phase7eBrowserProcesses: processes.filter(processInfo => (
-      processInfo.cmd.includes(BROWSER_USER_DATA_PREFIX)
+    newBrowserAutomationProcesses: processes.filter(processInfo => (
+      isBrowserAutomationProcess(processInfo)
+      && !beforePids.has(processInfo.pid)
     )),
   });
 
   const firstPass = findOwnedProcesses(await readRuntimeProcesses());
   const ownedProcesses = [
     ...firstPass.newDevServerProcesses,
-    ...firstPass.phase7eBrowserProcesses,
+    ...firstPass.newBrowserAutomationProcesses,
   ];
   const killedProcessIds = [];
 
@@ -481,7 +497,7 @@ async function cleanupOwnedRuntimeProcesses(beforeProcesses) {
   return {
     killedProcessIds,
     newDevServerProcessesAfterCleanup: finalPass.newDevServerProcesses.map(formatProcess),
-    phase7eBrowserProcessesAfterCleanup: finalPass.phase7eBrowserProcesses.map(formatProcess),
+    newBrowserAutomationProcessesAfterCleanup: finalPass.newBrowserAutomationProcesses.map(formatProcess),
   };
 }
 
@@ -524,7 +540,7 @@ async function main() {
 
   const remainingOwnedProcesses = [
     ...processCleanup.newDevServerProcessesAfterCleanup,
-    ...processCleanup.phase7eBrowserProcessesAfterCleanup,
+    ...processCleanup.newBrowserAutomationProcessesAfterCleanup,
   ];
   assert.equal(
     remainingOwnedProcesses.length,

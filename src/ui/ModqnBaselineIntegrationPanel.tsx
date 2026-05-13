@@ -85,12 +85,6 @@ export function ModqnBaselineHandoverControls({
       <div className="leo-modqn-integration-heading">
         <span>Baseline MODQN integrated in frontend</span>
         <strong>Live handover controls active</strong>
-        <details className="leo-modqn-boundary-disclosure">
-          <summary>Replay/live boundary</summary>
-          <p>
-            Replay truth is read-only; live handover edits tune current HOBS/SINR simulation only.
-          </p>
-        </details>
       </div>
 
       <div className="leo-modqn-integration-card leo-modqn-integration-card--live">
@@ -136,6 +130,13 @@ export function ModqnBaselineHandoverControls({
           Reset live handover policy
         </button>
       </div>
+
+      <details className="leo-modqn-boundary-disclosure">
+        <summary>Replay/live boundary</summary>
+        <p>
+          Replay truth is read-only; live handover edits tune current HOBS/SINR simulation only.
+        </p>
+      </details>
     </section>
   );
 }

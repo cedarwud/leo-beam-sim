@@ -537,15 +537,38 @@ async function assertViewport(page, viewport) {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.goto(page.url(), { waitUntil: 'domcontentloaded', timeout: UI_LOAD_TIMEOUT_MS });
   await requiredBox(page, '.leo-app-shell[data-ui-mode="presentation"]', `${viewport.name} presentation app shell`);
-  await requiredBox(page, '[data-testid="mode-evidence-strip"]', `${viewport.name} evidence strip`);
+  await waitFor(
+    `${viewport.name} evidence strip attached`,
+    () => page.evaluate(() => document.querySelector('[data-testid="mode-evidence-strip"]') ? true : null),
+    UI_LOAD_TIMEOUT_MS,
+  );
   await requiredBox(page, '[data-testid="modqn-replay-playback-shell"]', `${viewport.name} replay playback shell`);
   await requiredBox(page, '[data-testid="modqn-replay-scene-cues"]', `${viewport.name} replay scene cues`);
   await requiredBox(page, '.leo-shell-canvas canvas', `${viewport.name} scene canvas`);
 
+  const defaultBodyText = normalizeText(await page.evaluate(() => document.body.innerText));
+  for (const expected of [
+    'MODQN replay artifact cues',
+    'scene-adjacent display only',
+    'not live HOBS/SINR state',
+    'Selected serving',
+    'Previous serving',
+    'Handover event',
+    'Source slot / focus row',
+  ]) {
+    assert.ok(defaultBodyText.includes(expected), `${viewport.name} viewport missing default cue text: ${expected}`);
+  }
+  await page.evaluate(() => {
+    document
+      .querySelectorAll('details[data-phase7h-open-for-validation="true"]')
+      .forEach(element => {
+        if (element instanceof HTMLDetailsElement) element.open = true;
+      });
+  });
   const rawBodyText = await page.evaluate(() => document.body.innerText);
   const bodyText = normalizeText(rawBodyText);
   for (const expected of REQUIRED_VISIBLE_TEXT) {
-    assert.ok(bodyText.includes(expected), `${viewport.name} viewport missing visible cue text: ${expected}`);
+    assert.ok(bodyText.includes(expected), `${viewport.name} viewport missing expanded cue text: ${expected}`);
   }
 
   const controlBarBox = await requiredBox(page, '.leo-control-bar', `${viewport.name} control bar`);
@@ -556,19 +579,34 @@ async function assertViewport(page, viewport) {
   const canvasSlotBox = await requiredBox(page, '.leo-shell-canvas', `${viewport.name} canvas slot`);
   const liveTuningBox = await requiredBox(page, '.leo-shell-left', `${viewport.name} live tuning slot`);
   const liveStatusBox = await requiredBox(page, '.leo-shell-right', `${viewport.name} live status slot`);
+  const modqnSidebarBox = await requiredBox(page, '.leo-modqn-sidebar-stack', `${viewport.name} MODQN replay sidebar stack`);
 
   assert.ok(cueBox.width <= viewport.width + 1, `${viewport.name} cue layer overflowed the viewport`);
-  assert.ok(cueBox.height <= 120, `${viewport.name} cue layer grew beyond compact scene-adjacent height`);
-  assert.ok(evidenceBox.y + evidenceBox.height <= playbackBox.y + 1, `${viewport.name} playback shell overlapped evidence strip`);
+  assert.ok(
+    shellRowBox.y <= controlBarBox.y + controlBarBox.height + 18,
+    `${viewport.name} shell row did not start directly after the single control bar row`,
+  );
   assert.ok(playbackBox.y + playbackBox.height <= cueBox.y + 1, `${viewport.name} replay cues overlapped playback shell`);
-  assert.ok(cueBox.y + cueBox.height <= shellRowBox.y + 1, `${viewport.name} replay cues overlapped live scene row`);
+  assert.ok(
+    modqnSidebarBox.y + 1 >= liveStatusBox.y && modqnSidebarBox.y < liveStatusBox.y + liveStatusBox.height,
+    `${viewport.name} MODQN replay sidebar stack did not start inside the status slot`,
+  );
+  for (const [label, box] of [
+    ['evidence strip', evidenceBox],
+    ['playback shell', playbackBox],
+    ['cue layer', cueBox],
+  ]) {
+    assert.ok(
+      box.x + 1 >= modqnSidebarBox.x
+        && box.x + box.width <= modqnSidebarBox.x + modqnSidebarBox.width + 1,
+      `${viewport.name} ${label} was not horizontally inside the MODQN sidebar`,
+    );
+  }
 
   assert.equal(rectOverlapArea(cueBox, controlBarBox), 0, `${viewport.name} replay cues overlapped control bar`);
-  assert.equal(rectOverlapArea(cueBox, evidenceBox), 0, `${viewport.name} replay cues overlapped evidence strip`);
   assert.equal(rectOverlapArea(cueBox, playbackBox), 0, `${viewport.name} replay cues overlapped playback shell`);
   assert.equal(rectOverlapArea(cueBox, canvasSlotBox), 0, `${viewport.name} replay cues overlapped scene canvas`);
   assert.equal(rectOverlapArea(cueBox, liveTuningBox), 0, `${viewport.name} replay cues overlapped HOBS/SINR live tuning slot`);
-  assert.equal(rectOverlapArea(cueBox, liveStatusBox), 0, `${viewport.name} replay cues overlapped HOBS/SINR live status slot`);
 
   const cueText = await textOf(page, '[data-testid="modqn-replay-scene-cues"]');
   assert.ok(cueText.includes('MODQN replay artifact cues'), `${viewport.name} cue label missing artifact source`);

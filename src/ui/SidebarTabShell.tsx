@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { UI_CLASSES } from '../constants/uiTokens';
 
 export interface SidebarTabItem<T extends string> {
@@ -26,12 +26,40 @@ export function SidebarTabShell<T extends string>({
 }: SidebarTabShellProps<T>) {
   const activeTab = tabs.find(tab => tab.key === activeKey) ?? tabs[0];
   const panelId = `${side}-sidebar-tab-panel`;
+  const activeIndex = Math.max(tabs.findIndex(tab => tab.key === activeTab.key), 0);
+
+  const focusTab = (key: T) => {
+    window.requestAnimationFrame(() => {
+      document.getElementById(`${side}-sidebar-tab-${key}`)?.focus();
+    });
+  };
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      nextIndex = (index + 1) % tabs.length;
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      nextIndex = (index - 1 + tabs.length) % tabs.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = tabs.length - 1;
+    }
+
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextKey = tabs[nextIndex].key;
+    onChange(nextKey);
+    focusTab(nextKey);
+  };
 
   return (
     <section className="leo-sidebar-tab-shell" data-sidebar-side={side} aria-label={label}>
-      <div className="leo-sidebar-tab-list" role="tablist" aria-label={`${label} tabs`}>
-        {tabs.map(tab => {
-          const selected = tab.key === activeKey;
+      <div className="leo-sidebar-tab-list" role="tablist" aria-label={`${label} tabs`} aria-orientation="horizontal">
+        {tabs.map((tab, index) => {
+          const selected = index === activeIndex;
           return (
             <button
               key={tab.key}
@@ -42,7 +70,9 @@ export function SidebarTabShell<T extends string>({
               aria-selected={selected}
               aria-controls={panelId}
               data-active={selected ? 'true' : 'false'}
+              tabIndex={selected ? 0 : -1}
               onClick={() => onChange(tab.key)}
+              onKeyDown={event => handleTabKeyDown(event, index)}
             >
               <span>{tab.label}</span>
               <small>{tab.description}</small>

@@ -446,6 +446,7 @@ export function App() {
             paused={paused}
             profile={effectiveProfile}
             runtime={runtime}
+            modqnReplayDisplayState={modqnReplayDisplayState}
             onSimUpdate={handleSimUpdate}
           />
           <ModqnReplaySceneOverlay

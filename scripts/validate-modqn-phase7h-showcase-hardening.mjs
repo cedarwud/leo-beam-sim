@@ -562,6 +562,58 @@ async function assertCueState(page, expected) {
   assert.match(await textOf(page, '[data-testid="modqn-replay-scene-cue-focus"]'), expected.focusPattern);
 }
 
+async function assertCanvasReplaySceneLayer(page, expected) {
+  const attrs = await waitFor(
+    `${expected.label} canvas replay scene layer telemetry`,
+    async () => {
+      const current = await page.evaluate(() => {
+        const canvas = document.querySelector('.leo-shell-canvas canvas');
+        return {
+          layer: canvas?.getAttribute('data-modqn-replay-scene-layer') ?? null,
+          renderer: canvas?.getAttribute('data-modqn-replay-scene-renderer') ?? null,
+          source: canvas?.getAttribute('data-modqn-replay-scene-source') ?? null,
+          eventKind: canvas?.getAttribute('data-modqn-replay-scene-event-kind') ?? null,
+          previousBeam: canvas?.getAttribute('data-modqn-replay-scene-previous-beam') ?? null,
+          selectedBeam: canvas?.getAttribute('data-modqn-replay-scene-selected-beam') ?? null,
+          previousPosition: canvas?.getAttribute('data-modqn-replay-scene-previous-position') ?? null,
+          selectedPosition: canvas?.getAttribute('data-modqn-replay-scene-selected-position') ?? null,
+          sourceRow: canvas?.getAttribute('data-modqn-replay-scene-source-row') ?? null,
+        };
+      });
+      return current.layer === 'ready' ? current : null;
+    },
+    UI_LOAD_TIMEOUT_MS,
+  );
+
+  assert.equal(attrs.layer, 'ready', `${expected.label} canvas scene layer was not ready`);
+  assert.equal(attrs.renderer, 'r3f-world-layer', `${expected.label} canvas proof was not rendered by the R3F world layer`);
+  assert.equal(
+    attrs.source,
+    'display-only-canonical-7beam',
+    `${expected.label} canvas proof did not use the canonical 7-beam display layer`,
+  );
+  assert.equal(attrs.eventKind, expected.eventKind, `${expected.label} canvas event kind mismatch`);
+  assert.equal(attrs.previousBeam, expected.previousBeam, `${expected.label} canvas previous beam mismatch`);
+  assert.equal(attrs.selectedBeam, expected.selectedBeam, `${expected.label} canvas selected beam mismatch`);
+  assert.equal(attrs.sourceRow, String(expected.sourceRow), `${expected.label} canvas source row mismatch`);
+  assert.ok(attrs.previousPosition, `${expected.label} canvas previous beam position missing`);
+  assert.ok(attrs.selectedPosition, `${expected.label} canvas selected beam position missing`);
+
+  if (expected.positionRelation === 'separated') {
+    assert.notEqual(
+      attrs.previousPosition,
+      attrs.selectedPosition,
+      `${expected.label} canvas previous and selected beams should be visibly separated`,
+    );
+  } else if (expected.positionRelation === 'same') {
+    assert.equal(
+      attrs.previousPosition,
+      attrs.selectedPosition,
+      `${expected.label} canvas previous and selected beams should share the same display position`,
+    );
+  }
+}
+
 async function assertReplayInteraction(page, viewportName) {
   await clickTestId(page, 'modqn-replay-reset');
   assert.match(await textOf(page, '[data-testid="modqn-replay-current-slot"]'), /1 \/ 10/);
@@ -574,6 +626,14 @@ async function assertReplayInteraction(page, viewportName) {
     previousPattern: /sat-0 \/ beam 4/,
     eventPattern: /intra-satellite beam switch/,
     focusPattern: /slot 1, row 1/,
+  });
+  await assertCanvasReplaySceneLayer(page, {
+    label: `${viewportName} first source slot`,
+    sourceRow: 1,
+    eventKind: 'intra-satellite-beam-switch',
+    previousBeam: 'sat-0-beam-3',
+    selectedBeam: 'sat-0-beam-4',
+    positionRelation: 'separated',
   });
 
   await scrubToSlotOffset(page, 5);
@@ -596,6 +656,14 @@ async function assertReplayInteraction(page, viewportName) {
     previousPattern: /sat-0 \/ beam 5/,
     eventPattern: /\bnone\b/,
     focusPattern: /slot 6, row 501/,
+  });
+  await assertCanvasReplaySceneLayer(page, {
+    label: `${viewportName} scrubbed source slot`,
+    sourceRow: 501,
+    eventKind: 'none',
+    previousBeam: 'sat-0-beam-4',
+    selectedBeam: 'sat-0-beam-4',
+    positionRelation: 'same',
   });
 
   await clickTestId(page, 'modqn-replay-reset');
@@ -621,6 +689,13 @@ async function assertReplayInteraction(page, viewportName) {
     '1',
     `${viewportName} cue layer did not track play/pause stepping`,
   );
+  assert.notEqual(
+    await page.evaluate(() => (
+      document.querySelector('.leo-shell-canvas canvas')?.getAttribute('data-modqn-replay-scene-source-row') ?? null
+    )),
+    '1',
+    `${viewportName} canvas scene layer did not track play/pause stepping`,
+  );
 }
 
 async function assertViewport(page, viewport) {
@@ -630,6 +705,16 @@ async function assertViewport(page, viewport) {
   await requiredBox(page, '.leo-app-shell[data-ui-mode="presentation"]', `${viewport.name} presentation app shell`);
   await requiredBox(page, '.leo-shell-canvas canvas', `${viewport.name} scene canvas`);
   await requiredBox(page, '[data-testid="modqn-replay-scene-overlay"]', `${viewport.name} canvas replay overlay`);
+  const defaultBodyText = normalizeText(await page.evaluate(() => document.body.innerText));
+  for (const hiddenByDefault of [
+    'read-only source-slot playback',
+    'producer diagnostics present-from-producer',
+  ]) {
+    assert.ok(
+      !defaultBodyText.includes(hiddenByDefault),
+      `${viewport.name} disclosure detail was visible by default: ${hiddenByDefault}`,
+    );
+  }
   await page.evaluate(() => {
     document
       .querySelectorAll('details[data-phase7h-open-for-validation="true"]')
@@ -658,7 +743,6 @@ async function assertViewport(page, viewport) {
 
   for (const [label, box] of [
     ['control bar', controlBarBox],
-    ['evidence strip', evidenceBox],
     ['canvas slot', canvasSlotBox],
     ['live tuning slot', liveTuningBox],
     ['live status slot', liveStatusBox],
@@ -687,12 +771,10 @@ async function assertViewport(page, viewport) {
   assertBoxHorizontallyInside(modqnSidebarBox, playbackBox, `${viewport.name} playback shell`);
   assertBoxHorizontallyInside(modqnSidebarBox, cueBox, `${viewport.name} cue layer`);
   assertBoxInside(canvasSlotBox, overlayBox, `${viewport.name} canvas replay overlay`);
-  assert.ok(evidenceBox.y + evidenceBox.height <= cueBox.y + 1, `${viewport.name} cue layer overlapped evidence strip`);
-  assert.ok(cueBox.y + cueBox.height <= playbackBox.y + 1, `${viewport.name} playback shell overlapped cue layer`);
+  assert.ok(playbackBox.y + playbackBox.height <= cueBox.y + 1, `${viewport.name} cue layer overlapped playback controls`);
 
   for (const [label, box] of [
     ['control bar', controlBarBox],
-    ['evidence strip', evidenceBox],
     ['scene canvas', canvasSlotBox],
     ['live tuning slot', liveTuningBox],
   ]) {

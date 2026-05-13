@@ -331,8 +331,8 @@ canvas {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
   color: #eefaff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.28;
+  font-size: 14px;
+  line-height: 1.35;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
@@ -353,8 +353,10 @@ canvas {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow: auto;
+  gap: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 2px;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
@@ -389,7 +391,8 @@ canvas {
   flex-direction: column;
   gap: 10px;
   align-content: start;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
@@ -404,6 +407,22 @@ canvas {
 .leo-sidebar-content-stack > *,
 .leo-modqn-sidebar-stack > * {
   flex: 0 0 auto;
+}
+
+.leo-modqn-sidebar-stack > .leo-sidebar-disclosure {
+  order: 3;
+}
+
+.leo-modqn-sidebar-stack > .leo-replay-playback-shell {
+  order: 0;
+}
+
+.leo-modqn-sidebar-stack > .leo-replay-scene-cues {
+  order: 1;
+}
+
+.leo-modqn-sidebar-stack > .leo-modqn-integration-panel {
+  order: 2;
 }
 
 .leo-live-status-stack {
@@ -425,7 +444,7 @@ canvas {
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
   padding: 6px;
   border: 1px solid rgba(218, 244, 255, 0.12);
   border-radius: 8px;
@@ -434,12 +453,12 @@ canvas {
 
 .leo-sidebar-tab-button {
   min-width: 0;
-  min-height: 42px;
+  min-height: 48px;
   display: grid;
   gap: 2px;
   align-content: center;
   justify-items: start;
-  padding: 7px 8px;
+  padding: 8px 10px;
   border: 1px solid rgba(218, 244, 255, 0.12);
   border-radius: 6px;
   color: rgba(229, 244, 251, 0.72);
@@ -462,13 +481,15 @@ canvas {
 }
 
 .leo-sidebar-tab-button span {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
+  line-height: 1.15;
 }
 
 .leo-sidebar-tab-button small {
   color: rgba(229, 244, 251, 0.58);
-  font-size: 11.5px;
+  font-size: 12.5px;
+  line-height: 1.2;
 }
 
 .leo-sidebar-tab-panel {
@@ -537,6 +558,10 @@ canvas {
 .leo-sidebar-disclosure summary,
 .leo-modqn-boundary-disclosure summary,
 .leo-policy-control-details summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
   color: #f6fbff;
   font-weight: 800;
@@ -650,8 +675,8 @@ canvas {
 }
 
 .leo-modqn-integration-actions button {
-  min-height: 28px;
-  padding: 5px 9px;
+  min-height: 40px;
+  padding: 8px 11px;
   border: 1px solid rgba(218, 244, 255, 0.16);
   border-radius: 4px;
   color: #f6fbff;
@@ -699,19 +724,20 @@ canvas {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
   color: #eefaff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.2;
+  font-size: 13.5px;
+  line-height: 1.3;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
 
 .leo-modqn-sidebar-stack .leo-replay-playback-shell {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-areas:
-    "header"
-    "controls"
-    "status"
-    "truth";
+    "controls controls"
+    "header header"
+    "status truth";
+  gap: 7px;
+  padding: 9px 10px;
   max-height: 220px;
 }
 
@@ -745,6 +771,7 @@ canvas {
 .leo-replay-playback-controls,
 .leo-replay-playback-status,
 .leo-replay-truth-summary,
+.leo-replay-playback-detail-group,
 .leo-replay-fail-closed-detail {
   min-width: 0;
 }
@@ -801,6 +828,38 @@ canvas {
   justify-content: flex-end;
 }
 
+.leo-replay-playback-detail-group {
+  padding: 7px 8px;
+  border: 1px solid rgba(218, 244, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(229, 244, 251, 0.78);
+}
+
+.leo-replay-playback-detail-group > summary {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #f6fbff;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.leo-replay-playback-detail-group--source {
+  grid-area: status;
+}
+
+.leo-replay-playback-detail-group--truth {
+  grid-area: truth;
+}
+
+.leo-replay-playback-detail-group[open] > .leo-replay-playback-boundaries,
+.leo-replay-playback-detail-group[open] > .leo-replay-playback-status,
+.leo-replay-playback-detail-group[open] > .leo-replay-truth-summary {
+  margin-top: 8px;
+}
+
 .leo-replay-fail-closed-detail {
   grid-area: detail;
   display: grid;
@@ -827,8 +886,8 @@ canvas {
 
 .leo-replay-playback-controls button,
 .leo-replay-loop-toggle {
-  min-height: 28px;
-  padding: 5px 9px;
+  min-height: 40px;
+  padding: 8px 11px;
   border: 1px solid rgba(218, 244, 255, 0.16);
   border-radius: 4px;
   color: #f6fbff;
@@ -842,6 +901,11 @@ canvas {
   gap: 6px;
 }
 
+.leo-replay-loop-toggle input {
+  width: 18px;
+  height: 18px;
+}
+
 .leo-replay-scrub-label {
   min-width: min(290px, 100%);
   flex: 1 1 260px;
@@ -852,6 +916,57 @@ canvas {
 
 .leo-replay-scrub {
   width: 100%;
+  min-height: 30px;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-playback-controls {
+  display: grid;
+  grid-template-columns: max-content max-content max-content minmax(120px, 1fr);
+  align-items: end;
+  justify-content: stretch;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-scrub-label {
+  min-width: 0;
+  flex: unset;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-playback-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(118px, 0.58fr);
+  gap: 6px;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-playback-title span,
+.leo-modqn-sidebar-stack .leo-replay-playback-title strong {
+  min-height: 28px;
+  padding: 4px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-playback-detail-group {
+  padding: 4px 6px;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-playback-detail-group > summary {
+  min-height: 32px;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-playback-controls button,
+.leo-modqn-sidebar-stack .leo-replay-loop-toggle {
+  min-height: 36px;
+  padding: 6px 8px;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-scrub-label {
+  gap: 1px;
+  font-size: 12px;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-scrub {
+  min-height: 24px;
 }
 
 .leo-replay-playback-status {
@@ -881,7 +996,7 @@ canvas {
 .leo-replay-truth-row strong {
   min-width: 0;
   color: #f6fbff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
@@ -912,8 +1027,8 @@ canvas {
     rgba(3, 10, 17, 0.9);
   color: #eefaff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.18;
+  font-size: 13px;
+  line-height: 1.25;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
@@ -1178,6 +1293,14 @@ canvas {
   align-items: center;
   color: rgba(229, 244, 251, 0.72);
   font-size: 14px;
+}
+
+.leo-policy-action-row button {
+  min-height: 44px;
+}
+
+.leo-policy-control-card .leo-ui-range {
+  min-height: 30px;
 }
 
 .leo-diagnostics-drawer {
@@ -1505,9 +1628,9 @@ canvas {
 
   .leo-replay-playback-shell {
     max-height: 132px;
-    padding: 7px 8px;
-    gap: 5px;
-    font-size: 11px;
+    padding: 8px;
+    gap: 7px;
+    font-size: 12.5px;
   }
 
   .leo-modqn-sidebar-stack .leo-replay-playback-shell {
@@ -1517,8 +1640,8 @@ canvas {
   .leo-modqn-integration-panel {
     max-height: 108px;
     padding: 7px 8px;
-    gap: 5px;
-    font-size: 12px;
+    gap: 6px;
+    font-size: 13px;
   }
 
   .leo-modqn-integration-panel--controls {
@@ -1557,8 +1680,8 @@ canvas {
   }
 
   .leo-modqn-integration-actions button {
-    min-height: 24px;
-    padding: 3px 6px;
+    min-height: 36px;
+    padding: 6px 8px;
   }
 
   .leo-replay-playback-shell--fail-closed {
@@ -1574,14 +1697,14 @@ canvas {
   .leo-replay-playback-title span,
   .leo-replay-playback-title strong,
   .leo-replay-playback-boundaries span {
-    min-height: 17px;
-    padding: 1px 4px;
+    min-height: 22px;
+    padding: 3px 5px;
   }
 
   .leo-replay-playback-controls button,
   .leo-replay-loop-toggle {
-    min-height: 24px;
-    padding: 3px 6px;
+    min-height: 36px;
+    padding: 6px 8px;
   }
 
   .leo-replay-playback-status,
@@ -1597,14 +1720,14 @@ canvas {
 
   .leo-replay-playback-metric strong,
   .leo-replay-truth-row strong {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .leo-replay-scene-cues {
     max-height: 78px;
-    padding: 6px 7px;
-    gap: 5px;
-    font-size: 11px;
+    padding: 7px;
+    gap: 6px;
+    font-size: 12px;
   }
 
   .leo-modqn-sidebar-stack .leo-replay-scene-cues {
@@ -1622,7 +1745,7 @@ canvas {
 
   .leo-replay-scene-cues-header strong,
   .leo-replay-scene-cue strong {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .leo-signal-tuning-panel {

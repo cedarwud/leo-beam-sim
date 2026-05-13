@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import { UI_CLASSES, UI_TOKENS } from '../../constants/uiTokens';
 import { TUNING_PAGES } from './tuningConfig';
 import type { TuningPageKey } from './types';
@@ -9,11 +10,41 @@ export function TuningPageTabs({
   activePage: TuningPageKey;
   onChange: (page: TuningPageKey) => void;
 }) {
+  const activeIndex = Math.max(TUNING_PAGES.findIndex(page => page.key === activePage), 0);
+
+  const focusPageTab = (page: TuningPageKey) => {
+    window.requestAnimationFrame(() => {
+      document.getElementById(`tuning-page-tab-${page}`)?.focus();
+    });
+  };
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      nextIndex = (index + 1) % TUNING_PAGES.length;
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      nextIndex = (index - 1 + TUNING_PAGES.length) % TUNING_PAGES.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = TUNING_PAGES.length - 1;
+    }
+
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextPage = TUNING_PAGES[nextIndex].key;
+    onChange(nextPage);
+    focusPageTab(nextPage);
+  };
+
   return (
     <div
       data-testid="tuning-page-tabs"
       role="tablist"
       aria-label="Tuning pages"
+      aria-orientation="horizontal"
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -33,8 +64,8 @@ export function TuningPageTabs({
         overflow: 'hidden',
       }}
     >
-      {TUNING_PAGES.map(page => {
-        const active = page.key === activePage;
+      {TUNING_PAGES.map((page, index) => {
+        const active = index === activeIndex;
         return (
           <button
             id={`tuning-page-tab-${page.key}`}
@@ -44,8 +75,10 @@ export function TuningPageTabs({
             role="tab"
             aria-selected={active}
             aria-controls={`tuning-page-panel-${page.key}`}
+            tabIndex={active ? 0 : -1}
             title={page.subtitle}
             onClick={() => onChange(page.key)}
+            onKeyDown={event => handleTabKeyDown(event, index)}
             style={{
               cursor: 'pointer',
               height: 44,

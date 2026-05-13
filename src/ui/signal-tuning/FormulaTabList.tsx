@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import { UI_CLASSES, UI_TOKENS } from '../../constants/uiTokens';
 import {
   getFormulaTabAccent,
@@ -14,11 +15,41 @@ export function FormulaTabList({
   activeTab: TuningTabKey;
   onChange: (tab: TuningTabKey) => void;
 }) {
+  const activeIndex = Math.max(TUNING_TABS.findIndex(tab => tab.key === activeTab), 0);
+
+  const focusFormulaTab = (tab: TuningTabKey) => {
+    window.requestAnimationFrame(() => {
+      document.getElementById(`sinr-formula-tab-${tab}`)?.focus();
+    });
+  };
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      nextIndex = (index + 1) % TUNING_TABS.length;
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      nextIndex = (index - 1 + TUNING_TABS.length) % TUNING_TABS.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = TUNING_TABS.length - 1;
+    }
+
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextTab = TUNING_TABS[nextIndex].key;
+    onChange(nextTab);
+    focusFormulaTab(nextTab);
+  };
+
   return (
     <div
       data-testid="sinr-formula-tabs"
       role="tablist"
       aria-label="SINR parameter groups"
+      aria-orientation="horizontal"
       style={{
         overflowX: 'auto',
         scrollbarGutter: 'stable',
@@ -38,18 +69,21 @@ export function FormulaTabList({
         minWidth: 420,
         padding: '0 4px 4px',
       }}>
-        {TUNING_TABS.map(tab => {
-          const active = tab.key === activeTab;
+        {TUNING_TABS.map((tab, index) => {
+          const active = index === activeIndex;
           const accent = getFormulaTabAccent(tab.key);
           return (
             <button
+              id={`sinr-formula-tab-${tab.key}`}
               className={`${UI_CLASSES.button} ${UI_CLASSES.tab}`}
               key={tab.key}
               type="button"
               role="tab"
               aria-selected={active}
+              tabIndex={active ? 0 : -1}
               title={tab.subtitle}
               onClick={() => onChange(tab.key)}
+              onKeyDown={event => handleTabKeyDown(event, index)}
               style={{
                 cursor: 'pointer',
                 height: 50,

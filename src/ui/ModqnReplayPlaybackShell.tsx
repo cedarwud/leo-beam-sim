@@ -188,11 +188,17 @@ export function ModqnReplayPlaybackShell({
           <span data-testid="phase7f-mode-label">{activeModel.modeLabel}</span>
           <strong data-testid="phase7f-evidence-status">{activeModel.evidenceStatus}</strong>
         </div>
-        <div className="leo-replay-playback-boundaries">
-          <span>read-only source-slot playback</span>
-          <span>producer diagnostics {activeModel.diagnosticsStatus}</span>
-          <span>HOBS/SINR live controls separated</span>
-        </div>
+        <details
+          className="leo-replay-playback-detail-group leo-replay-playback-detail-group--boundary"
+          data-phase7h-open-for-validation="true"
+        >
+          <summary>Replay/live boundary</summary>
+          <div className="leo-replay-playback-boundaries">
+            <span>read-only source-slot playback</span>
+            <span>producer diagnostics {activeModel.diagnosticsStatus}</span>
+            <span>HOBS/SINR live controls separated</span>
+          </div>
+        </details>
       </div>
 
       <div className="leo-replay-playback-controls" aria-label="Replay playback controls">
@@ -242,66 +248,78 @@ export function ModqnReplayPlaybackShell({
         </label>
       </div>
 
-      <div className="leo-replay-playback-status" aria-label="Current replay source position">
-        <SourceMetric
-          label="Current slot"
-          value={`${currentSlot.slotIndex} / ${activeModel.slotCount}`}
-          testId="modqn-replay-current-slot"
-        />
-        <SourceMetric
-          label="Source rows"
-          value={`${currentSlot.sourceRowStartIndex + 1}-${currentSlot.sourceRowEndIndex + 1} / ${activeModel.rowCount}`}
-          testId="modqn-replay-current-row-range"
-        />
-        <SourceMetric
-          label="Focus source row"
-          value={`${currentSlot.focusRow.sourceRowIndex + 1} / ${activeModel.rowCount}`}
-          testId="modqn-replay-current-focus-row"
-        />
-        <SourceMetric
-          label="Slot event mix"
-          value={formatEventCounts(currentSlot.eventCounts)}
-          testId="modqn-replay-current-event-mix"
-        />
-        <SourceMetric
-          label="Artifact event total"
-          value={formatEventCounts(activeModel.eventCounts)}
-          testId="modqn-replay-artifact-event-total"
-        />
-      </div>
+      <details
+        className="leo-replay-playback-detail-group leo-replay-playback-detail-group--source"
+        data-phase7h-open-for-validation="true"
+      >
+        <summary>Source slot details</summary>
+        <div className="leo-replay-playback-status" aria-label="Current replay source position">
+          <SourceMetric
+            label="Current slot"
+            value={`${currentSlot.slotIndex} / ${activeModel.slotCount}`}
+            testId="modqn-replay-current-slot"
+          />
+          <SourceMetric
+            label="Source rows"
+            value={`${currentSlot.sourceRowStartIndex + 1}-${currentSlot.sourceRowEndIndex + 1} / ${activeModel.rowCount}`}
+            testId="modqn-replay-current-row-range"
+          />
+          <SourceMetric
+            label="Focus source row"
+            value={`${currentSlot.focusRow.sourceRowIndex + 1} / ${activeModel.rowCount}`}
+            testId="modqn-replay-current-focus-row"
+          />
+          <SourceMetric
+            label="Slot event mix"
+            value={formatEventCounts(currentSlot.eventCounts)}
+            testId="modqn-replay-current-event-mix"
+          />
+          <SourceMetric
+            label="Artifact event total"
+            value={formatEventCounts(activeModel.eventCounts)}
+            testId="modqn-replay-artifact-event-total"
+          />
+        </div>
+      </details>
 
-      <div className="leo-replay-truth-summary" aria-label="Current replay producer truth summary">
-        <TruthRow
-          label="Selected serving"
-          value={formatBeamReference(currentSlot.focusRow.selectedServing)}
-          testId="modqn-replay-selected-serving"
-        />
-        <TruthRow
-          label="Previous serving"
-          value={formatBeamReference(currentSlot.focusRow.previousServing)}
-          testId="modqn-replay-previous-serving"
-        />
-        <TruthRow
-          label="Handover event"
-          value={currentSlot.focusRow.handoverEventKind}
-          testId="modqn-replay-handover-event"
-        />
-        <TruthRow
-          label="Scalar reward"
-          value={formatNumber(currentSlot.focusRow.scalarReward)}
-          testId="modqn-replay-scalar-reward"
-        />
-        <TruthRow
-          label="Reward vector"
-          value={rewardVectorText}
-          testId="modqn-replay-reward-vector"
-        />
-        <TruthRow
-          label="Diagnostics"
-          value={`${currentSlot.focusRow.diagnosticsStatus}; actions ${currentSlot.focusRow.availableActionCount ?? 'n/a'}`}
-          testId="modqn-replay-diagnostics-status"
-        />
-      </div>
+      <details
+        className="leo-replay-playback-detail-group leo-replay-playback-detail-group--truth"
+        data-phase7h-open-for-validation="true"
+      >
+        <summary>Producer truth details</summary>
+        <div className="leo-replay-truth-summary" aria-label="Current replay producer truth summary">
+          <TruthRow
+            label="Selected serving"
+            value={formatBeamReference(currentSlot.focusRow.selectedServing)}
+            testId="modqn-replay-selected-serving"
+          />
+          <TruthRow
+            label="Previous serving"
+            value={formatBeamReference(currentSlot.focusRow.previousServing)}
+            testId="modqn-replay-previous-serving"
+          />
+          <TruthRow
+            label="Handover event"
+            value={currentSlot.focusRow.handoverEventKind}
+            testId="modqn-replay-handover-event"
+          />
+          <TruthRow
+            label="Scalar reward"
+            value={formatNumber(currentSlot.focusRow.scalarReward)}
+            testId="modqn-replay-scalar-reward"
+          />
+          <TruthRow
+            label="Reward vector"
+            value={rewardVectorText}
+            testId="modqn-replay-reward-vector"
+          />
+          <TruthRow
+            label="Diagnostics"
+            value={`${currentSlot.focusRow.diagnosticsStatus}; actions ${currentSlot.focusRow.availableActionCount ?? 'n/a'}`}
+            testId="modqn-replay-diagnostics-status"
+          />
+        </div>
+      </details>
     </section>
   );
 }
