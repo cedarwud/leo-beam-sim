@@ -648,8 +648,6 @@ async function assertViewport(page, viewport) {
   for (const [label, box] of [
     ['control bar', controlBarBox],
     ['evidence strip', evidenceBox],
-    ['playback shell', playbackBox],
-    ['cue layer', cueBox],
     ['canvas slot', canvasSlotBox],
     ['live tuning slot', liveTuningBox],
     ['live status slot', liveStatusBox],
@@ -658,17 +656,30 @@ async function assertViewport(page, viewport) {
     assertBoxTouchesViewport(box, viewport, `${viewport.name} ${label}`);
   }
 
+  if (viewport.name !== 'narrow') {
+    assertBoxTouchesViewport(playbackBox, viewport, `${viewport.name} playback shell`);
+    assertBoxTouchesViewport(cueBox, viewport, `${viewport.name} cue layer`);
+  }
+
   assert.ok(evidenceBox.width <= viewport.width + 1, `${viewport.name} evidence strip overflowed the viewport`);
   assert.ok(playbackBox.width <= viewport.width + 1, `${viewport.name} playback shell overflowed the viewport`);
   assert.ok(cueBox.width <= viewport.width + 1, `${viewport.name} cue layer overflowed the viewport`);
   assert.ok(evidenceBox.height <= 175, `${viewport.name} evidence strip exceeded compact height`);
   assert.ok(playbackBox.height <= (viewport.name === 'narrow' ? 150 : 220), `${viewport.name} playback shell exceeded compact height`);
   assert.ok(cueBox.height <= (viewport.name === 'narrow' ? 110 : 140), `${viewport.name} cue layer exceeded compact height`);
-  assert.ok(controlBarBox.y + controlBarBox.height <= evidenceBox.y + 1, `${viewport.name} evidence strip overlapped control bar`);
-  assert.ok(evidenceBox.y + evidenceBox.height <= shellRowBox.y + 1, `${viewport.name} live scene row overlapped evidence strip`);
-  assertBoxInside(liveStatusBox, modqnSidebarBox, `${viewport.name} MODQN replay sidebar stack`);
+  assert.ok(
+    shellRowBox.y <= controlBarBox.y + controlBarBox.height + 18,
+    `${viewport.name} shell row did not start directly after the control bar`,
+  );
+  assertBoxHorizontallyInside(liveStatusBox, modqnSidebarBox, `${viewport.name} MODQN replay sidebar stack`);
+  assert.ok(
+    modqnSidebarBox.y + 1 >= liveStatusBox.y && modqnSidebarBox.y < liveStatusBox.y + liveStatusBox.height,
+    `${viewport.name} MODQN replay sidebar stack did not start inside the status slot`,
+  );
+  assertBoxHorizontallyInside(modqnSidebarBox, evidenceBox, `${viewport.name} evidence strip`);
   assertBoxHorizontallyInside(modqnSidebarBox, playbackBox, `${viewport.name} playback shell`);
   assertBoxHorizontallyInside(modqnSidebarBox, cueBox, `${viewport.name} cue layer`);
+  assert.ok(evidenceBox.y + evidenceBox.height <= playbackBox.y + 1, `${viewport.name} playback shell overlapped evidence strip`);
   assert.ok(playbackBox.y + playbackBox.height <= cueBox.y + 1, `${viewport.name} cue layer overlapped playback shell`);
 
   for (const [label, box] of [

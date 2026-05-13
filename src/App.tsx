@@ -49,6 +49,8 @@ import {
 } from './ui/ModqnBaselineIntegrationPanel';
 import { ModqnReplayPlaybackShell } from './ui/ModqnReplayPlaybackShell';
 import { ModqnReplaySceneCues } from './ui/ModqnReplaySceneCues';
+import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
+import { SidebarTabShell, type SidebarTabItem } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import type { TuningPageRequest } from './ui/signal-tuning/types';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
@@ -57,6 +59,19 @@ const DEFAULT_PROFILE_ID = 'hobs-2024-candidate-rich';
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 const DEFAULT_BASE_SPEED = 5;
 const HANDOVER_FOCUS_SPEED = 1;
+
+type LeftSidebarTab = 'handover' | 'signal';
+type RightSidebarTab = 'modqn' | 'live';
+
+const LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
+  { key: 'handover', label: 'Live handover', description: 'policy controls' },
+  { key: 'signal', label: 'Signal formula', description: 'SINR tuning' },
+];
+
+const RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = [
+  { key: 'modqn', label: 'MODQN replay', description: 'baseline evidence' },
+  { key: 'live', label: 'Live status', description: 'HOBS/SINR' },
+];
 
 interface HandoverPolicyRuntimeState {
   profileId: string;
@@ -78,6 +93,8 @@ export function App() {
   const [autoSlowEnabled, setAutoSlowEnabled] = useState(true);
   const [autoSlowDismissed, setAutoSlowDismissed] = useState(false);
   const [uiMode, setUiMode] = useState<UiMode>(() => readPersistedUiMode());
+  const [leftSidebarTab, setLeftSidebarTab] = useState<LeftSidebarTab>('handover');
+  const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('modqn');
   const [cinematicMode, setCinematicMode] = useState<CinematicMode>('off');
   const [beamDensityOverride, setBeamDensityOverride] = useState<BeamDensity | null>(null);
   const [cameraCommand, setCameraCommand] = useState<RuntimeConfig['cameraCommand']>();
@@ -291,6 +308,7 @@ export function App() {
 
   const handleOpenHandoverPolicyControls = useCallback(() => {
     setBeamDensityOverride(null);
+    setLeftSidebarTab('handover');
     setUiMode('tuning');
     persistUiMode('tuning');
     tuningPageRequestSequenceRef.current += 1;
@@ -371,34 +389,55 @@ export function App() {
         onDismissAutoSlow={() => setAutoSlowDismissed(true)}
         onToggleAutoSlow={() => setAutoSlowEnabled(e => !e)}
       />
-      <ModeEvidenceStrip />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
-          <ModqnBaselineHandoverControls
-            appliedHandoverPolicy={appliedHandoverPolicy}
-            hasHandoverOverrides={hasHandoverAppliedOverrides}
-            hasHandoverDraftChanges={hasHandoverDraftChanges}
-            onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
-            onResetHandoverPolicy={handleResetHandoverPolicy}
-          />
-          <SignalTuningPanel
-            baseProfile={baseProfile}
-            tuning={signalTuning}
-            hasOverrides={hasSignalOverrides}
-            uiMode={uiMode}
-            activePageRequest={tuningPageRequest}
-            formulaBudget={simState.physicalServingBudget}
-            isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-            handoverDraft={handoverPolicyDraft}
-            appliedHandoverPolicy={appliedHandoverPolicy}
-            hasHandoverDraftChanges={hasHandoverDraftChanges}
-            hasHandoverOverrides={hasHandoverResetTarget}
-            onTuningChange={handleSignalTuningChange}
-            onReset={handleResetSignalTuning}
-            onHandoverDraftChange={handleHandoverPolicyDraftChange}
-            onApplyHandoverPolicy={handleApplyHandoverPolicy}
-            onResetHandoverPolicy={handleResetHandoverPolicy}
-          />
+          <SidebarTabShell
+            label="Simulation control sidebar"
+            side="left"
+            tabs={LEFT_SIDEBAR_TABS}
+            activeKey={leftSidebarTab}
+            onChange={setLeftSidebarTab}
+          >
+            {leftSidebarTab === 'handover' ? (
+              <div className="leo-sidebar-content-stack">
+                <ModqnBaselineHandoverControls
+                  appliedHandoverPolicy={appliedHandoverPolicy}
+                  hasHandoverOverrides={hasHandoverAppliedOverrides}
+                  hasHandoverDraftChanges={hasHandoverDraftChanges}
+                  onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
+                  onResetHandoverPolicy={handleResetHandoverPolicy}
+                />
+                <HandoverPolicyControls
+                  draft={handoverPolicyDraft}
+                  applied={appliedHandoverPolicy}
+                  hasDraftChanges={hasHandoverDraftChanges}
+                  hasOverrides={hasHandoverResetTarget}
+                  onDraftChange={handleHandoverPolicyDraftChange}
+                  onApply={handleApplyHandoverPolicy}
+                  onReset={handleResetHandoverPolicy}
+                />
+              </div>
+            ) : (
+              <SignalTuningPanel
+                baseProfile={baseProfile}
+                tuning={signalTuning}
+                hasOverrides={hasSignalOverrides}
+                uiMode="tuning"
+                activePageRequest={tuningPageRequest}
+                formulaBudget={simState.physicalServingBudget}
+                isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                handoverDraft={handoverPolicyDraft}
+                appliedHandoverPolicy={appliedHandoverPolicy}
+                hasHandoverDraftChanges={hasHandoverDraftChanges}
+                hasHandoverOverrides={hasHandoverResetTarget}
+                onTuningChange={handleSignalTuningChange}
+                onReset={handleResetSignalTuning}
+                onHandoverDraftChange={handleHandoverPolicyDraftChange}
+                onApplyHandoverPolicy={handleApplyHandoverPolicy}
+                onResetHandoverPolicy={handleResetHandoverPolicy}
+              />
+            )}
+          </SidebarTabShell>
         </aside>
         <main className="leo-shell-canvas" data-testid="leo-shell-canvas">
           <MainScene
@@ -410,28 +449,42 @@ export function App() {
           />
         </main>
         <aside className="leo-shell-right" aria-label="Signal status panel slot">
-          <section className="leo-modqn-sidebar-stack" aria-label="MODQN replay evidence and controls">
-            <ModqnBaselineReplayEvidence
-              replayDisplayState={modqnReplayDisplayState}
-              replayIssueMessage={modqnReplayModelIssue?.message}
-            />
-            <ModqnReplayPlaybackShell onDisplayStateChange={handleModqnReplayDisplayStateChange} />
-            <ModqnReplaySceneCues
-              displayState={modqnReplayDisplayState}
-              failClosedReason={modqnReplayModelIssue?.message}
-            />
-          </section>
-          <InfoPanel
-            {...simState}
-            uiMode={uiMode}
-            profile={effectiveProfile}
-            isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-          />
-          <DiagnosticsDrawer
-            {...simState}
-            uiMode={uiMode}
-            profile={effectiveProfile}
-          />
+          <SidebarTabShell
+            label="Simulation status sidebar"
+            side="right"
+            tabs={RIGHT_SIDEBAR_TABS}
+            activeKey={rightSidebarTab}
+            onChange={setRightSidebarTab}
+          >
+            {rightSidebarTab === 'modqn' ? (
+              <section className="leo-modqn-sidebar-stack" aria-label="MODQN replay evidence and controls">
+                <ModeEvidenceStrip />
+                <ModqnBaselineReplayEvidence
+                  replayDisplayState={modqnReplayDisplayState}
+                  replayIssueMessage={modqnReplayModelIssue?.message}
+                />
+                <ModqnReplayPlaybackShell onDisplayStateChange={handleModqnReplayDisplayStateChange} />
+                <ModqnReplaySceneCues
+                  displayState={modqnReplayDisplayState}
+                  failClosedReason={modqnReplayModelIssue?.message}
+                />
+              </section>
+            ) : (
+              <section className="leo-live-status-stack" aria-label="Live HOBS/SINR status">
+                <InfoPanel
+                  {...simState}
+                  uiMode={uiMode}
+                  profile={effectiveProfile}
+                  isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                />
+                <DiagnosticsDrawer
+                  {...simState}
+                  uiMode={uiMode}
+                  profile={effectiveProfile}
+                />
+              </section>
+            )}
+          </SidebarTabShell>
         </aside>
       </div>
     </div>

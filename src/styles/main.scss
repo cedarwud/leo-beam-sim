@@ -37,7 +37,7 @@ canvas {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   padding: 12px;
   overflow: hidden;
@@ -75,8 +75,7 @@ canvas {
 .leo-shell-left {
   grid-area: left;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 10px;
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -89,8 +88,7 @@ canvas {
 .leo-shell-right {
   grid-area: right;
   display: grid;
-  grid-template-rows: minmax(0, 0.92fr) minmax(0, 1.08fr) auto;
-  gap: 10px;
+  grid-template-rows: minmax(0, 1fr);
   position: relative;
   overflow: hidden;
 }
@@ -231,11 +229,116 @@ canvas {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto auto auto;
   gap: 10px;
   overflow: auto;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
+}
+
+.leo-modqn-sidebar-stack .leo-mode-evidence-strip {
+  gap: 4px;
+  font-size: 10px;
+  line-height: 1.12;
+}
+
+.leo-modqn-sidebar-stack .leo-mode-evidence-cluster {
+  width: 100%;
+  padding: 4px 5px;
+  gap: 3px;
+  border-radius: 6px;
+}
+
+.leo-modqn-sidebar-stack .leo-mode-evidence-chip {
+  min-height: 16px;
+  padding: 1px 4px;
+}
+
+.leo-modqn-sidebar-stack .leo-mode-evidence-note {
+  font-size: 10px;
+}
+
+.leo-live-status-stack,
+.leo-sidebar-content-stack {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.leo-live-status-stack {
+  position: relative;
+  height: 100%;
+}
+
+.leo-sidebar-tab-shell {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.leo-sidebar-tab-list {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(218, 244, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(3, 10, 17, 0.76);
+}
+
+.leo-sidebar-tab-button {
+  min-width: 0;
+  min-height: 42px;
+  display: grid;
+  gap: 2px;
+  align-content: center;
+  justify-items: start;
+  padding: 7px 8px;
+  border: 1px solid rgba(218, 244, 255, 0.12);
+  border-radius: 6px;
+  color: rgba(229, 244, 251, 0.72);
+  background: rgba(255, 255, 255, 0.045);
+  cursor: pointer;
+  text-align: left;
+}
+
+.leo-sidebar-tab-button[data-active="true"] {
+  border-color: rgba(118, 234, 215, 0.38);
+  color: #f6fbff;
+  background: rgba(118, 234, 215, 0.12);
+}
+
+.leo-sidebar-tab-button span,
+.leo-sidebar-tab-button small {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.leo-sidebar-tab-button span {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.leo-sidebar-tab-button small {
+  color: rgba(229, 244, 251, 0.58);
+  font-size: 10px;
+}
+
+.leo-sidebar-tab-panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .leo-modqn-integration-heading,
@@ -425,17 +528,17 @@ canvas {
     "controls"
     "status"
     "truth";
-  max-height: none;
+  max-height: 220px;
 }
 
 .leo-modqn-sidebar-stack .leo-replay-playback-status,
 .leo-modqn-sidebar-stack .leo-replay-truth-summary {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .leo-modqn-sidebar-stack .leo-replay-scene-cues {
   grid-template-columns: minmax(0, 1fr);
-  max-height: none;
+  max-height: 140px;
 }
 
 .leo-modqn-sidebar-stack .leo-replay-scene-cues-grid {
@@ -718,23 +821,19 @@ canvas {
   border-color: rgba(218, 244, 255, 0.16);
 }
 
-.leo-shell-left > .leo-signal-tuning-panel,
-.leo-shell-right > .leo-info-panel,
-.leo-shell-right > .leo-diagnostics-drawer[data-drawer-state="expanded"] {
+.leo-sidebar-tab-panel > .leo-signal-tuning-panel,
+.leo-live-status-stack > .leo-info-panel,
+.leo-live-status-stack > .leo-diagnostics-drawer[data-drawer-state="expanded"] {
   width: 100% !important;
   height: 100% !important;
   max-width: 100% !important;
   max-height: 100% !important;
 }
 
-.leo-shell-left > .leo-modqn-integration-panel,
-.leo-shell-right > .leo-modqn-integration-panel {
+.leo-sidebar-content-stack > .leo-modqn-integration-panel,
+.leo-modqn-sidebar-stack > .leo-modqn-integration-panel {
   width: 100%;
   min-height: 0;
-}
-
-.leo-app-shell[data-ui-mode="diagnostics"] .leo-shell-right {
-  grid-template-rows: auto minmax(0, 1fr) minmax(260px, 320px);
 }
 
 .leo-diagnostics-drawer {
@@ -742,14 +841,14 @@ canvas {
   overscroll-behavior: contain;
 }
 
-.leo-shell-left > .leo-signal-tuning-panel[data-drawer-state="collapsed"] {
+.leo-sidebar-tab-panel > .leo-signal-tuning-panel[data-drawer-state="collapsed"] {
   width: 28px !important;
   min-width: 28px !important;
   max-width: 28px !important;
   padding: 0 !important;
 }
 
-.leo-app-shell[data-ui-mode="presentation"] .leo-shell-left > .leo-signal-tuning-panel[data-drawer-state="collapsed"] {
+.leo-app-shell[data-ui-mode="presentation"] .leo-sidebar-tab-panel > .leo-signal-tuning-panel[data-drawer-state="collapsed"] {
   display: none;
 }
 
@@ -985,10 +1084,6 @@ canvas {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .leo-app-shell[data-ui-mode="diagnostics"] .leo-shell-right {
-    grid-template-rows: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 0.9fr);
-  }
-
   .leo-diagnostics-drawer[data-drawer-state="expanded"] {
     padding: 12px !important;
   }
@@ -1011,7 +1106,7 @@ canvas {
   }
 
   .leo-app-shell[data-ui-mode="presentation"] .leo-shell-row {
-    grid-template-rows: minmax(350px, 1fr) minmax(88px, 0.2fr) minmax(120px, 0.3fr);
+    grid-template-rows: minmax(390px, 1fr) minmax(150px, 0.34fr) minmax(136px, 0.3fr);
   }
 
   .leo-duel-decision-metrics,
@@ -1042,11 +1137,30 @@ canvas {
     padding: 0 3px;
   }
 
+  .leo-modqn-sidebar-stack .leo-mode-evidence-strip {
+    gap: 2px;
+    font-size: 8px;
+    line-height: 1.05;
+  }
+
+  .leo-modqn-sidebar-stack .leo-mode-evidence-cluster {
+    padding: 3px 4px;
+    gap: 2px;
+  }
+
+  .leo-modqn-sidebar-stack .leo-mode-evidence-note {
+    font-size: 8px;
+  }
+
   .leo-replay-playback-shell {
     max-height: 132px;
     padding: 7px 8px;
     gap: 5px;
     font-size: 10px;
+  }
+
+  .leo-modqn-sidebar-stack .leo-replay-playback-shell {
+    max-height: 132px;
   }
 
   .leo-modqn-integration-panel {
@@ -1142,6 +1256,10 @@ canvas {
     font-size: 10px;
   }
 
+  .leo-modqn-sidebar-stack .leo-replay-scene-cues {
+    max-height: 78px;
+  }
+
   .leo-replay-scene-cues-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
@@ -1164,7 +1282,4 @@ canvas {
     height: 100% !important;
   }
 
-  .leo-app-shell[data-ui-mode="diagnostics"] .leo-shell-right {
-    grid-template-rows: minmax(0, 0.78fr) minmax(0, 1fr);
-  }
 }
