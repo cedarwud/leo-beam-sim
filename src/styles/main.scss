@@ -37,7 +37,7 @@ canvas {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
   gap: 12px;
   padding: 12px;
   overflow: hidden;
@@ -45,7 +45,7 @@ canvas {
 }
 
 .leo-app-shell[data-ui-mode="presentation"] {
-  --leo-left-drawer-width: 28px;
+  --leo-left-drawer-width: 300px;
 }
 
 .leo-app-shell[data-ui-mode="diagnostics"] {
@@ -74,7 +74,9 @@ canvas {
 
 .leo-shell-left {
   grid-area: left;
-  display: flex;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
   overflow: hidden;
 }
 
@@ -86,7 +88,9 @@ canvas {
 
 .leo-shell-right {
   grid-area: right;
-  display: flex;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
   position: relative;
   overflow: hidden;
 }
@@ -189,14 +193,14 @@ canvas {
   position: relative;
   z-index: 8;
   display: grid;
-  grid-template-columns: minmax(210px, 0.34fr) minmax(0, 1fr) auto;
-  gap: 9px;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-content: start;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  max-height: 128px;
-  padding: 9px 10px;
+  max-height: 100%;
+  padding: 10px;
   overflow: auto;
   border: 1px solid rgba(118, 234, 215, 0.28);
   border-radius: 8px;
@@ -206,15 +210,27 @@ canvas {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
   color: #eefaff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.2;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
 
+.leo-modqn-integration-panel--controls {
+  border-color: rgba(255, 190, 69, 0.32);
+  background:
+    linear-gradient(180deg, rgba(27, 18, 5, 0.88), rgba(5, 14, 20, 0.86)),
+    rgba(3, 10, 17, 0.92);
+}
+
+.leo-modqn-integration-panel--evidence {
+  border-color: rgba(118, 234, 215, 0.32);
+}
+
 .leo-modqn-integration-heading,
 .leo-modqn-integration-card,
-.leo-modqn-integration-actions {
+.leo-modqn-integration-actions,
+.leo-modqn-integration-footnote {
   min-width: 0;
 }
 
@@ -253,7 +269,7 @@ canvas {
 .leo-modqn-integration-grid {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -302,7 +318,7 @@ canvas {
 
 .leo-modqn-integration-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 5px;
 }
 
@@ -330,6 +346,7 @@ canvas {
 
 .leo-modqn-integration-actions {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   align-content: center;
 }
@@ -350,8 +367,13 @@ canvas {
   background: rgba(255, 255, 255, 0.035);
 }
 
-.leo-modqn-integration-actions span {
-  max-width: 260px;
+.leo-modqn-integration-footnote {
+  color: rgba(229, 244, 251, 0.7);
+  overflow-wrap: anywhere;
+}
+
+.leo-modqn-integration-footnote span {
+  display: block;
   color: rgba(229, 244, 251, 0.7);
   overflow-wrap: anywhere;
 }
@@ -670,10 +692,14 @@ canvas {
   max-height: 100% !important;
 }
 
+.leo-shell-left > .leo-modqn-integration-panel,
+.leo-shell-right > .leo-modqn-integration-panel {
+  width: 100%;
+  min-height: 0;
+}
+
 .leo-app-shell[data-ui-mode="diagnostics"] .leo-shell-right {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(260px, 320px);
-  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr) minmax(260px, 320px);
 }
 
 .leo-diagnostics-drawer {
@@ -686,6 +712,10 @@ canvas {
   min-width: 28px !important;
   max-width: 28px !important;
   padding: 0 !important;
+}
+
+.leo-app-shell[data-ui-mode="presentation"] .leo-shell-left > .leo-signal-tuning-panel[data-drawer-state="collapsed"] {
+  display: none;
 }
 
 .leo-signal-tuning-content {
@@ -946,7 +976,7 @@ canvas {
   }
 
   .leo-app-shell[data-ui-mode="presentation"] .leo-shell-row {
-    grid-template-rows: minmax(118px, 1fr) 34px minmax(78px, 0.52fr);
+    grid-template-rows: minmax(112px, 1fr) minmax(108px, 0.38fr) minmax(82px, 0.3fr);
   }
 
   .leo-duel-decision-metrics,
@@ -991,6 +1021,22 @@ canvas {
     font-size: 10px;
   }
 
+  .leo-modqn-integration-panel--controls {
+    overflow: hidden;
+  }
+
+  .leo-modqn-integration-panel--controls .leo-modqn-integration-card {
+    display: none;
+  }
+
+  .leo-modqn-integration-panel--controls .leo-modqn-integration-heading {
+    gap: 3px;
+  }
+
+  .leo-modqn-integration-panel--controls .leo-modqn-integration-heading small {
+    display: none;
+  }
+
   .leo-modqn-integration-card {
     gap: 4px;
     padding: 5px 6px;
@@ -1006,7 +1052,7 @@ canvas {
   }
 
   .leo-modqn-integration-actions {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 5px;
   }
 

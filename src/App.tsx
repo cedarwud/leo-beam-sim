@@ -43,7 +43,10 @@ import { ControlBar } from './ui/ControlBar';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
 import { InfoPanel } from './ui/InfoPanel';
 import { ModeEvidenceStrip } from './ui/ModeEvidenceStrip';
-import { ModqnBaselineIntegrationPanel } from './ui/ModqnBaselineIntegrationPanel';
+import {
+  ModqnBaselineHandoverControls,
+  ModqnBaselineReplayEvidence,
+} from './ui/ModqnBaselineIntegrationPanel';
 import { ModqnReplayPlaybackShell } from './ui/ModqnReplayPlaybackShell';
 import { ModqnReplaySceneCues } from './ui/ModqnReplaySceneCues';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
@@ -369,15 +372,6 @@ export function App() {
         onToggleAutoSlow={() => setAutoSlowEnabled(e => !e)}
       />
       <ModeEvidenceStrip />
-      <ModqnBaselineIntegrationPanel
-        replayDisplayState={modqnReplayDisplayState}
-        replayIssueMessage={modqnReplayModelIssue?.message}
-        appliedHandoverPolicy={appliedHandoverPolicy}
-        hasHandoverOverrides={hasHandoverAppliedOverrides}
-        hasHandoverDraftChanges={hasHandoverDraftChanges}
-        onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
-        onResetHandoverPolicy={handleResetHandoverPolicy}
-      />
       <ModqnReplayPlaybackShell onDisplayStateChange={handleModqnReplayDisplayStateChange} />
       <ModqnReplaySceneCues
         displayState={modqnReplayDisplayState}
@@ -385,6 +379,13 @@ export function App() {
       />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
+          <ModqnBaselineHandoverControls
+            appliedHandoverPolicy={appliedHandoverPolicy}
+            hasHandoverOverrides={hasHandoverAppliedOverrides}
+            hasHandoverDraftChanges={hasHandoverDraftChanges}
+            onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
+            onResetHandoverPolicy={handleResetHandoverPolicy}
+          />
           <SignalTuningPanel
             baseProfile={baseProfile}
             tuning={signalTuning}
@@ -414,6 +415,10 @@ export function App() {
           />
         </main>
         <aside className="leo-shell-right" aria-label="Signal status panel slot">
+          <ModqnBaselineReplayEvidence
+            replayDisplayState={modqnReplayDisplayState}
+            replayIssueMessage={modqnReplayModelIssue?.message}
+          />
           <InfoPanel
             {...simState}
             uiMode={uiMode}

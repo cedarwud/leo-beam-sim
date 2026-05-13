@@ -12,6 +12,19 @@ interface ModqnBaselineIntegrationPanelProps {
   readonly onResetHandoverPolicy: () => void;
 }
 
+interface ModqnBaselineReplayEvidenceProps {
+  readonly replayDisplayState: ModqnReplayPlaybackDisplayState | null;
+  readonly replayIssueMessage?: string | null;
+}
+
+interface ModqnBaselineHandoverControlsProps {
+  readonly appliedHandoverPolicy: HandoverPolicyTuningState;
+  readonly hasHandoverOverrides: boolean;
+  readonly hasHandoverDraftChanges: boolean;
+  readonly onOpenHandoverPolicyControls: () => void;
+  readonly onResetHandoverPolicy: () => void;
+}
+
 function formatPolicyValue(value: number, unit: string): string {
   const digits = Number.isInteger(value) ? 0 : 1;
   return `${value.toFixed(digits)} ${unit}`;
@@ -42,94 +55,62 @@ function ProofMetric({
   );
 }
 
-export function ModqnBaselineIntegrationPanel({
-  replayDisplayState,
-  replayIssueMessage = null,
+function getPolicyState(
+  hasHandoverDraftChanges: boolean,
+  hasHandoverOverrides: boolean,
+): string {
+  return hasHandoverDraftChanges
+    ? 'draft pending'
+    : hasHandoverOverrides
+      ? 'custom applied'
+      : 'profile defaults';
+}
+
+export function ModqnBaselineHandoverControls({
   appliedHandoverPolicy,
   hasHandoverOverrides,
   hasHandoverDraftChanges,
   onOpenHandoverPolicyControls,
   onResetHandoverPolicy,
-}: ModqnBaselineIntegrationPanelProps) {
-  const replayLoaded = replayDisplayState !== null;
-  const policyState = hasHandoverDraftChanges
-    ? 'draft pending'
-    : hasHandoverOverrides
-      ? 'custom applied'
-      : 'profile defaults';
-  const currentSlot = replayDisplayState?.currentSlot;
+}: ModqnBaselineHandoverControlsProps) {
+  const policyState = getPolicyState(hasHandoverDraftChanges, hasHandoverOverrides);
 
   return (
     <section
-      className="leo-modqn-integration-panel"
-      data-testid="modqn-baseline-integration-panel"
-      data-replay-state={replayLoaded ? 'accepted' : 'fail-closed'}
+      className="leo-modqn-integration-panel leo-modqn-integration-panel--controls"
+      data-testid="modqn-baseline-handover-controls"
       data-live-handover-policy-state={policyState}
-      aria-label="Baseline MODQN frontend integration proof"
+      aria-label="Baseline MODQN handover control proof"
     >
       <div className="leo-modqn-integration-heading">
         <span>Baseline MODQN integrated in frontend</span>
-        <strong data-testid="modqn-baseline-integration-status">
-          {replayLoaded ? 'Replay evidence loaded' : 'Replay evidence blocked'}
-        </strong>
+        <strong>Live handover controls active</strong>
         <small>
           Replay truth is read-only; live handover edits tune current HOBS/SINR simulation only.
         </small>
       </div>
 
-      <div className="leo-modqn-integration-grid">
-        <div className="leo-modqn-integration-card leo-modqn-integration-card--replay">
-          <div className="leo-modqn-integration-card-title">
-            <span>MODQN baseline replay</span>
-            <strong>{replayDisplayState?.evidenceStatus ?? 'fail-closed'}</strong>
-          </div>
-          {replayLoaded && currentSlot !== undefined ? (
-            <div className="leo-modqn-integration-metrics">
-              <ProofMetric
-                label="Artifact shape"
-                value={`${replayDisplayState.rowCount} rows / ${replayDisplayState.slotCount} slots`}
-                testId="modqn-baseline-artifact-shape"
-              />
-              <ProofMetric
-                label="Current source"
-                value={`slot ${currentSlot.slotIndex}, row ${currentSlot.focusRow.sourceRowIndex + 1}`}
-                testId="modqn-baseline-current-source"
-              />
-              <ProofMetric
-                label="Event totals"
-                value={formatReplayEventTotals(replayDisplayState)}
-                testId="modqn-baseline-event-totals"
-              />
-            </div>
-          ) : (
-            <div className="leo-modqn-integration-blocked" data-testid="modqn-baseline-replay-blocked">
-              {replayIssueMessage ?? 'Accepted 7-beam replay display model is unavailable.'}
-            </div>
-          )}
+      <div className="leo-modqn-integration-card leo-modqn-integration-card--live">
+        <div className="leo-modqn-integration-card-title">
+          <span>Current live policy</span>
+          <strong>{policyState}</strong>
         </div>
-
-        <div className="leo-modqn-integration-card leo-modqn-integration-card--live">
-          <div className="leo-modqn-integration-card-title">
-            <span>Live handover controls active</span>
-            <strong>{policyState}</strong>
-          </div>
-          <div className="leo-modqn-integration-metrics">
-            <ProofMetric
-              label="Offset margin"
-              value={formatPolicyValue(appliedHandoverPolicy.offsetDb, 'dB')}
-              testId="modqn-live-handover-offset"
-            />
-            <ProofMetric
-              label="Inter-HO trigger"
-              value={formatPolicyValue(appliedHandoverPolicy.triggerTimeSec, 's')}
-              testId="modqn-live-handover-trigger"
-            />
-            <ProofMetric
-              label="Attach threshold"
-              value={formatPolicyValue(appliedHandoverPolicy.sinrThresholdDb, 'dB')}
-              testId="modqn-live-handover-threshold"
-            />
-          </div>
+        <div className="leo-modqn-integration-metrics">
+          <ProofMetric
+            label="Offset margin"
+            value={formatPolicyValue(appliedHandoverPolicy.offsetDb, 'dB')}
+            testId="modqn-live-handover-offset"
+          />
+          <ProofMetric
+            label="Inter-HO trigger"
+            value={formatPolicyValue(appliedHandoverPolicy.triggerTimeSec, 's')}
+            testId="modqn-live-handover-trigger"
+          />
+          <ProofMetric
+            label="Attach threshold"
+            value={formatPolicyValue(appliedHandoverPolicy.sinrThresholdDb, 'dB')}
+            testId="modqn-live-handover-threshold"
+          />
         </div>
       </div>
 
@@ -151,10 +132,82 @@ export function ModqnBaselineIntegrationPanel({
         >
           Reset live handover policy
         </button>
+      </div>
+    </section>
+  );
+}
+
+export function ModqnBaselineReplayEvidence({
+  replayDisplayState,
+  replayIssueMessage = null,
+}: ModqnBaselineReplayEvidenceProps) {
+  const replayLoaded = replayDisplayState !== null;
+  const currentSlot = replayDisplayState?.currentSlot;
+
+  return (
+    <section
+      className="leo-modqn-integration-panel leo-modqn-integration-panel--evidence"
+      data-testid="modqn-baseline-integration-panel"
+      data-replay-state={replayLoaded ? 'accepted' : 'fail-closed'}
+      aria-label="Baseline MODQN frontend integration proof"
+    >
+      <div className="leo-modqn-integration-heading">
+        <span>Baseline MODQN integrated in frontend</span>
+        <strong data-testid="modqn-baseline-integration-status">
+          {replayLoaded ? 'Replay evidence loaded' : 'Replay evidence blocked'}
+        </strong>
+        <small>
+          Replay truth is read-only; live handover edits tune current HOBS/SINR simulation only.
+        </small>
+      </div>
+
+      <div className="leo-modqn-integration-card leo-modqn-integration-card--replay">
+        <div className="leo-modqn-integration-card-title">
+          <span>MODQN baseline replay</span>
+          <strong>{replayDisplayState?.evidenceStatus ?? 'fail-closed'}</strong>
+        </div>
+        {replayLoaded && currentSlot !== undefined ? (
+          <div className="leo-modqn-integration-metrics">
+            <ProofMetric
+              label="Artifact shape"
+              value={`${replayDisplayState.rowCount} rows / ${replayDisplayState.slotCount} slots`}
+              testId="modqn-baseline-artifact-shape"
+            />
+            <ProofMetric
+              label="Current source"
+              value={`slot ${currentSlot.slotIndex}, row ${currentSlot.focusRow.sourceRowIndex + 1}`}
+              testId="modqn-baseline-current-source"
+            />
+            <ProofMetric
+              label="Event totals"
+              value={formatReplayEventTotals(replayDisplayState)}
+              testId="modqn-baseline-event-totals"
+            />
+          </div>
+        ) : (
+          <div className="leo-modqn-integration-blocked" data-testid="modqn-baseline-replay-blocked">
+            {replayIssueMessage ?? 'Accepted 7-beam replay display model is unavailable.'}
+          </div>
+        )}
+      </div>
+
+      <div className="leo-modqn-integration-footnote">
         <span>
           7-beam baseline MODQN evidence is displayed in the same shell as the adjustable live handover simulator.
         </span>
       </div>
     </section>
+  );
+}
+
+export function ModqnBaselineIntegrationPanel(props: ModqnBaselineIntegrationPanelProps) {
+  return (
+    <>
+      <ModqnBaselineHandoverControls {...props} />
+      <ModqnBaselineReplayEvidence
+        replayDisplayState={props.replayDisplayState}
+        replayIssueMessage={props.replayIssueMessage}
+      />
+    </>
   );
 }
