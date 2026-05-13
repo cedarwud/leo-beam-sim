@@ -45,6 +45,12 @@
     "validate:modqn:phase2-identity-adapter": "node --import tsx/esm scripts/validate-modqn-phase2-identity-adapter.ts",
     "validate:modqn:phase3b-beam-layout": "node --import tsx/esm scripts/validate-modqn-phase3b-beam-layout.ts",
     "validate:modqn:phase4b-beam-layout-bridge": "node --import tsx/esm scripts/validate-modqn-phase4b-beam-layout-bridge.ts",
+    "validate:modqn:phase7c-replay-state-model": "node --import tsx/esm scripts/validate-modqn-phase7c-replay-state-model.ts",
+    "validate:modqn:phase7d-replay-diagnostics": "node --import tsx/esm scripts/validate-modqn-phase7d-replay-diagnostics.ts",
+    "validate:modqn:phase7e-ui-mode-labeling": "node scripts/validate-modqn-phase7e-ui-mode-labeling-browser.mjs",
+    "validate:modqn:phase7f-replay-playback-shell": "node --import tsx/esm scripts/validate-modqn-phase7f-replay-playback-browser.mjs",
+    "validate:modqn:phase7g-replay-scene-cues": "node --import tsx/esm scripts/validate-modqn-phase7g-replay-scene-cues-browser.mjs",
+    "validate:modqn:phase7h-showcase-hardening": "node --import tsx/esm scripts/validate-modqn-phase7h-showcase-hardening.mjs",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
     "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts"
   },

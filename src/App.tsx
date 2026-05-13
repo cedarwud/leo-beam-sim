@@ -10,6 +10,12 @@ import type { BeamDensity, CameraPreset, CinematicMode, PresentationMode, Runtim
 import { createInitialSimState } from './scene/initialSimState';
 import { recommendDemoReplayStartOffsetSec } from './scene/replay-recommendation';
 import {
+  MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL,
+  createModqnReplayPlaybackDisplayState,
+  getModqnReplayPlaybackModelValidationIssue,
+  type ModqnReplayPlaybackDisplayState,
+} from './modqn/replay-bundle';
+import {
   deriveRuntimeVisualSettings,
   readPrefersReducedMotion,
   readRuntimeViewport,
@@ -36,6 +42,9 @@ import {
 import { ControlBar } from './ui/ControlBar';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
 import { InfoPanel } from './ui/InfoPanel';
+import { ModeEvidenceStrip } from './ui/ModeEvidenceStrip';
+import { ModqnReplayPlaybackShell } from './ui/ModqnReplayPlaybackShell';
+import { ModqnReplaySceneCues } from './ui/ModqnReplaySceneCues';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
 
@@ -178,6 +187,17 @@ export function App() {
   ]);
 
   const [simState, setSimState] = useState<SimState>(() => createInitialSimState(baseProfile));
+  const modqnReplayModelIssue = useMemo(
+    () => getModqnReplayPlaybackModelValidationIssue(MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL),
+    [],
+  );
+  const [modqnReplayDisplayState, setModqnReplayDisplayState] = useState<ModqnReplayPlaybackDisplayState | null>(
+    () => (
+      modqnReplayModelIssue === null
+        ? createModqnReplayPlaybackDisplayState(MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL)
+        : null
+    ),
+  );
   const [staleFormulaEvidenceKey, setStaleFormulaEvidenceKey] = useState<string | null>(null);
 
   const handleSimUpdate = useCallback((state: SimState) => {
@@ -186,6 +206,19 @@ export function App() {
       current === signalEvidenceKey && state.physicalServingBudget !== null ? null : current
     ));
   }, [signalEvidenceKey]);
+
+  const handleModqnReplayDisplayStateChange = useCallback((next: ModqnReplayPlaybackDisplayState | null) => {
+    setModqnReplayDisplayState(current => (
+      current !== null
+      && next !== null
+      && current.slotOffset === next.slotOffset
+      && current.playing === next.playing
+      && current.loopEnabled === next.loopEnabled
+      && current.currentSlot === next.currentSlot
+        ? current
+        : next
+    ));
+  }, []);
 
   const handleSignalTuningChange = useCallback((next: SignalTuningState) => {
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
@@ -319,6 +352,12 @@ export function App() {
         onSpeedChange={setSpeed}
         onDismissAutoSlow={() => setAutoSlowDismissed(true)}
         onToggleAutoSlow={() => setAutoSlowEnabled(e => !e)}
+      />
+      <ModeEvidenceStrip />
+      <ModqnReplayPlaybackShell onDisplayStateChange={handleModqnReplayDisplayStateChange} />
+      <ModqnReplaySceneCues
+        displayState={modqnReplayDisplayState}
+        failClosedReason={modqnReplayModelIssue?.message}
       />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
