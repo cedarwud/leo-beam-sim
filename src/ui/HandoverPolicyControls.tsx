@@ -100,8 +100,8 @@ const POLICY_CONTROL_CONFIGS: readonly HandoverPolicyControlConfig[] = [
 
 const sectionStyle: CSSProperties = {
   display: 'grid',
-  gap: UI_TOKENS.space.panel,
-  padding: '16px',
+  gap: 12,
+  padding: '12px',
   borderRadius: UI_TOKENS.radius.lg,
   background: 'linear-gradient(180deg, rgba(117, 74, 10, 0.22), rgba(24, 18, 8, 0.18))',
   border: '1px solid rgba(255, 210, 100, 0.2)',
@@ -126,43 +126,21 @@ function PolicyNumericControl({
   const hasDraftChange = value !== appliedValue;
 
   return (
-    <div
+    <article
+      className="leo-policy-control-card"
       data-policy-field={config.field}
-      style={{
-        display: 'grid',
-        gap: 10,
-        padding: '13px 14px',
-        borderRadius: UI_TOKENS.radius.md,
-        background: UI_TOKENS.color.surface.card,
-        border: hasDraftChange ? '1px solid rgba(255, 210, 100, 0.36)' : `1px solid ${UI_TOKENS.color.border.soft}`,
-      }}
+      data-draft-changed={hasDraftChange ? 'true' : 'false'}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{
-            fontSize: UI_TOKENS.type.size.subheading,
-            color: UI_TOKENS.color.text.controlLabel,
-            lineHeight: 1.3,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-          }}>
-            {config.label}
-          </div>
-          <div style={{ marginTop: 5, fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.secondary, lineHeight: 1.45 }}>
-            {config.description}
+      <div className="leo-policy-control-heading">
+        <div className="leo-policy-control-title-block">
+          <div className="leo-policy-control-label">{config.label}</div>
+          <div className="leo-policy-control-applied">
+            Applied {formatPolicyValue(appliedValue, config.unit)}
           </div>
         </div>
-        <div style={{
-          padding: '6px 9px',
-          borderRadius: UI_TOKENS.radius.md,
-          background: hasDraftChange ? 'rgba(255, 210, 100, 0.16)' : UI_TOKENS.color.surface.cardSubtle,
-          border: hasDraftChange ? '1px solid rgba(255, 210, 100, 0.34)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
-          color: UI_TOKENS.color.text.primary,
-          fontSize: UI_TOKENS.type.size.bodyLg,
-          fontWeight: UI_TOKENS.type.weight.heavy,
-          whiteSpace: 'nowrap',
-        }}>
+        <output className="leo-policy-control-value">
           {formatPolicyValue(value, config.unit)}
-        </div>
+        </output>
       </div>
       <input
         className={UI_CLASSES.range}
@@ -175,15 +153,21 @@ function PolicyNumericControl({
         onChange={event => onChange(Number(event.target.value))}
         style={{ width: '100%', accentColor: UI_TOKENS.color.semantic.candidate.accent }}
       />
-      <div style={{ fontSize: UI_TOKENS.type.size.body, color: 'rgba(255, 230, 173, 0.82)', lineHeight: 1.45 }}>
-        {config.effect}
+      <div className="leo-policy-control-range">
+        <span>{formatPolicyValue(config.min, config.unit)}</span>
+        <span>{formatPolicyValue(config.max, config.unit)}</span>
       </div>
+      <details className="leo-policy-control-details">
+        <summary>What this changes</summary>
+        <p>{config.description}</p>
+        <p>{config.effect}</p>
+      </details>
       {hasDraftChange && (
-        <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.muted }}>
+        <div className="leo-policy-control-draft-note">
           Applied value remains {formatPolicyValue(appliedValue, config.unit)} until Apply policy changes.
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -202,42 +186,32 @@ export function HandoverPolicyControls({
 
   return (
     <section
+      className="leo-handover-policy-controls"
       data-testid="handover-policy-controls"
       aria-label="Handover Policy Research Controls"
       style={sectionStyle}
     >
-      <div style={{ display: 'grid', gap: 9 }}>
-        <div style={{
-          fontSize: UI_TOKENS.type.size.body,
-          color: UI_TOKENS.color.semantic.candidate.title,
-          letterSpacing: 1.1,
-          textTransform: 'uppercase',
-          fontWeight: UI_TOKENS.type.weight.heavy,
-        }}>
-          Handover Policy Research Controls
+      <div className="leo-policy-section-header">
+        <div className="leo-policy-section-title-row">
+          <div className="leo-policy-section-title">
+            Handover Policy Research Controls
+          </div>
+          <div
+            className="leo-policy-readonly-pill"
+            data-testid="handover-policy-readonly"
+          >
+            policy: {applied.policy} - read-only
+          </div>
         </div>
-        <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.secondary, lineHeight: 1.5 }}>
-          These staged policy values tune handover qualification and timers, not the HOBS SINR formula tabs.
-        </div>
-        <div
-          data-testid="handover-policy-readonly"
-          style={{
-            display: 'inline-flex',
-            width: 'fit-content',
-            padding: '5px 9px',
-            borderRadius: UI_TOKENS.radius.pill,
-            background: 'rgba(255, 210, 100, 0.1)',
-            border: '1px solid rgba(255, 210, 100, 0.24)',
-            color: UI_TOKENS.color.semantic.fixed,
-            fontSize: UI_TOKENS.type.size.caption,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-          }}
-        >
-          policy: {applied.policy} - read-only
-        </div>
+        <details className="leo-policy-control-details leo-policy-control-details--section">
+          <summary>Scope and boundary</summary>
+          <p>
+            These staged policy values tune handover qualification and timers, not the HOBS SINR formula tabs.
+          </p>
+        </details>
       </div>
 
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div className="leo-policy-control-list">
         {POLICY_CONTROL_CONFIGS.map(config => (
           <PolicyNumericControl
             key={config.field}
@@ -249,7 +223,7 @@ export function HandoverPolicyControls({
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, alignItems: 'center' }}>
+      <div className="leo-policy-action-row">
         <button
           className={UI_CLASSES.button}
           type="button"

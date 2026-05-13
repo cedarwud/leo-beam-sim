@@ -208,8 +208,8 @@ canvas {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
   color: #eefaff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-  line-height: 1.2;
+  font-size: 13px;
+  line-height: 1.28;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
@@ -228,8 +228,8 @@ canvas {
 .leo-modqn-sidebar-stack {
   min-width: 0;
   min-height: 0;
-  display: grid;
-  grid-template-rows: auto auto auto auto;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   overflow: auto;
   scrollbar-gutter: stable;
@@ -262,12 +262,25 @@ canvas {
 .leo-sidebar-content-stack {
   min-width: 0;
   min-height: 0;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   align-content: start;
   overflow: auto;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
+}
+
+.leo-sidebar-tab-panel > .leo-sidebar-content-stack,
+.leo-sidebar-tab-panel > .leo-modqn-sidebar-stack,
+.leo-sidebar-tab-panel > .leo-live-status-stack {
+  height: 100%;
+  max-height: 100%;
+}
+
+.leo-sidebar-content-stack > *,
+.leo-modqn-sidebar-stack > * {
+  flex: 0 0 auto;
 }
 
 .leo-live-status-stack {
@@ -326,13 +339,13 @@ canvas {
 }
 
 .leo-sidebar-tab-button span {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
 }
 
 .leo-sidebar-tab-button small {
   color: rgba(229, 244, 251, 0.58);
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .leo-sidebar-tab-panel {
@@ -378,6 +391,54 @@ canvas {
 
 .leo-modqn-integration-heading small {
   color: rgba(229, 244, 251, 0.72);
+}
+
+.leo-sidebar-disclosure,
+.leo-modqn-boundary-disclosure,
+.leo-policy-control-details {
+  min-width: 0;
+  border: 1px solid rgba(218, 244, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(229, 244, 251, 0.78);
+}
+
+.leo-sidebar-disclosure {
+  padding: 7px 8px;
+}
+
+.leo-sidebar-disclosure[open] {
+  background: rgba(6, 20, 31, 0.74);
+}
+
+.leo-sidebar-disclosure summary,
+.leo-modqn-boundary-disclosure summary,
+.leo-policy-control-details summary {
+  cursor: pointer;
+  color: #f6fbff;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.leo-sidebar-disclosure > summary,
+.leo-modqn-boundary-disclosure > summary {
+  list-style-position: inside;
+}
+
+.leo-sidebar-disclosure .leo-mode-evidence-strip {
+  margin-top: 7px;
+}
+
+.leo-modqn-boundary-disclosure {
+  padding: 6px 7px;
+}
+
+.leo-modqn-boundary-disclosure p,
+.leo-modqn-boundary-disclosure span {
+  display: block;
+  margin: 6px 0 0;
+  color: rgba(229, 244, 251, 0.74);
+  overflow-wrap: anywhere;
 }
 
 .leo-modqn-integration-grid {
@@ -834,6 +895,152 @@ canvas {
 .leo-modqn-sidebar-stack > .leo-modqn-integration-panel {
   width: 100%;
   min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.leo-modqn-sidebar-stack .leo-replay-playback-shell,
+.leo-modqn-sidebar-stack .leo-replay-scene-cues {
+  max-height: none !important;
+  overflow: visible !important;
+  scrollbar-gutter: auto;
+}
+
+.leo-handover-policy-controls {
+  min-width: 0;
+  min-height: 0;
+  align-content: start;
+  color: #eefaff;
+}
+
+.leo-policy-section-header,
+.leo-policy-control-list {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.leo-policy-section-title-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.leo-policy-section-title {
+  color: #ffe7aa;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.leo-policy-readonly-pill {
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 9px;
+  border: 1px solid rgba(255, 210, 100, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 210, 100, 0.1);
+  color: #ffd36b;
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.leo-policy-control-card {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(218, 244, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.leo-policy-control-card[data-draft-changed="true"] {
+  border-color: rgba(255, 210, 100, 0.42);
+  background: rgba(255, 210, 100, 0.075);
+}
+
+.leo-policy-control-heading {
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.leo-policy-control-title-block,
+.leo-policy-control-label,
+.leo-policy-control-applied,
+.leo-policy-control-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.leo-policy-control-label {
+  color: #fff1cf;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.leo-policy-control-applied {
+  margin-top: 3px;
+  color: rgba(255, 230, 173, 0.72);
+  font-size: 12px;
+}
+
+.leo-policy-control-value {
+  flex: 0 0 auto;
+  max-width: 44%;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 210, 100, 0.26);
+  border-radius: 7px;
+  background: rgba(255, 210, 100, 0.1);
+  color: #fff8e7;
+  font-size: 17px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.leo-policy-control-range {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(255, 230, 173, 0.62);
+  font-size: 12px;
+}
+
+.leo-policy-control-details {
+  padding: 7px 8px;
+  border-color: rgba(255, 210, 100, 0.16);
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(255, 236, 190, 0.82);
+}
+
+.leo-policy-control-details p {
+  margin: 7px 0 0;
+  line-height: 1.45;
+}
+
+.leo-policy-control-details--section {
+  font-size: 13px;
+}
+
+.leo-policy-control-draft-note {
+  color: rgba(255, 230, 173, 0.72);
+  font-size: 12.5px;
+}
+
+.leo-policy-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  color: rgba(255, 230, 173, 0.72);
+  font-size: 13px;
 }
 
 .leo-diagnostics-drawer {
@@ -1106,7 +1313,7 @@ canvas {
   }
 
   .leo-app-shell[data-ui-mode="presentation"] .leo-shell-row {
-    grid-template-rows: minmax(390px, 1fr) minmax(150px, 0.34fr) minmax(136px, 0.3fr);
+    grid-template-rows: minmax(300px, 1fr) minmax(200px, 0.45fr) minmax(196px, 0.42fr);
   }
 
   .leo-duel-decision-metrics,
@@ -1139,8 +1346,8 @@ canvas {
 
   .leo-modqn-sidebar-stack .leo-mode-evidence-strip {
     gap: 2px;
-    font-size: 8px;
-    line-height: 1.05;
+    font-size: 10px;
+    line-height: 1.15;
   }
 
   .leo-modqn-sidebar-stack .leo-mode-evidence-cluster {
@@ -1149,14 +1356,14 @@ canvas {
   }
 
   .leo-modqn-sidebar-stack .leo-mode-evidence-note {
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .leo-replay-playback-shell {
     max-height: 132px;
     padding: 7px 8px;
     gap: 5px;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .leo-modqn-sidebar-stack .leo-replay-playback-shell {
@@ -1167,7 +1374,7 @@ canvas {
     max-height: 108px;
     padding: 7px 8px;
     gap: 5px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .leo-modqn-integration-panel--controls {
@@ -1246,14 +1453,14 @@ canvas {
 
   .leo-replay-playback-metric strong,
   .leo-replay-truth-row strong {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .leo-replay-scene-cues {
     max-height: 78px;
     padding: 6px 7px;
     gap: 5px;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .leo-modqn-sidebar-stack .leo-replay-scene-cues {
@@ -1271,7 +1478,7 @@ canvas {
 
   .leo-replay-scene-cues-header strong,
   .leo-replay-scene-cue strong {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .leo-signal-tuning-panel {

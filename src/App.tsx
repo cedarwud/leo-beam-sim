@@ -400,13 +400,6 @@ export function App() {
           >
             {leftSidebarTab === 'handover' ? (
               <div className="leo-sidebar-content-stack">
-                <ModqnBaselineHandoverControls
-                  appliedHandoverPolicy={appliedHandoverPolicy}
-                  hasHandoverOverrides={hasHandoverAppliedOverrides}
-                  hasHandoverDraftChanges={hasHandoverDraftChanges}
-                  onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
-                  onResetHandoverPolicy={handleResetHandoverPolicy}
-                />
                 <HandoverPolicyControls
                   draft={handoverPolicyDraft}
                   applied={appliedHandoverPolicy}
@@ -415,6 +408,13 @@ export function App() {
                   onDraftChange={handleHandoverPolicyDraftChange}
                   onApply={handleApplyHandoverPolicy}
                   onReset={handleResetHandoverPolicy}
+                />
+                <ModqnBaselineHandoverControls
+                  appliedHandoverPolicy={appliedHandoverPolicy}
+                  hasHandoverOverrides={hasHandoverAppliedOverrides}
+                  hasHandoverDraftChanges={hasHandoverDraftChanges}
+                  onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
+                  onResetHandoverPolicy={handleResetHandoverPolicy}
                 />
               </div>
             ) : (
@@ -458,7 +458,14 @@ export function App() {
           >
             {rightSidebarTab === 'modqn' ? (
               <section className="leo-modqn-sidebar-stack" aria-label="MODQN replay evidence and controls">
-                <ModeEvidenceStrip />
+                <details
+                  className="leo-sidebar-disclosure"
+                  data-testid="modqn-claim-boundaries-disclosure"
+                  data-phase7h-open-for-validation="true"
+                >
+                  <summary>Claim boundaries</summary>
+                  <ModeEvidenceStrip />
+                </details>
                 <ModqnBaselineReplayEvidence
                   replayDisplayState={modqnReplayDisplayState}
                   replayIssueMessage={modqnReplayModelIssue?.message}

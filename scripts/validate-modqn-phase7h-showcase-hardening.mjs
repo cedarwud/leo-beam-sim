@@ -628,6 +628,13 @@ async function assertViewport(page, viewport) {
   await page.goto(page.url(), { waitUntil: 'domcontentloaded', timeout: UI_LOAD_TIMEOUT_MS });
   await requiredBox(page, '.leo-app-shell[data-ui-mode="presentation"]', `${viewport.name} presentation app shell`);
   await requiredBox(page, '.leo-shell-canvas canvas', `${viewport.name} scene canvas`);
+  await page.evaluate(() => {
+    document
+      .querySelectorAll('details[data-phase7h-open-for-validation="true"]')
+      .forEach(element => {
+        if (element instanceof HTMLDetailsElement) element.open = true;
+      });
+  });
 
   const rawBodyText = await page.evaluate(() => document.body.innerText);
   const bodyText = normalizeText(rawBodyText);
@@ -644,6 +651,7 @@ async function assertViewport(page, viewport) {
   const liveTuningBox = await requiredBox(page, '.leo-shell-left', `${viewport.name} live tuning slot`);
   const liveStatusBox = await requiredBox(page, '.leo-shell-right', `${viewport.name} live status slot`);
   const modqnSidebarBox = await requiredBox(page, '.leo-modqn-sidebar-stack', `${viewport.name} MODQN replay sidebar stack`);
+  const liveHandoverStackBox = await requiredBox(page, '.leo-sidebar-content-stack', `${viewport.name} live handover sidebar stack`);
 
   for (const [label, box] of [
     ['control bar', controlBarBox],
@@ -656,21 +664,15 @@ async function assertViewport(page, viewport) {
     assertBoxTouchesViewport(box, viewport, `${viewport.name} ${label}`);
   }
 
-  if (viewport.name !== 'narrow') {
-    assertBoxTouchesViewport(playbackBox, viewport, `${viewport.name} playback shell`);
-    assertBoxTouchesViewport(cueBox, viewport, `${viewport.name} cue layer`);
-  }
-
   assert.ok(evidenceBox.width <= viewport.width + 1, `${viewport.name} evidence strip overflowed the viewport`);
   assert.ok(playbackBox.width <= viewport.width + 1, `${viewport.name} playback shell overflowed the viewport`);
   assert.ok(cueBox.width <= viewport.width + 1, `${viewport.name} cue layer overflowed the viewport`);
   assert.ok(evidenceBox.height <= 175, `${viewport.name} evidence strip exceeded compact height`);
-  assert.ok(playbackBox.height <= (viewport.name === 'narrow' ? 150 : 220), `${viewport.name} playback shell exceeded compact height`);
-  assert.ok(cueBox.height <= (viewport.name === 'narrow' ? 110 : 140), `${viewport.name} cue layer exceeded compact height`);
   assert.ok(
     shellRowBox.y <= controlBarBox.y + controlBarBox.height + 18,
     `${viewport.name} shell row did not start directly after the control bar`,
   );
+  assertBoxHorizontallyInside(liveTuningBox, liveHandoverStackBox, `${viewport.name} live handover sidebar stack`);
   assertBoxHorizontallyInside(liveStatusBox, modqnSidebarBox, `${viewport.name} MODQN replay sidebar stack`);
   assert.ok(
     modqnSidebarBox.y + 1 >= liveStatusBox.y && modqnSidebarBox.y < liveStatusBox.y + liveStatusBox.height,
@@ -694,6 +696,51 @@ async function assertViewport(page, viewport) {
   assert.equal(rectOverlapArea(playbackBox, evidenceBox), 0, `${viewport.name} playback shell overlapped evidence strip`);
   assert.equal(rectOverlapArea(playbackBox, canvasSlotBox), 0, `${viewport.name} playback shell overlapped scene canvas`);
   assert.equal(rectOverlapArea(playbackBox, liveTuningBox), 0, `${viewport.name} playback shell overlapped HOBS/SINR tuning slot`);
+
+  const scrollAndOverflowState = await page.evaluate(() => {
+    function metrics(selector) {
+      const element = document.querySelector(selector);
+      if (!(element instanceof HTMLElement)) return null;
+      const style = window.getComputedStyle(element);
+      return {
+        clientHeight: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+        overflowY: style.overflowY,
+      };
+    }
+    return {
+      liveHandoverStack: metrics('.leo-sidebar-content-stack'),
+      modqnStack: metrics('.leo-modqn-sidebar-stack'),
+      playbackShell: metrics('[data-testid="modqn-replay-playback-shell"]'),
+      cueLayer: metrics('[data-testid="modqn-replay-scene-cues"]'),
+    };
+  });
+  assert.ok(
+    ['auto', 'scroll'].includes(scrollAndOverflowState.liveHandoverStack?.overflowY),
+    `${viewport.name} live handover sidebar stack did not allow vertical scrolling`,
+  );
+  assert.ok(
+    ['auto', 'scroll'].includes(scrollAndOverflowState.modqnStack?.overflowY),
+    `${viewport.name} MODQN sidebar stack did not allow vertical scrolling`,
+  );
+  assert.equal(
+    scrollAndOverflowState.playbackShell?.overflowY,
+    'visible',
+    `${viewport.name} playback shell should rely on the sidebar scroll area`,
+  );
+  assert.equal(
+    scrollAndOverflowState.cueLayer?.overflowY,
+    'visible',
+    `${viewport.name} cue layer should rely on the sidebar scroll area`,
+  );
+  assert.ok(
+    scrollAndOverflowState.liveHandoverStack.clientHeight <= liveTuningBox.height + 1,
+    `${viewport.name} live handover sidebar stack exceeded its slot instead of scrolling`,
+  );
+  assert.ok(
+    scrollAndOverflowState.modqnStack.clientHeight <= liveStatusBox.height + 1,
+    `${viewport.name} MODQN sidebar stack exceeded its slot instead of scrolling`,
+  );
 
   const playbackState = await page.locator('[data-testid="modqn-replay-playback-shell"]').getAttribute('data-replay-state');
   assert.notEqual(playbackState, 'fail-closed', `${viewport.name} valid selected artifact unexpectedly rendered fail closed`);

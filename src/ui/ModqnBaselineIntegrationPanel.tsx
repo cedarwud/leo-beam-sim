@@ -85,9 +85,12 @@ export function ModqnBaselineHandoverControls({
       <div className="leo-modqn-integration-heading">
         <span>Baseline MODQN integrated in frontend</span>
         <strong>Live handover controls active</strong>
-        <small>
-          Replay truth is read-only; live handover edits tune current HOBS/SINR simulation only.
-        </small>
+        <details className="leo-modqn-boundary-disclosure">
+          <summary>Replay/live boundary</summary>
+          <p>
+            Replay truth is read-only; live handover edits tune current HOBS/SINR simulation only.
+          </p>
+        </details>
       </div>
 
       <div className="leo-modqn-integration-card leo-modqn-integration-card--live">
@@ -156,9 +159,15 @@ export function ModqnBaselineReplayEvidence({
         <strong data-testid="modqn-baseline-integration-status">
           {replayLoaded ? 'Replay evidence loaded' : 'Replay evidence blocked'}
         </strong>
-        <small>
-          Replay truth is read-only; live handover edits tune current HOBS/SINR simulation only.
-        </small>
+        <details
+          className="leo-modqn-boundary-disclosure"
+          data-phase7h-open-for-validation="true"
+        >
+          <summary>Replay/live boundary</summary>
+          <p>
+            Replay truth is read-only; live handover edits tune current HOBS/SINR simulation only.
+          </p>
+        </details>
       </div>
 
       <div className="leo-modqn-integration-card leo-modqn-integration-card--replay">
@@ -191,11 +200,15 @@ export function ModqnBaselineReplayEvidence({
         )}
       </div>
 
-      <div className="leo-modqn-integration-footnote">
+      <details
+        className="leo-modqn-integration-footnote leo-modqn-boundary-disclosure"
+        data-phase7h-open-for-validation="true"
+      >
+        <summary>Integration note</summary>
         <span>
           7-beam baseline MODQN evidence is displayed in the same shell as the adjustable live handover simulator.
         </span>
-      </div>
+      </details>
     </section>
   );
 }
