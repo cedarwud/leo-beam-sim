@@ -43,9 +43,11 @@ import { ControlBar } from './ui/ControlBar';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
 import { InfoPanel } from './ui/InfoPanel';
 import { ModeEvidenceStrip } from './ui/ModeEvidenceStrip';
+import { ModqnBaselineIntegrationPanel } from './ui/ModqnBaselineIntegrationPanel';
 import { ModqnReplayPlaybackShell } from './ui/ModqnReplayPlaybackShell';
 import { ModqnReplaySceneCues } from './ui/ModqnReplaySceneCues';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
+import type { TuningPageRequest } from './ui/signal-tuning/types';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
 
 const DEFAULT_PROFILE_ID = 'hobs-2024-candidate-rich';
@@ -79,6 +81,8 @@ export function App() {
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
   const cameraCommandSequenceRef = useRef(0);
+  const tuningPageRequestSequenceRef = useRef(0);
+  const [tuningPageRequest, setTuningPageRequest] = useState<TuningPageRequest | null>(null);
   const baseProfile = useMemo(() => loadProfile(selectedProfileId), [selectedProfileId]);
   const [signalTuning, setSignalTuning] = useState<SignalTuningState>(() => createSignalTuningState(baseProfile));
   const [handoverPolicyState, setHandoverPolicyState] = useState<HandoverPolicyRuntimeState>(() => {
@@ -282,6 +286,17 @@ export function App() {
     persistUiMode(nextMode);
   }, []);
 
+  const handleOpenHandoverPolicyControls = useCallback(() => {
+    setBeamDensityOverride(null);
+    setUiMode('tuning');
+    persistUiMode('tuning');
+    tuningPageRequestSequenceRef.current += 1;
+    setTuningPageRequest({
+      page: 'handover-policy',
+      sequence: tuningPageRequestSequenceRef.current,
+    });
+  }, []);
+
   const handleBeamDensityChange = useCallback((nextDensity: BeamDensity) => {
     setBeamDensityOverride(nextDensity);
   }, []);
@@ -354,6 +369,15 @@ export function App() {
         onToggleAutoSlow={() => setAutoSlowEnabled(e => !e)}
       />
       <ModeEvidenceStrip />
+      <ModqnBaselineIntegrationPanel
+        replayDisplayState={modqnReplayDisplayState}
+        replayIssueMessage={modqnReplayModelIssue?.message}
+        appliedHandoverPolicy={appliedHandoverPolicy}
+        hasHandoverOverrides={hasHandoverAppliedOverrides}
+        hasHandoverDraftChanges={hasHandoverDraftChanges}
+        onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
+        onResetHandoverPolicy={handleResetHandoverPolicy}
+      />
       <ModqnReplayPlaybackShell onDisplayStateChange={handleModqnReplayDisplayStateChange} />
       <ModqnReplaySceneCues
         displayState={modqnReplayDisplayState}
@@ -366,6 +390,7 @@ export function App() {
             tuning={signalTuning}
             hasOverrides={hasSignalOverrides}
             uiMode={uiMode}
+            activePageRequest={tuningPageRequest}
             formulaBudget={simState.physicalServingBudget}
             isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
             handoverDraft={handoverPolicyDraft}

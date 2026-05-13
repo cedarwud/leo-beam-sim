@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { UI_TOKENS } from '../constants/uiTokens';
 import {
   DEFAULT_TR38811_CHANNEL,
@@ -42,7 +42,7 @@ import {
   pagePanelStyle,
   panelStyle,
 } from './signal-tuning/styles';
-import type { SignalDrawerState, TuningPageKey, TuningTabKey } from './signal-tuning/types';
+import type { SignalDrawerState, TuningPageKey, TuningPageRequest, TuningTabKey } from './signal-tuning/types';
 import { formatDbi } from './signal-tuning/formatters';
 import type { UiMode } from './uiMode';
 
@@ -54,6 +54,7 @@ interface SignalTuningPanelProps {
   formulaBudget: LinkBudgetTerms | null;
   isFormulaEvidenceStale?: boolean;
   initialActiveTab?: TuningTabKey;
+  activePageRequest?: TuningPageRequest | null;
   handoverDraft: HandoverPolicyTuningState;
   appliedHandoverPolicy: HandoverPolicyTuningState;
   hasHandoverDraftChanges: boolean;
@@ -78,6 +79,7 @@ export function SignalTuningPanel({
   formulaBudget,
   isFormulaEvidenceStale = false,
   initialActiveTab = 'signal-power',
+  activePageRequest = null,
   handoverDraft,
   appliedHandoverPolicy,
   hasHandoverDraftChanges,
@@ -98,6 +100,12 @@ export function SignalTuningPanel({
   const scintillationEnabled = tuning.pathLossComponents.includes('scintillation');
   const shadowFadingEnabled = tuning.pathLossComponents.includes('shadow-fading');
   const tr38811Environment = baseProfile.channel.tr38811?.environment ?? DEFAULT_TR38811_CHANNEL.environment;
+
+  useEffect(() => {
+    if (activePageRequest === null) return;
+    setActivePage(activePageRequest.page);
+  }, [activePageRequest?.page, activePageRequest?.sequence]);
+
   const update = (patch: Partial<SignalTuningState>) => {
     onTuningChange({ ...tuning, ...patch });
   };

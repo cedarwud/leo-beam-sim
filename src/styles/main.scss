@@ -37,7 +37,7 @@ canvas {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
   gap: 12px;
   padding: 12px;
   overflow: hidden;
@@ -182,6 +182,177 @@ canvas {
   min-width: 0;
   max-width: 100%;
   color: rgba(229, 244, 251, 0.82);
+  overflow-wrap: anywhere;
+}
+
+.leo-modqn-integration-panel {
+  position: relative;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: minmax(210px, 0.34fr) minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 128px;
+  padding: 9px 10px;
+  overflow: auto;
+  border: 1px solid rgba(118, 234, 215, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(4, 18, 25, 0.94), rgba(3, 10, 17, 0.86)),
+    rgba(3, 10, 17, 0.92);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+  color: #eefaff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.2;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.leo-modqn-integration-heading,
+.leo-modqn-integration-card,
+.leo-modqn-integration-actions {
+  min-width: 0;
+}
+
+.leo-modqn-integration-heading {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.leo-modqn-integration-heading span,
+.leo-modqn-integration-heading strong,
+.leo-modqn-integration-heading small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.leo-modqn-integration-heading span {
+  color: #d8fffa;
+  font-weight: 800;
+}
+
+.leo-modqn-integration-heading strong {
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 6px;
+  border: 1px solid rgba(118, 234, 215, 0.28);
+  border-radius: 4px;
+  color: #f6fbff;
+  background: rgba(118, 234, 215, 0.12);
+}
+
+.leo-modqn-integration-heading small {
+  color: rgba(229, 244, 251, 0.72);
+}
+
+.leo-modqn-integration-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.leo-modqn-integration-card {
+  display: grid;
+  gap: 7px;
+  padding: 7px 8px;
+  border: 1px solid rgba(218, 244, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.leo-modqn-integration-card--replay {
+  border-color: rgba(118, 234, 215, 0.28);
+  background: rgba(118, 234, 215, 0.07);
+}
+
+.leo-modqn-integration-card--live {
+  border-color: rgba(255, 190, 69, 0.28);
+  background: rgba(255, 190, 69, 0.06);
+}
+
+.leo-modqn-integration-card-title {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leo-modqn-integration-card-title span,
+.leo-modqn-integration-card-title strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.leo-modqn-integration-card-title span {
+  color: rgba(229, 244, 251, 0.72);
+}
+
+.leo-modqn-integration-card-title strong {
+  color: #f6fbff;
+  font-weight: 800;
+}
+
+.leo-modqn-integration-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.leo-modqn-integration-metric {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 5px 6px;
+  border: 1px solid rgba(218, 244, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.leo-modqn-integration-metric span,
+.leo-modqn-integration-blocked {
+  color: rgba(229, 244, 251, 0.62);
+}
+
+.leo-modqn-integration-metric strong {
+  min-width: 0;
+  color: #f6fbff;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.leo-modqn-integration-actions {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+}
+
+.leo-modqn-integration-actions button {
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid rgba(218, 244, 255, 0.16);
+  border-radius: 4px;
+  color: #f6fbff;
+  background: rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+}
+
+.leo-modqn-integration-actions button:disabled {
+  color: rgba(229, 244, 251, 0.42);
+  cursor: default;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.leo-modqn-integration-actions span {
+  max-width: 260px;
+  color: rgba(229, 244, 251, 0.7);
   overflow-wrap: anywhere;
 }
 
@@ -722,6 +893,20 @@ canvas {
     max-height: 180px;
   }
 
+  .leo-modqn-integration-panel {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: 172px;
+  }
+
+  .leo-modqn-integration-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .leo-modqn-integration-actions {
+    grid-template-columns: repeat(2, minmax(0, max-content)) minmax(0, 1fr);
+    align-items: center;
+  }
+
   .leo-replay-playback-controls {
     justify-content: flex-start;
   }
@@ -761,7 +946,7 @@ canvas {
   }
 
   .leo-app-shell[data-ui-mode="presentation"] .leo-shell-row {
-    grid-template-rows: minmax(170px, 1fr) 42px minmax(112px, 0.62fr);
+    grid-template-rows: minmax(118px, 1fr) 34px minmax(78px, 0.52fr);
   }
 
   .leo-duel-decision-metrics,
@@ -797,6 +982,37 @@ canvas {
     padding: 7px 8px;
     gap: 5px;
     font-size: 10px;
+  }
+
+  .leo-modqn-integration-panel {
+    max-height: 108px;
+    padding: 7px 8px;
+    gap: 5px;
+    font-size: 10px;
+  }
+
+  .leo-modqn-integration-card {
+    gap: 4px;
+    padding: 5px 6px;
+  }
+
+  .leo-modqn-integration-metrics {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .leo-modqn-integration-metric {
+    padding: 3px 4px;
+  }
+
+  .leo-modqn-integration-actions {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .leo-modqn-integration-actions button {
+    min-height: 24px;
+    padding: 3px 6px;
   }
 
   .leo-replay-playback-shell--fail-closed {

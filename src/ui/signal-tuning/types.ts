@@ -12,6 +12,11 @@ export type TuningPageKey = 'sinr-formula' | 'handover-policy';
 
 export type SignalDrawerState = 'collapsed' | 'tuning' | 'diagnostics';
 
+export interface TuningPageRequest {
+  page: TuningPageKey;
+  sequence: number;
+}
+
 export interface TuningTab {
   key: TuningTabKey;
   symbol: ReactNode;
