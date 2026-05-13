@@ -446,7 +446,22 @@ function assertPhase8DNlosClutterUx(): void {
 }
 
 function assertPlacementCopyAndStaleMarkup(): void {
-  const tuningSource = readFileSync(new URL('../src/ui/SignalTuningPanel.tsx', import.meta.url), 'utf8');
+  const tuningSource = [
+    '../src/ui/SignalTuningPanel.tsx',
+    '../src/ui/signal-tuning/ControlSections.tsx',
+    '../src/ui/signal-tuning/Controls.tsx',
+    '../src/ui/signal-tuning/FormulaMap.tsx',
+    '../src/ui/signal-tuning/FormulaTabList.tsx',
+    '../src/ui/signal-tuning/MathSymbol.tsx',
+    '../src/ui/signal-tuning/SinrOverview.tsx',
+    '../src/ui/signal-tuning/TuningPageTabs.tsx',
+    '../src/ui/signal-tuning/formatters.ts',
+    '../src/ui/signal-tuning/styles.ts',
+    '../src/ui/signal-tuning/tuningConfig.tsx',
+    '../src/ui/signal-tuning/types.ts',
+  ]
+    .map(path => readFileSync(new URL(path, import.meta.url), 'utf8'))
+    .join('\n');
   const tokenSource = readFileSync(new URL('../src/constants/uiTokens.ts', import.meta.url), 'utf8');
   assertContains(tuningSource, 'testId="loss-formula-controls"');
   assertContains(tuningSource, 'title="Path-loss stack"');
