@@ -42,6 +42,9 @@
     "validate:vc4d:diagnostics-drawer": "node --import tsx/esm scripts/validate-vc4d-diagnostics-drawer.tsx",
     "validate:hobs-tr38811-phase1": "node --import tsx/esm scripts/validate-hobs-tr38811-phase1.ts",
     "validate:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/validate-hobs-tr38811-phase2-dpc.ts",
+    "validate:modqn:phase2-identity-adapter": "node --import tsx/esm scripts/validate-modqn-phase2-identity-adapter.ts",
+    "validate:modqn:phase3b-beam-layout": "node --import tsx/esm scripts/validate-modqn-phase3b-beam-layout.ts",
+    "validate:modqn:phase4b-beam-layout-bridge": "node --import tsx/esm scripts/validate-modqn-phase4b-beam-layout-bridge.ts",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
     "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts"
   },
