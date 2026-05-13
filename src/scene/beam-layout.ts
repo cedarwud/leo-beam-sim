@@ -1,3 +1,15 @@
+import { generateHexagonalBeamLayout } from '../core/beam/layout';
+
+export const CORE_LAYOUT_FREQUENCY_REUSE_VALUES = [1, 3, 7] as const;
+export type CoreLayoutFrequencyReuse = typeof CORE_LAYOUT_FREQUENCY_REUSE_VALUES[number];
+export type ReuseGroupSource = 'core-layout' | 'runtime-frequency-reuse-compatibility';
+
+export interface CoreLayoutFrequencyReuseResolution {
+  runtimeFrequencyReuse: number;
+  coreLayoutFrequencyReuse: CoreLayoutFrequencyReuse;
+  reuseGroupSource: ReuseGroupSource;
+}
+
 export interface BeamGeometry {
   footprintRadiusKm: number;
   spacingKm: number;
@@ -9,8 +21,63 @@ export interface BeamOffsetKm {
   dNorthKm: number;
 }
 
+export interface CoreSceneBeamOffsetKm extends BeamOffsetKm {
+  coreLayoutSatId: string;
+  coreBeamId: string;
+  coreLocalBeamIndex: number;
+  reuseGroup: number;
+  runtimeFrequencyReuse: number;
+  coreLayoutFrequencyReuse: CoreLayoutFrequencyReuse;
+  reuseGroupSource: ReuseGroupSource;
+}
+
+export interface CoreSceneBeamLayoutConfig {
+  coreLayoutSatId: string;
+  maxBeams: number;
+  beamDiameterKm: number;
+  altitudeKm: number;
+  frequencyReuse: number;
+}
+
 export const MAX_BEAMS_PER_SATELLITE = 7;
 export const FOOTPRINT_RADIUS_WORLD = 56;
+const COMPATIBILITY_CORE_LAYOUT_FREQUENCY_REUSE: CoreLayoutFrequencyReuse = 1;
+
+function isCoreLayoutFrequencyReuse(value: number): value is CoreLayoutFrequencyReuse {
+  return (CORE_LAYOUT_FREQUENCY_REUSE_VALUES as readonly number[]).includes(value);
+}
+
+function normalizeRuntimeFrequencyReuse(frequencyReuse: number): number {
+  if (!Number.isFinite(frequencyReuse)) return 1;
+  return Math.max(1, Math.floor(frequencyReuse));
+}
+
+export function resolveCoreLayoutFrequencyReuse(
+  frequencyReuse: number,
+): CoreLayoutFrequencyReuseResolution {
+  const runtimeFrequencyReuse = normalizeRuntimeFrequencyReuse(frequencyReuse);
+
+  if (isCoreLayoutFrequencyReuse(runtimeFrequencyReuse)) {
+    return {
+      runtimeFrequencyReuse,
+      coreLayoutFrequencyReuse: runtimeFrequencyReuse,
+      reuseGroupSource: 'core-layout',
+    };
+  }
+
+  return {
+    runtimeFrequencyReuse,
+    coreLayoutFrequencyReuse: COMPATIBILITY_CORE_LAYOUT_FREQUENCY_REUSE,
+    reuseGroupSource: 'runtime-frequency-reuse-compatibility',
+  };
+}
+
+function deriveCompatibilityReuseGroup(
+  coreLocalBeamIndex: number,
+  runtimeFrequencyReuse: number,
+): number {
+  return coreLocalBeamIndex % runtimeFrequencyReuse;
+}
 
 export function computeBeamGeometry(
   altitudeKm: number,
@@ -46,4 +113,42 @@ export function generateBeamOffsetsKm(
   }
 
   return beams;
+}
+
+export function generateCoreSceneBeamOffsetsKm(
+  config: CoreSceneBeamLayoutConfig,
+): CoreSceneBeamOffsetKm[] {
+  const beamLimit = Math.min(Math.floor(config.maxBeams), MAX_BEAMS_PER_SATELLITE);
+  if (beamLimit <= 0) return [];
+  const reuseResolution = resolveCoreLayoutFrequencyReuse(config.frequencyReuse);
+
+  const layout = generateHexagonalBeamLayout({
+    satId: config.coreLayoutSatId,
+    numBeams: beamLimit,
+    beamDiameterKm: config.beamDiameterKm,
+    altitudeKm: config.altitudeKm,
+    frf: reuseResolution.coreLayoutFrequencyReuse,
+  });
+
+  return layout.beams.map((beam, coreLocalBeamIndex) => {
+    const reuseGroup = reuseResolution.reuseGroupSource === 'core-layout'
+      ? beam.reuseGroup
+      : deriveCompatibilityReuseGroup(
+        coreLocalBeamIndex,
+        reuseResolution.runtimeFrequencyReuse,
+      );
+
+    return {
+      beamId: coreLocalBeamIndex + 1,
+      dEastKm: beam.offsetEastKm,
+      dNorthKm: beam.offsetNorthKm,
+      coreLayoutSatId: layout.satId,
+      coreBeamId: beam.beamId,
+      coreLocalBeamIndex,
+      reuseGroup,
+      runtimeFrequencyReuse: reuseResolution.runtimeFrequencyReuse,
+      coreLayoutFrequencyReuse: reuseResolution.coreLayoutFrequencyReuse,
+      reuseGroupSource: reuseResolution.reuseGroupSource,
+    };
+  });
 }

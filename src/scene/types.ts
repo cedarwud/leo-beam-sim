@@ -4,6 +4,8 @@ import type { TopocentricPoint } from '../engine/orbit';
 import type { ActiveBeamAssignment, LinkSample } from '../engine/signal/types';
 import type { BeamTarget } from '../viz/SatelliteBeams';
 import type { GlyphKind } from '../viz/glyphs';
+import type { BeamFrequencyIndexResolution } from '../utils/beamFrequency';
+import type { CoreLayoutFrequencyReuse, ReuseGroupSource } from './beam-layout';
 
 export type PresentationMode = 'research-default' | 'candidate-rich' | 'demo-readability';
 export type BeamDensity = 'event-only' | 'event-plus-1' | 'all';
@@ -78,6 +80,24 @@ export interface PanelComparisonState extends SignalSourceState {
   role: 'pending' | 'candidate' | 'ho-target' | 'none';
 }
 
+export type VisualFrequencyDiagnosticsSource =
+  | BeamFrequencyIndexResolution['frequencyIndexSource']
+  | 'not-visible';
+
+export interface VisualFrequencyDiagnosticsEntry {
+  satId: string | null;
+  beamId: number | null;
+  frequencyIndex: number | null;
+  frequencyIndexSource: VisualFrequencyDiagnosticsSource;
+  runtimeFrequencyReuse: number | null;
+  coreLayoutFrequencyReuse: number | null;
+}
+
+export interface VisualFrequencyDiagnosticsState {
+  primary: VisualFrequencyDiagnosticsEntry;
+  comparison: VisualFrequencyDiagnosticsEntry;
+}
+
 export interface SimState {
   profileId?: string;
   formulaFamilyLabel?: string;
@@ -85,6 +105,7 @@ export interface SimState {
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;
+  visualFrequencyDiagnostics?: VisualFrequencyDiagnosticsState;
   /** Backward-compatible right-panel primary fields; prefer the explicit contract fields above. */
   servingSatId: string | null;
   servingBeamId: number | null;
@@ -142,6 +163,13 @@ export interface BeamCellState {
   offsetEastKm: number;
   offsetNorthKm: number;
   scanAngleDeg: number;
+  coreLayoutSatId?: string;
+  coreBeamId?: string;
+  coreLocalBeamIndex?: number;
+  reuseGroup?: number;
+  runtimeFrequencyReuse?: number;
+  coreLayoutFrequencyReuse?: CoreLayoutFrequencyReuse;
+  reuseGroupSource?: ReuseGroupSource;
 }
 
 export interface SatBeamHopState {
@@ -190,22 +218,24 @@ export interface SinrLabel {
   isServing: boolean;
 }
 
-export interface AmbientRing {
+export interface AmbientRing extends BeamFrequencyIndexResolution {
   satelliteId: string;
   beamId: number;
   groundX: number;
   groundZ: number;
   footprintRadiusKm: number;
-  frequencyIndex: number;
 }
+
+export type VisualBeamTarget = BeamTarget & BeamFrequencyIndexResolution;
 
 export interface VizFrame {
   displaySats: VisibleSat[];
   eventSatIds: Set<string>;
   eventRoles: Map<string, EventRole>;
   beamSatIds: Set<string>;
-  satBeams: Map<string, BeamTarget[]>;
+  satBeams: Map<string, VisualBeamTarget[]>;
   ambientRings: AmbientRing[];
+  visualFrequencyByBeamKey: Map<string, BeamFrequencyIndexResolution>;
   sinrLabels: SinrLabel[];
   footprintRadiusWorld: number;
 }

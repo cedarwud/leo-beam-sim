@@ -3,8 +3,12 @@ import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
 import { satelliteTint, satelliteTintIndex } from '../constants/beamRoleTokens';
 import type { Profile } from '../profiles/types';
 import { scheduleBeamCells, type CandidateBeamCell } from './beam-scheduler';
-import { FOOTPRINT_RADIUS_WORLD, MAX_BEAMS_PER_SATELLITE, computeBeamGeometry } from './beam-layout';
-import type { BeamTarget } from '../viz/SatelliteBeams';
+import {
+  FOOTPRINT_RADIUS_WORLD,
+  MAX_BEAMS_PER_SATELLITE,
+  computeBeamGeometry,
+  type CoreLayoutFrequencyReuse,
+} from './beam-layout';
 import type {
   AmbientRing,
   BeamDensity,
@@ -14,9 +18,14 @@ import type {
   RuntimeViewport,
   SimFrame,
   VizFrame,
+  VisualBeamTarget,
   VisibleSat,
 } from './types';
-import { getBeamFrequencyIndex } from '../utils/beamFrequency';
+import {
+  resolveBeamFrequencyIndex,
+  type BeamFrequencyIndexResolution,
+  type MetadataBackedFrequencyIndexSource,
+} from '../utils/beamFrequency';
 import { satelliteGlyph } from '../viz/glyphs';
 
 const MAX_DISPLAY_SATS = 12;
@@ -49,6 +58,10 @@ interface BeamCellViz {
   offsetEastKm: number;
   offsetNorthKm: number;
   scanAngleDeg: number;
+  reuseGroup?: number;
+  reuseGroupSource?: MetadataBackedFrequencyIndexSource;
+  runtimeFrequencyReuse?: number;
+  coreLayoutFrequencyReuse?: CoreLayoutFrequencyReuse;
 }
 
 interface ApproachPreview {
@@ -71,7 +84,7 @@ interface BeamSelectionSpec {
 interface ConeBeamEntry {
   key: string;
   satelliteId: string;
-  beam: BeamTarget;
+  beam: VisualBeamTarget;
   order: number;
 }
 
@@ -127,6 +140,27 @@ function coneEntryKey(satelliteId: string, beamId: number): string {
   return `${satelliteId}:B${beamId}`;
 }
 
+function resolveVisualFrequency(
+  beam: Pick<
+    BeamCellViz,
+    | 'beamId'
+    | 'reuseGroup'
+    | 'reuseGroupSource'
+    | 'runtimeFrequencyReuse'
+    | 'coreLayoutFrequencyReuse'
+  >,
+  frequencyReuse: number,
+): BeamFrequencyIndexResolution {
+  return resolveBeamFrequencyIndex({
+    beamId: beam.beamId,
+    frequencyReuse,
+    reuseGroup: beam.reuseGroup,
+    reuseGroupSource: beam.reuseGroupSource,
+    runtimeFrequencyReuse: beam.runtimeFrequencyReuse,
+    coreLayoutFrequencyReuse: beam.coreLayoutFrequencyReuse,
+  });
+}
+
 function nearestBeamCell(beamCells: BeamCellViz[]): BeamCellViz | null {
   let nearest: BeamCellViz | null = null;
   let nearestDistanceKm = Infinity;
@@ -152,8 +186,7 @@ function scoreCentralPass(sat: VisibleSat): number {
       1 - (centerRadiusWorld - CENTRAL_CORE_RADIUS_WORLD)
         / (CENTRAL_FOCUS_RADIUS_WORLD - CENTRAL_CORE_RADIUS_WORLD)
     );
-  
-  // Power-4 elevation score to extremely favor zenith satellites
+
   const elevationScore = Math.pow(sat.topo.elevationDeg / 90, 4) * 500;
 
   return radialScore + elevationScore;
@@ -245,6 +278,10 @@ export function useBeamViz(
           offsetEastKm: beam.offsetEastKm,
           offsetNorthKm: beam.offsetNorthKm,
           scanAngleDeg: beam.scanAngleDeg,
+          reuseGroup: beam.reuseGroup,
+          reuseGroupSource: beam.reuseGroupSource,
+          runtimeFrequencyReuse: beam.runtimeFrequencyReuse,
+          coreLayoutFrequencyReuse: beam.coreLayoutFrequencyReuse,
         })),
       ]),
     );
@@ -328,6 +365,10 @@ export function useBeamViz(
             offsetEastKm: beam.offsetEastKm,
             offsetNorthKm: beam.offsetNorthKm,
             scanAngleDeg: beam.scanAngleDeg,
+            reuseGroup: beam.reuseGroup,
+            reuseGroupSource: beam.reuseGroupSource,
+            runtimeFrequencyReuse: beam.runtimeFrequencyReuse,
+            coreLayoutFrequencyReuse: beam.coreLayoutFrequencyReuse,
             distanceToUeKm: beamDistanceToUeKm(beam),
           } satisfies CandidateBeamCell))
           .sort((a, b) => a.distanceToUeKm - b.distanceToUeKm || a.beamId - b.beamId);
@@ -589,8 +630,9 @@ export function useBeamViz(
     }
     if (beamSatIds.size === 0 && sim.serving.satId) beamSatIds.add(sim.serving.satId);
 
-    let satBeams = new Map<string, BeamTarget[]>();
+    let satBeams = new Map<string, VisualBeamTarget[]>();
     const ambientRings: AmbientRing[] = [];
+    const visualFrequencyByBeamKey = new Map<string, BeamFrequencyIndexResolution>();
     const coneEntries: ConeBeamEntry[] = [];
     const footprintRadiusKmBySatId = new Map<string, number>();
     let coneOrder = 0;
@@ -647,8 +689,17 @@ export function useBeamViz(
         ?? fallbackBeamId;
       if (selectedBeamId === null) return null;
 
-      const beamCell = beamCells.get(selectedBeamId) ?? nearestBeamCell([...beamCells.values()]);
+      const selectedBeamCell = beamCells.get(selectedBeamId);
+      const beamCell = selectedBeamCell ?? nearestBeamCell([...beamCells.values()]);
       if (!beamCell) return null;
+
+      const frequency = selectedBeamCell
+        ? resolveVisualFrequency(selectedBeamCell, profile.beams.frequencyReuse)
+        : resolveBeamFrequencyIndex({
+          beamId: selectedBeamId,
+          frequencyReuse: profile.beams.frequencyReuse,
+        });
+      visualFrequencyByBeamKey.set(coneEntryKey(sat.id, selectedBeamId), frequency);
 
       const scale = FOOTPRINT_RADIUS_WORLD / Math.max(layout.footprintRadiusKm, 1e-6);
       return {
@@ -657,7 +708,7 @@ export function useBeamViz(
         groundX: beamCell.offsetEastKm * scale,
         groundZ: -beamCell.offsetNorthKm * scale,
         footprintRadiusKm: layout.footprintRadiusKm,
-        frequencyIndex: getBeamFrequencyIndex(selectedBeamId, profile.beams.frequencyReuse),
+        ...frequency,
       };
     };
 
@@ -745,6 +796,13 @@ export function useBeamViz(
         const beamOffsetNorthKm = beamCell?.offsetNorthKm ?? anchorOffsetNorthKm;
         const groundX = (beamOffsetEastKm - anchorOffsetEastKm) * scale;
         const groundZ = -(beamOffsetNorthKm - anchorOffsetNorthKm) * scale;
+        const frequency = beamCell
+          ? resolveVisualFrequency(beamCell, profile.beams.frequencyReuse)
+          : resolveBeamFrequencyIndex({
+            beamId: spec.beamId,
+            frequencyReuse: profile.beams.frequencyReuse,
+          });
+        visualFrequencyByBeamKey.set(coneEntryKey(sat.id, spec.beamId), frequency);
 
         return [{
           beamId: spec.beamId,
@@ -755,7 +813,7 @@ export function useBeamViz(
           isPrimary,
           showBeam: true,
           role: spec.role,
-          frequencyIndex: getBeamFrequencyIndex(spec.beamId, profile.beams.frequencyReuse),
+          ...frequency,
           satelliteTintColor: sat.satelliteTintColor,
           satelliteGlyph: sat.satelliteGlyph,
           satelliteVisualIndex: sat.satelliteVisualIndex,
@@ -796,10 +854,10 @@ export function useBeamViz(
           .slice(0, calloutCap)
           .map(entry => entry.key),
       );
-      const cappedSatBeams = new Map<string, BeamTarget[]>();
+      const cappedSatBeams = new Map<string, VisualBeamTarget[]>();
 
       for (const [satelliteId, beams] of satBeams.entries()) {
-        const keptBeams: BeamTarget[] = [];
+        const keptBeams: VisualBeamTarget[] = [];
         for (const beam of beams) {
           const key = coneEntryKey(satelliteId, beam.beamId);
           if (keptKeys.has(key)) {
@@ -808,13 +866,17 @@ export function useBeamViz(
           }
 
           if (beamDensity === 'event-plus-1') {
+            const frequency = visualFrequencyByBeamKey.get(key) ?? resolveBeamFrequencyIndex({
+              beamId: beam.beamId,
+              frequencyReuse: profile.beams.frequencyReuse,
+            });
             ambientRings.push({
               satelliteId,
               beamId: beam.beamId,
               groundX: beam.groundX,
               groundZ: beam.groundZ,
               footprintRadiusKm: footprintRadiusKmBySatId.get(satelliteId) ?? 0,
-              frequencyIndex: beam.frequencyIndex,
+              ...frequency,
             });
           }
         }
@@ -847,6 +909,7 @@ export function useBeamViz(
       beamSatIds,
       satBeams,
       ambientRings,
+      visualFrequencyByBeamKey,
       sinrLabels,
       footprintRadiusWorld: FOOTPRINT_RADIUS_WORLD,
     };

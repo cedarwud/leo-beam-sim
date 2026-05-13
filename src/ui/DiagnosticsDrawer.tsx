@@ -3,12 +3,15 @@ import { UI_TOKENS } from '../constants/uiTokens';
 import type { Profile } from '../profiles/types';
 import type { SimState } from '../scene/types';
 import { formatBeamIdentity, formatHandoverReason, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
+import { formatFrequencyLabel } from '../utils/beamFrequency';
 import type { UiMode } from './uiMode';
 
 type DiagnosticsDrawerProps = SimState & {
   uiMode: UiMode;
   profile: Profile;
 };
+
+type VisualFrequencyDiagnosticEntry = NonNullable<SimState['visualFrequencyDiagnostics']>['primary'];
 
 function formatDb(value: number): string {
   return `${value.toFixed(1)} dB`;
@@ -26,6 +29,19 @@ function formatPanelBeamIdentity(
 ): string {
   if (!satId || beamId === null) return emptyLabel;
   return formatBeamIdentity({ satId, beamId, frequencyReuse });
+}
+
+function formatVisualFrequencyIndex(entry: VisualFrequencyDiagnosticEntry | undefined): string {
+  if (!entry || entry.frequencyIndex === null) return '—';
+  return formatFrequencyLabel(entry.frequencyIndex);
+}
+
+function formatVisualFrequencySource(entry: VisualFrequencyDiagnosticEntry | undefined): string {
+  return entry?.frequencyIndexSource ?? 'not-visible';
+}
+
+function formatFrequencyReuseValue(value: number | null | undefined, prefix: string): string {
+  return value === null || value === undefined ? '—' : `${prefix}=${value}`;
 }
 
 function DebugRow({
@@ -90,6 +106,7 @@ export function DiagnosticsDrawer({
   profile,
   panelPrimary,
   panelComparison,
+  visualFrequencyDiagnostics,
   recentHoSourceSatId,
   recentHoTargetSatId,
   physicalServingBudget,
@@ -123,6 +140,8 @@ export function DiagnosticsDrawer({
     ? `${recentHoSourceIdentity} → ${recentHoTargetIdentity}`
     : '—';
   const currentEffectiveServingPt = physicalServingBudget?.txPowerDbm;
+  const primaryFrequencyDiagnostics = visualFrequencyDiagnostics?.primary;
+  const comparisonFrequencyDiagnostics = visualFrequencyDiagnostics?.comparison;
 
   if (!expanded) {
     return (
@@ -287,6 +306,47 @@ export function DiagnosticsDrawer({
             <DebugRow label="Recent HO" value={recentHoText} />
             <DebugRow label="HO Count" value={String(hoCount)} />
             <DebugRow label="Last Reason" value={formatHandoverReason(lastHoReason, frequencyReuse) || '—'} />
+          </div>
+        </DrawerSection>
+
+        <DrawerSection
+          testId="visual-frequency-diagnostics"
+          tone={UI_TOKENS.color.semantic.info}
+          title="VISUAL FREQUENCY SOURCE"
+        >
+          <div style={{ display: 'grid', gap: 5 }}>
+            <DebugRow
+              label="Primary F"
+              value={formatVisualFrequencyIndex(primaryFrequencyDiagnostics)}
+            />
+            <DebugRow
+              label="Primary Source"
+              value={formatVisualFrequencySource(primaryFrequencyDiagnostics)}
+            />
+            <DebugRow
+              label="Primary Runtime K"
+              value={formatFrequencyReuseValue(primaryFrequencyDiagnostics?.runtimeFrequencyReuse, 'K')}
+            />
+            <DebugRow
+              label="Primary Core FRF"
+              value={formatFrequencyReuseValue(primaryFrequencyDiagnostics?.coreLayoutFrequencyReuse, 'FRF')}
+            />
+            <DebugRow
+              label="Comparison F"
+              value={formatVisualFrequencyIndex(comparisonFrequencyDiagnostics)}
+            />
+            <DebugRow
+              label="Comparison Source"
+              value={formatVisualFrequencySource(comparisonFrequencyDiagnostics)}
+            />
+            <DebugRow
+              label="Comparison Runtime K"
+              value={formatFrequencyReuseValue(comparisonFrequencyDiagnostics?.runtimeFrequencyReuse, 'K')}
+            />
+            <DebugRow
+              label="Comparison Core FRF"
+              value={formatFrequencyReuseValue(comparisonFrequencyDiagnostics?.coreLayoutFrequencyReuse, 'FRF')}
+            />
           </div>
         </DrawerSection>
       </div>
