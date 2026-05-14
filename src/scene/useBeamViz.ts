@@ -904,7 +904,11 @@ export function useBeamViz(
     previousEventIdsRef.current = new Set(eventSatIds);
 
     let intraHandoverEvent: VizIntraHandoverEvent | null = null;
-    if (sim.intraHandoverEvent) {
+    if (
+      sim.intraHandoverEvent !== null
+      && sim.intraHandoverWallClockStartMs !== null
+      && sim.intraHandoverWallClockExpiresMs !== null
+    ) {
       const { satId, fromBeamId, toBeamId } = sim.intraHandoverEvent;
       const sat = shownSatsWithIdentity.find(s => s.id === satId);
       const layout = sat ? shellLayouts.get(sat.shellId) : undefined;
@@ -918,6 +922,8 @@ export function useBeamViz(
           const anchorNorthKm = toCell.offsetNorthKm;
           intraHandoverEvent = {
             ...sim.intraHandoverEvent,
+            wallClockStartMs: sim.intraHandoverWallClockStartMs,
+            wallClockExpiresMs: sim.intraHandoverWallClockExpiresMs,
             fromGroundX: (fromCell.offsetEastKm - anchorEastKm) * scale,
             fromGroundZ: -(fromCell.offsetNorthKm - anchorNorthKm) * scale,
             toGroundX: 0,

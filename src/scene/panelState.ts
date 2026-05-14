@@ -172,6 +172,11 @@ export function hasUiStateChanged(previous: SimState | null, next: SimState): bo
     || previous.intraHoCount !== next.intraHoCount
     || previous.handoverOffsetDb !== next.handoverOffsetDb
     || previous.handoverTriggerSec !== next.handoverTriggerSec
+    || previous.intraHandoverEvent?.satId !== next.intraHandoverEvent?.satId
+    || previous.intraHandoverEvent?.fromBeamId !== next.intraHandoverEvent?.fromBeamId
+    || previous.intraHandoverEvent?.toBeamId !== next.intraHandoverEvent?.toBeamId
+    || previous.intraHandoverEvent?.wallClockStartMs !== next.intraHandoverEvent?.wallClockStartMs
+    || previous.intraHandoverEvent?.wallClockExpiresMs !== next.intraHandoverEvent?.wallClockExpiresMs
     || hasNumericDelta(previous.sinrDb, next.sinrDb)
     || hasNumericDelta(previous.pendingTargetSinrDb, next.pendingTargetSinrDb)
     || hasNumericDelta(previous.comparisonSinrDb, next.comparisonSinrDb)

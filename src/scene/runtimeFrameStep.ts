@@ -46,7 +46,9 @@ export const SIM_DURATION_SEC = 1200;
 export const SIM_STEP_SEC = 20;
 export const MAX_STEERING_EXTRA_RINGS = 3;
 export const RECENT_HO_LINGER_SEC = 5;
+// Deprecated: kept for backward compatibility with event records only.
 export const INTRA_HANDOVER_ARROW_SEC = 2.4;
+const INTRA_HANDOVER_ARROW_WALLCLOCK_MS = 3000;
 const EARTH_KM_PER_DEG = 111.32;
 
 export interface RuntimeRecentHoState {
@@ -60,10 +62,17 @@ export interface RuntimeRecentHoState {
   expiresAtSec: number;
 }
 
+export interface IntraHandoverVizLatch {
+  event: IntraHandoverEvent;
+  wallClockStartMs: number;
+  wallClockExpiresMs: number;
+}
+
 export interface RuntimeFrameStepState {
   simTimeSec: number;
   recentHo: RuntimeRecentHoState | null;
   intraHandoverEvent: IntraHandoverEvent | null;
+  intraHandoverVizLatch: IntraHandoverVizLatch | null;
   beamPowerControlRuntime: BeamPowerControlRuntime;
 }
 
@@ -185,6 +194,7 @@ export function createRuntimeFrameStepState(simTimeSec: number): RuntimeFrameSte
     simTimeSec,
     recentHo: null,
     intraHandoverEvent: null,
+    intraHandoverVizLatch: null,
     beamPowerControlRuntime: createEmptyBeamPowerControlRuntime(),
   };
 }
@@ -557,11 +567,16 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     hoManager.reset();
     state.recentHo = null;
     state.intraHandoverEvent = null;
+    state.intraHandoverVizLatch = null;
     state.beamPowerControlRuntime = createEmptyBeamPowerControlRuntime();
   }
 
-  if (state.intraHandoverEvent && state.simTimeSec >= state.intraHandoverEvent.expiresAtSec) {
-    state.intraHandoverEvent = null;
+  const nowWallClockMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+  if (
+    state.intraHandoverVizLatch
+    && nowWallClockMs >= state.intraHandoverVizLatch.wallClockExpiresMs
+  ) {
+    state.intraHandoverVizLatch = null;
   }
 
   const visibleSats = interpolateVisibleSats(trajectoryCache, state.simTimeSec, replay.loop);
@@ -656,12 +671,18 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     && lastEvent?.action === 'intra-switch'
     && lastEvent.fromBeamId !== null
   ) {
+    const nowWallClockMs = typeof performance === 'undefined' ? Date.now() : performance.now();
     state.intraHandoverEvent = {
       satId: decision.target.satId,
       fromBeamId: lastEvent.fromBeamId,
       toBeamId: decision.target.beamId,
       triggeredAtSec: state.simTimeSec,
       expiresAtSec: state.simTimeSec + INTRA_HANDOVER_ARROW_SEC,
+    };
+    state.intraHandoverVizLatch = {
+      event: state.intraHandoverEvent,
+      wallClockStartMs: nowWallClockMs,
+      wallClockExpiresMs: nowWallClockMs + INTRA_HANDOVER_ARROW_WALLCLOCK_MS,
     };
   }
 
@@ -673,6 +694,15 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     state.recentHo && state.recentHo.expiresAtSec > state.simTimeSec
       ? state.recentHo.targetSatId
       : null;
+  const activeIntraHandoverEvent = state.intraHandoverVizLatch
+    ? state.intraHandoverVizLatch.event
+    : null;
+  const activeIntraHandoverWallClockStartMs = state.intraHandoverVizLatch
+    ? state.intraHandoverVizLatch.wallClockStartMs
+    : null;
+  const activeIntraHandoverWallClockExpiresMs = state.intraHandoverVizLatch
+    ? state.intraHandoverVizLatch.wallClockExpiresMs
+    : null;
   const postDecisionRecentHo =
     state.recentHo && state.recentHo.expiresAtSec > state.simTimeSec
       ? state.recentHo
@@ -746,7 +776,9 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
       simTimeSec: state.simTimeSec,
       recentHoSourceSatId,
       recentHoTargetSatId,
-      intraHandoverEvent: state.intraHandoverEvent,
+      intraHandoverEvent: activeIntraHandoverEvent,
+      intraHandoverWallClockStartMs: activeIntraHandoverWallClockStartMs,
+      intraHandoverWallClockExpiresMs: activeIntraHandoverWallClockExpiresMs,
     },
   };
 }

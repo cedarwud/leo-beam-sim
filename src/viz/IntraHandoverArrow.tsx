@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { INTRA_HANDOVER_ARROW_COLOR } from '../constants/beamRoleTokens';
-import { INTRA_HANDOVER_ARROW_SEC } from '../scene/runtimeFrameStep';
 import type { RuntimeConfig, VizFrame, VizIntraHandoverEvent } from '../scene/types';
 
 const BEAM_GROUND_Y = 5;
@@ -50,7 +49,6 @@ interface MeshProps {
 
 function IntraHandoverArrowMesh({ event, reducedMotion }: MeshProps) {
   const { gl } = useThree();
-  const startTimeRef = useRef<number | null>(null);
 
   const fromVec = useMemo(
     () => new THREE.Vector3(event.fromGroundX, BEAM_GROUND_Y, event.fromGroundZ),
@@ -92,15 +90,21 @@ function IntraHandoverArrowMesh({ event, reducedMotion }: MeshProps) {
     return mesh;
   }, [headGeo, headMat]);
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (reducedMotion) {
       gl.domElement.dataset.intraHandoverArrowOpacity = '0.700';
       gl.domElement.dataset.intraHandoverArrowActive = '1';
       return;
     }
-    if (startTimeRef.current === null) startTimeRef.current = clock.elapsedTime;
-    const elapsed = clock.elapsedTime - startTimeRef.current;
-    const opacity = Math.max(0, 1 - elapsed / INTRA_HANDOVER_ARROW_SEC);
+    const wallClockNowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const wallClockWindowMs = Math.max(
+      1,
+      event.wallClockExpiresMs - event.wallClockStartMs,
+    );
+    const opacity = Math.max(
+      0,
+      1 - (wallClockNowMs - event.wallClockStartMs) / wallClockWindowMs,
+    );
     arcMat.opacity = opacity;
     headMat.opacity = opacity;
     gl.domElement.dataset.intraHandoverArrowOpacity = opacity.toFixed(4);

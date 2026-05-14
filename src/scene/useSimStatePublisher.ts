@@ -431,6 +431,14 @@ export function useSimStatePublisher({
       ),
     };
 
+    const nextIntraHandoverEvent = sim.intraHandoverEvent !== null && sim.intraHandoverWallClockStartMs !== null && sim.intraHandoverWallClockExpiresMs !== null
+      ? {
+        ...sim.intraHandoverEvent,
+        wallClockStartMs: sim.intraHandoverWallClockStartMs,
+        wallClockExpiresMs: sim.intraHandoverWallClockExpiresMs,
+      }
+      : null;
+
     const nextState: SimState = {
       profileId: profile.id,
       formulaFamilyLabel: getFormulaFamilyLabel(profile.formulaFamily),
@@ -452,6 +460,7 @@ export function useSimStatePublisher({
       comparisonRangeKm: normalizedComparisonTopo.rangeKm,
       comparisonSinrDb: normalizedComparison.sinrDb,
       comparisonKind: normalizedComparison.satId ? panelComparisonKind : null,
+      intraHandoverEvent: nextIntraHandoverEvent,
       sinrDeltaDb: panelSinrDeltaDb,
       recentHoSourceSatId: sim.recentHoSourceSatId,
       recentHoTargetSatId: sim.recentHoTargetSatId,
@@ -475,7 +484,8 @@ export function useSimStatePublisher({
     const handoverWindowActive =
       sim.pendingTargetSatId !== null
       || sim.recentHoSourceSatId !== null
-      || sim.recentHoTargetSatId !== null;
+      || sim.recentHoTargetSatId !== null
+      || sim.intraHandoverEvent !== null;
     const uiIntervalMs = handoverWindowActive
       ? UI_HANDOVER_UPDATE_INTERVAL_MS
       : UI_STABLE_UPDATE_INTERVAL_MS;

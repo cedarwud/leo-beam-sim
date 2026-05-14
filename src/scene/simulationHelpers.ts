@@ -77,6 +77,9 @@ export function createEmptyFrame(simTimeSec: number): SimFrame {
     simTimeSec,
     recentHoSourceSatId: null,
     recentHoTargetSatId: null,
+    intraHandoverEvent: null,
+    intraHandoverWallClockStartMs: null,
+    intraHandoverWallClockExpiresMs: null,
   };
 }
 

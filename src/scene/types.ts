@@ -106,7 +106,12 @@ export interface IntraHandoverEvent {
   expiresAtSec: number;
 }
 
-export interface VizIntraHandoverEvent extends IntraHandoverEvent {
+export interface IntraHandoverEventWithWallClock extends IntraHandoverEvent {
+  wallClockStartMs: number;
+  wallClockExpiresMs: number;
+}
+
+export interface VizIntraHandoverEvent extends IntraHandoverEventWithWallClock {
   fromGroundX: number;
   fromGroundZ: number;
   toGroundX: number;
@@ -153,7 +158,7 @@ export interface SimState {
   servingBeamActiveThisSlot: boolean | null;
   servingSatActiveBeamIds: number[];
   pendingTargetActiveBeamIds: number[];
-  intraHandoverEvent?: IntraHandoverEvent | null;
+  intraHandoverEvent?: IntraHandoverEventWithWallClock | null;
 }
 
 export interface VisibleSat {
@@ -226,7 +231,9 @@ export interface SimFrame {
   simTimeSec: number;
   recentHoSourceSatId: string | null;
   recentHoTargetSatId: string | null;
-  intraHandoverEvent?: IntraHandoverEvent | null;
+  intraHandoverEvent: IntraHandoverEvent | null;
+  intraHandoverWallClockStartMs: number | null;
+  intraHandoverWallClockExpiresMs: number | null;
 }
 
 export type EventRole = BeamCodeRole;

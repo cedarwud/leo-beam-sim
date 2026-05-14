@@ -336,7 +336,7 @@ export function App() {
     setCinematicMode(nextMode);
   }, []);
 
-  const autoSlowActive = simState.pendingTargetSatId !== null;
+  const autoSlowActive = simState.pendingTargetSatId !== null || simState.intraHandoverEvent !== null;
   const autoSlowApplied = autoSlowEnabled && autoSlowActive && !autoSlowDismissed;
   const effectiveSpeed = autoSlowApplied ? Math.min(speed, HANDOVER_FOCUS_SPEED) : speed;
 
