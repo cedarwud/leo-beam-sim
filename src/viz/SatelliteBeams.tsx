@@ -342,6 +342,7 @@ function BeamCone({
   footprintRadius,
   reducedMotion,
   cinematicMode,
+  hasSomeServing,
 }: {
   beamKey: string;
   satelliteId: string;
@@ -350,6 +351,7 @@ function BeamCone({
   footprintRadius: number;
   reducedMotion: boolean;
   cinematicMode: CinematicMode;
+  hasSomeServing: boolean;
 }) {
   const style = resolveBeamVisualEncoding({
     role: beam.role,
@@ -400,6 +402,8 @@ function BeamCone({
   );
   const sinrLabel = formatBeamSinr(beam.sinrDb);
   const isEmphasized = style.isEmphasized;
+  const dimFactor = hasSomeServing ? (beam.isServing ? 1.0 : 0.20) : 1.0;
+  const yLift = beam.isServing ? 5.0 : 0;
   const endpointRingOpacity = Math.max(style.endpointOpacity, style.isEventPrimary ? 0.5 : 0.28);
   const outerRingThickness = Math.min(
     footprintRadius * 0.08,
@@ -414,13 +418,13 @@ function BeamCone({
 
     registerPulseTarget(beamKey, {
       material,
-      baseOpacity: coneOpacity,
+      baseOpacity: coneOpacity * dimFactor,
       pulse: style.pulse,
       visualRole: style.visualRole,
     });
 
     return () => registerPulseTarget(beamKey, null);
-  }, [beamKey, coneOpacity, style.pulse, style.visualRole]);
+  }, [beamKey, coneOpacity, dimFactor, style.pulse, style.visualRole]);
 
   return (
     <group>
@@ -430,7 +434,7 @@ function BeamCone({
           color={color}
           transparent
           opacity={resolveBeamPulseOpacity({
-            baseOpacity: coneOpacity,
+            baseOpacity: coneOpacity * dimFactor,
             pulse: style.pulse,
             elapsedSec: 0,
             reducedMotion,
@@ -442,11 +446,11 @@ function BeamCone({
         />
       </mesh>
 
-      <mesh geometry={discGeo}>
+      <mesh geometry={discGeo} position={[0, yLift, 0]}>
         <meshBasicMaterial
           color={discFillColor}
           transparent
-          opacity={discOpacity}
+          opacity={discOpacity * dimFactor}
           side={THREE.DoubleSide}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
@@ -454,12 +458,12 @@ function BeamCone({
         />
       </mesh>
 
-      <mesh position={[beam.groundX, 1.55, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={18}>
+      <mesh position={[beam.groundX, 1.55 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={18}>
         <ringGeometry args={[footprintRadius, footprintRadius + outerRingThickness, SEGMENTS]} />
         <meshBasicMaterial
           color={satelliteTintColor}
           transparent
-          opacity={0.78}
+          opacity={0.78 * dimFactor}
           side={THREE.DoubleSide}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
@@ -468,12 +472,12 @@ function BeamCone({
       </mesh>
 
       {eventRoleSurface && (
-        <mesh position={[beam.groundX, 1.85, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={19}>
+        <mesh position={[beam.groundX, 1.85 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={19}>
           <ringGeometry args={[innerRoleRingInner, innerRoleRingOuter, SEGMENTS]} />
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.82}
+            opacity={0.82 * dimFactor}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
@@ -490,7 +494,7 @@ function BeamCone({
         color={satelliteTintColor}
         lineWidth={style.lineWidth + 1}
         transparent
-        opacity={Math.max(style.lineOpacity * 0.82, 0.42)}
+        opacity={Math.max(style.lineOpacity * 0.82, 0.42) * dimFactor}
         dashed={style.dashed}
         dashSize={15}
         gapSize={10}
@@ -505,7 +509,7 @@ function BeamCone({
         color={color}
         lineWidth={Math.max(1, style.lineWidth - 1)}
         transparent
-        opacity={style.lineOpacity}
+        opacity={style.lineOpacity * dimFactor}
         dashed={style.dashed}
         dashSize={15}
         gapSize={10}
@@ -515,14 +519,14 @@ function BeamCone({
       {style.endpointFilled ? (
         <mesh
           geometry={glyphFillGeo}
-          position={[beam.groundX, 5, beam.groundZ]}
+          position={[beam.groundX, 5 + yLift, beam.groundZ]}
           rotation={[-Math.PI / 2, 0, 0]}
           renderOrder={24}
         >
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={style.endpointOpacity}
+            opacity={style.endpointOpacity * dimFactor}
             depthTest={false}
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -531,11 +535,11 @@ function BeamCone({
         </mesh>
       ) : (
         <Line
-          points={glyphOutlinePoints.map(([x, y, z]) => [beam.groundX + x, 5.25 + z, beam.groundZ + y])}
+          points={glyphOutlinePoints.map(([x, y, z]) => [beam.groundX + x, 5.25 + z + yLift, beam.groundZ + y])}
           color={color}
           lineWidth={2.4}
           transparent
-          opacity={endpointRingOpacity}
+          opacity={endpointRingOpacity * dimFactor}
           depthTest={false}
           depthWrite={false}
           renderOrder={25}
@@ -547,7 +551,7 @@ function BeamCone({
         color={color}
         lineWidth={beam.isServing || beam.isPrimary ? 1.6 : 1.1}
         transparent
-        opacity={isEmphasized ? 0.92 : Math.max(style.lineOpacity, 0.42)}
+        opacity={(isEmphasized ? 0.92 : Math.max(style.lineOpacity, 0.42)) * dimFactor}
         dashed={style.dashed || !beam.isScheduledActive}
         dashSize={8}
         gapSize={6}
@@ -585,6 +589,8 @@ export function SatelliteBeams({
   reducedMotion = false,
   cinematicMode = 'off',
 }: SatelliteBeamsProps) {
+  const hasSomeServing = beams.some(b => b.isServing);
+
   return (
     <group>
       {beams.map(beam => {
@@ -601,6 +607,7 @@ export function SatelliteBeams({
             footprintRadius={footprintRadius}
             reducedMotion={reducedMotion}
             cinematicMode={cinematicMode}
+            hasSomeServing={hasSomeServing}
           />
         );
       })}
