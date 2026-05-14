@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "phase6t-source-channel-shadow-kpi-fixture-v1",
+  "phase": "6T",
+  "comparisonMode": "validator-only-source-channel-shadow-kpi",
+  "requiredProfiles": [
+    "hobs-2024-paper-default",
+    "hobs-2024-candidate-rich",
+    "hobs-2024-tr38811-research"
+  ],
+  "sourceChannelPolicy": {
+    "adapterVersion": "phase6t-source-channel-shadow-adapter-v1",
+    "implementationLoss": "phase6n-local-pathloss-minus-core-fspl",
+    "handoverShadow": "validator-only-shadow-manager",
+    "dpcPolicy": "consume-baseline-effective-tx-power-no-shadow-feedback",
+    "runtimeAdoption": "not-adopted"
+  },
+  "driftGate": {
+    "p50FiniteSinrDbAbsTolerance": 0.25,
+    "lowSinrCountMinToleranceSamples": 2,
+    "lowSinrCountFractionTolerance": 0.02,
+    "totalHandoverCountAbsTolerance": 1,
+    "intraSwitchCountAbsTolerance": 1,
+    "interHandoverRawExact": true,
+    "interHandoverExcludingInitialAttachExact": true,
+    "initialAttachExact": true,
+    "dpcTxPowerSummaryAbsToleranceDb": 0.5,
+    "activeMeanAbsTolerance": 0.01
+  },
+  "allowedPhase6TStatuses": [
+    "SHADOW_COMPARISON_PASS",
+    "SHADOW_COMPARISON_DRIFT_EXCEEDS_GATE",
+    "BLOCKED_NEEDS_ADAPTER_REFINEMENT"
+  ],
+  "claimBoundary": {
+    "acceptedModqnEvidenceBeamCount": 7,
+    "sensitivityDemoOnlyBeamCounts": [
+      19,
+      37
+    ],
+    "hobsSinrLiveOutputRemainsSeparateFromModqnReplayEvidence": true,
+    "sourceChannelShadowCreatesModqnEvidence": false,
+    "runtimeAdoption": "not-adopted",
+    "eeHeaCatfishScope": "non-scope"
+  }
+}

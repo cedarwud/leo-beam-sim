@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "phase6v-antenna-pattern-convention-fixture-v1",
+  "phase": "6V",
+  "comparisonMode": "validator-only-antenna-pattern-convention-resolution",
+  "phase6UValidatorScript": "node --import tsx/esm scripts/validate-modqn-phase6u-beam-gain-mismatch.ts",
+  "phase6UFixturePath": "scripts/fixtures/modqn-phase6u-beam-gain-mismatch.json",
+  "requiredProfiles": [
+    "hobs-2024-paper-default",
+    "hobs-2024-candidate-rich",
+    "hobs-2024-tr38811-research"
+  ],
+  "allowedPhase6VStatuses": [
+    "READY_FOR_PHASE6W_SHADOW_ADAPTER",
+    "BLOCKED_BY_PATTERN_CONVENTION",
+    "NEEDS_SOURCE_PROVENANCE"
+  ],
+  "expectedPhase6VStatus": "BLOCKED_BY_PATTERN_CONVENTION",
+  "diagnosticPolicy": {
+    "runtimeAdoption": "not-adopted",
+    "formulaChanges": "forbidden",
+    "browserSmoke": "not-required",
+    "adapterOnlyFixDefensibleWhen": "diameter-adapted residuals are inside tolerance and no J1+J3 pattern-convention residual remains",
+    "additionalConventionCandidatePolicy": "admit only candidates with explicit paper-backed, standard-backed, source-map, or source-code provenance"
+  },
+  "thresholds": {
+    "phase6UMaxAllowedRawMeanAbsDb": 100,
+    "residualP50ToleranceDb": 0.25,
+    "residualMeanToleranceDb": 0.25,
+    "patternConventionResidualToleranceDb": 1e-9,
+    "sourceProvenanceRequired": true
+  },
+  "claimBoundary": {
+    "acceptedModqnEvidenceBeamCount": 7,
+    "sensitivityDemoOnlyBeamCounts": [
+      19,
+      37
+    ],
+    "hobsSinrLiveOutputRemainsSeparateFromModqnReplayEvidence": true,
+    "phase6vCreatesModqnEvidence": false,
+    "runtimeAdoption": "not-adopted",
+    "eeHeaCatfishScope": "non-scope"
+  }
+}
