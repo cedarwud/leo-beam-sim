@@ -176,8 +176,10 @@ Phase 4A decision, documented below:
 - Do not show `G^R` as adjustable until Phase 4B implements the field,
   `computeLinkBudget()` wiring, UI control, contract update, and validation.
   Until then, show it as a fixed formula term: `G^R = 0 dBi`.
-- UI copy must explicitly say the HOBS paper parameter table does not provide
-  a receiver / UE antenna gain value.
+- Internal docs, validation, and optional Diagnostics copy must preserve that
+  the HOBS paper parameter table does not provide a receiver / UE antenna gain
+  value. Phase 10 supersedes the older requirement to show that caveat in the
+  primary Tuning scan path.
 
 ## Proposed Visual Direction
 
@@ -246,8 +248,8 @@ Interaction intent:
 - `Fixed Terms` should show, until Phase 4B implements the approved research
   override:
   - `G^R = 0 dBi`
-  - HOBS paper parameter table does not provide a receiver / UE antenna gain
-    value
+  - receiver / UE antenna gain source caveat, collapsed or moved to
+    Diagnostics after Phase 10
   - TR 38.811 environment
   - NLoS clutter loss
   - antenna efficiency not wired
@@ -2650,6 +2652,10 @@ Phase 10A copy decision:
 
 - User-facing Presentation and primary Tuning surfaces should use
   simulator-native language.
+- The primary scan path should prioritize editable controls, current values,
+  short effect labels, and simulator-native status labels. Detailed
+  provenance, source caveats, and claim-boundary explanations belong in
+  collapsed disclosures, Diagnostics, SDDs, contract docs, or validators.
 - Do not show the following provenance terms in primary user workflows:
   - `HOBS`;
   - `paper-backed`;
@@ -2687,7 +2693,8 @@ Mode contract:
 - Tuning:
   - primary controls use simulator-native labels and short effect text;
   - advanced / sensitivity labels are allowed;
-  - paper/source caveats should not be part of the normal scan path.
+  - paper/source caveats and detailed claim-boundary copy should not be part
+    of the normal scan path.
 - Diagnostics:
   - may show read-only provenance in a low-priority `Model source` /
     `Assumptions` area;
@@ -2777,6 +2784,23 @@ Phase 10B partial implementation evidence:
 - This is not full Phase 10B closure: broader user-facing paper/provenance copy
   cleanup remains open for other primary controls, especially Loss-tab copy.
 
+Phase 10C control-first status checkpoint:
+
+- Current copy direction is control-first, not provenance-first. The primary
+  Presentation and Tuning paths should make simulator controls, current values,
+  and runtime status scannable before any research-source explanation.
+- Detailed provenance and claim-boundary copy remains required internally, but
+  should be collapsed or moved to Diagnostics / docs-level surfaces unless it
+  is a concise safety label needed to prevent an unsupported visible claim.
+- MODQN replay evidence labels may remain visible when they are short boundary
+  labels, but long-form artifact provenance, producer limitations, and
+  forbidden-claim detail should not dominate the primary scan path.
+- This status does not delete or weaken provenance guardrails in this SDD,
+  `docs/sinr-runtime-parameter-contract.md`, MODQN phase docs, validation
+  scripts, or Diagnostics-level read-only surfaces.
+- No runtime, SINR, handover, replay, scene, sidebar, or artifact behavior is
+  authorized by this Phase 10C status note.
+
 Risks / open questions:
 
 - Phase 8B resolved the runtime field-name question by aligning final names
@@ -2815,10 +2839,10 @@ Risks / open questions:
   selection or explicit test / URL override exists.
 - Receiver gain promotion is resolved by Phase 4A for the current UX redesign
   track as an approved research override / teaching control; Phase 4B is
-  already implemented / validated. `G^R` must not be described as a
-  paper-backed parameter;
-  default remains `0 dBi`, and UI copy must state that the HOBS paper parameter
-  table does not provide a receiver / UE antenna gain value.
+  already implemented / validated. `G^R` must not be described internally as a
+  paper-backed parameter; default remains `0 dBi`. Phase 10 supersedes the
+  older primary-UI requirement to state the HOBS paper-table caveat inline:
+  keep that caveat in docs, validation, or Diagnostics-level provenance.
 - DPC controls placement is resolved by Phase 5 for the current UX redesign
   track: editable DPC controls are deferred; read-only DPC facts may be shown in
   Diagnostics; any future editable promotion must be a `TR 38.811`-gated
@@ -2910,6 +2934,10 @@ Risks / open questions:
   `G^R` now has a dedicated `Receiver Gain` tab, separate from `P_t` /
   `Transmit Power` and `G^T` / `Transmit Gain`. Broader paper/provenance copy
   cleanup remains open.
+- Phase 10C records the control-first copy status: primary Presentation and
+  Tuning should prioritize simulator-native controls, values, and labels, while
+  detailed provenance and claim-boundary text remains collapsed or
+  Diagnostics/docs-level. Internal provenance guardrails remain required.
 
 ## Open Questions
 
