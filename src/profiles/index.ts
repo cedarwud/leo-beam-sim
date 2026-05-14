@@ -2,11 +2,13 @@ import type { FormulaFamily, Profile } from './types';
 import paperDefaultJson from './hobs-2024-paper-default.json';
 import candidateRichJson from './hobs-2024-candidate-rich.json';
 import tr38811ResearchJson from './hobs-2024-tr38811-research.json';
+import mobileDemoAircraftJson from './hobs-2024-mobile-demo-aircraft.json';
 
 const profileEntries = [
   ['hobs-2024-candidate-rich', candidateRichJson as Profile],
   ['hobs-2024-paper-default', paperDefaultJson as Profile],
   ['hobs-2024-tr38811-research', tr38811ResearchJson as Profile],
+  ['hobs-2024-mobile-demo-aircraft', mobileDemoAircraftJson as Profile],
 ] as const;
 
 export const profiles: Record<string, Profile> = Object.fromEntries(profileEntries);
@@ -36,6 +38,8 @@ export function getProfileLabel(profile: Profile): string {
       return 'HOBS Paper Default';
     case 'hobs-2024-tr38811-research':
       return 'HOBS + TR 38.811 Research';
+    case 'hobs-2024-mobile-demo-aircraft':
+      return 'HOBS Aircraft Mobile Demo';
     default:
       return profile.id;
   }

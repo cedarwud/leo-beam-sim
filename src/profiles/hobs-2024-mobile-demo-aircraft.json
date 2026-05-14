@@ -1,0 +1,107 @@
+{
+  "id": "hobs-2024-mobile-demo-aircraft",
+  "paper": "Chen et al., Energy-Efficient Joint Handover and Beam Switching Scheme for Multi-LEO Networks, VTC2024-Spring",
+  "description": "Aircraft cruise (TR 38.821 NTN UE), Lissajous loiter pattern",
+  "profileClass": "candidate-rich",
+  "formulaFamily": "hobs-legacy",
+  "orbit": {
+    "type": "walker",
+    "shells": [
+      { "id": "shell-pro-53", "altitudeKm": 550, "inclinationDeg": 53, "planes": 36, "satsPerPlane": 20 },
+      { "id": "shell-pro-42", "altitudeKm": 550, "inclinationDeg": 42, "planes": 36, "satsPerPlane": 20 },
+      { "id": "shell-polar", "altitudeKm": 550, "inclinationDeg": 90, "planes": 36, "satsPerPlane": 20 },
+      { "id": "shell-retro-125", "altitudeKm": 550, "inclinationDeg": 125, "planes": 24, "satsPerPlane": 16 },
+      { "id": "shell-retro-145", "altitudeKm": 550, "inclinationDeg": 145, "planes": 24, "satsPerPlane": 16 }
+    ],
+    "observerLatDeg": 40,
+    "observerLonDeg": 116
+  },
+  "antenna": {
+    "model": "bessel-j1-j3",
+    "maxGainDbi": 40,
+    "beamwidth3dBRad": 0.058,
+    "efficiency": 0.6,
+    "maxSteeringAngleDeg": 12,
+    "scanLossAtMaxSteeringDb": 4
+  },
+  "ueAntenna": {
+    "maxGainDbi": 0
+  },
+  "channel": {
+    "frequencyGHz": 28,
+    "bandwidthMHz": 100,
+    "maxTxPowerDbm": 50,
+    "noisePsdDbmHz": -174,
+    "pathLossComponents": ["fspl", "atmospheric", "scintillation", "shadow-fading"],
+    "lossOverrides": {
+      "atmosphericZenithLossDb": 0.1,
+      "scintillationScaleDb": 0.05,
+      "shadowFadingMarginDb": 2
+    },
+    "tr38811": {
+      "environment": "suburban",
+      "nlosClutterLossDb": 20
+    }
+  },
+  "handover": {
+    "policy": "sinr-offset",
+    "sinrThresholdDb": -5,
+    "offsetDb": 3,
+    "triggerTimeSec": 3.5,
+    "pingPongGuardSec": 5,
+    "pendingTargetHoldSec": 1.5,
+    "intraSwitchTimeSec": 0.75,
+    "sinrSmoothingSec": 0.5
+  },
+  "beams": {
+    "perSatellite": 7,
+    "maxActivePerSat": 7,
+    "frequencyReuse": 3
+  },
+  "beamHopping": {
+    "enabled": true,
+    "slotSec": 2.5,
+    "maxActiveBeamsPerSlot": 7,
+    "scheduler": "round-robin",
+    "frameLengthSlots": 7
+  },
+  "ueMobility": {
+    "type": "waypoints",
+    "waypoints": [
+      { "timeSec": 0, "latDeg": 40, "lonDeg": 116 },
+      { "timeSec": 10, "latDeg": 40.058125, "lonDeg": 116.120502 },
+      { "timeSec": 20, "latDeg": 40.112289, "lonDeg": 116.219704 },
+      { "timeSec": 30, "latDeg": 40.1588, "lonDeg": 116.28007 },
+      { "timeSec": 40, "latDeg": 40.19449, "lonDeg": 116.29093 },
+      { "timeSec": 50, "latDeg": 40.216925, "lonDeg": 116.250365 },
+      { "timeSec": 60, "latDeg": 40.224578, "lonDeg": 116.165544 },
+      { "timeSec": 70, "latDeg": 40.216925, "lonDeg": 116.051462 },
+      { "timeSec": 80, "latDeg": 40.19449, "lonDeg": 115.928283 },
+      { "timeSec": 90, "latDeg": 40.1588, "lonDeg": 115.817781 },
+      { "timeSec": 100, "latDeg": 40.112289, "lonDeg": 115.739488 },
+      { "timeSec": 110, "latDeg": 40.058125, "lonDeg": 115.707244 },
+      { "timeSec": 120, "latDeg": 40, "lonDeg": 115.726749 },
+      { "timeSec": 130, "latDeg": 39.941875, "lonDeg": 115.794554 },
+      { "timeSec": 140, "latDeg": 39.887711, "lonDeg": 115.898674 },
+      { "timeSec": 150, "latDeg": 39.8412, "lonDeg": 116.020705 },
+      { "timeSec": 160, "latDeg": 39.80551, "lonDeg": 116.139076 },
+      { "timeSec": 170, "latDeg": 39.783075, "lonDeg": 116.232864 },
+      { "timeSec": 180, "latDeg": 39.775422, "lonDeg": 116.28549 },
+      { "timeSec": 190, "latDeg": 39.783075, "lonDeg": 116.287652 },
+      { "timeSec": 200, "latDeg": 39.80551, "lonDeg": 116.238967 },
+      { "timeSec": 210, "latDeg": 39.8412, "lonDeg": 116.148043 },
+      { "timeSec": 220, "latDeg": 39.887711, "lonDeg": 116.030949 },
+      { "timeSec": 230, "latDeg": 39.941875, "lonDeg": 115.908386 },
+      { "timeSec": 240, "latDeg": 40, "lonDeg": 115.802016 },
+      { "timeSec": 250, "latDeg": 40.058125, "lonDeg": 115.730642 },
+      { "timeSec": 260, "latDeg": 40.112289, "lonDeg": 115.706881 },
+      { "timeSec": 270, "latDeg": 40.1588, "lonDeg": 115.734932 },
+      { "timeSec": 280, "latDeg": 40.19449, "lonDeg": 115.809838 },
+      { "timeSec": 290, "latDeg": 40.216925, "lonDeg": 115.918357 },
+      { "timeSec": 300, "latDeg": 40.224578, "lonDeg": 116.041307 }
+    ],
+    "interpolation": "linear",
+    "generator": "lissajous(R=25km, f1=1.618, f2=1, T=240s, observerLat=40, observerLon=116)"
+  },
+  "demoStartOffsetSec": 450
+}

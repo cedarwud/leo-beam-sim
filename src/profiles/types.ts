@@ -6,6 +6,19 @@ export type BeamPowerControlMode = 'dpc';
 export type PathLossComponent = 'fspl' | 'atmospheric' | 'scintillation' | 'shadow-fading';
 export type Tr38811LosEnvironment = 'suburban';
 
+export interface UeMobilityWaypoint {
+  timeSec: number;
+  latDeg: number;
+  lonDeg: number;
+}
+
+export interface UeMobility {
+  type: 'waypoints';
+  waypoints: UeMobilityWaypoint[];
+  interpolation: 'linear';
+  generator?: string;
+}
+
 export interface ChannelLossOverrides {
   atmosphericZenithLossDb: number;
   scintillationScaleDb: number;
@@ -108,4 +121,5 @@ export interface Profile {
 
   /** Pre-calculated or manually selected start time for the demo */
   demoStartOffsetSec?: number;
+  ueMobility?: UeMobility;
 }

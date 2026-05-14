@@ -47,6 +47,7 @@ export const SIM_STEP_SEC = 20;
 export const MAX_STEERING_EXTRA_RINGS = 3;
 export const RECENT_HO_LINGER_SEC = 5;
 export const INTRA_HANDOVER_ARROW_SEC = 2.4;
+const EARTH_KM_PER_DEG = 111.32;
 
 export interface RuntimeRecentHoState {
   sourceSatId: string;
@@ -94,6 +95,11 @@ export interface RuntimeFrameStepOutput {
   frame: SimFrame;
   previousSimTimeSec: number;
   didLoopWrap: boolean;
+}
+
+interface UeObserverPosition {
+  latDeg: number;
+  lonDeg: number;
 }
 
 export function createBeamLayoutsByShellId(profile: Profile): Map<string, ShellBeamLayout> {
@@ -183,6 +189,54 @@ export function createRuntimeFrameStepState(simTimeSec: number): RuntimeFrameSte
   };
 }
 
+function resolveWaypointObserver(
+  mobility: Profile['ueMobility'],
+  simTimeSec: number,
+  observerLatDeg: number,
+  observerLonDeg: number,
+): UeObserverPosition {
+  if (
+    !mobility
+    || mobility.type !== 'waypoints'
+    || mobility.interpolation !== 'linear'
+    || !Array.isArray(mobility.waypoints)
+    || mobility.waypoints.length === 0
+  ) {
+    return { latDeg: observerLatDeg, lonDeg: observerLonDeg };
+  }
+
+  const waypoints = mobility.waypoints.filter(
+    point => Number.isFinite(point.timeSec) && Number.isFinite(point.latDeg) && Number.isFinite(point.lonDeg),
+  );
+  if (waypoints.length === 0) return { latDeg: observerLatDeg, lonDeg: observerLonDeg };
+
+  const first = waypoints[0];
+  if (simTimeSec <= first.timeSec) {
+    return { latDeg: first.latDeg, lonDeg: first.lonDeg };
+  }
+
+  const last = waypoints[waypoints.length - 1];
+  if (simTimeSec >= last.timeSec) {
+    return { latDeg: last.latDeg, lonDeg: last.lonDeg };
+  }
+
+  for (let index = 1; index < waypoints.length; index += 1) {
+    const previous = waypoints[index - 1];
+    const next = waypoints[index];
+    const durationSec = next.timeSec - previous.timeSec;
+    if (durationSec <= 0) continue;
+    if (simTimeSec <= next.timeSec) {
+      const t = (simTimeSec - previous.timeSec) / durationSec;
+      return {
+        latDeg: previous.latDeg + (next.latDeg - previous.latDeg) * t,
+        lonDeg: previous.lonDeg + (next.lonDeg - previous.lonDeg) * t,
+      };
+    }
+  }
+
+  return { latDeg: last.latDeg, lonDeg: last.lonDeg };
+}
+
 export function interpolateVisibleSats(
   trajectoryCache: readonly CachedSatState[][],
   simTimeSec: number,
@@ -259,11 +313,14 @@ function buildLinkContext(
   linkSats: readonly VisibleSat[],
   state: Pick<ServingState, 'satId' | 'beamId' | 'pendingTarget'>,
   recentHo: RuntimeRecentHoState | null,
+  ueObserver: UeObserverPosition,
   beamHopSlotIndex: number,
   beamPowerOverrideDbmByKey?: ReadonlyMap<string, number>,
 ): LinkContext {
   const { observer, profile, beamLayoutsByShellId } = input;
   const cosObsLat = Math.cos((observer.latDeg * Math.PI) / 180);
+  const ueLatDeg = ueObserver.latDeg;
+  const ueLonDeg = ueObserver.lonDeg;
   const beamHopEnabled = profile.beamHopping.enabled;
   const snapshots: SatelliteSnapshot[] = [];
   const beamHopStatesBySatId = new Map<string, SatBeamHopState>();
@@ -281,8 +338,8 @@ function buildLinkContext(
     });
     if (offsets.length === 0) continue;
 
-    const nadirEastKm = (sat.lonDeg - observer.lonDeg) * 111.32 * cosObsLat;
-    const nadirNorthKm = (sat.latDeg - observer.latDeg) * 111.32;
+    const nadirEastKm = (sat.lonDeg - ueLonDeg) * EARTH_KM_PER_DEG * cosObsLat;
+    const nadirNorthKm = (sat.latDeg - ueLatDeg) * EARTH_KM_PER_DEG;
     const nadirDistanceKm = Math.hypot(nadirEastKm, nadirNorthKm);
     const { steeringEastKm, steeringNorthKm } = resolveLatticeSteering(
       nadirEastKm,
@@ -420,8 +477,8 @@ function buildLinkContext(
   }
 
   const ue = {
-    latDeg: observer.latDeg,
-    lonDeg: observer.lonDeg,
+    latDeg: ueLatDeg,
+    lonDeg: ueLonDeg,
     offsetEastKm: 0,
     offsetNorthKm: 0,
   };
@@ -476,6 +533,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     profile,
     replay,
     speed,
+    observer,
     paused,
     deltaSec,
     trajectoryCache,
@@ -548,11 +606,15 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     ? buildBeamPowerOverrideDbmByKey(state.beamPowerControlRuntime.statesByKey)
     : undefined;
 
+  const ueObserver = resolveWaypointObserver(profile.ueMobility, state.simTimeSec, observer.latDeg, observer.lonDeg);
+
+// TODO [S6]: Expose resolved UE world position to viz marker anchor/runtime wiring in next slice.
   const preDecisionContext = buildLinkContext(
     input,
     linkSats,
     hoManager.state,
     currentRecentHo,
+    ueObserver,
     beamHopSlotIndex,
     beamPowerOverrideDbmByKey,
   );
@@ -620,6 +682,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     linkSats,
     hoManager.state,
     postDecisionRecentHo,
+    ueObserver,
     beamHopSlotIndex,
     beamPowerOverrideDbmByKey,
   );
