@@ -677,27 +677,39 @@ Sections 2-9 describe the **target architecture**. Delivery is staged:
 - **Phase 2** exposes runtime profile/mode/replay selection in UI and adds the richer
   event-presentation contract for research/demo governance.
 
+### Supersession Note
+
+This checklist captured the v2 architecture rollout from the project's early phase.
+Most rows are now superseded by `docs/frontend-ux-redesign-sdd.md`,
+`docs/visual-clarity-proposal/visual-clarity-sdd/`,
+`docs/hobs-tr38811-sinr-mini-sdd.md`, and the MODQN baseline Phase 1 → 7K-R2
+documentation chain. The MODQN replay demo mainline is closed at Phase 7K-R2
+with the selected regenerated 7-beam producer bundle. This supersession note is
+documentation alignment only; it does not promote source-channel runtime
+adoption, does not promote `19` / `37` trained-baseline claims, and does not
+claim HOBS/SINR live output is MODQN replay evidence.
+
 ### Phase 1 — Multi-shell + Hook refactor (core)
 
 | # | Task | Files | Status |
 |---|------|-------|--------|
-| 1 | Update Profile types: add `profileClass` and `orbit.shells[]` | profiles/types.ts | TODO |
-| 2 | Split profile IDs into baseline and custom variants | profiles/hobs-2024-paper-default.json + profiles/hobs-2024-candidate-rich.json + profiles/index.ts | TODO |
-| 3 | Add `RuntimeConfig` / `ReplayConfig` plumbing with fixed defaults | App + scene/useSimulation.ts + scene/MainScene.tsx | TODO |
-| 4 | Update walker-constellation: accept Shell[] | engine/orbit/walker-constellation.ts | TODO |
-| 5 | Extract useSimulation hook | scene/useSimulation.ts (new) | TODO |
-| 6 | Extract useBeamViz hook | scene/useBeamViz.ts (new) | TODO |
-| 7 | Rewrite MainScene (render only) | scene/MainScene.tsx | TODO |
-| 8 | Delete SatelliteLinks.tsx | viz/SatelliteLinks.tsx | TODO |
-| 9 | Clean dead code | various | TODO |
-| 10 | npm run lint && npm run build | — | TODO |
+| 1 | Update Profile types: add `profileClass` and `orbit.shells[]` | profiles/types.ts | Shipped |
+| 2 | Split profile IDs into baseline and custom variants | profiles/hobs-2024-paper-default.json + profiles/hobs-2024-candidate-rich.json + profiles/index.ts | Shipped |
+| 3 | Add `RuntimeConfig` / `ReplayConfig` plumbing with fixed defaults | App + scene/useSimulation.ts + scene/MainScene.tsx | Shipped |
+| 4 | Update walker-constellation: accept Shell[] | engine/orbit/walker-constellation.ts | Shipped |
+| 5 | Extract useSimulation hook | scene/useSimulation.ts (new) | Shipped |
+| 6 | Extract useBeamViz hook | scene/useBeamViz.ts (new) | Shipped |
+| 7 | Rewrite MainScene (render only) | scene/MainScene.tsx | Shipped |
+| 8 | Delete SatelliteLinks.tsx | viz/SatelliteLinks.tsx | Shipped |
+| 9 | Clean dead code | various | Shipped |
+| 10 | npm run lint && npm run build | — | Shipped |
 
 ### Phase 2 — Presentation mode + research governance (after Phase 1 is stable)
 
 | # | Task | Files | Status |
 |---|------|-------|--------|
-| 11 | Expose either separate profile/presentation selectors or explicit named presets in UI; include replay choice | App + ui/ControlBar.tsx | TODO |
-| 12 | Add display-set / event-set separation and event-role emphasis | scene/useBeamViz.ts + viz components | TODO |
-| 13 | Finalize focus corridor constants (FOCUS_CORRIDOR_Y_*) | scene/useBeamViz.ts | TODO |
-| 14 | Add validation checks / manual acceptance checklist for anti-cluster + role readability | docs + test helpers | TODO |
-| 15 | Add CHO-oriented `secondary` / `prepared` role semantics only if policy/model support is introduced | handover + scene/useBeamViz.ts | FUTURE |
+| 11 | Expose either separate profile/presentation selectors or explicit named presets in UI; include replay choice | App + ui/ControlBar.tsx | Shipped (covered by docs/frontend-ux-redesign-sdd.md Phase 2D / 3B) |
+| 12 | Add display-set / event-set separation and event-role emphasis | scene/useBeamViz.ts + viz components | Shipped (covered by docs/visual-clarity-proposal/visual-clarity-sdd/phase-1-identity-first.md) |
+| 13 | Finalize focus corridor constants (FOCUS_CORRIDOR_Y_*) | scene/useBeamViz.ts | Stale planning entry — see docs/visual-clarity-proposal/visual-clarity-sdd/phase-1-identity-first.md and docs/frontend-ux-redesign-sdd.md (focus-corridor framing replaced by identity-first layering) |
+| 14 | Add validation checks / manual acceptance checklist for anti-cluster + role readability | docs + test helpers | Shipped (covered by docs/frontend-ux-redesign-sdd.md and docs/visual-clarity-proposal/visual-clarity-sdd/phase-1-identity-first.md) |
+| 15 | Add CHO-oriented `secondary` / `prepared` role semantics only if policy/model support is introduced | handover + scene/useBeamViz.ts | Future |

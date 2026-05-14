@@ -1,5 +1,20 @@
 # Baseline MODQN Live Integration Mini-SDD
 
+## Supersession Note
+
+This mini-SDD is the historical live-integration design note from before the
+Phase 6 / Phase 7 MODQN baseline track existed. It is now superseded by the
+Phase 7B replay / live adapter contract
+(`docs/modqn-baseline-phase7b-replay-live-adapter-contract.md`) and the Phase
+7C replay state model (`docs/modqn-baseline-phase7c-replay-state-model.md`)
+and its Phase 7C-R1 producer-truth projection hardening. The full Phase 7 →
+Phase 7K-R2 chain owns the current live / replay separation, control-plane
+separation, browser smoke, and showcase hardening contracts. The Phase 6
+source-channel adoption path remains deferred / not adopted, gated by Phase
+6T / 6U / 6V upstream blockers and the Phase 6W / 6X decision packets. Treat
+the rest of this file as historical reference only. Do not read it as the
+current MODQN integration authority.
+
 **Status:** Phase 0 boundary inventory, docs only
 **Date:** 2026-05-11
 **Target repo:** `/home/u24/papers/project/leo-beam-sim`
