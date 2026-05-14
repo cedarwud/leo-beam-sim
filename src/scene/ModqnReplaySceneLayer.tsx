@@ -15,6 +15,7 @@ import {
 interface ModqnReplaySceneLayerProps {
   readonly displayState: ModqnReplayPlaybackDisplayState | null;
   readonly reducedMotion?: boolean;
+  readonly showBoard?: boolean;
 }
 
 const LAYER_ORIGIN: [number, number, number] = [245, 0, -185];
@@ -570,6 +571,7 @@ function ReplayBoard({
 export function ModqnReplaySceneLayer({
   displayState,
   reducedMotion = false,
+  showBoard = true,
 }: ModqnReplaySceneLayerProps) {
   const visualState = useMemo(
     () => deriveModqnReplaySceneVisualState(displayState),
@@ -579,7 +581,7 @@ export function ModqnReplaySceneLayer({
   return (
     <>
       <ReplayCanvasTelemetry visualState={visualState} />
-      {visualState !== null && (
+      {showBoard && visualState !== null && (
         <ReplayBoard visualState={visualState} reducedMotion={reducedMotion} />
       )}
     </>

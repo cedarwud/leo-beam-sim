@@ -325,6 +325,7 @@ function SceneContent({
       <ModqnReplaySceneLayer
         displayState={modqnReplayDisplayState}
         reducedMotion={runtime.reducedMotion}
+        showBoard={false}
       />
       {showOrbitTrail && (
         <OrbitTrail satellites={viz.displaySats} />
