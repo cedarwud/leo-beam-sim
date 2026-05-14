@@ -58,7 +58,8 @@ export const SATELLITE_TINT_PALETTE = [
   '#c7d1d8',
 ] as const;
 
-export const RECENT_HO_FADE_WINDOW_SEC = 2;
+export const RECENT_HO_FADE_WINDOW_SEC = 5;
+export const INTRA_HANDOVER_ARROW_COLOR = '#22d3ee';
 
 export const BEAM_PULSE_SPECS: Record<BeamPulseKind, {
   periodSec: number | null;
@@ -67,7 +68,7 @@ export const BEAM_PULSE_SPECS: Record<BeamPulseKind, {
   none: { periodSec: null, amplitude: 0 },
   breathe: { periodSec: 2.4, amplitude: 0.06 },
   pulse: { periodSec: 1.4, amplitude: 0.05 },
-  fade: { periodSec: RECENT_HO_FADE_WINDOW_SEC, amplitude: 0.06 },
+  fade: { periodSec: RECENT_HO_FADE_WINDOW_SEC, amplitude: 0.10 },
 };
 
 export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {

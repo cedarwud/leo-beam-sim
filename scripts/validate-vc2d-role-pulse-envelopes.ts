@@ -22,7 +22,7 @@ function assertTokenContract(): void {
 
   assert.deepEqual(BEAM_PULSE_SPECS.breathe, { periodSec: 2.4, amplitude: 0.06 });
   assert.deepEqual(BEAM_PULSE_SPECS.pulse, { periodSec: 1.4, amplitude: 0.05 });
-  assert.deepEqual(BEAM_PULSE_SPECS.fade, { periodSec: 2, amplitude: 0.06 });
+  assert.deepEqual(BEAM_PULSE_SPECS.fade, { periodSec: 5, amplitude: 0.10 });
 }
 
 function assertPulseMath(): void {

@@ -18,6 +18,7 @@ import type {
   RuntimeViewport,
   SimFrame,
   VizFrame,
+  VizIntraHandoverEvent,
   VisualBeamTarget,
   VisibleSat,
 } from './types';
@@ -902,6 +903,30 @@ export function useBeamViz(
     previousDisplayIdsRef.current = new Set(shownSatsWithIdentity.map(sat => sat.id));
     previousEventIdsRef.current = new Set(eventSatIds);
 
+    let intraHandoverEvent: VizIntraHandoverEvent | null = null;
+    if (sim.intraHandoverEvent) {
+      const { satId, fromBeamId, toBeamId } = sim.intraHandoverEvent;
+      const sat = shownSatsWithIdentity.find(s => s.id === satId);
+      const layout = sat ? shellLayouts.get(sat.shellId) : undefined;
+      const beamCells = steeringBeamCellsBySatId.get(satId) ?? [];
+      if (sat && layout) {
+        const scale = FOOTPRINT_RADIUS_WORLD / Math.max(layout.footprintRadiusKm, 1e-6);
+        const toCell = beamCells.find(b => b.beamId === toBeamId);
+        const fromCell = beamCells.find(b => b.beamId === fromBeamId);
+        if (toCell && fromCell) {
+          const anchorEastKm = toCell.offsetEastKm;
+          const anchorNorthKm = toCell.offsetNorthKm;
+          intraHandoverEvent = {
+            ...sim.intraHandoverEvent,
+            fromGroundX: (fromCell.offsetEastKm - anchorEastKm) * scale,
+            fromGroundZ: -(fromCell.offsetNorthKm - anchorNorthKm) * scale,
+            toGroundX: 0,
+            toGroundZ: 0,
+          };
+        }
+      }
+    }
+
     return {
       displaySats: shownSatsWithIdentity,
       eventSatIds,
@@ -912,6 +937,7 @@ export function useBeamViz(
       visualFrequencyByBeamKey,
       sinrLabels,
       footprintRadiusWorld: FOOTPRINT_RADIUS_WORLD,
+      intraHandoverEvent,
     };
   }, [latchedBeamSinrByKey, profile, runtime, sim]);
 }

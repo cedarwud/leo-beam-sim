@@ -98,6 +98,21 @@ export interface VisualFrequencyDiagnosticsState {
   comparison: VisualFrequencyDiagnosticsEntry;
 }
 
+export interface IntraHandoverEvent {
+  satId: string;
+  fromBeamId: number;
+  toBeamId: number;
+  triggeredAtSec: number;
+  expiresAtSec: number;
+}
+
+export interface VizIntraHandoverEvent extends IntraHandoverEvent {
+  fromGroundX: number;
+  fromGroundZ: number;
+  toGroundX: number;
+  toGroundZ: number;
+}
+
 export interface SimState {
   profileId?: string;
   formulaFamilyLabel?: string;
@@ -137,6 +152,7 @@ export interface SimState {
   servingBeamActiveThisSlot: boolean | null;
   servingSatActiveBeamIds: number[];
   pendingTargetActiveBeamIds: number[];
+  intraHandoverEvent?: IntraHandoverEvent | null;
 }
 
 export interface VisibleSat {
@@ -208,6 +224,7 @@ export interface SimFrame {
   simTimeSec: number;
   recentHoSourceSatId: string | null;
   recentHoTargetSatId: string | null;
+  intraHandoverEvent?: IntraHandoverEvent | null;
 }
 
 export type EventRole = BeamCodeRole;
@@ -238,4 +255,5 @@ export interface VizFrame {
   visualFrequencyByBeamKey: Map<string, BeamFrequencyIndexResolution>;
   sinrLabels: SinrLabel[];
   footprintRadiusWorld: number;
+  intraHandoverEvent: VizIntraHandoverEvent | null;
 }

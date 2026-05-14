@@ -24,6 +24,7 @@ import {
 } from '../viz/EarthFixedCells';
 import { AmbientFootprintRings } from '../viz/AmbientFootprintRings';
 import { HandoverLinks } from '../viz/HandoverLinks';
+import { IntraHandoverArrow } from '../viz/IntraHandoverArrow';
 import { BeamPulseClock, SatelliteBeams } from '../viz/SatelliteBeams';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
 import { SpineParticles } from '../viz/SpineParticles';
@@ -371,6 +372,7 @@ function SceneContent({
           />
         );
         })}
+      <IntraHandoverArrow vizFrame={viz} runtime={runtime} />
     </>
   );
 }

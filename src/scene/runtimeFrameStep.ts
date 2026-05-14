@@ -18,6 +18,7 @@ import { computeBeamGeometry, generateCoreSceneBeamOffsetsKm } from './beam-layo
 import { scheduleBeamCells, type CandidateBeamCell } from './beam-scheduler';
 import type {
   BeamCellState,
+  IntraHandoverEvent,
   ReplayConfig,
   SatBeamHopState,
   SimFrame,
@@ -44,7 +45,8 @@ export const SKY_DOME_V_RADIUS = 400;
 export const SIM_DURATION_SEC = 1200;
 export const SIM_STEP_SEC = 20;
 export const MAX_STEERING_EXTRA_RINGS = 3;
-export const RECENT_HO_LINGER_SEC = 2;
+export const RECENT_HO_LINGER_SEC = 5;
+export const INTRA_HANDOVER_ARROW_SEC = 2.4;
 
 export interface RuntimeRecentHoState {
   sourceSatId: string;
@@ -60,6 +62,7 @@ export interface RuntimeRecentHoState {
 export interface RuntimeFrameStepState {
   simTimeSec: number;
   recentHo: RuntimeRecentHoState | null;
+  intraHandoverEvent: IntraHandoverEvent | null;
   beamPowerControlRuntime: BeamPowerControlRuntime;
 }
 
@@ -175,6 +178,7 @@ export function createRuntimeFrameStepState(simTimeSec: number): RuntimeFrameSte
   return {
     simTimeSec,
     recentHo: null,
+    intraHandoverEvent: null,
     beamPowerControlRuntime: createEmptyBeamPowerControlRuntime(),
   };
 }
@@ -494,7 +498,12 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   if (didLoopWrap) {
     hoManager.reset();
     state.recentHo = null;
+    state.intraHandoverEvent = null;
     state.beamPowerControlRuntime = createEmptyBeamPowerControlRuntime();
+  }
+
+  if (state.intraHandoverEvent && state.simTimeSec >= state.intraHandoverEvent.expiresAtSec) {
+    state.intraHandoverEvent = null;
   }
 
   const visibleSats = interpolateVisibleSats(trajectoryCache, state.simTimeSec, replay.loop);
@@ -579,6 +588,21 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     };
   }
 
+  if (
+    decision.action === 'intra-switch'
+    && decision.target
+    && lastEvent?.action === 'intra-switch'
+    && lastEvent.fromBeamId !== null
+  ) {
+    state.intraHandoverEvent = {
+      satId: decision.target.satId,
+      fromBeamId: lastEvent.fromBeamId,
+      toBeamId: decision.target.beamId,
+      triggeredAtSec: state.simTimeSec,
+      expiresAtSec: state.simTimeSec + INTRA_HANDOVER_ARROW_SEC,
+    };
+  }
+
   const recentHoSourceSatId =
     state.recentHo && state.recentHo.expiresAtSec > state.simTimeSec
       ? state.recentHo.sourceSatId
@@ -658,6 +682,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
       simTimeSec: state.simTimeSec,
       recentHoSourceSatId,
       recentHoTargetSatId,
+      intraHandoverEvent: state.intraHandoverEvent,
     },
   };
 }
