@@ -1,365 +1,212 @@
 # MODQN Baseline Phase 7B Replay Live Adapter Contract
 
-**Date:** 2026-05-12
-**Status:** `CONTRACT_COMPLETE_PHASE7C_READY_WITH_FAIL_CLOSED_ARTIFACT_GATE`
-**Target repo:** `/home/u24/papers/project/leo-beam-sim`
-**Scope:** docs-only replay/live-adapter contract
+## 1. Status, Date, And Scope
 
-Phase 7B defines how `leo-beam-sim` may later host baseline MODQN replay and
-live-adapter surfaces without confusing them with current HOBS/SINR live
-runtime output. It does not implement replay playback, runtime behavior, UI
-mode switches, validators, package scripts, profile changes, source wiring,
-artifact copies, producer exports, or vendored donor changes.
+**Date:** 2026-05-14
+**Status:** docs-only replay/live-adapter contract
+**Scope:** Phase 7B contract boundary for future replay/live composition in
+`leo-beam-sim`.
 
-The first safe implementation path remains replay-first and bounded to the
-accepted regenerated 7-beam producer bundle recorded in Phase 1 and Phase 7A.
-HOBS/SINR live output remains a separate live simulator path and is not MODQN
-replay evidence.
+This document contains no runtime implementation, no runtime adoption, no
+package/script changes, no fixtures, no source edits, and no source-channel
+runtime adoption. It does not mutate, reinterpret, repair, or normalize MODQN
+artifact truth. It records how later Phase 7 implementation phases must keep
+MODQN replay evidence separate from live HOBS/SINR runtime behavior.
 
-## 1. Mode Labels And Claim Boundaries
+The only accepted baseline MODQN evidence path remains the regenerated
+`7`-beam producer artifact lineage. `19` and `37` remain sensitivity/demo only
+and must not be described as trained baseline MODQN evidence.
 
-Every future state model, adapter, UI panel, log, screenshot, and validator
-report must carry one explicit runtime/display mode. A frame must not be
-MODQN replay evidence when it is HOBS/SINR live output; the modes remain
-distinct.
+## 2. Purpose
 
-| Mode key | Required user-facing label | Primary input | Allowed claim | Forbidden claim |
-| --- | --- | --- | --- | --- |
-| `modqn-replay-7beam` | `MODQN replay - 7-beam producer artifact` | Selected `phase-03a-replay-bundle-v1` producer bundle. | Evidence-capable replay of the selected regenerated 7-beam baseline artifact, subject to the artifact's disclosed limits. | No live SINR, HOBS policy, retraining, full paper-faithful reproduction, EE/HEA/Catfish-family, 19/37 trained-baseline, or inter-satellite handover claim unless source evidence supplies it. |
-| `hobs-sinr-live` | `HOBS/SINR live` | Current Leo live runtime frame step, HOBS/SINR signal path, HandoverManager events, and HOBS profiles. | Live simulator behavior and current Phase 6P-style KPI evidence for the selected profile and tuning state. | No MODQN replay, MODQN action, MODQN reward, trained policy, or producer replay evidence claim. |
-| `sensitivity-demo` | `Sensitivity/demo` | Future explicit adapter output, vendored modules, or fixture-only data. | Demo or sensitivity behavior with its source, policy rule, and validation scope disclosed. | No trained baseline claim for `19` or `37`; no producer replay identity derivation unless future producer evidence exists. |
+Phase 7B reopens the safe Phase 7 replay mainline after Phase 6 source-channel
+adoption deferment. The safe path is replay-first: consume producer-owned
+MODQN replay truth immutably, render it in Leo, and keep live runtime controls
+and live diagnostics outside the replay truth boundary.
 
-Mode labels are part of the data contract, not only UI copy. They must survive
-serialization into diagnostics and test fixtures so screenshots cannot be used
-out of context.
+This contract does not claim that source-channel live is adopted. Source-channel
+live remains deferred/not adopted until a separate provenance and product
+decision explicitly authorizes it.
 
-## 2. Selected Replay Bundle Contract
+## 3. Ownership
 
-The selected 7-beam replay bundle path is:
-
-`/home/u24/papers/modqn-paper-reproduction/artifacts/phase-1c-regenerated-7beam-baseline-2026-05-11/phase-03a-replay-bundle-v1`
-
-This path is an external immutable producer input, not a file to copy or edit
-inside `leo-beam-sim` during Phase 7B. A later adapter may accept a configured
-path override for tests, but any non-selected path must be labeled explicitly as
-fixture-only or non-evidence unless `modqn-paper-reproduction` promotes it.
-
-Required bundle surfaces:
-
-| Surface | Contract |
-| --- | --- |
-| `manifest.json` | Declares `paperId`, `bundleSchemaVersion`, `replayTruthMode`, `timelineFormatVersion`, coordinate frame, replay summary, beam catalog order, optional diagnostics disclosure, claim boundary, and evidence status. |
-| `provenance-map.json` | Declares field-level provenance and classification. Consumers must preserve the difference between artifact-derived truth and visualization-only convenience fields. |
-| `timeline/step-trace.jsonl` | Canonical ordered slot-row source. Replay truth comes from these rows, not from live runtime recomputation. |
-| `evaluation/summary.json` | Optional summary surface for producer-owned evaluation metadata. Missing optional summaries must remain absence-honest. |
-| `config-resolved.json`, `assumptions.json`, training summaries | Provenance support surfaces. A replay adapter may read them for diagnostics, but display needs must not mutate timeline truth. |
-
-Current workspace availability note: docs in this repo select the path above,
-but Phase 7B inspection of the producer checkout found that the directory is
-not currently present under `modqn-paper-reproduction/artifacts/`. A Phase 7C
-implementation must fail closed when the selected evidence path is missing,
-or must use an explicitly labeled fixture/non-evidence path.
-
-## 3. Timeline Row Inputs
-
-For `modqn-replay-7beam`, a replay state model consumes producer timeline rows
-with these logical fields. All fields are producer truth unless the bundle's
-provenance map classifies them otherwise.
-
-| Row field | Required handling |
-| --- | --- |
-| `slotIndex` | Source slot index. Current bundle semantics use first exported index `1`; slot `0` is reset state and has no exported row. |
-| `timeSec` | Post-step replay time for the row. The renderer may interpolate motion between times, but may not invent intermediate decisions, rewards, or events. |
-| `decisionTimeSec` | Decision-time timestamp for the selected action. If absent in a future source, the adapter must disclose absence rather than infer policy timing. |
-| `userId`, `userIndex` | Producer user identity. Deterministic display key is `userId|userIndex`. |
-| `userPosition`, `decisionUserPosition` | Source-owned user geometry in the declared coordinate frame. Display transforms may project it visually but must not rewrite it. |
-| `previousServing`, `selectedServing` | Producer serving references before and after the decision. These are the MODQN action and event basis. |
-| `handoverEvent` | Producer event object. Supported Phase 7B kinds are `none`, `intra-satellite-beam-switch`, and `inter-satellite-handover`. |
-| `beamCatalogOrder` | Must remain `satellite-major-beam-minor` for the selected bundle. Candidate order and action indexes follow this order. |
-| `visibilityMask`, `actionValidityMask` | Post-step masks. The adapter must preserve length, index alignment, and false entries. |
-| `decisionVisibilityMask`, `decisionActionValidityMask` | Decision-time masks. The adapter must preserve them separately from post-step masks. |
-| `beamLoads`, `beamThroughputs` | Producer load and throughput arrays aligned to beam indexes. They may feed diagnostics and overlays, not HOBS reward math. |
-| `rewardVector`, `scalarReward` | Producer reward fields. Current producer rows use keys such as `r1Throughput`, `r2Handover`, and `r3LoadBalance`; consumers must preserve keys and values. |
-| `satelliteStates` | Source satellite geometry and IDs for the row. |
-| `beamStates` | Source beam geometry, IDs, local/global indexes, and center positions for the row. |
-| `kpiOverlay` | Producer overlay metrics such as user throughput, selected beam load, selected beam throughput, and handover-occurrence flag. |
-| `policyDiagnostics` | Optional producer-owned diagnostics. Missing diagnostics must remain missing; Leo must not invent Q-values or candidate scores. |
-
-The selected artifact is documented as `1000` timeline rows over `10` slots and
-`100` users, with `4` satellites, `7` beams per satellite, and `28` total
-beams. Phase 7C must validate these values against the selected artifact before
-treating output as evidence-capable.
-
-## 4. Identity Mapping Contract
-
-Replay identity remains producer-canonical. Core and Leo identities are
-derived bridge fields, not replacements.
-
-| Identity family | Field/rule |
-| --- | --- |
-| Producer satellite | `sat-<satIndex>`, for example `sat-0`. |
-| Producer beam | `sat-<satIndex>-beam-<localBeamIndex>`, for example `sat-0-beam-4`. |
-| Producer global beam index | 0-based satellite-major / beam-minor index: `satIndex * beamCountPerSatellite + localBeamIndex`. |
-| Producer local beam index | 0-based beam index inside one satellite. |
-| Selected action index | `selectedServing.beamIndex`; masks and candidate arrays are indexed by this value. |
-| Core layout satellite | `coreLayoutSatId`; defaults to producer satellite ID for replay-derived 7-beam mapping unless an explicit bridge table is supplied. |
-| Core beam | `${coreLayoutSatId}-b${producerLocalBeamIndex}`. |
-| Leo scene satellite | `leoSceneSatId`; may differ only through an explicit deterministic bridge. |
-| Leo display beam IDs | `leoLocalBeamNumericId = producerLocalBeamIndex + 1`; `leoGlobalBeamNumericId = producerBeamIndex + 1`. These are display helpers only. |
-| User | `user-<userIndex>` plus deterministic key `userId|userIndex`. |
-
-For replay-derived producer identity, Phase 7B authorizes derivation only for
-the accepted `7`-beam path. `19` and `37` may use runtime/core identity in a
-future live or sensitivity mode, but they must not synthesize `producer*`
-replay identity from the 7-beam bundle.
-
-## 5. Reward And Diagnostics Contract
-
-MODQN reward and diagnostics surfaces remain producer-owned.
-
-Required preservation rules:
-
-1. Preserve `rewardVector` keys and numeric values exactly as read.
-2. Preserve `scalarReward` exactly as read.
-3. Preserve `manifest.replaySummary.rewardWeights` and
-   `policyDiagnostics.objectiveWeights` when present.
-4. Preserve `policyDiagnostics.selectedScalarizedQ`,
-   `runnerUpScalarizedQ`, `scalarizedMarginToRunnerUp`,
-   `availableActionCount`, and `topCandidates` when present.
-5. Preserve candidate diagnostics fields: candidate `beamId`, `beamIndex`,
-   `satId`, `satIndex`, `localBeamIndex`, `validUnderDecisionMask`,
-   `objectiveQ`, and `scalarizedQ`.
-6. Keep optional diagnostics absence-honest. If a row has no diagnostics, the
-   adapter may emit `diagnosticsStatus: missing-from-producer`, but must not
-   compute replacement Q-values.
-7. Do not map HOBS/SINR handover penalties, SINR thresholds, DPC power changes,
-   or live KPI counters into MODQN reward fields.
-
-Diagnostics may add adapter-owned metadata such as parse status, bridge status,
-row count, and claim-boundary checks, but those metadata must be separated from
-producer-owned policy diagnostics.
-
-## 6. Handover Event Semantics
-
-For MODQN replay, handover classification is determined by producer
-`previousServing`, producer `selectedServing`, and producer `handoverEvent`.
-
-| Case | Replay semantic | Required handling |
+| Owner | Owns | Does not own here |
 | --- | --- | --- |
-| Same satellite and same beam, `handoverEvent.kind === 'none'` | No event. | Display as continuation/stay. Do not count as a handover penalty. |
-| Same satellite and different beam | Intra-satellite beam handover. | Require `handoverEvent.kind === 'intra-satellite-beam-switch'` for evidence-capable replay rows. Map to Leo semantic `intra-satellite-beam-handover` only after validation. |
-| Different satellite | Inter-satellite handover. | Require `handoverEvent.kind === 'inter-satellite-handover'` for evidence-capable replay rows. |
-| First visible serving state in a replay window | Initial attach / window entry. | Do not treat as a penalized inter-satellite handover unless the producer explicitly emits and documents that event. |
-| Event kind contradicts from/to IDs | Invalid replay row. | Phase 7C/7D must fail validation instead of silently repairing the event. |
+| `modqn-paper-reproduction` | MODQN artifact truth, actions, rewards, event kinds, masks, diagnostics, provenance, producer satellite/beam IDs, claim boundary, and promoted evidence status. | Leo display/runtime composition or HOBS/SINR live behavior. |
+| `ntn-sim-core` | Validated contracts, core truth, visual-showcase validation, and vendored-core source of truth when live simulation needs academic rigor. | Final Leo visual shell or producer MODQN artifact claims. |
+| `leo-beam-sim` | Final display/runtime composition, camera, materials, labels, panels, replay controls, live controls, and demo packaging. | MODQN training, producer truth mutation, independent SINR/handover truth rewrites, or unsupported evidence promotion. |
 
-Event records exposed by a future adapter should carry:
+Renderer convenience is display-only. It must never change actions, rewards,
+event kinds, SINR/SNR, geometry truth, provenance, masks, diagnostics,
+deterministic IDs, or evidence labels.
 
-1. source `eventId` and `kind`;
-2. source `slotIndex`, `timeSec`, and `decisionTimeSec`;
-3. from/to producer satellite and beam IDs;
-4. from/to local and global beam indexes;
-5. semantic classification;
-6. source signal or delta fields only when the producer artifact supplies them;
-7. adapter validation status.
+## 4. Replay Immutable Input Rules
 
-The current selected artifact is documented as demonstrating
-`intra-satellite-beam-switch` and `none` rows only. It must not be used to
-promise observed inter-satellite handover until a future promoted artifact or
-source supplies such rows.
+Replay inputs are immutable producer artifacts. A Phase 7 replay adapter must
+preserve, pass through, or fail closed for all producer-owned truth fields.
 
-## 7. Replay Events Versus HOBS/SINR Live Events
+Forbidden replay mutations:
 
-Replay events and live events have different sources and meanings.
+1. Do not rewrite MODQN actions or selected serving references.
+2. Do not rewrite scalar rewards, reward vectors, objective weights, or
+   candidate diagnostics.
+3. Do not rewrite event kinds, event counts, event timing, or event
+   from/to identities.
+4. Do not rewrite SINR/SNR, signal fields, beam load, throughput, or KPI
+   overlay values.
+5. Do not rewrite satellite, UE, beam, footprint, coordinate-frame, or geometry
+   truth.
+6. Do not rewrite provenance, evidence status, claim boundary, source-gap
+   fields, masks, diagnostics, deterministic path IDs, slot indexes, or sample
+   indexes.
+7. Do not infer missing producer truth from Leo labels, colors, colocated
+   display cues, screenshots, traffic hex paint, or live HOBS/SINR output.
 
-| Surface | Event source | Policy meaning | Evidence status |
-| --- | --- | --- | --- |
-| MODQN replay | Producer `timeline/step-trace.jsonl` rows. | Selected checkpoint greedy replay action over the producer candidate catalog and masks. | Evidence-capable only for the selected 7-beam bundle after validation. |
-| HOBS/SINR live | Leo runtime HandoverManager over current SINR samples and HOBS policy settings. | Runtime threshold/offset handover behavior. | Live simulator evidence only; not MODQN replay evidence. |
-| Sensitivity/demo | Future explicitly labeled adapter or vendored module output. | Depends on the disclosed source and rule. | Demo/sensitivity only unless promoted by producer evidence. |
+If required producer truth is absent or contradictory, the adapter must report
+the missing or invalid state and fail closed for evidence-capable replay.
 
-The HOBS/SINR manager may log initial attach using an inter-handover-shaped raw
-event. Phase 6P already separates raw inter-handover count from
-inter-handover excluding initial attach. A MODQN replay adapter must preserve
-the same distinction and must not import HOBS initial-attach accounting into
-MODQN rewards or event claims.
+## 5. Replay And Live Separation
 
-## 8. Replay Time And Slot Stepping
+Replay and live runtime surfaces must remain separate even when they share the
+same screen.
 
-The replay state model should group timeline rows by `slotIndex`, then expose a
-deterministic sequence of replay frames ordered by `slotIndex` and `timeSec`.
+1. Right-side replay controls affect replay display state only: pause, play,
+   scrub, speed, loop, selected sample, selected user, selected replay event,
+   and replay diagnostics presentation.
+2. Left-side HOBS/SINR controls affect live runtime only: signal tuning,
+   handover thresholds, offset controls, profile/runtime settings, and live KPI
+   behavior.
+3. Replay scrub must not alter live handover state, live signal history,
+   HOBS/SINR counters, or live runtime reset state.
+4. Live tuning must not alter replay artifact fields, replay masks, MODQN
+   rewards, replay event classification, replay geometry, replay IDs, or
+   replay provenance.
+5. Shared visual components must carry explicit source tags so MODQN replay,
+   HOBS/SINR live, and future deferred source-channel live cannot be merged by
+   presentation convenience.
 
-Required stepping rules:
+HOBS/SINR live output is not MODQN replay evidence. MODQN replay evidence is
+not a live HOBS/SINR runtime trace.
 
-1. Slot stepping uses producer `slotIndex` and `timeSec`.
-2. Within each slot, rows remain keyed by producer `userId` / `userIndex`.
-3. The selected action for a row is `selectedServing.beamIndex`.
-4. Playback speed, pause, scrub, and loop controls are display controls only.
-5. Interpolation may smooth geometry between source samples, but the active
-   serving choice, masks, rewards, diagnostics, and handover event state may
-   change only on source rows.
-6. Looping from the final slot to the first slot must reset transient display
-   latches and must not create an extra handover event.
-7. A replay adapter must expose whether it is showing a source row, an
-   interpolated display pose, or an out-of-window placeholder.
+## 6. Event Semantics
 
-If a future visual-showcase artifact adds `timebase.sourceSlotIndexBySample`,
-the replay state model should preserve that map and treat it as the canonical
-sample-to-slot bridge for the artifact path. It must not derive new source slot
-indexes from display frame rate.
+Supported Phase 7B MODQN replay event kinds are:
 
-## 9. Traffic Hex Grid Role
+1. `none`
+2. `intra-satellite-beam-switch`
+3. `inter-satellite-handover`
 
-The traffic hex grid is an overlay surface only for this Phase 7B contract.
+Producer `previousServing`, producer `selectedServing`, and producer
+`handoverEvent.kind` are authoritative. The replay adapter may map these into
+Leo display labels only after validation, and the mapped label must keep the
+producer event kind available for diagnostics.
+
+Initial attach or first visible serving state in a replay window must not be
+counted as a MODQN penalized inter-satellite handover unless producer evidence
+explicitly emits and documents that event as a penalized
+`inter-satellite-handover`.
+
+If from/to satellite or beam IDs contradict the producer event kind, the row is
+invalid for evidence-capable replay. Later validators must fail rather than
+repairing the row with local policy rules.
+
+## 7. ID Families
+
+Future adapters must keep identity families explicit instead of collapsing them
+into one display ID.
+
+| ID family | Meaning |
+| --- | --- |
+| Producer satellite/beam IDs | Source-owned IDs emitted by `modqn-paper-reproduction`. |
+| Producer local/global beam index | Source-owned candidate/action indexes, including satellite-major/global ordering and local beam index inside a satellite. |
+| Core layout beam IDs / reuse groups | `ntn-sim-core` layout IDs and FRF/reuse metadata when a validated core module or artifact supplies them. |
+| Leo numeric display IDs | Human-readable display helpers, such as 1-based local or global beam numbers. They are labels only. |
+| Scene/runtime satellite IDs | Leo runtime scene object IDs used by live simulation and rendering. |
+
+An explicit bridge may relate these families, but the bridge does not change
+the underlying source. A colocated display cue is not geometry truth. Visual
+overlap, identical screen position, matching label color, or camera framing
+must not be used to prove producer geometry, replay identity, or event truth.
+
+For Phase 7 replay, `7`-beam producer replay identity is the only baseline
+MODQN evidence identity path. `19` and `37` identities remain sensitivity/demo
+only unless a future producer artifact promotes them with provenance and a new
+validation report.
+
+## 8. Mode Labels
+
+Every frame, adapter envelope, diagnostic report, UI label, and screenshot must
+carry one explicit mode label.
+
+| Mode | Required label | Boundary |
+| --- | --- | --- |
+| MODQN replay | `MODQN replay` | Producer artifact truth only; `7`-beam baseline evidence path only unless future producer evidence expands it. |
+| HOBS/SINR live | `HOBS/SINR live` | Leo live runtime behavior and live KPI surface only; not MODQN replay evidence. |
+| Source-channel live | `source-channel live deferred/not adopted` | Not adopted in Phase 7B. No source-channel runtime adoption or source-channel product claim is made. |
+
+This contract also makes no EE-MODQN, HEA-MODQN, Catfish, Catfish-over-HEA, or
+Multi-Catfish effectiveness claim. Those topics remain outside this replay/live
+adapter boundary unless the owning evidence repo later promotes them.
+
+## 9. Traffic Hex-Grid Boundary
+
+The traffic hex grid is a demand/coverage overlay only.
 
 Allowed uses:
 
-1. Visualize producer or vendored traffic demand.
-2. Visualize queue pressure, load, or coverage overlays.
-3. Aggregate display color from source-owned `beamLoads`, queue fields, or
-   future traffic-module output.
-4. Help explain where demand is located relative to beams.
+1. Display producer-owned or validated live-module demand/coverage overlays.
+2. Visualize queue pressure, load, coverage, or traffic density when the source
+   is disclosed.
+3. Help explain spatial context beside beams and users.
 
 Forbidden uses:
 
-1. Do not treat hex cells as the primary MODQN handover action space.
-2. Do not replace the satellite plus beam action catalog with cells.
-3. Do not claim earth-fixed-cell truth from current visual hex paint.
-4. Do not infer traffic demand, queue length, user association, handover
-   events, rewards, or provenance from cell color.
+1. Do not treat traffic hex cells as the MODQN action space.
+2. Do not replace producer satellite/beam actions with hex-cell actions.
+3. Do not infer MODQN actions, rewards, handover events, masks, geometry truth,
+   SINR/SNR, queue truth, or provenance from hex color.
+4. Do not claim earth-fixed-cell truth from display-only hex paint.
 
-If future MODQN inputs include demand or queue state, the source must be a
-producer artifact or a validated vendored `ntn-sim-core` traffic module. The
-Leo hex grid may display that truth, but must not author it.
+## 10. Validation Plan
 
-## 10. Beam Count Behavior
+Required pre-stage checks for this docs-only Phase 7B contract:
 
-Beam count is a claim boundary, not a visual density setting.
+1. `git status -sb`
+2. `git diff --check`
+3. `git diff --no-index --check -- /dev/null docs/modqn-baseline-phase7b-replay-live-adapter-contract.md`
+4. `rg -n "runtime implementation|runtime adoption|not adopted|MODQN replay evidence|19|37|trained baseline|HOBS/SINR|source-channel|inter-satellite|EE-MODQN|HEA-MODQN|Catfish" docs/modqn-baseline-phase7b-replay-live-adapter-contract.md`
 
-| Beam count | Phase 7B behavior |
-| ---: | --- |
-| `7` | Evidence-capable replay path only for the selected producer-owned regenerated baseline bundle, after path and row validation. Producer replay identity may be derived for this path. |
-| `19` | Sensitivity/demo only. No trained-baseline claim. No producer replay identity derivation. Any policy behavior must be labeled as adapter, heuristic, source-backed live, or fixture-only according to its real source. |
-| `37` | Sensitivity/demo only. No trained-baseline claim. No producer replay identity derivation. Same limits as `19`. |
+Required repo validation after the docs change:
 
-The current replay action catalog for the selected artifact is `4` satellites x
-`7` beams = `28` action positions. A future live `19` or `37` mode may have a
-larger runtime/core candidate catalog, but it must not project those additional
-beams back into the selected producer replay bundle.
+1. `npm run validate:modqn:phase7c-replay-state-model`
+2. `npm run validate:modqn:phase7d-replay-diagnostics`
+3. `npm run validate:modqn:phase7k-replay-scene-layer`
+4. `npm run lint`
 
-No trained-baseline claim for `19` or `37` is allowed unless
-`modqn-paper-reproduction` later produces and promotes matching evidence. If
-that happens, a future phase must add a new artifact path, new claim boundary,
-new identity-derivation rule, and new validation report before UI promotion.
+Required staged checks:
 
-## 11. Adapter Envelope
+1. `git diff --cached --name-status`
+2. `git diff --cached --check`
+3. `git diff --cached --stat`
 
-Future replay and live adapters should produce a common envelope with explicit
-source separation:
+Claim-boundary review must confirm:
 
-| Envelope field | Required value |
-| --- | --- |
-| `modeKey` | One of the approved mode keys or a future documented extension. |
-| `modeLabel` | Required display label from Section 1. |
-| `evidenceStatus` | `accepted-7beam-baseline`, `live-hobs-sinr-not-replay`, `sensitivity-demo`, `fixture-only`, or a future documented value. |
-| `sourcePath` | Producer bundle path, live profile ID, or fixture path. |
-| `sourceOwner` | `modqn-paper-reproduction`, `leo-beam-sim`, `ntn-sim-core`, or explicitly documented source. |
-| `claimBoundary` | Allowed and forbidden claims for the frame/model. |
-| `time` | Source slot/time fields for replay, or live simulation time for HOBS/SINR. |
-| `identityMap` | Producer/core/Leo identity fields where applicable. |
-| `events` | Replay events or live events, never merged without source tags. |
-| `diagnostics` | Producer diagnostics and adapter diagnostics in separate namespaces. |
+1. No runtime implementation is claimed complete.
+2. No runtime adoption is claimed.
+3. Source-channel live remains deferred/not adopted.
+4. No MODQN artifact truth is mutated or reinterpreted.
+5. `7` remains the only baseline MODQN evidence path.
+6. `19` and `37` remain sensitivity/demo only.
+7. HOBS/SINR live is not labeled MODQN replay evidence.
 
-Shared display components may consume the envelope, but they must preserve the
-mode label and source tags. If a component cannot display the active mode
-without ambiguity, it is not ready for Phase 7E UI promotion.
+## 11. Next Phase Recommendation
 
-## 12. Next Implementation Slices
+Phase 7C, Phase 7D, and later Phase 7 implementation or validator phases may
+proceed only after this contract. They should implement and validate the replay
+state model, replay diagnostics, scene-layer separation, UI labeling, and
+browser evidence in bounded slices.
 
-### Phase 7C - Replay State Model / Non-UI Adapter
-
-Recommended scope if this contract is accepted:
-
-1. Add a non-UI replay state model that loads a configured bundle path and
-   fails closed when the selected evidence path is missing.
-2. Group `timeline/step-trace.jsonl` rows by `slotIndex`.
-3. Build producer/core/Leo identity bridge records for the accepted `7`-beam
-   path only.
-4. Validate candidate ordering, masks, reward fields, diagnostics pass-through,
-   event semantics, row counts, and beam-count claim labels.
-5. Emit a serializable adapter envelope with `modeKey:
-   modqn-replay-7beam`.
-6. Avoid React, Three.js, UI controls, browser smoke, source-channel adoption,
-   HOBS policy rewrites, artifact copies, and producer changes.
-
-If the selected producer artifact is unavailable, Phase 7C may use the producer
-sample fixture only for fixture-only parser tests, with `evidenceStatus:
-fixture-only`.
-
-### Phase 7D - Replay Diagnostics Validator
-
-Recommended scope:
-
-1. Add a focused validator for the Phase 7C replay state model.
-2. Check path availability or fixture-only status.
-3. Check immutable field preservation for IDs, masks, rewards, diagnostics,
-   events, slot indexes, and provenance.
-4. Check unsupported `19`/`37` trained-baseline claim wording.
-5. Check HOBS/SINR-as-MODQN-replay-evidence wording.
-6. Check no HOBS live event stream is merged into replay event evidence.
-
-### Phase 7E - UI Mode Labeling
-
-Recommended scope only after Phase 7C and Phase 7D pass:
-
-1. Add visible mode labels for `MODQN replay - 7-beam producer artifact` and
-   `HOBS/SINR live`.
-2. Keep replay and live controls separate unless a validated envelope switch
-   proves reset/invalidation behavior.
-3. Show 7-beam evidence status and 19/37 sensitivity/demo status clearly.
-4. Add browser validation only after UI labels and adapter validation exist.
-
-Phase 7E must not promote UI labels before the non-UI adapter and diagnostics
-validator prove the data boundaries.
-
-## 13. Validation Plan
-
-Required validation for this docs-only Phase 7B slice:
-
-1. `git diff --check`
-2. `git diff --no-index --check -- /dev/null docs/modqn-baseline-phase7b-replay-live-adapter-contract.md`
-3. unsupported `19` / `37` trained-baseline claim scan
-4. HOBS/SINR-as-MODQN-replay-evidence claim scan
-5. confirm no source, runtime, package, profile, replay artifact, producer
-   artifact, validator, or vendored donor file was changed by Phase 7B
-
-Browser smoke, lint, package validation, replay artifact validation, producer
-validation, and `ntn-sim-core` validation are intentionally out of scope
-because Phase 7B is docs-only and introduces no runnable behavior.
-
-## 14. Validation Results
-
-Validation results after creating this document:
-
-| Check | Result |
-| --- | --- |
-| `git diff --check` | Passed with no output. |
-| `git diff --no-index --check -- /dev/null docs/modqn-baseline-phase7b-replay-live-adapter-contract.md` | No whitespace findings. The command exits nonzero because `/dev/null` and the new file differ. |
-| Unsupported `19` / `37` trained-baseline claim scan | Passed by inspection. Hits are negative boundary statements or stop/validation language only. |
-| HOBS/SINR-as-MODQN-replay-evidence claim scan | Passed by inspection. Hits are negative boundary statements only. |
-| Changed-file confirmation | Phase 7B added only `docs/modqn-baseline-phase7b-replay-live-adapter-contract.md`. The broader worktree already contained modified and untracked source, package, script, and doc files before Phase 7B. |
-
-## 15. Deviations And Blockers
-
-Deviations:
-
-1. None from the docs-only implementation scope.
-
-Blockers for later phases:
-
-1. Phase 7C evidence-capable adapter work is blocked until the selected
-   producer bundle path exists again or the implementation is explicitly
-   fixture-only.
-2. UI mode promotion is blocked until Phase 7C and Phase 7D validate the replay
-   envelope and diagnostics boundaries.
-3. `19` and `37` remain sensitivity/demo only until future producer evidence
-   exists and a new contract phase promotes it.
+Later phases must remain implementation/validator phases. They must not adopt
+source-channel live behavior unless a separate provenance and product decision
+opens that path, defines its mode label, identifies owning truth, captures
+baseline validation, and updates the claim boundary before runtime wiring.
