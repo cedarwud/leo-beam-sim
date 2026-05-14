@@ -5,6 +5,23 @@
 **Target repo:** `/home/u24/papers/project/leo-beam-sim`
 **Scope:** docs-only evidence-input invalidation checkpoint
 
+## Current Supersession Note
+
+This checkpoint is a historical record of the 2026-05-12 upstream deletion
+state. It is no longer the current blocker state for Phase 7 replay work.
+
+As of the later Phase 7C / Phase 7C-R1 validation path, the selected producer
+bundle path is present again and the evidence-capable replay state validator
+passes against the restored / re-promoted `7`-beam producer input. Use
+`docs/modqn-baseline-phase7c-replay-state-model.md` and
+`docs/modqn-baseline-phase7b-replay-live-adapter-contract.md` for the current
+replay-state and replay/live-adapter contract status.
+
+The fail-closed rules below remain valid if the selected producer path or any
+required surface disappears again. Do not use this historical invalidation note
+to claim that Phase 7C is currently blocked while the Phase 7C validator is
+passing against the selected producer input.
+
 Phase 7A-R1 records that the previously accepted regenerated 7-beam baseline
 MODQN replay bundle is no longer available in the upstream producer checkout.
 This checkpoint does not edit source code, validators, package scripts,

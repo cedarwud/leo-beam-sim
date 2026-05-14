@@ -5,6 +5,19 @@
 **Target repo:** `/home/u24/papers/project/leo-beam-sim`
 **Scope:** docs-and-verification-only PR-readiness checkpoint for the completed Phase 7 MODQN replay evidence demo
 
+## Current Supersession Note
+
+This document is a historical PR-readiness checkpoint from the dirty-worktree
+staging period. It should not be read as the current git status or current PR
+procedure after the later selective commits and pushes.
+
+Current Phase 7 replay-contract status is governed by
+`docs/modqn-baseline-phase7b-replay-live-adapter-contract.md` and
+`docs/modqn-baseline-phase7c-replay-state-model.md`. In particular, later
+Phase 7C-R1 work hardened the replay state contract with named producer-truth
+projections and validator guards. The dirty-file inventory in this Phase 7J
+checkpoint remains useful for historical staging review only.
+
 Phase 7J records PR-readiness for the Phase 7 MODQN replay evidence demo. It
 does not add product behavior, runtime simulation behavior, UI behavior,
 producer artifact changes, vendored source changes, profile changes, package

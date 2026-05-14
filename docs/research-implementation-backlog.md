@@ -11,6 +11,25 @@
   - acceptance criteria
 - Keep the first working simulator grounded in deterministic, explainable baselines before adding AI policies.
 
+## Current Track Note
+
+This backlog is a long-range research-simulator roadmap. It does not supersede
+the current MODQN showcase integration track or authorize immediate runtime
+adoption of deferred modules.
+
+As of 2026-05-14, the active MODQN track in `leo-beam-sim` is replay-first:
+Phase 7B defines the replay/live-adapter contract, Phase 7C / 7C-R1 preserves
+producer truth in the replay state model, and Phase 7K / 7K-R1 guards frontend
+replay/live control-plane separation. The Phase 6 source-channel adoption path
+remains deferred / not adopted after the Phase 6T / 6U / 6V blocker evidence
+and Phase 6W / 6X decision docs.
+
+Do not read the generic Phase 6 AI-policy and Phase 7 TLE numbering below as
+the next MODQN replay work order. Future runtime work must still preserve the
+`7`-beam baseline evidence boundary, keep `19` and `37` as sensitivity/demo
+only unless separately promoted by producer evidence, and keep live signal
+runtime output out of the producer replay-proof surface.
+
 ## Current Codebase Snapshot
 
 | Area | Current files | Current status | Main gap vs. papers |

@@ -17,6 +17,17 @@ Phase 4A note, 2026-05-12: the runtime-adoption ID bridge, 7 versus 19/37
 boundary, and Phase 4B blocker inventory are recorded in
 `docs/modqn-baseline-phase4a-runtime-adoption-contract.md`.
 
+Current direction note, 2026-05-14: this Mini-SDD remains useful historical
+boundary context, but it is not the current next-step authorization for
+source-channel live adoption or 7/19/37 runtime controls. Later Phase 6 blocker
+validators and decision-gate docs keep source-channel runtime adoption
+deferred / not adopted. The active MODQN showcase track is replay-first:
+Phase 7B defines the replay/live-adapter contract, Phase 7C / 7C-R1 hardens
+producer-truth replay state, and Phase 7K / 7K-R1 hardens frontend
+replay/live control-plane separation. Treat any future 19/37 live work as
+sensitivity/demo only until a separate provenance-backed product decision and
+validator chain promote it.
+
 Phase 0 does not implement runtime code, vendor modules, add controls, train
 policies, or run long validation. It records source ownership, claim limits,
 current local boundaries, and the future implementation sequence.
