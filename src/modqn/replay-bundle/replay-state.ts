@@ -120,6 +120,21 @@ export interface ModqnReplayEnvelopeIdentityMap {
   readonly users: readonly ModqnUserIdentity[];
 }
 
+export type ModqnReplayEnvelopeActionTruth =
+  | {
+      readonly kind: 'explicit-source-action';
+      readonly sourceField: 'timeline/step-trace.jsonl.action';
+      readonly displayOnly: false;
+      readonly action: ModqnReplayTimelineRow['action'];
+      readonly selectedServingBeamIndex: number;
+    }
+  | {
+      readonly kind: 'selected-serving-display-identity-alias';
+      readonly sourceField: 'timeline/step-trace.jsonl.selectedServing.beamIndex';
+      readonly displayOnly: true;
+      readonly selectedServingBeamIndex: number;
+    };
+
 export interface ModqnReplayEnvelopeProducerTruth {
   readonly timestamps: {
     readonly slotIndex: number;
@@ -128,8 +143,11 @@ export interface ModqnReplayEnvelopeProducerTruth {
   };
   readonly userId: string;
   readonly userIndex: number;
+  readonly userPosition: ModqnReplayTimelineRow['userPosition'];
+  readonly decisionUserPosition: ModqnReplayTimelineRow['decisionUserPosition'];
   readonly previousServing: ModqnBeamReference;
   readonly selectedServing: ModqnBeamReference;
+  readonly actionTruth: ModqnReplayEnvelopeActionTruth;
   readonly candidateActionOrder: readonly ModqnBeamReference[];
   readonly beamCatalogOrder: typeof MODQN_BEAM_CATALOG_ORDER;
   readonly visibilityMask: readonly boolean[];
@@ -140,6 +158,9 @@ export interface ModqnReplayEnvelopeProducerTruth {
   readonly beamThroughputs: readonly number[];
   readonly rewardVector: ModqnRewardVector;
   readonly scalarReward: number;
+  readonly satelliteStates: ModqnReplayTimelineRow['satelliteStates'];
+  readonly beamStates: ModqnReplayTimelineRow['beamStates'];
+  readonly kpiOverlay: ModqnReplayTimelineRow['kpiOverlay'];
   readonly handoverEvent: ModqnReplayTimelineRow['handoverEvent'];
   readonly policyDiagnostics?: ModqnPolicyDiagnostics;
   readonly sourceRow: ModqnReplayTimelineRow;
@@ -235,6 +256,12 @@ function booleanRecordValue(
 
 function assertArrayLength(value: readonly unknown[], expected: number, label: string): void {
   if (value.length !== expected) fail(label, `${expected} entries`);
+}
+
+function assertProducerOwnedObject(value: unknown, label: string): void {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    fail(label, 'producer-owned object');
+  }
 }
 
 function assertSameJson(a: unknown, b: unknown, label: string): void {
@@ -354,6 +381,9 @@ function validateEvidenceCapableBundleShape(bundle: ModqnReplayBundle): void {
     slots.add(row.slotIndex);
 
     if (row.beamCatalogOrder !== MODQN_BEAM_CATALOG_ORDER) fail(`${label}.beamCatalogOrder`, MODQN_BEAM_CATALOG_ORDER);
+    assertProducerOwnedObject(row.userPosition, `${label}.userPosition`);
+    assertProducerOwnedObject(row.decisionUserPosition, `${label}.decisionUserPosition`);
+    assertProducerOwnedObject(row.kpiOverlay, `${label}.kpiOverlay`);
     assertArrayLength(row.satelliteStates, EXPECTED_SATELLITE_COUNT, `${label}.satelliteStates`);
     assertArrayLength(row.beamStates, MODQN_TOTAL_BASELINE_BEAMS, `${label}.beamStates`);
     assertArrayLength(row.visibilityMask, MODQN_TOTAL_BASELINE_BEAMS, `${label}.visibilityMask`);
@@ -453,6 +483,25 @@ function createIdentityMap(
   };
 }
 
+function createActionTruth(row: ModqnReplayTimelineRow): ModqnReplayEnvelopeActionTruth {
+  if (Object.prototype.hasOwnProperty.call(row, 'action')) {
+    return {
+      kind: 'explicit-source-action',
+      sourceField: 'timeline/step-trace.jsonl.action',
+      displayOnly: false,
+      action: row.action,
+      selectedServingBeamIndex: row.selectedServing.beamIndex,
+    };
+  }
+
+  return {
+    kind: 'selected-serving-display-identity-alias',
+    sourceField: 'timeline/step-trace.jsonl.selectedServing.beamIndex',
+    displayOnly: true,
+    selectedServingBeamIndex: row.selectedServing.beamIndex,
+  };
+}
+
 function createEnvelopeRow(
   row: ModqnReplayTimelineRow,
   sourceRowIndex: number,
@@ -482,8 +531,11 @@ function createEnvelopeRow(
       },
       userId: row.userId,
       userIndex: row.userIndex,
+      userPosition: row.userPosition,
+      decisionUserPosition: row.decisionUserPosition,
       previousServing: row.previousServing,
       selectedServing: row.selectedServing,
+      actionTruth: createActionTruth(row),
       candidateActionOrder: row.beamStates,
       beamCatalogOrder: row.beamCatalogOrder,
       visibilityMask: row.visibilityMask,
@@ -494,6 +546,9 @@ function createEnvelopeRow(
       beamThroughputs: row.beamThroughputs,
       rewardVector: row.rewardVector,
       scalarReward: row.scalarReward,
+      satelliteStates: row.satelliteStates,
+      beamStates: row.beamStates,
+      kpiOverlay: row.kpiOverlay,
       handoverEvent: row.handoverEvent,
       policyDiagnostics: row.policyDiagnostics,
       sourceRow: row,

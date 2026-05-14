@@ -55,6 +55,10 @@ function flattenRows(envelope: ModqnReplayEnvelope) {
   return envelope.replaySlots.flatMap(slot => slot.rows);
 }
 
+function hasExplicitActionField(row: { readonly action?: unknown }): boolean {
+  return Object.prototype.hasOwnProperty.call(row, 'action');
+}
+
 function assertSerializable(envelope: ModqnReplayEnvelope): void {
   const serialized = JSON.stringify(envelope);
   assert.ok(serialized.length > 0, 'envelope did not serialize');
@@ -170,15 +174,40 @@ function assertProducerTruthPreserved(
       timeSec: sourceRow.timeSec,
       decisionTimeSec: sourceRow.decisionTimeSec,
     });
+    assert.deepEqual(envelopeRow.producerTruth.userPosition, sourceRow.userPosition);
+    assert.deepEqual(envelopeRow.producerTruth.decisionUserPosition, sourceRow.decisionUserPosition);
     assert.deepEqual(envelopeRow.producerTruth.previousServing, sourceRow.previousServing);
     assert.deepEqual(envelopeRow.producerTruth.selectedServing, sourceRow.selectedServing);
+    const actionTruth = envelopeRow.producerTruth.actionTruth;
+    assert.equal(actionTruth.selectedServingBeamIndex, sourceRow.selectedServing.beamIndex);
+    if (hasExplicitActionField(sourceRow)) {
+      assert.equal(actionTruth.kind, 'explicit-source-action');
+      if (actionTruth.kind !== 'explicit-source-action') {
+        assert.fail(`row ${rowIndex} explicit source action was not preserved`);
+      }
+      assert.equal(actionTruth.sourceField, 'timeline/step-trace.jsonl.action');
+      assert.equal(actionTruth.displayOnly, false);
+      assert.deepEqual(actionTruth.action, sourceRow.action);
+    } else {
+      assert.equal(actionTruth.kind, 'selected-serving-display-identity-alias');
+      if (actionTruth.kind !== 'selected-serving-display-identity-alias') {
+        assert.fail(`row ${rowIndex} selected-serving alias was not marked display-only`);
+      }
+      assert.equal(actionTruth.sourceField, 'timeline/step-trace.jsonl.selectedServing.beamIndex');
+      assert.equal(actionTruth.displayOnly, true);
+    }
     assert.deepEqual(envelopeRow.producerTruth.candidateActionOrder, sourceRow.beamStates);
     assert.deepEqual(envelopeRow.producerTruth.visibilityMask, sourceRow.visibilityMask);
     assert.deepEqual(envelopeRow.producerTruth.actionValidityMask, sourceRow.actionValidityMask);
     assert.deepEqual(envelopeRow.producerTruth.decisionVisibilityMask, sourceRow.decisionVisibilityMask);
     assert.deepEqual(envelopeRow.producerTruth.decisionActionValidityMask, sourceRow.decisionActionValidityMask);
+    assert.deepEqual(envelopeRow.producerTruth.beamLoads, sourceRow.beamLoads);
+    assert.deepEqual(envelopeRow.producerTruth.beamThroughputs, sourceRow.beamThroughputs);
     assert.deepEqual(envelopeRow.producerTruth.rewardVector, sourceRow.rewardVector);
     assert.equal(envelopeRow.producerTruth.scalarReward, sourceRow.scalarReward);
+    assert.deepEqual(envelopeRow.producerTruth.satelliteStates, sourceRow.satelliteStates);
+    assert.deepEqual(envelopeRow.producerTruth.beamStates, sourceRow.beamStates);
+    assert.deepEqual(envelopeRow.producerTruth.kpiOverlay, sourceRow.kpiOverlay);
     assert.deepEqual(envelopeRow.producerTruth.handoverEvent, sourceRow.handoverEvent);
     assert.deepEqual(envelopeRow.producerTruth.policyDiagnostics, sourceRow.policyDiagnostics);
     assert.deepEqual(envelopeRow.producerTruth.sourceRow, sourceRow);
@@ -256,6 +285,13 @@ function run(): void {
   const loadPlan = createModqnReplayBundleLoadPlan();
   const contents = readBundleContentsFromPlan(loadPlan);
   const envelope = loadModqnReplayEnvelopeFromSurfaceReader(readSurfaceFromDisk);
+  const envelopeRows = flattenRows(envelope);
+  const explicitSourceActionRows = envelopeRows
+    .filter(row => row.producerTruth.actionTruth.kind === 'explicit-source-action')
+    .length;
+  const selectedServingDisplayAliasRows = envelopeRows
+    .filter(row => row.producerTruth.actionTruth.kind === 'selected-serving-display-identity-alias')
+    .length;
 
   assertEnvelopeHeader(envelope);
   assertExpectedShape(envelope);
@@ -280,6 +316,11 @@ function run(): void {
       identityBridgeRecords: envelope.identityMap.beamBridges.length,
       userIdentities: envelope.identityMap.users.length,
       diagnosticsNamespaces: Object.keys(envelope.diagnostics),
+    },
+    actionTruth: {
+      explicitSourceActionRows,
+      selectedServingDisplayAliasRows,
+      selectedActionIdentitySource: 'selectedServing.beamIndex display identity only when sourceRow.action is absent',
     },
     eventCounts: envelope.diagnostics.adapter.eventCounts,
     policyDiagnostics: envelope.diagnostics.producerPolicyDiagnostics,

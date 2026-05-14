@@ -13,6 +13,9 @@ export type ModqnHandoverEventKind =
 
 export type ModqnRewardVector = Readonly<Record<string, number>>;
 export type ModqnProducerOwnedObject = Readonly<Record<string, unknown>>;
+export type ModqnProducerAction = unknown;
+export type ModqnProducerPosition = ModqnProducerOwnedObject;
+export type ModqnKpiOverlay = ModqnProducerOwnedObject;
 
 export interface ModqnBaselineSurface {
   readonly beamCountPerSatellite: number;
@@ -104,6 +107,9 @@ export interface ModqnReplayTimelineRow {
   readonly decisionTimeSec: number;
   readonly userId: string;
   readonly userIndex: number;
+  readonly action?: ModqnProducerAction;
+  readonly userPosition: ModqnProducerPosition;
+  readonly decisionUserPosition: ModqnProducerPosition;
   readonly previousServing: ModqnBeamReference;
   readonly selectedServing: ModqnBeamReference;
   readonly handoverEvent: ModqnHandoverEvent;
@@ -118,6 +124,7 @@ export interface ModqnReplayTimelineRow {
   readonly scalarReward: number;
   readonly satelliteStates: readonly ModqnSatelliteState[];
   readonly beamStates: readonly ModqnBeamState[];
+  readonly kpiOverlay: ModqnKpiOverlay;
   readonly policyDiagnostics?: ModqnPolicyDiagnostics;
   readonly [key: string]: unknown;
 }

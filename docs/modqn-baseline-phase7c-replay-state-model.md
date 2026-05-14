@@ -1,14 +1,19 @@
 # MODQN Baseline Phase 7C Replay State Model
 
-**Date:** 2026-05-12
-**Status:** `NON_UI_REPLAY_STATE_MODEL_IMPLEMENTED`
+**Date:** 2026-05-14
+**Status:** `R1_REPLAY_STATE_CONTRACT_HARDENED`
 **Target repo:** `/home/u24/papers/project/leo-beam-sim`
-**Scope:** non-UI replay state model and focused validator
+**Scope:** non-UI replay state model, producer truth projections, and focused validator
 
 Phase 7C implements the non-UI replay state model for the restored and
 re-promoted `7`-beam producer bundle. It does not add React UI, Three.js scene
 runtime wiring, HOBS/SINR live behavior, profiles, copied artifacts, producer
 artifact edits, vendored donor edits, or Phase 6 source-channel adoption.
+
+Phase 7C-R1 hardens the state model against the Phase 7B immutable
+producer/source-row truth contract. The adapter keeps the full `sourceRow`
+unchanged and exposes named `producerTruth` projections for display consumers
+without rewriting producer values.
 
 ## Selected Producer Input
 
@@ -79,9 +84,13 @@ Evidence-capable output requires all of the following:
 9. `baselineSurface.totalBeamCount === 28`
 10. `claimBoundary.notFullPaperFaithfulReproduction === true`
 11. `claimBoundary.not19Or37BeamTrainedEvidence === true`
-12. per-row `28`-entry masks, loads, throughputs, and beam action catalog
-13. per-row handover kind matches producer previous and selected serving truth
-14. producer policy diagnostics are preserved when the manifest says they are
+12. per-row producer-owned `userPosition`, `decisionUserPosition`, and
+    `kpiOverlay` objects are present
+13. per-row `28`-entry masks, loads, throughputs, and beam action catalog
+14. per-row named `satelliteStates` and `beamStates` projections preserve the
+    producer arrays
+15. per-row handover kind matches producer previous and selected serving truth
+16. producer policy diagnostics are preserved when the manifest says they are
     present
 
 No producer truth is inferred from display needs.
@@ -93,13 +102,31 @@ Each slot contains `100` rows in the current artifact. Each row carries:
 
 1. producer timestamps: `slotIndex`, `timeSec`, and `decisionTimeSec`;
 2. producer user identity and deterministic user key;
-3. selected and previous serving beam references;
-4. candidate/action order from the producer beam catalog;
-5. post-step and decision-time masks;
-6. reward vector and scalar reward;
-7. producer handover event and adapter handover semantic;
-8. producer policy diagnostics exactly as supplied; and
-9. the full source row for absence-honest downstream replay consumers.
+3. producer `userPosition` and `decisionUserPosition`;
+4. selected and previous serving beam references;
+5. explicit action truth when `sourceRow.action` exists, or the selected
+   serving display-identity alias when it does not;
+6. candidate/action order from the producer beam catalog;
+7. post-step and decision-time masks;
+8. beam loads, beam throughputs, reward vector, and scalar reward;
+9. `satelliteStates`, `beamStates`, and `kpiOverlay` exactly as supplied;
+10. producer handover event and adapter handover semantic;
+11. producer policy diagnostics exactly as supplied; and
+12. the full source row for absence-honest downstream replay consumers.
+
+The current selected producer rows do not contain an explicit `action` field.
+Phase 7C-R1 therefore marks `producerTruth.actionTruth.kind` as
+`selected-serving-display-identity-alias`: `selectedActionIdentity` derives
+from producer `selectedServing.beamIndex` only to identify the selected serving
+beam for display. It is not new MODQN replay truth. If a future source row
+contains explicit `action`, the adapter preserves it under
+`producerTruth.actionTruth.action` and the validator compares it directly to
+`sourceRow.action`.
+
+`adaptModqnHandoverEvent` remains a display/semantic bridge. It emits Leo
+handover labels from producer `handoverEvent`, `previousServing`, and
+`selectedServing`, while `producerTruth.handoverEvent` and full `sourceRow`
+remain the producer event truth.
 
 The top-level `identityMap` contains the accepted 7-beam producer/core/Leo
 beam bridge records only for the selected path. `19` and `37` remain
@@ -150,28 +177,37 @@ The validator checks:
 3. schema, paper ID, 4-satellite / 7-beam / 28-beam shape;
 4. 1000 rows grouped into 10 slots while preserving source row order;
 5. 28 producer/core/Leo beam bridge records and 100 user identities;
-6. selected serving, previous serving, candidate order, masks, rewards,
-   events, policy diagnostics, timestamps, source rows, replay summary, and
-   provenance map are preserved exactly;
-7. adapter diagnostics and producer policy diagnostics remain separate;
-8. non-selected paths fail closed unless fixture-only mode is explicit;
-9. evidence-capable source-owner overrides fail closed;
-10. fixture-only output is non-evidence and does not carry producer-artifact
+6. selected serving, previous serving, candidate order, masks, beam loads,
+   throughputs, rewards, events, policy diagnostics, timestamps, source rows,
+   replay summary, and provenance map are preserved exactly;
+7. `producerTruth.userPosition`, `producerTruth.decisionUserPosition`,
+   `producerTruth.satelliteStates`, `producerTruth.beamStates`,
+   `producerTruth.kpiOverlay`, `producerTruth.beamLoads`, and
+   `producerTruth.beamThroughputs` deep-equal the same fields on `sourceRow`;
+8. explicit `sourceRow.action`, when present, is preserved and validated; when
+   absent, selected action display identity is validated as a
+   `selectedServing.beamIndex` alias only;
+9. adapter handover semantics remain separate from producer event truth;
+10. adapter diagnostics and producer policy diagnostics remain separate;
+11. non-selected paths fail closed unless fixture-only mode is explicit;
+12. evidence-capable source-owner overrides fail closed;
+13. fixture-only output is non-evidence and does not carry producer-artifact
     status; and
-11. missing required surfaces and a 19-beam shape mutation fail before
+14. missing required surfaces and a 19-beam shape mutation fail before
     evidence-capable output.
 
 ## Validation Results
 
 | Check | Result |
 | --- | --- |
-| `npm run validate:modqn:phase2-identity-adapter` | Passed. Confirmed selected bundle schema, paper ID, 7-beam / 28-beam shape, 1000 rows, producer identity preservation, 1000 producer diagnostics rows, and no observed inter-satellite handover rows. |
-| `npm run validate:modqn:phase4b-beam-layout-bridge` | Passed. Confirmed Phase 2 parse, 28 producer/core/Leo bridge records per row, 28000 bridged beam references, no row mutation, and 19/37 producer identity derivation guards. |
-| `npm run validate:modqn:phase7c-replay-state-model` | Passed. Emitted `10` replay slots, `1000` rows, `28` identity bridge records, `100` user identities, `85` intra-satellite beam switches, `915` no-event rows, and `0` inter-satellite handover rows. |
+| `git status -sb` | Passed. Worktree changes are limited to Phase 7C-R1 replay state, type, validator, and documentation files. |
 | `git diff --check` | Passed with no output. |
-| Unsupported `19` / `37` trained-baseline claim scan | Passed by inspection. Hits are negative boundary statements, validator guard strings, or validation-scope text only. |
-| HOBS/SINR-as-MODQN-replay-evidence claim scan | Passed by inspection. Hits are negative boundary statements only. |
-| Changed-file confirmation | Passed for Phase 7C scope. This phase changed only `src/modqn/replay-bundle/replay-state.ts`, `src/modqn/replay-bundle/index.ts`, `scripts/validate-modqn-phase7c-replay-state-model.ts`, `package.json`, and this checkpoint doc. The broader worktree already contained unrelated dirty UI/runtime/doc/script/core files before Phase 7C; those were not edited by this phase. Producer artifact status for the selected bundle path had no git-status output. |
+| `npm run validate:modqn:phase7c-replay-state-model` | Passed. Emitted `10` replay slots, `1000` rows, `28` identity bridge records, `100` user identities, `0` explicit source action rows, `1000` selected-serving display alias rows, `85` intra-satellite beam switches, `915` no-event rows, and `0` inter-satellite handover rows. |
+| `npm run validate:modqn:phase7d-replay-diagnostics` | Passed. Confirmed the same 7-beam accepted replay shape, fixture-only non-evidence behavior, and 85 / 915 / 0 event counts. |
+| `npm run validate:modqn:phase7k-replay-scene-layer` | Passed. |
+| `npm run lint` | Passed. |
+| Phase 7C-R1 claim scan | Passed by inspection. Hits are producer-truth fields, validator guards, negative boundary statements, or sensitivity/demo-only `19` / `37` language. |
+| Changed-file confirmation | Passed. Phase 7C-R1 changed only `src/modqn/replay-bundle/types.ts`, `src/modqn/replay-bundle/replay-state.ts`, `scripts/validate-modqn-phase7c-replay-state-model.ts`, and this checkpoint doc. No artifacts, package files, fixtures, or unrelated UI/scene/runtime files were edited. |
 
 ## Deviations And Blockers
 
