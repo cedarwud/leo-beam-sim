@@ -96,17 +96,24 @@ Phase 7K should reuse the existing Phase 7 validation chain. If a
 scene-integrated cue creates a new testable surface, add focused visual-proof
 validation for that surface without changing replay artifact truth.
 
+Phase 7K-R1 adds a static control-plane hardening validator for replay/live
+separation and forbidden visible claims. It is not runtime implementation,
+not runtime adoption, and not source-channel live adoption; source-channel live remains deferred / not adopted.
+The `7`-beam artifact remains the only baseline
+MODQN evidence path; `19` and `37` remain sensitivity/demo only.
+
 Minimum validation direction:
 
 1. `npm run lint`
 2. `git diff --check`
-3. `npm run validate:modqn:phase7c-replay-state-model`
-4. `npm run validate:modqn:phase7d-replay-diagnostics`
-5. `npm run validate:modqn:phase7e-ui-mode-labeling`
-6. `npm run validate:modqn:phase7f-replay-playback-shell`
-7. `npm run validate:modqn:phase7g-replay-scene-cues`
-8. `npm run validate:modqn:phase7h-showcase-hardening`
-9. `npm run validate:modqn:phase7k-replay-scene-layer`
+3. `npm run validate:modqn:phase7k-r1-control-plane-hardening`
+4. `npm run validate:modqn:phase7c-replay-state-model`
+5. `npm run validate:modqn:phase7d-replay-diagnostics`
+6. `npm run validate:modqn:phase7e-ui-mode-labeling`
+7. `npm run validate:modqn:phase7f-replay-playback-shell`
+8. `npm run validate:modqn:phase7g-replay-scene-cues`
+9. `npm run validate:modqn:phase7h-showcase-hardening`
+10. `npm run validate:modqn:phase7k-replay-scene-layer`
 
 For the scene-integrated proof, the focused validator should prove that the
 canvas-level cue is an R3F world-layer display surface fed by replay display
