@@ -1,7 +1,13 @@
 import { UI_TOKENS } from '../constants/uiTokens';
 import { MODQN_BASELINE_BEAMS_PER_SATELLITE } from '../modqn/replay-bundle/identity';
+import {
+  MODQN_REGENERATION_DATE,
+  MODQN_EXPECTED_TIMELINE_ROW_COUNT,
+  MODQN_REPLAY_7BEAM_EVIDENCE_STATUS,
+} from '../modqn/replay-bundle/replay-state';
 
 const MODQN_REPLAY_LABEL = 'MODQN replay - 7-beam producer artifact';
+const MODQN_SOURCE_OWNER = 'modqn-paper-reproduction';
 const HOBS_SINR_LIVE_LABEL = 'HOBS/SINR live';
 const SENSITIVITY_DEMO_LABEL = 'Sensitivity/demo';
 const MODQN_EVIDENCE_STATUS = 'accepted-7beam-baseline';
@@ -42,6 +48,20 @@ export function ModeEvidenceStrip() {
         <EvidenceChip tone="replay">{MODQN_EVIDENCE_STATUS}</EvidenceChip>
         <span className="leo-mode-evidence-note">
           newly regenerated / re-promoted; not recovered frozen artifact; not full paper-faithful reproduction.
+        </span>
+      </div>
+
+      <div
+        className="leo-mode-evidence-cluster leo-mode-evidence-cluster--replay"
+        data-testid="modqn-baseline-proof-stamp"
+        data-baseline-date={MODQN_REGENERATION_DATE}
+        data-baseline-rows={String(MODQN_EXPECTED_TIMELINE_ROW_COUNT)}
+      >
+        <EvidenceChip tone="replay">
+          {`BASELINE: MODQN ${MODQN_BASELINE_BEAMS_PER_SATELLITE}-beam regenerated ${MODQN_REGENERATION_DATE} ✓`}
+        </EvidenceChip>
+        <span className="leo-mode-evidence-note">
+          {MODQN_EXPECTED_TIMELINE_ROW_COUNT} rows · {MODQN_REPLAY_7BEAM_EVIDENCE_STATUS} · source: {MODQN_SOURCE_OWNER}
         </span>
       </div>
 

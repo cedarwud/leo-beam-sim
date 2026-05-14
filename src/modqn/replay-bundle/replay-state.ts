@@ -40,6 +40,8 @@ export const MODQN_REPLAY_7BEAM_MODE_LABEL =
   'MODQN replay - 7-beam producer artifact' as const;
 export const MODQN_REPLAY_7BEAM_EVIDENCE_STATUS = 'accepted-7beam-baseline' as const;
 export const MODQN_FIXTURE_ONLY_EVIDENCE_STATUS = 'fixture-only' as const;
+export const MODQN_REGENERATION_DATE = '2026-05-11' as const;
+export const MODQN_EXPECTED_TIMELINE_ROW_COUNT = 1000 as const;
 
 const EXPECTED_SATELLITE_COUNT = 4;
 const EXPECTED_TIMELINE_ROWS = 1000;

@@ -1,7 +1,7 @@
 # Intra-Handover Visual Strengthening Mini-SDD
 
 **Date:** 2026-05-14
-**Status:** Slice A — Live-end implementation
+**Status:** Slice A complete / Slice B — Baseline proof strip
 **Target repo:** /home/u24/papers/project/leo-beam-sim
 **Scope:** Live-end intra-satellite handover viz strengthening (arrow connector +
 extended recentSource linger)
@@ -126,7 +126,28 @@ Slice A is done when all of:
 
 ## 7. Out of scope
 
-- Baseline integration proof badge → future Slice B.
+- Baseline integration proof badge → Slice B (complete).
 - Live tuning panel discoverability → future Slice C.
 - Replay scene cue strengthening → Phase 7K display-only locked.
 - Inter-satellite handover viz → future.
+
+## 8. Slice B: Baseline Integration Proof Strip
+
+**Goal:** Make the artifact date, row count, and evidence provenance machine-readable
+and human-visible in the ModeEvidenceStrip without requiring live replay state.
+
+**Changes:**
+- `src/modqn/replay-bundle/replay-state.ts`: export `MODQN_REGENERATION_DATE` and
+  `MODQN_EXPECTED_TIMELINE_ROW_COUNT`.
+- `src/ui/ModeEvidenceStrip.tsx`: new cluster with `data-testid="modqn-baseline-proof-stamp"`,
+  `data-baseline-date`, `data-baseline-rows`, visible text badge.
+- `scripts/validate-vc-baseline-proof-strip.tsx`: V3 browser validator asserting DOM attrs,
+  visible text, forbidden claim scan, process cleanup.
+
+**Forbidden claims:** Same as Slice A §4.
+
+**Acceptance:**
+1. `npm run validate:vc:baseline-proof-strip` passes.
+2. All Phase 7C → 7K-R2 validators still pass.
+3. `npm run lint` passes.
+4. Single commit pushed to `origin/main` fast-forward.

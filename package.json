@@ -31,6 +31,7 @@
     "validate:vc2c:satellite-tint": "node --import tsx/esm scripts/validate-vc2c-satellite-tint.ts",
     "validate:vc2d:role-pulse-envelopes": "node --import tsx/esm scripts/validate-vc2d-role-pulse-envelopes.ts",
     "validate:vc:intra-handover-arrow": "node --import tsx/esm scripts/validate-vc-intra-handover-arrow.tsx",
+    "validate:vc:baseline-proof-strip": "node --import tsx/esm scripts/validate-vc-baseline-proof-strip.tsx",
     "validate:vc3a:hex-paint": "node --import tsx/esm scripts/validate-vc3a-hex-paint.tsx",
     "validate:vc3b:spine-particles": "node --import tsx/esm scripts/validate-vc3b-spine-particles.ts",
     "validate:vc3c:orbit-trail": "node --import tsx/esm scripts/validate-vc3c-orbit-trail.ts",
