@@ -1,0 +1,770 @@
+{
+  "schemaVersion": "phase6p-hobs-sinr-kpi-baseline-fixture-v1",
+  "phase": "6P",
+  "status": "PASS",
+  "scriptAddressability": {
+    "fullyScriptAddressableToday": true,
+    "captureMode": "shared deterministic runtime frame-step helper imported from src/scene/runtimeFrameStep.ts by both useSimulation and this validator",
+    "blocker": "none; Phase 6Q extracted the shared non-React HOBS/SINR frame-step path",
+    "phase6QRecommendation": "complete; keep future Phase 6R work behavior-preserving unless an explicit channel-adoption gate is opened"
+  },
+  "claimBoundary": {
+    "hobsSinrBaselineOnly": true,
+    "acceptedModqnEvidenceBeamCount": 7,
+    "sensitivityDemoOnlyBeamCounts": [
+      19,
+      37
+    ],
+    "channelKpiParityCreatesModqnEvidence": false,
+    "eeHeaCatfishScope": "non-scope"
+  },
+  "baselines": [
+    {
+      "profileId": "hobs-2024-paper-default",
+      "formulaFamily": "hobs-legacy",
+      "profileClass": "paper-default",
+      "status": "PASS",
+      "tuning": {
+        "signalEvidenceKey": "28.000|0.100|0.050|2.000|20.000|100.000|50.000|-174.000|40.000|0.000|3.323|bessel-j1-j3|12.000|4.000|3|fspl,atmospheric,scintillation,shadow-fading",
+        "signalResetKey": "3.323|12.000",
+        "handoverPolicyKey": "sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000",
+        "appHandoverResetKey": "0:sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000"
+      },
+      "window": {
+        "epochUtcMs": 1767225600000,
+        "startOffsetSec": 1065,
+        "loop": true,
+        "frameDtSec": 0.2,
+        "speed": 5,
+        "frameCount": 60,
+        "firstFrameSimTimeSec": 1066,
+        "lastFrameSimTimeSec": 1125,
+        "frameStepSimSec": 1
+      },
+      "beamConfig": {
+        "beamCountPerSatellite": 7,
+        "maxActivePerSat": 7,
+        "frequencyReuseK": 3
+      },
+      "samples": {
+        "totalFrames": 60,
+        "totalLinkSamples": 308,
+        "finiteSinrSamples": 308,
+        "nonFiniteSinrSamples": 0,
+        "lowSinrBelowHandoverThresholdCount": 53,
+        "lowSinrBelowZeroDbCount": 191,
+        "handoverThresholdDb": -5
+      },
+      "finiteSinrDb": {
+        "count": 308,
+        "min": -12.57853,
+        "p05": -9.204697,
+        "p50": -1.686948,
+        "p95": 4.035125,
+        "max": 4.932366,
+        "mean": -1.446374
+      },
+      "servingTimeline": {
+        "uniqueStateCount": 5,
+        "nullFrameCount": 21,
+        "segments": [
+          {
+            "startFrame": 0,
+            "endFrame": 20,
+            "startSimTimeSec": 1066,
+            "endSimTimeSec": 1086,
+            "key": "none"
+          },
+          {
+            "startFrame": 21,
+            "endFrame": 26,
+            "startSimTimeSec": 1087,
+            "endSimTimeSec": 1092,
+            "key": "hobs-baseline-P9-S6:B1"
+          },
+          {
+            "startFrame": 27,
+            "endFrame": 37,
+            "startSimTimeSec": 1093,
+            "endSimTimeSec": 1103,
+            "key": "hobs-baseline-P9-S6:B3"
+          },
+          {
+            "startFrame": 38,
+            "endFrame": 44,
+            "startSimTimeSec": 1104,
+            "endSimTimeSec": 1110,
+            "key": "hobs-baseline-P9-S6:B2"
+          },
+          {
+            "startFrame": 45,
+            "endFrame": 59,
+            "startSimTimeSec": 1111,
+            "endSimTimeSec": 1125,
+            "key": "hobs-baseline-P9-S6:B7"
+          }
+        ]
+      },
+      "pendingTargetTimeline": {
+        "frameCount": 0,
+        "uniqueStateCount": 0,
+        "segments": []
+      },
+      "recentHoLatchTimeline": {
+        "available": true,
+        "frameCount": 0,
+        "uniqueStateCount": 0,
+        "segments": []
+      },
+      "handoverEvents": {
+        "totalCount": 4,
+        "intraSwitchCount": 3,
+        "interHandoverCountRaw": 1,
+        "initialAttachCount": 1,
+        "interHandoverCountExcludingInitialAttach": 0,
+        "initialAttachHandling": "HandoverManager records initial attach as inter-handover; Phase 6P reports it separately and does not treat it as MODQN reward evidence.",
+        "events": [
+          {
+            "timeSec": 1767226687,
+            "action": "inter-handover",
+            "from": "none",
+            "to": "hobs-baseline-P9-S6:B1",
+            "fromSinrDb": null,
+            "toSinrDb": -3.260421,
+            "deltaDb": null
+          },
+          {
+            "timeSec": 1767226693,
+            "action": "intra-switch",
+            "from": "hobs-baseline-P9-S6:B1",
+            "to": "hobs-baseline-P9-S6:B3",
+            "fromSinrDb": 0.838736,
+            "toSinrDb": 1.632556,
+            "deltaDb": 0.79382
+          },
+          {
+            "timeSec": 1767226704,
+            "action": "intra-switch",
+            "from": "hobs-baseline-P9-S6:B3",
+            "to": "hobs-baseline-P9-S6:B2",
+            "fromSinrDb": 3.018196,
+            "toSinrDb": 3.819343,
+            "deltaDb": 0.801147
+          },
+          {
+            "timeSec": 1767226711,
+            "action": "intra-switch",
+            "from": "hobs-baseline-P9-S6:B2",
+            "to": "hobs-baseline-P9-S6:B7",
+            "fromSinrDb": 3.307416,
+            "toSinrDb": 4.138501,
+            "deltaDb": 0.831085
+          }
+        ]
+      },
+      "dpcTxPower": {
+        "enabled": false,
+        "mode": null,
+        "updatePeriodSec": null,
+        "finalStateCount": 0,
+        "txPowerDbm": null,
+        "finalStateSample": []
+      },
+      "activeBeamSummary": {
+        "activeAssignmentsPerFrame": {
+          "count": 60,
+          "min": 0,
+          "p05": 0,
+          "p50": 1,
+          "p95": 1,
+          "max": 1,
+          "mean": 0.65
+        },
+        "activeBeamCellsPerFrame": {
+          "count": 60,
+          "min": 0,
+          "p05": 0,
+          "p50": 6,
+          "p95": 11,
+          "max": 11,
+          "mean": 5.133333
+        },
+        "uniqueActiveAssignmentCount": 4,
+        "uniqueActiveBeamCellCount": 13,
+        "reuseGroupsByActiveAssignment": {
+          "0": 6,
+          "1": 7,
+          "2": 26
+        },
+        "reuseGroupsByActiveBeamCell": {
+          "0": 63,
+          "1": 106,
+          "2": 139
+        },
+        "reuseGroupSourcesByActiveBeamCell": {
+          "core-layout": 308
+        }
+      }
+    },
+    {
+      "profileId": "hobs-2024-candidate-rich",
+      "formulaFamily": "hobs-legacy",
+      "profileClass": "candidate-rich",
+      "status": "PASS",
+      "tuning": {
+        "signalEvidenceKey": "28.000|0.100|0.050|2.000|20.000|100.000|50.000|-174.000|40.000|0.000|3.323|bessel-j1-j3|12.000|4.000|3|fspl,atmospheric,scintillation,shadow-fading",
+        "signalResetKey": "3.323|12.000",
+        "handoverPolicyKey": "sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000",
+        "appHandoverResetKey": "0:sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000"
+      },
+      "window": {
+        "epochUtcMs": 1767225600000,
+        "startOffsetSec": 450,
+        "loop": true,
+        "frameDtSec": 0.2,
+        "speed": 5,
+        "frameCount": 60,
+        "firstFrameSimTimeSec": 451,
+        "lastFrameSimTimeSec": 510,
+        "frameStepSimSec": 1
+      },
+      "beamConfig": {
+        "beamCountPerSatellite": 7,
+        "maxActivePerSat": 7,
+        "frequencyReuseK": 3
+      },
+      "samples": {
+        "totalFrames": 60,
+        "totalLinkSamples": 130,
+        "finiteSinrSamples": 130,
+        "nonFiniteSinrSamples": 0,
+        "lowSinrBelowHandoverThresholdCount": 106,
+        "lowSinrBelowZeroDbCount": 130,
+        "handoverThresholdDb": -5
+      },
+      "finiteSinrDb": {
+        "count": 130,
+        "min": -37.809583,
+        "p05": -36.52478,
+        "p50": -25.5355,
+        "p95": -1.649974,
+        "max": -0.35518,
+        "mean": -19.932006
+      },
+      "servingTimeline": {
+        "uniqueStateCount": 5,
+        "nullFrameCount": 0,
+        "segments": [
+          {
+            "startFrame": 0,
+            "endFrame": 4,
+            "startSimTimeSec": 451,
+            "endSimTimeSec": 455,
+            "key": "shell-pro-53-P18-S1:B6"
+          },
+          {
+            "startFrame": 5,
+            "endFrame": 12,
+            "startSimTimeSec": 456,
+            "endSimTimeSec": 463,
+            "key": "shell-pro-53-P18-S1:B1"
+          },
+          {
+            "startFrame": 13,
+            "endFrame": 13,
+            "startSimTimeSec": 464,
+            "endSimTimeSec": 464,
+            "key": "shell-pro-53-P18-S1:B5"
+          },
+          {
+            "startFrame": 14,
+            "endFrame": 15,
+            "startSimTimeSec": 465,
+            "endSimTimeSec": 466,
+            "key": "shell-pro-53-P18-S1:B4"
+          },
+          {
+            "startFrame": 16,
+            "endFrame": 16,
+            "startSimTimeSec": 467,
+            "endSimTimeSec": 467,
+            "key": "shell-pro-53-P18-S1:B6"
+          },
+          {
+            "startFrame": 17,
+            "endFrame": 19,
+            "startSimTimeSec": 468,
+            "endSimTimeSec": 470,
+            "key": "shell-pro-53-P18-S1:B1"
+          },
+          {
+            "startFrame": 20,
+            "endFrame": 21,
+            "startSimTimeSec": 471,
+            "endSimTimeSec": 472,
+            "key": "shell-pro-53-P18-S1:B5"
+          },
+          {
+            "startFrame": 22,
+            "endFrame": 23,
+            "startSimTimeSec": 473,
+            "endSimTimeSec": 474,
+            "key": "shell-pro-53-P18-S1:B4"
+          },
+          {
+            "startFrame": 24,
+            "endFrame": 24,
+            "startSimTimeSec": 475,
+            "endSimTimeSec": 475,
+            "key": "shell-pro-53-P18-S1:B6"
+          },
+          {
+            "startFrame": 25,
+            "endFrame": 26,
+            "startSimTimeSec": 476,
+            "endSimTimeSec": 477,
+            "key": "shell-pro-53-P18-S1:B1"
+          },
+          {
+            "startFrame": 27,
+            "endFrame": 59,
+            "startSimTimeSec": 478,
+            "endSimTimeSec": 510,
+            "key": "shell-pro-53-P18-S1:B3"
+          }
+        ]
+      },
+      "pendingTargetTimeline": {
+        "frameCount": 0,
+        "uniqueStateCount": 0,
+        "segments": []
+      },
+      "recentHoLatchTimeline": {
+        "available": true,
+        "frameCount": 0,
+        "uniqueStateCount": 0,
+        "segments": []
+      },
+      "handoverEvents": {
+        "totalCount": 11,
+        "intraSwitchCount": 10,
+        "interHandoverCountRaw": 1,
+        "initialAttachCount": 1,
+        "interHandoverCountExcludingInitialAttach": 0,
+        "initialAttachHandling": "HandoverManager records initial attach as inter-handover; Phase 6P reports it separately and does not treat it as MODQN reward evidence.",
+        "events": [
+          {
+            "timeSec": 1767226051,
+            "action": "inter-handover",
+            "from": "none",
+            "to": "shell-pro-53-P18-S1:B6",
+            "fromSinrDb": null,
+            "toSinrDb": -0.35518,
+            "deltaDb": null
+          },
+          {
+            "timeSec": 1767226056,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B6",
+            "to": "shell-pro-53-P18-S1:B1",
+            "fromSinrDb": -1.790775,
+            "toSinrDb": -1.540827,
+            "deltaDb": 0.249949
+          },
+          {
+            "timeSec": 1767226064,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B1",
+            "to": "shell-pro-53-P18-S1:B5",
+            "fromSinrDb": -25.716661,
+            "toSinrDb": -25.30063,
+            "deltaDb": 0.416032
+          },
+          {
+            "timeSec": 1767226065,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B5",
+            "to": "shell-pro-53-P18-S1:B4",
+            "fromSinrDb": -26.130026,
+            "toSinrDb": -25.504677,
+            "deltaDb": 0.625349
+          },
+          {
+            "timeSec": 1767226067,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B4",
+            "to": "shell-pro-53-P18-S1:B6",
+            "fromSinrDb": -31.653016,
+            "toSinrDb": -26.863419,
+            "deltaDb": 4.789597
+          },
+          {
+            "timeSec": 1767226068,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B6",
+            "to": "shell-pro-53-P18-S1:B1",
+            "fromSinrDb": -27.881428,
+            "toSinrDb": -26.513589,
+            "deltaDb": 1.367839
+          },
+          {
+            "timeSec": 1767226071,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B1",
+            "to": "shell-pro-53-P18-S1:B5",
+            "fromSinrDb": null,
+            "toSinrDb": -29.624201,
+            "deltaDb": null
+          },
+          {
+            "timeSec": 1767226073,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B5",
+            "to": "shell-pro-53-P18-S1:B4",
+            "fromSinrDb": -29.39006,
+            "toSinrDb": -29.163848,
+            "deltaDb": 0.226212
+          },
+          {
+            "timeSec": 1767226075,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B4",
+            "to": "shell-pro-53-P18-S1:B6",
+            "fromSinrDb": -32.607749,
+            "toSinrDb": -30.531754,
+            "deltaDb": 2.075995
+          },
+          {
+            "timeSec": 1767226076,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B6",
+            "to": "shell-pro-53-P18-S1:B1",
+            "fromSinrDb": -30.924221,
+            "toSinrDb": -30.38078,
+            "deltaDb": 0.543441
+          },
+          {
+            "timeSec": 1767226078,
+            "action": "intra-switch",
+            "from": "shell-pro-53-P18-S1:B1",
+            "to": "shell-pro-53-P18-S1:B3",
+            "fromSinrDb": -32.806937,
+            "toSinrDb": -32.803081,
+            "deltaDb": 0.003856
+          }
+        ]
+      },
+      "dpcTxPower": {
+        "enabled": false,
+        "mode": null,
+        "updatePeriodSec": null,
+        "finalStateCount": 0,
+        "txPowerDbm": null,
+        "finalStateSample": []
+      },
+      "activeBeamSummary": {
+        "activeAssignmentsPerFrame": {
+          "count": 60,
+          "min": 5,
+          "p05": 5,
+          "p50": 5,
+          "p95": 5,
+          "max": 7,
+          "mean": 5.083333
+        },
+        "activeBeamCellsPerFrame": {
+          "count": 60,
+          "min": 5,
+          "p05": 5,
+          "p50": 5,
+          "p95": 5,
+          "max": 7,
+          "mean": 5.083333
+        },
+        "uniqueActiveAssignmentCount": 7,
+        "uniqueActiveBeamCellCount": 7,
+        "reuseGroupsByActiveAssignment": {
+          "0": 60,
+          "1": 122,
+          "2": 123
+        },
+        "reuseGroupsByActiveBeamCell": {
+          "0": 60,
+          "1": 122,
+          "2": 123
+        },
+        "reuseGroupSourcesByActiveBeamCell": {
+          "core-layout": 305
+        }
+      }
+    },
+    {
+      "profileId": "hobs-2024-tr38811-research",
+      "formulaFamily": "hobs-tr38811",
+      "profileClass": "paper-default",
+      "status": "PASS",
+      "tuning": {
+        "signalEvidenceKey": "28.000|0.100|0.050|2.000|20.000|100.000|50.000|-174.000|40.000|0.000|3.323|bessel-j1-j3|12.000|4.000|3|fspl,atmospheric,scintillation,shadow-fading",
+        "signalResetKey": "3.323|12.000",
+        "handoverPolicyKey": "sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000",
+        "appHandoverResetKey": "0:sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000"
+      },
+      "window": {
+        "epochUtcMs": 1767225600000,
+        "startOffsetSec": 1065,
+        "loop": true,
+        "frameDtSec": 0.2,
+        "speed": 5,
+        "frameCount": 60,
+        "firstFrameSimTimeSec": 1066,
+        "lastFrameSimTimeSec": 1125,
+        "frameStepSimSec": 1
+      },
+      "beamConfig": {
+        "beamCountPerSatellite": 7,
+        "maxActivePerSat": 7,
+        "frequencyReuseK": 3
+      },
+      "samples": {
+        "totalFrames": 60,
+        "totalLinkSamples": 308,
+        "finiteSinrSamples": 308,
+        "nonFiniteSinrSamples": 0,
+        "lowSinrBelowHandoverThresholdCount": 88,
+        "lowSinrBelowZeroDbCount": 232,
+        "handoverThresholdDb": -5
+      },
+      "finiteSinrDb": {
+        "count": 308,
+        "min": -18.317293,
+        "p05": -16.901088,
+        "p50": -3.05824,
+        "p95": 2.809557,
+        "max": 4.931288,
+        "mean": -3.489561
+      },
+      "servingTimeline": {
+        "uniqueStateCount": 4,
+        "nullFrameCount": 21,
+        "segments": [
+          {
+            "startFrame": 0,
+            "endFrame": 20,
+            "startSimTimeSec": 1066,
+            "endSimTimeSec": 1086,
+            "key": "none"
+          },
+          {
+            "startFrame": 21,
+            "endFrame": 33,
+            "startSimTimeSec": 1087,
+            "endSimTimeSec": 1099,
+            "key": "hobs-baseline-P9-S6:B1"
+          },
+          {
+            "startFrame": 34,
+            "endFrame": 37,
+            "startSimTimeSec": 1100,
+            "endSimTimeSec": 1103,
+            "key": "hobs-baseline-P9-S6:B3"
+          },
+          {
+            "startFrame": 38,
+            "endFrame": 54,
+            "startSimTimeSec": 1104,
+            "endSimTimeSec": 1120,
+            "key": "hobs-baseline-P9-S6:B2"
+          },
+          {
+            "startFrame": 55,
+            "endFrame": 59,
+            "startSimTimeSec": 1121,
+            "endSimTimeSec": 1125,
+            "key": "hobs-baseline-P9-S6:B1"
+          }
+        ]
+      },
+      "pendingTargetTimeline": {
+        "frameCount": 0,
+        "uniqueStateCount": 0,
+        "segments": []
+      },
+      "recentHoLatchTimeline": {
+        "available": true,
+        "frameCount": 0,
+        "uniqueStateCount": 0,
+        "segments": []
+      },
+      "handoverEvents": {
+        "totalCount": 4,
+        "intraSwitchCount": 3,
+        "interHandoverCountRaw": 1,
+        "initialAttachCount": 1,
+        "interHandoverCountExcludingInitialAttach": 0,
+        "initialAttachHandling": "HandoverManager records initial attach as inter-handover; Phase 6P reports it separately and does not treat it as MODQN reward evidence.",
+        "events": [
+          {
+            "timeSec": 1767226687,
+            "action": "inter-handover",
+            "from": "none",
+            "to": "hobs-baseline-P9-S6:B1",
+            "fromSinrDb": null,
+            "toSinrDb": -3.208614,
+            "deltaDb": null
+          },
+          {
+            "timeSec": 1767226700,
+            "action": "intra-switch",
+            "from": "hobs-baseline-P9-S6:B1",
+            "to": "hobs-baseline-P9-S6:B3",
+            "fromSinrDb": -10.727195,
+            "toSinrDb": 2.284025,
+            "deltaDb": 13.01122
+          },
+          {
+            "timeSec": 1767226704,
+            "action": "intra-switch",
+            "from": "hobs-baseline-P9-S6:B3",
+            "to": "hobs-baseline-P9-S6:B2",
+            "fromSinrDb": 2.998892,
+            "toSinrDb": 3.819119,
+            "deltaDb": 0.820227
+          },
+          {
+            "timeSec": 1767226721,
+            "action": "intra-switch",
+            "from": "hobs-baseline-P9-S6:B2",
+            "to": "hobs-baseline-P9-S6:B1",
+            "fromSinrDb": -1.885914,
+            "toSinrDb": -0.112667,
+            "deltaDb": 1.773247
+          }
+        ]
+      },
+      "dpcTxPower": {
+        "enabled": true,
+        "mode": "dpc",
+        "updatePeriodSec": 1,
+        "finalStateCount": 13,
+        "txPowerDbm": {
+          "count": 13,
+          "min": 46,
+          "p05": 46,
+          "p50": 49.5,
+          "p95": 50,
+          "max": 50,
+          "mean": 48.538462
+        },
+        "finalStateSample": [
+          {
+            "key": "hobs-baseline-P20-S38:1",
+            "txPowerDbm": 50,
+            "stepDb": 0.5,
+            "efficiencyScore": 0.000005
+          },
+          {
+            "key": "hobs-baseline-P20-S38:2",
+            "txPowerDbm": 50,
+            "stepDb": 0.5,
+            "efficiencyScore": 0.000006
+          },
+          {
+            "key": "hobs-baseline-P20-S38:4",
+            "txPowerDbm": 49,
+            "stepDb": -0.5,
+            "efficiencyScore": 0.000005
+          },
+          {
+            "key": "hobs-baseline-P20-S38:5",
+            "txPowerDbm": 49.5,
+            "stepDb": -0.5,
+            "efficiencyScore": 0.000004
+          },
+          {
+            "key": "hobs-baseline-P20-S38:6",
+            "txPowerDbm": 50,
+            "stepDb": 0.5,
+            "efficiencyScore": 0.000005
+          },
+          {
+            "key": "hobs-baseline-P20-S38:7",
+            "txPowerDbm": 50,
+            "stepDb": 0.5,
+            "efficiencyScore": 0.000002
+          },
+          {
+            "key": "hobs-baseline-P9-S6:1",
+            "txPowerDbm": 50,
+            "stepDb": 0.5,
+            "efficiencyScore": 0.000012
+          },
+          {
+            "key": "hobs-baseline-P9-S6:2",
+            "txPowerDbm": 46.5,
+            "stepDb": 0.5,
+            "efficiencyScore": 0.000014
+          },
+          {
+            "key": "hobs-baseline-P9-S6:3",
+            "txPowerDbm": 47.5,
+            "stepDb": -0.5,
+            "efficiencyScore": 0.000007
+          },
+          {
+            "key": "hobs-baseline-P9-S6:4",
+            "txPowerDbm": 46.5,
+            "stepDb": -0.5,
+            "efficiencyScore": 0.000009
+          },
+          {
+            "key": "hobs-baseline-P9-S6:5",
+            "txPowerDbm": 49.5,
+            "stepDb": -0.5,
+            "efficiencyScore": 0.000005
+          },
+          {
+            "key": "hobs-baseline-P9-S6:6",
+            "txPowerDbm": 46,
+            "stepDb": -0.5,
+            "efficiencyScore": 0.000012
+          }
+        ]
+      },
+      "activeBeamSummary": {
+        "activeAssignmentsPerFrame": {
+          "count": 60,
+          "min": 0,
+          "p05": 0,
+          "p50": 1,
+          "p95": 1,
+          "max": 1,
+          "mean": 0.65
+        },
+        "activeBeamCellsPerFrame": {
+          "count": 60,
+          "min": 0,
+          "p05": 0,
+          "p50": 6,
+          "p95": 11,
+          "max": 11,
+          "mean": 5.133333
+        },
+        "uniqueActiveAssignmentCount": 3,
+        "uniqueActiveBeamCellCount": 13,
+        "reuseGroupsByActiveAssignment": {
+          "0": 18,
+          "1": 17,
+          "2": 4
+        },
+        "reuseGroupsByActiveBeamCell": {
+          "0": 63,
+          "1": 106,
+          "2": 139
+        },
+        "reuseGroupSourcesByActiveBeamCell": {
+          "core-layout": 308
+        }
+      }
+    }
+  ]
+}
