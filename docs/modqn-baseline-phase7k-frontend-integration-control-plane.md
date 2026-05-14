@@ -102,18 +102,27 @@ not runtime adoption, and not source-channel live adoption; source-channel live 
 The `7`-beam artifact remains the only baseline
 MODQN evidence path; `19` and `37` remain sensitivity/demo only.
 
+Phase 7K-R2 adds a browser-level smoke validator that drives the real replay
+playback controls in a live app session (reset, scrub, play, pause), compares
+replay update behavior to the live handover panel telemetry, and enforces
+forbidden visible-copy boundaries at runtime (including no HOBS/SINR-replay
+evidence claims, no source-channel live-adoption claims, no `19/37` baseline
+claims, no producer geometry truth claims, no observed inter-satellite handover
+claims for selected artifact rows, and no EE/HEA/Catfish scope claims).
+
 Minimum validation direction:
 
 1. `npm run lint`
 2. `git diff --check`
-3. `npm run validate:modqn:phase7k-r1-control-plane-hardening`
-4. `npm run validate:modqn:phase7c-replay-state-model`
-5. `npm run validate:modqn:phase7d-replay-diagnostics`
-6. `npm run validate:modqn:phase7e-ui-mode-labeling`
-7. `npm run validate:modqn:phase7f-replay-playback-shell`
-8. `npm run validate:modqn:phase7g-replay-scene-cues`
-9. `npm run validate:modqn:phase7h-showcase-hardening`
-10. `npm run validate:modqn:phase7k-replay-scene-layer`
+3. `npm run validate:modqn:phase7k-r2-browser-control-plane-smoke`
+4. `npm run validate:modqn:phase7k-r1-control-plane-hardening`
+5. `npm run validate:modqn:phase7c-replay-state-model`
+6. `npm run validate:modqn:phase7d-replay-diagnostics`
+7. `npm run validate:modqn:phase7e-ui-mode-labeling`
+8. `npm run validate:modqn:phase7f-replay-playback-shell`
+9. `npm run validate:modqn:phase7g-replay-scene-cues`
+10. `npm run validate:modqn:phase7h-showcase-hardening`
+11. `npm run validate:modqn:phase7k-replay-scene-layer`
 
 For the scene-integrated proof, the focused validator should prove that the
 canvas-level cue is an R3F world-layer display surface fed by replay display
