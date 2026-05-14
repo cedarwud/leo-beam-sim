@@ -45,6 +45,31 @@ deterministic IDs, or evidence labels.
 Replay inputs are immutable producer artifacts. A Phase 7 replay adapter must
 preserve, pass through, or fail closed for all producer-owned truth fields.
 
+For Phase 7B, immutable producer/source-row truth explicitly includes:
+
+1. `action`
+2. selected serving
+3. previous serving
+4. masks
+5. `rewardVector`
+6. `scalarReward`
+7. event kind
+8. event count
+9. event timing
+10. beam loads
+11. throughputs
+12. `policyDiagnostics`
+13. `userPosition`
+14. `decisionUserPosition`
+15. `satelliteStates`
+16. `beamStates`
+17. `kpiOverlay`
+18. geometry truth
+19. provenance
+20. `provenanceMap`
+21. full `sourceRow`
+22. deterministic IDs
+
 Forbidden replay mutations:
 
 1. Do not rewrite MODQN actions or selected serving references.
@@ -198,6 +223,12 @@ Claim-boundary review must confirm:
 5. `7` remains the only baseline MODQN evidence path.
 6. `19` and `37` remain sensitivity/demo only.
 7. HOBS/SINR live is not labeled MODQN replay evidence.
+8. The current selected artifact has no observed inter-satellite-handover
+   evidence.
+9. Current artifact event counts remain:
+   - `intra-satellite-beam-switch`: `85`
+   - `none`: `915`
+   - `inter-satellite-handover`: `0`
 
 ## 11. Next Phase Recommendation
 
