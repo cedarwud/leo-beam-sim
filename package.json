@@ -54,6 +54,7 @@
     "validate:modqn:phase6f-beam-gain-vendor": "node --import tsx/esm scripts/validate-modqn-phase6f-beam-gain-vendor.ts",
     "validate:modqn:phase6h-pure-channel-remainder-vendor": "node --import tsx/esm scripts/validate-modqn-phase6h-pure-channel-remainder-vendor.ts",
     "validate:modqn:phase6j-shadow-fading-vendor": "node --import tsx/esm scripts/validate-modqn-phase6j-shadow-fading-vendor.ts",
+    "validate:modqn:phase6k-link-budget-vendor": "node --import tsx/esm scripts/validate-modqn-phase6k-link-budget-vendor.ts",
     "validate:modqn:phase6o-channel-adapter-parity": "node --import tsx/esm scripts/validate-modqn-phase6o-channel-adapter-parity.ts",
     "validate:modqn:phase6p-hobs-sinr-kpi-baseline": "node --import tsx/esm scripts/validate-modqn-phase6p-hobs-sinr-kpi-baseline.ts",
     "validate:modqn:phase6r-runtime-frame-step-boundary": "node --import tsx/esm scripts/validate-modqn-phase6r-runtime-frame-step-boundary.ts",
