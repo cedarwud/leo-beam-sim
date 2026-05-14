@@ -111,6 +111,7 @@ export function DiagnosticsDrawer({
   recentHoTargetSatId,
   physicalServingBudget,
   hoCount,
+  intraHoCount,
   lastHoReason,
   beamHopEnabled,
   beamHopSlotIndex,
@@ -305,6 +306,7 @@ export function DiagnosticsDrawer({
             />
             <DebugRow label="Recent HO" value={recentHoText} />
             <DebugRow label="HO Count" value={String(hoCount)} />
+            <DebugRow label="Intra-switch" value={String(intraHoCount)} />
             <DebugRow label="Last Reason" value={formatHandoverReason(lastHoReason, frequencyReuse) || '—'} />
           </div>
         </DrawerSection>

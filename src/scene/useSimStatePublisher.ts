@@ -462,6 +462,7 @@ export function useSimStatePublisher({
       handoverTriggerProgressSec: sim.handoverTriggerProgressSec,
       handoverTriggerSec: profile.handover.triggerTimeSec,
       hoCount: sim.hoCount,
+      intraHoCount: sim.intraHoCount,
       lastHoReason: sim.lastHoReason,
       beamHopEnabled: sim.beamHopEnabled,
       beamHopSlotIndex: sim.beamHopSlotIndex,

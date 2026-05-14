@@ -145,6 +145,7 @@ export interface SimState {
   handoverTriggerProgressSec: number;
   handoverTriggerSec: number;
   hoCount: number;
+  intraHoCount: number;
   lastHoReason: string;
   beamHopEnabled: boolean;
   beamHopSlotIndex: number;
@@ -220,6 +221,7 @@ export interface SimFrame {
   recentHoDeltaDb: number | null;
   handoverTriggerProgressSec: number;
   hoCount: number;
+  intraHoCount: number;
   lastHoReason: string;
   simTimeSec: number;
   recentHoSourceSatId: string | null;

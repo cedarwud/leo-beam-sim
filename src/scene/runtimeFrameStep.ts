@@ -678,6 +678,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
       recentHoDeltaDb: state.recentHo?.deltaDb ?? null,
       handoverTriggerProgressSec: hoManager.state.pendingTarget ? hoManager.state.triggerTimeSec : 0,
       hoCount: hoManager.eventLog.length,
+      intraHoCount: hoManager.eventLog.filter(e => e.action === 'intra-switch').length,
       lastHoReason: decision.reason,
       simTimeSec: state.simTimeSec,
       recentHoSourceSatId,

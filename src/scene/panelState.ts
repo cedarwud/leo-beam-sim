@@ -169,6 +169,7 @@ export function hasUiStateChanged(previous: SimState | null, next: SimState): bo
     || previous.recentHoSourceSatId !== next.recentHoSourceSatId
     || previous.recentHoTargetSatId !== next.recentHoTargetSatId
     || previous.hoCount !== next.hoCount
+    || previous.intraHoCount !== next.intraHoCount
     || previous.handoverOffsetDb !== next.handoverOffsetDb
     || previous.handoverTriggerSec !== next.handoverTriggerSec
     || hasNumericDelta(previous.sinrDb, next.sinrDb)

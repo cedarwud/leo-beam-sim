@@ -48,6 +48,7 @@ export function createInitialSimState(profile: Profile): SimState {
     handoverTriggerProgressSec: 0,
     handoverTriggerSec: profile.handover.triggerTimeSec,
     hoCount: 0,
+    intraHoCount: 0,
     lastHoReason: '',
     beamHopEnabled: profile.beamHopping.enabled,
     beamHopSlotIndex: -1,

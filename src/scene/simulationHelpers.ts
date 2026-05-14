@@ -72,6 +72,7 @@ export function createEmptyFrame(simTimeSec: number): SimFrame {
     recentHoDeltaDb: null,
     handoverTriggerProgressSec: 0,
     hoCount: 0,
+    intraHoCount: 0,
     lastHoReason: '',
     simTimeSec,
     recentHoSourceSatId: null,
