@@ -259,9 +259,11 @@ function assertHandoverResetPreservesReplayAndDpc(): void {
   const effectStart = source.lastIndexOf('useEffect(() => {', effectEnd);
   assert.ok(effectStart >= 0, 'expected handoverResetKey useEffect start');
   const block = source.slice(effectStart, effectEnd);
-  assertContains(block, 'frameRef.current = createEmptyFrame(simTimeRef.current)');
+  assertContains(block, 'frameRef.current = createEmptyFrame(runtimeStateRef.current.simTimeSec)');
   assertContains(block, 'publishNextFrameRef.current = true');
+  assertContains(block, 'recentHo: null');
   assertNotContains(block, 'simTimeRef.current =');
+  assertNotContains(block, 'runtimeStateRef.current.simTimeSec =');
   assertNotContains(block, 'beamPowerControlRef.current =');
 }
 
