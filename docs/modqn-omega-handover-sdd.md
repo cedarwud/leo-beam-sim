@@ -61,9 +61,10 @@ trained Q-networks.
   `topCandidates[*].objectiveQ` and applies ω via post-hoc scalarization.
 - Provide three handover-criterion modes selectable at runtime:
   `sinr-offset` (default), `modqn-replay`, and `omega-heuristic`.
-- Replace the hard-coded `MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL` in
-  `src/App.tsx:13` with a runtime fetch of the selected baseline bundle
-  artifact.
+- Replace the hard-coded `MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL`
+  (defined at `src/modqn/replay-bundle/playback-shell.ts:269`, currently
+  imported and consumed at `src/App.tsx:13`) with a runtime fetch of the
+  selected baseline bundle artifact.
 - Add a new profile `modqn-1sat-7beam` that matches the bundle training
   environment so `modqn-replay` mode has a coherent scene to render.
 - Add an unmissable `Heuristic ω-scoring — NOT paper MODQN` banner whenever
@@ -544,13 +545,27 @@ depend on S0; S3 also depends on S2 (needs the bundle in scene).
 - "Retrain" button is removed in this slice. The fake reward curve is
   removed. The fake `effectiveOffsetDb` / `effectiveTriggerTimeSec`
   derivations in `useModqnDemoStub` are removed.
-- A `tsc` and `vitest` pass.
+- `tsc --noEmit` is clean and a new validator
+  `scripts/validate-modqn-omega-s1-sidebar-truth-up.tsx` exits 0. (The
+  repo has no `vitest`; tests are validator scripts invoked via
+  `node --import tsx/esm scripts/validate-*.{ts,tsx}`. This convention
+  carries through every subsequent slice.)
 
 ### 9.3 S2 — Runtime fetch + new profile
 
 - `MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL` is no longer imported by
   `App.tsx`. It may remain in `playback-shell.ts` as a typed reference
   for tests, but it is not the runtime source.
+- The S1 hook `useModqnHandoverState` currently synthesizes a
+  paper-default `bundlePolicyDiagnostics` snapshot. S2 replaces the
+  synthesis with envelope reads — envelope-level diagnostics live at
+  `ModqnReplayEnvelopeProducerTruth.policyDiagnostics`
+  (`src/modqn/replay-bundle/replay-state.ts:167`) and per-row
+  diagnostics live at `ModqnReplayTimelineRow.policyDiagnostics`
+  (`src/modqn/replay-bundle/types.ts:128`). S2 surfaces at least the
+  current-slot row's `policyDiagnostics` through the existing
+  `getBundleSidebarSnapshot()` accessor **without changing the hook's
+  return shape** (S3/S4 depend on shape stability).
 - `App.tsx` fetches the baseline bundle at startup. The fetch path is
   configurable but defaults to `SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH`
   via the dev server's static-file route.
