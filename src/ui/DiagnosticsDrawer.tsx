@@ -1,11 +1,15 @@
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
 import { UI_TOKENS } from '../constants/uiTokens';
 import type { Profile } from '../profiles/types';
 import type { SimState } from '../scene/types';
 import { formatBeamIdentity, formatHandoverReason, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import { formatFrequencyLabel } from '../utils/beamFrequency';
 import type { UiMode } from './uiMode';
-import type { RuntimeHandoverMode } from './useModqnHandoverState';
+import {
+  ModqnHandoverModeContext,
+  type RuntimeHandoverMode,
+  type RuntimeOmegaState,
+} from './useModqnHandoverState';
 
 type DiagnosticsDrawerProps = SimState & {
   uiMode: UiMode;
@@ -274,6 +278,15 @@ export function DiagnosticsDrawer({
           </DrawerSection>
         )}
 
+        {/* S4: omega-heuristic disclosure row — only in omega-heuristic mode
+            (SDD §9.5 acceptance criterion 7 / §10 row 6). Shows mode value,
+            current ω, score formula in human-readable form, and a not-paper
+            warning so the row is independently informative from the
+            top-of-scene banner. */}
+        {handoverMode === 'omega-heuristic' && (
+          <HeuristicModeDiagnosticsSection />
+        )}
+
         <DrawerSection
           testId="visual-frequency-diagnostics"
           tone={UI_TOKENS.color.semantic.info}
@@ -316,5 +329,50 @@ export function DiagnosticsDrawer({
         </DrawerSection>
       </div>
     </section>
+  );
+}
+
+function formatOmegaWeight(value: number | undefined): string {
+  if (value === undefined || !Number.isFinite(value)) return '—';
+  return value.toFixed(2);
+}
+
+function formatOmegaTuple(omega: RuntimeOmegaState | null): string {
+  if (omega === null) return '(—, —, —)';
+  return `(${formatOmegaWeight(omega.throughput)}, ${formatOmegaWeight(omega.handover)}, ${formatOmegaWeight(omega.loadBalance)})`;
+}
+
+// S4: diagnostics row for omega-heuristic mode (SDD §9.5 acceptance item 7).
+// Displays the active ω, the score formula in human-readable form, and a
+// not-paper warning. The row is gated by `handoverMode === 'omega-heuristic'`
+// so it never appears when the user is in another mode. It pulls the live ω
+// from `ModqnHandoverModeContext` so the tuple stays in sync with the
+// sidebar's Apply button without coupling the drawer to the sidebar hook.
+function HeuristicModeDiagnosticsSection() {
+  const { omegaActive } = useContext(ModqnHandoverModeContext);
+  const omega = omegaActive ?? null;
+  return (
+    <DrawerSection
+      testId="diagnostics-drawer-omega-heuristic"
+      tone={UI_TOKENS.color.semantic.warning.accent}
+      title="ω HEURISTIC (NOT PAPER MODQN)"
+    >
+      <div className="leo-drawer-section__rows">
+        <DebugRow label="Mode" value="omega-heuristic" />
+        <DebugRow label="ω (t, h, l)" value={formatOmegaTuple(omega)} />
+        <DebugRow
+          label="Score formula"
+          value="score(a) = ω_t · normSINR(a) − ω_h · isSwitch(a) − ω_l · normLoad(a)"
+        />
+        <div className="leo-drawer-section__note" style={{ fontSize: 11, opacity: 0.8 }}>
+          NOT paper MODQN — closed-form heuristic score over live candidates.
+          The selected beam still flows through HandoverManager for
+          trigger-time and ping-pong-guard timing; only the argmax step is
+          overridden. normLoad(a) is held at 0 this slice because LinkSample
+          does not yet carry a per-beam load metric (documented in
+          src/engine/handover/decision-override.ts).
+        </div>
+      </div>
+    </DrawerSection>
   );
 }

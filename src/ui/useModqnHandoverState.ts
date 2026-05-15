@@ -1,10 +1,12 @@
-// MODQN ω-Handover S1 + S2 + S3 — sidebar truth-up hook.
+// MODQN ω-Handover S1 + S2 + S3 + S4 — sidebar truth-up hook.
 //
 // Owns:
 //   * ω draft / active state (RuntimeOmegaState)
 //   * omegaSource lineage (bundle / user-applied / user-applied-not-paper)
-//   * The runtime handover mode (RuntimeHandoverMode), with S3 localStorage
-//     persistence for sinr-offset / modqn-replay (never persisted for omega-heuristic)
+//   * The runtime handover mode (RuntimeHandoverMode), with localStorage
+//     persistence for sinr-offset / modqn-replay (never persisted for
+//     omega-heuristic — SDD §4.4 item 2: app startup always resets to
+//     `sinr-offset`; selecting `omega-heuristic` is intentional per-session)
 //   * The bundle sidebar snapshot: ModqnPolicyDiagnostics + manifest fields the
 //     evidence tab displays (paperId, bundleSchemaVersion, baselineSurface)
 //

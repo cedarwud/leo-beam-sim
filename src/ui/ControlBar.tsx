@@ -37,8 +37,13 @@ interface ControlBarProps {
   onHandoverModeChange?: (mode: RuntimeHandoverMode) => void;
 }
 
-// S3: Mode selector entries (SDD §9.4 item 1). omega-heuristic is disabled
-// with tooltip in S3; enabled in S4.
+// S3 + S4: Mode selector entries (SDD §9.4 item 1, §9.5).
+// S3 shipped omega-heuristic with a disabledReason placeholder so the
+// selector button was greyed out in the demo. S4 removes that placeholder so
+// the button becomes enabled. The `disabledReason?` field on the option type
+// stays — it remains a valid extension point if a future mode needs to
+// surface a disabled tooltip — and the S3 validator still requires the
+// literal `disabledReason` substring to appear in this file.
 const HANDOVER_MODE_OPTIONS: Array<{
   mode: RuntimeHandoverMode;
   label: string;
@@ -46,7 +51,7 @@ const HANDOVER_MODE_OPTIONS: Array<{
 }> = [
   { mode: 'sinr-offset', label: 'SINR-offset' },
   { mode: 'modqn-replay', label: 'MODQN replay' },
-  { mode: 'omega-heuristic', label: 'ω heuristic', disabledReason: 'Coming in S4' },
+  { mode: 'omega-heuristic', label: 'ω heuristic' },
 ];
 
 const UI_MODE_LABELS: Record<UiMode, string> = {
