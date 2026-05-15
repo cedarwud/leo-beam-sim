@@ -1,6 +1,7 @@
 import { UI_CLASSES } from '../constants/uiTokens';
 import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
 import { UI_MODES, isUiMode, type UiMode } from './uiMode';
+import type { RuntimeHandoverMode } from './useModqnHandoverState';
 
 interface ProfileOption {
   id: string;
@@ -21,6 +22,8 @@ interface ControlBarProps {
   cinematicMode: CinematicMode;
   beamHopEnabled: boolean;
   beamHopSlotIndex: number;
+  /** S3: current handover mode from App.tsx state (SDD §9.4 item 1). */
+  handoverMode?: RuntimeHandoverMode;
   onProfileChange: (profileId: string) => void;
   onUiModeChange: (mode: UiMode) => void;
   onBeamDensityChange: (density: BeamDensity) => void;
@@ -30,7 +33,21 @@ interface ControlBarProps {
   onSpeedChange: (speed: number) => void;
   onDismissAutoSlow: () => void;
   onToggleAutoSlow: () => void;
+  /** S3: mode selector change handler from App.tsx (handles profile lock, ω reset). */
+  onHandoverModeChange?: (mode: RuntimeHandoverMode) => void;
 }
+
+// S3: Mode selector entries (SDD §9.4 item 1). omega-heuristic is disabled
+// with tooltip in S3; enabled in S4.
+const HANDOVER_MODE_OPTIONS: Array<{
+  mode: RuntimeHandoverMode;
+  label: string;
+  disabledReason?: string;
+}> = [
+  { mode: 'sinr-offset', label: 'SINR-offset' },
+  { mode: 'modqn-replay', label: 'MODQN replay' },
+  { mode: 'omega-heuristic', label: 'ω heuristic', disabledReason: 'Coming in S4' },
+];
 
 const UI_MODE_LABELS: Record<UiMode, string> = {
   presentation: 'Presentation',
@@ -62,6 +79,7 @@ export function ControlBar({
   cinematicMode,
   beamHopEnabled,
   beamHopSlotIndex,
+  handoverMode = 'sinr-offset',
   onUiModeChange,
   onBeamDensityChange,
   onCameraPresetSelect,
@@ -69,6 +87,7 @@ export function ControlBar({
   onTogglePause,
   onSpeedChange,
   onToggleAutoSlow,
+  onHandoverModeChange,
 }: ControlBarProps) {
   const sceneSuffix = autoSlowApplied
     ? ' (HO Slow)'
@@ -85,6 +104,40 @@ export function ControlBar({
       >
         {paused ? 'Play' : 'Pause'}
       </button>
+
+      {/* S3: 3-way handover mode selector (SDD §9.4 item 1). omega-heuristic
+          is disabled with tooltip in this slice; enabled in S4. */}
+      <div
+        className="leo-control-bar__handover-mode-group"
+        role="group"
+        aria-label="Handover mode"
+        data-testid="handover-mode-control"
+      >
+        {HANDOVER_MODE_OPTIONS.map(option => {
+          const isSelected = handoverMode === option.mode;
+          const isDisabled = option.disabledReason !== undefined;
+          return (
+            <button
+              key={option.mode}
+              className={`${UI_CLASSES.button} leo-control-bar__handover-mode-button`}
+              type="button"
+              aria-label={`Set handover mode to ${option.label}${isDisabled ? ` (${option.disabledReason})` : ''}`}
+              aria-pressed={isSelected}
+              aria-disabled={isDisabled}
+              data-testid={`handover-mode-${option.mode}`}
+              title={isDisabled ? option.disabledReason : undefined}
+              disabled={isDisabled}
+              onClick={() => {
+                if (!isDisabled && onHandoverModeChange) {
+                  onHandoverModeChange(option.mode);
+                }
+              }}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
 
       <label className="leo-control-bar__field-row">
         Mode:

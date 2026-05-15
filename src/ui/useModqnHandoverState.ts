@@ -1,11 +1,25 @@
-// MODQN ω-Handover S1 + S2 — sidebar truth-up hook.
+// MODQN ω-Handover S1 + S2 + S3 — sidebar truth-up hook.
 //
 // Owns:
 //   * ω draft / active state (RuntimeOmegaState)
 //   * omegaSource lineage (bundle / user-applied / user-applied-not-paper)
-//   * The runtime handover mode (RuntimeHandoverMode), in-memory only this slice
+//   * The runtime handover mode (RuntimeHandoverMode), with S3 localStorage
+//     persistence for sinr-offset / modqn-replay (never persisted for omega-heuristic)
 //   * The bundle sidebar snapshot: ModqnPolicyDiagnostics + manifest fields the
 //     evidence tab displays (paperId, bundleSchemaVersion, baselineSurface)
+//
+// S3 internal changes (SDD §9.4):
+//   * Adds `ModqnHandoverModeContext` + `ModqnHandoverModeProvider` so App.tsx
+//     can lift the mode state up (required for the profile-lock confirmation
+//     dialog on modqn-replay entry). The hook reads mode from this context when
+//     provided, falling back to its own local state for headless/test mounts.
+//   * Adds `rescalarizeFallbackCount` to `UseModqnHandoverState` so
+//     DiagnosticsDrawer can surface the out-of-topK fallback tally.
+//   * `incrementRescalarizeFallback` is provided via `ModqnHandoverModeContext`
+//     so `useSimulation.ts` (inside the Canvas) can call it when the override
+//     fires a fallback.
+//   * localStorage persistence: `sinr-offset` and `modqn-replay` are persisted;
+//     `omega-heuristic` is never persisted (S4's job; S3 must not persist it).
 //
 // S2 internal change (SDD §9.3):
 //   * `getBundleSidebarSnapshot(envelope, slotOffset)` reads envelope-level
@@ -20,18 +34,17 @@
 //   * Exported hook surface unchanged — S3/S4 lock onto the shape this slice
 //     left behind.
 //
-// Notes for S3/S4 readers:
-//   * S1 does NOT subscribe an engine consumer to `omegaActive` / `mode`.
-//     Apply/Reset/setMode mutate hook state and that is it.
-//   * S3 will install an engine override that reads `omegaActive` and triggers
-//     bundle re-scalarization. S4 will add the omega-heuristic decision path
-//     plus the four-line disclosure (banner / capture metadata / non-persistence
-//     / naming) from SDD §4.4. Neither slice should need to change this hook's
-//     return signature.
+// Notes for S4 readers:
+//   * S4 will add the omega-heuristic decision path plus the four-line
+//     disclosure (banner / capture metadata / non-persistence / naming) from
+//     SDD §4.4. It should not need to change this hook's return signature.
+//   * `rescalarizeFallbackCount` is incremented by the useSimulation override
+//     callback via `ModqnHandoverModeContext.incrementRescalarizeFallback`.
 //
 // References: docs/modqn-omega-handover-sdd.md §3.1 (ω fields), §3.5 (Apply
 // semantics), §5.2 (RuntimeOmegaState / RuntimeHandoverMode), §9.2 (S1
-// acceptance), §9.3 (S2 acceptance), §12.8 (paper default ω).
+// acceptance), §9.3 (S2 acceptance), §9.4 (S3 acceptance), §12.8 (paper
+// default ω).
 import {
   createContext,
   createElement,
@@ -62,14 +75,41 @@ import {
   type ModqnReplayBundleSchemaVersion,
 } from '../modqn/replay-bundle/types';
 
-// Three modes from SDD §3.2. S1 holds the type + the local state. S3 wires
-// `modqn-replay` to the override hook from S0. S4 wires `omega-heuristic`.
+// Three modes from SDD §3.2. S3 wires `modqn-replay` to the override hook
+// from S0. S4 wires `omega-heuristic`.
 export type RuntimeHandoverMode =
   | 'sinr-offset'
   | 'modqn-replay'
   | 'omega-heuristic';
 
 export const DEFAULT_RUNTIME_HANDOVER_MODE: RuntimeHandoverMode = 'sinr-offset';
+
+// localStorage key for mode persistence. Only sinr-offset and modqn-replay
+// are persisted. omega-heuristic is NEVER written (SDD §5.2, §9.4 item 8).
+export const HANDOVER_MODE_STORAGE_KEY = 'leo-beam-sim.handover-mode.v1';
+
+const PERSISTABLE_MODES = new Set<RuntimeHandoverMode>(['sinr-offset', 'modqn-replay']);
+
+export function readPersistedHandoverMode(): RuntimeHandoverMode {
+  if (typeof window === 'undefined') return DEFAULT_RUNTIME_HANDOVER_MODE;
+  try {
+    const stored = window.localStorage.getItem(HANDOVER_MODE_STORAGE_KEY);
+    if (stored === 'sinr-offset' || stored === 'modqn-replay') return stored;
+  } catch {
+    // Storage unavailable in private/embedded contexts.
+  }
+  return DEFAULT_RUNTIME_HANDOVER_MODE;
+}
+
+export function persistHandoverMode(mode: RuntimeHandoverMode): void {
+  if (typeof window === 'undefined') return;
+  if (!PERSISTABLE_MODES.has(mode)) return; // never persist omega-heuristic
+  try {
+    window.localStorage.setItem(HANDOVER_MODE_STORAGE_KEY, mode);
+  } catch {
+    // Storage unavailable.
+  }
+}
 
 // MODQN paper-faithful training-time ω, from SDD §12.8.
 export const MODQN_PAPER_FAITHFUL_OMEGA = Object.freeze({
@@ -128,6 +168,75 @@ export interface UseModqnHandoverState {
   readonly resetOmega: () => void;
   readonly mode: RuntimeHandoverMode;
   readonly setMode: (next: RuntimeHandoverMode) => void;
+  /**
+   * Count of decision ticks where user ω preferred an out-of-top-K action and
+   * the system defaulted to the recorded top-K winner. Incremented by the
+   * useSimulation override callback via ModqnHandoverModeContext. Resets on
+   * mode change or sim reset. (SDD §9.4 acceptance criterion 6 / §10 row 5.)
+   */
+  readonly rescalarizeFallbackCount: number;
+}
+
+// S3: Context that carries the lifted mode state from App.tsx into the engine
+// (useSimulation) and diagnostics (DiagnosticsDrawer) layers. Providing this
+// context is optional — the hook falls back to its own local state if absent.
+//
+// `omegaActive` is included so useSimulation can read the latest user ω without
+// coupling to the hook's internal useState (which lives in a different React
+// subtree from the Canvas).
+export interface ModqnHandoverModeContextValue {
+  readonly mode: RuntimeHandoverMode;
+  readonly setMode: (next: RuntimeHandoverMode) => void;
+  readonly omegaActive: RuntimeOmegaState;
+  readonly onOmegaActiveChange: (next: RuntimeOmegaState) => void;
+  readonly rescalarizeFallbackCount: number;
+  readonly incrementRescalarizeFallback: () => void;
+}
+
+const DEFAULT_MODQN_HANDOVER_MODE_CONTEXT: ModqnHandoverModeContextValue = {
+  mode: DEFAULT_RUNTIME_HANDOVER_MODE,
+  setMode: () => { /* no-op for headless/test mounts that do not provide context */ },
+  omegaActive: MODQN_PAPER_FAITHFUL_OMEGA,
+  onOmegaActiveChange: () => { /* no-op */ },
+  rescalarizeFallbackCount: 0,
+  incrementRescalarizeFallback: () => { /* no-op */ },
+};
+
+export const ModqnHandoverModeContext = createContext<ModqnHandoverModeContextValue>(
+  DEFAULT_MODQN_HANDOVER_MODE_CONTEXT,
+);
+
+export interface ModqnHandoverModeProviderProps {
+  readonly mode: RuntimeHandoverMode;
+  readonly setMode: (next: RuntimeHandoverMode) => void;
+  readonly omegaActive: RuntimeOmegaState;
+  readonly onOmegaActiveChange: (next: RuntimeOmegaState) => void;
+  readonly rescalarizeFallbackCount: number;
+  readonly incrementRescalarizeFallback: () => void;
+  readonly children: ReactNode;
+}
+
+export function ModqnHandoverModeProvider({
+  mode,
+  setMode,
+  omegaActive,
+  onOmegaActiveChange,
+  rescalarizeFallbackCount,
+  incrementRescalarizeFallback,
+  children,
+}: ModqnHandoverModeProviderProps) {
+  const value = useMemo(
+    () => ({
+      mode,
+      setMode,
+      omegaActive,
+      onOmegaActiveChange,
+      rescalarizeFallbackCount,
+      incrementRescalarizeFallback,
+    }),
+    [mode, setMode, omegaActive, onOmegaActiveChange, rescalarizeFallbackCount, incrementRescalarizeFallback],
+  );
+  return createElement(ModqnHandoverModeContext.Provider, { value }, children);
 }
 
 export interface ModqnEnvelopeContextValue {
@@ -140,7 +249,7 @@ const DEFAULT_ENVELOPE_CONTEXT: ModqnEnvelopeContextValue = {
   slotOffset: 0,
 };
 
-const ModqnEnvelopeContext = createContext<ModqnEnvelopeContextValue>(
+export const ModqnEnvelopeContext = createContext<ModqnEnvelopeContextValue>(
   DEFAULT_ENVELOPE_CONTEXT,
 );
 
@@ -347,6 +456,10 @@ export { SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH };
 
 export function useModqnHandoverState(): UseModqnHandoverState {
   const { envelope, slotOffset } = useContext(ModqnEnvelopeContext);
+  // S3: read lifted mode + fallback count from the mode context if App.tsx
+  // provides it; fall back to local state for headless/test mounts.
+  const modeCtx = useContext(ModqnHandoverModeContext);
+  const modeCtxIsDefault = modeCtx === DEFAULT_MODQN_HANDOVER_MODE_CONTEXT;
 
   // Recompute the snapshot when the envelope or current slot changes. The
   // snapshot is stable as long as both inputs are stable; this keeps the hook
@@ -364,7 +477,21 @@ export function useModqnHandoverState(): UseModqnHandoverState {
   const [omegaDraft, setOmegaDraftState] = useState<RuntimeOmegaState>(bundleOmega);
   const [omegaActive, setOmegaActive] = useState<RuntimeOmegaState>(bundleOmega);
   const [omegaSource, setOmegaSource] = useState<RuntimeOmegaSource>('bundle');
-  const [mode, setMode] = useState<RuntimeHandoverMode>(DEFAULT_RUNTIME_HANDOVER_MODE);
+
+  // Local mode state — used only when no ModqnHandoverModeProvider is above us
+  // (headless tests, S1/S2 validators, etc.). When App.tsx provides the context
+  // we delegate to context.mode / context.setMode instead.
+  const [localMode, setLocalMode] = useState<RuntimeHandoverMode>(DEFAULT_RUNTIME_HANDOVER_MODE);
+  const mode: RuntimeHandoverMode = modeCtxIsDefault ? localMode : modeCtx.mode;
+  const setMode = useCallback((next: RuntimeHandoverMode) => {
+    if (modeCtxIsDefault) {
+      setLocalMode(next);
+    } else {
+      modeCtx.setMode(next);
+    }
+  }, [modeCtx, modeCtxIsDefault]);
+
+  const rescalarizeFallbackCount = modeCtxIsDefault ? 0 : modeCtx.rescalarizeFallbackCount;
 
   // When the envelope arrives (or the slot moves), re-anchor the bundle ω
   // baseline for Apply/Reset bookkeeping. We only update state if the user has
@@ -390,8 +517,13 @@ export function useModqnHandoverState(): UseModqnHandoverState {
   // S4 will replace 'user-applied' with 'user-applied-not-paper' when the
   // active mode is `omega-heuristic`. For S1/S2 (mode default `sinr-offset`),
   // 'user-applied' covers both modqn-replay and sinr-offset edits.
+  // S3: also notifies the mode context so App.tsx (and then useSimulation via
+  // the context) picks up the updated omega for re-scalarization.
   const applyOmega = useCallback(() => {
     setOmegaActive(omegaDraft);
+    if (!modeCtxIsDefault) {
+      modeCtx.onOmegaActiveChange(omegaDraft);
+    }
     if (omegaEquals(omegaDraft, bundleOmega)) {
       setOmegaSource('bundle');
     } else if (mode === 'omega-heuristic') {
@@ -399,14 +531,17 @@ export function useModqnHandoverState(): UseModqnHandoverState {
     } else {
       setOmegaSource('user-applied');
     }
-  }, [bundleOmega, mode, omegaDraft]);
+  }, [bundleOmega, mode, modeCtx, modeCtxIsDefault, omegaDraft]);
 
   // SDD §3.5: Reset returns BOTH omegaDraft and omegaActive to the bundle ω.
   const resetOmega = useCallback(() => {
     setOmegaDraftState(bundleOmega);
     setOmegaActive(bundleOmega);
     setOmegaSource('bundle');
-  }, [bundleOmega]);
+    if (!modeCtxIsDefault) {
+      modeCtx.onOmegaActiveChange(bundleOmega);
+    }
+  }, [bundleOmega, modeCtx, modeCtxIsDefault]);
 
   const bundlePolicyDiagnostics = bundleSidebarSnapshot.policyDiagnostics;
 
@@ -421,5 +556,6 @@ export function useModqnHandoverState(): UseModqnHandoverState {
     resetOmega,
     mode,
     setMode,
+    rescalarizeFallbackCount,
   };
 }

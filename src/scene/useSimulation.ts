@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { createObserverContext } from '../engine/orbit';
-import { HandoverManager } from '../engine/handover/handover-manager';
+import {
+  HandoverManager,
+  type HandoverDecisionOverride,
+} from '../engine/handover/handover-manager';
 import type { Profile } from '../profiles/types';
 import type { ReplayConfig, SimFrame } from './types';
 import { createEmptyFrame, normalizeReplayOffset } from './simulationHelpers';
@@ -13,6 +16,35 @@ import {
   stepRuntimeFrame,
   type RuntimeFrameStepState,
 } from './runtimeFrameStep';
+import { reScalarize } from '../modqn/replay-bundle/rescalarize';
+import {
+  ModqnEnvelopeContext,
+  ModqnHandoverModeContext,
+} from '../ui/useModqnHandoverState';
+
+// S3: HandoverManager subclass that injects the S3 decisionOverride ref on
+// every `.update()` call so stepRuntimeFrame (src/scene/runtimeFrameStep.ts,
+// which is FROZEN this slice) picks up the override without modification.
+// When `overrideRef.current` is null the call is byte-equivalent to the base
+// class — SDD §9.7 truth invariance is preserved for sinr-offset mode.
+class S3HandoverManager extends HandoverManager {
+  // React MutableRefObject equivalent (plain object ref — no React dep needed).
+  overrideRef: { current: HandoverDecisionOverride | null } = { current: null };
+
+  override update(
+    candidates: Parameters<HandoverManager['update']>[0],
+    dt: Parameters<HandoverManager['update']>[1],
+    simTimeMs: Parameters<HandoverManager['update']>[2],
+    explicitOverride?: HandoverDecisionOverride,
+  ) {
+    return super.update(
+      candidates,
+      dt,
+      simTimeMs,
+      explicitOverride ?? (this.overrideRef.current ?? undefined),
+    );
+  }
+}
 
 export {
   CACHE_ELEVATION_DEG,
@@ -33,6 +65,59 @@ export function useSimulation(
   signalResetKey?: string,
   handoverResetKey?: string,
 ): SimFrame {
+  // S3: read handover mode + current bundle envelope from contexts. When the
+  // mode contexts are absent (headless tests, pure SINR render) we fall back to
+  // sinr-offset behavior (no override installed — truth invariance preserved).
+  const { envelope, slotOffset } = useContext(ModqnEnvelopeContext);
+  const modeCtx = useContext(ModqnHandoverModeContext);
+  const { mode: handoverMode, omegaActive, incrementRescalarizeFallback } = modeCtx;
+
+  // Stable refs so the override closure (below) always reads the latest values
+  // from the current render without needing to be recreated.
+  const incrementFallbackRef = useRef(incrementRescalarizeFallback);
+  incrementFallbackRef.current = incrementRescalarizeFallback;
+  const envelopeRef = useRef(envelope);
+  envelopeRef.current = envelope;
+  const slotOffsetRef = useRef(slotOffset);
+  slotOffsetRef.current = slotOffset;
+  const handoverModeRef = useRef(handoverMode);
+  handoverModeRef.current = handoverMode;
+  const omegaActiveRef = useRef(omegaActive);
+  omegaActiveRef.current = omegaActive;
+
+  // Build the decisionOverride callback. It is stable (referentially) across
+  // renders and reads the latest values from refs at call time. When
+  // handoverMode !== 'modqn-replay' the override returns null on every call,
+  // which is byte-equivalent to no-override (SDD §9.7 truth invariance).
+  const decisionOverride = useCallback<HandoverDecisionOverride>(() => {
+    if (handoverModeRef.current !== 'modqn-replay') return null;
+
+    const env = envelopeRef.current;
+    if (!env) return null;
+
+    const safeSlot = Math.min(
+      Math.max(Math.trunc(slotOffsetRef.current), 0),
+      Math.max(env.replaySlots.length - 1, 0),
+    );
+    const slot = env.replaySlots[safeSlot] ?? env.replaySlots[0];
+    const row = slot?.rows[0];
+    if (!row) return null;
+
+    const diag = row.producerTruth.policyDiagnostics;
+    const candidates = diag?.topCandidates;
+    if (!candidates || candidates.length === 0) return null;
+
+    const omega = omegaActiveRef.current;
+    const result = reScalarize(candidates, omega);
+    if (!result) return null;
+
+    if (result.wasFallback) {
+      incrementFallbackRef.current();
+    }
+
+    return { satId: result.satId, beamId: result.beamId };
+  }, []); // deps intentionally empty — all mutable reads go through refs
+
   const observer = useMemo(
     () => createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg),
     [profile.orbit.observerLatDeg, profile.orbit.observerLonDeg],
@@ -52,7 +137,9 @@ export function useSimulation(
     return createTrajectoryCache(profile, observer, replay.epochUtcMs);
   }, [observer, profile.orbit.shells, replay.epochUtcMs]);
 
-  const hoManager = useMemo(() => new HandoverManager(profile.handover), [profile.handover]);
+  // S3: use the subclass so stepRuntimeFrame picks up the override without
+  // needing a frozen-file edit.
+  const hoManager = useMemo(() => new S3HandoverManager(profile.handover), [profile.handover]);
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
   const initialSimTimeSec = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
   const runtimeStateRef = useRef<RuntimeFrameStepState>(
@@ -97,6 +184,13 @@ export function useSimulation(
 
   useFrame((_, delta) => {
     if (trajectoryCache.length === 0) return;
+
+    // S3: install or clear the override on the manager each frame so the ref
+    // is current at the moment hoManager.update() fires inside stepRuntimeFrame.
+    // Null when mode !== 'modqn-replay' — byte-equivalent to base-class behavior
+    // (SDD §9.7 truth invariance for sinr-offset mode).
+    hoManager.overrideRef.current =
+      handoverModeRef.current === 'modqn-replay' ? decisionOverride : null;
 
     const { frame, previousSimTimeSec } = stepRuntimeFrame({
       profile,

@@ -19,7 +19,16 @@ import {
   type ModqnReplayPlaybackDisplayState,
   type ModqnReplayPlaybackShellModel,
 } from './modqn/replay-bundle';
-import { ModqnEnvelopeProvider } from './ui/useModqnHandoverState';
+import {
+  ModqnEnvelopeProvider,
+  ModqnHandoverModeProvider,
+  MODQN_PAPER_FAITHFUL_OMEGA,
+  readPersistedHandoverMode,
+  persistHandoverMode,
+  type RuntimeHandoverMode,
+  type RuntimeOmegaState,
+} from './ui/useModqnHandoverState';
+import { MODQN_1SAT_7BEAM_PROFILE_ID } from './profiles';
 import {
   deriveRuntimeVisualSettings,
   readPrefersReducedMotion,
@@ -87,6 +96,21 @@ function resolvePresentationMode(profile: Profile): PresentationMode {
 export function App() {
   const [selectedProfileId, setSelectedProfileId] = useState(DEFAULT_PROFILE_ID);
   const [uiMode, setUiMode] = useState<UiMode>(() => readPersistedUiMode());
+
+  // S3: handover mode — persisted for sinr-offset/modqn-replay, never for omega-heuristic.
+  const [handoverMode, setHandoverModeRaw] = useState<RuntimeHandoverMode>(
+    () => readPersistedHandoverMode(),
+  );
+  // omegaActive snapshot — owned by App so it can be threaded into ModqnHandoverModeContext
+  // and read by useSimulation (inside Canvas). Starts at paper-faithful defaults.
+  const [omegaActiveForContext, setOmegaActiveForContext] = useState<RuntimeOmegaState>(
+    () => MODQN_PAPER_FAITHFUL_OMEGA,
+  );
+  // re-scalarization fallback count — reset on mode change or sim reset.
+  const [rescalarizeFallbackCount, setRescalarizeFallbackCount] = useState(0);
+  const incrementRescalarizeFallback = useCallback(() => {
+    setRescalarizeFallbackCount(c => c + 1);
+  }, []);
   const [leftSidebarTab, setLeftSidebarTab] = useState<LeftSidebarTab>('objective');
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('modqn');
   const [beamDensityOverride, setBeamDensityOverride] = useState<BeamDensity | null>(null);
@@ -311,6 +335,81 @@ export function App() {
     persistUiMode(nextMode);
   }, []);
 
+  // S3: handover mode change with profile-lock enforcement (SDD §6.2).
+  // omega reset to bundle objectiveWeights (or paper-faithful fallback).
+  // MODQN board default-on when entering modqn-replay.
+  const handleHandoverModeChange = useCallback((nextMode: RuntimeHandoverMode) => {
+    if (nextMode === handoverMode) return;
+
+    if (nextMode === 'modqn-replay') {
+      const targetProfileId = MODQN_1SAT_7BEAM_PROFILE_ID;
+      const isAlreadyOnTarget = selectedProfileId === targetProfileId;
+
+      if (!isAlreadyOnTarget) {
+        // Profile lock: ask user to confirm switching to modqn-1sat-7beam.
+        const confirmed = window.confirm(
+          'modqn-replay requires the modqn-1sat-7beam profile.\n\n'
+          + 'Switch to modqn-1sat-7beam and reset simulation? '
+          + 'Your signal/handover tuning will be reset.',
+        );
+        if (!confirmed) {
+          // Cancel — keep sinr-offset.
+          return;
+        }
+        // Switch profile, reset sim, reset ω to paper-faithful defaults.
+        startTransition(() => {
+          setSelectedProfileId(targetProfileId);
+          const targetProfile = loadProfile(targetProfileId);
+          setSignalTuning(createSignalTuningState(targetProfile));
+          const defaults = createHandoverPolicyTuningState(targetProfile);
+          setHandoverPolicyState({
+            profileId: targetProfileId,
+            draft: defaults,
+            applied: defaults,
+            version: 0,
+          });
+          setSimState(createInitialSimState(targetProfile));
+          playback.resetAutoSlowDismissed();
+          setRescalarizeFallbackCount(0);
+        });
+      } else {
+        // Already on modqn-1sat-7beam — just reset fallback count.
+        setRescalarizeFallbackCount(0);
+      }
+      // Reset ω to paper-faithful defaults (bundle objectiveWeights, if available;
+      // falls back to MODQN_PAPER_FAITHFUL_OMEGA per SDD §6.2).
+      setOmegaActiveForContext(MODQN_PAPER_FAITHFUL_OMEGA);
+      // Persist and apply mode.
+      setHandoverModeRaw(nextMode);
+      persistHandoverMode(nextMode);
+      // Note: MODQN board default-on is handled in the right sidebar tab by the
+      // mode selector render — the board's visibility is controlled by the
+      // rightSidebarTab being 'modqn'. For S3 we ensure the tab switches to
+      // 'modqn' when entering modqn-replay.
+      setRightSidebarTab('modqn');
+      return;
+    }
+
+    // omega-heuristic: never persist; just set in-memory.
+    if (nextMode === 'omega-heuristic') {
+      setHandoverModeRaw(nextMode);
+      setRescalarizeFallbackCount(0);
+      // Do NOT call persistHandoverMode for omega-heuristic (SDD §5.2, §9.4 item 8).
+      return;
+    }
+
+    // sinr-offset: persist + clear fallback count.
+    setHandoverModeRaw(nextMode);
+    persistHandoverMode(nextMode);
+    setRescalarizeFallbackCount(0);
+  }, [handoverMode, selectedProfileId, playback]);
+
+  // S3: expose a setter so ModqnObjectiveTab (via useModqnHandoverState hook)
+  // can update the omegaActive snapshot in the mode context.
+  const handleOmegaActiveChange = useCallback((next: RuntimeOmegaState) => {
+    setOmegaActiveForContext(next);
+  }, []);
+
   const handleBeamDensityChange = useCallback((nextDensity: BeamDensity) => {
     setBeamDensityOverride(nextDensity);
   }, []);
@@ -374,6 +473,14 @@ export function App() {
       envelope={modqnReplayEnvelope}
       slotOffset={modqnReplaySlotOffset}
     >
+    <ModqnHandoverModeProvider
+      mode={handoverMode}
+      setMode={handleHandoverModeChange}
+      omegaActive={omegaActiveForContext}
+      onOmegaActiveChange={handleOmegaActiveChange}
+      rescalarizeFallbackCount={rescalarizeFallbackCount}
+      incrementRescalarizeFallback={incrementRescalarizeFallback}
+    >
     <div data-ui-mode={uiMode} className="leo-app-shell">
       {modqnReplayFetchError !== null && (
         <div
@@ -396,6 +503,42 @@ export function App() {
           reachable. Error: {modqnReplayFetchError}
         </div>
       )}
+      {/* S3: Paper-faithful replay info banner — non-warning, dismissable (SDD §6.1 / §9.4 item 7) */}
+      {handoverMode === 'modqn-replay' && (
+        <div
+          className="leo-modqn-replay-mode-banner"
+          role="status"
+          data-testid="modqn-replay-mode-banner"
+          style={{
+            background: 'rgba(0, 80, 180, 0.72)',
+            color: '#d4edff',
+            padding: '6px 16px',
+            fontSize: 13,
+            borderBottom: '1px solid rgba(100, 180, 255, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <span>Paper-faithful: MODQN baseline replay</span>
+          <button
+            type="button"
+            aria-label="Dismiss MODQN replay mode banner"
+            style={{
+              marginLeft: 'auto',
+              background: 'none',
+              border: 'none',
+              color: 'inherit',
+              cursor: 'pointer',
+              fontSize: 16,
+              lineHeight: 1,
+            }}
+            onClick={() => handleHandoverModeChange('sinr-offset')}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <ControlBar
         selectedProfileId={selectedProfileId}
         profileOptions={profileOptions}
@@ -410,6 +553,7 @@ export function App() {
         cinematicMode={effectiveCinematicMode}
         beamHopEnabled={simState.beamHopEnabled}
         beamHopSlotIndex={simState.beamHopSlotIndex}
+        handoverMode={handoverMode}
         onProfileChange={setSelectedProfileId}
         onUiModeChange={handleUiModeChange}
         onBeamDensityChange={handleBeamDensityChange}
@@ -419,6 +563,7 @@ export function App() {
         onSpeedChange={playback.setSpeed}
         onDismissAutoSlow={playback.dismissAutoSlow}
         onToggleAutoSlow={playback.toggleAutoSlow}
+        onHandoverModeChange={handleHandoverModeChange}
       />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
@@ -452,7 +597,12 @@ export function App() {
             )}
           </SidebarTabShell>
         </aside>
-        <main className="leo-shell-canvas" data-testid="leo-shell-canvas">
+        {/* S3: data-handover-criterion attribute on scene container (SDD §9.4 item 6) */}
+        <main
+          className="leo-shell-canvas"
+          data-testid="leo-shell-canvas"
+          data-handover-criterion={handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset'}
+        >
           <MainScene
             speed={playback.effectiveSpeed}
             paused={playback.paused}
@@ -494,6 +644,8 @@ export function App() {
                   {...simState}
                   uiMode={uiMode}
                   profile={effectiveProfile}
+                  handoverMode={handoverMode}
+                  rescalarizeFallbackCount={rescalarizeFallbackCount}
                 />
               </section>
             )}
@@ -501,6 +653,7 @@ export function App() {
         </aside>
       </div>
     </div>
+    </ModqnHandoverModeProvider>
     </ModqnEnvelopeProvider>
   );
 }
