@@ -2,6 +2,42 @@ import type { Profile } from '../../profiles/types';
 import type { LinkSample } from '../signal/types';
 import type { HandoverDecision, HandoverEvent, ServingState } from './types';
 
+/**
+ * Input contract for a {@link HandoverDecisionOverride}.
+ *
+ * SDD §5.3 (`docs/modqn-omega-handover-sdd.md`): the override receives the
+ * same inputs as the engine — candidate beams, current serving, masks/ΔSINR
+ * versus serving — and either picks a target beam or returns `null` to defer
+ * to sinr-offset. Trigger timing, dwell, and ping-pong-guard remain
+ * engine-side; the override only replaces the `argmax` step.
+ */
+export interface HandoverDecisionOverrideInput {
+  /** Smoothed candidate beams visible this tick (post sinr smoothing). */
+  readonly candidates: readonly LinkSample[];
+  /** Same candidates pre-sorted by smoothed SINR descending. */
+  readonly sortedBySinrDesc: readonly LinkSample[];
+  /** Current serving snapshot at the moment override is consulted. */
+  readonly serving: {
+    readonly satId: string | null;
+    readonly beamId: number | null;
+    readonly sinrDb: number;
+  };
+  /** Engine offset (dB) used for the inter-HO ΔSINR mask. */
+  readonly offsetDb: number;
+}
+
+/**
+ * Optional decision override hook on {@link HandoverManager.update}.
+ *
+ * Returning `null` defers to the built-in sinr-offset argmax. Returning a
+ * `{satId, beamId}` that exists in the candidate set re-prioritizes the
+ * engine's argmax to that target. Trigger timing, dwell, and ping-pong-guard
+ * keep running engine-side regardless.
+ */
+export type HandoverDecisionOverride = (
+  input: HandoverDecisionOverrideInput,
+) => { satId: string; beamId: number } | null;
+
 function beamAssignmentKey(satId: string, beamId: number): string {
   return `${satId}:${beamId}`;
 }
@@ -67,7 +103,12 @@ export class HandoverManager {
     return this.smoothedSinrByAssignment.get(key) ?? null;
   }
 
-  update(candidates: LinkSample[], dt: number, simTimeMs: number): HandoverDecision {
+  update(
+    candidates: LinkSample[],
+    dt: number,
+    simTimeMs: number,
+    decisionOverride?: HandoverDecisionOverride,
+  ): HandoverDecision {
     const smoothedCandidates = this.smoothCandidates(candidates, dt);
     if (this.state.satId !== null) {
       const currentBeam = smoothedCandidates.find(
@@ -84,7 +125,13 @@ export class HandoverManager {
       return { action: 'stay', reason: 'no candidates' };
     }
 
-    const sorted = [...smoothedCandidates].sort((a, b) => b.sinrDb - a.sinrDb);
+    const sortedBase = [...smoothedCandidates].sort((a, b) => b.sinrDb - a.sinrDb);
+    // SDD §5.3: override only replaces the argmax. We give it the same
+    // inputs the engine has (candidates + ΔSINR mask offset + serving) and
+    // re-prioritize sortedBase so the chosen target becomes sorted[0]. All
+    // downstream timing/dwell/guard logic still operates on the same array
+    // shape, so a null/absent override is byte-equivalent to the prior code.
+    const sorted = this.applyDecisionOverride(sortedBase, smoothedCandidates, decisionOverride);
     const best = sorted[0];
 
     if (this.state.satId === null) {
@@ -213,6 +260,46 @@ export class HandoverManager {
     }
 
     return this.pendingDecisionReason(activePendingSample ?? bestTarget, 'tracking pending target');
+  }
+
+  /**
+   * SDD §5.3 override application. Pulls the override's chosen target to
+   * the front of `sortedBase` so the existing argmax-driven branches
+   * (intra-switch, inter-HO) see it as `sorted[0]`. Returns `sortedBase`
+   * unchanged when:
+   *   - override is not supplied (most callers; backwards-compatible),
+   *   - override returns `null` (defer to sinr-offset),
+   *   - override returns a target absent from this tick's candidates,
+   *   - override returns the candidate that is already sorted[0].
+   * Engine-side timing/dwell/guard logic is untouched.
+   */
+  private applyDecisionOverride(
+    sortedBase: LinkSample[],
+    smoothedCandidates: LinkSample[],
+    decisionOverride: HandoverDecisionOverride | undefined,
+  ): LinkSample[] {
+    if (!decisionOverride) return sortedBase;
+    const chosen = decisionOverride({
+      candidates: smoothedCandidates,
+      sortedBySinrDesc: sortedBase,
+      serving: {
+        satId: this.state.satId,
+        beamId: this.state.beamId,
+        sinrDb: this.state.sinrDb,
+      },
+      offsetDb: this.offsetDb,
+    });
+    if (!chosen) return sortedBase;
+    const chosenIndex = sortedBase.findIndex(
+      candidate => candidate.satId === chosen.satId && candidate.beamId === chosen.beamId,
+    );
+    if (chosenIndex <= 0) return sortedBase;
+    const chosenSample = sortedBase[chosenIndex];
+    const reordered = [chosenSample];
+    for (let i = 0; i < sortedBase.length; i++) {
+      if (i !== chosenIndex) reordered.push(sortedBase[i]);
+    }
+    return reordered;
   }
 
   private smoothCandidates(candidates: LinkSample[], dt: number): LinkSample[] {
