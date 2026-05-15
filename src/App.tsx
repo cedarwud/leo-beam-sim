@@ -46,7 +46,6 @@ import { SidebarTabShell, type SidebarTabItem } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
-import { useModqnDemoStub } from './ui/useModqnDemoStub';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
 import { usePlaybackControls } from './usePlaybackControls';
 import { useCameraControls } from './useCameraControls';
@@ -149,7 +148,6 @@ export function App() {
     () => `${handoverPolicyVersion}:${getHandoverPolicyResetKey(appliedHandoverPolicy)}`,
     [appliedHandoverPolicy, handoverPolicyVersion],
   );
-  const modqnDemoStub = useModqnDemoStub(appliedHandoverPolicy);
   const profileOptions = useMemo(
     () => profileList.map(entry => ({ id: entry.id, label: getProfileLabel(entry) })),
     [],
@@ -359,7 +357,7 @@ export function App() {
             onChange={setLeftSidebarTab}
           >
             {leftSidebarTab === 'objective' ? (
-              <ModqnObjectiveTab stub={modqnDemoStub} />
+              <ModqnObjectiveTab />
             ) : (
               <SignalTuningPanel
                 baseProfile={baseProfile}
@@ -405,9 +403,10 @@ export function App() {
                 aria-label="MODQN proof"
               >
                 <ModqnEvidenceTab
-                  stub={modqnDemoStub}
                   simState={simState}
                   bandwidthMHz={effectiveProfile.channel.bandwidthMHz}
+                  appliedHandoverOffsetDb={appliedHandoverPolicy.offsetDb}
+                  appliedHandoverTriggerTimeSec={appliedHandoverPolicy.triggerTimeSec}
                 />
               </section>
             ) : (
