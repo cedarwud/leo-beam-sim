@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { BeamCodeRole } from '../constants/beamRoleTokens';
 import type { TopocentricPoint } from '../engine/orbit';
 import type { ActiveBeamAssignment, LinkSample } from '../engine/signal/types';
+import type { HandoverEvent } from '../engine/handover/types';
 import type { BeamTarget } from '../viz/SatelliteBeams';
 import type { GlyphKind } from '../viz/glyphs';
 import type { BeamFrequencyIndexResolution } from '../utils/beamFrequency';
@@ -143,6 +144,11 @@ export interface SimState {
   sinrDeltaDb: number | null;
   recentHoSourceSatId: string | null;
   recentHoTargetSatId: string | null;
+  recentHoSourceBeamId: number | null;
+  recentHoTargetBeamId: number | null;
+  recentHoDeltaDb: number | null;
+  lastHoEvent: HandoverEvent | null;
+  simTimeSec: number;
   sinrDb: number;
   physicalServingBudget: LinkBudgetTerms | null;
   servingBudget: LinkBudgetTerms | null;
@@ -224,6 +230,7 @@ export interface SimFrame {
   recentHoSourceSinrDb: number | null;
   recentHoTargetSinrDb: number | null;
   recentHoDeltaDb: number | null;
+  lastHoEvent: HandoverEvent | null;
   handoverTriggerProgressSec: number;
   hoCount: number;
   intraHoCount: number;
@@ -234,6 +241,8 @@ export interface SimFrame {
   intraHandoverEvent: IntraHandoverEvent | null;
   intraHandoverWallClockStartMs: number | null;
   intraHandoverWallClockExpiresMs: number | null;
+  ueGroundX: number;
+  ueGroundZ: number;
 }
 
 export type EventRole = BeamCodeRole;

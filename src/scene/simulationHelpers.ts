@@ -80,6 +80,9 @@ export function createEmptyFrame(simTimeSec: number): SimFrame {
     intraHandoverEvent: null,
     intraHandoverWallClockStartMs: null,
     intraHandoverWallClockExpiresMs: null,
+    lastHoEvent: null,
+    ueGroundX: 0,
+    ueGroundZ: 0,
   };
 }
 

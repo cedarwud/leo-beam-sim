@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { UI_CLASSES, UI_TOKENS } from '../constants/uiTokens';
 import type { HandoverPolicyTuningState } from '../handoverPolicyTuning';
 
-type NumericHandoverPolicyField = Exclude<keyof HandoverPolicyTuningState, 'policy'>;
+type NumericHandoverPolicyField = Exclude<keyof HandoverPolicyTuningState, 'policy' | 'modqnWeights' | 'modqnNetworkParams'>;
 
 interface HandoverPolicyControlConfig {
   field: NumericHandoverPolicyField;

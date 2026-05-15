@@ -51,10 +51,10 @@ export function deriveBeamDensity(uiMode: UiMode): BeamDensity {
 }
 
 export function resolveRuntimeCinematicMode(
-  uiMode: UiMode,
+  _uiMode: UiMode,
   requestedMode: CinematicMode,
 ): CinematicMode {
-  return uiMode === 'presentation' ? requestedMode : 'off';
+  return requestedMode;
 }
 
 export function deriveRuntimeVisualSettings(

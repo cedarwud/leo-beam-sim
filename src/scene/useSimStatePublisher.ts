@@ -15,30 +15,18 @@ import {
   extractBudgetTerms,
   hasUiStateChanged,
   isFiniteBeamSinr,
-  isFinitePanelSinr,
   normalizePanelSignal,
   resolveLatchedBudget,
   resolveLatchedSinr,
   resolveLatchedTopo,
   resolveSignalStatus,
   resolveVisualFrequencyDiagnosticsEntry,
-  type LatchedBudgetState,
-  type LatchedSignalState,
-  type LatchedTopoState,
 } from './panelState';
+import { useLatchedSignals } from './useLatchedSignals';
+import { usePanelModeInference } from './usePanelModeInference';
 
 const UI_STABLE_UPDATE_INTERVAL_MS = 700;
 const UI_HANDOVER_UPDATE_INTERVAL_MS = 250;
-
-interface HandoverPanelSnapshot {
-  phase: 'pending' | 'recent-ho';
-  servingSatId: string;
-  servingBeamId: number;
-  servingSinrDb: number | null;
-  comparisonSatId: string;
-  comparisonBeamId: number;
-  comparisonSinrDb: number | null;
-}
 
 export function useSimStatePublisher({
   profile,
@@ -57,36 +45,26 @@ export function useSimStatePublisher({
   latchedBeamSinrByKeyRef: MutableRefObject<Map<string, number>>;
   onSimUpdate: (state: SimState) => void;
 }) {
+  const latched = useLatchedSignals({
+    signalResetKey,
+    handoverResetKey,
+    beamSinrByKeyRef: latchedBeamSinrByKeyRef,
+  });
+  const inferPanelMode = usePanelModeInference({ signalResetKey, handoverResetKey });
+
   const lastUiUpdateAtRef = useRef(0);
   const lastUiStateRef = useRef<SimState | null>(null);
-  const latchedServingSinrRef = useRef<LatchedSignalState>({ satId: null, beamId: null, sinrDb: null });
-  const latchedComparisonSinrRef = useRef<LatchedSignalState>({ satId: null, beamId: null, sinrDb: null });
-  const latchedPhysicalServingTopoRef = useRef<LatchedTopoState>({ satId: null, beamId: null, elevationDeg: null, rangeKm: null });
-  const latchedServingTopoRef = useRef<LatchedTopoState>({ satId: null, beamId: null, elevationDeg: null, rangeKm: null });
-  const latchedComparisonTopoRef = useRef<LatchedTopoState>({ satId: null, beamId: null, elevationDeg: null, rangeKm: null });
-  const latchedPhysicalServingBudgetRef = useRef<LatchedBudgetState>({ satId: null, beamId: null, budget: null });
-  const latchedServingBudgetRef = useRef<LatchedBudgetState>({ satId: null, beamId: null, budget: null });
-  const handoverPanelRef = useRef<HandoverPanelSnapshot | null>(null);
 
   useEffect(() => {
     lastUiUpdateAtRef.current = 0;
     lastUiStateRef.current = null;
-    latchedServingSinrRef.current = { satId: null, beamId: null, sinrDb: null };
-    latchedComparisonSinrRef.current = { satId: null, beamId: null, sinrDb: null };
-    latchedPhysicalServingTopoRef.current = { satId: null, beamId: null, elevationDeg: null, rangeKm: null };
-    latchedServingTopoRef.current = { satId: null, beamId: null, elevationDeg: null, rangeKm: null };
-    latchedComparisonTopoRef.current = { satId: null, beamId: null, elevationDeg: null, rangeKm: null };
-    latchedPhysicalServingBudgetRef.current = { satId: null, beamId: null, budget: null };
-    latchedServingBudgetRef.current = { satId: null, beamId: null, budget: null };
-    latchedBeamSinrByKeyRef.current = new Map();
-    handoverPanelRef.current = null;
-  }, [handoverResetKey, signalResetKey]);
+  }, [signalResetKey, handoverResetKey]);
 
   useEffect(() => {
     const topoBySatId = new Map(sim.satellites.map(sat => [sat.id, sat.topo]));
     const pendingTargetSinrDb = sim.pendingTargetSinrDb;
     const liveServingSinrDb = resolveLatchedSinr(
-      latchedServingSinrRef.current,
+      latched.servingSinr.current,
       sim.serving.satId,
       sim.serving.beamId,
       sim.serving.sinrDb,
@@ -103,7 +81,7 @@ export function useSimStatePublisher({
       ? sim.linkRangeKmBySatId.get(physicalServingSignal.satId) ?? physicalServingTopo?.rangeKm ?? null
       : null;
     const normalizedPhysicalServingTopo = resolveLatchedTopo(
-      latchedPhysicalServingTopoRef.current,
+      latched.physicalServingTopo.current,
       physicalServingSignal.satId,
       physicalServingSignal.beamId,
       physicalServingTopo?.elevationDeg ?? null,
@@ -113,119 +91,29 @@ export function useSimStatePublisher({
       .filter(sample => sample.satId !== sim.serving.satId)
       .sort((a, b) => b.sinrDb - a.sinrDb)[0] ?? null;
     const idleComparisonSinrDb = resolveLatchedSinr(
-      latchedComparisonSinrRef.current,
+      latched.comparisonSinr.current,
       candidateComparisonSample?.satId ?? null,
       candidateComparisonSample?.beamId ?? null,
       candidateComparisonSample?.sinrDb ?? null,
     );
-    const previousHandoverPanel = handoverPanelRef.current;
-    let panelServingSatId = sim.serving.satId;
-    let panelServingBeamId = sim.serving.beamId;
-    let panelServingSinrDb = liveServingSinrDb;
-    let panelComparisonSatId = candidateComparisonSample?.satId ?? null;
-    let panelComparisonBeamId = candidateComparisonSample?.beamId ?? null;
-    let panelComparisonSinrDb = idleComparisonSinrDb;
-    let panelComparisonKind: SimState['comparisonKind'] = candidateComparisonSample ? 'candidate' : null;
 
-    if (
-      sim.pendingTargetSatId !== null
-      && sim.pendingTargetBeamId !== null
-      && sim.serving.satId !== null
-      && sim.serving.beamId !== null
-    ) {
-      const samePendingPair =
-        previousHandoverPanel?.phase === 'pending'
-        && previousHandoverPanel.servingSatId === sim.serving.satId
-        && previousHandoverPanel.servingBeamId === sim.serving.beamId
-        && previousHandoverPanel.comparisonSatId === sim.pendingTargetSatId
-        && previousHandoverPanel.comparisonBeamId === sim.pendingTargetBeamId;
-      const pendingServingSinrDb = isFinitePanelSinr(liveServingSinrDb)
-        ? liveServingSinrDb
-        : samePendingPair
-          ? previousHandoverPanel.servingSinrDb
-          : null;
-      const pendingComparisonSinrDb = isFinitePanelSinr(pendingTargetSinrDb)
-        ? pendingTargetSinrDb
-        : samePendingPair
-          ? previousHandoverPanel.comparisonSinrDb
-          : null;
-      handoverPanelRef.current = {
-        phase: 'pending',
-        servingSatId: sim.serving.satId,
-        servingBeamId: sim.serving.beamId,
-        servingSinrDb: pendingServingSinrDb,
-        comparisonSatId: sim.pendingTargetSatId,
-        comparisonBeamId: sim.pendingTargetBeamId,
-        comparisonSinrDb: pendingComparisonSinrDb,
-      };
-      panelServingSatId = handoverPanelRef.current.servingSatId;
-      panelServingBeamId = handoverPanelRef.current.servingBeamId;
-      panelServingSinrDb = handoverPanelRef.current.servingSinrDb;
-      panelComparisonSatId = handoverPanelRef.current.comparisonSatId;
-      panelComparisonBeamId = handoverPanelRef.current.comparisonBeamId;
-      panelComparisonSinrDb = handoverPanelRef.current.comparisonSinrDb;
-      panelComparisonKind = 'pending';
-    } else if (
-      sim.recentHoSourceSatId !== null
-      && sim.recentHoSourceBeamId !== null
-      && sim.recentHoTargetSatId !== null
-      && sim.recentHoTargetBeamId !== null
-    ) {
-      const sameRecentPair =
-        previousHandoverPanel?.phase === 'recent-ho'
-        && previousHandoverPanel.servingSatId === sim.recentHoSourceSatId
-        && previousHandoverPanel.servingBeamId === sim.recentHoSourceBeamId
-        && previousHandoverPanel.comparisonSatId === sim.recentHoTargetSatId
-        && previousHandoverPanel.comparisonBeamId === sim.recentHoTargetBeamId;
-      const matchesPreviousPendingPair =
-        previousHandoverPanel?.phase === 'pending'
-        && previousHandoverPanel.servingSatId === sim.recentHoSourceSatId
-        && previousHandoverPanel.servingBeamId === sim.recentHoSourceBeamId
-        && previousHandoverPanel.comparisonSatId === sim.recentHoTargetSatId
-        && previousHandoverPanel.comparisonBeamId === sim.recentHoTargetBeamId;
-      const recentServingSinrDb = isFinitePanelSinr(sim.recentHoSourceSinrDb)
-        ? sim.recentHoSourceSinrDb
-        : matchesPreviousPendingPair
-          ? previousHandoverPanel.servingSinrDb
-          : sameRecentPair
-            ? previousHandoverPanel.servingSinrDb
-            : null;
-      const recentComparisonSinrDb = isFinitePanelSinr(sim.recentHoTargetSinrDb)
-        ? sim.recentHoTargetSinrDb
-        : matchesPreviousPendingPair
-          ? previousHandoverPanel.comparisonSinrDb
-          : sameRecentPair
-            ? previousHandoverPanel.comparisonSinrDb
-            : null;
-      handoverPanelRef.current = {
-        phase: 'recent-ho',
-        servingSatId: sim.recentHoSourceSatId,
-        servingBeamId: sim.recentHoSourceBeamId,
-        servingSinrDb: recentServingSinrDb,
-        comparisonSatId: sim.recentHoTargetSatId,
-        comparisonBeamId: sim.recentHoTargetBeamId,
-        comparisonSinrDb: recentComparisonSinrDb,
-      };
-      panelServingSatId = handoverPanelRef.current.servingSatId;
-      panelServingBeamId = handoverPanelRef.current.servingBeamId;
-      panelServingSinrDb = handoverPanelRef.current.servingSinrDb;
-      panelComparisonSatId = handoverPanelRef.current.comparisonSatId;
-      panelComparisonBeamId = handoverPanelRef.current.comparisonBeamId;
-      panelComparisonSinrDb = handoverPanelRef.current.comparisonSinrDb;
-      panelComparisonKind = 'recent-ho';
-    } else {
-      handoverPanelRef.current = null;
-    }
+    const panelMode = inferPanelMode({
+      sim,
+      liveServingSinrDb,
+      candidateComparisonSatId: candidateComparisonSample?.satId ?? null,
+      candidateComparisonBeamId: candidateComparisonSample?.beamId ?? null,
+      idleComparisonSinrDb,
+    });
 
     const normalizedServing = normalizePanelSignal(
-      panelServingSatId,
-      panelServingBeamId,
-      panelServingSinrDb,
+      panelMode.panelServingSatId,
+      panelMode.panelServingBeamId,
+      panelMode.panelServingSinrDb,
     );
     const normalizedComparison = normalizePanelSignal(
-      panelComparisonSatId,
-      panelComparisonBeamId,
-      panelComparisonSinrDb,
+      panelMode.panelComparisonSatId,
+      panelMode.panelComparisonBeamId,
+      panelMode.panelComparisonSinrDb,
     );
     const servingTopo = normalizedServing.satId
       ? topoBySatId.get(normalizedServing.satId)
@@ -240,14 +128,14 @@ export function useSimStatePublisher({
       ? sim.linkRangeKmBySatId.get(normalizedComparison.satId) ?? comparisonTopo?.rangeKm ?? null
       : null;
     const normalizedServingTopo = resolveLatchedTopo(
-      latchedServingTopoRef.current,
+      latched.servingTopo.current,
       normalizedServing.satId,
       normalizedServing.beamId,
       servingTopo?.elevationDeg ?? null,
       servingRangeKm,
     );
     const normalizedComparisonTopo = resolveLatchedTopo(
-      latchedComparisonTopoRef.current,
+      latched.comparisonTopo.current,
       normalizedComparison.satId,
       normalizedComparison.beamId,
       comparisonTopo?.elevationDeg ?? null,
@@ -327,19 +215,19 @@ export function useSimStatePublisher({
       ) ?? null
       : null;
     const physicalServingBudget = resolveLatchedBudget(
-      latchedPhysicalServingBudgetRef.current,
+      latched.physicalServingBudget.current,
       physicalServingSignal.satId,
       physicalServingSignal.beamId,
       extractBudgetTerms(physicalServingSample),
     );
     const servingBudget = resolveLatchedBudget(
-      latchedServingBudgetRef.current,
+      latched.servingBudget.current,
       normalizedServing.satId,
       normalizedServing.beamId,
       extractBudgetTerms(servingSample),
     );
     const panelPrimaryRole: PanelPrimaryState['role'] = normalizedServing.satId
-      ? panelComparisonKind === 'recent-ho' ? 'ho-source' : 'serving'
+      ? panelMode.panelComparisonKind === 'recent-ho' ? 'ho-source' : 'serving'
       : 'none';
     const panelPrimaryStatus: SignalTruthStatus = panelPrimaryRole === 'ho-source'
       ? 'recent-ho'
@@ -352,9 +240,9 @@ export function useSimStatePublisher({
     const panelComparisonRole: PanelComparisonState['role'] =
       normalizedComparison.satId === null
         ? 'none'
-        : panelComparisonKind === 'pending'
+        : panelMode.panelComparisonKind === 'pending'
           ? 'pending'
-          : panelComparisonKind === 'recent-ho'
+          : panelMode.panelComparisonKind === 'recent-ho'
             ? 'ho-target'
             : 'candidate';
     const panelComparisonStatus: SignalTruthStatus =
@@ -459,11 +347,16 @@ export function useSimStatePublisher({
       comparisonElevationDeg: normalizedComparisonTopo.elevationDeg,
       comparisonRangeKm: normalizedComparisonTopo.rangeKm,
       comparisonSinrDb: normalizedComparison.sinrDb,
-      comparisonKind: normalizedComparison.satId ? panelComparisonKind : null,
+      comparisonKind: normalizedComparison.satId ? panelMode.panelComparisonKind : null,
       intraHandoverEvent: nextIntraHandoverEvent,
       sinrDeltaDb: panelSinrDeltaDb,
       recentHoSourceSatId: sim.recentHoSourceSatId,
       recentHoTargetSatId: sim.recentHoTargetSatId,
+      recentHoSourceBeamId: sim.recentHoSourceBeamId,
+      recentHoTargetBeamId: sim.recentHoTargetBeamId,
+      recentHoDeltaDb: sim.recentHoDeltaDb,
+      lastHoEvent: sim.lastHoEvent,
+      simTimeSec: sim.simTimeSec,
       sinrDb: normalizedServing.sinrDb ?? -Infinity,
       physicalServingBudget,
       servingBudget,

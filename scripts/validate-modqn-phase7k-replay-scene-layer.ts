@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -17,6 +17,16 @@ const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function readRepoFile(path: string): string {
   return readFileSync(join(ROOT_DIR, path), 'utf8');
+}
+
+function readReplaySceneLayerSources(): string {
+  const entry = readRepoFile('src/scene/ModqnReplaySceneLayer.tsx');
+  const dirPath = join(ROOT_DIR, 'src/scene/modqn-replay-visuals');
+  const files = readdirSync(dirPath)
+    .filter(name => name.endsWith('.tsx') || name.endsWith('.ts'))
+    .sort();
+  const parts = files.map(name => readFileSync(join(dirPath, name), 'utf8'));
+  return [entry, ...parts].join('\n');
 }
 
 function assertContains(source: string, needle: string, label: string): void {
@@ -97,7 +107,7 @@ function assertNoSwitchSlotVisualState(): void {
 function assertSceneBridgeSource(): void {
   const appSource = readRepoFile('src/App.tsx');
   const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
-  const sceneLayerSource = readRepoFile('src/scene/ModqnReplaySceneLayer.tsx');
+  const sceneLayerSource = readReplaySceneLayerSources();
   const helperSource = readRepoFile('src/scene/modqnReplaySceneVisuals.ts');
 
   assertContains(

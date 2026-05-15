@@ -1,9 +1,14 @@
 import { Text } from '@react-three/drei';
 
-/** Observer marker only — no ground plane (NTPU scene provides the ground). */
-export function GroundScene() {
+interface GroundSceneProps {
+  readonly ueGroundX?: number;
+  readonly ueGroundZ?: number;
+}
+
+/** Observer/UE marker only — no ground plane (NTPU scene provides the ground). */
+export function GroundScene({ ueGroundX = 0, ueGroundZ = 0 }: GroundSceneProps) {
   return (
-    <group>
+    <group position={[ueGroundX, 0, ueGroundZ]}>
       <mesh position={[0, 2, 0]}>
         <cylinderGeometry args={[6, 6, 4, 16]} />
         <meshStandardMaterial color="#ff4444" emissive="#ff2222" emissiveIntensity={0.3} />

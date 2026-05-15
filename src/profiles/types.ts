@@ -57,6 +57,26 @@ export interface Shell {
   satsPerPlane: number;
 }
 
+export interface ModqnObjectiveWeights {
+  throughput: number;
+  handover: number;
+  loadBalance: number;
+}
+
+export interface ModqnNetworkParams {
+  learningRate: number;
+  discountGamma: number;
+  hiddenDim: number;
+  networkDepth: number;
+  batchSize: number;
+  optimizer: 'Adam' | 'SGD' | 'RMSprop';
+  epsilonStart: number;
+  epsilonEnd: number;
+  targetUpdateTau: number;
+  replayBufferSize: number;
+  episodes: number;
+}
+
 export interface Profile {
   id: string;
   paper: string;
@@ -103,6 +123,8 @@ export interface Profile {
     pendingTargetHoldSec: number;
     intraSwitchTimeSec: number;
     sinrSmoothingSec: number;
+    modqnWeights?: ModqnObjectiveWeights;
+    modqnNetworkParams?: ModqnNetworkParams;
   };
 
   beams: {

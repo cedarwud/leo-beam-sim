@@ -52,14 +52,9 @@ function DebugRow({
   value: string;
 }) {
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'minmax(92px, 0.8fr) minmax(0, 1.2fr)',
-      gap: 10,
-      minWidth: 0,
-    }}>
-      <div style={{ color: UI_TOKENS.color.text.faint }}>{label}</div>
-      <div style={{ color: UI_TOKENS.color.text.secondary, overflowWrap: 'anywhere' }}>{value}</div>
+    <div className="leo-debug-row">
+      <div className="leo-debug-row__label">{label}</div>
+      <div className="leo-debug-row__value">{value}</div>
     </div>
   );
 }
@@ -76,24 +71,8 @@ function DrawerSection({
   children: ReactNode;
 }) {
   return (
-    <section
-      data-testid={testId}
-      style={{
-        padding: '11px 12px',
-        borderRadius: UI_TOKENS.radius.lg,
-        background: UI_TOKENS.color.surface.cardFaint,
-        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-        fontSize: 12,
-        lineHeight: 1.45,
-      }}
-    >
-      <div style={{
-        color: tone,
-        fontWeight: UI_TOKENS.type.weight.heavy,
-        letterSpacing: 0.7,
-        marginBottom: 7,
-        textTransform: 'uppercase',
-      }}>
+    <section className="leo-drawer-section" data-testid={testId}>
+      <div className="leo-drawer-section__title" style={{ color: tone }}>
         {title}
       </div>
       {children}
@@ -104,22 +83,25 @@ function DrawerSection({
 export function DiagnosticsDrawer({
   uiMode,
   profile,
-  panelPrimary,
-  panelComparison,
-  visualFrequencyDiagnostics,
-  recentHoSourceSatId,
-  recentHoTargetSatId,
-  physicalServingBudget,
-  hoCount,
-  intraHoCount,
-  lastHoReason,
-  beamHopEnabled,
-  beamHopSlotIndex,
-  beamHopSlotSec,
-  servingBeamActiveThisSlot,
-  servingSatActiveBeamIds,
-  pendingTargetActiveBeamIds,
+  ...simState
 }: DiagnosticsDrawerProps) {
+  const {
+    panelPrimary,
+    panelComparison,
+    visualFrequencyDiagnostics,
+    recentHoSourceSatId,
+    recentHoTargetSatId,
+    physicalServingBudget,
+    hoCount,
+    intraHoCount,
+    lastHoReason,
+    beamHopEnabled,
+    beamHopSlotIndex,
+    beamHopSlotSec,
+    servingBeamActiveThisSlot,
+    servingSatActiveBeamIds,
+    pendingTargetActiveBeamIds,
+  } = simState;
   const expanded = uiMode === 'diagnostics';
   const frequencyReuse = profile.beams.frequencyReuse;
   const beamPowerControl = profile.channel.beamPowerControl;
@@ -151,23 +133,6 @@ export function DiagnosticsDrawer({
         data-testid="diagnostics-drawer"
         data-drawer-state="collapsed"
         aria-label="Diagnostics drawer"
-        style={{
-          position: 'absolute',
-          right: 0,
-          bottom: 0,
-          width: 'min(188px, 100%)',
-          padding: '8px 10px',
-          borderRadius: UI_TOKENS.radius.md,
-          border: `1px solid ${UI_TOKENS.color.border.soft}`,
-          background: 'rgba(5, 16, 26, 0.94)',
-          color: UI_TOKENS.color.text.secondary,
-          fontFamily: UI_TOKENS.type.family.mono,
-          fontSize: UI_TOKENS.type.size.caption,
-          fontWeight: UI_TOKENS.type.weight.heavy,
-          letterSpacing: 0.4,
-          pointerEvents: 'auto',
-          zIndex: 4,
-        }}
       >
         <div data-testid="diagnostics-drawer-tab">Diagnostics</div>
       </section>
@@ -180,44 +145,14 @@ export function DiagnosticsDrawer({
       data-testid="diagnostics-drawer"
       data-drawer-state="expanded"
       aria-label="Diagnostics drawer"
-      style={{
-        minWidth: 0,
-        minHeight: 0,
-        height: '100%',
-        padding: '13px 14px',
-        borderRadius: UI_TOKENS.radius.panel,
-        border: `1px solid ${UI_TOKENS.color.border.panel}`,
-        background: UI_TOKENS.color.surface.panel,
-        boxShadow: UI_TOKENS.shadow.panel,
-        color: UI_TOKENS.color.text.primary,
-        fontFamily: UI_TOKENS.type.family.mono,
-        overflowY: 'auto',
-        overscrollBehavior: 'contain',
-      }}
     >
-      <div style={{ display: 'grid', gap: 10 }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          alignItems: 'center',
-        }}>
-          <div style={{
-            color: UI_TOKENS.color.text.controlLabel,
-            fontSize: UI_TOKENS.type.size.caption,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-            letterSpacing: 0.6,
-            textTransform: 'uppercase',
-          }}>
-            Diagnostics
-          </div>
-          <div style={{
-            color: UI_TOKENS.color.semantic.info,
-            fontSize: UI_TOKENS.type.size.tiny,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-            letterSpacing: 0.5,
-            textTransform: 'uppercase',
-          }}>
+      <div className="leo-diagnostics-drawer__body">
+        <div className="leo-diagnostics-drawer__header">
+          <div className="leo-diagnostics-drawer__heading">Diagnostics</div>
+          <div
+            className="leo-diagnostics-drawer__sub-heading"
+            style={{ color: UI_TOKENS.color.semantic.info }}
+          >
             drawer
           </div>
         </div>
@@ -227,7 +162,7 @@ export function DiagnosticsDrawer({
           tone={beamHopEnabled ? UI_TOKENS.color.semantic.good : UI_TOKENS.color.semantic.inactive}
           title="BEAM HOPPING"
         >
-          <div style={{ display: 'grid', gap: 5 }}>
+          <div className="leo-drawer-section__rows">
             <DebugRow
               label="Enabled"
               value={beamHopEnabled ? 'ON' : 'OFF'}
@@ -252,7 +187,7 @@ export function DiagnosticsDrawer({
           tone={UI_TOKENS.color.semantic.fixed}
           title="Handover policy (effective)"
         >
-          <div style={{ display: 'grid', gap: 5 }}>
+          <div className="leo-drawer-section__rows">
             <DebugRow label="policy" value={`${profile.handover.policy} (read-only)`} />
             <DebugRow label="Offset margin" value={formatDb(profile.handover.offsetDb)} />
             <DebugRow label="Trigger time" value={`${profile.handover.triggerTimeSec.toFixed(1)} s`} />
@@ -270,10 +205,10 @@ export function DiagnosticsDrawer({
             tone={UI_TOKENS.color.semantic.tuning}
             title="DPC: research power policy"
           >
-            <div style={{ color: UI_TOKENS.color.text.secondary, marginBottom: 8 }}>
+            <div className="leo-drawer-section__note">
               This is a TR 38.811-gated research power policy. Enabled only for HOBS + TR 38.811 research profile. Base P_t remains the Tuning control; DPC may override per-beam P_{'{n,m}'}(t).
             </div>
-            <div style={{ display: 'grid', gap: 5 }}>
+            <div className="leo-drawer-section__rows">
               <DebugRow label="Gate" value="HOBS + TR 38.811 research profile" />
               <DebugRow label="Update Period" value={`${beamPowerControl.updatePeriodSec.toFixed(2)} s`} />
               <DebugRow label="Step Size" value={formatDb(beamPowerControl.stepDb)} />
@@ -295,7 +230,7 @@ export function DiagnosticsDrawer({
           tone={UI_TOKENS.color.text.faint}
           title="DEBUG / VALIDATION"
         >
-          <div style={{ display: 'grid', gap: 5 }}>
+          <div className="leo-drawer-section__rows">
             <DebugRow
               label="Serving IDs"
               value={servingSatActiveBeamIds.length ? servingSatActiveBeamIds.join(', ') : '—'}
@@ -316,7 +251,7 @@ export function DiagnosticsDrawer({
           tone={UI_TOKENS.color.semantic.info}
           title="VISUAL FREQUENCY SOURCE"
         >
-          <div style={{ display: 'grid', gap: 5 }}>
+          <div className="leo-drawer-section__rows">
             <DebugRow
               label="Primary F"
               value={formatVisualFrequencyIndex(primaryFrequencyDiagnostics)}

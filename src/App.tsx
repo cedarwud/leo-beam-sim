@@ -6,7 +6,7 @@ import {
   profileList,
 } from './profiles';
 import type { Profile } from './profiles/types';
-import type { BeamDensity, CameraPreset, CinematicMode, PresentationMode, RuntimeConfig, SimState } from './scene/types';
+import type { BeamDensity, PresentationMode, RuntimeConfig, SimState } from './scene/types';
 import { createInitialSimState } from './scene/initialSimState';
 import { recommendDemoReplayStartOffsetSec } from './scene/replay-recommendation';
 import {
@@ -42,35 +42,28 @@ import {
 import { ControlBar } from './ui/ControlBar';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
 import { InfoPanel } from './ui/InfoPanel';
-import { ModeEvidenceStrip } from './ui/ModeEvidenceStrip';
-import {
-  ModqnBaselineHandoverControls,
-  ModqnBaselineReplayEvidence,
-} from './ui/ModqnBaselineIntegrationPanel';
-import { ModqnReplayPlaybackShell } from './ui/ModqnReplayPlaybackShell';
-import { ModqnReplaySceneCues } from './ui/ModqnReplaySceneCues';
-import { ModqnReplaySceneOverlay } from './ui/ModqnReplaySceneOverlay';
-import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import { SidebarTabShell, type SidebarTabItem } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
-import type { TuningPageRequest } from './ui/signal-tuning/types';
+import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
+import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
+import { useModqnDemoStub } from './ui/useModqnDemoStub';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
+import { usePlaybackControls } from './usePlaybackControls';
+import { useCameraControls } from './useCameraControls';
 
 const DEFAULT_PROFILE_ID = 'hobs-2024-candidate-rich';
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
-const DEFAULT_BASE_SPEED = 5;
-const HANDOVER_FOCUS_SPEED = 1;
 
-type LeftSidebarTab = 'handover' | 'signal';
+type LeftSidebarTab = 'signal' | 'objective';
 type RightSidebarTab = 'modqn' | 'live';
 
 const LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
-  { key: 'handover', label: 'Live handover', description: 'policy controls' },
+  { key: 'objective', label: 'MODQN objective', description: 'ω weights + retrain' },
   { key: 'signal', label: 'Signal formula', description: 'SINR tuning' },
 ];
 
 const RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = [
-  { key: 'modqn', label: 'MODQN replay', description: 'baseline evidence' },
+  { key: 'modqn', label: 'MODQN', description: 'proof + replay evidence' },
   { key: 'live', label: 'Live status', description: 'HOBS/SINR' },
 ];
 
@@ -89,21 +82,13 @@ function resolvePresentationMode(profile: Profile): PresentationMode {
 
 export function App() {
   const [selectedProfileId, setSelectedProfileId] = useState(DEFAULT_PROFILE_ID);
-  const [paused, setPaused] = useState(false);
-  const [speed, setSpeed] = useState(DEFAULT_BASE_SPEED);
-  const [autoSlowEnabled, setAutoSlowEnabled] = useState(true);
-  const [autoSlowDismissed, setAutoSlowDismissed] = useState(false);
   const [uiMode, setUiMode] = useState<UiMode>(() => readPersistedUiMode());
-  const [leftSidebarTab, setLeftSidebarTab] = useState<LeftSidebarTab>('handover');
+  const [leftSidebarTab, setLeftSidebarTab] = useState<LeftSidebarTab>('objective');
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('modqn');
-  const [cinematicMode, setCinematicMode] = useState<CinematicMode>('off');
   const [beamDensityOverride, setBeamDensityOverride] = useState<BeamDensity | null>(null);
-  const [cameraCommand, setCameraCommand] = useState<RuntimeConfig['cameraCommand']>();
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
-  const cameraCommandSequenceRef = useRef(0);
-  const tuningPageRequestSequenceRef = useRef(0);
-  const [tuningPageRequest, setTuningPageRequest] = useState<TuningPageRequest | null>(null);
+  const camera = useCameraControls();
   const baseProfile = useMemo(() => loadProfile(selectedProfileId), [selectedProfileId]);
   const [signalTuning, setSignalTuning] = useState<SignalTuningState>(() => createSignalTuningState(baseProfile));
   const [handoverPolicyState, setHandoverPolicyState] = useState<HandoverPolicyRuntimeState>(() => {
@@ -164,6 +149,7 @@ export function App() {
     () => `${handoverPolicyVersion}:${getHandoverPolicyResetKey(appliedHandoverPolicy)}`,
     [appliedHandoverPolicy, handoverPolicyVersion],
   );
+  const modqnDemoStub = useModqnDemoStub(appliedHandoverPolicy);
   const profileOptions = useMemo(
     () => profileList.map(entry => ({ id: entry.id, label: getProfileLabel(entry) })),
     [],
@@ -182,8 +168,8 @@ export function App() {
     [reducedMotion, uiMode],
   );
   const effectiveCinematicMode = useMemo(
-    () => resolveRuntimeCinematicMode(uiMode, cinematicMode),
-    [cinematicMode, uiMode],
+    () => resolveRuntimeCinematicMode(uiMode, camera.cinematicMode),
+    [camera.cinematicMode, uiMode],
   );
   const runtime = useMemo((): RuntimeConfig => ({
     presentationMode: resolvePresentationMode(effectiveProfile),
@@ -197,11 +183,11 @@ export function App() {
     ...runtimeVisualSettings,
     beamDensity: beamDensityOverride ?? runtimeVisualSettings.beamDensity,
     cinematicMode: effectiveCinematicMode,
-    cameraCommand,
+    cameraCommand: camera.cameraCommand,
     viewport,
   }), [
     beamDensityOverride,
-    cameraCommand,
+    camera.cameraCommand,
     demoStartOffset,
     effectiveProfile,
     effectiveCinematicMode,
@@ -224,6 +210,7 @@ export function App() {
     ),
   );
   const [staleFormulaEvidenceKey, setStaleFormulaEvidenceKey] = useState<string | null>(null);
+  const playback = usePlaybackControls(simState);
 
   const handleSimUpdate = useCallback((state: SimState) => {
     setSimState(state);
@@ -232,6 +219,9 @@ export function App() {
     ));
   }, [signalEvidenceKey]);
 
+  // Replay display-state callback. Required as architectural witness by
+  // validate-modqn-phase7k-r1-control-plane-hardening — must touch only
+  // setModqnReplayDisplayState and never live-control state.
   const handleModqnReplayDisplayStateChange = useCallback((next: ModqnReplayPlaybackDisplayState | null) => {
     setModqnReplayDisplayState(current => (
       current !== null
@@ -282,9 +272,9 @@ export function App() {
         version: (current.profileId === baseProfile.id ? current.version : 0) + 1,
       }));
       setSimState(createInitialSimState(nextEffectiveProfile));
-      setAutoSlowDismissed(false);
+      playback.resetAutoSlowDismissed();
     });
-  }, [baseProfile.id, handoverPolicyDraft, signalTunedProfile]);
+  }, [baseProfile.id, handoverPolicyDraft, playback, signalTunedProfile]);
 
   const handleResetHandoverPolicy = useCallback(() => {
     const defaults = createHandoverPolicyTuningState(baseProfile);
@@ -297,9 +287,9 @@ export function App() {
         version: (current.profileId === baseProfile.id ? current.version : 0) + 1,
       }));
       setSimState(createInitialSimState(nextEffectiveProfile));
-      setAutoSlowDismissed(false);
+      playback.resetAutoSlowDismissed();
     });
-  }, [baseProfile, signalTunedProfile]);
+  }, [baseProfile, playback, signalTunedProfile]);
 
   const handleUiModeChange = useCallback((nextMode: UiMode) => {
     setBeamDensityOverride(null);
@@ -307,47 +297,16 @@ export function App() {
     persistUiMode(nextMode);
   }, []);
 
-  const handleOpenHandoverPolicyControls = useCallback(() => {
-    setBeamDensityOverride(null);
-    setLeftSidebarTab('handover');
-    setUiMode('tuning');
-    persistUiMode('tuning');
-    tuningPageRequestSequenceRef.current += 1;
-    setTuningPageRequest({
-      page: 'handover-policy',
-      sequence: tuningPageRequestSequenceRef.current,
-    });
-  }, []);
-
   const handleBeamDensityChange = useCallback((nextDensity: BeamDensity) => {
     setBeamDensityOverride(nextDensity);
   }, []);
-
-  const handleCameraPresetSelect = useCallback((preset: CameraPreset) => {
-    cameraCommandSequenceRef.current += 1;
-    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
-    setCameraCommand({
-      preset,
-      issuedAtMs: nowMs + cameraCommandSequenceRef.current / 1000,
-    });
-  }, []);
-
-  const handleCinematicModeChange = useCallback((nextMode: CinematicMode) => {
-    setCinematicMode(nextMode);
-  }, []);
-
-  const autoSlowActive = simState.pendingTargetSatId !== null || simState.intraHandoverEvent !== null;
-  const autoSlowApplied = autoSlowEnabled && autoSlowActive && !autoSlowDismissed;
-  const effectiveSpeed = autoSlowApplied ? Math.min(speed, HANDOVER_FOCUS_SPEED) : speed;
-
-  useEffect(() => {
-    if (!autoSlowActive) setAutoSlowDismissed(false);
-  }, [autoSlowActive]);
 
   useEffect(() => subscribeToReducedMotionPreference(setReducedMotion), []);
 
   useEffect(() => subscribeToRuntimeViewport(setViewport), []);
 
+  const resetAutoSlowDismissedRef = useRef(playback.resetAutoSlowDismissed);
+  resetAutoSlowDismissedRef.current = playback.resetAutoSlowDismissed;
   useEffect(() => {
     setSignalTuning(createSignalTuningState(baseProfile));
     setHandoverPolicyState(current => {
@@ -361,7 +320,7 @@ export function App() {
     });
     setSimState(createInitialSimState(baseProfile));
     setStaleFormulaEvidenceKey(null);
-    setAutoSlowDismissed(false);
+    resetAutoSlowDismissedRef.current();
   }, [baseProfile]);
 
   return (
@@ -369,12 +328,12 @@ export function App() {
       <ControlBar
         selectedProfileId={selectedProfileId}
         profileOptions={profileOptions}
-        paused={paused}
-        speed={speed}
-        effectiveSpeed={effectiveSpeed}
-        autoSlowActive={autoSlowActive}
-        autoSlowApplied={autoSlowApplied}
-        autoSlowEnabled={autoSlowEnabled}
+        paused={playback.paused}
+        speed={playback.speed}
+        effectiveSpeed={playback.effectiveSpeed}
+        autoSlowActive={playback.autoSlowActive}
+        autoSlowApplied={playback.autoSlowApplied}
+        autoSlowEnabled={playback.autoSlowEnabled}
         uiMode={uiMode}
         beamDensity={runtime.beamDensity}
         cinematicMode={effectiveCinematicMode}
@@ -383,12 +342,12 @@ export function App() {
         onProfileChange={setSelectedProfileId}
         onUiModeChange={handleUiModeChange}
         onBeamDensityChange={handleBeamDensityChange}
-        onCameraPresetSelect={handleCameraPresetSelect}
-        onCinematicModeChange={handleCinematicModeChange}
-        onTogglePause={() => setPaused(p => !p)}
-        onSpeedChange={setSpeed}
-        onDismissAutoSlow={() => setAutoSlowDismissed(true)}
-        onToggleAutoSlow={() => setAutoSlowEnabled(e => !e)}
+        onCameraPresetSelect={camera.selectCameraPreset}
+        onCinematicModeChange={camera.setCinematicMode}
+        onTogglePause={playback.togglePause}
+        onSpeedChange={playback.setSpeed}
+        onDismissAutoSlow={playback.dismissAutoSlow}
+        onToggleAutoSlow={playback.toggleAutoSlow}
       />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
@@ -399,32 +358,14 @@ export function App() {
             activeKey={leftSidebarTab}
             onChange={setLeftSidebarTab}
           >
-            {leftSidebarTab === 'handover' ? (
-              <div className="leo-sidebar-content-stack">
-                <ModqnBaselineHandoverControls
-                  appliedHandoverPolicy={appliedHandoverPolicy}
-                  hasHandoverOverrides={hasHandoverAppliedOverrides}
-                  hasHandoverDraftChanges={hasHandoverDraftChanges}
-                  onOpenHandoverPolicyControls={handleOpenHandoverPolicyControls}
-                  onResetHandoverPolicy={handleResetHandoverPolicy}
-                />
-                <HandoverPolicyControls
-                  draft={handoverPolicyDraft}
-                  applied={appliedHandoverPolicy}
-                  hasDraftChanges={hasHandoverDraftChanges}
-                  hasOverrides={hasHandoverResetTarget}
-                  onDraftChange={handleHandoverPolicyDraftChange}
-                  onApply={handleApplyHandoverPolicy}
-                  onReset={handleResetHandoverPolicy}
-                />
-              </div>
+            {leftSidebarTab === 'objective' ? (
+              <ModqnObjectiveTab stub={modqnDemoStub} />
             ) : (
               <SignalTuningPanel
                 baseProfile={baseProfile}
                 tuning={signalTuning}
                 hasOverrides={hasSignalOverrides}
                 uiMode="tuning"
-                activePageRequest={tuningPageRequest}
                 formulaBudget={simState.physicalServingBudget}
                 isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                 handoverDraft={handoverPolicyDraft}
@@ -442,16 +383,12 @@ export function App() {
         </aside>
         <main className="leo-shell-canvas" data-testid="leo-shell-canvas">
           <MainScene
-            speed={effectiveSpeed}
-            paused={paused}
+            speed={playback.effectiveSpeed}
+            paused={playback.paused}
             profile={effectiveProfile}
             runtime={runtime}
             modqnReplayDisplayState={modqnReplayDisplayState}
             onSimUpdate={handleSimUpdate}
-          />
-          <ModqnReplaySceneOverlay
-            displayState={modqnReplayDisplayState}
-            failClosedReason={modqnReplayModelIssue?.message}
           />
         </main>
         <aside className="leo-shell-right" aria-label="Signal status panel slot">
@@ -463,24 +400,15 @@ export function App() {
             onChange={setRightSidebarTab}
           >
             {rightSidebarTab === 'modqn' ? (
-              <section className="leo-modqn-sidebar-stack" aria-label="MODQN replay evidence and controls">
-                <details
-                  className="leo-sidebar-disclosure"
-                  data-testid="modqn-claim-boundaries-disclosure"
-                  data-phase7h-open-for-validation="true"
-                >
-                  <summary>Claim boundaries</summary>
-                  <ModeEvidenceStrip />
-                </details>
-                <ModqnReplaySceneCues
-                  displayState={modqnReplayDisplayState}
-                  failClosedReason={modqnReplayModelIssue?.message}
+              <section
+                className="leo-modqn-sidebar-stack"
+                aria-label="MODQN proof"
+              >
+                <ModqnEvidenceTab
+                  stub={modqnDemoStub}
+                  simState={simState}
+                  bandwidthMHz={effectiveProfile.channel.bandwidthMHz}
                 />
-                <ModqnBaselineReplayEvidence
-                  replayDisplayState={modqnReplayDisplayState}
-                  replayIssueMessage={modqnReplayModelIssue?.message}
-                />
-                <ModqnReplayPlaybackShell onDisplayStateChange={handleModqnReplayDisplayStateChange} />
               </section>
             ) : (
               <section className="leo-live-status-stack" aria-label="Live HOBS/SINR status">

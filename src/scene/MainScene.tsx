@@ -314,10 +314,10 @@ function SceneContent({
         <NTPUScene />
       </Suspense>
       <Suspense fallback={null}>
-        <UAV position={[0, 10, 0]} scale={10} />
+        <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
       </Suspense>
 
-      <GroundScene />
+      <GroundScene ueGroundX={sim.ueGroundX} ueGroundZ={sim.ueGroundZ} />
       <EarthFixedCells cells={paintedCells} showDebugLabels={runtime.beamDensity === 'all'} />
       <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />
       <HandoverLinks satellites={viz.displaySats} eventRoles={viz.eventRoles} satBeams={viz.satBeams} />
@@ -325,7 +325,7 @@ function SceneContent({
       <ModqnReplaySceneLayer
         displayState={modqnReplayDisplayState}
         reducedMotion={runtime.reducedMotion}
-        showBoard={false}
+        showBoard={false} // visual disabled (commit 4968f29); kept mounted for validator telemetry
       />
       {showOrbitTrail && (
         <OrbitTrail satellites={viz.displaySats} />

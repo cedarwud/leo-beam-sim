@@ -9,6 +9,11 @@ import type {
   VisualFrequencyDiagnosticsState,
 } from './types';
 
+// ============================================================================
+// Latched state types — refs held by useSimStatePublisher per signal-source.
+// Resolvers live below; see "Panel signal helpers and latched resolvers".
+// ============================================================================
+
 export interface LatchedSignalState {
   satId: string | null;
   beamId: number | null;
@@ -26,6 +31,12 @@ export interface LatchedBudgetState {
   beamId: number | null;
   budget: LinkBudgetTerms | null;
 }
+
+// ============================================================================
+// Change detection helpers — feed `hasUiStateChanged` to decide whether the
+// React UI snapshot needs to publish. Tolerances avoid jitter from
+// floating-point noise.
+// ============================================================================
 
 function hasNumericDelta(
   previous: number | null,
@@ -62,6 +73,11 @@ function hasSignalSourceChanged(previous: SignalSourceState, next: SignalSourceS
     || hasNumericDelta(previous.elevationDeg, next.elevationDeg)
     || hasNumericDelta(previous.rangeKm, next.rangeKm);
 }
+
+// ============================================================================
+// Visual frequency diagnostics — frequency-reuse / provenance lookup keyed by
+// beam, plus change detection for the resolved entries.
+// ============================================================================
 
 export function resolveVisualFrequencyDiagnosticsEntry(
   visualFrequencyByBeamKey: Map<string, {
@@ -191,6 +207,11 @@ export function hasUiStateChanged(previous: SimState | null, next: SimState): bo
     || previous.pendingTargetActiveBeamIds.join(',') !== next.pendingTargetActiveBeamIds.join(',');
 }
 
+// ============================================================================
+// Panel signal helpers and latched resolvers — predicates plus the mutators
+// that read/write the latched refs declared in `useLatchedSignals`.
+// ============================================================================
+
 export function isFinitePanelSinr(sinrDb: number | null): sinrDb is number {
   return sinrDb !== null && Number.isFinite(sinrDb) && sinrDb > MIN_VISIBLE_SINR_DB;
 }
@@ -319,6 +340,10 @@ export function resolveSignalStatus(
   if (displayedSinrDb !== null && Number.isFinite(displayedSinrDb)) return 'latched';
   return 'latched';
 }
+
+// ============================================================================
+// Budget term extraction — flattens engine LinkSample into the UI budget shape.
+// ============================================================================
 
 export function extractBudgetTerms(sample: LinkSample | null): LinkBudgetTerms | null {
   if (!sample) return null;

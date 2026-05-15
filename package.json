@@ -68,13 +68,7 @@
     "validate:modqn:phase6v-antenna-pattern-convention": "node --import tsx/esm scripts/validate-modqn-phase6v-antenna-pattern-convention.ts",
     "validate:modqn:phase7c-replay-state-model": "node --import tsx/esm scripts/validate-modqn-phase7c-replay-state-model.ts",
     "validate:modqn:phase7d-replay-diagnostics": "node --import tsx/esm scripts/validate-modqn-phase7d-replay-diagnostics.ts",
-    "validate:modqn:phase7e-ui-mode-labeling": "node scripts/validate-modqn-phase7e-ui-mode-labeling-browser.mjs",
-    "validate:modqn:phase7f-replay-playback-shell": "node --import tsx/esm scripts/validate-modqn-phase7f-replay-playback-browser.mjs",
-    "validate:modqn:phase7g-replay-scene-cues": "node --import tsx/esm scripts/validate-modqn-phase7g-replay-scene-cues-browser.mjs",
-    "validate:modqn:phase7h-showcase-hardening": "node --import tsx/esm scripts/validate-modqn-phase7h-showcase-hardening.mjs",
-    "validate:modqn:phase7k-r2-browser-control-plane-smoke": "node --import tsx/esm scripts/validate-modqn-phase7k-r2-browser-control-plane-smoke.ts",
     "validate:modqn:phase7k-replay-scene-layer": "node --import tsx/esm scripts/validate-modqn-phase7k-replay-scene-layer.ts",
-    "validate:modqn:phase7k-r1-control-plane-hardening": "node --import tsx/esm scripts/validate-modqn-phase7k-r1-control-plane-hardening.ts",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
     "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts"
   },

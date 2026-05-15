@@ -1,4 +1,4 @@
-import { UI_CLASSES, UI_TOKENS } from '../constants/uiTokens';
+import { UI_CLASSES } from '../constants/uiTokens';
 import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
 import { UI_MODES, isUiMode, type UiMode } from './uiMode';
 
@@ -32,8 +32,6 @@ interface ControlBarProps {
   onToggleAutoSlow: () => void;
 }
 
-const SHOW_PROFILE_SELECTOR = false;
-
 const UI_MODE_LABELS: Record<UiMode, string> = {
   presentation: 'Presentation',
   tuning: 'Tuning',
@@ -53,8 +51,6 @@ const CAMERA_PRESETS: Array<{ label: string; preset: CameraPreset }> = [
 ];
 
 export function ControlBar({
-  selectedProfileId,
-  profileOptions,
   paused,
   speed,
   effectiveSpeed,
@@ -66,68 +62,39 @@ export function ControlBar({
   cinematicMode,
   beamHopEnabled,
   beamHopSlotIndex,
-  onProfileChange,
   onUiModeChange,
   onBeamDensityChange,
   onCameraPresetSelect,
   onCinematicModeChange,
   onTogglePause,
   onSpeedChange,
-  onDismissAutoSlow,
   onToggleAutoSlow,
 }: ControlBarProps) {
+  const sceneSuffix = autoSlowApplied
+    ? ' (HO Slow)'
+    : autoSlowActive
+      ? ' (HO Slow Off)'
+      : '';
   return (
-    <div className="leo-control-bar" style={{
-      position: 'relative',
-      zIndex: 10,
-      width: '100%',
-      maxWidth: '100%',
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: 12,
-      alignItems: 'center',
-      background: UI_TOKENS.color.surface.controlBar,
-      padding: '8px 16px',
-      borderRadius: UI_TOKENS.radius.md,
-      border: `1px solid ${UI_TOKENS.color.border.panel}`,
-      boxShadow: '0 14px 32px rgba(0, 0, 0, 0.36)',
-      color: UI_TOKENS.color.text.primary,
-      fontSize: UI_TOKENS.type.size.body,
-      fontFamily: UI_TOKENS.type.family.mono,
-    }}>
+    <div className="leo-control-bar">
       <button
-        className={UI_CLASSES.button}
+        className={`${UI_CLASSES.button} leo-control-bar__play`}
+        type="button"
+        data-paused={paused ? 'true' : 'false'}
         onClick={onTogglePause}
-        style={{
-          cursor: 'pointer',
-          background: paused ? 'rgba(118, 234, 215, 0.18)' : UI_TOKENS.color.surface.card,
-          border: `1px solid ${UI_TOKENS.color.border.soft}`,
-          color: UI_TOKENS.color.text.primary,
-          padding: '4px 12px',
-          borderRadius: UI_TOKENS.radius.sm,
-        }}
       >
         {paused ? 'Play' : 'Pause'}
       </button>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <label className="leo-control-bar__field-row">
         Mode:
         <select
-          className={UI_CLASSES.select}
+          className={`${UI_CLASSES.select} leo-control-bar__mode-select`}
           aria-label="UI mode"
           value={uiMode}
           onChange={event => {
             const nextMode = event.target.value;
             if (isUiMode(nextMode)) onUiModeChange(nextMode);
-          }}
-          style={{
-            cursor: 'pointer',
-            background: UI_TOKENS.color.surface.field,
-            border: `1px solid ${UI_TOKENS.color.border.tuningPanel}`,
-            color: UI_TOKENS.color.text.primary,
-            padding: '4px 8px',
-            borderRadius: UI_TOKENS.radius.sm,
-            minWidth: 138,
           }}
         >
           {UI_MODES.map(mode => (
@@ -139,39 +106,22 @@ export function ControlBar({
       </label>
 
       <div
+        className="leo-control-bar__density-group"
         role="group"
         aria-label="Beam density"
         data-testid="beam-density-control"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          padding: 3,
-          border: `1px solid ${UI_TOKENS.color.border.soft}`,
-          borderRadius: UI_TOKENS.radius.sm,
-          background: 'rgba(255, 255, 255, 0.04)',
-        }}
       >
         {DENSITY_OPTIONS.map(option => {
           const selected = beamDensity === option.density;
           return (
             <button
               key={option.density}
-              className={UI_CLASSES.button}
+              className={`${UI_CLASSES.button} leo-control-bar__density-button`}
               type="button"
               aria-label={`Set beam density to ${option.label}`}
               aria-pressed={selected}
               data-testid={`beam-density-${option.label}`}
               onClick={() => onBeamDensityChange(option.density)}
-              style={{
-                cursor: 'pointer',
-                minWidth: 58,
-                background: selected ? 'rgba(118, 234, 215, 0.2)' : 'transparent',
-                border: `1px solid ${selected ? 'rgba(118, 234, 215, 0.46)' : 'transparent'}`,
-                color: selected ? '#d8fffa' : UI_TOKENS.color.text.secondary,
-                padding: '4px 9px',
-                borderRadius: UI_TOKENS.radius.sm,
-              }}
             >
               {option.label}
             </button>
@@ -180,32 +130,19 @@ export function ControlBar({
       </div>
 
       <div
+        className="leo-control-bar__camera-group"
         role="group"
         aria-label="Camera presets"
         data-testid="camera-preset-control"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-        }}
       >
         {CAMERA_PRESETS.map(option => (
           <button
             key={option.preset}
-            className={UI_CLASSES.button}
+            className={`${UI_CLASSES.button} leo-control-bar__camera-button`}
             type="button"
             aria-label={`Set camera preset to ${option.label}`}
             data-testid={`camera-preset-${option.preset}`}
             onClick={() => onCameraPresetSelect(option.preset)}
-            style={{
-              cursor: 'pointer',
-              minWidth: 70,
-              background: UI_TOKENS.color.surface.card,
-              border: `1px solid ${UI_TOKENS.color.border.soft}`,
-              color: UI_TOKENS.color.text.primary,
-              padding: '4px 10px',
-              borderRadius: UI_TOKENS.radius.sm,
-            }}
           >
             {option.label}
           </button>
@@ -213,120 +150,68 @@ export function ControlBar({
       </div>
 
       <label
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          cursor: uiMode === 'presentation' ? 'pointer' : 'not-allowed',
-          opacity: uiMode === 'presentation' ? 1 : 0.62,
-        }}
+        className="leo-control-bar__toggle"
+        title="Highlight serving beam path with cinematic spotlight"
       >
         <input
           className={UI_CLASSES.checkbox}
           type="checkbox"
-          aria-label="Spotlight mode"
+          aria-label="Spotlight mode: highlight serving beam path"
           checked={cinematicMode === 'spotlight'}
-          disabled={uiMode !== 'presentation'}
           onChange={event => {
             onCinematicModeChange(event.target.checked ? 'spotlight' : 'off');
           }}
-          style={{ cursor: uiMode === 'presentation' ? 'pointer' : 'not-allowed' }}
         />
         Spotlight
       </label>
 
-      {SHOW_PROFILE_SELECTOR && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          Profile:
-          <select
-            className={UI_CLASSES.select}
-            value={selectedProfileId}
-            onChange={event => onProfileChange(event.target.value)}
-            style={{
-              cursor: 'pointer',
-              background: UI_TOKENS.color.surface.field,
-              border: `1px solid ${UI_TOKENS.color.border.soft}`,
-              color: UI_TOKENS.color.text.primary,
-              padding: '4px 8px',
-              borderRadius: UI_TOKENS.radius.sm,
-              minWidth: 220,
-            }}
-          >
-            {profileOptions.map(option => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+      <label
+        className="leo-control-bar__toggle"
+        title="Auto-slow simulation rate during handover events"
+      >
         <input
           className={UI_CLASSES.checkbox}
           type="checkbox"
+          aria-label="Auto slow on handover"
           checked={autoSlowEnabled}
           onChange={onToggleAutoSlow}
-          style={{ cursor: 'pointer' }}
         />
         HO Slow
       </label>
 
-      {autoSlowApplied && (
-        <button
-          className={UI_CLASSES.button}
-          onClick={onDismissAutoSlow}
-        style={{
-          cursor: 'pointer',
-          background: 'rgba(123, 167, 255, 0.16)',
-          border: '1px solid rgba(123, 167, 255, 0.32)',
-          color: '#dbe7ff',
-            padding: '4px 12px',
-            borderRadius: UI_TOKENS.radius.sm,
-          }}
-        >
-          Resume Normal Speed
-        </button>
-      )}
-
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <label className="leo-control-bar__field-row">
         Speed:
         <input
-          className={UI_CLASSES.range}
+          className={`${UI_CLASSES.range} leo-control-bar__speed-range`}
           type="range"
           min={1}
           max={20}
           value={speed}
+          aria-label="Playback speed"
+          aria-valuetext={`${speed} times real time`}
           onChange={e => onSpeedChange(Number(e.target.value))}
-          style={{ width: 80 }}
         />
-        <span>{speed}x</span>
+        <span aria-hidden="true">{speed}x</span>
       </label>
 
-      <div style={{ color: autoSlowActive ? UI_TOKENS.color.semantic.warning.accent : UI_TOKENS.color.text.faint, minWidth: 140 }}>
-        Scene: {effectiveSpeed.toFixed(1)}x{autoSlowApplied ? ' (HO Slow)' : autoSlowActive ? ' (HO Slow Off)' : ''}
+      <div
+        className="leo-control-bar__scene-readout"
+        data-warning={autoSlowActive ? 'true' : 'false'}
+      >
+        Scene: {effectiveSpeed.toFixed(1)}x{sceneSuffix}
       </div>
 
       <div
+        className="leo-control-bar__beam-hop-pill"
         data-testid="beam-hop-status-pill"
-        style={{
-          marginLeft: 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          minWidth: 112,
-          justifyContent: 'center',
-          padding: '4px 10px',
-          borderRadius: UI_TOKENS.radius.sm,
-          border: `1px solid ${beamHopEnabled ? 'rgba(118, 234, 215, 0.42)' : UI_TOKENS.color.border.soft}`,
-          background: beamHopEnabled ? 'rgba(118, 234, 215, 0.14)' : 'rgba(255, 255, 255, 0.04)',
-          color: beamHopEnabled ? '#d8fffa' : UI_TOKENS.color.text.faint,
-          fontWeight: 700,
-          letterSpacing: 0,
-        }}
+        data-enabled={beamHopEnabled ? 'true' : 'false'}
+        role="status"
+        aria-live="polite"
+        aria-label={`Beam hopping ${beamHopEnabled ? `enabled, slot ${Math.max(beamHopSlotIndex, 0)}` : 'disabled'}`}
+        title="Beam-hopping status"
       >
-        <span>BH</span>
-        <span>{beamHopEnabled ? `S${Math.max(beamHopSlotIndex, 0)}` : 'OFF'}</span>
+        <span aria-hidden="true">BH</span>
+        <span aria-hidden="true">{beamHopEnabled ? `S${Math.max(beamHopSlotIndex, 0)}` : 'OFF'}</span>
       </div>
     </div>
   );

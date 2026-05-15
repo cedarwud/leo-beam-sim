@@ -1,4 +1,3 @@
-import { UI_TOKENS } from '../constants/uiTokens';
 import type { Profile } from '../profiles/types';
 import type { SimState } from '../scene/types';
 import { DuelCard, type DuelSignalTone } from './info-panel/DuelCard';
@@ -91,41 +90,17 @@ export function InfoPanel({
   });
 
   return (
-    <div className="leo-info-panel" style={{
-      background: UI_TOKENS.color.surface.panel,
-      backdropFilter: 'blur(10px)',
-      padding: '16px 18px',
-      borderRadius: UI_TOKENS.radius.panel,
-      border: `1px solid ${UI_TOKENS.color.border.panel}`,
-      boxShadow: UI_TOKENS.shadow.panel,
-      color: UI_TOKENS.color.text.primary,
-      fontSize: UI_TOKENS.type.size.bodyLg,
-      fontFamily: UI_TOKENS.type.family.mono,
-      boxSizing: 'border-box',
-      width: 'min(460px, calc(100vw - 24px))',
-      minWidth: 0,
-      overflowWrap: 'anywhere',
-    }}>
-      <div style={{ display: 'grid', gap: 12 }}>
+    <div className="leo-info-panel">
+      <div className="leo-info-panel__grid">
         {showProfileIdentity && (profileId || formulaFamilyLabel) && (
-          <div style={{
-            padding: '10px 12px',
-            background: UI_TOKENS.color.surface.cardSubtle,
-            borderRadius: UI_TOKENS.radius.lg,
-            border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-          }}>
-            <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.text.secondary, letterSpacing: 0.6, marginBottom: 4 }}>
-              SIGNAL PROFILE
-            </div>
-            <div style={{ fontSize: UI_TOKENS.type.size.body, color: UI_TOKENS.color.text.primary, marginBottom: 2 }}>
-              {formulaFamilyLabel ?? '—'}
-            </div>
-            <div style={{ fontSize: UI_TOKENS.type.size.caption, color: UI_TOKENS.color.text.secondary }}>
-              {profileId ?? '—'}
-            </div>
+          <div className="leo-info-panel__profile-card">
+            <div className="leo-info-panel__profile-label">SIGNAL PROFILE</div>
+            <div className="leo-info-panel__profile-family">{formulaFamilyLabel ?? '—'}</div>
+            <div className="leo-info-panel__profile-id">{profileId ?? '—'}</div>
           </div>
         )}
 
+        <div role="status" aria-live="polite" aria-label="Serving and comparison beam status">
         <DuelCard
           servingTitle={servingTitle}
           servingCaption={servingCaption}
@@ -157,6 +132,7 @@ export function InfoPanel({
           stateLabel={duelState.label}
           stateTone={duelState.tone}
         />
+        </div>
       </div>
 
       {showFormulaTerms && (
