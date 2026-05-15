@@ -1,0 +1,69 @@
+{
+  "id": "modqn-1sat-7beam",
+  "paper": "PAP-2024-MORL-MULTIBEAM — consumer-side scene profile matching the MODQN Phase 7C replay bundle's 1-satellite 7-beam training environment.",
+  "profileClass": "candidate-rich",
+  "formulaFamily": "hobs-legacy",
+  "orbit": {
+    "type": "walker",
+    "shells": [
+      {
+        "id": "modqn-1sat-shell",
+        "altitudeKm": 550,
+        "inclinationDeg": 53,
+        "planes": 1,
+        "satsPerPlane": 1
+      }
+    ],
+    "observerLatDeg": 40,
+    "observerLonDeg": 116
+  },
+  "antenna": {
+    "model": "bessel-j1-j3",
+    "maxGainDbi": 40,
+    "beamwidth3dBRad": 0.058,
+    "efficiency": 0.6,
+    "maxSteeringAngleDeg": 12,
+    "scanLossAtMaxSteeringDb": 4
+  },
+  "ueAntenna": {
+    "maxGainDbi": 0
+  },
+  "channel": {
+    "frequencyGHz": 28,
+    "bandwidthMHz": 100,
+    "maxTxPowerDbm": 50,
+    "noisePsdDbmHz": -174,
+    "pathLossComponents": ["fspl", "atmospheric", "scintillation", "shadow-fading"],
+    "lossOverrides": {
+      "atmosphericZenithLossDb": 0.1,
+      "scintillationScaleDb": 0.05,
+      "shadowFadingMarginDb": 2
+    },
+    "tr38811": {
+      "environment": "suburban",
+      "nlosClutterLossDb": 20
+    }
+  },
+  "handover": {
+    "policy": "sinr-offset",
+    "sinrThresholdDb": -5,
+    "offsetDb": 3,
+    "triggerTimeSec": 3.5,
+    "pingPongGuardSec": 5,
+    "pendingTargetHoldSec": 1.5,
+    "intraSwitchTimeSec": 0.75,
+    "sinrSmoothingSec": 0.5
+  },
+  "beams": {
+    "perSatellite": 7,
+    "maxActivePerSat": 7,
+    "frequencyReuse": 3
+  },
+  "beamHopping": {
+    "enabled": false,
+    "slotSec": 1.0,
+    "maxActiveBeamsPerSlot": 7,
+    "scheduler": "round-robin",
+    "frameLengthSlots": 7
+  }
+}

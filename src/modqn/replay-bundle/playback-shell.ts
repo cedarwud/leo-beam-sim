@@ -266,6 +266,18 @@ export function createModqnReplayPlaybackShellModel(
   };
 }
 
+// MODQN ω-Handover S2 fallback accessor.
+//
+// Returns the immutable typed-reference shell model used as the demo-render
+// fallback when the runtime bundle fetch in App.tsx fails. The constant
+// MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL must not be imported into
+// App.tsx after S2 (SDD §9.3); this accessor is the supported indirection so
+// the fallback path stays demoable when the dev server has not been started
+// from the right cwd, the producer artifact has moved, etc.
+export function getModqnReplayPlaybackFallbackShellModel(): ModqnReplayPlaybackShellModel {
+  return MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL;
+}
+
 export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
   modeKey: 'modqn-replay-7beam',
   modeLabel: 'MODQN replay - 7-beam producer artifact',

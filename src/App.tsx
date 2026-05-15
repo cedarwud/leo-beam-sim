@@ -10,11 +10,16 @@ import type { BeamDensity, PresentationMode, RuntimeConfig, SimState } from './s
 import { createInitialSimState } from './scene/initialSimState';
 import { recommendDemoReplayStartOffsetSec } from './scene/replay-recommendation';
 import {
-  MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL,
   createModqnReplayPlaybackDisplayState,
+  createModqnReplayPlaybackShellModel,
+  fetchModqnReplayBundleEnvelope,
+  getModqnReplayPlaybackFallbackShellModel,
   getModqnReplayPlaybackModelValidationIssue,
+  type ModqnReplayEnvelope,
   type ModqnReplayPlaybackDisplayState,
+  type ModqnReplayPlaybackShellModel,
 } from './modqn/replay-bundle';
+import { ModqnEnvelopeProvider } from './ui/useModqnHandoverState';
 import {
   deriveRuntimeVisualSettings,
   readPrefersReducedMotion,
@@ -196,17 +201,28 @@ export function App() {
   ]);
 
   const [simState, setSimState] = useState<SimState>(() => createInitialSimState(baseProfile));
+  // MODQN ω-Handover S2: replace the hard-coded shell model with a runtime
+  // fetch of the producer's replay bundle. The fallback typed-reference is
+  // used to keep the demo renderable when the dev server's static-file route
+  // cannot reach the producer artifact. SDD §9.3 acceptance.
+  const fallbackShellModel = useMemo(getModqnReplayPlaybackFallbackShellModel, []);
+  const [modqnReplayShellModel, setModqnReplayShellModel] = useState<ModqnReplayPlaybackShellModel>(
+    () => fallbackShellModel,
+  );
+  const [modqnReplayEnvelope, setModqnReplayEnvelope] = useState<ModqnReplayEnvelope | null>(null);
+  const [modqnReplayFetchError, setModqnReplayFetchError] = useState<string | null>(null);
   const modqnReplayModelIssue = useMemo(
-    () => getModqnReplayPlaybackModelValidationIssue(MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL),
-    [],
+    () => getModqnReplayPlaybackModelValidationIssue(modqnReplayShellModel),
+    [modqnReplayShellModel],
   );
   const [modqnReplayDisplayState, setModqnReplayDisplayState] = useState<ModqnReplayPlaybackDisplayState | null>(
     () => (
       modqnReplayModelIssue === null
-        ? createModqnReplayPlaybackDisplayState(MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL)
+        ? createModqnReplayPlaybackDisplayState(fallbackShellModel)
         : null
     ),
   );
+  const modqnReplaySlotOffset = modqnReplayDisplayState?.slotOffset ?? 0;
   const [staleFormulaEvidenceKey, setStaleFormulaEvidenceKey] = useState<string | null>(null);
   const playback = usePlaybackControls(simState);
 
@@ -303,6 +319,38 @@ export function App() {
 
   useEffect(() => subscribeToRuntimeViewport(setViewport), []);
 
+  // MODQN ω-Handover S2: runtime fetch of the producer replay bundle at
+  // startup. On success the shell model + envelope reflect the live artifact
+  // and the sidebar's policyDiagnostics flow from the envelope. On failure we
+  // surface a banner and keep the typed-reference fallback so the demo still
+  // renders. SDD §9.3 acceptance.
+  useEffect(() => {
+    let cancelled = false;
+    fetchModqnReplayBundleEnvelope()
+      .then(result => {
+        if (cancelled) return;
+        const liveShell = createModqnReplayPlaybackShellModel(result.envelope);
+        setModqnReplayEnvelope(result.envelope);
+        setModqnReplayShellModel(liveShell);
+        setModqnReplayFetchError(null);
+        const issue = getModqnReplayPlaybackModelValidationIssue(liveShell);
+        setModqnReplayDisplayState(
+          issue === null ? createModqnReplayPlaybackDisplayState(liveShell) : null,
+        );
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        const message =
+          error instanceof Error ? error.message : String(error);
+        // Keep the typed-reference fallback in place so the scene still
+        // renders; surface the failure to the user via the banner below.
+        setModqnReplayFetchError(message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const resetAutoSlowDismissedRef = useRef(playback.resetAutoSlowDismissed);
   resetAutoSlowDismissedRef.current = playback.resetAutoSlowDismissed;
   useEffect(() => {
@@ -322,7 +370,32 @@ export function App() {
   }, [baseProfile]);
 
   return (
+    <ModqnEnvelopeProvider
+      envelope={modqnReplayEnvelope}
+      slotOffset={modqnReplaySlotOffset}
+    >
     <div data-ui-mode={uiMode} className="leo-app-shell">
+      {modqnReplayFetchError !== null && (
+        <div
+          className="leo-modqn-bundle-fetch-banner"
+          role="alert"
+          data-testid="modqn-bundle-fetch-banner"
+          data-modqn-bundle-fetch-status="failed"
+          style={{
+            background: '#7a3a00',
+            color: '#fff8e7',
+            padding: '8px 16px',
+            fontSize: 13,
+            borderBottom: '1px solid #b25c00',
+          }}
+        >
+          <strong>MODQN bundle fetch failed.</strong>{' '}
+          Falling back to the typed-reference shell model for demo
+          rendering. Live MODQN replay diagnostics will not reflect the
+          producer artifact until the dev-server route /modqn-bundles is
+          reachable. Error: {modqnReplayFetchError}
+        </div>
+      )}
       <ControlBar
         selectedProfileId={selectedProfileId}
         profileOptions={profileOptions}
@@ -428,5 +501,6 @@ export function App() {
         </aside>
       </div>
     </div>
+    </ModqnEnvelopeProvider>
   );
 }
