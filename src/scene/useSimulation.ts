@@ -17,6 +17,7 @@ import {
   type RuntimeFrameStepState,
 } from './runtimeFrameStep';
 import { reScalarize } from '../modqn/replay-bundle/rescalarize';
+import { computeHeuristicNotPaperScore } from '../engine/handover/decision-override';
 import {
   ModqnEnvelopeContext,
   ModqnHandoverModeContext,
@@ -87,35 +88,58 @@ export function useSimulation(
 
   // Build the decisionOverride callback. It is stable (referentially) across
   // renders and reads the latest values from refs at call time. When
-  // handoverMode !== 'modqn-replay' the override returns null on every call,
-  // which is byte-equivalent to no-override (SDD §9.7 truth invariance).
-  const decisionOverride = useCallback<HandoverDecisionOverride>(() => {
-    if (handoverModeRef.current !== 'modqn-replay') return null;
+  // handoverMode is `sinr-offset` (or any unknown mode) the override returns
+  // null on every call, which is byte-equivalent to no-override
+  // (SDD §9.7 truth invariance).
+  //
+  // S4 (SDD §9.5): when handoverMode === 'omega-heuristic' the override
+  // consults `computeHeuristicNotPaperScore` over the live candidate set. The
+  // selected beam still flows through HandoverManager for trigger timing and
+  // ping-pong-guard timing (engine-side, unchanged); only the argmax step is
+  // replaced. The heuristic does NOT use re-scalarization or the bundle —
+  // SDD §4.4 item 3 forbids the bundle parser from emitting this mode.
+  const decisionOverride = useCallback<HandoverDecisionOverride>(input => {
+    const mode = handoverModeRef.current;
 
-    const env = envelopeRef.current;
-    if (!env) return null;
+    if (mode === 'modqn-replay') {
+      const env = envelopeRef.current;
+      if (!env) return null;
 
-    const safeSlot = Math.min(
-      Math.max(Math.trunc(slotOffsetRef.current), 0),
-      Math.max(env.replaySlots.length - 1, 0),
-    );
-    const slot = env.replaySlots[safeSlot] ?? env.replaySlots[0];
-    const row = slot?.rows[0];
-    if (!row) return null;
+      const safeSlot = Math.min(
+        Math.max(Math.trunc(slotOffsetRef.current), 0),
+        Math.max(env.replaySlots.length - 1, 0),
+      );
+      const slot = env.replaySlots[safeSlot] ?? env.replaySlots[0];
+      const row = slot?.rows[0];
+      if (!row) return null;
 
-    const diag = row.producerTruth.policyDiagnostics;
-    const candidates = diag?.topCandidates;
-    if (!candidates || candidates.length === 0) return null;
+      const diag = row.producerTruth.policyDiagnostics;
+      const candidates = diag?.topCandidates;
+      if (!candidates || candidates.length === 0) return null;
 
-    const omega = omegaActiveRef.current;
-    const result = reScalarize(candidates, omega);
-    if (!result) return null;
+      const omega = omegaActiveRef.current;
+      const result = reScalarize(candidates, omega);
+      if (!result) return null;
 
-    if (result.wasFallback) {
-      incrementFallbackRef.current();
+      if (result.wasFallback) {
+        incrementFallbackRef.current();
+      }
+
+      return { satId: result.satId, beamId: result.beamId };
     }
 
-    return { satId: result.satId, beamId: result.beamId };
+    if (mode === 'omega-heuristic') {
+      const omega = omegaActiveRef.current;
+      const heuristicResult = computeHeuristicNotPaperScore({
+        omega,
+        candidates: input.candidates,
+        serving: input.serving,
+      });
+      if (!heuristicResult) return null;
+      return { satId: heuristicResult.satId, beamId: heuristicResult.beamId };
+    }
+
+    return null;
   }, []); // deps intentionally empty — all mutable reads go through refs
 
   const observer = useMemo(
@@ -185,12 +209,19 @@ export function useSimulation(
   useFrame((_, delta) => {
     if (trajectoryCache.length === 0) return;
 
-    // S3: install or clear the override on the manager each frame so the ref
-    // is current at the moment hoManager.update() fires inside stepRuntimeFrame.
-    // Null when mode !== 'modqn-replay' — byte-equivalent to base-class behavior
-    // (SDD §9.7 truth invariance for sinr-offset mode).
-    hoManager.overrideRef.current =
+    // S3/S4: install or clear the override on the manager each frame so the
+    // ref is current at the moment hoManager.update() fires inside
+    // stepRuntimeFrame. The S3 invariant remains visible in source —
+    // `handoverModeRef.current === 'modqn-replay' ? decisionOverride : null` —
+    // and S4 widens the truthiness to also enable the override under
+    // `omega-heuristic`. In `sinr-offset` (or any unknown) mode the install
+    // resolves to null, which is byte-equivalent to base-class behavior
+    // (SDD §9.7 truth invariance).
+    const overrideInModqnReplay =
       handoverModeRef.current === 'modqn-replay' ? decisionOverride : null;
+    hoManager.overrideRef.current =
+      overrideInModqnReplay
+      ?? (handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null);
 
     const { frame, previousSimTimeSec } = stepRuntimeFrame({
       profile,

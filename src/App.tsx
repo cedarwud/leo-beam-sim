@@ -55,6 +55,7 @@ import {
 } from './signalTuning';
 import { ControlBar } from './ui/ControlBar';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
+import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
 import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell, type SidebarTabItem } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
@@ -597,12 +598,23 @@ export function App() {
             )}
           </SidebarTabShell>
         </aside>
-        {/* S3: data-handover-criterion attribute on scene container (SDD §9.4 item 6) */}
+        {/* S3 + S4: data-handover-criterion attribute on scene container.
+            SDD §9.4 item 6 (sinr-offset / modqn-replay) and SDD §4.4 item 4 /
+            §9.5 item 4 — omega-heuristic mode emits the exact string
+            'omega-heuristic-not-paper' for capture metadata. */}
         <main
           className="leo-shell-canvas"
           data-testid="leo-shell-canvas"
-          data-handover-criterion={handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset'}
+          data-handover-criterion={
+            handoverMode === 'omega-heuristic'
+              ? 'omega-heuristic-not-paper'
+              : (handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset')
+          }
         >
+          {/* S4: persistent heuristic-mode warning banner (SDD §4.4 item 1).
+              Mounted inside <main> so it travels with the scene container in
+              both browser fullscreen and cinematic-mode dimming. */}
+          {handoverMode === 'omega-heuristic' && <HeuristicNotPaperBanner />}
           <MainScene
             speed={playback.effectiveSpeed}
             paused={playback.paused}
