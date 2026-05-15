@@ -5,10 +5,15 @@ import type { SimState } from '../scene/types';
 import { formatBeamIdentity, formatHandoverReason, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import { formatFrequencyLabel } from '../utils/beamFrequency';
 import type { UiMode } from './uiMode';
+import type { RuntimeHandoverMode } from './useModqnHandoverState';
 
 type DiagnosticsDrawerProps = SimState & {
   uiMode: UiMode;
   profile: Profile;
+  /** S3: current handover mode — shows re-scalarization fallback row when 'modqn-replay'. */
+  handoverMode?: RuntimeHandoverMode;
+  /** S3: count of ticks where user ω preferred out-of-topK and system fell back. */
+  rescalarizeFallbackCount?: number;
 };
 
 type VisualFrequencyDiagnosticEntry = NonNullable<SimState['visualFrequencyDiagnostics']>['primary'];
@@ -83,6 +88,8 @@ function DrawerSection({
 export function DiagnosticsDrawer({
   uiMode,
   profile,
+  handoverMode = 'sinr-offset',
+  rescalarizeFallbackCount = 0,
   ...simState
 }: DiagnosticsDrawerProps) {
   const {
@@ -245,6 +252,27 @@ export function DiagnosticsDrawer({
             <DebugRow label="Last Reason" value={formatHandoverReason(lastHoReason, frequencyReuse) || '—'} />
           </div>
         </DrawerSection>
+
+        {/* S3: Re-scalarization fallback row — only in modqn-replay mode (SDD §9.4 item 5 / §10). */}
+        {handoverMode === 'modqn-replay' && (
+          <DrawerSection
+            testId="diagnostics-drawer-rescalarize-fallback"
+            tone={UI_TOKENS.color.semantic.info}
+            title="MODQN RE-SCALARIZATION"
+          >
+            <div className="leo-drawer-section__rows">
+              <DebugRow label="Mode" value="modqn-replay" />
+              <DebugRow
+                label="Fallback ticks"
+                value={String(rescalarizeFallbackCount)}
+              />
+              <div className="leo-drawer-section__note" style={{ fontSize: 11, opacity: 0.7 }}>
+                Ticks where user ω preferred an out-of-top-K beam
+                and the system defaulted to the recorded top-K winner.
+              </div>
+            </div>
+          </DrawerSection>
+        )}
 
         <DrawerSection
           testId="visual-frequency-diagnostics"
