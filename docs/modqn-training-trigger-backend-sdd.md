@@ -1,7 +1,8 @@
 # MODQN Training-Trigger Backend Mini-SDD
 
-**Date:** 2026-05-15
-**Status:** DRAFT SDD — planning authority, not implementation evidence
+**Date:** 2026-05-15 (drafted)
+**Status:** DRAFT SDD — planning authority, not implementation evidence. B0–B4 NOT started as of 2026-05-16.
+**Blocks:** `leo-beam-sim` Slice S5 (consumer-side training trigger UI) in `docs/modqn-omega-handover-sdd.md` §14 cannot start until B0–B4 land here. S0–S4 of that plan already shipped without backend dependency (final merge `4b92756`, 2026-05-16).
 **Target repo:** `/home/u24/papers/modqn-paper-reproduction` (backend service lives next to the producer); consumer wiring in `/home/u24/papers/project/leo-beam-sim`
 **Scope anchor:** `PAP-2024-MORL-MULTIBEAM` baseline MODQN, with forward-compatibility for `angle-aware-ee-multicatfish` and `multi-catfish` training entry points.
 

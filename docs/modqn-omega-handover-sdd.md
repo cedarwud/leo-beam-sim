@@ -1,7 +1,7 @@
 # MODQN ω-Weighted Handover Mini-SDD
 
-**Date:** 2026-05-15
-**Status:** DRAFT SDD — planning authority, not implementation evidence
+**Date:** 2026-05-15 (drafted) / 2026-05-16 (S0–S4 shipped)
+**Status:** IMPLEMENTED — S0+S1+S2+S3+S4 all merged to `main` (final commit `4b92756`); S5 (backend training trigger consumer side) blocked on companion backend SDD landing in `modqn-paper-reproduction`. See §15 Post-Shipment Notes.
 **Target repo:** `/home/u24/papers/project/leo-beam-sim`
 **Scope anchor:** `PAP-2024-MORL-MULTIBEAM` baseline MODQN, with forward-compatibility hooks for `angle-aware-ee-multicatfish` and `multi-catfish` follow-ons.
 
@@ -772,16 +772,54 @@ SDD:
 If any of these slip, this SDD must be revised; do not silently expand
 the consumer to cover producer drift.
 
-## 14. Immediate Next Implementation Tasks
+## 14. Slice Shipment Status
 
-Recommended order:
+(Originally "Immediate Next Implementation Tasks" — rewritten post-shipment 2026-05-16.)
 
-1. **S0** — engine override hook + null-override parity test.
-2. **S1** — sidebar truth-up.
-3. **S2** — runtime bundle fetch + `modqn-1sat-7beam` profile.
-4. **S3** — `modqn-replay` mode wiring.
-5. **S4** — `omega-heuristic` mode + four-line disclosure.
-6. **S5** — backend training trigger (consumer side); pair with
-   `docs/modqn-training-trigger-backend-sdd.md`.
+| Slice | Branch (deleted post-merge) | Slice SHA | Merge SHA on `main` | Validator | Browser smoke |
+|---|---|---|---|---|---|
+| S0 | `feat/modqn-omega-s0-override-hook` | `37bb73d` | `853b0d1` | `validate-modqn-omega-s0-override-null-parity.ts` (1100-tick parity) | — |
+| S1 | `feat/modqn-omega-s1-sidebar-truth-up` | `2f13274` | `d7fb3e1` | `validate-modqn-omega-s1-sidebar-truth-up.tsx` (16/16) | — |
+| S2 | `feat/modqn-omega-s2-runtime-bundle-fetch` | `63056f2` | `28ff21e` | `validate-modqn-omega-s2-runtime-fetch.tsx` (20/20) | — |
+| S3 | `feat/modqn-omega-s3-replay-mode-wiring` | `8d98857` | `06a3f7a` | `validate-modqn-omega-s3-replay-mode-wiring.tsx` (39/39) | 7/7 (Playwright via shell) |
+| S4 | `feat/modqn-omega-s4-heuristic-not-paper` | `02c369e` | `4b92756` | `validate-modqn-omega-s4-heuristic-not-paper.tsx` (40/40) | 7/7 (Playwright via shell) |
+| S5 | not started | — | — | — | — |
 
-S0 and S1 may begin in separate conversations; they share no files.
+S0 and S1 ran in parallel (no file overlap). S2 followed S1 (App.tsx merge-order risk avoided per path 2). S3 followed S0+S2. S4 followed S3. All slices used the `1 Slice = 1 PR = 1 conversation` rule.
+
+## 15. Post-Shipment Notes (2026-05-16)
+
+### 15.1 Verification Summary
+
+All five omega validators pass on `main`:
+`s0-override-null-parity` (1100 ticks, 49 events identical between baseline and null-override).
+`s1-sidebar-truth-up`, `s2-runtime-fetch`, `s3-replay-mode-wiring`, `s4-heuristic-not-paper`.
+
+Five pre-existing handover/replay validators pass: `phase1a-recent-ho-ui`, `phase6b-handover-policy-controls`, `serving-pending-beam-floor`, `phase6r-runtime-frame-step-boundary`, `phase6u-beam-gain-mismatch`.
+
+Two pre-existing validators FAIL on `main` and have not been touched (Phase 6P / Phase 6U scope, not ω scope): `phase6t-source-channel-shadow-kpi`, `phase6p-hobs-sinr-kpi-baseline`. These were pre-existing before S0.
+
+Browser smoke on S3 and S4 ran via `@playwright/test` `chromium.launch()` against the dev server; 14 checks total (7 each) covered: ControlBar 3-way selector, profile-lock confirm dialog, info banner for `modqn-replay`, `data-handover-criterion` attribute on scene container, contrast ratio 8.15:1 for the heuristic banner, localStorage non-persistence for `omega-heuristic`, and mode-reset to `sinr-offset` on page reload.
+
+### 15.2 Known Limitations
+
+- **Heuristic `normLoad = 0` everywhere.** `LinkSample` (`src/engine/signal/types.ts`) carries no per-beam load metric, so the `ω_loadBalance` term in `computeHeuristicNotPaperScore` always contributes zero. SDD §3.4's `activeUesOnBeam` is not surfaced by the live pipeline. Adding a real load metric is a follow-up slice touching the signal pipeline and the LinkSample contract; not in ω scope. The limitation is surfaced in the DiagnosticsDrawer heuristic row and the `decision-override.ts` docblock.
+- **Production build needs static bundle copy.** S2's vite dev plugin (`vite.config.ts` `modqnBundleStaticServer`) only serves the 12 MB bundle in `configureServer` mode. `vite build` does NOT copy the bundle into `dist/`. Production demos must either copy the bundle into `public/modqn-bundles/<basename>/...` before build, or be served behind a backend route matching the same URL shape. S5 backend trigger naturally satisfies this contract.
+- **Bundle parser tolerates absent per-row `policyDiagnostics`.** S2 + S3 fall back to envelope-anchor (slot 0 row 0) when a row lacks `policyDiagnostics`, per SDD §3.3. Future bundle schema variants must preserve this fallback.
+
+### 15.3 Sub-Agent Verification Lessons
+
+- Sub-agents reporting `validate-modqn-phase6t` as PASS during S0/S1/S2/S3 were incorrect — they had not checked exit codes properly. The S4 sub-agent verified the failure was pre-existing via stash + main comparison. Orchestrator main-thread must re-run validators with explicit `echo $?` to confirm exit status, especially when sub-agent reports a long list of PASS items without quoting specific output.
+- S1 sub-agent stashed unrelated working-tree dirt (10 files: `DuelDecisionColumn`, `signal-tuning/Controls`, etc.) before branching. The stash entry persisted across slices and was re-applied by subsequent orchestrator file checkouts. Lesson: orchestrator must stash unrelated dirt itself before any branch checkout to avoid cross-slice working-tree contamination.
+- S2 sub-agent flagged scope expansions openly (`vite.config.ts` plugin addition + `playback-shell.ts` accessor function) rather than silently expanding. Both were necessary for the spec; orchestrator accepted both. The pattern (flag openly, justify in report) is the right escape valve for "allowed list excludes a necessary file" cases.
+
+### 15.4 Architectural Seams for S5 (When Backend Lands)
+
+- `ModqnHandoverModeContextValue` (`src/ui/useModqnHandoverState.ts`) is the central state seam — S5's training form should extend this context with a `jobState` slot rather than threading new props through `ControlBar` / `DiagnosticsDrawer`.
+- `App.tsx:393–399 handleHandoverModeChange` already correctly skips `localStorage` persist for `omega-heuristic` (S3 preempted SDD §4.4 rule 2). S5 must preserve this contract.
+- S3 + S4 validators pin exact substrings of the ternary expressions for `data-handover-criterion` and the `decisionOverride` mode-switch. Future slices touching either must wrap prior branches as the false-branch of an outer conditional (do not refactor away the pinned strings without also updating both validators in the same PR).
+- The bundle fetch endpoint contract `/modqn-bundles/<basename>/...` is established by the S2 vite plugin. S5 backend must serve the artifact under the same route shape for runtime parity between dev and prod.
+
+### 15.5 S5 Status
+
+**Blocked on backend.** S5 (consumer-side training trigger UI in `leo-beam-sim`) cannot start until `docs/modqn-training-trigger-backend-sdd.md` B0–B4 land in `/home/u24/papers/modqn-paper-reproduction/server/modqn_training_service/`. The backend SDD remains DRAFT as of 2026-05-16. S5 prep should start by reading backend SDD §9 acceptance and confirming the `POST /jobs` / `GET /jobs/<id>` / `GET /jobs/<id>/artifact` contract is honored before wiring the UI.
