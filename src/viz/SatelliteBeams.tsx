@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import {
+  INTRA_HANDOVER_ARROW_COLOR,
   frequencyReuseColor,
   resolveBeamPulseOpacity,
   resolveBeamVisualEncoding,
@@ -36,6 +37,7 @@ export interface BeamTarget {
   role?: BeamCodeRole;
   isTransitioningSource?: boolean;
   sinrDb?: number | null;
+  intraRole?: 'intraSource' | 'intraTargetNewServing' | null;
 }
 
 interface SatelliteBeamsProps {
@@ -51,6 +53,8 @@ const SEGMENTS = 32;
 const DISC_OUTER_RING_THICKNESS_WORLD = 2.4;
 const DISC_INNER_ROLE_RING_GAP_WORLD = 3;
 const DISC_INNER_ROLE_RING_THICKNESS_WORLD = 1.8;
+const INTRA_SOURCE_COLOR = '#f59e0b';
+const INTRA_TARGET_COLOR = INTRA_HANDOVER_ARROW_COLOR;
 
 function createObliqueConeSide(
   apex: THREE.Vector3,
@@ -298,6 +302,20 @@ function BeamCone({
             depthWrite={false}
             blending={THREE.AdditiveBlending}
             fog={!spotlightEventSurface}
+          />
+        </mesh>
+      )}
+
+      {beam.intraRole && (
+        <mesh position={[beam.groundX, 2.4 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={23}>
+          <ringGeometry args={[footprintRadius * 0.62, footprintRadius * 0.62 + 2.8, SEGMENTS]} />
+          <meshBasicMaterial
+            color={beam.intraRole === 'intraSource' ? INTRA_SOURCE_COLOR : INTRA_TARGET_COLOR}
+            transparent
+            opacity={0.88}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
           />
         </mesh>
       )}

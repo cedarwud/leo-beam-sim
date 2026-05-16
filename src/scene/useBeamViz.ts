@@ -608,6 +608,18 @@ export function useBeamViz(
         return specs.slice(0, MAX_BEAMS_PER_SATELLITE);
       })();
 
+      // Inject intra-HO from/to beams so they're visible during the wall-clock latch window.
+      const activeIntraForSat =
+        sim.intraHandoverEvent?.satId === sat.id ? sim.intraHandoverEvent : null;
+      if (activeIntraForSat) {
+        const existingBeamIds = new Set(selectionSpecs.map(s => s.beamId));
+        for (const intraBeamId of [activeIntraForSat.fromBeamId, activeIntraForSat.toBeamId]) {
+          if (!existingBeamIds.has(intraBeamId) && selectionSpecs.length < MAX_BEAMS_PER_SATELLITE) {
+            selectionSpecs.push({ beamId: intraBeamId });
+          }
+        }
+      }
+
       const targets = selectionSpecs.flatMap(spec => {
         const beamCell = beamCells.get(spec.beamId) as BeamCellViz | undefined;
         const sample = sampleByBeamId.get(spec.beamId);
@@ -629,6 +641,11 @@ export function useBeamViz(
           });
         visualFrequencyByBeamKey.set(coneEntryKey(sat.id, spec.beamId), frequency);
 
+        const intraRole: 'intraSource' | 'intraTargetNewServing' | null =
+          activeIntraForSat?.fromBeamId === spec.beamId ? 'intraSource'
+          : activeIntraForSat?.toBeamId === spec.beamId ? 'intraTargetNewServing'
+          : null;
+
         return [{
           beamId: spec.beamId,
           groundX,
@@ -638,6 +655,7 @@ export function useBeamViz(
           isPrimary,
           showBeam: true,
           role: spec.role,
+          intraRole,
           ...frequency,
           satelliteTintColor: sat.satelliteTintColor,
           satelliteGlyph: sat.satelliteGlyph,

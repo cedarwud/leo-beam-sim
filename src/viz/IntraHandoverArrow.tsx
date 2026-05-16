@@ -94,6 +94,7 @@ function IntraHandoverArrowMesh({ event, reducedMotion }: MeshProps) {
     if (reducedMotion) {
       gl.domElement.dataset.intraHandoverArrowOpacity = '0.700';
       gl.domElement.dataset.intraHandoverArrowActive = '1';
+      gl.domElement.dataset.intraBeamRolesActive = '1';
       return;
     }
     const wallClockNowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
@@ -109,11 +110,13 @@ function IntraHandoverArrowMesh({ event, reducedMotion }: MeshProps) {
     headMat.opacity = opacity;
     gl.domElement.dataset.intraHandoverArrowOpacity = opacity.toFixed(4);
     gl.domElement.dataset.intraHandoverArrowActive = opacity > 0.01 ? '1' : '0';
+    gl.domElement.dataset.intraBeamRolesActive = opacity > 0.01 ? '1' : '0';
   });
 
   useEffect(() => () => {
     gl.domElement.dataset.intraHandoverArrowOpacity = '';
     gl.domElement.dataset.intraHandoverArrowActive = '0';
+    gl.domElement.dataset.intraBeamRolesActive = '0';
     arcMat.dispose();
     headMat.dispose();
     arcGeo.dispose();

@@ -37,6 +37,7 @@ type ForbiddenCopyViolation = Readonly<{
 type ArrowTelemetry = {
   active: string | null;
   opacity: string | null;
+  beamRolesActive: string | null;
 };
 
 type BrowserValidationResult = {
@@ -45,6 +46,7 @@ type BrowserValidationResult = {
   opacityHighWatermark: number;
   opacityLowWatermark: number;
   opacityRangeValid: boolean;
+  beamRolesDetected: boolean;
   reducedMotionActive: string | null;
   reducedMotionOpacityFirst: number | null;
   reducedMotionOpacityLast: number | null;
@@ -300,10 +302,12 @@ function collectForbiddenCopyViolations(bodyText: string): ForbiddenCopyViolatio
 async function readArrowTelemetry(page: Page): Promise<ArrowTelemetry> {
   return page.evaluate(() => {
     const canvas = document.querySelector('canvas');
-    if (!(canvas instanceof HTMLElement)) return { active: null, opacity: null };
+    if (!(canvas instanceof HTMLElement)) return { active: null, opacity: null, beamRolesActive: null };
+    const ds = (canvas as HTMLElement & { dataset: DOMStringMap }).dataset;
     return {
-      active: (canvas as HTMLElement & { dataset: DOMStringMap }).dataset['intraHandoverArrowActive'] ?? null,
-      opacity: (canvas as HTMLElement & { dataset: DOMStringMap }).dataset['intraHandoverArrowOpacity'] ?? null,
+      active: ds['intraHandoverArrowActive'] ?? null,
+      opacity: ds['intraHandoverArrowOpacity'] ?? null,
+      beamRolesActive: ds['intraBeamRolesActive'] ?? null,
     };
   });
 }
@@ -321,6 +325,7 @@ async function runBrowserValidation(appUrl: string): Promise<BrowserValidationRe
     opacityHighWatermark: 0,
     opacityLowWatermark: 1,
     opacityRangeValid: false,
+    beamRolesDetected: false,
     reducedMotionActive: null,
     reducedMotionOpacityFirst: null,
     reducedMotionOpacityLast: null,
@@ -374,6 +379,10 @@ async function runBrowserValidation(appUrl: string): Promise<BrowserValidationRe
         result.opacityHighWatermark = highWatermark;
         result.opacityLowWatermark = lowWatermark;
         result.opacityRangeValid = fadingTelem > 0 && fadingTelem < 1;
+
+        // S3 check: beam-level intra roles should be active while the arrow is active.
+        const beamRolesTelem = await readArrowTelemetry(page);
+        result.beamRolesDetected = beamRolesTelem.beamRolesActive === '1';
 
         const bodyText = await page.evaluate(() => document.body.innerText);
         result.forbiddenClaims = collectForbiddenCopyViolations(bodyText);
@@ -525,6 +534,11 @@ async function main() {
     true,
     `opacity range invalid — expected samples > 0, high > 0 and high < 0.99 but got ${browserResult!.opacitySamples.length} samples, high=${browserResult!.opacityHighWatermark.toFixed(3)} low=${browserResult!.opacityLowWatermark.toFixed(3)}`,
   );
+  assert.equal(
+    browserResult!.beamRolesDetected,
+    true,
+    'intra beam-level roles (intraSource/intraTargetNewServing) not active while arrow was active',
+  );
   assert.equal(browserResult!.reducedMotionActive, '1', 'intra-handover arrow not active in reduced-motion mode');
   assert.equal(
     browserResult!.reducedMotionOpacityStable,
@@ -548,6 +562,7 @@ async function main() {
       opacityHighWatermark: browserResult!.opacityHighWatermark,
       opacityLowWatermark: browserResult!.opacityLowWatermark,
       opacityRangeValid: browserResult!.opacityRangeValid,
+      beamRolesDetected: browserResult!.beamRolesDetected,
       reducedMotion: {
         active: browserResult!.reducedMotionActive,
         opacityFirst: browserResult!.reducedMotionOpacityFirst,
