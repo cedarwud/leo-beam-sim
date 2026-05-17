@@ -90,3 +90,37 @@ repo's final-renderer role, artifact immutability, or vendor-on-demand rules:
 ## 8. Sync Rule
 
 When editing this file, mirror the same change set to [AGENTS.md](./AGENTS.md). The two files are kept symmetric except for the Claude/Codex header.
+
+## 9. Agent Memory Bridge
+
+This repo bridges its agent memory across tools (Claude Code, Codex CLI,
+future agents). Both AGENTS.md and CLAUDE.md are loaded by respective agents.
+The live, session-updated memory store lives at `.agent-memory/` (symlink
+into Claude Code's user-private memory dir for this repo's slug; the symlink
+itself is in `.gitignore`, the target is the source of truth).
+
+**Read order at session start (any agent):**
+
+1. `.agent-memory/MEMORY.md` — index of all current memory entries for this
+   repo.
+2. Open every `.agent-memory/feedback_*` and `.agent-memory/project_*` entry
+   whose description matches the task at hand.
+3. Then proceed to the workspace-level workflow rules at
+   `/home/u24/papers/AGENTS.md` §7 (Multi-Tool Agent Convention) and §8
+   (Memory Bridge Convention), and finally this repo's own rules above.
+
+**Updating memory:**
+
+- Only the Claude controller agent updates memory entries (writes to the
+  symlink target). Codex CLI and other sub-agents treat `.agent-memory/` as
+  read-only context.
+- Memory entries that contradict current code or status are stale — surface
+  the contradiction; do not act on stale memory.
+
+**Why this bridge:** Claude memory is the controller's persistent state
+ledger (project status, decisions, user preferences). Codex CLI has no
+native memory store; without this bridge it would diverge from the
+controller's decisions and reintroduce solved problems.
+
+The canonical bridge implementation reference is
+`modqn-paper-reproduction/AGENTS.md` §Agent Memory Bridge.
