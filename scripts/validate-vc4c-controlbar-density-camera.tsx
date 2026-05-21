@@ -146,7 +146,6 @@ async function bootAppPage(
     await page.locator('.leo-shell-canvas canvas').waitFor({ timeout: 30000 });
     await page.locator('[data-testid="beam-density-control"]').waitFor({ timeout: 5000 });
     await page.locator('[data-testid="camera-preset-control"]').waitFor({ timeout: 5000 });
-    await page.locator('[data-testid="beam-hop-status-pill"]').waitFor({ timeout: 5000 });
     return page;
   } catch (error) {
     await context.close().catch(() => {});
@@ -204,8 +203,8 @@ async function assertDensityControls(page: Page): Promise<DensityResult> {
     undefined,
     { timeout: 15000 },
   );
-  await page.getByRole('button', { name: 'Pause' }).click();
-  await page.getByRole('button', { name: 'Play' }).waitFor({ timeout: 5000 });
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).waitFor({ timeout: 5000 });
   await waitForNextFrame(page);
 
   const normalCount = await countBeamCallouts(page);
@@ -233,8 +232,11 @@ async function assertDensityControls(page: Page): Promise<DensityResult> {
   const presentation = await activeDensityLabel(page);
   assert.equal(presentation, 'normal', 'presentation mode should reset density override to normal');
 
-  const bhText = (await page.locator('[data-testid="beam-hop-status-pill"]').innerText()).replace(/\s+/g, ' ').trim();
-  assert.match(bhText, /^BH (S\d+|OFF)$/, `BH pill did not expose beam-hop status: ${bhText}`);
+  assert.equal(
+    await page.locator('[data-testid="beam-hop-status-pill"]').count(),
+    0,
+    'beam-hopping slot readout should stay out of the top ControlBar; Diagnostics owns that detail',
+  );
 
   return {
     defaultLabel,

@@ -65,6 +65,10 @@ export interface ModqnReplaySceneVisualState {
   readonly sourceRowIndex: number;
   readonly sourceRowNumber: number;
   readonly eventKind: ModqnHandoverEventKind;
+  readonly selectionSource:
+    | 'producer'
+    | 'omega-rescalarized'
+    | 'omega-rescalarized-fallback';
   readonly playing: boolean;
   readonly loopEnabled: boolean;
   readonly beams: readonly ModqnReplaySceneBeamVisual[];
@@ -198,6 +202,7 @@ export function deriveModqnReplaySceneVisualState(
     sourceRowIndex: focusRow.sourceRowIndex,
     sourceRowNumber: focusRow.sourceRowIndex + 1,
     eventKind: focusRow.handoverEventKind,
+    selectionSource: focusRow.selectedServingSource ?? 'producer',
     playing: displayState.playing,
     loopEnabled: displayState.loopEnabled,
     beams,

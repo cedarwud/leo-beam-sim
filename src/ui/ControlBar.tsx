@@ -20,8 +20,6 @@ interface ControlBarProps {
   uiMode: UiMode;
   beamDensity: BeamDensity;
   cinematicMode: CinematicMode;
-  beamHopEnabled: boolean;
-  beamHopSlotIndex: number;
   /** S3: current handover mode from App.tsx state (SDD §9.4 item 1). */
   handoverMode?: RuntimeHandoverMode;
   onProfileChange: (profileId: string) => void;
@@ -33,17 +31,12 @@ interface ControlBarProps {
   onSpeedChange: (speed: number) => void;
   onDismissAutoSlow: () => void;
   onToggleAutoSlow: () => void;
-  /** S3: mode selector change handler from App.tsx (handles profile lock, ω reset). */
+  /** S3: mode selector change handler from App.tsx (handles ω reset and mode reset). */
   onHandoverModeChange?: (mode: RuntimeHandoverMode) => void;
 }
 
-// S3 + S4: Mode selector entries (SDD §9.4 item 1, §9.5).
-// S3 shipped omega-heuristic with a disabledReason placeholder so the
-// selector button was greyed out in the demo. S4 removes that placeholder so
-// the button becomes enabled. The `disabledReason?` field on the option type
-// stays — it remains a valid extension point if a future mode needs to
-// surface a disabled tooltip — and the S3 validator still requires the
-// literal `disabledReason` substring to appear in this file.
+// Public demo modes. ω adjustment is now handled inside MODQN replay via the
+// sidebar Apply action, not as a third top-level handover mode.
 const HANDOVER_MODE_OPTIONS: Array<{
   mode: RuntimeHandoverMode;
   label: string;
@@ -51,7 +44,6 @@ const HANDOVER_MODE_OPTIONS: Array<{
 }> = [
   { mode: 'sinr-offset', label: 'SINR-offset' },
   { mode: 'modqn-replay', label: 'MODQN replay' },
-  { mode: 'omega-heuristic', label: 'ω heuristic' },
 ];
 
 const UI_MODE_LABELS: Record<UiMode, string> = {
@@ -82,8 +74,6 @@ export function ControlBar({
   uiMode,
   beamDensity,
   cinematicMode,
-  beamHopEnabled,
-  beamHopSlotIndex,
   handoverMode = 'sinr-offset',
   onUiModeChange,
   onBeamDensityChange,
@@ -110,8 +100,7 @@ export function ControlBar({
         {paused ? 'Play' : 'Pause'}
       </button>
 
-      {/* S3: 3-way handover mode selector (SDD §9.4 item 1). omega-heuristic
-          is disabled with tooltip in this slice; enabled in S4. */}
+      {/* Handover mode selector. MODQN ω changes are applied inside replay. */}
       <div
         className="leo-control-bar__handover-mode-group"
         role="group"
@@ -259,18 +248,6 @@ export function ControlBar({
         Scene: {effectiveSpeed.toFixed(1)}x{sceneSuffix}
       </div>
 
-      <div
-        className="leo-control-bar__beam-hop-pill"
-        data-testid="beam-hop-status-pill"
-        data-enabled={beamHopEnabled ? 'true' : 'false'}
-        role="status"
-        aria-live="polite"
-        aria-label={`Beam hopping ${beamHopEnabled ? `enabled, slot ${Math.max(beamHopSlotIndex, 0)}` : 'disabled'}`}
-        title="Beam-hopping status"
-      >
-        <span aria-hidden="true">BH</span>
-        <span aria-hidden="true">{beamHopEnabled ? `S${Math.max(beamHopSlotIndex, 0)}` : 'OFF'}</span>
-      </div>
     </div>
   );
 }

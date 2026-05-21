@@ -12,8 +12,7 @@
 //
 // S3 internal changes (SDD §9.4):
 //   * Adds `ModqnHandoverModeContext` + `ModqnHandoverModeProvider` so App.tsx
-//     can lift the mode state up (required for the profile-lock confirmation
-//     dialog on modqn-replay entry). The hook reads mode from this context when
+//     can lift the mode state up. The hook reads mode from this context when
 //     provided, falling back to its own local state for headless/test mounts.
 //   * Adds `rescalarizeFallbackCount` to `UseModqnHandoverState` so
 //     DiagnosticsDrawer can surface the out-of-topK fallback tally.
@@ -72,6 +71,7 @@ import {
   MODQN_PAPER_ID,
   MODQN_REPLAY_BUNDLE_SCHEMA_VERSION,
   type ModqnBaselineSurface,
+  type ModqnBeamReference,
   type ModqnPaperId,
   type ModqnPolicyDiagnostics,
   type ModqnReplayBundleSchemaVersion,
@@ -157,6 +157,10 @@ export interface BundleSidebarSnapshot {
   readonly sourcePath: string;
   readonly rowCount: number;
   readonly slotCount: number;
+  readonly slotOffset: number;
+  readonly currentSlotIndex: number | null;
+  readonly currentTimeSec: number | null;
+  readonly currentRowSelectedServing: ModqnBeamReference | null;
 }
 
 export interface UseModqnHandoverState {
@@ -317,12 +321,22 @@ function omegaEquals(left: RuntimeOmegaState, right: RuntimeOmegaState): boolean
     && left.loadBalance === right.loadBalance;
 }
 
+function classifyOmegaSource(
+  activeOmega: RuntimeOmegaState,
+  bundleOmega: RuntimeOmegaState,
+  mode: RuntimeHandoverMode,
+): RuntimeOmegaSource {
+  if (omegaEquals(activeOmega, bundleOmega)) return 'bundle';
+  return mode === 'omega-heuristic' ? 'user-applied-not-paper' : 'user-applied';
+}
+
 function getPaperDefaultBundleSidebarSnapshot(): BundleSidebarSnapshot {
   // S1 paper-default fallback. Used when the runtime fetch has not yet landed
   // (or in headless validators / tests without an envelope). The diagnostics
   // version string is the S1 marker that the S2 validator uses to confirm the
   // hook switched to envelope-read semantics under context.
   const shell = MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL;
+  const focusRow = shell.slots[0]?.focusRow;
   const policyDiagnostics: ModqnPolicyDiagnostics = {
     diagnosticsVersion: S1_PAPER_DEFAULT_DIAGNOSTICS_VERSION,
     objectiveWeights: {
@@ -349,6 +363,10 @@ function getPaperDefaultBundleSidebarSnapshot(): BundleSidebarSnapshot {
     sourcePath: shell.sourcePath,
     rowCount: shell.rowCount,
     slotCount: shell.slotCount,
+    slotOffset: 0,
+    currentSlotIndex: shell.slots[0]?.slotIndex ?? null,
+    currentTimeSec: focusRow?.timeSec ?? null,
+    currentRowSelectedServing: focusRow?.selectedServing ?? null,
   };
 }
 
@@ -429,6 +447,10 @@ function getEnvelopeBundleSidebarSnapshot(
     sourcePath: envelope.sourcePath,
     rowCount: envelope.diagnostics.adapter.rowCount,
     slotCount: envelope.diagnostics.adapter.slotCount,
+    slotOffset: safeSlotOffset,
+    currentSlotIndex: slot?.slotIndex ?? null,
+    currentTimeSec: row?.producerTruth.timestamps.timeSec ?? null,
+    currentRowSelectedServing: row?.producerTruth.selectedServing ?? null,
   };
 }
 
@@ -494,6 +516,10 @@ export function useModqnHandoverState(): UseModqnHandoverState {
   }, [modeCtx, modeCtxIsDefault]);
 
   const rescalarizeFallbackCount = modeCtxIsDefault ? 0 : modeCtx.rescalarizeFallbackCount;
+  const activeOmega = modeCtxIsDefault ? omegaActive : modeCtx.omegaActive;
+  const effectiveOmegaSource = modeCtxIsDefault
+    ? omegaSource
+    : classifyOmegaSource(activeOmega, bundleOmega, mode);
 
   // When the envelope arrives (or the slot moves), re-anchor the bundle ω
   // baseline for Apply/Reset bookkeeping. We only update state if the user has
@@ -549,8 +575,8 @@ export function useModqnHandoverState(): UseModqnHandoverState {
 
   return {
     omegaDraft,
-    omegaActive,
-    omegaSource,
+    omegaActive: activeOmega,
+    omegaSource: effectiveOmegaSource,
     bundlePolicyDiagnostics,
     bundleSidebarSnapshot,
     setOmegaDraft,

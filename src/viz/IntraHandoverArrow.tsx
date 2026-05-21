@@ -8,22 +8,12 @@ const BEAM_GROUND_Y = 5;
 const CTRL_POINT_LIFT = 80;
 const ARC_SEGMENTS = 24;
 const ARROWHEAD_SIZE = 10;
+const ARC_TUBE_RADIUS = 2.4;
+const ARC_TUBE_RADIUS_REDUCED_MOTION = 1.8;
 
-function buildArcGeometry(from: THREE.Vector3, to: THREE.Vector3): THREE.BufferGeometry {
+function buildArcCurve(from: THREE.Vector3, to: THREE.Vector3): THREE.QuadraticBezierCurve3 {
   const ctrl = from.clone().lerp(to, 0.5).add(new THREE.Vector3(0, CTRL_POINT_LIFT, 0));
-  const positions: number[] = [];
-  for (let i = 0; i <= ARC_SEGMENTS; i++) {
-    const t = i / ARC_SEGMENTS;
-    const mt = 1 - t;
-    positions.push(
-      mt * mt * from.x + 2 * mt * t * ctrl.x + t * t * to.x,
-      mt * mt * from.y + 2 * mt * t * ctrl.y + t * t * to.y,
-      mt * mt * from.z + 2 * mt * t * ctrl.z + t * t * to.z,
-    );
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  return geo;
+  return new THREE.QuadraticBezierCurve3(from, ctrl, to);
 }
 
 function buildHeadGeometry(from: THREE.Vector3, to: THREE.Vector3): THREE.BufferGeometry {
@@ -61,12 +51,23 @@ function IntraHandoverArrowMesh({ event, reducedMotion }: MeshProps) {
     [event.toGroundX, event.toGroundZ],
   );
 
-  const arcGeo = useMemo(() => buildArcGeometry(fromVec, toVec), [fromVec, toVec]);
+  const arcGeo = useMemo(() => new THREE.TubeGeometry(
+    buildArcCurve(fromVec, toVec),
+    ARC_SEGMENTS,
+    reducedMotion ? ARC_TUBE_RADIUS_REDUCED_MOTION : ARC_TUBE_RADIUS,
+    8,
+    false,
+  ), [fromVec, reducedMotion, toVec]);
   const headGeo = useMemo(() => buildHeadGeometry(fromVec, toVec), [fromVec, toVec]);
 
-  const arcMat = useMemo(() => reducedMotion
-    ? new THREE.LineDashedMaterial({ color: INTRA_HANDOVER_ARROW_COLOR, dashSize: 12, gapSize: 8, transparent: true, opacity: 0.7, depthWrite: false })
-    : new THREE.LineBasicMaterial({ color: INTRA_HANDOVER_ARROW_COLOR, transparent: true, opacity: 1, depthWrite: false }),
+  const arcMat = useMemo(() => new THREE.MeshBasicMaterial({
+    color: INTRA_HANDOVER_ARROW_COLOR,
+    transparent: true,
+    opacity: reducedMotion ? 0.72 : 1,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  }),
   [reducedMotion]);
 
   const headMat = useMemo(() => new THREE.MeshBasicMaterial({
@@ -77,12 +78,11 @@ function IntraHandoverArrowMesh({ event, reducedMotion }: MeshProps) {
     depthWrite: false,
   }), [reducedMotion]);
 
-  const arcLine = useMemo(() => {
-    const line = reducedMotion ? new THREE.LineSegments(arcGeo, arcMat) : new THREE.Line(arcGeo, arcMat);
-    if (reducedMotion) line.computeLineDistances();
-    line.renderOrder = 22;
-    return line;
-  }, [arcGeo, arcMat, reducedMotion]);
+  const arcMesh = useMemo(() => {
+    const mesh = new THREE.Mesh(arcGeo, arcMat);
+    mesh.renderOrder = 22;
+    return mesh;
+  }, [arcGeo, arcMat]);
 
   const headMesh = useMemo(() => {
     const mesh = new THREE.Mesh(headGeo, headMat);
@@ -125,7 +125,7 @@ function IntraHandoverArrowMesh({ event, reducedMotion }: MeshProps) {
 
   return (
     <group>
-      <primitive object={arcLine} />
+      <primitive object={arcMesh} />
       <primitive object={headMesh} />
     </group>
   );

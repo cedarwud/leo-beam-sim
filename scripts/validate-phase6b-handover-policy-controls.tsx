@@ -14,7 +14,9 @@ import { loadProfile } from '../src/profiles/index.ts';
 import { createInitialSimState } from '../src/scene/initialSimState.ts';
 import { createSignalTuningState, applySignalTuning } from '../src/signalTuning.ts';
 import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
+import { HandoverPolicyControls } from '../src/ui/HandoverPolicyControls.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
+import { SidebarTabShell, type SidebarTabItem } from '../src/ui/SidebarTabShell.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-candidate-rich';
@@ -61,7 +63,19 @@ function assertNotContains(text: string, unexpected: string): void {
   assert.ok(!text.includes(unexpected), `expected rendered UI not to contain "${unexpected}"`);
 }
 
-function renderTuningPanelTextAndMarkup() {
+type LeftSidebarTab = 'objective' | 'signal' | 'handover';
+
+const LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
+  { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
+  { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
+];
+
+const MODQN_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
+  { key: 'objective', label: 'MODQN objective', description: 'post-hoc ω weights' },
+  { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
+];
+
+function renderSidebarTextAndMarkup() {
   const profile = loadProfile(PROFILE_ID);
   const applied = createHandoverPolicyTuningState(profile);
   const draft = {
@@ -70,40 +84,92 @@ function renderTuningPanelTextAndMarkup() {
     triggerTimeSec: applied.triggerTimeSec + 0.5,
     sinrThresholdDb: applied.sinrThresholdDb + 1,
   };
-  const markup = renderToStaticMarkup(
+  const signalMarkup = renderToStaticMarkup(
     <SignalTuningPanel
       baseProfile={profile}
       tuning={createSignalTuningState(profile)}
       hasOverrides={false}
-      currentSinrDb={12.5}
+      uiMode="tuning"
       formulaBudget={null}
-      formulaSource={{
-        satId: null,
-        beamId: null,
-        sinrDb: null,
-        elevationDeg: null,
-        rangeKm: null,
-        status: 'none',
-      }}
-      handoverDraft={draft}
-      appliedHandoverPolicy={applied}
-      hasHandoverDraftChanges
-      hasHandoverOverrides
       onTuningChange={() => {}}
       onReset={() => {}}
-      onHandoverDraftChange={() => {}}
-      onApplyHandoverPolicy={() => {}}
-      onResetHandoverPolicy={() => {}}
     />,
   );
+  const handoverControls = (
+    <HandoverPolicyControls
+      draft={draft}
+      applied={applied}
+      hasDraftChanges
+      hasOverrides
+      onDraftChange={() => {}}
+      onApply={() => {}}
+      onReset={() => {}}
+    />
+  );
+  const handoverMarkup = renderToStaticMarkup(handoverControls);
+  const sidebarMarkup = renderToStaticMarkup(
+    <SidebarTabShell
+      label="Simulation control sidebar"
+      side="left"
+      tabs={LEFT_SIDEBAR_TABS}
+      activeKey="handover"
+      onChange={() => {}}
+    >
+      {handoverControls}
+    </SidebarTabShell>,
+  );
+  const modqnSidebarMarkup = renderToStaticMarkup(
+    <SidebarTabShell
+      label="Simulation control sidebar"
+      side="left"
+      tabs={MODQN_LEFT_SIDEBAR_TABS}
+      activeKey="handover"
+      onChange={() => {}}
+    >
+      {handoverControls}
+    </SidebarTabShell>,
+  );
 
-  return { markup, text: decodeHtmlText(markup), profile, applied, draft };
+  return {
+    signalMarkup,
+    handoverMarkup,
+    sidebarMarkup,
+    modqnSidebarMarkup,
+    text: decodeHtmlText(sidebarMarkup),
+    profile,
+    applied,
+    draft,
+  };
+}
+
+function assertAppOwnsTopLevelHandoverTab(): void {
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+  const signalPanelSource = readFileSync(new URL('../src/ui/SignalTuningPanel.tsx', import.meta.url), 'utf8');
+  const styleSource = readFileSync(new URL('../src/styles/main.scss', import.meta.url), 'utf8');
+
+  assertContains(appSource, "type LeftSidebarTab = 'objective' | 'signal' | 'handover'");
+  assertContains(appSource, "{ key: 'objective', label: 'MODQN objective'");
+  assertContains(appSource, "{ key: 'signal', label: 'SINR formula'");
+  assertContains(appSource, "{ key: 'handover', label: 'Handover policy'");
+  assertContains(appSource, 'SINR_LEFT_SIDEBAR_TABS');
+  assertContains(appSource, 'MODQN_LEFT_SIDEBAR_TABS');
+  assertContains(appSource, 'SINR_RIGHT_SIDEBAR_TABS');
+  assertContains(appSource, 'MODQN_RIGHT_SIDEBAR_TABS');
+  assertContains(appSource, 'getLeftSidebarTabsForMode');
+  assertContains(appSource, 'getRightSidebarTabsForMode');
+  assertContains(appSource, '<SidebarTabShell');
+  assertContains(appSource, '<HandoverPolicyControls');
+  assertContains(styleSource, '.leo-sidebar-tab-shell[data-tab-count="2"] .leo-sidebar-tab-list');
+  assertNotContains(signalPanelSource, 'HandoverPolicyControls');
+  assertNotContains(signalPanelSource, 'handover-policy-page');
+  assertNotContains(signalPanelSource, 'tuning-page-tabs');
 }
 
 function assertTuningPlacementAndCopy(): void {
-  const { markup, text } = renderTuningPanelTextAndMarkup();
-  assertContains(text, 'SINR Formula');
-  assertContains(text, 'Handover Policy');
+  const { signalMarkup, handoverMarkup, sidebarMarkup, modqnSidebarMarkup, text } = renderSidebarTextAndMarkup();
+  assertContains(text, 'SINR formula');
+  assertContains(text, 'Handover policy');
+  assertNotContains(text, 'MODQN objective');
   assertContains(text, 'Handover Policy Research Controls');
   assertContains(text, 'policy: sinr-offset');
   assertContains(text, 'read-only');
@@ -112,6 +178,8 @@ function assertTuningPlacementAndCopy(): void {
   assertContains(text, 'Ping-pong guard window');
   assertContains(text, 'Decision SINR smoothing');
   assertContains(text, 'Same-satellite beam dwell');
+  assertContains(text, 'Intra-HO limit per satellite');
+  assertContains(text, 'Maximum same-satellite beam switches before the next inter-satellite handover resets the counter.');
   assertContains(text, 'Pending target hold');
   assertContains(text, 'Handover attach threshold');
   assertContains(text, 'Apply policy changes');
@@ -120,27 +188,37 @@ function assertTuningPlacementAndCopy(): void {
   assertNotContains(text, 'policy selector');
   assertNotContains(text, 'SINR threshold');
 
-  const pageTabsIndex = markup.indexOf('data-testid="tuning-page-tabs"');
-  const sinrPageIndex = markup.indexOf('data-testid="sinr-formula-page"');
-  const handoverPageIndex = markup.indexOf('data-testid="handover-policy-page"');
-  const tabIndex = markup.indexOf('data-testid="sinr-formula-tabs"');
-  const coverageAuditIndex = markup.indexOf('data-testid="sinr-coverage-audit"');
-  const coverageDisclosureIndex = markup.indexOf('data-testid="sinr-coverage-assumptions-disclosure"');
-  const policyIndex = markup.indexOf('data-testid="handover-policy-controls"');
-  assert.ok(pageTabsIndex >= 0, 'expected top-level Tuning page tabs');
-  assert.ok(sinrPageIndex > pageTabsIndex, 'expected SINR Formula tab panel after top-level tabs');
-  assert.ok(handoverPageIndex > sinrPageIndex, 'expected independent Handover Policy tab panel outside SINR page');
-  assert.ok(tabIndex >= 0, 'expected SINR formula tab marker');
-  assert.ok(tabIndex > sinrPageIndex, 'SINR formula tabs must live inside the SINR Formula page');
-  assert.equal(coverageAuditIndex, -1, 'Phase 9H removes the old always-visible coverage audit block');
-  assert.equal(coverageDisclosureIndex, -1, 'coverage / assumptions is no longer a separate SINR-page disclosure');
-  assert.ok(policyIndex > handoverPageIndex, 'handover policy controls must live inside the Handover Policy page');
+  const topLevelTabsIndex = sidebarMarkup.indexOf('class="leo-sidebar-tab-list"');
+  const objectiveTabIndex = sidebarMarkup.indexOf('id="left-sidebar-tab-objective"');
+  const signalTabIndex = sidebarMarkup.indexOf('id="left-sidebar-tab-signal"');
+  const handoverTabIndex = sidebarMarkup.indexOf('id="left-sidebar-tab-handover"');
+  const policyIndex = sidebarMarkup.indexOf('data-testid="handover-policy-controls"');
+  assert.ok(topLevelTabsIndex >= 0, 'expected sidebar top-level tab list');
+  assert.equal(objectiveTabIndex, -1, 'SINR mode sidebar must not expose MODQN objective tab');
+  assert.ok(signalTabIndex > topLevelTabsIndex, 'expected SINR formula tab in SINR mode sidebar');
+  assert.ok(handoverTabIndex > signalTabIndex, 'expected Handover policy tab next to SINR formula in SINR mode');
+  assert.ok(policyIndex > handoverTabIndex, 'handover policy controls must render in the active top-level sidebar panel');
 
-  const sinrPageMarkup = markup.slice(sinrPageIndex, handoverPageIndex);
-  const handoverPageMarkup = markup.slice(handoverPageIndex);
-  assertNotContains(sinrPageMarkup, 'data-testid="handover-policy-controls"');
-  assertNotContains(decodeHtmlText(sinrPageMarkup), 'Handover Policy Research Controls');
-  assertContains(handoverPageMarkup, 'data-testid="handover-policy-controls"');
+  const modqnText = decodeHtmlText(modqnSidebarMarkup);
+  assertContains(modqnText, 'MODQN objective');
+  assertContains(modqnText, 'Handover policy');
+  assertContains(modqnText, 'Handover Policy Research Controls');
+  assert.equal(
+    modqnSidebarMarkup.indexOf('id="left-sidebar-tab-signal"'),
+    -1,
+    'MODQN mode sidebar must not expose SINR formula tab',
+  );
+  assert.ok(
+    modqnSidebarMarkup.indexOf('id="left-sidebar-tab-handover"') > modqnSidebarMarkup.indexOf('id="left-sidebar-tab-objective"'),
+    'MODQN mode sidebar must expose Handover policy next to MODQN objective',
+  );
+
+  assertContains(signalMarkup, 'data-testid="sinr-formula-page"');
+  assertContains(signalMarkup, 'data-testid="sinr-formula-tabs"');
+  assertContains(handoverMarkup, 'data-testid="handover-policy-controls"');
+  assertNotContains(signalMarkup, 'data-testid="handover-policy-controls"');
+  assertNotContains(decodeHtmlText(signalMarkup), 'Handover Policy Research Controls');
+  assertAppOwnsTopLevelHandoverTab();
 }
 
 function assertModeVisibility(): void {
@@ -169,6 +247,36 @@ function assertModeVisibility(): void {
   assertNotContains(diagnosticsText, 'Handover Policy Research Controls');
   assertNotContains(diagnosticsText, 'Apply policy changes');
   assertNotContains(diagnosticsText, 'Reset to profile defaults');
+
+  const modqnLiveStatusState = {
+    ...initialState,
+    panelComparison: {
+      ...initialState.panelComparison,
+      role: 'candidate' as const,
+      status: 'derived' as const,
+      satId: 'candidate-sat',
+      beamId: 2,
+      sinrDb: 12,
+    },
+    comparisonSatId: 'candidate-sat',
+    comparisonBeamId: 2,
+    comparisonSinrDb: 12,
+  };
+  const modqnLiveStatusText = decodeHtmlText(renderToStaticMarkup(
+    <InfoPanel
+      {...modqnLiveStatusState}
+      uiMode="presentation"
+      profile={profile}
+      handoverMode="modqn-replay"
+    />,
+  ));
+  assertContains(modqnLiveStatusText, 'MODQN replay');
+  assertContains(modqnLiveStatusText, 'MODQN selects serving; SINR metrics are live');
+  assertContains(modqnLiveStatusText, 'MODQN-selected live link');
+  assertContains(modqnLiveStatusText, 'live SINR reference');
+  assertContains(modqnLiveStatusText, 'Δ live SINR');
+  assertContains(modqnLiveStatusText, 'Timing Gate');
+  assertNotContains(modqnLiveStatusText, 'MODQN replay evidence');
 }
 
 function assertDraftApplySeparation(): void {
@@ -252,18 +360,110 @@ function assertHandoverManagerResetCoverage(): void {
   assert.equal(manager.getTrackedSinrDb('target-sat', 2), null);
 }
 
-function assertHandoverResetPreservesReplayAndDpc(): void {
+function assertIntraSwitchEpochGuard(): void {
+  const profile = loadProfile(PROFILE_ID);
+  const manager = new HandoverManager({
+    ...profile.handover,
+    triggerTimeSec: 1,
+    pingPongGuardSec: 0,
+    intraSwitchTimeSec: 1,
+    maxIntraSwitchesPerServingEpoch: 1,
+    sinrSmoothingSec: 0,
+  });
+  let simTimeMs = Date.UTC(2026, 0, 1, 0, 0, 0);
+  const step = (samples: LinkSample[]) => {
+    simTimeMs += 1000;
+    return manager.update(samples, 1, simTimeMs);
+  };
+
+  step([createLinkSample('source-sat', 1, 20)]);
+  assert.equal(manager.state.satId, 'source-sat');
+  assert.equal(manager.state.beamId, 1);
+
+  const firstIntra = step([
+    createLinkSample('source-sat', 1, 10),
+    createLinkSample('source-sat', 2, 12),
+  ]);
+  assert.equal(firstIntra.action, 'intra-switch');
+  assert.equal(manager.state.beamId, 2);
+
+  const blockedIntra = step([
+    createLinkSample('source-sat', 2, 10),
+    createLinkSample('source-sat', 3, 14),
+  ]);
+  assert.equal(blockedIntra.action, 'stay');
+  assert.match(blockedIntra.reason, /intra-switch epoch limit reached/);
+  assert.equal(manager.state.satId, 'source-sat');
+  assert.equal(manager.state.beamId, 2);
+
+  step([
+    createLinkSample('source-sat', 2, 10),
+    createLinkSample('source-sat', 3, 14),
+    createLinkSample('target-sat', 1, 20),
+  ]);
+  const inter = step([
+    createLinkSample('source-sat', 2, 10),
+    createLinkSample('source-sat', 3, 14),
+    createLinkSample('target-sat', 1, 20),
+  ]);
+  assert.equal(inter.action, 'inter-handover');
+  assert.equal(manager.state.satId, 'target-sat');
+  assert.equal(manager.state.beamId, 1);
+
+  const intraAfterInterReset = step([
+    createLinkSample('target-sat', 1, 8),
+    createLinkSample('target-sat', 2, 12),
+  ]);
+  assert.equal(intraAfterInterReset.action, 'intra-switch');
+  assert.equal(manager.state.satId, 'target-sat');
+  assert.equal(manager.state.beamId, 2);
+}
+
+function assertServedBeamCannotRepeatWithinSatelliteEpoch(): void {
+  const profile = loadProfile(PROFILE_ID);
+  const manager = new HandoverManager({
+    ...profile.handover,
+    pingPongGuardSec: 0,
+    intraSwitchTimeSec: 1,
+    maxIntraSwitchesPerServingEpoch: 3,
+    sinrSmoothingSec: 0,
+  });
+  let simTimeMs = Date.UTC(2026, 0, 1, 0, 0, 0);
+  const step = (samples: LinkSample[]) => {
+    simTimeMs += 1000;
+    return manager.update(samples, 1, simTimeMs);
+  };
+
+  step([createLinkSample('source-sat', 1, 20)]);
+  step([
+    createLinkSample('source-sat', 1, 10),
+    createLinkSample('source-sat', 2, 12),
+  ]);
+  assert.equal(manager.state.beamId, 2);
+
+  const repeatAttempt = step([
+    createLinkSample('source-sat', 1, 14),
+    createLinkSample('source-sat', 2, 10),
+  ]);
+  assert.equal(repeatAttempt.action, 'stay');
+  assert.match(repeatAttempt.reason, /beam B1 already served/);
+  assert.equal(manager.state.beamId, 2);
+}
+
+function assertHandoverResetReturnsToReplayStart(): void {
   const source = readFileSync(new URL('../src/scene/useSimulation.ts', import.meta.url), 'utf8');
   const effectEnd = source.indexOf('}, [handoverResetKey]);');
   assert.ok(effectEnd > 0, 'expected a dedicated handoverResetKey effect');
   const effectStart = source.lastIndexOf('useEffect(() => {', effectEnd);
   assert.ok(effectStart >= 0, 'expected handoverResetKey useEffect start');
   const block = source.slice(effectStart, effectEnd);
-  assertContains(block, 'frameRef.current = createEmptyFrame(runtimeStateRef.current.simTimeSec)');
-  assertContains(block, 'publishNextFrameRef.current = true');
-  assertContains(block, 'recentHo: null');
-  assertNotContains(block, 'simTimeRef.current =');
-  assertNotContains(block, 'runtimeStateRef.current.simTimeSec =');
+  assertContains(block, 'resetToReplayStartFrame();');
+  assertContains(source, 'const resetToReplayStartFrame = useCallback(() => {');
+  assertContains(source, 'createRuntimeFrameStepState(startOffset)');
+  assertContains(source, 'paused: true');
+  assertContains(source, 'deltaSec: 0');
+  assertContains(source, 'frameRef.current = frame');
+  assertNotContains(block, 'frameRef.current = createEmptyFrame(runtimeStateRef.current.simTimeSec)');
   assertNotContains(block, 'beamPowerControlRef.current =');
 }
 
@@ -273,16 +473,18 @@ function run(): void {
   assertDraftApplySeparation();
   assertResetClearsStaleEvidence();
   assertHandoverManagerResetCoverage();
-  assertHandoverResetPreservesReplayAndDpc();
+  assertIntraSwitchEpochGuard();
+  assertServedBeamCannotRepeatWithinSatelliteEpoch();
+  assertHandoverResetReturnsToReplayStart();
 
-  console.log('Phase 6C handover policy independent tab validation passed.');
+  console.log('Phase 6C handover policy top-level sidebar tab validation passed.');
   console.log(JSON.stringify({
     profileId: PROFILE_ID,
     asserted: {
-      placement: 'Tuning-only independent SINR Formula and Handover Policy tab panels',
-      copy: ['policy: sinr-offset read-only', 'Handover attach threshold', 'no standalone handover SINR threshold label'],
-      state: ['draft does not alter effective policy', 'apply updates effective policy', 'reset state clears stale handover evidence'],
-      preservation: ['handover-only reset does not assign simTimeRef.current', 'handover-only reset does not clear beamPowerControlRef'],
+      placement: 'Top mode selector owns SINR/MODQN; left sidebar shows mode-specific controls',
+      copy: ['policy: sinr-offset read-only', 'Handover attach threshold', 'Intra-HO limit per satellite', 'no standalone handover SINR threshold label'],
+      state: ['draft does not alter effective policy', 'apply updates effective policy', 'reset state clears stale handover evidence', 'intra epoch guard resets after inter-HO'],
+      preservation: ['handover reset returns to replay start offset', 'handover reset publishes a zero-delta initial frame'],
     },
   }, null, 2));
 }

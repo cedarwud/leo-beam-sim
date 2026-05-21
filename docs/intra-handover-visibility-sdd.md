@@ -65,6 +65,9 @@ A configurable input that changes how often intra-HO events fire **without**
 altering SINR truth or the trigger comparison itself.
 
 Examples: scenario profile, `intraSwitchTimeSec` dwell, UE trajectory.
+The live demo also exposes `maxIntraSwitchesPerServingEpoch`, which limits
+same-satellite beam switching per serving-satellite epoch without changing
+the raw SINR comparison.
 
 ### 3.3 Visibility Lever
 
@@ -111,12 +114,14 @@ hidden hardcode) so the change is auditable:
    regimes — see §5.1.A2 for evidence. Kept tunable in the slider for
    research scenarios.
 2. `sinrSmoothingSec` (default 0.5 s). Use with caution; also affects inter.
-3. `pingPongGuardSec` (default 5 s). Affects post-inter intra ramp-up.
-4. Profile selection (`hobs-2024-paper-default`,
+3. `maxIntraSwitchesPerServingEpoch` (default 1). Caps same-satellite
+   beam switches before the next inter-HO starts a new serving-satellite
+   epoch, and prevents returning to a beam already served in the current
+   epoch.
+4. `pingPongGuardSec` (default 5 s). Affects post-inter intra ramp-up.
+5. Profile selection (`hobs-2024-paper-default`,
    `hobs-2024-candidate-rich`, `hobs-2024-mobile-demo-aircraft`).
-5. UE trajectory (waypoint schema, see §13.3).
-6. `demoHoldUntilMs` (`HandoverManager`, currently hardcoded 3 s after a
-   forced demo intra; not part of paper truth, may be exposed as a knob).
+6. UE trajectory (waypoint schema, see §13.3).
 
 ### 4.3 Pure presentation — fully free
 
@@ -198,7 +203,7 @@ Five sub-slices, in order of dependency:
    `intraHandoverEvent` is non-null, with the same windowing rules.
 3. **B2 — Ribbon arc + pulse dot.** Replace `THREE.Line` with a
    thickness-bearing primitive (drei `<Line lineWidth>` or `TubeGeometry`),
-   add an outer cyan glow and a moving white pulse dot animating from
+   add an outer blue target glow and a moving white pulse dot animating from
    `from` to `to` along the Bézier.
 4. **B3 — Beam-level FROM/TO role.** The current `SOURCE` / `recentSource`
    role at `runtimeFrameStep.ts:579` and `useBeamViz.ts:571` is
@@ -222,8 +227,8 @@ Concrete current behavior, for reference and as a checklist of touchpoints.
 
 | Concern | File | Line | Current |
 |---|---|---|---|
-| Intra trigger code | `src/engine/handover/handover-manager.ts` | 110–132 | `candidate.sinrDb > currentSinr`, dwell `intraSwitchTimeSec`, no margin |
-| Demo intra hold | `src/engine/handover/handover-manager.ts` | 31, 117 | `demoHoldUntilMs`, hardcoded 3000 ms guard after forced demo intra |
+| Intra trigger code | `src/engine/handover/handover-manager.ts` | 110–132 | `candidate.sinrDb > currentSinr`, dwell `intraSwitchTimeSec`, no margin; same-sat beam reuse and max intra count are policy guards |
+| Intra epoch guard | `src/engine/handover/handover-manager.ts` | intra epoch state | Blocks returning to a beam already served in the current serving-satellite epoch and caps intra switches by `maxIntraSwitchesPerServingEpoch`; reset by inter-HO |
 | Arrow TTL constant | `src/scene/runtimeFrameStep.ts` | 49 | `INTRA_HANDOVER_ARROW_SEC = 2.4` (sim-time) |
 | Arrow component | `src/viz/IntraHandoverArrow.tsx` | 1–143 | `THREE.Line` 1 px, `CTRL_POINT_LIFT = 80`, linear fade over sim-time TTL |
 | Source/target role | `src/scene/runtimeFrameStep.ts` | 579 ff. | `SOURCE` / `recentSource` is satellite-level, set only on inter-HO |
@@ -233,7 +238,9 @@ Concrete current behavior, for reference and as a checklist of touchpoints.
 | Intra count display | `src/ui/DiagnosticsDrawer.tsx` | 310 | total count only, no per-minute rate |
 | Intra count source | `src/scene/runtimeFrameStep.ts` | 681 | `hoManager.eventLog.filter(action='intra-switch').length` |
 | Dwell slider | `src/ui/DiagnosticsDrawer.tsx` | 262 | "Same-sat dwell" already exposes `intraSwitchTimeSec` |
+| Intra epoch limit control | `src/ui/HandoverPolicyControls.tsx` | policy controls | "Intra-HO limit per satellite" exposes `maxIntraSwitchesPerServingEpoch` |
 | Default `intraSwitchTimeSec` | three legacy profile JSONs | 54 / 52 / 61 | 0.75 s |
+| Default `maxIntraSwitchesPerServingEpoch` | profile JSONs | handover block | 1 switch per serving-satellite epoch |
 | UE mobility profile | `src/profiles/hobs-2024-mobile-demo-aircraft.json` | new (S6) | Lissajous waypoints, dwell 0.75 |
 | UE waypoint injection | `src/scene/runtimeFrameStep.ts` | new (S6) | linear waypoint interp, clamp at ends |
 
@@ -370,6 +377,8 @@ Future Track A slices must include:
   (0.3, 0.9) during an intra-HO event.
 - After S3, an intra-HO event renders the from-beam and to-beam with
   visibly distinct ground discs for the duration of the wall-clock latch.
+  The source fades down in the serving-yellow family while the target ramps up
+  in the same blue target family used by inter-HO pending/target beams.
 - After S4, the ribbon arc has a measurable on-screen width greater than
   1 px and the moving pulse dot reaches the to-beam endpoint within the
   latch window.

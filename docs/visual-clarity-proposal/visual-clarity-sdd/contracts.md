@@ -139,9 +139,10 @@ granularity so each pixel surface has exactly one tier owner.
 | Channel | Where it lives in code | Tier owner | Encodes |
 |---|---|---|---|
 | `cone.fill` | `meshBasicMaterial` on `coneGeo` in `SatelliteBeams.tsx` | T1 (event roles) **or** T3 (non-event roles) — never both | role color (event) or frequency color (non-event) |
-| `disc.fill` | `meshBasicMaterial` on `discGeo` | T3 | frequency color (always; reduced opacity for event roles to keep T1 dominant elsewhere) |
+| `disc.fill` | `meshBasicMaterial` on `discGeo` | T1 for event roles, T3 for non-event roles | role color for serving/pending/approach/recent-HO; frequency color for other active beams |
 | `disc.outerRing` | new `ringGeometry` outside the disc radius | T2 | satellite tint |
-| `disc.innerRoleRing` | new `ringGeometry` inside the disc radius (event roles only) | T1 | role color (cyan/amber/violet/slate) |
+| `disc.frequencyRing` | thin `ringGeometry` inside event-role discs | T3 | demoted frequency swatch color |
+| `disc.innerRoleRing` | new `ringGeometry` inside the disc radius (event roles only) | T1 | role color (yellow/green/blue/light-blue) |
 | `spine.outer` | outer of the dual `Line` from satellite to ground | T2 | satellite tint |
 | `spine.inner` | inner of the dual `Line` | T1 | role color (event) or frequency color (non-event) |
 | `endpoint.shape` | `triangleGeometry` / `octahedronGeometry` / etc. in `glyphs.ts` | T2 | satellite glyph |
@@ -247,12 +248,12 @@ Colorblind considerations:
 
 - Phase 2D's role-pulse rhythm difference (2.4 s vs 1.4 s) is the
   primary deuteranopia-safe distinguisher between pending and approach,
-  because their colors (amber and violet) shift hue under deuteranopia
-  but their pulse rhythms do not.
+  because their colors can shift hue under deuteranopia but their pulse
+  rhythms do not.
 - Phase 2A spine tint and Phase 2B glyph are both colorblind-safe by
   construction (off-white tints + distinct shapes).
-- Open Question: a `colorblind-mode` toggle that swaps cyan ↔ amber
-  to a deuteranopia-safe palette is deferred to a future SDD; this
+- Open Question: a `colorblind-mode` toggle that can swap the role
+  palette to a deuteranopia-safe variant is deferred to a future SDD; this
   SDD's secondary-encoding policy (line width, dash, glyph, pulse) is
   declared sufficient pending real-user evaluation.
 

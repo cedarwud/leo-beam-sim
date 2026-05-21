@@ -3,8 +3,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  MODQN_EXPECTED_EVENT_COUNTS,
   MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL,
   createModqnReplayPlaybackDisplayState,
+  createOmegaRescalarizedModqnReplayPlaybackDisplayState,
 } from '../src/modqn/replay-bundle/index.ts';
 import {
   MODQN_REPLAY_SCENE_BEAM_COUNT,
@@ -62,7 +64,7 @@ function assertFirstSlotVisualState(): void {
   assert.equal(visualState.eventKind, 'intra-satellite-beam-switch');
   assert.equal(visualState.switch.activeIntraSatelliteSwitch, true);
   assert.equal(visualState.previous.producerBeamId, 'sat-0-beam-3');
-  assert.equal(visualState.selected.producerBeamId, 'sat-0-beam-4');
+  assert.equal(visualState.selected.producerBeamId, 'sat-0-beam-1');
   assert.equal(visualState.previous.producerSatId, 'sat-0');
   assert.equal(visualState.selected.producerSatId, 'sat-0');
   assert.deepEqual(
@@ -72,8 +74,8 @@ function assertFirstSlotVisualState(): void {
   );
   assert.deepEqual(
     visualState.selected.position,
-    createModqnReplayCanonicalBeamPosition(4),
-    'selected serving should use producer localBeamIndex 4 in the canonical display plane',
+    createModqnReplayCanonicalBeamPosition(1),
+    'selected serving should use producer localBeamIndex 1 in the canonical display plane',
   );
   assert.notDeepEqual(
     visualState.previous.position,
@@ -95,13 +97,66 @@ function assertNoSwitchSlotVisualState(): void {
   assert.ok(visualState, 'sixth replay slot should produce scene visual state');
   assert.equal(visualState.eventKind, 'none');
   assert.equal(visualState.switch.activeIntraSatelliteSwitch, false);
-  assert.equal(visualState.previous.producerBeamId, 'sat-0-beam-4');
-  assert.equal(visualState.selected.producerBeamId, 'sat-0-beam-4');
+  assert.equal(visualState.previous.producerBeamId, 'sat-0-beam-1');
+  assert.equal(visualState.selected.producerBeamId, 'sat-0-beam-1');
 
-  const sharedBeam = visualState.beams.find(beam => beam.canonicalBeamNumber === 5);
-  assert.ok(sharedBeam, 'shared previous/selected beam B5 should be present');
+  const sharedBeam = visualState.beams.find(beam => beam.canonicalBeamNumber === 2);
+  assert.ok(sharedBeam, 'shared previous/selected beam B2 should be present');
   assert.equal(sharedBeam.role, 'previous-and-selected');
   assertNoLiveSceneIdentityLeak(JSON.stringify(visualState));
+}
+
+function assertOmegaRescalarizedDisplayState(): void {
+  const displayState = createModqnReplayPlaybackDisplayState(
+    MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL,
+    0,
+    false,
+    true,
+  );
+  const focusRow = displayState.currentSlot.focusRow;
+  const seededDisplayState = {
+    ...displayState,
+    currentSlot: {
+      ...displayState.currentSlot,
+      focusRow: {
+        ...focusRow,
+        policyDiagnostics: {
+          diagnosticsVersion: 'phase-7k-validator-synthetic-topk',
+          availableActionCount: 2,
+          topCandidates: [
+            {
+              ...focusRow.selectedServing,
+              objectiveQ: {
+                r1Throughput: 1,
+                r2Handover: 0,
+                r3LoadBalance: 0,
+              },
+            },
+            {
+              ...focusRow.previousServing,
+              objectiveQ: {
+                r1Throughput: 10,
+                r2Handover: 0,
+                r3LoadBalance: 0,
+              },
+            },
+          ],
+        },
+      },
+    },
+  };
+
+  const nextDisplayState = createOmegaRescalarizedModqnReplayPlaybackDisplayState(
+    seededDisplayState,
+    { throughput: 1, handover: 0, loadBalance: 0 },
+  );
+  assert.ok(nextDisplayState, 'omega re-scalarization should return display state');
+  const nextFocusRow = nextDisplayState.currentSlot.focusRow;
+  assert.equal(nextFocusRow.selectedServing.beamId, focusRow.previousServing.beamId);
+  assert.equal(nextFocusRow.selectedServingSource, 'omega-rescalarized');
+  assert.deepEqual(nextFocusRow.producerSelectedServing, focusRow.selectedServing);
+  assert.equal(nextFocusRow.producerHandoverEventKind, focusRow.handoverEventKind);
+  assert.equal(nextFocusRow.handoverEventKind, 'none');
 }
 
 function assertSceneBridgeSource(): void {
@@ -112,7 +167,17 @@ function assertSceneBridgeSource(): void {
 
   assertContains(
     appSource,
-    'modqnReplayDisplayState={modqnReplayDisplayState}',
+    'modqnReplayDisplayState={renderedModqnReplayDisplayState}',
+    'App replay-to-scene bridge',
+  );
+  assertContains(
+    appSource,
+    "if (handoverMode !== 'modqn-replay')",
+    'App replay-to-scene mode gate',
+  );
+  assertContains(
+    appSource,
+    'createOmegaRescalarizedModqnReplayPlaybackDisplayState',
     'App replay-to-scene bridge',
   );
   assertContains(
@@ -127,14 +192,17 @@ function assertSceneBridgeSource(): void {
   );
   assertContains(
     sceneLayerSource,
-    '<circleGeometry',
-    'R3F replay beam disc layer',
+    'SatelliteMarker',
+    'R3F replay producer satellite actor',
   );
-  assertContains(
+  assertNotContains(
     sceneLayerSource,
-    '<ringGeometry',
-    'R3F replay beam ring layer',
+    'BeamDisc',
+    'R3F replay layer must not regress to seven debug beam discs',
   );
+  assertNotContains(sceneLayerSource, '<planeGeometry', 'R3F replay board must not render a board plane');
+  assertNotContains(sceneLayerSource, '<circleGeometry', 'R3F replay board must not render a footprint circle');
+  assertNotContains(sceneLayerSource, '<ringGeometry', 'R3F replay board must not render beam rings');
   assertContains(
     sceneLayerSource,
     '<Line',
@@ -144,6 +212,16 @@ function assertSceneBridgeSource(): void {
     sceneLayerSource,
     'data-modqn-replay-scene-renderer',
     'canvas validation attributes',
+  );
+  assertContains(
+    sceneLayerSource,
+    'useReplaySceneTelemetry(visualState, showBoard)',
+    'canvas validation attributes must be inactive outside modqn-replay mode',
+  );
+  assertContains(
+    sceneLayerSource,
+    'if (!enabled)',
+    'canvas validation attributes must be removable when replay layer is inactive',
   );
   assertContains(
     sceneLayerSource,
@@ -185,12 +263,12 @@ function assertSceneBridgeSource(): void {
 function assertClaimBoundaryCounts(): void {
   assert.equal(
     MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL.eventCounts['intra-satellite-beam-switch'],
-    85,
+    MODQN_EXPECTED_EVENT_COUNTS['intra-satellite-beam-switch'],
   );
-  assert.equal(MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL.eventCounts.none, 915);
+  assert.equal(MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL.eventCounts.none, MODQN_EXPECTED_EVENT_COUNTS.none);
   assert.equal(
     MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL.eventCounts['inter-satellite-handover'],
-    0,
+    MODQN_EXPECTED_EVENT_COUNTS['inter-satellite-handover'],
   );
 }
 
@@ -198,6 +276,7 @@ assert.equal(deriveModqnReplaySceneVisualState(null), null);
 assertClaimBoundaryCounts();
 assertFirstSlotVisualState();
 assertNoSwitchSlotVisualState();
+assertOmegaRescalarizedDisplayState();
 assertSceneBridgeSource();
 
 console.log('MODQN Phase 7K replay scene layer validation passed.');

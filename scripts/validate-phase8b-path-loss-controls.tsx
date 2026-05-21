@@ -454,7 +454,6 @@ function assertPlacementCopyAndStaleMarkup(): void {
     '../src/ui/signal-tuning/FormulaTabList.tsx',
     '../src/ui/signal-tuning/MathSymbol.tsx',
     '../src/ui/signal-tuning/SinrOverview.tsx',
-    '../src/ui/signal-tuning/TuningPageTabs.tsx',
     '../src/ui/signal-tuning/formatters.ts',
     '../src/ui/signal-tuning/styles.ts',
     '../src/ui/signal-tuning/tuningConfig.tsx',

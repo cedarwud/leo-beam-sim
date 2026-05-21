@@ -378,10 +378,9 @@ Acceptance:
   sampled from a browser screenshot pull only from
   `BEAM_ROLE_TOKENS.serving.color` (ΔE ≤ 5 vs role color; ΔE ≥ 15 vs
   every `BEAM_FREQUENCY_COLORS` entry).
-- The disc area sampled at the disc center carries the matching
-  `frequencyReuseColor(...)` hue at low opacity (luminance < `0.4` of
-  the role's serving cyan luminance), confirming `disc.fill` retains
-  its T3 ownership without overpowering role.
+- The disc area sampled at the disc center carries the role hue; frequency
+  is demoted to the callout swatch and the thin frequency ring so it cannot
+  overpower serving / handover state.
 - The callout still shows `F2 B5` text and a visible `F2` swatch.
 - For a forced `otherActive` fixture, the cone/disc/spine all use
   `frequencyReuseColor(...)`.

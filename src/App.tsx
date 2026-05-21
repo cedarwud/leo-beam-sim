@@ -12,6 +12,7 @@ import { recommendDemoReplayStartOffsetSec } from './scene/replay-recommendation
 import {
   createModqnReplayPlaybackDisplayState,
   createModqnReplayPlaybackShellModel,
+  createOmegaRescalarizedModqnReplayPlaybackDisplayState,
   fetchModqnReplayBundleEnvelope,
   getModqnReplayPlaybackFallbackShellModel,
   getModqnReplayPlaybackModelValidationIssue,
@@ -23,12 +24,12 @@ import {
   ModqnEnvelopeProvider,
   ModqnHandoverModeProvider,
   MODQN_PAPER_FAITHFUL_OMEGA,
+  getBundleSidebarSnapshot,
   readPersistedHandoverMode,
   persistHandoverMode,
   type RuntimeHandoverMode,
   type RuntimeOmegaState,
 } from './ui/useModqnHandoverState';
-import { MODQN_1SAT_7BEAM_PROFILE_ID } from './profiles';
 import {
   deriveRuntimeVisualSettings,
   readPrefersReducedMotion,
@@ -55,12 +56,12 @@ import {
 } from './signalTuning';
 import { ControlBar } from './ui/ControlBar';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
-import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
 import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell, type SidebarTabItem } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
+import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
 import { usePlaybackControls } from './usePlaybackControls';
 import { useCameraControls } from './useCameraControls';
@@ -68,18 +69,40 @@ import { useCameraControls } from './useCameraControls';
 const DEFAULT_PROFILE_ID = 'hobs-2024-candidate-rich';
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 
-type LeftSidebarTab = 'signal' | 'objective';
+type LeftSidebarTab = 'objective' | 'signal' | 'handover';
 type RightSidebarTab = 'modqn' | 'live';
 
 const LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
-  { key: 'objective', label: 'MODQN objective', description: 'ω weights + retrain' },
-  { key: 'signal', label: 'Signal formula', description: 'SINR tuning' },
+  { key: 'objective', label: 'MODQN objective', description: 'post-hoc ω weights' },
+  { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
+  { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
+];
+
+const SINR_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
+  LEFT_SIDEBAR_TABS[1],
+  LEFT_SIDEBAR_TABS[2],
+];
+
+const MODQN_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
+  LEFT_SIDEBAR_TABS[0],
+  LEFT_SIDEBAR_TABS[2],
 ];
 
 const RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = [
-  { key: 'modqn', label: 'MODQN', description: 'proof + replay evidence' },
-  { key: 'live', label: 'Live status', description: 'HOBS/SINR' },
+  { key: 'live', label: 'Live status', description: 'current scene state' },
+  { key: 'modqn', label: 'MODQN evidence', description: 'artifact proof' },
 ];
+
+const SINR_RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = [
+  RIGHT_SIDEBAR_TABS[0],
+];
+
+const MODQN_RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = RIGHT_SIDEBAR_TABS;
+
+interface InitialRuntimeState {
+  readonly selectedProfileId: string;
+  readonly handoverMode: RuntimeHandoverMode;
+}
 
 interface HandoverPolicyRuntimeState {
   profileId: string;
@@ -94,26 +117,116 @@ function resolvePresentationMode(profile: Profile): PresentationMode {
   return 'research-default';
 }
 
+function readInitialRuntimeState(): InitialRuntimeState {
+  const handoverMode = readPersistedHandoverMode();
+  return {
+    selectedProfileId: DEFAULT_PROFILE_ID,
+    handoverMode,
+  };
+}
+
+function getLeftSidebarTabsForMode(mode: RuntimeHandoverMode): readonly SidebarTabItem<LeftSidebarTab>[] {
+  return mode === 'sinr-offset'
+    ? SINR_LEFT_SIDEBAR_TABS
+    : MODQN_LEFT_SIDEBAR_TABS;
+}
+
+function getDefaultLeftSidebarTabForMode(mode: RuntimeHandoverMode): LeftSidebarTab {
+  return mode === 'sinr-offset' ? 'signal' : 'objective';
+}
+
+function getRightSidebarTabsForMode(mode: RuntimeHandoverMode): readonly SidebarTabItem<RightSidebarTab>[] {
+  return mode === 'modqn-replay'
+    ? MODQN_RIGHT_SIDEBAR_TABS
+    : SINR_RIGHT_SIDEBAR_TABS;
+}
+
+function getDefaultRightSidebarTabForMode(_mode: RuntimeHandoverMode): RightSidebarTab {
+  return 'live';
+}
+
+function clampOmegaComponent(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(1, Math.max(0, numeric));
+}
+
+function normalizeRuntimeOmega(weights: Readonly<Record<string, unknown>> | undefined): RuntimeOmegaState {
+  const throughput = clampOmegaComponent(
+    weights?.throughput ?? weights?.r1Throughput,
+    MODQN_PAPER_FAITHFUL_OMEGA.throughput,
+  );
+  const handover = clampOmegaComponent(
+    weights?.handover ?? weights?.r2Handover,
+    MODQN_PAPER_FAITHFUL_OMEGA.handover,
+  );
+  const loadBalance = clampOmegaComponent(
+    weights?.loadBalance ?? weights?.r3LoadBalance,
+    MODQN_PAPER_FAITHFUL_OMEGA.loadBalance,
+  );
+  const sum = throughput + handover + loadBalance;
+  if (sum <= 0) return MODQN_PAPER_FAITHFUL_OMEGA;
+  return {
+    throughput: throughput / sum,
+    handover: handover / sum,
+    loadBalance: loadBalance / sum,
+  };
+}
+
 export function App() {
-  const [selectedProfileId, setSelectedProfileId] = useState(DEFAULT_PROFILE_ID);
+  const initialRuntimeRef = useRef<InitialRuntimeState | null>(null);
+  if (initialRuntimeRef.current === null) {
+    initialRuntimeRef.current = readInitialRuntimeState();
+  }
+  const initialRuntime = initialRuntimeRef.current;
+  const [selectedProfileId, setSelectedProfileId] = useState(initialRuntime.selectedProfileId);
   const [uiMode, setUiMode] = useState<UiMode>(() => readPersistedUiMode());
 
   // S3: handover mode — persisted for sinr-offset/modqn-replay, never for omega-heuristic.
   const [handoverMode, setHandoverModeRaw] = useState<RuntimeHandoverMode>(
-    () => readPersistedHandoverMode(),
+    initialRuntime.handoverMode,
   );
   // omegaActive snapshot — owned by App so it can be threaded into ModqnHandoverModeContext
   // and read by useSimulation (inside Canvas). Starts at paper-faithful defaults.
   const [omegaActiveForContext, setOmegaActiveForContext] = useState<RuntimeOmegaState>(
     () => MODQN_PAPER_FAITHFUL_OMEGA,
   );
+  const [omegaDisplayApplyVersion, setOmegaDisplayApplyVersion] = useState(0);
+  const omegaDisplayApplyVersionRef = useRef(0);
+  const markOmegaDisplayApplied = useCallback(() => {
+    setOmegaDisplayApplyVersion(current => {
+      const next = current + 1;
+      omegaDisplayApplyVersionRef.current = next;
+      return next;
+    });
+  }, []);
+  const resetOmegaDisplayApplied = useCallback(() => {
+    omegaDisplayApplyVersionRef.current = 0;
+    setOmegaDisplayApplyVersion(0);
+  }, []);
   // re-scalarization fallback count — reset on mode change or sim reset.
   const [rescalarizeFallbackCount, setRescalarizeFallbackCount] = useState(0);
   const incrementRescalarizeFallback = useCallback(() => {
     setRescalarizeFallbackCount(c => c + 1);
   }, []);
-  const [leftSidebarTab, setLeftSidebarTab] = useState<LeftSidebarTab>('objective');
-  const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('modqn');
+  const [leftSidebarTab, setLeftSidebarTab] = useState<LeftSidebarTab>(
+    () => getDefaultLeftSidebarTabForMode(initialRuntime.handoverMode),
+  );
+  const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
+  const visibleLeftSidebarTabs = useMemo(
+    () => getLeftSidebarTabsForMode(handoverMode),
+    [handoverMode],
+  );
+  const activeLeftSidebarTab = visibleLeftSidebarTabs.some(tab => tab.key === leftSidebarTab)
+    ? leftSidebarTab
+    : getDefaultLeftSidebarTabForMode(handoverMode);
+  const visibleRightSidebarTabs = useMemo(
+    () => getRightSidebarTabsForMode(handoverMode),
+    [handoverMode],
+  );
+  const activeRightSidebarTab = visibleRightSidebarTabs.some(tab => tab.key === rightSidebarTab)
+    ? rightSidebarTab
+    : getDefaultRightSidebarTabForMode(handoverMode);
   const [beamDensityOverride, setBeamDensityOverride] = useState<BeamDensity | null>(null);
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
@@ -175,8 +288,8 @@ export function App() {
     [signalTuning],
   );
   const handoverResetKey = useMemo(
-    () => `${handoverPolicyVersion}:${getHandoverPolicyResetKey(appliedHandoverPolicy)}`,
-    [appliedHandoverPolicy, handoverPolicyVersion],
+    () => `${handoverMode}:${handoverPolicyVersion}:${getHandoverPolicyResetKey(appliedHandoverPolicy)}`,
+    [appliedHandoverPolicy, handoverMode, handoverPolicyVersion],
   );
   const profileOptions = useMemo(
     () => profileList.map(entry => ({ id: entry.id, label: getProfileLabel(entry) })),
@@ -248,6 +361,30 @@ export function App() {
     ),
   );
   const modqnReplaySlotOffset = modqnReplayDisplayState?.slotOffset ?? 0;
+  const modqnBundleOmega = useMemo(
+    () => normalizeRuntimeOmega(
+      getBundleSidebarSnapshot(modqnReplayEnvelope, modqnReplaySlotOffset)
+        .policyDiagnostics.objectiveWeights,
+    ),
+    [modqnReplayEnvelope, modqnReplaySlotOffset],
+  );
+  const renderedModqnReplayDisplayState = useMemo(() => {
+    if (handoverMode !== 'modqn-replay') {
+      return null;
+    }
+    if (omegaDisplayApplyVersion === 0) {
+      return modqnReplayDisplayState;
+    }
+    return createOmegaRescalarizedModqnReplayPlaybackDisplayState(
+      modqnReplayDisplayState,
+      omegaActiveForContext,
+    );
+  }, [
+    handoverMode,
+    modqnReplayDisplayState,
+    omegaActiveForContext,
+    omegaDisplayApplyVersion,
+  ]);
   const [staleFormulaEvidenceKey, setStaleFormulaEvidenceKey] = useState<string | null>(null);
   const playback = usePlaybackControls(simState);
 
@@ -336,58 +473,30 @@ export function App() {
     persistUiMode(nextMode);
   }, []);
 
-  // S3: handover mode change with profile-lock enforcement (SDD §6.2).
+  const handleProfileChange = useCallback((profileId: string) => {
+    setSelectedProfileId(profileId);
+  }, []);
+
+  // S3: handover mode change.
   // omega reset to bundle objectiveWeights (or paper-faithful fallback).
-  // MODQN board default-on when entering modqn-replay.
+  // The scene profile is intentionally not changed here: MODQN replay drives the
+  // decision override, while the main scene keeps the current visual topology.
   const handleHandoverModeChange = useCallback((nextMode: RuntimeHandoverMode) => {
     if (nextMode === handoverMode) return;
 
     if (nextMode === 'modqn-replay') {
-      const targetProfileId = MODQN_1SAT_7BEAM_PROFILE_ID;
-      const isAlreadyOnTarget = selectedProfileId === targetProfileId;
-
-      if (!isAlreadyOnTarget) {
-        // Profile lock: ask user to confirm switching to modqn-1sat-7beam.
-        const confirmed = window.confirm(
-          'modqn-replay requires the modqn-1sat-7beam profile.\n\n'
-          + 'Switch to modqn-1sat-7beam and reset simulation? '
-          + 'Your signal/handover tuning will be reset.',
-        );
-        if (!confirmed) {
-          // Cancel — keep sinr-offset.
-          return;
-        }
-        // Switch profile, reset sim, reset ω to paper-faithful defaults.
-        startTransition(() => {
-          setSelectedProfileId(targetProfileId);
-          const targetProfile = loadProfile(targetProfileId);
-          setSignalTuning(createSignalTuningState(targetProfile));
-          const defaults = createHandoverPolicyTuningState(targetProfile);
-          setHandoverPolicyState({
-            profileId: targetProfileId,
-            draft: defaults,
-            applied: defaults,
-            version: 0,
-          });
-          setSimState(createInitialSimState(targetProfile));
-          playback.resetAutoSlowDismissed();
-          setRescalarizeFallbackCount(0);
-        });
-      } else {
-        // Already on modqn-1sat-7beam — just reset fallback count.
-        setRescalarizeFallbackCount(0);
-      }
-      // Reset ω to paper-faithful defaults (bundle objectiveWeights, if available;
-      // falls back to MODQN_PAPER_FAITHFUL_OMEGA per SDD §6.2).
-      setOmegaActiveForContext(MODQN_PAPER_FAITHFUL_OMEGA);
+      // Reset ω to the bundle objectiveWeights, falling back to paper-faithful
+      // constants only when producer diagnostics are absent.
+      setOmegaActiveForContext(modqnBundleOmega);
+      resetOmegaDisplayApplied();
+      setRescalarizeFallbackCount(0);
+      setSimState(createInitialSimState(effectiveProfile));
+      playback.resetAutoSlowDismissed();
       // Persist and apply mode.
       setHandoverModeRaw(nextMode);
       persistHandoverMode(nextMode);
-      // Note: MODQN board default-on is handled in the right sidebar tab by the
-      // mode selector render — the board's visibility is controlled by the
-      // rightSidebarTab being 'modqn'. For S3 we ensure the tab switches to
-      // 'modqn' when entering modqn-replay.
-      setRightSidebarTab('modqn');
+      setLeftSidebarTab('objective');
+      setRightSidebarTab('live');
       return;
     }
 
@@ -395,6 +504,8 @@ export function App() {
     if (nextMode === 'omega-heuristic') {
       setHandoverModeRaw(nextMode);
       setRescalarizeFallbackCount(0);
+      resetOmegaDisplayApplied();
+      setLeftSidebarTab('objective');
       // Do NOT call persistHandoverMode for omega-heuristic (SDD §5.2, §9.4 item 8).
       return;
     }
@@ -403,13 +514,25 @@ export function App() {
     setHandoverModeRaw(nextMode);
     persistHandoverMode(nextMode);
     setRescalarizeFallbackCount(0);
-  }, [handoverMode, selectedProfileId, playback]);
+    resetOmegaDisplayApplied();
+    setSimState(createInitialSimState(effectiveProfile));
+    playback.resetAutoSlowDismissed();
+    setLeftSidebarTab('signal');
+    setRightSidebarTab('live');
+  }, [
+    effectiveProfile,
+    handoverMode,
+    modqnBundleOmega,
+    playback,
+    resetOmegaDisplayApplied,
+  ]);
 
   // S3: expose a setter so ModqnObjectiveTab (via useModqnHandoverState hook)
   // can update the omegaActive snapshot in the mode context.
   const handleOmegaActiveChange = useCallback((next: RuntimeOmegaState) => {
     setOmegaActiveForContext(next);
-  }, []);
+    markOmegaDisplayApplied();
+  }, [markOmegaDisplayApplied]);
 
   const handleBeamDensityChange = useCallback((nextDensity: BeamDensity) => {
     setBeamDensityOverride(nextDensity);
@@ -433,6 +556,12 @@ export function App() {
         setModqnReplayEnvelope(result.envelope);
         setModqnReplayShellModel(liveShell);
         setModqnReplayFetchError(null);
+        if (omegaDisplayApplyVersionRef.current === 0) {
+          const bundleSnapshot = getBundleSidebarSnapshot(result.envelope, 0);
+          setOmegaActiveForContext(
+            normalizeRuntimeOmega(bundleSnapshot.policyDiagnostics.objectiveWeights),
+          );
+        }
         const issue = getModqnReplayPlaybackModelValidationIssue(liveShell);
         setModqnReplayDisplayState(
           issue === null ? createModqnReplayPlaybackDisplayState(liveShell) : null,
@@ -504,42 +633,6 @@ export function App() {
           reachable. Error: {modqnReplayFetchError}
         </div>
       )}
-      {/* S3: Paper-faithful replay info banner — non-warning, dismissable (SDD §6.1 / §9.4 item 7) */}
-      {handoverMode === 'modqn-replay' && (
-        <div
-          className="leo-modqn-replay-mode-banner"
-          role="status"
-          data-testid="modqn-replay-mode-banner"
-          style={{
-            background: 'rgba(0, 80, 180, 0.72)',
-            color: '#d4edff',
-            padding: '6px 16px',
-            fontSize: 13,
-            borderBottom: '1px solid rgba(100, 180, 255, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
-          <span>Paper-faithful: MODQN baseline replay</span>
-          <button
-            type="button"
-            aria-label="Dismiss MODQN replay mode banner"
-            style={{
-              marginLeft: 'auto',
-              background: 'none',
-              border: 'none',
-              color: 'inherit',
-              cursor: 'pointer',
-              fontSize: 16,
-              lineHeight: 1,
-            }}
-            onClick={() => handleHandoverModeChange('sinr-offset')}
-          >
-            ×
-          </button>
-        </div>
-      )}
       <ControlBar
         selectedProfileId={selectedProfileId}
         profileOptions={profileOptions}
@@ -552,10 +645,8 @@ export function App() {
         uiMode={uiMode}
         beamDensity={runtime.beamDensity}
         cinematicMode={effectiveCinematicMode}
-        beamHopEnabled={simState.beamHopEnabled}
-        beamHopSlotIndex={simState.beamHopSlotIndex}
         handoverMode={handoverMode}
-        onProfileChange={setSelectedProfileId}
+        onProfileChange={handleProfileChange}
         onUiModeChange={handleUiModeChange}
         onBeamDensityChange={handleBeamDensityChange}
         onCameraPresetSelect={camera.selectCameraPreset}
@@ -571,13 +662,13 @@ export function App() {
           <SidebarTabShell
             label="Simulation control sidebar"
             side="left"
-            tabs={LEFT_SIDEBAR_TABS}
-            activeKey={leftSidebarTab}
+            tabs={visibleLeftSidebarTabs}
+            activeKey={activeLeftSidebarTab}
             onChange={setLeftSidebarTab}
           >
-            {leftSidebarTab === 'objective' ? (
+            {activeLeftSidebarTab === 'objective' ? (
               <ModqnObjectiveTab />
-            ) : (
+            ) : activeLeftSidebarTab === 'signal' ? (
               <SignalTuningPanel
                 baseProfile={baseProfile}
                 tuning={signalTuning}
@@ -585,42 +676,36 @@ export function App() {
                 uiMode="tuning"
                 formulaBudget={simState.physicalServingBudget}
                 isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                handoverDraft={handoverPolicyDraft}
-                appliedHandoverPolicy={appliedHandoverPolicy}
-                hasHandoverDraftChanges={hasHandoverDraftChanges}
-                hasHandoverOverrides={hasHandoverResetTarget}
                 onTuningChange={handleSignalTuningChange}
                 onReset={handleResetSignalTuning}
-                onHandoverDraftChange={handleHandoverPolicyDraftChange}
-                onApplyHandoverPolicy={handleApplyHandoverPolicy}
-                onResetHandoverPolicy={handleResetHandoverPolicy}
+              />
+            ) : (
+              <HandoverPolicyControls
+                draft={handoverPolicyDraft}
+                applied={appliedHandoverPolicy}
+                hasDraftChanges={hasHandoverDraftChanges}
+                hasOverrides={hasHandoverResetTarget}
+                onDraftChange={handleHandoverPolicyDraftChange}
+                onApply={handleApplyHandoverPolicy}
+                onReset={handleResetHandoverPolicy}
               />
             )}
           </SidebarTabShell>
         </aside>
-        {/* S3 + S4: data-handover-criterion attribute on scene container.
-            SDD §9.4 item 6 (sinr-offset / modqn-replay) and SDD §4.4 item 4 /
-            §9.5 item 4 — omega-heuristic mode emits the exact string
-            'omega-heuristic-not-paper' for capture metadata. */}
         <main
           className="leo-shell-canvas"
           data-testid="leo-shell-canvas"
           data-handover-criterion={
-            handoverMode === 'omega-heuristic'
-              ? 'omega-heuristic-not-paper'
-              : (handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset')
+            handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset'
           }
         >
-          {/* S4: persistent heuristic-mode warning banner (SDD §4.4 item 1).
-              Mounted inside <main> so it travels with the scene container in
-              both browser fullscreen and cinematic-mode dimming. */}
-          {handoverMode === 'omega-heuristic' && <HeuristicNotPaperBanner />}
           <MainScene
             speed={playback.effectiveSpeed}
             paused={playback.paused}
             profile={effectiveProfile}
             runtime={runtime}
-            modqnReplayDisplayState={modqnReplayDisplayState}
+            modqnReplayDisplayState={renderedModqnReplayDisplayState}
+            showModqnReplayScene={false}
             onSimUpdate={handleSimUpdate}
           />
         </main>
@@ -628,11 +713,28 @@ export function App() {
           <SidebarTabShell
             label="Simulation status sidebar"
             side="right"
-            tabs={RIGHT_SIDEBAR_TABS}
-            activeKey={rightSidebarTab}
+            tabs={visibleRightSidebarTabs}
+            activeKey={activeRightSidebarTab}
             onChange={setRightSidebarTab}
           >
-            {rightSidebarTab === 'modqn' ? (
+            {activeRightSidebarTab === 'live' ? (
+              <section className="leo-live-status-stack" aria-label="Live status for current scene">
+                <InfoPanel
+                  {...simState}
+                  uiMode={uiMode}
+                  profile={effectiveProfile}
+                  handoverMode={handoverMode}
+                  isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                />
+                <DiagnosticsDrawer
+                  {...simState}
+                  uiMode={uiMode}
+                  profile={effectiveProfile}
+                  handoverMode={handoverMode}
+                  rescalarizeFallbackCount={rescalarizeFallbackCount}
+                />
+              </section>
+            ) : (
               <section
                 className="leo-modqn-sidebar-stack"
                 aria-label="MODQN proof"
@@ -642,22 +744,7 @@ export function App() {
                   bandwidthMHz={effectiveProfile.channel.bandwidthMHz}
                   appliedHandoverOffsetDb={appliedHandoverPolicy.offsetDb}
                   appliedHandoverTriggerTimeSec={appliedHandoverPolicy.triggerTimeSec}
-                />
-              </section>
-            ) : (
-              <section className="leo-live-status-stack" aria-label="Live HOBS/SINR status">
-                <InfoPanel
-                  {...simState}
-                  uiMode={uiMode}
-                  profile={effectiveProfile}
-                  isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                />
-                <DiagnosticsDrawer
-                  {...simState}
-                  uiMode={uiMode}
-                  profile={effectiveProfile}
                   handoverMode={handoverMode}
-                  rescalarizeFallbackCount={rescalarizeFallbackCount}
                 />
               </section>
             )}

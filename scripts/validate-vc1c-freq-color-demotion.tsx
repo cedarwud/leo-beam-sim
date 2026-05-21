@@ -132,8 +132,8 @@ function assertEncodingInvariants(): void {
       `${fixture.name} role-owned surfaces must not use a frequency palette entry`,
     );
     assert.ok(
-      encoding.discOpacity <= 0.18,
-      `${fixture.name} disc opacity ${encoding.discOpacity} exceeded the Phase 1C event-role cap`,
+      encoding.discOpacity <= 0.32,
+      `${fixture.name} disc opacity ${encoding.discOpacity} exceeded the role-dominant visibility cap`,
     );
   }
 }
@@ -316,8 +316,12 @@ async function assertBrowserFixture(
     result.roleSurfaceColor,
     `${fixture.name} browser fixture leaked frequency color into role-owned surfaces`,
   );
-  assert.equal(result.discFillColor, frequencyColor, `${fixture.name} browser fixture did not retain T3 disc.fill`);
-  assert.ok(result.discOpacity <= 0.18, `${fixture.name} browser fixture exceeded event-role disc opacity cap`);
+  assert.equal(
+    result.discFillColor,
+    BEAM_ROLE_TOKENS[fixture.visualRole].color,
+    `${fixture.name} browser fixture did not keep disc.fill on role color`,
+  );
+  assert.ok(result.discOpacity <= 0.32, `${fixture.name} browser fixture exceeded role-dominant disc opacity cap`);
   assert.equal(result.frequencySwatchColor, frequencyColor, `${fixture.name} browser fixture swatch color mismatch`);
 
   const swatch = page.locator('[data-testid="vc1c-callout-probe"] [data-testid="beam-callout-frequency-swatch"]');
@@ -369,7 +373,7 @@ async function main(): Promise<void> {
   console.log(JSON.stringify({
     v1: {
       eventRoleSurfaces: 'role color',
-      eventRoleDiscFill: 'frequency color capped <= 0.18 opacity',
+      eventRoleDiscFill: 'role color capped <= 0.32 opacity',
       otherActiveSurfaces: 'frequency color retained',
     },
     v2: {

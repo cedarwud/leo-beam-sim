@@ -10,13 +10,10 @@
 //       color constants for contrast verification.
 //   (d) Banner background/foreground colors achieve W3C WCAG 2.1 contrast
 //       ratio ≥ 4.5:1.
-//   (e) ControlBar.tsx omega-heuristic entry no longer carries
-//       `disabledReason: 'Coming in S4'` (button is enabled). The
-//       `disabledReason` typed field remains on the option-type for
-//       extensibility but the literal `'Coming in S4'` is gone.
-//   (f) App.tsx sets data-handover-criterion="omega-heuristic-not-paper" when
-//       mode is omega-heuristic, while preserving the S3 modqn-replay /
-//       sinr-offset paths.
+//   (e) ControlBar.tsx no longer exposes omega-heuristic as a top-level demo
+//       mode; ω Apply is handled inside MODQN replay.
+//   (f) App.tsx keeps data-handover-criterion to the two public branches:
+//       modqn-replay / sinr-offset.
 //   (g) `persistHandoverMode('omega-heuristic')` MUST NOT write to localStorage
 //       (verified via a mock storage instance). `persistHandoverMode('sinr-offset')`
 //       still writes (regression guard).
@@ -191,56 +188,38 @@ console.log('\n(d) W3C WCAG 2.1 contrast ratio');
 }
 
 // ---------------------------------------------------------------------------
-// (e) ControlBar.tsx — omega-heuristic entry no longer has `disabledReason: 'Coming in S4'`
+// (e) ControlBar.tsx — omega-heuristic is not a top-level public mode
 // ---------------------------------------------------------------------------
-console.log('\n(e) ControlBar omega-heuristic entry enabled');
+console.log('\n(e) ControlBar omega-heuristic entry removed');
 {
   const cbSrc = readSource('src/ui/ControlBar.tsx');
   assert(
-    cbSrc.includes("{ mode: 'omega-heuristic', label: 'ω heuristic' }"),
-    "ControlBar entry: { mode: 'omega-heuristic', label: 'ω heuristic' } (no disabledReason)",
+    cbSrc.includes("mode: 'sinr-offset'") && cbSrc.includes("mode: 'modqn-replay'"),
+    'ControlBar exposes the two public demo modes',
   );
   assert(
-    !cbSrc.includes("disabledReason: 'Coming in S4'"),
-    "`disabledReason: 'Coming in S4'` literal removed",
-  );
-  // The typed field stays for future use; that's fine — S3 validator
-  // requires `disabledReason` to remain referenced somewhere in the file.
-  assert(
-    cbSrc.includes('disabledReason'),
-    "`disabledReason?` typed field retained on option type (S3 invariant)",
+    !cbSrc.includes("mode: 'omega-heuristic'"),
+    'ControlBar does not expose omega-heuristic as a third top-level mode',
   );
 }
 
 // ---------------------------------------------------------------------------
-// (f) App.tsx data-handover-criterion includes omega-heuristic-not-paper
-//     when mode is omega-heuristic, preserves S3 modqn-replay/sinr-offset branch
+// (f) App.tsx data-handover-criterion preserves modqn-replay/sinr-offset branch
 // ---------------------------------------------------------------------------
-console.log('\n(f) App.tsx data-handover-criterion 3-way wiring');
+console.log('\n(f) App.tsx data-handover-criterion 2-way wiring');
 {
   const appSrc = readSource('src/App.tsx');
   assert(
-    appSrc.includes("'omega-heuristic-not-paper'"),
-    "App.tsx contains the exact 'omega-heuristic-not-paper' string",
-  );
-  assert(
-    appSrc.includes("handoverMode === 'omega-heuristic'"),
-    "App.tsx tests handoverMode === 'omega-heuristic' for the criterion branch",
-  );
-  // S3 invariant preserved: the original ternary remains as the false-branch
-  // of the S4 outer ternary.
-  assert(
     appSrc.includes("handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset'"),
-    "App.tsx preserves the S3 modqn-replay/sinr-offset ternary literal",
-  );
-  // Banner is mounted under omega-heuristic mode.
-  assert(
-    appSrc.includes('<HeuristicNotPaperBanner />'),
-    'App.tsx mounts <HeuristicNotPaperBanner /> JSX',
+    "App.tsx uses the public modqn-replay/sinr-offset ternary literal",
   );
   assert(
-    appSrc.includes('import { HeuristicNotPaperBanner }'),
-    'App.tsx imports HeuristicNotPaperBanner',
+    !appSrc.includes("'omega-heuristic-not-paper'"),
+    "App.tsx does not emit the removed 'omega-heuristic-not-paper' criterion",
+  );
+  assert(
+    !appSrc.includes('<HeuristicNotPaperBanner />'),
+    'App.tsx does not mount the removed top-level heuristic banner',
   );
 }
 

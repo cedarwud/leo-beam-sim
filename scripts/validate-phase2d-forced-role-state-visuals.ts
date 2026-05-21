@@ -15,6 +15,7 @@ const FORBIDDEN_RAW_ROLE_LABELS = ['prepared', 'secondary', 'post-ho'] as const;
 
 type FixtureName =
   | 'pending handover'
+  | 'recent HO target'
   | 'approach / pre-illumination'
   | 'recent HO source'
   | 'inactive / unscheduled primary beam';
@@ -51,6 +52,18 @@ const fixtures: ForcedRoleFixture[] = [
     isScheduledActive: true,
     expectedOperatorLabel: 'PENDING',
     expectedMarkerLabel: 'PENDING',
+    expectedVisualRole: 'pending',
+  },
+  {
+    name: 'recent HO target',
+    codeRole: 'post-ho',
+    beamId: 3,
+    frequencyIndex: 1,
+    isPrimary: true,
+    isServing: true,
+    isScheduledActive: true,
+    expectedOperatorLabel: 'TARGET',
+    expectedMarkerLabel: 'HO TARGET',
     expectedVisualRole: 'pending',
   },
   {
@@ -176,6 +189,7 @@ function assertNonColorEncoding(rendered: RenderedFixture): void {
 
   switch (fixture.name) {
     case 'pending handover':
+    case 'recent HO target':
       assert.equal(encoding.dashed, false, 'pending handover must be solid after Phase 2 dash reassignment');
       assert.equal(encoding.pulse, 'breathe', 'pending handover must use the breathe pulse cue');
       assert.equal(BEAM_PULSE_SPECS.breathe.periodSec, 2.4, 'pending breathe period drifted');
@@ -194,8 +208,8 @@ function assertNonColorEncoding(rendered: RenderedFixture): void {
     case 'recent HO source':
       assert.equal(encoding.dashed, false, 'recent HO source must be solid after Phase 2 dash reassignment');
       assert.equal(encoding.pulse, 'fade', 'recent HO source must use the linger fade cue');
-      assert.equal(BEAM_PULSE_SPECS.fade.periodSec, 2, 'recent HO fade window drifted');
-      assert.equal(BEAM_PULSE_SPECS.fade.amplitude, 0.06, 'recent HO fade amplitude drifted');
+      assert.equal(BEAM_PULSE_SPECS.fade.periodSec, 5, 'recent HO fade window drifted');
+      assert.equal(BEAM_PULSE_SPECS.fade.amplitude, 0.10, 'recent HO fade amplitude drifted');
       assert.equal(encoding.endpointFilled, false, 'recent HO source must use outline endpoint encoding');
       assert.ok(encoding.lineOpacity < 0.7, 'recent HO source must use fade/opacity de-emphasis');
       break;

@@ -22,6 +22,7 @@ import {
   ModqnEnvelopeContext,
   ModqnHandoverModeContext,
 } from '../ui/useModqnHandoverState';
+import type { ReScalarizeResult } from '../modqn/replay-bundle/rescalarize';
 
 // S3: HandoverManager subclass that injects the S3 decisionOverride ref on
 // every `.update()` call so stepRuntimeFrame (src/scene/runtimeFrameStep.ts,
@@ -45,6 +46,41 @@ class S3HandoverManager extends HandoverManager {
       explicitOverride ?? (this.overrideRef.current ?? undefined),
     );
   }
+}
+
+function resolveModqnReplayOverrideTarget(
+  input: Parameters<HandoverDecisionOverride>[0],
+  result: ReScalarizeResult,
+): { satId: string; beamId: number } | null {
+  const { candidates, serving, sortedBySinrDesc } = input;
+  const exactCandidate = candidates.find(
+    candidate => candidate.satId === result.satId && candidate.beamId === result.beamId,
+  );
+  if (exactCandidate) {
+    return { satId: exactCandidate.satId, beamId: exactCandidate.beamId };
+  }
+
+  // The producer artifact is a 1-satellite / 7-beam replay surface and names
+  // its selected satellite as `sat-0`. The live showcase scene may keep a richer
+  // visual profile, so preserve the producer's local beam choice while choosing
+  // the most relevant live satellite for the existing HandoverManager timing.
+  const sameServingSatCandidate = serving.satId === null
+    ? undefined
+    : candidates.find(candidate => (
+      candidate.satId === serving.satId
+      && candidate.beamId === result.beamId
+    ));
+  if (sameServingSatCandidate) {
+    return { satId: sameServingSatCandidate.satId, beamId: sameServingSatCandidate.beamId };
+  }
+
+  const bestVisibleLocalBeamCandidate = sortedBySinrDesc.find(candidate => candidate.beamId === result.beamId);
+  return bestVisibleLocalBeamCandidate === undefined
+    ? null
+    : {
+      satId: bestVisibleLocalBeamCandidate.satId,
+      beamId: bestVisibleLocalBeamCandidate.beamId,
+    };
 }
 
 export {
@@ -125,7 +161,7 @@ export function useSimulation(
         incrementFallbackRef.current();
       }
 
-      return { satId: result.satId, beamId: result.beamId };
+      return resolveModqnReplayOverrideTarget(input, result);
     }
 
     if (mode === 'omega-heuristic') {
@@ -173,13 +209,48 @@ export function useSimulation(
   const publishNextFrameRef = useRef(true);
   const [, setVersion] = useState(0);
 
-  useEffect(() => {
+  const installDecisionOverride = useCallback(() => {
+    const overrideInModqnReplay =
+      handoverModeRef.current === 'modqn-replay' ? decisionOverride : null;
+    hoManager.overrideRef.current =
+      overrideInModqnReplay
+      ?? (handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null);
+  }, [decisionOverride, hoManager]);
+
+  const resetToReplayStartFrame = useCallback(() => {
     const startOffset = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
     hoManager.reset();
     runtimeStateRef.current = createRuntimeFrameStepState(startOffset);
-    frameRef.current = createEmptyFrame(startOffset);
+    installDecisionOverride();
+    const { frame } = stepRuntimeFrame({
+      profile,
+      replay,
+      speed,
+      paused: true,
+      deltaSec: 0,
+      observer,
+      beamLayoutsByShellId,
+      trajectoryCache,
+      hoManager,
+      state: runtimeStateRef.current,
+    });
+    frameRef.current = frame;
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
+  }, [
+    beamLayoutsByShellId,
+    hoManager,
+    installDecisionOverride,
+    maxTimeSec,
+    observer,
+    profile,
+    replay,
+    speed,
+    trajectoryCache,
+  ]);
+
+  useEffect(() => {
+    resetToReplayStartFrame();
   }, [maxTimeSec, profile.id, replay.epochUtcMs, replay.loop, replay.startOffsetSec]);
 
   useEffect(() => {
@@ -191,14 +262,7 @@ export function useSimulation(
   }, [signalResetKey]);
 
   useEffect(() => {
-    hoManager.reset();
-    runtimeStateRef.current = {
-      ...runtimeStateRef.current,
-      recentHo: null,
-    };
-    frameRef.current = createEmptyFrame(runtimeStateRef.current.simTimeSec);
-    publishNextFrameRef.current = true;
-    setVersion(v => v + 1);
+    resetToReplayStartFrame();
   }, [handoverResetKey]);
 
   useEffect(() => {
@@ -217,11 +281,7 @@ export function useSimulation(
     // `omega-heuristic`. In `sinr-offset` (or any unknown) mode the install
     // resolves to null, which is byte-equivalent to base-class behavior
     // (SDD §9.7 truth invariance).
-    const overrideInModqnReplay =
-      handoverModeRef.current === 'modqn-replay' ? decisionOverride : null;
-    hoManager.overrideRef.current =
-      overrideInModqnReplay
-      ?? (handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null);
+    installDecisionOverride();
 
     const { frame, previousSimTimeSec } = stepRuntimeFrame({
       profile,

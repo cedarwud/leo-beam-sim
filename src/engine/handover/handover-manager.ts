@@ -60,10 +60,14 @@ export class HandoverManager {
   private readonly pingPongGuardMs: number;
   private readonly pendingTargetHoldMs: number;
   private readonly intraSwitchTimeSec: number;
+  private readonly maxIntraSwitchesPerServingEpoch: number;
   private readonly sinrSmoothingSec: number;
   private guardUntilMs = 0;
   private pendingSinceMs: number | null = null;
   private intraSwitchTarget: { beamId: number; triggerTimeSec: number } | null = null;
+  private servingEpochSatId: string | null = null;
+  private intraSwitchCountForServingEpoch = 0;
+  private readonly servedBeamIdsForServingEpoch = new Set<number>();
   private readonly smoothedSinrByAssignment = new Map<string, number>();
   state: ServingState = createServingState();
   eventLog: HandoverEvent[] = [];
@@ -79,6 +83,10 @@ export class HandoverManager {
     this.pingPongGuardMs = config.pingPongGuardSec * 1000;
     this.pendingTargetHoldMs = config.pendingTargetHoldSec * 1000;
     this.intraSwitchTimeSec = config.intraSwitchTimeSec;
+    this.maxIntraSwitchesPerServingEpoch = Math.max(
+      0,
+      Math.floor(config.maxIntraSwitchesPerServingEpoch ?? 1),
+    );
     this.sinrSmoothingSec = config.sinrSmoothingSec;
   }
 
@@ -86,6 +94,7 @@ export class HandoverManager {
     this.guardUntilMs = 0;
     this.pendingSinceMs = null;
     this.intraSwitchTarget = null;
+    this.clearServingEpoch();
     this.smoothedSinrByAssignment.clear();
     this.state = createServingState();
     this.eventLog = [];
@@ -94,6 +103,7 @@ export class HandoverManager {
   clearServing(): void {
     this.pendingSinceMs = null;
     this.intraSwitchTarget = null;
+    this.clearServingEpoch();
     this.state = createServingState();
   }
 
@@ -153,12 +163,18 @@ export class HandoverManager {
     }
 
     const currentSinr = this.state.sinrDb;
-    const bestSameSatBeam = sorted.find(
+    this.ensureServingEpoch();
+    const betterSameSatBeams = sorted.filter(
       candidate =>
         candidate.satId === this.state.satId
         && candidate.beamId !== this.state.beamId
         && candidate.sinrDb > currentSinr,
     );
+    const bestSameSatBeam = betterSameSatBeams.find(candidate =>
+      this.canUseIntraSwitchTarget(candidate.beamId),
+    );
+    const intraSwitchBlockedReason =
+      bestSameSatBeam ? null : this.describeIntraSwitchBlock(betterSameSatBeams[0]?.beamId ?? null);
 
     if (bestSameSatBeam) {
       if (this.intraSwitchTarget?.beamId === bestSameSatBeam.beamId) {
@@ -192,7 +208,12 @@ export class HandoverManager {
     const bestTarget = qualifiedTargets[0];
     if (!bestTarget) {
       this.clearPendingTarget();
-      return { action: 'stay', reason: 'conditions not met' };
+      return {
+        action: 'stay',
+        reason: intraSwitchBlockedReason
+          ? `${intraSwitchBlockedReason}; inter-HO conditions not met`
+          : 'conditions not met',
+      };
     }
 
     const pendingSample = this.state.pendingTarget
@@ -343,6 +364,47 @@ export class HandoverManager {
     this.intraSwitchTarget = null;
   }
 
+  private clearServingEpoch(): void {
+    this.servingEpochSatId = null;
+    this.intraSwitchCountForServingEpoch = 0;
+    this.servedBeamIdsForServingEpoch.clear();
+  }
+
+  private startServingEpoch(satId: string, beamId: number): void {
+    this.servingEpochSatId = satId;
+    this.intraSwitchCountForServingEpoch = 0;
+    this.servedBeamIdsForServingEpoch.clear();
+    this.servedBeamIdsForServingEpoch.add(beamId);
+  }
+
+  private ensureServingEpoch(): void {
+    if (this.state.satId === null || this.state.beamId === null) {
+      this.clearServingEpoch();
+      return;
+    }
+    if (this.servingEpochSatId !== this.state.satId) {
+      this.startServingEpoch(this.state.satId, this.state.beamId);
+      return;
+    }
+    this.servedBeamIdsForServingEpoch.add(this.state.beamId);
+  }
+
+  private canUseIntraSwitchTarget(beamId: number): boolean {
+    return this.intraSwitchCountForServingEpoch < this.maxIntraSwitchesPerServingEpoch
+      && !this.servedBeamIdsForServingEpoch.has(beamId);
+  }
+
+  private describeIntraSwitchBlock(candidateBeamId: number | null): string | null {
+    if (candidateBeamId === null) return null;
+    if (this.intraSwitchCountForServingEpoch >= this.maxIntraSwitchesPerServingEpoch) {
+      return `intra-switch epoch limit reached (${this.intraSwitchCountForServingEpoch}/${this.maxIntraSwitchesPerServingEpoch})`;
+    }
+    if (this.servedBeamIdsForServingEpoch.has(candidateBeamId)) {
+      return `intra-switch beam B${candidateBeamId} already served in this satellite epoch`;
+    }
+    return null;
+  }
+
   private commitDecision(
     action: HandoverDecision['action'],
     target: LinkSample,
@@ -350,6 +412,8 @@ export class HandoverManager {
     simTimeMs: number,
     reason: string,
   ): HandoverDecision {
+    const fromSatId = this.state.satId;
+    const fromBeamId = this.state.beamId;
     const fromSinrDb = this.state.satId !== null ? this.state.sinrDb : null;
     const toSinrDb = candidates.find(
       candidate => candidate.satId === target.satId && candidate.beamId === target.beamId,
@@ -357,8 +421,8 @@ export class HandoverManager {
     this.eventLog.push({
       timeMs: simTimeMs,
       action,
-      fromSatId: this.state.satId,
-      fromBeamId: this.state.beamId,
+      fromSatId,
+      fromBeamId,
       fromSinrDb,
       toSatId: target.satId,
       toBeamId: target.beamId,
@@ -373,7 +437,12 @@ export class HandoverManager {
     this.clearIntraSwitch();
 
     if (action === 'inter-handover') {
+      this.startServingEpoch(target.satId, target.beamId);
       this.guardUntilMs = simTimeMs + this.pingPongGuardMs;
+    } else if (action === 'intra-switch') {
+      if (fromBeamId !== null) this.servedBeamIdsForServingEpoch.add(fromBeamId);
+      this.servedBeamIdsForServingEpoch.add(target.beamId);
+      this.intraSwitchCountForServingEpoch += 1;
     }
 
     return {

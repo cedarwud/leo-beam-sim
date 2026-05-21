@@ -64,8 +64,8 @@ function resolveFixtureEncoding(input: Required<Vc1cFixtureInput>): Vc1cFixtureE
   return {
     visualRole: style.visualRole,
     roleSurfaceColor: style.color,
-    discFillColor: eventRoleSurface ? style.frequencySwatchColor : style.color,
-    discOpacity: eventRoleSurface ? Math.min(style.discOpacity, 0.18) : style.discOpacity,
+    discFillColor: eventRoleSurface ? style.color : style.frequencySwatchColor,
+    discOpacity: style.discOpacity,
     frequencySwatchColor: style.frequencySwatchColor,
     operatorLabel: style.operatorLabel,
   };

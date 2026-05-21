@@ -38,7 +38,7 @@ function assertMaterialTintHelper(): void {
 
   assert.equal(
     BEAM_ROLE_TOKENS.serving.color,
-    '#41c7ff',
+    '#facc15',
     'serving marker text color should remain role-owned and unchanged',
   );
 }

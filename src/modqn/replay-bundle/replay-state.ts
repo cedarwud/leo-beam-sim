@@ -33,19 +33,27 @@ import {
 import { parseModqnReplayBundle } from './loader';
 
 export const SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-1c-regenerated-7beam-baseline-2026-05-11/phase-03a-replay-bundle-v1' as const;
+  '/tmp/leo-beam-sim/modqn-bundles/baseline-modqn-pilot02-rerun-2026-05-15-export' as const;
+
+export const MODQN_PRODUCER_BASELINE_RUN_PATH =
+  '/home/u24/papers/modqn-paper-reproduction/artifacts/baseline-modqn-pilot02-rerun-2026-05-15/run' as const;
 
 export const MODQN_REPLAY_7BEAM_MODE_KEY = 'modqn-replay-7beam' as const;
 export const MODQN_REPLAY_7BEAM_MODE_LABEL =
   'MODQN replay - 7-beam producer artifact' as const;
 export const MODQN_REPLAY_7BEAM_EVIDENCE_STATUS = 'accepted-7beam-baseline' as const;
 export const MODQN_FIXTURE_ONLY_EVIDENCE_STATUS = 'fixture-only' as const;
-export const MODQN_REGENERATION_DATE = '2026-05-11' as const;
+export const MODQN_REGENERATION_DATE = '2026-05-15' as const;
 export const MODQN_EXPECTED_TIMELINE_ROW_COUNT = 1000 as const;
 
 const EXPECTED_SATELLITE_COUNT = 4;
 const EXPECTED_TIMELINE_ROWS = 1000;
 const EXPECTED_SLOT_COUNT = 10;
+export const MODQN_EXPECTED_EVENT_COUNTS: Readonly<Record<ModqnHandoverEventKind, number>> = {
+  none: 918,
+  'intra-satellite-beam-switch': 82,
+  'inter-satellite-handover': 0,
+} as const;
 
 export type ModqnReplayEvidenceStatus =
   | typeof MODQN_REPLAY_7BEAM_EVIDENCE_STATUS
@@ -108,7 +116,7 @@ export interface ModqnReplayEnvelopeClaimBoundary {
   readonly baselineModqnEvidence: boolean;
   readonly acceptedEvidenceShape: '7-beam producer baseline only' | 'none-fixture-only';
   readonly artifactStatus:
-    | 'newly-regenerated-re-promoted-not-recovered-frozen-artifact'
+    | 'current-baseline-run-exported-bundle'
     | 'fixture-only-non-evidence-not-producer-artifact';
   readonly allowedClaims: readonly string[];
   readonly forbiddenClaims: readonly string[];
@@ -429,11 +437,11 @@ function createClaimBoundary(
     baselineModqnEvidence,
     acceptedEvidenceShape: baselineModqnEvidence ? '7-beam producer baseline only' : 'none-fixture-only',
     artifactStatus: baselineModqnEvidence
-      ? 'newly-regenerated-re-promoted-not-recovered-frozen-artifact'
+      ? 'current-baseline-run-exported-bundle'
       : 'fixture-only-non-evidence-not-producer-artifact',
     allowedClaims: baselineModqnEvidence
       ? [
-          'Producer-owned regenerated 7-beam baseline MODQN replay bundle for PAP-2024-MORL-MULTIBEAM.',
+          'Producer-owned 7-beam baseline MODQN replay bundle exported from the current baseline run for PAP-2024-MORL-MULTIBEAM.',
           'Evidence-capable replay of selected producer rows after Phase 7C shape validation.',
           '7 beams per satellite is the only accepted baseline MODQN evidence shape for this selected path.',
         ]

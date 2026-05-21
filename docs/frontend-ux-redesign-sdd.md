@@ -24,7 +24,7 @@ This creates several concrete problems:
 - The right panel mixes primary operator information with debug data such as
   slot IDs, active beam IDs, last handover reason, and historical counters.
 - Beam colors are not enough to distinguish semantic roles under additive
-  blending. Frequency colors, serving blue, candidate amber, prepared beams,
+  blending. Frequency colors, serving yellow, candidate blue, prepared beams,
   approach beams, inactive beams, dashed lines, and opacity states compete.
 - Users cannot reliably tell whether a parameter changed the formula unless
   formula terms are shown, because a correctly wired parameter may be masked by
@@ -192,10 +192,9 @@ Visual thesis:
 Palette intent:
 
 - Background: near-black navy, not flat gray.
-- Serving: electric cyan/blue, matching the right serving block.
-- Handover candidate / pending: amber/gold, matching the right candidate block.
-- Approach / pre-illumination: violet or magenta, visually distinct from both
-  serving and candidate.
+- Serving/source: yellow, matching the right serving/source block.
+- Handover candidate / pending / target: blue, matching the right candidate/target block.
+- Approach / pre-illumination: green, visually distinct from both serving and target.
 - Other frequency beams: use a color-blind-aware categorical set with lower
   saturation and clear labels.
 - Inactive / unscheduled beams: slate with dashed pattern and low opacity.
@@ -295,18 +294,18 @@ Color alone is insufficient. Each beam role must have at least two encodings:
 
 | Role | Color | Secondary encoding |
 |---|---|---|
-| Serving | serving cyan/blue | solid thick line, filled endpoint, `SERVING` badge |
-| Pending handover | candidate amber | dashed-to-solid transition, `PENDING` badge |
-| Approach/pre-illumination | violet/magenta | thin dashed line, `APPROACH` badge |
-| Recent HO source | muted cyan/slate | fading dashed line, `SOURCE` badge |
+| Serving | serving yellow | solid thick line, filled endpoint, `SERVING` badge |
+| Pending / recent HO target | candidate blue | thick line, filled endpoint, `PENDING` / `TARGET` badge |
+| Approach/pre-illumination | approach green | thinner pulsing line, `APPROACH` badge |
+| Recent HO source | muted yellow | fading line, outline endpoint, `SOURCE` badge |
 | Other active beams | categorical frequency colors | `F1/F2/F3...` label |
 | Inactive/unscheduled | slate | low opacity dashed outline |
 
 Acceptance:
 
-- Serving and candidate beams must remain distinguishable in grayscale
+- Serving and candidate/target beams must remain distinguishable in grayscale
   screenshots.
-- Other beams must not use colors close to serving cyan or candidate amber.
+- Other beams must not use colors close to serving yellow or candidate blue.
 - Frequency labels must remain readable at desktop and laptop resolutions.
 
 ## Phased Plan
@@ -549,11 +548,11 @@ Beam role encoding matrix:
 
 | Role | Current source / mapping | Color intent | Secondary encodings | Label / badge expectation |
 |---|---|---|---|---|
-| Serving | `sim.serving.satId` + `sim.serving.beamId`; current event role `serving`, or `post-ho` only when the new target is still in recent-HO linger | Serving cyan/blue from the semantic serving token; must be the strongest event color in the scene | Solid line, thickest beam spine, highest endpoint fill, high cone/disc opacity, no dash when scheduled active; if serving beam is unscheduled this slot, keep cyan but switch to dashed line and reduced cone opacity | Beam callout starts with `SERVING`, then `F# B#`; satellite/link badge uses `SERVING`; if unscheduled, add compact `UNSCHEDULED` or `SLOT OFF` badge |
-| Pending handover | `sim.pendingTargetSatId` + `sim.pendingTargetBeamId`; current event role `prepared` | Candidate amber/gold from the semantic candidate token; second strongest event color | Medium-thick line, dashed pattern while trigger is accumulating, optional dash-to-solid transition only after handover is committed, filled endpoint smaller than serving, high label contrast | Beam callout starts with `PENDING`, then `F# B#`; satellite/link badge uses `PENDING`; trigger-progress text stays in panel, not inside the beam label |
-| Approach / pre-illumination | Approach lookahead in `useBeamViz`; current event role `approach` | Violet/magenta event color distinct from serving cyan, candidate amber, and frequency-reuse green/pink/purple; avoid yellow-green because it is weak in grayscale and may imply signal quality | Thin dashed line, low-to-medium cone opacity, hollow or lower-opacity endpoint, optional fade-in by lookahead slot distance; primary preview beam can be slightly heavier than non-primary preview beams | Beam callout starts with `APPROACH`, then `F# B#`; satellite badge uses `APPROACH`; no implication that it is already eligible for handover |
-| Recent HO source | `sim.recentHoSourceSatId` + `sim.recentHoSourceBeamId`; currently encoded as event role `secondary` when not serving/pending | Muted cyan/slate: visually related to the former serving link but clearly de-emphasized below active serving | Fading dashed line, declining opacity over linger time, endpoint outline or partially filled endpoint, no strongest glow; if still scheduled active, keep the fade stronger than inactive beams but below pending | Beam callout starts with `SOURCE`, then `F# B#`; satellite/link badge uses `HO SOURCE` or `SOURCE`; must not read as current active serving |
-| Other active beams | Scheduled active beams from `sim.beamHopStatesBySatId.activeBeamIds` that are not the primary event beam | Frequency-reuse categorical colors; colors must be lower-saturation than event-role colors and must not be close to serving cyan or candidate amber | Medium or thin solid line when scheduled active, moderate endpoint fill, lower cone opacity than event beams; label remains compact | Beam callout starts with `F# B#`; optional small `ACTIVE` badge only in diagnostics or when needed to explain scheduler state |
+| Serving | `sim.serving.satId` + `sim.serving.beamId`; current event role `serving` after any recent-HO/target latch ends | Serving yellow from the semantic serving token; must be the strongest steady-state color in the scene | Solid line, thickest beam spine, highest endpoint fill, high cone/disc opacity, no dash when scheduled active; if serving beam is unscheduled this slot, keep yellow but switch to dashed line and reduced cone opacity | Beam callout starts with `SERVING`, then `F# B#`; satellite/link badge uses `SERVING`; if unscheduled, add compact `UNSCHEDULED` or `SLOT OFF` badge |
+| Pending / recent HO target | `sim.pendingTargetSatId` + `sim.pendingTargetBeamId` (`prepared`) or recent target linger (`post-ho`) | Candidate blue from the semantic candidate token; second strongest event color and shared by intra-HO target | Medium-thick line, filled endpoint, high label contrast, breathe pulse while target relevance is active | Beam callout starts with `PENDING` or `TARGET`, then `F# B#`; trigger-progress text stays in panel, not inside the beam label |
+| Approach / pre-illumination | Approach lookahead in `useBeamViz`; current event role `approach` | Green event color distinct from serving yellow, target blue, and frequency-reuse colors | Thin line, low-to-medium cone opacity, hollow or lower-opacity endpoint, optional fade-in by lookahead slot distance; primary preview beam can be slightly heavier than non-primary preview beams | Beam callout starts with `APPROACH`, then `F# B#`; satellite badge uses `APPROACH`; no implication that it is already eligible for handover |
+| Recent HO source | `sim.recentHoSourceSatId` + `sim.recentHoSourceBeamId`; currently encoded as event role `secondary` when not serving/pending | Muted yellow: visually related to the former serving link but clearly de-emphasized below active serving | Fading line, declining opacity over linger time, endpoint outline or partially filled endpoint, no strongest glow; if still scheduled active, keep the fade stronger than inactive beams but below pending | Beam callout starts with `SOURCE`, then `F# B#`; satellite/link badge uses `HO SOURCE` or `SOURCE`; must not read as current active serving |
+| Other active beams | Scheduled active beams from `sim.beamHopStatesBySatId.activeBeamIds` that are not the primary event beam | Frequency-reuse categorical colors; colors must be lower-saturation than event-role colors and must not be close to serving yellow or target blue | Medium or thin solid line when scheduled active, moderate endpoint fill, lower cone opacity than event beams; label remains compact | Beam callout starts with `F# B#`; optional small `ACTIVE` badge only in diagnostics or when needed to explain scheduler state |
 | Inactive / unscheduled beams | Beams shown for context but absent from the current active slot, including primary role beams when `isScheduledActive` is false | Slate/neutral or frequency color heavily desaturated; role color may remain only as a thin outline if needed for serving/pending truth | Low opacity, dashed outline/spine, hollow or low-fill endpoint, no glow, optional fade-out after role relevance expires | Beam callout starts with `OFF SLOT` or `UNSCHEDULED` only for primary event beams; non-primary inactive beams may show only `F# B#` or hide labels to reduce clutter |
 
 Event role color vs frequency-reuse color conflict rules:
@@ -568,8 +567,8 @@ Event role color vs frequency-reuse color conflict rules:
 3. Other active beams keep frequency-reuse color as their primary color because
    they are not event-critical. Their line weight, opacity, and label hierarchy
    must stay below serving and pending beams.
-4. If a frequency-reuse color is visually close to serving cyan or candidate
-   amber, the implementation must shift that frequency color or reduce its
+4. If a frequency-reuse color is visually close to serving yellow or candidate
+   blue, the implementation must shift that frequency color or reduce its
    saturation. Frequency colors must not compete with the semantic serving and
    pending palette.
 5. Inactive / unscheduled state can override both event and frequency color by
@@ -578,7 +577,7 @@ Event role color vs frequency-reuse color conflict rules:
    make the inactive state unmistakable with dash, lower fill, and `SLOT OFF`
    or `UNSCHEDULED` copy.
 6. Recent HO source must never reuse the full-strength serving style. It may
-   share the cyan family only through a muted/faded variant plus source-specific
+   share the yellow family only through a muted/faded variant plus source-specific
    copy.
 
 Validation expectations for the follow-up implementation:
@@ -1372,6 +1371,7 @@ Proposed control set:
 | Ping-pong guard window | `handover.pingPongGuardSec` | s | `0` to `30` | Cooldown after inter-satellite handover to reduce immediate switching back. |
 | Handover SINR smoothing | `handover.sinrSmoothingSec` | s | `0` to `5` | Decision-path smoothing for candidate SINR. `0` means use the raw per-frame SINR sample. |
 | Same-satellite beam dwell | `handover.intraSwitchTimeSec` | s | `0` to `5` | Dwell before same-satellite beam switching. |
+| Intra-HO limit per satellite | `handover.maxIntraSwitchesPerServingEpoch` | switches | `0` to `7` | Maximum same-satellite beam switches before the next inter-satellite handover resets the counter; also prevents returning to a beam already served in the current serving-satellite epoch. |
 | Pending target hold | `handover.pendingTargetHoldSec` | s | `0` to `10` | Grace window before replacing a still-qualified pending target. |
 | Handover attach threshold | `handover.sinrThresholdDb` | dB | `-20` to `10` | Minimum attach / reattach eligibility threshold for the handover manager. UI must not label this simply as `SINR threshold`; distinguish it from DPC `beamPowerControl.sinrThresholdDb`. |
 

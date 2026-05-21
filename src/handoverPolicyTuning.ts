@@ -169,6 +169,7 @@ export function sameHandoverPolicyTuning(
     && left.pingPongGuardSec === right.pingPongGuardSec
     && left.pendingTargetHoldSec === right.pendingTargetHoldSec
     && left.intraSwitchTimeSec === right.intraSwitchTimeSec
+    && left.maxIntraSwitchesPerServingEpoch === right.maxIntraSwitchesPerServingEpoch
     && left.sinrSmoothingSec === right.sinrSmoothingSec
     && sameModqnObjectiveWeights(left.modqnWeights, right.modqnWeights)
     && sameModqnNetworkParams(left.modqnNetworkParams, right.modqnNetworkParams);
@@ -189,6 +190,7 @@ export function getHandoverPolicyResetKey(tuning: HandoverPolicyTuningState): st
     tuning.pingPongGuardSec.toFixed(3),
     tuning.sinrSmoothingSec.toFixed(3),
     tuning.intraSwitchTimeSec.toFixed(3),
+    tuning.maxIntraSwitchesPerServingEpoch.toFixed(3),
     tuning.pendingTargetHoldSec.toFixed(3),
     tuning.sinrThresholdDb.toFixed(3),
     tuning.modqnWeights.throughput.toFixed(3),

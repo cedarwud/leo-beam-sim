@@ -48,8 +48,9 @@ Scope:
   - Center: `Δ SINR` value, `need offset` value, trigger progress bar,
     handover state badge.
   - Right: pending/comparison identity, SINR, topo row.
-- Each column uses the matching role accent (serving cyan / pending
-  amber / recent-source slate), keeping current `boxShadow` glow rules.
+- Each column uses the matching role accent (serving/source yellow / pending
+  or target blue / approach green), keeping current `boxShadow` glow
+  rules.
 - The duel card replaces the current standalone `SINR Delta` and
   `Trigger Time` block. That block dissolves into the center column.
 

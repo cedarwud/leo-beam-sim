@@ -8,14 +8,7 @@ export type TuningTabKey =
   | 'interference'
   | 'thermal-noise';
 
-export type TuningPageKey = 'sinr-formula' | 'handover-policy';
-
 export type SignalDrawerState = 'collapsed' | 'tuning' | 'diagnostics';
-
-export interface TuningPageRequest {
-  page: TuningPageKey;
-  sequence: number;
-}
 
 export interface TuningTab {
   key: TuningTabKey;
@@ -24,9 +17,4 @@ export interface TuningTab {
   subtitle: string;
   formula: ReactNode;
   note: string;
-}
-export interface TuningPage {
-  key: TuningPageKey;
-  title: string;
-  subtitle: string;
 }

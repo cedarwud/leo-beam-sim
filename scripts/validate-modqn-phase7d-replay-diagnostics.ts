@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import {
   MODQN_BEAM_CATALOG_ORDER,
+  MODQN_EXPECTED_EVENT_COUNTS,
   MODQN_FIXTURE_ONLY_EVIDENCE_STATUS,
   MODQN_PAPER_ID,
   MODQN_REPLAY_7BEAM_EVIDENCE_STATUS,
@@ -23,6 +24,7 @@ import {
   type ModqnReplayBundleSurface,
   type ModqnReplayEnvelope,
 } from '../src/modqn/replay-bundle/index.ts';
+import { ensureModqnCurrentBaselineExport } from './support/modqn-current-baseline-export.ts';
 
 function readSurfaceFromDisk(surface: ModqnReplayBundleSurface): string | undefined {
   if (!existsSync(surface.absolutePath)) return undefined;
@@ -63,17 +65,13 @@ function flattenRows(envelope: ModqnReplayEnvelope) {
 function assertSelectedArtifactStatus(envelope: ModqnReplayEnvelope): void {
   assert.equal(
     envelope.claimBoundary.artifactStatus,
-    'newly-regenerated-re-promoted-not-recovered-frozen-artifact',
+    'current-baseline-run-exported-bundle',
   );
-
-  const reviewPath = join(dirname(SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH), 'review.md');
-  assert.ok(existsSync(reviewPath), `producer re-promotion review is missing: ${reviewPath}`);
-  const reviewText = readFileSync(reviewPath, 'utf8');
-
-  assert.match(reviewText, /RE_PROMOTED_NEW_REGENERATED_7_BEAM_BASELINE_BUNDLE/);
-  assert.match(reviewText, /newly regenerated and re-promoted/i);
-  assert.match(reviewText, /not an exact recovery/i);
-  assert.match(reviewText, /not describe it as a\s+recovered frozen artifact/i);
+  assert.match(
+    envelope.sourcePath,
+    /baseline-modqn-pilot02-rerun-2026-05-15-export$/,
+    'selected replay path should point at the current producer baseline export',
+  );
 }
 
 function assertEnvelopeIdentity(envelope: ModqnReplayEnvelope): void {
@@ -210,9 +208,15 @@ function assertEventBoundary(envelope: ModqnReplayEnvelope): void {
   }
 
   assert.deepEqual(observed, envelope.diagnostics.adapter.eventCounts);
-  assert.equal(observed.none, 915);
-  assert.equal(observed['intra-satellite-beam-switch'], 85);
-  assert.equal(observed['inter-satellite-handover'], 0);
+  assert.equal(observed.none, MODQN_EXPECTED_EVENT_COUNTS.none);
+  assert.equal(
+    observed['intra-satellite-beam-switch'],
+    MODQN_EXPECTED_EVENT_COUNTS['intra-satellite-beam-switch'],
+  );
+  assert.equal(
+    observed['inter-satellite-handover'],
+    MODQN_EXPECTED_EVENT_COUNTS['inter-satellite-handover'],
+  );
   assert.doesNotMatch(envelope.claimBoundary.allowedClaims.join('\n'), /inter-satellite handover/i);
 }
 
@@ -352,6 +356,7 @@ function assertClaimBoundaries(envelope: ModqnReplayEnvelope): void {
 }
 
 function run(): void {
+  ensureModqnCurrentBaselineExport();
   const loadPlan = createModqnReplayBundleLoadPlan();
   const contents = readBundleContentsFromPlan(loadPlan);
   const envelope = loadModqnReplayEnvelopeFromSurfaceReader(readSurfaceFromDisk);

@@ -2,11 +2,16 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import {
+  BEAM_ROLE_TOKENS,
   INTRA_HANDOVER_ARROW_COLOR,
+  INTRA_HANDOVER_SOURCE_COLOR,
+  INTRA_HANDOVER_TARGET_COLOR,
   frequencyReuseColor,
   resolveBeamPulseOpacity,
+  resolveIntraHandoverVisualTransition,
   resolveBeamVisualEncoding,
   type BeamCodeRole,
+  type IntraHandoverBeamRole,
 } from '../constants/beamRoleTokens';
 import {
   createGlyphFillGeometry,
@@ -37,7 +42,8 @@ export interface BeamTarget {
   role?: BeamCodeRole;
   isTransitioningSource?: boolean;
   sinrDb?: number | null;
-  intraRole?: 'intraSource' | 'intraTargetNewServing' | null;
+  intraRole?: IntraHandoverBeamRole;
+  intraTransitionProgress?: number | null;
 }
 
 interface SatelliteBeamsProps {
@@ -53,8 +59,11 @@ const SEGMENTS = 32;
 const DISC_OUTER_RING_THICKNESS_WORLD = 2.4;
 const DISC_INNER_ROLE_RING_GAP_WORLD = 3;
 const DISC_INNER_ROLE_RING_THICKNESS_WORLD = 1.8;
-const INTRA_SOURCE_COLOR = '#f59e0b';
-const INTRA_TARGET_COLOR = INTRA_HANDOVER_ARROW_COLOR;
+const DISC_FREQUENCY_RING_THICKNESS_WORLD = 1.1;
+
+function clampOpacity(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
 
 function createObliqueConeSide(
   apex: THREE.Vector3,
@@ -181,16 +190,36 @@ function BeamCone({
     frequencyColor: frequencyReuseColor(beam.frequencyIndex),
   });
   const color = style.color;
-  const coneOpacity = style.coneOpacity * resolveCinematicConeOpacityMultiplier(
+  const isIntraSource = beam.intraRole === 'intraSource';
+  const isIntraTarget = beam.intraRole === 'intraTargetNewServing';
+  const intraTransition = resolveIntraHandoverVisualTransition({
+    role: beam.intraRole ?? null,
+    progress: beam.intraTransitionProgress ?? 1,
+    reducedMotion,
+  });
+  const intraOverlayColor =
+    isIntraSource
+      ? INTRA_HANDOVER_SOURCE_COLOR
+      : isIntraTarget
+        ? INTRA_HANDOVER_TARGET_COLOR
+        : null;
+  const displayColor = intraOverlayColor ?? color;
+  const baseConeOpacity = isIntraSource
+    ? Math.max(style.coneOpacity, BEAM_ROLE_TOKENS.serving.coneOpacity)
+    : style.coneOpacity;
+  const coneOpacity = baseConeOpacity * resolveCinematicConeOpacityMultiplier(
     style.visualRole,
     cinematicMode,
   );
   const eventRoleSurface = style.visualRole !== 'otherActive' && style.visualRole !== 'inactive';
+  const roleSurface = eventRoleSurface || intraOverlayColor !== null;
   const spotlightEventSurface =
     isSpotlightMode(cinematicMode)
-    && (style.visualRole === 'serving' || style.visualRole === 'pending');
-  const discFillColor = eventRoleSurface ? style.frequencySwatchColor : color;
-  const discOpacity = eventRoleSurface ? Math.min(style.discOpacity, 0.18) : style.discOpacity;
+    && (style.visualRole === 'serving' || style.visualRole === 'pending' || intraOverlayColor !== null);
+  const discFillColor = roleSurface ? displayColor : color;
+  const discOpacity = isIntraSource
+    ? Math.max(style.discOpacity, BEAM_ROLE_TOKENS.serving.discOpacity)
+    : style.discOpacity;
   const coneMaterialRef = useRef<THREE.MeshBasicMaterial | null>(null);
   // Destructure to primitives so useMemo deps are stable between renders
   const sx = satellitePosition.x, sy = satellitePosition.y, sz = satellitePosition.z;
@@ -222,8 +251,18 @@ function BeamCone({
   );
   const sinrLabel = formatBeamSinr(beam.sinrDb);
   const isEmphasized = style.isEmphasized;
-  const dimFactor = hasSomeServing ? (beam.isServing ? 1.0 : 0.45) : 1.0;
-  const yLift = beam.isServing ? 5.0 : 0;
+  const isForegroundBeam = beam.isServing || style.isEmphasized || intraOverlayColor !== null;
+  const dimFactor = (() => {
+    if (!hasSomeServing) return 1.0;
+    if (isIntraSource || isIntraTarget) return intraTransition.dimFactor;
+    if (beam.isServing) return 1.0;
+    if (isForegroundBeam) return 0.82;
+    return 0.32;
+  })();
+  const intraSurfaceScale = beam.intraRole ? intraTransition.surfaceScale : 1;
+  const intraLineScale = beam.intraRole ? intraTransition.lineScale : 1;
+  const intraCalloutScale = beam.intraRole ? intraTransition.calloutScale : 1;
+  const yLift = beam.intraRole ? intraTransition.yLift : beam.isServing ? 6.0 : 0;
   const endpointRingOpacity = Math.max(style.endpointOpacity, style.isEventPrimary ? 0.5 : 0.28);
   const outerRingThickness = Math.min(
     footprintRadius * 0.08,
@@ -231,6 +270,10 @@ function BeamCone({
   );
   const innerRoleRingOuter = Math.max(footprintRadius - DISC_INNER_ROLE_RING_GAP_WORLD, footprintRadius * 0.72);
   const innerRoleRingInner = Math.max(0.1, innerRoleRingOuter - DISC_INNER_ROLE_RING_THICKNESS_WORLD);
+  const frequencyRingInner = Math.max(0.1, footprintRadius * 0.84);
+  const frequencyRingOuter = frequencyRingInner + DISC_FREQUENCY_RING_THICKNESS_WORLD;
+  const intraRoleRingInner = Math.max(0.1, footprintRadius + outerRingThickness + 1.2);
+  const intraRoleRingOuter = intraRoleRingInner + (isIntraTarget ? 7.2 : 2.8);
 
   useEffect(() => {
     const material = coneMaterialRef.current;
@@ -238,23 +281,23 @@ function BeamCone({
 
     registerPulseTarget(beamKey, {
       material,
-      baseOpacity: coneOpacity * dimFactor,
+      baseOpacity: clampOpacity(coneOpacity * dimFactor * intraSurfaceScale),
       pulse: style.pulse,
       visualRole: style.visualRole,
     });
 
     return () => registerPulseTarget(beamKey, null);
-  }, [beamKey, coneOpacity, dimFactor, style.pulse, style.visualRole]);
+  }, [beamKey, coneOpacity, dimFactor, intraSurfaceScale, style.pulse, style.visualRole]);
 
   return (
     <group>
       <mesh geometry={coneGeo}>
         <meshBasicMaterial
           ref={coneMaterialRef}
-          color={color}
+          color={displayColor}
           transparent
           opacity={resolveBeamPulseOpacity({
-            baseOpacity: coneOpacity * dimFactor,
+            baseOpacity: clampOpacity(coneOpacity * dimFactor * intraSurfaceScale),
             pulse: style.pulse,
             elapsedSec: 0,
             reducedMotion,
@@ -270,20 +313,35 @@ function BeamCone({
         <meshBasicMaterial
           color={discFillColor}
           transparent
-          opacity={discOpacity * dimFactor}
+          opacity={clampOpacity(discOpacity * dimFactor * intraSurfaceScale)}
           side={THREE.DoubleSide}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
           fog={!spotlightEventSurface}
         />
       </mesh>
+
+      {roleSurface && (
+        <mesh position={[beam.groundX, 1.68 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={18}>
+          <ringGeometry args={[frequencyRingInner, frequencyRingOuter, SEGMENTS]} />
+          <meshBasicMaterial
+            color={style.frequencySwatchColor}
+            transparent
+            opacity={clampOpacity(0.62 * dimFactor * (isIntraTarget ? 1.1 : 1))}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            fog={!spotlightEventSurface}
+          />
+        </mesh>
+      )}
 
       <mesh position={[beam.groundX, 1.55 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={18}>
         <ringGeometry args={[footprintRadius, footprintRadius + outerRingThickness, SEGMENTS]} />
         <meshBasicMaterial
           color={satelliteTintColor}
           transparent
-          opacity={0.78 * dimFactor}
+          opacity={clampOpacity(0.78 * dimFactor * (isIntraSource ? 0.62 : 1))}
           side={THREE.DoubleSide}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
@@ -291,13 +349,13 @@ function BeamCone({
         />
       </mesh>
 
-      {eventRoleSurface && (
+      {roleSurface && (
         <mesh position={[beam.groundX, 1.85 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={19}>
           <ringGeometry args={[innerRoleRingInner, innerRoleRingOuter, SEGMENTS]} />
           <meshBasicMaterial
-            color={color}
+            color={displayColor}
             transparent
-            opacity={0.82 * dimFactor}
+            opacity={clampOpacity(0.9 * dimFactor * (isIntraTarget ? 1.08 : isIntraSource ? 0.52 : 1))}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
@@ -307,17 +365,32 @@ function BeamCone({
       )}
 
       {beam.intraRole && (
-        <mesh position={[beam.groundX, 2.4 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={23}>
-          <ringGeometry args={[footprintRadius * 0.62, footprintRadius * 0.62 + 2.8, SEGMENTS]} />
+        <mesh position={[beam.groundX, 2.7 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={23}>
+          <ringGeometry args={[intraRoleRingInner, intraRoleRingOuter, SEGMENTS]} />
           <meshBasicMaterial
-            color={beam.intraRole === 'intraSource' ? INTRA_SOURCE_COLOR : INTRA_TARGET_COLOR}
+            color={intraOverlayColor ?? INTRA_HANDOVER_ARROW_COLOR}
             transparent
-            opacity={0.88}
+            opacity={intraTransition.roleRingOpacity}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
+      )}
+
+      {roleSurface && (
+        <Line
+          points={[
+            [satellitePosition.x, satellitePosition.y, satellitePosition.z],
+            [beam.groundX, 0.06, beam.groundZ],
+          ]}
+          color={displayColor}
+          lineWidth={style.lineWidth + (isIntraTarget ? 8.2 : isIntraSource ? 3.2 : 3.2)}
+          transparent
+          opacity={clampOpacity((isIntraTarget ? 0.58 : isIntraSource ? 0.28 : 0.24) * dimFactor * intraLineScale)}
+          depthWrite={false}
+          renderOrder={19}
+        />
       )}
 
       <Line
@@ -328,7 +401,7 @@ function BeamCone({
         color={satelliteTintColor}
         lineWidth={style.lineWidth + 1}
         transparent
-        opacity={Math.max(style.lineOpacity * 0.82, 0.42) * dimFactor}
+        opacity={clampOpacity(Math.max((isIntraSource ? BEAM_ROLE_TOKENS.serving.lineOpacity : style.lineOpacity) * 0.82, 0.42) * dimFactor * intraLineScale)}
         dashed={style.dashed}
         dashSize={15}
         gapSize={10}
@@ -340,10 +413,10 @@ function BeamCone({
           [satellitePosition.x, satellitePosition.y, satellitePosition.z],
           [beam.groundX, 0.12, beam.groundZ],
         ]}
-        color={color}
-        lineWidth={Math.max(1, style.lineWidth - 1)}
+        color={displayColor}
+        lineWidth={Math.max(1.4, style.lineWidth - 0.4) + (isIntraTarget ? 2.8 : isIntraSource ? 0.5 : 0)}
         transparent
-        opacity={style.lineOpacity * dimFactor}
+        opacity={clampOpacity((isIntraSource ? BEAM_ROLE_TOKENS.serving.lineOpacity : style.lineOpacity) * dimFactor * intraLineScale)}
         dashed={style.dashed}
         dashSize={15}
         gapSize={10}
@@ -358,9 +431,9 @@ function BeamCone({
           renderOrder={24}
         >
           <meshBasicMaterial
-            color={color}
+            color={displayColor}
             transparent
-            opacity={style.endpointOpacity * dimFactor}
+            opacity={clampOpacity(style.endpointOpacity * dimFactor * (isIntraTarget ? 1.18 : isIntraSource ? 0.46 : 1))}
             depthTest={false}
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -370,10 +443,10 @@ function BeamCone({
       ) : (
         <Line
           points={glyphOutlinePoints.map(([x, y, z]) => [beam.groundX + x, 5.25 + z + yLift, beam.groundZ + y])}
-          color={color}
+          color={displayColor}
           lineWidth={2.4}
           transparent
-          opacity={endpointRingOpacity * dimFactor}
+          opacity={clampOpacity(endpointRingOpacity * dimFactor * (isIntraTarget ? 1.18 : isIntraSource ? 0.46 : 1))}
           depthTest={false}
           depthWrite={false}
           renderOrder={25}
@@ -382,10 +455,10 @@ function BeamCone({
 
       <Line
         points={callout.points}
-        color={color}
-        lineWidth={beam.isServing || beam.isPrimary ? 1.6 : 1.1}
+        color={displayColor}
+        lineWidth={isIntraTarget ? 2.8 : beam.isServing || beam.isPrimary || beam.intraRole ? 1.8 : 1.1}
         transparent
-        opacity={(isEmphasized ? 0.92 : Math.max(style.lineOpacity, 0.42)) * dimFactor}
+        opacity={clampOpacity((isEmphasized ? 0.92 : Math.max(style.lineOpacity, 0.42)) * dimFactor * intraCalloutScale)}
         dashed={style.dashed || !beam.isScheduledActive}
         dashSize={8}
         gapSize={6}
@@ -406,7 +479,7 @@ function BeamCone({
           satelliteGlyph={satelliteGlyph}
           beam={beam}
           style={style}
-          color={color}
+          color={displayColor}
           sinrLabel={sinrLabel}
           isEmphasized={isEmphasized}
         />

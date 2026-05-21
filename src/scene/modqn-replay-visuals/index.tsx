@@ -2,20 +2,17 @@ import { useMemo } from 'react';
 import { Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { ModqnReplayPlaybackDisplayState } from '../../modqn/replay-bundle/playback-shell';
+import { SatelliteMarker } from '../../viz/SatelliteMarker';
 import {
   deriveModqnReplaySceneVisualState,
   type ModqnReplaySceneVisualState,
 } from '../modqnReplaySceneVisuals';
-import { BeamDisc } from './BeamDisc';
 import {
   BOARD_DEPTH_WORLD,
-  BOARD_WIDTH_WORLD,
-  BOARD_Y_WORLD,
   DISC_Y_WORLD,
   LAYER_ORIGIN,
   PRODUCER_MARKER_Y_WORLD,
   ROLE_COLORS,
-  SEGMENTS,
 } from './constants';
 import { ReplaySwitchArc } from './ReplaySwitchArc';
 import { useReplaySceneTelemetry } from './useReplaySceneTelemetry';
@@ -31,23 +28,21 @@ function ProducerReplayAnchor({
 }: {
   readonly visualState: ModqnReplaySceneVisualState;
 }) {
+  const satellitePosition = useMemo(
+    () => new THREE.Vector3(0, PRODUCER_MARKER_Y_WORLD, 0),
+    [],
+  );
   const producerSatLabel = visualState.previous.producerSatId === visualState.selected.producerSatId
     ? visualState.selected.producerSatId
     : `${visualState.previous.producerSatId} -> ${visualState.selected.producerSatId}`;
 
   return (
     <group name="modqn-replay-scene-producer-anchor">
-      <mesh position={[0, PRODUCER_MARKER_Y_WORLD, 0]} renderOrder={64} frustumCulled={false}>
-        <octahedronGeometry args={[8, 0]} />
-        <meshBasicMaterial
-          color="#e2e8f0"
-          transparent
-          opacity={0.86}
-          depthTest={false}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
+      <SatelliteMarker
+        position={satellitePosition}
+        label={producerSatLabel}
+        satelliteTintColor="#e2e8f0"
+      />
       <Line
         points={[
           [0, PRODUCER_MARKER_Y_WORLD - 6, 0],
@@ -80,28 +75,6 @@ function ProducerReplayAnchor({
         depthWrite={false}
         renderOrder={63}
       />
-      <Text
-        position={[0, PRODUCER_MARKER_Y_WORLD + 18, 0]}
-        fontSize={8.2}
-        color="#e2e8f0"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.45}
-        outlineColor="#020617"
-      >
-        {`MODQN replay ${producerSatLabel}`}
-      </Text>
-      <Text
-        position={[0, PRODUCER_MARKER_Y_WORLD + 7, 0]}
-        fontSize={6.4}
-        color="#cbd5e1"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.35}
-        outlineColor="#020617"
-      >
-        display-only 7-beam plane
-      </Text>
     </group>
   );
 }
@@ -176,44 +149,6 @@ function ReplayBoard({
         selectedProducerBeamId: visualState.selected.producerBeamId,
       }}
     >
-      <mesh
-        position={[0, BOARD_Y_WORLD, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        renderOrder={58}
-        frustumCulled={false}
-        name="modqn-replay-scene-board"
-      >
-        <planeGeometry args={[BOARD_WIDTH_WORLD, BOARD_DEPTH_WORLD]} />
-        <meshBasicMaterial
-          color="#020617"
-          transparent
-          opacity={0.46}
-          depthTest={false}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-          toneMapped={false}
-        />
-      </mesh>
-      <mesh
-        position={[0, BOARD_Y_WORLD + 0.3, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        renderOrder={59}
-        frustumCulled={false}
-      >
-        <ringGeometry args={[82, 85, SEGMENTS]} />
-        <meshBasicMaterial
-          color="#64748b"
-          transparent
-          opacity={0.3}
-          side={THREE.DoubleSide}
-          depthTest={false}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
-      {visualState.beams.map(beam => (
-        <BeamDisc key={beam.canonicalBeamNumber} beam={beam} />
-      ))}
       <ReplaySwitchArc visualState={visualState} reducedMotion={reducedMotion} />
       <ProducerReplayAnchor visualState={visualState} />
       <EndpointLabels visualState={visualState} />
@@ -241,8 +176,7 @@ export function ModqnReplaySceneLayer({
     () => deriveModqnReplaySceneVisualState(displayState),
     [displayState],
   );
-
-  useReplaySceneTelemetry(visualState);
+  useReplaySceneTelemetry(visualState, showBoard);
 
   if (!showBoard || visualState === null) return null;
   return <ReplayBoard visualState={visualState} reducedMotion={reducedMotion} />;

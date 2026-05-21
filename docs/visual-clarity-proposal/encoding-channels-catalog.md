@@ -50,10 +50,10 @@
 
 下面這些色家族**不能拿來當衛星色**，否則會跟現有的 Tier 1 角色色撞色：
 
-- 青藍 #38B6FF → SERVING
-- 金黃 #FFB000 → PENDING / candidate
-- 紫紅 #CF5CFF → APPROACH
-- 灰青 #83A8C7 → RECENT-SOURCE
+- 金黃 `#facc15` → SERVING
+- 亮藍 `#38bdf8` → PENDING / handover target / candidate / intra-HO target cue
+- 綠色 `#34d399` → APPROACH
+- 淡黃 `#fde68a` → RECENT-SOURCE
 
 也不應該拿來當衛星色，因為 Tier 3 已用：
 
@@ -65,9 +65,9 @@
 
 | 角色（不是 Tier 1 角色，是「第幾顆衛星」的順位）| 推薦衛星色 | 為什麼這顆色 |
 |---|---|---|
-| Sat-1（通常是 serving 衛星）| `#FFFFFF` 純白外框 + 內描 #38B6FF | 跟 SERVING 視覺自然連接，但又有獨立識別性 |
-| Sat-2（通常是 pending）| `#F2EFE5` 暖白 / 米色 | 跟 PENDING 金黃同溫但不撞 |
-| Sat-3（通常是 approach）| `#D6CCFF` 淡薰衣草 | 跟 APPROACH 紫家族但更安靜 |
+| Sat-1（通常是 serving 衛星）| `#FFFFFF` 純白外框 + 金黃 role ring | 跟 SERVING 視覺自然連接，但又有獨立識別性 |
+| Sat-2（通常是 pending）| `#F2EFE5` 暖白 / 米色 | 低飽和，不跟綠色 handover target 撞 |
+| Sat-3（通常是 approach）| `#D6CCFF` 淡薰衣草 | 跟藍色 approach role 保持區隔 |
 | Sat-4 / fallback | `#A4D9FF` 冰藍 | 跟既有色都離得遠 |
 
 > 重點：衛星色**故意低飽和、偏白色家族**，這樣它們不會搶 Tier 1 的舞台，但仍然能彼此區分。
@@ -115,7 +115,7 @@
 ```
 BeamRoleToken {
   // === Tier 1 角色 ===
-  color                ← 主色（serving 青 / pending 金 / approach 紫 / source 灰）
+  color                ← 主色（serving 黃 / pending 綠 / approach 藍 / source 淡藍）
   lineWidth, linkLineWidth, coneOpacity, discOpacity, lineOpacity,
   endpointRadius, endpointOpacity, endpointFilled, dashed (簡化後),
   calloutGlowPx, markerScale, markerLightIntensity

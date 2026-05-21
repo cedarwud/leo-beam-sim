@@ -10,11 +10,19 @@ function removeReplayCanvasAttributes(canvas: HTMLCanvasElement): void {
   }
 }
 
-export function useReplaySceneTelemetry(visualState: ModqnReplaySceneVisualState | null): void {
+export function useReplaySceneTelemetry(
+  visualState: ModqnReplaySceneVisualState | null,
+  enabled = true,
+): void {
   const gl = useThree(state => state.gl);
 
   useEffect(() => {
     const canvas = gl.domElement;
+    if (!enabled) {
+      removeReplayCanvasAttributes(canvas);
+      return () => removeReplayCanvasAttributes(canvas);
+    }
+
     canvas.setAttribute(
       'data-modqn-replay-scene-layer',
       visualState === null ? 'fail-closed' : 'ready',
@@ -24,6 +32,7 @@ export function useReplaySceneTelemetry(visualState: ModqnReplaySceneVisualState
     if (visualState !== null) {
       canvas.setAttribute('data-modqn-replay-scene-source', visualState.source);
       canvas.setAttribute('data-modqn-replay-scene-event-kind', visualState.eventKind);
+      canvas.setAttribute('data-modqn-replay-scene-selection-source', visualState.selectionSource);
       canvas.setAttribute('data-modqn-replay-scene-previous-beam', visualState.previous.producerBeamId);
       canvas.setAttribute('data-modqn-replay-scene-selected-beam', visualState.selected.producerBeamId);
       canvas.setAttribute('data-modqn-replay-scene-previous-position', formatPoint(visualState.previous.position));
@@ -41,5 +50,5 @@ export function useReplaySceneTelemetry(visualState: ModqnReplaySceneVisualState
     }
 
     return () => removeReplayCanvasAttributes(canvas);
-  }, [gl, visualState]);
+  }, [enabled, gl, visualState]);
 }

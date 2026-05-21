@@ -10,6 +10,7 @@ import {
   MODQN_PAPER_ID,
   MODQN_REPLAY_BUNDLE_SCHEMA_VERSION,
   MODQN_TOTAL_BASELINE_BEAMS,
+  SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH,
   createBeamLayoutBridgeCatalogByProducerId,
   createBeamLayoutBridgeIdentity,
   deriveCoreBeamId,
@@ -17,9 +18,7 @@ import {
   parseModqnReplayBundle,
   type ModqnBeamReference,
 } from '../src/modqn/replay-bundle/index.ts';
-
-const SELECTED_PHASE4B_BUNDLE_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-1c-regenerated-7beam-baseline-2026-05-11/phase-03a-replay-bundle-v1';
+import { ensureModqnCurrentBaselineExport } from './support/modqn-current-baseline-export.ts';
 
 const EXPECTED_TIMELINE_ROWS = 1000;
 const EXPECTED_SATELLITE_COUNT = 4;
@@ -163,7 +162,8 @@ function assertClaimBoundaryText(): void {
 }
 
 function run(): void {
-  const bundlePath = process.argv[2] ?? SELECTED_PHASE4B_BUNDLE_PATH;
+  ensureModqnCurrentBaselineExport();
+  const bundlePath = process.argv[2] ?? SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH;
   const bundle = readBundleFromPath(bundlePath);
 
   assert.equal(bundle.manifest.bundleSchemaVersion, MODQN_REPLAY_BUNDLE_SCHEMA_VERSION);

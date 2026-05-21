@@ -44,6 +44,16 @@ function extractQ(
   return typeof pv === 'number' ? pv : 0;
 }
 
+export function scoreModqnPolicyCandidate(
+  candidate: ModqnPolicyCandidate,
+  omega: RuntimeOmegaState,
+): number | null {
+  if (candidate.objectiveQ === undefined) return null;
+  return omega.throughput * extractQ(candidate, 'throughput', 'r1Throughput')
+    + omega.handover * extractQ(candidate, 'handover', 'r2Handover')
+    + omega.loadBalance * extractQ(candidate, 'loadBalance', 'r3LoadBalance');
+}
+
 /**
  * Re-scalarize the recorded top-K candidates under `omega` and return the
  * argmax beam identity.
@@ -71,15 +81,11 @@ export function reScalarize(
 
   // Run argmax over the scoreable candidates.
   let best = topCandidates[0];
-  let bestScore = omega.throughput * extractQ(best, 'throughput', 'r1Throughput')
-    + omega.handover * extractQ(best, 'handover', 'r2Handover')
-    + omega.loadBalance * extractQ(best, 'loadBalance', 'r3LoadBalance');
+  let bestScore = scoreModqnPolicyCandidate(best, omega) ?? 0;
 
   for (let i = 1; i < topCandidates.length; i++) {
     const c = topCandidates[i];
-    const score = omega.throughput * extractQ(c, 'throughput', 'r1Throughput')
-      + omega.handover * extractQ(c, 'handover', 'r2Handover')
-      + omega.loadBalance * extractQ(c, 'loadBalance', 'r3LoadBalance');
+    const score = scoreModqnPolicyCandidate(c, omega) ?? 0;
     if (score > bestScore) {
       bestScore = score;
       best = c;

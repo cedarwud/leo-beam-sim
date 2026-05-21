@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { UI_TOKENS } from '../constants/uiTokens';
 import {
   DEFAULT_TR38811_CHANNEL,
@@ -7,12 +7,10 @@ import {
   type Profile,
 } from '../profiles/types';
 import type { LinkBudgetTerms } from '../scene/types';
-import type { HandoverPolicyTuningState } from '../handoverPolicyTuning';
 import {
   PATH_LOSS_COMPONENT_ORDER,
   type SignalTuningState,
 } from '../signalTuning';
-import { HandoverPolicyControls } from './HandoverPolicyControls';
 import {
   FormulaContextDisclosure,
   FormulaSideControlSection,
@@ -23,7 +21,6 @@ import { NumericControl, PathLossTermControl, SelectControl } from './signal-tun
 import { SinrFormulaMap } from './signal-tuning/FormulaMap';
 import { FormulaTabList } from './signal-tuning/FormulaTabList';
 import { SinrOverview } from './signal-tuning/SinrOverview';
-import { TuningPageTabs } from './signal-tuning/TuningPageTabs';
 import {
   FREQUENCY_REUSE_OPTIONS,
   GAIN_MODEL_OPTIONS,
@@ -38,11 +35,10 @@ import {
   controlStackStyle,
   dividerStyle,
   drawerContentStyle,
-  hiddenPagePanelStyle,
   pagePanelStyle,
   panelStyle,
 } from './signal-tuning/styles';
-import type { SignalDrawerState, TuningPageKey, TuningPageRequest, TuningTabKey } from './signal-tuning/types';
+import type { SignalDrawerState, TuningTabKey } from './signal-tuning/types';
 import { formatDbi } from './signal-tuning/formatters';
 import type { UiMode } from './uiMode';
 
@@ -54,16 +50,8 @@ interface SignalTuningPanelProps {
   formulaBudget: LinkBudgetTerms | null;
   isFormulaEvidenceStale?: boolean;
   initialActiveTab?: TuningTabKey;
-  activePageRequest?: TuningPageRequest | null;
-  handoverDraft: HandoverPolicyTuningState;
-  appliedHandoverPolicy: HandoverPolicyTuningState;
-  hasHandoverDraftChanges: boolean;
-  hasHandoverOverrides: boolean;
   onTuningChange: (next: SignalTuningState) => void;
   onReset: () => void;
-  onHandoverDraftChange: (next: HandoverPolicyTuningState) => void;
-  onApplyHandoverPolicy: () => void;
-  onResetHandoverPolicy: () => void;
 }
 
 function getSignalDrawerState(uiMode: UiMode): SignalDrawerState {
@@ -79,18 +67,9 @@ export function SignalTuningPanel({
   formulaBudget,
   isFormulaEvidenceStale = false,
   initialActiveTab = 'signal-power',
-  activePageRequest = null,
-  handoverDraft,
-  appliedHandoverPolicy,
-  hasHandoverDraftChanges,
-  hasHandoverOverrides,
   onTuningChange,
   onReset,
-  onHandoverDraftChange,
-  onApplyHandoverPolicy,
-  onResetHandoverPolicy,
 }: SignalTuningPanelProps) {
-  const [activePage, setActivePage] = useState<TuningPageKey>('sinr-formula');
   const [activeTab, setActiveTab] = useState<TuningTabKey>(initialActiveTab);
   const drawerState = getSignalDrawerState(uiMode);
   const activeTabConfig = getActiveTabConfig(activeTab);
@@ -100,11 +79,6 @@ export function SignalTuningPanel({
   const scintillationEnabled = tuning.pathLossComponents.includes('scintillation');
   const shadowFadingEnabled = tuning.pathLossComponents.includes('shadow-fading');
   const tr38811Environment = baseProfile.channel.tr38811?.environment ?? DEFAULT_TR38811_CHANNEL.environment;
-
-  useEffect(() => {
-    if (activePageRequest === null) return;
-    setActivePage(activePageRequest.page);
-  }, [activePageRequest?.page, activePageRequest?.sequence]);
 
   const update = (patch: Partial<SignalTuningState>) => {
     onTuningChange({ ...tuning, ...patch });
@@ -145,17 +119,14 @@ export function SignalTuningPanel({
         className="leo-signal-tuning-content"
         data-testid="signal-tuning-drawer-content"
         hidden={drawerState === 'collapsed'}
-        style={drawerState === 'collapsed' ? hiddenPagePanelStyle : drawerContentStyle}
+        style={drawerState === 'collapsed' ? { display: 'none' } : drawerContentStyle}
       >
-        <TuningPageTabs activePage={activePage} onChange={setActivePage} />
-
         <section
           id="tuning-page-panel-sinr-formula"
           data-testid="sinr-formula-page"
           role="tabpanel"
-          aria-labelledby="tuning-page-tab-sinr-formula"
-          hidden={activePage !== 'sinr-formula'}
-          style={activePage === 'sinr-formula' ? pagePanelStyle : hiddenPagePanelStyle}
+          aria-label="SINR formula controls"
+          style={pagePanelStyle}
         >
           <FormulaTabList activeTab={activeTab} onChange={setActiveTab} />
 
@@ -546,25 +517,6 @@ export function SignalTuningPanel({
           </details>
 
           <div style={dividerStyle} />
-        </section>
-
-        <section
-          id="tuning-page-panel-handover-policy"
-          data-testid="handover-policy-page"
-          role="tabpanel"
-          aria-labelledby="tuning-page-tab-handover-policy"
-          hidden={activePage !== 'handover-policy'}
-          style={activePage === 'handover-policy' ? pagePanelStyle : hiddenPagePanelStyle}
-        >
-          <HandoverPolicyControls
-            draft={handoverDraft}
-            applied={appliedHandoverPolicy}
-            hasDraftChanges={hasHandoverDraftChanges}
-            hasOverrides={hasHandoverOverrides}
-            onDraftChange={onHandoverDraftChange}
-            onApply={onApplyHandoverPolicy}
-            onReset={onResetHandoverPolicy}
-          />
         </section>
       </div>
     </aside>

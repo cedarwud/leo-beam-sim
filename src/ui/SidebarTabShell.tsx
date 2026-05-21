@@ -27,6 +27,7 @@ export function SidebarTabShell<T extends string>({
   const activeTab = tabs.find(tab => tab.key === activeKey) ?? tabs[0];
   const panelId = `${side}-sidebar-tab-panel`;
   const activeIndex = Math.max(tabs.findIndex(tab => tab.key === activeTab.key), 0);
+  const showTabList = tabs.length > 1;
 
   const focusTab = (key: T) => {
     window.requestAnimationFrame(() => {
@@ -56,36 +57,45 @@ export function SidebarTabShell<T extends string>({
   };
 
   return (
-    <section className="leo-sidebar-tab-shell" data-sidebar-side={side} aria-label={label}>
-      <div className="leo-sidebar-tab-list" role="tablist" aria-label={`${label} tabs`} aria-orientation="horizontal">
-        {tabs.map((tab, index) => {
-          const selected = index === activeIndex;
-          return (
-            <button
-              key={tab.key}
-              id={`${side}-sidebar-tab-${tab.key}`}
-              className={`${UI_CLASSES.tab} leo-sidebar-tab-button`}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              aria-controls={panelId}
-              data-active={selected ? 'true' : 'false'}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => onChange(tab.key)}
-              onKeyDown={event => handleTabKeyDown(event, index)}
-            >
-              <span>{tab.label}</span>
-              <small>{tab.description}</small>
-            </button>
-          );
-        })}
-      </div>
+    <section
+      className="leo-sidebar-tab-shell"
+      data-sidebar-side={side}
+      data-tab-list-visible={showTabList ? 'true' : 'false'}
+      data-tab-count={tabs.length}
+      aria-label={label}
+    >
+      {showTabList && (
+        <div className="leo-sidebar-tab-list" role="tablist" aria-label={`${label} tabs`} aria-orientation="horizontal">
+          {tabs.map((tab, index) => {
+            const selected = index === activeIndex;
+            return (
+              <button
+                key={tab.key}
+                id={`${side}-sidebar-tab-${tab.key}`}
+                className={`${UI_CLASSES.tab} leo-sidebar-tab-button`}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={panelId}
+                data-active={selected ? 'true' : 'false'}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => onChange(tab.key)}
+                onKeyDown={event => handleTabKeyDown(event, index)}
+              >
+                <span>{tab.label}</span>
+                <small>{tab.description}</small>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div
         id={panelId}
         className="leo-sidebar-tab-panel"
         role="tabpanel"
-        aria-labelledby={`${side}-sidebar-tab-${activeTab.key}`}
+        aria-labelledby={showTabList ? `${side}-sidebar-tab-${activeTab.key}` : undefined}
+        aria-label={showTabList ? undefined : activeTab.label}
       >
         {children}
       </div>

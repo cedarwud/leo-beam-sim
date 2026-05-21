@@ -1,6 +1,6 @@
 import type { ModqnReplaySceneBeamRole } from '../modqnReplaySceneVisuals';
 
-export const LAYER_ORIGIN: [number, number, number] = [245, 0, -185];
+export const LAYER_ORIGIN: [number, number, number] = [0, 0, -36];
 export const BOARD_WIDTH_WORLD = 220;
 export const BOARD_DEPTH_WORLD = 175;
 export const BOARD_Y_WORLD = 2.6;
@@ -21,6 +21,7 @@ export const REPLAY_CANVAS_ATTRIBUTES = [
   'data-modqn-replay-scene-renderer',
   'data-modqn-replay-scene-source',
   'data-modqn-replay-scene-event-kind',
+  'data-modqn-replay-scene-selection-source',
   'data-modqn-replay-scene-previous-beam',
   'data-modqn-replay-scene-selected-beam',
   'data-modqn-replay-scene-previous-position',

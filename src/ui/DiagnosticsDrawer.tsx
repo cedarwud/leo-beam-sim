@@ -205,6 +205,12 @@ export function DiagnosticsDrawer({
             <DebugRow label="Ping-pong guard" value={`${profile.handover.pingPongGuardSec.toFixed(1)} s`} />
             <DebugRow label="Decision smoothing" value={`${profile.handover.sinrSmoothingSec.toFixed(1)} s`} />
             <DebugRow label="Same-sat dwell" value={`${profile.handover.intraSwitchTimeSec.toFixed(1)} s`} />
+            <DebugRow
+              label="Intra-HO epoch limit"
+              value={`${profile.handover.maxIntraSwitchesPerServingEpoch} ${
+                profile.handover.maxIntraSwitchesPerServingEpoch === 1 ? 'switch' : 'switches'
+              }`}
+            />
             <DebugRow label="Pending hold" value={`${profile.handover.pendingTargetHoldSec.toFixed(1)} s`} />
             <DebugRow label="Handover attach threshold" value={formatDb(profile.handover.sinrThresholdDb)} />
           </div>

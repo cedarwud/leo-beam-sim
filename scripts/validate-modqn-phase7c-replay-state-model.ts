@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   MODQN_FIXTURE_ONLY_EVIDENCE_STATUS,
+  MODQN_EXPECTED_EVENT_COUNTS,
   MODQN_REPLAY_7BEAM_EVIDENCE_STATUS,
   MODQN_REPLAY_7BEAM_MODE_KEY,
   MODQN_REPLAY_7BEAM_MODE_LABEL,
@@ -18,6 +19,7 @@ import {
   type ModqnReplayBundleContents,
   type ModqnReplayEnvelope,
 } from '../src/modqn/replay-bundle/index.ts';
+import { ensureModqnCurrentBaselineExport } from './support/modqn-current-baseline-export.ts';
 
 function readSurfaceFromDisk(surface: ModqnReplayBundleSurface): string | undefined {
   if (!existsSync(surface.absolutePath)) return undefined;
@@ -105,9 +107,15 @@ function assertExpectedShape(envelope: ModqnReplayEnvelope): void {
     'intra-satellite-beam-switch',
     'none',
   ]);
-  assert.equal(envelope.diagnostics.adapter.eventCounts.none, 915);
-  assert.equal(envelope.diagnostics.adapter.eventCounts['intra-satellite-beam-switch'], 85);
-  assert.equal(envelope.diagnostics.adapter.eventCounts['inter-satellite-handover'], 0);
+  assert.equal(envelope.diagnostics.adapter.eventCounts.none, MODQN_EXPECTED_EVENT_COUNTS.none);
+  assert.equal(
+    envelope.diagnostics.adapter.eventCounts['intra-satellite-beam-switch'],
+    MODQN_EXPECTED_EVENT_COUNTS['intra-satellite-beam-switch'],
+  );
+  assert.equal(
+    envelope.diagnostics.adapter.eventCounts['inter-satellite-handover'],
+    MODQN_EXPECTED_EVENT_COUNTS['inter-satellite-handover'],
+  );
   assert.equal(envelope.diagnostics.adapter.rowsWithPolicyDiagnostics, expected.timelineRows);
   assert.equal(envelope.diagnostics.adapter.rowsWithoutPolicyDiagnostics, 0);
   assert.equal(envelope.diagnostics.adapter.bridgeStatus, 'built-for-accepted-7beam-path');
@@ -282,6 +290,7 @@ function assertFailClosedBehavior(contents: ModqnReplayBundleContents): void {
 }
 
 function run(): void {
+  ensureModqnCurrentBaselineExport();
   const loadPlan = createModqnReplayBundleLoadPlan();
   const contents = readBundleContentsFromPlan(loadPlan);
   const envelope = loadModqnReplayEnvelopeFromSurfaceReader(readSurfaceFromDisk);

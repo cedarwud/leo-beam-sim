@@ -36,6 +36,13 @@ export function DuelCard({
   triggerRatio,
   stateLabel,
   stateTone,
+  contextBadgeText = 'live context',
+  contextBadgeTone = 'neutral',
+  contextDetail,
+  deltaLabel,
+  offsetLabel,
+  triggerLabel,
+  triggerAriaLabel,
 }: {
   servingTitle: string;
   servingCaption: string;
@@ -66,6 +73,13 @@ export function DuelCard({
   triggerRatio: number;
   stateLabel: string;
   stateTone: StatusBadgeTone;
+  contextBadgeText?: string;
+  contextBadgeTone?: StatusBadgeTone;
+  contextDetail?: string;
+  deltaLabel?: string;
+  offsetLabel?: string;
+  triggerLabel?: string;
+  triggerAriaLabel?: string;
 }) {
   return (
     <section
@@ -95,8 +109,20 @@ export function DuelCard({
         }}>
           Beam duel
         </div>
-        <StatusBadge tone="neutral">live context</StatusBadge>
+        <StatusBadge tone={contextBadgeTone}>{contextBadgeText}</StatusBadge>
       </div>
+      {contextDetail ? (
+        <div
+          data-testid="info-panel-live-context-detail"
+          style={{
+            color: UI_TOKENS.color.text.secondary,
+            fontSize: UI_TOKENS.type.size.caption,
+            lineHeight: 1.35,
+          }}
+        >
+          {contextDetail}
+        </div>
+      ) : null}
 
       <div
         data-testid="info-panel-duel-body"
@@ -131,6 +157,10 @@ export function DuelCard({
           triggerRatio={triggerRatio}
           stateLabel={stateLabel}
           stateTone={stateTone}
+          deltaLabel={deltaLabel}
+          offsetLabel={offsetLabel}
+          triggerLabel={triggerLabel}
+          triggerAriaLabel={triggerAriaLabel}
         />
         <DuelSignalColumn
           testId="info-panel-comparison-sinr-status"

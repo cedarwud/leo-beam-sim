@@ -135,8 +135,8 @@ Acceptance:
   samples are within ΔE ≤ 5 of an entry in `SATELLITE_TINT_PALETTE`
   and ≥ 15 ΔE from every `BEAM_ROLE_TOKENS[*].color` accent and every
   `BEAM_FREQUENCY_COLORS` entry. (V3 assertion.)
-- Serving-covered cells have a visibly thicker inner border in serving
-  cyan.
+- Serving-covered cells have a visibly thicker inner border in the
+  serving role color.
 - The grid does not flicker on consecutive frames with the same beam
   set: rendering the same SimFrame twice in a row produces identical
   cover-map output (V2 invariant); the hysteresis prevents two-frame
@@ -283,7 +283,7 @@ Scope:
   from radius `0` to `1.6 × footprintRadius` over `1.6 s`, fade to
   opacity `0` at the outer radius, and respawn on a `2.0 s` cycle (so
   two rings are in-flight at staggered phases).
-- Ring stroke color = `BEAM_ROLE_TOKENS.serving.color` (cyan); the
+- Ring stroke color = `BEAM_ROLE_TOKENS.serving.color` (serving yellow); the
   ripple is thus a "louder" extension of the existing serving role
   channel and reads consistently with the rest of the serving palette.
 - Render gated to:
@@ -292,7 +292,7 @@ Scope:
   - Disabled when `paused = true`.
   - Disabled when `runtime.reducedMotion === true`.
   - Disabled during recent-HO linger (the ripple would imply the old
-    serving is still active; recent-HO uses its own slate visual).
+    serving is still active; recent-HO uses its own faded source visual).
 - A second, smaller ripple variant for `pending`, gated by
   `runtime.effectsEnabled.pendingRipple` (independent flag from
   `servingRipple`; see
@@ -335,7 +335,8 @@ Touched files:
 Acceptance:
 
 - In presentation mode running un-paused with a defined serving beam,
-  the serving disc center shows a continuously expanding cyan ring.
+  the serving disc center shows a continuously expanding serving-color
+  ring.
 - In tuning, diagnostics, paused, recent-HO, or `reducedMotion` states,
   no ripple is rendered.
 - Ripple does not occlude the serving disc fill, glyph, or callout (use

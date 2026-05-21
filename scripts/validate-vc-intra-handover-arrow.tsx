@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Page } from '@playwright/test';
+import { resolveIntraHandoverVisualTransition } from '../src/constants/beamRoleTokens.ts';
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REQUEST_TIMEOUT_MS = 900;
@@ -53,6 +54,24 @@ type BrowserValidationResult = {
   reducedMotionOpacityStable: boolean;
   forbiddenClaims: ForbiddenCopyViolation[];
 };
+
+function assertIntraRoleTransitionContract(): void {
+  const sourceStart = resolveIntraHandoverVisualTransition({ role: 'intraSource', progress: 0 });
+  const sourceEnd = resolveIntraHandoverVisualTransition({ role: 'intraSource', progress: 1 });
+  const targetStart = resolveIntraHandoverVisualTransition({ role: 'intraTargetNewServing', progress: 0 });
+  const targetEnd = resolveIntraHandoverVisualTransition({ role: 'intraTargetNewServing', progress: 1 });
+
+  assert.ok(sourceStart.dimFactor > sourceEnd.dimFactor, 'intra source must fade down over the latch window');
+  assert.ok(sourceStart.surfaceScale > sourceEnd.surfaceScale, 'intra source surface must shrink/fade over the latch window');
+  assert.ok(targetStart.surfaceScale < targetEnd.surfaceScale, 'intra target surface must grow over the latch window');
+  assert.ok(targetStart.lineScale < targetEnd.lineScale, 'intra target line must strengthen over the latch window');
+  assert.ok(targetStart.roleRingOpacity < targetEnd.roleRingOpacity, 'intra target ring must brighten over the latch window');
+  assert.equal(
+    resolveIntraHandoverVisualTransition({ role: 'intraSource', progress: 0, reducedMotion: true }).progress,
+    1,
+    'reduced motion should collapse intra transition to the final state',
+  );
+}
 
 function execFileText(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -475,6 +494,8 @@ async function cleanupOwnedRuntimeProcesses(beforeProcesses: ProcessInfo[]) {
 }
 
 async function main() {
+  assertIntraRoleTransitionContract();
+
   const beforeProcesses = await readRuntimeProcesses();
   const existingAppUrl = await resolveExistingAppUrl();
   let temporaryServer = null as null | Awaited<ReturnType<typeof startTemporaryDevServer>>;

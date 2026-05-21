@@ -52,6 +52,7 @@ interface SceneContentProps {
   paused: boolean;
   runtime: RuntimeConfig;
   modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
+  showModqnReplayScene: boolean;
   onSimUpdate: (state: SimState) => void;
 }
 
@@ -101,6 +102,7 @@ function SceneContent({
   paused,
   runtime,
   modqnReplayDisplayState,
+  showModqnReplayScene,
   onSimUpdate,
 }: SceneContentProps) {
   const camera = useThree(state => state.camera);
@@ -203,6 +205,17 @@ function SceneContent({
   useEffect(() => {
     writeCameraTelemetry(lastCameraPresetRef.current, cameraTweenRef.current ? 'animating' : 'idle');
   });
+
+  useEffect(() => {
+    const firstSatellite = viz.displaySats[0];
+    gl.domElement.dataset.visibleSatelliteCount = String(viz.displaySats.length);
+    gl.domElement.dataset.firstSatellitePosition = firstSatellite
+      ? formatCameraVector(firstSatellite.world)
+      : '';
+    gl.domElement.dataset.servingSatelliteId = sim.serving.satId ?? '';
+    gl.domElement.dataset.servingBeamId = sim.serving.beamId === null ? '' : String(sim.serving.beamId);
+    gl.domElement.dataset.simTimeSec = sim.simTimeSec.toFixed(2);
+  }, [gl.domElement, sim.serving.beamId, sim.serving.satId, sim.simTimeSec, viz.displaySats]);
 
   useLayoutEffect(() => {
     const command = runtime.cameraCommand;
@@ -325,7 +338,7 @@ function SceneContent({
       <ModqnReplaySceneLayer
         displayState={modqnReplayDisplayState}
         reducedMotion={runtime.reducedMotion}
-        showBoard={false} // visual disabled (commit 4968f29); kept mounted for validator telemetry
+        showBoard={showModqnReplayScene}
       />
       {showOrbitTrail && (
         <OrbitTrail satellites={viz.displaySats} />
@@ -384,6 +397,7 @@ interface MainSceneProps {
   profile: Profile;
   runtime: RuntimeConfig;
   modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
+  showModqnReplayScene: boolean;
   onSimUpdate: (state: SimState) => void;
 }
 
@@ -393,6 +407,7 @@ export const MainScene = memo(function MainScene({
   profile,
   runtime,
   modqnReplayDisplayState,
+  showModqnReplayScene,
   onSimUpdate,
 }: MainSceneProps) {
   return (
@@ -421,6 +436,7 @@ export const MainScene = memo(function MainScene({
             paused={paused}
             runtime={runtime}
             modqnReplayDisplayState={modqnReplayDisplayState}
+            showModqnReplayScene={showModqnReplayScene}
             onSimUpdate={onSimUpdate}
           />
         </Suspense>

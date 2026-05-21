@@ -274,7 +274,7 @@ identity strings come from Phase 1.
 
 | Risk | Mitigation |
 |---|---|
-| Spine tint palette collides with new `BEAM_ROLE_TOKENS` accent in some future phase | Keep palette explicitly off-white / low-saturation; reserve cyan/amber/violet/slate strictly for roles |
+| Spine tint palette collides with new `BEAM_ROLE_TOKENS` accent in some future phase | Keep palette explicitly off-white / low-saturation; reserve saturated yellow/green/blue role colors strictly for roles |
 | Glyph at endpoint becomes unreadable at distant camera | Glyph size scales with camera distance; fallback to circle when below `8 px`; inline Unicode glyph in callout text remains as text fallback |
 | Particle drift causes WebGL frame drops on low-end hardware | Particle count capped at 4 per spine; gated by presentation mode; can be disabled by a `RuntimeConfig.disableParticles` flag |
 | Hex paint causes flicker as best-cover beam alternates per tick | Smooth cover assignment over 200 ms windows; cover only changes when a different beam dominates for two consecutive ticks |
@@ -322,8 +322,8 @@ time after the first handover has occurred:
 2. Should the orbit trail (Phase 3C) render in `tuning` mode for research
    contexts where the orbit shape is the question? Currently scoped to
    presentation only.
-3. Is there a need for a `colorblind-mode` runtime flag that swaps cyan ↔
-   pending amber to a deuteranopia-safe palette, or is the existing
+3. Is there a need for a `colorblind-mode` runtime flag that swaps the
+   role palette to a deuteranopia-safe variant, or is the existing
    secondary-encoding policy from Phase 2D's grayscale validation
    sufficient?
 4. The hex grid is centered at `(0,0)` in world space (the NTPU site).

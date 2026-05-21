@@ -8,13 +8,75 @@ import {
   resolveDuelStateLabel,
 } from './info-panel/formatters';
 import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
+import type { RuntimeHandoverMode } from './useModqnHandoverState';
 import type { UiMode } from './uiMode';
 
 type InfoPanelProps = SimState & {
   uiMode: UiMode;
   profile: Profile;
+  handoverMode?: RuntimeHandoverMode;
   isFormulaEvidenceStale?: boolean;
 };
+
+interface LiveStatusModeCopy {
+  label: string;
+  detail: string;
+  duelBadge: string;
+  duelDetail: string;
+  servingCaption: string;
+  pendingCaption: string;
+  candidateCaption: string;
+  deltaLabel: string;
+  offsetLabel: string;
+  triggerLabel: string;
+  triggerAriaLabel: string;
+}
+
+function getLiveStatusModeCopy(mode: RuntimeHandoverMode): LiveStatusModeCopy {
+  if (mode === 'modqn-replay') {
+    return {
+      label: 'MODQN replay',
+      detail: 'MODQN selects serving; SINR metrics are live',
+      duelBadge: 'MODQN-selected',
+      duelDetail: 'Serving follows the MODQN replay override. SINR, elevation, range, trigger timing, and comparison candidates remain live SINR references.',
+      servingCaption: 'MODQN-selected live link',
+      pendingCaption: 'engine timing target',
+      candidateCaption: 'live SINR reference',
+      deltaLabel: 'Δ live SINR',
+      offsetLabel: 'Gate Offset',
+      triggerLabel: 'Timing Gate',
+      triggerAriaLabel: 'Live handover timing-gate progress',
+    };
+  }
+  if (mode === 'omega-heuristic') {
+    return {
+      label: 'ω heuristic',
+      detail: 'not paper MODQN',
+      duelBadge: 'heuristic live',
+      duelDetail: 'Serving follows a live heuristic override. Link metrics, timing gates, and comparison candidates remain live SINR references.',
+      servingCaption: 'heuristic-selected link',
+      pendingCaption: 'engine timing target',
+      candidateCaption: 'live SINR reference',
+      deltaLabel: 'Δ live SINR',
+      offsetLabel: 'Gate Offset',
+      triggerLabel: 'Timing Gate',
+      triggerAriaLabel: 'Live handover timing-gate progress',
+    };
+  }
+  return {
+    label: 'SINR-offset',
+    detail: 'live SINR policy',
+    duelBadge: 'live SINR',
+    duelDetail: 'Serving and candidate status come from the live SINR-offset handover policy.',
+    servingCaption: 'physical serving',
+    pendingCaption: 'handover timer',
+    candidateCaption: 'derived comparison',
+    deltaLabel: 'Δ SINR',
+    offsetLabel: 'Need Offset',
+    triggerLabel: 'Trigger Time',
+    triggerAriaLabel: 'Handover trigger progress',
+  };
+}
 
 export function InfoPanel({
   satelliteVisualIdentityById = {},
@@ -23,6 +85,7 @@ export function InfoPanel({
   panelComparison,
   uiMode,
   profile,
+  handoverMode = 'sinr-offset',
   isFormulaEvidenceStale = false,
   profileId,
   formulaFamilyLabel,
@@ -48,9 +111,10 @@ export function InfoPanel({
     ? Math.min(handoverTriggerProgressSec / handoverTriggerSec, 1)
     : 0;
   const servingTitle = panelPrimary.role === 'ho-source' ? 'HO SOURCE' : 'ACTIVE SERVING';
+  const modeCopy = getLiveStatusModeCopy(handoverMode);
   const servingCaption = panelPrimary.role === 'ho-source'
     ? 'previous source'
-    : 'physical serving';
+    : modeCopy.servingCaption;
   const comparisonTitle =
     panelComparison.role === 'pending'
       ? 'PENDING TARGET'
@@ -61,11 +125,11 @@ export function InfoPanel({
           : 'COMPARISON';
   const comparisonCaption =
     panelComparison.role === 'pending'
-      ? 'handover timer'
+      ? modeCopy.pendingCaption
       : panelComparison.role === 'ho-target'
         ? panelComparison.satId === physicalServing.satId ? 'recent target / serving now' : 'recent target'
         : panelComparison.role === 'candidate'
-          ? 'derived comparison'
+          ? modeCopy.candidateCaption
           : 'no comparison';
   const showProfileIdentity = uiMode !== 'tuning';
   const showFormulaTerms = uiMode === 'tuning' || uiMode === 'diagnostics';
@@ -80,7 +144,7 @@ export function InfoPanel({
       ? 'serving'
       : 'neutral';
   const comparisonTone: DuelSignalTone = panelComparison.role === 'ho-target'
-    ? 'recentSource'
+    ? 'recentTarget'
     : hasComparisonSignal
       ? 'pending'
       : 'neutral';
@@ -100,12 +164,22 @@ export function InfoPanel({
           </div>
         )}
 
+        <div
+          className="leo-info-panel__profile-card"
+          data-testid="live-status-handover-mode"
+          data-handover-mode={handoverMode}
+        >
+          <div className="leo-info-panel__profile-label">HANDOVER MODE</div>
+          <div className="leo-info-panel__mode-label">{modeCopy.label}</div>
+          <div className="leo-info-panel__mode-detail">{modeCopy.detail}</div>
+        </div>
+
         <div role="status" aria-live="polite" aria-label="Serving and comparison beam status">
         <DuelCard
           servingTitle={servingTitle}
           servingCaption={servingCaption}
           servingBadgeText={panelPrimary.role === 'ho-source' ? 'recent HO' : formatStatusLabel(panelPrimary.status)}
-          servingBadgeTone={panelPrimary.role === 'ho-source' ? 'warning' : 'serving'}
+          servingBadgeTone="serving"
           servingIdentity={servingIdentity}
           hasServingSignal={hasServingSignal}
           servingGlyph={servingGlyph}
@@ -116,7 +190,7 @@ export function InfoPanel({
           comparisonTitle={comparisonTitle}
           comparisonCaption={comparisonCaption}
           comparisonBadgeText={formatStatusLabel(panelComparison.status)}
-          comparisonBadgeTone={panelComparison.role === 'ho-target' ? 'warning' : 'candidate'}
+          comparisonBadgeTone="candidate"
           comparisonIdentity={comparisonIdentity}
           hasComparisonSignal={hasComparisonSignal}
           comparisonGlyph={comparisonGlyph}
@@ -131,6 +205,13 @@ export function InfoPanel({
           triggerRatio={triggerRatio}
           stateLabel={duelState.label}
           stateTone={duelState.tone}
+          contextBadgeText={modeCopy.duelBadge}
+          contextBadgeTone={handoverMode === 'sinr-offset' ? 'neutral' : 'candidate'}
+          contextDetail={modeCopy.duelDetail}
+          deltaLabel={modeCopy.deltaLabel}
+          offsetLabel={modeCopy.offsetLabel}
+          triggerLabel={modeCopy.triggerLabel}
+          triggerAriaLabel={modeCopy.triggerAriaLabel}
         />
         </div>
       </div>

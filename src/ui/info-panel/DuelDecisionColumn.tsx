@@ -54,6 +54,10 @@ export function DuelDecisionColumn({
   triggerRatio,
   stateLabel,
   stateTone,
+  deltaLabel = 'Δ SINR',
+  offsetLabel = 'Need Offset',
+  triggerLabel = 'Trigger Time',
+  triggerAriaLabel = 'Handover trigger progress',
 }: {
   sinrDeltaDb: number | null;
   handoverOffsetDb: number;
@@ -62,6 +66,10 @@ export function DuelDecisionColumn({
   triggerRatio: number;
   stateLabel: string;
   stateTone: StatusBadgeTone;
+  deltaLabel?: string;
+  offsetLabel?: string;
+  triggerLabel?: string;
+  triggerAriaLabel?: string;
 }) {
   const progressPercent = Math.round(triggerRatio * 100);
 
@@ -93,11 +101,11 @@ export function DuelDecisionColumn({
 
       <div className="leo-duel-decision-metrics" style={{ minWidth: 0, width: '100%' }}>
         <DuelMetricTile
-          label="Δ SINR"
+          label={deltaLabel}
           value={formatDeltaDb(sinrDeltaDb)}
         />
         <DuelMetricTile
-          label="Need Offset"
+          label={offsetLabel}
           value={`+${handoverOffsetDb.toFixed(1)} dB`}
         />
       </div>
@@ -110,7 +118,7 @@ export function DuelDecisionColumn({
           fontSize: UI_TOKENS.type.size.caption,
           lineHeight: 1.25,
         }}>
-          <span style={{ whiteSpace: 'nowrap' }}>Trigger Time</span>
+          <span style={{ whiteSpace: 'nowrap' }}>{triggerLabel}</span>
           <span style={{ color: UI_TOKENS.color.text.secondary, whiteSpace: 'nowrap' }}>
             {triggerProgressSec.toFixed(1)} / {triggerSec.toFixed(1)} s
           </span>
@@ -118,7 +126,7 @@ export function DuelDecisionColumn({
         <div
           data-testid="info-panel-duel-trigger-progress"
           role="progressbar"
-          aria-label="Handover trigger progress"
+          aria-label={triggerAriaLabel}
           aria-valuemin={0}
           aria-valuemax={triggerSec}
           aria-valuenow={Math.min(triggerProgressSec, triggerSec)}

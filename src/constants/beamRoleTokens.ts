@@ -11,6 +11,7 @@ export type BeamVisualRole =
   | 'inactive';
 
 export type BeamPulseKind = 'none' | 'breathe' | 'pulse' | 'fade';
+export type IntraHandoverBeamRole = 'intraSource' | 'intraTargetNewServing' | null;
 
 export interface BeamRoleToken {
   operatorLabel: string | null;
@@ -59,7 +60,77 @@ export const SATELLITE_TINT_PALETTE = [
 ] as const;
 
 export const RECENT_HO_FADE_WINDOW_SEC = 5;
-export const INTRA_HANDOVER_ARROW_COLOR = '#22d3ee';
+export const INTRA_HANDOVER_SOURCE_COLOR = UI_TOKENS.color.semantic.serving.accent;
+export const INTRA_HANDOVER_TARGET_COLOR = UI_TOKENS.color.semantic.candidate.accent;
+export const INTRA_HANDOVER_ARROW_COLOR = INTRA_HANDOVER_TARGET_COLOR;
+
+export interface IntraHandoverVisualTransition {
+  progress: number;
+  easedProgress: number;
+  dimFactor: number;
+  surfaceScale: number;
+  lineScale: number;
+  calloutScale: number;
+  roleRingOpacity: number;
+  yLift: number;
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(1, Math.max(0, value));
+}
+
+function smoothstep(value: number): number {
+  const t = clamp01(value);
+  return t * t * (3 - 2 * t);
+}
+
+export function resolveIntraHandoverVisualTransition(input: {
+  role: IntraHandoverBeamRole;
+  progress: number;
+  reducedMotion?: boolean;
+}): IntraHandoverVisualTransition {
+  const progress = input.reducedMotion ? 1 : clamp01(input.progress);
+  const easedProgress = input.reducedMotion ? 1 : smoothstep(progress);
+
+  if (input.role === 'intraSource') {
+    const sourceStrength = 1 - easedProgress;
+    return {
+      progress,
+      easedProgress,
+      dimFactor: 0.32 + sourceStrength * 0.68,
+      surfaceScale: 0.28 + sourceStrength * 0.72,
+      lineScale: 0.36 + sourceStrength * 0.64,
+      calloutScale: 0.44 + sourceStrength * 0.56,
+      roleRingOpacity: 0.22 + sourceStrength * 0.5,
+      yLift: 1.2,
+    };
+  }
+
+  if (input.role === 'intraTargetNewServing') {
+    return {
+      progress,
+      easedProgress,
+      dimFactor: 1,
+      surfaceScale: 0.55 + easedProgress * 0.8,
+      lineScale: 0.55 + easedProgress * 0.73,
+      calloutScale: 0.74 + easedProgress * 0.44,
+      roleRingOpacity: 0.28 + easedProgress * 0.72,
+      yLift: 4 + easedProgress * 5,
+    };
+  }
+
+  return {
+    progress,
+    easedProgress,
+    dimFactor: 1,
+    surfaceScale: 1,
+    lineScale: 1,
+    calloutScale: 1,
+    roleRingOpacity: 0,
+    yLift: 0,
+  };
+}
 
 export const BEAM_PULSE_SPECS: Record<BeamPulseKind, {
   periodSec: number | null;
@@ -76,12 +147,12 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     operatorLabel: 'SERVING',
     markerLabel: 'SERVING',
     color: UI_TOKENS.color.semantic.serving.accent,
-    lineWidth: 4,
-    linkLineWidth: 3.8,
-    coneOpacity: 0.36,
-    discOpacity: 0.23,
+    lineWidth: 5.2,
+    linkLineWidth: 4.6,
+    coneOpacity: 0.46,
+    discOpacity: 0.3,
     lineOpacity: 1,
-    endpointRadius: 5,
+    endpointRadius: 5.6,
     endpointOpacity: 0.96,
     endpointFilled: true,
     dashed: false,
@@ -96,12 +167,12 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     operatorLabel: 'PENDING',
     markerLabel: 'PENDING',
     color: UI_TOKENS.color.semantic.candidate.accent,
-    lineWidth: 3.4,
-    linkLineWidth: 2.8,
-    coneOpacity: 0.3,
-    discOpacity: 0.19,
-    lineOpacity: 0.92,
-    endpointRadius: 4.6,
+    lineWidth: 4.6,
+    linkLineWidth: 3.9,
+    coneOpacity: 0.38,
+    discOpacity: 0.25,
+    lineOpacity: 0.96,
+    endpointRadius: 5.1,
     endpointOpacity: 0.9,
     endpointFilled: true,
     dashed: false,
@@ -115,14 +186,14 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
   approach: {
     operatorLabel: 'APPROACH',
     markerLabel: 'APPROACH',
-    color: '#cf5cff',
-    lineWidth: 2.5,
-    linkLineWidth: 2.1,
-    coneOpacity: 0.2,
-    discOpacity: 0.13,
-    lineOpacity: 0.76,
-    endpointRadius: 4,
-    endpointOpacity: 0.72,
+    color: '#34d399',
+    lineWidth: 3.1,
+    linkLineWidth: 2.7,
+    coneOpacity: 0.24,
+    discOpacity: 0.16,
+    lineOpacity: 0.8,
+    endpointRadius: 4.4,
+    endpointOpacity: 0.78,
     endpointFilled: false,
     dashed: false,
     pulse: 'pulse',
@@ -135,14 +206,14 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
   recentSource: {
     operatorLabel: 'SOURCE',
     markerLabel: 'HO SOURCE',
-    color: '#83a8c7',
-    lineWidth: 2.3,
-    linkLineWidth: 2.2,
-    coneOpacity: 0.17,
-    discOpacity: 0.1,
-    lineOpacity: 0.64,
-    endpointRadius: 4.1,
-    endpointOpacity: 0.62,
+    color: '#fde68a',
+    lineWidth: 2.8,
+    linkLineWidth: 2.6,
+    coneOpacity: 0.2,
+    discOpacity: 0.13,
+    lineOpacity: 0.68,
+    endpointRadius: 4.5,
+    endpointOpacity: 0.68,
     endpointFilled: false,
     dashed: false,
     pulse: 'fade',
@@ -234,8 +305,8 @@ export function resolveBeamPulseOpacity(input: {
 export function beamVisualRoleForEventRole(role?: BeamCodeRole): BeamVisualRole | null {
   switch (role) {
     case 'serving':
-    case 'post-ho':
       return 'serving';
+    case 'post-ho':
     case 'prepared':
       return 'pending';
     case 'approach':
@@ -249,7 +320,15 @@ export function beamVisualRoleForEventRole(role?: BeamCodeRole): BeamVisualRole 
 
 export function tokenForEventRole(role?: BeamCodeRole): BeamRoleToken {
   const visualRole = beamVisualRoleForEventRole(role);
-  return visualRole ? BEAM_ROLE_TOKENS[visualRole] : BEAM_ROLE_TOKENS.otherActive;
+  const token = visualRole ? BEAM_ROLE_TOKENS[visualRole] : BEAM_ROLE_TOKENS.otherActive;
+  if (role === 'post-ho') {
+    return {
+      ...token,
+      operatorLabel: 'TARGET',
+      markerLabel: 'HO TARGET',
+    };
+  }
+  return token;
 }
 
 export function operatorLabelForEventRole(role?: BeamCodeRole, marker = false): string | null {
@@ -273,7 +352,9 @@ export function resolveBeamVisualEncoding(input: {
       : input.isScheduledActive
         ? 'otherActive'
         : 'inactive';
-  const base = BEAM_ROLE_TOKENS[visualRole];
+  const base = input.role === 'post-ho'
+    ? tokenForEventRole(input.role)
+    : BEAM_ROLE_TOKENS[visualRole];
   const eventHue = visualRole !== 'otherActive' && visualRole !== 'inactive';
   const color = eventHue ? base.color : input.isScheduledActive ? input.frequencyColor : BEAM_ROLE_TOKENS.inactive.color;
   const frequencySwatchColor = input.isScheduledActive ? input.frequencyColor : BEAM_ROLE_TOKENS.inactive.color;

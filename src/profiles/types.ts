@@ -122,6 +122,7 @@ export interface Profile {
     pingPongGuardSec: number;
     pendingTargetHoldSec: number;
     intraSwitchTimeSec: number;
+    maxIntraSwitchesPerServingEpoch: number;
     sinrSmoothingSec: number;
     modqnWeights?: ModqnObjectiveWeights;
     modqnNetworkParams?: ModqnNetworkParams;

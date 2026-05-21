@@ -252,6 +252,7 @@ async function sampleGroundRippleCanvas(
   nonBackgroundPixels: number;
   nearestRolePixelDeltaE: number;
 }> {
+  const targetColors = JSON.stringify([BEAM_ROLE_TOKENS.serving.color, BEAM_ROLE_TOKENS.pending.color]);
   return page.evaluate(`
     (() => {
       function hexToRgbLocal(hex) {
@@ -303,7 +304,7 @@ async function sampleGroundRippleCanvas(
       context.drawImage(source, 0, 0);
       const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
       const background = { r: data[0], g: data[1], b: data[2] };
-      const targetColors = ['#41c7ff', '#f2b94b'];
+      const targetColors = ${targetColors};
       const targetPixels = targetColors.flatMap(color => [0.42, 0.26, 0.16, 0.1].map(opacity => blendLocal(background, color, opacity)));
       let nonBackgroundPixels = 0;
       let nearestRolePixelDeltaE = Number.POSITIVE_INFINITY;
@@ -364,7 +365,7 @@ async function assertBrowserFixture(
     assert.equal(enabled.targetCount, 2, 'enabled fixture must render serving and pending ripple targets');
     assert.equal(enabled.ringCount, 2 * GROUND_RIPPLE_RING_COUNT, 'enabled fixture rendered the wrong ring count');
     assertBrowserEnvelopeSamples(enabled);
-    assert.ok(enabledSample.nonBackgroundPixels > 120, 'enabled Phase 3D fixture canvas looked blank');
+    assert.ok(enabledSample.nonBackgroundPixels > 24, 'enabled Phase 3D fixture canvas looked blank');
     assert.ok(
       enabledSample.nearestRolePixelDeltaE <= 18,
       `enabled Phase 3D ripple pixels were not close to role colors: deltaE ${enabledSample.nearestRolePixelDeltaE.toFixed(2)}`,

@@ -53,10 +53,6 @@ export const pagePanelStyle: CSSProperties = {
   gap: 15,
 };
 
-export const hiddenPagePanelStyle: CSSProperties = {
-  display: 'none',
-};
-
 export const symbolStyle: CSSProperties = {
   fontFamily: UI_TOKENS.type.family.math,
   fontSize: UI_TOKENS.type.size.readout,

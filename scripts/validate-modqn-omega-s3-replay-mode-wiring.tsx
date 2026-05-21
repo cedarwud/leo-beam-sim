@@ -5,14 +5,16 @@
 //   (a) override is null / no-op in sinr-offset mode (truth invariance)
 //   (b) reScalarize returns correct argmax for a synthetic candidates array
 //   (c) fallback fires when all candidates lack objectiveQ
-//   (d) profile lock constant is 'modqn-1sat-7beam'
+//   (d) reference artifact profile constant is 'modqn-1sat-7beam'
 //   (e) localStorage persistence: sinr-offset and modqn-replay are persisted;
 //       omega-heuristic is NOT persisted
 //   (f) ModqnHandoverModeContext is exported from useModqnHandoverState
 //   (g) data-handover-criterion attribute is added to leo-shell-canvas in App.tsx
 //   (h) DiagnosticsDrawer accepts handoverMode + rescalarizeFallbackCount props
-//   (i) ControlBar accepts handoverMode + onHandoverModeChange props
+//   (i) ControlBar accepts handoverMode + onHandoverModeChange props and
+//       exposes only the public SINR / MODQN replay modes
 //   (j) S3HandoverManager subclass exists in useSimulation.ts (overrides update)
+//   (k) MODQN evidence / replay telemetry are mode-gated and cannot look live in SINR mode
 //
 // Run: node --import tsx/esm scripts/validate-modqn-omega-s3-replay-mode-wiring.tsx
 
@@ -169,9 +171,9 @@ console.log('\n(c) Fallback fires when all candidates lack objectiveQ');
 }
 
 // ---------------------------------------------------------------------------
-// (d) Profile lock: modqn-1sat-7beam constant
+// (d) Reference artifact profile: modqn-1sat-7beam constant
 // ---------------------------------------------------------------------------
-console.log('\n(d) Profile lock: modqn-1sat-7beam constant');
+console.log('\n(d) Reference artifact profile: modqn-1sat-7beam constant');
 {
   assert(
     MODQN_1SAT_7BEAM_PROFILE_ID === 'modqn-1sat-7beam',
@@ -225,6 +227,21 @@ console.log('\n(f) ModqnHandoverModeContext shape');
     typeof ModqnHandoverModeProvider === 'function',
     'ModqnHandoverModeProvider is a function',
   );
+  const hookSrc = fs.readFileSync(
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/useModqnHandoverState.ts'),
+    'utf8',
+  );
+  assert(
+    hookSrc.includes('const activeOmega = modeCtxIsDefault ? omegaActive : modeCtx.omegaActive')
+    && hookSrc.includes('omegaActive: activeOmega'),
+    'useModqnHandoverState returns context omegaActive when a provider is present',
+  );
+  assert(
+    hookSrc.includes('currentRowSelectedServing')
+    && hookSrc.includes('currentSlotIndex')
+    && hookSrc.includes('currentTimeSec'),
+    'BundleSidebarSnapshot exposes current-slot producer selectedServing for evidence trace',
+  );
   void ctxDefault; // suppress unused
 }
 
@@ -244,6 +261,10 @@ console.log('\n(g) App.tsx data-handover-criterion attribute');
   assert(
     appSrc.includes("handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset'"),
     "App.tsx switches data-handover-criterion between 'modqn-replay' and 'sinr-offset'",
+  );
+  assert(
+    appSrc.includes("if (handoverMode !== 'modqn-replay')") && appSrc.includes('return null;'),
+    'App.tsx nulls rendered MODQN replay display state outside modqn-replay mode',
   );
 }
 
@@ -292,8 +313,12 @@ console.log('\n(i) ControlBar props');
     'ControlBar.tsx contains onHandoverModeChange prop',
   );
   assert(
-    cbSrc.includes("'omega-heuristic'") && cbSrc.includes('disabledReason'),
-    "ControlBar.tsx has omega-heuristic as disabled entry",
+    cbSrc.includes("mode: 'sinr-offset'") && cbSrc.includes("mode: 'modqn-replay'"),
+    'ControlBar.tsx exposes sinr-offset and modqn-replay entries',
+  );
+  assert(
+    !cbSrc.includes("mode: 'omega-heuristic'"),
+    'ControlBar.tsx does not expose omega-heuristic as a top-level mode',
   );
   assert(
     cbSrc.includes('handover-mode-control'),
@@ -330,10 +355,112 @@ console.log('\n(j) S3HandoverManager in useSimulation.ts');
     simSrc.includes('reScalarize'),
     'useSimulation.ts imports and uses reScalarize',
   );
+  assert(
+    simSrc.includes('resolveModqnReplayOverrideTarget')
+    && simSrc.includes('candidate.satId === serving.satId')
+    && simSrc.includes('sortedBySinrDesc.find(candidate => candidate.beamId === result.beamId)'),
+    'useSimulation.ts maps producer MODQN local beam choice onto the current visual scene candidates',
+  );
   // Truth invariance: when mode !== 'modqn-replay', overrideRef.current is set to null.
   assert(
     simSrc.includes('handoverModeRef.current === \'modqn-replay\' ? decisionOverride : null'),
     'useSimulation.ts nulls overrideRef when not modqn-replay (truth invariance)',
+  );
+  assert(
+    simSrc.includes('const resetToReplayStartFrame = useCallback(() => {')
+    && simSrc.includes('createRuntimeFrameStepState(startOffset)')
+    && simSrc.includes('paused: true')
+    && simSrc.includes('deltaSec: 0')
+    && simSrc.includes('frameRef.current = frame'),
+    'useSimulation.ts mode/handover reset returns to replay start and publishes an attached zero-delta frame',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// (k) Evidence / telemetry mode gating
+// ---------------------------------------------------------------------------
+console.log('\n(k) Evidence / telemetry mode gating');
+{
+  const appSrc = fs.readFileSync(
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/App.tsx'),
+    'utf8',
+  );
+  const evidenceSrc = fs.readFileSync(
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/ModqnEvidenceTab.tsx'),
+    'utf8',
+  );
+  const infoSrc = fs.readFileSync(
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/InfoPanel.tsx'),
+    'utf8',
+  );
+  const replayLayerSrc = fs.readFileSync(
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/scene/modqn-replay-visuals/index.tsx'),
+    'utf8',
+  );
+  const telemetrySrc = fs.readFileSync(
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx'),
+    'utf8',
+  );
+  assert(
+    appSrc.includes('readInitialRuntimeState') && appSrc.includes('selectedProfileId: DEFAULT_PROFILE_ID')
+    && !appSrc.includes('selectedProfileId: handoverMode === \'modqn-replay\''),
+    'App.tsx keeps modqn-replay mode profile-preserving on boot instead of forcing the 1-sat profile',
+  );
+  assert(
+    !appSrc.includes('window.confirm')
+    && !appSrc.includes('modqn-replay requires the modqn-1sat-7beam profile')
+    && !appSrc.includes('resetRuntimeToProfile(targetProfileId)')
+    && !appSrc.includes('previousNonModqnProfileIdRef'),
+    'App.tsx enters modqn-replay without confirmation or automatic profile switching',
+  );
+  assert(
+    appSrc.includes('getLeftSidebarTabsForMode')
+    && appSrc.includes('SINR_LEFT_SIDEBAR_TABS')
+    && appSrc.includes('MODQN_LEFT_SIDEBAR_TABS'),
+    'App.tsx shows mode-specific left sidebar controls instead of concurrent SINR/MODQN tabs',
+  );
+  assert(
+    appSrc.includes('getRightSidebarTabsForMode')
+    && appSrc.includes('SINR_RIGHT_SIDEBAR_TABS')
+    && appSrc.includes('MODQN_RIGHT_SIDEBAR_TABS'),
+    'App.tsx hides MODQN evidence tab from the right sidebar outside MODQN replay mode',
+  );
+  assert(
+    appSrc.includes('handoverMode={handoverMode}'),
+    'App.tsx passes handoverMode into live status and MODQN evidence panels',
+  );
+  assert(
+    appSrc.includes('showModqnReplayScene={false}'),
+    'App.tsx hides the producer replay debug overlay from the center scene',
+  );
+  assert(
+    evidenceSrc.includes('modqn-evidence-mode-status')
+    && evidenceSrc.includes('modqn-evidence-decision-trace')
+    && evidenceSrc.includes('modqn-evidence-producer-selected')
+    && evidenceSrc.includes('modqn-evidence-rescalarized-selected')
+    && evidenceSrc.includes('modqn-evidence-selection-changed')
+    && evidenceSrc.includes('modqn-evidence-mapped-live-serving')
+    && evidenceSrc.includes('reScalarize')
+    && evidenceSrc.includes('scoreModqnPolicyCandidate')
+    && !evidenceSrc.includes('LiveKpiStrip'),
+    'ModqnEvidenceTab renders applied omega decision trace without embedding the live KPI strip',
+  );
+  assert(
+    infoSrc.includes('live-status-handover-mode')
+    && infoSrc.includes('HANDOVER MODE')
+    && infoSrc.includes('MODQN selects serving; SINR metrics are live')
+    && infoSrc.includes('MODQN-selected live link')
+    && infoSrc.includes('live SINR reference')
+    && infoSrc.includes('Δ live SINR'),
+    'InfoPanel exposes mode-aware Live status wording for active handover mode',
+  );
+  assert(
+    replayLayerSrc.includes('useReplaySceneTelemetry(visualState, showBoard)'),
+    'MODQN replay canvas telemetry is gated by showBoard',
+  );
+  assert(
+    telemetrySrc.includes('if (!enabled)') && telemetrySrc.includes('removeReplayCanvasAttributes(canvas)'),
+    'Replay telemetry removes canvas attributes when MODQN replay layer is inactive',
   );
 }
 

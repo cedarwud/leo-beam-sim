@@ -200,6 +200,13 @@ function isRecentHoSourceSat(satId: string, sim: SimFrame): boolean {
   return satId === sim.recentHoSourceSatId && satId !== sim.serving.satId;
 }
 
+function wallClockProgress(startMs: number | null, endMs: number | null): number {
+  if (startMs === null || endMs === null) return 1;
+  const durationMs = Math.max(1, endMs - startMs);
+  const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+  return Math.min(1, Math.max(0, (nowMs - startMs) / durationMs));
+}
+
 export function useBeamViz(
   sim: SimFrame,
   profile: Profile,
@@ -611,6 +618,9 @@ export function useBeamViz(
       // Inject intra-HO from/to beams so they're visible during the wall-clock latch window.
       const activeIntraForSat =
         sim.intraHandoverEvent?.satId === sat.id ? sim.intraHandoverEvent : null;
+      const intraTransitionProgress = activeIntraForSat
+        ? wallClockProgress(sim.intraHandoverWallClockStartMs, sim.intraHandoverWallClockExpiresMs)
+        : null;
       if (activeIntraForSat) {
         const existingBeamIds = new Set(selectionSpecs.map(s => s.beamId));
         for (const intraBeamId of [activeIntraForSat.fromBeamId, activeIntraForSat.toBeamId]) {
@@ -656,6 +666,7 @@ export function useBeamViz(
           showBeam: true,
           role: spec.role,
           intraRole,
+          intraTransitionProgress,
           ...frequency,
           satelliteTintColor: sat.satelliteTintColor,
           satelliteGlyph: sat.satelliteGlyph,

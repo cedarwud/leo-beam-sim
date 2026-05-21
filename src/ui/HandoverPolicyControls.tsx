@@ -77,6 +77,16 @@ const POLICY_CONTROL_CONFIGS: readonly HandoverPolicyControlConfig[] = [
     effect: 'Shorter dwell tracks beam quality faster; longer dwell avoids frequent beam changes.',
   },
   {
+    field: 'maxIntraSwitchesPerServingEpoch',
+    label: 'Intra-HO limit per satellite',
+    unit: 'switches',
+    min: 0,
+    max: 7,
+    step: 1,
+    description: 'Maximum same-satellite beam switches before the next inter-satellite handover resets the counter.',
+    effect: 'Lower values stop local beam ping-pong; 0 disables intra-HO for the current serving-satellite epoch.',
+  },
+  {
     field: 'pendingTargetHoldSec',
     label: 'Pending target hold',
     unit: 's',
@@ -108,6 +118,10 @@ const sectionStyle: CSSProperties = {
 };
 
 function formatPolicyValue(value: number, unit: string): string {
+  if (unit === 'switches') {
+    const count = Math.round(value);
+    return `${count} ${count === 1 ? 'switch' : 'switches'}`;
+  }
   const digits = Number.isInteger(value) ? 0 : 1;
   return `${value.toFixed(digits)} ${unit}`;
 }

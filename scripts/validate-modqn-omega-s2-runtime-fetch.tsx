@@ -52,11 +52,13 @@ import {
   type UseModqnHandoverState,
 } from '../src/ui/useModqnHandoverState.ts';
 import { ModqnObjectiveTab } from '../src/ui/ModqnObjectiveTab.tsx';
+import { ensureModqnCurrentBaselineExport } from './support/modqn-current-baseline-export.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname ?? '.', '..');
 const APP_PATH = path.join(REPO_ROOT, 'src/App.tsx');
 const PLAYBACK_SHELL_PATH = path.join(REPO_ROOT, 'src/modqn/replay-bundle/playback-shell.ts');
 const PROFILE_PATH = path.join(REPO_ROOT, 'src/profiles/modqn-1sat-7beam.json');
+ensureModqnCurrentBaselineExport();
 
 interface CheckResult {
   readonly id: string;

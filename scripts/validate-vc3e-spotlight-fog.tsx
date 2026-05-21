@@ -90,8 +90,8 @@ function createBeam(input: {
 function assertInvariantSurface(): void {
   assert.equal(deriveRuntimeVisualSettings('presentation', false).cinematicMode, 'off');
   assert.equal(resolveRuntimeCinematicMode('presentation', 'spotlight'), 'spotlight');
-  assert.equal(resolveRuntimeCinematicMode('tuning', 'spotlight'), 'off');
-  assert.equal(resolveRuntimeCinematicMode('diagnostics', 'spotlight'), 'off');
+  assert.equal(resolveRuntimeCinematicMode('tuning', 'spotlight'), 'spotlight');
+  assert.equal(resolveRuntimeCinematicMode('diagnostics', 'spotlight'), 'spotlight');
   assert.equal(resolveCinematicLightIntensity(1, 'spotlight'), CINEMATIC_LIGHT_DIM_MULTIPLIER);
   assert.equal(resolveCinematicLightIntensity(1, 'off'), 1);
 

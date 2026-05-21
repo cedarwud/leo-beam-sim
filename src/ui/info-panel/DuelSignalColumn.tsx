@@ -117,7 +117,7 @@ function CompactSignalMetric({
   );
 }
 
-export type DuelSignalTone = 'serving' | 'pending' | 'recentSource' | 'neutral';
+export type DuelSignalTone = 'serving' | 'pending' | 'recentSource' | 'recentTarget' | 'neutral';
 
 function duelSignalToneStyle(tone: DuelSignalTone) {
   if (tone === 'serving') {
@@ -145,11 +145,22 @@ function duelSignalToneStyle(tone: DuelSignalTone) {
   if (tone === 'recentSource') {
     return {
       accent: BEAM_ROLE_TOKENS.recentSource.color,
-      title: '#d8ecfb',
-      caption: 'rgba(218,236,248,0.76)',
-      background: 'linear-gradient(180deg, rgba(80, 118, 148, 0.38), rgba(36, 56, 78, 0.3))',
-      border: 'rgba(131, 168, 199, 0.48)',
-      glow: 'inset 0 0 24px rgba(131, 168, 199, 0.13), 0 0 18px rgba(131, 168, 199, 0.1)',
+      title: '#fff2b8',
+      caption: 'rgba(255,242,184,0.72)',
+      background: 'linear-gradient(180deg, rgba(118, 94, 13, 0.32), rgba(50, 39, 9, 0.27))',
+      border: 'rgba(250, 204, 21, 0.42)',
+      glow: 'inset 0 0 24px rgba(250, 204, 21, 0.1), 0 0 16px rgba(250, 204, 21, 0.08)',
+    };
+  }
+
+  if (tone === 'recentTarget') {
+    return {
+      accent: UI_TOKENS.color.semantic.candidate.accent,
+      title: UI_TOKENS.color.semantic.candidate.title,
+      caption: UI_TOKENS.color.semantic.candidate.caption,
+      background: UI_TOKENS.color.semantic.candidate.background,
+      border: UI_TOKENS.color.semantic.candidate.border,
+      glow: UI_TOKENS.color.semantic.candidate.glow,
     };
   }
 

@@ -37,9 +37,9 @@ interface ModeResult {
 }
 
 const EXPECTED_DRAWER_WIDTH: Record<UiMode, number> = {
-  presentation: 28,
-  tuning: 520,
-  diagnostics: 360,
+  presentation: 432,
+  tuning: 432,
+  diagnostics: 460,
 };
 
 function hashBuffer(buffer: Buffer): string {
@@ -88,9 +88,9 @@ async function clickDrawerControl(page: Page, mode: UiMode, leftPanel: BrowserBo
     return;
   }
 
-  await page.locator('#tuning-page-tab-handover-policy').click();
+  await page.locator('#left-sidebar-tab-handover').click();
   await page.waitForTimeout(80);
-  await page.locator('#tuning-page-tab-sinr-formula').click();
+  await page.locator('#left-sidebar-tab-signal').click();
   await page.waitForTimeout(80);
 }
 
@@ -161,37 +161,31 @@ async function assertMode(
     await selectUiMode(page, mode);
     console.log(`[vc4b] ${mode}: selected`);
     await page.locator('.leo-shell-canvas canvas').waitFor({ timeout: 5000 });
-    await page.locator('.leo-shell-left .leo-signal-tuning-panel').waitFor({ timeout: 5000 });
+    await page.locator('.leo-shell-left .leo-sidebar-tab-shell').waitFor({ timeout: 5000 });
     await page.locator('.leo-shell-right .leo-info-panel').waitFor({ timeout: 5000 });
 
     const shell = await measureBox(page, '.leo-shell-row', `${mode} shell row`);
     const canvasSlot = await measureBox(page, '.leo-shell-canvas', `${mode} canvas slot`);
     const canvas = await measureBox(page, '.leo-shell-canvas canvas', `${mode} canvas`);
     const leftSlot = await measureBox(page, '.leo-shell-left', `${mode} left slot`);
-    const leftPanel = await measureBox(page, '.leo-shell-left .leo-signal-tuning-panel', `${mode} left panel`);
+    const leftPanel = await measureBox(page, '.leo-shell-left .leo-sidebar-tab-shell', `${mode} left panel`);
     const rightPanel = await measureBox(page, '.leo-shell-right .leo-info-panel', `${mode} right panel`);
     const expectedWidth = EXPECTED_DRAWER_WIDTH[mode];
-    const drawerState = await page.locator('.leo-shell-left .leo-signal-tuning-panel').getAttribute('data-drawer-state');
+    const drawerState = await page.locator('.leo-shell-left .leo-sidebar-tab-shell').getAttribute('data-sidebar-side');
     const handleVisible = await page.locator('[data-testid="signal-tuning-drawer-handle"]').isVisible();
-    const contentVisible = await page.locator('[data-testid="signal-tuning-drawer-content"]').isVisible();
+    const contentVisible = await page.locator('.leo-shell-left .leo-sidebar-tab-panel').isVisible();
 
     assertClose(leftSlot.width, expectedWidth, 3, `${mode} left shell slot width`);
     assertClose(leftPanel.width, expectedWidth, 3, `${mode} tuning drawer width`);
     assert.ok(canvasSlot.width >= 280, `${mode} canvas slot width collapsed: ${canvasSlot.width}`);
     assert.ok(canvasSlot.height >= 300, `${mode} canvas slot height collapsed: ${canvasSlot.height}`);
-    assert.ok(rightPanel.width >= 420, `${mode} right panel width regressed: ${rightPanel.width}`);
+    assert.ok(rightPanel.width >= 320, `${mode} right panel width regressed: ${rightPanel.width}`);
     assertClose(canvas.width, canvasSlot.width, 2, `${mode} canvas width`);
     assertClose(canvas.height, canvasSlot.height, 2, `${mode} canvas height`);
 
-    if (mode === 'presentation') {
-      assert.equal(drawerState, 'collapsed', 'presentation mode should collapse the tuning drawer');
-      assert.equal(handleVisible, true, 'presentation mode should leave the tuning drawer handle visible');
-      assert.equal(contentVisible, false, 'presentation mode should hide tuning drawer contents');
-    } else {
-      assert.equal(drawerState, mode, `${mode} mode should expose matching drawer state`);
-      assert.equal(handleVisible, false, `${mode} mode should not show the collapsed drawer handle`);
-      assert.equal(contentVisible, true, `${mode} mode should keep tuning drawer contents visible`);
-    }
+    assert.equal(drawerState, 'left', `${mode} mode should keep the left sidebar tab shell mounted`);
+    assert.equal(handleVisible, false, `${mode} mode should not expose the retired collapsed tuning handle in the top-level sidebar`);
+    assert.equal(contentVisible, true, `${mode} mode should keep the top-level sidebar panel visible`);
 
     const panelClickCanvasPointers = await assertDrawerClickDoesNotHitCanvas(page, mode, leftPanel);
     console.log(`[vc4b] ${mode}: drawer pointer isolation passed`);
@@ -242,12 +236,12 @@ async function main(): Promise<void> {
 
   const byMode = Object.fromEntries(modes.map(result => [result.mode, result])) as Record<UiMode, ModeResult>;
   assert.ok(
-    byMode.presentation.canvasSlot.width > byMode.diagnostics.canvasSlot.width + 300,
-    'presentation mode did not reclaim the collapsed drawer width for the canvas',
+    byMode.presentation.canvasSlot.width > byMode.diagnostics.canvasSlot.width + 40,
+    'presentation mode did not keep the canvas wider than the diagnostics sidebar layout',
   );
   assert.ok(
-    byMode.diagnostics.canvasSlot.width > byMode.tuning.canvasSlot.width + 140,
-    'diagnostics mode did not reflow wider than the 520px tuning drawer state',
+    Math.abs(byMode.presentation.canvasSlot.width - byMode.tuning.canvasSlot.width) <= 4,
+    'presentation and tuning mode should share the same top-level sidebar width at the 1440px checkpoint',
   );
 
   console.log('Visual Clarity Phase 4B tuning-drawer validation passed.');

@@ -33,9 +33,9 @@ export function StatusBadge({
       border: `1px solid ${border}`,
       color,
       background: tone === 'serving'
-        ? 'rgba(65, 199, 255, 0.16)'
+        ? 'rgba(250, 204, 21, 0.16)'
         : tone === 'candidate'
-          ? 'rgba(255, 190, 69, 0.16)'
+          ? 'rgba(56, 189, 248, 0.16)'
           : tone === 'warning'
             ? 'rgba(255, 125, 104, 0.14)'
             : UI_TOKENS.color.surface.card,

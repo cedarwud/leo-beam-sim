@@ -49,8 +49,8 @@ following hold:
 2. Relative luminance contrast ratio against background ≥ `3.0` (WCAG AA
    non-text minimum).
 3. Pairwise CIE76 ΔE between any palette entry and any of the role
-   accents (`serving #38B6FF`, `pending #FFB000`, `approach #CF5CFF`,
-   `recent-source #83A8C7`) ≥ `15`.
+   accents (`serving #facc15`, `pending/target #38bdf8`, `approach #34d399`,
+   `recent-source #fde68a`) ≥ `15`.
 4. Pairwise CIE76 ΔE between any palette entry and any of the
    `BEAM_FREQUENCY_COLORS` entries ≥ `15`.
 
@@ -60,15 +60,16 @@ fail):
 - `'#FFFFFF'` pure white
 - `'#F2D7A0'` warm sand (replaces previous `#F2EFE5` which was too close
   to the warm white range; `#F2D7A0` is a low-saturation amber-adjacent
-  that pulls clearly away from cool serving cyan)
-- `'#D9B6E8'` muted lilac (replaces `#D6CCFF` which is too close to
-  approach violet; `#D9B6E8` shifts toward magenta-grey)
-- `'#86C7B6'` mint-grey (replaces `#A4D9FF` which is too close to
-  serving cyan; `#86C7B6` is a desaturated cyan-green well clear of
-  `#38B6FF`)
+  that pulls clearly away from serving yellow)
+- `'#D9B6E8'` muted lilac (replaces `#D6CCFF` which is too saturated for
+  the low-emphasis satellite-tint channel; `#D9B6E8` shifts toward
+  magenta-grey)
+- `'#86C7B6'` mint-grey (replaces `#A4D9FF` which sits too near the
+  high-emphasis role palette; `#86C7B6` is a desaturated cyan-green kept
+  away from the role-dominant channels)
 
 The `#FFFFFF` entry is reserved for the serving satellite when satellite
-counts ≤ 4, because pure white plus serving-cyan inner spine reads as
+counts ≤ 4, because pure white plus the serving-yellow role ring reads as
 the strongest "active link" cue.
 
 If invariants 1–4 still cannot be satisfied at four colors, the SDD's
@@ -205,7 +206,7 @@ Implementation guidance:
 - Each glyph geometry should be cached by satellite-tint index, not by
   satId, so the geometry pool stays at four entries.
 - Glyph fill color reads from the existing `style.color` (role color),
-  so a hollow ▲ in serving cyan reads as "serving + sat A".
+  so a hollow ▲ in serving yellow reads as "serving + sat A".
 - A small Unicode glyph copy (▲ ◆ ● ★) is also placed inline inside the
   callout text from Phase 1A, immediately after the satellite chip.
   This echo lets the operator match scene-glyph to callout-glyph

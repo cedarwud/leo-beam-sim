@@ -1,4 +1,5 @@
 import {
+  MODQN_EXPECTED_EVENT_COUNTS,
   MODQN_REPLAY_7BEAM_EVIDENCE_STATUS,
   MODQN_REPLAY_7BEAM_MODE_KEY,
   MODQN_REPLAY_7BEAM_MODE_LABEL,
@@ -8,8 +9,11 @@ import {
 import type {
   ModqnBeamReference,
   ModqnHandoverEventKind,
+  ModqnPolicyDiagnostics,
   ModqnRewardVector,
 } from './types';
+import type { RuntimeOmegaState } from '../../ui/useModqnHandoverState';
+import { reScalarize } from './rescalarize';
 
 export type ModqnReplayPlaybackStepKind = 'source-slot';
 
@@ -29,9 +33,17 @@ export interface ModqnReplayPlaybackFocusRow {
   readonly decisionTimeSec: number;
   readonly previousServing: ModqnBeamReference;
   readonly selectedServing: ModqnBeamReference;
+  readonly producerSelectedServing?: ModqnBeamReference;
+  readonly producerHandoverEventKind?: ModqnHandoverEventKind;
+  readonly selectedServingSource?:
+    | 'producer'
+    | 'omega-rescalarized'
+    | 'omega-rescalarized-fallback';
+  readonly appliedOmega?: RuntimeOmegaState;
   readonly handoverEventKind: ModqnHandoverEventKind;
   readonly scalarReward: number;
   readonly rewardVector: ModqnRewardVector;
+  readonly policyDiagnostics?: ModqnPolicyDiagnostics;
   readonly diagnosticsStatus: ModqnReplayPlaybackDiagnosticsStatus;
   readonly availableActionCount: number | null;
 }
@@ -162,13 +174,13 @@ export function getModqnReplayPlaybackModelValidationIssue(
   }
 
   if (
-    model.eventCounts['intra-satellite-beam-switch'] !== 85
-    || model.eventCounts.none !== 915
-    || model.eventCounts['inter-satellite-handover'] !== 0
+    model.eventCounts['intra-satellite-beam-switch'] !== MODQN_EXPECTED_EVENT_COUNTS['intra-satellite-beam-switch']
+    || model.eventCounts.none !== MODQN_EXPECTED_EVENT_COUNTS.none
+    || model.eventCounts['inter-satellite-handover'] !== MODQN_EXPECTED_EVENT_COUNTS['inter-satellite-handover']
   ) {
     return validationIssue(
       'unexpected-event-counts',
-      'Selected replay display model does not match the accepted 85 / 915 / 0 artifact event counts.',
+      'Selected replay display model does not match the accepted producer artifact event counts.',
     );
   }
 
@@ -204,6 +216,74 @@ export function createModqnReplayPlaybackDisplayState(
     currentSlot: model.slots[safeSlotOffset] ?? firstSlot,
     eventCounts: model.eventCounts,
     diagnosticsStatus: model.diagnosticsStatus,
+  };
+}
+
+function deriveHandoverEventKind(
+  previous: ModqnBeamReference,
+  selected: ModqnBeamReference,
+): ModqnHandoverEventKind {
+  if (previous.satId !== selected.satId) return 'inter-satellite-handover';
+  if (previous.localBeamIndex !== selected.localBeamIndex) {
+    return 'intra-satellite-beam-switch';
+  }
+  return 'none';
+}
+
+function findPolicyCandidateServing(
+  diagnostics: ModqnPolicyDiagnostics,
+  satId: string,
+  localBeamIndex: number,
+): ModqnBeamReference | null {
+  const candidate = diagnostics.topCandidates?.find(entry => (
+    entry.satId === satId && entry.localBeamIndex === localBeamIndex
+  ));
+  return candidate ?? null;
+}
+
+export function createOmegaRescalarizedModqnReplayPlaybackDisplayState(
+  displayState: ModqnReplayPlaybackDisplayState | null,
+  omega: RuntimeOmegaState,
+): ModqnReplayPlaybackDisplayState | null {
+  if (displayState === null) return null;
+
+  const focusRow = displayState.currentSlot.focusRow;
+  const diagnostics = focusRow.policyDiagnostics;
+  const result = reScalarize(diagnostics?.topCandidates, omega);
+  if (diagnostics === undefined || result === null) return displayState;
+
+  const selectedServing = findPolicyCandidateServing(
+    diagnostics,
+    result.satId,
+    result.beamId,
+  );
+  if (selectedServing === null) return displayState;
+
+  const nextFocusRow: ModqnReplayPlaybackFocusRow = {
+    ...focusRow,
+    producerSelectedServing:
+      focusRow.producerSelectedServing ?? focusRow.selectedServing,
+    producerHandoverEventKind:
+      focusRow.producerHandoverEventKind ?? focusRow.handoverEventKind,
+    selectedServing,
+    selectedServingSource: result.wasFallback
+      ? 'omega-rescalarized-fallback'
+      : 'omega-rescalarized',
+    appliedOmega: omega,
+    handoverEventKind: deriveHandoverEventKind(
+      focusRow.previousServing,
+      selectedServing,
+    ),
+  };
+
+  const nextSlot: ModqnReplayPlaybackSlot = {
+    ...displayState.currentSlot,
+    focusRow: nextFocusRow,
+  };
+
+  return {
+    ...displayState,
+    currentSlot: nextSlot,
   };
 }
 
@@ -256,6 +336,7 @@ export function createModqnReplayPlaybackShellModel(
           handoverEventKind: focusRow.producerTruth.handoverEvent.kind,
           scalarReward: focusRow.producerTruth.scalarReward,
           rewardVector: focusRow.producerTruth.rewardVector,
+          policyDiagnostics: focusRow.producerTruth.policyDiagnostics,
           diagnosticsStatus: focusRow.producerTruth.policyDiagnostics === undefined
             ? 'missing-from-producer'
             : 'present-from-producer',
@@ -287,11 +368,7 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
   stepKind: 'source-slot',
   rowCount: 1000,
   slotCount: 10,
-  eventCounts: {
-    none: 915,
-    'intra-satellite-beam-switch': 85,
-    'inter-satellite-handover': 0,
-  },
+  eventCounts: MODQN_EXPECTED_EVENT_COUNTS,
   diagnosticsStatus: 'present-from-producer',
   slots: [
     {
@@ -299,7 +376,7 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
       sourceRowStartIndex: 0,
       sourceRowEndIndex: 99,
       rowCount: 100,
-      eventCounts: { none: 15, 'intra-satellite-beam-switch': 85, 'inter-satellite-handover': 0 },
+      eventCounts: { none: 18, 'intra-satellite-beam-switch': 82, 'inter-satellite-handover': 0 },
       focusRow: {
         sourceRowIndex: 0,
         slotRowIndex: 0,
@@ -317,11 +394,11 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
@@ -350,20 +427,20 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
         timeSec: 2,
         decisionTimeSec: 1,
         previousServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
@@ -392,20 +469,20 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
         timeSec: 3,
         decisionTimeSec: 2,
         previousServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
@@ -434,20 +511,20 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
         timeSec: 4,
         decisionTimeSec: 3,
         previousServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
@@ -476,20 +553,20 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
         timeSec: 5,
         decisionTimeSec: 4,
         previousServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
@@ -518,20 +595,20 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
         timeSec: 6,
         decisionTimeSec: 5,
         previousServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
@@ -560,20 +637,20 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
         timeSec: 7,
         decisionTimeSec: 6,
         previousServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
@@ -602,20 +679,20 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
         timeSec: 8,
         decisionTimeSec: 7,
         previousServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
@@ -644,20 +721,20 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
         timeSec: 9,
         decisionTimeSec: 8,
         previousServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
@@ -686,20 +763,20 @@ export const MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL = {
         timeSec: 10,
         decisionTimeSec: 9,
         previousServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },
         selectedServing: {
-          beamId: 'sat-0-beam-4',
-          beamIndex: 4,
+          beamId: 'sat-0-beam-1',
+          beamIndex: 1,
           satId: 'sat-0',
           satIndex: 0,
-          localBeamIndex: 4,
+          localBeamIndex: 1,
           validUnderDecisionMask: true,
           validUnderPostStepMask: true,
         },

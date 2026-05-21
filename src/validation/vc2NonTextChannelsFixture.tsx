@@ -148,7 +148,7 @@ function probeForFixture(fixture: Vc2BeamFixture, displayOrder: number): Vc2Beam
     satelliteGlyph: beam.satelliteGlyph,
     satelliteGlyphSymbol: glyphSymbolForKind(beam.satelliteGlyph),
     roleColor: style.color,
-    discFillColor: eventRoleSurface ? style.frequencySwatchColor : style.color,
+    discFillColor: eventRoleSurface ? style.color : style.frequencySwatchColor,
     dashed: style.dashed,
     pulse: style.pulse,
     staticOpacity: style.coneOpacity,

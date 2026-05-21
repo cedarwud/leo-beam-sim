@@ -128,12 +128,13 @@ the simulator's serving beam follows**. Three values:
 | Mode | ID | Decision source | Profile constraint |
 |---|---|---|---|
 | Sinr Offset | `sinr-offset` | `HandoverManager` sinr-offset rule (current) | none |
-| MODQN Replay | `modqn-replay` | Bundle-derived `selectedServing`, recomputable via ω re-scalarization over `topCandidates[*].objectiveQ` | `modqn-1sat-7beam` required |
+| MODQN Replay | `modqn-replay` | Bundle-derived local beam choice, recomputable via ω re-scalarization over `topCandidates[*].objectiveQ`, mapped onto the current live scene candidates | none for the center scene; `modqn-1sat-7beam` remains the reference artifact profile |
 | ω Heuristic | `omega-heuristic` | Closed-form score `s(a) = ω_t · normSINR(a) − ω_h · isSwitch(a) − ω_l · normLoad(a)`, argmax over current beams | none |
 
 Mode is a runtime control-plane state, not a profile field. Profile
-selection and mode selection are independent except for the constraint
-that `modqn-replay` requires `modqn-1sat-7beam`.
+selection and mode selection are independent; the public MODQN demo keeps the
+current moving scene topology and uses the producer artifact only as the
+decision-source adapter.
 
 ### 3.3 Re-Scalarization
 
@@ -394,28 +395,30 @@ verifies this in S0.
 
 | Behavior | `sinr-offset` | `modqn-replay` | `omega-heuristic` |
 |---|---|---|---|
-| Required profile | any | `modqn-1sat-7beam` (forced) | any |
-| Engine decision source | `HandoverManager` sinr-offset rule | bundle ω re-scalarization via override hook | `computeHeuristicNotPaperScore` via override hook |
-| ω slider visible | yes (read-only) | yes (read-write) | yes (read-write) |
+| Required profile | any | any center-scene profile; reference artifact profile is `modqn-1sat-7beam` | any |
+| Engine decision source | `HandoverManager` sinr-offset rule | bundle ω re-scalarization via override hook, with producer local beam mapped onto live candidates | `computeHeuristicNotPaperScore` via override hook |
+| ω slider visible | no; SINR mode shows SINR formula + handover policy controls | yes (read-write); MODQN mode also exposes handover policy timing gates | yes (read-write) |
 | ω Apply effect | none on engine; updates MODQN board re-scalarization only | re-scalarizes bundle on next slot, may change serving beam | recomputes score on next decision tick |
 | ω Reset target | `bundle.policyDiagnostics.objectiveWeights` | same | last user-set value or `(0.4, 0.3, 0.3)` if never set this session |
-| MODQN replay board | toggleable | toggleable, defaults on | toggleable, defaults off |
-| Live HUD banner | none | `Paper-faithful: MODQN baseline replay` (info) | `Heuristic ω-scoring — NOT paper MODQN` (warn) |
+| MODQN replay board | hidden | hidden from the center scene; MODQN evidence stays in the right sidebar | toggleable, defaults off |
+| Live HUD banner | none; Live status shows `SINR-offset` mode badge | none; Live status shows `MODQN replay` mode badge and states that MODQN selects serving while SINR metrics remain live | `Heuristic ω-scoring — NOT paper MODQN` (warn) |
 | `data-handover-criterion` attribute | `sinr-offset` | `modqn-replay` | `omega-heuristic-not-paper` |
 | Mode persistence | `localStorage` | `localStorage` | never persisted |
-| Profile lock | profile selector free | profile selector locked to `modqn-1sat-7beam` while mode active | profile selector free |
+| Profile lock | profile selector free | profile selector free; mode switch resets to replay start but does not change profile | profile selector free |
 | Live SINR / fading / channel | unchanged | unchanged | unchanged |
 | Intra-handover viz | unchanged | unchanged | unchanged (override replaces argmax, not the event) |
 
 ### 6.2 Mode transitions
 
-- `sinr-offset` → `modqn-replay`: if current profile is not
-  `modqn-1sat-7beam`, the mode change requires the user to confirm a
-  profile switch. After confirm: profile reset to `modqn-1sat-7beam`,
-  sim reset via existing `createInitialSimState`, ω reset to bundle
-  `objectiveWeights`, MODQN board defaults on.
-- `modqn-replay` → `sinr-offset`: profile selector unlocks. ω draft
-  retained but no longer affects engine. Board state preserved.
+- `sinr-offset` → `modqn-replay`: profile selection is preserved, the
+  handover runtime resets to the replay start offset, immediately publishes a
+  zero-delta initial frame, and ω resets to bundle `objectiveWeights`. No
+  recurring confirmation dialog is shown; the top mode selector is the single
+  control surface.
+- `modqn-replay` → `sinr-offset`: profile selection is preserved, and the
+  handover runtime resets to the replay start offset so the serving satellite
+  is re-attached from a clean initial state. ω draft retained but no longer
+  affects engine.
 - `* → omega-heuristic`: heuristic banner mounts. ω reset to last
   heuristic-session value or `(0.4, 0.3, 0.3)` default.
 - `omega-heuristic → *`: heuristic banner unmounts. Heuristic ω is
@@ -428,8 +431,9 @@ verifies this in S0.
 The bundle artifact at
 `SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH` was produced by training MODQN
 in an environment with a single satellite (`sat-0`) and seven beams
-(`sat-0-beam-0` … `sat-0-beam-6`). Re-scalarizing `objectiveQ` is only
-faithful to the trained Q-networks if the scene shows the same scenario.
+(`sat-0-beam-0` … `sat-0-beam-6`). This profile remains available as the
+reference artifact topology, but it is not forced by the public MODQN mode
+because a single-satellite window can leave the center scene visually empty.
 
 A new profile is added to reuse all the existing scene infrastructure
 (camera, ground, UE, ambient rings, intra/inter handover viz) on top of a
@@ -577,16 +581,25 @@ depend on S0; S3 also depends on S2 (needs the bundle in scene).
 
 ### 9.4 S3 — `modqn-replay` mode
 
-- A new `ControlBar` segmented control offers
-  `sinr-offset` / `modqn-replay` / `omega-heuristic`. (The `omega-heuristic`
-  entry may render with a `coming in S4` disabled state until S4 lands.)
-- Selecting `modqn-replay` from any profile prompts the user to switch
-  to `modqn-1sat-7beam`. On confirm: profile resets, sim reset, ω reset
-  to bundle weights.
+- A `ControlBar` segmented control offers the public
+  `sinr-offset` / `modqn-replay` modes. The left sidebar is mode-scoped:
+  SINR mode shows SINR formula + handover policy controls; MODQN mode shows
+  MODQN objective + handover policy controls. The right sidebar is also
+  mode-scoped: SINR mode only shows Live status, while MODQN mode adds the
+  MODQN evidence tab. Live status remains scene-state readout and uses
+  mode-aware copy so MODQN mode is not mistaken for SINR-only policy output
+  or static MODQN evidence.
+- Selecting `modqn-replay` preserves the current profile: handover state
+  resets, ω resets to bundle weights, and the center scene keeps moving with
+  the same constellation that was visible before the mode switch.
 - Sliding ω in `modqn-replay` mode and clicking `Apply` changes the
   serving beam at the next bundle slot, provided the user-chosen ω
   prefers a beam in the bundle's `topCandidates` over the
   training-time choice.
+- The MODQN evidence tab shows the applied decision trace: current slot,
+  immutable producer `selectedServing`, consumer re-scalarized top-K pick,
+  fallback status, whether ω changed the pick, and the mapped live serving
+  identity visible in the center scene.
 - A re-scalarization fallback row in `DiagnosticsDrawer` shows when the
   user's ω would prefer an out-of-top-K beam and the system fell back to
   the recorded top-K winner.
@@ -710,12 +723,13 @@ linear combination, not a retraining op.
 Heuristic is a closed-form rule, not a learned policy. UI labels must
 say so. The four-line disclosure in §4.4 is binding.
 
-### 12.4 Profile is locked in `modqn-replay`
+### 12.4 Public MODQN mode keeps the current visual profile
 
-The bundle is faithful to its training env. Re-scalarizing
-`objectiveQ` against a different scene env would produce semantically
-empty numbers and would mislead in screenshots. The profile lock
-explicitly tells the user "to switch the scene, switch the mode first".
+The bundle is faithful to its training env, but the final demo must keep the
+center scene legible. `modqn-replay` therefore uses the bundle as the decision
+source and maps the producer local beam index onto the current live candidate
+set. The reference `modqn-1sat-7beam` profile remains selectable for artifact
+inspection, but it is not forced by the public mode toggle.
 
 ### 12.5 Engine override is opt-in, behavior-preserving when null
 
@@ -799,7 +813,7 @@ Five pre-existing handover/replay validators pass: `phase1a-recent-ho-ui`, `phas
 
 Two pre-existing validators FAIL on `main` and have not been touched (Phase 6P / Phase 6U scope, not ω scope): `phase6t-source-channel-shadow-kpi`, `phase6p-hobs-sinr-kpi-baseline`. These were pre-existing before S0.
 
-Browser smoke on S3 and S4 ran via `@playwright/test` `chromium.launch()` against the dev server; 14 checks total (7 each) covered: ControlBar 3-way selector, profile-lock confirm dialog, info banner for `modqn-replay`, `data-handover-criterion` attribute on scene container, contrast ratio 8.15:1 for the heuristic banner, localStorage non-persistence for `omega-heuristic`, and mode-reset to `sinr-offset` on page reload.
+Browser smoke on S3 and S4 ran via `@playwright/test` `chromium.launch()` against the dev server; the current public demo path is a 2-way ControlBar selector (`sinr-offset` / `modqn-replay`) with profile-preserving mode switches, mode-scoped sidebars, `data-handover-criterion` on the scene container, and no recurring profile-lock confirm dialog.
 
 ### 15.2 Known Limitations
 

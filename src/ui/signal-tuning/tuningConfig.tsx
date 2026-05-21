@@ -1,20 +1,7 @@
 import type { ReactNode } from 'react';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import type { GainModel, PathLossComponent } from '../../profiles/types';
-import type { TuningPage, TuningTab, TuningTabKey } from './types';
-
-export const TUNING_PAGES: readonly TuningPage[] = [
-  {
-    key: 'sinr-formula',
-    title: 'SINR Formula',
-    subtitle: 'Formula-owned link budget controls.',
-  },
-  {
-    key: 'handover-policy',
-    title: 'Handover Policy',
-    subtitle: 'Qualification and timing controls.',
-  },
-];
+import type { TuningTab, TuningTabKey } from './types';
 
 export const TUNING_TABS: readonly TuningTab[] = [
   {

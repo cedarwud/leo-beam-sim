@@ -8,6 +8,7 @@ import {
   MODQN_BASELINE_BEAMS_PER_SATELLITE,
   MODQN_BEAM_COUNT_CLAIM_LABELS,
   MODQN_TOTAL_BASELINE_BEAMS,
+  SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH,
   SUPPORTED_MODQN_HANDOVER_EVENT_KINDS,
   adaptModqnHandoverEvent,
   createBeamCatalogByProducerId,
@@ -20,9 +21,7 @@ import {
   type ModqnBeamReference,
   type ModqnHandoverEventKind,
 } from '../src/modqn/replay-bundle/index.ts';
-
-const SELECTED_PHASE2_BUNDLE_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-1c-regenerated-7beam-baseline-2026-05-11/phase-03a-replay-bundle-v1';
+import { ensureModqnCurrentBaselineExport } from './support/modqn-current-baseline-export.ts';
 
 const EXPECTED_TIMELINE_ROWS = 1000;
 
@@ -62,14 +61,15 @@ function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[]
 }
 
 function run(): void {
-  const bundlePath = process.argv[2] ?? SELECTED_PHASE2_BUNDLE_PATH;
+  ensureModqnCurrentBaselineExport();
+  const bundlePath = process.argv[2] ?? SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH;
   const bundle = readBundleFromPath(bundlePath);
 
   assert.equal(bundle.manifest.bundleSchemaVersion, MODQN_REPLAY_BUNDLE_SCHEMA_VERSION);
   assert.equal(bundle.manifest.paperId, MODQN_PAPER_ID);
   assert.equal(bundle.manifest.baselineSurface.beamCountPerSatellite, MODQN_BASELINE_BEAMS_PER_SATELLITE);
   assert.equal(bundle.manifest.baselineSurface.totalBeamCount, MODQN_TOTAL_BASELINE_BEAMS);
-  assert.equal(bundle.manifest.baselineSurface.episodesCompleted, 1);
+  assert.equal(bundle.manifest.baselineSurface.episodesCompleted, 200);
   assert.equal(bundle.manifest.claimBoundary.notFullPaperFaithfulReproduction, true);
   assert.equal(bundle.manifest.claimBoundary.not19Or37BeamTrainedEvidence, true);
   assert.equal(bundle.provenanceMap.bundleSchemaVersion, MODQN_REPLAY_BUNDLE_SCHEMA_VERSION);
