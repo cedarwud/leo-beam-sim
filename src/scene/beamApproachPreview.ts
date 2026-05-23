@@ -2,7 +2,8 @@ import type { Profile } from '../profiles/types';
 import type { MetadataBackedFrequencyIndexSource } from '../utils/beamFrequency';
 import { scheduleBeamCells, type CandidateBeamCell } from './beam-scheduler';
 import type { CoreLayoutFrequencyReuse } from './beam-layout';
-import type { SimFrame } from './types';
+import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
+import type { SceneGeometry } from './SceneGeometry';
 
 export const APPROACH_LOOKAHEAD_SLOTS = 5;
 export const APPROACH_LOOKAHEAD_DISTANCE_FACTOR = 3.2;
@@ -53,37 +54,74 @@ export function beamDistanceToUeKm(beam: BeamCellViz): number {
 }
 
 export function computeApproachPreviews({
-  sim,
-  profile,
-  shellLayouts,
-  steeringBeamCellsBySatId,
+  frame,
+  geometry,
+  beamHoppingConfig,
   bestSinrPerSat,
   approachHoldSec,
   previousLatched,
   maxPreviewBeams,
 }: {
-  sim: SimFrame;
-  profile: Profile;
-  shellLayouts: Map<string, ShellVizLayout>;
-  steeringBeamCellsBySatId: Map<string, BeamCellViz[]>;
+  frame: NormalizedSceneFrame;
+  geometry: SceneGeometry;
+  beamHoppingConfig: Profile['beamHopping'];
   bestSinrPerSat: Map<string, number>;
   approachHoldSec: number;
   previousLatched: Map<string, LatchedApproachState>;
   maxPreviewBeams: number;
 }): ApproachComputationResult {
-  const blockedApproachSatIds = new Set<string>([
-    sim.serving.satId,
-    sim.pendingTargetSatId,
-    sim.recentHoTargetSatId,
-    sim.recentHoSourceSatId,
-  ].filter((satId): satId is string => satId !== null));
+  // Approach previews require live-only beam-hopping scheduler state. Replay
+  // path leaves `slotIndex`/`enabled` undefined; return empty.
+  const beamHopEnabled = frame.beamHopping.enabled ?? false;
+  const beamHopSlotIndex = frame.beamHopping.slotIndex ?? -1;
+  const simTimeSec = frame.tSec;
+  if (!beamHopEnabled || beamHopSlotIndex < 0) {
+    return {
+      approachSatIds: [],
+      approachSatIdSet: new Set<string>(),
+      selectedApproachPreviewBySatId: new Map<string, ApproachPreview>(),
+      newLatchedApproachBySat: new Map<string, LatchedApproachState>(),
+    };
+  }
+
+  const blockedApproachSatIds = new Set<string>(
+    [
+      frame.handover.servingSatelliteId || null,
+      frame.handover.targetSatelliteId ?? null,
+      frame.recentHo?.targetSatId ?? null,
+      frame.recentHo?.sourceSatId ?? null,
+    ].filter((satId): satId is string => satId !== null && satId !== ''),
+  );
+
+  // Re-group beams[] back into per-satellite BeamCellViz lists for the
+  // scheduler. Beam IDs revert to numeric form (live convention).
+  const steeringBeamCellsBySatId = new Map<string, BeamCellViz[]>();
+  for (const beam of frame.beams) {
+    if (beam.offsetEastKm === undefined || beam.offsetNorthKm === undefined) continue;
+    const list = steeringBeamCellsBySatId.get(beam.satelliteId) ?? [];
+    list.push({
+      beamId: Number(beam.id),
+      offsetEastKm: beam.offsetEastKm,
+      offsetNorthKm: beam.offsetNorthKm,
+      scanAngleDeg: beam.scanAngleDeg ?? 0,
+      reuseGroup: beam.reuseGroup,
+      reuseGroupSource: beam.reuseGroupSource,
+      runtimeFrequencyReuse: beam.runtimeFrequencyReuse,
+      coreLayoutFrequencyReuse: beam.coreLayoutFrequencyReuse,
+    });
+    steeringBeamCellsBySatId.set(beam.satelliteId, list);
+  }
+
   const approachPreviewBySatId = new Map<string, ApproachPreview>();
-  const approachCandidates = [...sim.satellites]
+  const approachCandidates = [...frame.satellites]
     .filter(sat => !blockedApproachSatIds.has(sat.id))
     .flatMap(sat => {
-      const layout = shellLayouts.get(sat.shellId);
+      const shellId = sat.shellId ?? '';
+      const layout =
+        geometry.shellLayouts.get(shellId)
+        ?? geometry.shellLayouts.values().next().value;
       const steeringBeamCells = steeringBeamCellsBySatId.get(sat.id) ?? [];
-      if (!layout || steeringBeamCells.length === 0 || !sim.beamHopEnabled || sim.beamHopSlotIndex < 0) return [];
+      if (!layout || steeringBeamCells.length === 0) return [];
 
       const allCandidateBeamCells = steeringBeamCells
         .map(beam => ({
@@ -116,8 +154,8 @@ export function computeApproachPreviews({
           lookaheadBeamCells,
           [],
           sat.id,
-          sim.beamHopSlotIndex + slotOffset,
-          profile.beamHopping,
+          beamHopSlotIndex + slotOffset,
+          beamHoppingConfig,
           { minimumActiveBeamCount: 1 },
         );
         for (const beamId of scheduled.activeBeamIds) {
@@ -194,14 +232,14 @@ export function computeApproachPreviews({
     if (!preview) continue;
     nextLatchedApproachBySat.set(candidate.satId, {
       ...preview,
-      releaseAtSec: sim.simTimeSec + approachHoldSec,
+      releaseAtSec: simTimeSec + approachHoldSec,
     });
   }
 
   for (const [satId, latched] of previousLatched.entries()) {
     if (blockedApproachSatIds.has(satId)) continue;
     if (nextLatchedApproachBySat.has(satId)) continue;
-    if (latched.releaseAtSec <= sim.simTimeSec) continue;
+    if (latched.releaseAtSec <= simTimeSec) continue;
     if (!steeringBeamCellsBySatId.has(satId)) continue;
     nextLatchedApproachBySat.set(satId, latched);
   }

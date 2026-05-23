@@ -11,10 +11,18 @@ import {
   type RuntimeOmegaState,
 } from './useModqnHandoverState';
 
+// TODO P2: DiagnosticsDrawer still reads `profile` for many handover-policy
+// fields (`offsetDb`, `pingPongGuardSec`, `intraSwitchTimeSec`, …) that have
+// no SceneGeometry equivalent. SceneGeometry covers shell-altitude /
+// beamwidth / frequency-reuse-count, but the bulk of the diagnostics panel
+// surfaces deep live-engine policy config not present in the artifact.
+// Replay path will mount a parallel diagnostics panel against producer
+// `truthOwnership` / `diagnostics`.
+
 type DiagnosticsDrawerProps = SimState & {
   uiMode: UiMode;
   profile: Profile;
-  /** S3: current handover mode — shows re-scalarization fallback row when 'modqn-replay'. */
+  /** S3: current handover mode — shows re-scalarization fallback row when 'decision-overlay-on-live-sinr'. */
   handoverMode?: RuntimeHandoverMode;
   /** S3: count of ticks where user ω preferred out-of-topK and system fell back. */
   rescalarizeFallbackCount?: number;
@@ -263,15 +271,15 @@ export function DiagnosticsDrawer({
           </div>
         </DrawerSection>
 
-        {/* S3: Re-scalarization fallback row — only in modqn-replay mode (SDD §9.4 item 5 / §10). */}
-        {handoverMode === 'modqn-replay' && (
+        {/* S3: Re-scalarization fallback row — only in decision-overlay-on-live-sinr mode (SDD §9.4 item 5 / §10). */}
+        {handoverMode === 'decision-overlay-on-live-sinr' && (
           <DrawerSection
             testId="diagnostics-drawer-rescalarize-fallback"
             tone={UI_TOKENS.color.semantic.info}
             title="MODQN RE-SCALARIZATION"
           >
             <div className="leo-drawer-section__rows">
-              <DebugRow label="Mode" value="modqn-replay" />
+              <DebugRow label="Mode" value="decision-overlay-on-live-sinr" />
               <DebugRow
                 label="Fallback ticks"
                 value={String(rescalarizeFallbackCount)}

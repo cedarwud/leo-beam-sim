@@ -11,6 +11,7 @@ import type {
   VisualFrequencyDiagnosticsState,
   VizFrame,
 } from './types';
+import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 import {
   extractBudgetTerms,
   hasUiStateChanged,
@@ -25,12 +26,21 @@ import {
 import { useLatchedSignals } from './useLatchedSignals';
 import { usePanelModeInference } from './usePanelModeInference';
 
+// P1d: this hook now receives `frame: NormalizedSceneFrame` and forwards it
+// to `usePanelModeInference`. The bulk of the SimState publication still
+// reads `sim: SimFrame` because it surfaces deep live-engine details
+// (LinkBudgetTerms, latched signals) that have no replay equivalent — the
+// replay path will mount a parallel state publisher driven by producer
+// diagnostics. TODO P2: collapse the two publishers behind the
+// NormalizedSceneFrame seam once the replay SimState shape stabilises.
+
 const UI_STABLE_UPDATE_INTERVAL_MS = 700;
 const UI_HANDOVER_UPDATE_INTERVAL_MS = 250;
 
 export function useSimStatePublisher({
   profile,
   sim,
+  frame,
   viz,
   signalResetKey,
   handoverResetKey,
@@ -39,6 +49,7 @@ export function useSimStatePublisher({
 }: {
   profile: Profile;
   sim: SimFrame;
+  frame: NormalizedSceneFrame;
   viz: VizFrame;
   signalResetKey?: string;
   handoverResetKey?: string;
@@ -98,7 +109,7 @@ export function useSimStatePublisher({
     );
 
     const panelMode = inferPanelMode({
-      sim,
+      frame,
       liveServingSinrDb,
       candidateComparisonSatId: candidateComparisonSample?.satId ?? null,
       candidateComparisonBeamId: candidateComparisonSample?.beamId ?? null,

@@ -1,3 +1,11 @@
+// SDD §7 (v4 review codex NEW-2): MainScene is the **boundary** between the
+// live engine and the renderer. `useSimulation` still emits `SimFrame`
+// directly; MainScene projects it to `NormalizedSceneFrame` via
+// `liveSimToScene` and `sceneGeometryFromProfile`, then passes the normalised
+// frame + geometry into `useBeamViz` / `useSimStatePublisher` /
+// `HandoverToastOverlay`. The replay path will mount a parallel
+// `useReplayPlayback` hook in P3 that constructs NormalizedSceneFrame via
+// `showcaseArtifactToScene` instead.
 import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei';
@@ -13,6 +21,8 @@ import type {
 import type { ModqnReplayPlaybackDisplayState } from '../modqn/replay-bundle/playback-shell';
 import { useSimulation } from './useSimulation';
 import { useBeamViz } from './useBeamViz';
+import { sceneGeometryFromProfile } from './SceneGeometry';
+import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
 import { ModqnReplaySceneLayer } from './ModqnReplaySceneLayer';
 import {
@@ -24,6 +34,7 @@ import {
 } from '../viz/EarthFixedCells';
 import { AmbientFootprintRings } from '../viz/AmbientFootprintRings';
 import { HandoverLinks } from '../viz/HandoverLinks';
+import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
 import { IntraHandoverArrow } from '../viz/IntraHandoverArrow';
 import { BeamPulseClock, SatelliteBeams } from '../viz/SatelliteBeams';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
@@ -140,10 +151,51 @@ function SceneContent({
     () => generateHexGrid({ rows: 4, cols: 5, cellRadius: 80, centerX: 0, centerZ: 0 }),
     [],
   );
-  const viz = useBeamViz(sim, profile, runtime, latchedBeamSinrByKeyRef.current);
+  // P1c §A / SDD §3 Q7 C4 / D9: derive `SceneGeometry` from the live profile
+  // so downstream code (deriveLiveSceneFields, P1d migrations) consumes the
+  // shell-level constants through the same interface as the replay path.
+  // `useBeamViz` reads `Profile` directly today; threading geometry here makes
+  // the type available for the gradual migration.
+  const sceneGeometry = useMemo(
+    () =>
+      sceneGeometryFromProfile({
+        shell: { altitudeKm: profile.orbit.shells[0]?.altitudeKm },
+        antenna: { beamwidth3dBRad: profile.antenna.beamwidth3dBRad },
+        handover: { triggerTimeSec: profile.handover.triggerTimeSec },
+        orbit: {
+          shells: profile.orbit.shells.map(s => ({ id: s.id, altitudeKm: s.altitudeKm })),
+        },
+        beams: { frequencyReuse: profile.beams.frequencyReuse },
+      }),
+    [
+      profile.orbit.shells,
+      profile.antenna.beamwidth3dBRad,
+      profile.handover.triggerTimeSec,
+      profile.beams.frequencyReuse,
+    ],
+  );
+  // P1d: project the live SimFrame → NormalizedSceneFrame at the boundary.
+  // useBeamViz now consumes only (frame, geometry) — sim/profile stay
+  // confined to MainScene.
+  const sceneFrame = useMemo(
+    () => liveSimToScene(sim, sceneGeometry),
+    [sim, sceneGeometry],
+  );
+  // P1c §E: live-default display caps per SDD §13 Cat A. Replay path will
+  // wire mode-appropriate defaults (default 4 sats / 4 beams / 4 events for
+  // the trigger artifact's 4-satellite constellation).
+  const viz = useBeamViz(
+    sceneFrame,
+    sceneGeometry,
+    runtime,
+    latchedBeamSinrByKeyRef.current,
+    undefined,
+    profile.beamHopping,
+  );
   useSimStatePublisher({
     profile,
     sim,
+    frame: sceneFrame,
     viz,
     signalResetKey: runtime.signalResetKey,
     handoverResetKey: runtime.handoverResetKey,
@@ -212,10 +264,18 @@ function SceneContent({
     gl.domElement.dataset.firstSatellitePosition = firstSatellite
       ? formatCameraVector(firstSatellite.world)
       : '';
-    gl.domElement.dataset.servingSatelliteId = sim.serving.satId ?? '';
-    gl.domElement.dataset.servingBeamId = sim.serving.beamId === null ? '' : String(sim.serving.beamId);
-    gl.domElement.dataset.simTimeSec = sim.simTimeSec.toFixed(2);
-  }, [gl.domElement, sim.serving.beamId, sim.serving.satId, sim.simTimeSec, viz.displaySats]);
+    gl.domElement.dataset.servingSatelliteId = sceneFrame.metrics.servingSatelliteId;
+    gl.domElement.dataset.servingBeamId = sceneFrame.metrics.servingBeamId;
+    gl.domElement.dataset.beamCalloutsEnabled = runtime.beamCalloutsEnabled ? '1' : '0';
+    gl.domElement.dataset.simTimeSec = sceneFrame.tSec.toFixed(2);
+  }, [
+    gl.domElement,
+    runtime.beamCalloutsEnabled,
+    sceneFrame.metrics.servingSatelliteId,
+    sceneFrame.metrics.servingBeamId,
+    sceneFrame.tSec,
+    viz.displaySats,
+  ]);
 
   useLayoutEffect(() => {
     const command = runtime.cameraCommand;
@@ -379,14 +439,16 @@ function SceneContent({
               key={`beams-${sat.id}`}
               satelliteId={sat.id}
               satellitePosition={sat.world}
-            beams={beams}
-            footprintRadius={viz.footprintRadiusWorld}
-            reducedMotion={runtime.reducedMotion}
-            cinematicMode={runtime.cinematicMode}
-          />
-        );
+              beams={beams}
+              footprintRadius={viz.footprintRadiusWorld}
+              reducedMotion={runtime.reducedMotion}
+              cinematicMode={runtime.cinematicMode}
+              showCallouts={runtime.beamCalloutsEnabled}
+            />
+          );
         })}
       <IntraHandoverArrow vizFrame={viz} runtime={runtime} />
+      <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />
     </>
   );
 }

@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { isFinitePanelSinr } from './panelState';
-import type { SimFrame, SimState } from './types';
+import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
+import type { SimState } from './types';
+
+// P1d: consumes `NormalizedSceneFrame.metrics` + `pendingTarget` + `recentHo`
+// (per SDD §7 Refactored bucket). Both live + replay paths drive this hook
+// uniformly through the adapter.
 
 interface HandoverPanelSnapshot {
   phase: 'pending' | 'recent-ho';
@@ -23,7 +28,7 @@ export interface PanelModeResult {
 }
 
 export interface PanelModeInputs {
-  readonly sim: SimFrame;
+  readonly frame: NormalizedSceneFrame;
   readonly liveServingSinrDb: number | null;
   readonly candidateComparisonSatId: string | null;
   readonly candidateComparisonBeamId: number | null;
@@ -31,6 +36,12 @@ export interface PanelModeInputs {
 }
 
 export type InferPanelMode = (inputs: PanelModeInputs) => PanelModeResult;
+
+function parseBeamId(beamId: string | null | undefined): number | null {
+  if (beamId === null || beamId === undefined || beamId === '') return null;
+  const numeric = Number(beamId);
+  return Number.isFinite(numeric) ? numeric : null;
+}
 
 export function usePanelModeInference({
   signalResetKey,
@@ -46,15 +57,28 @@ export function usePanelModeInference({
   }, [signalResetKey, handoverResetKey]);
 
   return useCallback(({
-    sim,
+    frame,
     liveServingSinrDb,
     candidateComparisonSatId,
     candidateComparisonBeamId,
     idleComparisonSinrDb,
   }: PanelModeInputs): PanelModeResult => {
     const previousHandoverPanel = handoverPanelRef.current;
-    let panelServingSatId = sim.serving.satId;
-    let panelServingBeamId = sim.serving.beamId;
+    const servingSatId = frame.metrics.servingSatelliteId || null;
+    const servingBeamId = parseBeamId(frame.metrics.servingBeamId);
+    const pendingTargetSatId = frame.pendingTarget?.satId ?? null;
+    const pendingTargetBeamId = parseBeamId(frame.pendingTarget?.beamId);
+    const pendingTargetSinrDb = frame.pendingTarget?.channelMetric?.dB ?? null;
+    const recentHoSourceSatId = frame.recentHo?.sourceSatId ?? null;
+    const recentHoSourceBeamId = parseBeamId(frame.recentHo?.sourceBeamId);
+    const recentHoSourceSinrDb = frame.recentHo?.sourceChannelMetric?.dB ?? null;
+    const recentHoTargetSatId = frame.recentHo?.targetSatId ?? null;
+    const recentHoTargetBeamId = parseBeamId(frame.recentHo?.targetBeamId);
+    // Live stub did not carry recentHoTargetSinrDb; renderer treats absent.
+    const recentHoTargetSinrDb: number | null = null;
+
+    let panelServingSatId = servingSatId;
+    let panelServingBeamId = servingBeamId;
     let panelServingSinrDb: number | null = liveServingSinrDb;
     let panelComparisonSatId = candidateComparisonSatId;
     let panelComparisonBeamId = candidateComparisonBeamId;
@@ -63,34 +87,34 @@ export function usePanelModeInference({
       candidateComparisonSatId !== null ? 'candidate' : null;
 
     if (
-      sim.pendingTargetSatId !== null
-      && sim.pendingTargetBeamId !== null
-      && sim.serving.satId !== null
-      && sim.serving.beamId !== null
+      pendingTargetSatId !== null
+      && pendingTargetBeamId !== null
+      && servingSatId !== null
+      && servingBeamId !== null
     ) {
       const samePendingPair =
         previousHandoverPanel?.phase === 'pending'
-        && previousHandoverPanel.servingSatId === sim.serving.satId
-        && previousHandoverPanel.servingBeamId === sim.serving.beamId
-        && previousHandoverPanel.comparisonSatId === sim.pendingTargetSatId
-        && previousHandoverPanel.comparisonBeamId === sim.pendingTargetBeamId;
+        && previousHandoverPanel.servingSatId === servingSatId
+        && previousHandoverPanel.servingBeamId === servingBeamId
+        && previousHandoverPanel.comparisonSatId === pendingTargetSatId
+        && previousHandoverPanel.comparisonBeamId === pendingTargetBeamId;
       const pendingServingSinrDb = isFinitePanelSinr(liveServingSinrDb)
         ? liveServingSinrDb
         : samePendingPair
           ? previousHandoverPanel.servingSinrDb
           : null;
-      const pendingComparisonSinrDb = isFinitePanelSinr(sim.pendingTargetSinrDb)
-        ? sim.pendingTargetSinrDb
+      const pendingComparisonSinrDb = isFinitePanelSinr(pendingTargetSinrDb)
+        ? pendingTargetSinrDb
         : samePendingPair
           ? previousHandoverPanel.comparisonSinrDb
           : null;
       handoverPanelRef.current = {
         phase: 'pending',
-        servingSatId: sim.serving.satId,
-        servingBeamId: sim.serving.beamId,
+        servingSatId,
+        servingBeamId,
         servingSinrDb: pendingServingSinrDb,
-        comparisonSatId: sim.pendingTargetSatId,
-        comparisonBeamId: sim.pendingTargetBeamId,
+        comparisonSatId: pendingTargetSatId,
+        comparisonBeamId: pendingTargetBeamId,
         comparisonSinrDb: pendingComparisonSinrDb,
       };
       panelServingSatId = handoverPanelRef.current.servingSatId;
@@ -101,32 +125,32 @@ export function usePanelModeInference({
       panelComparisonSinrDb = handoverPanelRef.current.comparisonSinrDb;
       panelComparisonKind = 'pending';
     } else if (
-      sim.recentHoSourceSatId !== null
-      && sim.recentHoSourceBeamId !== null
-      && sim.recentHoTargetSatId !== null
-      && sim.recentHoTargetBeamId !== null
+      recentHoSourceSatId !== null
+      && recentHoSourceBeamId !== null
+      && recentHoTargetSatId !== null
+      && recentHoTargetBeamId !== null
     ) {
       const sameRecentPair =
         previousHandoverPanel?.phase === 'recent-ho'
-        && previousHandoverPanel.servingSatId === sim.recentHoSourceSatId
-        && previousHandoverPanel.servingBeamId === sim.recentHoSourceBeamId
-        && previousHandoverPanel.comparisonSatId === sim.recentHoTargetSatId
-        && previousHandoverPanel.comparisonBeamId === sim.recentHoTargetBeamId;
+        && previousHandoverPanel.servingSatId === recentHoSourceSatId
+        && previousHandoverPanel.servingBeamId === recentHoSourceBeamId
+        && previousHandoverPanel.comparisonSatId === recentHoTargetSatId
+        && previousHandoverPanel.comparisonBeamId === recentHoTargetBeamId;
       const matchesPreviousPendingPair =
         previousHandoverPanel?.phase === 'pending'
-        && previousHandoverPanel.servingSatId === sim.recentHoSourceSatId
-        && previousHandoverPanel.servingBeamId === sim.recentHoSourceBeamId
-        && previousHandoverPanel.comparisonSatId === sim.recentHoTargetSatId
-        && previousHandoverPanel.comparisonBeamId === sim.recentHoTargetBeamId;
-      const recentServingSinrDb = isFinitePanelSinr(sim.recentHoSourceSinrDb)
-        ? sim.recentHoSourceSinrDb
+        && previousHandoverPanel.servingSatId === recentHoSourceSatId
+        && previousHandoverPanel.servingBeamId === recentHoSourceBeamId
+        && previousHandoverPanel.comparisonSatId === recentHoTargetSatId
+        && previousHandoverPanel.comparisonBeamId === recentHoTargetBeamId;
+      const recentServingSinrDb = isFinitePanelSinr(recentHoSourceSinrDb)
+        ? recentHoSourceSinrDb
         : matchesPreviousPendingPair
           ? previousHandoverPanel.servingSinrDb
           : sameRecentPair
             ? previousHandoverPanel.servingSinrDb
             : null;
-      const recentComparisonSinrDb = isFinitePanelSinr(sim.recentHoTargetSinrDb)
-        ? sim.recentHoTargetSinrDb
+      const recentComparisonSinrDb = isFinitePanelSinr(recentHoTargetSinrDb)
+        ? recentHoTargetSinrDb
         : matchesPreviousPendingPair
           ? previousHandoverPanel.comparisonSinrDb
           : sameRecentPair
@@ -134,11 +158,11 @@ export function usePanelModeInference({
             : null;
       handoverPanelRef.current = {
         phase: 'recent-ho',
-        servingSatId: sim.recentHoSourceSatId,
-        servingBeamId: sim.recentHoSourceBeamId,
+        servingSatId: recentHoSourceSatId,
+        servingBeamId: recentHoSourceBeamId,
         servingSinrDb: recentServingSinrDb,
-        comparisonSatId: sim.recentHoTargetSatId,
-        comparisonBeamId: sim.recentHoTargetBeamId,
+        comparisonSatId: recentHoTargetSatId,
+        comparisonBeamId: recentHoTargetBeamId,
         comparisonSinrDb: recentComparisonSinrDb,
       };
       panelServingSatId = handoverPanelRef.current.servingSatId;

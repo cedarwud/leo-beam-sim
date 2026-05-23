@@ -16,6 +16,8 @@ import type {
   VizFrame,
 } from '../src/scene/types.ts';
 import { useBeamViz } from '../src/scene/useBeamViz.ts';
+import { sceneGeometryFromProfile } from '../src/scene/SceneGeometry.ts';
+import { liveSimToScene } from '../src/showcase/liveSimToScene.ts';
 import {
   getBeamFrequencyIndex,
   resolveBeamFrequencyIndex,
@@ -224,7 +226,15 @@ function renderViz(profile: Profile, sim: SimFrame, runtime: RuntimeConfig): Viz
   let captured: VizFrame | null = null;
 
   function Probe() {
-    captured = useBeamViz(sim, profile, runtime);
+    const geometry = sceneGeometryFromProfile({
+      shell: { altitudeKm: profile.orbit.shells[0]?.altitudeKm },
+      antenna: { beamwidth3dBRad: profile.antenna.beamwidth3dBRad },
+      handover: { triggerTimeSec: profile.handover.triggerTimeSec },
+      orbit: { shells: profile.orbit.shells.map(s => ({ id: s.id, altitudeKm: s.altitudeKm })) },
+      beams: { frequencyReuse: profile.beams.frequencyReuse },
+    });
+    const frame = liveSimToScene(sim, geometry);
+    captured = useBeamViz(frame, geometry, runtime, undefined, undefined, profile.beamHopping);
     return React.createElement('div', { 'data-testid': 'viz-probe' });
   }
 
