@@ -32,3 +32,7 @@ Thumbs.db
 
 # Bridge symlink to Claude memory (user-private, not tracked)
 .agent-memory
+
+# Accidental drops from external apps (LINE / WeChat / iMessage screenshot share)
+S__*.jpg
+S__*.jpeg
