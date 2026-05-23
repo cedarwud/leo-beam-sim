@@ -390,10 +390,21 @@ function SceneContent({
         <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
       </Suspense>
 
-      <GroundScene ueGroundX={sim.ueGroundX} ueGroundZ={sim.ueGroundZ} />
+      <GroundScene
+        ues={sceneFrame.ues
+          .filter((u) => u.worldPos !== undefined)
+          .map((u) => ({ id: u.id, worldPos: u.worldPos as readonly [number, number, number] }))}
+      />
       <EarthFixedCells cells={paintedCells} showDebugLabels={runtime.beamDensity === 'all'} />
       <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />
-      <HandoverLinks satellites={viz.displaySats} eventRoles={viz.eventRoles} satBeams={viz.satBeams} />
+      <HandoverLinks
+        satellites={viz.displaySats}
+        eventRoles={viz.eventRoles}
+        satBeams={viz.satBeams}
+        primaryUeAnchor={sceneFrame.ues[0]?.worldPos as
+          | readonly [number, number, number]
+          | undefined}
+      />
       <BeamPulseClock reducedMotion={runtime.reducedMotion} />
       <ModqnReplaySceneLayer
         displayState={modqnReplayDisplayState}

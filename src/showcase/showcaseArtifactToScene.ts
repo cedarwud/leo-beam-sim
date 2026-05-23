@@ -56,7 +56,9 @@ import type {
 import {
   isReplaySceneGeometry,
   sceneGeometryFromFullArtifact,
+  type SceneGeometry,
 } from '../scene/SceneGeometry';
+import { FOOTPRINT_RADIUS_WORLD } from '../scene/beam-geometry-pure';
 import type {
   VisualShowcaseArtifact,
   VisualShowcaseBeamRole,
@@ -218,9 +220,69 @@ function buildSatellites(
   });
 }
 
+/**
+ * Per-artifact UE ground-projection parameters (P2). Reference center is
+ * the bbox center of the first-frame UE cluster, and the world scale is
+ * derived from the primary shell's footprint radius — same convention as
+ * the live `runtimeFrameStep` ueWorldScale at line ~506.
+ *
+ * The reference center is fixed per artifact (not recomputed per frame)
+ * so that UE motion across frames appears as motion in world space rather
+ * than as a sliding cluster origin.
+ */
+interface UeReplayProjection {
+  readonly referenceLatDeg: number;
+  readonly referenceLonDeg: number;
+  readonly ueWorldScale: number;
+}
+
+const KM_PER_DEG = 111.32;
+
+function computeUeReplayProjection(
+  artifact: VisualShowcaseArtifact,
+  geometry: SceneGeometry,
+): UeReplayProjection {
+  const firstFrameUes = artifact.timeline[0]?.ues ?? [];
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  for (const u of firstFrameUes) {
+    minLat = Math.min(minLat, u.geo.latDeg);
+    maxLat = Math.max(maxLat, u.geo.latDeg);
+    minLon = Math.min(minLon, u.geo.lonDeg);
+    maxLon = Math.max(maxLon, u.geo.lonDeg);
+  }
+  const referenceLatDeg = Number.isFinite(minLat) ? (minLat + maxLat) / 2 : 0;
+  const referenceLonDeg = Number.isFinite(minLon) ? (minLon + maxLon) / 2 : 0;
+
+  // Scale: pick primary shell's footprintRadiusKm.
+  const primaryShellId = artifact.entities.satellites[0]?.shellId ?? '';
+  const layout =
+    geometry.shellLayouts.get(primaryShellId) ??
+    geometry.shellLayouts.values().next().value;
+  const footprintRadiusKm = layout?.footprintRadiusKm ?? 1;
+  const ueWorldScale =
+    footprintRadiusKm > 0 ? FOOTPRINT_RADIUS_WORLD / footprintRadiusKm : 1;
+
+  return { referenceLatDeg, referenceLonDeg, ueWorldScale };
+}
+
+function projectUeWorldPos(
+  latDeg: number,
+  lonDeg: number,
+  proj: UeReplayProjection,
+): WorldPos {
+  const cosRefLat = Math.cos((proj.referenceLatDeg * Math.PI) / 180);
+  const eastKm = (lonDeg - proj.referenceLonDeg) * KM_PER_DEG * cosRefLat;
+  const northKm = (latDeg - proj.referenceLatDeg) * KM_PER_DEG;
+  return [eastKm * proj.ueWorldScale, 0, -northKm * proj.ueWorldScale];
+}
+
 function buildUes(
   samples: readonly VisualShowcaseUeSample[],
   channelMetricKind: VisualShowcaseChannelMetricKind,
+  proj: UeReplayProjection,
 ): NormalizedUe[] {
   return samples.map((u) => {
     const candidates = u.candidateSinrDbByBeamId
@@ -234,10 +296,7 @@ function buildUes(
     return {
       id: u.id,
       geo: { latDeg: u.geo.latDeg, lonDeg: u.geo.lonDeg, altKm: u.geo.altKm },
-      // worldPos optional — UE-on-ground projection is a display decision
-      // best made at the renderer (different mapping than satellite ECEF→world).
-      // TODO P2: align multi-UE replay projection with live single-UE ground
-      // mapping (`[ueGroundX, 0, ueGroundZ]`).
+      worldPos: projectUeWorldPos(u.geo.latDeg, u.geo.lonDeg, proj),
       servingSatelliteId: u.servingSatelliteId,
       servingBeamId: u.servingBeamId,
       targetSatelliteId: u.targetSatelliteId ?? null,
@@ -475,8 +534,19 @@ export function showcaseArtifactToScene(
       ? scenarioCoord
       : 'eci-km-no-earth-rotation-proxy';
 
+  const geometry = sceneGeometryFromFullArtifact(artifact);
+  // Defence-in-depth: SDD §3 Q7 last paragraph + §4 D9.
+  if (!isReplaySceneGeometry(geometry)) {
+    throw new Error(
+      '[showcaseArtifactToScene] internal invariant violated: SceneGeometry ' +
+        'does not carry REPLAY_GEOMETRY_BRAND — would risk filling geometry ' +
+        'from live Profile on the replay path (R1).',
+    );
+  }
+  const ueProjection = computeUeReplayProjection(artifact, geometry);
+
   const satellites = buildSatellites(frame.satellites, fallbackCoord, satelliteShellIdById);
-  const ues = buildUes(frame.ues, channelMetricKind);
+  const ues = buildUes(frame.ues, channelMetricKind, ueProjection);
   const beams = buildBeams(frame.beams, beamEntityIndex);
   const links = buildLinks(frame.links, channelMetricKind);
 
@@ -502,16 +572,6 @@ export function showcaseArtifactToScene(
   const recentHo: NormalizedRecentHo | undefined = undefined;
 
   const perUeDecisions = buildPerUeDecisions(artifact, frame);
-
-  const geometry = sceneGeometryFromFullArtifact(artifact);
-  // Defence-in-depth: SDD §3 Q7 last paragraph + §4 D9.
-  if (!isReplaySceneGeometry(geometry)) {
-    throw new Error(
-      '[showcaseArtifactToScene] internal invariant violated: SceneGeometry ' +
-        'does not carry REPLAY_GEOMETRY_BRAND — would risk filling geometry ' +
-        'from live Profile on the replay path (R1).',
-    );
-  }
 
   return {
     sceneSource: 'artifact-replay',

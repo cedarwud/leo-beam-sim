@@ -29,6 +29,24 @@ export interface BeamGeometry {
 }
 
 /**
+ * Display constants. Carried here (instead of in `beam-layout.ts`) so
+ * replay-side consumers can read them without triggering the eager ESM
+ * evaluation of `beam-layout.ts`'s top-level `import { … } from
+ * '../core/beam/layout'` — the same leak chain that motivated extracting
+ * `computeBeamGeometry`.
+ *
+ * `FOOTPRINT_RADIUS_WORLD`: world-space pixel/unit radius the renderer
+ * assigns to the primary beam footprint. Together with the resolved
+ * shell's `footprintRadiusKm`, it yields the km → world-units scale used
+ * for UE / satellite ground projection.
+ *
+ * `MAX_BEAMS_PER_SATELLITE`: upper bound the renderer enforces on
+ * per-satellite beam counts (paper convention).
+ */
+export const FOOTPRINT_RADIUS_WORLD = 56;
+export const MAX_BEAMS_PER_SATELLITE = 7;
+
+/**
  * Convert shell altitude + 3 dB beamwidth (rad) → ground footprint geometry.
  * Pure trigonometry; no SINR, no handover, no channel side-effects.
  */
