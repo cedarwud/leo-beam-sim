@@ -1,5 +1,6 @@
 import type { Profile } from '../profiles/types';
 import type { SimState } from '../scene/types';
+import type { VisualShowcaseChannelMetricKind } from '../scene/visual-showcase-contract';
 import { DuelCard, type DuelSignalTone } from './info-panel/DuelCard';
 import {
   formatPanelBeamIdentity,
@@ -16,6 +17,13 @@ type InfoPanelProps = SimState & {
   profile: Profile;
   handoverMode?: RuntimeHandoverMode;
   isFormulaEvidenceStale?: boolean;
+  /**
+   * P1e (c) audit-list hook (PR-0.5 backfill): channel-metric kind the panel
+   * should render. Live engine = `'sinr-with-interference'`; replay artifact
+   * = `'snr-no-interference'`. Optional; full label-branching wiring is
+   * reserved for the slice PRs — this prop only exposes the contract surface.
+   */
+  channelMetricKind?: VisualShowcaseChannelMetricKind;
 };
 
 interface LiveStatusModeCopy {

@@ -1,10 +1,23 @@
 import { UI_TOKENS } from '../../constants/uiTokens';
+import type { VisualShowcaseChannelMetricKind } from '../../scene/visual-showcase-contract';
 import type { GlyphKind } from '../../viz/glyphs';
 import { StatusBadge, type StatusBadgeTone } from './StatusBadge';
 import { DuelDecisionColumn } from './DuelDecisionColumn';
 import { DuelSignalColumn, type DuelSignalTone } from './DuelSignalColumn';
 
 export type { DuelSignalTone } from './DuelSignalColumn';
+
+/**
+ * P1e (c) audit-list hook (PR-0.5 backfill): the channel-metric kind both
+ * Serving and Comparison columns should render. Live engine =
+ * `'sinr-with-interference'`; replay artifact = `'snr-no-interference'`.
+ * Optional; full label-branching is reserved for the slice PRs — this prop
+ * is declared so InfoPanel can thread the kind through without a downstream
+ * `DuelCard` signature change.
+ */
+export type DuelCardChannelMetricProp = {
+  channelMetricKind?: VisualShowcaseChannelMetricKind;
+};
 
 export function DuelCard({
   servingTitle,

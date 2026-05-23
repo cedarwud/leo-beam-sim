@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SimState } from '../scene/types';
+import { channelMetricLabelForKind } from './info-panel/formatters';
 
 function computeSinrThroughputBitsPerHz(sinrDb: number): number {
   if (!Number.isFinite(sinrDb)) return Number.NaN;
@@ -101,7 +102,10 @@ export function LiveKpiStrip({
       <div className="leo-live-kpi-strip__group-title" id="live-kpi-serving-heading">Serving</div>
       <div role="status" aria-live="polite" aria-labelledby="live-kpi-serving-heading">
         <KpiRow label="Sat / Beam" value={formatBeam(physicalServing.satId, physicalServing.beamId)} />
-        <KpiRow label="SINR" value={sinrIsFinite ? `${(sinrDb as number).toFixed(2)} dB` : NO_VALUE} />
+        <KpiRow
+          label={channelMetricLabelForKind('sinr-with-interference')}
+          value={sinrIsFinite ? `${(sinrDb as number).toFixed(2)} dB` : NO_VALUE}
+        />
         <KpiRow label="Throughput" value={throughputValue} />
       </div>
 

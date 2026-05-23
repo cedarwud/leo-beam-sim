@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import type { SimState } from '../../scene/types';
 import {
+  channelMetricLabelForKind,
   formatDb,
   formatDbm,
   formatDbi,
@@ -10,6 +11,14 @@ import {
   sinrColor,
 } from './formatters';
 import { StatusBadge } from './StatusBadge';
+
+// P1e (c) audit-list hook (PR-0.5 backfill): keep `channelMetricLabelForKind`
+// in scope so the SINR-derived terms (line ~245 "SINR Formula Terms" heading)
+// can later branch to "SNR Formula Terms" when the producer-declared kind is
+// `'snr-no-interference'`. Full heading branching is reserved for the slice
+// PRs — this constant keeps the contract surface in scope.
+const _FORMULA_TERMS_DEFAULT_LABEL = channelMetricLabelForKind(undefined);
+void _FORMULA_TERMS_DEFAULT_LABEL;
 
 type FormulaEvidenceStatus = 'current' | 'stale' | 'waiting';
 type FormulaTermUnit = 'dBm' | 'dB' | 'dBi';

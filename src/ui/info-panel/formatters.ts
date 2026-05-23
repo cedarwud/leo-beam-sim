@@ -1,8 +1,44 @@
+import type { ChannelMetricValue } from '../../scene/ChannelMetricValue';
+import type { VisualShowcaseChannelMetricKind } from '../../scene/visual-showcase-contract';
 import { MIN_VISIBLE_SINR_DB } from '../../constants/sinr';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import type { SimState } from '../../scene/types';
 import { formatBeamIdentity } from '../../utils/formatSatelliteLabel';
 import type { GlyphKind } from '../../viz/glyphs';
+
+/**
+ * SDD §3 Q6 audit-list helper: source-driven label string for the legend /
+ * callout. The string is the single truth-tagging point — every SINR-rendering
+ * surface in the audit list should call this helper instead of hardcoding
+ * `"SINR"`.
+ *
+ * - `'sinr-with-interference'` (live engine) → `"SINR"`.
+ * - `'snr-no-interference'` (paper replay) → `"SNR"`.
+ * - Anything else falls back to `"SINR/SNR"`.
+ */
+export function channelMetricLabelForKind(
+  kind: VisualShowcaseChannelMetricKind | string | undefined,
+): string {
+  if (kind === 'sinr-with-interference') return 'SINR';
+  if (kind === 'snr-no-interference') return 'SNR';
+  return 'SINR/SNR';
+}
+
+/**
+ * Verbose label used by legends / banners (e.g.
+ * `"SINR (dB) — interference-aware (live)"` /
+ * `"SNR (dB) — paper, no interference (replay proxy)"`). Matches SDD §3 Q6
+ * rule 2. Defaults to the live form if `kind` is unknown so that screenshot /
+ * export pipelines always emit a legible label.
+ */
+export function channelMetricVerboseLabelForKind(
+  kind: VisualShowcaseChannelMetricKind | string | undefined,
+): string {
+  if (kind === 'snr-no-interference') {
+    return 'SNR (dB) — paper, no interference (replay proxy)';
+  }
+  return 'SINR (dB) — interference-aware (live)';
+}
 
 export function sinrColor(sinrDb: number): string {
   if (sinrDb >= 20) return UI_TOKENS.color.signalQuality.great;
@@ -10,9 +46,57 @@ export function sinrColor(sinrDb: number): string {
   if (sinrDb >= 5) return UI_TOKENS.color.signalQuality.warning;
   return UI_TOKENS.color.signalQuality.poor;
 }
+
+/**
+ * Kind-aware color picker — same scale, but the underlying metric kind is
+ * preserved so callers cannot accidentally feed an SNR value through a SINR-
+ * named function. SDD §3 Q6 rule 3 ("distinct color scale + badge") — the
+ * **scale function** is shared; the **label / badge** branches via
+ * {@link channelMetricLabelForKind}.
+ */
+export function channelMetricColor(value: ChannelMetricValue): string {
+  return sinrColor(value.dB);
+}
+
+/**
+ * @deprecated Prefer {@link formatChannelMetric} which carries
+ * `ChannelMetricValue.kind` and produces the correct label per SDD §3 Q6.
+ * Kept for callers in the live-sim path; will be removed when those surfaces
+ * migrate to `ChannelMetricValue`.
+ */
 export function formatSinr(sinrDb: number | null): string {
   if (sinrDb === null || !Number.isFinite(sinrDb) || sinrDb <= MIN_VISIBLE_SINR_DB) return '—';
   return `${sinrDb.toFixed(1)} dB`;
+}
+
+/**
+ * Kind-aware variant: renders the dB value with a kind-tagged suffix. Returns
+ * `'—'` for absent values. Use this in any surface that consumes a
+ * `ChannelMetricValue`; the suffix tells the user which channel metric the
+ * number represents.
+ *
+ * Example outputs:
+ *   - live SINR 13.4   → `"13.4 dB (SINR)"`
+ *   - replay SNR 13.4  → `"13.4 dB (SNR)"`
+ */
+export function formatChannelMetric(value: ChannelMetricValue | null): string {
+  if (value === null || !Number.isFinite(value.dB) || value.dB <= MIN_VISIBLE_SINR_DB) {
+    return '—';
+  }
+  return `${value.dB.toFixed(1)} dB (${channelMetricLabelForKind(value.kind)})`;
+}
+
+/**
+ * Format only the numeric portion of a `ChannelMetricValue` — useful for
+ * tightly-typed callouts that render the unit separately. The caller is
+ * responsible for emitting the kind-aware label alongside.
+ */
+export function formatChannelMetricNumeric(
+  value: ChannelMetricValue | null | undefined,
+): string {
+  if (value === null || value === undefined) return '—';
+  if (!Number.isFinite(value.dB) || value.dB <= MIN_VISIBLE_SINR_DB) return '—';
+  return `${value.dB.toFixed(1)} dB`;
 }
 
 export function formatElevation(elevationDeg: number | null): string {

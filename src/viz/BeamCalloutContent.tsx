@@ -1,14 +1,50 @@
 import {
   type BeamVisualEncoding,
 } from '../constants/beamRoleTokens';
+import type { ChannelMetricValue } from '../scene/ChannelMetricValue';
+import type { VisualShowcaseChannelMetricKind } from '../scene/visual-showcase-contract';
+import { channelMetricLabelForKind } from '../ui/info-panel/formatters';
 import { formatBeamIdentityLabel } from '../utils/beamFrequency';
 import { formatBeamIdentityByIndex, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import { glyphSymbolForKind, type GlyphKind } from './glyphs';
 import type { BeamTarget } from './SatelliteBeams';
 
+/**
+ * @deprecated Prefer {@link formatBeamChannelMetric} which carries the
+ * `ChannelMetricValue.kind` discriminator (SDD §3 Q6). The bare-number
+ * variant is kept for the live-sim hot path where `VizFrame.satBeams` carries
+ * `sinrDb: number` — kind is implicitly `'sinr-with-interference'` for live.
+ *
+ * P1d will retire this in favour of the kind-aware variant once the
+ * VizFrame.satBeams shape carries `ChannelMetricValue`.
+ */
 export function formatBeamSinr(sinrDb?: number | null): string {
   if (sinrDb === null || sinrDb === undefined || !Number.isFinite(sinrDb)) return '-- dB';
   return `${sinrDb.toFixed(1)} dB`;
+}
+
+/**
+ * Kind-aware variant: renders `"13.4 dB (SINR)"` or `"13.4 dB (SNR)"` etc.
+ * based on the producer-declared metric kind. Use this for any callout
+ * surfacing a `ChannelMetricValue` (replay path) or when wrapping a live
+ * `sinrDb` with the explicit `'sinr-with-interference'` kind.
+ */
+export function formatBeamChannelMetric(value: ChannelMetricValue | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value.dB)) return '-- dB';
+  return `${value.dB.toFixed(1)} dB (${channelMetricLabelForKind(value.kind)})`;
+}
+
+/**
+ * Wraps a bare `sinrDb` with an explicit metric kind for the callout label.
+ * Used by validators and the live-sim callout surface until those surfaces
+ * migrate to {@link formatBeamChannelMetric}.
+ */
+export function formatBeamSinrWithKind(
+  sinrDb: number | null | undefined,
+  kind: VisualShowcaseChannelMetricKind | string | undefined,
+): string {
+  if (sinrDb === null || sinrDb === undefined || !Number.isFinite(sinrDb)) return '-- dB';
+  return `${sinrDb.toFixed(1)} dB (${channelMetricLabelForKind(kind)})`;
 }
 
 export function BeamCalloutContent({

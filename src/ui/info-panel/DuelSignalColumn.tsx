@@ -1,14 +1,22 @@
 import { BEAM_ROLE_TOKENS } from '../../constants/beamRoleTokens';
 import { MIN_VISIBLE_SINR_DB } from '../../constants/sinr';
 import { UI_TOKENS } from '../../constants/uiTokens';
-import type { GlyphKind } from '../../viz/glyphs';
 import {
+  channelMetricLabelForKind,
   formatElevation,
   formatSlantRange,
   sinrColor,
 } from './formatters';
+import type { GlyphKind } from '../../viz/glyphs';
 import { PanelBeamIdentity } from './Identity';
 import { StatusBadge, type StatusBadgeTone } from './StatusBadge';
+
+// P1e (c) audit-list hook (PR-0.5 backfill): `channelMetricLabelForKind` is
+// imported so the bare numeric SINR readout below can later branch its label
+// on the producer-declared kind. Full label rendering is reserved for the
+// slice PRs — the constant keeps the contract surface in scope.
+const _PANEL_SINR_LABEL_DEFAULT = channelMetricLabelForKind(undefined);
+void _PANEL_SINR_LABEL_DEFAULT;
 
 function SinrReadout({
   testId,

@@ -19,6 +19,7 @@ import {
   type GlyphKind,
 } from './glyphs';
 import type { CinematicMode } from '../scene/types';
+import type { VisualShowcaseChannelMetricKind } from '../scene/visual-showcase-contract';
 import { isSpotlightMode, resolveCinematicConeOpacityMultiplier } from '../scene/cinematicEffects';
 import { BeamCalloutContent, formatBeamSinr } from './BeamCalloutContent';
 import { registerPulseTarget } from './beamPulseMaterials';
@@ -42,6 +43,16 @@ export interface BeamTarget {
   role?: BeamCodeRole;
   isTransitioningSource?: boolean;
   sinrDb?: number | null;
+  /**
+   * P1e (c) audit-list hook (PR-0.5 backfill): the channel-metric kind that
+   * accompanies `sinrDb`. Live engine = `'sinr-with-interference'`; replay =
+   * `'snr-no-interference'`. Optional; live-sim path does not populate this
+   * yet. Full kind-aware rendering (callout label branching via
+   * `formatBeamSinrWithKind` / `formatBeamChannelMetric`) is reserved for the
+   * slice PRs — this declaration only exposes the contract surface so future
+   * wiring does not need a downstream BeamTarget change.
+   */
+  channelMetricKind?: VisualShowcaseChannelMetricKind;
   intraRole?: IntraHandoverBeamRole;
   intraTransitionProgress?: number | null;
 }
