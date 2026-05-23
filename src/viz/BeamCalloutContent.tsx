@@ -58,7 +58,7 @@ export function BeamCalloutContent({
 }: {
   satelliteId: string | null;
   satelliteGlyph?: GlyphKind;
-  beam: Pick<BeamTarget, 'beamId' | 'frequencyIndex'>;
+  beam: Pick<BeamTarget, 'beamId' | 'frequencyIndex' | 'handoverRole'>;
   style: Pick<
     BeamVisualEncoding,
     'operatorLabel' | 'slotStateLabel' | 'calloutMinWidth' | 'calloutGlowPx' | 'frequencySwatchColor'
@@ -86,6 +86,8 @@ export function BeamCalloutContent({
       data-satellite-glyph={satelliteGlyph}
       data-beam-identity={beamIdentity}
       data-beam-token={beamTokenLabel}
+      data-handover-role={beam.handoverRole ?? undefined}
+      data-handover-color={beam.handoverRole ? color : undefined}
       style={{
         minWidth: style.calloutMinWidth,
         padding: isEmphasized ? '5px 7px' : '4px 6px',

@@ -223,7 +223,17 @@ Five sub-slices, in order of dependency:
    `INTRA · <sat> · B<from> → B<to> · ΔSINR +x.x dB`, lifetime equal to
    the wall-clock latch window.
 
-7. **B7 — Inter-first handover priority.** SINR mode must not become
+7. **B6 — Intra/inter color-language parity.** Inter-HO uses the same
+   beam-level display language as intra-HO: yellow marks the current/source
+   serving beam, blue marks the pending/target beam, and the committed
+   inter-HO transition remains visible on a display-only wall-clock latch.
+   The role channel is generic (`handoverRole`) so inter-HO no longer travels
+   through an intra-only display prop, and source yellow keeps a visible floor
+   through the full transition.
+   This parity is presentation only and does not change TTT, SINR ranking,
+   event timing, or handover counts.
+
+8. **B7 — Inter-first handover priority.** SINR mode must not become
    intra-dominant just because intra is now visible. Inter-HO remains the
    serving-satellite boundary: the post-inter guard blocks immediate intra,
    qualified inter targets own pending/TTT state, and intra-HO is evaluated
@@ -296,11 +306,14 @@ of the raw event. Add beam-level role flags:
 ```ts
 interface BeamTarget {
   ...
-  intraRole: 'intraSource' | 'intraTargetNewServing' | null;
+  handoverRole: 'intraSource' | 'intraTargetNewServing' | 'interSource' | 'interTargetNewServing' | null;
 }
 ```
 
-`intraRole` is non-null only while the wall-clock latch is active.
+`handoverRole` is non-null during intra-HO wall-clock latch, inter-HO
+pending dwell, and inter-HO wall-clock latch. Intra and inter latches are
+mutually exclusive: committing an inter-HO clears the intra latch and vice
+versa, so a beam never carries both an intra and an inter role at once.
 
 ### 7.5 UI
 

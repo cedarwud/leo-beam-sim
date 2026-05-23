@@ -11,7 +11,13 @@ export type BeamVisualRole =
   | 'inactive';
 
 export type BeamPulseKind = 'none' | 'breathe' | 'pulse' | 'fade';
-export type IntraHandoverBeamRole = 'intraSource' | 'intraTargetNewServing' | null;
+export type HandoverBeamRole =
+  | 'intraSource'
+  | 'intraTargetNewServing'
+  | 'interSource'
+  | 'interTargetNewServing'
+  | null;
+export type IntraHandoverBeamRole = HandoverBeamRole;
 
 export interface BeamRoleToken {
   operatorLabel: string | null;
@@ -63,6 +69,9 @@ export const RECENT_HO_FADE_WINDOW_SEC = 5;
 export const INTRA_HANDOVER_SOURCE_COLOR = UI_TOKENS.color.semantic.serving.accent;
 export const INTRA_HANDOVER_TARGET_COLOR = UI_TOKENS.color.semantic.candidate.accent;
 export const INTRA_HANDOVER_ARROW_COLOR = INTRA_HANDOVER_TARGET_COLOR;
+export const HANDOVER_SOURCE_COLOR = INTRA_HANDOVER_SOURCE_COLOR;
+export const HANDOVER_TARGET_COLOR = INTRA_HANDOVER_TARGET_COLOR;
+export const HANDOVER_ARROW_COLOR = HANDOVER_TARGET_COLOR;
 
 export interface IntraHandoverVisualTransition {
   progress: number;
@@ -85,38 +94,44 @@ function smoothstep(value: number): number {
   return t * t * (3 - 2 * t);
 }
 
-export function resolveIntraHandoverVisualTransition(input: {
-  role: IntraHandoverBeamRole;
+export function resolveHandoverVisualTransition(input: {
+  role: HandoverBeamRole;
   progress: number;
   reducedMotion?: boolean;
 }): IntraHandoverVisualTransition {
   const progress = input.reducedMotion ? 1 : clamp01(input.progress);
   const easedProgress = input.reducedMotion ? 1 : smoothstep(progress);
 
-  if (input.role === 'intraSource') {
-    const sourceStrength = 1 - easedProgress;
+  if (input.role === 'intraSource' || input.role === 'interSource') {
+    const sourceFadeProgress = input.reducedMotion
+      ? 1
+      : smoothstep((progress - 0.12) / 0.88);
+    const sourceStrength = 1 - sourceFadeProgress;
     return {
       progress,
       easedProgress,
-      dimFactor: 0.32 + sourceStrength * 0.68,
-      surfaceScale: 0.28 + sourceStrength * 0.72,
-      lineScale: 0.36 + sourceStrength * 0.64,
-      calloutScale: 0.44 + sourceStrength * 0.56,
-      roleRingOpacity: 0.22 + sourceStrength * 0.5,
+      dimFactor: 0.5 + sourceStrength * 0.5,
+      surfaceScale: 0.42 + sourceStrength * 0.58,
+      lineScale: 0.52 + sourceStrength * 0.48,
+      calloutScale: 0.62 + sourceStrength * 0.38,
+      roleRingOpacity: 0.36 + sourceStrength * 0.42,
       yLift: 1.2,
     };
   }
 
-  if (input.role === 'intraTargetNewServing') {
+  if (input.role === 'intraTargetNewServing' || input.role === 'interTargetNewServing') {
+    const targetEasedProgress = input.reducedMotion
+      ? 1
+      : smoothstep(0.2 + progress * 0.8);
     return {
       progress,
-      easedProgress,
+      easedProgress: targetEasedProgress,
       dimFactor: 1,
-      surfaceScale: 0.55 + easedProgress * 0.8,
-      lineScale: 0.55 + easedProgress * 0.73,
-      calloutScale: 0.74 + easedProgress * 0.44,
-      roleRingOpacity: 0.28 + easedProgress * 0.72,
-      yLift: 4 + easedProgress * 5,
+      surfaceScale: 0.18 + targetEasedProgress * 1.17,
+      lineScale: 0.24 + targetEasedProgress * 1.04,
+      calloutScale: 0.48 + targetEasedProgress * 0.7,
+      roleRingOpacity: 0.08 + targetEasedProgress * 0.92,
+      yLift: 1.6 + targetEasedProgress * 7.4,
     };
   }
 
@@ -130,6 +145,14 @@ export function resolveIntraHandoverVisualTransition(input: {
     roleRingOpacity: 0,
     yLift: 0,
   };
+}
+
+export function resolveIntraHandoverVisualTransition(input: {
+  role: IntraHandoverBeamRole;
+  progress: number;
+  reducedMotion?: boolean;
+}): IntraHandoverVisualTransition {
+  return resolveHandoverVisualTransition(input);
 }
 
 export const BEAM_PULSE_SPECS: Record<BeamPulseKind, {

@@ -577,6 +577,37 @@ function assertHandoverResetReturnsToReplayStart(): void {
   assertNotContains(block, 'beamPowerControlRef.current =');
 }
 
+function assertInterHandoverUsesBeamLevelVisualParity(): void {
+  // intra-vis SDD §5.2 B6: inter-HO uses the same beam-level display language
+  // as intra-HO (yellow source, blue target) via a generic `handoverRole`
+  // channel + a display-only wall-clock latch parallel to intra. PR-2 reuses
+  // the existing 3000 ms `INTRA_HANDOVER_ARROW_WALLCLOCK_MS` constant for the
+  // inter latch; B5 (PR-3) widens both latches to 6000 ms.
+  const runtimeSource = readFileSync(new URL('../src/scene/runtimeFrameStep.ts', import.meta.url), 'utf8');
+  const vizSource = readFileSync(new URL('../src/scene/useBeamViz.ts', import.meta.url), 'utf8');
+  const beamSource = readFileSync(new URL('../src/viz/SatelliteBeams.tsx', import.meta.url), 'utf8');
+  const calloutSource = readFileSync(new URL('../src/viz/BeamCalloutContent.tsx', import.meta.url), 'utf8');
+  const tokenSource = readFileSync(new URL('../src/constants/beamRoleTokens.ts', import.meta.url), 'utf8');
+
+  assertContains(runtimeSource, 'const INTRA_HANDOVER_ARROW_WALLCLOCK_MS = 3000');
+  assertContains(runtimeSource, 'state.interHandoverEvent = {');
+  assertContains(runtimeSource, 'state.interHandoverVizLatch = {');
+  assertContains(vizSource, "interRoleByBeamId.set(servingBeamId, 'interSource')");
+  assertContains(vizSource, "interRoleByBeamId.set(pendingTargetBeamId, 'interTargetNewServing')");
+  assertContains(vizSource, "interRoleByBeamId.set(committedInterEvent.fromBeamId, 'interSource')");
+  assertContains(vizSource, "interRoleByBeamId.set(committedInterEvent.toBeamId, 'interTargetNewServing')");
+  assertContains(vizSource, 'handoverRole,');
+  assertContains(vizSource, 'handoverTransitionProgress,');
+  assertContains(beamSource, "handoverRole === 'interSource'");
+  assertContains(beamSource, "handoverRole === 'interTargetNewServing'");
+  assertContains(beamSource, 'HANDOVER_SOURCE_COLOR');
+  assertContains(beamSource, 'HANDOVER_TARGET_COLOR');
+  assertContains(calloutSource, 'data-handover-role');
+  assertContains(calloutSource, 'data-handover-color');
+  assertContains(tokenSource, "input.role === 'intraSource' || input.role === 'interSource'");
+  assertContains(tokenSource, "input.role === 'intraTargetNewServing' || input.role === 'interTargetNewServing'");
+}
+
 function run(): void {
   assertTuningPlacementAndCopy();
   assertModeVisibility();
@@ -588,6 +619,7 @@ function run(): void {
   assertPostInterGuardBlocksImmediateIntra();
   assertServedBeamCannotRepeatWithinSatelliteEpoch();
   assertHandoverResetReturnsToReplayStart();
+  assertInterHandoverUsesBeamLevelVisualParity();
 
   console.log('Phase 6C handover policy top-level sidebar tab validation passed.');
   console.log(JSON.stringify({
