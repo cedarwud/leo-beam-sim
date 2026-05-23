@@ -62,12 +62,49 @@ import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
+import {
+  ClaimBoundaryBanner,
+  type ClaimBoundaryBannerInput,
+} from './ui/ClaimBoundaryBanner';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
 import { usePlaybackControls } from './usePlaybackControls';
 import { useCameraControls } from './useCameraControls';
 
 const DEFAULT_PROFILE_ID = 'hobs-2024-candidate-rich';
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
+
+/**
+ * P1e follow-up: ClaimBoundaryBanner mount input for the live-sim path.
+ *
+ * The renderer accepts only the {sceneSource, claimBoundary, evidenceStatus,
+ * provenance} subset of NormalizedSceneFrame. On the live-sim path no artifact
+ * is loaded, so we feed the banner a static stub that mirrors the live-stub
+ * shape emitted by `liveSimToScene` (allowedClaims / forbiddenClaims identical
+ * to the producer-validated live boundary). The banner therefore renders in
+ * `kind: 'rendered'` mode with the live SINR claim and the live forbidden-claim
+ * list active. Full artifact-replay banner wiring (sourcing the input from the
+ * loaded VisualShowcaseArtifact) lands in A-P3.
+ */
+const LIVE_SIM_CLAIM_BOUNDARY_INPUT: ClaimBoundaryBannerInput = {
+  sceneSource: 'live-sim',
+  provenance: {
+    kind: 'live-stub',
+    note: 'live-sim provenance — repo build info',
+  },
+  claimBoundary: {
+    kind: 'live-stub',
+    storyKind: 'live-sinr-sim',
+    allowedClaims: ['interference-aware SINR (live)'],
+    forbiddenClaims: [
+      'Multi-Catfish-MODQN effectiveness',
+      'Catfish-EE',
+      'general EE-MODQN superiority',
+      'active-TX EE recovery',
+      'physical energy saving',
+    ],
+  },
+  evidenceStatus: { kind: 'live-stub', status: 'live', notes: [] },
+};
 
 type LeftSidebarTab = 'objective' | 'signal' | 'handover';
 type RightSidebarTab = 'modqn' | 'live';
@@ -719,6 +756,7 @@ export function App() {
           >
             {activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
+                <ClaimBoundaryBanner frame={LIVE_SIM_CLAIM_BOUNDARY_INPUT} />
                 <InfoPanel
                   {...simState}
                   uiMode={uiMode}
