@@ -52,7 +52,7 @@
     "pingPongGuardSec": 5,
     "pendingTargetHoldSec": 1.5,
     "intraSwitchTimeSec": 0.75,
-    "maxIntraSwitchesPerServingEpoch": 1,
+    "maxIntraSwitchesPerServingEpoch": 2,
     "sinrSmoothingSec": 0.5
   },
   "beams": {

@@ -85,7 +85,7 @@ export class HandoverManager {
     this.intraSwitchTimeSec = config.intraSwitchTimeSec;
     this.maxIntraSwitchesPerServingEpoch = Math.max(
       0,
-      Math.floor(config.maxIntraSwitchesPerServingEpoch ?? 1),
+      Math.floor(config.maxIntraSwitchesPerServingEpoch ?? 2),
     );
     this.sinrSmoothingSec = config.sinrSmoothingSec;
   }

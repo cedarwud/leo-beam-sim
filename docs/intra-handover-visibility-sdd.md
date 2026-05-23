@@ -115,11 +115,13 @@ hidden hardcode) so the change is auditable:
    regimes — see §5.1.A2 for evidence. Kept tunable in the slider for
    research scenarios.
 2. `sinrSmoothingSec` (default 0.5 s). Use with caution; also affects inter.
-3. `maxIntraSwitchesPerServingEpoch` (default 1). Caps same-satellite
-   beam switches before the next inter-HO starts a new serving-satellite
-   epoch, and prevents returning to a beam already served in the current
-   epoch.
-4. `pingPongGuardSec` (default 5 s). Affects post-inter intra ramp-up.
+3. `maxIntraSwitchesPerServingEpoch` (default 1 in demo-readable profiles,
+   2 in paper/research profiles). Caps same-satellite beam switches before
+   the next inter-HO starts a new serving-satellite epoch, and prevents
+   returning to a beam already served in the current epoch.
+4. `pingPongGuardSec` (default 30 s in demo-readable profiles, 5 s in
+   paper/research profiles). Affects post-inter intra ramp-up and prevents
+   immediate inter -> intra pairing from dominating the demo.
 5. Profile selection (`hobs-2024-paper-default`,
    `hobs-2024-candidate-rich`, `hobs-2024-mobile-demo-aircraft`).
 6. UE trajectory (waypoint schema, see §13.3).
@@ -269,7 +271,8 @@ Concrete current behavior, for reference and as a checklist of touchpoints.
 | Dwell slider | `src/ui/DiagnosticsDrawer.tsx` | 262 | "Same-sat dwell" already exposes `intraSwitchTimeSec` |
 | Intra epoch limit control | `src/ui/HandoverPolicyControls.tsx` | policy controls | "Intra-HO limit per satellite" exposes `maxIntraSwitchesPerServingEpoch` |
 | Default `intraSwitchTimeSec` | three legacy profile JSONs | 54 / 52 / 61 | 0.75 s |
-| Default `maxIntraSwitchesPerServingEpoch` | profile JSONs | handover block | 1 switch per serving-satellite epoch |
+| Default `maxIntraSwitchesPerServingEpoch` | profile JSONs | handover block | 1 switch in candidate-rich/mobile demo profiles; 2 switches in paper/research profiles |
+| Default `pingPongGuardSec` | profile JSONs | handover block | 30 s in candidate-rich/mobile demo profiles; 5 s in paper/research profiles |
 | UE mobility profile | `src/profiles/hobs-2024-mobile-demo-aircraft.json` | new (S6) | Lissajous waypoints, dwell 0.75 |
 | UE waypoint injection | `src/scene/runtimeFrameStep.ts` | new (S6) | linear waypoint interp, clamp at ends |
 

@@ -48,7 +48,7 @@
     "sinrThresholdDb": -5,
     "offsetDb": 3,
     "triggerTimeSec": 3.5,
-    "pingPongGuardSec": 5,
+    "pingPongGuardSec": 30,
     "pendingTargetHoldSec": 1.5,
     "intraSwitchTimeSec": 0.75,
     "maxIntraSwitchesPerServingEpoch": 1,
