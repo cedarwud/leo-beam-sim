@@ -12,6 +12,10 @@ import {
 } from '../src/handoverPolicyTuning.ts';
 import { loadProfile } from '../src/profiles/index.ts';
 import { createInitialSimState } from '../src/scene/initialSimState.ts';
+import {
+  resolveHandoverToastState,
+  type HandoverToastInput,
+} from '../src/viz/handoverToastState.ts';
 import { createSignalTuningState, applySignalTuning } from '../src/signalTuning.ts';
 import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
 import { HandoverPolicyControls } from '../src/ui/HandoverPolicyControls.tsx';
@@ -619,16 +623,17 @@ function assertHandoverResetReturnsToReplayStart(): void {
 function assertInterHandoverUsesBeamLevelVisualParity(): void {
   // intra-vis SDD §5.2 B6: inter-HO uses the same beam-level display language
   // as intra-HO (yellow source, blue target) via a generic `handoverRole`
-  // channel + a display-only wall-clock latch parallel to intra. PR-2 reuses
-  // the existing 3000 ms `INTRA_HANDOVER_ARROW_WALLCLOCK_MS` constant for the
-  // inter latch; B5 (PR-3) widens both latches to 6000 ms.
+  // channel + a display-only wall-clock latch parallel to intra. PR-2 reused
+  // the existing wall-clock latch constant; PR-4 (B5 / §13.1) renames the
+  // constant to `HANDOVER_VISUAL_LATCH_WALLCLOCK_MS` and widens both latches
+  // to 6000 ms.
   const runtimeSource = readFileSync(new URL('../src/scene/runtimeFrameStep.ts', import.meta.url), 'utf8');
   const vizSource = readFileSync(new URL('../src/scene/useBeamViz.ts', import.meta.url), 'utf8');
   const beamSource = readFileSync(new URL('../src/viz/SatelliteBeams.tsx', import.meta.url), 'utf8');
   const calloutSource = readFileSync(new URL('../src/viz/BeamCalloutContent.tsx', import.meta.url), 'utf8');
   const tokenSource = readFileSync(new URL('../src/constants/beamRoleTokens.ts', import.meta.url), 'utf8');
 
-  assertContains(runtimeSource, 'const INTRA_HANDOVER_ARROW_WALLCLOCK_MS = 3000');
+  assertContains(runtimeSource, 'const HANDOVER_VISUAL_LATCH_WALLCLOCK_MS = 6000');
   assertContains(runtimeSource, 'state.interHandoverEvent = {');
   assertContains(runtimeSource, 'state.interHandoverVizLatch = {');
   assertContains(vizSource, "interRoleByBeamId.set(servingBeamId, 'interSource')");
@@ -647,6 +652,146 @@ function assertInterHandoverUsesBeamLevelVisualParity(): void {
   assertContains(tokenSource, "input.role === 'intraTargetNewServing' || input.role === 'interTargetNewServing'");
 }
 
+function makeToastInput(transitionProgress: HandoverToastInput['transitionProgress']): HandoverToastInput {
+  return { transitionProgress };
+}
+
+function assertHandoverToastFollowsActivePolicyState(): void {
+  // intra-vis SDD §5.2 B5: toast follows the active intra preview / committed
+  // wall-clock latch and the inter pending / committed wall-clock latch.
+  // It must not use a synthetic setTimeout or the recent-HO linger window.
+  const toastSource = readFileSync(new URL('../src/viz/HandoverToastOverlay.tsx', import.meta.url), 'utf8');
+  const stateSource = readFileSync(new URL('../src/viz/handoverToastState.ts', import.meta.url), 'utf8');
+
+  // No transition state at all → no toast.
+  assert.equal(resolveHandoverToastState(makeToastInput({}), 2, 1500), null);
+
+  // Inter pending: pending pre-trigger phase, pending* fields populated.
+  const interPendingToast = resolveHandoverToastState(makeToastInput({
+    inter: {
+      fromSatId: 'source-sat',
+      fromBeamId: '1',
+      toSatId: 'target-sat',
+      toBeamId: '4',
+      progress01: 0.5,
+      expiresAtSec: 0,
+      kind: 'pending',
+      pendingProgressSec: 0.75,
+      pendingTargetSec: 1.5,
+    },
+  }), 1.5, 1500);
+  assert.equal(interPendingToast?.kind, 'inter');
+  assert.equal(interPendingToast?.sourceSatId, 'source-sat');
+  assert.equal(interPendingToast?.sourceBeamId, 1);
+  assert.equal(interPendingToast?.targetSatId, 'target-sat');
+  assert.equal(interPendingToast?.targetBeamId, 4);
+  assert.equal(interPendingToast?.progressSec, 0.75);
+  assert.equal(interPendingToast?.targetSec, 1.5);
+  assert.equal(interPendingToast?.progressRatio, 0.5);
+
+  // Inter committed: wall-clock latch active.
+  const interTransitionToast = resolveHandoverToastState(makeToastInput({
+    inter: {
+      fromSatId: 'source-sat',
+      fromBeamId: '1',
+      toSatId: 'target-sat',
+      toBeamId: '4',
+      progress01: 0.5,
+      expiresAtSec: 85,
+      kind: 'committed',
+      wallClockStartMs: 1000,
+      wallClockExpiresMs: 7000,
+    },
+  }), 1.5, 4000);
+  assert.equal(interTransitionToast?.kind, 'inter');
+  assert.equal(interTransitionToast?.sourceSatId, 'source-sat');
+  assert.equal(interTransitionToast?.sourceBeamId, 1);
+  assert.equal(interTransitionToast?.targetSatId, 'target-sat');
+  assert.equal(interTransitionToast?.targetBeamId, 4);
+  assert.equal(interTransitionToast?.progressSec, 3);
+  assert.equal(interTransitionToast?.targetSec, 6);
+  assert.equal(interTransitionToast?.progressRatio, 0.5);
+
+  // Intra preview: dwell preview, intra wins over a concurrent inter pending state.
+  const intraPreviewToast = resolveHandoverToastState(makeToastInput({
+    intra: {
+      fromBeamId: '1',
+      toBeamId: '2',
+      progress01: 0.3,
+      expiresAtSec: 0,
+      kind: 'preview',
+      satId: 'source-sat',
+      previewProgressSec: 0.6,
+      previewTargetSec: 2,
+    },
+    inter: {
+      fromSatId: 'source-sat',
+      fromBeamId: '1',
+      toSatId: 'target-sat',
+      toBeamId: '4',
+      progress01: 0.4,
+      expiresAtSec: 0,
+      kind: 'pending',
+      pendingProgressSec: 0.8,
+      pendingTargetSec: 2,
+    },
+  }), 1.5, 1500);
+  assert.equal(intraPreviewToast?.kind, 'intra');
+  assert.equal(intraPreviewToast?.sourceSatId, 'source-sat');
+  assert.equal(intraPreviewToast?.sourceBeamId, 1);
+  assert.equal(intraPreviewToast?.targetSatId, 'source-sat');
+  assert.equal(intraPreviewToast?.targetBeamId, 2);
+  assert.equal(intraPreviewToast?.progressSec, 0.6);
+  assert.equal(intraPreviewToast?.targetSec, 2);
+  assert.equal(intraPreviewToast?.progressRatio, 1);
+
+  // Intra committed: wall-clock latch active.
+  const intraTransitionToast = resolveHandoverToastState(makeToastInput({
+    intra: {
+      fromBeamId: '1',
+      toBeamId: '2',
+      progress01: 0.5,
+      expiresAtSec: 42.4,
+      kind: 'committed',
+      satId: 'source-sat',
+      wallClockStartMs: 1000,
+      wallClockExpiresMs: 4000,
+    },
+  }), 1.5, 2500);
+  assert.equal(intraTransitionToast?.kind, 'intra');
+  assert.equal(intraTransitionToast?.progressSec, 1.5);
+  assert.equal(intraTransitionToast?.targetSec, 3);
+  assert.equal(intraTransitionToast?.progressRatio, 0.5);
+
+  // Past the wall-clock latch expiry → no toast.
+  assert.equal(resolveHandoverToastState(makeToastInput({
+    intra: {
+      fromBeamId: '1',
+      toBeamId: '2',
+      progress01: 1,
+      expiresAtSec: 42.4,
+      kind: 'committed',
+      satId: 'source-sat',
+      wallClockStartMs: 1000,
+      wallClockExpiresMs: 4000,
+    },
+  }), 1.5, 4500), null);
+
+  // Source contract: toast reads NormalizedSceneFrame.transitionProgress
+  // (intra preview / committed + inter pending / committed); never recentHo
+  // or synthetic setTimeout.
+  assertContains(toastSource, 'resolveHandoverToastState(frame, interTriggerSec, wallClockNowMs)');
+  assertContains(stateSource, 'transitionProgress.intra');
+  assertContains(stateSource, 'transitionProgress.inter');
+  assertContains(stateSource, "kind === 'preview'");
+  assertContains(stateSource, "kind === 'committed'");
+  assertContains(stateSource, "kind === 'pending'");
+  assertContains(stateSource, 'wallClockExpiresMs');
+  assertNotContains(toastSource, 'setTimeout');
+  assertNotContains(stateSource, 'setTimeout');
+  assertNotContains(stateSource, 'recentHo');
+}
+
 function run(): void {
   assertTuningPlacementAndCopy();
   assertModeVisibility();
@@ -660,6 +805,7 @@ function run(): void {
   assertServedBeamCannotRepeatWithinSatelliteEpoch();
   assertHandoverResetReturnsToReplayStart();
   assertInterHandoverUsesBeamLevelVisualParity();
+  assertHandoverToastFollowsActivePolicyState();
 
   console.log('Phase 6C handover policy top-level sidebar tab validation passed.');
   console.log(JSON.stringify({
@@ -669,6 +815,8 @@ function run(): void {
       copy: ['policy: sinr-offset read-only', 'Handover attach threshold', 'Intra-HO limit per satellite', 'no standalone handover SINR threshold label'],
       state: ['draft does not alter effective policy', 'apply updates effective policy', 'reset state clears stale handover evidence', 'inter gate preempts intra', 'post-inter guard blocks immediate intra', 'intra dwell preview surfaces while accumulating', 'intra epoch guard resets after inter-HO'],
       preservation: ['handover reset returns to replay start offset', 'handover reset publishes a zero-delta initial frame'],
+      visualParity: ['inter source/target beams use the same yellow/blue beam-level overlay as intra', 'inter visual latch is display-only wall-clock state', 'handover visual latch widened to 6.0 s wall-clock'],
+      toast: ['intra toast follows intra preview / committed state', 'inter toast follows pending / committed state', 'no synthetic toast timeout, no recentHo dependency'],
     },
   }, null, 2));
 }

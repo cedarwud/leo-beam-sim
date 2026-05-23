@@ -136,7 +136,7 @@ their logged values:
 
 - `INTRA_HANDOVER_ARROW_SEC` and its TTL semantics.
 - Arrow geometry, color, opacity curves, materials, render order.
-- Ground-disc shockwave, satellite halo ring, HUD banner.
+- Ground-disc shockwave, satellite halo ring, HUD banner / toast.
 - Auto-slow trigger inputs (extending it to include intra is presentation
   policy, not truth).
 - Beam-level versus satellite-level role tagging in `VizFrame`, as long as
@@ -220,9 +220,13 @@ Five sub-slices, in order of dependency:
    to-beam, emit a one-shot ring effect: old beam ring contracts and
    fades; new beam ring expands and brightens. Cheap and unambiguous at
    the spatial scale of adjacent same-sat beams.
-6. **B5 — HUD banner.** Compact transient overlay,
-   `INTRA · <sat> · B<from> → B<to> · ΔSINR +x.x dB`, lifetime equal to
-   the wall-clock latch window.
+6. **B5 — Scene handover toast.** Compact top-center overlay. Unlike the
+   post-event wall-clock arrow latch, this toast must follow the active
+   policy / transition state exactly: intra-HO reads `intraHandoverPreview`
+   while the same-satellite dwell is active, then the existing
+   `intraHandoverEvent` wall-clock transition latch after commit; inter-HO
+   reads `pendingTarget` while the inter trigger gate is active. It must not
+   use a synthetic timeout or the recent-HO linger window.
 
 7. **B6 — Intra/inter color-language parity.** Inter-HO uses the same
    beam-level display language as intra-HO: yellow marks the current/source
@@ -489,13 +493,15 @@ binding on the slice implementations.
 
 ### 13.1 Wall-clock latch window
 
-Fixed at **3.0 s of wall-clock time**, not derived from inter-HO
+Fixed at **6.0 s of wall-clock time**, not derived from inter-HO
 auto-slow.
 
-Rationale: 2.5 s is the visibility floor required by §9.2 and leaves no
-margin for a viewer to read the HUD banner. Inter-HO auto-slow exists to
-let the camera follow a sat change; intra-HO is a local beam swap with
-different cognitive needs, so coupling the two timings is a false
+Rationale: 2.5 s is the visibility floor required by §9.2, but practical
+review showed 3.0 s still feels too abrupt once the source and target beams
+overlap. A 6.0 s display-only latch gives the viewer enough time to read the
+toast and inspect the yellow-to-blue beam transition. Inter-HO auto-slow
+exists to let the camera follow a sat change; intra-HO is a local beam swap
+with different cognitive needs, so coupling the two timings is a false
 economy. A fixed constant is also easier to assert against in §9.2.
 
 ### 13.2 `intraSwitchTimeSec` scope

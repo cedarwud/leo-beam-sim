@@ -56,7 +56,7 @@ export const MAX_STEERING_EXTRA_RINGS = 3;
 export const RECENT_HO_LINGER_SEC = 5;
 // Deprecated: kept for backward compatibility with event records only.
 export const INTRA_HANDOVER_ARROW_SEC = 2.4;
-const INTRA_HANDOVER_ARROW_WALLCLOCK_MS = 3000;
+const HANDOVER_VISUAL_LATCH_WALLCLOCK_MS = 6000;
 const EARTH_KM_PER_DEG = 111.32;
 
 export interface RuntimeRecentHoState {
@@ -556,7 +556,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     state.interHandoverVizLatch = {
       event: state.interHandoverEvent,
       wallClockStartMs: interLatchNowWallClockMs,
-      wallClockExpiresMs: interLatchNowWallClockMs + INTRA_HANDOVER_ARROW_WALLCLOCK_MS,
+      wallClockExpiresMs: interLatchNowWallClockMs + HANDOVER_VISUAL_LATCH_WALLCLOCK_MS,
     };
     state.intraHandoverEvent = null;
     state.intraHandoverVizLatch = null;
@@ -589,7 +589,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     state.intraHandoverVizLatch = {
       event: state.intraHandoverEvent,
       wallClockStartMs: nowWallClockMs,
-      wallClockExpiresMs: nowWallClockMs + INTRA_HANDOVER_ARROW_WALLCLOCK_MS,
+      wallClockExpiresMs: nowWallClockMs + HANDOVER_VISUAL_LATCH_WALLCLOCK_MS,
     };
     state.interHandoverEvent = null;
     state.interHandoverVizLatch = null;

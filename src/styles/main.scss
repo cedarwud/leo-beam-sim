@@ -488,6 +488,77 @@ canvas {
   height: 100%;
 }
 
+.leo-handover-toast-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14px;
+  pointer-events: none;
+}
+
+.leo-handover-toast {
+  min-width: min(420px, calc(100vw - 48px));
+  max-width: min(520px, calc(100vw - 48px));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(90, 176, 255, 0.52);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(4, 21, 34, 0.92), rgba(2, 8, 15, 0.84)),
+    rgba(5, 14, 22, 0.86);
+  color: #f5fbff;
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.2;
+  backdrop-filter: blur(10px);
+}
+
+.leo-handover-toast[data-handover-toast-kind="intra"] {
+  border-color: rgba(82, 168, 255, 0.58);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.34),
+    0 0 24px rgba(82, 168, 255, 0.16),
+    inset 0 0 0 1px rgba(82, 168, 255, 0.12);
+}
+
+.leo-handover-toast[data-handover-toast-kind="inter"] {
+  border-color: rgba(121, 244, 180, 0.54);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.34),
+    0 0 24px rgba(121, 244, 180, 0.14),
+    inset 0 0 0 1px rgba(121, 244, 180, 0.12);
+}
+
+.leo-handover-toast__label {
+  color: #ffffff;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.leo-handover-toast__path {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(229, 244, 251, 0.78);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leo-handover-toast__progress {
+  color: rgba(182, 244, 255, 0.86);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .leo-modqn-scene-overlay {
   position: absolute;
   right: 16px;

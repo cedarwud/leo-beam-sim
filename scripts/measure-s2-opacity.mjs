@@ -2,7 +2,7 @@ import { chromium } from '@playwright/test';
 
 const APP_URL = 'http://127.0.0.1:5173/';
 const TIMEOUT_MS = 120_000;
-const SAMPLE_SEC = [0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5];
+const SAMPLE_SEC = [0, 1.0, 2.0, 3.0, 4.5, 6.0, 6.5];
 
 async function readArrow(page) {
   return await page.evaluate(() => {
