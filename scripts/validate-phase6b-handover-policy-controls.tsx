@@ -529,6 +529,45 @@ function assertPostInterGuardBlocksImmediateIntra(): void {
   assert.equal(manager.state.beamId, 2);
 }
 
+function assertIntraSwitchPreview(): void {
+  const profile = loadProfile(PROFILE_ID);
+  const manager = new HandoverManager({
+    ...profile.handover,
+    pingPongGuardSec: 0,
+    intraSwitchTimeSec: 2,
+    sinrSmoothingSec: 0,
+  });
+  let simTimeMs = Date.UTC(2026, 0, 1, 0, 0, 0);
+  const step = (samples: LinkSample[], dt = 1) => {
+    simTimeMs += dt * 1000;
+    return manager.update(samples, dt, simTimeMs);
+  };
+
+  step([createLinkSample('source-sat', 1, 20)]);
+  assert.equal(manager.getIntraSwitchPreview(), null, 'preview should be null before any intra target is queued');
+
+  const pendingIntra = step([
+    createLinkSample('source-sat', 1, 10),
+    createLinkSample('source-sat', 2, 12),
+  ], 0.5);
+  assert.equal(pendingIntra.action, 'stay');
+  assert.deepEqual(manager.getIntraSwitchPreview(), {
+    satId: 'source-sat',
+    fromBeamId: 1,
+    toBeamId: 2,
+    triggerTimeSec: 0.5,
+    triggerTimeTargetSec: 2,
+    progress: 0.25,
+  });
+
+  const committedIntra = step([
+    createLinkSample('source-sat', 1, 10),
+    createLinkSample('source-sat', 2, 12),
+  ], 1.5);
+  assert.equal(committedIntra.action, 'intra-switch');
+  assert.equal(manager.getIntraSwitchPreview(), null, 'preview should clear after committed intra-switch');
+}
+
 function assertServedBeamCannotRepeatWithinSatelliteEpoch(): void {
   const profile = loadProfile(PROFILE_ID);
   const manager = new HandoverManager({
@@ -617,6 +656,7 @@ function run(): void {
   assertIntraSwitchEpochGuard();
   assertInterGatePreemptsIntraSwitch();
   assertPostInterGuardBlocksImmediateIntra();
+  assertIntraSwitchPreview();
   assertServedBeamCannotRepeatWithinSatelliteEpoch();
   assertHandoverResetReturnsToReplayStart();
   assertInterHandoverUsesBeamLevelVisualParity();
@@ -627,7 +667,7 @@ function run(): void {
     asserted: {
       placement: 'Top mode selector owns SINR/MODQN; left sidebar shows mode-specific controls',
       copy: ['policy: sinr-offset read-only', 'Handover attach threshold', 'Intra-HO limit per satellite', 'no standalone handover SINR threshold label'],
-      state: ['draft does not alter effective policy', 'apply updates effective policy', 'reset state clears stale handover evidence', 'inter gate preempts intra', 'post-inter guard blocks immediate intra', 'intra epoch guard resets after inter-HO'],
+      state: ['draft does not alter effective policy', 'apply updates effective policy', 'reset state clears stale handover evidence', 'inter gate preempts intra', 'post-inter guard blocks immediate intra', 'intra dwell preview surfaces while accumulating', 'intra epoch guard resets after inter-HO'],
       preservation: ['handover reset returns to replay start offset', 'handover reset publishes a zero-delta initial frame'],
     },
   }, null, 2));

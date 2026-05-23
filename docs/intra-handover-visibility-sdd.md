@@ -71,9 +71,10 @@ the raw SINR comparison.
 
 ### 3.3 Visibility Lever
 
-A rendering change that makes an already-emitted intra-HO event easier to
-see. Pure presentation; never changes whether the event happens, who is
-involved, when it fires, or how long the truth-side guard lasts.
+A rendering change that makes an intra-HO easier to see. It may read the
+truth-side dwell preview and the already-emitted event latch, but it remains
+pure presentation; it never changes whether the event happens, who is involved,
+when it fires, or how long the truth-side guard lasts.
 
 ### 3.4 Wall-Clock vs Sim-Time
 
@@ -252,6 +253,7 @@ Concrete current behavior, for reference and as a checklist of touchpoints.
 | Intra trigger code | `src/engine/handover/handover-manager.ts` | 110–132 | `candidate.sinrDb > currentSinr`, dwell `intraSwitchTimeSec`, no margin; same-sat beam reuse and max intra count are policy guards |
 | Handover priority | `src/engine/handover/handover-manager.ts` | decision order | Inter offset / TTT and post-inter guard run before intra; intra only evaluates when no inter target qualifies and the global best remains same-sat |
 | Intra epoch guard | `src/engine/handover/handover-manager.ts` | intra epoch state | Blocks returning to a beam already served in the current serving-satellite epoch and caps intra switches by `maxIntraSwitchesPerServingEpoch`; reset by inter-HO |
+| Intra dwell preview | `src/engine/handover/handover-manager.ts` | read-only getter | Exposes same-sat dwell source/target/progress for display-only pre-switch color ramp |
 | Arrow TTL constant | `src/scene/runtimeFrameStep.ts` | 49 | `INTRA_HANDOVER_ARROW_SEC = 2.4` (sim-time) |
 | Arrow component | `src/viz/IntraHandoverArrow.tsx` | 1–143 | `THREE.Line` 1 px, `CTRL_POINT_LIFT = 80`, linear fade over sim-time TTL |
 | Source/target role | `src/scene/runtimeFrameStep.ts` | 579 ff. | `SOURCE` / `recentSource` is satellite-level, set only on inter-HO |

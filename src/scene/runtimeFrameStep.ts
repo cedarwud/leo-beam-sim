@@ -606,6 +606,9 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   const activeIntraHandoverEvent = state.intraHandoverVizLatch
     ? state.intraHandoverVizLatch.event
     : null;
+  const activeIntraHandoverPreview = activeIntraHandoverEvent
+    ? null
+    : hoManager.getIntraSwitchPreview();
   const activeIntraHandoverWallClockStartMs = state.intraHandoverVizLatch
     ? state.intraHandoverVizLatch.wallClockStartMs
     : null;
@@ -696,7 +699,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
       recentHoSourceSatId,
       recentHoTargetSatId,
       intraHandoverEvent: activeIntraHandoverEvent,
-      intraHandoverPreview: null,
+      intraHandoverPreview: activeIntraHandoverPreview,
       intraHandoverWallClockStartMs: activeIntraHandoverWallClockStartMs,
       intraHandoverWallClockExpiresMs: activeIntraHandoverWallClockExpiresMs,
       interHandoverEvent: activeInterHandoverEvent,

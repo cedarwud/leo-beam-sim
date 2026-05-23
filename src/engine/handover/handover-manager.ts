@@ -1,6 +1,6 @@
 import type { Profile } from '../../profiles/types';
 import type { LinkSample } from '../signal/types';
-import type { HandoverDecision, HandoverEvent, ServingState } from './types';
+import type { HandoverDecision, HandoverEvent, IntraSwitchPreview, ServingState } from './types';
 
 /**
  * Input contract for a {@link HandoverDecisionOverride}.
@@ -111,6 +111,19 @@ export class HandoverManager {
     if (!satId || beamId === null) return null;
     const key = beamAssignmentKey(satId, beamId);
     return this.smoothedSinrByAssignment.get(key) ?? null;
+  }
+
+  getIntraSwitchPreview(): IntraSwitchPreview | null {
+    if (!this.intraSwitchTarget || this.state.satId === null || this.state.beamId === null) return null;
+    const triggerTimeTargetSec = Math.max(this.intraSwitchTimeSec, 1e-6);
+    return {
+      satId: this.state.satId,
+      fromBeamId: this.state.beamId,
+      toBeamId: this.intraSwitchTarget.beamId,
+      triggerTimeSec: this.intraSwitchTarget.triggerTimeSec,
+      triggerTimeTargetSec,
+      progress: Math.min(1, Math.max(0, this.intraSwitchTarget.triggerTimeSec / triggerTimeTargetSec)),
+    };
   }
 
   update(
