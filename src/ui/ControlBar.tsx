@@ -35,15 +35,17 @@ interface ControlBarProps {
   onHandoverModeChange?: (mode: RuntimeHandoverMode) => void;
 }
 
-// Public demo modes. ω adjustment is now handled inside MODQN replay via the
-// sidebar Apply action, not as a third top-level handover mode.
+// Public demo modes. ω adjustment is now handled inside the decision-overlay
+// mode via the sidebar Apply action, not as a third top-level handover mode.
+// P1c OQ-7: `'modqn-replay'` renamed to `'decision-overlay-on-live-sinr'` to
+// disambiguate it from the new `sceneSource='artifact-replay'` axis.
 const HANDOVER_MODE_OPTIONS: Array<{
   mode: RuntimeHandoverMode;
   label: string;
   disabledReason?: string;
 }> = [
   { mode: 'sinr-offset', label: 'SINR-offset' },
-  { mode: 'modqn-replay', label: 'MODQN replay' },
+  { mode: 'decision-overlay-on-live-sinr', label: 'Decision overlay on live SINR' },
 ];
 
 const UI_MODE_LABELS: Record<UiMode, string> = {

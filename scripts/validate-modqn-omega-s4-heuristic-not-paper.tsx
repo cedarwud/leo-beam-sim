@@ -13,12 +13,12 @@
 //   (e) ControlBar.tsx no longer exposes omega-heuristic as a top-level demo
 //       mode; ω Apply is handled inside MODQN replay.
 //   (f) App.tsx keeps data-handover-criterion to the two public branches:
-//       modqn-replay / sinr-offset.
+//       decision-overlay-on-live-sinr / sinr-offset.
 //   (g) `persistHandoverMode('omega-heuristic')` MUST NOT write to localStorage
 //       (verified via a mock storage instance). `persistHandoverMode('sinr-offset')`
 //       still writes (regression guard).
 //   (h) On boot, readPersistedHandoverMode returns 'sinr-offset' for any
-//       stored value other than 'sinr-offset' or 'modqn-replay' — including
+//       stored value other than 'sinr-offset' or 'decision-overlay-on-live-sinr' — including
 //       'omega-heuristic' and arbitrary invalid strings (SDD §4.4 item 2).
 //   (i) DiagnosticsDrawer renders an omega-heuristic section (test-id
 //       `diagnostics-drawer-omega-heuristic`) that shows mode, ω, score
@@ -194,7 +194,7 @@ console.log('\n(e) ControlBar omega-heuristic entry removed');
 {
   const cbSrc = readSource('src/ui/ControlBar.tsx');
   assert(
-    cbSrc.includes("mode: 'sinr-offset'") && cbSrc.includes("mode: 'modqn-replay'"),
+    cbSrc.includes("mode: 'sinr-offset'") && cbSrc.includes("mode: 'decision-overlay-on-live-sinr'"),
     'ControlBar exposes the two public demo modes',
   );
   assert(
@@ -204,14 +204,14 @@ console.log('\n(e) ControlBar omega-heuristic entry removed');
 }
 
 // ---------------------------------------------------------------------------
-// (f) App.tsx data-handover-criterion preserves modqn-replay/sinr-offset branch
+// (f) App.tsx data-handover-criterion preserves decision-overlay-on-live-sinr/sinr-offset branch
 // ---------------------------------------------------------------------------
 console.log('\n(f) App.tsx data-handover-criterion 2-way wiring');
 {
   const appSrc = readSource('src/App.tsx');
   assert(
-    appSrc.includes("handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset'"),
-    "App.tsx uses the public modqn-replay/sinr-offset ternary literal",
+    appSrc.includes("handoverMode === 'decision-overlay-on-live-sinr' ? 'decision-overlay-on-live-sinr' : 'sinr-offset'"),
+    "App.tsx uses the public decision-overlay-on-live-sinr/sinr-offset ternary literal",
   );
   assert(
     !appSrc.includes("'omega-heuristic-not-paper'"),
@@ -248,17 +248,17 @@ console.log('\n(g) persistHandoverMode skips omega-heuristic');
       `key in store: ${[...store.keys()].join(',')}`,
     );
 
-    // Regression: sinr-offset and modqn-replay still persist.
+    // Regression: sinr-offset and decision-overlay-on-live-sinr still persist.
     persistHandoverMode('sinr-offset');
     assert(
       store.get(HANDOVER_MODE_STORAGE_KEY) === 'sinr-offset',
       "persistHandoverMode('sinr-offset') writes 'sinr-offset'",
       `got: ${store.get(HANDOVER_MODE_STORAGE_KEY) ?? '<unset>'}`,
     );
-    persistHandoverMode('modqn-replay');
+    persistHandoverMode('decision-overlay-on-live-sinr');
     assert(
-      store.get(HANDOVER_MODE_STORAGE_KEY) === 'modqn-replay',
-      "persistHandoverMode('modqn-replay') writes 'modqn-replay'",
+      store.get(HANDOVER_MODE_STORAGE_KEY) === 'decision-overlay-on-live-sinr',
+      "persistHandoverMode('decision-overlay-on-live-sinr') writes 'decision-overlay-on-live-sinr'",
       `got: ${store.get(HANDOVER_MODE_STORAGE_KEY) ?? '<unset>'}`,
     );
   } finally {
@@ -307,10 +307,10 @@ console.log('\n(h) readPersistedHandoverMode boot fallback');
     );
 
     // Valid values still round-trip.
-    store.set(HANDOVER_MODE_STORAGE_KEY, 'modqn-replay');
+    store.set(HANDOVER_MODE_STORAGE_KEY, 'decision-overlay-on-live-sinr');
     assert(
-      readPersistedHandoverMode() === 'modqn-replay',
-      "Persisted 'modqn-replay' → modqn-replay (S3 regression guard)",
+      readPersistedHandoverMode() === 'decision-overlay-on-live-sinr',
+      "Persisted 'decision-overlay-on-live-sinr' → decision-overlay-on-live-sinr (S3 regression guard)",
     );
     store.set(HANDOVER_MODE_STORAGE_KEY, 'sinr-offset');
     assert(

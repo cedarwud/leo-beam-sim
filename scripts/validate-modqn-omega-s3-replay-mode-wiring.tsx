@@ -6,7 +6,7 @@
 //   (b) reScalarize returns correct argmax for a synthetic candidates array
 //   (c) fallback fires when all candidates lack objectiveQ
 //   (d) reference artifact profile constant is 'modqn-1sat-7beam'
-//   (e) localStorage persistence: sinr-offset and modqn-replay are persisted;
+//   (e) localStorage persistence: sinr-offset and decision-overlay-on-live-sinr are persisted;
 //       omega-heuristic is NOT persisted
 //   (f) ModqnHandoverModeContext is exported from useModqnHandoverState
 //   (g) data-handover-criterion attribute is added to leo-shell-canvas in App.tsx
@@ -183,7 +183,7 @@ console.log('\n(d) Reference artifact profile: modqn-1sat-7beam constant');
 }
 
 // ---------------------------------------------------------------------------
-// (e) localStorage persistence: sinr-offset + modqn-replay persisted;
+// (e) localStorage persistence: sinr-offset + decision-overlay-on-live-sinr persisted;
 //     omega-heuristic never persisted
 // ---------------------------------------------------------------------------
 console.log('\n(e) localStorage persistence rules');
@@ -206,8 +206,8 @@ console.log('\n(e) localStorage persistence rules');
     'persistHandoverMode references PERSISTABLE_MODES with omega-heuristic exclusion',
   );
   assert(
-    persistSrc.includes("stored === 'sinr-offset' || stored === 'modqn-replay'"),
-    'readPersistedHandoverMode only accepts sinr-offset or modqn-replay',
+    persistSrc.includes("stored === 'sinr-offset' || stored === 'decision-overlay-on-live-sinr'"),
+    'readPersistedHandoverMode only accepts sinr-offset or decision-overlay-on-live-sinr',
   );
 }
 
@@ -259,12 +259,12 @@ console.log('\n(g) App.tsx data-handover-criterion attribute');
     'App.tsx contains data-handover-criterion attribute',
   );
   assert(
-    appSrc.includes("handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset'"),
-    "App.tsx switches data-handover-criterion between 'modqn-replay' and 'sinr-offset'",
+    appSrc.includes("handoverMode === 'decision-overlay-on-live-sinr' ? 'decision-overlay-on-live-sinr' : 'sinr-offset'"),
+    "App.tsx switches data-handover-criterion between 'decision-overlay-on-live-sinr' and 'sinr-offset'",
   );
   assert(
-    appSrc.includes("if (handoverMode !== 'modqn-replay')") && appSrc.includes('return null;'),
-    'App.tsx nulls rendered MODQN replay display state outside modqn-replay mode',
+    appSrc.includes("if (handoverMode !== 'decision-overlay-on-live-sinr')") && appSrc.includes('return null;'),
+    'App.tsx nulls rendered MODQN replay display state outside decision-overlay-on-live-sinr mode',
   );
 }
 
@@ -286,8 +286,8 @@ console.log('\n(h) DiagnosticsDrawer props');
     'DiagnosticsDrawer.tsx contains rescalarizeFallbackCount prop',
   );
   assert(
-    drawSrc.includes("handoverMode === 'modqn-replay'"),
-    "DiagnosticsDrawer.tsx gates fallback section on handoverMode === 'modqn-replay'",
+    drawSrc.includes("handoverMode === 'decision-overlay-on-live-sinr'"),
+    "DiagnosticsDrawer.tsx gates fallback section on handoverMode === 'decision-overlay-on-live-sinr'",
   );
   assert(
     drawSrc.includes('diagnostics-drawer-rescalarize-fallback'),
@@ -313,8 +313,8 @@ console.log('\n(i) ControlBar props');
     'ControlBar.tsx contains onHandoverModeChange prop',
   );
   assert(
-    cbSrc.includes("mode: 'sinr-offset'") && cbSrc.includes("mode: 'modqn-replay'"),
-    'ControlBar.tsx exposes sinr-offset and modqn-replay entries',
+    cbSrc.includes("mode: 'sinr-offset'") && cbSrc.includes("mode: 'decision-overlay-on-live-sinr'"),
+    'ControlBar.tsx exposes sinr-offset and decision-overlay-on-live-sinr entries',
   );
   assert(
     !cbSrc.includes("mode: 'omega-heuristic'"),
@@ -325,8 +325,8 @@ console.log('\n(i) ControlBar props');
     'ControlBar.tsx has handover-mode-control testid group',
   );
   assert(
-    cbSrc.includes("handover-mode-${option.mode}") || cbSrc.includes("handover-mode-modqn-replay"),
-    'ControlBar.tsx has handover-mode-modqn-replay testid (static or template literal)',
+    cbSrc.includes("handover-mode-${option.mode}") || cbSrc.includes("handover-mode-decision-overlay-on-live-sinr"),
+    'ControlBar.tsx has handover-mode-decision-overlay-on-live-sinr testid (static or template literal)',
   );
 }
 
@@ -348,8 +348,8 @@ console.log('\n(j) S3HandoverManager in useSimulation.ts');
     'S3HandoverManager has override update method',
   );
   assert(
-    simSrc.includes("overrideRef.current") && simSrc.includes("'modqn-replay'"),
-    "useSimulation.ts sets overrideRef only when handoverMode === 'modqn-replay'",
+    simSrc.includes("overrideRef.current") && simSrc.includes("'decision-overlay-on-live-sinr'"),
+    "useSimulation.ts sets overrideRef only when handoverMode === 'decision-overlay-on-live-sinr'",
   );
   assert(
     simSrc.includes('reScalarize'),
@@ -361,10 +361,10 @@ console.log('\n(j) S3HandoverManager in useSimulation.ts');
     && simSrc.includes('sortedBySinrDesc.find(candidate => candidate.beamId === result.beamId)'),
     'useSimulation.ts maps producer MODQN local beam choice onto the current visual scene candidates',
   );
-  // Truth invariance: when mode !== 'modqn-replay', overrideRef.current is set to null.
+  // Truth invariance: when mode !== 'decision-overlay-on-live-sinr', overrideRef.current is set to null.
   assert(
-    simSrc.includes('handoverModeRef.current === \'modqn-replay\' ? decisionOverride : null'),
-    'useSimulation.ts nulls overrideRef when not modqn-replay (truth invariance)',
+    simSrc.includes('handoverModeRef.current === \'decision-overlay-on-live-sinr\' ? decisionOverride : null'),
+    'useSimulation.ts nulls overrideRef when not decision-overlay-on-live-sinr (truth invariance)',
   );
   assert(
     simSrc.includes('const resetToReplayStartFrame = useCallback(() => {')
@@ -403,15 +403,15 @@ console.log('\n(k) Evidence / telemetry mode gating');
   );
   assert(
     appSrc.includes('readInitialRuntimeState') && appSrc.includes('selectedProfileId: DEFAULT_PROFILE_ID')
-    && !appSrc.includes('selectedProfileId: handoverMode === \'modqn-replay\''),
-    'App.tsx keeps modqn-replay mode profile-preserving on boot instead of forcing the 1-sat profile',
+    && !appSrc.includes('selectedProfileId: handoverMode === \'decision-overlay-on-live-sinr\''),
+    'App.tsx keeps decision-overlay-on-live-sinr mode profile-preserving on boot instead of forcing the 1-sat profile',
   );
   assert(
     !appSrc.includes('window.confirm')
-    && !appSrc.includes('modqn-replay requires the modqn-1sat-7beam profile')
+    && !appSrc.includes('decision-overlay-on-live-sinr requires the modqn-1sat-7beam profile')
     && !appSrc.includes('resetRuntimeToProfile(targetProfileId)')
     && !appSrc.includes('previousNonModqnProfileIdRef'),
-    'App.tsx enters modqn-replay without confirmation or automatic profile switching',
+    'App.tsx enters decision-overlay-on-live-sinr without confirmation or automatic profile switching',
   );
   assert(
     appSrc.includes('getLeftSidebarTabsForMode')

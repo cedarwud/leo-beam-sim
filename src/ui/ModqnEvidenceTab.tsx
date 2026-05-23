@@ -175,7 +175,7 @@ export function ModqnEvidenceTab({
   const fallbackHook = useModqnHandoverState();
   const hook = hookOverride ?? fallbackHook;
   const { omegaActive, omegaSource, bundleSidebarSnapshot } = hook;
-  const modqnReplayActive = handoverMode === 'modqn-replay';
+  const modqnReplayActive = handoverMode === 'decision-overlay-on-live-sinr';
   const inactiveModeLabel = handoverMode === 'omega-heuristic' ? 'ω heuristic' : 'SINR-offset';
   const decisionTrace = useMemo(
     () => buildDecisionTrace(bundleSidebarSnapshot, omegaActive, simState),

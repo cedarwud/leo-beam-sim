@@ -271,7 +271,7 @@ function assertModeVisibility(): void {
       {...modqnLiveStatusState}
       uiMode="presentation"
       profile={profile}
-      handoverMode="modqn-replay"
+      handoverMode="decision-overlay-on-live-sinr"
     />,
   ));
   assertContains(modqnLiveStatusText, 'MODQN replay');

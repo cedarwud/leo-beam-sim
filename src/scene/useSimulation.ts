@@ -137,7 +137,7 @@ export function useSimulation(
   const decisionOverride = useCallback<HandoverDecisionOverride>(input => {
     const mode = handoverModeRef.current;
 
-    if (mode === 'modqn-replay') {
+    if (mode === 'decision-overlay-on-live-sinr') {
       const env = envelopeRef.current;
       if (!env) return null;
 
@@ -211,7 +211,7 @@ export function useSimulation(
 
   const installDecisionOverride = useCallback(() => {
     const overrideInModqnReplay =
-      handoverModeRef.current === 'modqn-replay' ? decisionOverride : null;
+      handoverModeRef.current === 'decision-overlay-on-live-sinr' ? decisionOverride : null;
     hoManager.overrideRef.current =
       overrideInModqnReplay
       ?? (handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null);
@@ -276,7 +276,7 @@ export function useSimulation(
     // S3/S4: install or clear the override on the manager each frame so the
     // ref is current at the moment hoManager.update() fires inside
     // stepRuntimeFrame. The S3 invariant remains visible in source —
-    // `handoverModeRef.current === 'modqn-replay' ? decisionOverride : null` —
+    // `handoverModeRef.current === 'decision-overlay-on-live-sinr' ? decisionOverride : null` —
     // and S4 widens the truthiness to also enable the override under
     // `omega-heuristic`. In `sinr-offset` (or any unknown) mode the install
     // resolves to null, which is byte-equivalent to base-class behavior

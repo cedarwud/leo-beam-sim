@@ -172,7 +172,7 @@ function assertSceneBridgeSource(): void {
   );
   assertContains(
     appSource,
-    "if (handoverMode !== 'modqn-replay')",
+    "if (handoverMode !== 'decision-overlay-on-live-sinr')",
     'App replay-to-scene mode gate',
   );
   assertContains(

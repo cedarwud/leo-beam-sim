@@ -173,7 +173,7 @@ function getDefaultLeftSidebarTabForMode(mode: RuntimeHandoverMode): LeftSidebar
 }
 
 function getRightSidebarTabsForMode(mode: RuntimeHandoverMode): readonly SidebarTabItem<RightSidebarTab>[] {
-  return mode === 'modqn-replay'
+  return mode === 'decision-overlay-on-live-sinr'
     ? MODQN_RIGHT_SIDEBAR_TABS
     : SINR_RIGHT_SIDEBAR_TABS;
 }
@@ -219,7 +219,7 @@ export function App() {
   const [selectedProfileId, setSelectedProfileId] = useState(initialRuntime.selectedProfileId);
   const [uiMode, setUiMode] = useState<UiMode>(() => readPersistedUiMode());
 
-  // S3: handover mode — persisted for sinr-offset/modqn-replay, never for omega-heuristic.
+  // S3: handover mode — persisted for sinr-offset/decision-overlay-on-live-sinr, never for omega-heuristic.
   const [handoverMode, setHandoverModeRaw] = useState<RuntimeHandoverMode>(
     initialRuntime.handoverMode,
   );
@@ -406,7 +406,7 @@ export function App() {
     [modqnReplayEnvelope, modqnReplaySlotOffset],
   );
   const renderedModqnReplayDisplayState = useMemo(() => {
-    if (handoverMode !== 'modqn-replay') {
+    if (handoverMode !== 'decision-overlay-on-live-sinr') {
       return null;
     }
     if (omegaDisplayApplyVersion === 0) {
@@ -521,7 +521,7 @@ export function App() {
   const handleHandoverModeChange = useCallback((nextMode: RuntimeHandoverMode) => {
     if (nextMode === handoverMode) return;
 
-    if (nextMode === 'modqn-replay') {
+    if (nextMode === 'decision-overlay-on-live-sinr') {
       // Reset ω to the bundle objectiveWeights, falling back to paper-faithful
       // constants only when producer diagnostics are absent.
       setOmegaActiveForContext(modqnBundleOmega);
@@ -733,7 +733,7 @@ export function App() {
           className="leo-shell-canvas"
           data-testid="leo-shell-canvas"
           data-handover-criterion={
-            handoverMode === 'modqn-replay' ? 'modqn-replay' : 'sinr-offset'
+            handoverMode === 'decision-overlay-on-live-sinr' ? 'decision-overlay-on-live-sinr' : 'sinr-offset'
           }
         >
           <MainScene

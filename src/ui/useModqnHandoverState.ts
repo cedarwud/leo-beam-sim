@@ -4,9 +4,10 @@
 //   * ω draft / active state (RuntimeOmegaState)
 //   * omegaSource lineage (bundle / user-applied / user-applied-not-paper)
 //   * The runtime handover mode (RuntimeHandoverMode), with localStorage
-//     persistence for sinr-offset / modqn-replay (never persisted for
-//     omega-heuristic — SDD §4.4 item 2: app startup always resets to
-//     `sinr-offset`; selecting `omega-heuristic` is intentional per-session)
+//     persistence for sinr-offset / decision-overlay-on-live-sinr (never
+//     persisted for omega-heuristic — SDD §4.4 item 2: app startup always
+//     resets to `sinr-offset`; selecting `omega-heuristic` is intentional
+//     per-session)
 //   * The bundle sidebar snapshot: ModqnPolicyDiagnostics + manifest fields the
 //     evidence tab displays (paperId, bundleSchemaVersion, baselineSurface)
 //
@@ -19,8 +20,9 @@
 //   * `incrementRescalarizeFallback` is provided via `ModqnHandoverModeContext`
 //     so `useSimulation.ts` (inside the Canvas) can call it when the override
 //     fires a fallback.
-//   * localStorage persistence: `sinr-offset` and `modqn-replay` are persisted;
-//     `omega-heuristic` is never persisted (S4's job; S3 must not persist it).
+//   * localStorage persistence: `sinr-offset` and
+//     `decision-overlay-on-live-sinr` are persisted; `omega-heuristic` is
+//     never persisted (S4's job; S3 must not persist it).
 //
 // S2 internal change (SDD §9.3):
 //   * `getBundleSidebarSnapshot(envelope, slotOffset)` reads envelope-level
@@ -77,33 +79,64 @@ import {
   type ModqnReplayBundleSchemaVersion,
 } from '../modqn/replay-bundle/types';
 
-// Three modes from SDD §3.2. S3 wires `modqn-replay` to the override hook
-// from S0. S4 wires `omega-heuristic`.
+// Three modes from SDD §3.2. P1c OQ-7 (CLOSED): the former `'modqn-replay'`
+// is renamed `'decision-overlay-on-live-sinr'` to disambiguate it from the
+// new `sceneSource='artifact-replay'` axis. The old visual-showcase-v1
+// integration would otherwise read as a 2-of-2 conflicting "replay" concept.
+// localStorage carries a one-shot migration shim (see
+// `readPersistedHandoverMode` below) so prior user state is preserved.
 //
-// PR-0 housekeeping: union widened to include `'decision-overlay-on-live-sinr'`
-// (the OQ-7 renamed literal per visual-showcase SDD §10) so prior commits that
-// already referenced the new literal (e.g. DiagnosticsDrawer.tsx) lint clean.
-// Runtime still emits `'modqn-replay'`; the runtime rename + persistence
-// migration shim lands in a later visual-showcase A-OQ7 PR.
+// PR-0 widened the union to include the new literal so DiagnosticsDrawer
+// lint-clean. PR-7 (this commit) shrinks the union back by dropping the
+// legacy `'modqn-replay'` literal — every functional callsite is now
+// renamed (per visual-showcase SDD §10 OQ-7 housekeeping).
 export type RuntimeHandoverMode =
   | 'sinr-offset'
-  | 'modqn-replay'
   | 'decision-overlay-on-live-sinr'
   | 'omega-heuristic';
 
 export const DEFAULT_RUNTIME_HANDOVER_MODE: RuntimeHandoverMode = 'sinr-offset';
 
-// localStorage key for mode persistence. Only sinr-offset and modqn-replay
-// are persisted. omega-heuristic is NEVER written (SDD §5.2, §9.4 item 8).
+// localStorage key for mode persistence. Only sinr-offset and the renamed
+// decision-overlay-on-live-sinr are persisted. omega-heuristic is NEVER
+// written (SDD §5.2, §9.4 item 8).
 export const HANDOVER_MODE_STORAGE_KEY = 'leo-beam-sim.handover-mode.v1';
 
-const PERSISTABLE_MODES = new Set<RuntimeHandoverMode>(['sinr-offset', 'modqn-replay']);
+/** Legacy value stored before OQ-7 rename. Migrated in-place on read. */
+const LEGACY_MODQN_REPLAY_VALUE = 'modqn-replay';
 
+const PERSISTABLE_MODES = new Set<RuntimeHandoverMode>([
+  'sinr-offset',
+  'decision-overlay-on-live-sinr',
+]);
+
+/**
+ * Read the persisted handover mode, migrating the legacy `'modqn-replay'`
+ * value to `'decision-overlay-on-live-sinr'` on the fly (one-shot — the
+ * migrated value is written back to localStorage so subsequent reads see the
+ * new key).
+ *
+ * Migration semantics (OQ-7 binding): a stored value of `'modqn-replay'` is
+ * accepted as `'decision-overlay-on-live-sinr'`; the localStorage entry is
+ * rewritten in place; no user state is lost.
+ */
 export function readPersistedHandoverMode(): RuntimeHandoverMode {
   if (typeof window === 'undefined') return DEFAULT_RUNTIME_HANDOVER_MODE;
   try {
     const stored = window.localStorage.getItem(HANDOVER_MODE_STORAGE_KEY);
-    if (stored === 'sinr-offset' || stored === 'modqn-replay') return stored;
+    if (stored === 'sinr-offset' || stored === 'decision-overlay-on-live-sinr') return stored;
+    if (stored === LEGACY_MODQN_REPLAY_VALUE) {
+      // OQ-7 one-shot migration: rewrite to new key and return new value.
+      try {
+        window.localStorage.setItem(
+          HANDOVER_MODE_STORAGE_KEY,
+          'decision-overlay-on-live-sinr',
+        );
+      } catch {
+        // Storage unavailable; still return the migrated value.
+      }
+      return 'decision-overlay-on-live-sinr';
+    }
   } catch {
     // Storage unavailable in private/embedded contexts.
   }
@@ -551,7 +584,7 @@ export function useModqnHandoverState(): UseModqnHandoverState {
   // unless the draft is identical to the bundle's training-time ω.
   // S4 will replace 'user-applied' with 'user-applied-not-paper' when the
   // active mode is `omega-heuristic`. For S1/S2 (mode default `sinr-offset`),
-  // 'user-applied' covers both modqn-replay and sinr-offset edits.
+  // 'user-applied' covers both decision-overlay-on-live-sinr and sinr-offset edits.
   // S3: also notifies the mode context so App.tsx (and then useSimulation via
   // the context) picks up the updated omega for re-scalarization.
   const applyOmega = useCallback(() => {

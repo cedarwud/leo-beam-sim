@@ -41,7 +41,7 @@ interface LiveStatusModeCopy {
 }
 
 function getLiveStatusModeCopy(mode: RuntimeHandoverMode): LiveStatusModeCopy {
-  if (mode === 'modqn-replay') {
+  if (mode === 'decision-overlay-on-live-sinr') {
     return {
       label: 'MODQN replay',
       detail: 'MODQN selects serving; SINR metrics are live',
