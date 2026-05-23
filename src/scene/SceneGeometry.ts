@@ -30,7 +30,7 @@ import type {
   VisualShowcaseArtifact,
   VisualShowcaseBeamEntity,
 } from './visual-showcase-contract';
-import { computeBeamGeometry } from './beam-layout';
+import { computeBeamGeometry } from './beam-geometry-pure';
 
 // ---------------------------------------------------------------------------
 // Branding

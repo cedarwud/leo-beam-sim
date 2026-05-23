@@ -1,4 +1,8 @@
 import { generateHexagonalBeamLayout } from '../core/beam/layout';
+import { computeBeamGeometry, type BeamGeometry } from './beam-geometry-pure';
+
+export { computeBeamGeometry };
+export type { BeamGeometry };
 
 export const CORE_LAYOUT_FREQUENCY_REUSE_VALUES = [1, 3, 7] as const;
 export type CoreLayoutFrequencyReuse = typeof CORE_LAYOUT_FREQUENCY_REUSE_VALUES[number];
@@ -8,11 +12,6 @@ export interface CoreLayoutFrequencyReuseResolution {
   runtimeFrequencyReuse: number;
   coreLayoutFrequencyReuse: CoreLayoutFrequencyReuse;
   reuseGroupSource: ReuseGroupSource;
-}
-
-export interface BeamGeometry {
-  footprintRadiusKm: number;
-  spacingKm: number;
 }
 
 export interface BeamOffsetKm {
@@ -77,16 +76,6 @@ function deriveCompatibilityReuseGroup(
   runtimeFrequencyReuse: number,
 ): number {
   return coreLocalBeamIndex % runtimeFrequencyReuse;
-}
-
-export function computeBeamGeometry(
-  altitudeKm: number,
-  beamwidth3dBRad: number,
-): BeamGeometry {
-  const halfBeamRad = beamwidth3dBRad / 2;
-  const footprintRadiusKm = altitudeKm * Math.tan(halfBeamRad);
-  const spacingKm = footprintRadiusKm * Math.sqrt(3);
-  return { footprintRadiusKm, spacingKm };
 }
 
 export function generateBeamOffsetsKm(
