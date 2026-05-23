@@ -123,6 +123,11 @@ hidden hardcode) so the change is auditable:
    `hobs-2024-candidate-rich`, `hobs-2024-mobile-demo-aircraft`).
 6. UE trajectory (waypoint schema, see §13.3).
 
+Policy sequencing is not a hidden tuning knob: inter-HO offset / TTT and the
+post-inter guard run before same-satellite beam refinement. Intra-HO is a local
+fallback when no inter target qualifies and the global best candidate remains
+on the current serving satellite.
+
 ### 4.3 Pure presentation — fully free
 
 Anything that does not change which events are emitted, when, by whom, or
@@ -218,6 +223,13 @@ Five sub-slices, in order of dependency:
    `INTRA · <sat> · B<from> → B<to> · ΔSINR +x.x dB`, lifetime equal to
    the wall-clock latch window.
 
+7. **B7 — Inter-first handover priority.** SINR mode must not become
+   intra-dominant just because intra is now visible. Inter-HO remains the
+   serving-satellite boundary: the post-inter guard blocks immediate intra,
+   qualified inter targets own pending/TTT state, and intra-HO is evaluated
+   only when no inter target qualifies and the global best candidate is still
+   on the current serving satellite.
+
 Each B-slice is independently shippable and produces a visible improvement
 on its own.
 
@@ -228,6 +240,7 @@ Concrete current behavior, for reference and as a checklist of touchpoints.
 | Concern | File | Line | Current |
 |---|---|---|---|
 | Intra trigger code | `src/engine/handover/handover-manager.ts` | 110–132 | `candidate.sinrDb > currentSinr`, dwell `intraSwitchTimeSec`, no margin; same-sat beam reuse and max intra count are policy guards |
+| Handover priority | `src/engine/handover/handover-manager.ts` | decision order | Inter offset / TTT and post-inter guard run before intra; intra only evaluates when no inter target qualifies and the global best remains same-sat |
 | Intra epoch guard | `src/engine/handover/handover-manager.ts` | intra epoch state | Blocks returning to a beam already served in the current serving-satellite epoch and caps intra switches by `maxIntraSwitchesPerServingEpoch`; reset by inter-HO |
 | Arrow TTL constant | `src/scene/runtimeFrameStep.ts` | 49 | `INTRA_HANDOVER_ARROW_SEC = 2.4` (sim-time) |
 | Arrow component | `src/viz/IntraHandoverArrow.tsx` | 1–143 | `THREE.Line` 1 px, `CTRL_POINT_LIFT = 80`, linear fade over sim-time TTL |
@@ -390,11 +403,27 @@ Future Track A slices must include:
 For a fixed replay seed and fixed `intraSwitchTimeSec`, before-and-after
 diffs across every slice show:
 
-- Identical `HandoverEvent` log (same actions, same fromBeamId, same
-  toBeamId, same triggeredAtSec to within float tolerance).
+- Identical `HandoverEvent` log for inter-handover entries (same actions,
+  same fromSatId, same fromBeamId, same toSatId, same toBeamId, same
+  triggeredAtSec to within float tolerance, same SINR samples to within
+  float tolerance).
 - Identical per-beam SINR samples.
 - Identical `baseline-kpi-*.json` cross-checks when run against
   `ntn-sim-core`.
+- For intra-switch entries: identical action / fromSatId / fromBeamId /
+  toSatId / toBeamId across the slice boundary. Intra `triggeredAtSec`
+  must match to within float tolerance **prior to B7**; from B7 onwards
+  the intra dwell timer accumulates only on ticks where no inter target
+  qualified, so intra `triggeredAtSec` may shift by up to one full
+  inter-pending window relative to pre-B7 baselines. This drift is the
+  visible signature of B7's "intra is local fallback when no inter
+  target qualifies" semantics (§4.2 policy sequencing paragraph; §5.2
+  B7) and is acceptable as long as the intra event identity (sat / beam
+  endpoints) and the inter event log remain byte-identical.
+
+Per-slice baselines recorded before B7 (e.g. the S6 capture in §9.1)
+remain valid for inter and SINR comparisons but must be re-recorded for
+intra `triggeredAtSec` once B7 lands.
 
 ## 10. Measurement and Telemetry
 

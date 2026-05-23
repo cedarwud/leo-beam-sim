@@ -419,6 +419,116 @@ function assertIntraSwitchEpochGuard(): void {
   assert.equal(manager.state.beamId, 2);
 }
 
+function assertInterGatePreemptsIntraSwitch(): void {
+  const profile = loadProfile(PROFILE_ID);
+  const manager = new HandoverManager({
+    ...profile.handover,
+    triggerTimeSec: 1,
+    pingPongGuardSec: 0,
+    intraSwitchTimeSec: 1,
+    maxIntraSwitchesPerServingEpoch: 2,
+    sinrSmoothingSec: 0,
+  });
+  let simTimeMs = Date.UTC(2026, 0, 1, 0, 0, 0);
+  const step = (samples: LinkSample[]) => {
+    simTimeMs += 1000;
+    return manager.update(samples, 1, simTimeMs);
+  };
+
+  step([createLinkSample('source-sat', 1, 20)]);
+  const pendingInter = step([
+    createLinkSample('source-sat', 1, 10),
+    createLinkSample('source-sat', 2, 12),
+    createLinkSample('target-sat', 1, 20),
+  ]);
+  assert.equal(pendingInter.action, 'stay');
+  assert.deepEqual(manager.state.pendingTarget, { satId: 'target-sat', beamId: 1 });
+  assert.equal(manager.state.satId, 'source-sat');
+  assert.equal(manager.state.beamId, 1);
+
+  const inter = step([
+    createLinkSample('source-sat', 1, 10),
+    createLinkSample('source-sat', 2, 12),
+    createLinkSample('target-sat', 1, 20),
+  ]);
+  assert.equal(inter.action, 'inter-handover');
+  assert.equal(manager.state.satId, 'target-sat');
+  assert.equal(manager.state.beamId, 1);
+
+  const conservativeManager = new HandoverManager({
+    ...profile.handover,
+    offsetDb: 5,
+    pingPongGuardSec: 0,
+    intraSwitchTimeSec: 1,
+    sinrSmoothingSec: 0,
+  });
+  let conservativeTimeMs = Date.UTC(2026, 0, 1, 0, 0, 0);
+  const conservativeStep = (samples: LinkSample[]) => {
+    conservativeTimeMs += 1000;
+    return conservativeManager.update(samples, 1, conservativeTimeMs);
+  };
+  conservativeStep([createLinkSample('source-sat', 1, 20)]);
+  const notQualifiedInter = conservativeStep([
+    createLinkSample('source-sat', 1, 10),
+    createLinkSample('source-sat', 2, 12),
+    createLinkSample('target-sat', 1, 14),
+  ]);
+  assert.equal(notQualifiedInter.action, 'stay');
+  assert.equal(conservativeManager.state.satId, 'source-sat');
+  assert.equal(conservativeManager.state.beamId, 1);
+}
+
+function assertPostInterGuardBlocksImmediateIntra(): void {
+  const profile = loadProfile(PROFILE_ID);
+  const manager = new HandoverManager({
+    ...profile.handover,
+    triggerTimeSec: 1,
+    pingPongGuardSec: 3,
+    intraSwitchTimeSec: 1,
+    maxIntraSwitchesPerServingEpoch: 1,
+    sinrSmoothingSec: 0,
+  });
+  let simTimeMs = Date.UTC(2026, 0, 1, 0, 0, 0);
+  const step = (samples: LinkSample[]) => {
+    simTimeMs += 1000;
+    return manager.update(samples, 1, simTimeMs);
+  };
+
+  step([createLinkSample('source-sat', 1, 20)]);
+  step([createLinkSample('source-sat', 1, 18)]);
+  step([createLinkSample('source-sat', 1, 18)]);
+  step([createLinkSample('source-sat', 1, 18)]);
+  step([
+    createLinkSample('source-sat', 1, 10),
+    createLinkSample('target-sat', 1, 20),
+  ]);
+  const inter = step([
+    createLinkSample('source-sat', 1, 10),
+    createLinkSample('target-sat', 1, 20),
+  ]);
+  assert.equal(inter.action, 'inter-handover');
+  assert.equal(manager.state.satId, 'target-sat');
+
+  const guardedIntra = step([
+    createLinkSample('target-sat', 1, 8),
+    createLinkSample('target-sat', 2, 12),
+  ]);
+  assert.equal(guardedIntra.action, 'stay');
+  assert.match(guardedIntra.reason, /handover guard active/);
+  assert.equal(manager.state.beamId, 1);
+
+  step([
+    createLinkSample('target-sat', 1, 8),
+    createLinkSample('target-sat', 2, 12),
+  ]);
+  const intraAfterGuard = step([
+    createLinkSample('target-sat', 1, 8),
+    createLinkSample('target-sat', 2, 12),
+  ]);
+  assert.equal(intraAfterGuard.action, 'intra-switch');
+  assert.equal(manager.state.beamId, 2);
+}
+
 function assertServedBeamCannotRepeatWithinSatelliteEpoch(): void {
   const profile = loadProfile(PROFILE_ID);
   const manager = new HandoverManager({
@@ -474,6 +584,8 @@ function run(): void {
   assertResetClearsStaleEvidence();
   assertHandoverManagerResetCoverage();
   assertIntraSwitchEpochGuard();
+  assertInterGatePreemptsIntraSwitch();
+  assertPostInterGuardBlocksImmediateIntra();
   assertServedBeamCannotRepeatWithinSatelliteEpoch();
   assertHandoverResetReturnsToReplayStart();
 
@@ -483,7 +595,7 @@ function run(): void {
     asserted: {
       placement: 'Top mode selector owns SINR/MODQN; left sidebar shows mode-specific controls',
       copy: ['policy: sinr-offset read-only', 'Handover attach threshold', 'Intra-HO limit per satellite', 'no standalone handover SINR threshold label'],
-      state: ['draft does not alter effective policy', 'apply updates effective policy', 'reset state clears stale handover evidence', 'intra epoch guard resets after inter-HO'],
+      state: ['draft does not alter effective policy', 'apply updates effective policy', 'reset state clears stale handover evidence', 'inter gate preempts intra', 'post-inter guard blocks immediate intra', 'intra epoch guard resets after inter-HO'],
       preservation: ['handover reset returns to replay start offset', 'handover reset publishes a zero-delta initial frame'],
     },
   }, null, 2));

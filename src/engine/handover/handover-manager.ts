@@ -164,41 +164,14 @@ export class HandoverManager {
 
     const currentSinr = this.state.sinrDb;
     this.ensureServingEpoch();
-    const betterSameSatBeams = sorted.filter(
-      candidate =>
-        candidate.satId === this.state.satId
-        && candidate.beamId !== this.state.beamId
-        && candidate.sinrDb > currentSinr,
-    );
-    const bestSameSatBeam = betterSameSatBeams.find(candidate =>
-      this.canUseIntraSwitchTarget(candidate.beamId),
-    );
-    const intraSwitchBlockedReason =
-      bestSameSatBeam ? null : this.describeIntraSwitchBlock(betterSameSatBeams[0]?.beamId ?? null);
 
-    if (bestSameSatBeam) {
-      if (this.intraSwitchTarget?.beamId === bestSameSatBeam.beamId) {
-        this.intraSwitchTarget.triggerTimeSec += dt;
-      } else {
-        this.intraSwitchTarget = { beamId: bestSameSatBeam.beamId, triggerTimeSec: dt };
-      }
-
-      if (this.intraSwitchTarget.triggerTimeSec >= this.intraSwitchTimeSec) {
-        return this.commitDecision(
-          'intra-switch',
-          bestSameSatBeam,
-          sorted,
-          simTimeMs,
-          `intra-switch after ${this.intraSwitchTarget.triggerTimeSec.toFixed(1)}s dwell`,
-        );
-      }
-    } else {
-      this.clearIntraSwitch();
-    }
-
+    // Inter-HO owns the hard serving-satellite boundary. Keep its guard and
+    // TTT gate ahead of local same-satellite beam refinements so intra-HO
+    // cannot immediately shadow every inter-HO.
     const guardActive = simTimeMs < this.guardUntilMs;
     if (guardActive) {
       this.clearPendingTarget();
+      this.clearIntraSwitch();
       return { action: 'stay', reason: 'handover guard active' };
     }
 
@@ -206,8 +179,91 @@ export class HandoverManager {
       candidate => candidate.satId !== this.state.satId && candidate.sinrDb - this.offsetDb > currentSinr,
     );
     const bestTarget = qualifiedTargets[0];
-    if (!bestTarget) {
+    if (bestTarget) {
+      this.clearIntraSwitch();
+      const pendingSample = this.state.pendingTarget
+        ? qualifiedTargets.find(
+          candidate =>
+            candidate.satId === this.state.pendingTarget?.satId
+            && candidate.beamId === this.state.pendingTarget?.beamId,
+        ) ?? null
+        : null;
+
+      if (!this.state.pendingTarget) {
+        this.setPendingTarget(bestTarget, dt, simTimeMs);
+        return this.pendingDecisionReason(bestTarget, 'new pending target');
+      }
+
+      const sameAsPending =
+        pendingSample !== null
+        && pendingSample.satId === bestTarget.satId
+        && pendingSample.beamId === bestTarget.beamId;
+
+      if (sameAsPending) {
+        this.state.triggerTimeSec += dt;
+      } else if (!pendingSample) {
+        this.setPendingTarget(bestTarget, dt, simTimeMs);
+        return this.pendingDecisionReason(bestTarget, 'pending target replaced');
+      } else if (
+        this.pendingSinceMs !== null
+        && simTimeMs - this.pendingSinceMs < this.pendingTargetHoldMs
+      ) {
+        this.state.triggerTimeSec += dt;
+        if (this.state.triggerTimeSec >= this.triggerTimeSec) {
+          return this.commitDecision(
+            'inter-handover',
+            pendingSample,
+            sorted,
+            simTimeMs,
+            `inter-HO after ${this.state.triggerTimeSec.toFixed(1)}s stable pending hold`,
+          );
+        }
+        return this.pendingDecisionReason(
+          pendingSample,
+          'pending hold active',
+        );
+      } else {
+        this.setPendingTarget(bestTarget, dt, simTimeMs);
+        return this.pendingDecisionReason(bestTarget, 'pending target replaced');
+      }
+
+      const activePendingSample = this.state.pendingTarget
+        ? qualifiedTargets.find(
+          candidate =>
+            candidate.satId === this.state.pendingTarget?.satId
+            && candidate.beamId === this.state.pendingTarget?.beamId,
+        ) ?? null
+        : null;
+
+      if (activePendingSample && this.state.triggerTimeSec >= this.triggerTimeSec) {
+        return this.commitDecision(
+          'inter-handover',
+          activePendingSample,
+          sorted,
+          simTimeMs,
+          `inter-HO: stable target for ${this.state.triggerTimeSec.toFixed(1)}s`,
+        );
+      }
+
+      return this.pendingDecisionReason(activePendingSample ?? bestTarget, 'tracking pending target');
+    }
+
+    const sameSatBestBeam =
+      best.satId === this.state.satId
+      && best.beamId !== this.state.beamId
+      && best.sinrDb > currentSinr
+        ? best
+        : null;
+    const bestSameSatBeam =
+      sameSatBestBeam && this.canUseIntraSwitchTarget(sameSatBestBeam.beamId)
+        ? sameSatBestBeam
+        : null;
+    const intraSwitchBlockedReason =
+      bestSameSatBeam ? null : this.describeIntraSwitchBlock(sameSatBestBeam?.beamId ?? null);
+
+    if (!bestSameSatBeam) {
       this.clearPendingTarget();
+      this.clearIntraSwitch();
       return {
         action: 'stay',
         reason: intraSwitchBlockedReason
@@ -216,71 +272,27 @@ export class HandoverManager {
       };
     }
 
-    const pendingSample = this.state.pendingTarget
-      ? qualifiedTargets.find(
-        candidate =>
-          candidate.satId === this.state.pendingTarget?.satId
-          && candidate.beamId === this.state.pendingTarget?.beamId,
-      ) ?? null
-      : null;
-
-    if (!this.state.pendingTarget) {
-      this.setPendingTarget(bestTarget, dt, simTimeMs);
-      return this.pendingDecisionReason(bestTarget, 'new pending target');
-    }
-
-    const sameAsPending =
-      pendingSample !== null
-      && pendingSample.satId === bestTarget.satId
-      && pendingSample.beamId === bestTarget.beamId;
-
-    if (sameAsPending) {
-      this.state.triggerTimeSec += dt;
-    } else if (!pendingSample) {
-      this.setPendingTarget(bestTarget, dt, simTimeMs);
-      return this.pendingDecisionReason(bestTarget, 'pending target replaced');
-    } else if (
-      this.pendingSinceMs !== null
-      && simTimeMs - this.pendingSinceMs < this.pendingTargetHoldMs
-    ) {
-      this.state.triggerTimeSec += dt;
-      if (this.state.triggerTimeSec >= this.triggerTimeSec) {
-        return this.commitDecision(
-          'inter-handover',
-          pendingSample,
-          sorted,
-          simTimeMs,
-          `inter-HO after ${this.state.triggerTimeSec.toFixed(1)}s stable pending hold`,
-        );
-      }
-      return this.pendingDecisionReason(
-        pendingSample,
-        'pending hold active',
-      );
+    this.clearPendingTarget();
+    if (this.intraSwitchTarget?.beamId === bestSameSatBeam.beamId) {
+      this.intraSwitchTarget.triggerTimeSec += dt;
     } else {
-      this.setPendingTarget(bestTarget, dt, simTimeMs);
-      return this.pendingDecisionReason(bestTarget, 'pending target replaced');
+      this.intraSwitchTarget = { beamId: bestSameSatBeam.beamId, triggerTimeSec: dt };
     }
 
-    const activePendingSample = this.state.pendingTarget
-      ? qualifiedTargets.find(
-        candidate =>
-          candidate.satId === this.state.pendingTarget?.satId
-          && candidate.beamId === this.state.pendingTarget?.beamId,
-      ) ?? null
-      : null;
-
-    if (activePendingSample && this.state.triggerTimeSec >= this.triggerTimeSec) {
+    if (this.intraSwitchTarget.triggerTimeSec >= this.intraSwitchTimeSec) {
       return this.commitDecision(
-        'inter-handover',
-        activePendingSample,
+        'intra-switch',
+        bestSameSatBeam,
         sorted,
         simTimeMs,
-        `inter-HO: stable target for ${this.state.triggerTimeSec.toFixed(1)}s`,
+        `intra-switch after ${this.intraSwitchTarget.triggerTimeSec.toFixed(1)}s dwell`,
       );
     }
 
-    return this.pendingDecisionReason(activePendingSample ?? bestTarget, 'tracking pending target');
+    return {
+      action: 'stay',
+      reason: `tracking intra-switch target: ${bestSameSatBeam.satId} B${bestSameSatBeam.beamId}, ${this.intraSwitchTarget.triggerTimeSec.toFixed(1)}/${this.intraSwitchTimeSec.toFixed(1)}s`,
+    };
   }
 
   /**
