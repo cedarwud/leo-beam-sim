@@ -56,6 +56,7 @@ import {
   resolveCinematicLightIntensity,
   resolveCinematicSpotlightTargets,
 } from './cinematicEffects';
+import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 
 interface SceneContentProps {
   profile: Profile;
@@ -65,6 +66,7 @@ interface SceneContentProps {
   modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
   showModqnReplayScene: boolean;
   onSimUpdate: (state: SimState) => void;
+  sceneFrame?: NormalizedSceneFrame;
 }
 
 const SHOW_BEAMS = true;
@@ -115,6 +117,7 @@ function SceneContent({
   modqnReplayDisplayState,
   showModqnReplayScene,
   onSimUpdate,
+  sceneFrame: propSceneFrame,
 }: SceneContentProps) {
   const camera = useThree(state => state.camera);
   const gl = useThree(state => state.gl);
@@ -157,8 +160,11 @@ function SceneContent({
   // `useBeamViz` reads `Profile` directly today; threading geometry here makes
   // the type available for the gradual migration.
   const sceneGeometry = useMemo(
-    () =>
-      sceneGeometryFromProfile({
+    () => {
+      if (propSceneFrame) {
+        return propSceneFrame.geometry;
+      }
+      return sceneGeometryFromProfile({
         shell: { altitudeKm: profile.orbit.shells[0]?.altitudeKm },
         antenna: { beamwidth3dBRad: profile.antenna.beamwidth3dBRad },
         handover: { triggerTimeSec: profile.handover.triggerTimeSec },
@@ -166,8 +172,10 @@ function SceneContent({
           shells: profile.orbit.shells.map(s => ({ id: s.id, altitudeKm: s.altitudeKm })),
         },
         beams: { frequencyReuse: profile.beams.frequencyReuse },
-      }),
+      });
+    },
     [
+      propSceneFrame,
       profile.orbit.shells,
       profile.antenna.beamwidth3dBRad,
       profile.handover.triggerTimeSec,
@@ -178,8 +186,8 @@ function SceneContent({
   // useBeamViz now consumes only (frame, geometry) — sim/profile stay
   // confined to MainScene.
   const sceneFrame = useMemo(
-    () => liveSimToScene(sim, sceneGeometry),
-    [sim, sceneGeometry],
+    () => propSceneFrame ?? liveSimToScene(sim, sceneGeometry),
+    [propSceneFrame, sim, sceneGeometry],
   );
   // P1c §E: live-default display caps per SDD §13 Cat A. Replay path will
   // wire mode-appropriate defaults (default 4 sats / 4 beams / 4 events for
@@ -472,6 +480,7 @@ interface MainSceneProps {
   modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
   showModqnReplayScene: boolean;
   onSimUpdate: (state: SimState) => void;
+  sceneFrame?: NormalizedSceneFrame;
 }
 
 export const MainScene = memo(function MainScene({
@@ -482,6 +491,7 @@ export const MainScene = memo(function MainScene({
   modqnReplayDisplayState,
   showModqnReplayScene,
   onSimUpdate,
+  sceneFrame,
 }: MainSceneProps) {
   return (
     <div className="leo-main-scene" data-testid="leo-main-scene" style={{
@@ -511,6 +521,7 @@ export const MainScene = memo(function MainScene({
             modqnReplayDisplayState={modqnReplayDisplayState}
             showModqnReplayScene={showModqnReplayScene}
             onSimUpdate={onSimUpdate}
+            sceneFrame={sceneFrame}
           />
         </Suspense>
       </Canvas>

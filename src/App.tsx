@@ -66,6 +66,17 @@ import {
   ClaimBoundaryBanner,
   type ClaimBoundaryBannerInput,
 } from './ui/ClaimBoundaryBanner';
+import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
+import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
+import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
+import type { VisualShowcaseArtifact } from './scene/visual-showcase-contract';
+import type { NormalizedSceneFrame } from './scene/NormalizedSceneFrame';
+import type {
+  SignalSourceState,
+  PanelPrimaryState,
+  PanelComparisonState,
+  VisualFrequencyDiagnosticsState,
+} from './scene/types';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
 import { usePlaybackControls } from './usePlaybackControls';
 import { useCameraControls } from './useCameraControls';
@@ -210,7 +221,21 @@ function normalizeRuntimeOmega(weights: Readonly<Record<string, unknown>> | unde
   };
 }
 
+function readSceneSourceFromUrl(): 'live-sim' | 'artifact-replay' {
+  if (typeof window === 'undefined') return 'live-sim';
+  const params = new URLSearchParams(window.location.search);
+  const src = params.get('sceneSource');
+  return src === 'artifact-replay' ? 'artifact-replay' : 'live-sim';
+}
+
 export function App() {
+  const [sceneSource] = useState<'live-sim' | 'artifact-replay'>(() => readSceneSourceFromUrl());
+  const [showcaseArtifact, setShowcaseArtifact] = useState<VisualShowcaseArtifact | null>(null);
+  const [showcaseLoading, setShowcaseLoading] = useState(false);
+  const [showcaseError, setShowcaseError] = useState<string | null>(null);
+  const [frameIndex, setFrameIndex] = useState(0);
+  const [currentTimeSec, setCurrentTimeSec] = useState(0);
+
   const initialRuntimeRef = useRef<InitialRuntimeState | null>(null);
   if (initialRuntimeRef.current === null) {
     initialRuntimeRef.current = readInitialRuntimeState();
@@ -617,6 +642,230 @@ export function App() {
     };
   }, []);
 
+  // P3: fetch visual-showcase-v1 artifact at startup if in artifact-replay mode.
+  useEffect(() => {
+    if (sceneSource !== 'artifact-replay') return;
+    setShowcaseLoading(true);
+    fetch('/showcase-artifacts/visual-showcase-v1.json')
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+        return r.json();
+      })
+      .then(data => {
+        const art = loadShowcaseArtifact(data);
+        setShowcaseArtifact(art);
+        setShowcaseLoading(false);
+      })
+      .catch(err => {
+        setShowcaseError(err instanceof Error ? err.message : String(err));
+        setShowcaseLoading(false);
+      });
+  }, [sceneSource]);
+
+  const replayController = useMemo(
+    () => (showcaseArtifact ? new ShowcaseReplayController(showcaseArtifact) : null),
+    [showcaseArtifact],
+  );
+
+  useEffect(() => {
+    if (!replayController) return;
+    return replayController.subscribe(snap => {
+      setFrameIndex(snap.frameIndex);
+      setCurrentTimeSec(snap.currentTimeSec);
+    });
+  }, [replayController]);
+
+  // Synchronize playback paused state to ShowcaseReplayController.
+  useEffect(() => {
+    if (!replayController) return;
+    if (playback.paused) {
+      replayController.pause();
+    } else {
+      replayController.play();
+    }
+  }, [replayController, playback.paused]);
+
+  // Synchronize playback speed to ShowcaseReplayController.
+  useEffect(() => {
+    if (!replayController) return;
+    replayController.setPlaybackSpeed(playback.effectiveSpeed);
+  }, [replayController, playback.effectiveSpeed]);
+
+  // Animation frame tick loop driving the ShowcaseReplayController cursor.
+  useEffect(() => {
+    if (sceneSource !== 'artifact-replay' || !replayController || playback.paused) return;
+
+    let lastTime = performance.now();
+    let frameId: number;
+
+    const tick = (now: number) => {
+      const deltaSec = (now - lastTime) / 1000;
+      lastTime = now;
+
+      replayController.tick(deltaSec * playback.effectiveSpeed);
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [sceneSource, replayController, playback.paused, playback.effectiveSpeed]);
+
+  // World-space lerp adapter binding (SDD §9 P3): interpolation occurs strictly
+  // after coordToWorld; raw positionEcefKm is never re-interpolated.
+  const replaySceneFrame = useMemo(() => {
+    if (!showcaseArtifact) return null;
+    return showcaseArtifactToSceneInterpolated(showcaseArtifact, currentTimeSec);
+  }, [showcaseArtifact, currentTimeSec]);
+
+  const activeSceneFrame = useMemo((): NormalizedSceneFrame | undefined => {
+    if (sceneSource !== 'artifact-replay' || !replaySceneFrame) return undefined;
+    return replaySceneFrame;
+  }, [sceneSource, replaySceneFrame]);
+
+  // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
+  // the producer-truth playback cursor. We never recompute SINR or handover
+  // truth here — we only forward producer values (R1).
+  useEffect(() => {
+    if (sceneSource !== 'artifact-replay' || !replaySceneFrame) return;
+
+    const allUes = replaySceneFrame.ues;
+    if (allUes.length === 0) return;
+    const focusedUe = allUes[0];
+    if (!focusedUe) return;
+    const focusedId = focusedUe.id;
+
+    let hoCount = 0;
+    let intraHoCount = 0;
+    if (showcaseArtifact) {
+      for (let i = 1; i <= frameIndex; i++) {
+        const prev = showcaseArtifact.timeline[i - 1];
+        const curr = showcaseArtifact.timeline[i];
+        if (!prev || !curr) continue;
+        const prevUe = prev.ues.find(u => u.id === focusedId) ?? prev.ues[0];
+        const currUe = curr.ues.find(u => u.id === focusedId) ?? curr.ues[0];
+        if (prevUe && currUe) {
+          if (currUe.servingSatelliteId !== prevUe.servingSatelliteId) {
+            hoCount++;
+          } else if (currUe.servingBeamId !== prevUe.servingBeamId) {
+            intraHoCount++;
+          }
+        }
+      }
+    }
+
+    const servingSatId = focusedUe.servingSatelliteId;
+    const servingBeamId = focusedUe.servingBeamId ? parseInt(focusedUe.servingBeamId) : null;
+    const targetSatId = focusedUe.targetSatelliteId ?? null;
+    const targetBeamId = focusedUe.targetBeamId ? parseInt(focusedUe.targetBeamId) : null;
+
+    const candidates = focusedUe.candidatesByBeamId;
+    const targetSinrDb =
+      targetSatId && focusedUe.targetBeamId && candidates
+        ? candidates.get(focusedUe.targetBeamId)?.dB ?? null
+        : null;
+
+    const physicalServing: SignalSourceState = {
+      satId: servingSatId,
+      beamId: servingBeamId,
+      sinrDb: focusedUe.channelMetric.dB,
+      elevationDeg: null,
+      rangeKm: null,
+      status: 'derived',
+    };
+
+    const panelPrimary: PanelPrimaryState = {
+      ...physicalServing,
+      role:
+        replaySceneFrame.handover.kind !== 'none' && replaySceneFrame.handover.kind !== ''
+          ? 'ho-source'
+          : 'serving',
+    };
+
+    const panelComparison: PanelComparisonState = {
+      satId: targetSatId,
+      beamId: targetBeamId,
+      sinrDb: targetSinrDb,
+      elevationDeg: null,
+      rangeKm: null,
+      status: targetSatId ? 'derived' : 'none',
+      role: targetSatId ? 'pending' : 'none',
+    };
+
+    const sinrDeltaDb = targetSinrDb !== null ? targetSinrDb - focusedUe.channelMetric.dB : null;
+
+    const visualFrequencyDiagnostics: VisualFrequencyDiagnosticsState = {
+      primary: {
+        satId: servingSatId,
+        beamId: servingBeamId,
+        frequencyIndex: 0,
+        frequencyIndexSource:
+          servingSatId !== null && servingBeamId !== null
+            ? 'fallback-numeric-modulo'
+            : 'not-visible',
+        runtimeFrequencyReuse: 0,
+        coreLayoutFrequencyReuse: null,
+      },
+      comparison: {
+        satId: targetSatId,
+        beamId: targetBeamId,
+        frequencyIndex: 0,
+        frequencyIndexSource:
+          targetSatId !== null && targetBeamId !== null
+            ? 'fallback-numeric-modulo'
+            : 'not-visible',
+        runtimeFrequencyReuse: 0,
+        coreLayoutFrequencyReuse: null,
+      },
+    };
+
+    setSimState({
+      profileId: showcaseArtifact?.scenario.id ?? 'modqn-1sat-7beam',
+      formulaFamilyLabel: 'SNR (no interference)',
+      satelliteVisualIdentityById: {},
+      physicalServing,
+      panelPrimary,
+      panelComparison,
+      visualFrequencyDiagnostics,
+      servingSatId,
+      servingBeamId,
+      servingElevationDeg: null,
+      servingRangeKm: null,
+      pendingTargetSatId: targetSatId,
+      pendingTargetBeamId: targetBeamId,
+      pendingTargetSinrDb: targetSinrDb,
+      comparisonSatId: targetSatId,
+      comparisonBeamId: targetBeamId,
+      comparisonElevationDeg: null,
+      comparisonRangeKm: null,
+      comparisonSinrDb: targetSinrDb,
+      comparisonKind: targetSatId ? 'pending' : null,
+      sinrDeltaDb,
+      recentHoSourceSatId: null,
+      recentHoTargetSatId: null,
+      recentHoSourceBeamId: null,
+      recentHoTargetBeamId: null,
+      recentHoDeltaDb: null,
+      lastHoEvent: null,
+      simTimeSec: replaySceneFrame.tSec,
+      sinrDb: focusedUe.channelMetric.dB,
+      physicalServingBudget: null,
+      servingBudget: null,
+      handoverOffsetDb: 0,
+      handoverTriggerProgressSec: 0,
+      handoverTriggerSec: 0,
+      hoCount,
+      intraHoCount,
+      lastHoReason: replaySceneFrame.handover.handoverProvenance?.note ?? '—',
+      beamHopEnabled: false,
+      beamHopSlotIndex: -1,
+      beamHopSlotSec: 0,
+      servingBeamActiveThisSlot: true,
+      servingSatActiveBeamIds: servingBeamId !== null ? [servingBeamId] : [],
+      pendingTargetActiveBeamIds: targetBeamId !== null ? [targetBeamId] : [],
+    });
+  }, [sceneSource, replaySceneFrame, showcaseArtifact, frameIndex]);
+
   const resetAutoSlowDismissedRef = useRef(playback.resetAutoSlowDismissed);
   resetAutoSlowDismissedRef.current = playback.resetAutoSlowDismissed;
   useEffect(() => {
@@ -744,6 +993,7 @@ export function App() {
             modqnReplayDisplayState={renderedModqnReplayDisplayState}
             showModqnReplayScene={false}
             onSimUpdate={handleSimUpdate}
+            sceneFrame={activeSceneFrame}
           />
         </main>
         <aside className="leo-shell-right" aria-label="Signal status panel slot">
@@ -756,13 +1006,20 @@ export function App() {
           >
             {activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
-                <ClaimBoundaryBanner frame={LIVE_SIM_CLAIM_BOUNDARY_INPUT} />
+                <ClaimBoundaryBanner
+                  frame={
+                    sceneSource === 'artifact-replay' && activeSceneFrame
+                      ? activeSceneFrame
+                      : LIVE_SIM_CLAIM_BOUNDARY_INPUT
+                  }
+                />
                 <InfoPanel
                   {...simState}
                   uiMode={uiMode}
                   profile={effectiveProfile}
                   handoverMode={handoverMode}
                   isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                  channelMetricKind={activeSceneFrame?.channelMetricKind}
                 />
                 <DiagnosticsDrawer
                   {...simState}

@@ -36,6 +36,7 @@ export interface ShowcaseControllerSnapshot {
   readonly tSec: number;
   readonly state: ShowcasePlaybackState;
   readonly playbackSpeed: number;
+  readonly currentTimeSec: number;
 }
 
 export type ShowcaseControllerSubscriber = (snap: ShowcaseControllerSnapshot) => void;
@@ -56,6 +57,7 @@ export class ShowcaseReplayController {
   private cursorIndex: number;
   private state: ShowcasePlaybackState;
   private playbackSpeed: number;
+  private currentTimeSec: number;
   private subs: Set<ShowcaseControllerSubscriber>;
 
   constructor(artifact: VisualShowcaseArtifact) {
@@ -74,6 +76,7 @@ export class ShowcaseReplayController {
     this.cursorIndex = 0;
     this.state = 'paused';
     this.playbackSpeed = artifact.scenario.defaultPlaybackSpeed || 1;
+    this.currentTimeSec = this.timesSec[0];
     this.subs = new Set();
   }
 
@@ -103,16 +106,15 @@ export class ShowcaseReplayController {
       this.timesSec[0],
       Math.min(this.timesSec[this.timesSec.length - 1], tSec),
     );
+    this.currentTimeSec = clamped;
     let idx = 0;
     // Linear scan; replace with binary search if timelines grow beyond ~1k samples.
     for (let i = 0; i < this.timesSec.length; i++) {
       if (this.timesSec[i] <= clamped) idx = i;
       else break;
     }
-    if (idx !== this.cursorIndex) {
-      this.cursorIndex = idx;
-      this.notify();
-    }
+    this.cursorIndex = idx;
+    this.notify();
   }
 
   /**
@@ -122,10 +124,36 @@ export class ShowcaseReplayController {
     if (!Number.isInteger(index) || index < 0 || index >= this.timesSec.length) {
       throw new Error(`[ShowcaseReplayController] seekToFrame index=${index} out of bounds`);
     }
-    if (index !== this.cursorIndex) {
-      this.cursorIndex = index;
-      this.notify();
+    this.cursorIndex = index;
+    this.currentTimeSec = this.timesSec[index];
+    this.notify();
+  }
+
+  /**
+   * Advance playhead by time delta.
+   */
+  tick(deltaSec: number): void {
+    if (this.state === 'paused') return;
+
+    this.currentTimeSec += deltaSec;
+    const minT = this.timesSec[0];
+    const maxT = this.timesSec[this.timesSec.length - 1];
+
+    if (this.currentTimeSec > maxT) {
+      this.currentTimeSec = minT + (this.currentTimeSec - minT) % (maxT - minT || 1);
     }
+
+    let idx = 0;
+    for (let i = 0; i < this.timesSec.length; i++) {
+      if (this.timesSec[i] <= this.currentTimeSec) {
+        idx = i;
+      } else {
+        break;
+      }
+    }
+
+    this.cursorIndex = idx;
+    this.notify();
   }
 
   /** Transition to `'playing'`. No-op if already playing. */
@@ -172,6 +200,7 @@ export class ShowcaseReplayController {
       tSec: this.timesSec[this.cursorIndex],
       state: this.state,
       playbackSpeed: this.playbackSpeed,
+      currentTimeSec: this.currentTimeSec,
     };
   }
 

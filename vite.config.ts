@@ -89,6 +89,21 @@ function modqnBundleStaticServer(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = req.url ?? '';
+        if (url === '/showcase-artifacts/visual-showcase-v1.json') {
+          const filePath = '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
+          fs.stat(filePath, (err, stat) => {
+            if (err || !stat.isFile()) {
+              res.statusCode = 404;
+              res.end('Showcase artifact not found');
+              return;
+            }
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Cache-Control', 'no-store');
+            fs.createReadStream(filePath).pipe(res);
+          });
+          return;
+        }
+
         if (!url.startsWith(MODQN_BUNDLE_ROUTE_PREFIX)) return next();
         const remainder = url.slice(MODQN_BUNDLE_ROUTE_PREFIX.length);
         const slash = remainder.indexOf('/');

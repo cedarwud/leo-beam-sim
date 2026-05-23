@@ -82,6 +82,7 @@
     "validate:modqn:visual-showcase:p1e:static-frame-integration": "node --import tsx/esm scripts/validate-modqn-visual-showcase-p1e-static-frame-integration.ts",
     "validate:modqn:visual-showcase:p1e:all": "npm run validate:modqn:visual-showcase:p1e:import-boundary && npm run validate:modqn:visual-showcase:p1e:runtime-side-effect && npm run validate:modqn:visual-showcase:p1e:d6-state-snapshot && npm run validate:modqn:visual-showcase:p1e:snr-surface-audit && npm run validate:modqn:visual-showcase:p1e:d8-forbidden-claim && npm run validate:modqn:visual-showcase:p1e:static-frame-integration",
     "validate:modqn:visual-showcase:p2a:multi-ue": "node --import tsx/esm scripts/validate-modqn-visual-showcase-p2a-multi-ue.ts",
+    "validate:modqn:visual-showcase:p3:interpolation-space": "node --import tsx/esm scripts/validate-modqn-visual-showcase-p3-interpolation-space.ts",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
     "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts"
   },

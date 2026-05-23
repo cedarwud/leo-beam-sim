@@ -1,3 +1,9 @@
+// P1c §C bucket-bare classification (SDD §7): **live-sim only**. This module
+// pre-computes a demo start offset from a live `Profile`'s constellation
+// generation. It has no analog on the artifact-replay path — replay reads
+// timeline frames directly from the producer artifact and does not
+// recommend a start offset (the artifact's `scenario.startTimeSec` plus
+// playback cursor own that decision). No refactor required.
 import {
   computeTopocentricPoint,
   createObserverContext,

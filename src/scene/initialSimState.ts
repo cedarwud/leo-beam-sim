@@ -1,3 +1,8 @@
+// P1c §C bucket-bare classification (SDD §7): **live-sim only**. Constructs
+// the initial `SimState` shape for the live render path before the first
+// `useFrame` tick. The artifact-replay path mounts a parallel state
+// publisher (P3) driven by the producer-truth `decisionFrames[0]` snapshot.
+// No refactor required.
 import { getFormulaFamilyLabel } from '../profiles';
 import type { Profile } from '../profiles/types';
 import type { SignalSourceState, SimState } from './types';
