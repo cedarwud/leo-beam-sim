@@ -19,12 +19,14 @@ interface ControlBarProps {
   autoSlowEnabled: boolean;
   uiMode: UiMode;
   beamDensity: BeamDensity;
+  beamCalloutsEnabled: boolean;
   cinematicMode: CinematicMode;
   /** S3: current handover mode from App.tsx state (SDD §9.4 item 1). */
   handoverMode?: RuntimeHandoverMode;
   onProfileChange: (profileId: string) => void;
   onUiModeChange: (mode: UiMode) => void;
   onBeamDensityChange: (density: BeamDensity) => void;
+  onToggleBeamCallouts: () => void;
   onCameraPresetSelect: (preset: CameraPreset) => void;
   onCinematicModeChange: (mode: CinematicMode) => void;
   onTogglePause: () => void;
@@ -33,6 +35,15 @@ interface ControlBarProps {
   onToggleAutoSlow: () => void;
   /** S3: mode selector change handler from App.tsx (handles ω reset and mode reset). */
   onHandoverModeChange?: (mode: RuntimeHandoverMode) => void;
+
+  // P2b Display-filter & focus UE controls
+  sceneSource?: 'live-sim' | 'artifact-replay';
+  ueDisplayCount?: number;
+  maxUeCount?: number;
+  onUeDisplayCountChange?: (count: number) => void;
+  elevatedUeId?: string | null;
+  ueIds?: readonly string[];
+  onElevatedUeIdChange?: (id: string) => void;
 }
 
 // Public demo modes. ω adjustment is now handled inside the decision-overlay
@@ -75,16 +86,25 @@ export function ControlBar({
   autoSlowEnabled,
   uiMode,
   beamDensity,
+  beamCalloutsEnabled,
   cinematicMode,
   handoverMode = 'sinr-offset',
   onUiModeChange,
   onBeamDensityChange,
+  onToggleBeamCallouts,
   onCameraPresetSelect,
   onCinematicModeChange,
   onTogglePause,
   onSpeedChange,
   onToggleAutoSlow,
   onHandoverModeChange,
+  sceneSource = 'live-sim',
+  ueDisplayCount = 100,
+  maxUeCount = 100,
+  onUeDisplayCountChange,
+  elevatedUeId = null,
+  ueIds = [],
+  onElevatedUeIdChange,
 }: ControlBarProps) {
   const sceneSuffix = autoSlowApplied
     ? ' (HO Slow)'
@@ -178,6 +198,21 @@ export function ControlBar({
         })}
       </div>
 
+      <label
+        className="leo-control-bar__toggle"
+        title="Show or hide beam information blocks in the scene"
+      >
+        <input
+          className={UI_CLASSES.checkbox}
+          type="checkbox"
+          aria-label="Show beam information blocks"
+          data-testid="beam-info-toggle"
+          checked={beamCalloutsEnabled}
+          onChange={onToggleBeamCallouts}
+        />
+        Beam Info
+      </label>
+
       <div
         className="leo-control-bar__camera-group"
         role="group"
@@ -242,6 +277,42 @@ export function ControlBar({
         />
         <span aria-hidden="true">{speed}x</span>
       </label>
+
+      {sceneSource === 'artifact-replay' ? (
+        <>
+          <label className="leo-control-bar__field-row">
+            Active UEs:
+            <input
+              className={`${UI_CLASSES.range} leo-control-bar__speed-range`}
+              type="range"
+              min={1}
+              max={maxUeCount}
+              value={ueDisplayCount}
+              aria-label="Active UEs display filter"
+              onChange={e => onUeDisplayCountChange?.(Number(e.target.value))}
+            />
+            <span>showing {ueDisplayCount} of {maxUeCount}</span>
+          </label>
+          <label className="leo-control-bar__field-row">
+            Focus UE:
+            <select
+              className={UI_CLASSES.select + ' leo-control-bar__ue-select'}
+              value={elevatedUeId ?? ''}
+              onChange={e => onElevatedUeIdChange?.(e.target.value)}
+            >
+              {ueIds.map(id => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      ) : (
+        <span className="leo-control-bar__ue-filter-readonly">
+          Active UEs: 1 (fixed)
+        </span>
+      )}
 
       <div
         className="leo-control-bar__scene-readout"

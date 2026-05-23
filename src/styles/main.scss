@@ -3066,3 +3066,33 @@ canvas {
   color: rgba(229, 244, 251, 0.78);
   overflow-wrap: anywhere;
 }
+
+.leo-fps-counter {
+  background: rgba(6, 18, 28, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(137, 205, 255, 0.2);
+  color: #76ead7;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 0 4px rgba(118, 234, 215, 0.4);
+}
+
+.leo-control-bar__ue-select {
+  cursor: pointer;
+  background: rgba(8, 23, 32, 0.96);
+  border: 1px solid rgba(118, 234, 215, 0.28);
+  color: #f6fbff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  min-width: 100px;
+}
+
+.leo-control-bar__ue-filter-readonly {
+  color: rgba(229, 244, 251, 0.44);
+  font-size: 14px;
+  padding: 4px 8px;
+}

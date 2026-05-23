@@ -184,6 +184,7 @@ function BeamCone({
   reducedMotion,
   cinematicMode,
   hasSomeServing,
+  showCallouts,
 }: {
   beamKey: string;
   satelliteId: string;
@@ -193,6 +194,7 @@ function BeamCone({
   reducedMotion: boolean;
   cinematicMode: CinematicMode;
   hasSomeServing: boolean;
+  showCallouts: boolean;
 }) {
   const style = resolveBeamVisualEncoding({
     role: beam.role,
@@ -466,37 +468,41 @@ function BeamCone({
         />
       )}
 
-      <Line
-        points={callout.points}
-        color={displayColor}
-        lineWidth={isHandoverTarget ? 2.8 : beam.isServing || beam.isPrimary || handoverRole ? 1.8 : 1.1}
-        transparent
-        opacity={clampOpacity((isEmphasized ? 0.92 : Math.max(style.lineOpacity, 0.42)) * dimFactor * handoverCalloutScale)}
-        dashed={style.dashed || !beam.isScheduledActive}
-        dashSize={8}
-        gapSize={6}
-        depthWrite={false}
-      />
+      {showCallouts && (
+        <>
+          <Line
+            points={callout.points}
+            color={displayColor}
+            lineWidth={isHandoverTarget ? 2.8 : beam.isServing || beam.isPrimary || handoverRole ? 1.8 : 1.1}
+            transparent
+            opacity={clampOpacity((isEmphasized ? 0.92 : Math.max(style.lineOpacity, 0.42)) * dimFactor * handoverCalloutScale)}
+            dashed={style.dashed || !beam.isScheduledActive}
+            dashSize={8}
+            gapSize={6}
+            depthWrite={false}
+          />
 
-      <Html
-        position={callout.labelPosition}
-        center
-        zIndexRange={[80, 20]}
-        style={{
-          pointerEvents: 'none',
-          userSelect: 'none',
-        }}
-      >
-        <BeamCalloutContent
-          satelliteId={satelliteId}
-          satelliteGlyph={satelliteGlyph}
-          beam={beam}
-          style={style}
-          color={displayColor}
-          sinrLabel={sinrLabel}
-          isEmphasized={isEmphasized}
-        />
-      </Html>
+          <Html
+            position={callout.labelPosition}
+            center
+            zIndexRange={[80, 20]}
+            style={{
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}
+          >
+            <BeamCalloutContent
+              satelliteId={satelliteId}
+              satelliteGlyph={satelliteGlyph}
+              beam={beam}
+              style={style}
+              color={displayColor}
+              sinrLabel={sinrLabel}
+              isEmphasized={isEmphasized}
+            />
+          </Html>
+        </>
+      )}
     </group>
   );
 }
@@ -508,6 +514,7 @@ export function SatelliteBeams({
   footprintRadius,
   reducedMotion = false,
   cinematicMode = 'off',
+  showCallouts = true,
 }: SatelliteBeamsProps) {
   const hasSomeServing = beams.some(b => b.isServing);
 
@@ -528,6 +535,7 @@ export function SatelliteBeams({
             reducedMotion={reducedMotion}
             cinematicMode={cinematicMode}
             hasSomeServing={hasSomeServing}
+            showCallouts={showCallouts}
           />
         );
       })}

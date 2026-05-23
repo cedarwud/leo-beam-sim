@@ -38,6 +38,14 @@ interface DensityResult {
   };
 }
 
+interface BeamInfoToggleResult {
+  defaultChecked: boolean;
+  calloutsBefore: number;
+  calloutsAfterDisable: number;
+  calloutsAfterEnable: number;
+  canvasDatasetAfterDisable: string | null;
+}
+
 interface CameraResult {
   preset: CameraPreset;
   telemetry: CameraTelemetry;
@@ -169,6 +177,57 @@ async function activeDensityLabel(page: Page): Promise<DensityLabel> {
 async function countBeamCallouts(page: Page): Promise<number> {
   await page.waitForFunction(() => document.querySelectorAll('[data-testid="beam-callout"]').length > 0, undefined, { timeout: 30000 });
   return page.locator('[data-testid="beam-callout"]').count();
+}
+
+async function countBeamCalloutsNow(page: Page): Promise<number> {
+  return page.locator('[data-testid="beam-callout"]').count();
+}
+
+async function readBeamCalloutsDataset(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('.leo-shell-canvas canvas');
+    return canvas instanceof HTMLCanvasElement ? canvas.dataset.beamCalloutsEnabled ?? null : null;
+  });
+}
+
+async function assertBeamInfoToggle(page: Page): Promise<BeamInfoToggleResult> {
+  const toggle = page.locator('[data-testid="beam-info-toggle"]');
+  await toggle.waitFor({ timeout: 5000 });
+  assert.equal(await toggle.isChecked(), true, 'beam info toggle should default to on');
+
+  const calloutsBefore = await countBeamCallouts(page);
+  assert.ok(calloutsBefore > 0, 'beam info default-on state should render beam callout blocks');
+
+  await toggle.click();
+  await page.waitForFunction(
+    () => document.querySelectorAll('[data-testid="beam-callout"]').length === 0,
+    undefined,
+    { timeout: 4000 },
+  );
+  const calloutsAfterDisable = await countBeamCalloutsNow(page);
+  const canvasDatasetAfterDisable = await readBeamCalloutsDataset(page);
+  assert.equal(await toggle.isChecked(), false, 'beam info toggle did not switch off');
+  assert.equal(calloutsAfterDisable, 0, 'beam callout blocks remained visible after disabling beam info');
+  assert.equal(canvasDatasetAfterDisable, '0', 'canvas telemetry did not report disabled beam callouts');
+
+  await toggle.click();
+  await page.waitForFunction(
+    previousCount => document.querySelectorAll('[data-testid="beam-callout"]').length >= previousCount,
+    calloutsBefore,
+    { timeout: 8000 },
+  );
+  const calloutsAfterEnable = await countBeamCalloutsNow(page);
+  assert.equal(await toggle.isChecked(), true, 'beam info toggle did not switch back on');
+  assert.ok(calloutsAfterEnable > 0, 'beam callout blocks did not return after re-enabling beam info');
+  assert.equal(await readBeamCalloutsDataset(page), '1', 'canvas telemetry did not report enabled beam callouts');
+
+  return {
+    defaultChecked: true,
+    calloutsBefore,
+    calloutsAfterDisable,
+    calloutsAfterEnable,
+    canvasDatasetAfterDisable,
+  };
 }
 
 async function selectDensity(page: Page, label: DensityLabel): Promise<number> {
@@ -338,6 +397,7 @@ async function assertReducedMotionSnap(
 async function main(): Promise<void> {
   const appUrl = await detectAppUrl();
   const browser = await chromium.launch();
+  let beamInfo: BeamInfoToggleResult;
   let density: DensityResult;
   let camera: CameraResult[];
   let reducedMotion: CameraTelemetry;
@@ -345,6 +405,7 @@ async function main(): Promise<void> {
   try {
     const page = await bootAppPage(browser, appUrl);
     try {
+      beamInfo = await assertBeamInfoToggle(page);
       density = await assertDensityControls(page);
       camera = await assertCameraControls(page);
     } finally {
@@ -359,6 +420,7 @@ async function main(): Promise<void> {
   console.log('Visual Clarity Phase 4C controlbar-density-camera validation passed.');
   console.log(JSON.stringify({
     appUrl,
+    beamInfo,
     density,
     camera,
     reducedMotion,

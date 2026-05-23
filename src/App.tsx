@@ -234,6 +234,8 @@ export function App() {
   const [showcaseLoading, setShowcaseLoading] = useState(false);
   const [showcaseError, setShowcaseError] = useState<string | null>(null);
   const [frameIndex, setFrameIndex] = useState(0);
+  const [ueDisplayCount, setUeDisplayCount] = useState<number>(100);
+  const [elevatedUeId, setElevatedUeId] = useState<string | null>(null);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
 
   const initialRuntimeRef = useRef<InitialRuntimeState | null>(null);
@@ -290,6 +292,7 @@ export function App() {
     ? rightSidebarTab
     : getDefaultRightSidebarTabForMode(handoverMode);
   const [beamDensityOverride, setBeamDensityOverride] = useState<BeamDensity | null>(null);
+  const [beamCalloutsEnabled, setBeamCalloutsEnabled] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
   const camera = useCameraControls();
@@ -385,11 +388,13 @@ export function App() {
     handoverResetKey,
     ...runtimeVisualSettings,
     beamDensity: beamDensityOverride ?? runtimeVisualSettings.beamDensity,
+    beamCalloutsEnabled,
     cinematicMode: effectiveCinematicMode,
     cameraCommand: camera.cameraCommand,
     viewport,
   }), [
     beamDensityOverride,
+    beamCalloutsEnabled,
     camera.cameraCommand,
     demoStartOffset,
     effectiveProfile,
@@ -718,10 +723,31 @@ export function App() {
     return showcaseArtifactToSceneInterpolated(showcaseArtifact, currentTimeSec);
   }, [showcaseArtifact, currentTimeSec]);
 
+  // P2b display-filter (SDD §9 P2 deliverable): reorder UEs so the elevated UE
+  // sits at index 0 (consumed as primary by MainScene and InfoPanel), then
+  // slice to the user-selected `ueDisplayCount`. This is pure presentation —
+  // the artifact's UE truth is untouched (R1 invariant).
+  const processedUes = useMemo(() => {
+    if (!replaySceneFrame) return [];
+    const allUes = replaySceneFrame.ues;
+    if (allUes.length === 0) return [];
+    const focusedId = elevatedUeId ?? allUes[0]?.id;
+    const focusedIndex = allUes.findIndex(u => u.id === focusedId);
+    const reordered = [...allUes];
+    if (focusedIndex > 0) {
+      const [focusedUe] = reordered.splice(focusedIndex, 1);
+      reordered.unshift(focusedUe);
+    }
+    return reordered.slice(0, Math.min(ueDisplayCount, reordered.length));
+  }, [replaySceneFrame, elevatedUeId, ueDisplayCount]);
+
   const activeSceneFrame = useMemo((): NormalizedSceneFrame | undefined => {
     if (sceneSource !== 'artifact-replay' || !replaySceneFrame) return undefined;
-    return replaySceneFrame;
-  }, [sceneSource, replaySceneFrame]);
+    return {
+      ...replaySceneFrame,
+      ues: processedUes,
+    };
+  }, [sceneSource, replaySceneFrame, processedUes]);
 
   // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
   // the producer-truth playback cursor. We never recompute SINR or handover
@@ -731,9 +757,9 @@ export function App() {
 
     const allUes = replaySceneFrame.ues;
     if (allUes.length === 0) return;
-    const focusedUe = allUes[0];
+    const focusedId = elevatedUeId ?? allUes[0]?.id ?? null;
+    const focusedUe = (focusedId ? allUes.find(u => u.id === focusedId) : null) ?? allUes[0];
     if (!focusedUe) return;
-    const focusedId = focusedUe.id;
 
     let hoCount = 0;
     let intraHoCount = 0;
@@ -864,7 +890,7 @@ export function App() {
       servingSatActiveBeamIds: servingBeamId !== null ? [servingBeamId] : [],
       pendingTargetActiveBeamIds: targetBeamId !== null ? [targetBeamId] : [],
     });
-  }, [sceneSource, replaySceneFrame, showcaseArtifact, frameIndex]);
+  }, [sceneSource, replaySceneFrame, elevatedUeId, showcaseArtifact, frameIndex]);
 
   const resetAutoSlowDismissedRef = useRef(playback.resetAutoSlowDismissed);
   resetAutoSlowDismissedRef.current = playback.resetAutoSlowDismissed;
@@ -930,11 +956,13 @@ export function App() {
         autoSlowEnabled={playback.autoSlowEnabled}
         uiMode={uiMode}
         beamDensity={runtime.beamDensity}
+        beamCalloutsEnabled={beamCalloutsEnabled}
         cinematicMode={effectiveCinematicMode}
         handoverMode={handoverMode}
         onProfileChange={handleProfileChange}
         onUiModeChange={handleUiModeChange}
         onBeamDensityChange={handleBeamDensityChange}
+        onToggleBeamCallouts={() => setBeamCalloutsEnabled(value => !value)}
         onCameraPresetSelect={camera.selectCameraPreset}
         onCinematicModeChange={camera.setCinematicMode}
         onTogglePause={playback.togglePause}
@@ -942,6 +970,13 @@ export function App() {
         onDismissAutoSlow={playback.dismissAutoSlow}
         onToggleAutoSlow={playback.toggleAutoSlow}
         onHandoverModeChange={handleHandoverModeChange}
+        sceneSource={sceneSource}
+        ueDisplayCount={ueDisplayCount}
+        maxUeCount={showcaseArtifact?.timeline[0]?.ues.length ?? 100}
+        onUeDisplayCountChange={setUeDisplayCount}
+        elevatedUeId={elevatedUeId}
+        ueIds={showcaseArtifact?.timeline[0]?.ues.map(u => u.id) ?? []}
+        onElevatedUeIdChange={setElevatedUeId}
       />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">

@@ -57,6 +57,7 @@ import {
   resolveCinematicSpotlightTargets,
 } from './cinematicEffects';
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
+import { FPSCounter } from './FPSCounter';
 
 interface SceneContentProps {
   profile: Profile;
@@ -468,6 +469,7 @@ function SceneContent({
         })}
       <IntraHandoverArrow vizFrame={viz} runtime={runtime} />
       <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />
+      {sceneFrame.sceneSource === 'artifact-replay' && <FPSCounter />}
     </>
   );
 }
