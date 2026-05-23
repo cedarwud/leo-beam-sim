@@ -53,6 +53,7 @@ interface SatelliteBeamsProps {
   footprintRadius: number; // world units
   reducedMotion?: boolean;
   cinematicMode?: CinematicMode;
+  showCallouts?: boolean;
 }
 
 const SEGMENTS = 32;

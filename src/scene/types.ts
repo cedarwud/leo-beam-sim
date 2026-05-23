@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { BeamCodeRole } from '../constants/beamRoleTokens';
 import type { TopocentricPoint } from '../engine/orbit';
 import type { ActiveBeamAssignment, LinkSample } from '../engine/signal/types';
-import type { HandoverEvent } from '../engine/handover/types';
+import type { HandoverEvent, IntraSwitchPreview } from '../engine/handover/types';
 import type { BeamTarget } from '../viz/SatelliteBeams';
 import type { GlyphKind } from '../viz/glyphs';
 import type { BeamFrequencyIndexResolution } from '../utils/beamFrequency';
@@ -42,6 +42,7 @@ export interface RuntimeConfig {
   signalResetKey?: string;
   handoverResetKey?: string;
   beamDensity: BeamDensity;
+  beamCalloutsEnabled?: boolean;
   effectsEnabled: RuntimeEffectsEnabled;
   cinematicMode: CinematicMode;
   cameraCommand?: RuntimeCameraCommand;
@@ -108,6 +109,20 @@ export interface IntraHandoverEvent {
 }
 
 export interface IntraHandoverEventWithWallClock extends IntraHandoverEvent {
+  wallClockStartMs: number;
+  wallClockExpiresMs: number;
+}
+
+export interface InterHandoverEvent {
+  fromSatId: string;
+  fromBeamId: number;
+  toSatId: string;
+  toBeamId: number;
+  triggeredAtSec: number;
+  expiresAtSec: number;
+}
+
+export interface InterHandoverEventWithWallClock extends InterHandoverEvent {
   wallClockStartMs: number;
   wallClockExpiresMs: number;
 }
@@ -239,8 +254,12 @@ export interface SimFrame {
   recentHoSourceSatId: string | null;
   recentHoTargetSatId: string | null;
   intraHandoverEvent: IntraHandoverEvent | null;
+  intraHandoverPreview: IntraSwitchPreview | null;
   intraHandoverWallClockStartMs: number | null;
   intraHandoverWallClockExpiresMs: number | null;
+  interHandoverEvent: InterHandoverEvent | null;
+  interHandoverWallClockStartMs: number | null;
+  interHandoverWallClockExpiresMs: number | null;
   ueGroundX: number;
   ueGroundZ: number;
 }

@@ -30,6 +30,15 @@ export interface HandoverEvent {
   deltaDb: number | null;
 }
 
+export interface IntraSwitchPreview {
+  satId: string;
+  fromBeamId: number;
+  toBeamId: number;
+  triggerTimeSec: number;
+  triggerTimeTargetSec: number;
+  progress: number;
+}
+
 export interface HandoverPolicy {
   evaluate(
     current: ServingState,

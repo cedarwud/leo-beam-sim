@@ -79,9 +79,16 @@ import {
 
 // Three modes from SDD §3.2. S3 wires `modqn-replay` to the override hook
 // from S0. S4 wires `omega-heuristic`.
+//
+// PR-0 housekeeping: union widened to include `'decision-overlay-on-live-sinr'`
+// (the OQ-7 renamed literal per visual-showcase SDD §10) so prior commits that
+// already referenced the new literal (e.g. DiagnosticsDrawer.tsx) lint clean.
+// Runtime still emits `'modqn-replay'`; the runtime rename + persistence
+// migration shim lands in a later visual-showcase A-OQ7 PR.
 export type RuntimeHandoverMode =
   | 'sinr-offset'
   | 'modqn-replay'
+  | 'decision-overlay-on-live-sinr'
   | 'omega-heuristic';
 
 export const DEFAULT_RUNTIME_HANDOVER_MODE: RuntimeHandoverMode = 'sinr-offset';
