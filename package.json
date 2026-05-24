@@ -33,6 +33,7 @@
     "validate:vc:intra-handover-arrow": "node --import tsx/esm scripts/validate-vc-intra-handover-arrow.tsx",
     "validate:s2:wall-clock-latch": "node --import tsx/esm scripts/validate-s2-wall-clock-latch.tsx",
     "validate:intra-shockwave-s4": "node --import tsx/esm scripts/validate-s4-intra-shockwave.tsx",
+    "validate:intra-ribbon-s4b": "node --import tsx/esm scripts/validate-s4b-intra-ribbon.tsx",
     "validate:vc:baseline-proof-strip": "node --import tsx/esm scripts/validate-vc-baseline-proof-strip.tsx",
     "validate:vc3a:hex-paint": "node --import tsx/esm scripts/validate-vc3a-hex-paint.tsx",
     "validate:vc3b:spine-particles": "node --import tsx/esm scripts/validate-vc3b-spine-particles.ts",
