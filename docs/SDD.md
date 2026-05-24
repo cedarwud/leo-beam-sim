@@ -16,6 +16,13 @@ for that upgrade path is tracked separately in
 The current implementation/status rollup for that upgrade path is tracked in
 `docs/hobs-tr38811-current-status.md`.
 
+MODQN ω-weighted handover (three runtime modes: `sinr-offset` /
+`decision-overlay-on-live-sinr` / `omega-heuristic`) and user-triggered training are also
+**not** part of this baseline architecture. The design contract is tracked
+separately in `docs/modqn-omega-handover-sdd.md`. The companion backend
+service contract for user-triggered training is tracked in
+`docs/modqn-training-trigger-backend-sdd.md`.
+
 **Goals:**
 - Simulate LEO satellite passes across the observer's sky with physically correct arc trajectories
 - Render beam cones from satellites to ground with oblique-cone geometry

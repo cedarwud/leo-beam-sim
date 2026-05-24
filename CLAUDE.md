@@ -67,6 +67,8 @@ When a live-sim feature here needs academic rigor (multi-beam SINR, Doppler, fad
 | SINR runtime parameter contract | [docs/sinr-runtime-parameter-contract.md](./docs/sinr-runtime-parameter-contract.md) |
 | Frontend UX / visual roadmap | [docs/frontend-ux-redesign-sdd.md](./docs/frontend-ux-redesign-sdd.md) |
 | Beam hopping mini-SDD | [docs/beam-hopping-mini-sdd.md](./docs/beam-hopping-mini-sdd.md) |
+| MODQN ω-weighted handover mini-SDD | [docs/modqn-omega-handover-sdd.md](./docs/modqn-omega-handover-sdd.md) |
+| MODQN training-trigger backend mini-SDD | [docs/modqn-training-trigger-backend-sdd.md](./docs/modqn-training-trigger-backend-sdd.md) |
 | Research implementation backlog | [docs/research-implementation-backlog.md](./docs/research-implementation-backlog.md) |
 
 ## 7. Supplemental Engineering Skill Routing
