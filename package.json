@@ -36,6 +36,7 @@
     "validate:intra-ribbon-s4b": "node --import tsx/esm scripts/validate-s4b-intra-ribbon.tsx",
     "validate:diagnostics-rate-s5": "node --import tsx/esm scripts/validate-s5-diagnostics-rate.tsx",
     "validate:dsinr-histogram-t1": "node --import tsx/esm scripts/validate-t1-dsinr-histogram.tsx",
+    "validate:observed-window-t2": "node --import tsx/esm scripts/validate-t2-observed-window.tsx",
     "validate:vc:baseline-proof-strip": "node --import tsx/esm scripts/validate-vc-baseline-proof-strip.tsx",
     "validate:vc3a:hex-paint": "node --import tsx/esm scripts/validate-vc3a-hex-paint.tsx",
     "validate:vc3b:spine-particles": "node --import tsx/esm scripts/validate-vc3b-spine-particles.ts",

@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { UI_TOKENS } from '../constants/uiTokens';
 import type { HandoverEvent } from '../engine/handover/types';
 import type { Profile } from '../profiles/types';
-import type { SimState } from '../scene/types';
+import type { IntraHandoverEvent, SimState } from '../scene/types';
 import { formatBeamIdentity, formatHandoverReason, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import { formatFrequencyLabel } from '../utils/beamFrequency';
 import type { UiMode } from './uiMode';
@@ -122,6 +122,26 @@ function bucketDelta(delta: number): DsinrBucketKey {
   return 'ge8';
 }
 
+const T2_LATCH_WINDOW_MS = 6000;
+
+interface ObservedWindowAggregate {
+  sumMs: number;
+  count: number;
+  lastMs: number | null;
+}
+
+const EMPTY_OBSERVED_WINDOW_AGGREGATE: ObservedWindowAggregate = {
+  sumMs: 0,
+  count: 0,
+  lastMs: null,
+};
+
+type PublishedIntraHandoverEvent = NonNullable<SimState['intraHandoverEvent']> & IntraHandoverEvent;
+
+function readPublishedIntraStart(event: PublishedIntraHandoverEvent | null): number | null {
+  return event !== null ? event.wallClockStartMs : null;
+}
+
 export function DiagnosticsDrawer({
   uiMode,
   profile,
@@ -140,6 +160,7 @@ export function DiagnosticsDrawer({
     intraHoCount,
     lastHoEvent,
     lastHoReason,
+    intraHandoverEvent,
     simTimeSec,
     beamHopEnabled,
     beamHopSlotIndex,
@@ -189,6 +210,32 @@ export function DiagnosticsDrawer({
     }));
   }, [lastHoEvent]);
   const dsinrMean = dsinrHistogram.total > 0 ? dsinrHistogram.sum / dsinrHistogram.total : null;
+  const observedMountTimeRef = useRef<number>(typeof performance === 'undefined' ? Date.now() : performance.now());
+  const prevIntraLatchStartRef = useRef<number | null | undefined>(undefined);
+  const [observedAggregate, setObservedAggregate] = useState<ObservedWindowAggregate>(() => ({ ...EMPTY_OBSERVED_WINDOW_AGGREGATE }));
+  useEffect(() => {
+    const curStart = readPublishedIntraStart(intraHandoverEvent ?? null);
+    if (prevIntraLatchStartRef.current === undefined) {
+      // Baseline-on-first-render: do not finalize the in-flight latch (we did
+      // not observe its start).
+      prevIntraLatchStartRef.current = curStart;
+      return;
+    }
+    if (prevIntraLatchStartRef.current === curStart) return;
+    const prevStart = prevIntraLatchStartRef.current;
+    prevIntraLatchStartRef.current = curStart;
+    if (prevStart === null) return;
+    if (prevStart < observedMountTimeRef.current) return;
+    const endMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const observedMs = Math.min(T2_LATCH_WINDOW_MS, Math.max(0, endMs - prevStart));
+    setObservedAggregate(prev => ({
+      sumMs: prev.sumMs + observedMs,
+      count: prev.count + 1,
+      lastMs: observedMs,
+    }));
+  }, [intraHandoverEvent]);
+  const observedMeanMs = observedAggregate.count > 0 ? observedAggregate.sumMs / observedAggregate.count : null;
+  const observedPendingFlag: '0' | '1' = intraHandoverEvent !== null ? '1' : '0';
   const expanded = uiMode === 'diagnostics';
   const frequencyReuse = profile.beams.frequencyReuse;
   const beamPowerControl = profile.channel.beamPowerControl;
@@ -245,6 +292,10 @@ export function DiagnosticsDrawer({
       data-intra-dsinr-count-ge8={String(dsinrHistogram.counts.ge8)}
       data-intra-dsinr-mean={dsinrMean === null ? '' : dsinrMean.toFixed(4)}
       data-intra-dsinr-last={dsinrHistogram.lastDelta === null ? '' : dsinrHistogram.lastDelta.toFixed(4)}
+      data-intra-observed-count={String(observedAggregate.count)}
+      data-intra-observed-mean-ms={observedMeanMs === null ? '' : observedMeanMs.toFixed(4)}
+      data-intra-observed-last-ms={observedAggregate.lastMs === null ? '' : observedAggregate.lastMs.toFixed(4)}
+      data-intra-observed-pending={observedPendingFlag}
       aria-label="Diagnostics drawer"
     >
       <div className="leo-diagnostics-drawer__body">
@@ -359,6 +410,10 @@ export function DiagnosticsDrawer({
             <DebugRow
               label="ΔSINR bins"
               value={`<1:${dsinrHistogram.counts.lt1}|1-2:${dsinrHistogram.counts['1to2']}|2-4:${dsinrHistogram.counts['2to4']}|4-8:${dsinrHistogram.counts['4to8']}|≥8:${dsinrHistogram.counts.ge8} (n=${dsinrHistogram.total})`}
+            />
+            <DebugRow
+              label="Visibility window"
+              value={`${observedMeanMs === null ? '—' : `${observedMeanMs.toFixed(0)} ms`} mean | ${observedAggregate.lastMs === null ? '—' : `${observedAggregate.lastMs.toFixed(0)} ms`} last (n=${observedAggregate.count})`}
             />
             <DebugRow label="Last Reason" value={formatHandoverReason(lastHoReason, frequencyReuse) || '—'} />
           </div>
