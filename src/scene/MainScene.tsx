@@ -36,6 +36,7 @@ import { AmbientFootprintRings } from '../viz/AmbientFootprintRings';
 import { HandoverLinks } from '../viz/HandoverLinks';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
 import { IntraHandoverArrow } from '../viz/IntraHandoverArrow';
+import { IntraGroundShockwave } from '../viz/IntraGroundShockwave';
 import { BeamPulseClock, SatelliteBeams } from '../viz/SatelliteBeams';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
 import { SpineParticles } from '../viz/SpineParticles';
@@ -468,6 +469,7 @@ function SceneContent({
           );
         })}
       <IntraHandoverArrow vizFrame={viz} runtime={runtime} />
+      <IntraGroundShockwave vizFrame={viz} runtime={runtime} />
       <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />
       {sceneFrame.sceneSource === 'artifact-replay' && <FPSCounter />}
     </>

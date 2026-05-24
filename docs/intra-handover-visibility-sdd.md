@@ -222,6 +222,13 @@ Five sub-slices, in order of dependency:
    to-beam, emit a one-shot ring effect: old beam ring contracts and
    fades; new beam ring expands and brightens. Cheap and unambiguous at
    the spatial scale of adjacent same-sat beams.
+   **Status:** shipped as `src/viz/IntraGroundShockwave.tsx` mounted
+   alongside `IntraHandoverArrow` in `MainScene`. Validator:
+   `npm run validate:intra-shockwave-s4`. The shockwave reads the
+   existing `vizFrame.intraHandoverEvent` wall-clock latch (no truth-side
+   change) and writes `data-intra-shockwave-*` attributes on the canvas
+   `dataset` for headless verification. B2 (ribbon arc + pulse dot) is
+   deferred to follow-up slice S4b.
 6. **B5 — Scene handover toast.** Compact top-center overlay. Unlike the
    post-event wall-clock arrow latch, this toast must follow the active
    policy / transition state exactly: intra-HO reads `intraHandoverPreview`
@@ -348,7 +355,7 @@ trail; the execution order in §8.1 supersedes the original draft ordering.
 | S1 | A1 + A2 | profile JSON, dwell tuning | dropped (no effect at stationary or mobile UE; see §5.1.A2) |
 | S2 | B0 + B1 | `runtimeFrameStep.ts`, `IntraHandoverArrow.tsx`, `App.tsx` auto-slow | low — next |
 | S3 | B3 | `runtimeFrameStep.ts:579`, `useBeamViz.ts:571`, `VizFrame` types, beam material consumer | medium (touches role plumbing) |
-| S4 | B2 + B4 | `IntraHandoverArrow.tsx` rewrite, new ground-ring viz | low (presentation only) |
+| S4 | B2 + B4 | `IntraHandoverArrow.tsx` rewrite, new ground-ring viz | B4 shipped (`IntraGroundShockwave.tsx` + `validate:intra-shockwave-s4`); B2 deferred to follow-up slice S4b |
 | S5 | B5 | new HUD banner component, `DiagnosticsDrawer` rate readout | low |
 | S6 | A3 | new mobility profile, `ueMobility` schema, UE-position injection in `runtimeFrameStep.ts` | **shipped 2026-05-14, commit 9081486** |
 
@@ -414,11 +421,18 @@ Future Track A slices must include:
   visibly distinct ground discs for the duration of the wall-clock latch.
   The source fades down in the serving-yellow family while the target ramps up
   in the same blue target family used by inter-HO pending/target beams.
+- After B4 (S4 partial), the from-beam and to-beam ground discs each render
+  a transient ring whose opacity stays within (0.05, 0.95) for at least one
+  sample during the wall-clock latch window; source ring scale is
+  monotonically non-increasing and target ring scale is monotonically
+  non-decreasing.
 - After S4, the ribbon arc has a measurable on-screen width greater than
   1 px and the moving pulse dot reaches the to-beam endpoint within the
   latch window.
 - After S5, the HUD banner appears within the same frame as the event
   and disappears at latch expiry.
+- Reduced-motion path: shockwave attributes do not oscillate (two consecutive
+  samples within ±0.01).
 
 ### 9.3 Truth invariance
 
@@ -483,7 +497,8 @@ Recommended order:
    `runtimeFrameStep.ts`, plumbed into `IntraHandoverArrow.tsx` and
    `App.tsx` auto-slow.
 4. S3 (B3) — beam-level intra role on `VizFrame` and `useBeamViz`.
-5. S4 (B2 + B4) — ribbon arc, pulse dot, ground shockwave.
+5a. S4 partial: B4 shipped (`IntraGroundShockwave.tsx` + `validate:intra-shockwave-s4`).
+5b. S4 follow-up: B2 (ribbon arc + pulse dot) — next.
 6. S5 (B5) — HUD banner and rate readout.
 
 S2 unblocks all later visibility work and is the highest leverage next
