@@ -619,9 +619,10 @@ respects §9.3 truth invariance.
 | Slice | §10 item | Status |
 |---|---|---|
 | T1 | ΔSINR histogram (intra-trigger) | shipped 2026-05-24 (commit fills at FF-merge); DiagnosticsDrawer 2 rows + 8 dataset attrs; validator `validate:dsinr-histogram-t1` |
-| T2 | Mean wall-clock visibility window per intra-HO event | deferred — see §13.1 (window is a fixed 6.0 s constant; "mean observed" requires either engine-side observed-duration field or UI-side latch-end interpolation) |
+| T2 | Mean wall-clock visibility window per intra-HO event | mini-spec landed 2026-05-24 (this section §15.2); implementation slice pending |
 
-T1 details:
+### 15.1 T1 details (shipped)
+
 - DiagnosticsDrawer reads SimState `lastHoEvent` (already published by
   `useSimStatePublisher`) and accumulates a 5-bucket histogram in
   React-side `useState`. Baseline-on-first-render dedupe avoids
@@ -641,3 +642,139 @@ T1 details:
 - Histogram is monotonic across the session; sim profile change or
   reset does not clear it in the first cut. A clear button is a
   deferred follow-up if demo feedback requests it.
+
+### 15.2 T2 mini-spec (pending implementation)
+
+**Problem.** §13.1 fixes the intra-HO wall-clock latch window at 6.0 s.
+A naive "mean visibility window" over committed intra-HO events would
+therefore be trivially 6.0 s for every event, which carries no tuning
+signal. To make the metric meaningful at the demo's intra-HO rate
+(50 events / 5 min on `hobs-2024-mobile-demo-aircraft` per §9.1, i.e.
+~10 events / min sim-time and at speed 20× ~3.3 events / sec
+wall-clock), T2 must measure the *observed* duration of each latch
+before it is overwritten by a subsequent intra-HO or inter-HO commit
+(per §7.4: "intra and inter latches are mutually exclusive; committing
+one clears the other").
+
+**Definition (binding for the implementation slice).** For each
+committed intra-HO event `E_i` with wall-clock latch starting at
+`E_i.wallClockStartMs` and natural expiry at
+`E_i.wallClockExpiresMs = E_i.wallClockStartMs + 6000`, define:
+
+- `observedMs(E_i) = min(6000, E_{i+1}.wallClockStartMs - E_i.wallClockStartMs)`
+  where `E_{i+1}` is the next *any-kind* `HandoverEvent` (intra-switch
+  or inter-handover) with `E_{i+1}.wallClockStartMs > E_i.wallClockStartMs`.
+- If `E_i` is the latest committed event and no follow-up event has
+  arrived, `observedMs(E_i)` is *unfinalized* and is excluded from
+  the running sum / count until either (a) a follow-up event arrives,
+  or (b) wall-clock time exceeds `E_i.wallClockExpiresMs`. In case (b)
+  the natural-expiry path applies: `observedMs(E_i) = 6000`.
+
+The metric is intentionally bounded to [0, 6000] ms even when
+`E_{i+1}.wallClockStartMs - E_i.wallClockStartMs > 6000` (i.e. the
+latch already expired naturally before the next event), because the
+*visible* duration cannot exceed the latch window regardless of the
+real gap.
+
+**Channel — UI-side only.** Implementation must stay presentation-only
+per §4.3 / §9.3. No engine, no `runtimeFrameStep`, no SimState type
+addition, no publisher field. The needed inputs are already on
+SimState as `intraHandoverEvent.wallClockStartMs/ExpiresMs` (via
+useSimStatePublisher line 333-339) and `lastHoEvent` (line 369). The
+DiagnosticsDrawer maintains the per-event state via React `useRef` and
+`useState` exactly like T1.
+
+**Algorithm (DiagnosticsDrawer-local).**
+
+```
+state (refs):
+  pendingIntra:   { startMs, expiresMs } | null  // latest unfinalized intra
+  observedSumMs:  number
+  observedCount:  number
+  lastObservedMs: number | null
+
+trigger A — on lastHoEvent change (useEffect):
+  let e = lastHoEvent (deduped via reference + baseline-on-mount)
+  if e is null: return
+  if pendingIntra !== null:
+    let observed = min(6000, max(0, e.timeMs * speedAdjust - pendingIntra.startMs))
+    finalize(observed)
+  if e.action === 'intra-switch':
+    pendingIntra = { startMs: e.wallClockStartMs, expiresMs: e.wallClockExpiresMs }
+  else:
+    pendingIntra = null  // inter-HO clears intra latch per §7.4
+
+trigger B — 1 Hz tick (useEffect setInterval, reuses S5's existing 1 Hz tick or adds its own):
+  let now = performance.now()
+  if pendingIntra !== null && now >= pendingIntra.expiresMs:
+    finalize(6000)  // natural expiry, no follow-up
+    pendingIntra = null
+
+finalize(observedMs):
+  observedSumMs += observedMs
+  observedCount += 1
+  lastObservedMs = observedMs
+  setHistogramVersion(v => v + 1)
+```
+
+**Open detail (resolve before impl).** The `e.timeMs` field on
+`HandoverEvent` is sim-time-ms, not wall-clock-ms. For computing the
+observed duration in wall-clock terms (which is what the user sees),
+we need the wall-clock latch start of `E_{i+1}`. That value is
+available on the *follow-up* event's intraHandoverEvent latch IF
+`E_{i+1}` is also an intra-switch, but for an inter-HO commit there is
+no `intraHandoverEvent.wallClockStartMs` exposed. The impl slice must
+either (i) capture `performance.now()` inside the trigger-A useEffect
+as the proxy for `E_{i+1}` wall-clock arrival (precise enough since
+React commit lag is bounded — see [[feedback-validator-canvas-vs-react-attr]]),
+or (ii) add `interHandoverEvent.wallClockStartMs` to SimState
+publisher (already on RuntimeFrameStep state per
+`useSimStatePublisher.ts:336`; just not on the published `intraHandoverEvent`
+shape). Option (i) keeps the diff smaller and is recommended.
+
+**Dataset attrs on expanded drawer section root.**
+
+- `data-intra-observed-count`         — integer string, total finalized events
+- `data-intra-observed-mean-ms`       — 4-decimal `toFixed(4)`, empty when count=0
+- `data-intra-observed-last-ms`       — 4-decimal `toFixed(4)`, empty when count=0
+- `data-intra-observed-pending`       — '1' if a `pendingIntra` exists, '0' otherwise (validator hint)
+
+**DiagnosticsDrawer rows (added after T1's `ΔSINR bins` row).**
+
+- `Visibility window` — `${mean ? mean.toFixed(2) + ' ms' : '—'} mean | ${last ? last.toFixed(2) + ' ms' : '—'} last (n=${count})`
+
+**Acceptance criteria.**
+
+- After 2+ intra-HO events on the mobile-demo profile at speed 20×,
+  `data-intra-observed-count >= 2` AND `data-intra-observed-mean-ms`
+  is finite AND in (0, 6000]. At this rate `~10` events / min sim-time
+  the typical observed window will be well under 6000 ms (single intra
+  cycle is ~6 sim-sec = 300 ms wall-clock at 20×, but multiple intra in
+  a single dwell can occur).
+- Sum invariant: `mean ≈ sum/count` to within float tolerance.
+- Bounded invariant: `0 < last <= 6000`, `0 < mean <= 6000`.
+- Truth invariance: `HandoverEvent` log byte-identical; per-beam SINR
+  identical; T1 attrs unchanged.
+
+**Validator outline.** `scripts/validate-t2-observed-window.tsx`:
+mirror T1 scaffolding (localStorage init-script to open diagnostics
+drawer + speed 20× + drawer-attr gate). Wait for
+`data-intra-observed-count >= 2` (timeout 180 s — needs 2 events).
+Read mean / last / count, assert invariants above. Optional: confirm
+`data-intra-observed-pending` cycles 0→1→0 across an event-boundary
+sample window.
+
+**Out of scope (deferred from T2).**
+
+- Per-event histogram of observed durations (analogous to T1's bucket
+  scheme). T2 first cut emits aggregate mean + last only.
+- Reset on profile switch / sim reset. Same first-cut policy as T1
+  (monotonic per session).
+- Distinguishing "expired naturally" vs "overwritten" observed buckets.
+
+**Rationale for deferring impl from this turn.** The "Open detail"
+above is a real design fork that the controller must resolve with the
+user before issuing a codex executor brief. Shipping impl in the same
+turn as the spec risks codex picking the wrong fork by guess.
+Implementation should run in a fresh conversation with the resolved
+spec in hand.
