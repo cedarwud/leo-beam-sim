@@ -234,6 +234,11 @@ Five sub-slices, in order of dependency:
    `intraHandoverEvent` wall-clock transition latch after commit; inter-HO
    reads `pendingTarget` while the inter trigger gate is active. It must not
    use a synthetic timeout or the recent-HO linger window.
+   **Status:** Scene handover toast shipped via 12-PR strict split (PR-4)
+   commit 1ac3038. DiagnosticsDrawer rate readout shipped 2026-05-24 as S5
+   (commit fills at FF-merge): `Intra/sim-min`, `Inter/sim-min`,
+   `Wall-clock elapsed` rows in DEBUG/VALIDATION section; validator
+   `npm run validate:diagnostics-rate-s5`.
 
 7. **B6 — Intra/inter color-language parity.** Inter-HO uses the same
    beam-level display language as intra-HO: yellow marks the current/source
@@ -338,6 +343,14 @@ versa, so a beam never carries both an intra and an inter role at once.
 - A second readout for elapsed wall-clock time, so the rate is
   interpretable at speed multipliers.
 
+Status: HUD banner shipped via `src/viz/HandoverToastOverlay.tsx` (12-PR
+PR-4). DiagnosticsDrawer rate readout shipped 2026-05-24 as S5; new dataset
+attrs on `[data-testid="diagnostics-drawer"][data-drawer-state="expanded"]`:
+`data-intra-ho-per-sim-min`, `data-inter-ho-per-sim-min`,
+`data-sim-wallclock-elapsed-sec`, `data-sim-time-sec`,
+`data-intra-ho-count`, `data-ho-count` (4-decimal `toFixed(4)` for
+numerics, integer strings for counts).
+
 `App.tsx` auto-slow inspects `vizFrame.intraHandoverEvent` in addition to
 `pendingTargetSatId`.
 
@@ -354,7 +367,7 @@ trail; the execution order in §8.1 supersedes the original draft ordering.
 | S2 | B0 + B1 | `runtimeFrameStep.ts`, `IntraHandoverArrow.tsx`, `App.tsx` auto-slow | low — next |
 | S3 | B3 | `runtimeFrameStep.ts:579`, `useBeamViz.ts:571`, `VizFrame` types, beam material consumer | medium (touches role plumbing) |
 | S4 | B2 + B4 | `IntraHandoverArrow.tsx` rewrite, new ground-ring viz | B4 shipped (`IntraGroundShockwave.tsx` + `validate:intra-shockwave-s4`); B2 shipped as S4b (`IntraHandoverArrow.tsx` glow+pulse + `validate:intra-ribbon-s4b`) |
-| S5 | B5 | new HUD banner component, `DiagnosticsDrawer` rate readout | low |
+| S5 | B5 | new HUD banner component, `DiagnosticsDrawer` rate readout | shipped 2026-05-24, commit fills at FF-merge |
 | S6 | A3 | new mobility profile, `ueMobility` schema, UE-position injection in `runtimeFrameStep.ts` | **shipped 2026-05-14, commit 9081486** |
 
 ### 8.1 Revised Execution Order
@@ -429,6 +442,11 @@ Future Track A slices must include:
   latch window (verified via `data-intra-ribbon-radius-world` ≥ 2.0 world units + `data-intra-pulse-progress` reaching ≥ 0.95 within the latch — see `scripts/validate-s4b-intra-ribbon.tsx`).
 - After S5, the HUD banner appears within the same frame as the event
   and disappears at latch expiry.
+- After S5, the `DiagnosticsDrawer` (uiMode='diagnostics') exposes
+  `data-intra-ho-per-sim-min` ≥ 0 and `data-sim-wallclock-elapsed-sec`
+  advancing at ≥ 1.0 per wall-clock second on its
+  `[data-testid="diagnostics-drawer"][data-drawer-state="expanded"]`
+  section (verified via `scripts/validate-s5-diagnostics-rate.tsx`).
 - Reduced-motion path: shockwave attributes do not oscillate (two consecutive
   samples within ±0.01).
 
@@ -497,7 +515,8 @@ Recommended order:
 4. S3 (B3) — beam-level intra role on `VizFrame` and `useBeamViz`.
 5a. S4 partial: B4 shipped (`IntraGroundShockwave.tsx` + `validate:intra-shockwave-s4`).
 5b. ~~S4 follow-up: B2~~ — shipped as S4b (commit fills in at FF-merge).
-6. S5 (B5) — HUD banner and rate readout.
+6. S5 (B5) — HUD banner shipped via 12-PR PR-4; DiagnosticsDrawer rate
+   readout shipped 2026-05-24 (commit fills at FF-merge).
 
 S2 unblocks all later visibility work and is the highest leverage next
 step.

@@ -1,4 +1,4 @@
-import { useContext, type ReactNode } from 'react';
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { UI_TOKENS } from '../constants/uiTokens';
 import type { Profile } from '../profiles/types';
 import type { SimState } from '../scene/types';
@@ -114,6 +114,7 @@ export function DiagnosticsDrawer({
     hoCount,
     intraHoCount,
     lastHoReason,
+    simTimeSec,
     beamHopEnabled,
     beamHopSlotIndex,
     beamHopSlotSec,
@@ -121,6 +122,19 @@ export function DiagnosticsDrawer({
     servingSatActiveBeamIds,
     pendingTargetActiveBeamIds,
   } = simState;
+  const wallClockStartMsRef = useRef<number>(typeof performance === 'undefined' ? Date.now() : performance.now());
+  const [wallClockNowMs, setWallClockNowMs] = useState<number>(() => typeof performance === 'undefined' ? Date.now() : performance.now());
+  useEffect(() => {
+    const id = setInterval(() => {
+      setWallClockNowMs(typeof performance === 'undefined' ? Date.now() : performance.now());
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+  const wallClockElapsedSec = Math.max(0, (wallClockNowMs - wallClockStartMsRef.current) / 1000);
+  const simMinElapsed = simTimeSec / 60;
+  const intraHoPerSimMin = simMinElapsed > 0 ? intraHoCount / simMinElapsed : 0;
+  const interHoCount = Math.max(0, hoCount - intraHoCount);
+  const interHoPerSimMin = simMinElapsed > 0 ? interHoCount / simMinElapsed : 0;
   const expanded = uiMode === 'diagnostics';
   const frequencyReuse = profile.beams.frequencyReuse;
   const beamPowerControl = profile.channel.beamPowerControl;
@@ -163,6 +177,12 @@ export function DiagnosticsDrawer({
       className="leo-diagnostics-drawer"
       data-testid="diagnostics-drawer"
       data-drawer-state="expanded"
+      data-intra-ho-per-sim-min={intraHoPerSimMin.toFixed(4)}
+      data-inter-ho-per-sim-min={interHoPerSimMin.toFixed(4)}
+      data-sim-wallclock-elapsed-sec={wallClockElapsedSec.toFixed(4)}
+      data-sim-time-sec={simTimeSec.toFixed(4)}
+      data-intra-ho-count={String(intraHoCount)}
+      data-ho-count={String(hoCount)}
       aria-label="Diagnostics drawer"
     >
       <div className="leo-diagnostics-drawer__body">
@@ -267,6 +287,9 @@ export function DiagnosticsDrawer({
             <DebugRow label="Recent HO" value={recentHoText} />
             <DebugRow label="HO Count" value={String(hoCount)} />
             <DebugRow label="Intra-switch" value={String(intraHoCount)} />
+            <DebugRow label="Intra/sim-min" value={intraHoPerSimMin.toFixed(2)} />
+            <DebugRow label="Inter/sim-min" value={interHoPerSimMin.toFixed(2)} />
+            <DebugRow label="Wall-clock elapsed" value={`${wallClockElapsedSec.toFixed(1)} s`} />
             <DebugRow label="Last Reason" value={formatHandoverReason(lastHoReason, frequencyReuse) || '—'} />
           </div>
         </DrawerSection>
