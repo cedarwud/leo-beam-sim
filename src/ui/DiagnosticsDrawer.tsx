@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { UI_TOKENS } from '../constants/uiTokens';
+import type { HandoverEvent } from '../engine/handover/types';
 import type { Profile } from '../profiles/types';
 import type { SimState } from '../scene/types';
 import { formatBeamIdentity, formatHandoverReason, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
@@ -97,6 +98,30 @@ function DrawerSection({
   );
 }
 
+type DsinrBucketKey = 'lt1' | '1to2' | '2to4' | '4to8' | 'ge8';
+
+interface DsinrHistogram {
+  counts: Record<DsinrBucketKey, number>;
+  total: number;
+  sum: number;
+  lastDelta: number | null;
+}
+
+const EMPTY_DSINR_HISTOGRAM: DsinrHistogram = {
+  counts: { lt1: 0, '1to2': 0, '2to4': 0, '4to8': 0, ge8: 0 },
+  total: 0,
+  sum: 0,
+  lastDelta: null,
+};
+
+function bucketDelta(delta: number): DsinrBucketKey {
+  if (delta < 1) return 'lt1';
+  if (delta < 2) return '1to2';
+  if (delta < 4) return '2to4';
+  if (delta < 8) return '4to8';
+  return 'ge8';
+}
+
 export function DiagnosticsDrawer({
   uiMode,
   profile,
@@ -113,6 +138,7 @@ export function DiagnosticsDrawer({
     physicalServingBudget,
     hoCount,
     intraHoCount,
+    lastHoEvent,
     lastHoReason,
     simTimeSec,
     beamHopEnabled,
@@ -135,6 +161,34 @@ export function DiagnosticsDrawer({
   const intraHoPerSimMin = simMinElapsed > 0 ? intraHoCount / simMinElapsed : 0;
   const interHoCount = Math.max(0, hoCount - intraHoCount);
   const interHoPerSimMin = simMinElapsed > 0 ? interHoCount / simMinElapsed : 0;
+  const prevHoEventRef = useRef<HandoverEvent | null | undefined>(undefined);
+  const [dsinrHistogram, setDsinrHistogram] = useState<DsinrHistogram>(() => ({
+    counts: { ...EMPTY_DSINR_HISTOGRAM.counts },
+    total: 0,
+    sum: 0,
+    lastDelta: null,
+  }));
+  useEffect(() => {
+    const event = lastHoEvent;
+    if (prevHoEventRef.current === undefined) {
+      prevHoEventRef.current = event;
+      return;
+    }
+    if (prevHoEventRef.current === event) return;
+    prevHoEventRef.current = event;
+    if (event === null) return;
+    if (event.action !== 'intra-switch') return;
+    const delta = event.deltaDb;
+    if (delta === null || !Number.isFinite(delta)) return;
+    const bucket = bucketDelta(delta);
+    setDsinrHistogram(prev => ({
+      counts: { ...prev.counts, [bucket]: prev.counts[bucket] + 1 },
+      total: prev.total + 1,
+      sum: prev.sum + delta,
+      lastDelta: delta,
+    }));
+  }, [lastHoEvent]);
+  const dsinrMean = dsinrHistogram.total > 0 ? dsinrHistogram.sum / dsinrHistogram.total : null;
   const expanded = uiMode === 'diagnostics';
   const frequencyReuse = profile.beams.frequencyReuse;
   const beamPowerControl = profile.channel.beamPowerControl;
@@ -183,6 +237,14 @@ export function DiagnosticsDrawer({
       data-sim-time-sec={simTimeSec.toFixed(4)}
       data-intra-ho-count={String(intraHoCount)}
       data-ho-count={String(hoCount)}
+      data-intra-dsinr-total={String(dsinrHistogram.total)}
+      data-intra-dsinr-count-lt1={String(dsinrHistogram.counts.lt1)}
+      data-intra-dsinr-count-1to2={String(dsinrHistogram.counts['1to2'])}
+      data-intra-dsinr-count-2to4={String(dsinrHistogram.counts['2to4'])}
+      data-intra-dsinr-count-4to8={String(dsinrHistogram.counts['4to8'])}
+      data-intra-dsinr-count-ge8={String(dsinrHistogram.counts.ge8)}
+      data-intra-dsinr-mean={dsinrMean === null ? '' : dsinrMean.toFixed(4)}
+      data-intra-dsinr-last={dsinrHistogram.lastDelta === null ? '' : dsinrHistogram.lastDelta.toFixed(4)}
       aria-label="Diagnostics drawer"
     >
       <div className="leo-diagnostics-drawer__body">
@@ -290,6 +352,14 @@ export function DiagnosticsDrawer({
             <DebugRow label="Intra/sim-min" value={intraHoPerSimMin.toFixed(2)} />
             <DebugRow label="Inter/sim-min" value={interHoPerSimMin.toFixed(2)} />
             <DebugRow label="Wall-clock elapsed" value={`${wallClockElapsedSec.toFixed(1)} s`} />
+            <DebugRow
+              label="Intra ΔSINR"
+              value={`${dsinrMean === null ? '—' : `${dsinrMean.toFixed(2)} dB`} mean | ${dsinrHistogram.lastDelta === null ? '—' : `${dsinrHistogram.lastDelta.toFixed(2)} dB`} last`}
+            />
+            <DebugRow
+              label="ΔSINR bins"
+              value={`<1:${dsinrHistogram.counts.lt1}|1-2:${dsinrHistogram.counts['1to2']}|2-4:${dsinrHistogram.counts['2to4']}|4-8:${dsinrHistogram.counts['4to8']}|≥8:${dsinrHistogram.counts.ge8} (n=${dsinrHistogram.total})`}
+            />
             <DebugRow label="Last Reason" value={formatHandoverReason(lastHoReason, frequencyReuse) || '—'} />
           </div>
         </DrawerSection>

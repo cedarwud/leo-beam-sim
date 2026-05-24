@@ -485,8 +485,11 @@ Required diagnostics for each slice landing:
 - Inter-HO events per minute, for regression watch.
 - Mean wall-clock visibility window per intra-HO event (computed from
   latch start and end).
-- Optional: histogram of `ΔSINR = candidate.sinrDb - currentSinr` at
-  trigger, for tuning.
+- Histogram of `ΔSINR = candidate.sinrDb - currentSinr` at trigger,
+  for tuning. **Status:** shipped 2026-05-24 as Slice T1
+  (DiagnosticsDrawer DEBUG/VALIDATION extension, 5 buckets `<1` /
+  `1-2` / `2-4` / `4-8` / `≥8` dB, mean + last value); validator
+  `npm run validate:dsinr-histogram-t1`.
 
 The `DiagnosticsDrawer` is the canonical surface for these.
 
@@ -606,3 +609,35 @@ Rationale: a stacked banner risks visual clutter and competes with the
 the freshest event. A `+N more` collapse may be added later if demo
 feedback shows back-to-back intra-HOs are being missed, but it is not a
 blocker for S5 acceptance.
+
+## 15. Telemetry Follow-ups
+
+Once §8 Track A/B slices completed, residual measurements from §10 are
+landed as `T*` slices. Each is presentation-only (UI-only diff) and
+respects §9.3 truth invariance.
+
+| Slice | §10 item | Status |
+|---|---|---|
+| T1 | ΔSINR histogram (intra-trigger) | shipped 2026-05-24 (commit fills at FF-merge); DiagnosticsDrawer 2 rows + 8 dataset attrs; validator `validate:dsinr-histogram-t1` |
+| T2 | Mean wall-clock visibility window per intra-HO event | deferred — see §13.1 (window is a fixed 6.0 s constant; "mean observed" requires either engine-side observed-duration field or UI-side latch-end interpolation) |
+
+T1 details:
+- DiagnosticsDrawer reads SimState `lastHoEvent` (already published by
+  `useSimStatePublisher`) and accumulates a 5-bucket histogram in
+  React-side `useState`. Baseline-on-first-render dedupe avoids
+  double-counting the initial event; reference equality dedupes
+  subsequent identical refs.
+- Buckets: `<1` / `1-2` / `2-4` / `4-8` / `≥8` dB on
+  `candidate.sinrDb - currentSinr` at trigger (= `HandoverEvent.deltaDb`
+  for intra-switch entries, computed in
+  `src/engine/handover/handover-manager.ts:455`).
+- Dataset attrs on the expanded drawer section root
+  (`[data-testid="diagnostics-drawer"][data-drawer-state="expanded"]`):
+  `data-intra-dsinr-total`, `data-intra-dsinr-count-lt1`,
+  `data-intra-dsinr-count-1to2`, `data-intra-dsinr-count-2to4`,
+  `data-intra-dsinr-count-4to8`, `data-intra-dsinr-count-ge8`,
+  `data-intra-dsinr-mean` (4-decimal, empty when no events),
+  `data-intra-dsinr-last` (4-decimal, empty when no events).
+- Histogram is monotonic across the session; sim profile change or
+  reset does not clear it in the first cut. A clear button is a
+  deferred follow-up if demo feedback requests it.

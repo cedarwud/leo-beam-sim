@@ -31,22 +31,21 @@ type ProcessTableClose = Readonly<{
 }>;
 
 type DiagnosticsReadings = Readonly<{
-  intraHoPerSimMin: number | null;
-  interHoPerSimMin: number | null;
-  wallClockElapsedSec: number | null;
-  simTimeSec: number | null;
-  intraHoCount: number | null;
-  hoCount: number | null;
+  total: number | null;
+  counts: Record<DsinrBucketKey, number | null>;
+  mean: number | null;
+  last: number | null;
 }>;
 
 type BrowserValidationResult = {
   drawerExpanded: boolean;
-  intraArrowDetected: boolean;
-  before: DiagnosticsReadings | null;
-  after: DiagnosticsReadings | null;
-  wallClockDeltaSec: number | null;
-  simTimeDeltaSec: number | null;
+  first: DiagnosticsReadings | null;
+  optionalSecond: DiagnosticsReadings | null;
 };
+
+type DsinrBucketKey = 'lt1' | '1to2' | '2to4' | '4to8' | 'ge8';
+
+const DSINR_BUCKET_KEYS: DsinrBucketKey[] = ['lt1', '1to2', '2to4', '4to8', 'ge8'];
 
 function execFileText(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -282,23 +281,66 @@ async function ensureRunning(page: Page): Promise<void> {
 async function readDiagnosticsDrawer(page: Page): Promise<DiagnosticsReadings> {
   return page.evaluate(() => {
     const drawer = document.querySelector('[data-testid="diagnostics-drawer"][data-drawer-state="expanded"]');
-    const ds = drawer instanceof HTMLElement ? drawer.dataset : null;
+    if (!(drawer instanceof HTMLElement)) {
+      return {
+        total: null,
+        counts: { lt1: null, '1to2': null, '2to4': null, '4to8': null, ge8: null },
+        mean: null,
+        last: null,
+      };
+    }
+    const ds = drawer.dataset;
     return {
-      intraHoPerSimMin: ds?.intraHoPerSimMin ?? null,
-      interHoPerSimMin: ds?.interHoPerSimMin ?? null,
-      wallClockElapsedSec: ds?.simWallclockElapsedSec ?? null,
-      simTimeSec: ds?.simTimeSec ?? null,
-      intraHoCount: ds?.intraHoCount ?? null,
-      hoCount: ds?.hoCount ?? null,
+      total: ds.intraDsinrTotal ?? null,
+      counts: {
+        lt1: ds.intraDsinrCountLt1 ?? null,
+        '1to2': ds['intraDsinrCount-1to2'] ?? null,
+        '2to4': ds['intraDsinrCount-2to4'] ?? null,
+        '4to8': ds['intraDsinrCount-4to8'] ?? null,
+        ge8: ds.intraDsinrCountGe8 ?? null,
+      },
+      mean: ds.intraDsinrMean ?? null,
+      last: ds.intraDsinrLast ?? null,
     };
   }).then(result => ({
-    intraHoPerSimMin: toNumber(result.intraHoPerSimMin),
-    interHoPerSimMin: toNumber(result.interHoPerSimMin),
-    wallClockElapsedSec: toNumber(result.wallClockElapsedSec),
-    simTimeSec: toNumber(result.simTimeSec),
-    intraHoCount: toNumber(result.intraHoCount),
-    hoCount: toNumber(result.hoCount),
+    total: toNumber(result.total),
+    counts: {
+      lt1: toNumber(result.counts.lt1),
+      '1to2': toNumber(result.counts['1to2']),
+      '2to4': toNumber(result.counts['2to4']),
+      '4to8': toNumber(result.counts['4to8']),
+      ge8: toNumber(result.counts.ge8),
+    },
+    mean: toNumber(result.mean),
+    last: toNumber(result.last),
   }));
+}
+
+function bucketDelta(delta: number): DsinrBucketKey {
+  if (delta < 1) return 'lt1';
+  if (delta < 2) return '1to2';
+  if (delta < 4) return '2to4';
+  if (delta < 8) return '4to8';
+  return 'ge8';
+}
+
+function assertValidHistogram(reading: DiagnosticsReadings): void {
+  assert.ok(reading.total !== null && Number.isInteger(reading.total) && reading.total >= 1, 'ΔSINR total missing or zero');
+  const counts = DSINR_BUCKET_KEYS.map(key => reading.counts[key]);
+  for (const [index, count] of counts.entries()) {
+    assert.ok(count !== null && Number.isInteger(count) && count >= 0, `ΔSINR bucket ${DSINR_BUCKET_KEYS[index]} missing or invalid`);
+  }
+  const sum = counts.reduce((acc, count) => acc + (count ?? 0), 0);
+  assert.equal(sum, reading.total, 'ΔSINR bucket counts do not sum to total');
+  assert.ok(reading.mean !== null && Number.isFinite(reading.mean), 'ΔSINR mean missing or non-finite');
+  assert.ok(reading.last !== null && Number.isFinite(reading.last), 'ΔSINR last missing or non-finite');
+
+  if (reading.total === 1) {
+    const nonZeroBuckets = DSINR_BUCKET_KEYS.filter(key => reading.counts[key] === 1);
+    assert.equal(nonZeroBuckets.length, 1, 'expected exactly one ΔSINR bucket to increment when total is 1');
+    assert.equal(bucketDelta(reading.last), nonZeroBuckets[0], 'last ΔSINR value did not match the incremented bucket');
+    assert.ok(Math.abs(reading.mean - reading.last) < 0.0001, 'mean should equal last when total is 1');
+  }
 }
 
 async function runBrowserValidation(appUrl: string): Promise<BrowserValidationResult> {
@@ -307,11 +349,8 @@ async function runBrowserValidation(appUrl: string): Promise<BrowserValidationRe
   });
   const result: BrowserValidationResult = {
     drawerExpanded: false,
-    intraArrowDetected: false,
-    before: null,
-    after: null,
-    wallClockDeltaSec: null,
-    simTimeDeltaSec: null,
+    first: null,
+    optionalSecond: null,
   };
 
   try {
@@ -334,66 +373,39 @@ async function runBrowserValidation(appUrl: string): Promise<BrowserValidationRe
 
       await setSliderSpeedTo(page, SPEED_TARGET);
       await ensureRunning(page);
-      await waitFor(
-        'intra-handover arrow active dataset flag',
-        () => page.evaluate(() => {
-          const canvas = document.querySelector('canvas');
-          const active = canvas instanceof HTMLElement ? canvas.dataset.intraHandoverArrowActive : null;
-          return active === '1' ? true : null;
-        }),
-        INTRA_EVENT_TIMEOUT_MS,
-      );
-      result.intraArrowDetected = true;
-
-      // The DiagnosticsDrawer reads simState through useSimStatePublisher, which
-      // commits after the canvas useFrame attr write. Wait for the drawer's own
-      // data-intra-ho-count >= 1 before reading rate attrs to avoid a stale-DOM
-      // race where the canvas latch is active but React has not yet committed.
-      const before = await waitFor(
-        'DiagnosticsDrawer to publish intraHoCount >= 1',
+      const firstStartedAt = Date.now();
+      const first = await waitFor(
+        'DiagnosticsDrawer ΔSINR histogram total >= 1',
         async () => {
           const reading = await readDiagnosticsDrawer(page);
-          if (reading.intraHoCount !== null && reading.intraHoCount >= 1 && reading.intraHoPerSimMin !== null && reading.intraHoPerSimMin > 0) {
+          if (reading.total !== null && reading.total >= 1) {
             return reading;
           }
           return null;
         },
         INTRA_EVENT_TIMEOUT_MS,
       );
-      result.before = before;
-      assert.ok(before.intraHoPerSimMin !== null && before.intraHoPerSimMin > 0, 'intra-HO per-sim-min not positive after intra fired');
-      assert.ok(before.interHoPerSimMin !== null && before.interHoPerSimMin >= 0, 'inter-HO per-sim-min negative or missing');
-      assert.ok(before.wallClockElapsedSec !== null, 'wall-clock elapsed missing');
-      assert.ok(before.simTimeSec !== null, 'sim time missing');
-      assert.ok(before.intraHoCount !== null && before.intraHoCount >= 1, 'intra-HO count missing after intra fired');
-      assert.ok(before.hoCount !== null && before.hoCount >= 1, 'HO count missing after intra fired');
+      result.first = first;
+      assertValidHistogram(first);
 
-      // Wall-clock readout updates via a 1 Hz setInterval inside the drawer.
-      // A fixed delay(1500) can read between two consecutive setInterval ticks
-      // (e.g. before-read just after tick T captures elapsed=N, after-read
-      // just before tick T+2 still captures N+1 = +1.0 floor; loaded systems
-      // can even miss the tick boundary entirely). Wait actively for the
-      // attr to advance by >= 1.0 sec, with a generous timeout so we never
-      // assert on a not-yet-ticked sample.
-      const beforeWallClock = before.wallClockElapsedSec;
-      const after = await waitFor(
-        'wall-clock elapsed to advance >= 1.0 sec',
-        async () => {
-          const reading = await readDiagnosticsDrawer(page);
-          if (reading.wallClockElapsedSec !== null && reading.wallClockElapsedSec - beforeWallClock >= 1.0) {
-            return reading;
-          }
-          return null;
-        },
-        5_000,
-      );
-      result.after = after;
-      assert.ok(after.wallClockElapsedSec !== null, 'wall-clock elapsed missing after delay');
-      assert.ok(after.simTimeSec !== null, 'sim time missing after delay');
-      result.wallClockDeltaSec = after.wallClockElapsedSec - before.wallClockElapsedSec;
-      result.simTimeDeltaSec = after.simTimeSec - before.simTimeSec;
-      assert.ok(result.wallClockDeltaSec >= 1.0, 'wall-clock elapsed not advancing');
-      assert.ok(result.simTimeDeltaSec > 0, 'sim time not advancing at speed 20x');
+      const remainingMs = Math.max(0, INTRA_EVENT_TIMEOUT_MS - (Date.now() - firstStartedAt));
+      if (remainingMs > 0) {
+        const optionalSecond = await waitFor(
+          'DiagnosticsDrawer ΔSINR histogram total >= 2',
+          async () => {
+            const reading = await readDiagnosticsDrawer(page);
+            if (reading.total !== null && reading.total >= 2) {
+              return reading;
+            }
+            return null;
+          },
+          Math.min(remainingMs, 20_000),
+        ).catch(() => null);
+        if (optionalSecond !== null) {
+          assertValidHistogram(optionalSecond);
+          result.optionalSecond = optionalSecond;
+        }
+      }
 
       await page.close().catch(() => {});
     } finally {
@@ -492,18 +504,15 @@ async function main() {
     throw validationError;
   }
 
-  console.log('Diagnostics rate S5 browser validation passed.');
+  console.log('Delta SINR histogram T1 browser validation passed.');
   console.log(JSON.stringify({
     runtimeHygiene: { before: summarizeProcesses(beforeProcesses), devServer: devServerInfo, processCleanup },
     browser: {
       appUrl,
       result: 'PASS',
       drawerExpanded: browserResult!.drawerExpanded,
-      intraArrowDetected: browserResult!.intraArrowDetected,
-      before: browserResult!.before,
-      after: browserResult!.after,
-      wallClockDeltaSec: browserResult!.wallClockDeltaSec,
-      simTimeDeltaSec: browserResult!.simTimeDeltaSec,
+      first: browserResult!.first,
+      optionalSecond: browserResult!.optionalSecond,
     },
   }, null, 2));
 }
