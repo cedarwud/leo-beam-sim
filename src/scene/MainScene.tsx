@@ -93,6 +93,10 @@ const CAMERA_PRESET_POSES: Record<CameraPreset, {
     position: [520, 260, -620],
     target: [0, 20, 0],
   },
+  'paper-faithful-closeup': {
+    position: [0, 320, 380],
+    target: [0, 80, 0],
+  },
 };
 
 interface CameraTweenState {

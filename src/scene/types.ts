@@ -11,7 +11,7 @@ import type { CoreLayoutFrequencyReuse, ReuseGroupSource } from './beam-layout';
 export type PresentationMode = 'research-default' | 'candidate-rich' | 'demo-readability';
 export type BeamDensity = 'event-only' | 'event-plus-1' | 'all';
 export type CinematicMode = 'off' | 'spotlight';
-export type CameraPreset = 'zenith' | 'oblique' | 'chase';
+export type CameraPreset = 'zenith' | 'oblique' | 'chase' | 'paper-faithful-closeup';
 
 export interface ReplayConfig {
   epochUtcMs: number;

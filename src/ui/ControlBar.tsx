@@ -75,6 +75,7 @@ const CAMERA_PRESETS: Array<{ label: string; preset: CameraPreset }> = [
   { label: 'Zenith', preset: 'zenith' },
   { label: 'Oblique', preset: 'oblique' },
   { label: 'Chase', preset: 'chase' },
+  { label: 'Paper-faithful close-up', preset: 'paper-faithful-closeup' },
 ];
 
 export function ControlBar({
