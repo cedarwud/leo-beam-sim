@@ -65,6 +65,7 @@ import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { TrainingForm } from './ui/modqn-training/TrainingForm';
 import { JobsPanel } from './ui/modqn-training/JobsPanel';
 import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
+import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
 import { readTrainingServiceBaseUrl } from './modqn/training-trigger/baseUrl';
 import { fetchUserTrainedBundleEnvelope } from './modqn/training-trigger/userTrainedBundleFetch';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
@@ -1232,6 +1233,11 @@ export function App() {
                   appliedHandoverOffsetDb={appliedHandoverPolicy.offsetDb}
                   appliedHandoverTriggerTimeSec={appliedHandoverPolicy.triggerTimeSec}
                   handoverMode={handoverMode}
+                  bundleProvenanceKind={bundleProvenanceKind}
+                />
+                <RewardCurvePanel
+                  envelope={modqnReplayEnvelope}
+                  slotOffset={modqnReplaySlotOffset}
                   bundleProvenanceKind={bundleProvenanceKind}
                 />
               </section>

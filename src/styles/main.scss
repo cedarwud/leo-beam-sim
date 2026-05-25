@@ -896,6 +896,60 @@ canvas {
   cursor: pointer;
 }
 
+.leo-reward-curve-panel {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(118, 234, 215, 0.22);
+  border-radius: 6px;
+  background: rgba(3, 12, 21, 0.82);
+  color: #e8fbff;
+}
+
+.leo-reward-curve-panel__header {
+  margin-bottom: 8px;
+  color: #f6fbff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.leo-reward-curve-panel__empty {
+  color: rgba(232, 251, 255, 0.72);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.leo-reward-curve-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.leo-reward-curve-chart {
+  width: 100%;
+  height: 110px;
+  display: block;
+  color: #76ead7;
+  border: 1px solid rgba(218, 244, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.leo-reward-curve-chart__title {
+  fill: rgba(246, 251, 255, 0.9);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.leo-reward-curve-chart__axis {
+  fill: rgba(232, 251, 255, 0.54);
+  font-size: 8px;
+}
+
+.leo-reward-curve-chart__axis-line {
+  stroke: rgba(232, 251, 255, 0.18);
+}
+
 .leo-modqn-sidebar-stack .leo-mode-evidence-strip {
   gap: 4px;
   font-size: 10px;
