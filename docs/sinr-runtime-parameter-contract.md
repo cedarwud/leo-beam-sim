@@ -281,6 +281,16 @@ These may still be adjustable elsewhere, but not inside the SINR-parameter UI.
 > selector (artifacts were baked at paper-faithful scale per
 > Phase 7 contract). See Phase C SDD §6 + §8.
 
+### UE Count (Phase F)
+
+> Phase F activates the Phase E DEFERRED `ueCount` field in
+> `SceneTopologyState`. The slider sits in the Topology tab alongside
+> sat-count and beam-count overrides as a `Simulation Setting`. The
+> UE-count override extends the live engine to maintain N independent
+> per-UE state vectors with per-UE SINR + per-UE handover state. The
+> override is gated on `appMode === 'sinr-experiment'`; in
+> `modqn-demo` the paper-faithful 100-UE baseline applies.
+
 ## Not Yet Wired Or Not Safe To Expose As-Is
 
 | Internal field / behavior | Current state | Guidance |
