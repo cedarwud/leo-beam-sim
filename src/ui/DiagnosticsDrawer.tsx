@@ -123,6 +123,7 @@ function bucketDelta(delta: number): DsinrBucketKey {
 }
 
 const T2_LATCH_WINDOW_MS = 6000;
+const PER_UE_DIAGNOSTICS_ROW_LIMIT = 20;
 
 interface ObservedWindowAggregate {
   sumMs: number;
@@ -259,6 +260,14 @@ export function DiagnosticsDrawer({
   const currentEffectiveServingPt = physicalServingBudget?.txPowerDbm;
   const primaryFrequencyDiagnostics = visualFrequencyDiagnostics?.primary;
   const comparisonFrequencyDiagnostics = visualFrequencyDiagnostics?.comparison;
+  const perUePositions = simState.perUePositions;
+  const showPerUeDiagnostics = perUePositions !== undefined && perUePositions.length > 1;
+  const perUeRows = showPerUeDiagnostics
+    ? perUePositions.slice(0, PER_UE_DIAGNOSTICS_ROW_LIMIT)
+    : [];
+  const perUeOverflowCount = showPerUeDiagnostics
+    ? perUePositions.length - perUeRows.length
+    : 0;
 
   if (!expanded) {
     return (
@@ -489,6 +498,46 @@ export function DiagnosticsDrawer({
             />
           </div>
         </DrawerSection>
+
+        {showPerUeDiagnostics && (
+          <DrawerSection
+            testId="per-ue-diagnostics-section"
+            tone={UI_TOKENS.color.semantic.info}
+            title="Per-UE table"
+          >
+            <table
+              className="leo-per-ue-diagnostics-table"
+              data-testid="per-ue-diagnostics-table"
+            >
+              <thead>
+                <tr>
+                  <th scope="col">UE id</th>
+                  <th scope="col">Serving sat</th>
+                  <th scope="col">Serving beam</th>
+                  <th scope="col">SINR (dB)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perUeRows.map(position => (
+                  <tr key={position.id}>
+                    <td>{position.id}</td>
+                    <td>{position.servingSatId === null ? '—' : formatSatelliteLabel(position.servingSatId)}</td>
+                    <td>{position.servingBeamId === null ? '—' : position.servingBeamId}</td>
+                    <td>{position.sinrDb === null ? '—' : formatDb(position.sinrDb)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {perUeOverflowCount > 0 && (
+              <div
+                className="leo-drawer-section__note leo-per-ue-diagnostics-overflow"
+                data-testid="per-ue-diagnostics-overflow-note"
+              >
+                ... and {perUeOverflowCount} more UEs
+              </div>
+            )}
+          </DrawerSection>
+        )}
       </div>
     </section>
   );

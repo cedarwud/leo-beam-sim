@@ -329,6 +329,14 @@ export function useSimStatePublisher({
         normalizedComparison.beamId,
       ),
     };
+    const perUePositions = sim.perUePositions.length > 1
+      ? sim.perUePositions.map(position => ({
+        id: position.id,
+        servingSatId: position.servingSatId,
+        servingBeamId: position.servingBeamId,
+        sinrDb: position.sinrDb,
+      }))
+      : undefined;
 
     const nextIntraHandoverEvent = sim.intraHandoverEvent !== null && sim.intraHandoverWallClockStartMs !== null && sim.intraHandoverWallClockExpiresMs !== null
       ? {
@@ -346,6 +354,7 @@ export function useSimStatePublisher({
       panelPrimary,
       panelComparison,
       visualFrequencyDiagnostics,
+      perUePositions,
       servingSatId: normalizedServing.satId,
       servingBeamId: normalizedServing.beamId,
       servingElevationDeg: normalizedServingTopo.elevationDeg,

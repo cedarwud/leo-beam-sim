@@ -3119,6 +3119,32 @@ canvas {
   overflow-wrap: anywhere;
 }
 
+.leo-per-ue-diagnostics-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: rgba(229, 244, 251, 0.78);
+  font-size: 11px;
+}
+
+.leo-per-ue-diagnostics-table th,
+.leo-per-ue-diagnostics-table td {
+  padding: 4px 5px;
+  border-bottom: 1px solid rgba(218, 244, 255, 0.08);
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.leo-per-ue-diagnostics-table th {
+  color: rgba(229, 244, 251, 0.48);
+  font-weight: 800;
+}
+
+.leo-per-ue-diagnostics-overflow {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
 .leo-fps-counter {
   background: rgba(6, 18, 28, 0.75);
   backdrop-filter: blur(8px);

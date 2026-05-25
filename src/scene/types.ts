@@ -141,6 +141,12 @@ export interface SimState {
   profileId?: string;
   formulaFamilyLabel?: string;
   satelliteVisualIdentityById: Record<string, SatelliteVisualIdentity>;
+  perUePositions?: ReadonlyArray<{
+    id: string;
+    servingSatId: string | null;
+    servingBeamId: number | null;
+    sinrDb: number | null;
+  }>;
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;
