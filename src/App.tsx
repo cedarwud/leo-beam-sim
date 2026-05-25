@@ -63,6 +63,7 @@ import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { TrainingForm } from './ui/modqn-training/TrainingForm';
+import { JobsPanel } from './ui/modqn-training/JobsPanel';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import {
   ClaimBoundaryBanner,
@@ -130,7 +131,7 @@ const LIVE_SIM_CLAIM_BOUNDARY_INPUT: ClaimBoundaryBannerInput = {
   evidenceStatus: { kind: 'live-stub', status: 'live', notes: [] },
 };
 
-type LeftSidebarTab = 'objective' | 'signal' | 'handover' | 'training';
+type LeftSidebarTab = 'objective' | 'signal' | 'handover' | 'training' | 'jobs';
 type RightSidebarTab = 'modqn' | 'live';
 
 const LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
@@ -138,6 +139,7 @@ const LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
   { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
   { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
   { key: 'training', label: 'MODQN training', description: 'launch backend training run' },
+  { key: 'jobs', label: 'MODQN jobs', description: 'training run history' },
 ];
 
 const SINR_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
@@ -149,6 +151,7 @@ const MODQN_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
   LEFT_SIDEBAR_TABS[0],
   LEFT_SIDEBAR_TABS[2],
   LEFT_SIDEBAR_TABS[3],
+  LEFT_SIDEBAR_TABS[4],
 ];
 
 const RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = [
@@ -1073,6 +1076,8 @@ export function App() {
               />
             ) : activeLeftSidebarTab === 'training' ? (
               <TrainingForm appMode={appMode} />
+            ) : activeLeftSidebarTab === 'jobs' ? (
+              <JobsPanel appMode={appMode} />
             ) : (
               <HandoverPolicyControls
                 draft={handoverPolicyDraft}
