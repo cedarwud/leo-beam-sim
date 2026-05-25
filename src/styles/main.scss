@@ -73,8 +73,9 @@ canvas {
   min-height: 0;
   flex: 1 1 auto;
   display: grid;
-  grid-template-areas: "left canvas right";
+  grid-template-areas: "rail left canvas right";
   grid-template-columns:
+    56px
     minmax(300px, var(--leo-left-drawer-width))
     minmax(520px, 1fr)
     minmax(280px, var(--leo-right-drawer-width));
@@ -94,6 +95,57 @@ canvas {
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
+}
+
+.leo-app-mode-rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px 4px;
+  background: #02121f;
+  border-right: 1px solid rgba(118, 234, 215, 0.18);
+  min-width: 0;
+}
+
+.leo-app-mode-rail__button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #b5d6e8;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.leo-app-mode-rail__button[data-active="true"] {
+  background: rgba(82, 242, 161, 0.16);
+  border-color: rgba(82, 242, 161, 0.65);
+  color: #f4fff8;
+}
+
+.leo-app-mode-rail__button:focus-visible {
+  outline: 2px solid rgba(118, 234, 215, 0.8);
+  outline-offset: 2px;
+}
+
+.leo-app-mode-rail__label {
+  font-size: 12px;
+}
+
+.leo-app-mode-rail__sub {
+  font-size: 10px;
+  opacity: 0.7;
 }
 
 .leo-proof-strip {
@@ -2358,9 +2410,9 @@ canvas {
 @media (max-width: 1180px) {
   .leo-shell-row {
     grid-template-areas:
-      "canvas canvas"
-      "left right";
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+      "rail canvas canvas"
+      "rail left right";
+    grid-template-columns: 56px repeat(2, minmax(0, 1fr));
     grid-template-rows: minmax(340px, 1fr) minmax(260px, 0.68fr);
   }
 
@@ -2479,10 +2531,10 @@ canvas {
 
   .leo-shell-row {
     grid-template-areas:
-      "canvas"
-      "left"
-      "right";
-    grid-template-columns: minmax(0, 1fr);
+      "rail canvas"
+      "rail left"
+      "rail right";
+    grid-template-columns: 56px minmax(0, 1fr);
     grid-template-rows: minmax(320px, 1fr) minmax(108px, 0.24fr) minmax(150px, 0.36fr);
     gap: 10px;
   }

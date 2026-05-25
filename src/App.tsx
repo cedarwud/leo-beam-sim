@@ -25,7 +25,6 @@ import {
   ModqnHandoverModeProvider,
   MODQN_PAPER_FAITHFUL_OMEGA,
   getBundleSidebarSnapshot,
-  readPersistedHandoverMode,
   persistHandoverMode,
   type RuntimeHandoverMode,
   type RuntimeOmegaState,
@@ -55,6 +54,7 @@ import {
   type SignalTuningState,
 } from './signalTuning';
 import { ControlBar } from './ui/ControlBar';
+import { AppModeRail } from './ui/AppModeRail';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
 import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell, type SidebarTabItem } from './ui/SidebarTabShell';
@@ -78,10 +78,21 @@ import type {
   VisualFrequencyDiagnosticsState,
 } from './scene/types';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
+import {
+  APP_MODE_DEFAULT_PROFILE,
+  APP_MODE_HANDOVER_MAP,
+  readPersistedAppMode,
+  readPersistedProfileByMode,
+  persistAppMode,
+  persistProfileByMode,
+  resolveProfileForAppMode,
+  type AppExperienceMode,
+  type ProfileByMode,
+} from './ui/appMode';
 import { usePlaybackControls } from './usePlaybackControls';
 import { useCameraControls } from './useCameraControls';
 
-const DEFAULT_PROFILE_ID = 'hobs-2024-candidate-rich';
+const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 
 /**
@@ -148,8 +159,10 @@ const SINR_RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = [
 const MODQN_RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = RIGHT_SIDEBAR_TABS;
 
 interface InitialRuntimeState {
+  readonly appMode: AppExperienceMode;
   readonly selectedProfileId: string;
   readonly handoverMode: RuntimeHandoverMode;
+  readonly profileByMode: ProfileByMode;
 }
 
 interface HandoverPolicyRuntimeState {
@@ -160,17 +173,27 @@ interface HandoverPolicyRuntimeState {
 }
 
 function resolvePresentationMode(profile: Profile): PresentationMode {
-  if (profile.id === DEFAULT_PROFILE_ID) return 'demo-readability';
+  if (profile.id === APP_MODE_DEFAULT_PROFILE['sinr-experiment']) return 'demo-readability';
   if (profile.profileClass === 'candidate-rich') return 'candidate-rich';
   return 'research-default';
 }
 
+function isKnownProfileId(id: string): boolean {
+  return profileList.some(p => p.id === id);
+}
+
 function readInitialRuntimeState(): InitialRuntimeState {
-  const handoverMode = readPersistedHandoverMode();
-  return {
+  const appMode = readPersistedAppMode();
+  const profileByMode = readPersistedProfileByMode();
+  const selectedProfileId = resolveProfileForAppMode(appMode, profileByMode, isKnownProfileId);
+  const handoverMode = APP_MODE_HANDOVER_MAP[appMode];
+  const defaultState: InitialRuntimeState = {
+    appMode,
     selectedProfileId: DEFAULT_PROFILE_ID,
     handoverMode,
+    profileByMode,
   };
+  return { ...defaultState, selectedProfileId };
 }
 
 function getLeftSidebarTabsForMode(mode: RuntimeHandoverMode): readonly SidebarTabItem<LeftSidebarTab>[] {
@@ -243,6 +266,8 @@ export function App() {
     initialRuntimeRef.current = readInitialRuntimeState();
   }
   const initialRuntime = initialRuntimeRef.current;
+  const [appMode, setAppModeRaw] = useState<AppExperienceMode>(initialRuntime.appMode);
+  const profileByModeRef = useRef<ProfileByMode>(initialRuntime.profileByMode);
   const [selectedProfileId, setSelectedProfileId] = useState(initialRuntime.selectedProfileId);
   const [uiMode, setUiMode] = useState<UiMode>(() => readPersistedUiMode());
 
@@ -541,23 +566,26 @@ export function App() {
   }, []);
 
   const handleProfileChange = useCallback((profileId: string) => {
+    const next: ProfileByMode = {
+      ...profileByModeRef.current,
+      [appMode]: profileId,
+    };
+    profileByModeRef.current = next;
+    persistProfileByMode(next);
     setSelectedProfileId(profileId);
-  }, []);
+  }, [appMode]);
 
-  // S3: handover mode change.
-  // omega reset to bundle objectiveWeights (or paper-faithful fallback).
-  // The scene profile is intentionally not changed here: MODQN replay drives the
-  // decision override, while the main scene keeps the current visual topology.
-  const handleHandoverModeChange = useCallback((nextMode: RuntimeHandoverMode) => {
-    if (nextMode === handoverMode) return;
-
+  const applyHandoverModeSideEffects = useCallback((
+    nextMode: RuntimeHandoverMode,
+    nextEffectiveProfile: Profile,
+  ) => {
     if (nextMode === 'decision-overlay-on-live-sinr') {
       // Reset ω to the bundle objectiveWeights, falling back to paper-faithful
       // constants only when producer diagnostics are absent.
       setOmegaActiveForContext(modqnBundleOmega);
       resetOmegaDisplayApplied();
       setRescalarizeFallbackCount(0);
-      setSimState(createInitialSimState(effectiveProfile));
+      setSimState(createInitialSimState(nextEffectiveProfile));
       playback.resetAutoSlowDismissed();
       // Persist and apply mode.
       setHandoverModeRaw(nextMode);
@@ -582,16 +610,54 @@ export function App() {
     persistHandoverMode(nextMode);
     setRescalarizeFallbackCount(0);
     resetOmegaDisplayApplied();
-    setSimState(createInitialSimState(effectiveProfile));
+    setSimState(createInitialSimState(nextEffectiveProfile));
     playback.resetAutoSlowDismissed();
     setLeftSidebarTab('signal');
     setRightSidebarTab('live');
   }, [
-    effectiveProfile,
-    handoverMode,
     modqnBundleOmega,
     playback,
     resetOmegaDisplayApplied,
+  ]);
+
+  // S3: handover mode change.
+  // omega reset to bundle objectiveWeights (or paper-faithful fallback).
+  // The scene profile is intentionally not changed here: MODQN replay drives the
+  // decision override, while the main scene keeps the current visual topology.
+  const handleHandoverModeChange = useCallback((nextMode: RuntimeHandoverMode) => {
+    if (nextMode === handoverMode) return;
+    applyHandoverModeSideEffects(nextMode, effectiveProfile);
+  }, [
+    applyHandoverModeSideEffects,
+    effectiveProfile,
+    handoverMode,
+  ]);
+
+  const handleAppModeChange = useCallback((nextMode: AppExperienceMode) => {
+    if (nextMode === appMode) return;
+
+    const outgoing: ProfileByMode = {
+      ...profileByModeRef.current,
+      [appMode]: selectedProfileId,
+    };
+    const incomingProfileId = resolveProfileForAppMode(nextMode, outgoing, isKnownProfileId);
+    outgoing[nextMode] = incomingProfileId;
+    profileByModeRef.current = outgoing;
+    persistProfileByMode(outgoing);
+    persistAppMode(nextMode);
+
+    const nextHandoverMode = APP_MODE_HANDOVER_MAP[nextMode];
+    const incomingProfile = loadProfile(incomingProfileId);
+
+    startTransition(() => {
+      setAppModeRaw(nextMode);
+      setSelectedProfileId(incomingProfileId);
+      applyHandoverModeSideEffects(nextHandoverMode, incomingProfile);
+    });
+  }, [
+    appMode,
+    applyHandoverModeSideEffects,
+    selectedProfileId,
   ]);
 
   // S3: expose a setter so ModqnObjectiveTab (via useModqnHandoverState hook)
@@ -923,7 +989,7 @@ export function App() {
       rescalarizeFallbackCount={rescalarizeFallbackCount}
       incrementRescalarizeFallback={incrementRescalarizeFallback}
     >
-    <div data-ui-mode={uiMode} className="leo-app-shell">
+    <div data-ui-mode={uiMode} data-app-mode={appMode} className="leo-app-shell">
       {modqnReplayFetchError !== null && (
         <div
           className="leo-modqn-bundle-fetch-banner"
@@ -979,6 +1045,7 @@ export function App() {
         onElevatedUeIdChange={setElevatedUeId}
       />
       <div className="leo-shell-row">
+        <AppModeRail mode={appMode} onChange={handleAppModeChange} />
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
           <SidebarTabShell
             label="Simulation control sidebar"
