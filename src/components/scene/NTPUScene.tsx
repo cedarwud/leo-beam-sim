@@ -1,10 +1,14 @@
 import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
-import { NTPU_CONFIG } from '@/config/ntpu.config';
+import { NTPU_CONFIG, NTPU_LARGE_CONFIG, type NTPUSceneConfig } from '@/config/ntpu.config';
 import * as THREE from 'three';
 
-export function NTPUScene() {
-  const { scene } = useGLTF(NTPU_CONFIG.scene.modelPath);
+interface NTPUSceneProps {
+  config?: NTPUSceneConfig;
+}
+
+export function NTPUScene({ config = NTPU_CONFIG }: NTPUSceneProps) {
+  const { scene } = useGLTF(config.scene.modelPath);
 
   // 處理場景材質，與 ntn-stack 完全相同
   const processedScene = useMemo(() => {
@@ -48,11 +52,12 @@ export function NTPUScene() {
   }, [scene]);
 
   return (
-    <group position={NTPU_CONFIG.scene.position}>
-      <primitive object={processedScene} scale={NTPU_CONFIG.scene.scale} />
+    <group position={config.scene.position} rotation={config.scene.rotation}>
+      <primitive object={processedScene} scale={config.scene.scale} />
     </group>
   );
 }
 
 // 預載入模型
 useGLTF.preload(NTPU_CONFIG.scene.modelPath);
+useGLTF.preload(NTPU_LARGE_CONFIG.scene.modelPath);

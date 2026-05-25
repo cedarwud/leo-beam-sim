@@ -44,6 +44,7 @@ import { OrbitTrail } from '../viz/OrbitTrail';
 import { ServingGroundRipple } from '../viz/ServingGroundRipple';
 import { GroundScene } from '../viz/GroundScene';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
+import { NTPU_LARGE_CONFIG } from '../config/ntpu.config';
 import { NTPUScene } from '../components/scene/NTPUScene';
 import { UAV } from '../components/scene/UAV';
 import { Starfield } from '../components/ui/Starfield';
@@ -351,7 +352,13 @@ function SceneContent({
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[0, 600, 750]} fov={60} near={0.1} far={10000} />
+      <PerspectiveCamera
+        makeDefault
+        position={NTPU_LARGE_CONFIG.camera.initialPosition}
+        fov={NTPU_LARGE_CONFIG.camera.fov}
+        near={NTPU_LARGE_CONFIG.camera.near}
+        far={NTPU_LARGE_CONFIG.camera.far}
+      />
       <OrbitControls
         ref={controlsRef}
         enableDamping={false}
@@ -394,7 +401,7 @@ function SceneContent({
       ))}
 
       <Suspense fallback={null}>
-        <NTPUScene />
+        <NTPUScene config={NTPU_LARGE_CONFIG} />
       </Suspense>
       <Suspense fallback={null}>
         <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
