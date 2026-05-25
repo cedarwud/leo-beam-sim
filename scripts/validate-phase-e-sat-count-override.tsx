@@ -94,6 +94,7 @@ section('(b) applySceneTopology behavior', () => {
     satsPerPlane: 6,
     beamCountPerSatellite: null,
     ueCount: null,
+    ueDistributionMode: null,
   });
 
   check(applied !== profile, 'satsPerPlane override returns a new profile object');
@@ -116,6 +117,7 @@ section('(b) applySceneTopology behavior', () => {
     satsPerPlane: null,
     beamCountPerSatellite: 19,
     ueCount: null,
+    ueDistributionMode: null,
   });
   check(beamOverride.beams.perSatellite === 19, 'beamCountPerSatellite overrides beams.perSatellite to 19');
   check(beamOverride.beams.maxActivePerSat === 19, 'beamCountPerSatellite overrides beams.maxActivePerSat to 19');

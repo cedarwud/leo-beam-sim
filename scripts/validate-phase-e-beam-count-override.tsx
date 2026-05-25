@@ -112,6 +112,7 @@ section('(b) applySceneTopology beam-count behavior', () => {
     satsPerPlane: null,
     beamCountPerSatellite: 19,
     ueCount: null,
+    ueDistributionMode: null,
   });
 
   check(applied !== profile, 'beam-count override returns a new profile object');
@@ -128,6 +129,7 @@ section('(b) applySceneTopology beam-count behavior', () => {
     satsPerPlane: null,
     beamCountPerSatellite: 7,
     ueCount: null,
+    ueDistributionMode: null,
   });
   check(sameValueOverride !== profile, 'same-value beam-count override still returns a new profile object');
   check(sameValueOverride.beams.perSatellite === 7, 'same-value beam-count override keeps perSatellite at 7');
@@ -140,11 +142,13 @@ section('(c) reset key includes beam-count override', () => {
     satsPerPlane: null,
     beamCountPerSatellite: null,
     ueCount: null,
+    ueDistributionMode: null,
   });
   const beamKey = getSceneTopologyResetKey({
     satsPerPlane: null,
     beamCountPerSatellite: 19,
     ueCount: null,
+    ueDistributionMode: null,
   });
   check(baseKey !== beamKey, 'reset keys differ when only beamCountPerSatellite changes');
 });

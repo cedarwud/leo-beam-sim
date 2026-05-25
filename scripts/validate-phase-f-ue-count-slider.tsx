@@ -172,7 +172,7 @@ section('(e) applySceneTopology + reset-key UE-count regression', () => {
     'ueCount overlay does not mutate the Profile shape',
   );
   check(baseKey !== overrideKey, 'reset keys differ when only ueCount changes');
-  check(overrideKey.endsWith('|100'), 'ueCount override is joined into the reset key');
+  check(overrideKey.split('|').includes('100'), 'ueCount override is joined into the reset key');
 });
 
 section('(f) SINR runtime parameter contract amendment', () => {

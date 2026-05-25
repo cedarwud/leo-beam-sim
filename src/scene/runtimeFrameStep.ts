@@ -9,6 +9,7 @@ import { computeTr38811SlantRangeKm } from '../engine/signal/slant-range';
 import { HandoverManager } from '../engine/handover/handover-manager';
 import type { ServingState } from '../engine/handover/types';
 import { generateUePositions } from '../engine/ue/multiUeState';
+import type { UeDistributionMode } from '../engine/ue/multiUeState';
 import type { Profile } from '../profiles/types';
 import { computeBeamGeometry, FOOTPRINT_RADIUS_WORLD, generateCoreSceneBeamOffsetsKm } from './beam-layout';
 import { scheduleBeamCells, type CandidateBeamCell } from './beam-scheduler';
@@ -128,6 +129,7 @@ export interface RuntimeFrameStepInput {
   deltaSec: number;
   beamFootprintMultiplier?: number;
   ueCount?: number;
+  ueDistributionMode?: UeDistributionMode;
   observer: ReturnType<typeof createObserverContext>;
   beamLayoutsByShellId: ReadonlyMap<string, ShellBeamLayout>;
   trajectoryCache: readonly CachedSatState[][];
@@ -559,6 +561,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     deltaSec,
     beamFootprintMultiplier: inputBeamFootprintMultiplier,
     ueCount: inputUeCount,
+    ueDistributionMode = 'random',
     trajectoryCache,
     hoManager,
     secondaryHoManagers = [],
@@ -663,6 +666,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     primaryNorthKm: ueNorthKm,
     primaryFootprintRadiusKm: primaryGeometry.footprintRadiusKm,
     ueWorldScale,
+    mode: ueDistributionMode,
   }).map(position => ({
     ...position,
     sinrDb: null,

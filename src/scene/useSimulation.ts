@@ -6,6 +6,7 @@ import {
   type HandoverDecisionOverride,
 } from '../engine/handover/handover-manager';
 import type { Profile } from '../profiles/types';
+import type { UeDistributionMode } from '../engine/ue/multiUeState';
 import type { ReplayConfig, SimFrame } from './types';
 import { createEmptyFrame, normalizeReplayOffset } from './simulationHelpers';
 import {
@@ -103,6 +104,7 @@ export function useSimulation(
   handoverResetKey?: string,
   beamFootprintMultiplier?: number,
   ueCount?: number,
+  ueDistributionMode: UeDistributionMode = 'random',
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -251,6 +253,7 @@ export function useSimulation(
       hoManager,
       secondaryHoManagers,
       ueCount: effectiveUeCount,
+      ueDistributionMode,
       state: runtimeStateRef.current,
     });
     frameRef.current = frame;
@@ -270,6 +273,7 @@ export function useSimulation(
     speed,
     beamFootprintMultiplier,
     trajectoryCache,
+    ueDistributionMode,
   ]);
 
   useEffect(() => {
@@ -319,6 +323,7 @@ export function useSimulation(
       hoManager,
       secondaryHoManagers,
       ueCount: effectiveUeCount,
+      ueDistributionMode,
       state: runtimeStateRef.current,
     });
     frameRef.current = frame;

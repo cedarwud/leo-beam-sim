@@ -7,6 +7,7 @@ import type { BeamTarget } from '../viz/SatelliteBeams';
 import type { GlyphKind } from '../viz/glyphs';
 import type { BeamFrequencyIndexResolution } from '../utils/beamFrequency';
 import type { CoreLayoutFrequencyReuse, ReuseGroupSource } from './beam-layout';
+import type { UeDistributionMode } from '../engine/ue/multiUeState';
 
 export type PresentationMode = 'research-default' | 'candidate-rich' | 'demo-readability';
 export type BeamDensity = 'event-only' | 'event-plus-1' | 'all';
@@ -49,6 +50,7 @@ export interface RuntimeConfig {
   reducedMotion: boolean;
   viewport: RuntimeViewport;
   ueCount?: number;
+  ueDistributionMode?: UeDistributionMode;
 }
 
 export interface LinkBudgetTerms {

@@ -57,6 +57,7 @@ import {
   SCENE_TOPOLOGY_OVERRIDES_KEY,
   applySceneTopology,
   createSceneTopologyState,
+  getSceneTopologyEvidenceKey,
   getSceneTopologyResetKey,
   hasSceneTopologyOverrides,
   type SceneTopologyState,
@@ -286,6 +287,11 @@ function readSceneTopologyOverrides(): SceneTopologyState {
         ? record.beamCountPerSatellite
         : null,
       ueCount: typeof record.ueCount === 'number' ? record.ueCount : null,
+      ueDistributionMode: record.ueDistributionMode === 'random'
+        || record.ueDistributionMode === 'grid'
+        || record.ueDistributionMode === 'clustered'
+        ? record.ueDistributionMode
+        : null,
     };
   } catch {
     return createSceneTopologyState();
@@ -455,8 +461,11 @@ export function App() {
     [appMode, signalTuning, sceneTopology],
   );
   const signalEvidenceKey = useMemo(
-    () => getSignalTuningEvidenceKey(signalTuning),
-    [signalTuning],
+    () => [
+      getSignalTuningEvidenceKey(signalTuning),
+      getSceneTopologyEvidenceKey(appMode === 'sinr-experiment' ? sceneTopology : createSceneTopologyState()),
+    ].join('|'),
+    [appMode, sceneTopology, signalTuning],
   );
   const handoverResetKey = useMemo(
     () => `${handoverMode}:${handoverPolicyVersion}:${getHandoverPolicyResetKey(appliedHandoverPolicy)}`,
@@ -499,6 +508,9 @@ export function App() {
     cameraCommand: camera.cameraCommand,
     viewport,
     ueCount: appMode === 'sinr-experiment' ? sceneTopology.ueCount ?? undefined : undefined,
+    ueDistributionMode: appMode === 'sinr-experiment'
+      ? sceneTopology.ueDistributionMode ?? 'random'
+      : 'random',
   }), [
     appMode,
     beamDensityOverride,
@@ -509,6 +521,7 @@ export function App() {
     effectiveCinematicMode,
     handoverResetKey,
     runtimeVisualSettings,
+    sceneTopology.ueDistributionMode,
     sceneTopology.ueCount,
     signalResetKey,
     viewport,
