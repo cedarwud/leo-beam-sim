@@ -7,15 +7,21 @@ import {
 } from './tuningConfig';
 import { formulaTextStyle, srOnlyStyle } from './styles';
 import type { TuningTabKey } from './types';
+import type { AppExperienceMode } from '../appMode';
 
 export function FormulaTabList({
   activeTab,
+  appMode,
   onChange,
 }: {
   activeTab: TuningTabKey;
+  appMode: AppExperienceMode;
   onChange: (tab: TuningTabKey) => void;
 }) {
-  const activeIndex = Math.max(TUNING_TABS.findIndex(tab => tab.key === activeTab), 0);
+  const visibleTabs = TUNING_TABS.filter(tab => (
+    tab.key !== 'topology' || appMode === 'sinr-experiment'
+  ));
+  const activeIndex = Math.max(visibleTabs.findIndex(tab => tab.key === activeTab), 0);
 
   const focusFormulaTab = (tab: TuningTabKey) => {
     window.requestAnimationFrame(() => {
@@ -27,19 +33,19 @@ export function FormulaTabList({
     let nextIndex: number | null = null;
 
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      nextIndex = (index + 1) % TUNING_TABS.length;
+      nextIndex = (index + 1) % visibleTabs.length;
     } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      nextIndex = (index - 1 + TUNING_TABS.length) % TUNING_TABS.length;
+      nextIndex = (index - 1 + visibleTabs.length) % visibleTabs.length;
     } else if (event.key === 'Home') {
       nextIndex = 0;
     } else if (event.key === 'End') {
-      nextIndex = TUNING_TABS.length - 1;
+      nextIndex = visibleTabs.length - 1;
     }
 
     if (nextIndex === null) return;
 
     event.preventDefault();
-    const nextTab = TUNING_TABS[nextIndex].key;
+    const nextTab = visibleTabs[nextIndex].key;
     onChange(nextTab);
     focusFormulaTab(nextTab);
   };
@@ -64,12 +70,12 @@ export function FormulaTabList({
     >
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(6, minmax(64px, 1fr))',
+        gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(64px, 1fr))`,
         gap: 6,
-        minWidth: 420,
+        minWidth: visibleTabs.length > 6 ? 490 : 420,
         padding: '0 4px 4px',
       }}>
-        {TUNING_TABS.map((tab, index) => {
+        {visibleTabs.map((tab, index) => {
           const active = index === activeIndex;
           const accent = getFormulaTabAccent(tab.key);
           return (

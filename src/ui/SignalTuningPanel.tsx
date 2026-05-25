@@ -12,6 +12,10 @@ import {
   type SignalTuningState,
 } from '../signalTuning';
 import {
+  createSceneTopologyState,
+  type SceneTopologyState,
+} from '../sceneTopology';
+import {
   FormulaContextDisclosure,
   FormulaSideControlSection,
   LossControlSection,
@@ -21,6 +25,7 @@ import { NumericControl, PathLossTermControl, SelectControl } from './signal-tun
 import { SinrFormulaMap } from './signal-tuning/FormulaMap';
 import { FormulaTabList } from './signal-tuning/FormulaTabList';
 import { SinrOverview } from './signal-tuning/SinrOverview';
+import { TopologyTab } from './signal-tuning/TopologyTab';
 import {
   FREQUENCY_REUSE_OPTIONS,
   GAIN_MODEL_OPTIONS,
@@ -41,16 +46,20 @@ import {
 import type { SignalDrawerState, TuningTabKey } from './signal-tuning/types';
 import { formatDbi } from './signal-tuning/formatters';
 import type { UiMode } from './uiMode';
+import type { AppExperienceMode } from './appMode';
 
 interface SignalTuningPanelProps {
   baseProfile: Profile;
   tuning: SignalTuningState;
+  topology: SceneTopologyState;
   hasOverrides: boolean;
+  appMode: AppExperienceMode;
   uiMode: UiMode;
   formulaBudget: LinkBudgetTerms | null;
   isFormulaEvidenceStale?: boolean;
   initialActiveTab?: TuningTabKey;
   onTuningChange: (next: SignalTuningState) => void;
+  onTopologyChange: (next: SceneTopologyState) => void;
   onReset: () => void;
 }
 
@@ -62,12 +71,15 @@ function getSignalDrawerState(uiMode: UiMode): SignalDrawerState {
 export function SignalTuningPanel({
   baseProfile,
   tuning,
+  topology,
   hasOverrides,
+  appMode,
   uiMode,
   formulaBudget,
   isFormulaEvidenceStale = false,
   initialActiveTab = 'signal-power',
   onTuningChange,
+  onTopologyChange,
   onReset,
 }: SignalTuningPanelProps) {
   const [activeTab, setActiveTab] = useState<TuningTabKey>(initialActiveTab);
@@ -128,7 +140,7 @@ export function SignalTuningPanel({
           aria-label="SINR formula controls"
           style={pagePanelStyle}
         >
-          <FormulaTabList activeTab={activeTab} onChange={setActiveTab} />
+          <FormulaTabList activeTab={activeTab} appMode={appMode} onChange={setActiveTab} />
 
           {activeTab === 'signal-power' && (
             <div style={controlStackStyle}>
@@ -478,6 +490,15 @@ export function SignalTuningPanel({
                 </details>
               </div>
             </div>
+          )}
+
+          {activeTab === 'topology' && appMode === 'sinr-experiment' && (
+            <TopologyTab
+              topology={topology}
+              baseProfile={baseProfile}
+              onTopologyChange={onTopologyChange}
+              onReset={() => onTopologyChange(createSceneTopologyState())}
+            />
           )}
 
           <FormulaContextDisclosure tab={activeTabConfig} />

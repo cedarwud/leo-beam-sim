@@ -6,7 +6,8 @@ export type TuningTabKey =
   | 'beam'
   | 'receiver-gain'
   | 'interference'
-  | 'thermal-noise';
+  | 'thermal-noise'
+  | 'topology';
 
 export type SignalDrawerState = 'collapsed' | 'tuning' | 'diagnostics';
 
@@ -17,4 +18,5 @@ export interface TuningTab {
   subtitle: string;
   formula: ReactNode;
   note: string;
+  tabClass?: 'paper-facing' | 'simulation-setting';
 }

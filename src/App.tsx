@@ -53,6 +53,14 @@ import {
   hasSignalTuningOverrides,
   type SignalTuningState,
 } from './signalTuning';
+import {
+  SCENE_TOPOLOGY_OVERRIDES_KEY,
+  applySceneTopology,
+  createSceneTopologyState,
+  getSceneTopologyResetKey,
+  hasSceneTopologyOverrides,
+  type SceneTopologyState,
+} from './sceneTopology';
 import { ControlBar } from './ui/ControlBar';
 import { AppModeRail } from './ui/AppModeRail';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
@@ -251,6 +259,29 @@ function readSceneSourceFromUrl(): 'live-sim' | 'artifact-replay' {
   return src === 'artifact-replay' ? 'artifact-replay' : 'live-sim';
 }
 
+function readSceneTopologyOverrides(): SceneTopologyState {
+  if (typeof window === 'undefined') return createSceneTopologyState();
+
+  try {
+    const stored = window.localStorage.getItem(SCENE_TOPOLOGY_OVERRIDES_KEY);
+    if (stored === null) return createSceneTopologyState();
+    const parsed: unknown = JSON.parse(stored);
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return createSceneTopologyState();
+    }
+    const record = parsed as Partial<Record<keyof SceneTopologyState, unknown>>;
+    return {
+      satsPerPlane: typeof record.satsPerPlane === 'number' ? record.satsPerPlane : null,
+      beamCountPerSatellite: typeof record.beamCountPerSatellite === 'number'
+        ? record.beamCountPerSatellite
+        : null,
+      ueCount: typeof record.ueCount === 'number' ? record.ueCount : null,
+    };
+  } catch {
+    return createSceneTopologyState();
+  }
+}
+
 export function App() {
   const [sceneSource] = useState<'live-sim' | 'artifact-replay'>(() => readSceneSourceFromUrl());
   const [showcaseArtifact, setShowcaseArtifact] = useState<VisualShowcaseArtifact | null>(null);
@@ -323,6 +354,7 @@ export function App() {
   const camera = useCameraControls();
   const baseProfile = useMemo(() => loadProfile(selectedProfileId), [selectedProfileId]);
   const [signalTuning, setSignalTuning] = useState<SignalTuningState>(() => createSignalTuningState(baseProfile));
+  const [sceneTopology, setSceneTopology] = useState<SceneTopologyState>(() => readSceneTopologyOverrides());
   const [handoverPolicyState, setHandoverPolicyState] = useState<HandoverPolicyRuntimeState>(() => {
     const initialPolicy = createHandoverPolicyTuningState(baseProfile);
     return {
@@ -346,8 +378,8 @@ export function App() {
     ? handoverPolicyState.version
     : 0;
   const signalTunedProfile = useMemo(
-    () => applySignalTuning(baseProfile, signalTuning),
-    [baseProfile, signalTuning],
+    () => applySceneTopology(applySignalTuning(baseProfile, signalTuning), appMode === 'sinr-experiment' ? sceneTopology : createSceneTopologyState()),
+    [appMode, baseProfile, signalTuning, sceneTopology],
   );
   const effectiveProfile = useMemo(
     () => applyHandoverPolicyTuning(signalTunedProfile, appliedHandoverPolicy),
@@ -356,6 +388,10 @@ export function App() {
   const hasSignalOverrides = useMemo(
     () => hasSignalTuningOverrides(baseProfile, signalTuning),
     [baseProfile, signalTuning],
+  );
+  const hasTopologyOverrides = useMemo(
+    () => appMode === 'sinr-experiment' && hasSceneTopologyOverrides(sceneTopology),
+    [appMode, sceneTopology],
   );
   const hasHandoverAppliedOverrides = useMemo(
     () => hasHandoverPolicyOverrides(baseProfile, appliedHandoverPolicy),
@@ -370,8 +406,11 @@ export function App() {
     [baseProfile, handoverPolicyDraft, hasHandoverAppliedOverrides],
   );
   const signalResetKey = useMemo(
-    () => getSignalTuningResetKey(signalTuning),
-    [signalTuning],
+    () => [
+      getSignalTuningResetKey(signalTuning),
+      getSceneTopologyResetKey(appMode === 'sinr-experiment' ? sceneTopology : createSceneTopologyState()),
+    ].join('|'),
+    [appMode, signalTuning, sceneTopology],
   );
   const signalEvidenceKey = useMemo(
     () => getSignalTuningEvidenceKey(signalTuning),
@@ -507,6 +546,12 @@ export function App() {
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
     startTransition(() => {
       setSignalTuning(next);
+    });
+  }, []);
+
+  const handleSceneTopologyChange = useCallback((next: SceneTopologyState) => {
+    startTransition(() => {
+      setSceneTopology(next);
     });
   }, []);
 
@@ -674,6 +719,14 @@ export function App() {
   useEffect(() => subscribeToReducedMotionPreference(setReducedMotion), []);
 
   useEffect(() => subscribeToRuntimeViewport(setViewport), []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SCENE_TOPOLOGY_OVERRIDES_KEY, JSON.stringify(sceneTopology));
+    } catch {
+      // Storage can be unavailable in private or embedded browser contexts.
+    }
+  }, [sceneTopology]);
 
   // MODQN ω-Handover S2: runtime fetch of the producer replay bundle at
   // startup. On success the shell model + envelope reflect the live artifact
@@ -989,7 +1042,12 @@ export function App() {
       rescalarizeFallbackCount={rescalarizeFallbackCount}
       incrementRescalarizeFallback={incrementRescalarizeFallback}
     >
-    <div data-ui-mode={uiMode} data-app-mode={appMode} className="leo-app-shell">
+    <div
+      data-ui-mode={uiMode}
+      data-app-mode={appMode}
+      data-topology-overrides-active={hasTopologyOverrides ? 'true' : 'false'}
+      className="leo-app-shell"
+    >
       {modqnReplayFetchError !== null && (
         <div
           className="leo-modqn-bundle-fetch-banner"
@@ -1060,11 +1118,14 @@ export function App() {
               <SignalTuningPanel
                 baseProfile={baseProfile}
                 tuning={signalTuning}
+                topology={sceneTopology}
                 hasOverrides={hasSignalOverrides}
+                appMode={appMode}
                 uiMode="tuning"
                 formulaBudget={simState.physicalServingBudget}
                 isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                 onTuningChange={handleSignalTuningChange}
+                onTopologyChange={handleSceneTopologyChange}
                 onReset={handleResetSignalTuning}
               />
             ) : (

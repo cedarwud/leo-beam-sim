@@ -252,7 +252,21 @@ These may still be adjustable elsewhere, but not inside the SINR-parameter UI.
 |---|---|---|
 | Handover policy | `handover.*` | affects target qualification and switching logic, not the SINR formula itself |
 | Beam hopping scheduler | `beamHopping.*` | affects which beams are active and therefore available/interfering, but belongs to scheduler control |
-| Orbit geometry | `orbit.*` and `shells[]` | changes constellation truth and trajectory cache, not just the link formula |
+| Orbit geometry | `orbit.*` and `shells[]` | changes constellation truth and trajectory cache, not just the link formula. Topology overrides for sat-count / beam-count / UE-count are exposed in a separate `Topology` tab; see Phase E SDD §5 + §9. |
+
+### Topology Overrides (Phase E)
+
+> User vision (recorded in `.agent-memory/project_paper_faithful_vision.md`)
+> places sat-count, beam-count, and UE-count overrides inside the
+> SINR-mode left sidebar. To satisfy this without reverting the
+> formula-tab classification, Phase E ships a `Topology` tab inside
+> `SignalTuningPanel` classed as `Simulation Setting`, NOT as a
+> paper-facing SINR formula tab. The tab is gated on
+> `appMode === 'sinr-experiment'`; it never appears in `modqn-demo`.
+>
+> Parameters in the Topology tab follow `Simulation Setting` semantics
+> (no paper symbol mapping; reset implications documented in
+> `docs/phase-e-runtime-overrides-mini-sdd.md` §8).
 
 ## Not Yet Wired Or Not Safe To Expose As-Is
 

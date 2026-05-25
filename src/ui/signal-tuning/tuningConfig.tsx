@@ -52,6 +52,15 @@ export const TUNING_TABS: readonly TuningTab[] = [
     formula: <>σ² = N<sub>0</sub>B</>,
     note: 'Use this page for bandwidth and noise density terms that raise the denominator noise floor.',
   },
+  {
+    key: 'topology',
+    symbol: <>N<sub>sat</sub></>,
+    title: 'Topology',
+    subtitle: 'Simulation Setting for constellation shape.',
+    formula: <>Simulation Setting</>,
+    note: 'Use this page for live-scene topology overrides that restart simulation state instead of changing the SINR formula.',
+    tabClass: 'simulation-setting',
+  },
 ];
 
 export const GAIN_MODEL_OPTIONS: ReadonlyArray<{ value: GainModel; label: string; detail: string }> = [
@@ -102,6 +111,8 @@ export function getFormulaTabAccent(tabKey: TuningTabKey): string {
       return UI_TOKENS.color.semantic.beam;
     case 'signal-power':
       return UI_TOKENS.color.semantic.tuning;
+    case 'topology':
+      return UI_TOKENS.color.semantic.fixed;
   }
 }
 
@@ -119,5 +130,7 @@ export function getFormulaTabShortLabel(tabKey: TuningTabKey): string {
       return 'Interf.';
     case 'thermal-noise':
       return 'Noise';
+    case 'topology':
+      return 'Topology';
   }
 }
