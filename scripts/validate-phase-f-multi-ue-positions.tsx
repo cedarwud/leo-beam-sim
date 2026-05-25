@@ -217,7 +217,7 @@ section('(g) replay path negative assertion', () => {
 });
 
 function createSyntheticFrame(perUeCount: number): SimFrame {
-  const primary = { id: 'live-ue-0', groundX: 12.5, groundZ: -7.75, eastKm: 1.25, northKm: 0.775 };
+  const primary = { id: 'live-ue-0', groundX: 12.5, groundZ: -7.75, eastKm: 1.25, northKm: 0.775, sinrDb: 17.25 };
   const frame = createEmptyFrame(12);
   frame.serving = { satId: 'sat-0', beamId: 3, sinrDb: 17.25 };
   frame.pendingTargetSatId = 'sat-1';
@@ -234,6 +234,7 @@ function createSyntheticFrame(perUeCount: number): SimFrame {
         groundZ: primary.groundZ - i,
         eastKm: primary.eastKm + i * 0.1,
         northKm: primary.northKm - i * 0.1,
+        sinrDb: null,
       }
   ));
   return frame;

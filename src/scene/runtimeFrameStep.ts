@@ -95,6 +95,8 @@ export interface RuntimeFrameStepState {
 
 interface LinkContext {
   linkSamples: ReturnType<typeof computeLinkBudget>;
+  snapshots: SatelliteSnapshot[];
+  linkBudgetOptions: Parameters<typeof computeLinkBudget>[2];
   beamCellsBySatId: Map<string, BeamCellState[]>;
   steeringBeamCellsBySatId: Map<string, BeamCellState[]>;
   linkRangeKmBySatId: Map<string, number>;
@@ -102,6 +104,15 @@ interface LinkContext {
   availableBeamAssignments: Set<string>;
   activeAssignments: ActiveBeamAssignment[];
   trackedAssignments: ActiveBeamAssignment[];
+}
+
+export interface RuntimePerUeSinrPosition {
+  id: string;
+  groundX: number;
+  groundZ: number;
+  eastKm: number;
+  northKm: number;
+  sinrDb: number | null;
 }
 
 export interface RuntimeFrameStepInput {
@@ -381,7 +392,7 @@ function buildLinkContext(
   const linkRangeKmBySatId = new Map(
     snapshots.map(satellite => [satellite.id, satellite.rangeKm]),
   );
-  const linkSamples = computeLinkBudget(ue, snapshots, {
+  const linkBudgetOptions = {
     formulaFamily: profile.formulaFamily,
     channel: profile.channel,
     antenna: profile.antenna,
@@ -390,10 +401,13 @@ function buildLinkContext(
     activeAssignments,
     simTimeSec: input.state.simTimeSec,
     beamPowerOverrideDbmByKey,
-  });
+  } satisfies Parameters<typeof computeLinkBudget>[2];
+  const linkSamples = computeLinkBudget(ue, snapshots, linkBudgetOptions);
 
   return {
     linkSamples,
+    snapshots,
+    linkBudgetOptions,
     beamCellsBySatId,
     steeringBeamCellsBySatId,
     linkRangeKmBySatId,
@@ -402,6 +416,67 @@ function buildLinkContext(
     activeAssignments,
     trackedAssignments,
   };
+}
+
+export function fillPerUeServingSinr(params: {
+  perUePositions: RuntimePerUeSinrPosition[];
+  primaryServingSinrDb: number;
+  primaryServingSatId: string | null;
+  primaryServingBeamId: number | null;
+  primaryLatDeg: number;
+  primaryLonDeg: number;
+  primaryEastKm: number;
+  primaryNorthKm: number;
+  snapshots: SatelliteSnapshot[];
+  linkBudgetOptions: Parameters<typeof computeLinkBudget>[2];
+}): RuntimePerUeSinrPosition[] {
+  const {
+    perUePositions,
+    primaryServingSinrDb,
+    primaryServingSatId,
+    primaryServingBeamId,
+    primaryLatDeg,
+    primaryLonDeg,
+    primaryEastKm,
+    primaryNorthKm,
+    snapshots,
+    linkBudgetOptions,
+  } = params;
+
+  if (perUePositions.length === 0) return perUePositions;
+  perUePositions[0].sinrDb = primaryServingSinrDb;
+
+  if (primaryServingSatId === null || primaryServingBeamId === null) {
+    for (let i = 1; i < perUePositions.length; i += 1) {
+      perUePositions[i].sinrDb = null;
+    }
+    return perUePositions;
+  }
+
+  const cosPrimaryLat = Math.cos((primaryLatDeg * Math.PI) / 180);
+  const lonKmPerDeg = EARTH_KM_PER_DEG * Math.max(Math.abs(cosPrimaryLat), 1e-6);
+
+  for (let i = 1; i < perUePositions.length; i += 1) {
+    const ueSecondary = perUePositions[i];
+    const deltaEastKm = ueSecondary.eastKm - primaryEastKm;
+    const deltaNorthKm = ueSecondary.northKm - primaryNorthKm;
+    const secondarySamples = computeLinkBudget(
+      {
+        latDeg: primaryLatDeg + deltaNorthKm / EARTH_KM_PER_DEG,
+        lonDeg: primaryLonDeg + deltaEastKm / lonKmPerDeg,
+        offsetEastKm: deltaEastKm,
+        offsetNorthKm: deltaNorthKm,
+      },
+      snapshots,
+      linkBudgetOptions,
+    );
+    const matchingSample = secondarySamples.find(
+      sample => sample.satId === primaryServingSatId && sample.beamId === primaryServingBeamId,
+    );
+    ueSecondary.sinrDb = matchingSample?.sinrDb ?? null;
+  }
+
+  return perUePositions;
 }
 
 export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStepOutput {
@@ -510,13 +585,13 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   const ueWorldScale = primaryGeometry.footprintRadiusKm > 0
     ? (FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier) / primaryGeometry.footprintRadiusKm
     : 1;
-  const perUePositions = generateUePositions({
+  const perUePositions: RuntimePerUeSinrPosition[] = generateUePositions({
     ueCount,
     primaryEastKm: ueEastKm,
     primaryNorthKm: ueNorthKm,
     primaryFootprintRadiusKm: primaryGeometry.footprintRadiusKm,
     ueWorldScale,
-  });
+  }).map(position => ({ ...position, sinrDb: null }));
   const ueGroundX = perUePositions[0].groundX;
   const ueGroundZ = perUePositions[0].groundZ;
   const preDecisionContext = buildLinkContext(
@@ -656,6 +731,20 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     state.beamPowerControlRuntime.lastBucketSamples = postDecisionContext.linkSamples;
   }
 
+  const primaryServingSinrDb = hoManager.state.sinrDb;
+  fillPerUeServingSinr({
+    perUePositions,
+    primaryServingSinrDb,
+    primaryServingSatId: hoManager.state.satId,
+    primaryServingBeamId: hoManager.state.beamId,
+    primaryLatDeg: ueObserver.latDeg,
+    primaryLonDeg: ueObserver.lonDeg,
+    primaryEastKm: perUePositions[0].eastKm,
+    primaryNorthKm: perUePositions[0].northKm,
+    snapshots: postDecisionContext.snapshots,
+    linkBudgetOptions: postDecisionContext.linkBudgetOptions,
+  });
+
   const pendingTargetSinrDb = hoManager.getTrackedSinrDb(
     hoManager.state.pendingTarget?.satId ?? null,
     hoManager.state.pendingTarget?.beamId ?? null,
@@ -694,7 +783,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
       serving: {
         satId: hoManager.state.satId,
         beamId: hoManager.state.beamId,
-        sinrDb: hoManager.state.sinrDb,
+        sinrDb: primaryServingSinrDb,
       },
       pendingTargetSatId: hoManager.state.pendingTarget?.satId ?? null,
       pendingTargetBeamId: hoManager.state.pendingTarget?.beamId ?? null,

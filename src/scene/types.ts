@@ -268,6 +268,7 @@ export interface SimFrame {
     groundZ: number;
     eastKm: number;
     northKm: number;
+    sinrDb: number | null;
   }>;
 }
 

@@ -95,6 +95,7 @@
     "validate:phase-e:sat-count-override": "node --import tsx/esm scripts/validate-phase-e-sat-count-override.tsx",
     "validate:phase-e:beam-count-override": "node --import tsx/esm scripts/validate-phase-e-beam-count-override.tsx",
     "validate:phase-f:multi-ue-positions": "node --import tsx/esm scripts/validate-phase-f-multi-ue-positions.tsx",
+    "validate:phase-f:per-ue-sinr": "node --import tsx/esm scripts/validate-phase-f-per-ue-sinr.tsx",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
     "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts"
   },

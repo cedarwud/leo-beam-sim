@@ -175,7 +175,7 @@ export function liveSimToScene(
   }));
 
   // R6 binding: live N variable, primary preserved at index 0 (live-ue-0).
-  // F-S1 secondaries are positional only; per-UE SINR arrives in F-S2.
+  // F-S2 secondaries carry SINR against the primary serving beam when available.
   const liveUePositions = sim.perUePositions.length > 0
     ? sim.perUePositions
     : [{
@@ -184,6 +184,7 @@ export function liveSimToScene(
       groundZ: sim.ueGroundZ,
       eastKm: 0,
       northKm: 0,
+      sinrDb: sim.serving.sinrDb,
     }];
   const ues: NormalizedUe[] = liveUePositions.map((pos, i) => {
     if (i === 0) {
@@ -213,7 +214,7 @@ export function liveSimToScene(
       servingBeamId: '',
       targetSatelliteId: null,
       targetBeamId: null,
-      channelMetric: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, NaN),
+      channelMetric: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, pos.sinrDb ?? NaN),
     };
   });
 
