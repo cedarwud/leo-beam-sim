@@ -32,6 +32,7 @@ export interface GroundSceneUe {
 
 interface GroundSceneProps {
   readonly ues: ReadonlyArray<GroundSceneUe>;
+  readonly ueMarkerMultiplier?: number;
 }
 
 const MARKER_HEIGHT = 4;
@@ -42,12 +43,27 @@ const PRIMARY_EMISSIVE = '#ff2222';
 const SECONDARY_COLOR = '#cc6644';
 const SECONDARY_EMISSIVE = '#882222';
 
-function PrimaryUeMarker({ x, y, z }: { x: number; y: number; z: number }) {
+function PrimaryUeMarker({
+  x,
+  y,
+  z,
+  ueMarkerMultiplier,
+}: {
+  x: number;
+  y: number;
+  z: number;
+  ueMarkerMultiplier: number;
+}) {
   return (
     <group position={[x, y, z]}>
-      <mesh position={[0, 2, 0]}>
+      <mesh position={[0, 2 * ueMarkerMultiplier, 0]}>
         <cylinderGeometry
-          args={[MARKER_RADIUS, MARKER_RADIUS, MARKER_HEIGHT, MARKER_RADIAL_SEGMENTS]}
+          args={[
+            MARKER_RADIUS * ueMarkerMultiplier,
+            MARKER_RADIUS * ueMarkerMultiplier,
+            MARKER_HEIGHT * ueMarkerMultiplier,
+            MARKER_RADIAL_SEGMENTS,
+          ]}
         />
         <meshStandardMaterial
           color={PRIMARY_COLOR}
@@ -56,7 +72,7 @@ function PrimaryUeMarker({ x, y, z }: { x: number; y: number; z: number }) {
         />
       </mesh>
       <Text
-        position={[0, 12, 0]}
+        position={[0, 12 * ueMarkerMultiplier, 0]}
         fontSize={12}
         color="#ff6666"
         anchorX="center"
@@ -72,8 +88,10 @@ function PrimaryUeMarker({ x, y, z }: { x: number; y: number; z: number }) {
 
 function SecondaryUeInstances({
   positions,
+  ueMarkerMultiplier,
 }: {
   positions: ReadonlyArray<readonly [number, number, number]>;
+  ueMarkerMultiplier: number;
 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
@@ -83,7 +101,7 @@ function SecondaryUeInstances({
     const mesh = meshRef.current;
     for (let i = 0; i < positions.length; i++) {
       const [x, y, z] = positions[i];
-      dummy.position.set(x, y + 2, z);
+      dummy.position.set(x, y + 2 * ueMarkerMultiplier, z);
       dummy.rotation.set(0, 0, 0);
       dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
@@ -91,7 +109,7 @@ function SecondaryUeInstances({
     }
     mesh.instanceMatrix.needsUpdate = true;
     mesh.count = positions.length;
-  }, [positions, dummy]);
+  }, [positions, dummy, ueMarkerMultiplier]);
 
   if (positions.length === 0) return null;
 
@@ -102,9 +120,9 @@ function SecondaryUeInstances({
     >
       <cylinderGeometry
         args={[
-          MARKER_RADIUS * 0.6,
-          MARKER_RADIUS * 0.6,
-          MARKER_HEIGHT * 0.7,
+          MARKER_RADIUS * 0.6 * ueMarkerMultiplier,
+          MARKER_RADIUS * 0.6 * ueMarkerMultiplier,
+          MARKER_HEIGHT * 0.7 * ueMarkerMultiplier,
           MARKER_RADIAL_SEGMENTS,
         ]}
       />
@@ -117,7 +135,7 @@ function SecondaryUeInstances({
   );
 }
 
-export function GroundScene({ ues }: GroundSceneProps) {
+export function GroundScene({ ues, ueMarkerMultiplier = 1.0 }: GroundSceneProps) {
   const secondaryPositions = useMemo(
     () => ues.slice(1).map((u) => u.worldPos),
     [ues],
@@ -127,8 +145,8 @@ export function GroundScene({ ues }: GroundSceneProps) {
   const [px, py, pz] = primary.worldPos;
   return (
     <group>
-      <PrimaryUeMarker x={px} y={py} z={pz} />
-      <SecondaryUeInstances positions={secondaryPositions} />
+      <PrimaryUeMarker x={px} y={py} z={pz} ueMarkerMultiplier={ueMarkerMultiplier} />
+      <SecondaryUeInstances positions={secondaryPositions} ueMarkerMultiplier={ueMarkerMultiplier} />
     </group>
   );
 }

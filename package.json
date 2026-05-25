@@ -90,6 +90,7 @@
     "validate:modqn:visual-showcase:p2b:display-filter": "node --import tsx/esm scripts/validate-modqn-visual-showcase-p2b-display-filter.ts",
     "validate:modqn:visual-showcase:p3:interpolation-space": "node --import tsx/esm scripts/validate-modqn-visual-showcase-p3-interpolation-space.ts",
     "validate:phase-c:scene-scale-override": "node --import tsx/esm scripts/validate-phase-c-scene-scale-override.tsx",
+    "validate:phase-c:ue-marker-size": "node --import tsx/esm scripts/validate-phase-c-ue-marker-size.tsx",
     "validate:phase-e:sat-count-override": "node --import tsx/esm scripts/validate-phase-e-sat-count-override.tsx",
     "validate:phase-e:beam-count-override": "node --import tsx/esm scripts/validate-phase-e-beam-count-override.tsx",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",

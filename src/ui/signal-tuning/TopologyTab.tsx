@@ -576,6 +576,114 @@ export function TopologyTab({
           </button>
         </div>
       </section>
+
+      <div style={dividerStyle} />
+
+      <section
+        style={{
+          display: 'grid',
+          gap: 12,
+          padding: '14px 15px',
+          borderRadius: UI_TOKENS.radius.lg,
+          background: UI_TOKENS.color.surface.card,
+          border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+          borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
+        }}
+      >
+        <div style={{
+          display: 'grid',
+          gap: 5,
+          minWidth: 0,
+        }}>
+          <span style={{
+            color: UI_TOKENS.color.text.controlLabel,
+            fontSize: UI_TOKENS.type.size.bodyLg,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            lineHeight: 1.3,
+          }}>
+            UE marker size
+          </span>
+          <p style={{ ...explanatoryTextStyle, margin: 0 }}>
+            Visual-only size control for UE marker cylinders.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gap: 7 }}>
+          <input
+            data-testid="topology-tab-ue-marker-slider"
+            className={UI_CLASSES.range}
+            type="range"
+            aria-label="UE marker size"
+            min={0.5}
+            max={3.0}
+            step={0.1}
+            value={sceneVisualScale.ueMarkerScale}
+            onChange={(e) => onSceneVisualScaleChange({
+              ...sceneVisualScale,
+              ueMarkerScale: Number(e.target.value),
+            })}
+            style={{
+              width: '100%',
+              accentColor: UI_TOKENS.color.semantic.fixed,
+              cursor: 'pointer',
+            }}
+          />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 10,
+            color: UI_TOKENS.color.text.secondary,
+            fontSize: UI_TOKENS.type.size.body,
+            lineHeight: 1.35,
+          }}>
+            <span>0.5×</span>
+            <span>3.0×</span>
+          </div>
+        </div>
+
+        <div
+          data-testid="topology-tab-ue-marker-effective-value"
+          style={{
+            display: 'grid',
+            gap: 6,
+            color: UI_TOKENS.color.text.secondary,
+            fontSize: UI_TOKENS.type.size.body,
+            lineHeight: 1.45,
+          }}
+        >
+          <span>
+            Effective UE marker scale: {sceneVisualScale.ueMarkerScale.toFixed(2)}×
+          </span>
+        </div>
+
+        <p style={{ ...explanatoryTextStyle, margin: 0 }}>
+          Adjusts UE marker cylinder size relative to the default. Takes effect on next render frame (no simulation restart).
+        </p>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button
+            data-testid="topology-tab-ue-marker-reset"
+            className={UI_CLASSES.button}
+            type="button"
+            onClick={() => onSceneVisualScaleChange({
+              ...sceneVisualScale,
+              ueMarkerScale: 1.0,
+            })}
+            style={{
+              cursor: 'pointer',
+              borderRadius: UI_TOKENS.radius.md,
+              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+              background: 'rgba(132, 148, 163, 0.08)',
+              color: UI_TOKENS.color.text.secondary,
+              padding: '8px 10px',
+              fontSize: UI_TOKENS.type.size.body,
+              fontWeight: UI_TOKENS.type.weight.strong,
+            }}
+          >
+            Reset UE size
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

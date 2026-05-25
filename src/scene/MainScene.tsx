@@ -416,6 +416,7 @@ function SceneContent({
         ues={sceneFrame.ues
           .filter((u) => u.worldPos !== undefined)
           .map((u) => ({ id: u.id, worldPos: u.worldPos as readonly [number, number, number] }))}
+        ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
       />
       <EarthFixedCells cells={paintedCells} showDebugLabels={runtime.beamDensity === 'all'} />
       <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />
