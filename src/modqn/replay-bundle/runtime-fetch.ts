@@ -159,6 +159,7 @@ export async function fetchModqnReplayBundleEnvelope(
     {
       sourcePath,
       sourceOwner: options.sourceOwner,
+      modeKey: options.modeKey,
       fixtureOnly: options.fixtureOnly,
     },
   );

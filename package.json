@@ -22,6 +22,7 @@
     "validate:phase9f:formula-map": "node --import tsx/esm scripts/validate-phase9f-formula-map.tsx",
     "validate:phase9h:coverage-audit-demotion": "node --import tsx/esm scripts/validate-phase9h-coverage-audit-demotion.tsx",
     "validate:phase-d:user-trained-bundle-fetch": "node --import tsx/esm scripts/validate-phase-d-user-trained-bundle-fetch.tsx",
+    "validate:phase-d:user-trained-mode": "node --import tsx/esm scripts/validate-phase-d-user-trained-mode.tsx",
     "validate:vc-fixture:smoke": "node --import tsx/esm scripts/validate-vc-fixture-smoke.ts",
     "validate:vc1a:live-legend": "node --import tsx/esm scripts/validate-vc1a-live-legend.tsx",
     "validate:vc1b:presentation-density": "node --import tsx/esm scripts/validate-vc1b-presentation-density.tsx",
