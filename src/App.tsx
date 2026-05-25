@@ -61,6 +61,7 @@ import { SidebarTabShell, type SidebarTabItem } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
+import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import {
   ClaimBoundaryBanner,
@@ -1099,6 +1100,7 @@ export function App() {
           />
         </main>
         <aside className="leo-shell-right" aria-label="Signal status panel slot">
+          <ServiceStatusBanner appMode={appMode} />
           <SidebarTabShell
             label="Simulation status sidebar"
             side="right"
