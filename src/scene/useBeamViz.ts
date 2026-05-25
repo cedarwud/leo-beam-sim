@@ -21,6 +21,7 @@ import type {
 } from './types';
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 import type { SceneGeometry } from './SceneGeometry';
+import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import {
   resolveBeamFrequencyIndex,
   type BeamFrequencyIndexResolution,
@@ -288,12 +289,14 @@ export function useBeamViz(
    * function gates on `frame.beamHopping.enabled`).
    */
   beamHoppingConfig?: Profile['beamHopping'],
+  visualScaleMultipliers?: SceneVisualScaleMultipliers,
 ): VizFrame {
   const previousDisplayIdsRef = useRef<Set<string>>(new Set());
   const previousEventIdsRef = useRef<Set<string>>(new Set());
   const latchedApproachBySatRef = useRef<Map<string, LatchedApproachState>>(new Map());
 
   return useMemo(() => {
+    const beamFootprintMultiplier = visualScaleMultipliers?.beamFootprintMultiplier ?? 1.0;
     // -------------------------------------------------------------------
     // P1d local alias block — derive sim-shape values from
     // `NormalizedSceneFrame`. The renderer no longer reads `SimFrame` or
@@ -746,7 +749,8 @@ export function useBeamViz(
         });
       visualFrequencyByBeamKey.set(coneEntryKey(sat.id, selectedBeamId), frequency);
 
-      const scale = FOOTPRINT_RADIUS_WORLD / Math.max(layout.footprintRadiusKm, 1e-6);
+      const scale = (FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier)
+        / Math.max(layout.footprintRadiusKm, 1e-6);
       return {
         satelliteId: sat.id,
         beamId: selectedBeamId,
@@ -764,7 +768,8 @@ export function useBeamViz(
       if (!layout) continue;
       footprintRadiusKmBySatId.set(sat.id, layout.footprintRadiusKm);
 
-      const scale = FOOTPRINT_RADIUS_WORLD / Math.max(layout.footprintRadiusKm, 1e-6);
+      const scale = (FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier)
+        / Math.max(layout.footprintRadiusKm, 1e-6);
       const approachPreview = selectedApproachPreviewBySatId.get(sat.id);
       const primaryBeamId = approachPreview?.primaryBeamId ?? primaryBeamIdForSat(
         sat.id,
@@ -1033,7 +1038,8 @@ export function useBeamViz(
       const layout = sat ? shellLayouts.get(sat.shellId) : undefined;
       const beamCells = steeringBeamCellsBySatId.get(satId) ?? [];
       if (sat && layout) {
-        const scale = FOOTPRINT_RADIUS_WORLD / Math.max(layout.footprintRadiusKm, 1e-6);
+        const scale = (FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier)
+          / Math.max(layout.footprintRadiusKm, 1e-6);
         const toCell = beamCells.find(b => b.beamId === toBeamId);
         const fromCell = beamCells.find(b => b.beamId === fromBeamId);
         if (toCell && fromCell) {
@@ -1065,8 +1071,16 @@ export function useBeamViz(
       ambientRings,
       visualFrequencyByBeamKey,
       sinrLabels,
-      footprintRadiusWorld: FOOTPRINT_RADIUS_WORLD,
+      footprintRadiusWorld: FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier,
       intraHandoverEvent,
     };
-  }, [latchedBeamSinrByKey, frame, geometry, runtime, displayCaps, beamHoppingConfig]);
+  }, [
+    latchedBeamSinrByKey,
+    frame,
+    geometry,
+    runtime,
+    displayCaps,
+    beamHoppingConfig,
+    visualScaleMultipliers,
+  ]);
 }

@@ -109,6 +109,7 @@ export interface RuntimeFrameStepInput {
   speed: number;
   paused: boolean;
   deltaSec: number;
+  beamFootprintMultiplier?: number;
   observer: ReturnType<typeof createObserverContext>;
   beamLayoutsByShellId: ReadonlyMap<string, ShellBeamLayout>;
   trajectoryCache: readonly CachedSatState[][];
@@ -409,10 +410,12 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     observer,
     paused,
     deltaSec,
+    beamFootprintMultiplier: inputBeamFootprintMultiplier,
     trajectoryCache,
     hoManager,
     state,
   } = input;
+  const beamFootprintMultiplier = inputBeamFootprintMultiplier ?? 1.0;
   const previousSimTimeSec = state.simTimeSec;
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
 
@@ -501,7 +504,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     ? computeBeamGeometry(primaryShell.altitudeKm, profile.antenna.beamwidth3dBRad)
     : { footprintRadiusKm: 1, spacingKm: 1 };
   const ueWorldScale = primaryGeometry.footprintRadiusKm > 0
-    ? FOOTPRINT_RADIUS_WORLD / primaryGeometry.footprintRadiusKm
+    ? (FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier) / primaryGeometry.footprintRadiusKm
     : 1;
   const ueGroundX = ueEastKm * ueWorldScale;
   const ueGroundZ = -ueNorthKm * ueWorldScale;

@@ -101,6 +101,7 @@ export function useSimulation(
   paused: boolean,
   signalResetKey?: string,
   handoverResetKey?: string,
+  beamFootprintMultiplier?: number,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -228,6 +229,7 @@ export function useSimulation(
       speed,
       paused: true,
       deltaSec: 0,
+      beamFootprintMultiplier,
       observer,
       beamLayoutsByShellId,
       trajectoryCache,
@@ -246,6 +248,7 @@ export function useSimulation(
     profile,
     replay,
     speed,
+    beamFootprintMultiplier,
     trajectoryCache,
   ]);
 
@@ -268,7 +271,7 @@ export function useSimulation(
   useEffect(() => {
     // Profile-backed SINR controls must refresh the React UI even when simulation time is paused.
     publishNextFrameRef.current = true;
-  }, [profile]);
+  }, [profile, beamFootprintMultiplier]);
 
   useFrame((_, delta) => {
     if (trajectoryCache.length === 0) return;
@@ -289,6 +292,7 @@ export function useSimulation(
       speed,
       paused,
       deltaSec: delta,
+      beamFootprintMultiplier,
       observer,
       beamLayoutsByShellId,
       trajectoryCache,

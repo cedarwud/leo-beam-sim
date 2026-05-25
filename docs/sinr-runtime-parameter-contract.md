@@ -268,6 +268,19 @@ These may still be adjustable elsewhere, but not inside the SINR-parameter UI.
 > (no paper symbol mapping; reset implications documented in
 > `docs/phase-e-runtime-overrides-mini-sdd.md` §8).
 
+### Scene Scale (Phase C)
+
+> Phase C adds a second `Simulation Setting` sub-section to the
+> `Topology` tab covering visual scale and UE marker size. Like
+> Topology, these controls are NOT paper-facing SINR formula
+> parameters; they only change the km → world-units rendering
+> mapping (`sceneScale`) and the GroundScene marker cylinder
+> geometry (`ueMarkerScale`). They do NOT alter SINR, link budget,
+> handover decisions, or any physical computation. Replay artifacts
+> are rendered with multiplier = 1.0 regardless of the live
+> selector (artifacts were baked at paper-faithful scale per
+> Phase 7 contract). See Phase C SDD §6 + §8.
+
 ## Not Yet Wired Or Not Safe To Expose As-Is
 
 | Internal field / behavior | Current state | Guidance |

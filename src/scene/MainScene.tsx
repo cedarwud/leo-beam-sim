@@ -19,6 +19,7 @@ import type {
   SimState,
 } from './types';
 import type { ModqnReplayPlaybackDisplayState } from '../modqn/replay-bundle/playback-shell';
+import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import { useSimulation } from './useSimulation';
 import { useBeamViz } from './useBeamViz';
 import { sceneGeometryFromProfile } from './SceneGeometry';
@@ -66,6 +67,7 @@ interface SceneContentProps {
   speed: number;
   paused: boolean;
   runtime: RuntimeConfig;
+  visualScaleMultipliers: SceneVisualScaleMultipliers;
   modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
   showModqnReplayScene: boolean;
   onSimUpdate: (state: SimState) => void;
@@ -117,6 +119,7 @@ function SceneContent({
   speed,
   paused,
   runtime,
+  visualScaleMultipliers,
   modqnReplayDisplayState,
   showModqnReplayScene,
   onSimUpdate,
@@ -135,6 +138,7 @@ function SceneContent({
     paused,
     runtime.signalResetKey,
     runtime.handoverResetKey,
+    visualScaleMultipliers.beamFootprintMultiplier,
   );
   const latchedBeamSinrByKeyRef = useRef<Map<string, number>>(new Map());
   const cellCoverHysteresisRef = useRef<CellCoverHysteresisState>(new Map());
@@ -202,6 +206,7 @@ function SceneContent({
     latchedBeamSinrByKeyRef.current,
     undefined,
     profile.beamHopping,
+    visualScaleMultipliers,
   );
   useSimStatePublisher({
     profile,
@@ -488,6 +493,7 @@ interface MainSceneProps {
   paused: boolean;
   profile: Profile;
   runtime: RuntimeConfig;
+  visualScaleMultipliers: SceneVisualScaleMultipliers;
   modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
   showModqnReplayScene: boolean;
   onSimUpdate: (state: SimState) => void;
@@ -499,6 +505,7 @@ export const MainScene = memo(function MainScene({
   paused,
   profile,
   runtime,
+  visualScaleMultipliers,
   modqnReplayDisplayState,
   showModqnReplayScene,
   onSimUpdate,
@@ -529,6 +536,7 @@ export const MainScene = memo(function MainScene({
             speed={speed}
             paused={paused}
             runtime={runtime}
+            visualScaleMultipliers={visualScaleMultipliers}
             modqnReplayDisplayState={modqnReplayDisplayState}
             showModqnReplayScene={showModqnReplayScene}
             onSimUpdate={onSimUpdate}

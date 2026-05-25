@@ -1,12 +1,21 @@
 import { UI_CLASSES, UI_TOKENS } from '../../constants/uiTokens';
 import type { Profile } from '../../profiles/types';
+import type { AppExperienceMode } from '../appMode';
 import type { SceneTopologyState } from '../../sceneTopology';
+import {
+  createSceneVisualScaleState,
+  type SceneScale,
+  type SceneVisualScaleState,
+} from '../../sceneVisualScale';
 import { controlStackStyle, dividerStyle, explanatoryTextStyle } from './styles';
 
 interface TopologyTabProps {
   topology: SceneTopologyState;
+  sceneVisualScale?: SceneVisualScaleState;
   baseProfile: Profile;
+  appMode?: AppExperienceMode;
   onTopologyChange: (next: SceneTopologyState) => void;
+  onSceneVisualScaleChange?: (next: SceneVisualScaleState) => void;
   onReset: () => void;
 }
 
@@ -15,6 +24,12 @@ function formatSatCount(value: number): string {
 }
 
 const BEAM_COUNT_OPTIONS = [7, 19, 37] as const;
+const SCENE_SCALE_OPTIONS: readonly SceneScale[] = ['paper-faithful', 'demo-readability'];
+
+const SCENE_SCALE_OPTION_TESTIDS: Record<SceneScale, string> = {
+  'paper-faithful': 'topology-tab-scene-scale-option-paper-faithful',
+  'demo-readability': 'topology-tab-scene-scale-option-demo-readability',
+};
 
 type BeamCountOption = typeof BEAM_COUNT_OPTIONS[number];
 
@@ -34,10 +49,14 @@ function isBeamCountOption(value: number): value is BeamCountOption {
 
 export function TopologyTab({
   topology,
+  sceneVisualScale = createSceneVisualScaleState(),
   baseProfile,
+  appMode = 'sinr-experiment',
   onTopologyChange,
+  onSceneVisualScaleChange = () => undefined,
   onReset,
 }: TopologyTabProps) {
+  const showTopologyOverrideControls = appMode === 'sinr-experiment';
   const baseSatCount = baseProfile.orbit.shells[0]?.satsPerPlane ?? 4;
   const effectiveSatCount = topology.satsPerPlane ?? baseSatCount;
   const hasSatOverride = topology.satsPerPlane !== null;
@@ -53,38 +72,40 @@ export function TopologyTab({
 
   return (
     <div style={controlStackStyle}>
-      <div
-        data-testid="topology-tab-restart-banner"
-        style={{
-          display: 'grid',
-          gap: 4,
-          padding: '10px 12px',
-          borderRadius: UI_TOKENS.radius.md,
-          background: 'rgba(255, 214, 125, 0.10)',
-          border: '1px solid rgba(255, 214, 125, 0.24)',
-          color: 'rgba(255, 231, 180, 0.9)',
-          fontSize: UI_TOKENS.type.size.body,
-          lineHeight: 1.4,
-        }}
-      >
-        <strong style={{ color: UI_TOKENS.color.semantic.fixed }}>
-          Adjusting sat count restarts the simulation
-        </strong>
-        <span>Adjusting beam count restarts the simulation</span>
-      </div>
+      {showTopologyOverrideControls && (
+        <>
+          <div
+            data-testid="topology-tab-restart-banner"
+            style={{
+              display: 'grid',
+              gap: 4,
+              padding: '10px 12px',
+              borderRadius: UI_TOKENS.radius.md,
+              background: 'rgba(255, 214, 125, 0.10)',
+              border: '1px solid rgba(255, 214, 125, 0.24)',
+              color: 'rgba(255, 231, 180, 0.9)',
+              fontSize: UI_TOKENS.type.size.body,
+              lineHeight: 1.4,
+            }}
+          >
+            <strong style={{ color: UI_TOKENS.color.semantic.fixed }}>
+              Adjusting sat count restarts the simulation
+            </strong>
+            <span>Adjusting beam count restarts the simulation</span>
+          </div>
 
-      <section
-        data-testid="topology-tab-effective-value"
-        style={{
-          display: 'grid',
-          gap: 12,
-          padding: '14px 15px',
-          borderRadius: UI_TOKENS.radius.lg,
-          background: UI_TOKENS.color.surface.card,
-          border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-          borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
-        }}
-      >
+          <section
+            data-testid="topology-tab-effective-value"
+            style={{
+              display: 'grid',
+              gap: 12,
+              padding: '14px 15px',
+              borderRadius: UI_TOKENS.radius.lg,
+              background: UI_TOKENS.color.surface.card,
+              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+              borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
+            }}
+          >
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -226,22 +247,22 @@ export function TopologyTab({
             Reset topology
           </button>
         </div>
-      </section>
+          </section>
 
-      <div style={dividerStyle} />
+          <div style={dividerStyle} />
 
-      <section
-        data-testid="topology-tab-beam-count-effective-value"
-        style={{
-          display: 'grid',
-          gap: 12,
-          padding: '14px 15px',
-          borderRadius: UI_TOKENS.radius.lg,
-          background: UI_TOKENS.color.surface.card,
-          border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-          borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
-        }}
-      >
+          <section
+            data-testid="topology-tab-beam-count-effective-value"
+            style={{
+              display: 'grid',
+              gap: 12,
+              padding: '14px 15px',
+              borderRadius: UI_TOKENS.radius.lg,
+              background: UI_TOKENS.color.surface.card,
+              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+              borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
+            }}
+          >
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -401,6 +422,157 @@ export function TopologyTab({
             }}
           >
             Clear beam override
+          </button>
+        </div>
+          </section>
+        </>
+      )}
+
+      <div style={dividerStyle} />
+
+      <section
+        style={{
+          display: 'grid',
+          gap: 12,
+          padding: '14px 15px',
+          borderRadius: UI_TOKENS.radius.lg,
+          background: UI_TOKENS.color.surface.card,
+          border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+          borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
+        }}
+      >
+        <div style={{
+          display: 'grid',
+          gap: 5,
+          minWidth: 0,
+        }}>
+          <span style={{
+            color: UI_TOKENS.color.text.controlLabel,
+            fontSize: UI_TOKENS.type.size.bodyLg,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            lineHeight: 1.3,
+          }}>
+            Scene scale
+          </span>
+          <p style={{ ...explanatoryTextStyle, margin: 0 }}>
+            Simulation Setting for visual footprint scale. This is not a SINR formula parameter.
+          </p>
+        </div>
+
+        <fieldset
+          data-testid="topology-tab-scene-scale-radio"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 8,
+            padding: 0,
+            margin: 0,
+            border: 0,
+            minWidth: 0,
+          }}
+        >
+          <legend style={{
+            position: 'absolute',
+            width: 1,
+            height: 1,
+            padding: 0,
+            margin: -1,
+            overflow: 'hidden',
+            clip: 'rect(0, 0, 0, 0)',
+            whiteSpace: 'nowrap',
+            border: 0,
+          }}>
+            Scene scale
+          </legend>
+          {SCENE_SCALE_OPTIONS.map(option => {
+            const active = sceneVisualScale.sceneScale === option;
+            return (
+              <label
+                key={option}
+                style={{
+                  cursor: 'pointer',
+                  display: 'grid',
+                  gap: 5,
+                  justifyItems: 'center',
+                  padding: '10px 9px',
+                  borderRadius: UI_TOKENS.radius.md,
+                  border: `1px solid ${active ? `${UI_TOKENS.color.semantic.fixed}66` : UI_TOKENS.color.border.subtle}`,
+                  background: active ? 'rgba(255, 214, 125, 0.12)' : 'rgba(255, 255, 255, 0.045)',
+                  color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
+                  fontSize: UI_TOKENS.type.size.body,
+                  fontWeight: UI_TOKENS.type.weight.strong,
+                  lineHeight: 1.25,
+                }}
+              >
+                <input
+                  data-testid={SCENE_SCALE_OPTION_TESTIDS[option]}
+                  type="radio"
+                  name="topology-scene-scale"
+                  value={option}
+                  checked={active}
+                  onChange={() => onSceneVisualScaleChange({
+                    ...sceneVisualScale,
+                    sceneScale: option,
+                  })}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    margin: 0,
+                    accentColor: UI_TOKENS.color.semantic.fixed,
+                    cursor: 'pointer',
+                  }}
+                />
+                <span>{option}</span>
+              </label>
+            );
+          })}
+        </fieldset>
+
+        <div style={{
+          padding: '10px 12px',
+          borderRadius: UI_TOKENS.radius.md,
+          background: 'rgba(255, 214, 125, 0.10)',
+          border: '1px solid rgba(255, 214, 125, 0.24)',
+          color: 'rgba(255, 231, 180, 0.9)',
+          fontSize: UI_TOKENS.type.size.body,
+          lineHeight: 1.4,
+        }}>
+          Adjusting scene scale takes effect on next render frame (no simulation restart).
+        </div>
+
+        <div
+          data-testid="topology-tab-scene-scale-effective-value"
+          style={{
+            display: 'grid',
+            gap: 6,
+            color: UI_TOKENS.color.text.secondary,
+            fontSize: UI_TOKENS.type.size.body,
+            lineHeight: 1.45,
+          }}
+        >
+          <span>
+            Effective scene scale: {sceneVisualScale.sceneScale} ({sceneVisualScale.sceneScale !== 'paper-faithful' ? 'override' : 'default'})
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button
+            data-testid="topology-tab-scene-scale-reset"
+            className={UI_CLASSES.button}
+            type="button"
+            onClick={() => onSceneVisualScaleChange(createSceneVisualScaleState())}
+            style={{
+              cursor: 'pointer',
+              borderRadius: UI_TOKENS.radius.md,
+              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+              background: 'rgba(132, 148, 163, 0.08)',
+              color: UI_TOKENS.color.text.secondary,
+              padding: '8px 10px',
+              fontSize: UI_TOKENS.type.size.body,
+              fontWeight: UI_TOKENS.type.weight.strong,
+            }}
+          >
+            Reset visual scale
           </button>
         </div>
       </section>

@@ -18,9 +18,9 @@ export function FormulaTabList({
   appMode: AppExperienceMode;
   onChange: (tab: TuningTabKey) => void;
 }) {
-  const visibleTabs = TUNING_TABS.filter(tab => (
-    tab.key !== 'topology' || appMode === 'sinr-experiment'
-  ));
+  void appMode;
+  // Phase E gate was: tab.key !== 'topology' || appMode === 'sinr-experiment'.
+  const visibleTabs = TUNING_TABS;
   const activeIndex = Math.max(visibleTabs.findIndex(tab => tab.key === activeTab), 0);
 
   const focusFormulaTab = (tab: TuningTabKey) => {

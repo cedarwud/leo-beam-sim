@@ -61,6 +61,15 @@ import {
   hasSceneTopologyOverrides,
   type SceneTopologyState,
 } from './sceneTopology';
+import {
+  SCENE_VISUAL_SCALE_OVERRIDES_KEY,
+  createSceneVisualScaleState,
+  getSceneVisualScaleResetKey,
+  hasSceneVisualScaleOverrides,
+  resolveSceneVisualScaleMultipliers,
+  type SceneVisualScaleMultipliers,
+  type SceneVisualScaleState,
+} from './sceneVisualScale';
 import { ControlBar } from './ui/ControlBar';
 import { AppModeRail } from './ui/AppModeRail';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
@@ -152,6 +161,7 @@ const SINR_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
 
 const MODQN_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
   LEFT_SIDEBAR_TABS[0],
+  LEFT_SIDEBAR_TABS[1],
   LEFT_SIDEBAR_TABS[2],
 ];
 
@@ -282,6 +292,29 @@ function readSceneTopologyOverrides(): SceneTopologyState {
   }
 }
 
+function readSceneVisualScaleOverrides(): SceneVisualScaleState {
+  if (typeof window === 'undefined') return createSceneVisualScaleState();
+
+  try {
+    const stored = window.localStorage.getItem(SCENE_VISUAL_SCALE_OVERRIDES_KEY);
+    if (stored === null) return createSceneVisualScaleState();
+    const parsed: unknown = JSON.parse(stored);
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return createSceneVisualScaleState();
+    }
+    const record = parsed as Partial<Record<keyof SceneVisualScaleState, unknown>>;
+    const sceneScale = record.sceneScale === 'demo-readability' || record.sceneScale === 'paper-faithful'
+      ? record.sceneScale
+      : 'paper-faithful';
+    return {
+      sceneScale,
+      ueMarkerScale: typeof record.ueMarkerScale === 'number' ? record.ueMarkerScale : 1.0,
+    };
+  } catch {
+    return createSceneVisualScaleState();
+  }
+}
+
 export function App() {
   const [sceneSource] = useState<'live-sim' | 'artifact-replay'>(() => readSceneSourceFromUrl());
   const [showcaseArtifact, setShowcaseArtifact] = useState<VisualShowcaseArtifact | null>(null);
@@ -355,6 +388,7 @@ export function App() {
   const baseProfile = useMemo(() => loadProfile(selectedProfileId), [selectedProfileId]);
   const [signalTuning, setSignalTuning] = useState<SignalTuningState>(() => createSignalTuningState(baseProfile));
   const [sceneTopology, setSceneTopology] = useState<SceneTopologyState>(() => readSceneTopologyOverrides());
+  const [sceneVisualScale, setSceneVisualScale] = useState<SceneVisualScaleState>(() => readSceneVisualScaleOverrides());
   const [handoverPolicyState, setHandoverPolicyState] = useState<HandoverPolicyRuntimeState>(() => {
     const initialPolicy = createHandoverPolicyTuningState(baseProfile);
     return {
@@ -392,6 +426,14 @@ export function App() {
   const hasTopologyOverrides = useMemo(
     () => appMode === 'sinr-experiment' && hasSceneTopologyOverrides(sceneTopology),
     [appMode, sceneTopology],
+  );
+  const hasVisualScaleOverrides = useMemo(
+    () => hasSceneVisualScaleOverrides(sceneVisualScale),
+    [sceneVisualScale],
+  );
+  const sceneVisualScaleResetKey = useMemo(
+    () => getSceneVisualScaleResetKey(sceneVisualScale),
+    [sceneVisualScale],
   );
   const hasHandoverAppliedOverrides = useMemo(
     () => hasHandoverPolicyOverrides(baseProfile, appliedHandoverPolicy),
@@ -468,6 +510,10 @@ export function App() {
     signalResetKey,
     viewport,
   ]);
+  const visualScaleMultipliers = useMemo(
+    (): SceneVisualScaleMultipliers => resolveSceneVisualScaleMultipliers(sceneVisualScale),
+    [sceneVisualScale],
+  );
 
   const [simState, setSimState] = useState<SimState>(() => createInitialSimState(baseProfile));
   // MODQN ω-Handover S2: replace the hard-coded shell model with a runtime
@@ -727,6 +773,14 @@ export function App() {
       // Storage can be unavailable in private or embedded browser contexts.
     }
   }, [sceneTopology]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SCENE_VISUAL_SCALE_OVERRIDES_KEY, JSON.stringify(sceneVisualScale));
+    } catch {
+      // Storage can be unavailable in private or embedded browser contexts.
+    }
+  }, [sceneVisualScale]);
 
   // MODQN ω-Handover S2: runtime fetch of the producer replay bundle at
   // startup. On success the shell model + envelope reflect the live artifact
@@ -1046,6 +1100,8 @@ export function App() {
       data-ui-mode={uiMode}
       data-app-mode={appMode}
       data-topology-overrides-active={hasTopologyOverrides ? 'true' : 'false'}
+      data-visual-scale-overrides-active={hasVisualScaleOverrides ? 'true' : 'false'}
+      data-visual-scale-key={sceneVisualScaleResetKey}
       className="leo-app-shell"
     >
       {modqnReplayFetchError !== null && (
@@ -1119,6 +1175,7 @@ export function App() {
                 baseProfile={baseProfile}
                 tuning={signalTuning}
                 topology={sceneTopology}
+                sceneVisualScale={sceneVisualScale}
                 hasOverrides={hasSignalOverrides}
                 appMode={appMode}
                 uiMode="tuning"
@@ -1126,6 +1183,7 @@ export function App() {
                 isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                 onTuningChange={handleSignalTuningChange}
                 onTopologyChange={handleSceneTopologyChange}
+                onSceneVisualScaleChange={setSceneVisualScale}
                 onReset={handleResetSignalTuning}
               />
             ) : (
@@ -1153,6 +1211,7 @@ export function App() {
             paused={playback.paused}
             profile={effectiveProfile}
             runtime={runtime}
+            visualScaleMultipliers={visualScaleMultipliers}
             modqnReplayDisplayState={renderedModqnReplayDisplayState}
             showModqnReplayScene={false}
             onSimUpdate={handleSimUpdate}

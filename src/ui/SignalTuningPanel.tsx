@@ -15,6 +15,7 @@ import {
   createSceneTopologyState,
   type SceneTopologyState,
 } from '../sceneTopology';
+import type { SceneVisualScaleState } from '../sceneVisualScale';
 import {
   FormulaContextDisclosure,
   FormulaSideControlSection,
@@ -52,6 +53,7 @@ interface SignalTuningPanelProps {
   baseProfile: Profile;
   tuning: SignalTuningState;
   topology: SceneTopologyState;
+  sceneVisualScale: SceneVisualScaleState;
   hasOverrides: boolean;
   appMode: AppExperienceMode;
   uiMode: UiMode;
@@ -60,6 +62,7 @@ interface SignalTuningPanelProps {
   initialActiveTab?: TuningTabKey;
   onTuningChange: (next: SignalTuningState) => void;
   onTopologyChange: (next: SceneTopologyState) => void;
+  onSceneVisualScaleChange: (next: SceneVisualScaleState) => void;
   onReset: () => void;
 }
 
@@ -72,6 +75,7 @@ export function SignalTuningPanel({
   baseProfile,
   tuning,
   topology,
+  sceneVisualScale,
   hasOverrides,
   appMode,
   uiMode,
@@ -80,6 +84,7 @@ export function SignalTuningPanel({
   initialActiveTab = 'signal-power',
   onTuningChange,
   onTopologyChange,
+  onSceneVisualScaleChange,
   onReset,
 }: SignalTuningPanelProps) {
   const [activeTab, setActiveTab] = useState<TuningTabKey>(initialActiveTab);
@@ -492,11 +497,15 @@ export function SignalTuningPanel({
             </div>
           )}
 
-          {activeTab === 'topology' && appMode === 'sinr-experiment' && (
+          {/* Phase E used: activeTab === 'topology' && appMode === 'sinr-experiment'. Phase C keeps visual scale visible in both app modes. */}
+          {activeTab === 'topology' && (
             <TopologyTab
               topology={topology}
+              sceneVisualScale={sceneVisualScale}
               baseProfile={baseProfile}
+              appMode={appMode}
               onTopologyChange={onTopologyChange}
+              onSceneVisualScaleChange={onSceneVisualScaleChange}
               onReset={() => onTopologyChange(createSceneTopologyState())}
             />
           )}
