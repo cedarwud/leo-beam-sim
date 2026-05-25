@@ -134,7 +134,7 @@ console.log('\n(d) App.tsx jobs tab wiring');
     'App.tsx imports JobsPanel',
   );
   assert(
-    appSource.includes('<JobsPanel appMode={appMode} />'),
+    /<JobsPanel\s+appMode=\{appMode\}/.test(appSource),
     'App.tsx renders JobsPanel with appMode',
   );
 

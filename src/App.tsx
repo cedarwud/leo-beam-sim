@@ -64,6 +64,9 @@ import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { TrainingForm } from './ui/modqn-training/TrainingForm';
 import { JobsPanel } from './ui/modqn-training/JobsPanel';
+import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
+import { readTrainingServiceBaseUrl } from './modqn/training-trigger/baseUrl';
+import { fetchArtifactManifest } from './modqn/training-trigger/artifactManifest';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import {
   ClaimBoundaryBanner,
@@ -309,6 +312,8 @@ export function App() {
     () => getDefaultLeftSidebarTabForMode(initialRuntime.handoverMode),
   );
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
+  const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
+  const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
   const visibleLeftSidebarTabs = useMemo(
     () => getLeftSidebarTabsForMode(handoverMode),
     [handoverMode],
@@ -676,6 +681,19 @@ export function App() {
 
   const handleBeamDensityChange = useCallback((nextDensity: BeamDensity) => {
     setBeamDensityOverride(nextDensity);
+  }, []);
+
+  const handleLoadIntoScene = useCallback(async (jobId: string) => {
+    try {
+      const manifest = await fetchArtifactManifest(
+        { baseUrl: readTrainingServiceBaseUrl() },
+        jobId,
+      );
+      setSelectedUserTrainedJobId(jobId);
+      setBundleProvenanceKind(manifest.userTrained ? 'user-trained' : 'paper-faithful');
+    } catch {
+      // ignore - keep previous selection
+    }
   }, []);
 
   useEffect(() => subscribeToReducedMotionPreference(setReducedMotion), []);
@@ -1077,7 +1095,7 @@ export function App() {
             ) : activeLeftSidebarTab === 'training' ? (
               <TrainingForm appMode={appMode} />
             ) : activeLeftSidebarTab === 'jobs' ? (
-              <JobsPanel appMode={appMode} />
+              <JobsPanel appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
             ) : (
               <HandoverPolicyControls
                 draft={handoverPolicyDraft}
@@ -1126,6 +1144,7 @@ export function App() {
                       ? activeSceneFrame
                       : LIVE_SIM_CLAIM_BOUNDARY_INPUT
                   }
+                  bundleProvenanceKind={bundleProvenanceKind}
                 />
                 <InfoPanel
                   {...simState}
@@ -1148,12 +1167,18 @@ export function App() {
                 className="leo-modqn-sidebar-stack"
                 aria-label="MODQN proof"
               >
+                <ArtifactPicker
+                  appMode={appMode}
+                  selectedJobId={selectedUserTrainedJobId}
+                  onLoadEntry={handleLoadIntoScene}
+                />
                 <ModqnEvidenceTab
                   simState={simState}
                   bandwidthMHz={effectiveProfile.channel.bandwidthMHz}
                   appliedHandoverOffsetDb={appliedHandoverPolicy.offsetDb}
                   appliedHandoverTriggerTimeSec={appliedHandoverPolicy.triggerTimeSec}
                   handoverMode={handoverMode}
+                  bundleProvenanceKind={bundleProvenanceKind}
                 />
               </section>
             )}

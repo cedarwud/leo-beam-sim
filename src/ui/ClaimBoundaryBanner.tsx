@@ -157,6 +157,7 @@ export function decideClaimBoundaryBanner(
 
 export function ClaimBoundaryBanner(props: {
   frame: ClaimBoundaryBannerInput;
+  bundleProvenanceKind?: 'paper-faithful' | 'user-trained';
 }): ReactElement | null {
   const decision = decideClaimBoundaryBanner(props.frame);
   if (decision.kind === 'fallback') {
@@ -190,6 +191,9 @@ export function ClaimBoundaryBanner(props: {
       data-evidence-status={decision.evidenceStatus}
     >
       <strong className="claim-boundary-banner__title">{decision.title}</strong>
+      {props.bundleProvenanceKind === 'user-trained' ? (
+        <span className="claim-boundary-banner__chip claim-boundary-banner__chip--user-trained" data-testid="claim-boundary-banner-user-trained-chip">user-trained</span>
+      ) : null}
       <span className="claim-boundary-banner__subtitle">{decision.subtitle}</span>
       {decision.details.length > 0 && (
         <ul className="claim-boundary-banner__notes">
