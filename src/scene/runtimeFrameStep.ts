@@ -8,6 +8,7 @@ import {
 import { computeTr38811SlantRangeKm } from '../engine/signal/slant-range';
 import { HandoverManager } from '../engine/handover/handover-manager';
 import type { ServingState } from '../engine/handover/types';
+import { generateUePositions } from '../engine/ue/multiUeState';
 import type { Profile } from '../profiles/types';
 import { computeBeamGeometry, FOOTPRINT_RADIUS_WORLD, generateCoreSceneBeamOffsetsKm } from './beam-layout';
 import { scheduleBeamCells, type CandidateBeamCell } from './beam-scheduler';
@@ -110,6 +111,7 @@ export interface RuntimeFrameStepInput {
   paused: boolean;
   deltaSec: number;
   beamFootprintMultiplier?: number;
+  ueCount?: number;
   observer: ReturnType<typeof createObserverContext>;
   beamLayoutsByShellId: ReadonlyMap<string, ShellBeamLayout>;
   trajectoryCache: readonly CachedSatState[][];
@@ -411,11 +413,13 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     paused,
     deltaSec,
     beamFootprintMultiplier: inputBeamFootprintMultiplier,
+    ueCount: inputUeCount,
     trajectoryCache,
     hoManager,
     state,
   } = input;
   const beamFootprintMultiplier = inputBeamFootprintMultiplier ?? 1.0;
+  const ueCount = inputUeCount ?? 1;
   const previousSimTimeSec = state.simTimeSec;
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
 
@@ -506,8 +510,15 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   const ueWorldScale = primaryGeometry.footprintRadiusKm > 0
     ? (FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier) / primaryGeometry.footprintRadiusKm
     : 1;
-  const ueGroundX = ueEastKm * ueWorldScale;
-  const ueGroundZ = -ueNorthKm * ueWorldScale;
+  const perUePositions = generateUePositions({
+    ueCount,
+    primaryEastKm: ueEastKm,
+    primaryNorthKm: ueNorthKm,
+    primaryFootprintRadiusKm: primaryGeometry.footprintRadiusKm,
+    ueWorldScale,
+  });
+  const ueGroundX = perUePositions[0].groundX;
+  const ueGroundZ = perUePositions[0].groundZ;
   const preDecisionContext = buildLinkContext(
     input,
     linkSats,
@@ -710,6 +721,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
       interHandoverWallClockExpiresMs: activeInterHandoverWallClockExpiresMs,
       ueGroundX,
       ueGroundZ,
+      perUePositions,
     },
   };
 }

@@ -262,6 +262,13 @@ export interface SimFrame {
   interHandoverWallClockExpiresMs: number | null;
   ueGroundX: number;
   ueGroundZ: number;
+  perUePositions: ReadonlyArray<{
+    id: string;
+    groundX: number;
+    groundZ: number;
+    eastKm: number;
+    northKm: number;
+  }>;
 }
 
 export type EventRole = BeamCodeRole;

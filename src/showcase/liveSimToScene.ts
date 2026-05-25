@@ -13,8 +13,8 @@
  *     - wraps channel values in `ChannelMetricValue` with kind
  *       `'sinr-with-interference'` (the live engine produces interference-
  *       aware SINR, contrasting with the artifact's `'snr-no-interference'`);
- *     - projects the single live UE (R6: live N=1 fixed) into a
- *       one-element array;
+ *     - projects live UEs (R6: live N variable, primary preserved at index 0)
+ *       into the renderer-facing UE array;
  *     - emits live-stub `claimBoundary` / `evidenceStatus` / `provenance`
  *       (UI prop injection is deferred to P1d when the claim-boundary banner
  *       UI component lands).
@@ -174,26 +174,48 @@ export function liveSimToScene(
     receiverGainDbi: sample.receiverGainDbi,
   }));
 
-  // R6 binding: live N=1 fixed. Single UE record with serving / pending /
-  // channel-metric kind tagged.
-  const ues: NormalizedUe[] = [
-    {
+  // R6 binding: live N variable, primary preserved at index 0 (live-ue-0).
+  // F-S1 secondaries are positional only; per-UE SINR arrives in F-S2.
+  const liveUePositions = sim.perUePositions.length > 0
+    ? sim.perUePositions
+    : [{
       id: liveUeId,
+      groundX: sim.ueGroundX,
+      groundZ: sim.ueGroundZ,
+      eastKm: 0,
+      northKm: 0,
+    }];
+  const ues: NormalizedUe[] = liveUePositions.map((pos, i) => {
+    if (i === 0) {
+      return {
+        id: liveUeId,
+        geo: { latDeg: 0, lonDeg: 0 },
+        worldPos: [pos.groundX, 0, pos.groundZ] as const,
+        servingSatelliteId: sim.serving.satId ?? '',
+        servingBeamId:
+          sim.serving.beamId !== null && sim.serving.beamId !== undefined
+            ? String(sim.serving.beamId)
+            : '',
+        targetSatelliteId: sim.pendingTargetSatId,
+        targetBeamId:
+          sim.pendingTargetBeamId !== null && sim.pendingTargetBeamId !== undefined
+            ? String(sim.pendingTargetBeamId)
+            : null,
+        channelMetric: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, sim.serving.sinrDb),
+      };
+    }
+
+    return {
+      id: pos.id,
       geo: { latDeg: 0, lonDeg: 0 },
-      worldPos: [sim.ueGroundX, 0, sim.ueGroundZ] as const,
-      servingSatelliteId: sim.serving.satId ?? '',
-      servingBeamId:
-        sim.serving.beamId !== null && sim.serving.beamId !== undefined
-          ? String(sim.serving.beamId)
-          : '',
-      targetSatelliteId: sim.pendingTargetSatId,
-      targetBeamId:
-        sim.pendingTargetBeamId !== null && sim.pendingTargetBeamId !== undefined
-          ? String(sim.pendingTargetBeamId)
-          : null,
-      channelMetric: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, sim.serving.sinrDb),
-    },
-  ];
+      worldPos: [pos.groundX, 0, pos.groundZ] as const,
+      servingSatelliteId: '',
+      servingBeamId: '',
+      targetSatelliteId: null,
+      targetBeamId: null,
+      channelMetric: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, NaN),
+    };
+  });
 
   const metrics: NormalizedMetrics = {
     channelMetricKind: LIVE_CHANNEL_METRIC_KIND,

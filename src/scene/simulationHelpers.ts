@@ -87,6 +87,7 @@ export function createEmptyFrame(simTimeSec: number): SimFrame {
     lastHoEvent: null,
     ueGroundX: 0,
     ueGroundZ: 0,
+    perUePositions: [],
   };
 }
 
