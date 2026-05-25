@@ -62,6 +62,7 @@ import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
+import { TrainingForm } from './ui/modqn-training/TrainingForm';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import {
   ClaimBoundaryBanner,
@@ -129,13 +130,14 @@ const LIVE_SIM_CLAIM_BOUNDARY_INPUT: ClaimBoundaryBannerInput = {
   evidenceStatus: { kind: 'live-stub', status: 'live', notes: [] },
 };
 
-type LeftSidebarTab = 'objective' | 'signal' | 'handover';
+type LeftSidebarTab = 'objective' | 'signal' | 'handover' | 'training';
 type RightSidebarTab = 'modqn' | 'live';
 
 const LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
   { key: 'objective', label: 'MODQN objective', description: 'post-hoc ω weights' },
   { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
   { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
+  { key: 'training', label: 'MODQN training', description: 'launch backend training run' },
 ];
 
 const SINR_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
@@ -146,6 +148,7 @@ const SINR_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
 const MODQN_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
   LEFT_SIDEBAR_TABS[0],
   LEFT_SIDEBAR_TABS[2],
+  LEFT_SIDEBAR_TABS[3],
 ];
 
 const RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = [
@@ -1068,6 +1071,8 @@ export function App() {
                 onTuningChange={handleSignalTuningChange}
                 onReset={handleResetSignalTuning}
               />
+            ) : activeLeftSidebarTab === 'training' ? (
+              <TrainingForm appMode={appMode} />
             ) : (
               <HandoverPolicyControls
                 draft={handoverPolicyDraft}
