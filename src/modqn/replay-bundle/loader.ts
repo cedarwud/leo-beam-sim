@@ -226,6 +226,21 @@ export function parseModqnManifest(manifestJson: string): ModqnReplayBundleManif
   booleanValue(claimBoundary.notFullPaperFaithfulReproduction, 'manifest.claimBoundary.notFullPaperFaithfulReproduction');
   booleanValue(claimBoundary.not19Or37BeamTrainedEvidence, 'manifest.claimBoundary.not19Or37BeamTrainedEvidence');
 
+  if (source.userTrained !== undefined) {
+    booleanValue(source.userTrained, 'manifest.userTrained');
+  }
+  if (source.paperFaithful !== undefined) {
+    booleanValue(source.paperFaithful, 'manifest.paperFaithful');
+  }
+  if (source.userTrainingMetadata !== undefined) {
+    const meta = record(source.userTrainingMetadata, 'manifest.userTrainingMetadata');
+    if (meta.jobId !== undefined) stringValue(meta.jobId, 'manifest.userTrainingMetadata.jobId');
+    if (meta.submittedAtMs !== undefined) numberValue(meta.submittedAtMs, 'manifest.userTrainingMetadata.submittedAtMs');
+    if (meta.trainerSubcommand !== undefined) stringValue(meta.trainerSubcommand, 'manifest.userTrainingMetadata.trainerSubcommand');
+    if (meta.hyperparams !== undefined) record(meta.hyperparams, 'manifest.userTrainingMetadata.hyperparams');
+    if (meta.serviceVersion !== undefined) stringValue(meta.serviceVersion, 'manifest.userTrainingMetadata.serviceVersion');
+  }
+
   return source as unknown as ModqnReplayBundleManifest;
 }
 
