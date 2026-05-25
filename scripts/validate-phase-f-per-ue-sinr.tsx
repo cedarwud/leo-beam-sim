@@ -127,6 +127,11 @@ function createPositions(count: number): RuntimePerUeSinrPosition[] {
       eastKm,
       northKm,
       sinrDb: null,
+      servingSatId: null,
+      servingBeamId: null,
+      pendingTargetSatId: null,
+      pendingTargetBeamId: null,
+      triggerProgressSec: 0,
     };
   });
 }
@@ -241,6 +246,11 @@ function createSyntheticFrameWithSinr(values: readonly number[]): SimFrame {
     eastKm: i * 12,
     northKm: i * 6,
     sinrDb,
+    servingSatId: i === 0 ? frame.serving.satId : null,
+    servingBeamId: i === 0 ? frame.serving.beamId : null,
+    pendingTargetSatId: null,
+    pendingTargetBeamId: null,
+    triggerProgressSec: 0,
   }));
   return frame;
 }

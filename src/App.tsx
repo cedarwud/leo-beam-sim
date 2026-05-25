@@ -498,7 +498,9 @@ export function App() {
     cinematicMode: effectiveCinematicMode,
     cameraCommand: camera.cameraCommand,
     viewport,
+    ueCount: appMode === 'sinr-experiment' ? sceneTopology.ueCount ?? undefined : undefined,
   }), [
+    appMode,
     beamDensityOverride,
     beamCalloutsEnabled,
     camera.cameraCommand,
@@ -507,6 +509,7 @@ export function App() {
     effectiveCinematicMode,
     handoverResetKey,
     runtimeVisualSettings,
+    sceneTopology.ueCount,
     signalResetKey,
     viewport,
   ]);

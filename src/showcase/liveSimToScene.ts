@@ -185,6 +185,11 @@ export function liveSimToScene(
       eastKm: 0,
       northKm: 0,
       sinrDb: sim.serving.sinrDb,
+      servingSatId: sim.serving.satId,
+      servingBeamId: sim.serving.beamId,
+      pendingTargetSatId: sim.pendingTargetSatId,
+      pendingTargetBeamId: sim.pendingTargetBeamId,
+      triggerProgressSec: sim.handoverTriggerProgressSec,
     }];
   const ues: NormalizedUe[] = liveUePositions.map((pos, i) => {
     if (i === 0) {
@@ -210,10 +215,10 @@ export function liveSimToScene(
       id: pos.id,
       geo: { latDeg: 0, lonDeg: 0 },
       worldPos: [pos.groundX, 0, pos.groundZ] as const,
-      servingSatelliteId: '',
-      servingBeamId: '',
-      targetSatelliteId: null,
-      targetBeamId: null,
+      servingSatelliteId: pos.servingSatId ?? '',
+      servingBeamId: pos.servingBeamId !== null ? String(pos.servingBeamId) : '',
+      targetSatelliteId: pos.pendingTargetSatId,
+      targetBeamId: pos.pendingTargetBeamId !== null ? String(pos.pendingTargetBeamId) : null,
       channelMetric: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, pos.sinrDb ?? NaN),
     };
   });

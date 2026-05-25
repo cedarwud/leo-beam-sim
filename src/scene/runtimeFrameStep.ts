@@ -113,6 +113,11 @@ export interface RuntimePerUeSinrPosition {
   eastKm: number;
   northKm: number;
   sinrDb: number | null;
+  servingSatId: string | null;
+  servingBeamId: number | null;
+  pendingTargetSatId: string | null;
+  pendingTargetBeamId: number | null;
+  triggerProgressSec: number;
 }
 
 export interface RuntimeFrameStepInput {
@@ -127,6 +132,7 @@ export interface RuntimeFrameStepInput {
   beamLayoutsByShellId: ReadonlyMap<string, ShellBeamLayout>;
   trajectoryCache: readonly CachedSatState[][];
   hoManager: HandoverManager;
+  secondaryHoManagers?: readonly HandoverManager[];
   state: RuntimeFrameStepState;
 }
 
@@ -479,6 +485,70 @@ export function fillPerUeServingSinr(params: {
   return perUePositions;
 }
 
+export function stepSecondaryUeHandovers(params: {
+  perUePositions: RuntimePerUeSinrPosition[];
+  secondaryHoManagers: readonly HandoverManager[];
+  primaryLatDeg: number;
+  primaryLonDeg: number;
+  primaryEastKm: number;
+  primaryNorthKm: number;
+  snapshots: SatelliteSnapshot[];
+  linkBudgetOptions: Parameters<typeof computeLinkBudget>[2];
+  dtSec: number;
+  simTimeMs: number;
+}): RuntimePerUeSinrPosition[] {
+  const {
+    perUePositions,
+    secondaryHoManagers,
+    primaryLatDeg,
+    primaryLonDeg,
+    primaryEastKm,
+    primaryNorthKm,
+    snapshots,
+    linkBudgetOptions,
+    dtSec,
+    simTimeMs,
+  } = params;
+
+  if (perUePositions.length <= 1 || secondaryHoManagers.length === 0) return perUePositions;
+
+  const cosPrimaryLat = Math.cos((primaryLatDeg * Math.PI) / 180);
+  const lonKmPerDeg = EARTH_KM_PER_DEG * Math.max(Math.abs(cosPrimaryLat), 1e-6);
+
+  for (let i = 1; i < perUePositions.length; i += 1) {
+    const manager = secondaryHoManagers[i - 1];
+    if (!manager) continue;
+
+    const ueSecondary = perUePositions[i];
+    const deltaEastKm = ueSecondary.eastKm - primaryEastKm;
+    const deltaNorthKm = ueSecondary.northKm - primaryNorthKm;
+    const secondarySamples = computeLinkBudget(
+      {
+        latDeg: primaryLatDeg + deltaNorthKm / EARTH_KM_PER_DEG,
+        lonDeg: primaryLonDeg + deltaEastKm / lonKmPerDeg,
+        offsetEastKm: deltaEastKm,
+        offsetNorthKm: deltaNorthKm,
+      },
+      snapshots,
+      linkBudgetOptions,
+    );
+
+    if (manager.state.satId && !secondarySamples.some(sample => sample.satId === manager.state.satId)) {
+      manager.clearServing();
+    }
+
+    manager.update(secondarySamples, dtSec, simTimeMs);
+    ueSecondary.sinrDb = manager.state.sinrDb;
+    ueSecondary.servingSatId = manager.state.satId;
+    ueSecondary.servingBeamId = manager.state.beamId;
+    ueSecondary.pendingTargetSatId = manager.state.pendingTarget?.satId ?? null;
+    ueSecondary.pendingTargetBeamId = manager.state.pendingTarget?.beamId ?? null;
+    ueSecondary.triggerProgressSec = manager.state.pendingTarget ? manager.state.triggerTimeSec : 0;
+  }
+
+  return perUePositions;
+}
+
 export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStepOutput {
   const {
     profile,
@@ -491,6 +561,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     ueCount: inputUeCount,
     trajectoryCache,
     hoManager,
+    secondaryHoManagers = [],
     state,
   } = input;
   const beamFootprintMultiplier = inputBeamFootprintMultiplier ?? 1.0;
@@ -510,6 +581,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   const didLoopWrap = replay.loop && state.simTimeSec < previousSimTimeSec;
   if (didLoopWrap) {
     hoManager.reset();
+    secondaryHoManagers.forEach(manager => manager.reset());
     state.recentHo = null;
     state.intraHandoverEvent = null;
     state.intraHandoverVizLatch = null;
@@ -591,7 +663,15 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     primaryNorthKm: ueNorthKm,
     primaryFootprintRadiusKm: primaryGeometry.footprintRadiusKm,
     ueWorldScale,
-  }).map(position => ({ ...position, sinrDb: null }));
+  }).map(position => ({
+    ...position,
+    sinrDb: null,
+    servingSatId: null,
+    servingBeamId: null,
+    pendingTargetSatId: null,
+    pendingTargetBeamId: null,
+    triggerProgressSec: 0,
+  }));
   const ueGroundX = perUePositions[0].groundX;
   const ueGroundZ = perUePositions[0].groundZ;
   const preDecisionContext = buildLinkContext(
@@ -732,18 +812,40 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   }
 
   const primaryServingSinrDb = hoManager.state.sinrDb;
-  fillPerUeServingSinr({
-    perUePositions,
-    primaryServingSinrDb,
-    primaryServingSatId: hoManager.state.satId,
-    primaryServingBeamId: hoManager.state.beamId,
-    primaryLatDeg: ueObserver.latDeg,
-    primaryLonDeg: ueObserver.lonDeg,
-    primaryEastKm: perUePositions[0].eastKm,
-    primaryNorthKm: perUePositions[0].northKm,
-    snapshots: postDecisionContext.snapshots,
-    linkBudgetOptions: postDecisionContext.linkBudgetOptions,
-  });
+  perUePositions[0].sinrDb = primaryServingSinrDb;
+  perUePositions[0].servingSatId = hoManager.state.satId;
+  perUePositions[0].servingBeamId = hoManager.state.beamId;
+  perUePositions[0].pendingTargetSatId = hoManager.state.pendingTarget?.satId ?? null;
+  perUePositions[0].pendingTargetBeamId = hoManager.state.pendingTarget?.beamId ?? null;
+  perUePositions[0].triggerProgressSec = hoManager.state.pendingTarget ? hoManager.state.triggerTimeSec : 0;
+
+  if (secondaryHoManagers.length > 0) {
+    stepSecondaryUeHandovers({
+      perUePositions,
+      secondaryHoManagers,
+      primaryLatDeg: ueObserver.latDeg,
+      primaryLonDeg: ueObserver.lonDeg,
+      primaryEastKm: perUePositions[0].eastKm,
+      primaryNorthKm: perUePositions[0].northKm,
+      snapshots: postDecisionContext.snapshots,
+      linkBudgetOptions: postDecisionContext.linkBudgetOptions,
+      dtSec: paused ? 0 : deltaSec * speed,
+      simTimeMs: replay.epochUtcMs + state.simTimeSec * 1000,
+    });
+  } else {
+    fillPerUeServingSinr({
+      perUePositions,
+      primaryServingSinrDb,
+      primaryServingSatId: hoManager.state.satId,
+      primaryServingBeamId: hoManager.state.beamId,
+      primaryLatDeg: ueObserver.latDeg,
+      primaryLonDeg: ueObserver.lonDeg,
+      primaryEastKm: perUePositions[0].eastKm,
+      primaryNorthKm: perUePositions[0].northKm,
+      snapshots: postDecisionContext.snapshots,
+      linkBudgetOptions: postDecisionContext.linkBudgetOptions,
+    });
+  }
 
   const pendingTargetSinrDb = hoManager.getTrackedSinrDb(
     hoManager.state.pendingTarget?.satId ?? null,

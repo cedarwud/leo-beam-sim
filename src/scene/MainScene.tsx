@@ -143,6 +143,7 @@ function SceneContent({
     runtime.signalResetKey,
     runtime.handoverResetKey,
     visualScaleMultipliers.beamFootprintMultiplier,
+    runtime.ueCount,
   );
   const latchedBeamSinrByKeyRef = useRef<Map<string, number>>(new Map());
   const cellCoverHysteresisRef = useRef<CellCoverHysteresisState>(new Map());

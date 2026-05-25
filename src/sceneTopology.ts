@@ -57,6 +57,7 @@ export function getSceneTopologyResetKey(
   return [
     topology.satsPerPlane ?? 'base',
     topology.beamCountPerSatellite ?? 'base',
+    topology.ueCount ?? 'base',
   ].join('|');
 }
 

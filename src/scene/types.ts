@@ -48,6 +48,7 @@ export interface RuntimeConfig {
   cameraCommand?: RuntimeCameraCommand;
   reducedMotion: boolean;
   viewport: RuntimeViewport;
+  ueCount?: number;
 }
 
 export interface LinkBudgetTerms {
@@ -269,6 +270,11 @@ export interface SimFrame {
     eastKm: number;
     northKm: number;
     sinrDb: number | null;
+    servingSatId: string | null;
+    servingBeamId: number | null;
+    pendingTargetSatId: string | null;
+    pendingTargetBeamId: number | null;
+    triggerProgressSec: number;
   }>;
 }
 

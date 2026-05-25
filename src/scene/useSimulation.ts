@@ -102,6 +102,7 @@ export function useSimulation(
   signalResetKey?: string,
   handoverResetKey?: string,
   beamFootprintMultiplier?: number,
+  ueCount?: number,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -201,6 +202,15 @@ export function useSimulation(
   // S3: use the subclass so stepRuntimeFrame picks up the override without
   // needing a frozen-file edit.
   const hoManager = useMemo(() => new S3HandoverManager(profile.handover), [profile.handover]);
+  const requestedUeCount = Math.trunc(ueCount ?? 1);
+  const effectiveUeCount = Number.isFinite(requestedUeCount) ? Math.max(1, requestedUeCount) : 1;
+  const secondaryHoManagers = useMemo(
+    () => Array.from(
+      { length: Math.max(0, effectiveUeCount - 1) },
+      () => new HandoverManager(profile.handover),
+    ),
+    [effectiveUeCount, profile.handover],
+  );
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
   const initialSimTimeSec = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
   const runtimeStateRef = useRef<RuntimeFrameStepState>(
@@ -218,9 +228,14 @@ export function useSimulation(
       ?? (handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null);
   }, [decisionOverride, hoManager]);
 
+  const resetAllHoManagers = useCallback(() => {
+    hoManager.reset();
+    secondaryHoManagers.forEach(manager => manager.reset());
+  }, [hoManager, secondaryHoManagers]);
+
   const resetToReplayStartFrame = useCallback(() => {
     const startOffset = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
-    hoManager.reset();
+    resetAllHoManagers();
     runtimeStateRef.current = createRuntimeFrameStepState(startOffset);
     installDecisionOverride();
     const { frame } = stepRuntimeFrame({
@@ -234,6 +249,8 @@ export function useSimulation(
       beamLayoutsByShellId,
       trajectoryCache,
       hoManager,
+      secondaryHoManagers,
+      ueCount: effectiveUeCount,
       state: runtimeStateRef.current,
     });
     frameRef.current = frame;
@@ -241,12 +258,15 @@ export function useSimulation(
     setVersion(v => v + 1);
   }, [
     beamLayoutsByShellId,
+    effectiveUeCount,
     hoManager,
     installDecisionOverride,
     maxTimeSec,
     observer,
     profile,
     replay,
+    resetAllHoManagers,
+    secondaryHoManagers,
     speed,
     beamFootprintMultiplier,
     trajectoryCache,
@@ -257,12 +277,12 @@ export function useSimulation(
   }, [maxTimeSec, profile.id, replay.epochUtcMs, replay.loop, replay.startOffsetSec]);
 
   useEffect(() => {
-    hoManager.reset();
+    resetAllHoManagers();
     runtimeStateRef.current = createRuntimeFrameStepState(runtimeStateRef.current.simTimeSec);
     frameRef.current = createEmptyFrame(runtimeStateRef.current.simTimeSec);
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
-  }, [signalResetKey]);
+  }, [resetAllHoManagers, signalResetKey]);
 
   useEffect(() => {
     resetToReplayStartFrame();
@@ -297,6 +317,8 @@ export function useSimulation(
       beamLayoutsByShellId,
       trajectoryCache,
       hoManager,
+      secondaryHoManagers,
+      ueCount: effectiveUeCount,
       state: runtimeStateRef.current,
     });
     frameRef.current = frame;
