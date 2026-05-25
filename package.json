@@ -22,6 +22,7 @@
     "validate:phase9f:formula-map": "node --import tsx/esm scripts/validate-phase9f-formula-map.tsx",
     "validate:phase9h:coverage-audit-demotion": "node --import tsx/esm scripts/validate-phase9h-coverage-audit-demotion.tsx",
     "validate:phase-d:app-wire": "node --import tsx/esm scripts/validate-phase-d-app-wire.tsx",
+    "validate:phase-d:banner-copy": "node --import tsx/esm scripts/validate-phase-d-banner-copy.tsx",
     "validate:phase-d:decision-viz": "node --import tsx/esm scripts/validate-phase-d-decision-viz.tsx",
     "validate:phase-d:reward-curve": "node --import tsx/esm scripts/validate-phase-d-reward-curve.tsx",
     "validate:phase-d:user-trained-bundle-fetch": "node --import tsx/esm scripts/validate-phase-d-user-trained-bundle-fetch.tsx",

@@ -194,6 +194,14 @@ export function ClaimBoundaryBanner(props: {
       {props.bundleProvenanceKind === 'user-trained' ? (
         <span className="claim-boundary-banner__chip claim-boundary-banner__chip--user-trained" data-testid="claim-boundary-banner-user-trained-chip">user-trained</span>
       ) : null}
+      {props.bundleProvenanceKind === 'user-trained' ? (
+        <span
+          className="claim-boundary-banner__user-trained-disclaimer"
+          data-testid="claim-boundary-banner-user-trained-disclaimer"
+        >
+          User-trained MODQN replay · paperFaithful: false · do not cite as PAP-2024 baseline evidence
+        </span>
+      ) : null}
       <span className="claim-boundary-banner__subtitle">{decision.subtitle}</span>
       {decision.details.length > 0 && (
         <ul className="claim-boundary-banner__notes">
