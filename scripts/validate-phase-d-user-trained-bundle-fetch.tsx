@@ -3,9 +3,9 @@
 //
 // PR-iota / D-S1 acceptance validator:
 //   (a) user-trained bundle fetch imports runtime-fetch and artifactUrl
-//   (b) D-S1 does not import replay-state
+//   (b) user-trained bundle fetch imports only the allowed replay-state mode key
 //   (c) fetchUserTrainedBundleEnvelope is the only exported async function
-//   (d) valid mocked bundle surfaces return a runtime bundle fetch result
+//   (d) valid mocked bundle surfaces return a user-trained runtime bundle fetch result
 //   (e) manifest 404 throws ModqnRuntimeBundleFetchError with surface=manifest.json
 //   (f) URL base is stripped before runtime-fetch appends relative paths
 //   (g) module JSDoc references Phase D mini-SDD §6 + §10.1 and backend SDD §6.4
@@ -207,14 +207,19 @@ console.log('\n(a) Source imports');
 }
 
 // ---------------------------------------------------------------------------
-// (b) Source grep: no replay-state import
+// (b) Source grep: only the allowed replay-state mode-key import
 // ---------------------------------------------------------------------------
-console.log('\n(b) No replay-state import');
+console.log('\n(b) Replay-state import boundary');
 {
   assert(
-    !moduleSource.includes("../replay-bundle/replay-state")
-      && !moduleSource.includes('../replay-bundle/replay-state'),
-    'userTrainedBundleFetch does not import replay-state',
+    /import\s*\{\s*MODQN_USER_TRAINED_MODE_KEY\s*\}\s*from\s*['"]\.\.\/replay-bundle\/replay-state['"]/.test(moduleSource),
+    'userTrainedBundleFetch imports only MODQN_USER_TRAINED_MODE_KEY from replay-state',
+  );
+  assert(
+    !moduleSource.includes('createModqnReplayEnvelope')
+      && !moduleSource.includes('ModqnReplayEnvelope')
+      && !moduleSource.includes('MODQN_REPLAY_7BEAM_MODE_KEY'),
+    'userTrainedBundleFetch does not import forbidden replay-state symbols',
   );
 }
 
@@ -237,31 +242,23 @@ console.log('\n(c) Exported async function shape');
 }
 
 // ---------------------------------------------------------------------------
-// (d) Composition: all four surfaces fetched; envelope assembly fail-closes
+// (d) Composition: all four surfaces fetched; envelope assembly succeeds
 //
-// Per Phase D mini-SDD §10.1: "If the user-trained bundle's shape happens to
-// also pass Phase 7C's strict gate (it almost never will), D-S1's output is
-// usable today. Otherwise the envelope build inside
-// fetchModqnReplayBundleEnvelope will fail-close — that is the correct D-S1
-// behavior. D-S2 fixes it." D-S1 proves only composition (URL building +
-// surface fetching). End-to-end envelope success belongs to D-S2 (PR-κ).
+// D-S3 passes the D-S2 user-trained mode key through this wrapper, so the
+// synthetic 7-beam user-trained fixture now builds an envelope successfully.
 // ---------------------------------------------------------------------------
-console.log('\n(d) Composition: surfaces fetched + envelope fail-closes until D-S2');
+console.log('\n(d) Composition: surfaces fetched + envelope success under user-trained mode');
 {
   const calls: string[] = [];
-  let caught: unknown = null;
+  let result: Awaited<ReturnType<typeof fetchUserTrainedBundleEnvelope>> | null = null;
   await withFetch(
     fixtureFetch(buildValidSevenBeamSurfaces(), calls),
     async () => {
-      try {
-        await fetchUserTrainedBundleEnvelope({
-          config: { baseUrl: 'http://backend.local:8765' },
-          jobId: 'job-valid',
-          clock: () => 1234,
-        });
-      } catch (error) {
-        caught = error;
-      }
+      result = await fetchUserTrainedBundleEnvelope({
+        config: { baseUrl: 'http://backend.local:8765' },
+        jobId: 'job-valid',
+        clock: () => 1234,
+      });
     },
   );
   assert(
@@ -281,11 +278,24 @@ console.log('\n(d) Composition: surfaces fetched + envelope fail-closes until D-
     'D-S1 fetches optional evaluation/summary.json',
   );
   assert(
-    caught instanceof Error
-      && /sourcePath/i.test(caught.message)
-      && caught.message.includes('selected path'),
-    'envelope assembly fail-closes on non-Phase-7C sourcePath (D-S2 opens this gate)',
-    caught instanceof Error ? caught.message : String(caught),
+    result?.envelope.modeKey === 'modqn-user-trained',
+    'envelope modeKey is modqn-user-trained',
+    result?.envelope.modeKey,
+  );
+  assert(
+    result?.envelope.evidenceStatus === 'user-trained',
+    'envelope evidenceStatus is user-trained',
+    result?.envelope.evidenceStatus,
+  );
+  assert(
+    result?.envelope.diagnostics.adapter.rowCount === 1000,
+    'envelope diagnostics rowCount is 1000',
+    String(result?.envelope.diagnostics.adapter.rowCount),
+  );
+  assert(
+    result?.envelope.diagnostics.adapter.slotCount === 10,
+    'envelope diagnostics slotCount is 10',
+    String(result?.envelope.diagnostics.adapter.slotCount),
   );
 }
 
