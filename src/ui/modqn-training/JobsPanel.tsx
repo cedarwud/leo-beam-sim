@@ -36,6 +36,31 @@ function getStartedAtMs(job: TrainingJobSummary): number | undefined {
     : job.submittedAtMs;
 }
 
+export interface EpisodeProgressReadout {
+  readonly current: number;
+  readonly total: number;
+  readonly percent: number;
+}
+
+// Parse the LAST `episode N / M` line in the stdout tail. Returns null
+// if absent or unparseable. M must be a positive integer to avoid
+// divide-by-zero.
+export function parseEpisodeProgress(
+  stdoutTail: string | undefined,
+): EpisodeProgressReadout | null {
+  if (typeof stdoutTail !== 'string' || stdoutTail.length === 0) return null;
+  const matches = [...stdoutTail.matchAll(/episode\s+(\d+)\s*\/\s*(\d+)/g)];
+  if (matches.length === 0) return null;
+  const last = matches[matches.length - 1];
+  const current = Number(last[1]);
+  const total = Number(last[2]);
+  if (!Number.isFinite(current) || !Number.isFinite(total)) return null;
+  if (total <= 0) return null;
+  const ratio = current / total;
+  const percent = Math.min(100, Math.max(0, Math.round(ratio * 100)));
+  return { current, total, percent };
+}
+
 export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactElement | null {
   const enabled = appMode === 'modqn-demo';
   const [jobs, setJobs] = useState<readonly TrainingJobSummary[]>([]);
@@ -116,6 +141,7 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
           {activeJobs.map(job => {
             const startedAtMs = getStartedAtMs(job);
             const stdoutTail = detail[job.jobId]?.stdoutTail;
+            const progress = parseEpisodeProgress(stdoutTail);
             return (
               <div
                 key={job.jobId}
@@ -131,11 +157,35 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
                     running for {formatRunningFor(nowMs - startedAtMs)}
                   </div>
                 ) : null}
-                <div
-                  className="leo-jobs-panel__progress-indeterminate"
-                  role="progressbar"
-                  aria-busy="true"
-                />
+                {progress === null ? (
+                  <div
+                    className="leo-jobs-panel__progress-indeterminate"
+                    role="progressbar"
+                    aria-busy="true"
+                  />
+                ) : (
+                  <>
+                    <div
+                      className="leo-jobs-panel__progress-determinate"
+                      role="progressbar"
+                      aria-busy="true"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={progress.percent}
+                    >
+                      <div
+                        className="leo-jobs-panel__progress-determinate-fill"
+                        style={{ width: `${progress.percent}%` }}
+                      />
+                    </div>
+                    <span
+                      className="leo-jobs-panel__progress-readout"
+                      data-testid="jobs-panel-active-card-percent"
+                    >
+                      episode {progress.current} / {progress.total} · {progress.percent}%
+                    </span>
+                  </>
+                )}
                 <button
                   type="button"
                   data-testid="jobs-panel-refresh-detail"

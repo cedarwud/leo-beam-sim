@@ -24,6 +24,7 @@
     "validate:phase-d:app-wire": "node --import tsx/esm scripts/validate-phase-d-app-wire.tsx",
     "validate:phase-d:banner-copy": "node --import tsx/esm scripts/validate-phase-d-banner-copy.tsx",
     "validate:phase-d:decision-viz": "node --import tsx/esm scripts/validate-phase-d-decision-viz.tsx",
+    "validate:phase-d:episode-progress": "node --import tsx/esm scripts/validate-phase-d-episode-progress.tsx",
     "validate:phase-d:reward-curve": "node --import tsx/esm scripts/validate-phase-d-reward-curve.tsx",
     "validate:phase-d:user-trained-bundle-fetch": "node --import tsx/esm scripts/validate-phase-d-user-trained-bundle-fetch.tsx",
     "validate:phase-d:user-trained-mode": "node --import tsx/esm scripts/validate-phase-d-user-trained-mode.tsx",
