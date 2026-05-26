@@ -3,8 +3,15 @@ import {
   MODQN_REPLAY_7BEAM_EVIDENCE_STATUS,
   MODQN_REPLAY_7BEAM_MODE_KEY,
   MODQN_REPLAY_7BEAM_MODE_LABEL,
+  MODQN_USER_TRAINED_EVIDENCE_STATUS,
+  MODQN_USER_TRAINED_MODE_KEY,
+  MODQN_USER_TRAINED_MODE_LABEL,
   SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH,
+  type ModqnReplayAdapterModeKey,
+  type ModqnReplayAdapterModeLabel,
+  type ModqnReplayEvidenceStatus,
   type ModqnReplayEnvelope,
+  type ModqnReplaySourceOwner,
 } from './replay-state';
 import type {
   ModqnBeamReference,
@@ -58,11 +65,11 @@ export interface ModqnReplayPlaybackSlot {
 }
 
 export interface ModqnReplayPlaybackShellModel {
-  readonly modeKey: typeof MODQN_REPLAY_7BEAM_MODE_KEY;
-  readonly modeLabel: typeof MODQN_REPLAY_7BEAM_MODE_LABEL;
-  readonly evidenceStatus: typeof MODQN_REPLAY_7BEAM_EVIDENCE_STATUS;
-  readonly sourceOwner: 'modqn-paper-reproduction';
-  readonly sourcePath: typeof SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH;
+  readonly modeKey: ModqnReplayAdapterModeKey;
+  readonly modeLabel: ModqnReplayAdapterModeLabel;
+  readonly evidenceStatus: ModqnReplayEvidenceStatus;
+  readonly sourceOwner: ModqnReplaySourceOwner;
+  readonly sourcePath: string;
   readonly stepKind: ModqnReplayPlaybackStepKind;
   readonly rowCount: number;
   readonly slotCount: number;
@@ -72,11 +79,11 @@ export interface ModqnReplayPlaybackShellModel {
 }
 
 export interface ModqnReplayPlaybackDisplayState {
-  readonly modeKey: typeof MODQN_REPLAY_7BEAM_MODE_KEY;
-  readonly modeLabel: typeof MODQN_REPLAY_7BEAM_MODE_LABEL;
-  readonly evidenceStatus: typeof MODQN_REPLAY_7BEAM_EVIDENCE_STATUS;
-  readonly sourceOwner: 'modqn-paper-reproduction';
-  readonly sourcePath: typeof SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH;
+  readonly modeKey: ModqnReplayAdapterModeKey;
+  readonly modeLabel: ModqnReplayAdapterModeLabel;
+  readonly evidenceStatus: ModqnReplayEvidenceStatus;
+  readonly sourceOwner: ModqnReplaySourceOwner;
+  readonly sourcePath: string;
   readonly stepKind: ModqnReplayPlaybackStepKind;
   readonly rowCount: number;
   readonly slotCount: number;
@@ -128,7 +135,19 @@ export function getModqnReplayPlaybackModelValidationIssue(
     );
   }
 
-  if (model.modeKey !== MODQN_REPLAY_7BEAM_MODE_KEY || model.modeLabel !== MODQN_REPLAY_7BEAM_MODE_LABEL) {
+  if (model.modeKey === MODQN_REPLAY_7BEAM_MODE_KEY) return validateSevenBeamPlaybackModel(model);
+  if (model.modeKey === MODQN_USER_TRAINED_MODE_KEY) return validateUserTrainedPlaybackModel(model);
+
+  return validationIssue(
+    'unexpected-mode',
+    'Selected replay display model is not an accepted MODQN replay mode.',
+  );
+}
+
+function validateSevenBeamPlaybackModel(
+  model: ModqnReplayPlaybackShellModel,
+): ModqnReplayPlaybackModelValidationIssue | null {
+  if (model.modeLabel !== MODQN_REPLAY_7BEAM_MODE_LABEL) {
     return validationIssue(
       'unexpected-mode',
       'Selected replay display model is not the accepted 7-beam MODQN producer artifact mode.',
@@ -181,6 +200,66 @@ export function getModqnReplayPlaybackModelValidationIssue(
     return validationIssue(
       'unexpected-event-counts',
       'Selected replay display model does not match the accepted producer artifact event counts.',
+    );
+  }
+
+  return null;
+}
+
+// D-S2 user-trained playback is a replay display gate, not paper evidence.
+function validateUserTrainedPlaybackModel(
+  model: ModqnReplayPlaybackShellModel,
+): ModqnReplayPlaybackModelValidationIssue | null {
+  if (model.modeLabel !== MODQN_USER_TRAINED_MODE_LABEL) {
+    return validationIssue('unexpected-mode', 'Selected replay display model is not user-trained mode.');
+  }
+
+  if (model.evidenceStatus !== MODQN_USER_TRAINED_EVIDENCE_STATUS) {
+    return validationIssue(
+      'unexpected-evidence-status',
+      'Selected replay display model is not user-trained evidence status.',
+    );
+  }
+
+  if (
+    model.sourceOwner !== 'modqn-paper-reproduction'
+    || !model.sourcePath.startsWith('user-trained:')
+  ) {
+    return validationIssue(
+      'unexpected-source',
+      'Selected replay display model does not point at a user-trained producer artifact source.',
+    );
+  }
+
+  if (model.stepKind !== 'source-slot') {
+    return validationIssue(
+      'unexpected-step-kind',
+      'Selected replay display model is not read-only source-slot playback.',
+    );
+  }
+
+  if (model.slots.length === 0) {
+    return validationIssue(
+      'missing-slots',
+      'Selected replay display model has no source slots to display.',
+    );
+  }
+
+  if (model.rowCount < 1 || model.slotCount < 1 || model.slots.length !== model.slotCount) {
+    return validationIssue(
+      'unexpected-shape',
+      'Selected replay display model does not match the user-trained minimum shape (rowCount>=1 && slotCount>=1 && slots.length===slotCount).',
+    );
+  }
+
+  const eventCountTotal =
+    model.eventCounts.none
+    + model.eventCounts['intra-satellite-beam-switch']
+    + model.eventCounts['inter-satellite-handover'];
+  if (eventCountTotal !== model.rowCount) {
+    return validationIssue(
+      'unexpected-event-counts',
+      'Selected replay display model event counts do not sum to rowCount.',
     );
   }
 
@@ -291,11 +370,11 @@ export function createModqnReplayPlaybackShellModel(
   envelope: ModqnReplayEnvelope,
 ): ModqnReplayPlaybackShellModel {
   return {
-    modeKey: MODQN_REPLAY_7BEAM_MODE_KEY,
-    modeLabel: MODQN_REPLAY_7BEAM_MODE_LABEL,
-    evidenceStatus: MODQN_REPLAY_7BEAM_EVIDENCE_STATUS,
-    sourceOwner: 'modqn-paper-reproduction',
-    sourcePath: SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH,
+    modeKey: envelope.modeKey,
+    modeLabel: envelope.modeLabel,
+    evidenceStatus: envelope.evidenceStatus,
+    sourceOwner: envelope.sourceOwner,
+    sourcePath: envelope.sourcePath,
     stepKind: 'source-slot',
     rowCount: envelope.diagnostics.adapter.rowCount,
     slotCount: envelope.diagnostics.adapter.slotCount,

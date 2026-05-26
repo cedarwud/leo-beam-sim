@@ -83,8 +83,10 @@ import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { TrainingForm } from './ui/modqn-training/TrainingForm';
 import { JobsPanel } from './ui/modqn-training/JobsPanel';
 import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
+import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
+import { DecisionVizPanel } from './ui/modqn-training/DecisionVizPanel';
 import { readTrainingServiceBaseUrl } from './modqn/training-trigger/baseUrl';
-import { fetchArtifactManifest } from './modqn/training-trigger/artifactManifest';
+import { fetchUserTrainedBundleEnvelope } from './modqn/training-trigger/userTrainedBundleFetch';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import {
   ClaimBoundaryBanner,
@@ -410,6 +412,7 @@ export function App() {
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
   const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
+  const [userTrainedLoadError, setUserTrainedLoadError] = useState<string | null>(null);
   const visibleLeftSidebarTabs = useMemo(
     () => getLeftSidebarTabsForMode(handoverMode),
     [handoverMode],
@@ -828,17 +831,51 @@ export function App() {
     setBeamDensityOverride(nextDensity);
   }, []);
 
+  // D-S3 replaces the Phase B stub import { fetchArtifactManifest } path with an all-or-nothing envelope swap.
   const handleLoadIntoScene = useCallback(async (jobId: string) => {
+    const config = { baseUrl: readTrainingServiceBaseUrl() };
+    let result;
     try {
-      const manifest = await fetchArtifactManifest(
-        { baseUrl: readTrainingServiceBaseUrl() },
-        jobId,
-      );
-      setSelectedUserTrainedJobId(jobId);
-      setBundleProvenanceKind(manifest.userTrained ? 'user-trained' : 'paper-faithful');
-    } catch {
-      // ignore - keep previous selection
+      result = await fetchUserTrainedBundleEnvelope({ config, jobId });
+    } catch (err) {
+      setUserTrainedLoadError(err instanceof Error ? err.message : String(err));
+      return;
     }
+    const liveShell = createModqnReplayPlaybackShellModel(result.envelope);
+    const issue = getModqnReplayPlaybackModelValidationIssue(liveShell);
+    if (issue !== null) {
+      setUserTrainedLoadError(issue.message);
+      return;
+    }
+    setModqnReplayEnvelope(result.envelope);
+    setModqnReplayShellModel(liveShell);
+    setModqnReplayDisplayState(createModqnReplayPlaybackDisplayState(liveShell));
+    setSelectedUserTrainedJobId(jobId);
+    setBundleProvenanceKind('user-trained');
+    setUserTrainedLoadError(null);
+  }, []);
+
+  // D-S3 reuses the Phase 7C startup bundle path as the explicit unload path.
+  const handleRevertToPaperFaithful = useCallback(async () => {
+    let result;
+    try {
+      result = await fetchModqnReplayBundleEnvelope();
+    } catch (err) {
+      setUserTrainedLoadError(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    const liveShell = createModqnReplayPlaybackShellModel(result.envelope);
+    const issue = getModqnReplayPlaybackModelValidationIssue(liveShell);
+    if (issue !== null) {
+      setUserTrainedLoadError(issue.message);
+      return;
+    }
+    setModqnReplayEnvelope(result.envelope);
+    setModqnReplayShellModel(liveShell);
+    setModqnReplayDisplayState(createModqnReplayPlaybackDisplayState(liveShell));
+    setSelectedUserTrainedJobId(null);
+    setBundleProvenanceKind('paper-faithful');
+    setUserTrainedLoadError(null);
   }, []);
 
   useEffect(() => subscribeToReducedMotionPreference(setReducedMotion), []);
@@ -1341,6 +1378,25 @@ export function App() {
                 className="leo-modqn-sidebar-stack"
                 aria-label="MODQN proof"
               >
+                {userTrainedLoadError !== null ? (
+                  <div
+                    role="alert"
+                    data-testid="load-into-scene-error-banner"
+                    className="leo-load-into-scene-error-banner"
+                  >
+                    User-trained bundle load failed: {userTrainedLoadError}
+                  </div>
+                ) : null}
+                {bundleProvenanceKind === 'user-trained' ? (
+                  <button
+                    type="button"
+                    data-testid="revert-to-paper-faithful"
+                    className="leo-revert-to-paper-faithful"
+                    onClick={() => { void handleRevertToPaperFaithful(); }}
+                  >
+                    Revert to paper-faithful
+                  </button>
+                ) : null}
                 <ArtifactPicker
                   appMode={appMode}
                   selectedJobId={selectedUserTrainedJobId}
@@ -1352,6 +1408,16 @@ export function App() {
                   appliedHandoverOffsetDb={appliedHandoverPolicy.offsetDb}
                   appliedHandoverTriggerTimeSec={appliedHandoverPolicy.triggerTimeSec}
                   handoverMode={handoverMode}
+                  bundleProvenanceKind={bundleProvenanceKind}
+                />
+                <RewardCurvePanel
+                  envelope={modqnReplayEnvelope}
+                  slotOffset={modqnReplaySlotOffset}
+                  bundleProvenanceKind={bundleProvenanceKind}
+                />
+                <DecisionVizPanel
+                  envelope={modqnReplayEnvelope}
+                  slotOffset={modqnReplaySlotOffset}
                   bundleProvenanceKind={bundleProvenanceKind}
                 />
               </section>

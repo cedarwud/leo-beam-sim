@@ -42,6 +42,9 @@ export const MODQN_REPLAY_7BEAM_MODE_KEY = 'modqn-replay-7beam' as const;
 export const MODQN_REPLAY_7BEAM_MODE_LABEL =
   'MODQN replay - 7-beam producer artifact' as const;
 export const MODQN_REPLAY_7BEAM_EVIDENCE_STATUS = 'accepted-7beam-baseline' as const;
+export const MODQN_USER_TRAINED_MODE_KEY = 'modqn-user-trained' as const;
+export const MODQN_USER_TRAINED_MODE_LABEL = 'MODQN user-trained replay' as const;
+export const MODQN_USER_TRAINED_EVIDENCE_STATUS = 'user-trained' as const;
 export const MODQN_FIXTURE_ONLY_EVIDENCE_STATUS = 'fixture-only' as const;
 export const MODQN_REGENERATION_DATE = '2026-05-15' as const;
 export const MODQN_EXPECTED_TIMELINE_ROW_COUNT = 1000 as const;
@@ -57,14 +60,17 @@ export const MODQN_EXPECTED_EVENT_COUNTS: Readonly<Record<ModqnHandoverEventKind
 
 export type ModqnReplayEvidenceStatus =
   | typeof MODQN_REPLAY_7BEAM_EVIDENCE_STATUS
+  | typeof MODQN_USER_TRAINED_EVIDENCE_STATUS
   | typeof MODQN_FIXTURE_ONLY_EVIDENCE_STATUS;
 
 export type ModqnReplayAdapterModeKey =
   | typeof MODQN_REPLAY_7BEAM_MODE_KEY
+  | typeof MODQN_USER_TRAINED_MODE_KEY
   | 'sensitivity-demo';
 
 export type ModqnReplayAdapterModeLabel =
   | typeof MODQN_REPLAY_7BEAM_MODE_LABEL
+  | typeof MODQN_USER_TRAINED_MODE_LABEL
   | 'Sensitivity/demo';
 
 export type ModqnReplaySourceOwner =
@@ -100,6 +106,7 @@ export type ModqnReplayBundleSurfaceReader = (
 export interface ModqnReplayBundleLoadOptions {
   readonly sourcePath?: string;
   readonly fixtureOnly?: boolean;
+  readonly modeKey?: ModqnReplayAdapterModeKey;
   readonly sourceOwner?: ModqnReplaySourceOwner;
 }
 
@@ -114,9 +121,13 @@ export interface ModqnReplayBundleLoadPlan {
 export interface ModqnReplayEnvelopeClaimBoundary {
   readonly sourceClaimBoundary: ModqnClaimBoundary;
   readonly baselineModqnEvidence: boolean;
-  readonly acceptedEvidenceShape: '7-beam producer baseline only' | 'none-fixture-only';
+  readonly acceptedEvidenceShape:
+    | '7-beam producer baseline only'
+    | 'user-trained-bundle-not-paper-faithful'
+    | 'none-fixture-only';
   readonly artifactStatus:
     | 'current-baseline-run-exported-bundle'
+    | 'user-trained-bundle-non-evidence'
     | 'fixture-only-non-evidence-not-producer-artifact';
   readonly allowedClaims: readonly string[];
   readonly forbiddenClaims: readonly string[];
@@ -207,6 +218,7 @@ export interface ModqnReplayEnvelopeDiagnostics {
     readonly eventCounts: Readonly<Record<ModqnHandoverEventKind, number>>;
     readonly bridgeStatus:
       | 'built-for-accepted-7beam-path'
+      | 'skipped-user-trained-bundle'
       | 'skipped-fixture-only-non-evidence';
     readonly requiredSurfaces: readonly string[];
   };
@@ -426,29 +438,84 @@ function validateEvidenceCapableBundleShape(bundle: ModqnReplayBundle): void {
   if (slots.size !== EXPECTED_SLOT_COUNT) fail('timeline slot count', `${EXPECTED_SLOT_COUNT}`);
 }
 
+// D-S2 user-trained bundles are producer artifacts, but not Phase 7C evidence.
+function validateUserTrainedBundleShape(bundle: ModqnReplayBundle): void {
+  if (bundle.manifest.bundleSchemaVersion !== MODQN_REPLAY_BUNDLE_SCHEMA_VERSION) {
+    fail('manifest.bundleSchemaVersion', MODQN_REPLAY_BUNDLE_SCHEMA_VERSION);
+  }
+  if (bundle.manifest.paperId !== MODQN_PAPER_ID) fail('manifest.paperId', MODQN_PAPER_ID);
+
+  const satelliteCount = bundle.manifest.baselineSurface.satelliteCount;
+  if (satelliteCount === undefined || satelliteCount <= 0) {
+    fail('manifest.baselineSurface.satelliteCount', 'positive number');
+  }
+  const beamCountPerSatellite = bundle.manifest.baselineSurface.beamCountPerSatellite;
+  if (beamCountPerSatellite <= 0) {
+    fail('manifest.baselineSurface.beamCountPerSatellite', 'positive number');
+  }
+  const totalBeamCount = bundle.manifest.baselineSurface.totalBeamCount;
+  if (totalBeamCount <= 0) fail('manifest.baselineSurface.totalBeamCount', 'positive number');
+  if (totalBeamCount !== satelliteCount * beamCountPerSatellite) {
+    fail('manifest.baselineSurface.totalBeamCount', 'satelliteCount * beamCountPerSatellite');
+  }
+  if (bundle.timelineRows.length < 1) fail('timeline/step-trace.jsonl row count', 'at least 1');
+
+  for (const [rowIndex, row] of bundle.timelineRows.entries()) {
+    const label = `timeline.rows[${rowIndex}]`;
+    assertArrayLength(row.satelliteStates, satelliteCount, `${label}.satelliteStates`);
+    assertArrayLength(row.beamStates, totalBeamCount, `${label}.beamStates`);
+    assertArrayLength(row.visibilityMask, totalBeamCount, `${label}.visibilityMask`);
+    assertArrayLength(row.actionValidityMask, totalBeamCount, `${label}.actionValidityMask`);
+    assertArrayLength(row.decisionVisibilityMask, totalBeamCount, `${label}.decisionVisibilityMask`);
+    assertArrayLength(row.decisionActionValidityMask, totalBeamCount, `${label}.decisionActionValidityMask`);
+    assertArrayLength(row.beamLoads, totalBeamCount, `${label}.beamLoads`);
+    assertArrayLength(row.beamThroughputs, totalBeamCount, `${label}.beamThroughputs`);
+
+    const catalog = new Map(row.beamStates.map(beam => [beam.beamId, beam]));
+    if (catalog.size !== totalBeamCount) fail(`${label}.beamStates`, 'unique producer beam IDs');
+    const beamIndexes = new Set(row.beamStates.map(beam => beam.beamIndex));
+    if (beamIndexes.size !== totalBeamCount) fail(`${label}.beamStates`, 'unique producer beam indexes');
+    assertReferenceMatchesBeamCatalog(row.previousServing, catalog, `${label}.previousServing`);
+    assertReferenceMatchesBeamCatalog(row.selectedServing, catalog, `${label}.selectedServing`);
+    assertHandoverEventMatchesServingTruth(row, label);
+  }
+}
+
 function createClaimBoundary(
   sourceClaimBoundary: ModqnClaimBoundary,
   evidenceStatus: ModqnReplayEvidenceStatus,
 ): ModqnReplayEnvelopeClaimBoundary {
   const baselineModqnEvidence = evidenceStatus === MODQN_REPLAY_7BEAM_EVIDENCE_STATUS;
+  const userTrainedBundle = evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS;
 
   return {
     sourceClaimBoundary,
     baselineModqnEvidence,
-    acceptedEvidenceShape: baselineModqnEvidence ? '7-beam producer baseline only' : 'none-fixture-only',
+    acceptedEvidenceShape: baselineModqnEvidence
+      ? '7-beam producer baseline only'
+      : userTrainedBundle
+        ? 'user-trained-bundle-not-paper-faithful'
+        : 'none-fixture-only',
     artifactStatus: baselineModqnEvidence
       ? 'current-baseline-run-exported-bundle'
-      : 'fixture-only-non-evidence-not-producer-artifact',
+      : userTrainedBundle
+        ? 'user-trained-bundle-non-evidence'
+        : 'fixture-only-non-evidence-not-producer-artifact',
     allowedClaims: baselineModqnEvidence
       ? [
           'Producer-owned 7-beam baseline MODQN replay bundle exported from the current baseline run for PAP-2024-MORL-MULTIBEAM.',
           'Evidence-capable replay of selected producer rows after Phase 7C shape validation.',
           '7 beams per satellite is the only accepted baseline MODQN evidence shape for this selected path.',
         ]
-      : [
-          'Fixture-only parser and replay-state exercise.',
-          'No baseline MODQN evidence claim is emitted for fixture-only paths.',
-        ],
+      : userTrainedBundle
+        ? [
+            'User-trained MODQN replay bundle. Not paper-faithful evidence.',
+            'Showcase replay of user training run output; does not stand in for the 7-beam producer baseline.',
+          ]
+        : [
+            'Fixture-only parser and replay-state exercise.',
+            'No baseline MODQN evidence claim is emitted for fixture-only paths.',
+          ],
     forbiddenClaims: [
       'No recovered frozen artifact claim.',
       'No full paper-faithful reproduction claim.',
@@ -631,7 +698,9 @@ function createDiagnostics(
       eventCounts,
       bridgeStatus: evidenceStatus === MODQN_REPLAY_7BEAM_EVIDENCE_STATUS
         ? 'built-for-accepted-7beam-path'
-        : 'skipped-fixture-only-non-evidence',
+        : evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
+          ? 'skipped-user-trained-bundle'
+          : 'skipped-fixture-only-non-evidence',
       requiredSurfaces: loadPlan.requiredSurfaces.map(surface => surface.relativePath),
     },
     producerPolicyDiagnostics: {
@@ -648,6 +717,42 @@ export function createModqnReplayBundleLoadPlan(
 ): ModqnReplayBundleLoadPlan {
   const sourcePath = options.sourcePath ?? SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH;
   const fixtureOnly = options.fixtureOnly === true;
+  const userTrainedMode = options.modeKey === MODQN_USER_TRAINED_MODE_KEY;
+
+  if (userTrainedMode) {
+    if (!sourcePath.startsWith('user-trained:')) {
+      fail('sourcePath', 'user-trained mode sourcePath with user-trained: prefix');
+    }
+
+    return {
+      sourcePath,
+      sourceOwner: options.sourceOwner ?? 'modqn-paper-reproduction',
+      evidenceStatus: MODQN_USER_TRAINED_EVIDENCE_STATUS,
+      requiredSurfaces: [
+        {
+          contentsKey: 'manifestJson',
+          relativePath: 'manifest.json',
+          absolutePath: appendBundlePath(sourcePath, 'manifest.json'),
+        },
+        {
+          contentsKey: 'provenanceMapJson',
+          relativePath: 'provenance-map.json',
+          absolutePath: appendBundlePath(sourcePath, 'provenance-map.json'),
+        },
+        {
+          contentsKey: 'timelineJsonl',
+          relativePath: 'timeline/step-trace.jsonl',
+          absolutePath: appendBundlePath(sourcePath, 'timeline/step-trace.jsonl'),
+        },
+      ],
+      optionalSurfaces: [
+        {
+          relativePath: 'evaluation/summary.json',
+          absolutePath: appendBundlePath(sourcePath, 'evaluation/summary.json'),
+        },
+      ],
+    };
+  }
 
   if (!fixtureOnly && sourcePath !== SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH) {
     fail('sourcePath', 'selected path or explicit fixtureOnly=true for non-evidence paths');
@@ -702,6 +807,8 @@ export function createModqnReplayEnvelopeFromBundle(
   }
   if (loadPlan.evidenceStatus === MODQN_REPLAY_7BEAM_EVIDENCE_STATUS) {
     validateEvidenceCapableBundleShape(bundle);
+  } else if (loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS) {
+    validateUserTrainedBundleShape(bundle);
   }
 
   const replaySlots = groupRowsBySlot(bundle.timelineRows);
@@ -710,10 +817,14 @@ export function createModqnReplayEnvelopeFromBundle(
   return {
     modeKey: loadPlan.evidenceStatus === MODQN_REPLAY_7BEAM_EVIDENCE_STATUS
       ? MODQN_REPLAY_7BEAM_MODE_KEY
-      : 'sensitivity-demo',
+      : loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
+        ? MODQN_USER_TRAINED_MODE_KEY
+        : 'sensitivity-demo',
     modeLabel: loadPlan.evidenceStatus === MODQN_REPLAY_7BEAM_EVIDENCE_STATUS
       ? MODQN_REPLAY_7BEAM_MODE_LABEL
-      : 'Sensitivity/demo',
+      : loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
+        ? MODQN_USER_TRAINED_MODE_LABEL
+        : 'Sensitivity/demo',
     evidenceStatus: loadPlan.evidenceStatus,
     sourceOwner: loadPlan.sourceOwner,
     sourcePath: loadPlan.sourcePath,
@@ -744,6 +855,9 @@ export function createModqnReplayEnvelopeFromContents(
     ...options,
     sourcePath: loadPlan.sourcePath,
     sourceOwner: loadPlan.sourceOwner,
+    modeKey: loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
+      ? MODQN_USER_TRAINED_MODE_KEY
+      : options.modeKey,
     fixtureOnly: loadPlan.evidenceStatus === MODQN_FIXTURE_ONLY_EVIDENCE_STATUS,
   });
 }
@@ -797,6 +911,9 @@ export function loadModqnReplayEnvelopeFromSurfaceReader(
     ...options,
     sourcePath: loadPlan.sourcePath,
     sourceOwner: loadPlan.sourceOwner,
+    modeKey: loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
+      ? MODQN_USER_TRAINED_MODE_KEY
+      : options.modeKey,
     fixtureOnly: loadPlan.evidenceStatus === MODQN_FIXTURE_ONLY_EVIDENCE_STATUS,
   });
 }
