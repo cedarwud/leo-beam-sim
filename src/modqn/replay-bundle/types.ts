@@ -34,6 +34,15 @@ export interface ModqnClaimBoundary {
   readonly [key: string]: unknown;
 }
 
+export interface ModqnUserTrainingMetadata {
+  readonly jobId?: string;
+  readonly submittedAtMs?: number;
+  readonly trainerSubcommand?: string;
+  readonly hyperparams?: ModqnProducerOwnedObject;
+  readonly serviceVersion?: string;
+  readonly [key: string]: unknown;
+}
+
 export interface ModqnReplayBundleManifest {
   readonly bundleSchemaVersion: ModqnReplayBundleSchemaVersion;
   readonly paperId: ModqnPaperId;
@@ -42,6 +51,9 @@ export interface ModqnReplayBundleManifest {
   readonly beamCatalogOrder?: ModqnBeamCatalogOrder;
   readonly replaySummary?: ModqnProducerOwnedObject;
   readonly optionalPolicyDiagnostics?: ModqnProducerOwnedObject;
+  readonly userTrained?: boolean;
+  readonly paperFaithful?: boolean;
+  readonly userTrainingMetadata?: ModqnUserTrainingMetadata;
   readonly [key: string]: unknown;
 }
 
