@@ -261,8 +261,8 @@ section('(e) TopologyTab source testids and radio options', () => {
     check(topologyTabSource.includes(testId), `TopologyTab.tsx contains new testid ${testId}`);
   }
   check(
-    countOccurrences(topologyTabSource, 'topology-tab-') === 35,
-    'TopologyTab.tsx contains exactly 35 topology-tab testid string literals after Phase G mobility params UI',
+    countOccurrences(topologyTabSource, 'topology-tab-') === 37,
+    'TopologyTab.tsx contains exactly 37 topology-tab testid string literals after Phase G UE trail toggle',
   );
   check(topologyTabSource.includes("['random', 'grid', 'clustered']"), 'TopologyTab radio declares random/grid/clustered options');
   check(topologyTabSource.includes('Changing UE distribution restarts the simulation'), 'TopologyTab includes distribution restart banner');

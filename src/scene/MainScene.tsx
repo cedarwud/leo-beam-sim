@@ -21,6 +21,7 @@ import type {
 import type { ModqnReplayPlaybackDisplayState } from '../modqn/replay-bundle/playback-shell';
 import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import { useSimulation } from './useSimulation';
+import { useUeTrailHistory } from './useUeTrailHistory';
 import { useBeamViz } from './useBeamViz';
 import { sceneGeometryFromProfile } from './SceneGeometry';
 import { liveSimToScene } from '../showcase/liveSimToScene';
@@ -148,6 +149,11 @@ function SceneContent({
     runtime.ueMobilityMode,
     runtime.ueMobilityParams,
   );
+  const ueTrailHistory = useUeTrailHistory({
+    enabled: runtime.enableUeTrails === true && propSceneFrame === undefined,
+    perUePositions: sim.perUePositions,
+    resetKey: runtime.signalResetKey,
+  });
   const latchedBeamSinrByKeyRef = useRef<Map<string, number>>(new Map());
   const cellCoverHysteresisRef = useRef<CellCoverHysteresisState>(new Map());
   const writeCameraTelemetry = (preset: CameraPreset | null, transition: 'idle' | 'animating') => {
@@ -425,6 +431,7 @@ function SceneContent({
           .filter((u) => u.worldPos !== undefined)
           .map((u) => ({ id: u.id, worldPos: u.worldPos as readonly [number, number, number] }))}
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
+        ueTrailHistory={ueTrailHistory}
       />
       <EarthFixedCells cells={paintedCells} showDebugLabels={runtime.beamDensity === 'all'} />
       <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />

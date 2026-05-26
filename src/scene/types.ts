@@ -54,6 +54,7 @@ export interface RuntimeConfig {
   ueDistributionMode?: UeDistributionMode;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
+  enableUeTrails?: boolean;
 }
 
 export interface LinkBudgetTerms {

@@ -317,6 +317,7 @@ function readSceneTopologyOverrides(): SceneTopologyState {
         ? record.ueMobilityMode
         : null,
       ueMobilityParams: normalizedMobilityParams,
+      enableUeTrails: record.enableUeTrails === true ? true : null,
     };
   } catch {
     return createSceneTopologyState();
@@ -542,6 +543,9 @@ export function App() {
     ueMobilityParams: appMode === 'sinr-experiment'
       ? sceneTopology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS
       : DEFAULT_UE_MOBILITY_PARAMS,
+    enableUeTrails: appMode === 'sinr-experiment'
+      ? sceneTopology.enableUeTrails === true
+      : false,
   }), [
     appMode,
     beamDensityOverride,
@@ -555,6 +559,7 @@ export function App() {
     sceneTopology.ueDistributionMode,
     sceneTopology.ueMobilityMode,
     sceneTopology.ueMobilityParams,
+    sceneTopology.enableUeTrails,
     sceneTopology.ueCount,
     signalResetKey,
     viewport,

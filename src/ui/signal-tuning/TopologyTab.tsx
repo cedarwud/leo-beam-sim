@@ -120,6 +120,7 @@ export function TopologyTab({
   const hasUeMobilityOverride = topology.ueMobilityMode !== null
     && topology.ueMobilityMode !== 'static'
     || topology.ueMobilityParams !== null;
+  const enableUeTrails = topology.enableUeTrails === true;
   const activeBeamCount = hasBeamOverride
     ? topology.beamCountPerSatellite
     : isBeamCountOption(baseBeamCount)
@@ -1320,6 +1321,42 @@ export function TopologyTab({
                 Reset mobility
               </button>
             </div>
+
+            <label
+              data-testid="topology-tab-ue-trails-label"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 12px',
+                borderRadius: UI_TOKENS.radius.md,
+                background: enableUeTrails ? 'rgba(255, 214, 125, 0.10)' : 'rgba(255, 255, 255, 0.045)',
+                border: `1px solid ${enableUeTrails ? `${UI_TOKENS.color.semantic.fixed}55` : UI_TOKENS.color.border.subtle}`,
+                color: enableUeTrails ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
+                fontSize: UI_TOKENS.type.size.body,
+                fontWeight: UI_TOKENS.type.weight.strong,
+                lineHeight: 1.35,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                data-testid="topology-tab-ue-trails-toggle"
+                type="checkbox"
+                checked={enableUeTrails}
+                onChange={event => onTopologyChange({
+                  ...topology,
+                  enableUeTrails: event.target.checked ? true : null,
+                })}
+                style={{
+                  width: 16,
+                  height: 16,
+                  margin: 0,
+                  accentColor: UI_TOKENS.color.semantic.fixed,
+                  cursor: 'pointer',
+                }}
+              />
+              <span>Show UE trails</span>
+            </label>
           </section>
         </>
       )}

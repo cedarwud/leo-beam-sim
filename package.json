@@ -103,6 +103,7 @@
     "validate:phase-g:ue-mobility-step": "node --import tsx/esm scripts/validate-phase-g-ue-mobility-step.tsx",
     "validate:phase-g:ue-mobility-ui": "node --import tsx/esm scripts/validate-phase-g-ue-mobility-ui.tsx",
     "validate:phase-g:ue-mobility-params": "node --import tsx/esm scripts/validate-phase-g-ue-mobility-params.tsx",
+    "validate:phase-g:ue-trail-viz": "node --import tsx/esm scripts/validate-phase-g-ue-trail-viz.tsx",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
     "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts"
   },

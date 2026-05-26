@@ -11,6 +11,7 @@ export interface SceneTopologyState {
   ueDistributionMode: UeDistributionMode | null;
   ueMobilityMode: UeMobilityMode | null;
   ueMobilityParams: UeMobilityParams | null;
+  enableUeTrails: boolean | null;
 }
 
 export function createSceneTopologyState(): SceneTopologyState {
@@ -21,6 +22,7 @@ export function createSceneTopologyState(): SceneTopologyState {
     ueDistributionMode: null,
     ueMobilityMode: null,
     ueMobilityParams: null,
+    enableUeTrails: null,
   };
 }
 
@@ -59,7 +61,8 @@ export function hasSceneTopologyOverrides(
     || topology.ueCount !== null
     || (topology.ueDistributionMode !== null && topology.ueDistributionMode !== 'random')
     || (topology.ueMobilityMode !== null && topology.ueMobilityMode !== 'static')
-    || topology.ueMobilityParams !== null;
+    || topology.ueMobilityParams !== null
+    || topology.enableUeTrails === true;
 }
 
 export function getSceneTopologyResetKey(
@@ -74,6 +77,7 @@ export function getSceneTopologyResetKey(
     topology.ueMobilityParams?.speedKmPerSec ?? 'default',
     topology.ueMobilityParams?.waypointCount ?? 'default',
     topology.ueMobilityParams?.manhattanGridSpacingKm ?? 'default',
+    topology.enableUeTrails === true ? 'ue-trails' : 'no-ue-trails',
   ].join('|');
 }
 
@@ -89,6 +93,7 @@ export function getSceneTopologyEvidenceKey(
     topology.ueMobilityParams?.speedKmPerSec ?? 'default',
     topology.ueMobilityParams?.waypointCount ?? 'default',
     topology.ueMobilityParams?.manhattanGridSpacingKm ?? 'default',
+    topology.enableUeTrails === true ? 'ue-trails' : 'no-ue-trails',
   ].join('|');
 }
 

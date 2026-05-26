@@ -234,7 +234,7 @@ section('(d) TopologyTab source grep', () => {
   for (const testId of newParamTestIds) {
     check(topologySource.includes(testId), `TopologyTab contains new param testid ${testId}`);
   }
-  check(countOccurrences(topologySource, 'topology-tab-') === 35, 'TopologyTab contains exactly 35 topology-tab testid string literals');
+  check(countOccurrences(topologySource, 'topology-tab-') === 37, 'TopologyTab contains exactly 37 topology-tab testid string literals after UE trail toggle');
   check(topologySource.includes('topology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS'), 'TopologyTab merges null params with defaults');
   check(topologySource.includes('...(topology.ueMobilityParams ?? {})'), 'TopologyTab updates params with merge pattern');
 });

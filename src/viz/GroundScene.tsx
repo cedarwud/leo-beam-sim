@@ -1,6 +1,8 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
+import type { UeTrailHistory } from '../scene/useUeTrailHistory';
+import { UeTrail } from './UeTrail';
 
 /**
  * GroundScene — UE markers (one per scene-frame UE).
@@ -33,6 +35,7 @@ export interface GroundSceneUe {
 interface GroundSceneProps {
   readonly ues: ReadonlyArray<GroundSceneUe>;
   readonly ueMarkerMultiplier?: number;
+  readonly ueTrailHistory?: UeTrailHistory;
 }
 
 const MARKER_HEIGHT = 4;
@@ -136,15 +139,19 @@ function SecondaryUeInstances({
 }
 
 export function GroundScene({ ues, ueMarkerMultiplier = 1.0 }: GroundSceneProps) {
+  const { ueTrailHistory } = arguments[0] as GroundSceneProps;
   const secondaryPositions = useMemo(
     () => ues.slice(1).map((u) => u.worldPos),
     [ues],
   );
-  if (ues.length === 0) return null;
+  if (ues.length === 0) {
+    return ueTrailHistory !== undefined ? <UeTrail history={ueTrailHistory} /> : null;
+  }
   const primary = ues[0];
   const [px, py, pz] = primary.worldPos;
   return (
     <group>
+      {ueTrailHistory !== undefined && <UeTrail history={ueTrailHistory} />}
       <PrimaryUeMarker x={px} y={py} z={pz} ueMarkerMultiplier={ueMarkerMultiplier} />
       <SecondaryUeInstances positions={secondaryPositions} ueMarkerMultiplier={ueMarkerMultiplier} />
     </group>
