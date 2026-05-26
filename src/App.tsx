@@ -88,6 +88,10 @@ import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
 import type { VisualShowcaseArtifact } from './scene/visual-showcase-contract';
+import {
+  DEFAULT_UE_MOBILITY_PARAMS,
+  type UeMobilityParams,
+} from './engine/ue/multiUeMobility';
 import type { NormalizedSceneFrame } from './scene/NormalizedSceneFrame';
 import type {
   SignalSourceState,
@@ -281,6 +285,20 @@ function readSceneTopologyOverrides(): SceneTopologyState {
       return createSceneTopologyState();
     }
     const record = parsed as Partial<Record<keyof SceneTopologyState, unknown>>;
+    const mobilityParams = record.ueMobilityParams;
+    const normalizedMobilityParams: UeMobilityParams | null =
+      mobilityParams !== null
+      && typeof mobilityParams === 'object'
+      && !Array.isArray(mobilityParams)
+      && typeof (mobilityParams as Partial<UeMobilityParams>).speedKmPerSec === 'number'
+      && typeof (mobilityParams as Partial<UeMobilityParams>).waypointCount === 'number'
+      && typeof (mobilityParams as Partial<UeMobilityParams>).manhattanGridSpacingKm === 'number'
+        ? {
+            speedKmPerSec: (mobilityParams as UeMobilityParams).speedKmPerSec,
+            waypointCount: (mobilityParams as UeMobilityParams).waypointCount,
+            manhattanGridSpacingKm: (mobilityParams as UeMobilityParams).manhattanGridSpacingKm,
+          }
+        : null;
     return {
       satsPerPlane: typeof record.satsPerPlane === 'number' ? record.satsPerPlane : null,
       beamCountPerSatellite: typeof record.beamCountPerSatellite === 'number'
@@ -298,6 +316,7 @@ function readSceneTopologyOverrides(): SceneTopologyState {
         || record.ueMobilityMode === 'manhattan'
         ? record.ueMobilityMode
         : null,
+      ueMobilityParams: normalizedMobilityParams,
     };
   } catch {
     return createSceneTopologyState();
@@ -520,6 +539,9 @@ export function App() {
     ueMobilityMode: appMode === 'sinr-experiment'
       ? sceneTopology.ueMobilityMode ?? 'static'
       : 'static',
+    ueMobilityParams: appMode === 'sinr-experiment'
+      ? sceneTopology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS
+      : DEFAULT_UE_MOBILITY_PARAMS,
   }), [
     appMode,
     beamDensityOverride,
@@ -532,6 +554,7 @@ export function App() {
     runtimeVisualSettings,
     sceneTopology.ueDistributionMode,
     sceneTopology.ueMobilityMode,
+    sceneTopology.ueMobilityParams,
     sceneTopology.ueCount,
     signalResetKey,
     viewport,

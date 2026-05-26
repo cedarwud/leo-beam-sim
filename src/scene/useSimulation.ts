@@ -11,6 +11,7 @@ import {
   createMobilityStates,
   DEFAULT_UE_MOBILITY_PARAMS,
   type UeMobilityMode,
+  type UeMobilityParams,
   type UePerMobilityState,
 } from '../engine/ue/multiUeMobility';
 import type { ReplayConfig, SimFrame } from './types';
@@ -112,6 +113,7 @@ export function useSimulation(
   ueCount?: number,
   ueDistributionMode: UeDistributionMode = 'random',
   ueMobilityMode: UeMobilityMode = 'static',
+  ueMobilityParams: UeMobilityParams = DEFAULT_UE_MOBILITY_PARAMS,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -220,9 +222,10 @@ export function useSimulation(
     ),
     [effectiveUeCount, profile.handover],
   );
+  const effectiveUeMobilityParams = ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS;
   const createCurrentMobilityStates = useCallback(() => (
-    createMobilityStates(effectiveUeCount, ueMobilityMode, DEFAULT_UE_MOBILITY_PARAMS, 42)
-  ), [effectiveUeCount, ueMobilityMode]);
+    createMobilityStates(effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams, 42)
+  ), [effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams]);
   const mobilityStatesRef = useRef<UePerMobilityState[]>(createCurrentMobilityStates());
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
   const initialSimTimeSec = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
@@ -271,7 +274,7 @@ export function useSimulation(
       ueCount: effectiveUeCount,
       ueDistributionMode,
       ueMobilityMode,
-      ueMobilityParams: DEFAULT_UE_MOBILITY_PARAMS,
+      ueMobilityParams: effectiveUeMobilityParams,
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });
@@ -295,6 +298,7 @@ export function useSimulation(
     trajectoryCache,
     ueDistributionMode,
     ueMobilityMode,
+    effectiveUeMobilityParams,
   ]);
 
   useEffect(() => {
@@ -314,7 +318,7 @@ export function useSimulation(
     resetMobilityStates();
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
-  }, [profile.id, effectiveUeCount, ueMobilityMode, resetMobilityStates]);
+  }, [profile.id, effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams, resetMobilityStates]);
 
   useEffect(() => {
     resetToReplayStartFrame();
@@ -353,7 +357,7 @@ export function useSimulation(
       ueCount: effectiveUeCount,
       ueDistributionMode,
       ueMobilityMode,
-      ueMobilityParams: DEFAULT_UE_MOBILITY_PARAMS,
+      ueMobilityParams: effectiveUeMobilityParams,
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });

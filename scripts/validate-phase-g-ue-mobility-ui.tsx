@@ -117,6 +117,9 @@ const mobilityTestIds = [
   'topology-tab-ue-mobility-option-waypoints',
   'topology-tab-ue-mobility-option-manhattan',
   'topology-tab-ue-mobility-reset',
+  'topology-tab-ue-mobility-speed',
+  'topology-tab-ue-mobility-waypoint-count',
+  'topology-tab-ue-mobility-grid-spacing',
 ] as const;
 
 const optionTestIds: Record<UeMobilityMode, string> = {
@@ -135,16 +138,16 @@ section('(a) TopologyTab source grep', () => {
     check(topologySource.includes(testId), `TopologyTab.tsx contains mobility testid ${testId}`);
   }
   check(
-    countOccurrences(topologySource, 'topology-tab-') === 32,
-    'TopologyTab.tsx contains exactly 32 topology-tab testid string literals',
+    countOccurrences(topologySource, 'topology-tab-') === 35,
+    'TopologyTab.tsx contains exactly 35 topology-tab testid string literals',
   );
   check(
     topologySource.includes("topology.ueMobilityMode ?? 'static'"),
     'TopologyTab uses static as the null mobility default',
   );
   check(
-    topologySource.includes('onTopologyChange({ ...topology, ueMobilityMode: null })'),
-    'TopologyTab reset button clears ueMobilityMode to null',
+    topologySource.includes('onTopologyChange({ ...topology, ueMobilityMode: null, ueMobilityParams: null })'),
+    'TopologyTab reset button clears ueMobilityMode and ueMobilityParams to null',
   );
 });
 
@@ -204,7 +207,7 @@ section('(e) Contract md grep', () => {
 section('(f) SSR active mobility option per mode', () => {
   for (const mode of mobilityModes) {
     const markup = renderTopologyTab(mode, 'sinr-experiment');
-    for (const testId of mobilityTestIds) {
+    for (const testId of mobilityTestIds.slice(0, 6)) {
       check(markup.includes(`data-testid="${testId}"`), `${mode} SSR renders ${testId}`);
     }
     check(

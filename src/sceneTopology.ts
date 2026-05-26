@@ -10,6 +10,7 @@ export interface SceneTopologyState {
   ueCount: number | null;
   ueDistributionMode: UeDistributionMode | null;
   ueMobilityMode: UeMobilityMode | null;
+  ueMobilityParams: UeMobilityParams | null;
 }
 
 export function createSceneTopologyState(): SceneTopologyState {
@@ -19,6 +20,7 @@ export function createSceneTopologyState(): SceneTopologyState {
     ueCount: null,
     ueDistributionMode: null,
     ueMobilityMode: null,
+    ueMobilityParams: null,
   };
 }
 
@@ -56,7 +58,8 @@ export function hasSceneTopologyOverrides(
     || topology.beamCountPerSatellite !== null
     || topology.ueCount !== null
     || (topology.ueDistributionMode !== null && topology.ueDistributionMode !== 'random')
-    || (topology.ueMobilityMode !== null && topology.ueMobilityMode !== 'static');
+    || (topology.ueMobilityMode !== null && topology.ueMobilityMode !== 'static')
+    || topology.ueMobilityParams !== null;
 }
 
 export function getSceneTopologyResetKey(
@@ -68,6 +71,9 @@ export function getSceneTopologyResetKey(
     topology.ueCount ?? 'base',
     topology.ueDistributionMode ?? 'random',
     topology.ueMobilityMode ?? 'static',
+    topology.ueMobilityParams?.speedKmPerSec ?? 'default',
+    topology.ueMobilityParams?.waypointCount ?? 'default',
+    topology.ueMobilityParams?.manhattanGridSpacingKm ?? 'default',
   ].join('|');
 }
 
@@ -80,6 +86,9 @@ export function getSceneTopologyEvidenceKey(
     topology.ueCount ?? 'base',
     topology.ueDistributionMode ?? 'random',
     topology.ueMobilityMode ?? 'static',
+    topology.ueMobilityParams?.speedKmPerSec ?? 'default',
+    topology.ueMobilityParams?.waypointCount ?? 'default',
+    topology.ueMobilityParams?.manhattanGridSpacingKm ?? 'default',
   ].join('|');
 }
 

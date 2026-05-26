@@ -3,7 +3,11 @@ import type { Profile } from '../../profiles/types';
 import type { AppExperienceMode } from '../appMode';
 import type { SceneTopologyState } from '../../sceneTopology';
 import type { UeDistributionMode } from '../../engine/ue/multiUeState';
-import type { UeMobilityMode } from '../../engine/ue/multiUeMobility';
+import {
+  DEFAULT_UE_MOBILITY_PARAMS,
+  type UeMobilityMode,
+  type UeMobilityParams,
+} from '../../engine/ue/multiUeMobility';
 import {
   createSceneVisualScaleState,
   type SceneScale,
@@ -57,12 +61,30 @@ const UE_MOBILITY_MODE_OPTION_TESTIDS: Record<UeMobilityMode, string> = {
   manhattan: 'topology-tab-ue-mobility-option-manhattan',
 };
 
+const UE_MOBILITY_PARAM_TESTIDS = {
+  speedKmPerSec: 'topology-tab-ue-mobility-speed',
+  waypointCount: 'topology-tab-ue-mobility-waypoint-count',
+  manhattanGridSpacingKm: 'topology-tab-ue-mobility-grid-spacing',
+} as const;
+
 function formatBeamCount(value: number): string {
   return `${value.toFixed(0)} beams`;
 }
 
 function formatUeCount(value: number): string {
   return `${value.toFixed(0)} UEs`;
+}
+
+function formatUeSpeed(value: number): string {
+  return `${value.toFixed(0)} km/sec`;
+}
+
+function formatWaypointCount(value: number): string {
+  return `${value.toFixed(0)} waypoints`;
+}
+
+function formatGridSpacing(value: number): string {
+  return `${value.toFixed(0)} km`;
 }
 
 function isBeamCountOption(value: number): value is BeamCountOption {
@@ -92,13 +114,27 @@ export function TopologyTab({
   const hasUeDistributionOverride = topology.ueDistributionMode !== null
     && topology.ueDistributionMode !== 'random';
   const effectiveUeMobilityMode = topology.ueMobilityMode ?? 'static';
-  const hasUeMobilityOverride = topology.ueMobilityMode !== null
+  const effectiveUeMobilityParams = topology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS;
+  const showUeMobilityParams = topology.ueMobilityMode !== null
     && topology.ueMobilityMode !== 'static';
+  const hasUeMobilityOverride = topology.ueMobilityMode !== null
+    && topology.ueMobilityMode !== 'static'
+    || topology.ueMobilityParams !== null;
   const activeBeamCount = hasBeamOverride
     ? topology.beamCountPerSatellite
     : isBeamCountOption(baseBeamCount)
       ? baseBeamCount
       : null;
+  const updateUeMobilityParams = (patch: Partial<UeMobilityParams>) => {
+    onTopologyChange({
+      ...topology,
+      ueMobilityParams: {
+        ...DEFAULT_UE_MOBILITY_PARAMS,
+        ...(topology.ueMobilityParams ?? {}),
+        ...patch,
+      },
+    });
+  };
 
   return (
     <div style={controlStackStyle}>
@@ -1128,6 +1164,7 @@ export function TopologyTab({
                       onChange={() => onTopologyChange({
                         ...topology,
                         ueMobilityMode: option,
+                        ueMobilityParams: option === 'static' ? null : topology.ueMobilityParams,
                       })}
                       style={{
                         width: 16,
@@ -1142,6 +1179,114 @@ export function TopologyTab({
                 );
               })}
             </fieldset>
+
+            {showUeMobilityParams && (
+              <div style={{
+                display: 'grid',
+                gap: 12,
+                padding: '12px 13px',
+                borderRadius: UI_TOKENS.radius.md,
+                background: 'rgba(255, 255, 255, 0.045)',
+                border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+              }}>
+                <label style={{ display: 'grid', gap: 7 }}>
+                  <span style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    color: UI_TOKENS.color.text.controlLabel,
+                    fontSize: UI_TOKENS.type.size.body,
+                    fontWeight: UI_TOKENS.type.weight.strong,
+                    lineHeight: 1.35,
+                  }}>
+                    <span>Speed</span>
+                    <span>{formatUeSpeed(effectiveUeMobilityParams.speedKmPerSec)}</span>
+                  </span>
+                  <input
+                    data-testid={UE_MOBILITY_PARAM_TESTIDS.speedKmPerSec}
+                    className={UI_CLASSES.range}
+                    type="range"
+                    aria-label="UE mobility speed"
+                    min={1}
+                    max={50}
+                    step={1}
+                    value={effectiveUeMobilityParams.speedKmPerSec}
+                    onChange={event => updateUeMobilityParams({ speedKmPerSec: Number(event.target.value) })}
+                    style={{
+                      width: '100%',
+                      accentColor: UI_TOKENS.color.semantic.fixed,
+                      cursor: 'pointer',
+                    }}
+                  />
+                </label>
+
+                {effectiveUeMobilityMode === 'waypoints' && (
+                  <label style={{ display: 'grid', gap: 7 }}>
+                    <span style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      color: UI_TOKENS.color.text.controlLabel,
+                      fontSize: UI_TOKENS.type.size.body,
+                      fontWeight: UI_TOKENS.type.weight.strong,
+                      lineHeight: 1.35,
+                    }}>
+                      <span>Waypoint count</span>
+                      <span>{formatWaypointCount(effectiveUeMobilityParams.waypointCount)}</span>
+                    </span>
+                    <input
+                      data-testid={UE_MOBILITY_PARAM_TESTIDS.waypointCount}
+                      className={UI_CLASSES.range}
+                      type="range"
+                      aria-label="UE mobility waypoint count"
+                      min={2}
+                      max={8}
+                      step={1}
+                      value={effectiveUeMobilityParams.waypointCount}
+                      onChange={event => updateUeMobilityParams({ waypointCount: Number(event.target.value) })}
+                      style={{
+                        width: '100%',
+                        accentColor: UI_TOKENS.color.semantic.fixed,
+                        cursor: 'pointer',
+                      }}
+                    />
+                  </label>
+                )}
+
+                {effectiveUeMobilityMode === 'manhattan' && (
+                  <label style={{ display: 'grid', gap: 7 }}>
+                    <span style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      color: UI_TOKENS.color.text.controlLabel,
+                      fontSize: UI_TOKENS.type.size.body,
+                      fontWeight: UI_TOKENS.type.weight.strong,
+                      lineHeight: 1.35,
+                    }}>
+                      <span>Grid spacing</span>
+                      <span>{formatGridSpacing(effectiveUeMobilityParams.manhattanGridSpacingKm)}</span>
+                    </span>
+                    <input
+                      data-testid={UE_MOBILITY_PARAM_TESTIDS.manhattanGridSpacingKm}
+                      className={UI_CLASSES.range}
+                      type="range"
+                      aria-label="UE mobility Manhattan grid spacing"
+                      min={1}
+                      max={20}
+                      step={1}
+                      value={effectiveUeMobilityParams.manhattanGridSpacingKm}
+                      onChange={event => updateUeMobilityParams({ manhattanGridSpacingKm: Number(event.target.value) })}
+                      style={{
+                        width: '100%',
+                        accentColor: UI_TOKENS.color.semantic.fixed,
+                        cursor: 'pointer',
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
 
             <div style={{
               padding: '10px 12px',
@@ -1160,7 +1305,7 @@ export function TopologyTab({
                 data-testid="topology-tab-ue-mobility-reset"
                 className={UI_CLASSES.button}
                 type="button"
-                onClick={() => onTopologyChange({ ...topology, ueMobilityMode: null })}
+                onClick={() => onTopologyChange({ ...topology, ueMobilityMode: null, ueMobilityParams: null })}
                 style={{
                   cursor: 'pointer',
                   borderRadius: UI_TOKENS.radius.md,

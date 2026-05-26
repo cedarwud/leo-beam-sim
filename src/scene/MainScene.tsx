@@ -146,6 +146,7 @@ function SceneContent({
     runtime.ueCount,
     runtime.ueDistributionMode,
     runtime.ueMobilityMode,
+    runtime.ueMobilityParams,
   );
   const latchedBeamSinrByKeyRef = useRef<Map<string, number>>(new Map());
   const cellCoverHysteresisRef = useRef<CellCoverHysteresisState>(new Map());
