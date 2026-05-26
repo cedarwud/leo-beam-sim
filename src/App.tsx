@@ -292,6 +292,12 @@ function readSceneTopologyOverrides(): SceneTopologyState {
         || record.ueDistributionMode === 'clustered'
         ? record.ueDistributionMode
         : null,
+      ueMobilityMode: record.ueMobilityMode === 'static'
+        || record.ueMobilityMode === 'random-walk'
+        || record.ueMobilityMode === 'waypoints'
+        || record.ueMobilityMode === 'manhattan'
+        ? record.ueMobilityMode
+        : null,
     };
   } catch {
     return createSceneTopologyState();
@@ -511,6 +517,9 @@ export function App() {
     ueDistributionMode: appMode === 'sinr-experiment'
       ? sceneTopology.ueDistributionMode ?? 'random'
       : 'random',
+    ueMobilityMode: appMode === 'sinr-experiment'
+      ? sceneTopology.ueMobilityMode ?? 'static'
+      : 'static',
   }), [
     appMode,
     beamDensityOverride,
@@ -522,6 +531,7 @@ export function App() {
     handoverResetKey,
     runtimeVisualSettings,
     sceneTopology.ueDistributionMode,
+    sceneTopology.ueMobilityMode,
     sceneTopology.ueCount,
     signalResetKey,
     viewport,

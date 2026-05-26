@@ -145,6 +145,7 @@ function SceneContent({
     visualScaleMultipliers.beamFootprintMultiplier,
     runtime.ueCount,
     runtime.ueDistributionMode,
+    runtime.ueMobilityMode,
   );
   const latchedBeamSinrByKeyRef = useRef<Map<string, number>>(new Map());
   const cellCoverHysteresisRef = useRef<CellCoverHysteresisState>(new Map());

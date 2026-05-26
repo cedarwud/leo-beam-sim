@@ -7,6 +7,12 @@ import {
 } from '../engine/handover/handover-manager';
 import type { Profile } from '../profiles/types';
 import type { UeDistributionMode } from '../engine/ue/multiUeState';
+import {
+  createMobilityStates,
+  DEFAULT_UE_MOBILITY_PARAMS,
+  type UeMobilityMode,
+  type UePerMobilityState,
+} from '../engine/ue/multiUeMobility';
 import type { ReplayConfig, SimFrame } from './types';
 import { createEmptyFrame, normalizeReplayOffset } from './simulationHelpers';
 import {
@@ -105,6 +111,7 @@ export function useSimulation(
   beamFootprintMultiplier?: number,
   ueCount?: number,
   ueDistributionMode: UeDistributionMode = 'random',
+  ueMobilityMode: UeMobilityMode = 'static',
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -213,6 +220,10 @@ export function useSimulation(
     ),
     [effectiveUeCount, profile.handover],
   );
+  const createCurrentMobilityStates = useCallback(() => (
+    createMobilityStates(effectiveUeCount, ueMobilityMode, DEFAULT_UE_MOBILITY_PARAMS, 42)
+  ), [effectiveUeCount, ueMobilityMode]);
+  const mobilityStatesRef = useRef<UePerMobilityState[]>(createCurrentMobilityStates());
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
   const initialSimTimeSec = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
   const runtimeStateRef = useRef<RuntimeFrameStepState>(
@@ -235,9 +246,14 @@ export function useSimulation(
     secondaryHoManagers.forEach(manager => manager.reset());
   }, [hoManager, secondaryHoManagers]);
 
+  const resetMobilityStates = useCallback(() => {
+    mobilityStatesRef.current = createCurrentMobilityStates();
+  }, [createCurrentMobilityStates]);
+
   const resetToReplayStartFrame = useCallback(() => {
     const startOffset = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
     resetAllHoManagers();
+    resetMobilityStates();
     runtimeStateRef.current = createRuntimeFrameStepState(startOffset);
     installDecisionOverride();
     const { frame } = stepRuntimeFrame({
@@ -254,6 +270,9 @@ export function useSimulation(
       secondaryHoManagers,
       ueCount: effectiveUeCount,
       ueDistributionMode,
+      ueMobilityMode,
+      ueMobilityParams: DEFAULT_UE_MOBILITY_PARAMS,
+      mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });
     frameRef.current = frame;
@@ -269,11 +288,13 @@ export function useSimulation(
     profile,
     replay,
     resetAllHoManagers,
+    resetMobilityStates,
     secondaryHoManagers,
     speed,
     beamFootprintMultiplier,
     trajectoryCache,
     ueDistributionMode,
+    ueMobilityMode,
   ]);
 
   useEffect(() => {
@@ -282,11 +303,18 @@ export function useSimulation(
 
   useEffect(() => {
     resetAllHoManagers();
+    resetMobilityStates();
     runtimeStateRef.current = createRuntimeFrameStepState(runtimeStateRef.current.simTimeSec);
     frameRef.current = createEmptyFrame(runtimeStateRef.current.simTimeSec);
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
-  }, [resetAllHoManagers, signalResetKey]);
+  }, [resetAllHoManagers, resetMobilityStates, signalResetKey]);
+
+  useEffect(() => {
+    resetMobilityStates();
+    publishNextFrameRef.current = true;
+    setVersion(v => v + 1);
+  }, [profile.id, effectiveUeCount, ueMobilityMode, resetMobilityStates]);
 
   useEffect(() => {
     resetToReplayStartFrame();
@@ -324,6 +352,9 @@ export function useSimulation(
       secondaryHoManagers,
       ueCount: effectiveUeCount,
       ueDistributionMode,
+      ueMobilityMode,
+      ueMobilityParams: DEFAULT_UE_MOBILITY_PARAMS,
+      mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });
     frameRef.current = frame;

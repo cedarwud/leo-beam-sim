@@ -8,6 +8,7 @@ import type { GlyphKind } from '../viz/glyphs';
 import type { BeamFrequencyIndexResolution } from '../utils/beamFrequency';
 import type { CoreLayoutFrequencyReuse, ReuseGroupSource } from './beam-layout';
 import type { UeDistributionMode } from '../engine/ue/multiUeState';
+import type { UeMobilityMode } from '../engine/ue/multiUeMobility';
 
 export type PresentationMode = 'research-default' | 'candidate-rich' | 'demo-readability';
 export type BeamDensity = 'event-only' | 'event-plus-1' | 'all';
@@ -51,6 +52,7 @@ export interface RuntimeConfig {
   viewport: RuntimeViewport;
   ueCount?: number;
   ueDistributionMode?: UeDistributionMode;
+  ueMobilityMode?: UeMobilityMode;
 }
 
 export interface LinkBudgetTerms {

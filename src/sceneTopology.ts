@@ -1,5 +1,6 @@
 import type { Profile } from './profiles/types';
 import type { UeDistributionMode } from './engine/ue/multiUeState';
+import type { UeMobilityMode, UeMobilityParams } from './engine/ue/multiUeMobility';
 
 export const SCENE_TOPOLOGY_OVERRIDES_KEY = 'leo-beam-sim.scene-topology.v1';
 
@@ -8,6 +9,7 @@ export interface SceneTopologyState {
   beamCountPerSatellite: number | null;
   ueCount: number | null;
   ueDistributionMode: UeDistributionMode | null;
+  ueMobilityMode: UeMobilityMode | null;
 }
 
 export function createSceneTopologyState(): SceneTopologyState {
@@ -16,6 +18,7 @@ export function createSceneTopologyState(): SceneTopologyState {
     beamCountPerSatellite: null,
     ueCount: null,
     ueDistributionMode: null,
+    ueMobilityMode: null,
   };
 }
 
@@ -52,7 +55,8 @@ export function hasSceneTopologyOverrides(
   return topology.satsPerPlane !== null
     || topology.beamCountPerSatellite !== null
     || topology.ueCount !== null
-    || (topology.ueDistributionMode !== null && topology.ueDistributionMode !== 'random');
+    || (topology.ueDistributionMode !== null && topology.ueDistributionMode !== 'random')
+    || (topology.ueMobilityMode !== null && topology.ueMobilityMode !== 'static');
 }
 
 export function getSceneTopologyResetKey(
@@ -63,6 +67,7 @@ export function getSceneTopologyResetKey(
     topology.beamCountPerSatellite ?? 'base',
     topology.ueCount ?? 'base',
     topology.ueDistributionMode ?? 'random',
+    topology.ueMobilityMode ?? 'static',
   ].join('|');
 }
 
@@ -74,5 +79,8 @@ export function getSceneTopologyEvidenceKey(
     topology.beamCountPerSatellite ?? 'base',
     topology.ueCount ?? 'base',
     topology.ueDistributionMode ?? 'random',
+    topology.ueMobilityMode ?? 'static',
   ].join('|');
 }
+
+export type { UeMobilityParams };

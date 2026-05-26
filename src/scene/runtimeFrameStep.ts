@@ -10,6 +10,13 @@ import { HandoverManager } from '../engine/handover/handover-manager';
 import type { ServingState } from '../engine/handover/types';
 import { generateUePositions } from '../engine/ue/multiUeState';
 import type { UeDistributionMode } from '../engine/ue/multiUeState';
+import {
+  DEFAULT_UE_MOBILITY_PARAMS,
+  mobilityStep,
+  type UeMobilityMode,
+  type UeMobilityParams,
+  type UePerMobilityState,
+} from '../engine/ue/multiUeMobility';
 import type { Profile } from '../profiles/types';
 import { computeBeamGeometry, FOOTPRINT_RADIUS_WORLD, generateCoreSceneBeamOffsetsKm } from './beam-layout';
 import { scheduleBeamCells, type CandidateBeamCell } from './beam-scheduler';
@@ -130,6 +137,9 @@ export interface RuntimeFrameStepInput {
   beamFootprintMultiplier?: number;
   ueCount?: number;
   ueDistributionMode?: UeDistributionMode;
+  ueMobilityMode?: UeMobilityMode;
+  ueMobilityParams?: UeMobilityParams;
+  mobilityStates?: UePerMobilityState[];
   observer: ReturnType<typeof createObserverContext>;
   beamLayoutsByShellId: ReadonlyMap<string, ShellBeamLayout>;
   trajectoryCache: readonly CachedSatState[][];
@@ -551,6 +561,58 @@ export function stepSecondaryUeHandovers(params: {
   return perUePositions;
 }
 
+function applyPerTickUeMobility(params: {
+  perUePositions: RuntimePerUeSinrPosition[];
+  mobilityStates: UePerMobilityState[];
+  ueMobilityMode: UeMobilityMode;
+  ueMobilityParams: UeMobilityParams;
+  deltaSec: number;
+  primaryFootprintRadiusKm: number;
+  ueWorldScale: number;
+}): RuntimePerUeSinrPosition[] {
+  const {
+    perUePositions,
+    mobilityStates,
+    ueMobilityMode,
+    ueMobilityParams,
+    deltaSec,
+    primaryFootprintRadiusKm,
+    ueWorldScale,
+  } = params;
+  if (ueMobilityMode === 'static' || perUePositions.length <= 1) return perUePositions;
+
+  const primary = perUePositions[0];
+  for (let i = 1; i < perUePositions.length; i += 1) {
+    const previous = perUePositions[i];
+    const storedState = mobilityStates[i];
+    if (!storedState) continue;
+    const currentPosition = storedState.currentPosition ?? previous;
+    const next = mobilityStep(
+      currentPosition,
+      {
+        ...storedState,
+        originEastKm: primary.eastKm,
+        originNorthKm: primary.northKm,
+        ueWorldScale,
+      },
+      ueMobilityMode,
+      ueMobilityParams,
+      deltaSec,
+      primaryFootprintRadiusKm,
+    );
+    mobilityStates[i] = next.state;
+    perUePositions[i] = {
+      ...previous,
+      groundX: next.position.groundX,
+      groundZ: next.position.groundZ,
+      eastKm: next.position.eastKm,
+      northKm: next.position.northKm,
+    };
+  }
+
+  return perUePositions;
+}
+
 export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStepOutput {
   const {
     profile,
@@ -562,6 +624,9 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     beamFootprintMultiplier: inputBeamFootprintMultiplier,
     ueCount: inputUeCount,
     ueDistributionMode = 'random',
+    ueMobilityMode = 'static',
+    ueMobilityParams = DEFAULT_UE_MOBILITY_PARAMS,
+    mobilityStates = [],
     trajectoryCache,
     hoManager,
     secondaryHoManagers = [],
@@ -676,6 +741,15 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     pendingTargetBeamId: null,
     triggerProgressSec: 0,
   }));
+  applyPerTickUeMobility({
+    perUePositions,
+    mobilityStates,
+    ueMobilityMode,
+    ueMobilityParams,
+    deltaSec: paused ? 0 : deltaSec * speed,
+    primaryFootprintRadiusKm: primaryGeometry.footprintRadiusKm,
+    ueWorldScale,
+  });
   const ueGroundX = perUePositions[0].groundX;
   const ueGroundZ = perUePositions[0].groundZ;
   const preDecisionContext = buildLinkContext(
