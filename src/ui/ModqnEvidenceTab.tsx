@@ -38,6 +38,7 @@ interface Props {
   readonly appliedHandoverTriggerTimeSec: number;
   readonly handoverMode?: RuntimeHandoverMode;
   readonly hookOverride?: UseModqnHandoverState;
+  readonly bundleProvenanceKind?: 'paper-faithful' | 'user-trained';
 }
 
 function formatWeight(value: number): string {
@@ -171,6 +172,7 @@ export function ModqnEvidenceTab({
   simState,
   handoverMode = 'sinr-offset',
   hookOverride,
+  bundleProvenanceKind,
 }: Props) {
   const fallbackHook = useModqnHandoverState();
   const hook = hookOverride ?? fallbackHook;
@@ -225,6 +227,9 @@ export function ModqnEvidenceTab({
       data-omega-source={omegaSource}
       style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
     >
+      {bundleProvenanceKind === 'user-trained' ? (
+        <span className="modqn-evidence__chip modqn-evidence__chip--user-trained" data-testid="modqn-evidence-user-trained-chip">user-trained</span>
+      ) : null}
       <section
         className="leo-modqn-evidence-mode-status"
         data-testid="modqn-evidence-mode-status"
