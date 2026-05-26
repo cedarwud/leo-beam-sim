@@ -14,7 +14,7 @@ import {
   type UeMobilityParams,
   type UePerMobilityState,
 } from '../engine/ue/multiUeMobility';
-import type { ReplayConfig, SimFrame } from './types';
+import type { ReplayConfig, SimFrame, UeDistributionScope } from './types';
 import { createEmptyFrame, normalizeReplayOffset } from './simulationHelpers';
 import {
   createBeamLayoutsByShellId,
@@ -114,6 +114,7 @@ export function useSimulation(
   ueDistributionMode: UeDistributionMode = 'random',
   ueMobilityMode: UeMobilityMode = 'static',
   ueMobilityParams: UeMobilityParams = DEFAULT_UE_MOBILITY_PARAMS,
+  ueDistributionScope: UeDistributionScope = 'beam-footprint',
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -275,6 +276,7 @@ export function useSimulation(
       ueDistributionMode,
       ueMobilityMode,
       ueMobilityParams: effectiveUeMobilityParams,
+      ueDistributionScope,
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });
@@ -299,6 +301,7 @@ export function useSimulation(
     ueDistributionMode,
     ueMobilityMode,
     effectiveUeMobilityParams,
+    ueDistributionScope,
   ]);
 
   useEffect(() => {
@@ -327,7 +330,7 @@ export function useSimulation(
   useEffect(() => {
     // Profile-backed SINR controls must refresh the React UI even when simulation time is paused.
     publishNextFrameRef.current = true;
-  }, [profile, beamFootprintMultiplier]);
+  }, [profile, beamFootprintMultiplier, ueDistributionScope]);
 
   useFrame((_, delta) => {
     if (trajectoryCache.length === 0) return;
@@ -358,6 +361,7 @@ export function useSimulation(
       ueDistributionMode,
       ueMobilityMode,
       ueMobilityParams: effectiveUeMobilityParams,
+      ueDistributionScope,
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });

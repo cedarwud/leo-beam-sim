@@ -148,6 +148,7 @@ function SceneContent({
     runtime.ueDistributionMode,
     runtime.ueMobilityMode,
     runtime.ueMobilityParams,
+    runtime.ueDistributionScope,
   );
   const ueTrailHistory = useUeTrailHistory({
     enabled: runtime.enableUeTrails === true && propSceneFrame === undefined,

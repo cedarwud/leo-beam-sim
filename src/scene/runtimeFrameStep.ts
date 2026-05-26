@@ -27,6 +27,7 @@ import type {
   ReplayConfig,
   SatBeamHopState,
   SimFrame,
+  UeDistributionScope,
   VisibleSat,
 } from './types';
 import {
@@ -137,6 +138,7 @@ export interface RuntimeFrameStepInput {
   beamFootprintMultiplier?: number;
   ueCount?: number;
   ueDistributionMode?: UeDistributionMode;
+  ueDistributionScope?: UeDistributionScope;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   mobilityStates?: UePerMobilityState[];
@@ -198,6 +200,21 @@ export function createRuntimeFrameStepState(simTimeSec: number): RuntimeFrameSte
     interHandoverVizLatch: null,
     beamPowerControlRuntime: createEmptyBeamPowerControlRuntime(),
   };
+}
+
+function resolveUeDistributionRadiusKm(
+  scope: UeDistributionScope,
+  shellId: string | undefined,
+  beamLayoutsByShellId: ReadonlyMap<string, ShellBeamLayout>,
+  fallbackRadiusKm: number,
+): number {
+  if (scope !== 'service-area' || !shellId) return fallbackRadiusKm;
+  const layout = beamLayoutsByShellId.get(shellId);
+  if (!layout) return fallbackRadiusKm;
+  const serviceAreaRadiusKm = layout.maxOffsetRadiusKm + layout.footprintRadiusKm;
+  return Number.isFinite(serviceAreaRadiusKm) && serviceAreaRadiusKm > 0
+    ? serviceAreaRadiusKm
+    : fallbackRadiusKm;
 }
 
 function pushUniqueAssignment(
@@ -619,11 +636,13 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     replay,
     speed,
     observer,
+    beamLayoutsByShellId,
     paused,
     deltaSec,
     beamFootprintMultiplier: inputBeamFootprintMultiplier,
     ueCount: inputUeCount,
     ueDistributionMode = 'random',
+    ueDistributionScope = 'beam-footprint',
     ueMobilityMode = 'static',
     ueMobilityParams = DEFAULT_UE_MOBILITY_PARAMS,
     mobilityStates = [],
@@ -725,11 +744,17 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   const ueWorldScale = primaryGeometry.footprintRadiusKm > 0
     ? (FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier) / primaryGeometry.footprintRadiusKm
     : 1;
+  const ueDistributionRadiusKm = resolveUeDistributionRadiusKm(
+    ueDistributionScope,
+    primaryShell?.id,
+    beamLayoutsByShellId,
+    primaryGeometry.footprintRadiusKm,
+  );
   const perUePositions: RuntimePerUeSinrPosition[] = generateUePositions({
     ueCount,
     primaryEastKm: ueEastKm,
     primaryNorthKm: ueNorthKm,
-    primaryFootprintRadiusKm: primaryGeometry.footprintRadiusKm,
+    primaryFootprintRadiusKm: ueDistributionRadiusKm,
     ueWorldScale,
     mode: ueDistributionMode,
   }).map(position => ({

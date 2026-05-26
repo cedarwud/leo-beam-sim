@@ -14,6 +14,7 @@ export type PresentationMode = 'research-default' | 'candidate-rich' | 'demo-rea
 export type BeamDensity = 'event-only' | 'event-plus-1' | 'all';
 export type CinematicMode = 'off' | 'spotlight';
 export type CameraPreset = 'zenith' | 'oblique' | 'chase' | 'paper-faithful-closeup';
+export type UeDistributionScope = 'beam-footprint' | 'service-area';
 
 export interface ReplayConfig {
   epochUtcMs: number;
@@ -52,6 +53,7 @@ export interface RuntimeConfig {
   viewport: RuntimeViewport;
   ueCount?: number;
   ueDistributionMode?: UeDistributionMode;
+  ueDistributionScope?: UeDistributionScope;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   enableUeTrails?: boolean;

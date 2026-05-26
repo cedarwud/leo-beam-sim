@@ -555,6 +555,7 @@ export function App() {
     ueDistributionMode: appMode === 'sinr-experiment'
       ? sceneTopology.ueDistributionMode ?? 'random'
       : 'random',
+    ueDistributionScope: appMode === 'modqn-demo' ? 'service-area' : 'beam-footprint',
     ueMobilityMode: appMode === 'sinr-experiment'
       ? sceneTopology.ueMobilityMode ?? 'static'
       : 'static',
