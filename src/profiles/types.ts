@@ -55,6 +55,8 @@ export interface Shell {
   inclinationDeg: number;
   planes: number;
   satsPerPlane: number;
+  /** Live-sim initializer: one service-area pass target per plane when satsPerPlane is 1. */
+  serviceAreaPassTargetsSec?: number[];
 }
 
 export interface ModqnObjectiveWeights {

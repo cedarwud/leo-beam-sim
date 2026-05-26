@@ -35,6 +35,8 @@ export function createTrajectoryCache(
   const elements = generateWalkerConstellation({
     shells: profile.orbit.shells,
     epochUtcMs,
+    observerLatDeg: observer.latDeg,
+    observerLonDeg: observer.lonDeg,
   });
   const steps = Math.ceil(SIM_DURATION_SEC / SIM_STEP_SEC) + 1;
   const cache: CachedSatState[][] = new Array(steps);

@@ -10,8 +10,9 @@
         "id": "modqn-paper-780km",
         "altitudeKm": 780,
         "inclinationDeg": 53,
-        "planes": 1,
-        "satsPerPlane": 4
+        "planes": 4,
+        "satsPerPlane": 1,
+        "serviceAreaPassTargetsSec": [100, 400, 700, 1000]
       }
     ],
     "observerLatDeg": 40,

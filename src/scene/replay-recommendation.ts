@@ -52,6 +52,8 @@ export function recommendDemoReplayStartOffsetSec(
   const elements = generateWalkerConstellation({
     shells: profile.orbit.shells,
     epochUtcMs,
+    observerLatDeg: profile.orbit.observerLatDeg,
+    observerLonDeg: profile.orbit.observerLonDeg,
   });
 
   // Performance optimization: sample satellites for recommendation logic
