@@ -38,6 +38,7 @@ interface ControlBarProps {
 
   // P2b Display-filter & focus UE controls
   sceneSource?: 'live-sim' | 'artifact-replay';
+  liveUeCount?: number;
   ueDisplayCount?: number;
   maxUeCount?: number;
   onUeDisplayCountChange?: (count: number) => void;
@@ -100,6 +101,7 @@ export function ControlBar({
   onToggleAutoSlow,
   onHandoverModeChange,
   sceneSource = 'live-sim',
+  liveUeCount = 1,
   ueDisplayCount = 100,
   maxUeCount = 100,
   onUeDisplayCountChange,
@@ -311,7 +313,7 @@ export function ControlBar({
         </>
       ) : (
         <span className="leo-control-bar__ue-filter-readonly">
-          Active UEs: 1 (fixed)
+          Active UEs: {Math.max(1, Math.trunc(liveUeCount))}
         </span>
       )}
 

@@ -124,6 +124,7 @@ import { useCameraControls } from './useCameraControls';
 
 const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
+const MODQN_PAPER_BASELINE_UE_COUNT = 100;
 
 /**
  * P1e follow-up: ClaimBoundaryBanner mount input for the live-sim path.
@@ -548,7 +549,9 @@ export function App() {
     cinematicMode: effectiveCinematicMode,
     cameraCommand: camera.cameraCommand,
     viewport,
-    ueCount: appMode === 'sinr-experiment' ? sceneTopology.ueCount ?? undefined : undefined,
+    ueCount: appMode === 'sinr-experiment'
+      ? sceneTopology.ueCount ?? undefined
+      : MODQN_PAPER_BASELINE_UE_COUNT,
     ueDistributionMode: appMode === 'sinr-experiment'
       ? sceneTopology.ueDistributionMode ?? 'random'
       : 'random',
@@ -1267,6 +1270,7 @@ export function App() {
         onToggleAutoSlow={playback.toggleAutoSlow}
         onHandoverModeChange={handleHandoverModeChange}
         sceneSource={sceneSource}
+        liveUeCount={runtime.ueCount ?? 1}
         ueDisplayCount={ueDisplayCount}
         maxUeCount={showcaseArtifact?.timeline[0]?.ues.length ?? 100}
         onUeDisplayCountChange={setUeDisplayCount}
