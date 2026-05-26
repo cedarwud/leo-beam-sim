@@ -3,6 +3,7 @@ import type { Profile } from '../../profiles/types';
 import type { AppExperienceMode } from '../appMode';
 import type { SceneTopologyState } from '../../sceneTopology';
 import type { UeDistributionMode } from '../../engine/ue/multiUeState';
+import type { UeMobilityMode } from '../../engine/ue/multiUeMobility';
 import {
   createSceneVisualScaleState,
   type SceneScale,
@@ -27,6 +28,7 @@ function formatSatCount(value: number): string {
 const BEAM_COUNT_OPTIONS = [7, 19, 37] as const;
 const SCENE_SCALE_OPTIONS: readonly SceneScale[] = ['paper-faithful', 'demo-readability'];
 const UE_DISTRIBUTION_MODE_OPTIONS: readonly UeDistributionMode[] = ['random', 'grid', 'clustered'];
+const UE_MOBILITY_MODE_OPTIONS: readonly UeMobilityMode[] = ['static', 'random-walk', 'waypoints', 'manhattan'];
 const DEFAULT_UE_COUNT = 100;
 
 const SCENE_SCALE_OPTION_TESTIDS: Record<SceneScale, string> = {
@@ -46,6 +48,13 @@ const UE_DISTRIBUTION_MODE_OPTION_TESTIDS: Record<UeDistributionMode, string> = 
   random: 'topology-tab-ue-distribution-option-random',
   grid: 'topology-tab-ue-distribution-option-grid',
   clustered: 'topology-tab-ue-distribution-option-clustered',
+};
+
+const UE_MOBILITY_MODE_OPTION_TESTIDS: Record<UeMobilityMode, string> = {
+  static: 'topology-tab-ue-mobility-option-static',
+  'random-walk': 'topology-tab-ue-mobility-option-random-walk',
+  waypoints: 'topology-tab-ue-mobility-option-waypoints',
+  manhattan: 'topology-tab-ue-mobility-option-manhattan',
 };
 
 function formatBeamCount(value: number): string {
@@ -82,6 +91,9 @@ export function TopologyTab({
   const effectiveUeDistributionMode = topology.ueDistributionMode ?? 'random';
   const hasUeDistributionOverride = topology.ueDistributionMode !== null
     && topology.ueDistributionMode !== 'random';
+  const effectiveUeMobilityMode = topology.ueMobilityMode ?? 'static';
+  const hasUeMobilityOverride = topology.ueMobilityMode !== null
+    && topology.ueMobilityMode !== 'static';
   const activeBeamCount = hasBeamOverride
     ? topology.beamCountPerSatellite
     : isBeamCountOption(baseBeamCount)
@@ -1006,6 +1018,161 @@ export function TopologyTab({
                 }}
               >
                 Reset distribution
+              </button>
+            </div>
+          </section>
+
+          <div style={dividerStyle} />
+
+          <section
+            style={{
+              display: 'grid',
+              gap: 12,
+              padding: '14px 15px',
+              borderRadius: UI_TOKENS.radius.lg,
+              background: UI_TOKENS.color.surface.card,
+              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+              borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
+            }}
+          >
+            <div style={{
+              display: 'grid',
+              gap: 5,
+              minWidth: 0,
+            }}>
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <span style={{
+                  color: UI_TOKENS.color.text.controlLabel,
+                  fontSize: UI_TOKENS.type.size.bodyLg,
+                  fontWeight: UI_TOKENS.type.weight.heavy,
+                  lineHeight: 1.3,
+                }}>
+                  UE mobility
+                </span>
+                {!hasUeMobilityOverride && (
+                  <span style={{
+                    padding: '3px 7px',
+                    borderRadius: UI_TOKENS.radius.sm,
+                    background: 'rgba(132, 148, 163, 0.12)',
+                    border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+                    color: UI_TOKENS.color.text.secondary,
+                    fontSize: UI_TOKENS.type.size.caption,
+                    fontWeight: UI_TOKENS.type.weight.heavy,
+                    textTransform: 'uppercase',
+                  }}>
+                    Default static
+                  </span>
+                )}
+              </div>
+              <p style={{ ...explanatoryTextStyle, margin: 0 }}>
+                Simulation Setting for secondary UE motion. Primary UE remains fixed.
+              </p>
+            </div>
+
+            <fieldset
+              data-testid="topology-tab-ue-mobility-radio"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                gap: 8,
+                padding: 0,
+                margin: 0,
+                border: 0,
+                minWidth: 0,
+              }}
+            >
+              <legend style={{
+                position: 'absolute',
+                width: 1,
+                height: 1,
+                padding: 0,
+                margin: -1,
+                overflow: 'hidden',
+                clip: 'rect(0, 0, 0, 0)',
+                whiteSpace: 'nowrap',
+                border: 0,
+              }}>
+                UE mobility
+              </legend>
+              {UE_MOBILITY_MODE_OPTIONS.map(option => {
+                const active = effectiveUeMobilityMode === option;
+                return (
+                  <label
+                    key={option}
+                    style={{
+                      cursor: 'pointer',
+                      display: 'grid',
+                      gap: 5,
+                      justifyItems: 'center',
+                      padding: '10px 9px',
+                      borderRadius: UI_TOKENS.radius.md,
+                      border: `1px solid ${active ? `${UI_TOKENS.color.semantic.fixed}66` : UI_TOKENS.color.border.subtle}`,
+                      background: active ? 'rgba(255, 214, 125, 0.12)' : 'rgba(255, 255, 255, 0.045)',
+                      color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
+                      fontSize: UI_TOKENS.type.size.body,
+                      fontWeight: UI_TOKENS.type.weight.strong,
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    <input
+                      data-testid={UE_MOBILITY_MODE_OPTION_TESTIDS[option]}
+                      type="radio"
+                      name="topology-ue-mobility-mode"
+                      value={option}
+                      checked={active}
+                      onChange={() => onTopologyChange({
+                        ...topology,
+                        ueMobilityMode: option,
+                      })}
+                      style={{
+                        width: 16,
+                        height: 16,
+                        margin: 0,
+                        accentColor: UI_TOKENS.color.semantic.fixed,
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span>{option}</span>
+                  </label>
+                );
+              })}
+            </fieldset>
+
+            <div style={{
+              padding: '10px 12px',
+              borderRadius: UI_TOKENS.radius.md,
+              background: 'rgba(255, 214, 125, 0.10)',
+              border: '1px solid rgba(255, 214, 125, 0.24)',
+              color: 'rgba(255, 231, 180, 0.9)',
+              fontSize: UI_TOKENS.type.size.body,
+              lineHeight: 1.4,
+            }}>
+              Changing UE mobility restarts the simulation.
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button
+                data-testid="topology-tab-ue-mobility-reset"
+                className={UI_CLASSES.button}
+                type="button"
+                onClick={() => onTopologyChange({ ...topology, ueMobilityMode: null })}
+                style={{
+                  cursor: 'pointer',
+                  borderRadius: UI_TOKENS.radius.md,
+                  border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+                  background: 'rgba(132, 148, 163, 0.08)',
+                  color: UI_TOKENS.color.text.secondary,
+                  padding: '8px 10px',
+                  fontSize: UI_TOKENS.type.size.body,
+                  fontWeight: UI_TOKENS.type.weight.strong,
+                }}
+              >
+                Reset mobility
               </button>
             </div>
           </section>

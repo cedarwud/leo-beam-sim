@@ -291,6 +291,23 @@ These may still be adjustable elsewhere, but not inside the SINR-parameter UI.
 > override is gated on `appMode === 'sinr-experiment'`; in
 > `modqn-demo` the paper-faithful 100-UE baseline applies.
 
+### UE Mobility (Phase G)
+
+> Phase G activates per-tick UE position update so secondary UEs move
+> through the primary observer footprint each simulation tick.
+> Selector lives in the Topology tab as a `Simulation Setting`
+> alongside Phase F sat/beam/UE-count overrides. Modes:
+>
+> - `static` (default; zero-drift with Phase F).
+> - `random-walk` (uniform direction per tick, fixed speed).
+> - `waypoints` (per-UE circular waypoint tour).
+> - `manhattan` (axis-aligned grid streets).
+>
+> Replay artifacts continue to consume producer-baked positions
+> (mobility values inside artifacts are immutable per Phase 7
+> contract). Primary UE remains static for backward compat with
+> single-UE narratives.
+
 ## Not Yet Wired Or Not Safe To Expose As-Is
 
 | Internal field / behavior | Current state | Guidance |
