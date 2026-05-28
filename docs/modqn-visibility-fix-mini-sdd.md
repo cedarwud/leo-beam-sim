@@ -7,6 +7,16 @@ context lanes, or replay cone cues has been superseded by
 now prefers producer row `satelliteStates` / `beamStates` and otherwise
 fails closed to T0 cues.
 
+**2026-05-28 (later) supersession:** §2 producer-truth anchors (4-plane Walker
+scripted-pass coverage hack, `serviceAreaPassTargetsSec [100, 400, 700, 1000]`,
+hex-7 nadir 2° beam) are SUPERSEDED for beam geometry by
+`docs/modqn-realistic-beam-geometry-cross-repo-sdd.md`. The scripted-pass
+hack was a coverage workaround for the nadir-anchored single-pass-per-cycle
+issue; in the realistic Earth-fixed cell model the scheduler drives coverage
+regardless of satellite trajectory, so scripted passes are no longer needed.
+This document's render-isolation discipline (no compressed lanes, no
+consumer-invented satellite-context positions) stays authoritative.
+
 ## 1. Problem
 
 The live `modqn-demo` scene had three user-visible problems:

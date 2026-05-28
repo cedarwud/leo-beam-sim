@@ -1,10 +1,19 @@
 # Phase H Live-Sim MODQN Visual Parity SDD
 
 **Date:** 2026-05-28
-**Status:** Draft — slice H-S1..H-S8 plan anchored.
+**Status:** Slice H-S1..H-S8 SHIPPED to branch `modqn-visibility-fix`. **§4.4 (beam hopping toggle) SUPERSEDED, §4.5 partially superseded, §4.6 trigger-condition updated** by `docs/modqn-realistic-beam-geometry-cross-repo-sdd.md` (2026-05-28). The un-gating work (H-S1/H-S2/H-S3) and viz polish (H-S7/H-S8) remain authoritative.
 **Owner repo:** `/home/u24/papers/project/leo-beam-sim`.
 **Predecessor SDD:** `docs/modqn-training-truth-visualization-sdd.md` (S0-S1 shipped 2026-05-28 in commit `42109c0`).
+**Successor SDD (beam geometry):** `docs/modqn-realistic-beam-geometry-cross-repo-sdd.md`.
 **Cross-repo dependencies:** None. All Phase H slices stay inside `leo-beam-sim`.
+
+> **2026-05-28 supersession note (read first):** Phase H assumed paper-faithful
+> nadir-anchored hex-7 was authoritative; subsequent paper-text grep showed
+> the paper is silent on beam geometry and the nadir-anchored choice is a
+> reproducer assumption. The realistic beam geometry SDD replaces beam
+> hopping (H-S4) and partly the inter-HO arc trigger (H-S6) with Earth-fixed
+> cell schedule semantics. Phase I (per the realistic SDD §7) implements the
+> viz-side cell overlay first; backend re-training follows.
 
 ## 0. Reading Order
 

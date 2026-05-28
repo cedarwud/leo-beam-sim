@@ -1,10 +1,18 @@
 # MODQN Training Truth Visualization SDD
 
 **Date:** 2026-05-28
-**Status:** Proposed / S0-S1 partially implemented in `leo-beam-sim`
+**Status:** Proposed / S0-S1 partially implemented in `leo-beam-sim`. **Sections 3.1, 4.4, 5, and 7.5 are SUPERSEDED for beam geometry by `docs/modqn-realistic-beam-geometry-cross-repo-sdd.md`** (2026-05-28). The producer-truth boundary discipline (no claiming producer truth in live-sim, fail-closed on missing replay fields, etc.) remains authoritative.
 **Owner boundary:** `modqn-paper-reproduction` owns training truth; `leo-beam-sim` consumes and visualizes only.
 **Target repo:** `/home/u24/papers/project/leo-beam-sim`
 **Producer repo:** `/home/u24/papers/modqn-paper-reproduction`
+
+> **2026-05-28 supersession note (read first):** The hex-7 nadir geometry
+> referenced throughout this SDD is the reproducer assumption
+> `ASSUME-MODQN-REP-002`, NOT a paper-mandated layout. After grep of paper
+> full text, the paper is silent on beam pointing behavior. The realistic
+> beam geometry SDD replaces nadir-anchored fixed offsets with Earth-fixed
+> hex cells + hopping schedule. Read the realistic SDD before applying the
+> hex-7 nadir math from this document.
 
 ## 1. Purpose
 
