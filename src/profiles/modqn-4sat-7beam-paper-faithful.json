@@ -1,6 +1,6 @@
 {
   "id": "modqn-4sat-7beam-paper-faithful",
-  "paper": "PAP-2024-MORL-MULTIBEAM — paper-faithful 4-satellite 7-beam MODQN baseline (780 km / 20 GHz / 500 MHz / 33 dBm / 100 UEs / 9000 episodes). Live scene profile; not a trainer and not a replay artifact.",
+  "paper": "PAP-2024-MORL-MULTIBEAM \u2014 paper-faithful 7-beam MODQN baseline (780 km / 20 GHz / 500 MHz / 33 dBm / 100 UEs / 9000 episodes). Live scene profile; not a trainer and not a replay artifact. The historical 4sat id/filename now uses constellation pool P=384 Walker 53\u00b0, with serving cap L per realistic-beam-geometry SDD \u00a74.2.1/\u00a75.5.4.",
   "profileClass": "paper-default",
   "formulaFamily": "hobs-legacy",
   "orbit": {
@@ -9,10 +9,9 @@
       {
         "id": "modqn-paper-780km",
         "altitudeKm": 780,
-        "inclinationDeg": 90,
-        "planes": 4,
-        "satsPerPlane": 1,
-        "serviceAreaPassTargetsSec": [100, 400, 700, 1000],
+        "inclinationDeg": 53,
+        "planes": 24,
+        "satsPerPlane": 16,
         "phasePerturbation": false
       }
     ],
@@ -35,7 +34,12 @@
     "bandwidthMHz": 500,
     "maxTxPowerDbm": 33,
     "noisePsdDbmHz": -174,
-    "pathLossComponents": ["fspl", "atmospheric", "scintillation", "shadow-fading"],
+    "pathLossComponents": [
+      "fspl",
+      "atmospheric",
+      "scintillation",
+      "shadow-fading"
+    ],
     "lossOverrides": {
       "atmosphericZenithLossDb": 0.1,
       "scintillationScaleDb": 0.05,

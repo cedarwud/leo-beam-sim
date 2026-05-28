@@ -23,7 +23,7 @@ import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import { useSimulation } from './useSimulation';
 import { useUeTrailHistory } from './useUeTrailHistory';
 import { useBeamViz } from './useBeamViz';
-import { CELL_SCHEDULE_VIZ_SLOT_SEC, useCellSchedule } from './useCellSchedule';
+import { CELL_SCHEDULE_VIZ_SLOT_SEC, DEFAULT_SERVING_COUNT, useCellSchedule } from './useCellSchedule';
 import { sceneGeometryFromProfile } from './SceneGeometry';
 import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
@@ -283,8 +283,14 @@ function SceneContent({
     centerLatDeg: profile.orbit.observerLatDeg ?? 40,
     centerLonDeg: profile.orbit.observerLonDeg ?? 116,
     worldUnitsPerKm,
-    satellites: viz.displaySats.map(satellite => ({ id: satellite.id })),
+    satellites: viz.displaySats.map(satellite => ({
+      id: satellite.id,
+      latDeg: satellite.latDeg,
+      lonDeg: satellite.lonDeg,
+      altitudeKm: sceneGeometry.shellAltitudeKm,
+    })),
     slotSec: CELL_SCHEDULE_VIZ_SLOT_SEC,
+    servingCount: DEFAULT_SERVING_COUNT,
   });
   const satelliteTintById = useMemo(
     () => new Map(viz.displaySats.map((satellite, index) => [
@@ -405,6 +411,8 @@ function SceneContent({
     gl.domElement.dataset.cellOverlayActiveCount = showCellOverlay ? String(cellSchedule.slot.assignments.length) : '';
     gl.domElement.dataset.cellOverlayIdleCount = showCellOverlay ? String(cellSchedule.slot.idleCellIds.length) : '';
     gl.domElement.dataset.cellOverlayCellCount = showCellOverlay ? String(cellSchedule.layout.count) : '';
+    gl.domElement.dataset.cellServingCount = showCellOverlay ? String(cellSchedule.servingCount) : '';
+    gl.domElement.dataset.cellVisibleCount = showCellOverlay ? String(cellSchedule.visibleCount) : '';
     gl.domElement.dataset.cellHoReassignmentCount = showCellOverlay ? String(cellHoCounts.total) : '';
     gl.domElement.dataset.cellHoInterCount = showCellOverlay ? String(cellHoCounts.inter) : '';
     gl.domElement.dataset.cellHoIntraCount = showCellOverlay ? String(cellHoCounts.intra) : '';
@@ -413,9 +421,11 @@ function SceneContent({
     cellHoCounts.intra,
     cellHoCounts.total,
     cellSchedule.layout.count,
+    cellSchedule.servingCount,
     cellSchedule.slot.assignments.length,
     cellSchedule.slot.idleCellIds.length,
     cellSchedule.slotIndex,
+    cellSchedule.visibleCount,
     gl.domElement,
     runtime.beamCalloutsEnabled,
     runtime.appMode,

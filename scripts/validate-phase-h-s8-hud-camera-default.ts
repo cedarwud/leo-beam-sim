@@ -112,7 +112,8 @@ function validateProfileUntouched(): void {
   const profileJson = JSON.parse(
     readSource('src/profiles/modqn-4sat-7beam-paper-faithful.json'),
   );
-  expect(profileJson.orbit.shells[0].planes === 4, 'Profile still 4 planes');
+  expect(profileJson.orbit.shells[0].planes === 24, 'Profile uses P=384 pool: 24 Walker planes');
+  expect(profileJson.orbit.shells[0].satsPerPlane === 16, 'Profile uses P=384 pool: 16 sats per plane');
   expect(profileJson.beams.perSatellite === 7, 'Profile still 7 beams per sat');
 }
 

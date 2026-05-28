@@ -82,11 +82,18 @@ function validateProfileUntouched(): void {
   const profileJson = JSON.parse(
     readSource('src/profiles/modqn-4sat-7beam-paper-faithful.json'),
   );
-  expect(profileJson.orbit.shells[0].planes === 4, 'Profile keeps 4 planes');
-  expect(profileJson.orbit.shells[0].satsPerPlane === 1, 'Profile keeps 1 sat per plane');
+  expect(profileJson.orbit.shells[0].planes === 24, 'Profile uses P=384 pool: 24 Walker planes');
   expect(
-    Array.isArray(profileJson.orbit.shells[0].serviceAreaPassTargetsSec),
-    'Profile keeps scripted serviceAreaPassTargetsSec (paper-literal 4-sat geometry cannot continuously cover 40N observer without scripting)',
+    profileJson.orbit.shells[0].satsPerPlane === 16,
+    'Profile uses P=384 pool: 16 sats per plane with serving cap L handled by useCellSchedule',
+  );
+  expect(
+    profileJson.orbit.shells[0].inclinationDeg === 53,
+    'Profile uses P=384 natural Walker 53° baseline: inclination is 53°',
+  );
+  expect(
+    !('serviceAreaPassTargetsSec' in profileJson.orbit.shells[0]),
+    'Profile uses P=384 natural Walker 53° baseline: serviceAreaPassTargetsSec is absent',
   );
 }
 

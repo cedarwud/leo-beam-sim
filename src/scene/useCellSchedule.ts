@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import {
   buildCellLayout,
+  DEFAULT_MIN_ELEVATION_DEG,
+  elevationAngleRad,
   type CellCenter,
   type CellLayout,
 } from '../engine/cells/cellLayout';
@@ -14,8 +16,11 @@ import {
 
 /** Cosmetic viz slot pacing (seconds). NOT the backend training slot (SDD §5.5.1 0.5s). */
 export const CELL_SCHEDULE_VIZ_SLOT_SEC = 2.5;
+export const DEFAULT_SERVING_COUNT = 8;
+export const PAPER_ACTIVE_BEAMS_PER_SLOT = 28;
 
 const MAX_SYNTHETIC_SATELLITES = 4;
+const DEG_TO_RAD = Math.PI / 180;
 const SYNTHETIC_POSE_OFFSETS_DEG: readonly [number, number][] = [
   [0, 0],
   [0.1, 0],
@@ -58,6 +63,10 @@ export interface CellScheduleViz {
   /** Map cellId -> assignment for the previous slot (active cells only). */
   readonly previousAssignmentByCellId: ReadonlyMap<number, CellAssignment>;
   readonly cellReassignments: readonly CellReassignment[];
+  /** Resolved serving-count cap L used by this schedule. */
+  readonly servingCount: number;
+  /** Visible satellites before applying the serving-count cap. */
+  readonly visibleCount: number;
 }
 
 export interface UseCellScheduleInput {
@@ -68,14 +77,27 @@ export interface UseCellScheduleInput {
   readonly centerLonDeg: number;
   readonly worldUnitsPerKm: number;
   /** Display satellites for tint + count (id + visual index from array order). */
-  readonly satellites: ReadonlyArray<{ id: string }>;
+  readonly satellites: ReadonlyArray<{
+    id: string;
+    latDeg?: number;
+    lonDeg?: number;
+    altitudeKm?: number;
+  }>;
   readonly slotSec?: number;
   readonly beamsPerSatellite?: number;
+  /** Serving-count cap: use only the top-L satellites by elevation to the area. Default 8. */
+  readonly servingCount?: number;
 }
 
 interface ComputeCellScheduleVizFromLayoutInput extends UseCellScheduleInput {
   readonly layout: CellLayout;
   readonly slotIndex: number;
+}
+
+interface SchedulerSatelliteSelection {
+  readonly satellites: readonly SatellitePose[];
+  readonly servingCount: number;
+  readonly visibleCount: number;
 }
 
 export function computeCellScheduleViz(input: UseCellScheduleInput): CellScheduleViz {
@@ -109,10 +131,15 @@ export function useCellSchedule(input: UseCellScheduleInput): CellScheduleViz {
       input.centerLonDeg,
     ],
   );
-  const satelliteIds = input.satellites
-    .slice(0, MAX_SYNTHETIC_SATELLITES)
-    .map(satellite => satellite.id)
+  const satelliteKey = input.satellites
+    .map(satellite => [
+      satellite.id,
+      satellite.latDeg ?? '',
+      satellite.lonDeg ?? '',
+      satellite.altitudeKm ?? '',
+    ].join(':'))
     .join('\u001f');
+  const servingCount = resolveServingCount(input.servingCount);
 
   return useMemo(
     () => computeCellScheduleVizFromLayout({ ...input, layout, slotIndex }),
@@ -120,10 +147,11 @@ export function useCellSchedule(input: UseCellScheduleInput): CellScheduleViz {
       input.beamsPerSatellite,
       input.centerLatDeg,
       input.centerLonDeg,
+      servingCount,
       input.worldUnitsPerKm,
       layout,
       previousSlotIndex,
-      satelliteIds,
+      satelliteKey,
       slotIndex,
     ],
   );
@@ -141,23 +169,25 @@ function computeCellScheduleVizFromLayout(input: ComputeCellScheduleVizFromLayou
     radiusWorld: input.layout.cellRadiusKm * input.worldUnitsPerKm,
   }));
 
-  const satellites = buildSyntheticVisibleSatellitePoses(input);
-  if (satellites.length === 0) {
+  const selection = buildSchedulerSatelliteSelection(input);
+  if (selection.satellites.length === 0) {
     const slot = emptyCellScheduleSlot(input.layout, input.slotIndex);
     const previousSlot = emptyCellScheduleSlot(input.layout, Math.max(0, input.slotIndex - 1));
-    return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, placements);
+    return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, placements, selection);
   }
 
   const schedulerConfig = {
     layout: input.layout,
-    satellites,
+    satellites: selection.satellites,
     beamsPerSatellite: input.beamsPerSatellite ?? DEFAULT_BEAMS_PER_SATELLITE,
+    minElevationDeg: DEFAULT_MIN_ELEVATION_DEG,
+    maxActivePerSlot: PAPER_ACTIVE_BEAMS_PER_SLOT,
   };
   const previousSlotIndex = Math.max(0, input.slotIndex - 1);
   const slot = computeSlotSchedule(schedulerConfig, input.slotIndex);
   const previousSlot = computeSlotSchedule(schedulerConfig, previousSlotIndex);
 
-  return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, placements);
+  return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, placements, selection);
 }
 
 function buildVizResult(
@@ -166,6 +196,7 @@ function buildVizResult(
   slot: CellScheduleSlot,
   previousSlot: CellScheduleSlot,
   placements: readonly CellWorldPlacement[],
+  selection: Pick<SchedulerSatelliteSelection, 'servingCount' | 'visibleCount'>,
 ): CellScheduleViz {
   const assignmentByCellId = assignmentMap(slot);
   const previousAssignmentByCellId = assignmentMap(previousSlot);
@@ -179,6 +210,8 @@ function buildVizResult(
     assignmentByCellId,
     previousAssignmentByCellId,
     cellReassignments: computeCellReassignments(placements, assignmentByCellId, previousAssignmentByCellId),
+    servingCount: selection.servingCount,
+    visibleCount: selection.visibleCount,
   };
 }
 
@@ -230,13 +263,69 @@ function computeCellReassignments(
   return reassignments.sort((a, b) => a.cellId - b.cellId);
 }
 
-function buildSyntheticVisibleSatellitePoses(input: UseCellScheduleInput): readonly SatellitePose[] {
-  // Phase I is a viz mock (SDD §7): use synthetic all-visible scheduler poses
-  // for a stable 28/9 hop pattern. Rendered tint still uses real display sat
-  // IDs; real-orbit lat/lon scheduler input is deferred to Phase III.
-  return input.satellites
+function buildSchedulerSatelliteSelection(input: UseCellScheduleInput): SchedulerSatelliteSelection {
+  const servingCount = resolveServingCount(input.servingCount);
+  const allSatellitesHaveGeo = input.satellites.length > 0
+    && input.satellites.every(satellite => (
+      Number.isFinite(satellite.latDeg)
+      && Number.isFinite(satellite.lonDeg)
+      && Number.isFinite(satellite.altitudeKm)
+    ));
+
+  if (allSatellitesHaveGeo) {
+    // SDD §4.2.1: derive the serving set from real rendered satellite geo,
+    // then cap to top-L by service-area-center elevation.
+    const visibleSatellites = input.satellites
+      .map((satellite, visualIndex) => ({
+        satellite,
+        visualIndex,
+        elevationRad: satellite.id.length > 0
+          ? elevationAngleRad(
+            satellite.latDeg as number,
+            satellite.lonDeg as number,
+            satellite.altitudeKm as number,
+            input.centerLatDeg,
+            input.centerLonDeg,
+          )
+          : Number.NEGATIVE_INFINITY,
+      }))
+      .filter(candidate => candidate.satellite.id.length > 0)
+      .filter(candidate => candidate.elevationRad > DEFAULT_MIN_ELEVATION_DEG * DEG_TO_RAD)
+      .sort((a, b) => (
+        (b.elevationRad - a.elevationRad)
+        || (a.visualIndex - b.visualIndex)
+        || a.satellite.id.localeCompare(b.satellite.id)
+      ));
+
+    return {
+      servingCount,
+      visibleCount: visibleSatellites.length,
+      satellites: visibleSatellites
+        .slice(0, servingCount)
+        .map(({ satellite, visualIndex }): SatellitePose => ({
+          satId: satellite.id,
+          visualIndex,
+          latDeg: satellite.latDeg as number,
+          lonDeg: satellite.lonDeg as number,
+          altitudeKm: satellite.altitudeKm as number,
+        })),
+    };
+  }
+
+  return buildSyntheticVisibleSatelliteSelection(input, servingCount);
+}
+
+function buildSyntheticVisibleSatelliteSelection(
+  input: UseCellScheduleInput,
+  servingCount: number,
+): SchedulerSatelliteSelection {
+  // Backward-compatible I-S4/I-S5a path: fixtures that pass ids only keep the
+  // synthetic all-visible four-satellite 28/9 hop pattern.
+  const visibleSatellites = input.satellites
     .slice(0, MAX_SYNTHETIC_SATELLITES)
-    .filter(satellite => satellite.id.length > 0)
+    .filter(satellite => satellite.id.length > 0);
+  const satellites = visibleSatellites
+    .slice(0, servingCount)
     .map((satellite, visualIndex): SatellitePose => {
       const [latOffsetDeg, lonOffsetDeg] = SYNTHETIC_POSE_OFFSETS_DEG[visualIndex] ?? [0, 0];
       return {
@@ -247,6 +336,12 @@ function buildSyntheticVisibleSatellitePoses(input: UseCellScheduleInput): reado
         altitudeKm: input.altitudeKm,
       };
     });
+
+  return {
+    satellites,
+    servingCount,
+    visibleCount: visibleSatellites.length,
+  };
 }
 
 function emptyCellScheduleSlot(layout: CellLayout, slotIndex: number): CellScheduleSlot {
@@ -266,4 +361,12 @@ function resolveSlotSec(slotSec: number | undefined): number {
 function resolveSlotIndex(simTimeSec: number, slotSec: number): number {
   const tSec = Number.isFinite(simTimeSec) ? simTimeSec : 0;
   return Math.max(0, Math.floor(tSec / slotSec));
+}
+
+function resolveServingCount(servingCount: number | undefined): number {
+  const resolved = servingCount ?? DEFAULT_SERVING_COUNT;
+  if (!Number.isInteger(resolved) || resolved <= 0) {
+    throw new Error(`servingCount must be a positive integer; got ${resolved}`);
+  }
+  return resolved;
 }

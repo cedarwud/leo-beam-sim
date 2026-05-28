@@ -126,7 +126,8 @@ export function generateWalkerConstellation(config: {
 
     for (let p = 0; p < shell.planes; p++) {
       const raanRad = (TWO_PI * p) / shell.planes;
-      const planePhaseOffset = (TWO_PI * p) / totalSats; 
+      // Walker-delta F=1 phasing: adjacent planes are offset by 360 / totalSats.
+      const planePhaseOffset = (TWO_PI * p) / totalSats;
 
       for (let s = 0; s < shell.satsPerPlane; s++) {
         // Source: modqn-paper-reproduction/configs/modqn-paper-baseline.resolved-template.yaml

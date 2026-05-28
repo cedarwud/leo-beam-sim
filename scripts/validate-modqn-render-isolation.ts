@@ -30,13 +30,13 @@ function validateProfileTruth(): void {
   const shell = profile.orbit.shells[0];
   assert.ok(shell, 'MODQN profile has a primary shell');
   assert.equal(shell.altitudeKm, 780, 'MODQN truth altitude remains 780 km');
-  assert.equal(shell.inclinationDeg, 90, 'MODQN truth inclination follows producer follow-on baseline');
-  assert.equal(shell.planes, 4, 'MODQN live display keeps 4 total satellites via 4 planes');
-  assert.equal(shell.satsPerPlane, 1, 'MODQN live display keeps 1 satellite per service-area phased plane');
-  assert.deepEqual(
-    shell.serviceAreaPassTargetsSec,
-    [100, 400, 700, 1000],
-    'MODQN live display declares deterministic service-area pass targets',
+  assert.equal(shell.inclinationDeg, 53, 'MODQN live display uses P=384 natural Walker 53 deg inclination');
+  assert.equal(shell.planes, 24, 'MODQN live display uses P=384 pool: 24 Walker planes');
+  assert.equal(shell.satsPerPlane, 16, 'MODQN live display uses P=384 pool: 16 satellites per plane');
+  assert.equal(
+    'serviceAreaPassTargetsSec' in shell,
+    false,
+    'MODQN live display omits serviceAreaPassTargetsSec so natural Walker propagation is used',
   );
   assert.equal(shell.phasePerturbation, false, 'MODQN live display disables extra phase perturbation');
 
@@ -133,22 +133,32 @@ function validateRenderIsolationContracts(): void {
   assertIncludes(groundScene, "markerShape = 'cylinder'", 'GroundScene keeps SINR cylinder default');
 }
 
-function validateModqnServiceAreaVisibility(): void {
+function validateModqnNaturalWalkerVisibility(): void {
   const observer = createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg);
   const cache = createTrajectoryCache(profile, observer, Date.UTC(2024, 0, 1));
   const gaps: number[] = [];
+  let maxVisibleAbove15 = 0;
+  let finiteGeoSampleCount = 0;
 
   for (let tSec = 0; tSec <= 1200; tSec += 20) {
     const visibleAbove15 = interpolateVisibleSats(cache, tSec, true)
       .filter(sat => sat.topo.elevationDeg >= 15);
-    if (visibleAbove15.length === 0) gaps.push(tSec);
+    maxVisibleAbove15 = Math.max(maxVisibleAbove15, visibleAbove15.length);
+    finiteGeoSampleCount += visibleAbove15
+      .filter(sat => Number.isFinite(sat.latDeg) && Number.isFinite(sat.lonDeg))
+      .length;
+    if (visibleAbove15.length === 0) {
+      gaps.push(tSec);
+    }
   }
 
-  assert.deepEqual(gaps, [], 'MODQN service-area phased profile has no sampled >15deg visibility gaps');
+  assert.ok(maxVisibleAbove15 >= 8, 'Natural Walker MODQN profile has sampled >=8 satellites above 15deg for serving cap');
+  assert.equal(gaps.length, 0, 'P=384 Natural Walker MODQN profile has continuous sampled >15deg coverage');
+  assert.ok(finiteGeoSampleCount > 0, 'Visible MODQN satellite samples carry finite real lat/lon for render isolation');
 }
 
 validateProfileTruth();
 validateRenderIsolationContracts();
-validateModqnServiceAreaVisibility();
+validateModqnNaturalWalkerVisibility();
 
 console.log('validate-modqn-render-isolation: PASS');
