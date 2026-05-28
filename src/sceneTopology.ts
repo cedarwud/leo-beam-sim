@@ -7,6 +7,7 @@ export const SCENE_TOPOLOGY_OVERRIDES_KEY = 'leo-beam-sim.scene-topology.v1';
 export interface SceneTopologyState {
   satsPerPlane: number | null;
   beamCountPerSatellite: number | null;
+  cellServingCount: number | null;
   ueCount: number | null;
   ueDistributionMode: UeDistributionMode | null;
   ueMobilityMode: UeMobilityMode | null;
@@ -18,6 +19,7 @@ export function createSceneTopologyState(): SceneTopologyState {
   return {
     satsPerPlane: null,
     beamCountPerSatellite: null,
+    cellServingCount: null,
     ueCount: null,
     ueDistributionMode: null,
     ueMobilityMode: null,

@@ -49,6 +49,11 @@ export function readSceneTopologyOverrides(): SceneTopologyState {
       beamCountPerSatellite: typeof record.beamCountPerSatellite === 'number'
         ? record.beamCountPerSatellite
         : null,
+      cellServingCount: record.cellServingCount === 4
+        || record.cellServingCount === 8
+        || record.cellServingCount === 12
+        ? record.cellServingCount
+        : null,
       ueCount: typeof record.ueCount === 'number' ? record.ueCount : null,
       ueDistributionMode: record.ueDistributionMode === 'random'
         || record.ueDistributionMode === 'grid'

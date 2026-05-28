@@ -53,6 +53,9 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     ueCount: input.appMode === 'sinr-experiment'
       ? input.sceneTopology.ueCount ?? undefined
       : input.selectedTrainingEnvAxes?.nUsers ?? MODQN_PAPER_BASELINE_UE_COUNT,
+    cellServingCount: input.appMode === 'modqn-demo'
+      ? input.sceneTopology.cellServingCount ?? undefined
+      : undefined,
     ueDistributionMode: input.appMode === 'sinr-experiment'
       ? input.sceneTopology.ueDistributionMode ?? 'random'
       : trainingTopology.ueDistributionMode ?? 'random',

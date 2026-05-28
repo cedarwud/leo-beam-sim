@@ -6,6 +6,10 @@ export function formatBeamCount(value: number): string {
   return `${value.toFixed(0)} beams`;
 }
 
+export function formatServingCount(value: number): string {
+  return `${value.toFixed(0)} serving sats`;
+}
+
 export function formatUeCount(value: number): string {
   return `${value.toFixed(0)} UEs`;
 }
@@ -21,4 +25,3 @@ export function formatWaypointCount(value: number): string {
 export function formatGridSpacing(value: number): string {
   return `${value.toFixed(0)} km`;
 }
-

@@ -291,7 +291,7 @@ function SceneContent({
       altitudeKm: sceneGeometry.shellAltitudeKm,
     })),
     slotSec: CELL_SCHEDULE_VIZ_SLOT_SEC,
-    servingCount: DEFAULT_SERVING_COUNT,
+    servingCount: runtime.cellServingCount ?? DEFAULT_SERVING_COUNT,
   });
   const satelliteTintById = useMemo(
     () => new Map(viz.displaySats.map((satellite, index) => [

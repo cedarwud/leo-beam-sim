@@ -56,6 +56,7 @@ export interface RuntimeConfig {
   reducedMotion: boolean;
   viewport: RuntimeViewport;
   ueCount?: number;
+  cellServingCount?: number;
   ueDistributionMode?: UeDistributionMode;
   uePrimaryAnchorMode?: UePrimaryAnchorMode;
   ueDistributionScope?: UeDistributionScope;

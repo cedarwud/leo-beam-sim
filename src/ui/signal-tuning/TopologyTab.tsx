@@ -9,6 +9,7 @@ import {
   type UeMobilityMode,
   type UeMobilityParams,
 } from '../../engine/ue/multiUeMobility';
+import { DEFAULT_SERVING_COUNT } from '../../scene/useCellSchedule';
 import {
   createSceneVisualScaleState,
   type SceneScale,
@@ -19,6 +20,7 @@ import {
   formatBeamCount,
   formatGridSpacing,
   formatSatCount,
+  formatServingCount,
   formatUeCount,
   formatUeSpeed,
   formatWaypointCount,
@@ -59,6 +61,7 @@ interface TopologyTabProps {
 }
 
 const BEAM_COUNT_OPTIONS = [7, 19, 37] as const;
+const SERVING_COUNT_OPTIONS = [4, 8, 12] as const;
 const SCENE_SCALE_OPTIONS: readonly SceneScale[] = ['paper-faithful', 'demo-readability'];
 const UE_DISTRIBUTION_MODE_OPTIONS: readonly UeDistributionMode[] = ['random', 'grid', 'clustered'];
 const UE_MOBILITY_MODE_OPTIONS: readonly UeMobilityMode[] = ['static', 'random-walk', 'waypoints', 'manhattan'];
@@ -70,11 +73,18 @@ const SCENE_SCALE_OPTION_TESTIDS: Record<SceneScale, string> = {
 };
 
 type BeamCountOption = typeof BEAM_COUNT_OPTIONS[number];
+type ServingCountOption = typeof SERVING_COUNT_OPTIONS[number];
 
 const BEAM_COUNT_OPTION_TESTIDS: Record<BeamCountOption, string> = {
   7: 'topology-tab-beam-count-option-7',
   19: 'topology-tab-beam-count-option-19',
   37: 'topology-tab-beam-count-option-37',
+};
+
+const SERVING_COUNT_OPTION_TESTIDS: Record<ServingCountOption, string> = {
+  4: 'topology-tab-serving-count-option-4',
+  8: 'topology-tab-serving-count-option-8',
+  12: 'topology-tab-serving-count-option-12',
 };
 
 const UE_DISTRIBUTION_MODE_OPTION_TESTIDS: Record<UeDistributionMode, string> = {
@@ -216,6 +226,8 @@ export function TopologyTab({
   onReset,
 }: TopologyTabProps) {
   const showTopologyOverrideControls = appMode === 'sinr-experiment';
+  const effectiveServingCount = topology.cellServingCount ?? DEFAULT_SERVING_COUNT;
+  const hasServingCountOverride = topology.cellServingCount !== null;
   const baseSatCount = baseProfile.orbit.shells[0]?.satsPerPlane ?? 4;
   const effectiveSatCount = topology.satsPerPlane ?? baseSatCount;
   const hasSatOverride = topology.satsPerPlane !== null;
@@ -254,6 +266,55 @@ export function TopologyTab({
 
   return (
     <div style={controlStackStyle}>
+      {appMode === 'modqn-demo' && (
+        <>
+          <TopologySection data-testid="topology-tab-serving-count-effective-value">
+            <SectionHeading
+              title="Serving satellites (L)"
+              description="modqn-demo cell-lane lever: how many top-elevation satellites serve the cells. K=28 active beams (hopping) is held fixed; only the serving set size changes."
+              badge={hasServingCountOverride ? undefined : 'Default L=8'}
+              value={formatServingCount(effectiveServingCount)}
+            />
+            <fieldset data-testid="topology-tab-serving-count-radio" style={topologyRadioFieldsetStyle(3)}>
+              <RadioLegend>Serving satellite count</RadioLegend>
+              {SERVING_COUNT_OPTIONS.map(option => {
+                const active = effectiveServingCount === option;
+                return (
+                  <label key={option} style={topologyRadioLabelStyle(active)}>
+                    <input
+                      data-testid={SERVING_COUNT_OPTION_TESTIDS[option]}
+                      type="radio"
+                      name="topology-serving-count"
+                      value={option}
+                      checked={active}
+                      onChange={() => onTopologyChange({ ...topology, cellServingCount: option })}
+                      style={topologyChoiceInputStyle}
+                    />
+                    <span>L = {option}</span>
+                  </label>
+                );
+              })}
+            </fieldset>
+            <div style={topologyEffectiveValueStyle}>
+              <span>
+                Effective serving count: L = {effectiveServingCount} ({hasServingCountOverride ? 'override' : 'default'})
+              </span>
+            </div>
+            <TopologyNotice>Takes effect on next render frame (no simulation restart).</TopologyNotice>
+            <ActionRow>
+              <ResetButton
+                data-testid="topology-tab-serving-count-clear-override"
+                clear
+                onClick={() => onTopologyChange({ ...topology, cellServingCount: null })}
+              >
+                Clear serving override
+              </ResetButton>
+            </ActionRow>
+          </TopologySection>
+          <div style={dividerStyle} />
+        </>
+      )}
+
       {showTopologyOverrideControls && (
         <>
           <div data-testid="topology-tab-restart-banner" style={topologyNoticeStyle}>
