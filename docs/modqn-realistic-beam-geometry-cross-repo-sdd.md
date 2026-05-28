@@ -155,7 +155,21 @@ Cell positions are computed once at startup (deterministic, profile-derived). Th
 
 ### 4.2 Beam Behavior
 
-Each satellite has 7 beams (paper Table I). Per slot, each satellite's beams are assigned to 7 cells via the cell scheduler (§4.4). The total active beams per slot is K = 4 × 7 = 28, serving 28 of 37 cells; 9 cells are idle per slot.
+Each satellite has 7 beams (paper Table I). Per slot, each satellite's beams are assigned to cells via the cell scheduler (§4.4). For the paper-literal 4-satellite baseline the total active beams per slot is K = 4 × 7 = 28, serving 28 of 37 cells; 9 cells are idle per slot.
+
+#### 4.2.1 Constellation size and effective active-beam count (L decoupling)
+
+**Updated 2026-05-28 (constellation-size lever).** The K = 28 figure above is the *4-satellite* instance. The satellite count `L` is a separate environment lever — the paper's own Table II sensitivity sweep ranges over `L ∈ [2, 8]` (see §5.5.4), and 4 satellites cannot exhibit meaningful inter-satellite handover because they almost never share simultaneous visibility of the user area. We therefore treat `L` as adjustable (Phase I viz default `L = 8`, demo control over `{4, 8, 12}`; Phase III training sweeps `L ∈ {4, 8, 12}` to show the angle-aware-EE advantage growth trend).
+
+The active-beam count is **not** a fixed 28 once `L > 4`. It is the *effective visible* count:
+
+```text
+K_eff(t) = (number of satellites currently visible to the user area, elevation > 15°) × beams_per_satellite
+```
+
+With `L = 8` in a natural Walker constellation, typically only ~2-3 satellites are simultaneously visible to the 200×90 km area, so `K_eff ≈ 14-21 < 37` — fewer active beams than cells, so the hopping structure (active set ⊊ all cells, with idle cells) is **preserved naturally by visibility**, not by an artificial cap. As satellites rise and set, the serving satellite for a given cell changes across slots, producing **natural inter-satellite handover** (the §4.6 inter-HO trigger).
+
+Consumer (`leo-beam-sim`) consequence: the `useCellSchedule` hook must derive per-satellite visibility from **real satellite positions** (the rendered `viz.displaySats` world/geo positions), not the synthetic all-visible mock used by the I-S4/I-S5a slices. The synthetic-all-visible mock was acceptable for `L = 4` (4 × 7 = 28 < 37 still left 9 idle) but breaks at `L ≥ 6` (`L × 7 ≥ 42 > 37` would mark every cell active and erase hopping). I-S7a replaces the synthetic visibility with real-satellite visibility so `K_eff` tracks geometry and inter-HO emerges physically. Backend SNR stays nadir until Phase III; this change is visibility/scheduling only.
 
 The beam pointing is determined by the scheduler's cell assignment, not by satellite-fixed offsets. As the satellite moves, the beam steers electronically (modeled via off-axis angle and slant range) to maintain pointing at its assigned cell.
 
@@ -332,7 +346,8 @@ Confirmed 2026-05-28 with user: "只要對我的演算法有利，在學術研�
 
 - **UE speed**: paper 30 km/h. Considered raising to 60 km/h but quantified analysis shows scheduler-driven HO events dominate UE-mobility HO events by ~33-100x in Earth-fixed cells, so UE speed has negligible algorithm impact. Keep paper 30 km/h.
 - **Frequency reuse / SINR**: paper SNR (no interference). Switching to SINR adds complexity but does not directly leverage user's angle-aware EE algo. Keep paper SNR.
-- **Number of users `I` = 100, satellites `L` = 4**: paper Table I literal. Sensitivity sweep over [40, 200] users and [2, 8] sats is paper Table II convention; keep.
+- **Number of users `I` = 100**: paper Table I literal; keep. Sensitivity sweep over [40, 200] users is paper Table II convention.
+- **Number of satellites `L`**: ~~paper Table I literal `L = 4`; keep~~ **REVISED 2026-05-28 → `L` is an environment lever, not fixed at 4.** Rationale: 4 satellites cannot exhibit meaningful inter-satellite handover (they almost never share simultaneous visibility of the 200×90 km area), starving MODQN's `r2` handover objective and the φ1/φ2 intra/inter distinction in both demo and training. The paper's own Table II sweep covers `L ∈ [2, 8]`, so raising the baseline is paper-supported. Decision: Phase I viz default `L = 8` (Walker, inclination 53°, scripted center-pass dropped in favor of natural Walker visibility) with a demo control over `{4, 8, 12}`; Phase III training **sweeps `L ∈ {4, 8, 12}`** and reports the angle-aware-EE advantage as a function of `L` (a stronger, more honest result than cherry-picking one `L`). `L = 12` exceeds the paper sweep upper bound and must be disclosed as a deliberate extension to enable realistic inter-HO density. The active-beam count is `K_eff = visible_sats × 7` (see §4.2.1), not a fixed 28, once `L > 4`. Why this is fair, not rigging: every algorithm (baseline MODQN, angle-aware EE, W-HOBS arms, Multi-Catfish) re-trains on the identical environment at each `L` (§6.3); the angle-aware advantage must come from explicit `G_T(θ)` modeling verified per-objective, not from baseline capacity starvation.
 - **Carrier frequency `fc` = 20 GHz, bandwidth `B` = 500 MHz, transmit power = 2 W, noise PSD = -174 dBm/Hz, MODQN network shape 100-50-50 tanh, optimizer Adam, learning rate 0.01, discount γ = 0.9, batch size 128, epsilon-greedy**: paper Table I + Section III literal. Keep — these define the MODQN algorithm baseline that we are comparing against.
 
 ## 6. Algorithm Leverage Analysis
