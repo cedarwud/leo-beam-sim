@@ -27,8 +27,8 @@ function validateCameraDefault(): void {
     'App.tsx declares modqnDemoCameraAppliedRef',
   );
   expect(
-    source.includes("camera.selectCameraPreset('paper-faithful-closeup')"),
-    'App.tsx schedules paper-faithful-closeup preset on modqn-demo entry',
+    source.includes("camera.selectCameraPreset('oblique')"),
+    'App.tsx schedules oblique preset on modqn-demo entry (Phase I pull-back from too-close closeup)',
   );
   expect(
     source.includes("appMode === 'modqn-demo' && !modqnDemoCameraAppliedRef.current"),

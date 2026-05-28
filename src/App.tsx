@@ -274,14 +274,16 @@ export function App() {
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
   const camera = useCameraControls();
-  // Phase H §4.8: modqn-demo defaults to paper-faithful-closeup camera so the
-  // user opens into a tight view of the 4 satellites + beam cones; live-sim
+  // Phase H §4.8 + Phase I: modqn-demo defaults to the oblique camera so the
+  // user opens into a pulled-back view framing the Earth-fixed cell field +
+  // 4 satellites + beam cones (the closeup preset sat too tight on the
+  // satellites and clipped the 200x90 km cell overlay). Live-sim camera
   // changes only, never claims producer ephemeris truth.
   const modqnDemoCameraAppliedRef = useRef(false);
   useEffect(() => {
     if (appMode === 'modqn-demo' && !modqnDemoCameraAppliedRef.current) {
       modqnDemoCameraAppliedRef.current = true;
-      camera.selectCameraPreset('paper-faithful-closeup');
+      camera.selectCameraPreset('oblique');
     } else if (appMode !== 'modqn-demo') {
       modqnDemoCameraAppliedRef.current = false;
     }
