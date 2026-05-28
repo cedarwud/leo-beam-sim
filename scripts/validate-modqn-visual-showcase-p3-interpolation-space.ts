@@ -40,14 +40,10 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 
-import { loadShowcaseArtifact } from '../src/showcase/loadShowcaseArtifact';
 import { showcaseArtifactToScene } from '../src/showcase/showcaseArtifactToScene';
 import { showcaseArtifactToSceneInterpolated } from '../src/showcase/showcaseArtifactToSceneInterpolated';
-
-const TRIGGER_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
+import { loadValidatorVisualShowcaseArtifact } from './visualShowcaseValidatorFixture';
 
 function test(label: string, fn: () => void): void {
   try {
@@ -62,8 +58,8 @@ function test(label: string, fn: () => void): void {
 
 console.log('validate-modqn-visual-showcase-p3-interpolation-space');
 
-const rawText = readFileSync(TRIGGER_PATH, 'utf8');
-const artifact = loadShowcaseArtifact(JSON.parse(rawText));
+const { artifact, source } = loadValidatorVisualShowcaseArtifact();
+console.log(`  artifact source: ${source.label}`);
 const timesSec = artifact.timebase.timesSec ?? artifact.timeline.map((f) => f.tSec);
 
 // World-space linearity must hold up to numerical noise (no truth recompute).

@@ -1,10 +1,19 @@
 type Vector3Tuple = [number, number, number];
 
 export const NTPU_OBSERVER = {
-  name: 'Beijing Observer',
-  latitude: 40,            // 度 (paper consensus: 40°N)
-  longitude: 116,          // 度 (116°E)
+  // Source: PAP-2024-MORL-MULTIBEAM user-area statement and
+  // modqn-paper-reproduction/configs/modqn-paper-baseline.paper-faithful-follow-on.resolved.yaml.
+  name: 'MODQN Baseline Ground Point',
+  latitude: 40,
+  longitude: 116,
   altitude: 0,             // 米
+};
+
+export const MODQN_PAPER_USER_AREA_KM = {
+  // Source: modqn-paper-reproduction/docs/modqn-reproduction-assumption-register.md
+  // ASSUME-MODQN-REP-022: uniform-rectangle sampling inside 200 km x 90 km.
+  widthKm: 200,
+  heightKm: 90,
 };
 
 export interface NTPUSceneConfig {
@@ -14,6 +23,10 @@ export interface NTPUSceneConfig {
     position: Vector3Tuple;
     scale: number;
     rotation: Vector3Tuple;
+    measuredBoundsWu: {
+      width: number;
+      depth: number;
+    };
   };
   uav: {
     modelPath: string;
@@ -23,6 +36,35 @@ export interface NTPUSceneConfig {
     fov: number;
     near: number;
     far: number;
+  };
+  visualAlpha: number;
+  /**
+   * Visual-only camera framing hint. Beam footprint and satellite altitude
+   * world-space sizes are derived from physical km through kmPerWorldUnit.
+   */
+  visualSatelliteAltitude: number;
+  /** Visual-only legacy UI hint; not a physics source. */
+  visualBeamDiameter: number;
+}
+
+export interface InscribedPaperUserArea {
+  widthWu: number;
+  depthWu: number;
+  kmPerWorldUnit: number;
+}
+
+export function resolveInscribedPaperUserArea(config: NTPUSceneConfig): InscribedPaperUserArea {
+  const targetAspect = MODQN_PAPER_USER_AREA_KM.widthKm / MODQN_PAPER_USER_AREA_KM.heightKm;
+  const boundsWidth = config.scene.measuredBoundsWu.width * config.scene.scale;
+  const boundsDepth = config.scene.measuredBoundsWu.depth * config.scene.scale;
+  const boundsAspect = boundsWidth / boundsDepth;
+  const widthWu = boundsAspect >= targetAspect ? boundsDepth * targetAspect : boundsWidth;
+  const depthWu = widthWu / targetAspect;
+
+  return {
+    widthWu,
+    depthWu,
+    kmPerWorldUnit: MODQN_PAPER_USER_AREA_KM.widthKm / widthWu,
   };
 }
 
@@ -37,6 +79,10 @@ export const NTPU_CONFIG: NTPUSceneConfig = {
     position: [0, 0, 0],
     scale: 1,
     rotation: [0, 0, 0],
+    measuredBoundsWu: {
+      width: 1375.866516,
+      depth: 918.623901,
+    },
   },
   uav: NTPU_UAV_CONFIG,
   camera: {
@@ -45,6 +91,9 @@ export const NTPU_CONFIG: NTPUSceneConfig = {
     near: 0.1,
     far: 10000,
   },
+  visualAlpha: 0.64,
+  visualSatelliteAltitude: 360,
+  visualBeamDiameter: 450,
 };
 
 export const NTPU_LARGE_CONFIG: NTPUSceneConfig = {
@@ -54,6 +103,10 @@ export const NTPU_LARGE_CONFIG: NTPUSceneConfig = {
     position: [0, 0, 0],
     scale: 1,
     rotation: [0, 0, 0],
+    measuredBoundsWu: {
+      width: 2140.236755,
+      depth: 1528.740601,
+    },
   },
   uav: NTPU_UAV_CONFIG,
   camera: {
@@ -62,4 +115,7 @@ export const NTPU_LARGE_CONFIG: NTPUSceneConfig = {
     near: 0.1,
     far: 15000,
   },
+  visualAlpha: 1.0,
+  visualSatelliteAltitude: 380,
+  visualBeamDiameter: 700,
 };

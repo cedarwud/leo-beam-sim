@@ -4,9 +4,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import { satelliteTint, satelliteTintIndex } from '../constants/beamRoleTokens';
+import type { BeamTarget } from '../scene/beamTargetTypes';
 import type { VisibleSat } from '../scene/types';
 import { SpineParticles, resolveSpineParticlePlans } from '../viz/SpineParticles';
-import type { BeamTarget } from '../viz/SatelliteBeams';
 import { satelliteGlyph } from '../viz/glyphs';
 
 interface Vc3bFixtureInput {

@@ -4,7 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import { frequencyReuseColor, resolveBeamVisualEncoding, satelliteTint, satelliteTintIndex, type BeamCodeRole } from '../constants/beamRoleTokens';
-import { BeamCalloutContent, SatelliteBeams, type BeamTarget } from '../viz/SatelliteBeams';
+import type { BeamTarget } from '../scene/beamTargetTypes';
+import { BeamCalloutContent, SatelliteBeams } from '../viz/SatelliteBeams';
 import { satelliteGlyph } from '../viz/glyphs';
 
 type Vc1cFixtureRole = 'serving' | 'pending' | 'approach' | 'recentSource' | 'otherActive';

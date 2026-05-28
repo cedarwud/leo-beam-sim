@@ -36,3 +36,13 @@ Thumbs.db
 # Accidental drops from external apps (LINE / WeChat / iMessage screenshot share)
 S__*.jpg
 S__*.jpeg
+
+# Browser automation runtime artifacts (Playwright CLI / MCP)
+.playwright-cli/
+.playwright-mcp/
+
+# Local QA output (screenshots, browser runs)
+output/
+
+# Standalone screenshots dropped into repo root
+modqn-*.png

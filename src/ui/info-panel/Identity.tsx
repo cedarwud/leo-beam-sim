@@ -1,4 +1,5 @@
-import { glyphSymbolForKind, type GlyphKind } from '../../viz/glyphs';
+import type { GlyphKind } from '../../contracts/glyphTypes';
+import { glyphSymbolForKind } from '../../viz/glyphs';
 
 function InlineSatelliteGlyph({ glyph }: { glyph: GlyphKind }) {
   return (

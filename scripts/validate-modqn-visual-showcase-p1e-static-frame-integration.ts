@@ -39,17 +39,19 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import { loadShowcaseArtifact } from '../src/showcase/loadShowcaseArtifact';
 import { showcaseArtifactToScene } from '../src/showcase/showcaseArtifactToScene';
 import { ShowcaseReplayController } from '../src/showcase/ShowcaseReplayController';
 import { decideClaimBoundaryBanner } from '../src/ui/ClaimBoundaryBanner';
+import {
+  PINNED_VISUAL_SHOWCASE_ARTIFACT_SHA256,
+  loadValidatorVisualShowcaseArtifact,
+} from './visualShowcaseValidatorFixture';
 
-const TRIGGER_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
-const TRIGGER_SHA256 =
-  '0cfaf33e6b788e0722249dba12a7615275b0e3c6ee346662b2429b104ed383ef';
 const NTN_SIM_CORE_DIR = '/home/u24/papers/ntn-sim-core';
 
 function test(label: string, fn: () => void): void {
@@ -65,24 +67,40 @@ function test(label: string, fn: () => void): void {
 
 console.log('validate-modqn-visual-showcase-p1e-static-frame-integration');
 
-const raw = readFileSync(TRIGGER_PATH);
-const rawText = raw.toString('utf8');
+const { rawBytes: raw, rawText, source } = loadValidatorVisualShowcaseArtifact();
+console.log(`  artifact source: ${source.label}`);
 
-test('trigger artifact SHA-256 matches the SDD-pinned hash', () => {
+function withArtifactPath<T>(fn: (artifactPath: string) => T): T {
+  if (source.path) return fn(source.path);
+  const tmp = mkdtempSync(path.join(tmpdir(), 'visual-showcase-fixture-'));
+  try {
+    const outPath = path.join(tmp, 'visual-showcase-v1.json');
+    writeFileSync(outPath, rawText);
+    return fn(outPath);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+test('artifact SHA-256 matches pinned hash when the pinned trigger is available', () => {
   const hash = createHash('sha256').update(raw).digest('hex');
-  if (hash !== TRIGGER_SHA256) {
+  if (!source.isPinnedTrigger) {
+    assert.strictEqual(source.kind, 'synthetic');
+    return;
+  }
+  if (hash !== PINNED_VISUAL_SHOWCASE_ARTIFACT_SHA256) {
     throw new Error(
-      `trigger artifact hash drifted.\n  expected: ${TRIGGER_SHA256}\n  actual:   ${hash}\n  path:     ${TRIGGER_PATH}`,
+      `trigger artifact hash drifted.\n  expected: ${PINNED_VISUAL_SHOWCASE_ARTIFACT_SHA256}\n  actual:   ${hash}\n  path:     ${source.path}`,
     );
   }
 });
 
 test('ntn-sim-core validate:visual-showcase:artifact PASSes', () => {
-  const r = spawnSync(
-    'npm',
-    ['run', '--silent', 'validate:visual-showcase:artifact', '--', TRIGGER_PATH],
-    { cwd: NTN_SIM_CORE_DIR, encoding: 'utf8' },
-  );
+  const r = withArtifactPath((artifactPath) => spawnSync(
+      'npm',
+      ['run', '--silent', 'validate:visual-showcase:artifact', '--', artifactPath],
+      { cwd: NTN_SIM_CORE_DIR, encoding: 'utf8' },
+    ));
   if (r.status !== 0) {
     throw new Error(
       `ntn-sim-core validator failed (exit ${r.status}):\n${r.stdout}\n${r.stderr}`,

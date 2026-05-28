@@ -207,10 +207,16 @@ section('(e) TopologyTab toggle + testids', () => {
 });
 
 section('(f) modqn-demo bypass', () => {
-  const appSource = source('src/App.tsx');
+  const appRuntimeConfigSource = source('src/app/appRuntimeConfig.ts');
   const markup = renderTopologyTab(true, 'modqn-demo');
-  check(appSource.includes("enableUeTrails: appMode === 'sinr-experiment'"), 'App computes enableUeTrails from app mode');
-  check(appSource.includes(': false'), 'App modqn-demo branch forces enableUeTrails false');
+  check(
+    appRuntimeConfigSource.includes("enableUeTrails: input.appMode === 'sinr-experiment'"),
+    'appRuntimeConfig computes enableUeTrails from app mode',
+  );
+  check(
+    appRuntimeConfigSource.includes('trainingTopology.enableUeTrails === true'),
+    'appRuntimeConfig lets modqn-demo training truth drive trail runtime flag',
+  );
   for (const testId of trailTestIds) {
     check(!markup.includes(`data-testid="${testId}"`), `modqn-demo SSR omits ${testId}`);
   }

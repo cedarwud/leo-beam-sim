@@ -13,7 +13,7 @@ import {
   type CellCoverCandidate,
   type CellData,
 } from '../viz/EarthFixedCells';
-import type { BeamTarget } from '../viz/SatelliteBeams';
+import type { BeamTarget } from '../scene/beamTargetTypes';
 import { satelliteGlyph } from '../viz/glyphs';
 
 interface Vc3FixtureInput {

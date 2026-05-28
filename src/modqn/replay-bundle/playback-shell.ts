@@ -15,11 +15,14 @@ import {
 } from './replay-state';
 import type {
   ModqnBeamReference,
+  ModqnBeamState,
   ModqnHandoverEventKind,
   ModqnPolicyDiagnostics,
+  ModqnProducerPosition,
   ModqnRewardVector,
+  ModqnSatelliteState,
 } from './types';
-import type { RuntimeOmegaState } from '../../ui/useModqnHandoverState';
+import type { RuntimeOmegaState } from '../runtimeControls';
 import { reScalarize } from './rescalarize';
 
 export type ModqnReplayPlaybackStepKind = 'source-slot';
@@ -38,6 +41,8 @@ export interface ModqnReplayPlaybackFocusRow {
   readonly userIndex: number;
   readonly timeSec: number;
   readonly decisionTimeSec: number;
+  readonly userPosition?: ModqnProducerPosition;
+  readonly decisionUserPosition?: ModqnProducerPosition;
   readonly previousServing: ModqnBeamReference;
   readonly selectedServing: ModqnBeamReference;
   readonly producerSelectedServing?: ModqnBeamReference;
@@ -53,6 +58,12 @@ export interface ModqnReplayPlaybackFocusRow {
   readonly policyDiagnostics?: ModqnPolicyDiagnostics;
   readonly diagnosticsStatus: ModqnReplayPlaybackDiagnosticsStatus;
   readonly availableActionCount: number | null;
+  readonly visibilityMask?: readonly boolean[];
+  readonly actionValidityMask?: readonly boolean[];
+  readonly decisionVisibilityMask?: readonly boolean[];
+  readonly decisionActionValidityMask?: readonly boolean[];
+  readonly satelliteStates?: readonly ModqnSatelliteState[];
+  readonly beamStates?: readonly ModqnBeamState[];
 }
 
 export interface ModqnReplayPlaybackSlot {
@@ -410,6 +421,8 @@ export function createModqnReplayPlaybackShellModel(
           userIndex: focusRow.producerTruth.userIndex,
           timeSec: focusRow.producerTruth.timestamps.timeSec,
           decisionTimeSec: focusRow.producerTruth.timestamps.decisionTimeSec,
+          userPosition: focusRow.producerTruth.userPosition,
+          decisionUserPosition: focusRow.producerTruth.decisionUserPosition,
           previousServing: focusRow.producerTruth.previousServing,
           selectedServing: focusRow.producerTruth.selectedServing,
           handoverEventKind: focusRow.producerTruth.handoverEvent.kind,
@@ -420,6 +433,12 @@ export function createModqnReplayPlaybackShellModel(
             ? 'missing-from-producer'
             : 'present-from-producer',
           availableActionCount: focusRow.producerTruth.policyDiagnostics?.availableActionCount ?? null,
+          visibilityMask: focusRow.producerTruth.visibilityMask,
+          actionValidityMask: focusRow.producerTruth.actionValidityMask,
+          decisionVisibilityMask: focusRow.producerTruth.decisionVisibilityMask,
+          decisionActionValidityMask: focusRow.producerTruth.decisionActionValidityMask,
+          satelliteStates: focusRow.producerTruth.satelliteStates,
+          beamStates: focusRow.producerTruth.beamStates,
         },
       };
     }),

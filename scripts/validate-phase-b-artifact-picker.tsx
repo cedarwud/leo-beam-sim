@@ -7,6 +7,7 @@
 //   (c) ClaimBoundaryBanner renders user-trained chip only on rendered path
 //   (d) ModqnEvidenceTab renders user-trained header chip
 //   (e) App.tsx wires picker, load handler, and provenance state
+//   (f) Track-2 claim/truth UI uses manifest/run_metadata-derived fields
 //
 // Run: node --import tsx/esm scripts/validate-phase-b-artifact-picker.tsx
 
@@ -116,6 +117,10 @@ console.log('\n(b) ArtifactPicker source contract');
     'data-testid="artifact-picker"',
     'data-testid="artifact-picker-entry"',
     'data-testid="artifact-picker-user-trained-chip"',
+    'data-testid="artifact-picker-claim-mode-chip"',
+    'data-testid="artifact-picker-truth-row"',
+    'data-testid="artifact-picker-ablation-arm-card"',
+    'data-testid="artifact-picker-ablation-truth"',
     'data-testid="artifact-picker-load"',
     'data-testid="artifact-picker-empty"',
     'data-testid="artifact-picker-producer-empty"',
@@ -129,6 +134,10 @@ console.log('\n(b) ArtifactPicker source contract');
   assert(source.includes('getJobs('), 'ArtifactPicker polls getJobs');
   assert(source.includes('readSubmittedJobIds('), 'ArtifactPicker reads submitted job history');
   assert(source.includes('clearTimeout('), 'ArtifactPicker cleans up poll timeout');
+  assert(source.includes('claimModeFromManifest'), 'ArtifactPicker derives visible claimMode from manifest');
+  assert(source.includes('paperFaithfulStatusFromManifest'), 'ArtifactPicker renders paperFaithful manifest status');
+  assert(source.includes('seedTripletFromSources'), 'ArtifactPicker renders seed triplet truth from manifest/detail');
+  assert(source.includes('envAxesFromSources(detailsById[job.jobId], manifestsById[job.jobId])'), 'ArtifactPicker filter options use manifest envAxes as well as job detail');
 }
 
 // ---------------------------------------------------------------------------
@@ -196,7 +205,7 @@ console.log('\n(e) App.tsx artifact picker wiring');
 {
   const source = fs.readFileSync('src/App.tsx', 'utf8');
   assert(source.includes('import { ArtifactPicker }'), 'App.tsx imports ArtifactPicker');
-  assert(source.includes('import { fetchArtifactManifest }'), 'App.tsx imports fetchArtifactManifest');
+  assert(source.includes('fetchTrainingServiceManifest'), 'App.tsx imports fetchTrainingServiceManifest');
   assert(source.includes('useState<string | null>(null)'), 'App.tsx tracks selectedUserTrainedJobId');
   assert(
     source.includes("useState<'paper-faithful' | 'user-trained'>('paper-faithful')"),
@@ -211,6 +220,38 @@ console.log('\n(e) App.tsx artifact picker wiring');
   assert(
     countOccurrences(source, 'bundleProvenanceKind={bundleProvenanceKind}') >= 2,
     'App.tsx passes bundleProvenanceKind to banner and evidence tab',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// (f) Track-2 claim/truth display contract
+// ---------------------------------------------------------------------------
+console.log('\n(f) Track-2 claim/truth display contract');
+{
+  const source = fs.readFileSync('src/ui/modqn-training/ArtifactPicker.tsx', 'utf8');
+  assert(
+    source.includes("manifest.claimMode === 'pre-registered-evaluation'"),
+    'ArtifactPicker preserves pre-registered-evaluation claimMode label',
+  );
+  assert(
+    source.includes("manifest.claimMode === 'exploration' || manifest.claimMode === undefined"),
+    'ArtifactPicker defaults missing manifest claimMode to exploration',
+  );
+  assert(
+    source.includes("manifest.paperFaithful === false ? 'paperFaithful false' : 'paperFaithful unexpected'"),
+    'ArtifactPicker makes paperFaithful=false visible and flags unexpected truth',
+  );
+  assert(
+    source.includes('data-claim-mode={claimMode}'),
+    'Same-env ablation cards expose claim mode as data attribute',
+  );
+  assert(
+    source.includes('data-replay-status={replayStatusFromManifest(manifest)}'),
+    'Same-env ablation cards expose replay presence as data attribute',
+  );
+  assert(
+    source.includes('formatSeedTriplet(seedTriplet)'),
+    'ArtifactPicker displays seedTriplet in entry and ablation truth rows',
   );
 }
 

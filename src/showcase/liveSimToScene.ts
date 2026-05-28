@@ -176,8 +176,9 @@ export function liveSimToScene(
 
   // R6 binding: live N variable, primary preserved at index 0 (live-ue-0).
   // F-S2 secondaries carry SINR against the primary serving beam when available.
-  const liveUePositions = sim.perUePositions.length > 0
-    ? sim.perUePositions
+  const simUePositions = sim.perUePositions ?? [];
+  const liveUePositions = simUePositions.length > 0
+    ? simUePositions
     : [{
       id: liveUeId,
       groundX: sim.ueGroundX,

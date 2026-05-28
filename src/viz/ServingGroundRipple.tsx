@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BEAM_ROLE_TOKENS } from '../constants/beamRoleTokens';
-import type { BeamTarget } from './SatelliteBeams';
+import type { BeamTarget } from '../scene/beamTargetTypes';
 
 export type GroundRippleRole = 'serving' | 'pending';
 

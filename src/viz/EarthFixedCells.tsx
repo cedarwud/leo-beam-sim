@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Text, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { BEAM_ROLE_TOKENS, frequencyReuseColor } from '../constants/beamRoleTokens';
-import type { BeamTarget } from './SatelliteBeams';
+import type { BeamTarget } from '../scene/beamTargetTypes';
 
 export type CellCoverRole = 'serving' | 'pending' | 'approach' | 'recentSource' | 'otherActive';
 

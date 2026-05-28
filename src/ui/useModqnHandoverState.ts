@@ -49,14 +49,11 @@
 // acceptance), §9.3 (S2 acceptance), §9.4 (S3 acceptance), §12.8 (paper
 // default ω).
 import {
-  createContext,
-  createElement,
   useCallback,
   useContext,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from 'react';
 import {
   MODQN_BASELINE_BEAMS_PER_SATELLITE,
@@ -78,6 +75,22 @@ import {
   type ModqnPolicyDiagnostics,
   type ModqnReplayBundleSchemaVersion,
 } from '../modqn/replay-bundle/types';
+import {
+  DEFAULT_RUNTIME_HANDOVER_MODE,
+  HANDOVER_MODE_STORAGE_KEY,
+  MODQN_PAPER_FAITHFUL_OMEGA,
+  persistHandoverMode,
+  readPersistedHandoverMode,
+  type RuntimeHandoverMode,
+  type RuntimeOmegaState,
+} from '../modqn/runtimeControls';
+import {
+  DEFAULT_MODQN_HANDOVER_MODE_CONTEXT,
+  ModqnEnvelopeContext,
+  ModqnEnvelopeProvider,
+  ModqnHandoverModeContext,
+  ModqnHandoverModeProvider,
+} from '../modqn/runtimeContext';
 
 // Three modes from SDD §3.2. P1c OQ-7 (CLOSED): the former `'modqn-replay'`
 // is renamed `'decision-overlay-on-live-sinr'` to disambiguate it from the
@@ -90,75 +103,25 @@ import {
 // lint-clean. PR-7 (this commit) shrinks the union back by dropping the
 // legacy `'modqn-replay'` literal — every functional callsite is now
 // renamed (per visual-showcase SDD §10 OQ-7 housekeeping).
-export type RuntimeHandoverMode =
-  | 'sinr-offset'
-  | 'decision-overlay-on-live-sinr'
-  | 'omega-heuristic';
-
-export const DEFAULT_RUNTIME_HANDOVER_MODE: RuntimeHandoverMode = 'sinr-offset';
-
-// localStorage key for mode persistence. Only sinr-offset and the renamed
-// decision-overlay-on-live-sinr are persisted. omega-heuristic is NEVER
-// written (SDD §5.2, §9.4 item 8).
-export const HANDOVER_MODE_STORAGE_KEY = 'leo-beam-sim.handover-mode.v1';
-
-/** Legacy value stored before OQ-7 rename. Migrated in-place on read. */
-const LEGACY_MODQN_REPLAY_VALUE = 'modqn-replay';
-
-const PERSISTABLE_MODES = new Set<RuntimeHandoverMode>([
-  'sinr-offset',
-  'decision-overlay-on-live-sinr',
-]);
-
-/**
- * Read the persisted handover mode, migrating the legacy `'modqn-replay'`
- * value to `'decision-overlay-on-live-sinr'` on the fly (one-shot — the
- * migrated value is written back to localStorage so subsequent reads see the
- * new key).
- *
- * Migration semantics (OQ-7 binding): a stored value of `'modqn-replay'` is
- * accepted as `'decision-overlay-on-live-sinr'`; the localStorage entry is
- * rewritten in place; no user state is lost.
- */
-export function readPersistedHandoverMode(): RuntimeHandoverMode {
-  if (typeof window === 'undefined') return DEFAULT_RUNTIME_HANDOVER_MODE;
-  try {
-    const stored = window.localStorage.getItem(HANDOVER_MODE_STORAGE_KEY);
-    if (stored === 'sinr-offset' || stored === 'decision-overlay-on-live-sinr') return stored;
-    if (stored === LEGACY_MODQN_REPLAY_VALUE) {
-      // OQ-7 one-shot migration: rewrite to new key and return new value.
-      try {
-        window.localStorage.setItem(
-          HANDOVER_MODE_STORAGE_KEY,
-          'decision-overlay-on-live-sinr',
-        );
-      } catch {
-        // Storage unavailable; still return the migrated value.
-      }
-      return 'decision-overlay-on-live-sinr';
-    }
-  } catch {
-    // Storage unavailable in private/embedded contexts.
-  }
-  return DEFAULT_RUNTIME_HANDOVER_MODE;
-}
-
-export function persistHandoverMode(mode: RuntimeHandoverMode): void {
-  if (typeof window === 'undefined') return;
-  if (!PERSISTABLE_MODES.has(mode)) return; // never persist omega-heuristic
-  try {
-    window.localStorage.setItem(HANDOVER_MODE_STORAGE_KEY, mode);
-  } catch {
-    // Storage unavailable.
-  }
-}
-
-// MODQN paper-faithful training-time ω, from SDD §12.8.
-export const MODQN_PAPER_FAITHFUL_OMEGA = Object.freeze({
-  throughput: 0.4,
-  handover: 0.3,
-  loadBalance: 0.3,
-});
+export {
+  DEFAULT_RUNTIME_HANDOVER_MODE,
+  HANDOVER_MODE_STORAGE_KEY,
+  MODQN_PAPER_FAITHFUL_OMEGA,
+  persistHandoverMode,
+  readPersistedHandoverMode,
+  type RuntimeHandoverMode,
+  type RuntimeOmegaState,
+};
+export {
+  ModqnEnvelopeContext,
+  ModqnEnvelopeProvider,
+  ModqnHandoverModeContext,
+  ModqnHandoverModeProvider,
+  type ModqnEnvelopeContextValue,
+  type ModqnEnvelopeProviderProps,
+  type ModqnHandoverModeContextValue,
+  type ModqnHandoverModeProviderProps,
+} from '../modqn/runtimeContext';
 
 // `omegaSource` is a 3-value lineage tag per the S1 prompt contract.
 // SDD §5.2 sketches a 4-value enum that further splits the user-applied state
@@ -168,12 +131,6 @@ export type RuntimeOmegaSource =
   | 'bundle'
   | 'user-applied'
   | 'user-applied-not-paper';
-
-export interface RuntimeOmegaState {
-  readonly throughput: number;
-  readonly handover: number;
-  readonly loadBalance: number;
-}
 
 // `snapshotOrigin` is a S2 marker that the validator uses to prove the hook's
 // `bundlePolicyDiagnostics` flowed through the runtime envelope path rather
@@ -221,106 +178,6 @@ export interface UseModqnHandoverState {
    * mode change or sim reset. (SDD §9.4 acceptance criterion 6 / §10 row 5.)
    */
   readonly rescalarizeFallbackCount: number;
-}
-
-// S3: Context that carries the lifted mode state from App.tsx into the engine
-// (useSimulation) and diagnostics (DiagnosticsDrawer) layers. Providing this
-// context is optional — the hook falls back to its own local state if absent.
-//
-// `omegaActive` is included so useSimulation can read the latest user ω without
-// coupling to the hook's internal useState (which lives in a different React
-// subtree from the Canvas).
-export interface ModqnHandoverModeContextValue {
-  readonly mode: RuntimeHandoverMode;
-  readonly setMode: (next: RuntimeHandoverMode) => void;
-  readonly omegaActive: RuntimeOmegaState;
-  readonly onOmegaActiveChange: (next: RuntimeOmegaState) => void;
-  readonly rescalarizeFallbackCount: number;
-  readonly incrementRescalarizeFallback: () => void;
-}
-
-const DEFAULT_MODQN_HANDOVER_MODE_CONTEXT: ModqnHandoverModeContextValue = {
-  mode: DEFAULT_RUNTIME_HANDOVER_MODE,
-  setMode: () => { /* no-op for headless/test mounts that do not provide context */ },
-  omegaActive: MODQN_PAPER_FAITHFUL_OMEGA,
-  onOmegaActiveChange: () => { /* no-op */ },
-  rescalarizeFallbackCount: 0,
-  incrementRescalarizeFallback: () => { /* no-op */ },
-};
-
-export const ModqnHandoverModeContext = createContext<ModqnHandoverModeContextValue>(
-  DEFAULT_MODQN_HANDOVER_MODE_CONTEXT,
-);
-
-export interface ModqnHandoverModeProviderProps {
-  readonly mode: RuntimeHandoverMode;
-  readonly setMode: (next: RuntimeHandoverMode) => void;
-  readonly omegaActive: RuntimeOmegaState;
-  readonly onOmegaActiveChange: (next: RuntimeOmegaState) => void;
-  readonly rescalarizeFallbackCount: number;
-  readonly incrementRescalarizeFallback: () => void;
-  readonly children: ReactNode;
-}
-
-export function ModqnHandoverModeProvider({
-  mode,
-  setMode,
-  omegaActive,
-  onOmegaActiveChange,
-  rescalarizeFallbackCount,
-  incrementRescalarizeFallback,
-  children,
-}: ModqnHandoverModeProviderProps) {
-  const value = useMemo(
-    () => ({
-      mode,
-      setMode,
-      omegaActive,
-      onOmegaActiveChange,
-      rescalarizeFallbackCount,
-      incrementRescalarizeFallback,
-    }),
-    [mode, setMode, omegaActive, onOmegaActiveChange, rescalarizeFallbackCount, incrementRescalarizeFallback],
-  );
-  return createElement(ModqnHandoverModeContext.Provider, { value }, children);
-}
-
-export interface ModqnEnvelopeContextValue {
-  readonly envelope: ModqnReplayEnvelope | null;
-  readonly slotOffset: number;
-}
-
-const DEFAULT_ENVELOPE_CONTEXT: ModqnEnvelopeContextValue = {
-  envelope: null,
-  slotOffset: 0,
-};
-
-export const ModqnEnvelopeContext = createContext<ModqnEnvelopeContextValue>(
-  DEFAULT_ENVELOPE_CONTEXT,
-);
-
-export interface ModqnEnvelopeProviderProps {
-  readonly envelope: ModqnReplayEnvelope | null;
-  readonly slotOffset?: number;
-  readonly children: ReactNode;
-}
-
-export function ModqnEnvelopeProvider({
-  envelope,
-  slotOffset = 0,
-  children,
-}: ModqnEnvelopeProviderProps) {
-  const value = useMemo(
-    () => ({ envelope, slotOffset }),
-    [envelope, slotOffset],
-  );
-  // Use createElement to keep this module .ts (the S1 validator imports it
-  // from `useModqnHandoverState.ts`; renaming would break that import).
-  return createElement(
-    ModqnEnvelopeContext.Provider,
-    { value },
-    children,
-  );
 }
 
 function clamp01(value: number): number {

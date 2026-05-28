@@ -213,16 +213,17 @@ section('(b) behavioral params change reset/evidence keys and runtime motion', (
 section('(c) runtimeFrameStep + useSimulation + App + MainScene threading grep', () => {
   const runtimeSource = source('src/scene/runtimeFrameStep.ts');
   const useSimulationSource = source('src/scene/useSimulation.ts');
-  const appSource = source('src/App.tsx');
+  const appPersistenceSource = source('src/app/appPersistence.ts');
+  const appRuntimeConfigSource = source('src/app/appRuntimeConfig.ts');
   const mainSceneSource = source('src/scene/MainScene.tsx');
   check(runtimeSource.includes('ueMobilityParams?: UeMobilityParams'), 'runtimeFrameStep input accepts ueMobilityParams');
   check(runtimeSource.includes('ueMobilityParams = DEFAULT_UE_MOBILITY_PARAMS'), 'runtimeFrameStep falls back to default params');
   check(runtimeSource.includes('ueMobilityParams,'), 'runtimeFrameStep forwards ueMobilityParams into applyPerTickUeMobility');
   check(useSimulationSource.includes('ueMobilityParams: UeMobilityParams = DEFAULT_UE_MOBILITY_PARAMS'), 'useSimulation accepts ueMobilityParams with default fallback');
-  check(useSimulationSource.includes('createMobilityStates(effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams, 42)'), 'useSimulation creates mobility states from runtime params');
+  check(useSimulationSource.includes('createMobilityStates(effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams, ueDeterministicSeed)'), 'useSimulation creates mobility states from runtime params and profile seed');
   check(countOccurrences(useSimulationSource, 'ueMobilityParams: effectiveUeMobilityParams') >= 2, 'useSimulation passes effective params to both stepRuntimeFrame calls');
-  check(appSource.includes('record.ueMobilityParams'), 'App reads persisted ueMobilityParams');
-  check(appSource.includes('sceneTopology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS'), 'App threads topology params with default fallback');
+  check(appPersistenceSource.includes('record.ueMobilityParams'), 'appPersistence reads persisted ueMobilityParams');
+  check(appRuntimeConfigSource.includes('input.sceneTopology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS'), 'appRuntimeConfig threads topology params with default fallback');
   check(mainSceneSource.includes('runtime.ueMobilityParams'), 'MainScene threads runtime.ueMobilityParams into useSimulation');
 });
 
@@ -268,7 +269,7 @@ section('(e) conditional rendering', () => {
   check(topologyCompact.includes('min={1}max={20}step={1}'), 'grid spacing slider range is 1-20 step 1');
 });
 
-section('(f) modqn-demo bypass', () => {
+section('(f) modqn-demo topology UI bypass + Track-2 truth drive', () => {
   const markup = renderTopologyTab({
     ueMobilityMode: 'manhattan',
     ueMobilityParams: { speedKmPerSec: 31, waypointCount: 7, manhattanGridSpacingKm: 13 },
@@ -285,14 +286,14 @@ section('(f) modqn-demo bypass', () => {
   ]) {
     check(!markup.includes(testId), `modqn-demo SSR omits UE mobility testid ${testId}`);
   }
-  const appSource = source('src/App.tsx');
+  const appRuntimeConfigSource = source('src/app/appRuntimeConfig.ts');
   check(
-    /ueMobilityMode:\s*appMode === 'sinr-experiment'\s*\?\s*sceneTopology\.ueMobilityMode \?\? 'static'\s*:\s*'static'/m.test(appSource),
-    'App forces modqn-demo ueMobilityMode to static',
+    /ueMobilityMode:\s*input\.appMode === 'sinr-experiment'\s*\?\s*input\.sceneTopology\.ueMobilityMode \?\? 'static'\s*:\s*trainingTopology\.ueMobilityMode \?\? 'static'/m.test(appRuntimeConfigSource),
+    'appRuntimeConfig lets modqn-demo user-trained artifacts drive ueMobilityMode from training truth',
   );
   check(
-    /ueMobilityParams:\s*appMode === 'sinr-experiment'\s*\?\s*sceneTopology\.ueMobilityParams \?\? DEFAULT_UE_MOBILITY_PARAMS\s*:\s*DEFAULT_UE_MOBILITY_PARAMS/m.test(appSource),
-    'App forces modqn-demo ueMobilityParams to defaults',
+    /ueMobilityParams:\s*input\.appMode === 'sinr-experiment'\s*\?\s*input\.sceneTopology\.ueMobilityParams \?\? DEFAULT_UE_MOBILITY_PARAMS\s*:\s*trainingTopology\.ueMobilityParams \?\? DEFAULT_UE_MOBILITY_PARAMS/m.test(appRuntimeConfigSource),
+    'appRuntimeConfig lets modqn-demo user-trained artifacts drive ueMobilityParams from training truth',
   );
 });
 

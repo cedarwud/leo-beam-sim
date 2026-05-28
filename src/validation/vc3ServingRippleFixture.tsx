@@ -11,7 +11,7 @@ import {
   resolveGroundRippleEnvelope,
   resolveGroundRippleTargets,
 } from '../viz/ServingGroundRipple';
-import type { BeamTarget } from '../viz/SatelliteBeams';
+import type { BeamTarget } from '../scene/beamTargetTypes';
 
 interface Vc3dFixtureInput {
   servingEnabled?: boolean;

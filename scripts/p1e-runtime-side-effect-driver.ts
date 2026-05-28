@@ -8,19 +8,12 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 
-import { loadShowcaseArtifact } from '../src/showcase/loadShowcaseArtifact';
 import { showcaseArtifactToScene } from '../src/showcase/showcaseArtifactToScene';
 import { ShowcaseReplayController } from '../src/showcase/ShowcaseReplayController';
+import { loadValidatorVisualShowcaseArtifact } from './visualShowcaseValidatorFixture';
 
-const TRIGGER_ARTIFACT_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
-
-const raw = readFileSync(TRIGGER_ARTIFACT_PATH, 'utf8');
-const json = JSON.parse(raw) as unknown;
-
-const artifact = loadShowcaseArtifact(json);
+const { artifact } = loadValidatorVisualShowcaseArtifact();
 assert.strictEqual(artifact.schemaVersion, 'visual-showcase-v1');
 assert.strictEqual(artifact.timeline.length, 61);
 

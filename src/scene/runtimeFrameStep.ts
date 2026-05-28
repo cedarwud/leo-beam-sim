@@ -9,10 +9,9 @@ import { computeTr38811SlantRangeKm } from '../engine/signal/slant-range';
 import { HandoverManager } from '../engine/handover/handover-manager';
 import type { ServingState } from '../engine/handover/types';
 import { generateUePositions } from '../engine/ue/multiUeState';
-import type { UeDistributionMode } from '../engine/ue/multiUeState';
+import type { UeDistributionMode, UePrimaryAnchorMode } from '../engine/ue/multiUeState';
 import {
   DEFAULT_UE_MOBILITY_PARAMS,
-  mobilityStep,
   type UeMobilityMode,
   type UeMobilityParams,
   type UePerMobilityState,
@@ -47,12 +46,22 @@ import {
   resolveWaypointObserver,
   type UeObserverPosition,
 } from './trajectoryFrame';
+import {
+  applyPerTickUeMobility,
+  fillPerUeServingSinr as fillPerUeServingSinrImpl,
+  resolveProfileRectangleAreaKm,
+  stepSecondaryUeHandovers as stepSecondaryUeHandoversImpl,
+  type FillPerUeServingSinrParams,
+  type RuntimePerUeSinrPosition,
+  type StepSecondaryUeHandoversParams,
+} from './runtimeUeFrame';
 
 export {
   createTrajectoryCache,
   getTrajectoryMaxTimeSec,
   interpolateVisibleSats,
 } from './trajectoryFrame';
+export type { RuntimePerUeSinrPosition } from './runtimeUeFrame';
 
 // These constants are duplicated with trajectoryFrame.ts so the runtime
 // baseline validator regex can match the literal `export const` declarations.
@@ -115,20 +124,6 @@ interface LinkContext {
   trackedAssignments: ActiveBeamAssignment[];
 }
 
-export interface RuntimePerUeSinrPosition {
-  id: string;
-  groundX: number;
-  groundZ: number;
-  eastKm: number;
-  northKm: number;
-  sinrDb: number | null;
-  servingSatId: string | null;
-  servingBeamId: number | null;
-  pendingTargetSatId: string | null;
-  pendingTargetBeamId: number | null;
-  triggerProgressSec: number;
-}
-
 export interface RuntimeFrameStepInput {
   profile: Profile;
   replay: ReplayConfig;
@@ -136,9 +131,12 @@ export interface RuntimeFrameStepInput {
   paused: boolean;
   deltaSec: number;
   beamFootprintMultiplier?: number;
+  mapKmPerWorldUnit?: number;
   ueCount?: number;
   ueDistributionMode?: UeDistributionMode;
+  uePrimaryAnchorMode?: UePrimaryAnchorMode;
   ueDistributionScope?: UeDistributionScope;
+  ueDistributionRadiusKm?: number;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   mobilityStates?: UePerMobilityState[];
@@ -453,181 +451,14 @@ function buildLinkContext(
   };
 }
 
-export function fillPerUeServingSinr(params: {
-  perUePositions: RuntimePerUeSinrPosition[];
-  primaryServingSinrDb: number;
-  primaryServingSatId: string | null;
-  primaryServingBeamId: number | null;
-  primaryLatDeg: number;
-  primaryLonDeg: number;
-  primaryEastKm: number;
-  primaryNorthKm: number;
-  snapshots: SatelliteSnapshot[];
-  linkBudgetOptions: Parameters<typeof computeLinkBudget>[2];
-}): RuntimePerUeSinrPosition[] {
-  const {
-    perUePositions,
-    primaryServingSinrDb,
-    primaryServingSatId,
-    primaryServingBeamId,
-    primaryLatDeg,
-    primaryLonDeg,
-    primaryEastKm,
-    primaryNorthKm,
-    snapshots,
-    linkBudgetOptions,
-  } = params;
-
-  if (perUePositions.length === 0) return perUePositions;
-  perUePositions[0].sinrDb = primaryServingSinrDb;
-
-  if (primaryServingSatId === null || primaryServingBeamId === null) {
-    for (let i = 1; i < perUePositions.length; i += 1) {
-      perUePositions[i].sinrDb = null;
-    }
-    return perUePositions;
-  }
-
-  const cosPrimaryLat = Math.cos((primaryLatDeg * Math.PI) / 180);
-  const lonKmPerDeg = EARTH_KM_PER_DEG * Math.max(Math.abs(cosPrimaryLat), 1e-6);
-
-  for (let i = 1; i < perUePositions.length; i += 1) {
-    const ueSecondary = perUePositions[i];
-    const deltaEastKm = ueSecondary.eastKm - primaryEastKm;
-    const deltaNorthKm = ueSecondary.northKm - primaryNorthKm;
-    const secondarySamples = computeLinkBudget(
-      {
-        latDeg: primaryLatDeg + deltaNorthKm / EARTH_KM_PER_DEG,
-        lonDeg: primaryLonDeg + deltaEastKm / lonKmPerDeg,
-        offsetEastKm: deltaEastKm,
-        offsetNorthKm: deltaNorthKm,
-      },
-      snapshots,
-      linkBudgetOptions,
-    );
-    const matchingSample = secondarySamples.find(
-      sample => sample.satId === primaryServingSatId && sample.beamId === primaryServingBeamId,
-    );
-    ueSecondary.sinrDb = matchingSample?.sinrDb ?? null;
-  }
-
-  return perUePositions;
+export function fillPerUeServingSinr(params: FillPerUeServingSinrParams): RuntimePerUeSinrPosition[] {
+  return fillPerUeServingSinrImpl(params);
 }
 
-export function stepSecondaryUeHandovers(params: {
-  perUePositions: RuntimePerUeSinrPosition[];
-  secondaryHoManagers: readonly HandoverManager[];
-  primaryLatDeg: number;
-  primaryLonDeg: number;
-  primaryEastKm: number;
-  primaryNorthKm: number;
-  snapshots: SatelliteSnapshot[];
-  linkBudgetOptions: Parameters<typeof computeLinkBudget>[2];
-  dtSec: number;
-  simTimeMs: number;
-}): RuntimePerUeSinrPosition[] {
-  const {
-    perUePositions,
-    secondaryHoManagers,
-    primaryLatDeg,
-    primaryLonDeg,
-    primaryEastKm,
-    primaryNorthKm,
-    snapshots,
-    linkBudgetOptions,
-    dtSec,
-    simTimeMs,
-  } = params;
-
-  if (perUePositions.length <= 1 || secondaryHoManagers.length === 0) return perUePositions;
-
-  const cosPrimaryLat = Math.cos((primaryLatDeg * Math.PI) / 180);
-  const lonKmPerDeg = EARTH_KM_PER_DEG * Math.max(Math.abs(cosPrimaryLat), 1e-6);
-
-  for (let i = 1; i < perUePositions.length; i += 1) {
-    const manager = secondaryHoManagers[i - 1];
-    if (!manager) continue;
-
-    const ueSecondary = perUePositions[i];
-    const deltaEastKm = ueSecondary.eastKm - primaryEastKm;
-    const deltaNorthKm = ueSecondary.northKm - primaryNorthKm;
-    const secondarySamples = computeLinkBudget(
-      {
-        latDeg: primaryLatDeg + deltaNorthKm / EARTH_KM_PER_DEG,
-        lonDeg: primaryLonDeg + deltaEastKm / lonKmPerDeg,
-        offsetEastKm: deltaEastKm,
-        offsetNorthKm: deltaNorthKm,
-      },
-      snapshots,
-      linkBudgetOptions,
-    );
-
-    if (manager.state.satId && !secondarySamples.some(sample => sample.satId === manager.state.satId)) {
-      manager.clearServing();
-    }
-
-    manager.update(secondarySamples, dtSec, simTimeMs);
-    ueSecondary.sinrDb = manager.state.sinrDb;
-    ueSecondary.servingSatId = manager.state.satId;
-    ueSecondary.servingBeamId = manager.state.beamId;
-    ueSecondary.pendingTargetSatId = manager.state.pendingTarget?.satId ?? null;
-    ueSecondary.pendingTargetBeamId = manager.state.pendingTarget?.beamId ?? null;
-    ueSecondary.triggerProgressSec = manager.state.pendingTarget ? manager.state.triggerTimeSec : 0;
-  }
-
-  return perUePositions;
-}
-
-function applyPerTickUeMobility(params: {
-  perUePositions: RuntimePerUeSinrPosition[];
-  mobilityStates: UePerMobilityState[];
-  ueMobilityMode: UeMobilityMode;
-  ueMobilityParams: UeMobilityParams;
-  deltaSec: number;
-  primaryFootprintRadiusKm: number;
-  ueWorldScale: number;
-}): RuntimePerUeSinrPosition[] {
-  const {
-    perUePositions,
-    mobilityStates,
-    ueMobilityMode,
-    ueMobilityParams,
-    deltaSec,
-    primaryFootprintRadiusKm,
-    ueWorldScale,
-  } = params;
-  if (ueMobilityMode === 'static' || perUePositions.length <= 1) return perUePositions;
-
-  const primary = perUePositions[0];
-  for (let i = 1; i < perUePositions.length; i += 1) {
-    const previous = perUePositions[i];
-    const storedState = mobilityStates[i];
-    if (!storedState) continue;
-    const currentPosition = storedState.currentPosition ?? previous;
-    const next = mobilityStep(
-      currentPosition,
-      {
-        ...storedState,
-        originEastKm: primary.eastKm,
-        originNorthKm: primary.northKm,
-        ueWorldScale,
-      },
-      ueMobilityMode,
-      ueMobilityParams,
-      deltaSec,
-      primaryFootprintRadiusKm,
-    );
-    mobilityStates[i] = next.state;
-    perUePositions[i] = {
-      ...previous,
-      groundX: next.position.groundX,
-      groundZ: next.position.groundZ,
-      eastKm: next.position.eastKm,
-      northKm: next.position.northKm,
-    };
-  }
-
-  return perUePositions;
+export function stepSecondaryUeHandovers(
+  params: StepSecondaryUeHandoversParams,
+): RuntimePerUeSinrPosition[] {
+  return stepSecondaryUeHandoversImpl(params);
 }
 
 export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStepOutput {
@@ -640,9 +471,12 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     paused,
     deltaSec,
     beamFootprintMultiplier: inputBeamFootprintMultiplier,
+    mapKmPerWorldUnit,
     ueCount: inputUeCount,
     ueDistributionMode = 'random',
+    uePrimaryAnchorMode = 'observer',
     ueDistributionScope = 'beam-footprint',
+    ueDistributionRadiusKm: inputUeDistributionRadiusKm,
     ueMobilityMode = 'static',
     ueMobilityParams = DEFAULT_UE_MOBILITY_PARAMS,
     mobilityStates = [],
@@ -741,22 +575,37 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   const primaryGeometry = primaryShell
     ? computeBeamGeometry(primaryShell.altitudeKm, profile.antenna.beamwidth3dBRad)
     : { footprintRadiusKm: 1, spacingKm: 1 };
-  const ueWorldScale = primaryGeometry.footprintRadiusKm > 0
+  const mapWorldScale = mapKmPerWorldUnit !== undefined && Number.isFinite(mapKmPerWorldUnit) && mapKmPerWorldUnit > 0
+    ? 1 / mapKmPerWorldUnit
+    : null;
+  const ueWorldScale = mapWorldScale ?? (primaryGeometry.footprintRadiusKm > 0
     ? (FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier) / primaryGeometry.footprintRadiusKm
-    : 1;
-  const ueDistributionRadiusKm = resolveUeDistributionRadiusKm(
+    : 1);
+  const explicitUeDistributionRadiusKm = typeof inputUeDistributionRadiusKm === 'number'
+    && Number.isFinite(inputUeDistributionRadiusKm)
+    && inputUeDistributionRadiusKm > 0
+    ? inputUeDistributionRadiusKm
+    : null;
+  const ueDistributionRadiusKm = explicitUeDistributionRadiusKm ?? resolveUeDistributionRadiusKm(
     ueDistributionScope,
     primaryShell?.id,
     beamLayoutsByShellId,
     primaryGeometry.footprintRadiusKm,
   );
+  const rectangleAreaKm = resolveProfileRectangleAreaKm(profile);
   const perUePositions: RuntimePerUeSinrPosition[] = generateUePositions({
     ueCount,
     primaryEastKm: ueEastKm,
     primaryNorthKm: ueNorthKm,
     primaryFootprintRadiusKm: ueDistributionRadiusKm,
     ueWorldScale,
+    // Source: modqn-paper-reproduction/configs/modqn-paper-baseline.resolved-template.yaml
+    // resolved_assumptions.seed_and_rng_policy.value.mobility_seed = 7
+    // (ASSUME-MODQN-REP-018); profile surfaces it for deterministic playback.
+    seed: profile.ueDistribution?.seed,
+    rectangleAreaKm,
     mode: ueDistributionMode,
+    primaryAnchorMode: uePrimaryAnchorMode,
   }).map(position => ({
     ...position,
     sinrDb: null,

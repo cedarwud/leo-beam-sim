@@ -4,7 +4,7 @@ import { MIN_VISIBLE_SINR_DB } from '../../constants/sinr';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import type { SimState } from '../../scene/types';
 import { formatBeamIdentity } from '../../utils/formatSatelliteLabel';
-import type { GlyphKind } from '../../viz/glyphs';
+import type { GlyphKind } from '../../contracts/glyphTypes';
 
 /**
  * SDD §3 Q6 audit-list helper: source-driven label string for the legend /

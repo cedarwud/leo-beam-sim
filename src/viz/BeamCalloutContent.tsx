@@ -6,8 +6,9 @@ import type { VisualShowcaseChannelMetricKind } from '../scene/visual-showcase-c
 import { channelMetricLabelForKind } from '../ui/info-panel/formatters';
 import { formatBeamIdentityLabel } from '../utils/beamFrequency';
 import { formatBeamIdentityByIndex, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
-import { glyphSymbolForKind, type GlyphKind } from './glyphs';
-import type { BeamTarget } from './SatelliteBeams';
+import type { GlyphKind } from '../contracts/glyphTypes';
+import type { BeamTarget } from '../scene/beamTargetTypes';
+import { glyphSymbolForKind } from './glyphs';
 
 /**
  * @deprecated Prefer {@link formatBeamChannelMetric} which carries the
@@ -58,7 +59,7 @@ export function BeamCalloutContent({
 }: {
   satelliteId: string | null;
   satelliteGlyph?: GlyphKind;
-  beam: Pick<BeamTarget, 'beamId' | 'frequencyIndex' | 'handoverRole'>;
+  beam: Pick<BeamTarget, 'beamId' | 'frequencyIndex' | 'handoverRole' | 'visualColorSource'>;
   style: Pick<
     BeamVisualEncoding,
     'operatorLabel' | 'slotStateLabel' | 'calloutMinWidth' | 'calloutGlowPx' | 'frequencySwatchColor'
@@ -68,7 +69,9 @@ export function BeamCalloutContent({
   isEmphasized: boolean;
 }) {
   const satelliteLabel = formatSatelliteLabel(satelliteId);
-  const beamTokenLabel = formatBeamIdentityLabel(beam.frequencyIndex, beam.beamId);
+  const beamTokenLabel = beam.visualColorSource === 'satellite'
+    ? `B${beam.beamId}`
+    : formatBeamIdentityLabel(beam.frequencyIndex, beam.beamId);
   const beamIdentity = formatBeamIdentityByIndex({
     satId: satelliteId,
     beamId: beam.beamId,
@@ -76,7 +79,12 @@ export function BeamCalloutContent({
   });
   const identityLine = style.operatorLabel ? `${style.operatorLabel} · ${beamTokenLabel}` : beamTokenLabel;
   const [frequencyToken, beamNumberToken] = beamTokenLabel.split(' ');
-  const showFrequencySwatch = Boolean(style.operatorLabel && frequencyToken && beamNumberToken);
+  const showFrequencySwatch = Boolean(
+    beam.visualColorSource !== 'satellite'
+      && style.operatorLabel
+      && frequencyToken
+      && beamNumberToken,
+  );
   const glyphSymbol = satelliteGlyph ? glyphSymbolForKind(satelliteGlyph) : null;
 
   return (

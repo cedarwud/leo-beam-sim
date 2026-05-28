@@ -365,6 +365,8 @@ export function resolveBeamVisualEncoding(input: {
   isServing: boolean;
   isScheduledActive: boolean;
   frequencyColor: string;
+  identityColor?: string;
+  preferIdentityColor?: boolean;
 }): BeamVisualEncoding {
   const eventVisualRole = beamVisualRoleForEventRole(input.role);
   const isPrimaryEvent = Boolean(eventVisualRole && (input.isPrimary || input.isServing));
@@ -379,8 +381,18 @@ export function resolveBeamVisualEncoding(input: {
     ? tokenForEventRole(input.role)
     : BEAM_ROLE_TOKENS[visualRole];
   const eventHue = visualRole !== 'otherActive' && visualRole !== 'inactive';
-  const color = eventHue ? base.color : input.isScheduledActive ? input.frequencyColor : BEAM_ROLE_TOKENS.inactive.color;
-  const frequencySwatchColor = input.isScheduledActive ? input.frequencyColor : BEAM_ROLE_TOKENS.inactive.color;
+  const identityColor = input.identityColor ?? input.frequencyColor;
+  const useIdentityColor = input.preferIdentityColor === true && input.isScheduledActive;
+  const color = useIdentityColor
+    ? identityColor
+    : eventHue
+      ? base.color
+      : input.isScheduledActive
+        ? input.frequencyColor
+        : BEAM_ROLE_TOKENS.inactive.color;
+  const frequencySwatchColor = input.isScheduledActive
+    ? (useIdentityColor ? identityColor : input.frequencyColor)
+    : BEAM_ROLE_TOKENS.inactive.color;
   const slotStateLabel = !input.isScheduledActive && isPrimaryEvent
     ? visualRole === 'serving' || visualRole === 'pending'
       ? 'SLOT OFF'

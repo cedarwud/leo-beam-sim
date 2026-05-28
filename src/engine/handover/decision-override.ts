@@ -18,7 +18,7 @@
 // flows through HandoverManager for trigger-time and ping-pong-guard timing
 // (SDD §3.4); only the argmax choice is overridden.
 import type { HandoverDecisionOverrideInput } from './handover-manager';
-import type { RuntimeOmegaState } from '../../ui/useModqnHandoverState';
+import type { RuntimeOmegaState } from '../../modqn/runtimeControls';
 
 export interface HeuristicScoreInput {
   /** User-chosen ω vector this tick (from the sidebar Apply state). */

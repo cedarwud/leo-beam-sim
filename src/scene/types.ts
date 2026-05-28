@@ -3,12 +3,15 @@ import type { BeamCodeRole } from '../constants/beamRoleTokens';
 import type { TopocentricPoint } from '../engine/orbit';
 import type { ActiveBeamAssignment, LinkSample } from '../engine/signal/types';
 import type { HandoverEvent, IntraSwitchPreview } from '../engine/handover/types';
-import type { BeamTarget } from '../viz/SatelliteBeams';
-import type { GlyphKind } from '../viz/glyphs';
 import type { BeamFrequencyIndexResolution } from '../utils/beamFrequency';
 import type { CoreLayoutFrequencyReuse, ReuseGroupSource } from './beam-layout';
-import type { UeDistributionMode } from '../engine/ue/multiUeState';
+import type { UeDistributionMode, UePrimaryAnchorMode } from '../engine/ue/multiUeState';
 import type { UeMobilityMode, UeMobilityParams } from '../engine/ue/multiUeMobility';
+import type { AppExperienceMode } from '../app/appExperienceMode';
+import type { GlyphKind } from '../contracts/glyphTypes';
+import type { VisualBeamTarget } from './beamTargetTypes';
+
+export type { BeamTarget, VisualBeamTarget } from './beamTargetTypes';
 
 export type PresentationMode = 'research-default' | 'candidate-rich' | 'demo-readability';
 export type BeamDensity = 'event-only' | 'event-plus-1' | 'all';
@@ -40,6 +43,7 @@ export interface RuntimeCameraCommand {
 }
 
 export interface RuntimeConfig {
+  appMode: AppExperienceMode;
   presentationMode: PresentationMode;
   replay: ReplayConfig;
   signalResetKey?: string;
@@ -53,7 +57,9 @@ export interface RuntimeConfig {
   viewport: RuntimeViewport;
   ueCount?: number;
   ueDistributionMode?: UeDistributionMode;
+  uePrimaryAnchorMode?: UePrimaryAnchorMode;
   ueDistributionScope?: UeDistributionScope;
+  ueDistributionRadiusKm?: number;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   enableUeTrails?: boolean;
@@ -307,8 +313,6 @@ export interface AmbientRing extends BeamFrequencyIndexResolution {
   groundZ: number;
   footprintRadiusKm: number;
 }
-
-export type VisualBeamTarget = BeamTarget & BeamFrequencyIndexResolution;
 
 export interface VizFrame {
   displaySats: VisibleSat[];

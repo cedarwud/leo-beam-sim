@@ -15,7 +15,7 @@ import {
   resolveCinematicLightIntensity,
   resolveCinematicSpotlightTargets,
 } from '../scene/cinematicEffects';
-import type { BeamTarget } from '../viz/SatelliteBeams';
+import type { BeamTarget } from '../scene/beamTargetTypes';
 
 interface Vc3eFixtureInput {
   cinematicMode?: CinematicMode;

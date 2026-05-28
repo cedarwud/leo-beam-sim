@@ -198,7 +198,7 @@ console.log('\n(e) localStorage persistence rules');
   // Test localStorage behavior via a mock (Node doesn't have window.localStorage)
   // We test the function logic by verifying the source code directly.
   const persistSrc = fs.readFileSync(
-    path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/useModqnHandoverState.ts'),
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/modqn/runtimeControls.ts'),
     'utf8',
   );
   assert(
@@ -252,6 +252,10 @@ console.log('\n(g) App.tsx data-handover-criterion attribute');
 {
   const appSrc = fs.readFileSync(
     path.resolve(import.meta.dirname ?? process.cwd(), '../src/App.tsx'),
+    'utf8',
+  );
+  const appRuntimeModelSrc = fs.readFileSync(
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/app/appRuntimeModel.ts'),
     'utf8',
   );
   assert(
@@ -385,6 +389,10 @@ console.log('\n(k) Evidence / telemetry mode gating');
     path.resolve(import.meta.dirname ?? process.cwd(), '../src/App.tsx'),
     'utf8',
   );
+  const appRuntimeModelSrc = fs.readFileSync(
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/app/appRuntimeModel.ts'),
+    'utf8',
+  );
   const evidenceSrc = fs.readFileSync(
     path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/ModqnEvidenceTab.tsx'),
     'utf8',
@@ -402,7 +410,7 @@ console.log('\n(k) Evidence / telemetry mode gating');
     'utf8',
   );
   assert(
-    appSrc.includes('readInitialRuntimeState') && appSrc.includes('selectedProfileId: DEFAULT_PROFILE_ID')
+    appSrc.includes('readInitialRuntimeState') && appRuntimeModelSrc.includes('selectedProfileId: DEFAULT_PROFILE_ID')
     && !appSrc.includes('selectedProfileId: handoverMode === \'decision-overlay-on-live-sinr\''),
     'App.tsx keeps decision-overlay-on-live-sinr mode profile-preserving on boot instead of forcing the 1-sat profile',
   );
@@ -415,23 +423,23 @@ console.log('\n(k) Evidence / telemetry mode gating');
   );
   assert(
     appSrc.includes('getLeftSidebarTabsForMode')
-    && appSrc.includes('SINR_LEFT_SIDEBAR_TABS')
-    && appSrc.includes('MODQN_LEFT_SIDEBAR_TABS'),
-    'App.tsx shows mode-specific left sidebar controls instead of concurrent SINR/MODQN tabs',
+    && appRuntimeModelSrc.includes('SINR_LEFT_SIDEBAR_TABS')
+    && appRuntimeModelSrc.includes('MODQN_LEFT_SIDEBAR_TABS'),
+    'App runtime model shows mode-specific left sidebar controls instead of concurrent SINR/MODQN tabs',
   );
   assert(
     appSrc.includes('getRightSidebarTabsForMode')
-    && appSrc.includes('SINR_RIGHT_SIDEBAR_TABS')
-    && appSrc.includes('MODQN_RIGHT_SIDEBAR_TABS'),
-    'App.tsx hides MODQN evidence tab from the right sidebar outside MODQN replay mode',
+    && appRuntimeModelSrc.includes('SINR_RIGHT_SIDEBAR_TABS')
+    && appRuntimeModelSrc.includes('MODQN_RIGHT_SIDEBAR_TABS'),
+    'App runtime model hides MODQN evidence tab from the right sidebar outside MODQN replay mode',
   );
   assert(
     appSrc.includes('handoverMode={handoverMode}'),
     'App.tsx passes handoverMode into live status and MODQN evidence panels',
   );
   assert(
-    appSrc.includes('showModqnReplayScene={false}'),
-    'App.tsx hides the producer replay debug overlay from the center scene',
+    appSrc.includes("showModqnReplayScene={appMode === 'modqn-demo'}"),
+    'App.tsx mounts the display-only replay scene layer only in MODQN mode',
   );
   assert(
     evidenceSrc.includes('modqn-evidence-mode-status')
@@ -448,10 +456,10 @@ console.log('\n(k) Evidence / telemetry mode gating');
   assert(
     infoSrc.includes('live-status-handover-mode')
     && infoSrc.includes('HANDOVER MODE')
-    && infoSrc.includes('MODQN selects serving; SINR metrics are live')
-    && infoSrc.includes('MODQN-selected live link')
+    && infoSrc.includes('Loaded from pre-trained offline network (100% paper params)')
+    && infoSrc.includes('MODQN policy serving link')
     && infoSrc.includes('live SINR reference')
-    && infoSrc.includes('Δ live SINR'),
+    && infoSrc.includes('live Δ SINR'),
     'InfoPanel exposes mode-aware Live status wording for active handover mode',
   );
   assert(

@@ -120,6 +120,29 @@ the scene displays it.
   10-slot validation for the `modqn-replay-7beam` mode. The relaxation
   is **opt-in** under the new user-trained mode only.
 
+### 2.4 2026-05-27 Training Env Truth Mapping
+
+When a user-trained artifact is loaded, the scene reads producer-owned
+`run_metadata.json` first and falls back to the service manifest's
+`trainingTruth.envAxes`. The frontend maps those values into display
+profile/runtime state without changing producer semantics:
+
+- `envAxes.nSatellites` is the total satellite count. The MODQN service-area
+  display profile renders this as `planes = nSatellites` and
+  `satsPerPlane = 1`; it must not be assigned to `satsPerPlane` on a
+  pre-existing multi-plane profile, because that would multiply the training
+  satellite count.
+- `envAxes.altitudeKm`, `antenna.theta3dbDeg`, channel frequency/bandwidth/tx
+  power, UE count, UE area, UE mobility, and mobility seed are applied to the
+  local display profile only after artifact load.
+- In MODQN mode, UE slot 0 is sampled from the training distribution just like
+  the other UEs. SINR mode keeps the legacy observer-anchored primary UE so the
+  two render paths remain isolated.
+- `visualSatelliteAltitude` remains display-only framing. It does not rewrite
+  `envAxes.altitudeKm` or producer `run_metadata.json`.
+
+Focused validator coverage: `npm run validate:phase-d:app-wire`.
+
 ## 3. Current State
 
 Relevant existing code (audited 2026-05-25 on branch

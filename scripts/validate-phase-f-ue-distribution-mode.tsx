@@ -238,13 +238,18 @@ section('(c) sceneTopology source + behavior', () => {
 
 section('(d) App.tsx + MainScene.tsx runtime threading source grep', () => {
   const appSource = source('src/App.tsx');
+  const appRuntimeConfigSource = source('src/app/appRuntimeConfig.ts');
   const mainSceneSource = source('src/scene/MainScene.tsx');
   const useSimulationSource = source('src/scene/useSimulation.ts');
   const runtimeFrameStepSource = source('src/scene/runtimeFrameStep.ts');
 
-  check(appSource.includes('ueDistributionMode: appMode === \'sinr-experiment\''), 'App.tsx computes runtime.ueDistributionMode from app mode');
-  check(appSource.includes("sceneTopology.ueDistributionMode ?? 'random'"), 'App.tsx uses topology mode default random');
-  check(appSource.includes(": 'random'"), 'App.tsx modqn-demo branch passes random');
+  check(appSource.includes('buildAppRuntimeConfig'), 'App.tsx delegates runtime config construction');
+  check(appRuntimeConfigSource.includes('ueDistributionMode: input.appMode === \'sinr-experiment\''), 'appRuntimeConfig computes runtime.ueDistributionMode from app mode');
+  check(appRuntimeConfigSource.includes("input.sceneTopology.ueDistributionMode ?? 'random'"), 'appRuntimeConfig uses topology mode default random');
+  check(
+    appRuntimeConfigSource.includes("trainingTopology.ueDistributionMode ?? 'random'"),
+    'appRuntimeConfig modqn-demo branch defaults training topology distribution to random',
+  );
   check(mainSceneSource.includes('runtime.ueDistributionMode'), 'MainScene threads runtime.ueDistributionMode into useSimulation');
   check(useSimulationSource.includes('ueDistributionMode: UeDistributionMode = \'random\''), 'useSimulation defaults ueDistributionMode to random');
   check(runtimeFrameStepSource.includes('ueDistributionMode?: UeDistributionMode'), 'runtimeFrameStep accepts optional ueDistributionMode');

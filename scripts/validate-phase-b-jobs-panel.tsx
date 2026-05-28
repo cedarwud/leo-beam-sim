@@ -100,6 +100,10 @@ console.log('\n(b) JobsPanel required testids');
     'data-testid="jobs-panel-expired-card"',
     'data-testid="jobs-panel-empty"',
     'data-testid="jobs-panel-offline"',
+    'data-testid="jobs-panel-batch-card"',
+    'data-testid="jobs-panel-batch-progress"',
+    'data-testid="jobs-panel-batch-cell"',
+    'data-testid="jobs-panel-refresh-batch"',
   ]) {
     assert(panelSource.includes(testId), `JobsPanel includes ${testId}`);
   }
@@ -116,11 +120,25 @@ console.log('\n(c) JobsPanel poll loop and mode gate');
   assert(panelSource.includes('if (!enabled) return;'), 'JobsPanel useEffect has enabled early return');
   assert(panelSource.includes('computePollIntervalMs('), 'JobsPanel uses computePollIntervalMs helper');
   assert(panelSource.includes('getJobs('), 'JobsPanel calls getJobs');
+  assert(panelSource.includes('getBatch('), 'JobsPanel calls getBatch for sensitivity sweep batches');
+  assert(panelSource.includes('collectBatchIds('), 'JobsPanel groups jobs by batchId');
   assert(panelSource.includes('readSubmittedJobIds('), 'JobsPanel reads submitted job history');
   assert(panelSource.includes('clearTimeout('), 'JobsPanel cleans up poll timeout');
   assert(!panelSource.includes('http://127.0.0.1:8765'), 'JobsPanel does not hard-code backend base URL');
   assert(panelSource.includes('role="progressbar"'), 'JobsPanel renders indeterminate progressbar role');
   assert(panelSource.includes('onLoadIntoScene'), 'JobsPanel exposes optional load callback prop');
+
+  const formSource = fs.readFileSync('src/ui/modqn-training/TrainingForm.tsx', 'utf8');
+  assert(
+    formSource.includes('batchId: response.batchId'),
+    'TrainingForm persists batchId with submitted sweep jobs',
+  );
+
+  const submittedJobsSource = fs.readFileSync('src/modqn/training-trigger/submittedJobs.ts', 'utf8');
+  assert(
+    submittedJobsSource.includes('readonly batchId?: string'),
+    'submitted job history accepts optional batchId',
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +147,7 @@ console.log('\n(c) JobsPanel poll loop and mode gate');
 console.log('\n(d) App.tsx jobs tab wiring');
 {
   const appSource = fs.readFileSync('src/App.tsx', 'utf8');
+  const appRuntimeModelSource = fs.readFileSync('src/app/appRuntimeModel.ts', 'utf8');
   assert(
     appSource.includes("import { JobsPanel } from './ui/modqn-training/JobsPanel';"),
     'App.tsx imports JobsPanel',
@@ -138,27 +157,27 @@ console.log('\n(d) App.tsx jobs tab wiring');
     'App.tsx renders JobsPanel with appMode',
   );
 
-  const leftSidebarTypeLine = appSource
+  const leftSidebarTypeLine = appRuntimeModelSource
     .split('\n')
-    .find(line => line.startsWith('type LeftSidebarTab')) ?? '';
+    .find(line => line.includes('type LeftSidebarTab')) ?? '';
   assert(
     leftSidebarTypeLine.includes("'jobs'"),
-    'LeftSidebarTab union includes jobs',
+    'App runtime model LeftSidebarTab union includes jobs',
     leftSidebarTypeLine,
   );
   assert(
-    appSource.includes("{ key: 'jobs', label: 'MODQN jobs'"),
-    'LEFT_SIDEBAR_TABS includes MODQN jobs entry',
+    appRuntimeModelSource.includes("{ key: 'jobs', label: 'MODQN jobs'"),
+    'App runtime model LEFT_SIDEBAR_TABS includes MODQN jobs entry',
   );
 
-  const modqnBlock = extractConstArray(appSource, 'MODQN_LEFT_SIDEBAR_TABS');
+  const modqnBlock = extractConstArray(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS');
   assert(
     modqnBlock.includes('LEFT_SIDEBAR_TABS[4]'),
-    'MODQN sidebar includes jobs tab entry',
+    'App runtime model MODQN sidebar includes jobs tab entry',
     modqnBlock,
   );
 
-  const sinrBlock = extractConstArray(appSource, 'SINR_LEFT_SIDEBAR_TABS');
+  const sinrBlock = extractConstArray(appRuntimeModelSource, 'SINR_LEFT_SIDEBAR_TABS');
   assert(
     !sinrBlock.includes('LEFT_SIDEBAR_TABS[4]'),
     'SINR sidebar does not include jobs tab entry',

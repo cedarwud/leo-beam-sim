@@ -125,9 +125,10 @@ section('(b) applySceneTopology behavior', () => {
 
 section('(c) App.tsx source wiring', () => {
   const appSource = source('src/App.tsx');
+  const appPersistenceSource = source('src/app/appPersistence.ts');
   check(appSource.includes('applySceneTopology(applySignalTuning('), 'App.tsx composes applySceneTopology(applySignalTuning(...))');
   check(appSource.includes('getSceneTopologyResetKey('), 'App.tsx joins getSceneTopologyResetKey into reset chain');
-  check(appSource.includes('SCENE_TOPOLOGY_OVERRIDES_KEY'), 'App.tsx uses SCENE_TOPOLOGY_OVERRIDES_KEY');
+  check(appPersistenceSource.includes('SCENE_TOPOLOGY_OVERRIDES_KEY'), 'appPersistence.ts uses SCENE_TOPOLOGY_OVERRIDES_KEY');
   check(appSource.includes('appMode={appMode}'), 'App.tsx passes appMode into SignalTuningPanel');
   check(
     appSource.includes("appMode === 'sinr-experiment' ? sceneTopology : createSceneTopologyState()"),

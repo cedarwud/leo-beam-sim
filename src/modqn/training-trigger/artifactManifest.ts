@@ -1,5 +1,9 @@
 import { artifactUrl } from './serviceClient';
-import type { ServiceClientConfig } from './types';
+import type {
+  ServiceClientConfig,
+  TrainingRunMetadata,
+  TrainingServiceManifest,
+} from './types';
 
 export interface UserTrainedManifestSummary {
   readonly jobId: string;
@@ -8,6 +12,8 @@ export interface UserTrainedManifestSummary {
   readonly trainerSubcommand?: string;
   readonly submittedAtMs?: number;
   readonly serviceVersion?: string;
+  readonly trainingServiceManifest?: TrainingServiceManifest;
+  readonly replayBundlePresent?: boolean;
   readonly raw: Record<string, unknown>;
 }
 
@@ -28,16 +34,66 @@ export async function fetchArtifactManifest(
   if (!isRecord(raw)) {
     throw new Error('fetchArtifactManifest: manifest is not an object');
   }
-  const userTrained = raw.userTrained === true;
-  const paperFaithful = raw.paperFaithful !== false;
+  const serviceManifest = parseTrainingServiceManifest(raw);
+  const userTrained = serviceManifest?.artifactTag === 'user-trained' || raw.userTrained === true;
+  const paperFaithful = serviceManifest !== undefined ? false : raw.paperFaithful !== false;
   const metadata = isRecord(raw.userTrainingMetadata) ? raw.userTrainingMetadata : undefined;
   return {
     jobId,
     userTrained,
     paperFaithful,
-    trainerSubcommand: typeof metadata?.trainerSubcommand === 'string' ? metadata.trainerSubcommand : undefined,
+    trainerSubcommand: serviceManifest?.trainerSubcommand
+      ?? (typeof metadata?.trainerSubcommand === 'string' ? metadata.trainerSubcommand : undefined),
     submittedAtMs: typeof metadata?.submittedAtMs === 'number' ? metadata.submittedAtMs : undefined,
-    serviceVersion: typeof metadata?.serviceVersion === 'string' ? metadata.serviceVersion : undefined,
+    serviceVersion: serviceManifest?.serviceVersion
+      ?? (typeof metadata?.serviceVersion === 'string' ? metadata.serviceVersion : undefined),
+    trainingServiceManifest: serviceManifest,
+    replayBundlePresent: serviceManifest?.replayBundle?.present,
+    raw,
+  };
+}
+
+export async function fetchTrainingServiceManifest(
+  config: ServiceClientConfig,
+  jobId: string,
+): Promise<TrainingServiceManifest> {
+  const summary = await fetchArtifactManifest(config, jobId);
+  if (summary.trainingServiceManifest === undefined) {
+    throw new Error('fetchTrainingServiceManifest: artifact is not a training-service manifest');
+  }
+  return summary.trainingServiceManifest;
+}
+
+export async function fetchTrainingRunMetadata(
+  config: ServiceClientConfig,
+  manifest: TrainingServiceManifest,
+): Promise<TrainingRunMetadata> {
+  const runMetadataPath = manifest.rawRun?.runMetadataPath ?? 'raw-run/run_metadata.json';
+  const response = await fetch(artifactUrl(config, manifest.jobId, runMetadataPath), {
+    method: 'GET',
+  });
+  if (!response.ok) {
+    throw new Error(`fetchTrainingRunMetadata: HTTP ${response.status}`);
+  }
+  const raw = await response.json();
+  if (!isRecord(raw)) {
+    throw new Error('fetchTrainingRunMetadata: run_metadata.json is not an object');
+  }
+  return raw as TrainingRunMetadata;
+}
+
+function parseTrainingServiceManifest(raw: Record<string, unknown>): TrainingServiceManifest | undefined {
+  if (
+    raw.schema !== 'modqn-training-service-artifact-manifest-v1'
+    || raw.artifactTag !== 'user-trained'
+    || raw.paperFaithful !== false
+    || raw.effectivenessClaimAuthorized !== false
+    || typeof raw.jobId !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    ...(raw as Omit<TrainingServiceManifest, 'raw'>),
     raw,
   };
 }

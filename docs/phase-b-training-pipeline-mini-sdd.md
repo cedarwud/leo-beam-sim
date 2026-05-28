@@ -364,11 +364,14 @@ styling. No other render path changes.
 - The panel polls at 3 s when active jobs exist and 30 s otherwise.
 - Active jobs show running-for duration and an indeterminate progress bar.
 - Done jobs show the `Load into scene` button.
+- Sweep batches show producer-owned aggregate counts and per-cell axis/status
+  rows via `/batches/{batch_id}`.
 - The panel renders the user's submission history from
   `SUBMITTED_JOB_IDS_KEY` for jobs the backend no longer knows about
   (marked `expired`).
 - testids: `jobs-panel`, `jobs-panel-active-card`, `jobs-panel-done-card`,
-  `jobs-panel-load-into-scene`.
+  `jobs-panel-load-into-scene`, `jobs-panel-batch-card`,
+  `jobs-panel-batch-progress`.
 - `npm run lint` clean.
 
 ### 10.5 PR-θ (artifact picker)
@@ -414,6 +417,64 @@ A separate PR in modqn-paper-reproduction:
 Phase B does NOT block on this; the indeterminate progress bar is the
 agreed v1 behavior. A follow-up consumer slice consumes whichever shape
 the backend exposes.
+
+### 11.4 2026-05-27 Track-2 Extension Status
+
+The original Phase B plan has been extended by the Track-2
+`leo-beam-sim` integration work. The current consumer UI now includes:
+
+- `POST /sensitivity-sweep` submission from `TrainingForm`.
+- `GET /jobs/{job_id}/stream` SSE consumption in `JobsPanel`.
+- `GET /batches/{batch_id}` consumption in `JobsPanel`, keyed by the
+  producer-provided `batchId`, to show sensitivity-sweep cell counts and
+  per-axis job status without inferring model quality.
+- Track-2 arm selection for `a1`, `a4`, and `a5_hobs`.
+- Exploration vs pre-registered evaluation mode selection.
+- Env-axis controls for satellites, altitude, satellite speed, UE count,
+  UE speed, UE area distribution/size, UE mobility family, QoS threshold,
+  beamwidth `theta3dbDeg`, channel carrier/bandwidth/tx power/Rician K, and
+  atmospheric attenuation.
+- The Track-2 form default UE area is the paper-aligned
+  `uniform-rectangle` 200 km × 90 km region; `uniform-circular` remains an
+  explicit exploration setting.
+- HOBS controls for `gammaOsDb`, `tThresholdSteps`, and `eHoPerEventJ`.
+- Multi-Catfish controls for quotas, `catfishAlpha`, `mainShareFloor`,
+  `vdnLossScale`, `snapshotBatchSize`, and `softmaxTemperature`.
+- Evaluation-only QoS tier list under `track2.evalOnlyAxes`, preserving the
+  Track-2 SDD rule that QoS tiers are diagnostic/evaluation axes rather than
+  verdict-bearing training matrix expansion.
+
+The backend still intentionally fixes `beamsPerSatellite` to `7`
+(`AntennaConfig.beamsPerSatellite: Literal[7]`). The frontend therefore
+surfaces beam count as a visible contract value and blocks non-7 submission,
+while beam *width* is adjustable through `theta3dbDeg`.
+
+Focused validation:
+
+- `npm run validate:phase-b:training-form`
+- `npm run validate:phase-b:service-client`
+- `npm run validate:phase-b:jobs-panel`
+- `npm run validate:phase-b:artifact-picker`
+
+### 11.5 2026-05-27 Artifact Claim / Truth Tightening
+
+The artifact picker now treats the service manifest and `run_metadata.json`
+as the display truth for user-trained artifacts:
+
+- Entry chips show both `user-trained` and the manifest `claimMode`
+  (`exploration` or `pre-registered-evaluation`).
+- Entry truth rows show seed triplet, replay bundle availability, and
+  `paperFaithful` status from the manifest instead of inferring evidence
+  status from frontend selection.
+- Filter options are populated from manifest `trainingTruth.envAxes` as well
+  as job detail, so missing `/jobs/{id}` env detail does not hide a valid
+  manifest-backed option.
+- Same-env ablation rows expose per-arm `claimMode`, seed triplet, and replay
+  presence for `a1` / `a4` / `a5_hobs`. These rows are comparison/navigation
+  affordances only; they do not state effectiveness, evaluation success, or
+  thesis-grade evidence.
+
+Focused validation: `npm run validate:phase-b:artifact-picker`.
 
 ## 12. Out of Scope
 

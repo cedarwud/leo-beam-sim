@@ -7,7 +7,7 @@
 //   (c) fetchUserTrainedBundleEnvelope is the only exported async function
 //   (d) valid mocked bundle surfaces return a user-trained runtime bundle fetch result
 //   (e) manifest 404 throws ModqnRuntimeBundleFetchError with surface=manifest.json
-//   (f) URL base is stripped before runtime-fetch appends relative paths
+//   (f) URL base is stripped before runtime-fetch appends replay-bundle relative paths
 //   (g) module JSDoc references Phase D mini-SDD §6 + §10.1 and backend SDD §6.4
 //
 // Run: node --import tsx/esm scripts/validate-phase-d-user-trained-bundle-fetch.tsx
@@ -351,20 +351,20 @@ console.log('\n(f) URL base slash handling');
     },
   );
 
-  const expectedBase = 'http://backend.local:8765/artifacts/job-url-base';
+  const expectedBase = 'http://backend.local:8765/artifacts/job-url-base/replay-bundle';
   assert(
     calls.includes(`${expectedBase}/manifest.json`),
-    'manifest URL is <base>/manifest.json',
+    'manifest URL is <base>/replay-bundle/manifest.json',
     calls.join(', '),
   );
   assert(
     calls.includes(`${expectedBase}/provenance-map.json`),
-    'provenance URL is <base>/provenance-map.json',
+    'provenance URL is <base>/replay-bundle/provenance-map.json',
     calls.join(', '),
   );
   assert(
     calls.includes(`${expectedBase}/timeline/step-trace.jsonl`),
-    'timeline URL is <base>/timeline/step-trace.jsonl',
+    'timeline URL is <base>/replay-bundle/timeline/step-trace.jsonl',
     calls.join(', '),
   );
   assert(

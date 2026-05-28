@@ -7,7 +7,7 @@ import {
   formatSlantRange,
   sinrColor,
 } from './formatters';
-import type { GlyphKind } from '../../viz/glyphs';
+import type { GlyphKind } from '../../contracts/glyphTypes';
 import { PanelBeamIdentity } from './Identity';
 import { StatusBadge, type StatusBadgeTone } from './StatusBadge';
 

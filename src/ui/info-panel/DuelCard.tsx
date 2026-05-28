@@ -1,6 +1,6 @@
 import { UI_TOKENS } from '../../constants/uiTokens';
 import type { VisualShowcaseChannelMetricKind } from '../../scene/visual-showcase-contract';
-import type { GlyphKind } from '../../viz/glyphs';
+import type { GlyphKind } from '../../contracts/glyphTypes';
 import { StatusBadge, type StatusBadgeTone } from './StatusBadge';
 import { DuelDecisionColumn } from './DuelDecisionColumn';
 import { DuelSignalColumn, type DuelSignalTone } from './DuelSignalColumn';

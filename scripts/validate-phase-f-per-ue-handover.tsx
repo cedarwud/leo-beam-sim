@@ -149,10 +149,11 @@ section('(b) useSimulation.ts per-UE manager wiring', () => {
 
 section('(c) runtimeFrameStep.ts secondary handover loop', () => {
   const runtimeSource = source('src/scene/runtimeFrameStep.ts');
+  const runtimeUeSource = source('src/scene/runtimeUeFrame.ts');
   check(runtimeSource.includes('secondaryHoManagers?: readonly HandoverManager[]'), 'stepRuntimeFrame accepts optional secondaryHoManagers');
   check(runtimeSource.includes('export function stepSecondaryUeHandovers'), 'runtime exports secondary handover helper');
-  check(runtimeSource.includes('const secondarySamples = computeLinkBudget('), 'secondary loop calls computeLinkBudget per UE');
-  check(runtimeSource.includes('manager.update(secondarySamples, dtSec, simTimeMs)'), 'secondary loop updates each HandoverManager');
+  check(runtimeUeSource.includes('const secondarySamples = computeLinkBudget('), 'secondary helper loop calls computeLinkBudget per UE');
+  check(runtimeUeSource.includes('manager.update(secondarySamples, dtSec, simTimeMs)'), 'secondary helper loop updates each HandoverManager');
   for (const expected of [
     'ueSecondary.servingSatId = manager.state.satId',
     'ueSecondary.servingBeamId = manager.state.beamId',
@@ -160,7 +161,7 @@ section('(c) runtimeFrameStep.ts secondary handover loop', () => {
     'ueSecondary.pendingTargetBeamId = manager.state.pendingTarget?.beamId ?? null',
     'ueSecondary.triggerProgressSec = manager.state.pendingTarget ? manager.state.triggerTimeSec : 0',
   ]) {
-    check(runtimeSource.includes(expected), `secondary loop fills ${expected}`);
+    check(runtimeUeSource.includes(expected), `secondary helper loop fills ${expected}`);
   }
 });
 

@@ -6,7 +6,7 @@ import {
   type HandoverDecisionOverride,
 } from '../engine/handover/handover-manager';
 import type { Profile } from '../profiles/types';
-import type { UeDistributionMode } from '../engine/ue/multiUeState';
+import type { UeDistributionMode, UePrimaryAnchorMode } from '../engine/ue/multiUeState';
 import {
   createMobilityStates,
   DEFAULT_UE_MOBILITY_PARAMS,
@@ -29,7 +29,7 @@ import { computeHeuristicNotPaperScore } from '../engine/handover/decision-overr
 import {
   ModqnEnvelopeContext,
   ModqnHandoverModeContext,
-} from '../ui/useModqnHandoverState';
+} from '../modqn/runtimeContext';
 import type { ReScalarizeResult } from '../modqn/replay-bundle/rescalarize';
 
 // S3: HandoverManager subclass that injects the S3 decisionOverride ref on
@@ -112,9 +112,12 @@ export function useSimulation(
   beamFootprintMultiplier?: number,
   ueCount?: number,
   ueDistributionMode: UeDistributionMode = 'random',
+  uePrimaryAnchorMode: UePrimaryAnchorMode = 'observer',
   ueMobilityMode: UeMobilityMode = 'static',
   ueMobilityParams: UeMobilityParams = DEFAULT_UE_MOBILITY_PARAMS,
   ueDistributionScope: UeDistributionScope = 'beam-footprint',
+  ueDistributionRadiusKm?: number,
+  mapKmPerWorldUnit?: number,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -224,9 +227,10 @@ export function useSimulation(
     [effectiveUeCount, profile.handover],
   );
   const effectiveUeMobilityParams = ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS;
+  const ueDeterministicSeed = profile.ueDistribution?.seed ?? 42;
   const createCurrentMobilityStates = useCallback(() => (
-    createMobilityStates(effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams, 42)
-  ), [effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams]);
+    createMobilityStates(effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams, ueDeterministicSeed)
+  ), [effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams, ueDeterministicSeed]);
   const mobilityStatesRef = useRef<UePerMobilityState[]>(createCurrentMobilityStates());
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
   const initialSimTimeSec = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
@@ -267,6 +271,7 @@ export function useSimulation(
       paused: true,
       deltaSec: 0,
       beamFootprintMultiplier,
+      mapKmPerWorldUnit,
       observer,
       beamLayoutsByShellId,
       trajectoryCache,
@@ -274,9 +279,11 @@ export function useSimulation(
       secondaryHoManagers,
       ueCount: effectiveUeCount,
       ueDistributionMode,
+      uePrimaryAnchorMode,
       ueMobilityMode,
       ueMobilityParams: effectiveUeMobilityParams,
       ueDistributionScope,
+      ueDistributionRadiusKm,
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });
@@ -297,11 +304,14 @@ export function useSimulation(
     secondaryHoManagers,
     speed,
     beamFootprintMultiplier,
+    mapKmPerWorldUnit,
     trajectoryCache,
     ueDistributionMode,
+    uePrimaryAnchorMode,
     ueMobilityMode,
     effectiveUeMobilityParams,
     ueDistributionScope,
+    ueDistributionRadiusKm,
   ]);
 
   useEffect(() => {
@@ -321,7 +331,17 @@ export function useSimulation(
     resetMobilityStates();
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
-  }, [profile.id, effectiveUeCount, ueMobilityMode, effectiveUeMobilityParams, resetMobilityStates]);
+  }, [
+    profile.id,
+    effectiveUeCount,
+    ueDistributionMode,
+    uePrimaryAnchorMode,
+    ueDistributionScope,
+    ueDistributionRadiusKm,
+    ueMobilityMode,
+    effectiveUeMobilityParams,
+    resetMobilityStates,
+  ]);
 
   useEffect(() => {
     resetToReplayStartFrame();
@@ -330,7 +350,7 @@ export function useSimulation(
   useEffect(() => {
     // Profile-backed SINR controls must refresh the React UI even when simulation time is paused.
     publishNextFrameRef.current = true;
-  }, [profile, beamFootprintMultiplier, ueDistributionScope]);
+  }, [profile, beamFootprintMultiplier, ueDistributionScope, ueDistributionRadiusKm, mapKmPerWorldUnit]);
 
   useFrame((_, delta) => {
     if (trajectoryCache.length === 0) return;
@@ -345,6 +365,15 @@ export function useSimulation(
     // (SDD §9.7 truth invariance).
     installDecisionOverride();
 
+    const windowLength = 180; // 3 minutes highlight window for demonstration
+    if (
+      replay.loop
+      && runtimeStateRef.current.simTimeSec >= replay.startOffsetSec + windowLength
+    ) {
+      resetToReplayStartFrame();
+      return;
+    }
+
     const { frame, previousSimTimeSec } = stepRuntimeFrame({
       profile,
       replay,
@@ -352,6 +381,7 @@ export function useSimulation(
       paused,
       deltaSec: delta,
       beamFootprintMultiplier,
+      mapKmPerWorldUnit,
       observer,
       beamLayoutsByShellId,
       trajectoryCache,
@@ -359,9 +389,11 @@ export function useSimulation(
       secondaryHoManagers,
       ueCount: effectiveUeCount,
       ueDistributionMode,
+      uePrimaryAnchorMode,
       ueMobilityMode,
       ueMobilityParams: effectiveUeMobilityParams,
       ueDistributionScope,
+      ueDistributionRadiusKm,
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });

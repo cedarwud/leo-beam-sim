@@ -27,7 +27,7 @@ export interface FetchUserTrainedBundleParams {
 export async function fetchUserTrainedBundleEnvelope(
   params: FetchUserTrainedBundleParams,
 ): Promise<ModqnRuntimeBundleFetchResult> {
-  const fetchUrlBase = artifactUrl(params.config, params.jobId, '').replace(/\/$/, '');
+  const fetchUrlBase = artifactUrl(params.config, params.jobId, 'replay-bundle').replace(/\/$/, '');
 
   return fetchModqnReplayBundleEnvelope({
     sourcePath: `user-trained:${params.jobId}`,

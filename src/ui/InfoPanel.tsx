@@ -9,7 +9,7 @@ import {
   resolveDuelStateLabel,
 } from './info-panel/formatters';
 import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
-import type { RuntimeHandoverMode } from './useModqnHandoverState';
+import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 import type { UiMode } from './uiMode';
 
 type InfoPanelProps = SimState & {
@@ -43,46 +43,46 @@ interface LiveStatusModeCopy {
 function getLiveStatusModeCopy(mode: RuntimeHandoverMode): LiveStatusModeCopy {
   if (mode === 'decision-overlay-on-live-sinr') {
     return {
-      label: 'MODQN replay',
-      detail: 'MODQN selects serving; SINR metrics are live',
-      duelBadge: 'MODQN-selected',
-      duelDetail: 'Serving follows the MODQN replay override. SINR, elevation, range, trigger timing, and comparison candidates remain live SINR references.',
-      servingCaption: 'MODQN-selected live link',
-      pendingCaption: 'engine timing target',
+      label: 'MODQN Replay Mode',
+      detail: 'Loaded from pre-trained offline network (100% paper params)',
+      duelBadge: 'MODQN Replay Path',
+      duelDetail: 'Serving link and beam follow the MODQN offline policy decision. Live SINR and elevation metrics are provided as reference.',
+      servingCaption: 'MODQN policy serving link',
+      pendingCaption: 'handover target',
       candidateCaption: 'live SINR reference',
-      deltaLabel: 'Δ live SINR',
-      offsetLabel: 'Gate Offset',
-      triggerLabel: 'Timing Gate',
-      triggerAriaLabel: 'Live handover timing-gate progress',
+      deltaLabel: 'live Δ SINR',
+      offsetLabel: 'gate offset',
+      triggerLabel: 'decision timing threshold',
+      triggerAriaLabel: 'MODQN decision progress bar',
     };
   }
   if (mode === 'omega-heuristic') {
     return {
-      label: 'ω heuristic',
-      detail: 'not paper MODQN',
-      duelBadge: 'heuristic live',
-      duelDetail: 'Serving follows a live heuristic override. Link metrics, timing gates, and comparison candidates remain live SINR references.',
-      servingCaption: 'heuristic-selected link',
-      pendingCaption: 'engine timing target',
+      label: 'ω Heuristic Decision',
+      detail: 'Simplified heuristic policy based on live omega weights',
+      duelBadge: 'Heuristic Live Decision',
+      duelDetail: 'Serving link follows the live omega weighted heuristic policy. All signal and threshold metrics are computed live.',
+      servingCaption: 'heuristic serving link',
+      pendingCaption: 'handover target',
       candidateCaption: 'live SINR reference',
-      deltaLabel: 'Δ live SINR',
-      offsetLabel: 'Gate Offset',
-      triggerLabel: 'Timing Gate',
-      triggerAriaLabel: 'Live handover timing-gate progress',
+      deltaLabel: 'live Δ SINR',
+      offsetLabel: 'gate offset',
+      triggerLabel: 'handover progress',
+      triggerAriaLabel: 'handover progress bar',
     };
   }
   return {
-    label: 'SINR-offset',
-    detail: 'live SINR policy',
-    duelBadge: 'live SINR',
-    duelDetail: 'Serving and candidate status come from the live SINR-offset handover policy.',
-    servingCaption: 'physical serving',
+    label: 'SINR Experiment Mode',
+    detail: 'Traditional live SINR-offset handover protocol',
+    duelBadge: 'Live SINR Protocol',
+    duelDetail: 'Serving link and handover decisions are fully driven by the traditional live SINR-offset protocol.',
+    servingCaption: 'live serving link',
     pendingCaption: 'handover timer',
-    candidateCaption: 'derived comparison',
-    deltaLabel: 'Δ SINR',
-    offsetLabel: 'Need Offset',
-    triggerLabel: 'Trigger Time',
-    triggerAriaLabel: 'Handover trigger progress',
+    candidateCaption: 'best candidate link',
+    deltaLabel: 'signal delta Δ SINR',
+    offsetLabel: 'hysteresis margin threshold',
+    triggerLabel: 'time-to-trigger timer',
+    triggerAriaLabel: 'handover timer progress bar',
   };
 }
 
@@ -140,7 +140,7 @@ export function InfoPanel({
           ? modeCopy.candidateCaption
           : 'no comparison';
   const showProfileIdentity = uiMode !== 'tuning';
-  const showFormulaTerms = uiMode === 'tuning' || uiMode === 'diagnostics';
+  const showFormulaTerms = (uiMode === 'tuning' || uiMode === 'diagnostics') && handoverMode !== 'decision-overlay-on-live-sinr';
   const frequencyReuse = profile.beams.frequencyReuse;
   const servingIdentity = formatPanelBeamIdentity(servingSatId, servingBeamId, frequencyReuse, 'none');
   const comparisonIdentity = formatPanelBeamIdentity(comparisonSatId, comparisonBeamId, frequencyReuse, 'none');

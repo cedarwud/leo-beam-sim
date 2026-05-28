@@ -10,8 +10,8 @@ import {
 } from '../src/modqn/replay-bundle/index.ts';
 import {
   MODQN_REPLAY_SCENE_BEAM_COUNT,
+  MODQN_REPLAY_SCENE_BEAM_RADIUS_WORLD,
   MODQN_REPLAY_SCENE_SOURCE,
-  createModqnReplayCanonicalBeamPosition,
   deriveModqnReplaySceneVisualState,
 } from '../src/scene/modqnReplaySceneVisuals.ts';
 
@@ -48,6 +48,10 @@ function assertNoLiveSceneIdentityLeak(serialized: string): void {
   assert.doesNotMatch(serialized, /sceneSatId|liveSatId|liveBeamId/i);
 }
 
+function pointDistance(a: { readonly x: number; readonly y: number; readonly z: number }, b: { readonly x: number; readonly y: number; readonly z: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
 function assertFirstSlotVisualState(): void {
   const displayState = createModqnReplayPlaybackDisplayState(
     MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL,
@@ -60,27 +64,227 @@ function assertFirstSlotVisualState(): void {
   assert.ok(visualState, 'first replay slot should produce scene visual state');
   assert.equal(visualState.source, MODQN_REPLAY_SCENE_SOURCE);
   assert.equal(visualState.coordinateFrame, 'scene-world-display-layer');
+  assert.equal(visualState.geometrySource, 'display-canonical-lens');
   assert.equal(visualState.beams.length, MODQN_REPLAY_SCENE_BEAM_COUNT);
+  assert.equal(visualState.expectedProducerSatelliteCount, 4);
+  assert.equal(visualState.producerSatelliteStateCount, 0);
+  assert.equal(visualState.slotDecisionRowCount, 100);
+  assert.equal(visualState.truthAudit.highestSceneLevel, 'T0');
+  assert.equal(visualState.truthAudit.levels.find(level => level.level === 'T4')?.status, 'absent');
+  assert.equal(visualState.truthAudit.levels.find(level => level.level === 'T5')?.status, 'absent');
   assert.equal(visualState.eventKind, 'intra-satellite-beam-switch');
+  assert.equal(visualState.switch.activeHandover, true);
   assert.equal(visualState.switch.activeIntraSatelliteSwitch, true);
   assert.equal(visualState.previous.producerBeamId, 'sat-0-beam-3');
   assert.equal(visualState.selected.producerBeamId, 'sat-0-beam-1');
   assert.equal(visualState.previous.producerSatId, 'sat-0');
   assert.equal(visualState.selected.producerSatId, 'sat-0');
-  assert.deepEqual(
-    visualState.previous.position,
-    createModqnReplayCanonicalBeamPosition(3),
-    'previous serving should use producer localBeamIndex 3 in the canonical display plane',
+  const intraSwitchDistance = pointDistance(visualState.previous.position, visualState.selected.position);
+  assert.ok(
+    intraSwitchDistance > 0,
+    'first replay slot should visibly separate previous and selected beams in the handover lens',
   );
-  assert.deepEqual(
-    visualState.selected.position,
-    createModqnReplayCanonicalBeamPosition(1),
-    'selected serving should use producer localBeamIndex 1 in the canonical display plane',
+  assert.ok(
+    intraSwitchDistance < MODQN_REPLAY_SCENE_BEAM_RADIUS_WORLD * 2,
+    'intra-satellite replay lens should keep previous/selected footprints close enough to overlap',
   );
-  assert.notDeepEqual(
-    visualState.previous.position,
-    visualState.selected.position,
-    'first replay slot should visibly separate previous and selected beams',
+  assertNoLiveSceneIdentityLeak(JSON.stringify(visualState));
+}
+
+function assertSourceBackedGeometryVisualState(): void {
+  const baseDisplayState = createModqnReplayPlaybackDisplayState(
+    MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL,
+    0,
+    false,
+    true,
+  );
+  const baseFocusRow = baseDisplayState.currentSlot.focusRow;
+  const beamStates = Array.from({ length: 7 }, (_, localBeamIndex) => ({
+    beamId: `sat-0-beam-${localBeamIndex}`,
+    beamIndex: localBeamIndex,
+    satId: 'sat-0',
+    satIndex: 0,
+    localBeamIndex,
+    centerLocalTangentKm: {
+      east: localBeamIndex === 3 ? 23.6 : 0,
+      north: localBeamIndex === 1 ? 33.9 : localBeamIndex === 3 ? -7 : localBeamIndex * 6,
+    },
+    footprintKm: 27.2,
+    footprintProvenance: {
+      displayOnly: false,
+      policy: 'validator-renderable-footprint',
+    },
+    frequencyReuseGroup: 'paper-unspecified',
+  }));
+  const displayState = {
+    ...baseDisplayState,
+    currentSlot: {
+      ...baseDisplayState.currentSlot,
+      focusRow: {
+        ...baseFocusRow,
+        decisionUserPosition: {
+          localTangentKm: { east: 36.9, north: -6.75 },
+        },
+        userPosition: {
+          localTangentKm: { east: 36.9, north: -6.74 },
+        },
+        decisionActionValidityMask: [
+          true, true, true, true, true, true, true,
+          false, false, false, false, false, false, false,
+          false, false, false, false, false, false, false,
+          false, false, false, false, false, false, false,
+        ],
+        satelliteStates: [
+          {
+            satId: 'sat-0',
+            satIndex: 0,
+            subSatellitePoint: { latDeg: 0.06, lonDeg: 0 },
+            coordinateFrameKind: 'topocentric-local-tangent',
+          },
+          {
+            satId: 'sat-1',
+            satIndex: 1,
+            subSatellitePoint: { latDeg: 89.94, lonDeg: 180 },
+            coordinateFrameKind: 'topocentric-local-tangent',
+          },
+          {
+            satId: 'sat-2',
+            satIndex: 2,
+            subSatellitePoint: { latDeg: -0.06, lonDeg: -180 },
+            coordinateFrameKind: 'topocentric-local-tangent',
+          },
+          {
+            satId: 'sat-3',
+            satIndex: 3,
+            subSatellitePoint: { latDeg: -89.94, lonDeg: 0 },
+            coordinateFrameKind: 'topocentric-local-tangent',
+          },
+        ],
+        beamStates,
+      },
+    },
+  };
+  const visualState = deriveModqnReplaySceneVisualState(displayState, {
+    worldUnitsPerKm: 10,
+    visualSatelliteAltitudeWorld: 380,
+  });
+
+  assert.ok(visualState, 'source-backed replay slot should produce scene visual state');
+  assert.equal(visualState.coordinateFrame, 'producer-local-tangent-display-layer');
+  assert.equal(visualState.geometrySource, 'producer-beam-state');
+  assert.equal(visualState.beams.length, 7);
+  assert.equal(visualState.satellites.length, 4);
+  assert.equal(visualState.producerSatelliteStateCount, 4);
+  assert.equal(visualState.renderedSatelliteStateCount, 4);
+  assert.ok(visualState.focusedUser, 'source-backed replay state should expose the focused UE marker');
+  assert.equal(visualState.truthAudit.levels.find(level => level.level === 'T1')?.status, 'partial');
+  assert.equal(visualState.truthAudit.levels.find(level => level.level === 'T2')?.status, 'partial');
+  assert.equal(visualState.truthAudit.levels.find(level => level.level === 'T4')?.status, 'absent');
+  assert.equal(visualState.truthAudit.levels.find(level => level.level === 'T5')?.status, 'absent');
+  assert.equal(
+    visualState.beams.every(beam => beam.geometrySource === 'producer-beam-state'),
+    true,
+    'all synthetic source-backed beams should retain producer-beam-state provenance',
+  );
+  assertNoLiveSceneIdentityLeak(JSON.stringify(visualState));
+}
+
+function assertDisplayOnlyProducerGeometryRendersProxyWithoutTruthClaim(): void {
+  const baseDisplayState = createModqnReplayPlaybackDisplayState(
+    MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL,
+    0,
+    false,
+    true,
+  );
+  const baseFocusRow = baseDisplayState.currentSlot.focusRow;
+  const beamStates = Array.from({ length: 7 }, (_, localBeamIndex) => ({
+    beamId: `sat-0-beam-${localBeamIndex}`,
+    beamIndex: localBeamIndex,
+    satId: 'sat-0',
+    satIndex: 0,
+    localBeamIndex,
+    centerLocalTangentKm: {
+      east: localBeamIndex === 3 ? 23.6 : 0,
+      north: localBeamIndex === 1 ? 33.9 : localBeamIndex === 3 ? -7 : localBeamIndex * 6,
+    },
+    footprintKm: 27.2,
+    footprintProvenance: {
+      displayOnly: true,
+      policy: 'display-derived-altitude-tan-half-angle',
+    },
+    frequencyReuseGroup: 'paper-unspecified',
+    frequencyReuseProvenance: {
+      displayOnly: true,
+      policy: 'paper-unspecified-frequency-reuse',
+    },
+  }));
+  const displayState = {
+    ...baseDisplayState,
+    currentSlot: {
+      ...baseDisplayState.currentSlot,
+      focusRow: {
+        ...baseFocusRow,
+        decisionUserPosition: {
+          localTangentKm: { east: 36.9, north: -6.75 },
+        },
+        userPosition: {
+          localTangentKm: { east: 36.9, north: -6.74 },
+        },
+        decisionActionValidityMask: [
+          true, true, true, true, true, true, true,
+          false, false, false, false, false, false, false,
+          false, false, false, false, false, false, false,
+          false, false, false, false, false, false, false,
+        ],
+        satelliteStates: [
+          {
+            satId: 'sat-0',
+            satIndex: 0,
+            subSatellitePoint: { latDeg: 0.06, lonDeg: 0 },
+            coordinateFrameKind: 'eci-km-no-earth-rotation-proxy',
+          },
+          {
+            satId: 'sat-1',
+            satIndex: 1,
+            subSatellitePoint: { latDeg: 89.94, lonDeg: 180 },
+            coordinateFrameKind: 'eci-km-no-earth-rotation-proxy',
+          },
+          {
+            satId: 'sat-2',
+            satIndex: 2,
+            subSatellitePoint: { latDeg: -0.06, lonDeg: -180 },
+            coordinateFrameKind: 'eci-km-no-earth-rotation-proxy',
+          },
+          {
+            satId: 'sat-3',
+            satIndex: 3,
+            subSatellitePoint: { latDeg: -89.94, lonDeg: 0 },
+            coordinateFrameKind: 'eci-km-no-earth-rotation-proxy',
+          },
+        ],
+        beamStates,
+      },
+    },
+  };
+  const visualState = deriveModqnReplaySceneVisualState(displayState, {
+    worldUnitsPerKm: 10,
+    visualSatelliteAltitudeWorld: 380,
+  });
+
+  assert.ok(visualState, 'display-only producer geometry should still produce visible proxy replay cues');
+  assert.equal(visualState.coordinateFrame, 'producer-local-tangent-display-layer');
+  assert.equal(visualState.geometrySource, 'producer-display-proxy');
+  assert.equal(visualState.beams.length, MODQN_REPLAY_SCENE_BEAM_COUNT);
+  assert.equal(visualState.satellites.length, 1);
+  assert.equal(visualState.producerSatelliteStateCount, 4);
+  assert.equal(visualState.renderedSatelliteStateCount, 1);
+  assert.equal(visualState.truthAudit.highestSceneLevel, 'T1');
+  assert.equal(visualState.truthAudit.levels.find(level => level.level === 'T1')?.status, 'partial');
+  assert.equal(visualState.truthAudit.levels.find(level => level.level === 'T2')?.status, 'absent');
+  assert.equal(
+    visualState.beams.every(beam => beam.geometrySource === 'producer-display-proxy'),
+    true,
+    'display-only footprint provenance may render only as producer-display-proxy geometry',
   );
   assertNoLiveSceneIdentityLeak(JSON.stringify(visualState));
 }
@@ -96,13 +300,63 @@ function assertNoSwitchSlotVisualState(): void {
 
   assert.ok(visualState, 'sixth replay slot should produce scene visual state');
   assert.equal(visualState.eventKind, 'none');
+  assert.equal(visualState.switch.activeHandover, false);
   assert.equal(visualState.switch.activeIntraSatelliteSwitch, false);
   assert.equal(visualState.previous.producerBeamId, 'sat-0-beam-1');
   assert.equal(visualState.selected.producerBeamId, 'sat-0-beam-1');
+  assert.deepEqual(
+    visualState.previous.position,
+    visualState.selected.position,
+    'no-switch replay slot should draw previous and selected at the same footprint',
+  );
 
   const sharedBeam = visualState.beams.find(beam => beam.canonicalBeamNumber === 2);
   assert.ok(sharedBeam, 'shared previous/selected beam B2 should be present');
   assert.equal(sharedBeam.role, 'previous-and-selected');
+  assertNoLiveSceneIdentityLeak(JSON.stringify(visualState));
+}
+
+function assertInterSatelliteVisualState(): void {
+  const baseDisplayState = createModqnReplayPlaybackDisplayState(
+    MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL,
+    0,
+    true,
+    true,
+  );
+  const baseFocusRow = baseDisplayState.currentSlot.focusRow;
+  const displayState = {
+    ...baseDisplayState,
+    currentSlot: {
+      ...baseDisplayState.currentSlot,
+      focusRow: {
+        ...baseFocusRow,
+        selectedServing: {
+          ...baseFocusRow.selectedServing,
+          beamId: 'sat-1-beam-1',
+          satId: 'sat-1',
+          satIndex: 1,
+        },
+        handoverEventKind: 'inter-satellite-handover' as const,
+      },
+    },
+  };
+  const visualState = deriveModqnReplaySceneVisualState(displayState);
+
+  assert.ok(visualState, 'inter-satellite replay slot should produce scene visual state');
+  assert.equal(visualState.eventKind, 'inter-satellite-handover');
+  assert.equal(visualState.switch.activeHandover, true);
+  assert.equal(visualState.switch.activeIntraSatelliteSwitch, false);
+  assert.equal(visualState.switch.label, 'Inter-sat handover');
+  assert.notEqual(
+    visualState.previous.producerSatId,
+    visualState.selected.producerSatId,
+    'inter-satellite handover should preserve distinct producer sat IDs',
+  );
+  assert.notDeepEqual(
+    visualState.previous.position,
+    visualState.selected.position,
+    'inter-satellite handover should be visually separated even when local beam IDs overlap',
+  );
   assertNoLiveSceneIdentityLeak(JSON.stringify(visualState));
 }
 
@@ -164,6 +418,7 @@ function assertSceneBridgeSource(): void {
   const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
   const sceneLayerSource = readReplaySceneLayerSources();
   const helperSource = readRepoFile('src/scene/modqnReplaySceneVisuals.ts');
+  const cuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
 
   assertContains(
     appSource,
@@ -181,8 +436,33 @@ function assertSceneBridgeSource(): void {
     'App replay-to-scene bridge',
   );
   assertContains(
+    appSource,
+    'MODQN_REPLAY_HANDOVER_SLOT_SEC',
+    'App replay handover slot hold bridge',
+  );
+  assertContains(
+    appSource,
+    'MODQN_REPLAY_STABLE_SLOT_SEC',
+    'App replay stable slot hold bridge',
+  );
+  assertContains(
+    appSource,
+    'resolveModqnReplayVisualSlotOffset',
+    'App replay variable-duration slot resolver',
+  );
+  assertContains(
+    appSource,
+    '<ModqnReplayCuePanel',
+    'App replay sidebar cue panel',
+  );
+  assertContains(
+    appSource,
+    "showModqnReplayScene={appMode === 'modqn-demo'}",
+    'App must mount replay scene layer in MODQN mode',
+  );
+  assertContains(
     mainSceneSource,
-    "import { ModqnReplaySceneLayer } from './ModqnReplaySceneLayer';",
+    'import { ModqnReplaySceneLayer }',
     'MainScene scene layer import',
   );
   assertContains(
@@ -191,18 +471,94 @@ function assertSceneBridgeSource(): void {
     'MainScene R3F content',
   );
   assertContains(
-    sceneLayerSource,
-    'SatelliteMarker',
-    'R3F replay producer satellite actor',
+    mainSceneSource,
+    'worldUnitsPerKm={replayWorldUnitsPerKm}',
+    'MainScene should pass scene scale into the replay truth layer',
+  );
+  assertNotContains(
+    mainSceneSource,
+    'createModqnProducerContextSatellites',
+    'MODQN replay must not compute consumer-invented compressed context satellites',
+  );
+  assertNotContains(
+    mainSceneSource,
+    'generateWalkerConstellation',
+    'MODQN replay must not use the live profile orbit as replay producer truth',
+  );
+  assertNotContains(
+    mainSceneSource,
+    'modqnProducerContextSatellites.map',
+    'MODQN replay must not render compressed context satellite lanes',
   );
   assertNotContains(
     sceneLayerSource,
-    'BeamDisc',
-    'R3F replay layer must not regress to seven debug beam discs',
+    'producerContextSatellitePositions',
+    'MODQN replay must not use fallback/static producer-context satellite positions',
+  );
+  assertContains(
+    sceneLayerSource,
+    'SatelliteMarker',
+    'R3F replay layer may render source-backed producer satellite states',
+  );
+  assertContains(
+    sceneLayerSource,
+    'data-modqn-replay-producer-satellite-state-count',
+    'MODQN replay should publish producer satellite state count for browser smoke',
+  );
+  assertContains(
+    sceneLayerSource,
+    'data-modqn-replay-rendered-satellite-state-count',
+    'MODQN replay should publish rendered satellite state count for browser smoke',
+  );
+  assertContains(
+    sceneLayerSource,
+    'data-modqn-replay-slot-decision-row-count',
+    'MODQN replay should publish source slot row count for browser smoke',
+  );
+  assertContains(
+    sceneLayerSource,
+    'data-modqn-replay-truth-level',
+    'MODQN replay should publish highest truth level for browser smoke',
+  );
+  assertContains(
+    sceneLayerSource,
+    'data-modqn-replay-source-gap-count',
+    'MODQN replay should publish source-gap count for browser smoke',
+  );
+  assertContains(
+    mainSceneSource,
+    "const showLiveSatelliteMarkers = runtime.appMode !== 'modqn-demo';",
+    'MODQN replay must not display the live orbit satellite marker as producer truth',
+  );
+  assertContains(
+    mainSceneSource,
+    'showLiveSatelliteMarkers && viz.displaySats',
+    'MODQN replay must hide live satellite markers and rely on producer-context markers',
+  );
+  assertContains(
+    mainSceneSource,
+    'showLiveBeamCones && viz.displaySats',
+    'MODQN replay must not also render live SINR beam cones',
+  );
+  assertContains(
+    sceneLayerSource,
+    'modqn-replay-scene-beam-discs',
+    'R3F replay beam activation layer',
+  );
+  assertContains(sceneLayerSource, 'producer-beam-state', 'R3F replay should consume producer beamState geometry when present');
+  assertContains(sceneLayerSource, 'producer-display-proxy', 'R3F replay should render display-only producer geometry as a proxy layer');
+  assertContains(sceneLayerSource, 'modqn-replay-proxy-beam-links', 'R3F replay should show proxy satellite-to-footprint beam links');
+  assertContains(sceneLayerSource, 'modqn-replay-scene-beam-footprint', 'R3F replay source-backed beam footprints');
+  assertContains(sceneLayerSource, 'modqn-replay-focused-user', 'R3F replay focused UE marker');
+  assertNotContains(sceneLayerSource, 'modqn-replay-scene-beam-cone', 'R3F replay must not render consumer-invented satellite-to-footprint cones');
+  assertContains(sceneLayerSource, '<circleGeometry', 'R3F replay beam footprints');
+  assertContains(sceneLayerSource, '<ringGeometry', 'R3F replay beam activation rings');
+  assertContains(
+    sceneLayerSource,
+    'modqn-replay-scene-active-beam-pulse',
+    'R3F replay active beam pulse',
   );
   assertNotContains(sceneLayerSource, '<planeGeometry', 'R3F replay board must not render a board plane');
-  assertNotContains(sceneLayerSource, '<circleGeometry', 'R3F replay board must not render a footprint circle');
-  assertNotContains(sceneLayerSource, '<ringGeometry', 'R3F replay board must not render beam rings');
   assertContains(
     sceneLayerSource,
     '<Line',
@@ -258,6 +614,86 @@ function assertSceneBridgeSource(): void {
     'reward',
     'display-only helper must not derive rewards',
   );
+  assertContains(
+    helperSource,
+    'activeHandover',
+    'display helper should expose intra/inter handover activation state',
+  );
+  assertContains(
+    helperSource,
+    'createTruthAudit',
+    'display helper should expose fail-closed truth-level audit',
+  );
+  assertContains(
+    helperSource,
+    'footprintProvenance',
+    'display helper must inspect beam footprint provenance before rendering producer geometry',
+  );
+  assertContains(
+    helperSource,
+    'displayOnly',
+    'display helper must reject display-only geometry as scene truth',
+  );
+  assertContains(
+    helperSource,
+    'no-earth-rotation-proxy',
+    'display helper must reject proxy satellite coordinate frames as scene truth',
+  );
+  assertContains(
+    helperSource,
+    'Do not animate beam hopping.',
+    'truth audit must explicitly fail closed for missing beam hopping schedule',
+  );
+  assertContains(
+    helperSource,
+    'Do not use color to imply different frequencies.',
+    'truth audit must explicitly fail closed for missing frequency truth',
+  );
+  assertContains(
+    cuePanelSource,
+    'deriveModqnReplaySceneVisualState(displayState)',
+    'cue panel must derive from display-only visual state',
+  );
+  assertContains(
+    cuePanelSource,
+    'data-testid="modqn-replay-cue-panel"',
+    'cue panel browser smoke hook',
+  );
+  assertContains(
+    cuePanelSource,
+    'data-handover-event-kind={visualState.eventKind}',
+    'cue panel event-kind proof hook',
+  );
+  assertContains(
+    cuePanelSource,
+    'data-beam-role={roleTone(beam.role)}',
+    'cue panel beam role proof hook',
+  );
+  assertContains(
+    cuePanelSource,
+    'data-truth-level={level.level}',
+    'cue panel should expose truth-level audit hooks',
+  );
+  assertContains(
+    cuePanelSource,
+    'data-truth-status={level.status}',
+    'cue panel should expose source-gap status hooks',
+  );
+  assertNotContains(
+    cuePanelSource,
+    '../engine',
+    'cue panel must not derive engine truth',
+  );
+  assertNotContains(
+    cuePanelSource,
+    'sinr',
+    'cue panel must not infer SINR',
+  );
+  assertNotContains(
+    cuePanelSource,
+    'reward',
+    'cue panel must not derive rewards',
+  );
 }
 
 function assertClaimBoundaryCounts(): void {
@@ -275,7 +711,10 @@ function assertClaimBoundaryCounts(): void {
 assert.equal(deriveModqnReplaySceneVisualState(null), null);
 assertClaimBoundaryCounts();
 assertFirstSlotVisualState();
+assertSourceBackedGeometryVisualState();
+assertDisplayOnlyProducerGeometryRendersProxyWithoutTruthClaim();
 assertNoSwitchSlotVisualState();
+assertInterSatelliteVisualState();
 assertOmegaRescalarizedDisplayState();
 assertSceneBridgeSource();
 

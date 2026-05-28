@@ -10,6 +10,7 @@ interface SatelliteMarkerProps {
   label: string;
   eventRole?: EventRole;
   satelliteTintColor?: string;
+  scaleMultiplier?: number;
 }
 
 const SAT_MODEL_PATH = '/models/sat.glb';
@@ -27,13 +28,19 @@ function tintMaterial(material: THREE.Material, tintColor: string): THREE.Materi
   return cloned;
 }
 
-export function SatelliteMarker({ position, label, eventRole, satelliteTintColor }: SatelliteMarkerProps) {
+export function SatelliteMarker({
+  position,
+  label,
+  eventRole,
+  satelliteTintColor,
+  scaleMultiplier = 1,
+}: SatelliteMarkerProps) {
   const { scene } = useGLTF(SAT_MODEL_PATH);
   const roleToken = tokenForEventRole(eventRole);
   const roleLabel = operatorLabelForEventRole(eventRole, true);
-  const accent = eventRole ? roleToken.color : '#aaccff';
+  const accent = eventRole ? roleToken.color : satelliteTintColor ?? '#aaccff';
   const markerLightColor = satelliteTintColor ?? accent;
-  const scale = eventRole ? roleToken.markerScale : 5;
+  const scale = (eventRole ? roleToken.markerScale : 5) * scaleMultiplier;
 
   const cloned = useMemo(() => {
     const c = SkeletonUtils.clone(scene);

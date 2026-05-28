@@ -130,8 +130,12 @@ section('(b) sceneVisualScale behavior', () => {
 
 section('(c) App.tsx source wiring', () => {
   const appSource = source('src/App.tsx');
+  const appPersistenceSource = source('src/app/appPersistence.ts');
+  check(
+    appPersistenceSource.includes('SCENE_VISUAL_SCALE_OVERRIDES_KEY'),
+    'appPersistence.ts contains SCENE_VISUAL_SCALE_OVERRIDES_KEY',
+  );
   for (const expected of [
-    'SCENE_VISUAL_SCALE_OVERRIDES_KEY',
     'resolveSceneVisualScaleMultipliers(',
     'setSceneVisualScale',
     'visualScaleMultipliers={',
@@ -152,8 +156,12 @@ section('(d) useBeamViz.ts multiplier threading', () => {
     'useBeamViz has default-1.0 fallback',
   );
   check(
-    countOccurrences(useBeamVizSource, 'FOOTPRINT_RADIUS_WORLD * beamFootprintMultiplier') === 4,
-    'useBeamViz applies beamFootprintMultiplier at 4 consumer sites',
+    useBeamVizSource.includes('fallbackFootprintRadiusWorld = 350 * alpha * beamFootprintMultiplier'),
+    'useBeamViz applies beamFootprintMultiplier to fallback footprint radius',
+  );
+  check(
+    countOccurrences(useBeamVizSource, 'fallbackFootprintRadiusWorld') >= 3,
+    'useBeamViz threads scaled fallback footprint radius through shell layout helpers',
   );
 });
 

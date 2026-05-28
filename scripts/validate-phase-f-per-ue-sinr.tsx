@@ -165,20 +165,21 @@ section('(a) SimFrame.perUePositions source contract', () => {
 
 section('(b) runtimeFrameStep.ts source wiring', () => {
   const runtimeSource = source('src/scene/runtimeFrameStep.ts');
+  const runtimeUeSource = source('src/scene/runtimeUeFrame.ts');
   check(runtimeSource.includes('export function fillPerUeServingSinr'), 'runtime exports focused per-UE SINR helper');
   check(
-    /for\s*\(\s*let\s+i\s*=\s*1;\s*i\s*<\s*perUePositions\.length;/.test(runtimeSource),
-    'runtime iterates secondary UEs from index 1',
+    /for\s*\(\s*let\s+i\s*=\s*1;\s*i\s*<\s*perUePositions\.length;/.test(runtimeUeSource),
+    'runtime UE helper iterates secondary UEs from index 1',
   );
-  check(runtimeSource.includes('const secondarySamples = computeLinkBudget('), 'runtime calls computeLinkBudget for secondary UEs');
+  check(runtimeUeSource.includes('const secondarySamples = computeLinkBudget('), 'runtime UE helper calls computeLinkBudget for secondary UEs');
   check(
-    runtimeSource.includes('perUePositions[0].sinrDb = primaryServingSinrDb')
+    runtimeUeSource.includes('perUePositions[0].sinrDb = primaryServingSinrDb')
       && runtimeSource.includes('const primaryServingSinrDb = hoManager.state.sinrDb'),
     'primary per-UE SINR is copied from existing serving SINR state',
   );
   check(
-    runtimeSource.includes('primaryServingSatId === null || primaryServingBeamId === null'),
-    'runtime sets secondary SINR null when primary serving is absent',
+    runtimeUeSource.includes('primaryServingSatId === null || primaryServingBeamId === null'),
+    'runtime UE helper sets secondary SINR null when primary serving is absent',
   );
 });
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { UI_CLASSES, UI_TOKENS } from '../../constants/uiTokens';
 import type { Profile } from '../../profiles/types';
 import type { AppExperienceMode } from '../appMode';
@@ -14,6 +15,38 @@ import {
   type SceneVisualScaleState,
 } from '../../sceneVisualScale';
 import { controlStackStyle, dividerStyle, explanatoryTextStyle } from './styles';
+import {
+  formatBeamCount,
+  formatGridSpacing,
+  formatSatCount,
+  formatUeCount,
+  formatUeSpeed,
+  formatWaypointCount,
+} from './topologyFormatters';
+import {
+  topologyActionRowStyle,
+  topologyBadgeStyle,
+  topologyChoiceInputStyle,
+  topologyClearButtonStyle,
+  topologyEffectiveValueStyle,
+  topologyHeaderStackStyle,
+  topologyNoticeStyle,
+  topologyParamLabelStyle,
+  topologyParamPanelStyle,
+  topologyRadioFieldsetStyle,
+  topologyRadioLabelStyle,
+  topologyRangeBoundsStyle,
+  topologyRangeInputStyle,
+  topologyRangeStackStyle,
+  topologySectionStyle,
+  topologySecondaryButtonStyle,
+  topologySplitHeaderStyle,
+  topologySrOnlyLegendStyle,
+  topologyTitleRowStyle,
+  topologyTitleStyle,
+  topologyTrailToggleStyle,
+  topologyValuePillStyle,
+} from './topologyTabStyles';
 
 interface TopologyTabProps {
   topology: SceneTopologyState;
@@ -23,10 +56,6 @@ interface TopologyTabProps {
   onTopologyChange: (next: SceneTopologyState) => void;
   onSceneVisualScaleChange?: (next: SceneVisualScaleState) => void;
   onReset: () => void;
-}
-
-function formatSatCount(value: number): string {
-  return `${value.toFixed(0)} sats`;
 }
 
 const BEAM_COUNT_OPTIONS = [7, 19, 37] as const;
@@ -67,28 +96,114 @@ const UE_MOBILITY_PARAM_TESTIDS = {
   manhattanGridSpacingKm: 'topology-tab-ue-mobility-grid-spacing',
 } as const;
 
-function formatBeamCount(value: number): string {
-  return `${value.toFixed(0)} beams`;
-}
-
-function formatUeCount(value: number): string {
-  return `${value.toFixed(0)} UEs`;
-}
-
-function formatUeSpeed(value: number): string {
-  return `${value.toFixed(0)} km/sec`;
-}
-
-function formatWaypointCount(value: number): string {
-  return `${value.toFixed(0)} waypoints`;
-}
-
-function formatGridSpacing(value: number): string {
-  return `${value.toFixed(0)} km`;
-}
-
 function isBeamCountOption(value: number): value is BeamCountOption {
   return BEAM_COUNT_OPTIONS.includes(value as BeamCountOption);
+}
+
+function TopologyNotice({ children }: { children: ReactNode }) {
+  return <div style={topologyNoticeStyle}>{children}</div>;
+}
+
+function TopologySection({
+  children,
+  'data-testid': testId,
+}: {
+  children: ReactNode;
+  'data-testid'?: string;
+}) {
+  return (
+    <section data-testid={testId} style={topologySectionStyle}>
+      {children}
+    </section>
+  );
+}
+
+function SectionHeading({
+  title,
+  description,
+  badge,
+  value,
+}: {
+  title: string;
+  description: string;
+  badge?: string;
+  value?: ReactNode;
+}) {
+  const content = (
+    <div style={topologyHeaderStackStyle}>
+      <div style={topologyTitleRowStyle}>
+        <span style={topologyTitleStyle}>{title}</span>
+        {badge !== undefined && <span style={topologyBadgeStyle}>{badge}</span>}
+      </div>
+      <p style={{ ...explanatoryTextStyle, margin: 0 }}>{description}</p>
+    </div>
+  );
+
+  if (value === undefined) {
+    return content;
+  }
+
+  return (
+    <div style={topologySplitHeaderStyle}>
+      {content}
+      <div style={topologyValuePillStyle}>{value}</div>
+    </div>
+  );
+}
+
+function RangeBounds({ min, max }: { min: ReactNode; max: ReactNode }) {
+  return (
+    <div style={topologyRangeBoundsStyle}>
+      <span>{min}</span>
+      <span>{max}</span>
+    </div>
+  );
+}
+
+function EffectiveValue({
+  children,
+  'data-testid': testId,
+}: {
+  children: ReactNode;
+  'data-testid'?: string;
+}) {
+  return (
+    <div data-testid={testId} style={topologyEffectiveValueStyle}>
+      {children}
+    </div>
+  );
+}
+
+function ActionRow({ children }: { children: ReactNode }) {
+  return <div style={topologyActionRowStyle}>{children}</div>;
+}
+
+function ResetButton({
+  children,
+  onClick,
+  clear = false,
+  'data-testid': testId,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  clear?: boolean;
+  'data-testid'?: string;
+}) {
+  return (
+    <button
+      data-testid={testId}
+      className={UI_CLASSES.button}
+      type="button"
+      onClick={onClick}
+      style={clear ? topologyClearButtonStyle : topologySecondaryButtonStyle}
+    >
+      {children}
+    </button>
+  );
+}
+
+function RadioLegend({ children }: { children: ReactNode }) {
+  return <legend style={topologySrOnlyLegendStyle}>{children}</legend>;
 }
 
 export function TopologyTab({
@@ -141,436 +256,136 @@ export function TopologyTab({
     <div style={controlStackStyle}>
       {showTopologyOverrideControls && (
         <>
-          <div
-            data-testid="topology-tab-restart-banner"
-            style={{
-              display: 'grid',
-              gap: 4,
-              padding: '10px 12px',
-              borderRadius: UI_TOKENS.radius.md,
-              background: 'rgba(255, 214, 125, 0.10)',
-              border: '1px solid rgba(255, 214, 125, 0.24)',
-              color: 'rgba(255, 231, 180, 0.9)',
-              fontSize: UI_TOKENS.type.size.body,
-              lineHeight: 1.4,
-            }}
-          >
+          <div data-testid="topology-tab-restart-banner" style={topologyNoticeStyle}>
             <strong style={{ color: UI_TOKENS.color.semantic.fixed }}>
               Adjusting sat count restarts the simulation
             </strong>
             <span>Adjusting beam count restarts the simulation</span>
           </div>
 
-          <section
-            data-testid="topology-tab-effective-value"
-            style={{
-              display: 'grid',
-              gap: 12,
-              padding: '14px 15px',
-              borderRadius: UI_TOKENS.radius.lg,
-              background: UI_TOKENS.color.surface.card,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
-            }}
-          >
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          alignItems: 'start',
-        }}>
-          <div style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: 8,
-            }}>
-              <span style={{
-                color: UI_TOKENS.color.text.controlLabel,
-                fontSize: UI_TOKENS.type.size.bodyLg,
-                fontWeight: UI_TOKENS.type.weight.heavy,
-                lineHeight: 1.3,
-              }}>
-                Satellites per plane
+          <TopologySection data-testid="topology-tab-effective-value">
+            <SectionHeading
+              title="Satellites per plane"
+              description="Simulation Setting for the primary shell. This is not a SINR formula parameter."
+              badge={hasSatOverride ? undefined : 'No override'}
+              value={formatSatCount(effectiveSatCount)}
+            />
+
+            <div style={topologyRangeStackStyle}>
+              <input
+                data-testid="topology-tab-sat-count-slider"
+                className={UI_CLASSES.range}
+                type="range"
+                aria-label="Satellites per plane"
+                min={2}
+                max={8}
+                step={1}
+                value={effectiveSatCount}
+                onChange={event => onTopologyChange({
+                  ...topology,
+                  satsPerPlane: Number(event.target.value),
+                })}
+                style={topologyRangeInputStyle}
+              />
+              <RangeBounds min="Min 2 sats" max="Max 8 sats" />
+            </div>
+
+            <div style={topologyEffectiveValueStyle}>
+              <span>
+                Effective sat count: {effectiveSatCount} ({hasSatOverride ? 'override' : 'base profile'})
               </span>
-              {!hasSatOverride && (
-                <span style={{
-                  padding: '3px 7px',
-                  borderRadius: UI_TOKENS.radius.sm,
-                  background: 'rgba(132, 148, 163, 0.12)',
-                  border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                  color: UI_TOKENS.color.text.secondary,
-                  fontSize: UI_TOKENS.type.size.caption,
-                  fontWeight: UI_TOKENS.type.weight.heavy,
-                  textTransform: 'uppercase',
-                }}>
-                  No override
+              {baseProfile.orbit.shells.length > 1 && hasSatOverride && (
+                <span>
+                  shells[0]: {effectiveSatCount} (override) · other shells unchanged ({unchangedShellCount})
                 </span>
               )}
             </div>
-            <p style={{ ...explanatoryTextStyle, margin: 0 }}>
-              Simulation Setting for the primary shell. This is not a SINR formula parameter.
-            </p>
-          </div>
-          <div style={{
-            padding: '6px 10px',
-            borderRadius: UI_TOKENS.radius.md,
-            background: 'rgba(255, 255, 255, 0.055)',
-            border: `1px solid ${UI_TOKENS.color.semantic.fixed}38`,
-            color: UI_TOKENS.color.text.primary,
-            fontSize: UI_TOKENS.type.size.bodyLg,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-            whiteSpace: 'nowrap',
-          }}>
-            {formatSatCount(effectiveSatCount)}
-          </div>
-        </div>
 
-        <div style={{ display: 'grid', gap: 7 }}>
-          <input
-            data-testid="topology-tab-sat-count-slider"
-            className={UI_CLASSES.range}
-            type="range"
-            aria-label="Satellites per plane"
-            min={2}
-            max={8}
-            step={1}
-            value={effectiveSatCount}
-            onChange={event => onTopologyChange({
-              ...topology,
-              satsPerPlane: Number(event.target.value),
-            })}
-            style={{
-              width: '100%',
-              accentColor: UI_TOKENS.color.semantic.fixed,
-              cursor: 'pointer',
-            }}
-          />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 10,
-            color: UI_TOKENS.color.text.secondary,
-            fontSize: UI_TOKENS.type.size.body,
-            lineHeight: 1.35,
-          }}>
-            <span>Min 2 sats</span>
-            <span>Max 8 sats</span>
-          </div>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gap: 6,
-          color: UI_TOKENS.color.text.secondary,
-          fontSize: UI_TOKENS.type.size.body,
-          lineHeight: 1.45,
-        }}>
-          <span>
-            Effective sat count: {effectiveSatCount} ({hasSatOverride ? 'override' : 'base profile'})
-          </span>
-          {baseProfile.orbit.shells.length > 1 && hasSatOverride && (
-            <span>
-              shells[0]: {effectiveSatCount} (override) · other shells unchanged ({unchangedShellCount})
-            </span>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button
-            data-testid="topology-tab-clear-override"
-            className={UI_CLASSES.button}
-            type="button"
-            onClick={() => onTopologyChange({ ...topology, satsPerPlane: null })}
-            style={{
-              cursor: 'pointer',
-              borderRadius: UI_TOKENS.radius.md,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              background: 'rgba(255, 255, 255, 0.055)',
-              color: UI_TOKENS.color.text.secondary,
-              padding: '8px 10px',
-              fontSize: UI_TOKENS.type.size.body,
-              fontWeight: UI_TOKENS.type.weight.strong,
-            }}
-          >
-            Clear override
-          </button>
-          <button
-            className={UI_CLASSES.button}
-            type="button"
-            onClick={onReset}
-            style={{
-              cursor: 'pointer',
-              borderRadius: UI_TOKENS.radius.md,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              background: 'rgba(132, 148, 163, 0.08)',
-              color: UI_TOKENS.color.text.secondary,
-              padding: '8px 10px',
-              fontSize: UI_TOKENS.type.size.body,
-              fontWeight: UI_TOKENS.type.weight.strong,
-            }}
-          >
-            Reset topology
-          </button>
-        </div>
-          </section>
+            <ActionRow>
+              <ResetButton
+                data-testid="topology-tab-clear-override"
+                clear
+                onClick={() => onTopologyChange({ ...topology, satsPerPlane: null })}
+              >
+                Clear override
+              </ResetButton>
+              <ResetButton onClick={onReset}>Reset topology</ResetButton>
+            </ActionRow>
+          </TopologySection>
 
           <div style={dividerStyle} />
 
-          <section
-            data-testid="topology-tab-beam-count-effective-value"
-            style={{
-              display: 'grid',
-              gap: 12,
-              padding: '14px 15px',
-              borderRadius: UI_TOKENS.radius.lg,
-              background: UI_TOKENS.color.surface.card,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
-            }}
-          >
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          alignItems: 'start',
-        }}>
-          <div style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: 8,
-            }}>
-              <span style={{
-                color: UI_TOKENS.color.text.controlLabel,
-                fontSize: UI_TOKENS.type.size.bodyLg,
-                fontWeight: UI_TOKENS.type.weight.heavy,
-                lineHeight: 1.3,
-              }}>
-                Beam count per satellite
+          <TopologySection data-testid="topology-tab-beam-count-effective-value">
+            <SectionHeading
+              title="Beam count per satellite"
+              description="Simulation Setting for hex beam layouts. Radio options are limited to 7 / 19 / 37."
+              badge={hasBeamOverride ? undefined : 'No override'}
+              value={formatBeamCount(effectiveBeamCount)}
+            />
+
+            <fieldset data-testid="topology-tab-beam-count-radio" style={topologyRadioFieldsetStyle(3)}>
+              <RadioLegend>Beam count per satellite</RadioLegend>
+              {BEAM_COUNT_OPTIONS.map(option => {
+                const active = activeBeamCount === option;
+                return (
+                  <label key={option} style={topologyRadioLabelStyle(active)}>
+                    <input
+                      data-testid={BEAM_COUNT_OPTION_TESTIDS[option]}
+                      type="radio"
+                      name="topology-beam-count-per-satellite"
+                      value={option}
+                      checked={active}
+                      onChange={() => onTopologyChange({
+                        ...topology,
+                        beamCountPerSatellite: option,
+                      })}
+                      style={topologyChoiceInputStyle}
+                    />
+                    <span>{option} beams</span>
+                  </label>
+                );
+              })}
+            </fieldset>
+
+            <div style={topologyEffectiveValueStyle}>
+              <span>
+                Effective beam count per sat: {effectiveBeamCount} ({hasBeamOverride ? 'override' : 'base profile'})
               </span>
-              {!hasBeamOverride && (
-                <span style={{
-                  padding: '3px 7px',
-                  borderRadius: UI_TOKENS.radius.sm,
-                  background: 'rgba(132, 148, 163, 0.12)',
-                  border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                  color: UI_TOKENS.color.text.secondary,
-                  fontSize: UI_TOKENS.type.size.caption,
-                  fontWeight: UI_TOKENS.type.weight.heavy,
-                  textTransform: 'uppercase',
-                }}>
-                  No override
-                </span>
+              {!hasBeamOverride && !isBeamCountOption(baseBeamCount) && (
+                <span>No override - base profile beam count: {baseBeamCount}</span>
+              )}
+              {hasBeamOverride && (
+                <span>beams.perSatellite + beams.maxActivePerSat both set to {effectiveBeamCount}</span>
               )}
             </div>
-            <p style={{ ...explanatoryTextStyle, margin: 0 }}>
-              Simulation Setting for hex beam layouts. Radio options are limited to 7 / 19 / 37.
-            </p>
-          </div>
-          <div style={{
-            padding: '6px 10px',
-            borderRadius: UI_TOKENS.radius.md,
-            background: 'rgba(255, 255, 255, 0.055)',
-            border: `1px solid ${UI_TOKENS.color.semantic.fixed}38`,
-            color: UI_TOKENS.color.text.primary,
-            fontSize: UI_TOKENS.type.size.bodyLg,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-            whiteSpace: 'nowrap',
-          }}>
-            {formatBeamCount(effectiveBeamCount)}
-          </div>
-        </div>
 
-        <fieldset
-          data-testid="topology-tab-beam-count-radio"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-            gap: 8,
-            padding: 0,
-            margin: 0,
-            border: 0,
-            minWidth: 0,
-          }}
-        >
-          <legend style={{
-            position: 'absolute',
-            width: 1,
-            height: 1,
-            padding: 0,
-            margin: -1,
-            overflow: 'hidden',
-            clip: 'rect(0, 0, 0, 0)',
-            whiteSpace: 'nowrap',
-            border: 0,
-          }}>
-            Beam count per satellite
-          </legend>
-          {BEAM_COUNT_OPTIONS.map(option => {
-            const active = activeBeamCount === option;
-            return (
-              <label
-                key={option}
-                style={{
-                  cursor: 'pointer',
-                  display: 'grid',
-                  gap: 5,
-                  justifyItems: 'center',
-                  padding: '10px 9px',
-                  borderRadius: UI_TOKENS.radius.md,
-                  border: `1px solid ${active ? `${UI_TOKENS.color.semantic.fixed}66` : UI_TOKENS.color.border.subtle}`,
-                  background: active ? 'rgba(255, 214, 125, 0.12)' : 'rgba(255, 255, 255, 0.045)',
-                  color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
-                  fontSize: UI_TOKENS.type.size.body,
-                  fontWeight: UI_TOKENS.type.weight.strong,
-                  lineHeight: 1.25,
-                }}
+            <ActionRow>
+              <ResetButton
+                data-testid="topology-tab-beam-count-clear-override"
+                clear
+                onClick={() => onTopologyChange({ ...topology, beamCountPerSatellite: null })}
               >
-                <input
-                  data-testid={BEAM_COUNT_OPTION_TESTIDS[option]}
-                  type="radio"
-                  name="topology-beam-count-per-satellite"
-                  value={option}
-                  checked={active}
-                  onChange={() => onTopologyChange({
-                    ...topology,
-                    beamCountPerSatellite: option,
-                  })}
-                  style={{
-                    width: 16,
-                    height: 16,
-                    margin: 0,
-                    accentColor: UI_TOKENS.color.semantic.fixed,
-                    cursor: 'pointer',
-                  }}
-                />
-                <span>{option} beams</span>
-              </label>
-            );
-          })}
-        </fieldset>
-
-        <div style={{
-          display: 'grid',
-          gap: 6,
-          color: UI_TOKENS.color.text.secondary,
-          fontSize: UI_TOKENS.type.size.body,
-          lineHeight: 1.45,
-        }}>
-          <span>
-            Effective beam count per sat: {effectiveBeamCount} ({hasBeamOverride ? 'override' : 'base profile'})
-          </span>
-          {!hasBeamOverride && !isBeamCountOption(baseBeamCount) && (
-            <span>No override - base profile beam count: {baseBeamCount}</span>
-          )}
-          {hasBeamOverride && (
-            <span>beams.perSatellite + beams.maxActivePerSat both set to {effectiveBeamCount}</span>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button
-            data-testid="topology-tab-beam-count-clear-override"
-            className={UI_CLASSES.button}
-            type="button"
-            onClick={() => onTopologyChange({ ...topology, beamCountPerSatellite: null })}
-            style={{
-              cursor: 'pointer',
-              borderRadius: UI_TOKENS.radius.md,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              background: 'rgba(255, 255, 255, 0.055)',
-              color: UI_TOKENS.color.text.secondary,
-              padding: '8px 10px',
-              fontSize: UI_TOKENS.type.size.body,
-              fontWeight: UI_TOKENS.type.weight.strong,
-            }}
-          >
-            Clear beam override
-          </button>
-        </div>
-          </section>
+                Clear beam override
+              </ResetButton>
+            </ActionRow>
+          </TopologySection>
         </>
       )}
 
       <div style={dividerStyle} />
 
-      <section
-        style={{
-          display: 'grid',
-          gap: 12,
-          padding: '14px 15px',
-          borderRadius: UI_TOKENS.radius.lg,
-          background: UI_TOKENS.color.surface.card,
-          border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-          borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
-        }}
-      >
-        <div style={{
-          display: 'grid',
-          gap: 5,
-          minWidth: 0,
-        }}>
-          <span style={{
-            color: UI_TOKENS.color.text.controlLabel,
-            fontSize: UI_TOKENS.type.size.bodyLg,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-            lineHeight: 1.3,
-          }}>
-            Scene scale
-          </span>
-          <p style={{ ...explanatoryTextStyle, margin: 0 }}>
-            Simulation Setting for visual footprint scale. This is not a SINR formula parameter.
-          </p>
-        </div>
+      <TopologySection>
+        <SectionHeading
+          title="Scene scale"
+          description="Simulation Setting for visual footprint scale. This is not a SINR formula parameter."
+        />
 
-        <fieldset
-          data-testid="topology-tab-scene-scale-radio"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 8,
-            padding: 0,
-            margin: 0,
-            border: 0,
-            minWidth: 0,
-          }}
-        >
-          <legend style={{
-            position: 'absolute',
-            width: 1,
-            height: 1,
-            padding: 0,
-            margin: -1,
-            overflow: 'hidden',
-            clip: 'rect(0, 0, 0, 0)',
-            whiteSpace: 'nowrap',
-            border: 0,
-          }}>
-            Scene scale
-          </legend>
+        <fieldset data-testid="topology-tab-scene-scale-radio" style={topologyRadioFieldsetStyle(2)}>
+          <RadioLegend>Scene scale</RadioLegend>
           {SCENE_SCALE_OPTIONS.map(option => {
             const active = sceneVisualScale.sceneScale === option;
             return (
-              <label
-                key={option}
-                style={{
-                  cursor: 'pointer',
-                  display: 'grid',
-                  gap: 5,
-                  justifyItems: 'center',
-                  padding: '10px 9px',
-                  borderRadius: UI_TOKENS.radius.md,
-                  border: `1px solid ${active ? `${UI_TOKENS.color.semantic.fixed}66` : UI_TOKENS.color.border.subtle}`,
-                  background: active ? 'rgba(255, 214, 125, 0.12)' : 'rgba(255, 255, 255, 0.045)',
-                  color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
-                  fontSize: UI_TOKENS.type.size.body,
-                  fontWeight: UI_TOKENS.type.weight.strong,
-                  lineHeight: 1.25,
-                }}
-              >
+              <label key={option} style={topologyRadioLabelStyle(active)}>
                 <input
                   data-testid={SCENE_SCALE_OPTION_TESTIDS[option]}
                   type="radio"
@@ -581,13 +396,7 @@ export function TopologyTab({
                     ...sceneVisualScale,
                     sceneScale: option,
                   })}
-                  style={{
-                    width: 16,
-                    height: 16,
-                    margin: 0,
-                    accentColor: UI_TOKENS.color.semantic.fixed,
-                    cursor: 'pointer',
-                  }}
+                  style={topologyChoiceInputStyle}
                 />
                 <span>{option}</span>
               </label>
@@ -595,87 +404,35 @@ export function TopologyTab({
           })}
         </fieldset>
 
-        <div style={{
-          padding: '10px 12px',
-          borderRadius: UI_TOKENS.radius.md,
-          background: 'rgba(255, 214, 125, 0.10)',
-          border: '1px solid rgba(255, 214, 125, 0.24)',
-          color: 'rgba(255, 231, 180, 0.9)',
-          fontSize: UI_TOKENS.type.size.body,
-          lineHeight: 1.4,
-        }}>
+        <TopologyNotice>
           Adjusting scene scale takes effect on next render frame (no simulation restart).
-        </div>
+        </TopologyNotice>
 
-        <div
-          data-testid="topology-tab-scene-scale-effective-value"
-          style={{
-            display: 'grid',
-            gap: 6,
-            color: UI_TOKENS.color.text.secondary,
-            fontSize: UI_TOKENS.type.size.body,
-            lineHeight: 1.45,
-          }}
-        >
+        <EffectiveValue data-testid="topology-tab-scene-scale-effective-value">
           <span>
             Effective scene scale: {sceneVisualScale.sceneScale} ({sceneVisualScale.sceneScale !== 'paper-faithful' ? 'override' : 'default'})
           </span>
-        </div>
+        </EffectiveValue>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button
+        <ActionRow>
+          <ResetButton
             data-testid="topology-tab-scene-scale-reset"
-            className={UI_CLASSES.button}
-            type="button"
             onClick={() => onSceneVisualScaleChange(createSceneVisualScaleState())}
-            style={{
-              cursor: 'pointer',
-              borderRadius: UI_TOKENS.radius.md,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              background: 'rgba(132, 148, 163, 0.08)',
-              color: UI_TOKENS.color.text.secondary,
-              padding: '8px 10px',
-              fontSize: UI_TOKENS.type.size.body,
-              fontWeight: UI_TOKENS.type.weight.strong,
-            }}
           >
             Reset visual scale
-          </button>
-        </div>
-      </section>
+          </ResetButton>
+        </ActionRow>
+      </TopologySection>
 
       <div style={dividerStyle} />
 
-      <section
-        style={{
-          display: 'grid',
-          gap: 12,
-          padding: '14px 15px',
-          borderRadius: UI_TOKENS.radius.lg,
-          background: UI_TOKENS.color.surface.card,
-          border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-          borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
-        }}
-      >
-        <div style={{
-          display: 'grid',
-          gap: 5,
-          minWidth: 0,
-        }}>
-          <span style={{
-            color: UI_TOKENS.color.text.controlLabel,
-            fontSize: UI_TOKENS.type.size.bodyLg,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-            lineHeight: 1.3,
-          }}>
-            UE marker size
-          </span>
-          <p style={{ ...explanatoryTextStyle, margin: 0 }}>
-            Visual-only size control for UE marker cylinders.
-          </p>
-        </div>
+      <TopologySection>
+        <SectionHeading
+          title="UE marker size"
+          description="Visual-only size control for UE marker cylinders."
+        />
 
-        <div style={{ display: 'grid', gap: 7 }}>
+        <div style={topologyRangeStackStyle}>
           <input
             data-testid="topology-tab-ue-marker-slider"
             className={UI_CLASSES.range}
@@ -689,139 +446,47 @@ export function TopologyTab({
               ...sceneVisualScale,
               ueMarkerScale: Number(e.target.value),
             })}
-            style={{
-              width: '100%',
-              accentColor: UI_TOKENS.color.semantic.fixed,
-              cursor: 'pointer',
-            }}
+            style={topologyRangeInputStyle}
           />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 10,
-            color: UI_TOKENS.color.text.secondary,
-            fontSize: UI_TOKENS.type.size.body,
-            lineHeight: 1.35,
-          }}>
-            <span>0.5×</span>
-            <span>3.0×</span>
-          </div>
+          <RangeBounds min="0.5×" max="3.0×" />
         </div>
 
-        <div
-          data-testid="topology-tab-ue-marker-effective-value"
-          style={{
-            display: 'grid',
-            gap: 6,
-            color: UI_TOKENS.color.text.secondary,
-            fontSize: UI_TOKENS.type.size.body,
-            lineHeight: 1.45,
-          }}
-        >
+        <EffectiveValue data-testid="topology-tab-ue-marker-effective-value">
           <span>
             Effective UE marker scale: {sceneVisualScale.ueMarkerScale.toFixed(2)}×
           </span>
-        </div>
+        </EffectiveValue>
 
         <p style={{ ...explanatoryTextStyle, margin: 0 }}>
           Adjusts UE marker cylinder size relative to the default. Takes effect on next render frame (no simulation restart).
         </p>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button
+        <ActionRow>
+          <ResetButton
             data-testid="topology-tab-ue-marker-reset"
-            className={UI_CLASSES.button}
-            type="button"
             onClick={() => onSceneVisualScaleChange({
               ...sceneVisualScale,
               ueMarkerScale: 1.0,
             })}
-            style={{
-              cursor: 'pointer',
-              borderRadius: UI_TOKENS.radius.md,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              background: 'rgba(132, 148, 163, 0.08)',
-              color: UI_TOKENS.color.text.secondary,
-              padding: '8px 10px',
-              fontSize: UI_TOKENS.type.size.body,
-              fontWeight: UI_TOKENS.type.weight.strong,
-            }}
           >
             Reset UE size
-          </button>
-        </div>
-      </section>
+          </ResetButton>
+        </ActionRow>
+      </TopologySection>
 
       {showTopologyOverrideControls && (
         <>
           <div style={dividerStyle} />
 
-          <section
-            style={{
-              display: 'grid',
-              gap: 12,
-              padding: '14px 15px',
-              borderRadius: UI_TOKENS.radius.lg,
-              background: UI_TOKENS.color.surface.card,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
-            }}
-          >
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: 12,
-              alignItems: 'start',
-            }}>
-              <div style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-                <div style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  gap: 8,
-                }}>
-                  <span style={{
-                    color: UI_TOKENS.color.text.controlLabel,
-                    fontSize: UI_TOKENS.type.size.bodyLg,
-                    fontWeight: UI_TOKENS.type.weight.heavy,
-                    lineHeight: 1.3,
-                  }}>
-                    UE count
-                  </span>
-                  {!hasUeCountOverride && (
-                    <span style={{
-                      padding: '3px 7px',
-                      borderRadius: UI_TOKENS.radius.sm,
-                      background: 'rgba(132, 148, 163, 0.12)',
-                      border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                      color: UI_TOKENS.color.text.secondary,
-                      fontSize: UI_TOKENS.type.size.caption,
-                      fontWeight: UI_TOKENS.type.weight.heavy,
-                      textTransform: 'uppercase',
-                    }}>
-                      No override
-                    </span>
-                  )}
-                </div>
-                <p style={{ ...explanatoryTextStyle, margin: 0 }}>
-                  Simulation Setting for live multi-UE generation. This is not a SINR formula parameter.
-                </p>
-              </div>
-              <div style={{
-                padding: '6px 10px',
-                borderRadius: UI_TOKENS.radius.md,
-                background: 'rgba(255, 255, 255, 0.055)',
-                border: `1px solid ${UI_TOKENS.color.semantic.fixed}38`,
-                color: UI_TOKENS.color.text.primary,
-                fontSize: UI_TOKENS.type.size.bodyLg,
-                fontWeight: UI_TOKENS.type.weight.heavy,
-                whiteSpace: 'nowrap',
-              }}>
-                {formatUeCount(effectiveUeCount)}
-              </div>
-            </div>
+          <TopologySection>
+            <SectionHeading
+              title="UE count"
+              description="Simulation Setting for live multi-UE generation. This is not a SINR formula parameter."
+              badge={hasUeCountOverride ? undefined : 'No override'}
+              value={formatUeCount(effectiveUeCount)}
+            />
 
-            <div style={{ display: 'grid', gap: 7 }}>
+            <div style={topologyRangeStackStyle}>
               <input
                 data-testid="topology-tab-ue-count-slider"
                 className={UI_CLASSES.range}
@@ -835,172 +500,44 @@ export function TopologyTab({
                   ...topology,
                   ueCount: Number(event.target.value),
                 })}
-                style={{
-                  width: '100%',
-                  accentColor: UI_TOKENS.color.semantic.fixed,
-                  cursor: 'pointer',
-                }}
+                style={topologyRangeInputStyle}
               />
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 10,
-                color: UI_TOKENS.color.text.secondary,
-                fontSize: UI_TOKENS.type.size.body,
-                lineHeight: 1.35,
-              }}>
-                <span>Min 40 UEs</span>
-                <span>Max 200 UEs</span>
-              </div>
+              <RangeBounds min="Min 40 UEs" max="Max 200 UEs" />
             </div>
 
-            <div
-              data-testid="topology-tab-ue-count-effective-value"
-              style={{
-                display: 'grid',
-                gap: 6,
-                color: UI_TOKENS.color.text.secondary,
-                fontSize: UI_TOKENS.type.size.body,
-                lineHeight: 1.45,
-              }}
-            >
+            <EffectiveValue data-testid="topology-tab-ue-count-effective-value">
               <span>
                 Effective UE count: {effectiveUeCount} ({hasUeCountOverride ? 'override' : 'default'})
               </span>
-            </div>
+            </EffectiveValue>
 
-            <div style={{
-              padding: '10px 12px',
-              borderRadius: UI_TOKENS.radius.md,
-              background: 'rgba(255, 214, 125, 0.10)',
-              border: '1px solid rgba(255, 214, 125, 0.24)',
-              color: 'rgba(255, 231, 180, 0.9)',
-              fontSize: UI_TOKENS.type.size.body,
-              lineHeight: 1.4,
-            }}>
-              Adjusting UE count restarts the simulation.
-            </div>
+            <TopologyNotice>Adjusting UE count restarts the simulation.</TopologyNotice>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <button
+            <ActionRow>
+              <ResetButton
                 data-testid="topology-tab-ue-count-reset"
-                className={UI_CLASSES.button}
-                type="button"
                 onClick={() => onTopologyChange({ ...topology, ueCount: null })}
-                style={{
-                  cursor: 'pointer',
-                  borderRadius: UI_TOKENS.radius.md,
-                  border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                  background: 'rgba(132, 148, 163, 0.08)',
-                  color: UI_TOKENS.color.text.secondary,
-                  padding: '8px 10px',
-                  fontSize: UI_TOKENS.type.size.body,
-                  fontWeight: UI_TOKENS.type.weight.strong,
-                }}
               >
                 Reset UE count
-              </button>
-            </div>
-          </section>
+              </ResetButton>
+            </ActionRow>
+          </TopologySection>
 
           <div style={dividerStyle} />
 
-          <section
-            style={{
-              display: 'grid',
-              gap: 12,
-              padding: '14px 15px',
-              borderRadius: UI_TOKENS.radius.lg,
-              background: UI_TOKENS.color.surface.card,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
-            }}
-          >
-            <div style={{
-              display: 'grid',
-              gap: 5,
-              minWidth: 0,
-            }}>
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: 8,
-              }}>
-                <span style={{
-                  color: UI_TOKENS.color.text.controlLabel,
-                  fontSize: UI_TOKENS.type.size.bodyLg,
-                  fontWeight: UI_TOKENS.type.weight.heavy,
-                  lineHeight: 1.3,
-                }}>
-                  UE distribution mode
-                </span>
-                {!hasUeDistributionOverride && (
-                  <span style={{
-                    padding: '3px 7px',
-                    borderRadius: UI_TOKENS.radius.sm,
-                    background: 'rgba(132, 148, 163, 0.12)',
-                    border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                    color: UI_TOKENS.color.text.secondary,
-                    fontSize: UI_TOKENS.type.size.caption,
-                    fontWeight: UI_TOKENS.type.weight.heavy,
-                    textTransform: 'uppercase',
-                  }}>
-                    Default random
-                  </span>
-                )}
-              </div>
-              <p style={{ ...explanatoryTextStyle, margin: 0 }}>
-                Simulation Setting for secondary UE placement. Primary UE remains fixed.
-              </p>
-            </div>
+          <TopologySection>
+            <SectionHeading
+              title="UE distribution mode"
+              description="Simulation Setting for secondary UE placement. Primary UE remains fixed."
+              badge={hasUeDistributionOverride ? undefined : 'Default random'}
+            />
 
-            <fieldset
-              data-testid="topology-tab-ue-distribution-radio"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                gap: 8,
-                padding: 0,
-                margin: 0,
-                border: 0,
-                minWidth: 0,
-              }}
-            >
-              <legend style={{
-                position: 'absolute',
-                width: 1,
-                height: 1,
-                padding: 0,
-                margin: -1,
-                overflow: 'hidden',
-                clip: 'rect(0, 0, 0, 0)',
-                whiteSpace: 'nowrap',
-                border: 0,
-              }}>
-                UE distribution mode
-              </legend>
+            <fieldset data-testid="topology-tab-ue-distribution-radio" style={topologyRadioFieldsetStyle(3)}>
+              <RadioLegend>UE distribution mode</RadioLegend>
               {UE_DISTRIBUTION_MODE_OPTIONS.map(option => {
                 const active = effectiveUeDistributionMode === option;
                 return (
-                  <label
-                    key={option}
-                    style={{
-                      cursor: 'pointer',
-                      display: 'grid',
-                      gap: 5,
-                      justifyItems: 'center',
-                      padding: '10px 9px',
-                      borderRadius: UI_TOKENS.radius.md,
-                      border: `1px solid ${active ? `${UI_TOKENS.color.semantic.fixed}66` : UI_TOKENS.color.border.subtle}`,
-                      background: active ? 'rgba(255, 214, 125, 0.12)' : 'rgba(255, 255, 255, 0.045)',
-                      color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
-                      fontSize: UI_TOKENS.type.size.body,
-                      fontWeight: UI_TOKENS.type.weight.strong,
-                      lineHeight: 1.25,
-                      textTransform: 'capitalize',
-                    }}
-                  >
+                  <label key={option} style={topologyRadioLabelStyle(active, 'capitalize')}>
                     <input
                       data-testid={UE_DISTRIBUTION_MODE_OPTION_TESTIDS[option]}
                       type="radio"
@@ -1011,13 +548,7 @@ export function TopologyTab({
                         ...topology,
                         ueDistributionMode: option,
                       })}
-                      style={{
-                        width: 16,
-                        height: 16,
-                        margin: 0,
-                        accentColor: UI_TOKENS.color.semantic.fixed,
-                        cursor: 'pointer',
-                      }}
+                      style={topologyChoiceInputStyle}
                     />
                     <span>{option}</span>
                   </label>
@@ -1025,137 +556,33 @@ export function TopologyTab({
               })}
             </fieldset>
 
-            <div style={{
-              padding: '10px 12px',
-              borderRadius: UI_TOKENS.radius.md,
-              background: 'rgba(255, 214, 125, 0.10)',
-              border: '1px solid rgba(255, 214, 125, 0.24)',
-              color: 'rgba(255, 231, 180, 0.9)',
-              fontSize: UI_TOKENS.type.size.body,
-              lineHeight: 1.4,
-            }}>
-              Changing UE distribution restarts the simulation.
-            </div>
+            <TopologyNotice>Changing UE distribution restarts the simulation.</TopologyNotice>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <button
+            <ActionRow>
+              <ResetButton
                 data-testid="topology-tab-ue-distribution-reset"
-                className={UI_CLASSES.button}
-                type="button"
                 onClick={() => onTopologyChange({ ...topology, ueDistributionMode: null })}
-                style={{
-                  cursor: 'pointer',
-                  borderRadius: UI_TOKENS.radius.md,
-                  border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                  background: 'rgba(132, 148, 163, 0.08)',
-                  color: UI_TOKENS.color.text.secondary,
-                  padding: '8px 10px',
-                  fontSize: UI_TOKENS.type.size.body,
-                  fontWeight: UI_TOKENS.type.weight.strong,
-                }}
               >
                 Reset distribution
-              </button>
-            </div>
-          </section>
+              </ResetButton>
+            </ActionRow>
+          </TopologySection>
 
           <div style={dividerStyle} />
 
-          <section
-            style={{
-              display: 'grid',
-              gap: 12,
-              padding: '14px 15px',
-              borderRadius: UI_TOKENS.radius.lg,
-              background: UI_TOKENS.color.surface.card,
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              borderLeft: `4px solid ${UI_TOKENS.color.semantic.fixed}aa`,
-            }}
-          >
-            <div style={{
-              display: 'grid',
-              gap: 5,
-              minWidth: 0,
-            }}>
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: 8,
-              }}>
-                <span style={{
-                  color: UI_TOKENS.color.text.controlLabel,
-                  fontSize: UI_TOKENS.type.size.bodyLg,
-                  fontWeight: UI_TOKENS.type.weight.heavy,
-                  lineHeight: 1.3,
-                }}>
-                  UE mobility
-                </span>
-                {!hasUeMobilityOverride && (
-                  <span style={{
-                    padding: '3px 7px',
-                    borderRadius: UI_TOKENS.radius.sm,
-                    background: 'rgba(132, 148, 163, 0.12)',
-                    border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                    color: UI_TOKENS.color.text.secondary,
-                    fontSize: UI_TOKENS.type.size.caption,
-                    fontWeight: UI_TOKENS.type.weight.heavy,
-                    textTransform: 'uppercase',
-                  }}>
-                    Default static
-                  </span>
-                )}
-              </div>
-              <p style={{ ...explanatoryTextStyle, margin: 0 }}>
-                Simulation Setting for secondary UE motion. Primary UE remains fixed.
-              </p>
-            </div>
+          <TopologySection>
+            <SectionHeading
+              title="UE mobility"
+              description="Simulation Setting for secondary UE motion. Primary UE remains fixed."
+              badge={hasUeMobilityOverride ? undefined : 'Default static'}
+            />
 
-            <fieldset
-              data-testid="topology-tab-ue-mobility-radio"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-                gap: 8,
-                padding: 0,
-                margin: 0,
-                border: 0,
-                minWidth: 0,
-              }}
-            >
-              <legend style={{
-                position: 'absolute',
-                width: 1,
-                height: 1,
-                padding: 0,
-                margin: -1,
-                overflow: 'hidden',
-                clip: 'rect(0, 0, 0, 0)',
-                whiteSpace: 'nowrap',
-                border: 0,
-              }}>
-                UE mobility
-              </legend>
+            <fieldset data-testid="topology-tab-ue-mobility-radio" style={topologyRadioFieldsetStyle(4)}>
+              <RadioLegend>UE mobility</RadioLegend>
               {UE_MOBILITY_MODE_OPTIONS.map(option => {
                 const active = effectiveUeMobilityMode === option;
                 return (
-                  <label
-                    key={option}
-                    style={{
-                      cursor: 'pointer',
-                      display: 'grid',
-                      gap: 5,
-                      justifyItems: 'center',
-                      padding: '10px 9px',
-                      borderRadius: UI_TOKENS.radius.md,
-                      border: `1px solid ${active ? `${UI_TOKENS.color.semantic.fixed}66` : UI_TOKENS.color.border.subtle}`,
-                      background: active ? 'rgba(255, 214, 125, 0.12)' : 'rgba(255, 255, 255, 0.045)',
-                      color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
-                      fontSize: UI_TOKENS.type.size.body,
-                      fontWeight: UI_TOKENS.type.weight.strong,
-                      lineHeight: 1.25,
-                    }}
-                  >
+                  <label key={option} style={topologyRadioLabelStyle(active)}>
                     <input
                       data-testid={UE_MOBILITY_MODE_OPTION_TESTIDS[option]}
                       type="radio"
@@ -1167,13 +594,7 @@ export function TopologyTab({
                         ueMobilityMode: option,
                         ueMobilityParams: option === 'static' ? null : topology.ueMobilityParams,
                       })}
-                      style={{
-                        width: 16,
-                        height: 16,
-                        margin: 0,
-                        accentColor: UI_TOKENS.color.semantic.fixed,
-                        cursor: 'pointer',
-                      }}
+                      style={topologyChoiceInputStyle}
                     />
                     <span>{option}</span>
                   </label>
@@ -1182,24 +603,9 @@ export function TopologyTab({
             </fieldset>
 
             {showUeMobilityParams && (
-              <div style={{
-                display: 'grid',
-                gap: 12,
-                padding: '12px 13px',
-                borderRadius: UI_TOKENS.radius.md,
-                background: 'rgba(255, 255, 255, 0.045)',
-                border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              }}>
+              <div style={topologyParamPanelStyle}>
                 <label style={{ display: 'grid', gap: 7 }}>
-                  <span style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 10,
-                    color: UI_TOKENS.color.text.controlLabel,
-                    fontSize: UI_TOKENS.type.size.body,
-                    fontWeight: UI_TOKENS.type.weight.strong,
-                    lineHeight: 1.35,
-                  }}>
+                  <span style={topologyParamLabelStyle}>
                     <span>Speed</span>
                     <span>{formatUeSpeed(effectiveUeMobilityParams.speedKmPerSec)}</span>
                   </span>
@@ -1213,25 +619,13 @@ export function TopologyTab({
                     step={1}
                     value={effectiveUeMobilityParams.speedKmPerSec}
                     onChange={event => updateUeMobilityParams({ speedKmPerSec: Number(event.target.value) })}
-                    style={{
-                      width: '100%',
-                      accentColor: UI_TOKENS.color.semantic.fixed,
-                      cursor: 'pointer',
-                    }}
+                    style={topologyRangeInputStyle}
                   />
                 </label>
 
                 {effectiveUeMobilityMode === 'waypoints' && (
                   <label style={{ display: 'grid', gap: 7 }}>
-                    <span style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      color: UI_TOKENS.color.text.controlLabel,
-                      fontSize: UI_TOKENS.type.size.body,
-                      fontWeight: UI_TOKENS.type.weight.strong,
-                      lineHeight: 1.35,
-                    }}>
+                    <span style={topologyParamLabelStyle}>
                       <span>Waypoint count</span>
                       <span>{formatWaypointCount(effectiveUeMobilityParams.waypointCount)}</span>
                     </span>
@@ -1245,26 +639,14 @@ export function TopologyTab({
                       step={1}
                       value={effectiveUeMobilityParams.waypointCount}
                       onChange={event => updateUeMobilityParams({ waypointCount: Number(event.target.value) })}
-                      style={{
-                        width: '100%',
-                        accentColor: UI_TOKENS.color.semantic.fixed,
-                        cursor: 'pointer',
-                      }}
+                      style={topologyRangeInputStyle}
                     />
                   </label>
                 )}
 
                 {effectiveUeMobilityMode === 'manhattan' && (
                   <label style={{ display: 'grid', gap: 7 }}>
-                    <span style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      color: UI_TOKENS.color.text.controlLabel,
-                      fontSize: UI_TOKENS.type.size.body,
-                      fontWeight: UI_TOKENS.type.weight.strong,
-                      lineHeight: 1.35,
-                    }}>
+                    <span style={topologyParamLabelStyle}>
                       <span>Grid spacing</span>
                       <span>{formatGridSpacing(effectiveUeMobilityParams.manhattanGridSpacingKm)}</span>
                     </span>
@@ -1278,86 +660,41 @@ export function TopologyTab({
                       step={1}
                       value={effectiveUeMobilityParams.manhattanGridSpacingKm}
                       onChange={event => updateUeMobilityParams({ manhattanGridSpacingKm: Number(event.target.value) })}
-                      style={{
-                        width: '100%',
-                        accentColor: UI_TOKENS.color.semantic.fixed,
-                        cursor: 'pointer',
-                      }}
+                      style={topologyRangeInputStyle}
                     />
                   </label>
                 )}
               </div>
             )}
 
-            <div style={{
-              padding: '10px 12px',
-              borderRadius: UI_TOKENS.radius.md,
-              background: 'rgba(255, 214, 125, 0.10)',
-              border: '1px solid rgba(255, 214, 125, 0.24)',
-              color: 'rgba(255, 231, 180, 0.9)',
-              fontSize: UI_TOKENS.type.size.body,
-              lineHeight: 1.4,
-            }}>
-              Changing UE mobility restarts the simulation.
-            </div>
+            <TopologyNotice>Changing UE mobility restarts the simulation.</TopologyNotice>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <button
+            <ActionRow>
+              <ResetButton
                 data-testid="topology-tab-ue-mobility-reset"
-                className={UI_CLASSES.button}
-                type="button"
                 onClick={() => onTopologyChange({ ...topology, ueMobilityMode: null, ueMobilityParams: null })}
-                style={{
-                  cursor: 'pointer',
-                  borderRadius: UI_TOKENS.radius.md,
-                  border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                  background: 'rgba(132, 148, 163, 0.08)',
-                  color: UI_TOKENS.color.text.secondary,
-                  padding: '8px 10px',
-                  fontSize: UI_TOKENS.type.size.body,
-                  fontWeight: UI_TOKENS.type.weight.strong,
-                }}
               >
                 Reset mobility
-              </button>
-            </div>
+              </ResetButton>
+            </ActionRow>
 
             <label
               data-testid="topology-tab-ue-trails-label"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '10px 12px',
-                borderRadius: UI_TOKENS.radius.md,
-                background: enableUeTrails ? 'rgba(255, 214, 125, 0.10)' : 'rgba(255, 255, 255, 0.045)',
-                border: `1px solid ${enableUeTrails ? `${UI_TOKENS.color.semantic.fixed}55` : UI_TOKENS.color.border.subtle}`,
-                color: enableUeTrails ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
-                fontSize: UI_TOKENS.type.size.body,
-                fontWeight: UI_TOKENS.type.weight.strong,
-                lineHeight: 1.35,
-                cursor: 'pointer',
-              }}
+              style={topologyTrailToggleStyle(enableUeTrails)}
             >
               <input
                 data-testid="topology-tab-ue-trails-toggle"
                 type="checkbox"
                 checked={enableUeTrails}
-                onChange={event => onTopologyChange({
+                onChange={(event) => onTopologyChange({
                   ...topology,
                   enableUeTrails: event.target.checked ? true : null,
                 })}
-                style={{
-                  width: 16,
-                  height: 16,
-                  margin: 0,
-                  accentColor: UI_TOKENS.color.semantic.fixed,
-                  cursor: 'pointer',
-                }}
+                style={topologyChoiceInputStyle}
               />
               <span>Show UE trails</span>
             </label>
-          </section>
+          </TopologySection>
         </>
       )}
     </div>

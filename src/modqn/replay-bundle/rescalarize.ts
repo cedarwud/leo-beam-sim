@@ -16,7 +16,7 @@
 //
 // Returns null when `topCandidates` is absent/empty — the caller defers to
 // sinr-offset (do NOT synthesise Q-values per SDD §5.3).
-import type { RuntimeOmegaState } from '../../ui/useModqnHandoverState';
+import type { RuntimeOmegaState } from '../runtimeControls';
 import type { ModqnPolicyCandidate } from './types';
 
 export interface ReScalarizeResult {

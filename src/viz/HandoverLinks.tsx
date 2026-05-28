@@ -1,9 +1,9 @@
 import { Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { tokenForEventRole } from '../constants/beamRoleTokens';
+import type { BeamTarget } from '../scene/beamTargetTypes';
 import type { EventRole, VisibleSat } from '../scene/types';
 import { formatBeamIdentityByIndex } from '../utils/formatSatelliteLabel';
-import type { BeamTarget } from './SatelliteBeams';
 
 /**
  * P2 (SDD §9 + §7 "src/viz/HandoverLinks.tsx — currently uses a hardcoded

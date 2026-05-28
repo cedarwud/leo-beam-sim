@@ -163,5 +163,24 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+            return 'vendor-react';
+          }
+          if (
+            id.includes('/three/')
+            || id.includes('/@react-three/fiber/')
+            || id.includes('/@react-three/drei/')
+          ) {
+            return 'vendor-three';
+          }
+          return 'vendor';
+        },
+      },
+    },
   },
 });

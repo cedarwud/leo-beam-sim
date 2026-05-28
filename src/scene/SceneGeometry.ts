@@ -90,6 +90,15 @@ export interface SceneGeometryFields {
    * uses this only for live-side visual frequency-index resolution.
    */
   readonly beamFrequencyReuseCount?: number;
+  /** Adaptive visual alpha scale factor (defaults to 1.0). */
+  readonly visualAlpha?: number;
+  /** Downscaled visual satellite altitude in world units (e.g. 600 or 900). */
+  readonly visualSatelliteAltitude?: number;
+  /**
+   * Scene map scale in km/world-unit. Derived by inscribing the paper UE area
+   * into the active GLB bounds; not a physics input.
+   */
+  readonly kmPerWorldUnit?: number;
 }
 
 /**
@@ -140,6 +149,12 @@ export interface LiveProfileGeometryInput {
    * frequency indices without re-reading `Profile`.
    */
   beams?: { frequencyReuse?: number } | null;
+  /** Adaptive visual alpha scale factor. */
+  visualAlpha?: number;
+  /** Downscaled visual satellite altitude in world units. */
+  visualSatelliteAltitude?: number;
+  /** Active scene km/world-unit scale derived from the inscribed paper UE area. */
+  kmPerWorldUnit?: number;
 }
 
 /**
@@ -183,6 +198,9 @@ export function sceneGeometryFromProfile(profile: LiveProfileGeometryInput): Sce
     handoverTriggerTimeSec: profile.handover?.triggerTimeSec,
     shellLayouts,
     beamFrequencyReuseCount: profile.beams?.frequencyReuse,
+    visualAlpha: profile.visualAlpha,
+    visualSatelliteAltitude: profile.visualSatelliteAltitude,
+    kmPerWorldUnit: profile.kmPerWorldUnit,
     __brand: LIVE_GEOMETRY_BRAND_SYMBOL,
   };
 }
@@ -331,6 +349,8 @@ export function sceneGeometryFromArtifact(
     // Replay: producer truth supplies per-frame phase; no live trigger time.
     handoverTriggerTimeSec: undefined,
     shellLayouts,
+    visualAlpha: 1.0,
+    visualSatelliteAltitude: 900,
     __brand: REPLAY_GEOMETRY_BRAND_SYMBOL,
   };
 }

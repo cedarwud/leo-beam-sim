@@ -3,7 +3,7 @@ import { Line, Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { ModqnReplaySceneVisualState } from '../modqnReplaySceneVisuals';
-import { ARC_CONTROL_Y_WORLD } from './constants';
+import { ARC_CONTROL_Y_WORLD, DISC_Y_WORLD } from './constants';
 import { createArcPoints, pointOnQuadraticArc, samePoint } from './geometry';
 
 function SwitchPulse({
@@ -14,7 +14,7 @@ function SwitchPulse({
   readonly reducedMotion: boolean;
 }) {
   const pulseRef = useRef<THREE.Mesh | null>(null);
-  const active = visualState.switch.activeIntraSatelliteSwitch
+  const active = visualState.switch.activeHandover
     && !samePoint(visualState.switch.sourcePosition, visualState.switch.targetPosition);
 
   useFrame(({ clock }) => {
@@ -46,15 +46,15 @@ function SwitchPulse({
     <mesh
       ref={pulseRef}
       position={initialPoint}
-      renderOrder={69}
+      renderOrder={79}
       frustumCulled={false}
       name="modqn-replay-scene-switch-pulse"
     >
-      <sphereGeometry args={[5.8, 20, 20]} />
+      <sphereGeometry args={[4.2, 20, 20]} />
       <meshBasicMaterial
         color="#fff7ed"
         transparent
-        opacity={0.96}
+        opacity={0.74}
         depthTest={false}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
@@ -74,9 +74,15 @@ export function ReplaySwitchArc({
   const source = visualState.switch.sourcePosition;
   const target = visualState.switch.targetPosition;
   const hasArc = !samePoint(source, target);
-  const active = visualState.switch.activeIntraSatelliteSwitch && hasArc;
-  const color = active ? '#f59e0b' : '#94a3b8';
+  const active = visualState.switch.activeHandover && hasArc;
+  const color = visualState.switch.eventKind === 'inter-satellite-handover'
+    ? '#a78bfa'
+    : active ? '#f8fafc' : '#94a3b8';
   const points = createArcPoints(source, target, ARC_CONTROL_Y_WORLD);
+  const groundPoints: [number, number, number][] = [
+    [source.x, DISC_Y_WORLD + 1.2, source.z],
+    [target.x, DISC_Y_WORLD + 1.2, target.z],
+  ];
   const midpoint: [number, number, number] = [
     (source.x + target.x) / 2,
     ARC_CONTROL_Y_WORLD + 5,
@@ -88,26 +94,40 @@ export function ReplaySwitchArc({
   return (
     <group name="modqn-replay-scene-switch-arc">
       <Line
+        points={groundPoints}
+        color={color}
+        lineWidth={active ? 3.2 : 2}
+        transparent
+        opacity={active ? 0.24 : 0.16}
+        dashed={!active}
+        dashSize={18}
+        gapSize={10}
+        renderOrder={76}
+        depthTest={false}
+        depthWrite={false}
+      />
+      <Line
         points={points}
         color={color}
-        lineWidth={active ? 4.6 : 2.4}
+        lineWidth={active ? 4.2 : 2.4}
         transparent
-        opacity={active ? 0.95 : 0.48}
+        opacity={active ? 0.72 : 0.36}
         dashed={!active}
         dashSize={9}
         gapSize={6}
-        renderOrder={66}
+        renderOrder={77}
         depthTest={false}
         depthWrite={false}
       />
       <Text
         position={midpoint}
-        fontSize={7.5}
+        fontSize={7.2}
         color={color}
         anchorX="center"
         anchorY="middle"
         outlineWidth={0.45}
         outlineColor="#020617"
+        renderOrder={78}
       >
         {visualState.switch.label}
       </Text>

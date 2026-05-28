@@ -1,70 +1,133 @@
-# MODQN Visibility Fix Mini-SDD
+# MODQN Render Isolation / Visibility Fix Mini-SDD
+
+**2026-05-28 update:** The render-isolation parts of this document still
+apply, but any mention of four producer-context satellite models, compressed
+context lanes, or replay cone cues has been superseded by
+`docs/modqn-training-truth-visualization-sdd.md`. MODQN replay visualization
+now prefers producer row `satelliteStates` / `beamStates` and otherwise
+fails closed to T0 cues.
 
 ## 1. Problem
 
-The live `modqn-demo` profile currently declares the paper baseline shell as:
+The live `modqn-demo` scene had three user-visible problems:
 
-```json
-{ "altitudeKm": 780, "inclinationDeg": 53, "planes": 1, "satsPerPlane": 4 }
-```
+1. The 780 km paper shell was drawn at physical scale relative to a
+   200 km x 90 km ground area, so satellites often sat outside the camera
+   framing.
+2. `modqn-demo` could enter a no-serving state where no beam cones were drawn,
+   making the scene look satellite-less even when satellites were present.
+3. The MODQN scene reused SINR live-scene markers: flat UE markers and the UAV
+   model appeared even though the public MODQN view should read as a
+   satellite/UE/beam scene.
 
-That is paper-literal in total satellite count, but it places all four
-satellites in one orbital plane. With the live renderer elevation gate
-(`MIN_ELEVATION_DEG = 15`) the plane crosses the Beijing service area in a
-short pass and then leaves no visible satellite for most of the 1200 second
-demo cycle.
+This is a live-rendering and scene-profile issue. It is not a replay artifact
+issue and must not be solved by changing `showcaseArtifactToScene.ts`,
+producer replay values, SINR truth, reward truth, global handover thresholds,
+or MODQN training semantics.
 
-This is a live profile geometry issue. It is not a replay artifact issue and
-must not be solved by changing `showcaseArtifactToScene.ts`, producer replay
-values, SINR truth, reward truth, or global visibility thresholds.
+## 2. Producer Truth Anchors
 
-## 2. Goal
+The MODQN scene follows the producer-side paper-faithful follow-on config for
+research facts:
 
-For `modqn-demo`, keep the paper baseline count and beam shape:
+- `altitude_km: 780`
+- `inclination_deg: 90.0`
+- ground point `(40°N, 116°E)`
+- UE area `uniform-rectangle`, `200 km x 90 km`
+- 7 beams per satellite
+- `theta_3db_deg = 2.0` stored as radians in the frontend profile
+- primary baseline objective weights `[0.5, 0.3, 0.2]`
 
-- 4 satellites total.
-- 7 beams per satellite.
-- 780 km altitude.
-- 53 degree inclination.
-- 100 UE paper baseline remains unchanged.
+Sources:
 
-The scene should show at least one satellite above 15 degrees elevation for
-the full 0..1200 second simulation cycle. More than one visible satellite is
-allowed, but the fix should not inflate the MODQN paper baseline into a 16+
-satellite constellation.
+- `modqn-paper-reproduction/configs/modqn-paper-baseline.paper-faithful-follow-on.resolved.yaml`
+- `modqn-paper-reproduction/configs/modqn-paper-baseline.resolved-template.yaml`
+- `modqn-paper-reproduction/docs/phase-01-python-baseline-reproduction-sdd.md`
+- `modqn-paper-reproduction/docs/modqn-reproduction-assumption-register.md`
+
+The previous `50 km` circular UE scatter is an older executable proxy
+(`ASSUME-MODQN-REP-021`). The public MODQN paper-faithful scene uses
+`ASSUME-MODQN-REP-022`: uniform sampling inside the paper-backed
+`200 km x 90 km` rectangle.
 
 ## 3. Chosen Design
 
-Use Option B with a small service-area phasing extension:
+### 3.1 Visual Satellite Altitude
+
+Keep the producer truth altitude at `780 km`, but introduce an explicit
+`visualSatelliteAltitude` scene hint. `useBeamViz` prefers this value for
+world-space satellite placement. This is display-only camera/framing
+compression:
+
+- it does not change `Profile.orbit.shells[*].altitudeKm`;
+- it does not feed link budget, handover, action masks, rewards, or producer
+  artifacts;
+- SINR and MODQN can use different visual scene configs without sharing marker
+  decisions.
+
+### 3.2 Service-Area Phased MODQN Live Profile
+
+The producer follow-on config uses a rotated single-plane proxy:
+
+```json
+{
+  "altitude_km": 780,
+  "orbital_planes": 1,
+  "satellites_per_plane": 4,
+  "in_plane_spacing_deg": 90,
+  "inclination_deg": 90.0
+}
+```
+
+For the live 3D showcase, the frontend keeps the same total count (`4`) and
+truth altitude (`780 km`), but distributes the four display satellites as one
+service-area-phased satellite per plane:
 
 ```json
 {
   "planes": 4,
   "satsPerPlane": 1,
-  "serviceAreaPassTargetsSec": [100, 400, 700, 1000]
+  "serviceAreaPassTargetsSec": [100, 400, 700, 1000],
+  "phasePerturbation": false
 }
 ```
 
-The existing Walker generator already supports multiple planes, but absolute
-RAAN values are epoch-sensitive. A hard-coded RAAN array that looks correct at
-one epoch can drift when the cache is built with a different epoch. The new
-field is therefore semantic rather than absolute: each listed target time asks
-the orbit module to initialize one plane's single satellite so that it passes
-over the configured observer at that simulation second.
+The field is semantic rather than absolute RAAN: each target time asks the
+orbit module to initialize that plane's satellite so it passes near the
+observer at the configured simulation second. This avoids epoch-sensitive
+hard-coded RAAN arrays and prevents a 16+ satellite visual inflation.
 
-The generator derives the actual RAAN and mean anomaly from:
+### 3.3 Mode-Scoped Scene Objects
 
-- shell altitude and inclination,
-- profile observer latitude and longitude,
-- cache epoch,
-- per-plane target pass second.
+`MainScene` keeps SINR and MODQN visual layers separated:
 
-This keeps the profile compact and robust for both the fixed app epoch and
-standalone validators that call `createTrajectoryCache(..., Date.now())`.
+- `modqn-demo`: spherical UE markers, UAV hidden, live orbit satellite marker
+  hidden, and live SINR beam cones hidden. The replay layer renders producer
+  row satellite / beam geometry when `satelliteStates` and `beamStates` are
+  available; otherwise it falls back to T0 row-level cues.
+- `sinr-experiment`: existing cylindrical UE marker default and UAV remain.
+
+The separation is exposed through `data-testid="render-isolation-probe"` and
+canvas dataset telemetry so browser smoke can assert the active mode without
+reading Three.js internals.
+
+### 3.4 Display-Only Candidate Beam Fallback
+
+If `modqn-demo` has visible satellites but no serving link, `useBeamViz` can
+still compute a display-only 7-beam candidate layout around the shown
+satellite. The current replay scene no longer mounts those live SINR cones in
+MODQN mode; the replay layer owns the visible beam cues. This keeps the
+"no beams / no satellite" failure closed without fabricating a serving state:
+
+- `servingSatelliteId` and `servingBeamId` remain empty;
+- beam SINR labels remain absent when there is no link sample;
+- link budget, handover, MODQN actions, rewards, and producer artifacts remain
+  untouched.
 
 ## 4. Boundary Rules
 
-- `serviceAreaPassTargetsSec` is live-sim profile geometry only.
+- `visualSatelliteAltitude` is camera/framing only.
+- `serviceAreaPassTargetsSec` is live-scene profile geometry only.
 - The field must be ignored unless `planes > 0`, `satsPerPlane === 1`, and the
   caller provides an observer position.
 - Standard Walker behavior remains the fallback for all existing profiles.
@@ -72,6 +135,9 @@ standalone validators that call `createTrajectoryCache(..., Date.now())`.
 - `MIN_ELEVATION_DEG` remains unchanged.
 - `showcaseArtifactToScene.ts` remains untouched.
 - The replay artifact path remains immutable and producer-owned.
+- No frontend display path may promote exploration/user-trained output into
+  paper-faithful or evaluation-mode evidence.
+- No MODQN-specific marker or beam fallback may affect the SINR mode defaults.
 
 ## 5. Alternatives Rejected
 
@@ -88,10 +154,48 @@ standalone validators that call `createTrajectoryCache(..., Date.now())`.
 
 The fix is accepted only if:
 
-1. The reproduction one-liner reports `above15deg >= 1` at all sampled times
-   from 0 to 1200 seconds.
-2. A one-second sweep of 0..1200 seconds has no `above15deg === 0` gaps.
-3. `npm run lint` is clean.
-4. The requested validator set remains green.
-5. Browser smoke in `modqn-demo` confirms satellites remain visible while the
-   timeline is scrubbed.
+1. `npm run validate:modqn:render-isolation` passes.
+2. The validator locks producer-truth fields: observer `40/116`, altitude
+   `780`, inclination `90`, `theta_3db = 2°`, objective weights
+   `[0.5, 0.3, 0.2]`, 4 total satellites, 7 beams, and `uniform-rectangle`
+   `200 km x 90 km`.
+3. The validator confirms mode isolation hooks: MODQN sphere UE markers, MODQN
+   UAV hidden, SINR cylinder default, and display-only candidate beam fallback.
+4. `npm run lint` is clean.
+5. `npm run build` is clean.
+6. Browser smoke confirms:
+   - `modqn-demo`: `data-ue-marker-shape="sphere"`,
+     `data-uav-visible="0"`, replay renderer active, and live beam cone count
+     `0` because MODQN beam cues are owned by the replay layer.
+   - `sinr-experiment`: `data-ue-marker-shape="cylinder"`,
+     `data-uav-visible="1"`, existing serving link still active.
+
+## 7. 2026-05-27 Implementation Evidence
+
+Static gates:
+
+- `npm run validate:modqn:render-isolation` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with only the existing Vite large-chunk warning.
+
+Browser smoke against `http://127.0.0.1:5174/`:
+
+- `modqn-demo`
+  - probe: `appMode=modqn-demo`, `ueMarkerShape=sphere`,
+    `uavVisible=0`
+  - canvas: `visibleSatelliteCount=2`, `visualSatelliteAltitude=380`,
+    `beamSatelliteCount=2`, `beamConeCount=14`
+  - note: this evidence predates the 2026-05-28 training-truth visualization
+    change and should not be used as authority for MODQN replay geometry.
+  - screenshot: `output/playwright/modqn-render-isolation-after-doc.png`
+  - console errors were only expected training-service health checks against
+    `127.0.0.1:8765/health` while the backend was not running.
+- `sinr-experiment`
+  - probe: `appMode=sinr-experiment`, `ueMarkerShape=cylinder`,
+    `uavVisible=1`
+  - canvas: `visibleSatelliteCount=12`, `visualSatelliteAltitude=360`,
+    `servingSatelliteId=shell-pro-53-P18-S1`, `servingBeamId=6`,
+    `beamConeCount=2`
+  - screenshot: `output/playwright/sinr-render-isolation-after-doc.png`
+  - console had no errors and only the existing
+    `KHR_materials_pbrSpecularGlossiness` GLTF warning.

@@ -2,8 +2,8 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { beamVisualRoleForEventRole } from '../constants/beamRoleTokens';
+import type { BeamTarget } from '../scene/beamTargetTypes';
 import type { VisibleSat } from '../scene/types';
-import type { BeamTarget } from './SatelliteBeams';
 
 export const SPINE_PARTICLES_PER_BEAM = 3;
 export const SPINE_PARTICLE_CYCLE_SEC = 2.8;

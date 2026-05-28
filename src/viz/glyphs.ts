@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import type { GlyphKind } from '../contracts/glyphTypes';
 
-export type GlyphKind = 'triangle' | 'diamond' | 'circle' | 'star';
+export type { GlyphKind };
 
 export interface SatelliteGlyphSpec {
   kind: GlyphKind;

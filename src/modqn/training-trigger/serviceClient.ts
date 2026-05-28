@@ -1,6 +1,9 @@
 import type {
   ServiceAvailability,
   ServiceClientConfig,
+  SensitivitySweepRequest,
+  SensitivitySweepResponse,
+  BatchDetail,
   TrainingJobDetail,
   TrainingJobSummary,
   TrainingRequest,
@@ -11,6 +14,14 @@ const DEFAULT_PROBE_TIMEOUT_MS = 1500;
 
 function normalizedBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/$/, '');
+}
+
+function encodeArtifactPath(filename: string): string {
+  return filename
+    .split('/')
+    .filter(segment => segment.length > 0)
+    .map(segment => encodeURIComponent(segment))
+    .join('/');
 }
 
 function nowMs(): number {
@@ -94,10 +105,49 @@ export async function getJobDetail(
   return response.json();
 }
 
+export async function postSensitivitySweep(
+  config: ServiceClientConfig,
+  request: SensitivitySweepRequest,
+  idempotencyKey?: string,
+): Promise<SensitivitySweepResponse> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+  const response = await fetch(`${normalizedBaseUrl(config.baseUrl)}/sensitivity-sweep`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`postSensitivitySweep: HTTP ${response.status}${text ? `: ${text}` : ''}`);
+  }
+  return response.json();
+}
+
+export async function getBatch(
+  config: ServiceClientConfig,
+  batchId: string,
+): Promise<BatchDetail> {
+  const response = await fetch(`${normalizedBaseUrl(config.baseUrl)}/batches/${encodeURIComponent(batchId)}`, {
+    method: 'GET',
+  });
+  if (!response.ok) throw new Error(`getBatch: HTTP ${response.status}`);
+  return response.json();
+}
+
+export function jobStreamUrl(
+  config: ServiceClientConfig,
+  jobId: string,
+): string {
+  return `${normalizedBaseUrl(config.baseUrl)}/jobs/${encodeURIComponent(jobId)}/stream`;
+}
+
 export function artifactUrl(
   config: ServiceClientConfig,
   jobId: string,
   filename: string,
 ): string {
-  return `${normalizedBaseUrl(config.baseUrl)}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(filename)}`;
+  const encodedPath = encodeArtifactPath(filename);
+  const suffix = encodedPath.length > 0 ? `/${encodedPath}` : '';
+  return `${normalizedBaseUrl(config.baseUrl)}/artifacts/${encodeURIComponent(jobId)}${suffix}`;
 }

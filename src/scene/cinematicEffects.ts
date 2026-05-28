@@ -1,6 +1,6 @@
 import { BEAM_ROLE_TOKENS, type BeamVisualRole } from '../constants/beamRoleTokens';
+import type { BeamTarget } from './beamTargetTypes';
 import type { CinematicMode } from './types';
-import type { BeamTarget } from '../viz/SatelliteBeams';
 
 export type CinematicSpotlightRole = 'serving' | 'pending';
 

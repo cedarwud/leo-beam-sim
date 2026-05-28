@@ -11,14 +11,10 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { loadShowcaseArtifact } from '../src/showcase/loadShowcaseArtifact';
 import { showcaseArtifactToScene } from '../src/showcase/showcaseArtifactToScene';
 import { isReplaySceneGeometry } from '../src/scene/SceneGeometry';
 import { isChannelMetricValueShape } from '../src/scene/ChannelMetricValue';
-
-const TRIGGER_ARTIFACT_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
+import { loadValidatorVisualShowcaseArtifact } from './visualShowcaseValidatorFixture';
 
 function test(label: string, fn: () => void): void {
   try {
@@ -33,7 +29,8 @@ function test(label: string, fn: () => void): void {
 
 console.log('validate-modqn-visual-showcase-p1ab-showcase-artifact-to-scene');
 
-const artifact = loadShowcaseArtifact(JSON.parse(readFileSync(TRIGGER_ARTIFACT_PATH, 'utf8')));
+const { artifact, source } = loadValidatorVisualShowcaseArtifact();
+console.log(`  artifact source: ${source.label}`);
 const frame0 = showcaseArtifactToScene(artifact, 0);
 
 test('sceneSource is artifact-replay', () => {

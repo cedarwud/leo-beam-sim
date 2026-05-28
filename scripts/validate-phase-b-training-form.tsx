@@ -63,9 +63,10 @@ console.log('\n(a) submittedJobs localStorage helpers');
 
   try {
     appendSubmittedJobId({ jobId: 'A', submittedAtMs: 1, hyperparamSummary: 'x' });
-    appendSubmittedJobId({ jobId: 'B', submittedAtMs: 2, hyperparamSummary: 'y' });
+    appendSubmittedJobId({ jobId: 'B', batchId: 'batch-1', submittedAtMs: 2, hyperparamSummary: 'y' });
     assert(readSubmittedJobIds()[0]?.jobId === 'B', 'submitted jobIds read newest first after two appends');
     assert(readSubmittedJobIds().length === 2, 'submitted jobIds preserve two records');
+    assert(readSubmittedJobIds()[0]?.batchId === 'batch-1', 'submitted jobIds preserve optional batchId');
 
     appendSubmittedJobId({ jobId: 'A', submittedAtMs: 3, hyperparamSummary: 'z' });
     assert(readSubmittedJobIds().length === 2, 'submitted jobIds dedupe by jobId');
@@ -104,6 +105,15 @@ console.log('\n(b) TrainingForm required testids');
     'data-testid="training-form-full"',
     'data-testid="training-form-submit"',
     'data-testid="training-form-episodes-input"',
+    'data-testid="training-form-coverage-estimate"',
+    'data-testid="training-form-theta3db-deg"',
+    'data-testid="training-form-random-wandering-max-turn"',
+    'data-testid="training-form-atmospheric-loss"',
+    'data-testid="training-form-main-share-floor"',
+    'data-testid="training-form-vdn-loss-scale"',
+    'data-testid="training-form-snapshot-batch-size"',
+    'data-testid="training-form-softmax-temperature"',
+    'data-testid="training-form-eval-qos-tiers"',
   ]) {
     assert(formSource.includes(testId), `TrainingForm includes ${testId}`);
   }
@@ -115,14 +125,27 @@ console.log('\n(b) TrainingForm required testids');
 console.log('\n(c) TrainingForm mode gate and submit path');
 {
   const formSource = fs.readFileSync('src/ui/modqn-training/TrainingForm.tsx', 'utf8');
+  const modelSource = fs.readFileSync('src/ui/modqn-training/trainingFormModel.ts', 'utf8');
   assert(formSource.includes("appMode === 'modqn-demo'"), 'TrainingForm gates on modqn-demo app mode');
   assert(formSource.includes('if (!enabled) return null;'), 'TrainingForm component has enabled null return');
   assert(formSource.includes('if (!enabled) return;'), 'TrainingForm useEffect has enabled early return');
-  assert(formSource.includes('EPISODES_BACKEND_CAP = 5000'), 'TrainingForm defines 5000 episode backend cap');
+  assert(modelSource.includes('EPISODES_BACKEND_CAP = 5000'), 'TrainingForm model defines 5000 episode backend cap');
   assert(formSource.includes('Full (5000 ep)'), 'TrainingForm uses exact Full preset label');
   assert(formSource.includes('Quick'), 'TrainingForm includes Quick preset label fragment');
   assert(formSource.includes('postTrain'), 'TrainingForm imports/calls postTrain');
   assert(formSource.includes('appendSubmittedJobId'), 'TrainingForm persists submitted jobIds');
+  assert(formSource.includes('<legend>Objective</legend>'), 'TrainingForm owns objective weights in training flow');
+  assert(formSource.includes('Coverage estimate'), 'TrainingForm shows beamwidth-to-UE coverage estimate');
+  assert(modelSource.includes('theta3dbDeg: state.theta3dbDeg'), 'TrainingForm model submits beamwidth theta3dbDeg');
+  assert(
+    modelSource.includes("ueDistribution: 'uniform-rectangle'"),
+    'TrainingForm model defaults to paper 200x90 km rectangular UE distribution',
+  );
+  assert(
+    modelSource.includes("'track2.envAxes.qosThresholdBps': evalOnlyQosThresholds"),
+    'TrainingForm model submits evaluation-only QoS tiers under evalOnlyAxes',
+  );
+  assert(formSource.includes('postSensitivitySweep'), 'TrainingForm imports/calls postSensitivitySweep');
 }
 
 // ---------------------------------------------------------------------------
@@ -131,36 +154,46 @@ console.log('\n(c) TrainingForm mode gate and submit path');
 console.log('\n(d) App.tsx training tab wiring');
 {
   const appSource = fs.readFileSync('src/App.tsx', 'utf8');
+  const appRuntimeModelSource = fs.readFileSync('src/app/appRuntimeModel.ts', 'utf8');
   assert(
     appSource.includes("import { TrainingForm } from './ui/modqn-training/TrainingForm';"),
     'App.tsx imports TrainingForm',
   );
 
-  const leftSidebarTypeLine = appSource
+  const leftSidebarTypeLine = appRuntimeModelSource
     .split('\n')
-    .find(line => line.startsWith('type LeftSidebarTab')) ?? '';
+    .find(line => line.includes('type LeftSidebarTab')) ?? '';
   assert(
     leftSidebarTypeLine.includes("'training'"),
-    'LeftSidebarTab union includes training',
+    'App runtime model LeftSidebarTab union includes training',
     leftSidebarTypeLine,
   );
   assert(
-    appSource.includes("{ key: 'training', label: 'MODQN training'"),
-    'LEFT_SIDEBAR_TABS includes MODQN training entry',
+    appRuntimeModelSource.includes("{ key: 'training', label: 'MODQN training'"),
+    'App runtime model LEFT_SIDEBAR_TABS includes MODQN training entry',
   );
   assert(
     appSource.includes('<TrainingForm appMode={appMode} />'),
     'App.tsx renders TrainingForm with appMode',
   );
 
-  const modqnBlock = extractConstArray(appSource, 'MODQN_LEFT_SIDEBAR_TABS');
+  const modqnBlock = extractConstArray(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS');
   assert(
     modqnBlock.includes('LEFT_SIDEBAR_TABS[3]'),
-    'MODQN sidebar includes training tab entry',
+    'App runtime model MODQN sidebar includes training tab entry',
     modqnBlock,
   );
+  assert(
+    !modqnBlock.includes('LEFT_SIDEBAR_TABS[0]'),
+    'App runtime model MODQN sidebar no longer exposes legacy objective tab',
+    modqnBlock,
+  );
+  assert(
+    appRuntimeModelSource.includes("return mode === 'sinr-offset' ? 'signal' : 'replay';"),
+    'App runtime model defaults MODQN sidebar to replay tab',
+  );
 
-  const sinrBlock = extractConstArray(appSource, 'SINR_LEFT_SIDEBAR_TABS');
+  const sinrBlock = extractConstArray(appRuntimeModelSource, 'SINR_LEFT_SIDEBAR_TABS');
   assert(
     !sinrBlock.includes('LEFT_SIDEBAR_TABS[3]'),
     'SINR sidebar does not include training tab entry',
@@ -178,10 +211,14 @@ console.log('\n(d) App.tsx training tab wiring');
 // ---------------------------------------------------------------------------
 console.log('\n(e) TRAINER_SUBCOMMANDS backend allowlist');
 {
-  const formSource = fs.readFileSync('src/ui/modqn-training/TrainingForm.tsx', 'utf8');
-  for (const subcommand of ["'baseline'", "'ee-modqn'", "'multi-catfish'"]) {
+  const formSource = fs.readFileSync('src/ui/modqn-training/trainingFormModel.ts', 'utf8');
+  for (const subcommand of ["'baseline'", "'multi-catfish'"]) {
     assert(formSource.includes(subcommand), `TrainingForm includes trainer subcommand ${subcommand}`);
   }
+  assert(
+    formSource.includes("arm === 'a1' ? 'baseline' : 'multi-catfish'"),
+    'TrainingForm maps Track-2 a1 to baseline and a4/a5_hobs to multi-catfish',
+  );
 }
 
 console.log(`\n[validate-phase-b-training-form] ${passed} passed, ${failed} failed`);

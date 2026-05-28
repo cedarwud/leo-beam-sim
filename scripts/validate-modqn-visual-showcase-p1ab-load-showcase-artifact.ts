@@ -9,14 +9,11 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import {
   ShowcaseLoadError,
   loadShowcaseArtifact,
 } from '../src/showcase/loadShowcaseArtifact';
-
-const TRIGGER_ARTIFACT_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
+import { loadValidatorVisualShowcaseArtifact } from './visualShowcaseValidatorFixture';
 
 function test(label: string, fn: () => void): void {
   try {
@@ -31,8 +28,8 @@ function test(label: string, fn: () => void): void {
 
 console.log('validate-modqn-visual-showcase-p1ab-load-showcase-artifact');
 
-const triggerRaw = readFileSync(TRIGGER_ARTIFACT_PATH, 'utf8');
-const triggerJson = JSON.parse(triggerRaw) as unknown;
+const { rawText: triggerRaw, json: triggerJson, source } = loadValidatorVisualShowcaseArtifact();
+console.log(`  artifact source: ${source.label}`);
 
 test('trigger artifact loads cleanly', () => {
   const a = loadShowcaseArtifact(triggerJson);

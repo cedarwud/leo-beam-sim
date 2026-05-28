@@ -35,39 +35,55 @@ export interface GroundSceneUe {
 interface GroundSceneProps {
   readonly ues: ReadonlyArray<GroundSceneUe>;
   readonly ueMarkerMultiplier?: number;
+  readonly markerShape?: 'cylinder' | 'sphere';
   readonly ueTrailHistory?: UeTrailHistory;
 }
 
-const MARKER_HEIGHT = 4;
-const MARKER_RADIUS = 6;
+const MARKER_HEIGHT = 10;
+const MARKER_RADIUS = 15;
 const MARKER_RADIAL_SEGMENTS = 16;
-const PRIMARY_COLOR = '#ff4444';
-const PRIMARY_EMISSIVE = '#ff2222';
-const SECONDARY_COLOR = '#cc6644';
-const SECONDARY_EMISSIVE = '#882222';
+const PRIMARY_COLOR = '#ff3333';
+const PRIMARY_EMISSIVE = '#ff1111';
+const SECONDARY_COLOR = '#00ffcc'; // cyber cyan for high contrast in dark mode
+const SECONDARY_EMISSIVE = '#00aa88';
 
 function PrimaryUeMarker({
   x,
   y,
   z,
   ueMarkerMultiplier,
+  markerShape,
 }: {
   x: number;
   y: number;
   z: number;
   ueMarkerMultiplier: number;
+  markerShape: 'cylinder' | 'sphere';
 }) {
+  const markerRadius = MARKER_RADIUS * ueMarkerMultiplier;
+  const markerHeight = MARKER_HEIGHT * ueMarkerMultiplier;
+  const markerY = markerShape === 'sphere'
+    ? markerRadius
+    : markerHeight / 2;
+  const labelY = markerShape === 'sphere'
+    ? markerRadius * 2.2
+    : 18 * ueMarkerMultiplier;
+
   return (
     <group position={[x, y, z]}>
-      <mesh position={[0, 2 * ueMarkerMultiplier, 0]}>
-        <cylinderGeometry
-          args={[
-            MARKER_RADIUS * ueMarkerMultiplier,
-            MARKER_RADIUS * ueMarkerMultiplier,
-            MARKER_HEIGHT * ueMarkerMultiplier,
-            MARKER_RADIAL_SEGMENTS,
-          ]}
-        />
+      <mesh position={[0, markerY, 0]}>
+        {markerShape === 'sphere' ? (
+          <sphereGeometry args={[markerRadius, 20, 14]} />
+        ) : (
+          <cylinderGeometry
+            args={[
+              markerRadius,
+              markerRadius,
+              markerHeight,
+              MARKER_RADIAL_SEGMENTS,
+            ]}
+          />
+        )}
         <meshStandardMaterial
           color={PRIMARY_COLOR}
           emissive={PRIMARY_EMISSIVE}
@@ -75,7 +91,7 @@ function PrimaryUeMarker({
         />
       </mesh>
       <Text
-        position={[0, 12 * ueMarkerMultiplier, 0]}
+        position={[0, labelY, 0]}
         fontSize={12}
         color="#ff6666"
         anchorX="center"
@@ -92,19 +108,27 @@ function PrimaryUeMarker({
 function SecondaryUeInstances({
   positions,
   ueMarkerMultiplier,
+  markerShape,
 }: {
   positions: ReadonlyArray<readonly [number, number, number]>;
   ueMarkerMultiplier: number;
+  markerShape: 'cylinder' | 'sphere';
 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const markerRadius = MARKER_RADIUS * 0.45 * ueMarkerMultiplier;
+  const markerHeight = MARKER_HEIGHT * 0.7 * ueMarkerMultiplier;
 
   useLayoutEffect(() => {
     if (!meshRef.current) return;
     const mesh = meshRef.current;
     for (let i = 0; i < positions.length; i++) {
       const [x, y, z] = positions[i];
-      dummy.position.set(x, y + 2 * ueMarkerMultiplier, z);
+      dummy.position.set(
+        x,
+        y + (markerShape === 'sphere' ? markerRadius : markerHeight / 2),
+        z,
+      );
       dummy.rotation.set(0, 0, 0);
       dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
@@ -112,7 +136,7 @@ function SecondaryUeInstances({
     }
     mesh.instanceMatrix.needsUpdate = true;
     mesh.count = positions.length;
-  }, [positions, dummy, ueMarkerMultiplier]);
+  }, [positions, dummy, markerHeight, markerRadius, markerShape, ueMarkerMultiplier]);
 
   if (positions.length === 0) return null;
 
@@ -121,25 +145,36 @@ function SecondaryUeInstances({
       ref={meshRef}
       args={[undefined, undefined, Math.max(positions.length, 1)]}
     >
-      <cylinderGeometry
-        args={[
-          MARKER_RADIUS * 0.6 * ueMarkerMultiplier,
-          MARKER_RADIUS * 0.6 * ueMarkerMultiplier,
-          MARKER_HEIGHT * 0.7 * ueMarkerMultiplier,
-          MARKER_RADIAL_SEGMENTS,
-        ]}
-      />
+      {markerShape === 'sphere' ? (
+        <sphereGeometry args={[markerRadius, 14, 10]} />
+      ) : (
+        <cylinderGeometry
+          args={[
+            MARKER_RADIUS * 0.6 * ueMarkerMultiplier,
+            MARKER_RADIUS * 0.6 * ueMarkerMultiplier,
+            markerHeight,
+            12,
+          ]}
+        />
+      )}
       <meshStandardMaterial
         color={SECONDARY_COLOR}
         emissive={SECONDARY_EMISSIVE}
-        emissiveIntensity={0.15}
+        emissiveIntensity={0.35}
+        transparent
+        opacity={0.9}
+        blending={THREE.AdditiveBlending}
       />
     </instancedMesh>
   );
 }
 
-export function GroundScene({ ues, ueMarkerMultiplier = 1.0 }: GroundSceneProps) {
-  const { ueTrailHistory } = arguments[0] as GroundSceneProps;
+export function GroundScene({
+  ues,
+  ueMarkerMultiplier = 1.0,
+  markerShape = 'cylinder',
+  ueTrailHistory,
+}: GroundSceneProps) {
   const secondaryPositions = useMemo(
     () => ues.slice(1).map((u) => u.worldPos),
     [ues],
@@ -152,8 +187,18 @@ export function GroundScene({ ues, ueMarkerMultiplier = 1.0 }: GroundSceneProps)
   return (
     <group>
       {ueTrailHistory !== undefined && <UeTrail history={ueTrailHistory} />}
-      <PrimaryUeMarker x={px} y={py} z={pz} ueMarkerMultiplier={ueMarkerMultiplier} />
-      <SecondaryUeInstances positions={secondaryPositions} ueMarkerMultiplier={ueMarkerMultiplier} />
+      <PrimaryUeMarker
+        x={px}
+        y={py}
+        z={pz}
+        ueMarkerMultiplier={ueMarkerMultiplier}
+        markerShape={markerShape}
+      />
+      <SecondaryUeInstances
+        positions={secondaryPositions}
+        ueMarkerMultiplier={ueMarkerMultiplier}
+        markerShape={markerShape}
+      />
     </group>
   );
 }

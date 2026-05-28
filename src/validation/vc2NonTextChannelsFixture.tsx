@@ -12,7 +12,8 @@ import {
   satelliteTintIndex,
   type BeamCodeRole,
 } from '../constants/beamRoleTokens';
-import { BeamCalloutContent, BeamPulseClock, SatelliteBeams, type BeamTarget } from '../viz/SatelliteBeams';
+import type { BeamTarget } from '../scene/beamTargetTypes';
+import { BeamCalloutContent, BeamPulseClock, SatelliteBeams } from '../viz/SatelliteBeams';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
 import {
   SATELLITE_GLYPH_LIBRARY,

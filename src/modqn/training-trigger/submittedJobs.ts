@@ -3,6 +3,7 @@ export const SUBMITTED_JOB_IDS_CAP = 50;
 
 export interface SubmittedJobRecord {
   readonly jobId: string;
+  readonly batchId?: string;
   readonly submittedAtMs: number;
   readonly hyperparamSummary: string;
 }
@@ -35,6 +36,7 @@ function isValidRecord(value: unknown): value is SubmittedJobRecord {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
   return typeof v.jobId === 'string'
+    && (v.batchId === undefined || typeof v.batchId === 'string')
     && typeof v.submittedAtMs === 'number'
     && Number.isFinite(v.submittedAtMs)
     && typeof v.hyperparamSummary === 'string';

@@ -10,52 +10,20 @@ import {
   resolveBeamPulseOpacity,
   resolveHandoverVisualTransition,
   resolveBeamVisualEncoding,
-  type BeamCodeRole,
-  type HandoverBeamRole,
 } from '../constants/beamRoleTokens';
 import {
   createGlyphFillGeometry,
   createGlyphOutlinePoints,
-  type GlyphKind,
 } from './glyphs';
 import type { CinematicMode } from '../scene/types';
-import type { VisualShowcaseChannelMetricKind } from '../scene/visual-showcase-contract';
+import type { BeamTarget } from '../scene/beamTargetTypes';
 import { isSpotlightMode, resolveCinematicConeOpacityMultiplier } from '../scene/cinematicEffects';
-import { BeamCalloutContent, formatBeamSinr } from './BeamCalloutContent';
+import { BeamCalloutContent, formatBeamSinrWithKind } from './BeamCalloutContent';
 import { registerPulseTarget } from './beamPulseMaterials';
 
 export { BeamCalloutContent } from './BeamCalloutContent';
 export { BeamPulseClock } from './beamPulseMaterials';
-
-/** A beam with its ground-projected center in world coordinates. */
-export interface BeamTarget {
-  beamId: number;
-  groundX: number; // world X
-  groundZ: number; // world Z
-  isServing: boolean;
-  isScheduledActive: boolean;
-  isPrimary: boolean;
-  showBeam: boolean;
-  frequencyIndex: number;
-  satelliteTintColor: string;
-  satelliteGlyph: GlyphKind;
-  satelliteVisualIndex: number;
-  role?: BeamCodeRole;
-  isTransitioningSource?: boolean;
-  sinrDb?: number | null;
-  /**
-   * P1e (c) audit-list hook (PR-0.5 backfill): the channel-metric kind that
-   * accompanies `sinrDb`. Live engine = `'sinr-with-interference'`; replay =
-   * `'snr-no-interference'`. Optional; live-sim path does not populate this
-   * yet. Full kind-aware rendering (callout label branching via
-   * `formatBeamSinrWithKind` / `formatBeamChannelMetric`) is reserved for the
-   * slice PRs — this declaration only exposes the contract surface so future
-   * wiring does not need a downstream BeamTarget change.
-   */
-  channelMetricKind?: VisualShowcaseChannelMetricKind;
-  handoverRole?: HandoverBeamRole;
-  handoverTransitionProgress?: number | null;
-}
+export type { BeamTarget } from '../scene/beamTargetTypes';
 
 interface SatelliteBeamsProps {
   satelliteId: string;
@@ -202,8 +170,14 @@ function BeamCone({
     isServing: beam.isServing,
     isScheduledActive: beam.isScheduledActive,
     frequencyColor: frequencyReuseColor(beam.frequencyIndex),
+    identityColor: beam.satelliteTintColor,
+    preferIdentityColor: beam.visualColorSource === 'satellite',
   });
   const color = style.color;
+  // Source: modqn-paper-reproduction/configs/modqn-paper-baseline.yaml
+  // paper §III φ1/φ2 distinguishes intra- vs inter-satellite handover, while
+  // no source-truth file specifies frequency-color semantics for MODQN.
+  const loadIntensity = 0.45 + 0.55 * clampOpacity(beam.loadRatio ?? 0);
   const handoverRole = beam.handoverRole ?? null;
   const isHandoverSource = handoverRole === 'intraSource' || handoverRole === 'interSource';
   const isHandoverTarget = handoverRole === 'intraTargetNewServing' || handoverRole === 'interTargetNewServing';
@@ -222,7 +196,7 @@ function BeamCone({
   const baseConeOpacity = isHandoverSource
     ? Math.max(style.coneOpacity, BEAM_ROLE_TOKENS.serving.coneOpacity)
     : style.coneOpacity;
-  const coneOpacity = baseConeOpacity * resolveCinematicConeOpacityMultiplier(
+  const coneOpacity = baseConeOpacity * loadIntensity * resolveCinematicConeOpacityMultiplier(
     style.visualRole,
     cinematicMode,
   );
@@ -234,7 +208,7 @@ function BeamCone({
   const discFillColor = roleSurface ? displayColor : color;
   const discOpacity = isHandoverSource
     ? Math.max(style.discOpacity, BEAM_ROLE_TOKENS.serving.discOpacity)
-    : style.discOpacity;
+    : style.discOpacity * loadIntensity;
   const coneMaterialRef = useRef<THREE.MeshBasicMaterial | null>(null);
   // Destructure to primitives so useMemo deps are stable between renders
   const sx = satellitePosition.x, sy = satellitePosition.y, sz = satellitePosition.z;
@@ -264,7 +238,7 @@ function BeamCone({
     () => createGlyphOutlinePoints(satelliteGlyph, style.endpointRadius * 1.28),
     [satelliteGlyph, style.endpointRadius],
   );
-  const sinrLabel = formatBeamSinr(beam.sinrDb);
+  const sinrLabel = formatBeamSinrWithKind(beam.sinrDb, beam.channelMetricKind);
   const isEmphasized = style.isEmphasized;
   const isForegroundBeam = beam.isServing || style.isEmphasized || handoverOverlayColor !== null;
   const dimFactor = (() => {
@@ -278,6 +252,11 @@ function BeamCone({
   const handoverLineScale = handoverRole ? handoverTransition.lineScale : 1;
   const handoverCalloutScale = handoverRole ? handoverTransition.calloutScale : 1;
   const yLift = handoverRole ? handoverTransition.yLift : beam.isServing ? 6.0 : 0;
+  const discUniforms = useMemo(() => ({
+    uColor: { value: new THREE.Color(discFillColor) },
+    uOpacity: { value: clampOpacity(discOpacity * dimFactor * handoverSurfaceScale) },
+    uRadius: { value: footprintRadius },
+  }), [discFillColor, discOpacity, dimFactor, handoverSurfaceScale, footprintRadius]);
   const endpointRingOpacity = Math.max(style.endpointOpacity, style.isEventPrimary ? 0.5 : 0.28);
   const outerRingThickness = Math.min(
     footprintRadius * 0.08,
@@ -324,25 +303,42 @@ function BeamCone({
         />
       </mesh>
 
-      <mesh geometry={discGeo} position={[0, yLift, 0]}>
-        <meshBasicMaterial
-          color={discFillColor}
+      <mesh position={[beam.groundX, 1.0 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[footprintRadius, 32]} />
+        <shaderMaterial
+          vertexShader={`
+            varying vec3 vPosition;
+            void main() {
+              vPosition = position;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vPosition;
+            uniform vec3 uColor;
+            uniform float uOpacity;
+            uniform float uRadius;
+            void main() {
+              float dist = length(vPosition.xy);
+              float intensity = 1.0 - smoothstep(0.0, uRadius, dist);
+              gl_FragColor = vec4(uColor, intensity * uOpacity);
+            }
+          `}
+          uniforms={discUniforms}
           transparent
-          opacity={clampOpacity(discOpacity * dimFactor * handoverSurfaceScale)}
-          side={THREE.DoubleSide}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
-          fog={!spotlightEventSurface}
+          side={THREE.DoubleSide}
         />
       </mesh>
 
       {roleSurface && (
         <mesh position={[beam.groundX, 1.68 + yLift, beam.groundZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={18}>
           <ringGeometry args={[frequencyRingInner, frequencyRingOuter, SEGMENTS]} />
-          <meshBasicMaterial
+        <meshBasicMaterial
             color={style.frequencySwatchColor}
             transparent
-            opacity={clampOpacity(0.62 * dimFactor * (isHandoverTarget ? 1.1 : 1))}
+            opacity={clampOpacity(0.62 * loadIntensity * dimFactor * (isHandoverTarget ? 1.1 : 1))}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
@@ -370,7 +366,7 @@ function BeamCone({
           <meshBasicMaterial
             color={displayColor}
             transparent
-            opacity={clampOpacity(0.9 * dimFactor * (isHandoverTarget ? 1.08 : isHandoverSource ? 0.52 : 1))}
+            opacity={clampOpacity(0.9 * loadIntensity * dimFactor * (isHandoverTarget ? 1.08 : isHandoverSource ? 0.52 : 1))}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
@@ -416,7 +412,7 @@ function BeamCone({
         color={satelliteTintColor}
         lineWidth={style.lineWidth + 1}
         transparent
-        opacity={clampOpacity(Math.max((isHandoverSource ? BEAM_ROLE_TOKENS.serving.lineOpacity : style.lineOpacity) * 0.82, 0.42) * dimFactor * handoverLineScale)}
+        opacity={clampOpacity(Math.max((isHandoverSource ? BEAM_ROLE_TOKENS.serving.lineOpacity : style.lineOpacity) * loadIntensity * 0.82, 0.42) * dimFactor * handoverLineScale)}
         dashed={style.dashed}
         dashSize={15}
         gapSize={10}
@@ -431,7 +427,7 @@ function BeamCone({
         color={displayColor}
         lineWidth={Math.max(1.4, style.lineWidth - 0.4) + (isHandoverTarget ? 2.8 : isHandoverSource ? 0.5 : 0)}
         transparent
-        opacity={clampOpacity((isHandoverSource ? BEAM_ROLE_TOKENS.serving.lineOpacity : style.lineOpacity) * dimFactor * handoverLineScale)}
+        opacity={clampOpacity((isHandoverSource ? BEAM_ROLE_TOKENS.serving.lineOpacity : style.lineOpacity) * loadIntensity * dimFactor * handoverLineScale)}
         dashed={style.dashed}
         dashSize={15}
         gapSize={10}

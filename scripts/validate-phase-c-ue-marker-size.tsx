@@ -75,8 +75,9 @@ function textFromMarkup(markup: string): string {
 }
 
 function hasPrimaryCylinderArgs(groundSceneCompact: string): boolean {
-  return groundSceneCompact.includes('args={[MARKER_RADIUS*ueMarkerMultiplier,MARKER_RADIUS*ueMarkerMultiplier,MARKER_HEIGHT*ueMarkerMultiplier,MARKER_RADIAL_SEGMENTS]}')
-    || groundSceneCompact.includes('args={[MARKER_RADIUS*ueMarkerMultiplier,MARKER_RADIUS*ueMarkerMultiplier,MARKER_HEIGHT*ueMarkerMultiplier,MARKER_RADIAL_SEGMENTS,]}');
+  return groundSceneCompact.includes('constmarkerRadius=MARKER_RADIUS*ueMarkerMultiplier;')
+    && groundSceneCompact.includes('constmarkerHeight=MARKER_HEIGHT*ueMarkerMultiplier;')
+    && groundSceneCompact.includes('args={[markerRadius,markerRadius,markerHeight,MARKER_RADIAL_SEGMENTS,]}');
 }
 
 section('(a) GroundScene.tsx source contract', () => {
@@ -88,7 +89,7 @@ section('(a) GroundScene.tsx source contract', () => {
     'GroundSceneProps declares optional ueMarkerMultiplier',
   );
   check(
-    groundSceneCompact.includes('exportfunctionGroundScene({ues,ueMarkerMultiplier=1.0}:GroundSceneProps)'),
+    groundSceneCompact.includes('exportfunctionGroundScene({ues,ueMarkerMultiplier=1.0,'),
     'GroundScene defaults omitted ueMarkerMultiplier to 1.0',
   );
   check(
@@ -96,11 +97,11 @@ section('(a) GroundScene.tsx source contract', () => {
     'PrimaryUeMarker cylinder args multiply radius top, radius bottom, and height',
   );
   check(
-    groundSceneCompact.includes('position={[0,2*ueMarkerMultiplier,0]}'),
+    groundSceneCompact.includes("constmarkerY=markerShape==='sphere'?markerRadius:markerHeight/2;"),
     'PrimaryUeMarker mesh y offset scales with ueMarkerMultiplier',
   );
   check(
-    groundSceneCompact.includes('position={[0,12*ueMarkerMultiplier,0]}'),
+    groundSceneCompact.includes("constlabelY=markerShape==='sphere'?markerRadius*2.2:18*ueMarkerMultiplier;"),
     'PrimaryUeMarker text y offset scales with ueMarkerMultiplier',
   );
   check(
@@ -108,20 +109,20 @@ section('(a) GroundScene.tsx source contract', () => {
     'PrimaryUeMarker label font size remains fixed at 12',
   );
   check(
-    groundSceneCompact.includes('MARKER_RADIUS*0.6*ueMarkerMultiplier,MARKER_RADIUS*0.6*ueMarkerMultiplier,MARKER_HEIGHT*0.7*ueMarkerMultiplier,MARKER_RADIAL_SEGMENTS'),
+    groundSceneCompact.includes('MARKER_RADIUS*0.6*ueMarkerMultiplier,MARKER_RADIUS*0.6*ueMarkerMultiplier,markerHeight,12'),
     'SecondaryUeInstances preserves 0.6/0.7 ratios and multiplies radius top, radius bottom, and height',
   );
   check(
-    groundSceneCompact.includes('dummy.position.set(x,y+2*ueMarkerMultiplier,z);'),
+    groundSceneCompact.includes("y+(markerShape==='sphere'?markerRadius:markerHeight/2)"),
     'SecondaryUeInstances y offset scales with ueMarkerMultiplier',
   );
   check(
-    countOccurrences(groundSceneSource, 'const MARKER_HEIGHT = 4;') === 1,
-    'MARKER_HEIGHT remains const 4 exactly once',
+    countOccurrences(groundSceneSource, 'const MARKER_HEIGHT = ') === 1,
+    'MARKER_HEIGHT remains declared exactly once',
   );
   check(
-    countOccurrences(groundSceneSource, 'const MARKER_RADIUS = 6;') === 1,
-    'MARKER_RADIUS remains const 6 exactly once',
+    countOccurrences(groundSceneSource, 'const MARKER_RADIUS = ') === 1,
+    'MARKER_RADIUS remains declared exactly once',
   );
   check(
     countOccurrences(groundSceneSource, 'const MARKER_RADIAL_SEGMENTS = 16;') === 1,
@@ -247,11 +248,16 @@ section('(e) TopologyTab SSR UE marker behavior', () => {
 section('(f) GroundScene multiplier render fallback source checks', () => {
   const groundSceneCompact = compact(source('src/viz/GroundScene.tsx'));
   check(
-    groundSceneCompact.includes('<PrimaryUeMarkerx={px}y={py}z={pz}ueMarkerMultiplier={ueMarkerMultiplier}/>'),
+    groundSceneCompact.includes('<PrimaryUeMarker')
+      && groundSceneCompact.includes('ueMarkerMultiplier={ueMarkerMultiplier}')
+      && groundSceneCompact.includes('markerShape={markerShape}'),
     'GroundScene forwards ueMarkerMultiplier into PrimaryUeMarker',
   );
   check(
-    groundSceneCompact.includes('<SecondaryUeInstancespositions={secondaryPositions}ueMarkerMultiplier={ueMarkerMultiplier}/>'),
+    groundSceneCompact.includes('<SecondaryUeInstances')
+      && groundSceneCompact.includes('positions={secondaryPositions}')
+      && groundSceneCompact.includes('ueMarkerMultiplier={ueMarkerMultiplier}')
+      && groundSceneCompact.includes('markerShape={markerShape}'),
     'GroundScene forwards ueMarkerMultiplier into SecondaryUeInstances',
   );
   check(
@@ -259,7 +265,7 @@ section('(f) GroundScene multiplier render fallback source checks', () => {
     'fallback source check confirms primary cylinder args depend on multiplier',
   );
   check(
-    groundSceneCompact.includes('MARKER_RADIUS*0.6*ueMarkerMultiplier,MARKER_RADIUS*0.6*ueMarkerMultiplier,MARKER_HEIGHT*0.7*ueMarkerMultiplier,MARKER_RADIAL_SEGMENTS'),
+    groundSceneCompact.includes('MARKER_RADIUS*0.6*ueMarkerMultiplier,MARKER_RADIUS*0.6*ueMarkerMultiplier,markerHeight,12'),
     'fallback source check confirms secondary cylinder args depend on multiplier',
   );
 });

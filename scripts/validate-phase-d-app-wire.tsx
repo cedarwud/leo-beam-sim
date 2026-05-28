@@ -83,6 +83,7 @@ function hasMutationBeforeReturn(block: string): boolean {
 
 const appPath = 'src/App.tsx';
 const appSource = fs.readFileSync(appPath, 'utf8');
+const trainingEnvAdapterSource = fs.readFileSync('src/app/trainingEnvAxesProfileAdapter.ts', 'utf8');
 const replayBundleImport = appSource.match(/import\s*\{[\s\S]*?\}\s*from\s*['"]\.\/modqn\/replay-bundle['"];/)?.[0] ?? '';
 const handleLoadIntoSceneBody = extractUseCallbackBody(appSource, 'handleLoadIntoScene');
 const handleRevertToPaperFaithfulBody = extractUseCallbackBody(appSource, 'handleRevertToPaperFaithful');
@@ -287,6 +288,35 @@ console.log('\n(i) Startup Phase 7C useEffect');
   assert(
     /fetchModqnReplayBundleEnvelope\(\)[\s\S]*setModqnReplayDisplayState\([\s\S]*createModqnReplayPlaybackDisplayState\(liveShell\)[\s\S]*\)/.test(appSource),
     'startup useEffect still sets modqnReplayDisplayState from liveShell when valid',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// (j) Training env truth: nSatellites is total satellite count
+// ---------------------------------------------------------------------------
+console.log('\n(j) Training env satellite-count truth');
+{
+  assert(
+    trainingEnvAdapterSource.includes('function serviceAreaPassTargetsSecForSatelliteCount'),
+    'training env adapter derives display pass targets from total satellite count',
+  );
+  assert(
+    trainingEnvAdapterSource.includes('satsPerPlane: null'),
+    'sceneTopologyFromTrainingEnvAxes does not map total nSatellites into satsPerPlane',
+  );
+  assert(
+    trainingEnvAdapterSource.includes('const totalSatellites = Math.max(1, Math.trunc(envAxes.nSatellites))'),
+    'applyTrainingEnvAxesToProfile normalizes total satellite count',
+  );
+  assert(
+    trainingEnvAdapterSource.includes('planes: totalSatellites')
+      && trainingEnvAdapterSource.includes('satsPerPlane: 1'),
+    'applyTrainingEnvAxesToProfile renders total satellite count as planes x one satellite',
+  );
+  assert(
+    !appSource.includes('satsPerPlane: envAxes.nSatellites')
+      && !trainingEnvAdapterSource.includes('satsPerPlane: envAxes.nSatellites'),
+    'App + training env adapter do not multiply MODQN training satellite count by display planes',
   );
 }
 

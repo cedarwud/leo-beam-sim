@@ -1,7 +1,7 @@
 import { UI_CLASSES } from '../constants/uiTokens';
 import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
 import { UI_MODES, isUiMode, type UiMode } from './uiMode';
-import type { RuntimeHandoverMode } from './useModqnHandoverState';
+import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 
 interface ProfileOption {
   id: string;
@@ -56,8 +56,8 @@ const HANDOVER_MODE_OPTIONS: Array<{
   label: string;
   disabledReason?: string;
 }> = [
-  { mode: 'sinr-offset', label: 'SINR-offset' },
-  { mode: 'decision-overlay-on-live-sinr', label: 'Decision overlay on live SINR' },
+  { mode: 'sinr-offset', label: 'SINR Experiment' },
+  { mode: 'decision-overlay-on-live-sinr', label: 'MODQN Demo' },
 ];
 
 const UI_MODE_LABELS: Record<UiMode, string> = {

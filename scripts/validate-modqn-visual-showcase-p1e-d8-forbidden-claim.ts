@@ -38,8 +38,8 @@ import { spawnSync } from 'node:child_process';
 import { loadShowcaseArtifact } from '../src/showcase/loadShowcaseArtifact';
 import { showcaseArtifactToScene } from '../src/showcase/showcaseArtifactToScene';
 import { decideClaimBoundaryBanner } from '../src/ui/ClaimBoundaryBanner';
+import { loadValidatorVisualShowcaseArtifact } from './visualShowcaseValidatorFixture';
 
-const TRIGGER = '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
 const NTN_SIM_CORE_DIR = '/home/u24/papers/ntn-sim-core';
 
 function test(label: string, fn: () => void): void {
@@ -66,13 +66,13 @@ function runNtnValidator(jsonPath: string): { ok: boolean; output: string } {
 }
 
 function withSyntheticArtifact<T>(
+  baseRawText: string,
   mutate: (root: Record<string, unknown>) => void,
   fn: (jsonPath: string) => T,
 ): T {
   const tmp = mkdtempSync(path.join(tmpdir(), 'p1e-d8-'));
   try {
-    const raw = readFileSync(TRIGGER, 'utf8');
-    const obj = JSON.parse(raw) as Record<string, unknown>;
+    const obj = JSON.parse(baseRawText) as Record<string, unknown>;
     mutate(obj);
     const outPath = path.join(tmp, 'synthetic.visual-showcase-v1.json');
     writeFileSync(outPath, JSON.stringify(obj));
@@ -83,12 +83,13 @@ function withSyntheticArtifact<T>(
 }
 
 console.log('validate-modqn-visual-showcase-p1e-d8-forbidden-claim');
+const { rawText: triggerRaw, source } = loadValidatorVisualShowcaseArtifact();
+console.log(`  artifact source: ${source.label}`);
 
 // ---- Case 1: trigger artifact → rendered ----
 
 test('trigger artifact: banner decision = rendered with producer title', () => {
-  const raw = readFileSync(TRIGGER, 'utf8');
-  const artifact = loadShowcaseArtifact(JSON.parse(raw));
+  const artifact = loadShowcaseArtifact(JSON.parse(triggerRaw));
   const scene = showcaseArtifactToScene(artifact, 0);
   const decision = decideClaimBoundaryBanner(scene);
   if (decision.kind !== 'rendered') {
@@ -104,6 +105,7 @@ test('trigger artifact: banner decision = rendered with producer title', () => {
 
 test('synthetic: empty allowedClaims → banner = fallback', () => {
   withSyntheticArtifact(
+    triggerRaw,
     (obj) => {
       const provenance = obj.provenance as { claimBoundary: { allowedClaims: string[] } };
       provenance.claimBoundary.allowedClaims = [];
@@ -123,6 +125,7 @@ test('synthetic: empty allowedClaims → banner = fallback', () => {
 
 test('synthetic: allowedClaims[0] also in forbiddenClaims → banner = blocked', () => {
   withSyntheticArtifact(
+    triggerRaw,
     (obj) => {
       const provenance = obj.provenance as {
         claimBoundary: { allowedClaims: string[]; forbiddenClaims: string[] };
@@ -163,6 +166,7 @@ test('synthetic: allowedClaims[0] also in forbiddenClaims → banner = blocked',
 
 test('synthetic: evidenceStatus.notes contains a forbidden phrase → banner = blocked', () => {
   withSyntheticArtifact(
+    triggerRaw,
     (obj) => {
       const provenance = obj.provenance as {
         claimBoundary: { forbiddenClaims: string[] };

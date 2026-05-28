@@ -233,14 +233,15 @@ section('(c) sceneTopology source + behavior', () => {
 
 section('(d) runtimeFrameStep source grep', () => {
   const runtimeSource = source('src/scene/runtimeFrameStep.ts');
+  const runtimeUeSource = source('src/scene/runtimeUeFrame.ts');
   const mobilityIndex = runtimeSource.indexOf('applyPerTickUeMobility({');
   const secondaryHoIndex = runtimeSource.indexOf('stepSecondaryUeHandovers({');
   const fillSinrIndex = runtimeSource.indexOf('fillPerUeServingSinr({');
   check(runtimeSource.includes('ueMobilityMode?: UeMobilityMode'), 'runtimeFrameStep input accepts ueMobilityMode');
   check(runtimeSource.includes("ueMobilityMode = 'static'"), 'runtimeFrameStep defaults ueMobilityMode to static');
-  check(runtimeSource.includes("if (ueMobilityMode === 'static'"), 'runtimeFrameStep skips mobility in static mode');
-  check(runtimeSource.includes('for (let i = 1; i < perUePositions.length; i += 1)'), 'runtimeFrameStep mobility loop starts from secondary UE index 1');
-  check(runtimeSource.includes('perUePositions[i] = {'), 'runtimeFrameStep updates secondary UE position fields');
+  check(runtimeUeSource.includes("if (ueMobilityMode === 'static'"), 'runtime UE helper skips mobility in static mode');
+  check(runtimeUeSource.includes('for (let i = 1; i < perUePositions.length; i += 1)'), 'runtime UE helper mobility loop starts from secondary UE index 1');
+  check(runtimeUeSource.includes('perUePositions[i] = {'), 'runtime UE helper updates secondary UE position fields');
   check(mobilityIndex >= 0 && secondaryHoIndex >= 0 && mobilityIndex < secondaryHoIndex, 'per-tick mobility step appears before secondary UE handover loop');
   check(mobilityIndex >= 0 && fillSinrIndex >= 0 && mobilityIndex < fillSinrIndex, 'per-tick mobility step appears before fallback per-UE SINR fill');
 });
@@ -248,13 +249,16 @@ section('(d) runtimeFrameStep source grep', () => {
 section('(e) useSimulation + App + MainScene source grep', () => {
   const useSimulationSource = source('src/scene/useSimulation.ts');
   const appSource = source('src/App.tsx');
+  const appPersistenceSource = source('src/app/appPersistence.ts');
+  const appRuntimeConfigSource = source('src/app/appRuntimeConfig.ts');
   const mainSceneSource = source('src/scene/MainScene.tsx');
   check(useSimulationSource.includes('mobilityStatesRef'), 'useSimulation maintains mobilityStatesRef');
   check(useSimulationSource.includes('createMobilityStates(effectiveUeCount, ueMobilityMode'), 'useSimulation initializes mobility states by ueCount and mode');
   check(useSimulationSource.includes('mobilityStates: mobilityStatesRef.current'), 'useSimulation passes mobilityStates to stepRuntimeFrame');
-  check(appSource.includes('record.ueMobilityMode'), 'App reads persisted ueMobilityMode');
-  check(appSource.includes("ueMobilityMode: appMode === 'sinr-experiment'"), 'App gates ueMobilityMode by app mode');
-  check(appSource.includes(": 'static'"), 'App forces non-SINR app modes to static mobility');
+  check(appSource.includes('buildAppRuntimeConfig'), 'App delegates runtime config construction');
+  check(appPersistenceSource.includes('record.ueMobilityMode'), 'appPersistence reads persisted ueMobilityMode');
+  check(appRuntimeConfigSource.includes("ueMobilityMode: input.appMode === 'sinr-experiment'"), 'appRuntimeConfig gates ueMobilityMode by app mode');
+  check(appRuntimeConfigSource.includes("trainingTopology.ueMobilityMode ?? 'static'"), 'appRuntimeConfig lets modqn-demo user-trained artifacts drive mobility from training truth');
   check(mainSceneSource.includes('runtime.ueMobilityMode'), 'MainScene threads runtime.ueMobilityMode into useSimulation');
 });
 
@@ -286,11 +290,11 @@ section('(g) zero-drift behavioral static mode', () => {
   check(sameJson(firstPositions, secondPositions), 'ueMobilityMode=static keeps perUePositions unchanged across consecutive frames');
 });
 
-section('(h) modqn-demo bypass assertion', () => {
-  const appSource = source('src/App.tsx');
+section('(h) modqn-demo Track-2 truth assertion', () => {
+  const appRuntimeConfigSource = source('src/app/appRuntimeConfig.ts');
   check(
-    /ueMobilityMode:\s*appMode === 'sinr-experiment'\s*\?\s*sceneTopology\.ueMobilityMode \?\? 'static'\s*:\s*'static'/m.test(appSource),
-    'App runtime config forces modqn-demo and other non-SINR modes to static mobility',
+    /ueMobilityMode:\s*input\.appMode === 'sinr-experiment'\s*\?\s*input\.sceneTopology\.ueMobilityMode \?\? 'static'\s*:\s*trainingTopology\.ueMobilityMode \?\? 'static'/m.test(appRuntimeConfigSource),
+    'appRuntimeConfig uses training truth for modqn-demo mobility',
   );
 });
 

@@ -17,13 +17,9 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 
-import { loadShowcaseArtifact } from '../src/showcase/loadShowcaseArtifact';
 import { showcaseArtifactToScene } from '../src/showcase/showcaseArtifactToScene';
-
-const TRIGGER =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
+import { loadValidatorVisualShowcaseArtifact } from './visualShowcaseValidatorFixture';
 
 function test(label: string, fn: () => void): void {
   try {
@@ -38,8 +34,8 @@ function test(label: string, fn: () => void): void {
 
 console.log('validate-modqn-visual-showcase-p2a-multi-ue');
 
-const raw = readFileSync(TRIGGER, 'utf8');
-const artifact = loadShowcaseArtifact(JSON.parse(raw));
+const { artifact, source } = loadValidatorVisualShowcaseArtifact();
+console.log(`  artifact source: ${source.label}`);
 
 test('replay frame 0 carries all 100 UEs (trigger artifact size)', () => {
   const scene = showcaseArtifactToScene(artifact, 0);

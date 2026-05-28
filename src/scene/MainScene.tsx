@@ -46,7 +46,11 @@ import { OrbitTrail } from '../viz/OrbitTrail';
 import { ServingGroundRipple } from '../viz/ServingGroundRipple';
 import { GroundScene } from '../viz/GroundScene';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
-import { NTPU_LARGE_CONFIG } from '../config/ntpu.config';
+import {
+  NTPU_CONFIG,
+  NTPU_LARGE_CONFIG,
+  resolveInscribedPaperUserArea,
+} from '../config/ntpu.config';
 import { NTPUScene } from '../components/scene/NTPUScene';
 import { UAV } from '../components/scene/UAV';
 import { Starfield } from '../components/ui/Starfield';
@@ -119,6 +123,10 @@ function formatCameraVector(vector: THREE.Vector3): string {
   return [vector.x, vector.y, vector.z].map(value => value.toFixed(2)).join(',');
 }
 
+function formatScenePosition(position: readonly [number, number, number] | undefined): string {
+  return position ? position.map(value => value.toFixed(2)).join(',') : '';
+}
+
 function SceneContent({
   profile,
   speed,
@@ -136,6 +144,13 @@ function SceneContent({
   const cameraTweenRef = useRef<CameraTweenState | null>(null);
   const lastCameraCommandAtRef = useRef<number | null>(null);
   const lastCameraPresetRef = useRef<CameraPreset | null>(null);
+  const sceneConfig = useMemo(() => (
+    runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
+  ), [runtime.appMode]);
+  const paperUserArea = useMemo(
+    () => resolveInscribedPaperUserArea(sceneConfig),
+    [sceneConfig],
+  );
   const sim = useSimulation(
     profile,
     runtime.replay,
@@ -146,9 +161,12 @@ function SceneContent({
     visualScaleMultipliers.beamFootprintMultiplier,
     runtime.ueCount,
     runtime.ueDistributionMode,
+    runtime.uePrimaryAnchorMode,
     runtime.ueMobilityMode,
     runtime.ueMobilityParams,
     runtime.ueDistributionScope,
+    runtime.ueDistributionRadiusKm,
+    paperUserArea.kmPerWorldUnit,
   );
   const ueTrailHistory = useUeTrailHistory({
     enabled: runtime.enableUeTrails === true && propSceneFrame === undefined,
@@ -164,8 +182,29 @@ function SceneContent({
     gl.domElement.dataset.cameraPosition = formatCameraVector(camera.position);
     gl.domElement.dataset.cameraTarget = formatCameraVector(controls?.target ?? new THREE.Vector3());
   };
+  const alpha = sceneConfig.visualAlpha;
+
+  const cameraPresets = useMemo(() => ({
+    zenith: {
+      position: [0, 980 * alpha, 1] as [number, number, number],
+      target: [0, 0, 0] as [number, number, number],
+    },
+    oblique: {
+      position: [0, 600 * alpha, 750 * alpha] as [number, number, number],
+      target: [0, 0, 0] as [number, number, number],
+    },
+    chase: {
+      position: [520 * alpha, 260 * alpha, -620 * alpha] as [number, number, number],
+      target: [0, 20 * alpha, 0] as [number, number, number],
+    },
+    'paper-faithful-closeup': {
+      position: [0, 320 * alpha, 380 * alpha] as [number, number, number],
+      target: [0, 80 * alpha, 0] as [number, number, number],
+    },
+  }), [alpha]);
+
   const applyCameraPose = (preset: CameraPreset, transition: 'idle' | 'animating') => {
-    const presetPose = CAMERA_PRESET_POSES[preset];
+    const presetPose = cameraPresets[preset];
     const controls = controlsRef.current;
     camera.position.set(...presetPose.position);
     controls?.target.set(...presetPose.target);
@@ -194,6 +233,9 @@ function SceneContent({
           shells: profile.orbit.shells.map(s => ({ id: s.id, altitudeKm: s.altitudeKm })),
         },
         beams: { frequencyReuse: profile.beams.frequencyReuse },
+        visualAlpha: sceneConfig.visualAlpha,
+        visualSatelliteAltitude: sceneConfig.visualSatelliteAltitude,
+        kmPerWorldUnit: paperUserArea.kmPerWorldUnit,
       });
     },
     [
@@ -202,6 +244,8 @@ function SceneContent({
       profile.antenna.beamwidth3dBRad,
       profile.handover.triggerTimeSec,
       profile.beams.frequencyReuse,
+      sceneConfig,
+      paperUserArea.kmPerWorldUnit,
     ],
   );
   // P1d: project the live SimFrame → NormalizedSceneFrame at the boundary.
@@ -211,6 +255,9 @@ function SceneContent({
     () => propSceneFrame ?? liveSimToScene(sim, sceneGeometry),
     [propSceneFrame, sim, sceneGeometry],
   );
+  const replayWorldUnitsPerKm = sceneGeometry.kmPerWorldUnit
+    ? 1 / sceneGeometry.kmPerWorldUnit
+    : 1 / paperUserArea.kmPerWorldUnit;
   // P1c §E: live-default display caps per SDD §13 Cat A. Replay path will
   // wire mode-appropriate defaults (default 4 sats / 4 beams / 4 events for
   // the trigger artifact's 4-satellite constellation).
@@ -257,6 +304,13 @@ function SceneContent({
     }),
     [cellCoverCandidates, cells],
   );
+  const showEarthFixedCells = true;
+  const showEarthFixedCellLabels = runtime.appMode !== 'modqn-demo' && runtime.beamDensity === 'all';
+  const ueMarkerShape = runtime.appMode === 'modqn-demo' ? 'sphere' : 'cylinder';
+  const showUav = runtime.appMode !== 'modqn-demo';
+  const showLiveBeamCones = runtime.appMode !== 'modqn-demo';
+  const showLiveSatelliteMarkers = runtime.appMode !== 'modqn-demo';
+  const showBeamCallouts = runtime.beamCalloutsEnabled && runtime.appMode !== 'modqn-demo';
   const showSpineParticles =
     runtime.effectsEnabled.spineParticles
     && !paused
@@ -297,15 +351,36 @@ function SceneContent({
       : '';
     gl.domElement.dataset.servingSatelliteId = sceneFrame.metrics.servingSatelliteId;
     gl.domElement.dataset.servingBeamId = sceneFrame.metrics.servingBeamId;
-    gl.domElement.dataset.beamCalloutsEnabled = runtime.beamCalloutsEnabled ? '1' : '0';
+    gl.domElement.dataset.beamCalloutsEnabled = showBeamCallouts ? '1' : '0';
     gl.domElement.dataset.simTimeSec = sceneFrame.tSec.toFixed(2);
+    gl.domElement.dataset.appMode = runtime.appMode;
+    gl.domElement.dataset.ueMarkerShape = ueMarkerShape;
+    gl.domElement.dataset.uavVisible = showUav ? '1' : '0';
+    gl.domElement.dataset.uePrimaryAnchorMode = runtime.uePrimaryAnchorMode ?? 'observer';
+    gl.domElement.dataset.firstUePosition = formatScenePosition(sceneFrame.ues[0]?.worldPos);
+    gl.domElement.dataset.visualSatelliteAltitude = String(sceneGeometry.visualSatelliteAltitude ?? '');
+    gl.domElement.dataset.beamSatelliteCount = String(viz.satBeams.size);
+    gl.domElement.dataset.beamConeCount = String(
+      showLiveBeamCones
+        ? [...viz.satBeams.values()].reduce((count, beams) => count + beams.length, 0)
+        : 0,
+    );
   }, [
     gl.domElement,
     runtime.beamCalloutsEnabled,
+    runtime.appMode,
+    runtime.uePrimaryAnchorMode,
     sceneFrame.metrics.servingSatelliteId,
     sceneFrame.metrics.servingBeamId,
     sceneFrame.tSec,
+    sceneFrame.ues,
+    sceneGeometry.visualSatelliteAltitude,
+    showBeamCallouts,
+    showLiveBeamCones,
+    showUav,
+    ueMarkerShape,
     viz.displaySats,
+    viz.satBeams,
   ]);
 
   useLayoutEffect(() => {
@@ -315,7 +390,7 @@ function SceneContent({
     lastCameraCommandAtRef.current = command.issuedAtMs;
     lastCameraPresetRef.current = command.preset;
 
-    const presetPose = CAMERA_PRESET_POSES[command.preset];
+    const presetPose = cameraPresets[command.preset];
     const controls = controlsRef.current;
     const toPosition = new THREE.Vector3(...presetPose.position);
     const toTarget = new THREE.Vector3(...presetPose.target);
@@ -336,7 +411,7 @@ function SceneContent({
       toTarget,
     };
     writeCameraTelemetry(command.preset, 'animating');
-  }, [camera, runtime.cameraCommand, runtime.reducedMotion]);
+  }, [camera, runtime.cameraCommand, runtime.reducedMotion, cameraPresets]);
 
   useFrame(() => {
     const tween = cameraTweenRef.current;
@@ -374,10 +449,10 @@ function SceneContent({
     <>
       <PerspectiveCamera
         makeDefault
-        position={NTPU_LARGE_CONFIG.camera.initialPosition}
-        fov={NTPU_LARGE_CONFIG.camera.fov}
-        near={NTPU_LARGE_CONFIG.camera.near}
-        far={NTPU_LARGE_CONFIG.camera.far}
+        position={sceneConfig.camera.initialPosition}
+        fov={sceneConfig.camera.fov}
+        near={sceneConfig.camera.near}
+        far={sceneConfig.camera.far}
       />
       <OrbitControls
         ref={controlsRef}
@@ -421,20 +496,23 @@ function SceneContent({
       ))}
 
       <Suspense fallback={null}>
-        <NTPUScene config={NTPU_LARGE_CONFIG} />
+        <NTPUScene config={sceneConfig} />
       </Suspense>
-      <Suspense fallback={null}>
-        <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
-      </Suspense>
+      {showUav && (
+        <Suspense fallback={null}>
+          <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
+        </Suspense>
+      )}
 
       <GroundScene
         ues={sceneFrame.ues
           .filter((u) => u.worldPos !== undefined)
           .map((u) => ({ id: u.id, worldPos: u.worldPos as readonly [number, number, number] }))}
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
+        markerShape={ueMarkerShape}
         ueTrailHistory={ueTrailHistory}
       />
-      <EarthFixedCells cells={paintedCells} showDebugLabels={runtime.beamDensity === 'all'} />
+      {showEarthFixedCells && <EarthFixedCells cells={paintedCells} showDebugLabels={showEarthFixedCellLabels} />}
       <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />
       <HandoverLinks
         satellites={viz.displaySats}
@@ -449,6 +527,8 @@ function SceneContent({
         displayState={modqnReplayDisplayState}
         reducedMotion={runtime.reducedMotion}
         showBoard={showModqnReplayScene}
+        worldUnitsPerKm={replayWorldUnitsPerKm}
+        visualSatelliteAltitudeWorld={sceneGeometry.visualSatelliteAltitude}
       />
       {showOrbitTrail && (
         <OrbitTrail satellites={viz.displaySats} />
@@ -468,7 +548,7 @@ function SceneContent({
         />
       )}
 
-      {viz.displaySats.map(sat => (
+      {showLiveSatelliteMarkers && viz.displaySats.map(sat => (
         <SatelliteMarker
           key={sat.id}
           position={sat.world}
@@ -477,8 +557,7 @@ function SceneContent({
           satelliteTintColor={sat.satelliteTintColor}
         />
       ))}
-
-      {SHOW_BEAMS && viz.displaySats
+      {SHOW_BEAMS && showLiveBeamCones && viz.displaySats
         .filter(sat => viz.beamSatIds.has(sat.id))
         .map(sat => {
           const beams = viz.satBeams.get(sat.id);
@@ -493,7 +572,7 @@ function SceneContent({
               footprintRadius={viz.footprintRadiusWorld}
               reducedMotion={runtime.reducedMotion}
               cinematicMode={runtime.cinematicMode}
-              showCallouts={runtime.beamCalloutsEnabled}
+              showCallouts={showBeamCallouts}
             />
           );
         })}
@@ -528,6 +607,9 @@ export const MainScene = memo(function MainScene({
   onSimUpdate,
   sceneFrame,
 }: MainSceneProps) {
+  const ueMarkerShape = runtime.appMode === 'modqn-demo' ? 'sphere' : 'cylinder';
+  const showUav = runtime.appMode !== 'modqn-demo';
+
   return (
     <div className="leo-main-scene" data-testid="leo-main-scene" style={{
       width: '100%',
@@ -536,6 +618,14 @@ export const MainScene = memo(function MainScene({
       background: 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)',
       overflow: 'hidden',
     }}>
+      <div
+        data-testid="render-isolation-probe"
+        data-app-mode={runtime.appMode}
+        data-ue-marker-shape={ueMarkerShape}
+        data-uav-visible={showUav ? '1' : '0'}
+        data-ue-primary-anchor-mode={runtime.uePrimaryAnchorMode ?? 'observer'}
+        hidden
+      />
       <Starfield starCount={180} />
       <Canvas
         shadows

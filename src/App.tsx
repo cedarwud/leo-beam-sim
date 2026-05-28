@@ -6,7 +6,7 @@ import {
   profileList,
 } from './profiles';
 import type { Profile } from './profiles/types';
-import type { BeamDensity, PresentationMode, RuntimeConfig, SimState } from './scene/types';
+import type { BeamDensity, SimState } from './scene/types';
 import { createInitialSimState } from './scene/initialSimState';
 import { recommendDemoReplayStartOffsetSec } from './scene/replay-recommendation';
 import {
@@ -19,16 +19,21 @@ import {
   type ModqnReplayEnvelope,
   type ModqnReplayPlaybackDisplayState,
   type ModqnReplayPlaybackShellModel,
+  type ModqnReplayPlaybackSlot,
 } from './modqn/replay-bundle';
+import {
+  getBundleSidebarSnapshot,
+} from './ui/useModqnHandoverState';
 import {
   ModqnEnvelopeProvider,
   ModqnHandoverModeProvider,
+} from './modqn/runtimeContext';
+import {
   MODQN_PAPER_FAITHFUL_OMEGA,
-  getBundleSidebarSnapshot,
   persistHandoverMode,
   type RuntimeHandoverMode,
   type RuntimeOmegaState,
-} from './ui/useModqnHandoverState';
+} from './modqn/runtimeControls';
 import {
   deriveRuntimeVisualSettings,
   readPrefersReducedMotion,
@@ -54,7 +59,6 @@ import {
   type SignalTuningState,
 } from './signalTuning';
 import {
-  SCENE_TOPOLOGY_OVERRIDES_KEY,
   applySceneTopology,
   createSceneTopologyState,
   getSceneTopologyEvidenceKey,
@@ -63,8 +67,6 @@ import {
   type SceneTopologyState,
 } from './sceneTopology';
 import {
-  SCENE_VISUAL_SCALE_OVERRIDES_KEY,
-  createSceneVisualScaleState,
   getSceneVisualScaleResetKey,
   hasSceneVisualScaleOverrides,
   resolveSceneVisualScaleMultipliers,
@@ -72,12 +74,11 @@ import {
   type SceneVisualScaleState,
 } from './sceneVisualScale';
 import { ControlBar } from './ui/ControlBar';
-import { AppModeRail } from './ui/AppModeRail';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
 import { InfoPanel } from './ui/InfoPanel';
-import { SidebarTabShell, type SidebarTabItem } from './ui/SidebarTabShell';
+import { SidebarTabShell } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
-import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
+import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { TrainingForm } from './ui/modqn-training/TrainingForm';
@@ -86,120 +87,67 @@ import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
 import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
 import { DecisionVizPanel } from './ui/modqn-training/DecisionVizPanel';
 import { readTrainingServiceBaseUrl } from './modqn/training-trigger/baseUrl';
-import { fetchUserTrainedBundleEnvelope } from './modqn/training-trigger/userTrainedBundleFetch';
-import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import {
-  ClaimBoundaryBanner,
-  type ClaimBoundaryBannerInput,
-} from './ui/ClaimBoundaryBanner';
+  fetchTrainingRunMetadata,
+  fetchTrainingServiceManifest,
+} from './modqn/training-trigger/artifactManifest';
+import { fetchUserTrainedBundleEnvelope } from './modqn/training-trigger/userTrainedBundleFetch';
+import type {
+  TrainingRunMetadata,
+  TrainingServiceManifest,
+} from './modqn/training-trigger/types';
+import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
+import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
 import type { VisualShowcaseArtifact } from './scene/visual-showcase-contract';
-import {
-  DEFAULT_UE_MOBILITY_PARAMS,
-  type UeMobilityParams,
-} from './engine/ue/multiUeMobility';
 import type { NormalizedSceneFrame } from './scene/NormalizedSceneFrame';
-import type {
-  SignalSourceState,
-  PanelPrimaryState,
-  PanelComparisonState,
-  VisualFrequencyDiagnosticsState,
-} from './scene/types';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
 import {
-  APP_MODE_DEFAULT_PROFILE,
   APP_MODE_HANDOVER_MAP,
-  readPersistedAppMode,
-  readPersistedProfileByMode,
   persistAppMode,
   persistProfileByMode,
   resolveProfileForAppMode,
   type AppExperienceMode,
   type ProfileByMode,
-} from './ui/appMode';
+} from './app/appExperienceMode';
+import {
+  getDefaultLeftSidebarTabForMode,
+  getDefaultRightSidebarTabForMode,
+  getLeftSidebarTabsForMode,
+  getRightSidebarTabsForMode,
+  isKnownProfileId,
+  normalizeRuntimeOmega,
+  readInitialRuntimeState,
+  type InitialRuntimeState,
+  type LeftSidebarTab,
+  type RightSidebarTab,
+} from './app/appRuntimeModel';
+import {
+  applyTrainingEnvAxesToProfile,
+  envAxesFromTrainingRunMetadata,
+  seedTripletFromTrainingRunMetadata,
+} from './app/trainingEnvAxesProfileAdapter';
+import {
+  APP_EPOCH_MS,
+  buildAppRuntimeConfig,
+} from './app/appRuntimeConfig';
+import {
+  persistSceneTopologyOverrides,
+  persistSceneVisualScaleOverrides,
+  readSceneSourceFromUrl,
+  readSceneTopologyOverrides,
+  readSceneVisualScaleOverrides,
+  type SceneSourceMode,
+} from './app/appPersistence';
+import { LIVE_SIM_CLAIM_BOUNDARY_INPUT } from './app/liveClaimBoundary';
+import {
+  createReplayPanelSimState,
+  selectReplayDisplayUes,
+} from './app/showcaseReplayState';
 import { usePlaybackControls } from './usePlaybackControls';
 import { useCameraControls } from './useCameraControls';
-
-const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
-const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
-const MODQN_PAPER_BASELINE_UE_COUNT = 100;
-
-/**
- * P1e follow-up: ClaimBoundaryBanner mount input for the live-sim path.
- *
- * The renderer accepts only the {sceneSource, claimBoundary, evidenceStatus,
- * provenance} subset of NormalizedSceneFrame. On the live-sim path no artifact
- * is loaded, so we feed the banner a static stub that mirrors the live-stub
- * shape emitted by `liveSimToScene` (allowedClaims / forbiddenClaims identical
- * to the producer-validated live boundary). The banner therefore renders in
- * `kind: 'rendered'` mode with the live SINR claim and the live forbidden-claim
- * list active. Full artifact-replay banner wiring (sourcing the input from the
- * loaded VisualShowcaseArtifact) lands in A-P3.
- */
-const LIVE_SIM_CLAIM_BOUNDARY_INPUT: ClaimBoundaryBannerInput = {
-  sceneSource: 'live-sim',
-  provenance: {
-    kind: 'live-stub',
-    note: 'live-sim provenance — repo build info',
-  },
-  claimBoundary: {
-    kind: 'live-stub',
-    storyKind: 'live-sinr-sim',
-    allowedClaims: ['interference-aware SINR (live)'],
-    forbiddenClaims: [
-      'Multi-Catfish-MODQN effectiveness',
-      'Catfish-EE',
-      'general EE-MODQN superiority',
-      'active-TX EE recovery',
-      'physical energy saving',
-    ],
-  },
-  evidenceStatus: { kind: 'live-stub', status: 'live', notes: [] },
-};
-
-type LeftSidebarTab = 'objective' | 'signal' | 'handover' | 'training' | 'jobs';
-type RightSidebarTab = 'modqn' | 'live';
-
-const LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
-  { key: 'objective', label: 'MODQN objective', description: 'post-hoc ω weights' },
-  { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
-  { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
-  { key: 'training', label: 'MODQN training', description: 'launch backend training run' },
-  { key: 'jobs', label: 'MODQN jobs', description: 'training run history' },
-];
-
-const SINR_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
-  LEFT_SIDEBAR_TABS[1],
-  LEFT_SIDEBAR_TABS[2],
-];
-
-const MODQN_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
-  LEFT_SIDEBAR_TABS[0],
-  LEFT_SIDEBAR_TABS[1],
-  LEFT_SIDEBAR_TABS[2],
-  LEFT_SIDEBAR_TABS[3],
-  LEFT_SIDEBAR_TABS[4],
-];
-
-const RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = [
-  { key: 'live', label: 'Live status', description: 'current scene state' },
-  { key: 'modqn', label: 'MODQN evidence', description: 'artifact proof' },
-];
-
-const SINR_RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = [
-  RIGHT_SIDEBAR_TABS[0],
-];
-
-const MODQN_RIGHT_SIDEBAR_TABS: readonly SidebarTabItem<RightSidebarTab>[] = RIGHT_SIDEBAR_TABS;
-
-interface InitialRuntimeState {
-  readonly appMode: AppExperienceMode;
-  readonly selectedProfileId: string;
-  readonly handoverMode: RuntimeHandoverMode;
-  readonly profileByMode: ProfileByMode;
-}
 
 interface HandoverPolicyRuntimeState {
   profileId: string;
@@ -208,160 +156,42 @@ interface HandoverPolicyRuntimeState {
   version: number;
 }
 
-function resolvePresentationMode(profile: Profile): PresentationMode {
-  if (profile.id === APP_MODE_DEFAULT_PROFILE['sinr-experiment']) return 'demo-readability';
-  if (profile.profileClass === 'candidate-rich') return 'candidate-rich';
-  return 'research-default';
+const MODQN_REPLAY_HANDOVER_SLOT_SEC = 3.2;
+const MODQN_REPLAY_STABLE_SLOT_SEC = 0.9;
+const MODQN_REPLAY_VISUAL_TICK_MS = 100;
+
+function getModqnReplayVisualSlotDuration(slot: ModqnReplayPlaybackSlot): number {
+  return slot.focusRow.handoverEventKind === 'none'
+    ? MODQN_REPLAY_STABLE_SLOT_SEC
+    : MODQN_REPLAY_HANDOVER_SLOT_SEC;
 }
 
-function isKnownProfileId(id: string): boolean {
-  return profileList.some(p => p.id === id);
-}
+function resolveModqnReplayVisualSlotOffset(
+  model: ModqnReplayPlaybackShellModel,
+  elapsedSec: number,
+): number {
+  if (model.slots.length === 0) return 0;
 
-function readInitialRuntimeState(): InitialRuntimeState {
-  const appMode = readPersistedAppMode();
-  const profileByMode = readPersistedProfileByMode();
-  const selectedProfileId = resolveProfileForAppMode(appMode, profileByMode, isKnownProfileId);
-  const handoverMode = APP_MODE_HANDOVER_MAP[appMode];
-  const defaultState: InitialRuntimeState = {
-    appMode,
-    selectedProfileId: DEFAULT_PROFILE_ID,
-    handoverMode,
-    profileByMode,
-  };
-  return { ...defaultState, selectedProfileId };
-}
-
-function getLeftSidebarTabsForMode(mode: RuntimeHandoverMode): readonly SidebarTabItem<LeftSidebarTab>[] {
-  return mode === 'sinr-offset'
-    ? SINR_LEFT_SIDEBAR_TABS
-    : MODQN_LEFT_SIDEBAR_TABS;
-}
-
-function getDefaultLeftSidebarTabForMode(mode: RuntimeHandoverMode): LeftSidebarTab {
-  return mode === 'sinr-offset' ? 'signal' : 'objective';
-}
-
-function getRightSidebarTabsForMode(mode: RuntimeHandoverMode): readonly SidebarTabItem<RightSidebarTab>[] {
-  return mode === 'decision-overlay-on-live-sinr'
-    ? MODQN_RIGHT_SIDEBAR_TABS
-    : SINR_RIGHT_SIDEBAR_TABS;
-}
-
-function getDefaultRightSidebarTabForMode(_mode: RuntimeHandoverMode): RightSidebarTab {
-  return 'live';
-}
-
-function clampOmegaComponent(value: unknown, fallback: number): number {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
-  return Math.min(1, Math.max(0, numeric));
-}
-
-function normalizeRuntimeOmega(weights: Readonly<Record<string, unknown>> | undefined): RuntimeOmegaState {
-  const throughput = clampOmegaComponent(
-    weights?.throughput ?? weights?.r1Throughput,
-    MODQN_PAPER_FAITHFUL_OMEGA.throughput,
+  const totalSec = model.slots.reduce(
+    (sum, slot) => sum + getModqnReplayVisualSlotDuration(slot),
+    0,
   );
-  const handover = clampOmegaComponent(
-    weights?.handover ?? weights?.r2Handover,
-    MODQN_PAPER_FAITHFUL_OMEGA.handover,
-  );
-  const loadBalance = clampOmegaComponent(
-    weights?.loadBalance ?? weights?.r3LoadBalance,
-    MODQN_PAPER_FAITHFUL_OMEGA.loadBalance,
-  );
-  const sum = throughput + handover + loadBalance;
-  if (sum <= 0) return MODQN_PAPER_FAITHFUL_OMEGA;
-  return {
-    throughput: throughput / sum,
-    handover: handover / sum,
-    loadBalance: loadBalance / sum,
-  };
-}
+  if (!Number.isFinite(totalSec) || totalSec <= 0) return 0;
 
-function readSceneSourceFromUrl(): 'live-sim' | 'artifact-replay' {
-  if (typeof window === 'undefined') return 'live-sim';
-  const params = new URLSearchParams(window.location.search);
-  const src = params.get('sceneSource');
-  return src === 'artifact-replay' ? 'artifact-replay' : 'live-sim';
-}
-
-function readSceneTopologyOverrides(): SceneTopologyState {
-  if (typeof window === 'undefined') return createSceneTopologyState();
-
-  try {
-    const stored = window.localStorage.getItem(SCENE_TOPOLOGY_OVERRIDES_KEY);
-    if (stored === null) return createSceneTopologyState();
-    const parsed: unknown = JSON.parse(stored);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return createSceneTopologyState();
-    }
-    const record = parsed as Partial<Record<keyof SceneTopologyState, unknown>>;
-    const mobilityParams = record.ueMobilityParams;
-    const normalizedMobilityParams: UeMobilityParams | null =
-      mobilityParams !== null
-      && typeof mobilityParams === 'object'
-      && !Array.isArray(mobilityParams)
-      && typeof (mobilityParams as Partial<UeMobilityParams>).speedKmPerSec === 'number'
-      && typeof (mobilityParams as Partial<UeMobilityParams>).waypointCount === 'number'
-      && typeof (mobilityParams as Partial<UeMobilityParams>).manhattanGridSpacingKm === 'number'
-        ? {
-            speedKmPerSec: (mobilityParams as UeMobilityParams).speedKmPerSec,
-            waypointCount: (mobilityParams as UeMobilityParams).waypointCount,
-            manhattanGridSpacingKm: (mobilityParams as UeMobilityParams).manhattanGridSpacingKm,
-          }
-        : null;
-    return {
-      satsPerPlane: typeof record.satsPerPlane === 'number' ? record.satsPerPlane : null,
-      beamCountPerSatellite: typeof record.beamCountPerSatellite === 'number'
-        ? record.beamCountPerSatellite
-        : null,
-      ueCount: typeof record.ueCount === 'number' ? record.ueCount : null,
-      ueDistributionMode: record.ueDistributionMode === 'random'
-        || record.ueDistributionMode === 'grid'
-        || record.ueDistributionMode === 'clustered'
-        ? record.ueDistributionMode
-        : null,
-      ueMobilityMode: record.ueMobilityMode === 'static'
-        || record.ueMobilityMode === 'random-walk'
-        || record.ueMobilityMode === 'waypoints'
-        || record.ueMobilityMode === 'manhattan'
-        ? record.ueMobilityMode
-        : null,
-      ueMobilityParams: normalizedMobilityParams,
-      enableUeTrails: record.enableUeTrails === true ? true : null,
-    };
-  } catch {
-    return createSceneTopologyState();
+  let cursor = Math.max(0, elapsedSec) % totalSec;
+  for (let index = 0; index < model.slots.length; index += 1) {
+    const slot = model.slots[index];
+    if (slot === undefined) continue;
+    const durationSec = getModqnReplayVisualSlotDuration(slot);
+    if (cursor < durationSec) return index;
+    cursor -= durationSec;
   }
-}
 
-function readSceneVisualScaleOverrides(): SceneVisualScaleState {
-  if (typeof window === 'undefined') return createSceneVisualScaleState();
-
-  try {
-    const stored = window.localStorage.getItem(SCENE_VISUAL_SCALE_OVERRIDES_KEY);
-    if (stored === null) return createSceneVisualScaleState();
-    const parsed: unknown = JSON.parse(stored);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return createSceneVisualScaleState();
-    }
-    const record = parsed as Partial<Record<keyof SceneVisualScaleState, unknown>>;
-    const sceneScale = record.sceneScale === 'demo-readability' || record.sceneScale === 'paper-faithful'
-      ? record.sceneScale
-      : 'paper-faithful';
-    return {
-      sceneScale,
-      ueMarkerScale: typeof record.ueMarkerScale === 'number' ? record.ueMarkerScale : 1.0,
-    };
-  } catch {
-    return createSceneVisualScaleState();
-  }
+  return Math.max(0, model.slots.length - 1);
 }
 
 export function App() {
-  const [sceneSource] = useState<'live-sim' | 'artifact-replay'>(() => readSceneSourceFromUrl());
+  const [sceneSource] = useState<SceneSourceMode>(() => readSceneSourceFromUrl());
   const [showcaseArtifact, setShowcaseArtifact] = useState<VisualShowcaseArtifact | null>(null);
   const [showcaseLoading, setShowcaseLoading] = useState(false);
   const [showcaseError, setShowcaseError] = useState<string | null>(null);
@@ -414,6 +244,16 @@ export function App() {
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
   const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
   const [userTrainedLoadError, setUserTrainedLoadError] = useState<string | null>(null);
+  const [selectedTrainingServiceManifest, setSelectedTrainingServiceManifest] = useState<TrainingServiceManifest | null>(null);
+  const [selectedTrainingRunMetadata, setSelectedTrainingRunMetadata] = useState<TrainingRunMetadata | null>(null);
+  const selectedTrainingEnvAxes = bundleProvenanceKind === 'user-trained'
+    ? envAxesFromTrainingRunMetadata(selectedTrainingRunMetadata)
+      ?? selectedTrainingServiceManifest?.trainingTruth?.envAxes
+    : undefined;
+  const selectedTrainingSeedTriplet = bundleProvenanceKind === 'user-trained'
+    ? seedTripletFromTrainingRunMetadata(selectedTrainingRunMetadata)
+      ?? selectedTrainingServiceManifest?.trainingTruth?.seedTriplet
+    : undefined;
   const visibleLeftSidebarTabs = useMemo(
     () => getLeftSidebarTabsForMode(handoverMode),
     [handoverMode],
@@ -459,10 +299,20 @@ export function App() {
   const handoverPolicyVersion = handoverPolicyState.profileId === baseProfile.id
     ? handoverPolicyState.version
     : 0;
-  const signalTunedProfile = useMemo(
-    () => applySceneTopology(applySignalTuning(baseProfile, signalTuning), appMode === 'sinr-experiment' ? sceneTopology : createSceneTopologyState()),
-    [appMode, baseProfile, signalTuning, sceneTopology],
-  );
+  const signalTunedProfile = useMemo(() => {
+    const topology = appMode === 'sinr-experiment'
+      ? sceneTopology
+      : createSceneTopologyState();
+    const tuned = applySceneTopology(applySignalTuning(baseProfile, signalTuning), topology);
+    return applyTrainingEnvAxesToProfile(tuned, selectedTrainingEnvAxes, selectedTrainingSeedTriplet);
+  }, [
+    appMode,
+    baseProfile,
+    selectedTrainingEnvAxes,
+    selectedTrainingSeedTriplet,
+    signalTuning,
+    sceneTopology,
+  ]);
   const effectiveProfile = useMemo(
     () => applyHandoverPolicyTuning(signalTunedProfile, appliedHandoverPolicy),
     [signalTunedProfile, appliedHandoverPolicy],
@@ -522,7 +372,7 @@ export function App() {
   // but this still runs during the first render. 
   // Given we have localStorage cache now, it will be instant after the first run.
   const demoStartOffset = useMemo(
-    () => recommendDemoReplayStartOffsetSec(baseProfile, EPOCH_MS),
+    () => recommendDemoReplayStartOffsetSec(baseProfile, APP_EPOCH_MS),
     [baseProfile],
   );
 
@@ -534,37 +384,20 @@ export function App() {
     () => resolveRuntimeCinematicMode(uiMode, camera.cinematicMode),
     [camera.cinematicMode, uiMode],
   );
-  const runtime = useMemo((): RuntimeConfig => ({
-    presentationMode: resolvePresentationMode(effectiveProfile),
-    replay: {
-      epochUtcMs: EPOCH_MS,
-      startOffsetSec: demoStartOffset,
-      loop: true,
-    },
+  const runtime = useMemo(() => buildAppRuntimeConfig({
+    appMode,
+    effectiveProfile,
+    demoStartOffsetSec: demoStartOffset,
     signalResetKey,
     handoverResetKey,
-    ...runtimeVisualSettings,
-    beamDensity: beamDensityOverride ?? runtimeVisualSettings.beamDensity,
+    runtimeVisualSettings,
+    beamDensityOverride,
     beamCalloutsEnabled,
-    cinematicMode: effectiveCinematicMode,
+    effectiveCinematicMode,
     cameraCommand: camera.cameraCommand,
     viewport,
-    ueCount: appMode === 'sinr-experiment'
-      ? sceneTopology.ueCount ?? undefined
-      : MODQN_PAPER_BASELINE_UE_COUNT,
-    ueDistributionMode: appMode === 'sinr-experiment'
-      ? sceneTopology.ueDistributionMode ?? 'random'
-      : 'random',
-    ueDistributionScope: appMode === 'modqn-demo' ? 'service-area' : 'beam-footprint',
-    ueMobilityMode: appMode === 'sinr-experiment'
-      ? sceneTopology.ueMobilityMode ?? 'static'
-      : 'static',
-    ueMobilityParams: appMode === 'sinr-experiment'
-      ? sceneTopology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS
-      : DEFAULT_UE_MOBILITY_PARAMS,
-    enableUeTrails: appMode === 'sinr-experiment'
-      ? sceneTopology.enableUeTrails === true
-      : false,
+    sceneTopology,
+    selectedTrainingEnvAxes,
   }), [
     appMode,
     beamDensityOverride,
@@ -573,13 +406,10 @@ export function App() {
     demoStartOffset,
     effectiveProfile,
     effectiveCinematicMode,
-    handoverResetKey,
     runtimeVisualSettings,
-    sceneTopology.ueDistributionMode,
-    sceneTopology.ueMobilityMode,
-    sceneTopology.ueMobilityParams,
-    sceneTopology.enableUeTrails,
-    sceneTopology.ueCount,
+    handoverResetKey,
+    sceneTopology,
+    selectedTrainingEnvAxes,
     signalResetKey,
     viewport,
   ]);
@@ -610,6 +440,7 @@ export function App() {
         : null
     ),
   );
+  const [modqnReplayVisualElapsedSec, setModqnReplayVisualElapsedSec] = useState(0);
   const modqnReplaySlotOffset = modqnReplayDisplayState?.slotOffset ?? 0;
   const modqnBundleOmega = useMemo(
     () => normalizeRuntimeOmega(
@@ -754,7 +585,7 @@ export function App() {
       // Persist and apply mode.
       setHandoverModeRaw(nextMode);
       persistHandoverMode(nextMode);
-      setLeftSidebarTab('objective');
+      setLeftSidebarTab('replay');
       setRightSidebarTab('live');
       return;
     }
@@ -764,7 +595,7 @@ export function App() {
       setHandoverModeRaw(nextMode);
       setRescalarizeFallbackCount(0);
       resetOmegaDisplayApplied();
-      setLeftSidebarTab('objective');
+      setLeftSidebarTab('replay');
       // Do NOT call persistHandoverMode for omega-heuristic (SDD §5.2, §9.4 item 8).
       return;
     }
@@ -788,15 +619,6 @@ export function App() {
   // omega reset to bundle objectiveWeights (or paper-faithful fallback).
   // The scene profile is intentionally not changed here: MODQN replay drives the
   // decision override, while the main scene keeps the current visual topology.
-  const handleHandoverModeChange = useCallback((nextMode: RuntimeHandoverMode) => {
-    if (nextMode === handoverMode) return;
-    applyHandoverModeSideEffects(nextMode, effectiveProfile);
-  }, [
-    applyHandoverModeSideEffects,
-    effectiveProfile,
-    handoverMode,
-  ]);
-
   const handleAppModeChange = useCallback((nextMode: AppExperienceMode) => {
     if (nextMode === appMode) return;
 
@@ -813,19 +635,29 @@ export function App() {
     const nextHandoverMode = APP_MODE_HANDOVER_MAP[nextMode];
     const incomingProfile = loadProfile(incomingProfileId);
 
-    startTransition(() => {
-      setAppModeRaw(nextMode);
-      setSelectedProfileId(incomingProfileId);
-      applyHandoverModeSideEffects(nextHandoverMode, incomingProfile);
-    });
+    // App-mode changes are direct user navigation. Keeping this outside
+    // startTransition prevents the busy canvas/simulation loop from delaying
+    // the visible rail/tab switch and making repeated clicks look necessary.
+    setAppModeRaw(nextMode);
+    setSelectedProfileId(incomingProfileId);
+    applyHandoverModeSideEffects(nextHandoverMode, incomingProfile);
   }, [
     appMode,
     applyHandoverModeSideEffects,
     selectedProfileId,
   ]);
 
-  // S3: expose a setter so ModqnObjectiveTab (via useModqnHandoverState hook)
-  // can update the omegaActive snapshot in the mode context.
+  const handleHandoverModeChange = useCallback((nextMode: RuntimeHandoverMode) => {
+    if (nextMode === handoverMode) return;
+    const nextAppMode = nextMode === 'decision-overlay-on-live-sinr' ? 'modqn-demo' : 'sinr-experiment';
+    handleAppModeChange(nextAppMode);
+  }, [
+    handleAppModeChange,
+    handoverMode,
+  ]);
+
+  // S3 compatibility path: omega stays sourced from the loaded bundle unless
+  // a legacy/test-only caller explicitly invokes the old hook surface.
   const handleOmegaActiveChange = useCallback((next: RuntimeOmegaState) => {
     setOmegaActiveForContext(next);
     markOmegaDisplayApplied();
@@ -838,6 +670,23 @@ export function App() {
   // D-S3 replaces the Phase B stub import { fetchArtifactManifest } path with an all-or-nothing envelope swap.
   const handleLoadIntoScene = useCallback(async (jobId: string) => {
     const config = { baseUrl: readTrainingServiceBaseUrl() };
+    let serviceManifest: TrainingServiceManifest;
+    try {
+      serviceManifest = await fetchTrainingServiceManifest(config, jobId);
+    } catch (err) {
+      setUserTrainedLoadError(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    if (serviceManifest.replayBundle?.present !== true) {
+      setUserTrainedLoadError('Selected training artifact has no replay-bundle surface yet.');
+      return;
+    }
+    let runMetadata: TrainingRunMetadata | null = null;
+    try {
+      runMetadata = await fetchTrainingRunMetadata(config, serviceManifest);
+    } catch {
+      runMetadata = null;
+    }
     let result;
     try {
       result = await fetchUserTrainedBundleEnvelope({ config, jobId });
@@ -855,6 +704,8 @@ export function App() {
     setModqnReplayShellModel(liveShell);
     setModqnReplayDisplayState(createModqnReplayPlaybackDisplayState(liveShell));
     setSelectedUserTrainedJobId(jobId);
+    setSelectedTrainingServiceManifest(serviceManifest);
+    setSelectedTrainingRunMetadata(runMetadata);
     setBundleProvenanceKind('user-trained');
     setUserTrainedLoadError(null);
   }, []);
@@ -878,6 +729,8 @@ export function App() {
     setModqnReplayShellModel(liveShell);
     setModqnReplayDisplayState(createModqnReplayPlaybackDisplayState(liveShell));
     setSelectedUserTrainedJobId(null);
+    setSelectedTrainingServiceManifest(null);
+    setSelectedTrainingRunMetadata(null);
     setBundleProvenanceKind('paper-faithful');
     setUserTrainedLoadError(null);
   }, []);
@@ -887,19 +740,11 @@ export function App() {
   useEffect(() => subscribeToRuntimeViewport(setViewport), []);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(SCENE_TOPOLOGY_OVERRIDES_KEY, JSON.stringify(sceneTopology));
-    } catch {
-      // Storage can be unavailable in private or embedded browser contexts.
-    }
+    persistSceneTopologyOverrides(sceneTopology);
   }, [sceneTopology]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(SCENE_VISUAL_SCALE_OVERRIDES_KEY, JSON.stringify(sceneVisualScale));
-    } catch {
-      // Storage can be unavailable in private or embedded browser contexts.
-    }
+    persistSceneVisualScaleOverrides(sceneVisualScale);
   }, [sceneVisualScale]);
 
   // MODQN ω-Handover S2: runtime fetch of the producer replay bundle at
@@ -939,6 +784,86 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    setModqnReplayVisualElapsedSec(0);
+  }, [
+    appMode,
+    handoverMode,
+    modqnReplayShellModel.sourcePath,
+  ]);
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined'
+      || sceneSource !== 'live-sim'
+      || appMode !== 'modqn-demo'
+      || handoverMode !== 'decision-overlay-on-live-sinr'
+      || playback.paused
+    ) {
+      return;
+    }
+
+    const tickSec = MODQN_REPLAY_VISUAL_TICK_MS / 1000;
+    const timerId = window.setInterval(() => {
+      setModqnReplayVisualElapsedSec(current => current + tickSec);
+    }, MODQN_REPLAY_VISUAL_TICK_MS);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [
+    appMode,
+    handoverMode,
+    playback.paused,
+    sceneSource,
+  ]);
+
+  useEffect(() => {
+    if (
+      sceneSource !== 'live-sim'
+      || appMode !== 'modqn-demo'
+      || handoverMode !== 'decision-overlay-on-live-sinr'
+      || modqnReplayModelIssue !== null
+      || modqnReplayShellModel.slots.length === 0
+    ) {
+      return;
+    }
+
+    const slotOffset = resolveModqnReplayVisualSlotOffset(
+      modqnReplayShellModel,
+      modqnReplayVisualElapsedSec,
+    );
+    const playing = !playback.paused;
+
+    if (
+      modqnReplayDisplayState !== null
+      && modqnReplayDisplayState.sourcePath === modqnReplayShellModel.sourcePath
+      && modqnReplayDisplayState.slotOffset === slotOffset
+      && modqnReplayDisplayState.playing === playing
+      && modqnReplayDisplayState.loopEnabled
+    ) {
+      return;
+    }
+
+    setModqnReplayDisplayState(
+      createModqnReplayPlaybackDisplayState(
+        modqnReplayShellModel,
+        slotOffset,
+        playing,
+        true,
+      ),
+    );
+  }, [
+    appMode,
+    handoverMode,
+    modqnReplayDisplayState,
+    modqnReplayModelIssue,
+    modqnReplayShellModel,
+    modqnReplayVisualElapsedSec,
+    playback.paused,
+    sceneSource,
+  ]);
 
   // P3: fetch visual-showcase-v1 artifact at startup if in artifact-replay mode.
   useEffect(() => {
@@ -1021,17 +946,7 @@ export function App() {
   // slice to the user-selected `ueDisplayCount`. This is pure presentation —
   // the artifact's UE truth is untouched (R1 invariant).
   const processedUes = useMemo(() => {
-    if (!replaySceneFrame) return [];
-    const allUes = replaySceneFrame.ues;
-    if (allUes.length === 0) return [];
-    const focusedId = elevatedUeId ?? allUes[0]?.id;
-    const focusedIndex = allUes.findIndex(u => u.id === focusedId);
-    const reordered = [...allUes];
-    if (focusedIndex > 0) {
-      const [focusedUe] = reordered.splice(focusedIndex, 1);
-      reordered.unshift(focusedUe);
-    }
-    return reordered.slice(0, Math.min(ueDisplayCount, reordered.length));
+    return selectReplayDisplayUes(replaySceneFrame, elevatedUeId, ueDisplayCount);
   }, [replaySceneFrame, elevatedUeId, ueDisplayCount]);
 
   const activeSceneFrame = useMemo((): NormalizedSceneFrame | undefined => {
@@ -1046,143 +961,14 @@ export function App() {
   // the producer-truth playback cursor. We never recompute SINR or handover
   // truth here — we only forward producer values (R1).
   useEffect(() => {
-    if (sceneSource !== 'artifact-replay' || !replaySceneFrame) return;
-
-    const allUes = replaySceneFrame.ues;
-    if (allUes.length === 0) return;
-    const focusedId = elevatedUeId ?? allUes[0]?.id ?? null;
-    const focusedUe = (focusedId ? allUes.find(u => u.id === focusedId) : null) ?? allUes[0];
-    if (!focusedUe) return;
-
-    let hoCount = 0;
-    let intraHoCount = 0;
-    if (showcaseArtifact) {
-      for (let i = 1; i <= frameIndex; i++) {
-        const prev = showcaseArtifact.timeline[i - 1];
-        const curr = showcaseArtifact.timeline[i];
-        if (!prev || !curr) continue;
-        const prevUe = prev.ues.find(u => u.id === focusedId) ?? prev.ues[0];
-        const currUe = curr.ues.find(u => u.id === focusedId) ?? curr.ues[0];
-        if (prevUe && currUe) {
-          if (currUe.servingSatelliteId !== prevUe.servingSatelliteId) {
-            hoCount++;
-          } else if (currUe.servingBeamId !== prevUe.servingBeamId) {
-            intraHoCount++;
-          }
-        }
-      }
-    }
-
-    const servingSatId = focusedUe.servingSatelliteId;
-    const servingBeamId = focusedUe.servingBeamId ? parseInt(focusedUe.servingBeamId) : null;
-    const targetSatId = focusedUe.targetSatelliteId ?? null;
-    const targetBeamId = focusedUe.targetBeamId ? parseInt(focusedUe.targetBeamId) : null;
-
-    const candidates = focusedUe.candidatesByBeamId;
-    const targetSinrDb =
-      targetSatId && focusedUe.targetBeamId && candidates
-        ? candidates.get(focusedUe.targetBeamId)?.dB ?? null
-        : null;
-
-    const physicalServing: SignalSourceState = {
-      satId: servingSatId,
-      beamId: servingBeamId,
-      sinrDb: focusedUe.channelMetric.dB,
-      elevationDeg: null,
-      rangeKm: null,
-      status: 'derived',
-    };
-
-    const panelPrimary: PanelPrimaryState = {
-      ...physicalServing,
-      role:
-        replaySceneFrame.handover.kind !== 'none' && replaySceneFrame.handover.kind !== ''
-          ? 'ho-source'
-          : 'serving',
-    };
-
-    const panelComparison: PanelComparisonState = {
-      satId: targetSatId,
-      beamId: targetBeamId,
-      sinrDb: targetSinrDb,
-      elevationDeg: null,
-      rangeKm: null,
-      status: targetSatId ? 'derived' : 'none',
-      role: targetSatId ? 'pending' : 'none',
-    };
-
-    const sinrDeltaDb = targetSinrDb !== null ? targetSinrDb - focusedUe.channelMetric.dB : null;
-
-    const visualFrequencyDiagnostics: VisualFrequencyDiagnosticsState = {
-      primary: {
-        satId: servingSatId,
-        beamId: servingBeamId,
-        frequencyIndex: 0,
-        frequencyIndexSource:
-          servingSatId !== null && servingBeamId !== null
-            ? 'fallback-numeric-modulo'
-            : 'not-visible',
-        runtimeFrequencyReuse: 0,
-        coreLayoutFrequencyReuse: null,
-      },
-      comparison: {
-        satId: targetSatId,
-        beamId: targetBeamId,
-        frequencyIndex: 0,
-        frequencyIndexSource:
-          targetSatId !== null && targetBeamId !== null
-            ? 'fallback-numeric-modulo'
-            : 'not-visible',
-        runtimeFrequencyReuse: 0,
-        coreLayoutFrequencyReuse: null,
-      },
-    };
-
-    setSimState({
-      profileId: showcaseArtifact?.scenario.id ?? 'modqn-1sat-7beam',
-      formulaFamilyLabel: 'SNR (no interference)',
-      satelliteVisualIdentityById: {},
-      physicalServing,
-      panelPrimary,
-      panelComparison,
-      visualFrequencyDiagnostics,
-      servingSatId,
-      servingBeamId,
-      servingElevationDeg: null,
-      servingRangeKm: null,
-      pendingTargetSatId: targetSatId,
-      pendingTargetBeamId: targetBeamId,
-      pendingTargetSinrDb: targetSinrDb,
-      comparisonSatId: targetSatId,
-      comparisonBeamId: targetBeamId,
-      comparisonElevationDeg: null,
-      comparisonRangeKm: null,
-      comparisonSinrDb: targetSinrDb,
-      comparisonKind: targetSatId ? 'pending' : null,
-      sinrDeltaDb,
-      recentHoSourceSatId: null,
-      recentHoTargetSatId: null,
-      recentHoSourceBeamId: null,
-      recentHoTargetBeamId: null,
-      recentHoDeltaDb: null,
-      lastHoEvent: null,
-      simTimeSec: replaySceneFrame.tSec,
-      sinrDb: focusedUe.channelMetric.dB,
-      physicalServingBudget: null,
-      servingBudget: null,
-      handoverOffsetDb: 0,
-      handoverTriggerProgressSec: 0,
-      handoverTriggerSec: 0,
-      hoCount,
-      intraHoCount,
-      lastHoReason: replaySceneFrame.handover.handoverProvenance?.note ?? '—',
-      beamHopEnabled: false,
-      beamHopSlotIndex: -1,
-      beamHopSlotSec: 0,
-      servingBeamActiveThisSlot: true,
-      servingSatActiveBeamIds: servingBeamId !== null ? [servingBeamId] : [],
-      pendingTargetActiveBeamIds: targetBeamId !== null ? [targetBeamId] : [],
+    const replaySimState = createReplayPanelSimState({
+      sceneSource,
+      replaySceneFrame,
+      elevatedUeId,
+      showcaseArtifact,
+      frameIndex,
     });
+    if (replaySimState !== null) setSimState(replaySimState);
   }, [sceneSource, replaySceneFrame, elevatedUeId, showcaseArtifact, frameIndex]);
 
   const resetAutoSlowDismissedRef = useRef(playback.resetAutoSlowDismissed);
@@ -1280,7 +1066,6 @@ export function App() {
         onElevatedUeIdChange={setElevatedUeId}
       />
       <div className="leo-shell-row">
-        <AppModeRail mode={appMode} onChange={handleAppModeChange} />
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
           <SidebarTabShell
             label="Simulation control sidebar"
@@ -1289,9 +1074,7 @@ export function App() {
             activeKey={activeLeftSidebarTab}
             onChange={setLeftSidebarTab}
           >
-            {activeLeftSidebarTab === 'objective' ? (
-              <ModqnObjectiveTab />
-            ) : activeLeftSidebarTab === 'signal' ? (
+            {activeLeftSidebarTab === 'signal' ? (
               <SignalTuningPanel
                 baseProfile={baseProfile}
                 tuning={signalTuning}
@@ -1311,6 +1094,11 @@ export function App() {
               <TrainingForm appMode={appMode} />
             ) : activeLeftSidebarTab === 'jobs' ? (
               <JobsPanel appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
+            ) : activeLeftSidebarTab === 'replay' ? (
+              <ModqnReplayCuePanel
+                appMode={appMode}
+                displayState={renderedModqnReplayDisplayState}
+              />
             ) : (
               <HandoverPolicyControls
                 draft={handoverPolicyDraft}
@@ -1338,7 +1126,7 @@ export function App() {
             runtime={runtime}
             visualScaleMultipliers={visualScaleMultipliers}
             modqnReplayDisplayState={renderedModqnReplayDisplayState}
-            showModqnReplayScene={false}
+            showModqnReplayScene={appMode === 'modqn-demo'}
             onSimUpdate={handleSimUpdate}
             sceneFrame={activeSceneFrame}
           />

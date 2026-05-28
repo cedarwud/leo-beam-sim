@@ -57,6 +57,8 @@ export interface Shell {
   satsPerPlane: number;
   /** Live-sim initializer: one service-area pass target per plane when satsPerPlane is 1. */
   serviceAreaPassTargetsSec?: number[];
+  /** Disable visual-only phase jitter when a profile must keep exact in-plane spacing. */
+  phasePerturbation?: boolean;
 }
 
 export interface ModqnObjectiveWeights {
@@ -79,6 +81,19 @@ export interface ModqnNetworkParams {
   episodes: number;
 }
 
+export interface ProfileUeDistribution {
+  // Source: modqn-paper-reproduction/docs/modqn-reproduction-assumption-register.md
+  // ASSUME-MODQN-REP-022: paper-faithful UE area is uniform-rectangle, 200 km x 90 km.
+  mode: 'uniform-rectangle';
+  areaWidthKm: number;
+  areaHeightKm: number;
+  // Source: modqn-paper-reproduction/configs/modqn-paper-baseline.resolved-template.yaml
+  // resolved_assumptions.seed_and_rng_policy.value.mobility_seed (ASSUME-MODQN-REP-018).
+  seed: number;
+  assumptionId: string;
+  seedAssumptionId: string;
+}
+
 export interface Profile {
   id: string;
   paper: string;
@@ -95,6 +110,12 @@ export interface Profile {
   antenna: {
     model: GainModel;
     maxGainDbi: number;
+    /**
+     * MODQN paper-faithful profile stores radians for
+     * modqn-paper-reproduction/configs/modqn-paper-baseline.resolved-template.yaml
+     * resolved_assumptions.beam_geometry.value.theta_3db_deg = 2.0
+     * (ASSUME-MODQN-REP-002).
+     */
     beamwidth3dBRad: number;
     efficiency: number;
     maxSteeringAngleDeg: number;
@@ -133,6 +154,11 @@ export interface Profile {
   beams: {
     perSatellite: number;
     maxActivePerSat: number;
+    /**
+     * Frequency reuse is a live-layout compatibility input. The MODQN paper
+     * source files have no frequency-reuse field, so the paper-faithful
+     * profile uses 1 and renderer color comes from satellite identity.
+     */
     frequencyReuse: number;
   };
 
@@ -147,4 +173,5 @@ export interface Profile {
   /** Pre-calculated or manually selected start time for the demo */
   demoStartOffsetSec?: number;
   ueMobility?: UeMobility;
+  ueDistribution?: ProfileUeDistribution;
 }
