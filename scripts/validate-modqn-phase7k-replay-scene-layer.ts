@@ -537,8 +537,8 @@ function assertSceneBridgeSource(): void {
   );
   assertContains(
     mainSceneSource,
-    'showLiveBeamCones && viz.displaySats',
-    'MODQN replay must not also render live SINR beam cones',
+    'showLiveBeamCones && !showCellOverlay && viz.displaySats',
+    'MODQN replay must not also render legacy live SINR beam cones',
   );
   assertContains(
     sceneLayerSource,

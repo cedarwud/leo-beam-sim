@@ -73,10 +73,10 @@ function validateMainSceneGate(): void {
 
   assertIncludes(
     source,
-    'showLiveBeamCones && viz.displaySats',
-    'showLiveBeamCones still gates the SatelliteBeams render block',
+    'showLiveBeamCones && !showCellOverlay && viz.displaySats',
+    'showLiveBeamCones still gates the legacy SatelliteBeams render block outside the cell lane',
   );
-  pass('showLiveBeamCones still gates the SatelliteBeams render block');
+  pass('showLiveBeamCones still gates the legacy SatelliteBeams render block outside the cell lane');
 
   assertIncludes(
     source,

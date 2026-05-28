@@ -131,6 +131,7 @@
     "validate:phase-i:s3-beam-geometry": "node --import tsx/esm scripts/validate-phase-i-s3-beam-geometry.ts",
     "validate:phase-i:s4-cell-overlay": "node --import tsx/esm scripts/validate-phase-i-s4-cell-overlay.tsx",
     "validate:phase-i:s5a-footprint-handover": "node --import tsx/esm scripts/validate-phase-i-s5a-footprint-handover.tsx",
+    "validate:phase-i:s5b-cell-beam-cones": "node --import tsx/esm scripts/validate-phase-i-s5b-cell-beam-cones.tsx",
     "validate:phase-i:s6-hud-preview-banner": "node --import tsx/esm scripts/validate-phase-i-s6-hud-preview-banner.tsx",
     "validate:phase-i:s7a-constellation-coverage": "node --import tsx/esm scripts/validate-phase-i-s7a-constellation-coverage.ts",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",

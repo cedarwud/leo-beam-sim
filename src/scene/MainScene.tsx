@@ -50,6 +50,7 @@ import { ServingGroundRipple } from '../viz/ServingGroundRipple';
 import { GroundScene } from '../viz/GroundScene';
 import { CellOverlay } from '../viz/CellOverlay';
 import { CellHandoverArcs } from '../viz/CellHandoverArcs';
+import { CellBeamCones } from '../viz/CellBeamCones';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import {
   NTPU_CONFIG,
@@ -368,6 +369,18 @@ function SceneContent({
     && !paused
     && !runtime.reducedMotion
     && !recentHoActive;
+  const servingOrbitTrailSatelliteIds = useMemo(
+    () => new Set(cellSchedule.slot.assignments.map(assignment => assignment.satId)),
+    [cellSchedule.slot.assignments],
+  );
+  const orbitTrailSatellites = useMemo(
+    () => (
+      showCellOverlay
+        ? viz.displaySats.filter(satellite => servingOrbitTrailSatelliteIds.has(satellite.id))
+        : viz.displaySats
+    ),
+    [servingOrbitTrailSatelliteIds, showCellOverlay, viz.displaySats],
+  );
   const cinematicSpotlightActive = isSpotlightMode(runtime.cinematicMode);
   const cinematicSpotlightTargets = useMemo(
     () => resolveCinematicSpotlightTargets({
@@ -416,6 +429,7 @@ function SceneContent({
     gl.domElement.dataset.cellHoReassignmentCount = showCellOverlay ? String(cellHoCounts.total) : '';
     gl.domElement.dataset.cellHoInterCount = showCellOverlay ? String(cellHoCounts.inter) : '';
     gl.domElement.dataset.cellHoIntraCount = showCellOverlay ? String(cellHoCounts.intra) : '';
+    gl.domElement.dataset.cellBeamConeCount = showCellOverlay ? String(cellSchedule.slot.assignments.length) : '';
   }, [
     cellHoCounts.inter,
     cellHoCounts.intra,
@@ -586,8 +600,15 @@ function SceneContent({
           satelliteWorldById={satelliteWorldById}
         />
       )}
+      {showCellOverlay && (
+        <CellBeamCones
+          schedule={cellSchedule}
+          satelliteWorldById={satelliteWorldById}
+          satelliteTintById={satelliteTintById}
+        />
+      )}
       {showEarthFixedCells && <EarthFixedCells cells={paintedCells} showDebugLabels={showEarthFixedCellLabels} />}
-      <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />
+      {!showCellOverlay && <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />}
       <HandoverLinks
         satellites={viz.displaySats}
         eventRoles={viz.eventRoles}
@@ -605,12 +626,12 @@ function SceneContent({
         visualSatelliteAltitudeWorld={sceneGeometry.visualSatelliteAltitude}
       />
       {showOrbitTrail && (
-        <OrbitTrail satellites={viz.displaySats} />
+        <OrbitTrail satellites={orbitTrailSatellites} />
       )}
       {showSpineParticles && (
         <SpineParticles satellites={viz.displaySats} satBeams={viz.satBeams} />
       )}
-      {showGroundRipple && (
+      {showGroundRipple && !showCellOverlay && (
         <ServingGroundRipple
           satBeams={viz.satBeams}
           footprintRadius={viz.footprintRadiusWorld}
@@ -631,7 +652,7 @@ function SceneContent({
           satelliteTintColor={sat.satelliteTintColor}
         />
       ))}
-      {SHOW_BEAMS && showLiveBeamCones && viz.displaySats
+      {SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && viz.displaySats
         .filter(sat => viz.beamSatIds.has(sat.id))
         .map(sat => {
           const beams = viz.satBeams.get(sat.id);
