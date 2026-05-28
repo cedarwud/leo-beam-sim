@@ -22,8 +22,8 @@ export interface CellBeamConeRenderItem {
   readonly baseRadiusWorld: number;
 }
 
-const CONE_SEGMENTS = 40;
-const CONE_OPACITY = 0.22;
+const CONE_SEGMENTS = 24;
+const CONE_OPACITY = 0.1;
 const FALLBACK_CONE_COLOR = '#93c5fd';
 const LOCAL_APEX = new THREE.Vector3(0, 1, 0);
 const LOCAL_BASE = new THREE.Vector3(0, -1, 0);
@@ -73,7 +73,7 @@ export function CellBeamCones(props: CellBeamConesProps): JSX.Element | null {
               color={cone.color}
               transparent
               opacity={CONE_OPACITY}
-              blending={THREE.AdditiveBlending}
+              blending={THREE.NormalBlending}
               depthWrite={false}
               side={THREE.DoubleSide}
               toneMapped={false}

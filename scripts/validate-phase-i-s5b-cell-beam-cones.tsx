@@ -252,7 +252,7 @@ expectApprox(
 expectEqual(firstMaterial.props.color, tints.get(firstAssignment.satId), 'cone material tint comes from serving satellite tint');
 expect(
   firstMaterial.props.transparent === true
-    && Number(firstMaterial.props.opacity) >= 0.18
+    && Number(firstMaterial.props.opacity) >= 0.05
     && Number(firstMaterial.props.opacity) <= 0.28
     && firstMaterial.props.depthWrite === false
     && firstMaterial.props.side === THREE.DoubleSide
@@ -327,10 +327,9 @@ expect(
   'MainScene gates ServingGroundRipple with !showCellOverlay',
 );
 expect(
-  mainSceneSource.includes('cellSchedule.slot.assignments.map(assignment => assignment.satId)')
-    && mainSceneSource.includes('servingOrbitTrailSatelliteIds.has(satellite.id)')
-    && mainSceneSource.includes('<OrbitTrail satellites={orbitTrailSatellites} />'),
-  'MainScene reduces OrbitTrail input to serving satellites in the cell lane',
+  mainSceneSource.includes('&& !showCellOverlay;')
+    && /showOrbitTrail =[\s\S]*?!showCellOverlay/.test(mainSceneSource),
+  'MainScene hides OrbitTrail entirely in the cell lane (showOrbitTrail gated on !showCellOverlay)',
 );
 expect(
   mainSceneSource.includes('dataset.cellBeamConeCount = showCellOverlay ? String(cellSchedule.slot.assignments.length) : \'\';'),

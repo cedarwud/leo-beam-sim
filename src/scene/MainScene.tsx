@@ -360,7 +360,8 @@ function SceneContent({
     && !runtime.reducedMotion;
   const showOrbitTrail =
     runtime.effectsEnabled.orbitTrail
-    && !runtime.reducedMotion;
+    && !runtime.reducedMotion
+    && !showCellOverlay;
   const recentHoActive =
     sim.recentHoSourceSatId !== null
     || sim.recentHoTargetSatId !== null;
@@ -369,18 +370,6 @@ function SceneContent({
     && !paused
     && !runtime.reducedMotion
     && !recentHoActive;
-  const servingOrbitTrailSatelliteIds = useMemo(
-    () => new Set(cellSchedule.slot.assignments.map(assignment => assignment.satId)),
-    [cellSchedule.slot.assignments],
-  );
-  const orbitTrailSatellites = useMemo(
-    () => (
-      showCellOverlay
-        ? viz.displaySats.filter(satellite => servingOrbitTrailSatelliteIds.has(satellite.id))
-        : viz.displaySats
-    ),
-    [servingOrbitTrailSatelliteIds, showCellOverlay, viz.displaySats],
-  );
   const cinematicSpotlightActive = isSpotlightMode(runtime.cinematicMode);
   const cinematicSpotlightTargets = useMemo(
     () => resolveCinematicSpotlightTargets({
@@ -626,7 +615,7 @@ function SceneContent({
         visualSatelliteAltitudeWorld={sceneGeometry.visualSatelliteAltitude}
       />
       {showOrbitTrail && (
-        <OrbitTrail satellites={orbitTrailSatellites} />
+        <OrbitTrail satellites={viz.displaySats} />
       )}
       {showSpineParticles && (
         <SpineParticles satellites={viz.displaySats} satBeams={viz.satBeams} />
