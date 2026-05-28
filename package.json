@@ -122,6 +122,7 @@
     "validate:phase-h:s2-live-sim-sat-markers": "node --import tsx/esm scripts/validate-phase-h-s2-live-sim-sat-markers.ts",
     "validate:phase-h:s3-live-sim-callouts": "node --import tsx/esm scripts/validate-phase-h-s3-live-sim-callouts.ts",
     "validate:phase-h:s4-beam-hopping-toggle": "node --import tsx/esm scripts/validate-phase-h-s4-beam-hopping-toggle.ts",
+    "validate:phase-h:s5-orbit-trail-modqn-demo": "node --import tsx/esm scripts/validate-phase-h-s5-orbit-trail-modqn-demo.ts",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
     "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts"
   },

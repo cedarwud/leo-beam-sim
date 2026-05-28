@@ -390,8 +390,19 @@ export function App() {
   );
 
   const runtimeVisualSettings = useMemo(
-    () => deriveRuntimeVisualSettings(uiMode, reducedMotion),
-    [reducedMotion, uiMode],
+    () => {
+      const base = deriveRuntimeVisualSettings(uiMode, reducedMotion);
+      if (appMode !== 'modqn-demo' || reducedMotion) return base;
+      return {
+        ...base,
+        effectsEnabled: {
+          ...base.effectsEnabled,
+          orbitTrail: true,
+          spineParticles: true,
+        },
+      };
+    },
+    [appMode, reducedMotion, uiMode],
   );
   const effectiveCinematicMode = useMemo(
     () => resolveRuntimeCinematicMode(uiMode, camera.cinematicMode),
