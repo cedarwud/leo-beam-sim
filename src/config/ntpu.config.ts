@@ -116,6 +116,6 @@ export const NTPU_LARGE_CONFIG: NTPUSceneConfig = {
     far: 15000,
   },
   visualAlpha: 1.0,
-  visualSatelliteAltitude: 380,
+  visualSatelliteAltitude: 600,
   visualBeamDiameter: 700,
 };
