@@ -165,6 +165,10 @@ export const BEAM_PULSE_SPECS: Record<BeamPulseKind, {
   fade: { periodSec: RECENT_HO_FADE_WINDOW_SEC, amplitude: 0.10 },
 };
 
+// Phase H §4.7: serving beam opacity bumped so the live-sim 3D cone reads as
+// the dominant feature in modqn-demo (where SatelliteBeams now renders without
+// the appMode gate from H-S1). Other roles unchanged so SINR-experiment fade
+// behavior stays calibrated.
 export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
   serving: {
     operatorLabel: 'SERVING',
@@ -172,8 +176,8 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     color: UI_TOKENS.color.semantic.serving.accent,
     lineWidth: 5.2,
     linkLineWidth: 4.6,
-    coneOpacity: 0.46,
-    discOpacity: 0.3,
+    coneOpacity: 0.58,
+    discOpacity: 0.42,
     lineOpacity: 1,
     endpointRadius: 5.6,
     endpointOpacity: 0.96,
