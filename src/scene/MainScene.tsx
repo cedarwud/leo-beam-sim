@@ -308,7 +308,7 @@ function SceneContent({
   const showEarthFixedCellLabels = runtime.appMode !== 'modqn-demo' && runtime.beamDensity === 'all';
   const ueMarkerShape = runtime.appMode === 'modqn-demo' ? 'sphere' : 'cylinder';
   const showUav = runtime.appMode !== 'modqn-demo';
-  const showLiveBeamCones = runtime.appMode !== 'modqn-demo';
+  const showLiveBeamCones = sceneFrame.sceneSource === 'live-sim';
   const showLiveSatelliteMarkers = runtime.appMode !== 'modqn-demo';
   const showBeamCallouts = runtime.beamCalloutsEnabled && runtime.appMode !== 'modqn-demo';
   const showSpineParticles =
