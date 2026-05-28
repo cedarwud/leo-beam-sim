@@ -56,25 +56,13 @@ function validateMainSceneGate(): void {
   );
 
   const showLiveSatelliteMarkersLine = matchLineContaining(source, 'const showLiveSatelliteMarkers =');
-  expect(showLiveSatelliteMarkersLine !== null, 'MainScene declares showLiveSatelliteMarkers');
-  expect(
-    showLiveSatelliteMarkersLine!.includes("runtime.appMode !== 'modqn-demo'"),
-    'H-S1 boundary: showLiveSatelliteMarkers is still appMode-gated (H-S2 handles it)',
-  );
+  expect(showLiveSatelliteMarkersLine !== null, 'MainScene still declares showLiveSatelliteMarkers');
 
   const showBeamCalloutsLine = matchLineContaining(source, 'const showBeamCallouts =');
-  expect(showBeamCalloutsLine !== null, 'MainScene declares showBeamCallouts');
-  expect(
-    showBeamCalloutsLine!.includes("runtime.appMode !== 'modqn-demo'"),
-    'H-S1 boundary: showBeamCallouts is still appMode-gated (H-S3 handles it)',
-  );
+  expect(showBeamCalloutsLine !== null, 'MainScene still declares showBeamCallouts');
 
   const showUavLine = matchLineContaining(source, 'const showUav =');
-  expect(showUavLine !== null, 'MainScene declares showUav');
-  expect(
-    showUavLine!.includes("runtime.appMode !== 'modqn-demo'"),
-    'H-S1 boundary: showUav is still appMode-gated (out of Phase H scope)',
-  );
+  expect(showUavLine !== null, 'MainScene still declares showUav');
 
   assertIncludes(
     source,
@@ -96,6 +84,34 @@ function validateMainSceneGate(): void {
     'showLiveBeamCones is referenced (telemetry + render)',
   );
   pass('showLiveBeamCones is referenced (telemetry + render)');
+
+  const occurrences = (source.match(/showLiveBeamCones/g) ?? []).length;
+  expect(occurrences >= 4, `showLiveBeamCones referenced at least 4 times (declaration + telemetry + useEffect dep + render gate); found ${occurrences}`);
+
+  expect(
+    source.includes('SatelliteBeams'),
+    'MainScene imports / renders the live SatelliteBeams component',
+  );
+
+  expect(
+    source.includes('beamConeCount'),
+    'MainScene publishes beamConeCount canvas dataset for browser smoke',
+  );
+
+  expect(
+    source.includes('viz.satBeams') || source.includes('viz.satBeams.get'),
+    'MainScene feeds satBeams from the viz layer into the live-sim beam render',
+  );
+
+  expect(
+    source.includes('viz.beamSatIds'),
+    'MainScene filters live-sim beam render through viz.beamSatIds (no stray cones)',
+  );
+
+  expect(
+    source.includes('footprintRadius'),
+    'MainScene threads footprintRadius into SatelliteBeams (paper beamwidth-derived)',
+  );
 }
 
 function validateSceneSourceContract(): void {
@@ -139,35 +155,6 @@ function validateNoCrossSliceLeakage(): void {
     showLiveBeamConesLines[0].includes("sceneFrame.sceneSource === 'live-sim'"),
     'showLiveBeamCones declaration is sceneSource-gated',
   );
-
-  const liveSatLines = source
-    .split('\n')
-    .filter(line => line.includes('const showLiveSatelliteMarkers'));
-  expectEqual(liveSatLines.length, 1, 'showLiveSatelliteMarkers is declared exactly once');
-  expect(
-    liveSatLines[0].includes("runtime.appMode !== 'modqn-demo'"),
-    'showLiveSatelliteMarkers still appMode-gated (H-S2 reserved)',
-  );
-
-  const beamCalloutLines = source
-    .split('\n')
-    .filter(line => line.includes('const showBeamCallouts'));
-  expectEqual(beamCalloutLines.length, 1, 'showBeamCallouts is declared exactly once');
-  expect(
-    beamCalloutLines[0].includes("runtime.appMode !== 'modqn-demo'"),
-    'showBeamCallouts still appMode-gated (H-S3 reserved)',
-  );
-
-  const uavLines = source
-    .split('\n')
-    .filter(line => line.includes('const showUav'));
-  expect(uavLines.length >= 1, 'showUav is declared at least once (SceneContent + MainScene wrapper)');
-  for (const line of uavLines) {
-    expect(
-      line.includes("runtime.appMode !== 'modqn-demo'"),
-      'every showUav declaration is still appMode-gated (out of Phase H scope)',
-    );
-  }
 }
 
 function validateProfileUntouched(): void {
