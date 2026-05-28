@@ -49,6 +49,7 @@ import { OrbitTrail } from '../viz/OrbitTrail';
 import { ServingGroundRipple } from '../viz/ServingGroundRipple';
 import { GroundScene } from '../viz/GroundScene';
 import { CellOverlay } from '../viz/CellOverlay';
+import { CellHandoverArcs } from '../viz/CellHandoverArcs';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import {
   NTPU_CONFIG,
@@ -292,6 +293,18 @@ function SceneContent({
     ])),
     [viz.displaySats],
   );
+  const satelliteWorldById = useMemo(
+    () => new Map(viz.displaySats.map(satellite => [
+      satellite.id,
+      { x: satellite.world.x, y: satellite.world.y, z: satellite.world.z },
+    ])),
+    [viz.displaySats],
+  );
+  const cellHoCounts = useMemo(() => ({
+    total: cellSchedule.cellReassignments.length,
+    inter: cellSchedule.cellReassignments.filter(reassignment => reassignment.kind === 'inter').length,
+    intra: cellSchedule.cellReassignments.filter(reassignment => reassignment.kind === 'intra').length,
+  }), [cellSchedule.cellReassignments]);
   useSimStatePublisher({
     profile,
     sim,
@@ -392,7 +405,13 @@ function SceneContent({
     gl.domElement.dataset.cellOverlayActiveCount = showCellOverlay ? String(cellSchedule.slot.assignments.length) : '';
     gl.domElement.dataset.cellOverlayIdleCount = showCellOverlay ? String(cellSchedule.slot.idleCellIds.length) : '';
     gl.domElement.dataset.cellOverlayCellCount = showCellOverlay ? String(cellSchedule.layout.count) : '';
+    gl.domElement.dataset.cellHoReassignmentCount = showCellOverlay ? String(cellHoCounts.total) : '';
+    gl.domElement.dataset.cellHoInterCount = showCellOverlay ? String(cellHoCounts.inter) : '';
+    gl.domElement.dataset.cellHoIntraCount = showCellOverlay ? String(cellHoCounts.intra) : '';
   }, [
+    cellHoCounts.inter,
+    cellHoCounts.intra,
+    cellHoCounts.total,
     cellSchedule.layout.count,
     cellSchedule.slot.assignments.length,
     cellSchedule.slot.idleCellIds.length,
@@ -545,7 +564,17 @@ function SceneContent({
         ueTrailHistory={ueTrailHistory}
       />
       {showCellOverlay && (
-        <CellOverlay schedule={cellSchedule} satelliteTintById={satelliteTintById} />
+        <CellOverlay
+          schedule={cellSchedule}
+          satelliteTintById={satelliteTintById}
+          satelliteWorldById={satelliteWorldById}
+        />
+      )}
+      {showCellOverlay && (
+        <CellHandoverArcs
+          reassignments={cellSchedule.cellReassignments}
+          satelliteWorldById={satelliteWorldById}
+        />
       )}
       {showEarthFixedCells && <EarthFixedCells cells={paintedCells} showDebugLabels={showEarthFixedCellLabels} />}
       <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />

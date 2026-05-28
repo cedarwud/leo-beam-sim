@@ -2,10 +2,15 @@ import type { JSX } from 'react';
 import { Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { CellScheduleViz } from '../scene/useCellSchedule';
+import {
+  CellFootprintEllipse,
+  type WorldPoint,
+} from './CellFootprints';
 
 export interface CellOverlayProps {
   readonly schedule: CellScheduleViz;
   readonly satelliteTintById: ReadonlyMap<string, string>;
+  readonly satelliteWorldById?: ReadonlyMap<string, WorldPoint>;
   readonly visible?: boolean;
 }
 
@@ -78,6 +83,15 @@ export function CellOverlay(props: CellOverlayProps): JSX.Element | null {
               depthWrite={false}
               renderOrder={12}
             />
+            {assignment && (
+              <CellFootprintEllipse
+                cellId={placement.cellId}
+                cellWorld={{ x: placement.worldX, z: placement.worldZ }}
+                radiusWorld={placement.radiusWorld}
+                satelliteWorld={props.satelliteWorldById?.get(assignment.satId)}
+                color={color}
+              />
+            )}
           </group>
         );
       })}

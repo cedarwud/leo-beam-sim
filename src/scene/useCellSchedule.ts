@@ -33,13 +33,31 @@ export interface CellWorldPlacement {
   readonly radiusWorld: number;
 }
 
+export type CellHandoverKind = 'intra' | 'inter';
+
+export interface CellReassignment {
+  readonly cellId: number;
+  readonly kind: CellHandoverKind;
+  readonly fromSatId: string;
+  readonly fromBeamIndex: number;
+  readonly toSatId: string;
+  readonly toBeamIndex: number;
+  /** Cell world position (ground plane) for arc anchoring. */
+  readonly worldX: number;
+  readonly worldZ: number;
+}
+
 export interface CellScheduleViz {
   readonly layout: CellLayout;
   readonly slotIndex: number;
   readonly slot: CellScheduleSlot;
+  readonly previousSlot: CellScheduleSlot;
   readonly placements: readonly CellWorldPlacement[];
   /** Map cellId -> assignment for the current slot (active cells only). */
   readonly assignmentByCellId: ReadonlyMap<number, CellAssignment>;
+  /** Map cellId -> assignment for the previous slot (active cells only). */
+  readonly previousAssignmentByCellId: ReadonlyMap<number, CellAssignment>;
+  readonly cellReassignments: readonly CellReassignment[];
 }
 
 export interface UseCellScheduleInput {
@@ -76,6 +94,7 @@ export function computeCellScheduleViz(input: UseCellScheduleInput): CellSchedul
 export function useCellSchedule(input: UseCellScheduleInput): CellScheduleViz {
   const slotSec = resolveSlotSec(input.slotSec);
   const slotIndex = resolveSlotIndex(input.simTimeSec, slotSec);
+  const previousSlotIndex = Math.max(0, slotIndex - 1);
   const layout = useMemo(
     () => buildCellLayout({
       centerLatDeg: input.centerLatDeg,
@@ -103,6 +122,7 @@ export function useCellSchedule(input: UseCellScheduleInput): CellScheduleViz {
       input.centerLonDeg,
       input.worldUnitsPerKm,
       layout,
+      previousSlotIndex,
       satelliteIds,
       slotIndex,
     ],
@@ -124,31 +144,90 @@ function computeCellScheduleVizFromLayout(input: ComputeCellScheduleVizFromLayou
   const satellites = buildSyntheticVisibleSatellitePoses(input);
   if (satellites.length === 0) {
     const slot = emptyCellScheduleSlot(input.layout, input.slotIndex);
-    return buildVizResult(input.layout, input.slotIndex, slot, placements);
+    const previousSlot = emptyCellScheduleSlot(input.layout, Math.max(0, input.slotIndex - 1));
+    return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, placements);
   }
 
-  const slot = computeSlotSchedule({
+  const schedulerConfig = {
     layout: input.layout,
     satellites,
     beamsPerSatellite: input.beamsPerSatellite ?? DEFAULT_BEAMS_PER_SATELLITE,
-  }, input.slotIndex);
+  };
+  const previousSlotIndex = Math.max(0, input.slotIndex - 1);
+  const slot = computeSlotSchedule(schedulerConfig, input.slotIndex);
+  const previousSlot = computeSlotSchedule(schedulerConfig, previousSlotIndex);
 
-  return buildVizResult(input.layout, input.slotIndex, slot, placements);
+  return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, placements);
 }
 
 function buildVizResult(
   layout: CellLayout,
   slotIndex: number,
   slot: CellScheduleSlot,
+  previousSlot: CellScheduleSlot,
   placements: readonly CellWorldPlacement[],
 ): CellScheduleViz {
+  const assignmentByCellId = assignmentMap(slot);
+  const previousAssignmentByCellId = assignmentMap(previousSlot);
+
   return {
     layout,
     slotIndex,
     slot,
+    previousSlot,
     placements,
-    assignmentByCellId: new Map(slot.assignments.map(assignment => [assignment.cellId, assignment])),
+    assignmentByCellId,
+    previousAssignmentByCellId,
+    cellReassignments: computeCellReassignments(placements, assignmentByCellId, previousAssignmentByCellId),
   };
+}
+
+function assignmentMap(slot: CellScheduleSlot): ReadonlyMap<number, CellAssignment> {
+  return new Map(slot.assignments.map(assignment => [assignment.cellId, assignment]));
+}
+
+function computeCellReassignments(
+  placements: readonly CellWorldPlacement[],
+  assignmentByCellId: ReadonlyMap<number, CellAssignment>,
+  previousAssignmentByCellId: ReadonlyMap<number, CellAssignment>,
+): readonly CellReassignment[] {
+  const placementByCellId = new Map(placements.map(placement => [placement.cellId, placement]));
+  const reassignments: CellReassignment[] = [];
+
+  for (const [cellId, to] of assignmentByCellId.entries()) {
+    const from = previousAssignmentByCellId.get(cellId);
+    if (!from) {
+      // Idle->active is scheduler on/off, not a user handover under SDD §4.6.
+      continue;
+    }
+
+    let kind: CellHandoverKind | null = null;
+    if (from.satId !== to.satId) {
+      kind = 'inter';
+    } else if (from.beamIndex !== to.beamIndex) {
+      kind = 'intra';
+    }
+
+    if (!kind) continue;
+
+    const placement = placementByCellId.get(cellId);
+    if (!placement) continue;
+
+    reassignments.push({
+      cellId,
+      kind,
+      fromSatId: from.satId,
+      fromBeamIndex: from.beamIndex,
+      toSatId: to.satId,
+      toBeamIndex: to.beamIndex,
+      worldX: placement.worldX,
+      worldZ: placement.worldZ,
+    });
+  }
+
+  // Active->idle cells are absent from the current assignment map and are
+  // intentionally skipped: they are schedule off-events, not handovers.
+  return reassignments.sort((a, b) => a.cellId - b.cellId);
 }
 
 function buildSyntheticVisibleSatellitePoses(input: UseCellScheduleInput): readonly SatellitePose[] {
