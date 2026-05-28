@@ -92,6 +92,7 @@ import {
   applyBeamHoppingDemoOverride,
   type BeamHoppingDemoState,
 } from './ui/modqn-controls/BeamHoppingToggle';
+import { ModqnSceneHud } from './ui/modqn-controls/ModqnSceneHud';
 import { readTrainingServiceBaseUrl } from './modqn/training-trigger/baseUrl';
 import {
   fetchTrainingRunMetadata,
@@ -282,6 +283,18 @@ export function App() {
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
   const camera = useCameraControls();
+  // Phase H §4.8: modqn-demo defaults to paper-faithful-closeup camera so the
+  // user opens into a tight view of the 4 satellites + beam cones; live-sim
+  // changes only, never claims producer ephemeris truth.
+  const modqnDemoCameraAppliedRef = useRef(false);
+  useEffect(() => {
+    if (appMode === 'modqn-demo' && !modqnDemoCameraAppliedRef.current) {
+      modqnDemoCameraAppliedRef.current = true;
+      camera.selectCameraPreset('paper-faithful-closeup');
+    } else if (appMode !== 'modqn-demo') {
+      modqnDemoCameraAppliedRef.current = false;
+    }
+  }, [appMode, camera]);
   const baseProfile = useMemo(() => loadProfile(selectedProfileId), [selectedProfileId]);
   const [signalTuning, setSignalTuning] = useState<SignalTuningState>(() => createSignalTuningState(baseProfile));
   const [sceneTopology, setSceneTopology] = useState<SceneTopologyState>(() => readSceneTopologyOverrides());
@@ -1150,6 +1163,12 @@ export function App() {
             handoverMode === 'decision-overlay-on-live-sinr' ? 'decision-overlay-on-live-sinr' : 'sinr-offset'
           }
         >
+          <ModqnSceneHud
+            appMode={appMode}
+            simState={simState}
+            bundleProvenanceKind={bundleProvenanceKind}
+            sceneSource={sceneSource}
+          />
           <MainScene
             speed={playback.effectiveSpeed}
             paused={playback.paused}
