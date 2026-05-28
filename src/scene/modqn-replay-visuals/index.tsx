@@ -142,6 +142,8 @@ function BeamDisc({
   readonly visualState: ModqnReplaySceneVisualState;
   readonly reducedMotion: boolean;
 }) {
+  if (beam.role === 'inactive') return null;
+
   const color = ROLE_COLORS[beam.role];
   const label = roleLabel(beam.role);
 
@@ -224,7 +226,7 @@ function BeamDisc({
         />
       </mesh>
       <BeamActivationPulse beam={beam} visualState={visualState} reducedMotion={reducedMotion} />
-      {beam.geometrySource === 'producer-display-proxy' && beam.role !== 'inactive' ? (
+      {beam.geometrySource === 'producer-display-proxy' ? (
         <Text
           position={[0, 14.5, 0]}
           fontSize={6.2}
@@ -240,7 +242,7 @@ function BeamDisc({
       <Text
         position={[0, 7.5, 0]}
         fontSize={10.5}
-        color={beam.role === 'inactive' ? '#e2e8f0' : color}
+        color={color}
         anchorX="center"
         anchorY="middle"
         outlineWidth={0.4}

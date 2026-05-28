@@ -357,10 +357,12 @@ function SceneContent({
   const showSpineParticles =
     runtime.effectsEnabled.spineParticles
     && !paused
-    && !runtime.reducedMotion;
+    && !runtime.reducedMotion
+    && !showCellOverlay;
   const showOrbitTrail =
     runtime.effectsEnabled.orbitTrail
     && !runtime.reducedMotion
+    && runtime.appMode !== 'modqn-demo'
     && !showCellOverlay;
   const recentHoActive =
     sim.recentHoSourceSatId !== null
@@ -574,18 +576,23 @@ function SceneContent({
           .map((u) => ({ id: u.id, worldPos: u.worldPos as readonly [number, number, number] }))}
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
         markerShape={ueMarkerShape}
-        ueTrailHistory={ueTrailHistory}
+        ueTrailHistory={showCellOverlay ? undefined : ueTrailHistory}
       />
       {showCellOverlay && (
         <CellOverlay
           schedule={cellSchedule}
           satelliteTintById={satelliteTintById}
           satelliteWorldById={satelliteWorldById}
+          showFootprints={false}
         />
       )}
       {showCellOverlay && (
         <CellHandoverArcs
-          reassignments={cellSchedule.cellReassignments}
+          reassignments={
+            runtime.appMode === 'modqn-demo'
+              ? cellSchedule.cellReassignments.filter((r) => r.kind !== 'inter')
+              : cellSchedule.cellReassignments
+          }
           satelliteWorldById={satelliteWorldById}
         />
       )}
@@ -594,18 +601,22 @@ function SceneContent({
           schedule={cellSchedule}
           satelliteWorldById={satelliteWorldById}
           satelliteTintById={satelliteTintById}
+          focusedUe={sceneFrame.ues[0] || null}
+          appMode={runtime.appMode}
         />
       )}
       {showEarthFixedCells && <EarthFixedCells cells={paintedCells} showDebugLabels={showEarthFixedCellLabels} />}
       {!showCellOverlay && <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />}
-      <HandoverLinks
-        satellites={viz.displaySats}
-        eventRoles={viz.eventRoles}
-        satBeams={viz.satBeams}
-        primaryUeAnchor={sceneFrame.ues[0]?.worldPos as
-          | readonly [number, number, number]
-          | undefined}
-      />
+      {!showCellOverlay && (
+        <HandoverLinks
+          satellites={viz.displaySats}
+          eventRoles={viz.eventRoles}
+          satBeams={viz.satBeams}
+          primaryUeAnchor={sceneFrame.ues[0]?.worldPos as
+            | readonly [number, number, number]
+            | undefined}
+        />
+      )}
       <BeamPulseClock reducedMotion={runtime.reducedMotion} />
       <ModqnReplaySceneLayer
         displayState={modqnReplayDisplayState}
@@ -660,14 +671,16 @@ function SceneContent({
             />
           );
         })}
-      <IntraHandoverArrow vizFrame={viz} runtime={runtime} />
-      <InterHandoverArrow
-        recentHoSourceSatId={sim.recentHoSourceSatId}
-        recentHoTargetSatId={sim.recentHoTargetSatId}
-        displaySats={viz.displaySats}
-        reducedMotion={runtime.reducedMotion}
-      />
-      <IntraGroundShockwave vizFrame={viz} runtime={runtime} />
+      {!showCellOverlay && <IntraHandoverArrow vizFrame={viz} runtime={runtime} />}
+      {runtime.appMode !== 'modqn-demo' && (
+        <InterHandoverArrow
+          recentHoSourceSatId={sim.recentHoSourceSatId}
+          recentHoTargetSatId={sim.recentHoTargetSatId}
+          displaySats={viz.displaySats}
+          reducedMotion={runtime.reducedMotion}
+        />
+      )}
+      {!showCellOverlay && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
       <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />
       {sceneFrame.sceneSource === 'artifact-replay' && <FPSCounter />}
     </>

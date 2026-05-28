@@ -9,6 +9,14 @@ export interface CellBeamConesProps {
   readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
   readonly satelliteTintById: ReadonlyMap<string, string>;
   readonly visible?: boolean;
+  readonly focusedUe?: {
+    readonly servingSatelliteId: string;
+    readonly servingBeamId: string;
+    readonly targetSatelliteId: string | null;
+    readonly targetBeamId: string | null;
+    readonly worldPos?: readonly [number, number, number];
+  } | null;
+  readonly appMode?: string;
 }
 
 export interface CellBeamConeRenderItem {
@@ -85,14 +93,58 @@ export function CellBeamCones(props: CellBeamConesProps): JSX.Element | null {
   );
 }
 
+/**
+ * Pick one focus satellite for the modqn-demo cell lane: the focused UE's
+ * serving satellite if it is actually in the current schedule, else the
+ * satellite serving the most cells this slot (deterministic tie-break by
+ * satId ascending). Returns null when there are no assignments.
+ */
+export function resolveFocusSatelliteId(
+  assignments: readonly CellAssignment[],
+  focusedUe?: CellBeamConesProps['focusedUe'],
+): string | null {
+  if (assignments.length === 0) return null;
+
+  const countBySatId = new Map<string, number>();
+  for (const assignment of assignments) {
+    countBySatId.set(assignment.satId, (countBySatId.get(assignment.satId) ?? 0) + 1);
+  }
+
+  const preferred = focusedUe?.servingSatelliteId;
+  if (preferred && countBySatId.has(preferred)) return preferred;
+
+  let bestSatId: string | null = null;
+  let bestCount = -1;
+  for (const [satId, count] of countBySatId) {
+    if (count > bestCount || (count === bestCount && (bestSatId === null || satId < bestSatId))) {
+      bestSatId = satId;
+      bestCount = count;
+    }
+  }
+  return bestSatId;
+}
+
 export function resolveCellBeamConeItems({
   schedule,
   satelliteWorldById,
   satelliteTintById,
+  focusedUe,
+  appMode,
 }: Omit<CellBeamConesProps, 'visible'>): readonly CellBeamConeRenderItem[] {
   const placementByCellId = new Map(schedule.placements.map(placement => [placement.cellId, placement]));
 
+  // modqn-demo: restrict cones to a SINGLE focus satellite so the scene shows
+  // one satellite's beams instead of all ~8 serving satellites overlapping.
+  // Prefer the focused UE's serving satellite when it actually appears in the
+  // cell schedule; otherwise fall back to the satellite serving the most cells
+  // this slot (deterministic, stable highlight).
+  const focusSatId = appMode === 'modqn-demo'
+    ? resolveFocusSatelliteId(schedule.slot.assignments, focusedUe)
+    : null;
+
   return schedule.slot.assignments.flatMap(assignment => {
+    if (focusSatId !== null && assignment.satId !== focusSatId) return [];
+
     const satelliteWorld = satelliteWorldById.get(assignment.satId);
     const placement = placementByCellId.get(assignment.cellId);
     if (!satelliteWorld || !placement) return [];

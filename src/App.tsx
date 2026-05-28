@@ -399,7 +399,7 @@ export function App() {
         ...base,
         effectsEnabled: {
           ...base.effectsEnabled,
-          orbitTrail: true,
+          orbitTrail: false,
           spineParticles: true,
         },
       };

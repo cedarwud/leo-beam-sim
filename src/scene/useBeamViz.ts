@@ -286,7 +286,7 @@ export function useBeamViz(
       maxBeamSats: MAX_BEAM_SATS,
     } = resolveBeamVizDisplayCaps(displayCaps);
     const mode = runtime.presentationMode;
-    const beamDensity = runtime.beamDensity;
+    const beamDensity = runtime.appMode === 'modqn-demo' ? 'all' : runtime.beamDensity;
     const calloutCap = resolveConeBeamCalloutCap(beamDensity, runtime.viewport);
     const centralBias = centralBiasWeight(mode);
     const approachHoldSec = Math.max(
@@ -509,16 +509,20 @@ export function useBeamViz(
     const displayAssignmentsBySatId = displayAssignmentsBySatIdNumeric;
 
     const shownSatIds = new Set(shownSatsWithIdentity.map(sat => sat.id));
-    const beamSatIdOrder = [
-      servingSatId,
-      pendingTargetSatId,
-      recentHoTargetSatId,
-      recentHoSourceSatId,
-      committedInterEvent?.toSatId ?? null,
-      committedInterEvent?.fromSatId ?? null,
-      ...approachSatIds,
-      ...rankedCandidates.map(sat => sat.id),
-    ].filter((satId): satId is string => satId !== null);
+    const beamSatIdOrder = (
+      runtime.appMode === 'modqn-demo'
+        ? [servingSatId]
+        : [
+            servingSatId,
+            pendingTargetSatId,
+            recentHoTargetSatId,
+            recentHoSourceSatId,
+            committedInterEvent?.toSatId ?? null,
+            committedInterEvent?.fromSatId ?? null,
+            ...approachSatIds,
+            ...rankedCandidates.map(sat => sat.id),
+          ]
+    ).filter((satId): satId is string => satId !== null);
     const beamSatIds = new Set<string>();
     for (const satId of beamSatIdOrder) {
       if (!shownSatIds.has(satId)) continue;
@@ -854,7 +858,8 @@ export function useBeamViz(
     }
 
     if (showModqnCandidateBeams && satBeams.size === 0) {
-      for (const sat of shownSatsWithIdentity.slice(0, MAX_BEAM_SATS)) {
+      const sliceLimit = runtime.appMode === 'modqn-demo' ? 1 : MAX_BEAM_SATS;
+      for (const sat of shownSatsWithIdentity.slice(0, sliceLimit)) {
         const layout = shellLayouts.get(sat.shellId);
         if (!layout) continue;
 

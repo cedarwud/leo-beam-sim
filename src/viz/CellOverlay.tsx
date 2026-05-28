@@ -12,6 +12,8 @@ export interface CellOverlayProps {
   readonly satelliteTintById: ReadonlyMap<string, string>;
   readonly satelliteWorldById?: ReadonlyMap<string, WorldPoint>;
   readonly visible?: boolean;
+  /** Render the per-cell elliptical footprint rings. Default true. */
+  readonly showFootprints?: boolean;
 }
 
 const CELL_OVERLAY_Y = 0.5;
@@ -83,7 +85,7 @@ export function CellOverlay(props: CellOverlayProps): JSX.Element | null {
               depthWrite={false}
               renderOrder={12}
             />
-            {assignment && (
+            {assignment && props.showFootprints !== false && (
               <CellFootprintEllipse
                 cellId={placement.cellId}
                 cellWorld={{ x: placement.worldX, z: placement.worldZ }}

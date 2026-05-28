@@ -28,8 +28,8 @@ function validateAppRuntimeOverride(): void {
     'App.tsx runtimeVisualSettings gates the modqn-demo override on appMode + reducedMotion',
   );
   expect(
-    source.includes('orbitTrail: true'),
-    'App.tsx enables orbitTrail in modqn-demo override',
+    source.includes('orbitTrail: false'),
+    'App.tsx disables orbitTrail in modqn-demo override',
   );
   expect(
     source.includes('spineParticles: true'),
