@@ -86,12 +86,6 @@ import { JobsPanel } from './ui/modqn-training/JobsPanel';
 import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
 import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
 import { DecisionVizPanel } from './ui/modqn-training/DecisionVizPanel';
-import {
-  BeamHoppingToggle,
-  DEFAULT_BEAM_HOPPING_DEMO_STATE,
-  applyBeamHoppingDemoOverride,
-  type BeamHoppingDemoState,
-} from './ui/modqn-controls/BeamHoppingToggle';
 import { ModqnSceneHud } from './ui/modqn-controls/ModqnSceneHud';
 import { readTrainingServiceBaseUrl } from './modqn/training-trigger/baseUrl';
 import {
@@ -249,9 +243,6 @@ export function App() {
   );
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
-  const [beamHoppingDemoState, setBeamHoppingDemoState] = useState<BeamHoppingDemoState>(
-    DEFAULT_BEAM_HOPPING_DEMO_STATE,
-  );
   const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
   const [userTrainedLoadError, setUserTrainedLoadError] = useState<string | null>(null);
   const [selectedTrainingServiceManifest, setSelectedTrainingServiceManifest] = useState<TrainingServiceManifest | null>(null);
@@ -336,12 +327,8 @@ export function App() {
     sceneTopology,
   ]);
   const effectiveProfile = useMemo(
-    () => {
-      const tuned = applyHandoverPolicyTuning(signalTunedProfile, appliedHandoverPolicy);
-      if (appMode !== 'modqn-demo') return tuned;
-      return applyBeamHoppingDemoOverride(tuned, beamHoppingDemoState);
-    },
-    [signalTunedProfile, appliedHandoverPolicy, appMode, beamHoppingDemoState],
+    () => applyHandoverPolicyTuning(signalTunedProfile, appliedHandoverPolicy),
+    [signalTunedProfile, appliedHandoverPolicy],
   );
   const hasSignalOverrides = useMemo(
     () => hasSignalTuningOverrides(baseProfile, signalTuning),
@@ -1132,17 +1119,10 @@ export function App() {
             ) : activeLeftSidebarTab === 'jobs' ? (
               <JobsPanel appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
             ) : activeLeftSidebarTab === 'replay' ? (
-              <>
-                <BeamHoppingToggle
-                  appMode={appMode}
-                  state={beamHoppingDemoState}
-                  onChange={setBeamHoppingDemoState}
-                />
-                <ModqnReplayCuePanel
-                  appMode={appMode}
-                  displayState={renderedModqnReplayDisplayState}
-                />
-              </>
+              <ModqnReplayCuePanel
+                appMode={appMode}
+                displayState={renderedModqnReplayDisplayState}
+              />
             ) : (
               <HandoverPolicyControls
                 draft={handoverPolicyDraft}

@@ -46,6 +46,7 @@ export function ModqnSceneHud({
     <div
       className="leo-modqn-scene-hud"
       data-testid="modqn-scene-hud"
+      data-preview-stage="phase-i"
       data-truth-tone={tone}
       data-sim-time-sec={simTimeSec.toFixed(1)}
       data-intra-ho-count={String(intraHoCount)}
@@ -55,6 +56,14 @@ export function ModqnSceneHud({
       <header className="leo-modqn-scene-hud__chip" data-truth-chip={tone}>
         {label}
       </header>
+      {/* SDD §11.3.6 (Phase I banner) + §7 Phase I scope. */}
+      <div
+        className="leo-modqn-scene-hud__preview-banner"
+        data-testid="modqn-scene-hud-preview-banner"
+        data-preview-stage="phase-i"
+      >
+        preview · realistic beam geometry · backend re-train pending
+      </div>
       <dl className="leo-modqn-scene-hud__metrics">
         <div>
           <dt>sim t</dt>
