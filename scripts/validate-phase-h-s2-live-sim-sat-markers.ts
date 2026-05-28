@@ -54,10 +54,6 @@ function validateMainSceneGate(): void {
     .split('\n')
     .filter(line => line.includes('const showBeamCallouts'));
   expectEqual(beamCalloutLines.length, 1, 'showBeamCallouts is declared exactly once');
-  expect(
-    beamCalloutLines[0].includes("runtime.appMode !== 'modqn-demo'"),
-    'H-S2 boundary: showBeamCallouts is still appMode-gated (H-S3 reserved)',
-  );
 
   const uavLines = source
     .split('\n')

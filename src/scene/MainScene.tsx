@@ -310,7 +310,7 @@ function SceneContent({
   const showUav = runtime.appMode !== 'modqn-demo';
   const showLiveBeamCones = sceneFrame.sceneSource === 'live-sim';
   const showLiveSatelliteMarkers = sceneFrame.sceneSource === 'live-sim';
-  const showBeamCallouts = runtime.beamCalloutsEnabled && runtime.appMode !== 'modqn-demo';
+  const showBeamCallouts = runtime.beamCalloutsEnabled && sceneFrame.sceneSource === 'live-sim';
   const showSpineParticles =
     runtime.effectsEnabled.spineParticles
     && !paused
