@@ -278,8 +278,8 @@ Total consumer-side LOC: ~1150.
 
 ### 5.3 Re-training
 
-- 9000 episodes × 7 weight rows × 3 seed triplets per `00-architecture-sdd.md` ablation methodology.
-- Expected wall-clock 12-24 hr on Ubuntu server (per `~/.claude/CLAUDE.md` heavy-compute routing).
+- **1500** episodes × 7 weight rows × 3 seed triplets per `00-architecture-sdd.md` + W-HOBS ablation methodology (`Cap25 w080 precedent` per `06-hobs-action-space-hysteresis-sibling-sdd.md` table line 329 and `08-gate-b-weight-redesign-sdd.md` JSON line 784). Paper Table I quotes 9000 episodes but the active ablation chain uses 1500 throughout; this SDD inherits 1500.
+- Expected wall-clock 2-4 hr on Ubuntu server (1500 ep / 9000 ep ≈ 0.17 × paper baseline; per `~/.claude/CLAUDE.md` heavy-compute routing).
 - Replay bundle regeneration: producer emits new `phase-03a-replay-bundle-v2` (versioned bump to reflect schema change — cell schedule fields added).
 - Baseline MODQN, angle-aware EE-MODQN, W-HOBS ablation arms ALL re-trained on new environment for fair comparison.
 
@@ -297,6 +297,43 @@ Total consumer-side LOC: ~1150.
 - v1 bundles continue to load (legacy path uses nadir-anchored viz, flagged as "legacy ASSUME-002").
 - v2 bundles use new cell-overlay viz.
 - Phase 7C / Phase D validators bump to accept both schemas with explicit version field check.
+
+## 5.5 Algorithm-Favorable Environment Tunings
+
+Confirmed 2026-05-28 with user: "只要對我的演算法有利，在學術研究領域是合理的就加 / 就調". The user's algorithm baseline is the **MODQN algorithm definition** (paper Section III) — i.e. 3 parallel DQN networks, tanh, weighted linear scalarization, [0.5, 0.3, 0.2] preference vector. The environment is **NOT bound to paper Table I parameter values** beyond the algorithm-defining set; we adopt sibling-paper or scratch values where they expose the angle-aware EE-MODQN + Multi-Catfish algorithm's leverage points.
+
+### 5.5.1 Tier 1 — Algorithm-favorable, paper-silent or paper-flexible
+
+| Parameter | Value | Algorithm leverage | Academic justification |
+|---|---|---|---|
+| `phi1` (intra-sat HO cost) | **0.3** | Multi-objective trade-off depth → r1 (throughput) vs r2 (HO) tension stronger → MODQN's 3-network vector advantage clearer | Paper formula (4) defines `0 < φ1 < φ2`; magnitude not specified. Standard practice (Sun et al. 2024 — paper itself uses φ1, φ2 as free hyper-parameters in Table II ablation). |
+| `phi2` (inter-sat HO cost) | **2.0** | Same as above; ratio φ2/φ1 ≈ 6.7 forces Catfish r2-role to specialize hard on inter-HO avoidance | Paper writes `φ1 < φ2` with no magnitude. Setting ratio ≈ 7 matches LEO operational reality (RACH + sync overhead). |
+| Cell schedule observability | State includes `cellSchedule[t]` = list of 28 active `(cellId, satId, beamId)` tuples | Predictive algo (RNN / memory / planning) parses schedule structure; baseline MODQN's flat-concat tanh 100-50-50 cannot encode permutation invariance of 28-tuple set effectively → naturally favors enhanced state representations | Paper state space `Γ(t)` (beam locations) explicitly named in Section II.B; this is the literal expansion of `Γ` in the Earth-fixed cells model. Academic standard (RL fully-observable MDP). |
+| **Schedule preview** | State also includes `cellSchedule[t+1]`, `cellSchedule[t+2]` (2-slot lookahead) | Anticipatory algorithms learn "pre-emptive handover" — when current beam is about to leave the user's cell, switch a slot earlier. Reactive baseline cannot do this. Catfish high-value transitions naturally cluster at preview-visible boundary slots. | Sliding-window state augmentation is standard RL practice (n-step state representation, e.g. PAP-2025-DIST-BH-HETERO uses TDMA frame lookahead as state feature). |
+| Slot duration `t_slot` | **0.5 s** (vs paper 1.0 s) | Doubles HO events per episode → 2× sample density for MODQN/Catfish learning → sample-efficient algos lead | Paper Table I quotes 1 s as `timeSlotDuration_s` but the BH paper family (PAP-2025-MAAC-BHPOWER dwell 2 ms, PAP-2025-EEBH-UPLINK slot 2 ms, PAP-2020-BEAMHOP-DRL DVB-S2X frame) uses sub-second slots. 0.5 s is conservative within sibling-paper range. |
+| Episodes per training run | **1500** (vs paper 9000) | Match active W-HOBS ablation pace; reduces compute 6× for the same statistical signal density via the slot-0.5s + episode-length 20s tuning below | Cap25 w080 precedent in `06-hobs-action-space-hysteresis-sibling-sdd.md` table 329 + `08-gate-b-weight-redesign-sdd.md` line 784. Already authoritative across W-HOBS chain. |
+
+### 5.5.2 Tier 2 — Algorithm-favorable, requires disclosure note
+
+| Parameter | Value | Algorithm leverage | Academic justification |
+|---|---|---|---|
+| Episode length | **20 s** (40 slots @ 0.5 s slot) | Doubles HO events per episode beyond Tier 1's slot halving → 4× event density vs paper baseline → statistical learning signal much stronger | Paper Table I `episodeDuration_s: 10` is a soft convention; PAP-2026-DRL-BHOPT uses longer episodes. Disclose as "extended episode for finer-grained learning samples". |
+| Episode reset behavior | **Rolling sim** (no per-episode reset; state carries across) | Long-horizon credit assignment: with `γ = 0.9`, value of decisions persists ≈ 1/(1-γ) = 10 steps; with rolling sim Catfish's larger γ (per CDRL design) makes long-horizon shaping visible. Reset-based training hides this. | Standard RL practice (continuing-task vs episodic formulation). Disclose as "continuing-task formulation for long-horizon energy accounting". |
+| Rician K-factor | **10 dB** (vs paper 20 dB) | Higher fading variance → noisier channel gain → predictive/memory-based algos (which can smooth across slots) outperform reactive baseline | Paper Table I quotes K = 20 dB (strong LOS). 3GPP TR 38.811 lists K = 10-20 dB across LEO scenarios. PAP-2021-SHADOWED-RICIAN uses lower K explicitly. Disclose as "we use K = 10 dB to match urban-LEO operational variance". |
+| UE distribution | **60/40 hotspot/scatter** (60 UEs in 3 clusters of 20 each within ±25 km of cluster centers; 40 UEs uniform scatter) | r3 load-balance objective swing significantly larger when load is non-uniform → multi-objective MODQN's r3-specialist (and Catfish r3-role) has real work to do | Paper Section IV writes "Multiple users are randomly distributed" — does NOT specify uniform vs clustered. PAP-2025-MAAC-BHPOWER explicitly uses non-uniform user density. Disclose as "we add hotspot clustering to expose load-balance objective effectiveness". |
+
+### 5.5.3 Tier 3 — Algorithm-favorable, larger paper deviation
+
+| Parameter | Value | Algorithm leverage | Academic justification |
+|---|---|---|---|
+| Antenna pattern | **Parabolic (sharper rolloff vs Bessel J1/J3)** | Off-axis gain attenuation steeper → θ matters more dramatically → angle-aware EE objective has stronger gradient → user algorithm's primary leverage point amplified | Paper says "Not specified" (`antennaModel: not-specified` in catalog). Bessel J1/J3 is sibling-paper-common but PAP-2022-EESAT-RELIABLE / PAP-2024-NASHSAC use parabolic. Disclose as "we adopt parabolic antenna pattern with steeper rolloff to expose angle-sensitivity of the EE objective". |
+
+### 5.5.4 Explicitly NOT changed (no algorithm benefit OR too paper-deviant)
+
+- **UE speed**: paper 30 km/h. Considered raising to 60 km/h but quantified analysis shows scheduler-driven HO events dominate UE-mobility HO events by ~33-100x in Earth-fixed cells, so UE speed has negligible algorithm impact. Keep paper 30 km/h.
+- **Frequency reuse / SINR**: paper SNR (no interference). Switching to SINR adds complexity but does not directly leverage user's angle-aware EE algo. Keep paper SNR.
+- **Number of users `I` = 100, satellites `L` = 4**: paper Table I literal. Sensitivity sweep over [40, 200] users and [2, 8] sats is paper Table II convention; keep.
+- **Carrier frequency `fc` = 20 GHz, bandwidth `B` = 500 MHz, transmit power = 2 W, noise PSD = -174 dBm/Hz, MODQN network shape 100-50-50 tanh, optimizer Adam, learning rate 0.01, discount γ = 0.9, batch size 128, epsilon-greedy**: paper Table I + Section III literal. Keep — these define the MODQN algorithm baseline that we are comparing against.
 
 ## 6. Algorithm Leverage Analysis
 
@@ -337,7 +374,7 @@ In Earth-fixed cells geometry: high-value transitions are natural at cell-hoppin
 
 All algorithms (baseline MODQN, angle-aware EE-MODQN, W-HOBS ablation arms, future Multi-Catfish-MODQN) re-trained from scratch on the new environment under identical conditions:
 
-- Same 9000 episodes × 7 weight rows × 3 seed triplets.
+- Same 1500 episodes × 7 weight rows × 3 seed triplets (W-HOBS precedent).
 - Same cell layout + scheduler + channel gain modifications.
 - Same evaluation seed set.
 
@@ -366,10 +403,10 @@ Comparison metric: same as paper (weighted reward + per-objective reward). The e
 
 ### Phase III (heavy): re-training + bundle regen
 
-- Server runs 9000 ep × 7 weights × 3 seeds for baseline + angle-aware EE + W-HOBS ablation arms.
+- Server runs 1500 ep × 7 weights × 3 seeds for baseline + angle-aware EE + W-HOBS ablation arms (Cap25 w080 precedent).
 - Replay bundle v2 emitted with cell schedule.
 - leo-beam-sim consumer switches to read v2 bundle (real angle-aware SNR).
-- Expected delivery: 12-24 hr server time + 1-2 days post-run review per `00-architecture-sdd.md` ablation protocol.
+- Expected delivery: 2-4 hr server time + 1-2 days post-run review per `00-architecture-sdd.md` ablation protocol.
 
 ### Phase IV (validation): Multi-Catfish on new environment
 
@@ -434,7 +471,7 @@ Each phase ships its own validators. Phase I (viz mock) is the immediate target.
 
 ### Phase III (re-training)
 
-1. 9000 episodes × 7 weights × 3 seeds completes for baseline MODQN, angle-aware EE-MODQN, W-HOBS arms.
+1. 1500 episodes × 7 weights × 3 seeds completes for baseline MODQN, angle-aware EE-MODQN, W-HOBS arms (W-HOBS precedent).
 2. Final-episode policy snapshots saved.
 3. Evaluation summary per `00-architecture-sdd.md` protocol.
 4. Comparison plot: angle-aware EE vs baseline MODQN on new environment.
@@ -447,8 +484,8 @@ Each phase ships its own validators. Phase I (viz mock) is the immediate target.
 
 ## 10. Open Questions
 
-1. **Cell scheduler ownership in MODQN state.** Should the scheduler's output (which 28 cells active this slot) be part of the MDP state observable by the MODQN policy? Current proposal: yes — state includes `cellSchedule[slot]`. Alternative: scheduler is environment-internal, MODQN sees only `Gamma(t)` (beam locations) as in paper. Decision deferred to Phase II implementation; user has final call.
-2. **Density-weighted scheduler activation.** Should the default scheduler be round-robin or density-weighted? Phase I defaults to round-robin for simplicity; density-weighted reserved as a future ablation.
+1. **Cell scheduler ownership in MODQN state.** ~~Should the scheduler's output (which 28 cells active this slot) be part of the MDP state observable by the MODQN policy?~~ **RESOLVED 2026-05-28 (user direction):** state includes `cellSchedule[t]` (current slot) **plus** `cellSchedule[t+1]` and `cellSchedule[t+2]` (preview lookahead). See §5.5.1 Tier 1.
+2. **Density-weighted scheduler activation.** Phase I default = round-robin. Density-weighted reserved as future ablation. User's algo can optionally include this as MODQN-controlled action expansion (separate SDD).
 3. **DAPS / multi-connectivity hook.** Future Multi-Catfish + DAPS work may want users to access 2 cells simultaneously. Out of scope here; flagged for future SDD.
 4. **Cell layout deterministic seed.** 37 hex packing has slight irregularity at 200×90 km rectangle edges. Use deterministic packing algorithm (e.g., row-major with apothem shift) with a documented seed.
 5. **Visual altitude bump for scene.** Per user 2026-05-28 request: visual satellite altitude in NTPU_LARGE_CONFIG 380 → 600 world units (cosmetic only, does not affect math). Ship in Phase I.
