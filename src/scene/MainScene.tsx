@@ -23,10 +23,12 @@ import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import { useSimulation } from './useSimulation';
 import { useUeTrailHistory } from './useUeTrailHistory';
 import { useBeamViz } from './useBeamViz';
+import { CELL_SCHEDULE_VIZ_SLOT_SEC, useCellSchedule } from './useCellSchedule';
 import { sceneGeometryFromProfile } from './SceneGeometry';
 import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
 import { ModqnReplaySceneLayer } from './ModqnReplaySceneLayer';
+import { satelliteTint } from '../constants/beamRoleTokens';
 import {
   EarthFixedCells,
   createCellCoverCandidate,
@@ -46,6 +48,7 @@ import { SpineParticles } from '../viz/SpineParticles';
 import { OrbitTrail } from '../viz/OrbitTrail';
 import { ServingGroundRipple } from '../viz/ServingGroundRipple';
 import { GroundScene } from '../viz/GroundScene';
+import { CellOverlay } from '../viz/CellOverlay';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import {
   NTPU_CONFIG,
@@ -271,6 +274,24 @@ function SceneContent({
     profile.beamHopping,
     visualScaleMultipliers,
   );
+  const worldUnitsPerKm = 1 / (sceneGeometry.kmPerWorldUnit ?? paperUserArea.kmPerWorldUnit);
+  const cellSchedule = useCellSchedule({
+    simTimeSec: sceneFrame.tSec,
+    altitudeKm: sceneGeometry.shellAltitudeKm,
+    beamwidth3dBRad: sceneGeometry.beamwidth3dBRad,
+    centerLatDeg: profile.orbit.observerLatDeg ?? 40,
+    centerLonDeg: profile.orbit.observerLonDeg ?? 116,
+    worldUnitsPerKm,
+    satellites: viz.displaySats.map(satellite => ({ id: satellite.id })),
+    slotSec: CELL_SCHEDULE_VIZ_SLOT_SEC,
+  });
+  const satelliteTintById = useMemo(
+    () => new Map(viz.displaySats.map((satellite, index) => [
+      satellite.id,
+      satelliteTint(satellite.id, index),
+    ])),
+    [viz.displaySats],
+  );
   useSimStatePublisher({
     profile,
     sim,
@@ -305,7 +326,8 @@ function SceneContent({
     }),
     [cellCoverCandidates, cells],
   );
-  const showEarthFixedCells = true;
+  const showCellOverlay = runtime.appMode === 'modqn-demo' && sceneFrame.sceneSource === 'live-sim';
+  const showEarthFixedCells = !showCellOverlay;
   const showEarthFixedCellLabels = runtime.appMode !== 'modqn-demo' && runtime.beamDensity === 'all';
   const ueMarkerShape = runtime.appMode === 'modqn-demo' ? 'sphere' : 'cylinder';
   const showUav = runtime.appMode !== 'modqn-demo';
@@ -366,7 +388,15 @@ function SceneContent({
         ? [...viz.satBeams.values()].reduce((count, beams) => count + beams.length, 0)
         : 0,
     );
+    gl.domElement.dataset.cellOverlaySlotIndex = showCellOverlay ? String(cellSchedule.slotIndex) : '';
+    gl.domElement.dataset.cellOverlayActiveCount = showCellOverlay ? String(cellSchedule.slot.assignments.length) : '';
+    gl.domElement.dataset.cellOverlayIdleCount = showCellOverlay ? String(cellSchedule.slot.idleCellIds.length) : '';
+    gl.domElement.dataset.cellOverlayCellCount = showCellOverlay ? String(cellSchedule.layout.count) : '';
   }, [
+    cellSchedule.layout.count,
+    cellSchedule.slot.assignments.length,
+    cellSchedule.slot.idleCellIds.length,
+    cellSchedule.slotIndex,
     gl.domElement,
     runtime.beamCalloutsEnabled,
     runtime.appMode,
@@ -377,6 +407,7 @@ function SceneContent({
     sceneFrame.ues,
     sceneGeometry.visualSatelliteAltitude,
     showBeamCallouts,
+    showCellOverlay,
     showLiveBeamCones,
     showUav,
     ueMarkerShape,
@@ -513,6 +544,9 @@ function SceneContent({
         markerShape={ueMarkerShape}
         ueTrailHistory={ueTrailHistory}
       />
+      {showCellOverlay && (
+        <CellOverlay schedule={cellSchedule} satelliteTintById={satelliteTintById} />
+      )}
       {showEarthFixedCells && <EarthFixedCells cells={paintedCells} showDebugLabels={showEarthFixedCellLabels} />}
       <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />
       <HandoverLinks
