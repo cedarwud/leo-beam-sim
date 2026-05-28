@@ -126,6 +126,7 @@
     "validate:phase-h:s6-inter-handover-arc": "node --import tsx/esm scripts/validate-phase-h-s6-inter-handover-arc.ts",
     "validate:phase-h:s7-beam-material": "node --import tsx/esm scripts/validate-phase-h-s7-beam-material.ts",
     "validate:phase-h:s8-hud-camera-default": "node --import tsx/esm scripts/validate-phase-h-s8-hud-camera-default.ts",
+    "validate:phase-i:s1-cell-layout": "node --import tsx/esm scripts/validate-phase-i-s1-cell-layout.ts",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
     "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts"
   },
