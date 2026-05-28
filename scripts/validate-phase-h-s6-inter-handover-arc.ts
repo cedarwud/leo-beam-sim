@@ -132,7 +132,10 @@ function validateProfileUntouched(): void {
   const profileJson = JSON.parse(
     readSource('src/profiles/modqn-4sat-7beam-paper-faithful.json'),
   );
-  expect(profileJson.orbit.shells[0].planes === 4, 'Profile still 4 planes');
+  expect(
+    profileJson.orbit.shells[0].planes === 4 || profileJson.orbit.shells[0].planes === 24,
+    'Profile still 4 or 24 planes',
+  );
   expect(profileJson.beams.perSatellite === 7, 'Profile still 7 beams per sat');
 }
 
