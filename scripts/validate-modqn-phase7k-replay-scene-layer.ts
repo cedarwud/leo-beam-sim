@@ -527,8 +527,8 @@ function assertSceneBridgeSource(): void {
   );
   assertContains(
     mainSceneSource,
-    "const showLiveSatelliteMarkers = runtime.appMode !== 'modqn-demo';",
-    'MODQN replay must not display the live orbit satellite marker as producer truth',
+    "const showLiveSatelliteMarkers = sceneFrame.sceneSource === 'live-sim';",
+    'MODQN replay must not display the live orbit satellite marker as producer truth (Phase H §4.2: gate now distinguishes live-sim vs artifact-replay)',
   );
   assertContains(
     mainSceneSource,
