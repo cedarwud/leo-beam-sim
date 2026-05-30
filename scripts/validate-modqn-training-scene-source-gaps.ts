@@ -31,12 +31,17 @@ const requiredFields = [
   'entities.ues.positionTrace',
   'entities.satellites.trajectory',
   'entities.beams.footprints',
+  'timeline.sourceRowIdentity',
+  'timeline.focusUeSelection',
+  'timeline.activeCellState',
   'timeline.allUeServingHistory',
+  'timeline.handoverPenaltyAttribution',
   'timeline.frequencyReuseGroups',
   'metrics.angleAwareTerms',
   'metrics.energyEfficiencyTerms',
   'metrics.reward',
   'diagnostics.policy',
+  'comparison.alignedTimebase',
   'provenance.claimBoundary',
 ] as const;
 
@@ -87,6 +92,18 @@ const nextScheduleGap = currentGaps.find(gap => gap.field === 'beamHopping.nextS
 assert.ok(nextScheduleGap, 'current replay proof includes next schedule source gap');
 assert.equal(nextScheduleGap?.claimImpact, 'no-next-beam-preview');
 assert.equal(nextScheduleGap?.owner, 'modqn-paper-reproduction');
+
+const focusUeGap = currentGaps.find(gap => gap.field === 'timeline.focusUeSelection');
+assert.ok(focusUeGap, 'current replay proof includes producer focus UE source gap');
+assert.equal(focusUeGap?.claimImpact, 'no-producer-focus-ue-selection');
+
+const activeCellGap = currentGaps.find(gap => gap.field === 'timeline.activeCellState');
+assert.ok(activeCellGap, 'current replay proof includes active cell state source gap');
+assert.equal(activeCellGap?.claimImpact, 'no-active-cell-state');
+
+const penaltyGap = currentGaps.find(gap => gap.field === 'timeline.handoverPenaltyAttribution');
+assert.ok(penaltyGap, 'current replay proof includes handover penalty attribution source gap');
+assert.equal(penaltyGap?.claimImpact, 'no-handover-penalty-attribution');
 
 const sourceGapModel = read('src/modqn/replay-source-gaps/sourceGaps.ts');
 assertNotIncludes(
@@ -147,6 +164,14 @@ assert.ok(
   replayCuePanel.includes('data-source-gap-policy={gap.policy}'),
   'MODQN replay cue panel exposes stable source-gap policy ids',
 );
+for (const field of [
+  'timeline.sourceRowIdentity',
+  'timeline.focusUeSelection',
+  'timeline.activeCellState',
+  'timeline.handoverPenaltyAttribution',
+] as const) {
+  assert.ok(replayCuePanel.includes(field), `MODQN replay cue panel labels trace source gap ${field}`);
+}
 
 const evidenceTab = read('src/ui/ModqnEvidenceTab.tsx');
 assert.ok(
@@ -165,6 +190,15 @@ assert.ok(
   evidenceTab.includes('data-source-gap-policy={gap.policy}'),
   'MODQN evidence tab exposes stable source-gap policy ids',
 );
+for (const field of [
+  'timeline.sourceRowIdentity',
+  'timeline.focusUeSelection',
+  'timeline.activeCellState',
+  'timeline.handoverPenaltyAttribution',
+  'comparison.alignedTimebase',
+] as const) {
+  assert.ok(evidenceTab.includes(field), `MODQN evidence tab labels trace source gap ${field}`);
+}
 
 const browserValidator = read('scripts/validate-modqn-training-scene-source-gaps-browser.ts');
 assert.ok(

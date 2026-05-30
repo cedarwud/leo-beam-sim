@@ -84,6 +84,23 @@ and validators must change together.
 
 ## Producer-Backed Trace Contract
 
+This SDD is mirrored by the consumer-side registry in
+`src/modqn/training-scene-trace/contract.ts`. The registry is intentionally a
+read-only contract map, not an artifact parser. It records:
+
+- the currently recognized display lanes and whether each lane may claim
+  proof, mount profile-derived overlays, or use SINR live visuals;
+- every required training-scene trace field and the producer path that must
+  own it;
+- whether display-derived projection is allowed for that field;
+- which canonical source-gap field must appear when producer truth is absent.
+
+Adapters for `visual-showcase-v1`, user-trained bundles, training-run traces,
+or comparison artifacts must consume this registry instead of adding local UI
+booleans. If a producer chooses to extend `visual-showcase-v1`, validation
+must land in `ntn-sim-core` first; `leo-beam-sim` only adds fail-closed
+consumer checks.
+
 ### 1. Run And Provenance
 
 Required:
@@ -275,9 +292,21 @@ Every source gap should include:
 - `claimImpact`: what the UI is not allowed to claim
 
 Mandatory source gaps for current replay-proof artifacts include missing
-producer active beam schedule and missing producer lookahead schedule. The
-renderer must not treat `selectedServing`, `previousServing`, or
-`decisionActionValidityMask` as replacements for these schedules.
+producer active beam schedule, missing producer lookahead schedule, missing
+stable source-row identity, missing producer focus UE selection, missing active
+cell state, missing all-UE serving history, and missing handover penalty
+attribution. The renderer must not treat `selectedServing`,
+`previousServing`, `actionValidityMask`, or `decisionActionValidityMask` as
+replacements for these schedules.
+
+Canonical trace-specific source-gap fields are:
+
+- `timeline.sourceRowIdentity`
+- `timeline.focusUeSelection`
+- `timeline.activeCellState`
+- `timeline.allUeServingHistory`
+- `timeline.handoverPenaltyAttribution`
+- `comparison.alignedTimebase`
 
 ## Validation Plan
 
@@ -296,6 +325,8 @@ Static validators should enforce:
 - new comparison/training-run lanes update `SceneLane`, render plan, docs, and
   validator expectations together;
 - no frontend code derives beam hopping from serving identity or validity masks.
+- the typed consumer registry keeps all proof/comparison training-trace
+  requirements mapped to producer-owned paths or canonical source gaps.
 
 Browser smoke should verify:
 

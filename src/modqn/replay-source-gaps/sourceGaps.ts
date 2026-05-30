@@ -4,12 +4,17 @@ export type ModqnReplaySourceGapField =
   | 'entities.ues.positionTrace'
   | 'entities.satellites.trajectory'
   | 'entities.beams.footprints'
+  | 'timeline.sourceRowIdentity'
+  | 'timeline.focusUeSelection'
+  | 'timeline.activeCellState'
   | 'timeline.allUeServingHistory'
+  | 'timeline.handoverPenaltyAttribution'
   | 'timeline.frequencyReuseGroups'
   | 'metrics.angleAwareTerms'
   | 'metrics.energyEfficiencyTerms'
   | 'metrics.reward'
   | 'diagnostics.policy'
+  | 'comparison.alignedTimebase'
   | 'provenance.claimBoundary';
 
 export type ModqnReplaySourceGapSurface =
@@ -33,7 +38,11 @@ export type ModqnReplaySourceGapOwner = 'modqn-paper-reproduction' | 'ntn-sim-co
 export type ModqnReplaySourceGapClaimImpact =
   | 'no-beam-hopping-animation'
   | 'no-next-beam-preview'
+  | 'no-stable-source-row-proof'
+  | 'no-producer-focus-ue-selection'
+  | 'no-active-cell-state'
   | 'no-all-ue-serving-map'
+  | 'no-handover-penalty-attribution'
   | 'no-physical-satellite-path'
   | 'no-physical-beam-footprint'
   | 'no-frequency-coloring'
@@ -41,6 +50,7 @@ export type ModqnReplaySourceGapClaimImpact =
   | 'no-energy-efficiency-per-step-claim'
   | 'no-reward-proof'
   | 'no-policy-diagnostics-proof'
+  | 'no-comparison-alignment-proof'
   | 'no-evidence-promotion';
 
 export interface ModqnReplaySourceGap {
@@ -70,12 +80,17 @@ export const MODQN_REPLAY_SOURCE_GAP_FIELDS = [
   'entities.ues.positionTrace',
   'entities.satellites.trajectory',
   'entities.beams.footprints',
+  'timeline.sourceRowIdentity',
+  'timeline.focusUeSelection',
+  'timeline.activeCellState',
   'timeline.allUeServingHistory',
+  'timeline.handoverPenaltyAttribution',
   'timeline.frequencyReuseGroups',
   'metrics.angleAwareTerms',
   'metrics.energyEfficiencyTerms',
   'metrics.reward',
   'diagnostics.policy',
+  'comparison.alignedTimebase',
   'provenance.claimBoundary',
 ] as const satisfies readonly ModqnReplaySourceGapField[];
 
@@ -124,6 +139,36 @@ export function createCurrentModqnReplayProofSourceGaps(): readonly ModqnReplayS
       note: 'The replay proof lane must not show next-beam preview without producer lookahead truth.',
     }),
     gap({
+      field: 'timeline.sourceRowIdentity',
+      surface: 'timeline',
+      reason: 'not-yet-exported',
+      owner: 'modqn-paper-reproduction',
+      policy: 'fail-closed',
+      requiredProducerField: 'timeline[].sourceRowId or stable producer row identifier',
+      claimImpact: 'no-stable-source-row-proof',
+      note: 'Display row numbers are not enough for cross-artifact replay and comparison evidence.',
+    }),
+    gap({
+      field: 'timeline.focusUeSelection',
+      surface: 'focus-panel',
+      reason: 'not-yet-exported',
+      owner: 'modqn-paper-reproduction',
+      policy: 'fail-closed',
+      requiredProducerField: 'timeline[].focusUeId and timeline[].focusReason',
+      claimImpact: 'no-producer-focus-ue-selection',
+      note: 'The UI may display-select a focus UE, but producer focus selection needs explicit trace fields.',
+    }),
+    gap({
+      field: 'timeline.activeCellState',
+      surface: 'viewport',
+      reason: 'not-yet-exported',
+      owner: 'modqn-paper-reproduction',
+      policy: 'fail-closed',
+      requiredProducerField: 'timeline[].cells[].active or timeline[].activeCellSchedule',
+      claimImpact: 'no-active-cell-state',
+      note: 'Active/inactive cells in replay proof require producer scheduler state, not serving identity.',
+    }),
+    gap({
       field: 'timeline.allUeServingHistory',
       surface: 'focus-panel',
       reason: 'not-yet-exported',
@@ -132,6 +177,16 @@ export function createCurrentModqnReplayProofSourceGaps(): readonly ModqnReplayS
       requiredProducerField: 'timeline[].ues[].serving',
       claimImpact: 'no-all-ue-serving-map',
       note: 'The current playback shell exposes the focused row, not every UE serving state at every step.',
+    }),
+    gap({
+      field: 'timeline.handoverPenaltyAttribution',
+      surface: 'angle-energy-panel',
+      reason: 'not-yet-exported',
+      owner: 'modqn-paper-reproduction',
+      policy: 'fail-closed',
+      requiredProducerField: 'timeline[].handoverEvent.penalty or timeline[].reward.handoverPenaltyTerm',
+      claimImpact: 'no-handover-penalty-attribution',
+      note: 'Inter/intra penalty attribution must come from the producer reward trace.',
     }),
     gap({
       field: 'entities.satellites.trajectory',

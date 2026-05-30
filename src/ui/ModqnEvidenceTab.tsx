@@ -153,12 +153,17 @@ function formatSourceGapField(field: ModqnReplaySourceGap['field']): string {
   if (field === 'entities.ues.positionTrace') return 'UE trace';
   if (field === 'entities.satellites.trajectory') return 'Satellite trajectory';
   if (field === 'entities.beams.footprints') return 'Beam footprint';
+  if (field === 'timeline.sourceRowIdentity') return 'Source row identity';
+  if (field === 'timeline.focusUeSelection') return 'Focus UE selection';
+  if (field === 'timeline.activeCellState') return 'Active cell state';
   if (field === 'timeline.allUeServingHistory') return 'All-UE serving';
+  if (field === 'timeline.handoverPenaltyAttribution') return 'HO penalty attribution';
   if (field === 'timeline.frequencyReuseGroups') return 'Frequency reuse';
   if (field === 'metrics.angleAwareTerms') return 'Angle-aware terms';
   if (field === 'metrics.energyEfficiencyTerms') return 'Energy-efficiency terms';
   if (field === 'metrics.reward') return 'Reward trace';
   if (field === 'diagnostics.policy') return 'Policy diagnostics';
+  if (field === 'comparison.alignedTimebase') return 'Comparison timebase';
   return 'Claim boundary';
 }
 

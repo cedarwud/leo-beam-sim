@@ -41,7 +41,11 @@ function sourceGapLabel(gap: ModqnReplaySourceGap): string {
   if (gap.field === 'beamHopping.nextSchedule') return 'Next beam preview';
   if (gap.field === 'entities.satellites.trajectory') return 'Satellite trajectory';
   if (gap.field === 'entities.beams.footprints') return 'Beam footprint';
+  if (gap.field === 'timeline.sourceRowIdentity') return 'Source row identity';
+  if (gap.field === 'timeline.focusUeSelection') return 'Focus UE selection';
+  if (gap.field === 'timeline.activeCellState') return 'Active cell state';
   if (gap.field === 'timeline.allUeServingHistory') return 'All-UE serving';
+  if (gap.field === 'timeline.handoverPenaltyAttribution') return 'HO penalty attribution';
   if (gap.field === 'metrics.angleAwareTerms') return 'Angle-aware terms';
   if (gap.field === 'metrics.energyEfficiencyTerms') return 'Energy-efficiency terms';
   return gap.field;
