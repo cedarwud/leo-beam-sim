@@ -2,6 +2,10 @@ import { useMemo } from 'react';
 import type { ReactElement } from 'react';
 import type { ModqnReplayPlaybackDisplayState } from '../modqn/replay-bundle';
 import {
+  createCurrentModqnReplayProofSourceGaps,
+  type ModqnReplaySourceGap,
+} from '../modqn/replay-source-gaps';
+import {
   deriveModqnReplaySceneVisualState,
   type ModqnReplaySceneBeamRole,
 } from '../scene/modqnReplaySceneVisuals';
@@ -11,6 +15,7 @@ interface ModqnReplayCuePanelProps {
   readonly displayState: ModqnReplayPlaybackDisplayState | null;
   readonly proofViewportActive?: boolean;
   readonly onProofViewportActiveChange?: (active: boolean) => void;
+  readonly sourceGaps?: readonly ModqnReplaySourceGap[];
 }
 
 interface ModqnReplayProofViewportToggleProps {
@@ -29,6 +34,17 @@ function roleTone(role: ModqnReplaySceneBeamRole): string {
   if (role === 'previous') return 'previous';
   if (role === 'previous-and-selected') return 'both';
   return 'inactive';
+}
+
+function sourceGapLabel(gap: ModqnReplaySourceGap): string {
+  if (gap.field === 'beamHopping.activeSchedule') return 'Active beam schedule';
+  if (gap.field === 'beamHopping.nextSchedule') return 'Next beam preview';
+  if (gap.field === 'entities.satellites.trajectory') return 'Satellite trajectory';
+  if (gap.field === 'entities.beams.footprints') return 'Beam footprint';
+  if (gap.field === 'timeline.allUeServingHistory') return 'All-UE serving';
+  if (gap.field === 'metrics.angleAwareTerms') return 'Angle-aware terms';
+  if (gap.field === 'metrics.energyEfficiencyTerms') return 'Energy-efficiency terms';
+  return gap.field;
 }
 
 function ModqnReplayProofViewportToggle({
@@ -62,10 +78,15 @@ export function ModqnReplayCuePanel({
   displayState,
   proofViewportActive = false,
   onProofViewportActiveChange,
+  sourceGaps,
 }: ModqnReplayCuePanelProps): ReactElement | null {
   const visualState = useMemo(
     () => deriveModqnReplaySceneVisualState(displayState),
     [displayState],
+  );
+  const replaySourceGaps = useMemo(
+    () => sourceGaps ?? createCurrentModqnReplayProofSourceGaps(),
+    [sourceGaps],
   );
 
   if (appMode !== 'modqn-demo') return null;
@@ -164,8 +185,30 @@ export function ModqnReplayCuePanel({
         <span>{visualState.selectionSource}</span>
         <span>{visualState.sourceOwner}</span>
         <span>{visualState.geometrySource}</span>
-        <span>{`source gaps ${visualState.truthAudit.sourceGapCount}`}</span>
+        <span>{`source gaps ${replaySourceGaps.length}`}</span>
       </div>
+
+      <section
+        className="leo-modqn-replay-panel__source-gaps"
+        data-testid="modqn-replay-source-gap-list"
+        data-source-gap-count={replaySourceGaps.length}
+        aria-label="MODQN replay source gaps"
+      >
+        <div className="leo-modqn-replay-panel__source-gaps-title">Source gaps</div>
+        {replaySourceGaps.map(gap => (
+          <div
+            key={`${gap.field}:${gap.surface}`}
+            className="leo-modqn-replay-panel__source-gap"
+            data-testid="modqn-replay-source-gap-item"
+            data-source-gap-field={gap.field}
+            data-source-gap-policy={gap.policy}
+            data-source-gap-claim-impact={gap.claimImpact}
+          >
+            <strong>{sourceGapLabel(gap)}</strong>
+            <span>{gap.note}</span>
+          </div>
+        ))}
+      </section>
 
       <div className="leo-modqn-replay-panel__audit" aria-label="MODQN truth-level audit">
         {visualState.truthAudit.levels.map(level => (

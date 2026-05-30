@@ -26,6 +26,10 @@ import type {
   ModqnBeamReference,
   ModqnPolicyCandidate,
 } from '../modqn/replay-bundle/types';
+import {
+  createCurrentModqnReplayProofSourceGaps,
+  type ModqnReplaySourceGap,
+} from '../modqn/replay-source-gaps';
 import type { SimState } from '../scene/types';
 
 interface Props {
@@ -39,6 +43,7 @@ interface Props {
   readonly handoverMode?: RuntimeHandoverMode;
   readonly hookOverride?: UseModqnHandoverState;
   readonly bundleProvenanceKind?: 'paper-faithful' | 'user-trained';
+  readonly sourceGaps?: readonly ModqnReplaySourceGap[];
 }
 
 type BundleProvenanceKind = 'paper-faithful' | 'user-trained';
@@ -142,6 +147,21 @@ function getEvidenceProvenanceCopy(status: EvidenceProvenanceStatus): EvidencePr
   };
 }
 
+function formatSourceGapField(field: ModqnReplaySourceGap['field']): string {
+  if (field === 'beamHopping.activeSchedule') return 'Active beam schedule';
+  if (field === 'beamHopping.nextSchedule') return 'Next beam preview';
+  if (field === 'entities.ues.positionTrace') return 'UE trace';
+  if (field === 'entities.satellites.trajectory') return 'Satellite trajectory';
+  if (field === 'entities.beams.footprints') return 'Beam footprint';
+  if (field === 'timeline.allUeServingHistory') return 'All-UE serving';
+  if (field === 'timeline.frequencyReuseGroups') return 'Frequency reuse';
+  if (field === 'metrics.angleAwareTerms') return 'Angle-aware terms';
+  if (field === 'metrics.energyEfficiencyTerms') return 'Energy-efficiency terms';
+  if (field === 'metrics.reward') return 'Reward trace';
+  if (field === 'diagnostics.policy') return 'Policy diagnostics';
+  return 'Claim boundary';
+}
+
 interface DecisionTraceRow {
   readonly label: string;
   readonly value: string;
@@ -217,6 +237,7 @@ export function ModqnEvidenceTab({
   handoverMode = 'sinr-offset',
   hookOverride,
   bundleProvenanceKind,
+  sourceGaps,
 }: Props) {
   const fallbackHook = useModqnHandoverState();
   const hook = hookOverride ?? fallbackHook;
@@ -238,6 +259,10 @@ export function ModqnEvidenceTab({
     decisionTrace.fallbackStatus,
   );
   const provenanceCopy = getEvidenceProvenanceCopy(provenanceStatus);
+  const replaySourceGaps = useMemo(
+    () => sourceGaps ?? createCurrentModqnReplayProofSourceGaps(),
+    [sourceGaps],
+  );
 
   const manifestRows = useMemo(() => {
     if (bundleSidebarSnapshot === null) {
@@ -312,6 +337,28 @@ export function ModqnEvidenceTab({
             ? 'Live SINR remains the reference surface while MODQN replay decisions are displayed through the decision-overlay path; this does not rewrite producer payloads or live truth ownership.'
             : `The center scene is using ${inactiveModeLabel}. Bundle manifest, producer baseline, and active ω are replay/evidence context only, not the live decision source.`}
         </p>
+      </section>
+
+      <section
+        className="leo-modqn-evidence-source-gaps"
+        data-testid="modqn-evidence-source-gap-list"
+        data-source-gap-count={replaySourceGaps.length}
+        aria-label="MODQN replay source gaps"
+      >
+        <div className="leo-modqn-objective-controls__title">Source gaps</div>
+        {replaySourceGaps.map(gap => (
+          <div
+            key={`${gap.field}:${gap.surface}`}
+            className="leo-modqn-evidence-source-gap"
+            data-testid="modqn-evidence-source-gap-item"
+            data-source-gap-field={gap.field}
+            data-source-gap-policy={gap.policy}
+            data-source-gap-claim-impact={gap.claimImpact}
+          >
+            <span className="leo-modqn-evidence-source-gap__label">{formatSourceGapField(gap.field)}</span>
+            <span className="leo-modqn-evidence-source-gap__value">{gap.note}</span>
+          </div>
+        ))}
       </section>
 
       <section

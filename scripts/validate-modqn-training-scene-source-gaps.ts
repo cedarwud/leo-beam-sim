@@ -126,6 +126,42 @@ assert.ok(
   'replay telemetry explicitly rejects fake beam hopping',
 );
 
+const replayCuePanel = read('src/ui/ModqnReplayCuePanel.tsx');
+assert.ok(
+  replayCuePanel.includes('createCurrentModqnReplayProofSourceGaps'),
+  'MODQN replay cue panel consumes the canonical source-gap model',
+);
+assert.ok(
+  replayCuePanel.includes('data-testid="modqn-replay-source-gap-list"'),
+  'MODQN replay cue panel exposes a source-gap list test hook',
+);
+assert.ok(
+  replayCuePanel.includes('data-source-gap-field={gap.field}'),
+  'MODQN replay cue panel exposes stable source-gap field ids',
+);
+assert.ok(
+  replayCuePanel.includes('data-source-gap-policy={gap.policy}'),
+  'MODQN replay cue panel exposes stable source-gap policy ids',
+);
+
+const evidenceTab = read('src/ui/ModqnEvidenceTab.tsx');
+assert.ok(
+  evidenceTab.includes('createCurrentModqnReplayProofSourceGaps'),
+  'MODQN evidence tab consumes the canonical source-gap model',
+);
+assert.ok(
+  evidenceTab.includes('data-testid="modqn-evidence-source-gap-list"'),
+  'MODQN evidence tab exposes a source-gap list test hook',
+);
+assert.ok(
+  evidenceTab.includes('data-source-gap-field={gap.field}'),
+  'MODQN evidence tab exposes stable source-gap field ids',
+);
+assert.ok(
+  evidenceTab.includes('data-source-gap-policy={gap.policy}'),
+  'MODQN evidence tab exposes stable source-gap policy ids',
+);
+
 const sdd = read('docs/modqn-training-scene-replay-sdd.md');
 assert.ok(
   sdd.includes('Do not infer beam hopping from `selectedServing`, `previousServing`'),
