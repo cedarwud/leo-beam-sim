@@ -222,6 +222,16 @@ export async function getJobDetail(
   jobId: string,
 ): Promise<TrainingJobDetail>;
 
+export async function postPauseJob(
+  config: ServiceClientConfig,
+  jobId: string,
+): Promise<JobLifecycleActionResponse>;
+
+export async function postResumeJob(
+  config: ServiceClientConfig,
+  jobId: string,
+): Promise<JobLifecycleActionResponse>;
+
 export function artifactUrl(
   config: ServiceClientConfig,
   jobId: string,
@@ -239,6 +249,14 @@ inside `leo-modqn-producer-dispatch-request-v1`. The envelope records that
 remains the producer truth owner, and `ntn-sim-core` is not introduced as a
 runtime dependency. The producer service validates the envelope at the API
 boundary and stores/runs the unmodified `runConfig.request`.
+
+Lifecycle action boundary: `postPauseJob` and `postResumeJob` exist only as
+fail-closed helpers for the producer contract. The current producer returns
+501 with `supported:false`; leo-beam-sim must treat that as unavailable
+orchestration, not as a partially supported trainer feature. The consumer must
+not synthesize `paused` truth or run a second MODQN trainer. In short,
+pause/resume must fail closed until the producer implements real lifecycle
+semantics.
 
 Default `baseUrl`: `http://127.0.0.1:8765`. Configurable via a
 `localStorage` key `leo-beam-sim.training-service.base-url.v1` if the user
@@ -462,6 +480,7 @@ Focused validation:
 - `npm run validate:phase-b:service-client`
 - `npm run validate:phase-b:jobs-panel`
 - `npm run validate:phase-b:artifact-picker`
+- `npm run validate:modqn:job-lifecycle-contract`
 
 Optional cross-repo producer smoke, when `/home/u24/papers/modqn-paper-reproduction`
 is available and its virtualenv is installed:
@@ -480,8 +499,8 @@ PRODUCER_BASE_URL=http://127.0.0.1:8766 npm run smoke:modqn:producer-dispatch
 
 This smoke verifies the leo dispatch envelope is accepted by the producer,
 listed with `submissionSchema`, readable through `GET /jobs/{id}`, and cleaned
-up through cancel/delete. It does not start training because `MODQN_SERVICE_DB`
-disables the producer worker.
+up through pause/resume fail-closed checks plus cancel/delete. It does not
+start training because `MODQN_SERVICE_DB` disables the producer worker.
 
 ### 11.5 2026-05-27 Artifact Claim / Truth Tightening
 

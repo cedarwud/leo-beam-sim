@@ -70,8 +70,9 @@ console.log('\n(a) jobsPolling pure helpers');
       jobWithStatus('queued'),
       jobWithStatus('done'),
       jobWithStatus('running'),
-    ]) === 2,
-    'countActiveJobs counts queued and running only',
+      jobWithStatus('paused'),
+    ]) === 3,
+    'countActiveJobs counts queued, running, and paused',
   );
   assert(formatRunningFor(0) === '0s', 'formatRunningFor formats zero');
   assert(formatRunningFor(5000) === '5s', 'formatRunningFor formats seconds');
@@ -81,8 +82,10 @@ console.log('\n(a) jobsPolling pure helpers');
   assert(shortJobId('01HXY00000000000000000ABCD').length <= 12, 'shortJobId truncates long job IDs');
   assert(shortJobId('short') === 'short', 'shortJobId preserves short job IDs');
   assert(isActiveStatus('queued') === true, 'isActiveStatus accepts queued');
+  assert(isActiveStatus('paused') === true, 'isActiveStatus accepts paused');
   assert(isActiveStatus('done') === false, 'isActiveStatus rejects done');
   assert(isDoneStatus('done') === true, 'isDoneStatus accepts done');
+  assert(isDoneStatus('completed') === true, 'isDoneStatus accepts completed alias');
   assert(isDoneStatus('running') === false, 'isDoneStatus rejects running');
 }
 

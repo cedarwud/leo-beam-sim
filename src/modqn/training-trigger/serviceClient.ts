@@ -5,6 +5,7 @@ import type {
   SensitivitySweepRequest,
   SensitivitySweepResponse,
   BatchDetail,
+  JobLifecycleActionResponse,
   PostTrainResponse,
   TrainingJobDetail,
   TrainingJobSummary,
@@ -199,17 +200,45 @@ export function artifactUrl(
   return `${normalizedBaseUrl(config.baseUrl)}/artifacts/${encodeURIComponent(jobId)}${suffix}`;
 }
 
+async function postJobLifecycleAction(
+  config: ServiceClientConfig,
+  jobId: string,
+  action: 'pause' | 'resume' | 'cancel',
+): Promise<JobLifecycleActionResponse> {
+  const actionLabel = action === 'pause' ? 'Pause' : action === 'resume' ? 'Resume' : 'Cancel';
+  const response = await fetch(`${normalizedBaseUrl(config.baseUrl)}/jobs/${encodeURIComponent(jobId)}/${action}`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`post${actionLabel}Job: HTTP ${response.status}${text ? `: ${text}` : ''}`);
+  }
+  return response.json();
+}
+
+export async function postPauseJob(
+  config: ServiceClientConfig,
+  jobId: string,
+): Promise<JobLifecycleActionResponse> {
+  return postJobLifecycleAction(config, jobId, 'pause');
+}
+
+export async function postResumeJob(
+  config: ServiceClientConfig,
+  jobId: string,
+): Promise<JobLifecycleActionResponse> {
+  return postJobLifecycleAction(config, jobId, 'resume');
+}
+
 export async function postCancelJob(
   config: ServiceClientConfig,
   jobId: string,
 ): Promise<{ jobId: string; status: 'cancelled'; message: string }> {
-  const response = await fetch(`${normalizedBaseUrl(config.baseUrl)}/jobs/${encodeURIComponent(jobId)}/cancel`, {
-    method: 'POST',
-  });
-  if (!response.ok) {
-    throw new Error(`postCancelJob: HTTP ${response.status}`);
-  }
-  return response.json();
+  return postJobLifecycleAction(
+    config,
+    jobId,
+    'cancel',
+  ) as Promise<{ jobId: string; status: 'cancelled'; message: string }>;
 }
 
 export async function deleteJob(

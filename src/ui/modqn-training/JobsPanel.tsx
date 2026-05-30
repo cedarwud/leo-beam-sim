@@ -141,10 +141,11 @@ function batchCompletionReadout(batch: BatchDetail): EpisodeProgressReadout {
 function formatBatchCounts(batch: BatchDetail): string {
   const queued = countBatchStatus(batch, 'queued');
   const running = countBatchStatus(batch, 'running');
+  const paused = countBatchStatus(batch, 'paused');
   const done = countBatchStatus(batch, 'done');
   const failed = countBatchStatus(batch, 'failed');
   const cancelled = countBatchStatus(batch, 'cancelled');
-  return `queued ${queued} · running ${running} · done ${done} · failed ${failed} · cancelled ${cancelled}`;
+  return `queued ${queued} · running ${running} · paused ${paused} · done ${done} · failed ${failed} · cancelled ${cancelled}`;
 }
 
 export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactElement | null {
@@ -271,14 +272,14 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
         setStreamEvents(current => ({ ...current, [parsed.jobId]: parsed }));
       };
       source.onmessage = handleMessage;
-      for (const eventType of ['queued', 'heartbeat', 'progress', 'done', 'failed']) {
+      for (const eventType of ['queued', 'heartbeat', 'progress', 'done', 'failed', 'cancelled']) {
         source.addEventListener(eventType, handleMessage);
       }
       return { source, handleMessage };
     });
     return () => {
       for (const { source, handleMessage } of sources) {
-        for (const eventType of ['queued', 'heartbeat', 'progress', 'done', 'failed']) {
+        for (const eventType of ['queued', 'heartbeat', 'progress', 'done', 'failed', 'cancelled']) {
           source.removeEventListener(eventType, handleMessage);
         }
         source.onmessage = null;
@@ -410,7 +411,7 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
                 </div>
                 {startedAtMs !== undefined ? (
                   <div className="leo-jobs-panel__meta">
-                    running for {formatRunningFor(nowMs - startedAtMs)}
+                    {job.status === 'paused' ? 'paused' : 'running'} for {formatRunningFor(nowMs - startedAtMs)}
                   </div>
                 ) : null}
                 <div className="leo-jobs-panel__meta">

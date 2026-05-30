@@ -3,7 +3,7 @@ export type TrainingProfile = 'legacy-baseline' | 'track2';
 export type TrainingArm = 'a1' | 'a4' | 'a5_hobs';
 export type TrainingRequestMode = 'exploration' | 'evaluation';
 
-export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled' | 'expired';
+export type JobStatus = 'queued' | 'running' | 'paused' | 'done' | 'completed' | 'failed' | 'cancelled' | 'expired';
 
 export interface ObjectiveWeights {
   readonly throughput: number;
@@ -176,6 +176,21 @@ export interface TrainingJobDetail extends TrainingJobSummary {
   readonly stderrTail?: string;
 }
 
+export interface JobLifecycleActionResponse {
+  readonly jobId: string;
+  readonly status?: JobStatus | 'deleted';
+  readonly message: string;
+  readonly action?: 'pause' | 'resume' | 'cancel' | string;
+  readonly supported?: boolean;
+  readonly lifecycle?: {
+    readonly persistedStates?: readonly string[];
+    readonly completionAlias?: Record<string, string>;
+    readonly responseOnlyStates?: readonly string[];
+    readonly reservedUnsupportedStates?: readonly string[];
+  };
+  readonly [key: string]: unknown;
+}
+
 export interface TrainingTruth {
   readonly envAxes?: EnvAxes;
   readonly objectiveWeights?: ObjectiveWeights;
@@ -231,7 +246,7 @@ export interface TrainingProgressEvent {
   readonly id: number;
   readonly tsMs: number;
   readonly jobId: string;
-  readonly type: 'queued' | 'heartbeat' | 'progress' | 'done' | 'failed' | string;
+  readonly type: 'queued' | 'heartbeat' | 'progress' | 'done' | 'failed' | 'cancelled' | string;
   readonly status: JobStatus | 'running';
   readonly episode?: number;
   readonly episodeBudget?: number;

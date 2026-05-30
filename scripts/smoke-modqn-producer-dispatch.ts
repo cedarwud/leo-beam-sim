@@ -13,6 +13,8 @@ import {
   getJobDetail,
   getJobs,
   postCancelJob,
+  postPauseJob,
+  postResumeJob,
   postTrain,
 } from '../src/modqn/training-trigger/serviceClient';
 import {
@@ -67,6 +69,8 @@ const created = await postTrain({ baseUrl }, request);
 let cancelledStatus = 'not-run';
 let deleteMessage = 'not-run';
 let detailSubmissionSchema: unknown = null;
+let pauseFailClosed = 'not-run';
+let resumeFailClosed = 'not-run';
 
 try {
   assert.equal(created.status, 'queued');
@@ -99,6 +103,22 @@ try {
   assert.deepEqual(detail.dispatchEnvelope?.runConfig.request, request);
   assertNormalizedRequestPreservesSubmission(detail.request, request);
 
+  await assert.rejects(
+    postPauseJob({ baseUrl }, created.jobId),
+    /postPauseJob: HTTP 501[\s\S]*supported/,
+  );
+  pauseFailClosed = 'HTTP 501';
+
+  const detailAfterPause = await getJobDetail({ baseUrl }, created.jobId);
+  assert.equal(detailAfterPause.status, 'queued');
+  assert.equal(detailAfterPause.dispatchEnvelope?.consumerOwner, 'leo-beam-sim');
+
+  await assert.rejects(
+    postResumeJob({ baseUrl }, created.jobId),
+    /postResumeJob: HTTP 501[\s\S]*supported/,
+  );
+  resumeFailClosed = 'HTTP 501';
+
   const cancelled = await postCancelJob({ baseUrl }, created.jobId);
   assert.equal(cancelled.jobId, created.jobId);
   assert.equal(cancelled.status, 'cancelled');
@@ -115,6 +135,8 @@ console.log(JSON.stringify({
   jobId: created.jobId,
   dispatchSchema: created.dispatch?.schema,
   detailSubmissionSchema,
+  pauseFailClosed,
+  resumeFailClosed,
   cancelled: cancelledStatus,
   deleted: deleteMessage,
 }, null, 2));

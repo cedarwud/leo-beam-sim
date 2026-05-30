@@ -8,15 +8,15 @@ export function computePollIntervalMs(activeJobCount: number): number {
 }
 
 export function countActiveJobs(jobs: readonly TrainingJobSummary[]): number {
-  return jobs.filter(j => j.status === 'queued' || j.status === 'running').length;
+  return jobs.filter(j => isActiveStatus(j.status)).length;
 }
 
 export function isActiveStatus(status: TrainingJobSummary['status']): boolean {
-  return status === 'queued' || status === 'running';
+  return status === 'queued' || status === 'running' || status === 'paused';
 }
 
 export function isDoneStatus(status: TrainingJobSummary['status']): boolean {
-  return status === 'done';
+  return status === 'done' || status === 'completed';
 }
 
 export function formatRunningFor(elapsedMs: number): string {

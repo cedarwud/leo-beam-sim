@@ -101,7 +101,8 @@ A request to run a single MODQN training session with a specific
 hyperparameter set. A job has:
 
 - `jobId`: ULID, server-assigned.
-- `status`: one of `queued`, `running`, `done`, `failed`, `cancelled`.
+- `status`: current persisted values are `queued`, `running`, `done`,
+  `failed`, `cancelled`, and `expired`.
 - `submittedAtMs`, `startedAtMs?`, `finishedAtMs?`.
 - `hyperparams`: the validated subset of CLI overrides the user submitted.
 - `trainerSubcommand`: which trainer was invoked (`baseline` /
@@ -113,6 +114,17 @@ hyperparameter set. A job has:
   `artifacts/user-trained/<jobId>/`, set when `done` and the bundle was
   successfully written.
 - `errorMessage?`: short string when `status === 'failed'`.
+
+Lifecycle compatibility note:
+
+- `done` is the producer's current persisted completion spelling.
+  `completed` is only a consumer compatibility alias for `done`; this slice
+  does not migrate old DBs or rewrite rows.
+- `deleted` is response-only for `DELETE /jobs/<id>`. The producer hard-deletes
+  the row, so later `GET /jobs/<id>` returns 404 instead of a persisted
+  `deleted` row.
+- `paused` is reserved for a future checkpoint/signal design. The producer must
+  not emit or persist `paused` until real pause/resume semantics exist.
 
 ### 3.2 User-Trained Bundle
 
@@ -421,7 +433,10 @@ Errors:
 
 ### 6.2 `GET /jobs`
 
-Query params: `?status=queued|running|done|failed|cancelled&limit=50`.
+Query params:
+`?status=queued|running|done|completed|failed|cancelled|expired|paused|deleted&limit=50`.
+`completed` is normalized to `done`; `paused` and `deleted` are fail-closed
+compatibility filters that currently return an empty list.
 
 Response 200:
 
@@ -459,9 +474,25 @@ and `evaluation/summary.json` here. Path traversal protection: reject
 filenames containing `..`, absolute paths, or paths that resolve outside
 the artifact dir.
 
-### 6.5 `POST /jobs/<id>/cancel` (optional, future)
+### 6.5 `POST /jobs/<id>/cancel`
 
-Out of scope for the first cut.
+Cancels `queued` or `running` jobs. The producer marks the row `cancelled`
+and, when a PID is known, sends a termination signal to the subprocess group.
+Terminal rows (`done`, `failed`, `cancelled`, `expired`) are idempotent and
+return the current status without changing truth/provenance fields.
+
+### 6.6 `DELETE /jobs/<id>`
+
+Hard-deletes the SQLite row and artifact directory. Response 200 includes
+`{"status":"deleted"}`. The producer does not persist a `deleted` row.
+
+### 6.7 `POST /jobs/<id>/pause` and `POST /jobs/<id>/resume`
+
+These endpoints are intentionally fail-closed in the current contract. For an
+existing job they return `501 Not Implemented` with `supported:false`, the
+current status, and the lifecycle compatibility contract. They must not mutate
+the row, signal a subprocess, infer checkpoint truth, or let the consumer
+pretend pause/resume is supported.
 
 ## 7. Database Schema
 
@@ -517,7 +548,15 @@ proceeding if `SELECT COUNT(*) WHERE status = 'running' = 0`.
 // src/modqn/training-trigger/types.ts
 export interface TrainingJob {
   readonly jobId: string;
-  readonly status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled' | 'expired';
+  readonly status:
+    | 'queued'
+    | 'running'
+    | 'paused'
+    | 'done'
+    | 'completed'
+    | 'failed'
+    | 'cancelled'
+    | 'expired';
   readonly submittedAtMs: number;
   readonly finishedAtMs?: number;
   readonly trainerSubcommand: 'baseline' | 'ee-modqn' | 'multi-catfish';
