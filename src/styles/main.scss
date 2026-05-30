@@ -1429,6 +1429,19 @@ canvas {
     }
   }
 
+  &[data-testid="jobs-panel-cancel-job"],
+  &[data-testid="jobs-panel-delete-job"] {
+    border: 1px solid rgba(255, 107, 107, 0.45);
+    background: rgba(255, 107, 107, 0.12);
+    color: #ff6b6b;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 107, 107, 0.22);
+      border-color: rgba(255, 107, 107, 0.6);
+      color: #ffffff;
+    }
+  }
+
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
@@ -1662,6 +1675,18 @@ canvas {
   &:disabled {
     opacity: 0.36;
     cursor: not-allowed;
+  }
+}
+
+.artifact-picker__delete-btn {
+  border: 1px solid rgba(255, 107, 107, 0.45) !important;
+  background: rgba(255, 107, 107, 0.12) !important;
+  color: #ff6b6b !important;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 107, 107, 0.22) !important;
+    border-color: rgba(255, 107, 107, 0.6) !important;
+    color: #ffffff !important;
   }
 }
 

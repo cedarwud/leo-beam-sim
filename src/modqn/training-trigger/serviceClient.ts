@@ -151,3 +151,29 @@ export function artifactUrl(
   const suffix = encodedPath.length > 0 ? `/${encodedPath}` : '';
   return `${normalizedBaseUrl(config.baseUrl)}/artifacts/${encodeURIComponent(jobId)}${suffix}`;
 }
+
+export async function postCancelJob(
+  config: ServiceClientConfig,
+  jobId: string,
+): Promise<{ jobId: string; status: 'cancelled'; message: string }> {
+  const response = await fetch(`${normalizedBaseUrl(config.baseUrl)}/jobs/${encodeURIComponent(jobId)}/cancel`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`postCancelJob: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function deleteJob(
+  config: ServiceClientConfig,
+  jobId: string,
+): Promise<{ jobId: string; status?: 'deleted'; message: string }> {
+  const response = await fetch(`${normalizedBaseUrl(config.baseUrl)}/jobs/${encodeURIComponent(jobId)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`deleteJob: HTTP ${response.status}`);
+  }
+  return response.json();
+}

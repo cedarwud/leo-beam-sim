@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { AppExperienceMode } from '../appMode';
 import { readTrainingServiceBaseUrl } from '../../modqn/training-trigger/baseUrl';
-import { getJobDetail, getJobs } from '../../modqn/training-trigger/serviceClient';
+import { getJobDetail, getJobs, deleteJob } from '../../modqn/training-trigger/serviceClient';
 import { fetchTrainingServiceManifest } from '../../modqn/training-trigger/artifactManifest';
 import {
   readSubmittedJobIds,
+  removeSubmittedJobId,
   type SubmittedJobRecord,
 } from '../../modqn/training-trigger/submittedJobs';
 import { shortJobId } from '../../modqn/training-trigger/jobsPolling';
@@ -139,6 +140,7 @@ export function ArtifactPicker({
   const [userFilter, setUserFilter] = useState<'all' | string>('all');
   const cancelledRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [refreshCount, setRefreshCount] = useState(0);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -167,7 +169,7 @@ export function ArtifactPicker({
       cancelledRef.current = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [enabled]);
+  }, [enabled, refreshCount]);
 
   useEffect(() => {
     if (!enabled || doneJobs.length === 0) return;
@@ -226,6 +228,16 @@ export function ArtifactPicker({
   const handleLoad = useCallback((jobId: string) => {
     onLoadEntry(jobId);
   }, [onLoadEntry]);
+
+  const handleDeleteJob = useCallback(async (jobId: string) => {
+    try {
+      await deleteJob({ baseUrl: readTrainingServiceBaseUrl() }, jobId);
+    } catch {
+      // ignore
+    }
+    removeSubmittedJobId(jobId);
+    setRefreshCount(c => c + 1);
+  }, []);
 
   if (!enabled) return null;
 
@@ -423,14 +435,26 @@ export function ArtifactPicker({
                       submitted {formatTimestamp(record.submittedAtMs)}
                     </div>
                     <div className="artifact-picker__summary">{record.hyperparamSummary}</div>
-                    <button
-                    type="button"
-                    data-testid="artifact-picker-load"
-                    disabled={replayUnavailable}
-                    onClick={() => handleLoad(record.jobId)}
-                  >
-                      Load into scene
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                      <button
+                        type="button"
+                        style={{ flex: 2, marginTop: 0 }}
+                        data-testid="artifact-picker-load"
+                        disabled={replayUnavailable}
+                        onClick={() => handleLoad(record.jobId)}
+                      >
+                        Load into scene
+                      </button>
+                      <button
+                        type="button"
+                        className="artifact-picker__delete-btn"
+                        style={{ flex: 1, marginTop: 0 }}
+                        data-testid="artifact-picker-delete"
+                        onClick={() => { void handleDeleteJob(record.jobId); }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 );
               })}

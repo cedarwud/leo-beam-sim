@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { AppExperienceMode } from '../appMode';
 import { readTrainingServiceBaseUrl } from '../../modqn/training-trigger/baseUrl';
-import { getBatch, getJobDetail, getJobs, jobStreamUrl } from '../../modqn/training-trigger/serviceClient';
+import { getBatch, getJobDetail, getJobs, jobStreamUrl, postCancelJob, deleteJob } from '../../modqn/training-trigger/serviceClient';
 import {
   readSubmittedJobIds,
+  removeSubmittedJobId,
   type SubmittedJobRecord,
 } from '../../modqn/training-trigger/submittedJobs';
 import {
@@ -158,6 +159,8 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const activeCountRef = useRef(0);
 
+  const [refreshCount, setRefreshCount] = useState(0);
+
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
@@ -209,7 +212,7 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [enabled]);
+  }, [enabled, refreshCount]);
 
   const handleRefreshDetail = useCallback(async (jobId: string) => {
     try {
@@ -218,6 +221,25 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
     } catch {
       // ignore - keep previous detail
     }
+  }, []);
+
+  const handleCancelJob = useCallback(async (jobId: string) => {
+    try {
+      await postCancelJob({ baseUrl: readTrainingServiceBaseUrl() }, jobId);
+      setRefreshCount(c => c + 1);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleDeleteJob = useCallback(async (jobId: string) => {
+    try {
+      await deleteJob({ baseUrl: readTrainingServiceBaseUrl() }, jobId);
+    } catch {
+      // ignore
+    }
+    removeSubmittedJobId(jobId);
+    setRefreshCount(c => c + 1);
   }, []);
 
   const handleRefreshBatch = useCallback(async (batchId: string) => {
@@ -428,13 +450,24 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
                     scalar {formatMetric(streamEvent.metrics.scalarReward)} · r1 {formatMetric(streamEvent.metrics.r1Mean)} · ho {formatMetric(streamEvent.metrics.totalHandovers)}
                   </div>
                 ) : null}
-                <button
-                  type="button"
-                  data-testid="jobs-panel-refresh-detail"
-                  onClick={() => { void handleRefreshDetail(job.jobId); }}
-                >
-                  Refresh detail
-                </button>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    style={{ flex: 1 }}
+                    data-testid="jobs-panel-refresh-detail"
+                    onClick={() => { void handleRefreshDetail(job.jobId); }}
+                  >
+                    Refresh detail
+                  </button>
+                  <button
+                    type="button"
+                    style={{ flex: 1 }}
+                    data-testid="jobs-panel-cancel-job"
+                    onClick={() => { void handleCancelJob(job.jobId); }}
+                  >
+                    Cancel job
+                  </button>
+                </div>
                 {stdoutTail ? (
                   <pre className="leo-jobs-panel__stdout">{stdoutTail}</pre>
                 ) : null}
@@ -463,15 +496,26 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
               <div className="leo-jobs-panel__meta">
                 {job.arm ?? 'legacy'}{job.batchId ? ` · batch ${shortJobId(job.batchId)}` : ''}
               </div>
-              <button
-                type="button"
-                data-testid="jobs-panel-load-into-scene"
-                disabled={onLoadIntoScene === undefined}
-                title={onLoadIntoScene === undefined ? 'Wired in PR-θ' : undefined}
-                onClick={() => { onLoadIntoScene?.(job.jobId); }}
-              >
-                Load into scene
-              </button>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  style={{ flex: 2 }}
+                  data-testid="jobs-panel-load-into-scene"
+                  disabled={onLoadIntoScene === undefined}
+                  title={onLoadIntoScene === undefined ? 'Wired in PR-θ' : undefined}
+                  onClick={() => { onLoadIntoScene?.(job.jobId); }}
+                >
+                  Load into scene
+                </button>
+                <button
+                  type="button"
+                  style={{ flex: 1 }}
+                  data-testid="jobs-panel-delete-job"
+                  onClick={() => { void handleDeleteJob(job.jobId); }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </section>
@@ -500,6 +544,13 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
               ) : null}
               <div className="leo-jobs-panel__summary">{record.hyperparamSummary}</div>
               <div className="leo-jobs-panel__note">Backend no longer has this job</div>
+              <button
+                type="button"
+                data-testid="jobs-panel-delete-job"
+                onClick={() => { void handleDeleteJob(record.jobId); }}
+              >
+                Delete record
+              </button>
             </div>
           ))}
         </section>

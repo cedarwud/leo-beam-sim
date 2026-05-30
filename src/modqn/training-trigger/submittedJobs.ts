@@ -32,6 +32,17 @@ export function appendSubmittedJobId(record: SubmittedJobRecord): void {
   }
 }
 
+export function removeSubmittedJobId(jobId: string): void {
+  if (typeof window === 'undefined') return;
+  const existing = readSubmittedJobIds();
+  const next = existing.filter(r => r.jobId !== jobId);
+  try {
+    window.localStorage.setItem(SUBMITTED_JOB_IDS_KEY, JSON.stringify(next));
+  } catch {
+    // best-effort persistence
+  }
+}
+
 function isValidRecord(value: unknown): value is SubmittedJobRecord {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
