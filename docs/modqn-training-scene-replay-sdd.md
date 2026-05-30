@@ -101,6 +101,26 @@ booleans. If a producer chooses to extend `visual-showcase-v1`, validation
 must land in `ntn-sim-core` first; `leo-beam-sim` only adds fail-closed
 consumer checks.
 
+The current consumer coverage inventory lives in
+`src/modqn/training-scene-trace/inventory.ts`. It compares the contract
+against the fields available today from:
+
+- `phase-03a-replay-bundle`: focused-row replay proof; enough for selected
+  serving, previous serving, masks, rewards, and optional policy diagnostics,
+  but not a scene-complete training trace;
+- `user-trained-manifest`: user-trained claim boundary, job identity,
+  seed/config/objective context, and artifact pointers, but not per-step
+  replay truth;
+- `visual-showcase-v1`: strongest current scene source, with provenance,
+  truth ownership, timebase, entities, per-frame samples, decisions, metrics,
+  and diagnostics, but still no active/next beam schedule or per-step
+  handover penalty attribution unless the producer adds those fields.
+
+The inventory is deliberately conservative: `selectedServing`,
+`previousServing`, `actionValidityMask`, and `decisionActionValidityMask` may
+cover decision context, but never cover `step.activeBeamSchedule` or
+`step.nextBeamSchedule`.
+
 ### 1. Run And Provenance
 
 Required:
@@ -327,6 +347,10 @@ Static validators should enforce:
 - no frontend code derives beam hopping from serving identity or validity masks.
 - the typed consumer registry keeps all proof/comparison training-trace
   requirements mapped to producer-owned paths or canonical source gaps.
+- the current coverage inventory keeps `phase-03a-replay-bundle`,
+  user-trained manifest, and `visual-showcase-v1` coverage explicit, with
+  active/next beam schedule still reported as source gaps until a producer
+  exports scheduler truth.
 
 Browser smoke should verify:
 
