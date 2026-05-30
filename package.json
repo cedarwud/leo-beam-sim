@@ -120,6 +120,7 @@
     "validate:modqn:handover-story-layer": "node --import tsx/esm scripts/validate-modqn-handover-story-layer.ts",
     "validate:modqn:training-scene-source-gaps": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps.ts",
     "validate:modqn:training-scene-source-gaps:browser": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps-browser.ts",
+    "validate:modqn:training-scene-artifact-target": "node --import tsx/esm scripts/validate-modqn-training-scene-artifact-target.ts",
     "validate:modqn:training-scene-trace-contract": "node --import tsx/esm scripts/validate-modqn-training-scene-trace-contract.ts",
     "validate:modqn:training-scene-trace-inventory": "node --import tsx/esm scripts/validate-modqn-training-scene-trace-inventory.ts",
     "validate:architecture:boundaries": "node --import tsx/esm scripts/validate-architecture-boundaries.ts",

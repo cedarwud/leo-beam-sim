@@ -101,6 +101,13 @@ booleans. If a producer chooses to extend `visual-showcase-v1`, validation
 must land in `ntn-sim-core` first; `leo-beam-sim` only adds fail-closed
 consumer checks.
 
+ADR-002 selects a dedicated producer trace target:
+`modqn-training-scene-trace-v1`. `visual-showcase-v1` remains the
+display/offline replay artifact. A validated training-scene trace may later
+derive a `visual-showcase-v1` window, but the reverse direction must not be
+used to infer training-run truth. The typed target decision lives in
+`src/modqn/training-scene-trace/artifactTarget.ts`.
+
 The current consumer coverage inventory lives in
 `src/modqn/training-scene-trace/inventory.ts`. It compares the contract
 against the fields available today from:
