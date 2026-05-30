@@ -463,6 +463,26 @@ Focused validation:
 - `npm run validate:phase-b:jobs-panel`
 - `npm run validate:phase-b:artifact-picker`
 
+Optional cross-repo producer smoke, when `/home/u24/papers/modqn-paper-reproduction`
+is available and its virtualenv is installed:
+
+```bash
+cd /home/u24/papers/modqn-paper-reproduction
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  MODQN_SERVICE_DB=/tmp/leo-producer-dispatch-smoke.sqlite \
+  MODQN_SERVICE_ARTIFACTS=/tmp/leo-producer-dispatch-artifacts \
+  MODQN_SERVICE_PORT=8766 \
+  .venv/bin/python -m modqn_training_service.api
+
+cd /home/u24/papers/project/leo-beam-sim
+PRODUCER_BASE_URL=http://127.0.0.1:8766 npm run smoke:modqn:producer-dispatch
+```
+
+This smoke verifies the leo dispatch envelope is accepted by the producer,
+listed with `submissionSchema`, readable through `GET /jobs/{id}`, and cleaned
+up through cancel/delete. It does not start training because `MODQN_SERVICE_DB`
+disables the producer worker.
+
 ### 11.5 2026-05-27 Artifact Claim / Truth Tightening
 
 The artifact picker now treats the service manifest and `run_metadata.json`
