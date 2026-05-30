@@ -88,6 +88,7 @@ export function ModqnReplayCuePanel({
     () => sourceGaps ?? createCurrentModqnReplayProofSourceGaps(),
     [sourceGaps],
   );
+  const showReplaySourceGaps = proofViewportActive && replaySourceGaps.length > 0;
 
   if (appMode !== 'modqn-demo') return null;
 
@@ -185,30 +186,32 @@ export function ModqnReplayCuePanel({
         <span>{visualState.selectionSource}</span>
         <span>{visualState.sourceOwner}</span>
         <span>{visualState.geometrySource}</span>
-        <span>{`source gaps ${replaySourceGaps.length}`}</span>
+        {proofViewportActive ? <span>{`source gaps ${replaySourceGaps.length}`}</span> : null}
       </div>
 
-      <section
-        className="leo-modqn-replay-panel__source-gaps"
-        data-testid="modqn-replay-source-gap-list"
-        data-source-gap-count={replaySourceGaps.length}
-        aria-label="MODQN replay source gaps"
-      >
-        <div className="leo-modqn-replay-panel__source-gaps-title">Source gaps</div>
-        {replaySourceGaps.map(gap => (
-          <div
-            key={`${gap.field}:${gap.surface}`}
-            className="leo-modqn-replay-panel__source-gap"
-            data-testid="modqn-replay-source-gap-item"
-            data-source-gap-field={gap.field}
-            data-source-gap-policy={gap.policy}
-            data-source-gap-claim-impact={gap.claimImpact}
-          >
-            <strong>{sourceGapLabel(gap)}</strong>
-            <span>{gap.note}</span>
-          </div>
-        ))}
-      </section>
+      {showReplaySourceGaps ? (
+        <section
+          className="leo-modqn-replay-panel__source-gaps"
+          data-testid="modqn-replay-source-gap-list"
+          data-source-gap-count={replaySourceGaps.length}
+          aria-label="MODQN replay source gaps"
+        >
+          <div className="leo-modqn-replay-panel__source-gaps-title">Source gaps</div>
+          {replaySourceGaps.map(gap => (
+            <div
+              key={`${gap.field}:${gap.surface}`}
+              className="leo-modqn-replay-panel__source-gap"
+              data-testid="modqn-replay-source-gap-item"
+              data-source-gap-field={gap.field}
+              data-source-gap-policy={gap.policy}
+              data-source-gap-claim-impact={gap.claimImpact}
+            >
+              <strong>{sourceGapLabel(gap)}</strong>
+              <span>{gap.note}</span>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       <div className="leo-modqn-replay-panel__audit" aria-label="MODQN truth-level audit">
         {visualState.truthAudit.levels.map(level => (

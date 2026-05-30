@@ -119,6 +119,7 @@
     "validate:frontend:scene-lane-governance": "node --import tsx/esm scripts/validate-frontend-scene-lane-governance.ts",
     "validate:modqn:handover-story-layer": "node --import tsx/esm scripts/validate-modqn-handover-story-layer.ts",
     "validate:modqn:training-scene-source-gaps": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps.ts",
+    "validate:modqn:training-scene-source-gaps:browser": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps-browser.ts",
     "validate:architecture:boundaries": "node --import tsx/esm scripts/validate-architecture-boundaries.ts",
     "validate:modqn:render-isolation": "node --import tsx/esm scripts/validate-modqn-render-isolation.ts",
     "validate:phase-h:s1-live-sim-beams": "node --import tsx/esm scripts/validate-phase-h-s1-live-sim-beams.ts",

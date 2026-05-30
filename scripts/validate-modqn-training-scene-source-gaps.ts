@@ -132,6 +132,10 @@ assert.ok(
   'MODQN replay cue panel consumes the canonical source-gap model',
 );
 assert.ok(
+  replayCuePanel.includes('const showReplaySourceGaps = proofViewportActive && replaySourceGaps.length > 0'),
+  'MODQN replay cue panel gates source-gap list to the proof viewport lane',
+);
+assert.ok(
   replayCuePanel.includes('data-testid="modqn-replay-source-gap-list"'),
   'MODQN replay cue panel exposes a source-gap list test hook',
 );
@@ -160,6 +164,24 @@ assert.ok(
 assert.ok(
   evidenceTab.includes('data-source-gap-policy={gap.policy}'),
   'MODQN evidence tab exposes stable source-gap policy ids',
+);
+
+const browserValidator = read('scripts/validate-modqn-training-scene-source-gaps-browser.ts');
+assert.ok(
+  browserValidator.includes('.leo-app-shell[data-scene-lane="modqn-live-cell-preview"]'),
+  'browser validator checks live preview before proof activation',
+);
+assert.ok(
+  browserValidator.includes('.leo-app-shell[data-scene-lane="modqn-replay-proof"]'),
+  'browser validator checks proof lane after proof activation',
+);
+assert.ok(
+  browserValidator.includes('.leo-app-shell[data-scene-lane="artifact-replay"]'),
+  'browser validator checks artifact replay isolation',
+);
+assert.ok(
+  browserValidator.includes('data-handover-story-fake-beam-hopping'),
+  'browser validator checks fake beam hopping remains disabled',
 );
 
 const sdd = read('docs/modqn-training-scene-replay-sdd.md');
