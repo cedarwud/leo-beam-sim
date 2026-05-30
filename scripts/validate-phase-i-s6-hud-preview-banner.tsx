@@ -2,8 +2,9 @@
 // Phase I-S6 HUD preview banner + BeamHoppingToggle removal validator.
 //
 // Acceptance source:
-// docs/modqn-realistic-beam-geometry-cross-repo-sdd.md §8 Phase I s6 and
-// §11.3.6 supersession of Phase H BeamHoppingToggle.
+// docs/modqn-handover-story-layer-sdd.md §Rendering Policy and
+// docs/modqn-realistic-beam-geometry-cross-repo-sdd.md §11.3.6 supersession
+// of Phase H BeamHoppingToggle.
 
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -21,7 +22,7 @@ const BEAM_HOPPING_TOGGLE_PATH = path.join(
   REPO_ROOT,
   'src/ui/modqn-controls/BeamHoppingToggle.tsx',
 );
-const PREVIEW_TEXT = 'preview · realistic beam geometry · backend re-train pending';
+const PREVIEW_TEXT = 'preview · handover story · not baseline proof · backend re-train pending';
 
 const PASSED: string[] = [];
 

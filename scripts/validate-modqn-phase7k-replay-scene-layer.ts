@@ -457,8 +457,23 @@ function assertSceneBridgeSource(): void {
   );
   assertContains(
     appSource,
+    'modqnReplayProofRequested: modqnReplayProofRequestActive',
+    'App must resolve the scene lane before mounting replay scene proof',
+  );
+  assertContains(
+    appSource,
+    'shouldRenderModqnReplayScene(sceneLane)',
+    'App must gate replay scene proof by scene lane',
+  );
+  assertContains(
+    appSource,
+    'showModqnReplayScene={showModqnReplayScene}',
+    'App must pass lane-gated replay proof state into MainScene',
+  );
+  assertNotContains(
+    appSource,
     "showModqnReplayScene={appMode === 'modqn-demo'}",
-    'App must mount replay scene layer in MODQN mode',
+    'App must not mount replay scene proof from broad MODQN mode alone',
   );
   assertContains(
     mainSceneSource,
@@ -526,9 +541,9 @@ function assertSceneBridgeSource(): void {
     'MODQN replay should publish source-gap count for browser smoke',
   );
   assertContains(
-    mainSceneSource,
-    "const showLiveSatelliteMarkers = sceneFrame.sceneSource === 'live-sim';",
-    'MODQN replay must not display the live orbit satellite marker as producer truth (Phase H §4.2: gate now distinguishes live-sim vs artifact-replay)',
+    readRepoFile('src/scene/sceneLaneRenderPlan.ts'),
+    "input.sceneLane === 'modqn-replay-proof'",
+    'MODQN replay proof has an explicit scene lane before it can own the viewport',
   );
   assertContains(
     mainSceneSource,

@@ -9,14 +9,15 @@ import {
   type AppExperienceMode,
   type ProfileByMode,
 } from './appExperienceMode';
+import type { SceneLane } from './sceneLane';
 import { profileList } from '../profiles';
 import type { Profile } from '../profiles/types';
 import type { PresentationMode } from '../scene/types';
 
 export const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 
-export type LeftSidebarTab = 'objective' | 'signal' | 'handover' | 'training' | 'jobs' | 'replay';
-export type RightSidebarTab = 'modqn' | 'live';
+export type LeftSidebarTab = 'objective' | 'signal' | 'handover' | 'training' | 'jobs' | 'replay' | 'artifact';
+export type RightSidebarTab = 'modqn' | 'live' | 'artifact';
 
 export interface AppSidebarTabItem<T extends string> {
   key: T;
@@ -44,6 +45,14 @@ const MODQN_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
   LEFT_SIDEBAR_TABS[4],
 ];
 
+const MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
+  LEFT_SIDEBAR_TABS[5],
+];
+
+const ARTIFACT_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
+  { key: 'artifact', label: 'Artifact replay', description: 'producer frame' },
+];
+
 const RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [
   { key: 'live', label: 'Live status', description: 'current scene state' },
   { key: 'modqn', label: 'MODQN evidence', description: 'artifact proof' },
@@ -54,6 +63,14 @@ const SINR_RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [
 ];
 
 const MODQN_RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = RIGHT_SIDEBAR_TABS;
+
+const MODQN_REPLAY_PROOF_RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [
+  RIGHT_SIDEBAR_TABS[1],
+];
+
+const ARTIFACT_RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [
+  { key: 'artifact', label: 'Artifact truth', description: 'producer status' },
+];
 
 export interface InitialRuntimeState {
   readonly appMode: AppExperienceMode;
@@ -98,6 +115,25 @@ export function getDefaultLeftSidebarTabForMode(mode: RuntimeHandoverMode): Left
   return mode === 'sinr-offset' ? 'signal' : 'replay';
 }
 
+export function getLeftSidebarTabsForSceneLane(
+  lane: SceneLane,
+  mode: RuntimeHandoverMode,
+): readonly AppSidebarTabItem<LeftSidebarTab>[] {
+  if (lane === 'artifact-replay') return ARTIFACT_LEFT_SIDEBAR_TABS;
+  if (lane === 'modqn-replay-proof') return MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS;
+  if (lane === 'modqn-live-cell-preview') return MODQN_LEFT_SIDEBAR_TABS;
+  return getLeftSidebarTabsForMode(mode);
+}
+
+export function getDefaultLeftSidebarTabForSceneLane(
+  lane: SceneLane,
+  mode: RuntimeHandoverMode,
+): LeftSidebarTab {
+  if (lane === 'artifact-replay') return 'artifact';
+  if (lane === 'modqn-replay-proof' || lane === 'modqn-live-cell-preview') return 'replay';
+  return getDefaultLeftSidebarTabForMode(mode);
+}
+
 export function getRightSidebarTabsForMode(
   mode: RuntimeHandoverMode,
 ): readonly AppSidebarTabItem<RightSidebarTab>[] {
@@ -108,6 +144,25 @@ export function getRightSidebarTabsForMode(
 
 export function getDefaultRightSidebarTabForMode(_mode: RuntimeHandoverMode): RightSidebarTab {
   return 'live';
+}
+
+export function getRightSidebarTabsForSceneLane(
+  lane: SceneLane,
+  mode: RuntimeHandoverMode,
+): readonly AppSidebarTabItem<RightSidebarTab>[] {
+  if (lane === 'artifact-replay') return ARTIFACT_RIGHT_SIDEBAR_TABS;
+  if (lane === 'modqn-replay-proof') return MODQN_REPLAY_PROOF_RIGHT_SIDEBAR_TABS;
+  if (lane === 'modqn-live-cell-preview') return SINR_RIGHT_SIDEBAR_TABS;
+  return getRightSidebarTabsForMode(mode);
+}
+
+export function getDefaultRightSidebarTabForSceneLane(
+  lane: SceneLane,
+  mode: RuntimeHandoverMode,
+): RightSidebarTab {
+  if (lane === 'artifact-replay') return 'artifact';
+  if (lane === 'modqn-replay-proof') return 'modqn';
+  return getDefaultRightSidebarTabForMode(mode);
 }
 
 function clampOmegaComponent(value: unknown, fallback: number): number {

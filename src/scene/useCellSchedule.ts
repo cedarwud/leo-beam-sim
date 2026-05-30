@@ -57,11 +57,14 @@ export interface CellScheduleViz {
   readonly slotIndex: number;
   readonly slot: CellScheduleSlot;
   readonly previousSlot: CellScheduleSlot;
+  readonly nextSlot: CellScheduleSlot;
   readonly placements: readonly CellWorldPlacement[];
   /** Map cellId -> assignment for the current slot (active cells only). */
   readonly assignmentByCellId: ReadonlyMap<number, CellAssignment>;
   /** Map cellId -> assignment for the previous slot (active cells only). */
   readonly previousAssignmentByCellId: ReadonlyMap<number, CellAssignment>;
+  /** Map cellId -> assignment for the next slot (active cells only). */
+  readonly nextAssignmentByCellId: ReadonlyMap<number, CellAssignment>;
   readonly cellReassignments: readonly CellReassignment[];
   /** Resolved serving-count cap L used by this schedule. */
   readonly servingCount: number;
@@ -117,6 +120,7 @@ export function useCellSchedule(input: UseCellScheduleInput): CellScheduleViz {
   const slotSec = resolveSlotSec(input.slotSec);
   const slotIndex = resolveSlotIndex(input.simTimeSec, slotSec);
   const previousSlotIndex = Math.max(0, slotIndex - 1);
+  const nextSlotIndex = slotIndex + 1;
   const layout = useMemo(
     () => buildCellLayout({
       centerLatDeg: input.centerLatDeg,
@@ -150,6 +154,7 @@ export function useCellSchedule(input: UseCellScheduleInput): CellScheduleViz {
       servingCount,
       input.worldUnitsPerKm,
       layout,
+      nextSlotIndex,
       previousSlotIndex,
       satelliteKey,
       slotIndex,
@@ -173,7 +178,8 @@ function computeCellScheduleVizFromLayout(input: ComputeCellScheduleVizFromLayou
   if (selection.satellites.length === 0) {
     const slot = emptyCellScheduleSlot(input.layout, input.slotIndex);
     const previousSlot = emptyCellScheduleSlot(input.layout, Math.max(0, input.slotIndex - 1));
-    return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, placements, selection);
+    const nextSlot = emptyCellScheduleSlot(input.layout, input.slotIndex + 1);
+    return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, nextSlot, placements, selection);
   }
 
   const schedulerConfig = {
@@ -184,10 +190,12 @@ function computeCellScheduleVizFromLayout(input: ComputeCellScheduleVizFromLayou
     maxActivePerSlot: PAPER_ACTIVE_BEAMS_PER_SLOT,
   };
   const previousSlotIndex = Math.max(0, input.slotIndex - 1);
+  const nextSlotIndex = input.slotIndex + 1;
   const slot = computeSlotSchedule(schedulerConfig, input.slotIndex);
   const previousSlot = computeSlotSchedule(schedulerConfig, previousSlotIndex);
+  const nextSlot = computeSlotSchedule(schedulerConfig, nextSlotIndex);
 
-  return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, placements, selection);
+  return buildVizResult(input.layout, input.slotIndex, slot, previousSlot, nextSlot, placements, selection);
 }
 
 function buildVizResult(
@@ -195,20 +203,24 @@ function buildVizResult(
   slotIndex: number,
   slot: CellScheduleSlot,
   previousSlot: CellScheduleSlot,
+  nextSlot: CellScheduleSlot,
   placements: readonly CellWorldPlacement[],
   selection: Pick<SchedulerSatelliteSelection, 'servingCount' | 'visibleCount'>,
 ): CellScheduleViz {
   const assignmentByCellId = assignmentMap(slot);
   const previousAssignmentByCellId = assignmentMap(previousSlot);
+  const nextAssignmentByCellId = assignmentMap(nextSlot);
 
   return {
     layout,
     slotIndex,
     slot,
     previousSlot,
+    nextSlot,
     placements,
     assignmentByCellId,
     previousAssignmentByCellId,
+    nextAssignmentByCellId,
     cellReassignments: computeCellReassignments(placements, assignmentByCellId, previousAssignmentByCellId),
     servingCount: selection.servingCount,
     visibleCount: selection.visibleCount,

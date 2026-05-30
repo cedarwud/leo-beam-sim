@@ -1,4 +1,5 @@
 import { UI_CLASSES } from '../constants/uiTokens';
+import type { SceneLane } from '../app/sceneLane';
 import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
 import { UI_MODES, isUiMode, type UiMode } from './uiMode';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
@@ -38,6 +39,7 @@ interface ControlBarProps {
 
   // P2b Display-filter & focus UE controls
   sceneSource?: 'live-sim' | 'artifact-replay';
+  sceneLane?: SceneLane;
   liveUeCount?: number;
   ueDisplayCount?: number;
   maxUeCount?: number;
@@ -101,6 +103,7 @@ export function ControlBar({
   onToggleAutoSlow,
   onHandoverModeChange,
   sceneSource = 'live-sim',
+  sceneLane = sceneSource === 'artifact-replay' ? 'artifact-replay' : 'sinr-live',
   liveUeCount = 1,
   ueDisplayCount = 100,
   maxUeCount = 100,
@@ -109,9 +112,12 @@ export function ControlBar({
   ueIds = [],
   onElevatedUeIdChange,
 }: ControlBarProps) {
-  const sceneSuffix = autoSlowApplied
+  const isArtifactReplay = sceneLane === 'artifact-replay' || sceneSource === 'artifact-replay';
+  const showSinrLiveControls = sceneLane === 'sinr-live';
+  const liveAutoSlowActive = showSinrLiveControls && autoSlowActive;
+  const sceneSuffix = showSinrLiveControls && autoSlowApplied
     ? ' (HO Slow)'
-    : autoSlowActive
+    : liveAutoSlowActive
       ? ' (HO Slow Off)'
       : '';
   return (
@@ -125,38 +131,57 @@ export function ControlBar({
         {paused ? 'Play' : 'Pause'}
       </button>
 
-      {/* Handover mode selector. MODQN ω changes are applied inside replay. */}
-      <div
-        className="leo-control-bar__handover-mode-group"
-        role="group"
-        aria-label="Handover mode"
-        data-testid="handover-mode-control"
-      >
-        {HANDOVER_MODE_OPTIONS.map(option => {
-          const isSelected = handoverMode === option.mode;
-          const isDisabled = option.disabledReason !== undefined;
-          return (
-            <button
-              key={option.mode}
-              className={`${UI_CLASSES.button} leo-control-bar__handover-mode-button`}
-              type="button"
-              aria-label={`Set handover mode to ${option.label}${isDisabled ? ` (${option.disabledReason})` : ''}`}
-              aria-pressed={isSelected}
-              aria-disabled={isDisabled}
-              data-testid={`handover-mode-${option.mode}`}
-              title={isDisabled ? option.disabledReason : undefined}
-              disabled={isDisabled}
-              onClick={() => {
-                if (!isDisabled && onHandoverModeChange) {
-                  onHandoverModeChange(option.mode);
-                }
-              }}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
+      {isArtifactReplay ? (
+        <div
+          className="leo-control-bar__handover-mode-group"
+          role="group"
+          aria-label="Artifact replay source; live handover mode selector is disabled"
+          data-testid="handover-mode-control"
+          data-scene-source="artifact-replay"
+        >
+          <span
+            className="leo-control-bar__ue-filter-readonly"
+            aria-label="Artifact replay is read-only; handover mode comes from the artifact"
+            data-testid="artifact-replay-handover-status"
+          >
+            Artifact Replay: read-only HO
+          </span>
+        </div>
+      ) : (
+        /* Handover mode selector. MODQN ω changes are applied inside replay. */
+        <div
+          className="leo-control-bar__handover-mode-group"
+          role="group"
+          aria-label="Handover mode"
+          data-testid="handover-mode-control"
+          data-scene-source="live-sim"
+        >
+          {HANDOVER_MODE_OPTIONS.map(option => {
+            const isSelected = handoverMode === option.mode;
+            const isDisabled = option.disabledReason !== undefined;
+            return (
+              <button
+                key={option.mode}
+                className={`${UI_CLASSES.button} leo-control-bar__handover-mode-button`}
+                type="button"
+                aria-label={`Set handover mode to ${option.label}${isDisabled ? ` (${option.disabledReason})` : ''}`}
+                aria-pressed={isSelected}
+                aria-disabled={isDisabled}
+                data-testid={`handover-mode-${option.mode}`}
+                title={isDisabled ? option.disabledReason : undefined}
+                disabled={isDisabled}
+                onClick={() => {
+                  if (!isDisabled && onHandoverModeChange) {
+                    onHandoverModeChange(option.mode);
+                  }
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <label className="leo-control-bar__field-row">
         Mode:
@@ -177,94 +202,98 @@ export function ControlBar({
         </select>
       </label>
 
-      <div
-        className="leo-control-bar__density-group"
-        role="group"
-        aria-label="Beam density"
-        data-testid="beam-density-control"
-      >
-        {DENSITY_OPTIONS.map(option => {
-          const selected = beamDensity === option.density;
-          return (
-            <button
-              key={option.density}
-              className={`${UI_CLASSES.button} leo-control-bar__density-button`}
-              type="button"
-              aria-label={`Set beam density to ${option.label}`}
-              aria-pressed={selected}
-              data-testid={`beam-density-${option.label}`}
-              onClick={() => onBeamDensityChange(option.density)}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <label
-        className="leo-control-bar__toggle"
-        title="Show or hide beam information blocks in the scene"
-      >
-        <input
-          className={UI_CLASSES.checkbox}
-          type="checkbox"
-          aria-label="Show beam information blocks"
-          data-testid="beam-info-toggle"
-          checked={beamCalloutsEnabled}
-          onChange={onToggleBeamCallouts}
-        />
-        Beam Info
-      </label>
-
-      <div
-        className="leo-control-bar__camera-group"
-        role="group"
-        aria-label="Camera presets"
-        data-testid="camera-preset-control"
-      >
-        {CAMERA_PRESETS.map(option => (
-          <button
-            key={option.preset}
-            className={`${UI_CLASSES.button} leo-control-bar__camera-button`}
-            type="button"
-            aria-label={`Set camera preset to ${option.label}`}
-            data-testid={`camera-preset-${option.preset}`}
-            onClick={() => onCameraPresetSelect(option.preset)}
+      {showSinrLiveControls && (
+        <>
+          <div
+            className="leo-control-bar__density-group"
+            role="group"
+            aria-label="Beam density"
+            data-testid="beam-density-control"
           >
-            {option.label}
-          </button>
-        ))}
-      </div>
+            {DENSITY_OPTIONS.map(option => {
+              const selected = beamDensity === option.density;
+              return (
+                <button
+                  key={option.density}
+                  className={`${UI_CLASSES.button} leo-control-bar__density-button`}
+                  type="button"
+                  aria-label={`Set beam density to ${option.label}`}
+                  aria-pressed={selected}
+                  data-testid={`beam-density-${option.label}`}
+                  onClick={() => onBeamDensityChange(option.density)}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
 
-      <label
-        className="leo-control-bar__toggle"
-        title="Highlight serving beam path with cinematic spotlight"
-      >
-        <input
-          className={UI_CLASSES.checkbox}
-          type="checkbox"
-          aria-label="Spotlight mode: highlight serving beam path"
-          checked={cinematicMode === 'spotlight'}
-          onChange={event => {
-            onCinematicModeChange(event.target.checked ? 'spotlight' : 'off');
-          }}
-        />
-        Spotlight
-      </label>
+          <label
+            className="leo-control-bar__toggle"
+            title="Show or hide beam information blocks in the scene"
+          >
+            <input
+              className={UI_CLASSES.checkbox}
+              type="checkbox"
+              aria-label="Show beam information blocks"
+              data-testid="beam-info-toggle"
+              checked={beamCalloutsEnabled}
+              onChange={onToggleBeamCallouts}
+            />
+            Beam Info
+          </label>
 
-      <label
-        className="leo-control-bar__toggle"
-        title="Auto-slow simulation rate during handover events"
-      >
-        <input
-          className={UI_CLASSES.checkbox}
-          type="checkbox"
-          aria-label="Auto slow on handover"
-          checked={autoSlowEnabled}
-          onChange={onToggleAutoSlow}
-        />
-        HO Slow
-      </label>
+          <div
+            className="leo-control-bar__camera-group"
+            role="group"
+            aria-label="Camera presets"
+            data-testid="camera-preset-control"
+          >
+            {CAMERA_PRESETS.map(option => (
+              <button
+                key={option.preset}
+                className={`${UI_CLASSES.button} leo-control-bar__camera-button`}
+                type="button"
+                aria-label={`Set camera preset to ${option.label}`}
+                data-testid={`camera-preset-${option.preset}`}
+                onClick={() => onCameraPresetSelect(option.preset)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <label
+            className="leo-control-bar__toggle"
+            title="Highlight serving beam path with cinematic spotlight"
+          >
+            <input
+              className={UI_CLASSES.checkbox}
+              type="checkbox"
+              aria-label="Spotlight mode: highlight serving beam path"
+              checked={cinematicMode === 'spotlight'}
+              onChange={event => {
+                onCinematicModeChange(event.target.checked ? 'spotlight' : 'off');
+              }}
+            />
+            Spotlight
+          </label>
+
+          <label
+            className="leo-control-bar__toggle"
+            title="Auto-slow simulation rate during handover events"
+          >
+            <input
+              className={UI_CLASSES.checkbox}
+              type="checkbox"
+              aria-label="Auto slow on handover"
+              checked={autoSlowEnabled}
+              onChange={onToggleAutoSlow}
+            />
+            HO Slow
+          </label>
+        </>
+      )}
 
       <label className="leo-control-bar__field-row">
         Speed:
@@ -281,7 +310,7 @@ export function ControlBar({
         <span aria-hidden="true">{speed}x</span>
       </label>
 
-      {sceneSource === 'artifact-replay' ? (
+      {isArtifactReplay ? (
         <>
           <label className="leo-control-bar__field-row">
             Active UEs:
@@ -319,7 +348,7 @@ export function ControlBar({
 
       <div
         className="leo-control-bar__scene-readout"
-        data-warning={autoSlowActive ? 'true' : 'false'}
+        data-warning={liveAutoSlowActive ? 'true' : 'false'}
       >
         Scene: {effectiveSpeed.toFixed(1)}x{sceneSuffix}
       </div>

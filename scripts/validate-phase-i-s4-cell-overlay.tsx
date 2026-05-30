@@ -211,13 +211,15 @@ expect(
 );
 
 const mainSceneSource = readFileSync(path.join(REPO_ROOT, 'src/scene/MainScene.tsx'), 'utf8');
+const renderPlanSource = readFileSync(path.join(REPO_ROOT, 'src/scene/sceneLaneRenderPlan.ts'), 'utf8');
 expect(
-  mainSceneSource.includes("runtime.appMode === 'modqn-demo' && sceneFrame.sceneSource === 'live-sim'"),
-  'MainScene gates CellOverlay to modqn-demo live-sim only',
+  mainSceneSource.includes('resolveSceneLaneRenderPlan({')
+    && renderPlanSource.includes("input.sceneLane === 'modqn-live-cell-preview' && isLiveScene"),
+  'Scene lane render plan gates CellOverlay to modqn-live-cell-preview live-sim only',
 );
 expect(
-  mainSceneSource.includes('const showEarthFixedCells = !showCellOverlay'),
-  'MainScene hides legacy EarthFixedCells only in the CellOverlay lane',
+  renderPlanSource.includes('showEarthFixedCells: showLiveSceneEffects'),
+  'Scene lane render plan hides legacy EarthFixedCells outside live scene effects',
 );
 expect(
   mainSceneSource.includes('dataset.cellOverlaySlotIndex')

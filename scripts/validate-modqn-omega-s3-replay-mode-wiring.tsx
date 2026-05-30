@@ -422,24 +422,41 @@ console.log('\n(k) Evidence / telemetry mode gating');
     'App.tsx enters decision-overlay-on-live-sinr without confirmation or automatic profile switching',
   );
   assert(
-    appSrc.includes('getLeftSidebarTabsForMode')
+    appSrc.includes('getLeftSidebarTabsForSceneLane')
     && appRuntimeModelSrc.includes('SINR_LEFT_SIDEBAR_TABS')
-    && appRuntimeModelSrc.includes('MODQN_LEFT_SIDEBAR_TABS'),
-    'App runtime model shows mode-specific left sidebar controls instead of concurrent SINR/MODQN tabs',
+    && appRuntimeModelSrc.includes('MODQN_LEFT_SIDEBAR_TABS')
+    && appRuntimeModelSrc.includes('MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS')
+    && appRuntimeModelSrc.includes('ARTIFACT_LEFT_SIDEBAR_TABS')
+    && appRuntimeModelSrc.includes("if (lane === 'artifact-replay') return ARTIFACT_LEFT_SIDEBAR_TABS;")
+    && appRuntimeModelSrc.includes("if (lane === 'modqn-replay-proof') return MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS;")
+    && appRuntimeModelSrc.includes("if (lane === 'modqn-replay-proof' || lane === 'modqn-live-cell-preview') return 'replay';"),
+    'App runtime model shows lane-specific left sidebar controls: proof=replay only, artifact=artifact only',
   );
   assert(
-    appSrc.includes('getRightSidebarTabsForMode')
+    appSrc.includes('getRightSidebarTabsForSceneLane')
     && appRuntimeModelSrc.includes('SINR_RIGHT_SIDEBAR_TABS')
-    && appRuntimeModelSrc.includes('MODQN_RIGHT_SIDEBAR_TABS'),
-    'App runtime model hides MODQN evidence tab from the right sidebar outside MODQN replay mode',
+    && appRuntimeModelSrc.includes('MODQN_REPLAY_PROOF_RIGHT_SIDEBAR_TABS')
+    && appRuntimeModelSrc.includes('ARTIFACT_RIGHT_SIDEBAR_TABS')
+    && appRuntimeModelSrc.includes("if (lane === 'artifact-replay') return ARTIFACT_RIGHT_SIDEBAR_TABS;")
+    && appRuntimeModelSrc.includes("if (lane === 'modqn-replay-proof') return MODQN_REPLAY_PROOF_RIGHT_SIDEBAR_TABS;")
+    && appRuntimeModelSrc.includes("if (lane === 'modqn-live-cell-preview') return SINR_RIGHT_SIDEBAR_TABS;")
+    && appRuntimeModelSrc.includes("if (lane === 'artifact-replay') return 'artifact';")
+    && appRuntimeModelSrc.includes("if (lane === 'modqn-replay-proof') return 'modqn';"),
+    'App runtime model keeps right sidebar isolated: SINR/cell-preview=live, proof=MODQN evidence, artifact=artifact truth',
   );
   assert(
     appSrc.includes('handoverMode={handoverMode}'),
     'App.tsx passes handoverMode into live status and MODQN evidence panels',
   );
   assert(
-    appSrc.includes("showModqnReplayScene={appMode === 'modqn-demo'}"),
-    'App.tsx mounts the display-only replay scene layer only in MODQN mode',
+    appSrc.includes('resolveSceneLane({')
+    && appSrc.includes('appMode,')
+    && appSrc.includes('sceneSource,')
+    && appSrc.includes('modqnReplayProofRequested: modqnReplayProofRequestActive')
+    && appSrc.includes('shouldRenderModqnReplayScene(sceneLane)')
+    && appSrc.includes('showModqnReplayScene={showModqnReplayScene}')
+    && !appSrc.includes("showModqnReplayScene={appMode === 'modqn-demo'}"),
+    'App.tsx mounts the display-only replay scene layer only through the explicit scene lane gate',
   );
   assert(
     evidenceSrc.includes('modqn-evidence-mode-status')
@@ -454,13 +471,39 @@ console.log('\n(k) Evidence / telemetry mode gating');
     'ModqnEvidenceTab renders applied omega decision trace without embedding the live KPI strip',
   );
   assert(
+    evidenceSrc.includes('modqn-evidence-provenance-status')
+    && evidenceSrc.includes('data-provenance-status={provenanceStatus}')
+    && evidenceSrc.includes('paper-faithful replay evidence')
+    && evidenceSrc.includes('user-trained replay evidence')
+    && evidenceSrc.includes('fallback replay evidence')
+    && evidenceSrc.includes('provenance unavailable')
+    && evidenceSrc.includes('resolveEvidenceProvenanceStatus')
+    && evidenceSrc.includes('getEvidenceProvenanceCopy'),
+    'ModqnEvidenceTab explicitly labels paper-faithful, user-trained, fallback, and unavailable replay evidence provenance',
+  );
+  assert(
+    evidenceSrc.includes('Live SINR remains the reference surface while MODQN replay decisions are displayed through the decision-overlay path')
+    && evidenceSrc.includes('does not rewrite producer payloads or live truth ownership')
+    && evidenceSrc.includes('replay/evidence context only, not the live decision source')
+    && !evidenceSrc.includes('Replay override active')
+    && !evidenceSrc.includes('replay override path'),
+    'ModqnEvidenceTab decision-overlay copy keeps replay/evidence boundaries and avoids override ownership wording',
+  );
+  assert(
     infoSrc.includes('live-status-handover-mode')
     && infoSrc.includes('HANDOVER MODE')
-    && infoSrc.includes('Loaded from pre-trained offline network (100% paper params)')
-    && infoSrc.includes('MODQN policy serving link')
+    && infoSrc.includes('Live SINR geometry/reference with MODQN replay decision overlay')
+    && infoSrc.includes('MODQN overlay serving link')
     && infoSrc.includes('live SINR reference')
     && infoSrc.includes('live Δ SINR'),
     'InfoPanel exposes mode-aware Live status wording for active handover mode',
+  );
+  assert(
+    !infoSrc.includes('100% paper params')
+    && !infoSrc.includes('pre-trained offline network')
+    && !infoSrc.includes('pretrained')
+    && !infoSrc.includes('paper-faithful replay'),
+    'InfoPanel decision-overlay copy has no hard-coded paper/pre-trained provenance claim',
   );
   assert(
     replayLayerSrc.includes('useReplaySceneTelemetry(visualState, showBoard)'),

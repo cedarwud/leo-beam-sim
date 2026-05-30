@@ -433,17 +433,18 @@ export function DiagnosticsDrawer({
           <DrawerSection
             testId="diagnostics-drawer-rescalarize-fallback"
             tone={UI_TOKENS.color.semantic.info}
-            title="MODQN RE-SCALARIZATION"
+            title="LIVE-ENGINE RE-SCALARIZATION FALLBACK"
           >
             <div className="leo-drawer-section__rows">
-              <DebugRow label="Mode" value="decision-overlay-on-live-sinr" />
+              <DebugRow label="Mode" value="live SINR reference + MODQN replay overlay" />
               <DebugRow
                 label="Fallback ticks"
                 value={String(rescalarizeFallbackCount)}
               />
               <div className="leo-drawer-section__note" style={{ fontSize: 11, opacity: 0.7 }}>
-                Ticks where user ω preferred an out-of-top-K beam
-                and the system defaulted to the recorded top-K winner.
+                Live-engine diagnostic only: counts re-scalarization fallback ticks
+                when the overlay cannot map the user ω preference to the replay top-K set.
+                This is not producer or replay-bundle diagnostics.
               </div>
             </div>
           </DrawerSection>

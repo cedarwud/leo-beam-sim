@@ -3,6 +3,7 @@ import { useThree } from '@react-three/fiber';
 import type { ModqnReplaySceneVisualState } from '../modqnReplaySceneVisuals';
 import { REPLAY_CANVAS_ATTRIBUTES } from './constants';
 import { formatPoint } from './geometry';
+import { replayProofBeamHoppingSourceGap } from '../handoverStoryModel';
 
 function removeReplayCanvasAttributes(canvas: HTMLCanvasElement): void {
   for (const attribute of REPLAY_CANVAS_ATTRIBUTES) {
@@ -51,6 +52,18 @@ export function useReplaySceneTelemetry(
       canvas.setAttribute('data-modqn-replay-slot-decision-row-count', String(visualState.slotDecisionRowCount));
       canvas.setAttribute('data-modqn-replay-truth-level', visualState.truthAudit.highestSceneLevel);
       canvas.setAttribute('data-modqn-replay-source-gap-count', String(visualState.truthAudit.sourceGapCount));
+      canvas.setAttribute('data-handover-story-layer', 'modqn-replay-source-backed');
+      canvas.setAttribute('data-handover-story-visible', '1');
+      canvas.setAttribute('data-handover-story-source', 'modqn-replay-proof');
+      const beamHoppingSourceGap = visualState.truthAudit.levels.some(
+        level => level.level === 'T4' && level.status !== 'available',
+      );
+      if (beamHoppingSourceGap) {
+        canvas.setAttribute('data-handover-story-source-gap', replayProofBeamHoppingSourceGap());
+      } else {
+        canvas.removeAttribute('data-handover-story-source-gap');
+      }
+      canvas.setAttribute('data-handover-story-fake-beam-hopping', '0');
     } else {
       for (const attribute of REPLAY_CANVAS_ATTRIBUTES) {
         if (

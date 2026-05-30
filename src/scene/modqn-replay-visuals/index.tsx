@@ -513,6 +513,10 @@ function ReplayBoard({
   readonly visualState: ModqnReplaySceneVisualState;
   readonly reducedMotion: boolean;
 }) {
+  const hasBeamHoppingSourceGap = visualState.truthAudit.levels.some(
+    level => level.level === 'T4' && level.status !== 'available',
+  );
+
   return (
     <group
       name="modqn-replay-scene-layer"
@@ -536,6 +540,19 @@ function ReplayBoard({
       />
       <ReplaySwitchArc visualState={visualState} reducedMotion={reducedMotion} />
       <EndpointLabels visualState={visualState} />
+      {hasBeamHoppingSourceGap ? (
+        <Text
+          position={[0, DISC_Y_WORLD + 24, -BOARD_DEPTH_WORLD / 2 + 17]}
+          fontSize={6.6}
+          color="#fef3c7"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.3}
+          outlineColor="#020617"
+        >
+          {'beam hopping schedule: source gap'}
+        </Text>
+      ) : null}
       <Text
         position={[0, DISC_Y_WORLD + 36, BOARD_DEPTH_WORLD / 2 - 13]}
         fontSize={8.5}

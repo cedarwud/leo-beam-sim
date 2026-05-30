@@ -114,10 +114,11 @@ import {
   type ProfileByMode,
 } from './app/appExperienceMode';
 import {
+  getDefaultLeftSidebarTabForSceneLane,
   getDefaultLeftSidebarTabForMode,
-  getDefaultRightSidebarTabForMode,
-  getLeftSidebarTabsForMode,
-  getRightSidebarTabsForMode,
+  getDefaultRightSidebarTabForSceneLane,
+  getLeftSidebarTabsForSceneLane,
+  getRightSidebarTabsForSceneLane,
   isKnownProfileId,
   normalizeRuntimeOmega,
   readInitialRuntimeState,
@@ -142,6 +143,10 @@ import {
   readSceneVisualScaleOverrides,
   type SceneSourceMode,
 } from './app/appPersistence';
+import {
+  resolveSceneLane,
+  shouldRenderModqnReplayScene,
+} from './app/sceneLane';
 import { LIVE_SIM_CLAIM_BOUNDARY_INPUT } from './app/liveClaimBoundary';
 import {
   createReplayPanelSimState,
@@ -215,6 +220,21 @@ export function App() {
   const [handoverMode, setHandoverModeRaw] = useState<RuntimeHandoverMode>(
     initialRuntime.handoverMode,
   );
+  const [modqnReplayProofRequested, setModqnReplayProofRequested] = useState(false);
+  const canToggleModqnReplayProof =
+    sceneSource === 'live-sim'
+    && appMode === 'modqn-demo'
+    && handoverMode === 'decision-overlay-on-live-sinr';
+  const modqnReplayProofRequestActive = canToggleModqnReplayProof && modqnReplayProofRequested;
+  const sceneLane = useMemo(
+    () => resolveSceneLane({
+      appMode,
+      sceneSource,
+      modqnReplayProofRequested: modqnReplayProofRequestActive,
+    }),
+    [appMode, modqnReplayProofRequestActive, sceneSource],
+  );
+  const showModqnReplayScene = shouldRenderModqnReplayScene(sceneLane);
   // omegaActive snapshot — owned by App so it can be threaded into ModqnHandoverModeContext
   // and read by useSimulation (inside Canvas). Starts at paper-faithful defaults.
   const [omegaActiveForContext, setOmegaActiveForContext] = useState<RuntimeOmegaState>(
@@ -256,19 +276,19 @@ export function App() {
       ?? selectedTrainingServiceManifest?.trainingTruth?.seedTriplet
     : undefined;
   const visibleLeftSidebarTabs = useMemo(
-    () => getLeftSidebarTabsForMode(handoverMode),
-    [handoverMode],
+    () => getLeftSidebarTabsForSceneLane(sceneLane, handoverMode),
+    [handoverMode, sceneLane],
   );
   const activeLeftSidebarTab = visibleLeftSidebarTabs.some(tab => tab.key === leftSidebarTab)
     ? leftSidebarTab
-    : getDefaultLeftSidebarTabForMode(handoverMode);
+    : getDefaultLeftSidebarTabForSceneLane(sceneLane, handoverMode);
   const visibleRightSidebarTabs = useMemo(
-    () => getRightSidebarTabsForMode(handoverMode),
-    [handoverMode],
+    () => getRightSidebarTabsForSceneLane(sceneLane, handoverMode),
+    [handoverMode, sceneLane],
   );
   const activeRightSidebarTab = visibleRightSidebarTabs.some(tab => tab.key === rightSidebarTab)
     ? rightSidebarTab
-    : getDefaultRightSidebarTabForMode(handoverMode);
+    : getDefaultRightSidebarTabForSceneLane(sceneLane, handoverMode);
   const [beamDensityOverride, setBeamDensityOverride] = useState<BeamDensity | null>(null);
   const [beamCalloutsEnabled, setBeamCalloutsEnabled] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
@@ -766,6 +786,12 @@ export function App() {
   useEffect(() => subscribeToRuntimeViewport(setViewport), []);
 
   useEffect(() => {
+    if (!canToggleModqnReplayProof) {
+      setModqnReplayProofRequested(false);
+    }
+  }, [canToggleModqnReplayProof]);
+
+  useEffect(() => {
     persistSceneTopologyOverrides(sceneTopology);
   }, [sceneTopology]);
 
@@ -779,6 +805,8 @@ export function App() {
   // surface a banner and keep the typed-reference fallback so the demo still
   // renders. SDD §9.3 acceptance.
   useEffect(() => {
+    if (sceneSource === 'artifact-replay') return;
+
     let cancelled = false;
     fetchModqnReplayBundleEnvelope()
       .then(result => {
@@ -809,7 +837,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [sceneSource]);
 
   useEffect(() => {
     setModqnReplayVisualElapsedSec(0);
@@ -982,6 +1010,7 @@ export function App() {
       ues: processedUes,
     };
   }, [sceneSource, replaySceneFrame, processedUes]);
+  const shouldRenderMainScene = sceneSource !== 'artifact-replay' || activeSceneFrame !== undefined;
 
   // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
   // the producer-truth playback cursor. We never recompute SINR or handover
@@ -1031,12 +1060,13 @@ export function App() {
     <div
       data-ui-mode={uiMode}
       data-app-mode={appMode}
+      data-scene-lane={sceneLane}
       data-topology-overrides-active={hasTopologyOverrides ? 'true' : 'false'}
       data-visual-scale-overrides-active={hasVisualScaleOverrides ? 'true' : 'false'}
       data-visual-scale-key={sceneVisualScaleResetKey}
       className="leo-app-shell"
     >
-      {modqnReplayFetchError !== null && (
+      {sceneSource !== 'artifact-replay' && modqnReplayFetchError !== null && (
         <div
           className="leo-modqn-bundle-fetch-banner"
           role="alert"
@@ -1083,6 +1113,7 @@ export function App() {
         onToggleAutoSlow={playback.toggleAutoSlow}
         onHandoverModeChange={handleHandoverModeChange}
         sceneSource={sceneSource}
+        sceneLane={sceneLane}
         liveUeCount={runtime.ueCount ?? 1}
         ueDisplayCount={ueDisplayCount}
         maxUeCount={showcaseArtifact?.timeline[0]?.ues.length ?? 100}
@@ -1100,7 +1131,24 @@ export function App() {
             activeKey={activeLeftSidebarTab}
             onChange={setLeftSidebarTab}
           >
-            {activeLeftSidebarTab === 'signal' ? (
+            {activeLeftSidebarTab === 'artifact' ? (
+              <section
+                className="leo-sidebar-content-stack"
+                aria-label="Artifact replay source status"
+                data-testid="artifact-replay-sidebar"
+                data-artifact-loaded={showcaseArtifact ? 'true' : 'false'}
+                data-artifact-loading={showcaseLoading ? 'true' : 'false'}
+                data-artifact-frame-index={String(frameIndex)}
+              >
+                <div className="leo-replay-truth-summary" data-testid="artifact-replay-source-summary">
+                  <strong>{showcaseArtifact?.scenario.title ?? 'Artifact replay'}</strong>
+                  <span>{showcaseError ?? showcaseArtifact?.artifactId ?? 'loading visual-showcase-v1'}</span>
+                </div>
+                <div className="leo-replay-playback-status" data-testid="artifact-replay-playback-status">
+                  t={currentTimeSec.toFixed(1)}s / {showcaseArtifact?.scenario.durationSec.toFixed(1) ?? '0.0'}s
+                </div>
+              </section>
+            ) : activeLeftSidebarTab === 'signal' ? (
               <SignalTuningPanel
                 baseProfile={baseProfile}
                 tuning={signalTuning}
@@ -1124,6 +1172,10 @@ export function App() {
               <ModqnReplayCuePanel
                 appMode={appMode}
                 displayState={renderedModqnReplayDisplayState}
+                proofViewportActive={sceneLane === 'modqn-replay-proof'}
+                onProofViewportActiveChange={
+                  canToggleModqnReplayProof ? setModqnReplayProofRequested : undefined
+                }
               />
             ) : (
               <HandoverPolicyControls
@@ -1144,27 +1196,42 @@ export function App() {
           data-handover-criterion={
             handoverMode === 'decision-overlay-on-live-sinr' ? 'decision-overlay-on-live-sinr' : 'sinr-offset'
           }
+          data-scene-lane={sceneLane}
         >
-          <ModqnSceneHud
-            appMode={appMode}
-            simState={simState}
-            bundleProvenanceKind={bundleProvenanceKind}
-            sceneSource={sceneSource}
-          />
-          <MainScene
-            speed={playback.effectiveSpeed}
-            paused={playback.paused}
-            profile={effectiveProfile}
-            runtime={runtime}
-            visualScaleMultipliers={visualScaleMultipliers}
-            modqnReplayDisplayState={renderedModqnReplayDisplayState}
-            showModqnReplayScene={appMode === 'modqn-demo'}
-            onSimUpdate={handleSimUpdate}
-            sceneFrame={activeSceneFrame}
-          />
+          {sceneLane === 'modqn-live-cell-preview' && (
+            <ModqnSceneHud
+              appMode={appMode}
+              simState={simState}
+              bundleProvenanceKind={bundleProvenanceKind}
+              sceneSource={sceneSource}
+            />
+          )}
+          {shouldRenderMainScene ? (
+            <MainScene
+              speed={playback.effectiveSpeed}
+              paused={playback.paused}
+              profile={effectiveProfile}
+              runtime={runtime}
+              visualScaleMultipliers={visualScaleMultipliers}
+              modqnReplayDisplayState={renderedModqnReplayDisplayState}
+              showModqnReplayScene={showModqnReplayScene}
+              sceneLane={sceneLane}
+              onSimUpdate={handleSimUpdate}
+              sceneFrame={activeSceneFrame}
+            />
+          ) : (
+            <div
+              className="leo-scene-fail-closed"
+              data-testid="artifact-scene-fail-closed"
+              data-scene-lane={sceneLane}
+              data-artifact-loading={showcaseLoading ? 'true' : 'false'}
+            >
+              <strong>{showcaseError ?? 'Loading visual-showcase-v1 artifact'}</strong>
+            </div>
+          )}
         </main>
         <aside className="leo-shell-right" aria-label="Signal status panel slot">
-          <ServiceStatusBanner appMode={appMode} />
+          {sceneLane === 'modqn-live-cell-preview' && <ServiceStatusBanner appMode={appMode} />}
           <SidebarTabShell
             label="Simulation status sidebar"
             side="right"
@@ -1172,7 +1239,25 @@ export function App() {
             activeKey={activeRightSidebarTab}
             onChange={setRightSidebarTab}
           >
-            {activeRightSidebarTab === 'live' ? (
+            {activeRightSidebarTab === 'artifact' ? (
+              <section
+                className="leo-sidebar-content-stack"
+                aria-label="Artifact truth status"
+                data-testid="artifact-truth-sidebar"
+                data-artifact-loaded={showcaseArtifact ? 'true' : 'false'}
+              >
+                {activeSceneFrame ? (
+                  <ClaimBoundaryBanner
+                    frame={activeSceneFrame}
+                    bundleProvenanceKind={bundleProvenanceKind}
+                  />
+                ) : null}
+                <div className="leo-replay-truth-summary" data-testid="artifact-truth-source-summary">
+                  <strong>{showcaseArtifact?.scenario.truthMode ?? 'artifact truth'}</strong>
+                  <span>{showcaseArtifact?.provenance.validation.status ?? showcaseError ?? 'loading'}</span>
+                </div>
+              </section>
+            ) : activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
                 <ClaimBoundaryBanner
                   frame={

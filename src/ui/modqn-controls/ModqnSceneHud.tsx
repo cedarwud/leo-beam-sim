@@ -62,7 +62,7 @@ export function ModqnSceneHud({
         data-testid="modqn-scene-hud-preview-banner"
         data-preview-stage="phase-i"
       >
-        preview · realistic beam geometry · backend re-train pending
+        preview · handover story · not baseline proof · backend re-train pending
       </div>
       <dl className="leo-modqn-scene-hud__metrics">
         <div>

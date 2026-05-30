@@ -46,6 +46,7 @@ export function useSimStatePublisher({
   handoverResetKey,
   latchedBeamSinrByKeyRef,
   onSimUpdate,
+  enabled = true,
 }: {
   profile: Profile;
   sim: SimFrame;
@@ -55,6 +56,7 @@ export function useSimStatePublisher({
   handoverResetKey?: string;
   latchedBeamSinrByKeyRef: MutableRefObject<Map<string, number>>;
   onSimUpdate: (state: SimState) => void;
+  enabled?: boolean;
 }) {
   const latched = useLatchedSignals({
     signalResetKey,
@@ -72,6 +74,8 @@ export function useSimStatePublisher({
   }, [signalResetKey, handoverResetKey]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     const topoBySatId = new Map(sim.satellites.map(sat => [sat.id, sat.topo]));
     const pendingTargetSinrDb = sim.pendingTargetSinrDb;
     const liveServingSinrDb = resolveLatchedSinr(
@@ -410,5 +414,5 @@ export function useSimStatePublisher({
       lastUiUpdateAtRef.current = nowMs;
       onSimUpdate(nextState);
     }
-  }, [onSimUpdate, sim]);
+  }, [enabled, onSimUpdate, sim]);
 }

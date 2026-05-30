@@ -75,13 +75,13 @@ function validateRenderIsolationContracts(): void {
   );
   assertIncludes(
     mainScene,
-    "runtime.appMode === 'modqn-demo' ? 'sphere' : 'cylinder'",
-    'MainScene makes UE marker shape mode-gated',
+    'resolveSceneLaneUeMarkerShape(sceneLane)',
+    'MainScene makes UE marker shape scene-lane-gated',
   );
   assertIncludes(
     mainScene,
-    "runtime.appMode !== 'modqn-demo'",
-    'MainScene gates UAV out of MODQN mode',
+    "const showUav = sceneLane === 'sinr-live'",
+    'MainScene gates UAV to the SINR live lane',
   );
   assertIncludes(
     appRuntimeConfig,

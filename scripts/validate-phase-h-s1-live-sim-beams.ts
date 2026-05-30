@@ -43,25 +43,26 @@ function expectEqual<T>(actual: T, expected: T, label: string): void {
 
 function validateMainSceneGate(): void {
   const source = readSource('src/scene/MainScene.tsx');
+  const renderPlan = readSource('src/scene/sceneLaneRenderPlan.ts');
 
-  const showLiveBeamConesLine = matchLineContaining(source, 'const showLiveBeamCones =');
+  const showLiveBeamConesLine = matchLineContaining(renderPlan, 'const showLiveBeamCones =');
   expect(showLiveBeamConesLine !== null, 'MainScene declares showLiveBeamCones');
   expect(
-    showLiveBeamConesLine!.includes("sceneFrame.sceneSource === 'live-sim'"),
-    'H-S1: showLiveBeamCones gate uses sceneFrame.sceneSource === "live-sim"',
+    showLiveBeamConesLine!.includes('showSinrLiveViewport'),
+    'H-S1: showLiveBeamCones gate uses the SINR live viewport lane',
   );
   expect(
     !showLiveBeamConesLine!.includes("runtime.appMode !== 'modqn-demo'"),
     'H-S1: showLiveBeamCones no longer gates on runtime.appMode',
   );
 
-  const showLiveSatelliteMarkersLine = matchLineContaining(source, 'const showLiveSatelliteMarkers =');
+  const showLiveSatelliteMarkersLine = matchLineContaining(renderPlan, 'const showLiveSatelliteMarkers =');
   expect(showLiveSatelliteMarkersLine !== null, 'MainScene still declares showLiveSatelliteMarkers');
 
-  const showBeamCalloutsLine = matchLineContaining(source, 'const showBeamCallouts =');
+  const showBeamCalloutsLine = matchLineContaining(renderPlan, 'const showBeamCallouts =');
   expect(showBeamCalloutsLine !== null, 'MainScene still declares showBeamCallouts');
 
-  const showUavLine = matchLineContaining(source, 'const showUav =');
+  const showUavLine = matchLineContaining(renderPlan, 'showUav:');
   expect(showUavLine !== null, 'MainScene still declares showUav');
 
   assertIncludes(
@@ -141,7 +142,7 @@ function validateSceneSourceContract(): void {
 }
 
 function validateNoCrossSliceLeakage(): void {
-  const source = readSource('src/scene/MainScene.tsx');
+  const source = readSource('src/scene/sceneLaneRenderPlan.ts');
 
   const showLiveBeamConesLines = source
     .split('\n')
@@ -152,8 +153,8 @@ function validateNoCrossSliceLeakage(): void {
     'showLiveBeamCones is declared exactly once',
   );
   expect(
-    showLiveBeamConesLines[0].includes("sceneFrame.sceneSource === 'live-sim'"),
-    'showLiveBeamCones declaration is sceneSource-gated',
+    showLiveBeamConesLines[0].includes('showSinrLiveViewport'),
+    'showLiveBeamCones declaration is scene-lane-gated',
   );
 }
 

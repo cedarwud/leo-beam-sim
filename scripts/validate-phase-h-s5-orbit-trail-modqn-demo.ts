@@ -60,6 +60,7 @@ function validateBaseRuntimeUnchanged(): void {
 
 function validateMainSceneTrailGate(): void {
   const source = readSource('src/scene/MainScene.tsx');
+  const renderPlan = readSource('src/scene/sceneLaneRenderPlan.ts');
   expect(
     source.includes('showOrbitTrail'),
     'MainScene threads showOrbitTrail through effectsEnabled.orbitTrail',
@@ -69,12 +70,14 @@ function validateMainSceneTrailGate(): void {
     'MainScene threads showSpineParticles through effectsEnabled.spineParticles',
   );
   expect(
-    source.includes('runtime.effectsEnabled.orbitTrail'),
-    'MainScene reads runtime.effectsEnabled.orbitTrail',
+    source.includes('effectsEnabled: runtime.effectsEnabled')
+      && renderPlan.includes('input.effectsEnabled.orbitTrail'),
+    'Scene lane render plan reads runtime.effectsEnabled.orbitTrail',
   );
   expect(
-    source.includes('runtime.effectsEnabled.spineParticles'),
-    'MainScene reads runtime.effectsEnabled.spineParticles',
+    source.includes('effectsEnabled: runtime.effectsEnabled')
+      && renderPlan.includes('input.effectsEnabled.spineParticles'),
+    'Scene lane render plan reads runtime.effectsEnabled.spineParticles',
   );
 }
 

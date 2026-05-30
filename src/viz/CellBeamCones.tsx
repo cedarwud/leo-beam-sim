@@ -171,6 +171,10 @@ export function resolveCellBeamConeItems({
   });
 }
 
+export function resolveCellBeamConeRenderCount(input: Omit<CellBeamConesProps, 'visible'>): number {
+  return resolveCellBeamConeItems(input).length;
+}
+
 export function computeConeApexFromTransform(
   midpoint: THREE.Vector3,
   quaternion: THREE.Quaternion,

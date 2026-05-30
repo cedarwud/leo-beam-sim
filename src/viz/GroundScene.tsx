@@ -37,6 +37,8 @@ interface GroundSceneProps {
   readonly ueMarkerMultiplier?: number;
   readonly markerShape?: 'cylinder' | 'sphere';
   readonly ueTrailHistory?: UeTrailHistory;
+  readonly secondaryOpacity?: number;
+  readonly secondaryScale?: number;
 }
 
 const MARKER_HEIGHT = 10;
@@ -109,15 +111,19 @@ function SecondaryUeInstances({
   positions,
   ueMarkerMultiplier,
   markerShape,
+  opacity,
+  scale,
 }: {
   positions: ReadonlyArray<readonly [number, number, number]>;
   ueMarkerMultiplier: number;
   markerShape: 'cylinder' | 'sphere';
+  opacity: number;
+  scale: number;
 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
-  const markerRadius = MARKER_RADIUS * 0.45 * ueMarkerMultiplier;
-  const markerHeight = MARKER_HEIGHT * 0.7 * ueMarkerMultiplier;
+  const markerRadius = MARKER_RADIUS * 0.45 * ueMarkerMultiplier * scale;
+  const markerHeight = MARKER_HEIGHT * 0.7 * ueMarkerMultiplier * scale;
 
   useLayoutEffect(() => {
     if (!meshRef.current) return;
@@ -162,7 +168,7 @@ function SecondaryUeInstances({
         emissive={SECONDARY_EMISSIVE}
         emissiveIntensity={0.35}
         transparent
-        opacity={0.9}
+        opacity={opacity}
         blending={THREE.AdditiveBlending}
       />
     </instancedMesh>
@@ -174,6 +180,8 @@ export function GroundScene({
   ueMarkerMultiplier = 1.0,
   markerShape = 'cylinder',
   ueTrailHistory,
+  secondaryOpacity = 0.9,
+  secondaryScale = 1,
 }: GroundSceneProps) {
   const secondaryPositions = useMemo(
     () => ues.slice(1).map((u) => u.worldPos),
@@ -198,6 +206,8 @@ export function GroundScene({
         positions={secondaryPositions}
         ueMarkerMultiplier={ueMarkerMultiplier}
         markerShape={markerShape}
+        opacity={secondaryOpacity}
+        scale={secondaryScale}
       />
     </group>
   );

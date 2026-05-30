@@ -9,6 +9,13 @@ import {
 interface ModqnReplayCuePanelProps {
   readonly appMode: string;
   readonly displayState: ModqnReplayPlaybackDisplayState | null;
+  readonly proofViewportActive?: boolean;
+  readonly onProofViewportActiveChange?: (active: boolean) => void;
+}
+
+interface ModqnReplayProofViewportToggleProps {
+  readonly active: boolean;
+  readonly onActiveChange?: (active: boolean) => void;
 }
 
 function eventLabel(eventKind: string): string {
@@ -24,9 +31,37 @@ function roleTone(role: ModqnReplaySceneBeamRole): string {
   return 'inactive';
 }
 
+function ModqnReplayProofViewportToggle({
+  active,
+  onActiveChange,
+}: ModqnReplayProofViewportToggleProps): ReactElement {
+  const disabled = onActiveChange === undefined;
+  const label = active ? 'Hide proof from viewport' : 'Show proof in viewport';
+  const wiringLabel = 'Controller wiring required to change MODQN replay proof viewport';
+
+  return (
+    <div className="leo-modqn-replay-panel__audit" aria-label="MODQN replay proof viewport control">
+      <button
+        type="button"
+        className="leo-modqn-replay-panel__beam"
+        data-testid="modqn-replay-proof-viewport-toggle"
+        aria-pressed={active}
+        aria-label={disabled ? `${label}. ${wiringLabel}` : label}
+        title={disabled ? wiringLabel : label}
+        disabled={disabled}
+        onClick={() => onActiveChange?.(!active)}
+      >
+        {label}
+      </button>
+    </div>
+  );
+}
+
 export function ModqnReplayCuePanel({
   appMode,
   displayState,
+  proofViewportActive = false,
+  onProofViewportActiveChange,
 }: ModqnReplayCuePanelProps): ReactElement | null {
   const visualState = useMemo(
     () => deriveModqnReplaySceneVisualState(displayState),
@@ -34,6 +69,13 @@ export function ModqnReplayCuePanel({
   );
 
   if (appMode !== 'modqn-demo') return null;
+
+  const proofViewportToggle = (
+    <ModqnReplayProofViewportToggle
+      active={proofViewportActive}
+      onActiveChange={onProofViewportActiveChange}
+    />
+  );
 
   if (visualState === null || displayState === null) {
     return (
@@ -43,6 +85,7 @@ export function ModqnReplayCuePanel({
         data-testid="modqn-replay-cue-panel"
         data-replay-ready="0"
       >
+        {proofViewportToggle}
         <div className="leo-modqn-replay-panel__empty">Replay unavailable</div>
       </section>
     );
@@ -59,6 +102,8 @@ export function ModqnReplayCuePanel({
       data-selection-source={visualState.selectionSource}
       data-source-row={visualState.sourceRowNumber}
     >
+      {proofViewportToggle}
+
       <div className="leo-modqn-replay-panel__header">
         <span>{`Slot ${visualState.slotIndex}`}</span>
         <strong>{eventLabel(visualState.eventKind)}</strong>

@@ -94,12 +94,14 @@ function validateHudMount(): void {
 
 function validatePhaseHInvariantsPreserved(): void {
   const source = readSource('src/scene/MainScene.tsx');
+  const renderPlan = readSource('src/scene/sceneLaneRenderPlan.ts');
   expect(
-    source.includes("showLiveBeamCones = sceneFrame.sceneSource === 'live-sim'"),
+    renderPlan.includes('const showLiveBeamCones = showSinrLiveViewport;'),
     'H-S1 invariant preserved',
   );
   expect(
-    source.includes("showLiveSatelliteMarkers = sceneFrame.sceneSource === 'live-sim'"),
+    renderPlan.includes('const showLiveSatelliteMarkers =')
+      && renderPlan.includes('isLiveScene'),
     'H-S2 invariant preserved',
   );
   expect(

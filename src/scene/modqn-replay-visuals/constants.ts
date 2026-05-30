@@ -35,6 +35,8 @@ export const REPLAY_CANVAS_ATTRIBUTES = [
   'data-modqn-replay-slot-decision-row-count',
   'data-modqn-replay-truth-level',
   'data-modqn-replay-source-gap-count',
+  'data-handover-story-source-gap',
+  'data-handover-story-fake-beam-hopping',
 ] as const;
 
 export function roleLabel(role: ModqnReplaySceneBeamRole): string | null {

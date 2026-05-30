@@ -41,6 +41,14 @@ interface Props {
   readonly bundleProvenanceKind?: 'paper-faithful' | 'user-trained';
 }
 
+type BundleProvenanceKind = 'paper-faithful' | 'user-trained';
+type EvidenceProvenanceStatus = BundleProvenanceKind | 'fallback' | 'unavailable';
+
+interface EvidenceProvenanceCopy {
+  readonly label: string;
+  readonly detail: string;
+}
+
 function formatWeight(value: number): string {
   return value.toFixed(2);
 }
@@ -96,6 +104,42 @@ function getSelectionChanged(
 function getFallbackStatus(result: ReScalarizeResult | null): string {
   if (result === null) return 'no top-K diagnostics';
   return result.wasFallback ? 'top-1 fallback' : 'within top-K';
+}
+
+function resolveEvidenceProvenanceStatus(
+  snapshot: UseModqnHandoverState['bundleSidebarSnapshot'],
+  bundleProvenanceKind: BundleProvenanceKind | undefined,
+  fallbackStatus: string,
+): EvidenceProvenanceStatus {
+  if (snapshot === null) return 'unavailable';
+  if (fallbackStatus === 'no top-K diagnostics') return 'unavailable';
+  if (fallbackStatus.includes('fallback')) return 'fallback';
+  return bundleProvenanceKind ?? 'unavailable';
+}
+
+function getEvidenceProvenanceCopy(status: EvidenceProvenanceStatus): EvidenceProvenanceCopy {
+  if (status === 'paper-faithful') {
+    return {
+      label: 'paper-faithful replay evidence',
+      detail: 'Bundle manifest and decision trace are displayed as paper-faithful replay evidence. Live SINR remains the reference surface; this panel does not rewrite producer or live truth ownership.',
+    };
+  }
+  if (status === 'user-trained') {
+    return {
+      label: 'user-trained replay evidence',
+      detail: 'Bundle manifest and decision trace are displayed from a user-trained replay bundle. Treat this as replay/evidence context, not PAP-2024 baseline proof and not live truth ownership.',
+    };
+  }
+  if (status === 'fallback') {
+    return {
+      label: 'fallback replay evidence',
+      detail: 'Objective diagnostics are incomplete for this row, so the display falls back to the first producer top-K candidate. Producer payloads and live SINR truth remain unchanged.',
+    };
+  }
+  return {
+    label: 'provenance unavailable',
+    detail: 'No bundle diagnostics are available for this row yet. This tab remains evidence-only until a replay bundle and its diagnostics are loaded.',
+  };
 }
 
 interface DecisionTraceRow {
@@ -188,6 +232,12 @@ export function ModqnEvidenceTab({
       simState.servingSatId,
     ],
   );
+  const provenanceStatus = resolveEvidenceProvenanceStatus(
+    bundleSidebarSnapshot,
+    bundleProvenanceKind,
+    decisionTrace.fallbackStatus,
+  );
+  const provenanceCopy = getEvidenceProvenanceCopy(provenanceStatus);
 
   const manifestRows = useMemo(() => {
     if (bundleSidebarSnapshot === null) {
@@ -231,6 +281,23 @@ export function ModqnEvidenceTab({
         <span className="modqn-evidence__chip modqn-evidence__chip--user-trained" data-testid="modqn-evidence-user-trained-chip">user-trained</span>
       ) : null}
       <section
+        className="leo-modqn-evidence-provenance-status"
+        data-testid="modqn-evidence-provenance-status"
+        data-provenance-status={provenanceStatus}
+        aria-label="MODQN replay evidence provenance"
+      >
+        <div className="leo-modqn-objective-controls__title">Evidence provenance</div>
+        <span
+          className="modqn-evidence__chip"
+          data-testid="modqn-evidence-provenance-chip"
+        >
+          {provenanceCopy.label}
+        </span>
+        <p data-testid="modqn-evidence-provenance-copy">
+          {provenanceCopy.detail}
+        </p>
+      </section>
+      <section
         className="leo-modqn-evidence-mode-status"
         data-testid="modqn-evidence-mode-status"
         data-handover-mode={handoverMode}
@@ -238,12 +305,12 @@ export function ModqnEvidenceTab({
         aria-label="MODQN evidence mode status"
       >
         <div className="leo-modqn-objective-controls__title">
-          {modqnReplayActive ? 'Replay override active' : 'Reference evidence only'}
+          {modqnReplayActive ? 'Decision-overlay evidence active' : 'Reference evidence only'}
         </div>
         <p>
           {modqnReplayActive
-            ? 'The center scene is using MODQN replay-selected beam decisions through the replay override path.'
-            : `The center scene is using ${inactiveModeLabel}. Bundle manifest, producer baseline, and active ω are reference evidence, not the live decision source.`}
+            ? 'Live SINR remains the reference surface while MODQN replay decisions are displayed through the decision-overlay path; this does not rewrite producer payloads or live truth ownership.'
+            : `The center scene is using ${inactiveModeLabel}. Bundle manifest, producer baseline, and active ω are replay/evidence context only, not the live decision source.`}
         </p>
       </section>
 

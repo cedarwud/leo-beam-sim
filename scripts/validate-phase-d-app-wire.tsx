@@ -274,8 +274,8 @@ console.log('\n(h) Artifact manifest removal');
 console.log('\n(i) Startup Phase 7C useEffect');
 {
   assert(
-    /useEffect\(\(\)\s*=>\s*\{[\s\S]*fetchModqnReplayBundleEnvelope\(\)[\s\S]*\.then\(result\s*=>/.test(appSource),
-    'startup useEffect still calls fetchModqnReplayBundleEnvelope() with no args',
+    /useEffect\(\(\)\s*=>\s*\{[\s\S]*if \(sceneSource === 'artifact-replay'\) return;[\s\S]*fetchModqnReplayBundleEnvelope\(\)[\s\S]*\.then\(result\s*=>/.test(appSource),
+    'startup useEffect still calls fetchModqnReplayBundleEnvelope() with no args outside artifact replay',
   );
   assert(
     /fetchModqnReplayBundleEnvelope\(\)[\s\S]*setModqnReplayEnvelope\(result\.envelope\)/.test(appSource),

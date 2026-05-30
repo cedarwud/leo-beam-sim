@@ -114,17 +114,19 @@ function validateReplayPathFailClosed(): void {
 
 function validatePhaseHInvariantsPreserved(): void {
   const source = readSource('src/scene/MainScene.tsx');
+  const renderPlan = readSource('src/scene/sceneLaneRenderPlan.ts');
   expect(
-    source.includes("showLiveBeamCones = sceneFrame.sceneSource === 'live-sim'"),
-    'H-S1 invariant preserved: showLiveBeamCones sceneSource-gated',
+    renderPlan.includes('const showLiveBeamCones = showSinrLiveViewport;'),
+    'H-S1 invariant preserved: showLiveBeamCones lane-gated',
   );
   expect(
-    source.includes("showLiveSatelliteMarkers = sceneFrame.sceneSource === 'live-sim'"),
-    'H-S2 invariant preserved: showLiveSatelliteMarkers sceneSource-gated',
+    renderPlan.includes('const showLiveSatelliteMarkers =')
+      && renderPlan.includes('isLiveScene'),
+    'H-S2 invariant preserved: showLiveSatelliteMarkers requires live scene source',
   );
   expect(
-    source.includes("showBeamCallouts = runtime.beamCalloutsEnabled && sceneFrame.sceneSource === 'live-sim'"),
-    'H-S3 invariant preserved: showBeamCallouts sceneSource-gated',
+    renderPlan.includes('const showBeamCallouts = input.beamCalloutsEnabled && showLiveBeamCones;'),
+    'H-S3 invariant preserved: showBeamCallouts follows live beam cone gate',
   );
 }
 

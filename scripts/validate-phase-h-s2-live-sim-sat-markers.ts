@@ -27,44 +27,39 @@ function expectEqual<T>(actual: T, expected: T, label: string): void {
 
 function validateMainSceneGate(): void {
   const source = readSource('src/scene/MainScene.tsx');
+  const renderPlan = readSource('src/scene/sceneLaneRenderPlan.ts');
 
-  const liveSatLines = source
+  const liveSatLines = renderPlan
     .split('\n')
     .filter(line => line.includes('const showLiveSatelliteMarkers'));
   expectEqual(liveSatLines.length, 1, 'showLiveSatelliteMarkers is declared exactly once');
   expect(
-    liveSatLines[0].includes("sceneFrame.sceneSource === 'live-sim'"),
-    'H-S2: showLiveSatelliteMarkers gate uses sceneFrame.sceneSource === "live-sim"',
+    liveSatLines[0].includes('isLiveScene'),
+    'H-S2: showLiveSatelliteMarkers gate requires live scene source',
   );
   expect(
     !liveSatLines[0].includes("runtime.appMode !== 'modqn-demo'"),
     'H-S2: showLiveSatelliteMarkers no longer gates on runtime.appMode',
   );
 
-  const liveBeamLines = source
+  const liveBeamLines = renderPlan
     .split('\n')
     .filter(line => line.includes('const showLiveBeamCones'));
   expectEqual(liveBeamLines.length, 1, 'showLiveBeamCones is declared exactly once');
   expect(
-    liveBeamLines[0].includes("sceneFrame.sceneSource === 'live-sim'"),
-    'H-S2 carries H-S1 invariant: showLiveBeamCones sceneSource-gated',
+    liveBeamLines[0].includes('showSinrLiveViewport'),
+    'H-S2 carries H-S1 invariant: showLiveBeamCones lane-gated',
   );
 
-  const beamCalloutLines = source
+  const beamCalloutLines = renderPlan
     .split('\n')
     .filter(line => line.includes('const showBeamCallouts'));
   expectEqual(beamCalloutLines.length, 1, 'showBeamCallouts is declared exactly once');
 
-  const uavLines = source
-    .split('\n')
-    .filter(line => line.includes('const showUav'));
-  expect(uavLines.length >= 1, 'showUav declared (SceneContent + MainScene wrapper)');
-  for (const line of uavLines) {
-    expect(
-      line.includes("runtime.appMode !== 'modqn-demo'"),
-      'showUav declarations stay appMode-gated (out of Phase H scope)',
-    );
-  }
+  expect(
+    renderPlan.includes('showUav: showSinrLiveViewport'),
+    'showUav is gated to the SINR live viewport lane',
+  );
 
   expect(
     source.includes('viz.displaySats.map(sat => ('),

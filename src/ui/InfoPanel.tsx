@@ -43,11 +43,11 @@ interface LiveStatusModeCopy {
 function getLiveStatusModeCopy(mode: RuntimeHandoverMode): LiveStatusModeCopy {
   if (mode === 'decision-overlay-on-live-sinr') {
     return {
-      label: 'MODQN Replay Mode',
-      detail: 'Loaded from pre-trained offline network (100% paper params)',
-      duelBadge: 'MODQN Replay Path',
-      duelDetail: 'Serving link and beam follow the MODQN offline policy decision. Live SINR and elevation metrics are provided as reference.',
-      servingCaption: 'MODQN policy serving link',
+      label: 'MODQN Overlay Mode',
+      detail: 'Live SINR geometry/reference with MODQN replay decision overlay',
+      duelBadge: 'MODQN Decision Overlay',
+      duelDetail: 'Viewport uses live SINR geometry and metrics as reference while the serving beam displays the MODQN replay decision overlay.',
+      servingCaption: 'MODQN overlay serving link',
       pendingCaption: 'handover target',
       candidateCaption: 'live SINR reference',
       deltaLabel: 'live Δ SINR',

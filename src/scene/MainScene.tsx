@@ -28,6 +28,7 @@ import { sceneGeometryFromProfile } from './SceneGeometry';
 import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
 import { ModqnReplaySceneLayer } from './ModqnReplaySceneLayer';
+import { REPLAY_CANVAS_ATTRIBUTES } from './modqn-replay-visuals/constants';
 import { satelliteTint } from '../constants/beamRoleTokens';
 import {
   EarthFixedCells,
@@ -50,7 +51,8 @@ import { ServingGroundRipple } from '../viz/ServingGroundRipple';
 import { GroundScene } from '../viz/GroundScene';
 import { CellOverlay } from '../viz/CellOverlay';
 import { CellHandoverArcs } from '../viz/CellHandoverArcs';
-import { CellBeamCones } from '../viz/CellBeamCones';
+import { CellBeamCones, resolveCellBeamConeRenderCount } from '../viz/CellBeamCones';
+import { HandoverStoryLayer } from '../viz/HandoverStoryLayer';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import {
   NTPU_CONFIG,
@@ -66,12 +68,17 @@ import {
   CINEMATIC_EVENT_LIGHT_HEIGHT_WORLD,
   CINEMATIC_FOG_COLOR,
   CINEMATIC_FOG_DENSITY,
-  isSpotlightMode,
   resolveCinematicLightIntensity,
   resolveCinematicSpotlightTargets,
 } from './cinematicEffects';
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 import { FPSCounter } from './FPSCounter';
+import type { SceneLane } from '../app/sceneLane';
+import {
+  resolveSceneLaneRenderPlan,
+  resolveSceneLaneUeMarkerShape,
+} from './sceneLaneRenderPlan';
+import { deriveProfileHandoverStoryModel } from './handoverStoryModel';
 
 interface SceneContentProps {
   profile: Profile;
@@ -81,8 +88,16 @@ interface SceneContentProps {
   visualScaleMultipliers: SceneVisualScaleMultipliers;
   modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
   showModqnReplayScene: boolean;
+  sceneLane: SceneLane;
   onSimUpdate: (state: SimState) => void;
   sceneFrame?: NormalizedSceneFrame;
+}
+
+interface ArtifactSceneContentProps {
+  runtime: RuntimeConfig;
+  visualScaleMultipliers: SceneVisualScaleMultipliers;
+  sceneLane: SceneLane;
+  sceneFrame: NormalizedSceneFrame;
 }
 
 const SHOW_BEAMS = true;
@@ -133,6 +148,143 @@ function formatScenePosition(position: readonly [number, number, number] | undef
   return position ? position.map(value => value.toFixed(2)).join(',') : '';
 }
 
+function ArtifactSceneContent({
+  runtime,
+  visualScaleMultipliers,
+  sceneLane,
+  sceneFrame,
+}: ArtifactSceneContentProps) {
+  const camera = useThree(state => state.camera);
+  const gl = useThree(state => state.gl);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const sceneConfig = useMemo(() => (
+    runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
+  ), [runtime.appMode]);
+  const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
+  const visibleSatellites = useMemo(
+    () => sceneFrame.satellites.filter(satellite => satellite.visible),
+    [sceneFrame.satellites],
+  );
+
+  useEffect(() => {
+    const firstSatellite = visibleSatellites[0];
+    gl.domElement.dataset.visibleSatelliteCount = String(visibleSatellites.length);
+    gl.domElement.dataset.firstSatellitePosition = formatScenePosition(firstSatellite?.worldPos);
+    gl.domElement.dataset.servingSatelliteId = sceneFrame.metrics.servingSatelliteId;
+    gl.domElement.dataset.servingBeamId = sceneFrame.metrics.servingBeamId;
+    gl.domElement.dataset.beamCalloutsEnabled = '0';
+    gl.domElement.dataset.simTimeSec = sceneFrame.tSec.toFixed(2);
+    gl.domElement.dataset.appMode = runtime.appMode;
+    gl.domElement.dataset.sceneLaneSourceCompatible =
+      sceneLane === 'artifact-replay' && sceneFrame.sceneSource === 'artifact-replay' ? '1' : '0';
+    gl.domElement.dataset.liveSimulationEnabled = '0';
+    gl.domElement.dataset.ueMarkerShape = ueMarkerShape;
+    gl.domElement.dataset.uavVisible = '0';
+    gl.domElement.dataset.uePrimaryAnchorMode = runtime.uePrimaryAnchorMode ?? 'observer';
+    gl.domElement.dataset.firstUePosition = formatScenePosition(sceneFrame.ues[0]?.worldPos);
+    gl.domElement.dataset.visualSatelliteAltitude = String(sceneFrame.geometry.visualSatelliteAltitude ?? '');
+    gl.domElement.dataset.beamSatelliteCount = '0';
+    gl.domElement.dataset.sceneSource = sceneFrame.sceneSource;
+    gl.domElement.dataset.beamConeCount = '0';
+    gl.domElement.dataset.cellOverlaySlotIndex = '';
+    gl.domElement.dataset.cellOverlayActiveCount = '';
+    gl.domElement.dataset.cellOverlayIdleCount = '';
+    gl.domElement.dataset.cellOverlayCellCount = '';
+    gl.domElement.dataset.cellServingCount = '';
+    gl.domElement.dataset.cellVisibleCount = '';
+    gl.domElement.dataset.cellHoReassignmentCount = '';
+    gl.domElement.dataset.cellHoInterCount = '';
+    gl.domElement.dataset.cellHoIntraCount = '';
+    gl.domElement.dataset.cellBeamConeCount = '';
+    gl.domElement.dataset.handoverStoryLayer = 'artifact-owned';
+    gl.domElement.dataset.handoverStoryVisible = '0';
+    gl.domElement.dataset.handoverStorySource = '';
+    gl.domElement.dataset.handoverStoryNotBaselineProof = '0';
+    gl.domElement.dataset.handoverStoryEventCount = '0';
+    gl.domElement.dataset.handoverStoryAggregateEventCount = '0';
+    gl.domElement.dataset.handoverStoryActiveCount = '0';
+    gl.domElement.dataset.handoverStoryInactiveCount = '0';
+    gl.domElement.dataset.handoverStoryNextCount = '0';
+    gl.domElement.dataset.cameraPreset = 'manual';
+    gl.domElement.dataset.cameraTransition = 'idle';
+    gl.domElement.dataset.cameraPosition = formatCameraVector(camera.position);
+    gl.domElement.dataset.cameraTarget = formatCameraVector(controlsRef.current?.target ?? new THREE.Vector3());
+    REPLAY_CANVAS_ATTRIBUTES.forEach(attribute => {
+      gl.domElement.removeAttribute(attribute);
+    });
+  }, [
+    camera.position,
+    gl.domElement,
+    runtime.appMode,
+    runtime.uePrimaryAnchorMode,
+    sceneFrame,
+    sceneLane,
+    ueMarkerShape,
+    visibleSatellites,
+  ]);
+
+  return (
+    <>
+      <PerspectiveCamera
+        makeDefault
+        position={sceneConfig.camera.initialPosition}
+        fov={sceneConfig.camera.fov}
+        near={sceneConfig.camera.near}
+        far={sceneConfig.camera.far}
+      />
+      <OrbitControls
+        ref={controlsRef}
+        enableDamping={false}
+        rotateSpeed={0.3}
+        zoomSpeed={0.45}
+        panSpeed={0.3}
+        minDistance={50}
+        maxDistance={3000}
+      />
+      <hemisphereLight args={[0xffffff, 0x444444, 1.0]} />
+      <ambientLight intensity={0.2} />
+      <directionalLight
+        castShadow
+        position={[0, 50, 0]}
+        intensity={1.5}
+        shadow-mapSize-width={4096}
+        shadow-mapSize-height={4096}
+        shadow-camera-near={1}
+        shadow-camera-far={1000}
+        shadow-camera-top={500}
+        shadow-camera-bottom={-500}
+        shadow-camera-left={500}
+        shadow-camera-right={-500}
+        shadow-bias={-0.0004}
+        shadow-radius={8}
+      />
+      <Suspense fallback={null}>
+        <NTPUScene config={sceneConfig} />
+      </Suspense>
+      <GroundScene
+        ues={sceneFrame.ues
+          .filter((u) => u.worldPos !== undefined)
+          .map((u) => ({ id: u.id, worldPos: u.worldPos as readonly [number, number, number] }))}
+        ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
+        markerShape={ueMarkerShape}
+      />
+      {visibleSatellites.map((satellite, index) => {
+        const eventRole = sceneFrame.eventRoles.bySatId.get(satellite.id);
+        return (
+          <SatelliteMarker
+            key={satellite.id}
+            position={new THREE.Vector3(...satellite.worldPos)}
+            label={formatSatelliteLabel(satellite.id)}
+            eventRole={eventRole === 'inactive' ? undefined : eventRole}
+            satelliteTintColor={satelliteTint(satellite.id, index)}
+          />
+        );
+      })}
+      <FPSCounter />
+    </>
+  );
+}
+
 function SceneContent({
   profile,
   speed,
@@ -141,6 +293,7 @@ function SceneContent({
   visualScaleMultipliers,
   modqnReplayDisplayState,
   showModqnReplayScene,
+  sceneLane,
   onSimUpdate,
   sceneFrame: propSceneFrame,
 }: SceneContentProps) {
@@ -321,6 +474,7 @@ function SceneContent({
     handoverResetKey: runtime.handoverResetKey,
     latchedBeamSinrByKeyRef,
     onSimUpdate,
+    enabled: sceneFrame.sceneSource !== 'artifact-replay',
   });
   const cellCoverCandidates = useMemo(() => {
     const displayOrderBySatId = new Map(viz.displaySats.map((sat, index) => [sat.id, index]));
@@ -346,39 +500,80 @@ function SceneContent({
     }),
     [cellCoverCandidates, cells],
   );
-  const showCellOverlay = runtime.appMode === 'modqn-demo' && sceneFrame.sceneSource === 'live-sim';
-  const showEarthFixedCells = !showCellOverlay;
-  const showEarthFixedCellLabels = runtime.appMode !== 'modqn-demo' && runtime.beamDensity === 'all';
-  const ueMarkerShape = runtime.appMode === 'modqn-demo' ? 'sphere' : 'cylinder';
-  const showUav = runtime.appMode !== 'modqn-demo';
-  const showLiveBeamCones = sceneFrame.sceneSource === 'live-sim';
-  const showLiveSatelliteMarkers = sceneFrame.sceneSource === 'live-sim';
-  const showBeamCallouts = runtime.beamCalloutsEnabled && sceneFrame.sceneSource === 'live-sim';
-  const showSpineParticles =
-    runtime.effectsEnabled.spineParticles
-    && !paused
-    && !runtime.reducedMotion
-    && !showCellOverlay;
-  const showOrbitTrail =
-    runtime.effectsEnabled.orbitTrail
-    && !runtime.reducedMotion
-    && runtime.appMode !== 'modqn-demo'
-    && !showCellOverlay;
   const recentHoActive =
     sim.recentHoSourceSatId !== null
     || sim.recentHoTargetSatId !== null;
-  const showGroundRipple =
-    (runtime.effectsEnabled.servingRipple || runtime.effectsEnabled.pendingRipple)
-    && !paused
-    && !runtime.reducedMotion
-    && !recentHoActive;
-  const cinematicSpotlightActive = isSpotlightMode(runtime.cinematicMode);
+  const renderPlan = resolveSceneLaneRenderPlan({
+    sceneLane,
+    sceneSource: sceneFrame.sceneSource,
+    beamCalloutsEnabled: runtime.beamCalloutsEnabled ?? false,
+    beamDensity: runtime.beamDensity,
+    cinematicMode: runtime.cinematicMode,
+    effectsEnabled: runtime.effectsEnabled,
+    paused,
+    reducedMotion: runtime.reducedMotion,
+    recentHoActive,
+    replayProofLayerRequested: showModqnReplayScene,
+  });
+  const {
+    showCellOverlay,
+    showLiveSceneEffects,
+    showEarthFixedCells,
+    showEarthFixedCellLabels,
+    showUav,
+    showLiveBeamCones,
+    showLiveSatelliteMarkers,
+    showBeamCallouts,
+    showSpineParticles,
+    showOrbitTrail,
+    showGroundRipple,
+    showInterHandoverArrow,
+    showHandoverToastOverlay,
+    handoverStoryLayerPolicy,
+    showProfileHandoverStoryLayer,
+    showCinematicSpotlight,
+    effectiveCinematicMode,
+    showReplayProofLayer,
+    showArtifactFpsCounter,
+  } = renderPlan;
+  const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
+  const focusedCellBeamConeUe = sceneFrame.ues[0] || null;
+  const handoverStoryModel = useMemo(
+    () => showProfileHandoverStoryLayer
+      ? deriveProfileHandoverStoryModel({
+        sceneLane,
+        sceneFrame,
+        schedule: cellSchedule,
+        satelliteWorldById,
+      })
+      : null,
+    [
+      cellSchedule,
+      satelliteWorldById,
+      sceneFrame,
+      sceneLane,
+      showProfileHandoverStoryLayer,
+    ],
+  );
+  const renderedCellBeamConeCount = showCellOverlay
+    ? resolveCellBeamConeRenderCount({
+      schedule: cellSchedule,
+      satelliteWorldById,
+      satelliteTintById,
+      focusedUe: focusedCellBeamConeUe,
+      appMode: runtime.appMode,
+    })
+    : 0;
+  const replayBackedHandoverStoryVisible =
+    handoverStoryLayerPolicy === 'modqn-replay-source-backed'
+    && showReplayProofLayer;
+  const cinematicSpotlightActive = showCinematicSpotlight;
   const cinematicSpotlightTargets = useMemo(
     () => resolveCinematicSpotlightTargets({
       satBeams: viz.satBeams,
-      cinematicMode: runtime.cinematicMode,
+      cinematicMode: effectiveCinematicMode,
     }),
-    [runtime.cinematicMode, viz.satBeams],
+    [effectiveCinematicMode, viz.satBeams],
   );
 
   useEffect(() => {
@@ -400,14 +595,17 @@ function SceneContent({
     gl.domElement.dataset.beamCalloutsEnabled = showBeamCallouts ? '1' : '0';
     gl.domElement.dataset.simTimeSec = sceneFrame.tSec.toFixed(2);
     gl.domElement.dataset.appMode = runtime.appMode;
+    gl.domElement.dataset.sceneLaneSourceCompatible = renderPlan.sourceCompatible ? '1' : '0';
+    gl.domElement.dataset.liveSimulationEnabled = '1';
     gl.domElement.dataset.ueMarkerShape = ueMarkerShape;
     gl.domElement.dataset.uavVisible = showUav ? '1' : '0';
     gl.domElement.dataset.uePrimaryAnchorMode = runtime.uePrimaryAnchorMode ?? 'observer';
     gl.domElement.dataset.firstUePosition = formatScenePosition(sceneFrame.ues[0]?.worldPos);
     gl.domElement.dataset.visualSatelliteAltitude = String(sceneGeometry.visualSatelliteAltitude ?? '');
     gl.domElement.dataset.beamSatelliteCount = String(viz.satBeams.size);
+    gl.domElement.dataset.sceneSource = sceneFrame.sceneSource;
     gl.domElement.dataset.beamConeCount = String(
-      showLiveBeamCones
+      SHOW_BEAMS && showLiveBeamCones && !showCellOverlay
         ? [...viz.satBeams.values()].reduce((count, beams) => count + beams.length, 0)
         : 0,
     );
@@ -420,7 +618,18 @@ function SceneContent({
     gl.domElement.dataset.cellHoReassignmentCount = showCellOverlay ? String(cellHoCounts.total) : '';
     gl.domElement.dataset.cellHoInterCount = showCellOverlay ? String(cellHoCounts.inter) : '';
     gl.domElement.dataset.cellHoIntraCount = showCellOverlay ? String(cellHoCounts.intra) : '';
-    gl.domElement.dataset.cellBeamConeCount = showCellOverlay ? String(cellSchedule.slot.assignments.length) : '';
+    gl.domElement.dataset.cellBeamConeCount = showCellOverlay ? String(renderedCellBeamConeCount) : '';
+    gl.domElement.dataset.handoverStoryLayer = handoverStoryLayerPolicy;
+    gl.domElement.dataset.handoverStoryVisible =
+      handoverStoryModel || replayBackedHandoverStoryVisible ? '1' : '0';
+    gl.domElement.dataset.handoverStorySource =
+      handoverStoryModel?.source ?? (replayBackedHandoverStoryVisible ? 'modqn-replay-proof' : '');
+    gl.domElement.dataset.handoverStoryNotBaselineProof = handoverStoryModel?.notBaselineProof ? '1' : '0';
+    gl.domElement.dataset.handoverStoryEventCount = String(handoverStoryModel?.events.length ?? 0);
+    gl.domElement.dataset.handoverStoryAggregateEventCount = String(handoverStoryModel?.aggregateEventCount ?? 0);
+    gl.domElement.dataset.handoverStoryActiveCount = String(handoverStoryModel?.activeSlots.length ?? 0);
+    gl.domElement.dataset.handoverStoryInactiveCount = String(handoverStoryModel?.inactiveSlots.length ?? 0);
+    gl.domElement.dataset.handoverStoryNextCount = String(handoverStoryModel?.nextSlots.length ?? 0);
   }, [
     cellHoCounts.inter,
     cellHoCounts.intra,
@@ -432,9 +641,15 @@ function SceneContent({
     cellSchedule.slotIndex,
     cellSchedule.visibleCount,
     gl.domElement,
+    handoverStoryLayerPolicy,
+    handoverStoryModel,
+    replayBackedHandoverStoryVisible,
+    renderedCellBeamConeCount,
+    renderPlan.sourceCompatible,
     runtime.beamCalloutsEnabled,
     runtime.appMode,
     runtime.uePrimaryAnchorMode,
+    sceneFrame.sceneSource,
     sceneFrame.metrics.servingSatelliteId,
     sceneFrame.metrics.servingBeamId,
     sceneFrame.tSec,
@@ -533,12 +748,12 @@ function SceneContent({
       {cinematicSpotlightActive && (
         <fogExp2 attach="fog" args={[CINEMATIC_FOG_COLOR, CINEMATIC_FOG_DENSITY]} />
       )}
-      <hemisphereLight args={[0xffffff, 0x444444, resolveCinematicLightIntensity(1.0, runtime.cinematicMode)]} />
-      <ambientLight intensity={resolveCinematicLightIntensity(0.2, runtime.cinematicMode)} />
+      <hemisphereLight args={[0xffffff, 0x444444, resolveCinematicLightIntensity(1.0, effectiveCinematicMode)]} />
+      <ambientLight intensity={resolveCinematicLightIntensity(0.2, effectiveCinematicMode)} />
       <directionalLight
         castShadow
         position={[0, 50, 0]}
-        intensity={resolveCinematicLightIntensity(1.5, runtime.cinematicMode)}
+        intensity={resolveCinematicLightIntensity(1.5, effectiveCinematicMode)}
         shadow-mapSize-width={4096}
         shadow-mapSize-height={4096}
         shadow-camera-near={1}
@@ -577,6 +792,8 @@ function SceneContent({
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
         markerShape={ueMarkerShape}
         ueTrailHistory={showCellOverlay ? undefined : ueTrailHistory}
+        secondaryOpacity={showCellOverlay ? 0.24 : undefined}
+        secondaryScale={showCellOverlay ? 0.72 : undefined}
       />
       {showCellOverlay && (
         <CellOverlay
@@ -584,6 +801,12 @@ function SceneContent({
           satelliteTintById={satelliteTintById}
           satelliteWorldById={satelliteWorldById}
           showFootprints={false}
+        />
+      )}
+      {showProfileHandoverStoryLayer && (
+        <HandoverStoryLayer
+          model={handoverStoryModel}
+          satelliteTintById={satelliteTintById}
         />
       )}
       {showCellOverlay && (
@@ -601,13 +824,13 @@ function SceneContent({
           schedule={cellSchedule}
           satelliteWorldById={satelliteWorldById}
           satelliteTintById={satelliteTintById}
-          focusedUe={sceneFrame.ues[0] || null}
+          focusedUe={focusedCellBeamConeUe}
           appMode={runtime.appMode}
         />
       )}
       {showEarthFixedCells && <EarthFixedCells cells={paintedCells} showDebugLabels={showEarthFixedCellLabels} />}
-      {!showCellOverlay && <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />}
-      {!showCellOverlay && (
+      {showLiveSceneEffects && <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />}
+      {showLiveSceneEffects && (
         <HandoverLinks
           satellites={viz.displaySats}
           eventRoles={viz.eventRoles}
@@ -621,7 +844,7 @@ function SceneContent({
       <ModqnReplaySceneLayer
         displayState={modqnReplayDisplayState}
         reducedMotion={runtime.reducedMotion}
-        showBoard={showModqnReplayScene}
+        showBoard={showReplayProofLayer}
         worldUnitsPerKm={replayWorldUnitsPerKm}
         visualSatelliteAltitudeWorld={sceneGeometry.visualSatelliteAltitude}
       />
@@ -631,7 +854,7 @@ function SceneContent({
       {showSpineParticles && (
         <SpineParticles satellites={viz.displaySats} satBeams={viz.satBeams} />
       )}
-      {showGroundRipple && !showCellOverlay && (
+      {showGroundRipple && (
         <ServingGroundRipple
           satBeams={viz.satBeams}
           footprintRadius={viz.footprintRadiusWorld}
@@ -666,13 +889,13 @@ function SceneContent({
               beams={beams}
               footprintRadius={viz.footprintRadiusWorld}
               reducedMotion={runtime.reducedMotion}
-              cinematicMode={runtime.cinematicMode}
+              cinematicMode={effectiveCinematicMode}
               showCallouts={showBeamCallouts}
             />
           );
         })}
-      {!showCellOverlay && <IntraHandoverArrow vizFrame={viz} runtime={runtime} />}
-      {runtime.appMode !== 'modqn-demo' && (
+      {showLiveSceneEffects && <IntraHandoverArrow vizFrame={viz} runtime={runtime} />}
+      {showInterHandoverArrow && (
         <InterHandoverArrow
           recentHoSourceSatId={sim.recentHoSourceSatId}
           recentHoTargetSatId={sim.recentHoTargetSatId}
@@ -680,9 +903,9 @@ function SceneContent({
           reducedMotion={runtime.reducedMotion}
         />
       )}
-      {!showCellOverlay && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
-      <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />
-      {sceneFrame.sceneSource === 'artifact-replay' && <FPSCounter />}
+      {showLiveSceneEffects && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
+      {showHandoverToastOverlay && <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />}
+      {showArtifactFpsCounter && <FPSCounter />}
     </>
   );
 }
@@ -695,6 +918,7 @@ interface MainSceneProps {
   visualScaleMultipliers: SceneVisualScaleMultipliers;
   modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
   showModqnReplayScene: boolean;
+  sceneLane: SceneLane;
   onSimUpdate: (state: SimState) => void;
   sceneFrame?: NormalizedSceneFrame;
 }
@@ -707,11 +931,12 @@ export const MainScene = memo(function MainScene({
   visualScaleMultipliers,
   modqnReplayDisplayState,
   showModqnReplayScene,
+  sceneLane,
   onSimUpdate,
   sceneFrame,
 }: MainSceneProps) {
-  const ueMarkerShape = runtime.appMode === 'modqn-demo' ? 'sphere' : 'cylinder';
-  const showUav = runtime.appMode !== 'modqn-demo';
+  const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
+  const showUav = sceneLane === 'sinr-live';
 
   return (
     <div className="leo-main-scene" data-testid="leo-main-scene" style={{
@@ -724,6 +949,7 @@ export const MainScene = memo(function MainScene({
       <div
         data-testid="render-isolation-probe"
         data-app-mode={runtime.appMode}
+        data-scene-lane={sceneLane}
         data-ue-marker-shape={ueMarkerShape}
         data-uav-visible={showUav ? '1' : '0'}
         data-ue-primary-anchor-mode={runtime.uePrimaryAnchorMode ?? 'observer'}
@@ -741,17 +967,27 @@ export const MainScene = memo(function MainScene({
         }}
       >
         <Suspense fallback={<Html center><div style={{ color: 'white', fontSize: 20 }}>Loading...</div></Html>}>
-          <SceneContent
-            profile={profile}
-            speed={speed}
-            paused={paused}
-            runtime={runtime}
-            visualScaleMultipliers={visualScaleMultipliers}
-            modqnReplayDisplayState={modqnReplayDisplayState}
-            showModqnReplayScene={showModqnReplayScene}
-            onSimUpdate={onSimUpdate}
-            sceneFrame={sceneFrame}
-          />
+          {sceneFrame?.sceneSource === 'artifact-replay' ? (
+            <ArtifactSceneContent
+              runtime={runtime}
+              visualScaleMultipliers={visualScaleMultipliers}
+              sceneLane={sceneLane}
+              sceneFrame={sceneFrame}
+            />
+          ) : (
+            <SceneContent
+              profile={profile}
+              speed={speed}
+              paused={paused}
+              runtime={runtime}
+              visualScaleMultipliers={visualScaleMultipliers}
+              modqnReplayDisplayState={modqnReplayDisplayState}
+              showModqnReplayScene={showModqnReplayScene}
+              sceneLane={sceneLane}
+              onSimUpdate={onSimUpdate}
+              sceneFrame={sceneFrame}
+            />
+          )}
         </Suspense>
       </Canvas>
     </div>

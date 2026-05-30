@@ -57,6 +57,16 @@ When a live-sim feature here needs academic rigor (multi-beam SINR, Doppler, fad
 3. MODQN bundle JSON and `visual-showcase-v1` JSON are immutable replay inputs — do not edit consumed values, only display them.
 4. `ntn-sim-core`'s 4 frozen `baseline-kpi-*.json` are authoritative. If a vendored module fails its baseline here, fix the port — do not adjust the baseline.
 
+### Frontend Render Governance Rule
+
+One viewport frame has one authoritative scene lane. Shared primitives are
+allowed, but shared viewport proof ownership is not. Do not mount SINR live,
+MODQN live-cell preview, MODQN replay proof, and artifact replay layers from
+`appMode` alone. Use [docs/frontend-render-governance.md](./docs/frontend-render-governance.md)
+and [docs/frontend-mode-lane-separation-sdd.md](./docs/frontend-mode-lane-separation-sdd.md)
+before changing `scene/`, `viz/`, `ui/`, or runtime rendering boundaries, and
+update `validate:frontend:scene-lane-governance` when a lane rule changes.
+
 ## 6. Local Docs
 
 | Purpose | File |
@@ -66,6 +76,9 @@ When a live-sim feature here needs academic rigor (multi-beam SINR, Doppler, fad
 | HOBS + TR 38.811 SINR baseline | [docs/hobs-tr38811-sinr-mini-sdd.md](./docs/hobs-tr38811-sinr-mini-sdd.md) |
 | SINR runtime parameter contract | [docs/sinr-runtime-parameter-contract.md](./docs/sinr-runtime-parameter-contract.md) |
 | Frontend UX / visual roadmap | [docs/frontend-ux-redesign-sdd.md](./docs/frontend-ux-redesign-sdd.md) |
+| Frontend render governance | [docs/frontend-render-governance.md](./docs/frontend-render-governance.md) |
+| Frontend mode/lane separation SDD | [docs/frontend-mode-lane-separation-sdd.md](./docs/frontend-mode-lane-separation-sdd.md) |
+| Scene lane render boundary ADR | [docs/decisions/ADR-001-scene-lane-render-boundary.md](./docs/decisions/ADR-001-scene-lane-render-boundary.md) |
 | Beam hopping mini-SDD | [docs/beam-hopping-mini-sdd.md](./docs/beam-hopping-mini-sdd.md) |
 | MODQN ω-weighted handover mini-SDD | [docs/modqn-omega-handover-sdd.md](./docs/modqn-omega-handover-sdd.md) |
 | MODQN training-trigger backend mini-SDD | [docs/modqn-training-trigger-backend-sdd.md](./docs/modqn-training-trigger-backend-sdd.md) |

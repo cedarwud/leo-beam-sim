@@ -14,6 +14,7 @@ import {
   CellBeamCones,
   computeConeApexFromTransform,
   computeConeBaseCenterFromTransform,
+  resolveCellBeamConeRenderCount,
   resolveCellBeamConeItems,
 } from '../src/viz/CellBeamCones.tsx';
 import type { WorldPoint } from '../src/viz/CellFootprints.tsx';
@@ -198,6 +199,11 @@ expectEqual(element.props.userData?.coneCount, 28, 'top group coneCount is 28 fo
 
 const groups = childrenOf(element);
 expectEqual(groups.length, slot0.slot.assignments.length, 'renders one cone group per active assignment');
+expectEqual(
+  resolveCellBeamConeRenderCount({ schedule: slot0, satelliteWorldById: worlds, satelliteTintById: tints }),
+  groups.length,
+  'render-count helper matches rendered cone group length for canonical fixture',
+);
 expect(
   groups.every((group, index) => group.props.name === `cell-beam-cone-${slot0.slot.assignments[index]?.cellId}`),
   'each cone group name is cell-beam-cone-${cellId}',
@@ -267,6 +273,11 @@ const reducedResolvedCount = slot0.slot.assignments.filter(assignment => reduced
 const reducedElement = coneElement(slot0, reducedWorlds, tints);
 expectEqual(childrenOf(reducedElement).length, reducedResolvedCount, 'missing satellite world skips only its cones without throwing');
 expectEqual(reducedElement.props.userData?.coneCount, reducedResolvedCount, 'coneCount reflects only resolvable assignments');
+expectEqual(
+  resolveCellBeamConeRenderCount({ schedule: slot0, satelliteWorldById: reducedWorlds, satelliteTintById: tints }),
+  reducedResolvedCount,
+  'render-count helper reflects reduced resolvable cones when satellite world is missing',
+);
 expectEqual(roundedConeSnapshot(slot0), roundedConeSnapshot(scheduleAt(0)), 'same schedule input produces deterministic cone transforms');
 
 const activeCellIds = new Set(slot0.slot.assignments.map(assignment => assignment.cellId));
@@ -293,6 +304,36 @@ expect(
   'all resolved cone radii are footprint-derived placement radii',
 );
 
+const focusedUe = {
+  servingSatelliteId: firstAssignment.satId,
+  servingBeamId: String(firstAssignment.beamIndex),
+  targetSatelliteId: null,
+  targetBeamId: null,
+};
+const focusedDemoItems = resolveCellBeamConeItems({
+  schedule: slot0,
+  satelliteWorldById: worlds,
+  satelliteTintById: tints,
+  focusedUe,
+  appMode: 'modqn-demo',
+});
+const focusedDemoRenderCount = resolveCellBeamConeRenderCount({
+  schedule: slot0,
+  satelliteWorldById: worlds,
+  satelliteTintById: tints,
+  focusedUe,
+  appMode: 'modqn-demo',
+});
+expect(
+  focusedDemoRenderCount > 0 && focusedDemoRenderCount < slot0.slot.assignments.length,
+  'modqn-demo focus satellite render count is lower than schedule assignment count',
+);
+expectEqual(
+  focusedDemoRenderCount,
+  focusedDemoItems.length,
+  'modqn-demo focus satellite render-count helper equals resolved cone items length',
+);
+
 const lCapped = geoSchedule(12);
 expectEqual(lCapped.slot.assignments.length, 28, 'L-capped geo schedule keeps active K=28');
 expectEqual(
@@ -302,8 +343,9 @@ expectEqual(
 );
 
 const mainSceneSource = readFileSync(path.join(REPO_ROOT, 'src/scene/MainScene.tsx'), 'utf8');
+const renderPlanSource = readFileSync(path.join(REPO_ROOT, 'src/scene/sceneLaneRenderPlan.ts'), 'utf8');
 expect(
-  mainSceneSource.includes('import { CellBeamCones }')
+  mainSceneSource.includes('import { CellBeamCones, resolveCellBeamConeRenderCount }')
     && mainSceneSource.includes('{showCellOverlay && (\n        <CellBeamCones')
     && mainSceneSource.includes('schedule={cellSchedule}')
     && mainSceneSource.includes('satelliteWorldById={satelliteWorldById}')
@@ -315,25 +357,26 @@ expect(
   'MainScene gates legacy SatelliteBeams with !showCellOverlay',
 );
 expect(
-  mainSceneSource.includes("const showLiveBeamCones = sceneFrame.sceneSource === 'live-sim';"),
-  'MainScene keeps the literal showLiveBeamCones live-sim invariant',
+  renderPlanSource.includes('const showLiveBeamCones = showSinrLiveViewport;'),
+  'Scene lane render plan gates legacy live beam cones to the SINR live viewport',
 );
 expect(
-  mainSceneSource.includes('{!showCellOverlay && <AmbientFootprintRings'),
-  'MainScene gates AmbientFootprintRings with !showCellOverlay',
+  mainSceneSource.includes('{showLiveSceneEffects && <AmbientFootprintRings'),
+  'MainScene gates AmbientFootprintRings with live-scene effects',
 );
 expect(
-  mainSceneSource.includes('{showGroundRipple && !showCellOverlay && ('),
-  'MainScene gates ServingGroundRipple with !showCellOverlay',
+  mainSceneSource.includes('{showGroundRipple && ('),
+  'MainScene gates ServingGroundRipple behind showGroundRipple',
 );
 expect(
-  mainSceneSource.includes('&& !showCellOverlay;')
-    && /showOrbitTrail =[\s\S]*?!showCellOverlay/.test(mainSceneSource),
-  'MainScene hides OrbitTrail entirely in the cell lane (showOrbitTrail gated on !showCellOverlay)',
+  renderPlanSource.includes('const showLiveSceneEffects = showSinrLiveViewport;')
+    && /showOrbitTrail:[\s\S]*?showLiveSceneEffects/.test(renderPlanSource),
+  'MainScene hides OrbitTrail outside live non-cell scene effects',
 );
 expect(
-  mainSceneSource.includes('dataset.cellBeamConeCount = showCellOverlay ? String(cellSchedule.slot.assignments.length) : \'\';'),
-  'MainScene adds cellBeamConeCount dataset bridge',
+  mainSceneSource.includes('dataset.cellBeamConeCount = showCellOverlay ? String(renderedCellBeamConeCount) : \'\';')
+    && mainSceneSource.includes('resolveCellBeamConeRenderCount({'),
+  'MainScene adds cellBeamConeCount rendered-object dataset bridge',
 );
 
 assert.ok(PASSED.length >= 24, `expected >=24 assertions; got ${PASSED.length}`);
