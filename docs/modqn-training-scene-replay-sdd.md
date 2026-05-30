@@ -108,6 +108,13 @@ derive a `visual-showcase-v1` window, but the reverse direction must not be
 used to infer training-run truth. The typed target decision lives in
 `src/modqn/training-scene-trace/artifactTarget.ts`.
 
+The producer-facing export packet lives in
+`docs/modqn-training-scene-producer-handoff-packet.md` and
+`src/modqn/training-scene-trace/producerHandoff.ts`. It classifies the
+40-field checklist into P0 required, P1 source-gap-allowed, and P2
+comparison-only fields so `modqn-paper-reproduction` can implement the trace
+exporter incrementally without weakening frontend truth boundaries.
+
 The current consumer coverage inventory lives in
 `src/modqn/training-scene-trace/inventory.ts`. It compares the contract
 against the fields available today from:
@@ -358,6 +365,8 @@ Static validators should enforce:
   user-trained manifest, and `visual-showcase-v1` coverage explicit, with
   active/next beam schedule still reported as source gaps until a producer
   exports scheduler truth.
+- the producer handoff packet assigns every trace requirement exactly one
+  priority: P0 required, P1 source-gap-allowed, or P2 comparison-only.
 
 Browser smoke should verify:
 
