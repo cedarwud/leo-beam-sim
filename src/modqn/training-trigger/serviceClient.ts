@@ -1,9 +1,11 @@
 import type {
+  LeoProducerDispatchEnvelope,
   ServiceAvailability,
   ServiceClientConfig,
   SensitivitySweepRequest,
   SensitivitySweepResponse,
   BatchDetail,
+  PostTrainResponse,
   TrainingJobDetail,
   TrainingJobSummary,
   TrainingRequest,
@@ -14,6 +16,50 @@ const DEFAULT_PROBE_TIMEOUT_MS = 1500;
 
 function normalizedBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/$/, '');
+}
+
+export const LEO_PRODUCER_DISPATCH_SCHEMA = 'leo-modqn-producer-dispatch-request-v1' as const;
+export const LEO_RUN_CONFIG_SCHEMA = 'leo-modqn-training-run-config-v1' as const;
+
+let dispatchSequence = 0;
+
+function nextDispatchJobId(createdAtMs: number): string {
+  dispatchSequence = (dispatchSequence + 1) % 100000;
+  return `leo-dispatch-${createdAtMs}-${dispatchSequence}`;
+}
+
+interface BuildDispatchEnvelopeOptions {
+  readonly createdAtMs?: number;
+  readonly clientJobId?: string;
+}
+
+export function buildProducerDispatchEnvelope(
+  config: ServiceClientConfig,
+  request: TrainingRequest,
+  options: BuildDispatchEnvelopeOptions = {},
+): LeoProducerDispatchEnvelope {
+  const createdAtMs = options.createdAtMs ?? Date.now();
+  const producerServiceBaseUrl = normalizedBaseUrl(config.baseUrl);
+  return {
+    schema: LEO_PRODUCER_DISPATCH_SCHEMA,
+    producerTruthOwner: 'modqn-paper-reproduction',
+    consumerOwner: 'leo-beam-sim',
+    requestedBy: 'leo-beam-sim-training-orchestrator',
+    ntnSimCoreRuntimeDependency: false,
+    runConfig: {
+      schema: LEO_RUN_CONFIG_SCHEMA,
+      jobId: options.clientJobId ?? nextDispatchJobId(createdAtMs),
+      createdAtMs,
+      producerTruthOwner: 'modqn-paper-reproduction',
+      orchestrator: {
+        owner: 'leo-beam-sim',
+        role: 'job-orchestration-only',
+        producerServiceBaseUrl,
+        ntnSimCoreRuntimeDependency: false,
+      },
+      request,
+    },
+  };
 }
 
 function encodeArtifactPath(filename: string): string {
@@ -69,11 +115,12 @@ export async function probeService(config: ServiceClientConfig): Promise<Service
 export async function postTrain(
   config: ServiceClientConfig,
   request: TrainingRequest,
-): Promise<{ jobId: string; status: 'queued'; estimatedStartAtMs: number | null }> {
+): Promise<PostTrainResponse> {
+  const envelope = buildProducerDispatchEnvelope(config, request);
   const response = await fetch(`${normalizedBaseUrl(config.baseUrl)}/train`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
+    body: JSON.stringify(envelope),
   });
   if (!response.ok) {
     const text = await response.text().catch(() => '');

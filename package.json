@@ -26,6 +26,7 @@
     "validate:phase-b:jobs-panel": "node --import tsx/esm scripts/validate-phase-b-jobs-panel.tsx",
     "validate:phase-b:artifact-picker": "node --import tsx/esm scripts/validate-phase-b-artifact-picker.tsx",
     "validate:phase-b:service-client": "node --import tsx/esm scripts/validate-phase-b-service-client.tsx",
+    "validate:modqn:producer-dispatch-envelope": "node --import tsx/esm scripts/validate-modqn-producer-dispatch-envelope.ts",
     "validate:phase-d:app-wire": "node --import tsx/esm scripts/validate-phase-d-app-wire.tsx",
     "validate:phase-d:banner-copy": "node --import tsx/esm scripts/validate-phase-d-banner-copy.tsx",
     "validate:phase-d:decision-viz": "node --import tsx/esm scripts/validate-phase-d-decision-viz.tsx",

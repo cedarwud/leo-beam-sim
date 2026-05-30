@@ -326,7 +326,52 @@ input.
 
 ### 6.1 `POST /train`
 
-Body:
+Body from `leo-beam-sim`:
+
+```json
+{
+  "schema": "leo-modqn-producer-dispatch-request-v1",
+  "producerTruthOwner": "modqn-paper-reproduction",
+  "consumerOwner": "leo-beam-sim",
+  "requestedBy": "leo-beam-sim-training-orchestrator",
+  "ntnSimCoreRuntimeDependency": false,
+  "runConfig": {
+    "schema": "leo-modqn-training-run-config-v1",
+    "jobId": "leo-dispatch-1234567890-1",
+    "createdAtMs": 1234567890,
+    "producerTruthOwner": "modqn-paper-reproduction",
+    "orchestrator": {
+      "owner": "leo-beam-sim",
+      "role": "job-orchestration-only",
+      "producerServiceBaseUrl": "http://127.0.0.1:8765",
+      "ntnSimCoreRuntimeDependency": false
+    },
+    "request": {
+      "trainerSubcommand": "baseline",
+      "hyperparams": {
+        "episodes": 1000,
+        "learningRate": 1e-3,
+        "discountGamma": 0.9,
+        "hiddenDim": 100,
+        "batchSize": 128,
+        "objectiveWeights": {
+          "throughput": 0.4,
+          "handover": 0.3,
+          "loadBalance": 0.3
+        },
+        "seedTriplet": [42, 1337, 7]
+      }
+    }
+  }
+}
+```
+
+The producer service accepts this envelope at the API boundary, validates the
+handoff metadata, and stores/runs the nested `runConfig.request` as the durable
+producer-owned `TrainingRequest`. Legacy raw `TrainingRequest` bodies remain a
+producer-side compatibility input, but the leo consumer should use the envelope.
+
+Legacy raw body shape:
 
 ```json
 {
@@ -353,7 +398,18 @@ Response 202:
 {
   "jobId": "01HXYABC...",
   "status": "queued",
-  "estimatedStartAtMs": null
+  "estimatedStartAtMs": null,
+  "trainingProfile": "legacy-baseline",
+  "arm": null,
+  "artifactTag": "user-trained",
+  "dispatch": {
+    "status": "accepted",
+    "schema": "leo-modqn-producer-dispatch-request-v1",
+    "producerTruthOwner": "modqn-paper-reproduction",
+    "consumerOwner": "leo-beam-sim",
+    "truthMutation": "none",
+    "ntnSimCoreRuntimeDependency": false
+  }
 }
 ```
 

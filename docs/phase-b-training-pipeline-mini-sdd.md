@@ -210,7 +210,7 @@ export async function probeService(
 export async function postTrain(
   config: ServiceClientConfig,
   request: TrainingRequest,
-): Promise<{ jobId: string; status: 'queued'; estimatedStartAtMs: number | null }>;
+): Promise<PostTrainResponse>;
 
 export async function getJobs(
   config: ServiceClientConfig,
@@ -229,9 +229,16 @@ export function artifactUrl(
 ): string;
 ```
 
-`TrainingRequest`, `TrainingJobSummary`, `TrainingJobDetail`, `JobStatus`
-live in `src/modqn/training-trigger/types.ts` and match the backend SDD
-§6.x shapes verbatim.
+`TrainingRequest`, `LeoProducerDispatchEnvelope`, `PostTrainResponse`,
+`TrainingJobSummary`, `TrainingJobDetail`, and `JobStatus` live in
+`src/modqn/training-trigger/types.ts` and match the backend SDD §6.x shapes.
+
+For `POST /train`, the consumer wraps the producer-owned `TrainingRequest`
+inside `leo-modqn-producer-dispatch-request-v1`. The envelope records that
+`leo-beam-sim` is an orchestration-only consumer, `modqn-paper-reproduction`
+remains the producer truth owner, and `ntn-sim-core` is not introduced as a
+runtime dependency. The producer service validates the envelope at the API
+boundary and stores/runs the unmodified `runConfig.request`.
 
 Default `baseUrl`: `http://127.0.0.1:8765`. Configurable via a
 `localStorage` key `leo-beam-sim.training-service.base-url.v1` if the user

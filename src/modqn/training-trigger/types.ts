@@ -104,6 +104,49 @@ export interface TrainingRequest {
   readonly track2?: Track2Config;
 }
 
+export interface LeoTrainingRunConfig {
+  readonly schema: 'leo-modqn-training-run-config-v1';
+  readonly jobId: string;
+  readonly createdAtMs: number;
+  readonly producerTruthOwner: 'modqn-paper-reproduction';
+  readonly orchestrator: {
+    readonly owner: 'leo-beam-sim';
+    readonly role: 'job-orchestration-only';
+    readonly producerServiceBaseUrl: string;
+    readonly ntnSimCoreRuntimeDependency: false;
+  };
+  readonly request: TrainingRequest;
+}
+
+export interface LeoProducerDispatchEnvelope {
+  readonly schema: 'leo-modqn-producer-dispatch-request-v1';
+  readonly producerTruthOwner: 'modqn-paper-reproduction';
+  readonly consumerOwner: 'leo-beam-sim';
+  readonly requestedBy: 'leo-beam-sim-training-orchestrator';
+  readonly ntnSimCoreRuntimeDependency: false;
+  readonly runConfig: LeoTrainingRunConfig;
+}
+
+export interface TrainingDispatchAck {
+  readonly status: 'accepted';
+  readonly schema: 'leo-modqn-producer-dispatch-request-v1' | string;
+  readonly producerTruthOwner: 'modqn-paper-reproduction' | string;
+  readonly consumerOwner: 'leo-beam-sim' | string;
+  readonly truthMutation: 'none' | string;
+  readonly ntnSimCoreRuntimeDependency: false;
+}
+
+export interface PostTrainResponse {
+  readonly jobId: string;
+  readonly status: 'queued';
+  readonly estimatedStartAtMs: number | null;
+  readonly trainingProfile?: TrainingProfile;
+  readonly arm?: TrainingArm | null;
+  readonly artifactTag?: 'user-trained';
+  readonly dispatch?: TrainingDispatchAck | null;
+  readonly [key: string]: unknown;
+}
+
 export interface TrainingJobSummary {
   readonly jobId: string;
   readonly status: JobStatus;
@@ -114,6 +157,7 @@ export interface TrainingJobSummary {
   readonly trainingProfile?: TrainingProfile;
   readonly arm?: TrainingArm | null;
   readonly batchId?: string | null;
+  readonly submissionSchema?: 'modqn-training-request-v1' | 'leo-modqn-producer-dispatch-request-v1' | string | null;
   readonly artifactTag?: 'user-trained';
   readonly hyperparamSummary: string;
   readonly artifactPath?: string;
@@ -124,6 +168,7 @@ export interface TrainingJobDetail extends TrainingJobSummary {
   readonly hyperparams: TrainingHyperparams;
   readonly request?: TrainingRequest | null;
   readonly manifestPath?: string | null;
+  readonly dispatchEnvelope?: LeoProducerDispatchEnvelope | null;
   readonly progressEventCount?: number;
   readonly trainingTruth?: TrainingTruth | null;
   readonly errorMessage?: string;
