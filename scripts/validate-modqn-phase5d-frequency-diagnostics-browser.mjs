@@ -277,17 +277,24 @@ function assertNoUnsupportedEvidenceClaim(text, label) {
 }
 
 async function selectLiveStatusTab(page) {
-  const liveStatusTab = page
-    .locator('.leo-shell-right [role="tab"]')
-    .filter({ hasText: 'Live status' });
+  const tabList = page.locator('.leo-shell-right [role="tablist"]');
+  const hasTabs = await tabList.count() > 0;
+  if (hasTabs) {
+    const liveStatusTab = page
+      .locator('.leo-shell-right [role="tab"]')
+      .filter({ hasText: 'Live status' });
 
-  await liveStatusTab.waitFor({ timeout: UI_LOAD_TIMEOUT_MS });
-  await liveStatusTab.click();
-  await expectLiveStatusTabSelected(page);
+    await liveStatusTab.waitFor({ timeout: UI_LOAD_TIMEOUT_MS });
+    await liveStatusTab.click();
+    await expectLiveStatusTabSelected(page);
+  }
   await page.locator('.leo-shell-right .leo-live-status-stack').waitFor({ timeout: UI_LOAD_TIMEOUT_MS });
 }
 
 async function expectLiveStatusTabSelected(page) {
+  const tabList = page.locator('.leo-shell-right [role="tablist"]');
+  const hasTabs = await tabList.count() > 0;
+  if (!hasTabs) return;
   await page.waitForFunction(() => {
     const tab = [...document.querySelectorAll('.leo-shell-right [role="tab"]')]
       .find(candidate => candidate.textContent?.includes('Live status'));

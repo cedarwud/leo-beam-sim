@@ -387,21 +387,21 @@ async function runBrowserValidation(appUrl: string): Promise<BrowserValidationRe
             const telem = await readArrowTelemetry(page);
             if (telem.active !== '1') return null;
             const opacity = parseFloat(telem.opacity ?? '0');
-            return opacity > 0 && opacity < 1 ? opacity : null;
+            return opacity > 0 && opacity < 1 ? telem : null;
           },
           ARROW_APPEAR_TIMEOUT_MS,
         );
-        result.opacitySamples = [fadingTelem];
+        const opacityVal = parseFloat(fadingTelem.opacity ?? '0');
+        result.opacitySamples = [opacityVal];
 
-        const highWatermark = fadingTelem;
-        const lowWatermark = fadingTelem;
+        const highWatermark = opacityVal;
+        const lowWatermark = opacityVal;
         result.opacityHighWatermark = highWatermark;
         result.opacityLowWatermark = lowWatermark;
-        result.opacityRangeValid = fadingTelem > 0 && fadingTelem < 1;
+        result.opacityRangeValid = opacityVal > 0 && opacityVal < 1;
 
         // S3 check: beam-level intra roles should be active while the arrow is active.
-        const beamRolesTelem = await readArrowTelemetry(page);
-        result.beamRolesDetected = beamRolesTelem.beamRolesActive === '1';
+        result.beamRolesDetected = fadingTelem.beamRolesActive === '1';
 
         const bodyText = await page.evaluate(() => document.body.innerText);
         result.forbiddenClaims = collectForbiddenCopyViolations(bodyText);

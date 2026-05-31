@@ -113,7 +113,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
       && !input.reducedMotion
       && showLiveSceneEffects,
     showGroundRipple,
-    showInterHandoverArrow: showSinrLiveViewport,
+    showInterHandoverArrow: false,
     showHandoverToastOverlay: showSinrLiveViewport,
     handoverStoryLayerPolicy:
       showSinrLiveViewport

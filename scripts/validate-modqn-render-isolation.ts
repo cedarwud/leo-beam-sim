@@ -103,15 +103,26 @@ function validateRenderIsolationContracts(): void {
     'data-ue-primary-anchor-mode',
     'MainScene exposes UE primary anchor mode in render isolation probe',
   );
+  const telemetry = readSource('src/scene/SceneTelemetry.tsx');
   assertIncludes(
-    mainScene,
+    telemetry,
     'dataset.beamConeCount',
-    'MainScene exposes beam cone count for browser smoke',
+    'SceneTelemetry exposes beam cone count for browser smoke',
   );
   assertIncludes(
     mainScene,
+    'beamConeCount={',
+    'MainScene passes beamConeCount prop to SceneTelemetry',
+  );
+  assertIncludes(
+    telemetry,
     'dataset.firstUePosition',
-    'MainScene exposes first UE position for browser smoke',
+    'SceneTelemetry exposes first UE position for browser smoke',
+  );
+  assertIncludes(
+    mainScene,
+    'firstUePosition={',
+    'MainScene passes firstUePosition prop to SceneTelemetry',
   );
   assertIncludes(
     useBeamViz,

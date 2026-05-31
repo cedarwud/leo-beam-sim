@@ -221,12 +221,20 @@ expect(
   renderPlanSource.includes('showEarthFixedCells: showLiveSceneEffects'),
   'Scene lane render plan hides legacy EarthFixedCells outside live scene effects',
 );
+const telemetrySource = readFileSync(path.join(REPO_ROOT, 'src/scene/SceneTelemetry.tsx'), 'utf8');
 expect(
-  mainSceneSource.includes('dataset.cellOverlaySlotIndex')
-    && mainSceneSource.includes('dataset.cellOverlayActiveCount')
-    && mainSceneSource.includes('dataset.cellOverlayIdleCount')
-    && mainSceneSource.includes('dataset.cellOverlayCellCount'),
-  'MainScene exposes cell overlay dataset bridge fields',
+  telemetrySource.includes('dataset.cellOverlaySlotIndex')
+    && telemetrySource.includes('dataset.cellOverlayActiveCount')
+    && telemetrySource.includes('dataset.cellOverlayIdleCount')
+    && telemetrySource.includes('dataset.cellOverlayCellCount'),
+  'SceneTelemetry exposes cell overlay dataset bridge fields',
+);
+expect(
+  mainSceneSource.includes('cellOverlaySlotIndex=')
+    && mainSceneSource.includes('cellOverlayActiveCount=')
+    && mainSceneSource.includes('cellOverlayIdleCount=')
+    && mainSceneSource.includes('cellOverlayCellCount='),
+  'MainScene passes cell overlay props to SceneTelemetry',
 );
 
 assert.ok(PASSED.length >= 25, `expected >=25 assertions; got ${PASSED.length}`);

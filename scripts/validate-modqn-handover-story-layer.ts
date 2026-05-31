@@ -183,6 +183,7 @@ function validateProfileDerivedModel(): void {
 
 function validateStaticContracts(): void {
   const mainScene = readSource('src/scene/MainScene.tsx');
+  const telemetry = readSource('src/scene/SceneTelemetry.tsx');
   const storyModel = readSource('src/scene/handoverStoryModel.ts');
   const storyLayer = readSource('src/viz/HandoverStoryLayer.tsx');
   const replayTelemetry = readSource('src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx');
@@ -211,15 +212,15 @@ function validateStaticContracts(): void {
 
   assertContains(mainScene, 'deriveProfileHandoverStoryModel', 'MainScene derives story model');
   assertContains(mainScene, '{showProfileHandoverStoryLayer && (', 'MainScene gates story layer by render plan');
-  assertContains(mainScene, 'dataset.handoverStoryNotBaselineProof', 'MainScene reports not-baseline-proof telemetry');
-  assertContains(mainScene, 'dataset.handoverStoryNextCount', 'MainScene reports next-slot story telemetry');
+  assertContains(telemetry, 'el.dataset.handoverStoryNotBaselineProof', 'SceneTelemetry reports not-baseline-proof telemetry');
+  assertContains(telemetry, 'el.dataset.handoverStoryNextCount', 'SceneTelemetry reports next-slot story telemetry');
   assertContains(mainScene, 'replayBackedHandoverStoryVisible', 'MainScene keeps replay proof story telemetry source-backed');
   const artifactStart = mainScene.indexOf('function ArtifactSceneContent');
   const liveStart = mainScene.indexOf('function SceneContent');
   assert.ok(artifactStart >= 0 && liveStart > artifactStart, 'MainScene artifact composer body located');
   const artifactBody = mainScene.slice(artifactStart, liveStart);
   assertNotContains(artifactBody, '<HandoverStoryLayer', 'artifact composer does not mount profile-derived story layer');
-  assertContains(artifactBody, "dataset.handoverStoryLayer = 'artifact-owned'", 'artifact composer reports artifact-owned story policy');
+  assertContains(artifactBody, 'handoverStoryLayer="artifact-owned"', 'artifact composer reports artifact-owned story policy');
 
   assertContains(replayTelemetry, 'replayProofBeamHoppingSourceGap()', 'replay telemetry uses source-gap helper');
   assertContains(replayTelemetry, "data-handover-story-layer', 'modqn-replay-source-backed'", 'replay telemetry reports source-backed story policy');

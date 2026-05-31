@@ -373,10 +373,12 @@ expect(
     && /showOrbitTrail:[\s\S]*?showLiveSceneEffects/.test(renderPlanSource),
   'MainScene hides OrbitTrail outside live non-cell scene effects',
 );
+const telemetrySource = readFileSync(path.join(REPO_ROOT, 'src/scene/SceneTelemetry.tsx'), 'utf8');
 expect(
-  mainSceneSource.includes('dataset.cellBeamConeCount = showCellOverlay ? String(renderedCellBeamConeCount) : \'\';')
+  telemetrySource.includes('el.dataset.cellBeamConeCount = props.cellBeamConeCount;')
+    && mainSceneSource.includes('cellBeamConeCount={showCellOverlay ? String(renderedCellBeamConeCount) : \'\'}')
     && mainSceneSource.includes('resolveCellBeamConeRenderCount({'),
-  'MainScene adds cellBeamConeCount rendered-object dataset bridge',
+  'MainScene and SceneTelemetry add cellBeamConeCount rendered-object dataset bridge',
 );
 
 assert.ok(PASSED.length >= 24, `expected >=24 assertions; got ${PASSED.length}`);

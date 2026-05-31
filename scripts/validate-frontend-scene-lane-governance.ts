@@ -231,6 +231,8 @@ const appRuntimeModelSource = readRepoFile('src/app/appRuntimeModel.ts');
 const controlBarSource = readRepoFile('src/ui/ControlBar.tsx');
 const modqnReplayCuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
 const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
+const baseSceneLayoutSource = readRepoFile('src/scene/BaseSceneLayout.tsx');
+const sceneTelemetrySource = readRepoFile('src/scene/SceneTelemetry.tsx');
 const sceneLaneRenderPlanSource = readRepoFile('src/scene/sceneLaneRenderPlan.ts');
 const replayLayerSource = readRepoFile('src/scene/modqn-replay-visuals/index.tsx');
 const replayTelemetrySource = readRepoFile('src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx');
@@ -462,9 +464,9 @@ assertContains(
   'MainScene render isolation probe exposes scene lane',
 );
 assertContains(
-  mainSceneSource,
-  'dataset.sceneLaneSourceCompatible',
-  'MainScene canvas exposes lane/source compatibility telemetry',
+  sceneTelemetrySource,
+  'el.dataset.sceneLaneSourceCompatible',
+  'MainScene canvas exposes lane/source compatibility telemetry'
 );
 assertContains(
   mainSceneSource,
@@ -482,14 +484,14 @@ assertContains(
   'MainScene gates the shared story layer by scene lane render plan',
 );
 assertContains(
-  mainSceneSource,
-  'dataset.handoverStoryLayer',
-  'MainScene canvas reports handover story layer policy',
+  sceneTelemetrySource,
+  'el.dataset.handoverStoryLayer',
+  'MainScene canvas reports handover story layer policy'
 );
 assertContains(
-  mainSceneSource,
-  'dataset.handoverStoryNextCount',
-  'MainScene canvas reports next-slot story telemetry',
+  sceneTelemetrySource,
+  'el.dataset.handoverStoryNextCount',
+  'MainScene canvas reports next-slot story telemetry'
 );
 assertContains(
   mainSceneSource,
@@ -513,13 +515,13 @@ assertContains(
 );
 assertContains(
   mainSceneSource,
-  "dataset.liveSimulationEnabled = '0'",
-  'Artifact scene telemetry marks live simulation disabled',
+  'liveSimulationEnabled="0"',
+  'Artifact scene telemetry marks live simulation disabled'
 );
 assertContains(
   mainSceneSource,
-  "dataset.liveSimulationEnabled = '1'",
-  'Live scene telemetry marks live simulation enabled',
+  'liveSimulationEnabled="1"',
+  'Live scene telemetry marks live simulation enabled'
 );
 {
   const artifactComposerIndex = mainSceneSource.indexOf('function ArtifactSceneContent');
@@ -569,10 +571,15 @@ for (const [needle, label] of [
   ['{showLiveSceneEffects && <IntraHandoverArrow', 'intra handover arrow'],
   ['{showLiveSceneEffects && <IntraGroundShockwave', 'intra ground shockwave'],
   ['{showHandoverToastOverlay && <HandoverToastOverlay', 'handover toast overlay'],
+] as const) {
+  assertContains(mainSceneSource, needle.replace('\\n', '\n'), `MainScene should source-gate ${label}`);
+}
+
+for (const [needle, label] of [
   ['{cinematicSpotlightActive && (\\n        <fogExp2', 'cinematic fog'],
   ['{cinematicSpotlightTargets.map(target => (', 'cinematic point lights'],
 ] as const) {
-  assertContains(mainSceneSource, needle.replace('\\n', '\n'), `MainScene should source-gate ${label}`);
+  assertContains(baseSceneLayoutSource, needle.replace('\\n', '\n'), `BaseSceneLayout should source-gate ${label}`);
 }
 assertContains(mainSceneSource, '<ModqnReplaySceneLayer', 'MainScene replay layer host');
 assertContains(mainSceneSource, 'showBoard={showReplayProofLayer}', 'MainScene render-plan-gated replay layer');

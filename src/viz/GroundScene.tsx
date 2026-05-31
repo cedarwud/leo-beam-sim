@@ -41,8 +41,8 @@ interface GroundSceneProps {
   readonly secondaryScale?: number;
 }
 
-const MARKER_HEIGHT = 10;
-const MARKER_RADIUS = 15;
+const MARKER_HEIGHT = 16;
+const MARKER_RADIUS = 26;
 const MARKER_RADIAL_SEGMENTS = 16;
 const PRIMARY_COLOR = '#ff3333';
 const PRIMARY_EMISSIVE = '#ff1111';
@@ -73,6 +73,17 @@ function PrimaryUeMarker({
 
   return (
     <group position={[x, y, z]}>
+      {/* 暗色半透明底盤以提高在複雜地景紋理上的視覺對比度 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
+        <ringGeometry args={[0, markerRadius * 2.2, 32]} />
+        <meshBasicMaterial
+          color="#000000"
+          opacity={0.65}
+          transparent
+          depthWrite={false}
+        />
+      </mesh>
+
       <mesh position={[0, markerY, 0]}>
         {markerShape === 'sphere' ? (
           <sphereGeometry args={[markerRadius, 20, 14]} />
@@ -89,7 +100,7 @@ function PrimaryUeMarker({
         <meshStandardMaterial
           color={PRIMARY_COLOR}
           emissive={PRIMARY_EMISSIVE}
-          emissiveIntensity={0.3}
+          emissiveIntensity={2.5}
         />
       </mesh>
       <Text
@@ -130,6 +141,7 @@ function SecondaryUeInstances({
     const mesh = meshRef.current;
     for (let i = 0; i < positions.length; i++) {
       const [x, y, z] = positions[i];
+      // 1. 主體標記的位置更新
       dummy.position.set(
         x,
         y + (markerShape === 'sphere' ? markerRadius : markerHeight / 2),
@@ -166,10 +178,10 @@ function SecondaryUeInstances({
       <meshStandardMaterial
         color={SECONDARY_COLOR}
         emissive={SECONDARY_EMISSIVE}
-        emissiveIntensity={0.35}
+        emissiveIntensity={1.4}
         transparent
         opacity={opacity}
-        blending={THREE.AdditiveBlending}
+        blending={THREE.NormalBlending}
       />
     </instancedMesh>
   );

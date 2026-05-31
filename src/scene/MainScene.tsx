@@ -8,7 +8,7 @@
 // `showcaseArtifactToScene` instead.
 import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { ACESFilmicToneMapping } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -59,16 +59,11 @@ import {
   NTPU_LARGE_CONFIG,
   resolveInscribedPaperUserArea,
 } from '../config/ntpu.config';
-import { NTPUScene } from '../components/scene/NTPUScene';
 import { UAV } from '../components/scene/UAV';
 import { Starfield } from '../components/ui/Starfield';
+import { BaseSceneLayout } from './BaseSceneLayout';
+import { SceneTelemetry } from './SceneTelemetry';
 import {
-  CINEMATIC_EVENT_LIGHT_DECAY,
-  CINEMATIC_EVENT_LIGHT_DISTANCE_WORLD,
-  CINEMATIC_EVENT_LIGHT_HEIGHT_WORLD,
-  CINEMATIC_FOG_COLOR,
-  CINEMATIC_FOG_DENSITY,
-  resolveCinematicLightIntensity,
   resolveCinematicSpotlightTargets,
 } from './cinematicEffects';
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
@@ -154,8 +149,6 @@ function ArtifactSceneContent({
   sceneLane,
   sceneFrame,
 }: ArtifactSceneContentProps) {
-  const camera = useThree(state => state.camera);
-  const gl = useThree(state => state.gl);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const sceneConfig = useMemo(() => (
     runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
@@ -166,101 +159,50 @@ function ArtifactSceneContent({
     [sceneFrame.satellites],
   );
 
-  useEffect(() => {
-    const firstSatellite = visibleSatellites[0];
-    gl.domElement.dataset.visibleSatelliteCount = String(visibleSatellites.length);
-    gl.domElement.dataset.firstSatellitePosition = formatScenePosition(firstSatellite?.worldPos);
-    gl.domElement.dataset.servingSatelliteId = sceneFrame.metrics.servingSatelliteId;
-    gl.domElement.dataset.servingBeamId = sceneFrame.metrics.servingBeamId;
-    gl.domElement.dataset.beamCalloutsEnabled = '0';
-    gl.domElement.dataset.simTimeSec = sceneFrame.tSec.toFixed(2);
-    gl.domElement.dataset.appMode = runtime.appMode;
-    gl.domElement.dataset.sceneLaneSourceCompatible =
-      sceneLane === 'artifact-replay' && sceneFrame.sceneSource === 'artifact-replay' ? '1' : '0';
-    gl.domElement.dataset.liveSimulationEnabled = '0';
-    gl.domElement.dataset.ueMarkerShape = ueMarkerShape;
-    gl.domElement.dataset.uavVisible = '0';
-    gl.domElement.dataset.uePrimaryAnchorMode = runtime.uePrimaryAnchorMode ?? 'observer';
-    gl.domElement.dataset.firstUePosition = formatScenePosition(sceneFrame.ues[0]?.worldPos);
-    gl.domElement.dataset.visualSatelliteAltitude = String(sceneFrame.geometry.visualSatelliteAltitude ?? '');
-    gl.domElement.dataset.beamSatelliteCount = '0';
-    gl.domElement.dataset.sceneSource = sceneFrame.sceneSource;
-    gl.domElement.dataset.beamConeCount = '0';
-    gl.domElement.dataset.cellOverlaySlotIndex = '';
-    gl.domElement.dataset.cellOverlayActiveCount = '';
-    gl.domElement.dataset.cellOverlayIdleCount = '';
-    gl.domElement.dataset.cellOverlayCellCount = '';
-    gl.domElement.dataset.cellServingCount = '';
-    gl.domElement.dataset.cellVisibleCount = '';
-    gl.domElement.dataset.cellHoReassignmentCount = '';
-    gl.domElement.dataset.cellHoInterCount = '';
-    gl.domElement.dataset.cellHoIntraCount = '';
-    gl.domElement.dataset.cellBeamConeCount = '';
-    gl.domElement.dataset.handoverStoryLayer = 'artifact-owned';
-    gl.domElement.dataset.handoverStoryVisible = '0';
-    gl.domElement.dataset.handoverStorySource = '';
-    gl.domElement.dataset.handoverStoryNotBaselineProof = '0';
-    gl.domElement.dataset.handoverStoryEventCount = '0';
-    gl.domElement.dataset.handoverStoryAggregateEventCount = '0';
-    gl.domElement.dataset.handoverStoryActiveCount = '0';
-    gl.domElement.dataset.handoverStoryInactiveCount = '0';
-    gl.domElement.dataset.handoverStoryNextCount = '0';
-    gl.domElement.dataset.cameraPreset = 'manual';
-    gl.domElement.dataset.cameraTransition = 'idle';
-    gl.domElement.dataset.cameraPosition = formatCameraVector(camera.position);
-    gl.domElement.dataset.cameraTarget = formatCameraVector(controlsRef.current?.target ?? new THREE.Vector3());
-    REPLAY_CANVAS_ATTRIBUTES.forEach(attribute => {
-      gl.domElement.removeAttribute(attribute);
-    });
-  }, [
-    camera.position,
-    gl.domElement,
-    runtime.appMode,
-    runtime.uePrimaryAnchorMode,
-    sceneFrame,
-    sceneLane,
-    ueMarkerShape,
-    visibleSatellites,
-  ]);
-
   return (
-    <>
-      <PerspectiveCamera
-        makeDefault
-        position={sceneConfig.camera.initialPosition}
-        fov={sceneConfig.camera.fov}
-        near={sceneConfig.camera.near}
-        far={sceneConfig.camera.far}
+    <BaseSceneLayout sceneConfig={sceneConfig} controlsRef={controlsRef}>
+      <SceneTelemetry
+        visibleSatelliteCount={visibleSatellites.length}
+        firstSatellitePosition={formatScenePosition(visibleSatellites[0]?.worldPos)}
+        servingSatelliteId={sceneFrame.metrics.servingSatelliteId}
+        servingBeamId={sceneFrame.metrics.servingBeamId}
+        beamCalloutsEnabled="0"
+        simTimeSec={sceneFrame.tSec}
+        appMode={runtime.appMode}
+        sceneLaneSourceCompatible={
+          sceneLane === 'artifact-replay' && sceneFrame.sceneSource === 'artifact-replay' ? '1' : '0'
+        }
+        liveSimulationEnabled="0"
+        ueMarkerShape={ueMarkerShape}
+        uavVisible="0"
+        uePrimaryAnchorMode={runtime.uePrimaryAnchorMode ?? 'observer'}
+        firstUePosition={formatScenePosition(sceneFrame.ues[0]?.worldPos)}
+        visualSatelliteAltitude={String(sceneFrame.geometry.visualSatelliteAltitude ?? '')}
+        beamSatelliteCount="0"
+        sceneSource={sceneFrame.sceneSource}
+        beamConeCount="0"
+        cellOverlaySlotIndex=""
+        cellOverlayActiveCount=""
+        cellOverlayIdleCount=""
+        cellOverlayCellCount=""
+        cellServingCount=""
+        cellVisibleCount=""
+        cellHoReassignmentCount=""
+        cellHoInterCount=""
+        cellHoIntraCount=""
+        cellBeamConeCount=""
+        handoverStoryLayer="artifact-owned"
+        handoverStoryVisible="0"
+        handoverStorySource=""
+        handoverStoryNotBaselineProof="0"
+        handoverStoryEventCount={0}
+        handoverStoryAggregateEventCount={0}
+        handoverStoryActiveCount={0}
+        handoverStoryInactiveCount={0}
+        handoverStoryNextCount={0}
+        controlsRef={controlsRef}
+        shouldClearReplayAttributes={true}
       />
-      <OrbitControls
-        ref={controlsRef}
-        enableDamping={false}
-        rotateSpeed={0.3}
-        zoomSpeed={0.45}
-        panSpeed={0.3}
-        minDistance={50}
-        maxDistance={3000}
-      />
-      <hemisphereLight args={[0xffffff, 0x444444, 1.0]} />
-      <ambientLight intensity={0.2} />
-      <directionalLight
-        castShadow
-        position={[0, 50, 0]}
-        intensity={1.5}
-        shadow-mapSize-width={4096}
-        shadow-mapSize-height={4096}
-        shadow-camera-near={1}
-        shadow-camera-far={1000}
-        shadow-camera-top={500}
-        shadow-camera-bottom={-500}
-        shadow-camera-left={500}
-        shadow-camera-right={-500}
-        shadow-bias={-0.0004}
-        shadow-radius={8}
-      />
-      <Suspense fallback={null}>
-        <NTPUScene config={sceneConfig} />
-      </Suspense>
       <GroundScene
         ues={sceneFrame.ues
           .filter((u) => u.worldPos !== undefined)
@@ -281,7 +223,7 @@ function ArtifactSceneContent({
         );
       })}
       <FPSCounter />
-    </>
+    </BaseSceneLayout>
   );
 }
 
@@ -298,8 +240,9 @@ function SceneContent({
   sceneFrame: propSceneFrame,
 }: SceneContentProps) {
   const camera = useThree(state => state.camera);
-  const gl = useThree(state => state.gl);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const cameraPresetRef = useRef<string | null>('manual');
+  const cameraTransitionRef = useRef<'idle' | 'animating'>('idle');
   const cameraTweenRef = useRef<CameraTweenState | null>(null);
   const lastCameraCommandAtRef = useRef<number | null>(null);
   const lastCameraPresetRef = useRef<CameraPreset | null>(null);
@@ -334,13 +277,6 @@ function SceneContent({
   });
   const latchedBeamSinrByKeyRef = useRef<Map<string, number>>(new Map());
   const cellCoverHysteresisRef = useRef<CellCoverHysteresisState>(new Map());
-  const writeCameraTelemetry = (preset: CameraPreset | null, transition: 'idle' | 'animating') => {
-    const controls = controlsRef.current;
-    gl.domElement.dataset.cameraPreset = preset ?? 'manual';
-    gl.domElement.dataset.cameraTransition = transition;
-    gl.domElement.dataset.cameraPosition = formatCameraVector(camera.position);
-    gl.domElement.dataset.cameraTarget = formatCameraVector(controls?.target ?? new THREE.Vector3());
-  };
   const alpha = sceneConfig.visualAlpha;
 
   const cameraPresets = useMemo(() => ({
@@ -368,7 +304,8 @@ function SceneContent({
     camera.position.set(...presetPose.position);
     controls?.target.set(...presetPose.target);
     controls?.update();
-    writeCameraTelemetry(preset, transition);
+    cameraPresetRef.current = preset;
+    cameraTransitionRef.current = transition;
   };
   const cells = useMemo(
     () => generateHexGrid({ rows: 4, cols: 5, cellRadius: 80, centerX: 0, centerZ: 0 }),
@@ -580,90 +517,6 @@ function SceneContent({
     cellCoverHysteresisRef.current.clear();
   }, [runtime.handoverResetKey, runtime.signalResetKey]);
 
-  useEffect(() => {
-    writeCameraTelemetry(lastCameraPresetRef.current, cameraTweenRef.current ? 'animating' : 'idle');
-  });
-
-  useEffect(() => {
-    const firstSatellite = viz.displaySats[0];
-    gl.domElement.dataset.visibleSatelliteCount = String(viz.displaySats.length);
-    gl.domElement.dataset.firstSatellitePosition = firstSatellite
-      ? formatCameraVector(firstSatellite.world)
-      : '';
-    gl.domElement.dataset.servingSatelliteId = sceneFrame.metrics.servingSatelliteId;
-    gl.domElement.dataset.servingBeamId = sceneFrame.metrics.servingBeamId;
-    gl.domElement.dataset.beamCalloutsEnabled = showBeamCallouts ? '1' : '0';
-    gl.domElement.dataset.simTimeSec = sceneFrame.tSec.toFixed(2);
-    gl.domElement.dataset.appMode = runtime.appMode;
-    gl.domElement.dataset.sceneLaneSourceCompatible = renderPlan.sourceCompatible ? '1' : '0';
-    gl.domElement.dataset.liveSimulationEnabled = '1';
-    gl.domElement.dataset.ueMarkerShape = ueMarkerShape;
-    gl.domElement.dataset.uavVisible = showUav ? '1' : '0';
-    gl.domElement.dataset.uePrimaryAnchorMode = runtime.uePrimaryAnchorMode ?? 'observer';
-    gl.domElement.dataset.firstUePosition = formatScenePosition(sceneFrame.ues[0]?.worldPos);
-    gl.domElement.dataset.visualSatelliteAltitude = String(sceneGeometry.visualSatelliteAltitude ?? '');
-    gl.domElement.dataset.beamSatelliteCount = String(viz.satBeams.size);
-    gl.domElement.dataset.sceneSource = sceneFrame.sceneSource;
-    gl.domElement.dataset.beamConeCount = String(
-      SHOW_BEAMS && showLiveBeamCones && !showCellOverlay
-        ? [...viz.satBeams.values()].reduce((count, beams) => count + beams.length, 0)
-        : 0,
-    );
-    gl.domElement.dataset.cellOverlaySlotIndex = showCellOverlay ? String(cellSchedule.slotIndex) : '';
-    gl.domElement.dataset.cellOverlayActiveCount = showCellOverlay ? String(cellSchedule.slot.assignments.length) : '';
-    gl.domElement.dataset.cellOverlayIdleCount = showCellOverlay ? String(cellSchedule.slot.idleCellIds.length) : '';
-    gl.domElement.dataset.cellOverlayCellCount = showCellOverlay ? String(cellSchedule.layout.count) : '';
-    gl.domElement.dataset.cellServingCount = showCellOverlay ? String(cellSchedule.servingCount) : '';
-    gl.domElement.dataset.cellVisibleCount = showCellOverlay ? String(cellSchedule.visibleCount) : '';
-    gl.domElement.dataset.cellHoReassignmentCount = showCellOverlay ? String(cellHoCounts.total) : '';
-    gl.domElement.dataset.cellHoInterCount = showCellOverlay ? String(cellHoCounts.inter) : '';
-    gl.domElement.dataset.cellHoIntraCount = showCellOverlay ? String(cellHoCounts.intra) : '';
-    gl.domElement.dataset.cellBeamConeCount = showCellOverlay ? String(renderedCellBeamConeCount) : '';
-    gl.domElement.dataset.handoverStoryLayer = handoverStoryLayerPolicy;
-    gl.domElement.dataset.handoverStoryVisible =
-      handoverStoryModel || replayBackedHandoverStoryVisible ? '1' : '0';
-    gl.domElement.dataset.handoverStorySource =
-      handoverStoryModel?.source ?? (replayBackedHandoverStoryVisible ? 'modqn-replay-proof' : '');
-    gl.domElement.dataset.handoverStoryNotBaselineProof = handoverStoryModel?.notBaselineProof ? '1' : '0';
-    gl.domElement.dataset.handoverStoryEventCount = String(handoverStoryModel?.events.length ?? 0);
-    gl.domElement.dataset.handoverStoryAggregateEventCount = String(handoverStoryModel?.aggregateEventCount ?? 0);
-    gl.domElement.dataset.handoverStoryActiveCount = String(handoverStoryModel?.activeSlots.length ?? 0);
-    gl.domElement.dataset.handoverStoryInactiveCount = String(handoverStoryModel?.inactiveSlots.length ?? 0);
-    gl.domElement.dataset.handoverStoryNextCount = String(handoverStoryModel?.nextSlots.length ?? 0);
-  }, [
-    cellHoCounts.inter,
-    cellHoCounts.intra,
-    cellHoCounts.total,
-    cellSchedule.layout.count,
-    cellSchedule.servingCount,
-    cellSchedule.slot.assignments.length,
-    cellSchedule.slot.idleCellIds.length,
-    cellSchedule.slotIndex,
-    cellSchedule.visibleCount,
-    gl.domElement,
-    handoverStoryLayerPolicy,
-    handoverStoryModel,
-    replayBackedHandoverStoryVisible,
-    renderedCellBeamConeCount,
-    renderPlan.sourceCompatible,
-    runtime.beamCalloutsEnabled,
-    runtime.appMode,
-    runtime.uePrimaryAnchorMode,
-    sceneFrame.sceneSource,
-    sceneFrame.metrics.servingSatelliteId,
-    sceneFrame.metrics.servingBeamId,
-    sceneFrame.tSec,
-    sceneFrame.ues,
-    sceneGeometry.visualSatelliteAltitude,
-    showBeamCallouts,
-    showCellOverlay,
-    showLiveBeamCones,
-    showUav,
-    ueMarkerShape,
-    viz.displaySats,
-    viz.satBeams,
-  ]);
-
   useLayoutEffect(() => {
     const command = runtime.cameraCommand;
     if (!command || lastCameraCommandAtRef.current === command.issuedAtMs) return;
@@ -691,7 +544,8 @@ function SceneContent({
       toPosition,
       toTarget,
     };
-    writeCameraTelemetry(command.preset, 'animating');
+    cameraPresetRef.current = command.preset;
+    cameraTransitionRef.current = 'animating';
   }, [camera, runtime.cameraCommand, runtime.reducedMotion, cameraPresets]);
 
   useFrame(() => {
@@ -719,66 +573,70 @@ function SceneContent({
       controls?.target.copy(tween.toTarget);
       controls?.update();
       cameraTweenRef.current = null;
-      writeCameraTelemetry(tween.preset, 'idle');
+      cameraPresetRef.current = tween.preset;
+      cameraTransitionRef.current = 'idle';
       return;
     }
 
-    writeCameraTelemetry(tween.preset, 'animating');
+    cameraPresetRef.current = tween.preset;
+    cameraTransitionRef.current = 'animating';
   });
 
   return (
-    <>
-      <PerspectiveCamera
-        makeDefault
-        position={sceneConfig.camera.initialPosition}
-        fov={sceneConfig.camera.fov}
-        near={sceneConfig.camera.near}
-        far={sceneConfig.camera.far}
+    <BaseSceneLayout
+      sceneConfig={sceneConfig}
+      controlsRef={controlsRef}
+      cinematicSpotlightActive={cinematicSpotlightActive}
+      effectiveCinematicMode={effectiveCinematicMode}
+      cinematicSpotlightTargets={cinematicSpotlightTargets}
+    >
+      <SceneTelemetry
+        visibleSatelliteCount={viz.displaySats.length}
+        firstSatellitePosition={viz.displaySats[0] ? formatCameraVector(viz.displaySats[0].world) : ''}
+        servingSatelliteId={sceneFrame.metrics.servingSatelliteId}
+        servingBeamId={sceneFrame.metrics.servingBeamId}
+        beamCalloutsEnabled={showBeamCallouts ? '1' : '0'}
+        simTimeSec={sceneFrame.tSec}
+        appMode={runtime.appMode}
+        sceneLaneSourceCompatible={renderPlan.sourceCompatible ? '1' : '0'}
+        liveSimulationEnabled="1"
+        ueMarkerShape={ueMarkerShape}
+        uavVisible={showUav ? '1' : '0'}
+        uePrimaryAnchorMode={runtime.uePrimaryAnchorMode ?? 'observer'}
+        firstUePosition={formatScenePosition(sceneFrame.ues[0]?.worldPos)}
+        visualSatelliteAltitude={String(sceneGeometry.visualSatelliteAltitude ?? '')}
+        beamSatelliteCount={viz.satBeams.size}
+        sceneSource={sceneFrame.sceneSource}
+        beamConeCount={
+          SHOW_BEAMS && showLiveBeamCones && !showCellOverlay
+            ? [...viz.satBeams.values()].reduce((count, beams) => count + beams.length, 0)
+            : 0
+        }
+        cellOverlaySlotIndex={showCellOverlay ? String(cellSchedule.slotIndex) : ''}
+        cellOverlayActiveCount={showCellOverlay ? String(cellSchedule.slot.assignments.length) : ''}
+        cellOverlayIdleCount={showCellOverlay ? String(cellSchedule.slot.idleCellIds.length) : ''}
+        cellOverlayCellCount={showCellOverlay ? String(cellSchedule.layout.count) : ''}
+        cellServingCount={showCellOverlay ? String(cellSchedule.servingCount) : ''}
+        cellVisibleCount={showCellOverlay ? String(cellSchedule.visibleCount) : ''}
+        cellHoReassignmentCount={showCellOverlay ? String(cellHoCounts.total) : ''}
+        cellHoInterCount={showCellOverlay ? String(cellHoCounts.inter) : ''}
+        cellHoIntraCount={showCellOverlay ? String(cellHoCounts.intra) : ''}
+        cellBeamConeCount={showCellOverlay ? String(renderedCellBeamConeCount) : ''}
+        handoverStoryLayer={handoverStoryLayerPolicy}
+        handoverStoryVisible={handoverStoryModel || replayBackedHandoverStoryVisible ? '1' : '0'}
+        handoverStorySource={
+          handoverStoryModel?.source ?? (replayBackedHandoverStoryVisible ? 'modqn-replay-proof' : '')
+        }
+        handoverStoryNotBaselineProof={handoverStoryModel?.notBaselineProof ? '1' : '0'}
+        handoverStoryEventCount={handoverStoryModel?.events.length ?? 0}
+        handoverStoryAggregateEventCount={handoverStoryModel?.aggregateEventCount ?? 0}
+        handoverStoryActiveCount={handoverStoryModel?.activeSlots.length ?? 0}
+        handoverStoryInactiveCount={handoverStoryModel?.inactiveSlots.length ?? 0}
+        handoverStoryNextCount={handoverStoryModel?.nextSlots.length ?? 0}
+        cameraPresetRef={cameraPresetRef}
+        cameraTransitionRef={cameraTransitionRef}
+        controlsRef={controlsRef}
       />
-      <OrbitControls
-        ref={controlsRef}
-        enableDamping={false}
-        rotateSpeed={0.3}
-        zoomSpeed={0.45}
-        panSpeed={0.3}
-        minDistance={50}
-        maxDistance={3000}
-      />
-
-      {cinematicSpotlightActive && (
-        <fogExp2 attach="fog" args={[CINEMATIC_FOG_COLOR, CINEMATIC_FOG_DENSITY]} />
-      )}
-      <hemisphereLight args={[0xffffff, 0x444444, resolveCinematicLightIntensity(1.0, effectiveCinematicMode)]} />
-      <ambientLight intensity={resolveCinematicLightIntensity(0.2, effectiveCinematicMode)} />
-      <directionalLight
-        castShadow
-        position={[0, 50, 0]}
-        intensity={resolveCinematicLightIntensity(1.5, effectiveCinematicMode)}
-        shadow-mapSize-width={4096}
-        shadow-mapSize-height={4096}
-        shadow-camera-near={1}
-        shadow-camera-far={1000}
-        shadow-camera-top={500}
-        shadow-camera-bottom={-500}
-        shadow-camera-left={500}
-        shadow-camera-right={-500}
-        shadow-bias={-0.0004}
-        shadow-radius={8}
-      />
-      {cinematicSpotlightTargets.map(target => (
-        <pointLight
-          key={target.id}
-          color={target.color}
-          intensity={target.intensity}
-          distance={CINEMATIC_EVENT_LIGHT_DISTANCE_WORLD}
-          decay={CINEMATIC_EVENT_LIGHT_DECAY}
-          position={[target.groundX, CINEMATIC_EVENT_LIGHT_HEIGHT_WORLD, target.groundZ]}
-        />
-      ))}
-
-      <Suspense fallback={null}>
-        <NTPUScene config={sceneConfig} />
-      </Suspense>
       {showUav && (
         <Suspense fallback={null}>
           <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
@@ -792,8 +650,8 @@ function SceneContent({
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
         markerShape={ueMarkerShape}
         ueTrailHistory={showCellOverlay ? undefined : ueTrailHistory}
-        secondaryOpacity={showCellOverlay ? 0.24 : undefined}
-        secondaryScale={showCellOverlay ? 0.72 : undefined}
+        secondaryOpacity={1.0}
+        secondaryScale={1.0}
       />
       {showCellOverlay && (
         <CellOverlay
@@ -906,7 +764,7 @@ function SceneContent({
       {showLiveSceneEffects && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
       {showHandoverToastOverlay && <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />}
       {showArtifactFpsCounter && <FPSCounter />}
-    </>
+    </BaseSceneLayout>
   );
 }
 

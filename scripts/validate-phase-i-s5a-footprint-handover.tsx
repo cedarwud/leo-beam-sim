@@ -294,13 +294,17 @@ expectEqual(
 
 const mainSceneSource = readFileSync(path.join(REPO_ROOT, 'src/scene/MainScene.tsx'), 'utf8');
 const sceneLaneRenderPlanSource = readFileSync(path.join(REPO_ROOT, 'src/scene/sceneLaneRenderPlan.ts'), 'utf8');
+const telemetrySource = readFileSync(path.join(REPO_ROOT, 'src/scene/SceneTelemetry.tsx'), 'utf8');
 expect(
   sceneLaneRenderPlanSource.includes("const showCellOverlay = input.sceneLane === 'modqn-live-cell-preview' && isLiveScene")
     && mainSceneSource.includes('{showCellOverlay && (\n        <CellHandoverArcs')
-    && mainSceneSource.includes('dataset.cellHoReassignmentCount')
-    && mainSceneSource.includes('dataset.cellHoInterCount')
-    && mainSceneSource.includes('dataset.cellHoIntraCount'),
-  'MainScene gates CellHandoverArcs to the live MODQN cell lane and exposes cellHo dataset fields',
+    && telemetrySource.includes('dataset.cellHoReassignmentCount')
+    && telemetrySource.includes('dataset.cellHoInterCount')
+    && telemetrySource.includes('dataset.cellHoIntraCount')
+    && mainSceneSource.includes('cellHoReassignmentCount=')
+    && mainSceneSource.includes('cellHoInterCount=')
+    && mainSceneSource.includes('cellHoIntraCount='),
+  'MainScene gates CellHandoverArcs to the live MODQN cell lane and exposes cellHo dataset fields via SceneTelemetry',
 );
 
 assert.ok(PASSED.length >= 30, `expected >=30 assertions; got ${PASSED.length}`);
