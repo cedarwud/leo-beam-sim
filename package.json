@@ -119,6 +119,7 @@
     "validate:phase-g:ue-mobility-ui": "node --import tsx/esm scripts/validate-phase-g-ue-mobility-ui.tsx",
     "validate:phase-g:ue-mobility-params": "node --import tsx/esm scripts/validate-phase-g-ue-mobility-params.tsx",
     "validate:phase-g:ue-trail-viz": "node --import tsx/esm scripts/validate-phase-g-ue-trail-viz.tsx",
+    "validate:timeline:scrubbing": "node --import tsx/esm scripts/validate-timeline-scrubbing.tsx",
     "validate:live-walker:7200-timeline": "node --import tsx/esm scripts/validate-live-walker-7200-timeline.ts",
     "validate:live-walker:handover-event-index-7200": "node --import tsx/esm scripts/validate-live-walker-handover-event-index-7200.ts",
     "validate:frontend:scene-lane-governance": "node --import tsx/esm scripts/validate-frontend-scene-lane-governance.ts",

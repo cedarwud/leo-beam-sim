@@ -2,7 +2,7 @@
 
 ## Status
 
-**Draft** — 2026-05-31. Technical specifications and implementation roadmap for introducing a sleek, glassmorphic bottom timeline bar with full play/pause, speed multipliers, step forward/backward, and continuous range scrubbing for both `live-sim` and `artifact-replay` modes.
+**Implemented through Slice T4** — 2026-06-01. Technical specifications and implementation roadmap for introducing a sleek, glassmorphic bottom timeline bar with full play/pause, speed multipliers, step forward/backward, and continuous range scrubbing for both `live-sim` and `artifact-replay` modes.
 
 ---
 
@@ -173,6 +173,14 @@ The JSX tree of the timeline bar will be structured as:
 - Add timeline metadata to `gl.domElement.dataset` or `document.body` dataset for test assertions.
 - Write a dedicated validator: `scripts/validate-timeline-scrubbing.tsx` that ensures time updates propagate and trigger state machine resets.
 - Run the full linter and suite validators.
+
+Implementation note (2026-06-01): the committed implementation exposes timeline
+metadata on the app shell and TimelineBar datasets instead of the WebGL canvas.
+`validate:timeline:scrubbing` locks source owner, horizon kind, claim kind,
+current time, duration, clamping, artifact seek, live seek request dispatch, and
+the `useSimulation` reset path. This remains a display/runtime validation layer;
+it does not mutate producer traces, artifact timelines, or MODQN replay proof
+horizons.
 
 ---
 

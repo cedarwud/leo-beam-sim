@@ -49,8 +49,9 @@ const ARTIFACT_EVENT_INDEX_SOURCE_GAP =
   'Source gap: loaded artifact has no validated handover event index.';
 
 export function clampTimelineTime(targetSec: number, durationSec: number): number {
+  const safeDurationSec = Number.isFinite(durationSec) ? Math.max(0, durationSec) : 0;
   if (!Number.isFinite(targetSec)) return 0;
-  return Math.min(Math.max(targetSec, 0), durationSec);
+  return Math.min(Math.max(targetSec, 0), safeDurationSec);
 }
 
 function formatShortSeconds(value: number): string {

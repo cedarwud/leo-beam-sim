@@ -1509,6 +1509,12 @@ export function App() {
       data-ui-mode={uiMode}
       data-app-mode={appMode}
       data-scene-lane={sceneLane}
+      data-timeline-current-time-sec={timelineCurrentTimeSec.toFixed(3)}
+      data-timeline-duration-sec={timelineDurationSec.toFixed(3)}
+      data-timeline-disabled={timelineDisabled ? 'true' : 'false'}
+      data-timeline-source-owner={timelineRailDescriptor.timeline.sourceOwner}
+      data-timeline-horizon-kind={timelineRailDescriptor.timeline.horizonKind}
+      data-timeline-claim-kind={timelineRailDescriptor.timeline.claimKind}
       data-live-timeline-seek-target={liveTimelineSeekRequest?.targetSec.toFixed(3) ?? ''}
       data-live-timeline-seek-key={liveTimelineSeekRequest?.requestKey ?? ''}
       data-topology-overrides-active={hasTopologyOverrides ? 'true' : 'false'}
