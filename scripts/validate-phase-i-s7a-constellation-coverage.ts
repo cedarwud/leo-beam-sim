@@ -10,9 +10,10 @@ import {
 } from '../src/engine/orbit';
 import type { OrbitElement } from '../src/engine/orbit/types';
 import type { Profile } from '../src/profiles/types';
+import { MODQN_BEAMS_PER_SERVING_SATELLITE } from '../src/modqn/servingCount.ts';
 import {
   DEFAULT_SERVING_COUNT,
-  PAPER_ACTIVE_BEAMS_PER_SLOT,
+  DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT,
   computeCellScheduleViz,
 } from '../src/scene/useCellSchedule.ts';
 
@@ -32,8 +33,7 @@ const ALTITUDE_KM = 780;
 const BEAMWIDTH_3DB_RAD = 2 * DEG_TO_RAD;
 const WORLD_UNITS_PER_KM = 2;
 const EXPECTED_POOL_SIZE = 384;
-const EXPECTED_IDLE_CELLS = 9;
-const SERVING_COUNTS = [4, DEFAULT_SERVING_COUNT, 12] as const;
+const SERVING_COUNTS = [2, 4, DEFAULT_SERVING_COUNT] as const;
 
 const PASSED: string[] = [];
 const FAILED: string[] = [];
@@ -357,25 +357,34 @@ for (const servingCount of SERVING_COUNTS) {
   assert.ok(diag, `missing diagnostics for L=${servingCount}`);
   expect(diag.servingCount === servingCount, `L=${servingCount} schedule reports resolved servingCount=${servingCount}`);
   expect(diag.visibleCount === fixtureSatellites.length, `L=${servingCount} reports visibleCount=12 before cap`);
-  expect(diag.activeCount === PAPER_ACTIVE_BEAMS_PER_SLOT, `L=${servingCount} keeps K=28 active beams`);
-  expect(diag.idleCount === EXPECTED_IDLE_CELLS, `L=${servingCount} keeps 9 idle cells`);
+  const expectedDisplayActive = Math.min(
+    37,
+    servingCount * MODQN_BEAMS_PER_SERVING_SATELLITE,
+    DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT,
+  );
+  expect(diag.activeCount === expectedDisplayActive, `L=${servingCount} applies display-only active-cell cap`);
+  expect(diag.idleCount === 37 - expectedDisplayActive, `L=${servingCount} reports display idle cells`);
   expect(isSubset(diag.assignedSatIds, diag.expectedTopSatIds), `L=${servingCount} assignments use only the top-L elevation set`);
 }
 
+const l2 = diagnostics.get(2);
 const l4 = diagnostics.get(4);
 const l8 = diagnostics.get(DEFAULT_SERVING_COUNT);
-const l12 = diagnostics.get(12);
-assert.ok(l4 && l8 && l12, 'missing serving diagnostics');
+assert.ok(l2 && l4 && l8, 'missing serving diagnostics');
 
+expect(isSubset(l2.expectedTopSatIds, l4.expectedTopSatIds), 'top-2 serving set is nested inside top-4');
 expect(isSubset(l4.expectedTopSatIds, l8.expectedTopSatIds), 'top-4 serving set is nested inside top-8');
-expect(isSubset(l8.expectedTopSatIds, l12.expectedTopSatIds), 'top-8 serving set is nested inside top-12');
 expect(
   l4.assignedSatIds.length === 4 && isSubset(l4.expectedTopSatIds, l4.assignedSatIds),
   'L=4 assigns all four highest-elevation satellites',
 );
 expect(
-  l12.distinctAssignedSatCount > l4.distinctAssignedSatCount,
-  'inter-HO opportunity grows: L=12 uses more distinct serving satellites than L=4',
+  l8.distinctAssignedSatCount > l4.distinctAssignedSatCount,
+  'inter-HO opportunity grows: L=8 uses more distinct serving satellites than L=4',
+);
+expect(
+  l2.expectedTopSatIds.join(',') === topByCenterElevation(fixtureSatellites, 2).join(','),
+  'L=2 top-L selection is sorted by elevation desc',
 );
 expect(
   l4.expectedTopSatIds.join(',') === topByCenterElevation(fixtureSatellites, 4).join(','),
@@ -384,10 +393,6 @@ expect(
 expect(
   l8.expectedTopSatIds.join(',') === topByCenterElevation(fixtureSatellites, DEFAULT_SERVING_COUNT).join(','),
   'L=8 top-L selection is sorted by elevation desc',
-);
-expect(
-  l12.expectedTopSatIds.join(',') === topByCenterElevation(fixtureSatellites, 12).join(','),
-  'L=12 top-L selection is sorted by elevation desc',
 );
 
 for (const servingCount of SERVING_COUNTS) {

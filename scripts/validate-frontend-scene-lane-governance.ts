@@ -7,6 +7,9 @@ import {
   shouldRenderModqnReplayScene,
 } from '../src/app/sceneLane.ts';
 import {
+  resolveTimelineRailDescriptor,
+} from '../src/app/timelineRailAuthority.ts';
+import {
   getDefaultLeftSidebarTabForSceneLane,
   getDefaultRightSidebarTabForSceneLane,
   getLeftSidebarTabsForSceneLane,
@@ -228,11 +231,27 @@ assert.equal(
 
 const appSource = readRepoFile('src/App.tsx');
 const appRuntimeModelSource = readRepoFile('src/app/appRuntimeModel.ts');
+const appRuntimeConfigSource = readRepoFile('src/app/appRuntimeConfig.ts');
+const appPersistenceSource = readRepoFile('src/app/appPersistence.ts');
+const appExperienceModeSource = readRepoFile('src/app/appExperienceMode.ts');
+const modqnServingCountSource = readRepoFile('src/modqn/servingCount.ts');
+const timelineAuthoritySource = readRepoFile('src/app/timelineRailAuthority.ts');
 const controlBarSource = readRepoFile('src/ui/ControlBar.tsx');
+const topologyTabSource = readRepoFile('src/ui/signal-tuning/TopologyTab.tsx');
+const timelineBarSource = readRepoFile('src/ui/TimelineBar.tsx');
+const handoverRailSource = readRepoFile('src/ui/HandoverEventRail.tsx');
+const modqnHudSource = readRepoFile('src/ui/modqn-controls/ModqnSceneHud.tsx');
+const modqnVisualLayersSource = readRepoFile('src/scene/modqnVisualLayers.ts');
+const modqnServiceMapSource = readRepoFile('src/scene/modqnServiceMap.ts');
+const cellOverlaySource = readRepoFile('src/viz/CellOverlay.tsx');
+const groundSceneSource = readRepoFile('src/viz/GroundScene.tsx');
 const modqnReplayCuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
 const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
+const cellScheduleSource = readRepoFile('src/scene/useCellSchedule.ts');
 const baseSceneLayoutSource = readRepoFile('src/scene/BaseSceneLayout.tsx');
 const sceneTelemetrySource = readRepoFile('src/scene/SceneTelemetry.tsx');
+const simStatePublisherSource = readRepoFile('src/scene/useSimStatePublisher.ts');
+const panelStateSource = readRepoFile('src/scene/panelState.ts');
 const sceneLaneRenderPlanSource = readRepoFile('src/scene/sceneLaneRenderPlan.ts');
 const replayLayerSource = readRepoFile('src/scene/modqn-replay-visuals/index.tsx');
 const replayTelemetrySource = readRepoFile('src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx');
@@ -244,6 +263,46 @@ const agentsDoc = readRepoFile('AGENTS.md');
 const claudeDoc = readRepoFile('CLAUDE.md');
 const packageJson = readRepoFile('package.json');
 
+assertContains(modqnServingCountSource, 'MODQN_SERVING_COUNT_OPTIONS = [2, 3, 4, 5, 6, 7, 8] as const', 'MODQN formal serving-count options are L=2..8');
+assertContains(modqnServingCountSource, 'MODQN_PAPER_BASELINE_SERVING_COUNT = 4', 'MODQN serving-count model labels L=4 as baseline');
+assertContains(modqnServingCountSource, 'MODQN_PAPER_SWEEP_MAX_SERVING_COUNT = 8', 'MODQN serving-count model labels L=8 as sweep max');
+assertContains(modqnServingCountSource, 'MODQN_BEAMS_PER_SERVING_SATELLITE = 7', 'MODQN serving-count model keeps 7 beams per serving satellite');
+assertContains(modqnServingCountSource, 'return MODQN_PAPER_SWEEP_MAX_SERVING_COUNT', 'MODQN serving-count model migrates legacy L=12 to L=8');
+assertContains(topologyTabSource, 'MODQN_SERVING_COUNT_OPTIONS.map', 'TopologyTab renders formal MODQN serving-count options from shared model');
+assertContains(topologyTabSource, 'paper-faithful baseline', 'TopologyTab labels L=4 as baseline');
+assertContains(topologyTabSource, 'paper sweep max / rich demo', 'TopologyTab labels L=8 as paper sweep max / rich demo');
+assertContains(topologyTabSource, 'L x 7 MODQN beam actions', 'TopologyTab presents MODQN action catalog as L x 7');
+assertNotContains(topologyTabSource, 'topology-tab-serving-count-option-12', 'TopologyTab must not expose L=12 as a formal selector option');
+assertNotContains(topologyTabSource, 'K=28 active beams', 'TopologyTab must not claim fixed K=28 across serving counts');
+assertContains(appPersistenceSource, 'normalizePersistedModqnServingCount(record.cellServingCount)', 'appPersistence normalizes persisted MODQN serving count');
+assertNotContains(appPersistenceSource, 'record.cellServingCount === 12', 'appPersistence must not accept L=12 as a normal value');
+assertContains(appRuntimeConfigSource, 'normalizeRuntimeModqnServingCount(input.sceneTopology.cellServingCount)', 'appRuntimeConfig normalizes runtime MODQN serving count');
+assertContains(modqnVisualLayersSource, "DEFAULT_MODQN_VISUAL_LAYER_PRESET: ModqnVisualLayerPreset = 'baseline-faithful'", 'MODQN visual layers default to baseline faithful preset');
+assertContains(modqnVisualLayersSource, "'explain-handover'", 'MODQN visual layers include explain handover preset');
+assertContains(modqnVisualLayersSource, 'beamCones: false', 'MODQN baseline preset keeps beam cones off');
+assertContains(modqnVisualLayersSource, 'handoverCues: false', 'MODQN baseline preset keeps handover cues off');
+assertContains(modqnVisualLayersSource, 'handoverCues: true', 'MODQN explain/debug presets can enable handover cues');
+assertContains(modqnServiceMapSource, 'deriveModqnServiceMap', 'MODQN service map derives all-UE service rendering state');
+assertContains(modqnServiceMapSource, 'ueCountByCellId', 'MODQN service map exposes per-cell served UE counts');
+assertContains(modqnServiceMapSource, 'activeCellCountBySatId', 'MODQN service map exposes per-satellite active-cell counts');
+assertContains(modqnServiceMapSource, 'buildModqnCellServiceReadout', 'MODQN service map builds a cell service readout');
+assertContains(modqnServiceMapSource, "claimKind: 'overlay-demo'", 'MODQN service readout keeps overlay-demo claim kind');
+assertContains(modqnServiceMapSource, 'slotSec', 'MODQN service readout carries display slot duration');
+assertContains(modqnServiceMapSource, 'nextChangedCellCount', 'MODQN service readout carries next-slot change count');
+assertContains(modqnServiceMapSource, 'activeBeamIds', 'MODQN service readout carries active beam ids without producer-proof claims');
+assertContains(cellOverlaySource, 'showUeCounts', 'CellOverlay supports explicit UE-count badge visibility');
+assertContains(controlBarSource, 'modqn-layer-preset-control', 'ControlBar exposes MODQN layer preset control');
+assertContains(controlBarSource, 'MODQN_VISUAL_LAYER_PRESETS.map', 'ControlBar renders presets from shared MODQN visual layer model');
+assertContains(appSource, 'const [modqnVisualLayerPreset, setModqnVisualLayerPreset]', 'App owns MODQN visual layer preset state');
+assertContains(appRuntimeConfigSource, 'resolveModqnVisualLayers(modqnVisualLayerPreset)', 'appRuntimeConfig resolves MODQN visual layers into runtime flags');
+assertContains(cellScheduleSource, 'DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT', 'useCellSchedule names the 28-cell cap as display-only');
+assertContains(cellScheduleSource, 'MODQN action catalog truth is L x 7', 'useCellSchedule documents display cap is not MODQN action truth');
+assertNotContains(cellScheduleSource, 'PAPER_ACTIVE_BEAMS_PER_SLOT', 'useCellSchedule must not name the display cap as paper action truth');
+assertContains(appExperienceModeSource, "'sinr-experiment': 'hobs-2024-candidate-rich'", 'SINR default profile remains HOBS candidate-rich');
+assertContains(packageJson, '"validate:live-walker:7200-timeline"', 'package exposes committed 7200s live Walker validator');
+assertContains(appRuntimeConfigSource, 'LIVE_SIM_TIMELINE_DURATION_SEC = 7200', 'live timeline is 7200s only with committed validator coverage');
+assertNotContains(appRuntimeConfigSource, 'LIVE_SIM_TIMELINE_DURATION_SEC = 1200', 'live timeline must not fall back to the old 1200s window');
+
 assertContains(appSource, "from './app/sceneLane'", 'App scene lane import');
 assertContains(appSource, 'modqnReplayProofRequested: modqnReplayProofRequestActive', 'App explicit proof request into scene lane resolver');
 assertContains(appSource, 'shouldRenderModqnReplayScene(sceneLane)', 'App replay proof lane gate');
@@ -251,6 +310,114 @@ assertContains(appSource, 'data-scene-lane={sceneLane}', 'App browser lane telem
 assertContains(appSource, 'showModqnReplayScene={showModqnReplayScene}', 'App MainScene replay prop');
 assertContains(appSource, 'sceneLane={sceneLane}', 'App MainScene lane prop');
 assertContains(appSource, 'sceneLane={sceneLane}', 'App ControlBar lane prop');
+assertContains(appSource, "from './app/timelineRailAuthority'", 'App imports timeline and rail authority module');
+assertContains(appSource, "from './app/liveWalkerHandoverRailAdapter'", 'App imports the live Walker rail adapter');
+assertContains(appSource, "from './scene/liveWalkerHandoverEventIndex'", 'App imports the live Walker event index helper');
+assertContains(timelineAuthoritySource, 'export function resolveTimelineRailDescriptor', 'Timeline authority exports descriptor resolver');
+assertContains(timelineAuthoritySource, "'profile-derived-forecast'", 'Timeline authority models profile-derived live Walker forecast claims');
+assertContains(appSource, 'buildLiveWalkerHandoverEventIndex({', 'App builds the live Walker event index outside render');
+assertContains(appSource, 'liveWalkerHandoverEventIndexToRailEvents(liveWalkerHandoverEventIndex)', 'App adapts live Walker event index to rail events');
+assertContains(appSource, 'function getModqnReplayVisualTimeline', 'App derives a slow-motion MODQN replay display axis');
+assertContains(appSource, 'MODQN_REPLAY_VISUAL_MIN_DISPLAY_DURATION_SEC = 60', 'App stretches the short legacy producer trace into a readable display playback window');
+assertContains(appSource, 'producerTraceDisplayDurationSec', 'App separates MODQN producer source horizon from display-stretched rail duration');
+assertContains(timelineAuthoritySource, 'const producerSourceTimeline: TimelineSurfaceDescriptor', 'Timeline authority keeps producer source timeline separate from display-stretched rail axis');
+assertContains(timelineAuthoritySource, "return { timeline: liveTimeline, rail: liveRail };", 'Timeline authority keeps MODQN live preview rail on the live Walker event index');
+assertContains(timelineAuthoritySource, "return { timeline: producerSourceTimeline, rail: producerTrace };", 'Timeline authority keeps MODQN replay proof bottom timeline on producer source time');
+assertNotContains(appSource, 'producerDisplayTimeline', 'App must not promote the slow-motion producer rail axis into the bottom timeline');
+assertContains(timelineAuthoritySource, 'horizonSec: producerDurationSec', 'Timeline authority keeps producer source horizon seconds separate from display duration');
+assertContains(appSource, 'horizonSec={timelineRailDescriptor.timeline.horizonSec}', 'App passes source horizon seconds to TimelineBar separately');
+assertContains(timelineAuthoritySource, "horizonKind: 'producer-trace'", 'Timeline authority models producer trace horizon explicitly');
+assertContains(timelineAuthoritySource, 'LEGACY_PRODUCER_TRACE_SOURCE_GAP', 'Timeline authority carries legacy producer trace source-gap copy');
+assertContains(appSource, 'const liveTimelineWindowStartSec = demoStartOffset;', 'App anchors live timeline display to the selected live Walker window');
+assertContains(appSource, 'simState.simTimeSec - liveTimelineWindowStartSec', 'App displays live timeline as window elapsed time, not absolute sim offset');
+assertContains(appSource, 'demoStartOffsetSec: demoStartOffset', 'App does not mutate the live Walker window start when seeking');
+assertContains(appSource, 'const absoluteTargetSec = liveTimelineWindowStartSec + target;', 'App converts bottom timeline elapsed seek to absolute Walker time');
+assertContains(appSource, 'durationSec={timelineRailDescriptor.rail.durationSec}', 'App handover rail uses descriptor-owned duration');
+assertContains(appSource, 'sourceLabel={timelineRailDescriptor.rail.sourceLabel}', 'App handover rail uses descriptor-owned source label');
+assertContains(appSource, 'sourceOwner={timelineRailDescriptor.rail.sourceOwner}', 'App handover rail exposes descriptor source owner');
+assertContains(appSource, 'sourceGapReasons={timelineRailDescriptor.rail.sourceGapReasons}', 'App handover rail exposes descriptor source gaps');
+assertContains(appSource, "if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;", 'App routes live lanes to the live Walker event index rail');
+assertContains(appSource, "if (sceneLane === 'modqn-replay-proof') return modqnHandoverRailEvents;", 'App keeps MODQN replay proof on producer rail events');
+assertContains(appSource, 'const timelineDurationSec = timelineRailDescriptor.timeline.durationSec;', 'App timeline duration is descriptor-owned');
+assertNotContains(
+  appSource,
+  "const timelineDurationSec = sceneSource === 'artifact-replay'",
+  'App must not derive timeline horizon from sceneSource alone',
+);
+assertNotContains(
+  appSource,
+  "const handoverRailSourceLabel = sceneSource === 'artifact-replay'",
+  'App must not derive handover rail source labels from free sceneSource strings',
+);
+
+{
+  const baseInput = {
+    sceneSource: 'live-sim' as const,
+    liveDurationSec: 7200,
+    liveCurrentTimeSec: 42,
+    artifactDurationSec: 300,
+    artifactCurrentTimeSec: 7,
+    artifactHandoverEventCount: 0,
+    producerTraceRange: {
+      startSec: 1,
+      endSec: 10,
+      durationSec: 10,
+      rangeLabel: '1s-10s',
+    },
+    producerTraceCurrentTimeSec: 1,
+    producerTraceDisplayDurationSec: 60,
+    producerTraceDisplayCurrentTimeSec: 18,
+    bundleProvenanceKind: 'paper-faithful' as const,
+  };
+  const livePreview = resolveTimelineRailDescriptor({
+    ...baseInput,
+    sceneLane: 'modqn-live-cell-preview',
+  });
+  assert.equal(livePreview.timeline.sourceOwner, 'live-walker', 'MODQN live preview bottom timeline uses live Walker source');
+  assert.equal(livePreview.timeline.horizonKind, 'live-walker-window', 'MODQN live preview bottom timeline uses live Walker horizon');
+  assert.equal(livePreview.timeline.durationSec, 7200, 'MODQN live preview bottom timeline uses the validated 7200s live Walker window');
+  assert.ok(livePreview.timeline.horizonLabel.includes('2 h'), 'MODQN live preview bottom timeline may label the validated live Walker horizon as 2 h');
+  assert.equal(livePreview.timeline.claimKind, 'overlay-demo', 'MODQN live preview bottom timeline is an overlay/demo claim');
+  assert.equal(livePreview.rail.sourceOwner, 'live-walker', 'MODQN live preview rail uses the live Walker event index');
+  assert.equal(livePreview.rail.horizonKind, 'live-walker-window', 'MODQN live preview rail uses the live Walker 7200s horizon');
+  assert.equal(livePreview.rail.durationSec, 7200, 'MODQN live preview rail does not inherit the 10s producer trace');
+  assert.equal(livePreview.rail.claimKind, 'overlay-demo', 'MODQN live preview rail labels live Walker events as overlay/demo');
+  assert.equal(livePreview.rail.axisKind, 'source-time', 'MODQN live preview rail click targets use source time');
+
+  const sinrLive = resolveTimelineRailDescriptor({
+    ...baseInput,
+    sceneLane: 'sinr-live',
+  });
+  assert.equal(sinrLive.rail.sourceOwner, 'live-walker', 'SINR live rail uses the live Walker event index');
+  assert.equal(sinrLive.rail.horizonKind, 'live-walker-window', 'SINR live rail uses the live Walker 7200s horizon');
+  assert.equal(sinrLive.rail.claimKind, 'profile-derived-forecast', 'SINR precomputed rail is a profile-derived forecast');
+  assert.equal(sinrLive.rail.axisKind, 'source-time', 'SINR live rail click targets use source time');
+
+  const proof = resolveTimelineRailDescriptor({
+    ...baseInput,
+    sceneLane: 'modqn-replay-proof',
+  });
+  assert.equal(proof.timeline.sourceOwner, 'modqn-producer-trace', 'MODQN replay proof bottom timeline uses producer source');
+  assert.equal(proof.timeline.horizonKind, 'producer-trace', 'MODQN replay proof bottom timeline uses producer horizon');
+  assert.equal(proof.timeline.durationSec, 10, 'MODQN replay proof bottom timeline keeps the 10s producer horizon');
+  assert.equal(proof.timeline.axisKind, 'source-time', 'MODQN replay proof bottom timeline uses source time');
+  assert.equal(proof.timeline.claimKind, 'producer-proof', 'MODQN replay proof bottom timeline is producer proof');
+
+  const artifactGap = resolveTimelineRailDescriptor({
+    ...baseInput,
+    sceneLane: 'artifact-replay',
+    sceneSource: 'artifact-replay',
+  });
+  assert.equal(artifactGap.timeline.sourceOwner, 'artifact-replay', 'artifact replay bottom timeline uses artifact source');
+  assert.equal(artifactGap.rail.sourceGapReasons.length, 1, 'artifact replay rail fails closed without a handover event index');
+  const artifactWithEvents = resolveTimelineRailDescriptor({
+    ...baseInput,
+    sceneLane: 'artifact-replay',
+    sceneSource: 'artifact-replay',
+    artifactHandoverEventCount: 3,
+  });
+  assert.equal(artifactWithEvents.rail.sourceGapReasons.length, 0, 'artifact replay rail accepts artifact-owned events when indexed');
+}
 assertContains(appSource, 'const [modqnReplayProofRequested, setModqnReplayProofRequested] = useState(false);', 'App explicit proof request state');
 assertContains(appSource, "handoverMode === 'decision-overlay-on-live-sinr'", 'App proof request is limited to decision overlay mode');
 assertContains(appSource, 'setModqnReplayProofRequested(false)', 'App proof request reset outside eligible lane');
@@ -287,6 +454,44 @@ assertContains(appRuntimeModelSource, "lane === 'artifact-replay'", 'App runtime
 assertContains(appRuntimeModelSource, "lane === 'modqn-replay-proof'", 'App runtime model MODQN proof lane override');
 assertContains(appRuntimeModelSource, "lane === 'modqn-live-cell-preview') return SINR_RIGHT_SIDEBAR_TABS", 'App runtime model keeps cell preview right sidebar live-status only');
 assertContains(appRuntimeModelSource, "if (lane === 'modqn-replay-proof') return 'modqn';", 'App runtime model defaults proof right sidebar to MODQN evidence');
+
+assertContains(timelineBarSource, 'data-source-owner={sourceOwner}', 'TimelineBar exposes source owner telemetry');
+assertContains(timelineBarSource, 'data-horizon-kind={horizonKind}', 'TimelineBar exposes horizon kind telemetry');
+assertContains(timelineBarSource, 'readonly horizonSec?: number;', 'TimelineBar accepts source horizon seconds separately from display duration');
+assertContains(timelineBarSource, 'data-horizon-sec={safeHorizonSec.toFixed(3)}', 'TimelineBar exposes source horizon seconds telemetry');
+assertContains(timelineBarSource, 'data-claim-kind={claimKind}', 'TimelineBar exposes claim kind telemetry');
+assertContains(timelineBarSource, 'data-testid="timeline-source-label"', 'TimelineBar renders source/horizon label');
+assertContains(handoverRailSource, 'data-source-owner={sourceOwner}', 'HandoverEventRail exposes source owner telemetry');
+assertContains(handoverRailSource, 'data-horizon-kind={horizonKind}', 'HandoverEventRail exposes horizon kind telemetry');
+assertContains(handoverRailSource, 'data-horizon-sec={safeDurationSec.toFixed(3)}', 'HandoverEventRail exposes source horizon seconds');
+assertContains(handoverRailSource, 'data-source-gap-count={String(sourceGapReasons.length)}', 'HandoverEventRail exposes source gap count');
+assertContains(handoverRailSource, "return 'producer trace';", 'HandoverEventRail labels MODQN rows as producer trace context');
+assertContains(handoverRailSource, 'buildEventMapClusters', 'HandoverEventRail builds stable source-time event map clusters');
+assertContains(handoverRailSource, 'data-map-layout="fixed-event-map"', 'HandoverEventRail exposes fixed event-map layout telemetry');
+assertContains(handoverRailSource, 'data-map-order="source-time"', 'HandoverEventRail keeps source-time map ordering');
+assertContains(handoverRailSource, 'data-cursor-mode="independent"', 'HandoverEventRail keeps playback cursor independent from map ordering');
+assertContains(handoverRailSource, 'data-axis-kind={axisKind}', 'HandoverEventRail exposes source-time vs display-stretched axis telemetry');
+assertContains(handoverRailSource, 'data-axis-sec={safeAxisDurationSec.toFixed(3)}', 'HandoverEventRail exposes display axis seconds separately from source horizon');
+assertContains(handoverRailSource, 'data-axis-current-sec={safeAxisCurrentTimeSec.toFixed(3)}', 'HandoverEventRail exposes display axis cursor seconds');
+assertContains(handoverRailSource, 'data-axis-playing={animateAxisCursor ? \'true\' : \'false\'}', 'HandoverEventRail exposes animated display-axis cursor state');
+assertContains(handoverRailSource, 'data-axis-playback-rate={safeAxisPlaybackRate.toFixed(3)}', 'HandoverEventRail exposes display axis playback rate');
+assertContains(handoverRailSource, 'displayTimeSec', 'HandoverEventRail supports display-stretched marker positions without mutating source time');
+assertContains(handoverRailSource, 'sourceTimeSec', 'HandoverEventRail accepts explicit source time');
+assertContains(handoverRailSource, 'clickTargetSec', 'HandoverEventRail accepts explicit source-time click targets');
+assertContains(handoverRailSource, 'data-click-target-sec={cluster.clickTargetSec.toFixed(3)}', 'HandoverEventRail exposes source-time click target telemetry');
+assertContains(handoverRailSource, 'onClick={() => seekTo(cluster.clickTargetSec)}', 'HandoverEventRail seeks to source click targets, not display axis positions');
+assertContains(handoverRailSource, '--handover-rail-axis-duration', 'HandoverEventRail drives display cursor animation from axis duration');
+assertContains(appSource, 'axisPlaying={!playback.paused}', 'App pauses the handover rail display sweep with playback state');
+assertContains(appSource, 'axisPlaybackRate={playback.effectiveSpeed}', 'App synchronizes handover rail display sweep with playback speed');
+assertContains(handoverRailSource, 'data-marker-cluster-count={String(eventMapClusters.length)}', 'HandoverEventRail exposes marker cluster count');
+assertContains(handoverRailSource, 'data-testid="handover-event-map-track"', 'HandoverEventRail renders a fixed event-map track');
+assertContains(handoverRailSource, 'aria-label="Source-ordered handover event map"', 'HandoverEventRail list is source-ordered, not nearest-event ordered');
+assertContains(handoverRailSource, "data-clustered={clustered ? 'true' : 'false'}", 'HandoverEventRail marks clustered same-time events');
+assertNotContains(handoverRailSource, 'getNearestEvents', 'HandoverEventRail must not sort rows by distance to the playback cursor');
+assertNotContains(handoverRailSource, 'nearestEvents', 'HandoverEventRail rows must not be cursor-nearest owned');
+assertNotContains(handoverRailSource, 'focusedEvent', 'HandoverEventRail must not expose a dynamic nearest-event focus card');
+assertNotContains(handoverRailSource, '.slice(0, 6)', 'HandoverEventRail fixed event map must not cap rows by nearest window');
+assertNotContains(handoverRailSource, 'Nearest handover events', 'HandoverEventRail must not present a cursor-relative nearest-event list');
 
 assertContains(
   controlBarSource,
@@ -475,13 +680,73 @@ assertContains(
 );
 assertContains(
   mainSceneSource,
+  'deriveModqnServiceMap({',
+  'MainScene derives MODQN all-UE service map for the cell lane',
+);
+assertContains(
+  mainSceneSource,
+  'buildModqnCellServiceReadout({',
+  'MainScene builds the MODQN service readout from the cell schedule',
+);
+assertContains(
+  mainSceneSource,
+  'slotSec: CELL_SCHEDULE_VIZ_SLOT_SEC',
+  'MainScene labels MODQN service diagnostics with the display cell-schedule slot duration',
+);
+assertContains(
+  mainSceneSource,
+  'modqnCellServiceReadout,',
+  'MainScene passes MODQN service readout into SimState publisher',
+);
+assertContains(
+  mainSceneSource,
+  'markerColor: service?.markerColor',
+  'MainScene passes service-map colors to UE markers',
+);
+assertContains(
+  groundSceneSource,
+  'const resolvedMarkerColor = markerColor ?? PRIMARY_COLOR',
+  'GroundScene applies service-map colors to the primary UE marker',
+);
+assertContains(
+  groundSceneSource,
+  'markerColor={primary.markerColor}',
+  'GroundScene threads primary UE marker color into PrimaryUeMarker',
+);
+assertContains(
+  mainSceneSource,
+  'ueCountByCellId={modqnServiceMap.ueCountByCellId}',
+  'MainScene passes per-cell UE counts to CellOverlay',
+);
+assertContains(
+  mainSceneSource,
+  'const showCellReassignmentEventArcs = modqnVisualLayers.handoverCues',
+  'MainScene gates profile-derived cell reassignment cues by MODQN visual preset',
+);
+assertContains(
+  mainSceneSource,
+  'selectProfileDerivedHandoverCues',
+  'MainScene caps profile-derived handover cue density',
+);
+assertContains(
+  mainSceneSource,
+  'visible={showCellReassignmentEventArcs}',
+  'MainScene wires cell reassignment event arcs through an explicit visibility gate',
+);
+assertContains(
+  mainSceneSource,
   '<HandoverStoryLayer',
   'MainScene can mount the shared handover story layer',
 );
 assertContains(
   mainSceneSource,
-  '{showProfileHandoverStoryLayer && (',
-  'MainScene gates the shared story layer by scene lane render plan',
+  '{showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory && (',
+  'MainScene gates the shared story layer by scene lane render plan and MODQN visual preset',
+);
+assertContains(
+  mainSceneSource,
+  '{showCellOverlay && modqnVisualLayers.beamCones && (',
+  'MainScene gates MODQN beam cones by visual preset',
 );
 assertContains(
   sceneTelemetrySource,
@@ -492,6 +757,66 @@ assertContains(
   sceneTelemetrySource,
   'el.dataset.handoverStoryNextCount',
   'MainScene canvas reports next-slot story telemetry'
+);
+assertContains(
+  sceneTelemetrySource,
+  'el.dataset.modqnVisualLayerPreset',
+  'MainScene canvas reports MODQN visual layer preset telemetry',
+);
+assertContains(
+  sceneTelemetrySource,
+  'el.dataset.modqnServedUeCount',
+  'MainScene canvas reports MODQN served UE count telemetry',
+);
+assertContains(
+  sceneTelemetrySource,
+  'el.dataset.modqnHandoverCuesVisible',
+  'MainScene canvas reports MODQN handover cue visibility telemetry',
+);
+assertContains(
+  modqnHudSource,
+  "modqnVisualLayerPreset === 'debug'",
+  'MODQN HUD gates service diagnostics to Debug preset',
+);
+assertContains(
+  modqnHudSource,
+  'data-service-diagnostics-visible',
+  'MODQN HUD exposes Debug-only diagnostics visibility telemetry',
+);
+assertContains(
+  modqnHudSource,
+  'data-testid="modqn-service-diagnostics"',
+  'MODQN HUD renders schedule diagnostics only through the gated Debug block',
+);
+assertContains(
+  modqnHudSource,
+  'data-service-claim-kind',
+  'MODQN HUD keeps service diagnostic claim kind visible',
+);
+assertContains(
+  governanceDoc,
+  'source=profile-derived-demo',
+  'Frontend governance documents the Debug diagnostics source boundary',
+);
+assertContains(
+  laneSdd,
+  'Debug may additionally show profile-derived schedule diagnostics',
+  'Lane SDD documents Debug-only schedule diagnostics',
+);
+assertContains(
+  handoverStorySdd,
+  'slot duration, next-slot change count',
+  'MODQN story SDD documents Debug schedule diagnostic fields',
+);
+assertContains(
+  simStatePublisherSource,
+  'modqnCellServiceReadout,',
+  'SimState publisher forwards MODQN service readout',
+);
+assertContains(
+  panelStateSource,
+  'hasModqnCellServiceReadoutChanged',
+  'panel state change detection includes MODQN service readout',
 );
 assertContains(
   mainSceneSource,
@@ -630,6 +955,8 @@ assertContains(handoverStorySdd, 'Handover Story Model', 'handover story SDD mod
 assertContains(handoverStorySdd, 'modqn-replay-proof', 'handover story SDD replay proof lane');
 assertContains(handoverStorySdd, 'source gap', 'handover story SDD source gap policy');
 assertContains(handoverStorySdd, 'not baseline proof', 'handover story SDD demo claim boundary');
+assertContains(handoverStorySdd, 'suppresses these foreground event arcs', 'handover story SDD records MODQN preview event-arc suppression');
+assertContains(governanceDoc, 'without foregrounding them as source-backed', 'governance doc records MODQN preview foreground-event suppression');
 
 assertContains(
   agentsDoc,

@@ -1,0 +1,327 @@
+import { createObserverContext } from '../engine/orbit';
+import { HandoverManager } from '../engine/handover/handover-manager';
+import type { HandoverEvent } from '../engine/handover/types';
+import type { UeDistributionMode, UePrimaryAnchorMode } from '../engine/ue/multiUeState';
+import {
+  DEFAULT_UE_MOBILITY_PARAMS,
+  type UeMobilityMode,
+  type UeMobilityParams,
+} from '../engine/ue/multiUeMobility';
+import type { Profile } from '../profiles/types';
+import {
+  createBeamLayoutsByShellId,
+  createRuntimeFrameStepState,
+  createTrajectoryCache,
+  getTrajectoryMaxTimeSec,
+  SIM_DURATION_SEC,
+  stepRuntimeFrame,
+} from './runtimeFrameStep';
+import type { UeDistributionScope } from './types';
+
+export const LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC = SIM_DURATION_SEC;
+export const LIVE_WALKER_HANDOVER_EVENT_INDEX_DEFAULT_STEP_SEC = 1;
+export const LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID = 'live-ue-0';
+
+export type LiveWalkerHandoverEventIndexSourceOwner = 'live-walker';
+export type LiveWalkerHandoverEventIndexHorizonKind = 'live-walker-window';
+export type LiveWalkerHandoverEventIndexClaimKind =
+  | 'live-truth'
+  | 'profile-derived-forecast'
+  | 'overlay-demo';
+export type LiveWalkerHandoverEventIndexUeScope = 'primary-ue-only';
+export type LiveWalkerHandoverEventKind = 'intra' | 'inter';
+
+export interface LiveWalkerHandoverEventIndexGeneration {
+  readonly profileId: string;
+  readonly epochUtcMs: number;
+  readonly simStepSec: number;
+  readonly handoverPolicyKey: string;
+  readonly topologyKey: string;
+  readonly runtimeFramePath: 'stepRuntimeFrame';
+}
+
+export interface LiveWalkerHandoverEvent {
+  readonly id: string;
+  readonly sourceTimeSec: number;
+  readonly kind: LiveWalkerHandoverEventKind;
+  readonly fromSatId: string;
+  readonly fromBeamId: number;
+  readonly toSatId: string;
+  readonly toBeamId: number;
+  readonly sourceStartSec: number;
+  readonly sourceEndSec: number;
+  readonly clickTargetSec: number;
+  readonly primaryUeId: typeof LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID;
+  readonly count: 1;
+}
+
+export interface LiveWalkerHandoverEventIndex {
+  readonly sourceOwner: LiveWalkerHandoverEventIndexSourceOwner;
+  readonly horizonKind: LiveWalkerHandoverEventIndexHorizonKind;
+  readonly claimKind: LiveWalkerHandoverEventIndexClaimKind;
+  readonly durationSec: typeof LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC;
+  readonly ueScope: LiveWalkerHandoverEventIndexUeScope;
+  readonly primaryUeId: typeof LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID;
+  readonly aggregateUeCount: 1;
+  readonly aggregateClaim: 'not-100-ue-aggregate';
+  readonly generation: LiveWalkerHandoverEventIndexGeneration;
+  readonly sourceGapReasons: readonly string[];
+  readonly events: readonly LiveWalkerHandoverEvent[];
+}
+
+export interface BuildLiveWalkerHandoverEventIndexInput {
+  readonly profile: Profile;
+  readonly epochUtcMs: number;
+  readonly simStepSec?: number;
+  readonly claimKind?: LiveWalkerHandoverEventIndexClaimKind;
+  readonly ueDistributionMode?: UeDistributionMode;
+  readonly uePrimaryAnchorMode?: UePrimaryAnchorMode;
+  readonly ueDistributionScope?: UeDistributionScope;
+  readonly ueDistributionRadiusKm?: number;
+  readonly ueMobilityMode?: UeMobilityMode;
+  readonly ueMobilityParams?: UeMobilityParams;
+}
+
+function finitePositiveOrFallback(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export function clampLiveWalkerEventSourceTimeSec(sourceTimeSec: number): number {
+  if (!Number.isFinite(sourceTimeSec)) return 0;
+  return Math.min(Math.max(sourceTimeSec, 0), LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC);
+}
+
+function roundTimeSec(value: number): number {
+  return Number(value.toFixed(6));
+}
+
+function formatScalar(value: string | number | undefined): string {
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'unset';
+  return value ?? 'unset';
+}
+
+function buildHandoverPolicyKey(profile: Profile): string {
+  const handover = profile.handover;
+  return [
+    `policy=${handover.policy}`,
+    `sinrThresholdDb=${handover.sinrThresholdDb}`,
+    `offsetDb=${handover.offsetDb}`,
+    `triggerTimeSec=${handover.triggerTimeSec}`,
+    `pingPongGuardSec=${handover.pingPongGuardSec}`,
+    `pendingTargetHoldSec=${handover.pendingTargetHoldSec}`,
+    `intraSwitchTimeSec=${handover.intraSwitchTimeSec}`,
+    `maxIntraSwitchesPerServingEpoch=${handover.maxIntraSwitchesPerServingEpoch ?? 'unset'}`,
+    `sinrSmoothingSec=${handover.sinrSmoothingSec}`,
+  ].join('|');
+}
+
+function buildTopologyKey(input: {
+  readonly profile: Profile;
+  readonly ueDistributionMode: UeDistributionMode;
+  readonly uePrimaryAnchorMode: UePrimaryAnchorMode;
+  readonly ueDistributionScope: UeDistributionScope;
+  readonly ueDistributionRadiusKm: number | undefined;
+  readonly ueMobilityMode: UeMobilityMode;
+}): string {
+  const { profile } = input;
+  return [
+    'ueScope=primary-ue-only',
+    `primaryUeId=${LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID}`,
+    'ueCount=1',
+    `orbitObserver=${profile.orbit.observerLatDeg},${profile.orbit.observerLonDeg}`,
+    `orbitShells=${profile.orbit.shells.map(shell => `${shell.id}:${shell.planes}x${shell.satsPerPlane}`).join(',')}`,
+    `ueDistributionMode=${input.ueDistributionMode}`,
+    `uePrimaryAnchorMode=${input.uePrimaryAnchorMode}`,
+    `ueDistributionScope=${input.ueDistributionScope}`,
+    `ueDistributionRadiusKm=${formatScalar(input.ueDistributionRadiusKm)}`,
+    `ueMobilityMode=${input.ueMobilityMode}`,
+  ].join('|');
+}
+
+function createEmptyIndex(
+  input: BuildLiveWalkerHandoverEventIndexInput,
+  simStepSec: number,
+  sourceGapReasons: readonly string[],
+): LiveWalkerHandoverEventIndex {
+  const ueDistributionMode = input.ueDistributionMode ?? 'random';
+  const uePrimaryAnchorMode = input.uePrimaryAnchorMode ?? 'distribution';
+  const ueDistributionScope = input.ueDistributionScope ?? 'service-area';
+  const ueMobilityMode = input.ueMobilityMode ?? 'static';
+
+  return {
+    sourceOwner: 'live-walker',
+    horizonKind: 'live-walker-window',
+    claimKind: input.claimKind ?? 'profile-derived-forecast',
+    durationSec: LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC,
+    ueScope: 'primary-ue-only',
+    primaryUeId: LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID,
+    aggregateUeCount: 1,
+    aggregateClaim: 'not-100-ue-aggregate',
+    generation: {
+      profileId: input.profile.id,
+      epochUtcMs: input.epochUtcMs,
+      simStepSec,
+      handoverPolicyKey: buildHandoverPolicyKey(input.profile),
+      topologyKey: buildTopologyKey({
+        profile: input.profile,
+        ueDistributionMode,
+        uePrimaryAnchorMode,
+        ueDistributionScope,
+        ueDistributionRadiusKm: input.ueDistributionRadiusKm,
+        ueMobilityMode,
+      }),
+      runtimeFramePath: 'stepRuntimeFrame',
+    },
+    sourceGapReasons,
+    events: [],
+  };
+}
+
+function eventId(sequence: number, sourceTimeSec: number, kind: LiveWalkerHandoverEventKind): string {
+  const timeToken = sourceTimeSec.toFixed(3).replace(/[^0-9]+/g, '_');
+  return `live-walker-primary-${String(sequence).padStart(4, '0')}-${timeToken}-${kind}`;
+}
+
+export function createLiveWalkerHandoverEventFromRuntimeEvent(
+  event: HandoverEvent,
+  epochUtcMs: number,
+  sequence: number,
+): LiveWalkerHandoverEvent | null {
+  if (event.fromSatId === null || event.fromBeamId === null) return null;
+
+  const kind: LiveWalkerHandoverEventKind | null =
+    event.action === 'intra-switch'
+      ? 'intra'
+      : event.action === 'inter-handover'
+        ? 'inter'
+        : null;
+  if (kind === null) return null;
+
+  if (kind === 'intra' && (event.fromSatId !== event.toSatId || event.fromBeamId === event.toBeamId)) {
+    return null;
+  }
+  if (kind === 'inter' && event.fromSatId === event.toSatId) {
+    return null;
+  }
+
+  const sourceTimeSec = clampLiveWalkerEventSourceTimeSec(roundTimeSec((event.timeMs - epochUtcMs) / 1000));
+  return {
+    id: eventId(sequence, sourceTimeSec, kind),
+    sourceTimeSec,
+    kind,
+    fromSatId: event.fromSatId,
+    fromBeamId: event.fromBeamId,
+    toSatId: event.toSatId,
+    toBeamId: event.toBeamId,
+    sourceStartSec: clampLiveWalkerEventSourceTimeSec(roundTimeSec(sourceTimeSec - 10)),
+    sourceEndSec: clampLiveWalkerEventSourceTimeSec(roundTimeSec(sourceTimeSec + 20)),
+    clickTargetSec: sourceTimeSec,
+    primaryUeId: LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID,
+    count: 1,
+  };
+}
+
+export function buildLiveWalkerHandoverEventIndex(
+  input: BuildLiveWalkerHandoverEventIndexInput,
+): LiveWalkerHandoverEventIndex {
+  const simStepSec = finitePositiveOrFallback(
+    input.simStepSec,
+    LIVE_WALKER_HANDOVER_EVENT_INDEX_DEFAULT_STEP_SEC,
+  );
+  const baseIndex = createEmptyIndex(input, simStepSec, []);
+  const observer = createObserverContext(input.profile.orbit.observerLatDeg, input.profile.orbit.observerLonDeg);
+  const trajectoryCache = createTrajectoryCache(input.profile, observer, input.epochUtcMs);
+  const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
+
+  if (maxTimeSec < LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC) {
+    return {
+      ...baseIndex,
+      sourceGapReasons: [
+        `live Walker trajectory cache only spans ${maxTimeSec}s; expected ${LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC}s`,
+      ],
+    };
+  }
+
+  const hoManager = new HandoverManager(input.profile.handover);
+  const state = createRuntimeFrameStepState(0);
+  const beamLayoutsByShellId = createBeamLayoutsByShellId(input.profile);
+  const replay = {
+    epochUtcMs: input.epochUtcMs,
+    startOffsetSec: 0,
+    loop: false,
+    windowLengthSec: LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC,
+  };
+  const ueDistributionMode = input.ueDistributionMode ?? 'random';
+  const uePrimaryAnchorMode = input.uePrimaryAnchorMode ?? 'distribution';
+  const ueDistributionScope = input.ueDistributionScope ?? 'service-area';
+  const ueMobilityMode = input.ueMobilityMode ?? 'static';
+  const ueMobilityParams = input.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS;
+  const events: LiveWalkerHandoverEvent[] = [];
+  let seenEventCount = 0;
+
+  const collectNewEvents = (): void => {
+    const newEvents = hoManager.eventLog.slice(seenEventCount);
+    for (const event of newEvents) {
+      const indexEvent = createLiveWalkerHandoverEventFromRuntimeEvent(event, input.epochUtcMs, events.length);
+      if (indexEvent) events.push(indexEvent);
+    }
+    seenEventCount = hoManager.eventLog.length;
+  };
+
+  stepRuntimeFrame({
+    profile: input.profile,
+    replay,
+    speed: 1,
+    paused: true,
+    deltaSec: 0,
+    observer,
+    beamLayoutsByShellId,
+    trajectoryCache,
+    hoManager,
+    state,
+    ueCount: 1,
+    ueDistributionMode,
+    uePrimaryAnchorMode,
+    ueDistributionScope,
+    ueDistributionRadiusKm: input.ueDistributionRadiusKm,
+    ueMobilityMode,
+    ueMobilityParams,
+  });
+  collectNewEvents();
+
+  while (state.simTimeSec < LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC) {
+    const deltaSec = Math.min(
+      simStepSec,
+      LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC - state.simTimeSec,
+    );
+    stepRuntimeFrame({
+      profile: input.profile,
+      replay,
+      speed: 1,
+      paused: false,
+      deltaSec,
+      observer,
+      beamLayoutsByShellId,
+      trajectoryCache,
+      hoManager,
+      state,
+      ueCount: 1,
+      ueDistributionMode,
+      uePrimaryAnchorMode,
+      ueDistributionScope,
+      ueDistributionRadiusKm: input.ueDistributionRadiusKm,
+      ueMobilityMode,
+      ueMobilityParams,
+    });
+    collectNewEvents();
+  }
+
+  return {
+    ...baseIndex,
+    events: events.sort((a, b) => (
+      a.sourceTimeSec - b.sourceTimeSec
+      || a.kind.localeCompare(b.kind)
+      || a.id.localeCompare(b.id)
+    )),
+  };
+}

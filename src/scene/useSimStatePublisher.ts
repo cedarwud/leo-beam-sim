@@ -47,6 +47,7 @@ export function useSimStatePublisher({
   latchedBeamSinrByKeyRef,
   onSimUpdate,
   enabled = true,
+  modqnCellServiceReadout,
 }: {
   profile: Profile;
   sim: SimFrame;
@@ -57,6 +58,7 @@ export function useSimStatePublisher({
   latchedBeamSinrByKeyRef: MutableRefObject<Map<string, number>>;
   onSimUpdate: (state: SimState) => void;
   enabled?: boolean;
+  modqnCellServiceReadout?: SimState['modqnCellServiceReadout'];
 }) {
   const latched = useLatchedSignals({
     signalResetKey,
@@ -359,6 +361,7 @@ export function useSimStatePublisher({
       panelComparison,
       visualFrequencyDiagnostics,
       perUePositions,
+      modqnCellServiceReadout,
       servingSatId: normalizedServing.satId,
       servingBeamId: normalizedServing.beamId,
       servingElevationDeg: normalizedServingTopo.elevationDeg,
@@ -414,5 +417,5 @@ export function useSimStatePublisher({
       lastUiUpdateAtRef.current = nowMs;
       onSimUpdate(nextState);
     }
-  }, [enabled, onSimUpdate, sim]);
+  }, [enabled, modqnCellServiceReadout, onSimUpdate, sim]);
 }

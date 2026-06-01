@@ -189,7 +189,15 @@ For visualization (`leo-beam-sim`), this is rendered as:
 
 - 37 hexagonal cell outlines on the ground (always visible, faint).
 - 28 active cells highlighted per slot (color by serving satellite tint).
-- Beam cones drawn from each satellite to its 7 active cells (one cone per beam-cell pair).
+- 100 UE service points colored by the active serving satellite/cell projection,
+  with per-active-cell UE-count badges so the default scene reads as
+  multi-satellite, multi-UE service allocation rather than single-UE decoration.
+- A compact profile-derived service readout may summarize slot, serving count,
+  active/idle cells, served/idle UEs, and per-satellite load. This remains a
+  Phase I display projection, not producer proof.
+- Beam cones are an explicit visual layer preset, not the Baseline Faithful
+  default. Explain/Debug presets may draw focused cones from satellites to
+  active cells; Baseline Faithful keeps cones off to avoid a dense tangle.
 - Footprint ellipse on the active cell (long axis = `r_cell / sin(elevation_angle)` to model oblique projection).
 
 ### 4.3 Channel Gain Modification

@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { Line } from '@react-three/drei';
+import { Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { CellReassignment } from '../scene/useCellSchedule';
 import type { WorldPoint } from './CellFootprints';
@@ -13,6 +13,7 @@ export interface CellHandoverArcsProps {
 interface ArcRenderItem {
   readonly reassignment: CellReassignment;
   readonly color: string;
+  readonly label: string;
   readonly points: readonly [number, number, number][];
 }
 
@@ -25,6 +26,10 @@ const INTRA_ARC_SEGMENTS = 24;
 const INTRA_ARC_HALF_SPAN = 9;
 const INTRA_ARC_HEIGHT = 18;
 const INTRA_ARC_Y = 1.1;
+const ARC_LABEL_FONT_SIZE = 5.8;
+const ARC_CLAIM_BOUNDARY = 'profile-derived overlay';
+const ARC_PROOF_STATUS = 'non-proof';
+const ARC_SOURCE = 'profile-derived-demo';
 
 export function CellHandoverArcs({
   reassignments,
@@ -41,6 +46,7 @@ export function CellHandoverArcs({
       return [{
         reassignment,
         color: INTER_ARC_COLOR,
+        label: buildIdentityLabel(reassignment),
         points: buildInterArcPoints(from, to),
       }];
     }
@@ -50,6 +56,7 @@ export function CellHandoverArcs({
     return [{
       reassignment,
       color: INTRA_ARC_COLOR,
+      label: buildIdentityLabel(reassignment),
       points: buildIntraArcPoints(reassignment.worldX, reassignment.worldZ),
     }];
   });
@@ -63,6 +70,9 @@ export function CellHandoverArcs({
         count: arcs.length,
         interCount,
         intraCount,
+        source: ARC_SOURCE,
+        claimBoundary: ARC_CLAIM_BOUNDARY,
+        proofStatus: ARC_PROOF_STATUS,
       }}
     >
       {arcs.map(arc => (
@@ -73,8 +83,14 @@ export function CellHandoverArcs({
             cellId: arc.reassignment.cellId,
             kind: arc.reassignment.kind,
             fromSatId: arc.reassignment.fromSatId,
+            fromBeamIndex: arc.reassignment.fromBeamIndex,
             toSatId: arc.reassignment.toSatId,
+            toBeamIndex: arc.reassignment.toBeamIndex,
+            label: arc.label,
             color: arc.color,
+            source: ARC_SOURCE,
+            claimBoundary: ARC_CLAIM_BOUNDARY,
+            proofStatus: ARC_PROOF_STATUS,
           }}
         >
           <Line
@@ -88,13 +104,46 @@ export function CellHandoverArcs({
             userData={{
               cellId: arc.reassignment.cellId,
               kind: arc.reassignment.kind,
+              label: arc.label,
               color: arc.color,
+              source: ARC_SOURCE,
+              claimBoundary: ARC_CLAIM_BOUNDARY,
+              proofStatus: ARC_PROOF_STATUS,
             }}
           />
+          <Text
+            position={buildArcLabelPosition(arc.points)}
+            fontSize={ARC_LABEL_FONT_SIZE}
+            color="#f8fafc"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.32}
+            outlineColor="#020617"
+            userData={{
+              cellId: arc.reassignment.cellId,
+              kind: arc.reassignment.kind,
+              label: arc.label,
+              source: ARC_SOURCE,
+              claimBoundary: ARC_CLAIM_BOUNDARY,
+              proofStatus: ARC_PROOF_STATUS,
+            }}
+          >
+            {arc.label}
+          </Text>
         </group>
       ))}
     </group>
   );
+}
+
+function buildIdentityLabel(reassignment: CellReassignment): string {
+  return `${reassignment.fromSatId}/${reassignment.fromBeamIndex} -> ${reassignment.toSatId}/${reassignment.toBeamIndex}`;
+}
+
+function buildArcLabelPosition(points: readonly [number, number, number][]): [number, number, number] {
+  const midpoint = points[Math.floor(points.length / 2)];
+  if (!midpoint) return [0, INTRA_ARC_Y + INTRA_ARC_HEIGHT, 0];
+  return [midpoint[0], midpoint[1] + 3.8, midpoint[2]];
 }
 
 function buildInterArcPoints(from: WorldPoint, to: WorldPoint): readonly [number, number, number][] {

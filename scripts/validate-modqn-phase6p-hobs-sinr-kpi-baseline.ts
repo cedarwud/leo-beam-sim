@@ -729,13 +729,13 @@ function validateRuntimeConstants(): string[] {
   const useSimulationSource = readRepoFile('src/scene/useSimulation.ts');
   const runtimeFrameStepSource = readRepoFile('src/scene/runtimeFrameStep.ts');
   const expectations: Array<[string, RegExp]> = [
-    ['App EPOCH_MS', /const EPOCH_MS = Date\.UTC\(2026, 0, 1, 0, 0, 0\)/],
+    ['App APP_EPOCH_MS import/use', /\bAPP_EPOCH_MS\b/],
     ['runtimeFrameStep MIN_ELEVATION_DEG', /export const MIN_ELEVATION_DEG = 15/],
     ['runtimeFrameStep CACHE_ELEVATION_DEG', /export const CACHE_ELEVATION_DEG = 10/],
-    ['runtimeFrameStep SIM_DURATION_SEC', /export const SIM_DURATION_SEC = 1200/],
+    ['runtimeFrameStep SIM_DURATION_SEC', /export const SIM_DURATION_SEC = 7200/],
     ['runtimeFrameStep SIM_STEP_SEC', /export const SIM_STEP_SEC = 20/],
     ['runtimeFrameStep MAX_STEERING_EXTRA_RINGS', /export const MAX_STEERING_EXTRA_RINGS = 3/],
-    ['runtimeFrameStep RECENT_HO_LINGER_SEC', /export const RECENT_HO_LINGER_SEC = 2/],
+    ['runtimeFrameStep RECENT_HO_LINGER_SEC', /export const RECENT_HO_LINGER_SEC = 5/],
     ['useSimulation shared step import', /\bstepRuntimeFrame\b/],
   ];
   for (const [label, pattern] of expectations) {

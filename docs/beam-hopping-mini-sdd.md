@@ -301,6 +301,11 @@ Add one lightweight beam hopping debug panel or section showing:
 - pending target satellite active beam ids
 - whether the serving beam is active this slot
 
+For MODQN live-cell preview, this requirement is satisfied only as a
+profile-derived display diagnostic in the Debug visual preset. It must not be
+used as MODQN producer replay proof when source active-beam masks or hopping
+schedules are absent.
+
 ### 10.2 3D Scene Requirements
 
 The 3D scene should visually distinguish:

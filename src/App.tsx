@@ -74,6 +74,12 @@ import {
   type SceneVisualScaleState,
 } from './sceneVisualScale';
 import { ControlBar } from './ui/ControlBar';
+import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
+import {
+  HandoverEventRail,
+  type HandoverRailEvent,
+  type HandoverRailEventKind,
+} from './ui/HandoverEventRail';
 import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
 import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell } from './ui/SidebarTabShell';
@@ -133,8 +139,17 @@ import {
 } from './app/trainingEnvAxesProfileAdapter';
 import {
   APP_EPOCH_MS,
+  LIVE_SIM_TIMELINE_DURATION_SEC,
   buildAppRuntimeConfig,
 } from './app/appRuntimeConfig';
+import {
+  clampTimelineTime,
+  getModqnProducerTraceRange,
+  resolveTimelineRailDescriptor,
+} from './app/timelineRailAuthority';
+import {
+  liveWalkerHandoverEventIndexToRailEvents,
+} from './app/liveWalkerHandoverRailAdapter';
 import {
   persistSceneTopologyOverrides,
   persistSceneVisualScaleOverrides,
@@ -147,6 +162,14 @@ import {
   resolveSceneLane,
   shouldRenderModqnReplayScene,
 } from './app/sceneLane';
+import {
+  buildLiveWalkerHandoverEventIndex,
+  type LiveWalkerHandoverEventIndex,
+} from './scene/liveWalkerHandoverEventIndex';
+import {
+  DEFAULT_MODQN_VISUAL_LAYER_PRESET,
+  type ModqnVisualLayerPreset,
+} from './scene/modqnVisualLayers';
 import { LIVE_SIM_CLAIM_BOUNDARY_INPUT } from './app/liveClaimBoundary';
 import {
   createReplayPanelSimState,
@@ -164,12 +187,212 @@ interface HandoverPolicyRuntimeState {
 
 const MODQN_REPLAY_HANDOVER_SLOT_SEC = 3.2;
 const MODQN_REPLAY_STABLE_SLOT_SEC = 0.9;
+const MODQN_REPLAY_VISUAL_MIN_DISPLAY_DURATION_SEC = 60;
 const MODQN_REPLAY_VISUAL_TICK_MS = 100;
+
+interface LiveTimelineSeekRequest {
+  targetSec: number;
+  requestKey: string;
+}
+
+interface ModqnReplayVisualTimeline {
+  readonly durationSec: number;
+  readonly currentTimeSec: number;
+  readonly slotMidpointSecByIndex: ReadonlyMap<number, number>;
+}
+
+function formatRailBeamLabel(satId: string | null | undefined, beamId: string | number | null | undefined): string {
+  const satLabel = satId ?? 'unknown';
+  if (beamId === null || beamId === undefined || beamId === '') return satLabel;
+  return `${satLabel} B${beamId}`;
+}
+
+function normalizeRailEventKind(kind: string | undefined): HandoverRailEventKind | null {
+  const value = kind?.toLowerCase() ?? '';
+  if (value.includes('inter')) return 'inter';
+  if (value.includes('intra') || value.includes('beam-switch') || value.includes('beam')) return 'intra';
+  return null;
+}
+
+function getNearestShowcaseFrame(
+  artifact: VisualShowcaseArtifact,
+  timeSec: number,
+): VisualShowcaseArtifact['timeline'][number] | null {
+  let nearest: VisualShowcaseArtifact['timeline'][number] | null = null;
+  let bestDistance = Infinity;
+  for (const frame of artifact.timeline) {
+    const distance = Math.abs(frame.tSec - timeSec);
+    if (distance < bestDistance) {
+      nearest = frame;
+      bestDistance = distance;
+    }
+  }
+  return nearest;
+}
+
+function deriveArtifactRailEventKind(
+  artifact: VisualShowcaseArtifact,
+  timeSec: number,
+  eventType: string,
+): HandoverRailEventKind | null {
+  const frame = getNearestShowcaseFrame(artifact, timeSec);
+  const sourceKind = normalizeRailEventKind(eventType) ?? normalizeRailEventKind(frame?.handoverState.kind);
+  if (sourceKind !== null) return sourceKind;
+
+  const handover = frame?.handoverState;
+  if (handover?.targetSatelliteId && handover.targetSatelliteId !== handover.servingSatelliteId) return 'inter';
+  if (handover?.targetBeamId && handover.targetBeamId !== handover.servingBeamId) return 'intra';
+  return null;
+}
+
+function buildArtifactHandoverRailEvents(
+  artifact: VisualShowcaseArtifact | null,
+): readonly HandoverRailEvent[] {
+  if (artifact === null) return [];
+
+  return artifact.events.flatMap(event => {
+    if (!event.type.toLowerCase().includes('handover')) return [];
+    const kind = deriveArtifactRailEventKind(artifact, event.tSec, event.type);
+    if (kind === null) return [];
+    const frame = getNearestShowcaseFrame(artifact, event.tSec);
+    const handover = frame?.handoverState;
+    return [{
+      id: `artifact-${event.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+      timeSec: event.tSec,
+      kind,
+      title: event.title,
+      fromLabel: formatRailBeamLabel(handover?.servingSatelliteId, handover?.servingBeamId),
+      toLabel: formatRailBeamLabel(handover?.targetSatelliteId ?? handover?.servingSatelliteId, handover?.targetBeamId),
+      detail: event.type,
+      source: 'artifact-replay' as const,
+    }];
+  });
+}
+
+interface ModqnRailEventBucket {
+  event: HandoverRailEvent;
+  fromLabels: Set<string>;
+  toLabels: Set<string>;
+}
+
+function summarizeRailLabelSet(labels: ReadonlySet<string>, pluralLabel: string): string {
+  const values = [...labels];
+  if (values.length === 0) return 'unknown';
+  if (values.length === 1) return values[0] ?? 'unknown';
+  return `${values.length} ${pluralLabel}`;
+}
+
+function buildModqnHandoverRailEvents(
+  envelope: ModqnReplayEnvelope | null,
+  displayTimeSecBySlotIndex: ReadonlyMap<number, number> = new Map(),
+): readonly HandoverRailEvent[] {
+  if (envelope === null) return [];
+
+  const grouped = new Map<string, ModqnRailEventBucket>();
+  for (const slot of envelope.replaySlots) {
+    for (const row of slot.rows) {
+      const eventKind = row.producerTruth.handoverEvent.kind;
+      const kind = normalizeRailEventKind(eventKind);
+      if (eventKind === 'none' || kind === null) continue;
+      const previous = row.producerTruth.previousServing;
+      const selected = row.producerTruth.selectedServing;
+      const timeSec = row.producerTruth.timestamps.timeSec;
+      const displayTimeSec = displayTimeSecBySlotIndex.get(slot.slotIndex);
+      const fromLabel = formatRailBeamLabel(previous.satId, previous.localBeamIndex + 1);
+      const toLabel = formatRailBeamLabel(selected.satId, selected.localBeamIndex + 1);
+      const key = `${timeSec.toFixed(3)}:${kind}`;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.fromLabels.add(fromLabel);
+        existing.toLabels.add(toLabel);
+        const count = (existing.event.count ?? 1) + 1;
+        existing.event = {
+          ...existing.event,
+          title: kind === 'inter' ? 'Satellite handover window' : 'Beam switch window',
+          fromLabel: summarizeRailLabelSet(existing.fromLabels, 'sources'),
+          toLabel: summarizeRailLabelSet(existing.toLabels, 'targets'),
+          count,
+        };
+        continue;
+      }
+      grouped.set(key, {
+        event: {
+          id: `modqn-${kind}-${timeSec.toFixed(3).replace(/[^0-9]/g, '_')}`,
+          timeSec,
+          displayTimeSec,
+          kind,
+          title: kind === 'inter' ? 'Satellite handover' : 'Beam switch',
+          fromLabel,
+          toLabel,
+          detail: `slot ${slot.slotIndex}`,
+          source: 'modqn-replay',
+          count: 1,
+        },
+        fromLabels: new Set([fromLabel]),
+        toLabels: new Set([toLabel]),
+      });
+    }
+  }
+
+  return [...grouped.values()].map(bucket => bucket.event);
+}
+
+function liveObservedHandoverRailEventFromState(state: SimState): HandoverRailEvent | null {
+  const event = state.lastHoEvent;
+  if (event === null || event.fromSatId === null || event.fromBeamId === null) return null;
+
+  const kind = event.action === 'inter-handover' ? 'inter' : event.action === 'intra-switch' ? 'intra' : null;
+  if (kind === null) return null;
+
+  const eventTimeSec = (event.timeMs - APP_EPOCH_MS) / 1000;
+  const timeSec = Number.isFinite(eventTimeSec) && eventTimeSec >= 0
+    ? eventTimeSec
+    : state.simTimeSec;
+
+  return {
+    id: `live-${kind}-${event.timeMs}-${event.fromSatId}-${event.fromBeamId}-${event.toSatId}-${event.toBeamId}`,
+    timeSec,
+    kind,
+    title: kind === 'inter' ? 'Observed satellite handover' : 'Observed beam switch',
+    fromLabel: formatRailBeamLabel(event.fromSatId, event.fromBeamId),
+    toLabel: formatRailBeamLabel(event.toSatId, event.toBeamId),
+    source: 'live-observed',
+  };
+}
 
 function getModqnReplayVisualSlotDuration(slot: ModqnReplayPlaybackSlot): number {
   return slot.focusRow.handoverEventKind === 'none'
     ? MODQN_REPLAY_STABLE_SLOT_SEC
     : MODQN_REPLAY_HANDOVER_SLOT_SEC;
+}
+
+function getModqnReplayVisualTimeline(
+  model: ModqnReplayPlaybackShellModel,
+  elapsedSec: number,
+): ModqnReplayVisualTimeline {
+  const baseSlotDurations = model.slots.map(slot => getModqnReplayVisualSlotDuration(slot));
+  const baseDurationSec = baseSlotDurations.reduce((sum, durationSec) => sum + durationSec, 0);
+  const displayScale = baseDurationSec > 0
+    ? Math.max(1, MODQN_REPLAY_VISUAL_MIN_DISPLAY_DURATION_SEC / baseDurationSec)
+    : 1;
+  let cursorSec = 0;
+  const slotMidpointSecByIndex = new Map<number, number>();
+  for (let index = 0; index < model.slots.length; index += 1) {
+    const slot = model.slots[index];
+    if (slot === undefined) continue;
+    const baseDurationSec = baseSlotDurations[index] ?? 0;
+    const durationSec = baseDurationSec * displayScale;
+    slotMidpointSecByIndex.set(slot.slotIndex, cursorSec + (durationSec / 2));
+    cursorSec += durationSec;
+  }
+
+  const roundedCursorSec = Number(cursorSec.toFixed(6));
+  const durationSec = Number.isFinite(roundedCursorSec) && roundedCursorSec > 0 ? roundedCursorSec : 0;
+  return {
+    durationSec,
+    currentTimeSec: durationSec > 0 ? Math.max(0, elapsedSec) % durationSec : 0,
+    slotMidpointSecByIndex,
+  };
 }
 
 function resolveModqnReplayVisualSlotOffset(
@@ -205,6 +428,8 @@ export function App() {
   const [ueDisplayCount, setUeDisplayCount] = useState<number>(100);
   const [elevatedUeId, setElevatedUeId] = useState<string | null>(null);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
+  const [liveTimelineSeekRequest, setLiveTimelineSeekRequest] =
+    useState<LiveTimelineSeekRequest | null>(null);
 
   const initialRuntimeRef = useRef<InitialRuntimeState | null>(null);
   if (initialRuntimeRef.current === null) {
@@ -267,6 +492,9 @@ export function App() {
   const [userTrainedLoadError, setUserTrainedLoadError] = useState<string | null>(null);
   const [selectedTrainingServiceManifest, setSelectedTrainingServiceManifest] = useState<TrainingServiceManifest | null>(null);
   const [selectedTrainingRunMetadata, setSelectedTrainingRunMetadata] = useState<TrainingRunMetadata | null>(null);
+  const [modqnVisualLayerPreset, setModqnVisualLayerPreset] = useState<ModqnVisualLayerPreset>(
+    DEFAULT_MODQN_VISUAL_LAYER_PRESET,
+  );
   const selectedTrainingEnvAxes = bundleProvenanceKind === 'user-trained'
     ? envAxesFromTrainingRunMetadata(selectedTrainingRunMetadata)
       ?? selectedTrainingServiceManifest?.trainingTruth?.envAxes
@@ -434,6 +662,8 @@ export function App() {
     appMode,
     effectiveProfile,
     demoStartOffsetSec: demoStartOffset,
+    liveTimelineSeekTargetSec: liveTimelineSeekRequest?.targetSec,
+    liveTimelineSeekRequestKey: liveTimelineSeekRequest?.requestKey,
     signalResetKey,
     handoverResetKey,
     runtimeVisualSettings,
@@ -444,6 +674,7 @@ export function App() {
     viewport,
     sceneTopology,
     selectedTrainingEnvAxes,
+    modqnVisualLayerPreset,
   }), [
     appMode,
     beamDensityOverride,
@@ -452,8 +683,10 @@ export function App() {
     demoStartOffset,
     effectiveProfile,
     effectiveCinematicMode,
+    liveTimelineSeekRequest,
     runtimeVisualSettings,
     handoverResetKey,
+    modqnVisualLayerPreset,
     sceneTopology,
     selectedTrainingEnvAxes,
     signalResetKey,
@@ -487,6 +720,9 @@ export function App() {
     ),
   );
   const [modqnReplayVisualElapsedSec, setModqnReplayVisualElapsedSec] = useState(0);
+  const [liveObservedHandoverRailEvents, setLiveObservedHandoverRailEvents] = useState<HandoverRailEvent[]>([]);
+  const [liveWalkerHandoverEventIndex, setLiveWalkerHandoverEventIndex] =
+    useState<LiveWalkerHandoverEventIndex | null>(null);
   const modqnReplaySlotOffset = modqnReplayDisplayState?.slotOffset ?? 0;
   const modqnBundleOmega = useMemo(
     () => normalizeRuntimeOmega(
@@ -517,6 +753,13 @@ export function App() {
 
   const handleSimUpdate = useCallback((state: SimState) => {
     setSimState(state);
+    const observedEvent = liveObservedHandoverRailEventFromState(state);
+    if (observedEvent !== null) {
+      setLiveObservedHandoverRailEvents(current => {
+        if (current.some(event => event.id === observedEvent.id)) return current;
+        return [...current, observedEvent].sort((a, b) => a.timeSec - b.timeSec);
+      });
+    }
     setStaleFormulaEvidenceKey(current => (
       current === signalEvidenceKey && state.physicalServingBudget !== null ? null : current
     ));
@@ -841,11 +1084,16 @@ export function App() {
 
   useEffect(() => {
     setModqnReplayVisualElapsedSec(0);
+    setLiveObservedHandoverRailEvents([]);
   }, [
     appMode,
     handoverMode,
     modqnReplayShellModel.sourcePath,
   ]);
+
+  useEffect(() => {
+    setLiveObservedHandoverRailEvents([]);
+  }, [baseProfile.id, handoverResetKey, sceneSource, signalResetKey]);
 
   useEffect(() => {
     if (
@@ -860,7 +1108,7 @@ export function App() {
 
     const tickSec = MODQN_REPLAY_VISUAL_TICK_MS / 1000;
     const timerId = window.setInterval(() => {
-      setModqnReplayVisualElapsedSec(current => current + tickSec);
+      setModqnReplayVisualElapsedSec(current => current + (tickSec * playback.effectiveSpeed));
     }, MODQN_REPLAY_VISUAL_TICK_MS);
 
     return () => {
@@ -870,6 +1118,7 @@ export function App() {
     appMode,
     handoverMode,
     playback.paused,
+    playback.effectiveSpeed,
     sceneSource,
   ]);
 
@@ -916,6 +1165,47 @@ export function App() {
     modqnReplayShellModel,
     modqnReplayVisualElapsedSec,
     playback.paused,
+    sceneSource,
+  ]);
+
+  useEffect(() => {
+    if (
+      sceneSource !== 'live-sim'
+      || (sceneLane !== 'sinr-live' && sceneLane !== 'modqn-live-cell-preview')
+    ) {
+      setLiveWalkerHandoverEventIndex(null);
+      return;
+    }
+
+    let cancelled = false;
+    const claimKind = sceneLane === 'modqn-live-cell-preview'
+      ? 'overlay-demo'
+      : 'profile-derived-forecast';
+    const index = buildLiveWalkerHandoverEventIndex({
+      profile: effectiveProfile,
+      epochUtcMs: APP_EPOCH_MS,
+      claimKind,
+      ueDistributionMode: runtime.ueDistributionMode,
+      uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
+      ueDistributionScope: runtime.ueDistributionScope,
+      ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
+      ueMobilityMode: runtime.ueMobilityMode,
+      ueMobilityParams: runtime.ueMobilityParams,
+    });
+    if (!cancelled) setLiveWalkerHandoverEventIndex(index);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    effectiveProfile,
+    runtime.ueDistributionMode,
+    runtime.ueDistributionRadiusKm,
+    runtime.ueDistributionScope,
+    runtime.ueMobilityMode,
+    runtime.ueMobilityParams,
+    runtime.uePrimaryAnchorMode,
+    sceneLane,
     sceneSource,
   ]);
 
@@ -987,6 +1277,164 @@ export function App() {
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
   }, [sceneSource, replayController, playback.paused, playback.effectiveSpeed]);
+
+  const modqnProducerTraceRange = useMemo(
+    () => getModqnProducerTraceRange(modqnReplayEnvelope),
+    [modqnReplayEnvelope],
+  );
+  const modqnReplayVisualTimeline = useMemo(
+    () => getModqnReplayVisualTimeline(modqnReplayShellModel, modqnReplayVisualElapsedSec),
+    [modqnReplayShellModel, modqnReplayVisualElapsedSec],
+  );
+  const modqnProducerTraceCurrentTimeSec = renderedModqnReplayDisplayState
+    ?.currentSlot.focusRow.timeSec
+    ?? modqnProducerTraceRange?.startSec
+    ?? 0;
+  const artifactHandoverRailEvents = useMemo(
+    () => buildArtifactHandoverRailEvents(showcaseArtifact),
+    [showcaseArtifact],
+  );
+  const modqnHandoverRailEvents = useMemo(
+    () => buildModqnHandoverRailEvents(
+      modqnReplayEnvelope,
+      modqnReplayVisualTimeline.slotMidpointSecByIndex,
+    ),
+    [modqnReplayEnvelope, modqnReplayVisualTimeline.slotMidpointSecByIndex],
+  );
+  const liveWalkerHandoverRailEvents = useMemo(
+    () => liveWalkerHandoverEventIndexToRailEvents(liveWalkerHandoverEventIndex),
+    [liveWalkerHandoverEventIndex],
+  );
+  const liveTimelineWindowStartSec = demoStartOffset;
+  const liveTimelineElapsedSec = clampTimelineTime(
+    simState.simTimeSec - liveTimelineWindowStartSec,
+    LIVE_SIM_TIMELINE_DURATION_SEC,
+  );
+  const liveWalkerHandoverEventIndexSourceGapReasons = useMemo(() => {
+    if (
+      sceneSource === 'live-sim'
+      && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
+      && liveWalkerHandoverEventIndex === null
+    ) {
+      return ['Source gap: live Walker handover event index is not ready.'] as const;
+    }
+    return liveWalkerHandoverEventIndex?.sourceGapReasons ?? [];
+  }, [liveWalkerHandoverEventIndex, sceneLane, sceneSource]);
+  const timelineRailDescriptor = useMemo(() => resolveTimelineRailDescriptor({
+    sceneLane,
+    sceneSource,
+    liveDurationSec: LIVE_SIM_TIMELINE_DURATION_SEC,
+    liveCurrentTimeSec: liveTimelineElapsedSec,
+    artifactDurationSec: showcaseArtifact?.scenario.durationSec ?? 0,
+    artifactCurrentTimeSec: currentTimeSec,
+    artifactHandoverEventCount: artifactHandoverRailEvents.length,
+    producerTraceRange: modqnProducerTraceRange,
+    producerTraceCurrentTimeSec: modqnProducerTraceCurrentTimeSec,
+    producerTraceDisplayDurationSec: modqnReplayVisualTimeline.durationSec,
+    producerTraceDisplayCurrentTimeSec: modqnReplayVisualTimeline.currentTimeSec,
+    bundleProvenanceKind,
+    liveWalkerHandoverEventIndexSourceGapReasons,
+  }), [
+    bundleProvenanceKind,
+    currentTimeSec,
+    modqnProducerTraceCurrentTimeSec,
+    modqnProducerTraceRange,
+    modqnReplayVisualTimeline,
+    sceneLane,
+    sceneSource,
+    showcaseArtifact,
+    artifactHandoverRailEvents.length,
+    liveTimelineElapsedSec,
+    liveWalkerHandoverEventIndexSourceGapReasons,
+  ]);
+  const timelineDurationSec = timelineRailDescriptor.timeline.durationSec;
+  const timelineCurrentTimeSec = timelineRailDescriptor.timeline.currentTimeSec;
+  const timelineDisabled =
+    sceneSource === 'artifact-replay'
+      ? replayController === null || showcaseLoading || showcaseError !== null
+      : timelineDurationSec <= 0;
+  const handoverRailEvents = useMemo(() => {
+    if (sceneSource === 'artifact-replay') return artifactHandoverRailEvents;
+    if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;
+    if (sceneLane === 'modqn-replay-proof') return modqnHandoverRailEvents;
+    return liveObservedHandoverRailEvents;
+  }, [
+    artifactHandoverRailEvents,
+    liveObservedHandoverRailEvents,
+    liveWalkerHandoverRailEvents,
+    modqnHandoverRailEvents,
+    sceneLane,
+    sceneSource,
+  ]);
+
+  const handleTimelineSeek = useCallback((targetSec: number) => {
+    const target = clampTimelineTime(targetSec, timelineDurationSec);
+    if (sceneSource === 'artifact-replay') {
+      replayController?.seek(target);
+      return;
+    }
+    if (timelineRailDescriptor.timeline.axisKind === 'display-stretched') {
+      setModqnReplayVisualElapsedSec(clampTimelineTime(target, timelineRailDescriptor.timeline.axisDurationSec));
+      return;
+    }
+    if (sceneLane === 'modqn-replay-proof') {
+      const railAxisDurationSec = timelineRailDescriptor.rail.axisDurationSec;
+      const visualTargetSec = timelineDurationSec > 0 && railAxisDurationSec > 0
+        ? (target / timelineDurationSec) * railAxisDurationSec
+        : target;
+      setModqnReplayVisualElapsedSec(clampTimelineTime(visualTargetSec, railAxisDurationSec));
+      return;
+    }
+
+    const absoluteTargetSec = liveTimelineWindowStartSec + target;
+    setLiveTimelineSeekRequest({
+      targetSec: absoluteTargetSec,
+      requestKey: `${absoluteTargetSec.toFixed(3)}:${Date.now().toString(36)}`,
+    });
+    setLiveObservedHandoverRailEvents([]);
+    setModqnReplayVisualElapsedSec(target);
+  }, [
+    liveTimelineWindowStartSec,
+    replayController,
+    sceneLane,
+    sceneSource,
+    timelineDurationSec,
+    timelineRailDescriptor.rail.axisDurationSec,
+    timelineRailDescriptor.timeline.axisDurationSec,
+    timelineRailDescriptor.timeline.axisKind,
+  ]);
+
+  const handleHandoverRailSeek = useCallback((targetSec: number) => {
+    handleTimelineSeek(targetSec);
+  }, [handleTimelineSeek]);
+
+  const handleTimelineSpeedChange = useCallback((nextSpeed: TimelineSpeedPreset) => {
+    playback.setSpeed(nextSpeed);
+  }, [playback]);
+
+  const handoverEventRail = (
+    <HandoverEventRail
+      events={handoverRailEvents}
+      currentTimeSec={timelineRailDescriptor.rail.currentTimeSec}
+      durationSec={timelineRailDescriptor.rail.durationSec}
+      onSeek={handleHandoverRailSeek}
+      disabled={timelineDisabled}
+      sourceLabel={timelineRailDescriptor.rail.sourceLabel}
+      sourceOwner={timelineRailDescriptor.rail.sourceOwner}
+      horizonKind={timelineRailDescriptor.rail.horizonKind}
+      horizonLabel={timelineRailDescriptor.rail.horizonLabel}
+      claimKind={timelineRailDescriptor.rail.claimKind}
+      sourceStartSec={timelineRailDescriptor.rail.sourceStartSec}
+      sourceEndSec={timelineRailDescriptor.rail.sourceEndSec}
+      sourceGapReasons={timelineRailDescriptor.rail.sourceGapReasons}
+      axisKind={timelineRailDescriptor.rail.axisKind}
+      axisLabel={timelineRailDescriptor.rail.axisLabel}
+      axisDurationSec={timelineRailDescriptor.rail.axisDurationSec}
+      axisCurrentTimeSec={timelineRailDescriptor.rail.axisCurrentTimeSec}
+      axisPlaying={!playback.paused}
+      axisPlaybackRate={playback.effectiveSpeed}
+    />
+  );
 
   // World-space lerp adapter binding (SDD §9 P3): interpolation occurs strictly
   // after coordToWorld; raw positionEcefKm is never re-interpolated.
@@ -1061,6 +1509,8 @@ export function App() {
       data-ui-mode={uiMode}
       data-app-mode={appMode}
       data-scene-lane={sceneLane}
+      data-live-timeline-seek-target={liveTimelineSeekRequest?.targetSec.toFixed(3) ?? ''}
+      data-live-timeline-seek-key={liveTimelineSeekRequest?.requestKey ?? ''}
       data-topology-overrides-active={hasTopologyOverrides ? 'true' : 'false'}
       data-visual-scale-overrides-active={hasVisualScaleOverrides ? 'true' : 'false'}
       data-visual-scale-key={sceneVisualScaleResetKey}
@@ -1121,6 +1571,8 @@ export function App() {
         elevatedUeId={elevatedUeId}
         ueIds={showcaseArtifact?.timeline[0]?.ues.map(u => u.id) ?? []}
         onElevatedUeIdChange={setElevatedUeId}
+        modqnVisualLayerPreset={modqnVisualLayerPreset}
+        onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}
       />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
@@ -1204,6 +1656,7 @@ export function App() {
               simState={simState}
               bundleProvenanceKind={bundleProvenanceKind}
               sceneSource={sceneSource}
+              modqnVisualLayerPreset={modqnVisualLayerPreset}
             />
           )}
           {shouldRenderMainScene ? (
@@ -1229,6 +1682,21 @@ export function App() {
               <strong>{showcaseError ?? 'Loading visual-showcase-v1 artifact'}</strong>
             </div>
           )}
+          <TimelineBar
+            currentTimeSec={timelineCurrentTimeSec}
+            durationSec={timelineDurationSec}
+            paused={playback.paused}
+            speed={playback.speed}
+            onTogglePause={playback.togglePause}
+            onSeek={handleTimelineSeek}
+            onSpeedChange={handleTimelineSpeedChange}
+            disabled={timelineDisabled}
+            sourceOwner={timelineRailDescriptor.timeline.sourceOwner}
+            horizonKind={timelineRailDescriptor.timeline.horizonKind}
+            horizonLabel={timelineRailDescriptor.timeline.horizonLabel}
+            horizonSec={timelineRailDescriptor.timeline.horizonSec}
+            claimKind={timelineRailDescriptor.timeline.claimKind}
+          />
         </main>
         <aside className="leo-shell-right" aria-label="Signal status panel slot">
           {sceneLane === 'modqn-live-cell-preview' && <ServiceStatusBanner appMode={appMode} />}
@@ -1252,6 +1720,7 @@ export function App() {
                     bundleProvenanceKind={bundleProvenanceKind}
                   />
                 ) : null}
+                {handoverEventRail}
                 <div className="leo-replay-truth-summary" data-testid="artifact-truth-source-summary">
                   <strong>{showcaseArtifact?.scenario.truthMode ?? 'artifact truth'}</strong>
                   <span>{showcaseArtifact?.provenance.validation.status ?? showcaseError ?? 'loading'}</span>
@@ -1267,6 +1736,7 @@ export function App() {
                   }
                   bundleProvenanceKind={bundleProvenanceKind}
                 />
+                {handoverEventRail}
                 <InfoPanel
                   {...simState}
                   uiMode={uiMode}
@@ -1307,6 +1777,7 @@ export function App() {
                     Revert to paper-faithful
                   </button>
                 ) : null}
+                {handoverEventRail}
                 <ArtifactPicker
                   appMode={appMode}
                   selectedJobId={selectedUserTrainedJobId}

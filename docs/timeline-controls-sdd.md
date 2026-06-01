@@ -19,7 +19,7 @@ Without a timeline:
 - **Interactive Scrubber**: Drag or click a continuous timeline bar to jump (seek) to any timestamp.
 - **Playback Controls**: Standard control buttons: Play/Pause (`▶`/`⏸`), Step Backward 10s (`⏪`), Step Forward 10s (`⏩`), Jump to Start (`⏮`), Jump to End (`⏭`).
 - **Speed Presets**: Fast speed selection buttons (e.g., `1x`, `2x`, `5x`, `10x`, `20x`).
-- **Unified Time Domain**: Seamless operation across both `live-sim` mode (0s to 1200s trajectory cache) and `artifact-replay` mode (bound to the pre-recorded timeline duration).
+- **Unified Time Domain**: Seamless operation across both `live-sim` mode (0s to 7200s / 2h trajectory cache) and `artifact-replay` mode (bound to the pre-recorded timeline duration).
 - **Aesthetic Excellence**: A premium, floating glassmorphic timeline bar situated at the bottom-center of the viewport, styled with CSS variables and glowing neon accents.
 
 ---
@@ -41,10 +41,48 @@ Without a timeline:
 └────────────────────────────────┘    └────────────────────────────────┘
 ```
 
+### Source Horizon and Handover Rail Rules
+
+Timeline controls are generic UI. Their meaning comes from the current scene
+lane's authoritative source. A handover rail or scrubber MUST NOT merge events
+from one source with a duration/horizon from another source.
+
+| Scene lane / surface | Timeline horizon | Handover-event source | Required labeling |
+|---|---|---|---|
+| `sinr-live` | live Walker trajectory cache / live simulation window | live `HandoverManager` observations or explicitly profile-derived live forecast | `live Walker` / `profile-derived`, not MODQN proof |
+| `modqn-live-cell-preview` | live Walker trajectory cache / live simulation window | live Walker SINR candidate set plus MODQN decision overlay | `MODQN overlay on live Walker SINR`, not replay proof |
+| `modqn-replay-proof` | producer replay artifact time range | immutable producer MODQN rows only | producer artifact / source-gap labels |
+| `artifact-replay` | `visual-showcase-v1` scenario duration | immutable artifact events only | artifact replay / validation status |
+
+The currently selected Phase 7C MODQN replay bundle is a legacy producer trace,
+not a live Walker timeline. It has producer rows in the `1s..10s` range and is
+validated as a 4-satellite, 7-beam trace. If that legacy trace is displayed in a
+rail, the rail must use the producer trace horizon or label it as legacy source
+context. It must not be stretched over the live Walker window as proof, and it
+must not be relabeled as a 2-hour Walker handover schedule.
+
+Future 2-hour intra/inter handover maps require one of two source-backed inputs:
+
+1. A live Walker forecast generated from the same profile-derived live engine
+   that renders the scene and computes SINR. This is demo/forecast evidence, not
+   MODQN producer proof.
+2. A producer-exported Walker-based MODQN replay or `visual-showcase-v1`
+   artifact whose satellite geometry, SINR/SNR, decisions, handover events, and
+   provenance all come from the producer.
+
+Display code may aggregate rows into readable marker windows, but it must not
+invent missing inter handovers, missing producer schedules, or a longer source
+horizon from visual needs.
+
+The right-sidebar 2-hour event-map and slow-motion focus design is specified in
+`docs/live-walker-handover-event-map-sdd.md`. The bottom timeline remains the
+master source-time scrubber; the right-side map may seek it but must not replace
+its source horizon.
+
 ### A. The Timeline Component (`src/ui/TimelineBar.tsx`)
 We will create a dedicated `TimelineBar` component that accepts:
 - `currentTimeSec`: Current playback time in seconds.
-- `durationSec`: Total duration of the current run (1200s for `live-sim` mode, or `artifact.timeline` length for `artifact-replay` mode).
+- `durationSec`: Total duration of the current run (7200s / 2h for `live-sim` mode, or `artifact.timeline` length for `artifact-replay` mode).
 - `paused`: Current play/pause state.
 - `speed`: Current playback speed.
 - `onTogglePause`: Play/Pause action callback.

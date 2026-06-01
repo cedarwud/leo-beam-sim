@@ -1,6 +1,10 @@
 import { UI_CLASSES } from '../constants/uiTokens';
 import type { SceneLane } from '../app/sceneLane';
 import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
+import {
+  MODQN_VISUAL_LAYER_PRESETS,
+  type ModqnVisualLayerPreset,
+} from '../scene/modqnVisualLayers';
 import { UI_MODES, isUiMode, type UiMode } from './uiMode';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 
@@ -47,6 +51,8 @@ interface ControlBarProps {
   elevatedUeId?: string | null;
   ueIds?: readonly string[];
   onElevatedUeIdChange?: (id: string) => void;
+  modqnVisualLayerPreset?: ModqnVisualLayerPreset;
+  onModqnVisualLayerPresetChange?: (preset: ModqnVisualLayerPreset) => void;
 }
 
 // Public demo modes. ω adjustment is now handled inside the decision-overlay
@@ -81,6 +87,12 @@ const CAMERA_PRESETS: Array<{ label: string; preset: CameraPreset }> = [
   { label: 'Paper-faithful close-up', preset: 'paper-faithful-closeup' },
 ];
 
+const MODQN_LAYER_PRESET_LABELS: Record<ModqnVisualLayerPreset, string> = {
+  'baseline-faithful': 'Baseline',
+  'explain-handover': 'Explain',
+  debug: 'Debug',
+};
+
 export function ControlBar({
   paused,
   speed,
@@ -111,9 +123,12 @@ export function ControlBar({
   elevatedUeId = null,
   ueIds = [],
   onElevatedUeIdChange,
+  modqnVisualLayerPreset = 'baseline-faithful',
+  onModqnVisualLayerPresetChange,
 }: ControlBarProps) {
   const isArtifactReplay = sceneLane === 'artifact-replay' || sceneSource === 'artifact-replay';
   const showSinrLiveControls = sceneLane === 'sinr-live';
+  const showModqnLayerControls = sceneLane === 'modqn-live-cell-preview';
   const liveAutoSlowActive = showSinrLiveControls && autoSlowActive;
   const sceneSuffix = showSinrLiveControls && autoSlowApplied
     ? ' (HO Slow)'
@@ -293,6 +308,33 @@ export function ControlBar({
             HO Slow
           </label>
         </>
+      )}
+
+      {showModqnLayerControls && (
+        <div
+          className="leo-control-bar__modqn-layer-group"
+          role="group"
+          aria-label="MODQN visual layer preset"
+          data-testid="modqn-layer-preset-control"
+          data-modqn-layer-preset={modqnVisualLayerPreset}
+        >
+          {MODQN_VISUAL_LAYER_PRESETS.map(preset => {
+            const selected = modqnVisualLayerPreset === preset;
+            return (
+              <button
+                key={preset}
+                className={`${UI_CLASSES.button} leo-control-bar__modqn-layer-button`}
+                type="button"
+                aria-label={`Set MODQN visual layer preset to ${MODQN_LAYER_PRESET_LABELS[preset]}`}
+                aria-pressed={selected}
+                data-testid={`modqn-layer-preset-${preset}`}
+                onClick={() => onModqnVisualLayerPresetChange?.(preset)}
+              >
+                {MODQN_LAYER_PRESET_LABELS[preset]}
+              </button>
+            );
+          })}
+        </div>
       )}
 
       <label className="leo-control-bar__field-row">

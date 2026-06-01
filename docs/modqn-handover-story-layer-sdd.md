@@ -58,13 +58,21 @@ target rings. The label must include old/new satellite and beam identity. When
 old and new ground anchors collapse to the same cell, use concentric rings and
 a lifted pulse arc so the switch is still readable.
 
+Baseline Faithful suppresses these foreground event arcs because the cell
+schedule is a profile-derived slot preview, not a source-backed primary-UE
+handover event index. The Explain Handover and Debug visual presets may show
+capped profile-derived intra/inter cues as a non-proof overlay. The middle
+scene may still show active, inactive, next-slot beam/cell state, all-UE service
+coloring, and active-cell UE counts; primary-UE event proof remains owned by the
+lane-owned live Walker event index or producer replay artifact.
+
 ### Inter HO
 
 Render a spatial transfer ribbon between old and new satellites, a target-cell
 or UE-to-target cue, and old/new satellite plus beam identity. Inter-HO in the
-MODQN cell preview is allowed because it is profile-derived demo state. Replay
-proof only renders inter-HO when the producer row says the handover kind is
-inter-satellite.
+MODQN cell preview remains suppressed for the same source-boundary reason as
+intra-HO foreground arcs. Replay proof only renders inter-HO when the producer
+row says the handover kind is inter-satellite.
 
 ### Multi-UE
 
@@ -84,6 +92,23 @@ source gap. The layer must display the gap and must not animate hopping.
 
 Live/profile-derived MODQN UI copy must keep the claim boundary visible:
 `preview · handover story · not baseline proof · backend re-train pending`.
+
+### Visual Presets
+
+- **Baseline Faithful** is the default for `modqn-live-cell-preview`. It shows
+  the all-UE service map, satellite/cell coloring, active-cell overlay, and
+  UE-count badges, with a compact profile-derived service readout for slot,
+  serving count, active cells, and served/idle UEs. It keeps beam cones,
+  footprint ellipses, foreground handover arcs, and diagnostics off.
+- **Explain Handover** may enable focused beam cones plus capped
+  profile-derived intra/inter cues. These cues are overlay-demo presentation
+  only.
+- **Debug** may enable footprint ellipses and diagnostics for engineering
+  inspection. Its HUD may expose compact profile-derived cell schedule
+  diagnostics: slot duration, next-slot change count, visible serving
+  satellites, and active beam ids by satellite. Baseline Faithful and Explain
+  Handover must keep this diagnostic block hidden. It remains separate from
+  producer replay proof.
 
 ## Validator Plan
 

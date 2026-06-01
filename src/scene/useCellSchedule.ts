@@ -13,11 +13,13 @@ import {
   type CellScheduleSlot,
   type SatellitePose,
 } from '../engine/cells/cellScheduler';
+import { MODQN_DEFAULT_SERVING_COUNT } from '../modqn/servingCount';
 
 /** Cosmetic viz slot pacing (seconds). NOT the backend training slot (SDD §5.5.1 0.5s). */
 export const CELL_SCHEDULE_VIZ_SLOT_SEC = 2.5;
-export const DEFAULT_SERVING_COUNT = 8;
-export const PAPER_ACTIVE_BEAMS_PER_SLOT = 28;
+export const DEFAULT_SERVING_COUNT = MODQN_DEFAULT_SERVING_COUNT;
+/** Display-only cell overlay cap. MODQN action catalog truth is L x 7, not this scheduler cap. */
+export const DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT = 28;
 
 const MAX_SYNTHETIC_SATELLITES = 4;
 const DEG_TO_RAD = Math.PI / 180;
@@ -187,7 +189,7 @@ function computeCellScheduleVizFromLayout(input: ComputeCellScheduleVizFromLayou
     satellites: selection.satellites,
     beamsPerSatellite: input.beamsPerSatellite ?? DEFAULT_BEAMS_PER_SATELLITE,
     minElevationDeg: DEFAULT_MIN_ELEVATION_DEG,
-    maxActivePerSlot: PAPER_ACTIVE_BEAMS_PER_SLOT,
+    maxActivePerSlot: DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT,
   };
   const previousSlotIndex = Math.max(0, input.slotIndex - 1);
   const nextSlotIndex = input.slotIndex + 1;
@@ -332,7 +334,7 @@ function buildSyntheticVisibleSatelliteSelection(
   servingCount: number,
 ): SchedulerSatelliteSelection {
   // Backward-compatible I-S4/I-S5a path: fixtures that pass ids only keep the
-  // synthetic all-visible four-satellite 28/9 hop pattern.
+  // synthetic all-visible four-satellite display-hop pattern.
   const visibleSatellites = input.satellites
     .slice(0, MAX_SYNTHETIC_SATELLITES)
     .filter(satellite => satellite.id.length > 0);

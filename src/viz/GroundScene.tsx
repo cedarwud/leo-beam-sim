@@ -30,6 +30,8 @@ export interface GroundSceneUe {
   /** World-space anchor `[x, y, z]`. Y is height-above-ground. */
   readonly worldPos: readonly [number, number, number];
   readonly id?: string;
+  readonly markerColor?: string;
+  readonly markerEmissive?: string;
 }
 
 interface GroundSceneProps {
@@ -55,12 +57,16 @@ function PrimaryUeMarker({
   z,
   ueMarkerMultiplier,
   markerShape,
+  markerColor,
+  markerEmissive,
 }: {
   x: number;
   y: number;
   z: number;
   ueMarkerMultiplier: number;
   markerShape: 'cylinder' | 'sphere';
+  markerColor?: string;
+  markerEmissive?: string;
 }) {
   const markerRadius = MARKER_RADIUS * ueMarkerMultiplier;
   const markerHeight = MARKER_HEIGHT * ueMarkerMultiplier;
@@ -70,6 +76,8 @@ function PrimaryUeMarker({
   const labelY = markerShape === 'sphere'
     ? markerRadius * 2.2
     : 18 * ueMarkerMultiplier;
+  const resolvedMarkerColor = markerColor ?? PRIMARY_COLOR;
+  const resolvedMarkerEmissive = markerEmissive ?? markerColor ?? PRIMARY_EMISSIVE;
 
   return (
     <group position={[x, y, z]}>
@@ -98,15 +106,15 @@ function PrimaryUeMarker({
           />
         )}
         <meshStandardMaterial
-          color={PRIMARY_COLOR}
-          emissive={PRIMARY_EMISSIVE}
+          color={resolvedMarkerColor}
+          emissive={resolvedMarkerEmissive}
           emissiveIntensity={2.5}
         />
       </mesh>
       <Text
         position={[0, labelY, 0]}
         fontSize={12}
-        color="#ff6666"
+        color={resolvedMarkerColor}
         anchorX="center"
         anchorY="middle"
         outlineWidth={1}
@@ -119,13 +127,13 @@ function PrimaryUeMarker({
 }
 
 function SecondaryUeInstances({
-  positions,
+  ues,
   ueMarkerMultiplier,
   markerShape,
   opacity,
   scale,
 }: {
-  positions: ReadonlyArray<readonly [number, number, number]>;
+  ues: ReadonlyArray<GroundSceneUe>;
   ueMarkerMultiplier: number;
   markerShape: 'cylinder' | 'sphere';
   opacity: number;
@@ -133,14 +141,16 @@ function SecondaryUeInstances({
 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const color = useMemo(() => new THREE.Color(), []);
   const markerRadius = MARKER_RADIUS * 0.45 * ueMarkerMultiplier * scale;
   const markerHeight = MARKER_HEIGHT * 0.7 * ueMarkerMultiplier * scale;
 
   useLayoutEffect(() => {
     if (!meshRef.current) return;
     const mesh = meshRef.current;
-    for (let i = 0; i < positions.length; i++) {
-      const [x, y, z] = positions[i];
+    for (let i = 0; i < ues.length; i++) {
+      const ue = ues[i];
+      const [x, y, z] = ue.worldPos;
       // 1. 主體標記的位置更新
       dummy.position.set(
         x,
@@ -151,17 +161,20 @@ function SecondaryUeInstances({
       dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
+      color.set(ue.markerColor ?? SECONDARY_COLOR);
+      mesh.setColorAt(i, color);
     }
     mesh.instanceMatrix.needsUpdate = true;
-    mesh.count = positions.length;
-  }, [positions, dummy, markerHeight, markerRadius, markerShape, ueMarkerMultiplier]);
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.count = ues.length;
+  }, [ues, color, dummy, markerHeight, markerRadius, markerShape, ueMarkerMultiplier]);
 
-  if (positions.length === 0) return null;
+  if (ues.length === 0) return null;
 
   return (
     <instancedMesh
       ref={meshRef}
-      args={[undefined, undefined, Math.max(positions.length, 1)]}
+      args={[undefined, undefined, Math.max(ues.length, 1)]}
     >
       {markerShape === 'sphere' ? (
         <sphereGeometry args={[markerRadius, 14, 10]} />
@@ -176,9 +189,10 @@ function SecondaryUeInstances({
         />
       )}
       <meshStandardMaterial
-        color={SECONDARY_COLOR}
+        color="#ffffff"
         emissive={SECONDARY_EMISSIVE}
         emissiveIntensity={1.4}
+        vertexColors
         transparent
         opacity={opacity}
         blending={THREE.NormalBlending}
@@ -195,8 +209,8 @@ export function GroundScene({
   secondaryOpacity = 0.9,
   secondaryScale = 1,
 }: GroundSceneProps) {
-  const secondaryPositions = useMemo(
-    () => ues.slice(1).map((u) => u.worldPos),
+  const secondaryUes = useMemo(
+    () => ues.slice(1),
     [ues],
   );
   if (ues.length === 0) {
@@ -213,9 +227,11 @@ export function GroundScene({
         z={pz}
         ueMarkerMultiplier={ueMarkerMultiplier}
         markerShape={markerShape}
+        markerColor={primary.markerColor}
+        markerEmissive={primary.markerEmissive}
       />
       <SecondaryUeInstances
-        positions={secondaryPositions}
+        ues={secondaryUes}
         ueMarkerMultiplier={ueMarkerMultiplier}
         markerShape={markerShape}
         opacity={secondaryOpacity}

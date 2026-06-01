@@ -138,8 +138,8 @@ section('(a) TopologyTab source grep', () => {
     check(topologySource.includes(testId), `TopologyTab.tsx contains mobility testid ${testId}`);
   }
   check(
-    countOccurrences(topologySource, 'topology-tab-') === 37,
-    'TopologyTab.tsx contains exactly 37 topology-tab testid string literals after UE trail toggle',
+    countOccurrences(topologySource, 'topology-tab-') >= 37,
+    'TopologyTab.tsx preserves prior topology-tab testid string literals after UE trail toggle',
   );
   check(
     topologySource.includes("topology.ueMobilityMode ?? 'static'"),

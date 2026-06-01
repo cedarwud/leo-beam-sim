@@ -291,10 +291,27 @@ expectEqual(
   slot1.cellReassignments.length,
   'CellHandoverArcs userData interCount plus intraCount equals total reassignment count',
 );
+expect(
+  arcGroups.every(group => typeof group.props.userData?.label === 'string' && String(group.props.userData.label).includes(' -> ')),
+  'CellHandoverArcs carries source-to-target identity labels',
+);
+expect(
+  arcs.props.userData?.source === 'profile-derived-demo'
+    && arcs.props.userData?.claimBoundary === 'profile-derived overlay'
+    && arcs.props.userData?.proofStatus === 'non-proof',
+  'CellHandoverArcs root labels profile-derived non-proof claim boundary',
+);
 
 const mainSceneSource = readFileSync(path.join(REPO_ROOT, 'src/scene/MainScene.tsx'), 'utf8');
 const sceneLaneRenderPlanSource = readFileSync(path.join(REPO_ROOT, 'src/scene/sceneLaneRenderPlan.ts'), 'utf8');
 const telemetrySource = readFileSync(path.join(REPO_ROOT, 'src/scene/SceneTelemetry.tsx'), 'utf8');
+const cellHandoverArcsSource = readFileSync(path.join(REPO_ROOT, 'src/viz/CellHandoverArcs.tsx'), 'utf8');
+expect(
+  cellHandoverArcsSource.includes("import { Line, Text }")
+    && cellHandoverArcsSource.includes('buildIdentityLabel')
+    && cellHandoverArcsSource.includes("ARC_PROOF_STATUS = 'non-proof'"),
+  'CellHandoverArcs renders identity labels with non-proof overlay metadata',
+);
 expect(
   sceneLaneRenderPlanSource.includes("const showCellOverlay = input.sceneLane === 'modqn-live-cell-preview' && isLiveScene")
     && mainSceneSource.includes('{showCellOverlay && (\n        <CellHandoverArcs')

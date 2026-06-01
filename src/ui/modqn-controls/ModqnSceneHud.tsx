@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import type { AppExperienceMode } from '../../app/appExperienceMode';
+import type { ModqnVisualLayerPreset } from '../../scene/modqnVisualLayers';
 import type { SimState } from '../../scene/types';
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
   readonly simState: SimState;
   readonly bundleProvenanceKind: 'paper-faithful' | 'user-trained';
   readonly sceneSource: 'live-sim' | 'artifact-replay';
+  readonly modqnVisualLayerPreset?: ModqnVisualLayerPreset;
 }
 
 // Phase H §4.8: top-right HUD that surfaces sim time + handover counters +
@@ -33,6 +35,7 @@ export function ModqnSceneHud({
   simState,
   bundleProvenanceKind,
   sceneSource,
+  modqnVisualLayerPreset = 'baseline-faithful',
 }: Props): JSX.Element | null {
   if (appMode !== 'modqn-demo') return null;
 
@@ -41,6 +44,12 @@ export function ModqnSceneHud({
   const hoCount = simState.hoCount ?? 0;
   const interHoCount = Math.max(0, hoCount - intraHoCount);
   const simTimeSec = simState.simTimeSec ?? 0;
+  const serviceReadout = simState.modqnCellServiceReadout;
+  const showServiceDiagnostics = modqnVisualLayerPreset === 'debug' && serviceReadout !== undefined;
+  const visibleSatelliteSummaries = serviceReadout?.satelliteSummaries
+    .filter(summary => summary.activeCellCount > 0 || summary.servedUeCount > 0)
+    .slice(0, 6) ?? [];
+  const diagnosticSatelliteSummaries = visibleSatelliteSummaries.slice(0, 3);
 
   return (
     <div
@@ -51,6 +60,19 @@ export function ModqnSceneHud({
       data-sim-time-sec={simTimeSec.toFixed(1)}
       data-intra-ho-count={String(intraHoCount)}
       data-inter-ho-count={String(interHoCount)}
+      data-modqn-layer-preset={modqnVisualLayerPreset}
+      data-service-source={serviceReadout?.source ?? 'none'}
+      data-service-claim-kind={serviceReadout?.claimKind ?? 'none'}
+      data-service-slot-index={String(serviceReadout?.slotIndex ?? '')}
+      data-service-slot-sec={String(serviceReadout?.slotSec ?? '')}
+      data-service-next-slot-index={String(serviceReadout?.nextSlotIndex ?? '')}
+      data-service-next-change-count={String(serviceReadout?.nextChangedCellCount ?? '')}
+      data-service-serving-count={String(serviceReadout?.servingCount ?? '')}
+      data-service-active-cell-count={String(serviceReadout?.activeCellCount ?? '')}
+      data-service-idle-cell-count={String(serviceReadout?.idleCellCount ?? '')}
+      data-service-served-ue-count={String(serviceReadout?.servedUeCount ?? '')}
+      data-service-idle-ue-count={String(serviceReadout?.idleUeCount ?? '')}
+      data-service-diagnostics-visible={showServiceDiagnostics ? 'true' : 'false'}
       aria-label="MODQN scene HUD"
     >
       <header className="leo-modqn-scene-hud__chip" data-truth-chip={tone}>
@@ -78,6 +100,70 @@ export function ModqnSceneHud({
           <dd data-testid="modqn-scene-hud-inter-ho">{interHoCount}</dd>
         </div>
       </dl>
+      {serviceReadout !== undefined && (
+        <section
+          className="leo-modqn-scene-hud__service"
+          data-testid="modqn-service-readout"
+          aria-label="MODQN profile-derived cell service readout"
+        >
+          <div className="leo-modqn-scene-hud__service-summary">
+            <span>L{serviceReadout.servingCount}</span>
+            <span>slot {serviceReadout.slotIndex}</span>
+            <span>{serviceReadout.activeCellCount}/{serviceReadout.cellCount} cells</span>
+            <span>{serviceReadout.servedUeCount}/{serviceReadout.servedUeCount + serviceReadout.idleUeCount} UE</span>
+          </div>
+          <div
+            className="leo-modqn-scene-hud__service-legend"
+            data-satellite-summary-count={String(serviceReadout.satelliteSummaries.length)}
+          >
+            {visibleSatelliteSummaries.map(summary => (
+              <div
+                key={summary.satId}
+                className="leo-modqn-scene-hud__service-sat"
+                data-sat-id={summary.satId}
+                data-active-cell-count={String(summary.activeCellCount)}
+                data-active-beam-ids={summary.activeBeamIds.join(',')}
+                data-served-ue-count={String(summary.servedUeCount)}
+              >
+                <span
+                  className="leo-modqn-scene-hud__service-swatch"
+                  style={{ backgroundColor: summary.markerColor }}
+                  aria-hidden="true"
+                />
+                <span className="leo-modqn-scene-hud__service-id">{summary.satId}</span>
+                <span className="leo-modqn-scene-hud__service-counts">
+                  {summary.activeCellCount}c · {summary.servedUeCount}u
+                </span>
+              </div>
+            ))}
+          </div>
+          {showServiceDiagnostics && (
+            <div
+              className="leo-modqn-scene-hud__service-diagnostics"
+              data-testid="modqn-service-diagnostics"
+              aria-label="MODQN profile-derived cell schedule diagnostics"
+            >
+              <div className="leo-modqn-scene-hud__service-diagnostics-grid">
+                <span>slot {serviceReadout.slotIndex} -&gt; {serviceReadout.nextSlotIndex}</span>
+                <span>{serviceReadout.slotSec.toFixed(1)}s slot</span>
+                <span>{serviceReadout.visibleSatelliteCount} visible sats</span>
+                <span>{serviceReadout.nextChangedCellCount} next changes</span>
+                <span>{serviceReadout.nextActiveCellCount}/{serviceReadout.cellCount} next cells</span>
+                <span>overlay · profile-derived</span>
+              </div>
+              {diagnosticSatelliteSummaries.length > 0 && (
+                <div className="leo-modqn-scene-hud__service-beams">
+                  {diagnosticSatelliteSummaries.map(summary => (
+                    <span key={summary.satId}>
+                      {summary.satId}: b{summary.activeBeamIds.join('/') || '-'}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

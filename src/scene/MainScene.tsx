@@ -23,7 +23,12 @@ import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import { useSimulation } from './useSimulation';
 import { useUeTrailHistory } from './useUeTrailHistory';
 import { useBeamViz } from './useBeamViz';
-import { CELL_SCHEDULE_VIZ_SLOT_SEC, DEFAULT_SERVING_COUNT, useCellSchedule } from './useCellSchedule';
+import {
+  CELL_SCHEDULE_VIZ_SLOT_SEC,
+  DEFAULT_SERVING_COUNT,
+  useCellSchedule,
+  type CellReassignment,
+} from './useCellSchedule';
 import { sceneGeometryFromProfile } from './SceneGeometry';
 import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
@@ -74,6 +79,15 @@ import {
   resolveSceneLaneUeMarkerShape,
 } from './sceneLaneRenderPlan';
 import { deriveProfileHandoverStoryModel } from './handoverStoryModel';
+import {
+  buildModqnCellServiceReadout,
+  deriveModqnServiceMap,
+  EMPTY_MODQN_SERVICE_MAP,
+} from './modqnServiceMap';
+import {
+  DEFAULT_MODQN_VISUAL_LAYER_PRESET,
+  resolveModqnVisualLayers,
+} from './modqnVisualLayers';
 
 interface SceneContentProps {
   profile: Profile;
@@ -97,6 +111,7 @@ interface ArtifactSceneContentProps {
 
 const SHOW_BEAMS = true;
 const CAMERA_TWEEN_DURATION_MS = 600;
+const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
 
 const CAMERA_PRESET_POSES: Record<CameraPreset, {
   position: [number, number, number];
@@ -141,6 +156,26 @@ function formatCameraVector(vector: THREE.Vector3): string {
 
 function formatScenePosition(position: readonly [number, number, number] | undefined): string {
   return position ? position.map(value => value.toFixed(2)).join(',') : '';
+}
+
+function selectProfileDerivedHandoverCues(
+  reassignments: readonly CellReassignment[],
+): readonly CellReassignment[] {
+  const selected: CellReassignment[] = [];
+  const push = (candidate: CellReassignment | undefined) => {
+    if (!candidate) return;
+    if (selected.some(existing => existing.cellId === candidate.cellId)) return;
+    selected.push(candidate);
+  };
+
+  push(reassignments.find(reassignment => reassignment.kind === 'intra'));
+  push(reassignments.find(reassignment => reassignment.kind === 'inter'));
+  for (const reassignment of reassignments) {
+    if (selected.length >= MAX_PROFILE_DERIVED_HANDOVER_CUES) break;
+    push(reassignment);
+  }
+
+  return selected;
 }
 
 function ArtifactSceneContent({
@@ -191,6 +226,11 @@ function ArtifactSceneContent({
         cellHoInterCount=""
         cellHoIntraCount=""
         cellBeamConeCount=""
+        modqnVisualLayerPreset=""
+        modqnServiceMapEnabled="0"
+        modqnServedUeCount={0}
+        modqnIdleUeCount={0}
+        modqnHandoverCuesVisible="0"
         handoverStoryLayer="artifact-owned"
         handoverStoryVisible="0"
         handoverStorySource=""
@@ -402,17 +442,6 @@ function SceneContent({
     inter: cellSchedule.cellReassignments.filter(reassignment => reassignment.kind === 'inter').length,
     intra: cellSchedule.cellReassignments.filter(reassignment => reassignment.kind === 'intra').length,
   }), [cellSchedule.cellReassignments]);
-  useSimStatePublisher({
-    profile,
-    sim,
-    frame: sceneFrame,
-    viz,
-    signalResetKey: runtime.signalResetKey,
-    handoverResetKey: runtime.handoverResetKey,
-    latchedBeamSinrByKeyRef,
-    onSimUpdate,
-    enabled: sceneFrame.sceneSource !== 'artifact-replay',
-  });
   const cellCoverCandidates = useMemo(() => {
     const displayOrderBySatId = new Map(viz.displaySats.map((sat, index) => [sat.id, index]));
 
@@ -473,10 +502,55 @@ function SceneContent({
     showReplayProofLayer,
     showArtifactFpsCounter,
   } = renderPlan;
+  const modqnVisualLayerPreset = runtime.modqnVisualLayerPreset ?? DEFAULT_MODQN_VISUAL_LAYER_PRESET;
+  const modqnVisualLayers = runtime.modqnVisualLayers ?? resolveModqnVisualLayers(modqnVisualLayerPreset);
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
   const focusedCellBeamConeUe = sceneFrame.ues[0] || null;
+  const modqnServiceMap = useMemo(
+    () => showCellOverlay && modqnVisualLayers.serviceMap
+      ? deriveModqnServiceMap({
+        ues: sceneFrame.ues,
+        schedule: cellSchedule,
+        satelliteTintById,
+      })
+      : EMPTY_MODQN_SERVICE_MAP,
+    [
+      cellSchedule,
+      modqnVisualLayers.serviceMap,
+      satelliteTintById,
+      sceneFrame.ues,
+      showCellOverlay,
+    ],
+  );
+  const modqnCellServiceReadout = useMemo(
+    () => showCellOverlay && modqnVisualLayers.serviceMap
+      ? buildModqnCellServiceReadout({
+        schedule: cellSchedule,
+        serviceMap: modqnServiceMap,
+        slotSec: CELL_SCHEDULE_VIZ_SLOT_SEC,
+      })
+      : undefined,
+    [
+      cellSchedule,
+      modqnServiceMap,
+      modqnVisualLayers.serviceMap,
+      showCellOverlay,
+    ],
+  );
+  useSimStatePublisher({
+    profile,
+    sim,
+    frame: sceneFrame,
+    viz,
+    signalResetKey: runtime.signalResetKey,
+    handoverResetKey: runtime.handoverResetKey,
+    latchedBeamSinrByKeyRef,
+    onSimUpdate,
+    enabled: sceneFrame.sceneSource !== 'artifact-replay',
+    modqnCellServiceReadout,
+  });
   const handoverStoryModel = useMemo(
-    () => showProfileHandoverStoryLayer
+    () => showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory
       ? deriveProfileHandoverStoryModel({
         sceneLane,
         sceneFrame,
@@ -489,10 +563,11 @@ function SceneContent({
       satelliteWorldById,
       sceneFrame,
       sceneLane,
+      modqnVisualLayers.handoverStory,
       showProfileHandoverStoryLayer,
     ],
   );
-  const renderedCellBeamConeCount = showCellOverlay
+  const renderedCellBeamConeCount = showCellOverlay && modqnVisualLayers.beamCones
     ? resolveCellBeamConeRenderCount({
       schedule: cellSchedule,
       satelliteWorldById,
@@ -501,6 +576,14 @@ function SceneContent({
       appMode: runtime.appMode,
     })
     : 0;
+  const profileDerivedHandoverCues = useMemo(
+    () => selectProfileDerivedHandoverCues(cellSchedule.cellReassignments),
+    [cellSchedule.cellReassignments],
+  );
+  // Cell schedule churn is a profile-derived overlay cue, not primary-UE
+  // source-backed handover truth. It is hidden in the baseline preset and only
+  // appears in explicit explain/debug presets.
+  const showCellReassignmentEventArcs = modqnVisualLayers.handoverCues;
   const replayBackedHandoverStoryVisible =
     handoverStoryLayerPolicy === 'modqn-replay-source-backed'
     && showReplayProofLayer;
@@ -622,6 +705,11 @@ function SceneContent({
         cellHoInterCount={showCellOverlay ? String(cellHoCounts.inter) : ''}
         cellHoIntraCount={showCellOverlay ? String(cellHoCounts.intra) : ''}
         cellBeamConeCount={showCellOverlay ? String(renderedCellBeamConeCount) : ''}
+        modqnVisualLayerPreset={showCellOverlay ? modqnVisualLayerPreset : ''}
+        modqnServiceMapEnabled={showCellOverlay && modqnVisualLayers.serviceMap ? '1' : '0'}
+        modqnServedUeCount={showCellOverlay ? modqnServiceMap.servedUeCount : 0}
+        modqnIdleUeCount={showCellOverlay ? modqnServiceMap.idleUeCount : 0}
+        modqnHandoverCuesVisible={showCellOverlay && showCellReassignmentEventArcs ? '1' : '0'}
         handoverStoryLayer={handoverStoryLayerPolicy}
         handoverStoryVisible={handoverStoryModel || replayBackedHandoverStoryVisible ? '1' : '0'}
         handoverStorySource={
@@ -646,22 +734,32 @@ function SceneContent({
       <GroundScene
         ues={sceneFrame.ues
           .filter((u) => u.worldPos !== undefined)
-          .map((u) => ({ id: u.id, worldPos: u.worldPos as readonly [number, number, number] }))}
+          .map((u) => {
+            const service = modqnServiceMap.ueById.get(u.id);
+            return {
+              id: u.id,
+              worldPos: u.worldPos as readonly [number, number, number],
+              markerColor: service?.markerColor,
+              markerEmissive: service?.markerEmissive,
+            };
+          })}
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
         markerShape={ueMarkerShape}
         ueTrailHistory={showCellOverlay ? undefined : ueTrailHistory}
-        secondaryOpacity={1.0}
-        secondaryScale={1.0}
+        secondaryOpacity={showCellOverlay && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
+        secondaryScale={showCellOverlay && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
       />
-      {showCellOverlay && (
+      {showCellOverlay && modqnVisualLayers.activeCellOverlay && (
         <CellOverlay
           schedule={cellSchedule}
           satelliteTintById={satelliteTintById}
           satelliteWorldById={satelliteWorldById}
-          showFootprints={false}
+          showFootprints={modqnVisualLayers.footprintEllipses}
+          ueCountByCellId={modqnServiceMap.ueCountByCellId}
+          showUeCounts={modqnVisualLayers.ueCountBadges}
         />
       )}
-      {showProfileHandoverStoryLayer && (
+      {showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory && (
         <HandoverStoryLayer
           model={handoverStoryModel}
           satelliteTintById={satelliteTintById}
@@ -669,15 +767,12 @@ function SceneContent({
       )}
       {showCellOverlay && (
         <CellHandoverArcs
-          reassignments={
-            runtime.appMode === 'modqn-demo'
-              ? cellSchedule.cellReassignments.filter((r) => r.kind !== 'inter')
-              : cellSchedule.cellReassignments
-          }
+          visible={showCellReassignmentEventArcs}
+          reassignments={profileDerivedHandoverCues}
           satelliteWorldById={satelliteWorldById}
         />
       )}
-      {showCellOverlay && (
+      {showCellOverlay && modqnVisualLayers.beamCones && (
         <CellBeamCones
           schedule={cellSchedule}
           satelliteWorldById={satelliteWorldById}
@@ -811,6 +906,8 @@ export const MainScene = memo(function MainScene({
         data-ue-marker-shape={ueMarkerShape}
         data-uav-visible={showUav ? '1' : '0'}
         data-ue-primary-anchor-mode={runtime.uePrimaryAnchorMode ?? 'observer'}
+        data-live-timeline-seek-key={runtime.replay.seekRequestKey ?? ''}
+        data-live-timeline-seek-target={runtime.replay.seekTargetSec?.toFixed(3) ?? ''}
         hidden
       />
       <Starfield starCount={180} />

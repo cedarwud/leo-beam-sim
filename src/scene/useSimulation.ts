@@ -314,9 +314,70 @@ export function useSimulation(
     ueDistributionRadiusKm,
   ]);
 
+  const seekToTimelineFrame = useCallback((targetSec: number) => {
+    const targetOffset = normalizeReplayOffset(targetSec, maxTimeSec, replay.loop);
+    resetAllHoManagers();
+    resetMobilityStates();
+    runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);
+    installDecisionOverride();
+    const { frame } = stepRuntimeFrame({
+      profile,
+      replay,
+      speed,
+      paused: true,
+      deltaSec: 0,
+      beamFootprintMultiplier,
+      mapKmPerWorldUnit,
+      observer,
+      beamLayoutsByShellId,
+      trajectoryCache,
+      hoManager,
+      secondaryHoManagers,
+      ueCount: effectiveUeCount,
+      ueDistributionMode,
+      uePrimaryAnchorMode,
+      ueMobilityMode,
+      ueMobilityParams: effectiveUeMobilityParams,
+      ueDistributionScope,
+      ueDistributionRadiusKm,
+      mobilityStates: mobilityStatesRef.current,
+      state: runtimeStateRef.current,
+    });
+    frameRef.current = frame;
+    publishNextFrameRef.current = true;
+    setVersion(v => v + 1);
+  }, [
+    beamLayoutsByShellId,
+    effectiveUeCount,
+    hoManager,
+    installDecisionOverride,
+    maxTimeSec,
+    observer,
+    profile,
+    replay,
+    resetAllHoManagers,
+    resetMobilityStates,
+    secondaryHoManagers,
+    speed,
+    beamFootprintMultiplier,
+    mapKmPerWorldUnit,
+    trajectoryCache,
+    ueDistributionMode,
+    uePrimaryAnchorMode,
+    ueMobilityMode,
+    effectiveUeMobilityParams,
+    ueDistributionScope,
+    ueDistributionRadiusKm,
+  ]);
+
   useEffect(() => {
     resetToReplayStartFrame();
   }, [maxTimeSec, profile.id, replay.epochUtcMs, replay.loop, replay.startOffsetSec]);
+
+  useEffect(() => {
+    if (replay.seekRequestKey === undefined || replay.seekTargetSec === undefined) return;
+    seekToTimelineFrame(replay.seekTargetSec);
+  }, [replay.seekRequestKey]);
 
   useEffect(() => {
     resetAllHoManagers();
@@ -365,7 +426,7 @@ export function useSimulation(
     // (SDD §9.7 truth invariance).
     installDecisionOverride();
 
-    const windowLength = 180; // 3 minutes highlight window for demonstration
+    const windowLength = replay.windowLengthSec ?? 180; // Default keeps legacy short-window demos.
     if (
       replay.loop
       && runtimeStateRef.current.simTimeSec >= replay.startOffsetSec + windowLength

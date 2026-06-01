@@ -9,6 +9,14 @@ import {
   type UeMobilityMode,
   type UeMobilityParams,
 } from '../../engine/ue/multiUeMobility';
+import {
+  MODQN_BEAMS_PER_SERVING_SATELLITE,
+  MODQN_DEFAULT_SERVING_COUNT,
+  MODQN_PAPER_BASELINE_SERVING_COUNT,
+  MODQN_PAPER_SWEEP_MAX_SERVING_COUNT,
+  MODQN_SERVING_COUNT_OPTIONS,
+  type ModqnServingCount,
+} from '../../modqn/servingCount';
 import { DEFAULT_SERVING_COUNT } from '../../scene/useCellSchedule';
 import {
   createSceneVisualScaleState,
@@ -61,7 +69,6 @@ interface TopologyTabProps {
 }
 
 const BEAM_COUNT_OPTIONS = [7, 19, 37] as const;
-const SERVING_COUNT_OPTIONS = [4, 8, 12] as const;
 const SCENE_SCALE_OPTIONS: readonly SceneScale[] = ['paper-faithful', 'demo-readability'];
 const UE_DISTRIBUTION_MODE_OPTIONS: readonly UeDistributionMode[] = ['random', 'grid', 'clustered'];
 const UE_MOBILITY_MODE_OPTIONS: readonly UeMobilityMode[] = ['static', 'random-walk', 'waypoints', 'manhattan'];
@@ -73,7 +80,6 @@ const SCENE_SCALE_OPTION_TESTIDS: Record<SceneScale, string> = {
 };
 
 type BeamCountOption = typeof BEAM_COUNT_OPTIONS[number];
-type ServingCountOption = typeof SERVING_COUNT_OPTIONS[number];
 
 const BEAM_COUNT_OPTION_TESTIDS: Record<BeamCountOption, string> = {
   7: 'topology-tab-beam-count-option-7',
@@ -81,10 +87,14 @@ const BEAM_COUNT_OPTION_TESTIDS: Record<BeamCountOption, string> = {
   37: 'topology-tab-beam-count-option-37',
 };
 
-const SERVING_COUNT_OPTION_TESTIDS: Record<ServingCountOption, string> = {
+const SERVING_COUNT_OPTION_TESTIDS: Record<ModqnServingCount, string> = {
+  2: 'topology-tab-serving-count-option-2',
+  3: 'topology-tab-serving-count-option-3',
   4: 'topology-tab-serving-count-option-4',
+  5: 'topology-tab-serving-count-option-5',
+  6: 'topology-tab-serving-count-option-6',
+  7: 'topology-tab-serving-count-option-7',
   8: 'topology-tab-serving-count-option-8',
-  12: 'topology-tab-serving-count-option-12',
 };
 
 const UE_DISTRIBUTION_MODE_OPTION_TESTIDS: Record<UeDistributionMode, string> = {
@@ -108,6 +118,16 @@ const UE_MOBILITY_PARAM_TESTIDS = {
 
 function isBeamCountOption(value: number): value is BeamCountOption {
   return BEAM_COUNT_OPTIONS.includes(value as BeamCountOption);
+}
+
+function formatServingOptionLabel(option: ModqnServingCount): string {
+  if (option === MODQN_PAPER_BASELINE_SERVING_COUNT) {
+    return `L = ${option} · baseline`;
+  }
+  if (option === MODQN_PAPER_SWEEP_MAX_SERVING_COUNT) {
+    return `L = ${option} · sweep max`;
+  }
+  return `L = ${option}`;
 }
 
 function TopologyNotice({ children }: { children: ReactNode }) {
@@ -253,6 +273,7 @@ export function TopologyTab({
     : isBeamCountOption(baseBeamCount)
       ? baseBeamCount
       : null;
+  const modqnActionCatalogSize = effectiveServingCount * MODQN_BEAMS_PER_SERVING_SATELLITE;
   const updateUeMobilityParams = (patch: Partial<UeMobilityParams>) => {
     onTopologyChange({
       ...topology,
@@ -271,13 +292,13 @@ export function TopologyTab({
           <TopologySection data-testid="topology-tab-serving-count-effective-value">
             <SectionHeading
               title="Serving satellites (L)"
-              description="modqn-demo cell-lane lever: how many top-elevation satellites serve the cells. K=28 active beams (hopping) is held fixed; only the serving set size changes."
-              badge={hasServingCountOverride ? undefined : 'Default L=8'}
+              description="modqn-demo selector: serving candidates L from the 24x16 Walker pool. Each serving satellite contributes 7 MODQN beam actions; L=4 is the paper-faithful baseline and L=8 is the paper sweep max / rich demo."
+              badge={hasServingCountOverride ? undefined : `Default L=${MODQN_DEFAULT_SERVING_COUNT} rich demo`}
               value={formatServingCount(effectiveServingCount)}
             />
-            <fieldset data-testid="topology-tab-serving-count-radio" style={topologyRadioFieldsetStyle(3)}>
+            <fieldset data-testid="topology-tab-serving-count-radio" style={topologyRadioFieldsetStyle(4)}>
               <RadioLegend>Serving satellite count</RadioLegend>
-              {SERVING_COUNT_OPTIONS.map(option => {
+              {MODQN_SERVING_COUNT_OPTIONS.map(option => {
                 const active = effectiveServingCount === option;
                 return (
                   <label key={option} style={topologyRadioLabelStyle(active)}>
@@ -290,7 +311,7 @@ export function TopologyTab({
                       onChange={() => onTopologyChange({ ...topology, cellServingCount: option })}
                       style={topologyChoiceInputStyle}
                     />
-                    <span>L = {option}</span>
+                    <span>{formatServingOptionLabel(option)}</span>
                   </label>
                 );
               })}
@@ -298,6 +319,9 @@ export function TopologyTab({
             <div style={topologyEffectiveValueStyle}>
               <span>
                 Effective serving count: L = {effectiveServingCount} ({hasServingCountOverride ? 'override' : 'default'})
+              </span>
+              <span>
+                L x 7 MODQN beam actions: {modqnActionCatalogSize}
               </span>
             </div>
             <TopologyNotice>Takes effect on next render frame (no simulation restart).</TopologyNotice>

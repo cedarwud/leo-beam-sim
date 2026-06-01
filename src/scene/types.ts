@@ -10,6 +10,11 @@ import type { UeMobilityMode, UeMobilityParams } from '../engine/ue/multiUeMobil
 import type { AppExperienceMode } from '../app/appExperienceMode';
 import type { GlyphKind } from '../contracts/glyphTypes';
 import type { VisualBeamTarget } from './beamTargetTypes';
+import type {
+  ModqnVisualLayerFlags,
+  ModqnVisualLayerPreset,
+} from './modqnVisualLayers';
+import type { ModqnCellServiceReadout } from './modqnServiceMap';
 
 export type { BeamTarget, VisualBeamTarget } from './beamTargetTypes';
 
@@ -23,6 +28,9 @@ export interface ReplayConfig {
   epochUtcMs: number;
   startOffsetSec: number;
   loop: boolean;
+  windowLengthSec?: number;
+  seekTargetSec?: number;
+  seekRequestKey?: string;
 }
 
 export interface RuntimeEffectsEnabled {
@@ -64,6 +72,8 @@ export interface RuntimeConfig {
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   enableUeTrails?: boolean;
+  modqnVisualLayerPreset?: ModqnVisualLayerPreset;
+  modqnVisualLayers?: ModqnVisualLayerFlags;
 }
 
 export interface LinkBudgetTerms {
@@ -160,6 +170,7 @@ export interface SimState {
     servingBeamId: number | null;
     sinrDb: number | null;
   }>;
+  modqnCellServiceReadout?: ModqnCellServiceReadout;
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;

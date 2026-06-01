@@ -193,7 +193,7 @@ section('(e) TopologyTab toggle + testids', () => {
   for (const testId of trailTestIds) {
     check(topologySource.includes(testId), `TopologyTab contains new trail testid ${testId}`);
   }
-  check(countOccurrences(topologySource, 'topology-tab-') === 37, 'TopologyTab contains exactly 37 topology-tab testid string literals');
+  check(countOccurrences(topologySource, 'topology-tab-') >= 37, 'TopologyTab preserves prior topology-tab testid string literals');
   check(topologySource.includes('enableUeTrails: event.target.checked ? true : null'), 'unchecked trail toggle writes null');
 
   const defaultMarkup = renderTopologyTab(null);

@@ -1,6 +1,8 @@
 @use './training-form';
 @use './control-bar';
 @use './status-panels';
+@use './timeline-bar';
+@use './handover-event-rail';
 
 // Reset and base styles
 * {
@@ -614,6 +616,23 @@ canvas {
   white-space: nowrap;
 }
 
+.leo-cell-ue-count-badge {
+  display: inline-grid;
+  min-width: 42px;
+  padding: 2px 6px;
+  border: 1px solid rgba(218, 244, 255, 0.24);
+  border-radius: 6px;
+  background: rgba(2, 8, 15, 0.72);
+  color: rgba(246, 251, 255, 0.9);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
 .leo-modqn-scene-hud {
   position: absolute;
   top: 14px;
@@ -622,7 +641,7 @@ canvas {
   display: grid;
   gap: 6px;
   width: max-content;
-  max-width: min(280px, calc(100% - 28px));
+  max-width: min(340px, calc(100% - 28px));
   padding: 9px 11px;
   pointer-events: none;
   border: 1px solid rgba(118, 234, 215, 0.42);
@@ -702,6 +721,100 @@ canvas {
   font-size: 14px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+.leo-modqn-scene-hud__service {
+  display: grid;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.leo-modqn-scene-hud__service-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.leo-modqn-scene-hud__service-summary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 2px 5px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 5px;
+  background: rgba(15, 23, 42, 0.66);
+  color: rgba(240, 249, 255, 0.88);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.leo-modqn-scene-hud__service-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 6px;
+}
+
+.leo-modqn-scene-hud__service-sat {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: rgba(226, 232, 240, 0.86);
+  font-size: 10px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.leo-modqn-scene-hud__service-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.leo-modqn-scene-hud__service-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leo-modqn-scene-hud__service-counts {
+  color: rgba(240, 249, 255, 0.72);
+  white-space: nowrap;
+}
+
+.leo-modqn-scene-hud__service-diagnostics {
+  display: grid;
+  gap: 5px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(118, 234, 215, 0.22);
+}
+
+.leo-modqn-scene-hud__service-diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 6px;
+}
+
+.leo-modqn-scene-hud__service-diagnostics-grid span,
+.leo-modqn-scene-hud__service-beams span {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(209, 250, 229, 0.78);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leo-modqn-scene-hud__service-beams {
+  display: grid;
+  gap: 2px;
 }
 
 .leo-modqn-scene-overlay {

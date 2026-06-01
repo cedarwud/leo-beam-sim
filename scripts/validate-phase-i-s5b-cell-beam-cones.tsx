@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { satelliteTint } from '../src/constants/beamRoleTokens.ts';
 import {
   CELL_SCHEDULE_VIZ_SLOT_SEC,
+  DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT,
   computeCellScheduleViz,
   type CellScheduleViz,
 } from '../src/scene/useCellSchedule.ts';
@@ -334,23 +335,27 @@ expectEqual(
   'modqn-demo focus satellite render-count helper equals resolved cone items length',
 );
 
-const lCapped = geoSchedule(12);
-expectEqual(lCapped.slot.assignments.length, 28, 'L-capped geo schedule keeps active K=28');
+const lCapped = geoSchedule(8);
+expectEqual(
+  lCapped.slot.assignments.length,
+  DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT,
+  'L-capped geo schedule uses display-only active-cell cap',
+);
 expectEqual(
   childrenOf(coneElement(lCapped, satelliteWorldById(lCapped), satelliteTintById(lCapped))).length,
-  28,
-  'CellBeamCones renders 28 cones for L-capped schedule',
+  DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT,
+  'CellBeamCones renders display-capped cones for L-capped schedule',
 );
 
 const mainSceneSource = readFileSync(path.join(REPO_ROOT, 'src/scene/MainScene.tsx'), 'utf8');
 const renderPlanSource = readFileSync(path.join(REPO_ROOT, 'src/scene/sceneLaneRenderPlan.ts'), 'utf8');
 expect(
   mainSceneSource.includes('import { CellBeamCones, resolveCellBeamConeRenderCount }')
-    && mainSceneSource.includes('{showCellOverlay && (\n        <CellBeamCones')
+    && mainSceneSource.includes('{showCellOverlay && modqnVisualLayers.beamCones && (\n        <CellBeamCones')
     && mainSceneSource.includes('schedule={cellSchedule}')
     && mainSceneSource.includes('satelliteWorldById={satelliteWorldById}')
     && mainSceneSource.includes('satelliteTintById={satelliteTintById}'),
-  'MainScene mounts CellBeamCones gated on showCellOverlay',
+  'MainScene mounts CellBeamCones gated on showCellOverlay and the MODQN beam-cone visual layer',
 );
 expect(
   mainSceneSource.includes('SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && viz.displaySats'),

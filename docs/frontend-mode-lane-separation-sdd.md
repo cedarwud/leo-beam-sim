@@ -80,11 +80,41 @@ proof layer.
 
 | Surface | Owner | May compute truth? |
 |---|---|---:|
-| SINR live beams | live simulator / profile runtime | yes, via live engine only |
-| MODQN live cell preview | Phase I cell schedule display | no, display-only cell schedule |
-| MODQN replay proof | MODQN replay bundle display state | no, display immutable replay values |
+| SINR live beams | live Walker simulator / profile runtime | yes, via live engine only |
+| MODQN live cell preview | live Walker simulator for geometry/SINR plus explicit MODQN decision overlay | yes for live SINR via live engine only; MODQN decisions must be labeled overlay/demo unless producer-backed |
+| MODQN replay proof | MODQN replay bundle / producer artifact display state | no, display immutable replay values |
 | Artifact replay | `visual-showcase-v1` artifact | no, display immutable artifact values |
 | Camera, materials, labels | `leo-beam-sim` renderer | no |
+
+### Walker Source Boundary
+
+The intended long-term substrate for live comparison lanes is Walker-based
+geometry. The source boundary is per scene lane:
+
+- `sinr-live` uses the live Walker engine for satellite geometry, link budget,
+  SINR, handover manager state, and live timeline/forecast rails.
+- `modqn-live-cell-preview` uses the same live Walker geometry and live SINR
+  candidate set, then overlays MODQN decision behavior. This lane is a demo
+  comparison lane, not replay proof.
+- `modqn-replay-proof` must not borrow the live Walker engine to fill gaps in a
+  producer replay. It may render only producer-exported geometry, SNR/SINR,
+  decisions, handover events, and source gaps. If the producer artifact was
+  generated from Walker assumptions, those assumptions must be exported by the
+  producer and consumed as artifact truth.
+- `artifact-replay` follows the `visual-showcase-v1` artifact timeline and
+  geometry, even when the artifact came from a Walker-based producer.
+
+This prevents a single viewport from showing satellites from one Walker state,
+SINR from another state, and handover markers from a third trace.
+
+### Legacy MODQN Trace Boundary
+
+The selected Phase 7C MODQN bundle remains a preserved legacy evidence surface.
+It is a short producer trace, not the current live Walker 20-minute simulation
+window and not a future 2-hour handover map. UI surfaces that consume it must
+label it as a legacy/producer trace and use its producer horizon or report a
+source gap. It must not be promoted to live Walker timeline truth by stretching
+its markers across the live simulation duration.
 
 ## C1 Implementation Slice
 
@@ -167,6 +197,22 @@ Static validators must check:
   profile-derived story layer, `modqn-replay-proof` reports a source gap instead
   of fake beam hopping when producer schedule truth is absent, and
   `artifact-replay` does not mount the profile-derived overlay.
+- MODQN live-cell visual layer presets are lane-gated: Baseline Faithful must
+  keep the all-UE service map and active-cell UE counts visible while keeping
+  beam cones and profile-derived handover cues off; its service readout may
+  summarize slot/L/cell/UE allocation only as profile-derived overlay/demo.
+  Explain/Debug may enable capped overlay cues without changing producer-proof
+  claims. Debug may additionally show profile-derived schedule diagnostics in
+  the live-cell HUD; Baseline Faithful and Explain Handover keep that block
+  hidden.
+- Timeline and handover rail telemetry is lane-gated: live Walker rails,
+  MODQN overlay rails, producer replay rails, and artifact rails must each expose
+  their source owner and horizon without mixing producer traces into live
+  Walker timelines.
+- Right-sidebar 2-hour handover event maps are governed by
+  `docs/live-walker-handover-event-map-sdd.md`; live maps require a validated
+  live Walker event index, and slow-motion focus must preserve source-time
+  seek targets.
 
 Browser smoke should check at least:
 
@@ -210,3 +256,8 @@ Browser smoke should check at least:
 - Handover Story first slice done: shared profile-derived story overlay is
   lane-gated to MODQN live cell preview, while replay proof and artifact replay
   preserve their source boundaries.
+- MODQN live-cell visual preset first slice done: the cell lane can switch
+  between Baseline Faithful, Explain Handover, and Debug without mounting
+  replay proof or changing producer truth.
+- MODQN Debug diagnostics slice done: the live-cell HUD can expose compact
+  profile-derived slot/next-change/active-beam diagnostics only in Debug.

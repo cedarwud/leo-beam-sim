@@ -16,7 +16,7 @@ import {
 // Constants intentionally duplicated with runtimeFrameStep.ts so the
 // runtime baseline validator can match the literal `export const` declarations
 // while this file stays self-contained.
-const SIM_DURATION_SEC = 1200;
+const SIM_DURATION_SEC = 7200;
 const SIM_STEP_SEC = 20;
 const CACHE_ELEVATION_DEG = 10;
 const SKY_DOME_H_RADIUS = 700;

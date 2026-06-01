@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { Line } from '@react-three/drei';
+import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { CellScheduleViz } from '../scene/useCellSchedule';
 import {
@@ -14,6 +14,8 @@ export interface CellOverlayProps {
   readonly visible?: boolean;
   /** Render the per-cell elliptical footprint rings. Default true. */
   readonly showFootprints?: boolean;
+  readonly ueCountByCellId?: ReadonlyMap<number, number>;
+  readonly showUeCounts?: boolean;
 }
 
 const CELL_OVERLAY_Y = 0.5;
@@ -48,6 +50,7 @@ export function CellOverlay(props: CellOverlayProps): JSX.Element | null {
         const lineOpacity = active ? ACTIVE_LINE_OPACITY : IDLE_LINE_OPACITY;
         const points = createHexBorderPoints(placement.radiusWorld);
         const shape = createHexShape(placement.radiusWorld);
+        const ueCount = props.ueCountByCellId?.get(placement.cellId) ?? 0;
 
         return (
           <group
@@ -93,6 +96,19 @@ export function CellOverlay(props: CellOverlayProps): JSX.Element | null {
                 satelliteWorld={props.satelliteWorldById?.get(assignment.satId)}
                 color={color}
               />
+            )}
+            {assignment && props.showUeCounts === true && ueCount > 0 && (
+              <Html
+                position={[0, 4.5, 0]}
+                center
+                zIndexRange={[72, 16]}
+                style={{
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              >
+                <span className="leo-cell-ue-count-badge">{ueCount} UE</span>
+              </Html>
             )}
           </group>
         );

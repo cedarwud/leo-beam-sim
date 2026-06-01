@@ -78,10 +78,6 @@ export interface DeriveProfileHandoverStoryModelInput {
   readonly satelliteWorldById: ReadonlyMap<string, HandoverStoryWorldPoint>;
 }
 
-function beamIdentityLabel(satId: string, beamIndex: number): string {
-  return `${satId} B${beamIndex + 1}`;
-}
-
 function pointFromTuple(tuple: readonly [number, number, number] | undefined): HandoverStoryWorldPoint | undefined {
   return tuple === undefined ? undefined : { x: tuple[0], y: tuple[1], z: tuple[2] };
 }
@@ -119,36 +115,10 @@ function distanceSqToFocus(
   return dx * dx + dz * dz;
 }
 
-function eventFromReassignment(
-  reassignment: CellReassignment,
-  placement: CellWorldPlacement,
-  satelliteWorldById: ReadonlyMap<string, HandoverStoryWorldPoint>,
-): HandoverStoryEvent {
-  return {
-    kind: reassignment.kind,
-    cellId: reassignment.cellId,
-    source: {
-      satId: reassignment.fromSatId,
-      beamIndex: reassignment.fromBeamIndex,
-      label: beamIdentityLabel(reassignment.fromSatId, reassignment.fromBeamIndex),
-      satelliteWorld: satelliteWorldById.get(reassignment.fromSatId),
-    },
-    target: {
-      satId: reassignment.toSatId,
-      beamIndex: reassignment.toBeamIndex,
-      label: beamIdentityLabel(reassignment.toSatId, reassignment.toBeamIndex),
-      satelliteWorld: satelliteWorldById.get(reassignment.toSatId),
-    },
-    ground: { x: placement.worldX, z: placement.worldZ },
-    radiusWorld: placement.radiusWorld,
-  };
-}
-
 export function deriveProfileHandoverStoryModel({
   sceneLane,
   sceneFrame,
   schedule,
-  satelliteWorldById,
 }: DeriveProfileHandoverStoryModelInput): HandoverStoryModel {
   const primaryUe = sceneFrame.ues[0];
   const focusWorld = pointFromTuple(primaryUe?.worldPos);
@@ -175,20 +145,10 @@ export function deriveProfileHandoverStoryModel({
       distanceSqToFocus(a, focusWorld) - distanceSqToFocus(b, focusWorld)
       || a.cellId - b.cellId
     ));
-  const focusedReassignment = sortedReassignments[0];
-  const events = focusedReassignment === undefined
-    ? []
-    : [eventFromReassignment(
-      focusedReassignment,
-      placementByCellId.get(focusedReassignment.cellId) ?? {
-        cellId: focusedReassignment.cellId,
-        center: { cellId: focusedReassignment.cellId, latDeg: 0, lonDeg: 0, localXKm: 0, localYKm: 0 },
-        worldX: focusedReassignment.worldX,
-        worldZ: focusedReassignment.worldZ,
-        radiusWorld: 1,
-      },
-      satelliteWorldById,
-    )];
+  // MODQN live-cell preview uses the cell schedule as a slot/beam preview only.
+  // Source-backed primary-UE handover events live in the live Walker event index,
+  // so foreground event arcs here would imply proof this model does not own.
+  const events: HandoverStoryEvent[] = [];
 
   return {
     lane: sceneLane,
@@ -198,10 +158,10 @@ export function deriveProfileHandoverStoryModel({
     focus: {
       ueId: primaryUe?.id ?? null,
       ueWorld: focusWorld,
-      cellId: events[0]?.cellId ?? null,
+      cellId: sortedReassignments[0]?.cellId ?? null,
     },
     events,
-    aggregateEventCount: Math.max(0, sortedReassignments.length - events.length),
+    aggregateEventCount: sortedReassignments.length,
     activeSlots,
     inactiveSlots,
     nextSlots,

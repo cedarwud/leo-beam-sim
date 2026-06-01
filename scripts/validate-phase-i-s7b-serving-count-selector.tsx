@@ -9,7 +9,11 @@ import type { AppRuntimeConfigInput } from '../src/app/appRuntimeConfig.ts';
 import type { Profile } from '../src/profiles/types';
 import { createSceneTopologyState } from '../src/sceneTopology.ts';
 import {
-  PAPER_ACTIVE_BEAMS_PER_SLOT,
+  MODQN_SERVING_COUNT_OPTIONS,
+  MODQN_BEAMS_PER_SERVING_SATELLITE,
+} from '../src/modqn/servingCount.ts';
+import {
+  DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT,
   computeCellScheduleViz,
 } from '../src/scene/useCellSchedule.ts';
 import { TopologyTab } from '../src/ui/signal-tuning/TopologyTab.tsx';
@@ -21,7 +25,7 @@ const CENTER_LON_DEG = 116;
 const ALTITUDE_KM = 780;
 const BEAMWIDTH_3DB_RAD = 2 * DEG_TO_RAD;
 const WORLD_UNITS_PER_KM = 2;
-const SERVING_COUNTS = [4, 8, 12] as const;
+const SERVING_COUNTS = [2, 4, 8] as const;
 const baseProfile = profileJson as Profile;
 
 const PASSED: string[] = [];
@@ -182,21 +186,21 @@ function scheduleForServingCount(servingCount: number) {
 const demoSpyCalls: SceneTopologySpyCall[] = [];
 const demoTree = renderTopologyTab('modqn-demo', null, demoSpyCalls);
 expectEqual(findAllByTestId(demoTree, 'topology-tab-serving-count-radio').length, 1, 'modqn-demo renders serving-count fieldset');
-expectEqual(findAllByTestId(demoTree, 'topology-tab-serving-count-option-4').length, 1, 'modqn-demo renders L=4 option');
-expectEqual(findAllByTestId(demoTree, 'topology-tab-serving-count-option-8').length, 1, 'modqn-demo renders L=8 option');
-expectEqual(findAllByTestId(demoTree, 'topology-tab-serving-count-option-12').length, 1, 'modqn-demo renders L=12 option');
+for (const option of MODQN_SERVING_COUNT_OPTIONS) {
+  expectEqual(findAllByTestId(demoTree, `topology-tab-serving-count-option-${option}`).length, 1, `modqn-demo renders L=${option} option`);
+}
+expectEqual(findAllByTestId(demoTree, 'topology-tab-serving-count-option-12').length, 0, 'modqn-demo omits non-formal L=12 option');
 expectEqual(findAllByTestId(demoTree, 'topology-tab-serving-count-option-8')[0]?.props.checked, true, 'default serving count checks L=8');
 expectEqual(findAllByTestId(demoTree, 'topology-tab-serving-count-option-4')[0]?.props.checked, false, 'default serving count leaves L=4 unchecked');
-expectEqual(findAllByTestId(demoTree, 'topology-tab-serving-count-option-12')[0]?.props.checked, false, 'default serving count leaves L=12 unchecked');
 
-const l12Tree = renderTopologyTab('modqn-demo', 12);
-expectEqual(findAllByTestId(l12Tree, 'topology-tab-serving-count-option-12')[0]?.props.checked, true, 'override serving count checks L=12');
-expectEqual(findAllByTestId(l12Tree, 'topology-tab-serving-count-option-8')[0]?.props.checked, false, 'override serving count unchecks L=8');
+const l4Tree = renderTopologyTab('modqn-demo', 4);
+expectEqual(findAllByTestId(l4Tree, 'topology-tab-serving-count-option-4')[0]?.props.checked, true, 'override serving count checks baseline L=4');
+expectEqual(findAllByTestId(l4Tree, 'topology-tab-serving-count-option-8')[0]?.props.checked, false, 'override serving count unchecks L=8');
 
 findAllByTestId(demoTree, 'topology-tab-serving-count-option-4')[0]?.props.onChange?.();
 expectEqual(latestSpyArg(demoSpyCalls).cellServingCount, 4, 'L=4 onChange writes cellServingCount 4');
-findAllByTestId(demoTree, 'topology-tab-serving-count-option-12')[0]?.props.onChange?.();
-expectEqual(latestSpyArg(demoSpyCalls).cellServingCount, 12, 'L=12 onChange writes cellServingCount 12');
+findAllByTestId(demoTree, 'topology-tab-serving-count-option-8')[0]?.props.onChange?.();
+expectEqual(latestSpyArg(demoSpyCalls).cellServingCount, 8, 'L=8 onChange writes cellServingCount 8');
 findAllByTestId(demoTree, 'topology-tab-serving-count-clear-override')[0]?.props.onClick?.();
 expectEqual(latestSpyArg(demoSpyCalls).cellServingCount, null, 'clear serving override writes cellServingCount null');
 
@@ -204,7 +208,8 @@ const sinrTree = renderTopologyTab('sinr-experiment');
 expectEqual(findAllByTestId(sinrTree, 'topology-tab-serving-count-radio').length, 0, 'sinr-experiment omits serving-count selector');
 
 expectEqual(buildAppRuntimeConfig(runtimeInput('modqn-demo', 4)).cellServingCount, 4, 'runtime maps modqn-demo L=4');
-expectEqual(buildAppRuntimeConfig(runtimeInput('modqn-demo', 12)).cellServingCount, 12, 'runtime maps modqn-demo L=12');
+expectEqual(buildAppRuntimeConfig(runtimeInput('modqn-demo', 8)).cellServingCount, 8, 'runtime maps modqn-demo L=8');
+expectEqual(buildAppRuntimeConfig(runtimeInput('modqn-demo', 12)).cellServingCount, 8, 'runtime migrates legacy L=12 to L=8');
 expectEqual(buildAppRuntimeConfig(runtimeInput('modqn-demo', null)).cellServingCount, undefined, 'runtime omits default modqn-demo serving count');
 expectEqual(buildAppRuntimeConfig(runtimeInput('sinr-experiment', 12)).cellServingCount, undefined, 'runtime omits serving count outside modqn-demo');
 
@@ -216,13 +221,18 @@ for (const servingCount of SERVING_COUNTS) {
     new Set(schedule.slot.assignments.map(assignment => assignment.satId)).size,
   );
   expectEqual(schedule.servingCount, servingCount, `cell schedule resolves servingCount L=${servingCount}`);
-  expectEqual(schedule.slot.assignments.length, PAPER_ACTIVE_BEAMS_PER_SLOT, `cell schedule keeps K=28 active beams at L=${servingCount}`);
-  expectEqual(schedule.slot.idleCellIds.length, 9, `cell schedule keeps 9 idle cells at L=${servingCount}`);
+  const expectedDisplayActive = Math.min(
+    schedule.layout.count,
+    servingCount * MODQN_BEAMS_PER_SERVING_SATELLITE,
+    DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT,
+  );
+  expectEqual(schedule.slot.assignments.length, expectedDisplayActive, `cell schedule applies display-only active-cell cap at L=${servingCount}`);
+  expectEqual(schedule.slot.idleCellIds.length, schedule.layout.count - expectedDisplayActive, `cell schedule reports display idle cells at L=${servingCount}`);
   expectEqual(schedule.visibleCount, 12, `cell schedule sees 12 visible real-geo sats at L=${servingCount}`);
 }
 expect(
-  (distinctAssignedSatCountByL.get(12) ?? 0) > (distinctAssignedSatCountByL.get(4) ?? 0),
-  'L=12 assigns cells across more distinct sats than L=4',
+  (distinctAssignedSatCountByL.get(8) ?? 0) > (distinctAssignedSatCountByL.get(4) ?? 0),
+  'L=8 assigns cells across more distinct sats than L=4',
 );
 
 expectEqual(createSceneTopologyState().cellServingCount, null, 'createSceneTopologyState initializes cellServingCount null');

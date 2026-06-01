@@ -1,0 +1,409 @@
+import type { CSSProperties } from 'react';
+import { formatTimelineTime } from './TimelineBar';
+
+export type HandoverRailEventKind = 'intra' | 'inter';
+export type HandoverRailEventSource = 'artifact-replay' | 'modqn-replay' | 'live-observed' | 'live-walker';
+export type HandoverRailSourceOwner = 'artifact-replay' | 'modqn-producer-trace' | 'live-walker';
+export type HandoverRailHorizonKind = 'artifact-scenario' | 'producer-trace' | 'live-walker-window';
+export type HandoverRailClaimKind =
+  | 'artifact-proof'
+  | 'producer-proof'
+  | 'overlay-demo'
+  | 'live-truth'
+  | 'profile-derived-forecast';
+export type HandoverRailAxisKind = 'source-time' | 'display-stretched';
+
+export interface HandoverRailEvent {
+  readonly id: string;
+  readonly timeSec: number;
+  readonly sourceTimeSec?: number;
+  readonly clickTargetSec?: number;
+  readonly displayTimeSec?: number;
+  readonly kind: HandoverRailEventKind;
+  readonly title: string;
+  readonly fromLabel: string;
+  readonly toLabel: string;
+  readonly detail?: string;
+  readonly source: HandoverRailEventSource;
+  readonly count?: number;
+}
+
+export interface HandoverEventRailProps {
+  readonly events: readonly HandoverRailEvent[];
+  readonly currentTimeSec: number;
+  readonly durationSec: number;
+  readonly onSeek: (targetTimeSec: number) => void;
+  readonly disabled?: boolean;
+  readonly sourceLabel: string;
+  readonly sourceOwner: HandoverRailSourceOwner;
+  readonly horizonKind: HandoverRailHorizonKind;
+  readonly horizonLabel: string;
+  readonly claimKind: HandoverRailClaimKind;
+  readonly sourceStartSec?: number;
+  readonly sourceEndSec?: number;
+  readonly sourceGapReasons?: readonly string[];
+  readonly axisKind?: HandoverRailAxisKind;
+  readonly axisLabel?: string;
+  readonly axisDurationSec?: number;
+  readonly axisCurrentTimeSec?: number;
+  readonly axisPlaying?: boolean;
+  readonly axisPlaybackRate?: number;
+}
+
+function isFiniteNumber(value: number): boolean {
+  return Number.isFinite(value);
+}
+
+function clampTime(value: number, durationSec: number): number {
+  if (!isFiniteNumber(value)) return 0;
+  return Math.min(Math.max(value, 0), durationSec);
+}
+
+function kindLabel(kind: HandoverRailEventKind): string {
+  return kind === 'inter' ? 'INTER' : 'INTRA';
+}
+
+function sourceLabel(source: HandoverRailEventSource): string {
+  if (source === 'artifact-replay') return 'artifact';
+  if (source === 'modqn-replay') return 'producer trace';
+  if (source === 'live-walker') return 'live Walker';
+  return 'observed';
+}
+
+function emptyRailMessage(
+  railSourceLabel: string,
+  durationSec: number,
+  sourceGapReasons: readonly string[],
+): string {
+  if (sourceGapReasons.length > 0) return sourceGapReasons[0] ?? '';
+  if (durationSec <= 0) return 'Waiting for source-backed timeline data.';
+  if (railSourceLabel.includes('live Walker')) {
+    return 'Source-backed live Walker index has no primary-UE handover events in this window.';
+  }
+  if (railSourceLabel === 'live observed') return 'Pure live SINR mode only exposes events after they occur.';
+  if (railSourceLabel === 'artifact replay') return 'The loaded artifact has no validated handover event index.';
+  return 'The current producer bundle has no handover rows on this timeline.';
+}
+
+function eventSort(a: HandoverRailEvent, b: HandoverRailEvent): number {
+  return eventSourceTimeSec(a) - eventSourceTimeSec(b) || a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id);
+}
+
+interface HandoverEventMapCluster {
+  readonly id: string;
+  readonly timeSec: number;
+  readonly clickTargetSec: number;
+  readonly axisTimeSec: number;
+  readonly kind: HandoverRailEventKind;
+  readonly title: string;
+  readonly fromLabel: string;
+  readonly toLabel: string;
+  readonly source: HandoverRailEventSource;
+  readonly count: number;
+  readonly eventCount: number;
+}
+
+interface MutableHandoverEventMapCluster {
+  id: string;
+  timeSec: number;
+  clickTargetSec: number;
+  axisTimeSec: number;
+  kind: HandoverRailEventKind;
+  title: string;
+  fromLabels: Set<string>;
+  toLabels: Set<string>;
+  source: HandoverRailEventSource;
+  count: number;
+  eventCount: number;
+}
+
+function eventRowCount(event: HandoverRailEvent): number {
+  return event.count && event.count > 0 ? event.count : 1;
+}
+
+function eventSourceTimeSec(event: HandoverRailEvent): number {
+  return isFiniteNumber(event.sourceTimeSec ?? NaN) ? event.sourceTimeSec as number : event.timeSec;
+}
+
+function eventClickTargetSec(event: HandoverRailEvent): number {
+  return isFiniteNumber(event.clickTargetSec ?? NaN) ? event.clickTargetSec as number : eventSourceTimeSec(event);
+}
+
+function eventAxisTimeSec(event: HandoverRailEvent): number {
+  return isFiniteNumber(event.displayTimeSec ?? NaN) ? event.displayTimeSec as number : eventSourceTimeSec(event);
+}
+
+function summarizeClusterLabels(labels: ReadonlySet<string>, pluralLabel: string): string {
+  const values = [...labels].filter(Boolean);
+  if (values.length === 0) return 'unknown';
+  if (values.length === 1) return values[0] ?? 'unknown';
+  return `${values.length} ${pluralLabel}`;
+}
+
+function buildEventMapClusters(events: readonly HandoverRailEvent[]): readonly HandoverEventMapCluster[] {
+  const clusters = new Map<string, MutableHandoverEventMapCluster>();
+  for (const event of events) {
+    const sourceTimeSec = eventSourceTimeSec(event);
+    const key = `${sourceTimeSec.toFixed(3)}:${event.kind}`;
+    const existing = clusters.get(key);
+    if (existing) {
+      existing.fromLabels.add(event.fromLabel);
+      existing.toLabels.add(event.toLabel);
+      existing.count += eventRowCount(event);
+      existing.eventCount += 1;
+      existing.title = `${kindLabel(event.kind)} handover cluster`;
+      continue;
+    }
+    clusters.set(key, {
+      id: `cluster-${key.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+      timeSec: sourceTimeSec,
+      clickTargetSec: eventClickTargetSec(event),
+      axisTimeSec: eventAxisTimeSec(event),
+      kind: event.kind,
+      title: event.title,
+      fromLabels: new Set([event.fromLabel]),
+      toLabels: new Set([event.toLabel]),
+      source: event.source,
+      count: eventRowCount(event),
+      eventCount: 1,
+    });
+  }
+
+  return [...clusters.values()]
+    .map(cluster => ({
+      id: cluster.id,
+      timeSec: cluster.timeSec,
+      clickTargetSec: cluster.clickTargetSec,
+      axisTimeSec: cluster.axisTimeSec,
+      kind: cluster.kind,
+      title: cluster.eventCount > 1 || cluster.count > 1
+        ? `${kindLabel(cluster.kind)} handover cluster`
+        : cluster.title,
+      fromLabel: summarizeClusterLabels(cluster.fromLabels, 'sources'),
+      toLabel: summarizeClusterLabels(cluster.toLabels, 'targets'),
+      source: cluster.source,
+      count: cluster.count,
+      eventCount: cluster.eventCount,
+    }))
+    .sort((a, b) => a.timeSec - b.timeSec || a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
+}
+
+function markerCountLabel(count: number): string {
+  if (count > 99) return '99+';
+  return String(count);
+}
+
+export function HandoverEventRail({
+  events,
+  currentTimeSec,
+  durationSec,
+  onSeek,
+  disabled = false,
+  sourceLabel: railSourceLabel,
+  sourceOwner,
+  horizonKind,
+  horizonLabel,
+  claimKind,
+  sourceStartSec,
+  sourceEndSec,
+  sourceGapReasons = [],
+  axisKind = 'source-time',
+  axisLabel,
+  axisDurationSec,
+  axisCurrentTimeSec,
+  axisPlaying = false,
+  axisPlaybackRate = 1,
+}: HandoverEventRailProps) {
+  const safeDurationSec = Math.max(0, isFiniteNumber(durationSec) ? durationSec : 0);
+  const safeCurrentTimeSec = clampTime(currentTimeSec, safeDurationSec);
+  const safeAxisDurationSec = Math.max(
+    0,
+    isFiniteNumber(axisDurationSec ?? NaN) ? axisDurationSec as number : safeDurationSec,
+  );
+  const safeAxisCurrentTimeSec = clampTime(
+    isFiniteNumber(axisCurrentTimeSec ?? NaN) ? axisCurrentTimeSec as number : safeCurrentTimeSec,
+    safeAxisDurationSec,
+  );
+  const safeSourceStartSec = isFiniteNumber(sourceStartSec ?? NaN) ? sourceStartSec : undefined;
+  const safeSourceEndSec = isFiniteNumber(sourceEndSec ?? NaN) ? sourceEndSec : undefined;
+  const sortedEvents = [...events]
+    .filter(event => {
+      const sourceTimeSec = eventSourceTimeSec(event);
+      return isFiniteNumber(sourceTimeSec) && sourceTimeSec >= 0 && sourceTimeSec <= safeDurationSec;
+    })
+    .sort(eventSort);
+  const intraCount = sortedEvents.filter(event => event.kind === 'intra').reduce((sum, event) => sum + (event.count ?? 1), 0);
+  const interCount = sortedEvents.filter(event => event.kind === 'inter').reduce((sum, event) => sum + (event.count ?? 1), 0);
+  const eventMapClusters = buildEventMapClusters(sortedEvents);
+  const progressPercent = safeAxisDurationSec > 0 ? (safeAxisCurrentTimeSec / safeAxisDurationSec) * 100 : 0;
+  const canSeek = !disabled && safeDurationSec > 0;
+  const resolvedAxisLabel = axisLabel ?? (axisKind === 'display-stretched' ? 'display-stretched axis' : 'source time axis');
+  const animateAxisCursor = axisKind === 'display-stretched' && axisPlaying && safeAxisDurationSec > 0;
+  const safeAxisPlaybackRate = isFiniteNumber(axisPlaybackRate) && axisPlaybackRate > 0 ? axisPlaybackRate : 1;
+  const animationDurationSec = safeAxisDurationSec / safeAxisPlaybackRate;
+  const headline = eventMapClusters.length > 0
+    ? `${eventMapClusters.length} marker${eventMapClusters.length === 1 ? '' : 's'}`
+    : 'No HO index';
+
+  const seekTo = (targetTimeSec: number) => {
+    if (!canSeek) return;
+    onSeek(clampTime(targetTimeSec, safeDurationSec));
+  };
+
+  return (
+    <section
+      className="leo-handover-event-rail"
+      aria-label="Handover event rail"
+      data-testid="handover-event-rail"
+      data-source={railSourceLabel}
+      data-source-owner={sourceOwner}
+      data-horizon-kind={horizonKind}
+      data-horizon-sec={safeDurationSec.toFixed(3)}
+      data-claim-kind={claimKind}
+      data-source-start-sec={safeSourceStartSec === undefined ? '' : safeSourceStartSec.toFixed(3)}
+      data-source-end-sec={safeSourceEndSec === undefined ? '' : safeSourceEndSec.toFixed(3)}
+      data-source-gap-count={String(sourceGapReasons.length)}
+      data-event-count={String(sortedEvents.length)}
+      data-intra-count={String(intraCount)}
+      data-inter-count={String(interCount)}
+      data-map-layout="fixed-event-map"
+      data-map-order="source-time"
+      data-marker-cluster-count={String(eventMapClusters.length)}
+      data-cursor-mode="independent"
+      data-axis-kind={axisKind}
+      data-axis-sec={safeAxisDurationSec.toFixed(3)}
+      data-axis-current-sec={safeAxisCurrentTimeSec.toFixed(3)}
+      data-axis-label={resolvedAxisLabel}
+      data-axis-playing={animateAxisCursor ? 'true' : 'false'}
+      data-axis-playback-rate={safeAxisPlaybackRate.toFixed(3)}
+    >
+      <div className="leo-handover-event-rail__header">
+        <div>
+          <span className="leo-handover-event-rail__eyebrow">Handover map</span>
+          <strong>{headline}</strong>
+        </div>
+        <span className="leo-handover-event-rail__source">{railSourceLabel}</span>
+      </div>
+      <div className="leo-handover-event-rail__metadata" aria-label="Handover rail source and horizon">
+        <span>{horizonLabel}</span>
+        <span>{claimKind}</span>
+        <span>{resolvedAxisLabel}</span>
+      </div>
+      {sourceGapReasons.length > 0 ? (
+        <div className="leo-handover-event-rail__source-gap" data-testid="handover-event-rail-source-gap">
+          {sourceGapReasons[0]}
+        </div>
+      ) : null}
+
+      <div className="leo-handover-event-rail__summary" aria-label="Handover counts">
+        <span data-kind="intra">
+          <strong>{intraCount}</strong>
+          <small>INTRA</small>
+        </span>
+        <span data-kind="inter">
+          <strong>{interCount}</strong>
+          <small>INTER</small>
+        </span>
+        <span>
+          <strong>{formatTimelineTime(safeAxisCurrentTimeSec)}</strong>
+          <small>{axisKind === 'display-stretched' ? 'display' : 'cursor'}</small>
+        </span>
+      </div>
+
+      <div
+        className="leo-handover-event-rail__track"
+        aria-label="Fixed handover event map on source timeline"
+        data-testid="handover-event-map-track"
+      >
+        <div className="leo-handover-event-rail__lane" data-kind="intra" aria-hidden="true" />
+        <div className="leo-handover-event-rail__lane" data-kind="inter" aria-hidden="true" />
+        <span
+          className="leo-handover-event-rail__cursor"
+          data-axis-playing={animateAxisCursor ? 'true' : 'false'}
+          style={{
+            '--handover-rail-current': `${progressPercent}%`,
+            '--handover-rail-axis-duration': `${animationDurationSec}s`,
+            '--handover-rail-axis-delay': `${-(safeAxisCurrentTimeSec / safeAxisPlaybackRate)}s`,
+          } as CSSProperties}
+          aria-hidden="true"
+        />
+        {eventMapClusters.map(cluster => {
+          const leftPercent = safeAxisDurationSec > 0 ? (cluster.axisTimeSec / safeAxisDurationSec) * 100 : 0;
+          const active = Math.abs(cluster.axisTimeSec - safeAxisCurrentTimeSec) <= 1.5;
+          const edge = leftPercent < 2.5 ? 'start' : leftPercent > 97.5 ? 'end' : 'middle';
+          const clustered = cluster.count > 1 || cluster.eventCount > 1;
+          return (
+            <button
+              key={cluster.id}
+              className="leo-handover-event-rail__marker"
+              type="button"
+              data-testid={`handover-event-marker-${cluster.id}`}
+              data-kind={cluster.kind}
+              data-active={active ? 'true' : 'false'}
+              data-edge={edge}
+              data-count={String(cluster.count)}
+              data-clustered={clustered ? 'true' : 'false'}
+              data-source-time-sec={cluster.timeSec.toFixed(3)}
+              data-click-target-sec={cluster.clickTargetSec.toFixed(3)}
+              data-axis-time-sec={cluster.axisTimeSec.toFixed(3)}
+              style={{ '--handover-rail-left': `${leftPercent}%` } as CSSProperties}
+              disabled={!canSeek}
+              title={`${formatTimelineTime(cluster.axisTimeSec)} ${kindLabel(cluster.kind)}: ${cluster.fromLabel} to ${cluster.toLabel}${clustered ? ` (${cluster.count} rows)` : ''}`}
+              aria-label={`Seek to ${kindLabel(cluster.kind)} handover marker at ${formatTimelineTime(cluster.axisTimeSec)} from ${cluster.fromLabel} to ${cluster.toLabel}${clustered ? `, ${cluster.count} source rows` : ''}`}
+              onClick={() => seekTo(cluster.clickTargetSec)}
+            >
+              {clustered ? (
+                <span className="leo-handover-event-rail__marker-count">{markerCountLabel(cluster.count)}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="leo-handover-event-rail__axis" aria-hidden="true">
+        <span>0:00</span>
+        <span>{formatTimelineTime(safeAxisDurationSec / 2)}</span>
+        <span>{formatTimelineTime(safeAxisDurationSec)}</span>
+      </div>
+
+      {eventMapClusters.length > 0 ? (
+        <div className="leo-handover-event-rail__list" aria-label="Source-ordered handover event map">
+          {eventMapClusters.map(cluster => {
+            const active = Math.abs(cluster.axisTimeSec - safeAxisCurrentTimeSec) <= 1.5;
+            return (
+              <button
+                key={`list:${cluster.id}`}
+                type="button"
+                className="leo-handover-event-rail__event"
+                data-kind={cluster.kind}
+                data-active={active ? 'true' : 'false'}
+                data-count={String(cluster.count)}
+                data-source-time-sec={cluster.timeSec.toFixed(3)}
+                data-click-target-sec={cluster.clickTargetSec.toFixed(3)}
+                data-axis-time-sec={cluster.axisTimeSec.toFixed(3)}
+                data-testid={`handover-event-row-${cluster.id}`}
+                disabled={!canSeek}
+                onClick={() => seekTo(cluster.clickTargetSec)}
+              >
+                <span className="leo-handover-event-rail__event-time">{formatTimelineTime(cluster.axisTimeSec)}</span>
+                <span className="leo-handover-event-rail__event-kind">{kindLabel(cluster.kind)}</span>
+                <span className="leo-handover-event-rail__event-main">
+                  <strong>{cluster.title}</strong>
+                  <small>{`${cluster.fromLabel} -> ${cluster.toLabel} · source ${formatTimelineTime(cluster.timeSec)}`}</small>
+                </span>
+                <span className="leo-handover-event-rail__event-source">
+                  {cluster.count > 1 ? `${cluster.count} rows` : sourceLabel(cluster.source)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="leo-handover-event-rail__empty" data-testid="handover-event-rail-empty">
+          <strong>No source-backed handover events</strong>
+          <span>{emptyRailMessage(railSourceLabel, safeDurationSec, sourceGapReasons)}</span>
+        </div>
+      )}
+    </section>
+  );
+}

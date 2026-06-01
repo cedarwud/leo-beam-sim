@@ -38,6 +38,11 @@ export interface SceneTelemetryProps {
   cellHoInterCount: string;
   cellHoIntraCount: string;
   cellBeamConeCount: string;
+  modqnVisualLayerPreset: string;
+  modqnServiceMapEnabled: string;
+  modqnServedUeCount: string | number;
+  modqnIdleUeCount: string | number;
+  modqnHandoverCuesVisible: string;
 
   // Handover story dataset attributes
   handoverStoryLayer: string;
@@ -94,6 +99,11 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.cellHoInterCount = props.cellHoInterCount;
     el.dataset.cellHoIntraCount = props.cellHoIntraCount;
     el.dataset.cellBeamConeCount = props.cellBeamConeCount;
+    el.dataset.modqnVisualLayerPreset = props.modqnVisualLayerPreset;
+    el.dataset.modqnServiceMapEnabled = props.modqnServiceMapEnabled;
+    el.dataset.modqnServedUeCount = String(props.modqnServedUeCount);
+    el.dataset.modqnIdleUeCount = String(props.modqnIdleUeCount);
+    el.dataset.modqnHandoverCuesVisible = props.modqnHandoverCuesVisible;
 
     el.dataset.handoverStoryLayer = props.handoverStoryLayer;
     el.dataset.handoverStoryVisible = props.handoverStoryVisible;
@@ -139,6 +149,11 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.cellHoInterCount,
     props.cellHoIntraCount,
     props.cellBeamConeCount,
+    props.modqnVisualLayerPreset,
+    props.modqnServiceMapEnabled,
+    props.modqnServedUeCount,
+    props.modqnIdleUeCount,
+    props.modqnHandoverCuesVisible,
     props.handoverStoryLayer,
     props.handoverStoryVisible,
     props.handoverStorySource,
