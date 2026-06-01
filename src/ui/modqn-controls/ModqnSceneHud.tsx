@@ -50,9 +50,14 @@ export function ModqnSceneHud({
   const serviceReadout = simState.modqnCellServiceReadout;
   const showLivePreviewBanner = sceneSource === 'live-sim';
   const showServiceDiagnostics = modqnVisualLayerPreset === 'debug' && serviceReadout !== undefined;
+  const showServiceAllocationSummary = modqnVisualLayerPreset === 'service-allocation' && serviceReadout !== undefined;
+  const activeServiceSatelliteCount = serviceReadout?.satelliteSummaries
+    .filter(summary => summary.activeCellCount > 0 || summary.servedUeCount > 0)
+    .length ?? 0;
+  const serviceLegendLimit = modqnVisualLayerPreset === 'service-allocation' ? 8 : 6;
   const visibleSatelliteSummaries = serviceReadout?.satelliteSummaries
     .filter(summary => summary.activeCellCount > 0 || summary.servedUeCount > 0)
-    .slice(0, 6) ?? [];
+    .slice(0, serviceLegendLimit) ?? [];
   const diagnosticSatelliteSummaries = visibleSatelliteSummaries.slice(0, 3);
 
   return (
@@ -76,6 +81,8 @@ export function ModqnSceneHud({
       data-service-idle-cell-count={String(serviceReadout?.idleCellCount ?? '')}
       data-service-served-ue-count={String(serviceReadout?.servedUeCount ?? '')}
       data-service-idle-ue-count={String(serviceReadout?.idleUeCount ?? '')}
+      data-service-active-satellite-count={String(activeServiceSatelliteCount)}
+      data-service-allocation-visible={showServiceAllocationSummary ? 'true' : 'false'}
       data-service-diagnostics-visible={showServiceDiagnostics ? 'true' : 'false'}
       aria-label="MODQN scene HUD"
     >
@@ -115,6 +122,16 @@ export function ModqnSceneHud({
           data-testid="modqn-service-readout"
           aria-label="MODQN profile-derived cell service readout"
         >
+          {showServiceAllocationSummary && (
+            <div
+              className="leo-modqn-scene-hud__service-callout"
+              data-testid="modqn-service-allocation-summary"
+            >
+              <strong>Service Allocation</strong>
+              <span>{activeServiceSatelliteCount} sats · {serviceReadout.activeCellCount} cells · {serviceReadout.servedUeCount} UE</span>
+              <small>profile-derived overlay</small>
+            </div>
+          )}
           <div className="leo-modqn-scene-hud__service-summary">
             <span>L{serviceReadout.servingCount}</span>
             <span>slot {serviceReadout.slotIndex}</span>

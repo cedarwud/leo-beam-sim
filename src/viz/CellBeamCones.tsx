@@ -33,7 +33,9 @@ export interface CellBeamConeRenderItem {
 }
 
 const CONE_SEGMENTS = 24;
-const CONE_OPACITY = 0.1;
+const DEFAULT_CONE_OPACITY = 0.1;
+const FOCUS_CONE_OPACITY = 0.12;
+const SERVICE_ALLOCATION_CONE_OPACITY = 0.13;
 const FALLBACK_CONE_COLOR = '#93c5fd';
 const LOCAL_APEX = new THREE.Vector3(0, 1, 0);
 const LOCAL_BASE = new THREE.Vector3(0, -1, 0);
@@ -42,6 +44,7 @@ export function CellBeamCones(props: CellBeamConesProps): JSX.Element | null {
   if (props.visible === false) return null;
 
   const cones = resolveCellBeamConeItems(props);
+  const coneOpacity = resolveCellBeamConeOpacity(props.beamConeScope);
 
   return (
     <group
@@ -76,6 +79,7 @@ export function CellBeamCones(props: CellBeamConesProps): JSX.Element | null {
               baseRadiusWorld: cone.baseRadiusWorld,
               heightWorld: cone.heightWorld,
               color: cone.color,
+              opacity: coneOpacity,
               beamConeScope: props.beamConeScope ?? 'auto',
             }}
           >
@@ -83,7 +87,7 @@ export function CellBeamCones(props: CellBeamConesProps): JSX.Element | null {
             <meshBasicMaterial
               color={cone.color}
               transparent
-              opacity={CONE_OPACITY}
+              opacity={coneOpacity}
               blending={THREE.NormalBlending}
               depthWrite={false}
               side={THREE.DoubleSide}
@@ -182,6 +186,12 @@ export function resolveCellBeamConeRenderCount(input: Omit<CellBeamConesProps, '
 
 export function resolveCellBeamConeSatelliteCount(input: Omit<CellBeamConesProps, 'visible'>): number {
   return new Set(resolveCellBeamConeItems(input).map(item => item.assignment.satId)).size;
+}
+
+export function resolveCellBeamConeOpacity(scope?: ModqnBeamConeScope): number {
+  if (scope === 'all-serving-satellites') return SERVICE_ALLOCATION_CONE_OPACITY;
+  if (scope === 'focus-satellite') return FOCUS_CONE_OPACITY;
+  return DEFAULT_CONE_OPACITY;
 }
 
 export function computeConeApexFromTransform(

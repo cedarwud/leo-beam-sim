@@ -33,6 +33,7 @@ import {
 import { ModqnSceneHud } from '../src/ui/modqn-controls/ModqnSceneHud.tsx';
 import type { SimState } from '../src/scene/types.ts';
 import {
+  resolveCellBeamConeOpacity,
   resolveCellBeamConeRenderCount,
   resolveCellBeamConeSatelliteCount,
 } from '../src/viz/CellBeamCones.tsx';
@@ -258,6 +259,10 @@ function validateVisualLayerModel(): void {
       > resolveCellBeamConeRenderCount({ ...coneInput, beamConeScope: 'focus-satellite' }),
     'all-serving beam cone scope renders more cones than focus scope',
   );
+  expect(
+    resolveCellBeamConeOpacity('all-serving-satellites') > resolveCellBeamConeOpacity(undefined),
+    'service allocation cone opacity is slightly raised above the default cone opacity',
+  );
   const activeAssignment = schedule.slot.assignments[0];
   assert.ok(activeAssignment, 'active assignment missing');
   const activePlacement = schedule.placements.find(placement => placement.cellId === activeAssignment.cellId);
@@ -357,13 +362,24 @@ function validateHudDiagnosticsRender(): void {
     ...baseProps,
     modqnVisualLayerPreset: 'explain-handover',
   }));
+  const serviceMarkup = renderToStaticMarkup(React.createElement(ModqnSceneHud, {
+    ...baseProps,
+    modqnVisualLayerPreset: 'service-allocation',
+  }));
   const debugMarkup = renderToStaticMarkup(React.createElement(ModqnSceneHud, {
     ...baseProps,
     modqnVisualLayerPreset: 'debug',
   }));
 
+  assertContains(baselineMarkup, 'data-service-allocation-visible="false"', 'Baseline HUD reports Service Allocation callout hidden');
   assertContains(baselineMarkup, 'data-service-diagnostics-visible="false"', 'Baseline HUD reports diagnostics hidden');
+  assertNotContains(baselineMarkup, 'data-testid="modqn-service-allocation-summary"', 'Baseline HUD omits Service Allocation summary');
+  assertContains(serviceMarkup, 'data-service-allocation-visible="true"', 'Service HUD reports Service Allocation callout visible');
+  assertContains(serviceMarkup, 'data-testid="modqn-service-allocation-summary"', 'Service HUD renders Service Allocation summary');
+  assertContains(serviceMarkup, 'profile-derived overlay', 'Service HUD labels the allocation summary as profile-derived overlay');
+  assertContains(serviceMarkup, 'data-service-active-satellite-count=', 'Service HUD exposes active service satellite telemetry');
   assertNotContains(baselineMarkup, 'data-testid="modqn-service-diagnostics"', 'Baseline HUD omits diagnostics markup');
+  assertNotContains(explainMarkup, 'data-testid="modqn-service-allocation-summary"', 'Explain HUD omits Service Allocation summary');
   assertNotContains(explainMarkup, 'data-testid="modqn-service-diagnostics"', 'Explain HUD omits diagnostics markup');
   assertContains(debugMarkup, 'data-service-diagnostics-visible="true"', 'Debug HUD reports diagnostics visible');
   assertContains(debugMarkup, 'data-testid="modqn-service-diagnostics"', 'Debug HUD renders diagnostics markup');

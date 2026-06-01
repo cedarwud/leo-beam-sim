@@ -827,6 +827,26 @@ assertContains(
 );
 assertContains(
   modqnHudSource,
+  'data-service-allocation-visible',
+  'MODQN HUD exposes Service Allocation callout visibility telemetry',
+);
+assertContains(
+  modqnHudSource,
+  'data-testid="modqn-service-allocation-summary"',
+  'MODQN HUD renders Service Allocation summary only through the Service preset',
+);
+assertContains(
+  modqnHudSource,
+  'data-service-active-satellite-count',
+  'MODQN HUD exposes active service satellite count telemetry',
+);
+assertContains(
+  cellBeamConesSource,
+  'resolveCellBeamConeOpacity',
+  'CellBeamCones exposes preset-aware cone opacity for Service Allocation readability',
+);
+assertContains(
+  modqnHudSource,
   "modqnVisualLayerPreset === 'debug'",
   'MODQN HUD gates service diagnostics to Debug preset',
 );
