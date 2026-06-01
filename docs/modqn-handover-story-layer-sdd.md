@@ -91,7 +91,7 @@ In `modqn-replay-proof`, missing active-beam mask or hopping schedule is a
 source gap. The layer must display the gap and must not animate hopping.
 
 Live/profile-derived MODQN UI copy must keep the claim boundary visible:
-`preview · handover story · not baseline proof · backend re-train pending`.
+`preview · profile-derived cells · not baseline proof · SNR nadir · Phase III pending`.
 
 ### Visual Presets
 

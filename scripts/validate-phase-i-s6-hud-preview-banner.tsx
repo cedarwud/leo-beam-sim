@@ -14,7 +14,10 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { AppExperienceMode } from '../src/app/appExperienceMode.ts';
 import type { SimState } from '../src/scene/types.ts';
-import { ModqnSceneHud } from '../src/ui/modqn-controls/ModqnSceneHud.tsx';
+import {
+  MODQN_LIVE_CELL_PREVIEW_BANNER_TEXT,
+  ModqnSceneHud,
+} from '../src/ui/modqn-controls/ModqnSceneHud.tsx';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const APP_PATH = path.join(REPO_ROOT, 'src/App.tsx');
@@ -22,7 +25,7 @@ const BEAM_HOPPING_TOGGLE_PATH = path.join(
   REPO_ROOT,
   'src/ui/modqn-controls/BeamHoppingToggle.tsx',
 );
-const PREVIEW_TEXT = 'preview · handover story · not baseline proof · backend re-train pending';
+const PREVIEW_TEXT = MODQN_LIVE_CELL_PREVIEW_BANNER_TEXT;
 
 const PASSED: string[] = [];
 
@@ -156,6 +159,22 @@ function validateLiveHudBanner(): void {
     getAttribute(bannerTag, 'data-preview-stage') === 'phase-i',
     'Banner exposes data-preview-stage="phase-i"',
   );
+  expect(
+    getAttribute(bannerTag, 'data-preview-source') === 'profile-derived-demo',
+    'Banner exposes profile-derived source boundary',
+  );
+  expect(
+    getAttribute(bannerTag, 'data-backend-snr-truth') === 'nadir',
+    'Banner exposes backend SNR truth as nadir',
+  );
+  expect(
+    getAttribute(bannerTag, 'data-producer-proof') === 'false',
+    'Banner exposes non-producer-proof state',
+  );
+  expect(
+    getAttribute(bannerTag, 'data-phase-target') === 'phase-iii',
+    'Banner exposes Phase III backend target',
+  );
   expect(rootTag.includes('data-testid="modqn-scene-hud"'), 'Existing HUD root testid remains present');
   expect(
     getElementTextByTestId(markup, 'modqn-scene-hud-sim-time') === '42.3s',
@@ -201,7 +220,7 @@ function validateTruthChipTones(): void {
 }
 
 function validateModeAndReplayBanner(): void {
-  console.log('\n(c) mode gating and replay preview state');
+  console.log('\n(c) mode gating and source boundary');
   const hobsMarkup = renderHud({ appMode: 'hobs-demo' });
   expect(hobsMarkup === '', 'HUD returns null outside modqn-demo');
 
@@ -210,8 +229,8 @@ function validateModeAndReplayBanner(): void {
     bundleProvenanceKind: 'paper-faithful',
   });
   expect(
-    getElementTextByTestId(replayMarkup, 'modqn-scene-hud-preview-banner') === PREVIEW_TEXT,
-    'Preview banner also renders for artifact-replay',
+    !replayMarkup.includes('data-testid="modqn-scene-hud-preview-banner"'),
+    'Live preview banner is absent for artifact-replay component input',
   );
 }
 
@@ -232,8 +251,12 @@ function validateBeamHoppingRemoval(): void {
   );
   expect(!existsSync(BEAM_HOPPING_TOGGLE_PATH), 'BeamHoppingToggle.tsx no longer exists');
   expect(
-    hudSource.includes('SDD §11.3.6 (Phase I banner) + §7 Phase I scope'),
-    'HUD source includes short Phase I banner scope comment',
+    hudSource.includes('data-backend-snr-truth="nadir"'),
+    'HUD source exposes backend SNR truth boundary telemetry',
+  );
+  expect(
+    hudSource.includes('data-preview-source="profile-derived-demo"'),
+    'HUD source exposes profile-derived preview source telemetry',
   );
 }
 

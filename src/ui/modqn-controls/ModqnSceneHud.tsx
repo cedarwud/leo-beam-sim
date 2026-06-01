@@ -3,6 +3,9 @@ import type { AppExperienceMode } from '../../app/appExperienceMode';
 import type { ModqnVisualLayerPreset } from '../../scene/modqnVisualLayers';
 import type { SimState } from '../../scene/types';
 
+export const MODQN_LIVE_CELL_PREVIEW_BANNER_TEXT =
+  'preview · profile-derived cells · not baseline proof · SNR nadir · Phase III pending';
+
 interface Props {
   readonly appMode: AppExperienceMode;
   readonly simState: SimState;
@@ -45,6 +48,7 @@ export function ModqnSceneHud({
   const interHoCount = Math.max(0, hoCount - intraHoCount);
   const simTimeSec = simState.simTimeSec ?? 0;
   const serviceReadout = simState.modqnCellServiceReadout;
+  const showLivePreviewBanner = sceneSource === 'live-sim';
   const showServiceDiagnostics = modqnVisualLayerPreset === 'debug' && serviceReadout !== undefined;
   const visibleSatelliteSummaries = serviceReadout?.satelliteSummaries
     .filter(summary => summary.activeCellCount > 0 || summary.servedUeCount > 0)
@@ -78,14 +82,19 @@ export function ModqnSceneHud({
       <header className="leo-modqn-scene-hud__chip" data-truth-chip={tone}>
         {label}
       </header>
-      {/* SDD §11.3.6 (Phase I banner) + §7 Phase I scope. */}
-      <div
-        className="leo-modqn-scene-hud__preview-banner"
-        data-testid="modqn-scene-hud-preview-banner"
-        data-preview-stage="phase-i"
-      >
-        preview · handover story · not baseline proof · backend re-train pending
-      </div>
+      {showLivePreviewBanner && (
+        <div
+          className="leo-modqn-scene-hud__preview-banner"
+          data-testid="modqn-scene-hud-preview-banner"
+          data-preview-stage="phase-i"
+          data-preview-source="profile-derived-demo"
+          data-backend-snr-truth="nadir"
+          data-producer-proof="false"
+          data-phase-target="phase-iii"
+        >
+          {MODQN_LIVE_CELL_PREVIEW_BANNER_TEXT}
+        </div>
+      )}
       <dl className="leo-modqn-scene-hud__metrics">
         <div>
           <dt>sim t</dt>

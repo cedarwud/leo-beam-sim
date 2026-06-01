@@ -425,7 +425,7 @@ Comparison metric: same as paper (weighted reward + per-objective reward). The e
 - SNR math continues to use nadir-anchored backend (mocked angle-aware viz, real angle-aware SNR deferred to Phase III).
 - Replay bundles continue to be v1 (no cell schedule field).
 - Cell-overlay viz read from local `cellLayout.ts` deterministic config.
-- UI banner: "preview · realistic beam geometry · backend re-train pending".
+- UI banner: "preview · profile-derived cells · not baseline proof · SNR nadir · Phase III pending".
 - Expected delivery: 3-5 days, ~6-8 slices.
 
 ### Phase II (medium): producer Python implementation
@@ -463,7 +463,7 @@ Each phase ships its own validators. Phase I (viz mock) is the immediate target.
 | `validate:phase-i:s3-elliptical-footprint-projection` | Footprint long axis = r_cell / sin(ε), short axis = r_cell, ε bounds 15°-90°. | 22 |
 | `validate:phase-i:s4-hopping-animation` | Active cells change per slot, animation transitions, beam cones point at cell centers (not nadir). | 25 |
 | `validate:phase-i:s5-cell-transition-handover` | Intra-HO fires on same-sat beam reassignment of a cell; inter-HO fires on cross-sat cell reassignment. | 28 |
-| `validate:phase-i:s6-hud-cell-schedule-truth` | HUD truth chip shows "viz preview · backend SNR still nadir" until Phase III. | 18 |
+| `validate:phase-i:s6-hud-cell-schedule-truth` | HUD truth chip shows "preview · profile-derived cells · not baseline proof · SNR nadir · Phase III pending" until Phase III. | 18 |
 
 ### Phase II validators (modqn-paper-reproduction, Python)
 
@@ -493,7 +493,7 @@ Each phase ships its own validators. Phase I (viz mock) is the immediate target.
 5. See elliptical footprints on cells at oblique angles (not circular).
 6. See intra-HO arc when a cell's serving beam switches within the same satellite.
 7. See inter-HO arc when a cell's serving satellite changes.
-8. See HUD truth chip showing "viz preview · backend SNR nadir (Phase III pending)".
+8. See HUD truth chip showing "preview · profile-derived cells · not baseline proof · SNR nadir · Phase III pending".
 9. SINR-experiment tab unchanged.
 10. Replay-loaded bundles (Phase B+D paper-faithful + user-trained) continue to load and render their existing scene without disruption.
 
