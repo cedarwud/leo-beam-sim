@@ -502,7 +502,12 @@ assertContains(handoverRailSource, 'displayTimeSec', 'HandoverEventRail supports
 assertContains(handoverRailSource, 'sourceTimeSec', 'HandoverEventRail accepts explicit source time');
 assertContains(handoverRailSource, 'clickTargetSec', 'HandoverEventRail accepts explicit source-time click targets');
 assertContains(handoverRailSource, 'data-click-target-sec={cluster.clickTargetSec.toFixed(3)}', 'HandoverEventRail exposes source-time click target telemetry');
-assertContains(handoverRailSource, 'onClick={() => seekTo(cluster.clickTargetSec)}', 'HandoverEventRail seeks to source click targets, not display axis positions');
+assertContains(handoverRailSource, 'onClick={() => selectClusterAndSeek(cluster)}', 'HandoverEventRail routes marker clicks through source-time selection');
+assertContains(handoverRailSource, 'seekTo(cluster.clickTargetSec);', 'HandoverEventRail seeks to source click targets, not display axis positions');
+assertContains(handoverRailSource, "sourceOwner === 'live-walker' && horizonKind === 'live-walker-window'", 'HandoverEventRail gates slow-motion focus to live Walker source horizon');
+assertContains(handoverRailSource, 'data-focus-axis-kind={slowMotionFocus?.axisKind ?? \'\'}', 'HandoverEventRail exposes focus display-axis telemetry');
+assertContains(handoverRailSource, 'data-testid="handover-event-slow-focus"', 'HandoverEventRail renders the selected live Walker slow-motion focus panel');
+assertContains(handoverRailSource, "axisKind: 'display-stretched'", 'HandoverEventRail slow-motion focus uses a display axis');
 assertContains(handoverRailSource, '--handover-rail-axis-duration', 'HandoverEventRail drives display cursor animation from axis duration');
 assertContains(appSource, 'axisPlaying={!playback.paused}', 'App pauses the handover rail display sweep with playback state');
 assertContains(appSource, 'axisPlaybackRate={playback.effectiveSpeed}', 'App synchronizes handover rail display sweep with playback speed');
@@ -512,7 +517,6 @@ assertContains(handoverRailSource, 'aria-label="Source-ordered handover event ma
 assertContains(handoverRailSource, "data-clustered={clustered ? 'true' : 'false'}", 'HandoverEventRail marks clustered same-time events');
 assertNotContains(handoverRailSource, 'getNearestEvents', 'HandoverEventRail must not sort rows by distance to the playback cursor');
 assertNotContains(handoverRailSource, 'nearestEvents', 'HandoverEventRail rows must not be cursor-nearest owned');
-assertNotContains(handoverRailSource, 'focusedEvent', 'HandoverEventRail must not expose a dynamic nearest-event focus card');
 assertNotContains(handoverRailSource, '.slice(0, 6)', 'HandoverEventRail fixed event map must not cap rows by nearest window');
 assertNotContains(handoverRailSource, 'Nearest handover events', 'HandoverEventRail must not present a cursor-relative nearest-event list');
 

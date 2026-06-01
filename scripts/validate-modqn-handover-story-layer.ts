@@ -499,13 +499,17 @@ function validateStaticContracts(): void {
   assertContains(handoverRail, 'sourceTimeSec', 'handover rail supports explicit source time');
   assertContains(handoverRail, 'clickTargetSec', 'handover rail supports explicit source-time click targets');
   assertContains(handoverRail, 'data-click-target-sec={cluster.clickTargetSec.toFixed(3)}', 'handover rail exposes click target telemetry');
-  assertContains(handoverRail, 'onClick={() => seekTo(cluster.clickTargetSec)}', 'handover rail clicks seek source time instead of display axis');
+  assertContains(handoverRail, 'onClick={() => selectClusterAndSeek(cluster)}', 'handover rail routes marker clicks through source-time selection');
+  assertContains(handoverRail, 'seekTo(cluster.clickTargetSec);', 'handover rail clicks seek source time instead of display axis');
+  assertContains(handoverRail, "sourceOwner === 'live-walker' && horizonKind === 'live-walker-window'", 'handover rail gates slow-motion focus to live Walker source horizon');
+  assertContains(handoverRail, 'data-focus-axis-kind={slowMotionFocus?.axisKind ?? \'\'}', 'handover rail exposes slow-motion focus display-axis telemetry');
+  assertContains(handoverRail, 'data-testid="handover-event-slow-focus"', 'handover rail renders selected live Walker slow-motion focus panel');
+  assertContains(handoverRail, "axisKind: 'display-stretched'", 'handover rail slow-motion focus uses a display axis');
   assertContains(handoverRail, '--handover-rail-axis-duration', 'handover rail cursor animation uses display axis duration');
   assertContains(handoverRail, 'data-testid="handover-event-map-track"', 'handover rail renders source-backed event map track');
   assertContains(handoverRail, 'aria-label="Source-ordered handover event map"', 'handover rail list is source ordered, not nearest-event ordered');
   assertNotContains(handoverRail, 'getNearestEvents', 'handover rail omits nearest-event cursor sorting');
   assertNotContains(handoverRail, 'nearestEvents', 'handover rail omits nearest-event state');
-  assertNotContains(handoverRail, 'focusedEvent', 'handover rail omits dynamic nearest-event focus card');
   assertNotContains(handoverRail, '.slice(0, 6)', 'handover rail does not cap rows by nearest window');
 
   assertContains(storyLayer, 'name="handover-story-layer"', 'story layer root');

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { formatTimelineTime } from './TimelineBar';
 
 export type HandoverRailEventKind = 'intra' | 'inter';
@@ -12,6 +12,9 @@ export type HandoverRailClaimKind =
   | 'live-truth'
   | 'profile-derived-forecast';
 export type HandoverRailAxisKind = 'source-time' | 'display-stretched';
+export const HANDOVER_RAIL_FOCUS_SOURCE_LEAD_SEC = 10;
+export const HANDOVER_RAIL_FOCUS_SOURCE_TRAIL_SEC = 20;
+export const HANDOVER_RAIL_FOCUS_DISPLAY_SEC = 60;
 
 export interface HandoverRailEvent {
   readonly id: string;
@@ -48,6 +51,19 @@ export interface HandoverEventRailProps {
   readonly axisCurrentTimeSec?: number;
   readonly axisPlaying?: boolean;
   readonly axisPlaybackRate?: number;
+  readonly initialFocusedEventId?: string;
+}
+
+export interface HandoverRailSlowMotionFocus {
+  readonly eventId: string;
+  readonly sourceStartSec: number;
+  readonly sourceEndSec: number;
+  readonly sourceDurationSec: number;
+  readonly sourceCurrentSec: number;
+  readonly displayDurationSec: number;
+  readonly displayCurrentSec: number;
+  readonly clickTargetSec: number;
+  readonly axisKind: 'display-stretched';
 }
 
 function isFiniteNumber(value: number): boolean {
@@ -133,6 +149,42 @@ function eventAxisTimeSec(event: HandoverRailEvent): number {
   return isFiniteNumber(event.displayTimeSec ?? NaN) ? event.displayTimeSec as number : eventSourceTimeSec(event);
 }
 
+export function deriveHandoverRailSlowMotionFocus(input: {
+  readonly eventId: string;
+  readonly eventTimeSec: number;
+  readonly clickTargetSec: number;
+  readonly currentTimeSec: number;
+  readonly durationSec: number;
+  readonly sourceLeadSec?: number;
+  readonly sourceTrailSec?: number;
+  readonly displayDurationSec?: number;
+}): HandoverRailSlowMotionFocus | null {
+  const safeDurationSec = Math.max(0, isFiniteNumber(input.durationSec) ? input.durationSec : 0);
+  if (safeDurationSec <= 0 || !isFiniteNumber(input.eventTimeSec)) return null;
+
+  const sourceLeadSec = Math.max(0, input.sourceLeadSec ?? HANDOVER_RAIL_FOCUS_SOURCE_LEAD_SEC);
+  const sourceTrailSec = Math.max(0, input.sourceTrailSec ?? HANDOVER_RAIL_FOCUS_SOURCE_TRAIL_SEC);
+  const displayDurationSec = Math.max(1, input.displayDurationSec ?? HANDOVER_RAIL_FOCUS_DISPLAY_SEC);
+  const sourceStartSec = clampTime(input.eventTimeSec - sourceLeadSec, safeDurationSec);
+  const sourceEndSec = clampTime(input.eventTimeSec + sourceTrailSec, safeDurationSec);
+  const sourceDurationSec = Math.max(0, sourceEndSec - sourceStartSec);
+  if (sourceDurationSec <= 0) return null;
+
+  const sourceCurrentSec = clampTime(input.currentTimeSec, safeDurationSec);
+  const sourceProgress = clampTime(sourceCurrentSec - sourceStartSec, sourceDurationSec) / sourceDurationSec;
+  return {
+    eventId: input.eventId,
+    sourceStartSec,
+    sourceEndSec,
+    sourceDurationSec,
+    sourceCurrentSec,
+    displayDurationSec,
+    displayCurrentSec: sourceProgress * displayDurationSec,
+    clickTargetSec: clampTime(input.clickTargetSec, safeDurationSec),
+    axisKind: 'display-stretched',
+  };
+}
+
 function summarizeClusterLabels(labels: ReadonlySet<string>, pluralLabel: string): string {
   const values = [...labels].filter(Boolean);
   if (values.length === 0) return 'unknown';
@@ -213,7 +265,9 @@ export function HandoverEventRail({
   axisCurrentTimeSec,
   axisPlaying = false,
   axisPlaybackRate = 1,
+  initialFocusedEventId,
 }: HandoverEventRailProps) {
+  const [focusedEventId, setFocusedEventId] = useState<string | null>(initialFocusedEventId ?? null);
   const safeDurationSec = Math.max(0, isFiniteNumber(durationSec) ? durationSec : 0);
   const safeCurrentTimeSec = clampTime(currentTimeSec, safeDurationSec);
   const safeAxisDurationSec = Math.max(
@@ -237,6 +291,7 @@ export function HandoverEventRail({
   const eventMapClusters = buildEventMapClusters(sortedEvents);
   const progressPercent = safeAxisDurationSec > 0 ? (safeAxisCurrentTimeSec / safeAxisDurationSec) * 100 : 0;
   const canSeek = !disabled && safeDurationSec > 0;
+  const slowMotionFocusEnabled = sourceOwner === 'live-walker' && horizonKind === 'live-walker-window';
   const resolvedAxisLabel = axisLabel ?? (axisKind === 'display-stretched' ? 'display-stretched axis' : 'source time axis');
   const animateAxisCursor = axisKind === 'display-stretched' && axisPlaying && safeAxisDurationSec > 0;
   const safeAxisPlaybackRate = isFiniteNumber(axisPlaybackRate) && axisPlaybackRate > 0 ? axisPlaybackRate : 1;
@@ -244,10 +299,29 @@ export function HandoverEventRail({
   const headline = eventMapClusters.length > 0
     ? `${eventMapClusters.length} marker${eventMapClusters.length === 1 ? '' : 's'}`
     : 'No HO index';
+  const focusedCluster = eventMapClusters.find(cluster => cluster.id === focusedEventId) ?? null;
+  const slowMotionFocus = slowMotionFocusEnabled && focusedCluster !== null
+    ? deriveHandoverRailSlowMotionFocus({
+      eventId: focusedCluster.id,
+      eventTimeSec: focusedCluster.timeSec,
+      clickTargetSec: focusedCluster.clickTargetSec,
+      currentTimeSec: safeCurrentTimeSec,
+      durationSec: safeDurationSec,
+    })
+    : null;
+  const focusProgressPercent = slowMotionFocus !== null
+    ? (slowMotionFocus.displayCurrentSec / slowMotionFocus.displayDurationSec) * 100
+    : 0;
 
   const seekTo = (targetTimeSec: number) => {
     if (!canSeek) return;
     onSeek(clampTime(targetTimeSec, safeDurationSec));
+  };
+
+  const selectClusterAndSeek = (cluster: HandoverEventMapCluster) => {
+    if (!canSeek) return;
+    if (slowMotionFocusEnabled) setFocusedEventId(cluster.id);
+    seekTo(cluster.clickTargetSec);
   };
 
   return (
@@ -276,6 +350,14 @@ export function HandoverEventRail({
       data-axis-label={resolvedAxisLabel}
       data-axis-playing={animateAxisCursor ? 'true' : 'false'}
       data-axis-playback-rate={safeAxisPlaybackRate.toFixed(3)}
+      data-focus-enabled={slowMotionFocusEnabled ? 'true' : 'false'}
+      data-focus-open={slowMotionFocus !== null ? 'true' : 'false'}
+      data-focus-event-id={slowMotionFocus?.eventId ?? ''}
+      data-focus-axis-kind={slowMotionFocus?.axisKind ?? ''}
+      data-focus-source-start-sec={slowMotionFocus?.sourceStartSec.toFixed(3) ?? ''}
+      data-focus-source-end-sec={slowMotionFocus?.sourceEndSec.toFixed(3) ?? ''}
+      data-focus-display-sec={slowMotionFocus?.displayDurationSec.toFixed(3) ?? ''}
+      data-focus-click-target-sec={slowMotionFocus?.clickTargetSec.toFixed(3) ?? ''}
     >
       <div className="leo-handover-event-rail__header">
         <div>
@@ -340,6 +422,7 @@ export function HandoverEventRail({
               data-testid={`handover-event-marker-${cluster.id}`}
               data-kind={cluster.kind}
               data-active={active ? 'true' : 'false'}
+              data-selected={focusedCluster?.id === cluster.id ? 'true' : 'false'}
               data-edge={edge}
               data-count={String(cluster.count)}
               data-clustered={clustered ? 'true' : 'false'}
@@ -350,7 +433,7 @@ export function HandoverEventRail({
               disabled={!canSeek}
               title={`${formatTimelineTime(cluster.axisTimeSec)} ${kindLabel(cluster.kind)}: ${cluster.fromLabel} to ${cluster.toLabel}${clustered ? ` (${cluster.count} rows)` : ''}`}
               aria-label={`Seek to ${kindLabel(cluster.kind)} handover marker at ${formatTimelineTime(cluster.axisTimeSec)} from ${cluster.fromLabel} to ${cluster.toLabel}${clustered ? `, ${cluster.count} source rows` : ''}`}
-              onClick={() => seekTo(cluster.clickTargetSec)}
+              onClick={() => selectClusterAndSeek(cluster)}
             >
               {clustered ? (
                 <span className="leo-handover-event-rail__marker-count">{markerCountLabel(cluster.count)}</span>
@@ -366,6 +449,67 @@ export function HandoverEventRail({
         <span>{formatTimelineTime(safeAxisDurationSec)}</span>
       </div>
 
+      {slowMotionFocus !== null && focusedCluster !== null ? (
+        <div
+          className="leo-handover-event-rail__focus-panel"
+          data-testid="handover-event-slow-focus"
+          data-kind={focusedCluster.kind}
+          data-source-owner={sourceOwner}
+          data-horizon-kind={horizonKind}
+          data-axis-kind={slowMotionFocus.axisKind}
+          data-source-time-sec={focusedCluster.timeSec.toFixed(3)}
+          data-source-start-sec={slowMotionFocus.sourceStartSec.toFixed(3)}
+          data-source-end-sec={slowMotionFocus.sourceEndSec.toFixed(3)}
+          data-source-duration-sec={slowMotionFocus.sourceDurationSec.toFixed(3)}
+          data-display-sec={slowMotionFocus.displayDurationSec.toFixed(3)}
+          data-display-current-sec={slowMotionFocus.displayCurrentSec.toFixed(3)}
+          data-click-target-sec={slowMotionFocus.clickTargetSec.toFixed(3)}
+        >
+          <div className="leo-handover-event-rail__focus-header">
+            <span>Slow-motion focus</span>
+            <strong>{kindLabel(focusedCluster.kind)} · {formatTimelineTime(focusedCluster.timeSec)}</strong>
+          </div>
+          <div className="leo-handover-event-rail__focus-grid" aria-label="Selected handover focus timing">
+            <span>
+              <small>source window</small>
+              <strong>{formatTimelineTime(slowMotionFocus.sourceStartSec)}-{formatTimelineTime(slowMotionFocus.sourceEndSec)}</strong>
+            </span>
+            <span>
+              <small>display lens</small>
+              <strong>{formatTimelineTime(slowMotionFocus.displayDurationSec)}</strong>
+            </span>
+          </div>
+          <div
+            className="leo-handover-event-rail__focus-bar"
+            aria-hidden="true"
+            data-axis-kind={slowMotionFocus.axisKind}
+          >
+            <span
+              className="leo-handover-event-rail__focus-playhead"
+              style={{ '--handover-rail-focus-current': `${focusProgressPercent}%` } as CSSProperties}
+            />
+          </div>
+          <button
+            className="leo-handover-event-rail__focus"
+            type="button"
+            data-kind={focusedCluster.kind}
+            data-temporal={Math.abs(focusedCluster.timeSec - safeCurrentTimeSec) <= 1.5 ? 'current' : 'selected'}
+            data-testid="handover-event-slow-focus-seek"
+            disabled={!canSeek}
+            onClick={() => seekTo(slowMotionFocus.clickTargetSec)}
+          >
+            <span className="leo-handover-event-rail__focus-pin">{kindLabel(focusedCluster.kind)}</span>
+            <span className="leo-handover-event-rail__focus-main">
+              <strong>{focusedCluster.fromLabel} -&gt; {focusedCluster.toLabel}</strong>
+              <small>source {formatTimelineTime(focusedCluster.timeSec)} · target {formatTimelineTime(slowMotionFocus.clickTargetSec)}</small>
+            </span>
+            <span className="leo-handover-event-rail__focus-delta">
+              {formatTimelineTime(slowMotionFocus.displayCurrentSec)}
+            </span>
+          </button>
+        </div>
+      ) : null}
+
       {eventMapClusters.length > 0 ? (
         <div className="leo-handover-event-rail__list" aria-label="Source-ordered handover event map">
           {eventMapClusters.map(cluster => {
@@ -377,13 +521,14 @@ export function HandoverEventRail({
                 className="leo-handover-event-rail__event"
                 data-kind={cluster.kind}
                 data-active={active ? 'true' : 'false'}
+                data-selected={focusedCluster?.id === cluster.id ? 'true' : 'false'}
                 data-count={String(cluster.count)}
                 data-source-time-sec={cluster.timeSec.toFixed(3)}
                 data-click-target-sec={cluster.clickTargetSec.toFixed(3)}
                 data-axis-time-sec={cluster.axisTimeSec.toFixed(3)}
                 data-testid={`handover-event-row-${cluster.id}`}
                 disabled={!canSeek}
-                onClick={() => seekTo(cluster.clickTargetSec)}
+                onClick={() => selectClusterAndSeek(cluster)}
               >
                 <span className="leo-handover-event-rail__event-time">{formatTimelineTime(cluster.axisTimeSec)}</span>
                 <span className="leo-handover-event-rail__event-kind">{kindLabel(cluster.kind)}</span>

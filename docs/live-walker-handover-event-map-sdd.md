@@ -2,9 +2,9 @@
 
 ## Status
 
-Draft - 2026-06-01. Design boundary for a right-sidebar handover event map that
-can review a validated 7200-second live Walker window while preserving
-lane-owned source horizons.
+Implemented through Slice 5 - 2026-06-01. Design boundary for a right-sidebar
+handover event map that can review a validated 7200-second live Walker window
+while preserving lane-owned source horizons.
 
 ## Authority
 
@@ -253,6 +253,14 @@ After UI implementation, browser smoke should verify:
 4. Add marker click-to-seek.
 5. Add slow-motion focus display, preserving source-time telemetry.
 6. Add browser smoke for lane/source telemetry and click-to-seek behavior.
+
+Implementation note (2026-06-01): Slice 5 is implemented in
+`HandoverEventRail`. Selecting a source-backed live Walker marker opens a local
+slow-motion focus panel with a separate `display-stretched` axis while the
+rail/root axis remains source time. The focused panel is gated to
+`sourceOwner=live-walker` and `horizonKind=live-walker-window`; producer-trace
+and artifact rails do not open this live focus lens. The focused validator is
+`validate:live-walker:handover-event-focus`.
 
 ## Acceptance Criteria
 
