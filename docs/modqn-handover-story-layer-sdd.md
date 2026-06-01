@@ -100,15 +100,19 @@ Live/profile-derived MODQN UI copy must keep the claim boundary visible:
   UE-count badges, with a compact profile-derived service readout for slot,
   serving count, active cells, and served/idle UEs. It keeps beam cones,
   footprint ellipses, foreground handover arcs, and diagnostics off.
+- **Service Allocation** may enable profile-derived beam cones for all serving
+  satellites so the multi-satellite / 100-UE allocation can be inspected. It
+  keeps foreground handover cues and diagnostics off, and remains overlay-demo
+  rather than producer proof.
 - **Explain Handover** may enable focused beam cones plus capped
   profile-derived intra/inter cues. These cues are overlay-demo presentation
   only.
 - **Debug** may enable footprint ellipses and diagnostics for engineering
   inspection. Its HUD may expose compact profile-derived cell schedule
   diagnostics: slot duration, next-slot change count, visible serving
-  satellites, and active beam ids by satellite. Baseline Faithful and Explain
-  Handover must keep this diagnostic block hidden. It remains separate from
-  producer replay proof.
+  satellites, and active beam ids by satellite. Baseline Faithful, Service
+  Allocation, and Explain Handover must keep this diagnostic block hidden. It
+  remains separate from producer replay proof.
 
 ## Validator Plan
 

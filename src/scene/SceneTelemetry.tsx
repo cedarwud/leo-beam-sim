@@ -38,6 +38,8 @@ export interface SceneTelemetryProps {
   cellHoInterCount: string;
   cellHoIntraCount: string;
   cellBeamConeCount: string;
+  cellBeamConeScope: string;
+  cellBeamConeSatelliteCount: string;
   modqnVisualLayerPreset: string;
   modqnServiceMapEnabled: string;
   modqnServedUeCount: string | number;
@@ -99,6 +101,8 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.cellHoInterCount = props.cellHoInterCount;
     el.dataset.cellHoIntraCount = props.cellHoIntraCount;
     el.dataset.cellBeamConeCount = props.cellBeamConeCount;
+    el.dataset.cellBeamConeScope = props.cellBeamConeScope;
+    el.dataset.cellBeamConeSatelliteCount = props.cellBeamConeSatelliteCount;
     el.dataset.modqnVisualLayerPreset = props.modqnVisualLayerPreset;
     el.dataset.modqnServiceMapEnabled = props.modqnServiceMapEnabled;
     el.dataset.modqnServedUeCount = String(props.modqnServedUeCount);
@@ -149,6 +153,8 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.cellHoInterCount,
     props.cellHoIntraCount,
     props.cellBeamConeCount,
+    props.cellBeamConeScope,
+    props.cellBeamConeSatelliteCount,
     props.modqnVisualLayerPreset,
     props.modqnServiceMapEnabled,
     props.modqnServedUeCount,

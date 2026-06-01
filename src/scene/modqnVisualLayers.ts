@@ -1,13 +1,20 @@
 export type ModqnVisualLayerPreset =
   | 'baseline-faithful'
+  | 'service-allocation'
   | 'explain-handover'
   | 'debug';
+
+export type ModqnBeamConeScope =
+  | 'none'
+  | 'focus-satellite'
+  | 'all-serving-satellites';
 
 export interface ModqnVisualLayerFlags {
   readonly serviceMap: boolean;
   readonly activeCellOverlay: boolean;
   readonly ueCountBadges: boolean;
   readonly beamCones: boolean;
+  readonly beamConeScope: ModqnBeamConeScope;
   readonly handoverStory: boolean;
   readonly handoverCues: boolean;
   readonly footprintEllipses: boolean;
@@ -18,6 +25,7 @@ export const DEFAULT_MODQN_VISUAL_LAYER_PRESET: ModqnVisualLayerPreset = 'baseli
 
 export const MODQN_VISUAL_LAYER_PRESETS: readonly ModqnVisualLayerPreset[] = [
   'baseline-faithful',
+  'service-allocation',
   'explain-handover',
   'debug',
 ];
@@ -27,6 +35,19 @@ const BASELINE_FAITHFUL_LAYERS: ModqnVisualLayerFlags = {
   activeCellOverlay: true,
   ueCountBadges: true,
   beamCones: false,
+  beamConeScope: 'none',
+  handoverStory: false,
+  handoverCues: false,
+  footprintEllipses: false,
+  diagnostics: false,
+};
+
+const SERVICE_ALLOCATION_LAYERS: ModqnVisualLayerFlags = {
+  serviceMap: true,
+  activeCellOverlay: true,
+  ueCountBadges: true,
+  beamCones: true,
+  beamConeScope: 'all-serving-satellites',
   handoverStory: false,
   handoverCues: false,
   footprintEllipses: false,
@@ -38,6 +59,7 @@ const EXPLAIN_HANDOVER_LAYERS: ModqnVisualLayerFlags = {
   activeCellOverlay: true,
   ueCountBadges: true,
   beamCones: true,
+  beamConeScope: 'focus-satellite',
   handoverStory: true,
   handoverCues: true,
   footprintEllipses: false,
@@ -49,6 +71,7 @@ const DEBUG_LAYERS: ModqnVisualLayerFlags = {
   activeCellOverlay: true,
   ueCountBadges: true,
   beamCones: true,
+  beamConeScope: 'all-serving-satellites',
   handoverStory: true,
   handoverCues: true,
   footprintEllipses: true,
@@ -63,6 +86,7 @@ export function resolveModqnVisualLayers(
   preset: ModqnVisualLayerPreset = DEFAULT_MODQN_VISUAL_LAYER_PRESET,
 ): ModqnVisualLayerFlags {
   if (preset === 'debug') return DEBUG_LAYERS;
+  if (preset === 'service-allocation') return SERVICE_ALLOCATION_LAYERS;
   if (preset === 'explain-handover') return EXPLAIN_HANDOVER_LAYERS;
   return BASELINE_FAITHFUL_LAYERS;
 }

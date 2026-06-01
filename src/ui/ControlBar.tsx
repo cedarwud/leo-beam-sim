@@ -89,6 +89,7 @@ const CAMERA_PRESETS: Array<{ label: string; preset: CameraPreset }> = [
 
 const MODQN_LAYER_PRESET_LABELS: Record<ModqnVisualLayerPreset, string> = {
   'baseline-faithful': 'Baseline',
+  'service-allocation': 'Service',
   'explain-handover': 'Explain',
   debug: 'Debug',
 };

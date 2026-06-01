@@ -201,9 +201,11 @@ Static validators must check:
   keep the all-UE service map and active-cell UE counts visible while keeping
   beam cones and profile-derived handover cues off; its service readout may
   summarize slot/L/cell/UE allocation only as profile-derived overlay/demo.
-  Explain/Debug may enable capped overlay cues without changing producer-proof
-  claims. Debug may additionally show profile-derived schedule diagnostics in
-  the live-cell HUD; Baseline Faithful and Explain Handover keep that block
+  Service Allocation may enable all-serving-satellite, satellite-tinted cell
+  beam cones without enabling foreground handover cues. Explain/Debug may
+  enable capped overlay cues without changing producer-proof claims. Debug may
+  additionally show profile-derived schedule diagnostics in the live-cell HUD;
+  Baseline Faithful, Service Allocation, and Explain Handover keep that block
   hidden.
 - Timeline and handover rail telemetry is lane-gated: live Walker rails,
   MODQN overlay rails, producer replay rails, and artifact rails must each expose
@@ -257,7 +259,7 @@ Browser smoke should check at least:
   lane-gated to MODQN live cell preview, while replay proof and artifact replay
   preserve their source boundaries.
 - MODQN live-cell visual preset first slice done: the cell lane can switch
-  between Baseline Faithful, Explain Handover, and Debug without mounting
-  replay proof or changing producer truth.
+  between Baseline Faithful, Service Allocation, Explain Handover, and Debug
+  without mounting replay proof or changing producer truth.
 - MODQN Debug diagnostics slice done: the live-cell HUD can expose compact
   profile-derived slot/next-change/active-beam diagnostics only in Debug.

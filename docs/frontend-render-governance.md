@@ -114,6 +114,10 @@ MODQN live-cell visual presets are lane-owned:
   a compact profile-derived service readout for slot/L/cell/UE allocation.
   It keeps beam cones, footprint ellipses, foreground handover cues, and debug
   diagnostics off.
+- **Service Allocation** may add low-opacity, satellite-tinted cell beam cones
+  for all serving satellites so the 100-UE / multi-satellite allocation can be
+  inspected. It stays profile-derived overlay/demo, keeps foreground handover
+  cues off, and must not appear in replay proof or artifact lanes.
 - **Explain Handover** may add focused beam cones and capped profile-derived
   intra/inter cell reassignment cues. These cues are overlay/demo presentation,
   not producer proof.
@@ -207,7 +211,9 @@ Before changing scene rendering:
   primary-UE handover events, while MODQN replay proof reports beam-hopping
   source gap instead of fake hopping animation.
 - MODQN live-cell preview now owns visual layer presets: Baseline Faithful
-  shows an all-UE service map and active-cell UE counts; Explain/Debug can add
+  shows an all-UE service map and active-cell UE counts; Service Allocation can
+  add all-serving-satellite profile-derived beam cones; Explain/Debug can add
   capped profile-derived handover cues without changing replay proof claims.
   Debug can additionally expose profile-derived cell schedule diagnostics in
-  the HUD while keeping Baseline Faithful and Explain Handover clean.
+  the HUD while keeping Baseline Faithful, Service Allocation, and Explain
+  Handover clean.

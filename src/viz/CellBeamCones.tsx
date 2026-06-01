@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import * as THREE from 'three';
 import type { CellAssignment } from '../engine/cells/cellScheduler';
+import type { ModqnBeamConeScope } from '../scene/modqnVisualLayers';
 import type { CellScheduleViz } from '../scene/useCellSchedule';
 import type { WorldPoint } from './CellFootprints';
 
@@ -16,6 +17,7 @@ export interface CellBeamConesProps {
     readonly targetBeamId: string | null;
     readonly worldPos?: readonly [number, number, number];
   } | null;
+  readonly beamConeScope?: ModqnBeamConeScope;
   readonly appMode?: string;
 }
 
@@ -74,6 +76,7 @@ export function CellBeamCones(props: CellBeamConesProps): JSX.Element | null {
               baseRadiusWorld: cone.baseRadiusWorld,
               heightWorld: cone.heightWorld,
               color: cone.color,
+              beamConeScope: props.beamConeScope ?? 'auto',
             }}
           >
             <coneGeometry args={[cone.baseRadiusWorld, cone.heightWorld, CONE_SEGMENTS, 1, true]} />
@@ -129,16 +132,18 @@ export function resolveCellBeamConeItems({
   satelliteWorldById,
   satelliteTintById,
   focusedUe,
+  beamConeScope,
   appMode,
 }: Omit<CellBeamConesProps, 'visible'>): readonly CellBeamConeRenderItem[] {
+  const resolvedScope = beamConeScope ?? (appMode === 'modqn-demo' ? 'focus-satellite' : 'all-serving-satellites');
+  if (resolvedScope === 'none') return [];
+
   const placementByCellId = new Map(schedule.placements.map(placement => [placement.cellId, placement]));
 
-  // modqn-demo: restrict cones to a SINGLE focus satellite so the scene shows
-  // one satellite's beams instead of all ~8 serving satellites overlapping.
-  // Prefer the focused UE's serving satellite when it actually appears in the
-  // cell schedule; otherwise fall back to the satellite serving the most cells
-  // this slot (deterministic, stable highlight).
-  const focusSatId = appMode === 'modqn-demo'
+  // Focus scope is for explain mode: it keeps the handover story readable by
+  // showing one satellite's beams. Service/debug scopes show the multi-sat
+  // allocation explicitly.
+  const focusSatId = resolvedScope === 'focus-satellite'
     ? resolveFocusSatelliteId(schedule.slot.assignments, focusedUe)
     : null;
 
@@ -173,6 +178,10 @@ export function resolveCellBeamConeItems({
 
 export function resolveCellBeamConeRenderCount(input: Omit<CellBeamConesProps, 'visible'>): number {
   return resolveCellBeamConeItems(input).length;
+}
+
+export function resolveCellBeamConeSatelliteCount(input: Omit<CellBeamConesProps, 'visible'>): number {
+  return new Set(resolveCellBeamConeItems(input).map(item => item.assignment.satId)).size;
 }
 
 export function computeConeApexFromTransform(

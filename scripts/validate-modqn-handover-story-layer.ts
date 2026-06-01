@@ -32,6 +32,10 @@ import {
 } from '../src/ui/HandoverEventRail.tsx';
 import { ModqnSceneHud } from '../src/ui/modqn-controls/ModqnSceneHud.tsx';
 import type { SimState } from '../src/scene/types.ts';
+import {
+  resolveCellBeamConeRenderCount,
+  resolveCellBeamConeSatelliteCount,
+} from '../src/viz/CellBeamCones.tsx';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEG_TO_RAD = Math.PI / 180;
@@ -212,18 +216,48 @@ function validateVisualLayerModel(): void {
   expectEqual(baseline.serviceMap, true, 'baseline preset keeps all-UE service map visible');
   expectEqual(baseline.ueCountBadges, true, 'baseline preset keeps per-cell UE count badges visible');
   expectEqual(baseline.beamCones, false, 'baseline preset suppresses beam cones by default');
+  expectEqual(baseline.beamConeScope, 'none', 'baseline preset keeps beam cone scope empty');
   expectEqual(baseline.handoverCues, false, 'baseline preset suppresses profile-derived handover cues by default');
+
+  const service = resolveModqnVisualLayers('service-allocation');
+  expectEqual(service.beamCones, true, 'service allocation preset enables multi-satellite beam cones');
+  expectEqual(service.beamConeScope, 'all-serving-satellites', 'service allocation preset renders all serving satellites');
+  expectEqual(service.handoverCues, false, 'service allocation preset keeps foreground handover cues off');
+  expectEqual(service.diagnostics, false, 'service allocation preset avoids debug diagnostics');
 
   const explain = resolveModqnVisualLayers('explain-handover');
   expectEqual(explain.beamCones, true, 'explain preset enables focused beam cones');
+  expectEqual(explain.beamConeScope, 'focus-satellite', 'explain preset keeps beam cones focused on one satellite');
   expectEqual(explain.handoverCues, true, 'explain preset enables profile-derived handover cues');
   expectEqual(explain.diagnostics, false, 'explain preset avoids debug diagnostics');
 
   const debug = resolveModqnVisualLayers('debug');
+  expectEqual(debug.beamConeScope, 'all-serving-satellites', 'debug preset can inspect all serving satellite beams');
   expectEqual(debug.footprintEllipses, true, 'debug preset enables footprint ellipses');
   expectEqual(debug.diagnostics, true, 'debug preset enables diagnostics flag');
 
   const schedule = scheduleAt(1);
+  const coneInput = {
+    schedule,
+    satelliteWorldById: satelliteWorldById(schedule),
+    satelliteTintById: tintMap(schedule),
+    focusedUe: null,
+    appMode: 'modqn-demo',
+  };
+  expectEqual(
+    resolveCellBeamConeSatelliteCount({ ...coneInput, beamConeScope: 'focus-satellite' }),
+    1,
+    'focused beam cone scope renders one serving satellite',
+  );
+  expect(
+    resolveCellBeamConeSatelliteCount({ ...coneInput, beamConeScope: 'all-serving-satellites' }) > 1,
+    'all-serving beam cone scope renders multiple serving satellites',
+  );
+  expect(
+    resolveCellBeamConeRenderCount({ ...coneInput, beamConeScope: 'all-serving-satellites' })
+      > resolveCellBeamConeRenderCount({ ...coneInput, beamConeScope: 'focus-satellite' }),
+    'all-serving beam cone scope renders more cones than focus scope',
+  );
   const activeAssignment = schedule.slot.assignments[0];
   assert.ok(activeAssignment, 'active assignment missing');
   const activePlacement = schedule.placements.find(placement => placement.cellId === activeAssignment.cellId);
@@ -353,6 +387,7 @@ function validateStaticContracts(): void {
   const visualLayers = readSource('src/scene/modqnVisualLayers.ts');
   const serviceMap = readSource('src/scene/modqnServiceMap.ts');
   const cellOverlay = readSource('src/viz/CellOverlay.tsx');
+  const cellBeamCones = readSource('src/viz/CellBeamCones.tsx');
   const storyModel = readSource('src/scene/handoverStoryModel.ts');
   const storyLayer = readSource('src/viz/HandoverStoryLayer.tsx');
   const handoverRail = readSource('src/ui/HandoverEventRail.tsx');
@@ -376,10 +411,17 @@ function validateStaticContracts(): void {
   assertContains(storyModel, "return 'beam-hopping-schedule'", 'replay source-gap helper');
   assertContains(visualLayers, "export type ModqnVisualLayerPreset", 'MODQN visual layer preset contract');
   assertContains(visualLayers, "'baseline-faithful'", 'MODQN visual layers define baseline faithful preset');
+  assertContains(visualLayers, "'service-allocation'", 'MODQN visual layers define service allocation preset');
   assertContains(visualLayers, "'explain-handover'", 'MODQN visual layers define explain handover preset');
   assertContains(visualLayers, 'beamCones: false', 'MODQN baseline visual preset suppresses beam cones');
+  assertContains(visualLayers, "beamConeScope: 'all-serving-satellites'", 'MODQN service/debug presets can show all serving satellites');
+  assertContains(visualLayers, "beamConeScope: 'focus-satellite'", 'MODQN explain preset keeps beam cones focused');
   assertContains(visualLayers, 'handoverCues: false', 'MODQN baseline visual preset suppresses handover cues');
   assertContains(visualLayers, 'handoverCues: true', 'MODQN explain/debug visual presets can enable handover cues');
+  assertContains(cellBeamCones, 'resolveCellBeamConeSatelliteCount', 'CellBeamCones exposes rendered serving-satellite count');
+  assertContains(cellBeamCones, "resolvedScope === 'focus-satellite'", 'CellBeamCones supports focused one-satellite scope');
+  assertContains(cellBeamCones, "resolvedScope === 'none'", 'CellBeamCones supports hidden beam-cone scope');
+  assertContains(cellBeamCones, "'all-serving-satellites'", 'CellBeamCones supports all-serving-satellite scope');
   assertContains(serviceMap, 'deriveModqnServiceMap', 'MODQN service map derives all-UE service projection');
   assertContains(serviceMap, 'ueCountByCellId', 'MODQN service map exposes per-cell UE counts');
   assertContains(serviceMap, 'ueCountBySatId', 'MODQN service map exposes per-satellite UE counts');
@@ -394,6 +436,7 @@ function validateStaticContracts(): void {
   assertContains(cellOverlay, 'leo-cell-ue-count-badge', 'CellOverlay uses stable UE count badge class');
   assertContains(controlBar, 'modqn-layer-preset-control', 'ControlBar exposes MODQN layer preset control');
   assertContains(controlBar, 'MODQN_VISUAL_LAYER_PRESETS.map', 'ControlBar renders MODQN visual layer presets from shared model');
+  assertContains(controlBar, "'service-allocation': 'Service'", 'ControlBar labels Service Allocation preset');
   assertContains(app, 'const [modqnVisualLayerPreset, setModqnVisualLayerPreset]', 'App owns MODQN visual layer preset state');
   assertContains(appRuntimeConfig, 'resolveModqnVisualLayers(modqnVisualLayerPreset)', 'appRuntimeConfig resolves MODQN visual layer flags');
   assertContains(modqnServingCount, 'MODQN_SERVING_COUNT_OPTIONS = [2, 3, 4, 5, 6, 7, 8] as const', 'MODQN formal serving-count options are L=2..8');
@@ -484,9 +527,14 @@ function validateStaticContracts(): void {
   assertContains(mainScene, 'selectProfileDerivedHandoverCues', 'MainScene caps profile-derived handover cue density');
   assertContains(mainScene, 'visible={showCellReassignmentEventArcs}', 'MainScene passes explicit cell reassignment arc visibility gate');
   assertContains(mainScene, '{showCellOverlay && modqnVisualLayers.beamCones && (', 'MainScene gates MODQN beam cones by visual preset');
+  assertContains(mainScene, 'beamConeScope: renderedCellBeamConeScope', 'MainScene passes visual preset beam cone scope into render-count helper');
+  assertContains(mainScene, 'resolveCellBeamConeSatelliteCount', 'MainScene computes MODQN beam-cone satellite telemetry');
+  assertContains(mainScene, 'beamConeScope={modqnVisualLayers.beamConeScope}', 'MainScene passes visual preset beam cone scope to CellBeamCones');
   assertContains(telemetry, 'el.dataset.handoverStoryNotBaselineProof', 'SceneTelemetry reports not-baseline-proof telemetry');
   assertContains(telemetry, 'el.dataset.handoverStoryNextCount', 'SceneTelemetry reports next-slot story telemetry');
   assertContains(telemetry, 'el.dataset.modqnVisualLayerPreset', 'SceneTelemetry reports MODQN visual layer preset');
+  assertContains(telemetry, 'el.dataset.cellBeamConeScope', 'SceneTelemetry reports MODQN beam cone scope telemetry');
+  assertContains(telemetry, 'el.dataset.cellBeamConeSatelliteCount', 'SceneTelemetry reports MODQN beam cone satellite count telemetry');
   assertContains(telemetry, 'el.dataset.modqnServedUeCount', 'SceneTelemetry reports MODQN served UE count');
   assertContains(telemetry, 'el.dataset.modqnHandoverCuesVisible', 'SceneTelemetry reports MODQN handover cue visibility');
   assertContains(simStatePublisher, 'modqnCellServiceReadout,', 'SimState publisher forwards MODQN service readout');

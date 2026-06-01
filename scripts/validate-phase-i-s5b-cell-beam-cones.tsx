@@ -17,6 +17,7 @@ import {
   computeConeBaseCenterFromTransform,
   resolveCellBeamConeRenderCount,
   resolveCellBeamConeItems,
+  resolveCellBeamConeSatelliteCount,
 } from '../src/viz/CellBeamCones.tsx';
 import type { WorldPoint } from '../src/viz/CellFootprints.tsx';
 
@@ -325,6 +326,14 @@ const focusedDemoRenderCount = resolveCellBeamConeRenderCount({
   focusedUe,
   appMode: 'modqn-demo',
 });
+const allServingDemoRenderCount = resolveCellBeamConeRenderCount({
+  schedule: slot0,
+  satelliteWorldById: worlds,
+  satelliteTintById: tints,
+  focusedUe,
+  beamConeScope: 'all-serving-satellites',
+  appMode: 'modqn-demo',
+});
 expect(
   focusedDemoRenderCount > 0 && focusedDemoRenderCount < slot0.slot.assignments.length,
   'modqn-demo focus satellite render count is lower than schedule assignment count',
@@ -333,6 +342,33 @@ expectEqual(
   focusedDemoRenderCount,
   focusedDemoItems.length,
   'modqn-demo focus satellite render-count helper equals resolved cone items length',
+);
+expect(
+  allServingDemoRenderCount > focusedDemoRenderCount,
+  'all-serving-satellites scope renders more MODQN demo cones than focus scope',
+);
+expectEqual(
+  resolveCellBeamConeSatelliteCount({
+    schedule: slot0,
+    satelliteWorldById: worlds,
+    satelliteTintById: tints,
+    focusedUe,
+    beamConeScope: 'focus-satellite',
+    appMode: 'modqn-demo',
+  }),
+  1,
+  'focus-satellite scope renders one serving satellite',
+);
+expect(
+  resolveCellBeamConeSatelliteCount({
+    schedule: slot0,
+    satelliteWorldById: worlds,
+    satelliteTintById: tints,
+    focusedUe,
+    beamConeScope: 'all-serving-satellites',
+    appMode: 'modqn-demo',
+  }) > 1,
+  'all-serving-satellites scope renders multiple serving satellites',
 );
 
 const lCapped = geoSchedule(8);
@@ -350,12 +386,15 @@ expectEqual(
 const mainSceneSource = readFileSync(path.join(REPO_ROOT, 'src/scene/MainScene.tsx'), 'utf8');
 const renderPlanSource = readFileSync(path.join(REPO_ROOT, 'src/scene/sceneLaneRenderPlan.ts'), 'utf8');
 expect(
-  mainSceneSource.includes('import { CellBeamCones, resolveCellBeamConeRenderCount }')
+  mainSceneSource.includes('CellBeamCones,')
+    && mainSceneSource.includes('resolveCellBeamConeRenderCount,')
+    && mainSceneSource.includes('resolveCellBeamConeSatelliteCount,')
     && mainSceneSource.includes('{showCellOverlay && modqnVisualLayers.beamCones && (\n        <CellBeamCones')
     && mainSceneSource.includes('schedule={cellSchedule}')
     && mainSceneSource.includes('satelliteWorldById={satelliteWorldById}')
-    && mainSceneSource.includes('satelliteTintById={satelliteTintById}'),
-  'MainScene mounts CellBeamCones gated on showCellOverlay and the MODQN beam-cone visual layer',
+    && mainSceneSource.includes('satelliteTintById={satelliteTintById}')
+    && mainSceneSource.includes('beamConeScope={modqnVisualLayers.beamConeScope}'),
+  'MainScene mounts CellBeamCones gated on showCellOverlay and the MODQN beam-cone visual layer scope',
 );
 expect(
   mainSceneSource.includes('SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && viz.displaySats'),

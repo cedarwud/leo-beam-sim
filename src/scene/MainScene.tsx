@@ -56,7 +56,11 @@ import { ServingGroundRipple } from '../viz/ServingGroundRipple';
 import { GroundScene } from '../viz/GroundScene';
 import { CellOverlay } from '../viz/CellOverlay';
 import { CellHandoverArcs } from '../viz/CellHandoverArcs';
-import { CellBeamCones, resolveCellBeamConeRenderCount } from '../viz/CellBeamCones';
+import {
+  CellBeamCones,
+  resolveCellBeamConeRenderCount,
+  resolveCellBeamConeSatelliteCount,
+} from '../viz/CellBeamCones';
 import { HandoverStoryLayer } from '../viz/HandoverStoryLayer';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import {
@@ -226,6 +230,8 @@ function ArtifactSceneContent({
         cellHoInterCount=""
         cellHoIntraCount=""
         cellBeamConeCount=""
+        cellBeamConeScope=""
+        cellBeamConeSatelliteCount=""
         modqnVisualLayerPreset=""
         modqnServiceMapEnabled="0"
         modqnServedUeCount={0}
@@ -567,13 +573,25 @@ function SceneContent({
       showProfileHandoverStoryLayer,
     ],
   );
+  const renderedCellBeamConeScope = showCellOverlay && modqnVisualLayers.beamCones
+    ? modqnVisualLayers.beamConeScope
+    : 'none';
+  const cellBeamConeInput = {
+    schedule: cellSchedule,
+    satelliteWorldById,
+    satelliteTintById,
+    focusedUe: focusedCellBeamConeUe,
+    beamConeScope: renderedCellBeamConeScope,
+    appMode: runtime.appMode,
+  };
   const renderedCellBeamConeCount = showCellOverlay && modqnVisualLayers.beamCones
     ? resolveCellBeamConeRenderCount({
-      schedule: cellSchedule,
-      satelliteWorldById,
-      satelliteTintById,
-      focusedUe: focusedCellBeamConeUe,
-      appMode: runtime.appMode,
+      ...cellBeamConeInput,
+    })
+    : 0;
+  const renderedCellBeamConeSatelliteCount = showCellOverlay && modqnVisualLayers.beamCones
+    ? resolveCellBeamConeSatelliteCount({
+      ...cellBeamConeInput,
     })
     : 0;
   const profileDerivedHandoverCues = useMemo(
@@ -705,6 +723,8 @@ function SceneContent({
         cellHoInterCount={showCellOverlay ? String(cellHoCounts.inter) : ''}
         cellHoIntraCount={showCellOverlay ? String(cellHoCounts.intra) : ''}
         cellBeamConeCount={showCellOverlay ? String(renderedCellBeamConeCount) : ''}
+        cellBeamConeScope={showCellOverlay ? renderedCellBeamConeScope : ''}
+        cellBeamConeSatelliteCount={showCellOverlay ? String(renderedCellBeamConeSatelliteCount) : ''}
         modqnVisualLayerPreset={showCellOverlay ? modqnVisualLayerPreset : ''}
         modqnServiceMapEnabled={showCellOverlay && modqnVisualLayers.serviceMap ? '1' : '0'}
         modqnServedUeCount={showCellOverlay ? modqnServiceMap.servedUeCount : 0}
@@ -778,6 +798,7 @@ function SceneContent({
           satelliteWorldById={satelliteWorldById}
           satelliteTintById={satelliteTintById}
           focusedUe={focusedCellBeamConeUe}
+          beamConeScope={modqnVisualLayers.beamConeScope}
           appMode={runtime.appMode}
         />
       )}
