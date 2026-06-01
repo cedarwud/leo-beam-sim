@@ -1405,8 +1405,35 @@ export function App() {
   ]);
 
   const handleHandoverRailSeek = useCallback((targetSec: number) => {
+    if (
+      sceneSource === 'live-sim'
+      && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
+      && timelineRailDescriptor.rail.sourceOwner === 'live-walker'
+      && timelineRailDescriptor.rail.horizonKind === 'live-walker-window'
+    ) {
+      const sourceTarget = clampTimelineTime(targetSec, timelineRailDescriptor.rail.durationSec);
+      setLiveTimelineSeekRequest({
+        targetSec: sourceTarget,
+        requestKey: `${sourceTarget.toFixed(3)}:${Date.now().toString(36)}`,
+      });
+      setLiveObservedHandoverRailEvents([]);
+      setModqnReplayVisualElapsedSec(clampTimelineTime(
+        sourceTarget - liveTimelineWindowStartSec,
+        timelineDurationSec,
+      ));
+      return;
+    }
     handleTimelineSeek(targetSec);
-  }, [handleTimelineSeek]);
+  }, [
+    handleTimelineSeek,
+    liveTimelineWindowStartSec,
+    sceneLane,
+    sceneSource,
+    timelineDurationSec,
+    timelineRailDescriptor.rail.durationSec,
+    timelineRailDescriptor.rail.horizonKind,
+    timelineRailDescriptor.rail.sourceOwner,
+  ]);
 
   const handleTimelineSpeedChange = useCallback((nextSpeed: TimelineSpeedPreset) => {
     playback.setSpeed(nextSpeed);

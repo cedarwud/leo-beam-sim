@@ -15,6 +15,7 @@ import {
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const VALIDATOR_SCRIPT = 'node --import tsx/esm scripts/validate-live-walker-handover-event-focus.tsx';
+const BROWSER_VALIDATOR_SCRIPT = 'node --import tsx/esm scripts/validate-live-walker-handover-event-focus-browser.ts';
 const LIVE_DURATION_SEC = 7200;
 const FOCUSED_CLUSTER_ID = 'cluster-20_000_intra';
 
@@ -103,6 +104,11 @@ function validatePackageScript(): void {
     VALIDATOR_SCRIPT,
     'package.json must expose the live Walker handover event focus validator',
   );
+  assert.equal(
+    packageJson.scripts?.['validate:live-walker:handover-event-focus:browser'],
+    BROWSER_VALIDATOR_SCRIPT,
+    'package.json must expose the live Walker handover event focus browser validator',
+  );
   console.log('PASS: package exposes validate:live-walker:handover-event-focus');
 }
 
@@ -182,6 +188,17 @@ function validateStaticBoundaries(): void {
   assertContains(railSource, 'data-click-target-sec={slowMotionFocus.clickTargetSec.toFixed(3)}', 'focus click target telemetry');
   assertContains(sddSource, 'Slow motion is a display lens, not a new source horizon.', 'source policy SDD');
   assertContains(sddSource, 'bottom timeline seek target is always `sourceTimeSec`', 'source seek SDD');
+  const appSource = readRepoFile('src/App.tsx');
+  assertContains(
+    appSource,
+    "timelineRailDescriptor.rail.sourceOwner === 'live-walker'",
+    'App live Walker rail seek source-owner guard',
+  );
+  assertContains(
+    appSource,
+    'setLiveTimelineSeekRequest({',
+    'App live Walker rail source-time seek request',
+  );
   console.log('PASS: static source-time and live-Walker-only focus boundaries are present');
 }
 
