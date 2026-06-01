@@ -2781,8 +2781,15 @@ Phase 10B partial implementation evidence:
   math.
 - Focused validation was updated so it now rejects `G^R` inside the transmit
   power controls and verifies the dedicated receiver-gain tab.
-- This is not full Phase 10B closure: broader user-facing paper/provenance copy
-  cleanup remains open for other primary controls, especially Loss-tab copy.
+- Loss-tab primary copy now labels the TR 38.811 NLoS scalar block as
+  `TR 38.811 Sensitivity` and uses advanced/sensitivity wording instead of
+  user-visible `Research Override`, `HOBS`, or `paper-backed` copy. The
+  `validate:phase10b:primary-copy-demotion` validator locks this primary-copy
+  demotion while preserving internal provenance guardrails in docs and runtime
+  contract text.
+- This is still partial Phase 10B closure: broader user-facing paper/provenance
+  cleanup beyond the Signal Power, Receiver Gain, SINR overview, and Loss-tab
+  primary surfaces remains open.
 
 Phase 10C control-first status checkpoint:
 
@@ -2930,10 +2937,11 @@ Risks / open questions:
   present `G^R` as `Receiver gain (G^R)` / receive-side signal-path gain while
   keeping source/provenance distinctions in SDD, contract docs, validation, and
   optional low-priority Diagnostics.
-- Phase 10B has a partial direct implementation for receiver-gain IA:
+- Phase 10B has a partial direct implementation for primary SINR copy:
   `G^R` now has a dedicated `Receiver Gain` tab, separate from `P_t` /
-  `Transmit Power` and `G^T` / `Transmit Gain`. Broader paper/provenance copy
-  cleanup remains open.
+  `Transmit Power` and `G^T` / `Transmit Gain`, and the Loss tab now uses
+  sensitivity-oriented primary copy. Broader paper/provenance cleanup remains
+  open outside these primary surfaces.
 - Phase 10C records the control-first copy status: primary Presentation and
   Tuning should prioritize simulator-native controls, values, and labels, while
   detailed provenance and claim-boundary text remains collapsed or

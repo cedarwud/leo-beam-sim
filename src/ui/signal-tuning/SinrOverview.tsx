@@ -1,5 +1,4 @@
 import { UI_CLASSES, UI_TOKENS } from '../../constants/uiTokens';
-import { getFormulaFamilyLabel, getProfileLabel } from '../../profiles';
 import type { Profile } from '../../profiles/types';
 import { formatDbi } from './formatters';
 import {
@@ -7,6 +6,30 @@ import {
   explanatoryTextStyle,
   formulaTextStyle,
 } from './styles';
+
+function getOverviewProfileLabel(profile: Profile): string {
+  switch (profile.id) {
+    case 'hobs-2024-candidate-rich':
+      return 'Candidate-rich demo profile';
+    case 'hobs-2024-paper-default':
+      return 'Default simulator profile';
+    case 'hobs-2024-tr38811-research':
+      return 'TR 38.811 sensitivity profile';
+    case 'hobs-2024-mobile-demo-aircraft':
+      return 'Aircraft mobility demo profile';
+    default:
+      return profile.id;
+  }
+}
+
+function getOverviewFormulaLabel(profile: Profile): string {
+  switch (profile.formulaFamily) {
+    case 'hobs-legacy':
+      return 'Legacy SINR model';
+    case 'hobs-tr38811':
+      return 'TR 38.811 path-loss model';
+  }
+}
 
 export function SinrOverview({
   baseProfile,
@@ -100,7 +123,7 @@ export function SinrOverview({
           </div>
         </div>
         <div style={explanatoryTextStyle}>
-          {getProfileLabel(baseProfile)} · {getFormulaFamilyLabel(baseProfile.formulaFamily)} · G<sup>R</sup> {formatDbi(receiverGainDbi)}
+          {getOverviewProfileLabel(baseProfile)} · {getOverviewFormulaLabel(baseProfile)} · G<sup>R</sup> {formatDbi(receiverGainDbi)}
         </div>
       </div>
     </details>

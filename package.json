@@ -21,6 +21,7 @@
     "validate:phase9d:formula-evidence-stability": "node --import tsx/esm scripts/validate-phase9d-formula-evidence-stability.tsx",
     "validate:phase9f:formula-map": "node --import tsx/esm scripts/validate-phase9f-formula-map.tsx",
     "validate:phase9h:coverage-audit-demotion": "node --import tsx/esm scripts/validate-phase9h-coverage-audit-demotion.tsx",
+    "validate:phase10b:primary-copy-demotion": "node --import tsx/esm scripts/validate-phase10b-primary-copy-demotion.tsx",
     "validate:phase-b:loader": "node --import tsx/esm scripts/validate-phase-b-loader.tsx",
     "validate:phase-b:training-form": "node --import tsx/esm scripts/validate-phase-b-training-form.tsx",
     "validate:phase-b:jobs-panel": "node --import tsx/esm scripts/validate-phase-b-jobs-panel.tsx",

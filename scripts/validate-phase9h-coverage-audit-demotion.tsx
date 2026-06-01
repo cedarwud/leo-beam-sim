@@ -125,9 +125,8 @@ function assertEssentialContextRemainsInline(): void {
   assertNotContains(signal.text, 'Research Override / teaching control');
 
   const loss = renderPanel('loss');
-  assertContains(loss.markup, 'data-testid="loss-research-override"');
-  assertContains(loss.text, 'Teaching / sensitivity controls for simulator constants');
-  assertContains(loss.text, 'not HOBS paper-backed parameter ranges');
+  assertContains(loss.markup, 'data-testid="loss-sensitivity-controls"');
+  assertContains(loss.text, 'Advanced sensitivity controls for simulator constants');
 }
 
 function assertSourceDoesNotKeepOldAuditSurface(): void {
@@ -155,7 +154,7 @@ function run(): void {
       ],
       preserved: [
         'G^R remains discoverable as a separate Receiver Gain control',
-        'path-loss Research Override caveat remains visible in the Loss control group',
+        'path-loss sensitivity controls remain visible in the Loss control group',
         'transmit-power effect and dynamic-power-control caveat remain visible without opening a details disclosure',
       ],
     },

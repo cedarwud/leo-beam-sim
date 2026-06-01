@@ -334,10 +334,10 @@ export function SignalTuningPanel({
               </LossControlSection>
 
               <LossControlSection
-                testId="loss-research-override"
-                title="TR 38.811 Research Override"
+                testId="loss-sensitivity-controls"
+                title="TR 38.811 Sensitivity"
                 tone="research"
-                subtitle="Teaching / sensitivity controls for simulator constants; not HOBS paper-backed parameter ranges. TR 38.811 NLoS sensitivity control; common loss terms are grouped above with their switches."
+                subtitle="Advanced sensitivity controls for simulator constants. TR 38.811 NLoS sensitivity control; common loss terms are grouped above with their switches."
               >
                 {isTr38811Formula && (
                   <NumericControl
@@ -349,8 +349,8 @@ export function SignalTuningPanel({
                     min={0}
                     max={40}
                     step={0.5}
-                    description="TR 38.811 NLoS clutter Research Override for seeded NLoS samples only."
-                    effect="Editable in the HOBS + TR 38.811 research profile; changing it affects only seeded NLoS samples. Seeded LoS samples do not change."
+                    description="TR 38.811 NLoS clutter sensitivity control for seeded NLoS samples only."
+                    effect="Editable in the TR 38.811 profile; changing it affects only seeded NLoS samples. Seeded LoS samples do not change."
                     accentColor={UI_TOKENS.color.semantic.fixed}
                     onChange={tr38811NlosClutterLossDb => update({ tr38811NlosClutterLossDb })}
                   />

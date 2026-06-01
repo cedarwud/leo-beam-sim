@@ -425,7 +425,7 @@ function assertPhase8DNlosClutterUx(): void {
     /aria-label="NLoS clutter loss \(dB\)" aria-disabled="false" min="0" max="40" step="0\.5"/,
     'hobs-tr38811 L_cl,NLoS must render as an editable 0-40 dB range',
   );
-  assertContains(trText, 'Editable in the HOBS + TR 38.811 research profile');
+  assertContains(trText, 'Editable in the TR 38.811 profile');
   assertContains(trText, 'Seeded LoS samples do not change');
   assertNotContains(trMarkup, 'data-testid="lcl-nlos-inactive-callout"');
 
@@ -464,9 +464,9 @@ function assertPlacementCopyAndStaleMarkup(): void {
   const tokenSource = readFileSync(new URL('../src/constants/uiTokens.ts', import.meta.url), 'utf8');
   assertContains(tuningSource, 'testId="loss-formula-controls"');
   assertContains(tuningSource, 'title="Path-loss stack"');
-  assertContains(tuningSource, 'testId="loss-research-override"');
-  assertContains(tuningSource, 'title="TR 38.811 Research Override"');
-  assertContains(tuningSource, 'not HOBS paper-backed parameter ranges');
+  assertContains(tuningSource, 'testId="loss-sensitivity-controls"');
+  assertContains(tuningSource, 'title="TR 38.811 Sensitivity"');
+  assertContains(tuningSource, 'Advanced sensitivity controls for simulator constants');
   assertContains(tuningSource, 'data-testid="sinr-overview-disclosure"');
   assertContains(tuningSource, 'data-testid="active-tab-formula-context"');
   assertContains(tuningSource, 'Formula / notes');
@@ -634,7 +634,7 @@ function run(): void {
       ],
       ui: [
         'Loss tab colocates each path-loss component switch with its slider/value control',
-        'TR 38.811 Research Override remains separated from the common loss-term stack',
+        'TR 38.811 sensitivity controls remain separated from the common loss-term stack',
         'hobs-tr38811 renders editable L_cl,NLoS control and legacy profiles hide L_cl,NLoS entirely',
         'formula evidence is marked stale between edit and recompute',
       ],
