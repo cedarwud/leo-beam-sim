@@ -162,25 +162,45 @@ Each satellite has 7 beams (paper Table I). Per slot, each satellite's beams are
 **Revised 2026-05-28 (v3, empirically grounded).** Earlier drafts conflated three distinct quantities. They are separated here:
 
 1. **Constellation pool size `P`** — the total number of satellites propagated in the orbit model. This is the *coverage substrate*. The SINR-experiment profile (`hobs-2024-candidate-rich`) already uses `P ≈ 2928` (5 Walker shells @ 550 km), proving the renderer + topocentric pipeline handle large pools (it filters to visible, then caps display at `MAX_DISPLAY_SATS = 12`).
-2. **Serving / candidate count `L`** — the number of satellites visible to the 200×90 km area (elevation > 15°) that the MDP actually considers per decision. **This is what the paper's "L satellites serving I users" means** — the *serving* set drawn from an implicit larger constellation, not a 4-satellite total. `L` is the selectable lever (`{4, 8, 12}`) for both the demo and the Phase III training sweep. MDP action-space and training cost scale with `L`, **not** with `P`.
-3. **Active beams per slot `K`** — held at the **paper capacity `K = 28`** (`< N = 37` cells) so the beam-hopping structure (28 active, 9 idle, cycling) is **always preserved regardless of `P` or `L`**. The 28 active beams are allocated across the top-`L` visible satellites by the cell scheduler.
+2. **Serving / candidate count `L`** — the number of satellites visible to the
+   200×90 km area (elevation > 15°) that the MDP actually considers per
+   decision. **This is what the paper's "L satellites serving I users" means**
+   — the *serving* set drawn from an implicit larger constellation, not a
+   4-satellite total. The active authority is
+   `docs/modqn-walker-serving-authority-sdd.md`: formal `L ∈ {2,3,4,5,6,7,8}`,
+   with `L=4` as the paper-faithful baseline and `L=8` as the paper-supported
+   upper sweep / rich demo setting. MDP action-space and training cost scale
+   with `L`, **not** with `P`.
+3. **Action catalog vs display cell cap** — each serving satellite still has
+   `B=7` beams, so the MODQN action catalog is `L × 7`. The Phase I cell
+   overlay may keep a display-only active-cell cap of 28 to preserve visible
+   28/37 hopping, but that cap is not the MODQN action-catalog truth for
+   `L != 4`.
 
-**Why all three are needed (empirical):** a natural Walker constellation sized at the old `L = 8` total gives only `coverage = 34.6%`, `inter-HO feasibility = 0%`, `mean visible = 0.35` over a fixed 40°N site (measured by `validate:phase-i:s7a-constellation-coverage`) — a single LEO satellite has ~10% visibility duty over a point, so few-satellite "natural" coverage is impossible. A realistic pool fixes it: `P ≈ 384` (24 planes × 16, 53°, 780 km) measures `coverage = 100%`, `inter-HO feasibility = 100%`, `mean visible ≈ 12`. With that pool the serving cap `L` selects the top-`L` visible satellites and `K = 28` keeps hopping:
+**Why all three are needed (empirical):** a natural Walker constellation sized at the old `L = 8` total gives only `coverage = 34.6%`, `inter-HO feasibility = 0%`, `mean visible = 0.35` over a fixed 40°N site (measured by `validate:phase-i:s7a-constellation-coverage`) — a single LEO satellite has ~10% visibility duty over a point, so few-satellite "natural" coverage is impossible. A realistic pool fixes it: `P ≈ 384` (24 planes × 16, 53°, 780 km) measures `coverage = 100%`, `inter-HO feasibility = 100%`, `mean visible ≈ 12`. With that pool the serving cap `L` selects the top-`L` visible satellites, while the Phase I display active-cell cap preserves a readable 28/37 hopping overlay:
 
 ```text
-pool P ≈ 384  (coverage substrate; ~12 sats visible to the area at any time)
-serving L ∈ {4, 8, 12}  (top-L visible by elevation; MDP candidate set; selectable)
-active K = 28  (paper capacity, < 37 cells → 9 idle → hopping preserved)
-  → 28 active beams allocated across the L visible satellites
-  → L = 4: ~7 beams/sat (paper-like, sparse inter-HO)
-  → L = 12: ~2.3 beams/sat (dense inter-HO; cells reassign across more satellites)
+pool P ≈ 384  (coverage substrate; 10+ serving-visible sats over the validated 2h window)
+serving L ∈ {2,3,4,5,6,7,8}  (top-L visible by elevation; MDP candidate set)
+action catalog = L × 7
+display active-cell cap = 28  (Phase I cell-overlay presentation only)
+  → L = 4: 28 beam actions (paper-faithful baseline)
+  → L = 8: 56 beam actions (paper sweep max / rich demo)
 ```
 
-Inter-satellite handover richness scales with `L` (more candidate satellites a cell can hand to); the angle-aware-EE advantage scales with `L` (more `G_T(θ)` choices per decision). Hopping is independent of `L` because `K` is fixed at 28.
+Inter-satellite handover richness scales with `L` (more candidate satellites a
+cell can hand to); the angle-aware-EE advantage scales with `L` (more `G_T(θ)`
+choices per decision). The Phase I visual hopping cadence is independent of
+MODQN action truth because the 28-cell cap is display-only.
 
 Consumer (`leo-beam-sim`) consequences:
 - The profile carries a realistic pool (`P ≈ 384`, natural Walker, scripted center-pass removed).
-- `useCellSchedule` derives per-satellite visibility from **real satellite positions** (the rendered `viz.displaySats` carry real `latDeg`/`lonDeg`; altitude from `sceneGeometry.shellAltitudeKm`), takes the **top-`L` by elevation**, and calls the scheduler with an explicit **`maxActivePerSlot = 28`** so `K` stays 28 (hopping) no matter how many sats are visible. The synthetic all-visible mock of I-S4/I-S5a is retained only as the no-geo backward-compatible fallback for those slices' fixtures.
+- `useCellSchedule` derives per-satellite visibility from **real satellite
+  positions** (the rendered `viz.displaySats` carry real `latDeg`/`lonDeg`;
+  altitude from `sceneGeometry.shellAltitudeKm`), takes the **top-`L` by
+  elevation**, and may apply an explicit display-only active-cell cap for the
+  37-cell overlay. The synthetic all-visible mock of I-S4/I-S5a is retained
+  only as the no-geo backward-compatible fallback for those slices' fixtures.
 - Backend SNR stays nadir until Phase III; this is visibility/scheduling/rendering only.
 
 The beam pointing is determined by the scheduler's cell assignment, not by satellite-fixed offsets. As the satellite moves, the beam steers electronically (modeled via off-axis angle and slant range) to maintain pointing at its assigned cell.
@@ -232,7 +252,7 @@ The cell scheduler decides which 28 of 37 cells are served by which (satellite, 
 
 **Default scheduler (initial implementation):** round-robin per cell.
 
-- Each cell is served in rotation. With K = 28 active per slot and N = 37 cells, every cell is served `28/37 ≈ 0.76` of the time on average. Full coverage cycle is `lcm(37, 28) / 37 ≈ 28 slots` for a stable rotation.
+- Each cell is served in rotation. With the Phase I display active-cell cap at 28 and N = 37 cells, every cell is served `28/37 ≈ 0.76` of the time on average. Full coverage cycle is `lcm(37, 28) / 37 ≈ 28 slots` for a stable rotation.
 - Constraint: each satellite serves at most 7 cells per slot.
 - Constraint: cells served by satellite `l` must be visible (above 15° elevation) from `l` at the current slot.
 - Tie-breaking: deterministic by cell ID + slot index hash.
@@ -367,7 +387,18 @@ Confirmed 2026-05-28 with user: "只要對我的演算法有利，在學術研�
 - **UE speed**: paper 30 km/h. Considered raising to 60 km/h but quantified analysis shows scheduler-driven HO events dominate UE-mobility HO events by ~33-100x in Earth-fixed cells, so UE speed has negligible algorithm impact. Keep paper 30 km/h.
 - **Frequency reuse / SINR**: paper SNR (no interference). Switching to SINR adds complexity but does not directly leverage user's angle-aware EE algo. Keep paper SNR.
 - **Number of users `I` = 100**: paper Table I literal; keep. Sensitivity sweep over [40, 200] users is paper Table II convention.
-- **Number of satellites `L`**: ~~paper Table I literal `L = 4`; keep~~ **REVISED 2026-05-28 → `L` is an environment lever, not fixed at 4.** Rationale: 4 satellites cannot exhibit meaningful inter-satellite handover (they almost never share simultaneous visibility of the 200×90 km area), starving MODQN's `r2` handover objective and the φ1/φ2 intra/inter distinction in both demo and training. The paper's own Table II sweep covers `L ∈ [2, 8]`, so raising the baseline is paper-supported. Decision (see §4.2.1 for the full pool/L/K model): a realistic constellation **pool `P ≈ 384`** (24 planes × 16, inclination 53°, 780 km, natural Walker, scripted center-pass dropped) provides 100% coverage + 100% inter-HO feasibility (~12 sats visible to the area). The **serving count `L`** is the selectable lever — Phase I viz default `L = 8` with a demo control over `{4, 8, 12}` (top-`L` visible satellites by elevation); Phase III training **sweeps `L ∈ {4, 8, 12}`** and reports the angle-aware-EE advantage as a function of `L` (a stronger, more honest result than cherry-picking one `L`). `L = 12` is a deliberate, disclosed extension beyond the paper's `[2, 8]` sweep to enable dense inter-HO. The active-beam count is held at the paper capacity **`K = 28 < 37`** (hopping preserved) regardless of `P` or `L`; the 28 beams are allocated across the top-`L` visible satellites. Why this is fair, not rigging: every algorithm (baseline MODQN, angle-aware EE, W-HOBS arms, Multi-Catfish) re-trains on the identical environment at each `L` (§6.3); the angle-aware advantage must come from explicit `G_T(θ)` modeling verified per-objective, not from baseline capacity starvation.
+- **Number of satellites `L`**: ~~paper Table I literal `L = 4`; keep~~
+  **REVISED 2026-06-01 → `L` is the serving/candidate count, with formal
+  options `2..8`.** Rationale: the paper's own sensitivity sweep covers
+  `L ∈ [2, 8]`; `L=4` remains the paper-faithful baseline and `L=8` is the
+  paper-supported upper sweep / rich demo setting. A realistic constellation
+  **pool `P ≈ 384`** (24 planes × 16, inclination 53°, 780 km, natural Walker)
+  supplies the visibility substrate, but `P` is not the MODQN action dimension.
+  The MODQN action catalog is `L × 7`. Any 28-cell cap in Phase I is a
+  display-only scheduler cap for the 37-cell overlay and must not be described
+  as fixed MODQN action truth for every `L`. If a future stress experiment needs
+  `L=12`, it requires a separately labeled producer/training plan; it is not
+  part of the formal selector.
 - **Carrier frequency `fc` = 20 GHz, bandwidth `B` = 500 MHz, transmit power = 2 W, noise PSD = -174 dBm/Hz, MODQN network shape 100-50-50 tanh, optimizer Adam, learning rate 0.01, discount γ = 0.9, batch size 128, epsilon-greedy**: paper Table I + Section III literal. Keep — these define the MODQN algorithm baseline that we are comparing against.
 
 ## 6. Algorithm Leverage Analysis
@@ -459,7 +490,7 @@ Each phase ships its own validators. Phase I (viz mock) is the immediate target.
 | Validator | Purpose | Min assertions |
 |---|---|---|
 | `validate:phase-i:s1-cell-layout-geometry` | 37-cell hex packing math, deterministic centers, coverage of 200×90 km. | 25 |
-| `validate:phase-i:s2-cell-scheduler-determinism` | Round-robin scheduler stable across seeds, K=28 per slot, visibility constraint, no double-assignment. | 30 |
+| `validate:phase-i:s2-cell-scheduler-determinism` | Round-robin scheduler stable across seeds, display active-cell cap per slot, visibility constraint, no double-assignment. | 30 |
 | `validate:phase-i:s3-elliptical-footprint-projection` | Footprint long axis = r_cell / sin(ε), short axis = r_cell, ε bounds 15°-90°. | 22 |
 | `validate:phase-i:s4-hopping-animation` | Active cells change per slot, animation transitions, beam cones point at cell centers (not nadir). | 25 |
 | `validate:phase-i:s5-cell-transition-handover` | Intra-HO fires on same-sat beam reassignment of a cell; inter-HO fires on cross-sat cell reassignment. | 28 |

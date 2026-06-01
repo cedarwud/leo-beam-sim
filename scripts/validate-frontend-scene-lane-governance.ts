@@ -258,6 +258,8 @@ const replayTelemetrySource = readRepoFile('src/scene/modqn-replay-visuals/useRe
 const governanceDoc = readRepoFile('docs/frontend-render-governance.md');
 const laneSdd = readRepoFile('docs/frontend-mode-lane-separation-sdd.md');
 const handoverStorySdd = readRepoFile('docs/modqn-handover-story-layer-sdd.md');
+const realisticGeometrySdd = readRepoFile('docs/modqn-realistic-beam-geometry-cross-repo-sdd.md');
+const realisticGeometryProducerBrief = readRepoFile('docs/modqn-realistic-beam-geometry-phase-ii-producer-brief.md');
 const adr = readRepoFile('docs/decisions/ADR-001-scene-lane-render-boundary.md');
 const agentsDoc = readRepoFile('AGENTS.md');
 const claudeDoc = readRepoFile('CLAUDE.md');
@@ -268,6 +270,19 @@ assertContains(modqnServingCountSource, 'MODQN_PAPER_BASELINE_SERVING_COUNT = 4'
 assertContains(modqnServingCountSource, 'MODQN_PAPER_SWEEP_MAX_SERVING_COUNT = 8', 'MODQN serving-count model labels L=8 as sweep max');
 assertContains(modqnServingCountSource, 'MODQN_BEAMS_PER_SERVING_SATELLITE = 7', 'MODQN serving-count model keeps 7 beams per serving satellite');
 assertContains(modqnServingCountSource, 'return MODQN_PAPER_SWEEP_MAX_SERVING_COUNT', 'MODQN serving-count model migrates legacy L=12 to L=8');
+assertContains(realisticGeometrySdd, 'formal `L ∈ {2,3,4,5,6,7,8}`', 'Realistic geometry SDD defers to formal L=2..8 serving authority');
+assertContains(realisticGeometrySdd, 'display-only active-cell cap of 28', 'Realistic geometry SDD labels 28 as display-only cap');
+assertContains(realisticGeometrySdd, 'display active-cell cap preserves a readable 28/37 hopping overlay', 'Realistic geometry SDD keeps 28/37 hopping as display overlay wording');
+assertNotContains(realisticGeometrySdd, 'serving L ∈ {4, 8, 12}', 'Realistic geometry SDD must not keep stale L=12 active design');
+assertNotContains(realisticGeometrySdd, 'Phase III training **sweeps `L ∈ {4, 8, 12}`', 'Realistic geometry SDD must not keep stale L=12 training sweep');
+assertNotContains(realisticGeometrySdd, 'K = 28 keeps hopping', 'Realistic geometry SDD must not label 28-cell hopping as fixed action truth');
+assertNotContains(realisticGeometrySdd, 'With K = 28 active per slot', 'Realistic geometry SDD scheduler text must not label display cap as action truth');
+assertNotContains(realisticGeometrySdd, 'K=28 per slot', 'Realistic geometry SDD validator table must not label display cap as action truth');
+assertContains(realisticGeometryProducerBrief, '2026-06-01 serving-authority update', 'Producer brief carries serving-authority supersession warning');
+assertContains(realisticGeometryProducerBrief, 'Serving cap **L ∈ {2,3,4,5,6,7,8}**', 'Producer brief uses formal L=2..8 serving cap');
+assertContains(realisticGeometryProducerBrief, 'display-only cell-overlay cap', 'Producer brief keeps 28 cap display-only unless producer exports it');
+assertNotContains(realisticGeometryProducerBrief, 'Serving cap **L ∈ {4,8,12}**', 'Producer brief must not preserve stale formal L=12 selector');
+assertNotContains(realisticGeometryProducerBrief, 'sweep set {4,8,12}', 'Producer brief must not preserve stale L=12 sweep set');
 assertContains(topologyTabSource, 'MODQN_SERVING_COUNT_OPTIONS.map', 'TopologyTab renders formal MODQN serving-count options from shared model');
 assertContains(topologyTabSource, 'paper-faithful baseline', 'TopologyTab labels L=4 as baseline');
 assertContains(topologyTabSource, 'paper sweep max / rich demo', 'TopologyTab labels L=8 as paper sweep max / rich demo');
