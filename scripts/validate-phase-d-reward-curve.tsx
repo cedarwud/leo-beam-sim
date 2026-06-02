@@ -29,6 +29,14 @@ import {
   RewardCurvePanel,
   buildRewardCurveSeries,
 } from '../src/ui/modqn-training/RewardCurvePanel';
+import {
+  DASHBOARD_SERIES_CHANNEL_SPECS,
+  buildDashboardSeriesModel,
+  getDashboardSeriesChannelExpectedStatus,
+  type DashboardSeriesChannelKey,
+  type DashboardSeriesModel,
+} from '../src/showcase/dashboard/seriesModel';
+import { loadValidatorVisualShowcaseArtifact } from './visualShowcaseValidatorFixture';
 
 let passed = 0;
 let failed = 0;
@@ -63,6 +71,41 @@ function countExactStringLiteral(source: string, value: string): number {
 function arraysEqual(actual: readonly number[], expected: readonly number[]): boolean {
   return actual.length === expected.length
     && actual.every((value, index) => Object.is(value, expected[index]));
+}
+
+function channelProvenance(model: DashboardSeriesModel, key: DashboardSeriesChannelKey) {
+  return model[key].provenance;
+}
+
+function channelValueCount(model: DashboardSeriesModel, key: DashboardSeriesChannelKey): number {
+  switch (key) {
+    case 'rewardScalar':
+      return model.rewardScalar.primary.values.length + model.rewardScalar.timeline.values.length;
+    case 'rewardComponents':
+      return Object.values(model.rewardComponents.byComponent)
+        .reduce((sum, series) => sum + series.values.length, 0);
+    case 'objectiveWeights':
+      return Object.keys(model.objectiveWeights.values).length;
+    case 'selectedAction':
+      return model.selectedAction.actionIndex.values.length
+        + model.selectedAction.selectedAction.values.length
+        + model.selectedAction.timelineDecisions.length
+        + model.selectedAction.decisionFrames.length;
+    case 'actionScores':
+      return model.actionScores.dense.values.length + model.actionScores.decisionFrames.length;
+    case 'servingSatellite':
+      return model.servingSatellite.series.values.length;
+    case 'handover':
+      return model.handover.phase.values.length + model.handover.states.length + model.handover.events.length;
+    case 'sinr':
+      return model.sinr.primary.values.length + model.sinr.serving.values.length;
+    case 'throughput':
+      return model.throughput.series.values.length;
+    default: {
+      const exhaustive: never = key;
+      return exhaustive;
+    }
+  }
 }
 
 function extractBalancedTag(source: string, tagStart: string): string {
@@ -364,6 +407,65 @@ console.log('\n(h) MODQN branch placement regression');
     !liveSection.includes('<RewardCurvePanel'),
     'RewardCurvePanel is absent from the live/SINR status section',
   );
+}
+
+// ---------------------------------------------------------------------------
+// (i) Phase 1a S1 Plane-C dashboard series provenance
+// ---------------------------------------------------------------------------
+console.log('\n(i) Phase 1a S1 Plane-C dashboard series provenance');
+{
+  const { artifact, source } = loadValidatorVisualShowcaseArtifact();
+  const model = buildDashboardSeriesModel(artifact);
+
+  assert(model.plane === 'visual-showcase-v1', 'dashboard series model declares Plane C');
+  assert(
+    DASHBOARD_SERIES_CHANNEL_SPECS.length === 9,
+    'dashboard series model exposes the expected Phase 1a S1 channel set',
+  );
+
+  for (const spec of DASHBOARD_SERIES_CHANNEL_SPECS) {
+    const provenance = channelProvenance(model, spec.key);
+    assert(
+      provenance.plane === 'visual-showcase-v1',
+      `${spec.key} provenance plane is visual-showcase-v1`,
+    );
+    assert(
+      provenance.inventoryField === spec.inventoryField,
+      `${spec.key} provenance binds to ${spec.inventoryField}`,
+    );
+    assert(
+      provenance.status === getDashboardSeriesChannelExpectedStatus(spec.key),
+      `${spec.key} provenance status agrees with VISUAL_SHOWCASE_V1_COVERAGE`,
+      `${source.label} produced ${provenance.status}`,
+    );
+    if (provenance.status === 'source-gap') {
+      assert(
+        channelValueCount(model, spec.key) === 0,
+        `${spec.key} source-gap channel carries no values`,
+      );
+    }
+  }
+
+  for (const event of model.handover.events) {
+    assert(
+      event.type === 'handover' || event.type.startsWith('handover-'),
+      `handover channel event ${event.id} is handover-typed`,
+      `got ${event.type}`,
+    );
+  }
+
+  const nullModel = buildDashboardSeriesModel(null);
+  for (const spec of DASHBOARD_SERIES_CHANNEL_SPECS) {
+    const provenance = channelProvenance(nullModel, spec.key);
+    assert(
+      provenance.status === 'source-gap',
+      `${spec.key} null artifact resolves to source-gap`,
+    );
+    assert(
+      channelValueCount(nullModel, spec.key) === 0,
+      `${spec.key} null artifact source-gap carries no values`,
+    );
+  }
 }
 
 console.log(`\n[validate-phase-d-reward-curve] ${passed} passed, ${failed} failed`);
