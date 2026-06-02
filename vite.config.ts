@@ -92,14 +92,33 @@ function modqnBundleStaticServer(): Plugin {
         if (url === '/showcase-artifacts/visual-showcase-v1.json') {
           const filePath = '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
           fs.stat(filePath, (err, stat) => {
-            if (err || !stat.isFile()) {
-              res.statusCode = 404;
-              res.end('Showcase artifact not found');
+            if (!err && stat.isFile()) {
+              res.setHeader('Content-Type', 'application/json');
+              res.setHeader('Cache-Control', 'no-store');
+              res.setHeader('X-Showcase-Artifact-Source', 'producer-pinned');
+              fs.createReadStream(filePath).pipe(res);
               return;
             }
-            res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Cache-Control', 'no-store');
-            fs.createReadStream(filePath).pipe(res);
+            // The pinned producer artifact is absent in this checkout. Fall back
+            // to the repo-local synthetic validator fixture so `npm run dev` can
+            // still show the artifact-replay dashboard/flowchart. The synthetic
+            // artifact self-labels evidenceStatus=validator-only / claimBoundary
+            // "test fixture", so the ClaimBoundaryBanner renders it as NOT proof.
+            server
+              .ssrLoadModule('/scripts/visualShowcaseValidatorFixture.ts')
+              .then(mod => {
+                const { artifact } = (mod as {
+                  loadValidatorVisualShowcaseArtifact: () => { artifact: unknown };
+                }).loadValidatorVisualShowcaseArtifact();
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Cache-Control', 'no-store');
+                res.setHeader('X-Showcase-Artifact-Source', 'synthetic-fixture-fallback');
+                res.end(JSON.stringify(artifact));
+              })
+              .catch((fallbackError: unknown) => {
+                res.statusCode = 404;
+                res.end(`Showcase artifact not found; synthetic fallback failed: ${String(fallbackError)}`);
+              });
           });
           return;
         }

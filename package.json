@@ -126,6 +126,7 @@
     "validate:live-walker:handover-event-index-7200": "node --import tsx/esm scripts/validate-live-walker-handover-event-index-7200.ts",
     "validate:live-walker:handover-event-focus": "node --import tsx/esm scripts/validate-live-walker-handover-event-focus.tsx",
     "validate:live-walker:handover-event-focus:browser": "node --import tsx/esm scripts/validate-live-walker-handover-event-focus-browser.ts",
+    "validate:phase-d:dashboard:browser": "node --import tsx/esm scripts/validate-phase-d-dashboard-browser.ts",
     "validate:frontend:scene-lane-governance": "node --import tsx/esm scripts/validate-frontend-scene-lane-governance.ts",
     "validate:modqn:handover-story-layer": "node --import tsx/esm scripts/validate-modqn-handover-story-layer.ts",
     "validate:modqn:training-scene-source-gaps": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps.ts",
