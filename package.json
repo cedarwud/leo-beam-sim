@@ -115,6 +115,7 @@
     "validate:phase-c:ue-marker-size": "node --import tsx/esm scripts/validate-phase-c-ue-marker-size.tsx",
     "validate:phase-c:camera-preset": "node --import tsx/esm scripts/validate-phase-c-camera-preset.tsx",
     "validate:phase-c:cinematic-window": "node --import tsx/esm src/scene/cinematicReplayWindow.test.ts",
+    "validate:phase-c:director-pose": "node --import tsx/esm src/scene/directorFocusPose.test.ts",
     "validate:phase-e:sat-count-override": "node --import tsx/esm scripts/validate-phase-e-sat-count-override.tsx",
     "validate:phase-e:beam-count-override": "node --import tsx/esm scripts/validate-phase-e-beam-count-override.tsx",
     "validate:phase-f:multi-ue-positions": "node --import tsx/esm scripts/validate-phase-f-multi-ue-positions.tsx",

@@ -11,6 +11,7 @@ import {
   resolveSceneLaneRenderPlan,
   type SceneLaneRenderPlanInput,
 } from '../src/scene/sceneLaneRenderPlan';
+import { resolveDirectorFocusPose } from '../src/scene/directorFocusPose';
 import type { CameraPreset, DirectorFocusPhase } from '../src/scene/types';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -349,6 +350,73 @@ section('(k) DirectorControls SSR — per-kind source gating + inert disabled st
   check(
     /directorInterEnabled[\s\S]*?handoverRailEvents\.some\(event => event\.kind === 'inter'\)/.test(appSource),
     'App gates the inter button on a source-backed inter rail event',
+  );
+});
+
+// ----- D6a: pure Director focus-pose helper extraction + sat-pair framing -----
+
+section('(l) resolveDirectorFocusPose extracted to a pure, renderer-free module', () => {
+  const poseSource = source('src/scene/directorFocusPose.ts');
+  check(
+    /export function resolveDirectorFocusPose/.test(poseSource),
+    'directorFocusPose.ts exports resolveDirectorFocusPose',
+  );
+  check(
+    /export interface DirectorFocusFramingPose/.test(poseSource)
+    && poseSource.includes('fromSatWorldPos')
+    && poseSource.includes('toSatWorldPos'),
+    'DirectorFocusFramingPose carries fromSatWorldPos/toSatWorldPos',
+  );
+  check(
+    !/import .*react/i.test(poseSource) && !/@react-three/.test(poseSource),
+    'pure module imports no React / react-three-fiber (validator/test loadable)',
+  );
+
+  const mainSceneSource = source('src/scene/MainScene.tsx');
+  check(
+    mainSceneSource.includes("from './directorFocusPose'"),
+    'MainScene imports resolveDirectorFocusPose from the extracted module',
+  );
+  check(
+    !/function resolveDirectorFocusPose/.test(mainSceneSource),
+    'MainScene no longer defines resolveDirectorFocusPose inline (single source of truth)',
+  );
+});
+
+section('(m) Director focus pose: inter-HO frames the real source/target sat pair', () => {
+  const ue: [number, number, number] = [10, 0, 20];
+  const fromSat: [number, number, number] = [110, 400, 50];
+  const toSat: [number, number, number] = [-90, 420, -60];
+
+  const interFallback = resolveDirectorFocusPose(ue, 1, 'inter');
+  const interFramed = resolveDirectorFocusPose(ue, 1, 'inter', {
+    fromSatWorldPos: fromSat,
+    toSatWorldPos: toSat,
+  });
+  check(
+    !interFramed.position.equals(interFallback.position)
+    && !interFramed.target.equals(interFallback.target),
+    'inter pair framing produces a different pose than the legacy kind-only fallback',
+  );
+  const cx = (ue[0] + fromSat[0] + toSat[0]) / 3;
+  const cy = (ue[1] + fromSat[1] + toSat[1]) / 3;
+  const cz = (ue[2] + fromSat[2] + toSat[2]) / 3;
+  check(
+    Math.abs(interFramed.target.x - cx) < 1e-6
+    && Math.abs(interFramed.target.y - cy) < 1e-6
+    && Math.abs(interFramed.target.z - cz) < 1e-6,
+    'inter pair framing retargets to the {UE, fromSat, toSat} centroid',
+  );
+
+  const intraFramed = resolveDirectorFocusPose(ue, 1, 'intra', {
+    fromSatWorldPos: fromSat,
+    toSatWorldPos: toSat,
+  });
+  const intraFallback = resolveDirectorFocusPose(ue, 1, 'intra');
+  check(
+    intraFramed.position.equals(intraFallback.position)
+    && intraFramed.target.equals(intraFallback.target),
+    'intra-HO ignores sat-pair framing by design (single-satellite beam switch)',
   );
 });
 
