@@ -73,10 +73,14 @@ export const SIM_DURATION_SEC = 7200;
 export const SIM_STEP_SEC = 20;
 export const MAX_STEERING_EXTRA_RINGS = 3;
 export const RECENT_HO_LINGER_SEC = 5;
+// Showcase Master SDD v2 §8 requires secondary-UE recompute to be decoupled
+// from render FPS; §4 fixes the live sampling cadence at 10-15 Hz.
+export const SECONDARY_UE_RECOMPUTE_HZ = 12;
 // Deprecated: kept for backward compatibility with event records only.
 export const INTRA_HANDOVER_ARROW_SEC = 2.4;
 const HANDOVER_VISUAL_LATCH_WALLCLOCK_MS = 6000;
 const EARTH_KM_PER_DEG = 111.32;
+const SECONDARY_RECOMPUTE_EPSILON_SEC = 1e-12;
 
 export interface RuntimeRecentHoState {
   sourceSatId: string;
@@ -101,6 +105,16 @@ export interface InterHandoverVizLatch {
   wallClockExpiresMs: number;
 }
 
+export type SecondaryServingSnapshot = Pick<
+  RuntimePerUeSinrPosition,
+  | 'sinrDb'
+  | 'servingSatId'
+  | 'servingBeamId'
+  | 'pendingTargetSatId'
+  | 'pendingTargetBeamId'
+  | 'triggerProgressSec'
+>;
+
 export interface RuntimeFrameStepState {
   simTimeSec: number;
   recentHo: RuntimeRecentHoState | null;
@@ -109,6 +123,8 @@ export interface RuntimeFrameStepState {
   interHandoverEvent: InterHandoverEvent | null;
   interHandoverVizLatch: InterHandoverVizLatch | null;
   beamPowerControlRuntime: BeamPowerControlRuntime;
+  secondaryRecomputeAccumulatorSec: number;
+  secondaryServingCache: SecondaryServingSnapshot[] | null;
 }
 
 interface LinkContext {
@@ -152,6 +168,7 @@ export interface RuntimeFrameStepOutput {
   frame: SimFrame;
   previousSimTimeSec: number;
   didLoopWrap: boolean;
+  secondaryRecomputedThisFrame: boolean;
 }
 
 export function createBeamLayoutsByShellId(profile: Profile): Map<string, ShellBeamLayout> {
@@ -197,6 +214,8 @@ export function createRuntimeFrameStepState(simTimeSec: number): RuntimeFrameSte
     interHandoverEvent: null,
     interHandoverVizLatch: null,
     beamPowerControlRuntime: createEmptyBeamPowerControlRuntime(),
+    secondaryRecomputeAccumulatorSec: 0,
+    secondaryServingCache: null,
   };
 }
 
@@ -461,6 +480,45 @@ export function stepSecondaryUeHandovers(
   return stepSecondaryUeHandoversImpl(params);
 }
 
+export function shouldRecomputeSecondary(
+  accumulatorSec: number,
+  cacheValid: boolean,
+  hz = SECONDARY_UE_RECOMPUTE_HZ,
+): boolean {
+  if (!cacheValid) return true;
+  const safeHz = Number.isFinite(hz) && hz > 0 ? hz : SECONDARY_UE_RECOMPUTE_HZ;
+  return accumulatorSec + SECONDARY_RECOMPUTE_EPSILON_SEC >= 1 / safeHz;
+}
+
+function snapshotSecondaryServing(
+  perUePositions: readonly RuntimePerUeSinrPosition[],
+): SecondaryServingSnapshot[] {
+  return perUePositions.slice(1).map(position => ({
+    sinrDb: position.sinrDb,
+    servingSatId: position.servingSatId,
+    servingBeamId: position.servingBeamId,
+    pendingTargetSatId: position.pendingTargetSatId,
+    pendingTargetBeamId: position.pendingTargetBeamId,
+    triggerProgressSec: position.triggerProgressSec,
+  }));
+}
+
+function applySecondaryServingCache(
+  perUePositions: RuntimePerUeSinrPosition[],
+  cache: readonly SecondaryServingSnapshot[],
+): void {
+  for (let i = 1; i < perUePositions.length; i += 1) {
+    const cached = cache[i - 1];
+    if (!cached) continue;
+    perUePositions[i].sinrDb = cached.sinrDb;
+    perUePositions[i].servingSatId = cached.servingSatId;
+    perUePositions[i].servingBeamId = cached.servingBeamId;
+    perUePositions[i].pendingTargetSatId = cached.pendingTargetSatId;
+    perUePositions[i].pendingTargetBeamId = cached.pendingTargetBeamId;
+    perUePositions[i].triggerProgressSec = cached.triggerProgressSec;
+  }
+}
+
 export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStepOutput {
   const {
     profile,
@@ -509,6 +567,8 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     state.interHandoverEvent = null;
     state.interHandoverVizLatch = null;
     state.beamPowerControlRuntime = createEmptyBeamPowerControlRuntime();
+    state.secondaryRecomputeAccumulatorSec = 0;
+    state.secondaryServingCache = null;
   }
 
   const nowWallClockMs = typeof performance === 'undefined' ? Date.now() : performance.now();
@@ -771,32 +831,62 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   perUePositions[0].pendingTargetBeamId = hoManager.state.pendingTarget?.beamId ?? null;
   perUePositions[0].triggerProgressSec = hoManager.state.pendingTarget ? hoManager.state.triggerTimeSec : 0;
 
-  if (secondaryHoManagers.length > 0) {
-    stepSecondaryUeHandovers({
-      perUePositions,
-      secondaryHoManagers,
-      primaryLatDeg: ueObserver.latDeg,
-      primaryLonDeg: ueObserver.lonDeg,
-      primaryEastKm: perUePositions[0].eastKm,
-      primaryNorthKm: perUePositions[0].northKm,
-      snapshots: postDecisionContext.snapshots,
-      linkBudgetOptions: postDecisionContext.linkBudgetOptions,
-      dtSec: paused ? 0 : deltaSec * speed,
-      simTimeMs: replay.epochUtcMs + state.simTimeSec * 1000,
-    });
+  let secondaryRecomputedThisFrame = false;
+  const secondaryUeCount = Math.max(0, perUePositions.length - 1);
+  if (secondaryUeCount === 0) {
+    state.secondaryRecomputeAccumulatorSec = 0;
+    state.secondaryServingCache = null;
   } else {
-    fillPerUeServingSinr({
-      perUePositions,
-      primaryServingSinrDb,
-      primaryServingSatId: hoManager.state.satId,
-      primaryServingBeamId: hoManager.state.beamId,
-      primaryLatDeg: ueObserver.latDeg,
-      primaryLonDeg: ueObserver.lonDeg,
-      primaryEastKm: perUePositions[0].eastKm,
-      primaryNorthKm: perUePositions[0].northKm,
-      snapshots: postDecisionContext.snapshots,
-      linkBudgetOptions: postDecisionContext.linkBudgetOptions,
-    });
+    // Phase 3 S1 CPU gate invariants:
+    // - primary UE index 0 is recomputed every frame above and is untouched here.
+    // - secondary managers receive accumulated sim-dt on recompute, so timer dt is sampled, not dropped.
+    // - skipped frames copy the last real serving sample only; no interpolation or fabricated serving truth.
+    state.secondaryRecomputeAccumulatorSec += paused ? 0 : deltaSec * speed;
+    const cacheValid =
+      state.secondaryServingCache !== null
+      && state.secondaryServingCache.length === secondaryUeCount;
+    const recomputeSecondary = shouldRecomputeSecondary(
+      state.secondaryRecomputeAccumulatorSec,
+      cacheValid,
+    );
+
+    if (recomputeSecondary) {
+      const accumulatedDtSec = paused ? 0 : state.secondaryRecomputeAccumulatorSec;
+      if (secondaryHoManagers.length > 0) {
+        stepSecondaryUeHandovers({
+          perUePositions,
+          secondaryHoManagers,
+          primaryLatDeg: ueObserver.latDeg,
+          primaryLonDeg: ueObserver.lonDeg,
+          primaryEastKm: perUePositions[0].eastKm,
+          primaryNorthKm: perUePositions[0].northKm,
+          snapshots: postDecisionContext.snapshots,
+          linkBudgetOptions: postDecisionContext.linkBudgetOptions,
+          dtSec: accumulatedDtSec,
+          simTimeMs: replay.epochUtcMs + state.simTimeSec * 1000,
+        });
+      } else {
+        fillPerUeServingSinr({
+          perUePositions,
+          primaryServingSinrDb,
+          primaryServingSatId: hoManager.state.satId,
+          primaryServingBeamId: hoManager.state.beamId,
+          primaryLatDeg: ueObserver.latDeg,
+          primaryLonDeg: ueObserver.lonDeg,
+          primaryEastKm: perUePositions[0].eastKm,
+          primaryNorthKm: perUePositions[0].northKm,
+          snapshots: postDecisionContext.snapshots,
+          linkBudgetOptions: postDecisionContext.linkBudgetOptions,
+        });
+      }
+      state.secondaryServingCache = snapshotSecondaryServing(perUePositions);
+      // Reset to zero rather than carrying a fractional remainder: the full
+      // accumulated dt has just been paid into secondary managers.
+      state.secondaryRecomputeAccumulatorSec = 0;
+      secondaryRecomputedThisFrame = true;
+    } else if (state.secondaryServingCache) {
+      applySecondaryServingCache(perUePositions, state.secondaryServingCache);
+    }
   }
 
   const pendingTargetSinrDb = hoManager.getTrackedSinrDb(
@@ -821,6 +911,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   return {
     previousSimTimeSec,
     didLoopWrap,
+    secondaryRecomputedThisFrame,
     frame: {
       satellites: visibleSats,
       linkSamples: postDecisionContext.linkSamples,

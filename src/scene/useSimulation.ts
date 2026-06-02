@@ -390,6 +390,15 @@ export function useSimulation(
 
   useEffect(() => {
     resetMobilityStates();
+    // Phase 3 S1: same-count distribution/mobility changes regenerate UE
+    // positions but reuse this RuntimeFrameStepState (we keep sim-time + HO
+    // continuity). The secondary serving cache is keyed only by UE count, so
+    // without this it would hold serving/SINR computed for the OLD positions
+    // and (while paused, accumulator frozen) apply them to the NEW positions
+    // indefinitely. Invalidate it so the next frame recomputes against the
+    // regenerated positions.
+    runtimeStateRef.current.secondaryServingCache = null;
+    runtimeStateRef.current.secondaryRecomputeAccumulatorSec = 0;
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
   }, [
