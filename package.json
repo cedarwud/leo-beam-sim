@@ -12,6 +12,7 @@
     "validate:phase1a:recent-ho-ui": "node --import tsx/esm scripts/validate-phase1a-recent-ho-ui.tsx",
     "validate:phase2d:forced-role-state-visuals": "node --import tsx/esm scripts/validate-phase2d-forced-role-state-visuals.ts",
     "validate:phase-3:cpu-budget": "node --import tsx/esm scripts/validate-phase-3-cpu-budget.tsx",
+    "validate:phase-3:beam-load": "node --import tsx/esm src/scene/beamLoadContention.test.ts",
     "validate:phase4b:receiver-gain": "node --import tsx/esm scripts/validate-phase4b-receiver-gain.ts",
     "validate:phase5b:diagnostics-dpc-status": "node --import tsx/esm scripts/validate-phase5b-diagnostics-dpc-status.tsx",
     "validate:phase6b:handover-policy-controls": "node --import tsx/esm scripts/validate-phase6b-handover-policy-controls.tsx",
