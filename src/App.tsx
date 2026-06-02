@@ -673,6 +673,7 @@ export function App() {
     beamCalloutsEnabled,
     effectiveCinematicMode,
     cameraCommand: camera.cameraCommand,
+    directorFocusCommand: camera.directorFocusCommand,
     viewport,
     sceneTopology,
     selectedTrainingEnvAxes,
@@ -682,6 +683,7 @@ export function App() {
     beamDensityOverride,
     beamCalloutsEnabled,
     camera.cameraCommand,
+    camera.directorFocusCommand,
     demoStartOffset,
     effectiveProfile,
     effectiveCinematicMode,
@@ -751,7 +753,7 @@ export function App() {
     omegaDisplayApplyVersion,
   ]);
   const [staleFormulaEvidenceKey, setStaleFormulaEvidenceKey] = useState<string | null>(null);
-  const playback = usePlaybackControls(simState);
+  const playback = usePlaybackControls(simState, camera.directorFocusActive);
 
   const handleSimUpdate = useCallback((state: SimState) => {
     setSimState(state);
@@ -1410,13 +1412,22 @@ export function App() {
     timelineRailDescriptor.timeline.axisKind,
   ]);
 
-  const handleHandoverRailSeek = useCallback((targetSec: number) => {
-    if (
+  const directorFocusEnabled = useMemo(
+    () =>
       sceneSource === 'live-sim'
       && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
       && timelineRailDescriptor.rail.sourceOwner === 'live-walker'
-      && timelineRailDescriptor.rail.horizonKind === 'live-walker-window'
-    ) {
+      && timelineRailDescriptor.rail.horizonKind === 'live-walker-window',
+    [
+      sceneSource,
+      sceneLane,
+      timelineRailDescriptor.rail.sourceOwner,
+      timelineRailDescriptor.rail.horizonKind,
+    ],
+  );
+
+  const handleHandoverRailSeek = useCallback((targetSec: number) => {
+    if (directorFocusEnabled) {
       const sourceTarget = clampTimelineTime(targetSec, timelineRailDescriptor.rail.durationSec);
       setLiveTimelineSeekRequest({
         targetSec: sourceTarget,
@@ -1431,15 +1442,16 @@ export function App() {
     }
     handleTimelineSeek(targetSec);
   }, [
+    directorFocusEnabled,
     handleTimelineSeek,
     liveTimelineWindowStartSec,
-    sceneLane,
-    sceneSource,
     timelineDurationSec,
     timelineRailDescriptor.rail.durationSec,
-    timelineRailDescriptor.rail.horizonKind,
-    timelineRailDescriptor.rail.sourceOwner,
   ]);
+
+  useEffect(() => {
+    if (!directorFocusEnabled) camera.exitDirectorFocus();
+  }, [directorFocusEnabled, camera]);
 
   const handleTimelineSpeedChange = useCallback((nextSpeed: TimelineSpeedPreset) => {
     playback.setSpeed(nextSpeed);
