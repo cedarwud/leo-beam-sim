@@ -5,6 +5,8 @@ import type { SimState } from '../../scene/types';
 
 export const MODQN_LIVE_CELL_PREVIEW_BANNER_TEXT =
   'preview · profile-derived cells · not baseline proof · SNR nadir · Phase III pending';
+export const MODQN_BEAM_LOAD_SOURCE_GAP_TEXT =
+  'Beam load (UEs/beam): shown · Queue/buffer depth: not modeled (full-buffer)';
 
 interface Props {
   readonly appMode: AppExperienceMode;
@@ -49,6 +51,10 @@ export function ModqnSceneHud({
   const simTimeSec = simState.simTimeSec ?? 0;
   const serviceReadout = simState.modqnCellServiceReadout;
   const showLivePreviewBanner = sceneSource === 'live-sim';
+  const beamLoadShown = (modqnVisualLayerPreset === 'explain-handover' || modqnVisualLayerPreset === 'debug')
+    && sceneSource === 'live-sim'
+    && simState.servingSatId !== null
+    && simState.servingBeamId !== null;
   const showServiceDiagnostics = modqnVisualLayerPreset === 'debug' && serviceReadout !== undefined;
   const showServiceAllocationSummary = modqnVisualLayerPreset === 'service-allocation' && serviceReadout !== undefined;
   const activeServiceSatelliteCount = serviceReadout?.satelliteSummaries
@@ -84,6 +90,8 @@ export function ModqnSceneHud({
       data-service-active-satellite-count={String(activeServiceSatelliteCount)}
       data-service-allocation-visible={showServiceAllocationSummary ? 'true' : 'false'}
       data-service-diagnostics-visible={showServiceDiagnostics ? 'true' : 'false'}
+      data-queue-depth-source="source-gap"
+      data-beam-load-shown={beamLoadShown ? '1' : '0'}
       aria-label="MODQN scene HUD"
     >
       <header className="leo-modqn-scene-hud__chip" data-truth-chip={tone}>
@@ -116,6 +124,12 @@ export function ModqnSceneHud({
           <dd data-testid="modqn-scene-hud-inter-ho">{interHoCount}</dd>
         </div>
       </dl>
+      <div
+        className="leo-modqn-scene-hud__source-gap"
+        data-testid="modqn-scene-hud-queue-depth-source-gap"
+      >
+        {MODQN_BEAM_LOAD_SOURCE_GAP_TEXT}
+      </div>
       {serviceReadout !== undefined && (
         <section
           className="leo-modqn-scene-hud__service"

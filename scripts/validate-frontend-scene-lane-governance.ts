@@ -249,6 +249,7 @@ const modqnVisualLayersSource = readRepoFile('src/scene/modqnVisualLayers.ts');
 const modqnServiceMapSource = readRepoFile('src/scene/modqnServiceMap.ts');
 const cellOverlaySource = readRepoFile('src/viz/CellOverlay.tsx');
 const cellBeamConesSource = readRepoFile('src/viz/CellBeamCones.tsx');
+const beamLoadCylinderSource = readRepoFile('src/viz/BeamLoadCylinder.tsx');
 const groundSceneSource = readRepoFile('src/viz/GroundScene.tsx');
 const modqnReplayCuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
 const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
@@ -865,6 +866,61 @@ assertContains(
   'MainScene passes visual preset beam cone scope to CellBeamCones',
 );
 assertContains(
+  mainSceneSource,
+  'const focusBeamLoad = beamLoadContentionEnabled',
+  'MainScene derives focused UE beam load from the existing contention model',
+);
+assertContains(
+  mainSceneSource,
+  "beamLoadContention.byUeId.get(focusedCellBeamConeUe?.id ?? '')",
+  'MainScene reuses the existing beamLoadContention by focused UE id',
+);
+assertContains(
+  mainSceneSource,
+  '<BeamLoadCylinder',
+  'MainScene mounts the focused beam-load cylinder',
+);
+assertContains(
+  mainSceneSource,
+  '{showCellOverlay && modqnVisualLayers.handoverStory && (',
+  'MainScene gates the focused beam-load cylinder to the explain/debug handover surface',
+);
+assertContains(
+  mainSceneSource,
+  'visible={(focusBeamLoad?.load ?? 0) > 0}',
+  'MainScene hides the focused beam-load cylinder when the focused UE has no serving-beam load',
+);
+assertContains(
+  beamLoadCylinderSource,
+  'visible={false}',
+  'BeamLoadCylinder keeps the pooled mesh hidden by default',
+);
+assertContains(
+  beamLoadCylinderSource,
+  'mesh.visible = shouldShow',
+  'BeamLoadCylinder toggles visibility on the persistent mesh',
+);
+assertContains(
+  beamLoadCylinderSource,
+  'mesh.scale.set(1, height, 1)',
+  'BeamLoadCylinder encodes beam load by cylinder height',
+);
+assertNotContains(
+  beamLoadCylinderSource,
+  'useFrame(',
+  'BeamLoadCylinder must not use per-frame work for height updates',
+);
+assertNotContains(
+  beamLoadCylinderSource,
+  'new THREE.Mesh',
+  'BeamLoadCylinder must not allocate meshes manually',
+);
+assertNotContains(
+  beamLoadCylinderSource,
+  '.dispose(',
+  'BeamLoadCylinder must not manually dispose pooled objects',
+);
+assertContains(
   sceneTelemetrySource,
   'el.dataset.handoverStoryLayer',
   'MainScene canvas reports handover story layer policy'
@@ -938,6 +994,21 @@ assertContains(
   modqnHudSource,
   'data-service-claim-kind',
   'MODQN HUD keeps service diagnostic claim kind visible',
+);
+assertContains(
+  modqnHudSource,
+  'data-queue-depth-source="source-gap"',
+  'MODQN HUD exposes the queue-depth source gap',
+);
+assertContains(
+  modqnHudSource,
+  'data-beam-load-shown={beamLoadShown ? \'1\' : \'0\'}',
+  'MODQN HUD reports whether the beam-load visual surface is active',
+);
+assertContains(
+  modqnHudSource,
+  'Queue/buffer depth: not modeled (full-buffer)',
+  'MODQN HUD visibly distinguishes beam load from missing queue depth',
 );
 assertContains(
   governanceDoc,

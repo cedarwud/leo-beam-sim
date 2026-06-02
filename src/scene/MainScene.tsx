@@ -62,6 +62,7 @@ import {
   resolveCellBeamConeRenderCount,
   resolveCellBeamConeSatelliteCount,
 } from '../viz/CellBeamCones';
+import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
 import { HandoverStoryLayer } from '../viz/HandoverStoryLayer';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import {
@@ -550,6 +551,12 @@ function SceneContent({
   );
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
   const focusedCellBeamConeUe = sceneFrame.ues[0] || null;
+  const focusBeamLoad = beamLoadContentionEnabled
+    ? beamLoadContention.byUeId.get(focusedCellBeamConeUe?.id ?? '')
+    : undefined;
+  const focusBeamLoadTint = focusedCellBeamConeUe?.servingSatelliteId
+    ? satelliteTintById.get(focusedCellBeamConeUe.servingSatelliteId)
+    : undefined;
   const modqnServiceMap = useMemo(
     () => showCellOverlay && modqnVisualLayers.serviceMap
       ? deriveModqnServiceMap({
@@ -963,6 +970,15 @@ function SceneContent({
           focusedUe={focusedCellBeamConeUe}
           beamConeScope={modqnVisualLayers.beamConeScope}
           appMode={runtime.appMode}
+        />
+      )}
+      {showCellOverlay && modqnVisualLayers.handoverStory && (
+        <BeamLoadCylinder
+          worldPos={focusedCellBeamConeUe?.worldPos}
+          normalizedLoad={focusBeamLoad?.normalizedLoad ?? 0}
+          load={focusBeamLoad?.load ?? 0}
+          tintColor={focusBeamLoadTint}
+          visible={(focusBeamLoad?.load ?? 0) > 0}
         />
       )}
       {showEarthFixedCells && <EarthFixedCells cells={paintedCells} showDebugLabels={showEarthFixedCellLabels} />}

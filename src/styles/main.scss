@@ -724,6 +724,18 @@ canvas {
   font-variant-numeric: tabular-nums;
 }
 
+.leo-modqn-scene-hud__source-gap {
+  padding: 4px 7px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 190, 69, 0.32);
+  background: rgba(58, 38, 6, 0.54);
+  color: rgba(255, 225, 154, 0.92);
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1.25;
+  white-space: normal;
+}
+
 .leo-modqn-scene-hud__service {
   display: grid;
   gap: 6px;
