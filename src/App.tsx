@@ -80,6 +80,7 @@ import {
 } from './sceneVisualScale';
 import { ControlBar } from './ui/ControlBar';
 import { DirectorControls } from './ui/DirectorControls';
+import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
 import {
   HandoverEventRail,
@@ -1492,6 +1493,8 @@ export function App() {
   const directorInterButtonEnabled = directorInterEnabled || directorCinematicInterEnabled;
 
   const [activeCinematicWindow, setActiveCinematicWindow] = useState<CinematicReplayWindow | null>(null);
+  const [cinematicFadePulse, setCinematicFadePulse] = useState<number | null>(null);
+  const pendingCinematicSeekRef = useRef<(() => void) | null>(null);
   // Previous replay cursor time, for cinematic auto-end loop-wrap detection.
   const prevCinematicTimeSecRef = useRef(0);
 
@@ -1506,15 +1509,22 @@ export function App() {
         timelineDurationSec,
       );
       if (!replayWindow) return;
-      if (playback.paused) playback.togglePause();
-      // Real reposition; the artifact scene frame is a render-time memo on
-      // currentTimeSec, so it recomputes in the same render the focus command is
-      // emitted (no stale-frame deferral needed, unlike the live lane).
-      replayController.seek(replayWindow.startSec);
-      setActiveCinematicWindow(replayWindow);
-      const framing = { fromSatId: replayWindow.fromSatId, toSatId: replayWindow.toSatId };
-      if (kind === 'intra') camera.requestIntraFocus(framing);
-      else camera.requestInterFocus(framing);
+      const runCinematicSeek = () => {
+        if (playback.paused) playback.togglePause();
+        // Real reposition; the artifact scene frame is a render-time memo on
+        // currentTimeSec, so it recomputes from the selected replay cursor.
+        replayController.seek(replayWindow.startSec);
+        setActiveCinematicWindow(replayWindow);
+        const framing = { fromSatId: replayWindow.fromSatId, toSatId: replayWindow.toSatId };
+        if (kind === 'intra') camera.requestIntraFocus(framing);
+        else camera.requestInterFocus(framing);
+      };
+      if (runtime.reducedMotion) {
+        runCinematicSeek();
+      } else {
+        pendingCinematicSeekRef.current = runCinematicSeek;
+        setCinematicFadePulse(prev => (prev === null ? 0 : prev + 1));
+      }
       return;
     }
     // Live lanes keep the shipped live-focus behavior (focus the running sim;
@@ -1533,8 +1543,15 @@ export function App() {
     directorCinematicEnabled,
     playback,
     replayController,
+    runtime.reducedMotion,
     timelineDurationSec,
   ]);
+
+  const handleCinematicSeekPeak = useCallback(() => {
+    const run = pendingCinematicSeekRef.current;
+    pendingCinematicSeekRef.current = null;
+    run?.();
+  }, []);
 
   const handleDirectorIntraFocus = useCallback(() => requestDirectorFocus('intra'), [requestDirectorFocus]);
   const handleDirectorInterFocus = useCallback(() => requestDirectorFocus('inter'), [requestDirectorFocus]);
@@ -1893,6 +1910,13 @@ export function App() {
             >
               <strong>{showcaseError ?? 'Loading visual-showcase-v1 artifact'}</strong>
             </div>
+          )}
+          {directorCinematicEnabled && (
+            <CinematicSeekFadeOverlay
+              pulseKey={cinematicFadePulse}
+              reducedMotion={runtime.reducedMotion}
+              onPeak={handleCinematicSeekPeak}
+            />
           )}
           <TimelineBar
             currentTimeSec={timelineCurrentTimeSec}

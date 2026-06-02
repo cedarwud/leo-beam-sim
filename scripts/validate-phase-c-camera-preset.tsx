@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
+import { CinematicSeekFadeOverlay } from '../src/ui/CinematicSeekFadeOverlay';
 import { ControlBar } from '../src/ui/ControlBar';
 import { DirectorControls } from '../src/ui/DirectorControls';
 import {
@@ -501,6 +502,71 @@ section('(n) D6b Director framing uses real rail satellite ids', () => {
   check(
     /if \(kind === 'intra'\) camera\.requestIntraFocus\(\);\s*else camera\.requestInterFocus\(\);/.test(appSource),
     'App live requestDirectorFocus passes NO framing (legacy pose, no future/stale-pair risk)',
+  );
+});
+
+section('(o) D3 cinematic seek fade overlay is artifact-lane-only presentation chrome', () => {
+  const markup = renderToString(
+    <CinematicSeekFadeOverlay
+      pulseKey={null}
+      reducedMotion={false}
+      onPeak={() => undefined}
+    />,
+  );
+  check(
+    markup.includes('data-testid="cinematic-seek-fade-overlay"'),
+    'SSR render contains cinematic-seek-fade-overlay testid',
+  );
+  check(
+    markup.includes('data-fade-phase="idle"'),
+    'SSR render starts idle',
+  );
+  check(
+    markup.includes('pointer-events:none'),
+    'SSR render keeps pointer-events none in the style',
+  );
+  check(
+    markup.includes('aria-hidden="true"'),
+    'SSR render is aria-hidden',
+  );
+
+  const overlaySource = source('src/ui/CinematicSeekFadeOverlay.tsx');
+  check(
+    !/from ['"]three['"]/.test(overlaySource) && !/@react-three/.test(overlaySource),
+    'CinematicSeekFadeOverlay imports no three / @react-three modules',
+  );
+  check(/export const PEAK_OPACITY = 0\.6;/.test(overlaySource), 'PEAK_OPACITY = 0.6');
+  check(/export const FADE_OUT_MS = 150;/.test(overlaySource), 'FADE_OUT_MS = 150');
+  check(/export const FADE_IN_MS = 150;/.test(overlaySource), 'FADE_IN_MS = 150');
+
+  const appSource = source('src/App.tsx');
+  check(
+    /const \[cinematicFadePulse, setCinematicFadePulse\] = useState<number \| null>\(null\);/.test(appSource),
+    'App declares cinematicFadePulse state',
+  );
+  check(
+    /const pendingCinematicSeekRef = useRef<\(\(\) => void\) \| null>\(null\);/.test(appSource),
+    'App declares pendingCinematicSeekRef',
+  );
+  check(
+    /const handleCinematicSeekPeak = useCallback\(\(\) => \{[\s\S]*?pendingCinematicSeekRef\.current = null;[\s\S]*?run\?\.\(\);[\s\S]*?\}, \[\]\);/.test(appSource),
+    'App declares handleCinematicSeekPeak and clears the pending closure before running it',
+  );
+  check(
+    /\{directorCinematicEnabled && \([\s\S]*?<CinematicSeekFadeOverlay[\s\S]*?pulseKey=\{cinematicFadePulse\}[\s\S]*?reducedMotion=\{runtime\.reducedMotion\}[\s\S]*?onPeak=\{handleCinematicSeekPeak\}/.test(appSource),
+    'App mounts CinematicSeekFadeOverlay gated on directorCinematicEnabled',
+  );
+  check(
+    /const runCinematicSeek = \(\) => \{[\s\S]*?replayController\.seek\(replayWindow\.startSec\);[\s\S]*?setActiveCinematicWindow\(replayWindow\);[\s\S]*?camera\.requestInterFocus\(framing\);[\s\S]*?\};/.test(appSource),
+    'App keeps the cinematic seek + camera work in one deferred closure',
+  );
+  check(
+    /if \(runtime\.reducedMotion\) \{\s*runCinematicSeek\(\);\s*\} else \{\s*pendingCinematicSeekRef\.current = runCinematicSeek;\s*setCinematicFadePulse\(prev => \(prev === null \? 0 : prev \+ 1\)\);\s*\}/.test(appSource),
+    'App runs synchronously for reduced motion and otherwise bumps the fade pulse after stashing the seek',
+  );
+  check(
+    /runtime\.reducedMotion,\s*timelineDurationSec,/.test(appSource),
+    'requestDirectorFocus deps include runtime.reducedMotion',
   );
 });
 
