@@ -108,6 +108,7 @@ import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
+import { AlgorithmDashboard } from './showcase/dashboard/AlgorithmDashboard';
 import type { VisualShowcaseArtifact } from './scene/visual-showcase-contract';
 import type { NormalizedSceneFrame } from './scene/NormalizedSceneFrame';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
@@ -1758,6 +1759,9 @@ export function App() {
                   <strong>{showcaseArtifact?.scenario.truthMode ?? 'artifact truth'}</strong>
                   <span>{showcaseArtifact?.provenance.validation.status ?? showcaseError ?? 'loading'}</span>
                 </div>
+                {sceneSource === 'artifact-replay' && (
+                  <AlgorithmDashboard artifact={showcaseArtifact} frameIndex={frameIndex} />
+                )}
               </section>
             ) : activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">

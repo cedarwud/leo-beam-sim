@@ -35,6 +35,10 @@ function assertNotContains(source: string, needle: string, label: string): void 
   assert.ok(!source.includes(needle), `${label} unexpectedly contains ${needle}`);
 }
 
+function countOccurrences(source: string, needle: string): number {
+  return source.split(needle).length - 1;
+}
+
 function tabKeys<T extends string>(tabs: readonly { readonly key: T }[]): T[] {
   return tabs.map(tab => tab.key);
 }
@@ -256,6 +260,7 @@ const panelStateSource = readRepoFile('src/scene/panelState.ts');
 const sceneLaneRenderPlanSource = readRepoFile('src/scene/sceneLaneRenderPlan.ts');
 const replayLayerSource = readRepoFile('src/scene/modqn-replay-visuals/index.tsx');
 const replayTelemetrySource = readRepoFile('src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx');
+const algorithmDashboardSource = readRepoFile('src/showcase/dashboard/AlgorithmDashboard.tsx');
 const governanceDoc = readRepoFile('docs/frontend-render-governance.md');
 const laneSdd = readRepoFile('docs/frontend-mode-lane-separation-sdd.md');
 const handoverStorySdd = readRepoFile('docs/modqn-handover-story-layer-sdd.md');
@@ -372,6 +377,75 @@ assertNotContains(
   "const handoverRailSourceLabel = sceneSource === 'artifact-replay'",
   'App must not derive handover rail source labels from free sceneSource strings',
 );
+
+assertContains(
+  appSource,
+  "from './showcase/dashboard/AlgorithmDashboard'",
+  'App imports the artifact-lane AlgorithmDashboard',
+);
+assert.equal(
+  countOccurrences(appSource, '<AlgorithmDashboard'),
+  1,
+  'AlgorithmDashboard is mounted exactly once',
+);
+{
+  const artifactTruthBranchStart = appSource.indexOf('data-testid="artifact-truth-sidebar"');
+  const artifactTruthBranchEnd = appSource.indexOf(
+    ") : activeRightSidebarTab === 'live' ? (",
+    artifactTruthBranchStart,
+  );
+  assert.ok(artifactTruthBranchStart >= 0, 'artifact truth sidebar branch exists');
+  assert.ok(artifactTruthBranchEnd > artifactTruthBranchStart, 'artifact truth sidebar branch has a live-branch boundary');
+
+  const artifactTruthBranch = appSource.slice(artifactTruthBranchStart, artifactTruthBranchEnd);
+  const dashboardMountIndex = artifactTruthBranch.indexOf('<AlgorithmDashboard');
+  const artifactReplayGuardIndex = artifactTruthBranch.lastIndexOf(
+    "sceneSource === 'artifact-replay'",
+    dashboardMountIndex,
+  );
+  assert.ok(dashboardMountIndex >= 0, 'AlgorithmDashboard mount is inside the artifact truth sidebar branch');
+  assert.ok(
+    artifactReplayGuardIndex >= 0 && artifactReplayGuardIndex < dashboardMountIndex,
+    'AlgorithmDashboard mount is gated by sceneSource === artifact-replay',
+  );
+  assertContains(
+    artifactTruthBranch,
+    'data-testid="artifact-truth-source-summary"',
+    'AlgorithmDashboard shares the artifact truth sidebar region',
+  );
+}
+
+assertContains(
+  algorithmDashboardSource,
+  'data-testid="algorithm-dashboard"',
+  'AlgorithmDashboard exposes root test id',
+);
+assertContains(
+  algorithmDashboardSource,
+  'buildDashboardSeriesModel(artifact)',
+  'AlgorithmDashboard consumes the Plane-C dashboard series model',
+);
+assertContains(
+  algorithmDashboardSource,
+  'provenance.status',
+  'AlgorithmDashboard renders INV-1 provenance status',
+);
+assertContains(
+  algorithmDashboardSource,
+  'data-testid="algorithm-dashboard-provenance-chip"',
+  'AlgorithmDashboard exposes provenance chips',
+);
+assertContains(
+  algorithmDashboardSource,
+  'source gap - not shown',
+  'AlgorithmDashboard fails closed on source gaps',
+);
+assertNotContains(algorithmDashboardSource, "from 'three", 'AlgorithmDashboard must not import three');
+assertNotContains(algorithmDashboardSource, 'from "three', 'AlgorithmDashboard must not import three');
+assertNotContains(algorithmDashboardSource, '@react-three/', 'AlgorithmDashboard must not import react-three');
+assertNotContains(algorithmDashboardSource, '../scene/', 'AlgorithmDashboard must not import scene modules');
+assertNotContains(algorithmDashboardSource, '../viz/', 'AlgorithmDashboard must not import viz modules');
+assertNotContains(algorithmDashboardSource, '<Canvas', 'AlgorithmDashboard must not mount Canvas');
 
 {
   const baseInput = {
