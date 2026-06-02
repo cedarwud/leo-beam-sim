@@ -1,4 +1,8 @@
-import { useMemo, type JSX } from 'react';
+import { memo, useEffect, useMemo, useRef, type JSX } from 'react';
+import {
+  findCrossedBoundaries,
+  resolvePulseEdgeIds,
+} from './flowchartAnimation';
 import { buildDashboardSeriesModel } from './seriesModel';
 import {
   FLOWCHART_EDGES,
@@ -13,12 +17,19 @@ import {
 
 type VisualShowcaseArtifact = NonNullable<Parameters<typeof buildDashboardSeriesModel>[0]>;
 
+export interface FlowchartTimeRef {
+  readonly current: number;
+}
+
 export interface AlgorithmFlowchartProps {
   readonly artifact: VisualShowcaseArtifact | null;
+  readonly currentTimeSecRef?: FlowchartTimeRef | null;
 }
 
 const NODE_WIDTH = 17;
 const NODE_HEIGHT = 9;
+const PULSE_MS = 600;
+const ACTIVE_EDGE_CLASS = 'leo-algorithm-flowchart__edge--active';
 
 interface Point {
   readonly x: number;
@@ -89,19 +100,79 @@ function bindingByEdgeId(
   return new Map(bindings.map(binding => [binding.edgeId, binding]));
 }
 
-export function AlgorithmFlowchart({
+function AlgorithmFlowchartComponent({
   artifact,
+  currentTimeSecRef = null,
 }: AlgorithmFlowchartProps): JSX.Element {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const edgeElementsRef = useRef<Map<string, SVGPathElement>>(new Map());
   const model = useMemo(() => buildDashboardSeriesModel(artifact), [artifact]);
   const bindings = useMemo(() => resolveFlowchartEdgeBindings(model), [model]);
   const bindingMap = useMemo(() => bindingByEdgeId(bindings), [bindings]);
+  const events = artifact?.events ?? model.handover.events;
+  const decisionFrames = model.selectedAction.decisionFrames;
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (artifact === null || currentTimeSecRef === null || svg === null) return undefined;
+
+    let frameId = 0;
+    let prevSec: number | null = null;
+    const activeUntilMs = new Map<string, number>();
+
+    const clearActiveEdges = () => {
+      activeUntilMs.clear();
+      for (const path of edgeElementsRef.current.values()) {
+        path.classList.remove(ACTIVE_EDGE_CLASS);
+      }
+    };
+
+    const tick = (nowMs: number) => {
+      const curSec = currentTimeSecRef.current;
+      if (!Number.isFinite(curSec)) {
+        prevSec = null;
+      } else if (prevSec === null) {
+        prevSec = curSec;
+      } else {
+        const crossed = findCrossedBoundaries(prevSec, curSec, events, decisionFrames);
+        const pulseIds = resolvePulseEdgeIds(crossed, bindings);
+        const activeExpiresAtMs = nowMs + PULSE_MS;
+
+        for (const edgeId of pulseIds) {
+          const path = edgeElementsRef.current.get(edgeId);
+          if (path === undefined) continue;
+          path.classList.add(ACTIVE_EDGE_CLASS);
+          activeUntilMs.set(edgeId, activeExpiresAtMs);
+        }
+
+        for (const [edgeId, expiresAtMs] of activeUntilMs) {
+          if (expiresAtMs > nowMs) continue;
+          const path = edgeElementsRef.current.get(edgeId);
+          path?.classList.remove(ACTIVE_EDGE_CLASS);
+          activeUntilMs.delete(edgeId);
+        }
+
+        prevSec = curSec;
+      }
+
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      clearActiveEdges();
+    };
+  }, [artifact, bindings, currentTimeSecRef, decisionFrames, events]);
 
   return (
     <svg
+      ref={svgRef}
       className="leo-algorithm-flowchart"
       data-testid="algorithm-flowchart"
+      data-pulse-driver="raf"
       role="img"
-      aria-label="Static MODQN decision pipeline"
+      aria-label="MODQN decision pipeline"
       viewBox="0 0 100 100"
       preserveAspectRatio="xMidYMid meet"
     >
@@ -130,6 +201,13 @@ export function AlgorithmFlowchart({
           return (
             <path
               key={edgeId}
+              ref={element => {
+                if (element === null) {
+                  edgeElementsRef.current.delete(edgeId);
+                } else {
+                  edgeElementsRef.current.set(edgeId, element);
+                }
+              }}
               className={
                 idle
                   ? 'leo-algorithm-flowchart__edge leo-algorithm-flowchart__edge--idle'
@@ -174,3 +252,5 @@ export function AlgorithmFlowchart({
     </svg>
   );
 }
+
+export const AlgorithmFlowchart = memo(AlgorithmFlowchartComponent);

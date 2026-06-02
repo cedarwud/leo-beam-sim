@@ -3095,6 +3095,25 @@ canvas {
   stroke-dasharray: 3 2.4;
 }
 
+.leo-algorithm-flowchart__edge--active {
+  animation: leo-algorithm-flowchart-edge-pulse 600ms ease-out 1;
+}
+
+@keyframes leo-algorithm-flowchart-edge-pulse {
+  0% {
+    stroke-opacity: 0.72;
+    stroke-width: 1.25;
+  }
+  38% {
+    stroke-opacity: 1;
+    stroke-width: 1.8;
+  }
+  100% {
+    stroke-opacity: 0.72;
+    stroke-width: 1.25;
+  }
+}
+
 .leo-algorithm-flowchart__arrow {
   fill: rgba(129, 246, 188, 0.72);
 }

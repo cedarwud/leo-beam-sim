@@ -1,6 +1,6 @@
 import { useMemo, type JSX, type ReactNode } from 'react';
 import { MiniRewardCurve } from '../../ui/modqn-controls/MiniRewardCurve';
-import { AlgorithmFlowchart } from './AlgorithmFlowchart';
+import { AlgorithmFlowchart, type FlowchartTimeRef } from './AlgorithmFlowchart';
 import {
   buildDashboardSeriesModel,
   type DashboardDecisionFrame,
@@ -14,6 +14,7 @@ type DashboardModel = ReturnType<typeof buildDashboardSeriesModel>;
 export interface AlgorithmDashboardProps {
   readonly artifact: VisualShowcaseArtifact | null;
   readonly frameIndex: number;
+  readonly currentTimeSecRef?: FlowchartTimeRef | null;
 }
 
 interface DashboardTileProps {
@@ -182,6 +183,7 @@ function currentFrameMarkerStyle(
 export function AlgorithmDashboard({
   artifact,
   frameIndex,
+  currentTimeSecRef = null,
 }: AlgorithmDashboardProps): JSX.Element {
   const model = useMemo(() => buildDashboardSeriesModel(artifact), [artifact]);
 
@@ -204,7 +206,7 @@ export function AlgorithmDashboard({
           <header className="leo-algorithm-dashboard__tile-header">
             <strong>Decision pipeline</strong>
           </header>
-          <AlgorithmFlowchart artifact={artifact} />
+          <AlgorithmFlowchart artifact={artifact} currentTimeSecRef={currentTimeSecRef} />
         </section>
         <p className="leo-algorithm-dashboard__empty">No artifact loaded.</p>
       </section>
@@ -247,7 +249,7 @@ export function AlgorithmDashboard({
         <header className="leo-algorithm-dashboard__tile-header">
           <strong>Decision pipeline</strong>
         </header>
-        <AlgorithmFlowchart artifact={artifact} />
+        <AlgorithmFlowchart artifact={artifact} currentTimeSecRef={currentTimeSecRef} />
       </section>
 
       <DashboardTile

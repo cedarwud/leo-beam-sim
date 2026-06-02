@@ -432,6 +432,7 @@ export function App() {
   const [liveTimelineSeekRequest, setLiveTimelineSeekRequest] =
     useState<LiveTimelineSeekRequest | null>(null);
 
+  const currentTimeSecRef = useRef(0);
   const initialRuntimeRef = useRef<InitialRuntimeState | null>(null);
   if (initialRuntimeRef.current === null) {
     initialRuntimeRef.current = readInitialRuntimeState();
@@ -1243,6 +1244,10 @@ export function App() {
     });
   }, [replayController]);
 
+  useEffect(() => {
+    currentTimeSecRef.current = currentTimeSec;
+  }, [currentTimeSec]);
+
   // Synchronize playback paused state to ShowcaseReplayController.
   useEffect(() => {
     if (!replayController) return;
@@ -1760,7 +1765,11 @@ export function App() {
                   <span>{showcaseArtifact?.provenance.validation.status ?? showcaseError ?? 'loading'}</span>
                 </div>
                 {sceneSource === 'artifact-replay' && (
-                  <AlgorithmDashboard artifact={showcaseArtifact} frameIndex={frameIndex} />
+                  <AlgorithmDashboard
+                    artifact={showcaseArtifact}
+                    frameIndex={frameIndex}
+                    currentTimeSecRef={currentTimeSecRef}
+                  />
                 )}
               </section>
             ) : activeRightSidebarTab === 'live' ? (
