@@ -20,7 +20,9 @@ export type { BeamTarget, VisualBeamTarget } from './beamTargetTypes';
 
 export type PresentationMode = 'research-default' | 'candidate-rich' | 'demo-readability';
 export type BeamDensity = 'event-only' | 'event-plus-1' | 'all';
-export type CinematicMode = 'off' | 'spotlight';
+export type CinematicMode = 'off' | 'spotlight' | 'director';
+export type DirectorFocusKind = 'intra' | 'inter';
+export type DirectorFocusPhase = 'idle' | 'acquiring' | 'focused' | 'restoring';
 export type CameraPreset = 'zenith' | 'oblique' | 'chase' | 'paper-faithful-closeup';
 export type UeDistributionScope = 'beam-footprint' | 'service-area';
 
@@ -50,6 +52,13 @@ export interface RuntimeCameraCommand {
   issuedAtMs: number;
 }
 
+export interface RuntimeDirectorFocusCommand {
+  kind: DirectorFocusKind;
+  /** Only the scene-relevant transitions are commanded; idle/focused are App-owned states. */
+  phase: 'acquiring' | 'restoring';
+  issuedAtMs: number;
+}
+
 export interface RuntimeConfig {
   appMode: AppExperienceMode;
   presentationMode: PresentationMode;
@@ -61,6 +70,7 @@ export interface RuntimeConfig {
   effectsEnabled: RuntimeEffectsEnabled;
   cinematicMode: CinematicMode;
   cameraCommand?: RuntimeCameraCommand;
+  directorFocusCommand?: RuntimeDirectorFocusCommand;
   reducedMotion: boolean;
   viewport: RuntimeViewport;
   ueCount?: number;

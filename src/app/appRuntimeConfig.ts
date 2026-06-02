@@ -36,6 +36,7 @@ export interface AppRuntimeConfigInput {
   readonly beamCalloutsEnabled: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
   readonly cameraCommand: RuntimeConfig['cameraCommand'];
+  readonly directorFocusCommand?: RuntimeConfig['directorFocusCommand'];
   readonly viewport: RuntimeConfig['viewport'];
   readonly sceneTopology: SceneTopologyState;
   readonly selectedTrainingEnvAxes: EnvAxes | undefined;
@@ -65,6 +66,7 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     beamCalloutsEnabled: input.beamCalloutsEnabled,
     cinematicMode: input.effectiveCinematicMode,
     cameraCommand: input.cameraCommand,
+    directorFocusCommand: input.directorFocusCommand,
     viewport: input.viewport,
     ueCount: input.appMode === 'sinr-experiment'
       ? input.sceneTopology.ueCount ?? undefined

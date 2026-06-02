@@ -48,6 +48,7 @@ export interface SceneLaneRenderPlan {
   readonly handoverStoryLayerPolicy: HandoverStoryLayerPolicy;
   readonly showProfileHandoverStoryLayer: boolean;
   readonly showCinematicSpotlight: boolean;
+  readonly showDirectorFocus: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
   readonly showReplayProofLayer: boolean;
   readonly showArtifactFpsCounter: boolean;
@@ -78,6 +79,8 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     && input.replayProofLayerRequested;
   const showLiveSceneEffects = showSinrLiveViewport;
   const showCinematicSpotlight = showSinrLiveViewport && input.cinematicMode === 'spotlight';
+  const showDirectorFocus =
+    (showSinrLiveViewport || showCellOverlay) && input.cinematicMode === 'director';
   const showLiveSatelliteMarkers = isLiveScene && (
     input.sceneLane === 'sinr-live'
     || input.sceneLane === 'modqn-live-cell-preview'
@@ -127,7 +130,13 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
               : 'disabled',
     showProfileHandoverStoryLayer,
     showCinematicSpotlight,
-    effectiveCinematicMode: showCinematicSpotlight ? input.cinematicMode : 'off',
+    showDirectorFocus,
+    // Replaces legacy single-lane anchor: effectiveCinematicMode: showCinematicSpotlight ? input.cinematicMode : 'off'
+    effectiveCinematicMode: showCinematicSpotlight
+      ? 'spotlight'
+      : showDirectorFocus
+        ? 'director'
+        : 'off',
     showReplayProofLayer,
     showArtifactFpsCounter: isArtifactReplay,
   };

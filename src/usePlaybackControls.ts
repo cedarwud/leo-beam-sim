@@ -3,6 +3,7 @@ import type { SimState } from './scene/types';
 
 const DEFAULT_BASE_SPEED = 5;
 const HANDOVER_FOCUS_SPEED = 1;
+const DIRECTOR_FOCUS_SPEED = 0.05;
 
 export interface PlaybackControls {
   readonly paused: boolean;
@@ -18,7 +19,10 @@ export interface PlaybackControls {
   readonly resetAutoSlowDismissed: () => void;
 }
 
-export function usePlaybackControls(simState: SimState): PlaybackControls {
+export function usePlaybackControls(
+  simState: SimState,
+  directorFocusActive = false,
+): PlaybackControls {
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(DEFAULT_BASE_SPEED);
   const [autoSlowEnabled, setAutoSlowEnabled] = useState(true);
@@ -27,7 +31,11 @@ export function usePlaybackControls(simState: SimState): PlaybackControls {
   const autoSlowActive =
     simState.pendingTargetSatId !== null || simState.intraHandoverEvent !== null;
   const autoSlowApplied = autoSlowEnabled && autoSlowActive && !autoSlowDismissed;
-  const effectiveSpeed = autoSlowApplied ? Math.min(speed, HANDOVER_FOCUS_SPEED) : speed;
+  const effectiveSpeed = directorFocusActive
+    ? Math.min(speed, DIRECTOR_FOCUS_SPEED)
+    : autoSlowApplied
+      ? Math.min(speed, HANDOVER_FOCUS_SPEED)
+      : speed;
 
   useEffect(() => {
     if (!autoSlowActive) setAutoSlowDismissed(false);
@@ -56,6 +64,7 @@ export function usePlaybackControls(simState: SimState): PlaybackControls {
       paused,
       speed,
       effectiveSpeed,
+      directorFocusActive,
       autoSlowActive,
       autoSlowApplied,
       autoSlowEnabled,
