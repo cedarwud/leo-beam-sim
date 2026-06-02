@@ -569,8 +569,8 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
 
   const ueObserver = resolveWaypointObserver(profile.ueMobility, state.simTimeSec, observer.latDeg, observer.lonDeg);
 
-  const ueEastKm = (ueObserver.lonDeg - observer.lonDeg) * 111.32 * Math.cos(observer.latDeg * Math.PI / 180);
-  const ueNorthKm = (ueObserver.latDeg - observer.latDeg) * 111.32;
+  const ueEastKm = (ueObserver.lonDeg - observer.lonDeg) * EARTH_KM_PER_DEG * Math.cos(observer.latDeg * Math.PI / 180);
+  const ueNorthKm = (ueObserver.latDeg - observer.latDeg) * EARTH_KM_PER_DEG;
   const primaryShell = profile.orbit.shells[0];
   const primaryGeometry = primaryShell
     ? computeBeamGeometry(primaryShell.altitudeKm, profile.antenna.beamwidth3dBRad)
