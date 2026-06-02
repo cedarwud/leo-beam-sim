@@ -90,6 +90,10 @@ import {
   EMPTY_MODQN_SERVICE_MAP,
 } from './modqnServiceMap';
 import {
+  deriveBeamLoadContention,
+  EMPTY_BEAM_LOAD_CONTENTION,
+} from './beamLoadContention';
+import {
   DEFAULT_MODQN_VISUAL_LAYER_PRESET,
   resolveModqnVisualLayers,
 } from './modqnVisualLayers';
@@ -533,6 +537,17 @@ function SceneContent({
   } = renderPlan;
   const modqnVisualLayerPreset = runtime.modqnVisualLayerPreset ?? DEFAULT_MODQN_VISUAL_LAYER_PRESET;
   const modqnVisualLayers = runtime.modqnVisualLayers ?? resolveModqnVisualLayers(modqnVisualLayerPreset);
+  const beamLoadContentionEnabled = showCellOverlay && modqnVisualLayers.serviceMap;
+  const beamLoadContention = useMemo(
+    () => beamLoadContentionEnabled
+      ? deriveBeamLoadContention(sim.perUePositions.map(position => ({
+        ueId: position.id,
+        servingSatId: position.servingSatId,
+        servingBeamId: position.servingBeamId,
+      })))
+      : EMPTY_BEAM_LOAD_CONTENTION,
+    [beamLoadContentionEnabled, sim.perUePositions],
+  );
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
   const focusedCellBeamConeUe = sceneFrame.ues[0] || null;
   const modqnServiceMap = useMemo(
@@ -898,11 +913,17 @@ function SceneContent({
           .filter((u) => u.worldPos !== undefined)
           .map((u) => {
             const service = modqnServiceMap.ueById.get(u.id);
+            // ID alignment verified: liveSimToScene preserves sim.perUePositions
+            // ids (`live-ue-${index}`), so contention lookup uses UE id, not index.
+            const contention = beamLoadContentionEnabled
+              ? beamLoadContention.byUeId.get(u.id)?.normalizedLoad ?? 0
+              : undefined;
             return {
               id: u.id,
               worldPos: u.worldPos as readonly [number, number, number],
               markerColor: service?.markerColor,
               markerEmissive: service?.markerEmissive,
+              contention,
             };
           })}
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
