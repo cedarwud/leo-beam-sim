@@ -137,7 +137,7 @@ function eventRowCount(event: HandoverRailEvent): number {
   return event.count && event.count > 0 ? event.count : 1;
 }
 
-function eventSourceTimeSec(event: HandoverRailEvent): number {
+export function eventSourceTimeSec(event: HandoverRailEvent): number {
   return isFiniteNumber(event.sourceTimeSec ?? NaN) ? event.sourceTimeSec as number : event.timeSec;
 }
 
