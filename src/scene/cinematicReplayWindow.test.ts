@@ -2,6 +2,7 @@
 
 import {
   resolveCinematicReplayWindow,
+  shouldEndCinematicReplay,
   type CinematicReplayWindow,
 } from './cinematicReplayWindow';
 import type { HandoverRailEvent, HandoverRailEventKind } from '../ui/HandoverEventRail';
@@ -51,6 +52,15 @@ function requireWindow(value: CinematicReplayWindow | null, label: string): Cine
   }
   return value;
 }
+
+const AUTO_END_WINDOW: CinematicReplayWindow = {
+  eventId: 'e',
+  kind: 'intra',
+  eventSec: 10,
+  startSec: 8,
+  endSec: 15,
+  windowDurationSec: 7,
+};
 
 console.log('cinematicReplayWindow.test');
 
@@ -162,6 +172,52 @@ check('opts override lead-in and lead-out defaults', () => {
   assert.equal(window.startSec, 7, 'startSec');
   assert.equal(window.endSec, 17, 'endSec');
   assert.equal(window.windowDurationSec, 10, 'windowDurationSec');
+});
+
+check('shouldEndCinematicReplay ignores null window', () => {
+  assert.equal(shouldEndCinematicReplay(null, 'focused', 98, 99), false, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay waits through acquiring even past end', () => {
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'acquiring', 15, 16), false, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay ignores restoring phase', () => {
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'restoring', 15, 16), false, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay ignores idle phase', () => {
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'idle', 15, 16), false, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay stays active before window end (forward play)', () => {
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'focused', 14, 14.999), false, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay ends exactly at window end', () => {
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'focused', 14, 15), true, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay ends after window end', () => {
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'focused', 14, 16), true, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay ignores non-finite current time', () => {
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'focused', 14, Number.NaN), false, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay ends on loop wrap / backward seek before window end', () => {
+  // currentTime jumped back well below the previous sample while focused (still < endSec).
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'focused', 14.9, 0.5), true, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay tolerates tiny backward jitter (not a wrap)', () => {
+  // diff smaller than CINEMATIC_WRAP_BACKSTEP_SEC and still before end → keep playing.
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'focused', 14.0005, 14), false, 'shouldEnd');
+});
+
+check('shouldEndCinematicReplay ignores wrap when not focused', () => {
+  assert.equal(shouldEndCinematicReplay(AUTO_END_WINDOW, 'acquiring', 14.9, 0.5), false, 'shouldEnd');
 });
 
 console.log(`[cinematicReplayWindow.test] PASS ${passed}/0`);

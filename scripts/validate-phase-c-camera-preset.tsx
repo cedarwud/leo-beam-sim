@@ -220,7 +220,7 @@ section('(g) CinematicMode director member source', () => {
   );
 });
 
-section('(h) Render plan: director is lane-gated and inert off live-walker lanes', () => {
+section('(h) Render plan: director is lane-gated to live-walker + artifact-replay lanes', () => {
   const sinrLive = resolveSceneLaneRenderPlan(
     directorRenderPlanInput({ sceneLane: 'sinr-live', sceneSource: 'live-sim' }),
   );
@@ -245,12 +245,32 @@ section('(h) Render plan: director is lane-gated and inert off live-walker lanes
     'director is INERT on modqn-replay-proof (effectiveCinematicMode resolves off)',
   );
 
+  // Cinematic replay lane: director IS effective on artifact-replay (the replay
+  // timeline is seekable; slow-mo = replay speed, camera = display-only UE focus,
+  // both governance-allowed for artifact-replay).
   const artifactReplay = resolveSceneLaneRenderPlan(
     directorRenderPlanInput({ sceneLane: 'artifact-replay', sceneSource: 'artifact-replay' }),
   );
   check(
-    artifactReplay.effectiveCinematicMode === 'off' && !artifactReplay.showDirectorFocus,
-    'director is INERT on artifact-replay (effectiveCinematicMode resolves off)',
+    artifactReplay.effectiveCinematicMode === 'director' && artifactReplay.showDirectorFocus,
+    'director (cinematic replay) is effective on the artifact-replay lane',
+  );
+
+  // Incompatible pair fails closed: artifact-replay lane with a live source.
+  const artifactReplayWrongSource = resolveSceneLaneRenderPlan(
+    directorRenderPlanInput({ sceneLane: 'artifact-replay', sceneSource: 'live-sim' }),
+  );
+  check(
+    artifactReplayWrongSource.effectiveCinematicMode === 'off' && !artifactReplayWrongSource.showDirectorFocus,
+    'director is INERT on artifact-replay lane with an incompatible live source',
+  );
+
+  const artifactReplayOff = resolveSceneLaneRenderPlan(
+    directorRenderPlanInput({ sceneLane: 'artifact-replay', sceneSource: 'artifact-replay', cinematicMode: 'off' }),
+  );
+  check(
+    artifactReplayOff.effectiveCinematicMode === 'off' && !artifactReplayOff.showDirectorFocus,
+    'cinematic off stays off on artifact-replay',
   );
 
   const spotlight = resolveSceneLaneRenderPlan(

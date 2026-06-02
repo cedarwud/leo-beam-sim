@@ -3,6 +3,7 @@
  * It fabricates no times, synthesizes no events, and owns no motion.
  */
 import { eventSourceTimeSec, type HandoverRailEvent, type HandoverRailEventKind } from '../ui/HandoverEventRail';
+import type { DirectorFocusPhase } from './types';
 
 export const CINEMATIC_LEAD_IN_SEC = 2;
 // Mirrors engine RECENT_HO_LINGER_SEC = 5: the post-handover settle/linger window.
@@ -55,4 +56,29 @@ export function resolveCinematicReplayWindow(
     endSec,
     windowDurationSec,
   };
+}
+
+// A backward jump in the absolute sim clock larger than this (while focused) is
+// treated as a timeline loop-wrap or an external seek, not normal slow playback.
+export const CINEMATIC_WRAP_BACKSTEP_SEC = 0.001;
+
+export function shouldEndCinematicReplay(
+  window: CinematicReplayWindow | null,
+  phase: DirectorFocusPhase,
+  prevTimeSec: number,
+  currentTimeSec: number,
+): boolean {
+  if (!window) return false;
+  // Wait until the camera settles; acquiring includes the seek/tween handoff.
+  if (phase !== 'focused') return false;
+  if (!Number.isFinite(currentTimeSec)) return false;
+  // Normal end: playback advanced to (or past) the window end.
+  if (currentTimeSec >= window.endSec) return true;
+  // Loop-wrap / backward-seek end: when the window end sits near maxTimeSec the live
+  // sim can wrap (or the user can seek) past the end without ever satisfying the
+  // forward check above; ending here avoids holding 0.05x slow-mo indefinitely.
+  if (Number.isFinite(prevTimeSec) && currentTimeSec < prevTimeSec - CINEMATIC_WRAP_BACKSTEP_SEC) {
+    return true;
+  }
+  return false;
 }

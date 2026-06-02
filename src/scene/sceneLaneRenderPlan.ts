@@ -79,8 +79,12 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     && input.replayProofLayerRequested;
   const showLiveSceneEffects = showSinrLiveViewport;
   const showCinematicSpotlight = showSinrLiveViewport && input.cinematicMode === 'spotlight';
+  // Director focus is allowed on the live walker lanes (live-focus) and on the
+  // artifact-replay lane (cinematic replay). Artifact-replay may own replay speed
+  // + display-only UE focus (frontend-render-governance.md), which is exactly what
+  // the cinematic camera tween + slow-mo are. Replay-proof stays inert (Rule#8).
   const showDirectorFocus =
-    (showSinrLiveViewport || showCellOverlay) && input.cinematicMode === 'director';
+    (showSinrLiveViewport || showCellOverlay || isArtifactReplay) && input.cinematicMode === 'director';
   const showLiveSatelliteMarkers = isLiveScene && (
     input.sceneLane === 'sinr-live'
     || input.sceneLane === 'modqn-live-cell-preview'

@@ -10,6 +10,11 @@ import type { BeamDensity, SimState } from './scene/types';
 import { createInitialSimState } from './scene/initialSimState';
 import { recommendDemoReplayStartOffsetSec } from './scene/replay-recommendation';
 import {
+  resolveCinematicReplayWindow,
+  shouldEndCinematicReplay,
+  type CinematicReplayWindow,
+} from './scene/cinematicReplayWindow';
+import {
   createModqnReplayPlaybackDisplayState,
   createModqnReplayPlaybackShellModel,
   createOmegaRescalarizedModqnReplayPlaybackDisplayState,
@@ -1441,6 +1446,98 @@ export function App() {
     [directorFocusEnabled, handoverRailEvents],
   );
 
+  // Cinematic replay = the artifact-replay-lane Director behavior. The replay
+  // timeline is genuinely seekable (ShowcaseReplayController.seek), unlike the
+  // forward-only live walker, so here a focus button can seek to a handover
+  // window, play it in slow motion, and auto-restore. Governance: artifact-replay
+  // may own replay speed + display-only UE focus + replay controls
+  // (frontend-render-governance.md "Artifact replay may keep ... replay speed ...
+  // and display-only UE focus/filter controls").
+  const directorCinematicEnabled = useMemo(
+    () =>
+      sceneSource === 'artifact-replay'
+      && replayController !== null
+      && !showcaseLoading
+      && showcaseError === null,
+    [sceneSource, replayController, showcaseLoading, showcaseError],
+  );
+  const directorCinematicIntraEnabled = useMemo(
+    () => directorCinematicEnabled && artifactHandoverRailEvents.some(event => event.kind === 'intra'),
+    [directorCinematicEnabled, artifactHandoverRailEvents],
+  );
+  const directorCinematicInterEnabled = useMemo(
+    () => directorCinematicEnabled && artifactHandoverRailEvents.some(event => event.kind === 'inter'),
+    [directorCinematicEnabled, artifactHandoverRailEvents],
+  );
+  // Each focus button is offered when EITHER the live lane (live-focus) or the
+  // artifact-replay lane (cinematic) can back that kind with a real event (Rule#8).
+  const directorIntraButtonEnabled = directorIntraEnabled || directorCinematicIntraEnabled;
+  const directorInterButtonEnabled = directorInterEnabled || directorCinematicInterEnabled;
+
+  const [activeCinematicWindow, setActiveCinematicWindow] = useState<CinematicReplayWindow | null>(null);
+  // Previous replay cursor time, for cinematic auto-end loop-wrap detection.
+  const prevCinematicTimeSecRef = useRef(0);
+
+  const requestDirectorFocus = useCallback((kind: 'intra' | 'inter') => {
+    if (directorCinematicEnabled && replayController) {
+      // Resolve on the artifact's absolute tSec axis (events carry event.tSec,
+      // currentTimeSecRef tracks the replay cursor in the same axis).
+      const replayWindow = resolveCinematicReplayWindow(
+        artifactHandoverRailEvents,
+        kind,
+        currentTimeSecRef.current,
+        timelineDurationSec,
+      );
+      if (!replayWindow) return;
+      if (playback.paused) playback.togglePause();
+      // Real reposition; the artifact scene frame is a render-time memo on
+      // currentTimeSec, so it recomputes in the same render the focus command is
+      // emitted (no stale-frame deferral needed, unlike the live lane).
+      replayController.seek(replayWindow.startSec);
+      setActiveCinematicWindow(replayWindow);
+      if (kind === 'intra') camera.requestIntraFocus();
+      else camera.requestInterFocus();
+      return;
+    }
+    // Live lanes keep the shipped live-focus behavior (focus the running sim;
+    // slow-mo via the same effectiveSpeed director tier).
+    if (kind === 'intra') camera.requestIntraFocus();
+    else camera.requestInterFocus();
+  }, [
+    artifactHandoverRailEvents,
+    camera,
+    directorCinematicEnabled,
+    playback,
+    replayController,
+    timelineDurationSec,
+  ]);
+
+  const handleDirectorIntraFocus = useCallback(() => requestDirectorFocus('intra'), [requestDirectorFocus]);
+  const handleDirectorInterFocus = useCallback(() => requestDirectorFocus('inter'), [requestDirectorFocus]);
+
+  // Cinematic auto-end: when the replay cursor reaches the window end (or wraps
+  // past it), restore. directorFocusActive then drops, effectiveSpeed returns to
+  // normal, and replay resumes its normal rate from there.
+  useEffect(() => {
+    const prevTimeSec = prevCinematicTimeSecRef.current;
+    const cinematicCurrentTimeSec = currentTimeSec;
+    prevCinematicTimeSecRef.current = cinematicCurrentTimeSec;
+    if (shouldEndCinematicReplay(
+      activeCinematicWindow,
+      camera.directorPhase,
+      prevTimeSec,
+      cinematicCurrentTimeSec,
+    )) {
+      camera.exitDirectorFocus();
+    }
+  }, [activeCinematicWindow, camera, camera.directorPhase, currentTimeSec]);
+
+  useEffect(() => {
+    if (camera.directorPhase === 'idle' && activeCinematicWindow !== null) {
+      setActiveCinematicWindow(null);
+    }
+  }, [activeCinematicWindow, camera.directorPhase]);
+
   const handleHandoverRailSeek = useCallback((targetSec: number) => {
     if (directorFocusEnabled) {
       const sourceTarget = clampTimelineTime(targetSec, timelineRailDescriptor.rail.durationSec);
@@ -1465,8 +1562,11 @@ export function App() {
   ]);
 
   useEffect(() => {
-    if (!directorFocusEnabled) camera.exitDirectorFocus();
-  }, [directorFocusEnabled, camera]);
+    if (!directorFocusEnabled && !directorCinematicEnabled) {
+      camera.exitDirectorFocus();
+      setActiveCinematicWindow(null);
+    }
+  }, [directorFocusEnabled, directorCinematicEnabled, camera]);
 
   useEffect(() => {
     if (camera.directorPhase === 'idle') return undefined;
@@ -1505,11 +1605,11 @@ export function App() {
         axisPlaybackRate={playback.effectiveSpeed}
       />
       <DirectorControls
-        intraEnabled={directorIntraEnabled}
-        interEnabled={directorInterEnabled}
+        intraEnabled={directorIntraButtonEnabled}
+        interEnabled={directorInterButtonEnabled}
         phase={camera.directorPhase}
-        onIntraFocus={camera.requestIntraFocus}
-        onInterFocus={camera.requestInterFocus}
+        onIntraFocus={handleDirectorIntraFocus}
+        onInterFocus={handleDirectorInterFocus}
         onExit={camera.exitDirectorFocus}
       />
     </>

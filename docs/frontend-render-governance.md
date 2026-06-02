@@ -217,3 +217,12 @@ Before changing scene rendering:
   Debug can additionally expose profile-derived cell schedule diagnostics in
   the HUD while keeping Baseline Faithful, Service Allocation, and Explain
   Handover clean.
+- Director focus is lane-gated by the render plan. On the live walker lanes
+  (`sinr-live`, `modqn-live-cell-preview`) it is "live focus": camera focus +
+  the single 0.05x slow-mo tier on the running sim. On `artifact-replay` it is
+  "cinematic replay": it seeks the replay to the next handover window, applies
+  the same 0.05x speed as replay playback rate, and auto-restores. Both are
+  display-only — camera focus and replay/playback speed, which artifact-replay
+  may own — and gate on real handover rail events of that kind (Rule#8). It
+  stays inert on `modqn-replay-proof` and on any source-incompatible lane.
+  Validator: `validate:phase-c:camera-preset`.

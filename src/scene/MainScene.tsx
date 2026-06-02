@@ -6,7 +6,7 @@
 // `HandoverToastOverlay`. The replay path will mount a parallel
 // `useReplayPlayback` hook in P3 that constructs NormalizedSceneFrame via
 // `showcaseArtifactToScene` instead.
-import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -182,6 +182,145 @@ function resolveDirectorFocusPose(
   return { position, target };
 }
 
+/**
+ * Self-contained Director camera focus FSM (acquire → hold → restore) over the
+ * shared OrbitControls camera. SceneContent keeps its own inline copy (entangled
+ * with the camera-preset tween + telemetry refs) for the live lanes; this hook is
+ * the camera half of the artifact-replay cinematic so ArtifactSceneContent —
+ * which has no preset tween machinery — can run the same focus/restore tween.
+ * (Future: unify SceneContent onto this hook.) Consumes a real handover focus
+ * command; inert unless effectiveCinematicMode === 'director' (Rule#8).
+ */
+function useDirectorCameraFocus(params: {
+  readonly controlsRef: MutableRefObject<OrbitControlsImpl | null>;
+  readonly sceneFrame: NormalizedSceneFrame;
+  readonly directorFocusCommand: RuntimeConfig['directorFocusCommand'];
+  readonly reducedMotion: boolean;
+  readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
+  readonly alpha: number;
+}): void {
+  const { controlsRef, sceneFrame, directorFocusCommand, reducedMotion, effectiveCinematicMode, alpha } = params;
+  const camera = useThree(state => state.camera);
+  const cameraTweenRef = useRef<CameraTweenState | null>(null);
+  const directorSnapshotRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+  const lastDirectorCommandAtRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    const command = directorFocusCommand;
+    if (!command || lastDirectorCommandAtRef.current === command.issuedAtMs) return;
+    // Inert on lanes the render plan did not mark as director.
+    if (effectiveCinematicMode !== 'director') {
+      lastDirectorCommandAtRef.current = command.issuedAtMs;
+      return;
+    }
+
+    const controls = controlsRef.current;
+    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+
+    if (command.phase === 'acquiring') {
+      const ueWorldPos = sceneFrame.ues[0]?.worldPos;
+      if (!ueWorldPos) {
+        lastDirectorCommandAtRef.current = command.issuedAtMs;
+        return;
+      }
+      lastDirectorCommandAtRef.current = command.issuedAtMs;
+      // Snapshot the pre-focus pose ONCE per cycle so restore returns to the
+      // original overview, not the focused pose.
+      if (directorSnapshotRef.current === null) {
+        directorSnapshotRef.current = {
+          position: camera.position.clone(),
+          target: controls?.target.clone() ?? new THREE.Vector3(),
+        };
+      }
+      if (controls) controls.enabled = false;
+
+      const pose = resolveDirectorFocusPose(ueWorldPos, alpha, command.kind);
+      if (reducedMotion) {
+        camera.position.copy(pose.position);
+        controls?.target.copy(pose.target);
+        controls?.update();
+        cameraTweenRef.current = null;
+      } else {
+        cameraTweenRef.current = {
+          preset: null,
+          kind: 'director-acquire',
+          startedAtMs: nowMs,
+          fromPosition: camera.position.clone(),
+          fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
+          toPosition: pose.position,
+          toTarget: pose.target,
+        };
+      }
+      return;
+    }
+
+    lastDirectorCommandAtRef.current = command.issuedAtMs;
+    const snapshot = directorSnapshotRef.current;
+    const toPosition = snapshot?.position.clone() ?? camera.position.clone();
+    const toTarget = snapshot?.target.clone() ?? (controls?.target.clone() ?? new THREE.Vector3());
+
+    if (reducedMotion) {
+      camera.position.copy(toPosition);
+      controls?.target.copy(toTarget);
+      if (controls) controls.enabled = true;
+      controls?.update();
+      directorSnapshotRef.current = null;
+      cameraTweenRef.current = null;
+    } else {
+      cameraTweenRef.current = {
+        preset: null,
+        kind: 'director-restore',
+        startedAtMs: nowMs,
+        fromPosition: camera.position.clone(),
+        fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
+        toPosition,
+        toTarget,
+      };
+    }
+  }, [camera, controlsRef, directorFocusCommand, reducedMotion, effectiveCinematicMode, sceneFrame.ues, alpha]);
+
+  // Force-restore if the lane stops being director mid-focus (inertness guarantee).
+  useEffect(() => {
+    if (effectiveCinematicMode === 'director') return;
+    if (directorSnapshotRef.current === null) return;
+    const controls = controlsRef.current;
+    if (controls) {
+      camera.position.copy(directorSnapshotRef.current.position);
+      controls.target.copy(directorSnapshotRef.current.target);
+      controls.enabled = true;
+      controls.update();
+    }
+    directorSnapshotRef.current = null;
+    cameraTweenRef.current = null;
+  }, [camera, controlsRef, effectiveCinematicMode]);
+
+  useFrame(() => {
+    const tween = cameraTweenRef.current;
+    if (!tween) return;
+    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const progress = Math.min(Math.max((nowMs - tween.startedAtMs) / CAMERA_TWEEN_DURATION_MS, 0), 1);
+    const eased = easeInOutCubic(progress);
+    const controls = controlsRef.current;
+
+    camera.position.lerpVectors(tween.fromPosition, tween.toPosition, eased);
+    if (controls) {
+      controls.target.lerpVectors(tween.fromTarget, tween.toTarget, eased);
+      controls.update();
+    }
+
+    if (progress >= 1) {
+      camera.position.copy(tween.toPosition);
+      controls?.target.copy(tween.toTarget);
+      controls?.update();
+      cameraTweenRef.current = null;
+      if (tween.kind === 'director-restore') {
+        if (controls) controls.enabled = true;
+        directorSnapshotRef.current = null;
+      }
+    }
+  });
+}
+
 function formatCameraVector(vector: THREE.Vector3): string {
   return [vector.x, vector.y, vector.z].map(value => value.toFixed(2)).join(',');
 }
@@ -220,6 +359,31 @@ function ArtifactSceneContent({
   const sceneConfig = useMemo(() => (
     runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
   ), [runtime.appMode]);
+  const alpha = sceneConfig.visualAlpha;
+  // Director cinematic on the artifact-replay lane: resolve effectiveCinematicMode
+  // through the same lane plan as the live path (single source of truth). Only
+  // effectiveCinematicMode is consumed here, so the live-only inputs use inert
+  // defaults (paused/recentHoActive/replayProofLayerRequested do not affect it).
+  const effectiveCinematicMode = resolveSceneLaneRenderPlan({
+    sceneLane,
+    sceneSource: sceneFrame.sceneSource,
+    beamCalloutsEnabled: runtime.beamCalloutsEnabled ?? false,
+    beamDensity: runtime.beamDensity,
+    cinematicMode: runtime.cinematicMode,
+    effectsEnabled: runtime.effectsEnabled,
+    paused: true,
+    reducedMotion: runtime.reducedMotion,
+    recentHoActive: false,
+    replayProofLayerRequested: false,
+  }).effectiveCinematicMode;
+  useDirectorCameraFocus({
+    controlsRef,
+    sceneFrame,
+    directorFocusCommand: runtime.directorFocusCommand,
+    reducedMotion: runtime.reducedMotion,
+    effectiveCinematicMode,
+    alpha,
+  });
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
   const visibleSatellites = useMemo(
     () => sceneFrame.satellites.filter(satellite => satellite.visible),
