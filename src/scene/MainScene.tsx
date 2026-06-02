@@ -15,6 +15,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { Profile } from '../profiles/types';
 import type {
   CameraPreset,
+  DirectorFocusKind,
   RuntimeConfig,
   SimState,
 } from './types';
@@ -158,9 +159,19 @@ function easeInOutCubic(value: number): number {
 function resolveDirectorFocusPose(
   ueWorldPos: readonly [number, number, number],
   alpha: number,
+  kind: DirectorFocusKind,
 ): { position: THREE.Vector3; target: THREE.Vector3 } {
   const target = new THREE.Vector3(ueWorldPos[0], ueWorldPos[1], ueWorldPos[2]);
-  const position = target.clone().add(new THREE.Vector3(0, 220 * alpha, 260 * alpha));
+  // Distinct shot per handover kind so the two focus buttons are not visually
+  // identical: intra-HO is a beam-level switch on one satellite → tight close-up;
+  // inter-HO is a satellite-to-satellite handover → pull up/back to bring the
+  // satellite context above the UE into frame. (Centering the specific
+  // source/target satellite pair is a future refinement; `kind` already drives
+  // a genuinely different camera pose here.)
+  const offset = kind === 'inter'
+    ? new THREE.Vector3(0, 430 * alpha, 520 * alpha)
+    : new THREE.Vector3(0, 220 * alpha, 260 * alpha);
+  const position = target.clone().add(offset);
   return { position, target };
 }
 
@@ -695,7 +706,7 @@ function SceneContent({
       }
       if (controls) controls.enabled = false;
 
-      const pose = resolveDirectorFocusPose(ueWorldPos, alpha);
+      const pose = resolveDirectorFocusPose(ueWorldPos, alpha, command.kind);
       if (runtime.reducedMotion) {
         camera.position.copy(pose.position);
         controls?.target.copy(pose.target);

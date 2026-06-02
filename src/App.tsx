@@ -74,6 +74,7 @@ import {
   type SceneVisualScaleState,
 } from './sceneVisualScale';
 import { ControlBar } from './ui/ControlBar';
+import { DirectorControls } from './ui/DirectorControls';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
 import {
   HandoverEventRail,
@@ -1426,6 +1427,20 @@ export function App() {
     ],
   );
 
+  // G1 / Rule#8: a focus button is offered only when the source-backed rail
+  // actually carries a handover event of that kind. Otherwise the lane gate
+  // alone could let a user trigger slow-mo + camera tour with no underlying
+  // event (e.g. a MODQN cell-preview profile that emits zero live-walker HO
+  // events), which would be motion without a source.
+  const directorIntraEnabled = useMemo(
+    () => directorFocusEnabled && handoverRailEvents.some(event => event.kind === 'intra'),
+    [directorFocusEnabled, handoverRailEvents],
+  );
+  const directorInterEnabled = useMemo(
+    () => directorFocusEnabled && handoverRailEvents.some(event => event.kind === 'inter'),
+    [directorFocusEnabled, handoverRailEvents],
+  );
+
   const handleHandoverRailSeek = useCallback((targetSec: number) => {
     if (directorFocusEnabled) {
       const sourceTarget = clampTimelineTime(targetSec, timelineRailDescriptor.rail.durationSec);
@@ -1453,32 +1468,51 @@ export function App() {
     if (!directorFocusEnabled) camera.exitDirectorFocus();
   }, [directorFocusEnabled, camera]);
 
+  useEffect(() => {
+    if (camera.directorPhase === 'idle') return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') camera.exitDirectorFocus();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [camera, camera.directorPhase]);
+
   const handleTimelineSpeedChange = useCallback((nextSpeed: TimelineSpeedPreset) => {
     playback.setSpeed(nextSpeed);
   }, [playback]);
 
   const handoverEventRail = (
-    <HandoverEventRail
-      events={handoverRailEvents}
-      currentTimeSec={timelineRailDescriptor.rail.currentTimeSec}
-      durationSec={timelineRailDescriptor.rail.durationSec}
-      onSeek={handleHandoverRailSeek}
-      disabled={timelineDisabled}
-      sourceLabel={timelineRailDescriptor.rail.sourceLabel}
-      sourceOwner={timelineRailDescriptor.rail.sourceOwner}
-      horizonKind={timelineRailDescriptor.rail.horizonKind}
-      horizonLabel={timelineRailDescriptor.rail.horizonLabel}
-      claimKind={timelineRailDescriptor.rail.claimKind}
-      sourceStartSec={timelineRailDescriptor.rail.sourceStartSec}
-      sourceEndSec={timelineRailDescriptor.rail.sourceEndSec}
-      sourceGapReasons={timelineRailDescriptor.rail.sourceGapReasons}
-      axisKind={timelineRailDescriptor.rail.axisKind}
-      axisLabel={timelineRailDescriptor.rail.axisLabel}
-      axisDurationSec={timelineRailDescriptor.rail.axisDurationSec}
-      axisCurrentTimeSec={timelineRailDescriptor.rail.axisCurrentTimeSec}
-      axisPlaying={!playback.paused}
-      axisPlaybackRate={playback.effectiveSpeed}
-    />
+    <>
+      <HandoverEventRail
+        events={handoverRailEvents}
+        currentTimeSec={timelineRailDescriptor.rail.currentTimeSec}
+        durationSec={timelineRailDescriptor.rail.durationSec}
+        onSeek={handleHandoverRailSeek}
+        disabled={timelineDisabled}
+        sourceLabel={timelineRailDescriptor.rail.sourceLabel}
+        sourceOwner={timelineRailDescriptor.rail.sourceOwner}
+        horizonKind={timelineRailDescriptor.rail.horizonKind}
+        horizonLabel={timelineRailDescriptor.rail.horizonLabel}
+        claimKind={timelineRailDescriptor.rail.claimKind}
+        sourceStartSec={timelineRailDescriptor.rail.sourceStartSec}
+        sourceEndSec={timelineRailDescriptor.rail.sourceEndSec}
+        sourceGapReasons={timelineRailDescriptor.rail.sourceGapReasons}
+        axisKind={timelineRailDescriptor.rail.axisKind}
+        axisLabel={timelineRailDescriptor.rail.axisLabel}
+        axisDurationSec={timelineRailDescriptor.rail.axisDurationSec}
+        axisCurrentTimeSec={timelineRailDescriptor.rail.axisCurrentTimeSec}
+        axisPlaying={!playback.paused}
+        axisPlaybackRate={playback.effectiveSpeed}
+      />
+      <DirectorControls
+        intraEnabled={directorIntraEnabled}
+        interEnabled={directorInterEnabled}
+        phase={camera.directorPhase}
+        onIntraFocus={camera.requestIntraFocus}
+        onInterFocus={camera.requestInterFocus}
+        onExit={camera.exitDirectorFocus}
+      />
+    </>
   );
 
   // World-space lerp adapter binding (SDD §9 P3): interpolation occurs strictly
@@ -1700,6 +1734,9 @@ export function App() {
             handoverMode === 'decision-overlay-on-live-sinr' ? 'decision-overlay-on-live-sinr' : 'sinr-offset'
           }
           data-scene-lane={sceneLane}
+          onPointerDownCapture={() => {
+            if (camera.directorPhase !== 'idle') camera.exitDirectorFocus();
+          }}
         >
           {sceneLane === 'modqn-live-cell-preview' && (
             <ModqnSceneHud
