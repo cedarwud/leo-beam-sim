@@ -59,10 +59,12 @@ import { CellOverlay } from '../viz/CellOverlay';
 import { CellHandoverArcs } from '../viz/CellHandoverArcs';
 import {
   CellBeamCones,
+  resolveCellBeamConeItems,
   resolveCellBeamConeRenderCount,
   resolveCellBeamConeSatelliteCount,
 } from '../viz/CellBeamCones';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
+import { BeamLoadUploadParticles } from '../viz/BeamLoadUploadParticles';
 import { HandoverStoryLayer } from '../viz/HandoverStoryLayer';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import {
@@ -621,14 +623,21 @@ function SceneContent({
   const renderedCellBeamConeScope = showCellOverlay && modqnVisualLayers.beamCones
     ? modqnVisualLayers.beamConeScope
     : 'none';
-  const cellBeamConeInput = {
+  const cellBeamConeInput = useMemo(() => ({
     schedule: cellSchedule,
     satelliteWorldById,
     satelliteTintById,
     focusedUe: focusedCellBeamConeUe,
     beamConeScope: renderedCellBeamConeScope,
     appMode: runtime.appMode,
-  };
+  }), [
+    cellSchedule,
+    focusedCellBeamConeUe,
+    renderedCellBeamConeScope,
+    runtime.appMode,
+    satelliteTintById,
+    satelliteWorldById,
+  ]);
   const renderedCellBeamConeCount = showCellOverlay && modqnVisualLayers.beamCones
     ? resolveCellBeamConeRenderCount({
       ...cellBeamConeInput,
@@ -639,6 +648,22 @@ function SceneContent({
       ...cellBeamConeInput,
     })
     : 0;
+  const uploadParticlesEnabled =
+    showCellOverlay
+    && modqnVisualLayerPreset === 'explain-handover'
+    && modqnVisualLayers.handoverStory;
+  const uploadParticleFocusCones = useMemo(
+    () => uploadParticlesEnabled
+      ? resolveCellBeamConeItems({
+        ...cellBeamConeInput,
+        beamConeScope: 'focus-satellite',
+      })
+      : [],
+    [
+      cellBeamConeInput,
+      uploadParticlesEnabled,
+    ],
+  );
   const profileDerivedHandoverCues = useMemo(
     () => selectProfileDerivedHandoverCues(cellSchedule.cellReassignments),
     [cellSchedule.cellReassignments],
@@ -979,6 +1004,15 @@ function SceneContent({
           load={focusBeamLoad?.load ?? 0}
           tintColor={focusBeamLoadTint}
           visible={(focusBeamLoad?.load ?? 0) > 0}
+        />
+      )}
+      {uploadParticlesEnabled && (
+        <BeamLoadUploadParticles
+          focusCones={uploadParticleFocusCones}
+          beamLoadContention={beamLoadContention}
+          focusedUe={focusedCellBeamConeUe}
+          paused={paused}
+          reducedMotion={runtime.reducedMotion}
         />
       )}
       {showEarthFixedCells && <EarthFixedCells cells={paintedCells} showDebugLabels={showEarthFixedCellLabels} />}

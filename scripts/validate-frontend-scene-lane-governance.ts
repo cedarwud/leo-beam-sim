@@ -250,6 +250,8 @@ const modqnServiceMapSource = readRepoFile('src/scene/modqnServiceMap.ts');
 const cellOverlaySource = readRepoFile('src/viz/CellOverlay.tsx');
 const cellBeamConesSource = readRepoFile('src/viz/CellBeamCones.tsx');
 const beamLoadCylinderSource = readRepoFile('src/viz/BeamLoadCylinder.tsx');
+const beamLoadUploadParticlesSource = readRepoFile('src/viz/BeamLoadUploadParticles.tsx');
+const beamLoadUploadParticleHelpersSource = readRepoFile('src/viz/beamLoadUploadParticles.ts');
 const groundSceneSource = readRepoFile('src/viz/GroundScene.tsx');
 const modqnReplayCuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
 const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
@@ -919,6 +921,217 @@ assertNotContains(
   beamLoadCylinderSource,
   '.dispose(',
   'BeamLoadCylinder must not manually dispose pooled objects',
+);
+assertContains(
+  mainSceneSource,
+  'import { BeamLoadUploadParticles }',
+  'MainScene imports the focused upload-particle layer',
+);
+assertContains(
+  mainSceneSource,
+  'resolveCellBeamConeItems',
+  'MainScene imports the focus cone resolver for upload particles',
+);
+assertContains(
+  mainSceneSource,
+  'const uploadParticlesEnabled =',
+  'MainScene names the upload-particle gate',
+);
+assertContains(
+  mainSceneSource,
+  "modqnVisualLayerPreset === 'explain-handover'",
+  'MainScene limits upload particles to the Explain Handover preset',
+);
+assertContains(
+  mainSceneSource,
+  '&& modqnVisualLayers.handoverStory',
+  'MainScene keeps upload particles behind the handover-story preset layer',
+);
+assertContains(
+  mainSceneSource,
+  'resolveCellBeamConeItems({',
+  'MainScene resolves focus cones through CellBeamCones authority',
+);
+assertContains(
+  mainSceneSource,
+  "beamConeScope: 'focus-satellite'",
+  'MainScene forces upload particles to focused beam cones',
+);
+assertContains(
+  mainSceneSource,
+  '<BeamLoadUploadParticles',
+  'MainScene mounts upload particles only behind the named gate',
+);
+assertContains(
+  mainSceneSource,
+  'focusCones={uploadParticleFocusCones}',
+  'MainScene passes resolved focus cones to upload particles',
+);
+assertContains(
+  mainSceneSource,
+  'beamLoadContention={beamLoadContention}',
+  'MainScene reuses the existing beamLoadContention model for upload particles',
+);
+assertContains(
+  mainSceneSource,
+  'focusedUe={focusedCellBeamConeUe}',
+  'MainScene passes the focused UE to upload particles',
+);
+assertContains(
+  mainSceneSource,
+  'paused={paused}',
+  'MainScene threads pause state into upload particles',
+);
+assertContains(
+  mainSceneSource,
+  'reducedMotion={runtime.reducedMotion}',
+  'MainScene threads reduced-motion state into upload particles',
+);
+assertContains(
+  beamLoadUploadParticleHelpersSource,
+  'UPLOAD_PARTICLES_DEFAULT = 96',
+  'Upload particle default per-cone density cap is named',
+);
+assertContains(
+  beamLoadUploadParticleHelpersSource,
+  'UPLOAD_PARTICLES_PER_CONE_HARD_CAP = 128',
+  'Upload particle hard per-cone cap is named',
+);
+assertContains(
+  beamLoadUploadParticleHelpersSource,
+  'UPLOAD_PARTICLES_GLOBAL_CAP = 256',
+  'Upload particle global cap is named',
+);
+assertContains(
+  beamLoadUploadParticleHelpersSource,
+  'MAX_FOCUS_CONES = 2',
+  'Upload particle focused-cone cap is named',
+);
+assertContains(
+  beamLoadUploadParticleHelpersSource,
+  'resolveUploadParticleConeCount',
+  'Upload particle helpers clamp focus cone count',
+);
+assertContains(
+  beamLoadUploadParticleHelpersSource,
+  'resolveUploadParticleCountForLoad',
+  'Upload particle helpers derive capped count from normalized load',
+);
+assertContains(
+  beamLoadUploadParticleHelpersSource,
+  'resolveUploadParticleGlobalCount',
+  'Upload particle helpers enforce the global cap',
+);
+assertContains(
+  beamLoadUploadParticleHelpersSource,
+  'resolveUploadParticleEnabledCount',
+  'Upload particle helpers expose disabled/paused/reduced-motion gating',
+);
+assertContains(
+  beamLoadUploadParticleHelpersSource,
+  'normalizeUploadParticleProgress',
+  'Upload particle helpers expose deterministic progress wrapping',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  "from '../scene/beamLoadContention'",
+  'Upload particle layer reads existing beam-load contention types/helpers',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'beamLoadContention.byUeId.get(input.focusedUe.id)',
+  'Upload particle layer prefers focused UE load from the existing contention model',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'beamLoadContention.loadByBeamKey.get',
+  'Upload particle layer may fall back to existing beamKey load without rebuilding a model',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'Array.from({ length: MAX_FOCUS_CONES }',
+  'Upload particle layer predeclares exactly MAX_FOCUS_CONES mesh slots',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'UPLOAD_PARTICLES_PER_CONE_HARD_CAP',
+  'Upload particle layer sizes each InstancedMesh slot by the hard per-cone cap',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'useMemo<ConstructorParameters<typeof THREE.InstancedMesh>>',
+  'Upload particle layer memoizes InstancedMesh constructor args',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'args={meshArgs}',
+  'Upload particle layer reuses memoized mesh args instead of reallocating on plan changes',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'mesh.count = plan?.count ?? 0',
+  'Upload particle layer toggles active pool count from the plan',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'mesh.visible = (plan?.count ?? 0) > 0',
+  'Upload particle layer hides unused pool slots via visibility',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'mesh.setMatrixAt(input.particleIndex, input.dummy.matrix)',
+  'Upload particle useFrame path updates instance matrices',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'mesh.instanceMatrix.needsUpdate = true',
+  'Upload particle layer marks instance matrices dirty after updates',
+);
+assertNotContains(
+  beamLoadUploadParticlesSource,
+  'useState',
+  'Upload particle layer must not set React state from frame work',
+);
+assertNotContains(
+  beamLoadUploadParticlesSource,
+  'setState',
+  'Upload particle layer must not call setState',
+);
+assertNotContains(
+  beamLoadUploadParticlesSource,
+  'new THREE.InstancedMesh',
+  'Upload particle layer must not manually allocate InstancedMesh objects',
+);
+// The pooled geometry/material are useMemo-owned and passed to the instanced
+// meshes via `args`, so R3F does NOT own/dispose them — the layer MUST release
+// them, but ONLY in an unmount cleanup (never per-frame/per-plan). Assert the
+// cleanup disposes exist AND that the useFrame body never disposes.
+assertContains(
+  beamLoadUploadParticlesSource,
+  'particleGeometry.dispose()',
+  'Upload particle layer releases its pooled geometry on unmount (leak guard)',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'particleMaterial.dispose()',
+  'Upload particle layer releases its pooled material on unmount (leak guard)',
+);
+const uploadParticleUseFrameStart = beamLoadUploadParticlesSource.indexOf('useFrame(');
+const uploadParticleUseFrameBody = uploadParticleUseFrameStart >= 0
+  ? beamLoadUploadParticlesSource.slice(
+    uploadParticleUseFrameStart,
+    beamLoadUploadParticlesSource.indexOf('});', uploadParticleUseFrameStart),
+  )
+  : '';
+assertNotContains(
+  uploadParticleUseFrameBody,
+  '.dispose(',
+  'Upload particle useFrame path must not dispose pooled objects per frame',
+);
+assertContains(
+  packageJson,
+  '"validate:phase-3:upload-particles"',
+  'package exposes the Phase 3 upload-particles validator',
 );
 assertContains(
   sceneTelemetrySource,
