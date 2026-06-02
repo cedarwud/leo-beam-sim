@@ -6,7 +6,12 @@ import { fileURLToPath } from 'node:url';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { ControlBar } from '../src/ui/ControlBar';
-import type { CameraPreset } from '../src/scene/types';
+import { DirectorControls } from '../src/ui/DirectorControls';
+import {
+  resolveSceneLaneRenderPlan,
+  type SceneLaneRenderPlanInput,
+} from '../src/scene/sceneLaneRenderPlan';
+import type { CameraPreset, DirectorFocusPhase } from '../src/scene/types';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
@@ -152,6 +157,178 @@ section('(f) Regression: existing preset testids still produce-able', () => {
   check(
     controlBarSource.includes('data-testid={`camera-preset-${option.preset}`}'),
     'ControlBar still derives child camera testids from option.preset',
+  );
+});
+
+// ----- Phase 2 Director Mode extensions (docs/showcase-master-sdd-v2.md §5) -----
+
+function directorRenderPlanInput(
+  overrides: Partial<SceneLaneRenderPlanInput>,
+): SceneLaneRenderPlanInput {
+  return {
+    sceneLane: 'sinr-live',
+    sceneSource: 'live-sim',
+    beamCalloutsEnabled: false,
+    beamDensity: 'event-plus-1',
+    cinematicMode: 'director',
+    effectsEnabled: {
+      spineParticles: false,
+      orbitTrail: false,
+      servingRipple: false,
+      pendingRipple: false,
+    },
+    paused: false,
+    reducedMotion: false,
+    recentHoActive: false,
+    replayProofLayerRequested: false,
+    ...overrides,
+  };
+}
+
+function directorButtonTag(markup: string, testId: string): string {
+  const match = markup.match(new RegExp(`<button[^>]*data-testid="${testId}"[^>]*>`));
+  return match?.[0] ?? '';
+}
+
+function directorButtonDisabled(markup: string, testId: string): boolean {
+  return /disabled=""/.test(directorButtonTag(markup, testId));
+}
+
+function renderDirectorControlsMarkup(props: {
+  intraEnabled: boolean;
+  interEnabled: boolean;
+  phase: DirectorFocusPhase;
+}): string {
+  const noop = () => undefined;
+  return renderToString(
+    <DirectorControls
+      intraEnabled={props.intraEnabled}
+      interEnabled={props.interEnabled}
+      phase={props.phase}
+      onIntraFocus={noop}
+      onInterFocus={noop}
+      onExit={noop}
+    />,
+  );
+}
+
+section('(g) CinematicMode director member source', () => {
+  const typesSource = source('src/scene/types.ts');
+  check(
+    typesSource.includes("export type CinematicMode = 'off' | 'spotlight' | 'director'"),
+    "CinematicMode union includes 'director'",
+  );
+});
+
+section('(h) Render plan: director is lane-gated and inert off live-walker lanes', () => {
+  const sinrLive = resolveSceneLaneRenderPlan(
+    directorRenderPlanInput({ sceneLane: 'sinr-live', sceneSource: 'live-sim' }),
+  );
+  check(
+    sinrLive.effectiveCinematicMode === 'director' && sinrLive.showDirectorFocus,
+    'director is effective on the sinr-live live lane',
+  );
+
+  const cellPreview = resolveSceneLaneRenderPlan(
+    directorRenderPlanInput({ sceneLane: 'modqn-live-cell-preview', sceneSource: 'live-sim' }),
+  );
+  check(
+    cellPreview.effectiveCinematicMode === 'director' && cellPreview.showDirectorFocus,
+    'director is effective on the modqn-live-cell-preview live lane',
+  );
+
+  const replayProof = resolveSceneLaneRenderPlan(
+    directorRenderPlanInput({ sceneLane: 'modqn-replay-proof', sceneSource: 'live-sim' }),
+  );
+  check(
+    replayProof.effectiveCinematicMode === 'off' && !replayProof.showDirectorFocus,
+    'director is INERT on modqn-replay-proof (effectiveCinematicMode resolves off)',
+  );
+
+  const artifactReplay = resolveSceneLaneRenderPlan(
+    directorRenderPlanInput({ sceneLane: 'artifact-replay', sceneSource: 'artifact-replay' }),
+  );
+  check(
+    artifactReplay.effectiveCinematicMode === 'off' && !artifactReplay.showDirectorFocus,
+    'director is INERT on artifact-replay (effectiveCinematicMode resolves off)',
+  );
+
+  const spotlight = resolveSceneLaneRenderPlan(
+    directorRenderPlanInput({ sceneLane: 'sinr-live', sceneSource: 'live-sim', cinematicMode: 'spotlight' }),
+  );
+  check(
+    spotlight.effectiveCinematicMode === 'spotlight' && !spotlight.showDirectorFocus,
+    'spotlight path is unaffected by the director addition',
+  );
+
+  const off = resolveSceneLaneRenderPlan(
+    directorRenderPlanInput({ sceneLane: 'sinr-live', sceneSource: 'live-sim', cinematicMode: 'off' }),
+  );
+  check(
+    off.effectiveCinematicMode === 'off' && !off.showDirectorFocus,
+    'cinematic off stays off',
+  );
+});
+
+section('(i) Single-chain director speed tier source', () => {
+  const playbackSource = source('src/usePlaybackControls.ts');
+  check(/DIRECTOR_FOCUS_SPEED\s*=\s*0\.05/.test(playbackSource), 'DIRECTOR_FOCUS_SPEED = 0.05 is defined');
+  check(playbackSource.includes('directorFocusActive'), 'effectiveSpeed chain consumes directorFocusActive');
+  check(
+    /directorFocusActive[\s\S]*?Math\.min\(speed,\s*DIRECTOR_FOCUS_SPEED\)/.test(playbackSource),
+    'director tier caps the single effectiveSpeed chain at DIRECTOR_FOCUS_SPEED',
+  );
+});
+
+section('(j) MainScene OrbitControls ownership restore guarantee source', () => {
+  const mainSceneSource = source('src/scene/MainScene.tsx');
+  check(
+    mainSceneSource.includes("if (effectiveCinematicMode !== 'director')"),
+    'director command handler is inert unless effectiveCinematicMode is director',
+  );
+  check(mainSceneSource.includes('controls.enabled = false'), 'acquiring disables OrbitControls');
+  check(
+    /tween\.kind === 'director-restore'[\s\S]*?controls\.enabled = true/.test(mainSceneSource),
+    'director-restore tween completion re-enables OrbitControls',
+  );
+  check(
+    /effectiveCinematicMode === 'director'\) return;[\s\S]*?controls\.enabled = true/.test(mainSceneSource),
+    'force-restore guard re-enables OrbitControls when the lane stops being director',
+  );
+  const enableCount = countOccurrences(mainSceneSource, /controls\.enabled = true/g);
+  const disableCount = countOccurrences(mainSceneSource, /controls\.enabled = false/g);
+  check(
+    disableCount >= 1 && enableCount >= disableCount,
+    `every controls.enabled=false (${disableCount}) is matched by a re-enable (${enableCount} found)`,
+  );
+});
+
+section('(k) DirectorControls SSR — per-kind source gating + inert disabled state', () => {
+  const allOff = renderDirectorControlsMarkup({ intraEnabled: false, interEnabled: false, phase: 'idle' });
+  check(allOff.includes('data-testid="director-controls"'), 'SSR renders the director-controls container');
+  check(allOff.includes('data-testid="director-intra-focus"'), 'SSR renders the intra focus button');
+  check(allOff.includes('data-testid="director-inter-focus"'), 'SSR renders the inter focus button');
+  check(allOff.includes('data-testid="director-exit-focus"'), 'SSR renders the exit button');
+  check(directorButtonDisabled(allOff, 'director-intra-focus'), 'intra focus disabled when no source-backed intra event');
+  check(directorButtonDisabled(allOff, 'director-inter-focus'), 'inter focus disabled when no source-backed inter event');
+  check(directorButtonDisabled(allOff, 'director-exit-focus'), 'exit disabled while idle');
+
+  const intraOnly = renderDirectorControlsMarkup({ intraEnabled: true, interEnabled: false, phase: 'idle' });
+  check(!directorButtonDisabled(intraOnly, 'director-intra-focus'), 'intra focus enabled when a source-backed intra event exists');
+  check(directorButtonDisabled(intraOnly, 'director-inter-focus'), 'inter focus stays disabled when no inter event exists');
+
+  const focused = renderDirectorControlsMarkup({ intraEnabled: true, interEnabled: true, phase: 'focused' });
+  check(directorButtonDisabled(focused, 'director-intra-focus'), 'focus buttons disabled while a focus is already active');
+  check(!directorButtonDisabled(focused, 'director-exit-focus'), 'exit enabled while a focus is active');
+
+  const appSource = source('src/App.tsx');
+  check(
+    /directorIntraEnabled[\s\S]*?handoverRailEvents\.some\(event => event\.kind === 'intra'\)/.test(appSource),
+    'App gates the intra button on a source-backed intra rail event',
+  );
+  check(
+    /directorInterEnabled[\s\S]*?handoverRailEvents\.some\(event => event\.kind === 'inter'\)/.test(appSource),
+    'App gates the inter button on a source-backed inter rail event',
   );
 });
 
