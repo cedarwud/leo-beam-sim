@@ -26,6 +26,8 @@ export interface HandoverRailEvent {
   readonly title: string;
   readonly fromLabel: string;
   readonly toLabel: string;
+  readonly fromSatId?: string | null;
+  readonly toSatId?: string | null;
   readonly detail?: string;
   readonly source: HandoverRailEventSource;
   readonly count?: number;

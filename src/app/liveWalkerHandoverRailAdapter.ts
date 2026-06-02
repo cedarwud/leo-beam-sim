@@ -24,6 +24,8 @@ export function liveWalkerHandoverEventIndexToRailEvents(
       title: liveWalkerRailTitle(event.kind),
       fromLabel: formatLiveWalkerBeamLabel(event.fromSatId, event.fromBeamId),
       toLabel: formatLiveWalkerBeamLabel(event.toSatId, event.toBeamId),
+      fromSatId: event.fromSatId,
+      toSatId: event.toSatId,
       detail: `${index.ueScope}; ${index.aggregateClaim}`,
       source: 'live-walker',
       count: event.count,

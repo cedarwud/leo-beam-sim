@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   CameraPreset,
   CinematicMode,
+  DirectorFocusFraming,
   DirectorFocusKind,
   DirectorFocusPhase,
   RuntimeConfig,
@@ -21,8 +22,8 @@ export interface CameraControls {
   readonly directorFocusCommand: RuntimeConfig['directorFocusCommand'];
   readonly selectCameraPreset: (preset: CameraPreset) => void;
   readonly setCinematicMode: (mode: CinematicMode) => void;
-  readonly requestIntraFocus: () => void;
-  readonly requestInterFocus: () => void;
+  readonly requestIntraFocus: (framing?: DirectorFocusFraming) => void;
+  readonly requestInterFocus: (framing?: DirectorFocusFraming) => void;
   readonly exitDirectorFocus: () => void;
 }
 
@@ -53,7 +54,7 @@ export function useCameraControls(): CameraControls {
     setUserCinematicMode(mode);
   }, []);
 
-  const requestFocus = useCallback((kind: DirectorFocusKind) => {
+  const requestFocus = useCallback((kind: DirectorFocusKind, framing?: DirectorFocusFraming) => {
     if (directorPhase !== 'idle' && directorPhase !== 'focused') return;
     directorKindRef.current = kind;
     setDirectorPhase('acquiring');
@@ -61,15 +62,16 @@ export function useCameraControls(): CameraControls {
       kind,
       phase: 'acquiring',
       issuedAtMs: nextIssuedAtMs(),
+      framing,
     });
   }, [directorPhase, nextIssuedAtMs]);
 
-  const requestIntraFocus = useCallback(() => {
-    requestFocus('intra');
+  const requestIntraFocus = useCallback((framing?: DirectorFocusFraming) => {
+    requestFocus('intra', framing);
   }, [requestFocus]);
 
-  const requestInterFocus = useCallback(() => {
-    requestFocus('inter');
+  const requestInterFocus = useCallback((framing?: DirectorFocusFraming) => {
+    requestFocus('inter', framing);
   }, [requestFocus]);
 
   const exitDirectorFocus = useCallback(() => {

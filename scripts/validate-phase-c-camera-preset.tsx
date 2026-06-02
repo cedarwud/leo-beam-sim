@@ -420,6 +420,90 @@ section('(m) Director focus pose: inter-HO frames the real source/target sat pai
   );
 });
 
+section('(n) D6b Director framing uses real rail satellite ids', () => {
+  const railSource = source('src/ui/HandoverEventRail.tsx');
+  check(
+    /readonly fromSatId\?: string \| null;/.test(railSource)
+    && /readonly toSatId\?: string \| null;/.test(railSource),
+    'HandoverRailEvent declares optional fromSatId/toSatId',
+  );
+
+  const appSource = source('src/App.tsx');
+  check(
+    /const decision = frame\?\.modqnDecision/.test(appSource)
+    && /const decisionSource = decision\?\.previousSatelliteId \?\? null/.test(appSource)
+    && /const decisionTarget = decision\?\.selectedSatelliteId \?\? null/.test(appSource),
+    'buildArtifactHandoverRailEvents reads the authoritative per-frame primary modqnDecision pair',
+  );
+  check(
+    /const primaryInterHo =\s*decisionSource !== null && decisionTarget !== null && decisionSource !== decisionTarget/.test(appSource)
+    && /const fromSatId = primaryInterHo \? decisionSource : null/.test(appSource)
+    && /const toSatId = primaryInterHo \? decisionTarget : null/.test(appSource),
+    'artifact framing attaches ONLY for a primary inter-HO and fails closed otherwise (no secondary-event misattribution)',
+  );
+
+  const liveAdapterSource = source('src/app/liveWalkerHandoverRailAdapter.ts');
+  check(
+    /fromSatId:\s*event\.fromSatId/.test(liveAdapterSource)
+    && /toSatId:\s*event\.toSatId/.test(liveAdapterSource),
+    'live walker rail adapter copies fromSatId/toSatId from source events',
+  );
+
+  const cinematicWindowSource = source('src/scene/cinematicReplayWindow.ts');
+  check(
+    /export interface CinematicReplayWindow[\s\S]*readonly fromSatId: string \| null;[\s\S]*readonly toSatId: string \| null;/.test(cinematicWindowSource),
+    'CinematicReplayWindow declares non-optional fromSatId/toSatId',
+  );
+  check(
+    /fromSatId:\s*target\.event\.fromSatId\s*\?\?\s*null/.test(cinematicWindowSource)
+    && /toSatId:\s*target\.event\.toSatId\s*\?\?\s*null/.test(cinematicWindowSource),
+    'resolveCinematicReplayWindow copies selected event satellite ids',
+  );
+
+  const typesSource = source('src/scene/types.ts');
+  check(
+    /export interface DirectorFocusFraming[\s\S]*fromSatId\?: string \| null;[\s\S]*toSatId\?: string \| null;/.test(typesSource)
+    && /export interface RuntimeDirectorFocusCommand[\s\S]*framing\?: DirectorFocusFraming/.test(typesSource),
+    'RuntimeDirectorFocusCommand declares optional framing ids',
+  );
+
+  const cameraControlsSource = source('src/useCameraControls.ts');
+  check(
+    /const requestFocus = useCallback\(\(kind: DirectorFocusKind,\s*framing\?: DirectorFocusFraming\)/.test(cameraControlsSource)
+    && /requestIntraFocus = useCallback\(\(framing\?: DirectorFocusFraming\)[\s\S]*requestFocus\('intra', framing\)/.test(cameraControlsSource)
+    && /requestInterFocus = useCallback\(\(framing\?: DirectorFocusFraming\)[\s\S]*requestFocus\('inter', framing\)/.test(cameraControlsSource),
+    'useCameraControls requestFocus accepts framing and intra/inter forward it',
+  );
+
+  const mainSceneSource = source('src/scene/MainScene.tsx');
+  check(
+    /function lookupSatWorldPos/.test(mainSceneSource)
+    && /satellites\.find\(candidate => candidate\.id === satId\)/.test(mainSceneSource),
+    'MainScene defines lookupSatWorldPos against current scene satellites',
+  );
+  check(
+    countOccurrences(mainSceneSource, /resolveDirectorFocusPose\(ueWorldPos, alpha, command\.kind, framing\)/g) >= 2,
+    'both MainScene director call sites pass framing as the 4th pose arg',
+  );
+
+  check(
+    /const framing = \{\s*fromSatId: replayWindow\.fromSatId,\s*toSatId: replayWindow\.toSatId,?\s*\}/.test(appSource),
+    'App cinematic requestDirectorFocus builds framing from replayWindow satellite ids',
+  );
+  check(
+    /camera\.requestIntraFocus\(framing\)/.test(appSource)
+    && /camera\.requestInterFocus\(framing\)/.test(appSource),
+    'App cinematic requestDirectorFocus forwards framing to the camera',
+  );
+  // D6 framing is scoped to the cinematic (artifact) lane, where the seek pins
+  // one specific real event. The live branch keeps the legacy pose (no framing)
+  // because App has no unambiguous "currently active handover" signal.
+  check(
+    /if \(kind === 'intra'\) camera\.requestIntraFocus\(\);\s*else camera\.requestInterFocus\(\);/.test(appSource),
+    'App live requestDirectorFocus passes NO framing (legacy pose, no future/stale-pair risk)',
+  );
+});
+
 console.log('\n---');
 console.log(`[validate-phase-c-camera-preset] ${passed} passed, ${failed} failed`);
 if (failed > 0) {

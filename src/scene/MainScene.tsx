@@ -101,6 +101,15 @@ import {
 } from './modqnVisualLayers';
 import { resolveDirectorFocusPose } from './directorFocusPose';
 
+function lookupSatWorldPos(
+  satellites: NormalizedSceneFrame['satellites'],
+  satId: string | null | undefined,
+): readonly [number, number, number] | null {
+  if (!satId) return null;
+  const sat = satellites.find(candidate => candidate.id === satId);
+  return sat ? sat.worldPos : null;
+}
+
 interface SceneContentProps {
   profile: Profile;
   speed: number;
@@ -215,7 +224,13 @@ function useDirectorCameraFocus(params: {
       }
       if (controls) controls.enabled = false;
 
-      const pose = resolveDirectorFocusPose(ueWorldPos, alpha, command.kind);
+      const framing = command.framing
+        ? {
+            fromSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.fromSatId),
+            toSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.toSatId),
+          }
+        : undefined;
+      const pose = resolveDirectorFocusPose(ueWorldPos, alpha, command.kind, framing);
       if (reducedMotion) {
         camera.position.copy(pose.position);
         controls?.target.copy(pose.target);
@@ -898,7 +913,13 @@ function SceneContent({
       }
       if (controls) controls.enabled = false;
 
-      const pose = resolveDirectorFocusPose(ueWorldPos, alpha, command.kind);
+      const framing = command.framing
+        ? {
+            fromSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.fromSatId),
+            toSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.toSatId),
+          }
+        : undefined;
+      const pose = resolveDirectorFocusPose(ueWorldPos, alpha, command.kind, framing);
       if (runtime.reducedMotion) {
         camera.position.copy(pose.position);
         controls?.target.copy(pose.target);

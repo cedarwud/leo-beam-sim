@@ -52,11 +52,17 @@ export interface RuntimeCameraCommand {
   issuedAtMs: number;
 }
 
+export interface DirectorFocusFraming {
+  readonly fromSatId?: string | null;
+  readonly toSatId?: string | null;
+}
+
 export interface RuntimeDirectorFocusCommand {
   kind: DirectorFocusKind;
   /** Only the scene-relevant transitions are commanded; idle/focused are App-owned states. */
   phase: 'acquiring' | 'restoring';
   issuedAtMs: number;
+  framing?: DirectorFocusFraming;
 }
 
 export interface RuntimeConfig {

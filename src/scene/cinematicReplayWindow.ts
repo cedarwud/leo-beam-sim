@@ -16,6 +16,8 @@ export interface CinematicReplayWindow {
   readonly startSec: number;
   readonly endSec: number;
   readonly windowDurationSec: number;
+  readonly fromSatId: string | null;
+  readonly toSatId: string | null;
 }
 
 export function resolveCinematicReplayWindow(
@@ -55,6 +57,8 @@ export function resolveCinematicReplayWindow(
     startSec,
     endSec,
     windowDurationSec,
+    fromSatId: target.event.fromSatId ?? null,
+    toSatId: target.event.toSatId ?? null,
   };
 }
 

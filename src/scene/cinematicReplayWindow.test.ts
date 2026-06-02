@@ -32,11 +32,15 @@ function ev(
   kind: HandoverRailEventKind,
   timeSec: number,
   sourceTimeSec?: number,
+  fromSatId?: string | null,
+  toSatId?: string | null,
 ): HandoverRailEvent {
   return {
     id,
     timeSec,
     ...(sourceTimeSec === undefined ? {} : { sourceTimeSec }),
+    ...(fromSatId === undefined ? {} : { fromSatId }),
+    ...(toSatId === undefined ? {} : { toSatId }),
     kind,
     title: 'event',
     fromLabel: 'from',
@@ -60,6 +64,8 @@ const AUTO_END_WINDOW: CinematicReplayWindow = {
   startSec: 8,
   endSec: 15,
   windowDurationSec: 7,
+  fromSatId: null,
+  toSatId: null,
 };
 
 console.log('cinematicReplayWindow.test');
@@ -162,6 +168,24 @@ check('deterministic tie-break picks earlier event id for equal times', () => {
   ], 'intra', 0, 60), 'window');
 
   assert.equal(window.eventId, 'event-a', 'eventId');
+});
+
+check('resolved window copies selected event satellite ids', () => {
+  const window = requireWindow(resolveCinematicReplayWindow([
+    ev('a', 'inter', 10, undefined, 'sat-a', 'sat-b'),
+  ], 'inter', 0, 60), 'window');
+
+  assert.equal(window.fromSatId, 'sat-a', 'fromSatId');
+  assert.equal(window.toSatId, 'sat-b', 'toSatId');
+});
+
+check('resolved window sets null satellite ids when event lacks them', () => {
+  const window = requireWindow(resolveCinematicReplayWindow([
+    ev('a', 'inter', 10),
+  ], 'inter', 0, 60), 'window');
+
+  assert.equal(window.fromSatId, null, 'fromSatId');
+  assert.equal(window.toSatId, null, 'toSatId');
 });
 
 check('opts override lead-in and lead-out defaults', () => {

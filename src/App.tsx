@@ -263,6 +263,21 @@ function buildArtifactHandoverRailEvents(
     if (kind === null) return [];
     const frame = getNearestShowcaseFrame(artifact, event.tSec);
     const handover = frame?.handoverState;
+    // Director D6 framing IDs. The camera focuses the PRIMARY UE (ues[0]), so the
+    // per-frame primary MODQN decision is the only coherent source/target pair.
+    // Attach it ONLY when that primary decision is itself an inter-satellite change
+    // (previousSatelliteId != selectedSatelliteId). Multi-UE artifacts can carry a
+    // secondary UE's handover event at this frame while the primary decision is
+    // unchanged — those correctly fail closed (null → legacy pose on the primary
+    // UE), never misattributing the primary's satellites to a secondary event.
+    // Pure producer truth; no fabricated pair.
+    const decision = frame?.modqnDecision;
+    const decisionSource = decision?.previousSatelliteId ?? null;
+    const decisionTarget = decision?.selectedSatelliteId ?? null;
+    const primaryInterHo =
+      decisionSource !== null && decisionTarget !== null && decisionSource !== decisionTarget;
+    const fromSatId = primaryInterHo ? decisionSource : null;
+    const toSatId = primaryInterHo ? decisionTarget : null;
     return [{
       id: `artifact-${event.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
       timeSec: event.tSec,
@@ -270,6 +285,8 @@ function buildArtifactHandoverRailEvents(
       title: event.title,
       fromLabel: formatRailBeamLabel(handover?.servingSatelliteId, handover?.servingBeamId),
       toLabel: formatRailBeamLabel(handover?.targetSatelliteId ?? handover?.servingSatelliteId, handover?.targetBeamId),
+      fromSatId,
+      toSatId: toSatId ?? null,
       detail: event.type,
       source: 'artifact-replay' as const,
     }];
@@ -1495,12 +1512,19 @@ export function App() {
       // emitted (no stale-frame deferral needed, unlike the live lane).
       replayController.seek(replayWindow.startSec);
       setActiveCinematicWindow(replayWindow);
-      if (kind === 'intra') camera.requestIntraFocus();
-      else camera.requestInterFocus();
+      const framing = { fromSatId: replayWindow.fromSatId, toSatId: replayWindow.toSatId };
+      if (kind === 'intra') camera.requestIntraFocus(framing);
+      else camera.requestInterFocus(framing);
       return;
     }
     // Live lanes keep the shipped live-focus behavior (focus the running sim;
-    // slow-mo via the same effectiveSpeed director tier).
+    // slow-mo via the same effectiveSpeed director tier). D6 sat-pair framing is
+    // deliberately NOT applied here: the live walker is forward-only and the
+    // focus targets "now", but App has no unambiguous signal for which handover
+    // is currently active, so any rail-event selection would risk framing a
+    // future/stale satellite pair. Sat-pair framing is therefore scoped to the
+    // cinematic lane above, where the seek pins one specific real event. The
+    // pose helper is still shared — live simply passes no framing → legacy pose.
     if (kind === 'intra') camera.requestIntraFocus();
     else camera.requestInterFocus();
   }, [
