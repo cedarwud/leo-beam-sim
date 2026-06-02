@@ -3065,6 +3065,53 @@ canvas {
   font-weight: 700;
 }
 
+.leo-algorithm-dashboard__tile--flowchart {
+  padding: 8px 7px 7px;
+}
+
+.leo-algorithm-flowchart {
+  width: 100%;
+  aspect-ratio: 1.35;
+  display: block;
+  overflow: visible;
+  border: 1px solid rgba(118, 234, 215, 0.14);
+  border-radius: 6px;
+  background: rgba(2, 11, 18, 0.58);
+}
+
+.leo-algorithm-flowchart__edge {
+  stroke: rgba(129, 246, 188, 0.78);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.leo-algorithm-flowchart__edge--static {
+  stroke: rgba(129, 246, 188, 0.7);
+}
+
+.leo-algorithm-flowchart__edge--idle {
+  stroke: rgba(229, 244, 251, 0.34);
+  stroke-dasharray: 3 2.4;
+}
+
+.leo-algorithm-flowchart__arrow {
+  fill: rgba(129, 246, 188, 0.72);
+}
+
+.leo-algorithm-flowchart__node rect {
+  fill: rgba(8, 28, 40, 0.94);
+  stroke: rgba(137, 205, 255, 0.34);
+  stroke-width: 0.7;
+}
+
+.leo-algorithm-flowchart__node text {
+  fill: rgba(246, 251, 255, 0.94);
+  font-size: 2.5px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
 .leo-modqn-objective-controls {
   min-width: 0;
   min-height: 0;

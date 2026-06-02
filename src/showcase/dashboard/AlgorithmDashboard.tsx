@@ -1,5 +1,6 @@
 import { useMemo, type JSX, type ReactNode } from 'react';
 import { MiniRewardCurve } from '../../ui/modqn-controls/MiniRewardCurve';
+import { AlgorithmFlowchart } from './AlgorithmFlowchart';
 import {
   buildDashboardSeriesModel,
   type DashboardDecisionFrame,
@@ -137,10 +138,13 @@ function topActionScores(frame: DashboardDecisionFrame | null): readonly {
   readonly value: number;
 }[] {
   if (frame === null || frame.actionScores.length === 0) return [];
-  return [...frame.actionScores]
-    .map((value, index) => ({ label: `A${index}`, value }))
+  return frame.actionScores
+    .map((value, index) => ({ label: `A${index}`, value, index }))
+    // G1/producer-truth: never surface a mask-invalid action as a top candidate.
+    .filter(item => frame.decisionActionValidityMask?.[item.index] !== false)
     .sort((left, right) => right.value - left.value)
-    .slice(0, 3);
+    .slice(0, 3)
+    .map(({ label, value }) => ({ label, value }));
 }
 
 function rewardComponentEntries(model: DashboardModel): readonly {
@@ -193,6 +197,15 @@ export function AlgorithmDashboard({
           <strong>Algorithm dashboard</strong>
           <span>visual-showcase-v1</span>
         </header>
+        <section
+          className="leo-algorithm-dashboard__tile leo-algorithm-dashboard__tile--flowchart"
+          data-testid="algorithm-dashboard-flowchart"
+        >
+          <header className="leo-algorithm-dashboard__tile-header">
+            <strong>Decision pipeline</strong>
+          </header>
+          <AlgorithmFlowchart artifact={artifact} />
+        </section>
         <p className="leo-algorithm-dashboard__empty">No artifact loaded.</p>
       </section>
     );
@@ -226,6 +239,16 @@ export function AlgorithmDashboard({
         <strong>Algorithm dashboard</strong>
         <span>Plane C / visual-showcase-v1</span>
       </header>
+
+      <section
+        className="leo-algorithm-dashboard__tile leo-algorithm-dashboard__tile--flowchart"
+        data-testid="algorithm-dashboard-flowchart"
+      >
+        <header className="leo-algorithm-dashboard__tile-header">
+          <strong>Decision pipeline</strong>
+        </header>
+        <AlgorithmFlowchart artifact={artifact} />
+      </section>
 
       <DashboardTile
         title="Reward scalar"
