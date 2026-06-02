@@ -140,7 +140,8 @@ const CAMERA_PRESET_POSES: Record<CameraPreset, {
 };
 
 interface CameraTweenState {
-  preset: CameraPreset;
+  preset: CameraPreset | null;
+  kind: 'preset' | 'director-acquire' | 'director-restore';
   startedAtMs: number;
   fromPosition: THREE.Vector3;
   fromTarget: THREE.Vector3;
@@ -152,6 +153,15 @@ function easeInOutCubic(value: number): number {
   return value < 0.5
     ? 4 * value * value * value
     : 1 - ((-2 * value + 2) ** 3) / 2;
+}
+
+function resolveDirectorFocusPose(
+  ueWorldPos: readonly [number, number, number],
+  alpha: number,
+): { position: THREE.Vector3; target: THREE.Vector3 } {
+  const target = new THREE.Vector3(ueWorldPos[0], ueWorldPos[1], ueWorldPos[2]);
+  const position = target.clone().add(new THREE.Vector3(0, 220 * alpha, 260 * alpha));
+  return { position, target };
 }
 
 function formatCameraVector(vector: THREE.Vector3): string {
@@ -292,6 +302,8 @@ function SceneContent({
   const cameraTweenRef = useRef<CameraTweenState | null>(null);
   const lastCameraCommandAtRef = useRef<number | null>(null);
   const lastCameraPresetRef = useRef<CameraPreset | null>(null);
+  const lastDirectorCommandAtRef = useRef<number | null>(null);
+  const directorSnapshotRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const sceneConfig = useMemo(() => (
     runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
   ), [runtime.appMode]);
@@ -639,6 +651,7 @@ function SceneContent({
 
     cameraTweenRef.current = {
       preset: command.preset,
+      kind: 'preset',
       startedAtMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
       fromPosition: camera.position.clone(),
       fromTarget: currentTarget,
@@ -649,10 +662,120 @@ function SceneContent({
     cameraTransitionRef.current = 'animating';
   }, [camera, runtime.cameraCommand, runtime.reducedMotion, cameraPresets]);
 
+  useLayoutEffect(() => {
+    const command = runtime.directorFocusCommand;
+    if (!command || lastDirectorCommandAtRef.current === command.issuedAtMs) return;
+
+    // Rule#8 / §5.4: the Director is inert on lanes the render plan did not
+    // mark as director, so stale commands cannot fire later on replay lanes.
+    if (effectiveCinematicMode !== 'director') {
+      lastDirectorCommandAtRef.current = command.issuedAtMs;
+      return;
+    }
+
+    const controls = controlsRef.current;
+    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+
+    if (command.phase === 'acquiring') {
+      const ueWorldPos = sceneFrame.ues[0]?.worldPos;
+      if (!ueWorldPos) {
+        lastDirectorCommandAtRef.current = command.issuedAtMs;
+        return;
+      }
+      lastDirectorCommandAtRef.current = command.issuedAtMs;
+
+      // Snapshot ONCE per focus cycle: re-targeting (acquiring again while already
+      // focused) must preserve the original pre-focus overview pose so `restoring`
+      // returns there, not to the current focused pose.
+      if (directorSnapshotRef.current === null) {
+        directorSnapshotRef.current = {
+          position: camera.position.clone(),
+          target: controls?.target.clone() ?? new THREE.Vector3(),
+        };
+      }
+      if (controls) controls.enabled = false;
+
+      const pose = resolveDirectorFocusPose(ueWorldPos, alpha);
+      if (runtime.reducedMotion) {
+        camera.position.copy(pose.position);
+        controls?.target.copy(pose.target);
+        controls?.update();
+        cameraTweenRef.current = null;
+        cameraPresetRef.current = 'manual';
+        cameraTransitionRef.current = 'idle';
+      } else {
+        cameraTweenRef.current = {
+          preset: null,
+          kind: 'director-acquire',
+          startedAtMs: nowMs,
+          fromPosition: camera.position.clone(),
+          fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
+          toPosition: pose.position,
+          toTarget: pose.target,
+        };
+        cameraPresetRef.current = 'manual';
+        cameraTransitionRef.current = 'animating';
+      }
+      return;
+    }
+
+    lastDirectorCommandAtRef.current = command.issuedAtMs;
+    const snapshot = directorSnapshotRef.current;
+    const toPosition = snapshot?.position.clone() ?? camera.position.clone();
+    const toTarget = snapshot?.target.clone() ?? (controls?.target.clone() ?? new THREE.Vector3());
+
+    if (runtime.reducedMotion) {
+      camera.position.copy(toPosition);
+      controls?.target.copy(toTarget);
+      if (controls) controls.enabled = true;
+      controls?.update();
+      directorSnapshotRef.current = null;
+      cameraTweenRef.current = null;
+      cameraPresetRef.current = 'manual';
+      cameraTransitionRef.current = 'idle';
+    } else {
+      cameraTweenRef.current = {
+        preset: null,
+        kind: 'director-restore',
+        startedAtMs: nowMs,
+        fromPosition: camera.position.clone(),
+        fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
+        toPosition,
+        toTarget,
+      };
+      cameraTransitionRef.current = 'animating';
+    }
+  }, [
+    camera,
+    runtime.directorFocusCommand,
+    runtime.reducedMotion,
+    effectiveCinematicMode,
+    sceneFrame.ues,
+    alpha,
+  ]);
+
+  useEffect(() => {
+    if (effectiveCinematicMode === 'director') return;
+    if (directorSnapshotRef.current === null) return;
+    const controls = controlsRef.current;
+    if (controls) {
+      camera.position.copy(directorSnapshotRef.current.position);
+      controls.target.copy(directorSnapshotRef.current.target);
+      controls.enabled = true;
+      controls.update();
+    }
+    directorSnapshotRef.current = null;
+    cameraTweenRef.current = null;
+    cameraTransitionRef.current = 'idle';
+  }, [camera, effectiveCinematicMode]);
+
   useFrame(() => {
     const tween = cameraTweenRef.current;
     if (!tween) {
-      if (runtime.reducedMotion && lastCameraPresetRef.current) {
+      // While the Director holds the camera (snapshot set), suppress the
+      // reduced-motion re-pin to the last preset — otherwise it would overwrite
+      // the focus/restore pose every frame and undo the focus instantly.
+      if (runtime.reducedMotion && lastCameraPresetRef.current && directorSnapshotRef.current === null) {
         applyCameraPose(lastCameraPresetRef.current, 'idle');
       }
       return;
@@ -674,12 +797,20 @@ function SceneContent({
       controls?.target.copy(tween.toTarget);
       controls?.update();
       cameraTweenRef.current = null;
-      cameraPresetRef.current = tween.preset;
+      if (tween.kind === 'director-restore') {
+        if (controls) controls.enabled = true;
+        directorSnapshotRef.current = null;
+        cameraPresetRef.current = 'manual';
+      } else if (tween.kind === 'director-acquire') {
+        cameraPresetRef.current = 'manual';
+      } else {
+        cameraPresetRef.current = tween.preset;
+      }
       cameraTransitionRef.current = 'idle';
       return;
     }
 
-    cameraPresetRef.current = tween.preset;
+    if (tween.kind === 'preset') cameraPresetRef.current = tween.preset;
     cameraTransitionRef.current = 'animating';
   });
 
