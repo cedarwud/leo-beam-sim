@@ -8,6 +8,7 @@ import type { LiveTelemetryEntry } from './liveTelemetryStore';
 import {
   resolveLiveEpisodeProgress,
   selectActiveTelemetryJob,
+  selectTerminalRewardMetrics,
 } from './selectActiveTelemetryJob';
 
 let passed = 0;
@@ -69,6 +70,7 @@ function entry(args: {
     }),
     lastProgressEvent,
     lastEpisodeEvent,
+    rewardHistory: [],
     lastProgressMs: lastProgressEvent?.tsMs ?? null,
     lastHeartbeatMs: args.heartbeatMs,
   };
@@ -167,6 +169,7 @@ check(
       latestEvent: event({ jobId: 'x', tsMs: 100, type: 'progress', metrics: { scalarReward: 1 } }),
       lastProgressEvent: event({ jobId: 'x', tsMs: 100, type: 'progress', metrics: { scalarReward: 1 } }),
       lastEpisodeEvent: event({ jobId: 'x', tsMs: 90, type: 'progress', episode: 5, episodeBudget: 10 }),
+      rewardHistory: [],
       lastProgressMs: 100,
       lastHeartbeatMs: 100,
     };
@@ -174,6 +177,40 @@ check(
     return resolved?.episode === 5 && resolved.budget === 10;
   })(),
 );
+
+// selectTerminalRewardMetrics — terminal summary vs per-episode sample (codex [P2]).
+function terminalEntry(args: {
+  readonly status: TrainingProgressEvent['status'];
+  readonly type: TrainingProgressEvent['type'];
+  readonly latestMetrics?: Record<string, number>;
+  readonly lastProgress?: { readonly episode?: number; readonly metrics?: Record<string, number> } | null;
+}): LiveTelemetryEntry {
+  const lastProgressEvent = args.lastProgress == null ? null : event({
+    jobId: 't', tsMs: 50, type: 'progress', status: 'running',
+    episode: args.lastProgress.episode, metrics: args.lastProgress.metrics,
+  });
+  return {
+    latestEvent: event({ jobId: 't', tsMs: 60, type: args.type, status: args.status, metrics: args.latestMetrics }),
+    lastProgressEvent,
+    lastEpisodeEvent: lastProgressEvent !== null && typeof lastProgressEvent.episode === 'number' ? lastProgressEvent : null,
+    rewardHistory: [],
+    lastProgressMs: lastProgressEvent?.tsMs ?? null,
+    lastHeartbeatMs: 60,
+  };
+}
+
+check('terminal metrics: running job => undefined (no end-of-run summary)',
+  selectTerminalRewardMetrics(terminalEntry({ status: 'running', type: 'progress', latestMetrics: { scalarReward: 1 } })) === undefined);
+check('terminal metrics: terminal event carries metrics => returns them',
+  selectTerminalRewardMetrics(terminalEntry({ status: 'done', type: 'done', latestMetrics: { scalarReward: 2 } }))?.scalarReward === 2);
+check('terminal metrics: metrics-only FINAL progress line (reward, NO episode) => returns it',
+  selectTerminalRewardMetrics(terminalEntry({ status: 'done', type: 'done', lastProgress: { metrics: { scalarReward: 3 } } }))?.scalarReward === 3);
+check('terminal metrics: final scalar line surfaces while still running, before the terminal SSE (codex [P2])',
+  selectTerminalRewardMetrics(terminalEntry({ status: 'running', type: 'progress', lastProgress: { metrics: { scalarReward: 5 } } }))?.scalarReward === 5);
+check('terminal metrics: episode-bearing progress reward is NOT a terminal summary (codex [P2])',
+  selectTerminalRewardMetrics(terminalEntry({ status: 'failed', type: 'failed', lastProgress: { episode: 7, metrics: { scalarReward: 4 } } })) === undefined);
+check('terminal metrics: no reward anywhere => undefined',
+  selectTerminalRewardMetrics(terminalEntry({ status: 'cancelled', type: 'cancelled', lastProgress: { episode: 7 } })) === undefined);
 
 if (failures.length > 0) {
   throw new Error(`[live-telemetry-select] ${passed} passed, ${failures.length} failed: ${failures.join('; ')}`);

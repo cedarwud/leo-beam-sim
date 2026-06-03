@@ -30,6 +30,11 @@ export const OFFLINE_AFTER_MS = 25_000;
 /** Heartbeat alive but no `progress` event for this long ⇒ stalled, not offline. */
 export const STALL_AFTER_MS = 20_000;
 
+export interface RewardHistoryPoint {
+  readonly episode: number;
+  readonly scalarReward: number;
+}
+
 export interface LiveTelemetryEntry {
   /** Latest event of ANY type — use for lifecycle status / terminal detection. */
   readonly latestEvent: TrainingProgressEvent;
@@ -42,10 +47,39 @@ export interface LiveTelemetryEntry {
    * from lastProgressEvent to avoid the episode tile blanking at completion.
    */
   readonly lastEpisodeEvent: TrainingProgressEvent | null;
+  /**
+   * Evolving per-episode scalarReward series, accumulated from progress events
+   * that carry BOTH `episode` and `metrics.scalarReward` (deduped by episode,
+   * ordered by episode). Empty until the producer emits per-episode reward
+   * (G-A); the live reward curve renders from this and is a source gap when
+   * empty (forward-compatible — no consumer change needed when G-A lands).
+   */
+  readonly rewardHistory: readonly RewardHistoryPoint[];
   /** tsMs of the last `progress` event, or null if none seen yet. */
   readonly lastProgressMs: number | null;
   /** tsMs of the last event of ANY type (proves the stream is alive). */
   readonly lastHeartbeatMs: number;
+}
+
+function accumulateRewardHistory(
+  previous: readonly RewardHistoryPoint[],
+  event: TrainingProgressEvent,
+): readonly RewardHistoryPoint[] {
+  if (event.type !== 'progress') return previous;
+  const episode = event.episode;
+  const scalarReward = event.metrics?.scalarReward;
+  if (typeof episode !== 'number' || !Number.isFinite(episode)) return previous;
+  if (typeof scalarReward !== 'number' || !Number.isFinite(scalarReward)) return previous;
+  const existingIndex = previous.findIndex(point => point.episode === episode);
+  if (existingIndex >= 0) {
+    // Dedup by episode (a reconnect re-delivers the same events); only rebuild
+    // when the value actually changed, to keep the array referentially stable.
+    if (previous[existingIndex].scalarReward === scalarReward) return previous;
+    const next = [...previous];
+    next[existingIndex] = { episode, scalarReward };
+    return next;
+  }
+  return [...previous, { episode, scalarReward }].sort((left, right) => left.episode - right.episode);
 }
 
 /**
@@ -101,6 +135,7 @@ export function publishTelemetryEvent(event: TrainingProgressEvent): void {
       // Only an episode-bearing progress event updates this — the producer's
       // final metrics-only progress line (no episode) must not blank it.
       lastEpisodeEvent: isProgress && hasEpisode ? event : (previous?.lastEpisodeEvent ?? null),
+      rewardHistory: accumulateRewardHistory(previous?.rewardHistory ?? [], event),
       lastProgressMs: isProgress ? event.tsMs : (previous?.lastProgressMs ?? null),
       // ANY event (heartbeat or progress) proves the stream is alive.
       lastHeartbeatMs: event.tsMs,

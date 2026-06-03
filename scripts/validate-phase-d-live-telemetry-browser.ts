@@ -61,6 +61,7 @@ interface SseEvent {
   readonly offsetMs: number;
   readonly episode?: number;
   readonly episodeBudget?: number;
+  readonly scalarReward?: number;
 }
 
 function sseBody(events: readonly SseEvent[], nowMs: number): string {
@@ -68,6 +69,7 @@ function sseBody(events: readonly SseEvent[], nowMs: number): string {
     const data: Record<string, unknown> = { id: index + 1, jobId: JOB_ID, tsMs: nowMs + e.offsetMs, type: e.type, status: 'running' };
     if (e.episode !== undefined) data.episode = e.episode;
     if (e.episodeBudget !== undefined) data.episodeBudget = e.episodeBudget;
+    if (e.scalarReward !== undefined) data.metrics = { scalarReward: e.scalarReward };
     return `event: ${e.type}\ndata: ${JSON.stringify(data)}\n\n`;
   }).join('');
 }
@@ -208,7 +210,30 @@ async function main(): Promise<void> {
       ],
     });
 
-    console.log(JSON.stringify({ appUrl, live, stalled, offline, result: 'PASS' }, null, 2));
+    // D. EVOLVING CURVE (P3a): per-episode progress carrying scalarReward (as the
+    // producer will emit post-G-A) -> the reward-curve tile renders a live
+    // MiniRewardCurve instead of a source gap.
+    const curve = await runScenario(browser, appUrl, {
+      label: 'curve',
+      expectBadge: 'live',
+      events: [
+        { type: 'progress', offsetMs: 0, episode: 1, episodeBudget: 3, scalarReward: 0.4 },
+        { type: 'progress', offsetMs: 0, episode: 2, episodeBudget: 3, scalarReward: 0.9 },
+        { type: 'progress', offsetMs: 0, episode: 3, episodeBudget: 3, scalarReward: 1.5 },
+      ],
+      assertExtra: async page => {
+        const tile = page.locator('[data-testid="live-telemetry-reward-curve"]');
+        const tileText = await tile.innerText();
+        const hasCurve = await tile.locator('[data-testid="modqn-mini-reward-curve"]').count();
+        const sourceGapTiles = await page.locator('.leo-algorithm-dashboard__source-gap').count();
+        assert.equal(hasCurve, 1, 'reward-curve tile renders a live MiniRewardCurve when per-episode reward is present');
+        assert.equal(tileText.includes('source gap'), false, 'reward-curve tile is no longer a source gap once reward history exists');
+        assert.equal(sourceGapTiles, EXPECTED_SOURCE_GAP_TILES.length - 1, 'reward-curve drops out of the source-gap set, leaving the other un-emitted channels');
+        return { hasCurve, sourceGapTiles };
+      },
+    });
+
+    console.log(JSON.stringify({ appUrl, live, stalled, offline, curve, result: 'PASS' }, null, 2));
   } finally {
     await browser.close().catch(() => undefined);
   }

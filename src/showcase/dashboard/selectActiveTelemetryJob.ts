@@ -1,4 +1,5 @@
 import { isActiveStatus } from '../../modqn/training-trigger/jobsPolling';
+import type { TrainingProgressEvent } from '../../modqn/training-trigger/types';
 import type { LiveTelemetryEntry } from './liveTelemetryStore';
 
 export interface LiveEpisodeProgress {
@@ -24,15 +25,41 @@ export function hasAnyRewardMetric(metrics: Record<string, number> | undefined):
   return REWARD_METRIC_KEYS.some(([key]) => readFiniteMetric(metrics, key) !== null);
 }
 
+function hasFiniteEpisode(event: TrainingProgressEvent | null): boolean {
+  return event !== null && typeof event.episode === 'number' && Number.isFinite(event.episode);
+}
+
+/**
+ * The END-OF-RUN reward summary for the "Terminal reward scalars" tile, or
+ * undefined (the tile is a source gap). Defined ONLY for a terminal job, and
+ * sourced from either the terminal event's own metrics or the producer's
+ * metrics-only FINAL progress line (reward metrics but NO episode). A reward on
+ * an episode-bearing progress event is a per-episode sample (the evolving curve)
+ * and must NOT be mislabeled as a terminal summary (codex [P2]).
+ */
+export function selectTerminalRewardMetrics(entry: LiveTelemetryEntry): Record<string, number> | undefined {
+  // The producer's final scalar line is a metrics-only progress event (reward,
+  // NO episode) emitted just BEFORE the terminal SSE while status is still
+  // 'running' — surface it immediately rather than waiting for the later `done`.
+  // An episode-bearing progress reward is a per-episode sample (the curve), not
+  // a terminal summary, so it is excluded here regardless of status.
+  const finalLine = entry.lastProgressEvent;
+  if (finalLine !== null && !hasFiniteEpisode(finalLine) && hasAnyRewardMetric(finalLine.metrics)) {
+    return finalLine.metrics;
+  }
+  // Otherwise the terminal event's own metrics, once the job is terminal.
+  if (!isActiveStatus(entry.latestEvent.status) && hasAnyRewardMetric(entry.latestEvent.metrics)) {
+    return entry.latestEvent.metrics;
+  }
+  return undefined;
+}
+
 /**
  * A terminal (completed/failed/etc.) job that still carries a reward summary
- * worth showing — its final scalars arrive at the terminal event and/or the
- * last progress event (codex [P2]: don't drop a just-completed run).
+ * worth showing — keeps a just-completed run selectable (codex [P2]).
  */
 function hasTerminalRewardSummary(entry: LiveTelemetryEntry): boolean {
-  if (isActiveStatus(entry.latestEvent.status)) return false;
-  return hasAnyRewardMetric(entry.latestEvent.metrics)
-    || hasAnyRewardMetric(entry.lastProgressEvent?.metrics);
+  return selectTerminalRewardMetrics(entry) !== undefined;
 }
 
 function laterEntry(

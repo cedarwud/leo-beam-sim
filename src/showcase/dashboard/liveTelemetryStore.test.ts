@@ -155,6 +155,30 @@ check('clearTelemetry leaves other jobs', afterClear['job-a'] !== undefined);
 clearTelemetry('job-missing');
 check('clearTelemetry on missing job is a no-op (stable identity)', getTelemetrySnapshot() === afterClear);
 
+// rewardHistory accumulation (P3a evolving reward curve, forward-compatible w/ G-A).
+resetTelemetryStore();
+publishTelemetryEvent(event({ jobId: 'job-e', tsMs: 1, type: 'progress', episode: 1, metrics: { scalarReward: 0.5 } }));
+publishTelemetryEvent(event({ jobId: 'job-e', tsMs: 2, type: 'progress', episode: 2, metrics: { scalarReward: 0.9 } }));
+check('rewardHistory accumulates per-episode scalarReward', JSON.stringify(getTelemetrySnapshot()['job-e'].rewardHistory) === JSON.stringify([{ episode: 1, scalarReward: 0.5 }, { episode: 2, scalarReward: 0.9 }]));
+// progress with episode but no reward => no append; reward but no episode => no append.
+publishTelemetryEvent(event({ jobId: 'job-e', tsMs: 3, type: 'progress', episode: 3 }));
+publishTelemetryEvent(event({ jobId: 'job-e', tsMs: 4, type: 'progress', metrics: { scalarReward: 1.1 } }));
+check('rewardHistory ignores episode-without-reward and reward-without-episode', getTelemetrySnapshot()['job-e'].rewardHistory.length === 2);
+// heartbeat carries neither => no append.
+publishTelemetryEvent(event({ jobId: 'job-e', tsMs: 5, type: 'heartbeat' }));
+check('rewardHistory unchanged by heartbeat', getTelemetrySnapshot()['job-e'].rewardHistory.length === 2);
+// re-deliver same episode same value (reconnect) => stable identity.
+const beforeRedeliver = getTelemetrySnapshot()['job-e'].rewardHistory;
+publishTelemetryEvent(event({ jobId: 'job-e', tsMs: 6, type: 'progress', episode: 1, metrics: { scalarReward: 0.5 } }));
+check('rewardHistory dedups same-episode same-value re-delivery (stable identity)', getTelemetrySnapshot()['job-e'].rewardHistory === beforeRedeliver);
+// re-deliver same episode DIFFERENT value => updates that episode.
+publishTelemetryEvent(event({ jobId: 'job-e', tsMs: 7, type: 'progress', episode: 1, metrics: { scalarReward: 0.7 } }));
+check('rewardHistory updates an episode when its value changes', getTelemetrySnapshot()['job-e'].rewardHistory[0].scalarReward === 0.7);
+// out-of-order episode => sorted by episode.
+publishTelemetryEvent(event({ jobId: 'job-e', tsMs: 8, type: 'progress', episode: 0, metrics: { scalarReward: 0.1 } }));
+check('rewardHistory stays sorted by episode', getTelemetrySnapshot()['job-e'].rewardHistory.map(p => p.episode).join(',') === '0,1,2');
+clearTelemetry('job-e');
+
 // reconcileTelemetry prunes deleted / LRU-expired jobs (codex [P2]).
 resetTelemetryStore();
 publishTelemetryEvent(event({ jobId: 'keep', tsMs: 10, type: 'progress', episode: 1 }));

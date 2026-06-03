@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState, type JSX, type ReactNode } from 'react';
-import { isActiveStatus } from '../../modqn/training-trigger/jobsPolling';
+import { MiniRewardCurve } from '../../ui/modqn-controls/MiniRewardCurve';
 import type { TrainingProgressEvent } from '../../modqn/training-trigger/types';
 import {
   resolveTelemetryStatus,
   useLiveTelemetry,
-  type LiveTelemetryEntry,
   type TelemetryStatus,
 } from './liveTelemetryStore';
 import {
   REWARD_METRIC_KEYS,
-  hasAnyRewardMetric,
   readFiniteMetric,
   resolveLiveEpisodeProgress,
   selectActiveTelemetryJob,
+  selectTerminalRewardMetrics,
 } from './selectActiveTelemetryJob';
 
 export interface LiveTelemetryPanelProps {
@@ -35,17 +34,6 @@ interface MetricRowProps {
 
 function formatMetric(value: number | null): string {
   return value === null || !Number.isFinite(value) ? 'n/a' : value.toFixed(3);
-}
-
-function selectRewardMetrics(entry: LiveTelemetryEntry): Record<string, number> | undefined {
-  const terminalMetrics = !isActiveStatus(entry.latestEvent.status)
-    && hasAnyRewardMetric(entry.latestEvent.metrics)
-    ? entry.latestEvent.metrics
-    : undefined;
-  if (terminalMetrics !== undefined) return terminalMetrics;
-  return hasAnyRewardMetric(entry.lastProgressEvent?.metrics)
-    ? entry.lastProgressEvent?.metrics
-    : undefined;
 }
 
 function telemetryStatusLabel(status: TelemetryStatus): string {
@@ -179,7 +167,8 @@ export function LiveTelemetryPanel({
   }
 
   const episodeProgress = resolveLiveEpisodeProgress(entry);
-  const rewardMetrics = selectRewardMetrics(entry);
+  const rewardMetrics = selectTerminalRewardMetrics(entry);
+  const rewardSeries = entry.rewardHistory.map(point => point.scalarReward);
 
   return (
     <section
@@ -241,10 +230,17 @@ export function LiveTelemetryPanel({
       <LiveTelemetryTile
         title="Evolving reward curve"
         testId="live-telemetry-reward-curve"
-        provenanceLabel="Plane A / source gap"
-        provenanceStatus="source-gap"
+        provenanceLabel={rewardSeries.length > 0 ? 'Plane A / live training' : 'Plane A / source gap'}
+        provenanceStatus={rewardSeries.length > 0 ? 'producer-backed' : 'source-gap'}
+        frozen={frozen}
       >
-        <SourceGap>requires producer change</SourceGap>
+        {rewardSeries.length > 0 ? (
+          <div className="leo-algorithm-dashboard__curve-wrap">
+            <MiniRewardCurve rewards={rewardSeries} />
+          </div>
+        ) : (
+          <SourceGap>requires producer change</SourceGap>
+        )}
       </LiveTelemetryTile>
 
       <LiveTelemetryTile
