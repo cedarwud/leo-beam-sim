@@ -108,6 +108,32 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
     cell/beam layers. NOT a free design call; would need a governance change + ADR-001
     update. Out of scope for FIX-5 unless explicitly reopened.
 
+  - **C build spec (technical anchors so the new session skips re-investigation):**
+    - **Sat data at runtime:** `showcaseArtifactToSceneInterpolated(showcaseArtifact, currentTimeSec).satellites[]`
+      (already computed in `App.tsx` as `replaySceneFrame`, and in the artifact `MainScene`
+      path as `visibleSatellites`). Each entry: `{ id: 'sat-0'..'sat-3', worldPos: [x, 0, z],
+      displayRole: 'context', visible, geo: {latDeg, lonDeg} }`. **All `worldPos[1]` (Y) = 0.**
+      Azimuth (compass bearing on the ground plane) = `Math.atan2(x, z)` → 4 sats ~90° apart,
+      rotating slowly over the 89s (sat-0 starts +X, sat-1 +Z, sat-2 −X, sat-3 −Z). Ring
+      radius `Math.hypot(x, z)` ≈ 7151 (constant per sat). `geo.latDeg/lonDeg` are also present
+      if a lat/lon readout is preferred over XZ azimuth.
+    - **Mount (governance-lightest):** a **2D DOM HUD overlay** (compass rose / small orbital
+      minimap) — NOT a new 3D viewport layer (a 3D in-scene ring would be a new viewport proof
+      layer → Rule#9 matrix+validator change). A DOM HUD that presents lane state is a shared/HUD
+      surface (frontend-render-governance "Shared Surfaces"). Mount on the artifact-replay
+      `leo-shell-canvas` `<main>` (App.tsx ~1873) gated to `sceneLane==='artifact-replay'`, fed the
+      sat azimuths from `replaySceneFrame`/`showcaseArtifact`. New component e.g.
+      `src/ui/ArtifactSatelliteCompass.tsx` with a pure `deriveSatelliteAzimuths(satellites)` helper
+      (unit-testable) + a `data-testid` for the browser smoke.
+    - **Honesty (the whole point):** render only the REAL azimuths; do NOT synthesize elevation.
+      Include an explicit label like "Satellites — orbital azimuth only (ECI proxy, no
+      elevation/Earth-rotation)". This is display-only (reads sat worldPos, never alters geometry
+      truth) and must stay governance-clean (no lane-ownership change; add a scene-lane-governance
+      assertion locking the honesty label + the no-3D-viewport-layer property).
+    - **Verify:** tsc + governance + a **real-data** browser smoke (dev server serving the
+      `producer-pinned` 89s artifact) asserting the compass shows 4 azimuth markers matching the
+      real ring (DATA SOURCE = real producer artifact, explicit) → codex review → ff → push.
+
 - [~] **FIX-6 — Re-verify the "COMPLETE" surfaces on REAL data** · mixed · **artifact-replay lane DONE (2026-06-03); 3 residual items logged below**
   - ✅ **artifact-replay 3D scene on real data:** FIX-2 smoke + screenshot = real
     100-UE ground distribution, scene not fail-closed (`555ba6a`).
