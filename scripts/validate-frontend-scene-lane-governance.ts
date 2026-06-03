@@ -265,6 +265,7 @@ const replayLayerSource = readRepoFile('src/scene/modqn-replay-visuals/index.tsx
 const replayTelemetrySource = readRepoFile('src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx');
 const algorithmDockSource = readRepoFile('src/showcase/dashboard/AlgorithmDock.tsx');
 const algorithmDashboardSource = readRepoFile('src/showcase/dashboard/AlgorithmDashboard.tsx');
+const liveTelemetryPanelSource = readRepoFile('src/showcase/dashboard/LiveTelemetryPanel.tsx');
 const governanceDoc = readRepoFile('docs/frontend-render-governance.md');
 const laneSdd = readRepoFile('docs/frontend-mode-lane-separation-sdd.md');
 const handoverStorySdd = readRepoFile('docs/modqn-handover-story-layer-sdd.md');
@@ -394,20 +395,30 @@ assert.equal(
 );
 {
   const dockMountIndex = appSource.indexOf('<AlgorithmDock');
-  const artifactReplayGuardIndex = appSource.lastIndexOf(
-    "sceneSource === 'artifact-replay'",
-    dockMountIndex,
-  );
+  const algorithmDockModeLine = appSource.split('\n')
+    .find(line => line.includes('const algorithmDockMode')) ?? '';
+  const algorithmDockModeIndex = appSource.indexOf('const algorithmDockMode');
   const dockGuardSlice = appSource.slice(Math.max(0, dockMountIndex - 220), dockMountIndex);
   assert.ok(dockMountIndex >= 0, 'AlgorithmDock mount exists in App');
+  assert.ok(algorithmDockModeIndex >= 0 && algorithmDockModeIndex < dockMountIndex, 'AlgorithmDock mode is derived before mount');
+  assertContains(
+    algorithmDockModeLine,
+    "sceneSource === 'artifact-replay'",
+    'AlgorithmDock mode derives artifact mode from artifact replay source',
+  );
+  assertContains(
+    algorithmDockModeLine,
+    "sceneLane === 'modqn-live-cell-preview'",
+    'AlgorithmDock mode derives live mode from MODQN live cell preview lane',
+  );
   assert.ok(
-    artifactReplayGuardIndex >= 0 && artifactReplayGuardIndex < dockMountIndex,
-    'AlgorithmDock mount is gated by sceneSource === artifact-replay',
+    dockGuardSlice.includes('algorithmDockMode !== null'),
+    'AlgorithmDock mount is gated by algorithmDockMode !== null',
   );
   assertContains(
     dockGuardSlice,
-    "sceneSource === 'artifact-replay'",
-    'AlgorithmDock mount has an immediate artifact-replay guard',
+    'algorithmDockMode !== null',
+    'AlgorithmDock mount has an immediate lane-aware guard',
   );
 }
 
@@ -436,6 +447,16 @@ assertContains(
   'variant="dock"',
   'AlgorithmDock renders the dashboard in dock layout variant',
 );
+assert.equal(
+  countOccurrences(algorithmDockSource, '<LiveTelemetryPanel'),
+  1,
+  'AlgorithmDock mounts LiveTelemetryPanel exactly once',
+);
+assertContains(
+  algorithmDockSource,
+  'mode === \'artifact\'',
+  'AlgorithmDock keeps artifact and live modes distinct',
+);
 assertNotContains(algorithmDockSource, "from 'three", 'AlgorithmDock must not import three');
 assertNotContains(algorithmDockSource, 'from "three', 'AlgorithmDock must not import three');
 assertNotContains(algorithmDockSource, '@react-three/', 'AlgorithmDock must not import react-three');
@@ -457,6 +478,11 @@ assertNotContains(algorithmDockSource, '<Canvas', 'AlgorithmDock must not mount 
     algorithmDockSource,
     'MODQN Algorithm Pipeline',
     'AlgorithmDock identifies the dock region',
+  );
+  assertContains(
+    algorithmDockSource,
+    'MODQN Live Training',
+    'AlgorithmDock identifies the live dock region',
   );
 }
 
@@ -489,8 +515,71 @@ assertNotContains(algorithmDashboardSource, "from 'three", 'AlgorithmDashboard m
 assertNotContains(algorithmDashboardSource, 'from "three', 'AlgorithmDashboard must not import three');
 assertNotContains(algorithmDashboardSource, '@react-three/', 'AlgorithmDashboard must not import react-three');
 assertNotContains(algorithmDashboardSource, '../scene/', 'AlgorithmDashboard must not import scene modules');
+assertNotContains(algorithmDashboardSource, '../../scene/', 'AlgorithmDashboard must not import scene modules');
 assertNotContains(algorithmDashboardSource, '../viz/', 'AlgorithmDashboard must not import viz modules');
+assertNotContains(algorithmDashboardSource, '../../viz/', 'AlgorithmDashboard must not import viz modules');
 assertNotContains(algorithmDashboardSource, '<Canvas', 'AlgorithmDashboard must not mount Canvas');
+
+assertContains(
+  liveTelemetryPanelSource,
+  'data-testid="live-telemetry-panel"',
+  'LiveTelemetryPanel exposes root test id',
+);
+assertContains(
+  liveTelemetryPanelSource,
+  'data-plane="A"',
+  'LiveTelemetryPanel declares Plane A provenance',
+);
+assertContains(
+  liveTelemetryPanelSource,
+  'data-testid="live-telemetry-provenance-chip"',
+  'LiveTelemetryPanel exposes INV-1 provenance chips',
+);
+assertContains(
+  liveTelemetryPanelSource,
+  'source gap - not shown',
+  'LiveTelemetryPanel fails closed on source gaps',
+);
+assertContains(
+  liveTelemetryPanelSource,
+  'data-testid="live-telemetry-status-badge"',
+  'LiveTelemetryPanel exposes INV-2 status badge',
+);
+assertNotContains(liveTelemetryPanelSource, "from 'three", 'LiveTelemetryPanel must not import three');
+assertNotContains(liveTelemetryPanelSource, 'from "three', 'LiveTelemetryPanel must not import three');
+assertNotContains(liveTelemetryPanelSource, '@react-three/', 'LiveTelemetryPanel must not import react-three');
+assertNotContains(liveTelemetryPanelSource, '../scene/', 'LiveTelemetryPanel must not import scene modules');
+assertNotContains(liveTelemetryPanelSource, '../../scene/', 'LiveTelemetryPanel must not import scene modules');
+assertNotContains(liveTelemetryPanelSource, '../viz/', 'LiveTelemetryPanel must not import viz modules');
+assertNotContains(liveTelemetryPanelSource, '../../viz/', 'LiveTelemetryPanel must not import viz modules');
+assertNotContains(liveTelemetryPanelSource, '<Canvas', 'LiveTelemetryPanel must not mount Canvas');
+
+// Headless Plane-A feed: the single store publisher, mounted independent of any
+// sidebar tab so the live dock is never starved (codex [P1]).
+const trainingTelemetryFeedSource = readRepoFile('src/showcase/dashboard/TrainingTelemetryFeed.tsx');
+assertContains(
+  trainingTelemetryFeedSource,
+  'publishTelemetryEvent',
+  'TrainingTelemetryFeed feeds the live telemetry store',
+);
+assertContains(
+  trainingTelemetryFeedSource,
+  'return null',
+  'TrainingTelemetryFeed is headless (renders nothing)',
+);
+assertNotContains(trainingTelemetryFeedSource, "from 'three", 'TrainingTelemetryFeed must not import three');
+assertNotContains(trainingTelemetryFeedSource, 'from "three', 'TrainingTelemetryFeed must not import three');
+assertNotContains(trainingTelemetryFeedSource, '@react-three/', 'TrainingTelemetryFeed must not import react-three');
+assertNotContains(trainingTelemetryFeedSource, '../scene/', 'TrainingTelemetryFeed must not import scene modules');
+assertNotContains(trainingTelemetryFeedSource, '../../scene/', 'TrainingTelemetryFeed must not import scene modules');
+assertNotContains(trainingTelemetryFeedSource, '../viz/', 'TrainingTelemetryFeed must not import viz modules');
+assertNotContains(trainingTelemetryFeedSource, '../../viz/', 'TrainingTelemetryFeed must not import viz modules');
+assertNotContains(trainingTelemetryFeedSource, '<Canvas', 'TrainingTelemetryFeed must not mount Canvas');
+assertContains(
+  appSource,
+  "<TrainingTelemetryFeed enabled={appMode === 'modqn-demo'}",
+  'App mounts the headless telemetry feed for modqn-demo independent of any tab',
+);
 
 {
   const baseInput = {

@@ -1,29 +1,36 @@
 import { useState, type JSX } from 'react';
 import { AlgorithmDashboard, type AlgorithmDashboardProps } from './AlgorithmDashboard';
+import { LiveTelemetryPanel } from './LiveTelemetryPanel';
 
-export type AlgorithmDockProps = Pick<
-  AlgorithmDashboardProps,
-  'artifact' | 'frameIndex' | 'currentTimeSecRef'
->;
+export interface AlgorithmDockProps {
+  readonly mode: 'artifact' | 'live';
+  readonly artifact?: AlgorithmDashboardProps['artifact'];
+  readonly frameIndex?: AlgorithmDashboardProps['frameIndex'];
+  readonly currentTimeSecRef?: AlgorithmDashboardProps['currentTimeSecRef'];
+}
 
 export function AlgorithmDock({
+  mode,
   artifact,
-  frameIndex,
-  currentTimeSecRef,
+  frameIndex = 0,
+  currentTimeSecRef = null,
 }: AlgorithmDockProps): JSX.Element {
   const [collapsed, setCollapsed] = useState(false);
+  const title = mode === 'artifact' ? 'MODQN Algorithm Pipeline' : 'MODQN Live Training';
+  const subtitle = mode === 'artifact' ? 'visual-showcase-v1 replay truth' : 'Plane-A SSE (episode-coarse)';
 
   return (
     <section
       className="leo-algorithm-dock"
       data-testid="algorithm-dock"
       data-collapsed={collapsed ? 'true' : 'false'}
+      data-mode={mode}
       aria-label="MODQN algorithm pipeline dock"
     >
       <header className="leo-algorithm-dock__header">
         <div className="leo-algorithm-dock__title">
-          <strong>MODQN Algorithm Pipeline</strong>
-          <span>visual-showcase-v1 replay truth</span>
+          <strong>{title}</strong>
+          <span>{subtitle}</span>
         </div>
         <button
           type="button"
@@ -37,12 +44,16 @@ export function AlgorithmDock({
       </header>
       {!collapsed ? (
         <div className="leo-algorithm-dock__body">
-          <AlgorithmDashboard
-            artifact={artifact}
-            frameIndex={frameIndex}
-            currentTimeSecRef={currentTimeSecRef}
-            variant="dock"
-          />
+          {mode === 'artifact' ? (
+            <AlgorithmDashboard
+              artifact={artifact ?? null}
+              frameIndex={frameIndex}
+              currentTimeSecRef={currentTimeSecRef}
+              variant="dock"
+            />
+          ) : (
+            <LiveTelemetryPanel variant="dock" />
+          )}
         </div>
       ) : null}
     </section>

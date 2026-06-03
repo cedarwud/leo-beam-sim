@@ -11,6 +11,7 @@ import {
   resolveTelemetryStatus,
   publishTelemetryEvent,
   clearTelemetry,
+  reconcileTelemetry,
   resetTelemetryStore,
   getTelemetrySnapshot,
 } from './liveTelemetryStore';
@@ -115,20 +116,34 @@ check('heartbeat after progress advances lastHeartbeatMs', sticky['job-a'].lastH
 // sticky progress PAYLOAD across heartbeat/terminal (codex [P2]: heartbeat/done
 // events carry no episode/metrics and must not blank the displayable payload).
 // Uses a fresh job id (job-c), so job-a/job-b stay intact for the clear tests.
-publishTelemetryEvent(event({ jobId: 'job-c', tsMs: 10, type: 'progress', episode: 5, metrics: { scalarReward: 2 } }));
+publishTelemetryEvent(event({ jobId: 'job-c', tsMs: 10, type: 'progress', episode: 5, episodeBudget: 12, metrics: { scalarReward: 2 } }));
 check('progress sets lastProgressEvent payload', getTelemetrySnapshot()['job-c'].lastProgressEvent?.episode === 5);
+check('progress sets lastEpisodeEvent', getTelemetrySnapshot()['job-c'].lastEpisodeEvent?.episode === 5);
 check('progress sets latestEvent', getTelemetrySnapshot()['job-c'].latestEvent.type === 'progress');
 
 publishTelemetryEvent(event({ jobId: 'job-c', tsMs: 20, type: 'heartbeat' }));
 const afterHb = getTelemetrySnapshot()['job-c'];
 check('heartbeat keeps lastProgressEvent episode sticky', afterHb.lastProgressEvent?.episode === 5);
 check('heartbeat keeps lastProgressEvent metrics sticky', afterHb.lastProgressEvent?.metrics?.scalarReward === 2);
+check('heartbeat keeps lastEpisodeEvent sticky', afterHb.lastEpisodeEvent?.episode === 5);
 check('heartbeat is the latestEvent', afterHb.latestEvent.type === 'heartbeat');
 
 publishTelemetryEvent(event({ jobId: 'job-c', tsMs: 30, type: 'done', status: 'done' }));
 const afterDone = getTelemetrySnapshot()['job-c'];
 check('done keeps lastProgressEvent episode sticky', afterDone.lastProgressEvent?.episode === 5);
+check('done keeps lastEpisodeEvent sticky', afterDone.lastEpisodeEvent?.episode === 5);
 check('done is the latestEvent', afterDone.latestEvent.type === 'done');
+
+// producer FINAL scalar line = a metrics-only progress (episodeBudget, NO
+// episode) that arrives AFTER the last real episode; it must update reward
+// metrics but NOT blank the sticky episode (codex [P2]). Fresh job-d.
+publishTelemetryEvent(event({ jobId: 'job-d', tsMs: 10, type: 'progress', episode: 5, episodeBudget: 12, metrics: { scalarReward: 2 } }));
+publishTelemetryEvent(event({ jobId: 'job-d', tsMs: 15, type: 'progress', episodeBudget: 12, metrics: { scalarReward: 9, r1Mean: 1 } }));
+const afterFinalProgress = getTelemetrySnapshot()['job-d'];
+check('metrics-only final progress keeps lastEpisodeEvent sticky (episode 5)', afterFinalProgress.lastEpisodeEvent?.episode === 5);
+check('metrics-only final progress updates lastProgressEvent metrics', afterFinalProgress.lastProgressEvent?.metrics?.scalarReward === 9);
+check('metrics-only final progress has no episode on lastProgressEvent', afterFinalProgress.lastProgressEvent?.episode === undefined);
+clearTelemetry('job-d');
 
 const beforeClear = getTelemetrySnapshot();
 clearTelemetry('job-b');
@@ -139,6 +154,21 @@ check('clearTelemetry leaves other jobs', afterClear['job-a'] !== undefined);
 
 clearTelemetry('job-missing');
 check('clearTelemetry on missing job is a no-op (stable identity)', getTelemetrySnapshot() === afterClear);
+
+// reconcileTelemetry prunes deleted / LRU-expired jobs (codex [P2]).
+resetTelemetryStore();
+publishTelemetryEvent(event({ jobId: 'keep', tsMs: 10, type: 'progress', episode: 1 }));
+publishTelemetryEvent(event({ jobId: 'gone', tsMs: 20, type: 'done', status: 'done', metrics: { scalarReward: 3 } }));
+const beforeReconcile = getTelemetrySnapshot();
+reconcileTelemetry(new Set(['keep']));
+const afterReconcile = getTelemetrySnapshot();
+check('reconcile removes jobs absent from the known set', afterReconcile['gone'] === undefined);
+check('reconcile keeps jobs in the known set', afterReconcile['keep'] !== undefined);
+check('reconcile changes snapshot identity when it prunes', afterReconcile !== beforeReconcile);
+reconcileTelemetry(new Set(['keep']));
+check('reconcile is a no-op (stable identity) when nothing is pruned', getTelemetrySnapshot() === afterReconcile);
+reconcileTelemetry(new Set());
+check('reconcile to empty set clears all entries', Object.keys(getTelemetrySnapshot()).length === 0);
 
 resetTelemetryStore();
 

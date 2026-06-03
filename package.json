@@ -40,6 +40,7 @@
     "validate:phase-d:decision-viz": "node --import tsx/esm scripts/validate-phase-d-decision-viz.tsx",
     "validate:phase-d:episode-progress": "node --import tsx/esm scripts/validate-phase-d-episode-progress.tsx",
     "validate:phase-d:flowchart-scaffold": "node --import tsx/esm scripts/validate-phase-d-flowchart-scaffold.tsx",
+    "validate:phase-d:live-telemetry-select": "node --import tsx/esm src/showcase/dashboard/selectActiveTelemetryJob.test.ts",
     "validate:phase-d:live-telemetry-store": "node --import tsx/esm src/showcase/dashboard/liveTelemetryStore.test.ts",
     "validate:phase-d:reward-curve": "node --import tsx/esm scripts/validate-phase-d-reward-curve.tsx",
     "validate:phase-d:user-trained-bundle-fetch": "node --import tsx/esm scripts/validate-phase-d-user-trained-bundle-fetch.tsx",

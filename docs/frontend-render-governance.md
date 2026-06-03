@@ -59,10 +59,18 @@ they must not share viewport ownership decisions.
 
 ## Non-3D Dashboard Dock
 
-`AlgorithmDashboard` now lives in the full-width collapsible bottom
-`AlgorithmDock` (`src/showcase/dashboard/AlgorithmDock.tsx`). It remains gated
-by `sceneSource === 'artifact-replay'`, imports no Three/scene/viz symbols,
-and mounts no `<Canvas>`. The dock is a normal flex child of `leo-app-shell`,
+`AlgorithmDock` (`src/showcase/dashboard/AlgorithmDock.tsx`) is the
+full-width collapsible bottom non-3D dashboard surface. It is lane-aware:
+`artifact-replay` renders the Plane-C `AlgorithmDashboard` against
+`visual-showcase-v1` replay truth, while `modqn-live-cell-preview` renders the
+Plane-A `LiveTelemetryPanel` against live training SSE telemetry. The live
+panel is INV-1/2/3 guarded: every tile declares Plane A provenance, staleness
+freezes sticky values or degrades offline, and missing producer channels render
+`source gap - not shown` instead of fabricated reward curves, loss, Pareto,
+Q-values, or learning-rate values.
+
+The dock and both dashboard components import no Three/scene/viz symbols and
+mount no `<Canvas>`. The dock is a normal flex child of `leo-app-shell`,
 co-visible with the 3D row without viewport occlusion, and is not a second
 proof lane.
 

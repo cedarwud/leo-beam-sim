@@ -3084,6 +3084,48 @@ canvas {
   padding: 8px 7px 7px;
 }
 
+.leo-live-telemetry-panel__status-badge {
+  justify-self: end;
+  padding: 3px 7px;
+  border: 1px solid rgba(129, 246, 188, 0.32);
+  border-radius: 999px;
+  background: rgba(129, 246, 188, 0.1);
+  color: rgba(218, 255, 235, 0.94);
+  font-size: 9px;
+  font-weight: 850;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.leo-live-telemetry-panel__status-badge[data-telemetry-status="stalled"] {
+  border-color: rgba(193, 205, 214, 0.32);
+  background: rgba(160, 173, 184, 0.12);
+  color: rgba(218, 226, 232, 0.88);
+}
+
+.leo-live-telemetry-panel__status-badge[data-telemetry-status="offline"] {
+  border-color: rgba(255, 118, 118, 0.32);
+  background: rgba(255, 118, 118, 0.1);
+  color: rgba(255, 205, 205, 0.94);
+}
+
+.leo-live-telemetry-panel__tile--frozen {
+  border-color: rgba(193, 205, 214, 0.18);
+  background: rgba(163, 176, 190, 0.06);
+  filter: grayscale(0.42);
+}
+
+.leo-live-telemetry-panel__tile--frozen .leo-algorithm-dashboard__metric-row strong {
+  color: rgba(218, 226, 232, 0.82);
+}
+
+.leo-live-telemetry-panel__source-gap-detail {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 217, 142, 0.74);
+}
+
 .leo-algorithm-flowchart {
   width: 100%;
   aspect-ratio: 1.35;

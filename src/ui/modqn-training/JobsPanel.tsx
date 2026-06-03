@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { AppExperienceMode } from '../appMode';
 import { readTrainingServiceBaseUrl } from '../../modqn/training-trigger/baseUrl';
-import { getBatch, getJobDetail, getJobs, jobStreamUrl, postCancelJob, deleteJob } from '../../modqn/training-trigger/serviceClient';
+import { getBatch, getJobDetail, getJobs, postCancelJob, deleteJob } from '../../modqn/training-trigger/serviceClient';
 import {
   readSubmittedJobIds,
   removeSubmittedJobId,
@@ -22,6 +22,7 @@ import type {
   TrainingJobSummary,
   TrainingProgressEvent,
 } from '../../modqn/training-trigger/types';
+import { useLiveTelemetry } from '../../showcase/dashboard/liveTelemetryStore';
 
 interface JobsPanelProps {
   readonly appMode: AppExperienceMode;
@@ -62,19 +63,6 @@ export function parseEpisodeProgress(
   const ratio = current / total;
   const percent = Math.min(100, Math.max(0, Math.round(ratio * 100)));
   return { current, total, percent };
-}
-
-function parseTrainingProgressEvent(raw: string): TrainingProgressEvent | null {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-    const record = parsed as Partial<TrainingProgressEvent>;
-    return typeof record.id === 'number' && typeof record.jobId === 'string'
-      ? record as TrainingProgressEvent
-      : null;
-  } catch {
-    return null;
-  }
 }
 
 function progressFromStreamEvent(
@@ -156,7 +144,7 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
   const [detail, setDetail] = useState<Record<string, TrainingJobDetail | undefined>>({});
   const [batchDetails, setBatchDetails] = useState<Record<string, BatchDetail | undefined>>({});
   const [batchErrors, setBatchErrors] = useState<Record<string, string | undefined>>({});
-  const [streamEvents, setStreamEvents] = useState<Record<string, TrainingProgressEvent | undefined>>({});
+  const telemetry = useLiveTelemetry();
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const activeCountRef = useRef(0);
 
@@ -256,37 +244,10 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
     }
   }, []);
 
-  const activeJobIds = useMemo(
-    () => jobs.filter(job => isActiveStatus(job.status)).map(job => job.jobId).sort(),
-    [jobs],
-  );
-  const activeJobIdsKey = activeJobIds.join('|');
-
-  useEffect(() => {
-    if (!enabled || activeJobIds.length === 0 || typeof EventSource === 'undefined') return;
-    const sources = activeJobIds.map(jobId => {
-      const source = new EventSource(jobStreamUrl({ baseUrl: readTrainingServiceBaseUrl() }, jobId));
-      const handleMessage = (event: MessageEvent<string>) => {
-        const parsed = parseTrainingProgressEvent(event.data);
-        if (parsed === null) return;
-        setStreamEvents(current => ({ ...current, [parsed.jobId]: parsed }));
-      };
-      source.onmessage = handleMessage;
-      for (const eventType of ['queued', 'heartbeat', 'progress', 'done', 'failed', 'cancelled']) {
-        source.addEventListener(eventType, handleMessage);
-      }
-      return { source, handleMessage };
-    });
-    return () => {
-      for (const { source, handleMessage } of sources) {
-        for (const eventType of ['queued', 'heartbeat', 'progress', 'done', 'failed', 'cancelled']) {
-          source.removeEventListener(eventType, handleMessage);
-        }
-        source.onmessage = null;
-        source.close();
-      }
-    };
-  }, [activeJobIdsKey, enabled]);
+  // Per-job SSE streaming is owned by the App-level <TrainingTelemetryFeed/>
+  // (the single store publisher, mounted independent of this tab). JobsPanel
+  // reads the latest event per job from that shared store — no parallel
+  // EventSource here (avoids duplicate per-origin connections).
 
   if (!enabled) return null;
 
@@ -396,7 +357,7 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
           {activeJobs.map(job => {
             const startedAtMs = getStartedAtMs(job);
             const stdoutTail = detail[job.jobId]?.stdoutTail;
-            const streamEvent = streamEvents[job.jobId];
+            const streamEvent = telemetry[job.jobId]?.latestEvent;
             const streamProgress = progressFromStreamEvent(streamEvent);
             const progress = streamProgress ?? parseEpisodeProgress(stdoutTail);
             return (

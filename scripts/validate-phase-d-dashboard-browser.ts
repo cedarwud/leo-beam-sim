@@ -20,6 +20,7 @@ const ARTIFACT_ROUTE = '**/showcase-artifacts/visual-showcase-v1.json';
 
 interface DashboardSmokeResult {
   readonly dockVisible: boolean;
+  readonly dockMode: string | null;
   readonly dashboardInsideDock: number;
   readonly dashboardLoaded: string | null;
   readonly nodes: number;
@@ -57,6 +58,7 @@ async function runDashboardSmoke(browser: Browser, appUrl: string): Promise<Dash
     await dashboard.waitFor({ state: 'visible', timeout: 20000 });
 
     const dockVisible = await dock.isVisible();
+    const dockMode = await dock.getAttribute('data-mode');
     const dashboardInsideDock = await dashboard.count();
     const dashboardLoaded = await dashboard.getAttribute('data-artifact-loaded');
     const nodes = await dock.locator('[data-testid="algorithm-flowchart-node"]').count();
@@ -88,6 +90,7 @@ async function runDashboardSmoke(browser: Browser, appUrl: string): Promise<Dash
 
     return {
       dockVisible,
+      dockMode,
       dashboardInsideDock,
       dashboardLoaded,
       nodes,
@@ -114,6 +117,7 @@ async function main(): Promise<void> {
     const result = await runDashboardSmoke(browser, appUrl);
 
     assert.equal(result.dockVisible, true, 'algorithm dock is visible');
+    assert.equal(result.dockMode, 'artifact', 'artifact replay renders the dock artifact mode path');
     assert.equal(result.dashboardInsideDock, 1, 'dashboard renders inside the algorithm dock');
     assert.equal(result.dashboardLoaded, 'true', 'dashboard reports artifact loaded');
     assert.equal(result.nodes, 8, 'flowchart renders all 8 MODQN pipeline nodes');

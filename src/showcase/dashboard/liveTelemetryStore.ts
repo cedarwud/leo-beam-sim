@@ -33,8 +33,15 @@ export const STALL_AFTER_MS = 20_000;
 export interface LiveTelemetryEntry {
   /** Latest event of ANY type — use for lifecycle status / terminal detection. */
   readonly latestEvent: TrainingProgressEvent;
-  /** Last `progress` event (sticky episode + reward metrics), or null if none yet. */
+  /** Last `progress` event (sticky reward metrics), or null if none yet. */
   readonly lastProgressEvent: TrainingProgressEvent | null;
+  /**
+   * Last `progress` event that actually carried a finite `episode` (sticky for
+   * the episode-progress tile). The producer's FINAL scalar line is a `progress`
+   * event with metrics + episodeBudget but NO episode, so this is tracked apart
+   * from lastProgressEvent to avoid the episode tile blanking at completion.
+   */
+  readonly lastEpisodeEvent: TrainingProgressEvent | null;
   /** tsMs of the last `progress` event, or null if none seen yet. */
   readonly lastProgressMs: number | null;
   /** tsMs of the last event of ANY type (proves the stream is alive). */
@@ -83,6 +90,7 @@ function emit(): void {
 export function publishTelemetryEvent(event: TrainingProgressEvent): void {
   const previous = snapshot[event.jobId];
   const isProgress = event.type === 'progress';
+  const hasEpisode = typeof event.episode === 'number' && Number.isFinite(event.episode);
   snapshot = Object.freeze({
     ...snapshot,
     [event.jobId]: {
@@ -90,11 +98,35 @@ export function publishTelemetryEvent(event: TrainingProgressEvent): void {
       // Sticky: heartbeat/terminal events carry no episode/metrics, so keep the
       // last progress payload for display tiles instead of overwriting it.
       lastProgressEvent: isProgress ? event : (previous?.lastProgressEvent ?? null),
+      // Only an episode-bearing progress event updates this — the producer's
+      // final metrics-only progress line (no episode) must not blank it.
+      lastEpisodeEvent: isProgress && hasEpisode ? event : (previous?.lastEpisodeEvent ?? null),
       lastProgressMs: isProgress ? event.tsMs : (previous?.lastProgressMs ?? null),
       // ANY event (heartbeat or progress) proves the stream is alive.
       lastHeartbeatMs: event.tsMs,
     },
   });
+  emit();
+}
+
+/**
+ * Prune store entries for jobs the authoritative job list no longer knows about
+ * (deleted by the user or LRU-expired). Called by the feed each successful poll
+ * so the live dock never shows a deleted run's terminal scalars indefinitely
+ * (codex [P2]). A no-op (stable identity) when every entry is still known.
+ */
+export function reconcileTelemetry(knownJobIds: ReadonlySet<string>): void {
+  let changed = false;
+  const next: Record<string, LiveTelemetryEntry> = {};
+  for (const [jobId, entry] of Object.entries(snapshot)) {
+    if (knownJobIds.has(jobId)) {
+      next[jobId] = entry;
+    } else {
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  snapshot = Object.freeze(next);
   emit();
 }
 

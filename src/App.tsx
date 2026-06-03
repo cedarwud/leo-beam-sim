@@ -116,6 +116,7 @@ import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
 import { AlgorithmDock } from './showcase/dashboard/AlgorithmDock';
+import { TrainingTelemetryFeed } from './showcase/dashboard/TrainingTelemetryFeed';
 import type { VisualShowcaseArtifact } from './scene/visual-showcase-contract';
 import type { NormalizedSceneFrame } from './scene/NormalizedSceneFrame';
 import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
@@ -486,6 +487,7 @@ export function App() {
     [appMode, modqnReplayProofRequestActive, sceneSource],
   );
   const showModqnReplayScene = shouldRenderModqnReplayScene(sceneLane);
+  const algorithmDockMode: 'artifact' | 'live' | null = sceneSource === 'artifact-replay' ? 'artifact' : sceneLane === 'modqn-live-cell-preview' ? 'live' : null;
   // omegaActive snapshot — owned by App so it can be threaded into ModqnHandoverModeContext
   // and read by useSimulation (inside Canvas). Starts at paper-faithful defaults.
   const [omegaActiveForContext, setOmegaActiveForContext] = useState<RuntimeOmegaState>(
@@ -2042,13 +2044,15 @@ export function App() {
           </SidebarTabShell>
         </aside>
       </div>
-      {sceneSource === 'artifact-replay' && (
+      {algorithmDockMode !== null && (
         <AlgorithmDock
+          mode={algorithmDockMode}
           artifact={showcaseArtifact}
           frameIndex={frameIndex}
           currentTimeSecRef={currentTimeSecRef}
         />
       )}
+      <TrainingTelemetryFeed enabled={appMode === 'modqn-demo'} />
     </div>
     </ModqnHandoverModeProvider>
     </ModqnEnvelopeProvider>
