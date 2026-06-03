@@ -23,12 +23,12 @@
 
 .leo-algorithm-dock__header {
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 9px 12px;
+  gap: 14px;
+  padding: 10px 14px;
   border-bottom: 1px solid rgba(218, 244, 255, 0.1);
 }
 
@@ -40,23 +40,23 @@
   min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 12px;
 }
 
 .leo-algorithm-dock__title strong {
   min-width: 0;
   color: #f6fbff;
   font-size: 13px;
-  font-weight: 850;
-  letter-spacing: 0;
+  font-weight: var(--leo-weight-black);
+  letter-spacing: 0.01em;
   overflow-wrap: anywhere;
 }
 
 .leo-algorithm-dock__title span {
-  color: rgba(229, 244, 251, 0.62);
+  color: rgba(229, 244, 251, 0.66);
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-weight: var(--leo-weight-heavy);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -64,36 +64,53 @@
   flex: 0 0 auto;
   appearance: none;
   min-height: 30px;
-  padding: 0 11px;
-  border: 1px solid rgba(118, 234, 215, 0.32);
+  padding: 0 12px;
+  border: 1px solid rgba(var(--leo-accent-rgb), 0.42);
   border-radius: 6px;
   background:
-    linear-gradient(180deg, rgba(118, 234, 215, 0.14), rgba(118, 234, 215, 0.06)),
+    linear-gradient(180deg, rgba(var(--leo-accent-rgb), 0.18), rgba(var(--leo-accent-rgb), 0.09)),
     rgba(4, 18, 28, 0.78);
-  color: rgba(238, 250, 255, 0.9);
+  color: rgba(238, 250, 255, 0.92);
   font: inherit;
   font-size: 11px;
-  font-weight: 850;
+  font-weight: var(--leo-weight-black);
   line-height: 1;
   cursor: pointer;
   transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    color 140ms ease;
+    background var(--leo-motion-standard) ease,
+    border-color var(--leo-motion-standard) ease,
+    color var(--leo-motion-standard) ease;
 }
 
 .leo-algorithm-dock__toggle:hover {
-  border-color: rgba(111, 247, 238, 0.56);
+  border-color: rgba(var(--leo-accent-rgb), 0.62);
   background:
-    linear-gradient(180deg, rgba(111, 247, 238, 0.2), rgba(111, 247, 238, 0.08)),
+    linear-gradient(180deg, rgba(var(--leo-accent-rgb), 0.26), rgba(var(--leo-accent-rgb), 0.12)),
     rgba(4, 18, 28, 0.86);
   color: #ffffff;
+}
+
+.leo-algorithm-dock__toggle:active {
+  background:
+    linear-gradient(180deg, rgba(var(--leo-accent-rgb), 0.2), rgba(var(--leo-accent-rgb), 0.1)),
+    rgba(3, 13, 21, 0.9);
+  transform: translateY(0.5px);
 }
 
 .leo-algorithm-dock__toggle:focus-visible {
   outline: 2px solid var(--leo-focus-ring, rgba(111, 247, 238, 0.96));
   outline-offset: 3px;
   box-shadow: 0 0 0 4px var(--leo-focus-ring-shadow, rgba(111, 247, 238, 0.2));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leo-algorithm-dock__toggle {
+    transition: none;
+  }
+
+  .leo-algorithm-dock__toggle:active {
+    transform: none;
+  }
 }
 
 .leo-algorithm-dock__body {
@@ -143,9 +160,9 @@
 }
 
 .leo-algorithm-dock [data-variant="dock"] .leo-algorithm-flowchart {
-  height: clamp(76px, 8.5vh, 118px);
+  height: clamp(96px, 9.5vh, 132px);
   aspect-ratio: auto;
-  border-color: rgba(118, 234, 215, 0.18);
+  border-color: rgba(var(--leo-accent-rgb), 0.18);
   background:
     linear-gradient(90deg, rgba(2, 11, 18, 0.78), rgba(5, 20, 30, 0.62)),
     rgba(2, 11, 18, 0.58);
