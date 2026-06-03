@@ -90,7 +90,14 @@ function modqnBundleStaticServer(): Plugin {
       server.middlewares.use((req, res, next) => {
         const url = req.url ?? '';
         if (url === '/showcase-artifacts/visual-showcase-v1.json') {
-          const filePath = '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
+          // FIX-2 (render-truth): the pinned producer artifact is the real 89s
+          // baseline MODQN multi-UE replay regenerated 2026-06-03 via
+          // `modqn-export --replay-slot-count 90` + `modqn-visual-showcase`
+          // (ntn-sim-core validate:visual-showcase:artifact OK, 4 sats / 100 UEs
+          // / 90 frames, evidenceStatus=baseline). The earlier phase-01h-mp5
+          // path was only a 10s CLI smoke and never satisfied the 60-120s
+          // visual-showcase-v1 window contract.
+          const filePath = '/home/u24/papers/modqn-paper-reproduction/artifacts/visual-showcase-v1-baseline-89s-2026-06-03/visual-showcase-v1.json';
           fs.stat(filePath, (err, stat) => {
             if (!err && stat.isFile()) {
               res.setHeader('Content-Type', 'application/json');
