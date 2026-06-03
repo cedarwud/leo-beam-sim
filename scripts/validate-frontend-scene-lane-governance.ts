@@ -653,6 +653,19 @@ assertContains(
   'data-testid="artifact-source-badge"',
   'badge exposes a browser test id for the honesty surface',
 );
+// FIX-4: the durable Director cinematic browser gate reads these shell telemetry
+// attributes (director FSM phase + effective playback speed). Lock them so they
+// cannot be silently removed and quietly disable the gate.
+assertContains(
+  appSource,
+  'data-director-phase={camera.directorPhase}',
+  'App exposes the director FSM phase as shell telemetry for the cinematic gate',
+);
+assertContains(
+  appSource,
+  'data-effective-speed={playback.effectiveSpeed',
+  'App exposes the effective playback speed as shell telemetry for the cinematic gate',
+);
 // The dev middleware is the header EMITTER for the honesty surface — it must
 // derive the source from the loader's resolved source, never hardcode synthetic,
 // so an env-provided / regenerated real artifact is not mislabeled as fake.

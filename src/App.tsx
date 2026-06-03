@@ -1766,6 +1766,8 @@ export function App() {
       data-artifact-source={
         sceneSource === 'artifact-replay' ? (showcaseArtifactSource ?? 'pending') : undefined
       }
+      data-director-phase={camera.directorPhase}
+      data-effective-speed={playback.effectiveSpeed.toFixed(3)}
       data-timeline-current-time-sec={timelineCurrentTimeSec.toFixed(3)}
       data-timeline-duration-sec={timelineDurationSec.toFixed(3)}
       data-timeline-disabled={timelineDisabled ? 'true' : 'false'}
