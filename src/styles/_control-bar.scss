@@ -25,16 +25,16 @@
   color: #f6fbff;
   padding: 4px 12px;
   border-radius: 6px;
-  transition: background 140ms ease, border-color 140ms ease;
+  transition: background var(--leo-motion-standard) ease, border-color var(--leo-motion-standard) ease;
 }
 
 .leo-control-bar__play[data-paused="true"] {
-  background: rgba(118, 234, 215, 0.18);
-  border-color: rgba(118, 234, 215, 0.46);
+  background: rgba(var(--leo-accent-rgb), 0.18);
+  border-color: rgba(var(--leo-accent-rgb), 0.46);
 }
 
 .leo-control-bar__play:hover {
-  background: rgba(118, 234, 215, 0.14);
+  background: rgba(var(--leo-accent-rgb), 0.14);
 }
 
 .leo-control-bar__field-row {
@@ -47,7 +47,7 @@
 .leo-control-bar__ue-select {
   cursor: pointer;
   background: rgba(8, 23, 32, 0.96);
-  border: 1px solid rgba(118, 234, 215, 0.28);
+  border: 1px solid rgba(var(--leo-accent-rgb), 0.28);
   color: #f6fbff;
   padding: 4px 8px;
   border-radius: 6px;
@@ -82,7 +82,7 @@
   color: rgba(229, 244, 251, 0.78);
   padding: 4px 9px;
   border-radius: 6px;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition: background var(--leo-motion-standard) ease, color var(--leo-motion-standard) ease, border-color var(--leo-motion-standard) ease;
 }
 
 .leo-control-bar__handover-mode-button {
@@ -100,16 +100,16 @@
 .leo-control-bar__handover-mode-button[aria-pressed="true"],
 .leo-control-bar__density-button[aria-pressed="true"],
 .leo-control-bar__modqn-layer-button[aria-pressed="true"] {
-  background: rgba(118, 234, 215, 0.2);
-  border-color: rgba(118, 234, 215, 0.46);
-  color: #d8fffa;
+  background: rgba(var(--leo-accent-rgb), 0.2);
+  border-color: rgba(var(--leo-accent-rgb), 0.46);
+  color: var(--leo-accent-strong);
 }
 
 .leo-control-bar__handover-mode-button:hover:not([aria-pressed="true"]):not(:disabled),
 .leo-control-bar__density-button:hover:not([aria-pressed="true"]),
 .leo-control-bar__modqn-layer-button:hover:not([aria-pressed="true"]) {
-  background: rgba(118, 234, 215, 0.08);
-  color: #d8fffa;
+  background: rgba(var(--leo-accent-rgb), 0.08);
+  color: var(--leo-accent-strong);
 }
 
 .leo-control-bar__handover-mode-button:disabled {
@@ -131,12 +131,12 @@
   color: #f6fbff;
   padding: 4px 10px;
   border-radius: 6px;
-  transition: background 140ms ease, border-color 140ms ease;
+  transition: background var(--leo-motion-standard) ease, border-color var(--leo-motion-standard) ease;
 }
 
 .leo-control-bar__camera-button:hover {
-  background: rgba(118, 234, 215, 0.14);
-  border-color: rgba(118, 234, 215, 0.42);
+  background: rgba(var(--leo-accent-rgb), 0.14);
+  border-color: rgba(var(--leo-accent-rgb), 0.42);
 }
 
 .leo-control-bar__toggle {
@@ -156,7 +156,7 @@
 
 .leo-control-bar__scene-readout {
   min-width: 140px;
-  color: rgba(229, 244, 251, 0.44);
+  color: rgba(229, 244, 251, 0.58);
 }
 
 .leo-control-bar__scene-readout[data-warning="true"] {
