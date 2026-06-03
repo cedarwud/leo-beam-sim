@@ -13,14 +13,31 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
 
 ## Sequenced items
 
-- [ ] **FIX-1 — Make the synthetic-fixture fallback LOUD** · non-heavy · in-environment
-  - App ignores `X-Showcase-Artifact-Source` (`App.tsx:1246`). Read it: when
-    `synthetic-fixture-fallback`, emit a `console.warn`, set a scene
-    `data-artifact-source="synthetic-fixture-fallback"` attribute, and show a
-    visible dev badge near the ClaimBoundaryBanner. Goal: fake data can never be
-    silently mistaken for a producer result.
-  - Verify: browser load `?sceneSource=artifact-replay` shows the badge + warn;
-    a (regenerated) real artifact shows `producer-pinned` with no badge.
+- [x] **FIX-1 — Make the synthetic-fixture fallback LOUD** · non-heavy · in-environment · **DONE `b9964af` (2026-06-03)**
+  - App now reads `X-Showcase-Artifact-Source` on the replay fetch into state;
+    `console.warn` + `data-artifact-source` shell attribute + a visible
+    `ArtifactSourceBadge` banner fire for any non-producer source. Display-only
+    (reads a transport header, never SINR/handover/MODQN/reward/geometry truth).
+  - A completed 200 with NO header (static/preview server, route mock) maps to a
+    distinct `HEADER_ABSENT_SOURCE` sentinel (not the loading `null`) so it still
+    trips the badge — caught by codex review (would otherwise be silently
+    bypassed). Warn copy is source-aware: only the synthetic fixture is called
+    "synthetic"; header-absent / unknown is reported as unverified, never
+    overclaimed.
+  - **Emitter fix (codex-caught):** `vite.config.ts` no longer hardcodes
+    `synthetic-fixture-fallback` on the loader fallback path — it derives the
+    header from the loader's resolved source, so an env-provided real artifact
+    (`VISUAL_SHOWCASE_ARTIFACT_PATH`) stamps `external-artifact-path`, not fake.
+    Only the canonical pinned path earns `producer-pinned` (§3: an unvalidated
+    external artifact must not silently pass as proof).
+  - **Verified (DATA SOURCE explicit):** tsc 0; governance/app-wire 41-0/
+    banner-copy 25-0 green; playwright smoke on the **synthetic-fixture-fallback**
+    dev path + a **route-mocked header-absent** 200 (badge+warn+attr, no live-lane
+    leak); curl on the emitter (default→synthetic; env real artifact→external,
+    5.9MB/200). `producer-pinned` no-badge path is logic-verified
+    (`decideArtifactSourceBadge` + emitter ternary) — **no real producer artifact
+    on disk yet (FIX-2)**, so it was NOT browser-verified on real data. codex
+    review 4 rounds → CLEAN (3 real P2s fixed, round-4 no findings).
 
 - [ ] **FIX-2 — Regenerate producer `visual-showcase-v1.json`** · likely HEAVY · cross-repo (modqn-paper-reproduction) → route to Ubuntu server if it needs a replay pass
   - Producer CLI `.venv/bin/modqn-visual-showcase` + `src/modqn_paper_reproduction/export/visual_showcase_*.py` exist; baseline run dir on disk
