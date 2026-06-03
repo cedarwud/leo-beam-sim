@@ -73,7 +73,37 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
     all fixed). **Inter-HO NOT testable here: the 89s baseline artifact has 0 inter
     events (82 intra only) — honest gap, the inter button stays correctly disabled.**
 
-- [~] **FIX-5 (design) — artifact-replay scene richness + camera framing** · investigation DONE 2026-06-03; **C2 decision = build option C (next, new conversation)**
+- [x] **FIX-5 (design) — artifact-replay scene richness + camera framing** · investigation DONE 2026-06-03; **Option C BUILT + merged `7707715` (2026-06-04), codex 2-round CLEAN**
+  - **✅ Option C DONE (`7707715`):** leo-only honest satellite-azimuth HUD compass.
+    `src/ui/artifactSatelliteAzimuths.ts` = pure `deriveSatelliteAzimuths` (bearing
+    `atan2(x,z)` + ring radius `hypot(x,z)` + data-driven `hasElevationData` +
+    `isFlatEciProxy` gate), unit-tested 8/8. `src/ui/ArtifactSatelliteCompass.tsx` =
+    2D SVG compass-rose DOM HUD (NOT a 3D viewport layer — no three/Canvas/scene
+    runtime import), lane-owned (`App.tsx` mounts once gated
+    `sceneLane==='artifact-replay'`, fed `replaySceneFrame.satellites`),
+    `pointer-events:none`, fixed honesty caption "Satellites — orbital azimuth only
+    (ECI proxy, no elevation/Earth-rotation)". Display-only (reads projected
+    `worldPos`, never alters truth). `scene-lane-governance` + governance doc lock the
+    caption + no-3D property + lane-gated single mount + the proxy gate.
+    `validate:phase-c:artifact-satellite-compass:browser` real-data gate added.
+  - **codex P2 (proxy-only gate) fixed:** the azimuth-only / "no elevation" caption is
+    truthful ONLY for the flattened ECI proxy. The compass now renders ONLY when
+    `isFlatEciProxy` (every surfaced sat is `coordFrameKind==='eci-km-no-earth-rotation-proxy'`
+    with no elevation). A real `ecef-km` artifact (3D draws real overhead geometry),
+    a mixed/unknown frame, or the FIX-1 synthetic fixture (carries elevation) gets NO
+    compass — so it never overclaims a missing limitation in the opposite direction.
+  - **Verified (DATA SOURCE = REAL producer-pinned 89s artifact):** tsc 0; unit 8/8;
+    `scene-lane-governance` green; real-data browser smoke = 4 sats sat-0..3 at azimuths
+    `[89.9, 359.9, 269.8, 179.8]°`, ring gaps all ~90° (the real flat ring),
+    `data-has-elevation=false`, `data-frame-kind=eci-km-no-earth-rotation-proxy`, honesty
+    caption exact, NO leak on the live SINR lane; screenshot eyes-on = clean glass
+    compass top-right of the viewport with N/E/S/W rose + 4 satellite bearings + caption.
+    director-cinematic browser smoke still PASS (no mount regression). codex review
+    2 rounds → CLEAN (P2 proxy-gate fixed round 1, round 2 no findings).
+
+  *(historical investigation preserved below)*
+
+- [~] **FIX-5 (historical investigation log)**
   - **C2 root cause is NOT camera angle (investigation, read-only):** the artifact's
     4 satellites are placed by the producer's `eci-km-no-earth-rotation-proxy` at
     a FLAT ring on the ground plane (Y=0) at radius ~7151 world units (sat-0=+X,
