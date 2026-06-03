@@ -57,6 +57,15 @@ they must not share viewport ownership decisions.
 | `modqn-replay-proof` | MODQN evidence proof | immutable MODQN replay artifact/display state | replay proof layer, source-backed or display-proxy replay beams, focused decision trace, producer-horizon replay rail | live cell preview, live SINR beams, artifact overlays, live Walker forecast markers |
 | `artifact-replay` | visual-showcase replay | immutable `visual-showcase-v1` artifact | artifact-provided frame content, replay controls, artifact-owned event rail | live cell preview, MODQN replay proof, live SINR proof effects |
 
+## Non-3D Dashboard Dock
+
+`AlgorithmDashboard` now lives in the full-width collapsible bottom
+`AlgorithmDock` (`src/showcase/dashboard/AlgorithmDock.tsx`). It remains gated
+by `sceneSource === 'artifact-replay'`, imports no Three/scene/viz symbols,
+and mounts no `<Canvas>`. The dock is a normal flex child of `leo-app-shell`,
+co-visible with the 3D row without viewport occlusion, and is not a second
+proof lane.
+
 ## Current Implementation Contract
 
 `src/app/sceneLane.ts` resolves the lane from app state. The initial contract is:

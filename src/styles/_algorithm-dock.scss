@@ -1,0 +1,174 @@
+.leo-algorithm-dock {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(129, 219, 255, 0.26);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(8, 22, 34, 0.94), rgba(3, 10, 17, 0.9)),
+    linear-gradient(90deg, rgba(111, 247, 238, 0.08), rgba(77, 243, 154, 0.06)),
+    rgba(3, 10, 17, 0.94);
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.44),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 -12px 30px rgba(90, 168, 255, 0.06);
+  color: #eefaff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow: hidden;
+  backdrop-filter: blur(14px) saturate(135%);
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+}
+
+.leo-algorithm-dock__header {
+  min-width: 0;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(218, 244, 255, 0.1);
+}
+
+.leo-algorithm-dock[data-collapsed="true"] .leo-algorithm-dock__header {
+  border-bottom: 0;
+}
+
+.leo-algorithm-dock__title {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.leo-algorithm-dock__title strong {
+  min-width: 0;
+  color: #f6fbff;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.leo-algorithm-dock__title span {
+  color: rgba(229, 244, 251, 0.62);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.leo-algorithm-dock__toggle {
+  flex: 0 0 auto;
+  appearance: none;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(118, 234, 215, 0.32);
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(118, 234, 215, 0.14), rgba(118, 234, 215, 0.06)),
+    rgba(4, 18, 28, 0.78);
+  color: rgba(238, 250, 255, 0.9);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.leo-algorithm-dock__toggle:hover {
+  border-color: rgba(111, 247, 238, 0.56);
+  background:
+    linear-gradient(180deg, rgba(111, 247, 238, 0.2), rgba(111, 247, 238, 0.08)),
+    rgba(4, 18, 28, 0.86);
+  color: #ffffff;
+}
+
+.leo-algorithm-dock__toggle:focus-visible {
+  outline: 2px solid var(--leo-focus-ring, rgba(111, 247, 238, 0.96));
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px var(--leo-focus-ring-shadow, rgba(111, 247, 238, 0.2));
+}
+
+.leo-algorithm-dock__body {
+  min-width: 0;
+  min-height: 0;
+  height: clamp(180px, 24vh, 280px);
+  padding: 10px 12px 12px;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.leo-algorithm-dock [data-variant="dock"].leo-algorithm-dashboard {
+  min-width: min(1120px, 100%);
+  min-height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-dashboard__header {
+  flex: 0 0 100%;
+  padding: 0 1px;
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-dashboard__tile {
+  flex: 1 1 190px;
+  min-width: 180px;
+  max-width: 280px;
+  align-content: start;
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-dashboard__tile--flowchart {
+  flex: 0 0 100%;
+  max-width: none;
+  padding: 7px 8px 8px;
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-dashboard__tile--flowchart .leo-algorithm-dashboard__tile-header {
+  display: none;
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-flowchart {
+  height: clamp(76px, 8.5vh, 118px);
+  aspect-ratio: auto;
+  border-color: rgba(118, 234, 215, 0.18);
+  background:
+    linear-gradient(90deg, rgba(2, 11, 18, 0.78), rgba(5, 20, 30, 0.62)),
+    rgba(2, 11, 18, 0.58);
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-dashboard__curve-wrap .leo-modqn-mini-reward-curve {
+  height: 34px;
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-dashboard__tile-header {
+  gap: 5px;
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-dashboard__chip-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 1px;
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-dashboard__provenance-chip {
+  flex: 0 0 auto;
+}
+
+.leo-algorithm-dock [data-variant="dock"] .leo-algorithm-dashboard__metric-row {
+  grid-template-columns: minmax(70px, 0.42fr) minmax(0, 1fr);
+}

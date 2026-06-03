@@ -263,6 +263,7 @@ const panelStateSource = readRepoFile('src/scene/panelState.ts');
 const sceneLaneRenderPlanSource = readRepoFile('src/scene/sceneLaneRenderPlan.ts');
 const replayLayerSource = readRepoFile('src/scene/modqn-replay-visuals/index.tsx');
 const replayTelemetrySource = readRepoFile('src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx');
+const algorithmDockSource = readRepoFile('src/showcase/dashboard/AlgorithmDock.tsx');
 const algorithmDashboardSource = readRepoFile('src/showcase/dashboard/AlgorithmDashboard.tsx');
 const governanceDoc = readRepoFile('docs/frontend-render-governance.md');
 const laneSdd = readRepoFile('docs/frontend-mode-lane-separation-sdd.md');
@@ -383,38 +384,79 @@ assertNotContains(
 
 assertContains(
   appSource,
-  "from './showcase/dashboard/AlgorithmDashboard'",
-  'App imports the artifact-lane AlgorithmDashboard',
+  "from './showcase/dashboard/AlgorithmDock'",
+  'App imports the artifact-lane AlgorithmDock',
 );
 assert.equal(
-  countOccurrences(appSource, '<AlgorithmDashboard'),
+  countOccurrences(appSource, '<AlgorithmDock'),
   1,
-  'AlgorithmDashboard is mounted exactly once',
+  'AlgorithmDock is mounted exactly once',
 );
 {
-  const artifactTruthBranchStart = appSource.indexOf('data-testid="artifact-truth-sidebar"');
-  const artifactTruthBranchEnd = appSource.indexOf(
-    ") : activeRightSidebarTab === 'live' ? (",
-    artifactTruthBranchStart,
-  );
-  assert.ok(artifactTruthBranchStart >= 0, 'artifact truth sidebar branch exists');
-  assert.ok(artifactTruthBranchEnd > artifactTruthBranchStart, 'artifact truth sidebar branch has a live-branch boundary');
-
-  const artifactTruthBranch = appSource.slice(artifactTruthBranchStart, artifactTruthBranchEnd);
-  const dashboardMountIndex = artifactTruthBranch.indexOf('<AlgorithmDashboard');
-  const artifactReplayGuardIndex = artifactTruthBranch.lastIndexOf(
+  const dockMountIndex = appSource.indexOf('<AlgorithmDock');
+  const artifactReplayGuardIndex = appSource.lastIndexOf(
     "sceneSource === 'artifact-replay'",
-    dashboardMountIndex,
+    dockMountIndex,
   );
-  assert.ok(dashboardMountIndex >= 0, 'AlgorithmDashboard mount is inside the artifact truth sidebar branch');
+  const dockGuardSlice = appSource.slice(Math.max(0, dockMountIndex - 220), dockMountIndex);
+  assert.ok(dockMountIndex >= 0, 'AlgorithmDock mount exists in App');
   assert.ok(
-    artifactReplayGuardIndex >= 0 && artifactReplayGuardIndex < dashboardMountIndex,
-    'AlgorithmDashboard mount is gated by sceneSource === artifact-replay',
+    artifactReplayGuardIndex >= 0 && artifactReplayGuardIndex < dockMountIndex,
+    'AlgorithmDock mount is gated by sceneSource === artifact-replay',
   );
   assertContains(
-    artifactTruthBranch,
-    'data-testid="artifact-truth-source-summary"',
-    'AlgorithmDashboard shares the artifact truth sidebar region',
+    dockGuardSlice,
+    "sceneSource === 'artifact-replay'",
+    'AlgorithmDock mount has an immediate artifact-replay guard',
+  );
+}
+
+assertContains(
+  algorithmDockSource,
+  'data-testid="algorithm-dock"',
+  'AlgorithmDock exposes root test id',
+);
+assertContains(
+  algorithmDockSource,
+  'data-testid="algorithm-dock-toggle"',
+  'AlgorithmDock exposes collapse toggle test id',
+);
+assertContains(
+  algorithmDockSource,
+  'aria-expanded={!collapsed}',
+  'AlgorithmDock toggle declares expanded state',
+);
+assert.equal(
+  countOccurrences(algorithmDockSource, '<AlgorithmDashboard'),
+  1,
+  'AlgorithmDock mounts AlgorithmDashboard exactly once',
+);
+assertContains(
+  algorithmDockSource,
+  'variant="dock"',
+  'AlgorithmDock renders the dashboard in dock layout variant',
+);
+assertNotContains(algorithmDockSource, "from 'three", 'AlgorithmDock must not import three');
+assertNotContains(algorithmDockSource, 'from "three', 'AlgorithmDock must not import three');
+assertNotContains(algorithmDockSource, '@react-three/', 'AlgorithmDock must not import react-three');
+assertNotContains(algorithmDockSource, '../scene/', 'AlgorithmDock must not import scene modules');
+assertNotContains(algorithmDockSource, '../../scene/', 'AlgorithmDock must not import scene modules');
+assertNotContains(algorithmDockSource, '../viz/', 'AlgorithmDock must not import viz modules');
+assertNotContains(algorithmDockSource, '../../viz/', 'AlgorithmDock must not import viz modules');
+assertNotContains(algorithmDockSource, '<Canvas', 'AlgorithmDock must not mount Canvas');
+
+{
+  const dockTestIdIndex = algorithmDockSource.indexOf('data-testid="algorithm-dock"');
+  const dashboardMountIndex = algorithmDockSource.indexOf('<AlgorithmDashboard');
+  assert.ok(dockTestIdIndex >= 0, 'AlgorithmDock root test id exists');
+  assert.ok(
+    dashboardMountIndex > dockTestIdIndex,
+    'AlgorithmDashboard is mounted inside the AlgorithmDock source',
+  );
+  assertContains(
+    algorithmDockSource,
+    'MODQN Algorithm Pipeline',
+    'AlgorithmDock identifies the dock region',
   );
 }
 

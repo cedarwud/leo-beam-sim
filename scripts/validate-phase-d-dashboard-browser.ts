@@ -19,6 +19,8 @@ import { loadValidatorVisualShowcaseArtifact } from './visualShowcaseValidatorFi
 const ARTIFACT_ROUTE = '**/showcase-artifacts/visual-showcase-v1.json';
 
 interface DashboardSmokeResult {
+  readonly dockVisible: boolean;
+  readonly dashboardInsideDock: number;
   readonly dashboardLoaded: string | null;
   readonly nodes: number;
   readonly edges: number;
@@ -27,6 +29,9 @@ interface DashboardSmokeResult {
   readonly animatableEdges: number;
   readonly idleEdges: number;
   readonly pulseObserved: boolean;
+  readonly collapsedAfterToggle: string | null;
+  readonly dashboardCountWhileCollapsed: number;
+  readonly collapsedAfterRestore: string | null;
   readonly consoleErrors: readonly string[];
 }
 
@@ -46,25 +51,44 @@ async function runDashboardSmoke(browser: Browser, appUrl: string): Promise<Dash
     const target = new URL(appUrl);
     target.searchParams.set('sceneSource', 'artifact-replay');
     await page.goto(target.toString(), { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForSelector('[data-testid="algorithm-dashboard"]', { timeout: 20000 });
+    const dock = page.locator('[data-testid="algorithm-dock"]');
+    await dock.waitFor({ state: 'visible', timeout: 20000 });
+    const dashboard = dock.locator('[data-testid="algorithm-dashboard"]');
+    await dashboard.waitFor({ state: 'visible', timeout: 20000 });
 
-    const dashboardLoaded = await page.getAttribute('[data-testid="algorithm-dashboard"]', 'data-artifact-loaded');
-    const nodes = await page.locator('[data-testid="algorithm-flowchart-node"]').count();
-    const edges = await page.locator('[data-testid="algorithm-flowchart-edge"]').count();
-    const provenanceChips = await page.locator('[data-testid="algorithm-dashboard-provenance-chip"]').count();
-    const pulseDriver = await page.getAttribute('[data-testid="algorithm-flowchart"]', 'data-pulse-driver');
-    const animatableEdges = await page
+    const dockVisible = await dock.isVisible();
+    const dashboardInsideDock = await dashboard.count();
+    const dashboardLoaded = await dashboard.getAttribute('data-artifact-loaded');
+    const nodes = await dock.locator('[data-testid="algorithm-flowchart-node"]').count();
+    const edges = await dock.locator('[data-testid="algorithm-flowchart-edge"]').count();
+    const provenanceChips = await dock.locator('[data-testid="algorithm-dashboard-provenance-chip"]').count();
+    const pulseDriver = await dock.locator('[data-testid="algorithm-flowchart"]').getAttribute('data-pulse-driver');
+    const animatableEdges = await dock
       .locator('[data-testid="algorithm-flowchart-edge"][data-animatable="true"]').count();
-    const idleEdges = await page
+    const idleEdges = await dock
       .locator('[data-testid="algorithm-flowchart-edge"][data-animatable="false"]').count();
 
     let pulseObserved = false;
     for (let attempt = 0; attempt < 24 && !pulseObserved; attempt += 1) {
-      pulseObserved = await page.locator('.leo-algorithm-flowchart__edge--active').count() > 0;
+      pulseObserved = await dock.locator('.leo-algorithm-flowchart__edge--active').count() > 0;
       if (!pulseObserved) await page.waitForTimeout(250);
     }
 
+    const toggle = dock.locator('[data-testid="algorithm-dock-toggle"]');
+    await toggle.click();
+    await page.waitForFunction(() =>
+      document.querySelector('[data-testid="algorithm-dock"]')?.getAttribute('data-collapsed') === 'true');
+    const collapsedAfterToggle = await dock.getAttribute('data-collapsed');
+    const dashboardCountWhileCollapsed = await dock.locator('[data-testid="algorithm-dashboard"]').count();
+    await toggle.click();
+    await page.waitForFunction(() =>
+      document.querySelector('[data-testid="algorithm-dock"]')?.getAttribute('data-collapsed') === 'false');
+    const collapsedAfterRestore = await dock.getAttribute('data-collapsed');
+    await dashboard.waitFor({ state: 'visible', timeout: 10000 });
+
     return {
+      dockVisible,
+      dashboardInsideDock,
       dashboardLoaded,
       nodes,
       edges,
@@ -73,6 +97,9 @@ async function runDashboardSmoke(browser: Browser, appUrl: string): Promise<Dash
       animatableEdges,
       idleEdges,
       pulseObserved,
+      collapsedAfterToggle,
+      dashboardCountWhileCollapsed,
+      collapsedAfterRestore,
       consoleErrors,
     };
   } finally {
@@ -86,6 +113,8 @@ async function main(): Promise<void> {
   try {
     const result = await runDashboardSmoke(browser, appUrl);
 
+    assert.equal(result.dockVisible, true, 'algorithm dock is visible');
+    assert.equal(result.dashboardInsideDock, 1, 'dashboard renders inside the algorithm dock');
     assert.equal(result.dashboardLoaded, 'true', 'dashboard reports artifact loaded');
     assert.equal(result.nodes, 8, 'flowchart renders all 8 MODQN pipeline nodes');
     assert.equal(result.edges, 8, 'flowchart renders all 8 edges');
@@ -94,6 +123,9 @@ async function main(): Promise<void> {
     assert.ok(result.animatableEdges >= 1, 'at least one producer-backed edge is animatable');
     assert.ok(result.idleEdges >= 1, 'the unbound reward->qnet edge stays idle (G1)');
     assert.ok(result.pulseObserved, 'an edge actually pulses during replay');
+    assert.equal(result.collapsedAfterToggle, 'true', 'dock toggle collapses the dock');
+    assert.equal(result.dashboardCountWhileCollapsed, 0, 'dashboard body is hidden while dock is collapsed');
+    assert.equal(result.collapsedAfterRestore, 'false', 'dock toggle expands the dock again');
     assert.deepEqual(result.consoleErrors, [], 'no console/page errors in artifact-replay mode');
 
     console.log(JSON.stringify({ appUrl, ...result, result: 'PASS' }, null, 2));

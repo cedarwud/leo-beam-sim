@@ -15,6 +15,7 @@ export interface AlgorithmDashboardProps {
   readonly artifact: VisualShowcaseArtifact | null;
   readonly frameIndex: number;
   readonly currentTimeSecRef?: FlowchartTimeRef | null;
+  readonly variant?: 'sidebar' | 'dock';
 }
 
 interface DashboardTileProps {
@@ -184,6 +185,7 @@ export function AlgorithmDashboard({
   artifact,
   frameIndex,
   currentTimeSecRef = null,
+  variant = 'sidebar',
 }: AlgorithmDashboardProps): JSX.Element {
   const model = useMemo(() => buildDashboardSeriesModel(artifact), [artifact]);
 
@@ -192,6 +194,7 @@ export function AlgorithmDashboard({
       <section
         className="leo-algorithm-dashboard leo-algorithm-dashboard--empty"
         data-testid="algorithm-dashboard"
+        data-variant={variant}
         data-plane={model.plane}
         data-artifact-loaded="false"
       >
@@ -233,6 +236,7 @@ export function AlgorithmDashboard({
     <section
       className="leo-algorithm-dashboard"
       data-testid="algorithm-dashboard"
+      data-variant={variant}
       data-plane={model.plane}
       data-artifact-loaded="true"
       data-frame-index={String(frameIndex)}
