@@ -36,6 +36,11 @@ const INTRA_BTN = '[data-testid="director-intra-focus"]';
 const EXIT_BTN = '[data-testid="director-exit-focus"]';
 const FADE = '[data-testid="cinematic-seek-fade-overlay"]';
 const CINEMATIC_SPEED = 0.05;
+// Durability (provenance audit 2026-06-04): REQUIRE_PRODUCER_ARTIFACT=1 (set by
+// the `validate:real-data` aggregate) turns the known-non-producer LOUD-SKIP into
+// a hard FAIL, so the Director real-data claim cannot silently green-skip on a
+// fresh checkout that lacks the pinned 46MB producer artifact.
+const REQUIRE_REAL = Boolean(process.env.REQUIRE_PRODUCER_ARTIFACT);
 
 async function attr(page: Page, selector: string, name: string): Promise<string | null> {
   return page.getAttribute(selector, name);
@@ -72,13 +77,21 @@ async function main(): Promise<void> {
     const KNOWN_NON_PRODUCER = ['synthetic-fixture-fallback', 'header-absent', 'external-artifact-path'];
     const source = await attr(page, SHELL, 'data-artifact-source');
     if (source !== 'producer-pinned') {
+      if (REQUIRE_REAL) {
+        throw new Error(
+          `REQUIRE_PRODUCER_ARTIFACT is set but data-artifact-source="${source ?? 'absent'}", not ` +
+            `producer-pinned — the Director real-data gate cannot certify the cinematic. Regenerate ` +
+            `the 89s producer artifact (FIX-2) and pin it in vite.config.ts, then re-run.`,
+        );
+      }
       if (source && KNOWN_NON_PRODUCER.includes(source)) {
         skipped = true;
         console.log(
           `[director-cinematic] SKIP — data-artifact-source="${source}", not the real ` +
             `producer artifact. The Director cinematic real-data gate needs the ` +
             `producer-pinned 89s artifact (82 intra-HO events). Regenerate via FIX-2 ` +
-            `(docs/showcase-render-truth-fix-backlog.md), then re-run. Exiting 0 (durable skip).`,
+            `(docs/showcase-render-truth-fix-backlog.md), then re-run. Exiting 0 (durable skip). ` +
+            `(Set REQUIRE_PRODUCER_ARTIFACT=1 to make this a hard failure instead.)`,
         );
         return;
       }

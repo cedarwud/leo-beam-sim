@@ -176,6 +176,34 @@ console.log('\n(b) Helper unit parseEpisodeProgress');
     { current: 999, total: 100, percent: 100 },
     'over-100 percent clamps to 100',
   );
+  // Provenance audit 2026-06-04: the producer trainer prints `[ep N/M]` /
+  // `[<policy> ep N/M]` / `[v2-ep N/M]`, NOT `episode N/M`. The fallback must
+  // parse the real producer format too (these previously returned null).
+  assertJsonEqual(
+    parseEpisodeProgress('[ep 50/150] scalar= 483.4 r1= 1 r2= 2 r3= 3 ho= 0'),
+    { current: 50, total: 150, percent: 33 },
+    'producer [ep N/M] line parses',
+  );
+  assertJsonEqual(
+    parseEpisodeProgress('[modqn ep 75/150] ...'),
+    { current: 75, total: 150, percent: 50 },
+    'producer [<policy> ep N/M] line parses',
+  );
+  assertJsonEqual(
+    parseEpisodeProgress('[v2-ep 30/150] ...'),
+    { current: 30, total: 150, percent: 20 },
+    'producer legacy [v2-ep N/M] line parses',
+  );
+  assertJsonEqual(
+    parseEpisodeProgress('warming up step 5 / 10\ndeep dive 1/2'),
+    null,
+    'word-boundary guard: "step"/"deep" do not false-match the ep token',
+  );
+  assertJsonEqual(
+    parseEpisodeProgress('episode 1 / 100\n[ep 80/100] later'),
+    { current: 80, total: 100, percent: 80 },
+    'mixed legacy + producer lines: last match (producer) wins',
+  );
 }
 
 // ---------------------------------------------------------------------------

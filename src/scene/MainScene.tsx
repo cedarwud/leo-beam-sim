@@ -404,6 +404,8 @@ function ArtifactSceneContent({
         uavVisible="0"
         uePrimaryAnchorMode={runtime.uePrimaryAnchorMode ?? 'observer'}
         firstUePosition={formatScenePosition(sceneFrame.ues[0]?.worldPos)}
+        renderedUeCount={sceneFrame.ues.filter(u => u.worldPos !== undefined).length}
+        beamLoadContentionUeCount={0}
         visualSatelliteAltitude={String(sceneFrame.geometry.visualSatelliteAltitude ?? '')}
         beamSatelliteCount="0"
         sceneSource={sceneFrame.sceneSource}
@@ -710,6 +712,14 @@ function SceneContent({
       })))
       : EMPTY_BEAM_LOAD_CONTENTION,
     [beamLoadContentionEnabled, sim.perUePositions],
+  );
+  // Provenance audit 2026-06-04: count of UEs carrying live beam-load contention
+  // (>0 normalized load). Surfaced as canvas telemetry so a durable browser gate
+  // can prove the phase-3 contention actually fires on real live geometry, rather
+  // than only asserting the `<BeamLoadCylinder>` source string mounts (audit B4).
+  const beamLoadContentionUeCount = useMemo(
+    () => [...beamLoadContention.byUeId.values()].filter(v => (v.normalizedLoad ?? 0) > 0).length,
+    [beamLoadContention],
   );
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
   const focusedCellBeamConeUe = sceneFrame.ues[0] || null;
@@ -1060,6 +1070,8 @@ function SceneContent({
         uavVisible={showUav ? '1' : '0'}
         uePrimaryAnchorMode={runtime.uePrimaryAnchorMode ?? 'observer'}
         firstUePosition={formatScenePosition(sceneFrame.ues[0]?.worldPos)}
+        renderedUeCount={sceneFrame.ues.filter(u => u.worldPos !== undefined).length}
+        beamLoadContentionUeCount={showCellOverlay ? beamLoadContentionUeCount : 0}
         visualSatelliteAltitude={String(sceneGeometry.visualSatelliteAltitude ?? '')}
         beamSatelliteCount={viz.satBeams.size}
         sceneSource={sceneFrame.sceneSource}

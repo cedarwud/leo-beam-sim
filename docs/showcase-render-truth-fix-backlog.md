@@ -190,6 +190,29 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
 
 ---
 
+
+- [~] **FIX-7 — Verification-provenance audit + Tier-A in-env hardening** · 2026-06-04 · **audit DONE + Tier-A DONE; 2 new findings + 2 deferred**
+  - Full read-only multi-agent provenance audit (`docs/showcase-verification-provenance-audit-2026-06-04.md`):
+    71 surfaces classified, ~21 real-data/live-engine, 4-6 fake-risk. Live lanes trustworthy;
+    artifact-replay lane "wired + type-safe", several "browser-verified" labels ran on
+    synthetic-fixture / route-mock. Root cause of the whole FIX campaign = fixture/mock verification,
+    not broken features.
+  - **Tier-A in-env fixes APPLIED + verified on REAL data** (see audit doc table): durability
+    (`REQUIRE_PRODUCER_ARTIFACT=1` LOUD-SKIP→FAIL + `validate:real-data` aggregate), dashboard
+    real-data gate, 100-UE scene real-data gate (`data-rendered-ue-count` telemetry), fail-closed
+    404 gate, Phase-H sinr-live render gate (live-engine), episode regex (producer `[ep N/M]`),
+    phase6o/p honest relabel, badge unit test. All green (real-producer / live-engine / route-mock-404,
+    DATA SOURCE stated per gate).
+  - **NEW findings (surfaced, not papered over):** (1) phase-3 contention glow input `sim.perUePositions`
+    is EMPTY in the live modqn-cell lane (`data-beam-load-contention-ue-count=0` vs serviceMap served=75
+    from `sceneFrame.ues`) → glow likely non-functional; the real-render gate REVEALED it then was REMOVED
+    (couldn't pass honestly); telemetry kept; needs a truth-ownership investigation, not a quick edit.
+    (2) `validate:modqn:phase6p-hobs-sinr-kpi-baseline` is RED at HEAD (pre-existing drift from its
+    committed fixture) — do NOT regenerate to mask.
+  - **Deferred (out of in-env scope):** #2 phase-3 render (blocked by finding 1), #3 live-telemetry
+    server E2E (HEAVY→Ubuntu), #4 inter-HO cinematic (needs an artifact with a satellite handover).
+
+
 ## Resume prompt for a fresh conversation (FIX-5 C2 → build option C)
 
 > 延續 leo-beam-sim render-truth FIX campaign。FIX-1/2/3/4 + FIX-6-artifact-lane

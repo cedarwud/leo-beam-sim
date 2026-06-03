@@ -1,3 +1,16 @@
+/**
+ * Phase 6p HOBS-SINR KPI "baseline" — SELF-REGRESSION snapshot validator.
+ *
+ * Scope honesty (provenance audit 2026-06-04): despite "baseline" in the name,
+ * this deep-equals leo's own committed fixture
+ * (`scripts/fixtures/modqn-phase6p-hobs-sinr-kpi-baseline.json`, schema
+ * `phase6p-...-fixture-v1`) — it is a SELF-REGRESSION snapshot of leo's HOBS-SINR
+ * compute, NOT a comparison against `ntn-sim-core`'s authoritative
+ * `baseline-kpi-*.json` (there are zero references to that oracle here). It locks
+ * leo's own KPI numbers against drift; it does not re-verify them against the
+ * upstream reference. Treat a green run as "leo's KPI has not regressed from the
+ * committed snapshot", not as "leo matches ntn-sim-core".
+ */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';

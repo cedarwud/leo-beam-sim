@@ -46,14 +46,25 @@ export interface EpisodeProgressReadout {
   readonly percent: number;
 }
 
-// Parse the LAST `episode N / M` line in the stdout tail. Returns null
-// if absent or unparseable. M must be a positive integer to avoid
-// divide-by-zero.
+// Parse the LAST episode-progress line in the stdout tail. Returns null if
+// absent or unparseable. M must be a positive integer to avoid divide-by-zero.
+//
+// Provenance audit 2026-06-04: this stdout fallback (used when no live SSE
+// `streamProgress` exists, e.g. a historical job) previously matched only
+// `episode N / M`, but the producer trainer actually prints the per-episode line
+// as `[ep N/M]` / `[<policy> ep N/M]` / `[v2-ep N/M]` (the same format the P3b
+// `progress_events.py` parser keys on). So on a real producer stdout tail the
+// fallback silently found nothing. Match both forms now: a leading `episode` or a
+// `\bep` token (word-boundary `ep` does not match inside `step`/`deep`/`keep`),
+// so `[ep 50/150]`, `[modqn ep 50/150]`, `[v2-ep 50/150]` and the legacy
+// `episode 50 / 150` all parse. Kept case-SENSITIVE on purpose: the trainer
+// emits lowercase `ep`, and a capitalized `Episode ...` summary line must NOT be
+// parsed as live progress (preserves the section (f) guard).
 export function parseEpisodeProgress(
   stdoutTail: string | undefined,
 ): EpisodeProgressReadout | null {
   if (typeof stdoutTail !== 'string' || stdoutTail.length === 0) return null;
-  const matches = [...stdoutTail.matchAll(/episode\s+(\d+)\s*\/\s*(\d+)/g)];
+  const matches = [...stdoutTail.matchAll(/\b(?:episode|ep)\s+(\d+)\s*\/\s*(\d+)/g)];
   if (matches.length === 0) return null;
   const last = matches[matches.length - 1];
   const current = Number(last[1]);

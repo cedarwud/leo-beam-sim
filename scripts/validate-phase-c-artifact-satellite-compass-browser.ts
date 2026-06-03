@@ -34,6 +34,12 @@ const HONESTY_LABEL = 'Satellites — orbital azimuth only (ECI proxy, no elevat
 const EXPECTED_SATELLITES = 4;
 const GAP_MIN = 55;
 const GAP_MAX = 125;
+// Durability (provenance audit 2026-06-04): the LOUD-SKIP below keeps a fresh
+// checkout (no committed 46MB artifact) from red-failing, but it also lets the
+// real-data claim silently degrade to a green-skip. Set REQUIRE_PRODUCER_ARTIFACT=1
+// (the `validate:real-data` aggregate does) to turn that skip into a hard FAIL, so
+// "real-data verified" cannot pass without the real producer artifact present.
+const REQUIRE_REAL = Boolean(process.env.REQUIRE_PRODUCER_ARTIFACT);
 
 async function attr(page: Page, selector: string, name: string): Promise<string | null> {
   return page.getAttribute(selector, name);
@@ -74,12 +80,20 @@ async function main(): Promise<void> {
     const KNOWN_NON_PRODUCER = ['synthetic-fixture-fallback', 'header-absent', 'external-artifact-path'];
     const source = await attr(page, SHELL, 'data-artifact-source');
     if (source !== 'producer-pinned') {
+      if (REQUIRE_REAL) {
+        throw new Error(
+          `REQUIRE_PRODUCER_ARTIFACT is set but data-artifact-source="${source ?? 'absent'}", not ` +
+            `producer-pinned — the real-data gate cannot certify the azimuth ring. Regenerate the 89s ` +
+            `producer artifact (FIX-2) and pin it in vite.config.ts, then re-run.`,
+        );
+      }
       if (source && KNOWN_NON_PRODUCER.includes(source)) {
         skipped = true;
         console.log(
           `[satellite-compass] SKIP — data-artifact-source="${source}", not the real producer ` +
             `artifact. The azimuth-ring gate needs the producer-pinned 89s artifact (4 satellites). ` +
-            `Regenerate via FIX-2 (docs/showcase-render-truth-fix-backlog.md), then re-run. Exiting 0.`,
+            `Regenerate via FIX-2 (docs/showcase-render-truth-fix-backlog.md), then re-run. Exiting 0. ` +
+            `(Set REQUIRE_PRODUCER_ARTIFACT=1 to make this a hard failure instead.)`,
         );
         return;
       }

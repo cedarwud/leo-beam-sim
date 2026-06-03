@@ -22,6 +22,20 @@ export interface SceneTelemetryProps {
   uavVisible: string;
   uePrimaryAnchorMode: string;
   firstUePosition: string;
+  /**
+   * Count of UE markers GroundScene actually renders (worldPos-bearing UEs).
+   * Provenance audit 2026-06-04: gives the artifact-replay real-data scene gate a
+   * durable observable that the real 100-UE distribution actually rendered, rather
+   * than relying on a one-time manual screenshot.
+   */
+  renderedUeCount: string | number;
+  /**
+   * Count of UEs carrying live phase-3 beam-load contention (>0 normalized load).
+   * Provenance audit 2026-06-04: lets a durable browser gate prove the contention
+   * overlay actually fires on real live geometry (audit B4 / FIX-6 residual #2),
+   * not only that the component source string mounts. 0 outside the live cell lane.
+   */
+  beamLoadContentionUeCount: string | number;
   visualSatelliteAltitude: string;
   beamSatelliteCount: string | number;
   sceneSource: string;
@@ -86,6 +100,8 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.uavVisible = props.uavVisible;
     el.dataset.uePrimaryAnchorMode = props.uePrimaryAnchorMode;
     el.dataset.firstUePosition = props.firstUePosition;
+    el.dataset.renderedUeCount = String(props.renderedUeCount);
+    el.dataset.beamLoadContentionUeCount = String(props.beamLoadContentionUeCount);
     el.dataset.visualSatelliteAltitude = props.visualSatelliteAltitude;
     el.dataset.beamSatelliteCount = String(props.beamSatelliteCount);
     el.dataset.sceneSource = props.sceneSource;
@@ -139,6 +155,8 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.uavVisible,
     props.uePrimaryAnchorMode,
     props.firstUePosition,
+    props.renderedUeCount,
+    props.beamLoadContentionUeCount,
     props.visualSatelliteAltitude,
     props.beamSatelliteCount,
     props.sceneSource,

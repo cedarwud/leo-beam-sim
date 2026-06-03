@@ -1,3 +1,17 @@
+/**
+ * Phase 6o channel-adapter parity — SELF-REGRESSION validator.
+ *
+ * Scope honesty (provenance audit 2026-06-04): this recomputes leo's VENDORED
+ * `src/core/channel` (`computeLinkBudget` / `computeSinr`) against a COMMITTED
+ * leo fixture (`scripts/fixtures/modqn-phase6o-channel-adapter-parity.json`,
+ * with explicit `fixture-literal` range / off-axis sources) and asserts numeric
+ * agreement. It LOCKS leo's own channel compute against drift. It is NOT a live
+ * comparison against `ntn-sim-core`'s authoritative `baseline-kpi-*.json`: the
+ * committed fixture is the reference, not the upstream oracle. "Parity" here
+ * means regression parity vs that frozen fixture. Re-verifying genuine vendor
+ * parity against `ntn-sim-core` happens at vendor time by running ntn-sim-core's
+ * own validators (CLAUDE.md §4), not by this script.
+ */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative } from 'node:path';
