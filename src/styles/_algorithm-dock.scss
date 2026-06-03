@@ -160,8 +160,12 @@
 }
 
 .leo-algorithm-dock [data-variant="dock"] .leo-algorithm-flowchart {
-  height: clamp(96px, 9.5vh, 132px);
-  aspect-ratio: auto;
+  // Fill the landscape dock width: height follows the base aspect-ratio
+  // (360/42) up to a cap, so the pipeline renders as a full-width strip rather
+  // than a centered square. Beyond the cap, meet re-centers (ultra-wide only).
+  width: 100%;
+  height: auto;
+  max-height: 165px;
   border-color: rgba(var(--leo-accent-rgb), 0.18);
   background:
     linear-gradient(90deg, rgba(2, 11, 18, 0.78), rgba(5, 20, 30, 0.62)),

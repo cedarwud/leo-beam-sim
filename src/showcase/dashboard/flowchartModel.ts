@@ -37,15 +37,19 @@ export interface FlowchartEdgeBinding {
   readonly animatable: boolean;
 }
 
+// Landscape pipeline layout for the full-width AlgorithmDock strip (viewBox
+// 0 0 360 42): a single left→right spine (state…handover) with the reward
+// feedback bus dropping below `serving` and returning to `qnet`. See
+// docs/flowchart-dock-landscape-relayout-sdd.md.
 export const FLOWCHART_NODES = [
-  { id: 'state', label: 'State', title: 'State (UE / SINR / serving)', x: 12, y: 22 },
-  { id: 'qnet', label: 'Q-network', title: 'MODQN Q-network (per-objective heads)', x: 34, y: 22 },
-  { id: 'omega', label: 'ω scalarize', title: 'ω scalarization', x: 57, y: 22 },
-  { id: 'mask', label: 'Action mask', title: 'Action validity mask', x: 80, y: 22 },
-  { id: 'select', label: 'argmax → select', title: 'argmax → selected action', x: 80, y: 50 },
-  { id: 'serving', label: 'Serving', title: 'Serving (sat / beam)', x: 57, y: 50 },
-  { id: 'handover', label: 'Handover', title: 'Handover', x: 80, y: 78 },
-  { id: 'reward', label: 'Reward', title: 'Reward (r1/r2/r3 → scalar)', x: 34, y: 78 },
+  { id: 'state', label: 'State', title: 'State (UE / SINR / serving)', x: 26, y: 12 },
+  { id: 'qnet', label: 'Q-network', title: 'MODQN Q-network (per-objective heads)', x: 77, y: 12 },
+  { id: 'omega', label: 'ω scalarize', title: 'ω scalarization', x: 129, y: 12 },
+  { id: 'mask', label: 'Action mask', title: 'Action validity mask', x: 180, y: 12 },
+  { id: 'select', label: 'argmax → select', title: 'argmax → selected action', x: 231, y: 12 },
+  { id: 'serving', label: 'Serving', title: 'Serving (sat / beam)', x: 283, y: 12 },
+  { id: 'handover', label: 'Handover', title: 'Handover', x: 334, y: 12 },
+  { id: 'reward', label: 'Reward', title: 'Reward (r1/r2/r3 → scalar)', x: 283, y: 31 },
 ] as const satisfies readonly FlowchartNode[];
 
 export const FLOWCHART_EDGES = [

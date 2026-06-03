@@ -26,8 +26,10 @@ export interface AlgorithmFlowchartProps {
   readonly currentTimeSecRef?: FlowchartTimeRef | null;
 }
 
-const NODE_WIDTH = 17;
-const NODE_HEIGHT = 9;
+const NODE_WIDTH = 42;
+const NODE_HEIGHT = 13;
+// Bottom feedback bus y for the reward->qnet return path (viewBox 0 0 360 42).
+const FEEDBACK_BUS_Y = 40;
 const PULSE_MS = 600;
 const ACTIVE_EDGE_CLASS = 'leo-algorithm-flowchart__edge--active';
 
@@ -65,32 +67,24 @@ function edgePath(edge: FlowchartEdge): string {
   const from = getFlowchartNodeById(edge.from);
   const to = getFlowchartNodeById(edge.to);
 
-  if (edge.from === 'mask' && edge.to === 'select') {
+  // serving -> reward: straight drop to the reward node directly below.
+  if (edge.from === 'serving' && edge.to === 'reward') {
     return pathFromPoints([bottomAnchor(from), topAnchor(to)]);
   }
 
-  if (edge.from === 'select' && edge.to === 'serving') {
-    return pathFromPoints([leftAnchor(from), rightAnchor(to)]);
-  }
-
-  if (edge.from === 'serving' && edge.to === 'handover') {
-    const start = rightAnchor(from);
-    const end = topAnchor(to);
-    return pathFromPoints([start, { x: end.x, y: start.y }, end]);
-  }
-
-  if (edge.from === 'serving' && edge.to === 'reward') {
-    const start = bottomAnchor(from);
-    const end = rightAnchor(to);
-    return pathFromPoints([start, { x: start.x, y: end.y }, end]);
-  }
-
+  // reward -> qnet: the RL feedback bus along the bottom of the strip.
   if (edge.from === 'reward' && edge.to === 'qnet') {
-    const start = topAnchor(from);
+    const start = bottomAnchor(from);
     const end = bottomAnchor(to);
-    return pathFromPoints([start, { x: start.x, y: 38 }, { x: end.x, y: 38 }, end]);
+    return pathFromPoints([
+      start,
+      { x: start.x, y: FEEDBACK_BUS_Y },
+      { x: end.x, y: FEEDBACK_BUS_Y },
+      end,
+    ]);
   }
 
+  // Spine edges: simple left-to-right hops between adjacent nodes.
   return pathFromPoints([rightAnchor(from), leftAnchor(to)]);
 }
 
@@ -173,7 +167,7 @@ function AlgorithmFlowchartComponent({
       data-pulse-driver="raf"
       role="img"
       aria-label="MODQN decision pipeline"
-      viewBox="0 0 100 100"
+      viewBox="0 0 360 42"
       preserveAspectRatio="xMidYMid meet"
     >
       <defs>
@@ -182,8 +176,8 @@ function AlgorithmFlowchartComponent({
           viewBox="0 0 10 10"
           refX="8"
           refY="5"
-          markerWidth="4"
-          markerHeight="4"
+          markerWidth="7"
+          markerHeight="7"
           orient="auto-start-reverse"
         >
           <path d="M 0 0 L 10 5 L 0 10 z" className="leo-algorithm-flowchart__arrow" />
@@ -241,7 +235,7 @@ function AlgorithmFlowchartComponent({
               y={(-NODE_HEIGHT / 2).toFixed(2)}
               width={NODE_WIDTH}
               height={NODE_HEIGHT}
-              rx="1.7"
+              rx="2.5"
             />
             <text textAnchor="middle" dominantBaseline="middle">
               {node.label}

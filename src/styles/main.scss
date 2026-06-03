@@ -3302,8 +3302,11 @@ canvas {
 }
 
 .leo-algorithm-flowchart {
+  // Landscape pipeline strip (viewBox 0 0 360 42); the dock variant overrides
+  // height/cap. Stroke + font values below are in viewBox user units tuned for
+  // the strip's px/unit scale (~3.1), not the old 1:1 square.
   width: 100%;
-  aspect-ratio: 1.35;
+  aspect-ratio: 360 / 42;
   display: block;
   overflow: visible;
   border: 1px solid rgba(118, 234, 215, 0.14);
@@ -3313,7 +3316,7 @@ canvas {
 
 .leo-algorithm-flowchart__edge {
   stroke: rgba(129, 246, 188, 0.78);
-  stroke-width: 1.25;
+  stroke-width: 0.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -3324,7 +3327,7 @@ canvas {
 
 .leo-algorithm-flowchart__edge--idle {
   stroke: rgba(229, 244, 251, 0.34);
-  stroke-dasharray: 3 2.4;
+  stroke-dasharray: 1.2 1;
 }
 
 .leo-algorithm-flowchart__edge--active {
@@ -3334,15 +3337,15 @@ canvas {
 @keyframes leo-algorithm-flowchart-edge-pulse {
   0% {
     stroke-opacity: 0.72;
-    stroke-width: 1.25;
+    stroke-width: 0.6;
   }
   38% {
     stroke-opacity: 1;
-    stroke-width: 1.8;
+    stroke-width: 0.92;
   }
   100% {
     stroke-opacity: 0.72;
-    stroke-width: 1.25;
+    stroke-width: 0.6;
   }
 }
 
@@ -3353,12 +3356,12 @@ canvas {
 .leo-algorithm-flowchart__node rect {
   fill: rgba(8, 28, 40, 0.94);
   stroke: rgba(137, 205, 255, 0.34);
-  stroke-width: 0.7;
+  stroke-width: 0.35;
 }
 
 .leo-algorithm-flowchart__node text {
   fill: rgba(246, 251, 255, 0.94);
-  font-size: 2.9px;
+  font-size: 3.5px;
   font-weight: var(--leo-weight-heavy);
   pointer-events: none;
 }
