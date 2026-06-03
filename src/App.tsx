@@ -112,6 +112,12 @@ import type {
 } from './modqn/training-trigger/types';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
+import {
+  ArtifactSourceBadge,
+  PRODUCER_PINNED_SOURCE,
+  SYNTHETIC_FIXTURE_SOURCE,
+  HEADER_ABSENT_SOURCE,
+} from './ui/ArtifactSourceBadge';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
@@ -448,6 +454,7 @@ function resolveModqnReplayVisualSlotOffset(
 export function App() {
   const [sceneSource] = useState<SceneSourceMode>(() => readSceneSourceFromUrl());
   const [showcaseArtifact, setShowcaseArtifact] = useState<VisualShowcaseArtifact | null>(null);
+  const [showcaseArtifactSource, setShowcaseArtifactSource] = useState<string | null>(null);
   const [showcaseLoading, setShowcaseLoading] = useState(false);
   const [showcaseError, setShowcaseError] = useState<string | null>(null);
   const [frameIndex, setFrameIndex] = useState(0);
@@ -1243,9 +1250,34 @@ export function App() {
   useEffect(() => {
     if (sceneSource !== 'artifact-replay') return;
     setShowcaseLoading(true);
+    setShowcaseArtifactSource(null);
     fetch('/showcase-artifacts/visual-showcase-v1.json')
       .then(r => {
         if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+        // FIX-1 render-truth honesty: the dev middleware stamps where the
+        // artifact came from. A non-`producer-pinned` source means the
+        // scene/dashboard/flowchart are riding synthetic fixture data, not a
+        // producer result — surface it loudly instead of silently. A completed
+        // 200 with no header (static/preview server, route mock) maps to the
+        // distinct HEADER_ABSENT_SOURCE sentinel so it still trips the badge
+        // rather than looking like the silent loading (null) state.
+        const artifactSource = r.headers.get('X-Showcase-Artifact-Source') ?? HEADER_ABSENT_SOURCE;
+        setShowcaseArtifactSource(artifactSource);
+        if (artifactSource !== PRODUCER_PINNED_SOURCE) {
+          // Branch the copy so the warning never overclaims: only the synthetic
+          // fixture is "synthetic"; a header-absent / unknown token is merely
+          // unverified provenance, not a claim that the data is fabricated.
+          const sourceDetail =
+            artifactSource === SYNTHETIC_FIXTURE_SOURCE
+              ? `This scene, dashboard, and flowchart ride synthetic fixture data`
+              : `The artifact provenance is unverified (not a pinned producer source)`;
+          console.warn(
+            `[leo-beam-sim] artifact-replay is NOT showing real producer data ` +
+              `(X-Showcase-Artifact-Source="${artifactSource}"). ${sourceDetail} — ` +
+              `do not read it as a producer result. Regenerate ` +
+              `visual-showcase-v1.json (docs/showcase-render-truth-fix-backlog.md FIX-2).`,
+          );
+        }
         return r.json();
       })
       .then(data => {
@@ -1731,6 +1763,9 @@ export function App() {
       data-ui-mode={uiMode}
       data-app-mode={appMode}
       data-scene-lane={sceneLane}
+      data-artifact-source={
+        sceneSource === 'artifact-replay' ? (showcaseArtifactSource ?? 'pending') : undefined
+      }
       data-timeline-current-time-sec={timelineCurrentTimeSec.toFixed(3)}
       data-timeline-duration-sec={timelineDurationSec.toFixed(3)}
       data-timeline-disabled={timelineDisabled ? 'true' : 'false'}
@@ -1744,6 +1779,9 @@ export function App() {
       data-visual-scale-key={sceneVisualScaleResetKey}
       className="leo-app-shell"
     >
+      {sceneSource === 'artifact-replay' && (
+        <ArtifactSourceBadge source={showcaseArtifactSource} />
+      )}
       {sceneSource !== 'artifact-replay' && modqnReplayFetchError !== null && (
         <div
           className="leo-modqn-bundle-fetch-banner"

@@ -100,19 +100,34 @@ function modqnBundleStaticServer(): Plugin {
               return;
             }
             // The pinned producer artifact is absent in this checkout. Fall back
-            // to the repo-local synthetic validator fixture so `npm run dev` can
-            // still show the artifact-replay dashboard/flowchart. The synthetic
-            // artifact self-labels evidenceStatus=validator-only / claimBoundary
-            // "test fixture", so the ClaimBoundaryBanner renders it as NOT proof.
+            // to the repo-local loader so `npm run dev` can still show the
+            // artifact-replay dashboard/flowchart. The loader may resolve a REAL
+            // external artifact (VISUAL_SHOWCASE_ARTIFACT_PATH) or the synthetic
+            // validator fixture, so derive the FIX-1 honesty header from the
+            // loader's resolved source instead of hardcoding it — otherwise the
+            // header would lie about an env-provided / regenerated real artifact
+            // and the consumer badge would wrongly call it synthetic. Only the
+            // canonical pinned path earns 'producer-pinned'; any other operator
+            // override is surfaced as a non-pinned external source (§3 says an
+            // unvalidated external artifact must not silently pass as proof).
             server
               .ssrLoadModule('/scripts/visualShowcaseValidatorFixture.ts')
               .then(mod => {
-                const { artifact } = (mod as {
-                  loadValidatorVisualShowcaseArtifact: () => { artifact: unknown };
+                const { artifact, source } = (mod as {
+                  loadValidatorVisualShowcaseArtifact: () => {
+                    artifact: unknown;
+                    source: { kind: 'external' | 'synthetic'; isPinnedTrigger: boolean };
+                  };
                 }).loadValidatorVisualShowcaseArtifact();
+                const artifactSourceHeader =
+                  source.kind === 'synthetic'
+                    ? 'synthetic-fixture-fallback'
+                    : source.isPinnedTrigger
+                      ? 'producer-pinned'
+                      : 'external-artifact-path';
                 res.setHeader('Content-Type', 'application/json');
                 res.setHeader('Cache-Control', 'no-store');
-                res.setHeader('X-Showcase-Artifact-Source', 'synthetic-fixture-fallback');
+                res.setHeader('X-Showcase-Artifact-Source', artifactSourceHeader);
                 res.end(JSON.stringify(artifact));
               })
               .catch((fallbackError: unknown) => {

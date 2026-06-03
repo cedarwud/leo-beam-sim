@@ -581,6 +581,98 @@ assertContains(
   'App mounts the headless telemetry feed for modqn-demo independent of any tab',
 );
 
+// ── FIX-1: render-truth honesty — a non-producer artifact source is loud ──
+// The dev middleware stamps `X-Showcase-Artifact-Source`. When the pinned
+// producer artifact is absent it falls back to a synthetic fixture; the app
+// must read that header, warn, expose it as scene telemetry, and render a
+// visible badge so synthetic data can never be silently mistaken for a
+// producer result (audit 2026-06-03 A2/A4). Display-only; no truth change.
+const artifactSourceBadgeSource = readRepoFile('src/ui/ArtifactSourceBadge.tsx');
+assertContains(
+  appSource,
+  "r.headers.get('X-Showcase-Artifact-Source')",
+  'App reads the artifact-source transport header on the replay fetch',
+);
+assertContains(
+  appSource,
+  'artifactSource !== PRODUCER_PINNED_SOURCE',
+  'App warns whenever the artifact source is not the pinned producer artifact',
+);
+assertContains(
+  appSource,
+  "r.headers.get('X-Showcase-Artifact-Source') ?? HEADER_ABSENT_SOURCE",
+  'App maps a completed header-absent 200 to the distinct sentinel, not the loading null',
+);
+assertContains(
+  appSource,
+  'artifactSource === SYNTHETIC_FIXTURE_SOURCE',
+  'App warn copy only calls the synthetic fixture "synthetic"; unverified sources say unverified',
+);
+assertContains(
+  artifactSourceBadgeSource,
+  "HEADER_ABSENT_SOURCE = 'header-absent'",
+  'badge names the header-absent sentinel distinct from the loading null',
+);
+assertContains(
+  artifactSourceBadgeSource,
+  'source === HEADER_ABSENT_SOURCE',
+  'badge renders the honesty surface for a completed response with no source header',
+);
+assertContains(
+  appSource,
+  "from './ui/ArtifactSourceBadge'",
+  'App imports the render-truth honesty badge',
+);
+assertContains(
+  appSource,
+  '<ArtifactSourceBadge source={showcaseArtifactSource} />',
+  'App mounts the artifact-source honesty badge in the artifact-replay lane',
+);
+assertContains(
+  appSource,
+  'data-artifact-source={',
+  'App exposes the resolved artifact source as scene telemetry',
+);
+assertContains(
+  artifactSourceBadgeSource,
+  "PRODUCER_PINNED_SOURCE = 'producer-pinned'",
+  'badge pins the real producer source token',
+);
+assertContains(
+  artifactSourceBadgeSource,
+  "SYNTHETIC_FIXTURE_SOURCE = 'synthetic-fixture-fallback'",
+  'badge names the synthetic fixture fallback source token',
+);
+assertContains(
+  artifactSourceBadgeSource,
+  'source === null || source === PRODUCER_PINNED_SOURCE',
+  'badge stays silent for the real producer source and the unknown/loading state',
+);
+assertContains(
+  artifactSourceBadgeSource,
+  'data-testid="artifact-source-badge"',
+  'badge exposes a browser test id for the honesty surface',
+);
+// The dev middleware is the header EMITTER for the honesty surface — it must
+// derive the source from the loader's resolved source, never hardcode synthetic,
+// so an env-provided / regenerated real artifact is not mislabeled as fake.
+const viteConfigSource = readRepoFile('vite.config.ts');
+assertContains(
+  viteConfigSource,
+  "source.kind === 'synthetic'",
+  'dev middleware derives the artifact-source header from the loader source',
+);
+assertContains(
+  viteConfigSource,
+  "'external-artifact-path'",
+  'dev middleware labels an env-provided external artifact distinctly from the synthetic fixture',
+);
+assertNotContains(
+  viteConfigSource,
+  "res.setHeader('X-Showcase-Artifact-Source', 'synthetic-fixture-fallback')",
+  'dev middleware must not hardcode the synthetic header on the loader fallback path',
+);
+
 // ── Track-2 design-token bridge: value-preserving INV colour contract ──
 // The INV-1/2/3 colours are now named :root tokens (src/styles/main.scss). These
 // assertions lock both (a) the token VALUES so a future edit cannot silently
