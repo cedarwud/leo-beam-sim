@@ -17,6 +17,64 @@
 :root {
   --leo-focus-ring: #8df7e5;
   --leo-focus-ring-shadow: rgba(141, 247, 229, 0.28);
+
+  // ── Track-2 cross-surface semantic tokens (mirror src/constants/uiTokens.ts) ──
+  // Value-preserving bridge: every token below resolves to the exact literal it
+  // replaced, so the rendered pixels are byte-identical. INV-1/2/3 colours are now
+  // a named, validator-locked contract (validate:frontend:scene-lane-governance)
+  // instead of scattered magic hex. GOVERNANCE: editing a value here changes the
+  // rendered colour — keep resolved bytes identical unless an INV/lane change is
+  // intended and the lane-governance validator + docs are updated in the same slice.
+
+  // Interactive accent (teal #76ead7 === rgb(118,234,215)); alpha-parametrised.
+  --leo-accent-rgb: 118, 234, 215;
+  --leo-accent: #76ead7;
+  --leo-accent-strong: #d8fffa;
+
+  // INV-1 truth-plane provenance. Chip text and border are DISTINCT hues (the
+  // border is not a simple alpha of the chip), so both are tokenised explicitly.
+  --leo-plane-live: #76ead7;
+  --leo-plane-live-border: rgba(118, 234, 215, 0.5);
+  --leo-plane-paper: #8fc0ff;
+  --leo-plane-paper-border: rgba(120, 178, 255, 0.5);
+  --leo-plane-user: #ffce82;
+  --leo-plane-user-border: rgba(255, 200, 110, 0.5);
+
+  // INV-2 telemetry status. "stalled" (freeze-grey) is DISTINCT from "offline"
+  // (red); the frozen tile keeps its grayscale filter. Never collapse these.
+  --leo-telemetry-live-border: rgba(129, 246, 188, 0.32);
+  --leo-telemetry-live-bg: rgba(129, 246, 188, 0.1);
+  --leo-telemetry-live-text: rgba(218, 255, 235, 0.94);
+  --leo-telemetry-stalled-border: rgba(193, 205, 214, 0.32);
+  --leo-telemetry-stalled-bg: rgba(160, 173, 184, 0.12);
+  --leo-telemetry-stalled-text: rgba(218, 226, 232, 0.88);
+  --leo-telemetry-offline-border: rgba(255, 118, 118, 0.32);
+  --leo-telemetry-offline-bg: rgba(255, 118, 118, 0.1);
+  --leo-telemetry-offline-text: rgba(255, 205, 205, 0.94);
+  --leo-telemetry-frozen-border: rgba(193, 205, 214, 0.18);
+  --leo-telemetry-frozen-bg: rgba(163, 176, 190, 0.06);
+  --leo-telemetry-frozen-value: rgba(218, 226, 232, 0.82);
+  --leo-telemetry-frozen-filter: grayscale(0.42);
+
+  // INV-3 source-gap (absent producer channel → "not shown", never fabricated).
+  --leo-source-gap-rgb: 255, 190, 69;
+  --leo-source-gap-chip-border: rgba(255, 190, 69, 0.34);
+  --leo-source-gap-chip-bg: rgba(255, 190, 69, 0.09);
+  --leo-source-gap-chip-text: rgba(255, 217, 142, 0.92);
+  --leo-source-gap-text: rgba(255, 190, 69, 0.86);
+  --leo-source-gap-detail-text: rgba(255, 217, 142, 0.74);
+
+  // Type weight scale (uiTokens.ts type.weight + the 850/900 SCSS already uses).
+  // Consumed incrementally by the per-surface Track-2 slices.
+  --leo-weight-strong: 700;
+  --leo-weight-heavy: 800;
+  --leo-weight-black: 850;
+  --leo-weight-ultra: 900;
+
+  // Motion durations (consumed incrementally by the per-surface Track-2 slices).
+  --leo-motion-fast: 120ms;
+  --leo-motion-standard: 140ms;
+  --leo-motion-slow: 160ms;
 }
 
 body {
@@ -668,22 +726,22 @@ canvas {
 }
 
 .leo-modqn-scene-hud[data-truth-tone="live"] {
-  border-color: rgba(118, 234, 215, 0.5);
+  border-color: var(--leo-plane-live-border);
 }
 .leo-modqn-scene-hud[data-truth-tone="live"] .leo-modqn-scene-hud__chip {
-  color: #76ead7;
+  color: var(--leo-plane-live);
 }
 .leo-modqn-scene-hud[data-truth-tone="paper"] {
-  border-color: rgba(120, 178, 255, 0.5);
+  border-color: var(--leo-plane-paper-border);
 }
 .leo-modqn-scene-hud[data-truth-tone="paper"] .leo-modqn-scene-hud__chip {
-  color: #8fc0ff;
+  color: var(--leo-plane-paper);
 }
 .leo-modqn-scene-hud[data-truth-tone="user"] {
-  border-color: rgba(255, 200, 110, 0.5);
+  border-color: var(--leo-plane-user-border);
 }
 .leo-modqn-scene-hud[data-truth-tone="user"] .leo-modqn-scene-hud__chip {
-  color: #ffce82;
+  color: var(--leo-plane-user);
 }
 
 .leo-modqn-scene-hud__preview-banner {
@@ -2921,7 +2979,7 @@ canvas {
   display: grid;
   gap: 8px;
   padding: 10px;
-  border: 1px solid rgba(118, 234, 215, 0.22);
+  border: 1px solid rgba(var(--leo-accent-rgb), 0.22);
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(6, 20, 31, 0.88), rgba(3, 10, 17, 0.82)),
@@ -2956,7 +3014,7 @@ canvas {
 .leo-algorithm-dashboard__empty,
 .leo-algorithm-dashboard__source-gap {
   margin: 0;
-  color: rgba(255, 190, 69, 0.86);
+  color: var(--leo-source-gap-text);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.35;
@@ -2997,9 +3055,9 @@ canvas {
   display: inline-flex;
   align-items: center;
   padding: 2px 5px;
-  border: 1px solid rgba(118, 234, 215, 0.28);
+  border: 1px solid rgba(var(--leo-accent-rgb), 0.28);
   border-radius: 999px;
-  background: rgba(118, 234, 215, 0.1);
+  background: rgba(var(--leo-accent-rgb), 0.1);
   color: rgba(216, 255, 250, 0.92);
   font-size: 9px;
   font-weight: 800;
@@ -3008,9 +3066,9 @@ canvas {
 }
 
 .leo-algorithm-dashboard__provenance-chip[data-provenance-status="source-gap"] {
-  border-color: rgba(255, 190, 69, 0.34);
-  background: rgba(255, 190, 69, 0.09);
-  color: rgba(255, 217, 142, 0.92);
+  border-color: var(--leo-source-gap-chip-border);
+  background: var(--leo-source-gap-chip-bg);
+  color: var(--leo-source-gap-chip-text);
 }
 
 .leo-algorithm-dashboard__curve-wrap {
@@ -3087,10 +3145,10 @@ canvas {
 .leo-live-telemetry-panel__status-badge {
   justify-self: end;
   padding: 3px 7px;
-  border: 1px solid rgba(129, 246, 188, 0.32);
+  border: 1px solid var(--leo-telemetry-live-border);
   border-radius: 999px;
-  background: rgba(129, 246, 188, 0.1);
-  color: rgba(218, 255, 235, 0.94);
+  background: var(--leo-telemetry-live-bg);
+  color: var(--leo-telemetry-live-text);
   font-size: 9px;
   font-weight: 850;
   line-height: 1.2;
@@ -3099,31 +3157,31 @@ canvas {
 }
 
 .leo-live-telemetry-panel__status-badge[data-telemetry-status="stalled"] {
-  border-color: rgba(193, 205, 214, 0.32);
-  background: rgba(160, 173, 184, 0.12);
-  color: rgba(218, 226, 232, 0.88);
+  border-color: var(--leo-telemetry-stalled-border);
+  background: var(--leo-telemetry-stalled-bg);
+  color: var(--leo-telemetry-stalled-text);
 }
 
 .leo-live-telemetry-panel__status-badge[data-telemetry-status="offline"] {
-  border-color: rgba(255, 118, 118, 0.32);
-  background: rgba(255, 118, 118, 0.1);
-  color: rgba(255, 205, 205, 0.94);
+  border-color: var(--leo-telemetry-offline-border);
+  background: var(--leo-telemetry-offline-bg);
+  color: var(--leo-telemetry-offline-text);
 }
 
 .leo-live-telemetry-panel__tile--frozen {
-  border-color: rgba(193, 205, 214, 0.18);
-  background: rgba(163, 176, 190, 0.06);
-  filter: grayscale(0.42);
+  border-color: var(--leo-telemetry-frozen-border);
+  background: var(--leo-telemetry-frozen-bg);
+  filter: var(--leo-telemetry-frozen-filter);
 }
 
 .leo-live-telemetry-panel__tile--frozen .leo-algorithm-dashboard__metric-row strong {
-  color: rgba(218, 226, 232, 0.82);
+  color: var(--leo-telemetry-frozen-value);
 }
 
 .leo-live-telemetry-panel__source-gap-detail {
   display: block;
   margin-top: 2px;
-  color: rgba(255, 217, 142, 0.74);
+  color: var(--leo-source-gap-detail-text);
 }
 
 .leo-algorithm-flowchart {

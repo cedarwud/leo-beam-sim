@@ -581,6 +581,53 @@ assertContains(
   'App mounts the headless telemetry feed for modqn-demo independent of any tab',
 );
 
+// ── Track-2 design-token bridge: value-preserving INV colour contract ──
+// The INV-1/2/3 colours are now named :root tokens (src/styles/main.scss). These
+// assertions lock both (a) the token VALUES so a future edit cannot silently
+// drift an INV colour, and (b) that the INV selectors REFERENCE the tokens so the
+// contract cannot be bypassed by re-hardcoding the hex. Together they prove the
+// staleness != offline and source-gap distinctions stay byte-identical.
+const mainScssSource = readRepoFile('src/styles/main.scss');
+for (const [token, value] of [
+  // INV-1 truth-plane (chip text + border are distinct hues, both locked)
+  ['--leo-plane-live', '#76ead7'],
+  ['--leo-plane-live-border', 'rgba(118, 234, 215, 0.5)'],
+  ['--leo-plane-paper', '#8fc0ff'],
+  ['--leo-plane-paper-border', 'rgba(120, 178, 255, 0.5)'],
+  ['--leo-plane-user', '#ffce82'],
+  ['--leo-plane-user-border', 'rgba(255, 200, 110, 0.5)'],
+  // INV-2 telemetry status (stalled freeze-grey is distinct from offline red)
+  ['--leo-telemetry-live-border', 'rgba(129, 246, 188, 0.32)'],
+  ['--leo-telemetry-stalled-border', 'rgba(193, 205, 214, 0.32)'],
+  ['--leo-telemetry-stalled-bg', 'rgba(160, 173, 184, 0.12)'],
+  ['--leo-telemetry-stalled-text', 'rgba(218, 226, 232, 0.88)'],
+  ['--leo-telemetry-offline-border', 'rgba(255, 118, 118, 0.32)'],
+  ['--leo-telemetry-offline-bg', 'rgba(255, 118, 118, 0.1)'],
+  ['--leo-telemetry-offline-text', 'rgba(255, 205, 205, 0.94)'],
+  ['--leo-telemetry-frozen-filter', 'grayscale(0.42)'],
+  // INV-3 source-gap (absent producer channel; never fabricated)
+  ['--leo-source-gap-chip-border', 'rgba(255, 190, 69, 0.34)'],
+  ['--leo-source-gap-chip-bg', 'rgba(255, 190, 69, 0.09)'],
+  ['--leo-source-gap-chip-text', 'rgba(255, 217, 142, 0.92)'],
+  ['--leo-source-gap-text', 'rgba(255, 190, 69, 0.86)'],
+  // Interactive accent (teal #76ead7 === rgb(118,234,215))
+  ['--leo-accent-rgb', '118, 234, 215'],
+] as const) {
+  assertContains(
+    mainScssSource,
+    `${token}: ${value};`,
+    `design token ${token} keeps its value-preserving INV literal`,
+  );
+}
+assertContains(mainScssSource, 'color: var(--leo-plane-live);', 'INV-1 live truth-tone chip references the plane-live token');
+assertContains(mainScssSource, 'color: var(--leo-plane-paper);', 'INV-1 paper truth-tone chip references the plane-paper token');
+assertContains(mainScssSource, 'color: var(--leo-plane-user);', 'INV-1 user truth-tone chip references the plane-user token');
+assertContains(mainScssSource, 'border-color: var(--leo-telemetry-stalled-border);', 'INV-2 stalled badge references the staleness token (distinct from offline)');
+assertContains(mainScssSource, 'border-color: var(--leo-telemetry-offline-border);', 'INV-2 offline badge references the offline token (distinct from stalled)');
+assertContains(mainScssSource, 'filter: var(--leo-telemetry-frozen-filter);', 'INV-2 frozen tile references the freeze-filter token');
+assertContains(mainScssSource, 'background: var(--leo-source-gap-chip-bg);', 'INV-3 source-gap chip references the source-gap background token');
+assertContains(mainScssSource, 'color: var(--leo-source-gap-chip-text);', 'INV-3 source-gap chip references the source-gap text token');
+
 {
   const baseInput = {
     sceneSource: 'live-sim' as const,

@@ -74,6 +74,14 @@ mount no `<Canvas>`. The dock is a normal flex child of `leo-app-shell`,
 co-visible with the 3D row without viewport occlusion, and is not a second
 proof lane.
 
+The INV-1 truth-plane, INV-2 telemetry-status (the staleness `!=` offline
+distinction and the frozen-tile filter), and INV-3 source-gap colours are
+defined once as value-preserving `:root` design tokens in `src/styles/main.scss`
+(`--leo-plane-*`, `--leo-telemetry-*`, `--leo-source-gap-*`). The migrated
+selectors reference those tokens instead of scattered hex, and
+`validate:frontend:scene-lane-governance` locks both the token values and the
+selector references so an INV colour cannot silently drift or be re-hardcoded.
+
 ## Current Implementation Contract
 
 `src/app/sceneLane.ts` resolves the lane from app state. The initial contract is:
