@@ -39,24 +39,22 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
     on disk yet (FIX-2)**, so it was NOT browser-verified on real data. codex
     review 4 rounds → CLEAN (3 real P2s fixed, round-4 no findings).
 
-- [ ] **FIX-2 — Regenerate producer `visual-showcase-v1.json`** · likely HEAVY · cross-repo (modqn-paper-reproduction) → route to Ubuntu server if it needs a replay pass
-  - Producer CLI `.venv/bin/modqn-visual-showcase` + `src/modqn_paper_reproduction/export/visual_showcase_*.py` exist; baseline run dir on disk
-    (`artifacts/baseline-modqn-pilot02-rerun-2026-05-15/run`).
-  - Step 0: read the producer CLI `--help` + `visual_showcase_main.py` to learn
-    inputs (does it need a trained model + a replay rollout, or just re-export
-    from the existing baseline run?). Classify heavy-vs-not from that.
-  - Output a `visual-showcase-v1.json`; validate it in ntn-sim-core
-    (`npm run validate:visual-showcase:artifact -- <path>`) per CLAUDE.md §3.
-  - Place where `vite.config.ts:93` expects it (or update the pinned path), so
-    artifact-replay loads REAL data: real satellites, UEs, handover events,
-    intra AND inter (the synthetic fixture is intra-only).
-  - Re-verify the dashboard/flowchart/director-cinematic ON THIS REAL artifact
-    (closes the audit B-block gap for the artifact lane).
+- [x] **FIX-2 — Regenerate producer `visual-showcase-v1.json`** · **NON-HEAVY (in-environment, ~60s)** · **DONE `555ba6a` (2026-06-03)**
+  - **STEP 0 verdict (reversed the "likely HEAVY" guess):** the CLI `modqn-visual-showcase --bundle <dir> --output <json>` is a pure JSON transform (no training). BUT the on-disk baseline run is a **10s episode** (`run_metadata: episode_duration_s=10, slot_duration_s=1`) and `visual_showcase_exporter.py:82` hard-requires a deterministic **60-120s window** → a plain re-export from the existing 10s bundle is `BLOCK_WITH_GAPS`.
+  - **Cheap path that works (user-picked "investigate extended-replay"):** `modqn-export --input <baseline-run> --output-dir <bundle> --replay-slot-count 90` (40s, env keeps stepping past the 10s training horizon on the continuous orbital sim → 89s bundle) → `modqn-visual-showcase --bundle <bundle> --output visual-showcase-v1.json --modqn-commit <40hex> --ntn-sim-core-commit <40hex> --artifact-id visual-showcase-v1-baseline-89s-2026-06-03` (20s, 46MB). **ntn-sim-core `validate:visual-showcase:artifact` = OK** (commits MUST be full 40-hex or it fails `PROVENANCE_COMMIT_FORMAT`).
+  - **Artifact path (persistent, clean-named):** `modqn-paper-reproduction/artifacts/visual-showcase-v1-baseline-89s-2026-06-03/{bundle/,visual-showcase-v1.json}` (lives on producer disk, NOT committed to leo; regenerate with the two commands above if wiped).
+  - **leo change = ONE line:** `vite.config.ts` pins the new path; `fs.stat` first-branch finds it → serves `producer-pinned` → FIX-1 badge correctly disappears. Loader `PINNED_VISUAL_SHOWCASE_ARTIFACT_PATH`/`SHA256` left unchanged on purpose (static-frame validator's frozen trigger concept; the regen carries env RNG, not byte-pinned).
+  - **Verified (DATA SOURCE = REAL producer artifact — FIRST real-data check):** tsc 0; scene-lane-governance green; curl emitter → `producer-pinned` (46MB); playwright real-data smoke = **NO honesty badge** (FIX-1 no-badge path now real-data verified, was logic-only), shell `data-artifact-source=producer-pinned`, no warn, artifact-loaded, scene not fail-closed, real scenario "Phase 01H Baseline MODQN Multi-UE Replay"; **screenshot eyes-on = real 100-UE ground distribution + populated dashboard/flowchart dock** (the audit's "one orange dot meaningless" is gone). codex review CLEAN.
+  - **⚠️ Producer-contract caveat (surfaced, not resolved):** slots 11-90 are an OOD extrapolation of a policy trained on 10s episodes — deterministic + real geometry, and the producer exporter treats a 60-120s greedy replay as valid `evidenceStatus=baseline`, but it is replay past the training horizon. leo only displays the status faithfully.
+  - **➡ FIX-6 follow-ups found:** real artifact has top-level `claimBoundary: undefined` (synthetic fixture had one) → `ClaimBoundaryBanner` takes its graceful fallback path; satellites still off-frame (C2) + no beams in artifact lane (C3) = FIX-5 design calls; the real artifact is intra/inter-HO content not yet eyes-on verified for Director cinematic (FIX-4).
 
 - [ ] **FIX-3 — Decide the demo's PRIMARY lane** · decision (user) · non-heavy
   - If `modqn-live-cell-preview` (real bundle on disk, cells + 100 UEs) is the
     centerpiece, artifact-replay emptiness is lower priority. If artifact-replay
     is the showcase, FIX-2 is mandatory. Drives the rest of the sequence.
+  - **Update (post-FIX-2):** the forcing function is gone — artifact-replay now
+    carries REAL producer data (89s, 4 sats / 100 UEs), so BOTH lanes are viable
+    showcases. This is now a pure preference call, not a "fix the empty lane" call.
 
 - [ ] **FIX-4 — Durable Director/cinematic browser validator** · non-heavy · in-environment
   - No `scripts/*director*`/`*cinematic*` browser script exists; camera tween /
