@@ -82,6 +82,41 @@ selectors reference those tokens instead of scattered hex, and
 `validate:frontend:scene-lane-governance` locks both the token values and the
 selector references so an INV colour cannot silently drift or be re-hardcoded.
 
+## Artifact Satellite Azimuth HUD (FIX-5 Option C)
+
+`ArtifactSatelliteCompass` (`src/ui/ArtifactSatelliteCompass.tsx`) is a 2D DOM
+(SVG) compass-rose HUD shown only on the `artifact-replay` lane. The producer
+`eci-km-no-earth-rotation-proxy` flattens the satellites to the ground plane
+(Y=0) on a ~7151-unit ring (the real LEO orbital radius), so the 3D markers sit
+far off-frame laterally. The HUD surfaces the truthful ground-plane azimuth
+(`atan2(x, z)` of the already-projected `worldPos`) so the viewer can see WHERE
+the satellites are without the scene fabricating overhead geometry.
+
+It is a governance Shared Surface, NOT a new viewport proof layer: it mounts no
+`<Canvas>` and imports no three / scene / viz symbol, so it adds no 3D proof
+story and needs no lane-matrix row. It stays lane-OWNED — `App.tsx` mounts it
+only when `sceneLane === 'artifact-replay'`, fed `replaySceneFrame.satellites`.
+
+It is HONEST and display-only: it renders ONLY the real azimuth + ring radius,
+never the missing elevation (Option A's producer Earth-fixed projection is
+blocked by a principled `earthRotationModel` source gap; Option B's leo-side
+overhead placement would fabricate the Y dimension — both rejected). It carries
+a fixed honesty caption stating "orbital azimuth only (ECI proxy, no
+elevation/Earth-rotation)" and a data-driven `data-has-elevation` flag.
+
+It renders ONLY for the flattened ECI proxy frame
+(`deriveSatelliteAzimuths().isFlatEciProxy`: all surfaced satellites are
+`coordFrameKind === 'eci-km-no-earth-rotation-proxy'` with no elevation). A
+standard `ecef-km` artifact (real overhead geometry the 3D scene draws
+correctly), a mixed/unknown frame, or any elevation-bearing frame gets NO
+compass — the proxy "no elevation" caption would otherwise overclaim a
+limitation that frame does not have. This also suppresses the misleading compass
+on the FIX-1 synthetic fixture (which carries elevation while the caption would
+claim none).
+The azimuth math is a pure, unit-tested helper (`deriveSatelliteAzimuths`).
+`validate:frontend:scene-lane-governance` locks the honesty caption, the
+no-3D-import property, and the lane-gated single mount.
+
 ## Current Implementation Contract
 
 `src/app/sceneLane.ts` resolves the lane from app state. The initial contract is:

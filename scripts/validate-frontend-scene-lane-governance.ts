@@ -666,6 +666,128 @@ assertContains(
   'data-effective-speed={playback.effectiveSpeed',
   'App exposes the effective playback speed as shell telemetry for the cinematic gate',
 );
+
+// ── FIX-5 Option C: honest satellite azimuth HUD (artifact-replay only) ──
+// A 2D DOM compass-rose HUD recovers the truthful ground-plane azimuth of the
+// producer's flattened ECI-proxy satellites without fabricating the missing
+// overhead elevation. It is a Shared Surface (no new viewport proof layer): it
+// must import no three / react-three / Canvas, must stay lane-owned (mounted
+// only on artifact-replay), and must keep its azimuth-only honesty caption so
+// it cannot silently start overclaiming elevation/Earth-rotation truth.
+const artifactSatelliteCompassSource = readRepoFile('src/ui/ArtifactSatelliteCompass.tsx');
+const artifactSatelliteAzimuthsSource = readRepoFile('src/ui/artifactSatelliteAzimuths.ts');
+const SATELLITE_COMPASS_HONESTY_LABEL =
+  'Satellites — orbital azimuth only (ECI proxy, no elevation/Earth-rotation)';
+assertContains(
+  artifactSatelliteCompassSource,
+  SATELLITE_COMPASS_HONESTY_LABEL,
+  'satellite compass keeps the azimuth-only / no-elevation honesty caption',
+);
+assertContains(
+  artifactSatelliteCompassSource,
+  'export const SATELLITE_COMPASS_HONESTY_LABEL',
+  'satellite compass exports the honesty caption so the governance gate can lock it',
+);
+assertContains(
+  artifactSatelliteCompassSource,
+  'data-testid="artifact-satellite-compass"',
+  'satellite compass exposes its root test id for the real-data browser smoke',
+);
+assertContains(
+  artifactSatelliteCompassSource,
+  'data-testid="artifact-satellite-azimuth-marker"',
+  'satellite compass exposes per-satellite azimuth markers for the browser smoke',
+);
+assertContains(
+  artifactSatelliteCompassSource,
+  'data-has-elevation={hasElevationData',
+  'satellite compass surfaces the data-driven elevation flag (false for the flat proxy)',
+);
+// Proxy-only gate (codex FIX-5 P2): the azimuth-only / "no elevation" caption is
+// truthful ONLY for the flattened ECI proxy. The compass must render nothing for
+// a real ecef-km / mixed / elevation-bearing frame, or it overclaims a missing
+// limitation in the opposite direction.
+assertContains(
+  artifactSatelliteCompassSource,
+  'if (!isFlatEciProxy) return null',
+  'satellite compass renders ONLY for the flat ECI proxy frame (no proxy caption on real geometry)',
+);
+assertContains(
+  artifactSatelliteCompassSource,
+  'data-frame-kind="eci-km-no-earth-rotation-proxy"',
+  'satellite compass surfaces the proxy frame kind it is honest about',
+);
+assertContains(
+  artifactSatelliteAzimuthsSource,
+  'isFlatEciProxy',
+  'azimuth helper derives the flat-ECI-proxy gate',
+);
+assertContains(
+  artifactSatelliteAzimuthsSource,
+  "FLAT_ECI_PROXY_FRAME = 'eci-km-no-earth-rotation-proxy'",
+  'azimuth helper pins the flat ECI proxy frame it gates on',
+);
+// no-3D-viewport-layer property: a DOM HUD, never a Canvas / three render layer.
+assertNotContains(artifactSatelliteCompassSource, "from 'three", 'satellite compass must not import three');
+assertNotContains(artifactSatelliteCompassSource, 'from "three', 'satellite compass must not import three');
+assertNotContains(artifactSatelliteCompassSource, '@react-three/', 'satellite compass must not import react-three');
+assertNotContains(artifactSatelliteCompassSource, '<Canvas', 'satellite compass must not mount a Canvas (no 3D viewport layer)');
+assertNotContains(artifactSatelliteCompassSource, 'useFrame', 'satellite compass must not drive a render-loop frame hook');
+// display-only: it reads only the NormalizedSceneFrame satellite TYPE + the pure
+// azimuth helper; it must not import a scene/viz runtime composer.
+assertContains(
+  artifactSatelliteCompassSource,
+  "import type { NormalizedSatellite } from '../scene/NormalizedSceneFrame'",
+  'satellite compass reads only the satellite type (display-only, no scene runtime import)',
+);
+assertContains(
+  artifactSatelliteCompassSource,
+  "import { deriveSatelliteAzimuths } from './artifactSatelliteAzimuths'",
+  'satellite compass derives azimuths via the pure unit-tested helper',
+);
+assertContains(
+  artifactSatelliteAzimuthsSource,
+  'export function deriveSatelliteAzimuths',
+  'azimuth helper exports the pure derivation',
+);
+assertContains(
+  artifactSatelliteAzimuthsSource,
+  'hasElevationData',
+  'azimuth helper reports whether real elevation was present (never fabricated)',
+);
+assertNotContains(artifactSatelliteAzimuthsSource, "from 'three", 'azimuth helper stays pure (no three import)');
+// App mounts it exactly once, lane-gated to artifact-replay.
+assertContains(
+  appSource,
+  "from './ui/ArtifactSatelliteCompass'",
+  'App imports the honest satellite azimuth compass',
+);
+assert.equal(
+  countOccurrences(appSource, '<ArtifactSatelliteCompass'),
+  1,
+  'ArtifactSatelliteCompass is mounted exactly once',
+);
+{
+  const compassMountIndex = appSource.indexOf('<ArtifactSatelliteCompass');
+  assert.ok(compassMountIndex >= 0, 'ArtifactSatelliteCompass mount exists in App');
+  const compassGuardSlice = appSource.slice(Math.max(0, compassMountIndex - 160), compassMountIndex);
+  assertContains(
+    compassGuardSlice,
+    "sceneLane === 'artifact-replay'",
+    'ArtifactSatelliteCompass mount is lane-gated to artifact-replay',
+  );
+}
+assertContains(
+  governanceDoc,
+  'Artifact Satellite Azimuth HUD (FIX-5 Option C)',
+  'governance doc documents the satellite azimuth HUD shared surface',
+);
+assertContains(
+  governanceDoc,
+  'never the missing elevation',
+  'governance doc records the HUD never fabricates elevation',
+);
+
 // The dev middleware is the header EMITTER for the honesty surface — it must
 // derive the source from the loader's resolved source, never hardcode synthetic,
 // so an env-provided / regenerated real artifact is not mislabeled as fake.

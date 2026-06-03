@@ -118,6 +118,7 @@ import {
   SYNTHETIC_FIXTURE_SOURCE,
   HEADER_ABSENT_SOURCE,
 } from './ui/ArtifactSourceBadge';
+import { ArtifactSatelliteCompass } from './ui/ArtifactSatelliteCompass';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
@@ -1952,6 +1953,9 @@ export function App() {
             >
               <strong>{showcaseError ?? 'Loading visual-showcase-v1 artifact'}</strong>
             </div>
+          )}
+          {sceneLane === 'artifact-replay' && replaySceneFrame && (
+            <ArtifactSatelliteCompass satellites={replaySceneFrame.satellites} />
           )}
           {directorCinematicEnabled && (
             <CinematicSeekFadeOverlay
