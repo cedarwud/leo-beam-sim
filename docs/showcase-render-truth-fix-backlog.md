@@ -56,12 +56,22 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
     carries REAL producer data (89s, 4 sats / 100 UEs), so BOTH lanes are viable
     showcases. This is now a pure preference call, not a "fix the empty lane" call.
 
-- [ ] **FIX-4 — Durable Director/cinematic browser validator** · non-heavy · in-environment
-  - No `scripts/*director*`/`*cinematic*` browser script exists; camera tween /
-    0.05× slow-mo / dim-fade were only ad-hoc manual. Add a playwright gate that
-    asserts the camera pose ACTUALLY changes on intra-focus + speed drops + fade
-    fires + auto-restore. (Needs a lane with a real intra event — artifact-replay
-    fixture has one today; after FIX-2 test inter too.)
+- [x] **FIX-4 — Durable Director/cinematic browser validator** · non-heavy · in-environment · **DONE `4a8e284` (2026-06-03)**
+  - New `scripts/validate-phase-c-director-cinematic-browser.ts` +
+    `validate:phase-c:director-cinematic:browser`. Runs against the dev server,
+    reads the FIX-1 `data-artifact-source` honesty attr + a content invariant
+    (duration ∈ 60-120s + baseline-MODQN scenario) so it certifies ONLY the real
+    89s producer artifact; LOUD-SKIPs (exit 0) on an explicit known non-producer
+    source; FAILS on artifact load failure (never green-passes while the lane is
+    broken). Hard asserts on intra-focus: FSM leaves idle, effective speed → 0.05×,
+    camera world position actually changes (focus tween), Exit restores idle + speed.
+    Soft: D3 dim-fade transient. Added shell telemetry `data-director-phase` +
+    `data-effective-speed` (governance-locked, Rule#9).
+  - **Verified on REAL data:** PASS — before idle/1×/cam(0,400,500) → intra-focus
+    acquiring/0.05×/cam moved/fade observed → exit idle/1×. codex 3 rounds CLEAN
+    (P2 silent-skip-on-load-failure, P3 waitForFunction arg-slot, P2 content-invariant
+    all fixed). **Inter-HO NOT testable here: the 89s baseline artifact has 0 inter
+    events (82 intra only) — honest gap, the inter button stays correctly disabled.**
 
 - [ ] **FIX-5 (design) — artifact-replay scene richness + camera framing** · non-heavy · design + impl
   - C2: satellites are never framed (camera ground-focused) — decide if a default
@@ -69,14 +79,29 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
     only sats + UE dots (no beams/cells by governance) — decide if the showcase
     wants more there. Both are design calls, then small impl.
 
-- [ ] **FIX-6 — Re-verify the "COMPLETE" surfaces on REAL data** · mixed
-  - After FIX-2, re-run dashboard:browser + a real-data eyes-on of: flowchart
-    pulse on real handover events, director cinematic on a real inter event,
-    Phase-3 overlays on real beam-load. Replace each memory "verified-on-fixture"
-    note with "verified-on-real-data" (or log the gap).
-  - P3b Tier-2 server E2E (the pre-existing open item) folds in here: real
-    training run → dock MiniRewardCurve fills live (HEAVY → server; push producer
-    `4c03665` to origin first).
+- [~] **FIX-6 — Re-verify the "COMPLETE" surfaces on REAL data** · mixed · **artifact-replay lane DONE (2026-06-03); 3 residual items logged below**
+  - ✅ **artifact-replay 3D scene on real data:** FIX-2 smoke + screenshot = real
+    100-UE ground distribution, scene not fail-closed (`555ba6a`).
+  - ✅ **dashboard + flowchart on real data:** real-data smoke = `data-artifact-source=producer-pinned`,
+    dock mode=artifact, dashboard artifact-loaded, 8 flowchart nodes / 8 edges,
+    8 provenance chips (real artifact provenance), and the **flowchart edge pulse
+    fires on the REAL 82 intra-HO events** (rAF pulse), no console errors. (Scene
+    viewport occasionally shows a transient "Loading…" while the 46MB artifact's
+    terrain/textures stream — render-state timing, not a data-truth issue; the
+    100-UE frame renders per the FIX-2 capture. Demo-load polish → note for FIX-5.)
+  - ✅ **director cinematic on real data:** FIX-4 gate (intra-focus, real artifact).
+  - **Residual gaps (logged, not silently dropped):**
+    1. **Inter-HO cinematic** — the 89s baseline artifact has **0 inter-HO events**
+       (82 intra only) → not testable on this artifact; the inter button stays
+       correctly disabled. Needs an artifact/run that produces a satellite handover.
+    2. **Phase-3 overlays on real beam-load** — phase-3 (contention glow / 3D
+       cylinder / particles) lives on the `modqn-live-cell-preview` LIVE lane
+       (real bundle, audit D1 = HEALTHY), NOT artifact-replay. A live-lane eyes-on
+       on the real bundle would replace its "synthetic/forecast" verification note.
+       In-env, lower priority (live lane already marked healthy).
+    3. **P3b Tier-2 server E2E** (pre-existing): real training run → dock
+       MiniRewardCurve fills live. HEAVY → Ubuntu server; push producer `4c03665`
+       (now part of producer HEAD `302ed53`) to origin first.
 
 ---
 
