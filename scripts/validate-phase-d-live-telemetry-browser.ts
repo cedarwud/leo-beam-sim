@@ -123,10 +123,11 @@ async function runScenario(
     await page.goto(appUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.locator('.leo-app-shell[data-scene-lane="modqn-live-cell-preview"]').waitFor({ timeout: 30000 });
     await page.locator('[data-testid="algorithm-dock"][data-mode="live"]').waitFor({ state: 'visible', timeout: 20000 });
-    // Require the panel to ACTUALLY load our mocked job's telemetry first — the
-    // empty "No active training run" state is itself `offline`, so without this
-    // the offline scenario could pass on the empty state instead of verifying a
-    // stale-telemetry fail-close (codex [P2]). The populated panel sets data-job-id.
+    // Require the panel to ACTUALLY load our mocked job's telemetry first. The
+    // empty "No active training run" state now renders an `idle` badge (distinct
+    // from `offline`), but we still gate on the populated panel's data-job-id so
+    // the offline scenario verifies a real heartbeat-loss fail-close, not any
+    // non-live state (codex [P2]).
     await page.locator(`[data-testid="live-telemetry-panel"][data-job-id="${JOB_ID}"]`).waitFor({ state: 'attached', timeout: 25000 });
     await page.waitForFunction(
       (want: string) => document.querySelector('[data-testid="live-telemetry-status-badge"]')?.getAttribute('data-telemetry-status') === want,

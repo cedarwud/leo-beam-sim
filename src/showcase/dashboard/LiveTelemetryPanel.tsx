@@ -140,12 +140,15 @@ export function LiveTelemetryPanel({
   const frozen = telemetryStatus === 'stalled' || telemetryStatus === 'offline';
 
   if (entry === null || activeJobId === null) {
+    // No run loaded yet = "idle", a distinct neutral state from "offline" (a run
+    // whose heartbeat was lost). Conflating the two would read as an alarm when
+    // nothing is wrong. INV-2: idle / stalled / offline stay visually distinct.
     return (
       <section
         className="leo-algorithm-dashboard leo-live-telemetry-panel leo-live-telemetry-panel--empty"
         data-testid="live-telemetry-panel"
         data-variant={variant}
-        data-telemetry-status={telemetryStatus}
+        data-telemetry-status="idle"
         data-plane="A"
       >
         <header className="leo-algorithm-dashboard__header">
@@ -154,13 +157,16 @@ export function LiveTelemetryPanel({
           <span
             className="leo-live-telemetry-panel__status-badge"
             data-testid="live-telemetry-status-badge"
-            data-telemetry-status={telemetryStatus}
+            data-telemetry-status="idle"
           >
-            {telemetryStatusLabel(telemetryStatus)}
+            Idle
           </span>
         </header>
         <p className="leo-algorithm-dashboard__empty" data-testid="live-telemetry-empty">
           No active training run
+          <span className="leo-live-telemetry-panel__empty-hint">
+            Start a training job to stream live Plane-A telemetry.
+          </span>
         </p>
       </section>
     );
@@ -235,7 +241,11 @@ export function LiveTelemetryPanel({
         frozen={frozen}
       >
         {rewardSeries.length > 0 ? (
-          <div className="leo-algorithm-dashboard__curve-wrap">
+          <div
+            className="leo-algorithm-dashboard__curve-wrap"
+            role="img"
+            aria-label="Evolving reward curve: episode-by-episode scalar reward trend"
+          >
             <MiniRewardCurve rewards={rewardSeries} />
           </div>
         ) : (

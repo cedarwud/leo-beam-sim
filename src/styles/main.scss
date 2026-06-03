@@ -55,6 +55,12 @@
   --leo-telemetry-frozen-bg: rgba(163, 176, 190, 0.06);
   --leo-telemetry-frozen-value: rgba(218, 226, 232, 0.82);
   --leo-telemetry-frozen-filter: grayscale(0.42);
+  // "idle" = no run loaded. A calm slate neutral, deliberately NOT the offline
+  // red (no alarm) and NOT the live green (nothing running). Distinct from the
+  // stalled grey so the three INV-2 states never read the same.
+  --leo-telemetry-idle-border: rgba(138, 162, 184, 0.34);
+  --leo-telemetry-idle-bg: rgba(138, 162, 184, 0.1);
+  --leo-telemetry-idle-text: rgba(206, 220, 232, 0.86);
 
   // INV-3 source-gap (absent producer channel → "not shown", never fabricated).
   --leo-source-gap-rgb: 255, 190, 69;
@@ -3055,9 +3061,9 @@ canvas {
   display: inline-flex;
   align-items: center;
   padding: 2px 5px;
-  border: 1px solid rgba(var(--leo-accent-rgb), 0.28);
+  border: 1px solid rgba(var(--leo-accent-rgb), 0.32);
   border-radius: 999px;
-  background: rgba(var(--leo-accent-rgb), 0.1);
+  background: rgba(var(--leo-accent-rgb), 0.12);
   color: rgba(216, 255, 250, 0.92);
   font-size: 9px;
   font-weight: 800;
@@ -3168,6 +3174,12 @@ canvas {
   color: var(--leo-telemetry-offline-text);
 }
 
+.leo-live-telemetry-panel__status-badge[data-telemetry-status="idle"] {
+  border-color: var(--leo-telemetry-idle-border);
+  background: var(--leo-telemetry-idle-bg);
+  color: var(--leo-telemetry-idle-text);
+}
+
 .leo-live-telemetry-panel__tile--frozen {
   border-color: var(--leo-telemetry-frozen-border);
   background: var(--leo-telemetry-frozen-bg);
@@ -3182,6 +3194,21 @@ canvas {
   display: block;
   margin-top: 2px;
   color: var(--leo-source-gap-detail-text);
+}
+
+// Idle empty state: keep the message calm/neutral (not the amber source-gap
+// tone), matching the slate "Idle" badge. Scoped to the live panel so the
+// Plane-C dashboard's own "No artifact loaded" empty copy is untouched.
+.leo-live-telemetry-panel--empty .leo-algorithm-dashboard__empty {
+  color: var(--leo-telemetry-idle-text);
+}
+
+.leo-live-telemetry-panel__empty-hint {
+  display: block;
+  margin-top: 3px;
+  color: rgba(229, 244, 251, 0.5);
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .leo-algorithm-flowchart {

@@ -605,6 +605,7 @@ for (const [token, value] of [
   ['--leo-telemetry-offline-bg', 'rgba(255, 118, 118, 0.1)'],
   ['--leo-telemetry-offline-text', 'rgba(255, 205, 205, 0.94)'],
   ['--leo-telemetry-frozen-filter', 'grayscale(0.42)'],
+  ['--leo-telemetry-idle-border', 'rgba(138, 162, 184, 0.34)'],
   // INV-3 source-gap (absent producer channel; never fabricated)
   ['--leo-source-gap-chip-border', 'rgba(255, 190, 69, 0.34)'],
   ['--leo-source-gap-chip-bg', 'rgba(255, 190, 69, 0.09)'],
@@ -624,6 +625,8 @@ assertContains(mainScssSource, 'color: var(--leo-plane-paper);', 'INV-1 paper tr
 assertContains(mainScssSource, 'color: var(--leo-plane-user);', 'INV-1 user truth-tone chip references the plane-user token');
 assertContains(mainScssSource, 'border-color: var(--leo-telemetry-stalled-border);', 'INV-2 stalled badge references the staleness token (distinct from offline)');
 assertContains(mainScssSource, 'border-color: var(--leo-telemetry-offline-border);', 'INV-2 offline badge references the offline token (distinct from stalled)');
+assertContains(mainScssSource, 'border-color: var(--leo-telemetry-idle-border);', 'INV-2 idle badge references the idle token (no-run state distinct from offline)');
+assertContains(liveTelemetryPanelSource, 'data-telemetry-status="idle"', 'LiveTelemetryPanel renders an idle (not offline) badge for the no-run empty state');
 assertContains(mainScssSource, 'filter: var(--leo-telemetry-frozen-filter);', 'INV-2 frozen tile references the freeze-filter token');
 assertContains(mainScssSource, 'background: var(--leo-source-gap-chip-bg);', 'INV-3 source-gap chip references the source-gap background token');
 assertContains(mainScssSource, 'color: var(--leo-source-gap-chip-text);', 'INV-3 source-gap chip references the source-gap text token');
