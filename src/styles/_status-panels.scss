@@ -1,24 +1,24 @@
 /* LiveKpiStrip - migrated from inline styles */
 .leo-live-kpi-strip {
   padding: 12px 14px;
-  border: 1px solid rgba(118, 234, 215, 0.24);
+  border: 1px solid rgba(var(--leo-accent-rgb), 0.24);
   border-radius: 8px;
   background: linear-gradient(180deg, rgba(4, 18, 28, 0.95), rgba(3, 8, 12, 0.92));
   color: #eefaff;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 .leo-live-kpi-strip__group-title {
-  color: #76ead7;
+  color: var(--leo-accent);
   font-size: 13px;
   letter-spacing: 1px;
   text-transform: uppercase;
   padding-top: 10px;
   padding-bottom: 5px;
-  border-bottom: 1px solid rgba(118, 234, 215, 0.18);
+  border-bottom: 1px solid rgba(var(--leo-accent-rgb), 0.18);
   margin-bottom: 5px;
 }
 

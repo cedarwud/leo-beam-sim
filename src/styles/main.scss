@@ -2209,12 +2209,28 @@ canvas {
   background: rgba(255, 255, 255, 0.045);
   cursor: pointer;
   text-align: left;
+  transition:
+    border-color var(--leo-motion-fast) ease,
+    background var(--leo-motion-fast) ease,
+    color var(--leo-motion-fast) ease;
+}
+
+.leo-sidebar-tab-button:hover:not([data-active="true"]) {
+  border-color: rgba(var(--leo-accent-rgb), 0.24);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(238, 250, 255, 0.88);
 }
 
 .leo-sidebar-tab-button[data-active="true"] {
-  border-color: rgba(118, 234, 215, 0.38);
+  border-color: rgba(var(--leo-accent-rgb), 0.38);
   color: #f6fbff;
-  background: rgba(118, 234, 215, 0.12);
+  background: rgba(var(--leo-accent-rgb), 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leo-sidebar-tab-button {
+    transition: none;
+  }
 }
 
 .leo-sidebar-tab-button span,
@@ -2232,7 +2248,7 @@ canvas {
 
 .leo-sidebar-tab-button small {
   color: rgba(229, 244, 251, 0.58);
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.2;
 }
 

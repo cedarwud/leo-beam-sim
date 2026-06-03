@@ -40,13 +40,13 @@
   font-size: 11px;
   font-weight: 800;
   line-height: 1.2;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
+  transition: background var(--leo-motion-standard) ease, border-color var(--leo-motion-standard) ease, color var(--leo-motion-standard) ease, opacity var(--leo-motion-standard) ease;
 }
 
 .leo-director-controls__btn:hover:not(:disabled) {
-  border-color: rgba(118, 234, 215, 0.42);
-  background: rgba(118, 234, 215, 0.14);
-  color: #d8fffa;
+  border-color: rgba(var(--leo-accent-rgb), 0.42);
+  background: rgba(var(--leo-accent-rgb), 0.14);
+  color: var(--leo-accent-strong);
 }
 
 .leo-director-controls__btn--exit:hover:not(:disabled) {
@@ -63,4 +63,10 @@
 .leo-director-controls__btn:disabled {
   cursor: not-allowed;
   opacity: 0.46;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leo-director-controls__btn {
+    transition: none;
+  }
 }
