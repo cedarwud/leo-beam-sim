@@ -73,11 +73,40 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
     all fixed). **Inter-HO NOT testable here: the 89s baseline artifact has 0 inter
     events (82 intra only) — honest gap, the inter button stays correctly disabled.**
 
-- [ ] **FIX-5 (design) — artifact-replay scene richness + camera framing** · non-heavy · design + impl
-  - C2: satellites are never framed (camera ground-focused) — decide if a default
-    or a preset camera should show the orbiting sats. C3: artifact-replay renders
-    only sats + UE dots (no beams/cells by governance) — decide if the showcase
-    wants more there. Both are design calls, then small impl.
+- [~] **FIX-5 (design) — artifact-replay scene richness + camera framing** · investigation DONE 2026-06-03; **C2 decision = build option C (next, new conversation)**
+  - **C2 root cause is NOT camera angle (investigation, read-only):** the artifact's
+    4 satellites are placed by the producer's `eci-km-no-earth-rotation-proxy` at
+    a FLAT ring on the ground plane (Y=0) at radius ~7151 world units (sat-0=+X,
+    sat-1=+Z, sat-2=−X, sat-3=−Z, slowly rotating). `MainScene` artifact path
+    renders `<SatelliteMarker position={Vector3(...satellite.worldPos)}/>` with NO
+    display scale, so sats sit 7151 units out while UEs are within ~150 → off-frame
+    laterally. Radius 7151 ≈ Earth radius 6371 + ~780 km = the REAL LEO orbital
+    radius; the azimuths are REAL; only inclination/elevation is missing (flattened
+    to the equatorial plane). **All sat Y = 0 — the proxy has NO overhead dimension.**
+  - **Why sinr-live has no problem:** it self-generates sat geometry via SceneGeometry
+    + a `visualSatelliteAltitude` display scale (`satPosScaleFactor = visualSatelliteAltitude/400`,
+    `useBeamViz.ts:124`) placing sats overhead at a controlled visual altitude. The
+    artifact lane CONSUMES the producer proxy that discarded elevation.
+  - **Option A (producer Earth-fixed projection) = BLOCKED, principled source-gap.**
+    The MODQN source has `startEpochIso` (1) but NO `earthRotationModel` / `eciToEcefEpochIso`
+    → the producer's `visual_showcase_source_gap.py` (`:81,:271,:373`) DELIBERATELY
+    refuses to fake ECEF without source-owned earth-rotation inputs ("Do not convert
+    ECI to ECEF without source-owned conversion inputs") — the SAME render-truth ethos
+    leo enforces. Honest overhead geometry would need the upstream MODQN sim to add an
+    earth-rotation model (far upstream, out of visual-showcase scope).
+  - **Option B (leo re-place sats overhead) = OUT** — the proxy has no elevation, so
+    leo would FABRICATE the Y dimension = geometry-truth violation (§3 / Rule#6), the
+    exact thing this campaign protects against. Camera change = OUT (ring 7151 vs UE 150).
+  - **DECISION = Option C (user-picked): a leo-only HONEST satellite direction / orbital
+    context indicator.** Use the REAL azimuths (the ring is azimuthally truthful) to
+    surface where the satellites are — e.g. an orbital-ring minimap or edge/compass
+    azimuth markers + an honest "satellites at orbital distance (ECI proxy, no
+    elevation)" label — WITHOUT fabricating overhead elevation. Display-only overlay,
+    governance-safe (no geometry change, no lane-ownership change). Build it next.
+  - **C3 (beams/cells in artifact lane) = governance LANE-MATRIX LOCKED** — the
+    frontend-render-governance lane matrix forbids artifact-replay from mounting live
+    cell/beam layers. NOT a free design call; would need a governance change + ADR-001
+    update. Out of scope for FIX-5 unless explicitly reopened.
 
 - [~] **FIX-6 — Re-verify the "COMPLETE" surfaces on REAL data** · mixed · **artifact-replay lane DONE (2026-06-03); 3 residual items logged below**
   - ✅ **artifact-replay 3D scene on real data:** FIX-2 smoke + screenshot = real
@@ -105,7 +134,27 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
 
 ---
 
-## Resume prompt for a fresh conversation
+## Resume prompt for a fresh conversation (FIX-5 C2 → build option C)
+
+> 延續 leo-beam-sim render-truth FIX campaign。FIX-1/2/3/4 + FIX-6-artifact-lane
+> 全部 DONE。先讀 `docs/showcase-render-truth-fix-backlog.md`（尤其 FIX-5 entry =
+> 完整 C2 診斷 + Option C 決定）+ `.agent-memory/MEMORY.md`（行尾 FIX-5 block）。
+> 確認 git sync（HEAD 應 `d4d5721` 或更新）。
+> 任務 = 建 **FIX-5 Option C：leo-only 誠實衛星方位 / 軌道 context 指示器**。
+> 已診斷：artifact 4 顆衛星是 producer ECI-no-earth-rotation proxy 壓平到 Y=0、
+> 半徑 7151 的環（方位真、仰角無）；A（producer 投影）被 principled source-gap
+> 卡死（無 earthRotationModel）；B（leo 擺頭頂）= 捏造幾何禁止。C = 用真方位畫
+> 指示器（orbital-ring minimap / 邊緣 compass 方位標 + 誠實 label），display-only
+> overlay，不動 geometry/lane-ownership。proven loop：impl → tsc + governance +
+> 真資料 browser smoke（dev server serve `producer-pinned` 89s artifact）→ codex
+> review --base main → CLEAN → ff → push。真資料 DATA SOURCE 必明寫。繁中對話。
+>
+> 剩餘 residual（非 C2，需 server/不同資料）：FIX-6(1) inter-HO（89s artifact 0
+> inter）、FIX-6(2) phase-3 live-lane eyes-on（in-env 低優先）、FIX-6(3) P3b
+> Tier-2 server E2E（HEAVY→Ubuntu，先 push producer `302ed53` 到 origin）。
+> C3（beams/cells in artifact lane）= governance lane-matrix LOCKED，需 ADR，不碰。
+
+## Original resume prompt (FIX-1, historical)
 
 > Continue the leo-beam-sim render-truth FIX campaign. Read first:
 > `docs/showcase-render-truth-audit-2026-06-03.md`,
