@@ -207,10 +207,18 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
     is EMPTY in the live modqn-cell lane (`data-beam-load-contention-ue-count=0` vs serviceMap served=75
     from `sceneFrame.ues`) → glow likely non-functional; the real-render gate REVEALED it then was REMOVED
     (couldn't pass honestly); telemetry kept; needs a truth-ownership investigation, not a quick edit.
-    (2) `validate:modqn:phase6p-hobs-sinr-kpi-baseline` is RED at HEAD (pre-existing drift from its
-    committed fixture) — do NOT regenerate to mask.
-  - **Deferred (out of in-env scope):** #2 phase-3 render (blocked by finding 1), #3 live-telemetry
-    server E2E (HEAVY→Ubuntu), #4 inter-HO cinematic (needs an artifact with a satellite handover).
+    (2) **RESOLVED `7493289`:** `validate:modqn:phase6p-hobs-sinr-kpi-baseline` was RED (pre-existing
+    drift). Diagnosed = STALE snapshot (fixture from `5d3079d`, before PR-IS7a P=384 geometry +
+    UE spread + Phase F/G + ω-handover tuning-key expansion); SINR drift sane (mean -1.45→-1.03 dB,
+    no collapse), NOT a regression. Re-captured via `--capture`; deterministic (re-capture byte-identical,
+    `timeSec` sim-derived), validator now PASS. Self-snapshot refresh of leo's own compute, not the
+    ntn-sim-core oracle, not masking a bug.
+  - **REMAINING in-env = 1 (new conversation):** finding (1) phase-3 contention glow — truth-ownership
+    investigation of the empty `sim.perUePositions` (wire glow to `sceneFrame.ues` vs fix population),
+    then a real-render gate via the kept `data-beam-load-contention-ue-count` telemetry.
+  - **Deferred (out of in-env scope):** #3 live-telemetry server E2E (HEAVY→Ubuntu, push producer
+    `302ed53`), #4 inter-HO cinematic (needs an artifact with a satellite handover). Plus the
+    audit's ~29 "weak" surfaces = verification-strength preference, not bugs (live lanes healthy).
 
 
 ## Resume prompt for a fresh conversation (FIX-5 C2 → build option C)
