@@ -219,6 +219,30 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
   - **Deferred (out of in-env scope):** #3 live-telemetry server E2E (HEAVY→Ubuntu, push producer
     `302ed53`), #4 inter-HO cinematic (needs an artifact with a satellite handover). Plus the
     audit's ~29 "weak" surfaces = verification-strength preference, not bugs (live lanes healthy).
+  - **✅ FINDING #1 RESOLVED 2026-06-04 (C1 truth-ownership fix).** Empirically diagnosed via live
+    browser probe: on the modqn-demo cell lane the live HandoverManager acquires NO per-UE serving
+    — even the primary `sim.serving.satId` is `""` (4-sat + decision-overlay profile behaviour;
+    sinr-live's 1-UE lane DOES acquire serving, so not a global crash). So the prior two candidate
+    fixes are BOTH dead: (a) `sceneFrame.ues` serving ≡ the same empty `sim` serving via
+    `liveSimToScene` → still 0; (b) "fix `perUePositions` population" = altering rigor-critical /
+    vendor-governed HandoverManager truth for a display need = §2/Rule#6 forbidden. There is no
+    producer per-UE serving on this LIVE lane (that lives only on the replay `allUeServingHistory`
+    source-gap). **User picked C1:** wire the contention to the SAME profile-derived cell-schedule
+    per-UE (satId, beamIndex) assignment `deriveModqnServiceMap` already uses to colour the markers
+    and emit the `ueCountByCellId` UE-count badges — the lane's authoritative *displayed* serving.
+    `source:'profile-derived-demo'` / `claimKind:'overlay-demo'`, **NOT** producer r3 (the glow adds
+    no claim the cell overlay does not already make). `cellScheduler.usedBeamKeys` makes each
+    (satId,beamIndex) 1:1 with a display cell, so the codex-S2 cell-splitting concern does not arise.
+    **DATA SOURCE proven:** `validate:phase-3:contention-render:browser` (new) drives the real live
+    modqn-cell engine and asserts `data-beam-load-contention-ue-count > 0` (was 0; now ≈70-88 =
+    served, ≤ served). Governance validator locks the C1 source + forbids regression to the empty
+    `sim.perUePositions`. New `validate:live-render` aggregate = sinr-live-render + contention-render.
+    Verified: tsc 0 / governance pass / phase-3 aggregate 17-0 / both live gates PASS / codex review
+    GATE PASS ([P2] = new validator untracked-in-diff, resolved by committing it) / 4-lens adversarial
+    workflow all `refuted:false` (HONESTY nit on the replay-branch docstring fixed → marked the
+    `allUeServingHistory` r3 path as a not-yet-wired source gap). Authority: governance doc
+    "Completed Follow-Ups" + `src/scene/beamLoadContention.ts` header. **🎯 FIX-7 in-env now fully
+    closed; only #3 (server E2E) + #4 (inter-HO artifact) remain, both out of in-env scope.**
 
 
 ## Resume prompt for a fresh conversation (FIX-5 C2 → build option C)

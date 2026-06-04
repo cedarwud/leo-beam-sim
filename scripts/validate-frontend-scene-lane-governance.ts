@@ -1275,6 +1275,27 @@ assertContains(
   'beamConeScope={modqnVisualLayers.beamConeScope}',
   'MainScene passes visual preset beam cone scope to CellBeamCones',
 );
+// FIX-7 finding #1 (provenance audit 2026-06-04): the phase-3 contention glow
+// MUST derive from the same profile-derived cell-schedule per-UE assignment that
+// `modqnServiceMap` already displays (the lane's authoritative shown serving),
+// NOT the dead `sim.perUePositions` HandoverManager serving (empty on the
+// modqn-demo decision-overlay path). Lock the C1 source and forbid a regression
+// to the empty live serving so the glow cannot silently go non-functional again.
+assertContains(
+  mainSceneSource,
+  'deriveBeamLoadContention([...modqnServiceMap.ueById.values()].map(projection => ({',
+  'MainScene derives phase-3 contention from the modqnServiceMap cell-schedule assignment (FIX-7 C1)',
+);
+assertNotContains(
+  mainSceneSource,
+  'deriveBeamLoadContention(sim.perUePositions',
+  'MainScene must not re-wire phase-3 contention to the empty live HandoverManager serving (FIX-7 finding #1)',
+);
+assertContains(
+  mainSceneSource,
+  '(NOT producer r3 proof): the glow is a per-UE',
+  'MainScene documents the contention overlay-demo provenance (not producer r3)',
+);
 assertContains(
   mainSceneSource,
   'const focusBeamLoad = beamLoadContentionEnabled',

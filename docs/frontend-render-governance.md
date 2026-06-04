@@ -277,6 +277,22 @@ Before changing scene rendering:
   Debug can additionally expose profile-derived cell schedule diagnostics in
   the HUD while keeping Baseline Faithful, Service Allocation, and Explain
   Handover clean.
+- Phase-3 beam-load contention glow (`modqn-live-cell-preview`) derives from the
+  same profile-derived cell-schedule per-UE (satId, beamIndex) assignment that
+  `deriveModqnServiceMap` already uses to colour the UE markers and emit the
+  per-cell UE-count badges. Provenance audit 2026-06-04 (FIX-7 finding #1) found
+  its prior `sim.perUePositions` source is empty on this lane — the modqn-demo
+  4-sat decision-overlay live path acquires no per-UE HandoverManager serving
+  (even the primary `sim.serving.satId` is null), so the glow never fired. There
+  is no producer per-UE serving on the live cell lane (that exists only on the
+  replay `allUeServingHistory` path), so the glow is a per-UE visual encoding of
+  the already-shown `source: 'profile-derived-demo'` / `claimKind: 'overlay-demo'`
+  cell load, NOT producer r3 proof — it adds no claim the cell overlay does not
+  already make. The enable gate (`showCellOverlay && serviceMap`) is unchanged, so
+  no lane gains or loses the glow. Validators: `validate:frontend:scene-lane-governance`
+  locks the C1 source (and forbids a regression to the empty `sim.perUePositions`
+  serving), and `validate:phase-3:contention-render:browser` proves it actually
+  fires on real live geometry (`data-beam-load-contention-ue-count > 0`).
 - Director focus is lane-gated by the render plan. On the live walker lanes
   (`sinr-live`, `modqn-live-cell-preview`) it is "live focus": camera focus +
   the single 0.05x slow-mo tier on the running sim. On `artifact-replay` it is

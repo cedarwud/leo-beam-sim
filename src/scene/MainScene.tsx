@@ -703,15 +703,48 @@ function SceneContent({
   const modqnVisualLayerPreset = runtime.modqnVisualLayerPreset ?? DEFAULT_MODQN_VISUAL_LAYER_PRESET;
   const modqnVisualLayers = runtime.modqnVisualLayers ?? resolveModqnVisualLayers(modqnVisualLayerPreset);
   const beamLoadContentionEnabled = showCellOverlay && modqnVisualLayers.serviceMap;
+  const modqnServiceMap = useMemo(
+    () => showCellOverlay && modqnVisualLayers.serviceMap
+      ? deriveModqnServiceMap({
+        ues: sceneFrame.ues,
+        schedule: cellSchedule,
+        satelliteTintById,
+      })
+      : EMPTY_MODQN_SERVICE_MAP,
+    [
+      cellSchedule,
+      modqnVisualLayers.serviceMap,
+      satelliteTintById,
+      sceneFrame.ues,
+      showCellOverlay,
+    ],
+  );
+  // Phase-3 beam-load contention source = the SAME per-UE (satId, beamIndex)
+  // cell-schedule assignment that `modqnServiceMap` already uses to colour the UE
+  // markers and emit the per-cell UE-count badges (`ueCountByCellId`). Provenance
+  // audit 2026-06-04 (FIX-7 finding #1): the earlier `sim.perUePositions` source
+  // is EMPTY in this lane — the modqn-demo 4-sat profile + decision-overlay live
+  // path acquires no per-UE HandoverManager serving (verified: even the primary
+  // `sim.serving.satId` is null), so the contention glow never fired. There is NO
+  // producer per-UE serving on the live cell lane (that exists only on the replay
+  // `allUeServingHistory` path), so the lane's authoritative displayed assignment
+  // is this profile-derived cell schedule. It is `source: 'profile-derived-demo'`
+  // / `claimKind: 'overlay-demo'` (NOT producer r3 proof): the glow is a per-UE
+  // visual encoding of the already-shown overlay-demo cell load, never a new claim.
+  // In the schedule each (satId, beamIndex) is used at most once per slot
+  // (cellScheduler `usedBeamKeys`), so grouping UEs by (satId, beamIndex) is 1:1
+  // with the display cells — the codex-S2 "one beam split across display cells"
+  // concern does not arise here. Idle/unknown UEs carry a null satId and stay
+  // unserved (load 0), so they never borrow a neighbour's load (INV-3).
   const beamLoadContention = useMemo(
     () => beamLoadContentionEnabled
-      ? deriveBeamLoadContention(sim.perUePositions.map(position => ({
-        ueId: position.id,
-        servingSatId: position.servingSatId,
-        servingBeamId: position.servingBeamId,
+      ? deriveBeamLoadContention([...modqnServiceMap.ueById.values()].map(projection => ({
+        ueId: projection.ueId,
+        servingSatId: projection.satId,
+        servingBeamId: projection.beamIndex,
       })))
       : EMPTY_BEAM_LOAD_CONTENTION,
-    [beamLoadContentionEnabled, sim.perUePositions],
+    [beamLoadContentionEnabled, modqnServiceMap],
   );
   // Provenance audit 2026-06-04: count of UEs carrying live beam-load contention
   // (>0 normalized load). Surfaced as canvas telemetry so a durable browser gate
@@ -729,22 +762,6 @@ function SceneContent({
   const focusBeamLoadTint = focusedCellBeamConeUe?.servingSatelliteId
     ? satelliteTintById.get(focusedCellBeamConeUe.servingSatelliteId)
     : undefined;
-  const modqnServiceMap = useMemo(
-    () => showCellOverlay && modqnVisualLayers.serviceMap
-      ? deriveModqnServiceMap({
-        ues: sceneFrame.ues,
-        schedule: cellSchedule,
-        satelliteTintById,
-      })
-      : EMPTY_MODQN_SERVICE_MAP,
-    [
-      cellSchedule,
-      modqnVisualLayers.serviceMap,
-      satelliteTintById,
-      sceneFrame.ues,
-      showCellOverlay,
-    ],
-  );
   const modqnCellServiceReadout = useMemo(
     () => showCellOverlay && modqnVisualLayers.serviceMap
       ? buildModqnCellServiceReadout({
