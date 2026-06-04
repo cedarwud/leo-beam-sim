@@ -171,14 +171,156 @@ function easeInOutCubic(value: number): number {
     : 1 - ((-2 * value + 2) ** 3) / 2;
 }
 
+type DirectorSnapshot = { position: THREE.Vector3; target: THREE.Vector3 };
+type DirectorSnapshotRef = MutableRefObject<DirectorSnapshot | null>;
+type CameraTweenRef = MutableRefObject<CameraTweenState | null>;
 /**
- * Self-contained Director camera focus FSM (acquire → hold → restore) over the
- * shared OrbitControls camera. SceneContent keeps its own inline copy (entangled
- * with the camera-preset tween + telemetry refs) for the live lanes; this hook is
- * the camera half of the artifact-replay cinematic so ArtifactSceneContent —
- * which has no preset tween machinery — can run the same focus/restore tween.
- * (Future: unify SceneContent onto this hook.) Consumes a real handover focus
- * command; inert unless effectiveCinematicMode === 'director' (Rule#8).
+ * The four points the Director acquire/restore FSM hands control back to its
+ * caller. The artifact hook ignores them; the live SceneContent maps them to its
+ * camera-preset telemetry refs (cameraPresetRef / cameraTransitionRef).
+ */
+type DirectorFocusTransition = 'acquire-applied' | 'acquire-tween' | 'restore-applied' | 'restore-tween';
+
+/**
+ * Shared Director acquire/restore camera FSM (ITEM #C P1 de-dup, 2026-06-04).
+ *
+ * The acquire→hold→restore decision used to be duplicated verbatim in the
+ * artifact-lane `useDirectorCameraFocus` hook and the live-lane `SceneContent`
+ * effect — a must-change-in-lockstep copy the architecture audit flagged. Both
+ * now call this one function so the focus framing, snapshot-once, reduced-motion,
+ * and restore semantics live in a single place. The caller is responsible for the
+ * `!command` / already-handled / `effectiveCinematicMode !== 'director'` guards
+ * (they gate the effect itself); this only runs the acquire/restore body. The
+ * per-consumer tween-application useFrame is intentionally NOT shared — the live
+ * lane interleaves it with the camera-preset tween — so this returns only the FSM
+ * decision via the shared refs + `onTransition` for preset-telemetry mirroring.
+ */
+function applyDirectorFocusCommand(ctx: {
+  readonly command: NonNullable<RuntimeConfig['directorFocusCommand']>;
+  readonly camera: THREE.Camera;
+  readonly controls: OrbitControlsImpl | null;
+  readonly sceneFrame: NormalizedSceneFrame;
+  readonly alpha: number;
+  readonly reducedMotion: boolean;
+  readonly nowMs: number;
+  readonly lastCommandAtRef: MutableRefObject<number | null>;
+  readonly snapshotRef: DirectorSnapshotRef;
+  readonly tweenRef: CameraTweenRef;
+  readonly onTransition?: (transition: DirectorFocusTransition) => void;
+}): void {
+  const {
+    command, camera, controls, sceneFrame, alpha, reducedMotion, nowMs,
+    lastCommandAtRef, snapshotRef, tweenRef, onTransition,
+  } = ctx;
+
+  if (command.phase === 'acquiring') {
+    const ueWorldPos = sceneFrame.ues[0]?.worldPos;
+    if (!ueWorldPos) {
+      lastCommandAtRef.current = command.issuedAtMs;
+      return;
+    }
+    lastCommandAtRef.current = command.issuedAtMs;
+    // Snapshot ONCE per focus cycle: re-targeting (acquiring again while already
+    // focused) must preserve the original pre-focus overview pose so `restoring`
+    // returns there, not to the current focused pose.
+    if (snapshotRef.current === null) {
+      snapshotRef.current = {
+        position: camera.position.clone(),
+        target: controls?.target.clone() ?? new THREE.Vector3(),
+      };
+    }
+    if (controls) controls.enabled = false;
+
+    const framing = command.framing
+      ? {
+          fromSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.fromSatId),
+          toSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.toSatId),
+        }
+      : undefined;
+    const pose = resolveDirectorFocusPose(ueWorldPos, alpha, command.kind, framing);
+    if (reducedMotion) {
+      camera.position.copy(pose.position);
+      controls?.target.copy(pose.target);
+      controls?.update();
+      tweenRef.current = null;
+      onTransition?.('acquire-applied');
+    } else {
+      tweenRef.current = {
+        preset: null,
+        kind: 'director-acquire',
+        startedAtMs: nowMs,
+        fromPosition: camera.position.clone(),
+        fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
+        toPosition: pose.position,
+        toTarget: pose.target,
+      };
+      onTransition?.('acquire-tween');
+    }
+    return;
+  }
+
+  lastCommandAtRef.current = command.issuedAtMs;
+  const snapshot = snapshotRef.current;
+  const toPosition = snapshot?.position.clone() ?? camera.position.clone();
+  const toTarget = snapshot?.target.clone() ?? (controls?.target.clone() ?? new THREE.Vector3());
+
+  if (reducedMotion) {
+    camera.position.copy(toPosition);
+    controls?.target.copy(toTarget);
+    if (controls) controls.enabled = true;
+    controls?.update();
+    snapshotRef.current = null;
+    tweenRef.current = null;
+    onTransition?.('restore-applied');
+  } else {
+    tweenRef.current = {
+      preset: null,
+      kind: 'director-restore',
+      startedAtMs: nowMs,
+      fromPosition: camera.position.clone(),
+      fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
+      toPosition,
+      toTarget,
+    };
+    onTransition?.('restore-tween');
+  }
+}
+
+/**
+ * Shared force-restore: snap the camera back to the pre-focus snapshot when a lane
+ * stops being director mid-focus (inertness guarantee). Caller gates on
+ * `effectiveCinematicMode !== 'director'`; this no-ops when no snapshot is held and
+ * otherwise restores + clears the refs, calling `onRestored` (live lane uses it to
+ * reset its camera-transition telemetry).
+ */
+function forceRestoreDirectorFocus(ctx: {
+  readonly camera: THREE.Camera;
+  readonly controls: OrbitControlsImpl | null;
+  readonly snapshotRef: DirectorSnapshotRef;
+  readonly tweenRef: CameraTweenRef;
+  readonly onRestored?: () => void;
+}): void {
+  const { camera, controls, snapshotRef, tweenRef, onRestored } = ctx;
+  if (snapshotRef.current === null) return;
+  if (controls) {
+    camera.position.copy(snapshotRef.current.position);
+    controls.target.copy(snapshotRef.current.target);
+    controls.enabled = true;
+    controls.update();
+  }
+  snapshotRef.current = null;
+  tweenRef.current = null;
+  onRestored?.();
+}
+
+/**
+ * Director camera focus FSM (acquire → hold → restore) over the shared
+ * OrbitControls camera, for ArtifactSceneContent (which has no camera-preset tween
+ * machinery). The acquire/restore decision is shared with the live SceneContent
+ * effect via applyDirectorFocusCommand / forceRestoreDirectorFocus above; this
+ * hook only owns the wiring (refs + the director tween-application useFrame).
+ * Consumes a real handover focus command; inert unless
+ * effectiveCinematicMode === 'director' (Rule#8).
  */
 function useDirectorCameraFocus(params: {
   readonly controlsRef: MutableRefObject<OrbitControlsImpl | null>;
@@ -202,91 +344,29 @@ function useDirectorCameraFocus(params: {
       lastDirectorCommandAtRef.current = command.issuedAtMs;
       return;
     }
-
-    const controls = controlsRef.current;
-    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
-
-    if (command.phase === 'acquiring') {
-      const ueWorldPos = sceneFrame.ues[0]?.worldPos;
-      if (!ueWorldPos) {
-        lastDirectorCommandAtRef.current = command.issuedAtMs;
-        return;
-      }
-      lastDirectorCommandAtRef.current = command.issuedAtMs;
-      // Snapshot the pre-focus pose ONCE per cycle so restore returns to the
-      // original overview, not the focused pose.
-      if (directorSnapshotRef.current === null) {
-        directorSnapshotRef.current = {
-          position: camera.position.clone(),
-          target: controls?.target.clone() ?? new THREE.Vector3(),
-        };
-      }
-      if (controls) controls.enabled = false;
-
-      const framing = command.framing
-        ? {
-            fromSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.fromSatId),
-            toSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.toSatId),
-          }
-        : undefined;
-      const pose = resolveDirectorFocusPose(ueWorldPos, alpha, command.kind, framing);
-      if (reducedMotion) {
-        camera.position.copy(pose.position);
-        controls?.target.copy(pose.target);
-        controls?.update();
-        cameraTweenRef.current = null;
-      } else {
-        cameraTweenRef.current = {
-          preset: null,
-          kind: 'director-acquire',
-          startedAtMs: nowMs,
-          fromPosition: camera.position.clone(),
-          fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
-          toPosition: pose.position,
-          toTarget: pose.target,
-        };
-      }
-      return;
-    }
-
-    lastDirectorCommandAtRef.current = command.issuedAtMs;
-    const snapshot = directorSnapshotRef.current;
-    const toPosition = snapshot?.position.clone() ?? camera.position.clone();
-    const toTarget = snapshot?.target.clone() ?? (controls?.target.clone() ?? new THREE.Vector3());
-
-    if (reducedMotion) {
-      camera.position.copy(toPosition);
-      controls?.target.copy(toTarget);
-      if (controls) controls.enabled = true;
-      controls?.update();
-      directorSnapshotRef.current = null;
-      cameraTweenRef.current = null;
-    } else {
-      cameraTweenRef.current = {
-        preset: null,
-        kind: 'director-restore',
-        startedAtMs: nowMs,
-        fromPosition: camera.position.clone(),
-        fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
-        toPosition,
-        toTarget,
-      };
-    }
+    applyDirectorFocusCommand({
+      command,
+      camera,
+      controls: controlsRef.current,
+      sceneFrame,
+      alpha,
+      reducedMotion,
+      nowMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
+      lastCommandAtRef: lastDirectorCommandAtRef,
+      snapshotRef: directorSnapshotRef,
+      tweenRef: cameraTweenRef,
+    });
   }, [camera, controlsRef, directorFocusCommand, reducedMotion, effectiveCinematicMode, sceneFrame.ues, alpha]);
 
   // Force-restore if the lane stops being director mid-focus (inertness guarantee).
   useEffect(() => {
     if (effectiveCinematicMode === 'director') return;
-    if (directorSnapshotRef.current === null) return;
-    const controls = controlsRef.current;
-    if (controls) {
-      camera.position.copy(directorSnapshotRef.current.position);
-      controls.target.copy(directorSnapshotRef.current.target);
-      controls.enabled = true;
-      controls.update();
-    }
-    directorSnapshotRef.current = null;
-    cameraTweenRef.current = null;
+    forceRestoreDirectorFocus({
+      camera,
+      controls: controlsRef.current,
+      snapshotRef: directorSnapshotRef,
+      tweenRef: cameraTweenRef,
+    });
   }, [camera, controlsRef, effectiveCinematicMode]);
 
   useFrame(() => {
@@ -916,84 +996,30 @@ function SceneContent({
       return;
     }
 
-    const controls = controlsRef.current;
-    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
-
-    if (command.phase === 'acquiring') {
-      const ueWorldPos = sceneFrame.ues[0]?.worldPos;
-      if (!ueWorldPos) {
-        lastDirectorCommandAtRef.current = command.issuedAtMs;
-        return;
-      }
-      lastDirectorCommandAtRef.current = command.issuedAtMs;
-
-      // Snapshot ONCE per focus cycle: re-targeting (acquiring again while already
-      // focused) must preserve the original pre-focus overview pose so `restoring`
-      // returns there, not to the current focused pose.
-      if (directorSnapshotRef.current === null) {
-        directorSnapshotRef.current = {
-          position: camera.position.clone(),
-          target: controls?.target.clone() ?? new THREE.Vector3(),
-        };
-      }
-      if (controls) controls.enabled = false;
-
-      const framing = command.framing
-        ? {
-            fromSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.fromSatId),
-            toSatWorldPos: lookupSatWorldPos(sceneFrame.satellites, command.framing.toSatId),
-          }
-        : undefined;
-      const pose = resolveDirectorFocusPose(ueWorldPos, alpha, command.kind, framing);
-      if (runtime.reducedMotion) {
-        camera.position.copy(pose.position);
-        controls?.target.copy(pose.target);
-        controls?.update();
-        cameraTweenRef.current = null;
-        cameraPresetRef.current = 'manual';
-        cameraTransitionRef.current = 'idle';
-      } else {
-        cameraTweenRef.current = {
-          preset: null,
-          kind: 'director-acquire',
-          startedAtMs: nowMs,
-          fromPosition: camera.position.clone(),
-          fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
-          toPosition: pose.position,
-          toTarget: pose.target,
-        };
-        cameraPresetRef.current = 'manual';
-        cameraTransitionRef.current = 'animating';
-      }
-      return;
-    }
-
-    lastDirectorCommandAtRef.current = command.issuedAtMs;
-    const snapshot = directorSnapshotRef.current;
-    const toPosition = snapshot?.position.clone() ?? camera.position.clone();
-    const toTarget = snapshot?.target.clone() ?? (controls?.target.clone() ?? new THREE.Vector3());
-
-    if (runtime.reducedMotion) {
-      camera.position.copy(toPosition);
-      controls?.target.copy(toTarget);
-      if (controls) controls.enabled = true;
-      controls?.update();
-      directorSnapshotRef.current = null;
-      cameraTweenRef.current = null;
-      cameraPresetRef.current = 'manual';
-      cameraTransitionRef.current = 'idle';
-    } else {
-      cameraTweenRef.current = {
-        preset: null,
-        kind: 'director-restore',
-        startedAtMs: nowMs,
-        fromPosition: camera.position.clone(),
-        fromTarget: controls?.target.clone() ?? new THREE.Vector3(),
-        toPosition,
-        toTarget,
-      };
-      cameraTransitionRef.current = 'animating';
-    }
+    // Shared acquire/restore FSM (see applyDirectorFocusCommand). The live lane
+    // also mirrors the camera-preset telemetry refs the artifact hook does not
+    // track — `onTransition` maps each FSM transition to that telemetry exactly as
+    // the prior inline copy did.
+    applyDirectorFocusCommand({
+      command,
+      camera,
+      controls: controlsRef.current,
+      sceneFrame,
+      alpha,
+      reducedMotion: runtime.reducedMotion,
+      nowMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
+      lastCommandAtRef: lastDirectorCommandAtRef,
+      snapshotRef: directorSnapshotRef,
+      tweenRef: cameraTweenRef,
+      onTransition: (transition) => {
+        if (transition === 'acquire-applied' || transition === 'acquire-tween' || transition === 'restore-applied') {
+          cameraPresetRef.current = 'manual';
+        }
+        cameraTransitionRef.current = transition === 'acquire-tween' || transition === 'restore-tween'
+          ? 'animating'
+          : 'idle';
+      },
+    });
   }, [
     camera,
     runtime.directorFocusCommand,
@@ -1005,17 +1031,13 @@ function SceneContent({
 
   useEffect(() => {
     if (effectiveCinematicMode === 'director') return;
-    if (directorSnapshotRef.current === null) return;
-    const controls = controlsRef.current;
-    if (controls) {
-      camera.position.copy(directorSnapshotRef.current.position);
-      controls.target.copy(directorSnapshotRef.current.target);
-      controls.enabled = true;
-      controls.update();
-    }
-    directorSnapshotRef.current = null;
-    cameraTweenRef.current = null;
-    cameraTransitionRef.current = 'idle';
+    forceRestoreDirectorFocus({
+      camera,
+      controls: controlsRef.current,
+      snapshotRef: directorSnapshotRef,
+      tweenRef: cameraTweenRef,
+      onRestored: () => { cameraTransitionRef.current = 'idle'; },
+    });
   }, [camera, effectiveCinematicMode]);
 
   useFrame(() => {

@@ -483,8 +483,10 @@ section('(n) D6b Director framing uses real rail satellite ids', () => {
     'MainScene defines lookupSatWorldPos against current scene satellites',
   );
   check(
-    countOccurrences(mainSceneSource, /resolveDirectorFocusPose\(ueWorldPos, alpha, command\.kind, framing\)/g) >= 2,
-    'both MainScene director call sites pass framing as the 4th pose arg',
+    countOccurrences(mainSceneSource, /resolveDirectorFocusPose\(ueWorldPos, alpha, command\.kind, framing\)/g) === 1
+      && /function applyDirectorFocusCommand/.test(mainSceneSource)
+      && countOccurrences(mainSceneSource, /applyDirectorFocusCommand\(\{/g) >= 2,
+    'shared applyDirectorFocusCommand passes framing as the 4th pose arg once, called by both director call sites (P1 de-dup)',
   );
 
   check(
