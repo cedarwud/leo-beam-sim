@@ -38,7 +38,11 @@ async function main(): Promise<void> {
 
     // The live SINR lane is selected and the canvas mounts.
     assert.equal(await page.getAttribute(SHELL, 'data-scene-lane'), 'sinr-live', 'lane resolves to sinr-live');
-    await page.waitForSelector(CANVAS, { timeout: 20000 });
+    // Wait on 'attached' (not the default 'visible'): headless layout can report
+    // the canvas mid-resize (width 585) and race the 'visible' check to a false
+    // timeout, even though the live render is already up. The telemetry poll below
+    // is the real readiness gate. (Provenance re-audit 2026-06-04 flake fix.)
+    await page.waitForSelector(CANVAS, { timeout: 20000, state: 'attached' });
 
     // The live engine actually renders satellites + beam cones. Headless
     // SwiftShader steps the rAF loop slowly, so poll the live telemetry until the
