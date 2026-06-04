@@ -263,46 +263,86 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
     engine, no artifact) is always runnable. Recorded decision, not an open gap.
   - **🎯 FIX-7 in-env FULLY CLOSED** (findings #1+#2, audit gaps #1-#2,#5-#10 all closed in-env;
     gap #6 durability = recorded Option A). **Remaining = out-of-in-env only:** #3 live-telemetry
-    server E2E (HEAVY→Ubuntu, push producer `302ed53` first) + #4 inter-HO cinematic (needs a producer
-    artifact containing ≥1 satellite handover; 89s baseline has 0). ~20 unranked weak source-string
-    surfaces = verification-strength preference (user chose to stop; audit never ranked them as problems).
+    server E2E (HEAVY→Ubuntu, push producer `302ed53` first) + #4 inter-HO cinematic. **#4
+    INVESTIGATED + RESOLVED-AS-CONCLUSION-B 2026-06-04 (in-env export probe, NOT a leo code change):
+    this baseline can NEVER yield an exportable inter-HO artifact at any epoch/offset — needs different
+    producer data. Full evidence in the "#4 inter-HO — RESOLVED" section below.** ~20 unranked weak
+    source-string surfaces = verification-strength preference (user chose to stop; audit never ranked
+    them as problems).
 
-## Resume prompt — #4 inter-HO cinematic (in-env export investigation, fresh conversation)
+## #4 inter-HO cinematic — RESOLVED-AS-CONCLUSION-B (in-env export probe, 2026-06-04)
 
-> 延續 leo-beam-sim render-truth campaign。繁中。先讀 `.agent-memory/MEMORY.md` 行尾 FIX-7 block +
-> 此 backlog FIX-7 entry + `docs/showcase-render-truth-fix-backlog.md` FIX-4/FIX-6。確認 git sync
-> (HEAD 應 `f0bc367` 或更新,main==origin/main==feat 全同步)。
->
-> 任務 = **#4 inter-HO cinematic in-env export 調查**(NOT 訓練;FIX-2 同類 — 那次以為要 server 結果
-> ~60s 本機搞定）。目標 = 取得一個**含 ≥1 顆衛星(inter)handover** 的 `visual-showcase-v1` artifact,
-> 讓 Director inter-HO cinematic（seek + D6 sat-pair framing + camera pull-back）能在真資料跑。
->
-> 已知:現用 89s baseline（`modqn-paper-reproduction/artifacts/visual-showcase-v1-baseline-89s-2026-06-03/`,
-> 45MB,該 epoch）= 82 intra-HO、**0 inter**。FIX-4 director gate 的 inter 鈕正確 disabled。inter-HO =
-> UE 的**服務衛星**換掉（非只換 beam），靠軌道幾何 → 視 epoch / start-offset / UE 位置而定。
-> ⚠️ **exporter 硬卡 60-120s window**（`visual_showcase_exporter.py:82`,FIX-2 已知）→ 不能用「更長
-> replay」硬湊 inter；只能**換 epoch / start-offset** 找一個 60-120s 內剛好跨衛星 handover 的窗。
->
-> 步驟（producer-side CLI，本機 .venv,別擋 server 上的 sdd03 ablation）:
-> 1. 在 `modqn-paper-reproduction` 試不同 epoch/start-offset:`.venv/bin/modqn-export --replay-slot-count
->    <60-120s 對應 slot> [--epoch/--start-offset 變化]` → 檢查產出 bundle 的 handover events 有無
->    **inter-satellite serving change**（serving satId 變,非只 beamIndex）。每次 export ~40-60s。
-> 2. 找到 → `.venv/bin/modqn-visual-showcase --modqn-commit <40hex> --ntn-sim-core-commit <40hex>`
->    (commits 須 full 40-hex) → ntn-sim-core `npm run validate:visual-showcase:artifact -- <path>` OK。
-> 3. leo:改 `vite.config.ts` 一行 pin → 新 artifact;`shouldRenderMainScene`/loader 不動。
-> 4. 跑 `validate:phase-c:director-cinematic:browser`,點 **inter** 鈕(現在該 enabled)→ 驗 FSM
->    idle→acquiring、effective speed→0.05×、camera 真的移動到 sat-pair centroid、D6 framing、Exit 還原。
->    DATA SOURCE 必明寫(real producer inter-HO artifact)。codex review → CLEAN → ff → push。
->
-> **可能結論 A**:找到 inter-HO window → #4 本機閉(real-data verified)。
-> **可能結論 B**:此 baseline 任何 60-120s 窗、4-sat 幾何都無 inter → 給明確證據（試了哪些 epoch、各 0
-> inter）+ 結論「#4 需不同 training/producer 資料(更大星座 / 不同 scenario / 更長訓練 horizon)= server/
-> producer 工作」,記錄進 backlog,不再當本機 open。
-> 守 governance（改 scene/viz 前讀 `docs/frontend-render-governance.md`）;artifact JSON 不可變;memory
-> 只 controller 更新;別碰 untracked `docs/sdd_review_report.md`。
->
-> #3（live-telemetry server E2E）= 另一條,server 工作(8765 短 job + dashboard eyes-on `MiniRewardCurve`;
-> 先 push producer `302ed53`)— 不在這條 #4 in-env 調查範圍。
+**Verdict: this baseline (`baseline-modqn-pilot02-rerun-2026-05-15`, the source of the 89s artifact)
+can NEVER produce an *exportable* inter-HO `visual-showcase-v1` artifact at ANY epoch / start-offset.
+Inter-satellite handover physically EXISTS in the orbital dynamics, but it is a HARD handover across a
+~592 s coverage gap, which (a) needs a ~1064 s-from-t=0 replay to reach (≫ the 120 s exporter cap) and
+(b) is intrinsically preceded by gap rows with empty `candidateSinrDbByBeamId` / `sinrDb` / `actionScores`
+that make the producer exporter `BLOCK_WITH_GAPS` on every window that contains the handover. No
+overlapping-visibility (make-before-break) handover exists. → #4 needs DIFFERENT producer data (denser
+constellation with overlapping coverage, or a different scenario / longer training horizon) = a
+producer/training change, NOT an in-env export-knob change. No longer an in-env open item.**
+
+This is the FIX-2-class hypothesis ("maybe it's a cheap ~60 s in-env re-export, not a server job")
+genuinely tested and **falsified by evidence**, not by guess.
+
+### Evidence (three independent, agreeing lines)
+
+The only `modqn-export` knobs are `--replay-start-time-s` (orbital reset time) and `--replay-slot-count`
+(window length, slot = 1 s); there are NO constellation / min-elevation / scenario knobs (`--help`
+confirmed). The 60–120 s window cap is in `visual_showcase_exporter.py:82` (the visual-showcase JSON
+step). `modqn-export` (the bundle step) is uncapped, so the orbital dynamics can be probed cheaply with
+one long bundle.
+
+1. **Geometry (analytic).** The artifact's 4 satellites sit on a SINGLE polar orbit plane, evenly spaced
+   90° apart in true anomaly (sat-0 over the ground point (0,0); sat-1 N pole; sat-2 antipode; sat-3 S
+   pole). Measured mean motion = 0.05929 °/s → period 6072 s (101.2 min). At radius 7151 km (alt 780 km)
+   the elev-0° horizon half-angle is `arccos(6371/7151)=27.0°`, so each satellite is above the horizon for
+   only `2·27/0.05929 = 911 s`, while a satellite passes overhead only every `6072/4 = 1518 s`. **Gap
+   between consecutive visibility windows = 1518−911 = 607 s** → no two satellites are EVER visible at
+   once. (Even at the most generous elev=0° threshold; a realistic min-elevation only widens the gap.)
+
+2. **Empirical orbital sweep** (`modqn-export --replay-slot-count 1600`, start=0, one bundle, ~3.5 min):
+   - **MAX simultaneously-visible satellites across all 1600 slots = 1** (never 2) — confirms (1).
+   - All 100 UEs are served by **sat-0 only** for t=1–462 s, then a **coverage gap t≈463–1054 s** where
+     `visibilityMask` is all-False (no satellite visible) yet UEs stay STALE-attached to the now-set sat-0
+     (`selectedServing.satId='sat-0'`, but `candidateSnrDbByBeamId` EMPTY — all 60 686 gap rows empty).
+   - Then sat-3 rises (~t=1055 s) and **all 100 UEs emit a real `inter-satellite-handover` event
+     (sat-0 → sat-3) at slots 1056–1071** (u0 at slot 1064). So inter-HO is real — but ~1064 s out and
+     gap-gated.
+
+3. **Empirical export attempts** (the decisive test — `modqn-export` → `modqn-visual-showcase`):
+   - `start=1010 count=90` (window t=1011–1100, contains all 100 sat-0→sat-3 inter events): 5177/9000
+     rows empty-candidate → exporter **BLOCKED**, no JSON.
+   - `start=1054 count=62` (t=1055–1116, 100 inter events, tightest that still catches the full handover):
+     777 empty rows → **BLOCKED** (2531 source-gap lines).
+   - `start=1064 count=62` (t=1065–1126, 40 inter events): even just 82 empty-candidate rows → **BLOCKED**
+     (326 source-gap lines).
+   - Why unavoidable: the pre-handover `previousServing='sat-0'` rows are exactly the coverage-gap rows
+     where sat-0 is below the horizon and has no channel → empty `candidateSinrDbByBeamId`/`sinrDb`/
+     `actionScores` → `_validate_required_sources` source-gap. Any window containing the handover contains
+     those rows. A window with NO gap rows (entirely inside sat-3's clean service) has 0 inter (just another
+     intra-only window like the existing baseline).
+
+Scratch probe logs kept at `/home/u24/interho-probe/` (`analysis_out.txt`, `*-vsc.log`; heavy bundles
+deleted). Reproduce: `modqn-export --input artifacts/baseline-modqn-pilot02-rerun-2026-05-15/run
+--replay-start-time-s 1054 --replay-slot-count 62 --output-dir <dir>` then `modqn-visual-showcase --bundle
+<dir> ...` → BLOCK on empty candidate SINR. No leo code, no `vite.config.ts` change, no governance touch
+(read-only producer-side investigation).
+
+### What WOULD unblock #4 (out of in-env scope, for a future producer/server session)
+
+A `visual-showcase-v1` artifact that carries ≥1 inter-satellite handover with **overlapping (make-before-
+break) coverage** so the departing satellite still has a real channel (non-empty candidate SINR) through
+the switch — i.e. a denser / multi-plane constellation, a wider beam footprint (higher altitude), or a
+scenario with shorter inter-satellite spacing. That is a producer training/scenario change in
+`modqn-paper-reproduction` (NOT a leo or export-flag change), then re-pin in `vite.config.ts` and run
+`validate:phase-c:director-cinematic:browser` clicking the **inter** button (it will then be enabled). The
+FIX-4 director gate + the disabled inter button on the current 89s artifact remain correct as-is.
+
+---
+
+#3 (live-telemetry server E2E) is the only other out-of-in-env remainder — server work (8765 short job +
+dashboard eyes-on `MiniRewardCurve`; push producer `302ed53` first) — unrelated to this #4 investigation.
 
 
 ## Resume prompt for a fresh conversation (FIX-5 C2 → build option C)
