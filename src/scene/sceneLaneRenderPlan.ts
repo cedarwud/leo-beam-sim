@@ -43,7 +43,6 @@ export interface SceneLaneRenderPlan {
   readonly showSpineParticles: boolean;
   readonly showOrbitTrail: boolean;
   readonly showGroundRipple: boolean;
-  readonly showInterHandoverArrow: boolean;
   readonly showHandoverToastOverlay: boolean;
   readonly handoverStoryLayerPolicy: HandoverStoryLayerPolicy;
   readonly showProfileHandoverStoryLayer: boolean;
@@ -120,7 +119,6 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
       && !input.reducedMotion
       && showLiveSceneEffects,
     showGroundRipple,
-    showInterHandoverArrow: false,
     showHandoverToastOverlay: showSinrLiveViewport,
     handoverStoryLayerPolicy:
       showSinrLiveViewport

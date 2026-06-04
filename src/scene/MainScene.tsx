@@ -46,7 +46,6 @@ import { AmbientFootprintRings } from '../viz/AmbientFootprintRings';
 import { HandoverLinks } from '../viz/HandoverLinks';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
 import { IntraHandoverArrow } from '../viz/IntraHandoverArrow';
-import { InterHandoverArrow } from './handover-viz/InterHandoverArrow';
 import { IntraGroundShockwave } from '../viz/IntraGroundShockwave';
 import { BeamPulseClock, SatelliteBeams } from '../viz/SatelliteBeams';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
@@ -691,7 +690,6 @@ function SceneContent({
     showSpineParticles,
     showOrbitTrail,
     showGroundRipple,
-    showInterHandoverArrow,
     showHandoverToastOverlay,
     handoverStoryLayerPolicy,
     showProfileHandoverStoryLayer,
@@ -1277,14 +1275,6 @@ function SceneContent({
           );
         })}
       {showLiveSceneEffects && <IntraHandoverArrow vizFrame={viz} runtime={runtime} />}
-      {showInterHandoverArrow && (
-        <InterHandoverArrow
-          recentHoSourceSatId={sim.recentHoSourceSatId}
-          recentHoTargetSatId={sim.recentHoTargetSatId}
-          displaySats={viz.displaySats}
-          reducedMotion={runtime.reducedMotion}
-        />
-      )}
       {showLiveSceneEffects && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
       {showHandoverToastOverlay && <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />}
       {showArtifactFpsCounter && <FPSCounter />}

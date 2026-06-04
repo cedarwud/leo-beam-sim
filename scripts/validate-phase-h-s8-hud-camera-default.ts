@@ -104,10 +104,6 @@ function validatePhaseHInvariantsPreserved(): void {
       && renderPlan.includes('isLiveScene'),
     'H-S2 invariant preserved',
   );
-  expect(
-    source.includes('<InterHandoverArrow'),
-    'H-S6 InterHandoverArrow still mounted',
-  );
 }
 
 function validateProfileUntouched(): void {

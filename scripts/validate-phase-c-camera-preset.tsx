@@ -553,8 +553,8 @@ section('(o) D3 cinematic seek fade overlay is artifact-lane-only presentation c
     'App declares handleCinematicSeekPeak and clears the pending closure before running it',
   );
   check(
-    /\{directorCinematicEnabled && \([\s\S]*?<CinematicSeekFadeOverlay[\s\S]*?pulseKey=\{cinematicFadePulse\}[\s\S]*?reducedMotion=\{runtime\.reducedMotion\}[\s\S]*?onPeak=\{handleCinematicSeekPeak\}/.test(appSource),
-    'App mounts CinematicSeekFadeOverlay gated on directorCinematicEnabled',
+    /\{\(directorCinematicEnabled \|\| directorFocusEnabled\) && \([\s\S]*?<CinematicSeekFadeOverlay[\s\S]*?pulseKey=\{cinematicFadePulse\}[\s\S]*?reducedMotion=\{runtime\.reducedMotion\}[\s\S]*?onPeak=\{handleCinematicSeekPeak\}/.test(appSource),
+    'App mounts CinematicSeekFadeOverlay gated on the director cinematic OR live focus (ITEM #C)',
   );
   check(
     /const runCinematicSeek = \(\) => \{[\s\S]*?replayController\.seek\(replayWindow\.startSec\);[\s\S]*?setActiveCinematicWindow\(replayWindow\);[\s\S]*?camera\.requestInterFocus\(framing\);[\s\S]*?\};/.test(appSource),

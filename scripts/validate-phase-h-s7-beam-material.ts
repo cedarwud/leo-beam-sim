@@ -94,10 +94,6 @@ function validatePhaseHInvariantsPreserved(): void {
     renderPlan.includes('const showLiveBeamCones = showSinrLiveViewport;'),
     'H-S1 invariant preserved',
   );
-  expect(
-    source.includes('<InterHandoverArrow'),
-    'H-S6 InterHandoverArrow still mounted',
-  );
 }
 
 validateServingOpacityBump();
