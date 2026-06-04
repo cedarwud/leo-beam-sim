@@ -372,3 +372,93 @@ dashboard eyes-on `MiniRewardCurve`; push producer `302ed53` first) — unrelate
 > `docs/showcase-render-truth-fix-backlog.md`, and `.agent-memory/MEMORY.md`
 > (the RENDER-TRUTH AUDIT block). Confirm git sync (HEAD should be `4d9be1a`).
 > Then start FIX-1 (loud synthetic fallback). 繁中對話.
+
+---
+
+## ITEM #C — Director Focus button: seek-to-next-HO + cinematic on the LIVE WALKER lane (NEW, 2026-06-04)
+
+**This is the path that actually matches the original design intent** ("click the
+Intra/Inter-HO Focus button → fast-forward to the next handover → auto camera move +
+slow-motion"). It needs NO producer training and sidesteps the #4 geometry block.
+
+### Why this exists (context)
+- #4 (producer-truth artifact inter-HO) is RESOLVED-AS-CONCLUSION-B: the producer baseline's
+  4-sat single-polar-plane constellation can never EXPORT an inter-HO (hard handover across a
+  592 s coverage gap → exporter source-gap). So the artifact-lane D6 cinematic on producer-truth
+  inter-HO is blocked on new producer data (out-of-in-env).
+- BUT leo's LIVE lane already runs a real multi-plane **Walker constellation**
+  (`generateWalkerConstellation`, real orbital propagation + elevation cutoff) that genuinely
+  produces inter-satellite handovers, honestly labeled `claimKind='profile-derived-forecast'`
+  (NOT producer MODQN truth). User's call: for the *visual showcase* of intra/inter handover,
+  the live Walker forecast lane is the right vehicle (looks real because it IS a real sim; honest
+  label; density tunable). #4 (producer-truth) becomes optional/lower priority.
+
+### Current state — what's built vs the gap
+- BUILT: `liveWalkerHandoverEventIndex` (intra/inter classified, from/to satellites + times),
+  `HandoverEventRail` marker-click seek (`selectClusterAndSeek` → `seekTo` → `onSeek=handleHandoverRailSeek`),
+  live timeline seek (`setLiveTimelineSeekRequest`), the live Director slow-mo + camera focus
+  (0.05× tier), and the shared pose helper `directorFocusPose.ts` (D6 sat-pair framing is shared,
+  applied when a from/to sat pair is supplied).
+- GAP: the **Director Intra/Inter Focus BUTTON on the live lane does NOT seek-to-next-HO and
+  passes NO sat-pair framing** — it only slow-mo-focuses "now". See `App.tsx`
+  `requestDirectorFocus` (≈1536): the artifact branch (≈1537-1563) does the full
+  `resolveCinematicReplayWindow` → `replayController.seek(window.startSec)` →
+  `camera.requestInterFocus({fromSatId, toSatId})` + D3 fade; the **live branch (≈1565-1574)
+  deliberately does only `camera.requestInterFocus()` (legacy pose, no seek)**. The code comment
+  says this was scoped out because "the live walker is forward-only and ... App has no unambiguous
+  signal for which handover is currently active" — but a SEEK to a specific indexed event
+  RESOLVES that ambiguity (it pins one event with known from/to sats), exactly like the artifact lane.
+
+### Governance verdict (checked 2026-06-04, read-only)
+**✅ ALLOWED — and it is a pre-designed, blessed SDD:** `docs/live-walker-handover-event-map-sdd.md`
+("Live Walker Handover Event Map and Slow-Motion Focus") specs exactly this — event markers that
+seek the master timeline + a local slow-motion focus view for short handover windows (lines ~35-36,
+84, 109, 121, 235), bottom-timeline seek target is always `sourceTimeSec`, and it says to extend
+`validate:frontend:scene-lane-governance`. Render-governance backs it: cinematic effects are
+live-SINR effects, NOT artifact-only (`docs/frontend-render-governance.md:160`); the live lanes are
+explicitly allowed live Walker timeline/forecast rails + a validated handover event map (lane matrix
+lines 55, 207, 220). The rail-marker seek already seeks the live timeline (precedent). The claim
+stays `profile-derived-forecast` (no truth change). D6 sat-pair framing on the live lane is NOT
+validator-locked to artifact — it was a code-design choice (the "ambiguity" comment), not a
+governance ban.
+
+### Build spec for #C
+1. Add a live-walker analog of `resolveCinematicReplayWindow` (e.g. `resolveLiveWalkerFocusWindow`)
+   that, given `liveWalkerHandoverEventIndex` + current live cursor + kind, returns the NEXT
+   inter/intra HO event's `sourceTimeSec` + from/to satellite ids (+ optional slow-mo window per the SDD).
+2. Wire `requestDirectorFocus`'s LIVE branch (`App.tsx` ≈1565-1574) to: seek the live timeline to
+   that event (reuse `setLiveTimelineSeekRequest` / the rail seek path), then
+   `camera.requestInterFocus({fromSatId, toSatId})` with the now-resolved sat pair (D6), + 0.05×
+   slow-mo, mirroring the artifact branch. Keep `claimKind='profile-derived-forecast'`.
+3. Resolve the from/to sat WORLD positions for the pose: the live sat positions live in the
+   trajectory cache / `replaySceneFrame`-equivalent for the live lane — feed them into
+   `directorFocusPose`'s framing (it already accepts `fromSatWorldPos`/`toSatWorldPos`).
+4. Honest UI: the focus stays labeled forecast; the slow-mo window stretch must follow the SDD
+   (seek target = `sourceTimeSec`, never a fabricated horizon).
+5. Verify: extend `validate:frontend:scene-lane-governance` (per the SDD) + add/extend a live-lane
+   Director cinematic browser gate (analog of `scripts/validate-phase-c-director-cinematic-browser.ts`,
+   which is artifact-lane) asserting on the LIVE walker lane: inter button enabled → click → live
+   timeline seeks to the HO event, FSM idle→acquiring, 0.05×, camera moves to the sat-pair, Exit
+   restores. Tune the demo profile's Walker density (`satsPerPlane`, Topology tab) so inter actually
+   fires. tsc + governance + browser eyes-on (DATA SOURCE = live Walker forecast, stated) + codex
+   review → ff → push.
+
+### Anchors
+- `src/App.tsx` `requestDirectorFocus` ≈1536 (artifact branch 1537-1563 = the reference; live branch
+  1565-1574 = the gap); `handoverRailEvents` ≈1423 (live lane → `liveWalkerHandoverRailEvents`);
+  `directorInterEnabled` ≈1497; `directorFocusEnabled` ≈1474.
+- `src/scene/liveWalkerHandoverEventIndex.ts` (intra/inter classification, events).
+- `src/scene/cinematicReplayWindow.ts` (`resolveCinematicReplayWindow` = the artifact-lane resolver to mirror).
+- `src/scene/directorFocusPose.ts` (shared pose helper; accepts from/to sat world pos for D6).
+- `src/ui/HandoverEventRail.tsx` (`selectClusterAndSeek`/`seekTo` = existing live rail seek precedent).
+- `docs/live-walker-handover-event-map-sdd.md` (the blessed design); `docs/frontend-render-governance.md:160,207,220`.
+
+### Resume prompt (fresh conversation)
+> 延續 leo-beam-sim render-truth campaign。繁中。先讀 `.agent-memory/MEMORY.md` 行尾 + 此 backlog
+> "ITEM #C" 整段 + `docs/live-walker-handover-event-map-sdd.md` + `docs/frontend-render-governance.md`。
+> 確認 git sync。任務 = build #C：把 Director Intra/Inter-HO Focus 按鈕在 LIVE WALKER lane 補成
+> 「seek 到下一個 HO 事件 + sat-pair 運鏡 + 慢動作」（= 原始設計願景），不用 producer 訓練。Governance
+> 已查 ✅（blessed SDD `live-walker-handover-event-map-sdd.md`）。按 build spec：做 live-walker 版
+> resolve-window + 接 requestDirectorFocus 的 live 分支 + 餵 sat 世界座標給 directorFocusPose + 誠實
+> forecast 標籤 + extend `validate:frontend:scene-lane-governance` + live-lane cinematic browser gate +
+> 調 Walker 密度讓 inter 真的發生。先用 4-lens / codex review，DATA SOURCE（live Walker forecast）必明寫。
