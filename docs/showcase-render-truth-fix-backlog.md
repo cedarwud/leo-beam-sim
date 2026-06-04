@@ -241,8 +241,32 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
     GATE PASS ([P2] = new validator untracked-in-diff, resolved by committing it) / 4-lens adversarial
     workflow all `refuted:false` (HONESTY nit on the replay-branch docstring fixed → marked the
     `allUeServingHistory` r3 path as a not-yet-wired source gap). Authority: governance doc
-    "Completed Follow-Ups" + `src/scene/beamLoadContention.ts` header. **🎯 FIX-7 in-env now fully
-    closed; only #3 (server E2E) + #4 (inter-HO artifact) remain, both out of in-env scope.**
+    "Completed Follow-Ups" + `src/scene/beamLoadContention.ts` header.
+  - **✅ AUDIT GAP #2 LAST FAKE-RISK CLOSED 2026-06-04 (`4df2ed7`).** The phase-3 S4 3D
+    cylinder + S5 upload particles + the MODQN handover-story layer were source-string mounts
+    only. New `validate:phase-3:overlay-render:browser` drives the live modqn-cell lane, switches
+    to the explain-handover preset (ControlBar control), and asserts all three actually paint via
+    MESH-DERIVED telemetry — `BeamLoadCylinder` publishes its post-toggle `mesh.visible`,
+    `BeamLoadUploadParticles` the summed visible-`mesh.count`, `HandoverStoryLayer` traverses its
+    own subtree for the visible ring/cue mesh count. Codex flagged a model/plan-derived observable
+    TWICE (could pass while the mesh is visually broken) → reworked to mesh-derived → codex CLEAN.
+    Added to `validate:live-render`; governance locks the three component writes. Verified
+    cylinder=true / particles=128 / storyMeshes=65, 3× stable. (Audit gap #7 episode regex confirmed
+    already matching producer `[ep N/M]` via Tier-A; phase6o overclaim already relabeled honestly.)
+  - **Durability (audit gap #6) — Option A chosen 2026-06-04 (NOT a code change):** do NOT commit the
+    45MB producer `visual-showcase-v1` artifact into leo — it is a producer-owned §3 immutable replay
+    input; vendoring a binary copy (git-LFS) crosses cross-repo ownership and is not a free call. The
+    durability guard is `validate:real-data` with `REQUIRE_PRODUCER_ARTIFACT=1` (LOUD-SKIP → hard FAIL
+    on absent) = the CI-enforced real gate. Standalone real-data gates keep LOUD-SKIP as dev
+    convenience; **their fresh-checkout green is NOT proof — CI must run `validate:real-data` (artifact
+    present) for the artifact-replay lane to count as verified**, and `validate:live-render` (live-
+    engine, no artifact) is always runnable. Recorded decision, not an open gap.
+  - **🎯 FIX-7 in-env FULLY CLOSED** (findings #1+#2, audit gaps #1-#2,#5-#10 all closed in-env;
+    gap #6 durability = recorded Option A). **Remaining = out-of-in-env only:** #3 live-telemetry
+    server E2E (HEAVY→Ubuntu, push producer `302ed53` first) + #4 inter-HO cinematic (needs a producer
+    artifact containing ≥1 satellite handover; 89s baseline has 0) — both need a NEW conversation /
+    server session. ~20 unranked weak source-string surfaces = verification-strength preference (user
+    chose to stop; audit never ranked them as problems).
 
 
 ## Resume prompt for a fresh conversation (FIX-5 C2 → build option C)
