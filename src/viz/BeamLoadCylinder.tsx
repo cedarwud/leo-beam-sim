@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, type JSX } from 'react';
+import { useEffect, useLayoutEffect, useRef, type JSX } from 'react';
+import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 interface BeamLoadCylinderProps {
@@ -29,6 +30,11 @@ export function BeamLoadCylinder({
 }: BeamLoadCylinderProps): JSX.Element {
   const meshRef = useRef<THREE.Mesh>(null);
   const color = tintColor ?? DEFAULT_TINT_COLOR;
+  // Provenance audit FIX-7 follow-up (gap #2, codex P2): publish the ACTUAL post-
+  // toggle `mesh.visible` (not the model prop) to the canvas dataset so the
+  // real-render gate proves the cylinder MESH renders, catching a broken
+  // mesh-write line that a model-derived telemetry would miss.
+  const gl = useThree(state => state.gl);
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -38,6 +44,7 @@ export function BeamLoadCylinder({
     mesh.visible = shouldShow;
     mesh.userData.load = load;
     mesh.userData.normalizedLoad = clamp01(normalizedLoad);
+    gl.domElement.dataset.beamLoadCylinderRendered = mesh.visible ? 'true' : 'false';
     if (!shouldShow || worldPos === undefined) return;
 
     const height = MIN_HEIGHT_WORLD + clamp01(normalizedLoad) * (MAX_HEIGHT_WORLD - MIN_HEIGHT_WORLD);
@@ -45,7 +52,13 @@ export function BeamLoadCylinder({
     mesh.position.set(x, y + BASE_OFFSET_WORLD + height / 2, z);
     mesh.scale.set(1, height, 1);
     mesh.updateMatrix();
-  }, [load, normalizedLoad, visible, worldPos]);
+  }, [gl, load, normalizedLoad, visible, worldPos]);
+
+  // The cylinder only mounts in the explain-handover preset; clear the rendered
+  // flag on unmount so a stale 'true' cannot survive a preset switch away.
+  useEffect(() => () => {
+    delete gl.domElement.dataset.beamLoadCylinderRendered;
+  }, [gl]);
 
   return (
     <mesh

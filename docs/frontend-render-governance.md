@@ -293,6 +293,23 @@ Before changing scene rendering:
   locks the C1 source (and forbids a regression to the empty `sim.perUePositions`
   serving), and `validate:phase-3:contention-render:browser` proves it actually
   fires on real live geometry (`data-beam-load-contention-ue-count > 0`).
+- Phase-3 S4 3D beam-load cylinder + S5 upload particles (explain-handover cell
+  preset) now have a durable real-render gate
+  (`validate:phase-3:overlay-render:browser`, audit gap #2 — they were source-string
+  mounts only). It switches to the explain-handover preset and asserts
+  `data-beam-load-cylinder-rendered=true` + `data-upload-particle-rendered-count > 0`
+  on real beam-load. These observables are MESH-derived: `BeamLoadCylinder`
+  publishes its actual post-toggle `mesh.visible` and `BeamLoadUploadParticles`
+  publishes the summed post-populate InstancedMesh `mesh.count`, so a broken
+  mesh-write line is caught (a model-derived observable would pass while the mesh is
+  visually broken). Both encode the FIX-7 overlay-demo contention model — no new
+  claim. The same gate also asserts the MODQN profile-derived handover-story layer
+  actually rendered its ring/cue meshes on the real live bundle: `HandoverStoryLayer`
+  traverses its own scene subtree and publishes the visible-mesh count
+  (`data-handover-story-rendered-mesh-count > 0`), a MESH-derived observable that
+  catches a broken `<BeamSlotRing>` render — closing the audit's source-string-only
+  handover-story surface (adversarial #4).
+  `validate:frontend:scene-lane-governance` locks the component telemetry writes.
 - Director focus is lane-gated by the render plan. On the live walker lanes
   (`sinr-live`, `modqn-live-cell-preview`) it is "live focus": camera focus +
   the single 0.05x slow-mo tier on the running sim. On `artifact-replay` it is

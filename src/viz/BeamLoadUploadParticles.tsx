@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, type JSX } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { beamKeyOf, type BeamLoadContentionModel } from '../scene/beamLoadContention';
 import type { CellBeamConeRenderItem } from './CellBeamCones';
@@ -52,6 +52,10 @@ export function BeamLoadUploadParticles({
   const meshRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const color = useMemo(() => new THREE.Color(), []);
+  // Provenance audit FIX-7 follow-up (gap #2, codex P2): publish the ACTUAL summed
+  // InstancedMesh instance count (post-populate `mesh.count`, not the model plan)
+  // so the real-render gate proves the particle meshes actually carry instances.
+  const gl = useThree(state => state.gl);
   const coneSlots = useMemo(
     () => Array.from({ length: MAX_FOCUS_CONES }, (_, slotIndex) => slotIndex),
     [],
@@ -126,7 +130,18 @@ export function BeamLoadUploadParticles({
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
-  }, [color, dummy, plans]);
+    const renderedCount = meshRefs.current.reduce(
+      (sum, mesh) => sum + (mesh && mesh.visible ? mesh.count : 0),
+      0,
+    );
+    gl.domElement.dataset.uploadParticleRenderedCount = String(renderedCount);
+  }, [color, dummy, gl, plans]);
+
+  // The particles only mount in the explain-handover preset; clear the rendered
+  // count on unmount so a stale non-zero value cannot survive a preset switch away.
+  useEffect(() => () => {
+    delete gl.domElement.dataset.uploadParticleRenderedCount;
+  }, [gl]);
 
   useFrame(({ clock }) => {
     if (!enabled || paused || reducedMotion) return;

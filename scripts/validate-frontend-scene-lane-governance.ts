@@ -251,6 +251,7 @@ const cellOverlaySource = readRepoFile('src/viz/CellOverlay.tsx');
 const cellBeamConesSource = readRepoFile('src/viz/CellBeamCones.tsx');
 const beamLoadCylinderSource = readRepoFile('src/viz/BeamLoadCylinder.tsx');
 const beamLoadUploadParticlesSource = readRepoFile('src/viz/BeamLoadUploadParticles.tsx');
+const handoverStoryLayerSource = readRepoFile('src/viz/HandoverStoryLayer.tsx');
 const beamLoadUploadParticleHelpersSource = readRepoFile('src/viz/beamLoadUploadParticles.ts');
 const groundSceneSource = readRepoFile('src/viz/GroundScene.tsx');
 const modqnReplayCuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
@@ -1355,6 +1356,36 @@ assertContains(
   mainSceneSource,
   'import { BeamLoadUploadParticles }',
   'MainScene imports the focused upload-particle layer',
+);
+// FIX-7 follow-up (audit gap #2, last fake-risk; codex P2): the phase-3 S4 cylinder
+// + S5 particles real-render gate reads MESH-derived telemetry the components
+// publish from their ACTUAL post-write mesh state, so a broken mesh-write line is
+// caught (a model-derived observable would pass while the mesh is broken). Lock the
+// component telemetry writes so the render observables cannot be silently dropped.
+assertContains(
+  beamLoadCylinderSource,
+  "gl.domElement.dataset.beamLoadCylinderRendered = mesh.visible ? 'true' : 'false';",
+  'BeamLoadCylinder publishes its actual post-toggle mesh.visible as the S4 render observable',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'gl.domElement.dataset.uploadParticleRenderedCount = String(renderedCount);',
+  'BeamLoadUploadParticles publishes the summed actual InstancedMesh instance count as the S5 render observable',
+);
+assertContains(
+  beamLoadUploadParticlesSource,
+  'mesh && mesh.visible ? mesh.count : 0',
+  'BeamLoadUploadParticles render observable sums only visible meshes (real instance count)',
+);
+assertContains(
+  handoverStoryLayerSource,
+  'gl.domElement.dataset.handoverStoryRenderedMeshCount = String(renderedMeshCount);',
+  'HandoverStoryLayer publishes its actual rendered ring/cue mesh count as the render observable (adversarial #4)',
+);
+assertContains(
+  handoverStoryLayerSource,
+  '(object as THREE.Mesh).isMesh && object.visible',
+  'HandoverStoryLayer render observable counts only visible scene-graph meshes',
 );
 assertContains(
   mainSceneSource,

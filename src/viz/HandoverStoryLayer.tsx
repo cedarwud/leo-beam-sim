@@ -1,7 +1,7 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { JSX } from 'react';
 import { Line, Text } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
   HANDOVER_SOURCE_COLOR,
@@ -305,11 +305,33 @@ export function HandoverStoryLayer({
   satelliteTintById,
   visible = true,
 }: HandoverStoryLayerProps): JSX.Element | null {
-  if (!visible || model === null) return null;
+  // Provenance audit FIX-7 follow-up (gap #2 / adversarial #4, codex P2): publish
+  // the ACTUAL count of rendered ring/cue meshes in this layer's subtree (not the
+  // model slot count) so the real-render gate proves the story layer actually
+  // painted — catching a broken <BeamSlotRing> mesh render that a model-derived
+  // observable (SceneTelemetry's `handoverStoryActiveCount`) would miss.
+  const gl = useThree(state => state.gl);
+  const storyGroupRef = useRef<THREE.Group>(null);
+  const active = visible && model !== null;
+  useEffect(() => {
+    let renderedMeshCount = 0;
+    const group = storyGroupRef.current;
+    if (group) {
+      group.traverse(object => {
+        if ((object as THREE.Mesh).isMesh && object.visible) renderedMeshCount += 1;
+      });
+    }
+    gl.domElement.dataset.handoverStoryRenderedMeshCount = String(renderedMeshCount);
+    return () => {
+      delete gl.domElement.dataset.handoverStoryRenderedMeshCount;
+    };
+  }, [active, gl, model]);
+  if (!active) return null;
   const event = model.events[0];
 
   return (
     <group
+      ref={storyGroupRef}
       name="handover-story-layer"
       userData={{
         lane: model.lane,
