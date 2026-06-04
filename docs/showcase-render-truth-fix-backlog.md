@@ -377,6 +377,46 @@ dashboard eyes-on `MiniRewardCurve`; push producer `302ed53` first) — unrelate
 
 ## ITEM #C — Director Focus button: seek-to-next-HO + cinematic on the LIVE WALKER lane (NEW, 2026-06-04)
 
+> ✅✅ **BUILT 2026-06-04 (real-data verified).** Live `sinr-live` lane Director
+> Inter/Intra-HO Focus now seeks the live timeline to the next indexed live Walker
+> handover, drops to 0.05× slow-mo, and (inter) frames the satellite pair — the
+> original design vision, on the lane that genuinely produces inter-HO.
+> - NEW `src/scene/liveWalkerDirectorFocus.ts` `resolveLiveWalkerFocusWindow`
+>   (pure; delegates to the proven `resolveCinematicReplayWindow`; honest
+>   `profile-derived-forecast`/`overlay-demo` claim; seek target = real
+>   source-time, never a fabricated horizon) + unit test
+>   `validate:phase-c:live-walker-focus-window` (9/9).
+> - `App.tsx`: `requestDirectorFocus` LIVE branch resolves the next HO, seeks the
+>   live timeline (reusing the rail-seek path + the D3 fade), and **defers** the
+>   camera focus via `pendingLiveFocusRef` until the async live seek lands
+>   (`simState.simTimeSec` within `LIVE_DIRECTOR_FOCUS_SEEK_LANDING_TOL_SEC=1.5s`
+>   of the target) so `MainScene.lookupSatWorldPos` resolves the **post-seek**
+>   from/to sat positions for `directorFocusPose` (D6). `data-live-director-focus-claim`
+>   + `data-live-director-focus-event-sec` honesty telemetry. The render plan grants
+>   the cinematic camera to BOTH live walker lanes (`showDirectorFocus` covers
+>   `showCellOverlay`), so the sat-pair tween plays on `sinr-live` AND
+>   `modqn-live-cell-preview` — they differ only in the CLAIM
+>   (forecast vs overlay-demo), not the camera. Armed-but-unfired focus is
+>   cancelled on a lane switch / exit / Escape (no cross-lane stale sat-pair).
+> - **Forecast-fidelity limit (codex r3, user OK'd ship-as-is):** the live seek
+>   re-simulates from a RESET handover state at the lead-in, so the UE
+>   cold-attaches to the TARGET sat at the framed moment rather than a warm
+>   from->to make-before-break. The indexed handover still fires (verified:
+>   inter-HO to P8-S5 at ~512s) and the camera frames the real pair, but the
+>   from-sat's pre-handover serving history is not reconstructed (probe: serving
+>   stays null even from event-10s → a faithful warm switch needs re-sim from ~t=0
+>   = impractical at 0.05x). Inherent to live re-sim; honestly labeled
+>   profile-derived-forecast — the recorded warm replay belongs to the artifact lane.
+> - Verify: tsc 0; governance extended+green; new browser gate
+>   `validate:phase-c:director-cinematic:live:browser` (in `validate:live-render`)
+>   PASS on REAL live Walker forecast — click inter → live timeline seek=512s,
+>   FSM idle→acquiring/focused, speed→0.05×, camera moved to the sat-pair pose
+>   `(156.9, 575.9, 262.0)` (lateral X confirms pair-centroid framing, not the
+>   legacy on-axis offset), Exit restored. Artifact director gate still PASS (no
+>   regression). Eyes-on screenshot captured. Governance doc Director bullet updated.
+> #4 (producer-truth inter-HO) stays OPTIONAL/lower priority — this lane is the
+> right vehicle for the visual showcase (real sim, honest forecast label).
+
 **This is the path that actually matches the original design intent** ("click the
 Intra/Inter-HO Focus button → fast-forward to the next handover → auto camera move +
 slow-motion"). It needs NO producer training and sidesteps the #4 geometry block.

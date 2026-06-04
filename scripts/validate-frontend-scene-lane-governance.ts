@@ -668,6 +668,81 @@ assertContains(
   'App exposes the effective playback speed as shell telemetry for the cinematic gate',
 );
 
+// ── ITEM #C: live-walker Director seek-to-next-HO + sat-pair framing ──
+// The live Director button mirrors the artifact cinematic (seek to the next
+// handover + 0.05x slow-mo + frame the satellite pair) on the live Walker lanes,
+// against the validated live Walker event index. Honesty: the seek target is a
+// real source-time (resolveLiveWalkerFocusWindow returns window.startSec, never a
+// fabricated horizon — docs/live-walker-handover-event-map-sdd.md) and the claim
+// stays profile-derived-forecast / overlay-demo, never producer proof. Lock the
+// resolver, the live seek + deferred sat-pair focus wiring, and the claim telemetry.
+const liveWalkerDirectorFocusSource = readRepoFile('src/scene/liveWalkerDirectorFocus.ts');
+assertContains(
+  liveWalkerDirectorFocusSource,
+  'const window = resolveCinematicReplayWindow(events, kind, nowSec, durationSec);',
+  'live Walker Director resolver reuses the proven cinematic event selection',
+);
+assertContains(
+  liveWalkerDirectorFocusSource,
+  'seekTargetSec: window.startSec,',
+  'live Walker Director seek target is a real source-time lead-in, not a fabricated horizon',
+);
+assertContains(
+  liveWalkerDirectorFocusSource,
+  "export type LiveWalkerDirectorFocusClaimKind = 'profile-derived-forecast' | 'overlay-demo';",
+  'live Walker Director focus claim is forecast/overlay-demo only, never producer proof',
+);
+assertContains(
+  appSource,
+  "from './scene/liveWalkerDirectorFocus'",
+  'App imports the live Walker Director focus resolver',
+);
+assertContains(
+  appSource,
+  'resolveLiveWalkerFocusWindow(',
+  'App resolves the next live Walker handover for the Director focus',
+);
+assertContains(
+  appSource,
+  "sceneLane === 'modqn-live-cell-preview' ? 'overlay-demo' : 'profile-derived-forecast'",
+  'App labels the live Director focus claim by lane (overlay-demo vs profile-derived-forecast)',
+);
+assertContains(
+  appSource,
+  'pendingLiveFocusRef.current = {',
+  'App arms a deferred live Director focus so the sat-pair pose reads the post-seek frame',
+);
+assertContains(
+  appSource,
+  'camera.requestInterFocus(pending.framing)',
+  'App passes the resolved live sat-pair framing into the inter-HO Director focus',
+);
+assertContains(
+  appSource,
+  'data-live-director-focus-claim={directorFocusEnabled ? liveDirectorFocusClaimKind : undefined}',
+  'App exposes the live Director focus claim as honesty telemetry',
+);
+assertContains(
+  appSource,
+  'data-live-director-focus-event-sec={liveDirectorFocusEventSec !== null ? liveDirectorFocusEventSec.toFixed(3) : undefined}',
+  'App exposes the resolved live Director focus event source-time (binds the seek to a real indexed event)',
+);
+assertContains(
+  appSource,
+  'const cancelPendingLiveFocus = useCallback(() => {',
+  'App can cancel an armed-but-unfired live Director focus',
+);
+assertContains(
+  appSource,
+  '}, [sceneLane, cancelPendingLiveFocus]);',
+  'App cancels a stale armed live Director focus on a lane switch (no cross-lane sat-pair leak)',
+);
+assertNotContains(
+  liveWalkerDirectorFocusSource,
+  'Math.random',
+  'live Walker Director resolver must not fabricate event times',
+);
+
 // ── FIX-5 Option C: honest satellite azimuth HUD (artifact-replay only) ──
 // A 2D DOM compass-rose HUD recovers the truthful ground-plane azimuth of the
 // producer's flattened ECI-proxy satellites without fabricating the missing

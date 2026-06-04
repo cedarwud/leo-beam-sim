@@ -310,12 +310,35 @@ Before changing scene rendering:
   catches a broken `<BeamSlotRing>` render — closing the audit's source-string-only
   handover-story surface (adversarial #4).
   `validate:frontend:scene-lane-governance` locks the component telemetry writes.
-- Director focus is lane-gated by the render plan. On the live walker lanes
-  (`sinr-live`, `modqn-live-cell-preview`) it is "live focus": camera focus +
-  the single 0.05x slow-mo tier on the running sim. On `artifact-replay` it is
-  "cinematic replay": it seeks the replay to the next handover window, applies
-  the same 0.05x speed as replay playback rate, and auto-restores. Both are
-  display-only — camera focus and replay/playback speed, which artifact-replay
-  may own — and gate on real handover rail events of that kind (Rule#8). It
-  stays inert on `modqn-replay-proof` and on any source-incompatible lane.
-  Validator: `validate:phase-c:camera-preset`.
+- Director focus is lane-gated by the render plan. On BOTH live walker lanes
+  (`sinr-live`, `modqn-live-cell-preview`) the Intra/Inter-HO Focus buttons seek
+  the live timeline to the next indexed live Walker handover of that kind, drop to
+  the single 0.05x slow-mo tier, and (inter) frame the involved satellite pair —
+  mirroring the artifact cinematic, against the validated live Walker event index
+  (ITEM #C, `docs/live-walker-handover-event-map-sdd.md`). The render plan grants
+  the cinematic camera tween to both live walker lanes (`showDirectorFocus` covers
+  `showSinrLiveViewport` and `showCellOverlay`), so the sat-pair camera move plays
+  on both — the lanes differ only in the honesty CLAIM, not the camera: it stays
+  `profile-derived-forecast` on `sinr-live` and `overlay-demo` on
+  `modqn-live-cell-preview` (`data-live-director-focus-claim`), never producer
+  proof. The seek target is always a real source-time
+  (`data-live-director-focus-event-sec` = the resolved event's source second; the
+  seek lands at that minus the lead-in). The live focus defers its camera command
+  until the async live seek lands so the pose reads the post-seek scene frame,
+  never a pre-seek/stale satellite pair, and cancels any armed-but-unfired focus on
+  a lane switch or an exit/Escape during the arming window. On `artifact-replay` it
+  is "cinematic replay": it seeks the replay to the next handover window, applies
+  the same 0.05x speed as replay playback rate, and auto-restores. All are
+  display-only — camera focus and replay/playback speed — and gate on real
+  handover rail events of that kind (Rule#8). It stays inert on
+  `modqn-replay-proof` and on any source-incompatible lane. Validators:
+  `validate:phase-c:camera-preset`, `validate:phase-c:live-walker-focus-window`,
+  `validate:phase-c:director-cinematic:live:browser`.
+  - Forecast-fidelity limit (live lanes only): the live seek re-simulates from a
+    reset handover state at the lead-in, so the UE cold-attaches to the handover
+    TARGET satellite at the framed moment instead of replaying a warm from/to
+    make-before-break. The indexed handover still fires and the camera frames the
+    real from/to pair, but the from-satellite's pre-handover serving history is not
+    reconstructed (impractical to warm up at 0.05x). This is why the live focus is
+    `profile-derived-forecast`/`overlay-demo`, never a producer-recorded handover
+    replay — that recorded fidelity belongs to `artifact-replay`.
