@@ -264,9 +264,45 @@ code changed. Untracked: this file + the audit doc + the flowchart SDD.
   - **🎯 FIX-7 in-env FULLY CLOSED** (findings #1+#2, audit gaps #1-#2,#5-#10 all closed in-env;
     gap #6 durability = recorded Option A). **Remaining = out-of-in-env only:** #3 live-telemetry
     server E2E (HEAVY→Ubuntu, push producer `302ed53` first) + #4 inter-HO cinematic (needs a producer
-    artifact containing ≥1 satellite handover; 89s baseline has 0) — both need a NEW conversation /
-    server session. ~20 unranked weak source-string surfaces = verification-strength preference (user
-    chose to stop; audit never ranked them as problems).
+    artifact containing ≥1 satellite handover; 89s baseline has 0). ~20 unranked weak source-string
+    surfaces = verification-strength preference (user chose to stop; audit never ranked them as problems).
+
+## Resume prompt — #4 inter-HO cinematic (in-env export investigation, fresh conversation)
+
+> 延續 leo-beam-sim render-truth campaign。繁中。先讀 `.agent-memory/MEMORY.md` 行尾 FIX-7 block +
+> 此 backlog FIX-7 entry + `docs/showcase-render-truth-fix-backlog.md` FIX-4/FIX-6。確認 git sync
+> (HEAD 應 `f0bc367` 或更新,main==origin/main==feat 全同步)。
+>
+> 任務 = **#4 inter-HO cinematic in-env export 調查**(NOT 訓練;FIX-2 同類 — 那次以為要 server 結果
+> ~60s 本機搞定）。目標 = 取得一個**含 ≥1 顆衛星(inter)handover** 的 `visual-showcase-v1` artifact,
+> 讓 Director inter-HO cinematic（seek + D6 sat-pair framing + camera pull-back）能在真資料跑。
+>
+> 已知:現用 89s baseline（`modqn-paper-reproduction/artifacts/visual-showcase-v1-baseline-89s-2026-06-03/`,
+> 45MB,該 epoch）= 82 intra-HO、**0 inter**。FIX-4 director gate 的 inter 鈕正確 disabled。inter-HO =
+> UE 的**服務衛星**換掉（非只換 beam），靠軌道幾何 → 視 epoch / start-offset / UE 位置而定。
+> ⚠️ **exporter 硬卡 60-120s window**（`visual_showcase_exporter.py:82`,FIX-2 已知）→ 不能用「更長
+> replay」硬湊 inter；只能**換 epoch / start-offset** 找一個 60-120s 內剛好跨衛星 handover 的窗。
+>
+> 步驟（producer-side CLI，本機 .venv,別擋 server 上的 sdd03 ablation）:
+> 1. 在 `modqn-paper-reproduction` 試不同 epoch/start-offset:`.venv/bin/modqn-export --replay-slot-count
+>    <60-120s 對應 slot> [--epoch/--start-offset 變化]` → 檢查產出 bundle 的 handover events 有無
+>    **inter-satellite serving change**（serving satId 變,非只 beamIndex）。每次 export ~40-60s。
+> 2. 找到 → `.venv/bin/modqn-visual-showcase --modqn-commit <40hex> --ntn-sim-core-commit <40hex>`
+>    (commits 須 full 40-hex) → ntn-sim-core `npm run validate:visual-showcase:artifact -- <path>` OK。
+> 3. leo:改 `vite.config.ts` 一行 pin → 新 artifact;`shouldRenderMainScene`/loader 不動。
+> 4. 跑 `validate:phase-c:director-cinematic:browser`,點 **inter** 鈕(現在該 enabled)→ 驗 FSM
+>    idle→acquiring、effective speed→0.05×、camera 真的移動到 sat-pair centroid、D6 framing、Exit 還原。
+>    DATA SOURCE 必明寫(real producer inter-HO artifact)。codex review → CLEAN → ff → push。
+>
+> **可能結論 A**:找到 inter-HO window → #4 本機閉(real-data verified)。
+> **可能結論 B**:此 baseline 任何 60-120s 窗、4-sat 幾何都無 inter → 給明確證據（試了哪些 epoch、各 0
+> inter）+ 結論「#4 需不同 training/producer 資料(更大星座 / 不同 scenario / 更長訓練 horizon)= server/
+> producer 工作」,記錄進 backlog,不再當本機 open。
+> 守 governance（改 scene/viz 前讀 `docs/frontend-render-governance.md`）;artifact JSON 不可變;memory
+> 只 controller 更新;別碰 untracked `docs/sdd_review_report.md`。
+>
+> #3（live-telemetry server E2E）= 另一條,server 工作(8765 短 job + dashboard eyes-on `MiniRewardCurve`;
+> 先 push producer `302ed53`)— 不在這條 #4 in-env 調查範圍。
 
 
 ## Resume prompt for a fresh conversation (FIX-5 C2 → build option C)
