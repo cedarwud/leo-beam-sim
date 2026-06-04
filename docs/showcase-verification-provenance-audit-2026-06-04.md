@@ -245,14 +245,22 @@ User chose "全部 in-env 修". Closed the audit's in-env gaps with REAL verific
    not a quick edit). The phase-3 3D cylinder (S4) additionally needs the
    explain-handover preset + a focused UE with load.
 
-2. **`validate:modqn:phase6p-hobs-sinr-kpi-baseline` is currently RED (pre-existing).**
-   It fails with "baselines drifted from scripts/fixtures/modqn-phase6p-...json" at
-   HEAD `fdf4337` too (verified by running the committed version) — NOT caused by the
-   docstring relabel. The memory/SDD claim that "Phase6 KPI baseline is green" is
-   stale; the self-regression snapshot has drifted from its committed fixture. Do NOT
-   regenerate the fixture to mask it (campaign rule); investigate why leo's HOBS-SINR
-   compute drifted from the snapshot, or decide the snapshot is stale and re-capture
-   deliberately with provenance.
+2. **`validate:modqn:phase6p-hobs-sinr-kpi-baseline` was RED — RESOLVED 2026-06-04 (stale snapshot re-captured).**
+   It failed with "baselines drifted from scripts/fixtures/modqn-phase6p-...json" at
+   HEAD `fdf4337` too (NOT caused by the docstring relabel). **Diagnosed:** the fixture
+   was last committed at `5d3079d`, BEFORE a batch of deliberate model-evolution commits
+   (`677f7f3` PR-IS7a realistic constellation P=384 + serving cap + K=28 hopping,
+   `b763520` UE spread, Phase F/G per-UE SINR/handover/mobility, plus the ω-handover +
+   training-policy tuning-key expansion — the stored `handoverPolicyKey` carries 8 params,
+   the current compute 22). The SINR distribution drifted only slightly and sanely (mean
+   -1.45 → -1.03 dB, no -Infinity / degenerate collapse), `recentHoLatchTimeline` went
+   from empty to populated (a feature added after) — i.e. a **STALE self-regression
+   snapshot**, NOT a compute regression. **Fix (legitimate, cause understood):** re-captured
+   via the validator's `--capture` flag; re-running `--capture` a second time produced a
+   byte-identical fixture → the compute is DETERMINISTIC (the `timeSec` field is sim-derived,
+   not wallclock), so it will not drift again. Validator now PASS. This is a self-snapshot
+   refresh of leo's OWN current compute, NOT the ntn-sim-core baseline-kpi oracle (per the
+   S3 docstring relabel), and NOT masking a bug (the drift cause is the documented feature work).
 
 ## Still NOT closed (correctly out of in-env scope)
 

@@ -27,8 +27,8 @@
       "tuning": {
         "signalEvidenceKey": "28.000|0.100|0.050|2.000|20.000|100.000|50.000|-174.000|40.000|0.000|3.323|bessel-j1-j3|12.000|4.000|3|fspl,atmospheric,scintillation,shadow-fading",
         "signalResetKey": "3.323|12.000",
-        "handoverPolicyKey": "sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000",
-        "appHandoverResetKey": "0:sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000"
+        "handoverPolicyKey": "sinr-offset|3.000|3.500|5.000|0.500|0.750|2.000|1.500|-5.000|0.400|0.300|0.300|0.001000|0.990|128|2|64|Adam|1.000|0.050|0.0100|50000|100",
+        "appHandoverResetKey": "0:sinr-offset|3.000|3.500|5.000|0.500|0.750|2.000|1.500|-5.000|0.400|0.300|0.300|0.001000|0.990|128|2|64|Adam|1.000|0.050|0.0100|50000|100"
       },
       "window": {
         "epochUtcMs": 1767225600000,
@@ -51,21 +51,21 @@
         "totalLinkSamples": 308,
         "finiteSinrSamples": 308,
         "nonFiniteSinrSamples": 0,
-        "lowSinrBelowHandoverThresholdCount": 53,
-        "lowSinrBelowZeroDbCount": 191,
+        "lowSinrBelowHandoverThresholdCount": 49,
+        "lowSinrBelowZeroDbCount": 165,
         "handoverThresholdDb": -5
       },
       "finiteSinrDb": {
         "count": 308,
         "min": -12.57853,
-        "p05": -9.204697,
-        "p50": -1.686948,
+        "p05": -7.98538,
+        "p50": -0.651549,
         "p95": 4.035125,
         "max": 4.932366,
-        "mean": -1.446374
+        "mean": -1.029877
       },
       "servingTimeline": {
-        "uniqueStateCount": 5,
+        "uniqueStateCount": 4,
         "nullFrameCount": 21,
         "segments": [
           {
@@ -91,17 +91,10 @@
           },
           {
             "startFrame": 38,
-            "endFrame": 44,
-            "startSimTimeSec": 1104,
-            "endSimTimeSec": 1110,
-            "key": "hobs-baseline-P9-S6:B2"
-          },
-          {
-            "startFrame": 45,
             "endFrame": 59,
-            "startSimTimeSec": 1111,
+            "startSimTimeSec": 1104,
             "endSimTimeSec": 1125,
-            "key": "hobs-baseline-P9-S6:B7"
+            "key": "hobs-baseline-P9-S6:B2"
           }
         ]
       },
@@ -112,13 +105,28 @@
       },
       "recentHoLatchTimeline": {
         "available": true,
-        "frameCount": 0,
-        "uniqueStateCount": 0,
-        "segments": []
+        "frameCount": 10,
+        "uniqueStateCount": 2,
+        "segments": [
+          {
+            "startFrame": 27,
+            "endFrame": 31,
+            "startSimTimeSec": 1093,
+            "endSimTimeSec": 1097,
+            "key": "hobs-baseline-P9-S6:B1->hobs-baseline-P9-S6:B3"
+          },
+          {
+            "startFrame": 38,
+            "endFrame": 42,
+            "startSimTimeSec": 1104,
+            "endSimTimeSec": 1108,
+            "key": "hobs-baseline-P9-S6:B3->hobs-baseline-P9-S6:B2"
+          }
+        ]
       },
       "handoverEvents": {
-        "totalCount": 4,
-        "intraSwitchCount": 3,
+        "totalCount": 3,
+        "intraSwitchCount": 2,
         "interHandoverCountRaw": 1,
         "initialAttachCount": 1,
         "interHandoverCountExcludingInitialAttach": 0,
@@ -150,15 +158,6 @@
             "fromSinrDb": 3.018196,
             "toSinrDb": 3.819343,
             "deltaDb": 0.801147
-          },
-          {
-            "timeSec": 1767226711,
-            "action": "intra-switch",
-            "from": "hobs-baseline-P9-S6:B2",
-            "to": "hobs-baseline-P9-S6:B7",
-            "fromSinrDb": 3.307416,
-            "toSinrDb": 4.138501,
-            "deltaDb": 0.831085
           }
         ]
       },
@@ -189,12 +188,12 @@
           "max": 11,
           "mean": 5.133333
         },
-        "uniqueActiveAssignmentCount": 4,
+        "uniqueActiveAssignmentCount": 3,
         "uniqueActiveBeamCellCount": 13,
         "reuseGroupsByActiveAssignment": {
           "0": 6,
-          "1": 7,
-          "2": 26
+          "1": 22,
+          "2": 11
         },
         "reuseGroupsByActiveBeamCell": {
           "0": 63,
@@ -214,8 +213,8 @@
       "tuning": {
         "signalEvidenceKey": "28.000|0.100|0.050|2.000|20.000|100.000|50.000|-174.000|40.000|0.000|3.323|bessel-j1-j3|12.000|4.000|3|fspl,atmospheric,scintillation,shadow-fading",
         "signalResetKey": "3.323|12.000",
-        "handoverPolicyKey": "sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000",
-        "appHandoverResetKey": "0:sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000"
+        "handoverPolicyKey": "sinr-offset|3.000|3.500|30.000|0.500|0.750|1.000|1.500|-5.000|0.400|0.300|0.300|0.001000|0.990|128|2|64|Adam|1.000|0.050|0.0100|50000|100",
+        "appHandoverResetKey": "0:sinr-offset|3.000|3.500|30.000|0.500|0.750|1.000|1.500|-5.000|0.400|0.300|0.300|0.001000|0.990|128|2|64|Adam|1.000|0.050|0.0100|50000|100"
       },
       "window": {
         "epochUtcMs": 1767225600000,
@@ -252,85 +251,15 @@
         "mean": -19.932006
       },
       "servingTimeline": {
-        "uniqueStateCount": 5,
+        "uniqueStateCount": 1,
         "nullFrameCount": 0,
         "segments": [
           {
             "startFrame": 0,
-            "endFrame": 4,
-            "startSimTimeSec": 451,
-            "endSimTimeSec": 455,
-            "key": "shell-pro-53-P18-S1:B6"
-          },
-          {
-            "startFrame": 5,
-            "endFrame": 12,
-            "startSimTimeSec": 456,
-            "endSimTimeSec": 463,
-            "key": "shell-pro-53-P18-S1:B1"
-          },
-          {
-            "startFrame": 13,
-            "endFrame": 13,
-            "startSimTimeSec": 464,
-            "endSimTimeSec": 464,
-            "key": "shell-pro-53-P18-S1:B5"
-          },
-          {
-            "startFrame": 14,
-            "endFrame": 15,
-            "startSimTimeSec": 465,
-            "endSimTimeSec": 466,
-            "key": "shell-pro-53-P18-S1:B4"
-          },
-          {
-            "startFrame": 16,
-            "endFrame": 16,
-            "startSimTimeSec": 467,
-            "endSimTimeSec": 467,
-            "key": "shell-pro-53-P18-S1:B6"
-          },
-          {
-            "startFrame": 17,
-            "endFrame": 19,
-            "startSimTimeSec": 468,
-            "endSimTimeSec": 470,
-            "key": "shell-pro-53-P18-S1:B1"
-          },
-          {
-            "startFrame": 20,
-            "endFrame": 21,
-            "startSimTimeSec": 471,
-            "endSimTimeSec": 472,
-            "key": "shell-pro-53-P18-S1:B5"
-          },
-          {
-            "startFrame": 22,
-            "endFrame": 23,
-            "startSimTimeSec": 473,
-            "endSimTimeSec": 474,
-            "key": "shell-pro-53-P18-S1:B4"
-          },
-          {
-            "startFrame": 24,
-            "endFrame": 24,
-            "startSimTimeSec": 475,
-            "endSimTimeSec": 475,
-            "key": "shell-pro-53-P18-S1:B6"
-          },
-          {
-            "startFrame": 25,
-            "endFrame": 26,
-            "startSimTimeSec": 476,
-            "endSimTimeSec": 477,
-            "key": "shell-pro-53-P18-S1:B1"
-          },
-          {
-            "startFrame": 27,
             "endFrame": 59,
-            "startSimTimeSec": 478,
+            "startSimTimeSec": 451,
             "endSimTimeSec": 510,
-            "key": "shell-pro-53-P18-S1:B3"
+            "key": "shell-pro-53-P18-S1:B6"
           }
         ]
       },
@@ -346,8 +275,8 @@
         "segments": []
       },
       "handoverEvents": {
-        "totalCount": 11,
-        "intraSwitchCount": 10,
+        "totalCount": 1,
+        "intraSwitchCount": 0,
         "interHandoverCountRaw": 1,
         "initialAttachCount": 1,
         "interHandoverCountExcludingInitialAttach": 0,
@@ -361,96 +290,6 @@
             "fromSinrDb": null,
             "toSinrDb": -0.35518,
             "deltaDb": null
-          },
-          {
-            "timeSec": 1767226056,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B6",
-            "to": "shell-pro-53-P18-S1:B1",
-            "fromSinrDb": -1.790775,
-            "toSinrDb": -1.540827,
-            "deltaDb": 0.249949
-          },
-          {
-            "timeSec": 1767226064,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B1",
-            "to": "shell-pro-53-P18-S1:B5",
-            "fromSinrDb": -25.716661,
-            "toSinrDb": -25.30063,
-            "deltaDb": 0.416032
-          },
-          {
-            "timeSec": 1767226065,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B5",
-            "to": "shell-pro-53-P18-S1:B4",
-            "fromSinrDb": -26.130026,
-            "toSinrDb": -25.504677,
-            "deltaDb": 0.625349
-          },
-          {
-            "timeSec": 1767226067,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B4",
-            "to": "shell-pro-53-P18-S1:B6",
-            "fromSinrDb": -31.653016,
-            "toSinrDb": -26.863419,
-            "deltaDb": 4.789597
-          },
-          {
-            "timeSec": 1767226068,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B6",
-            "to": "shell-pro-53-P18-S1:B1",
-            "fromSinrDb": -27.881428,
-            "toSinrDb": -26.513589,
-            "deltaDb": 1.367839
-          },
-          {
-            "timeSec": 1767226071,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B1",
-            "to": "shell-pro-53-P18-S1:B5",
-            "fromSinrDb": null,
-            "toSinrDb": -29.624201,
-            "deltaDb": null
-          },
-          {
-            "timeSec": 1767226073,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B5",
-            "to": "shell-pro-53-P18-S1:B4",
-            "fromSinrDb": -29.39006,
-            "toSinrDb": -29.163848,
-            "deltaDb": 0.226212
-          },
-          {
-            "timeSec": 1767226075,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B4",
-            "to": "shell-pro-53-P18-S1:B6",
-            "fromSinrDb": -32.607749,
-            "toSinrDb": -30.531754,
-            "deltaDb": 2.075995
-          },
-          {
-            "timeSec": 1767226076,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B6",
-            "to": "shell-pro-53-P18-S1:B1",
-            "fromSinrDb": -30.924221,
-            "toSinrDb": -30.38078,
-            "deltaDb": 0.543441
-          },
-          {
-            "timeSec": 1767226078,
-            "action": "intra-switch",
-            "from": "shell-pro-53-P18-S1:B1",
-            "to": "shell-pro-53-P18-S1:B3",
-            "fromSinrDb": -32.806937,
-            "toSinrDb": -32.803081,
-            "deltaDb": 0.003856
           }
         ]
       },
@@ -506,8 +345,8 @@
       "tuning": {
         "signalEvidenceKey": "28.000|0.100|0.050|2.000|20.000|100.000|50.000|-174.000|40.000|0.000|3.323|bessel-j1-j3|12.000|4.000|3|fspl,atmospheric,scintillation,shadow-fading",
         "signalResetKey": "3.323|12.000",
-        "handoverPolicyKey": "sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000",
-        "appHandoverResetKey": "0:sinr-offset|3.000|3.500|5.000|0.500|0.750|1.500|-5.000"
+        "handoverPolicyKey": "sinr-offset|3.000|3.500|5.000|0.500|0.750|2.000|1.500|-5.000|0.400|0.300|0.300|0.001000|0.990|128|2|64|Adam|1.000|0.050|0.0100|50000|100",
+        "appHandoverResetKey": "0:sinr-offset|3.000|3.500|5.000|0.500|0.750|2.000|1.500|-5.000|0.400|0.300|0.300|0.001000|0.990|128|2|64|Adam|1.000|0.050|0.0100|50000|100"
       },
       "window": {
         "epochUtcMs": 1767225600000,
@@ -530,7 +369,7 @@
         "totalLinkSamples": 308,
         "finiteSinrSamples": 308,
         "nonFiniteSinrSamples": 0,
-        "lowSinrBelowHandoverThresholdCount": 88,
+        "lowSinrBelowHandoverThresholdCount": 85,
         "lowSinrBelowZeroDbCount": 232,
         "handoverThresholdDb": -5
       },
@@ -538,10 +377,10 @@
         "count": 308,
         "min": -18.317293,
         "p05": -16.901088,
-        "p50": -3.05824,
+        "p50": -2.855128,
         "p95": 2.809557,
         "max": 4.931288,
-        "mean": -3.489561
+        "mean": -3.362091
       },
       "servingTimeline": {
         "uniqueStateCount": 4,
@@ -570,17 +409,10 @@
           },
           {
             "startFrame": 38,
-            "endFrame": 54,
-            "startSimTimeSec": 1104,
-            "endSimTimeSec": 1120,
-            "key": "hobs-baseline-P9-S6:B2"
-          },
-          {
-            "startFrame": 55,
             "endFrame": 59,
-            "startSimTimeSec": 1121,
+            "startSimTimeSec": 1104,
             "endSimTimeSec": 1125,
-            "key": "hobs-baseline-P9-S6:B1"
+            "key": "hobs-baseline-P9-S6:B2"
           }
         ]
       },
@@ -591,13 +423,28 @@
       },
       "recentHoLatchTimeline": {
         "available": true,
-        "frameCount": 0,
-        "uniqueStateCount": 0,
-        "segments": []
+        "frameCount": 9,
+        "uniqueStateCount": 2,
+        "segments": [
+          {
+            "startFrame": 34,
+            "endFrame": 37,
+            "startSimTimeSec": 1100,
+            "endSimTimeSec": 1103,
+            "key": "hobs-baseline-P9-S6:B1->hobs-baseline-P9-S6:B3"
+          },
+          {
+            "startFrame": 38,
+            "endFrame": 42,
+            "startSimTimeSec": 1104,
+            "endSimTimeSec": 1108,
+            "key": "hobs-baseline-P9-S6:B3->hobs-baseline-P9-S6:B2"
+          }
+        ]
       },
       "handoverEvents": {
-        "totalCount": 4,
-        "intraSwitchCount": 3,
+        "totalCount": 3,
+        "intraSwitchCount": 2,
         "interHandoverCountRaw": 1,
         "initialAttachCount": 1,
         "interHandoverCountExcludingInitialAttach": 0,
@@ -629,15 +476,6 @@
             "fromSinrDb": 2.998892,
             "toSinrDb": 3.819119,
             "deltaDb": 0.820227
-          },
-          {
-            "timeSec": 1767226721,
-            "action": "intra-switch",
-            "from": "hobs-baseline-P9-S6:B2",
-            "to": "hobs-baseline-P9-S6:B1",
-            "fromSinrDb": -1.885914,
-            "toSinrDb": -0.112667,
-            "deltaDb": 1.773247
           }
         ]
       },
@@ -648,19 +486,19 @@
         "finalStateCount": 13,
         "txPowerDbm": {
           "count": 13,
-          "min": 46,
-          "p05": 46,
-          "p50": 49.5,
+          "min": 44.5,
+          "p05": 44.5,
+          "p50": 48.5,
           "p95": 50,
           "max": 50,
-          "mean": 48.538462
+          "mean": 48.269231
         },
         "finalStateSample": [
           {
             "key": "hobs-baseline-P20-S38:1",
-            "txPowerDbm": 50,
+            "txPowerDbm": 48,
             "stepDb": 0.5,
-            "efficiencyScore": 0.000005
+            "efficiencyScore": 0.00001
           },
           {
             "key": "hobs-baseline-P20-S38:2",
@@ -670,15 +508,15 @@
           },
           {
             "key": "hobs-baseline-P20-S38:4",
-            "txPowerDbm": 49,
-            "stepDb": -0.5,
-            "efficiencyScore": 0.000005
+            "txPowerDbm": 48.5,
+            "stepDb": 0.5,
+            "efficiencyScore": 0.000009
           },
           {
             "key": "hobs-baseline-P20-S38:5",
-            "txPowerDbm": 49.5,
-            "stepDb": -0.5,
-            "efficiencyScore": 0.000004
+            "txPowerDbm": 50,
+            "stepDb": 0.5,
+            "efficiencyScore": 0.000003
           },
           {
             "key": "hobs-baseline-P20-S38:6",
@@ -690,7 +528,7 @@
             "key": "hobs-baseline-P20-S38:7",
             "txPowerDbm": 50,
             "stepDb": 0.5,
-            "efficiencyScore": 0.000002
+            "efficiencyScore": 0.000004
           },
           {
             "key": "hobs-baseline-P9-S6:1",
@@ -718,9 +556,9 @@
           },
           {
             "key": "hobs-baseline-P9-S6:5",
-            "txPowerDbm": 49.5,
-            "stepDb": -0.5,
-            "efficiencyScore": 0.000005
+            "txPowerDbm": 50,
+            "stepDb": 0.5,
+            "efficiencyScore": 0.000004
           },
           {
             "key": "hobs-baseline-P9-S6:6",
@@ -752,8 +590,8 @@
         "uniqueActiveAssignmentCount": 3,
         "uniqueActiveBeamCellCount": 13,
         "reuseGroupsByActiveAssignment": {
-          "0": 18,
-          "1": 17,
+          "0": 13,
+          "1": 22,
           "2": 4
         },
         "reuseGroupsByActiveBeamCell": {
