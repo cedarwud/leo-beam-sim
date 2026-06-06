@@ -1962,7 +1962,7 @@ export function App() {
               modqnVisualLayerPreset={modqnVisualLayerPreset}
             />
           )}
-          {handoverMode === 'omega-heuristic' && <HeuristicNotPaperBanner />}
+          {handoverMode === 'omega-heuristic' && sceneLane === 'modqn-live-cell-preview' && <HeuristicNotPaperBanner />}
           {shouldRenderMainScene ? (
             <MainScene
               speed={playback.effectiveSpeed}

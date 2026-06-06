@@ -222,8 +222,8 @@ console.log('\n(f) App.tsx data-handover-criterion 2-way wiring');
   // disclosure banner whenever the mode is active, so App MUST co-mount it gated
   // on handoverMode === 'omega-heuristic' (never expose the mode without it).
   assert(
-    appSrc.includes("handoverMode === 'omega-heuristic' && <HeuristicNotPaperBanner />"),
-    'App.tsx co-mounts HeuristicNotPaperBanner gated on omega-heuristic (mandatory NOT-paper disclosure)',
+    appSrc.includes("handoverMode === 'omega-heuristic' && sceneLane === 'modqn-live-cell-preview' && <HeuristicNotPaperBanner />"),
+    'App.tsx co-mounts HeuristicNotPaperBanner gated on omega-heuristic AND the modqn-live lane (mandatory NOT-paper disclosure, never leaks to artifact/other lanes)',
   );
 }
 

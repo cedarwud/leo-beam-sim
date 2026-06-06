@@ -2143,8 +2143,8 @@ assertContains(
 );
 assertContains(
   appSource,
-  "handoverMode === 'omega-heuristic' && <HeuristicNotPaperBanner />",
-  'App co-mounts the NOT-paper banner gated on omega-heuristic (mode never exposed without disclosure)',
+  "handoverMode === 'omega-heuristic' && sceneLane === 'modqn-live-cell-preview' && <HeuristicNotPaperBanner />",
+  'App co-mounts the NOT-paper banner gated on omega-heuristic AND the modqn-live lane (never leaks the live heuristic warning onto the artifact / other lanes)',
 );
 assertContains(
   appSource,
