@@ -1117,61 +1117,36 @@ assertContains(
 );
 assertContains(
   controlBarSource,
-  'data-testid="artifact-replay-handover-status"',
-  'ControlBar artifact replay handover status',
-);
-assertContains(
-  controlBarSource,
-  'aria-label="Artifact replay is read-only; handover mode comes from the artifact"',
-  'ControlBar artifact replay handover status accessibility label',
-);
-assertContains(
-  controlBarSource,
-  'data-scene-source="artifact-replay"',
-  'ControlBar artifact replay handover control source marker',
-);
-assertContains(
-  controlBarSource,
-  'data-scene-source="live-sim"',
-  'ControlBar live handover control source marker',
-);
-assertContains(
-  controlBarSource,
-  'const liveAutoSlowActive = showSinrLiveControls && autoSlowActive;',
-  'ControlBar keeps HO slow warning live-only',
-);
-assertContains(
-  controlBarSource,
   '{showSinrLiveControls && (',
   'ControlBar wraps live-only controls in the SINR live lane',
 );
-for (const [needle, label] of [
-  ['data-testid="beam-density-control"', 'beam density controls'],
-  ['data-testid="beam-info-toggle"', 'beam info toggle'],
-  ['data-testid="camera-preset-control"', 'camera preset controls'],
-  ['Spotlight', 'spotlight control copy'],
-  ['HO Slow', 'HO slow control copy'],
-] as const) {
-  const liveOnlyBranchIndex = controlBarSource.indexOf('{showSinrLiveControls && (');
-  const controlIndex = controlBarSource.indexOf(needle, liveOnlyBranchIndex);
-  const speedIndex = controlBarSource.indexOf('aria-label="Playback speed"');
-  assert.ok(
-    liveOnlyBranchIndex >= 0
-      && controlIndex > liveOnlyBranchIndex
-      && controlIndex < speedIndex,
-    `ControlBar artifact replay must hide live-only ${label}`,
-  );
-}
+// Live-only controls remain gated behind the showSinrLiveControls branch.
+// (Consolidation C1 removed the in-ControlBar playback speed slider, so the
+// upper bound is the MODQN-layer group that follows the live block instead.)
 {
-  const artifactStatusIndex = controlBarSource.indexOf('data-testid="artifact-replay-handover-status"');
-  const liveSelectorIndex = controlBarSource.indexOf('{HANDOVER_MODE_OPTIONS.map(option => {');
-  const handoverChangeIndex = controlBarSource.indexOf('onHandoverModeChange(option.mode)');
+  const liveOnlyBranchIndex = controlBarSource.indexOf('{showSinrLiveControls && (');
+  // Upper bound = the MODQN-layer group that follows the SINR-live block. Every
+  // live-only control must sit BETWEEN the branch open and that group, so a future
+  // edit that accidentally hoists a control out of the SINR-live branch is caught
+  // (codex C1 [P3]).
+  const modqnLayerGroupIndex = controlBarSource.indexOf('data-testid="modqn-layer-preset-control"');
   assert.ok(
-    artifactStatusIndex >= 0
-      && liveSelectorIndex > artifactStatusIndex
-      && handoverChangeIndex > liveSelectorIndex,
-    'ControlBar artifact replay must render a read-only status before the live handover selector branch',
+    liveOnlyBranchIndex >= 0 && modqnLayerGroupIndex > liveOnlyBranchIndex,
+    'ControlBar keeps the SINR-live branch before the MODQN-layer group',
   );
+  for (const [needle, label] of [
+    ['data-testid="beam-density-control"', 'beam density controls'],
+    ['data-testid="beam-info-toggle"', 'beam info toggle'],
+    ['data-testid="camera-preset-control"', 'camera preset controls'],
+    ['Spotlight', 'spotlight control copy'],
+    ['HO Slow', 'HO slow control copy'],
+  ] as const) {
+    const controlIndex = controlBarSource.indexOf(needle, liveOnlyBranchIndex);
+    assert.ok(
+      controlIndex > liveOnlyBranchIndex && controlIndex < modqnLayerGroupIndex,
+      `ControlBar must keep live-only ${label} inside the SINR live branch (before the MODQN-layer group)`,
+    );
+  }
 }
 
 assertContains(
@@ -2087,28 +2062,28 @@ assertContains(
   'objective tab can reset ω to the bundle weights',
 );
 assertContains(
-  appSource,
-  "from './ui/LiveKpiStrip'",
-  'App imports the live KPI strip',
-);
-assertContains(
-  appSource,
-  '<LiveKpiStrip',
-  'App mounts the live KPI strip on live lanes',
-);
-{
-  const kpiIndex = appSource.indexOf('<LiveKpiStrip');
-  const kpiGuard = appSource.slice(Math.max(0, kpiIndex - 80), kpiIndex);
-  assertContains(
-    kpiGuard,
-    "sceneSource === 'live-sim'",
-    'LiveKpiStrip is gated to the live-sim source (not artifact replay)',
-  );
-}
-assertContains(
   controlBarSource,
   'leo-control-bar__group-label',
   'ControlBar gives the MODQN visual-layer preset group a visible heading',
+);
+// Consolidation C1: playback (play/pause + speed) lives ONLY in the bottom
+// TimelineBar; the ControlBar must not duplicate it, and the redundant
+// in-ControlBar SINR/MODQN handover-mode switch is gone (LaneExperienceBar owns
+// the experience axis).
+assertNotContains(
+  controlBarSource,
+  'data-testid="handover-mode-control"',
+  'ControlBar no longer duplicates the SINR/MODQN switch (LaneExperienceBar owns it)',
+);
+assertNotContains(
+  controlBarSource,
+  'leo-control-bar__play',
+  'ControlBar no longer duplicates the play/pause button (TimelineBar owns playback)',
+);
+assertNotContains(
+  controlBarSource,
+  'aria-label="Playback speed"',
+  'ControlBar no longer duplicates the playback speed control (TimelineBar owns playback speed)',
 );
 assertContains(
   governanceDoc,

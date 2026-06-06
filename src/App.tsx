@@ -92,7 +92,6 @@ import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
 import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
-import { LiveKpiStrip } from './ui/LiveKpiStrip';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { TrainingForm } from './ui/modqn-training/TrainingForm';
 import { Tier2PreviewSection } from './ui/modqn-training/Tier2PreviewSection';
@@ -1831,11 +1830,6 @@ export function App() {
       <ControlBar
         selectedProfileId={selectedProfileId}
         profileOptions={profileOptions}
-        paused={playback.paused}
-        speed={playback.speed}
-        effectiveSpeed={playback.effectiveSpeed}
-        autoSlowActive={playback.autoSlowActive}
-        autoSlowApplied={playback.autoSlowApplied}
         autoSlowEnabled={playback.autoSlowEnabled}
         uiMode={uiMode}
         beamDensity={runtime.beamDensity}
@@ -1848,10 +1842,7 @@ export function App() {
         onToggleBeamCallouts={() => setBeamCalloutsEnabled(value => !value)}
         onCameraPresetSelect={camera.selectCameraPreset}
         onCinematicModeChange={camera.setCinematicMode}
-        onTogglePause={playback.togglePause}
-        onSpeedChange={playback.setSpeed}
         onToggleAutoSlow={playback.toggleAutoSlow}
-        onHandoverModeChange={handleHandoverModeChange}
         sceneSource={sceneSource}
         sceneLane={sceneLane}
         liveUeCount={runtime.ueCount ?? 1}
@@ -2066,14 +2057,6 @@ export function App() {
                   handoverMode={handoverMode}
                   rescalarizeFallbackCount={rescalarizeFallbackCount}
                 />
-                {sceneSource === 'live-sim' && (
-                  <LiveKpiStrip
-                    simState={simState}
-                    effectiveOffsetDb={appliedHandoverPolicy.offsetDb}
-                    effectiveTriggerTimeSec={appliedHandoverPolicy.triggerTimeSec}
-                    bandwidthMHz={effectiveProfile.channel.bandwidthMHz}
-                  />
-                )}
               </section>
             ) : (
               <section

@@ -193,9 +193,12 @@ console.log('\n(d) W3C WCAG 2.1 contrast ratio');
 console.log('\n(e) ControlBar omega-heuristic entry removed');
 {
   const cbSrc = readSource('src/ui/ControlBar.tsx');
+  // C1: the SINR/MODQN public switch moved to LaneExperienceBar. ControlBar keeps
+  // only the contained MODQN decision-policy toggle (paper overlay <-> heuristic ω),
+  // which must NOT register omega-heuristic as a third top-level handover mode.
   assert(
-    cbSrc.includes("mode: 'sinr-offset'") && cbSrc.includes("mode: 'decision-overlay-on-live-sinr'"),
-    'ControlBar exposes the two public demo modes',
+    cbSrc.includes('data-testid="modqn-decision-policy-control"'),
+    'ControlBar exposes the contained MODQN decision-policy toggle',
   );
   assert(
     !cbSrc.includes("mode: 'omega-heuristic'"),

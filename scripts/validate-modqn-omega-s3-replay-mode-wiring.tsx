@@ -300,37 +300,38 @@ console.log('\n(h) DiagnosticsDrawer props');
 }
 
 // ---------------------------------------------------------------------------
-// (i) ControlBar accepts handoverMode + onHandoverModeChange
+// (i) SINR <-> MODQN switch is wired (now via LaneExperienceBar, not ControlBar)
 // ---------------------------------------------------------------------------
-console.log('\n(i) ControlBar props');
+// Consolidation C1: the SINR/MODQN experience switch moved out of the ControlBar
+// (where it duplicated the new top LaneExperienceBar) and is now the SINR Live /
+// MODQN Live segments of LaneExperienceBar, applied through App.handleExperienceChange
+// -> handleAppModeChange. ControlBar keeps the handoverMode prop only for the
+// MODQN decision-policy toggle's active state, and must NOT re-expose the switch.
+console.log('\n(i) SINR<->MODQN switch wired via LaneExperienceBar');
 {
-  const cbSrc = fs.readFileSync(
-    path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/ControlBar.tsx'),
-    'utf8',
-  );
+  const repoDir = path.resolve(import.meta.dirname ?? process.cwd(), '..');
+  const cbSrc = fs.readFileSync(path.join(repoDir, 'src/ui/ControlBar.tsx'), 'utf8');
+  const railSrc = fs.readFileSync(path.join(repoDir, 'src/ui/LaneExperienceBar.tsx'), 'utf8');
+  const appSrc = fs.readFileSync(path.join(repoDir, 'src/App.tsx'), 'utf8');
   assert(
     cbSrc.includes('handoverMode'),
-    'ControlBar.tsx contains handoverMode prop',
+    'ControlBar.tsx still reads handoverMode (for the MODQN decision-policy toggle)',
   );
   assert(
-    cbSrc.includes('onHandoverModeChange'),
-    'ControlBar.tsx contains onHandoverModeChange prop',
-  );
-  assert(
-    cbSrc.includes("mode: 'sinr-offset'") && cbSrc.includes("mode: 'decision-overlay-on-live-sinr'"),
-    'ControlBar.tsx exposes sinr-offset and decision-overlay-on-live-sinr entries',
+    !cbSrc.includes('handover-mode-control'),
+    'ControlBar.tsx no longer duplicates the SINR/MODQN handover-mode switch (LaneExperienceBar owns it)',
   );
   assert(
     !cbSrc.includes("mode: 'omega-heuristic'"),
     'ControlBar.tsx does not expose omega-heuristic as a top-level mode',
   );
   assert(
-    cbSrc.includes('handover-mode-control'),
-    'ControlBar.tsx has handover-mode-control testid group',
+    railSrc.includes("lane: 'sinr-live'") && railSrc.includes("lane: 'modqn-live-cell-preview'"),
+    'LaneExperienceBar exposes the SINR Live + MODQN Live segments (the experience switch)',
   );
   assert(
-    cbSrc.includes("handover-mode-${option.mode}") || cbSrc.includes("handover-mode-decision-overlay-on-live-sinr"),
-    'ControlBar.tsx has handover-mode-decision-overlay-on-live-sinr testid (static or template literal)',
+    appSrc.includes('<LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />'),
+    'App wires LaneExperienceBar -> handleExperienceChange (which drives appMode)',
   );
 }
 
@@ -439,10 +440,10 @@ console.log('\n(k) Evidence / telemetry mode gating');
     && appRuntimeModelSrc.includes('ARTIFACT_RIGHT_SIDEBAR_TABS')
     && appRuntimeModelSrc.includes("if (lane === 'artifact-replay') return ARTIFACT_RIGHT_SIDEBAR_TABS;")
     && appRuntimeModelSrc.includes("if (lane === 'modqn-replay-proof') return MODQN_REPLAY_PROOF_RIGHT_SIDEBAR_TABS;")
-    && appRuntimeModelSrc.includes("if (lane === 'modqn-live-cell-preview') return SINR_RIGHT_SIDEBAR_TABS;")
+    && appRuntimeModelSrc.includes("if (lane === 'modqn-live-cell-preview') return MODQN_RIGHT_SIDEBAR_TABS;")
     && appRuntimeModelSrc.includes("if (lane === 'artifact-replay') return 'artifact';")
     && appRuntimeModelSrc.includes("if (lane === 'modqn-replay-proof') return 'modqn';"),
-    'App runtime model keeps right sidebar isolated: SINR/cell-preview=live, proof=MODQN evidence, artifact=artifact truth',
+    'App runtime model keeps right sidebar isolated: SINR=live, cell-preview=live+opt-in MODQN evidence, proof=MODQN evidence, artifact=artifact truth',
   );
   assert(
     appSrc.includes('handoverMode={handoverMode}'),

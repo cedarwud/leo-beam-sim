@@ -73,11 +73,6 @@ function renderControlBarMarkup(): string {
     <ControlBar
       selectedProfileId="hobs-2024-candidate-rich"
       profileOptions={[{ id: 'hobs-2024-candidate-rich', label: 'HOBS candidate rich' }]}
-      paused={false}
-      speed={1}
-      effectiveSpeed={1}
-      autoSlowActive={false}
-      autoSlowApplied={false}
       autoSlowEnabled={true}
       uiMode="presentation"
       beamDensity="event-plus-1"
@@ -89,10 +84,7 @@ function renderControlBarMarkup(): string {
       onToggleBeamCallouts={noop}
       onCameraPresetSelect={onCameraPresetSelect}
       onCinematicModeChange={noop}
-      onTogglePause={noop}
-      onSpeedChange={noop}
       onToggleAutoSlow={noop}
-      onHandoverModeChange={noop}
     />,
   );
 }

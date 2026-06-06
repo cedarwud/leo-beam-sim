@@ -16,17 +16,14 @@ interface ProfileOption {
 interface ControlBarProps {
   selectedProfileId: string;
   profileOptions: ProfileOption[];
-  paused: boolean;
-  speed: number;
-  effectiveSpeed: number;
-  autoSlowActive: boolean;
-  autoSlowApplied: boolean;
+  // Playback (play/pause, speed, scrub, seek) is owned solely by the bottom
+  // TimelineBar — the ControlBar no longer duplicates it (consolidation C1).
   autoSlowEnabled: boolean;
   uiMode: UiMode;
   beamDensity: BeamDensity;
   beamCalloutsEnabled: boolean;
   cinematicMode: CinematicMode;
-  /** S3: current handover mode from App.tsx state (SDD §9.4 item 1). */
+  /** Current handover mode — read for the MODQN decision-policy toggle's active state. */
   handoverMode?: RuntimeHandoverMode;
   onProfileChange: (profileId: string) => void;
   onUiModeChange: (mode: UiMode) => void;
@@ -34,11 +31,7 @@ interface ControlBarProps {
   onToggleBeamCallouts: () => void;
   onCameraPresetSelect: (preset: CameraPreset) => void;
   onCinematicModeChange: (mode: CinematicMode) => void;
-  onTogglePause: () => void;
-  onSpeedChange: (speed: number) => void;
   onToggleAutoSlow: () => void;
-  /** S3: mode selector change handler from App.tsx (handles ω reset and mode reset). */
-  onHandoverModeChange?: (mode: RuntimeHandoverMode) => void;
 
   // P2b Display-filter & focus UE controls
   sceneSource?: 'live-sim' | 'artifact-replay';
@@ -55,19 +48,6 @@ interface ControlBarProps {
   /** Flip the MODQN decision policy (paper overlay <-> omega-heuristic) on the MODQN live lane. */
   onModqnDecisionPolicyChange?: (mode: RuntimeHandoverMode) => void;
 }
-
-// Public demo modes. ω adjustment is now handled inside the decision-overlay
-// mode via the sidebar Apply action, not as a third top-level handover mode.
-// P1c OQ-7: `'modqn-replay'` renamed to `'decision-overlay-on-live-sinr'` to
-// disambiguate it from the new `sceneSource='artifact-replay'` axis.
-const HANDOVER_MODE_OPTIONS: Array<{
-  mode: RuntimeHandoverMode;
-  label: string;
-  disabledReason?: string;
-}> = [
-  { mode: 'sinr-offset', label: 'SINR Experiment' },
-  { mode: 'decision-overlay-on-live-sinr', label: 'MODQN Demo' },
-];
 
 const UI_MODE_LABELS: Record<UiMode, string> = {
   presentation: 'Presentation',
@@ -96,11 +76,6 @@ const MODQN_LAYER_PRESET_LABELS: Record<ModqnVisualLayerPreset, string> = {
 };
 
 export function ControlBar({
-  paused,
-  speed,
-  effectiveSpeed,
-  autoSlowActive,
-  autoSlowApplied,
   autoSlowEnabled,
   uiMode,
   beamDensity,
@@ -112,10 +87,7 @@ export function ControlBar({
   onToggleBeamCallouts,
   onCameraPresetSelect,
   onCinematicModeChange,
-  onTogglePause,
-  onSpeedChange,
   onToggleAutoSlow,
-  onHandoverModeChange,
   sceneSource = 'live-sim',
   sceneLane = sceneSource === 'artifact-replay' ? 'artifact-replay' : 'sinr-live',
   liveUeCount = 1,
@@ -132,75 +104,8 @@ export function ControlBar({
   const isArtifactReplay = sceneLane === 'artifact-replay' || sceneSource === 'artifact-replay';
   const showSinrLiveControls = sceneLane === 'sinr-live';
   const showModqnLayerControls = sceneLane === 'modqn-live-cell-preview';
-  const liveAutoSlowActive = showSinrLiveControls && autoSlowActive;
-  const sceneSuffix = showSinrLiveControls && autoSlowApplied
-    ? ' (HO Slow)'
-    : liveAutoSlowActive
-      ? ' (HO Slow Off)'
-      : '';
   return (
     <div className="leo-control-bar">
-      <button
-        className={`${UI_CLASSES.button} leo-control-bar__play`}
-        type="button"
-        data-paused={paused ? 'true' : 'false'}
-        onClick={onTogglePause}
-      >
-        {paused ? 'Play' : 'Pause'}
-      </button>
-
-      {isArtifactReplay ? (
-        <div
-          className="leo-control-bar__handover-mode-group"
-          role="group"
-          aria-label="Artifact replay source; live handover mode selector is disabled"
-          data-testid="handover-mode-control"
-          data-scene-source="artifact-replay"
-        >
-          <span
-            className="leo-control-bar__ue-filter-readonly"
-            aria-label="Artifact replay is read-only; handover mode comes from the artifact"
-            data-testid="artifact-replay-handover-status"
-          >
-            Artifact Replay: read-only HO
-          </span>
-        </div>
-      ) : (
-        /* Handover mode selector. MODQN ω changes are applied inside replay. */
-        <div
-          className="leo-control-bar__handover-mode-group"
-          role="group"
-          aria-label="Handover mode"
-          data-testid="handover-mode-control"
-          data-scene-source="live-sim"
-        >
-          {HANDOVER_MODE_OPTIONS.map(option => {
-            const isSelected = handoverMode === option.mode;
-            const isDisabled = option.disabledReason !== undefined;
-            return (
-              <button
-                key={option.mode}
-                className={`${UI_CLASSES.button} leo-control-bar__handover-mode-button`}
-                type="button"
-                aria-label={`Set handover mode to ${option.label}${isDisabled ? ` (${option.disabledReason})` : ''}`}
-                aria-pressed={isSelected}
-                aria-disabled={isDisabled}
-                data-testid={`handover-mode-${option.mode}`}
-                title={isDisabled ? option.disabledReason : undefined}
-                disabled={isDisabled}
-                onClick={() => {
-                  if (!isDisabled && onHandoverModeChange) {
-                    onHandoverModeChange(option.mode);
-                  }
-                }}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       <label className="leo-control-bar__field-row">
         Mode:
         <select
@@ -373,21 +278,6 @@ export function ControlBar({
         </div>
       )}
 
-      <label className="leo-control-bar__field-row">
-        Speed:
-        <input
-          className={`${UI_CLASSES.range} leo-control-bar__speed-range`}
-          type="range"
-          min={1}
-          max={20}
-          value={speed}
-          aria-label="Playback speed"
-          aria-valuetext={`${speed} times real time`}
-          onChange={e => onSpeedChange(Number(e.target.value))}
-        />
-        <span aria-hidden="true">{speed}x</span>
-      </label>
-
       {isArtifactReplay ? (
         <>
           <label className="leo-control-bar__field-row">
@@ -423,14 +313,6 @@ export function ControlBar({
           Active UEs: {Math.max(1, Math.trunc(liveUeCount))}
         </span>
       )}
-
-      <div
-        className="leo-control-bar__scene-readout"
-        data-warning={liveAutoSlowActive ? 'true' : 'false'}
-      >
-        Scene: {effectiveSpeed.toFixed(1)}x{sceneSuffix}
-      </div>
-
     </div>
   );
 }
