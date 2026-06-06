@@ -489,21 +489,25 @@ section('(n) D6b Director framing uses real rail satellite ids', () => {
     'shared applyDirectorFocusCommand passes framing as the 4th pose arg once, called by both director call sites (P1 de-dup)',
   );
 
+  // P3: the director orchestration (requestDirectorFocus + the cinematic/live
+  // focus lifecycle) was extracted from App into this hook; assertions that used
+  // to read App.tsx now read the hook source (same verbatim logic, new home).
+  const directorHookSource = source('src/app/useDirectorOrchestration.ts');
   check(
-    /const framing = \{\s*fromSatId: replayWindow\.fromSatId,\s*toSatId: replayWindow\.toSatId,?\s*\}/.test(appSource),
-    'App cinematic requestDirectorFocus builds framing from replayWindow satellite ids',
+    /const framing = \{\s*fromSatId: replayWindow\.fromSatId,\s*toSatId: replayWindow\.toSatId,?\s*\}/.test(directorHookSource),
+    'Director hook cinematic requestDirectorFocus builds framing from replayWindow satellite ids',
   );
   check(
-    /camera\.requestIntraFocus\(framing\)/.test(appSource)
-    && /camera\.requestInterFocus\(framing\)/.test(appSource),
-    'App cinematic requestDirectorFocus forwards framing to the camera',
+    /camera\.requestIntraFocus\(framing\)/.test(directorHookSource)
+    && /camera\.requestInterFocus\(framing\)/.test(directorHookSource),
+    'Director hook cinematic requestDirectorFocus forwards framing to the camera',
   );
-  // D6 framing is scoped to the cinematic (artifact) lane, where the seek pins
-  // one specific real event. The live branch keeps the legacy pose (no framing)
-  // because App has no unambiguous "currently active handover" signal.
+  // The cinematic (artifact) lane seeks then frames the pinned event immediately;
+  // the live lane's PRIMARY path also frames the pair but deferred (ITEM #C). The
+  // no-framing call below is only the legacy fallback when no indexed event resolves.
   check(
-    /if \(kind === 'intra'\) camera\.requestIntraFocus\(\);\s*else camera\.requestInterFocus\(\);/.test(appSource),
-    'App live requestDirectorFocus passes NO framing (legacy pose, no future/stale-pair risk)',
+    /if \(kind === 'intra'\) camera\.requestIntraFocus\(\);\s*else camera\.requestInterFocus\(\);/.test(directorHookSource),
+    'Director hook live requestDirectorFocus keeps a legacy no-framing fallback when no event resolves',
   );
 });
 
@@ -542,33 +546,37 @@ section('(o) D3 cinematic seek fade overlay is artifact-lane-only presentation c
   check(/export const FADE_IN_MS = 150;/.test(overlaySource), 'FADE_IN_MS = 150');
 
   const appSource = source('src/App.tsx');
+  // P3: cinematic fade state + the deferred-seek closure live in the director hook
+  // now; only the overlay MOUNT (which reads the hook's returned fade pulse +
+  // peak handler) stays in App.tsx JSX.
+  const directorHookSource = source('src/app/useDirectorOrchestration.ts');
   check(
-    /const \[cinematicFadePulse, setCinematicFadePulse\] = useState<number \| null>\(null\);/.test(appSource),
-    'App declares cinematicFadePulse state',
+    /const \[cinematicFadePulse, setCinematicFadePulse\] = useState<number \| null>\(null\);/.test(directorHookSource),
+    'Director hook declares cinematicFadePulse state',
   );
   check(
-    /const pendingCinematicSeekRef = useRef<\(\(\) => void\) \| null>\(null\);/.test(appSource),
-    'App declares pendingCinematicSeekRef',
+    /const pendingCinematicSeekRef = useRef<\(\(\) => void\) \| null>\(null\);/.test(directorHookSource),
+    'Director hook declares pendingCinematicSeekRef',
   );
   check(
-    /const handleCinematicSeekPeak = useCallback\(\(\) => \{[\s\S]*?pendingCinematicSeekRef\.current = null;[\s\S]*?run\?\.\(\);[\s\S]*?\}, \[\]\);/.test(appSource),
-    'App declares handleCinematicSeekPeak and clears the pending closure before running it',
+    /const handleCinematicSeekPeak = useCallback\(\(\) => \{[\s\S]*?pendingCinematicSeekRef\.current = null;[\s\S]*?run\?\.\(\);[\s\S]*?\}, \[\]\);/.test(directorHookSource),
+    'Director hook declares handleCinematicSeekPeak and clears the pending closure before running it',
   );
   check(
     /\{\(directorCinematicEnabled \|\| directorFocusEnabled\) && \([\s\S]*?<CinematicSeekFadeOverlay[\s\S]*?pulseKey=\{cinematicFadePulse\}[\s\S]*?reducedMotion=\{runtime\.reducedMotion\}[\s\S]*?onPeak=\{handleCinematicSeekPeak\}/.test(appSource),
     'App mounts CinematicSeekFadeOverlay gated on the director cinematic OR live focus (ITEM #C)',
   );
   check(
-    /const runCinematicSeek = \(\) => \{[\s\S]*?replayController\.seek\(replayWindow\.startSec\);[\s\S]*?setActiveCinematicWindow\(replayWindow\);[\s\S]*?camera\.requestInterFocus\(framing\);[\s\S]*?\};/.test(appSource),
-    'App keeps the cinematic seek + camera work in one deferred closure',
+    /const runCinematicSeek = \(\) => \{[\s\S]*?replayController\.seek\(replayWindow\.startSec\);[\s\S]*?setActiveCinematicWindow\(replayWindow\);[\s\S]*?camera\.requestInterFocus\(framing\);[\s\S]*?\};/.test(directorHookSource),
+    'Director hook keeps the cinematic seek + camera work in one deferred closure',
   );
   check(
-    /if \(runtime\.reducedMotion\) \{\s*runCinematicSeek\(\);\s*\} else \{\s*pendingCinematicSeekRef\.current = runCinematicSeek;\s*setCinematicFadePulse\(prev => \(prev === null \? 0 : prev \+ 1\)\);\s*\}/.test(appSource),
-    'App runs synchronously for reduced motion and otherwise bumps the fade pulse after stashing the seek',
+    /if \(reducedMotion\) \{\s*runCinematicSeek\(\);\s*\} else \{\s*pendingCinematicSeekRef\.current = runCinematicSeek;\s*setCinematicFadePulse\(prev => \(prev === null \? 0 : prev \+ 1\)\);\s*\}/.test(directorHookSource),
+    'Director hook runs synchronously for reduced motion and otherwise bumps the fade pulse after stashing the seek',
   );
   check(
-    /runtime\.reducedMotion,\s*timelineDurationSec,/.test(appSource),
-    'requestDirectorFocus deps include runtime.reducedMotion',
+    /replayController,\s*reducedMotion,/.test(directorHookSource),
+    'requestDirectorFocus deps include reducedMotion',
   );
 });
 

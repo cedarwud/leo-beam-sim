@@ -692,15 +692,24 @@ assertContains(
   "export type LiveWalkerDirectorFocusClaimKind = 'profile-derived-forecast' | 'overlay-demo';",
   'live Walker Director focus claim is forecast/overlay-demo only, never producer proof',
 );
+// P3: the director orchestration (requestDirectorFocus + the cinematic/live focus
+// lifecycle) was extracted from App into useDirectorOrchestration; App keeps the
+// honesty TELEMETRY JSX + the lane-mapped claim const and mounts the hook.
+const directorOrchestrationSource = readRepoFile('src/app/useDirectorOrchestration.ts');
 assertContains(
   appSource,
-  "from './scene/liveWalkerDirectorFocus'",
-  'App imports the live Walker Director focus resolver',
+  'useDirectorOrchestration({',
+  'App wires the extracted director orchestration hook',
 );
 assertContains(
-  appSource,
+  directorOrchestrationSource,
+  "from '../scene/liveWalkerDirectorFocus'",
+  'director hook imports the live Walker Director focus resolver',
+);
+assertContains(
+  directorOrchestrationSource,
   'resolveLiveWalkerFocusWindow(',
-  'App resolves the next live Walker handover for the Director focus',
+  'director hook resolves the next live Walker handover for the Director focus',
 );
 assertContains(
   appSource,
@@ -708,14 +717,14 @@ assertContains(
   'App labels the live Director focus claim by lane (overlay-demo vs profile-derived-forecast)',
 );
 assertContains(
-  appSource,
+  directorOrchestrationSource,
   'pendingLiveFocusRef.current = {',
-  'App arms a deferred live Director focus so the sat-pair pose reads the post-seek frame',
+  'director hook arms a deferred live Director focus so the sat-pair pose reads the post-seek frame',
 );
 assertContains(
-  appSource,
+  directorOrchestrationSource,
   'camera.requestInterFocus(pending.framing)',
-  'App passes the resolved live sat-pair framing into the inter-HO Director focus',
+  'director hook passes the resolved live sat-pair framing into the inter-HO Director focus',
 );
 assertContains(
   appSource,
@@ -728,14 +737,14 @@ assertContains(
   'App exposes the resolved live Director focus event source-time (binds the seek to a real indexed event)',
 );
 assertContains(
-  appSource,
+  directorOrchestrationSource,
   'const cancelPendingLiveFocus = useCallback(() => {',
-  'App can cancel an armed-but-unfired live Director focus',
+  'director hook can cancel an armed-but-unfired live Director focus',
 );
 assertContains(
-  appSource,
+  directorOrchestrationSource,
   '}, [sceneLane, cancelPendingLiveFocus]);',
-  'App cancels a stale armed live Director focus on a lane switch (no cross-lane sat-pair leak)',
+  'director hook cancels a stale armed live Director focus on a lane switch (no cross-lane sat-pair leak)',
 );
 assertNotContains(
   liveWalkerDirectorFocusSource,
