@@ -119,6 +119,7 @@
     "validate:phase-c:cinematic-window": "node --import tsx/esm src/scene/cinematicReplayWindow.test.ts",
     "validate:phase-c:director-pose": "node --import tsx/esm src/scene/directorFocusPose.test.ts",
     "validate:phase-c:live-walker-focus-window": "node --import tsx/esm src/scene/liveWalkerDirectorFocus.test.ts",
+    "validate:phase-c:beam-cone-role-factors": "node --import tsx/esm src/viz/beamConeRoleFactors.test.ts",
     "validate:phase-c:satellite-azimuths": "node --import tsx/esm src/ui/artifactSatelliteAzimuths.test.ts",
     "validate:phase-c:director-cinematic:browser": "node --import tsx/esm scripts/validate-phase-c-director-cinematic-browser.ts",
     "validate:phase-c:director-cinematic:live:browser": "node --import tsx/esm scripts/validate-phase-c-director-cinematic-live-browser.ts",

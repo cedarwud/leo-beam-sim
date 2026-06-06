@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
+import { resolveBeamConeRoleFactors } from './beamConeRoleFactors';
 import {
   BEAM_ROLE_TOKENS,
   HANDOVER_ARROW_COLOR,
@@ -181,6 +182,10 @@ function BeamCone({
   const handoverRole = beam.handoverRole ?? null;
   const isHandoverSource = handoverRole === 'intraSource' || handoverRole === 'interSource';
   const isHandoverTarget = handoverRole === 'intraTargetNewServing' || handoverRole === 'interTargetNewServing';
+  // P4: per-role visual factors collected in one pure helper (was ~9 scattered
+  // inline (isHandoverTarget ? : isHandoverSource ? :) ternaries). Values are
+  // byte-identical; the runtime opacity/line composition stays inline below.
+  const roleFactors = resolveBeamConeRoleFactors(isHandoverSource, isHandoverTarget);
   const handoverTransition = resolveHandoverVisualTransition({
     role: handoverRole,
     progress: beam.handoverTransitionProgress ?? 1,
@@ -267,7 +272,7 @@ function BeamCone({
   const frequencyRingInner = Math.max(0.1, footprintRadius * 0.84);
   const frequencyRingOuter = frequencyRingInner + DISC_FREQUENCY_RING_THICKNESS_WORLD;
   const handoverRoleRingInner = Math.max(0.1, footprintRadius + outerRingThickness + 1.2);
-  const handoverRoleRingOuter = handoverRoleRingInner + (isHandoverTarget ? 7.2 : 4.8);
+  const handoverRoleRingOuter = handoverRoleRingInner + roleFactors.roleRingOuterAdd;
 
   useEffect(() => {
     const material = coneMaterialRef.current;
@@ -338,7 +343,7 @@ function BeamCone({
         <meshBasicMaterial
             color={style.frequencySwatchColor}
             transparent
-            opacity={clampOpacity(0.62 * loadIntensity * dimFactor * (isHandoverTarget ? 1.1 : 1))}
+            opacity={clampOpacity(0.62 * loadIntensity * dimFactor * roleFactors.innerArcMul)}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
@@ -352,7 +357,7 @@ function BeamCone({
         <meshBasicMaterial
           color={satelliteTintColor}
           transparent
-          opacity={clampOpacity(0.78 * dimFactor * (isHandoverSource ? 0.62 : 1))}
+          opacity={clampOpacity(0.78 * dimFactor * roleFactors.groundDiscMul)}
           side={THREE.DoubleSide}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
@@ -366,7 +371,7 @@ function BeamCone({
           <meshBasicMaterial
             color={displayColor}
             transparent
-            opacity={clampOpacity(0.9 * loadIntensity * dimFactor * (isHandoverTarget ? 1.08 : isHandoverSource ? 0.52 : 1))}
+            opacity={clampOpacity(0.9 * loadIntensity * dimFactor * roleFactors.midRingMul)}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
@@ -396,9 +401,9 @@ function BeamCone({
             [beam.groundX, 0.06, beam.groundZ],
           ]}
           color={displayColor}
-          lineWidth={style.lineWidth + (isHandoverTarget ? 8.2 : isHandoverSource ? 3.2 : 3.2)}
+          lineWidth={style.lineWidth + roleFactors.haloLineWidthAdd}
           transparent
-          opacity={clampOpacity((isHandoverTarget ? 0.58 : isHandoverSource ? 0.36 : 0.24) * dimFactor * handoverLineScale)}
+          opacity={clampOpacity(roleFactors.haloLineOpacityBase * dimFactor * handoverLineScale)}
           depthWrite={false}
           renderOrder={19}
         />
@@ -425,7 +430,7 @@ function BeamCone({
           [beam.groundX, 0.12, beam.groundZ],
         ]}
         color={displayColor}
-        lineWidth={Math.max(1.4, style.lineWidth - 0.4) + (isHandoverTarget ? 2.8 : isHandoverSource ? 0.5 : 0)}
+        lineWidth={Math.max(1.4, style.lineWidth - 0.4) + roleFactors.coreLineWidthAdd}
         transparent
         opacity={clampOpacity((isHandoverSource ? BEAM_ROLE_TOKENS.serving.lineOpacity : style.lineOpacity) * loadIntensity * dimFactor * handoverLineScale)}
         dashed={style.dashed}
@@ -444,7 +449,7 @@ function BeamCone({
           <meshBasicMaterial
             color={displayColor}
             transparent
-            opacity={clampOpacity(style.endpointOpacity * dimFactor * (isHandoverTarget ? 1.18 : isHandoverSource ? 0.58 : 1))}
+            opacity={clampOpacity(style.endpointOpacity * dimFactor * roleFactors.endpointMul)}
             depthTest={false}
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -457,7 +462,7 @@ function BeamCone({
           color={displayColor}
           lineWidth={2.4}
           transparent
-          opacity={clampOpacity(endpointRingOpacity * dimFactor * (isHandoverTarget ? 1.18 : isHandoverSource ? 0.58 : 1))}
+          opacity={clampOpacity(endpointRingOpacity * dimFactor * roleFactors.endpointMul)}
           depthTest={false}
           depthWrite={false}
           renderOrder={25}
