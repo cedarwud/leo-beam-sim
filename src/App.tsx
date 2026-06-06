@@ -90,7 +90,9 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
+import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
+import { LiveKpiStrip } from './ui/LiveKpiStrip';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { TrainingForm } from './ui/modqn-training/TrainingForm';
 import { JobsPanel } from './ui/modqn-training/JobsPanel';
@@ -1898,6 +1900,8 @@ export function App() {
                   canToggleModqnReplayProof ? setModqnReplayProofRequested : undefined
                 }
               />
+            ) : activeLeftSidebarTab === 'objective' ? (
+              <ModqnObjectiveTab />
             ) : (
               <HandoverPolicyControls
                 draft={handoverPolicyDraft}
@@ -2038,6 +2042,14 @@ export function App() {
                   handoverMode={handoverMode}
                   rescalarizeFallbackCount={rescalarizeFallbackCount}
                 />
+                {sceneSource === 'live-sim' && (
+                  <LiveKpiStrip
+                    simState={simState}
+                    effectiveOffsetDb={appliedHandoverPolicy.offsetDb}
+                    effectiveTriggerTimeSec={appliedHandoverPolicy.triggerTimeSec}
+                    bandwidthMHz={effectiveProfile.channel.bandwidthMHz}
+                  />
+                )}
               </section>
             ) : (
               <section

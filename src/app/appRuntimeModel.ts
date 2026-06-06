@@ -26,7 +26,7 @@ export interface AppSidebarTabItem<T extends string> {
 }
 
 const LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
-  { key: 'objective', label: 'MODQN objective', description: 'legacy ω controls' },
+  { key: 'objective', label: 'MODQN objective', description: 'ω-weight editor (apply / reset to bundle)' },
   { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
   { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
   { key: 'training', label: 'MODQN training', description: 'objective, env, and run setup' },
@@ -41,6 +41,7 @@ const SINR_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
 
 const MODQN_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
   LEFT_SIDEBAR_TABS[5],
+  LEFT_SIDEBAR_TABS[0],
   LEFT_SIDEBAR_TABS[3],
   LEFT_SIDEBAR_TABS[4],
 ];
@@ -152,7 +153,11 @@ export function getRightSidebarTabsForSceneLane(
 ): readonly AppSidebarTabItem<RightSidebarTab>[] {
   if (lane === 'artifact-replay') return ARTIFACT_RIGHT_SIDEBAR_TABS;
   if (lane === 'modqn-replay-proof') return MODQN_REPLAY_PROOF_RIGHT_SIDEBAR_TABS;
-  if (lane === 'modqn-live-cell-preview') return SINR_RIGHT_SIDEBAR_TABS;
+  // Showcase navigation: the MODQN live cell preview right rail now offers the
+  // MODQN evidence tab (reward curve / decision viz / artifact picker) co-visible
+  // with live status, so the bundle diagnostics are reachable without entering the
+  // dedicated replay-proof lane. 'live' stays the default; 'modqn' is opt-in.
+  if (lane === 'modqn-live-cell-preview') return MODQN_RIGHT_SIDEBAR_TABS;
   return getRightSidebarTabsForMode(mode);
 }
 

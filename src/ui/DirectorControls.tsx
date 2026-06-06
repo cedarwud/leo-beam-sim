@@ -20,6 +20,16 @@ export function DirectorControls({
   onExit,
 }: DirectorControlsProps) {
   const active = phase !== 'idle';
+  // A disabled focus button is otherwise a silent grey button — the most common
+  // case is the canonical 89s baseline artifact, which carries 82 intra-HO events
+  // but 0 inter-satellite handovers, so Inter-HO Focus is correctly disabled.
+  // Explain WHY on hover instead of leaving it inert and unexplained.
+  const intraTitle = intraEnabled
+    ? 'Cinematic intra-HO focus — tight beam-level close-up + slow motion'
+    : 'No beam-switch (intra-HO) event in the current artifact / live window — intra-HO focus unavailable';
+  const interTitle = interEnabled
+    ? 'Cinematic inter-HO focus — wide satellite-context shot + slow motion'
+    : 'No inter-satellite handover in the current artifact / live window — inter-HO focus unavailable';
   return (
     <div
       className="leo-director-controls"
@@ -36,7 +46,7 @@ export function DirectorControls({
         data-testid="director-intra-focus"
         disabled={!intraEnabled || active}
         onClick={onIntraFocus}
-        title="Cinematic intra-HO focus — tight beam-level close-up + slow motion"
+        title={intraTitle}
       >
         Intra-HO Focus
       </button>
@@ -46,7 +56,7 @@ export function DirectorControls({
         data-testid="director-inter-focus"
         disabled={!interEnabled || active}
         onClick={onInterFocus}
-        title="Cinematic inter-HO focus — wide satellite-context shot + slow motion"
+        title={interTitle}
       >
         Inter-HO Focus
       </button>

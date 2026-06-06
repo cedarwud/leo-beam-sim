@@ -190,8 +190,13 @@ focus/filter controls.
 Lane-specific sidebars are part of viewport ownership:
 
 - `sinr-live`: left = SINR controls; right = live status.
-- `modqn-live-cell-preview`: left = replay/training/jobs controls; right = live
-  status only.
+- `modqn-live-cell-preview`: left = replay/objective(ω-weight editor)/training/jobs
+  controls; right = live status (default) + co-visible opt-in MODQN evidence. The
+  ω-weight editor (`ModqnObjectiveTab`) and the MODQN evidence tab
+  (`ArtifactPicker` / `RewardCurvePanel` / `DecisionVizPanel`, bundle diagnostics)
+  are reachable on the live lane without entering the dedicated replay-proof lane;
+  both are display-only / overlay-demo against the loaded bundle and never assert
+  producer proof. `live` stays the default right tab; `modqn` is opt-in.
 - `modqn-replay-proof`: left = replay cue toggle; right = MODQN evidence only.
 - `artifact-replay`: left/right = artifact replay/truth only.
 

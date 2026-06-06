@@ -319,6 +319,7 @@ export function ControlBar({
           data-testid="modqn-layer-preset-control"
           data-modqn-layer-preset={modqnVisualLayerPreset}
         >
+          <span className="leo-control-bar__group-label" aria-hidden="true">MODQN layers:</span>
           {MODQN_VISUAL_LAYER_PRESETS.map(preset => {
             const selected = modqnVisualLayerPreset === preset;
             return (

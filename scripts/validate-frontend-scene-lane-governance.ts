@@ -184,13 +184,23 @@ assert.equal(
 );
 assert.deepEqual(
   tabKeys(getRightSidebarTabsForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr')),
-  ['live'],
-  'MODQN live cell preview right sidebar should not mount MODQN evidence directly',
+  ['live', 'modqn'],
+  'MODQN live cell preview right sidebar offers live status + co-visible MODQN evidence (opt-in tab)',
 );
 assert.equal(
   getDefaultRightSidebarTabForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr'),
   'live',
-  'MODQN live cell preview should default the right sidebar to live status',
+  'MODQN live cell preview still DEFAULTS the right sidebar to live status (MODQN evidence is opt-in)',
+);
+assert.deepEqual(
+  tabKeys(getLeftSidebarTabsForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr')),
+  ['replay', 'objective', 'training', 'jobs'],
+  'MODQN live cell preview left sidebar exposes the revived ω-objective editor tab alongside replay/training/jobs',
+);
+assert.equal(
+  getDefaultLeftSidebarTabForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr'),
+  'replay',
+  'MODQN live cell preview still defaults the left sidebar to the replay cue',
 );
 assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('modqn-replay-proof', 'decision-overlay-on-live-sinr')),
@@ -1045,7 +1055,7 @@ assertContains(appRuntimeModelSource, 'MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS', 'A
 assertContains(appRuntimeModelSource, 'MODQN_REPLAY_PROOF_RIGHT_SIDEBAR_TABS', 'App runtime model replay proof right tabs');
 assertContains(appRuntimeModelSource, "lane === 'artifact-replay'", 'App runtime model artifact lane override');
 assertContains(appRuntimeModelSource, "lane === 'modqn-replay-proof'", 'App runtime model MODQN proof lane override');
-assertContains(appRuntimeModelSource, "lane === 'modqn-live-cell-preview') return SINR_RIGHT_SIDEBAR_TABS", 'App runtime model keeps cell preview right sidebar live-status only');
+assertContains(appRuntimeModelSource, "lane === 'modqn-live-cell-preview') return MODQN_RIGHT_SIDEBAR_TABS", 'App runtime model offers cell preview right sidebar live status + co-visible MODQN evidence');
 assertContains(appRuntimeModelSource, "if (lane === 'modqn-replay-proof') return 'modqn';", 'App runtime model defaults proof right sidebar to MODQN evidence');
 
 assertContains(timelineBarSource, 'data-source-owner={sourceOwner}', 'TimelineBar exposes source owner telemetry');
@@ -2042,6 +2052,68 @@ assertContains(
   governanceDoc,
   'It cancels any armed-but-unfired or active Director focus',
   'governance doc records the governance-safe Director-focus cancel on lane switch',
+);
+
+// ── Showcase exposure S3: revived ω-objective editor + co-visible MODQN evidence ──
+// The MODQN runtime ω-weight editor (ModqnObjectiveTab) was built but unmounted;
+// it is the only EDIT surface for the live ω weights. It is revived as the
+// 'objective' left tab on MODQN live lanes. The MODQN evidence panels and the
+// LiveKpiStrip are mounted so the built bundle diagnostics + live KPIs are
+// reachable in-app. All display-only / overlay-demo against the loaded bundle.
+const modqnObjectiveTabSource = readRepoFile('src/ui/ModqnObjectiveTab.tsx');
+assertContains(
+  appSource,
+  "from './ui/ModqnObjectiveTab'",
+  'App imports the ω-weight objective editor',
+);
+assertContains(
+  appSource,
+  "activeLeftSidebarTab === 'objective' ? (",
+  'App renders the revived objective tab branch (was dead registry data with no branch)',
+);
+assertContains(
+  appSource,
+  '<ModqnObjectiveTab />',
+  'App mounts the ω-weight objective editor on the objective tab',
+);
+assertContains(
+  modqnObjectiveTabSource,
+  'applyOmega',
+  'objective tab is the ω EDIT surface (apply)',
+);
+assertContains(
+  modqnObjectiveTabSource,
+  'resetOmega',
+  'objective tab can reset ω to the bundle weights',
+);
+assertContains(
+  appSource,
+  "from './ui/LiveKpiStrip'",
+  'App imports the live KPI strip',
+);
+assertContains(
+  appSource,
+  '<LiveKpiStrip',
+  'App mounts the live KPI strip on live lanes',
+);
+{
+  const kpiIndex = appSource.indexOf('<LiveKpiStrip');
+  const kpiGuard = appSource.slice(Math.max(0, kpiIndex - 80), kpiIndex);
+  assertContains(
+    kpiGuard,
+    "sceneSource === 'live-sim'",
+    'LiveKpiStrip is gated to the live-sim source (not artifact replay)',
+  );
+}
+assertContains(
+  controlBarSource,
+  'leo-control-bar__group-label',
+  'ControlBar gives the MODQN visual-layer preset group a visible heading',
+);
+assertContains(
+  governanceDoc,
+  'ω-weight editor',
+  'governance doc records the revived ω-weight editor on the MODQN live lane',
 );
 
 console.log('validate:frontend:scene-lane-governance passed');
