@@ -57,31 +57,33 @@ they must not share viewport ownership decisions.
 | `modqn-replay-proof` | MODQN evidence proof | immutable MODQN replay artifact/display state | replay proof layer, source-backed or display-proxy replay beams, focused decision trace, producer-horizon replay rail | live cell preview, live SINR beams, artifact overlays, live Walker forecast markers |
 | `artifact-replay` | visual-showcase replay | immutable `visual-showcase-v1` artifact | artifact-provided frame content, replay controls, artifact-owned event rail | live cell preview, MODQN replay proof, live SINR proof effects |
 
-## Non-3D Dashboard Dock
+## Non-3D Decision Metrics (Dashboard view removed)
 
-`AlgorithmDock` (`src/showcase/dashboard/AlgorithmDock.tsx`) is the non-3D
-dashboard surface. It is no longer a squished bottom strip: a top-level
-`ViewModeToggle` (`src/ui/ViewModeToggle.tsx`) flips the main area between the
-full-height 3D **Scene** view and a full-area **Dashboard** view
-(`leo-dashboard-view`, deep-linkable via `?view=dashboard`,
-`src/app/appPersistence.ts`), so the 3D viewport keeps its full height by default
-and the landscape flowchart finally gets room. The Dashboard view is lane-gated:
-it only renders where `algorithmDockMode !== null` (artifact-replay → flowchart +
-Plane-C tiles; modqn-live-cell-preview → live telemetry), and a no-dashboard lane
-(`sinr-live` / `modqn-replay-proof`) always resolves back to the Scene view. The
-dock is still mounted exactly once. It is lane-aware:
-`artifact-replay` renders the Plane-C `AlgorithmDashboard` against
-`visual-showcase-v1` replay truth, while `modqn-live-cell-preview` renders the
-Plane-A `LiveTelemetryPanel` against live training SSE telemetry. The live
-panel is INV-1/2/3 guarded: every tile declares Plane A provenance, staleness
-freezes sticky values or degrades offline, and missing producer channels render
-`source gap - not shown` instead of fabricated reward curves, loss, Pareto,
-Q-values, or learning-rate values.
+History: the MODQN dashboard first lived as a squished bottom dock (R1), then C3
+moved it into a full-area **Dashboard view** toggled by a top-level
+`ViewModeToggle` (3D Scene ↔ Dashboard, `?view=dashboard`). **C5 removed that
+Dashboard view and the `ViewModeToggle`**: the app now always renders the 3D
+**Scene** + sidebars, with no view switching. The pipeline **flowchart** is
+deferred to a future, paper-grade MODQN data-flow diagram project; its component
+code (`AlgorithmDock.tsx`, `AlgorithmFlowchart.tsx`, `ViewModeToggle.tsx`) is
+**retained on disk but no longer mounted**, so it can be revived for that
+project. `appPersistence` still exports the `?view` helpers for the same reason.
 
-The dock and both dashboard components import no Three/scene/viz symbols and
-mount no `<Canvas>`. The dock is a normal flex child of `leo-app-shell`,
-co-visible with the 3D row without viewport occlusion, and is not a second
-proof lane.
+What survives in the UI is the **per-frame MODQN decision metric tiles** (C4):
+`AlgorithmDashboard` takes a `content` prop (`'metrics' | 'flowchart' | 'all'`,
+stamped as `data-content`). App mounts it with `content="metrics"` +
+`variant="sidebar"` in the **artifact-replay right sidebar** (Scene view), so the
+reward scalar/components, objective ω weights, selected action + top scores,
+serving, handover, and SINR/throughput read out **co-visible with the 3D replay
+and update per frame**. It is display-only (Rule#6): it reads the same
+`visual-showcase-v1` truth through `buildDashboardSeriesModel`, keeps the INV-1
+provenance chips, and fails closed with `source gap - not shown`. The sidebar
+metrics are lane-owned — mounted only inside the `artifact-replay` right-sidebar
+branch, never on a live lane.
+
+`AlgorithmDashboard` imports no Three/scene/viz symbols and mounts no `<Canvas>`;
+it is a normal sidebar child and is not a second proof lane. (The retained but
+unmounted `AlgorithmDock` / `LiveTelemetryPanel` keep the same no-3D contract.)
 
 The INV-1 truth-plane, INV-2 telemetry-status (the staleness `!=` offline
 distinction and the frozen-tile filter), and INV-3 source-gap colours are

@@ -17,6 +17,11 @@ export type SceneSourceMode = 'live-sim' | 'artifact-replay';
 // 3D viewport; 'dashboard' = the full-area MODQN algorithm pipeline / dashboard /
 // live-telemetry surface (was the squished bottom dock). Deep-linkable via
 // ?view=dashboard, mirroring the sceneSource URL pattern (no react-router).
+//
+// C5: the Dashboard view + ViewModeToggle were removed from App (the app always
+// renders the 3D scene). These ?view helpers are intentionally RETAINED but
+// currently UNUSED — kept for the future MODQN data-flow diagram project that
+// will revive a full-area surface. Do not wire them back without that project.
 export type ViewMode = 'scene' | 'dashboard';
 
 export function readViewModeFromUrl(): ViewMode {

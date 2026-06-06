@@ -16,6 +16,15 @@ export interface AlgorithmDashboardProps {
   readonly frameIndex: number;
   readonly currentTimeSecRef?: FlowchartTimeRef | null;
   readonly variant?: 'sidebar' | 'dock';
+  /**
+   * Which sections to render. The flowchart wants horizontal room so it lives in
+   * the full-area Dashboard view (`'flowchart'`), while the per-frame decision
+   * metric tiles are number rows that read better co-visible with the 3D scene,
+   * so they mount in the artifact-replay sidebar (`'metrics'`). `'all'` keeps the
+   * original combined layout. Display-only either way (Rule#6) — the split is
+   * presentation, it never changes which artifact fields are read.
+   */
+  readonly content?: 'all' | 'flowchart' | 'metrics';
 }
 
 interface DashboardTileProps {
@@ -186,8 +195,11 @@ export function AlgorithmDashboard({
   frameIndex,
   currentTimeSecRef = null,
   variant = 'sidebar',
+  content = 'all',
 }: AlgorithmDashboardProps): JSX.Element {
   const model = useMemo(() => buildDashboardSeriesModel(artifact), [artifact]);
+  const showFlowchart = content !== 'metrics';
+  const showMetrics = content !== 'flowchart';
 
   if (artifact === null) {
     return (
@@ -195,6 +207,7 @@ export function AlgorithmDashboard({
         className="leo-algorithm-dashboard leo-algorithm-dashboard--empty"
         data-testid="algorithm-dashboard"
         data-variant={variant}
+        data-content={content}
         data-plane={model.plane}
         data-artifact-loaded="false"
       >
@@ -202,15 +215,17 @@ export function AlgorithmDashboard({
           <strong>Algorithm dashboard</strong>
           <span>visual-showcase-v1</span>
         </header>
-        <section
-          className="leo-algorithm-dashboard__tile leo-algorithm-dashboard__tile--flowchart"
-          data-testid="algorithm-dashboard-flowchart"
-        >
-          <header className="leo-algorithm-dashboard__tile-header">
-            <strong>Decision pipeline</strong>
-          </header>
-          <AlgorithmFlowchart artifact={artifact} currentTimeSecRef={currentTimeSecRef} />
-        </section>
+        {showFlowchart ? (
+          <section
+            className="leo-algorithm-dashboard__tile leo-algorithm-dashboard__tile--flowchart"
+            data-testid="algorithm-dashboard-flowchart"
+          >
+            <header className="leo-algorithm-dashboard__tile-header">
+              <strong>Decision pipeline</strong>
+            </header>
+            <AlgorithmFlowchart artifact={artifact} currentTimeSecRef={currentTimeSecRef} />
+          </section>
+        ) : null}
         <p className="leo-algorithm-dashboard__empty">No artifact loaded.</p>
       </section>
     );
@@ -237,6 +252,7 @@ export function AlgorithmDashboard({
       className="leo-algorithm-dashboard"
       data-testid="algorithm-dashboard"
       data-variant={variant}
+      data-content={content}
       data-plane={model.plane}
       data-artifact-loaded="true"
       data-frame-index={String(frameIndex)}
@@ -246,16 +262,20 @@ export function AlgorithmDashboard({
         <span>Plane C / visual-showcase-v1</span>
       </header>
 
-      <section
-        className="leo-algorithm-dashboard__tile leo-algorithm-dashboard__tile--flowchart"
-        data-testid="algorithm-dashboard-flowchart"
-      >
-        <header className="leo-algorithm-dashboard__tile-header">
-          <strong>Decision pipeline</strong>
-        </header>
-        <AlgorithmFlowchart artifact={artifact} currentTimeSecRef={currentTimeSecRef} />
-      </section>
+      {showFlowchart ? (
+        <section
+          className="leo-algorithm-dashboard__tile leo-algorithm-dashboard__tile--flowchart"
+          data-testid="algorithm-dashboard-flowchart"
+        >
+          <header className="leo-algorithm-dashboard__tile-header">
+            <strong>Decision pipeline</strong>
+          </header>
+          <AlgorithmFlowchart artifact={artifact} currentTimeSecRef={currentTimeSecRef} />
+        </section>
+      ) : null}
 
+      {showMetrics ? (
+      <>
       <DashboardTile
         title="Reward scalar"
         testId="algorithm-dashboard-reward"
@@ -377,6 +397,8 @@ export function AlgorithmDashboard({
           value={throughput === null ? 'frame unavailable' : `${formatNumber(throughput, 1)} Mbps`}
         />
       </DashboardTile>
+      </>
+      ) : null}
     </section>
   );
 }

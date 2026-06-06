@@ -12,9 +12,9 @@
  *   - the bar mounts, defaults to sinr-live;
  *   - clicking each segment flips the authoritative data-scene-lane;
  *   - MODQN Live exposes the MODQN visual-layer preset control;
- *   - Artifact Showcase mounts the AlgorithmDock + dashboard (flowchart host)
- *     and stamps the FIX-1 data-artifact-source honesty attribute;
- *   - switching back to a live lane tears the artifact dock back down;
+ *   - Artifact Showcase mounts the scene-view decision metric tiles
+ *     (content=metrics sidebar) and stamps the FIX-1 data-artifact-source attribute;
+ *   - switching back to a live lane tears the artifact surface back down;
  *   - no uncaught page errors fire across the whole tour.
  *
  * Requires a running dev server (`npm run dev`); pass APP_URL or argv[2] to
@@ -28,7 +28,6 @@ const SHELL = '.leo-app-shell';
 const BAR = '[data-testid="lane-experience-bar"]';
 const SEG = (lane: string) => `[data-testid="lane-experience-${lane}"]`;
 const PRESET = '[data-testid="modqn-layer-preset-control"]';
-const DOCK = '[data-testid="algorithm-dock"]';
 const DASHBOARD = '[data-testid="algorithm-dashboard"]';
 
 async function sceneLane(page: Page): Promise<string | null> {
@@ -75,22 +74,23 @@ async function main(): Promise<void> {
     // 3) MODQN Proof → replay-proof lane.
     await selectLane(page, 'modqn-replay-proof');
 
-    // 4) Artifact Showcase → artifact-replay lane + dock + dashboard (flowchart
-    //    host) + FIX-1 honesty attribute stamped.
+    // 4) Artifact Showcase → artifact-replay lane. The per-frame decision metric
+    //    tiles mount in the scene-view sidebar (content=metrics); FIX-1 honesty
+    //    attribute is stamped. (C5 removed the Dashboard view + flowchart dock.)
     await selectLane(page, 'artifact-replay');
-    await page.waitForSelector(DOCK, { timeout: 15_000 });
-    await page.waitForSelector(DASHBOARD, { timeout: 15_000 });
+    await page.waitForSelector('[data-testid="artifact-replay-sidebar"]', { timeout: 15_000 });
+    await page.waitForSelector(`${DASHBOARD}[data-content="metrics"]`, { timeout: 15_000 });
     const artifactSource = await page.getAttribute(SHELL, 'data-artifact-source');
     assert.ok(
       artifactSource !== null && artifactSource !== '',
       `artifact lane stamps the FIX-1 data-artifact-source attribute (got ${String(artifactSource)})`,
     );
 
-    // 5) back to SINR Live → lane flips back and the artifact dock is torn down.
+    // 5) back to SINR Live → lane flips back and the artifact surface is torn down.
     await selectLane(page, 'sinr-live');
     await page.waitForFunction(
       sel => document.querySelector(sel) === null,
-      DOCK,
+      '[data-testid="artifact-replay-sidebar"]',
       { timeout: 10_000 },
     );
     assert.equal(await sceneLane(page), 'sinr-live', 'switching back resolves the sinr-live lane');

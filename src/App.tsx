@@ -121,11 +121,10 @@ import {
 } from './ui/ArtifactSourceBadge';
 import { ArtifactSatelliteCompass } from './ui/ArtifactSatelliteCompass';
 import { LaneExperienceBar } from './ui/LaneExperienceBar';
-import { ViewModeToggle } from './ui/ViewModeToggle';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
-import { AlgorithmDock } from './showcase/dashboard/AlgorithmDock';
+import { AlgorithmDashboard } from './showcase/dashboard/AlgorithmDashboard';
 import { TrainingTelemetryFeed } from './showcase/dashboard/TrainingTelemetryFeed';
 import type { VisualShowcaseArtifact } from './scene/visual-showcase-contract';
 import type { NormalizedSceneFrame } from './scene/NormalizedSceneFrame';
@@ -175,11 +174,8 @@ import {
   readSceneSourceFromUrl,
   readSceneTopologyOverrides,
   readSceneVisualScaleOverrides,
-  readViewModeFromUrl,
   syncSceneSourceToUrl,
-  syncViewModeToUrl,
   type SceneSourceMode,
-  type ViewMode,
 } from './app/appPersistence';
 import {
   resolveSceneLane,
@@ -461,7 +457,6 @@ function resolveModqnReplayVisualSlotOffset(
 
 export function App() {
   const [sceneSource, setSceneSource] = useState<SceneSourceMode>(() => readSceneSourceFromUrl());
-  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewModeFromUrl());
   const [showcaseArtifact, setShowcaseArtifact] = useState<VisualShowcaseArtifact | null>(null);
   const [showcaseArtifactSource, setShowcaseArtifactSource] = useState<string | null>(null);
   const [showcaseLoading, setShowcaseLoading] = useState(false);
@@ -508,18 +503,6 @@ export function App() {
     [appMode, modqnReplayProofRequestActive, sceneSource],
   );
   const showModqnReplayScene = shouldRenderModqnReplayScene(sceneLane);
-  const algorithmDockMode: 'artifact' | 'live' | null = sceneSource === 'artifact-replay' ? 'artifact' : sceneLane === 'modqn-live-cell-preview' ? 'live' : null;
-  // Top-level view axis. The MODQN dashboard (flowchart / Plane-C / live telemetry)
-  // now occupies its own full-area Dashboard view instead of a squished bottom
-  // dock; 'scene' keeps the 3D viewport full height. The Dashboard view only
-  // exists where there is a dashboard to show (algorithmDockMode !== null), so a
-  // no-dashboard lane always resolves to the scene view.
-  const dashboardAvailable = algorithmDockMode !== null;
-  const effectiveViewMode: ViewMode = dashboardAvailable ? viewMode : 'scene';
-  const handleViewModeChange = useCallback((next: ViewMode) => {
-    setViewMode(next);
-    syncViewModeToUrl(next);
-  }, []);
   // omegaActive snapshot — owned by App so it can be threaded into ModqnHandoverModeContext
   // and read by useSimulation (inside Canvas). Starts at paper-faithful defaults.
   const [omegaActiveForContext, setOmegaActiveForContext] = useState<RuntimeOmegaState>(
@@ -1864,11 +1847,6 @@ export function App() {
       )}
       <div className="leo-top-nav-row">
         <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
-        <ViewModeToggle
-          value={effectiveViewMode}
-          dashboardAvailable={dashboardAvailable}
-          onChange={handleViewModeChange}
-        />
       </div>
       <ControlBar
         selectedProfileId={selectedProfileId}
@@ -1899,7 +1877,6 @@ export function App() {
         onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}
         onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
       />
-      {effectiveViewMode === 'scene' && (
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
           <SidebarTabShell
@@ -2060,6 +2037,17 @@ export function App() {
                   <strong>{showcaseArtifact?.scenario.truthMode ?? 'artifact truth'}</strong>
                   <span>{showcaseArtifact?.provenance.validation.status ?? showcaseError ?? 'loading'}</span>
                 </div>
+                {/* Per-frame MODQN decision metric tiles. The flowchart keeps the
+                    full-area Dashboard view (it needs the width); these number-row
+                    tiles read better co-visible with the 3D replay, so they live in
+                    the artifact-replay sidebar. Display-only, lane-owned, reads the
+                    same visual-showcase-v1 truth with per-tile provenance chips. */}
+                <AlgorithmDashboard
+                  artifact={showcaseArtifact}
+                  frameIndex={frameIndex}
+                  variant="sidebar"
+                  content="metrics"
+                />
               </section>
             ) : activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
@@ -2141,22 +2129,6 @@ export function App() {
           </SidebarTabShell>
         </aside>
       </div>
-      )}
-      {effectiveViewMode === 'dashboard' && algorithmDockMode !== null && (
-        <section className="leo-dashboard-view" data-testid="dashboard-view">
-          <AlgorithmDock
-            mode={algorithmDockMode}
-            artifact={showcaseArtifact}
-            frameIndex={frameIndex}
-            currentTimeSecRef={currentTimeSecRef}
-          />
-          {/* Artifact replay playback is App-level (ShowcaseReplayController), so the
-              timeline stays live in the dashboard view even with MainScene unmounted.
-              The live-lane dashboard (LiveTelemetryPanel) is SSE-episode-driven and
-              does not use the live-walker sim clock, so no (frozen) timeline there. */}
-          {sceneSource === 'artifact-replay' && timelineBar}
-        </section>
-      )}
       <TrainingTelemetryFeed enabled={appMode === 'modqn-demo'} />
     </div>
     </ModqnHandoverModeProvider>

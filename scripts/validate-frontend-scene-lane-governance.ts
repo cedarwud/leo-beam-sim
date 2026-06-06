@@ -394,44 +394,14 @@ assertNotContains(
   'App must not derive handover rail source labels from free sceneSource strings',
 );
 
-assertContains(
-  appSource,
-  "from './showcase/dashboard/AlgorithmDock'",
-  'App imports the artifact-lane AlgorithmDock',
-);
+// C5: the AlgorithmDock is no longer mounted in App (Dashboard view removed). Its
+// component file is retained for the future MODQN data-flow diagram project, so the
+// component-shape asserts below still run; only the App-side mount is gone.
 assert.equal(
   countOccurrences(appSource, '<AlgorithmDock'),
-  1,
-  'AlgorithmDock is mounted exactly once',
+  0,
+  'App no longer mounts the AlgorithmDock (C5: Dashboard view removed; dock code retained, unmounted)',
 );
-{
-  const dockMountIndex = appSource.indexOf('<AlgorithmDock');
-  const algorithmDockModeLine = appSource.split('\n')
-    .find(line => line.includes('const algorithmDockMode')) ?? '';
-  const algorithmDockModeIndex = appSource.indexOf('const algorithmDockMode');
-  const dockGuardSlice = appSource.slice(Math.max(0, dockMountIndex - 220), dockMountIndex);
-  assert.ok(dockMountIndex >= 0, 'AlgorithmDock mount exists in App');
-  assert.ok(algorithmDockModeIndex >= 0 && algorithmDockModeIndex < dockMountIndex, 'AlgorithmDock mode is derived before mount');
-  assertContains(
-    algorithmDockModeLine,
-    "sceneSource === 'artifact-replay'",
-    'AlgorithmDock mode derives artifact mode from artifact replay source',
-  );
-  assertContains(
-    algorithmDockModeLine,
-    "sceneLane === 'modqn-live-cell-preview'",
-    'AlgorithmDock mode derives live mode from MODQN live cell preview lane',
-  );
-  assert.ok(
-    dockGuardSlice.includes('algorithmDockMode !== null'),
-    'AlgorithmDock mount is gated by algorithmDockMode !== null',
-  );
-  assertContains(
-    dockGuardSlice,
-    'algorithmDockMode !== null',
-    'AlgorithmDock mount has an immediate lane-aware guard',
-  );
-}
 
 assertContains(
   algorithmDockSource,
@@ -457,6 +427,11 @@ assertContains(
   algorithmDockSource,
   'variant="dock"',
   'AlgorithmDock renders the dashboard in dock layout variant',
+);
+assertContains(
+  algorithmDockSource,
+  'content="flowchart"',
+  'AlgorithmDock renders only the flowchart in the dashboard view (C4 split)',
 );
 assert.equal(
   countOccurrences(algorithmDockSource, '<LiveTelemetryPanel'),
@@ -522,6 +497,48 @@ assertContains(
   'source gap - not shown',
   'AlgorithmDashboard fails closed on source gaps',
 );
+
+// ── C4: flowchart stays in the Dashboard view, the per-frame decision metric
+//    tiles move to the artifact-replay sidebar (scene view, co-visible with 3D).
+//    The split is display-only (Rule#6) — same artifact fields, different host.
+assertContains(
+  algorithmDashboardSource,
+  "content?: 'all' | 'flowchart' | 'metrics'",
+  'AlgorithmDashboard exposes the flowchart/metrics content split (C4)',
+);
+assertContains(
+  algorithmDashboardSource,
+  'data-content={content}',
+  'AlgorithmDashboard stamps its content section on the root for view/lane gating',
+);
+// (no-3D / no-scene / no-viz import guards for AlgorithmDashboard are asserted in
+//  the existing block below — not duplicated here.)
+
+// App mounts the metric tiles in the artifact-replay sidebar, display-only +
+// lane-owned. The flowchart host stays in the AlgorithmDock (Dashboard view).
+assertContains(
+  appSource,
+  "from './showcase/dashboard/AlgorithmDashboard'",
+  'App imports AlgorithmDashboard for the artifact-replay sidebar metrics',
+);
+assert.equal(
+  countOccurrences(appSource, '<AlgorithmDashboard'),
+  1,
+  'App mounts AlgorithmDashboard exactly once (artifact-replay sidebar metrics)',
+);
+{
+  const metricsMountIndex = appSource.indexOf('<AlgorithmDashboard');
+  assert.ok(metricsMountIndex >= 0, 'App AlgorithmDashboard mount exists');
+  const metricsSlice = appSource.slice(metricsMountIndex, metricsMountIndex + 220);
+  assertContains(metricsSlice, 'content="metrics"', 'App sidebar dashboard renders only the metric tiles (C4 split)');
+  assertContains(metricsSlice, 'variant="sidebar"', 'App sidebar dashboard uses the sidebar layout variant');
+  const artifactTabIndex = appSource.indexOf("activeRightSidebarTab === 'artifact'");
+  const liveTabIndex = appSource.indexOf("activeRightSidebarTab === 'live'");
+  assert.ok(
+    artifactTabIndex >= 0 && artifactTabIndex < metricsMountIndex && metricsMountIndex < liveTabIndex,
+    'App sidebar metrics are lane-owned inside the artifact right-sidebar branch',
+  );
+}
 assertNotContains(algorithmDashboardSource, "from 'three", 'AlgorithmDashboard must not import three');
 assertNotContains(algorithmDashboardSource, 'from "three', 'AlgorithmDashboard must not import three');
 assertNotContains(algorithmDashboardSource, '@react-three/', 'AlgorithmDashboard must not import react-three');
@@ -2168,69 +2185,27 @@ assertContains(
   'Tier-2 preview stays honest that it is not a wired training control',
 );
 
-// ── Consolidation C3: Dashboard view/route (dock out of the squished bottom) ──
-// The MODQN dashboard (flowchart / Plane-C / live telemetry) now occupies its own
-// full-area Dashboard view selected by a top-level ViewModeToggle (?view=dashboard),
-// so the 3D scene keeps its full height in the default Scene view. The AlgorithmDock
-// is still mounted exactly once (now inside the Dashboard view, not the bottom).
-const viewModeToggleSource = readRepoFile('src/ui/ViewModeToggle.tsx');
-assertContains(
-  appSource,
-  "from './ui/ViewModeToggle'",
-  'App imports the top-level view toggle',
-);
+// ── Consolidation C5: Dashboard view/route removed — only the 3D scene renders ──
+// C3's top-level ViewModeToggle + full-area Dashboard view were removed: the app
+// always shows the 3D Scene + sidebars. The ViewModeToggle / AlgorithmDock component
+// files stay on disk (retained for the future MODQN data-flow diagram project) but are
+// no longer mounted, and the MODQN pipeline flowchart is deferred to that project. The
+// per-frame decision metric tiles stay in the artifact-replay sidebar (the
+// AlgorithmDashboard content="metrics" block above).
 assert.equal(
   countOccurrences(appSource, '<ViewModeToggle'),
-  1,
-  'ViewModeToggle is mounted exactly once',
+  0,
+  'App no longer mounts the ViewModeToggle (C5: Dashboard view removed)',
 );
-assertContains(
+assertNotContains(
   appSource,
-  'const [viewMode, setViewMode] = useState<ViewMode>',
-  'App owns the runtime view-mode state',
+  "effectiveViewMode === 'dashboard'",
+  'App has no dashboard-view branch — the 3D scene is the only view (C5)',
 );
-assertContains(
-  appSource,
-  "const effectiveViewMode: ViewMode = dashboardAvailable ? viewMode : 'scene';",
-  'App falls the view back to scene on lanes with no dashboard (never strands on an empty Dashboard view)',
-);
-assertContains(
-  appSource,
-  "{effectiveViewMode === 'scene' && (",
-  'App renders the 3D shell row only in the scene view (no bottom dock squish)',
-);
-assertContains(
-  appSource,
-  "{effectiveViewMode === 'dashboard' && algorithmDockMode !== null && (",
-  'App renders the AlgorithmDock in the full-area dashboard view, lane-gated',
-);
-assertContains(
-  appSource,
-  'data-testid="dashboard-view"',
-  'App exposes the dashboard view container test id',
-);
-assertContains(
-  appPersistenceSource,
-  'export function readViewModeFromUrl(): ViewMode',
-  'appPersistence reads the ?view URL param',
-);
-assertContains(
-  appPersistenceSource,
-  'export function syncViewModeToUrl(mode: ViewMode): void',
-  'appPersistence keeps ?view deep-linkable',
-);
-assertContains(
-  viewModeToggleSource,
-  'data-testid="view-mode-toggle"',
-  'ViewModeToggle exposes its root test id',
-);
-assertNotContains(viewModeToggleSource, "from 'three", 'ViewModeToggle must not import three');
-assertNotContains(viewModeToggleSource, '@react-three/', 'ViewModeToggle must not import react-three');
-assertNotContains(viewModeToggleSource, '<Canvas', 'ViewModeToggle must not mount a Canvas');
 assertContains(
   governanceDoc,
   'Dashboard view',
-  'governance doc documents the dashboard view/route',
+  'governance doc records the dashboard view history (now removed)',
 );
 
 console.log('validate:frontend:scene-lane-governance passed');

@@ -50,6 +50,7 @@ export function AlgorithmDock({
               frameIndex={frameIndex}
               currentTimeSecRef={currentTimeSecRef}
               variant="dock"
+              content="flowchart"
             />
           ) : (
             <LiveTelemetryPanel variant="dock" />
