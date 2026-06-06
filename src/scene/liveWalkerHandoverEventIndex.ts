@@ -48,6 +48,17 @@ export interface LiveWalkerHandoverEvent {
   readonly fromBeamId: number;
   readonly toSatId: string;
   readonly toBeamId: number;
+  /**
+   * Recorded SINR of the two candidate beams AT the handover decision, carried
+   * verbatim from the engine `HandoverEvent` (the index already steps the real
+   * sim to collect events; these were simply dropped before). `fromSinrDb` is
+   * the serving (losing) candidate, `toSinrDb` the winner; both are live
+   * SINR-truth, NOT producer/MODQN values. Feeds the cinema SINR explainer.
+   */
+  readonly fromSinrDb: number | null;
+  readonly toSinrDb: number;
+  /** `toSinrDb - fromSinrDb` (dB); null when `fromSinrDb` is null (cold attach). */
+  readonly deltaDb: number | null;
   readonly sourceStartSec: number;
   readonly sourceEndSec: number;
   readonly clickTargetSec: number;
@@ -65,6 +76,12 @@ export interface LiveWalkerHandoverEventIndex {
   readonly aggregateUeCount: 1;
   readonly aggregateClaim: 'not-100-ue-aggregate';
   readonly generation: LiveWalkerHandoverEventIndexGeneration;
+  /**
+   * Inter-HO SINR-offset threshold (dB) of the live handover profile
+   * (`profile.handover.offsetDb`). The cinema SINR explainer surfaces it as the
+   * decision rule ("best SINR − offset > serving SINR"). Display-only.
+   */
+  readonly offsetDb: number;
   readonly sourceGapReasons: readonly string[];
   readonly events: readonly LiveWalkerHandoverEvent[];
 }
@@ -172,6 +189,7 @@ function createEmptyIndex(
       }),
       runtimeFramePath: 'stepRuntimeFrame',
     },
+    offsetDb: input.profile.handover.offsetDb,
     sourceGapReasons,
     events: [],
   };
@@ -213,6 +231,9 @@ export function createLiveWalkerHandoverEventFromRuntimeEvent(
     fromBeamId: event.fromBeamId,
     toSatId: event.toSatId,
     toBeamId: event.toBeamId,
+    fromSinrDb: event.fromSinrDb,
+    toSinrDb: event.toSinrDb,
+    deltaDb: event.deltaDb,
     sourceStartSec: clampLiveWalkerEventSourceTimeSec(roundTimeSec(sourceTimeSec - 10)),
     sourceEndSec: clampLiveWalkerEventSourceTimeSec(roundTimeSec(sourceTimeSec + 20)),
     clickTargetSec: sourceTimeSec,

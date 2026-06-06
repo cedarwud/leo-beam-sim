@@ -48,6 +48,13 @@ export interface SceneLaneRenderPlan {
   readonly showProfileHandoverStoryLayer: boolean;
   readonly showCinematicSpotlight: boolean;
   readonly showDirectorFocus: boolean;
+  /**
+   * Handover-cinema candidate-beam highlight (S1). Lane-owned to `sinr-live`
+   * ONLY (real SINR, no producer dependency) AND only while the director
+   * cinematic camera is engaged. Inert on `modqn-live-cell-preview`,
+   * `modqn-replay-proof` (Rule#8), and `artifact-replay`.
+   */
+  readonly showCandidateHandoverHighlight: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
   readonly showReplayProofLayer: boolean;
   readonly showArtifactFpsCounter: boolean;
@@ -84,6 +91,11 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // the cinematic camera tween + slow-mo are. Replay-proof stays inert (Rule#8).
   const showDirectorFocus =
     (showSinrLiveViewport || showCellOverlay || isArtifactReplay) && input.cinematicMode === 'director';
+  // Handover-cinema candidate highlight (S1): sinr-live ONLY + director cinematic
+  // engaged. Narrower than showDirectorFocus on purpose — S1 builds the real-SINR
+  // candidate story on the live SINR lane with no producer dependency; the MODQN
+  // and artifact variants are later slices.
+  const showCandidateHandoverHighlight = showSinrLiveViewport && input.cinematicMode === 'director';
   const showLiveSatelliteMarkers = isLiveScene && (
     input.sceneLane === 'sinr-live'
     || input.sceneLane === 'modqn-live-cell-preview'
@@ -133,6 +145,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     showProfileHandoverStoryLayer,
     showCinematicSpotlight,
     showDirectorFocus,
+    showCandidateHandoverHighlight,
     // Replaces legacy single-lane anchor: effectiveCinematicMode: showCinematicSpotlight ? input.cinematicMode : 'off'
     effectiveCinematicMode: showCinematicSpotlight
       ? 'spotlight'

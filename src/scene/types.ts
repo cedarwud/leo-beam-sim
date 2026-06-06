@@ -65,6 +65,21 @@ export interface RuntimeDirectorFocusCommand {
   framing?: DirectorFocusFraming;
 }
 
+/**
+ * Handover-cinema candidate-beam highlight command (S1). The two beams of the
+ * focused live-walker handover the cinema is framing; drives the lane-owned
+ * `CandidateBeamHighlight` scene layer (gated by the render plan, sinr-live
+ * only). It carries geometry-only beam identity — never SINR/decision truth —
+ * so it stays display-only (governance Rule#6).
+ */
+export interface RuntimeCandidateHighlightCommand {
+  kind: DirectorFocusKind;
+  fromSatId: string;
+  fromBeamId: number;
+  toSatId: string;
+  toBeamId: number;
+}
+
 export interface RuntimeConfig {
   appMode: AppExperienceMode;
   presentationMode: PresentationMode;
@@ -77,6 +92,7 @@ export interface RuntimeConfig {
   cinematicMode: CinematicMode;
   cameraCommand?: RuntimeCameraCommand;
   directorFocusCommand?: RuntimeDirectorFocusCommand;
+  candidateHighlight?: RuntimeCandidateHighlightCommand | null;
   reducedMotion: boolean;
   viewport: RuntimeViewport;
   ueCount?: number;

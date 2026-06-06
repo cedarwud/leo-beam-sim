@@ -75,6 +75,12 @@ export interface DirectorOrchestration {
   readonly cinematicFadePulse: number | null;
   readonly handleCinematicSeekPeak: () => void;
   readonly liveDirectorFocusEventSec: number | null;
+  /**
+   * Event id of the armed/active live Director focus (null when none). Shares the
+   * exact lifecycle of `liveDirectorFocusEventSec`; the handover cinema uses it to
+   * look up the focused event's candidate detail in the live Walker index.
+   */
+  readonly liveDirectorFocusEventId: string | null;
   readonly cancelPendingLiveFocus: () => void;
 }
 
@@ -108,6 +114,10 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
   // seek target to this real event time) and doubles as the "armed" indicator for
   // the Escape/cancel handler during the async arming window.
   const [liveDirectorFocusEventSec, setLiveDirectorFocusEventSec] = useState<number | null>(null);
+  // ITEM #C / cinema (S1): the event id of the armed/active live focus, shared
+  // lifecycle with the source-time marker above. Lets the handover cinema resolve
+  // the focused event's candidate detail (beam ids + recorded SINR) from the index.
+  const [liveDirectorFocusEventId, setLiveDirectorFocusEventId] = useState<string | null>(null);
   const [activeCinematicWindow, setActiveCinematicWindow] = useState<CinematicReplayWindow | null>(null);
   const [cinematicFadePulse, setCinematicFadePulse] = useState<number | null>(null);
   const pendingCinematicSeekRef = useRef<(() => void) | null>(null);
@@ -131,6 +141,7 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
     pendingLiveFocusRef.current = null;
     pendingCinematicSeekRef.current = null;
     setLiveDirectorFocusEventSec(null);
+    setLiveDirectorFocusEventId(null);
   }, []);
 
   const requestDirectorFocus = useCallback((kind: 'intra' | 'inter') => {
@@ -183,6 +194,7 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
         // Escape / viewport-click / lane-switch can cancel it at any point, and so
         // the honesty telemetry exposes the real resolved event source-time.
         setLiveDirectorFocusEventSec(focusTarget.eventSec);
+        setLiveDirectorFocusEventId(focusTarget.eventId);
         const runLiveFocusSeek = () => {
           // Play the sim so the slow-mo glides INTO the upcoming handover.
           if (playback.paused) playback.togglePause();
@@ -319,6 +331,7 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
       && liveDirectorFocusEventSec !== null
     ) {
       setLiveDirectorFocusEventSec(null);
+      setLiveDirectorFocusEventId(null);
     }
   }, [camera.directorPhase, liveDirectorFocusEventSec]);
 
@@ -361,6 +374,7 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
     cinematicFadePulse,
     handleCinematicSeekPeak,
     liveDirectorFocusEventSec,
+    liveDirectorFocusEventId,
     cancelPendingLiveFocus,
   };
 }

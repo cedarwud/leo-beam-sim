@@ -1,5 +1,12 @@
 .leo-director-controls {
   min-width: 0;
+  // The collapsed DiagnosticsDrawer chip is absolute bottom:0 (z-index:4) in the
+  // same sidebar stack and overlaps this bottom control strip, stealing the
+  // director / handover-cinema arm-button clicks. Win the hit-test (and paint over
+  // the chip's overlapping edge with this strip's own background). Pre-existing
+  // branch layout regression surfaced while wiring the handover cinema (S1).
+  position: relative;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

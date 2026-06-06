@@ -52,7 +52,7 @@ they must not share viewport ownership decisions.
 
 | Scene lane | Owner | Source | Allowed viewport proof | Must stay off |
 |---|---|---|---|---|
-| `sinr-live` | live SINR demo | live Walker simulator / configured profile | live satellites, live SINR beams, SINR handover effects, diagnostics, live Walker timeline/forecast rails | MODQN replay proof, MODQN cell overlay |
+| `sinr-live` | live SINR demo | live Walker simulator / configured profile | live satellites, live SINR beams, SINR handover effects, diagnostics, live Walker timeline/forecast rails, handover-cinema candidate-beam highlight + SINR explainer (focus-scoped, `sinr-offset` claim) | MODQN replay proof, MODQN cell overlay |
 | `modqn-live-cell-preview` | MODQN live preview | live Walker simulator for geometry/SINR plus explicit MODQN decision overlay | cell overlay, all-UE service map, active cell UE-count badges, clean cell hopping state, explicit visual layer presets, overlay-labeled handover cues/decision rail | MODQN replay proof, legacy live beam cones, decorative live effects, artifact overlays |
 | `modqn-replay-proof` | MODQN evidence proof | immutable MODQN replay artifact/display state | replay proof layer, source-backed or display-proxy replay beams, focused decision trace, producer-horizon replay rail | live cell preview, live SINR beams, artifact overlays, live Walker forecast markers |
 | `artifact-replay` | visual-showcase replay | immutable `visual-showcase-v1` artifact | artifact-provided frame content, replay controls, artifact-owned event rail | live cell preview, MODQN replay proof, live SINR proof effects |
@@ -414,3 +414,32 @@ Before changing scene rendering:
     reconstructed (impractical to warm up at 0.05x). This is why the live focus is
     `profile-derived-forecast`/`overlay-demo`, never a producer-recorded handover
     replay — that recorded fidelity belongs to `artifact-replay`.
+- Handover cinema (S1) is lane-owned to `sinr-live` and additive over the Director
+  focus above. It wraps the existing Director handlers (`useHandoverCinema` — arm /
+  intra-inter filter / exit, never a rewrite) and adds two focus-scoped surfaces
+  driven ONLY by the real live Walker handover event index (no producer dependency,
+  `docs/handover-cinema-sdd.md` §7):
+  - **Candidate-beam highlight** (`CandidateBeamHighlight`, `src/viz/`): coloured
+    ground rings on the two candidate beams (source + target) of the focused
+    handover, using the existing handover-role colours. It is gated by the render
+    plan flag `showCandidateHandoverHighlight` (= `showSinrLiveViewport &&
+    cinematicMode === 'director'`) — sinr-live ONLY, inert on
+    `modqn-live-cell-preview`, `modqn-replay-proof` (Rule#8), and `artifact-replay`.
+    It is display-only (rings placed at the beam ground positions `useBeamViz`
+    already computes; reads no SINR, alters no truth) and publishes a MESH-derived
+    observable (`data-candidate-handover-highlight-rendered-count` on the canvas) so
+    the validator proves the rings actually drew.
+  - **SINR explainer** (`SinrOffsetExplainer`, `src/ui/`): a floating, focus-scoped
+    card that explains the handover in SINR terms only — the two candidate beams'
+    recorded live SINR, the delta, and the SINR-offset rule. It is stamped
+    `data-claim-kind="sinr-offset"` and is lane-truthful: it NEVER mentions
+    MODQN/producer and NEVER claims decision proof. It renders only while the cinema
+    is engaged and tears down on exit.
+  The candidate command threaded to the scene is geometry-only
+  (`RuntimeCandidateHighlightCommand` — beam ids, no SINR/decision). Validators:
+  `validate:phase-c:handover-cinema:model` (pure lane-gating + SINR projection,
+  never fabricates), `validate:phase-c:handover-cinema:browser` (arm on sinr-live →
+  explainer `sinr-offset` + candidate-highlight mesh + 0.05x + camera move → exit
+  restores + tears down), and `validate:frontend:scene-lane-governance` locks the
+  render-plan gate, the gated MainScene mount, the mesh observable, and the
+  explainer claim stamp.

@@ -47,13 +47,14 @@ function renderPlan(
   sceneLane: Parameters<typeof resolveSceneLaneRenderPlan>[0]['sceneLane'],
   sceneSource: Parameters<typeof resolveSceneLaneRenderPlan>[0]['sceneSource'],
   replayProofLayerRequested = false,
+  cinematicMode: Parameters<typeof resolveSceneLaneRenderPlan>[0]['cinematicMode'] = 'spotlight',
 ): ReturnType<typeof resolveSceneLaneRenderPlan> {
   return resolveSceneLaneRenderPlan({
     sceneLane,
     sceneSource,
     beamCalloutsEnabled: true,
     beamDensity: 'all',
-    cinematicMode: 'spotlight',
+    cinematicMode,
     effectsEnabled: {
       servingRipple: true,
       pendingRipple: true,
@@ -130,6 +131,9 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(sinr.showReplayProofLayer, false, 'SINR live should not own MODQN replay proof');
   assert.equal(sinr.handoverStoryLayerPolicy, 'sinr-live', 'SINR live should keep the SINR handover story path');
   assert.equal(sinr.showProfileHandoverStoryLayer, false, 'SINR live must not mount the profile-derived story overlay');
+  // Handover-cinema candidate highlight (S1) is gated on the director cinematic
+  // mode, so it is OFF under spotlight even on its own lane.
+  assert.equal(sinr.showCandidateHandoverHighlight, false, 'SINR live candidate highlight stays off outside director mode');
 
   const cellPreview = renderPlan('modqn-live-cell-preview', 'live-sim');
   assert.equal(cellPreview.sourceCompatible, true, 'MODQN cell lane live source should be compatible');
@@ -163,6 +167,30 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(artifact.effectiveCinematicMode, 'off', 'artifact replay should force cinematic mode off');
   assert.equal(artifact.handoverStoryLayerPolicy, 'artifact-owned', 'artifact replay should keep handover story artifact-owned');
   assert.equal(artifact.showProfileHandoverStoryLayer, false, 'artifact replay must not mount the profile-derived story overlay');
+
+  // ── Handover-cinema candidate-beam highlight (S1) lane ownership ──
+  // Lane-owned to sinr-live ONLY, and only while the director cinematic is engaged.
+  // Inert on the MODQN cell preview, the replay-proof lane (Rule#8), and artifact.
+  assert.equal(
+    renderPlan('sinr-live', 'live-sim', false, 'director').showCandidateHandoverHighlight,
+    true,
+    'SINR live owns the handover-cinema candidate highlight under director mode',
+  );
+  assert.equal(
+    renderPlan('modqn-live-cell-preview', 'live-sim', false, 'director').showCandidateHandoverHighlight,
+    false,
+    'MODQN cell preview must not mount the S1 candidate highlight (sinr-live only)',
+  );
+  assert.equal(
+    renderPlan('modqn-replay-proof', 'live-sim', true, 'director').showCandidateHandoverHighlight,
+    false,
+    'MODQN replay proof must stay inert for the candidate highlight (Rule#8)',
+  );
+  assert.equal(
+    renderPlan('artifact-replay', 'artifact-replay', false, 'director').showCandidateHandoverHighlight,
+    false,
+    'artifact replay must not mount the live SINR candidate highlight',
+  );
 
   const incompatibleArtifact = renderPlan('artifact-replay', 'live-sim');
   assert.equal(incompatibleArtifact.sourceCompatible, false, 'artifact lane must reject live-sim source');
@@ -266,6 +294,8 @@ const beamLoadUploadParticleHelpersSource = readRepoFile('src/viz/beamLoadUpload
 const groundSceneSource = readRepoFile('src/viz/GroundScene.tsx');
 const modqnReplayCuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
 const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
+const candidateBeamHighlightSource = readRepoFile('src/viz/CandidateBeamHighlight.tsx');
+const sinrOffsetExplainerSource = readRepoFile('src/ui/SinrOffsetExplainer.tsx');
 const cellScheduleSource = readRepoFile('src/scene/useCellSchedule.ts');
 const baseSceneLayoutSource = readRepoFile('src/scene/BaseSceneLayout.tsx');
 const sceneTelemetrySource = readRepoFile('src/scene/SceneTelemetry.tsx');
@@ -1231,6 +1261,37 @@ assertContains(
   sceneLaneRenderPlanSource,
   'showCinematicSpotlight',
   'Scene lane render plan owns cinematic spotlight gating',
+);
+// ── Handover-cinema candidate highlight (S1) lane-ownership source locks ──
+assertContains(
+  sceneLaneRenderPlanSource,
+  'showCandidateHandoverHighlight',
+  'Scene lane render plan owns the handover-cinema candidate-highlight gate',
+);
+assertContains(
+  sceneLaneRenderPlanSource,
+  "const showCandidateHandoverHighlight = showSinrLiveViewport && input.cinematicMode === 'director'",
+  'Candidate highlight is gated sinr-live + director (no producer dependency, inert elsewhere)',
+);
+assertContains(
+  mainSceneSource,
+  'showCandidateHandoverHighlight && runtime.candidateHighlight',
+  'MainScene mounts the candidate highlight only under the render-plan gate + an armed command',
+);
+assertContains(
+  mainSceneSource,
+  '<CandidateBeamHighlight',
+  'MainScene mounts the lane-owned CandidateBeamHighlight layer',
+);
+assertContains(
+  candidateBeamHighlightSource,
+  'dataset.candidateHandoverHighlightRenderedCount',
+  'Candidate highlight publishes a MESH-derived rendered-count observable (validator-provable render)',
+);
+assertContains(
+  sinrOffsetExplainerSource,
+  'data-claim-kind="sinr-offset"',
+  'SINR explainer is stamped lane-truthful claim-kind="sinr-offset" (never producer/MODQN proof)',
 );
 assertContains(
   sceneLaneRenderPlanSource,

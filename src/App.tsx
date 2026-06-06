@@ -6,7 +6,7 @@ import {
   profileList,
 } from './profiles';
 import type { Profile } from './profiles/types';
-import type { BeamDensity, SimState } from './scene/types';
+import type { BeamDensity, RuntimeConfig, SimState } from './scene/types';
 import { createInitialSimState } from './scene/initialSimState';
 import { recommendDemoReplayStartOffsetSec } from './scene/replay-recommendation';
 import {
@@ -78,6 +78,9 @@ import {
 } from './sceneVisualScale';
 import { ControlBar } from './ui/ControlBar';
 import { DirectorControls } from './ui/DirectorControls';
+import { SinrOffsetExplainer } from './ui/SinrOffsetExplainer';
+import { useHandoverCinema } from './app/useHandoverCinema';
+import { toCandidateHighlightCommand } from './app/handoverCinema';
 import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
 import {
@@ -1576,6 +1579,7 @@ export function App() {
     cinematicFadePulse,
     handleCinematicSeekPeak,
     liveDirectorFocusEventSec,
+    liveDirectorFocusEventId,
     cancelPendingLiveFocus,
   } = useDirectorOrchestration({
     camera,
@@ -1599,6 +1603,32 @@ export function App() {
     setLiveObservedHandoverRailEvents,
     setModqnReplayVisualElapsedSec,
   });
+
+  // Handover cinema controller (S1): wraps the Director focus handlers above with
+  // an arm/intra-inter-filter/exit surface and resolves the focused handover's
+  // candidate detail (beam ids + recorded live SINR) from the live Walker index.
+  // It owns no truth — the detail is built ONLY from the real sinr-live index, no
+  // producer dependency (docs/handover-cinema-sdd.md §3.2/§7).
+  const handoverCinema = useHandoverCinema({
+    sceneLane,
+    handoverEventIndex: liveWalkerHandoverEventIndex,
+    focusedEventId: liveDirectorFocusEventId,
+    directorPhase: camera.directorPhase,
+    armIntraFocus: handleDirectorIntraFocus,
+    armInterFocus: handleDirectorInterFocus,
+    exitFocus: useCallback(() => {
+      cancelPendingLiveFocus();
+      camera.exitDirectorFocus();
+    }, [cancelPendingLiveFocus, camera]),
+  });
+
+  // Display-only candidate-beam highlight command for the scene layer (geometry
+  // only, no SINR/decision truth — Rule#6). Layered onto a thin derived runtime so
+  // the base `runtime` (built earlier, consumed by the orchestration) is untouched.
+  const runtimeWithCinema = useMemo<RuntimeConfig>(
+    () => ({ ...runtime, candidateHighlight: toCandidateHighlightCommand(handoverCinema.focusedCandidate) }),
+    [runtime, handoverCinema.focusedCandidate],
+  );
 
   // Top-level lane navigation (LaneExperienceBar). The single in-app entry point
   // for the viewport lane axis: it owns the sceneSource (live-sim vs
@@ -1701,9 +1731,9 @@ export function App() {
         intraEnabled={directorIntraButtonEnabled}
         interEnabled={directorInterButtonEnabled}
         phase={camera.directorPhase}
-        onIntraFocus={handleDirectorIntraFocus}
-        onInterFocus={handleDirectorInterFocus}
-        onExit={camera.exitDirectorFocus}
+        onIntraFocus={handoverCinema.armIntra}
+        onInterFocus={handoverCinema.armInter}
+        onExit={handoverCinema.exit}
       />
     </>
   );
@@ -1975,12 +2005,16 @@ export function App() {
             />
           )}
           {handoverMode === 'omega-heuristic' && sceneLane === 'modqn-live-cell-preview' && <HeuristicNotPaperBanner />}
+          <SinrOffsetExplainer
+            candidate={handoverCinema.focusedCandidate}
+            visible={handoverCinema.cinemaActive && sceneLane === 'sinr-live'}
+          />
           {shouldRenderMainScene ? (
             <MainScene
               speed={playback.effectiveSpeed}
               paused={playback.paused}
               profile={effectiveProfile}
-              runtime={runtime}
+              runtime={runtimeWithCinema}
               visualScaleMultipliers={visualScaleMultipliers}
               modqnReplayDisplayState={renderedModqnReplayDisplayState}
               showModqnReplayScene={showModqnReplayScene}

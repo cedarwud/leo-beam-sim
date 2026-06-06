@@ -1,0 +1,86 @@
+// Handover-cinema "why (SINR)" explainer (S1.3). Floating, focus-scoped card on
+// the sinr-live lane. Reuses the .leo-handover-event-rail__focus-panel gradient/
+// border family for visual coherence.
+
+.leo-handover-cinema-sinr-explainer {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 60;
+  width: min(320px, 42vw);
+  display: grid;
+  gap: 7px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 204, 92, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 204, 92, 0.1), rgba(8, 12, 18, 0.86)),
+    rgba(8, 12, 18, 0.86);
+  backdrop-filter: blur(4px);
+  color: rgba(236, 244, 255, 0.94);
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+}
+
+.leo-handover-cinema-sinr-explainer__title {
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  color: rgba(255, 224, 158, 0.96);
+}
+
+.leo-handover-cinema-sinr-explainer__rule {
+  font-size: 11px;
+  color: rgba(208, 220, 236, 0.82);
+}
+
+.leo-handover-cinema-sinr-explainer__candidates {
+  display: grid;
+  gap: 4px;
+}
+
+.leo-handover-cinema-sinr-explainer__candidate {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  font-variant-numeric: tabular-nums;
+}
+
+.leo-handover-cinema-sinr-explainer__candidate[data-is-selected="true"] {
+  background: rgba(255, 204, 92, 0.12);
+  border: 1px solid rgba(255, 204, 92, 0.28);
+}
+
+.leo-handover-cinema-sinr-explainer__candidate-label {
+  font-weight: 600;
+}
+
+.leo-handover-cinema-sinr-explainer__candidate-role {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(176, 190, 210, 0.7);
+}
+
+.leo-handover-cinema-sinr-explainer__candidate-sinr {
+  font-weight: 600;
+  color: rgba(118, 234, 215, 0.95);
+}
+
+.leo-handover-cinema-sinr-explainer__delta {
+  font-size: 11px;
+  color: rgba(118, 234, 215, 0.86);
+}
+
+.leo-handover-cinema-sinr-explainer__claim-stamp {
+  margin-top: 1px;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: rgba(168, 182, 202, 0.66);
+}
