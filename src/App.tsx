@@ -1850,7 +1850,6 @@ export function App() {
         onCinematicModeChange={camera.setCinematicMode}
         onTogglePause={playback.togglePause}
         onSpeedChange={playback.setSpeed}
-        onDismissAutoSlow={playback.dismissAutoSlow}
         onToggleAutoSlow={playback.toggleAutoSlow}
         onHandoverModeChange={handleHandoverModeChange}
         sceneSource={sceneSource}
@@ -1926,7 +1925,7 @@ export function App() {
               />
             ) : activeLeftSidebarTab === 'objective' ? (
               <ModqnObjectiveTab />
-            ) : (
+            ) : activeLeftSidebarTab === 'handover' ? (
               <HandoverPolicyControls
                 draft={handoverPolicyDraft}
                 applied={appliedHandoverPolicy}
@@ -1936,7 +1935,7 @@ export function App() {
                 onApply={handleApplyHandoverPolicy}
                 onReset={handleResetHandoverPolicy}
               />
-            )}
+            ) : null}
           </SidebarTabShell>
         </aside>
         <main

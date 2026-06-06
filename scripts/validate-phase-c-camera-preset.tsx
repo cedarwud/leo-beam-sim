@@ -91,7 +91,6 @@ function renderControlBarMarkup(): string {
       onCinematicModeChange={noop}
       onTogglePause={noop}
       onSpeedChange={noop}
-      onDismissAutoSlow={noop}
       onToggleAutoSlow={noop}
       onHandoverModeChange={noop}
     />,

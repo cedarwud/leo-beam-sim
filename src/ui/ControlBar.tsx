@@ -36,7 +36,6 @@ interface ControlBarProps {
   onCinematicModeChange: (mode: CinematicMode) => void;
   onTogglePause: () => void;
   onSpeedChange: (speed: number) => void;
-  onDismissAutoSlow: () => void;
   onToggleAutoSlow: () => void;
   /** S3: mode selector change handler from App.tsx (handles ω reset and mode reset). */
   onHandoverModeChange?: (mode: RuntimeHandoverMode) => void;
