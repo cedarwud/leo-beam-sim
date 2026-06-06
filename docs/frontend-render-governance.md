@@ -200,6 +200,20 @@ Lane-specific sidebars are part of viewport ownership:
 - `modqn-replay-proof`: left = replay cue toggle; right = MODQN evidence only.
 - `artifact-replay`: left/right = artifact replay/truth only.
 
+On the `modqn-live-cell-preview` lane the ControlBar also exposes a MODQN
+decision-policy toggle (`modqn-decision-policy-control`) that flips the live
+handover decision between the paper-faithful decision overlay
+(`decision-overlay-on-live-sinr`) and the deprecated heuristic ω-scoring
+(`omega-heuristic`) WITHIN `modqn-demo`, with no `appMode` switch. The
+`omega-heuristic` mode is explicitly NOT paper MODQN: whenever it is active App
+co-mounts the persistent `HeuristicNotPaperBanner` ("Heuristic ω-scoring — NOT
+paper MODQN") — the mode is never surfaced without its disclosure. It stays
+non-persistable (`runtimeControls.persistHandoverMode` skips it) and is reachable
+only through the on-screen toggle, never a keyboard shortcut or URL handler. The
+lane experience switcher restores `decision-overlay-on-live-sinr` when it moves
+to a MODQN lane so the replay-proof toggle (which requires the decision overlay)
+keeps working and the banner clears.
+
 Artifact replay also source-gates live-only decorative and diagnostic effects:
 legacy earth-fixed cells, ambient footprint rings, handover links, live
 handover arrows, ground shockwaves, serving ripples, UAV, and handover toast

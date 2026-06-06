@@ -2116,4 +2116,50 @@ assertContains(
   'governance doc records the revived ω-weight editor on the MODQN live lane',
 );
 
+// ── Showcase exposure S4: omega-heuristic decision policy + mandatory banner ──
+// The omega-heuristic engine path was always live but had no UI entry. It is
+// surfaced via a contained MODQN decision-policy toggle on the modqn-live lane.
+// GOVERNANCE: it is "NOT paper MODQN", so App MUST co-mount the disclosure banner
+// whenever it is active, and it must never be exposed as a 3rd top-level mode.
+assertContains(
+  controlBarSource,
+  'data-testid="modqn-decision-policy-control"',
+  'ControlBar exposes the MODQN decision-policy toggle (paper overlay <-> heuristic ω)',
+);
+assertContains(
+  controlBarSource,
+  'data-testid="modqn-decision-policy-heuristic"',
+  'ControlBar offers the heuristic ω (NOT paper) decision policy',
+);
+assertNotContains(
+  controlBarSource,
+  "mode: 'omega-heuristic'",
+  'omega-heuristic must NOT be a 3rd top-level handover mode option',
+);
+assertContains(
+  appSource,
+  "from './ui/HeuristicNotPaperBanner'",
+  'App imports the NOT-paper disclosure banner',
+);
+assertContains(
+  appSource,
+  "handoverMode === 'omega-heuristic' && <HeuristicNotPaperBanner />",
+  'App co-mounts the NOT-paper banner gated on omega-heuristic (mode never exposed without disclosure)',
+);
+assertContains(
+  appSource,
+  'onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}',
+  'App wires the MODQN decision-policy toggle',
+);
+assertContains(
+  governanceDoc,
+  'modqn-decision-policy-control',
+  'governance doc documents the MODQN decision-policy toggle',
+);
+assertContains(
+  governanceDoc,
+  'never surfaced without its disclosure',
+  'governance doc records the mandatory NOT-paper banner co-mount',
+);
+
 console.log('validate:frontend:scene-lane-governance passed');

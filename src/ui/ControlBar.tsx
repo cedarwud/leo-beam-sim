@@ -53,6 +53,8 @@ interface ControlBarProps {
   onElevatedUeIdChange?: (id: string) => void;
   modqnVisualLayerPreset?: ModqnVisualLayerPreset;
   onModqnVisualLayerPresetChange?: (preset: ModqnVisualLayerPreset) => void;
+  /** Flip the MODQN decision policy (paper overlay <-> omega-heuristic) on the MODQN live lane. */
+  onModqnDecisionPolicyChange?: (mode: RuntimeHandoverMode) => void;
 }
 
 // Public demo modes. ω adjustment is now handled inside the decision-overlay
@@ -126,6 +128,7 @@ export function ControlBar({
   onElevatedUeIdChange,
   modqnVisualLayerPreset = 'baseline-faithful',
   onModqnVisualLayerPresetChange,
+  onModqnDecisionPolicyChange,
 }: ControlBarProps) {
   const isArtifactReplay = sceneLane === 'artifact-replay' || sceneSource === 'artifact-replay';
   const showSinrLiveControls = sceneLane === 'sinr-live';
@@ -336,6 +339,38 @@ export function ControlBar({
               </button>
             );
           })}
+        </div>
+      )}
+
+      {showModqnLayerControls && (
+        <div
+          className="leo-control-bar__modqn-layer-group"
+          role="group"
+          aria-label="MODQN decision policy"
+          data-testid="modqn-decision-policy-control"
+          data-modqn-decision-policy={handoverMode}
+        >
+          <span className="leo-control-bar__group-label" aria-hidden="true">Decision policy:</span>
+          <button
+            type="button"
+            className={`${UI_CLASSES.button} leo-control-bar__modqn-layer-button`}
+            aria-pressed={handoverMode === 'decision-overlay-on-live-sinr'}
+            data-testid="modqn-decision-policy-overlay"
+            title="Paper-faithful MODQN decision overlay on live SINR"
+            onClick={() => onModqnDecisionPolicyChange?.('decision-overlay-on-live-sinr')}
+          >
+            Paper overlay
+          </button>
+          <button
+            type="button"
+            className={`${UI_CLASSES.button} leo-control-bar__modqn-layer-button`}
+            aria-pressed={handoverMode === 'omega-heuristic'}
+            data-testid="modqn-decision-policy-heuristic"
+            title="Heuristic ω-scoring — NOT paper MODQN; selecting it shows a persistent disclosure banner"
+            onClick={() => onModqnDecisionPolicyChange?.('omega-heuristic')}
+          >
+            Heuristic ω (NOT paper)
+          </button>
         </div>
       )}
 

@@ -111,6 +111,7 @@ import type {
   TrainingServiceManifest,
 } from './modqn/training-trigger/types';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
+import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,
@@ -993,6 +994,19 @@ export function App() {
     handoverMode,
   ]);
 
+  // Showcase exposure (S4): the MODQN decision-policy toggle (modqn-live lane
+  // only) flips between the paper-faithful decision overlay and the
+  // omega-heuristic scoring WITHIN modqn-demo, with no appMode switch. The
+  // omega-heuristic engine path was always live but had no UI entry. It is the
+  // deprecated "NOT paper MODQN" heuristic — App co-mounts the mandatory
+  // HeuristicNotPaperBanner whenever it is active (governance: the mode is never
+  // surfaced without its disclosure). It is non-persistable (runtimeControls).
+  const handleModqnDecisionPolicyChange = useCallback((nextMode: RuntimeHandoverMode) => {
+    if (nextMode === handoverMode) return;
+    if (nextMode !== 'decision-overlay-on-live-sinr' && nextMode !== 'omega-heuristic') return;
+    applyHandoverModeSideEffects(nextMode, effectiveProfile);
+  }, [applyHandoverModeSideEffects, effectiveProfile, handoverMode]);
+
   // S3 compatibility path: omega stays sourced from the loaded bundle unless
   // a legacy/test-only caller explicitly invokes the old hook surface.
   const handleOmegaActiveChange = useCallback((next: RuntimeOmegaState) => {
@@ -1624,9 +1638,14 @@ export function App() {
       targetLane === 'sinr-live' ? 'sinr-experiment' : 'modqn-demo';
     if (nextAppMode !== appMode) {
       handleAppModeChange(nextAppMode);
+    } else if (nextAppMode === 'modqn-demo' && handoverMode === 'omega-heuristic') {
+      // Already in modqn-demo but on the deprecated omega-heuristic policy:
+      // restore the canonical decision overlay so the MODQN Proof toggle (which
+      // requires decision-overlay) works and the NOT-paper banner clears.
+      applyHandoverModeSideEffects('decision-overlay-on-live-sinr', effectiveProfile);
     }
     setModqnReplayProofRequested(targetLane === 'modqn-replay-proof');
-  }, [appMode, camera, cancelPendingLiveFocus, handleAppModeChange, sceneLane, sceneSource]);
+  }, [appMode, applyHandoverModeSideEffects, camera, cancelPendingLiveFocus, effectiveProfile, handleAppModeChange, handoverMode, sceneLane, sceneSource]);
 
   const handleHandoverRailSeek = useCallback((targetSec: number) => {
     if (directorFocusEnabled) {
@@ -1844,6 +1863,7 @@ export function App() {
         onElevatedUeIdChange={setElevatedUeId}
         modqnVisualLayerPreset={modqnVisualLayerPreset}
         onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}
+        onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
       />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
@@ -1939,6 +1959,7 @@ export function App() {
               modqnVisualLayerPreset={modqnVisualLayerPreset}
             />
           )}
+          {handoverMode === 'omega-heuristic' && <HeuristicNotPaperBanner />}
           {shouldRenderMainScene ? (
             <MainScene
               speed={playback.effectiveSpeed}

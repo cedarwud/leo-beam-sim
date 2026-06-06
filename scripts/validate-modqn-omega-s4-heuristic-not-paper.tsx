@@ -217,9 +217,13 @@ console.log('\n(f) App.tsx data-handover-criterion 2-way wiring');
     !appSrc.includes("'omega-heuristic-not-paper'"),
     "App.tsx does not emit the removed 'omega-heuristic-not-paper' criterion",
   );
+  // Showcase exposure (S4 2026-06-06): omega-heuristic is reachable again via the
+  // MODQN decision-policy toggle (modqn-live lane). SDD §4.4 item 1 REQUIRES the
+  // disclosure banner whenever the mode is active, so App MUST co-mount it gated
+  // on handoverMode === 'omega-heuristic' (never expose the mode without it).
   assert(
-    !appSrc.includes('<HeuristicNotPaperBanner />'),
-    'App.tsx does not mount the removed top-level heuristic banner',
+    appSrc.includes("handoverMode === 'omega-heuristic' && <HeuristicNotPaperBanner />"),
+    'App.tsx co-mounts HeuristicNotPaperBanner gated on omega-heuristic (mandatory NOT-paper disclosure)',
   );
 }
 
