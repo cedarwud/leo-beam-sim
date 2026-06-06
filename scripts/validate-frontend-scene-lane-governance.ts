@@ -1948,4 +1948,100 @@ assertContains(
   'package validation script',
 );
 
+// ── Lane Experience Switcher: the single in-app entry point for the lane axis ──
+// LaneExperienceBar makes sceneSource (and therefore the whole artifact-replay
+// lane) reachable in-app for the first time. It must stay a governance Shared
+// Surface (no 3D import), mount exactly once lane-owned, and the transition must
+// stay governance-safe (cancel armed/active Director focus + tear down stale
+// artifact-replay state on leave) so it cannot become a naive setSceneSource.
+const laneExperienceBarSource = readRepoFile('src/ui/LaneExperienceBar.tsx');
+assertContains(
+  appSource,
+  "from './ui/LaneExperienceBar'",
+  'App imports the top-level LaneExperienceBar',
+);
+assert.equal(
+  countOccurrences(appSource, '<LaneExperienceBar'),
+  1,
+  'LaneExperienceBar is mounted exactly once',
+);
+assertContains(
+  appSource,
+  '<LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />',
+  'LaneExperienceBar is fed the resolved scene lane and the governance-safe transition handler',
+);
+assertContains(
+  appSource,
+  'const [sceneSource, setSceneSource] = useState<SceneSourceMode>',
+  'App owns a runtime sceneSource state (the lane switch is no longer URL-only)',
+);
+assertContains(
+  appSource,
+  'const handleExperienceChange = useCallback((targetLane: SceneLane) => {',
+  'App owns the lane experience transition handler',
+);
+{
+  const handlerIndex = appSource.indexOf('const handleExperienceChange = useCallback');
+  assert.ok(handlerIndex >= 0, 'handleExperienceChange exists');
+  const handlerSlice = appSource.slice(handlerIndex, handlerIndex + 1400);
+  assertContains(
+    handlerSlice,
+    'cancelPendingLiveFocus();',
+    'lane switch cancels an armed/active Director focus (no cross-lane sat-pair leak)',
+  );
+  assertContains(
+    handlerSlice,
+    'camera.exitDirectorFocus();',
+    'lane switch exits the Director focus FSM',
+  );
+  assertContains(
+    handlerSlice,
+    'setShowcaseArtifact(null);',
+    'lane switch tears down stale artifact-replay state on leave (FIX-1 cannot show stale provenance)',
+  );
+  assertContains(
+    handlerSlice,
+    'syncSceneSourceToUrl(nextSceneSource);',
+    'lane switch keeps the URL in sync so the lane stays deep-linkable / reload-stable',
+  );
+}
+assertContains(
+  appPersistenceSource,
+  'export function syncSceneSourceToUrl(mode: SceneSourceMode): void',
+  'appPersistence exposes the display-only URL sync for the runtime lane switch',
+);
+for (const lane of [
+  'sinr-live',
+  'modqn-live-cell-preview',
+  'modqn-replay-proof',
+  'artifact-replay',
+] as const) {
+  assertContains(
+    laneExperienceBarSource,
+    `lane: '${lane}'`,
+    `LaneExperienceBar offers the ${lane} segment`,
+  );
+}
+assertContains(
+  laneExperienceBarSource,
+  'data-testid="lane-experience-bar"',
+  'LaneExperienceBar exposes its root test id',
+);
+assertNotContains(laneExperienceBarSource, "from 'three", 'LaneExperienceBar must not import three');
+assertNotContains(laneExperienceBarSource, 'from "three', 'LaneExperienceBar must not import three');
+assertNotContains(laneExperienceBarSource, '@react-three/', 'LaneExperienceBar must not import react-three');
+assertNotContains(laneExperienceBarSource, '<Canvas', 'LaneExperienceBar must not mount a Canvas (no 3D viewport layer)');
+assertNotContains(laneExperienceBarSource, '../scene/', 'LaneExperienceBar must not import scene runtime modules');
+assertNotContains(laneExperienceBarSource, '../viz/', 'LaneExperienceBar must not import viz modules');
+assertContains(
+  governanceDoc,
+  'Lane Experience Switcher',
+  'governance doc documents the lane experience switcher',
+);
+assertContains(
+  governanceDoc,
+  'It cancels any armed-but-unfired or active Director focus',
+  'governance doc records the governance-safe Director-focus cancel on lane switch',
+);
+
 console.log('validate:frontend:scene-lane-governance passed');

@@ -20,6 +20,26 @@ export function readSceneSourceFromUrl(): SceneSourceMode {
   return src === 'artifact-replay' ? 'artifact-replay' : 'live-sim';
 }
 
+// Keep the URL in sync with a runtime sceneSource switch (LaneExperienceBar) so
+// the lane is deep-linkable and reload-stable. Display-only: it mirrors the
+// already-applied state, never drives truth. `live-sim` clears the param (the
+// default), `artifact-replay` sets it so readSceneSourceFromUrl re-resolves the
+// same lane on reload.
+export function syncSceneSourceToUrl(mode: SceneSourceMode): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const url = new URL(window.location.href);
+    if (mode === 'artifact-replay') {
+      url.searchParams.set('sceneSource', 'artifact-replay');
+    } else {
+      url.searchParams.delete('sceneSource');
+    }
+    window.history.replaceState(window.history.state, '', url);
+  } catch {
+    // history / URL APIs can be unavailable in embedded browser contexts.
+  }
+}
+
 export function readSceneTopologyOverrides(): SceneTopologyState {
   if (typeof window === 'undefined') return createSceneTopologyState();
 

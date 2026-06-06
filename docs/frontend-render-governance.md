@@ -117,6 +117,48 @@ The azimuth math is a pure, unit-tested helper (`deriveSatelliteAzimuths`).
 `validate:frontend:scene-lane-governance` locks the honesty caption, the
 no-3D-import property, and the lane-gated single mount.
 
+## Lane Experience Switcher
+
+`LaneExperienceBar` (`src/ui/LaneExperienceBar.tsx`) is the single top-level
+in-app entry point for the viewport lane axis. It is a segmented control over
+the four authoritative scene lanes (`sinr-live`, `modqn-live-cell-preview`,
+`modqn-replay-proof`, `artifact-replay`), and is the realized form of the
+previously-unmounted `AppModeRail` nav concept.
+
+It owns BOTH navigation axes at once: each segment maps to one resolved
+`SceneLane`, and `App.handleExperienceChange` translates that back into the
+combination of `sceneSource` (live-sim vs artifact-replay), `appMode` (SINR vs
+MODQN), and the `modqnReplayProofRequested` flag. Before this control,
+`sceneSource` had no setter at all — the entire `artifact-replay` lane (and its
+flowchart, Plane-C dashboard, satellite compass, and real-artifact Director
+cinematic) was reachable only via the `?sceneSource=artifact-replay` URL param,
+and the `modqn-replay-proof` lane was three sidebar clicks deep.
+
+The transition is governance-safe, NOT a naive `setSceneSource`:
+
+- It cancels any armed-but-unfired or active Director focus
+  (`cancelPendingLiveFocus` + `camera.exitDirectorFocus`) on every switch so a
+  cinematic sat-pair pose cannot leak across lanes.
+- Leaving `artifact-replay` tears down the artifact-replay state
+  (`showcaseArtifact`, `showcaseArtifactSource`, `showcaseError`,
+  `showcaseLoading`) so a re-entry re-runs the artifact fetch and the FIX-1
+  honesty badge can never show stale provenance from a previous visit.
+- It re-keys the lane through the existing `sceneSource`-dependent effects (the
+  artifact fetch at the `sceneSource === 'artifact-replay'` guard and the
+  fail-closed render gate `shouldRenderMainScene`), so a switch INTO
+  `artifact-replay` still fails closed (shows the artifact-scene-fail-closed
+  placeholder) while the artifact streams, and never inherits live overlays.
+- `syncSceneSourceToUrl` mirrors the applied lane into the URL so it stays
+  deep-linkable and reload-stable. This is display-only — it follows state, it
+  never drives truth.
+
+`LaneExperienceBar` is a governance Shared Surface, not a new viewport proof
+layer: it imports no three / react-three / Canvas symbol and mounts no `<Canvas>`,
+so it needs no lane-matrix row. `App` mounts it exactly once, fed the resolved
+`sceneLane` as its value. `validate:frontend:scene-lane-governance` locks the
+single lane-owned mount, the no-3D-import property, and the governance-safe
+transition (the Director-focus cancel on switch).
+
 ## Current Implementation Contract
 
 `src/app/sceneLane.ts` resolves the lane from app state. The initial contract is:

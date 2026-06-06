@@ -117,6 +117,7 @@ import {
   HEADER_ABSENT_SOURCE,
 } from './ui/ArtifactSourceBadge';
 import { ArtifactSatelliteCompass } from './ui/ArtifactSatelliteCompass';
+import { LaneExperienceBar } from './ui/LaneExperienceBar';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
@@ -170,11 +171,13 @@ import {
   readSceneSourceFromUrl,
   readSceneTopologyOverrides,
   readSceneVisualScaleOverrides,
+  syncSceneSourceToUrl,
   type SceneSourceMode,
 } from './app/appPersistence';
 import {
   resolveSceneLane,
   shouldRenderModqnReplayScene,
+  type SceneLane,
 } from './app/sceneLane';
 import {
   useDirectorOrchestration,
@@ -450,7 +453,7 @@ function resolveModqnReplayVisualSlotOffset(
 }
 
 export function App() {
-  const [sceneSource] = useState<SceneSourceMode>(() => readSceneSourceFromUrl());
+  const [sceneSource, setSceneSource] = useState<SceneSourceMode>(() => readSceneSourceFromUrl());
   const [showcaseArtifact, setShowcaseArtifact] = useState<VisualShowcaseArtifact | null>(null);
   const [showcaseArtifactSource, setShowcaseArtifactSource] = useState<string | null>(null);
   const [showcaseLoading, setShowcaseLoading] = useState(false);
@@ -1253,12 +1256,21 @@ export function App() {
   ]);
 
   // P3: fetch visual-showcase-v1 artifact at startup if in artifact-replay mode.
+  // The cancelled guard matters now that LaneExperienceBar makes sceneSource a
+  // runtime switch: if the user enters artifact-replay (this fetch starts) then
+  // leaves before the (large) artifact resolves, the in-flight promise must NOT
+  // repopulate showcaseArtifact*/error after handleExperienceChange already tore
+  // it down — otherwise the next artifact entry renders the stale artifact
+  // instead of failing closed on the loading state (codex S1 [P2]).
   useEffect(() => {
     if (sceneSource !== 'artifact-replay') return;
+    let cancelled = false;
     setShowcaseLoading(true);
+    setShowcaseError(null);
     setShowcaseArtifactSource(null);
     fetch('/showcase-artifacts/visual-showcase-v1.json')
       .then(r => {
+        if (cancelled) return null;
         if (!r.ok) throw new Error(`HTTP error ${r.status}`);
         // FIX-1 render-truth honesty: the dev middleware stamps where the
         // artifact came from. A non-`producer-pinned` source means the
@@ -1287,14 +1299,19 @@ export function App() {
         return r.json();
       })
       .then(data => {
+        if (cancelled || data === null) return;
         const art = loadShowcaseArtifact(data);
         setShowcaseArtifact(art);
         setShowcaseLoading(false);
       })
       .catch(err => {
+        if (cancelled) return;
         setShowcaseError(err instanceof Error ? err.message : String(err));
         setShowcaseLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [sceneSource]);
 
   const replayController = useMemo(
@@ -1568,6 +1585,47 @@ export function App() {
     setModqnReplayVisualElapsedSec,
   });
 
+  // Top-level lane navigation (LaneExperienceBar). The single in-app entry point
+  // for the viewport lane axis: it owns the sceneSource (live-sim vs
+  // artifact-replay) AND appMode (SINR vs MODQN) + proof-request choice, mapping
+  // one segment -> one resolved SceneLane. The transition is governance-safe, not
+  // a naive setSceneSource: it cancels any armed/active Director focus (no
+  // cross-lane sat-pair leak), tears down stale artifact-replay state when
+  // leaving that lane so a re-entry re-fetches and the FIX-1 honesty badge cannot
+  // show stale provenance, and re-keys the lane via existing effects (artifact
+  // fetch + fail-closed already depend on sceneSource). docs/frontend-render-
+  // governance.md "Lane Experience Switcher".
+  const handleExperienceChange = useCallback((targetLane: SceneLane) => {
+    if (targetLane === sceneLane) return;
+
+    cancelPendingLiveFocus();
+    camera.exitDirectorFocus();
+
+    if (sceneSource === 'artifact-replay' && targetLane !== 'artifact-replay') {
+      setShowcaseArtifact(null);
+      setShowcaseArtifactSource(null);
+      setShowcaseError(null);
+      setShowcaseLoading(false);
+    }
+
+    const nextSceneSource: SceneSourceMode =
+      targetLane === 'artifact-replay' ? 'artifact-replay' : 'live-sim';
+    setSceneSource(nextSceneSource);
+    syncSceneSourceToUrl(nextSceneSource);
+
+    if (targetLane === 'artifact-replay') {
+      setModqnReplayProofRequested(false);
+      return;
+    }
+
+    const nextAppMode: AppExperienceMode =
+      targetLane === 'sinr-live' ? 'sinr-experiment' : 'modqn-demo';
+    if (nextAppMode !== appMode) {
+      handleAppModeChange(nextAppMode);
+    }
+    setModqnReplayProofRequested(targetLane === 'modqn-replay-proof');
+  }, [appMode, camera, cancelPendingLiveFocus, handleAppModeChange, sceneLane, sceneSource]);
+
   const handleHandoverRailSeek = useCallback((targetSec: number) => {
     if (directorFocusEnabled) {
       const sourceTarget = clampTimelineTime(targetSec, timelineRailDescriptor.rail.durationSec);
@@ -1747,6 +1805,7 @@ export function App() {
           reachable. Error: {modqnReplayFetchError}
         </div>
       )}
+      <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
       <ControlBar
         selectedProfileId={selectedProfileId}
         profileOptions={profileOptions}
