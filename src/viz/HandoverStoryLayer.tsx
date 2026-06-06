@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import {
   HANDOVER_SOURCE_COLOR,
   HANDOVER_TARGET_COLOR,
+  INTER_HANDOVER_COLOR,
 } from '../constants/beamRoleTokens';
 import type {
   HandoverStoryBeamSlot,
@@ -23,7 +24,7 @@ interface HandoverStoryLayerProps {
 const ACTIVE_FALLBACK = '#facc15';
 const INACTIVE_COLOR = '#94a3b8';
 const NEXT_SLOT_COLOR = '#fbbf24';
-const INTER_RIBBON_COLOR = '#a855f7';
+const INTER_RIBBON_COLOR = INTER_HANDOVER_COLOR;
 const UE_CUE_COLOR = '#ffffff';
 const STORY_Y = 3.4;
 

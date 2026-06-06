@@ -68,6 +68,9 @@ export const SATELLITE_TINT_PALETTE = [
 export const RECENT_HO_FADE_WINDOW_SEC = 5;
 export const INTRA_HANDOVER_SOURCE_COLOR = UI_TOKENS.color.semantic.serving.accent;
 export const INTRA_HANDOVER_TARGET_COLOR = UI_TOKENS.color.semantic.candidate.accent;
+// Inter-satellite handover accent (purple). Single source for the cell-arc +
+// sky-ribbon inter-HO visuals (P5) — was hardcoded '#a855f7' in two components.
+export const INTER_HANDOVER_COLOR = '#a855f7';
 export const INTRA_HANDOVER_ARROW_COLOR = INTRA_HANDOVER_TARGET_COLOR;
 export const HANDOVER_SOURCE_COLOR = INTRA_HANDOVER_SOURCE_COLOR;
 export const HANDOVER_TARGET_COLOR = INTRA_HANDOVER_TARGET_COLOR;

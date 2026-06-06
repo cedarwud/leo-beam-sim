@@ -3,6 +3,7 @@ import { Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { CellReassignment } from '../scene/useCellSchedule';
 import type { WorldPoint } from './CellFootprints';
+import { INTER_HANDOVER_COLOR } from '../constants/beamRoleTokens';
 
 export interface CellHandoverArcsProps {
   readonly reassignments: readonly CellReassignment[];
@@ -17,7 +18,7 @@ interface ArcRenderItem {
   readonly points: readonly [number, number, number][];
 }
 
-export const INTER_ARC_COLOR = '#a855f7';
+export const INTER_ARC_COLOR = INTER_HANDOVER_COLOR;
 export const INTRA_ARC_COLOR = '#76ead7';
 
 const ARC_LIFT_FACTOR = 0.35;
