@@ -326,6 +326,104 @@ canvas {
   gap: 6px;
 }
 
+.leo-top-nav-row {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.leo-top-nav-row .leo-lane-experience-bar {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.leo-view-mode-toggle {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(118, 234, 215, 0.22);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(6, 22, 33, 0.96), rgba(3, 10, 17, 0.94));
+}
+
+.leo-view-mode-toggle__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(181, 214, 232, 0.72);
+}
+
+.leo-view-mode-toggle__button {
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #b5d6e8;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.leo-view-mode-toggle__button:hover:not(:disabled) {
+  border-color: rgba(118, 234, 215, 0.4);
+  color: #eafaff;
+}
+
+.leo-view-mode-toggle__button[data-active="true"] {
+  background: rgba(82, 242, 161, 0.16);
+  border-color: rgba(82, 242, 161, 0.65);
+  color: #f4fff8;
+}
+
+.leo-view-mode-toggle__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.leo-view-mode-toggle__button:focus-visible {
+  outline: 2px solid rgba(118, 234, 215, 0.8);
+  outline-offset: 2px;
+}
+
+.leo-dashboard-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.leo-dashboard-view .leo-algorithm-dock {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.leo-dashboard-view .leo-algorithm-dock__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+// TimelineBar is normally an absolute overlay on the 3D canvas; in the dashboard
+// view it must participate in the flex column so it sits below the dock instead of
+// floating over it (codex C3 [P2]).
+.leo-dashboard-view .leo-timeline-bar {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
 .leo-proof-strip {
   position: relative;
   padding: 6px 8px;

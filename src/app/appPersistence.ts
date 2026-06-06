@@ -13,6 +13,33 @@ import { normalizePersistedModqnServingCount } from '../modqn/servingCount';
 
 export type SceneSourceMode = 'live-sim' | 'artifact-replay';
 
+// Top-level view axis (orthogonal to the scene lane): 'scene' = the full-height
+// 3D viewport; 'dashboard' = the full-area MODQN algorithm pipeline / dashboard /
+// live-telemetry surface (was the squished bottom dock). Deep-linkable via
+// ?view=dashboard, mirroring the sceneSource URL pattern (no react-router).
+export type ViewMode = 'scene' | 'dashboard';
+
+export function readViewModeFromUrl(): ViewMode {
+  if (typeof window === 'undefined') return 'scene';
+  const params = new URLSearchParams(window.location.search);
+  return params.get('view') === 'dashboard' ? 'dashboard' : 'scene';
+}
+
+export function syncViewModeToUrl(mode: ViewMode): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const url = new URL(window.location.href);
+    if (mode === 'dashboard') {
+      url.searchParams.set('view', 'dashboard');
+    } else {
+      url.searchParams.delete('view');
+    }
+    window.history.replaceState(window.history.state, '', url);
+  } catch {
+    // history / URL APIs can be unavailable in embedded browser contexts.
+  }
+}
+
 export function readSceneSourceFromUrl(): SceneSourceMode {
   if (typeof window === 'undefined') return 'live-sim';
   const params = new URLSearchParams(window.location.search);

@@ -59,8 +59,17 @@ they must not share viewport ownership decisions.
 
 ## Non-3D Dashboard Dock
 
-`AlgorithmDock` (`src/showcase/dashboard/AlgorithmDock.tsx`) is the
-full-width collapsible bottom non-3D dashboard surface. It is lane-aware:
+`AlgorithmDock` (`src/showcase/dashboard/AlgorithmDock.tsx`) is the non-3D
+dashboard surface. It is no longer a squished bottom strip: a top-level
+`ViewModeToggle` (`src/ui/ViewModeToggle.tsx`) flips the main area between the
+full-height 3D **Scene** view and a full-area **Dashboard** view
+(`leo-dashboard-view`, deep-linkable via `?view=dashboard`,
+`src/app/appPersistence.ts`), so the 3D viewport keeps its full height by default
+and the landscape flowchart finally gets room. The Dashboard view is lane-gated:
+it only renders where `algorithmDockMode !== null` (artifact-replay → flowchart +
+Plane-C tiles; modqn-live-cell-preview → live telemetry), and a no-dashboard lane
+(`sinr-live` / `modqn-replay-proof`) always resolves back to the Scene view. The
+dock is still mounted exactly once. It is lane-aware:
 `artifact-replay` renders the Plane-C `AlgorithmDashboard` against
 `visual-showcase-v1` replay truth, while `modqn-live-cell-preview` renders the
 Plane-A `LiveTelemetryPanel` against live training SSE telemetry. The live

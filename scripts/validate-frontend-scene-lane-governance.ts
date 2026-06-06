@@ -2168,4 +2168,69 @@ assertContains(
   'Tier-2 preview stays honest that it is not a wired training control',
 );
 
+// ── Consolidation C3: Dashboard view/route (dock out of the squished bottom) ──
+// The MODQN dashboard (flowchart / Plane-C / live telemetry) now occupies its own
+// full-area Dashboard view selected by a top-level ViewModeToggle (?view=dashboard),
+// so the 3D scene keeps its full height in the default Scene view. The AlgorithmDock
+// is still mounted exactly once (now inside the Dashboard view, not the bottom).
+const viewModeToggleSource = readRepoFile('src/ui/ViewModeToggle.tsx');
+assertContains(
+  appSource,
+  "from './ui/ViewModeToggle'",
+  'App imports the top-level view toggle',
+);
+assert.equal(
+  countOccurrences(appSource, '<ViewModeToggle'),
+  1,
+  'ViewModeToggle is mounted exactly once',
+);
+assertContains(
+  appSource,
+  'const [viewMode, setViewMode] = useState<ViewMode>',
+  'App owns the runtime view-mode state',
+);
+assertContains(
+  appSource,
+  "const effectiveViewMode: ViewMode = dashboardAvailable ? viewMode : 'scene';",
+  'App falls the view back to scene on lanes with no dashboard (never strands on an empty Dashboard view)',
+);
+assertContains(
+  appSource,
+  "{effectiveViewMode === 'scene' && (",
+  'App renders the 3D shell row only in the scene view (no bottom dock squish)',
+);
+assertContains(
+  appSource,
+  "{effectiveViewMode === 'dashboard' && algorithmDockMode !== null && (",
+  'App renders the AlgorithmDock in the full-area dashboard view, lane-gated',
+);
+assertContains(
+  appSource,
+  'data-testid="dashboard-view"',
+  'App exposes the dashboard view container test id',
+);
+assertContains(
+  appPersistenceSource,
+  'export function readViewModeFromUrl(): ViewMode',
+  'appPersistence reads the ?view URL param',
+);
+assertContains(
+  appPersistenceSource,
+  'export function syncViewModeToUrl(mode: ViewMode): void',
+  'appPersistence keeps ?view deep-linkable',
+);
+assertContains(
+  viewModeToggleSource,
+  'data-testid="view-mode-toggle"',
+  'ViewModeToggle exposes its root test id',
+);
+assertNotContains(viewModeToggleSource, "from 'three", 'ViewModeToggle must not import three');
+assertNotContains(viewModeToggleSource, '@react-three/', 'ViewModeToggle must not import react-three');
+assertNotContains(viewModeToggleSource, '<Canvas', 'ViewModeToggle must not mount a Canvas');
+assertContains(
+  governanceDoc,
+  'Dashboard view',
+  'governance doc documents the dashboard view/route',
+);
+
 console.log('validate:frontend:scene-lane-governance passed');
