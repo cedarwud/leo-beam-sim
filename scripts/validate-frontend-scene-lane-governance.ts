@@ -2162,4 +2162,35 @@ assertContains(
   'governance doc records the mandatory NOT-paper banner co-mount',
 );
 
+// ── Showcase exposure S5: Tier-2 hyperparameter preview ──
+// The Tier-2 hyperparameter UI (HyperparamChip + NetworkParamInput) was built but
+// never mounted. It is surfaced in the MODQN training tab as an HONEST preview
+// (requires-retrain / disabled), never as a wired training control.
+const tier2PreviewSource = readRepoFile('src/ui/modqn-training/Tier2PreviewSection.tsx');
+assertContains(
+  appSource,
+  "from './ui/modqn-training/Tier2PreviewSection'",
+  'App imports the Tier-2 hyperparameter preview section',
+);
+assertContains(
+  appSource,
+  '<Tier2PreviewSection />',
+  'App mounts the Tier-2 preview in the MODQN training tab',
+);
+assertContains(
+  tier2PreviewSource,
+  'HyperparamChip',
+  'Tier-2 preview surfaces the built HyperparamChip component',
+);
+assertContains(
+  tier2PreviewSource,
+  'NetworkParamInput',
+  'Tier-2 preview surfaces the built NetworkParamInput component',
+);
+assertContains(
+  tier2PreviewSource,
+  'requires retrain, not yet wired',
+  'Tier-2 preview stays honest that it is not a wired training control',
+);
+
 console.log('validate:frontend:scene-lane-governance passed');

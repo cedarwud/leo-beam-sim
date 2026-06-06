@@ -95,6 +95,7 @@ import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
 import { LiveKpiStrip } from './ui/LiveKpiStrip';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { TrainingForm } from './ui/modqn-training/TrainingForm';
+import { Tier2PreviewSection } from './ui/modqn-training/Tier2PreviewSection';
 import { JobsPanel } from './ui/modqn-training/JobsPanel';
 import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
 import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
@@ -1908,7 +1909,10 @@ export function App() {
                 onReset={handleResetSignalTuning}
               />
             ) : activeLeftSidebarTab === 'training' ? (
-              <TrainingForm appMode={appMode} />
+              <section className="leo-sidebar-content-stack" aria-label="MODQN training controls">
+                <TrainingForm appMode={appMode} />
+                <Tier2PreviewSection />
+              </section>
             ) : activeLeftSidebarTab === 'jobs' ? (
               <JobsPanel appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
             ) : activeLeftSidebarTab === 'replay' ? (

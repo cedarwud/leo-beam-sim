@@ -298,6 +298,34 @@ canvas {
   max-width: 100%;
 }
 
+.leo-tier2-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px dashed rgba(255, 190, 69, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 190, 69, 0.04);
+}
+
+.leo-tier2-preview__header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.leo-tier2-preview__note {
+  font-size: 10px;
+  color: rgba(255, 217, 142, 0.86);
+}
+
+.leo-tier2-preview__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .leo-proof-strip {
   position: relative;
   padding: 6px 8px;
