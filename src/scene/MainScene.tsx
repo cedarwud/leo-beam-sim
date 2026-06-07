@@ -136,13 +136,13 @@ interface ArtifactSceneContentProps {
 }
 
 const SHOW_BEAMS = true;
-/** S-cells-4b-fix(6): how many satellites' serving beams the sinr-live lane draws.
- *  Set HIGH so EVERY satellite connected to a UE shows a beam (capping to a few
- *  sats left other connections beamless — the user's recurring complaint).
- *  Readability comes from NormalBlending + moderate opacity (additive could not be
- *  shown for all sats without washing out — it accumulates). `resolveTopServingFocusSatIds`
- *  narrowing stays available for the cinema (c2). */
-const SINR_LIVE_CONE_MAX_FOCUS_SATS = 16;
+/** S-cells-4b-fix(7): how many satellites' serving beams the sinr-live lane draws.
+ *  Screenshot-verified: drawing all serving sats washed the viewport with a forest
+ *  of tall cones that BURIED the UE mosaic dots. The connections are shown by the
+ *  MOSAIC DOTS (every UE coloured by its serving sat); the cones are a FEW focus
+ *  beams on top. So keep this LOW (1 = the primary UE's serving sat, force-included
+ *  by `resolveTopServingFocusSatIds`) → the mosaic stays readable. Dial 1–2 to taste. */
+const SINR_LIVE_CONE_MAX_FOCUS_SATS = 1;
 const CAMERA_TWEEN_DURATION_MS = 600;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
 
