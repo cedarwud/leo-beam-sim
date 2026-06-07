@@ -1653,6 +1653,23 @@ assertContains(
   'cell-truth per-UE serving maps cellId → servingBeamId (unserved → null beam, honest)',
 );
 
+// ── EarthFixedCells green-disc retired (S-cells-4d) ──
+// The legacy 20-hex steered-cover green-disc ground paint is RETIRED on the
+// sinr-live lane — the cell-truth beam cones own the earth-fixed cell story, and
+// two competing cell layouts on one viewport is a render-governance violation. The
+// flag is pinned false and MainScene no longer mounts the component (its hex-cover
+// MODEL + `validate:vc3a:hex-paint` logic gate stay intact for reuse).
+assertContains(
+  sceneLaneRenderPlanSource,
+  'showEarthFixedCells: false,',
+  'the legacy hex green-disc is retired (flag pinned false) — cell-truth cones own the cell story',
+);
+assertNotContains(
+  mainSceneSource,
+  '<EarthFixedCells',
+  'MainScene must not mount the retired hex green-disc (no competing 2nd cell layout)',
+);
+
 // ── Beam hopping + coverage (S-cells-3 follow-up / S-cells-4a) ──
 // A satellite forms a fixed number of beams (leo = 7), so the cell truth caps each
 // sat to SINR_LIVE_BEAMS_PER_SAT illuminated cells/slot and HOPS the window;

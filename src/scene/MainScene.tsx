@@ -35,13 +35,10 @@ import { useSimStatePublisher } from './useSimStatePublisher';
 import { ModqnReplaySceneLayer } from './ModqnReplaySceneLayer';
 import { REPLAY_CANVAS_ATTRIBUTES } from './modqn-replay-visuals/constants';
 import { satelliteTint } from '../constants/beamRoleTokens';
-import {
-  EarthFixedCells,
-  createCellCoverCandidate,
-  generateHexGrid,
-  resolveHexCellCoverAssignments,
-  type CellCoverHysteresisState,
-} from '../viz/EarthFixedCells';
+// S-cells-4d: the legacy 20-hex EarthFixedCells green-disc ground paint is retired
+// from the sinr-live lane (the cell-truth beam cones own the earth-fixed cell story
+// now). Its hex-cover MODEL stays in `../viz/EarthFixedCells` for reuse + the
+// `validate:vc3a:hex-paint` logic gate; only this scene's usage is removed.
 import { AmbientFootprintRings } from '../viz/AmbientFootprintRings';
 import { HandoverLinks } from '../viz/HandoverLinks';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
@@ -692,7 +689,6 @@ function SceneContent({
     resetKey: runtime.signalResetKey,
   });
   const latchedBeamSinrByKeyRef = useRef<Map<string, number>>(new Map());
-  const cellCoverHysteresisRef = useRef<CellCoverHysteresisState>(new Map());
   const alpha = sceneConfig.visualAlpha;
 
   const cameraPresets = useMemo(() => ({
@@ -723,10 +719,6 @@ function SceneContent({
     cameraPresetRef.current = preset;
     cameraTransitionRef.current = transition;
   };
-  const cells = useMemo(
-    () => generateHexGrid({ rows: 4, cols: 5, cellRadius: 80, centerX: 0, centerZ: 0 }),
-    [],
-  );
   // P1c §A / SDD §3 Q7 C4 / D9: derive `SceneGeometry` from the live profile
   // so downstream code (deriveLiveSceneFields, P1d migrations) consumes the
   // shell-level constants through the same interface as the replay path.
@@ -837,30 +829,6 @@ function SceneContent({
     inter: cellSchedule.cellReassignments.filter(reassignment => reassignment.kind === 'inter').length,
     intra: cellSchedule.cellReassignments.filter(reassignment => reassignment.kind === 'intra').length,
   }), [cellSchedule.cellReassignments]);
-  const cellCoverCandidates = useMemo(() => {
-    const displayOrderBySatId = new Map(viz.displaySats.map((sat, index) => [sat.id, index]));
-
-    return [...viz.satBeams.entries()].flatMap(([satelliteId, beams]) => {
-      const displayOrder = displayOrderBySatId.get(satelliteId) ?? 0;
-      return beams.flatMap(beam => {
-        const candidate = createCellCoverCandidate({
-          satelliteId,
-          beam,
-          footprintRadius: viz.footprintRadiusWorld,
-          displayOrder,
-        });
-        return candidate ? [candidate] : [];
-      });
-    });
-  }, [viz.displaySats, viz.footprintRadiusWorld, viz.satBeams]);
-  const paintedCells = useMemo(
-    () => resolveHexCellCoverAssignments({
-      cells,
-      beams: cellCoverCandidates,
-      hysteresis: cellCoverHysteresisRef.current,
-    }),
-    [cellCoverCandidates, cells],
-  );
   const recentHoActive =
     sim.recentHoSourceSatId !== null
     || sim.recentHoTargetSatId !== null;
@@ -879,8 +847,6 @@ function SceneContent({
   const {
     showCellOverlay,
     showLiveSceneEffects,
-    showEarthFixedCells,
-    showEarthFixedCellLabels,
     showUav,
     showLiveBeamCones,
     showLiveSatelliteMarkers,
@@ -1132,10 +1098,6 @@ function SceneContent({
     }),
     [effectiveCinematicMode, viz.satBeams],
   );
-
-  useEffect(() => {
-    cellCoverHysteresisRef.current.clear();
-  }, [runtime.handoverResetKey, runtime.signalResetKey]);
 
   useLayoutEffect(() => {
     const command = runtime.cameraCommand;
@@ -1450,7 +1412,7 @@ function SceneContent({
           reducedMotion={runtime.reducedMotion}
         />
       )}
-      {showEarthFixedCells && <EarthFixedCells cells={paintedCells} showDebugLabels={showEarthFixedCellLabels} />}
+      {/* S-cells-4d: EarthFixedCells 20-hex green-disc retired — cell-truth cones own the cell story. */}
       {showLiveSceneEffects && <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />}
       {showLiveSceneEffects && (
         <HandoverLinks

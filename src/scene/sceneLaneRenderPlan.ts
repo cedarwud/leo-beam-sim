@@ -145,7 +145,13 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     isLiveScene,
     isArtifactReplay,
     showCellOverlay,
-    showEarthFixedCells: showLiveSceneEffects,
+    // S-cells-4d: the legacy 20-hex steered-cover green-disc ground paint is
+    // RETIRED. The earth-fixed cell story is now owned by the cell-truth beam
+    // cones (`showSinrLiveCellBeams`), whose oblique footprints draw the real 37
+    // cells; the old hex disc was a DIFFERENT layout and competed with them. Kept
+    // false (not removed) so the hex-cover model + its `validate:vc3a:hex-paint`
+    // logic gate stay intact for reuse.
+    showEarthFixedCells: false,
     showEarthFixedCellLabels: showSinrLiveViewport && input.beamDensity === 'all',
     showUav: showSinrLiveViewport,
     showLiveBeamCones,
