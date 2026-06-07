@@ -1608,26 +1608,46 @@ assertContains(
   'live-render suite includes the S-cells-3 render browser gate',
 );
 
-// ── Cone focus-subset + illuminated beams (S-cells-4b) ──
-// The cones are FOCUS-SCOPED: the lane draws only the focused satellite's
-// illuminated beams (~2–7 clean cones), the service BREADTH is the UE mosaic's
-// job. Drawing a display subset is a legitimate Rule#6 filter — the serving TRUTH
-// (`sim.sinrLiveCells`) is unchanged. The render surface is the ILLUMINATED beams
-// (where the focus sat points), not only served cells.
+// ── Serving cones, every serving sat, satellite-tint colour (S-cells-4b-fix) ──
+// The lane draws the SERVING beams of EVERY serving satellite (apex = serving sat,
+// base = its served cell), so a satellite that is serving always shows its beam —
+// NO "serving sat with no beam" and NO idle/illuminating-only cones (the earlier
+// focus-subset narrowed to one "most-illuminating" fallback sat and drew idle
+// cones; the user saw the wrong sat hopping). Colour = serving-SATELLITE TINT
+// (matches the marker → "which sat serves where"). The optional `focusSatIds`
+// narrowing is left for the cinema (c2); ambient draws all serving sats.
 assertContains(
   sinrLiveCellBeamConesSource,
+  'if (!beam.serving) continue;',
+  'cone resolver draws ONLY serving beams (no idle/illuminating-only cones)',
+);
+assertNotContains(
+  sinrLiveCellBeamConesSource,
   'resolveSinrLiveConeFocusSatIds',
-  'cone resolver focus-scopes to the focused sat (with a most-illuminating fallback)',
+  'the most-illuminating fallback is gone (it hid the serving sat behind a wrong sat)',
 );
 assertContains(
   sinrLiveCellBeamConesSource,
-  'cellFrame.illuminatedBeams',
-  'cone resolver draws ILLUMINATED beams (where the focus sat points), not only served cells',
+  'satelliteTintById.get(beam.satId) ?? FALLBACK_CONE_COLOR',
+  'cone colour = serving-satellite tint (matches the marker), not a frequency palette',
+);
+assertNotContains(
+  sinrLiveCellBeamConesSource,
+  'frequencyReuseColor',
+  'cones no longer use the 3-hue frequency palette (read as a muddy weird tone)',
+);
+// The resolver REQUIRES `satelliteTintById` (a required prop), so tsc guarantees
+// MainScene threads the serving-satellite tint into the cone resolve — no fragile
+// whitespace assert needed.
+assertContains(
+  sinrLiveCellBeamConesSource,
+  'readonly satelliteTintById: ReadonlyMap<string, string>;',
+  'cone resolver props require the serving-satellite tint map (tsc enforces the MainScene wiring)',
 );
 assertContains(
   mainSceneSource,
-  'focusSatIds: sinrLiveConeFocusSatIds',
-  'MainScene passes the focus-subset (primary UE serving sat) into the cone resolver',
+  'resolveSinrLiveCellBeamConeItems({',
+  'MainScene resolves the cell-truth cones (all serving sats, sat-tinted)',
 );
 
 // ── Mosaic + aggregate re-point to the cell truth (S-cells-4c) ──

@@ -1,22 +1,21 @@
 #!/usr/bin/env node
 /**
  * Render-resolver gate for the SINR-live earth-fixed cell-truth beam cones
- * (S-cells-3 / 3b / 4b). Authority `docs/sinr-live-earth-fixed-cells-mini-sdd.md`
- * §5.5 + decisions A1/B3 + S-cells-4b (focus-subset + illuminated beams).
+ * (S-cells-3 / 3b / 4b-fix). Authority `docs/sinr-live-earth-fixed-cells-mini-sdd.md`
+ * §5.5 + decisions A1/B3.
  *
  * Locks the PURE resolver + geometry contract — not the cell physics (that is
- * `validate:phase-c:sinr-live-cells:model`) and not the runtime wiring (that is
- * `:runtime`). Milestone invariants:
- *   1. cones come from ILLUMINATED beams (where the focus sat points), not only
- *      served cells; a serving beam carries `serving: true` (brighter render);
- *   2. FOCUS-SUBSET: only the focus satellite(s)' beams draw — the service breadth
- *      is the UE mosaic's job, not a cone per served cell (Rule#6 display filter);
- *   3. FALLBACK: a null/empty/absent focus → the single most-illuminating sat, so
- *      the lane always shows a bounded beam fan;
- *   4. cone base centre sits at the FIXED cell centre on the GROUND (y = 0), NOT
- *      on the UE; apex = the illuminating satellite's world position;
- *   5. a beam whose sat is not rendered / whose cell has no placement is skipped;
- *   6. colour = FREQUENCY-REUSE colour (cellId mod reuse), not serving-sat tint;
+ * `validate:phase-c:sinr-live-cells:model`). Milestone invariants (S-cells-4b-fix):
+ *   1. one cone per SERVING beam (the serving sat → its served cell); an
+ *      illuminating-only beam (serving === false) draws NO cone;
+ *   2. EVERY serving satellite draws its serving beams — a serving sat is never
+ *      left beamless (the regression: a "most-illuminating" fallback narrowed to
+ *      one wrong sat);
+ *   3. `focusSatIds`, when non-empty, narrows to those sats (cinema handover pair);
+ *      omitted/empty → all serving sats draw;
+ *   4. cone base = the FIXED cell centre on the GROUND (y = 0), apex = serving sat;
+ *   5. colour = serving-SATELLITE TINT (matches the marker), fallback when missing;
+ *   6. a serving sat not rendered / a cell with no placement is skipped;
  *   7. the OBLIQUE geometry: the base ring lies FLAT on the ground plane.
  *
  * Run: `npm run validate:phase-c:sinr-live-cells:render`.
@@ -27,10 +26,8 @@ import {
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveCellBeamConeRenderCount,
   resolveSinrLiveCellBeamConeSatelliteCount,
-  resolveSinrLiveConeFocusSatIds,
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
-import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import type { IlluminatedCellBeam, SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
 
 let passed = 0;
@@ -79,82 +76,55 @@ const satelliteWorldById = new Map([
   ['sat-A', { x: 0, y: 900, z: 0 }],
   ['sat-B', { x: 100, y: 950, z: -100 }],
 ]);
+const satelliteTintById = new Map([
+  ['sat-A', '#11aa22'],
+  ['sat-B', '#3344ff'],
+]);
+
+function base(opts: { cellFrame: SinrLiveCellFrame | undefined; focusSatIds?: ReadonlySet<string> | null }) {
+  return { placementByCellId, satelliteWorldById, satelliteTintById, ...opts };
+}
 
 console.log('SinrLiveCellBeamCones resolver checks:');
 
 check('undefined cell frame → no cones (off-lane no-op)', () => {
-  const items = resolveSinrLiveCellBeamConeItems({ cellFrame: undefined, placementByCellId, satelliteWorldById });
-  assertEqual(items.length, 0, 'no cones without a cell frame');
+  assertEqual(resolveSinrLiveCellBeamConeItems(base({ cellFrame: undefined })).length, 0, 'no cones without a cell frame');
 });
 
 check('empty illuminated beams → no cones', () => {
-  const items = resolveSinrLiveCellBeamConeItems({ cellFrame: frameOf([]), placementByCellId, satelliteWorldById });
-  assertEqual(items.length, 0, 'no cones when nothing is lit this slot');
+  assertEqual(resolveSinrLiveCellBeamConeItems(base({ cellFrame: frameOf([]) })).length, 0, 'nothing lit → no cones');
 });
 
-check('one cone per ILLUMINATED beam of the (single) focus sat; unlit cells draw none', () => {
-  const items = resolveSinrLiveCellBeamConeItems({
-    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 2, true)]),
-    placementByCellId,
-    satelliteWorldById,
-  });
-  assertEqual(items.length, 2, 'two lit beams of the only sat → two cones');
-  assert(items.every(i => i.cellId !== 1), 'unlit cell 1 produces no cone');
-});
-
-check('FOCUS-SUBSET: focusSatIds keeps only that satellite\'s beams', () => {
-  const items = resolveSinrLiveCellBeamConeItems({
+check('EVERY serving satellite draws its serving beams (no serving sat left beamless)', () => {
+  const items = resolveSinrLiveCellBeamConeItems(base({
     cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-B', 2, true)]),
-    placementByCellId,
-    satelliteWorldById,
-    focusSatIds: new Set(['sat-A']),
-  });
-  assertEqual(items.length, 1, 'only the focus sat draws (breadth is the mosaic\'s job)');
-  assertEqual(items[0].satId, 'sat-A', 'kept the focus sat');
+  }));
+  assertEqual(items.length, 2, 'both serving sats draw their serving beam');
+  assert(items.some(i => i.satId === 'sat-A') && items.some(i => i.satId === 'sat-B'), 'both serving sats present');
 });
 
-check('FALLBACK: null focus → the single most-illuminating sat', () => {
-  // sat-A lights 2 cells, sat-B lights 1 → fallback picks sat-A.
-  const items = resolveSinrLiveCellBeamConeItems({
-    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 2, false), beam('sat-B', 2, true)]),
-    placementByCellId,
-    satelliteWorldById,
-    focusSatIds: null,
-  });
-  assertEqual(items.length, 2, 'fallback shows the most-illuminating sat\'s beams');
-  assert(items.every(i => i.satId === 'sat-A'), 'fallback sat = sat-A (lights the most cells)');
+check('illuminating-only beam (serving === false) draws NO cone', () => {
+  const items = resolveSinrLiveCellBeamConeItems(base({
+    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 2, false), beam('sat-B', 2, false)]),
+  }));
+  assertEqual(items.length, 1, 'only the serving beam draws');
+  assertEqual(items[0].cellId, 0, 'the serving cell-0 beam');
+  assert(items.every(i => i.serving), 'all rendered items are serving');
 });
 
-check('FALLBACK: focus naming a sat that illuminates nothing → most-illuminating sat', () => {
-  const items = resolveSinrLiveCellBeamConeItems({
-    cellFrame: frameOf([beam('sat-A', 0, true)]),
-    placementByCellId,
-    satelliteWorldById,
-    focusSatIds: new Set(['sat-B']), // sat-B lights nothing this slot
-  });
-  assertEqual(items.length, 1, 'falls back when the focus sat is dark');
-  assertEqual(items[0].satId, 'sat-A', 'fell back to the lit sat');
+check('focusSatIds narrows to those sats (cinema); omitted → all serving sats', () => {
+  const frame = frameOf([beam('sat-A', 0, true), beam('sat-B', 2, true)]);
+  const all = resolveSinrLiveCellBeamConeItems(base({ cellFrame: frame }));
+  assertEqual(all.length, 2, 'omitted focus → all serving sats');
+  const narrowed = resolveSinrLiveCellBeamConeItems(base({ cellFrame: frame, focusSatIds: new Set(['sat-B']) }));
+  assertEqual(narrowed.length, 1, 'narrowed to the focus sat');
+  assertEqual(narrowed[0].satId, 'sat-B', 'kept the focus sat');
+  const empty = resolveSinrLiveCellBeamConeItems(base({ cellFrame: frame, focusSatIds: new Set<string>() }));
+  assertEqual(empty.length, 2, 'empty focus set is treated as no narrowing (all serving)');
 });
 
-check('serving flag preserved: illuminating-only beams carry serving=false', () => {
-  const items = resolveSinrLiveCellBeamConeItems({
-    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 2, false)]),
-    placementByCellId,
-    satelliteWorldById,
-    focusSatIds: new Set(['sat-A']),
-  });
-  const c0 = items.find(i => i.cellId === 0)!;
-  const c2 = items.find(i => i.cellId === 2)!;
-  assertEqual(c0.serving, true, 'cell 0 beam is serving');
-  assertEqual(c2.serving, false, 'cell 2 beam illuminates only (not serving)');
-});
-
-check('cone base = FIXED cell centre on the GROUND (NOT the UE/origin), apex = illuminating sat', () => {
-  const items = resolveSinrLiveCellBeamConeItems({
-    cellFrame: frameOf([beam('sat-A', 0, true)]),
-    placementByCellId,
-    satelliteWorldById,
-  });
+check('cone base = FIXED cell centre on the GROUND (NOT the UE/origin), apex = serving sat', () => {
+  const items = resolveSinrLiveCellBeamConeItems(base({ cellFrame: frameOf([beam('sat-A', 0, true)]) }));
   assertEqual(items.length, 1, 'one cone');
   const c = items[0];
   approx(c.baseCenter.x, 30, 1e-9, 'base at cell-0 worldX');
@@ -165,55 +135,44 @@ check('cone base = FIXED cell centre on the GROUND (NOT the UE/origin), apex = i
   approx(c.apex.y, 900, 1e-9, 'apex at sat-A altitude');
 });
 
-check('colour = frequency-reuse colour (NOT serving-sat tint)', () => {
-  // One sat lights cell 0 (freq 0) and cell 2 (freq 2) → distinct reuse colours.
-  const items = resolveSinrLiveCellBeamConeItems({
-    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 2, true)]),
+check('colour = serving-SATELLITE TINT (matches marker), fallback when missing', () => {
+  const items = resolveSinrLiveCellBeamConeItems(base({
+    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-B', 2, true)]),
+  }));
+  const a = items.find(i => i.satId === 'sat-A')!;
+  const b = items.find(i => i.satId === 'sat-B')!;
+  assertEqual(a.color, '#11aa22', 'sat-A cone uses sat-A tint');
+  assertEqual(b.color, '#3344ff', 'sat-B cone uses sat-B tint');
+  assert(a.color !== b.color, 'distinct sats → distinct tints (which sat serves where)');
+  // a serving sat whose tint is missing from the map falls back, never crashes
+  const missing = resolveSinrLiveCellBeamConeItems({
+    cellFrame: frameOf([beam('sat-A', 0, true)]),
     placementByCellId,
     satelliteWorldById,
+    satelliteTintById: new Map(),
   });
-  const c0 = items.find(i => i.cellId === 0)!;
-  const c2 = items.find(i => i.cellId === 2)!;
-  assertEqual(c0.color, frequencyReuseColor(0), 'cell 0 uses freq-0 colour');
-  assertEqual(c2.color, frequencyReuseColor(2), 'cell 2 uses freq-2 colour');
-  assert(c0.color !== c2.color, 'distinct frequencies → distinct colours (not mono, single serving sat)');
+  assertEqual(missing[0].color, '#93c5fd', 'missing tint → fallback colour');
 });
 
-check('beam with an unrendered sat is skipped (display-cap honest)', () => {
-  const items = resolveSinrLiveCellBeamConeItems({
+check('serving sat not rendered (absent world position) is skipped', () => {
+  const items = resolveSinrLiveCellBeamConeItems(base({
     cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-MISSING', 2, true)]),
-    placementByCellId,
-    satelliteWorldById,
-    focusSatIds: new Set(['sat-A', 'sat-MISSING']),
-  });
-  assertEqual(items.length, 1, 'only the rendered-sat beam draws a cone');
+  }));
+  assertEqual(items.length, 1, 'only the rendered-sat serving beam draws');
   assertEqual(items[0].satId, 'sat-A', 'kept the rendered sat');
 });
 
-check('beam with no cell placement is skipped', () => {
-  const items = resolveSinrLiveCellBeamConeItems({
+check('serving beam with no cell placement is skipped', () => {
+  const items = resolveSinrLiveCellBeamConeItems(base({
     cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 99, true)]),
-    placementByCellId,
-    satelliteWorldById,
-  });
+  }));
   assertEqual(items.length, 1, 'cell 99 has no placement → skipped');
 });
 
-check('resolveSinrLiveConeFocusSatIds: explicit focus respected, else top illuminator', () => {
-  const beams = [beam('sat-A', 0, true), beam('sat-A', 2, false), beam('sat-B', 2, true)];
-  assertEqual([...resolveSinrLiveConeFocusSatIds(beams, new Set(['sat-B']))].join(','), 'sat-B', 'explicit focus honoured');
-  assertEqual([...resolveSinrLiveConeFocusSatIds(beams, null)].join(','), 'sat-A', 'fallback = most-illuminating sat');
-  assertEqual(resolveSinrLiveConeFocusSatIds([], null).size, 0, 'no beams → empty focus');
-});
-
 check('render-count + serving-sat-count helpers agree with the items', () => {
-  const input = {
-    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 2, true)]),
-    placementByCellId,
-    satelliteWorldById,
-  };
-  assertEqual(resolveSinrLiveCellBeamConeRenderCount(input), 2, 'render count = 2 cones');
-  assertEqual(resolveSinrLiveCellBeamConeSatelliteCount(input), 1, 'one focused serving sat');
+  const input = base({ cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 1, true), beam('sat-B', 2, true)]) });
+  assertEqual(resolveSinrLiveCellBeamConeRenderCount(input), 3, 'render count = 3 serving cones');
+  assertEqual(resolveSinrLiveCellBeamConeSatelliteCount(input), 2, 'two distinct serving sats');
 });
 
 check('oblique geometry: base ring FLAT on the ground (y=0), every triangle apex = sat', () => {
@@ -225,15 +184,13 @@ check('oblique geometry: base ring FLAT on the ground (y=0), every triangle apex
   assertEqual(pos.length, segments * 9, '3 verts × segments triangles');
   for (let i = 0; i < segments; i += 1) {
     const o = i * 9;
-    // vert 0 of each triangle = apex (the satellite)
     approx(pos[o], apex.x, 1e-6, `tri ${i} apex x`);
     approx(pos[o + 1], apex.y, 1e-6, `tri ${i} apex y`);
     approx(pos[o + 2], apex.z, 1e-6, `tri ${i} apex z`);
-    // verts 1 & 2 = ground ring, FLAT at y=0, at `radius` from the cell centre
     approx(pos[o + 4], 0, 1e-9, `tri ${i} ring v1 on ground (y=0)`);
     approx(pos[o + 7], 0, 1e-9, `tri ${i} ring v2 on ground (y=0)`);
     const r1 = Math.hypot(pos[o + 3] - baseCenter.x, pos[o + 5] - baseCenter.z);
-    approx(r1, radius, 1e-3, `tri ${i} ring v1 at footprint radius`); // Float32 storage precision
+    approx(r1, radius, 1e-3, `tri ${i} ring v1 at footprint radius`);
   }
 });
 

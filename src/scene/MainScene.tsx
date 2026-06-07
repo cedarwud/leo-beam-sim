@@ -1024,29 +1024,22 @@ function SceneContent({
   // browser gate (UE off-centre = cones at fixed cells while UEs sit off-axis).
   // Resolve the cones ONCE per frame; the component + telemetry both read this
   // memoised array (no redundant resolver passes).
-  // S-cells-4b focus subset: draw the PRIMARY UE's serving satellite's illuminated
-  // beams (~2–7 clean cones), not every served cell. The primary UE (index 0, the
-  // RED anchor at the observer) is the stable focus subject; when it is unserved the
-  // resolver falls back to the most-illuminating sat so the lane always shows a
-  // bounded beam fan. Service breadth stays in the UE mosaic (Rule#6 display filter).
-  const sinrLiveConeFocusSatIds = useMemo<ReadonlySet<string> | null>(() => {
-    if (!showSinrLiveCellBeams) return null;
-    const cellFrame = sim.sinrLiveCells;
-    const primaryId = sceneFrame.ues[0]?.id;
-    if (!cellFrame || primaryId === undefined) return null;
-    const primaryServingSatId = cellFrame.ues.find(u => u.ueId === primaryId)?.servingSatId ?? null;
-    return primaryServingSatId === null ? null : new Set([primaryServingSatId]);
-  }, [showSinrLiveCellBeams, sim.sinrLiveCells, sceneFrame.ues]);
+  // S-cells-4b-fix: draw the SERVING beams of EVERY serving satellite (apex = the
+  // serving sat, base = its served cell), coloured by that sat's tint (matching its
+  // marker). Every serving sat shows its beam — no "serving sat with no beam" and no
+  // idle/illuminating-only cones. At 37 cells + 7-beam hopping the serving cones are
+  // ~8 (bounded). The optional `focusSatIds` narrowing (cinema handover pair) is left
+  // for S-cells-4-c2; ambient draws all serving sats.
   const sinrLiveCellBeamConeItems = useMemo(
     () => (showSinrLiveCellBeams
       ? resolveSinrLiveCellBeamConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
         satelliteWorldById,
-        focusSatIds: sinrLiveConeFocusSatIds,
+        satelliteTintById,
       })
       : []),
-    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById, sinrLiveConeFocusSatIds],
+    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById, satelliteTintById],
   );
   const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
