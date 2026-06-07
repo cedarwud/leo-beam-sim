@@ -89,8 +89,14 @@ export interface SinrLiveCellBeamConeRenderItem {
 
 /** Segments around the flat ground footprint ring. */
 const OBLIQUE_CONE_SEGMENTS = 32;
-/** Cone opacity — the lane's primary beam render (raised vs the faint 0.1 MODQN overlay). */
-const SINR_LIVE_CELL_CONE_OPACITY = 0.32;
+/**
+ * Cone opacity for ADDITIVE blending — like the original `SatelliteBeams` glow
+ * (additive, opacity ~0.6–0.9) and `AmbientFootprintRings`, the cones EMIT light
+ * over the dark scene so the colours read bright/vivid instead of the hazy
+ * half-transparent veil that `NormalBlending` gave. Additive overlaps brighten
+ * (never muddy), so a moderate opacity keeps the fan luminous without blowing out.
+ */
+const SINR_LIVE_CELL_CONE_OPACITY = 0.45;
 
 /**
  * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)
@@ -229,7 +235,7 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem }): JSX.E
         color={cone.color}
         transparent
         opacity={SINR_LIVE_CELL_CONE_OPACITY}
-        blending={THREE.NormalBlending}
+        blending={THREE.AdditiveBlending}
         depthWrite={false}
         side={THREE.DoubleSide}
         toneMapped={false}
