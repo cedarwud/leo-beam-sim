@@ -363,4 +363,61 @@ check('serving sat replaced (A leaves, B arrives) → inter-HO end-to-end', () =
   assertEqual(fb.intraHandoverCount, 0, 'no intra');
 });
 
-console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty)`);
+// --- beam hopping: per-sat beam cap + rotating illumination window (§5.3) ------
+
+check('beam-hopping cap: one satellite lights at most `beamsPerSat` cells/slot', () => {
+  const layout = testLayout(19); // 19 candidate cells under one overhead sat
+  const m = new SinrLiveCellModel({
+    profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS,
+    beamsPerSat: 7, hopSlotSec: 2.5,
+  });
+  const sat = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const f = m.step({ visibleSats: [sat], ues: [], simTimeSec: 0, dtSec: 1 });
+  assert(f.servedCellCount <= 7, `served cells capped to 7 (got ${f.servedCellCount})`);
+  assert(f.servedCellCount >= 1, 'at least one cell lit');
+  const litCellsBySat = f.cells.filter(c => c.servingSatId === 'A').length;
+  assert(litCellsBySat <= 7, `sat A lights ≤ 7 cells (got ${litCellsBySat})`);
+});
+
+check('no cap by default (beamsPerSat = Infinity) → the overhead sat lights > 7 cells', () => {
+  const layout = testLayout(19);
+  const m = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
+  const sat = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const f = m.step({ visibleSats: [sat], ues: [], simTimeSec: 0, dtSec: 1 });
+  assert(f.servedCellCount > 7, `uncapped pure model lights > 7 cells (got ${f.servedCellCount}) — proves the cap actually constrains`);
+});
+
+check('beam hopping: the lit cell set ROTATES across slots (every cell served periodically)', () => {
+  const layout = testLayout(19);
+  const m = new SinrLiveCellModel({
+    profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS,
+    beamsPerSat: 7, hopSlotSec: 2.5,
+  });
+  const sat = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const slot0 = m.step({ visibleSats: [sat], ues: [], simTimeSec: 0, dtSec: 1 });
+  const slot1 = m.step({ visibleSats: [sat], ues: [], simTimeSec: 2.5, dtSec: 2.5 });
+  const lit0 = new Set(slot0.cells.filter(c => c.servingSatId !== null).map(c => c.cellId));
+  const lit1 = new Set(slot1.cells.filter(c => c.servingSatId !== null).map(c => c.cellId));
+  // The window advanced: at least one cell lit in slot 1 was NOT lit in slot 0.
+  const fresh = [...lit1].filter(c => !lit0.has(c));
+  assert(fresh.length > 0, `hopping lit a fresh cell in slot 1 (lit0=${[...lit0]}, lit1=${[...lit1]})`);
+});
+
+check('beam hopping idle honesty: a UE in an un-illuminated cell this slot is unserved', () => {
+  const layout = testLayout(19);
+  const m = new SinrLiveCellModel({
+    profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS,
+    beamsPerSat: 7, hopSlotSec: 2.5,
+  });
+  const sat = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  // Put one UE in every cell centre; with a 7-beam cap over 19 cells, > 7 UEs
+  // must be unserved (their cell is dark this slot) — honest, not borrowed.
+  const ues = layout.centers.map(c => ({ id: `ue${c.cellId}`, eastKm: c.localXKm, northKm: c.localYKm }));
+  const f = m.step({ visibleSats: [sat], ues, simTimeSec: 0, dtSec: 1 });
+  const served = f.ues.filter(u => u.servingSatId !== null).length;
+  const unserved = f.ues.filter(u => u.servingSatId === null).length;
+  assert(served <= 7, `served UEs bounded by the 7-beam cap (got ${served})`);
+  assert(unserved >= layout.centers.length - 7, `the rest are honestly unserved (got ${unserved})`);
+});
+
+console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + rotation + idle honesty)`);

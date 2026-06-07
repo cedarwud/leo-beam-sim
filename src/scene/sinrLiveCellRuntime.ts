@@ -49,7 +49,27 @@ import {
  * than tile coverage — that, plus idle-cell semantics, is the S-cells-5 tune;
  * this const is its single tuning point.
  */
-export const SINR_LIVE_CELL_COUNT = 61;
+export const SINR_LIVE_CELL_COUNT = 19;
+
+/**
+ * Link-budget / cell-layout 3 dB beamwidth for the SINR-live lane (rad ≈ 7.4°).
+ * WIDER than the profile antenna (3.32°) on purpose: cell SIZE is
+ * `altitude·tan(beamwidth/2)`, so a wider beam makes FEWER, BIGGER cells tile the
+ * whole 200×90 km service area — letting one satellite's {@link SINR_LIVE_BEAMS_PER_SAT}
+ * beams cover a meaningful fraction (the rest filled by hopping) instead of leaving
+ * most of the map dark. leo's gain model keeps peak gain (`maxGainDbi`) independent
+ * of beamwidth, so widening the lobe costs little SINR (only more co-channel overlap,
+ * damped by frequency reuse). Cell layout AND the cell model's link budget both use
+ * this value (one physical antenna). This + {@link SINR_LIVE_CELL_COUNT} are the
+ * coverage tuning point.
+ */
+export const SINR_LIVE_CELL_BEAMWIDTH_RAD = 0.13;
+
+/** Beams (simultaneous lit cells) per satellite — leo multibeam = 7. Beam hopping caps to this. */
+export const SINR_LIVE_BEAMS_PER_SAT = 7;
+
+/** Beam-hopping slot duration (s): the lit cell window advances each slot. */
+export const SINR_LIVE_HOP_SLOT_SEC = 2.5;
 
 /**
  * Elevation mask for the cell truth. Pinned to the cell-layout default (15°),
@@ -84,7 +104,10 @@ export function buildSinrLiveCellLayout(profile: Profile): CellLayout {
     centerLatDeg: profile.orbit.observerLatDeg,
     centerLonDeg: profile.orbit.observerLonDeg,
     altitudeKm: profile.orbit.shells[0]?.altitudeKm ?? 550,
-    beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
+    // Cell SIZE uses the WIDE sinr-live beamwidth (not the profile antenna) so the
+    // 19 cells tile the whole service area; the model's link budget uses the same
+    // value (one antenna) — see SINR_LIVE_CELL_BEAMWIDTH_RAD.
+    beamwidth3dBRad: SINR_LIVE_CELL_BEAMWIDTH_RAD,
     cellCount: SINR_LIVE_CELL_COUNT,
   });
 }
@@ -108,6 +131,11 @@ export function createSinrLiveCellModel(
     observer: { latDeg: profile.orbit.observerLatDeg, lonDeg: profile.orbit.observerLonDeg },
     minElevationDeg: SINR_LIVE_CELL_MIN_ELEVATION_DEG,
     epochUtcMs,
+    // Beam hopping: each satellite lights ≤7 cells/slot, rotating; link-budget
+    // beamwidth matches the cell layout (one antenna).
+    beamsPerSat: SINR_LIVE_BEAMS_PER_SAT,
+    hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
+    beamwidthOverrideRad: SINR_LIVE_CELL_BEAMWIDTH_RAD,
   });
 }
 

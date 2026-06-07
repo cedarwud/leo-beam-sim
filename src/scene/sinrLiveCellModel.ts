@@ -178,6 +178,26 @@ export interface SinrLiveCellModelConfig {
   readonly observer: { readonly latDeg: number; readonly lonDeg: number };
   readonly minElevationDeg?: number;
   readonly epochUtcMs: number;
+  /**
+   * Max cells one satellite may ILLUMINATE per hopping slot (its beam budget).
+   * A real multibeam satellite forms a fixed number of simultaneous beams (leo =
+   * 7), so it cannot light every cell it can geometrically reach. When a sat has
+   * more candidate cells than this, only `beamsPerSat` are lit this slot and the
+   * window ROTATES over slots (beam hopping); the rest are idle this slot. Default
+   * `Infinity` = no cap (the pure-model default; the runtime passes 7). Illumination
+   * gating is a SCHEDULING decision — the SERVING sat of a lit cell is still chosen
+   * by SINR + the `HandoverManager` (B3 / codex BLOCK-3), never round-robin.
+   */
+  readonly beamsPerSat?: number;
+  /** Beam-hopping slot duration (s); the lit window advances each slot. Default 2.5. */
+  readonly hopSlotSec?: number;
+  /**
+   * Override the link-budget antenna 3 dB beamwidth (rad). The cell SIZE
+   * (`cellLayout.cellRadiusKm`) and the antenna GAIN must come from the SAME
+   * beamwidth (one physical antenna); the runtime widens both together so fewer,
+   * bigger cells tile the service area. Default `undefined` = use the profile antenna.
+   */
+  readonly beamwidthOverrideRad?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -347,6 +367,9 @@ export class SinrLiveCellModel {
   private readonly observer: { latDeg: number; lonDeg: number };
   private readonly minElevationDeg: number;
   private readonly epochUtcMs: number;
+  private readonly beamsPerSat: number;
+  private readonly hopSlotSec: number;
+  private readonly antenna: Profile['antenna'];
   private readonly cellManagers = new Map<number, HandoverManager>();
   private prevUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
 
@@ -357,6 +380,11 @@ export class SinrLiveCellModel {
     this.observer = config.observer;
     this.minElevationDeg = config.minElevationDeg ?? DEFAULT_MIN_ELEVATION_DEG;
     this.epochUtcMs = config.epochUtcMs;
+    this.beamsPerSat = config.beamsPerSat ?? Infinity;
+    this.hopSlotSec = config.hopSlotSec && config.hopSlotSec > 0 ? config.hopSlotSec : 2.5;
+    this.antenna = config.beamwidthOverrideRad != null
+      ? { ...config.profile.antenna, beamwidth3dBRad: config.beamwidthOverrideRad }
+      : config.profile.antenna;
   }
 
   private managerForCell(cellId: number): HandoverManager {
@@ -372,7 +400,7 @@ export class SinrLiveCellModel {
     return {
       formulaFamily: this.profile.formulaFamily,
       channel: this.profile.channel,
-      antenna: this.profile.antenna,
+      antenna: this.antenna,
       ueAntenna: this.profile.ueAntenna,
       beams: this.profile.beams,
       activeAssignments,
@@ -383,6 +411,51 @@ export class SinrLiveCellModel {
   reset(): void {
     for (const manager of this.cellManagers.values()) manager.reset();
     this.prevUeServing = new Map();
+  }
+
+  /**
+   * Beam hopping (§5.3 / "K<N" in the SDD): cap each satellite to `beamsPerSat`
+   * illuminated cells this slot and ROTATE the lit window over slots, so every
+   * candidate cell of a sat is served periodically. Mutates `candidatesByCell` in
+   * place — a (sat, cell) pair the sat is not illuminating this slot is removed
+   * from that cell's candidate list, so downstream serving + per-UE SINR see only
+   * lit beams; a cell left with no candidate falls to idle. Deterministic per slot
+   * (by `cellId` order + slot index) — NOT random and NOT a serving decision.
+   */
+  private applyBeamHoppingCap(
+    candidatesByCell: Map<number, CellScanGeometry[]>,
+    simTimeSec: number,
+  ): void {
+    if (!Number.isFinite(this.beamsPerSat)) return; // no cap (pure-model default)
+    const beams = Math.max(1, Math.floor(this.beamsPerSat));
+
+    // Candidate cells per satellite.
+    const cellsBySat = new Map<string, number[]>();
+    for (const [cellId, geoms] of candidatesByCell) {
+      for (const geom of geoms) {
+        const list = cellsBySat.get(geom.satId);
+        if (list) list.push(cellId);
+        else cellsBySat.set(geom.satId, [cellId]);
+      }
+    }
+
+    const slotIndex = Math.max(0, Math.floor((Number.isFinite(simTimeSec) ? simTimeSec : 0) / this.hopSlotSec));
+    const illuminated = new Set<string>();
+    for (const [satId, cellIds] of cellsBySat) {
+      const sorted = [...new Set(cellIds)].sort((a, b) => a - b);
+      if (sorted.length <= beams) {
+        for (const cellId of sorted) illuminated.add(`${satId}#${cellId}`);
+        continue;
+      }
+      const start = (slotIndex * beams) % sorted.length;
+      for (let k = 0; k < beams; k += 1) {
+        illuminated.add(`${satId}#${sorted[(start + k) % sorted.length]}`);
+      }
+    }
+
+    for (const [cellId, geoms] of candidatesByCell) {
+      candidatesByCell.set(cellId, geoms.filter(geom => illuminated.has(`${geom.satId}#${cellId}`)));
+    }
   }
 
   step(input: SinrLiveCellStepInput): SinrLiveCellFrame {
@@ -400,6 +473,14 @@ export class SinrLiveCellModel {
         listCellCandidateSats(cell, linkSats, this.observer, maxSteer, this.minElevationDeg),
       );
     }
+
+    // 1b. Beam-hopping cap: a satellite forms only `beamsPerSat` simultaneous
+    //     beams, so it can illuminate at most that many cells this slot; the lit
+    //     window rotates over slots. This GATES which (sat, cell) pairs are even
+    //     candidates — the serving sat of a lit cell is still chosen by SINR + the
+    //     HandoverManager below (B3 / BLOCK-3), and an un-illuminated cell falls to
+    //     idle (honest). No-op when `beamsPerSat` is Infinity (pure-model default).
+    this.applyBeamHoppingCap(candidatesByCell, simTimeSec);
 
     // 2. Pre-decision lit field from each cell's PREVIOUS serving (mirrors the
     //    runtime pre/post two-pass). One lit beam per cell that still has a

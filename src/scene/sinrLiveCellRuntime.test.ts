@@ -25,6 +25,7 @@ import { DEFAULT_MIN_ELEVATION_DEG } from '../engine/cells/cellLayout';
 import { loadProfile } from '../profiles/index';
 import { SinrLiveCellModel, type CellModelSat } from './sinrLiveCellModel';
 import {
+  SINR_LIVE_CELL_BEAMWIDTH_RAD,
   SINR_LIVE_CELL_COUNT,
   SINR_LIVE_CELL_MIN_ELEVATION_DEG,
   attachSinrLiveCellFrame,
@@ -129,7 +130,9 @@ check('cell layout is built from the live profile at the tunable cell count', ()
   assertEqual(layout.centers.length, SINR_LIVE_CELL_COUNT, 'cell count from const');
   assertEqual(layout.count, SINR_LIVE_CELL_COUNT, 'layout.count from const');
   assertEqual(layout.altitudeKm, profile.orbit.shells[0]!.altitudeKm, 'altitude from profile shell');
-  assertEqual(layout.beamwidth3dBRad, profile.antenna.beamwidth3dBRad, 'beamwidth from profile antenna');
+  // Cell size uses the WIDE sinr-live beamwidth (fewer/bigger cells tile the area),
+  // not the narrow profile antenna — the model's link budget uses the same value.
+  assertEqual(layout.beamwidth3dBRad, SINR_LIVE_CELL_BEAMWIDTH_RAD, 'beamwidth = wide sinr-live override');
 });
 
 // --- the lane gate (other-lane zero-drift) -----------------------------------

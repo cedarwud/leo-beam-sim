@@ -1608,6 +1608,42 @@ assertContains(
   'live-render suite includes the S-cells-3 render browser gate',
 );
 
+// ── Beam hopping + wide-beam coverage (S-cells-3 follow-up) ──
+// A satellite forms a fixed number of beams (leo = 7), so the cell truth caps each
+// sat to SINR_LIVE_BEAMS_PER_SAT illuminated cells/slot and HOPS the window;
+// illumination is a scheduling gate, the SERVING sat of a lit cell is still chosen
+// by SINR + the HandoverManager (B3 / codex BLOCK-3), never round-robin. Cell SIZE
+// and link-budget GAIN come from the SAME wide beamwidth (one antenna) so fewer,
+// bigger cells tile the service area. These locks pin that wiring so it cannot
+// silently regress to a single satellite lighting every cell it can see.
+const sinrLiveCellModelSource = readRepoFile('src/scene/sinrLiveCellModel.ts');
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'beamsPerSat: SINR_LIVE_BEAMS_PER_SAT',
+  'runtime caps the cell model to a per-sat beam budget (beam hopping)',
+);
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'beamwidthOverrideRad: SINR_LIVE_CELL_BEAMWIDTH_RAD',
+  'runtime widens the cell-model link-budget beamwidth to match the cell layout (one antenna)',
+);
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'beamwidth3dBRad: SINR_LIVE_CELL_BEAMWIDTH_RAD',
+  'cell layout is sized by the wide sinr-live beamwidth (fewer/bigger cells tile the area)',
+);
+assertContains(
+  sinrLiveCellModelSource,
+  'applyBeamHoppingCap',
+  'cell model implements the per-sat beam-hopping illumination cap',
+);
+// The cap GATES candidate illumination; serving is still SINR + HandoverManager.
+assertContains(
+  sinrLiveCellModelSource,
+  'manager.update(candidateSamples',
+  'cell serving stays SINR + HandoverManager (illumination cap is not a serving oracle — BLOCK-3)',
+);
+
 assertContains(
   sceneLaneRenderPlanSource,
   'export type HandoverStoryLayerPolicy',
