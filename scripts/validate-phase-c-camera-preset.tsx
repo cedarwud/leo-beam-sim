@@ -285,7 +285,7 @@ section('(h) Render plan: director is lane-gated to live-walker + artifact-repla
 
 section('(i) Single-chain director speed tier source', () => {
   const playbackSource = source('src/usePlaybackControls.ts');
-  check(/DIRECTOR_FOCUS_SPEED\s*=\s*0\.05/.test(playbackSource), 'DIRECTOR_FOCUS_SPEED = 0.05 is defined');
+  check(/DIRECTOR_FOCUS_SPEED\s*=\s*0\.25/.test(playbackSource), 'DIRECTOR_FOCUS_SPEED = 0.25 is defined (CQ2 cinema-quality tier)');
   check(playbackSource.includes('directorFocusActive'), 'effectiveSpeed chain consumes directorFocusActive');
   check(
     /directorFocusActive[\s\S]*?Math\.min\(speed,\s*DIRECTOR_FOCUS_SPEED\)/.test(playbackSource),

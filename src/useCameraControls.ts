@@ -14,6 +14,15 @@ type UserCinematicMode = Exclude<CinematicMode, 'director'>;
 // window aligns with the camera settle.
 const DIRECTOR_TWEEN_DURATION_MS = 600;
 
+// CQ2 (cinema quality): wall-clock ceiling on the focus HOLD. The live cinema lane
+// has no window-based auto-end (only the artifact replay lane does via
+// shouldEndCinematicReplay), so without this a live focus held indefinitely until
+// the user hit Exit — a core part of the "it drags / too long" complaint. Once the
+// camera settles into `focused`, auto-restore after this long so every cinema
+// self-finishes (~one gentle orbit arc). Display-only pacing; the user can still
+// Exit/Escape sooner, and the artifact window-end can still fire first.
+const FOCUS_AUTO_EXIT_MS = 11000;
+
 export interface CameraControls {
   readonly cinematicMode: CinematicMode;
   readonly cameraCommand: RuntimeConfig['cameraCommand'];
@@ -91,6 +100,18 @@ export function useCameraControls(): CameraControls {
     }, DIRECTOR_TWEEN_DURATION_MS);
     return () => clearTimeout(timeoutId);
   }, [directorPhase]);
+
+  // CQ2: bounded auto-exit — once the camera settles into the focus HOLD, restore
+  // after FOCUS_AUTO_EXIT_MS so the cinema self-finishes instead of holding forever
+  // (the live lane has no window-based auto-end). Exit/Escape can still fire sooner;
+  // a re-target (acquiring again) drops us out of `focused`, clearing this timer.
+  useEffect(() => {
+    if (directorPhase !== 'focused') return undefined;
+    const timeoutId = setTimeout(() => {
+      exitDirectorFocus();
+    }, FOCUS_AUTO_EXIT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [directorPhase, exitDirectorFocus]);
 
   const cinematicMode: CinematicMode = directorPhase !== 'idle' ? 'director' : userCinematicMode;
   // Slow-mo stays locked for the entire director cycle, INCLUDING the `restoring`

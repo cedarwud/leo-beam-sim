@@ -16,7 +16,7 @@
  * in docs/showcase-render-truth-fix-backlog.md.
  *
  * Asserts (hard): on the real intra-focus click the director FSM leaves idle,
- * the effective playback speed drops to the 0.05x cinematic tier, the camera
+ * the effective playback speed drops to the 0.25x cinematic tier, the camera
  * world position ACTUALLY changes (the focus tween), and Exit restores the FSM
  * to idle with the speed back to normal. Soft: the seek dim-fade overlay is
  * observed transitioning (best-effort — it is a ~300ms transient that a
@@ -35,7 +35,7 @@ const DIRECTOR = '[data-testid="director-controls"]';
 const INTRA_BTN = '[data-testid="director-intra-focus"]';
 const EXIT_BTN = '[data-testid="director-exit-focus"]';
 const FADE = '[data-testid="cinematic-seek-fade-overlay"]';
-const CINEMATIC_SPEED = 0.05;
+const CINEMATIC_SPEED = 0.25;
 // Durability (provenance audit 2026-06-04): REQUIRE_PRODUCER_ARTIFACT=1 (set by
 // the `validate:real-data` aggregate) turns the known-non-producer LOUD-SKIP into
 // a hard FAIL, so the Director real-data claim cannot silently green-skip on a
@@ -171,9 +171,9 @@ async function main(): Promise<void> {
     const phaseDuring = await attr(page, SHELL, 'data-director-phase');
     assert.ok(['acquiring', 'focused', 'restoring'].includes(phaseDuring ?? ''), `director FSM active (${phaseDuring})`);
 
-    // Speed drops to the 0.05x cinematic tier.
+    // Speed drops to the 0.25x cinematic tier.
     await page.waitForFunction(
-      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) <= 0.05,
+      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) <= 0.25,
       undefined,
       { timeout: 8000 },
     );
@@ -207,7 +207,7 @@ async function main(): Promise<void> {
       { timeout: 8000 },
     );
     await page.waitForFunction(
-      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) > 0.05,
+      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) > 0.25,
       undefined,
       { timeout: 8000 },
     );
@@ -220,7 +220,7 @@ async function main(): Promise<void> {
     const realErrors = consoleErrors.filter(e => !/ERR_CONNECTION_REFUSED|:8765|favicon/.test(e));
     assert.equal(realErrors.length, 0, `no real console errors: ${JSON.stringify(realErrors)}`);
 
-    console.log('[director-cinematic] PASS — camera moved, speed dropped to 0.05x, FSM restored on exit (DATA SOURCE = real producer-pinned artifact)');
+    console.log('[director-cinematic] PASS — camera moved, speed dropped to 0.25x, FSM restored on exit (DATA SOURCE = real producer-pinned artifact)');
   } finally {
     await browser.close();
   }

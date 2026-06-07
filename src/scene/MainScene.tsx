@@ -183,6 +183,61 @@ type CameraTweenRef = MutableRefObject<CameraTweenState | null>;
  */
 type DirectorFocusTransition = 'acquire-applied' | 'acquire-tween' | 'restore-applied' | 'restore-tween';
 
+// CQ1 (cinema quality): after the acquire tween lands, the camera used to HOLD a
+// single static pose for the whole focus — the shot read as a frozen zoom. Instead
+// it now gently ORBITS the focus subject (slow azimuth arc around `center`) with a
+// subtle dolly/rise "breathing" so the cinema feels like cinematography, not a
+// freeze-frame. This is display-only motion (Rule#6): it never touches SINR / HO /
+// decision truth, only the presentation camera. Suppressed under reduced motion.
+const DIRECTOR_FOCUS_ORBIT_ANGULAR_SPEED = 0.16; // rad/s, ~quarter-turn over the focus hold
+const DIRECTOR_FOCUS_ORBIT_DOLLY_AMPLITUDE = 0.07; // ±7% in/out breathing on the orbit radius
+const DIRECTOR_FOCUS_ORBIT_RISE_AMPLITUDE = 0.06; // ±6% gentle vertical bob
+const DIRECTOR_FOCUS_ORBIT_BREATH_PERIOD_SEC = 9;
+
+interface DirectorFocusOrbitState {
+  /** The focus target the camera arcs around (= the landed acquire-pose target). */
+  readonly center: THREE.Vector3;
+  /** The landed acquire-pose camera offset from `center` (rotated/scaled each frame). */
+  readonly baseOffset: THREE.Vector3;
+  readonly startedAtMs: number;
+}
+type DirectorFocusOrbitRef = MutableRefObject<DirectorFocusOrbitState | null>;
+
+/**
+ * Advance the continuous Director focus orbit by one frame: rotate the landed
+ * acquire offset around the vertical axis through `center`, with a slow dolly +
+ * rise "breath" so the framing stays alive without losing the subject. Keeps
+ * `controls.target` pinned to `center` so the subject stays centred while the
+ * camera arcs. Pure presentation motion.
+ */
+function advanceDirectorFocusOrbit(ctx: {
+  readonly camera: THREE.Camera;
+  readonly controls: OrbitControlsImpl | null;
+  readonly orbit: DirectorFocusOrbitState;
+  readonly nowMs: number;
+}): void {
+  const { camera, controls, orbit, nowMs } = ctx;
+  const tSec = Math.max(0, (nowMs - orbit.startedAtMs) / 1000);
+  const angle = tSec * DIRECTOR_FOCUS_ORBIT_ANGULAR_SPEED;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const breath = Math.sin((tSec / DIRECTOR_FOCUS_ORBIT_BREATH_PERIOD_SEC) * Math.PI * 2);
+  const dolly = 1 + DIRECTOR_FOCUS_ORBIT_DOLLY_AMPLITUDE * breath;
+  const base = orbit.baseOffset;
+  const rotatedX = (base.x * cos - base.z * sin) * dolly;
+  const rotatedZ = (base.x * sin + base.z * cos) * dolly;
+  const liftedY = base.y * (1 + DIRECTOR_FOCUS_ORBIT_RISE_AMPLITUDE * breath);
+  camera.position.set(
+    orbit.center.x + rotatedX,
+    orbit.center.y + liftedY,
+    orbit.center.z + rotatedZ,
+  );
+  if (controls) {
+    controls.target.copy(orbit.center);
+    controls.update();
+  }
+}
+
 /**
  * Shared Director acquire/restore camera FSM (ITEM #C P1 de-dup, 2026-06-04).
  *
@@ -208,12 +263,18 @@ function applyDirectorFocusCommand(ctx: {
   readonly lastCommandAtRef: MutableRefObject<number | null>;
   readonly snapshotRef: DirectorSnapshotRef;
   readonly tweenRef: CameraTweenRef;
+  readonly orbitRef?: DirectorFocusOrbitRef;
   readonly onTransition?: (transition: DirectorFocusTransition) => void;
 }): void {
   const {
     command, camera, controls, sceneFrame, alpha, reducedMotion, nowMs,
-    lastCommandAtRef, snapshotRef, tweenRef, onTransition,
+    lastCommandAtRef, snapshotRef, tweenRef, orbitRef, onTransition,
   } = ctx;
+
+  // CQ1: any new acquire/restore command supersedes a running focus orbit — the
+  // acquire/restore tween now owns the camera until it lands (and re-establishes
+  // the orbit on completion). Clearing here covers re-target-while-focused too.
+  if (orbitRef) orbitRef.current = null;
 
   if (command.phase === 'acquiring') {
     const ueWorldPos = sceneFrame.ues[0]?.worldPos;
@@ -300,9 +361,11 @@ function forceRestoreDirectorFocus(ctx: {
   readonly controls: OrbitControlsImpl | null;
   readonly snapshotRef: DirectorSnapshotRef;
   readonly tweenRef: CameraTweenRef;
+  readonly orbitRef?: DirectorFocusOrbitRef;
   readonly onRestored?: () => void;
 }): void {
-  const { camera, controls, snapshotRef, tweenRef, onRestored } = ctx;
+  const { camera, controls, snapshotRef, tweenRef, orbitRef, onRestored } = ctx;
+  if (orbitRef) orbitRef.current = null;
   if (snapshotRef.current === null) return;
   if (controls) {
     camera.position.copy(snapshotRef.current.position);
@@ -336,6 +399,7 @@ function useDirectorCameraFocus(params: {
   const camera = useThree(state => state.camera);
   const cameraTweenRef = useRef<CameraTweenState | null>(null);
   const directorSnapshotRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+  const directorFocusOrbitRef = useRef<DirectorFocusOrbitState | null>(null);
   const lastDirectorCommandAtRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
@@ -357,6 +421,7 @@ function useDirectorCameraFocus(params: {
       lastCommandAtRef: lastDirectorCommandAtRef,
       snapshotRef: directorSnapshotRef,
       tweenRef: cameraTweenRef,
+      orbitRef: directorFocusOrbitRef,
     });
   }, [camera, controlsRef, directorFocusCommand, reducedMotion, effectiveCinematicMode, sceneFrame.ues, alpha]);
 
@@ -368,13 +433,21 @@ function useDirectorCameraFocus(params: {
       controls: controlsRef.current,
       snapshotRef: directorSnapshotRef,
       tweenRef: cameraTweenRef,
+      orbitRef: directorFocusOrbitRef,
     });
   }, [camera, controlsRef, effectiveCinematicMode]);
 
   useFrame(() => {
     const tween = cameraTweenRef.current;
-    if (!tween) return;
     const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    if (!tween) {
+      // CQ1: between acquire-land and restore, gently orbit the focus subject.
+      const orbit = directorFocusOrbitRef.current;
+      if (orbit && !reducedMotion) {
+        advanceDirectorFocusOrbit({ camera, controls: controlsRef.current, orbit, nowMs });
+      }
+      return;
+    }
     const progress = Math.min(Math.max((nowMs - tween.startedAtMs) / CAMERA_TWEEN_DURATION_MS, 0), 1);
     const eased = easeInOutCubic(progress);
     const controls = controlsRef.current;
@@ -393,6 +466,14 @@ function useDirectorCameraFocus(params: {
       if (tween.kind === 'director-restore') {
         if (controls) controls.enabled = true;
         directorSnapshotRef.current = null;
+        directorFocusOrbitRef.current = null;
+      } else if (tween.kind === 'director-acquire' && !reducedMotion && controls) {
+        // CQ1: start the continuous focus orbit from the landed acquire pose.
+        directorFocusOrbitRef.current = {
+          center: controls.target.clone(),
+          baseOffset: camera.position.clone().sub(controls.target),
+          startedAtMs: nowMs,
+        };
       }
     }
   });
@@ -565,6 +646,7 @@ function SceneContent({
   const lastCameraPresetRef = useRef<CameraPreset | null>(null);
   const lastDirectorCommandAtRef = useRef<number | null>(null);
   const directorSnapshotRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+  const directorFocusOrbitRef = useRef<DirectorFocusOrbitState | null>(null);
   const sceneConfig = useMemo(() => (
     runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
   ), [runtime.appMode]);
@@ -973,6 +1055,9 @@ function SceneContent({
 
     lastCameraCommandAtRef.current = command.issuedAtMs;
     lastCameraPresetRef.current = command.preset;
+    // CQ1: a manual camera preset supersedes any running focus orbit so the orbit
+    // cannot resume around the stale focus centre after the preset tween lands.
+    directorFocusOrbitRef.current = null;
 
     const presetPose = cameraPresets[command.preset];
     const controls = controlsRef.current;
@@ -1025,6 +1110,7 @@ function SceneContent({
       lastCommandAtRef: lastDirectorCommandAtRef,
       snapshotRef: directorSnapshotRef,
       tweenRef: cameraTweenRef,
+      orbitRef: directorFocusOrbitRef,
       onTransition: (transition) => {
         if (transition === 'acquire-applied' || transition === 'acquire-tween' || transition === 'restore-applied') {
           cameraPresetRef.current = 'manual';
@@ -1050,13 +1136,22 @@ function SceneContent({
       controls: controlsRef.current,
       snapshotRef: directorSnapshotRef,
       tweenRef: cameraTweenRef,
+      orbitRef: directorFocusOrbitRef,
       onRestored: () => { cameraTransitionRef.current = 'idle'; },
     });
   }, [camera, effectiveCinematicMode]);
 
   useFrame(() => {
     const tween = cameraTweenRef.current;
+    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
     if (!tween) {
+      // CQ1: between acquire-land and restore, gently orbit the focus subject so the
+      // cinema reads as cinematography, not a frozen zoom (display-only motion).
+      const orbit = directorFocusOrbitRef.current;
+      if (orbit && !runtime.reducedMotion) {
+        advanceDirectorFocusOrbit({ camera, controls: controlsRef.current, orbit, nowMs });
+        return;
+      }
       // While the Director holds the camera (snapshot set), suppress the
       // reduced-motion re-pin to the last preset — otherwise it would overwrite
       // the focus/restore pose every frame and undo the focus instantly.
@@ -1066,7 +1161,6 @@ function SceneContent({
       return;
     }
 
-    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
     const progress = Math.min(Math.max((nowMs - tween.startedAtMs) / CAMERA_TWEEN_DURATION_MS, 0), 1);
     const eased = easeInOutCubic(progress);
     const controls = controlsRef.current;
@@ -1085,9 +1179,18 @@ function SceneContent({
       if (tween.kind === 'director-restore') {
         if (controls) controls.enabled = true;
         directorSnapshotRef.current = null;
+        directorFocusOrbitRef.current = null;
         cameraPresetRef.current = 'manual';
       } else if (tween.kind === 'director-acquire') {
         cameraPresetRef.current = 'manual';
+        // CQ1: start the continuous focus orbit from the landed acquire pose.
+        if (!runtime.reducedMotion && controls) {
+          directorFocusOrbitRef.current = {
+            center: controls.target.clone(),
+            baseOffset: camera.position.clone().sub(controls.target),
+            startedAtMs: nowMs,
+          };
+        }
       } else {
         cameraPresetRef.current = tween.preset;
       }

@@ -385,7 +385,7 @@ Before changing scene rendering:
 - Director focus is lane-gated by the render plan. On BOTH live walker lanes
   (`sinr-live`, `modqn-live-cell-preview`) the Intra/Inter-HO Focus buttons seek
   the live timeline to the next indexed live Walker handover of that kind, drop to
-  the single 0.05x slow-mo tier, and (inter) frame the involved satellite pair —
+  the single 0.25x slow-mo tier, and (inter) frame the involved satellite pair —
   mirroring the artifact cinematic, against the validated live Walker event index
   (ITEM #C, `docs/live-walker-handover-event-map-sdd.md`). The render plan grants
   the cinematic camera tween to both live walker lanes (`showDirectorFocus` covers
@@ -400,7 +400,7 @@ Before changing scene rendering:
   never a pre-seek/stale satellite pair, and cancels any armed-but-unfired focus on
   a lane switch or an exit/Escape during the arming window. On `artifact-replay` it
   is "cinematic replay": it seeks the replay to the next handover window, applies
-  the same 0.05x speed as replay playback rate, and auto-restores. All are
+  the same 0.25x speed as replay playback rate, and auto-restores. All are
   display-only — camera focus and replay/playback speed — and gate on real
   handover rail events of that kind (Rule#8). It stays inert on
   `modqn-replay-proof` and on any source-incompatible lane. Validators:
@@ -411,7 +411,7 @@ Before changing scene rendering:
     TARGET satellite at the framed moment instead of replaying a warm from/to
     make-before-break. The indexed handover still fires and the camera frames the
     real from/to pair, but the from-satellite's pre-handover serving history is not
-    reconstructed (impractical to warm up at 0.05x). This is why the live focus is
+    reconstructed (impractical to warm up at 0.25x). This is why the live focus is
     `profile-derived-forecast`/`overlay-demo`, never a producer-recorded handover
     replay — that recorded fidelity belongs to `artifact-replay`.
 - Handover cinema (S1) is lane-owned to `sinr-live` and additive over the Director
@@ -439,10 +439,28 @@ Before changing scene rendering:
   (`RuntimeCandidateHighlightCommand` — beam ids, no SINR/decision). Validators:
   `validate:phase-c:handover-cinema:model` (pure lane-gating + SINR projection,
   never fabricates), `validate:phase-c:handover-cinema:browser` (arm on sinr-live →
-  explainer `sinr-offset` + candidate-highlight mesh + 0.05x + camera move → exit
+  explainer `sinr-offset` + candidate-highlight mesh + 0.25x + camera move → exit
   restores + tears down), and `validate:frontend:scene-lane-governance` locks the
   render-plan gate, the gated MainScene mount, the mesh observable, and the
   explainer claim stamp.
+- Cinema quality (CQ1/CQ2) refines the SAME director-focus surface — it adds no new
+  viewport lane, layer, or proof claim, only display-only camera motion + pacing
+  (Rule#6), so the lane matrix is unchanged and the existing director-cinematic +
+  handover-cinema gates (camera-moves + restores) still cover it:
+  - **CQ1 moving camera**: after the acquire tween lands, the focus no longer holds a
+    single static pose — it gently ORBITS the subject (slow azimuth arc + subtle
+    dolly/rise breathing, `advanceDirectorFocusOrbit` in `MainScene`, shared by the
+    live `SceneContent` and artifact `useDirectorCameraFocus` consumers). The framing
+    is also pulled WIDER (`directorFocusPose` intra offset up 220→320 / back 260→440;
+    inter-pair fit 1.35→1.6, min-back 260→360). Orbit is suppressed under reduced
+    motion and cleared by any restore / force-restore / re-target / manual preset.
+  - **CQ2 pacing**: the slow-mo tier is raised `0.05x → 0.25x`
+    (`DIRECTOR_FOCUS_SPEED`, `usePlaybackControls`) and the focus HOLD gains a
+    wall-clock auto-exit (`FOCUS_AUTO_EXIT_MS` in `useCameraControls`) so the live
+    cinema — which has no window-based auto-end — self-finishes instead of holding
+    until the user hits Exit. Both are display-only speed/timing (dt scales in
+    lockstep; SINR/HO/decision truth untouched). The three director/cinema browser
+    gates assert the new `0.25x` tier.
 - SINR-serving mosaic (S2) is lane-owned to `sinr-live` and is the always-on ambient
   default (NOT director-gated) that proves G3 — every UE marker is coloured by its
   serving beam (by SINR), so the ~100 UE dots partition into a coloured cell mosaic; a

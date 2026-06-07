@@ -1,6 +1,6 @@
 /**
  * ITEM #C durable browser gate: the Director "cinematic" seek-to-next-handover +
- * satellite-pair framing + 0.05x slow-mo actually works on the LIVE WALKER lane
+ * satellite-pair framing + 0.25x slow-mo actually works on the LIVE WALKER lane
  * (the analog of validate-phase-c-director-cinematic-browser.ts, which covers the
  * artifact-replay lane).
  *
@@ -15,7 +15,7 @@
  * becomes enabled (the live forecast produces inter handovers); clicking it
  * (1) seeks the live timeline to a real source-time handover event
  * (`data-live-timeline-seek-target` populates with a finite source second),
- * (2) leaves the director FSM idle, (3) drops the effective speed to the 0.05x
+ * (2) leaves the director FSM idle, (3) drops the effective speed to the 0.25x
  * cinematic tier, (4) actually moves the camera world position (the sat-pair focus
  * tween); and Exit restores the FSM to idle with the speed back to normal. Honesty:
  * the live Director focus claim stays `profile-derived-forecast`.
@@ -34,7 +34,7 @@ const DIRECTOR = '[data-testid="director-controls"]';
 const INTER_BTN = '[data-testid="director-inter-focus"]';
 const EXIT_BTN = '[data-testid="director-exit-focus"]';
 const FADE = '[data-testid="cinematic-seek-fade-overlay"]';
-const CINEMATIC_SPEED = 0.05;
+const CINEMATIC_SPEED = 0.25;
 
 async function attr(page: Page, selector: string, name: string): Promise<string | null> {
   return page.getAttribute(selector, name);
@@ -135,9 +135,9 @@ async function main(): Promise<void> {
     const phaseDuring = await attr(page, SHELL, 'data-director-phase');
     assert.ok(['acquiring', 'focused', 'restoring'].includes(phaseDuring ?? ''), `director FSM active (${phaseDuring})`);
 
-    // 3) Speed drops to the 0.05x cinematic tier.
+    // 3) Speed drops to the 0.25x cinematic tier.
     await page.waitForFunction(
-      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) <= 0.05,
+      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) <= 0.25,
       undefined,
       { timeout: 12000 },
     );
@@ -171,7 +171,7 @@ async function main(): Promise<void> {
       { timeout: 12000 },
     );
     await page.waitForFunction(
-      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) > 0.05,
+      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) > 0.25,
       undefined,
       { timeout: 12000 },
     );
@@ -188,7 +188,7 @@ async function main(): Promise<void> {
     const realErrors = consoleErrors.filter(e => !/ERR_CONNECTION_REFUSED|:8765|favicon/.test(e));
     assert.deepEqual(realErrors, [], `no real console errors: ${JSON.stringify(realErrors)}`);
 
-    console.log('[director-cinematic-live] PASS — live timeline seeked to a real HO event, camera moved to the sat-pair, speed dropped to 0.05x, FSM restored on exit (DATA SOURCE = live Walker forecast)');
+    console.log('[director-cinematic-live] PASS — live timeline seeked to a real HO event, camera moved to the sat-pair, speed dropped to 0.25x, FSM restored on exit (DATA SOURCE = live Walker forecast)');
   } finally {
     await browser.close();
   }

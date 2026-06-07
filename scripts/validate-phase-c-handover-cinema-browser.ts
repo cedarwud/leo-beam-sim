@@ -1,6 +1,6 @@
 /**
  * Phase C durable browser gate: the HANDOVER CINEMA (S1) works on the LIVE WALKER
- * sinr-live lane — arming a handover focus drops to 0.05x slow-mo, moves the
+ * sinr-live lane — arming a handover focus drops to 0.25x slow-mo, moves the
  * camera to the sat-pair, lights up the candidate beams (a real mesh layer), and
  * floats the SINR explainer; exiting restores everything.
  *
@@ -15,7 +15,7 @@
  *  - inter-HO focus becomes enabled (the live forecast produces inter handovers);
  *  - arming it floats the SINR explainer with `data-claim-kind="sinr-offset"`, two
  *    candidate rows (one winner-selected), and a finite live winner SINR;
- *  - the director FSM leaves idle, speed drops to the 0.05x tier, and the camera
+ *  - the director FSM leaves idle, speed drops to the 0.25x tier, and the camera
  *    world position moves;
  *  - the candidate-beam highlight MESH layer renders (mesh-derived canvas dataset
  *    `data-candidate-handover-highlight-rendered-count` > 0) — proving the rings
@@ -38,7 +38,7 @@ const EXIT_BTN = '[data-testid="director-exit-focus"]';
 const EXPLAINER = '[data-testid="handover-cinema-sinr-explainer"]';
 const CANDIDATE_ROW = '[data-testid="sinr-candidate-row"]';
 const HIGHLIGHT_COUNT_ATTR = 'data-candidate-handover-highlight-rendered-count';
-const CINEMATIC_SPEED = 0.05;
+const CINEMATIC_SPEED = 0.25;
 
 async function attr(page: Page, selector: string, name: string): Promise<string | null> {
   return page.getAttribute(selector, name);
@@ -116,9 +116,9 @@ async function main(): Promise<void> {
     const phaseDuring = await attr(page, SHELL, 'data-director-phase');
     assert.ok(['acquiring', 'focused', 'restoring'].includes(phaseDuring ?? ''), `director FSM active (${phaseDuring})`);
 
-    // 3) Speed drops to the 0.05x cinematic tier.
+    // 3) Speed drops to the 0.25x cinematic tier.
     await page.waitForFunction(
-      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) <= 0.05,
+      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) <= 0.25,
       undefined,
       { timeout: 12000, polling: 250 },
     );
@@ -149,6 +149,30 @@ async function main(): Promise<void> {
     assert.notEqual(cameraDuring, cameraBefore, 'camera pose moved on focus');
     console.log(`[handover-cinema] during: phase=${phaseDuring} speed=${speedDuring} highlight=${highlightCount} camera moved`);
 
+    // 6) CQ1: during the focused HOLD the camera keeps moving (continuous orbit),
+    //    NOT a static freeze. Wait for the hold to settle, snapshot the pose, then
+    //    prove it changes again WHILE still focused — the old behaviour held a single
+    //    static pose, so this distinguishes the orbit from a frozen zoom.
+    await page.waitForFunction(
+      () => document.querySelector('.leo-app-shell')?.getAttribute('data-director-phase') === 'focused',
+      undefined,
+      { timeout: 14000, polling: 100 },
+    );
+    const holdPos = await attr(page, CANVAS, 'data-camera-position');
+    await page.waitForFunction(
+      (prev: string | null) => {
+        const shell = document.querySelector('.leo-app-shell');
+        if (shell?.getAttribute('data-director-phase') !== 'focused') return false;
+        const v = document.querySelector('canvas[data-camera-position]')?.getAttribute('data-camera-position');
+        return v !== null && v !== prev;
+      },
+      holdPos,
+      { timeout: 8000, polling: 100 },
+    );
+    const holdPosLater = await attr(page, CANVAS, 'data-camera-position');
+    assert.notEqual(holdPosLater, holdPos, 'camera continues to orbit during the focused hold (CQ1, not a static freeze)');
+    console.log(`[handover-cinema] CQ1 orbit: camera moved during the focused hold (${holdPos} -> ${holdPosLater})`);
+
     // ── Exit restores + tears the cinema down ──
     await page.click(EXIT_BTN);
     await page.waitForFunction(
@@ -157,7 +181,7 @@ async function main(): Promise<void> {
       { timeout: 12000 },
     );
     await page.waitForFunction(
-      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) > 0.05,
+      () => Number(document.querySelector('.leo-app-shell')?.getAttribute('data-effective-speed')) > 0.25,
       undefined,
       { timeout: 12000 },
     );
@@ -187,7 +211,7 @@ async function main(): Promise<void> {
     const realErrors = consoleErrors.filter(e => !/ERR_CONNECTION_REFUSED|:8765|favicon/.test(e));
     assert.deepEqual(realErrors, [], `no real console errors: ${JSON.stringify(realErrors)}`);
 
-    console.log('[handover-cinema] PASS — armed SINR explainer (claim=sinr-offset) + candidate-beam highlight mesh + 0.05x + camera move on sinr-live; exit restored and tore down (DATA SOURCE = live Walker forecast)');
+    console.log('[handover-cinema] PASS — armed SINR explainer (claim=sinr-offset) + candidate-beam highlight mesh + 0.25x + camera move on sinr-live; exit restored and tore down (DATA SOURCE = live Walker forecast)');
   } finally {
     await browser.close();
   }

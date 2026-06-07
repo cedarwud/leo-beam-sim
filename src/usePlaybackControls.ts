@@ -3,7 +3,13 @@ import type { SimState } from './scene/types';
 
 const DEFAULT_BASE_SPEED = 5;
 const HANDOVER_FOCUS_SPEED = 1;
-const DIRECTOR_FOCUS_SPEED = 0.05;
+// CQ2 (cinema quality): the Director/cinema slow-mo tier. Raised from the original
+// 0.05x — at 0.05x even the short lead-in→event→linger window took ~2-3 minutes of
+// wall-clock, so the cinema "felt frozen and dragged". 0.25x keeps the handover
+// readable (still 4x slower than the 1x HO-focus tier and 20x slower than base)
+// while the whole cinema now resolves in seconds. Pure display speed (Rule#6): it
+// scales dt in lockstep, never the SINR/HO/decision truth.
+const DIRECTOR_FOCUS_SPEED = 0.25;
 
 export interface PlaybackControls {
   readonly paused: boolean;

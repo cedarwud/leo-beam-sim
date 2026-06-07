@@ -36,8 +36,8 @@ check('intra fallback: target is the UE, position pulled up+back by intra offset
   assertClose(pose.target.y, UE[1], 'target.y');
   assertClose(pose.target.z, UE[2], 'target.z');
   assertClose(pose.position.x, UE[0], 'position.x');
-  assertClose(pose.position.y, UE[1] + 220 * ALPHA, 'position.y');
-  assertClose(pose.position.z, UE[2] + 260 * ALPHA, 'position.z');
+  assertClose(pose.position.y, UE[1] + 320 * ALPHA, 'position.y');
+  assertClose(pose.position.z, UE[2] + 440 * ALPHA, 'position.z');
 });
 
 check('inter fallback (no framing): legacy inter offset, target is the UE', () => {

@@ -57,7 +57,7 @@ Four scene lanes (governance-owned, unchanged): `sinr-live`,
 
 | Capability | Where | Status |
 |---|---|---|
-| Seek-next-HO + 0.05× slow-mo + camera tween + sat-pair framing + restore + intra/inter | `DirectorControls.tsx`, `App.handleDirector*Focus`, camera FSM | ✅ sinr-live + modqn-live + artifact (ITEM #C) |
+| Seek-next-HO + 0.25× slow-mo (CQ2) + orbiting camera (CQ1) + sat-pair framing + bounded auto-exit + restore + intra/inter | `DirectorControls.tsx`, `App.handleDirector*Focus`, camera FSM | ✅ sinr-live + modqn-live + artifact (ITEM #C) |
 | Spotlight, HO-Slow | `ControlBar.tsx` | ✅ (separate checkboxes today) |
 | Live handover event index / rail | live Walker index | ✅ |
 | Live SINR engine + multi-sat + per-candidate SINR | `src/core/channel/*`, `generateWalkerConstellation` | ✅ real & non-degenerate on sinr-live |
@@ -107,8 +107,8 @@ they become **focus-scoped** (only the focused UE's link/glyph is bright; the re
 ### 3.2 STORY layer — the handover cinema (deep-dive, on demand)
 
 A single "▶ Handover Cinema" control with an `Off / Intra / Inter / All` filter.
-On the next matching handover: lead-in seek → 0.05× slow-mo → camera → candidates
-light up → explainer → winner highlight → restore → auto-advance. The ambient **mosaic
+On the next matching handover: lead-in seek → 0.25× slow-mo → orbiting camera → candidates
+light up → explainer → winner highlight → bounded auto-exit → restore → auto-advance. The ambient **mosaic
 + aggregate stay visible**; links/glyphs become focus-scoped (focused UE only).
 
 **Scale-adaptive shot types** (make intra/inter legible by framing):

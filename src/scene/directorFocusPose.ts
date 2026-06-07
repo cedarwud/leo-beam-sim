@@ -25,17 +25,24 @@ export interface DirectorFocusPose {
   readonly target: THREE.Vector3;
 }
 
-// Legacy kind-based pull-back offsets (unchanged): intra-HO is a beam-level switch
-// on one satellite → tight close-up; inter-HO is a satellite-to-satellite handover
-// → pull up/back so the satellite context above the UE comes into frame.
+// Legacy kind-based pull-back offsets: intra-HO is a beam-level switch on one
+// satellite; inter-HO is a satellite-to-satellite handover → pull up/back so the
+// satellite context above the UE comes into frame.
+//
+// CQ1 (cinema quality): both kinds are pulled back WIDER than the original tight
+// close-up. The earlier intra offset (up 220 / back 260) framed the UE so tightly
+// the shot read as a frozen zoom; the continuous focus orbit (MainScene) also needs
+// room so the camera can arc without the subject filling the frame. The inter
+// offset stays at its already-wide context distance.
 const INTER_OFFSET = { up: 430, back: 520 } as const;
-const INTRA_OFFSET = { up: 220, back: 260 } as const;
+const INTRA_OFFSET = { up: 320, back: 440 } as const;
 
 // Inter-HO satellite-pair framing: how far to pull the camera back from the framed
 // group, and the minimum back distance (scaled by alpha) so a tight pair still
-// reads as a wide context shot.
-const INTER_PAIR_FIT_FACTOR = 1.35;
-const INTER_PAIR_MIN_BACK = 260;
+// reads as a wide context shot. CQ1 widens both so the orbit keeps the whole
+// sat-pair + UE in frame as it arcs.
+const INTER_PAIR_FIT_FACTOR = 1.6;
+const INTER_PAIR_MIN_BACK = 360;
 const INTER_PAIR_UP_RATIO = 0.85;
 
 function isFinitePoint(point?: readonly [number, number, number] | null): point is readonly [number, number, number] {

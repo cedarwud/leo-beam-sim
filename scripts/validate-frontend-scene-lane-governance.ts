@@ -759,7 +759,7 @@ assertContains(
 
 // ── ITEM #C: live-walker Director seek-to-next-HO + sat-pair framing ──
 // The live Director button mirrors the artifact cinematic (seek to the next
-// handover + 0.05x slow-mo + frame the satellite pair) on the live Walker lanes,
+// handover + 0.25x slow-mo + frame the satellite pair) on the live Walker lanes,
 // against the validated live Walker event index. Honesty: the seek target is a
 // real source-time (resolveLiveWalkerFocusWindow returns window.startSec, never a
 // fabricated horizon — docs/live-walker-handover-event-map-sdd.md) and the claim
