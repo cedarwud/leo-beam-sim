@@ -1608,6 +1608,28 @@ assertContains(
   'live-render suite includes the S-cells-3 render browser gate',
 );
 
+// ── Cone focus-subset + illuminated beams (S-cells-4b) ──
+// The cones are FOCUS-SCOPED: the lane draws only the focused satellite's
+// illuminated beams (~2–7 clean cones), the service BREADTH is the UE mosaic's
+// job. Drawing a display subset is a legitimate Rule#6 filter — the serving TRUTH
+// (`sim.sinrLiveCells`) is unchanged. The render surface is the ILLUMINATED beams
+// (where the focus sat points), not only served cells.
+assertContains(
+  sinrLiveCellBeamConesSource,
+  'resolveSinrLiveConeFocusSatIds',
+  'cone resolver focus-scopes to the focused sat (with a most-illuminating fallback)',
+);
+assertContains(
+  sinrLiveCellBeamConesSource,
+  'cellFrame.illuminatedBeams',
+  'cone resolver draws ILLUMINATED beams (where the focus sat points), not only served cells',
+);
+assertContains(
+  mainSceneSource,
+  'focusSatIds: sinrLiveConeFocusSatIds',
+  'MainScene passes the focus-subset (primary UE serving sat) into the cone resolver',
+);
+
 // ── Beam hopping + coverage (S-cells-3 follow-up / S-cells-4a) ──
 // A satellite forms a fixed number of beams (leo = 7), so the cell truth caps each
 // sat to SINR_LIVE_BEAMS_PER_SAT illuminated cells/slot and HOPS the window;
@@ -1637,6 +1659,11 @@ assertContains(
   sinrLiveCellModelSource,
   'applyBeamHoppingCap',
   'cell model implements the per-sat beam-hopping illumination cap',
+);
+assertContains(
+  sinrLiveCellModelSource,
+  'illuminatedBeams,',
+  'cell model emits the illuminated-beam render surface (S-cells-4b cone source)',
 );
 // The cap GATES candidate illumination; serving is still SINR + HandoverManager.
 assertContains(

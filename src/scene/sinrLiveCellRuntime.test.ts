@@ -215,6 +215,7 @@ check('gate ON attach populates a well-formed sinrLiveCells frame and mutates no
   assert(cells!.servedUeCount >= 1, 'at least one UE served by the overhead sat');
   assert(cells!.servingSatCount >= 1, 'at least one serving sat');
   assert(cells!.servedCellCount >= 1, 'at least one cell lit');
+  assert(cells!.illuminatedBeams.length >= 1, 'at least one illuminated beam (the cone render surface)');
 
   const off = cells!.ues.find(u => u.ueId === 'off')!;
   const centre = cells!.ues.find(u => u.ueId === 'centre')!;

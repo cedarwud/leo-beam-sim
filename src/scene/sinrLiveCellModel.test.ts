@@ -289,6 +289,23 @@ check('multiple cells served by one overhead sat report distinct beam + freq ide
   assert(colours.size <= profile.beams.frequencyReuse, 'freq colours bounded by reuse factor');
 });
 
+check('illuminated beams: post-hopping lit (sat,cell) pairs; serving flag + freq match the cells', () => {
+  const layout = testLayout(7);
+  const model = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
+  const overhead = makeSat({ id: 'over', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const frame = model.step({ visibleSats: [overhead], ues: [], simTimeSec: 0, dtSec: 1 });
+  assert(frame.illuminatedBeams.length > 0, 'overhead sat lights beams (the cone render surface)');
+  const servingCellIds = new Set(frame.cells.filter(c => c.servingSatId === 'over').map(c => c.cellId));
+  for (const b of frame.illuminatedBeams) {
+    assertEqual(b.satId, 'over', 'only the overhead sat illuminates here');
+    assertEqual(b.serving, servingCellIds.has(b.cellId), `beam serving flag matches cell ${b.cellId} serving`);
+    assertEqual(b.frequencyIndex, cellFrequencyIndex(b.cellId, profile.beams.frequencyReuse), 'beam freq = cell freq');
+  }
+  // each served cell contributes exactly one serving illuminated beam (its serving sat lights it).
+  const servingBeams = frame.illuminatedBeams.filter(b => b.serving).length;
+  assertEqual(servingBeams, frame.servedCellCount, 'serving illuminated beams == served cells');
+});
+
 check('KEYSTONE: co-channel interference lowers cell SINR; orthogonal colours do not', () => {
   // Locks the interference field the SDD calls the keystone. reuse=1 → every lit
   // neighbour is co-channel; reuse=999 → each cell a unique colour → no co-channel
@@ -420,4 +437,4 @@ check('beam hopping idle honesty: a UE in an un-illuminated cell this slot is un
   assert(unserved >= layout.centers.length - 7, `the rest are honestly unserved (got ${unserved})`);
 });
 
-console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + rotation + idle honesty)`);
+console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + rotation + idle honesty, illuminated-beam render surface)`);

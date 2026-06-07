@@ -1050,15 +1050,29 @@ function SceneContent({
   // browser gate (UE off-centre = cones at fixed cells while UEs sit off-axis).
   // Resolve the cones ONCE per frame; the component + telemetry both read this
   // memoised array (no redundant resolver passes).
+  // S-cells-4b focus subset: draw the PRIMARY UE's serving satellite's illuminated
+  // beams (~2–7 clean cones), not every served cell. The primary UE (index 0, the
+  // RED anchor at the observer) is the stable focus subject; when it is unserved the
+  // resolver falls back to the most-illuminating sat so the lane always shows a
+  // bounded beam fan. Service breadth stays in the UE mosaic (Rule#6 display filter).
+  const sinrLiveConeFocusSatIds = useMemo<ReadonlySet<string> | null>(() => {
+    if (!showSinrLiveCellBeams) return null;
+    const cellFrame = sim.sinrLiveCells;
+    const primaryId = sceneFrame.ues[0]?.id;
+    if (!cellFrame || primaryId === undefined) return null;
+    const primaryServingSatId = cellFrame.ues.find(u => u.ueId === primaryId)?.servingSatId ?? null;
+    return primaryServingSatId === null ? null : new Set([primaryServingSatId]);
+  }, [showSinrLiveCellBeams, sim.sinrLiveCells, sceneFrame.ues]);
   const sinrLiveCellBeamConeItems = useMemo(
     () => (showSinrLiveCellBeams
       ? resolveSinrLiveCellBeamConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
         satelliteWorldById,
+        focusSatIds: sinrLiveConeFocusSatIds,
       })
       : []),
-    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById],
+    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById, sinrLiveConeFocusSatIds],
   );
   const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(

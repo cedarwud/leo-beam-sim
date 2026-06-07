@@ -56,6 +56,16 @@ export interface SinrLiveCellBeamConesProps {
   readonly cellFrame: SinrLiveCellFrame | undefined;
   readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
   readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+  /**
+   * Focus-subset (S-cells-4b): draw only these satellites' illuminated beams —
+   * the focused / current-handover satellite, ~2–7 clean cones. `null`/empty →
+   * the resolver falls back to the single most-illuminating satellite so the lane
+   * always shows a bounded beam fan. The SERVICE BREADTH (all served UEs) is
+   * carried by the UE mosaic, NOT by drawing a cone per served cell — drawing the
+   * focus subset is a legitimate display filter, the serving TRUTH is unchanged
+   * (CLAUDE.md Rule#6).
+   */
+  readonly focusSatIds?: ReadonlySet<string> | null;
 }
 
 export interface SinrLiveCellBeamConeRenderItem {
@@ -65,7 +75,9 @@ export interface SinrLiveCellBeamConeRenderItem {
   readonly frequencyIndex: number;
   /** Frequency-reuse colour (legend parity with `EarthFixedCells`). */
   readonly color: string;
-  /** Cone apex = serving satellite world position. */
+  /** True when this sat is the cell's chosen serving sat (brighter cone); false = illuminating only. */
+  readonly serving: boolean;
+  /** Cone apex = illuminating satellite world position. */
   readonly apex: THREE.Vector3;
   /** Cone base centre = FIXED cell centre on the ground plane (y = 0). */
   readonly baseCenter: THREE.Vector3;
@@ -74,8 +86,10 @@ export interface SinrLiveCellBeamConeRenderItem {
 
 /** Segments around the flat ground footprint ring. */
 const OBLIQUE_CONE_SEGMENTS = 32;
-/** Raised vs the faint 0.1 MODQN overlay (SDD §5.5) — this is the lane's primary beam render. */
-const SINR_LIVE_CELL_CONE_OPACITY = 0.18;
+/** A SERVING beam (its sat is the cell's chosen serving sat) — the lane's primary beam render. */
+const SINR_LIVE_CELL_SERVING_CONE_OPACITY = 0.32;
+/** A beam that illuminates a cell it does NOT serve — fainter, to read as "lit, not connected". */
+const SINR_LIVE_CELL_ILLUMINATED_CONE_OPACITY = 0.2;
 
 /**
  * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)
@@ -108,25 +122,62 @@ export function buildObliqueBeamConePositions(
 }
 
 /**
- * Pure resolver: one cone per SERVED cell, apex = serving sat, base = fixed cell
- * centre on the ground. Idle cells (`servingSatId === null`) draw no cone (honest
- * under K<N). A served cell whose serving sat is not currently RENDERED (capped
- * out of `satelliteWorldById`) or whose placement is missing is skipped — we
- * cannot place a cone without the sat's world position. Deterministic in cell
- * order. Colour = frequency-reuse colour (NOT serving-sat tint).
+ * Resolve the FOCUS satellite set: if `focusSatIds` names satellites that
+ * actually illuminate a beam this slot, use those; otherwise fall back to the
+ * single most-illuminating satellite (deterministic tie-break by satId ascending),
+ * so the lane always shows a bounded beam fan even when no UE-driven focus is
+ * available. Mirrors the modqn `resolveFocusSatelliteId` idea.
+ */
+export function resolveSinrLiveConeFocusSatIds(
+  beams: readonly { readonly satId: string }[],
+  focusSatIds: ReadonlySet<string> | null | undefined,
+): ReadonlySet<string> {
+  if (focusSatIds && focusSatIds.size > 0) {
+    const present = new Set<string>();
+    for (const beam of beams) if (focusSatIds.has(beam.satId)) present.add(beam.satId);
+    if (present.size > 0) return present;
+  }
+  const countBySat = new Map<string, number>();
+  for (const beam of beams) countBySat.set(beam.satId, (countBySat.get(beam.satId) ?? 0) + 1);
+  let bestSatId: string | null = null;
+  let bestCount = -1;
+  for (const [satId, count] of countBySat) {
+    if (count > bestCount || (count === bestCount && (bestSatId === null || satId < bestSatId))) {
+      bestSatId = satId;
+      bestCount = count;
+    }
+  }
+  return bestSatId === null ? new Set<string>() : new Set([bestSatId]);
+}
+
+/**
+ * Pure resolver: one cone per ILLUMINATED beam of the FOCUS satellite(s) — apex =
+ * illuminating sat, base = fixed cell centre on the ground. This draws "where the
+ * focus sat's beams point" (the ~7 hopping beams), NOT only the cells that ended
+ * up served — a serving beam is brighter, a merely-illuminating beam fainter. The
+ * focus subset keeps the scene to ~2–7 clean cones (Rule#6 display filter; serving
+ * truth unchanged). A beam whose sat is not RENDERED (capped out of
+ * `satelliteWorldById`) or whose cell placement is missing is skipped. Idle cells
+ * (not lit this slot) have no illuminated beam → no cone (honest under K<N).
+ * Deterministic in beam order. Colour = frequency-reuse colour (NOT serving-sat tint).
  */
 export function resolveSinrLiveCellBeamConeItems(
   props: SinrLiveCellBeamConesProps,
 ): readonly SinrLiveCellBeamConeRenderItem[] {
-  const { cellFrame, placementByCellId, satelliteWorldById } = props;
+  const { cellFrame, placementByCellId, satelliteWorldById, focusSatIds } = props;
   if (!cellFrame) return [];
+  const beams = cellFrame.illuminatedBeams;
+  if (beams.length === 0) return [];
+
+  const focus = resolveSinrLiveConeFocusSatIds(beams, focusSatIds);
+  if (focus.size === 0) return [];
 
   const items: SinrLiveCellBeamConeRenderItem[] = [];
-  for (const cell of cellFrame.cells) {
-    if (cell.servingSatId === null) continue; // idle cell — no cone (honest)
-    const placement = placementByCellId.get(cell.cellId);
-    const satWorld = satelliteWorldById.get(cell.servingSatId);
-    if (!placement || !satWorld) continue; // serving sat not rendered → can't place a cone
+  for (const beam of beams) {
+    if (!focus.has(beam.satId)) continue; // focus-subset: only the focused sat's beams
+    const placement = placementByCellId.get(beam.cellId);
+    const satWorld = satelliteWorldById.get(beam.satId);
+    if (!placement || !satWorld) continue; // illuminating sat not rendered → can't place a cone
     if (placement.radiusWorld <= 0) continue;
 
     const apex = new THREE.Vector3(satWorld.x, satWorld.y, satWorld.z);
@@ -134,10 +185,11 @@ export function resolveSinrLiveCellBeamConeItems(
     if (apex.distanceTo(baseCenter) <= 1e-6) continue;
 
     items.push({
-      cellId: cell.cellId,
-      satId: cell.servingSatId,
-      frequencyIndex: cell.frequencyIndex,
-      color: frequencyReuseColor(cell.frequencyIndex),
+      cellId: beam.cellId,
+      satId: beam.satId,
+      frequencyIndex: beam.frequencyIndex,
+      color: frequencyReuseColor(beam.frequencyIndex),
+      serving: beam.serving,
       apex,
       baseCenter,
       baseRadiusWorld: placement.radiusWorld,
@@ -195,6 +247,7 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem }): JSX.E
         cellId: cone.cellId,
         satId: cone.satId,
         frequencyIndex: cone.frequencyIndex,
+        serving: cone.serving,
         baseCenterWorld: [cone.baseCenter.x, cone.baseCenter.y, cone.baseCenter.z],
         baseRadiusWorld: cone.baseRadiusWorld,
         color: cone.color,
@@ -204,7 +257,7 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem }): JSX.E
       <meshBasicMaterial
         color={cone.color}
         transparent
-        opacity={SINR_LIVE_CELL_CONE_OPACITY}
+        opacity={cone.serving ? SINR_LIVE_CELL_SERVING_CONE_OPACITY : SINR_LIVE_CELL_ILLUMINATED_CONE_OPACITY}
         blending={THREE.NormalBlending}
         depthWrite={false}
         side={THREE.DoubleSide}

@@ -151,10 +151,30 @@ export interface UeCellServingRecord {
   readonly handoverKind: ServingTransitionKind;
 }
 
+/**
+ * A satellite's beam illuminating a cell this slot — one per post-beam-hopping
+ * lit (sat, cell) pair. This is the "where the beams POINT" surface (S-cells-4b):
+ * the render draws the focused satellite's illuminated beams as cones, not only
+ * the cells that ended up SERVED. `serving` marks the beam whose sat is the
+ * cell's CHOSEN serving sat (SINR + HandoverManager) — a cell can be illuminated
+ * by several sats but served by at most one. A cell NOT lit this slot (idle) has
+ * no illuminated beam → no cone (honest under K<N hopping).
+ */
+export interface IlluminatedCellBeam {
+  readonly satId: string;
+  readonly cellId: number;
+  /** Stable geographic frequency colour (`cellId mod reuse`). */
+  readonly frequencyIndex: number;
+  /** True when this sat is the cell's chosen serving sat (not merely illuminating). */
+  readonly serving: boolean;
+}
+
 export interface SinrLiveCellFrame {
   readonly simTimeSec: number;
   readonly cells: readonly CellServingRecord[];
   readonly ues: readonly UeCellServingRecord[];
+  /** Lit (sat, cell) beams this slot (post beam-hopping) — the cone render surface. */
+  readonly illuminatedBeams: readonly IlluminatedCellBeam[];
   readonly servedCellCount: number;
   /** UEs with a serving cell (served-by-assignment, mirrors the S2 aggregate);
    *  may include a UE whose own off-axis SINR is null — see {@link UeCellServingRecord.sinrDb}. */
@@ -505,6 +525,7 @@ export class SinrLiveCellModel {
     // Use the EFFECTIVE (possibly overridden) steering limit so the candidate
     // list matches the link-budget scan-loss ceiling (S-cells-4a).
     const maxSteer = this.antenna.maxSteeringAngleDeg;
+    const reuse = this.profile.beams.frequencyReuse;
 
     // 1. Per-cell candidate sats + geometry.
     const candidatesByCell = new Map<number, CellScanGeometry[]>();
@@ -549,7 +570,6 @@ export class SinrLiveCellModel {
     for (const cell of this.cellLayout.centers) {
       const candidates = candidatesByCell.get(cell.cellId) ?? [];
       const manager = this.managerForCell(cell.cellId);
-      const reuse = this.profile.beams.frequencyReuse;
       const frequencyIndex = cellFrequencyIndex(cell.cellId, reuse);
 
       // Drop a stale serving whose sat is no longer a candidate (mirrors
@@ -592,6 +612,27 @@ export class SinrLiveCellModel {
       finalActive.push({ satId, beamId: cellLinkBudgetBeamId(cellId) });
     }
     const finalOptions = this.linkBudgetOptions(finalActive, simTimeSec);
+
+    // 4b. Illuminated beams: every post-hopping lit (sat, cell) pair — "where the
+    //     beams point" (S-cells-4b). The render draws the FOCUSED sat's beams from
+    //     this (not only served cells); a sat that illuminates a cell it does not
+    //     end up serving still casts a beam there. `serving` marks the cell's
+    //     chosen serving sat. Deterministic in cell → candidate order.
+    const illuminatedBeams: IlluminatedCellBeam[] = [];
+    for (const cell of this.cellLayout.centers) {
+      const geoms = candidatesByCell.get(cell.cellId);
+      if (!geoms || geoms.length === 0) continue;
+      const frequencyIndex = cellFrequencyIndex(cell.cellId, reuse);
+      const servingSatId = finalServingByCell.get(cell.cellId) ?? null;
+      for (const geom of geoms) {
+        illuminatedBeams.push({
+          satId: geom.satId,
+          cellId: cell.cellId,
+          frequencyIndex,
+          serving: geom.satId === servingSatId,
+        });
+      }
+    }
 
     // 5. Per-UE membership, serving (inherited from cell), off-axis SINR, and
     //    intra/inter classification from the UE's serving transition.
@@ -654,6 +695,7 @@ export class SinrLiveCellModel {
       simTimeSec,
       cells: cellRecords,
       ues: ueRecords,
+      illuminatedBeams,
       servedCellCount: finalServingByCell.size,
       servedUeCount: ueRecords.filter(ue => ue.servingSatId !== null).length,
       servingSatCount: new Set(finalServingByCell.values()).size,
