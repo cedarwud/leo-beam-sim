@@ -473,13 +473,21 @@ export class SinrLiveCellModel {
   }
 
   /**
-   * Beam hopping (§5.3 / "K<N" in the SDD): cap each satellite to `beamsPerSat`
-   * illuminated cells this slot and ROTATE the lit window over slots, so every
-   * candidate cell of a sat is served periodically. Mutates `candidatesByCell` in
-   * place — a (sat, cell) pair the sat is not illuminating this slot is removed
-   * from that cell's candidate list, so downstream serving + per-UE SINR see only
-   * lit beams; a cell left with no candidate falls to idle. Deterministic per slot
-   * (by `cellId` order + slot index) — NOT random and NOT a serving decision.
+   * Beam hopping (§5.3 / "K<N" in the SDD) with SERVING CONTINUITY. Each satellite
+   * forms only `beamsPerSat` beams, so it can light at most that many cells. But a
+   * beam that is currently SERVING a cell must NOT hop off it — a connected UE has
+   * to stay covered (else its serving blinks every hop slot). So per satellite:
+   *   1. LOCK the cells it is already serving (continuity; up to the beam budget) —
+   *      these beams stay put;
+   *   2. HOP the SPARE budget over its remaining (unserved) reachable cells,
+   *      rotating the window per slot so new cells get discovered/served over time.
+   * Mutates `candidatesByCell` in place — a (sat, cell) pair the sat is not
+   * illuminating this slot is removed, so downstream serving + per-UE SINR see only
+   * lit beams; a cell left with no candidate falls to idle. At the lane's scale
+   * (~3–4 served cells per sat « 7-beam budget) every served cell stays locked AND
+   * spare beams still cycle the rest. Deterministic (prev-serving + cellId order +
+   * slot index); NOT random and NOT a serving decision (serving is still SINR +
+   * HandoverManager over whatever stays lit).
    */
   private applyBeamHoppingCap(
     candidatesByCell: Map<number, CellScanGeometry[]>,
@@ -506,9 +514,23 @@ export class SinrLiveCellModel {
         for (const cellId of sorted) illuminated.add(`${satId}#${cellId}`);
         continue;
       }
-      const start = (slotIndex * beams) % sorted.length;
-      for (let k = 0; k < beams; k += 1) {
-        illuminated.add(`${satId}#${sorted[(start + k) % sorted.length]}`);
+      // 1. Continuity: keep the cells this sat is ALREADY serving (prev frame),
+      //    so a connected beam never hops off its UE. cellManagers holds the
+      //    pre-update (previous) serving at this point in step().
+      const locked = sorted.filter(cellId => this.cellManagers.get(cellId)?.state.satId === satId).slice(0, beams);
+      const lockedSet = new Set(locked);
+      for (const cellId of locked) illuminated.add(`${satId}#${cellId}`);
+      // 2. Hop the SPARE budget over the remaining (unserved) reachable cells,
+      //    rotating per slot so new cells are discovered/served over time.
+      const spare = beams - locked.length;
+      if (spare > 0) {
+        const others = sorted.filter(cellId => !lockedSet.has(cellId));
+        if (others.length > 0) {
+          const start = (slotIndex * spare) % others.length;
+          for (let k = 0; k < spare; k += 1) {
+            illuminated.add(`${satId}#${others[(start + k) % others.length]}`);
+          }
+        }
       }
     }
 

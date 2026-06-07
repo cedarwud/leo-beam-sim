@@ -1608,14 +1608,15 @@ assertContains(
   'live-render suite includes the S-cells-3 render browser gate',
 );
 
-// ── Serving cones, every serving sat, satellite-tint colour (S-cells-4b-fix) ──
+// ── Serving cones, every serving sat, frequency-reuse colour (S-cells-4b-fix) ──
 // The lane draws the SERVING beams of EVERY serving satellite (apex = serving sat,
 // base = its served cell), so a satellite that is serving always shows its beam —
 // NO "serving sat with no beam" and NO idle/illuminating-only cones (the earlier
 // focus-subset narrowed to one "most-illuminating" fallback sat and drew idle
-// cones; the user saw the wrong sat hopping). Colour = serving-SATELLITE TINT
-// (matches the marker → "which sat serves where"). The optional `focusSatIds`
-// narrowing is left for the cinema (c2); ambient draws all serving sats.
+// cones; the user saw the wrong sat hopping). Colour = FREQUENCY-REUSE
+// (`cellId mod reuse`) so a satellite's fan is multi-colour (the multibeam pattern,
+// NOT a per-sat mono tint). The optional `focusSatIds` narrowing is left for the
+// cinema (c2); ambient draws all serving sats.
 assertContains(
   sinrLiveCellBeamConesSource,
   'if (!beam.serving) continue;',
@@ -1677,15 +1678,17 @@ assertNotContains(
   'MainScene must not mount the retired hex green-disc (no competing 2nd cell layout)',
 );
 
-// ── Beam hopping + coverage (S-cells-3 follow-up / S-cells-4a) ──
+// ── Beam hopping + serving continuity + coverage (S-cells-3 / 4a / 4b-fix) ──
 // A satellite forms a fixed number of beams (leo = 7), so the cell truth caps each
-// sat to SINR_LIVE_BEAMS_PER_SAT illuminated cells/slot and HOPS the window;
-// illumination is a scheduling gate, the SERVING sat of a lit cell is still chosen
-// by SINR + the HandoverManager (B3 / codex BLOCK-3), never round-robin. Cell SIZE
-// and link-budget GAIN come from the SAME realistic 3.32° beamwidth (one antenna);
+// sat to SINR_LIVE_BEAMS_PER_SAT illuminated cells/slot. CONTINUITY: a beam that is
+// already SERVING a cell stays LOCKED on it (a connected UE must not blink off every
+// hop slot); only the SPARE beam budget hops over the sat's unserved reachable cells.
+// Illumination is a scheduling gate; the SERVING sat of a lit cell is still chosen by
+// SINR + the HandoverManager (B3 / codex BLOCK-3), never round-robin. Cell SIZE and
+// link-budget GAIN come from the SAME realistic 3.32° beamwidth (one antenna);
 // coverage of the 200×90 area is delivered by STEERING, not by widening the lobe.
 // These locks pin that wiring so it cannot silently regress to a single satellite
-// lighting every cell it can see.
+// lighting every cell it can see, or to a timer that hops serving beams off their UEs.
 const sinrLiveCellModelSource = readRepoFile('src/scene/sinrLiveCellModel.ts');
 assertContains(
   sinrLiveCellRuntimeSource,
@@ -1711,6 +1714,13 @@ assertContains(
   sinrLiveCellModelSource,
   'illuminatedBeams,',
   'cell model emits the illuminated-beam render surface (S-cells-4b cone source)',
+);
+// Serving continuity (S-cells-4b-fix): the cap LOCKS cells the sat is already
+// serving (a connected beam must not hop off its UE), hopping only the spare budget.
+assertContains(
+  sinrLiveCellModelSource,
+  'this.cellManagers.get(cellId)?.state.satId === satId',
+  'beam-hopping LOCKS already-serving cells (serving continuity; only spare beams hop)',
 );
 // The cap GATES candidate illumination; serving is still SINR + HandoverManager.
 assertContains(

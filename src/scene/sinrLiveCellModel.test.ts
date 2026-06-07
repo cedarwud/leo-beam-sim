@@ -404,7 +404,9 @@ check('no cap by default (beamsPerSat = Infinity) → the overhead sat lights > 
   assert(f.servedCellCount > 7, `uncapped pure model lights > 7 cells (got ${f.servedCellCount}) — proves the cap actually constrains`);
 });
 
-check('beam hopping: the lit cell set ROTATES across slots (every cell served periodically)', () => {
+check('serving continuity: a beam SERVING a cell does NOT hop off it across slots', () => {
+  // The connected-beam invariant (user-reported): once a cell is served, the
+  // serving beam stays locked on it across hop slots — it must not blink off.
   const layout = testLayout(19);
   const m = new SinrLiveCellModel({
     profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS,
@@ -412,12 +414,15 @@ check('beam hopping: the lit cell set ROTATES across slots (every cell served pe
   });
   const sat = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
   const slot0 = m.step({ visibleSats: [sat], ues: [], simTimeSec: 0, dtSec: 1 });
-  const slot1 = m.step({ visibleSats: [sat], ues: [], simTimeSec: 2.5, dtSec: 2.5 });
-  const lit0 = new Set(slot0.cells.filter(c => c.servingSatId !== null).map(c => c.cellId));
-  const lit1 = new Set(slot1.cells.filter(c => c.servingSatId !== null).map(c => c.cellId));
-  // The window advanced: at least one cell lit in slot 1 was NOT lit in slot 0.
-  const fresh = [...lit1].filter(c => !lit0.has(c));
-  assert(fresh.length > 0, `hopping lit a fresh cell in slot 1 (lit0=${[...lit0]}, lit1=${[...lit1]})`);
+  const served0 = new Set(slot0.cells.filter(c => c.servingSatId === 'A').map(c => c.cellId));
+  assert(served0.size > 0, 'sat serves at least one cell in slot 0');
+  // advance several hop slots
+  let f = slot0;
+  for (const t of [2.5, 5, 7.5, 10]) f = m.step({ visibleSats: [sat], ues: [], simTimeSec: t, dtSec: 2.5 });
+  const servedLater = new Set(f.cells.filter(c => c.servingSatId === 'A').map(c => c.cellId));
+  for (const cellId of served0) {
+    assert(servedLater.has(cellId), `served cell ${cellId} stays served across hop slots (beam did not hop off)`);
+  }
 });
 
 check('beam hopping idle honesty: a UE in an un-illuminated cell this slot is unserved', () => {
@@ -437,4 +442,4 @@ check('beam hopping idle honesty: a UE in an un-illuminated cell this slot is un
   assert(unserved >= layout.centers.length - 7, `the rest are honestly unserved (got ${unserved})`);
 });
 
-console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + rotation + idle honesty, illuminated-beam render surface)`);
+console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + serving continuity + idle honesty, illuminated-beam render surface)`);
