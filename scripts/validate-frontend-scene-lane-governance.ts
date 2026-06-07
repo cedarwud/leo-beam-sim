@@ -1628,26 +1628,13 @@ assertNotContains(
 );
 assertContains(
   sinrLiveCellBeamConesSource,
-  'satelliteTintById.get(beam.satId) ?? FALLBACK_CONE_COLOR',
-  'cone colour = serving-satellite tint (matches the marker), not a frequency palette',
-);
-assertNotContains(
-  sinrLiveCellBeamConesSource,
-  'frequencyReuseColor',
-  'cones no longer use the 3-hue frequency palette (read as a muddy weird tone)',
-);
-// The resolver REQUIRES `satelliteTintById` (a required prop), so tsc guarantees
-// MainScene threads the serving-satellite tint into the cone resolve — no fragile
-// whitespace assert needed.
-assertContains(
-  sinrLiveCellBeamConesSource,
-  'readonly satelliteTintById: ReadonlyMap<string, string>;',
-  'cone resolver props require the serving-satellite tint map (tsc enforces the MainScene wiring)',
+  'color: frequencyReuseColor(beam.frequencyIndex)',
+  'cone colour = frequency-reuse (one satellite fan is multi-colour, the multibeam pattern — NOT a per-sat tint)',
 );
 assertContains(
   mainSceneSource,
   'resolveSinrLiveCellBeamConeItems({',
-  'MainScene resolves the cell-truth cones (all serving sats, sat-tinted)',
+  'MainScene resolves the cell-truth cones (all serving sats, frequency-coloured)',
 );
 
 // ── Mosaic + aggregate re-point to the cell truth (S-cells-4c) ──

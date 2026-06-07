@@ -18,13 +18,14 @@
  * cannot do an oblique cone, so we build the side surface directly (apex → ground
  * ring fan). `meshBasicMaterial` is unlit, so no normals are needed.
  *
- * COLOUR (S-cells-4b-fix): by SERVING-SATELLITE TINT (`satelliteTint`, the SAME
- * colour the satellite marker uses), so each serving sat's beam fan is one coherent
- * colour and a viewer can read "which satellite serves where" at a glance — the
- * beams tie to their satellite dot. (The earlier frequency-reuse palette mixed 3
- * hues per fan and, with overlapping cones, read as a muddy "weird tone"; the
- * S-cells-3b reason for it — a single overhead sat collapsing tint to one colour —
- * is gone now that 50° steering yields 2-4 serving sats.)
+ * COLOUR (S-cells-4b-fix2): by FREQUENCY-REUSE colour (`cellId mod reuse`, via
+ * `frequencyReuseColor`) — so a satellite's beam fan shows the multi-colour
+ * multibeam frequency-reuse pattern (adjacent cells use different frequencies),
+ * NOT a single per-satellite tint. (The brief satellite-tint attempt made every
+ * satellite's fan mono; the "weird tone" it was meant to cure was actually the
+ * idle illuminating-only ghost cones — those are gone here, so the frequency
+ * palette reads cleanly. Satellite identity is still legible: a satellite's cones
+ * all converge at its apex.)
  *
  * Serving truth = `frame.sinrLiveCells` (S-cells-1/2: per-cell serving sat by
  * SINR + the sinr-offset `HandoverManager`). It is **NOT** the round-robin
@@ -36,6 +37,7 @@
  */
 import { useLayoutEffect, useRef, type JSX } from 'react';
 import * as THREE from 'three';
+import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import type { SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
 import type { WorldPoint } from './CellFootprints';
 
@@ -58,8 +60,6 @@ export interface SinrLiveCellBeamConesProps {
   readonly cellFrame: SinrLiveCellFrame | undefined;
   readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
   readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
-  /** Serving-satellite tint by id — the SAME colour the satellite marker uses. */
-  readonly satelliteTintById: ReadonlyMap<string, string>;
   /**
    * Optional focus narrowing (S-cells-4b-fix): when provided + non-empty, draw only
    * these satellites' SERVING beams (e.g. the cinema's handover pair). When omitted /
@@ -74,9 +74,9 @@ export interface SinrLiveCellBeamConesProps {
 export interface SinrLiveCellBeamConeRenderItem {
   readonly cellId: number;
   readonly satId: string;
-  /** Stable geographic frequency colour index (`cellId mod reuse`) — telemetry only. */
+  /** Stable geographic frequency colour index (`cellId mod reuse`). */
   readonly frequencyIndex: number;
-  /** Serving-satellite tint (matches the satellite marker colour). */
+  /** Frequency-reuse colour (the multibeam frequency pattern; NOT a per-sat tint). */
   readonly color: string;
   /** Always true on this render path — only SERVING beams draw a cone. */
   readonly serving: boolean;
@@ -91,8 +91,6 @@ export interface SinrLiveCellBeamConeRenderItem {
 const OBLIQUE_CONE_SEGMENTS = 32;
 /** Cone opacity — the lane's primary beam render (raised vs the faint 0.1 MODQN overlay). */
 const SINR_LIVE_CELL_CONE_OPACITY = 0.32;
-/** Tint fallback for a serving sat missing from the tint map. */
-const FALLBACK_CONE_COLOR = '#93c5fd';
 
 /**
  * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)
@@ -140,7 +138,7 @@ export function buildObliqueBeamConePositions(
 export function resolveSinrLiveCellBeamConeItems(
   props: SinrLiveCellBeamConesProps,
 ): readonly SinrLiveCellBeamConeRenderItem[] {
-  const { cellFrame, placementByCellId, satelliteWorldById, satelliteTintById, focusSatIds } = props;
+  const { cellFrame, placementByCellId, satelliteWorldById, focusSatIds } = props;
   if (!cellFrame) return [];
   const narrow = focusSatIds && focusSatIds.size > 0 ? focusSatIds : null;
 
@@ -161,7 +159,7 @@ export function resolveSinrLiveCellBeamConeItems(
       cellId: beam.cellId,
       satId: beam.satId,
       frequencyIndex: beam.frequencyIndex,
-      color: satelliteTintById.get(beam.satId) ?? FALLBACK_CONE_COLOR,
+      color: frequencyReuseColor(beam.frequencyIndex),
       serving: true,
       apex,
       baseCenter,

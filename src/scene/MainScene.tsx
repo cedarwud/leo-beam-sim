@@ -1024,9 +1024,10 @@ function SceneContent({
   // browser gate (UE off-centre = cones at fixed cells while UEs sit off-axis).
   // Resolve the cones ONCE per frame; the component + telemetry both read this
   // memoised array (no redundant resolver passes).
-  // S-cells-4b-fix: draw the SERVING beams of EVERY serving satellite (apex = the
-  // serving sat, base = its served cell), coloured by that sat's tint (matching its
-  // marker). Every serving sat shows its beam — no "serving sat with no beam" and no
+  // S-cells-4b-fix(2): draw the SERVING beams of EVERY serving satellite (apex =
+  // the serving sat, base = its served cell), coloured by FREQUENCY-REUSE (cellId
+  // mod reuse) so each sat's fan shows the multi-colour multibeam pattern. Every
+  // serving sat shows its beam — no "serving sat with no beam" and no
   // idle/illuminating-only cones. At 37 cells + 7-beam hopping the serving cones are
   // ~8 (bounded). The optional `focusSatIds` narrowing (cinema handover pair) is left
   // for S-cells-4-c2; ambient draws all serving sats.
@@ -1036,10 +1037,9 @@ function SceneContent({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
         satelliteWorldById,
-        satelliteTintById,
       })
       : []),
-    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById, satelliteTintById],
+    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById],
   );
   const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(

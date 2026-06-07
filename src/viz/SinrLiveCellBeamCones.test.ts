@@ -14,7 +14,8 @@
  *   3. `focusSatIds`, when non-empty, narrows to those sats (cinema handover pair);
  *      omitted/empty → all serving sats draw;
  *   4. cone base = the FIXED cell centre on the GROUND (y = 0), apex = serving sat;
- *   5. colour = serving-SATELLITE TINT (matches the marker), fallback when missing;
+ *   5. colour = FREQUENCY-REUSE colour (one satellite fan is multi-colour, the
+ *      multibeam frequency pattern — not a single per-sat tint);
  *   6. a serving sat not rendered / a cell with no placement is skipped;
  *   7. the OBLIQUE geometry: the base ring lies FLAT on the ground plane.
  *
@@ -28,6 +29,7 @@ import {
   resolveSinrLiveCellBeamConeSatelliteCount,
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
+import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import type { IlluminatedCellBeam, SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
 
 let passed = 0;
@@ -76,13 +78,9 @@ const satelliteWorldById = new Map([
   ['sat-A', { x: 0, y: 900, z: 0 }],
   ['sat-B', { x: 100, y: 950, z: -100 }],
 ]);
-const satelliteTintById = new Map([
-  ['sat-A', '#11aa22'],
-  ['sat-B', '#3344ff'],
-]);
 
 function base(opts: { cellFrame: SinrLiveCellFrame | undefined; focusSatIds?: ReadonlySet<string> | null }) {
-  return { placementByCellId, satelliteWorldById, satelliteTintById, ...opts };
+  return { placementByCellId, satelliteWorldById, ...opts };
 }
 
 console.log('SinrLiveCellBeamCones resolver checks:');
@@ -135,23 +133,17 @@ check('cone base = FIXED cell centre on the GROUND (NOT the UE/origin), apex = s
   approx(c.apex.y, 900, 1e-9, 'apex at sat-A altitude');
 });
 
-check('colour = serving-SATELLITE TINT (matches marker), fallback when missing', () => {
+check('colour = FREQUENCY-REUSE colour (multibeam pattern; one sat fan shows multiple hues)', () => {
+  // One satellite serving cells 0 (freq 0) and 2 (freq 2) → its fan is multi-colour
+  // (the multibeam frequency-reuse pattern), NOT a single per-sat tint.
   const items = resolveSinrLiveCellBeamConeItems(base({
-    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-B', 2, true)]),
+    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 2, true)]),
   }));
-  const a = items.find(i => i.satId === 'sat-A')!;
-  const b = items.find(i => i.satId === 'sat-B')!;
-  assertEqual(a.color, '#11aa22', 'sat-A cone uses sat-A tint');
-  assertEqual(b.color, '#3344ff', 'sat-B cone uses sat-B tint');
-  assert(a.color !== b.color, 'distinct sats → distinct tints (which sat serves where)');
-  // a serving sat whose tint is missing from the map falls back, never crashes
-  const missing = resolveSinrLiveCellBeamConeItems({
-    cellFrame: frameOf([beam('sat-A', 0, true)]),
-    placementByCellId,
-    satelliteWorldById,
-    satelliteTintById: new Map(),
-  });
-  assertEqual(missing[0].color, '#93c5fd', 'missing tint → fallback colour');
+  const c0 = items.find(i => i.cellId === 0)!;
+  const c2 = items.find(i => i.cellId === 2)!;
+  assertEqual(c0.color, frequencyReuseColor(0), 'cell 0 uses freq-0 colour');
+  assertEqual(c2.color, frequencyReuseColor(2), 'cell 2 uses freq-2 colour');
+  assert(c0.color !== c2.color, 'one satellite fan is multi-colour (not mono per sat)');
 });
 
 check('serving sat not rendered (absent world position) is skipped', () => {
