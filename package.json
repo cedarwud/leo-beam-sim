@@ -129,6 +129,7 @@
     "validate:phase-c:sinr-serving-mosaic:model": "node --import tsx/esm src/scene/sinrServingMosaic.test.ts",
     "validate:phase-c:sinr-serving-mosaic:browser": "node --import tsx/esm scripts/validate-phase-c-sinr-serving-mosaic-browser.ts",
     "validate:phase-c:sinr-live-cells:model": "node --import tsx/esm src/scene/sinrLiveCellModel.test.ts",
+    "validate:phase-c:sinr-live-cells:runtime": "node --import tsx/esm src/scene/sinrLiveCellRuntime.test.ts",
     "validate:phase-c:artifact-satellite-compass:browser": "node --import tsx/esm scripts/validate-phase-c-artifact-satellite-compass-browser.ts",
     "validate:phase-c:lane-experience-bar:browser": "node --import tsx/esm scripts/validate-phase-c-lane-experience-bar-browser.ts",
     "validate:phase-c:artifact-scene:real-data:browser": "node --import tsx/esm scripts/validate-phase-c-artifact-scene-real-data-browser.ts",

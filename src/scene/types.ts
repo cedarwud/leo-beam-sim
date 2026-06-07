@@ -15,6 +15,7 @@ import type {
   ModqnVisualLayerPreset,
 } from './modqnVisualLayers';
 import type { ModqnCellServiceReadout } from './modqnServiceMap';
+import type { SinrLiveCellFrame } from './sinrLiveCellModel';
 
 export type { BeamTarget, VisualBeamTarget } from './beamTargetTypes';
 
@@ -340,6 +341,14 @@ export interface SimFrame {
     pendingTargetBeamId: number | null;
     triggerProgressSec: number;
   }>;
+  /**
+   * S-cells-2 (ADDITIVE): earth-fixed cell truth for the SINR-live lane only.
+   * Populated by `attachSinrLiveCellFrame` (src/scene/sinrLiveCellRuntime.ts)
+   * after `stepRuntimeFrame` when the `useEarthFixedCellTruth` gate is on
+   * (sceneLane === 'sinr-live'); `undefined` on the other three lanes. Render
+   * does NOT read it until S-cells-3 — see the SDD/governance lane lock.
+   */
+  sinrLiveCells?: SinrLiveCellFrame;
 }
 
 export type EventRole = BeamCodeRole;

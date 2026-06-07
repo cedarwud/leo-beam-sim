@@ -24,6 +24,10 @@ import {
   stepRuntimeFrame,
   type RuntimeFrameStepState,
 } from './runtimeFrameStep';
+import {
+  attachSinrLiveCellFrame,
+  createSinrLiveCellModel,
+} from './sinrLiveCellRuntime';
 import { reScalarize } from '../modqn/replay-bundle/rescalarize';
 import { computeHeuristicNotPaperScore } from '../engine/handover/decision-override';
 import {
@@ -118,6 +122,11 @@ export function useSimulation(
   ueDistributionScope: UeDistributionScope = 'beam-footprint',
   ueDistributionRadiusKm?: number,
   mapKmPerWorldUnit?: number,
+  // S-cells-2 (ADDITIVE): when true (sceneLane === 'sinr-live' only) the
+  // earth-fixed cell truth is layered onto each published frame as the new
+  // optional `frame.sinrLiveCells`. `stepRuntimeFrame` stays FROZEN; existing
+  // frame fields are byte-identical, so the other three lanes see zero drift.
+  useEarthFixedCellTruth: boolean = false,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -226,6 +235,14 @@ export function useSimulation(
     ),
     [effectiveUeCount, profile.handover],
   );
+  // S-cells-2 (ADDITIVE): the earth-fixed cell-truth model. `null` on every lane
+  // but sinr-live (the gate is off → byte-identical frames there). Recreated only
+  // on a profile / lane-gate / epoch change, which also resets its internal cell
+  // HandoverManagers — the intended full reset for those transitions.
+  const sinrLiveCellModel = useMemo(
+    () => createSinrLiveCellModel(profile, useEarthFixedCellTruth, replay.epochUtcMs),
+    [profile, useEarthFixedCellTruth, replay.epochUtcMs],
+  );
   const effectiveUeMobilityParams = ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS;
   const ueDeterministicSeed = profile.ueDistribution?.seed ?? 42;
   const createCurrentMobilityStates = useCallback(() => (
@@ -252,7 +269,11 @@ export function useSimulation(
   const resetAllHoManagers = useCallback(() => {
     hoManager.reset();
     secondaryHoManagers.forEach(manager => manager.reset());
-  }, [hoManager, secondaryHoManagers]);
+    // S-cells-2: reset the cell-truth model in lockstep with the HO managers so
+    // the next cell step is a clean cold-attach (clears per-cell HandoverManagers
+    // + the per-UE serving-transition memory). null on non-sinr-live lanes.
+    sinrLiveCellModel?.reset();
+  }, [hoManager, secondaryHoManagers, sinrLiveCellModel]);
 
   const resetMobilityStates = useCallback(() => {
     mobilityStatesRef.current = createCurrentMobilityStates();
@@ -287,6 +308,9 @@ export function useSimulation(
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });
+    // S-cells-2: additive cell truth on the reset frame (dt 0 — single static
+    // step; managers already cleared by resetAllHoManagers above). no-op off lane.
+    attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
     frameRef.current = frame;
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
@@ -302,6 +326,7 @@ export function useSimulation(
     resetAllHoManagers,
     resetMobilityStates,
     secondaryHoManagers,
+    sinrLiveCellModel,
     speed,
     beamFootprintMultiplier,
     mapKmPerWorldUnit,
@@ -343,6 +368,9 @@ export function useSimulation(
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });
+    // S-cells-2: additive cell truth on the seek frame (dt 0 — static reseat at
+    // the seek target; managers cleared by resetAllHoManagers above). no-op off lane.
+    attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
     frameRef.current = frame;
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
@@ -358,6 +386,7 @@ export function useSimulation(
     resetAllHoManagers,
     resetMobilityStates,
     secondaryHoManagers,
+    sinrLiveCellModel,
     speed,
     beamFootprintMultiplier,
     mapKmPerWorldUnit,
@@ -467,6 +496,10 @@ export function useSimulation(
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });
+    // S-cells-2: additive cell truth, advanced by the real sim-time delta so the
+    // per-cell HandoverManagers time their trigger/ping-pong guards correctly.
+    // dt 0 when paused; loop-wrap takes the early reset path above. no-op off lane.
+    attachSinrLiveCellFrame(frame, sinrLiveCellModel, frame.simTimeSec - previousSimTimeSec);
     frameRef.current = frame;
 
     if (runtimeStateRef.current.simTimeSec !== previousSimTimeSec || publishNextFrameRef.current) {

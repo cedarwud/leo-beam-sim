@@ -1383,6 +1383,107 @@ assertContains(
   "visible={sceneLane === 'sinr-live'}",
   'App gates the SINR-serving aggregate HUD to the sinr-live lane',
 );
+
+// ── SINR-live earth-fixed cell truth (S-cells-2, ADDITIVE) lane ownership ──
+// The cell truth is a NEW optional SimFrame field (`sinrLiveCells`) produced by a
+// pure runtime adapter, lane-owned to sinr-live ONLY. The load-bearing property
+// is ADDITIVE: `runtimeFrameStep.ts` stays FROZEN and existing frame fields are
+// byte-identical, so the three MODQN/artifact lanes see ZERO drift. Render does
+// NOT consume the field until S-cells-3 — these locks pin that boundary.
+const useSimulationSource = readRepoFile('src/scene/useSimulation.ts');
+const sinrLiveCellRuntimeSource = readRepoFile('src/scene/sinrLiveCellRuntime.ts');
+const runtimeFrameStepSource = readRepoFile('src/scene/runtimeFrameStep.ts');
+const cellLayoutSource = readRepoFile('src/engine/cells/cellLayout.ts');
+const sceneTypesSource = readRepoFile('src/scene/types.ts');
+// (a) the lane gate: MainScene owns it as sinr-live ONLY and threads it into the
+//     single live useSimulation hook.
+assertContains(
+  mainSceneSource,
+  "const useEarthFixedCellTruth = sceneLane === 'sinr-live';",
+  'MainScene gates the earth-fixed cell truth to the sinr-live lane only',
+);
+assertContains(
+  mainSceneSource,
+  'paperUserArea.kmPerWorldUnit,\n    useEarthFixedCellTruth,\n  );',
+  'MainScene threads the cell-truth gate into the live useSimulation hook',
+);
+// (b) the factory is gated (returns null off lane) → the additive no-op.
+assertContains(
+  useSimulationSource,
+  'createSinrLiveCellModel(profile, useEarthFixedCellTruth, replay.epochUtcMs)',
+  'useSimulation builds the cell model only through the lane gate',
+);
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'if (!useEarthFixedCellTruth) return null;',
+  'cell-truth factory returns null when the lane gate is off (other-lane zero-drift)',
+);
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'if (model === null) return;',
+  'cell-truth attach is a no-op for a null model (additive: off-lane frames untouched)',
+);
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'frame.sinrLiveCells = model.step(',
+  'cell-truth attach mutates ONLY the new sinrLiveCells field',
+);
+// (c) purity / additivity structural locks: the runtime adapter must not pull the
+//     scene-type hub or the frozen runtime stepper, so it CANNOT touch any other
+//     frame field — and `runtimeFrameStep.ts` must stay free of cell-truth symbols
+//     (FROZEN, S-cells-2-A).
+assertNotContains(
+  sinrLiveCellRuntimeSource,
+  "from './types'",
+  'cell-truth adapter must not import the SimFrame hub (stays additive + THREE-free)',
+);
+assertNotContains(
+  sinrLiveCellRuntimeSource,
+  "from './runtimeFrameStep'",
+  'cell-truth adapter must not import the frozen runtime stepper',
+);
+assertNotContains(
+  runtimeFrameStepSource,
+  'sinrLiveCell',
+  'runtimeFrameStep.ts stays FROZEN: no cell-truth symbol leaks into buildLinkContext (S-cells-2-A)',
+);
+// (d) the new SimFrame field is an optional, sinr-live-only addition.
+assertContains(
+  sceneTypesSource,
+  'sinrLiveCells?: SinrLiveCellFrame;',
+  'SimFrame carries the cell truth as an OPTIONAL field (undefined off the sinr-live lane)',
+);
+// (e) S-cells-2 is additive ONLY — render must not consume the cell truth yet
+//     (that lands in S-cells-3, which will update this lock).
+assertNotContains(
+  mainSceneSource,
+  '.sinrLiveCells',
+  'MainScene must not consume the cell truth in S-cells-2 (render reads it in S-cells-3)',
+);
+// (f) elevation-mask parity: the cell candidate visibility mask equals the
+//     runtime linkSats mask (both 15°), pinned to the cell-layout default.
+assertContains(
+  runtimeFrameStepSource,
+  'MIN_ELEVATION_DEG = 15',
+  'runtime linkSats elevation mask is 15°',
+);
+assertContains(
+  cellLayoutSource,
+  'DEFAULT_MIN_ELEVATION_DEG = 15',
+  'cell-layout default elevation mask is 15° (parity with the runtime linkSats mask)',
+);
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'SINR_LIVE_CELL_MIN_ELEVATION_DEG = DEFAULT_MIN_ELEVATION_DEG',
+  'cell-truth adapter pins its mask to the cell-layout default (single source of truth)',
+);
+// (g) the runtime-wiring gate is wired into package.json.
+assertContains(
+  packageJson,
+  '"validate:phase-c:sinr-live-cells:runtime"',
+  'package exposes the S-cells-2 runtime-wiring validator',
+);
+
 assertContains(
   sceneLaneRenderPlanSource,
   'export type HandoverStoryLayerPolicy',

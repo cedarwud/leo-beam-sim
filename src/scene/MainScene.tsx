@@ -654,6 +654,10 @@ function SceneContent({
     () => resolveInscribedPaperUserArea(sceneConfig),
     [sceneConfig],
   );
+  // S-cells-2 (ADDITIVE): the earth-fixed cell truth is lane-owned by sinr-live
+  // ONLY. Off on the three MODQN/artifact lanes → useSimulation returns frames
+  // byte-identical to today (no `sinrLiveCells` field).
+  const useEarthFixedCellTruth = sceneLane === 'sinr-live';
   const sim = useSimulation(
     profile,
     runtime.replay,
@@ -670,6 +674,7 @@ function SceneContent({
     runtime.ueDistributionScope,
     runtime.ueDistributionRadiusKm,
     paperUserArea.kmPerWorldUnit,
+    useEarthFixedCellTruth,
   );
   const ueTrailHistory = useUeTrailHistory({
     enabled: runtime.enableUeTrails === true && propSceneFrame === undefined,
