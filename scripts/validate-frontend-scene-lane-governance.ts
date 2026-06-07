@@ -192,8 +192,40 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'artifact replay must not mount the live SINR candidate highlight',
   );
 
+  // ── SINR-serving mosaic (S2) lane ownership ──
+  // Lane-owned to sinr-live ONLY and always-on (NOT director-gated): the ambient
+  // default that colours every UE by its serving beam. It is a DISTINCT
+  // SINR-serving layer, never the MODQN cell overlay — inert on every MODQN /
+  // artifact lane.
+  assert.equal(
+    renderPlan('sinr-live', 'live-sim').showSinrServingMosaic,
+    true,
+    'SINR live owns the SINR-serving mosaic as an always-on ambient default (spotlight mode, no director)',
+  );
+  assert.equal(
+    renderPlan('sinr-live', 'live-sim', false, 'director').showSinrServingMosaic,
+    true,
+    'SINR-serving mosaic stays on under director focus too (it is the ambient base, not focus-scoped)',
+  );
+  assert.equal(
+    renderPlan('modqn-live-cell-preview', 'live-sim').showSinrServingMosaic,
+    false,
+    'MODQN cell preview must not mount the SINR-serving mosaic (it owns the MODQN cell overlay instead)',
+  );
+  assert.equal(
+    renderPlan('modqn-replay-proof', 'live-sim', true).showSinrServingMosaic,
+    false,
+    'MODQN replay proof must stay inert for the SINR-serving mosaic (Rule#8)',
+  );
+  assert.equal(
+    renderPlan('artifact-replay', 'artifact-replay').showSinrServingMosaic,
+    false,
+    'artifact replay must not mount the live SINR-serving mosaic',
+  );
+
   const incompatibleArtifact = renderPlan('artifact-replay', 'live-sim');
   assert.equal(incompatibleArtifact.sourceCompatible, false, 'artifact lane must reject live-sim source');
+  assert.equal(incompatibleArtifact.showSinrServingMosaic, false, 'incompatible sinr-live source must not show the mosaic');
   assert.equal(incompatibleArtifact.isLiveScene, false, 'incompatible artifact lane must not become live scene');
   assert.equal(incompatibleArtifact.showArtifactFpsCounter, false, 'incompatible artifact lane must not show artifact diagnostics');
   assert.equal(incompatibleArtifact.showLiveSceneEffects, false, 'incompatible artifact lane must not show live effects');
@@ -1293,6 +1325,64 @@ assertContains(
   'data-claim-kind="sinr-offset"',
   'SINR explainer is stamped lane-truthful claim-kind="sinr-offset" (never producer/MODQN proof)',
 );
+// ── SINR-serving mosaic (S2) lane-ownership + distinct-from-MODQN source locks ──
+const sinrServingMosaicSource = readRepoFile('src/scene/sinrServingMosaic.ts');
+const sinrServingAggregateSource = readRepoFile('src/ui/SinrServingAggregate.tsx');
+assertContains(
+  sceneLaneRenderPlanSource,
+  'const showSinrServingMosaic = showSinrLiveViewport',
+  'SINR-serving mosaic is gated sinr-live only (always-on ambient, no producer dependency)',
+);
+assertContains(
+  sinrServingMosaicSource,
+  'export function buildSinrServingUeColorMap',
+  'SINR-serving mosaic owns its own UE colour derivation (distinct module, not deriveModqnServiceMap)',
+);
+assertContains(
+  sinrServingMosaicSource,
+  'export function deriveSinrServingMosaicAggregate',
+  'SINR-serving mosaic owns the served N/N + per-beam-load + mean-SINR aggregate',
+);
+assertNotContains(
+  sinrServingMosaicSource,
+  "from './modqnServiceMap'",
+  'SINR-serving mosaic must NOT import the MODQN cell overlay map (distinct lane-owned layer)',
+);
+assertContains(
+  mainSceneSource,
+  'showSinrServingMosaic\n      ? buildSinrServingUeColorMap(sceneFrame.ues)',
+  'MainScene derives the SINR-serving mosaic colours only under the render-plan gate (sinr-live)',
+);
+assertContains(
+  mainSceneSource,
+  "colorTelemetryAttr={showSinrServingMosaic ? 'sinrServingMosaicColorCount' : undefined}",
+  'MainScene threads the mosaic mesh-derived colour telemetry only on the sinr-live mosaic lane',
+);
+assertContains(
+  groundSceneSource,
+  'function publishInstanceColorTelemetry',
+  'GroundScene publishes a MESH-derived distinct-colour count (validator-provable mosaic render)',
+);
+assertContains(
+  sinrServingAggregateSource,
+  'data-claim-kind="sinr-serving"',
+  'SINR-serving aggregate is stamped lane-truthful claim-kind="sinr-serving" (never producer/MODQN proof)',
+);
+assertContains(
+  sinrServingAggregateSource,
+  'live SINR serving · not MODQN',
+  'SINR-serving aggregate carries the lane-truthful "not MODQN" disclosure',
+);
+assertContains(
+  appSource,
+  '<SinrServingAggregate',
+  'App mounts the SINR-serving aggregate HUD',
+);
+assertContains(
+  appSource,
+  "visible={sceneLane === 'sinr-live'}",
+  'App gates the SINR-serving aggregate HUD to the sinr-live lane',
+);
 assertContains(
   sceneLaneRenderPlanSource,
   'export type HandoverStoryLayerPolicy',
@@ -1360,8 +1450,8 @@ assertContains(
 );
 assertContains(
   mainSceneSource,
-  'markerColor: service?.markerColor',
-  'MainScene passes service-map colors to UE markers',
+  'markerColor: mosaic?.markerColor ?? service?.markerColor',
+  'MainScene passes mosaic-or-cell-service colors to UE markers (sinr-serving mosaic falls back to the MODQN cell overlay only on the MODQN lane)',
 );
 assertContains(
   groundSceneSource,

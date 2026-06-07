@@ -55,6 +55,17 @@ export interface SceneLaneRenderPlan {
    * `modqn-replay-proof` (Rule#8), and `artifact-replay`.
    */
   readonly showCandidateHandoverHighlight: boolean;
+  /**
+   * SINR-serving mosaic (S2). The ambient default on `sinr-live`: every UE
+   * marker is coloured by its serving beam (by SINR), partitioning the ~100 UE
+   * dots into a coloured cell mosaic (G3). Lane-owned to `sinr-live` ONLY — it
+   * is a DISTINCT SINR-serving visualisation, NOT the MODQN cell overlay, so it
+   * stays inert on `modqn-live-cell-preview`, `modqn-replay-proof`, and
+   * `artifact-replay`. Unlike the candidate highlight it is NOT director-gated:
+   * the mosaic is the always-on ambient base (Rule#10 default = mosaic +
+   * aggregate).
+   */
+  readonly showSinrServingMosaic: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
   readonly showReplayProofLayer: boolean;
   readonly showArtifactFpsCounter: boolean;
@@ -96,6 +107,10 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // candidate story on the live SINR lane with no producer dependency; the MODQN
   // and artifact variants are later slices.
   const showCandidateHandoverHighlight = showSinrLiveViewport && input.cinematicMode === 'director';
+  // SINR-serving mosaic (S2): sinr-live ONLY, always-on ambient default (NOT
+  // director-gated). It is a distinct SINR-serving layer, never the MODQN cell
+  // overlay — so it is inert on every MODQN/artifact lane.
+  const showSinrServingMosaic = showSinrLiveViewport;
   const showLiveSatelliteMarkers = isLiveScene && (
     input.sceneLane === 'sinr-live'
     || input.sceneLane === 'modqn-live-cell-preview'
@@ -146,6 +161,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     showCinematicSpotlight,
     showDirectorFocus,
     showCandidateHandoverHighlight,
+    showSinrServingMosaic,
     // Replaces legacy single-lane anchor: effectiveCinematicMode: showCinematicSpotlight ? input.cinematicMode : 'off'
     effectiveCinematicMode: showCinematicSpotlight
       ? 'spotlight'

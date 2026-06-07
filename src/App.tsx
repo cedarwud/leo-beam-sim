@@ -79,6 +79,7 @@ import {
 import { ControlBar } from './ui/ControlBar';
 import { DirectorControls } from './ui/DirectorControls';
 import { SinrOffsetExplainer } from './ui/SinrOffsetExplainer';
+import { SinrServingAggregate } from './ui/SinrServingAggregate';
 import { useHandoverCinema } from './app/useHandoverCinema';
 import { toCandidateHighlightCommand } from './app/handoverCinema';
 import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
@@ -2008,6 +2009,10 @@ export function App() {
           <SinrOffsetExplainer
             candidate={handoverCinema.focusedCandidate}
             visible={handoverCinema.cinemaActive && sceneLane === 'sinr-live'}
+          />
+          <SinrServingAggregate
+            perUePositions={simState.perUePositions}
+            visible={sceneLane === 'sinr-live'}
           />
           {shouldRenderMainScene ? (
             <MainScene

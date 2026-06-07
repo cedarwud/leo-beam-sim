@@ -91,6 +91,7 @@ import {
   deriveModqnServiceMap,
   EMPTY_MODQN_SERVICE_MAP,
 } from './modqnServiceMap';
+import { buildSinrServingUeColorMap } from './sinrServingMosaic';
 import {
   deriveBeamLoadContention,
   EMPTY_BEAM_LOAD_CONTENTION,
@@ -776,6 +777,7 @@ function SceneContent({
     showProfileHandoverStoryLayer,
     showCinematicSpotlight,
     showCandidateHandoverHighlight,
+    showSinrServingMosaic,
     effectiveCinematicMode,
     showReplayProofLayer,
     showArtifactFpsCounter,
@@ -798,6 +800,16 @@ function SceneContent({
       sceneFrame.ues,
       showCellOverlay,
     ],
+  );
+  // SINR-serving mosaic (S2): on `sinr-live` colour every UE marker by its
+  // serving beam (by SINR) — a DISTINCT SINR-serving layer, never the MODQN cell
+  // overlay (`deriveModqnServiceMap`). Gated by the render plan so it stays
+  // lane-owned to sinr-live and inert on every MODQN/artifact lane.
+  const sinrServingColorById = useMemo(
+    () => showSinrServingMosaic
+      ? buildSinrServingUeColorMap(sceneFrame.ues)
+      : null,
+    [showSinrServingMosaic, sceneFrame.ues],
   );
   // Phase-3 beam-load contention source = the SAME per-UE (satId, beamIndex)
   // cell-schedule assignment that `modqnServiceMap` already uses to colour the UE
@@ -1160,8 +1172,13 @@ function SceneContent({
       <GroundScene
         ues={sceneFrame.ues
           .filter((u) => u.worldPos !== undefined)
-          .map((u) => {
-            const service = modqnServiceMap.ueById.get(u.id);
+          .map((u, index) => {
+            // The primary UE (index 0) stays the red focus anchor; the SINR
+            // mosaic colours the secondary population by serving beam (the G3
+            // money shot). On a MODQN lane the mosaic map is null and colours
+            // come from the cell overlay instead — the two never mix.
+            const mosaic = index === 0 ? undefined : sinrServingColorById?.get(u.id);
+            const service = mosaic ? undefined : modqnServiceMap.ueById.get(u.id);
             // ID alignment verified: liveSimToScene preserves sim.perUePositions
             // ids (`live-ue-${index}`), so contention lookup uses UE id, not index.
             const contention = beamLoadContentionEnabled
@@ -1170,8 +1187,8 @@ function SceneContent({
             return {
               id: u.id,
               worldPos: u.worldPos as readonly [number, number, number],
-              markerColor: service?.markerColor,
-              markerEmissive: service?.markerEmissive,
+              markerColor: mosaic?.markerColor ?? service?.markerColor,
+              markerEmissive: mosaic?.markerEmissive ?? service?.markerEmissive,
               contention,
             };
           })}
@@ -1180,6 +1197,7 @@ function SceneContent({
         ueTrailHistory={showCellOverlay ? undefined : ueTrailHistory}
         secondaryOpacity={showCellOverlay && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
         secondaryScale={showCellOverlay && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
+        colorTelemetryAttr={showSinrServingMosaic ? 'sinrServingMosaicColorCount' : undefined}
       />
       {showCellOverlay && modqnVisualLayers.activeCellOverlay && (
         <CellOverlay

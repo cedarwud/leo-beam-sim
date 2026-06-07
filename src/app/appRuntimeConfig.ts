@@ -17,6 +17,14 @@ export const APP_EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 export const LIVE_SIM_TIMELINE_DURATION_SEC = 7200;
 
 const MODQN_PAPER_BASELINE_UE_COUNT = 100;
+// S2: sinr-live default UE population. `sceneTopology.ueCount` is null by
+// default, but the TopologyTab already SHOWS 100 as the effective default
+// (`topology.ueCount ?? DEFAULT_UE_COUNT`), so the runtime falling back to 1 was
+// a UI/runtime mismatch. Defaulting the runtime to 100 makes the ambient
+// SINR-serving mosaic the literal default screen (SDD §3.1/§5.4 — G3 visible
+// with zero clicks) and aligns runtime with the UI. An explicit Advanced
+// override still wins.
+const SINR_LIVE_DEFAULT_UE_COUNT = 100;
 
 type RuntimeVisualSettings = Pick<
   RuntimeConfig,
@@ -69,7 +77,7 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     directorFocusCommand: input.directorFocusCommand,
     viewport: input.viewport,
     ueCount: input.appMode === 'sinr-experiment'
-      ? input.sceneTopology.ueCount ?? undefined
+      ? input.sceneTopology.ueCount ?? SINR_LIVE_DEFAULT_UE_COUNT
       : input.selectedTrainingEnvAxes?.nUsers ?? MODQN_PAPER_BASELINE_UE_COUNT,
     cellServingCount: input.appMode === 'modqn-demo'
       ? normalizeRuntimeModqnServingCount(input.sceneTopology.cellServingCount)
@@ -78,7 +86,13 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
       ? input.sceneTopology.ueDistributionMode ?? 'random'
       : trainingTopology.ueDistributionMode ?? 'random',
     uePrimaryAnchorMode: input.appMode === 'modqn-demo' ? 'distribution' : 'observer',
-    ueDistributionScope: input.appMode === 'modqn-demo' ? 'service-area' : 'beam-footprint',
+    // S2: spread the sinr-live secondary population across the whole multi-beam
+    // SERVICE AREA (not a single beam footprint) so the ambient SINR-serving
+    // mosaic robustly partitions across multiple beams (G3) instead of all 100
+    // UEs collapsing onto one serving beam. The PRIMARY UE still anchors at the
+    // observer (`uePrimaryAnchorMode: 'observer'` above), so the handover cinema
+    // is unaffected — only the secondary spread widens.
+    ueDistributionScope: 'service-area',
     ueDistributionRadiusKm: input.appMode === 'modqn-demo'
       && input.selectedTrainingEnvAxes?.ueArea.distribution === 'uniform-circular'
       ? input.selectedTrainingEnvAxes.ueArea.radiusKm

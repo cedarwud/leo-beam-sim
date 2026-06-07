@@ -52,7 +52,7 @@ they must not share viewport ownership decisions.
 
 | Scene lane | Owner | Source | Allowed viewport proof | Must stay off |
 |---|---|---|---|---|
-| `sinr-live` | live SINR demo | live Walker simulator / configured profile | live satellites, live SINR beams, SINR handover effects, diagnostics, live Walker timeline/forecast rails, handover-cinema candidate-beam highlight + SINR explainer (focus-scoped, `sinr-offset` claim) | MODQN replay proof, MODQN cell overlay |
+| `sinr-live` | live SINR demo | live Walker simulator / configured profile | live satellites, live SINR beams, SINR handover effects, diagnostics, live Walker timeline/forecast rails, handover-cinema candidate-beam highlight + SINR explainer (focus-scoped, `sinr-offset` claim), SINR-serving mosaic (UE markers coloured by serving beam — its OWN layer, NOT the MODQN cell overlay) + aggregate readout (served N/N, per-beam load, mean SINR; `sinr-serving` claim, always-on ambient default) | MODQN replay proof, MODQN cell overlay |
 | `modqn-live-cell-preview` | MODQN live preview | live Walker simulator for geometry/SINR plus explicit MODQN decision overlay | cell overlay, all-UE service map, active cell UE-count badges, clean cell hopping state, explicit visual layer presets, overlay-labeled handover cues/decision rail | MODQN replay proof, legacy live beam cones, decorative live effects, artifact overlays |
 | `modqn-replay-proof` | MODQN evidence proof | immutable MODQN replay artifact/display state | replay proof layer, source-backed or display-proxy replay beams, focused decision trace, producer-horizon replay rail | live cell preview, live SINR beams, artifact overlays, live Walker forecast markers |
 | `artifact-replay` | visual-showcase replay | immutable `visual-showcase-v1` artifact | artifact-provided frame content, replay controls, artifact-owned event rail | live cell preview, MODQN replay proof, live SINR proof effects |
@@ -443,3 +443,37 @@ Before changing scene rendering:
   restores + tears down), and `validate:frontend:scene-lane-governance` locks the
   render-plan gate, the gated MainScene mount, the mesh observable, and the
   explainer claim stamp.
+- SINR-serving mosaic (S2) is lane-owned to `sinr-live` and is the always-on ambient
+  default (NOT director-gated) that proves G3 — every UE marker is coloured by its
+  serving beam (by SINR), so the ~100 UE dots partition into a coloured cell mosaic; a
+  handover = a dot changes colour. It is a DISTINCT SINR-serving visualisation, NOT the
+  MODQN cell overlay (`deriveModqnServiceMap`): a separate pure model
+  (`src/scene/sinrServingMosaic.ts`) colours UEs by a STABLE hash of their serving
+  (satId, beamId) — never the display-order `satelliteVisualIndex`, so a dot recolours
+  IFF its serving beam actually changed. It is gated by the render-plan flag
+  `showSinrServingMosaic` (= `showSinrLiveViewport`), so it is inert on
+  `modqn-live-cell-preview` (which owns the MODQN cell overlay instead),
+  `modqn-replay-proof` (Rule#8), and `artifact-replay`.
+  - **3D colouring** reuses the existing shared `GroundScene` instanced UE markers
+    (`markerColor`): on `sinr-live` MainScene feeds them mosaic colours; on the MODQN
+    lane it feeds `deriveModqnServiceMap` colours — the two never mix (the primary UE
+    stays the red focus anchor; only the secondary population is mosaic-coloured).
+    `GroundScene` publishes a MESH-derived observable
+    (`data-sinr-serving-mosaic-color-count` = distinct colours actually written to the
+    `instanceColor` buffer) so the validator proves the partition really rendered.
+  - **Aggregate readout** (`SinrServingAggregate`, `src/ui/`): a lane-gated DOM HUD fed
+    ONLY by the live `SimState.perUePositions` serving truth. It shows `served N/N`, the
+    distinct serving-beam count, per-beam load, and the mean served SINR, stamped
+    `data-claim-kind="sinr-serving"`; it NEVER mentions MODQN/producer and claims no
+    decision proof. It is the ambient low-density default (Rule#10).
+  - **Default population:** the `sinr-experiment` runtime UE-count default is raised from
+    1 to 100 (matching the TopologyTab's already-shown `DEFAULT_UE_COUNT` — the runtime
+    falling back to 1 was a UI/runtime mismatch) so the ambient mosaic is the literal
+    default screen (SDD §3.1/§5.4). An explicit Advanced override still wins.
+  Validators: `validate:phase-c:sinr-serving-mosaic:model` (pure colour stability +
+  aggregate counting, never fabricates), `validate:phase-c:sinr-serving-mosaic:browser`
+  (real sinr-live: aggregate `served N/N` with a multi-beam partition + finite mean SINR
+  + `sinr-serving` claim + the mesh distinct-colour count > 1; absent on the MODQN lane),
+  and `validate:frontend:scene-lane-governance` locks the render-plan gate, the distinct
+  module (no MODQN-map import), the gated MainScene mount, the mesh observable, and the
+  aggregate claim stamp.

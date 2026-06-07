@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { UeTrailHistory } from '../scene/useUeTrailHistory';
@@ -43,6 +43,43 @@ interface GroundSceneProps {
   readonly ueTrailHistory?: UeTrailHistory;
   readonly secondaryOpacity?: number;
   readonly secondaryScale?: number;
+  /**
+   * Optional MESH-derived telemetry hook: when a lane owner passes a camelCase
+   * dataset key (e.g. `'sinrServingMosaicColorCount'`, S2), the secondary
+   * instanced markers publish the count of DISTINCT colours actually written to
+   * the InstancedMesh `instanceColor` buffer to `gl.domElement.dataset[key]`.
+   * This proves the per-UE colouring really landed on the mesh (a model-prop
+   * observable would pass even if the colour write silently broke). Default
+   * undefined — no publish, so it stays lane-owned by whoever passes it.
+   */
+  readonly colorTelemetryAttr?: string;
+}
+
+/**
+ * Count the distinct colours actually written to an InstancedMesh's
+ * `instanceColor` buffer (over the live instance count) and publish to the
+ * WebGL canvas dataset. MESH-derived (reads the buffer, not the input props).
+ */
+function publishInstanceColorTelemetry(
+  gl: THREE.WebGLRenderer,
+  attr: string | undefined,
+  mesh: THREE.InstancedMesh,
+  count: number,
+): void {
+  if (!attr) return;
+  const instanceColor = mesh.instanceColor;
+  if (!instanceColor || count <= 0) {
+    gl.domElement.dataset[attr] = '0';
+    return;
+  }
+  const seen = new Set<string>();
+  for (let i = 0; i < count; i += 1) {
+    const r = Math.round(instanceColor.getX(i) * 255);
+    const g = Math.round(instanceColor.getY(i) * 255);
+    const b = Math.round(instanceColor.getZ(i) * 255);
+    seen.add(`${r},${g},${b}`);
+  }
+  gl.domElement.dataset[attr] = String(seen.size);
 }
 
 const MARKER_HEIGHT = 16;
@@ -61,6 +98,7 @@ interface SecondaryUeInstancesProps {
   readonly markerShape: 'cylinder' | 'sphere';
   readonly opacity: number;
   readonly scale: number;
+  readonly colorTelemetryAttr?: string;
 }
 
 interface ShaderNumberUniform {
@@ -215,7 +253,9 @@ function SecondaryUePlainInstances({
   markerShape,
   opacity,
   scale,
+  colorTelemetryAttr,
 }: SecondaryUeInstancesProps) {
+  const gl = useThree(state => state.gl);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const color = useMemo(() => new THREE.Color(), []);
@@ -244,7 +284,12 @@ function SecondaryUePlainInstances({
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.count = ues.length;
-  }, [ues, color, dummy, markerHeight, markerRadius, markerShape, ueMarkerMultiplier]);
+    publishInstanceColorTelemetry(gl, colorTelemetryAttr, mesh, ues.length);
+  }, [ues, color, dummy, gl, colorTelemetryAttr, markerHeight, markerRadius, markerShape, ueMarkerMultiplier]);
+
+  useEffect(() => () => {
+    if (colorTelemetryAttr) delete gl.domElement.dataset[colorTelemetryAttr];
+  }, [gl, colorTelemetryAttr]);
 
   if (ues.length === 0) return null;
 
@@ -284,7 +329,9 @@ function SecondaryUeGlowInstances({
   markerShape,
   opacity,
   scale,
+  colorTelemetryAttr,
 }: SecondaryUeInstancesProps) {
+  const gl = useThree(state => state.gl);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const color = useMemo(() => new THREE.Color(), []);
@@ -345,7 +392,12 @@ function SecondaryUeGlowInstances({
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     contentionAttribute.needsUpdate = true;
     mesh.count = ues.length;
-  }, [ues, color, dummy, markerHeight, markerRadius, markerShape, ueMarkerMultiplier]);
+    publishInstanceColorTelemetry(gl, colorTelemetryAttr, mesh, ues.length);
+  }, [ues, color, dummy, gl, colorTelemetryAttr, markerHeight, markerRadius, markerShape, ueMarkerMultiplier]);
+
+  useEffect(() => () => {
+    if (colorTelemetryAttr) delete gl.domElement.dataset[colorTelemetryAttr];
+  }, [gl, colorTelemetryAttr]);
 
   if (ues.length === 0) return null;
 
@@ -384,6 +436,7 @@ export function GroundScene({
   ueTrailHistory,
   secondaryOpacity = 0.9,
   secondaryScale = 1,
+  colorTelemetryAttr,
 }: GroundSceneProps) {
   const secondaryUes = useMemo(
     () => ues.slice(1),
@@ -412,6 +465,7 @@ export function GroundScene({
         markerShape={markerShape}
         opacity={secondaryOpacity}
         scale={secondaryScale}
+        colorTelemetryAttr={colorTelemetryAttr}
       />
     </group>
   );
