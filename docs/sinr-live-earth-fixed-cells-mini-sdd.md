@@ -1,116 +1,122 @@
 # SINR-Live Earth-Fixed Cells — Mini-SDD (CQ3 root fix)
 
 **Date:** 2026-06-07
-**Status:** Draft — pending codex review + user greenlight before implementation.
+**Status:** Revised post-codex-review (5 BLOCK + 7 MAJOR + 2 MINOR addressed). Pending implementation in a fresh conversation.
 **Author:** Claude controller (investigation session 2026-06-07).
 **Scope:** `leo-beam-sim` **SINR-live cinema lane only** (`appMode='sinr-experiment'`, `sceneLane='sinr-live'`, profile `hobs-2024-candidate-rich`). MODQN lanes (`modqn-demo`, `modqn-live-cell-preview`, artifact-replay) are **out of scope** and must not change behaviour.
-**Supersedes (for the SINR-live lane only):** the CQ3 "primary-UE drift / unanchor render" plan in `.agent-memory/project_cinema_quality_2026-06-07.md` (empirically falsified — see §2).
+**Supersedes (for the SINR-live lane only):** the CQ3 "primary-UE drift / unanchor render" plan in `.agent-memory/project_cinema_quality_2026-06-07.md`.
+**Decisions locked (user, 2026-06-07):** **A1** = no S0 unanchor slice (it only un-hides the degenerate steered off-axis and is thrown away once the lane renders cells; go straight to the cell model). **B3** = hybrid serving-truth model (see §5.1).
 
 ## 0. Reading Order
 
-1. `.agent-memory/MEMORY.md` index + `project_cinema_quality_2026-06-07` (CQ3 re-diagnosis block + this pivot).
+1. `.agent-memory/MEMORY.md` index + `project_cinema_quality_2026-06-07` (CQ3 re-diagnosis + this pivot).
 2. This doc.
-3. `docs/modqn-realistic-beam-geometry-cross-repo-sdd.md` — the **2026-05-28 cross-repo SDD** that established Earth-fixed cells + hopping + off-axis as the paper-faithful geometry. **This mini-SDD is a NEW application of that geometry**: it makes Earth-fixed cells the *live SINR truth of leo's own SINR-live lane*, which the cross-repo SDD did NOT cover (that SDD routed leo's real angle-aware SNR through a producer Phase III bundle regen, for the MODQN track).
-4. `CLAUDE.md` §3 (replay immutability), §4 (vendor-on-demand), §5 (boundaries) + Frontend Render Governance Rule; `docs/frontend-render-governance.md`.
-5. Key code: `src/scene/runtimeFrameStep.ts` (SINR truth), `src/scene/simulationHelpers.ts:168` (`resolveLatticeSteering`), `src/scene/useBeamViz.ts:632-754` (`anchorToUe`), `src/engine/cells/cellLayout.ts` + `cellScheduler.ts` (Earth-fixed cell oracle, leo-owned), `src/viz/CellBeamCones.tsx` (cone renderer), `src/scene/useCellSchedule.ts`.
+3. `docs/modqn-realistic-beam-geometry-cross-repo-sdd.md` — the 2026-05-28 cross-repo SDD that established Earth-fixed cells + hopping + off-axis as paper-faithful geometry **for the MODQN/producer track**. This mini-SDD is a NEW, SEPARATE application: Earth-fixed cells as the live SINR truth of leo's OWN SINR-live lane (leo-owned live SINR-offset compute, **NOT** MODQN/producer/paper proof — see §7).
+4. `CLAUDE.md` §3/§4/§5 + Frontend Render Governance Rule; `docs/frontend-render-governance.md`, `docs/frontend-mode-lane-separation-sdd.md`.
+5. Code: `src/scene/runtimeFrameStep.ts` (`stepRuntimeFrame`, `buildLinkContext`), `src/scene/simulationHelpers.ts:168` (`resolveLatticeSteering`), `src/scene/useBeamViz.ts:632-754` (`anchorToUe`), `src/engine/cells/cellLayout.ts` + `cellScheduler.ts`, `src/scene/useCellSchedule.ts`, `src/viz/CellBeamCones.tsx`, `src/engine/signal/link-budget.ts` + `beam-gain.ts` + `slant-range.ts`, `src/scene/runtimeUeFrame.ts`, `src/scene/liveWalkerHandoverEventIndex.ts`, `src/engine/handover/handover-manager.ts`, `src/scene/sceneLaneRenderPlan.ts:90`.
 
 ## 1. Purpose
 
-CQ3 goal: in the SINR-live cinema the beam must NOT keep hitting the UE dead-centre. The UE must sit at realistic positions inside/across beams (real **off-axis angle**), beams must **hop** to serve the 100-UE 200×90 km population, and **intra-HO must be visible** as a UE crossing a cell boundary / the serving cell being re-assigned. User vision (verbatim, 2026-05-28, recorded in cross-repo SDD §1.1) == today's CQ3 complaint: "波束跟著衛星平移、不理 off-axis、該 hopping 服務不同 UE … 不只視覺,要真的合理".
+In the SINR-live cinema the beam must NOT keep hitting the UE dead-centre. UEs must sit at real positions inside/across cells (real **off-axis angle**), beams must **hop** to serve the 100-UE 200×90 km population, and **intra/inter-HO must be visible** (UE crossing a fixed cell boundary / the serving sat changing). User vision (verbatim 2026-05-28, cross-repo SDD §1.1) == today's CQ3 complaint: "波束跟著衛星平移、不理 off-axis、該 hopping 服務不同 UE … 不只視覺,要真的合理".
 
 ## 2. Problem statement + evidence (CQ3 re-diagnosed 2026-06-07)
 
-The prior CQ3 plan ("give the primary UE drift so it crosses beam edges → visible intra-HO") was **empirically falsified** this session. Throwaway probes (`scripts/probe-cq3-*.ts`, committed for before/after verification):
+The prior CQ3 plan ("primary-UE drift → visible intra-HO") was empirically falsified. Throwaway probes (`scripts/probe-cq3-*.ts`, committed):
 
-1. **Intra-HO events already abundant; drift does nothing.** `buildLiveWalkerHandoverEventIndex` on candidate-rich, STATIC UE → **75 intra + 110 inter**, spread across all 12 ten-minute buckets. Adding primary-UE circular drift (r=15..80 km) → 62–70 intra (NOT more). The satellite passing overhead already drives intra via `resolveLatticeSteering` re-snapping the nearest lattice beam. So CQ3 is not "make intra happen".
-2. **CQ3 is a render-vs-truth bug.** TRUTH (`probe-cq3-offaxis.ts`): the serving beam's real ground distance to the primary UE = **mean 74.7 km / p50 27.634 km (= one lattice ring) / off-axis ≈ 2.88°** — the UE is genuinely off-axis in the SINR truth. RENDER hides it: `useBeamViz.ts:751-754` `anchorToUe` subtracts `primaryBeamCell.offset`; since `primaryBeamIdForSat` (`beamVizModel.ts:211`) returns `servingBeamId`, `groundX = (servingBeam.offset − anchorOffset) = 0` → **serving beam drawn ON the UE**, erasing the true off-axis. This is a Rule#6 display-vs-truth violation.
-3. **Steered-lattice is the wrong MODEL for a multi-UE handover showcase.** `resolveLatticeSteering` (`simulationHelpers.ts:168`) electronically steers a beam onto (near) the primary UE → θ≈0 for the serving sat → no off-axis story, cannot serve 100 scattered UEs with one steered beam, and the "intra" is a lattice re-snap (a teleport), not a UE crossing a fixed cell. Cross-repo SDD §1.2.6 names this exact degeneracy.
+1. **Intra-HO already abundant; drift does nothing.** `buildLiveWalkerHandoverEventIndex` on candidate-rich, STATIC UE → **75 intra + 110 inter** across all 12 ten-minute buckets. Drift (r=15..80 km) → 62-70 intra (NOT more). CQ3 is not "make intra happen".
+2. **CQ3 is render-vs-truth.** TRUTH (`probe-cq3-offaxis.ts`): serving beam ground-dist to primary UE = **mean 74.7 km / p50 27.634 km / off-axis ≈2.88°** — UE is genuinely off-axis. RENDER hides it: `useBeamViz.ts:751-754` `anchorToUe` subtracts `primaryBeamCell.offset` (= the serving beam's own offset, since `primaryBeamIdForSat` `beamVizModel.ts:211` returns `servingBeamId`) → `groundX = 0` → serving beam drawn ON the UE.
+3. **Steered-lattice degeneracy.** `resolveLatticeSteering` (`simulationHelpers.ts:168`) re-snaps a beam onto (near) the primary UE → off-axis is a single re-snapping ring (~27.6 km), not a rich distribution; cannot serve 100 scattered UEs with one steered beam; "intra" = lattice teleport, not a UE crossing a cell.
 
-### 2.1 Why Earth-fixed cells is the correct fix (and leo already owns it)
+### 2.1 codex review verdict (2026-06-07) and how it is resolved here
 
-- `docs/modqn-realistic-beam-geometry-cross-repo-sdd.md` already established **Earth-fixed 37-hex cells + beam-hopping + off-axis-from-cell-centre** as the paper-faithful geometry (paper is silent; all sibling LEO BH papers use Earth-fixed cells).
-- **leo owns the geometry oracle:** `src/engine/cells/cellLayout.ts` (37 hex cells, `cellRadius = altitude·tan(θ_3dB/2)`), `cellScheduler.ts` (K-active hopping), `CellBeamCones.tsx` (cone renderer: apex=satellite, base=fixed cell centre, tilted = real "波束變型"), `useCellSchedule.ts`. The producer's Python `env/cell_layout.py` is a documented "pure-geometry parity port of the TypeScript oracle leo-beam-sim/src/engine/cells/cellLayout.ts" — **the producer ported FROM leo.**
-- Earth-fixed cells gives, by construction: real off-axis (UE at its true position within its cell), hopping (K of N cells lit per slot), and **intra-HO = UE crossing a fixed cell boundary OR the serving cell re-assigned** — visible without any render hack. The `anchorToUe` hack + steered-lattice become unnecessary for this lane.
+codex (consult, 642k tok) returned 5 BLOCK + 7 MAJOR + 2 MINOR. Resolutions:
 
-### 2.2 Current state (what is and isn't wired)
-
-- SINR **truth** (both lanes): `stepRuntimeFrame → buildLinkContext → resolveLatticeSteering` (steered lattice). `computeLinkBudget` already computes off-axis via `computeOffAxisDeg(dist(UE, beam.offset), alt)` + Bessel J1/J3 `beam-gain.ts`.
-- Earth-fixed cells (`cellLayout`/`cellScheduler`/`CellBeamCones`/`useCellSchedule`) are a **display layer only**, gated to `modqn-live-cell-preview` (`sceneLaneRenderPlan.ts:91` `showCellOverlay`). `cellScheduler` runs off `viz.displaySats` at a cosmetic 2.5 s slot, does NOT feed SINR.
+- **BLOCK-1 (SDD overstates root fix; unanchor is the minimal fix for the narrow bug).** Accepted as framing: unanchor fixes only "UE centred" and exposes the *degenerate* steered off-axis; it does NOT deliver the multi-UE / hopping / cross-cell-HO showcase the user requires, and it is thrown away once the lane renders cells. **Decision A1: skip S0 unanchor; the cell model is the chosen scope.** This doc no longer claims cells are the *necessary* fix for the narrow bug — they are the chosen fix for the *showcase goal* (§1). The narrow off-axis bug is a subset that the cell model also fixes.
+- **BLOCK-2 (UE→cell→serving is the core truth contract, not an unknown; "membership OR best-SINR" are incompatible).** Resolved by **Decision B3** (§5.1): pick the hybrid explicitly.
+- **BLOCK-3 (`cellScheduler` is a display round-robin, not a serving oracle).** Resolved: the TRUTH path does NOT use `cellScheduler`'s round-robin assignment. Serving is selected by SINR + handover policy per §5.1. `cellScheduler`/`useCellSchedule` stay display-only on the MODQN lane, untouched.
+- **BLOCK-4 (intra-HO identity).** Resolved: four identities separated in §5.2; intra/inter defined by serving-SAT change, not scheduler bookkeeping.
+- **BLOCK-5 (S-cells-1 collapses spike+truth).** Resolved: §6 splits a pure-model spike (no runtime mutation) from the runtime truth switch.
+- **MAJORs** (slant range per-cell, scan-angle/steering-loss from sat-nadir→cell-centre, freq reuse by stable cell identity, secondaries use the same model, idle-cell semantics under K<N, governance flag not `showCellOverlay`, stop paper/MODQN-proof framing): folded into §5/§6/§7.
+- **MINORs** (cinema framing is downstream; revised ordering): folded into §6.
 
 ## 3. Decision
 
-Make **Earth-fixed cells the live SINR truth of the SINR-live lane**, reusing leo's own `cellLayout`/`cellScheduler`/`computeLinkBudget`/`beam-gain` — no producer dependency, no re-training (this lane is leo's own SINR-offset compute, NOT MODQN truth). Render the cells on the SINR-live lane (`CellBeamCones`) with UE markers at true positions, so the UE shows real off-axis and intra-HO is visible. MODQN lanes unchanged. SceneLane enum stays 4 (Rule#4).
-
-**This makes the ENVIRONMENT faithful to MODQN's training scene — NOT MODQN's decisions** (those still require the producer bundle; separate blocker per `project_handover_cinema_data_ceiling_2026-06-06`). Honesty labels ("not MODQN") stay.
+Make **Earth-fixed cells the live SINR truth of the SINR-live lane**, reusing leo's own `cellLayout.ts` geometry + `computeLinkBudget`/`beam-gain`/`slant-range`. Serving is chosen by SINR + handover policy (NOT the round-robin display scheduler). Render cells (`CellBeamCones`) on the lane with UE markers at true positions → real off-axis + visible cross-cell HO. No producer dependency, no re-training (this lane is leo's own SINR-offset compute, NOT MODQN truth). MODQN lanes unchanged; SceneLane enum stays 4 (Rule#4).
 
 ## 4. Coverage / parameters (empirical, `probe-cq3-cell-coverage.ts`)
 
-100 uniform UEs in 200×90, nearest-cell coverage of leo `cellLayout`:
+100 uniform UEs in 200×90, nearest-cell coverage:
 
 | beamwidth | cells | alt | cell-centre span | UEs covered | off-axis p95 |
 |---|---|---|---|---|---|
-| 2.0° (producer) | 37 | 780 | 141×123 km | **79/100** | 2.29° |
-| 3.32° | 37 | 780 | 235×203 km | **100/100** | 1.49° |
+| 2.0° (producer) | 37 | 780 | 141×123 km | 79/100 | 2.29° |
+| 3.32° | 37 | 780 | 235×203 km | 100/100 | 1.49° |
 | 2.0° | 61 | 780 | 189×163 km | 95/100 | 1.02° |
 | 3.32° (leo orbit) | 37 | 550 | 166×143 km | 92/100 | 2.28° |
 
-**Finding:** producer's 2°/37 tiles only 141×123 km → ~21 edge UEs uncovered; full 200×90 needs a wider beam and/or more cells. Plus beam-hopping (K active of N) ⇒ instantaneous coverage < 100 %, cycling (honest; the S2 aggregate already surfaces this).
-
-**Recommended param defaults (pin in S-cells-4):**
-- **Constellation:** keep leo `hobs-2024-candidate-rich` (large multi-shell pool, proven coverage + inter-HO). Do NOT adopt the producer 4-sat single-plane proxy (coverage-degenerate; cross-repo SDD line 180: needs P≈384).
-- **Altitude:** keep leo 550 km (it's the orbit). Cell radius derives from it.
-- **Coverage:** tune `{beamwidth3dB, cellCount}` to tile the full 200×90 at 550 km (candidate: cellCount 61 and/or beamwidth widened toward ~3.3°). Confirm 100 % nearest-cell coverage + acceptable off-axis spread via the coverage probe.
-- **Serving count L / active-cells-per-slot K:** start from the cross-repo SDD's K=28/37; reconcile with leo's beam-hopping profile (`beamHopping.maxActiveBeamsPerSlot`).
+**Decisions:**
+- **Constellation:** keep leo `hobs-2024-candidate-rich` (large multi-shell pool). Do NOT adopt the producer 4-sat/780 km proxy (coverage-degenerate; cross-repo SDD line 180 needs P≈384).
+- **Altitude:** keep leo 550 km. Cell radius = `alt·tan(θ_3dB/2)` derives from it.
+- **Tile coverage vs served coverage (MAJOR):** tune `{beamwidth3dB, cellCount}` so all UEs fall in a cell (candidate: cellCount 61 and/or beamwidth ~3.3° at 550 km). But **nearest-cell coverage ≠ served coverage under K<N hopping** — define idle-cell semantics (§5.3).
+- **This is a showcase-pragmatic leo live-SINR surface at 550 km — NOT the producer's 780 km/2° baseline.** Do not frame the two as the same truth (MAJOR). Honesty labels stay.
 
 ## 5. Design
 
-### 5.1 Target SINR truth (the core change)
+### 5.1 Serving truth model — Decision B3 (hybrid)
 
-Replace, **for the SINR-live lane only**, the steered-lattice beam geometry in `buildLinkContext` with **cell-pointing geometry**:
-- Build the Earth-fixed cell layout once (`buildCellLayout`, same params as the render).
-- Per visible satellite, the set of beams it lights = the cells the scheduler assigns to it this slot (`cellScheduler` run on the REAL orbit/sat geo + real slot, not the cosmetic display path), filtered by elevation/steering reach.
-- Each lit beam's ground position = its **fixed cell centre** (relative to the UE for `computeLinkBudget`). `computeLinkBudget` then yields off-axis = dist(UE, cell-centre) → real angle-aware SINR (off-axis Bessel J1/J3 + interference from co-channel cells via frequency reuse).
-- The primary UE's serving = the sat/beam serving the cell the UE is in (or best SINR among reachable cells). Handover manager logic stays (sinr-offset), but the candidate set is now cell-pointing beams, not steered-lattice beams.
+- **UE → cell (membership):** every UE is assigned to the **nearest earth-fixed cell centre**. Stable; this is what produces the visible "UE crosses from cell A to cell B" narrative when the UE moves (CQ3b).
+- **cell → serving sat/beam (SINR + HO policy):** for each cell, the candidate serving satellites = those that can illuminate the cell (elevation mask + steering reach to the cell centre). Among candidates, choose serving by **SINR + the existing sinr-offset handover policy** (hysteresis/offset/trigger-time, reuse `HandoverManager` logic on cell-pointing candidates). This REPLACES the round-robin `cellScheduler` assignment for the truth path (resolves BLOCK-3).
+- **primary UE serving = the serving of the cell it is in.** Off-axis SINR = `computeLinkBudget` with the serving beam pointed at the cell centre and the UE at its true position → off-axis = dist(UE, cell-centre) (resolves the CQ3 bug at the truth layer).
+- **K<N hopping** is a separate display/scheduling concern layered on top; the *serving truth* is continuity-stable (a UE keeps its serving sat until SINR/policy says otherwise), not slot-rotated.
 
-### 5.2 Render
+### 5.2 Four identities (resolves BLOCK-4)
 
-- SINR-live lane renders `CellBeamCones` at fixed cell centres (gated by a new render-plan flag, NOT `showCellOverlay` which stays MODQN-only). UE markers continue from `perUePositions` (true positions) → UE visibly off-centre in its cell.
-- Retire `anchorToUe` for this lane (its purpose — cancel steered-lattice common-mode slide — is moot once beams are at fixed cells). Keep the steered-lattice render path intact for any lane still using it.
-- Footprint: `coneGeometry` circular base is acceptable for v1 (tilt = "波束變型" is real); elliptical off-angle footprint = optional later polish. Raise opacity vs the faint 0.1 overlay for cinema legibility.
+- **cell identity:** fixed earth-fixed cell id (geography, from `cellLayout`).
+- **beam identity:** a satellite's beam pointed at a given cell (sat × cell).
+- **frequency identity:** stable reuse colour per cell = `cellId mod reuseFactor` (the producer's `local_beam_index_mod_reuse_factor`), NOT a rotating per-slot `beamIndex` (resolves the freq-reuse MAJOR). Co-channel interference = simultaneously-lit cells of the same colour.
+- **handover identity:** a change in the UE's SERVING. **intra-HO = serving SAT unchanged, serving CELL/beam changes** (UE crosses a boundary into another cell served by the same sat, or that sat re-points). **inter-HO = serving SAT changes.** A scheduler beam-index shuffle is NOT a handover.
 
-### 5.3 Handover semantics + event index
+### 5.3 Link-budget geometry corrections (resolve MAJORs)
 
-- intra-HO = serving cell re-assigned to a different beam of the same sat, OR (with CQ3b mobility) the UE crosses into an adjacent cell. inter-HO = serving cell taken over by a different sat.
-- `buildLiveWalkerHandoverEventIndex` (drives the cinema seek) must be re-derived from the cell model so the cinema seeks to real cell-based events. Re-run the intra/inter count probe; expect events to remain abundant and now spatially legible.
+For each (UE, candidate serving sat, cell):
+- **scan angle** = angle from sat nadir to the **fixed cell centre** (not `resolveLatticeSteering` offsets) → feeds `computeSteeringLossDb`.
+- **slant range** = per-(sat, cell) from the sat to the cell centre (per-cell elevation → `slant-range.ts`), not one `sat.rangeKm` for all cells (the 200×90 span makes this material).
+- **off-axis** = dist(UE true position, cell centre) → `computeOffAxisDeg` + Bessel J1/J3.
+- **idle-cell semantics:** define explicitly — a UE whose cell is not lit this slot is `unserved` (honest; the S2 aggregate already surfaces transient unserved), with optional neighbour-cell fallback as a later polish. Pin in S-cells-5.
 
-### 5.4 Honest design UNKNOWNS — resolve in the S-cells-1 spike (do NOT hand-wave)
+### 5.4 Secondaries (resolve MAJOR)
 
-1. **UE→cell→serving mapping for the primary UE + 100 secondaries.** Multiple UEs share a cell/beam. Define: primary serving = its cell's serving sat/beam; secondaries likewise. Reconcile with the existing per-UE `HandoverManager` + `stepSecondaryUeHandovers`.
-2. **Where the cell scheduler runs in the truth path.** Today `cellScheduler` is display-side (MainScene, off `displaySats`). The truth needs it inside/feeding `stepRuntimeFrame` on the real orbit + real slot. Decide: vendor scheduler call into the engine vs pass schedule in.
-3. **Interference model under cells.** Co-channel interference now comes from other lit cells (frequency reuse coloring). Confirm `computeLinkBudget`'s `activeAssignments` interference path works with cell-pointing beams.
-4. **Cinema framing.** Camera focus presets assume the serving beam sits on the UE. With fixed cells the serving cell is offset from the UE — re-check `directorFocusPose` / S1 candidate highlight (mesh-derived) / S2 mosaic re-pointing.
+The 100-UE mosaic/aggregate must use the SAME cell model as the primary (`runtimeUeFrame.ts` `stepSecondaryUeHandovers`/`fillPerUeServingSinr`). Primary-only cell truth would make cinema + aggregate disagree. All UEs: nearest-cell membership + cell-serving from the shared cell-truth object.
 
-## 6. Slice plan (execute in a FRESH conversation; per-slice: cavecrew-reviewer → affected validators → governance Rule#9 → browser-verify real :3001 → commit, push deferred)
+### 5.5 Render
 
-- **S-cells-1 (SPIKE + truth):** cell-based SINR truth for the primary UE in `stepRuntimeFrame`/`buildLinkContext` behind a SINR-live-only switch. Resolve §5.4 unknowns. Deliverable: off-axis probe shows real distribution (not θ≈0) + 100 % nearest-cell coverage + sane intra/inter counts. Validators: new `validate:phase-c:sinr-live-cells:model` + existing runtime baseline must not drift on other lanes.
-- **S-cells-2 (render):** SINR-live lane renders `CellBeamCones` (new render-plan flag, lane-owned), UE markers true pos, retire `anchorToUe` for this lane, opacity tuned. Governance: render-plan matrix + lane locks. Browser: UE visibly off-centre, beams at fixed cells, hopping.
-- **S-cells-3 (handover/cinema):** re-derive `buildLiveWalkerHandoverEventIndex` from cells; S1 candidate highlight + S2 mosaic re-pointed to cells; cinema framing re-checked. Validators: handover-cinema model+browser, sinr-serving-mosaic, director-cinematic, phase-h sinr-live-render all green.
-- **S-cells-4 (coverage + mobility):** pin `{beamwidth, cellCount}` for full 200×90 coverage; add CQ3b primary-UE mobility (now meaningful: UE crosses fixed cells → visible intra-HO). Coverage probe green.
+- SINR-live lane renders `CellBeamCones` from the SAME cell-truth object (apex=sat, base=fixed cell centre, tilted), gated by a NEW render-plan flag (NOT `showCellOverlay`, which stays MODQN-only — resolves governance MAJOR). UE markers from `perUePositions` (true positions) → UE visibly off-centre.
+- Retire `anchorToUe` for this lane only; keep the steered-lattice render path intact for any lane still using it.
+- `coneGeometry` circular base acceptable for v1 (tilt = real "波束變型"); elliptical footprint = later polish. Raise opacity vs the faint 0.1 overlay.
 
-## 7. Governance / validators / boundaries
+## 6. Slice plan (fresh conversation; per-slice: cavecrew-reviewer → affected validators → governance Rule#9 → browser-verify real :3001 → commit, push deferred)
 
-- Rule#4: SceneLane enum stays 4. New render-plan flag is lane-gated to sinr-live; MODQN `showCellOverlay` untouched.
-- Rule#6: cells are the TRUTH for this lane (not a display transform over a different truth) — render and SINR now agree. Update `validate:frontend:scene-lane-governance` with the new flag's lane ownership + a lock that the cell-truth path is sinr-live-only.
-- Affected validators to re-run each slice: `validate:live-render` (incl. handover-cinema model+browser, sinr-serving-mosaic, director-cinematic live+artifact, phase-h sinr-live-render), scene-lane-governance, runtime baseline, camera-preset, lint.
-- Not heavy-compute (pure TS) → stays in the local dev env, no Ubuntu server.
+- **S-cells-1 — PURE MODEL CONTRACT spike (NO runtime mutation).** New pure module: given orbit/sat geo + cell layout + UE positions + handover policy, emit per-UE cell membership, per-cell serving sat/beam (SINR + HO policy, §5.1), the four identities (§5.2), per-(sat,cell) scan angle / slant range / off-axis (§5.3), and intra/inter classification (§5.2). Deliverable: pure functions + unit tests + a probe showing real off-axis distribution + nearest-cell coverage + sane intra/inter counts. **`buildLinkContext` unchanged.** Validator: `validate:phase-c:sinr-live-cells:model`.
+- **S-cells-2 — runtime truth switch.** Wire the S-cells-1 model into `stepRuntimeFrame`/`buildLinkContext` behind a strict `sinr-live`-only gate; primary AND secondaries (§5.4). Validators: runtime baseline (other lanes zero drift) + cell-truth model.
+- **S-cells-3 — render.** `CellBeamCones` on sinr-live from the same truth object; UE markers true pos; retire `anchorToUe` for this lane; new render-plan flag + lane-governance update (NOT `showCellOverlay`). Browser: UE off-centre, beams at fixed cells, hopping.
+- **S-cells-4 — handover index + cinema.** Re-derive `buildLiveWalkerHandoverEventIndex` from the cell truth; re-point S1 candidate highlight + S2 mosaic to cells; re-check cinema framing (now serving cell ≠ UE position). Validators: handover-cinema model+browser, sinr-serving-mosaic, director-cinematic, phase-h sinr-live-render.
+- **S-cells-5 — coverage + mobility + idle-cell.** Pin `{beamwidth, cellCount}` for full 200×90 coverage at 550 km; define idle-cell semantics (§5.3); add CQ3b primary-UE mobility (UE crosses fixed cells → visible intra-HO). Coverage probe green.
+
+## 7. Governance / boundaries
+
+- Rule#4: SceneLane enum stays 4. New render-plan flag lane-gated to sinr-live; MODQN `showCellOverlay` untouched. Update `validate:frontend:scene-lane-governance` with the new flag's lane ownership.
+- Rule#6: cells are the TRUTH for this lane (render and SINR agree) — not a display transform over a different truth.
+- **Not MODQN/paper proof.** This is leo's own live SINR-offset surface at 550 km; it is NOT the producer's 780 km baseline and NOT MODQN decisions. Keep "not MODQN" honesty labels; do not imply producer/paper proof (MAJOR).
+- Vendor-on-demand (CLAUDE.md §4): reusing leo's OWN `cellLayout.ts` as live SINR geometry does not violate it (leo-owned live sim, not a foreign rigor-critical port). The serving/handover logic reuses leo's existing `HandoverManager`.
+- Affected validators each slice: `validate:live-render` (handover-cinema model+browser, sinr-serving-mosaic, director-cinematic live+artifact, phase-h sinr-live-render), scene-lane-governance, runtime baseline, camera-preset, lint. Not heavy-compute (pure TS) → local env.
 
 ## 8. Risks / blast radius
 
-- SINR truth path is rigor-critical; changing `buildLinkContext` risks the existing steered-lattice lanes — gate the new path strictly to sinr-live, keep steered path intact.
-- S1 candidate highlight is mesh-derived (reads cone positions) — must follow the new cones.
-- S2 mosaic / aggregate read `perUePositions` — unaffected positionally, but serving-beam coloring keys change to cell ids.
-- Cinema camera framing assumes beam-on-UE — re-tune.
+- SINR truth path is rigor-critical; gate the cell path strictly to sinr-live, keep the steered path intact for other lanes.
+- Serving selection on cell-pointing candidates must reuse `HandoverManager` cleanly (hysteresis/offset) — get continuity right or it churns.
+- Per-cell slant range / scan angle / steering loss are real geometry changes — verify against the off-axis probe.
+- S1 candidate highlight (mesh-derived) must follow the new cones; S2 mosaic keys change to cell ids; cinema framing assumes beam-on-UE (re-tune).
 
 ## 9. Handoff
 
-Implementation runs in a fresh conversation to keep context light. Bootstrap: read `.agent-memory/MEMORY.md` → `project_cinema_quality_2026-06-07` → this SDD, then start S-cells-1. Probes `scripts/probe-cq3-*.ts` are committed for before/after off-axis + coverage verification.
+Implementation runs in a fresh conversation. Bootstrap: read `.agent-memory/MEMORY.md` → `project_cinema_quality_2026-06-07` → this SDD, then start **S-cells-1** (pure model spike, no runtime mutation). Decisions locked: **A1** (no S0) + **B3** (hybrid serving). Probes `scripts/probe-cq3-*.ts` committed for before/after off-axis + coverage verification.
