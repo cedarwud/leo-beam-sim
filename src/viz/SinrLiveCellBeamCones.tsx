@@ -91,12 +91,12 @@ export interface SinrLiveCellBeamConeRenderItem {
 const OBLIQUE_CONE_SEGMENTS = 32;
 /**
  * Cone opacity for ADDITIVE blending. Additive cones EMIT light (bright/vivid, not
- * the hazy `NormalBlending` veil), but additive ACCUMULATES where cones overlap —
- * with many large sat→ground cones it blows out to white. Kept LOW (0.2) and paired
- * with the focus-subset (only the top serving sats draw) so the scene stays readable
- * and the beams still glow.
+ * the hazy `NormalBlending` veil), but additive ACCUMULATES where the tall
+ * sat→ground cones overlap — too high and it blows out the whole view so you cannot
+ * see the UEs / connections underneath. Kept VERY LOW (0.08) so every serving sat
+ * can show its beam (a connected UE always has a beam) without washing out the scene.
  */
-const SINR_LIVE_CELL_CONE_OPACITY = 0.2;
+const SINR_LIVE_CELL_CONE_OPACITY = 0.08;
 
 /**
  * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)

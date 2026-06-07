@@ -1608,13 +1608,14 @@ assertContains(
   'live-render suite includes the S-cells-3 render browser gate',
 );
 
-// ── Serving cones, FOCUS-SUBSET of serving sats, frequency-reuse colour (S-cells-4b-fix) ──
-// The lane draws SERVING beams only (apex = serving sat, base = served cell), but
-// FOCUS-SCOPED to a few satellites — `resolveTopServingFocusSatIds` picks the top
-// serving sats by SERVED-CELL count + the primary UE's serving sat (NOT the old
-// broken "most-illuminating" fallback that drew the wrong sat). This keeps the
-// additive-glow cones readable instead of blowing out the view with every serving
-// sat's fan. Continuity keeps the focus stable. Colour = FREQUENCY-REUSE
+// ── Serving cones, EVERY serving sat, faint additive, frequency-reuse colour (S-cells-4b-fix) ──
+// The lane draws SERVING beams only (apex = serving sat, base = served cell) for
+// EVERY serving satellite (focus cap set HIGH) so a UE's connected satellite always
+// shows a beam — narrowing to a few sats left other connections beamless. Readability
+// is handled by a VERY LOW additive opacity (the tall sat→ground cones otherwise blow
+// out the view), NOT by hiding sats. `resolveTopServingFocusSatIds` (top serving sats
+// by served-cell count + primary UE serving sat, NOT the old broken most-illuminating
+// fallback) stays available for the cinema (c2) to narrow. Colour = FREQUENCY-REUSE
 // (`cellId mod reuse`) so a fan is multi-colour (multibeam pattern, NOT a per-sat
 // tint). Breadth of who-is-served stays in the UE mosaic (Rule#6 display filter).
 assertContains(

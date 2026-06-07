@@ -136,10 +136,12 @@ interface ArtifactSceneContentProps {
 }
 
 const SHOW_BEAMS = true;
-/** S-cells-4b-fix(3): how many satellites' serving beams the sinr-live lane draws
- *  (the rest's service breadth stays in the UE mosaic). Keeps the additive-glow
- *  cones readable instead of blowing out with every serving sat's fan. */
-const SINR_LIVE_CONE_MAX_FOCUS_SATS = 2;
+/** S-cells-4b-fix(4): how many satellites' serving beams the sinr-live lane draws.
+ *  Set HIGH so EVERY serving satellite shows its beam — a UE's connected satellite
+ *  must always have a beam (narrowing to a few sats left other connections beamless).
+ *  Readability is handled by the low cone opacity, not by hiding sats. The
+ *  `resolveTopServingFocusSatIds` narrowing stays available for the cinema (c2). */
+const SINR_LIVE_CONE_MAX_FOCUS_SATS = 16;
 const CAMERA_TWEEN_DURATION_MS = 600;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
 
