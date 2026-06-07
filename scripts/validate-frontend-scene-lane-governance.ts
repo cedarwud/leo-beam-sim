@@ -1608,14 +1608,15 @@ assertContains(
   'live-render suite includes the S-cells-3 render browser gate',
 );
 
-// ── Beam hopping + wide-beam coverage (S-cells-3 follow-up) ──
+// ── Beam hopping + coverage (S-cells-3 follow-up / S-cells-4a) ──
 // A satellite forms a fixed number of beams (leo = 7), so the cell truth caps each
 // sat to SINR_LIVE_BEAMS_PER_SAT illuminated cells/slot and HOPS the window;
 // illumination is a scheduling gate, the SERVING sat of a lit cell is still chosen
 // by SINR + the HandoverManager (B3 / codex BLOCK-3), never round-robin. Cell SIZE
-// and link-budget GAIN come from the SAME wide beamwidth (one antenna) so fewer,
-// bigger cells tile the service area. These locks pin that wiring so it cannot
-// silently regress to a single satellite lighting every cell it can see.
+// and link-budget GAIN come from the SAME realistic 3.32° beamwidth (one antenna);
+// coverage of the 200×90 area is delivered by STEERING, not by widening the lobe.
+// These locks pin that wiring so it cannot silently regress to a single satellite
+// lighting every cell it can see.
 const sinrLiveCellModelSource = readRepoFile('src/scene/sinrLiveCellModel.ts');
 assertContains(
   sinrLiveCellRuntimeSource,
@@ -1625,12 +1626,12 @@ assertContains(
 assertContains(
   sinrLiveCellRuntimeSource,
   'beamwidthOverrideRad: SINR_LIVE_CELL_BEAMWIDTH_RAD',
-  'runtime widens the cell-model link-budget beamwidth to match the cell layout (one antenna)',
+  'runtime sets the cell-model link-budget beamwidth to match the cell layout (one antenna)',
 );
 assertContains(
   sinrLiveCellRuntimeSource,
   'beamwidth3dBRad: SINR_LIVE_CELL_BEAMWIDTH_RAD',
-  'cell layout is sized by the wide sinr-live beamwidth (fewer/bigger cells tile the area)',
+  'cell layout is sized by the sinr-live beamwidth (same antenna as the link-budget gain)',
 );
 assertContains(
   sinrLiveCellModelSource,
@@ -1642,6 +1643,57 @@ assertContains(
   sinrLiveCellModelSource,
   'manager.update(candidateSamples',
   'cell serving stays SINR + HandoverManager (illumination cap is not a serving oracle — BLOCK-3)',
+);
+
+// ── SINR-live antenna truth-input override (S-cells-4a) ──
+// The showcase lane sets its OWN self-consistent peak gain + wider steering as a
+// decoupled SINR-live-only truth-input (CLAUDE.md Rule#1/#4): the shared
+// `profile.antenna` is NEVER mutated, so the steered lane + baseline-KPI windows
+// stay byte-identical. Peak gain MUST be self-consistent with the beamwidth (no
+// >100%-efficiency bug). These locks pin (1) the overrides are wired into the
+// factory, (2) the model gates candidates by the EFFECTIVE (overridden) steering
+// limit — not the profile's — so the candidate list matches the scan-loss ceiling,
+// and (3) the runtime gate asserts gain↔beamwidth self-consistency.
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'maxGainDbiOverrideDbi: SINR_LIVE_CELL_MAX_GAIN_DBI',
+  'runtime overrides the cell-model peak gain (self-consistent with the beamwidth)',
+);
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'maxSteeringAngleOverrideDeg: SINR_LIVE_CELL_MAX_STEERING_DEG',
+  'runtime overrides the cell-model steering limit (lifts the 12° coverage bottleneck)',
+);
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'export const SINR_LIVE_CELL_MAX_GAIN_DBI = 33.5',
+  'runtime pins the self-consistent peak gain (33.5 dBi @ 3.32°, η=0.6) — NOT the profile 40 dBi bug',
+);
+assertContains(
+  sinrLiveCellRuntimeSource,
+  'export const SINR_LIVE_CELL_MAX_STEERING_DEG = 50',
+  'runtime pins the wider 50° steering limit (showcase lane only)',
+);
+assertContains(
+  sinrLiveCellModelSource,
+  'const maxSteer = this.antenna.maxSteeringAngleDeg',
+  'cell model filters candidates by the EFFECTIVE (overridden) steering limit, not profile.antenna',
+);
+// The truth-input is decoupled: the shared profile antenna is left untouched so
+// the steered lane + baseline KPI never drift. The override must NOT be written
+// back into the profile.
+assertNotContains(
+  sinrLiveCellRuntimeSource,
+  'profile.antenna.maxGainDbi =',
+  'S-cells-4a must NOT mutate the shared profile peak gain (decoupled override only)',
+);
+// Self-consistency is the load-bearing guard against re-introducing the
+// >100%-efficiency pairing; the runtime gate locks it via consistentPeakGainDbi.
+const sinrLiveCellRuntimeTestSource = readRepoFile('src/scene/sinrLiveCellRuntime.test.ts');
+assertContains(
+  sinrLiveCellRuntimeTestSource,
+  'consistentPeakGainDbi(SINR_LIVE_CELL_BEAMWIDTH_RAD, SINR_LIVE_CELL_ANTENNA_EFFICIENCY)',
+  'runtime gate asserts gain↔beamwidth self-consistency (|maxGainDbi − consistentPeakGainDbi| < 0.5 dB)',
 );
 
 assertContains(

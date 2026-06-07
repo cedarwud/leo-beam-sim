@@ -78,6 +78,25 @@ Make **Earth-fixed cells the live SINR truth of the SINR-live lane**, reusing le
 
 ### 5.3 Link-budget geometry corrections (resolve MAJORs)
 
+**Antenna self-consistency (S-cells-4a, DONE).** Peak gain and 3 dB beamwidth are
+NOT independent for one aperture, but `link-budget.ts` adds `antenna.maxGainDbi`
+as a free constant — the candidate-rich profile encodes a physically-impossible
+40 dBi @ 3.32° (>100 % efficiency). The SINR-live lane fixes this **as a decoupled
+sinr-live-only truth-input override**, NOT a profile edit (chosen over editing the
+shared profile because the profile is also the steered lane's SINR oracle + a
+baseline-KPI window — editing it would ripple into both): the cell model takes
+`maxGainDbiOverrideDbi` / `maxSteeringAngleOverrideDeg` / `scanLossAtMaxSteeringOverrideDb`
+/ `beamwidthOverrideRad`, layered over `profile.antenna` without mutating it, so
+the steered lane + `baseline-kpi-*.json` stay byte-identical (verified:
+`validate:modqn:phase6p-hobs-sinr-kpi-baseline` `failures:[]`). The lane runs
+`maxGainDbi = consistentPeakGainDbi(θ, η) ≈ 33.5 dBi` (θ = 0.058 rad, η = 0.6) and
+`maxSteeringAngleDeg = 50°` (the 12° profile limit was the real coverage bottleneck —
+only 1–3 of ~46 above-mask sats could reach the area). The runtime gate locks
+`|maxGainDbi − consistentPeakGainDbi| < 0.5 dB` so the pair can never silently drift
+back to a >100 %-efficiency antenna. Empirical demo-window result (37 cells):
+served SINR p50 ≈ −2.5 dB (the gain de-bias does NOT collapse serving), off-axis
+p95 ≈ 2.2°, 1–4 serving sats.
+
 For each (UE, candidate serving sat, cell):
 - **scan angle** = angle from sat nadir to the **fixed cell centre** (not `resolveLatticeSteering` offsets) → feeds `computeSteeringLossDb`.
 - **slant range** = per-(sat, cell) from the sat to the cell centre (per-cell elevation → `slant-range.ts`), not one `sat.rangeKm` for all cells (the 200×90 span makes this material).
@@ -99,7 +118,13 @@ The 100-UE mosaic/aggregate must use the SAME cell model as the primary (`runtim
 - **S-cells-1 — PURE MODEL CONTRACT spike (NO runtime mutation).** New pure module: given orbit/sat geo + cell layout + UE positions + handover policy, emit per-UE cell membership, per-cell serving sat/beam (SINR + HO policy, §5.1), the four identities (§5.2), per-(sat,cell) scan angle / slant range / off-axis (§5.3), and intra/inter classification (§5.2). Deliverable: pure functions + unit tests + a probe showing real off-axis distribution + nearest-cell coverage + sane intra/inter counts. **`buildLinkContext` unchanged.** Validator: `validate:phase-c:sinr-live-cells:model`.
 - **S-cells-2 — ADDITIVE runtime truth (DONE — supersedes the original "wire into `buildLinkContext`").** Decision **S-cells-2-A** (locked, `.agent-memory/project_cinema_quality_2026-06-07`): the cell truth is layered ADDITIVELY, `runtimeFrameStep.ts` (`stepRuntimeFrame`/`buildLinkContext`) stays **FROZEN** (no rewrite — avoids the truth→render coupling that would break a steered-render frame whose serving beamId no longer exists, and respects the frozen-file convention S3 used). Wiring: a pure adapter `src/scene/sinrLiveCellRuntime.ts` (`createSinrLiveCellModel` returns `null` off lane → `attachSinrLiveCellFrame` is a no-op) gated by `useEarthFixedCellTruth = sceneLane === 'sinr-live'` (passed from `MainScene.tsx` into `useSimulation.ts`). After each `stepRuntimeFrame` (reset/seek/useFrame) the adapter runs `SinrLiveCellModel.step` over `frame.satellites` + `frame.perUePositions` and hangs the result on a NEW optional `SimFrame.sinrLiveCells`; the cell model is reset in `resetAllHoManagers`. **Existing frame fields are byte-identical → the three MODQN/artifact lanes + the current sinr-live render see zero drift; the visible scene does not change yet.** This covers BOTH primary and secondaries (one model over all UEs, §5.4). Validators: `validate:phase-c:sinr-live-cells:runtime` (lane gate + additive zero-drift + populated cell frame + reset wiring) + the S-cells-1 model gate; governance Rule#9 lane-ownership lock added.
 - **S-cells-3 — render (DONE).** Cell-truth cones render on sinr-live from `frame.sinrLiveCells` (the SINR + HandoverManager truth, NOT the round-robin scheduler). NEW pure resolver + dumb render component `src/viz/SinrLiveCellBeamCones.tsx` (apex = serving sat, base = FIXED cell centre via the SAME `buildSinrLiveCellLayout(profile)` + `worldUnitsPerKm` the UE markers use → off-centre is real; idle/unrendered-sat cells skipped honestly). NEW render-plan flag `showSinrLiveCellBeams` (= `showSinrLiveViewport`, sinr-live only — NOT `showCellOverlay`). The steered `<SatelliteBeams>` cones are SUPPRESSED on this lane (`&& !showSinrLiveCellBeams`) so they don't double-draw, and `useBeamViz` retires the UE-anchor on sinr-live only via a new `disableUeAnchor` param (other lanes unchanged). `data-beam-cone-count` on this lane now reports the cell cones that actually render (honest). UE markers stay at true `perUePositions` → UE visibly off-centre. Validators: `validate:phase-c:sinr-live-cells:render` (resolver model gate, 7 checks) + `:render:browser` (added to `validate:live-render`); governance Rule#9 flipped the `.sinrLiveCells` render-consume lock (assertNotContains→assertContains) + added the flag lane-ownership matrix + mount/suppress/anchor/import-purity/placement locks. Verified real :3001: off-axis ≈ 1.0–1.6° (the CQ3 fix — steered render collapsed it to ~0), served cells hop 3–58 at the demo window, all 7 live-render gates green (modqn lanes zero-drift). ⚠️ honest: headless first-frame init ~30 s under CPU contention (cell model 161 link budgets/frame, S-cells-2) — the optional cell-model throttle stays the S-cells-5 lever.
-- **S-cells-4 — handover index + cinema.** Re-derive `buildLiveWalkerHandoverEventIndex` from the cell truth; re-point S1 candidate highlight + S2 mosaic to cells; re-check cinema framing (now serving cell ≠ UE position). Validators: handover-cinema model+browser, sinr-serving-mosaic, director-cinematic, phase-h sinr-live-render.
+- **S-cells-4 — antenna truth-input + render scope + re-point (IN PROGRESS, split a–e).**
+  - **(a) DONE** — self-consistent antenna truth-input override (33.5 dBi / 50° steering / 3.32° / cellCount 37) as a decoupled sinr-live-only override (profile untouched; baselines byte-identical); new `consistentPeakGainDbi` + `|maxGainDbi − consistent| < 0.5 dB` gate. See §5.3.
+  - **(b)** cone render scope = focus-subset (~2–7, reuse the modqn `beamConeScope` idea) + draw ILLUMINATED beams (not only served) + raise cone opacity.
+  - **(c)** re-point S1 candidate highlight + S2 mosaic/aggregate + the handover index from STEERED serving → the cell truth (UE connects only when its cell is lit); re-check cinema framing (serving cell ≠ UE position now).
+  - **(d)** retire/reconcile the old `EarthFixedCells` 20-hex green-disc ground paint (`showEarthFixedCells`, `validate:vc3a:hex-paint`).
+  - **(e)** confirm cellCount 37 vs 19 on real :3001 at the demo window.
+  - Validators: handover-cinema model+browser, sinr-serving-mosaic, director-cinematic, phase-h sinr-live-render, sinr-live-cells render.
 - **S-cells-5 — coverage + mobility + idle-cell.** Pin `{beamwidth, cellCount}` for full 200×90 coverage at 550 km; define idle-cell semantics (§5.3); add CQ3b primary-UE mobility (UE crosses fixed cells → visible intra-HO). Coverage probe green.
 
 ## 7. Governance / boundaries

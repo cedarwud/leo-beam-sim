@@ -73,4 +73,30 @@ export function computeOffAxisDeg(ueDistanceKm: number, altitudeKm: number): num
   return (Math.atan(ueDistanceKm / altitudeKm) * 180) / Math.PI;
 }
 
+/**
+ * Solid-angle constant for the peak-gain ↔ beamwidth relation: 4π steradians
+ * expressed in square degrees ((180/π)² · 4π). Peak gain `G ≈ k·efficiency / θ²`.
+ */
+export const FULL_SPHERE_SQ_DEG = (180 / Math.PI) * (180 / Math.PI) * 4 * Math.PI;
+
+/**
+ * The peak boresight gain (dBi) a `beamwidth3dBRad` antenna of a given aperture
+ * `efficiency` can deliver:  `G_dBi = 10·log10(efficiency · 41253 / θ_deg²)`.
+ *
+ * Peak gain and 3 dB beamwidth are NOT independent knobs for one aperture — a
+ * wider beam spreads the same power over more solid angle, so it MUST have lower
+ * peak gain. `link-budget.ts` adds `antenna.maxGainDbi` as a free constant
+ * decoupled from `beamwidth3dBRad`, so a profile can silently encode a
+ * physically-impossible (>100 % efficiency) pair (the candidate-rich profile's
+ * 40 dBi @ 3.32° does exactly that). The SINR-live lane derives its peak-gain
+ * override from this function and locks `|maxGainDbi − consistentPeakGainDbi| <
+ * 0.5 dB` so the showcase antenna stays self-consistent. Returns `NaN` for a
+ * non-positive beamwidth or efficiency.
+ */
+export function consistentPeakGainDbi(beamwidth3dBRad: number, efficiency: number): number {
+  const thetaDeg = (beamwidth3dBRad * 180) / Math.PI;
+  if (!(thetaDeg > 0) || !(efficiency > 0)) return Number.NaN;
+  return 10 * Math.log10((efficiency * FULL_SPHERE_SQ_DEG) / (thetaDeg * thetaDeg));
+}
+
 export const BEAM_GAIN_FLOOR_DB = GAIN_FLOOR_DB;

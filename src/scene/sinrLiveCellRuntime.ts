@@ -41,29 +41,61 @@ import {
 } from './sinrLiveCellModel';
 
 /**
- * Number of earth-fixed cells the SINR-live lane tiles. 61 gives ~99/100
- * nearest-cell coverage of the 200×90 km / 100-UE population on the real
- * candidate-rich trajectory (S-cells-1 probe). Cell SIZE is fixed by the beam
- * 3 dB width (`altitude·tan(θ/2)`), so cellCount only widens the tiling, never
- * shrinks the off-axis story. Served coverage under one-sat-over-area is lower
- * than tile coverage — that, plus idle-cell semantics, is the S-cells-5 tune;
- * this const is its single tuning point.
+ * Number of earth-fixed cells the SINR-live lane tiles. 37 (the producer hex
+ * count) gives ~92/100 nearest-cell coverage of the 200×90 km / 100-UE
+ * population at 550 km with a realistic 3.3° beam (S-cells-4 sweep). Cell SIZE
+ * is fixed by the beam 3 dB width (`altitude·tan(θ/2)`), so cellCount only
+ * widens the tiling, never shrinks the off-axis story. With the focus-scoped
+ * cone render (S-cells-4b) on-screen clutter is bounded regardless, so this is
+ * a coverage/served-continuity knob, not a clutter knob (19 vs 37 confirmed on
+ * :3001 in S-cells-4e).
  */
-export const SINR_LIVE_CELL_COUNT = 19;
+export const SINR_LIVE_CELL_COUNT = 37;
 
 /**
- * Link-budget / cell-layout 3 dB beamwidth for the SINR-live lane (rad ≈ 7.4°).
- * WIDER than the profile antenna (3.32°) on purpose: cell SIZE is
- * `altitude·tan(beamwidth/2)`, so a wider beam makes FEWER, BIGGER cells tile the
- * whole 200×90 km service area — letting one satellite's {@link SINR_LIVE_BEAMS_PER_SAT}
- * beams cover a meaningful fraction (the rest filled by hopping) instead of leaving
- * most of the map dark. leo's gain model keeps peak gain (`maxGainDbi`) independent
- * of beamwidth, so widening the lobe costs little SINR (only more co-channel overlap,
- * damped by frequency reuse). Cell layout AND the cell model's link budget both use
- * this value (one physical antenna). This + {@link SINR_LIVE_CELL_COUNT} are the
- * coverage tuning point.
+ * Link-budget / cell-layout 3 dB beamwidth for the SINR-live lane (rad ≈ 3.32°).
+ * This now equals the profile antenna beamwidth — a realistic LEO value between
+ * Starlink (~1.5–2°) and 3GPP TR 38.821 LEO-600 (~4.4°). Cell SIZE
+ * (`altitude·tan(θ/2)`) AND the model's link-budget GAIN are derived from this
+ * SAME beamwidth (one physical antenna): {@link SINR_LIVE_CELL_MAX_GAIN_DBI} is
+ * `consistentPeakGainDbi(this, efficiency)`, so the antenna can never encode the
+ * profile's >100 %-efficiency 40 dBi @ 3.32° bug. Coverage of the whole service
+ * area is delivered by STEERING ({@link SINR_LIVE_CELL_MAX_STEERING_DEG}) + the
+ * cell tiling, not by widening the lobe.
  */
-export const SINR_LIVE_CELL_BEAMWIDTH_RAD = 0.13;
+export const SINR_LIVE_CELL_BEAMWIDTH_RAD = 0.058;
+
+/**
+ * Profile aperture efficiency used to derive the self-consistent peak gain.
+ * Mirrors `hobs-2024-candidate-rich` antenna efficiency (η = 0.6).
+ */
+export const SINR_LIVE_CELL_ANTENNA_EFFICIENCY = 0.6;
+
+/**
+ * SINR-live-only peak boresight gain (dBi), SELF-CONSISTENT with
+ * {@link SINR_LIVE_CELL_BEAMWIDTH_RAD} at {@link SINR_LIVE_CELL_ANTENNA_EFFICIENCY}:
+ * `consistentPeakGainDbi(0.058 rad, 0.6) ≈ 33.5 dBi`. This OVERRIDES the profile's
+ * physically-impossible 40 dBi @ 3.32° (>100 % efficiency) for the showcase lane
+ * ONLY — `profile.antenna.maxGainDbi` is left untouched so the steered lane +
+ * baseline-KPI windows stay byte-identical (S-cells-4a is a decoupled
+ * sinr-live-only truth-input, not an edit to the shared SINR oracle). The
+ * `validate:phase-c:sinr-live-cells:runtime` gate locks
+ * `|this − consistentPeakGainDbi| < 0.5 dB`.
+ */
+export const SINR_LIVE_CELL_MAX_GAIN_DBI = 33.5;
+
+/**
+ * SINR-live-only max steering angle (deg). The profile's 12° lets only 1–3 of
+ * the ~46 above-mask sats steer to the 200×90 area → coverage dropouts + only
+ * 1–2 beams ever served; ~50° lets 6–8 serve continuously. Physically real: the
+ * 15° elevation mask admits ~63° off-nadir; 3GPP plans ~60°, Starlink measures
+ * 44–51°. Overrides `profile.antenna.maxSteeringAngleDeg` for the showcase lane
+ * only (the steered lane + baselines keep 12°).
+ */
+export const SINR_LIVE_CELL_MAX_STEERING_DEG = 50;
+
+/** SINR-live-only scan loss at max steering (dB); paired with the wider 50° steering. */
+export const SINR_LIVE_CELL_SCAN_LOSS_DB = 4.5;
 
 /** Beams (simultaneous lit cells) per satellite — leo multibeam = 7. Beam hopping caps to this. */
 export const SINR_LIVE_BEAMS_PER_SAT = 7;
@@ -104,9 +136,9 @@ export function buildSinrLiveCellLayout(profile: Profile): CellLayout {
     centerLatDeg: profile.orbit.observerLatDeg,
     centerLonDeg: profile.orbit.observerLonDeg,
     altitudeKm: profile.orbit.shells[0]?.altitudeKm ?? 550,
-    // Cell SIZE uses the WIDE sinr-live beamwidth (not the profile antenna) so the
-    // 19 cells tile the whole service area; the model's link budget uses the same
-    // value (one antenna) — see SINR_LIVE_CELL_BEAMWIDTH_RAD.
+    // Cell SIZE uses the SINR-live beamwidth; the model's link-budget GAIN derives
+    // from the SAME beamwidth (one antenna) — see SINR_LIVE_CELL_BEAMWIDTH_RAD /
+    // SINR_LIVE_CELL_MAX_GAIN_DBI.
     beamwidth3dBRad: SINR_LIVE_CELL_BEAMWIDTH_RAD,
     cellCount: SINR_LIVE_CELL_COUNT,
   });
@@ -135,7 +167,13 @@ export function createSinrLiveCellModel(
     // beamwidth matches the cell layout (one antenna).
     beamsPerSat: SINR_LIVE_BEAMS_PER_SAT,
     hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
+    // SINR-live-only antenna truth-input overrides (S-cells-4a). They are layered
+    // over the profile antenna and never mutate it → the steered lane + baseline
+    // KPI are byte-identical. Gain is self-consistent with the beamwidth.
     beamwidthOverrideRad: SINR_LIVE_CELL_BEAMWIDTH_RAD,
+    maxGainDbiOverrideDbi: SINR_LIVE_CELL_MAX_GAIN_DBI,
+    maxSteeringAngleOverrideDeg: SINR_LIVE_CELL_MAX_STEERING_DEG,
+    scanLossAtMaxSteeringOverrideDb: SINR_LIVE_CELL_SCAN_LOSS_DB,
   });
 }
 

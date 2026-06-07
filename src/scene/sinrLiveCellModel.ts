@@ -194,10 +194,36 @@ export interface SinrLiveCellModelConfig {
   /**
    * Override the link-budget antenna 3 dB beamwidth (rad). The cell SIZE
    * (`cellLayout.cellRadiusKm`) and the antenna GAIN must come from the SAME
-   * beamwidth (one physical antenna); the runtime widens both together so fewer,
-   * bigger cells tile the service area. Default `undefined` = use the profile antenna.
+   * beamwidth (one physical antenna); the runtime sizes both together. Default
+   * `undefined` = use the profile antenna.
    */
   readonly beamwidthOverrideRad?: number;
+  /**
+   * Override the antenna PEAK boresight gain (dBi) — S-cells-4a. This is a
+   * SINR-live-only TRUTH-INPUT override (the shared `profile.antenna.maxGainDbi`
+   * is left UNTOUCHED so the steered lane + baseline-KPI windows stay
+   * byte-identical). It must be SELF-CONSISTENT with {@link beamwidthOverrideRad}:
+   * `|maxGainDbi − consistentPeakGainDbi(θ, efficiency)| < 0.5 dB` (the profile's
+   * 40 dBi @ 3.3° implies >100 % efficiency — a real bug this override fixes for
+   * the showcase lane). Default `undefined` = use the profile antenna's gain.
+   */
+  readonly maxGainDbiOverrideDbi?: number;
+  /**
+   * Override the antenna max steering angle (deg) — S-cells-4a. SINR-live-only.
+   * The profile's 12° lets only 1–3 of the ~46 above-mask sats reach the 200×90
+   * service area (coverage dropouts); ~50° lets 6–8 serve continuously. Gates BOTH
+   * the per-cell candidate list (steering reach to the cell centre) and the
+   * link-budget scan-loss ceiling, so the two stay consistent. Default `undefined`
+   * = use the profile antenna's steering limit.
+   */
+  readonly maxSteeringAngleOverrideDeg?: number;
+  /**
+   * Override the scan loss at max steering (dB) — S-cells-4a. SINR-live-only.
+   * Paired with {@link maxSteeringAngleOverrideDeg} (wider steering → slightly
+   * higher edge-of-scan loss). Default `undefined` = use the profile antenna's
+   * scan loss.
+   */
+  readonly scanLossAtMaxSteeringOverrideDb?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -382,9 +408,22 @@ export class SinrLiveCellModel {
     this.epochUtcMs = config.epochUtcMs;
     this.beamsPerSat = config.beamsPerSat ?? Infinity;
     this.hopSlotSec = config.hopSlotSec && config.hopSlotSec > 0 ? config.hopSlotSec : 2.5;
-    this.antenna = config.beamwidthOverrideRad != null
-      ? { ...config.profile.antenna, beamwidth3dBRad: config.beamwidthOverrideRad }
-      : config.profile.antenna;
+    // SINR-live-only antenna overrides (S-cells-4a): beamwidth / peak gain /
+    // steering / scan loss are layered over the profile antenna WITHOUT mutating
+    // `profile.antenna` (the shared SINR oracle for the steered lane + baseline
+    // KPI stays byte-identical). When no override is supplied the spread is a
+    // value-identical shallow copy → the pure-model default is unchanged.
+    this.antenna = {
+      ...config.profile.antenna,
+      ...(config.beamwidthOverrideRad != null ? { beamwidth3dBRad: config.beamwidthOverrideRad } : {}),
+      ...(config.maxGainDbiOverrideDbi != null ? { maxGainDbi: config.maxGainDbiOverrideDbi } : {}),
+      ...(config.maxSteeringAngleOverrideDeg != null
+        ? { maxSteeringAngleDeg: config.maxSteeringAngleOverrideDeg }
+        : {}),
+      ...(config.scanLossAtMaxSteeringOverrideDb != null
+        ? { scanLossAtMaxSteeringDb: config.scanLossAtMaxSteeringOverrideDb }
+        : {}),
+    };
   }
 
   private managerForCell(cellId: number): HandoverManager {
@@ -463,7 +502,9 @@ export class SinrLiveCellModel {
     const simTimeMs = this.epochUtcMs + simTimeSec * 1000;
     const linkSats = visibleSats.filter(sat => sat.topo.elevationDeg >= this.minElevationDeg);
     const satById = new Map(linkSats.map(sat => [sat.id, sat]));
-    const maxSteer = this.profile.antenna.maxSteeringAngleDeg;
+    // Use the EFFECTIVE (possibly overridden) steering limit so the candidate
+    // list matches the link-budget scan-loss ceiling (S-cells-4a).
+    const maxSteer = this.antenna.maxSteeringAngleDeg;
 
     // 1. Per-cell candidate sats + geometry.
     const candidatesByCell = new Map<number, CellScanGeometry[]>();

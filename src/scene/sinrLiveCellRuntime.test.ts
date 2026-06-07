@@ -22,11 +22,15 @@
  * Run: `npm run validate:phase-c:sinr-live-cells:runtime`.
  */
 import { DEFAULT_MIN_ELEVATION_DEG } from '../engine/cells/cellLayout';
+import { consistentPeakGainDbi } from '../engine/signal/beam-gain';
 import { loadProfile } from '../profiles/index';
 import { SinrLiveCellModel, type CellModelSat } from './sinrLiveCellModel';
 import {
+  SINR_LIVE_CELL_ANTENNA_EFFICIENCY,
   SINR_LIVE_CELL_BEAMWIDTH_RAD,
   SINR_LIVE_CELL_COUNT,
+  SINR_LIVE_CELL_MAX_GAIN_DBI,
+  SINR_LIVE_CELL_MAX_STEERING_DEG,
   SINR_LIVE_CELL_MIN_ELEVATION_DEG,
   attachSinrLiveCellFrame,
   buildSinrLiveCellLayout,
@@ -130,9 +134,50 @@ check('cell layout is built from the live profile at the tunable cell count', ()
   assertEqual(layout.centers.length, SINR_LIVE_CELL_COUNT, 'cell count from const');
   assertEqual(layout.count, SINR_LIVE_CELL_COUNT, 'layout.count from const');
   assertEqual(layout.altitudeKm, profile.orbit.shells[0]!.altitudeKm, 'altitude from profile shell');
-  // Cell size uses the WIDE sinr-live beamwidth (fewer/bigger cells tile the area),
-  // not the narrow profile antenna — the model's link budget uses the same value.
-  assertEqual(layout.beamwidth3dBRad, SINR_LIVE_CELL_BEAMWIDTH_RAD, 'beamwidth = wide sinr-live override');
+  // Cell size uses the SINR-live beamwidth (= profile antenna value); the model's
+  // link-budget GAIN is derived from the SAME beamwidth (one antenna).
+  assertEqual(layout.beamwidth3dBRad, SINR_LIVE_CELL_BEAMWIDTH_RAD, 'beamwidth = sinr-live override');
+});
+
+// --- antenna self-consistency (S-cells-4a truth-input) -----------------------
+
+check('antenna self-consistency: peak gain matches beamwidth (no >100% efficiency bug)', () => {
+  const consistent = consistentPeakGainDbi(SINR_LIVE_CELL_BEAMWIDTH_RAD, SINR_LIVE_CELL_ANTENNA_EFFICIENCY);
+  assert(Number.isFinite(consistent), 'consistent peak gain is finite');
+  assert(
+    Math.abs(SINR_LIVE_CELL_MAX_GAIN_DBI - consistent) < 0.5,
+    `gain self-consistent within 0.5 dB (override ${SINR_LIVE_CELL_MAX_GAIN_DBI} vs consistent ${consistent.toFixed(3)})`,
+  );
+  // The profile's 40 dBi @ 3.32° is the >100%-efficiency bug this override fixes:
+  // the showcase peak gain must sit BELOW the profile's impossible value.
+  assert(
+    SINR_LIVE_CELL_MAX_GAIN_DBI < profile.antenna.maxGainDbi - 3,
+    `override de-biases the profile peak gain (override ${SINR_LIVE_CELL_MAX_GAIN_DBI} << profile ${profile.antenna.maxGainDbi})`,
+  );
+  // The override must be strictly larger than the profile's 12° steering limit —
+  // the bottleneck the override lifts so the area is covered.
+  assert(
+    SINR_LIVE_CELL_MAX_STEERING_DEG > profile.antenna.maxSteeringAngleDeg,
+    `steering override widens the profile limit (override ${SINR_LIVE_CELL_MAX_STEERING_DEG}° > profile ${profile.antenna.maxSteeringAngleDeg}°)`,
+  );
+});
+
+check('S-cells-4a overrides reach the factory model: a sat at >12° (profile) but <50° scan now serves', () => {
+  const model = createSinrLiveCellModel(profile, true, EPOCH_MS)!;
+  // A sat whose nadir is ~320 km east of the observer → scan-to-centre ≈ 30°
+  // (beyond the profile's 12° steering limit, within the 50° override). If the
+  // steering override were NOT wired into the factory, the centre cell would have
+  // no candidate and stay idle.
+  const lonOffsetDeg = 320 / (111.32 * Math.cos((OBS_LAT * Math.PI) / 180));
+  const offNadir = makeSat('offnadir', { latDeg: OBS_LAT, lonDeg: OBS_LON + lonOffsetDeg, elevationDeg: 55 });
+  const frame = makeFrame({
+    satellites: [offNadir],
+    perUePositions: [{ id: 'c', eastKm: 0, northKm: 0 }],
+    simTimeSec: 0,
+  });
+  attachSinrLiveCellFrame(frame, model, 1);
+  const cell0 = frame.sinrLiveCells!.cells.find(c => c.cellId === 0)!;
+  assertEqual(cell0.servingSatId, 'offnadir', 'centre cell served by the ~30°-scan off-nadir sat (steering override wired)');
 });
 
 // --- the lane gate (other-lane zero-drift) -----------------------------------
@@ -224,5 +269,6 @@ check('the factory model is resettable → reset produces a clean cold-attach', 
 
 console.log(
   `\n[sinr-live-cells:runtime] PASS — ${passed} checks `
-  + '(lane gate, additive zero-drift, populated+well-formed cell frame, dt sanitisation, reset wiring)',
+  + '(lane gate, additive zero-drift, populated+well-formed cell frame, dt sanitisation, reset wiring, '
+  + 'antenna self-consistency + steering-override wiring)',
 );
