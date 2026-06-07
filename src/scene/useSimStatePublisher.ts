@@ -335,14 +335,29 @@ export function useSimStatePublisher({
         normalizedComparison.beamId,
       ),
     };
-    const perUePositions = sim.perUePositions.length > 1
-      ? sim.perUePositions.map(position => ({
-        id: position.id,
-        servingSatId: position.servingSatId,
-        servingBeamId: position.servingBeamId,
-        sinrDb: position.sinrDb,
-      }))
-      : undefined;
+    // S-cells-4c: on the sinr-live lane the published per-UE serving truth is the
+    // EARTH-FIXED CELL model (`sim.sinrLiveCells`) so the aggregate HUD + per-UE
+    // diagnostics agree with the cones — a UE is "served" only when its cell is lit
+    // and served (servingSatId !== null), `servingBeamId` = its cell id. Off that
+    // lane (no cell truth) the steered per-UE serving is published unchanged.
+    const cellTruthUes = sim.sinrLiveCells?.ues;
+    const perUePositions = cellTruthUes !== undefined
+      ? (cellTruthUes.length > 1
+        ? cellTruthUes.map(ue => ({
+          id: ue.ueId,
+          servingSatId: ue.servingSatId,
+          servingBeamId: ue.servingSatId === null ? null : ue.cellId,
+          sinrDb: ue.sinrDb,
+        }))
+        : undefined)
+      : (sim.perUePositions.length > 1
+        ? sim.perUePositions.map(position => ({
+          id: position.id,
+          servingSatId: position.servingSatId,
+          servingBeamId: position.servingBeamId,
+          sinrDb: position.sinrDb,
+        }))
+        : undefined);
 
     const nextIntraHandoverEvent = sim.intraHandoverEvent !== null && sim.intraHandoverWallClockStartMs !== null && sim.intraHandoverWallClockExpiresMs !== null
       ? {

@@ -1382,7 +1382,7 @@ assertNotContains(
 );
 assertContains(
   mainSceneSource,
-  'showSinrServingMosaic\n      ? buildSinrServingUeColorMap(sceneFrame.ues)',
+  'if (!showSinrServingMosaic) return null;',
   'MainScene derives the SINR-serving mosaic colours only under the render-plan gate (sinr-live)',
 );
 assertContains(
@@ -1628,6 +1628,29 @@ assertContains(
   mainSceneSource,
   'focusSatIds: sinrLiveConeFocusSatIds',
   'MainScene passes the focus-subset (primary UE serving sat) into the cone resolver',
+);
+
+// ── Mosaic + aggregate re-point to the cell truth (S-cells-4c) ──
+// On sinr-live the SERVING displays (3D UE mosaic + the served N/N aggregate HUD +
+// per-UE diagnostics) read the EARTH-FIXED CELL truth, NOT the steered serving — a
+// UE is "connected" (coloured / counted) only when its cell is lit + served, so the
+// dots + cones + counter all agree. The 3D mosaic builds from the cell truth; the
+// HUD/diagnostics read it via the published `perUePositions` (cell truth replaces
+// the steered serving whenever `sim.sinrLiveCells` is present = the sinr-live gate).
+assertContains(
+  mainSceneSource,
+  'buildSinrServingUeColorMapFromCells(cellFrame.ues)',
+  'the 3D mosaic colours UE markers from the cell truth on sinr-live (UE connects only when its cell is lit)',
+);
+assertContains(
+  simStatePublisherSource,
+  'const cellTruthUes = sim.sinrLiveCells?.ues;',
+  'the published per-UE serving is the cell truth when present (aggregate + diagnostics agree with the cones)',
+);
+assertContains(
+  simStatePublisherSource,
+  'servingBeamId: ue.servingSatId === null ? null : ue.cellId,',
+  'cell-truth per-UE serving maps cellId → servingBeamId (unserved → null beam, honest)',
 );
 
 // ── Beam hopping + coverage (S-cells-3 follow-up / S-cells-4a) ──

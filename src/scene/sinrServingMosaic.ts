@@ -134,6 +134,39 @@ export function buildSinrServingUeColorMap(
 }
 
 /**
+ * Per-UE marker colours from the EARTH-FIXED CELL TRUTH (`sim.sinrLiveCells.ues`,
+ * S-cells-4c). On the sinr-live lane the serving truth is the cell model, NOT the
+ * steered lattice — a UE is "connected" (coloured) ONLY when its cell is lit and
+ * served (`servingSatId !== null`); an unserved UE (its cell idle this hopping slot)
+ * stays grey. Colour keys on (servingSatId, cellId) so a UE crossing into a new
+ * cell of the same sat shifts shade (intra-HO) and a serving-sat change jumps hue
+ * (inter-HO) — the mosaic's "handover = a dot changes colour" contract, now on the
+ * cell truth instead of the steered serving.
+ */
+export interface SinrServingCellUe {
+  readonly ueId: string;
+  readonly servingSatId: string | null;
+  readonly cellId: number | null;
+}
+
+export function buildSinrServingUeColorMapFromCells(
+  ues: ReadonlyArray<SinrServingCellUe>,
+): Map<string, SinrServingMarkerColor> {
+  const out = new Map<string, SinrServingMarkerColor>();
+  for (const ue of ues) {
+    if (ue.servingSatId === null || ue.servingSatId === '' || ue.cellId === null) {
+      out.set(ue.ueId, {
+        markerColor: SINR_SERVING_UNSERVED_COLOR,
+        markerEmissive: SINR_SERVING_UNSERVED_EMISSIVE,
+      });
+      continue;
+    }
+    out.set(ue.ueId, mosaicColorForServingBeam(ue.servingSatId, ue.cellId));
+  }
+  return out;
+}
+
+/**
  * Aggregate readout (served N/N, per-beam load, mean served SINR) over the
  * published per-UE serving samples (`SimState.perUePositions` shape). All
  * counting is over real serving truth; this model never invents a serving or a

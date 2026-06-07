@@ -10,6 +10,7 @@
  */
 import {
   buildSinrServingUeColorMap,
+  buildSinrServingUeColorMapFromCells,
   deriveSinrServingMosaicAggregate,
   mosaicColorForServingBeam,
   EMPTY_SINR_SERVING_MOSAIC_AGGREGATE,
@@ -71,6 +72,27 @@ check('unserved UE (empty serving) gets the muted unserved colour, never a beam 
   ]);
   assertEqual(map.get('u0')!.markerColor, SINR_SERVING_UNSERVED_COLOR, 'no sat/beam → unserved');
   assertEqual(map.get('u1')!.markerColor, SINR_SERVING_UNSERVED_COLOR, 'no beam → unserved');
+});
+
+// --- S-cells-4c: cell-truth mosaic (UE connects only when its cell is lit/served) ---
+
+check('cell-truth mosaic: served UE coloured by (satId,cellId); idle cell → unserved grey', () => {
+  const map = buildSinrServingUeColorMapFromCells([
+    { ueId: 'u0', servingSatId: 'sat-1', cellId: 3 },
+    { ueId: 'u1', servingSatId: null, cellId: 5 },     // cell idle this slot → unserved
+    { ueId: 'u2', servingSatId: 'sat-1', cellId: null }, // served sat but no cell → unserved
+  ]);
+  assertEqual(map.get('u0')!.markerColor, mosaicColorForServingBeam('sat-1', 3).markerColor, 'served UE = (sat,cell) colour');
+  assertEqual(map.get('u1')!.markerColor, SINR_SERVING_UNSERVED_COLOR, 'unlit cell → grey (UE not connected)');
+  assertEqual(map.get('u2')!.markerColor, SINR_SERVING_UNSERVED_COLOR, 'no cell → grey');
+});
+
+check('cell-truth mosaic: intra-HO (cell change, same sat) recolours; inter-HO (sat change) recolours', () => {
+  const t0 = buildSinrServingUeColorMapFromCells([{ ueId: 'm', servingSatId: 'sat-1', cellId: 0 }]);
+  const intra = buildSinrServingUeColorMapFromCells([{ ueId: 'm', servingSatId: 'sat-1', cellId: 1 }]);
+  const inter = buildSinrServingUeColorMapFromCells([{ ueId: 'm', servingSatId: 'sat-2', cellId: 0 }]);
+  assertNotEqual(t0.get('m')!.markerColor, intra.get('m')!.markerColor, 'crossing into a new cell recolours (intra-HO)');
+  assertNotEqual(t0.get('m')!.markerColor, inter.get('m')!.markerColor, 'serving-sat change recolours (inter-HO)');
 });
 
 check('aggregate counts served/total, distinct serving beams, and per-beam load', () => {

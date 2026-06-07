@@ -97,7 +97,7 @@ import {
   deriveModqnServiceMap,
   EMPTY_MODQN_SERVICE_MAP,
 } from './modqnServiceMap';
-import { buildSinrServingUeColorMap } from './sinrServingMosaic';
+import { buildSinrServingUeColorMap, buildSinrServingUeColorMapFromCells } from './sinrServingMosaic';
 import {
   deriveBeamLoadContention,
   EMPTY_BEAM_LOAD_CONTENTION,
@@ -918,15 +918,23 @@ function SceneContent({
       showCellOverlay,
     ],
   );
-  // SINR-serving mosaic (S2): on `sinr-live` colour every UE marker by its
-  // serving beam (by SINR) — a DISTINCT SINR-serving layer, never the MODQN cell
-  // overlay (`deriveModqnServiceMap`). Gated by the render plan so it stays
-  // lane-owned to sinr-live and inert on every MODQN/artifact lane.
+  // SINR-serving mosaic (S2 → S-cells-4c): on `sinr-live` colour every UE marker
+  // by its serving beam — a DISTINCT SINR-serving layer, never the MODQN cell
+  // overlay (`deriveModqnServiceMap`). The serving truth is the EARTH-FIXED CELL
+  // model (`sim.sinrLiveCells.ues`), so a UE is coloured ("connected") ONLY when
+  // its cell is lit + served and grey otherwise — consistent with the cones, which
+  // now also draw the cell truth. Falls back to the steered serving only if the
+  // cell truth is absent (never on a healthy sinr-live frame). Inert on every
+  // MODQN/artifact lane via the render-plan gate.
   const sinrServingColorById = useMemo(
-    () => showSinrServingMosaic
-      ? buildSinrServingUeColorMap(sceneFrame.ues)
-      : null,
-    [showSinrServingMosaic, sceneFrame.ues],
+    () => {
+      if (!showSinrServingMosaic) return null;
+      const cellFrame = sim.sinrLiveCells;
+      return cellFrame
+        ? buildSinrServingUeColorMapFromCells(cellFrame.ues)
+        : buildSinrServingUeColorMap(sceneFrame.ues);
+    },
+    [showSinrServingMosaic, sim.sinrLiveCells, sceneFrame.ues],
   );
   // Phase-3 beam-load contention source = the SAME per-UE (satId, beamIndex)
   // cell-schedule assignment that `modqnServiceMap` already uses to colour the UE
