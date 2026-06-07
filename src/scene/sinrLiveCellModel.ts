@@ -1,0 +1,588 @@
+/**
+ * SINR-live earth-fixed cell model — S-cells-1 PURE MODEL CONTRACT spike.
+ *
+ * Authority: `docs/sinr-live-earth-fixed-cells-mini-sdd.md` (CQ3 root fix).
+ * Decisions locked: **A1** (no S0 unanchor) + **B3** (hybrid serving truth).
+ *
+ * This module is a PURE MODEL. It mutates no runtime state, imports no React /
+ * Three.js / `viz/`-`app/` symbol, and — critically (codex BLOCK-5) — does NOT
+ * touch `buildLinkContext` / `stepRuntimeFrame`. It is the contract the later
+ * runtime switch (S-cells-2) will consume; here it exists only to be unit-tested
+ * and probed for real off-axis distribution + nearest-cell coverage + sane
+ * intra/inter counts.
+ *
+ * What it produces, per frame, for the SINR-live lane:
+ *   1. UE → nearest earth-fixed cell membership (§5.1).
+ *   2. per-cell serving sat by SINR + the existing sinr-offset `HandoverManager`
+ *      policy — NOT the round-robin `cellScheduler` (codex BLOCK-3 / B3 / §5.1).
+ *   3. the four separated identities (§5.2 / codex BLOCK-4):
+ *        - cell      = earth-fixed cell id (geography)
+ *        - beam      = sat × cell (`cellBeamIdentity`)
+ *        - frequency = `cellId mod reuseFactor` (STABLE per cell, geographic —
+ *          never a rotating per-slot beamIndex)
+ *        - handover  = a change in a UE's SERVING (intra = serving SAT unchanged
+ *          + serving CELL changes; inter = serving SAT changes)
+ *   4. per-(sat,cell) scan angle (sat-nadir → fixed cell centre), per-cell slant
+ *      range + elevation, and per-UE off-axis (dist UE → cell centre) (§5.3).
+ *   5. intra/inter classification from the UE's serving transition (§5.2).
+ *
+ * SINR is computed by reusing the validated `computeLinkBudget` (CLAUDE.md §4/§5:
+ * reuse, do not rewrite). We point each lit beam at its FIXED cell centre and
+ * measure at the true UE position, so the UE sits genuinely off-axis — this is
+ * the CQ3 fix at the truth layer (the steered-lattice `anchorToUe` re-snaps the
+ * beam onto the UE and hides the real ~27.6 km off-axis).
+ *
+ * NOT MODQN/paper proof: this is leo's OWN live SINR-offset surface at 550 km,
+ * not the producer's 780 km / 2° baseline and not MODQN decisions (§7).
+ */
+
+import { computeOffAxisDeg } from '../engine/signal/beam-gain';
+import { computeLinkBudget } from '../engine/signal/link-budget';
+import { computeTr38811SlantRangeKm } from '../engine/signal/slant-range';
+import type {
+  ActiveBeamAssignment,
+  LinkSample,
+  SatelliteSnapshot,
+  UEPosition,
+} from '../engine/signal/types';
+import {
+  DEFAULT_MIN_ELEVATION_DEG,
+  elevationAngleRad,
+  type CellCenter,
+  type CellLayout,
+} from '../engine/cells/cellLayout';
+import { HandoverManager } from '../engine/handover/handover-manager';
+import type { Profile } from '../profiles/types';
+
+/**
+ * Minimal satellite shape this pure model reads. The runtime's `VisibleSat`
+ * structurally satisfies it, so callers (S-cells-2 runtime, probe) pass
+ * `VisibleSat[]` directly — keeping the model free of the `scene/types` hub
+ * (and its THREE.js / app-symbol imports), which is what makes the "pure model,
+ * imports no React/Three.js" claim literally true.
+ */
+export interface CellModelSat {
+  readonly id: string;
+  readonly shellId: string;
+  readonly altitudeKm: number;
+  readonly latDeg: number;
+  readonly lonDeg: number;
+  readonly topo: { readonly azimuthDeg: number; readonly elevationDeg: number };
+}
+
+const DEG_TO_RAD = Math.PI / 180;
+/** Matches `runtimeFrameStep.ts` so cell-local ENU and nadir offsets share a frame. */
+const EARTH_KM_PER_DEG = 111.32;
+
+/**
+ * `computeLinkBudget` groups co-channel interference by `getBeamFrequencyIndex`
+ * = `(beamId - 1) mod reuse`. Encoding the link-budget beamId as `cellId + 1`
+ * makes that grouping evaluate to exactly `cellId mod reuse` — so the SINR's
+ * interference partition equals the REPORTED frequency identity (§5.2). The
+ * model's public surface always speaks in `cellId`; this offset is an internal
+ * link-budget encoding detail, asserted equivalent in the model validator.
+ */
+const CELL_BEAM_ID_OFFSET = 1;
+
+export type ServingTransitionKind = 'none' | 'intra' | 'inter' | 'attach' | 'drop';
+
+export interface UeInput {
+  readonly id: string;
+  /** True position, observer-relative ENU km (east, north). */
+  readonly eastKm: number;
+  readonly northKm: number;
+}
+
+/** Per-(sat, cell) geometry — §5.3, measured to the FIXED cell centre. */
+export interface CellScanGeometry {
+  readonly satId: string;
+  readonly cellId: number;
+  /** Angle from the satellite nadir to the fixed cell centre (deg). */
+  readonly scanAngleDeg: number;
+  /** Per-(sat, cell) slant range (km), from per-cell elevation — not one sat range. */
+  readonly slantRangeKm: number;
+  /** Per-cell link elevation (deg). */
+  readonly elevationDeg: number;
+  /** Ground distance from the satellite nadir to the cell centre (km). */
+  readonly nadirToCellKm: number;
+}
+
+export interface CellCandidate extends CellScanGeometry {
+  /** Boresight SINR (dB) the candidate sat would deliver at the cell centre. */
+  readonly sinrDb: number;
+}
+
+export interface CellServingRecord {
+  readonly cellId: number;
+  /** null when no candidate clears the attach threshold (idle cell — honest). */
+  readonly servingSatId: string | null;
+  /** `satId#cell{cellId}` beam identity; null when unserved. */
+  readonly beamIdentity: string | null;
+  /** Stable geographic frequency colour: `cellId mod reuse`. */
+  readonly frequencyIndex: number;
+  /** Smoothed serving SINR at the cell centre (dB); null when unserved. */
+  readonly servingSinrDb: number | null;
+  readonly candidateCount: number;
+}
+
+export interface UeCellServingRecord {
+  readonly ueId: string;
+  /** Nearest-cell membership; null only when the layout has no cells. */
+  readonly cellId: number | null;
+  /** Ground distance UE → its cell centre (km) = the off-axis lever. */
+  readonly cellDistanceKm: number;
+  /** Off-axis angle UE → cell centre at the serving sat altitude (deg). */
+  readonly offAxisDeg: number;
+  readonly servingSatId: string | null;
+  readonly beamIdentity: string | null;
+  readonly frequencyIndex: number | null;
+  /**
+   * UE SINR at its TRUE off-axis position (dB). null when unserved, AND null
+   * when the UE has a serving cell but sits beyond the beam-gain floor
+   * (`computeBeamGainDb` ≤ floor → the beam is skipped): a served-by-assignment
+   * UE with no decodable signal. Such a UE is still counted in
+   * {@link SinrLiveCellFrame.servedUeCount} (served = has a serving cell,
+   * mirroring the S2 aggregate's served-by-assignment count) but is excluded
+   * from any SINR mean. Empirically never fires in the real 37/61-cell lane
+   * config (nearest-cell off-axis p95 ≈ 2°); reachable only with a sparse
+   * layout / very distant UE.
+   */
+  readonly sinrDb: number | null;
+  readonly handoverKind: ServingTransitionKind;
+}
+
+export interface SinrLiveCellFrame {
+  readonly simTimeSec: number;
+  readonly cells: readonly CellServingRecord[];
+  readonly ues: readonly UeCellServingRecord[];
+  readonly servedCellCount: number;
+  /** UEs with a serving cell (served-by-assignment, mirrors the S2 aggregate);
+   *  may include a UE whose own off-axis SINR is null — see {@link UeCellServingRecord.sinrDb}. */
+  readonly servedUeCount: number;
+  /** Distinct serving sats across all lit cells this frame. */
+  readonly servingSatCount: number;
+  readonly intraHandoverCount: number;
+  readonly interHandoverCount: number;
+}
+
+export interface SinrLiveCellStepInput {
+  readonly visibleSats: readonly CellModelSat[];
+  readonly ues: readonly UeInput[];
+  readonly simTimeSec: number;
+  readonly dtSec: number;
+}
+
+export interface SinrLiveCellModelConfig {
+  readonly profile: Profile;
+  readonly cellLayout: CellLayout;
+  readonly observer: { readonly latDeg: number; readonly lonDeg: number };
+  readonly minElevationDeg?: number;
+  readonly epochUtcMs: number;
+}
+
+// ---------------------------------------------------------------------------
+// Pure identity + geometry helpers (individually unit-tested).
+// ---------------------------------------------------------------------------
+
+/** Stable geographic frequency colour for a cell — §5.2. NOT a beamIndex. */
+export function cellFrequencyIndex(cellId: number, frequencyReuse: number): number {
+  const reuse = Number.isFinite(frequencyReuse) ? Math.max(1, Math.floor(frequencyReuse)) : 1;
+  const id = Math.max(0, Math.floor(cellId));
+  return id % reuse;
+}
+
+/** Internal link-budget beamId encoding (see {@link CELL_BEAM_ID_OFFSET}). */
+export function cellLinkBudgetBeamId(cellId: number): number {
+  return Math.max(0, Math.floor(cellId)) + CELL_BEAM_ID_OFFSET;
+}
+
+/** Recover a cellId from the internal link-budget beamId. */
+export function cellIdFromLinkBudgetBeamId(beamId: number): number {
+  return Math.max(0, Math.floor(beamId) - CELL_BEAM_ID_OFFSET);
+}
+
+/** Beam identity = sat × cell (§5.2). */
+export function cellBeamIdentity(satId: string, cellId: number): string {
+  return `${satId}#cell${Math.max(0, Math.floor(cellId))}`;
+}
+
+/** UE → nearest earth-fixed cell by local-ENU distance (§5.1). */
+export function assignUeToNearestCell(
+  ue: Pick<UeInput, 'eastKm' | 'northKm'>,
+  cellLayout: CellLayout,
+): { cellId: number | null; distanceKm: number } {
+  let bestCellId: number | null = null;
+  let bestDistanceKm = Infinity;
+  for (const cell of cellLayout.centers) {
+    const distanceKm = Math.hypot(ue.eastKm - cell.localXKm, ue.northKm - cell.localYKm);
+    if (distanceKm < bestDistanceKm) {
+      bestDistanceKm = distanceKm;
+      bestCellId = cell.cellId;
+    }
+  }
+  return { cellId: bestCellId, distanceKm: bestCellId === null ? Infinity : bestDistanceKm };
+}
+
+/**
+ * Satellite nadir ground offset in observer-relative ENU km. Same convention as
+ * `runtimeFrameStep.ts:280` so cell-local coords and nadir share one frame.
+ */
+export function satNadirOffsetKm(
+  sat: Pick<CellModelSat, 'latDeg' | 'lonDeg'>,
+  observer: { latDeg: number; lonDeg: number },
+): { eastKm: number; northKm: number } {
+  const cosObsLat = Math.cos(observer.latDeg * DEG_TO_RAD);
+  return {
+    eastKm: (sat.lonDeg - observer.lonDeg) * EARTH_KM_PER_DEG * cosObsLat,
+    northKm: (sat.latDeg - observer.latDeg) * EARTH_KM_PER_DEG,
+  };
+}
+
+/** Per-(sat, cell) geometry to the FIXED cell centre (§5.3). */
+export function computeCellScanGeometry(
+  sat: Pick<CellModelSat, 'id' | 'latDeg' | 'lonDeg' | 'altitudeKm'>,
+  cell: CellCenter,
+  observer: { latDeg: number; lonDeg: number },
+): CellScanGeometry {
+  const nadir = satNadirOffsetKm(sat, observer);
+  const nadirToCellKm = Math.hypot(cell.localXKm - nadir.eastKm, cell.localYKm - nadir.northKm);
+  const scanAngleDeg = (Math.atan(nadirToCellKm / Math.max(sat.altitudeKm, 1e-6)) * 180) / Math.PI;
+  const elevationDeg = (elevationAngleRad(
+    sat.latDeg,
+    sat.lonDeg,
+    sat.altitudeKm,
+    cell.latDeg,
+    cell.lonDeg,
+  ) * 180) / Math.PI;
+  const slantRangeKm = computeTr38811SlantRangeKm(elevationDeg, sat.altitudeKm);
+  return { satId: sat.id, cellId: cell.cellId, scanAngleDeg, slantRangeKm, elevationDeg, nadirToCellKm };
+}
+
+/**
+ * Candidate serving sats for a cell — visible above the elevation mask AND
+ * steerable to the cell centre (scan angle within the array limit). §5.1.
+ */
+export function listCellCandidateSats(
+  cell: CellCenter,
+  sats: readonly CellModelSat[],
+  observer: { latDeg: number; lonDeg: number },
+  maxSteeringAngleDeg: number,
+  minElevationDeg: number,
+): CellScanGeometry[] {
+  const out: CellScanGeometry[] = [];
+  for (const sat of sats) {
+    const geom = computeCellScanGeometry(sat, cell, observer);
+    if (geom.elevationDeg < minElevationDeg) continue;
+    if (geom.scanAngleDeg > maxSteeringAngleDeg + 1e-6) continue;
+    out.push(geom);
+  }
+  return out;
+}
+
+/**
+ * Classify a UE serving transition (§5.2 / codex BLOCK-4). intra-HO = serving
+ * SAT unchanged + serving CELL changes (UE crossed a boundary into a cell the
+ * same sat serves); inter-HO = serving SAT changes. Cold attach / service drop
+ * are distinct and are NOT counted as handovers.
+ */
+export function classifyServingTransition(
+  prev: { satId: string | null; cellId: number | null } | null,
+  next: { satId: string | null; cellId: number | null },
+): ServingTransitionKind {
+  const prevServed = prev != null && prev.satId !== null;
+  const nextServed = next.satId !== null;
+  if (!prevServed && !nextServed) return 'none';
+  if (!prevServed && nextServed) return 'attach';
+  if (prevServed && !nextServed) return 'drop';
+  // both served
+  if (prev!.satId !== next.satId) return 'inter';
+  if (prev!.cellId !== next.cellId) return 'intra';
+  return 'none';
+}
+
+// ---------------------------------------------------------------------------
+// Stateful per-frame driver.
+// ---------------------------------------------------------------------------
+
+interface CellSnapshotBeam {
+  readonly cellId: number;
+  readonly satId: string;
+  readonly snapshot: SatelliteSnapshot;
+}
+
+/**
+ * Pointing a single beam of `sat` at `cell`'s fixed centre. One snapshot per
+ * (sat, cell) lit beam so per-cell slant range / elevation drive path loss
+ * independently (§5.3), while the shared satId keeps `computeLinkBudget`'s
+ * intra/inter interference classification correct.
+ */
+function buildCellBeamSnapshot(
+  sat: CellModelSat,
+  cell: CellCenter,
+  geom: CellScanGeometry,
+): SatelliteSnapshot {
+  return {
+    id: sat.id,
+    shellId: sat.shellId,
+    altitudeKm: sat.altitudeKm,
+    ecefKm: [0, 0, 0],
+    rangeKm: geom.slantRangeKm,
+    elevationDeg: geom.elevationDeg,
+    azimuthDeg: sat.topo.azimuthDeg,
+    beamCellsKm: [
+      {
+        beamId: cellLinkBudgetBeamId(cell.cellId),
+        offsetEastKm: cell.localXKm,
+        offsetNorthKm: cell.localYKm,
+        scanAngleDeg: geom.scanAngleDeg,
+      },
+    ],
+  };
+}
+
+export class SinrLiveCellModel {
+  private readonly profile: Profile;
+  private readonly cellLayout: CellLayout;
+  private readonly cellById: Map<number, CellCenter>;
+  private readonly observer: { latDeg: number; lonDeg: number };
+  private readonly minElevationDeg: number;
+  private readonly epochUtcMs: number;
+  private readonly cellManagers = new Map<number, HandoverManager>();
+  private prevUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
+
+  constructor(config: SinrLiveCellModelConfig) {
+    this.profile = config.profile;
+    this.cellLayout = config.cellLayout;
+    this.cellById = new Map(config.cellLayout.centers.map(cell => [cell.cellId, cell]));
+    this.observer = config.observer;
+    this.minElevationDeg = config.minElevationDeg ?? DEFAULT_MIN_ELEVATION_DEG;
+    this.epochUtcMs = config.epochUtcMs;
+  }
+
+  private managerForCell(cellId: number): HandoverManager {
+    let manager = this.cellManagers.get(cellId);
+    if (!manager) {
+      manager = new HandoverManager(this.profile.handover);
+      this.cellManagers.set(cellId, manager);
+    }
+    return manager;
+  }
+
+  private linkBudgetOptions(activeAssignments: ActiveBeamAssignment[], simTimeSec: number) {
+    return {
+      formulaFamily: this.profile.formulaFamily,
+      channel: this.profile.channel,
+      antenna: this.profile.antenna,
+      ueAntenna: this.profile.ueAntenna,
+      beams: this.profile.beams,
+      activeAssignments,
+      simTimeSec,
+    } satisfies Parameters<typeof computeLinkBudget>[2];
+  }
+
+  reset(): void {
+    for (const manager of this.cellManagers.values()) manager.reset();
+    this.prevUeServing = new Map();
+  }
+
+  step(input: SinrLiveCellStepInput): SinrLiveCellFrame {
+    const { visibleSats, ues, simTimeSec, dtSec } = input;
+    const simTimeMs = this.epochUtcMs + simTimeSec * 1000;
+    const linkSats = visibleSats.filter(sat => sat.topo.elevationDeg >= this.minElevationDeg);
+    const satById = new Map(linkSats.map(sat => [sat.id, sat]));
+    const maxSteer = this.profile.antenna.maxSteeringAngleDeg;
+
+    // 1. Per-cell candidate sats + geometry.
+    const candidatesByCell = new Map<number, CellScanGeometry[]>();
+    for (const cell of this.cellLayout.centers) {
+      candidatesByCell.set(
+        cell.cellId,
+        listCellCandidateSats(cell, linkSats, this.observer, maxSteer, this.minElevationDeg),
+      );
+    }
+
+    // 2. Pre-decision lit field from each cell's PREVIOUS serving (mirrors the
+    //    runtime pre/post two-pass). One lit beam per cell that still has a
+    //    valid serving sat among this frame's candidates.
+    const preLitByCell = new Map<number, CellSnapshotBeam>();
+    for (const cell of this.cellLayout.centers) {
+      const manager = this.managerForCell(cell.cellId);
+      const servingSatId = manager.state.satId;
+      if (servingSatId === null) continue;
+      const geom = candidatesByCell
+        .get(cell.cellId)
+        ?.find(candidate => candidate.satId === servingSatId);
+      const sat = satById.get(servingSatId);
+      if (!geom || !sat) continue;
+      preLitByCell.set(cell.cellId, {
+        cellId: cell.cellId,
+        satId: servingSatId,
+        snapshot: buildCellBeamSnapshot(sat, cell, geom),
+      });
+    }
+
+    // 3. Per-cell serving decision via SINR + HandoverManager (NOT round-robin).
+    const cellRecords: CellServingRecord[] = [];
+    const finalServingByCell = new Map<number, string>();
+    for (const cell of this.cellLayout.centers) {
+      const candidates = candidatesByCell.get(cell.cellId) ?? [];
+      const manager = this.managerForCell(cell.cellId);
+      const reuse = this.profile.beams.frequencyReuse;
+      const frequencyIndex = cellFrequencyIndex(cell.cellId, reuse);
+
+      // Drop a stale serving whose sat is no longer a candidate (mirrors
+      // runtimeFrameStep.ts:699 hoManager.clearServing()).
+      if (
+        manager.state.satId !== null
+        && !candidates.some(candidate => candidate.satId === manager.state.satId)
+      ) {
+        manager.clearServing();
+      }
+
+      // Candidate SINR at the cell centre. Interference field = OTHER lit cells
+      // (D != C); cell C is NOT lit here so a cell never self-interferes. Each
+      // candidate beam is measured but kept out of activeAssignments.
+      const candidateSamples = this.measureCellCandidates(cell, candidates, satById, preLitByCell, simTimeSec);
+      manager.update(candidateSamples, dtSec, simTimeMs);
+
+      const servingSatId = manager.state.satId;
+      if (servingSatId !== null) finalServingByCell.set(cell.cellId, servingSatId);
+      cellRecords.push({
+        cellId: cell.cellId,
+        servingSatId,
+        beamIdentity: servingSatId === null ? null : cellBeamIdentity(servingSatId, cell.cellId),
+        frequencyIndex,
+        servingSinrDb: servingSatId === null ? null : manager.state.sinrDb,
+        candidateCount: candidates.length,
+      });
+    }
+
+    // 4. Post-decision final lit field for per-UE SINR at true off-axis.
+    const finalLit: SatelliteSnapshot[] = [];
+    const finalActive: ActiveBeamAssignment[] = [];
+    for (const [cellId, satId] of finalServingByCell) {
+      const cell = this.cellById.get(cellId);
+      const sat = satById.get(satId);
+      if (!cell || !sat) continue;
+      const geom = candidatesByCell.get(cellId)?.find(candidate => candidate.satId === satId);
+      if (!geom) continue;
+      finalLit.push(buildCellBeamSnapshot(sat, cell, geom));
+      finalActive.push({ satId, beamId: cellLinkBudgetBeamId(cellId) });
+    }
+    const finalOptions = this.linkBudgetOptions(finalActive, simTimeSec);
+
+    // 5. Per-UE membership, serving (inherited from cell), off-axis SINR, and
+    //    intra/inter classification from the UE's serving transition.
+    const ueRecords: UeCellServingRecord[] = [];
+    const nextUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
+    let intraHandoverCount = 0;
+    let interHandoverCount = 0;
+    for (const ue of ues) {
+      const membership = assignUeToNearestCell(ue, this.cellLayout);
+      const cellId = membership.cellId;
+      const cell = cellId === null ? undefined : this.cellById.get(cellId);
+      const servingSatId = cellId === null ? null : finalServingByCell.get(cellId) ?? null;
+      const sat = servingSatId === null ? undefined : satById.get(servingSatId);
+
+      const offAxisDeg = cell && sat
+        ? computeOffAxisDeg(
+          Math.hypot(ue.eastKm - cell.localXKm, ue.northKm - cell.localYKm),
+          sat.altitudeKm,
+        )
+        : 0;
+
+      let sinrDb: number | null = null;
+      if (cell && sat && servingSatId !== null) {
+        const uePos: UEPosition = {
+          latDeg: 0, // unused by computeLinkBudget (reads offsets only)
+          lonDeg: 0,
+          offsetEastKm: ue.eastKm,
+          offsetNorthKm: ue.northKm,
+        };
+        const samples = computeLinkBudget(uePos, finalLit, finalOptions);
+        const beamId = cellLinkBudgetBeamId(cell.cellId);
+        sinrDb = samples.find(s => s.satId === servingSatId && s.beamId === beamId)?.sinrDb ?? null;
+      }
+
+      const next = { satId: servingSatId, cellId };
+      const kind = classifyServingTransition(this.prevUeServing.get(ue.id) ?? null, next);
+      if (kind === 'intra') intraHandoverCount += 1;
+      else if (kind === 'inter') interHandoverCount += 1;
+      nextUeServing.set(ue.id, next);
+
+      ueRecords.push({
+        ueId: ue.id,
+        cellId,
+        cellDistanceKm: membership.distanceKm === Infinity ? 0 : membership.distanceKm,
+        offAxisDeg,
+        servingSatId,
+        beamIdentity: servingSatId === null || cellId === null
+          ? null
+          : cellBeamIdentity(servingSatId, cellId),
+        frequencyIndex: cellId === null
+          ? null
+          : cellFrequencyIndex(cellId, this.profile.beams.frequencyReuse),
+        sinrDb,
+        handoverKind: kind,
+      });
+    }
+    this.prevUeServing = nextUeServing;
+
+    return {
+      simTimeSec,
+      cells: cellRecords,
+      ues: ueRecords,
+      servedCellCount: finalServingByCell.size,
+      servedUeCount: ueRecords.filter(ue => ue.servingSatId !== null).length,
+      servingSatCount: new Set(finalServingByCell.values()).size,
+      intraHandoverCount,
+      interHandoverCount,
+    };
+  }
+
+  /**
+   * Measure each candidate (sat, cell C) boresight SINR at C's centre. The
+   * active interference field is every OTHER lit cell (D != C); cell C itself is
+   * excluded so it never self-interferes. Candidate beams are added to the
+   * snapshot list but kept out of `activeAssignments`, so they are measured but
+   * do not interfere with one another. Returns one `LinkSample` per candidate
+   * (satId = candidate sat, beamId = `cellLinkBudgetBeamId(C)`), ready for the
+   * cell's `HandoverManager.update`.
+   */
+  private measureCellCandidates(
+    cell: CellCenter,
+    candidates: readonly CellScanGeometry[],
+    satById: Map<string, CellModelSat>,
+    preLitByCell: Map<number, CellSnapshotBeam>,
+    simTimeSec: number,
+  ): LinkSample[] {
+    if (candidates.length === 0) return [];
+    const beamId = cellLinkBudgetBeamId(cell.cellId);
+
+    const interferers: SatelliteSnapshot[] = [];
+    const activeAssignments: ActiveBeamAssignment[] = [];
+    for (const [litCellId, lit] of preLitByCell) {
+      if (litCellId === cell.cellId) continue; // exclude C: no self-interference
+      interferers.push(lit.snapshot);
+      activeAssignments.push({ satId: lit.satId, beamId: cellLinkBudgetBeamId(litCellId) });
+    }
+
+    const probes: SatelliteSnapshot[] = [];
+    for (const geom of candidates) {
+      const sat = satById.get(geom.satId);
+      if (!sat) continue;
+      probes.push(buildCellBeamSnapshot(sat, cell, geom));
+    }
+
+    const options = this.linkBudgetOptions(activeAssignments, simTimeSec);
+    const measurePoint: UEPosition = {
+      latDeg: 0,
+      lonDeg: 0,
+      offsetEastKm: cell.localXKm,
+      offsetNorthKm: cell.localYKm,
+    };
+    const samples = computeLinkBudget(measurePoint, [...interferers, ...probes], options);
+    // Keep only the candidate-probe samples for THIS cell (unique beamId).
+    return samples.filter(sample => sample.beamId === beamId);
+  }
+}
