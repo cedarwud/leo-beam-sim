@@ -90,14 +90,13 @@ export interface SinrLiveCellBeamConeRenderItem {
 /** Segments around the flat ground footprint ring. */
 const OBLIQUE_CONE_SEGMENTS = 32;
 /**
- * Cone opacity for ADDITIVE blending. Additive cones EMIT light (bright/vivid, not
- * the hazy `NormalBlending` veil), but additive ACCUMULATES where the tall
- * sat→ground cones overlap — too high and it blows out the whole view so you cannot
- * see the UEs / connections underneath. Kept LOW (0.06) and paired with the
- * few-serving-sat focus subset so the beams glow without washing out the scene
- * (the OLD steered render stayed legible by showing few beams — match that).
+ * Cone opacity for NORMAL blending. Additive blending could not show EVERY serving
+ * satellite without washing out (it accumulates: at all-sats, 0.06 was too faint
+ * yet 0.08 already blew out — no usable middle). NormalBlending alpha-composites
+ * each cone to a BOUNDED, uniform translucency (overlaps darken but never white
+ * out), so all connected sats can show a beam at one moderate, readable opacity.
  */
-const SINR_LIVE_CELL_CONE_OPACITY = 0.06;
+const SINR_LIVE_CELL_CONE_OPACITY = 0.22;
 
 /**
  * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)
@@ -130,16 +129,14 @@ export function buildObliqueBeamConePositions(
 }
 
 /**
- * Focus subset (S-cells-4b-fix2): pick the FEW satellites whose serving beams the
- * lane draws, so the scene shows a readable handful of cones instead of every
- * serving sat's full fan (which, additive-blended, blows out the view). Picks the
- * top `maxSats` satellites by SERVED-CELL count (deterministic; tie-break satId
- * ascending) — these are real serving sats, NOT the old "most-illuminating"
- * fallback that drew the wrong sat. `preferredSatId` (the primary UE's serving sat)
- * is force-included so the focused UE's beams always show. Continuity (the cell
- * model locks serving beams) keeps this set stable frame-to-frame. The breadth of
- * who-is-served stays in the UE mosaic (Rule#6 display filter; serving truth
- * unchanged).
+ * Focus subset: pick the top `maxSats` satellites by SERVED-CELL count
+ * (deterministic; tie-break satId ascending) + a force-included `preferredSatId`
+ * (the primary UE's serving sat) — real serving sats, NOT the old "most-illuminating"
+ * fallback that drew the wrong sat. The ambient lane currently passes a HIGH cap (it
+ * shows every connected sat's beam via NormalBlending without washout), so this
+ * narrowing is reserved for the CINEMA (c2) to spotlight the handover pair. Continuity
+ * keeps the chosen set stable frame-to-frame. Breadth of who-is-served stays in the
+ * UE mosaic (Rule#6 display filter; serving truth unchanged).
  */
 export function resolveTopServingFocusSatIds(
   cellFrame: SinrLiveCellFrame | undefined,
@@ -272,7 +269,7 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem }): JSX.E
         color={cone.color}
         transparent
         opacity={SINR_LIVE_CELL_CONE_OPACITY}
-        blending={THREE.AdditiveBlending}
+        blending={THREE.NormalBlending}
         depthWrite={false}
         side={THREE.DoubleSide}
         toneMapped={false}

@@ -1608,16 +1608,17 @@ assertContains(
   'live-render suite includes the S-cells-3 render browser gate',
 );
 
-// ── Serving cones, FEW serving sats, faint additive, frequency-reuse colour (S-cells-4b-fix) ──
-// The OLD steered sinr render kept connections legible by showing FEW beams; the cell
-// render flooded the view. So draw SERVING beams only (apex = serving sat, base =
-// served cell), focus-scoped to a FEW serving sats via `resolveTopServingFocusSatIds`
-// (top serving sats by served-cell count + the primary UE's serving sat force-included
-// so the central connection always shows — NOT the old broken most-illuminating
-// fallback), AND keep the additive opacity LOW (the tall sat→ground cones otherwise
-// blow out the view). Both levers keep the scene readable. Colour = FREQUENCY-REUSE
-// (`cellId mod reuse`) so a fan is multi-colour (multibeam pattern, NOT a per-sat
-// tint). Breadth of who-is-served stays in the UE mosaic (Rule#6 display filter).
+// ── Serving cones, EVERY connected sat, NORMAL-blend, frequency-reuse colour (S-cells-4b-fix) ──
+// Draw SERVING beams only (apex = serving sat, base = served cell) for EVERY serving
+// satellite (focus cap HIGH) so a satellite connected to a UE always shows a beam —
+// capping to a few sats left other connections beamless (the user's recurring
+// complaint). Additive could not do all-sats without washing out (it accumulates), so
+// the cones use NORMAL blending at a moderate opacity (bounded/uniform — overlaps
+// darken but never white out). `resolveTopServingFocusSatIds` (top serving sats +
+// primary UE serving sat, NOT the old broken most-illuminating fallback) stays
+// available for the cinema (c2). Colour = FREQUENCY-REUSE (`cellId mod reuse`) so a
+// fan is multi-colour (multibeam pattern). Breadth of who-is-served stays in the UE
+// mosaic (Rule#6 display filter).
 assertContains(
   sinrLiveCellBeamConesSource,
   'if (!beam.serving) continue;',
@@ -1640,8 +1641,8 @@ assertContains(
 );
 assertContains(
   sinrLiveCellBeamConesSource,
-  'blending={THREE.AdditiveBlending}',
-  'cones use additive glow (bright beams, not a hazy normal-blend veil)',
+  'blending={THREE.NormalBlending}',
+  'cones use NORMAL blending (bounded/uniform) so EVERY serving sat can show a beam without additive washout',
 );
 assertContains(
   mainSceneSource,

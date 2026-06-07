@@ -136,13 +136,13 @@ interface ArtifactSceneContentProps {
 }
 
 const SHOW_BEAMS = true;
-/** S-cells-4b-fix(5): how many satellites' serving beams the sinr-live lane draws.
- *  The OLD steered sinr render kept connections legible by showing FEW beams; the
- *  cell render flooded the view, so cap to a FEW serving sats (the primary UE's
- *  serving sat is always force-included by `resolveTopServingFocusSatIds`, so the
- *  central connection is always shown). Dial 1–3 to taste; breadth stays in the
- *  UE mosaic. */
-const SINR_LIVE_CONE_MAX_FOCUS_SATS = 2;
+/** S-cells-4b-fix(6): how many satellites' serving beams the sinr-live lane draws.
+ *  Set HIGH so EVERY satellite connected to a UE shows a beam (capping to a few
+ *  sats left other connections beamless — the user's recurring complaint).
+ *  Readability comes from NormalBlending + moderate opacity (additive could not be
+ *  shown for all sats without washing out — it accumulates). `resolveTopServingFocusSatIds`
+ *  narrowing stays available for the cinema (c2). */
+const SINR_LIVE_CONE_MAX_FOCUS_SATS = 16;
 const CAMERA_TWEEN_DURATION_MS = 600;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
 
