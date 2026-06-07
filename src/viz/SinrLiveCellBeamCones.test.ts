@@ -27,10 +27,11 @@ import {
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveCellBeamConeRenderCount,
   resolveSinrLiveCellBeamConeSatelliteCount,
+  resolveTopServingFocusSatIds,
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
 import { frequencyReuseColor } from '../constants/beamRoleTokens';
-import type { IlluminatedCellBeam, SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
+import type { CellServingRecord, IlluminatedCellBeam, SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
 
 let passed = 0;
 function assert(cond: boolean, label: string): void {
@@ -50,6 +51,32 @@ function check(label: string, fn: () => void): void {
 
 function beam(satId: string, cellId: number, serving: boolean, frequencyIndex = cellId % 3): IlluminatedCellBeam {
   return { satId, cellId, frequencyIndex, serving };
+}
+
+function cellRec(cellId: number, servingSatId: string | null): CellServingRecord {
+  return {
+    cellId,
+    servingSatId,
+    beamIdentity: servingSatId === null ? null : `${servingSatId}#cell${cellId}`,
+    frequencyIndex: cellId % 3,
+    servingSinrDb: servingSatId === null ? null : 10,
+    candidateCount: servingSatId === null ? 0 : 1,
+  };
+}
+
+function frameWithCells(cells: CellServingRecord[]): SinrLiveCellFrame {
+  const served = cells.filter(c => c.servingSatId !== null);
+  return {
+    simTimeSec: 450,
+    cells,
+    ues: [],
+    illuminatedBeams: [],
+    servedCellCount: served.length,
+    servedUeCount: 0,
+    servingSatCount: new Set(served.map(c => c.servingSatId)).size,
+    intraHandoverCount: 0,
+    interHandoverCount: 0,
+  };
 }
 
 function frameOf(beams: IlluminatedCellBeam[]): SinrLiveCellFrame {
@@ -165,6 +192,21 @@ check('render-count + serving-sat-count helpers agree with the items', () => {
   const input = base({ cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 1, true), beam('sat-B', 2, true)]) });
   assertEqual(resolveSinrLiveCellBeamConeRenderCount(input), 3, 'render count = 3 serving cones');
   assertEqual(resolveSinrLiveCellBeamConeSatelliteCount(input), 2, 'two distinct serving sats');
+});
+
+check('resolveTopServingFocusSatIds: top-K serving sats by served-cell count + preferred force-include', () => {
+  const frame = frameWithCells([
+    cellRec(0, 'sat-A'), cellRec(1, 'sat-A'), cellRec(2, 'sat-A'), // A serves 3
+    cellRec(3, 'sat-B'), cellRec(4, 'sat-B'),                       // B serves 2
+    cellRec(5, 'sat-C'),                                            // C serves 1
+    cellRec(6, null),                                              // idle
+  ]);
+  assertEqual([...resolveTopServingFocusSatIds(frame, 2, null)].sort().join(','), 'sat-A,sat-B', 'top-2 serving sats by served count');
+  const withPref = resolveTopServingFocusSatIds(frame, 2, 'sat-C');
+  assert(withPref.size === 2 && withPref.has('sat-C') && withPref.has('sat-A'), 'preferred (C) force-included + filled with top server (A), capped to 2');
+  assertEqual(resolveTopServingFocusSatIds(undefined, 2, null).size, 0, 'no frame → empty focus');
+  assertEqual(resolveTopServingFocusSatIds(frame, 0, null).size, 0, 'maxSats 0 → empty focus');
+  assertEqual(resolveTopServingFocusSatIds(frameWithCells([cellRec(0, null)]), 2, null).size, 0, 'no served cells → empty focus');
 });
 
 check('oblique geometry: base ring FLAT on the ground (y=0), every triangle apex = sat', () => {

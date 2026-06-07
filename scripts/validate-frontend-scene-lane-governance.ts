@@ -1608,15 +1608,15 @@ assertContains(
   'live-render suite includes the S-cells-3 render browser gate',
 );
 
-// ── Serving cones, every serving sat, frequency-reuse colour (S-cells-4b-fix) ──
-// The lane draws the SERVING beams of EVERY serving satellite (apex = serving sat,
-// base = its served cell), so a satellite that is serving always shows its beam —
-// NO "serving sat with no beam" and NO idle/illuminating-only cones (the earlier
-// focus-subset narrowed to one "most-illuminating" fallback sat and drew idle
-// cones; the user saw the wrong sat hopping). Colour = FREQUENCY-REUSE
-// (`cellId mod reuse`) so a satellite's fan is multi-colour (the multibeam pattern,
-// NOT a per-sat mono tint). The optional `focusSatIds` narrowing is left for the
-// cinema (c2); ambient draws all serving sats.
+// ── Serving cones, FOCUS-SUBSET of serving sats, frequency-reuse colour (S-cells-4b-fix) ──
+// The lane draws SERVING beams only (apex = serving sat, base = served cell), but
+// FOCUS-SCOPED to a few satellites — `resolveTopServingFocusSatIds` picks the top
+// serving sats by SERVED-CELL count + the primary UE's serving sat (NOT the old
+// broken "most-illuminating" fallback that drew the wrong sat). This keeps the
+// additive-glow cones readable instead of blowing out the view with every serving
+// sat's fan. Continuity keeps the focus stable. Colour = FREQUENCY-REUSE
+// (`cellId mod reuse`) so a fan is multi-colour (multibeam pattern, NOT a per-sat
+// tint). Breadth of who-is-served stays in the UE mosaic (Rule#6 display filter).
 assertContains(
   sinrLiveCellBeamConesSource,
   'if (!beam.serving) continue;',
@@ -1625,7 +1625,12 @@ assertContains(
 assertNotContains(
   sinrLiveCellBeamConesSource,
   'resolveSinrLiveConeFocusSatIds',
-  'the most-illuminating fallback is gone (it hid the serving sat behind a wrong sat)',
+  'the old most-illuminating fallback is gone (it hid the serving sat behind a wrong sat)',
+);
+assertContains(
+  sinrLiveCellBeamConesSource,
+  'export function resolveTopServingFocusSatIds',
+  'cone focus = top serving sats by served-cell count + preferred (NOT most-illuminating)',
 );
 assertContains(
   sinrLiveCellBeamConesSource,
@@ -1633,9 +1638,19 @@ assertContains(
   'cone colour = frequency-reuse (one satellite fan is multi-colour, the multibeam pattern — NOT a per-sat tint)',
 );
 assertContains(
+  sinrLiveCellBeamConesSource,
+  'blending={THREE.AdditiveBlending}',
+  'cones use additive glow (bright beams, not a hazy normal-blend veil)',
+);
+assertContains(
   mainSceneSource,
-  'resolveSinrLiveCellBeamConeItems({',
-  'MainScene resolves the cell-truth cones (all serving sats, frequency-coloured)',
+  'resolveTopServingFocusSatIds(cellFrame, SINR_LIVE_CONE_MAX_FOCUS_SATS, primaryServingSatId)',
+  'MainScene focus-scopes the cones to the top serving sats + the primary UE serving sat',
+);
+assertContains(
+  mainSceneSource,
+  'focusSatIds: sinrLiveConeFocusSatIds',
+  'MainScene passes the focus subset into the cone resolver (readable cone count)',
 );
 
 // ── Mosaic + aggregate re-point to the cell truth (S-cells-4c) ──

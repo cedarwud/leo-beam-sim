@@ -90,13 +90,13 @@ export interface SinrLiveCellBeamConeRenderItem {
 /** Segments around the flat ground footprint ring. */
 const OBLIQUE_CONE_SEGMENTS = 32;
 /**
- * Cone opacity for ADDITIVE blending — like the original `SatelliteBeams` glow
- * (additive, opacity ~0.6–0.9) and `AmbientFootprintRings`, the cones EMIT light
- * over the dark scene so the colours read bright/vivid instead of the hazy
- * half-transparent veil that `NormalBlending` gave. Additive overlaps brighten
- * (never muddy), so a moderate opacity keeps the fan luminous without blowing out.
+ * Cone opacity for ADDITIVE blending. Additive cones EMIT light (bright/vivid, not
+ * the hazy `NormalBlending` veil), but additive ACCUMULATES where cones overlap —
+ * with many large sat→ground cones it blows out to white. Kept LOW (0.2) and paired
+ * with the focus-subset (only the top serving sats draw) so the scene stays readable
+ * and the beams still glow.
  */
-const SINR_LIVE_CELL_CONE_OPACITY = 0.45;
+const SINR_LIVE_CELL_CONE_OPACITY = 0.2;
 
 /**
  * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)
@@ -126,6 +126,42 @@ export function buildObliqueBeamConePositions(
     out[o + 8] = baseCenter.z + radius * Math.sin(a1);
   }
   return out;
+}
+
+/**
+ * Focus subset (S-cells-4b-fix2): pick the FEW satellites whose serving beams the
+ * lane draws, so the scene shows a readable handful of cones instead of every
+ * serving sat's full fan (which, additive-blended, blows out the view). Picks the
+ * top `maxSats` satellites by SERVED-CELL count (deterministic; tie-break satId
+ * ascending) — these are real serving sats, NOT the old "most-illuminating"
+ * fallback that drew the wrong sat. `preferredSatId` (the primary UE's serving sat)
+ * is force-included so the focused UE's beams always show. Continuity (the cell
+ * model locks serving beams) keeps this set stable frame-to-frame. The breadth of
+ * who-is-served stays in the UE mosaic (Rule#6 display filter; serving truth
+ * unchanged).
+ */
+export function resolveTopServingFocusSatIds(
+  cellFrame: SinrLiveCellFrame | undefined,
+  maxSats: number,
+  preferredSatId: string | null,
+): ReadonlySet<string> {
+  if (!cellFrame || maxSats <= 0) return new Set<string>();
+  const servedCountBySat = new Map<string, number>();
+  for (const cell of cellFrame.cells) {
+    if (cell.servingSatId === null) continue;
+    servedCountBySat.set(cell.servingSatId, (servedCountBySat.get(cell.servingSatId) ?? 0) + 1);
+  }
+  if (servedCountBySat.size === 0) return new Set<string>();
+  const ranked = [...servedCountBySat.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map(([satId]) => satId);
+  const chosen: string[] = [];
+  if (preferredSatId !== null && servedCountBySat.has(preferredSatId)) chosen.push(preferredSatId);
+  for (const satId of ranked) {
+    if (chosen.length >= maxSats) break;
+    if (!chosen.includes(satId)) chosen.push(satId);
+  }
+  return new Set(chosen);
 }
 
 /**

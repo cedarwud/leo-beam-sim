@@ -62,6 +62,7 @@ import {
 import {
   SinrLiveCellBeamCones,
   resolveSinrLiveCellBeamConeItems,
+  resolveTopServingFocusSatIds,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
@@ -135,6 +136,10 @@ interface ArtifactSceneContentProps {
 }
 
 const SHOW_BEAMS = true;
+/** S-cells-4b-fix(3): how many satellites' serving beams the sinr-live lane draws
+ *  (the rest's service breadth stays in the UE mosaic). Keeps the additive-glow
+ *  cones readable instead of blowing out with every serving sat's fan. */
+const SINR_LIVE_CONE_MAX_FOCUS_SATS = 2;
 const CAMERA_TWEEN_DURATION_MS = 600;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
 
@@ -1024,22 +1029,31 @@ function SceneContent({
   // browser gate (UE off-centre = cones at fixed cells while UEs sit off-axis).
   // Resolve the cones ONCE per frame; the component + telemetry both read this
   // memoised array (no redundant resolver passes).
-  // S-cells-4b-fix(2): draw the SERVING beams of EVERY serving satellite (apex =
-  // the serving sat, base = its served cell), coloured by FREQUENCY-REUSE (cellId
-  // mod reuse) so each sat's fan shows the multi-colour multibeam pattern. Every
-  // serving sat shows its beam — no "serving sat with no beam" and no
-  // idle/illuminating-only cones. At 37 cells + 7-beam hopping the serving cones are
-  // ~8 (bounded). The optional `focusSatIds` narrowing (cinema handover pair) is left
-  // for S-cells-4-c2; ambient draws all serving sats.
+  // S-cells-4b-fix(3): draw the SERVING beams (apex = serving sat, base = served
+  // cell, frequency-reuse colour) of only a FOCUS SUBSET of satellites — the top
+  // serving sats + the primary UE's serving sat — so the additive-glow cones stay
+  // readable instead of blowing out the whole view with every serving sat's fan.
+  // Continuity keeps the focus set stable; the breadth of who-is-served stays in
+  // the UE mosaic (Rule#6 display filter, serving truth unchanged).
+  const sinrLiveConeFocusSatIds = useMemo<ReadonlySet<string> | undefined>(() => {
+    if (!showSinrLiveCellBeams) return undefined;
+    const cellFrame = sim.sinrLiveCells;
+    const primaryId = sceneFrame.ues[0]?.id;
+    const primaryServingSatId = primaryId !== undefined
+      ? cellFrame?.ues.find(u => u.ueId === primaryId)?.servingSatId ?? null
+      : null;
+    return resolveTopServingFocusSatIds(cellFrame, SINR_LIVE_CONE_MAX_FOCUS_SATS, primaryServingSatId);
+  }, [showSinrLiveCellBeams, sim.sinrLiveCells, sceneFrame.ues]);
   const sinrLiveCellBeamConeItems = useMemo(
     () => (showSinrLiveCellBeams
       ? resolveSinrLiveCellBeamConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
         satelliteWorldById,
+        focusSatIds: sinrLiveConeFocusSatIds,
       })
       : []),
-    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById],
+    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById, sinrLiveConeFocusSatIds],
   );
   const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
