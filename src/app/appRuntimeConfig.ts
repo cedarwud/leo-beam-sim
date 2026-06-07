@@ -86,13 +86,15 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
       ? input.sceneTopology.ueDistributionMode ?? 'random'
       : trainingTopology.ueDistributionMode ?? 'random',
     uePrimaryAnchorMode: input.appMode === 'modqn-demo' ? 'distribution' : 'observer',
-    // S2: spread the sinr-live secondary population across the whole multi-beam
-    // SERVICE AREA (not a single beam footprint) so the ambient SINR-serving
-    // mosaic robustly partitions across multiple beams (G3) instead of all 100
-    // UEs collapsing onto one serving beam. The PRIMARY UE still anchors at the
-    // observer (`uePrimaryAnchorMode: 'observer'` above), so the handover cinema
-    // is unaffected — only the secondary spread widens.
-    ueDistributionScope: 'service-area',
+    // S2: the sinr-experiment profile (hobs-2024-candidate-rich) now carries a
+    // uniform-rectangle `ueDistribution` (200x90 km user area), so the secondary
+    // population spreads across the WHOLE map and `generateUePositions` takes the
+    // rectangle path (this `ueDistributionScope` radius is only the fallback when
+    // no rectangle area is set). Coverage is the constellation's job: a single
+    // candidate-rich satellite reaches ~154 km (16 km footprint + 27.6 km lattice
+    // + 110.5 km steering @ 12 deg) > the 100 km map half-width, so map-wide UEs
+    // stay served. The PRIMARY UE still anchors at the observer (cinema unaffected).
+    ueDistributionScope: input.appMode === 'modqn-demo' ? 'service-area' : 'beam-footprint',
     ueDistributionRadiusKm: input.appMode === 'modqn-demo'
       && input.selectedTrainingEnvAxes?.ueArea.distribution === 'uniform-circular'
       ? input.selectedTrainingEnvAxes.ueArea.radiusKm

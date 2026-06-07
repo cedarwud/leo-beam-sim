@@ -65,5 +65,11 @@
     "scheduler": "round-robin",
     "frameLengthSlots": 7
   },
+  "ueDistribution": {
+    "mode": "uniform-rectangle",
+    "areaWidthKm": 200,
+    "areaHeightKm": 90,
+    "seed": 7
+  },
   "demoStartOffsetSec": 450
 }

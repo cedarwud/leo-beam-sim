@@ -470,6 +470,16 @@ Before changing scene rendering:
     1 to 100 (matching the TopologyTab's already-shown `DEFAULT_UE_COUNT` — the runtime
     falling back to 1 was a UI/runtime mismatch) so the ambient mosaic is the literal
     default screen (SDD §3.1/§5.4). An explicit Advanced override still wins.
+  - **Map-wide spread (coverage is the constellation's job, not a UE knob):** the
+    `sinr-experiment` profile (`hobs-2024-candidate-rich`) now carries a uniform-rectangle
+    `ueDistribution` over the 200×90 km user area (same as the MODQN paper profile), so the
+    100 UEs spread across the WHOLE map like a real population. This is served because a
+    single candidate-rich satellite reaches ~154 km off-nadir (16 km footprint + 27.6 km
+    7-beam lattice + 110.5 km steering @ 12°) — wider than the 100 km map half-width — and
+    several satellites are overhead (5 shells). The PRIMARY UE still anchors at the observer
+    so the handover cinema is unaffected. (An earlier S2 cut clustered UEs by sizing the
+    distribution to the static beam-lattice radius ~43 km, which wrongly ignored the
+    steering reach — fixed.)
   Validators: `validate:phase-c:sinr-serving-mosaic:model` (pure colour stability +
   aggregate counting, never fabricates), `validate:phase-c:sinr-serving-mosaic:browser`
   (real sinr-live: aggregate `served N/N` with a multi-beam partition + finite mean SINR
