@@ -93,6 +93,15 @@ export function useBeamViz(
    */
   beamHoppingConfig?: Profile['beamHopping'],
   visualScaleMultipliers?: SceneVisualScaleMultipliers,
+  /**
+   * S-cells-3: retire the UE-anchor for the sinr-live lane ONLY. When true the
+   * serving/event beam groups are NOT translated to sit on the primary UE
+   * (`anchorToUe` is forced off), so `satBeams` carry their true earth-fixed
+   * ground positions and the lane's render no longer hides the off-axis. The
+   * sinr-live caller passes `sceneLane === 'sinr-live'`; every other lane passes
+   * `false` (or omits it) and keeps the steered-anchored render unchanged.
+   */
+  disableUeAnchor?: boolean,
 ): VizFrame {
   const previousDisplayIdsRef = useRef<Set<string>>(new Set());
   const previousEventIdsRef = useRef<Set<string>>(new Set());
@@ -629,13 +638,17 @@ export function useBeamViz(
       const beamCells = new Map((steeringBeamCellsBySatId.get(sat.id) ?? []).map(beam => [beam.beamId, beam]));
       const role = eventRoles.get(sat.id);
       const primaryBeamCell = primaryBeamId !== null ? beamCells.get(primaryBeamId) : undefined;
+      // S-cells-3: on the sinr-live lane the UE-anchor is retired (the cell-truth
+      // cones own that lane's beam render), so beams keep their true earth-fixed
+      // ground positions and the UE renders off-centre.
       const anchorToUe =
-        sat.id === servingSatId
-        || isPreparedTransitionSat(sat.id, relevantIds)
-        || isRecentHoSourceSat(sat.id, relevantIds)
-        || sat.id === recentHoTargetSatId
-        || sat.id === committedInterEvent?.fromSatId
-        || sat.id === committedInterEvent?.toSatId;
+        !disableUeAnchor
+        && (sat.id === servingSatId
+          || isPreparedTransitionSat(sat.id, relevantIds)
+          || isRecentHoSourceSat(sat.id, relevantIds)
+          || sat.id === recentHoTargetSatId
+          || sat.id === committedInterEvent?.fromSatId
+          || sat.id === committedInterEvent?.toSatId);
       if (!anchorToUe && !primaryBeamCell) continue;
       const anchorOffsetEastKm = anchorToUe ? (primaryBeamCell?.offsetEastKm ?? 0) : 0;
       const anchorOffsetNorthKm = anchorToUe ? (primaryBeamCell?.offsetNorthKm ?? 0) : 0;
@@ -974,5 +987,6 @@ export function useBeamViz(
     displayCaps,
     beamHoppingConfig,
     visualScaleMultipliers,
+    disableUeAnchor,
   ]);
 }

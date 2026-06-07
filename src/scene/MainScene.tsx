@@ -62,6 +62,12 @@ import {
   resolveCellBeamConeRenderCount,
   resolveCellBeamConeSatelliteCount,
 } from '../viz/CellBeamCones';
+import {
+  SinrLiveCellBeamCones,
+  resolveSinrLiveCellBeamConeItems,
+  type SinrLiveCellPlacement,
+} from '../viz/SinrLiveCellBeamCones';
+import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
 import { BeamLoadUploadParticles } from '../viz/BeamLoadUploadParticles';
 import { HandoverStoryLayer } from '../viz/HandoverStoryLayer';
@@ -584,6 +590,10 @@ function ArtifactSceneContent({
         cellBeamConeCount=""
         cellBeamConeScope=""
         cellBeamConeSatelliteCount=""
+        sinrLiveCellBeamConeCount=""
+        sinrLiveCellServingSatCount=""
+        sinrLiveCellServedCount=""
+        sinrLiveCellUeOffAxisMaxDeg=""
         modqnVisualLayerPreset=""
         modqnServiceMapEnabled="0"
         modqnServedUeCount={0}
@@ -771,8 +781,27 @@ function SceneContent({
     undefined,
     profile.beamHopping,
     visualScaleMultipliers,
+    // S-cells-3: retire the UE-anchor on the sinr-live lane only — the cell-truth
+    // cones own this lane's beam render, so beams keep their true earth-fixed
+    // positions and the UE renders off-centre. Other lanes keep the steered anchor.
+    sceneLane === 'sinr-live',
   );
   const worldUnitsPerKm = 1 / (sceneGeometry.kmPerWorldUnit ?? paperUserArea.kmPerWorldUnit);
+  // S-cells-3: ground placements of the FIXED earth-fixed cells for the cell-truth
+  // beam cones. Built from the SAME `buildSinrLiveCellLayout(profile)` the runtime
+  // cell truth uses (so cellIds match `sim.sinrLiveCells`) and the SAME
+  // `worldUnitsPerKm` the UE markers use (east → +X, north → −Z), so a cone base
+  // and its UEs share one frame. Empty off the sinr-live lane.
+  const sinrLiveCellPlacementById = useMemo<ReadonlyMap<number, SinrLiveCellPlacement>>(() => {
+    if (!useEarthFixedCellTruth) return new Map();
+    const layout = buildSinrLiveCellLayout(profile);
+    return new Map(layout.centers.map(center => [center.cellId, {
+      cellId: center.cellId,
+      worldX: center.localXKm * worldUnitsPerKm,
+      worldZ: -center.localYKm * worldUnitsPerKm,
+      radiusWorld: layout.cellRadiusKm * worldUnitsPerKm,
+    }]));
+  }, [useEarthFixedCellTruth, profile, worldUnitsPerKm]);
   const cellSchedule = useCellSchedule({
     simTimeSec: sceneFrame.tSec,
     altitudeKm: sceneGeometry.shellAltitudeKm,
@@ -865,6 +894,7 @@ function SceneContent({
     showCinematicSpotlight,
     showCandidateHandoverHighlight,
     showSinrServingMosaic,
+    showSinrLiveCellBeams,
     effectiveCinematicMode,
     showReplayProofLayer,
     showArtifactFpsCounter,
@@ -1013,6 +1043,38 @@ function SceneContent({
     ? resolveCellBeamConeSatelliteCount({
       ...cellBeamConeInput,
     })
+    : 0;
+  // S-cells-3: cell-truth beam cones for the sinr-live lane. Serving comes from
+  // `sim.sinrLiveCells` (SINR + HandoverManager truth, NOT the round-robin
+  // scheduler). The render-count + serving-sat + off-axis values feed the durable
+  // browser gate (UE off-centre = cones at fixed cells while UEs sit off-axis).
+  // Resolve the cones ONCE per frame; the component + telemetry both read this
+  // memoised array (no redundant resolver passes).
+  const sinrLiveCellBeamConeItems = useMemo(
+    () => (showSinrLiveCellBeams
+      ? resolveSinrLiveCellBeamConeItems({
+        cellFrame: sim.sinrLiveCells,
+        placementByCellId: sinrLiveCellPlacementById,
+        satelliteWorldById,
+        satelliteTintById,
+      })
+      : []),
+    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById, satelliteTintById],
+  );
+  const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
+  const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
+    sinrLiveCellBeamConeItems.map(item => item.satId),
+  ).size;
+  const sinrLiveCellServedCount = showSinrLiveCellBeams
+    ? sim.sinrLiveCells?.servedCellCount ?? 0
+    : 0;
+  // Max off-axis angle among SERVED UEs — the real "UE off-centre" lever. > 0 means
+  // UEs genuinely sit off their cell centres (the steered render collapsed this to ~0).
+  const sinrLiveCellUeOffAxisMaxDeg = showSinrLiveCellBeams
+    ? (sim.sinrLiveCells?.ues.reduce(
+      (max, ue) => (ue.servingSatId !== null && ue.offAxisDeg > max ? ue.offAxisDeg : max),
+      0,
+    ) ?? 0)
     : 0;
   const uploadParticlesEnabled =
     showCellOverlay
@@ -1235,9 +1297,14 @@ function SceneContent({
         beamSatelliteCount={viz.satBeams.size}
         sceneSource={sceneFrame.sceneSource}
         beamConeCount={
-          SHOW_BEAMS && showLiveBeamCones && !showCellOverlay
-            ? [...viz.satBeams.values()].reduce((count, beams) => count + beams.length, 0)
-            : 0
+          showSinrLiveCellBeams
+            // S-cells-3: on the sinr-live lane the cell-truth cones REPLACE the
+            // steered SatelliteBeams, so report the cones that actually render
+            // (keeps this attr honest — it is not the suppressed steered count).
+            ? renderedSinrLiveCellBeamConeCount
+            : SHOW_BEAMS && showLiveBeamCones && !showCellOverlay
+              ? [...viz.satBeams.values()].reduce((count, beams) => count + beams.length, 0)
+              : 0
         }
         cellOverlaySlotIndex={showCellOverlay ? String(cellSchedule.slotIndex) : ''}
         cellOverlayActiveCount={showCellOverlay ? String(cellSchedule.slot.assignments.length) : ''}
@@ -1251,6 +1318,10 @@ function SceneContent({
         cellBeamConeCount={showCellOverlay ? String(renderedCellBeamConeCount) : ''}
         cellBeamConeScope={showCellOverlay ? renderedCellBeamConeScope : ''}
         cellBeamConeSatelliteCount={showCellOverlay ? String(renderedCellBeamConeSatelliteCount) : ''}
+        sinrLiveCellBeamConeCount={showSinrLiveCellBeams ? String(renderedSinrLiveCellBeamConeCount) : ''}
+        sinrLiveCellServingSatCount={showSinrLiveCellBeams ? String(renderedSinrLiveCellBeamConeSatelliteCount) : ''}
+        sinrLiveCellServedCount={showSinrLiveCellBeams ? String(sinrLiveCellServedCount) : ''}
+        sinrLiveCellUeOffAxisMaxDeg={showSinrLiveCellBeams ? sinrLiveCellUeOffAxisMaxDeg.toFixed(3) : ''}
         modqnVisualLayerPreset={showCellOverlay ? modqnVisualLayerPreset : ''}
         modqnServiceMapEnabled={showCellOverlay && modqnVisualLayers.serviceMap ? '1' : '0'}
         modqnServedUeCount={showCellOverlay ? modqnServiceMap.servedUeCount : 0}
@@ -1405,7 +1476,10 @@ function SceneContent({
           satelliteTintColor={sat.satelliteTintColor}
         />
       ))}
-      {SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && viz.displaySats
+      {showSinrLiveCellBeams && (
+        <SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} />
+      )}
+      {SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats
         .filter(sat => viz.beamSatIds.has(sat.id))
         .map(sat => {
           const beams = viz.satBeams.get(sat.id);

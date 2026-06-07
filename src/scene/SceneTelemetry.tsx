@@ -54,6 +54,15 @@ export interface SceneTelemetryProps {
   cellBeamConeCount: string;
   cellBeamConeScope: string;
   cellBeamConeSatelliteCount: string;
+
+  // SINR-live earth-fixed cell-truth beam cones (S-cells-3). Empty off the
+  // sinr-live lane. Lets the durable browser gate prove the lane renders cones at
+  // FIXED cell centres (not glued to the UE) on real live geometry.
+  sinrLiveCellBeamConeCount: string;
+  sinrLiveCellServingSatCount: string;
+  sinrLiveCellServedCount: string;
+  /** Max off-axis angle (deg) among served UEs — > 0 proves UEs sit off-centre. */
+  sinrLiveCellUeOffAxisMaxDeg: string;
   modqnVisualLayerPreset: string;
   modqnServiceMapEnabled: string;
   modqnServedUeCount: string | number;
@@ -119,6 +128,10 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.cellBeamConeCount = props.cellBeamConeCount;
     el.dataset.cellBeamConeScope = props.cellBeamConeScope;
     el.dataset.cellBeamConeSatelliteCount = props.cellBeamConeSatelliteCount;
+    el.dataset.sinrLiveCellBeamConeCount = props.sinrLiveCellBeamConeCount;
+    el.dataset.sinrLiveCellServingSatCount = props.sinrLiveCellServingSatCount;
+    el.dataset.sinrLiveCellServedCount = props.sinrLiveCellServedCount;
+    el.dataset.sinrLiveCellUeOffAxisMaxDeg = props.sinrLiveCellUeOffAxisMaxDeg;
     el.dataset.modqnVisualLayerPreset = props.modqnVisualLayerPreset;
     el.dataset.modqnServiceMapEnabled = props.modqnServiceMapEnabled;
     el.dataset.modqnServedUeCount = String(props.modqnServedUeCount);
@@ -173,6 +186,10 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.cellBeamConeCount,
     props.cellBeamConeScope,
     props.cellBeamConeSatelliteCount,
+    props.sinrLiveCellBeamConeCount,
+    props.sinrLiveCellServingSatCount,
+    props.sinrLiveCellServedCount,
+    props.sinrLiveCellUeOffAxisMaxDeg,
     props.modqnVisualLayerPreset,
     props.modqnServiceMapEnabled,
     props.modqnServedUeCount,

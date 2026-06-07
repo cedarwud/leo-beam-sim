@@ -66,6 +66,18 @@ export interface SceneLaneRenderPlan {
    * aggregate).
    */
   readonly showSinrServingMosaic: boolean;
+  /**
+   * SINR-live earth-fixed cell-truth beam cones (S-cells-3). The lane's PRIMARY
+   * beam render: one cone per served earth-fixed cell, apex = serving sat, base =
+   * FIXED cell centre (from `frame.sinrLiveCells`, the SINR + HandoverManager
+   * truth — NOT the round-robin `cellScheduler`). It REPLACES the steered
+   * `SatelliteBeams` cones on this lane (which glued a beam onto the UE), so the
+   * UE renders visibly off-centre in its cell footprint. Lane-owned to
+   * `sinr-live` ONLY and always-on (the ambient base, like the mosaic); a DISTINCT
+   * layer from the MODQN `showCellOverlay` cones — inert on every MODQN/artifact
+   * lane.
+   */
+  readonly showSinrLiveCellBeams: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
   readonly showReplayProofLayer: boolean;
   readonly showArtifactFpsCounter: boolean;
@@ -111,6 +123,10 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // director-gated). It is a distinct SINR-serving layer, never the MODQN cell
   // overlay — so it is inert on every MODQN/artifact lane.
   const showSinrServingMosaic = showSinrLiveViewport;
+  // SINR-live earth-fixed cell-truth cones (S-cells-3): sinr-live ONLY, always-on.
+  // The lane's primary beam render, replacing the steered SatelliteBeams cones; it
+  // is NOT `showCellOverlay` (that is the MODQN-lane round-robin overlay).
+  const showSinrLiveCellBeams = showSinrLiveViewport;
   const showLiveSatelliteMarkers = isLiveScene && (
     input.sceneLane === 'sinr-live'
     || input.sceneLane === 'modqn-live-cell-preview'
@@ -162,6 +178,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     showDirectorFocus,
     showCandidateHandoverHighlight,
     showSinrServingMosaic,
+    showSinrLiveCellBeams,
     // Replaces legacy single-lane anchor: effectiveCinematicMode: showCinematicSpotlight ? input.cinematicMode : 'off'
     effectiveCinematicMode: showCinematicSpotlight
       ? 'spotlight'

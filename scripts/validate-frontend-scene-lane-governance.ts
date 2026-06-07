@@ -223,9 +223,41 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'artifact replay must not mount the live SINR-serving mosaic',
   );
 
+  // ── SINR-live earth-fixed cell-truth beam cones (S-cells-3) lane ownership ──
+  // The lane's PRIMARY beam render: cones at FIXED cell centres from the cell
+  // truth, replacing the steered SatelliteBeams. Lane-owned to sinr-live ONLY and
+  // always-on (the ambient base, like the mosaic). A DISTINCT layer from the MODQN
+  // `showCellOverlay` cones — inert on every MODQN / artifact lane.
+  assert.equal(
+    renderPlan('sinr-live', 'live-sim').showSinrLiveCellBeams,
+    true,
+    'SINR live owns the earth-fixed cell-truth beam cones as an always-on ambient default',
+  );
+  assert.equal(
+    renderPlan('sinr-live', 'live-sim', false, 'director').showSinrLiveCellBeams,
+    true,
+    'cell-truth cones stay on under director focus too (the ambient base, not focus-scoped)',
+  );
+  assert.equal(
+    renderPlan('modqn-live-cell-preview', 'live-sim').showSinrLiveCellBeams,
+    false,
+    'MODQN cell preview must not mount the cell-truth cones (it owns the MODQN cell overlay instead)',
+  );
+  assert.equal(
+    renderPlan('modqn-replay-proof', 'live-sim', true).showSinrLiveCellBeams,
+    false,
+    'MODQN replay proof must stay inert for the cell-truth cones (Rule#8)',
+  );
+  assert.equal(
+    renderPlan('artifact-replay', 'artifact-replay').showSinrLiveCellBeams,
+    false,
+    'artifact replay must not mount the live cell-truth cones',
+  );
+
   const incompatibleArtifact = renderPlan('artifact-replay', 'live-sim');
   assert.equal(incompatibleArtifact.sourceCompatible, false, 'artifact lane must reject live-sim source');
   assert.equal(incompatibleArtifact.showSinrServingMosaic, false, 'incompatible sinr-live source must not show the mosaic');
+  assert.equal(incompatibleArtifact.showSinrLiveCellBeams, false, 'incompatible sinr-live source must not show the cell-truth cones');
   assert.equal(incompatibleArtifact.isLiveScene, false, 'incompatible artifact lane must not become live scene');
   assert.equal(incompatibleArtifact.showArtifactFpsCounter, false, 'incompatible artifact lane must not show artifact diagnostics');
   assert.equal(incompatibleArtifact.showLiveSceneEffects, false, 'incompatible artifact lane must not show live effects');
@@ -1453,12 +1485,12 @@ assertContains(
   'sinrLiveCells?: SinrLiveCellFrame;',
   'SimFrame carries the cell truth as an OPTIONAL field (undefined off the sinr-live lane)',
 );
-// (e) S-cells-2 is additive ONLY — render must not consume the cell truth yet
-//     (that lands in S-cells-3, which will update this lock).
-assertNotContains(
+// (e) S-cells-3 FLIPS the S-cells-2 boundary: render now CONSUMES the cell truth.
+//     MainScene reads `sim.sinrLiveCells` to draw the cell-truth beam cones.
+assertContains(
   mainSceneSource,
-  '.sinrLiveCells',
-  'MainScene must not consume the cell truth in S-cells-2 (render reads it in S-cells-3)',
+  'sim.sinrLiveCells',
+  'MainScene consumes the cell truth in S-cells-3 (cell-truth beam cone render)',
 );
 // (f) elevation-mask parity: the cell candidate visibility mask equals the
 //     runtime linkSats mask (both 15°), pinned to the cell-layout default.
@@ -1482,6 +1514,98 @@ assertContains(
   packageJson,
   '"validate:phase-c:sinr-live-cells:runtime"',
   'package exposes the S-cells-2 runtime-wiring validator',
+);
+
+// ── SINR-live earth-fixed cell-truth RENDER (S-cells-3) lane ownership ──
+// The cell truth becomes the lane's PRIMARY beam render: cones at FIXED cell
+// centres (apex = serving sat, base = cell centre) replacing the steered,
+// UE-anchored SatelliteBeams, so the UE renders visibly off-centre. Lane-owned to
+// sinr-live ONLY via a NEW render-plan flag (NOT `showCellOverlay`, which stays
+// MODQN-only). Serving comes from the SINR + HandoverManager cell truth, NEVER the
+// round-robin `cellScheduler` (codex BLOCK-3).
+const sinrLiveCellBeamConesSource = readRepoFile('src/viz/SinrLiveCellBeamCones.tsx');
+const useBeamVizSource = readRepoFile('src/scene/useBeamViz.ts');
+// (h) the new render-plan flag is lane-gated to the sinr-live viewport, NOT the
+//     MODQN cell overlay.
+assertContains(
+  sceneLaneRenderPlanSource,
+  'showSinrLiveCellBeams: boolean',
+  'render plan declares the cell-truth beam-cone flag',
+);
+assertContains(
+  sceneLaneRenderPlanSource,
+  'const showSinrLiveCellBeams = showSinrLiveViewport;',
+  'cell-truth cones are lane-gated to the sinr-live viewport (NOT showCellOverlay)',
+);
+// (i) MainScene mounts the cell-truth cones AND suppresses the steered
+//     SatelliteBeams on this lane (so they do not double-draw / contradict).
+assertContains(
+  mainSceneSource,
+  '<SinrLiveCellBeamCones',
+  'MainScene mounts the lane-owned cell-truth beam cones',
+);
+assertContains(
+  mainSceneSource,
+  '&& !showSinrLiveCellBeams && viz.displaySats',
+  'MainScene suppresses the steered SatelliteBeams cones on the cell-truth lane',
+);
+// (j) the steered UE-anchor is retired for this lane via the explicit useBeamViz
+//     gate; off-lane callers keep the anchored render unchanged.
+assertContains(
+  mainSceneSource,
+  '// S-cells-3: retire the UE-anchor on the sinr-live lane only',
+  'MainScene threads the UE-anchor retirement into useBeamViz for sinr-live only',
+);
+assertContains(
+  useBeamVizSource,
+  'disableUeAnchor?: boolean',
+  'useBeamViz exposes the per-lane UE-anchor retirement flag',
+);
+assertContains(
+  useBeamVizSource,
+  '!disableUeAnchor',
+  'useBeamViz forces the UE-anchor off when the retirement flag is set',
+);
+// (k) BLOCK-3 import purity: the cone resolver consumes the cell TRUTH only — it
+//     must NOT pull the round-robin scheduler (that display oracle stays
+//     MODQN-lane-only in CellBeamCones.tsx).
+assertNotContains(
+  sinrLiveCellBeamConesSource,
+  "from '../scene/useCellSchedule'",
+  'cell-truth cone resolver must not import the round-robin useCellSchedule (BLOCK-3)',
+);
+assertNotContains(
+  sinrLiveCellBeamConesSource,
+  "from '../engine/cells/cellScheduler'",
+  'cell-truth cone resolver must not import the round-robin cellScheduler (BLOCK-3)',
+);
+assertContains(
+  sinrLiveCellBeamConesSource,
+  "from '../scene/sinrLiveCellModel'",
+  'cell-truth cone resolver consumes the SinrLiveCellFrame truth type',
+);
+// (l) MainScene places the cones from the SAME layout builder the runtime cell
+//     truth uses, so cellIds match `sim.sinrLiveCells` (no placement drift).
+assertContains(
+  mainSceneSource,
+  'buildSinrLiveCellLayout(profile)',
+  'MainScene builds cone placements from the same cell layout as the runtime truth',
+);
+// (m) the render gates are wired into package.json + the live-render suite.
+assertContains(
+  packageJson,
+  '"validate:phase-c:sinr-live-cells:render"',
+  'package exposes the S-cells-3 render model gate',
+);
+assertContains(
+  packageJson,
+  '"validate:phase-c:sinr-live-cells:render:browser"',
+  'package exposes the S-cells-3 render browser gate',
+);
+assertContains(
+  packageJson,
+  'sinr-serving-mosaic:browser && npm run validate:phase-c:sinr-live-cells:render:browser',
+  'live-render suite includes the S-cells-3 render browser gate',
 );
 
 assertContains(
