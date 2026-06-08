@@ -98,7 +98,6 @@ import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { TrainingForm } from './ui/modqn-training/TrainingForm';
-import { Tier2PreviewSection } from './ui/modqn-training/Tier2PreviewSection';
 import { JobsPanel } from './ui/modqn-training/JobsPanel';
 import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
 import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
@@ -1953,7 +1952,6 @@ export function App() {
             ) : activeLeftSidebarTab === 'training' ? (
               <section className="leo-sidebar-content-stack" aria-label="MODQN training controls">
                 <TrainingForm appMode={appMode} />
-                <Tier2PreviewSection />
               </section>
             ) : activeLeftSidebarTab === 'jobs' ? (
               <JobsPanel appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
