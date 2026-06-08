@@ -2612,6 +2612,119 @@ canvas {
   overflow-wrap: anywhere;
 }
 
+// S4: MODQN Advanced setup drawer. The trigger mirrors a sidebar tab button and
+// lives at the foot of the MODQN left aside; the overlay is a left-anchored
+// drawer holding the training / jobs / ω-weight power tools moved off the rail.
+.leo-advanced-setup {
+  flex: 0 0 auto;
+  margin-top: 8px;
+}
+
+.leo-advanced-setup-trigger {
+  width: 100%;
+  min-height: 44px;
+  display: grid;
+  gap: 2px;
+  align-content: center;
+  justify-items: start;
+  padding: 8px 10px;
+  border: 1px solid rgba(218, 244, 255, 0.16);
+  border-radius: 6px;
+  color: rgba(229, 244, 251, 0.78);
+  background: rgba(255, 255, 255, 0.045);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--leo-motion-fast) ease,
+    background var(--leo-motion-fast) ease,
+    color var(--leo-motion-fast) ease;
+}
+
+.leo-advanced-setup-trigger:hover,
+.leo-advanced-setup-trigger[aria-expanded="true"] {
+  border-color: rgba(var(--leo-accent-rgb), 0.38);
+  color: #f6fbff;
+  background: rgba(var(--leo-accent-rgb), 0.12);
+}
+
+.leo-advanced-setup-trigger small {
+  color: rgba(229, 244, 251, 0.55);
+  font-size: 10px;
+  letter-spacing: 0.2px;
+}
+
+.leo-advanced-setup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: flex-start;
+  background: rgba(2, 7, 12, 0.62);
+  backdrop-filter: blur(2px);
+}
+
+.leo-advanced-setup-panel {
+  width: clamp(360px, 34vw, 480px);
+  max-width: 92vw;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 14px 18px;
+  gap: 12px;
+  border-right: 1px solid rgba(var(--leo-accent-rgb), 0.28);
+  background: rgba(5, 12, 19, 0.97);
+  box-shadow: 8px 0 28px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.leo-advanced-setup-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(218, 244, 255, 0.12);
+}
+
+.leo-advanced-setup-header strong {
+  color: #f6fbff;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.leo-advanced-setup-close {
+  min-width: 32px;
+  min-height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(218, 244, 255, 0.16);
+  border-radius: 6px;
+  color: rgba(229, 244, 251, 0.78);
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.leo-advanced-setup-close:hover {
+  border-color: rgba(var(--leo-accent-rgb), 0.38);
+  color: #f6fbff;
+  background: rgba(var(--leo-accent-rgb), 0.12);
+}
+
+.leo-advanced-setup-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leo-advanced-setup-trigger {
+    transition: none;
+  }
+}
+
 .leo-sidebar-tab-button span {
   font-size: 15px;
   font-weight: 800;

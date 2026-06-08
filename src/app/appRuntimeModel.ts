@@ -16,10 +16,13 @@ import type { PresentationMode } from '../scene/types';
 
 export const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 
-// S3 purpose-merge: the left rail collapses the per-sub-lane MODQN tab churn into
-// two purpose groups. 'signal'/'handover' stay the SINR rail; 'evidence' and
-// 'setup' are the unified MODQN rail (see MODQN_LEFT_SIDEBAR_TABS).
-export type LeftSidebarTab = 'signal' | 'handover' | 'evidence' | 'setup';
+// S3 purpose-merge + S4 drawer move: the left rail collapses the per-sub-lane
+// MODQN tab churn. 'signal'/'handover' stay the SINR rail; 'evidence' is now the
+// SOLE MODQN left rail (see MODQN_LEFT_SIDEBAR_TABS). S4 relocated the training /
+// jobs / ω-weight power tools out of a 'setup' left tab into the opt-in Advanced
+// setup drawer (src/ui/AdvancedSetupDrawer.tsx), so the default MODQN surface is
+// the evidence/replay story, not a training console.
+export type LeftSidebarTab = 'signal' | 'handover' | 'evidence';
 export type RightSidebarTab = 'modqn' | 'live' | 'artifact';
 
 export interface AppSidebarTabItem<T extends string> {
@@ -32,7 +35,6 @@ const LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
   { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
   { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
   { key: 'evidence', label: 'Evidence / Replay', description: 'decision trace + artifact source' },
-  { key: 'setup', label: 'Setup', description: 'training, jobs, ω-weights' },
 ];
 
 const SINR_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
@@ -40,15 +42,13 @@ const SINR_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
   LEFT_SIDEBAR_TABS[1], // handover
 ];
 
-// S3: all three MODQN sub-lanes (live cell preview / replay proof / artifact
+// S3 + S4: all three MODQN sub-lanes (live cell preview / replay proof / artifact
 // showcase) SHARE this one stable left rail, so toggling the in-MODQN
-// ModqnViewToggle sub-nav never reshuffles the sidebar. 'Evidence / Replay'
-// holds the decision trace (and, in the artifact sub-view, the artifact source
-// summary); 'Setup' stacks the training / jobs / ω-objective power tools (slated
-// to move into the Advanced drawer in S4).
+// ModqnViewToggle sub-nav never reshuffles the sidebar. S4 collapsed it to the
+// single 'Evidence / Replay' tab (decision trace + artifact source summary); the
+// training / jobs / ω-objective power tools moved to the Advanced setup drawer.
 const MODQN_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
   LEFT_SIDEBAR_TABS[2], // evidence
-  LEFT_SIDEBAR_TABS[3], // setup
 ];
 
 const RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [

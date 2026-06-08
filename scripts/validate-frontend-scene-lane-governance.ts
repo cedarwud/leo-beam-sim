@@ -287,8 +287,8 @@ assert.equal(
 );
 assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr')),
-  ['evidence', 'setup'],
-  'S3: MODQN live cell preview left sidebar exposes the unified Evidence + Setup rail',
+  ['evidence'],
+  'S4: MODQN live cell preview left sidebar collapses to the sole Evidence / Replay rail (Setup moved to the Advanced drawer)',
 );
 assert.equal(
   getDefaultLeftSidebarTabForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr'),
@@ -297,7 +297,7 @@ assert.equal(
 );
 assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('modqn-replay-proof', 'decision-overlay-on-live-sinr')),
-  ['evidence', 'setup'],
+  ['evidence'],
   'S3: MODQN replay proof lane shares the unified MODQN left rail (no per-sub-lane reshuffle)',
 );
 assert.equal(
@@ -317,7 +317,7 @@ assert.equal(
 );
 assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('artifact-replay', 'decision-overlay-on-live-sinr')),
-  ['evidence', 'setup'],
+  ['evidence'],
   'S3: artifact replay lane shares the unified MODQN left rail (artifact source folds into Evidence)',
 );
 assert.deepEqual(
@@ -1168,7 +1168,9 @@ assertContains(appSource, 'getLeftSidebarTabsForSceneLane(sceneLane, handoverMod
 assertContains(appSource, 'getRightSidebarTabsForSceneLane(sceneLane, handoverMode)', 'App lane-aware right sidebar tabs');
 assertContains(appSource, "activeLeftSidebarTab === 'evidence'", 'App unified MODQN Evidence/Replay left sidebar branch');
 assertContains(appSource, 'data-testid="artifact-replay-sidebar"', 'App folds the artifact source summary into the Evidence left rail (artifact sub-view)');
-assertContains(appSource, "activeLeftSidebarTab === 'setup'", 'App unified MODQN Setup left sidebar branch (training + jobs + ω-objective)');
+// S4: the MODQN Setup power tools left the rail for the Advanced drawer — the
+// left rail no longer has a 'setup' branch.
+assertNotContains(appSource, "activeLeftSidebarTab === 'setup'", 'S4: App no longer renders a Setup left sidebar branch (moved to the Advanced drawer)');
 assertContains(appSource, "activeRightSidebarTab === 'artifact'", 'App artifact right sidebar branch');
 assertContains(appSource, "sceneSource !== 'artifact-replay' || activeSceneFrame !== undefined", 'App artifact scene fail-closed gate');
 assertContains(appSource, 'data-testid="artifact-scene-fail-closed"', 'App artifact scene fail-closed placeholder');
@@ -1189,9 +1191,9 @@ assertNotContains(
   "showModqnReplayScene={appMode === 'modqn-demo'}",
   'App must not mount MODQN replay proof from appMode alone',
 );
-assertContains(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS', 'App runtime model unified MODQN left tabs (S3 Evidence + Setup)');
+assertContains(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS', 'App runtime model MODQN left tab (S4 Evidence only; Setup moved to the Advanced drawer)');
 assertContains(appRuntimeModelSource, "key: 'evidence'", 'App runtime model exposes the Evidence / Replay left tab');
-assertContains(appRuntimeModelSource, "key: 'setup'", 'App runtime model exposes the Setup left tab');
+assertNotContains(appRuntimeModelSource, "key: 'setup'", 'S4: App runtime model no longer exposes a Setup left tab (Advanced drawer hosts the power tools)');
 assertContains(appRuntimeModelSource, 'ARTIFACT_RIGHT_SIDEBAR_TABS', 'App runtime model artifact right tabs');
 assertContains(appRuntimeModelSource, 'MODQN_REPLAY_PROOF_RIGHT_SIDEBAR_TABS', 'App runtime model replay proof right tabs');
 assertContains(appRuntimeModelSource, "lane === 'artifact-replay'", 'App runtime model artifact lane override');
@@ -2720,27 +2722,28 @@ assertContains(
   'governance doc records the governance-safe Director-focus cancel on lane switch',
 );
 
-// ── Showcase exposure S3: revived ω-objective editor + co-visible MODQN evidence ──
-// The MODQN runtime ω-weight editor (ModqnObjectiveTab) was built but unmounted;
-// it is the only EDIT surface for the live ω weights. After the S3 purpose-merge
-// it lives inside the unified MODQN 'Setup' left tab (alongside training + jobs),
-// not its own 'objective' tab. The MODQN evidence panels are mounted so the built
-// bundle diagnostics are reachable in-app. All display-only / overlay-demo.
+// ── Showcase exposure S4: ω-objective editor relocated into the Advanced drawer ──
+// The MODQN runtime ω-weight editor (ModqnObjectiveTab) is the only EDIT surface
+// for the live ω weights. S3 hosted it in a 'Setup' left tab; S4 moved the Setup
+// power tools (training / jobs / ω-objective) out of the left rail into the
+// opt-in AdvancedSetupDrawer, so the default MODQN left surface is the single
+// Evidence / Replay tab. The editor stays mounted (KEEP-ACTIVE) — only relocated.
 const modqnObjectiveTabSource = readRepoFile('src/ui/ModqnObjectiveTab.tsx');
+const advancedSetupDrawerSource = readRepoFile('src/ui/AdvancedSetupDrawer.tsx');
 assertContains(
-  appSource,
-  "from './ui/ModqnObjectiveTab'",
-  'App imports the ω-weight objective editor',
+  advancedSetupDrawerSource,
+  "from './ModqnObjectiveTab'",
+  'Advanced drawer imports the ω-weight objective editor',
 );
 assertContains(
-  appSource,
-  "activeLeftSidebarTab === 'setup' ? (",
-  'App renders the unified MODQN Setup left tab (hosts the revived ω-objective editor + training + jobs)',
-);
-assertContains(
-  appSource,
+  advancedSetupDrawerSource,
   '<ModqnObjectiveTab />',
-  'App mounts the ω-weight objective editor on the objective tab',
+  'Advanced drawer mounts the ω-weight objective editor',
+);
+assertContains(
+  appSource,
+  "from './ui/AdvancedSetupDrawer'",
+  'App imports the Advanced setup drawer (hosts the relocated ω-objective editor + training + jobs)',
 );
 assertContains(
   modqnObjectiveTabSource,
@@ -2826,6 +2829,65 @@ assertContains(
   governanceDoc,
   'never surfaced without its disclosure',
   'governance doc records the mandatory NOT-paper banner co-mount',
+);
+
+// ── MODQN tab consolidation S4: degenerate-data honesty banner + Advanced drawer ──
+// The MODQN lanes replay a DEGENERATE producer run (see the defects report): 100
+// UEs on a single beam, 0 handovers, 1 satellite. Governance (CLAUDE.md Rule#3)
+// requires a loud, non-citable disclosure on EVERY MODQN lane. Separately, the
+// Setup power tools (training / jobs / ω-objective) move behind an opt-in drawer
+// so the default MODQN surface is the evidence/replay story, not a training
+// console (north star: 少按鈕 / 直覺 / 零學習).
+const degenerateDataBannerSource = readRepoFile('src/ui/DegenerateDataBanner.tsx');
+assertContains(
+  degenerateDataBannerSource,
+  'DEGENERATE_DATA_BANNER_TEXT',
+  'Degenerate-data banner exports its pinned disclosure text',
+);
+assertContains(
+  degenerateDataBannerSource,
+  'do not cite',
+  'Degenerate-data banner disclosure is explicitly non-citable',
+);
+assertContains(
+  appSource,
+  "from './ui/DegenerateDataBanner'",
+  'App imports the degenerate-data honesty banner',
+);
+assertContains(
+  appSource,
+  "sceneLane !== 'sinr-live' && <DegenerateDataBanner />",
+  'App mounts the degenerate-data banner on every MODQN lane (never on SINR)',
+);
+assertContains(
+  appSource,
+  '<AdvancedSetupDrawer appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />',
+  'App mounts the Advanced setup drawer with appMode + load-into-scene wiring',
+);
+assertContains(
+  advancedSetupDrawerSource,
+  "from './modqn-training/TrainingForm'",
+  'Advanced drawer hosts the training form',
+);
+assertContains(
+  advancedSetupDrawerSource,
+  "from './modqn-training/JobsPanel'",
+  'Advanced drawer hosts the jobs panel',
+);
+assertContains(
+  advancedSetupDrawerSource,
+  'data-testid="advanced-setup-trigger"',
+  'Advanced drawer exposes an opt-in trigger',
+);
+assertContains(
+  governanceDoc,
+  'Advanced setup drawer',
+  'governance doc records the S4 Advanced setup drawer',
+);
+assertContains(
+  governanceDoc,
+  'degenerate baseline',
+  'governance doc records the S4 degenerate-data honesty banner',
 );
 
 // ── Consolidation C5: Dashboard view/route removed — only the 3D scene renders ──

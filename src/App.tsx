@@ -94,11 +94,8 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
-import { ModqnObjectiveTab } from './ui/ModqnObjectiveTab';
 import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
-import { TrainingForm } from './ui/modqn-training/TrainingForm';
-import { JobsPanel } from './ui/modqn-training/JobsPanel';
 import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
 import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
 import { DecisionVizPanel } from './ui/modqn-training/DecisionVizPanel';
@@ -115,6 +112,8 @@ import type {
 } from './modqn/training-trigger/types';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
+import { DegenerateDataBanner } from './ui/DegenerateDataBanner';
+import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,
@@ -1879,6 +1878,7 @@ export function App() {
       <div className="leo-top-nav-row">
         <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
       </div>
+      {sceneLane !== 'sinr-live' && <DegenerateDataBanner />}
       {sceneLane !== 'sinr-live' && (
         <div className="leo-modqn-subnav-row">
           <ModqnViewToggle
@@ -1984,14 +1984,15 @@ export function App() {
                   }
                 />
               )
-            ) : activeLeftSidebarTab === 'setup' ? (
-              <section className="leo-sidebar-content-stack" aria-label="MODQN setup">
-                <TrainingForm appMode={appMode} />
-                <JobsPanel appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
-                <ModqnObjectiveTab />
-              </section>
             ) : null}
           </SidebarTabShell>
+          {/* S4: the MODQN Setup power tools (training / jobs / ω-weights) moved
+              out of the left rail into an opt-in drawer, so the default MODQN
+              left surface is the single Evidence / Replay tab. Gated on the MODQN
+              lanes; SINR (signal/handover) never shows it. */}
+          {sceneLane !== 'sinr-live' && (
+            <AdvancedSetupDrawer appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
+          )}
         </aside>
         <main
           className="leo-shell-canvas"

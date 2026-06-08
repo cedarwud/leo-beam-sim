@@ -201,15 +201,30 @@ focus/filter controls.
 Lane-specific sidebars are part of viewport ownership:
 
 - `sinr-live`: left = SINR controls; right = live status.
-- `modqn-live-cell-preview`: left = replay/objective(ω-weight editor)/training/jobs
-  controls; right = live status (default) + co-visible opt-in MODQN evidence. The
-  ω-weight editor (`ModqnObjectiveTab`) and the MODQN evidence tab
-  (`ArtifactPicker` / `RewardCurvePanel` / `DecisionVizPanel`, bundle diagnostics)
-  are reachable on the live lane without entering the dedicated replay-proof lane;
-  both are display-only / overlay-demo against the loaded bundle and never assert
-  producer proof. `live` stays the default right tab; `modqn` is opt-in.
-- `modqn-replay-proof`: left = replay cue toggle; right = MODQN evidence only.
-- `artifact-replay`: left/right = artifact replay/truth only.
+- `modqn-live-cell-preview`: left = the unified Evidence / Replay rail only (the
+  decision trace + the replay-proof toggle); right = live status (default) +
+  co-visible opt-in MODQN evidence. **S4** moved the Setup power tools (training /
+  jobs / the ω-weight editor `ModqnObjectiveTab`) off the left rail into an opt-in
+  **Advanced setup drawer** (`AdvancedSetupDrawer`), so the default MODQN left
+  surface is the evidence/replay story, not a training console. The MODQN evidence
+  tab (`ArtifactPicker` / `RewardCurvePanel` / `DecisionVizPanel`, bundle
+  diagnostics) is reachable on the right rail without entering the dedicated
+  replay-proof lane; the drawer + the evidence tab are display-only / overlay-demo
+  against the loaded bundle and never assert producer proof. `live` stays the
+  default right tab; `modqn` is opt-in.
+- `modqn-replay-proof`: left = unified Evidence / Replay rail; right = MODQN evidence only.
+- `artifact-replay`: left = Evidence rail (artifact source summary); right = artifact truth only.
+
+All three MODQN sub-lanes share that single Evidence / Replay left rail (no
+per-sub-lane reshuffle), and the Advanced setup drawer is gated on the MODQN
+lanes (`sceneLane !== 'sinr-live'`) — SINR never shows the Setup tools.
+
+Every MODQN lane replays a **degenerate baseline run** (the pinned producer
+artifact: 100 UEs on one beam, 0 handovers, 1 satellite — see the baseline MODQN
+producer-data defects report). App therefore mounts a persistent, non-citable
+`DegenerateDataBanner` ("…do not cite. Awaiting a non-degenerate producer
+artifact.") across the top of every MODQN lane (gated `sceneLane !== 'sinr-live'`);
+the only removal path is to leave MODQN for the SINR tab.
 
 On the `modqn-live-cell-preview` lane the ControlBar also exposes a MODQN
 decision-policy toggle (`modqn-decision-policy-control`) that flips the live

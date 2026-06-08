@@ -48,14 +48,6 @@ function jobWithStatus(status: JobStatus): TrainingJobSummary {
   return { status } as unknown as TrainingJobSummary;
 }
 
-function extractConstArray(source: string, constName: string): string {
-  const start = source.indexOf(`const ${constName}`);
-  if (start < 0) return '';
-  const end = source.indexOf('];', start);
-  if (end < 0) return '';
-  return source.slice(start, end + 2);
-}
-
 // ---------------------------------------------------------------------------
 // (a) jobsPolling pure helpers
 // ---------------------------------------------------------------------------
@@ -147,59 +139,59 @@ console.log('\n(c) JobsPanel poll loop and mode gate');
 // ---------------------------------------------------------------------------
 // (d) source grep: App.tsx wires jobs tab into MODQN sidebar only
 // ---------------------------------------------------------------------------
-console.log('\n(d) App.tsx jobs tab wiring');
+console.log('\n(d) App.tsx jobs wiring (S4: relocated into the Advanced setup drawer)');
 {
   const appSource = fs.readFileSync('src/App.tsx', 'utf8');
   const appRuntimeModelSource = fs.readFileSync('src/app/appRuntimeModel.ts', 'utf8');
+  const drawerSource = fs.readFileSync('src/ui/AdvancedSetupDrawer.tsx', 'utf8');
+
+  // S4 drawer move: JobsPanel left the left rail. It now lives inside the
+  // AdvancedSetupDrawer (with TrainingForm + the ω-objective editor), reachable
+  // via the opt-in Advanced trigger on the MODQN lanes. App imports + mounts the
+  // drawer, not JobsPanel directly.
   assert(
-    appSource.includes("import { JobsPanel } from './ui/modqn-training/JobsPanel';"),
-    'App.tsx imports JobsPanel',
+    drawerSource.includes("import { JobsPanel } from './modqn-training/JobsPanel';"),
+    'Advanced setup drawer imports JobsPanel',
   );
   assert(
-    /<JobsPanel\s+appMode=\{appMode\}/.test(appSource),
-    'App.tsx renders JobsPanel with appMode',
+    /<JobsPanel\s+appMode=\{appMode\}/.test(drawerSource),
+    'Advanced setup drawer renders JobsPanel with appMode',
+  );
+  assert(
+    !appSource.includes("import { JobsPanel } from './ui/modqn-training/JobsPanel';"),
+    'App.tsx no longer imports JobsPanel directly (moved to the Advanced drawer)',
+  );
+  assert(
+    appSource.includes("import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';"),
+    'App.tsx imports the Advanced setup drawer',
+  );
+  assert(
+    /<AdvancedSetupDrawer\s+appMode=\{appMode\}\s+onLoadIntoScene=\{handleLoadIntoScene\}/.test(appSource),
+    'App.tsx mounts the Advanced setup drawer with appMode + onLoadIntoScene',
   );
 
-  // S3 purpose-merge: JobsPanel no longer owns a dedicated 'jobs' left tab; it
-  // lives inside the unified MODQN 'Setup' left tab (with TrainingForm + the
-  // ω-objective editor). It must render in the MODQN Setup branch, never in SINR.
+  // The drawer is gated on the MODQN lanes; SINR never shows the Setup tools.
+  assert(
+    /sceneLane !== 'sinr-live' && \(\s*<AdvancedSetupDrawer/.test(appSource),
+    'App.tsx gates the Advanced drawer on the MODQN lanes (never on SINR)',
+  );
+
+  // S4: the left rail has no 'setup' tab anymore — neither MODQN nor SINR.
   const leftSidebarTypeLine = appRuntimeModelSource
     .split('\n')
     .find(line => line.includes('type LeftSidebarTab')) ?? '';
   assert(
-    leftSidebarTypeLine.includes("'setup'"),
-    'App runtime model LeftSidebarTab union includes the unified setup tab',
+    !leftSidebarTypeLine.includes("'setup'"),
+    'S4: App runtime model LeftSidebarTab union no longer includes a setup tab',
     leftSidebarTypeLine,
   );
   assert(
-    appRuntimeModelSource.includes("{ key: 'setup', label: 'Setup'"),
-    'App runtime model LEFT_SIDEBAR_TABS includes the Setup entry (hosts jobs)',
-  );
-
-  const modqnBlock = extractConstArray(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS');
-  assert(
-    modqnBlock.includes('LEFT_SIDEBAR_TABS[3]'),
-    'App runtime model MODQN sidebar includes the Setup tab entry',
-    modqnBlock,
-  );
-
-  const sinrBlock = extractConstArray(appRuntimeModelSource, 'SINR_LEFT_SIDEBAR_TABS');
-  assert(
-    !sinrBlock.includes('LEFT_SIDEBAR_TABS[3]'),
-    'SINR sidebar does not include the Setup tab entry',
-    sinrBlock,
+    !appRuntimeModelSource.includes("key: 'setup'"),
+    'S4: App runtime model LEFT_SIDEBAR_TABS no longer includes a Setup entry',
   );
   assert(
-    !sinrBlock.includes('setup'),
-    'SINR sidebar block does not contain the setup literal',
-    sinrBlock,
-  );
-
-  const setupBranchIndex = appSource.indexOf("activeLeftSidebarTab === 'setup'");
-  const jobsInSetupBranch = /activeLeftSidebarTab === 'setup'[\s\S]*?<JobsPanel/.test(appSource);
-  assert(
-    setupBranchIndex > -1 && jobsInSetupBranch,
-    "App.tsx renders JobsPanel inside the unified 'setup' left tab branch",
+    !appSource.includes("activeLeftSidebarTab === 'setup'"),
+    "S4: App.tsx no longer renders a 'setup' left tab branch",
   );
 }
 

@@ -431,7 +431,7 @@ console.log('\n(k) Evidence / telemetry mode gating');
     && appRuntimeModelSrc.includes("lane === 'modqn-live-cell-preview'")
     && appRuntimeModelSrc.includes('return MODQN_LEFT_SIDEBAR_TABS;')
     && appRuntimeModelSrc.includes("return 'evidence';"),
-    'S3: App runtime model unifies the 3 MODQN sub-lanes onto one left rail (Evidence + Setup), defaulting to Evidence (proof/artifact no longer get a per-sub-lane left rail)',
+    'S3+S4: App runtime model unifies the 3 MODQN sub-lanes onto one left rail (Evidence only after S4; Setup moved to the Advanced drawer), defaulting to Evidence (proof/artifact no longer get a per-sub-lane left rail)',
   );
   assert(
     appSrc.includes('getRightSidebarTabsForSceneLane')
