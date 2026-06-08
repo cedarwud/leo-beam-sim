@@ -223,20 +223,21 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'artifact replay must not mount the live SINR-serving mosaic',
   );
 
-  // ── SINR-live earth-fixed cell-truth beam cones (S-cells-3) lane ownership ──
-  // The lane's PRIMARY beam render: cones at FIXED cell centres from the cell
-  // truth, replacing the steered SatelliteBeams. Lane-owned to sinr-live ONLY and
-  // always-on (the ambient base, like the mosaic). A DISTINCT layer from the MODQN
-  // `showCellOverlay` cones — inert on every MODQN / artifact lane.
+  // ── SINR-live earth-fixed cell-truth beam cones (S-cells-3) — PARKED (2026-06-08) ──
+  // The cell-truth CONES are parked: they washed the viewport and used the wrong
+  // colour, so the sinr-live lane renders the ORIGINAL steered SatelliteBeams again.
+  // `showSinrLiveCellBeams` is pinned false on EVERY lane (the cell-truth MODEL stays
+  // computed, dormant, for a future cinema / off-axis render). See
+  // `.agent-memory/project_sinr_render_reset_2026-06-08.md`.
   assert.equal(
     renderPlan('sinr-live', 'live-sim').showSinrLiveCellBeams,
-    true,
-    'SINR live owns the earth-fixed cell-truth beam cones as an always-on ambient default',
+    false,
+    'cell-truth cones are parked on sinr-live (steered SatelliteBeams render restored)',
   );
   assert.equal(
     renderPlan('sinr-live', 'live-sim', false, 'director').showSinrLiveCellBeams,
-    true,
-    'cell-truth cones stay on under director focus too (the ambient base, not focus-scoped)',
+    false,
+    'cell-truth cones stay parked under director focus too',
   );
   assert.equal(
     renderPlan('modqn-live-cell-preview', 'live-sim').showSinrLiveCellBeams,
@@ -1532,29 +1533,33 @@ assertContains(
   'showSinrLiveCellBeams: boolean',
   'render plan declares the cell-truth beam-cone flag',
 );
+// PARKED (2026-06-08): the flag is pinned false → the cell-truth cones do NOT
+// render; the steered SatelliteBeams render again (the `&& !showSinrLiveCellBeams`
+// gate below becomes true). The cone JSX + resolver stay in source (un-park later).
 assertContains(
   sceneLaneRenderPlanSource,
-  'const showSinrLiveCellBeams = showSinrLiveViewport;',
-  'cell-truth cones are lane-gated to the sinr-live viewport (NOT showCellOverlay)',
+  'const showSinrLiveCellBeams = false;',
+  'cell-truth cones are PARKED (flag false) — steered SatelliteBeams render restored',
 );
-// (i) MainScene mounts the cell-truth cones AND suppresses the steered
-//     SatelliteBeams on this lane (so they do not double-draw / contradict).
+// (i) The cell-cone JSX is retained (gated false) for a future un-park.
 assertContains(
   mainSceneSource,
   '<SinrLiveCellBeamCones',
-  'MainScene mounts the lane-owned cell-truth beam cones',
+  'MainScene keeps the cell-truth beam-cone JSX (parked behind showSinrLiveCellBeams=false)',
 );
+// (j) With the flag false this gate is TRUE → the steered SatelliteBeams render on
+//     the sinr-live lane (the original look the user approved).
 assertContains(
   mainSceneSource,
   '&& !showSinrLiveCellBeams && viz.displaySats',
-  'MainScene suppresses the steered SatelliteBeams cones on the cell-truth lane',
+  'steered SatelliteBeams render on sinr-live again now that the cell cones are parked',
 );
-// (j) the steered UE-anchor is retired for this lane via the explicit useBeamViz
-//     gate; off-lane callers keep the anchored render unchanged.
+// (k) the UE-anchor is RESTORED on sinr-live (the cell cones no longer own the lane),
+//     so the steered beams converge on the UEs like the original render.
 assertContains(
   mainSceneSource,
-  '// S-cells-3: retire the UE-anchor on the sinr-live lane only',
-  'MainScene threads the UE-anchor retirement into useBeamViz for sinr-live only',
+  'S-cells-4 RENDER RESET (2026-06-08): the cell-truth cones are parked',
+  'MainScene restores the steered UE-anchor on sinr-live (cell cones parked)',
 );
 assertContains(
   useBeamVizSource,
@@ -1602,10 +1607,13 @@ assertContains(
   '"validate:phase-c:sinr-live-cells:render:browser"',
   'package exposes the S-cells-3 render browser gate',
 );
-assertContains(
+// PARKED (2026-06-08): the cell-cone render browser gate is REMOVED from the
+// live-render suite (with the cones parked there are 0 to assert). The gate SCRIPT
+// is retained (above) for a future un-park; it must not run in the live suite.
+assertNotContains(
   packageJson,
   'sinr-serving-mosaic:browser && npm run validate:phase-c:sinr-live-cells:render:browser',
-  'live-render suite includes the S-cells-3 render browser gate',
+  'live-render suite must NOT run the parked cell-cone render browser gate',
 );
 
 // ── Serving cones, EVERY connected sat, NORMAL-blend, frequency-reuse colour (S-cells-4b-fix) ──

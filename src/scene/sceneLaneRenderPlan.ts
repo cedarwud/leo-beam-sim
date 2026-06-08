@@ -123,10 +123,13 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // director-gated). It is a distinct SINR-serving layer, never the MODQN cell
   // overlay — so it is inert on every MODQN/artifact lane.
   const showSinrServingMosaic = showSinrLiveViewport;
-  // SINR-live earth-fixed cell-truth cones (S-cells-3): sinr-live ONLY, always-on.
-  // The lane's primary beam render, replacing the steered SatelliteBeams cones; it
-  // is NOT `showCellOverlay` (that is the MODQN-lane round-robin overlay).
-  const showSinrLiveCellBeams = showSinrLiveViewport;
+  // S-cells-4 RENDER RESET (user, 2026-06-08): the earth-fixed cell-truth CONES are
+  // PARKED — they washed the viewport with tall spread cones and used the wrong
+  // colour. The sinr-live lane renders the ORIGINAL steered `SatelliteBeams`
+  // (satellite-tint colour, few converging beams) again. The cell-truth MODEL stays
+  // computed (dormant, for a future cinema / off-axis render); only the CONE render
+  // is off. See `.agent-memory/project_sinr_render_reset_2026-06-08.md`.
+  const showSinrLiveCellBeams = false;
   const showLiveSatelliteMarkers = isLiveScene && (
     input.sceneLane === 'sinr-live'
     || input.sceneLane === 'modqn-live-cell-preview'

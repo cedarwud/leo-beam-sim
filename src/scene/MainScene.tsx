@@ -781,10 +781,11 @@ function SceneContent({
     undefined,
     profile.beamHopping,
     visualScaleMultipliers,
-    // S-cells-3: retire the UE-anchor on the sinr-live lane only — the cell-truth
-    // cones own this lane's beam render, so beams keep their true earth-fixed
-    // positions and the UE renders off-centre. Other lanes keep the steered anchor.
-    sceneLane === 'sinr-live',
+    // S-cells-4 RENDER RESET (2026-06-08): the cell-truth cones are parked, so the
+    // sinr-live lane uses the ORIGINAL steered SatelliteBeams again — restore the
+    // UE-anchor (false = anchor ON) so the steered beams converge on the UEs like
+    // the original look the user approved.
+    false,
   );
   const worldUnitsPerKm = 1 / (sceneGeometry.kmPerWorldUnit ?? paperUserArea.kmPerWorldUnit);
   // S-cells-3: ground placements of the FIXED earth-fixed cells for the cell-truth
