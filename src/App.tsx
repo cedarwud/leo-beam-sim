@@ -124,6 +124,7 @@ import {
 } from './ui/ArtifactSourceBadge';
 import { ArtifactSatelliteCompass } from './ui/ArtifactSatelliteCompass';
 import { LaneExperienceBar } from './ui/LaneExperienceBar';
+import { ModqnViewToggle } from './ui/ModqnViewToggle';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
@@ -1878,6 +1879,15 @@ export function App() {
       <div className="leo-top-nav-row">
         <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
       </div>
+      {sceneLane !== 'sinr-live' && (
+        <div className="leo-modqn-subnav-row">
+          <ModqnViewToggle
+            value={sceneLane}
+            onChange={handleExperienceChange}
+            proofEnabled={canToggleModqnReplayProof}
+          />
+        </div>
+      )}
       <ControlBar
         selectedProfileId={selectedProfileId}
         profileOptions={profileOptions}

@@ -2585,18 +2585,40 @@ assertContains(
   'export function syncSceneSourceToUrl(mode: SceneSourceMode): void',
   'appPersistence exposes the display-only URL sync for the runtime lane switch',
 );
+// ── 4 lanes -> 2 nav segments (modqn-tab-consolidation-plan.md) ──
+// The top LaneExperienceBar collapsed from 4 segments to 2 (SINR / MODQN). It
+// offers ONLY the two primary lanes; the other two MODQN lanes
+// (modqn-replay-proof, artifact-replay) are NOT top tabs anymore — they are
+// reachable solely through the in-MODQN ModqnViewToggle sub-nav. This is the
+// nav != lane keystone (ADR-002) made literal: a non-injective map from 2 nav
+// segments onto 4 SceneLanes. The SceneLane enum itself stays 4 (Rule#4).
 for (const lane of [
   'sinr-live',
   'modqn-live-cell-preview',
-  'modqn-replay-proof',
-  'artifact-replay',
 ] as const) {
   assertContains(
     laneExperienceBarSource,
     `lane: '${lane}'`,
-    `LaneExperienceBar offers the ${lane} segment`,
+    `LaneExperienceBar offers the ${lane} primary segment`,
   );
 }
+assert.equal(
+  countOccurrences(laneExperienceBarSource, "lane: '"),
+  2,
+  'LaneExperienceBar offers EXACTLY two primary nav segments (4->2 consolidation)',
+);
+for (const lane of ['modqn-replay-proof', 'artifact-replay'] as const) {
+  assertNotContains(
+    laneExperienceBarSource,
+    `lane: '${lane}'`,
+    `LaneExperienceBar must NOT expose the ${lane} lane as a top tab (in-MODQN toggle owns it)`,
+  );
+}
+assertContains(
+  laneExperienceBarSource,
+  'export function navSegmentForLane(lane: SceneLane): SceneLane {',
+  'LaneExperienceBar collapses 4 lanes onto 2 segments via navSegmentForLane (nav != lane)',
+);
 assertContains(
   laneExperienceBarSource,
   'data-testid="lane-experience-bar"',
@@ -2608,6 +2630,56 @@ assertNotContains(laneExperienceBarSource, '@react-three/', 'LaneExperienceBar m
 assertNotContains(laneExperienceBarSource, '<Canvas', 'LaneExperienceBar must not mount a Canvas (no 3D viewport layer)');
 assertNotContains(laneExperienceBarSource, '../scene/', 'LaneExperienceBar must not import scene runtime modules');
 assertNotContains(laneExperienceBarSource, '../viz/', 'LaneExperienceBar must not import viz modules');
+
+// ── In-MODQN ModqnViewToggle sub-nav (owns the 2 non-top MODQN lanes) ──
+// The two MODQN lanes the top bar dropped (modqn-replay-proof, artifact-replay)
+// are reachable ONLY through this in-MODQN sub-nav, alongside the default
+// modqn-live-cell-preview. It reuses App.handleExperienceChange (same
+// governance-safe transition as the top bar), is mounted gated to non-SINR
+// lanes, and is a Shared Surface (no 3D / scene / viz import).
+const modqnViewToggleSource = readRepoFile('src/ui/ModqnViewToggle.tsx');
+assertContains(
+  appSource,
+  "from './ui/ModqnViewToggle'",
+  'App imports the in-MODQN ModqnViewToggle sub-nav',
+);
+assert.equal(
+  countOccurrences(appSource, '<ModqnViewToggle'),
+  1,
+  'ModqnViewToggle is mounted exactly once',
+);
+assertContains(
+  appSource,
+  "{sceneLane !== 'sinr-live' && (",
+  'ModqnViewToggle sub-nav is mounted gated to MODQN lanes (hidden on the SINR experience)',
+);
+assertContains(
+  appSource,
+  'onChange={handleExperienceChange}',
+  'ModqnViewToggle reuses the governance-safe handleExperienceChange transition',
+);
+for (const lane of [
+  'modqn-live-cell-preview',
+  'modqn-replay-proof',
+  'artifact-replay',
+] as const) {
+  assertContains(
+    modqnViewToggleSource,
+    `lane: '${lane}'`,
+    `ModqnViewToggle offers the ${lane} sub-view (the in-MODQN entry for it)`,
+  );
+}
+assertContains(
+  modqnViewToggleSource,
+  'data-testid="modqn-view-toggle"',
+  'ModqnViewToggle exposes its root test id',
+);
+assertNotContains(modqnViewToggleSource, "from 'three", 'ModqnViewToggle must not import three');
+assertNotContains(modqnViewToggleSource, 'from "three', 'ModqnViewToggle must not import three');
+assertNotContains(modqnViewToggleSource, '@react-three/', 'ModqnViewToggle must not import react-three');
+assertNotContains(modqnViewToggleSource, '<Canvas', 'ModqnViewToggle must not mount a Canvas (no 3D viewport layer)');
+assertNotContains(modqnViewToggleSource, '../scene/', 'ModqnViewToggle must not import scene runtime modules');
+assertNotContains(modqnViewToggleSource, '../viz/', 'ModqnViewToggle must not import viz modules');
 assertContains(
   governanceDoc,
   'Lane Experience Switcher',

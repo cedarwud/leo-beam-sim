@@ -1,19 +1,19 @@
 import type { KeyboardEvent } from 'react';
 import type { SceneLane } from '../app/sceneLane';
 
-// The four authoritative scene lanes, surfaced as one top-level "Experience"
-// segmented control. This is the single in-app entry point for the viewport
-// lane axis: it owns BOTH the appMode (SINR vs MODQN) and the sceneSource
-// (live-sim vs artifact-replay) choice, mapping each segment to one SceneLane.
+// The top-level "Experience" segmented control. After the 4->2 nav consolidation
+// (docs/modqn-tab-consolidation-plan.md) this surfaces only the TWO primary
+// experiences — SINR and MODQN — even though FOUR authoritative SceneLanes exist.
+// This is the governance keystone made literal: nav != lane (a non-injective map,
+// ADR-002). The SINR segment owns the sinr-live lane; the MODQN segment owns the
+// modqn-live-cell-preview lane AND, via the in-MODQN ModqnViewToggle sub-nav, the
+// modqn-replay-proof and artifact-replay lanes. `value` is the resolved SceneLane;
+// it is collapsed to a nav segment by `navSegmentForLane` so the MODQN button
+// stays highlighted across all three MODQN lanes. `onChange` hands back the target
+// lane; App owns the governance-safe transition (reset artifact/replay state,
+// cancel any armed Director focus, fail closed while the artifact streams).
 //
-// Before this control, `artifact-replay` (and everything it owns — the MODQN
-// pipeline flowchart, the Plane-C dashboard, the satellite compass, the real
-// artifact Director cinematic) was reachable ONLY by loading the page with the
-// `?sceneSource=artifact-replay` URL param, and the MODQN replay-proof lane was
-// three sidebar clicks deep. The selector value is the resolved SceneLane and
-// `onChange` hands back the target lane; App owns the governance-safe transition
-// (reset artifact/replay state, cancel any armed Director focus, fail closed
-// while the artifact streams).
+// SceneLane enum stays 4 (CLAUDE.md Rule#4): nav segments are UI chrome, not lanes.
 export interface LaneExperienceOption {
   readonly lane: SceneLane;
   readonly label: string;
@@ -21,11 +21,17 @@ export interface LaneExperienceOption {
 }
 
 export const LANE_EXPERIENCE_OPTIONS: readonly LaneExperienceOption[] = [
-  { lane: 'sinr-live', label: 'SINR Live', sub: 'live SINR beams' },
-  { lane: 'modqn-live-cell-preview', label: 'MODQN Live', sub: 'cell preview + training' },
-  { lane: 'modqn-replay-proof', label: 'MODQN Proof', sub: 'replay evidence' },
-  { lane: 'artifact-replay', label: 'Artifact Showcase', sub: 'flowchart + dashboard' },
+  { lane: 'sinr-live', label: 'SINR', sub: 'live SINR beams' },
+  { lane: 'modqn-live-cell-preview', label: 'MODQN', sub: 'decision + replay evidence' },
 ];
+
+// nav != lane: collapse the 4 SceneLanes onto the 2 nav segments. The SINR
+// segment maps from sinr-live only; the MODQN segment maps from all three MODQN
+// lanes (live-cell-preview / replay-proof / artifact-replay), so the MODQN button
+// stays active while the in-MODQN ModqnViewToggle picks the sub-lane.
+export function navSegmentForLane(lane: SceneLane): SceneLane {
+  return lane === 'sinr-live' ? 'sinr-live' : 'modqn-live-cell-preview';
+}
 
 export interface LaneExperienceBarProps {
   readonly value: SceneLane;
@@ -42,6 +48,7 @@ function focusLaneButton(lane: SceneLane): void {
 }
 
 export function LaneExperienceBar({ value, onChange }: LaneExperienceBarProps) {
+  const activeSegment = navSegmentForLane(value);
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     let nextIndex: number | null = null;
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
@@ -70,7 +77,7 @@ export function LaneExperienceBar({ value, onChange }: LaneExperienceBarProps) {
       <span className="leo-lane-experience-bar__title" aria-hidden="true">Experience</span>
       <div className="leo-lane-experience-bar__group">
         {LANE_EXPERIENCE_OPTIONS.map((option, index) => {
-          const active = option.lane === value;
+          const active = option.lane === activeSegment;
           return (
             <button
               key={option.lane}

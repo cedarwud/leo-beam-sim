@@ -339,6 +339,99 @@ canvas {
   min-width: 0;
 }
 
+// In-MODQN sub-navigation row (ModqnViewToggle). Visually subordinate to the top
+// experience bar: thinner, indented, single-line segments. Appears only while a
+// MODQN lane is active.
+.leo-modqn-subnav-row {
+  flex: 0 0 auto;
+  display: flex;
+  margin-top: 6px;
+  padding-left: 2px;
+}
+
+.leo-modqn-view-toggle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 10px;
+  border: 1px solid rgba(118, 234, 215, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(6, 18, 27, 0.9), rgba(3, 9, 15, 0.88));
+}
+
+.leo-modqn-view-toggle__title {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(170, 205, 224, 0.6);
+}
+
+.leo-modqn-view-toggle__group {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+}
+
+.leo-modqn-view-toggle__button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.015);
+  color: #a7cadd;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.leo-modqn-view-toggle__button:hover:not(:disabled) {
+  border-color: rgba(118, 234, 215, 0.36);
+  color: #eafaff;
+}
+
+.leo-modqn-view-toggle__button[data-active="true"] {
+  background: rgba(82, 242, 161, 0.13);
+  border-color: rgba(82, 242, 161, 0.55);
+  color: #f4fff8;
+}
+
+.leo-modqn-view-toggle__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.leo-modqn-view-toggle__button:focus-visible {
+  outline: 2px solid rgba(118, 234, 215, 0.8);
+  outline-offset: 2px;
+}
+
+.leo-modqn-view-toggle__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.leo-modqn-view-toggle__sub {
+  font-size: 9px;
+  opacity: 0.62;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 .leo-view-mode-toggle {
   flex: 0 0 auto;
   display: flex;
