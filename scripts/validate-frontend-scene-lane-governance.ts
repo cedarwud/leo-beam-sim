@@ -287,23 +287,23 @@ assert.equal(
 );
 assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr')),
-  ['replay', 'objective', 'training', 'jobs'],
-  'MODQN live cell preview left sidebar exposes the revived ω-objective editor tab alongside replay/training/jobs',
+  ['evidence', 'setup'],
+  'S3: MODQN live cell preview left sidebar exposes the unified Evidence + Setup rail',
 );
 assert.equal(
   getDefaultLeftSidebarTabForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr'),
-  'replay',
-  'MODQN live cell preview still defaults the left sidebar to the replay cue',
+  'evidence',
+  'S3: MODQN live cell preview defaults the left sidebar to the Evidence / Replay tab',
 );
 assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('modqn-replay-proof', 'decision-overlay-on-live-sinr')),
-  ['replay'],
-  'MODQN replay proof lane left sidebar should only expose the replay cue',
+  ['evidence', 'setup'],
+  'S3: MODQN replay proof lane shares the unified MODQN left rail (no per-sub-lane reshuffle)',
 );
 assert.equal(
   getDefaultLeftSidebarTabForSceneLane('modqn-replay-proof', 'decision-overlay-on-live-sinr'),
-  'replay',
-  'MODQN replay proof lane should default the left sidebar to replay cue',
+  'evidence',
+  'S3: MODQN replay proof lane defaults the left sidebar to the Evidence / Replay tab',
 );
 assert.deepEqual(
   tabKeys(getRightSidebarTabsForSceneLane('modqn-replay-proof', 'decision-overlay-on-live-sinr')),
@@ -317,8 +317,8 @@ assert.equal(
 );
 assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('artifact-replay', 'decision-overlay-on-live-sinr')),
-  ['artifact'],
-  'artifact replay lane left sidebar should only expose artifact replay',
+  ['evidence', 'setup'],
+  'S3: artifact replay lane shares the unified MODQN left rail (artifact source folds into Evidence)',
 );
 assert.deepEqual(
   tabKeys(getRightSidebarTabsForSceneLane('artifact-replay', 'decision-overlay-on-live-sinr')),
@@ -327,13 +327,39 @@ assert.deepEqual(
 );
 assert.equal(
   getDefaultLeftSidebarTabForSceneLane('artifact-replay', 'decision-overlay-on-live-sinr'),
-  'artifact',
-  'artifact replay lane should default the left sidebar to artifact replay',
+  'evidence',
+  'S3: artifact replay lane defaults the left sidebar to the Evidence / Replay tab',
 );
 assert.equal(
   getDefaultRightSidebarTabForSceneLane('artifact-replay', 'decision-overlay-on-live-sinr'),
   'artifact',
   'artifact replay lane should default the right sidebar to artifact truth',
+);
+
+// ── S3 left-rail unification: the 3 MODQN sub-lanes SHARE one left sidebar ──
+// After the purpose-merge, toggling the in-MODQN ModqnViewToggle sub-nav
+// (live / proof / artifact) must NOT reshuffle the left rail. The right rail is
+// intentionally left per-sub-lane (this slice touches the left rail only).
+assert.deepEqual(
+  tabKeys(getLeftSidebarTabsForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr')),
+  tabKeys(getLeftSidebarTabsForSceneLane('modqn-replay-proof', 'decision-overlay-on-live-sinr')),
+  'S3: MODQN live + proof sub-lanes share the same unified left rail',
+);
+assert.deepEqual(
+  tabKeys(getLeftSidebarTabsForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr')),
+  tabKeys(getLeftSidebarTabsForSceneLane('artifact-replay', 'decision-overlay-on-live-sinr')),
+  'S3: MODQN live + artifact sub-lanes share the same unified left rail',
+);
+// SINR lane left rail is untouched by S3.
+assert.deepEqual(
+  tabKeys(getLeftSidebarTabsForSceneLane('sinr-live', 'sinr-offset')),
+  ['signal', 'handover'],
+  'SINR live lane keeps its untouched signal + handover left rail',
+);
+assert.equal(
+  getDefaultLeftSidebarTabForSceneLane('sinr-live', 'sinr-offset'),
+  'signal',
+  'SINR live lane defaults the left sidebar to signal tuning',
 );
 
 const appSource = readRepoFile('src/App.tsx');
@@ -1140,7 +1166,9 @@ assertContains(appSource, "proofViewportActive={sceneLane === 'modqn-replay-proo
 assertContains(appSource, 'canToggleModqnReplayProof ? setModqnReplayProofRequested : undefined', 'App wires proof viewport toggle callback only when eligible');
 assertContains(appSource, 'getLeftSidebarTabsForSceneLane(sceneLane, handoverMode)', 'App lane-aware left sidebar tabs');
 assertContains(appSource, 'getRightSidebarTabsForSceneLane(sceneLane, handoverMode)', 'App lane-aware right sidebar tabs');
-assertContains(appSource, "activeLeftSidebarTab === 'artifact'", 'App artifact left sidebar branch');
+assertContains(appSource, "activeLeftSidebarTab === 'evidence'", 'App unified MODQN Evidence/Replay left sidebar branch');
+assertContains(appSource, 'data-testid="artifact-replay-sidebar"', 'App folds the artifact source summary into the Evidence left rail (artifact sub-view)');
+assertContains(appSource, "activeLeftSidebarTab === 'setup'", 'App unified MODQN Setup left sidebar branch (training + jobs + ω-objective)');
 assertContains(appSource, "activeRightSidebarTab === 'artifact'", 'App artifact right sidebar branch');
 assertContains(appSource, "sceneSource !== 'artifact-replay' || activeSceneFrame !== undefined", 'App artifact scene fail-closed gate');
 assertContains(appSource, 'data-testid="artifact-scene-fail-closed"', 'App artifact scene fail-closed placeholder');
@@ -1161,9 +1189,10 @@ assertNotContains(
   "showModqnReplayScene={appMode === 'modqn-demo'}",
   'App must not mount MODQN replay proof from appMode alone',
 );
-assertContains(appRuntimeModelSource, 'ARTIFACT_LEFT_SIDEBAR_TABS', 'App runtime model artifact left tabs');
+assertContains(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS', 'App runtime model unified MODQN left tabs (S3 Evidence + Setup)');
+assertContains(appRuntimeModelSource, "key: 'evidence'", 'App runtime model exposes the Evidence / Replay left tab');
+assertContains(appRuntimeModelSource, "key: 'setup'", 'App runtime model exposes the Setup left tab');
 assertContains(appRuntimeModelSource, 'ARTIFACT_RIGHT_SIDEBAR_TABS', 'App runtime model artifact right tabs');
-assertContains(appRuntimeModelSource, 'MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS', 'App runtime model replay proof left tabs');
 assertContains(appRuntimeModelSource, 'MODQN_REPLAY_PROOF_RIGHT_SIDEBAR_TABS', 'App runtime model replay proof right tabs');
 assertContains(appRuntimeModelSource, "lane === 'artifact-replay'", 'App runtime model artifact lane override');
 assertContains(appRuntimeModelSource, "lane === 'modqn-replay-proof'", 'App runtime model MODQN proof lane override');
@@ -2693,10 +2722,10 @@ assertContains(
 
 // ── Showcase exposure S3: revived ω-objective editor + co-visible MODQN evidence ──
 // The MODQN runtime ω-weight editor (ModqnObjectiveTab) was built but unmounted;
-// it is the only EDIT surface for the live ω weights. It is revived as the
-// 'objective' left tab on MODQN live lanes. The MODQN evidence panels and the
-// LiveKpiStrip are mounted so the built bundle diagnostics + live KPIs are
-// reachable in-app. All display-only / overlay-demo against the loaded bundle.
+// it is the only EDIT surface for the live ω weights. After the S3 purpose-merge
+// it lives inside the unified MODQN 'Setup' left tab (alongside training + jobs),
+// not its own 'objective' tab. The MODQN evidence panels are mounted so the built
+// bundle diagnostics are reachable in-app. All display-only / overlay-demo.
 const modqnObjectiveTabSource = readRepoFile('src/ui/ModqnObjectiveTab.tsx');
 assertContains(
   appSource,
@@ -2705,8 +2734,8 @@ assertContains(
 );
 assertContains(
   appSource,
-  "activeLeftSidebarTab === 'objective' ? (",
-  'App renders the revived objective tab branch (was dead registry data with no branch)',
+  "activeLeftSidebarTab === 'setup' ? (",
+  'App renders the unified MODQN Setup left tab (hosts the revived ω-objective editor + training + jobs)',
 );
 assertContains(
   appSource,

@@ -926,7 +926,7 @@ export function App() {
       // Persist and apply mode.
       setHandoverModeRaw(nextMode);
       persistHandoverMode(nextMode);
-      setLeftSidebarTab('replay');
+      setLeftSidebarTab('evidence');
       setRightSidebarTab('live');
       return;
     }
@@ -936,7 +936,7 @@ export function App() {
       setHandoverModeRaw(nextMode);
       setRescalarizeFallbackCount(0);
       resetOmegaDisplayApplied();
-      setLeftSidebarTab('replay');
+      setLeftSidebarTab('evidence');
       // Do NOT call persistHandoverMode for omega-heuristic (SDD §5.2, §9.4 item 8).
       return;
     }
@@ -1926,24 +1926,7 @@ export function App() {
             activeKey={activeLeftSidebarTab}
             onChange={setLeftSidebarTab}
           >
-            {activeLeftSidebarTab === 'artifact' ? (
-              <section
-                className="leo-sidebar-content-stack"
-                aria-label="Artifact replay source status"
-                data-testid="artifact-replay-sidebar"
-                data-artifact-loaded={showcaseArtifact ? 'true' : 'false'}
-                data-artifact-loading={showcaseLoading ? 'true' : 'false'}
-                data-artifact-frame-index={String(frameIndex)}
-              >
-                <div className="leo-replay-truth-summary" data-testid="artifact-replay-source-summary">
-                  <strong>{showcaseArtifact?.scenario.title ?? 'Artifact replay'}</strong>
-                  <span>{showcaseError ?? showcaseArtifact?.artifactId ?? 'loading visual-showcase-v1'}</span>
-                </div>
-                <div className="leo-replay-playback-status" data-testid="artifact-replay-playback-status">
-                  t={currentTimeSec.toFixed(1)}s / {showcaseArtifact?.scenario.durationSec.toFixed(1) ?? '0.0'}s
-                </div>
-              </section>
-            ) : activeLeftSidebarTab === 'signal' ? (
+            {activeLeftSidebarTab === 'signal' ? (
               <SignalTuningPanel
                 baseProfile={baseProfile}
                 tuning={signalTuning}
@@ -1959,23 +1942,6 @@ export function App() {
                 onSceneVisualScaleChange={setSceneVisualScale}
                 onReset={handleResetSignalTuning}
               />
-            ) : activeLeftSidebarTab === 'training' ? (
-              <section className="leo-sidebar-content-stack" aria-label="MODQN training controls">
-                <TrainingForm appMode={appMode} />
-              </section>
-            ) : activeLeftSidebarTab === 'jobs' ? (
-              <JobsPanel appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
-            ) : activeLeftSidebarTab === 'replay' ? (
-              <ModqnReplayCuePanel
-                appMode={appMode}
-                displayState={renderedModqnReplayDisplayState}
-                proofViewportActive={sceneLane === 'modqn-replay-proof'}
-                onProofViewportActiveChange={
-                  canToggleModqnReplayProof ? setModqnReplayProofRequested : undefined
-                }
-              />
-            ) : activeLeftSidebarTab === 'objective' ? (
-              <ModqnObjectiveTab />
             ) : activeLeftSidebarTab === 'handover' ? (
               <HandoverPolicyControls
                 draft={handoverPolicyDraft}
@@ -1986,6 +1952,44 @@ export function App() {
                 onApply={handleApplyHandoverPolicy}
                 onReset={handleResetHandoverPolicy}
               />
+            ) : activeLeftSidebarTab === 'evidence' ? (
+              // S3 purpose-merge: the unified MODQN "Evidence / Replay" rail. The
+              // artifact sub-view shows the producer source summary; the live +
+              // proof sub-views show the MODQN replay decision-trace cue (which
+              // also hosts the Proof viewport toggle).
+              sceneLane === 'artifact-replay' ? (
+                <section
+                  className="leo-sidebar-content-stack"
+                  aria-label="Artifact replay source status"
+                  data-testid="artifact-replay-sidebar"
+                  data-artifact-loaded={showcaseArtifact ? 'true' : 'false'}
+                  data-artifact-loading={showcaseLoading ? 'true' : 'false'}
+                  data-artifact-frame-index={String(frameIndex)}
+                >
+                  <div className="leo-replay-truth-summary" data-testid="artifact-replay-source-summary">
+                    <strong>{showcaseArtifact?.scenario.title ?? 'Artifact replay'}</strong>
+                    <span>{showcaseError ?? showcaseArtifact?.artifactId ?? 'loading visual-showcase-v1'}</span>
+                  </div>
+                  <div className="leo-replay-playback-status" data-testid="artifact-replay-playback-status">
+                    t={currentTimeSec.toFixed(1)}s / {showcaseArtifact?.scenario.durationSec.toFixed(1) ?? '0.0'}s
+                  </div>
+                </section>
+              ) : (
+                <ModqnReplayCuePanel
+                  appMode={appMode}
+                  displayState={renderedModqnReplayDisplayState}
+                  proofViewportActive={sceneLane === 'modqn-replay-proof'}
+                  onProofViewportActiveChange={
+                    canToggleModqnReplayProof ? setModqnReplayProofRequested : undefined
+                  }
+                />
+              )
+            ) : activeLeftSidebarTab === 'setup' ? (
+              <section className="leo-sidebar-content-stack" aria-label="MODQN setup">
+                <TrainingForm appMode={appMode} />
+                <JobsPanel appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
+                <ModqnObjectiveTab />
+              </section>
             ) : null}
           </SidebarTabShell>
         </aside>

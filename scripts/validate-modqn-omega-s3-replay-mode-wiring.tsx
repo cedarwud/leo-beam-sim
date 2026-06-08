@@ -426,12 +426,12 @@ console.log('\n(k) Evidence / telemetry mode gating');
     appSrc.includes('getLeftSidebarTabsForSceneLane')
     && appRuntimeModelSrc.includes('SINR_LEFT_SIDEBAR_TABS')
     && appRuntimeModelSrc.includes('MODQN_LEFT_SIDEBAR_TABS')
-    && appRuntimeModelSrc.includes('MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS')
-    && appRuntimeModelSrc.includes('ARTIFACT_LEFT_SIDEBAR_TABS')
-    && appRuntimeModelSrc.includes("if (lane === 'artifact-replay') return ARTIFACT_LEFT_SIDEBAR_TABS;")
-    && appRuntimeModelSrc.includes("if (lane === 'modqn-replay-proof') return MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS;")
-    && appRuntimeModelSrc.includes("if (lane === 'modqn-replay-proof' || lane === 'modqn-live-cell-preview') return 'replay';"),
-    'App runtime model shows lane-specific left sidebar controls: proof=replay only, artifact=artifact only',
+    && appRuntimeModelSrc.includes("lane === 'artifact-replay'")
+    && appRuntimeModelSrc.includes("lane === 'modqn-replay-proof'")
+    && appRuntimeModelSrc.includes("lane === 'modqn-live-cell-preview'")
+    && appRuntimeModelSrc.includes('return MODQN_LEFT_SIDEBAR_TABS;')
+    && appRuntimeModelSrc.includes("return 'evidence';"),
+    'S3: App runtime model unifies the 3 MODQN sub-lanes onto one left rail (Evidence + Setup), defaulting to Evidence (proof/artifact no longer get a per-sub-lane left rail)',
   );
   assert(
     appSrc.includes('getRightSidebarTabsForSceneLane')

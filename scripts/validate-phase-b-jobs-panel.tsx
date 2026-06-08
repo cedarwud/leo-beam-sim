@@ -160,43 +160,46 @@ console.log('\n(d) App.tsx jobs tab wiring');
     'App.tsx renders JobsPanel with appMode',
   );
 
+  // S3 purpose-merge: JobsPanel no longer owns a dedicated 'jobs' left tab; it
+  // lives inside the unified MODQN 'Setup' left tab (with TrainingForm + the
+  // ω-objective editor). It must render in the MODQN Setup branch, never in SINR.
   const leftSidebarTypeLine = appRuntimeModelSource
     .split('\n')
     .find(line => line.includes('type LeftSidebarTab')) ?? '';
   assert(
-    leftSidebarTypeLine.includes("'jobs'"),
-    'App runtime model LeftSidebarTab union includes jobs',
+    leftSidebarTypeLine.includes("'setup'"),
+    'App runtime model LeftSidebarTab union includes the unified setup tab',
     leftSidebarTypeLine,
   );
   assert(
-    appRuntimeModelSource.includes("{ key: 'jobs', label: 'MODQN jobs'"),
-    'App runtime model LEFT_SIDEBAR_TABS includes MODQN jobs entry',
+    appRuntimeModelSource.includes("{ key: 'setup', label: 'Setup'"),
+    'App runtime model LEFT_SIDEBAR_TABS includes the Setup entry (hosts jobs)',
   );
 
   const modqnBlock = extractConstArray(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS');
   assert(
-    modqnBlock.includes('LEFT_SIDEBAR_TABS[4]'),
-    'App runtime model MODQN sidebar includes jobs tab entry',
+    modqnBlock.includes('LEFT_SIDEBAR_TABS[3]'),
+    'App runtime model MODQN sidebar includes the Setup tab entry',
     modqnBlock,
   );
 
   const sinrBlock = extractConstArray(appRuntimeModelSource, 'SINR_LEFT_SIDEBAR_TABS');
   assert(
-    !sinrBlock.includes('LEFT_SIDEBAR_TABS[4]'),
-    'SINR sidebar does not include jobs tab entry',
+    !sinrBlock.includes('LEFT_SIDEBAR_TABS[3]'),
+    'SINR sidebar does not include the Setup tab entry',
     sinrBlock,
   );
   assert(
-    !sinrBlock.includes('jobs'),
-    'SINR sidebar block does not contain jobs literal',
+    !sinrBlock.includes('setup'),
+    'SINR sidebar block does not contain the setup literal',
     sinrBlock,
   );
 
-  const handoverIndex = appSource.indexOf('<HandoverPolicyControls');
-  const jobsBranchIndex = appSource.indexOf("activeLeftSidebarTab === 'jobs'");
+  const setupBranchIndex = appSource.indexOf("activeLeftSidebarTab === 'setup'");
+  const jobsInSetupBranch = /activeLeftSidebarTab === 'setup'[\s\S]*?<JobsPanel/.test(appSource);
   assert(
-    handoverIndex > -1 && jobsBranchIndex > -1 && jobsBranchIndex < handoverIndex,
-    'App.tsx renders jobs branch before HandoverPolicyControls fallback',
+    setupBranchIndex > -1 && jobsInSetupBranch,
+    "App.tsx renders JobsPanel inside the unified 'setup' left tab branch",
   );
 }
 

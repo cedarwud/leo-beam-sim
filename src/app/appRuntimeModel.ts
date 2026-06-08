@@ -16,7 +16,10 @@ import type { PresentationMode } from '../scene/types';
 
 export const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 
-export type LeftSidebarTab = 'objective' | 'signal' | 'handover' | 'training' | 'jobs' | 'replay' | 'artifact';
+// S3 purpose-merge: the left rail collapses the per-sub-lane MODQN tab churn into
+// two purpose groups. 'signal'/'handover' stay the SINR rail; 'evidence' and
+// 'setup' are the unified MODQN rail (see MODQN_LEFT_SIDEBAR_TABS).
+export type LeftSidebarTab = 'signal' | 'handover' | 'evidence' | 'setup';
 export type RightSidebarTab = 'modqn' | 'live' | 'artifact';
 
 export interface AppSidebarTabItem<T extends string> {
@@ -26,32 +29,26 @@ export interface AppSidebarTabItem<T extends string> {
 }
 
 const LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
-  { key: 'objective', label: 'MODQN objective', description: 'ω-weight editor (apply / reset to bundle)' },
   { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
   { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
-  { key: 'training', label: 'MODQN training', description: 'objective, env, and run setup' },
-  { key: 'jobs', label: 'MODQN jobs', description: 'training run history' },
-  { key: 'replay', label: 'MODQN replay', description: 'handover decision trace' },
+  { key: 'evidence', label: 'Evidence / Replay', description: 'decision trace + artifact source' },
+  { key: 'setup', label: 'Setup', description: 'training, jobs, ω-weights' },
 ];
 
 const SINR_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
-  LEFT_SIDEBAR_TABS[1],
-  LEFT_SIDEBAR_TABS[2],
+  LEFT_SIDEBAR_TABS[0], // signal
+  LEFT_SIDEBAR_TABS[1], // handover
 ];
 
+// S3: all three MODQN sub-lanes (live cell preview / replay proof / artifact
+// showcase) SHARE this one stable left rail, so toggling the in-MODQN
+// ModqnViewToggle sub-nav never reshuffles the sidebar. 'Evidence / Replay'
+// holds the decision trace (and, in the artifact sub-view, the artifact source
+// summary); 'Setup' stacks the training / jobs / ω-objective power tools (slated
+// to move into the Advanced drawer in S4).
 const MODQN_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
-  LEFT_SIDEBAR_TABS[5],
-  LEFT_SIDEBAR_TABS[0],
-  LEFT_SIDEBAR_TABS[3],
-  LEFT_SIDEBAR_TABS[4],
-];
-
-const MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
-  LEFT_SIDEBAR_TABS[5],
-];
-
-const ARTIFACT_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
-  { key: 'artifact', label: 'Artifact replay', description: 'producer frame' },
+  LEFT_SIDEBAR_TABS[2], // evidence
+  LEFT_SIDEBAR_TABS[3], // setup
 ];
 
 const RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [
@@ -113,16 +110,22 @@ export function getLeftSidebarTabsForMode(
 }
 
 export function getDefaultLeftSidebarTabForMode(mode: RuntimeHandoverMode): LeftSidebarTab {
-  return mode === 'sinr-offset' ? 'signal' : 'replay';
+  return mode === 'sinr-offset' ? 'signal' : 'evidence';
 }
 
 export function getLeftSidebarTabsForSceneLane(
   lane: SceneLane,
   mode: RuntimeHandoverMode,
 ): readonly AppSidebarTabItem<LeftSidebarTab>[] {
-  if (lane === 'artifact-replay') return ARTIFACT_LEFT_SIDEBAR_TABS;
-  if (lane === 'modqn-replay-proof') return MODQN_REPLAY_PROOF_LEFT_SIDEBAR_TABS;
-  if (lane === 'modqn-live-cell-preview') return MODQN_LEFT_SIDEBAR_TABS;
+  // S3: the three MODQN sub-lanes share ONE unified left rail (no reshuffle when
+  // the in-MODQN ModqnViewToggle sub-nav switches sub-view). Only SINR differs.
+  if (
+    lane === 'artifact-replay'
+    || lane === 'modqn-replay-proof'
+    || lane === 'modqn-live-cell-preview'
+  ) {
+    return MODQN_LEFT_SIDEBAR_TABS;
+  }
   return getLeftSidebarTabsForMode(mode);
 }
 
@@ -130,8 +133,13 @@ export function getDefaultLeftSidebarTabForSceneLane(
   lane: SceneLane,
   mode: RuntimeHandoverMode,
 ): LeftSidebarTab {
-  if (lane === 'artifact-replay') return 'artifact';
-  if (lane === 'modqn-replay-proof' || lane === 'modqn-live-cell-preview') return 'replay';
+  if (
+    lane === 'artifact-replay'
+    || lane === 'modqn-replay-proof'
+    || lane === 'modqn-live-cell-preview'
+  ) {
+    return 'evidence';
+  }
   return getDefaultLeftSidebarTabForMode(mode);
 }
 
