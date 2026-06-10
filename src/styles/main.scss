@@ -2748,7 +2748,11 @@ canvas {
 .leo-advanced-setup-overlay {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  // Modal scrim must top every HUD layer in the root stacking context —
+  // TimelineBar (82) and the handover toast layer (95) included — or the
+  // timeline stays clickable through the open modal. Behavior-locked by
+  // validate:frontend:advanced-drawer-modality:browser (z tokens land in C3).
+  z-index: 100;
   display: flex;
   justify-content: flex-start;
   background: rgba(2, 7, 12, 0.62);
