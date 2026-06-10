@@ -400,6 +400,7 @@ function validateStaticContracts(): void {
   const topologyTab = readSource('src/ui/signal-tuning/TopologyTab.tsx');
   const telemetry = readSource('src/scene/SceneTelemetry.tsx');
   const controlBar = readSource('src/ui/ControlBar.tsx');
+  const advancedDisplayControls = readSource('src/ui/modqn-controls/ModqnAdvancedDisplayControls.tsx');
   const visualLayers = readSource('src/scene/modqnVisualLayers.ts');
   const serviceMap = readSource('src/scene/modqnServiceMap.ts');
   const cellOverlay = readSource('src/viz/CellOverlay.tsx');
@@ -450,9 +451,10 @@ function validateStaticContracts(): void {
   assertContains(serviceMap, 'markerColor', 'MODQN service map exposes satellite-tinted UE marker colors');
   assertContains(cellOverlay, 'showUeCounts', 'CellOverlay can render per-cell UE count badges');
   assertContains(cellOverlay, 'leo-cell-ue-count-badge', 'CellOverlay uses stable UE count badge class');
-  assertContains(controlBar, 'modqn-layer-preset-control', 'ControlBar exposes MODQN layer preset control');
-  assertContains(controlBar, 'MODQN_VISUAL_LAYER_PRESETS.map', 'ControlBar renders MODQN visual layer presets from shared model');
-  assertContains(controlBar, "'service-allocation': 'Service'", 'ControlBar labels Service Allocation preset');
+  assertContains(advancedDisplayControls, 'modqn-layer-preset-control', 'Advanced display controls expose MODQN layer preset control');
+  assertContains(advancedDisplayControls, 'MODQN_VISUAL_LAYER_PRESETS.map', 'Advanced display controls render MODQN visual layer presets from shared model');
+  assertContains(advancedDisplayControls, "'service-allocation': 'Service'", 'Advanced display controls label Service Allocation preset');
+  assertNotContains(controlBar, 'modqn-layer-preset-control', 'ControlBar no longer owns MODQN layer preset control');
   assertContains(app, 'const [modqnVisualLayerPreset, setModqnVisualLayerPreset]', 'App owns MODQN visual layer preset state');
   assertContains(appRuntimeConfig, 'resolveModqnVisualLayers(modqnVisualLayerPreset)', 'appRuntimeConfig resolves MODQN visual layer flags');
   assertContains(modqnServingCount, 'MODQN_SERVING_COUNT_OPTIONS = [2, 3, 4, 5, 6, 7, 8] as const', 'MODQN formal serving-count options are L=2..8');
@@ -541,7 +543,7 @@ function validateStaticContracts(): void {
   assertContains(mainScene, 'deriveModqnServiceMap({', 'MainScene derives MODQN all-UE service map');
   assertContains(mainScene, 'buildModqnCellServiceReadout({', 'MainScene builds MODQN service readout from schedule plus service map');
   assertContains(mainScene, 'modqnCellServiceReadout,', 'MainScene passes MODQN service readout into SimState publisher');
-  assertContains(mainScene, 'markerColor: service?.markerColor', 'MainScene passes service-map UE marker colors to GroundScene');
+  assertContains(mainScene, 'markerColor: mosaic?.markerColor ?? service?.markerColor', 'MainScene passes service-map UE marker colors to GroundScene after SINR mosaic precedence');
   assertContains(mainScene, 'ueCountByCellId={modqnServiceMap.ueCountByCellId}', 'MainScene passes per-cell UE counts to CellOverlay');
   assertContains(mainScene, 'const showCellReassignmentEventArcs = modqnVisualLayers.handoverCues', 'MainScene gates profile-derived handover cues by visual preset');
   assertContains(mainScene, 'selectProfileDerivedHandoverCues', 'MainScene caps profile-derived handover cue density');

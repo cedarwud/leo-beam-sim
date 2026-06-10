@@ -188,21 +188,27 @@ console.log('\n(d) W3C WCAG 2.1 contrast ratio');
 }
 
 // ---------------------------------------------------------------------------
-// (e) ControlBar.tsx — omega-heuristic is not a top-level public mode
+// (e) Advanced MODQN controls — omega-heuristic is not a top-level public mode
 // ---------------------------------------------------------------------------
-console.log('\n(e) ControlBar omega-heuristic entry removed');
+console.log('\n(e) Advanced omega-heuristic entry stays contained');
 {
   const cbSrc = readSource('src/ui/ControlBar.tsx');
-  // C1: the SINR/MODQN public switch moved to LaneExperienceBar. ControlBar keeps
-  // only the contained MODQN decision-policy toggle (paper overlay <-> heuristic ω),
-  // which must NOT register omega-heuristic as a third top-level handover mode.
+  const advancedControlsSrc = readSource('src/ui/modqn-controls/ModqnAdvancedDisplayControls.tsx');
+  // C1: the SINR/MODQN public switch moved to LaneExperienceBar. S5a moved the
+  // contained MODQN decision-policy toggle (paper overlay <-> heuristic omega) to
+  // the Advanced drawer. It must NOT register omega-heuristic as a third
+  // top-level handover mode.
   assert(
-    cbSrc.includes('data-testid="modqn-decision-policy-control"'),
-    'ControlBar exposes the contained MODQN decision-policy toggle',
+    !cbSrc.includes('data-testid="modqn-decision-policy-control"'),
+    'ControlBar no longer exposes the contained MODQN decision-policy toggle',
   );
   assert(
-    !cbSrc.includes("mode: 'omega-heuristic'"),
-    'ControlBar does not expose omega-heuristic as a third top-level mode',
+    advancedControlsSrc.includes('data-testid="modqn-decision-policy-control"'),
+    'Advanced controls expose the contained MODQN decision-policy toggle',
+  );
+  assert(
+    !advancedControlsSrc.includes("mode: 'omega-heuristic'"),
+    'Advanced controls do not expose omega-heuristic as a third top-level mode',
   );
 }
 
@@ -463,7 +469,7 @@ console.log('\n(j) computeHeuristicNotPaperScore picks argmax');
 console.log('\n(k) No shortcut / URL handler for omega-heuristic (SDD §4.4 item 5)');
 {
   // Walk every src file looking for setHandoverMode-ish writes that bypass
-  // the ControlBar selector. We allow the legitimate uses in App.tsx
+  // the Advanced drawer selector. We allow the legitimate uses in App.tsx
   // (state initializer + handleHandoverModeChange + persist/read).
   const allowedAppLines = new Set([
     'setHandoverModeRaw',

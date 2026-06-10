@@ -388,15 +388,17 @@ styling. No other render path changes.
 
 - The panel polls at 3 s when active jobs exist and 30 s otherwise.
 - Active jobs show running-for duration and an indeterminate progress bar.
-- Done jobs show the `Load into scene` button.
+- D2 update: completed jobs stay in job history; the Model Library owns the
+  `Load into scene` button and only enables it for completed jobs with a
+  loadable training-service manifest.
 - Sweep batches show producer-owned aggregate counts and per-cell axis/status
   rows via `/batches/{batch_id}`.
 - The panel renders the user's submission history from
   `SUBMITTED_JOB_IDS_KEY` for jobs the backend no longer knows about
   (marked `expired`).
-- testids: `jobs-panel`, `jobs-panel-active-card`, `jobs-panel-done-card`,
-  `jobs-panel-load-into-scene`, `jobs-panel-batch-card`,
-  `jobs-panel-batch-progress`.
+- testids: `jobs-panel`, `jobs-panel-active-card`,
+  `jobs-panel-completed-history-card`, `jobs-panel-terminal-card`,
+  `jobs-panel-batch-card`, `jobs-panel-batch-progress`.
 - `npm run lint` clean.
 
 ### 10.5 PR-θ (artifact picker)

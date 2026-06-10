@@ -119,19 +119,26 @@ check('heartbeat after progress advances lastHeartbeatMs', sticky['job-a'].lastH
 publishTelemetryEvent(event({ jobId: 'job-c', tsMs: 10, type: 'progress', episode: 5, episodeBudget: 12, metrics: { scalarReward: 2 } }));
 check('progress sets lastProgressEvent payload', getTelemetrySnapshot()['job-c'].lastProgressEvent?.episode === 5);
 check('progress sets lastEpisodeEvent', getTelemetrySnapshot()['job-c'].lastEpisodeEvent?.episode === 5);
+check('first episode progress has no previousEpisodeEvent', getTelemetrySnapshot()['job-c'].previousEpisodeEvent === null);
 check('progress sets latestEvent', getTelemetrySnapshot()['job-c'].latestEvent.type === 'progress');
+
+publishTelemetryEvent(event({ jobId: 'job-c', tsMs: 15, type: 'progress', episode: 6, episodeBudget: 12, metrics: { scalarReward: 3 } }));
+check('second episode progress keeps previousEpisodeEvent for speed deltas', getTelemetrySnapshot()['job-c'].previousEpisodeEvent?.episode === 5);
+check('second episode progress advances lastEpisodeEvent', getTelemetrySnapshot()['job-c'].lastEpisodeEvent?.episode === 6);
 
 publishTelemetryEvent(event({ jobId: 'job-c', tsMs: 20, type: 'heartbeat' }));
 const afterHb = getTelemetrySnapshot()['job-c'];
-check('heartbeat keeps lastProgressEvent episode sticky', afterHb.lastProgressEvent?.episode === 5);
-check('heartbeat keeps lastProgressEvent metrics sticky', afterHb.lastProgressEvent?.metrics?.scalarReward === 2);
-check('heartbeat keeps lastEpisodeEvent sticky', afterHb.lastEpisodeEvent?.episode === 5);
+check('heartbeat keeps lastProgressEvent episode sticky', afterHb.lastProgressEvent?.episode === 6);
+check('heartbeat keeps lastProgressEvent metrics sticky', afterHb.lastProgressEvent?.metrics?.scalarReward === 3);
+check('heartbeat keeps lastEpisodeEvent sticky', afterHb.lastEpisodeEvent?.episode === 6);
+check('heartbeat keeps previousEpisodeEvent sticky', afterHb.previousEpisodeEvent?.episode === 5);
 check('heartbeat is the latestEvent', afterHb.latestEvent.type === 'heartbeat');
 
 publishTelemetryEvent(event({ jobId: 'job-c', tsMs: 30, type: 'done', status: 'done' }));
 const afterDone = getTelemetrySnapshot()['job-c'];
-check('done keeps lastProgressEvent episode sticky', afterDone.lastProgressEvent?.episode === 5);
-check('done keeps lastEpisodeEvent sticky', afterDone.lastEpisodeEvent?.episode === 5);
+check('done keeps lastProgressEvent episode sticky', afterDone.lastProgressEvent?.episode === 6);
+check('done keeps lastEpisodeEvent sticky', afterDone.lastEpisodeEvent?.episode === 6);
+check('done keeps previousEpisodeEvent sticky', afterDone.previousEpisodeEvent?.episode === 5);
 check('done is the latestEvent', afterDone.latestEvent.type === 'done');
 
 // producer FINAL scalar line = a metrics-only progress (episodeBudget, NO

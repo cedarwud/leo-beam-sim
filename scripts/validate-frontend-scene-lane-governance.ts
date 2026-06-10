@@ -109,6 +109,52 @@ assert.equal(
   'only the explicit MODQN replay proof lane may render the replay scene layer',
 );
 
+{
+  const replayCinemaGate = readRepoFile('src/modqn/replay-bundle/replayHandoverCinemaGate.ts');
+  assertContains(
+    replayCinemaGate,
+    'buildModqnDenseQProof',
+    'MODQN D6 replay handover cinema gate must require dense-Q proof',
+  );
+  assertContains(
+    replayCinemaGate,
+    'entities.satellites.trajectory',
+    'MODQN D6 replay handover cinema gate must source-gap satellite trajectory',
+  );
+  assertContains(
+    replayCinemaGate,
+    'entities.beams.footprints',
+    'MODQN D6 replay handover cinema gate must source-gap beam footprints',
+  );
+  assertContains(
+    replayCinemaGate,
+    'metrics.reward',
+    'MODQN D6 replay handover cinema gate must source-gap reward proof',
+  );
+  assertNotContains(
+    replayCinemaGate,
+    'liveWalker',
+    'MODQN D6 replay handover cinema gate must not consume live Walker state',
+  );
+  assertNotContains(
+    replayCinemaGate,
+    'sinr',
+    'MODQN D6 replay handover cinema gate must not consume live SINR state',
+  );
+  assertNotContains(
+    replayCinemaGate,
+    '../scene',
+    'MODQN D6 replay handover cinema gate must not depend on renderer fallbacks',
+  );
+
+  const replayCuePanel = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
+  assertContains(
+    replayCuePanel,
+    'data-testid="modqn-replay-cinema-readiness"',
+    'MODQN replay cue panel must expose the D6 readiness stamp',
+  );
+}
+
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'sinr-live', sceneSource: 'live-sim' }), true);
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'modqn-live-cell-preview', sceneSource: 'live-sim' }), true);
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'modqn-replay-proof', sceneSource: 'live-sim' }), true);
@@ -370,6 +416,7 @@ const appExperienceModeSource = readRepoFile('src/app/appExperienceMode.ts');
 const modqnServingCountSource = readRepoFile('src/modqn/servingCount.ts');
 const timelineAuthoritySource = readRepoFile('src/app/timelineRailAuthority.ts');
 const controlBarSource = readRepoFile('src/ui/ControlBar.tsx');
+const modqnAdvancedDisplayControlsSource = readRepoFile('src/ui/modqn-controls/ModqnAdvancedDisplayControls.tsx');
 const topologyTabSource = readRepoFile('src/ui/signal-tuning/TopologyTab.tsx');
 const timelineBarSource = readRepoFile('src/ui/TimelineBar.tsx');
 const handoverRailSource = readRepoFile('src/ui/HandoverEventRail.tsx');
@@ -387,6 +434,8 @@ const modqnReplayCuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx')
 const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
 const candidateBeamHighlightSource = readRepoFile('src/viz/CandidateBeamHighlight.tsx');
 const sinrOffsetExplainerSource = readRepoFile('src/ui/SinrOffsetExplainer.tsx');
+const handoverCinemaSource = readRepoFile('src/app/handoverCinema.ts');
+const sinrLiveCellHandoverEventIndexSource = readRepoFile('src/scene/sinrLiveCellHandoverEventIndex.ts');
 const cellScheduleSource = readRepoFile('src/scene/useCellSchedule.ts');
 const baseSceneLayoutSource = readRepoFile('src/scene/BaseSceneLayout.tsx');
 const sceneTelemetrySource = readRepoFile('src/scene/SceneTelemetry.tsx');
@@ -455,9 +504,9 @@ assertContains(modqnServiceMapSource, 'slotSec', 'MODQN service readout carries 
 assertContains(modqnServiceMapSource, 'nextChangedCellCount', 'MODQN service readout carries next-slot change count');
 assertContains(modqnServiceMapSource, 'activeBeamIds', 'MODQN service readout carries active beam ids without producer-proof claims');
 assertContains(cellOverlaySource, 'showUeCounts', 'CellOverlay supports explicit UE-count badge visibility');
-assertContains(controlBarSource, 'modqn-layer-preset-control', 'ControlBar exposes MODQN layer preset control');
-assertContains(controlBarSource, 'MODQN_VISUAL_LAYER_PRESETS.map', 'ControlBar renders presets from shared MODQN visual layer model');
-assertContains(controlBarSource, "'service-allocation': 'Service'", 'ControlBar labels the service allocation preset');
+assertContains(modqnAdvancedDisplayControlsSource, 'modqn-layer-preset-control', 'Advanced display controls expose MODQN layer preset control');
+assertContains(modqnAdvancedDisplayControlsSource, 'MODQN_VISUAL_LAYER_PRESETS.map', 'Advanced display controls render presets from shared MODQN visual layer model');
+assertContains(modqnAdvancedDisplayControlsSource, "'service-allocation': 'Service'", 'Advanced display controls label the service allocation preset');
 assertContains(appSource, 'const [modqnVisualLayerPreset, setModqnVisualLayerPreset]', 'App owns MODQN visual layer preset state');
 assertContains(appRuntimeConfigSource, 'resolveModqnVisualLayers(modqnVisualLayerPreset)', 'appRuntimeConfig resolves MODQN visual layers into runtime flags');
 assertContains(cellScheduleSource, 'DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT', 'useCellSchedule names the 28-cell cap as display-only');
@@ -816,13 +865,14 @@ assertContains(
   'App exposes the effective playback speed as shell telemetry for the cinematic gate',
 );
 
-// ── ITEM #C: live-walker Director seek-to-next-HO + sat-pair framing ──
+// ── ITEM #C / D4: live source Director seek-to-next-HO + sat-pair framing ──
 // The live Director button mirrors the artifact cinematic (seek to the next
-// handover + 0.25x slow-mo + frame the satellite pair) on the live Walker lanes,
-// against the validated live Walker event index. Honesty: the seek target is a
+// handover + 0.25x slow-mo + frame the satellite pair) on the live lanes. On
+// SINR-live D4 this is the sinrLiveCells cell-truth index; on MODQN preview it
+// stays the live Walker overlay-demo index. Honesty: the seek target is a
 // real source-time (resolveLiveWalkerFocusWindow returns window.startSec, never a
 // fabricated horizon — docs/live-walker-handover-event-map-sdd.md) and the claim
-// stays profile-derived-forecast / overlay-demo, never producer proof. Lock the
+// stays live-truth / overlay-demo, never producer proof. Lock the
 // resolver, the live seek + deferred sat-pair focus wiring, and the claim telemetry.
 const liveWalkerDirectorFocusSource = readRepoFile('src/scene/liveWalkerDirectorFocus.ts');
 assertContains(
@@ -837,8 +887,8 @@ assertContains(
 );
 assertContains(
   liveWalkerDirectorFocusSource,
-  "export type LiveWalkerDirectorFocusClaimKind = 'profile-derived-forecast' | 'overlay-demo';",
-  'live Walker Director focus claim is forecast/overlay-demo only, never producer proof',
+  "export type LiveWalkerDirectorFocusClaimKind = 'live-truth' | 'profile-derived-forecast' | 'overlay-demo';",
+  'live Director focus claim allows SINR cell truth and overlay-demo, never producer proof',
 );
 // P3: the director orchestration (requestDirectorFocus + the cinematic/live focus
 // lifecycle) was extracted from App into useDirectorOrchestration; App keeps the
@@ -861,8 +911,23 @@ assertContains(
 );
 assertContains(
   appSource,
-  "sceneLane === 'modqn-live-cell-preview' ? 'overlay-demo' : 'profile-derived-forecast'",
-  'App labels the live Director focus claim by lane (overlay-demo vs profile-derived-forecast)',
+  "sceneLane === 'modqn-live-cell-preview' ? 'overlay-demo' : 'live-truth'",
+  'App labels the live Director focus claim by lane (overlay-demo vs SINR cell truth)',
+);
+assertContains(
+  appSource,
+  'buildSinrLiveCellHandoverEventIndex({',
+  'App builds the SINR-live handover index from sinrLiveCells cell truth',
+);
+assertContains(
+  sinrLiveCellHandoverEventIndexSource,
+  "sourceOwner: 'sinr-live-cell-truth'",
+  'SINR cell-truth event index declares its source owner',
+);
+assertContains(
+  sinrLiveCellHandoverEventIndexSource,
+  "runtimeFramePath: 'stepRuntimeFrame+sinrLiveCells'",
+  'SINR cell-truth event index records the additive sinrLiveCells trajectory path',
 );
 assertContains(
   directorOrchestrationSource,
@@ -1129,9 +1194,9 @@ assertContains(mainScssSource, 'color: var(--leo-source-gap-chip-text);', 'INV-3
     ...baseInput,
     sceneLane: 'sinr-live',
   });
-  assert.equal(sinrLive.rail.sourceOwner, 'live-walker', 'SINR live rail uses the live Walker event index');
+  assert.equal(sinrLive.rail.sourceOwner, 'sinr-live-cell-truth', 'SINR live rail uses the sinrLiveCells event index');
   assert.equal(sinrLive.rail.horizonKind, 'live-walker-window', 'SINR live rail uses the live Walker 7200s horizon');
-  assert.equal(sinrLive.rail.claimKind, 'profile-derived-forecast', 'SINR precomputed rail is a profile-derived forecast');
+  assert.equal(sinrLive.rail.claimKind, 'live-truth', 'SINR precomputed rail is cell-truth live truth');
   assert.equal(sinrLive.rail.axisKind, 'source-time', 'SINR live rail click targets use source time');
 
   const proof = resolveTimelineRailDescriptor({
@@ -1227,7 +1292,8 @@ assertContains(handoverRailSource, 'clickTargetSec', 'HandoverEventRail accepts 
 assertContains(handoverRailSource, 'data-click-target-sec={cluster.clickTargetSec.toFixed(3)}', 'HandoverEventRail exposes source-time click target telemetry');
 assertContains(handoverRailSource, 'onClick={() => selectClusterAndSeek(cluster)}', 'HandoverEventRail routes marker clicks through source-time selection');
 assertContains(handoverRailSource, 'seekTo(cluster.clickTargetSec);', 'HandoverEventRail seeks to source click targets, not display axis positions');
-assertContains(handoverRailSource, "sourceOwner === 'live-walker' && horizonKind === 'live-walker-window'", 'HandoverEventRail gates slow-motion focus to live Walker source horizon');
+assertContains(handoverRailSource, "sourceOwner === 'sinr-live-cell-truth'", 'HandoverEventRail allows D4 cell-truth source for slow-motion focus');
+assertContains(handoverRailSource, "horizonKind === 'live-walker-window'", 'HandoverEventRail gates slow-motion focus to the live Walker source horizon');
 assertContains(handoverRailSource, 'data-focus-axis-kind={slowMotionFocus?.axisKind ?? \'\'}', 'HandoverEventRail exposes focus display-axis telemetry');
 assertContains(handoverRailSource, 'data-testid="handover-event-slow-focus"', 'HandoverEventRail renders the selected live Walker slow-motion focus panel');
 assertContains(handoverRailSource, "axisKind: 'display-stretched'", 'HandoverEventRail slow-motion focus uses a display axis');
@@ -1264,18 +1330,19 @@ assertContains(
   'ControlBar wraps live-only controls in the SINR live lane',
 );
 // Live-only controls remain gated behind the showSinrLiveControls branch.
-// (Consolidation C1 removed the in-ControlBar playback speed slider, so the
-// upper bound is the MODQN-layer group that follows the live block instead.)
+// (Consolidation C1 removed the in-ControlBar playback speed slider; S5a moved
+// MODQN display/policy controls into the Advanced drawer. The upper bound is now
+// the artifact replay display-filter branch that follows the live block.)
 {
   const liveOnlyBranchIndex = controlBarSource.indexOf('{showSinrLiveControls && (');
-  // Upper bound = the MODQN-layer group that follows the SINR-live block. Every
-  // live-only control must sit BETWEEN the branch open and that group, so a future
-  // edit that accidentally hoists a control out of the SINR-live branch is caught
-  // (codex C1 [P3]).
-  const modqnLayerGroupIndex = controlBarSource.indexOf('data-testid="modqn-layer-preset-control"');
+  // Upper bound = the artifact replay branch that follows the SINR-live block.
+  // Every live-only control must sit BETWEEN the branch open and that group, so a
+  // future edit that accidentally hoists a control out of the SINR-live branch is
+  // caught (codex C1 [P3] + S5a).
+  const artifactReplayBranchIndex = controlBarSource.indexOf('{isArtifactReplay ? (');
   assert.ok(
-    liveOnlyBranchIndex >= 0 && modqnLayerGroupIndex > liveOnlyBranchIndex,
-    'ControlBar keeps the SINR-live branch before the MODQN-layer group',
+    liveOnlyBranchIndex >= 0 && artifactReplayBranchIndex > liveOnlyBranchIndex,
+    'ControlBar keeps the SINR-live branch before the artifact replay display-filter branch',
   );
   for (const [needle, label] of [
     ['data-testid="beam-density-control"', 'beam density controls'],
@@ -1286,8 +1353,8 @@ assertContains(
   ] as const) {
     const controlIndex = controlBarSource.indexOf(needle, liveOnlyBranchIndex);
     assert.ok(
-      controlIndex > liveOnlyBranchIndex && controlIndex < modqnLayerGroupIndex,
-      `ControlBar must keep live-only ${label} inside the SINR live branch (before the MODQN-layer group)`,
+      controlIndex > liveOnlyBranchIndex && controlIndex < artifactReplayBranchIndex,
+      `ControlBar must keep live-only ${label} inside the SINR live branch (before the artifact display-filter branch)`,
     );
   }
 }
@@ -1385,9 +1452,34 @@ assertContains(
   'Candidate highlight publishes a MESH-derived rendered-count observable (validator-provable render)',
 );
 assertContains(
+  candidateBeamHighlightSource,
+  'findCellGround(cellPlacementById, candidate.fromCellId)',
+  'Candidate highlight uses cell placement for D4 cell-truth focused events',
+);
+assertContains(
   sinrOffsetExplainerSource,
   'data-claim-kind="sinr-offset"',
   'SINR explainer is stamped lane-truthful claim-kind="sinr-offset" (never producer/MODQN proof)',
+);
+assertContains(
+  sinrOffsetExplainerSource,
+  'data-source-owner={model.sourceOwner}',
+  'SINR explainer exposes the D4 event source owner',
+);
+assertContains(
+  sinrOffsetExplainerSource,
+  'data-event-id={model.eventId}',
+  'SINR explainer exposes the focused source event id',
+);
+assertContains(
+  sinrOffsetExplainerSource,
+  'data-off-axis-deg={row.offAxisDeg == null ? \'\' : row.offAxisDeg.toFixed(3)}',
+  'SINR explainer exposes old/new off-axis fields from the cell-truth event',
+);
+assertContains(
+  handoverCinemaSource,
+  "index.sourceOwner === 'sinr-live-cell-truth'",
+  'handover cinema fails closed unless D4 cell-truth events carry required cell/off-axis fields',
 );
 // ── SINR-serving mosaic (S2) lane-ownership + distinct-from-MODQN source locks ──
 const sinrServingMosaicSource = readRepoFile('src/scene/sinrServingMosaic.ts');
@@ -1407,6 +1499,21 @@ assertContains(
   'export function deriveSinrServingMosaicAggregate',
   'SINR-serving mosaic owns the served N/N + per-beam-load + mean-SINR aggregate',
 );
+assertContains(
+  sinrServingMosaicSource,
+  "export const SINR_LIVE_SERVICE_QUEUE_SOURCE = 'live-service-demo'",
+  'SINR-live queue accounting is explicitly labelled as display-owned live-service-demo, not producer proof',
+);
+assertContains(
+  sinrServingMosaicSource,
+  'export function deriveSinrLiveServiceQueueModel',
+  'SINR-serving mosaic owns the S2a live-service-demo queue accountant',
+);
+assertContains(
+  sinrServingMosaicSource,
+  'queueBeforeBits + trafficArrivalBits - servedBits',
+  'SINR live-service-demo queue aggregate preserves the queue conservation fields',
+);
 assertNotContains(
   sinrServingMosaicSource,
   "from './modqnServiceMap'",
@@ -1423,14 +1530,44 @@ assertContains(
   'MainScene threads the mosaic mesh-derived colour telemetry only on the sinr-live mosaic lane',
 );
 assertContains(
+  mainSceneSource,
+  "contentionTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureBucketCount' : undefined}",
+  'MainScene threads queue-pressure buffer telemetry only on the sinr-live mosaic lane',
+);
+assertContains(
+  mainSceneSource,
+  "contentionInstanceCountTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureInstanceCount' : undefined}",
+  'MainScene exposes the instanced secondary-UE queue-pressure count for the D3 dense-safe smoke',
+);
+assertContains(
   groundSceneSource,
   'function publishInstanceColorTelemetry',
   'GroundScene publishes a MESH-derived distinct-colour count (validator-provable mosaic render)',
 );
 assertContains(
+  groundSceneSource,
+  'function publishInstanceContentionTelemetry',
+  'GroundScene publishes GEOMETRY-derived queue-pressure bucket telemetry from the instanced aContention buffer',
+);
+assertContains(
   sinrServingAggregateSource,
   'data-claim-kind="sinr-serving"',
   'SINR-serving aggregate is stamped lane-truthful claim-kind="sinr-serving" (never producer/MODQN proof)',
+);
+assertContains(
+  sinrServingAggregateSource,
+  'data-queue-source={queueAggregate.source}',
+  'SINR-serving aggregate exposes the queue source label from the same queue model',
+);
+assertContains(
+  sinrServingAggregateSource,
+  'data-testid="sinr-service-queue-summary"',
+  'SINR-serving aggregate exposes dense queue metrics without per-UE labels',
+);
+assertContains(
+  sinrServingAggregateSource,
+  'data-testid="sinr-service-queue-heatmap"',
+  'SINR-serving aggregate exposes a dense queue heatmap strip from the queue aggregate',
 );
 assertContains(
   sinrServingAggregateSource,
@@ -1564,19 +1701,41 @@ assertContains(
   'showSinrLiveCellBeams: boolean',
   'render plan declares the cell-truth beam-cone flag',
 );
-// PARKED (2026-06-08): the flag is pinned false → the cell-truth cones do NOT
-// render; the steered SatelliteBeams render again (the `&& !showSinrLiveCellBeams`
-// gate below becomes true). The cone JSX + resolver stay in source (un-park later).
+// PARKED (2026-06-08): the ambient flag is pinned false → the global cell-truth
+// cone layer does NOT render; the steered SatelliteBeams render again (the
+// `&& !showSinrLiveCellBeams` gate below becomes true). D4 may still render a
+// bounded, focus-scoped old/new pair sourced from one focused sinrLiveCells event.
 assertContains(
   sceneLaneRenderPlanSource,
   'const showSinrLiveCellBeams = false;',
-  'cell-truth cones are PARKED (flag false) — steered SatelliteBeams render restored',
+  'ambient cell-truth cones are PARKED (flag false) — steered SatelliteBeams render restored',
 );
-// (i) The cell-cone JSX is retained (gated false) for a future un-park.
+// (i) The ambient cell-cone JSX is retained (gated false); D4 adds a separate
+//     focus-scoped old/new pair mount with mesh-derived telemetry.
 assertContains(
   mainSceneSource,
   '<SinrLiveCellBeamCones',
-  'MainScene keeps the cell-truth beam-cone JSX (parked behind showSinrLiveCellBeams=false)',
+  'MainScene keeps the cell-truth beam-cone JSX',
+);
+assertContains(
+  mainSceneSource,
+  'resolveSinrLiveCellHandoverPairConeItems({',
+  'MainScene resolves the D4 focused old/new cell-truth beam pair',
+);
+assertContains(
+  mainSceneSource,
+  'telemetryCountDatasetKey="sinrLiveCellHandoverPairConeRenderedCount"',
+  'MainScene publishes mesh-derived telemetry for the D4 old/new cell-truth pair',
+);
+assertContains(
+  sinrLiveCellBeamConesSource,
+  'resolveSinrLiveCellHandoverPairConeItems',
+  'SinrLiveCellBeamCones exposes a focus-scoped old/new handover pair resolver',
+);
+assertContains(
+  sinrLiveCellBeamConesSource,
+  "candidate.sourceOwner !== 'sinr-live-cell-truth'",
+  'Focused old/new pair resolver is inert unless the event source is cell truth',
 );
 // (j) With the flag false this gate is TRUE → the steered SatelliteBeams render on
 //     the sinr-live lane (the original look the user approved).
@@ -2730,6 +2889,7 @@ assertContains(
 // Evidence / Replay tab. The editor stays mounted (KEEP-ACTIVE) — only relocated.
 const modqnObjectiveTabSource = readRepoFile('src/ui/ModqnObjectiveTab.tsx');
 const advancedSetupDrawerSource = readRepoFile('src/ui/AdvancedSetupDrawer.tsx');
+const jobsPanelSource = readRepoFile('src/ui/modqn-training/JobsPanel.tsx');
 assertContains(
   advancedSetupDrawerSource,
   "from './ModqnObjectiveTab'",
@@ -2756,9 +2916,14 @@ assertContains(
   'objective tab can reset ω to the bundle weights',
 );
 assertContains(
+  modqnAdvancedDisplayControlsSource,
+  'Display and policy',
+  'Advanced display controls give the MODQN display/policy group a visible heading',
+);
+assertNotContains(
   controlBarSource,
-  'leo-control-bar__group-label',
-  'ControlBar gives the MODQN visual-layer preset group a visible heading',
+  'data-testid="modqn-layer-preset-control"',
+  'ControlBar no longer owns the MODQN visual-layer preset control',
 );
 // Consolidation C1: playback (play/pause + speed) lives ONLY in the bottom
 // TimelineBar; the ControlBar must not duplicate it, and the redundant
@@ -2787,21 +2952,43 @@ assertContains(
 
 // ── Showcase exposure S4: omega-heuristic decision policy + mandatory banner ──
 // The omega-heuristic engine path was always live but had no UI entry. It is
-// surfaced via a contained MODQN decision-policy toggle on the modqn-live lane.
+// surfaced via a contained MODQN decision-policy toggle in the Advanced drawer
+// only on the live-cell preview lane.
 // GOVERNANCE: it is "NOT paper MODQN", so App MUST co-mount the disclosure banner
-// whenever it is active, and it must never be exposed as a 3rd top-level mode.
+// whenever it is active on the live-cell preview lane, and it must never be
+// exposed as a 3rd top-level mode or a replay/artifact policy control.
 assertContains(
-  controlBarSource,
+  modqnAdvancedDisplayControlsSource,
   'data-testid="modqn-decision-policy-control"',
-  'ControlBar exposes the MODQN decision-policy toggle (paper overlay <-> heuristic ω)',
+  'Advanced display controls expose the MODQN decision-policy toggle (paper overlay <-> heuristic omega)',
 );
 assertContains(
-  controlBarSource,
+  modqnAdvancedDisplayControlsSource,
   'data-testid="modqn-decision-policy-heuristic"',
-  'ControlBar offers the heuristic ω (NOT paper) decision policy',
+  'Advanced display controls offer the heuristic omega (NOT paper) decision policy',
+);
+assertContains(
+  modqnAdvancedDisplayControlsSource,
+  'showDecisionPolicyControls &&',
+  'Advanced display controls gate the live decision-policy toggle behind an explicit prop',
+);
+assertContains(
+  advancedSetupDrawerSource,
+  'showDecisionPolicyControls={showDecisionPolicyControls}',
+  'Advanced drawer forwards the live decision-policy gate into the display controls',
+);
+assertContains(
+  appSource,
+  "showDecisionPolicyControls={sceneLane === 'modqn-live-cell-preview'}",
+  'App exposes the MODQN decision-policy toggle only on the live-cell preview lane',
 );
 assertNotContains(
   controlBarSource,
+  'data-testid="modqn-decision-policy-control"',
+  'ControlBar no longer owns the MODQN decision-policy toggle',
+);
+assertNotContains(
+  modqnAdvancedDisplayControlsSource,
   "mode: 'omega-heuristic'",
   'omega-heuristic must NOT be a 3rd top-level handover mode option',
 );
@@ -2813,7 +3000,12 @@ assertContains(
 assertContains(
   appSource,
   "handoverMode === 'omega-heuristic' && sceneLane === 'modqn-live-cell-preview' && <HeuristicNotPaperBanner />",
-  'App co-mounts the NOT-paper banner gated on omega-heuristic AND the modqn-live lane (never leaks the live heuristic warning onto the artifact / other lanes)',
+  'App co-mounts the NOT-paper banner whenever omega-heuristic is active on the live-cell preview lane',
+);
+assertContains(
+  appSource,
+  "if (targetLane === 'artifact-replay') {\n      if (handoverMode === 'omega-heuristic')",
+  'Artifact lane entry clears an active live-only omega-heuristic policy before returning',
 );
 assertContains(
   appSource,
@@ -2861,8 +3053,53 @@ assertContains(
 );
 assertContains(
   appSource,
-  '<AdvancedSetupDrawer appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />',
-  'App mounts the Advanced setup drawer with appMode + load-into-scene wiring',
+  '<AdvancedSetupDrawer',
+  'App mounts the Advanced setup drawer',
+);
+assertContains(
+  appSource,
+  'appMode={appMode}',
+  'App passes appMode into the Advanced setup drawer',
+);
+assertContains(
+  appSource,
+  'handoverMode={handoverMode}',
+  'App passes handoverMode into the Advanced setup drawer',
+);
+assertContains(
+  appSource,
+  'modqnVisualLayerPreset={modqnVisualLayerPreset}',
+  'App passes the MODQN visual-layer preset into the Advanced setup drawer',
+);
+assertContains(
+  appSource,
+  "showDecisionPolicyControls={sceneLane === 'modqn-live-cell-preview'}",
+  'App passes the live-cell decision-policy gate into the Advanced setup drawer',
+);
+assertContains(
+  appSource,
+  'onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}',
+  'App wires the MODQN visual-layer setter into the Advanced setup drawer',
+);
+assertContains(
+  appSource,
+  'onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}',
+  'App wires the MODQN decision-policy setter into the Advanced setup drawer',
+);
+assertContains(
+  appSource,
+  'onLoadEntry={handleLoadIntoScene}',
+  'App wires load-into-scene into the Model Library',
+);
+assertNotContains(
+  appSource,
+  'onLoadIntoScene={handleLoadIntoScene}',
+  'Advanced drawer no longer owns load-into-scene after D2 Model Library cleanup',
+);
+assertNotContains(
+  advancedSetupDrawerSource,
+  'onLoadIntoScene',
+  'Advanced drawer does not forward load-into-scene into JobsPanel',
 );
 assertContains(
   advancedSetupDrawerSource,
@@ -2873,6 +3110,11 @@ assertContains(
   advancedSetupDrawerSource,
   "from './modqn-training/JobsPanel'",
   'Advanced drawer hosts the jobs panel',
+);
+assertNotContains(
+  jobsPanelSource,
+  'jobs-panel-load-into-scene',
+  'JobsPanel no longer renders the old completed-job Load into scene control',
 );
 assertContains(
   advancedSetupDrawerSource,

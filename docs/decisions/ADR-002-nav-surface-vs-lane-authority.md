@@ -2,7 +2,11 @@
 
 ## Status
 
-Proposed (draft — pending scope decision)
+Superseded by [../modqn-tab-consolidation-plan.md](../modqn-tab-consolidation-plan.md).
+This ADR preserves the keystone rule that navigation surface and `SceneLane`
+authority are not required to be 1:1, but its 3-story selector and ControlBar
+inventory were superseded by the later 2-tab MODQN consolidation and D1/S5a
+Advanced-drawer cleanup.
 
 ## Date
 
@@ -15,7 +19,7 @@ feature reachable in-app. The user then inventoried the result in-browser and
 asked for the opposite force: **fewer buttons, intuitive, zero learning** ("少按鈕、
 直覺、零學習"), with many features becoming default-on instead of toggle-per-feature.
 
-The current top-level control surface (see
+The top-level control surface at the time of the 2026-06-06 survey (see
 `docs/showcase-navigation-exposure-sdd.md` and the 2026-06-06 survey):
 
 - `LaneExperienceBar` — **4 segments**: SINR Live / MODQN Live / MODQN Proof /
@@ -23,7 +27,9 @@ The current top-level control surface (see
 - `ViewModeToggle` — Scene / Dashboard (`src/ui/ViewModeToggle.tsx`).
 - `ControlBar` — UI-mode dropdown (all lanes) + SINR presentation group
   (sinr-live only) + MODQN visual-layer presets + MODQN decision-policy toggle
-  (modqn-live only) + Active-UEs filter (artifact only)
+  (modqn-live only) + Active-UEs filter (artifact only). This is historical:
+  D1/S5a later moved MODQN visual-layer controls and the live-cell
+  decision-policy toggle into `AdvancedSetupDrawer`.
   (`src/ui/ControlBar.tsx:104-279`).
 - `DirectorControls` (Intra/Inter/Exit cinematic) above the bottom `TimelineBar`.
 - Per-lane left/right sidebar tab sets (`src/app/appRuntimeModel.ts:42-74`).

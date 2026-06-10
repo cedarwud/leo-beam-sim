@@ -138,7 +138,8 @@ const PHASE03A_REPLAY_BUNDLE_COVERAGE = {
   'step.policyDiagnostics': {
     status: 'partial-producer-backed',
     currentConsumerPaths: ['timelineRows[].policyDiagnostics'],
-    note: 'Policy diagnostics are optional per row; consumers already count present/missing rows.',
+    sourceGapField: 'diagnostics.denseQPolicy',
+    note: 'Current diagnostics may expose scalarized dense scores or top-K objectiveQ, but not the full dense per-objective proof contract.',
   },
   'step.sourceGaps': {
     status: 'display-derived',
@@ -427,14 +428,15 @@ const VISUAL_SHOWCASE_V1_COVERAGE = {
     note: 'Throughput is present, but power, consumed energy, and Joule/bit terms are missing.',
   },
   'step.policyDiagnostics': {
-    status: 'producer-backed',
+    status: 'partial-producer-backed',
     currentConsumerPaths: [
       'diagnostics.actionScores',
       'diagnostics.selectedAction',
       'diagnostics.decisionFrames',
       'timeline[].modqnDecision.selectedActionScore',
     ],
-    note: 'Policy diagnostics are part of visual-showcase-v1.',
+    sourceGapField: 'diagnostics.denseQPolicy',
+    note: 'Visual-showcase-v1 carries policy diagnostics and scalarized scores, but dense per-objective Q by action is not guaranteed by the current contract.',
   },
   'step.sourceGaps': {
     status: 'display-derived',

@@ -14,6 +14,8 @@ export type ModqnReplaySourceGapField =
   | 'metrics.energyEfficiencyTerms'
   | 'metrics.reward'
   | 'diagnostics.policy'
+  | 'diagnostics.denseQPolicy'
+  | 'traffic.queueRows'
   | 'comparison.alignedTimebase'
   | 'provenance.claimBoundary';
 
@@ -50,6 +52,8 @@ export type ModqnReplaySourceGapClaimImpact =
   | 'no-energy-efficiency-per-step-claim'
   | 'no-reward-proof'
   | 'no-policy-diagnostics-proof'
+  | 'no-dense-q-proof'
+  | 'no-producer-queue-proof'
   | 'no-comparison-alignment-proof'
   | 'no-evidence-promotion';
 
@@ -90,6 +94,8 @@ export const MODQN_REPLAY_SOURCE_GAP_FIELDS = [
   'metrics.energyEfficiencyTerms',
   'metrics.reward',
   'diagnostics.policy',
+  'diagnostics.denseQPolicy',
+  'traffic.queueRows',
   'comparison.alignedTimebase',
   'provenance.claimBoundary',
 ] as const satisfies readonly ModqnReplaySourceGapField[];
@@ -227,6 +233,26 @@ export function createCurrentModqnReplayProofSourceGaps(): readonly ModqnReplayS
       requiredProducerField: 'timeline[].energyEfficiencyTerms',
       claimImpact: 'no-energy-efficiency-per-step-claim',
       note: 'Energy-efficiency story must remain unavailable until producer exports per-step energy terms.',
+    }),
+    gap({
+      field: 'diagnostics.denseQPolicy',
+      surface: 'evidence-panel',
+      reason: 'not-yet-exported',
+      owner: 'modqn-paper-reproduction',
+      policy: 'fail-closed',
+      requiredProducerField: 'timeline[].policyDiagnostics.objectiveQByAction + scalarizedQByAction + selectedActionIndex + tieBreak + invalidActionSentinel',
+      claimImpact: 'no-dense-q-proof',
+      note: 'Dense-Q proof and counterfactual weight controls stay disabled until full per-action Q1/Q2/Q3, mask, selected action, tie-break, and sentinel are exported.',
+    }),
+    gap({
+      field: 'traffic.queueRows',
+      surface: 'evidence-panel',
+      reason: 'not-yet-exported',
+      owner: 'modqn-paper-reproduction',
+      policy: 'fail-closed',
+      requiredProducerField: 'timeline[].ues[].queueBeforeBits + trafficArrivalBits + servedBits + queueAfterBits + serviceRateBps',
+      claimImpact: 'no-producer-queue-proof',
+      note: 'Producer replay queue proof requires per-UE queue rows and conservation fields; live-service-demo queue state must not fill this MODQN proof gap.',
     }),
   ];
 }

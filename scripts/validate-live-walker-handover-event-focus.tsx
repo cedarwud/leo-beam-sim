@@ -63,15 +63,16 @@ function liveWalkerEvents(): readonly HandoverRailEvent[] {
 }
 
 function renderRail(input?: {
-  readonly sourceOwner?: 'live-walker' | 'modqn-producer-trace';
+  readonly sourceOwner?: 'live-walker' | 'sinr-live-cell-truth' | 'modqn-producer-trace';
   readonly horizonKind?: 'live-walker-window' | 'producer-trace';
-  readonly claimKind?: 'overlay-demo' | 'producer-proof';
+  readonly claimKind?: 'live-truth' | 'overlay-demo' | 'producer-proof';
   readonly durationSec?: number;
 }): string {
   const sourceOwner = input?.sourceOwner ?? 'live-walker';
   const horizonKind = input?.horizonKind ?? 'live-walker-window';
   const claimKind = input?.claimKind ?? 'overlay-demo';
   const durationSec = input?.durationSec ?? LIVE_DURATION_SEC;
+  const isSinrCellTruth = sourceOwner === 'sinr-live-cell-truth';
   return renderToStaticMarkup(
     <HandoverEventRail
       events={liveWalkerEvents()}
@@ -79,10 +80,18 @@ function renderRail(input?: {
       durationSec={durationSec}
       onSeek={() => undefined}
       disabled={false}
-      sourceLabel={sourceOwner === 'live-walker' ? 'MODQN overlay on live Walker - demo' : 'Legacy producer trace'}
+      sourceLabel={
+        isSinrCellTruth
+          ? 'sinrLiveCells event index - cell truth'
+          : sourceOwner === 'live-walker'
+            ? 'MODQN overlay on live Walker - demo'
+            : 'Legacy producer trace'
+      }
       sourceOwner={sourceOwner}
       horizonKind={horizonKind}
-      horizonLabel={sourceOwner === 'live-walker' ? 'Live Walker timeline 2 h' : 'Legacy producer trace 1s-10s'}
+      horizonLabel={
+        sourceOwner === 'modqn-producer-trace' ? 'Legacy producer trace 1s-10s' : 'Live Walker timeline 2 h'
+      }
       claimKind={claimKind}
       sourceStartSec={0}
       sourceEndSec={durationSec}
@@ -161,6 +170,21 @@ function validateLiveWalkerFocusMarkup(): void {
   console.log('PASS: live Walker rail opens source-backed slow-motion focus panel');
 }
 
+function validateSinrCellTruthFocusMarkup(): void {
+  const markup = renderRail({
+    sourceOwner: 'sinr-live-cell-truth',
+    horizonKind: 'live-walker-window',
+    claimKind: 'live-truth',
+  });
+  assertContains(markup, 'data-focus-enabled="true"', 'SINR cell-truth rail root');
+  assertContains(markup, 'data-focus-open="true"', 'SINR cell-truth rail root');
+  assertContains(markup, 'data-source-owner="sinr-live-cell-truth"', 'SINR cell-truth rail source telemetry');
+  assertContains(markup, 'data-claim-kind="live-truth"', 'SINR cell-truth rail claim telemetry');
+  assertContains(markup, 'data-focus-axis-kind="display-stretched"', 'SINR cell-truth rail root');
+  assertContains(markup, 'data-testid="handover-event-slow-focus"', 'SINR cell-truth slow focus panel');
+  console.log('PASS: SINR cell-truth rail can open the live-window slow-motion focus panel');
+}
+
 function validateNonLiveRailDoesNotFocus(): void {
   const markup = renderRail({
     sourceOwner: 'modqn-producer-trace',
@@ -179,8 +203,18 @@ function validateStaticBoundaries(): void {
   const sddSource = readRepoFile('docs/live-walker-handover-event-map-sdd.md');
   assertContains(
     railSource,
-    "sourceOwner === 'live-walker' && horizonKind === 'live-walker-window'",
-    'rail source boundary',
+    "sourceOwner === 'live-walker'",
+    'rail live Walker source boundary',
+  );
+  assertContains(
+    railSource,
+    "sourceOwner === 'sinr-live-cell-truth'",
+    'rail SINR cell-truth source boundary',
+  );
+  assertContains(
+    railSource,
+    "horizonKind === 'live-walker-window'",
+    'rail live-window horizon boundary',
   );
   assertContains(railSource, 'setFocusedEventId(cluster.id)', 'rail marker selection');
   assertContains(railSource, 'onClick={() => selectClusterAndSeek(cluster)}', 'rail click handler');
@@ -196,14 +230,25 @@ function validateStaticBoundaries(): void {
   );
   assertContains(
     appSource,
+    "timelineRailDescriptor.rail.sourceOwner === 'sinr-live-cell-truth'",
+    'App SINR cell-truth rail seek source-owner guard',
+  );
+  assertContains(
+    appSource,
+    "timelineRailDescriptor.rail.horizonKind === 'live-walker-window'",
+    'App live-window rail seek horizon guard',
+  );
+  assertContains(
+    appSource,
     'setLiveTimelineSeekRequest({',
     'App live Walker rail source-time seek request',
   );
-  console.log('PASS: static source-time and live-Walker-only focus boundaries are present');
+  console.log('PASS: static source-time and live-window focus boundaries are present');
 }
 
 validatePackageScript();
 validateFocusMath();
 validateLiveWalkerFocusMarkup();
+validateSinrCellTruthFocusMarkup();
 validateNonLiveRailDoesNotFocus();
 validateStaticBoundaries();

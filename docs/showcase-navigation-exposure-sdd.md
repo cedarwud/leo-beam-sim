@@ -1,8 +1,12 @@
 # Showcase Navigation + Orphan-Feature Exposure SDD
 
-**Status:** S1–S6 shipped on `feat/showcase-phase-0` (commits `4e56e0a` → `5ed4074`),
-codex-reviewed CLEAN, all validators + browser gates green on real producer data.
-**Date:** 2026-06-06. **Authority:** this doc + `docs/frontend-render-governance.md`.
+**Status:** Historical exposure campaign record. S1–S6 shipped on
+`feat/showcase-phase-0` (commits `4e56e0a` → `5ed4074`), codex-reviewed CLEAN,
+all validators + browser gates green on real producer data. Superseded for
+current implementation order by `docs/sdd-index.md`, MODQN tab consolidation,
+and the D1/S5a Advanced-drawer cleanup.
+**Date:** 2026-06-06. **Authority:** historical record only; use
+`docs/frontend-render-governance.md` plus `docs/sdd-index.md` for current work.
 
 ## 1. Problem
 

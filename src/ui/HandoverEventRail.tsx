@@ -2,8 +2,17 @@ import { useState, type CSSProperties } from 'react';
 import { formatTimelineTime } from './TimelineBar';
 
 export type HandoverRailEventKind = 'intra' | 'inter';
-export type HandoverRailEventSource = 'artifact-replay' | 'modqn-replay' | 'live-observed' | 'live-walker';
-export type HandoverRailSourceOwner = 'artifact-replay' | 'modqn-producer-trace' | 'live-walker';
+export type HandoverRailEventSource =
+  | 'artifact-replay'
+  | 'modqn-replay'
+  | 'live-observed'
+  | 'live-walker'
+  | 'sinr-live-cell-truth';
+export type HandoverRailSourceOwner =
+  | 'artifact-replay'
+  | 'modqn-producer-trace'
+  | 'live-walker'
+  | 'sinr-live-cell-truth';
 export type HandoverRailHorizonKind = 'artifact-scenario' | 'producer-trace' | 'live-walker-window';
 export type HandoverRailClaimKind =
   | 'artifact-proof'
@@ -84,6 +93,7 @@ function kindLabel(kind: HandoverRailEventKind): string {
 function sourceLabel(source: HandoverRailEventSource): string {
   if (source === 'artifact-replay') return 'artifact';
   if (source === 'modqn-replay') return 'producer trace';
+  if (source === 'sinr-live-cell-truth') return 'SINR cell truth';
   if (source === 'live-walker') return 'live Walker';
   return 'observed';
 }
@@ -95,6 +105,9 @@ function emptyRailMessage(
 ): string {
   if (sourceGapReasons.length > 0) return sourceGapReasons[0] ?? '';
   if (durationSec <= 0) return 'Waiting for source-backed timeline data.';
+  if (railSourceLabel.includes('sinrLiveCells') || railSourceLabel.includes('SINR cell')) {
+    return 'sinrLiveCells trajectory has no handover events in this source window.';
+  }
   if (railSourceLabel.includes('live Walker')) {
     return 'Source-backed live Walker index has no primary-UE handover events in this window.';
   }
@@ -293,7 +306,9 @@ export function HandoverEventRail({
   const eventMapClusters = buildEventMapClusters(sortedEvents);
   const progressPercent = safeAxisDurationSec > 0 ? (safeAxisCurrentTimeSec / safeAxisDurationSec) * 100 : 0;
   const canSeek = !disabled && safeDurationSec > 0;
-  const slowMotionFocusEnabled = sourceOwner === 'live-walker' && horizonKind === 'live-walker-window';
+  const slowMotionFocusEnabled =
+    (sourceOwner === 'live-walker' || sourceOwner === 'sinr-live-cell-truth')
+    && horizonKind === 'live-walker-window';
   const resolvedAxisLabel = axisLabel ?? (axisKind === 'display-stretched' ? 'display-stretched axis' : 'source time axis');
   const animateAxisCursor = axisKind === 'display-stretched' && axisPlaying && safeAxisDurationSec > 0;
   const safeAxisPlaybackRate = isFiniteNumber(axisPlaybackRate) && axisPlaybackRate > 0 ? axisPlaybackRate : 1;

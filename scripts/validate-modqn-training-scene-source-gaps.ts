@@ -41,6 +41,8 @@ const requiredFields = [
   'metrics.energyEfficiencyTerms',
   'metrics.reward',
   'diagnostics.policy',
+  'diagnostics.denseQPolicy',
+  'traffic.queueRows',
   'comparison.alignedTimebase',
   'provenance.claimBoundary',
 ] as const;
@@ -105,6 +107,16 @@ const penaltyGap = currentGaps.find(gap => gap.field === 'timeline.handoverPenal
 assert.ok(penaltyGap, 'current replay proof includes handover penalty attribution source gap');
 assert.equal(penaltyGap?.claimImpact, 'no-handover-penalty-attribution');
 
+const denseQGap = currentGaps.find(gap => gap.field === 'diagnostics.denseQPolicy');
+assert.ok(denseQGap, 'current replay proof includes dense-Q policy source gap');
+assert.equal(denseQGap?.claimImpact, 'no-dense-q-proof');
+assert.equal(denseQGap?.policy, 'fail-closed');
+
+const queueGap = currentGaps.find(gap => gap.field === 'traffic.queueRows');
+assert.ok(queueGap, 'current replay proof includes producer queue rows source gap');
+assert.equal(queueGap?.claimImpact, 'no-producer-queue-proof');
+assert.equal(queueGap?.policy, 'fail-closed');
+
 const sourceGapModel = read('src/modqn/replay-source-gaps/sourceGaps.ts');
 assertNotIncludes(
   sourceGapModel,
@@ -164,14 +176,55 @@ assert.ok(
   replayCuePanel.includes('data-source-gap-policy={gap.policy}'),
   'MODQN replay cue panel exposes stable source-gap policy ids',
 );
+assert.ok(
+  replayCuePanel.includes('buildModqnReplayHandoverCinemaGate'),
+  'MODQN replay cue panel consumes the D6 handover-cinema readiness gate',
+);
+assert.ok(
+  replayCuePanel.includes('data-testid="modqn-replay-cinema-readiness"'),
+  'MODQN replay cue panel exposes stable D6 readiness test hook',
+);
 for (const field of [
   'timeline.sourceRowIdentity',
   'timeline.focusUeSelection',
   'timeline.activeCellState',
   'timeline.handoverPenaltyAttribution',
+  'diagnostics.denseQPolicy',
+  'traffic.queueRows',
 ] as const) {
   assert.ok(replayCuePanel.includes(field), `MODQN replay cue panel labels trace source gap ${field}`);
 }
+
+const replayCinemaGate = read('src/modqn/replay-bundle/replayHandoverCinemaGate.ts');
+assert.ok(
+  replayCinemaGate.includes('buildModqnDenseQProof'),
+  'D6 replay handover cinema gate requires the dense-Q proof adapter',
+);
+for (const field of [
+  'timeline.sourceRowIdentity',
+  'entities.ues.positionTrace',
+  'entities.satellites.trajectory',
+  'entities.beams.footprints',
+  'metrics.reward',
+  'diagnostics.denseQPolicy',
+] as const) {
+  assert.ok(replayCinemaGate.includes(field), `D6 replay handover cinema gate can emit source gap ${field}`);
+}
+assertNotIncludes(
+  replayCinemaGate,
+  'liveWalker',
+  'D6 replay handover cinema gate must not read live Walker state',
+);
+assertNotIncludes(
+  replayCinemaGate,
+  'sinr',
+  'D6 replay handover cinema gate must not read live SINR state',
+);
+assertNotIncludes(
+  replayCinemaGate,
+  '../scene',
+  'D6 replay handover cinema gate must not depend on renderer fallback state',
+);
 
 const evidenceTab = read('src/ui/ModqnEvidenceTab.tsx');
 assert.ok(
@@ -195,6 +248,8 @@ for (const field of [
   'timeline.focusUeSelection',
   'timeline.activeCellState',
   'timeline.handoverPenaltyAttribution',
+  'diagnostics.denseQPolicy',
+  'traffic.queueRows',
   'comparison.alignedTimebase',
 ] as const) {
   assert.ok(evidenceTab.includes(field), `MODQN evidence tab labels trace source gap ${field}`);

@@ -18,7 +18,10 @@
  */
 import type { JSX } from 'react';
 import {
+  deriveSinrLiveServiceQueueFocusStories,
+  deriveSinrLiveServiceQueueModel,
   deriveSinrServingMosaicAggregate,
+  type SinrServiceQueueFocusStory,
   type SinrServingMosaicUeInput,
 } from '../scene/sinrServingMosaic';
 
@@ -34,6 +37,46 @@ function formatSinr(sinrDb: number | null): string {
   return sinrDb == null ? '—' : `${sinrDb.toFixed(1)} dB`;
 }
 
+function formatBits(bits: number): string {
+  if (!Number.isFinite(bits)) return '—';
+  if (bits >= 1_000_000) return `${(bits / 1_000_000).toFixed(2)} Mb`;
+  if (bits >= 1_000) return `${Math.round(bits / 1_000)} kb`;
+  return `${Math.round(bits)} b`;
+}
+
+function formatSignedBits(bits: number): string {
+  if (!Number.isFinite(bits)) return '—';
+  const sign = bits > 0 ? '+' : bits < 0 ? '-' : '';
+  return `${sign}${formatBits(Math.abs(bits))}`;
+}
+
+function QueueFocusStoryRow({
+  story,
+  label,
+}: {
+  readonly story: SinrServiceQueueFocusStory;
+  readonly label: string;
+}): JSX.Element {
+  return (
+    <div
+      className="leo-sinr-serving-aggregate__queue-focus-row"
+      data-testid="sinr-service-queue-focus-story"
+      data-queue-focus-kind={story.kind}
+      data-queue-focus-ue-id={story.ueId}
+      data-queue-before-bits={Math.round(story.queueBeforeBits)}
+      data-queue-after-bits={Math.round(story.queueAfterBits)}
+      data-queue-delta-bits={Math.round(story.queueDeltaBits)}
+      data-service-surplus-bits={Math.round(story.serviceSurplusBits)}
+      data-service-rate-bps={Math.round(story.serviceRateBps)}
+      data-queue-pressure={story.pressure.toFixed(3)}
+    >
+      <span>{label}</span>
+      <strong>{story.ueId}</strong>
+      <small>{`${formatSignedBits(story.queueDeltaBits)} queue`}</small>
+    </div>
+  );
+}
+
 export function SinrServingAggregate({
   perUePositions,
   visible,
@@ -42,8 +85,12 @@ export function SinrServingAggregate({
     return null;
   }
   const aggregate = deriveSinrServingMosaicAggregate(perUePositions);
+  const queueModel = deriveSinrLiveServiceQueueModel(perUePositions);
+  const queueAggregate = queueModel.aggregate;
+  const queueFocusStories = deriveSinrLiveServiceQueueFocusStories(queueModel.accounts);
   if (aggregate.totalCount === 0) return null;
   const topLoads = aggregate.beamLoads.slice(0, MAX_BEAM_LOAD_ROWS);
+  const maxHeatmapBin = Math.max(1, ...queueAggregate.pressureHistogram);
 
   return (
     <div
@@ -54,6 +101,16 @@ export function SinrServingAggregate({
       data-total-count={aggregate.totalCount}
       data-serving-beam-count={aggregate.servingBeamCount}
       data-avg-sinr-db={aggregate.avgServedSinrDb == null ? '' : aggregate.avgServedSinrDb.toFixed(1)}
+      data-queue-source={queueAggregate.source}
+      data-queue-capable-count={queueAggregate.queueCapableUeCount}
+      data-queue-avg-bits={Math.round(queueAggregate.avgQueueBits)}
+      data-queue-p95-bits={Math.round(queueAggregate.p95QueueBits)}
+      data-queue-max-bits={Math.round(queueAggregate.maxQueueBits)}
+      data-queue-starved-count={queueAggregate.starvedUeCount}
+      data-queue-pressure-bucket-count={queueAggregate.pressureBucketCount}
+      data-queue-focus-source={queueFocusStories.source}
+      data-queue-highest-pressure-ue-id={queueFocusStories.highestPressure?.ueId ?? ''}
+      data-queue-best-rescue-ue-id={queueFocusStories.bestRescue?.ueId ?? ''}
     >
       <div className="leo-sinr-serving-aggregate__title">Service · live SINR</div>
       <div className="leo-sinr-serving-aggregate__served">
@@ -88,8 +145,52 @@ export function SinrServingAggregate({
           ))}
         </div>
       )}
+      <div
+        className="leo-sinr-serving-aggregate__queue"
+        data-testid="sinr-service-queue-summary"
+        data-queue-source={queueAggregate.source}
+      >
+        <div className="leo-sinr-serving-aggregate__queue-head">
+          <span>Queue</span>
+          <span data-testid="sinr-service-queue-source">{queueAggregate.source}</span>
+        </div>
+        <div className="leo-sinr-serving-aggregate__queue-grid">
+          <span>avg {formatBits(queueAggregate.avgQueueBits)}</span>
+          <span>p95 {formatBits(queueAggregate.p95QueueBits)}</span>
+          <span>max {formatBits(queueAggregate.maxQueueBits)}</span>
+          <span>starved {queueAggregate.starvedUeCount}</span>
+        </div>
+        <div
+          className="leo-sinr-serving-aggregate__queue-heatmap"
+          data-testid="sinr-service-queue-heatmap"
+          aria-hidden="true"
+        >
+          {queueAggregate.pressureHistogram.map((count, index) => (
+            <span
+              key={index}
+              data-testid="sinr-service-queue-heatmap-bin"
+              data-bin-index={index}
+              data-bin-count={count}
+              style={{ opacity: count > 0 ? 0.22 + (count / maxHeatmapBin) * 0.72 : 0.1 }}
+            />
+          ))}
+        </div>
+        {queueFocusStories.highestPressure !== null && queueFocusStories.bestRescue !== null ? (
+          <div
+            className="leo-sinr-serving-aggregate__queue-focus"
+            data-testid="sinr-service-queue-focus-stories"
+            data-queue-focus-source={queueFocusStories.source}
+            data-highest-pressure-ue-id={queueFocusStories.highestPressure.ueId}
+            data-best-rescue-ue-id={queueFocusStories.bestRescue.ueId}
+            aria-label="Queue focus stories"
+          >
+            <QueueFocusStoryRow story={queueFocusStories.highestPressure} label="Pressure" />
+            <QueueFocusStoryRow story={queueFocusStories.bestRescue} label="Rescue" />
+          </div>
+        ) : null}
+      </div>
       <div className="leo-sinr-serving-aggregate__claim-stamp" data-claim="sinr-serving">
-        live SINR serving · not MODQN
+        live SINR serving · not MODQN · queue demo
       </div>
     </div>
   );

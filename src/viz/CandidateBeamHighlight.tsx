@@ -24,10 +24,12 @@ import * as THREE from 'three';
 import { HANDOVER_SOURCE_COLOR, HANDOVER_TARGET_COLOR } from '../constants/beamRoleTokens';
 import type { BeamTarget } from '../scene/beamTargetTypes';
 import type { RuntimeCandidateHighlightCommand } from '../scene/types';
+import type { SinrLiveCellPlacement } from './SinrLiveCellBeamCones';
 
 interface CandidateBeamHighlightProps {
   readonly candidate: RuntimeCandidateHighlightCommand;
   readonly satBeams: Map<string, BeamTarget[]>;
+  readonly cellPlacementById?: ReadonlyMap<number, SinrLiveCellPlacement>;
   readonly footprintRadius: number;
   readonly reducedMotion: boolean;
 }
@@ -37,6 +39,7 @@ interface CandidateRing {
   readonly role: 'source' | 'target';
   readonly x: number;
   readonly z: number;
+  readonly radius: number;
   readonly color: string;
 }
 
@@ -61,9 +64,24 @@ function findBeamGround(
   return { x: beam.groundX, z: beam.groundZ };
 }
 
+function findCellGround(
+  placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement> | undefined,
+  cellId: number | null | undefined,
+): { x: number; z: number; radius: number } | null {
+  if (placementByCellId === undefined || cellId == null) return null;
+  const placement = placementByCellId.get(cellId);
+  if (!placement) return null;
+  return {
+    x: placement.worldX,
+    z: placement.worldZ,
+    radius: placement.radiusWorld,
+  };
+}
+
 export function CandidateBeamHighlight({
   candidate,
   satBeams,
+  cellPlacementById,
   footprintRadius,
   reducedMotion,
 }: CandidateBeamHighlightProps): JSX.Element {
@@ -72,33 +90,48 @@ export function CandidateBeamHighlight({
 
   const rings = useMemo<CandidateRing[]>(() => {
     const out: CandidateRing[] = [];
-    const from = findBeamGround(satBeams, candidate.fromSatId, candidate.fromBeamId);
+    const fromCell = candidate.sourceOwner === 'sinr-live-cell-truth'
+      ? findCellGround(cellPlacementById, candidate.fromCellId)
+      : null;
+    const fromBeam = fromCell === null ? findBeamGround(satBeams, candidate.fromSatId, candidate.fromBeamId) : null;
+    const from = fromCell ?? (fromBeam ? { ...fromBeam, radius: footprintRadius } : null);
     if (from) {
       out.push({
         key: `source-${candidate.fromSatId}-${candidate.fromBeamId}`,
         role: 'source',
         x: from.x,
         z: from.z,
+        radius: from.radius,
         color: HANDOVER_SOURCE_COLOR,
       });
     }
-    const to = findBeamGround(satBeams, candidate.toSatId, candidate.toBeamId);
+    const toCell = candidate.sourceOwner === 'sinr-live-cell-truth'
+      ? findCellGround(cellPlacementById, candidate.toCellId)
+      : null;
+    const toBeam = toCell === null ? findBeamGround(satBeams, candidate.toSatId, candidate.toBeamId) : null;
+    const to = toCell ?? (toBeam ? { ...toBeam, radius: footprintRadius } : null);
     if (to) {
       out.push({
         key: `target-${candidate.toSatId}-${candidate.toBeamId}`,
         role: 'target',
         x: to.x,
         z: to.z,
+        radius: to.radius,
         color: HANDOVER_TARGET_COLOR,
       });
     }
     return out;
   }, [
     satBeams,
+    cellPlacementById,
+    footprintRadius,
+    candidate.sourceOwner,
     candidate.fromSatId,
     candidate.fromBeamId,
+    candidate.fromCellId,
     candidate.toSatId,
     candidate.toBeamId,
+    candidate.toCellId,
   ]);
 
   // Mesh-derived telemetry: count the actually-visible ring meshes in the subtree
@@ -139,31 +172,38 @@ export function CandidateBeamHighlight({
     });
   });
 
-  const innerRadius = Math.max(0.1, footprintRadius * RING_INNER_FACTOR);
-  const outerRadius = footprintRadius * RING_OUTER_FACTOR;
-
   return (
     <group ref={groupRef} name="candidate-beam-highlight">
-      {rings.map(ring => (
-        <mesh
-          key={ring.key}
-          position={[ring.x, RING_Y_LIFT_WORLD, ring.z]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          renderOrder={30}
-          frustumCulled={false}
-          userData={{ source: 'handover-cinema-candidate', role: ring.role }}
-        >
-          <ringGeometry args={[innerRadius, outerRadius, 48]} />
-          <meshBasicMaterial
-            color={ring.color}
-            transparent
-            opacity={BASE_OPACITY}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </mesh>
-      ))}
+      {rings.map(ring => {
+        const innerRadius = Math.max(0.1, ring.radius * RING_INNER_FACTOR);
+        const outerRadius = ring.radius * RING_OUTER_FACTOR;
+        return (
+          <mesh
+            key={ring.key}
+            position={[ring.x, RING_Y_LIFT_WORLD, ring.z]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            renderOrder={30}
+            frustumCulled={false}
+            userData={{
+              source: candidate.sourceOwner === 'sinr-live-cell-truth'
+                ? 'handover-cinema-cell-truth-candidate'
+                : 'handover-cinema-candidate',
+              role: ring.role,
+              eventId: candidate.eventId,
+            }}
+          >
+            <ringGeometry args={[innerRadius, outerRadius, 48]} />
+            <meshBasicMaterial
+              color={ring.color}
+              transparent
+              opacity={BASE_OPACITY}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+        );
+      })}
     </group>
   );
 }

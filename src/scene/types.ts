@@ -74,11 +74,21 @@ export interface RuntimeDirectorFocusCommand {
  * so it stays display-only (governance Rule#6).
  */
 export interface RuntimeCandidateHighlightCommand {
+  eventId?: string;
+  sourceOwner?: 'live-walker' | 'sinr-live-cell-truth';
+  sourceTimeSec?: number;
   kind: DirectorFocusKind;
   fromSatId: string;
   fromBeamId: number;
   toSatId: string;
   toBeamId: number;
+  ueId?: string | null;
+  fromCellId?: number | null;
+  toCellId?: number | null;
+  fromFrequencyIndex?: number | null;
+  toFrequencyIndex?: number | null;
+  fromOffAxisDeg?: number | null;
+  toOffAxisDeg?: number | null;
 }
 
 export interface RuntimeConfig {

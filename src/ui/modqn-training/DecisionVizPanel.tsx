@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 import type { JSX } from 'react';
-import type { ModqnReplayEnvelope } from '../../modqn/replay-bundle';
+import {
+  buildModqnDenseQProofFromReplayRow,
+  type ModqnDenseQProofResult,
+  type ModqnReplayEnvelope,
+} from '../../modqn/replay-bundle';
 
 type BundleProvenanceKind = 'paper-faithful' | 'user-trained';
 
@@ -43,6 +47,7 @@ export interface DecisionVizFocusSnapshot {
     readonly isSelected: boolean;
     readonly isInvalid: boolean;
   }[] | null;
+  readonly denseQProof: ModqnDenseQProofResult;
 }
 
 function readFiniteNumber(value: unknown): number | null {
@@ -185,7 +190,52 @@ export function buildDecisionVizFocusSnapshot(
     objectiveWeights,
     topCandidates,
     denseScores,
+    denseQProof: buildModqnDenseQProofFromReplayRow(focusedRow),
   };
+}
+
+interface DenseQProofReadoutProps {
+  readonly proof: ModqnDenseQProofResult;
+}
+
+function DenseQProofReadout({ proof }: DenseQProofReadoutProps): JSX.Element {
+  if (proof.status === 'source-gap') {
+    return (
+      <section
+        className="leo-decision-viz-proof"
+        data-testid="decision-viz-dense-q-proof"
+        data-dense-q-proof-status="source-gap"
+        data-source-gap-field={proof.sourceGapField}
+      >
+        <strong>Dense-Q proof source gap</strong>
+        <span>
+          Full per-action Q1/Q2/Q3, mask, selected action, tie-break, and sentinel are required.
+        </span>
+        <small>{proof.reasons.slice(0, 3).join('; ')}</small>
+      </section>
+    );
+  }
+
+  const selected = proof.actions[proof.selectedActionIndex];
+  return (
+    <section
+      className="leo-decision-viz-proof"
+      data-testid="decision-viz-dense-q-proof"
+      data-dense-q-proof-status="proof-ready"
+      data-self-check-status={proof.selfCheck.status}
+      data-selected-action-index={proof.selectedActionIndex}
+    >
+      <strong>Dense-Q proof ready</strong>
+      <span>
+        original-weight self-check passed · selected action #{proof.selectedActionIndex} · margin {formatFixed(proof.marginToRunnerUp, 3)}
+      </span>
+      {selected ? (
+        <small>
+          {selected.actionLabel}: Q1 {selected.objectiveQ.q1Throughput.toFixed(3)} · Q2 {selected.objectiveQ.q2Handover.toFixed(3)} · Q3 {selected.objectiveQ.q3LoadBalance.toFixed(3)}
+        </small>
+      ) : null}
+    </section>
+  );
 }
 
 interface TopCandidateChartProps {
@@ -271,7 +321,7 @@ function DenseScoresChart({ denseScores, kind }: DenseScoresChartProps): JSX.Ele
       role="img"
       aria-label="Dense action scalarized Q scores"
     >
-      <text className="leo-decision-viz-chart-title" x="8" y="12">dense action scores</text>
+      <text className="leo-decision-viz-chart-title" x="8" y="12">dense scalarized scores (not proof)</text>
       <line className="leo-decision-viz-axis" x1={DENSE_LEFT} y1={DENSE_TOP + plotHeight} x2={DENSE_LEFT + plotWidth} y2={DENSE_TOP + plotHeight} />
       {denseScores.map(score => {
         const height = (Math.abs(score.value) / maxAbs) * plotHeight;
@@ -325,6 +375,7 @@ export function DecisionVizPanel({
           {weightsReadout}
         </div>
       </header>
+      <DenseQProofReadout proof={snapshot.denseQProof} />
       <TopCandidateChart snapshot={snapshot} kind={bundleProvenanceKind} />
       {snapshot.denseScores !== null ? (
         <DenseScoresChart denseScores={snapshot.denseScores} kind={bundleProvenanceKind} />

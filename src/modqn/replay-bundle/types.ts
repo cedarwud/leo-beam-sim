@@ -102,6 +102,21 @@ export interface ModqnPolicyCandidate extends ModqnBeamReference {
   readonly scalarizedQ?: number;
 }
 
+export interface ModqnDenseObjectiveQByAction {
+  readonly q1Throughput?: number;
+  readonly q2Handover?: number;
+  readonly q3LoadBalance?: number;
+  readonly r1Throughput?: number;
+  readonly r2Handover?: number;
+  readonly r3LoadBalance?: number;
+  readonly throughput?: number;
+  readonly handover?: number;
+  readonly loadBalance?: number;
+  readonly [key: string]: unknown;
+}
+
+export type ModqnInvalidActionSentinel = '-inf' | '-Infinity' | 'negative-infinity' | number | string;
+
 export interface ModqnPolicyDiagnostics {
   readonly diagnosticsVersion?: string;
   readonly objectiveWeights?: ModqnRewardVector;
@@ -110,6 +125,19 @@ export interface ModqnPolicyDiagnostics {
   readonly scalarizedMarginToRunnerUp?: number;
   readonly availableActionCount?: number;
   readonly topCandidates?: readonly ModqnPolicyCandidate[];
+  /**
+   * D5 dense-Q proof fields. `denseActionScores` is only scalarized display
+   * data; producer proof requires full per-action objective Q plus the mask,
+   * selected action, tie-break, and invalid-action sentinel below.
+   */
+  readonly denseActionScores?: readonly number[];
+  readonly actionScoreValidityMask?: readonly boolean[];
+  readonly actionOrder?: readonly string[];
+  readonly objectiveQByAction?: readonly ModqnDenseObjectiveQByAction[];
+  readonly scalarizedQByAction?: readonly unknown[];
+  readonly selectedActionIndex?: number;
+  readonly tieBreak?: string;
+  readonly invalidActionSentinel?: ModqnInvalidActionSentinel;
   readonly [key: string]: unknown;
 }
 

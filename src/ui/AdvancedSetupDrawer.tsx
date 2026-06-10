@@ -1,11 +1,16 @@
 // MODQN tab consolidation S4 — Advanced setup drawer.
 //
-// The MODQN "Setup" power tools (TrainingForm / JobsPanel / ω-weight objective
-// editor) were a second left-rail tab after S3. The north star is 少按鈕 / 直覺 /
-// 零學習: the default MODQN surface should be the evidence/replay story, not a
-// training console. S4 moves the setup tools OUT of the left rail (which then
-// collapses to the single Evidence / Replay tab) and behind an opt-in Advanced
-// drawer, so the power surface is reachable but not in the default path.
+// The MODQN "Setup" power tools (TrainingForm / JobsPanel / omega-weight
+// objective editor) were a second left-rail tab after S3. The north star is
+// fewer visible controls, direct defaults, and low learning cost: the default
+// MODQN surface should be the evidence/replay story, not a training/debug
+// console. S4 moves the setup tools OUT of the left rail (which then collapses
+// to the single Evidence / Replay tab) and behind an opt-in Advanced drawer, so
+// the power surface is reachable but not in the default path.
+//
+// S5a also moves optional MODQN display-depth and decision-policy controls here.
+// The drawer is now the single home for non-default MODQN operations; ControlBar
+// remains a compact lane-owned toolbar instead of accumulating more branches.
 //
 // These three components are KEEP-ACTIVE (real live SSE training telemetry, real
 // backend polling, the only ω EDIT surface) — they are not degenerate-data
@@ -14,19 +19,29 @@
 // lanes (`sceneLane !== 'sinr-live'`).
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import type { AppExperienceMode } from './appMode';
+import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
+import type { ModqnVisualLayerPreset } from '../scene/modqnVisualLayers';
+import { ModqnAdvancedDisplayControls } from './modqn-controls/ModqnAdvancedDisplayControls';
 import { TrainingForm } from './modqn-training/TrainingForm';
 import { JobsPanel } from './modqn-training/JobsPanel';
 import { ModqnObjectiveTab } from './ModqnObjectiveTab';
 
 interface AdvancedSetupDrawerProps {
   readonly appMode: AppExperienceMode;
-  /** Forwarded to JobsPanel — loads a finished training bundle into the scene. */
-  readonly onLoadIntoScene?: (jobId: string) => void;
+  readonly handoverMode: RuntimeHandoverMode;
+  readonly modqnVisualLayerPreset: ModqnVisualLayerPreset;
+  readonly showDecisionPolicyControls: boolean;
+  readonly onModqnVisualLayerPresetChange: (preset: ModqnVisualLayerPreset) => void;
+  readonly onModqnDecisionPolicyChange: (mode: RuntimeHandoverMode) => void;
 }
 
 export function AdvancedSetupDrawer({
   appMode,
-  onLoadIntoScene,
+  handoverMode,
+  modqnVisualLayerPreset,
+  showDecisionPolicyControls,
+  onModqnVisualLayerPresetChange,
+  onModqnDecisionPolicyChange,
 }: AdvancedSetupDrawerProps): ReactElement {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -62,7 +77,7 @@ export function AdvancedSetupDrawer({
         onClick={() => setOpen(value => !value)}
       >
         <span>⚙ Advanced setup</span>
-        <small>training · jobs · ω-weights</small>
+        <small>display · policy · training · omega</small>
       </button>
       {open && (
         <div
@@ -91,8 +106,15 @@ export function AdvancedSetupDrawer({
               </button>
             </header>
             <div className="leo-advanced-setup-content leo-sidebar-content-stack">
+              <ModqnAdvancedDisplayControls
+                handoverMode={handoverMode}
+                modqnVisualLayerPreset={modqnVisualLayerPreset}
+                showDecisionPolicyControls={showDecisionPolicyControls}
+                onModqnVisualLayerPresetChange={onModqnVisualLayerPresetChange}
+                onModqnDecisionPolicyChange={onModqnDecisionPolicyChange}
+              />
               <TrainingForm appMode={appMode} />
-              <JobsPanel appMode={appMode} onLoadIntoScene={onLoadIntoScene} />
+              <JobsPanel appMode={appMode} />
               <ModqnObjectiveTab />
             </div>
           </div>

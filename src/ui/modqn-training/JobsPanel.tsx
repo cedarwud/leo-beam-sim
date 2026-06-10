@@ -13,6 +13,7 @@ import {
   countActiveJobs,
   formatRunningFor,
   isActiveStatus,
+  isCancellableStatus,
   isDoneStatus,
   shortJobId,
 } from '../../modqn/training-trigger/jobsPolling';
@@ -22,11 +23,10 @@ import type {
   TrainingJobSummary,
   TrainingProgressEvent,
 } from '../../modqn/training-trigger/types';
-import { useLiveTelemetry } from '../../showcase/dashboard/liveTelemetryStore';
+import { useLiveTelemetry, type LiveTelemetryEntry } from '../../showcase/dashboard/liveTelemetryStore';
 
 interface JobsPanelProps {
   readonly appMode: AppExperienceMode;
-  readonly onLoadIntoScene?: (jobId: string) => void;
 }
 
 function formatTimestamp(timestampMs: number | undefined): string {
@@ -102,6 +102,31 @@ function formatMetric(value: unknown): string {
   return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(3) : '-';
 }
 
+function formatEpisodeRate(episodesPerMinute: number): string {
+  if (!Number.isFinite(episodesPerMinute) || episodesPerMinute <= 0) return '-';
+  return episodesPerMinute >= 10
+    ? `${episodesPerMinute.toFixed(0)} ep/min`
+    : `${episodesPerMinute.toFixed(1)} ep/min`;
+}
+
+function trainingSpeedFromTelemetry(entry: LiveTelemetryEntry | undefined): string | null {
+  const current = entry?.lastEpisodeEvent;
+  const previous = entry?.previousEpisodeEvent ?? null;
+  if (
+    current === undefined
+    || current === null
+    || previous === null
+    || typeof current.episode !== 'number'
+    || typeof previous.episode !== 'number'
+  ) {
+    return null;
+  }
+  const episodeDelta = current.episode - previous.episode;
+  const timeDeltaMs = current.tsMs - previous.tsMs;
+  if (episodeDelta <= 0 || timeDeltaMs <= 0) return null;
+  return formatEpisodeRate(episodeDelta / (timeDeltaMs / 60_000));
+}
+
 function collectBatchIds(
   jobs: readonly TrainingJobSummary[],
   history: readonly SubmittedJobRecord[],
@@ -147,7 +172,7 @@ function formatBatchCounts(batch: BatchDetail): string {
   return `queued ${queued} · running ${running} · paused ${paused} · done ${done} · failed ${failed} · cancelled ${cancelled}`;
 }
 
-export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactElement | null {
+export function JobsPanel({ appMode }: JobsPanelProps): ReactElement | null {
   const enabled = appMode === 'modqn-demo';
   const [jobs, setJobs] = useState<readonly TrainingJobSummary[]>([]);
   const [history, setHistory] = useState<readonly SubmittedJobRecord[]>([]);
@@ -265,11 +290,15 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
   const nowMs = Date.now();
   const activeJobs = jobs.filter(j => isActiveStatus(j.status));
   const doneJobs = jobs.filter(j => isDoneStatus(j.status));
+  const terminalJobs = jobs.filter(j => (
+    j.status === 'failed' || j.status === 'cancelled' || j.status === 'expired'
+  ));
   const knownIds = new Set(jobs.map(j => j.jobId));
   const expiredJobs = history.filter(h => !knownIds.has(h.jobId));
   const batchIds = collectBatchIds(jobs, history);
   const isEmpty = activeJobs.length === 0
     && doneJobs.length === 0
+    && terminalJobs.length === 0
     && expiredJobs.length === 0
     && batchIds.length === 0;
 
@@ -368,9 +397,12 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
           {activeJobs.map(job => {
             const startedAtMs = getStartedAtMs(job);
             const stdoutTail = detail[job.jobId]?.stdoutTail;
-            const streamEvent = telemetry[job.jobId]?.latestEvent;
+            const telemetryEntry = telemetry[job.jobId];
+            const streamEvent = telemetryEntry?.latestEvent;
             const streamProgress = progressFromStreamEvent(streamEvent);
             const progress = streamProgress ?? parseEpisodeProgress(stdoutTail);
+            const cancellable = isCancellableStatus(job.status);
+            const trainingSpeed = trainingSpeedFromTelemetry(telemetryEntry);
             return (
               <div
                 key={job.jobId}
@@ -423,6 +455,11 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
                     scalar {formatMetric(streamEvent.metrics.scalarReward)} · r1 {formatMetric(streamEvent.metrics.r1Mean)} · ho {formatMetric(streamEvent.metrics.totalHandovers)}
                   </div>
                 ) : null}
+                {trainingSpeed !== null ? (
+                  <div className="leo-jobs-panel__stream-metrics" data-testid="jobs-panel-training-speed">
+                    speed {trainingSpeed}
+                  </div>
+                ) : null}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                   <button
                     type="button"
@@ -436,6 +473,8 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
                     type="button"
                     style={{ flex: 1 }}
                     data-testid="jobs-panel-cancel-job"
+                    disabled={!cancellable}
+                    title={cancellable ? undefined : 'Only queued/running producer jobs can be cancelled'}
                     onClick={() => { void handleCancelJob(job.jobId); }}
                   >
                     Cancel job
@@ -451,13 +490,13 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
       ) : null}
 
       {doneJobs.length > 0 ? (
-        <section className="leo-jobs-panel__section" aria-label="Completed training jobs">
-          <h3>Done</h3>
+        <section className="leo-jobs-panel__section" aria-label="Completed training job history">
+          <h3>Completed history</h3>
           {doneJobs.map(job => (
             <div
               key={job.jobId}
               className="leo-jobs-panel__card leo-jobs-panel__card--done"
-              data-testid="jobs-panel-done-card"
+              data-testid="jobs-panel-completed-history-card"
             >
               <div className="leo-jobs-panel__card-header">
                 <span className="leo-jobs-panel__job-id">{shortJobId(job.jobId)}</span>
@@ -469,17 +508,10 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
               <div className="leo-jobs-panel__meta">
                 {job.arm ?? 'legacy'}{job.batchId ? ` · batch ${shortJobId(job.batchId)}` : ''}
               </div>
+              <div className="leo-jobs-panel__note">
+                Loadable artifacts are selected from the Model Library.
+              </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <button
-                  type="button"
-                  style={{ flex: 2 }}
-                  data-testid="jobs-panel-load-into-scene"
-                  disabled={onLoadIntoScene === undefined}
-                  title={onLoadIntoScene === undefined ? 'Wired in PR-θ' : undefined}
-                  onClick={() => { onLoadIntoScene?.(job.jobId); }}
-                >
-                  Load into scene
-                </button>
                 <button
                   type="button"
                   style={{ flex: 1 }}
@@ -489,6 +521,42 @@ export function JobsPanel({ appMode, onLoadIntoScene }: JobsPanelProps): ReactEl
                   Delete
                 </button>
               </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {terminalJobs.length > 0 ? (
+        <section className="leo-jobs-panel__section" aria-label="Failed and cancelled job history">
+          <h3>Job history</h3>
+          {terminalJobs.map(job => (
+            <div
+              key={job.jobId}
+              className="leo-jobs-panel__card leo-jobs-panel__card--terminal"
+              data-testid="jobs-panel-terminal-card"
+            >
+              <div className="leo-jobs-panel__card-header">
+                <span className="leo-jobs-panel__job-id">{shortJobId(job.jobId)}</span>
+                <span className="leo-jobs-panel__status">{job.status}</span>
+              </div>
+              <div className="leo-jobs-panel__meta">
+                submitted {formatTimestamp(job.submittedAtMs)}
+                {job.finishedAtMs !== undefined ? ` · finished ${formatTimestamp(job.finishedAtMs)}` : ''}
+              </div>
+              <div className="leo-jobs-panel__meta">
+                {job.arm ?? 'legacy'}{job.batchId ? ` · batch ${shortJobId(job.batchId)}` : ''}
+              </div>
+              <div className="leo-jobs-panel__summary">{job.hyperparamSummary}</div>
+              <div className="leo-jobs-panel__note">
+                Not selectable unless the producer exposes a usable manifest surface.
+              </div>
+              <button
+                type="button"
+                data-testid="jobs-panel-delete-job"
+                onClick={() => { void handleDeleteJob(job.jobId); }}
+              >
+                Delete
+              </button>
             </div>
           ))}
         </section>

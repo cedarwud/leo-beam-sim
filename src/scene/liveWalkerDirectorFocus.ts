@@ -34,7 +34,7 @@
 import { resolveCinematicReplayWindow } from './cinematicReplayWindow';
 import type { HandoverRailEvent, HandoverRailEventKind } from '../ui/HandoverEventRail';
 
-export type LiveWalkerDirectorFocusClaimKind = 'profile-derived-forecast' | 'overlay-demo';
+export type LiveWalkerDirectorFocusClaimKind = 'live-truth' | 'profile-derived-forecast' | 'overlay-demo';
 
 export interface LiveWalkerDirectorFocusTarget {
   readonly eventId: string;

@@ -45,7 +45,7 @@ assert.deepEqual(
 );
 
 assert.equal(getModqnTrainingSceneProducerHandoffPacketByPriority('P0-required').length, 26);
-assert.equal(getModqnTrainingSceneProducerHandoffPacketByPriority('P1-source-gap-allowed').length, 11);
+assert.equal(getModqnTrainingSceneProducerHandoffPacketByPriority('P1-source-gap-allowed').length, 12);
 assert.equal(getModqnTrainingSceneProducerHandoffPacketByPriority('P2-comparison-only').length, 3);
 
 for (const item of MODQN_TRAINING_SCENE_PRODUCER_HANDOFF_PACKET) {
@@ -95,6 +95,7 @@ for (const field of [
   'step.allUePositions',
   'step.allUeServingHistory',
   'step.nextBeamSchedule',
+  'step.queueState',
   'step.angleAwareTerms',
   'step.energyEfficiencyTerms',
   'step.policyDiagnostics',
@@ -137,6 +138,7 @@ for (const token of [
   'P2 comparison-only',
   'step.activeBeamSchedule',
   'step.nextBeamSchedule',
+  'step.queueState',
   'selectedServing',
   'decisionActionValidityMask',
   'validate:modqn:training-scene-producer-handoff',

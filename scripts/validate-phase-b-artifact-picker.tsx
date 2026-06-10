@@ -8,6 +8,7 @@
 //   (d) ModqnEvidenceTab renders user-trained header chip
 //   (e) App.tsx wires picker, load handler, and provenance state
 //   (f) Track-2 claim/truth UI uses manifest/run_metadata-derived fields
+//   (g) D2 Model Library admits only completed jobs with a loadable manifest
 //
 // Run: node --import tsx/esm scripts/validate-phase-b-artifact-picker.tsx
 
@@ -115,7 +116,13 @@ console.log('\n(b) ArtifactPicker source contract');
   const source = fs.readFileSync('src/ui/modqn-training/ArtifactPicker.tsx', 'utf8');
   for (const testId of [
     'data-testid="artifact-picker"',
+    'data-testid="artifact-picker-paper-faithful-section"',
+    'data-testid="artifact-picker-paper-faithful-entry"',
+    'data-testid="artifact-picker-paper-faithful-truth-row"',
+    'data-testid="revert-to-paper-faithful"',
+    'data-testid="artifact-picker-producer-official-section"',
     'data-testid="artifact-picker-entry"',
+    'data-testid="artifact-picker-user-trained-section"',
     'data-testid="artifact-picker-user-trained-chip"',
     'data-testid="artifact-picker-claim-mode-chip"',
     'data-testid="artifact-picker-truth-row"',
@@ -124,20 +131,34 @@ console.log('\n(b) ArtifactPicker source contract');
     'data-testid="artifact-picker-load"',
     'data-testid="artifact-picker-empty"',
     'data-testid="artifact-picker-producer-empty"',
+    'data-testid="artifact-picker-synthetic-section"',
+    'data-testid="artifact-picker-synthetic-entry"',
+    'data-testid="artifact-picker-synthetic-load"',
   ]) {
     assert(source.includes(testId), `ArtifactPicker includes ${testId}`);
   }
   assert(/>user-trained</.test(source), 'ArtifactPicker chip text is exactly user-trained');
+  assert(/>paper-faithful</.test(source), 'ArtifactPicker chip text includes paper-faithful');
+  assert(source.includes('data-artifact-kind="paper-faithful"'), 'ArtifactPicker separates paper-faithful baseline entry');
+  assert(source.includes('data-artifact-kind="producer-official"'), 'ArtifactPicker separates producer-official section');
+  assert(source.includes('data-artifact-kind="synthetic-fixture"'), 'ArtifactPicker separates synthetic fixture entry');
+  assert(source.includes('data-loadable="false"'), 'ArtifactPicker marks unavailable/non-proof artifacts as non-loadable');
+  assert(source.includes('Not loadable as MODQN proof'), 'ArtifactPicker disables synthetic fallback proof loading');
   assert(source.includes("appMode === 'modqn-demo'"), 'ArtifactPicker gates on modqn-demo');
   assert(source.includes('if (!enabled) return null;'), 'ArtifactPicker component has enabled null return');
   assert(source.includes('if (!enabled) return;'), 'ArtifactPicker useEffect has enabled early return');
   assert(source.includes('getJobs('), 'ArtifactPicker polls getJobs');
-  assert(source.includes('readSubmittedJobIds('), 'ArtifactPicker reads submitted job history');
+  assert(
+    !source.includes('readSubmittedJobIds('),
+    'D2: ArtifactPicker no longer merges local submitted history into the Model Library',
+  );
   assert(source.includes('clearTimeout('), 'ArtifactPicker cleans up poll timeout');
   assert(source.includes('claimModeFromManifest'), 'ArtifactPicker derives visible claimMode from manifest');
   assert(source.includes('paperFaithfulStatusFromManifest'), 'ArtifactPicker renders paperFaithful manifest status');
   assert(source.includes('seedTripletFromSources'), 'ArtifactPicker renders seed triplet truth from manifest/detail');
   assert(source.includes('envAxesFromSources(detailsById[job.jobId], manifestsById[job.jobId])'), 'ArtifactPicker filter options use manifest envAxes as well as job detail');
+  assert(source.includes('data-surface="model-library"'), 'ArtifactPicker declares the Model Library surface');
+  assert(source.includes('aria-label="MODQN model library"'), 'ArtifactPicker exposes model-library aria label');
 }
 
 // ---------------------------------------------------------------------------
@@ -214,12 +235,20 @@ console.log('\n(e) App.tsx artifact picker wiring');
   assert(source.includes('handleLoadIntoScene'), 'App.tsx defines handleLoadIntoScene callback');
   assert(source.includes('<ArtifactPicker'), 'App.tsx mounts ArtifactPicker');
   assert(
-    source.includes('onLoadIntoScene={handleLoadIntoScene}'),
-    'App.tsx wires JobsPanel load callback',
+    source.includes('onLoadEntry={handleLoadIntoScene}'),
+    'App.tsx wires Model Library load callback',
+  );
+  assert(
+    source.includes('onLoadPaperFaithful={handleRevertToPaperFaithful}'),
+    'App.tsx wires paper-faithful baseline load callback into Model Library',
+  );
+  assert(
+    source.includes('artifactReplaySource={showcaseArtifactSource}'),
+    'App.tsx passes artifact source state into the Model Library source separation UI',
   );
   assert(
     countOccurrences(source, 'bundleProvenanceKind={bundleProvenanceKind}') >= 2,
-    'App.tsx passes bundleProvenanceKind to banner and evidence tab',
+    'App.tsx passes bundleProvenanceKind to banner, Model Library, and evidence tab',
   );
 }
 
@@ -252,6 +281,66 @@ console.log('\n(f) Track-2 claim/truth display contract');
   assert(
     source.includes('formatSeedTriplet(seedTriplet)'),
     'ArtifactPicker displays seedTriplet in entry and ablation truth rows',
+  );
+  assert(
+    source.includes('formatObjectiveWeights(objectiveWeights)'),
+    'ArtifactPicker displays objective weights before Load into scene',
+  );
+  assert(
+    source.includes('requestModeFromSources(detail, manifest)'),
+    'ArtifactPicker displays request mode before Load into scene',
+  );
+  assert(
+    source.includes('checkpointStatusFromManifest(manifest)'),
+    'ArtifactPicker displays checkpoint/config status before Load into scene',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// (g) D2 Model Library loadability and lifecycle separation
+// ---------------------------------------------------------------------------
+console.log('\n(g) D2 Model Library loadability contract');
+{
+  const source = fs.readFileSync('src/ui/modqn-training/ArtifactPicker.tsx', 'utf8');
+  assert(
+    source.includes('function isLoadableManifest'),
+    'ArtifactPicker centralizes loadability in isLoadableManifest',
+  );
+  assert(
+    source.includes('manifest?.replayBundle?.present === true'),
+    'ArtifactPicker requires replayBundle.present=true for loadable models',
+  );
+  assert(
+    source.includes('const loadableJobs = doneJobs.filter(job => isLoadableManifest(manifestsById[job.jobId]))'),
+    'ArtifactPicker builds the Model Library only from completed loadable jobs',
+  );
+  assert(
+    !source.includes('const merged =') && !source.includes('historyById'),
+    'ArtifactPicker no longer merges non-completed local history into the Model Library',
+  );
+  assert(
+    source.includes('disabled={!isLoadableManifest(manifest)}'),
+    'ArtifactPicker disables entry Load unless the manifest is loadable',
+  );
+  assert(
+    source.includes('disabled={job === undefined || !isLoadableManifest(manifest)}'),
+    'ArtifactPicker disables ablation Load unless that arm is loadable',
+  );
+  assert(
+    source.includes("return 'replay unknown';"),
+    'ArtifactPicker treats missing replayBundle.present as unknown, not yes',
+  );
+  assert(
+    source.includes("disabled={bundleProvenanceKind === 'paper-faithful'}"),
+    'ArtifactPicker disables paper-faithful load when baseline is already active',
+  );
+  assert(
+    source.includes("disabled={job === undefined || !isLoadableManifest(manifest)}"),
+    'ArtifactPicker disables missing/non-loadable ablation arms',
+  );
+  assert(
+    source.includes('disabled>\n            Not loadable as MODQN proof'),
+    'ArtifactPicker keeps synthetic fallback disabled as proof',
   );
 }
 

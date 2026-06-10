@@ -14,7 +14,8 @@
  * producer artifact or the synthetic fixture fallback. It asserts:
  *   - the bar mounts, defaults to sinr-live;
  *   - clicking each segment flips the authoritative data-scene-lane;
- *   - MODQN Live exposes the MODQN visual-layer preset control;
+ *   - MODQN Live exposes Advanced setup, which contains the MODQN visual-layer
+ *     preset control;
  *   - Artifact Showcase mounts the scene-view decision metric tiles
  *     (content=metrics sidebar) and stamps the FIX-1 data-artifact-source attribute;
  *   - switching back to a live lane tears the artifact surface back down;
@@ -35,7 +36,10 @@ const BAR = '[data-testid="lane-experience-bar"]';
 const SEG = (lane: string) => `[data-testid="lane-experience-${lane}"]`;
 const SUBNAV = '[data-testid="modqn-view-toggle"]';
 const MV = (lane: string) => `[data-testid="modqn-view-${lane}"]`;
+const ADVANCED_TRIGGER = '[data-testid="advanced-setup-trigger"]';
+const ADVANCED_DRAWER = '[data-testid="advanced-setup-drawer"]';
 const PRESET = '[data-testid="modqn-layer-preset-control"]';
+const DECISION_POLICY = '[data-testid="modqn-decision-policy-control"]';
 const DASHBOARD = '[data-testid="algorithm-dashboard"]';
 
 async function sceneLane(page: Page): Promise<string | null> {
@@ -81,10 +85,38 @@ async function main(): Promise<void> {
       'sinr-live segment is active by default',
     );
 
-    // 2) MODQN top tab → cell-preview lane + MODQN visual-layer preset control.
-    //    The in-MODQN sub-nav appears, defaulting to the Live (cell-preview) view.
+    // 2) MODQN top tab → cell-preview lane + Advanced drawer with the MODQN
+    //    visual-layer preset control. The in-MODQN sub-nav appears, defaulting
+    //    to the Live (cell-preview) view.
     await selectLane(page, 'modqn-live-cell-preview');
+    await page.waitForSelector(ADVANCED_TRIGGER, { timeout: 10_000 });
+    await page.click(ADVANCED_TRIGGER);
+    await page.waitForSelector(ADVANCED_DRAWER, { timeout: 10_000 });
     await page.waitForSelector(PRESET, { timeout: 10_000 });
+    await page.click('[data-testid="modqn-layer-preset-service-allocation"]');
+    await page.waitForFunction(
+      sel => document.querySelector(sel)?.getAttribute('data-modqn-layer-preset') === 'service-allocation',
+      PRESET,
+      { timeout: 10_000 },
+    );
+    await page.click('[data-testid="modqn-decision-policy-heuristic"]');
+    await page.waitForSelector('[data-testid="heuristic-not-paper-banner"]', { timeout: 10_000 });
+    assert.equal(
+      await page.locator(MV('modqn-replay-proof')).isDisabled(),
+      true,
+      'Proof sub-view is disabled while the live-only heuristic policy is active',
+    );
+    await page.click('[data-testid="modqn-decision-policy-overlay"]');
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="heuristic-not-paper-banner"]') === null,
+      { timeout: 10_000 },
+    );
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(
+      sel => document.querySelector(sel) === null,
+      ADVANCED_DRAWER,
+      { timeout: 10_000 },
+    );
     assert.equal(
       await page.getAttribute(SEG('modqn-live-cell-preview'), 'data-active'),
       'true',
@@ -105,13 +137,65 @@ async function main(): Promise<void> {
       'true',
       'MODQN top segment stays active across MODQN sub-lanes (non-injective nav -> lane)',
     );
+    await page.waitForSelector(ADVANCED_TRIGGER, { timeout: 10_000 });
+    await page.click(ADVANCED_TRIGGER);
+    await page.waitForSelector(ADVANCED_DRAWER, { timeout: 10_000 });
+    await page.waitForSelector(PRESET, { timeout: 10_000 });
+    assert.equal(
+      await page.locator(DECISION_POLICY).count(),
+      0,
+      'MODQN Proof keeps Advanced display controls but does not expose the live decision-policy toggle',
+    );
+    await page.waitForSelector('[data-testid="modqn-evidence-mode-status"]', { timeout: 10_000 });
+    assert.equal(
+      await page.getAttribute('[data-testid="modqn-evidence-mode-status"]', 'data-handover-mode'),
+      'decision-overlay-on-live-sinr',
+      'MODQN Proof is entered only with the canonical paper-overlay policy',
+    );
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(
+      sel => document.querySelector(sel) === null,
+      ADVANCED_DRAWER,
+      { timeout: 10_000 },
+    );
 
     // 4) Artifact Showcase → artifact-replay lane, via the in-MODQN sub-nav. The
     //    per-frame decision metric tiles mount in the scene-view sidebar
     //    (content=metrics); FIX-1 honesty attribute is stamped.
+    await selectModqnView(page, 'modqn-live-cell-preview');
+    await page.waitForSelector(ADVANCED_TRIGGER, { timeout: 10_000 });
+    await page.click(ADVANCED_TRIGGER);
+    await page.waitForSelector(ADVANCED_DRAWER, { timeout: 10_000 });
+    await page.click('[data-testid="modqn-decision-policy-heuristic"]');
+    await page.waitForSelector('[data-testid="heuristic-not-paper-banner"]', { timeout: 10_000 });
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(
+      sel => document.querySelector(sel) === null,
+      ADVANCED_DRAWER,
+      { timeout: 10_000 },
+    );
     await selectModqnView(page, 'artifact-replay');
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="heuristic-not-paper-banner"]') === null,
+      { timeout: 10_000 },
+    );
     await page.waitForSelector('[data-testid="artifact-replay-sidebar"]', { timeout: 15_000 });
     await page.waitForSelector(`${DASHBOARD}[data-content="metrics"]`, { timeout: 15_000 });
+    await page.waitForSelector(ADVANCED_TRIGGER, { timeout: 10_000 });
+    await page.click(ADVANCED_TRIGGER);
+    await page.waitForSelector(ADVANCED_DRAWER, { timeout: 10_000 });
+    await page.waitForSelector(PRESET, { timeout: 10_000 });
+    assert.equal(
+      await page.locator(DECISION_POLICY).count(),
+      0,
+      'artifact replay keeps Advanced display controls but does not expose the live decision-policy toggle',
+    );
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(
+      sel => document.querySelector(sel) === null,
+      ADVANCED_DRAWER,
+      { timeout: 10_000 },
+    );
     const artifactSource = await page.getAttribute(SHELL, 'data-artifact-source');
     assert.ok(
       artifactSource !== null && artifactSource !== '',

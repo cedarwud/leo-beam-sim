@@ -61,6 +61,7 @@ import {
 } from '../viz/CellBeamCones';
 import {
   SinrLiveCellBeamCones,
+  resolveSinrLiveCellHandoverPairConeItems,
   resolveSinrLiveCellBeamConeItems,
   resolveTopServingFocusSatIds,
   type SinrLiveCellPlacement,
@@ -95,7 +96,12 @@ import {
   deriveModqnServiceMap,
   EMPTY_MODQN_SERVICE_MAP,
 } from './modqnServiceMap';
-import { buildSinrServingUeColorMap, buildSinrServingUeColorMapFromCells } from './sinrServingMosaic';
+import {
+  buildSinrServingUeColorMap,
+  buildSinrServingUeColorMapFromCells,
+  deriveSinrLiveServiceQueueModel,
+  EMPTY_SINR_SERVICE_QUEUE_MODEL,
+} from './sinrServingMosaic';
 import {
   deriveBeamLoadContention,
   EMPTY_BEAM_LOAD_CONTENTION,
@@ -599,6 +605,9 @@ function ArtifactSceneContent({
         sinrLiveCellServingSatCount=""
         sinrLiveCellServedCount=""
         sinrLiveCellUeOffAxisMaxDeg=""
+        sinrLiveCellHandoverPairConeCount=""
+        sinrLiveCellHandoverPairSourceOwner=""
+        sinrLiveCellHandoverPairEventId=""
         modqnVisualLayerPreset=""
         modqnServiceMapEnabled="0"
         modqnServedUeCount={0}
@@ -911,6 +920,27 @@ function SceneContent({
     },
     [showSinrServingMosaic, sim.sinrLiveCells, sceneFrame.ues],
   );
+  const sinrServiceQueueModel = useMemo(
+    () => {
+      if (!showSinrServingMosaic) return EMPTY_SINR_SERVICE_QUEUE_MODEL;
+      const cellFrame = sim.sinrLiveCells;
+      const ues = cellFrame
+        ? cellFrame.ues.map(ue => ({
+          id: ue.ueId,
+          servingSatId: ue.servingSatId,
+          servingBeamId: ue.servingSatId === null ? null : ue.cellId,
+          sinrDb: ue.sinrDb,
+        }))
+        : sim.perUePositions.map(position => ({
+          id: position.id,
+          servingSatId: position.servingSatId,
+          servingBeamId: position.servingBeamId,
+          sinrDb: position.sinrDb,
+        }));
+      return deriveSinrLiveServiceQueueModel(ues);
+    },
+    [showSinrServingMosaic, sim.sinrLiveCells, sim.perUePositions],
+  );
   // Phase-3 beam-load contention source = the SAME per-UE (satId, beamIndex)
   // cell-schedule assignment that `modqnServiceMap` already uses to colour the UE
   // markers and emit the per-cell UE-count badges (`ueCountByCellId`). Provenance
@@ -1063,6 +1093,21 @@ function SceneContent({
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
     sinrLiveCellBeamConeItems.map(item => item.satId),
   ).size;
+  const sinrLiveCellHandoverPairConeItems = useMemo(
+    () => (showCandidateHandoverHighlight
+      ? resolveSinrLiveCellHandoverPairConeItems({
+        candidate: runtime.candidateHighlight,
+        placementByCellId: sinrLiveCellPlacementById,
+        satelliteWorldById,
+      })
+      : []),
+    [
+      showCandidateHandoverHighlight,
+      runtime.candidateHighlight,
+      sinrLiveCellPlacementById,
+      satelliteWorldById,
+    ],
+  );
   const sinrLiveCellServedCount = showSinrLiveCellBeams
     ? sim.sinrLiveCells?.servedCellCount ?? 0
     : 0;
@@ -1316,6 +1361,9 @@ function SceneContent({
         sinrLiveCellServingSatCount={showSinrLiveCellBeams ? String(renderedSinrLiveCellBeamConeSatelliteCount) : ''}
         sinrLiveCellServedCount={showSinrLiveCellBeams ? String(sinrLiveCellServedCount) : ''}
         sinrLiveCellUeOffAxisMaxDeg={showSinrLiveCellBeams ? sinrLiveCellUeOffAxisMaxDeg.toFixed(3) : ''}
+        sinrLiveCellHandoverPairConeCount={String(sinrLiveCellHandoverPairConeItems.length)}
+        sinrLiveCellHandoverPairSourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}
+        sinrLiveCellHandoverPairEventId={runtime.candidateHighlight?.eventId ?? ''}
         modqnVisualLayerPreset={showCellOverlay ? modqnVisualLayerPreset : ''}
         modqnServiceMapEnabled={showCellOverlay && modqnVisualLayers.serviceMap ? '1' : '0'}
         modqnServedUeCount={showCellOverlay ? modqnServiceMap.servedUeCount : 0}
@@ -1356,7 +1404,9 @@ function SceneContent({
             // ids (`live-ue-${index}`), so contention lookup uses UE id, not index.
             const contention = beamLoadContentionEnabled
               ? beamLoadContention.byUeId.get(u.id)?.normalizedLoad ?? 0
-              : undefined;
+              : (showSinrServingMosaic
+                ? sinrServiceQueueModel.byUeId.get(u.id)?.pressure ?? 0
+                : undefined);
             return {
               id: u.id,
               worldPos: u.worldPos as readonly [number, number, number],
@@ -1371,6 +1421,8 @@ function SceneContent({
         secondaryOpacity={showCellOverlay && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
         secondaryScale={showCellOverlay && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
         colorTelemetryAttr={showSinrServingMosaic ? 'sinrServingMosaicColorCount' : undefined}
+        contentionTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureBucketCount' : undefined}
+        contentionInstanceCountTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureInstanceCount' : undefined}
       />
       {showCellOverlay && modqnVisualLayers.activeCellOverlay && (
         <CellOverlay
@@ -1473,6 +1525,16 @@ function SceneContent({
       {showSinrLiveCellBeams && (
         <SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} />
       )}
+      {sinrLiveCellHandoverPairConeItems.length > 0 && (
+        <SinrLiveCellBeamCones
+          items={sinrLiveCellHandoverPairConeItems}
+          telemetryCountDatasetKey="sinrLiveCellHandoverPairConeRenderedCount"
+          telemetrySourceOwnerDatasetKey="sinrLiveCellHandoverPairConeRenderedSourceOwner"
+          telemetrySourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}
+          telemetryEventIdDatasetKey="sinrLiveCellHandoverPairConeRenderedEventId"
+          telemetryEventId={runtime.candidateHighlight?.eventId ?? ''}
+        />
+      )}
       {SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats
         .filter(sat => viz.beamSatIds.has(sat.id))
         .map(sat => {
@@ -1496,6 +1558,7 @@ function SceneContent({
         <CandidateBeamHighlight
           candidate={runtime.candidateHighlight}
           satBeams={viz.satBeams}
+          cellPlacementById={sinrLiveCellPlacementById}
           footprintRadius={viz.footprintRadiusWorld}
           reducedMotion={runtime.reducedMotion}
         />

@@ -227,8 +227,8 @@ imported by training code or analysis code in that repo.
 │  ┌─────────────────────────────────────────────────────────────┐  │
 │  │ src/ui/modqn-training/                                       │  │
 │  │ ├─ TrainingForm.tsx (hyperparams + ω)                       │  │
-│  │ ├─ JobsPanel.tsx (poll GET /jobs every 10s)                 │  │
-│  │ └─ ArtifactPicker.tsx (paper-faithful + user-trained tags)  │  │
+│  │ ├─ JobsPanel.tsx (poll GET /jobs + lifecycle history)       │  │
+│  │ └─ ArtifactPicker.tsx (Model Library load surface)          │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 │             │ POST /train, GET /jobs, GET /artifacts/<id>/bundle  │
 │             ▼                                                      │
@@ -532,11 +532,14 @@ proceeding if `SELECT COUNT(*) WHERE status = 'running' = 0`.
   user can see their submission history across sessions, even if the
   backend's LRU has expired the row).
 - `src/ui/modqn-training/JobsPanel.tsx`: poll `GET /jobs` every 10 s.
-  Show queued / running / done jobs. Done jobs have a `Load into scene`
-  button.
-- `src/ui/modqn-training/ArtifactPicker.tsx`: extends the existing
-  bundle artifact selector with the user-trained list. Each user-trained
-  entry shows:
+  Show queued/running jobs, completed history, failed/cancelled/expired
+  history, and delete/cancel controls according to the producer lifecycle.
+  It does not own `Load into scene`; loadable model selection is owned by
+  the Model Library.
+- `src/ui/modqn-training/ArtifactPicker.tsx`: exposes the Model Library.
+  It lists only completed jobs whose training-service manifest explicitly
+  exposes a usable replay surface (`replayBundle.present === true`). Each
+  user-trained entry shows:
   - Backend job id.
   - Submitted at (local time).
   - Hyperparam summary.
@@ -661,11 +664,12 @@ consumer changes) then B5 (consumer wiring) then B6 (ops doc).
 - Sidebar shows the training form.
 - `Start training` submits to the backend and receives a `jobId`.
 - Jobs panel shows the new job in `queued` state, transitions to
-  `running` on next poll, then `done` when the subprocess finishes.
-- Selecting the done job's `Load into scene` button fetches the
-  user-trained bundle, runs the parser, and renders it.
-- The artifact picker tags the user-trained entry with the
-  warning-amber chip.
+  `running` on next poll, then `done` when the subprocess finishes; failed
+  and cancelled jobs remain visible in job history.
+- Selecting a completed, loadable Model Library entry's `Load into scene`
+  button fetches the user-trained bundle, runs the parser, and renders it.
+- The Model Library tags the user-trained entry with the warning-amber chip
+  and shows claim/replay/parameter readouts before loading.
 - Closing the browser, waiting until the job finishes, reopening:
   the user-trained bundle still appears in the picker.
 

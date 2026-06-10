@@ -16,7 +16,7 @@ does not implement an exporter in `leo-beam-sim`.
 
 The typed packet lives in
 `src/modqn/training-scene-trace/producerHandoff.ts`. It is derived from the
-40-field contract in `src/modqn/training-scene-trace/contract.ts`.
+41-field contract in `src/modqn/training-scene-trace/contract.ts`.
 
 ## Priority Meaning
 
@@ -77,12 +77,15 @@ source gap and the UI fails closed:
 - `step.allUePositions`
 - `step.allUeServingHistory`
 - `step.nextBeamSchedule`
+- `step.queueState`
 - `step.angleAwareTerms`
 - `step.energyEfficiencyTerms`
 - `step.policyDiagnostics`
 
 P1 fields do not authorize fake visuals. For example, missing
 `step.nextBeamSchedule` disables next-beam preview; missing
+`step.policyDiagnostics` disables dense-Q proof / counterfactual controls;
+missing `step.queueState` disables producer queue proof; missing
 `step.energyEfficiencyTerms` disables per-step EE claims.
 
 ## P2 Comparison-Only Fields
@@ -119,7 +122,7 @@ The exporter should produce:
 
 `validate:modqn:training-scene-producer-handoff` checks:
 
-- every field in the 40-field trace contract appears in exactly one priority;
+- every field in the 41-field trace contract appears in exactly one priority;
 - P0 fields use `reject-trace-if-absent`;
 - P1 fields use `accept-trace-with-source-gap` and have canonical source-gap
   mappings;

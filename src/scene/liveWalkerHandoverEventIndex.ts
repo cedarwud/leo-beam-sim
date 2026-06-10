@@ -22,13 +22,15 @@ export const LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC = SIM_DURATION_SEC;
 export const LIVE_WALKER_HANDOVER_EVENT_INDEX_DEFAULT_STEP_SEC = 1;
 export const LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID = 'live-ue-0';
 
-export type LiveWalkerHandoverEventIndexSourceOwner = 'live-walker';
+export type LiveWalkerHandoverEventIndexSourceOwner = 'live-walker' | 'sinr-live-cell-truth';
 export type LiveWalkerHandoverEventIndexHorizonKind = 'live-walker-window';
 export type LiveWalkerHandoverEventIndexClaimKind =
   | 'live-truth'
   | 'profile-derived-forecast'
   | 'overlay-demo';
-export type LiveWalkerHandoverEventIndexUeScope = 'primary-ue-only';
+export type LiveWalkerHandoverEventIndexUeScope =
+  | 'primary-ue-only'
+  | 'cell-truth-ue-events';
 export type LiveWalkerHandoverEventKind = 'intra' | 'inter';
 
 export interface LiveWalkerHandoverEventIndexGeneration {
@@ -37,7 +39,7 @@ export interface LiveWalkerHandoverEventIndexGeneration {
   readonly simStepSec: number;
   readonly handoverPolicyKey: string;
   readonly topologyKey: string;
-  readonly runtimeFramePath: 'stepRuntimeFrame';
+  readonly runtimeFramePath: 'stepRuntimeFrame' | 'stepRuntimeFrame+sinrLiveCells';
 }
 
 export interface LiveWalkerHandoverEvent {
@@ -48,6 +50,18 @@ export interface LiveWalkerHandoverEvent {
   readonly fromBeamId: number;
   readonly toSatId: string;
   readonly toBeamId: number;
+  /** UE that produced this row. Old live-Walker forecast rows are always `live-ue-0`. */
+  readonly ueId?: string;
+  /** Cell-truth rows use earth-fixed cell ids as the handover beam identity. */
+  readonly fromCellId?: number;
+  readonly toCellId?: number;
+  readonly fromBeamIdentity?: string;
+  readonly toBeamIdentity?: string;
+  readonly fromFrequencyIndex?: number | null;
+  readonly toFrequencyIndex?: number | null;
+  /** UE off-axis angle (deg) relative to the old/new fixed cell centres. */
+  readonly fromOffAxisDeg?: number | null;
+  readonly toOffAxisDeg?: number | null;
   /**
    * Recorded SINR of the two candidate beams AT the handover decision, carried
    * verbatim from the engine `HandoverEvent` (the index already steps the real
@@ -62,7 +76,7 @@ export interface LiveWalkerHandoverEvent {
   readonly sourceStartSec: number;
   readonly sourceEndSec: number;
   readonly clickTargetSec: number;
-  readonly primaryUeId: typeof LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID;
+  readonly primaryUeId: string;
   readonly count: 1;
 }
 
@@ -72,9 +86,9 @@ export interface LiveWalkerHandoverEventIndex {
   readonly claimKind: LiveWalkerHandoverEventIndexClaimKind;
   readonly durationSec: typeof LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC;
   readonly ueScope: LiveWalkerHandoverEventIndexUeScope;
-  readonly primaryUeId: typeof LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID;
-  readonly aggregateUeCount: 1;
-  readonly aggregateClaim: 'not-100-ue-aggregate';
+  readonly primaryUeId: string;
+  readonly aggregateUeCount: number;
+  readonly aggregateClaim: 'not-100-ue-aggregate' | 'cell-truth-event-index';
   readonly generation: LiveWalkerHandoverEventIndexGeneration;
   /**
    * Inter-HO SINR-offset threshold (dB) of the live handover profile

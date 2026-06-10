@@ -106,6 +106,7 @@ Only confirmed dead/empty/orphan code is DELETE.
 | **S2** | nav 4→2: revive `AppModeRail` (or trim `LaneExperienceBar`); artifact-replay becomes an in-MODQN toggle (gate `sceneSource='artifact-replay'` to the MODQN tab); promote the existing Proof toggle | low–med | `LANE_EXPERIENCE_OPTIONS` count 4→2; nav≠lane non-injective assertion; lane-experience-bar + omega-s3 browser gates re-point |
 | **S3** | MODQN sidebar purpose-merge (ADR-002 D3): `training`+`jobs`+`objective`→Setup; `replay`→Evidence/Replay; artifact metadata folded in. `SidebarTabShell` compound-tab UX + `appRuntimeModel.ts` rewrite | high | per-lane tab-set assertions rewritten |
 | **S4** | MODQN-tab honesty banner ("degenerate — do not cite, awaiting producer fix") on the default + evidence views; Advanced ⚙ drawer for the power toggles | low | banner-presence assertion |
+| **S5a** | COMPLETE 2026-06-09. MODQN UI surface simplification moved visual-layer presets and the live-cell decision-policy toggle out of `ControlBar` into the existing Advanced drawer via `ModqnAdvancedDisplayControls`. Replay-proof and artifact lanes keep display controls but do not expose the live decision-policy toggle. See `modqn-ui-surface-simplification-sdd.md`. | low | governance validator + lane browser gate against real `:3001` |
 | later | revive PARK internals when the producer ships a non-degenerate run + dense per-objective-Q export (defects report). Top bar stays 2 buttons. | — | — |
 
 Each slice: edit → run `validate:frontend:scene-lane-governance` + typecheck → cavecrew-reviewer
@@ -117,4 +118,7 @@ before/after any visible change** (S2/S4) per the reset lesson.
 - SINR lane (render / sidebars / controls) untouched.
 - PARK components stay mounted-but-dormant under honest labels; never deleted while
   the producer fix is the stated path.
-- Heuristic disclosure mandatory; only the toggle relocates.
+- Heuristic disclosure mandatory; only the toggle relocates. After S5a the
+  MODQN visual-layer presets live in Advanced setup on MODQN sub-lanes, and the
+  decision-policy toggle lives in Advanced setup only on `modqn-live-cell-preview`,
+  not `ControlBar`.

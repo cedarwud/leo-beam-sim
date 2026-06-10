@@ -15,6 +15,7 @@ import {
   countActiveJobs,
   formatRunningFor,
   isActiveStatus,
+  isCancellableStatus,
   isDoneStatus,
   shortJobId,
 } from '../src/modqn/training-trigger/jobsPolling';
@@ -74,8 +75,12 @@ console.log('\n(a) jobsPolling pure helpers');
   assert(shortJobId('01HXY00000000000000000ABCD').length <= 12, 'shortJobId truncates long job IDs');
   assert(shortJobId('short') === 'short', 'shortJobId preserves short job IDs');
   assert(isActiveStatus('queued') === true, 'isActiveStatus accepts queued');
-  assert(isActiveStatus('paused') === true, 'isActiveStatus accepts paused');
+  assert(isActiveStatus('paused') === true, 'isActiveStatus keeps paused visible as a reserved non-terminal state');
   assert(isActiveStatus('done') === false, 'isActiveStatus rejects done');
+  assert(isCancellableStatus('queued') === true, 'isCancellableStatus accepts queued');
+  assert(isCancellableStatus('running') === true, 'isCancellableStatus accepts running');
+  assert(isCancellableStatus('paused') === false, 'isCancellableStatus rejects reserved paused');
+  assert(isCancellableStatus('done') === false, 'isCancellableStatus rejects done');
   assert(isDoneStatus('done') === true, 'isDoneStatus accepts done');
   assert(isDoneStatus('completed') === true, 'isDoneStatus accepts completed alias');
   assert(isDoneStatus('running') === false, 'isDoneStatus rejects running');
@@ -90,8 +95,8 @@ console.log('\n(b) JobsPanel required testids');
   for (const testId of [
     'data-testid="jobs-panel"',
     'data-testid="jobs-panel-active-card"',
-    'data-testid="jobs-panel-done-card"',
-    'data-testid="jobs-panel-load-into-scene"',
+    'data-testid="jobs-panel-completed-history-card"',
+    'data-testid="jobs-panel-terminal-card"',
     'data-testid="jobs-panel-expired-card"',
     'data-testid="jobs-panel-empty"',
     'data-testid="jobs-panel-offline"',
@@ -121,7 +126,38 @@ console.log('\n(c) JobsPanel poll loop and mode gate');
   assert(panelSource.includes('clearTimeout('), 'JobsPanel cleans up poll timeout');
   assert(!panelSource.includes('http://127.0.0.1:8765'), 'JobsPanel does not hard-code backend base URL');
   assert(panelSource.includes('role="progressbar"'), 'JobsPanel renders indeterminate progressbar role');
-  assert(panelSource.includes('onLoadIntoScene'), 'JobsPanel exposes optional load callback prop');
+  assert(
+    !panelSource.includes('onLoadIntoScene'),
+    'D2: JobsPanel no longer exposes load callback; Model Library owns Load into scene',
+  );
+  assert(
+    !panelSource.includes('data-testid="jobs-panel-load-into-scene"'),
+    'D2: JobsPanel no longer renders a Load into scene button',
+  );
+  assert(
+    panelSource.includes("j.status === 'failed' || j.status === 'cancelled' || j.status === 'expired'"),
+    'D2: JobsPanel keeps failed/cancelled/expired rows in terminal job history',
+  );
+  assert(
+    panelSource.includes('disabled={!cancellable}'),
+    'D2: JobsPanel disables cancel outside queued/running statuses',
+  );
+  assert(
+    panelSource.includes('function trainingSpeedFromTelemetry'),
+    'D2: JobsPanel computes training speed from telemetry episode deltas',
+  );
+  assert(
+    panelSource.includes('previousEpisodeEvent') && panelSource.includes('lastEpisodeEvent'),
+    'D2: JobsPanel training speed uses previous/current producer progress events',
+  );
+  assert(
+    panelSource.includes('data-testid="jobs-panel-training-speed"'),
+    'D2: JobsPanel exposes training speed when producer progress deltas are available',
+  );
+  assert(
+    !panelSource.includes('postPauseJob') && !panelSource.includes('postResumeJob'),
+    'D2: JobsPanel does not import pause/resume lifecycle helpers',
+  );
 
   const formSource = fs.readFileSync('src/ui/modqn-training/TrainingForm.tsx', 'utf8');
   assert(
@@ -166,9 +202,22 @@ console.log('\n(d) App.tsx jobs wiring (S4: relocated into the Advanced setup dr
     'App.tsx imports the Advanced setup drawer',
   );
   assert(
-    /<AdvancedSetupDrawer\s+appMode=\{appMode\}\s+onLoadIntoScene=\{handleLoadIntoScene\}/.test(appSource),
-    'App.tsx mounts the Advanced setup drawer with appMode + onLoadIntoScene',
+    appSource.includes('<AdvancedSetupDrawer'),
+    'App.tsx mounts the Advanced setup drawer',
   );
+  for (const [needle, label] of [
+    ['appMode={appMode}', 'appMode'],
+    ['handoverMode={handoverMode}', 'handoverMode'],
+    ['modqnVisualLayerPreset={modqnVisualLayerPreset}', 'MODQN visual-layer preset'],
+    ["showDecisionPolicyControls={sceneLane === 'modqn-live-cell-preview'}", 'live-cell decision-policy gate'],
+    ['onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}', 'MODQN visual-layer setter'],
+    ['onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}', 'MODQN decision-policy setter'],
+  ] as const) {
+    assert(
+      appSource.includes(needle),
+      `App.tsx wires Advanced setup drawer ${label}`,
+    );
+  }
 
   // The drawer is gated on the MODQN lanes; SINR never shows the Setup tools.
   assert(

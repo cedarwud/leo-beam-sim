@@ -125,20 +125,20 @@ function resolveEvidenceProvenanceStatus(
 function getEvidenceProvenanceCopy(status: EvidenceProvenanceStatus): EvidenceProvenanceCopy {
   if (status === 'paper-faithful') {
     return {
-      label: 'paper-faithful replay evidence',
-      detail: 'Bundle manifest and decision trace are displayed as paper-faithful replay evidence. Live SINR remains the reference surface; this panel does not rewrite producer or live truth ownership.',
+      label: 'paper-faithful replay context',
+      detail: 'Bundle manifest and producer selected-serving trace are paper-faithful replay context. Top-K ω preview is legacy display only; dense-Q proof requires the full D5 per-action export and self-check.',
     };
   }
   if (status === 'user-trained') {
     return {
       label: 'user-trained replay evidence',
-      detail: 'Bundle manifest and decision trace are displayed from a user-trained replay bundle. Treat this as replay/evidence context, not PAP-2024 baseline proof and not live truth ownership.',
+      detail: 'Bundle manifest and selected-serving trace are displayed from a user-trained replay bundle. Treat this as replay/evidence context, not PAP-2024 baseline proof, dense-Q proof, or live truth ownership.',
     };
   }
   if (status === 'fallback') {
     return {
-      label: 'fallback replay evidence',
-      detail: 'Objective diagnostics are incomplete for this row, so the display falls back to the first producer top-K candidate. Producer payloads and live SINR truth remain unchanged.',
+      label: 'top-K fallback preview',
+      detail: 'Dense-Q diagnostics are incomplete for this row, so the legacy preview falls back to the first producer top-K candidate. Producer payloads and live SINR truth remain unchanged.',
     };
   }
   return {
@@ -163,6 +163,8 @@ function formatSourceGapField(field: ModqnReplaySourceGap['field']): string {
   if (field === 'metrics.energyEfficiencyTerms') return 'Energy-efficiency terms';
   if (field === 'metrics.reward') return 'Reward trace';
   if (field === 'diagnostics.policy') return 'Policy diagnostics';
+  if (field === 'diagnostics.denseQPolicy') return 'Dense-Q proof';
+  if (field === 'traffic.queueRows') return 'Producer queue rows';
   if (field === 'comparison.alignedTimebase') return 'Comparison timebase';
   return 'Claim boundary';
 }
@@ -209,17 +211,17 @@ function buildDecisionTrace(
         testId: 'modqn-evidence-producer-selected',
       },
       {
-        label: 'Applied ω pick',
+        label: 'Top-K ω preview',
         value: formatCandidateBeam(selectedCandidate),
         testId: 'modqn-evidence-rescalarized-selected',
       },
       {
-        label: 'Applied score',
+        label: 'Top-K score',
         value: formatScore(selectedScore),
         testId: 'modqn-evidence-rescalarized-score',
       },
       {
-        label: 'Changed by ω',
+        label: 'Top-K changed',
         value: selectionChanged,
         testId: 'modqn-evidence-selection-changed',
       },
@@ -400,9 +402,9 @@ export function ModqnEvidenceTab({
         data-testid="modqn-evidence-decision-trace"
         data-selection-changed={decisionTrace.selectionChanged}
         data-fallback-status={decisionTrace.fallbackStatus}
-        aria-label="Applied MODQN decision trace"
+        aria-label="MODQN top-K decision preview"
       >
-        <div className="leo-modqn-objective-controls__title">Applied decision trace</div>
+        <div className="leo-modqn-objective-controls__title">Top-K decision preview</div>
         {decisionTrace.rows.map(row => (
           <div
             key={row.testId}
@@ -414,7 +416,7 @@ export function ModqnEvidenceTab({
           </div>
         ))}
         <p className="leo-modqn-evidence-decision-trace__note">
-          Derived for display from producer top-K diagnostics; producer selectedServing remains immutable.
+          Legacy display preview from producer top-K diagnostics, not dense-Q proof. Producer selectedServing remains immutable.
         </p>
       </section>
 

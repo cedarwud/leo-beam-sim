@@ -178,9 +178,10 @@ Relevant existing code (audited 2026-05-25 on branch
   bundle path; sets `modqnReplayEnvelope` + `modqnReplayShellModel` +
   `modqnReplayDisplayState`. The user-trained path must reuse the same
   state triple (not parallel state), or the scene won't switch.
-- `src/ui/modqn-training/JobsPanel.tsx:174–176` — `Load into scene`
-  button delegates to `onLoadIntoScene` prop; ArtifactPicker uses the
-  same callback.
+- D2 update: `src/ui/modqn-training/JobsPanel.tsx` is now job
+  monitor/history only. The Model Library (`ArtifactPicker`) owns the
+  `Load into scene` callback and enables it only for completed jobs with a
+  loadable training-service manifest.
 - Backend endpoint surface (per backend SDD §6.4): user-trained bundle
   files are static-served at `${baseUrl}/artifacts/${jobId}/${filename}`.
   Path traversal blocked; filenames are `manifest.json`,

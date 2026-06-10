@@ -35,10 +35,12 @@
  *
  * NOT MODQN/paper proof — leo's OWN live SINR-offset surface at 550 km (§7).
  */
-import { useLayoutEffect, useRef, type JSX } from 'react';
+import { useEffect, useLayoutEffect, useRef, type JSX } from 'react';
+import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import type { SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
+import type { RuntimeCandidateHighlightCommand } from '../scene/types';
 import type { WorldPoint } from './CellFootprints';
 
 /**
@@ -209,6 +211,63 @@ export function resolveSinrLiveCellBeamConeItems(
   return items;
 }
 
+function buildPairConeItem(input: {
+  readonly satId: string;
+  readonly cellId: number | null | undefined;
+  readonly frequencyIndex: number | null | undefined;
+  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
+  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+}): SinrLiveCellBeamConeRenderItem | null {
+  if (input.cellId == null) return null;
+  const placement = input.placementByCellId.get(input.cellId);
+  const satWorld = input.satelliteWorldById.get(input.satId);
+  if (!placement || !satWorld || placement.radiusWorld <= 0) return null;
+
+  const apex = new THREE.Vector3(satWorld.x, satWorld.y, satWorld.z);
+  const baseCenter = new THREE.Vector3(placement.worldX, 0, placement.worldZ);
+  if (apex.distanceTo(baseCenter) <= 1e-6) return null;
+  const frequencyIndex = input.frequencyIndex ?? input.cellId;
+  return {
+    cellId: input.cellId,
+    satId: input.satId,
+    frequencyIndex,
+    color: frequencyReuseColor(frequencyIndex),
+    serving: true,
+    apex,
+    baseCenter,
+    baseRadiusWorld: placement.radiusWorld,
+  };
+}
+
+/**
+ * D4 S3a focused cinema resolver: draw ONLY the old/new cell-truth pair named by
+ * the focused handover event. This does not unpark the ambient cell-cone layer;
+ * it is a bounded, focus-scoped display of event-owned `sinrLiveCells` geometry.
+ */
+export function resolveSinrLiveCellHandoverPairConeItems(input: {
+  readonly candidate: RuntimeCandidateHighlightCommand | null | undefined;
+  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
+  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+}): readonly SinrLiveCellBeamConeRenderItem[] {
+  const { candidate } = input;
+  if (!candidate || candidate.sourceOwner !== 'sinr-live-cell-truth') return [];
+  const from = buildPairConeItem({
+    satId: candidate.fromSatId,
+    cellId: candidate.fromCellId,
+    frequencyIndex: candidate.fromFrequencyIndex,
+    placementByCellId: input.placementByCellId,
+    satelliteWorldById: input.satelliteWorldById,
+  });
+  const to = buildPairConeItem({
+    satId: candidate.toSatId,
+    cellId: candidate.toCellId,
+    frequencyIndex: candidate.toFrequencyIndex,
+    placementByCellId: input.placementByCellId,
+    satelliteWorldById: input.satelliteWorldById,
+  });
+  return [from, to].filter((item): item is SinrLiveCellBeamConeRenderItem => item !== null);
+}
+
 export function resolveSinrLiveCellBeamConeRenderCount(props: SinrLiveCellBeamConesProps): number {
   return resolveSinrLiveCellBeamConeItems(props).length;
 }
@@ -221,6 +280,11 @@ export interface SinrLiveCellBeamConesRenderProps {
   /** Pre-resolved cone items (memoised once by the caller — see `MainScene`). */
   readonly items: readonly SinrLiveCellBeamConeRenderItem[];
   readonly visible?: boolean;
+  readonly telemetryCountDatasetKey?: string;
+  readonly telemetrySourceOwnerDatasetKey?: string;
+  readonly telemetrySourceOwner?: string;
+  readonly telemetryEventIdDatasetKey?: string;
+  readonly telemetryEventId?: string;
 }
 
 /**
@@ -281,10 +345,41 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem }): JSX.E
 export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): JSX.Element | null {
   if (props.visible === false) return null;
 
+  const gl = useThree(state => state.gl);
+  const groupRef = useRef<THREE.Group>(null);
   const cones = props.items;
 
+  useLayoutEffect(() => {
+    const key = props.telemetryCountDatasetKey;
+    if (!key) return;
+    const group = groupRef.current;
+    if (!group) return;
+    let count = 0;
+    group.traverse(obj => {
+      if ((obj as THREE.Mesh).isMesh && obj.visible) count += 1;
+    });
+    gl.domElement.dataset[key] = String(count);
+    if (props.telemetrySourceOwnerDatasetKey) {
+      gl.domElement.dataset[props.telemetrySourceOwnerDatasetKey] = props.telemetrySourceOwner ?? '';
+    }
+    if (props.telemetryEventIdDatasetKey) {
+      gl.domElement.dataset[props.telemetryEventIdDatasetKey] = props.telemetryEventId ?? '';
+    }
+  });
+
+  useEffect(() => () => {
+    if (props.telemetryCountDatasetKey) delete gl.domElement.dataset[props.telemetryCountDatasetKey];
+    if (props.telemetrySourceOwnerDatasetKey) delete gl.domElement.dataset[props.telemetrySourceOwnerDatasetKey];
+    if (props.telemetryEventIdDatasetKey) delete gl.domElement.dataset[props.telemetryEventIdDatasetKey];
+  }, [
+    gl,
+    props.telemetryCountDatasetKey,
+    props.telemetrySourceOwnerDatasetKey,
+    props.telemetryEventIdDatasetKey,
+  ]);
+
   return (
-    <group name="sinr-live-cell-beam-cones" userData={{ coneCount: cones.length }}>
+    <group ref={groupRef} name="sinr-live-cell-beam-cones" userData={{ coneCount: cones.length }}>
       {cones.map(cone => (
         <ObliqueConeMesh key={`${cone.cellId}-${cone.satId}`} cone={cone} />
       ))}

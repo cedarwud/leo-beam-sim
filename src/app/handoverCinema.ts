@@ -15,6 +15,8 @@
  */
 import type {
   LiveWalkerHandoverEventIndex,
+  LiveWalkerHandoverEventIndexClaimKind,
+  LiveWalkerHandoverEventIndexSourceOwner,
   LiveWalkerHandoverEventKind,
 } from '../scene/liveWalkerHandoverEventIndex';
 import type { LiveWalkerDirectorFocusClaimKind } from '../scene/liveWalkerDirectorFocus';
@@ -28,11 +30,22 @@ import type { SceneLane } from './sceneLane';
  */
 export interface CinemaCandidateDetail {
   readonly eventId: string;
+  readonly sourceOwner: LiveWalkerHandoverEventIndexSourceOwner;
+  readonly sourceTimeSec: number;
   readonly kind: LiveWalkerHandoverEventKind;
   readonly fromSatId: string;
   readonly fromBeamId: number;
   readonly toSatId: string;
   readonly toBeamId: number;
+  readonly ueId: string | null;
+  readonly fromCellId: number | null;
+  readonly toCellId: number | null;
+  readonly fromBeamIdentity: string | null;
+  readonly toBeamIdentity: string | null;
+  readonly fromFrequencyIndex: number | null;
+  readonly toFrequencyIndex: number | null;
+  readonly fromOffAxisDeg: number | null;
+  readonly toOffAxisDeg: number | null;
   /** Serving (losing) candidate SINR at the recorded handover (dB); null on cold attach. */
   readonly fromSinrDb: number | null;
   /** Winner candidate SINR at the recorded handover (dB). */
@@ -43,6 +56,12 @@ export interface CinemaCandidateDetail {
   readonly offsetDb: number;
   /** Honest claim of the live focus — never producer proof. */
   readonly claimKind: LiveWalkerDirectorFocusClaimKind;
+}
+
+function toDirectorClaimKind(claimKind: LiveWalkerHandoverEventIndexClaimKind): LiveWalkerDirectorFocusClaimKind {
+  if (claimKind === 'overlay-demo') return 'overlay-demo';
+  if (claimKind === 'live-truth') return 'live-truth';
+  return 'profile-derived-forecast';
 }
 
 /**
@@ -61,18 +80,40 @@ export function buildCinemaCandidateDetail(
   if (sceneLane !== 'sinr-live') return null;
   const event = index.events.find(e => e.id === eventId);
   if (event === undefined) return null;
+  if (
+    index.sourceOwner === 'sinr-live-cell-truth'
+    && (
+      event.fromCellId === undefined
+      || event.toCellId === undefined
+      || event.fromOffAxisDeg === undefined
+      || event.toOffAxisDeg === undefined
+    )
+  ) {
+    return null;
+  }
   return {
     eventId: event.id,
+    sourceOwner: index.sourceOwner,
+    sourceTimeSec: event.sourceTimeSec,
     kind: event.kind,
     fromSatId: event.fromSatId,
     fromBeamId: event.fromBeamId,
     toSatId: event.toSatId,
     toBeamId: event.toBeamId,
+    ueId: event.ueId ?? null,
+    fromCellId: event.fromCellId ?? null,
+    toCellId: event.toCellId ?? null,
+    fromBeamIdentity: event.fromBeamIdentity ?? null,
+    toBeamIdentity: event.toBeamIdentity ?? null,
+    fromFrequencyIndex: event.fromFrequencyIndex ?? null,
+    toFrequencyIndex: event.toFrequencyIndex ?? null,
+    fromOffAxisDeg: event.fromOffAxisDeg ?? null,
+    toOffAxisDeg: event.toOffAxisDeg ?? null,
     fromSinrDb: event.fromSinrDb,
     toSinrDb: event.toSinrDb,
     deltaDb: event.deltaDb,
     offsetDb: index.offsetDb,
-    claimKind: index.claimKind === 'overlay-demo' ? 'overlay-demo' : 'profile-derived-forecast',
+    claimKind: toDirectorClaimKind(index.claimKind),
   };
 }
 
@@ -82,11 +123,21 @@ export function toCandidateHighlightCommand(
 ): RuntimeCandidateHighlightCommand | null {
   if (detail === null) return null;
   return {
+    eventId: detail.eventId,
+    sourceOwner: detail.sourceOwner,
+    sourceTimeSec: detail.sourceTimeSec,
     kind: detail.kind,
     fromSatId: detail.fromSatId,
     fromBeamId: detail.fromBeamId,
     toSatId: detail.toSatId,
     toBeamId: detail.toBeamId,
+    ueId: detail.ueId,
+    fromCellId: detail.fromCellId,
+    toCellId: detail.toCellId,
+    fromFrequencyIndex: detail.fromFrequencyIndex,
+    toFrequencyIndex: detail.toFrequencyIndex,
+    fromOffAxisDeg: detail.fromOffAxisDeg,
+    toOffAxisDeg: detail.toOffAxisDeg,
   };
 }
 
@@ -96,6 +147,10 @@ export interface SinrCandidateRow {
   readonly beamLabel: string;
   readonly satId: string;
   readonly beamId: number;
+  readonly cellId: number | null;
+  readonly beamIdentity: string | null;
+  readonly frequencyIndex: number | null;
+  readonly offAxisDeg: number | null;
   readonly sinrDb: number | null;
   readonly role: SinrCandidateRole;
   /** The winner is the selected (new-serving) beam. */
@@ -104,14 +159,18 @@ export interface SinrCandidateRow {
 
 export interface SinrOffsetExplainerModel {
   readonly kind: LiveWalkerHandoverEventKind;
+  readonly eventId: string;
+  readonly sourceOwner: LiveWalkerHandoverEventIndexSourceOwner;
+  readonly sourceTimeSec: number;
+  readonly ueId: string | null;
   readonly offsetDb: number;
   readonly deltaDb: number | null;
   readonly rows: readonly SinrCandidateRow[];
   readonly claimKind: LiveWalkerDirectorFocusClaimKind;
 }
 
-function beamLabel(satId: string, beamId: number): string {
-  return `${satId} B${beamId}`;
+function beamLabel(satId: string, beamId: number, cellId: number | null): string {
+  return cellId === null ? `${satId} B${beamId}` : `${satId} C${cellId}`;
 }
 
 /**
@@ -127,17 +186,25 @@ export function decideSinrOffsetExplainer(
   if (candidate === null) return null;
   const rows: SinrCandidateRow[] = [
     {
-      beamLabel: beamLabel(candidate.fromSatId, candidate.fromBeamId),
+      beamLabel: beamLabel(candidate.fromSatId, candidate.fromBeamId, candidate.fromCellId),
       satId: candidate.fromSatId,
       beamId: candidate.fromBeamId,
+      cellId: candidate.fromCellId,
+      beamIdentity: candidate.fromBeamIdentity,
+      frequencyIndex: candidate.fromFrequencyIndex,
+      offAxisDeg: candidate.fromOffAxisDeg,
       sinrDb: candidate.fromSinrDb,
       role: 'serving',
       isSelected: false,
     },
     {
-      beamLabel: beamLabel(candidate.toSatId, candidate.toBeamId),
+      beamLabel: beamLabel(candidate.toSatId, candidate.toBeamId, candidate.toCellId),
       satId: candidate.toSatId,
       beamId: candidate.toBeamId,
+      cellId: candidate.toCellId,
+      beamIdentity: candidate.toBeamIdentity,
+      frequencyIndex: candidate.toFrequencyIndex,
+      offAxisDeg: candidate.toOffAxisDeg,
       sinrDb: candidate.toSinrDb,
       role: 'winner',
       isSelected: true,
@@ -145,6 +212,10 @@ export function decideSinrOffsetExplainer(
   ];
   return {
     kind: candidate.kind,
+    eventId: candidate.eventId,
+    sourceOwner: candidate.sourceOwner,
+    sourceTimeSec: candidate.sourceTimeSec,
+    ueId: candidate.ueId,
     offsetDb: candidate.offsetDb,
     deltaDb: candidate.deltaDb,
     rows,

@@ -144,6 +144,8 @@ assertLaneHasRequirements('baseline-replay-proof', [
   'step.nextBeamSchedule',
   'step.handoverEvent',
   'step.reward',
+  'step.queueState',
+  'step.policyDiagnostics',
   'step.angleAwareTerms',
   'step.energyEfficiencyTerms',
 ]);
@@ -173,6 +175,8 @@ assertLaneHasSourceGaps('baseline-replay-proof', [
   'timeline.activeCellState',
   'timeline.allUeServingHistory',
   'timeline.handoverPenaltyAttribution',
+  'diagnostics.denseQPolicy',
+  'traffic.queueRows',
   'metrics.angleAwareTerms',
   'metrics.energyEfficiencyTerms',
   'metrics.reward',
@@ -189,6 +193,8 @@ assert.equal(requirement('step.activeBeamSchedule').sourceGapField, 'beamHopping
 assert.equal(requirement('step.nextBeamSchedule').sourceGapField, 'beamHopping.nextSchedule');
 assert.equal(requirement('step.focusUe').sourceGapField, 'timeline.focusUeSelection');
 assert.equal(requirement('step.handoverEvent').sourceGapField, 'timeline.handoverPenaltyAttribution');
+assert.equal(requirement('step.policyDiagnostics').sourceGapField, 'diagnostics.denseQPolicy');
+assert.equal(requirement('step.queueState').sourceGapField, 'traffic.queueRows');
 assert.equal(requirement('comparison.alignedTimebase').sourceGapField, 'comparison.alignedTimebase');
 
 assertNoForbiddenScheduleAliases('step.activeBeamSchedule');
@@ -239,6 +245,8 @@ for (const field of [
   'timeline.focusUeSelection',
   'timeline.activeCellState',
   'timeline.handoverPenaltyAttribution',
+  'diagnostics.denseQPolicy',
+  'traffic.queueRows',
   'comparison.alignedTimebase',
 ]) {
   assert.ok(sdd.includes(field), `training scene SDD documents source-gap field ${field}`);

@@ -59,7 +59,36 @@ function ev(overrides: Partial<LiveWalkerHandoverEvent> = {}): LiveWalkerHandove
   };
 }
 
-function index(events: LiveWalkerHandoverEvent[], offsetDb = 2): LiveWalkerHandoverEventIndex {
+function cellEv(overrides: Partial<LiveWalkerHandoverEvent> = {}): LiveWalkerHandoverEvent {
+  return ev({
+    id: 'evt-cell-intra-1',
+    kind: 'intra',
+    fromSatId: 'SAT-2',
+    fromBeamId: 8,
+    toSatId: 'SAT-2',
+    toBeamId: 11,
+    ueId: 'live-ue-17',
+    fromCellId: 8,
+    toCellId: 11,
+    fromBeamIdentity: 'SAT-2#cell8',
+    toBeamIdentity: 'SAT-2#cell11',
+    fromFrequencyIndex: 2,
+    toFrequencyIndex: 5,
+    fromOffAxisDeg: 1.25,
+    toOffAxisDeg: 1.72,
+    sourceTimeSec: 123,
+    sourceStartSec: 113,
+    sourceEndSec: 143,
+    clickTargetSec: 123,
+    ...overrides,
+  });
+}
+
+function index(
+  events: LiveWalkerHandoverEvent[],
+  offsetDb = 2,
+  overrides: Partial<LiveWalkerHandoverEventIndex> = {},
+): LiveWalkerHandoverEventIndex {
   return {
     sourceOwner: 'live-walker',
     horizonKind: 'live-walker-window',
@@ -80,6 +109,7 @@ function index(events: LiveWalkerHandoverEvent[], offsetDb = 2): LiveWalkerHando
     offsetDb,
     sourceGapReasons: [],
     events,
+    ...overrides,
   };
 }
 
@@ -96,7 +126,37 @@ check('buildCinemaCandidateDetail resolves the focused event by id on sinr-live'
   assertEqual(detail.toSinrDb, 1.6, 'toSinrDb');
   assertEqual(detail.deltaDb, 5.8, 'deltaDb');
   assertEqual(detail.offsetDb, 2, 'offsetDb');
+  assertEqual(detail.sourceOwner, 'live-walker', 'sourceOwner');
   assertEqual(detail.claimKind, 'profile-derived-forecast', 'claimKind');
+});
+
+check('buildCinemaCandidateDetail resolves cell-truth event source, cell ids, UE id, and off-axis fields', () => {
+  const detail = assertNotNull(
+    buildCinemaCandidateDetail(index([cellEv()], 2, {
+      sourceOwner: 'sinr-live-cell-truth',
+      claimKind: 'live-truth',
+      ueScope: 'cell-truth-ue-events',
+      aggregateUeCount: 100,
+      aggregateClaim: 'cell-truth-event-index',
+      generation: {
+        profileId: 'p',
+        epochUtcMs: 0,
+        simStepSec: 15,
+        handoverPolicyKey: 'k',
+        topologyKey: 't',
+        runtimeFramePath: 'stepRuntimeFrame+sinrLiveCells',
+      },
+    }), 'evt-cell-intra-1', 'sinr-live'),
+    'detail',
+  );
+  assertEqual(detail.sourceOwner, 'sinr-live-cell-truth', 'sourceOwner');
+  assertEqual(detail.claimKind, 'live-truth', 'claimKind');
+  assertEqual(detail.ueId, 'live-ue-17', 'ueId');
+  assertEqual(detail.fromCellId, 8, 'fromCellId');
+  assertEqual(detail.toCellId, 11, 'toCellId');
+  assertEqual(detail.fromOffAxisDeg, 1.25, 'fromOffAxisDeg');
+  assertEqual(detail.toOffAxisDeg, 1.72, 'toOffAxisDeg');
+  assertEqual(detail.sourceTimeSec, 123, 'sourceTimeSec');
 });
 
 check('buildCinemaCandidateDetail is lane-gated to sinr-live (S1)', () => {
@@ -124,6 +184,32 @@ check('toCandidateHighlightCommand strips SINR (geometry only) and null-passes t
   assertNull(toCandidateHighlightCommand(null), 'null detail');
 });
 
+check('toCandidateHighlightCommand preserves cell-truth geometry fields but still strips SINR', () => {
+  const detail = buildCinemaCandidateDetail(index([cellEv()], 2, {
+    sourceOwner: 'sinr-live-cell-truth',
+    claimKind: 'live-truth',
+    ueScope: 'cell-truth-ue-events',
+    aggregateUeCount: 100,
+    aggregateClaim: 'cell-truth-event-index',
+    generation: {
+      profileId: 'p',
+      epochUtcMs: 0,
+      simStepSec: 15,
+      handoverPolicyKey: 'k',
+      topologyKey: 't',
+      runtimeFramePath: 'stepRuntimeFrame+sinrLiveCells',
+    },
+  }), 'evt-cell-intra-1', 'sinr-live');
+  const cmd = assertNotNull(toCandidateHighlightCommand(detail), 'cmd');
+  assertEqual(cmd.sourceOwner, 'sinr-live-cell-truth', 'cmd.sourceOwner');
+  assertEqual(cmd.eventId, 'evt-cell-intra-1', 'cmd.eventId');
+  assertEqual(cmd.fromCellId, 8, 'cmd.fromCellId');
+  assertEqual(cmd.toCellId, 11, 'cmd.toCellId');
+  assertEqual(cmd.fromOffAxisDeg, 1.25, 'cmd.fromOffAxisDeg');
+  assertEqual(cmd.toOffAxisDeg, 1.72, 'cmd.toOffAxisDeg');
+  assertEqual(Object.prototype.hasOwnProperty.call(cmd, 'toSinrDb'), false, 'cmd carries no SINR');
+});
+
 check('decideSinrOffsetExplainer emits serving+winner rows, winner selected, no fabrication', () => {
   const detail = buildCinemaCandidateDetail(index([ev()]), 'evt-inter-1', 'sinr-live');
   const model = assertNotNull(decideSinrOffsetExplainer(detail), 'model');
@@ -137,7 +223,36 @@ check('decideSinrOffsetExplainer emits serving+winner rows, winner selected, no 
   assertEqual(winner.sinrDb, 1.6, 'winner sinr');
   assertEqual(model.offsetDb, 2, 'model offset');
   assertEqual(model.kind, 'inter', 'model kind');
+  assertEqual(model.sourceOwner, 'live-walker', 'model source owner');
   assertEqual(model.claimKind, 'profile-derived-forecast', 'model claim');
+});
+
+check('decideSinrOffsetExplainer carries cell-truth source/time/off-axis rows', () => {
+  const detail = buildCinemaCandidateDetail(index([cellEv()], 2, {
+    sourceOwner: 'sinr-live-cell-truth',
+    claimKind: 'live-truth',
+    ueScope: 'cell-truth-ue-events',
+    aggregateUeCount: 100,
+    aggregateClaim: 'cell-truth-event-index',
+    generation: {
+      profileId: 'p',
+      epochUtcMs: 0,
+      simStepSec: 15,
+      handoverPolicyKey: 'k',
+      topologyKey: 't',
+      runtimeFramePath: 'stepRuntimeFrame+sinrLiveCells',
+    },
+  }), 'evt-cell-intra-1', 'sinr-live');
+  const model = assertNotNull(decideSinrOffsetExplainer(detail), 'model');
+  assertEqual(model.sourceOwner, 'sinr-live-cell-truth', 'model source owner');
+  assertEqual(model.claimKind, 'live-truth', 'model claim');
+  assertEqual(model.eventId, 'evt-cell-intra-1', 'event id');
+  assertEqual(model.sourceTimeSec, 123, 'source time');
+  assertEqual(model.ueId, 'live-ue-17', 'ue id');
+  assertEqual(model.rows[0].cellId, 8, 'serving cell');
+  assertEqual(model.rows[1].cellId, 11, 'winner cell');
+  assertEqual(model.rows[0].offAxisDeg, 1.25, 'serving off-axis');
+  assertEqual(model.rows[1].offAxisDeg, 1.72, 'winner off-axis');
 });
 
 check('decideSinrOffsetExplainer preserves a null serving SINR (cold attach), never invents one', () => {

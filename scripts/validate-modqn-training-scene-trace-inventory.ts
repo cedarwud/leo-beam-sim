@@ -102,6 +102,13 @@ assertCoverage('phase03a-replay-bundle', 'step.activeBeamSchedule', 'source-gap'
 assertCoverage('phase03a-replay-bundle', 'step.nextBeamSchedule', 'source-gap');
 assertCoverage('phase03a-replay-bundle', 'step.allUePositions', 'source-gap');
 assertCoverage('phase03a-replay-bundle', 'step.allUeServingHistory', 'source-gap');
+assertCoverage('phase03a-replay-bundle', 'step.policyDiagnostics', 'partial-producer-backed');
+assert.equal(
+  coverage('phase03a-replay-bundle', 'step.policyDiagnostics').sourceGapField,
+  'diagnostics.denseQPolicy',
+  'phase03 policy diagnostics remain source-gapped for dense-Q proof',
+);
+assertCoverage('phase03a-replay-bundle', 'step.queueState', 'source-gap');
 assertCoverage('phase03a-replay-bundle', 'step.angleAwareTerms', 'source-gap');
 assertCoverage('phase03a-replay-bundle', 'step.energyEfficiencyTerms', 'source-gap');
 assertCurrentPathsInclude('phase03a-replay-bundle', 'step.selectedAction', 'timelineRows[].action');
@@ -117,6 +124,8 @@ assertCoverage('user-trained-manifest', 'environment.objectiveWeights', 'produce
 assertCoverage('user-trained-manifest', 'environment.algorithmFlags', 'partial-producer-backed');
 assertCoverage('user-trained-manifest', 'entities.models', 'partial-producer-backed');
 assertCoverage('user-trained-manifest', 'step.activeBeamSchedule', 'source-gap');
+assertCoverage('user-trained-manifest', 'step.policyDiagnostics', 'source-gap');
+assertCoverage('user-trained-manifest', 'step.queueState', 'source-gap');
 assertCoverage('user-trained-manifest', 'step.reward', 'source-gap');
 assertCurrentPathsInclude('user-trained-manifest', 'provenance.claimBoundary', 'effectivenessClaimAuthorized');
 
@@ -133,9 +142,15 @@ assertCoverage('visual-showcase-v1', 'step.allUePositions', 'producer-backed');
 assertCoverage('visual-showcase-v1', 'step.allUeServingHistory', 'producer-backed');
 assertCoverage('visual-showcase-v1', 'step.selectedAction', 'producer-backed');
 assertCoverage('visual-showcase-v1', 'step.reward', 'producer-backed');
-assertCoverage('visual-showcase-v1', 'step.policyDiagnostics', 'producer-backed');
+assertCoverage('visual-showcase-v1', 'step.policyDiagnostics', 'partial-producer-backed');
+assert.equal(
+  coverage('visual-showcase-v1', 'step.policyDiagnostics').sourceGapField,
+  'diagnostics.denseQPolicy',
+  'visual-showcase policy diagnostics remain source-gapped for dense-Q proof',
+);
 assertCoverage('visual-showcase-v1', 'step.activeBeamSchedule', 'source-gap');
 assertCoverage('visual-showcase-v1', 'step.nextBeamSchedule', 'source-gap');
+assertCoverage('visual-showcase-v1', 'step.queueState', 'source-gap');
 assertCoverage('visual-showcase-v1', 'step.energyEfficiencyTerms', 'partial-producer-backed');
 assertCurrentPathsInclude('visual-showcase-v1', 'step.handoverEvent', 'timeline[].handoverState.kind');
 

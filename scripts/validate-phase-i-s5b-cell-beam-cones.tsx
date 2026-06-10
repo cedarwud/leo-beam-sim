@@ -397,8 +397,8 @@ expect(
   'MainScene mounts CellBeamCones gated on showCellOverlay and the MODQN beam-cone visual layer scope',
 );
 expect(
-  mainSceneSource.includes('SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && viz.displaySats'),
-  'MainScene gates legacy SatelliteBeams with !showCellOverlay',
+  mainSceneSource.includes('SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats'),
+  'MainScene gates legacy SatelliteBeams with !showCellOverlay and !showSinrLiveCellBeams',
 );
 expect(
   renderPlanSource.includes('const showLiveBeamCones = showSinrLiveViewport;'),

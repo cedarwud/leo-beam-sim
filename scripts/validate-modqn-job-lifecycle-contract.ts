@@ -2,13 +2,15 @@
 // validate-modqn-job-lifecycle-contract.ts
 //
 // Acceptance validator:
-//   (a) paused/completed lifecycle compatibility is client-visible
+//   (a) reserved/done lifecycle compatibility is client-visible but not overclaimed
 //   (b) pause/resume helpers call producer endpoints and fail closed on 501
-//   (c) docs preserve done/completed, deleted, and paused contract boundaries
+//   (c) UI exposes only supported lifecycle controls
+//   (d) docs preserve done/completed, deleted, and paused contract boundaries
 
 import * as fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {
+  isCancellableStatus,
   isActiveStatus,
   isDoneStatus,
 } from '../src/modqn/training-trigger/jobsPolling';
@@ -52,8 +54,11 @@ function withFetch<T>(stub: typeof fetch, action: () => Promise<T> | T): Promise
 }
 
 console.log('\n(a) lifecycle status helpers');
-await check('paused remains a non-terminal visible job state', () => {
+await check('paused remains visible but is not cancellable while reserved', () => {
   assert.equal(isActiveStatus('paused'), true);
+  assert.equal(isCancellableStatus('paused'), false);
+  assert.equal(isCancellableStatus('queued'), true);
+  assert.equal(isCancellableStatus('running'), true);
 });
 await check('completed is accepted only as a done compatibility alias', () => {
   assert.equal(isDoneStatus('completed'), true);
@@ -100,7 +105,23 @@ console.log('\n(b) pause/resume fail-closed helpers');
   );
 }
 
-console.log('\n(c) docs and package dependency guard');
+console.log('\n(c) UI lifecycle controls');
+await check('JobsPanel exposes cancel/delete but no pause/resume or load controls', () => {
+  const jobsPanel = fs.readFileSync('src/ui/modqn-training/JobsPanel.tsx', 'utf8');
+  assert.match(jobsPanel, /data-testid="jobs-panel-cancel-job"/);
+  assert.match(jobsPanel, /data-testid="jobs-panel-delete-job"/);
+  assert.match(jobsPanel, /disabled=\{!cancellable\}/);
+  assert.doesNotMatch(jobsPanel, /postPauseJob|postResumeJob|pause-job|resume-job/i);
+  assert.doesNotMatch(jobsPanel, /jobs-panel-load-into-scene|onLoadIntoScene/);
+});
+await check('ArtifactPicker owns the user-trained Load into scene affordance', () => {
+  const artifactPicker = fs.readFileSync('src/ui/modqn-training/ArtifactPicker.tsx', 'utf8');
+  assert.match(artifactPicker, /data-surface="model-library"/);
+  assert.match(artifactPicker, /data-testid="artifact-picker-load"/);
+  assert.match(artifactPicker, /disabled=\{!isLoadableManifest\(manifest\)\}/);
+});
+
+console.log('\n(d) docs and package dependency guard');
 await check('backend SDD documents done/completed compatibility', () => {
   const backendSdd = fs.readFileSync('docs/modqn-training-trigger-backend-sdd.md', 'utf8');
   assert.match(backendSdd, /completed[\s\S]*alias[\s\S]*done|done[\s\S]*completed[\s\S]*alias/i);

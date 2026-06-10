@@ -1,12 +1,7 @@
 import { UI_CLASSES } from '../constants/uiTokens';
 import type { SceneLane } from '../app/sceneLane';
 import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
-import {
-  MODQN_VISUAL_LAYER_PRESETS,
-  type ModqnVisualLayerPreset,
-} from '../scene/modqnVisualLayers';
 import { UI_MODES, isUiMode, type UiMode } from './uiMode';
-import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 
 interface ProfileOption {
   id: string;
@@ -23,8 +18,6 @@ interface ControlBarProps {
   beamDensity: BeamDensity;
   beamCalloutsEnabled: boolean;
   cinematicMode: CinematicMode;
-  /** Current handover mode — read for the MODQN decision-policy toggle's active state. */
-  handoverMode?: RuntimeHandoverMode;
   onProfileChange: (profileId: string) => void;
   onUiModeChange: (mode: UiMode) => void;
   onBeamDensityChange: (density: BeamDensity) => void;
@@ -43,10 +36,6 @@ interface ControlBarProps {
   elevatedUeId?: string | null;
   ueIds?: readonly string[];
   onElevatedUeIdChange?: (id: string) => void;
-  modqnVisualLayerPreset?: ModqnVisualLayerPreset;
-  onModqnVisualLayerPresetChange?: (preset: ModqnVisualLayerPreset) => void;
-  /** Flip the MODQN decision policy (paper overlay <-> omega-heuristic) on the MODQN live lane. */
-  onModqnDecisionPolicyChange?: (mode: RuntimeHandoverMode) => void;
 }
 
 const UI_MODE_LABELS: Record<UiMode, string> = {
@@ -68,20 +57,12 @@ const CAMERA_PRESETS: Array<{ label: string; preset: CameraPreset }> = [
   { label: 'Paper-faithful close-up', preset: 'paper-faithful-closeup' },
 ];
 
-const MODQN_LAYER_PRESET_LABELS: Record<ModqnVisualLayerPreset, string> = {
-  'baseline-faithful': 'Baseline',
-  'service-allocation': 'Service',
-  'explain-handover': 'Explain',
-  debug: 'Debug',
-};
-
 export function ControlBar({
   autoSlowEnabled,
   uiMode,
   beamDensity,
   beamCalloutsEnabled,
   cinematicMode,
-  handoverMode = 'sinr-offset',
   onUiModeChange,
   onBeamDensityChange,
   onToggleBeamCallouts,
@@ -97,13 +78,9 @@ export function ControlBar({
   elevatedUeId = null,
   ueIds = [],
   onElevatedUeIdChange,
-  modqnVisualLayerPreset = 'baseline-faithful',
-  onModqnVisualLayerPresetChange,
-  onModqnDecisionPolicyChange,
 }: ControlBarProps) {
   const isArtifactReplay = sceneLane === 'artifact-replay' || sceneSource === 'artifact-replay';
   const showSinrLiveControls = sceneLane === 'sinr-live';
-  const showModqnLayerControls = sceneLane === 'modqn-live-cell-preview';
   return (
     <div className="leo-control-bar">
       <label className="leo-control-bar__field-row">
@@ -216,66 +193,6 @@ export function ControlBar({
             HO Slow
           </label>
         </>
-      )}
-
-      {showModqnLayerControls && (
-        <div
-          className="leo-control-bar__modqn-layer-group"
-          role="group"
-          aria-label="MODQN visual layer preset"
-          data-testid="modqn-layer-preset-control"
-          data-modqn-layer-preset={modqnVisualLayerPreset}
-        >
-          <span className="leo-control-bar__group-label" aria-hidden="true">MODQN layers:</span>
-          {MODQN_VISUAL_LAYER_PRESETS.map(preset => {
-            const selected = modqnVisualLayerPreset === preset;
-            return (
-              <button
-                key={preset}
-                className={`${UI_CLASSES.button} leo-control-bar__modqn-layer-button`}
-                type="button"
-                aria-label={`Set MODQN visual layer preset to ${MODQN_LAYER_PRESET_LABELS[preset]}`}
-                aria-pressed={selected}
-                data-testid={`modqn-layer-preset-${preset}`}
-                onClick={() => onModqnVisualLayerPresetChange?.(preset)}
-              >
-                {MODQN_LAYER_PRESET_LABELS[preset]}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {showModqnLayerControls && (
-        <div
-          className="leo-control-bar__modqn-layer-group"
-          role="group"
-          aria-label="MODQN decision policy"
-          data-testid="modqn-decision-policy-control"
-          data-modqn-decision-policy={handoverMode}
-        >
-          <span className="leo-control-bar__group-label" aria-hidden="true">Decision policy:</span>
-          <button
-            type="button"
-            className={`${UI_CLASSES.button} leo-control-bar__modqn-layer-button`}
-            aria-pressed={handoverMode === 'decision-overlay-on-live-sinr'}
-            data-testid="modqn-decision-policy-overlay"
-            title="Paper-faithful MODQN decision overlay on live SINR"
-            onClick={() => onModqnDecisionPolicyChange?.('decision-overlay-on-live-sinr')}
-          >
-            Paper overlay
-          </button>
-          <button
-            type="button"
-            className={`${UI_CLASSES.button} leo-control-bar__modqn-layer-button`}
-            aria-pressed={handoverMode === 'omega-heuristic'}
-            data-testid="modqn-decision-policy-heuristic"
-            title="Heuristic ω-scoring — NOT paper MODQN; selecting it shows a persistent disclosure banner"
-            onClick={() => onModqnDecisionPolicyChange?.('omega-heuristic')}
-          >
-            Heuristic ω (NOT paper)
-          </button>
-        </div>
       )}
 
       {isArtifactReplay ? (

@@ -552,7 +552,7 @@ function assertSceneBridgeSource(): void {
   );
   assertContains(
     mainSceneSource,
-    'showLiveBeamCones && !showCellOverlay && viz.displaySats',
+    'showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats',
     'MODQN replay must not also render legacy live SINR beam cones',
   );
   assertContains(
@@ -706,8 +706,13 @@ function assertSceneBridgeSource(): void {
   );
   assertNotContains(
     cuePanelSource,
-    'reward',
-    'cue panel must not derive rewards',
+    'scalarReward',
+    'cue panel must not derive scalar rewards',
+  );
+  assertNotContains(
+    cuePanelSource,
+    'rewardVector',
+    'cue panel must not derive reward vectors',
   );
 }
 

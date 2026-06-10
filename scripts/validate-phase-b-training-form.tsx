@@ -5,7 +5,7 @@
 //   (a) submittedJobs localStorage helpers preserve newest-first, dedupe, and cap
 //   (b) TrainingForm exposes required testids
 //   (c) TrainingForm has MODQN-mode gate, clamp, presets, postTrain, and persistence
-//   (d) App.tsx wires the training tab into the MODQN sidebar only
+//   (d) App.tsx wires the Advanced drawer; the drawer hosts TrainingForm
 //   (e) TRAINER_SUBCOMMANDS stays aligned with the backend allowlist
 //
 // Run: node --import tsx/esm scripts/validate-phase-b-training-form.tsx
@@ -149,38 +149,47 @@ console.log('\n(c) TrainingForm mode gate and submit path');
 }
 
 // ---------------------------------------------------------------------------
-// (d) source grep: App.tsx wires training tab into MODQN sidebar only
+// (d) source grep: App.tsx wires the Advanced drawer; drawer hosts TrainingForm
 // ---------------------------------------------------------------------------
-console.log('\n(d) App.tsx training tab wiring');
+console.log('\n(d) Advanced drawer training wiring');
 {
   const appSource = fs.readFileSync('src/App.tsx', 'utf8');
   const appRuntimeModelSource = fs.readFileSync('src/app/appRuntimeModel.ts', 'utf8');
+  const drawerSource = fs.readFileSync('src/ui/AdvancedSetupDrawer.tsx', 'utf8');
   assert(
-    appSource.includes("import { TrainingForm } from './ui/modqn-training/TrainingForm';"),
-    'App.tsx imports TrainingForm',
+    appSource.includes("import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';"),
+    'App.tsx imports AdvancedSetupDrawer',
+  );
+  assert(
+    appSource.includes('<AdvancedSetupDrawer'),
+    'App.tsx mounts AdvancedSetupDrawer',
+  );
+  assert(
+    drawerSource.includes("import { TrainingForm } from './modqn-training/TrainingForm';"),
+    'AdvancedSetupDrawer imports TrainingForm',
+  );
+  assert(
+    drawerSource.includes('<TrainingForm appMode={appMode} />'),
+    'AdvancedSetupDrawer renders TrainingForm with appMode',
   );
 
   const leftSidebarTypeLine = appRuntimeModelSource
     .split('\n')
     .find(line => line.includes('type LeftSidebarTab')) ?? '';
   assert(
-    leftSidebarTypeLine.includes("'training'"),
-    'App runtime model LeftSidebarTab union includes training',
+    !leftSidebarTypeLine.includes("'training'"),
+    'S4: App runtime model LeftSidebarTab union no longer includes training',
     leftSidebarTypeLine,
   );
   assert(
-    appRuntimeModelSource.includes("{ key: 'training', label: 'MODQN training'"),
-    'App runtime model LEFT_SIDEBAR_TABS includes MODQN training entry',
-  );
-  assert(
-    appSource.includes('<TrainingForm appMode={appMode} />'),
-    'App.tsx renders TrainingForm with appMode',
+    !appRuntimeModelSource.includes("{ key: 'training', label: 'MODQN training'"),
+    'S4: App runtime model LEFT_SIDEBAR_TABS no longer includes MODQN training entry',
   );
 
   const modqnBlock = extractConstArray(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS');
   assert(
-    modqnBlock.includes('LEFT_SIDEBAR_TABS[3]'),
-    'App runtime model MODQN sidebar includes training tab entry',
+    !modqnBlock.includes('training'),
+    'S4: MODQN sidebar block does not include training literal',
     modqnBlock,
   );
   assert(
@@ -189,13 +198,13 @@ console.log('\n(d) App.tsx training tab wiring');
     modqnBlock,
   );
   assert(
-    appRuntimeModelSource.includes("return mode === 'sinr-offset' ? 'signal' : 'replay';"),
-    'App runtime model defaults MODQN sidebar to replay tab',
+    appRuntimeModelSource.includes("return 'evidence';"),
+    'S4: App runtime model defaults MODQN sidebar to Evidence/Replay tab',
   );
 
   const sinrBlock = extractConstArray(appRuntimeModelSource, 'SINR_LEFT_SIDEBAR_TABS');
   assert(
-    !sinrBlock.includes('LEFT_SIDEBAR_TABS[3]'),
+    !sinrBlock.includes('training'),
     'SINR sidebar does not include training tab entry',
     sinrBlock,
   );
@@ -211,7 +220,18 @@ console.log('\n(d) App.tsx training tab wiring');
 // ---------------------------------------------------------------------------
 console.log('\n(e) TRAINER_SUBCOMMANDS backend allowlist');
 {
+  const appRuntimeModelSource = fs.readFileSync('src/app/appRuntimeModel.ts', 'utf8');
   const formSource = fs.readFileSync('src/ui/modqn-training/trainingFormModel.ts', 'utf8');
+  const modqnBlock = extractConstArray(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS');
+  assert(
+    !modqnBlock.includes('training'),
+    'S4: App runtime model MODQN sidebar keeps TrainingForm in Advanced drawer, not a left tab',
+    modqnBlock,
+  );
+  assert(
+    appRuntimeModelSource.includes("return 'evidence';"),
+    'S4: App runtime model defaults MODQN sidebar to Evidence/Replay tab',
+  );
   for (const subcommand of ["'baseline'", "'multi-catfish'"]) {
     assert(formSource.includes(subcommand), `TrainingForm includes trainer subcommand ${subcommand}`);
   }

@@ -52,7 +52,7 @@ they must not share viewport ownership decisions.
 
 | Scene lane | Owner | Source | Allowed viewport proof | Must stay off |
 |---|---|---|---|---|
-| `sinr-live` | live SINR demo | live Walker simulator / configured profile | live satellites, live SINR beams, SINR handover effects, diagnostics, live Walker timeline/forecast rails, handover-cinema candidate-beam highlight + SINR explainer (focus-scoped, `sinr-offset` claim), SINR-serving mosaic (UE markers coloured by serving beam — its OWN layer, NOT the MODQN cell overlay) + aggregate readout (served N/N, per-beam load, mean SINR; `sinr-serving` claim, always-on ambient default) | MODQN replay proof, MODQN cell overlay |
+| `sinr-live` | live SINR demo | live Walker simulator / configured profile plus `sinrLiveCells` cell-truth trajectory for D4 focus | live satellites, live SINR beams, SINR handover effects, diagnostics, `sinrLiveCells` source-time handover rail for cell-truth focus, handover-cinema candidate-beam highlight + SINR explainer + focus-scoped old/new off-axis beam pair (`sinr-offset` / `live-truth` claim), SINR-serving mosaic (UE markers coloured by serving beam — its OWN layer, NOT the MODQN cell overlay) + aggregate readout (served N/N, per-beam load, mean SINR; `sinr-serving` claim, always-on ambient default) | MODQN replay proof, MODQN cell overlay |
 | `modqn-live-cell-preview` | MODQN live preview | live Walker simulator for geometry/SINR plus explicit MODQN decision overlay | cell overlay, all-UE service map, active cell UE-count badges, clean cell hopping state, explicit visual layer presets, overlay-labeled handover cues/decision rail | MODQN replay proof, legacy live beam cones, decorative live effects, artifact overlays |
 | `modqn-replay-proof` | MODQN evidence proof | immutable MODQN replay artifact/display state | replay proof layer, source-backed or display-proxy replay beams, focused decision trace, producer-horizon replay rail | live cell preview, live SINR beams, artifact overlays, live Walker forecast markers |
 | `artifact-replay` | visual-showcase replay | immutable `visual-showcase-v1` artifact | artifact-provided frame content, replay controls, artifact-owned event rail | live cell preview, MODQN replay proof, live SINR proof effects |
@@ -131,15 +131,17 @@ no-3D-import property, and the lane-gated single mount.
 ## Lane Experience Switcher
 
 `LaneExperienceBar` (`src/ui/LaneExperienceBar.tsx`) is the single top-level
-in-app entry point for the viewport lane axis. It is a segmented control over
-the four authoritative scene lanes (`sinr-live`, `modqn-live-cell-preview`,
-`modqn-replay-proof`, `artifact-replay`), and is the realized form of the
-previously-unmounted `AppModeRail` nav concept.
+in-app entry point for the primary experience axis. It exposes two top-level
+segments, `SINR` and `MODQN`, while the authoritative `SceneLane` enum remains
+four-valued (`sinr-live`, `modqn-live-cell-preview`, `modqn-replay-proof`,
+`artifact-replay`). `ModqnViewToggle` is the in-MODQN sub-view control that
+selects Live / Proof / Artifact beneath the single MODQN top tab.
 
-It owns BOTH navigation axes at once: each segment maps to one resolved
-`SceneLane`, and `App.handleExperienceChange` translates that back into the
-combination of `sceneSource` (live-sim vs artifact-replay), `appMode` (SINR vs
-MODQN), and the `modqnReplayProofRequested` flag. Before this control,
+The nav surface is intentionally non-injective: all three MODQN sub-lanes map
+back to the active MODQN top segment, and `App.handleExperienceChange`
+translates the selected lane into the combination of `sceneSource` (live-sim vs
+artifact-replay), `appMode` (SINR vs MODQN), and the
+`modqnReplayProofRequested` flag. Before this control,
 `sceneSource` had no setter at all — the entire `artifact-replay` lane (and its
 flowchart, Plane-C dashboard, satellite compass, and real-artifact Director
 cinematic) was reachable only via the `?sceneSource=artifact-replay` URL param,
@@ -178,8 +180,9 @@ transition (the Director-focus cancel on switch).
 - `appMode=modqn-demo` with `sceneSource=live-sim` resolves to
   `modqn-live-cell-preview`.
 - `appMode=sinr-experiment` with `sceneSource=live-sim` resolves to `sinr-live`.
-- `modqn-replay-proof` is selected only by the MODQN replay cue panel's explicit
-  proof viewport toggle. It is not the default MODQN viewport lane.
+- `modqn-replay-proof` is selected only by an explicit MODQN proof entry
+  (`ModqnViewToggle` / replay cue proof control), which sets
+  `modqnReplayProofRequested`. It is not the default MODQN viewport lane.
 
 `App.tsx` owns the lane decision. `MainScene` may continue to host shared
 primitives, but viewport ownership policy lives in
@@ -226,19 +229,24 @@ producer-data defects report). App therefore mounts a persistent, non-citable
 artifact.") across the top of every MODQN lane (gated `sceneLane !== 'sinr-live'`);
 the only removal path is to leave MODQN for the SINR tab.
 
-On the `modqn-live-cell-preview` lane the ControlBar also exposes a MODQN
-decision-policy toggle (`modqn-decision-policy-control`) that flips the live
-handover decision between the paper-faithful decision overlay
-(`decision-overlay-on-live-sinr`) and the deprecated heuristic ω-scoring
-(`omega-heuristic`) WITHIN `modqn-demo`, with no `appMode` switch. The
-`omega-heuristic` mode is explicitly NOT paper MODQN: whenever it is active App
-co-mounts the persistent `HeuristicNotPaperBanner` ("Heuristic ω-scoring — NOT
-paper MODQN") — the mode is never surfaced without its disclosure. It stays
-non-persistable (`runtimeControls.persistHandoverMode` skips it) and is reachable
-only through the on-screen toggle, never a keyboard shortcut or URL handler. The
-lane experience switcher restores `decision-overlay-on-live-sinr` when it moves
-to a MODQN lane so the replay-proof toggle (which requires the decision overlay)
-keeps working and the banner clears.
+The `Advanced setup` drawer is also the home for optional MODQN display controls.
+`ModqnAdvancedDisplayControls` exposes the visual-layer preset control
+(`modqn-layer-preset-control`) there, not in the top `ControlBar`. The live
+MODQN decision-policy toggle (`modqn-decision-policy-control`) is shown only on
+`modqn-live-cell-preview`; replay-proof and artifact lanes keep the display
+controls but do not expose a live handover-policy selector. The decision-policy
+toggle flips the live handover decision between the paper-faithful decision
+overlay (`decision-overlay-on-live-sinr`) and the deprecated heuristic omega
+scoring (`omega-heuristic`) WITHIN `modqn-demo`, with no `appMode` switch. The
+`omega-heuristic` mode is explicitly NOT paper MODQN: whenever it is active on
+the live-cell preview lane App co-mounts the persistent
+`HeuristicNotPaperBanner` ("Heuristic ω-scoring — NOT paper MODQN") — the mode
+is never surfaced without its disclosure. It stays non-persistable
+(`runtimeControls.persistHandoverMode` skips it) and is reachable only through
+the on-screen live-cell drawer toggle, never a keyboard shortcut or URL handler.
+The lane experience switcher restores `decision-overlay-on-live-sinr` when it
+moves to a MODQN replay/artifact lane so the replay-proof toggle (which requires
+the decision overlay) keeps working and the banner clears.
 
 Artifact replay also source-gates live-only decorative and diagnostic effects:
 legacy earth-fixed cells, ambient footprint rings, handover links, live
@@ -291,9 +299,10 @@ Handover story overlays are lane-owned:
 
 Timeline and handover rail ownership follows the same lane boundary:
 
-- `sinr-live` may show live Walker observations or a profile-derived live
-  forecast, but it must label forecasts as profile-derived and not producer
-  proof.
+- `sinr-live` D4 focus uses the `sinrLiveCells` cell-truth event index on the
+  live Walker source horizon. Any legacy live-Walker / steered-beam forecast
+  path must stay labeled `profile-derived-forecast` and must not be presented
+  as synchronized cell-truth focus or producer proof.
 - `modqn-live-cell-preview` may compare MODQN decisions against the live Walker
   SINR candidate set, but the rail must be labeled as an overlay on live Walker
   state.
@@ -305,8 +314,9 @@ Timeline and handover rail ownership follows the same lane boundary:
 
 The planned right-sidebar 2-hour handover event map follows
 `docs/live-walker-handover-event-map-sdd.md`: live lanes may use a validated
-live Walker event index, replay proof stays on the producer horizon, and
-slow-motion inspection is a display axis rather than a new source horizon.
+live-window event index (`sinr-live` cell truth, MODQN preview live-Walker
+overlay), replay proof stays on the producer horizon, and slow-motion
+inspection is a display axis rather than a new source horizon.
 
 ## Shared Surfaces
 
@@ -397,18 +407,17 @@ Before changing scene rendering:
   catches a broken `<BeamSlotRing>` render — closing the audit's source-string-only
   handover-story surface (adversarial #4).
   `validate:frontend:scene-lane-governance` locks the component telemetry writes.
-- Director focus is lane-gated by the render plan. On BOTH live walker lanes
+- Director focus is lane-gated by the render plan. On BOTH live-window lanes
   (`sinr-live`, `modqn-live-cell-preview`) the Intra/Inter-HO Focus buttons seek
-  the live timeline to the next indexed live Walker handover of that kind, drop to
-  the single 0.25x slow-mo tier, and (inter) frame the involved satellite pair —
-  mirroring the artifact cinematic, against the validated live Walker event index
-  (ITEM #C, `docs/live-walker-handover-event-map-sdd.md`). The render plan grants
-  the cinematic camera tween to both live walker lanes (`showDirectorFocus` covers
-  `showSinrLiveViewport` and `showCellOverlay`), so the sat-pair camera move plays
-  on both — the lanes differ only in the honesty CLAIM, not the camera: it stays
-  `profile-derived-forecast` on `sinr-live` and `overlay-demo` on
-  `modqn-live-cell-preview` (`data-live-director-focus-claim`), never producer
-  proof. The seek target is always a real source-time
+  the live timeline to the next indexed handover of that kind, drop to the single
+  0.25x slow-mo tier, and frame the involved sat/cell pair — mirroring the
+  artifact cinematic, against a validated live-window event index (ITEM #C,
+  `docs/live-walker-handover-event-map-sdd.md`). D4 splits the source claim:
+  `sinr-live` uses `sinrLiveCells` cell-truth events with
+  `data-live-director-focus-claim="live-truth"`, while
+  `modqn-live-cell-preview` keeps the legacy live-Walker overlay/demo event
+  index with `data-live-director-focus-claim="overlay-demo"`. Neither is
+  producer proof. The seek target is always a real source-time
   (`data-live-director-focus-event-sec` = the resolved event's source second; the
   seek lands at that minus the lead-in). The live focus defers its camera command
   until the async live seek lands so the pose reads the post-seek scene frame,
@@ -420,44 +429,60 @@ Before changing scene rendering:
   handover rail events of that kind (Rule#8). It stays inert on
   `modqn-replay-proof` and on any source-incompatible lane. Validators:
   `validate:phase-c:camera-preset`, `validate:phase-c:live-walker-focus-window`,
-  `validate:phase-c:director-cinematic:live:browser`.
-  - Forecast-fidelity limit (live lanes only): the live seek re-simulates from a
-    reset handover state at the lead-in, so the UE cold-attaches to the handover
-    TARGET satellite at the framed moment instead of replaying a warm from/to
-    make-before-break. The indexed handover still fires and the camera frames the
-    real from/to pair, but the from-satellite's pre-handover serving history is not
-    reconstructed (impractical to warm up at 0.25x). This is why the live focus is
-    `profile-derived-forecast`/`overlay-demo`, never a producer-recorded handover
-    replay — that recorded fidelity belongs to `artifact-replay`.
-- Handover cinema (S1) is lane-owned to `sinr-live` and additive over the Director
-  focus above. It wraps the existing Director handlers (`useHandoverCinema` — arm /
-  intra-inter filter / exit, never a rewrite) and adds two focus-scoped surfaces
-  driven ONLY by the real live Walker handover event index (no producer dependency,
-  `docs/handover-cinema-sdd.md` §7):
+  `validate:phase-c:director-cinematic:live:browser`,
+  `validate:phase-c:handover-cinema:browser`, and
+  `validate:live-walker:handover-event-focus`.
+  - Fidelity limits (live lanes only): `sinr-live` D4 now reuses the same
+    `sinrLiveCells` source for the event, explainer, candidate highlight, focused
+    old/new beam pair, and camera target. The MODQN live-cell preview still uses
+    the legacy live-Walker overlay/demo forecast path and must keep that claim
+    label. Neither path is a producer-recorded MODQN replay. D6 adds only a
+    consumer readiness/source-gap gate for producer-backed MODQN replay cinema;
+    current artifacts stay blocked until one producer sample contains event ID,
+    renderable geometry, reward, masks, and dense-Q proof.
+- Handover cinema (S1/D4) is lane-owned to `sinr-live` and additive over the
+  Director focus above. It wraps the existing Director handlers
+  (`useHandoverCinema` — arm / intra-inter filter / exit, never a rewrite).
+  S1 first used the live Walker event index; D4 supersedes the SINR focus path
+  with a `sinrLiveCells` cell-truth event index while keeping the legacy
+  live-Walker path labeled for MODQN live-cell overlay/demo use. On `sinr-live`,
+  the focus surfaces below are driven by the same cell-truth event
+  (`sourceOwner=sinr-live-cell-truth`, source time, event ID, UE ID, cell IDs,
+  off-axis telemetry; no producer dependency, `docs/handover-cinema-sdd.md` §7):
   - **Candidate-beam highlight** (`CandidateBeamHighlight`, `src/viz/`): coloured
-    ground rings on the two candidate beams (source + target) of the focused
-    handover, using the existing handover-role colours. It is gated by the render
-    plan flag `showCandidateHandoverHighlight` (= `showSinrLiveViewport &&
-    cinematicMode === 'director'`) — sinr-live ONLY, inert on
+    ground rings on the old/new candidates of the focused handover, using the
+    existing handover-role colours. Cell-truth events place the rings from the
+    earth-fixed cell IDs instead of the legacy steered-beam positions. It is
+    gated by the render plan flag `showCandidateHandoverHighlight`
+    (= `showSinrLiveViewport && cinematicMode === 'director'`) — sinr-live ONLY,
+    inert on
     `modqn-live-cell-preview`, `modqn-replay-proof` (Rule#8), and `artifact-replay`.
-    It is display-only (rings placed at the beam ground positions `useBeamViz`
-    already computes; reads no SINR, alters no truth) and publishes a MESH-derived
-    observable (`data-candidate-handover-highlight-rendered-count` on the canvas) so
-    the validator proves the rings actually drew.
+    It is display-only (reads geometry fields only; no SINR/decision payload in
+    the scene command, alters no truth) and publishes a MESH-derived observable
+    (`data-candidate-handover-highlight-rendered-count` on the canvas) so the
+    validator proves the rings actually drew.
   - **SINR explainer** (`SinrOffsetExplainer`, `src/ui/`): a floating, focus-scoped
-    card that explains the handover in SINR terms only — the two candidate beams'
-    recorded live SINR, the delta, and the SINR-offset rule. It is stamped
-    `data-claim-kind="sinr-offset"` and is lane-truthful: it NEVER mentions
-    MODQN/producer and NEVER claims decision proof. It renders only while the cinema
-    is engaged and tears down on exit.
+    card that explains the handover in SINR terms only — old/new SINR, delta,
+    the SINR-offset rule, off-axis, and old/new sat/cell/beam IDs. It is stamped
+    with source owner, event ID, source time, UE ID, and
+    `data-claim-kind="sinr-offset"`; it NEVER mentions MODQN/producer and NEVER
+    claims decision proof. It renders only while the cinema is engaged and tears
+    down on exit.
+  - **Focused old/new beam pair** (`SinrLiveCellBeamCones`, `src/viz/`): D4 mounts
+    a separate focus-only pair for the old/new cell-truth beams. The ambient
+    all-cell cone layer remains parked on every lane; D4 does not globally
+    re-enable the rejected full-viewport cone render.
   The candidate command threaded to the scene is geometry-only
-  (`RuntimeCandidateHighlightCommand` — beam ids, no SINR/decision). Validators:
+  (`RuntimeCandidateHighlightCommand` — source/event/cell geometry, no
+  SINR/decision). Validators:
   `validate:phase-c:handover-cinema:model` (pure lane-gating + SINR projection,
   never fabricates), `validate:phase-c:handover-cinema:browser` (arm on sinr-live →
-  explainer `sinr-offset` + candidate-highlight mesh + 0.25x + camera move → exit
-  restores + tears down), and `validate:frontend:scene-lane-governance` locks the
-  render-plan gate, the gated MainScene mount, the mesh observable, and the
-  explainer claim stamp.
+  explainer `sinr-offset` + cell-truth highlight/pair meshes + 0.25x + camera move
+  → exit restores + tears down), `validate:live-walker:handover-event-focus`
+  (legacy live-Walker and D4 cell-truth focus owners stay separated), and
+  `validate:frontend:scene-lane-governance` locks the render-plan gate, the gated
+  MainScene mount, the mesh observables, the ambient-cone parked state, and the
+  explainer claim/source stamps.
 - Cinema quality (CQ1/CQ2) refines the SAME director-focus surface — it adds no new
   viewport lane, layer, or proof claim, only display-only camera motion + pacing
   (Rule#6), so the lane matrix is unchanged and the existing director-cinematic +

@@ -49,6 +49,7 @@ export type ModqnTrainingSceneTraceField =
   | 'step.nextBeamSchedule'
   | 'step.handoverEvent'
   | 'step.reward'
+  | 'step.queueState'
   | 'step.angleAwareTerms'
   | 'step.energyEfficiencyTerms'
   | 'step.policyDiagnostics'
@@ -532,6 +533,23 @@ export const MODQN_TRAINING_SCENE_TRACE_REQUIREMENTS = [
     note: 'Reward values and handover penalty attribution are producer metrics.',
   },
   {
+    field: 'step.queueState',
+    group: 'step',
+    producerOwner: 'modqn-paper-reproduction',
+    requiredProducerPaths: [
+      'timeline[].ues[].queueBeforeBits',
+      'timeline[].ues[].trafficArrivalBits',
+      'timeline[].ues[].servedBits',
+      'timeline[].ues[].queueAfterBits',
+      'timeline[].ues[].serviceRateBps',
+    ],
+    requiredForLanes: PROOF_LANES,
+    displayDerivedAllowed: false,
+    sourceGapWhenAbsent: true,
+    sourceGapField: 'traffic.queueRows',
+    note: 'Producer queue proof requires per-UE queue accounting; live-service-demo queue state must not fill replay proof holes.',
+  },
+  {
     field: 'step.angleAwareTerms',
     group: 'step',
     producerOwner: 'modqn-paper-reproduction',
@@ -557,12 +575,18 @@ export const MODQN_TRAINING_SCENE_TRACE_REQUIREMENTS = [
     field: 'step.policyDiagnostics',
     group: 'step',
     producerOwner: 'modqn-paper-reproduction',
-    requiredProducerPaths: ['timeline[].policyDiagnostics.qValues', 'timeline[].policyDiagnostics.topCandidates'],
-    requiredForLanes: ['training-run-replay', 'model-comparison-replay'],
+    requiredProducerPaths: [
+      'timeline[].policyDiagnostics.objectiveQByAction',
+      'timeline[].policyDiagnostics.scalarizedQByAction',
+      'timeline[].policyDiagnostics.selectedActionIndex',
+      'timeline[].policyDiagnostics.tieBreak',
+      'timeline[].policyDiagnostics.invalidActionSentinel',
+    ],
+    requiredForLanes: PROOF_LANES,
     displayDerivedAllowed: false,
     sourceGapWhenAbsent: true,
-    sourceGapField: 'diagnostics.policy',
-    note: 'Q values and policy candidate comparisons must be producer diagnostics.',
+    sourceGapField: 'diagnostics.denseQPolicy',
+    note: 'Dense-Q proof requires full per-action Q1/Q2/Q3, scalarized scores, masks, selected action, tie-break order, and invalid-action sentinel; top-K diagnostics are display-only.',
   },
   {
     field: 'step.sourceGaps',

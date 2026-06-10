@@ -15,6 +15,10 @@ export function isActiveStatus(status: TrainingJobSummary['status']): boolean {
   return status === 'queued' || status === 'running' || status === 'paused';
 }
 
+export function isCancellableStatus(status: TrainingJobSummary['status']): boolean {
+  return status === 'queued' || status === 'running';
+}
+
 export function isDoneStatus(status: TrainingJobSummary['status']): boolean {
   return status === 'done' || status === 'completed';
 }

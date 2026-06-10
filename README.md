@@ -117,6 +117,7 @@ npm run preview
 
 ## 研究文件
 
+- `docs/sdd-index.md` — 目前 MODQN / handover / 100 UE showcase 的 SDD 入口、文件分類與開發順序
 - `docs/SDD.md` — 目前場景、模擬、渲染的整體設計說明
 - `docs/hobs-tr38811-sinr-mini-sdd.md` — HOBS + TR 38.811 的 SINR 研究設計補充
 - `docs/sinr-runtime-parameter-contract.md` — 左側可調 SINR 參數面板的權威對照表；包含論文符號、internal field、可調範圍、即時重算與 reset 規則。後續 agent 若要新增參數 UI，先看這份

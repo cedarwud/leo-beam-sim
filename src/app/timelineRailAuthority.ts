@@ -2,7 +2,11 @@ import type { ModqnReplayEnvelope } from '../modqn/replay-bundle';
 import type { SceneSourceMode } from './appPersistence';
 import type { SceneLane } from './sceneLane';
 
-export type TimelineSurfaceSourceOwner = 'live-walker' | 'modqn-producer-trace' | 'artifact-replay';
+export type TimelineSurfaceSourceOwner =
+  | 'live-walker'
+  | 'sinr-live-cell-truth'
+  | 'modqn-producer-trace'
+  | 'artifact-replay';
 export type TimelineSurfaceHorizonKind = 'live-walker-window' | 'producer-trace' | 'artifact-scenario';
 export type TimelineSurfaceClaimKind =
   | 'live-truth'
@@ -147,13 +151,16 @@ export function resolveTimelineRailDescriptor(input: {
     ...liveTimeline,
     sourceLabel: input.sceneLane === 'modqn-live-cell-preview'
       ? 'live Walker event index - MODQN overlay'
-      : 'live Walker event index - profile-derived forecast',
+      : 'sinrLiveCells event index - cell truth',
+    sourceOwner: input.sceneLane === 'modqn-live-cell-preview'
+      ? 'live-walker'
+      : 'sinr-live-cell-truth',
     horizonLabel: input.sceneLane === 'modqn-live-cell-preview'
       ? `live Walker event index ${formatDurationLabel(input.liveDurationSec)} with MODQN overlay`
-      : `live Walker profile-derived forecast on ${formatDurationLabel(input.liveDurationSec)} window`,
+      : `sinrLiveCells cell-truth trajectory on ${formatDurationLabel(input.liveDurationSec)} window`,
     claimKind: input.sceneLane === 'modqn-live-cell-preview'
       ? 'overlay-demo'
-      : 'profile-derived-forecast',
+      : 'live-truth',
     sourceGapReasons: input.liveWalkerHandoverEventIndexSourceGapReasons ?? [],
   };
 

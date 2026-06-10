@@ -8,7 +8,7 @@
 //   (d) handleLoadIntoScene fetches, validates, atomically swaps, and fail-closes
 //   (e) handleRevertToPaperFaithful reuses the Phase 7C fetch and swaps back
 //   (f) load-into-scene-error-banner renders only when userTrainedLoadError is set
-//   (g) revert-to-paper-faithful renders only for user-trained provenance
+//   (g) revert-to-paper-faithful is colocated with the Model Library baseline entry
 //   (h) fetchArtifactManifest is not used by handleLoadIntoScene
 //   (i) startup Phase 7C fetch useEffect remains present
 //
@@ -83,6 +83,7 @@ function hasMutationBeforeReturn(block: string): boolean {
 
 const appPath = 'src/App.tsx';
 const appSource = fs.readFileSync(appPath, 'utf8');
+const artifactPickerSource = fs.readFileSync('src/ui/modqn-training/ArtifactPicker.tsx', 'utf8');
 const trainingEnvAdapterSource = fs.readFileSync('src/app/trainingEnvAxesProfileAdapter.ts', 'utf8');
 const replayBundleImport = appSource.match(/import\s*\{[\s\S]*?\}\s*from\s*['"]\.\/modqn\/replay-bundle['"];/)?.[0] ?? '';
 const handleLoadIntoSceneBody = extractUseCallbackBody(appSource, 'handleLoadIntoScene');
@@ -239,17 +240,25 @@ console.log('\n(f) Load-into-scene error banner');
 }
 
 // ---------------------------------------------------------------------------
-// (g) UI: revert button is conditional on user-trained provenance
+// (g) UI: revert button is colocated with the Model Library baseline entry
 // ---------------------------------------------------------------------------
-console.log('\n(g) Revert button');
+console.log('\n(g) Model Library paper-faithful entry');
 {
   assert(
-    appSource.includes('data-testid="revert-to-paper-faithful"'),
-    'revert-to-paper-faithful testid is rendered',
+    appSource.includes('onLoadPaperFaithful={handleRevertToPaperFaithful}'),
+    'App.tsx passes handleRevertToPaperFaithful into ArtifactPicker',
   );
   assert(
-    /bundleProvenanceKind\s*===\s*'user-trained'\s*\?\s*\([\s\S]*data-testid="revert-to-paper-faithful"/.test(appSource),
-    'revert-to-paper-faithful is conditional on bundleProvenanceKind === user-trained',
+    artifactPickerSource.includes('data-testid="revert-to-paper-faithful"'),
+    'ArtifactPicker renders the paper-faithful load/revert testid',
+  );
+  assert(
+    artifactPickerSource.includes("disabled={bundleProvenanceKind === 'paper-faithful'}"),
+    'paper-faithful load is disabled while paper-faithful is already active',
+  );
+  assert(
+    artifactPickerSource.includes('data-testid="artifact-picker-paper-faithful-entry"'),
+    'paper-faithful baseline is a Model Library entry',
   );
 }
 

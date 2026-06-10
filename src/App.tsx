@@ -194,6 +194,9 @@ import {
   type LiveWalkerHandoverEventIndex,
 } from './scene/liveWalkerHandoverEventIndex';
 import {
+  buildSinrLiveCellHandoverEventIndex,
+} from './scene/sinrLiveCellHandoverEventIndex';
+import {
   DEFAULT_MODQN_VISUAL_LAYER_PRESET,
   type ModqnVisualLayerPreset,
 } from './scene/modqnVisualLayers';
@@ -1242,20 +1245,33 @@ export function App() {
     }
 
     let cancelled = false;
-    const claimKind = sceneLane === 'modqn-live-cell-preview'
-      ? 'overlay-demo'
-      : 'profile-derived-forecast';
-    const index = buildLiveWalkerHandoverEventIndex({
-      profile: effectiveProfile,
-      epochUtcMs: APP_EPOCH_MS,
-      claimKind,
-      ueDistributionMode: runtime.ueDistributionMode,
-      uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
-      ueDistributionScope: runtime.ueDistributionScope,
-      ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
-      ueMobilityMode: runtime.ueMobilityMode,
-      ueMobilityParams: runtime.ueMobilityParams,
-    });
+    const index = sceneLane === 'sinr-live'
+      ? buildSinrLiveCellHandoverEventIndex({
+        profile: effectiveProfile,
+        epochUtcMs: APP_EPOCH_MS,
+        // D4 S3a: keep the offline cell-truth scan bounded while preserving a
+        // source-time trajectory. The browser/runtime still consumes the same
+        // `sinrLiveCells` model for each focused event.
+        simStepSec: 30,
+        ueCount: runtime.ueCount,
+        ueDistributionMode: runtime.ueDistributionMode,
+        uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
+        ueDistributionScope: runtime.ueDistributionScope,
+        ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
+        ueMobilityMode: runtime.ueMobilityMode,
+        ueMobilityParams: runtime.ueMobilityParams,
+      })
+      : buildLiveWalkerHandoverEventIndex({
+        profile: effectiveProfile,
+        epochUtcMs: APP_EPOCH_MS,
+        claimKind: 'overlay-demo',
+        ueDistributionMode: runtime.ueDistributionMode,
+        uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
+        ueDistributionScope: runtime.ueDistributionScope,
+        ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
+        ueMobilityMode: runtime.ueMobilityMode,
+        ueMobilityParams: runtime.ueMobilityParams,
+      });
     if (!cancelled) setLiveWalkerHandoverEventIndex(index);
 
     return () => {
@@ -1263,6 +1279,7 @@ export function App() {
     };
   }, [
     effectiveProfile,
+    runtime.ueCount,
     runtime.ueDistributionMode,
     runtime.ueDistributionRadiusKm,
     runtime.ueDistributionScope,
@@ -1515,7 +1532,10 @@ export function App() {
     () =>
       sceneSource === 'live-sim'
       && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
-      && timelineRailDescriptor.rail.sourceOwner === 'live-walker'
+      && (
+        timelineRailDescriptor.rail.sourceOwner === 'live-walker'
+        || timelineRailDescriptor.rail.sourceOwner === 'sinr-live-cell-truth'
+      )
       && timelineRailDescriptor.rail.horizonKind === 'live-walker-window',
     [
       sceneSource,
@@ -1543,7 +1563,7 @@ export function App() {
   // proof. This labels the live seek/sat-pair focus, matching the live Walker rail
   // claim (timelineRailAuthority liveRail.claimKind).
   const liveDirectorFocusClaimKind: LiveWalkerDirectorFocusClaimKind =
-    sceneLane === 'modqn-live-cell-preview' ? 'overlay-demo' : 'profile-derived-forecast';
+    sceneLane === 'modqn-live-cell-preview' ? 'overlay-demo' : 'live-truth';
 
   // Cinematic replay = the artifact-replay-lane Director behavior. The replay
   // timeline is genuinely seekable (ShowcaseReplayController.seek), unlike the
@@ -1659,6 +1679,9 @@ export function App() {
     syncSceneSourceToUrl(nextSceneSource);
 
     if (targetLane === 'artifact-replay') {
+      if (handoverMode === 'omega-heuristic') {
+        applyHandoverModeSideEffects('decision-overlay-on-live-sinr', effectiveProfile);
+      }
       setModqnReplayProofRequested(false);
       return;
     }
@@ -1837,6 +1860,8 @@ export function App() {
       data-director-phase={camera.directorPhase}
       data-effective-speed={playback.effectiveSpeed.toFixed(3)}
       data-live-director-focus-claim={directorFocusEnabled ? liveDirectorFocusClaimKind : undefined}
+      data-live-director-focus-source-owner={directorFocusEnabled ? timelineRailDescriptor.rail.sourceOwner : undefined}
+      data-live-director-focus-event-id={liveDirectorFocusEventId ?? undefined}
       data-live-director-focus-event-sec={liveDirectorFocusEventSec !== null ? liveDirectorFocusEventSec.toFixed(3) : undefined}
       data-timeline-current-time-sec={timelineCurrentTimeSec.toFixed(3)}
       data-timeline-duration-sec={timelineDurationSec.toFixed(3)}
@@ -1896,7 +1921,6 @@ export function App() {
         beamDensity={runtime.beamDensity}
         beamCalloutsEnabled={beamCalloutsEnabled}
         cinematicMode={effectiveCinematicMode}
-        handoverMode={handoverMode}
         onProfileChange={handleProfileChange}
         onUiModeChange={handleUiModeChange}
         onBeamDensityChange={handleBeamDensityChange}
@@ -1913,9 +1937,6 @@ export function App() {
         elevatedUeId={elevatedUeId}
         ueIds={showcaseArtifact?.timeline[0]?.ues.map(u => u.id) ?? []}
         onElevatedUeIdChange={setElevatedUeId}
-        modqnVisualLayerPreset={modqnVisualLayerPreset}
-        onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}
-        onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
       />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
@@ -1986,12 +2007,18 @@ export function App() {
               )
             ) : null}
           </SidebarTabShell>
-          {/* S4: the MODQN Setup power tools (training / jobs / ω-weights) moved
-              out of the left rail into an opt-in drawer, so the default MODQN
-              left surface is the single Evidence / Replay tab. Gated on the MODQN
-              lanes; SINR (signal/handover) never shows it. */}
+          {/* S4/S5a: the MODQN setup/display-policy power tools live behind the
+              Advanced drawer, so the default MODQN left surface stays Evidence /
+              Replay without piling more controls into the top toolbar. */}
           {sceneLane !== 'sinr-live' && (
-            <AdvancedSetupDrawer appMode={appMode} onLoadIntoScene={handleLoadIntoScene} />
+            <AdvancedSetupDrawer
+              appMode={appMode}
+              handoverMode={handoverMode}
+              modqnVisualLayerPreset={modqnVisualLayerPreset}
+              showDecisionPolicyControls={sceneLane === 'modqn-live-cell-preview'}
+              onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}
+              onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
+            />
           )}
         </aside>
         <main
@@ -2142,21 +2169,14 @@ export function App() {
                     User-trained bundle load failed: {userTrainedLoadError}
                   </div>
                 ) : null}
-                {bundleProvenanceKind === 'user-trained' ? (
-                  <button
-                    type="button"
-                    data-testid="revert-to-paper-faithful"
-                    className="leo-revert-to-paper-faithful"
-                    onClick={() => { void handleRevertToPaperFaithful(); }}
-                  >
-                    Revert to paper-faithful
-                  </button>
-                ) : null}
                 {handoverEventRail}
                 <ArtifactPicker
                   appMode={appMode}
                   selectedJobId={selectedUserTrainedJobId}
+                  bundleProvenanceKind={bundleProvenanceKind}
+                  artifactReplaySource={showcaseArtifactSource}
                   onLoadEntry={handleLoadIntoScene}
+                  onLoadPaperFaithful={handleRevertToPaperFaithful}
                 />
                 <ModqnEvidenceTab
                   simState={simState}

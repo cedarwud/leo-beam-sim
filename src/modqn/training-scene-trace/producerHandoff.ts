@@ -63,6 +63,7 @@ export const MODQN_TRAINING_SCENE_P1_SOURCE_GAP_ALLOWED_FIELDS = [
   'step.allUePositions',
   'step.allUeServingHistory',
   'step.nextBeamSchedule',
+  'step.queueState',
   'step.angleAwareTerms',
   'step.energyEfficiencyTerms',
   'step.policyDiagnostics',

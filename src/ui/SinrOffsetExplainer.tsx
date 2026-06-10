@@ -35,6 +35,10 @@ function formatDelta(deltaDb: number | null): string | null {
   return `${sign}${Math.abs(deltaDb).toFixed(1)} dB`;
 }
 
+function formatOffAxis(offAxisDeg: number | null): string {
+  return offAxisDeg == null ? '—' : `${offAxisDeg.toFixed(2)}°`;
+}
+
 function ruleText(kind: 'intra' | 'inter', offsetDb: number): string {
   return kind === 'inter'
     ? `Switch satellite when best SINR − offset (${offsetDb.toFixed(1)} dB) beats serving SINR.`
@@ -56,6 +60,10 @@ export function SinrOffsetExplainer({ candidate, visible }: SinrOffsetExplainerP
       data-testid="handover-cinema-sinr-explainer"
       data-claim-kind="sinr-offset"
       data-live-claim={model.claimKind}
+      data-source-owner={model.sourceOwner}
+      data-event-id={model.eventId}
+      data-source-time-sec={model.sourceTimeSec.toFixed(3)}
+      data-ue-id={model.ueId ?? ''}
       data-focus-kind={model.kind}
     >
       <div className="leo-handover-cinema-sinr-explainer__title">
@@ -71,7 +79,13 @@ export function SinrOffsetExplainer({ candidate, visible }: SinrOffsetExplainerP
             className="leo-handover-cinema-sinr-explainer__candidate"
             data-testid="sinr-candidate-row"
             data-role={row.role}
+            data-sat-id={row.satId}
             data-beam-id={`${row.satId}-${row.beamId}`}
+            data-logical-beam-id={String(row.beamId)}
+            data-cell-id={row.cellId == null ? '' : String(row.cellId)}
+            data-beam-identity={row.beamIdentity ?? ''}
+            data-frequency-index={row.frequencyIndex == null ? '' : String(row.frequencyIndex)}
+            data-off-axis-deg={row.offAxisDeg == null ? '' : row.offAxisDeg.toFixed(3)}
             data-sinr-db={row.sinrDb == null ? '' : row.sinrDb.toFixed(1)}
             data-is-selected={row.isSelected ? 'true' : 'false'}
             data-provenance-plane="live"
@@ -81,6 +95,11 @@ export function SinrOffsetExplainer({ candidate, visible }: SinrOffsetExplainerP
             </span>
             <span className="leo-handover-cinema-sinr-explainer__candidate-role">{roleLabel(row)}</span>
             <span className="leo-handover-cinema-sinr-explainer__candidate-sinr">{formatSinr(row.sinrDb)}</span>
+            {model.sourceOwner === 'sinr-live-cell-truth' && (
+              <span className="leo-handover-cinema-sinr-explainer__candidate-off-axis">
+                {formatOffAxis(row.offAxisDeg)} off-axis
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -93,7 +112,9 @@ export function SinrOffsetExplainer({ candidate, visible }: SinrOffsetExplainerP
         className="leo-handover-cinema-sinr-explainer__claim-stamp"
         data-claim="sinr-offset"
       >
-        live SINR · sinr-offset (not MODQN)
+        {model.sourceOwner === 'sinr-live-cell-truth'
+          ? 'sinrLiveCells · sinr-offset (not MODQN)'
+          : 'live SINR · sinr-offset (not MODQN)'}
       </div>
     </div>
   );

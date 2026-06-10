@@ -47,6 +47,8 @@ export interface LiveTelemetryEntry {
    * from lastProgressEvent to avoid the episode tile blanking at completion.
    */
   readonly lastEpisodeEvent: TrainingProgressEvent | null;
+  /** Previous episode-bearing progress event, used for display-only speed deltas. */
+  readonly previousEpisodeEvent?: TrainingProgressEvent | null;
   /**
    * Evolving per-episode scalarReward series, accumulated from progress events
    * that carry BOTH `episode` and `metrics.scalarReward` (deduped by episode,
@@ -125,6 +127,9 @@ export function publishTelemetryEvent(event: TrainingProgressEvent): void {
   const previous = snapshot[event.jobId];
   const isProgress = event.type === 'progress';
   const hasEpisode = typeof event.episode === 'number' && Number.isFinite(event.episode);
+  const previousEpisodeEvent = isProgress && hasEpisode
+    ? (previous?.lastEpisodeEvent ?? null)
+    : (previous?.previousEpisodeEvent ?? null);
   snapshot = Object.freeze({
     ...snapshot,
     [event.jobId]: {
@@ -134,6 +139,7 @@ export function publishTelemetryEvent(event: TrainingProgressEvent): void {
       lastProgressEvent: isProgress ? event : (previous?.lastProgressEvent ?? null),
       // Only an episode-bearing progress event updates this — the producer's
       // final metrics-only progress line (no episode) must not blank it.
+      previousEpisodeEvent,
       lastEpisodeEvent: isProgress && hasEpisode ? event : (previous?.lastEpisodeEvent ?? null),
       rewardHistory: accumulateRewardHistory(previous?.rewardHistory ?? [], event),
       lastProgressMs: isProgress ? event.tsMs : (previous?.lastProgressMs ?? null),

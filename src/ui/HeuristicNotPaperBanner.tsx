@@ -21,8 +21,9 @@
 //
 // Non-dismissable: the banner has no close button and ignores click /
 // keyboard events. The only way to remove it is to switch out of
-// `omega-heuristic` via the ControlBar selector (SDD §4.4 item 5 — no shortcut
-// or URL handler may enter or leave the mode without the sidebar).
+// `omega-heuristic` via the Advanced drawer decision-policy control (SDD §4.4
+// item 5 — no shortcut or URL handler may enter or leave the mode without the
+// on-screen control).
 //
 // References:
 //   * docs/modqn-omega-handover-sdd.md §4.4 item 1 (banner)

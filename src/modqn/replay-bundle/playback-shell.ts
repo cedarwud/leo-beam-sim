@@ -47,6 +47,7 @@ export interface ModqnReplayPlaybackFocusRow {
   readonly selectedServing: ModqnBeamReference;
   readonly producerSelectedServing?: ModqnBeamReference;
   readonly producerHandoverEventKind?: ModqnHandoverEventKind;
+  readonly handoverEventId?: string | null;
   readonly selectedServingSource?:
     | 'producer'
     | 'omega-rescalarized'
@@ -355,6 +356,7 @@ export function createOmegaRescalarizedModqnReplayPlaybackDisplayState(
       focusRow.producerSelectedServing ?? focusRow.selectedServing,
     producerHandoverEventKind:
       focusRow.producerHandoverEventKind ?? focusRow.handoverEventKind,
+    handoverEventId: focusRow.handoverEventId,
     selectedServing,
     selectedServingSource: result.wasFallback
       ? 'omega-rescalarized-fallback'
@@ -425,6 +427,7 @@ export function createModqnReplayPlaybackShellModel(
           decisionUserPosition: focusRow.producerTruth.decisionUserPosition,
           previousServing: focusRow.producerTruth.previousServing,
           selectedServing: focusRow.producerTruth.selectedServing,
+          handoverEventId: focusRow.producerTruth.handoverEvent.eventId,
           handoverEventKind: focusRow.producerTruth.handoverEvent.kind,
           scalarReward: focusRow.producerTruth.scalarReward,
           rewardVector: focusRow.producerTruth.rewardVector,

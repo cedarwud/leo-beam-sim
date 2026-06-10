@@ -1,5 +1,10 @@
 # leo-beam-sim — Software Design Document (v2)
 
+For current MODQN / handover / 100-UE showcase development order, use
+[`docs/sdd-index.md`](./sdd-index.md). This baseline SDD remains useful for
+the simulator architecture, but it is not the active roadmap for the current
+handover cinema and MODQN replay-proof work.
+
 ## 1. Overview
 
 LEO multi-beam handover simulator with real-time 3D visualization.

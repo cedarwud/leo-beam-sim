@@ -13,7 +13,7 @@
 //
 // Out of scope this slice:
 //   * No engine wiring of `omegaActive` (S3 / S4).
-//   * No mode selector (S3 adds it via ControlBar).
+//   * No mode selector (now owned by the Advanced drawer display/policy controls).
 //   * No omega-heuristic banner / capture metadata (S4).
 import { useCallback, useMemo } from 'react';
 import {

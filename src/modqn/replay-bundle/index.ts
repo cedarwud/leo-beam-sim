@@ -5,3 +5,5 @@ export * from './beam-layout-bridge';
 export * from './replay-state';
 export * from './playback-shell';
 export * from './runtime-fetch';
+export * from './denseQProof';
+export * from './replayHandoverCinemaGate';

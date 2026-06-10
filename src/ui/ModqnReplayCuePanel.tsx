@@ -1,6 +1,11 @@
 import { useMemo } from 'react';
 import type { ReactElement } from 'react';
-import type { ModqnReplayPlaybackDisplayState } from '../modqn/replay-bundle';
+import {
+  buildModqnReplayHandoverCinemaGate,
+  modqnReplayHandoverCinemaGateSourceGapFieldsAttr,
+  type ModqnReplayHandoverCinemaGate,
+  type ModqnReplayPlaybackDisplayState,
+} from '../modqn/replay-bundle';
 import {
   createCurrentModqnReplayProofSourceGaps,
   type ModqnReplaySourceGap,
@@ -48,7 +53,57 @@ function sourceGapLabel(gap: ModqnReplaySourceGap): string {
   if (gap.field === 'timeline.handoverPenaltyAttribution') return 'HO penalty attribution';
   if (gap.field === 'metrics.angleAwareTerms') return 'Angle-aware terms';
   if (gap.field === 'metrics.energyEfficiencyTerms') return 'Energy-efficiency terms';
+  if (gap.field === 'metrics.reward') return 'Reward trace';
+  if (gap.field === 'diagnostics.policy') return 'Policy diagnostics';
+  if (gap.field === 'diagnostics.denseQPolicy') return 'Dense-Q proof';
+  if (gap.field === 'traffic.queueRows') return 'Producer queue rows';
   return gap.field;
+}
+
+function replayCinemaStatusLabel(gate: ModqnReplayHandoverCinemaGate): string {
+  return gate.status === 'ready' ? 'Replay cinema ready' : 'Replay cinema blocked';
+}
+
+function replayCinemaDetailLabel(gate: ModqnReplayHandoverCinemaGate): string {
+  if (gate.status === 'ready') return gate.eventKey;
+  const count = gate.sourceGapFields.length;
+  return count === 1 ? '1 source gap' : `${count} source gaps`;
+}
+
+function ModqnReplayCinemaReadiness({
+  gate,
+}: {
+  readonly gate: ModqnReplayHandoverCinemaGate;
+}): ReactElement {
+  const sourceGapFields = modqnReplayHandoverCinemaGateSourceGapFieldsAttr(gate);
+  const reasons = gate.status === 'source-gap' ? gate.reasons.slice(0, 3) : [];
+
+  return (
+    <section
+      className="leo-modqn-replay-panel__cinema-gate"
+      data-testid="modqn-replay-cinema-readiness"
+      data-replay-cinema-status={gate.status}
+      data-source-gap-fields={sourceGapFields}
+      data-replay-cinema-event-kind={gate.eventKind ?? 'none'}
+      data-replay-cinema-event-key={gate.eventKey ?? ''}
+      aria-label="MODQN replay handover cinema readiness"
+      title={gate.status === 'source-gap' ? gate.reasons.join(' | ') : gate.eventKey}
+    >
+      <div>
+        <strong>{replayCinemaStatusLabel(gate)}</strong>
+        <span>{replayCinemaDetailLabel(gate)}</span>
+      </div>
+      {reasons.length > 0 ? (
+        <div className="leo-modqn-replay-panel__cinema-gaps">
+          {reasons.map(reason => (
+            <span key={reason}>{reason}</span>
+          ))}
+        </div>
+      ) : (
+        <span>producer sample locked</span>
+      )}
+    </section>
+  );
 }
 
 function ModqnReplayProofViewportToggle({
@@ -92,6 +147,10 @@ export function ModqnReplayCuePanel({
     () => sourceGaps ?? createCurrentModqnReplayProofSourceGaps(),
     [sourceGaps],
   );
+  const replayCinemaGate = useMemo(
+    () => buildModqnReplayHandoverCinemaGate(displayState),
+    [displayState],
+  );
   const showReplaySourceGaps = proofViewportActive && replaySourceGaps.length > 0;
 
   if (appMode !== 'modqn-demo') return null;
@@ -113,6 +172,7 @@ export function ModqnReplayCuePanel({
       >
         {proofViewportToggle}
         <div className="leo-modqn-replay-panel__empty">Replay unavailable</div>
+        <ModqnReplayCinemaReadiness gate={replayCinemaGate} />
       </section>
     );
   }
@@ -192,6 +252,8 @@ export function ModqnReplayCuePanel({
         <span>{visualState.geometrySource}</span>
         {proofViewportActive ? <span>{`source gaps ${replaySourceGaps.length}`}</span> : null}
       </div>
+
+      <ModqnReplayCinemaReadiness gate={replayCinemaGate} />
 
       {showReplaySourceGaps ? (
         <section

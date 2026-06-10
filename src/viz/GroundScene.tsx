@@ -53,6 +53,13 @@ interface GroundSceneProps {
    * undefined — no publish, so it stays lane-owned by whoever passes it.
    */
   readonly colorTelemetryAttr?: string;
+  /**
+   * Optional GEOMETRY-derived telemetry hook for the instanced `aContention`
+   * buffer. Lane owners use it to prove dense per-UE pressure/glow data reached
+   * the InstancedMesh instead of being represented as 100 React labels.
+   */
+  readonly contentionTelemetryAttr?: string;
+  readonly contentionInstanceCountTelemetryAttr?: string;
 }
 
 /**
@@ -82,6 +89,27 @@ function publishInstanceColorTelemetry(
   gl.domElement.dataset[attr] = String(seen.size);
 }
 
+function publishInstanceContentionTelemetry(
+  gl: THREE.WebGLRenderer,
+  attr: string | undefined,
+  countAttr: string | undefined,
+  contentionAttribute: THREE.InstancedBufferAttribute,
+  count: number,
+): void {
+  if (!attr && !countAttr) return;
+  if (countAttr) gl.domElement.dataset[countAttr] = String(Math.max(0, count));
+  if (!attr) return;
+  if (count <= 0) {
+    gl.domElement.dataset[attr] = '0';
+    return;
+  }
+  const buckets = new Set<number>();
+  for (let i = 0; i < count; i += 1) {
+    buckets.add(Math.round(clampContention(contentionAttribute.getX(i)) * 10));
+  }
+  gl.domElement.dataset[attr] = String(buckets.size);
+}
+
 const MARKER_HEIGHT = 16;
 const MARKER_RADIUS = 26;
 const MARKER_RADIAL_SEGMENTS = 16;
@@ -99,6 +127,8 @@ interface SecondaryUeInstancesProps {
   readonly opacity: number;
   readonly scale: number;
   readonly colorTelemetryAttr?: string;
+  readonly contentionTelemetryAttr?: string;
+  readonly contentionInstanceCountTelemetryAttr?: string;
 }
 
 interface ShaderNumberUniform {
@@ -330,6 +360,8 @@ function SecondaryUeGlowInstances({
   opacity,
   scale,
   colorTelemetryAttr,
+  contentionTelemetryAttr,
+  contentionInstanceCountTelemetryAttr,
 }: SecondaryUeInstancesProps) {
   const gl = useThree(state => state.gl);
   const meshRef = useRef<THREE.InstancedMesh>(null);
@@ -393,11 +425,32 @@ function SecondaryUeGlowInstances({
     contentionAttribute.needsUpdate = true;
     mesh.count = ues.length;
     publishInstanceColorTelemetry(gl, colorTelemetryAttr, mesh, ues.length);
-  }, [ues, color, dummy, gl, colorTelemetryAttr, markerHeight, markerRadius, markerShape, ueMarkerMultiplier]);
+    publishInstanceContentionTelemetry(
+      gl,
+      contentionTelemetryAttr,
+      contentionInstanceCountTelemetryAttr,
+      contentionAttribute,
+      ues.length,
+    );
+  }, [
+    ues,
+    color,
+    dummy,
+    gl,
+    colorTelemetryAttr,
+    contentionTelemetryAttr,
+    contentionInstanceCountTelemetryAttr,
+    markerHeight,
+    markerRadius,
+    markerShape,
+    ueMarkerMultiplier,
+  ]);
 
   useEffect(() => () => {
     if (colorTelemetryAttr) delete gl.domElement.dataset[colorTelemetryAttr];
-  }, [gl, colorTelemetryAttr]);
+    if (contentionTelemetryAttr) delete gl.domElement.dataset[contentionTelemetryAttr];
+    if (contentionInstanceCountTelemetryAttr) delete gl.domElement.dataset[contentionInstanceCountTelemetryAttr];
+  }, [gl, colorTelemetryAttr, contentionTelemetryAttr, contentionInstanceCountTelemetryAttr]);
 
   if (ues.length === 0) return null;
 
@@ -437,6 +490,8 @@ export function GroundScene({
   secondaryOpacity = 0.9,
   secondaryScale = 1,
   colorTelemetryAttr,
+  contentionTelemetryAttr,
+  contentionInstanceCountTelemetryAttr,
 }: GroundSceneProps) {
   const secondaryUes = useMemo(
     () => ues.slice(1),
@@ -466,6 +521,8 @@ export function GroundScene({
         opacity={secondaryOpacity}
         scale={secondaryScale}
         colorTelemetryAttr={colorTelemetryAttr}
+        contentionTelemetryAttr={contentionTelemetryAttr}
+        contentionInstanceCountTelemetryAttr={contentionInstanceCountTelemetryAttr}
       />
     </group>
   );

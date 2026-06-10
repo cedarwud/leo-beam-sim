@@ -305,17 +305,22 @@ console.log('\n(h) DiagnosticsDrawer props');
 // Consolidation C1: the SINR/MODQN experience switch moved out of the ControlBar
 // (where it duplicated the new top LaneExperienceBar) and is now the SINR Live /
 // MODQN Live segments of LaneExperienceBar, applied through App.handleExperienceChange
-// -> handleAppModeChange. ControlBar keeps the handoverMode prop only for the
-// MODQN decision-policy toggle's active state, and must NOT re-expose the switch.
+// -> handleAppModeChange. S5a also moved the MODQN decision-policy toggle into
+// Advanced setup, so ControlBar must NOT re-expose the switch or policy controls.
 console.log('\n(i) SINR<->MODQN switch wired via LaneExperienceBar');
 {
   const repoDir = path.resolve(import.meta.dirname ?? process.cwd(), '..');
   const cbSrc = fs.readFileSync(path.join(repoDir, 'src/ui/ControlBar.tsx'), 'utf8');
+  const advancedControlsSrc = fs.readFileSync(path.join(repoDir, 'src/ui/modqn-controls/ModqnAdvancedDisplayControls.tsx'), 'utf8');
   const railSrc = fs.readFileSync(path.join(repoDir, 'src/ui/LaneExperienceBar.tsx'), 'utf8');
   const appSrc = fs.readFileSync(path.join(repoDir, 'src/App.tsx'), 'utf8');
   assert(
-    cbSrc.includes('handoverMode'),
-    'ControlBar.tsx still reads handoverMode (for the MODQN decision-policy toggle)',
+    !cbSrc.includes('data-testid="modqn-decision-policy-control"'),
+    'ControlBar.tsx no longer owns the MODQN decision-policy toggle',
+  );
+  assert(
+    advancedControlsSrc.includes('data-testid="modqn-decision-policy-control"'),
+    'Advanced MODQN controls own the MODQN decision-policy toggle',
   );
   assert(
     !cbSrc.includes('handover-mode-control'),
@@ -468,15 +473,17 @@ console.log('\n(k) Evidence / telemetry mode gating');
     && evidenceSrc.includes('modqn-evidence-mapped-live-serving')
     && evidenceSrc.includes('reScalarize')
     && evidenceSrc.includes('scoreModqnPolicyCandidate')
+    && evidenceSrc.includes('Top-K decision preview')
+    && evidenceSrc.includes('not dense-Q proof')
     && !evidenceSrc.includes('LiveKpiStrip'),
-    'ModqnEvidenceTab renders applied omega decision trace without embedding the live KPI strip',
+    'ModqnEvidenceTab renders legacy top-K omega preview without embedding the live KPI strip or dense-Q proof claim',
   );
   assert(
     evidenceSrc.includes('modqn-evidence-provenance-status')
     && evidenceSrc.includes('data-provenance-status={provenanceStatus}')
-    && evidenceSrc.includes('paper-faithful replay evidence')
+    && evidenceSrc.includes('paper-faithful replay context')
     && evidenceSrc.includes('user-trained replay evidence')
-    && evidenceSrc.includes('fallback replay evidence')
+    && evidenceSrc.includes('top-K fallback preview')
     && evidenceSrc.includes('provenance unavailable')
     && evidenceSrc.includes('resolveEvidenceProvenanceStatus')
     && evidenceSrc.includes('getEvidenceProvenanceCopy'),

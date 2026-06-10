@@ -7,6 +7,7 @@
 **Author:** Opus (architect) — implement per-slice with codex review.
 **Related:** [frontend-render-governance.md](./frontend-render-governance.md),
 [decisions/ADR-002-nav-surface-vs-lane-authority.md](./decisions/ADR-002-nav-surface-vs-lane-authority.md),
+[modqn-training-scene-replay-sdd.md](./modqn-training-scene-replay-sdd.md),
 [baseline-modqn-producer-data-defects-report-2026-06-06.md](./baseline-modqn-producer-data-defects-report-2026-06-06.md),
 `.agent-memory/project_handover_cinema_data_ceiling_2026-06-06.md`
 
@@ -98,6 +99,19 @@ they become **focus-scoped** (only the focused UE's link/glyph is bright; the re
   keeps MODQN cell overlay off" (governance lane matrix).
 - **Aggregate readout (default on)** — `served N/N`, per-beam load counts, avg
   SINR/throughput across all UEs. Always-true proof everyone is served.
+- **Traffic queue proof (low-density default, rich on demand)** — every UE may
+  carry a backlog/queue state: arrivals increase the queue; served bits drain
+  it; unserved or under-served UEs accumulate pressure. This is the strongest
+  "the other 99 UEs are not decoration" proof, but it is truth-bearing:
+  - on `sinr-live`, the first acceptable source is a lane-owned deterministic
+    traffic accountant labeled `live-service-demo`, or a validated/vendored
+    traffic generator if the claim needs academic rigor;
+  - on producer MODQN replay, queue/backlog, arrivals, served bits, and service
+    rate must come from the producer trace. Missing queue truth is a source gap.
+  Visual encoding stays dense-safe: per-UE halo radius/color for queue pressure,
+  optional heatmap for area backlog, and side-panel distribution metrics
+  (`avg`, `p95`, `max`, `starved UE count`, per-beam backlog bars). Do not draw
+  100 text labels or per-UE React components.
 - **Service links (opt-in, focus-scoped)** — a faint UE→serving-satellite line.
   Default off to keep density low; during a cinema focus only the focused link brightens
   so the other 99 stay served-but-muted, never decoration.
@@ -116,9 +130,52 @@ light up → explainer → winner highlight → bounded auto-exit → restore �
 - **macro (inter-HO)** — pull back to both satellites + the sweeping arc.
 - **meso (group / cell)** — optional: a *group* event ("sat-A sets → its 28 UEs migrate
   to sat-B"), so multi-UE itself is the story.
+- **queue-rescue** — focus the UE or cell with the highest queue pressure, then
+  show the queue dropping after service or handover. This is a service-quality
+  story, not just a handover story.
 
 Reuses the existing Director seek/slow-mo/camera handlers; adds the candidate-highlight
 scene layer + the explainer panel.
+
+**2026-06-09 handover-effect resolution.** The user-facing goal is not another
+mode. It is one cinema action that makes the next real handover visually
+obvious:
+
+- `Next HO` / `Next Intra` / `Next Inter` resolve the next matching event,
+  seek to a lead-in, preserve source time, slow playback, and let the director
+  camera frame the event.
+- **Intra-HO visibility requires off-axis geometry.** The visual must show the
+  previous and selected beams as two distinct fixed-cell/beam volumes around
+  the UE. It must not use the legacy beam-on-UE render that recenters the beam
+  on the focus UE and hides the handover.
+- **Do not globally re-enable cell-cone clutter.** The prior all-cell cone
+  render was rejected because it washed the viewport. The cinema uses a
+  focus-scoped old/new beam pair plus optional muted context beams; ambient
+  rendering stays low-density.
+- **Inter-HO requires source event density.** If the current lane/profile or
+  replay artifact has no inter-HO event, the inter control is disabled or shows
+  a source gap. The renderer must not synthesize an inter-HO to balance the
+  story.
+- During focus, the explainer surface is lane-specific: SINR shows old/new
+  SINR, delta, offset rule, off-axis, and old/new sat/cell/beam IDs; MODQN
+  shows exported Q1/Q2/Q3, scalarized score, original weights, mask, and
+  selected action for the same producer event sample.
+
+**D4 complete (2026-06-09): SINR cell-truth S3a.** On `sinr-live`, the cinema
+event index now comes from the same `stepRuntimeFrame + sinrLiveCells` source
+used by the service mosaic. The rail, candidate highlight, SINR explainer,
+focus-scoped old/new beam pair, and camera focus all carry the same source
+owner (`sinr-live-cell-truth`), event ID, source time, UE ID, old/new cell IDs,
+and off-axis telemetry. Legacy live-Walker events remain available for the
+MODQN live-cell overlay demo path, but SINR cell-truth focus is no longer
+claimed from the steered Walker forecast.
+
+**2026-06-10 H5/I5 queue-focus completion.** The `sinr-live` aggregate now
+exposes two lane-owned `live-service-demo` service stories: highest queue
+pressure and best queue rescue. They are panel-level focus/readout stories, not
+new camera runtime, not producer queue proof, and not MODQN replay truth. The
+model and browser gates require the source label, two focus rows, queue delta,
+service surplus, and no per-UE queue labels.
 
 ### 3.3 PROOF layer — support the integration claim (on demand)
 
@@ -162,6 +219,25 @@ stand-alone proof.
 The per-objective Q-bars per candidate are the supporting detail inside the cinema
 explainer.
 
+**2026-06-09 integration-proof clarification.** Real MODQN handover cinema proof
+is replay-synchronized, not live-controlled. For producer MODQN proof, the
+cinema must be driven by one producer trace sample or an explicitly linked
+event window from `docs/modqn-training-scene-replay-sdd.md`: same `timeSec` /
+`slotIndex`, same old/new serving IDs, same satellite and UE positions, same
+beam geometry, same handover event, same reward, and same dense-Q diagnostics.
+The camera may add lead-in, easing, framing, and labels, but it must not choose
+the handover time, reclassify intra/inter, or substitute live SINR/Walker state
+for missing replay truth.
+
+**2026-06-09 D6 consumer gate.** `leo-beam-sim` now exposes a MODQN replay
+handover-cinema readiness stamp, not an active replay cinema, for current
+artifacts. `buildModqnReplayHandoverCinemaGate` stays inside the replay-bundle
+consumer layer and returns `ready` only when one focus row has a producer event
+ID, renderable UE/satellite/beam fields, finite reward, masks, and dense-Q
+proof. Otherwise the replay cue panel shows `source-gap` with stable field IDs.
+The gate does not import the scene renderer, live Walker state, or live SINR
+state.
+
 ---
 
 ## 4. Per-lane behavior + data strategy
@@ -181,6 +257,11 @@ Data strategy:
 - **SINR lane: real, now.** Multi-sat geometry, varied per-candidate SINR, real
   intra+inter handovers, real SINR-serving mosaic/links. Build + validate the whole
   ambient + cinema machinery here on REAL data — no synthetic, no producer dependency.
+- **SINR cinema integration gap:** the ambient mosaic/aggregate can already read
+  cell truth, but the seek/focus event index and candidate highlight must also
+  be derived from the same cell-truth trajectory before the off-axis intra-HO
+  cinema can be claimed. Until that lands, any steered-index focus is a
+  profile-derived forecast, not the final cell-truth cinema.
 - **MODQN lane: synthetic-labeled → real.** Until the producer ships a non-degenerate
   run + the dense per-objective-Q export (defects report + §10), the MODQN cinema /
   ω-slider run on a **clearly-labeled synthetic "showcase-shaped" artifact** (multi-sat,
@@ -190,6 +271,19 @@ Data strategy:
   of Defect 1 (env has no spatial per-beam assignment → all UEs collapse onto one beam →
   mono-color mosaic). On the SINR lane the mosaic is real today; on the MODQN lane it
   becomes self-evident once Defect 1 is fixed.
+- **MODQN replay synchronization depends on producer trace completeness.** The real
+  MODQN cinema must not ask the frontend to "control" intra/inter handovers. It replays
+  producer event IDs at producer sample times. If the trace lacks old/new beam identity,
+  satellite/UE geometry, dense Q, or event kind for that sample, the proof surface shows
+  a source gap instead of inventing a synchronized event. D6 implements this as a
+  fail-closed readiness gate; current artifacts remain blocked.
+- **Traffic queue data strategy:** queue visuals are proof only when their source
+  is explicit. `sinr-live` may use a deterministic traffic/service accountant as
+  a live-service demo, but the claim label must say so. Producer MODQN proof
+  requires per-UE queue inputs and outputs from the trace: arrival bits, queue
+  before/after, served bits, service rate, and starvation/fairness metrics. The
+  renderer must not infer backlog from dot color, serving identity, or camera
+  focus.
 
 ---
 
@@ -203,7 +297,7 @@ The cinema becomes the primary interaction; scattered always-on controls fold aw
 | Spotlight | ControlBar (sinr-live) | automatic winning-beam highlight during a focus |
 | HO Slow | ControlBar (sinr-live) | IS the cinema slow-motion |
 | Director: Intra/Inter/Exit Focus | `DirectorControls` | the cinema play control + intra/inter filter + exit, plain-labeled |
-| MODQN preset "Explain Handover" | ControlBar (modqn-live) | the cinema candidate-highlight replaces it; preset → Advanced |
+| MODQN preset "Explain Handover" | Advanced setup (modqn-live) | the cinema candidate-highlight replaces it; preset stays hidden by default |
 
 ### 5.2 Move to **Advanced ⚙** (hidden by default; lane-gating preserved)
 | Control | Where | Note |
@@ -212,15 +306,17 @@ The cinema becomes the primary interaction; scattered always-on controls fold aw
 | density (few/normal/many) | sinr-live | default from Mode (Rule#10); manual override in Advanced |
 | Beam Info | sinr-live | Advanced |
 | camera presets (4) | sinr-live | cinema auto-frames; presets → Advanced |
-| MODQN presets (Baseline/Service/Debug) | modqn-live | Advanced |
-| decision-policy toggle (Paper / Heuristic ω) | modqn-live | Advanced. **`HeuristicNotPaperBanner` does NOT move — stays mandatory + non-dismissable when `omega-heuristic` is active.** |
+| MODQN presets (Baseline/Service/Explain/Debug) | MODQN sub-lanes | Advanced |
+| decision-policy toggle (Paper / Heuristic ω) | modqn-live only | Advanced. **`HeuristicNotPaperBanner` does NOT move — stays mandatory + non-dismissable when `omega-heuristic` is active.** Replay-proof and artifact lanes do not expose this live-policy selector. |
 | left tabs: MODQN training / jobs / objective(ω editor) | modqn-live | "Setup" → Advanced |
 | right tab: MODQN evidence | modqn-live | Advanced / contextual |
 
 ### 5.3 Keep (primary surface)
-`LaneExperienceBar` (lane/story selector; ADR-002 4→3 is a separate optional change),
-`TimelineBar`, Active UEs / Focus UE filter (artifact), the ambient mosaic+aggregate +
-the cinema control + the explainer + the proof surfaces (on demand).
+`LaneExperienceBar` as the two-tab SINR / MODQN top selector,
+`ModqnViewToggle` as the in-MODQN Live / Proof / Artifact selector,
+`TimelineBar`, Active UEs / Focus UE filter (artifact), the ambient
+mosaic+aggregate + the cinema control + the explainer + the proof surfaces (on
+demand).
 
 ### 5.4 Net
 Default screen ≈ **3D scene with the service mosaic + aggregate + lane selector +
@@ -237,6 +333,33 @@ timeline + one "Handover Cinema" control.** Everything else on-demand or in Adva
   lane matrix + a validator (Rule#9) before it ships, and carries the lane's claim
   (`sinr-offset` / `overlay-demo` / `producer` / `synthetic` / `counterfactual`) — never
   overclaims. The SINR-serving mosaic is explicitly NOT the MODQN cell overlay (§3.1).
+- **Producer MODQN cinema is frame-locked replay.** In proof contexts, intra/inter
+  handover kind comes from producer `handoverEvent.kind`. Frontend old/new sat-ID
+  comparison may only validate consistency; a mismatch is a source-gap or validation
+  failure, not a frontend override.
+- **Cell-truth SINR cinema must be single-source.** In `sinr-live`, the event
+  index, candidate highlight, explainer, and focus-scoped old/new beam pair
+  must read the same `sinrLiveCells` trajectory. Do not mix a steered Walker
+  event index with cell-truth cones and call the result synchronized.
+- **Focus-scoped off-axis beams only.** The accepted path is a cinema-only
+  old/new beam pair with restrained opacity and stable colors. Re-enabling
+  every live cell cone as a default full-viewport layer is out of scope unless
+  a later visual review reverses the 2026-06-08 render reset decision.
+- **Beam presentation and physics calibration are deferred.** Beam color,
+  beam-hopping display, beam width, and steering/scan-angle reach are high-risk
+  because they affect apparent UE coverage, queue draining, and handover
+  feasibility. Do not tune them as a quick visual fix during S2a/S3a. Use the
+  current lane-owned geometry and labels first; if S3a cannot be synchronized
+  without touching these parameters, stop and run the deferred audit slice
+  before changing runtime behavior.
+- **Queue proof is source-owned.** The queue halo/heatmap/sidebar may summarize
+  queue state, but the renderer may not invent arrivals, backlog, served bits,
+  or fairness values for a proof lane. Display-generated queue state must carry
+  a `live-service-demo` or `synthetic` claim and stay out of producer-proof
+  validators.
+- **100-UE performance guardrail.** Queue halo/pulse uses instanced attributes
+  or a mesh buffer updated at a bounded cadence (target 10-15 Hz for queue
+  values), not 100 independent React state updates or per-UE materials.
 - **SINR presentation controls stay sinr-live-owned** even inside Advanced.
 - **Heuristic disclosure mandatory** — only the toggle relocates; the banner stays.
 - **Display-only (Rule#6):** these surfaces change camera/speed/highlight/coloring + the
@@ -253,13 +376,16 @@ timeline + one "Handover Cinema" control.** Everything else on-demand or in Adva
 | Slice | Scope | Lane / data | Risk |
 |---|---|---|---|
 | **S1** | Cinema controller (arm / intra-inter filter / exit) wrapping the Director handlers + **one** candidate-highlight path + "why (SINR)" explainer panel | **sinr-live, REAL data** | low–med |
-| **S2** | Ambient SINR-serving mosaic + aggregate (`served N/N`, per-beam load) on sinr-live | sinr-live, real | low |
+| **S2** | Ambient SINR-serving mosaic + aggregate (`served N/N`, per-beam load) on sinr-live. D3 complete: default 100-UE browser gate proves the mesh colouring and aggregate readout. | sinr-live, real | low |
+| **S2a** | Traffic queue service proof: per-UE queue accountant/source adapter, queue halo/heatmap encoding, and sidebar distribution metrics. D3 complete for `live-service-demo`; queue-aware focus candidates remain in H4/I5. | sinr-live demo now; producer proof later | med |
 | **S3** | Service links + handover glyphs (intra-flash / inter-arc), focus-scoped; scale-adaptive shots (micro/macro) | sinr-live, real | med |
+| **S3a** | Cell-truth handover cinema sync: derive the next-HO event index from the `sinrLiveCells` trajectory, drive candidate highlight from that event, and render only the focused old/new off-axis beam pair during cinema. **D4 complete:** source/event/off-axis telemetry is validator-locked; ambient all-cell cones remain parked. | sinr-live, real cell truth | done |
 | **S4** | Explainer content abstraction (one panel: SINR reason vs MODQN per-objective Q) | both live lanes | low |
 | **S5** | Synthetic "showcase-shaped" artifact (labeled) + per-objective Q-bar explainer | `artifact-replay` (synthetic) / modqn-live | med |
 | **S6** | Counterfactual ω-slider (leo-side `w·Q` over dense exported Q) + KPI scoreboard, both labeled illustrative on synthetic | modqn-live / artifact | med |
-| **S7** | Consolidation: fold Spotlight/HO-Slow/Director/Explain into cinema; move Mode/density/camera/presets/decision-policy/setup-tabs to Advanced ⚙ | all | med (validator churn) |
+| **S7** | Residual consolidation after D1/S5a: fold Spotlight/HO-Slow/Director/Explain into cinema; move remaining Mode/density/camera controls only after a scoped governance pass. MODQN presets/setup and live decision policy already live in Advanced. | all | med (validator churn) |
 | **S8** | Polish: meso/group focus; minimap/heatmap; floating↔sidebar explainer; reduced-motion; auto-tour | all | low |
+| **S9 deferred** | Beam presentation / beam-physics calibration audit: color language, hopping display, beam width, steering angle, service coverage, and destructive MODQN-mode buttons | all beam-rendering lanes, read-only first | high |
 | **later** | Swap synthetic → real producer artifact + real ω-slider/scoreboard when the defects-report fixes land | artifact-replay | — |
 
 Each slice: design → **codex review** → governance Rule#9 (matrix + validator) →
@@ -273,6 +399,20 @@ version does.
   move + one candidate highlight + SINR explainer; exit restores.
 - S2/S3: assert SINR-serving mosaic colors (N served), aggregate `served N/N`, a handover
   recolors a dot, focus-scoped links/glyphs (only focused bright during cinema).
+- S2a: queue/accounting validator proves `queueAfter = max(0, queueBefore +
+  arrivals - servedBits)` per UE; unserved UEs accumulate; served UEs can drain;
+  sidebar metrics match the same queue source; DOM/WebGL smoke proves queue
+  halo uses instanced/buffer data and all proof labels disclose
+  `live-service-demo`, `synthetic`, or `producer`.
+- S3a: assert the cinema event source, candidate highlight, old/new beam pair,
+  off-axis telemetry, and SINR explainer all resolve from the same
+  `sinrLiveCells`-backed event. A regression gate prevents the old steered
+  Walker index from feeding a cell-truth focus scene without an explicit
+  `profile-derived-forecast` / `overlay-demo` label. D4 validators:
+  `validate:phase-c:handover-cinema:model`,
+  `validate:phase-c:handover-cinema:browser`,
+  `validate:live-walker:handover-event-focus`, and
+  `validate:frontend:scene-lane-governance`.
 - S5: synthetic badge fires; per-objective Q bars per candidate; claim = `synthetic`/`overlay-demo`.
 - S6 (ω-slider correctness, codex [P1]/[P2]): **full dense action coverage** (Q exported
   for every action, not top-k); **mask fidelity** (invalid actions excluded);
@@ -284,6 +424,13 @@ version does.
 - S7: `validate:frontend:scene-lane-governance` — Spotlight/HO-Slow/Director no longer
   separate mounts; Advanced lane-gated; heuristic banner mandatory; SINR controls not on
   other lanes; SINR-serving mosaic named distinct from MODQN cell overlay.
+- S9 deferred: first validator is an audit/report gate, not a visual patch.
+  It must enumerate every button/mode that changes beam colors, beam hopping
+  display, beam width, steering angle, cone visibility, or service coverage;
+  record its source of truth and lane; and capture before screenshots on
+  `:3001` before any render change. Later implementation validators must prove
+  no UI-only beam parameter change can alter proof claims or producer replay
+  truth.
 - No-regression: director-cinematic / compass / phase-3 / real-data gates.
 
 ## 9. Honesty / render-truth guardrails (non-negotiable)
@@ -315,15 +462,83 @@ version does.
   exact action validity mask + the invalid-action sentinel + the producer tie-break
   order**. Top-k `objectiveQ` is insufficient for an arbitrary-ω argmax. Also export the
   **MODQN-vs-baseline KPI** for the scoreboard.
+- **Scene trace export (REQUIRED for real synchronized cinema):** emit or derive a
+  validated `modqn-training-scene-trace-v1` / `visual-showcase-v1` replay window whose
+  handover event sample carries same-time satellite state, beam geometry, UE position,
+  previous/selected serving, event kind, reward, dense Q, masks, model/checkpoint
+  identity, and claim boundary. Without this, leo can prove training-pipeline
+  integration but not scene-synchronized MODQN service/handover truth.
 
 S1–S4 + S7 do NOT depend on the producer (real on the SINR lane). S5/S6's *real* version
 + the ω-slider/scoreboard's *real* version depend on the producer fixes; until then they
 run on labeled synthetic data.
 
-## 11. Open questions
+For SINR, the former producer-independent blocker S3a is complete: the event
+index, camera focus, explainer, and old/new beam rendering now share the same
+cell-truth source. Remaining MODQN replay cinema proof is still blocked by the
+producer dense-Q / scene-trace completeness in §10.
+
+## 11. Deferred Beam Presentation / Beam-Physics Calibration
+
+This is deliberately last. Prior attempts to fix beam color, beam-hopping
+presentation, beam width, and scan/steering angle by direct visual tuning made
+the MODQN screen harder to understand. The next attempt must be audit-first.
+
+### 11.1 Why it is high risk
+
+- Beam width and steering angle affect how many UEs a satellite can appear to
+  serve and how many UEs a beam appears to cover.
+- Beam hopping affects whether a UE is truly served in a slot, whether queue
+  can drain, and whether a handover target is even active.
+- Color language affects whether users can distinguish serving beam, candidate
+  beam, frequency reuse, old/new handover pair, queue pressure, and source-gap
+  status.
+- MODQN proof lanes must not inherit SINR/demo beam parameters as if they were
+  producer truth.
+
+### 11.2 Audit-first todo
+
+Before changing any beam color, hopping visualization, beam width, or steering
+angle:
+
+1. Inventory every visible control or mode that changes beam rendering.
+2. For each control, record lane, source owner, rendered layer, claim label,
+   current data source, and whether it changes truth or only presentation.
+3. Identify destructive or confusing MODQN-mode buttons and decide whether to
+   fold them into Advanced, relabel them, or delete them.
+4. Capture before screenshots and DOM/WebGL telemetry from the existing
+   `:3001` server.
+5. Propose one canonical color language and one canonical beam-hopping display
+   contract before implementing visual changes.
+
+### 11.3 Stop rules
+
+- Do not widen beams, increase steering angle, or change beam-hopping cadence to
+  make handovers, queue draining, or service coverage look better.
+- Do not use beam color as a hidden data channel unless the same color meaning
+  is documented in governance and validated for the lane.
+- Do not globally re-enable previously rejected cell-cone render paths without
+  a screenshot-backed visual review.
+- Do not let MODQN replay proof consume live SINR beam geometry or hopping
+  state unless the producer trace explicitly owns those fields.
+
+S2a queue proof and S3a handover cinema may use the existing geometry and
+source-owned labels. If they expose a true geometry inconsistency, S9 audit may
+move earlier, but implementation still starts with audit, not parameter tuning.
+
+**2026-06-10 D7 audit completion.** The audit-first gate now lives in
+`docs/beam-presentation-calibration-audit.md` with a validator-backed inventory,
+canonical color-language proposal, and beam-hopping display contract. Before
+screenshots/telemetry are captured by
+`APP_URL=http://localhost:3001 npm run capture:beam-presentation-audit` into
+ignored `output/beam-presentation-audit/2026-06-10/`. No beam width, steering
+angle, color token, hopping cadence, or parked ambient cell-cone render path was
+changed in this audit slice.
+
+## 12. Open questions
 
 - Explainer default placement (floating during focus vs sidebar) — propose floating,
   setting in S8.
 - Minimap/heatmap: unify with the service mosaic as one minimap with modes, vs separate.
-- ADR-002 nav 4→3: optional, independent; the §5 cinema consolidation is the higher-value
-  "fewer buttons" win.
+- ADR-002 nav 4→3 is superseded by the 4→2 MODQN tab consolidation; the §5
+  cinema consolidation remains the residual "fewer buttons" path after D1/S5a.

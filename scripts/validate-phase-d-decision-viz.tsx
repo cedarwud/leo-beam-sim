@@ -121,6 +121,24 @@ function basePolicyDiagnostics(
   };
 }
 
+function denseQProofPolicyDiagnostics(): ModqnPolicyDiagnostics {
+  return {
+    ...basePolicyDiagnostics(),
+    objectiveQByAction: [
+      { q1Throughput: 1, q2Handover: 1, q3LoadBalance: 1 },
+      { q1Throughput: 2, q2Handover: 1, q3LoadBalance: 1 },
+      { q1Throughput: 3, q2Handover: 1, q3LoadBalance: 1 },
+      { q1Throughput: 5, q2Handover: 2, q3LoadBalance: 1 },
+      { q1Throughput: 4, q2Handover: 1, q3LoadBalance: 1 },
+      { q1Throughput: 0, q2Handover: 0, q3LoadBalance: 0 },
+    ],
+    scalarizedQByAction: [1, 1.4, 1.8, 2.9, 2.2, 0],
+    selectedActionIndex: 3,
+    tieBreak: 'scalarizedQ-desc-actionOrder-asc',
+    invalidActionSentinel: '-inf',
+  };
+}
+
 function syntheticRow(policyDiagnostics?: ModqnPolicyDiagnostics): ModqnReplayTimelineRow {
   const selectedServing = beamReference(3);
   const row: ModqnReplayTimelineRow = {
@@ -210,6 +228,7 @@ const decisionVizTestIds = [
   'decision-viz-top-candidates',
   'decision-viz-dense-scores',
   'decision-viz-objective-weights-readout',
+  'decision-viz-dense-q-proof',
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -218,8 +237,10 @@ const decisionVizTestIds = [
 console.log('\n(a) DecisionVizPanel source contract');
 {
   assert(
-    /import\s+type\s*\{\s*ModqnReplayEnvelope\s*\}\s*from\s*['"]\.\.\/\.\.\/modqn\/replay-bundle['"];/.test(panelSource),
-    'DecisionVizPanel imports ModqnReplayEnvelope type from replay-bundle barrel',
+    panelSource.includes('buildModqnDenseQProofFromReplayRow')
+      && panelSource.includes('type ModqnReplayEnvelope')
+      && panelSource.includes("from '../../modqn/replay-bundle'"),
+    'DecisionVizPanel imports dense-Q adapter and ModqnReplayEnvelope from replay-bundle barrel',
   );
   assert(
     !panelSource.includes('chart.js')
@@ -276,6 +297,7 @@ console.log('\n(d) Behavioral focused row diagnostics');
   assert(snapshot?.runnersUpCount === 2, 'runnersUpCount is topCandidates length minus selected');
   assert(snapshot?.objectiveWeights?.r1 === 0.4, 'objectiveWeights r1 is compacted from r1Throughput');
   assert(snapshot?.topCandidates.length === 3, 'topCandidates has 3 candidates');
+  assert(snapshot?.denseQProof.status === 'source-gap', 'top-K diagnostics alone keep dense-Q proof source-gapped');
   assert(snapshot?.topCandidates[0]?.isSelected === true, 'first top candidate is selected');
   assert(snapshot?.topCandidates[1]?.isSelected === false, 'second top candidate is not selected');
   assert(
@@ -315,6 +337,7 @@ console.log('\n(f) Behavioral dense scores and validity mask');
   assert(snapshot?.denseScores?.[2]?.isInvalid === true, 'denseScores[2] is invalid from mask=false');
   assert(snapshot?.denseScores?.[0]?.isInvalid === false, 'denseScores[0] remains valid');
   assert(snapshot?.denseScores?.[3]?.isSelected === true, 'denseScores[3] is selected by selectedServing beamIndex');
+  assert(snapshot?.denseQProof.status === 'source-gap', 'scalarized dense scores alone keep dense-Q proof source-gapped');
 }
 
 // ---------------------------------------------------------------------------
@@ -382,8 +405,28 @@ console.log('\n(j) SSR loaded diagnostics with dense scores');
   for (const testId of decisionVizTestIds) {
     assert(html.includes(`data-testid="${testId}"`), `loaded SSR includes ${testId}`);
   }
+  assert(html.includes('data-dense-q-proof-status="source-gap"'), 'loaded SSR marks dense-Q proof as source gap');
   assert(html.includes('sat-0-beam-3'), 'loaded SSR includes selected beam header text');
   assert(html.includes('0.40'), 'loaded SSR includes formatted r1 weight');
+}
+
+// ---------------------------------------------------------------------------
+// (j2) SSR loaded diagnostics with full dense-Q proof
+// ---------------------------------------------------------------------------
+console.log('\n(j2) SSR loaded diagnostics with full dense-Q proof');
+{
+  const html = renderToString(
+    <DecisionVizPanel
+      envelope={buildSyntheticEnvelope(denseQProofPolicyDiagnostics())}
+      slotOffset={0}
+      bundleProvenanceKind="paper-faithful"
+    />,
+  );
+  assert(html.includes('data-dense-q-proof-status="proof-ready"'), 'full dense-Q SSR marks proof-ready');
+  assert(html.includes('data-self-check-status="passed"'), 'full dense-Q SSR marks original-weight self-check passed');
+  assert(html.includes('5.000'), 'full dense-Q SSR displays selected Q1');
+  assert(html.includes('2.000'), 'full dense-Q SSR displays selected Q2');
+  assert(html.includes('1.000'), 'full dense-Q SSR displays selected Q3');
 }
 
 // ---------------------------------------------------------------------------
@@ -401,6 +444,8 @@ console.log('\n(k) SSR loaded diagnostics without dense scores');
   assert(html.includes('data-testid="decision-viz-panel"'), 'loaded no-dense SSR includes panel root testid');
   assert(html.includes('data-testid="decision-viz-top-candidates"'), 'loaded no-dense SSR includes top candidates testid');
   assert(html.includes('data-testid="decision-viz-objective-weights-readout"'), 'loaded no-dense SSR includes weights testid');
+  assert(html.includes('data-testid="decision-viz-dense-q-proof"'), 'loaded no-dense SSR includes dense-Q source-gap readout');
+  assert(html.includes('data-dense-q-proof-status="source-gap"'), 'loaded no-dense SSR marks dense-Q proof source gap');
   assert(!html.includes('data-testid="decision-viz-dense-scores"'), 'loaded no-dense SSR omits dense scores testid');
 }
 
