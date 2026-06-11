@@ -472,6 +472,36 @@ export class SinrLiveCellModel {
   }
 
   /**
+   * S4-1 (deferred D5 from S3-2): clock-REBASE every per-cell HandoverManager by a
+   * sim-time jump (loop/window wrap, timeline seek) instead of destroying it, so a
+   * served cell keeps its serving link + eventLog across the jump rather than
+   * cold-re-acquiring under the strict re-attach threshold — the cell flavour of the
+   * served-N/N flicker (S3 plan §1.6; the steered fix was S3-2). Without it the
+   * per-cell managers keep a stale FUTURE guardUntilMs after a backward jump, which
+   * suppresses inter-HO (the ping-pong guard never expires) for the rest of the loop.
+   *
+   * Pure fan-out: `HandoverManager.rebase` offsets ONLY the two clock-absolute fields
+   * (guardUntilMs/pendingSinceMs), clamps a backward jump to sim-start, and keeps
+   * state (serving) + eventLog + smoothedSinr + the serving epoch — so no clamp logic
+   * is needed here. The model's OWN fields are not clock-absolute (epochUtcMs is
+   * immutable; simTimeMs and the beam-hop slotIndex are recomputed fresh each step from
+   * the rebased simTimeSec; the hopping continuity lock reads each manager's post-rebase
+   * serving, which is correct because the managers carry the serving state).
+   *
+   * `prevUeServing` is CLEARED (like reset): it drives ONLY the per-UE intra/inter
+   * serving-transition classification, and a sim-time jump is a TELEPORT, not a
+   * handover. Keeping the pre-jump entry across a satellite-set-changing seek/wrap
+   * would classify the re-acquired UE as a PHANTOM inter-HO at the seam (a Rule#2
+   * fabricated handover event). The served-continuity benefit lives in the per-cell
+   * HandoverManagers (eventLog → −3 dB relax), NOT in prevUeServing, so clearing it
+   * loses no continuity while keeping the seam classification truthful.
+   */
+  rebase(deltaMs: number): void {
+    for (const manager of this.cellManagers.values()) manager.rebase(deltaMs);
+    this.prevUeServing = new Map();
+  }
+
+  /**
    * Beam hopping (§5.3 / "K<N" in the SDD) with SERVING CONTINUITY. Each satellite
    * forms only `beamsPerSat` beams, so it can light at most that many cells. But a
    * beam that is currently SERVING a cell must NOT hop off it — a connected UE has

@@ -118,30 +118,44 @@ Every sub-slice is **ZERO-diff** on the existing truth golden (`fixtures/s0-geom
 退行為必附 gate; run-twice A==B; perturbation positive control). `truth.*` ZERO-diff is mandatory and may NOT
 be `S0_TRACE_IGNORE`'d. Beam visuals FROZEN throughout (steered render unchanged; cones stay parked).
 
-### S4-1 · Cell-model clock-rebase (D5 — the deferred served-N/N cell fix; keystone-lite)
-- Add `SinrLiveCellModel.rebase(deltaMs)`: a pure fan-out — `for (const m of this.cellManagers.values())
-  m.rebase(deltaMs)` and **KEEP `prevUeServing`** (do not clear it). No new clamp logic: `HandoverManager.rebase`
-  already clamps `guardUntilMs ≥ 0` and retracts a pre-epoch `pendingSinceMs`. Mirror `reset()`'s structure
-  (`sinrLiveCellModel.ts:469-472`) with `manager.reset()` → `manager.rebase(deltaMs)` and the `prevUeServing`
-  reset removed.
-- Swap the call site (`useSimulation.ts:279-294`): move the unconditional `sinrLiveCellModel?.reset()`
-  (line 291) into the `else` / cold-start branch (next to the steered `reset()` at 285-286) and add
-  `sinrLiveCellModel?.rebase(transition.deltaMs)` into the `rebase` branch (next to 282-283). Update the
-  S3-2 "deferred to S4 (D5)" comment (277-278). cold-start KEEPS reset; seek/wrap/window-reloop REBASE —
-  identical shape to the steered managers. No change to `buildRuntimeStateAt`'s `deltaMs` computation or the
-  three entry points (the existing recipe already carries `deltaMs`+intent; the cell rebase rides the thread).
-- **New gate `validate:s4:cell-served-survives-wrap`** (mirror `validate:s3:served-survives-wrap`, cell
-  flavour): drive a real loop-wrap on sinr-live (`loop:true`, short window, candidate-rich) + a backward
-  seek; assert `sinrLiveCells.servedCellCount`/`servedUeCount` does NOT crash across the wrap (rebase keeps
-  serving + relaxed re-attach). **Positive control:** the old `reset()` path MUST trip the crash. Run-twice A==B.
-  Frame the assertion as *faster recovery / no full-wipe stall* (at a FULL 7200 s wrap serving is geometrically
-  gone for both arms — full sky turnover — so the measurable payoff is eventLog→fast −3 dB relax re-acquire,
-  with true serving continuity only at SMALL/partial wraps and seeks; S3-2 geometry fact).
-- **ZERO-diff:** golden is `loop:false` → never wraps → `truth.*` unchanged. **QUAR-safe:** does NOT touch any
-  QUAR-S4-SERVING needle (it's a model method + one call-site swap). Group stays executing.
-- **Open check folded into the gate (recon D openQ):** verify a backward-seek `clearServing()` drop-stale
-  interaction (`sinrLiveCellModel.ts:598-603`) does not produce a phantom intra/inter event at the seam, and
-  that `prevUeServing` kept across a satellite-set change does not classify a stale entry as a spurious inter-HO.
+### S4-1 · Cell-model clock-rebase (D5 — the deferred served-N/N cell fix) — ✅ DONE
+**⚠️ A 3-lens review (workflow `wf_2472517e-790`) caught a BLOCKER in the first cut and a phantom-HO major;
+both folded before commit. The corrected as-built differs from the original plan as noted.**
+
+- `SinrLiveCellModel.rebase(deltaMs)`: a pure fan-out — `for (const m of this.cellManagers.values())
+  m.rebase(deltaMs)`. No new clamp logic: `HandoverManager.rebase` already clamps `guardUntilMs ≥ 0` and
+  retracts a pre-epoch `pendingSinceMs`. **CORRECTION (was "KEEP prevUeServing"): rebase CLEARS `prevUeServing`**
+  (`this.prevUeServing = new Map()`, like `reset()`). prevUeServing drives ONLY the per-UE intra/inter
+  classification; a sim-time jump is a TELEPORT, not a handover, so keeping the pre-jump entry across a
+  sat-set-changing seek/wrap fabricates a **phantom inter-HO** at the seam (review-measured: +60 s seek →
+  inter-HO 28 vs reset 0). The served-continuity benefit lives in the per-cell `HandoverManager` eventLog
+  (−3 dB relax), NOT in prevUeServing, so clearing it loses no continuity (D5 decision reversed — see §4).
+- **Wiring — TWO production time-shift paths (the BLOCKER fix):** the original cut wired the cell rebase ONLY
+  into `transitionHoManagers`, but **the live LOOP WRAP never routes through it.** Production sets
+  `windowLengthSec = LIVE_SIM_TIMELINE_DURATION_SEC = 7200 = maxTimeSec` (`appRuntimeConfig.ts:66`), so the
+  in-hook window-reloop guard (`useSimulation.ts:488`, fires at `startOffset+window ≈ 7650`) is **UNREACHABLE**
+  — `simTimeSec` wraps at `maxTimeSec=7200` first via the **in-step `didLoopWrap`** inside `stepRuntimeFrame`
+  (`runtimeFrameStep.ts:583`). The step rebases the STEERED managers in-step but NOT the externally-attached
+  cell model. (The S3 recon's "default window 180 s" was the `?? 180` *fallback*, never the live value — the
+  error this slice corrects.) So the wiring is in **two** places:
+  1. `useSimulation.ts` useFrame: when `out.didLoopWrap`, `sinrLiveCellModel?.rebase((frame.simTimeSec −
+     previousSimTimeSec) * 1000)` **before** the attach (the live loop-wrap path).
+  2. `transitionHoManagers` rebase branch: `sinrLiveCellModel?.rebase(transition.deltaMs)` (the SEEK +
+     window-reloop path); cold-start branch keeps `sinrLiveCellModel?.reset()`.
+- **Gate `validate:s4:cell-served-survives-wrap` (rewritten to be production-faithful):** **D** wiring (both
+  sites, source-structural); **A** unit (`rebase(0)` is a pure no-op); **W** the REAL live wrap — drives the
+  production `didLoopWrap` and reaches the per-cell managers' private `guardUntilMs` (`as unknown` cast): the
+  CONTROL arm (no wrap rebase = the bug) leaves **19/37 managers with a stale ~7215 s-future guard**; the FIX
+  arm leaves **0** (max 30 s, the legit ping-pong guard) — directly asserts the timer offset + recovery; **B**
+  small backward seek continuity (rebase keeps served 89 vs reset 13); **P** phantom-HO (a sat-changing seek's
+  seam inter-HO == the reset reference, 0 — locks the cleared-prevUeServing decision). Run-twice determinism.
+  All three positive-control mutations verified RED: remove the useFrame wrap rebase → D; wrong-sign rebase → W;
+  keep prevUeServing → P.
+- **ZERO-diff:** golden is `loop:false` → never wraps → `truth.*` unchanged (verified). **QUAR-safe:** model
+  method + two call-site rebases; no QUAR-S4-SERVING needle touched. Group stays executing (5 blocks).
+- **Open check DISCHARGED (recon D openQ → now gate section P):** the phantom intra/inter-at-the-seam risk is
+  resolved by CLEARING `prevUeServing` on rebase (above) and LOCKED by gate section P (seam inter-HO == reset
+  reference). The original "keep prevUeServing" hypothesis was the bug, not the fix.
 
 ### S4-2 · Kill the `servingBeamId↔cellId` pun (typed `servingCellId`, ADDITIVE)
 - Add a typed `servingCellId: number | null` to the sinr-live published per-UE serving record; populate it
@@ -246,8 +260,13 @@ blocks (`validate-frontend-scene-lane-governance.ts:1529, 1561, 1884, 1940, 1990
   sinr-live and the cell model is a "not MODQN" lane. *Default chosen.*
 - **D4 — event-index dt: LABEL as a coarse offline forecast, do NOT align to live dt.** Aligning is
   build-cost-prohibitive (~450 k frames × 100 UEs). *Default chosen.*
-- **D5 — cell-model rebase: fan-out to per-cell `HandoverManager.rebase`, KEEP `prevUeServing`.** No new clamp
-  logic (inherited from `HandoverManager.rebase`). *Default chosen (this was the S3-2 deferred D5).*
+- **D5 — cell-model rebase: fan-out to per-cell `HandoverManager.rebase`, CLEAR `prevUeServing`.** No new clamp
+  logic (inherited from `HandoverManager.rebase`). **REVERSED from "keep prevUeServing"** after the 3-lens
+  review proved keeping it fabricates a phantom inter-HO at the seam (a teleport ≠ a handover); the
+  served-continuity benefit lives in the per-cell manager eventLog, not prevUeServing, so clearing is free.
+  Wired in TWO places: the useFrame in-step `didLoopWrap` (the live loop wrap) AND `transitionHoManagers` (seek/
+  reloop) — the first cut missed the live-wrap path (a blocker; the live window == maxTime so the in-hook reloop
+  is unreachable). *(this was the S3-2 deferred D5).*
 
 These are leo-OWNED live-sim truth (CLAUDE.md Rule#2/#6 satisfied: no producer SINR/handover/provenance is
 rewritten; the cell model is leo's own SINR-offset oracle, explicitly "not MODQN").

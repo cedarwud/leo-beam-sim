@@ -267,28 +267,28 @@ export function useSimulation(
       ?? (handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null);
   }, [decisionOverride, hoManager]);
 
-  // S3-2: one helper for both kinds of HO-manager time transition.
+  // S3-2 / S4-1: one helper for both kinds of HO-manager time transition.
   //  - 'cold-start' (mount, profile change, signalReset, handoverReset): full
   //    reset() — fresh state, no serving carried.
-  //  - 'rebase' (loop/window wrap, seek): clock-REBASE the steered managers by the
+  //  - 'rebase' (loop/window wrap, seek): clock-REBASE the managers by the
   //    sim-time jump (offsets only guardUntilMs/pendingSinceMs), keeping serving +
   //    eventLog so a UE survives the jump instead of cold-re-acquiring under the
   //    strict re-attach threshold (the served-N/N flicker, S3 plan §1.6).
-  // The cell-truth model (sinrLiveCellModel) ALWAYS resets here — its own
-  // clock-rebase is deferred to S4 (cell lane = S4 serving truth, D5).
+  // S4-1 extends the rebase to the cell-truth model (sinrLiveCellModel) so it now
+  // rebases on a time-shift and resets only on cold-start, in lockstep with the
+  // steered managers (was: ALWAYS reset — the D5 hole deferred from S3-2). null on
+  // non-sinr-live lanes.
   const transitionHoManagers = useCallback(
     (transition: { kind: 'cold-start' } | { kind: 'rebase'; deltaMs: number }) => {
       if (transition.kind === 'rebase') {
         hoManager.rebase(transition.deltaMs);
         secondaryHoManagers.forEach(manager => manager.rebase(transition.deltaMs));
+        sinrLiveCellModel?.rebase(transition.deltaMs);
       } else {
         hoManager.reset();
         secondaryHoManagers.forEach(manager => manager.reset());
+        sinrLiveCellModel?.reset();
       }
-      // S-cells-2: reset the cell-truth model in lockstep with the HO managers so
-      // the next cell step is a clean cold-attach (clears per-cell HandoverManagers
-      // + the per-UE serving-transition memory). null on non-sinr-live lanes.
-      sinrLiveCellModel?.reset();
     },
     [hoManager, secondaryHoManagers, sinrLiveCellModel],
   );
@@ -497,7 +497,7 @@ export function useSimulation(
       return;
     }
 
-    const { frame, previousSimTimeSec } = stepRuntimeFrame({
+    const { frame, previousSimTimeSec, didLoopWrap } = stepRuntimeFrame({
       profile,
       replay,
       speed,
@@ -524,9 +524,19 @@ export function useSimulation(
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });
+    // S4-1: the live loop wrap is the in-step didLoopWrap (production windowLengthSec
+    // == maxTimeSec, so the in-hook window-reloop guard above is unreachable). The step
+    // rebases the STEERED managers in-step on a wrap but NOT the externally-attached
+    // cell model — so rebase it here by the same wrap delta, before the attach, else its
+    // per-cell HandoverManagers keep a stale FUTURE guard that suppresses serving
+    // continuity + inter-HO for the rest of the loop. (Seek/window-reloop time-shifts go
+    // through transitionHoManagers instead; this covers the trajectory-loop wrap.)
+    if (didLoopWrap) {
+      sinrLiveCellModel?.rebase((frame.simTimeSec - previousSimTimeSec) * 1000);
+    }
     // S-cells-2: additive cell truth, advanced by the real sim-time delta so the
-    // per-cell HandoverManagers time their trigger/ping-pong guards correctly.
-    // dt 0 when paused; loop-wrap takes the early reset path above. no-op off lane.
+    // per-cell HandoverManagers time their trigger/ping-pong guards correctly. dt is 0
+    // when paused and clamped to 0 on the wrap frame (negative delta). no-op off lane.
     attachSinrLiveCellFrame(frame, sinrLiveCellModel, frame.simTimeSec - previousSimTimeSec);
     frameRef.current = frame;
 
