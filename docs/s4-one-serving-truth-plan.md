@@ -307,7 +307,42 @@ blocks (`validate-frontend-scene-lane-governance.ts:1529, 1561, 1884, 1940, 1990
   `governance-lock-strategy.md:36` row RETIRED — mirroring the QUAR-S3-STEP precedent.
 - **ZERO-diff:** no truth change (gates + display-consumer re-points only).
 
-### S4-4 · Honest labels — decision-override primary-only + event-index coarse-dt (no retirement dependency)
+### S4-4 · Honest labels — decision-override primary-only + event-index coarse-dt (no retirement dependency) — ✅ DONE (S4 COMPLETE)
+**As-built (D3 `16e7207`, D4 `5e6ff37`; each its own gate + Workflow 3-lens + positive-control mutations RED):**
+- **D3 (`16e7207`) — override primary-only label.** New canonical `OVERRIDE_PRIMARY_UE_SCOPE_NOTE`
+  (`runtimeControls.ts`). The SDD §4.4 banner headline `HEURISTIC_NOT_PAPER_BANNER_TEXT` is
+  **exact-equality-locked** (`validate-modqn-omega-s4:151`), so "extend the banner" landed as an
+  ADDITIVE second scope line (the frozen headline is kept byte-identical), NOT a mutation of the
+  constant. InfoPanel: the note is appended to the `duelDetail` of BOTH override modes
+  (`decision-overlay-on-live-sinr` + `omega-heuristic`); `getLiveStatusModeCopy` exported so the gate
+  drives the real resolver. New behavior gate `validate:s4:override-primary-scope` (V value/anti-launder
+  + C copy-resolver + B banner render + D determinism). **sinr-live byte-identical** (banner mounts only
+  on `omega-heuristic && modqn-live-cell-preview`; entering sinr-live forces `handoverMode='sinr-offset'`,
+  whose copy carries no note). 3-lens review `wf_848e62b3-0ae` **CLEAN — 0 findings, ship**; the claim
+  (override only on the primary `hoManager`; secondaries + cell managers take none) verified TRUE.
+- **D4 (`5e6ff37`) — event-index coarse-dt forecast label.** App passes `simStepSec=30` to
+  `buildSinrLiveCellHandoverEventIndex` (App.tsx) → a 30 s OFFLINE re-run vs the ~16 ms live frame dt.
+  New `EVENT_INDEX_COARSE_FORECAST_NOTE` (`liveWalkerHandoverEventIndex.ts`) is rendered as a caveat
+  block in `SinrOffsetExplainer` (the clicked-cinema-event surface), gated to
+  `sourceOwner==='sinr-live-cell-truth'` (the only cinema source on sinr-live; steered/live-walker →
+  no note = negative control). New behavior gate `validate:s4:event-index-forecast-label` (V + R incl.
+  negative control + I real-builder coarse-scan grounding + O orthogonal-axes + D). **Scope call
+  (confirmed by 3-lens `wf_4590fbc4-411`, fix-then-ship): the cell-truth index KEEPS `claimKind:'live-truth'`.**
+  claimKind is the SOURCE axis (the rendered SINR is leo's real cell-truth, verbatim from the engine —
+  NOT a profile projection); the note is the orthogonal TIMING axis. Flipping to `profile-derived-forecast`
+  would FALSELY imply the SINR is a forecast (the steered live-walker index owns that bucket) and would
+  churn the App director-focus claim sprawl (App.tsx:1566, gov:939) + permanent gov:1230 + 2 other gates
+  — overreach for the simplest sub-cut. Orthogonality is documented at the junction and pinned by the
+  gate's O section. 4 minors folded (orthogonality doc + O-section pin + caveat SCSS + drop-case wording).
+- **Both:** truth geometry-trace ZERO-diff (display copy / HTML overlay only); connected-sat KNOWN-GAPs
+  unchanged (760/1, still → S5); steered 3D byte-identical. ⚠️ browse :3001 daemon stuck on `about:blank`
+  (WSL2 tab-tracking breakage) → visual proof via the gate-rendered markup + structural guarantee.
+- **NEXT = S5** (consolidation finish-line): un-park cones, 760 + population-cap must-hold flips,
+  QUAR-S5-BEAMRENDER (11 blocks) retired via ONE shared selection resolver, render-style screenshot loop.
+
+---
+
+**Original plan (for reference):**
 - **Decision-override label (Decision D3 = honestly LABEL, NOT extend):** extend `HEURISTIC_NOT_PAPER_BANNER_TEXT`
   (`HeuristicNotPaperBanner.tsx`) and the InfoPanel decision-overlay copy (`InfoPanel.tsx:44-57`) to state the
   override drives the **primary UE only**; the secondary population follows live SINR-offset. This lives in the
