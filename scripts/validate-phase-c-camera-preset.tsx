@@ -71,14 +71,11 @@ function renderControlBarMarkup(): string {
   const onCameraPresetSelect = (_preset: CameraPreset) => undefined;
   return renderToString(
     <ControlBar
-      selectedProfileId="hobs-2024-candidate-rich"
-      profileOptions={[{ id: 'hobs-2024-candidate-rich', label: 'HOBS candidate rich' }]}
       autoSlowEnabled={true}
       uiMode="presentation"
       beamDensity="event-plus-1"
       beamCalloutsEnabled={true}
       cinematicMode="off"
-      onProfileChange={noop}
       onUiModeChange={noop}
       onBeamDensityChange={noop}
       onToggleBeamCallouts={noop}

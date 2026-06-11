@@ -3,14 +3,7 @@ import type { SceneLane } from '../app/sceneLane';
 import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
 import { UI_MODES, isUiMode, type UiMode } from './uiMode';
 
-interface ProfileOption {
-  id: string;
-  label: string;
-}
-
 interface ControlBarProps {
-  selectedProfileId: string;
-  profileOptions: ProfileOption[];
   // Playback (play/pause, speed, scrub, seek) is owned solely by the bottom
   // TimelineBar — the ControlBar no longer duplicates it (consolidation C1).
   autoSlowEnabled: boolean;
@@ -18,7 +11,6 @@ interface ControlBarProps {
   beamDensity: BeamDensity;
   beamCalloutsEnabled: boolean;
   cinematicMode: CinematicMode;
-  onProfileChange: (profileId: string) => void;
   onUiModeChange: (mode: UiMode) => void;
   onBeamDensityChange: (density: BeamDensity) => void;
   onToggleBeamCallouts: () => void;

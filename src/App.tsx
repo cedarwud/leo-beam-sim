@@ -1,10 +1,6 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MainScene } from './scene/MainScene';
-import {
-  getProfileLabel,
-  loadProfile,
-  profileList,
-} from './profiles';
+import { loadProfile } from './profiles';
 import type { Profile } from './profiles/types';
 import type { BeamDensity, RuntimeConfig, SimState } from './scene/types';
 import { createInitialSimState } from './scene/initialSimState';
@@ -675,11 +671,6 @@ export function App() {
     () => `${handoverMode}:${handoverPolicyVersion}:${getHandoverPolicyResetKey(appliedHandoverPolicy)}`,
     [appliedHandoverPolicy, handoverMode, handoverPolicyVersion],
   );
-  const profileOptions = useMemo(
-    () => profileList.map(entry => ({ id: entry.id, label: getProfileLabel(entry) })),
-    [],
-  );
-
   // Memoize recommendation to prevent recalculating on every render,
   // but this still runs during the first render. 
   // Given we have localStorage cache now, it will be instant after the first run.
@@ -902,16 +893,6 @@ export function App() {
     setUiMode(nextMode);
     persistUiMode(nextMode);
   }, []);
-
-  const handleProfileChange = useCallback((profileId: string) => {
-    const next: ProfileByMode = {
-      ...profileByModeRef.current,
-      [appMode]: profileId,
-    };
-    profileByModeRef.current = next;
-    persistProfileByMode(next);
-    setSelectedProfileId(profileId);
-  }, [appMode]);
 
   const applyHandoverModeSideEffects = useCallback((
     nextMode: RuntimeHandoverMode,
@@ -1914,14 +1895,11 @@ export function App() {
         </div>
       )}
       <ControlBar
-        selectedProfileId={selectedProfileId}
-        profileOptions={profileOptions}
         autoSlowEnabled={playback.autoSlowEnabled}
         uiMode={uiMode}
         beamDensity={runtime.beamDensity}
         beamCalloutsEnabled={beamCalloutsEnabled}
         cinematicMode={effectiveCinematicMode}
-        onProfileChange={handleProfileChange}
         onUiModeChange={handleUiModeChange}
         onBeamDensityChange={handleBeamDensityChange}
         onToggleBeamCallouts={() => setBeamCalloutsEnabled(value => !value)}
