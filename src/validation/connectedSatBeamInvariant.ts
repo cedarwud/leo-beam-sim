@@ -18,6 +18,12 @@
 
 import type { SimFrame, VizFrame } from '../scene/types';
 import { deriveSinrServingMosaicAggregate } from '../scene/sinrServingMosaic';
+import {
+  resolveSinrLiveVisibleBeamSatIds,
+  type SteeredMountPlanFlags,
+} from '../scene/sinrLiveBeamSelection';
+
+export type { SteeredMountPlanFlags } from '../scene/sinrLiveBeamSelection';
 
 /** Which UI surface claims the satellite is connected/serving. */
 export type ConnectedClaimSurface =
@@ -71,17 +77,14 @@ export interface InvariantViolation {
 export interface InvariantReport {
   /** All distinct (surface, satId) connected claims found in the frame. */
   readonly claims: readonly ConnectedClaim[];
-  /** SatIds with at least one visibly mounted steered beam (MainScene replica). */
+  /**
+   * SatIds with at least one visibly mounted beam this frame, from the shared
+   * `resolveSinrLiveVisibleBeamSatIds` (the steered branch while the cell cones
+   * are parked; the cone-rendered set once S5 flips the render).
+   */
   readonly visibleBeamSatIds: ReadonlySet<string>;
   readonly mustHoldViolations: readonly InvariantViolation[];
   readonly knownGapViolations: readonly InvariantViolation[];
-}
-
-/** The render-plan flags the steered mount predicate depends on. */
-export interface SteeredMountPlanFlags {
-  readonly showLiveBeamCones: boolean;
-  readonly showCellOverlay: boolean;
-  readonly showSinrLiveCellBeams: boolean;
 }
 
 /**
@@ -113,29 +116,23 @@ export function collectConnectedClaims(frame: SimFrame): ConnectedClaim[] {
 }
 
 /**
- * REPLICA of the MainScene steered-beam mount predicate (MainScene.tsx ~1538):
- *   SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams
- *   && viz.displaySats.filter(sat => viz.beamSatIds.has(sat.id))
- *   && (viz.satBeams.get(sat.id) ?? []).length > 0
- * Replicated (not imported) because the predicate currently lives inline in
- * MainScene JSX; S5/S6 extract it to a shared resolver consumed by BOTH the
- * mount and this invariant, retiring the replica. Until then the governance
- * QUAR-S5-BEAMRENDER text locks pin the JSX so the replica cannot silently
- * diverge from the mount.
+ * The satIds with a visibly mounted beam this frame, for the invariant's
+ * "connected ⟹ visible beam" check. S5-1 delegates to the ONE shared resolver
+ * `resolveSinrLiveVisibleBeamSatIds` (src/scene/sinrLiveBeamSelection.ts) — the
+ * former inline REPLICA of the MainScene steered-mount predicate is retired in
+ * favour of the single source consumed by BOTH the mount and this invariant.
+ *
+ * Byte-identical to the legacy replica while the cell cones are parked: this
+ * wrapper passes no `coneSatIds`, so the shared resolver's steered branch runs
+ * (and its flag-true case returns the empty set, exactly as the old guard did).
+ * S5-2 passes the mounted cones' `coneSatIds` so the invariant measures the cone
+ * render once `showSinrLiveCellBeams` flips — that is the D1 must-hold flip.
  */
 export function resolveSteeredVisibleBeamSatIds(
   viz: VizFrame,
   plan: SteeredMountPlanFlags,
 ): Set<string> {
-  if (!plan.showLiveBeamCones || plan.showCellOverlay || plan.showSinrLiveCellBeams) {
-    return new Set();
-  }
-  const visible = new Set<string>();
-  for (const sat of viz.displaySats) {
-    if (!viz.beamSatIds.has(sat.id)) continue;
-    if ((viz.satBeams.get(sat.id)?.length ?? 0) > 0) visible.add(sat.id);
-  }
-  return visible;
+  return resolveSinrLiveVisibleBeamSatIds({ viz, plan });
 }
 
 function classifyViolation(claim: ConnectedClaim, frame: SimFrame): ViolationClassification {
