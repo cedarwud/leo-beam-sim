@@ -282,24 +282,25 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'artifact replay must not mount the live SINR-serving mosaic',
   );
 
-  // ── SINR-live earth-fixed cell-truth beam cones (S-cells-3) — PARKED (2026-06-08) ──
-  // The cell-truth CONES are parked: they washed the viewport and used the wrong
-  // colour, so the sinr-live lane renders the ORIGINAL steered SatelliteBeams again.
-  // `showSinrLiveCellBeams` is pinned false on EVERY lane (the cell-truth MODEL stays
-  // computed, dormant, for a future cinema / off-axis render). See
-  // `.agent-memory/project_sinr_render_reset_2026-06-08.md`.
-  tangleLockGroup('QUAR-RENDER-RESET', () => {
+  // ── SINR-live earth-fixed cell-truth beam cones (S5-2) — UN-PARKED, the lane's render ──
+  // S5-2 (one beam render, the consolidation finish-line): the cell-truth CONES are
+  // now the sinr-live lane's mounted beam render — `showSinrLiveCellBeams =
+  // showSinrLiveViewport` (sceneLaneRenderPlan.ts), so the steered SatelliteBeams
+  // auto-suppress (`&& !showSinrLiveCellBeams`) and the UE anchor is retired (UEs
+  // render off-centre). The cones stay inert on every MODQN / artifact lane (the
+  // sibling asserts below survived the QUAR-RENDER-RESET retirement). The
+  // connected-sat-has-beam invariant now measures this cone render (D1 must-hold
+  // flip, S5-3). See docs/s5-one-beam-render-plan.md.
   assert.equal(
     renderPlan('sinr-live', 'live-sim').showSinrLiveCellBeams,
-    false,
-    'cell-truth cones are parked on sinr-live (steered SatelliteBeams render restored)',
+    true,
+    'S5-2: SINR live mounts the cell-truth cones as its beam render (steered SatelliteBeams retired on the lane)',
   );
   assert.equal(
     renderPlan('sinr-live', 'live-sim', false, 'director').showSinrLiveCellBeams,
-    false,
-    'cell-truth cones stay parked under director focus too',
+    true,
+    'S5-2: cell-truth cones stay mounted under director focus too',
   );
-  });
   assert.equal(
     renderPlan('modqn-live-cell-preview', 'live-sim').showSinrLiveCellBeams,
     false,
@@ -1547,16 +1548,17 @@ assertNotContains(
 // NOT behaviourally replaceable yet — re-wrapped below into QUAR-S5-BEAMRENDER
 // together with block #3's colour-oracle wiring needle.
 //
-// S4-3 3-lens review (blocker + major, both execution-verified): the DATA
-// gates prove the pure colour map and the published projection, but WHICH
-// oracle feeds the 3D dots (cell truth, not steered) and the lane-gating of
-// that derivation are RENDER-layer selection wiring no shipped behaviour gate
-// observes — a one-line re-point/guard-delete would re-open the two-oracle
-// viewport (the S4 disease) or override MODQN service-map colours via the
-// mosaic-first merge, with every gate green. Only S5's shared selection
-// resolver replaces these behaviourally (rule 3 escape hatch: a newly met
-// tangle pin wraps into its matching group).
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
+// S5-2 GRADUATION to PERMANENT (was QUAR-S5-BEAMRENDER): WHICH oracle feeds the
+// 3D mosaic dots (cell truth, not steered) and the lane-gating of that derivation
+// are RENDER-layer selection wiring. validate:phase-c:sinr-serving-mosaic:browser
+// OFF-half covers the lane gate (the mosaic telemetry is ABSENT on every MODQN-lane
+// canvas) and validate:s4:serving-equivalence E2/E3 prove the cell-colour FUNCTION;
+// what is left is the MainScene CALL EDGE (it wires the cell-colour map, not steered).
+// The mosaic is the S2/S4 layer (NOT the S5 cone render this slice flips); its full
+// behavioural replacement is not cheaply available without a render diff, so these
+// two wiring locks GRADUATE to permanent rather than retire with the cone pins — a
+// one-line steered re-point/guard-delete would otherwise re-open the S4 two-oracle
+// disease silently.
 assertContains(
   mainSceneSource,
   'if (!showSinrServingMosaic) return null;',
@@ -1567,7 +1569,6 @@ assertContains(
   'buildSinrServingUeColorMapFromCells(cellFrame.ues)',
   'the 3D mosaic colours UE markers from the CELL truth on sinr-live (one serving oracle per viewport — a steered re-point would silently resurrect the S4 dual-oracle disease)',
 );
-});
 assertContains(
   groundSceneSource,
   'function publishInstanceColorTelemetry',
@@ -1705,67 +1706,14 @@ assertContains(
   'showSinrLiveCellBeams: boolean',
   'render plan declares the cell-truth beam-cone flag',
 );
-// PARKED (2026-06-08): the ambient flag is pinned false → the global cell-truth
-// cone layer does NOT render; the steered SatelliteBeams render again (the
-// `&& !showSinrLiveCellBeams` gate below becomes true). D4 may still render a
-// bounded, focus-scoped old/new pair sourced from one focused sinrLiveCells event.
-tangleLockGroup('QUAR-RENDER-RESET', () => {
-assertContains(
-  sceneLaneRenderPlanSource,
-  'const showSinrLiveCellBeams = false;',
-  'ambient cell-truth cones are PARKED (flag false) — steered SatelliteBeams render restored',
-);
-});
-// (i) The ambient cell-cone JSX is retained (gated false); D4 adds a separate
-//     focus-scoped old/new pair mount with mesh-derived telemetry.
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
-assertContains(
-  mainSceneSource,
-  '<SinrLiveCellBeamCones',
-  'MainScene keeps the cell-truth beam-cone JSX',
-);
-assertContains(
-  mainSceneSource,
-  'resolveSinrLiveCellHandoverPairConeItems({',
-  'MainScene resolves the D4 focused old/new cell-truth beam pair',
-);
-assertContains(
-  mainSceneSource,
-  'telemetryCountDatasetKey="sinrLiveCellHandoverPairConeRenderedCount"',
-  'MainScene publishes mesh-derived telemetry for the D4 old/new cell-truth pair',
-);
-assertContains(
-  sinrLiveCellBeamConesSource,
-  'resolveSinrLiveCellHandoverPairConeItems',
-  'SinrLiveCellBeamCones exposes a focus-scoped old/new handover pair resolver',
-);
-assertContains(
-  sinrLiveCellBeamConesSource,
-  "candidate.sourceOwner !== 'sinr-live-cell-truth'",
-  'Focused old/new pair resolver is inert unless the event source is cell truth',
-);
-});
-// (j) With the flag false this gate is TRUE → the steered SatelliteBeams render on
-//     the sinr-live lane (the original look the user approved).
-tangleLockGroup('QUAR-RENDER-RESET', () => {
-assertContains(
-  mainSceneSource,
-  '&& !showSinrLiveCellBeams && viz.displaySats',
-  'steered SatelliteBeams render on sinr-live again now that the cell cones are parked',
-);
-// (k) the UE-anchor is RESTORED on sinr-live (the cell cones no longer own the lane),
-//     so the steered beams converge on the UEs like the original render.
-assertContains(
-  useBeamVizSource,
-  'disableUeAnchor?: boolean',
-  'useBeamViz exposes the per-lane UE-anchor retirement flag',
-);
-assertContains(
-  useBeamVizSource,
-  '!disableUeAnchor',
-  'useBeamViz forces the UE-anchor off when the retirement flag is set',
-);
-});
+// S5-2: the ambient flag is now `= showSinrLiveViewport` (un-parked) — pinned by
+// the flipped render-plan matrix above (showSinrLiveCellBeams TRUE on sinr-live).
+// The cell-cone JSX, the D4 focus-pair mount + telemetry, and the steered-mount
+// auto-suppress are no longer text-pinned here: the cone render is covered by
+// validate:phase-c:sinr-live-cells:render(:browser) (incl. the D4 pair resolver
+// sourceOwner-guard test) and the connected-sat-has-beam must-hold invariant; the
+// UE-anchor retirement is wired through the shared visible-beam resolver. The
+// QUAR-RENDER-RESET + cone QUAR-S5-BEAMRENDER text pins retired with S5-2.
 // (k) BLOCK-3 import purity: the cone resolver consumes the cell TRUTH only — it
 //     must NOT pull the round-robin scheduler (that display oracle stays
 //     MODQN-lane-only in CellBeamCones.tsx).
@@ -1784,17 +1732,11 @@ assertContains(
   "from '../scene/sinrLiveCellModel'",
   'cell-truth cone resolver consumes the SinrLiveCellFrame truth type',
 );
-// (l) MainScene places the cones from the SAME layout builder the runtime cell
-//     truth uses, so cellIds match `sim.sinrLiveCells` (no placement drift).
-//     (S5 replaces this text pin with a geometry invariant: cone base == truth
-//     cell centre.)
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
-assertContains(
-  mainSceneSource,
-  'buildSinrLiveCellLayout(profile)',
-  'MainScene builds cone placements from the same cell layout as the runtime truth',
-);
-});
+// (l) S5-2: MainScene places cones from the same cell layout as the runtime truth —
+//     the QUAR-S5-BEAMRENDER `buildSinrLiveCellLayout(profile)` text pin retired,
+//     replaced by the cone-base==truth-cell-centre BEHAVIOUR invariant in
+//     validate:phase-c:sinr-live-cells:render (resolver fed the real layout asserts
+//     the cone base lands on the truth cell centre — stronger than the text pin).
 // (m) the render gates are wired into package.json + the live-render suite.
 assertContains(
   packageJson,
@@ -1806,68 +1748,34 @@ assertContains(
   '"validate:phase-c:sinr-live-cells:render:browser"',
   'package exposes the S-cells-3 render browser gate',
 );
-// PARKED (2026-06-08): the cell-cone render browser gate is REMOVED from the
-// live-render suite (with the cones parked there are 0 to assert). The gate SCRIPT
-// is retained (above) for a future un-park; it must not run in the live suite.
-tangleLockGroup('QUAR-RENDER-RESET', () => {
-assertNotContains(
+// S5-2: the cell-cone render browser gate is RE-ADDED to the live-render suite —
+// the cones are un-parked, so there ARE cones to assert (replaces the retired
+// QUAR-RENDER-RESET ban that kept it out while parked).
+assertContains(
   packageJson,
   'sinr-serving-mosaic:browser && npm run validate:phase-c:sinr-live-cells:render:browser',
-  'live-render suite must NOT run the parked cell-cone render browser gate',
+  'live-render suite runs the un-parked cell-cone render browser gate (S5-2)',
 );
-});
 
-// (S5/S0 note: the INTENT of this block — every connected sat shows a beam — is
-// now also covered by the S0 behavior invariant validate:s0:connected-sat-has-beam;
-// the text pins below retire with S5's one-beam-render.)
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
-// ── Serving cones, EVERY connected sat, NORMAL-blend, frequency-reuse colour (S-cells-4b-fix) ──
-// Draw SERVING beams only (apex = serving sat, base = served cell) for EVERY serving
-// satellite (focus cap HIGH) so a satellite connected to a UE always shows a beam —
-// capping to a few sats left other connections beamless (the user's recurring
-// complaint). Additive could not do all-sats without washing out (it accumulates), so
-// the cones use NORMAL blending at a moderate opacity (bounded/uniform — overlaps
-// darken but never white out). `resolveTopServingFocusSatIds` (top serving sats +
-// primary UE serving sat, NOT the old broken most-illuminating fallback) stays
-// available for the cinema (c2). Colour = FREQUENCY-REUSE (`cellId mod reuse`) so a
-// fan is multi-colour (multibeam pattern). Breadth of who-is-served stays in the UE
-// mosaic (Rule#6 display filter).
-assertContains(
-  sinrLiveCellBeamConesSource,
-  'if (!beam.serving) continue;',
-  'cone resolver draws ONLY serving beams (no idle/illuminating-only cones)',
-);
-assertNotContains(
-  sinrLiveCellBeamConesSource,
-  'resolveSinrLiveConeFocusSatIds',
-  'the old most-illuminating fallback is gone (it hid the serving sat behind a wrong sat)',
-);
-assertContains(
-  sinrLiveCellBeamConesSource,
-  'export function resolveTopServingFocusSatIds',
-  'cone focus = top serving sats by served-cell count + preferred (NOT most-illuminating)',
-);
-assertContains(
-  sinrLiveCellBeamConesSource,
-  'color: frequencyReuseColor(beam.frequencyIndex)',
-  'cone colour = frequency-reuse (one satellite fan is multi-colour, the multibeam pattern — NOT a per-sat tint)',
-);
-assertContains(
-  sinrLiveCellBeamConesSource,
-  'blending={THREE.NormalBlending}',
-  'cones use NORMAL blending (bounded/uniform) so EVERY serving sat can show a beam without additive washout',
-);
+// S5-2: the serving-cone render pins (serving-only / freq-reuse colour / blending /
+// focus-scoping) RETIRED with QUAR-S5-BEAMRENDER. Their behaviour now lives in
+// BEHAVIOUR gates: validate:phase-c:sinr-live-cells:render asserts serving-only
+// cones + frequency-reuse colour + the style-token VALUES (ambient 0.08 < pair 0.30,
+// 32 segments, NormalBlending) from constants/sinrLiveConeStyle.ts; the focus cap is
+// retired (focusSatIds null = draw EVERY serving sat, D-STYLE A); and the INTENT —
+// every connected sat shows a beam — is ENFORCED as a must-hold by the S0 invariant
+// validate:s0:connected-sat-has-beam (cone-cripple positive control).
+//
+// PERMANENT wiring lock (D-STYLE A, draw-all): MainScene passes focusSatIds null to
+// the cone resolver so EVERY serving sat is beamed (no focus narrowing). The s0
+// must-hold + the validate:phase-c:sinr-live-cells:render "focusSatIds null draws
+// every serving sat" control prove the BEHAVIOUR; this pins that MainScene does not
+// silently re-introduce a focus cap that would leave serving sats beamless.
 assertContains(
   mainSceneSource,
-  'resolveTopServingFocusSatIds(cellFrame, SINR_LIVE_CONE_MAX_FOCUS_SATS, primaryServingSatId)',
-  'MainScene focus-scopes the cones to the top serving sats + the primary UE serving sat',
+  'focusSatIds: null',
+  'MainScene draws every serving sat (focusSatIds null) — no focus narrowing leaves a serving sat beamless (D-STYLE A)',
 );
-assertContains(
-  mainSceneSource,
-  'focusSatIds: sinrLiveConeFocusSatIds',
-  'MainScene passes the focus subset into the cone resolver (readable cone count)',
-);
-});
 
 // QUAR-S4-SERVING block #3 RETIRED (S4-3): the de-punned publisher-shape text
 // needles were replaced by validate:s4:serving-equivalence — it EXECUTES the
@@ -1894,24 +1802,22 @@ assertContains(
 );
 });
 
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
-// ── EarthFixedCells green-disc retired (S-cells-4d) ──
-// The legacy 20-hex steered-cover green-disc ground paint is RETIRED on the
-// sinr-live lane — the cell-truth beam cones own the earth-fixed cell story, and
-// two competing cell layouts on one viewport is a render-governance violation. The
-// flag is pinned false and MainScene no longer mounts the component (its hex-cover
-// MODEL + `validate:vc3a:hex-paint` logic gate stay intact for reuse).
-assertContains(
-  sceneLaneRenderPlanSource,
-  'showEarthFixedCells: false,',
-  'the legacy hex green-disc is retired (flag pinned false) — cell-truth cones own the cell story',
+// ── EarthFixedCells green-disc retired (S-cells-4d) — one cell layout per viewport ──
+// The legacy 20-hex steered-cover green-disc ground paint stays RETIRED: the
+// cell-truth beam cones own the earth-fixed cell story, and two competing cell
+// layouts on one viewport is a render-governance violation. S5-2 GRADUATED the
+// QUAR-S5-BEAMRENDER source-text pin to a BEHAVIOURAL matrix assert (the flag is
+// false on the render plan) + the permanent MainScene "do not mount" guard.
+assert.equal(
+  renderPlan('sinr-live', 'live-sim').showEarthFixedCells,
+  false,
+  'the legacy hex green-disc stays retired on sinr-live (one cell layout per viewport — the cell-truth cones own it)',
 );
 assertNotContains(
   mainSceneSource,
   '<EarthFixedCells',
   'MainScene must not mount the retired hex green-disc (no competing 2nd cell layout)',
 );
-});
 
 // ── Beam hopping + serving continuity + coverage (S-cells-3 / 4a / 4b-fix) ──
 // A satellite forms a fixed number of beams (leo = 7), so the cell truth caps each
@@ -2022,7 +1928,6 @@ assertContains(
   'el.dataset.sceneLaneSourceCompatible',
   'MainScene canvas exposes lane/source compatibility telemetry'
 );
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'deriveProfileHandoverStoryModel',
@@ -2113,26 +2018,22 @@ assertContains(
   'beamConeScope={modqnVisualLayers.beamConeScope}',
   'MainScene passes visual preset beam cone scope to CellBeamCones',
 );
-});
 // FIX-7 finding #1 (provenance audit 2026-06-04): the phase-3 contention glow
 // MUST derive from the same profile-derived cell-schedule per-UE assignment that
 // `modqnServiceMap` already displays (the lane's authoritative shown serving),
 // NOT the dead `sim.perUePositions` HandoverManager serving (empty on the
 // modqn-demo decision-overlay path). Lock the C1 source and forbid a regression
 // to the empty live serving so the glow cannot silently go non-functional again.
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'deriveBeamLoadContention([...modqnServiceMap.ueById.values()].map(projection => ({',
   'MainScene derives phase-3 contention from the modqnServiceMap cell-schedule assignment (FIX-7 C1)',
 );
-});
 assertNotContains(
   mainSceneSource,
   'deriveBeamLoadContention(sim.perUePositions',
   'MainScene must not re-wire phase-3 contention to the empty live HandoverManager serving (FIX-7 finding #1)',
 );
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'const focusBeamLoad = beamLoadContentionEnabled',
@@ -2173,7 +2074,6 @@ assertContains(
   'mesh.scale.set(1, height, 1)',
   'BeamLoadCylinder encodes beam load by cylinder height',
 );
-});
 assertNotContains(
   beamLoadCylinderSource,
   'useFrame(',
@@ -2189,13 +2089,11 @@ assertNotContains(
   '.dispose(',
   'BeamLoadCylinder must not manually dispose pooled objects',
 );
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'import { BeamLoadUploadParticles }',
   'MainScene imports the focused upload-particle layer',
 );
-});
 // FIX-7 follow-up (audit gap #2, last fake-risk; codex P2): the phase-3 S4 cylinder
 // + S5 particles real-render gate reads MESH-derived telemetry the components
 // publish from their ACTUAL post-write mesh state, so a broken mesh-write line is
@@ -2226,7 +2124,6 @@ assertContains(
   '(object as THREE.Mesh).isMesh && object.visible',
   'HandoverStoryLayer render observable counts only visible scene-graph meshes',
 );
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'resolveCellBeamConeItems',
@@ -2387,7 +2284,6 @@ assertContains(
   'mesh.instanceMatrix.needsUpdate = true',
   'Upload particle layer marks instance matrices dirty after updates',
 );
-});
 assertNotContains(
   beamLoadUploadParticlesSource,
   'useState',
@@ -2623,7 +2519,6 @@ assertContains(
 );
 // (S0 note: the lane-gating PROPERTY is covered behaviorally by the renderPlan
 // matrix; these whitespace-sensitive exact-JSX pins retire with S5.)
-tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 for (const [needle, label] of [
   ['{showLiveSceneEffects && <AmbientFootprintRings', 'ambient footprint rings'],
   ['{showLiveSceneEffects && (\\n        <HandoverLinks', 'handover links'],
@@ -2640,7 +2535,6 @@ for (const [needle, label] of [
 ] as const) {
   assertContains(baseSceneLayoutSource, needle.replace('\\n', '\n'), `BaseSceneLayout should source-gate ${label}`);
 }
-});
 assertContains(mainSceneSource, '<ModqnReplaySceneLayer', 'MainScene replay layer host');
 assertContains(mainSceneSource, 'showBoard={showReplayProofLayer}', 'MainScene render-plan-gated replay layer');
 assertContains(mainSceneSource, "enabled: sceneFrame.sceneSource !== 'artifact-replay'", 'MainScene disables live SimState publisher for artifact replay');

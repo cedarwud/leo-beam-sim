@@ -46,20 +46,15 @@ export interface KnownGapContract {
 }
 
 export const KNOWN_GAPS: Record<string, KnownGapContract> = {
-  'population-beyond-display-cap': {
-    retiringSlice: 'S5 (one beam render) — display cap applied at draw, never at truth',
-    description:
-      'Secondary UEs claim serving sats beyond MAX_BEAM_SATS/top-12, so the aggregate counts beams the steered render never draws (useBeamViz display slice gates truth).',
-  },
-  'two-serving-oracles-cell-vs-steered': {
-    // D1 (s4-one-serving-truth-plan.md §4): S4 unified the cell-side DATA (one
-    // cell serving record, pun retired, equivalence gated) but the must-hold
-    // flip is RENDER-coupled — with cones parked + the steered render frozen, a
-    // cell-serving sat genuinely has no VISIBLE beam — so it lands with S5.
-    retiringSlice: 'S5 (one beam render) — flips to must-hold when the cell-cone layer is the lane\'s mounted render',
-    description:
-      'RENDER-layer divergence: sinr-live cell-side DATA is one serving record (S4), but the rendered beams are still the steered HandoverManager truth with the cell cones parked — a cell-serving sat has no visible beam until S5 mounts the cell-cone render.',
-  },
+  // S5-3 RETIRED 2026-06-11 (one beam render): 'population-beyond-display-cap'
+  // and 'two-serving-oracles-cell-vs-steered' both flipped to must-hold when the
+  // cell-cone layer became the sinr-live lane's mounted render. The cones now
+  // beam every serving sat (focus cap retired → draw-all; serving-sat-complete
+  // cone-apex map for sats beyond the top-12 display slice), and primary +
+  // population + cell-truth all read the one cell oracle (D-ORACLE A,
+  // collectConnectedClaims). Their classifyViolation cases now return must-hold;
+  // the connected-sat gate ENFORCES 0 of each (positive control: cone-cripple a
+  // serving sat → must-hold). See docs/s5-one-beam-render-plan.md §3 S5-3.
   'stale-serving-absent-from-truth-set': {
     retiringSlice: 'S2/S3 (sat identity pipeline + one reset)',
     description:
@@ -79,8 +74,9 @@ export interface InvariantReport {
   readonly claims: readonly ConnectedClaim[];
   /**
    * SatIds with at least one visibly mounted beam this frame, from the shared
-   * `resolveSinrLiveVisibleBeamSatIds` (the steered branch while the cell cones
-   * are parked; the cone-rendered set once S5 flips the render).
+   * `resolveSinrLiveVisibleBeamSatIds`: on the sinr-live lane (cones mounted,
+   * S5-2) this is the cone-rendered set (`coneSatIds`); on the steered/MODQN
+   * lanes it is the steered `<SatelliteBeams>` mount set.
    */
   readonly visibleBeamSatIds: ReadonlySet<string>;
   readonly mustHoldViolations: readonly InvariantViolation[];
@@ -89,10 +85,29 @@ export interface InvariantReport {
 
 /**
  * Collect every satellite the UI currently calls connected, per claim surface,
- * from the SAME pure derivations the UI mounts (not re-implemented logic):
- * primary = frame.serving (InfoPanel / SceneTelemetry), population =
- * deriveSinrServingMosaicAggregate over perUePositions (SinrServingAggregate),
- * cell truth = sinrLiveCells serving illuminated beams (mosaic re-point, 4c).
+ * from the SAME pure derivations the UI mounts (not re-implemented logic).
+ *
+ * The serving ORACLE depends on the lane (S5 D-ORACLE A, s5-one-beam-render-plan
+ * §1.4 / §4):
+ *
+ *  - **Cone lane** (sinr-live — `frame.sinrLiveCells` present): the lane's
+ *    rendered beams ARE the earth-fixed cell cones, and the mosaic + published
+ *    perUePositions are already re-pointed to the cell model (S4). So ALL THREE
+ *    claim surfaces read the cell truth — primary = the primary UE's cell serving
+ *    sat, population = every UE's cell serving sat, cell-truth = the serving
+ *    illuminated beams. The steered `frame.serving` / `frame.perUePositions` are
+ *    the OTHER oracle (the steered render that left this lane in S5-2); sourcing
+ *    them here would claim sats the cones never beam and break the must-hold flip.
+ *  - **Steered / MODQN lanes** (no cell truth): primary = `frame.serving`
+ *    (InfoPanel / SceneTelemetry), population = `deriveSinrServingMosaicAggregate`
+ *    over the steered `perUePositions` (SinrServingAggregate) — unchanged.
+ *
+ * NOTE (S5-2): the InfoPanel "ACTIVE SERVING" TEXT still reads the steered
+ * `SimState.serving` (publisher built from `sim.serving`); aligning that label to
+ * the cell truth is the separable InfoPanel re-point flagged in D-ORACLE "for
+ * confirmation" (a pre-existing label-vs-mosaic divergence shipped in S4, not
+ * introduced here). This invariant measures the rendered BEAM (cones), so it
+ * reads the cell truth — the lane's actual serving render.
  */
 export function collectConnectedClaims(frame: SimFrame): ConnectedClaim[] {
   const claims = new Map<string, ConnectedClaim>();
@@ -101,56 +116,68 @@ export function collectConnectedClaims(frame: SimFrame): ConnectedClaim[] {
     if (!claims.has(key)) claims.set(key, { surface, satId });
   };
 
+  const cellFrame = frame.sinrLiveCells;
+  if (cellFrame !== undefined) {
+    // Cone lane: one cell-truth oracle for all three claim surfaces.
+    // The primary UE sits at index 0 of perUePositions (the observer anchor;
+    // runtimeUeFrame); match it into the cell UE records by id.
+    const primaryUeId = frame.perUePositions[0]?.id;
+    const primaryServingSatId = primaryUeId !== undefined
+      ? cellFrame.ues.find(ue => ue.ueId === primaryUeId)?.servingSatId ?? null
+      : cellFrame.ues[0]?.servingSatId ?? null;
+    if (primaryServingSatId !== null) add('primary-serving', primaryServingSatId);
+    for (const ue of cellFrame.ues) {
+      if (ue.servingSatId !== null) add('population-aggregate', ue.servingSatId);
+    }
+    for (const beam of cellFrame.illuminatedBeams) {
+      if (beam.serving) add('cell-truth-serving', beam.satId);
+    }
+    return [...claims.values()];
+  }
+
   if (frame.serving.satId !== null) add('primary-serving', frame.serving.satId);
 
   const aggregate = deriveSinrServingMosaicAggregate(frame.perUePositions);
   for (const load of aggregate.beamLoads) add('population-aggregate', load.satId);
-
-  if (frame.sinrLiveCells) {
-    for (const beam of frame.sinrLiveCells.illuminatedBeams) {
-      if (beam.serving) add('cell-truth-serving', beam.satId);
-    }
-  }
 
   return [...claims.values()];
 }
 
 /**
  * The satIds with a visibly mounted beam this frame, for the invariant's
- * "connected ⟹ visible beam" check. S5-1 delegates to the ONE shared resolver
- * `resolveSinrLiveVisibleBeamSatIds` (src/scene/sinrLiveBeamSelection.ts) — the
- * former inline REPLICA of the MainScene steered-mount predicate is retired in
- * favour of the single source consumed by BOTH the mount and this invariant.
+ * "connected ⟹ visible beam" check. Delegates to the ONE shared resolver
+ * `resolveSinrLiveVisibleBeamSatIds` (src/scene/sinrLiveBeamSelection.ts), the
+ * single source consumed by BOTH the MainScene mount and this invariant (S5-1
+ * retired the former inline REPLICA of the steered-mount predicate).
  *
- * Byte-identical to the legacy replica while the cell cones are parked: this
- * wrapper passes no `coneSatIds`, so the shared resolver's steered branch runs
- * (and its flag-true case returns the empty set, exactly as the old guard did).
- * S5-2 passes the mounted cones' `coneSatIds` so the invariant measures the cone
- * render once `showSinrLiveCellBeams` flips — that is the D1 must-hold flip.
+ * Forwards `coneSatIds` to the shared resolver: on the sinr-live lane
+ * (`plan.showSinrLiveCellBeams` true, S5-2) the visible set IS the mounted cones'
+ * serving satIds, so a cell-serving sat with no cone fails the must-hold; off
+ * that lane (`coneSatIds` undefined) the steered `<SatelliteBeams>` predicate
+ * runs unchanged.
  */
 export function resolveSteeredVisibleBeamSatIds(
   viz: VizFrame,
   plan: SteeredMountPlanFlags,
+  coneSatIds?: ReadonlySet<string>,
 ): Set<string> {
-  return resolveSinrLiveVisibleBeamSatIds({ viz, plan });
+  return resolveSinrLiveVisibleBeamSatIds({ viz, plan, coneSatIds });
 }
 
 function classifyViolation(claim: ConnectedClaim, frame: SimFrame): ViolationClassification {
   switch (claim.surface) {
     case 'primary-serving':
+    case 'population-aggregate':
+      // S5-3 (one beam render = finish-line): the cell-cone render now beams
+      // EVERY serving sat (focus cap retired + serving-sat-complete cone-apex
+      // map), so a connected sat with no beam is a real regression, not a
+      // display-cap gap. Both primary and population must hold — the only
+      // remaining gap is a sat the truth no longer carries (stale latch).
       return frame.satellites.some(sat => sat.id === claim.satId)
         ? 'must-hold'
         : 'stale-serving-absent-from-truth-set';
-    case 'population-aggregate':
-      // The primary UE's serving sat is priority-injected into the display set;
-      // a missing PRIMARY claim is a must-hold regression even when surfaced
-      // through the population aggregate. Secondary-only sats are the audit's
-      // display-cap gap.
-      return claim.satId === frame.serving.satId && frame.satellites.some(sat => sat.id === claim.satId)
-        ? 'must-hold'
-        : 'population-beyond-display-cap';
     case 'cell-truth-serving':
-      return 'two-serving-oracles-cell-vs-steered';
+      return 'must-hold';
   }
 }
 
@@ -162,9 +189,17 @@ export function evaluateConnectedSatBeamInvariant(input: {
   readonly frame: SimFrame;
   readonly viz: VizFrame;
   readonly plan: SteeredMountPlanFlags;
+  /**
+   * The satIds the cell-cone render mounts a cone for this frame (S5-2). Read
+   * only when `plan.showSinrLiveCellBeams` is true (the cones ARE the lane's
+   * render); the visible-beam set is then exactly these satIds, so a cell-serving
+   * sat with no cone fails the must-hold. Undefined while the cones are parked
+   * (steered branch).
+   */
+  readonly coneSatIds?: ReadonlySet<string>;
 }): InvariantReport {
   const claims = collectConnectedClaims(input.frame);
-  const visibleBeamSatIds = resolveSteeredVisibleBeamSatIds(input.viz, input.plan);
+  const visibleBeamSatIds = resolveSteeredVisibleBeamSatIds(input.viz, input.plan, input.coneSatIds);
   const mustHoldViolations: InvariantViolation[] = [];
   const knownGapViolations: InvariantViolation[] = [];
 

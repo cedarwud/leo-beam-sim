@@ -391,6 +391,26 @@ export interface AmbientRing extends BeamFrequencyIndexResolution {
 
 export interface VizFrame {
   displaySats: VisibleSat[];
+  /**
+   * S5-2 cone-apex map: EVERY satellite's projected render-world position (all
+   * shells, BEFORE the top-12 `displaySats` slice), keyed by satId. The sinr-live
+   * cell-cone render uses this as the cone APEX source so a cell-serving sat
+   * beyond the top-12 display cap still gets a cone — the connected-sat-has-beam
+   * must-hold (display cap applied at DRAW, never at TRUTH; consolidation S5).
+   * `displaySats` stays the top-12 slice, so satellite tint / cell schedule /
+   * markers / MODQN-lane cones are unchanged (no geometry-trace churn).
+   *
+   * NOT separately captured by validate:s0:geometry-trace (its serialiser snapshots
+   * `displaySats`, not this map) — intentionally exempt: each entry is the SAME
+   * `s.world` projection as `displaySats` (a superset of the same projected
+   * `satellites`, before the cap slice), so its correctness is co-proven by the
+   * trace's `displaySats` / `truth.satellites` coverage PLUS the cone render gates
+   * (validate:phase-c:sinr-live-cells:render cone-base==truth-cell-centre + the
+   * connected-sat-has-beam must-hold over the real cone set). A projection bug here
+   * would also corrupt `displaySats` (trace-caught) or drop a serving sat's cone
+   * (must-hold-caught).
+   */
+  coneApexWorldById: Map<string, { x: number; y: number; z: number }>;
   eventSatIds: Set<string>;
   eventRoles: Map<string, EventRole>;
   beamSatIds: Set<string>;

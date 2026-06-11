@@ -27,11 +27,21 @@ import {
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveCellBeamConeRenderCount,
   resolveSinrLiveCellBeamConeSatelliteCount,
+  resolveSinrLiveCellHandoverPairConeItems,
   resolveTopServingFocusSatIds,
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
 import { frequencyReuseColor } from '../constants/beamRoleTokens';
+import {
+  SINR_LIVE_CONE_AMBIENT_OPACITY,
+  SINR_LIVE_CONE_BLENDING,
+  SINR_LIVE_CONE_PAIR_OPACITY,
+  SINR_LIVE_CONE_SEGMENTS,
+} from '../constants/sinrLiveConeStyle';
+import { buildSinrLiveCellLayout } from '../scene/sinrLiveCellRuntime';
+import { loadProfile } from '../profiles/index';
 import type { CellServingRecord, IlluminatedCellBeam, SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
+import type { RuntimeCandidateHighlightCommand } from '../scene/types';
 
 let passed = 0;
 function assert(cond: boolean, label: string): void {
@@ -148,6 +158,26 @@ check('focusSatIds narrows to those sats (cinema); omitted → all serving sats'
   assertEqual(empty.length, 2, 'empty focus set is treated as no narrowing (all serving)');
 });
 
+check('S5-2 focus cap retired: focusSatIds null draws EVERY serving sat (no narrowing) — the ~759/760 gap fix', () => {
+  // D-STYLE A (s5 plan §4): the focus cap is gone — MainScene passes focusSatIds:
+  // null so the cone render beams every serving sat (the connected-sat-has-beam
+  // must-hold). Six serving sats on six distinct cells must yield six cones.
+  const sixPlacements = new Map<number, SinrLiveCellPlacement>(
+    [0, 1, 2, 3, 4, 5].map(id => [id, {
+      cellId: id, worldX: 20 * (id + 1), worldZ: -15 * (id + 1), radiusWorld: 10,
+    }]),
+  );
+  const sixSats = new Map(
+    ['s0', 's1', 's2', 's3', 's4', 's5'].map((id, i) => [id, { x: 30 * i, y: 900, z: -30 * i }]),
+  );
+  const frame = frameOf([0, 1, 2, 3, 4, 5].map(i => beam(`s${i}`, i, true)));
+  const items = resolveSinrLiveCellBeamConeItems({
+    cellFrame: frame, placementByCellId: sixPlacements, satelliteWorldById: sixSats, focusSatIds: null,
+  });
+  assertEqual(items.length, 6, 'focusSatIds null renders all 6 serving sats (no focus narrowing)');
+  assertEqual(new Set(items.map(i => i.satId)).size, 6, 'all 6 distinct serving sats coned');
+});
+
 check('cone base = FIXED cell centre on the GROUND (NOT the UE/origin), apex = serving sat', () => {
   const items = resolveSinrLiveCellBeamConeItems(base({ cellFrame: frameOf([beam('sat-A', 0, true)]) }));
   assertEqual(items.length, 1, 'one cone');
@@ -226,6 +256,78 @@ check('oblique geometry: base ring FLAT on the ground (y=0), every triangle apex
     const r1 = Math.hypot(pos[o + 3] - baseCenter.x, pos[o + 5] - baseCenter.z);
     approx(r1, radius, 1e-3, `tri ${i} ring v1 at footprint radius`);
   }
+});
+
+// ── S5-2 replacements for the retired QUAR-S5-BEAMRENDER cone text pins ──
+
+check('S5-2 cone base == the TRUTH cell centre from buildSinrLiveCellLayout (no placement drift; replaces the MainScene buildSinrLiveCellLayout pin)', () => {
+  // The retired pin asserted MainScene builds placements from the SAME layout the
+  // truth uses. Behaviour: drive the resolver with placements built EXACTLY as
+  // MainScene does from buildSinrLiveCellLayout(profile) and assert the cone base
+  // lands on the truth cell centre (east → +X, north → −Z, ground y=0).
+  const profile = loadProfile('hobs-2024-candidate-rich');
+  const layout = buildSinrLiveCellLayout(profile);
+  assert(layout.centers.length > 0, 'candidate-rich layout has cells');
+  const worldUnitsPerKm = 2; // arbitrary positive scale; the invariant is base == centre * scale
+  const truthPlacements = new Map<number, SinrLiveCellPlacement>(
+    layout.centers.map(centre => [centre.cellId, {
+      cellId: centre.cellId,
+      worldX: centre.localXKm * worldUnitsPerKm,
+      worldZ: -centre.localYKm * worldUnitsPerKm,
+      radiusWorld: layout.cellRadiusKm * worldUnitsPerKm,
+    }]),
+  );
+  const centre = layout.centers[Math.min(5, layout.centers.length - 1)];
+  const items = resolveSinrLiveCellBeamConeItems({
+    cellFrame: frameOf([beam('sat-A', centre.cellId, true)]),
+    placementByCellId: truthPlacements,
+    satelliteWorldById,
+    focusSatIds: null,
+  });
+  assertEqual(items.length, 1, 'one cone for the truth cell');
+  approx(items[0].baseCenter.x, centre.localXKm * worldUnitsPerKm, 1e-9, 'cone base east == truth cell centre');
+  approx(items[0].baseCenter.z, -centre.localYKm * worldUnitsPerKm, 1e-9, 'cone base north == truth cell centre');
+  approx(items[0].baseCenter.y, 0, 1e-9, 'cone base on the ground plane');
+});
+
+check('S5-2 style tokens (hybrid): ambient 0.08 < pair 0.30, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
+  assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.08, 'ambient cone opacity is the screenshot-locked 0.08');
+  assertEqual(SINR_LIVE_CONE_PAIR_OPACITY, 0.3, 'bright focused-handover-pair cone opacity is 0.30');
+  assert(SINR_LIVE_CONE_PAIR_OPACITY > SINR_LIVE_CONE_AMBIENT_OPACITY, 'HYBRID: the focused pair is brighter than the ambient field');
+  assertEqual(SINR_LIVE_CONE_SEGMENTS, 32, 'oblique cone ring segment count');
+  assertEqual(SINR_LIVE_CONE_BLENDING, THREE.NormalBlending, 'cones use NormalBlending (bounded translucency, no additive washout)');
+  const posExplicit = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10, 5);
+  assertEqual(posExplicit.length, 5 * 9, 'explicit segments honoured');
+  const posDefault = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10);
+  assertEqual(posDefault.length, SINR_LIVE_CONE_SEGMENTS * 9, 'default segment count == the style token');
+});
+
+check('S5-2 D4 pair resolver: inert unless the focused event is cell truth; draws the old/new pair (replaces the sourceOwner-guard pin)', () => {
+  const candidateOf = (sourceOwner: 'live-walker' | 'sinr-live-cell-truth'): RuntimeCandidateHighlightCommand => ({
+    sourceOwner,
+    kind: 'inter',
+    fromSatId: 'sat-A',
+    fromBeamId: null,
+    fromCellId: 0,
+    fromFrequencyIndex: 0,
+    toSatId: 'sat-B',
+    toBeamId: null,
+    toCellId: 2,
+    toFrequencyIndex: 2,
+  } as RuntimeCandidateHighlightCommand);
+  const inert = resolveSinrLiveCellHandoverPairConeItems({
+    candidate: candidateOf('live-walker'),
+    placementByCellId,
+    satelliteWorldById,
+  });
+  assertEqual(inert.length, 0, 'pair resolver is inert unless the event source is cell truth');
+  const pair = resolveSinrLiveCellHandoverPairConeItems({
+    candidate: candidateOf('sinr-live-cell-truth'),
+    placementByCellId,
+    satelliteWorldById,
+  });
+  assertEqual(pair.length, 2, 'cell-truth event draws the old + new cell-truth cones');
+  assert(pair.some(c => c.satId === 'sat-A') && pair.some(c => c.satId === 'sat-B'), 'both old and new sats present');
 });
 
 console.log(`\nSinrLiveCellBeamCones resolver: ${passed} checks passed.`);

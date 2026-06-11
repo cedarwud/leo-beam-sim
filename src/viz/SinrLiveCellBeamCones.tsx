@@ -39,6 +39,11 @@ import { useEffect, useLayoutEffect, useRef, type JSX } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { frequencyReuseColor } from '../constants/beamRoleTokens';
+import {
+  SINR_LIVE_CONE_AMBIENT_OPACITY,
+  SINR_LIVE_CONE_BLENDING,
+  SINR_LIVE_CONE_SEGMENTS,
+} from '../constants/sinrLiveConeStyle';
 import type { SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
 import type { RuntimeCandidateHighlightCommand } from '../scene/types';
 import type { WorldPoint } from './CellFootprints';
@@ -89,28 +94,18 @@ export interface SinrLiveCellBeamConeRenderItem {
   readonly baseRadiusWorld: number;
 }
 
-/** Segments around the flat ground footprint ring. */
-const OBLIQUE_CONE_SEGMENTS = 32;
-/**
- * Cone opacity for NORMAL blending. Additive blending could not show EVERY serving
- * satellite without washing out (it accumulates: at all-sats, 0.06 was too faint
- * yet 0.08 already blew out — no usable middle). NormalBlending alpha-composites
- * each cone to a BOUNDED, uniform translucency (overlaps darken but never white
- * out), so all connected sats can show a beam at one moderate, readable opacity.
- */
-const SINR_LIVE_CELL_CONE_OPACITY = 0.22;
-
 /**
  * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)
  * fanned to a flat ground ring (y = `baseCenter.y`, i.e. 0) of `radius` around the
  * cell centre. Returns a packed position `Float32Array` (3 verts × `segments`
- * triangles). `meshBasicMaterial` is unlit → no normals needed.
+ * triangles). `meshBasicMaterial` is unlit → no normals needed. Segment count +
+ * cone opacity + blending live in `constants/sinrLiveConeStyle.ts` (S5-2 D-TOKEN).
  */
 export function buildObliqueBeamConePositions(
   apex: THREE.Vector3,
   baseCenter: THREE.Vector3,
   radius: number,
-  segments: number = OBLIQUE_CONE_SEGMENTS,
+  segments: number = SINR_LIVE_CONE_SEGMENTS,
 ): Float32Array {
   const out = new Float32Array(segments * 9);
   for (let i = 0; i < segments; i += 1) {
@@ -280,6 +275,13 @@ export interface SinrLiveCellBeamConesRenderProps {
   /** Pre-resolved cone items (memoised once by the caller — see `MainScene`). */
   readonly items: readonly SinrLiveCellBeamConeRenderItem[];
   readonly visible?: boolean;
+  /**
+   * Cone opacity (S5-2 hybrid, D-STYLE A): the ambient all-serving layer uses the
+   * default {@link SINR_LIVE_CONE_AMBIENT_OPACITY}; the focused cinema handover
+   * pair passes {@link SINR_LIVE_CONE_PAIR_OPACITY} so it reads BRIGHT over the
+   * faint ambient field. Defaulted, not required, so the ambient mount stays terse.
+   */
+  readonly opacity?: number;
   readonly telemetryCountDatasetKey?: string;
   readonly telemetrySourceOwnerDatasetKey?: string;
   readonly telemetrySourceOwner?: string;
@@ -295,8 +297,8 @@ export interface SinrLiveCellBeamConesRenderProps {
  * a new `args` array — that guarantees a persistent cone's apex TRACKS the moving
  * satellite instead of freezing at a stale position.
  */
-function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem }): JSX.Element {
-  const { cone } = props;
+function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number }): JSX.Element {
+  const { cone, opacity } = props;
   const geometryRef = useRef<THREE.BufferGeometry>(null);
   const positions = buildObliqueBeamConePositions(cone.apex, cone.baseCenter, cone.baseRadiusWorld);
 
@@ -326,14 +328,15 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem }): JSX.E
         baseCenterWorld: [cone.baseCenter.x, cone.baseCenter.y, cone.baseCenter.z],
         baseRadiusWorld: cone.baseRadiusWorld,
         color: cone.color,
+        opacity,
       }}
     >
       <bufferGeometry ref={geometryRef} />
       <meshBasicMaterial
         color={cone.color}
         transparent
-        opacity={SINR_LIVE_CELL_CONE_OPACITY}
-        blending={THREE.NormalBlending}
+        opacity={opacity}
+        blending={SINR_LIVE_CONE_BLENDING}
         depthWrite={false}
         side={THREE.DoubleSide}
         toneMapped={false}
@@ -348,6 +351,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
   const gl = useThree(state => state.gl);
   const groupRef = useRef<THREE.Group>(null);
   const cones = props.items;
+  const opacity = props.opacity ?? SINR_LIVE_CONE_AMBIENT_OPACITY;
 
   useLayoutEffect(() => {
     const key = props.telemetryCountDatasetKey;
@@ -379,9 +383,9 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
   ]);
 
   return (
-    <group ref={groupRef} name="sinr-live-cell-beam-cones" userData={{ coneCount: cones.length }}>
+    <group ref={groupRef} name="sinr-live-cell-beam-cones" userData={{ coneCount: cones.length, opacity }}>
       {cones.map(cone => (
-        <ObliqueConeMesh key={`${cone.cellId}-${cone.satId}`} cone={cone} />
+        <ObliqueConeMesh key={`${cone.cellId}-${cone.satId}`} cone={cone} opacity={opacity} />
       ))}
     </group>
   );

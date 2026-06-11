@@ -974,6 +974,13 @@ export function useBeamViz(
 
     return {
       displaySats: shownSatsWithIdentity,
+      // S5-2 cone-apex map: ALL projected sats (before the top-12 slice), so the
+      // cell-cone render can place a cone apex for a serving sat beyond the
+      // display cap (the connected-sat-has-beam must-hold). displaySats is
+      // unchanged — this is a SEPARATE cone-only map, not a widened display set.
+      coneApexWorldById: new Map(
+        satellites.map(s => [s.id, { x: s.world.x, y: s.world.y, z: s.world.z }]),
+      ),
       eventSatIds,
       eventRoles,
       beamSatIds,

@@ -63,9 +63,9 @@ import {
   SinrLiveCellBeamCones,
   resolveSinrLiveCellHandoverPairConeItems,
   resolveSinrLiveCellBeamConeItems,
-  resolveTopServingFocusSatIds,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
+import { SINR_LIVE_CONE_PAIR_OPACITY } from '../constants/sinrLiveConeStyle';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
 import { BeamLoadUploadParticles } from '../viz/BeamLoadUploadParticles';
@@ -142,13 +142,6 @@ interface ArtifactSceneContentProps {
 }
 
 const SHOW_BEAMS = true;
-/** S-cells-4b-fix(7): how many satellites' serving beams the sinr-live lane draws.
- *  Screenshot-verified: drawing all serving sats washed the viewport with a forest
- *  of tall cones that BURIED the UE mosaic dots. The connections are shown by the
- *  MOSAIC DOTS (every UE coloured by its serving sat); the cones are a FEW focus
- *  beams on top. So keep this LOW (1 = the primary UE's serving sat, force-included
- *  by `resolveTopServingFocusSatIds`) → the mosaic stays readable. Dial 1–2 to taste. */
-const SINR_LIVE_CONE_MAX_FOCUS_SATS = 1;
 const CAMERA_TWEEN_DURATION_MS = 600;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
 
@@ -790,11 +783,11 @@ function SceneContent({
     undefined,
     profile.beamHopping,
     visualScaleMultipliers,
-    // S-cells-4 RENDER RESET (2026-06-08): the cell-truth cones are parked, so the
-    // sinr-live lane uses the ORIGINAL steered SatelliteBeams again — restore the
-    // UE-anchor (false = anchor ON) so the steered beams converge on the UEs like
-    // the original look the user approved.
-    false,
+    // S5-2 PHASE A (working tree): cones un-parked → retire the UE-anchor on
+    // sinr-live (true = anchor OFF) so beams keep true earth-fixed positions and
+    // UEs render off-centre. Lane-gated: modqn-live-cell-preview still renders
+    // steered beams with the anchor ON.
+    sceneLane === 'sinr-live',
   );
   const worldUnitsPerKm = 1 / (sceneGeometry.kmPerWorldUnit ?? paperUserArea.kmPerWorldUnit);
   // S-cells-3: ground placements of the FIXED earth-fixed cells for the cell-truth
@@ -1073,25 +1066,23 @@ function SceneContent({
   // readable instead of blowing out the whole view with every serving sat's fan.
   // Continuity keeps the focus set stable; the breadth of who-is-served stays in
   // the UE mosaic (Rule#6 display filter, serving truth unchanged).
-  const sinrLiveConeFocusSatIds = useMemo<ReadonlySet<string> | undefined>(() => {
-    if (!showSinrLiveCellBeams) return undefined;
-    const cellFrame = sim.sinrLiveCells;
-    const primaryId = sceneFrame.ues[0]?.id;
-    const primaryServingSatId = primaryId !== undefined
-      ? cellFrame?.ues.find(u => u.ueId === primaryId)?.servingSatId ?? null
-      : null;
-    return resolveTopServingFocusSatIds(cellFrame, SINR_LIVE_CONE_MAX_FOCUS_SATS, primaryServingSatId);
-  }, [showSinrLiveCellBeams, sim.sinrLiveCells, sceneFrame.ues]);
   const sinrLiveCellBeamConeItems = useMemo(
     () => (showSinrLiveCellBeams
       ? resolveSinrLiveCellBeamConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
-        satelliteWorldById,
-        focusSatIds: sinrLiveConeFocusSatIds,
+        // S5-2: the serving-sat-COMPLETE cone-apex map (every projected sat, NOT
+        // the top-12 `satelliteWorldById` display slice) so a cell-serving sat
+        // beyond the display cap still gets a cone — the connected-sat-has-beam
+        // must-hold (display cap applied at DRAW, never at TRUTH).
+        satelliteWorldById: viz.coneApexWorldById,
+        // D-STYLE=A (s5-one-beam-render-plan.md §4): draw EVERY serving sat's
+        // beam (faint, NormalBlending) so every serving sat is beamed. The
+        // former top-N focus narrowing is retired; breadth is the render now.
+        focusSatIds: null,
       })
       : []),
-    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, satelliteWorldById, sinrLiveConeFocusSatIds],
+    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById],
   );
   const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
@@ -1532,6 +1523,7 @@ function SceneContent({
       {sinrLiveCellHandoverPairConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellHandoverPairConeItems}
+          opacity={SINR_LIVE_CONE_PAIR_OPACITY}
           telemetryCountDatasetKey="sinrLiveCellHandoverPairConeRenderedCount"
           telemetrySourceOwnerDatasetKey="sinrLiveCellHandoverPairConeRenderedSourceOwner"
           telemetrySourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}

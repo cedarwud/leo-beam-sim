@@ -6,18 +6,26 @@
  * renderToStaticMarkup probe — the proven vc1d pattern), then evaluates
  * src/validation/connectedSatBeamInvariant.ts per step:
  *
- *   every satellite the UI calls connected must have a visible steered beam.
+ *   every satellite the UI calls connected must have a visible beam.
  *
- *   - must-hold violations FAIL the gate (regression vs the frozen baseline
- *     render: primary serving sat is priority-injected, so it must be beamed).
- *   - KNOWN-GAP violations (audit defects: population beyond the display cap,
- *     cell-vs-steered dual oracle, stale latched serving) are MEASURED and
- *     reported each run — documented evidence, never a silent pass. Their
- *     retiring slices flip them to must-hold (see KNOWN_GAPS).
+ *   On the sinr-live lane the visible beams are the earth-fixed CELL CONES (S5-2:
+ *   `showSinrLiveCellBeams` flipped true, the steered render retired) and the
+ *   connected claims read the ONE cell oracle (primary + population + cell-truth,
+ *   D-ORACLE A). S5-3 retired the two render-coupled KNOWN_GAPS, so:
+ *
+ *   - must-hold violations FAIL the gate. The cones now beam EVERY serving sat
+ *     (focus cap retired → draw-all; serving-sat-complete cone-apex map for sats
+ *     beyond the top-12 display slice), so a connected sat with no cone is a real
+ *     regression — primary, population, AND cell-truth all must hold.
+ *   - the only remaining KNOWN-GAP is 'stale-serving-absent-from-truth-set'
+ *     (S2/S3): a sat the truth no longer carries; measured + reported, never a
+ *     silent pass.
  *
  * Meta-gates: (1) non-vacuous — the run must produce connected claims and
- * visible beams; (2) positive control — removing the primary serving sat from
- * a real captured VizFrame must produce a must-hold violation.
+ * visible beams; (2) positive controls — removing the PRIMARY serving sat from
+ * the cone set must produce a must-hold violation (the invariant measures the
+ * cone render), and removing a NON-PRIMARY serving sat must ALSO produce a
+ * must-hold violation (the S5-3 cell-truth/population flip is live).
  *
  * Determinism: d6 monotonic-clock protocol (performance.now/Date.now patched
  * before stepping; no RNG on this engine path).
@@ -52,8 +60,13 @@ import { sceneGeometryFromProfile } from '../src/scene/SceneGeometry.ts';
 import { resolveSceneLaneRenderPlan } from '../src/scene/sceneLaneRenderPlan.ts';
 import {
   attachSinrLiveCellFrame,
+  buildSinrLiveCellLayout,
   createSinrLiveCellModel,
 } from '../src/scene/sinrLiveCellRuntime.ts';
+import {
+  resolveSinrLiveCellBeamConeItems,
+  type SinrLiveCellPlacement,
+} from '../src/viz/SinrLiveCellBeamCones.tsx';
 import { captureVizFrame } from '../src/validation/vizFrameProbe.tsx';
 import type { RuntimeConfig, SimFrame, VizFrame } from '../src/scene/types.ts';
 import {
@@ -89,6 +102,22 @@ const geometry = sceneGeometryFromProfile({
   orbit: { shells: profile.orbit.shells.map(s => ({ id: s.id, altitudeKm: s.altitudeKm })) },
   beams: { frequencyReuse: profile.beams.frequencyReuse },
 });
+
+// S5-2: the cell-cone ground placements, built exactly as MainScene does
+// (same `buildSinrLiveCellLayout(profile)` + `worldUnitsPerKm`), so the cone
+// resolver here produces the SAME cone set the lane renders. The cone APEX is the
+// serving-sat-complete `viz.coneApexWorldById` (all projected sats, not the
+// top-12 display slice) so a serving sat beyond the display cap still cones.
+const worldUnitsPerKm = 1 / geometry.kmPerWorldUnit;
+const cellLayout = buildSinrLiveCellLayout(profile);
+const placementByCellId = new Map<number, SinrLiveCellPlacement>(
+  cellLayout.centers.map(center => [center.cellId, {
+    cellId: center.cellId,
+    worldX: center.localXKm * worldUnitsPerKm,
+    worldZ: -center.localYKm * worldUnitsPerKm,
+    radiusWorld: cellLayout.cellRadiusKm * worldUnitsPerKm,
+  }]),
+);
 
 const runtime: RuntimeConfig = {
   appMode: 'sinr-experiment',
@@ -130,6 +159,7 @@ const mustHoldFailures: { step: number; tSec: number; violations: InvariantViola
 const knownGapCounts = new Map<string, number>();
 const knownGapExamples = new Map<string, string>();
 let positiveControlDone = false;
+let nonPrimaryControlDone = false;
 
 for (let step = 0; step < STEP_COUNT; step += 1) {
   advanceClock();
@@ -152,7 +182,19 @@ for (let step = 0; step < STEP_COUNT; step += 1) {
   attachSinrLiveCellFrame(out.frame, cellModel, step === 0 ? 0 : STEP_SEC);
 
   const viz = captureViz(out.frame);
-  const report = evaluateConnectedSatBeamInvariant({ frame: out.frame, viz, plan });
+  // The satIds the cell-cone render mounts a cone for this frame — the SAME
+  // resolver + APEX map MainScene uses (focusSatIds null = draw every serving
+  // sat, D-STYLE A). With showSinrLiveCellBeams flipped true, this is the lane's
+  // visible-beam set (the steered branch is gone).
+  const coneSatIds = new Set(
+    resolveSinrLiveCellBeamConeItems({
+      cellFrame: out.frame.sinrLiveCells,
+      placementByCellId,
+      satelliteWorldById: viz.coneApexWorldById,
+      focusSatIds: null,
+    }).map(item => item.satId),
+  );
+  const report = evaluateConnectedSatBeamInvariant({ frame: out.frame, viz, plan, coneSatIds });
 
   totalClaims += report.claims.length;
   if (report.claims.length > 0) stepsWithClaims += 1;
@@ -169,22 +211,40 @@ for (let step = 0; step < STEP_COUNT; step += 1) {
     }
   }
 
-  // Positive control on the first frame with a beamed primary serving sat:
-  // delete that sat's beams from a shallow viz copy -> must-hold violation.
-  if (!positiveControlDone && out.frame.serving.satId !== null
-    && report.visibleBeamSatIds.has(out.frame.serving.satId)) {
-    const servingSatId = out.frame.serving.satId;
-    const crippled: VizFrame = {
-      ...viz,
-      beamSatIds: new Set([...viz.beamSatIds].filter(id => id !== servingSatId)),
-      satBeams: new Map([...viz.satBeams].filter(([id]) => id !== servingSatId)),
-    };
-    const controlReport = evaluateConnectedSatBeamInvariant({ frame: out.frame, viz: crippled, plan });
+  // Positive control (S5-2 cone path): on the first frame with a beamed primary
+  // serving sat, remove that sat from the cone set -> must-hold violation. This
+  // proves the invariant measures the CELL-CONE render (the new visible-beam
+  // oracle), not the retired steered mount. The primary serving sat is a real
+  // visible sat (in frame.satellites) so its primary-serving claim is must-hold.
+  const primaryClaim = report.claims.find(claim => claim.surface === 'primary-serving');
+  if (!positiveControlDone && primaryClaim !== undefined && coneSatIds.has(primaryClaim.satId)) {
+    const crippledCones = new Set([...coneSatIds].filter(id => id !== primaryClaim.satId));
+    const controlReport = evaluateConnectedSatBeamInvariant({
+      frame: out.frame, viz, plan, coneSatIds: crippledCones,
+    });
     assert.ok(
-      controlReport.mustHoldViolations.some(v => v.claim.satId === servingSatId),
-      'positive control failed: removing the primary serving beam did not produce a must-hold violation — the invariant is not measuring the mount',
+      controlReport.mustHoldViolations.some(v => v.claim.satId === primaryClaim.satId),
+      'positive control failed: removing the primary serving sat from the cone set did not produce a must-hold violation — the invariant is not measuring the cone render',
     );
     positiveControlDone = true;
+  }
+
+  // Positive control #2 (S5-3 flip): crippling a NON-primary serving sat must
+  // ALSO produce a must-hold violation — proving the cell-truth/population
+  // classification flipped from KNOWN-GAP to must-hold. RED if classifyViolation
+  // reverts those surfaces to a known-gap.
+  const primarySatId = primaryClaim?.satId;
+  const nonPrimaryConeSatId = [...coneSatIds].find(id => id !== primarySatId);
+  if (!nonPrimaryControlDone && nonPrimaryConeSatId !== undefined) {
+    const crippledCones = new Set([...coneSatIds].filter(id => id !== nonPrimaryConeSatId));
+    const controlReport = evaluateConnectedSatBeamInvariant({
+      frame: out.frame, viz, plan, coneSatIds: crippledCones,
+    });
+    assert.ok(
+      controlReport.mustHoldViolations.some(v => v.claim.satId === nonPrimaryConeSatId),
+      'positive control failed: removing a non-primary serving sat from the cone set did not produce a must-hold violation — the S5-3 cell-truth/population must-hold flip is not live',
+    );
+    nonPrimaryControlDone = true;
   }
 }
 
@@ -192,6 +252,7 @@ for (let step = 0; step < STEP_COUNT; step += 1) {
 assert.ok(stepsWithClaims > STEP_COUNT / 2, `vacuous run: only ${stepsWithClaims}/${STEP_COUNT} steps had connected claims`);
 assert.ok(stepsWithBeams > STEP_COUNT / 2, `vacuous run: only ${stepsWithBeams}/${STEP_COUNT} steps had visible beams`);
 assert.ok(positiveControlDone, 'positive control never armed (no step had a beamed primary serving sat)');
+assert.ok(nonPrimaryControlDone, 'non-primary positive control never armed (no step had a second beamed serving sat)');
 
 console.log(`[${GATE}] ${STEP_COUNT} steps x ${STEP_SEC}s, ${UE_COUNT} UEs, ${totalClaims} connected claims checked`);
 for (const [id, count] of [...knownGapCounts.entries()].sort()) {

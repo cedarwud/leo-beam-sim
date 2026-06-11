@@ -129,7 +129,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // (satellite-tint colour, few converging beams) again. The cell-truth MODEL stays
   // computed (dormant, for a future cinema / off-axis render); only the CONE render
   // is off. See `.agent-memory/project_sinr_render_reset_2026-06-08.md`.
-  const showSinrLiveCellBeams = false;
+  const showSinrLiveCellBeams = showSinrLiveViewport;
   const showLiveSatelliteMarkers = isLiveScene && (
     input.sceneLane === 'sinr-live'
     || input.sceneLane === 'modqn-live-cell-preview'

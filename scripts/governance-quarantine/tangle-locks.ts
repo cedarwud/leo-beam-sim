@@ -36,12 +36,13 @@ export interface TangleLockGroupContract {
 }
 
 export const TANGLE_LOCK_RETIREMENT: Record<string, TangleLockGroupContract> = {
-  'QUAR-RENDER-RESET': {
-    retiringSlice:
-      'sinr-live render reset (docs/sinr-live-render-reset-decision.md) — or S5 if it lands first',
-    replacement:
-      'render-plan matrix asserts for the un-parked cell-truth lane + the S0 connected-sat-has-beam invariant on the cell-cone path',
-  },
+  // QUAR-RENDER-RESET RETIRED 2026-06-11 (S5-2, one beam render): all 4 blocks
+  // retired with the cone un-park. Replacements landed in the same commit: the
+  // render-plan matrix now asserts showSinrLiveCellBeams TRUE on sinr-live (false
+  // on the 3 sibling lanes), the steered-mount auto-suppress + UE-anchor retirement
+  // flow through the shared visible-beam resolver (src/scene/sinrLiveBeamSelection),
+  // and validate:phase-c:sinr-live-cells:render:browser is re-added to the
+  // live-render suite. No registry entry remains → the meta-gate no longer expects it.
   // QUAR-S3-STEP RETIRED 2026-06-11 (S3-3, one step/one reset): its three blocks
   // (cell-lane gate strings, runtimeFrameStep FROZEN-text pin, 15° literal triple-pin)
   // were replaced wholesale by behavior / structural / imported-constant VALUE asserts
@@ -63,11 +64,45 @@ export const TANGLE_LOCK_RETIREMENT: Record<string, TangleLockGroupContract> = {
   // gate provably certifies the projection the hook actually publishes. No
   // QUAR-S4-SERVING registry entry remains, so the meta-gate no longer
   // expects it.
-  'QUAR-S5-BEAMRENDER': {
-    retiringSlice: 'S5 (one beam render)',
-    replacement:
-      'ONE pure beam selector under invariant tests (incl. connected-sat-has-beam per lane), ONE cone renderer per lane with mesh-derived telemetry gates, ONE style token module — replacing JSX mount-string pins, per-component mesh micro-pins and layer-wiring text locks',
-  },
+  // QUAR-S5-BEAMRENDER group RETIRED 2026-06-11 (S5-2/S5-3, one beam render): the
+  // tangleLockGroup wrappers + this registry entry are removed. HONEST disposition
+  // of the 11 blocks — it is a SPLIT, not a uniform behavioural retirement:
+  //
+  //   A) 5 sinr-live CONE-render pins (the slice's ACTUAL scope) — RETIRED WITH
+  //      BEHAVIOURAL REPLACEMENTS landed this commit:
+  //        - parked-flag pin + steered-restore/anchor pin → the flipped renderPlan
+  //          matrix (showSinrLiveCellBeams TRUE on sinr-live) + the shared
+  //          visible-beam selector (src/scene/sinrLiveBeamSelection) consumed by
+  //          BOTH the MainScene cone mount AND the connected-sat invariant;
+  //        - serving-only / focus-cap / freq-colour / NormalBlending pins → the
+  //          connected-sat-has-beam must-hold (validate:s0:connected-sat-has-beam,
+  //          cone-cripple positive control) + validate:phase-c:sinr-live-cells:render
+  //          (serving-only cones, freq-reuse colour, focusSatIds-null-draws-all,
+  //          style-token VALUE asserts) + the permanent MainScene focusSatIds:null
+  //          wiring lock;
+  //        - buildSinrLiveCellLayout placement pin → the cone-base==truth-cell-centre
+  //          BEHAVIOUR invariant in that same render gate;
+  //        - D4-pair JSX/telemetry pin → the pair-resolver sourceOwner-guard test
+  //          (render gate) + the re-added validate:phase-c:sinr-live-cells:render:browser.
+  //
+  //   B) 6 NON-cone pins — MODQN-lane render layers (handover story @ 2025, modqn
+  //      service map, beam-load cylinder @ 2135, upload particles @ 2192/2229),
+  //      live-effects/cinematic JSX @ 2626, and the S2/S4 3D-mosaic colour wiring @
+  //      1559 — are GENUINELY separate layers from the sinr-live cone S5-2 flips
+  //      (program §6 keeps them separate). They were NOT behaviourally replaced;
+  //      they GRADUATED to permanent asserts (un-wrapped in place, still EXECUTE
+  //      every run). Their feature behaviour is independently covered by the
+  //      dedicated gates (validate:phase-3:beam-load / :upload-particles /
+  //      :contention-render:browser, validate:modqn:handover-story-layer,
+  //      beamLoadUploadParticles.test.ts) + the permanent renderPlan matrix
+  //      (lane-gating) + the mesh-telemetry observables; the live-effects/cinematic
+  //      lane-gating PROPERTY is covered by the permanent showLiveSceneEffects/
+  //      showCinematicSpotlight matrix; the mosaic colour wiring keeps its two
+  //      permanent text pins (no cheap behavioural replacement — its consolidation
+  //      is S2/S4 mosaic scope). The brittle text-pin CONSOLIDATION of these MODQN-
+  //      lane layers is DEFERRED to a separate MODQN-lane render slice — out of
+  //      S5-2's sinr-live cone-flip scope. No registry entry remains → the meta-gate
+  //      no longer expects this group.
   'QUAR-S6-BUS': {
     retiringSlice: 'S6 (split the runtime bus)',
     replacement:
