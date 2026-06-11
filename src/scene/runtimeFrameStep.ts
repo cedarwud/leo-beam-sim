@@ -139,12 +139,31 @@ interface LinkContext {
   trackedAssignments: ActiveBeamAssignment[];
 }
 
+/**
+ * Read the ambient wall clock (display latch timing only — never truth).
+ * S3-1: the single source of the triplicated `performance.now()` expression so
+ * callers can inject `nowMs` explicitly and the step stays a pure function of
+ * (state, dt, nowMs, config). Truth (sim-time, SINR, handover decisions) does
+ * NOT read this; only the intra/inter handover viz-latch start/expiry does.
+ */
+export function readWallClockMs(): number {
+  return typeof performance === 'undefined' ? Date.now() : performance.now();
+}
+
 export interface RuntimeFrameStepInput {
   profile: Profile;
   replay: ReplayConfig;
   speed: number;
   paused: boolean;
   deltaSec: number;
+  /**
+   * Wall-clock ms used ONLY to stamp/expire the display-only handover viz
+   * latches (S3-1 clock injection). Optional: when omitted the step falls back
+   * to `readWallClockMs()` so existing callers are byte-unchanged; live callers
+   * and deterministic harnesses inject it so the step takes no ambient clock
+   * read on the driven path. NEVER feeds SINR / handover / serving truth.
+   */
+  nowMs?: number;
   beamFootprintMultiplier?: number;
   mapKmPerWorldUnit?: number;
   ueCount?: number;
@@ -529,6 +548,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     deltaSec,
     beamFootprintMultiplier: inputBeamFootprintMultiplier,
     mapKmPerWorldUnit,
+    nowMs,
     ueCount: inputUeCount,
     ueDistributionMode = 'random',
     uePrimaryAnchorMode = 'observer',
@@ -546,6 +566,10 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
   const ueCount = inputUeCount ?? 1;
   const previousSimTimeSec = state.simTimeSec;
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
+  // S3-1: resolve the display-latch wall clock ONCE from the injected value
+  // (fallback to the ambient read for unchanged callers). Used only by the
+  // intra/inter viz-latch stamping below — truth never reads it.
+  const resolvedNowMs = nowMs ?? readWallClockMs();
 
   if (!paused) {
     state.simTimeSec += deltaSec * speed;
@@ -570,7 +594,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     state.secondaryServingCache = null;
   }
 
-  const nowWallClockMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+  const nowWallClockMs = resolvedNowMs;
   if (
     state.intraHandoverVizLatch
     && nowWallClockMs >= state.intraHandoverVizLatch.wallClockExpiresMs
@@ -724,7 +748,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
       deltaDb: lastEvent.deltaDb ?? null,
       expiresAtSec: state.simTimeSec + RECENT_HO_LINGER_SEC,
     };
-    const interLatchNowWallClockMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const interLatchNowWallClockMs = resolvedNowMs;
     state.interHandoverEvent = {
       fromSatId: previousServingSatId,
       fromBeamId: lastEvent.fromBeamId,
@@ -758,7 +782,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
       deltaDb: lastEvent.deltaDb ?? null,
       expiresAtSec: state.simTimeSec + RECENT_HO_LINGER_SEC,
     };
-    const nowWallClockMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const nowWallClockMs = resolvedNowMs;
     state.intraHandoverEvent = {
       satId: decision.target.satId,
       fromBeamId: lastEvent.fromBeamId,

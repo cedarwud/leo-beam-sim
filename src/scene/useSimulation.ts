@@ -21,6 +21,7 @@ import {
   createRuntimeFrameStepState,
   createTrajectoryCache,
   getTrajectoryMaxTimeSec,
+  readWallClockMs,
   stepRuntimeFrame,
   type RuntimeFrameStepState,
 } from './runtimeFrameStep';
@@ -293,6 +294,10 @@ export function useSimulation(
       deltaSec: 0,
       beamFootprintMultiplier,
       mapKmPerWorldUnit,
+      // S3-1: inject the display-latch wall clock explicitly so the live step
+      // takes no ambient performance.now() read (pure-step contract). Same value
+      // the step previously read itself — behavior-identical.
+      nowMs: readWallClockMs(),
       observer,
       beamLayoutsByShellId,
       trajectoryCache,
@@ -353,6 +358,10 @@ export function useSimulation(
       deltaSec: 0,
       beamFootprintMultiplier,
       mapKmPerWorldUnit,
+      // S3-1: inject the display-latch wall clock explicitly so the live step
+      // takes no ambient performance.now() read (pure-step contract). Same value
+      // the step previously read itself — behavior-identical.
+      nowMs: readWallClockMs(),
       observer,
       beamLayoutsByShellId,
       trajectoryCache,
@@ -481,6 +490,10 @@ export function useSimulation(
       deltaSec: delta,
       beamFootprintMultiplier,
       mapKmPerWorldUnit,
+      // S3-1: inject the display-latch wall clock explicitly so the live step
+      // takes no ambient performance.now() read (pure-step contract). Same value
+      // the step previously read itself — behavior-identical.
+      nowMs: readWallClockMs(),
       observer,
       beamLayoutsByShellId,
       trajectoryCache,
