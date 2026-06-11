@@ -118,6 +118,11 @@ export interface RuntimeConfig {
   enableUeTrails?: boolean;
   modqnVisualLayerPreset?: ModqnVisualLayerPreset;
   modqnVisualLayers?: ModqnVisualLayerFlags;
+  // S-FLAG-2: producer-readiness gate for the MODQN service-allocation overlay
+  // family (parked OFF by default; App threads
+  // `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` OR the `?modqnServiceAllocation=1`
+  // override). Consumed only by the `modqn-live-cell-preview` lane render plan.
+  modqnServiceAllocationEnabled?: boolean;
 }
 
 export interface LinkBudgetTerms {

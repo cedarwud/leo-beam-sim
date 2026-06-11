@@ -170,6 +170,7 @@ import {
 import {
   persistSceneTopologyOverrides,
   persistSceneVisualScaleOverrides,
+  readModqnServiceAllocationOverrideFromUrl,
   readSceneSourceFromUrl,
   readSceneTopologyOverrides,
   readSceneVisualScaleOverrides,
@@ -181,6 +182,7 @@ import {
   shouldRenderModqnReplayScene,
   type SceneLane,
 } from './app/sceneLane';
+import { MODQN_SERVICE_ALLOCATION_PRODUCER_READY } from './scene/sceneLaneRenderPlan';
 import {
   useDirectorOrchestration,
   type LiveTimelineSeekRequest,
@@ -540,6 +542,13 @@ export function App() {
   const [modqnVisualLayerPreset, setModqnVisualLayerPreset] = useState<ModqnVisualLayerPreset>(
     DEFAULT_MODQN_VISUAL_LAYER_PRESET,
   );
+  // S-FLAG-2: producer-readiness gate for the MODQN service-allocation overlay
+  // family. Parked OFF in production (`MODQN_SERVICE_ALLOCATION_PRODUCER_READY`);
+  // the `?modqnServiceAllocation=1` URL override force-enables it for
+  // dev/validator render-path proof. Read once (stable across renders).
+  const [modqnServiceAllocationEnabled] = useState<boolean>(
+    () => MODQN_SERVICE_ALLOCATION_PRODUCER_READY || readModqnServiceAllocationOverrideFromUrl(),
+  );
   const selectedTrainingEnvAxes = bundleProvenanceKind === 'user-trained'
     ? envAxesFromTrainingRunMetadata(selectedTrainingRunMetadata)
       ?? selectedTrainingServiceManifest?.trainingTruth?.envAxes
@@ -716,6 +725,7 @@ export function App() {
     sceneTopology,
     selectedTrainingEnvAxes,
     modqnVisualLayerPreset,
+    modqnServiceAllocationEnabled,
   }), [
     appMode,
     beamDensityOverride,
@@ -729,6 +739,7 @@ export function App() {
     runtimeVisualSettings,
     handoverResetKey,
     modqnVisualLayerPreset,
+    modqnServiceAllocationEnabled,
     sceneTopology,
     selectedTrainingEnvAxes,
     signalResetKey,

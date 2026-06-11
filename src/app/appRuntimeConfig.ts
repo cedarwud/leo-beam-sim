@@ -49,6 +49,10 @@ export interface AppRuntimeConfigInput {
   readonly sceneTopology: SceneTopologyState;
   readonly selectedTrainingEnvAxes: EnvAxes | undefined;
   readonly modqnVisualLayerPreset?: ModqnVisualLayerPreset;
+  // S-FLAG-2 producer-readiness gate for the MODQN service-allocation overlay
+  // family (parked OFF by default; `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` /
+  // `?modqnServiceAllocation=1`). Only meaningful on `modqn-demo`.
+  readonly modqnServiceAllocationEnabled?: boolean;
 }
 
 export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConfig {
@@ -111,6 +115,11 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     modqnVisualLayerPreset,
     modqnVisualLayers: modqnVisualLayerPreset
       ? resolveModqnVisualLayers(modqnVisualLayerPreset)
+      : undefined,
+    // S-FLAG-2: producer-readiness gate for the MODQN service-allocation overlay
+    // family. Only the `modqn-demo` lane consumes it; parked OFF by default.
+    modqnServiceAllocationEnabled: input.appMode === 'modqn-demo'
+      ? input.modqnServiceAllocationEnabled ?? false
       : undefined,
   };
 }

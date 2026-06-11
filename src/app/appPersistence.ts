@@ -72,6 +72,18 @@ export function syncSceneSourceToUrl(mode: SceneSourceMode): void {
   }
 }
 
+// S-FLAG-2 dev/validator force-enable for the MODQN service-allocation overlay
+// family. The family is parked OFF in production (degenerate producer baseline,
+// `MODQN_SERVICE_ALLOCATION_PRODUCER_READY`); `?modqnServiceAllocation=1` un-parks
+// it at runtime so the render path stays provable (the phase-3 overlay-render
+// browser gate) without flipping the production default. Read-only: it never
+// writes the URL and never drives truth.
+export function readModqnServiceAllocationOverrideFromUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('modqnServiceAllocation') === '1';
+}
+
 export function readSceneTopologyOverrides(): SceneTopologyState {
   if (typeof window === 'undefined') return createSceneTopologyState();
 

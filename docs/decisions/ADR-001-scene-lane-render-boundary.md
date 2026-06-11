@@ -115,6 +115,12 @@ split is a valid follow-up, but it should be protected by lane validators first.
   into replay-proof or artifact-owned lanes.
 - Shared primitives remain allowed, but shared viewport ownership is not.
 - Validators can now reject broad mode-gated proof mounts.
+- S-FLAG-2: the MODQN service-allocation overlay family (all-UE service map,
+  per-cell UE-count badges, service readout/legend/diagnostics, phase-3 beam-load
+  cylinder + upload particles) on `modqn-live-cell-preview` is gated by a dedicated
+  producer-readiness flag (`showModqnServiceAllocation`) rather than the broad
+  `showCellOverlay`, so the degenerate producer baseline is parked off the default
+  surface while the code + data path is preserved for the producer un-park.
 
 ## Validation
 

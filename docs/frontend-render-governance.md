@@ -53,7 +53,7 @@ they must not share viewport ownership decisions.
 | Scene lane | Owner | Source | Allowed viewport proof | Must stay off |
 |---|---|---|---|---|
 | `sinr-live` | live SINR demo | live Walker simulator / configured profile plus `sinrLiveCells` cell-truth trajectory for D4 focus | live satellites, live SINR beams, SINR handover effects, diagnostics, `sinrLiveCells` source-time handover rail for cell-truth focus, handover-cinema candidate-beam highlight + SINR explainer + focus-scoped old/new off-axis beam pair (`sinr-offset` / `live-truth` claim), SINR-serving mosaic (UE markers coloured by serving beam — its OWN layer, NOT the MODQN cell overlay) + aggregate readout (served N/N, per-beam load, mean SINR; `sinr-serving` claim, always-on ambient default) | MODQN replay proof, MODQN cell overlay |
-| `modqn-live-cell-preview` | MODQN live preview | live Walker simulator for geometry/SINR plus explicit MODQN decision overlay | cell overlay, all-UE service map, active cell UE-count badges, clean cell hopping state, explicit visual layer presets, overlay-labeled handover cues/decision rail | MODQN replay proof, legacy live beam cones, decorative live effects, artifact overlays |
+| `modqn-live-cell-preview` | MODQN live preview | live Walker simulator for geometry/SINR plus explicit MODQN decision overlay | hex cell overlay, cell beam cones, satellite markers, director cinema, scene HUD; the all-UE service map + per-cell UE-count badges + service readout/legend/diagnostics grid + phase-3 beam-load cylinder/particles are the **service-allocation family, producer-gated and PARKED OFF by default** (S-FLAG-2); clean cell hopping state, explicit visual layer presets, overlay-labeled handover cues/decision rail | MODQN replay proof, legacy live beam cones, decorative live effects, artifact overlays, the service-allocation family while the producer baseline is degenerate |
 | `modqn-replay-proof` | MODQN evidence proof | immutable MODQN replay artifact/display state | replay proof layer, source-backed or display-proxy replay beams, focused decision trace, producer-horizon replay rail | live cell preview, live SINR beams, artifact overlays, live Walker forecast markers |
 | `artifact-replay` | visual-showcase replay | immutable `visual-showcase-v1` artifact | artifact-provided frame content, replay controls, artifact-owned event rail | live cell preview, MODQN replay proof, live SINR proof effects |
 
@@ -262,6 +262,26 @@ must receive `sceneSource=live-sim`; `artifact-replay` must receive
 `sceneSource=artifact-replay`. Incompatible pairs fail closed by disabling both
 live-only effects and artifact-only diagnostics.
 
+The MODQN **service-allocation overlay family** is producer-gated (S-FLAG-2). The
+all-UE service map (UE marker colouring + per-cell UE-count badges), its HUD
+readout / legend / diagnostics grid, and the phase-3 beam-load cylinder + upload
+particles all replay the degenerate producer baseline (100 UEs on one beam, 0
+handovers, 1 satellite — see the baseline MODQN producer-data defects report), so
+the map-wide allocation is meaningless noise that drowns the handover-cinema north
+star. The whole family is therefore PARKED OFF by default behind a single
+producer-readiness gate (`showModqnServiceAllocation`, computed from
+`MODQN_SERVICE_ALLOCATION_PRODUCER_READY` in `sceneLaneRenderPlan.ts`), while the
+code + data path stays intact (it is the G3 dense-Q proof scaffolding). The default
+`modqn-live-cell-preview` surface keeps the hex cell overlay, cell beam cones,
+satellite markers, director cinema, and the scene HUD. The family is `modqn-live-cell-preview`
+ONLY (the gate is AND-ed with `showCellOverlay`, so it can never leak onto a SINR /
+replay-proof / artifact lane) and un-parks in one move when the producer dense-Q
+export plus the four baseline-defect fixes land
+(`docs/handoff/producer-dense-q-export-request.md`); a `?modqnServiceAllocation=1`
+URL override force-enables it for dev/validator render-path proof without flipping
+the production default. The preset descriptions below describe the family when it is
+un-parked.
+
 MODQN live-cell visual presets are lane-owned:
 
 - **Baseline Faithful** is the default. It shows the 100-UE service map,
@@ -351,6 +371,21 @@ Before changing scene rendering:
 
 ## Completed Follow-Ups
 
+- S-FLAG-2: the MODQN service-allocation overlay family (all-UE service map + UE
+  marker colouring, per-cell UE-count badges, HUD service readout/legend/diagnostics
+  grid, phase-3 beam-load cylinder + upload particles) is parked behind a single
+  producer-readiness gate (`showModqnServiceAllocation`, default OFF) instead of the
+  broad `showCellOverlay`. The degenerate producer baseline makes the all-UE
+  allocation meaningless noise on the default `modqn-live-cell-preview` surface; the
+  family is parked while the code + data path stays intact (G3 dense-Q proof
+  scaffolding) and un-parks via the producer dense-Q export or the
+  `?modqnServiceAllocation=1` dev/validator override. The default surface keeps the
+  hex cell overlay, cell beam cones, satellite markers, director cinema, and the
+  scene HUD. `validate:frontend:scene-lane-governance` locks the gate definition,
+  the App/persistence un-park wiring, and every MainScene consumer (and that the gate
+  is AND-ed with `showCellOverlay` so it cannot leak to a SINR/replay/artifact lane);
+  `validate:phase-3:overlay-render:browser` positive-controls both directions (parked
+  default renders nothing; the override restores the cylinder/particle render path).
 - MODQN replay proof viewport has an explicit replay cue panel toggle before the
   3D proof layer can mount.
 - Focused cell beam cone telemetry uses rendered-object count.

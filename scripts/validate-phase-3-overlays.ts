@@ -37,6 +37,7 @@ function ok(condition: boolean, label: string): void {
 function renderPlan(
   sceneLane: Parameters<typeof resolveSceneLaneRenderPlan>[0]['sceneLane'],
   sceneSource: Parameters<typeof resolveSceneLaneRenderPlan>[0]['sceneSource'],
+  modqnServiceAllocationEnabled = false,
 ): ReturnType<typeof resolveSceneLaneRenderPlan> {
   return resolveSceneLaneRenderPlan({
     sceneLane,
@@ -49,6 +50,7 @@ function renderPlan(
     reducedMotion: false,
     recentHoActive: false,
     replayProofLayerRequested: true,
+    modqnServiceAllocationEnabled,
   });
 }
 
@@ -69,18 +71,30 @@ ok(renderPlan('modqn-replay-proof', 'live-sim').showCellOverlay === false,
 ok(renderPlan('artifact-replay', 'artifact-replay').showCellOverlay === false,
   'artifact-replay does NOT mount Phase 3 cell overlays');
 
-console.log('\n(b) overlay mounts gated cell-lane-only (SOURCE)');
-ok(mainScene.includes('const beamLoadContentionEnabled = showCellOverlay && modqnVisualLayers.serviceMap;'),
-  'contention glow is gated showCellOverlay && serviceMap (S3)');
-// cylinder mounts inside the explain-handover (showCellOverlay && handoverStory) block
-const cylinderGate = mainScene.indexOf('{showCellOverlay && modqnVisualLayers.handoverStory && (');
+console.log('\n(b) overlay mounts gated cell-lane-only + parked behind the producer gate (SOURCE)');
+// S-FLAG-2: the Phase 3 overlay family (contention glow + cylinder + particles) is
+// now PARKED behind the `showModqnServiceAllocation` producer-readiness gate
+// (default OFF) on top of the cell-lane `showCellOverlay` gate. It stays cell-lane
+// only AND off the default surface until the producer baseline is non-degenerate.
+ok(renderPlan('modqn-live-cell-preview', 'live-sim').showModqnServiceAllocation === false,
+  'cell-preview parks the service-allocation overlay family OFF by default (degenerate producer baseline)');
+ok(renderPlan('modqn-live-cell-preview', 'live-sim', true).showModqnServiceAllocation === true,
+  'cell-preview un-parks the overlay family when producer-readiness is enabled');
+ok(renderPlan('sinr-live', 'live-sim', true).showModqnServiceAllocation === false,
+  'enabling the producer gate cannot leak the overlay family onto sinr-live');
+ok(mainScene.includes('const beamLoadContentionEnabled = showModqnServiceAllocation && modqnVisualLayers.serviceMap;'),
+  'contention glow is gated showModqnServiceAllocation && serviceMap (S3 + S-FLAG-2)');
+// cylinder mounts inside the explain-handover block, now also behind the producer gate
+const cylinderGate = mainScene.indexOf('{showCellOverlay && modqnVisualLayers.handoverStory && showModqnServiceAllocation && (');
 ok(cylinderGate >= 0 && mainScene.includes('<BeamLoadCylinder'),
-  'beam-load cylinder mounts under explain-handover (showCellOverlay && handoverStory) (S4)');
-// particles gated via uploadParticlesEnabled = showCellOverlay && ... handoverStory
+  'beam-load cylinder mounts under explain-handover + producer gate (showCellOverlay && handoverStory && showModqnServiceAllocation) (S4 + S-FLAG-2)');
+// particles gated via uploadParticlesEnabled = showCellOverlay && showModqnServiceAllocation && ... handoverStory
 const upStart = mainScene.indexOf('const uploadParticlesEnabled =');
-const upGate = upStart >= 0 ? mainScene.slice(upStart, upStart + 160) : '';
-ok(upGate.includes('showCellOverlay') && upGate.includes('modqnVisualLayers.handoverStory'),
-  'upload particles gated showCellOverlay && handoverStory (S5)');
+const upGate = upStart >= 0 ? mainScene.slice(upStart, upStart + 220) : '';
+ok(upGate.includes('showCellOverlay')
+  && upGate.includes('showModqnServiceAllocation')
+  && upGate.includes('modqnVisualLayers.handoverStory'),
+  'upload particles gated showCellOverlay && showModqnServiceAllocation && handoverStory (S5 + S-FLAG-2)');
 ok(mainScene.includes('<BeamLoadUploadParticles'), 'upload particle layer is mounted');
 
 console.log('\n(c) §8 perf gates wired (constants present)');

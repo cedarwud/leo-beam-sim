@@ -854,9 +854,14 @@ function SceneContent({
     reducedMotion: runtime.reducedMotion,
     recentHoActive,
     replayProofLayerRequested: showModqnReplayScene,
+    // S-FLAG-2: producer-readiness gate for the MODQN service-allocation overlay
+    // family (parked OFF by default; `?modqnServiceAllocation=1` / producer un-park
+    // flips it). The render plan AND-s it with `showCellOverlay`.
+    modqnServiceAllocationEnabled: runtime.modqnServiceAllocationEnabled ?? false,
   });
   const {
     showCellOverlay,
+    showModqnServiceAllocation,
     showLiveSceneEffects,
     showUav,
     showLiveBeamCones,
@@ -878,9 +883,18 @@ function SceneContent({
   } = renderPlan;
   const modqnVisualLayerPreset = runtime.modqnVisualLayerPreset ?? DEFAULT_MODQN_VISUAL_LAYER_PRESET;
   const modqnVisualLayers = runtime.modqnVisualLayers ?? resolveModqnVisualLayers(modqnVisualLayerPreset);
-  const beamLoadContentionEnabled = showCellOverlay && modqnVisualLayers.serviceMap;
+  // S-FLAG-2: the MODQN service-allocation overlay family (service map + readout +
+  // legend + diagnostics grid, per-cell UE-count badges, phase-3 beam-load
+  // cylinder + upload particles) is PARKED behind `showModqnServiceAllocation`
+  // (producer-readiness gate, default OFF) instead of `showCellOverlay`. The
+  // degenerate producer baseline makes the all-UE allocation meaningless noise;
+  // the code + data path stays intact so the producer un-park (or
+  // `?modqnServiceAllocation=1`) revives the whole family in one move. The default
+  // MODQN-LIVE surface keeps the hex cell overlay + cones + sat markers + cinema +
+  // HUD; only this family is parked.
+  const beamLoadContentionEnabled = showModqnServiceAllocation && modqnVisualLayers.serviceMap;
   const modqnServiceMap = useMemo(
-    () => showCellOverlay && modqnVisualLayers.serviceMap
+    () => showModqnServiceAllocation && modqnVisualLayers.serviceMap
       ? deriveModqnServiceMap({
         ues: sceneFrame.ues,
         schedule: cellSchedule,
@@ -892,7 +906,7 @@ function SceneContent({
       modqnVisualLayers.serviceMap,
       satelliteTintById,
       sceneFrame.ues,
-      showCellOverlay,
+      showModqnServiceAllocation,
     ],
   );
   // SINR-serving mosaic (S2 → S-cells-4c): on `sinr-live` colour every UE marker
@@ -982,7 +996,7 @@ function SceneContent({
     ? satelliteTintById.get(focusedCellBeamConeUe.servingSatelliteId)
     : undefined;
   const modqnCellServiceReadout = useMemo(
-    () => showCellOverlay && modqnVisualLayers.serviceMap
+    () => showModqnServiceAllocation && modqnVisualLayers.serviceMap
       ? buildModqnCellServiceReadout({
         schedule: cellSchedule,
         serviceMap: modqnServiceMap,
@@ -993,7 +1007,7 @@ function SceneContent({
       cellSchedule,
       modqnServiceMap,
       modqnVisualLayers.serviceMap,
-      showCellOverlay,
+      showModqnServiceAllocation,
     ],
   );
   useSimStatePublisher({
@@ -1116,6 +1130,7 @@ function SceneContent({
     : 0;
   const uploadParticlesEnabled =
     showCellOverlay
+    && showModqnServiceAllocation
     && modqnVisualLayerPreset === 'explain-handover'
     && modqnVisualLayers.handoverStory;
   const uploadParticleFocusCones = useMemo(
@@ -1326,7 +1341,7 @@ function SceneContent({
         uePrimaryAnchorMode={runtime.uePrimaryAnchorMode ?? 'observer'}
         firstUePosition={formatScenePosition(sceneFrame.ues[0]?.worldPos)}
         renderedUeCount={sceneFrame.ues.filter(u => u.worldPos !== undefined).length}
-        beamLoadContentionUeCount={showCellOverlay ? beamLoadContentionUeCount : 0}
+        beamLoadContentionUeCount={showModqnServiceAllocation ? beamLoadContentionUeCount : 0}
         visualSatelliteAltitude={String(sceneGeometry.visualSatelliteAltitude ?? '')}
         beamSatelliteCount={viz.satBeams.size}
         sceneSource={sceneFrame.sceneSource}
@@ -1360,9 +1375,9 @@ function SceneContent({
         sinrLiveCellHandoverPairSourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}
         sinrLiveCellHandoverPairEventId={runtime.candidateHighlight?.eventId ?? ''}
         modqnVisualLayerPreset={showCellOverlay ? modqnVisualLayerPreset : ''}
-        modqnServiceMapEnabled={showCellOverlay && modqnVisualLayers.serviceMap ? '1' : '0'}
-        modqnServedUeCount={showCellOverlay ? modqnServiceMap.servedUeCount : 0}
-        modqnIdleUeCount={showCellOverlay ? modqnServiceMap.idleUeCount : 0}
+        modqnServiceMapEnabled={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? '1' : '0'}
+        modqnServedUeCount={showModqnServiceAllocation ? modqnServiceMap.servedUeCount : 0}
+        modqnIdleUeCount={showModqnServiceAllocation ? modqnServiceMap.idleUeCount : 0}
         modqnHandoverCuesVisible={showCellOverlay && showCellReassignmentEventArcs ? '1' : '0'}
         handoverStoryLayer={handoverStoryLayerPolicy}
         handoverStoryVisible={handoverStoryModel || replayBackedHandoverStoryVisible ? '1' : '0'}
@@ -1413,8 +1428,8 @@ function SceneContent({
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
         markerShape={ueMarkerShape}
         ueTrailHistory={showCellOverlay ? undefined : ueTrailHistory}
-        secondaryOpacity={showCellOverlay && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
-        secondaryScale={showCellOverlay && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
+        secondaryOpacity={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
+        secondaryScale={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
         colorTelemetryAttr={showSinrServingMosaic ? 'sinrServingMosaicColorCount' : undefined}
         contentionTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureBucketCount' : undefined}
         contentionInstanceCountTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureInstanceCount' : undefined}
@@ -1426,7 +1441,7 @@ function SceneContent({
           satelliteWorldById={satelliteWorldById}
           showFootprints={modqnVisualLayers.footprintEllipses}
           ueCountByCellId={modqnServiceMap.ueCountByCellId}
-          showUeCounts={modqnVisualLayers.ueCountBadges}
+          showUeCounts={modqnVisualLayers.ueCountBadges && showModqnServiceAllocation}
         />
       )}
       {showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory && (
@@ -1452,7 +1467,7 @@ function SceneContent({
           appMode={runtime.appMode}
         />
       )}
-      {showCellOverlay && modqnVisualLayers.handoverStory && (
+      {showCellOverlay && modqnVisualLayers.handoverStory && showModqnServiceAllocation && (
         <BeamLoadCylinder
           worldPos={focusedCellBeamConeUe?.worldPos}
           normalizedLoad={focusBeamLoad?.normalizedLoad ?? 0}

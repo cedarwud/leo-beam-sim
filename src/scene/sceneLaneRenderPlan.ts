@@ -2,6 +2,29 @@ import type { SceneLane } from '../app/sceneLane';
 import type { RuntimeConfig } from './types';
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 
+/**
+ * S-FLAG-2 producer-readiness gate for the MODQN-LIVE **service-allocation**
+ * overlay family (the all-UE service map / readout / legend / diagnostics grid,
+ * the per-cell UE-count badges, and the phase-3 beam-load cylinder + upload
+ * particles). Every MODQN lane currently replays a DEGENERATE producer baseline
+ * (100 UEs on one beam, 0 handovers, 1 satellite — see the baseline MODQN
+ * producer-data defects report), so a map-wide "service allocation" is
+ * meaningless noise that drowns the handover-cinema north star on the default
+ * surface. The whole family is therefore PARKED OFF by default while the code +
+ * data path stays intact (it is the G3 dense-Q proof scaffolding).
+ *
+ * Un-park trigger: the producer dense-Q export plus the four baseline-defect
+ * fixes (spatial per-beam UE assignment / per-beam pattern+interference /
+ * reward-scale normalization / real inter-intra HO events) land — see
+ * `docs/handoff/producer-dense-q-export-request.md`. Flip this constant to `true`
+ * (or wire a runtime producer-readiness signal into
+ * `SceneLaneRenderPlanInput.modqnServiceAllocationEnabled`) to revive the whole
+ * family in one move. A dev/validator force-enable exists via the
+ * `?modqnServiceAllocation=1` URL override (App threads it into the input), so the
+ * render path stays provable while the default stays parked.
+ */
+export const MODQN_SERVICE_ALLOCATION_PRODUCER_READY = false;
+
 export interface SceneLaneRenderPlanInput {
   readonly sceneLane: SceneLane;
   readonly sceneSource: NormalizedSceneFrame['sceneSource'];
@@ -13,6 +36,14 @@ export interface SceneLaneRenderPlanInput {
   readonly reducedMotion: boolean;
   readonly recentHoActive: boolean;
   readonly replayProofLayerRequested: boolean;
+  /**
+   * S-FLAG-2 producer-readiness gate for the MODQN service-allocation overlay
+   * family. Optional; defaults to OFF (parked). App threads
+   * `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` OR the `?modqnServiceAllocation=1`
+   * dev/validator override here. Only ever un-parks the family on the
+   * `modqn-live-cell-preview` lane (it is AND-ed with `showCellOverlay`).
+   */
+  readonly modqnServiceAllocationEnabled?: boolean;
 }
 
 export type SceneLaneUeMarkerShape = 'sphere' | 'cylinder';
@@ -33,6 +64,18 @@ export interface SceneLaneRenderPlan {
   readonly isLiveScene: boolean;
   readonly isArtifactReplay: boolean;
   readonly showCellOverlay: boolean;
+  /**
+   * S-FLAG-2: gates the MODQN-LIVE service-allocation overlay family (all-UE
+   * service map / readout / legend / diagnostics grid, per-cell UE-count badges,
+   * phase-3 beam-load cylinder + upload particles). `modqn-live-cell-preview`
+   * ONLY and PARKED OFF by default (degenerate producer baseline) — see
+   * `MODQN_SERVICE_ALLOCATION_PRODUCER_READY`. The default MODQN-LIVE surface
+   * keeps the hex cell overlay, cell beam cones, satellite markers, director
+   * cinema, and the scene HUD; only the service-allocation noise is parked. It is
+   * NOT the MODQN cell overlay itself (`showCellOverlay`) and never affects any
+   * SINR/replay/artifact lane.
+   */
+  readonly showModqnServiceAllocation: boolean;
   readonly showEarthFixedCells: boolean;
   readonly showEarthFixedCellLabels: boolean;
   readonly showUav: boolean;
@@ -102,6 +145,13 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   const showSinrLiveViewport = input.sceneLane === 'sinr-live' && isLiveScene;
   const showCellOverlay = input.sceneLane === 'modqn-live-cell-preview' && isLiveScene;
   const showProfileHandoverStoryLayer = showCellOverlay;
+  // S-FLAG-2: the MODQN service-allocation overlay family is `modqn-live-cell-preview`
+  // ONLY and parked OFF until the producer baseline is non-degenerate. Default OFF
+  // (`?? false`); App threads `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` / the
+  // `?modqnServiceAllocation=1` override. Never un-parks on any non-cell lane
+  // (AND-ed with `showCellOverlay`).
+  const showModqnServiceAllocation =
+    showCellOverlay && (input.modqnServiceAllocationEnabled ?? false);
   const showReplayProofLayer =
     input.sceneLane === 'modqn-replay-proof'
     && isLiveScene
@@ -148,6 +198,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     isLiveScene,
     isArtifactReplay,
     showCellOverlay,
+    showModqnServiceAllocation,
     // S-cells-4d: the legacy 20-hex steered-cover green-disc ground paint is
     // RETIRED. The earth-fixed cell story is now owned by the cell-truth beam
     // cones (`showSinrLiveCellBeams`), whose oblique footprints draw the real 37

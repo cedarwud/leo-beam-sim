@@ -22,6 +22,12 @@
  * count is derived from the profile-derived cell schedule (overlay-demo), which
  * is the same authoritative quantity the cell UE-count badges already show.
  *
+ * S-FLAG-2: the contention glow is part of the MODQN service-allocation overlay
+ * family, which is now PARKED OFF by default (degenerate producer baseline). This
+ * render-path gate un-parks it with the `?modqnServiceAllocation=1` dev/validator
+ * override so the glow's mesh-write path stays provable; the parked default is
+ * positive-controlled by `validate-phase-3-overlay-render-browser.ts`.
+ *
  * Requires a running dev server.
  * Run: `npm run validate:phase-3:contention-render:browser`.
  */
@@ -73,7 +79,9 @@ async function main(): Promise<void> {
     await page.addInitScript(() => {
       window.localStorage.setItem('leo-beam-sim.app-mode.v1', 'modqn-demo');
     });
-    await page.goto(`${appUrl}/?sceneSource=live-sim`, { waitUntil: 'domcontentloaded' });
+    // S-FLAG-2: un-park the service-allocation family so the contention glow's
+    // render path is exercised (parked default proven elsewhere).
+    await page.goto(`${appUrl}/?sceneSource=live-sim&modqnServiceAllocation=1`, { waitUntil: 'domcontentloaded' });
 
     assert.equal(
       await page.getAttribute(SHELL, 'data-scene-lane'),

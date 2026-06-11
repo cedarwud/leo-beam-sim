@@ -17,6 +17,7 @@ import {
 } from '../src/app/appRuntimeModel.ts';
 import {
   isSceneLaneSourceCompatible,
+  MODQN_SERVICE_ALLOCATION_PRODUCER_READY,
   resolveSceneLaneRenderPlan,
   resolveSceneLaneUeMarkerShape,
 } from '../src/scene/sceneLaneRenderPlan.ts';
@@ -61,6 +62,7 @@ function renderPlan(
   sceneSource: Parameters<typeof resolveSceneLaneRenderPlan>[0]['sceneSource'],
   replayProofLayerRequested = false,
   cinematicMode: Parameters<typeof resolveSceneLaneRenderPlan>[0]['cinematicMode'] = 'spotlight',
+  modqnServiceAllocationEnabled = false,
 ): ReturnType<typeof resolveSceneLaneRenderPlan> {
   return resolveSceneLaneRenderPlan({
     sceneLane,
@@ -78,6 +80,7 @@ function renderPlan(
     reducedMotion: false,
     recentHoActive: false,
     replayProofLayerRequested,
+    modqnServiceAllocationEnabled,
   });
 }
 
@@ -204,6 +207,54 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(cellPreview.effectiveCinematicMode, 'off', 'MODQN cell lane should force cinematic mode off');
   assert.equal(cellPreview.handoverStoryLayerPolicy, 'profile-derived-demo', 'MODQN cell lane may own the profile-derived story overlay');
   assert.equal(cellPreview.showProfileHandoverStoryLayer, true, 'MODQN cell lane should mount the profile-derived story overlay');
+
+  // S-FLAG-2: the MODQN service-allocation overlay family (all-UE service map +
+  // readout/legend/diagnostics grid, per-cell UE-count badges, phase-3 beam-load
+  // cylinder + upload particles) is PARKED OFF by default — every MODQN lane
+  // replays a degenerate producer baseline (100 UEs/one beam, 0 handovers, 1 sat)
+  // that makes the all-UE allocation meaningless noise. The default MODQN-LIVE
+  // surface keeps the hex cell overlay (with its cones/markers/cinema/HUD); only
+  // this family is parked, and the code + data path stays intact (G3 scaffolding).
+  assert.equal(
+    cellPreview.showModqnServiceAllocation,
+    false,
+    'MODQN cell lane parks the service-allocation overlay family OFF by default (degenerate producer baseline)',
+  );
+  assert.equal(
+    cellPreview.showCellOverlay,
+    true,
+    'MODQN cell lane still owns the hex cell overlay while the service-allocation family is parked',
+  );
+  assert.equal(
+    MODQN_SERVICE_ALLOCATION_PRODUCER_READY,
+    false,
+    'the MODQN service-allocation producer-readiness gate ships parked OFF (un-park only once the producer baseline is non-degenerate)',
+  );
+  // Producer un-park / dev override (`?modqnServiceAllocation=1`) flips the family
+  // ON — but ONLY on the cell lane (the gate is AND-ed with showCellOverlay).
+  const cellPreviewUnparked = renderPlan('modqn-live-cell-preview', 'live-sim', false, 'spotlight', true);
+  assert.equal(
+    cellPreviewUnparked.showModqnServiceAllocation,
+    true,
+    'MODQN cell lane un-parks the service-allocation family when producer-readiness is enabled',
+  );
+  // Enabling the gate can never leak the family onto a SINR / replay-proof /
+  // artifact lane — those never own the MODQN cell overlay.
+  assert.equal(
+    renderPlan('sinr-live', 'live-sim', false, 'spotlight', true).showModqnServiceAllocation,
+    false,
+    'SINR live must never own the MODQN service-allocation family even when the producer gate is enabled',
+  );
+  assert.equal(
+    renderPlan('modqn-replay-proof', 'live-sim', true, 'spotlight', true).showModqnServiceAllocation,
+    false,
+    'MODQN replay proof must never own the service-allocation family even when the producer gate is enabled',
+  );
+  assert.equal(
+    renderPlan('artifact-replay', 'artifact-replay', false, 'spotlight', true).showModqnServiceAllocation,
+    false,
+    'artifact replay must never own the MODQN service-allocation family even when the producer gate is enabled',
+  );
 
   const proof = renderPlan('modqn-replay-proof', 'live-sim', true);
   assert.equal(proof.sourceCompatible, true, 'MODQN proof lane live source should be compatible');
@@ -1933,6 +1984,75 @@ assertContains(
   'deriveProfileHandoverStoryModel',
   'MainScene builds the profile-derived handover story model',
 );
+// ── S-FLAG-2: MODQN service-allocation overlay family producer gate ──
+// The all-UE service map + readout/legend/diagnostics grid, the per-cell UE-count
+// badges, and the phase-3 beam-load cylinder + upload particles are PARKED behind
+// the `showModqnServiceAllocation` producer-readiness gate (default OFF), NOT the
+// broad `showCellOverlay`. Every MODQN lane replays a degenerate producer baseline
+// (100 UEs/one beam, 0 handovers, 1 sat) that makes the all-UE allocation
+// meaningless noise. Lock the gate definition, the App/persistence un-park wiring,
+// and every MainScene consumer so the family cannot silently regress back onto the
+// default surface — while keeping the code + data path intact (G3 scaffolding).
+assertContains(
+  sceneLaneRenderPlanSource,
+  'export const MODQN_SERVICE_ALLOCATION_PRODUCER_READY = false',
+  'render plan ships the MODQN service-allocation producer gate parked OFF',
+);
+assertContains(
+  sceneLaneRenderPlanSource,
+  'showCellOverlay && (input.modqnServiceAllocationEnabled ?? false)',
+  'render plan AND-s the service-allocation gate with showCellOverlay and defaults it OFF',
+);
+assertContains(
+  appPersistenceSource,
+  "params.get('modqnServiceAllocation') === '1'",
+  'appPersistence exposes the ?modqnServiceAllocation=1 dev/validator un-park override',
+);
+assertContains(
+  appSource,
+  'MODQN_SERVICE_ALLOCATION_PRODUCER_READY || readModqnServiceAllocationOverrideFromUrl()',
+  'App threads the producer-readiness gate OR the URL override into the runtime config',
+);
+assertContains(
+  appRuntimeConfigSource,
+  'modqnServiceAllocationEnabled: input.appMode === \'modqn-demo\'',
+  'app runtime config only forwards the service-allocation gate on the modqn-demo lane',
+);
+assertContains(
+  mainSceneSource,
+  'modqnServiceAllocationEnabled: runtime.modqnServiceAllocationEnabled ?? false',
+  'MainScene threads the service-allocation gate into the scene lane render plan input',
+);
+assertContains(
+  mainSceneSource,
+  'showModqnServiceAllocation && modqnVisualLayers.serviceMap',
+  'MainScene gates the all-UE service map / readout / contention by the producer gate (not showCellOverlay)',
+);
+assertContains(
+  mainSceneSource,
+  'showUeCounts={modqnVisualLayers.ueCountBadges && showModqnServiceAllocation}',
+  'MainScene gates the per-cell UE-count badges by the producer gate',
+);
+assertContains(
+  mainSceneSource,
+  'modqnServedUeCount={showModqnServiceAllocation ? modqnServiceMap.servedUeCount : 0}',
+  'MainScene served-UE telemetry reports zero while the service-allocation family is parked',
+);
+assertContains(
+  mainSceneSource,
+  'modqnIdleUeCount={showModqnServiceAllocation ? modqnServiceMap.idleUeCount : 0}',
+  'MainScene idle-UE telemetry rides the same producer gate as served (no stray showCellOverlay gate in the family)',
+);
+assertContains(
+  mainSceneSource,
+  "modqnServiceMapEnabled={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? '1' : '0'}",
+  'MainScene service-map-enabled telemetry honestly tracks the producer gate (parked = 0)',
+);
+assertNotContains(
+  mainSceneSource,
+  'const beamLoadContentionEnabled = showCellOverlay && modqnVisualLayers.serviceMap',
+  'MainScene must not re-gate the service-allocation family by the broad showCellOverlay flag (S-FLAG-2 regression)',
+);
 assertContains(
   mainSceneSource,
   'deriveModqnServiceMap({',
@@ -2051,7 +2171,7 @@ assertContains(
 );
 assertContains(
   mainSceneSource,
-  '{showCellOverlay && modqnVisualLayers.handoverStory && (',
+  '{showCellOverlay && modqnVisualLayers.handoverStory && showModqnServiceAllocation && (',
   'MainScene gates the focused beam-load cylinder to the explain/debug handover surface',
 );
 assertContains(
