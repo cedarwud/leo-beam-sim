@@ -48,33 +48,32 @@ function focusViewButton(lane: SceneLane): void {
 }
 
 export function ModqnViewToggle({ value, onChange, proofEnabled }: ModqnViewToggleProps) {
+  // S5-2b consolidation (user-locked): the Proof sub-view is HIDDEN (not merely
+  // disabled) until its producer evidence precondition is met — fewer buttons,
+  // cleaner north star. The lane + gate (proofEnabled) are unchanged; only the
+  // segment's render is dropped while inert. MODQN_VIEW_OPTIONS still carries all
+  // three (source-of-truth) so the un-park is a pure re-show when producer data
+  // lands. Every rendered option here is therefore enabled.
+  const visibleOptions = MODQN_VIEW_OPTIONS.filter(
+    option => !isOptionDisabled(option.lane, proofEnabled),
+  );
+
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     let step: number | null = null;
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') step = 1;
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') step = -1;
-    else if (event.key === 'Home') step = null;
-    else if (event.key === 'End') step = null;
-    else return;
+    else if (event.key !== 'Home' && event.key !== 'End') return;
 
     event.preventDefault();
-    const count = MODQN_VIEW_OPTIONS.length;
-    // Walk to the next ENABLED option in the requested direction (skips a
-    // disabled Proof segment) so keyboard nav never lands on a dead button.
+    const count = visibleOptions.length;
+    if (count === 0) return;
+    // All visible options are enabled, so navigation is a simple wrap.
     let target = index;
-    if (event.key === 'Home') {
-      target = 0;
-      while (isOptionDisabled(MODQN_VIEW_OPTIONS[target].lane, proofEnabled) && target < count - 1) target += 1;
-    } else if (event.key === 'End') {
-      target = count - 1;
-      while (isOptionDisabled(MODQN_VIEW_OPTIONS[target].lane, proofEnabled) && target > 0) target -= 1;
-    } else if (step !== null) {
-      for (let i = 0; i < count; i += 1) {
-        target = (target + step + count) % count;
-        if (!isOptionDisabled(MODQN_VIEW_OPTIONS[target].lane, proofEnabled)) break;
-      }
-    }
-    const nextLane = MODQN_VIEW_OPTIONS[target].lane;
-    if (isOptionDisabled(nextLane, proofEnabled)) return;
+    if (event.key === 'Home') target = 0;
+    else if (event.key === 'End') target = count - 1;
+    else if (step !== null) target = (target + step + count) % count;
+
+    const nextLane = visibleOptions[target].lane;
     onChange(nextLane);
     focusViewButton(nextLane);
   };
@@ -88,9 +87,8 @@ export function ModqnViewToggle({ value, onChange, proofEnabled }: ModqnViewTogg
     >
       <span className="leo-modqn-view-toggle__title" aria-hidden="true">MODQN view</span>
       <div className="leo-modqn-view-toggle__group">
-        {MODQN_VIEW_OPTIONS.map((option, index) => {
+        {visibleOptions.map((option, index) => {
           const active = option.lane === value;
-          const disabled = isOptionDisabled(option.lane, proofEnabled);
           return (
             <button
               key={option.lane}
@@ -100,9 +98,8 @@ export function ModqnViewToggle({ value, onChange, proofEnabled }: ModqnViewTogg
               data-testid={`modqn-view-${option.lane}`}
               data-active={active ? 'true' : 'false'}
               aria-selected={active}
-              disabled={disabled}
               tabIndex={active ? 0 : -1}
-              onClick={() => { if (!active && !disabled) onChange(option.lane); }}
+              onClick={() => { if (!active) onChange(option.lane); }}
               onKeyDown={event => handleKeyDown(event, index)}
             >
               <span className="leo-modqn-view-toggle__label">{option.label}</span>

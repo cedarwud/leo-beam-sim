@@ -102,9 +102,9 @@ async function main(): Promise<void> {
     await page.click('[data-testid="modqn-decision-policy-heuristic"]');
     await page.waitForSelector('[data-testid="heuristic-not-paper-banner"]', { timeout: 10_000 });
     assert.equal(
-      await page.locator(MV('modqn-replay-proof')).isDisabled(),
-      true,
-      'Proof sub-view is disabled while the live-only heuristic policy is active',
+      await page.locator(MV('modqn-replay-proof')).count(),
+      0,
+      'Proof sub-view is HIDDEN (not just disabled) while the live-only heuristic policy is active',
     );
     await page.click('[data-testid="modqn-decision-policy-overlay"]');
     await page.waitForFunction(
