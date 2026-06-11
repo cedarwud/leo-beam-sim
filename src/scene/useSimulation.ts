@@ -305,151 +305,112 @@ export function useSimulation(
     mobilityStatesRef.current = createCurrentMobilityStates();
   }, [createCurrentMobilityStates]);
 
-  const resetToReplayStartFrame = useCallback((options?: { timeShift?: boolean }) => {
-    const startOffset = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
-    // S3-2: the windowLength re-loop calls this with `timeShift` — it is a
-    // sim-time jump back to startOffset, so the steered managers REBASE (keep
-    // serving) instead of cold-resetting. Cold-start callers (mount/profile/epoch
-    // effect, handoverReset effect) pass no option and full-reset.
-    if (options?.timeShift) {
-      transitionHoManagers({
-        kind: 'rebase',
-        deltaMs: (startOffset - runtimeStateRef.current.simTimeSec) * 1000,
+  // S3-3: the SINGLE "construct the runtime state at sim-time T" recipe. It
+  // collapses the three hand-rolled reseat blocks — the cold-start reset, the
+  // loop/window-length wrap, and the timeline seek — into one parametrized path so a
+  // future change (S3-1 clock injection, S3-2 clock rebase, …) touches ONE place
+  // instead of three near-identical ~40-line copies. `intent` selects the HO-manager
+  // time transition:
+  //   - 'cold-start' (mount / profile / epoch / signalReset / handoverReset): full
+  //     reset() — fresh managers, no serving carried.
+  //   - 'seek' | 'wrap' (timeline seek, loop/window re-loop): clock-REBASE the
+  //     steered managers by the sim-time jump (S3-2) so a UE keeps its serving link
+  //     across the jump instead of cold-re-acquiring under the strict re-attach
+  //     threshold (the served-N/N flicker).
+  // Positions always cold-reseat at the target (D1): mobility states regenerate and a
+  // single paused dt=0 step renders T — no warm O(N) replay on a 7200 s timeline. The
+  // reseat publishes a real populated frame (never a blank createEmptyFrame — that
+  // removes the old signalReset empty-frame flicker).
+  const buildRuntimeStateAt = useCallback(
+    (params: { toSec: number; intent: 'cold-start' | 'seek' | 'wrap' }) => {
+      const targetOffset = normalizeReplayOffset(params.toSec, maxTimeSec, replay.loop);
+      if (params.intent === 'cold-start') {
+        resetAllHoManagers();
+      } else {
+        transitionHoManagers({
+          kind: 'rebase',
+          deltaMs: (targetOffset - runtimeStateRef.current.simTimeSec) * 1000,
+        });
+      }
+      resetMobilityStates();
+      runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);
+      installDecisionOverride();
+      const { frame } = stepRuntimeFrame({
+        profile,
+        replay,
+        speed,
+        paused: true,
+        deltaSec: 0,
+        beamFootprintMultiplier,
+        mapKmPerWorldUnit,
+        // S3-1: inject the display-latch wall clock explicitly so the live step
+        // takes no ambient performance.now() read (pure-step contract). Same value
+        // the step previously read itself — behavior-identical.
+        nowMs: readWallClockMs(),
+        observer,
+        beamLayoutsByShellId,
+        trajectoryCache,
+        hoManager,
+        secondaryHoManagers,
+        ueCount: effectiveUeCount,
+        ueDistributionMode,
+        uePrimaryAnchorMode,
+        ueMobilityMode,
+        ueMobilityParams: effectiveUeMobilityParams,
+        ueDistributionScope,
+        ueDistributionRadiusKm,
+        mobilityStates: mobilityStatesRef.current,
+        state: runtimeStateRef.current,
       });
-    } else {
-      resetAllHoManagers();
-    }
-    resetMobilityStates();
-    runtimeStateRef.current = createRuntimeFrameStepState(startOffset);
-    installDecisionOverride();
-    const { frame } = stepRuntimeFrame({
+      // S-cells-2: additive cell truth on the reseat frame (dt 0 — single static
+      // step; managers already transitioned above). no-op off lane.
+      attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
+      frameRef.current = frame;
+      publishNextFrameRef.current = true;
+      setVersion(v => v + 1);
+    },
+    [
+      beamLayoutsByShellId,
+      effectiveUeCount,
+      hoManager,
+      installDecisionOverride,
+      maxTimeSec,
+      observer,
       profile,
       replay,
+      resetAllHoManagers,
+      transitionHoManagers,
+      resetMobilityStates,
+      secondaryHoManagers,
+      sinrLiveCellModel,
       speed,
-      paused: true,
-      deltaSec: 0,
       beamFootprintMultiplier,
       mapKmPerWorldUnit,
-      // S3-1: inject the display-latch wall clock explicitly so the live step
-      // takes no ambient performance.now() read (pure-step contract). Same value
-      // the step previously read itself — behavior-identical.
-      nowMs: readWallClockMs(),
-      observer,
-      beamLayoutsByShellId,
       trajectoryCache,
-      hoManager,
-      secondaryHoManagers,
-      ueCount: effectiveUeCount,
       ueDistributionMode,
       uePrimaryAnchorMode,
       ueMobilityMode,
-      ueMobilityParams: effectiveUeMobilityParams,
+      effectiveUeMobilityParams,
       ueDistributionScope,
       ueDistributionRadiusKm,
-      mobilityStates: mobilityStatesRef.current,
-      state: runtimeStateRef.current,
+    ],
+  );
+
+  // S3-3: thin adapters over the one-reset recipe — kept as named helpers because
+  // effects + gates reference them by name and signature. resetToReplayStartFrame()
+  // is a cold-start at the replay start offset; with { timeShift: true } (loop/window
+  // re-loop) it is a 'wrap' time-shift (rebase). seekToTimelineFrame(T) is a timeline
+  // 'seek' time-shift to T (rebase).
+  const resetToReplayStartFrame = useCallback((options?: { timeShift?: boolean }) => {
+    buildRuntimeStateAt({
+      toSec: replay.startOffsetSec,
+      intent: options?.timeShift ? 'wrap' : 'cold-start',
     });
-    // S-cells-2: additive cell truth on the reset frame (dt 0 — single static
-    // step; managers already transitioned above). no-op off lane.
-    attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
-    frameRef.current = frame;
-    publishNextFrameRef.current = true;
-    setVersion(v => v + 1);
-  }, [
-    beamLayoutsByShellId,
-    effectiveUeCount,
-    hoManager,
-    installDecisionOverride,
-    maxTimeSec,
-    observer,
-    profile,
-    replay,
-    resetAllHoManagers,
-    transitionHoManagers,
-    resetMobilityStates,
-    secondaryHoManagers,
-    sinrLiveCellModel,
-    speed,
-    beamFootprintMultiplier,
-    mapKmPerWorldUnit,
-    trajectoryCache,
-    ueDistributionMode,
-    uePrimaryAnchorMode,
-    ueMobilityMode,
-    effectiveUeMobilityParams,
-    ueDistributionScope,
-    ueDistributionRadiusKm,
-  ]);
+  }, [buildRuntimeStateAt, replay.startOffsetSec]);
 
   const seekToTimelineFrame = useCallback((targetSec: number) => {
-    const targetOffset = normalizeReplayOffset(targetSec, maxTimeSec, replay.loop);
-    // S3-2: a seek is a TIME-SHIFT — rebase the steered managers by the jump so
-    // serving survives the seek (the served-N/N flicker fix). Position/mobility
-    // still cold-reseat (S3-3 D1); HO-in-progress visuals stay cold (documented).
-    transitionHoManagers({
-      kind: 'rebase',
-      deltaMs: (targetOffset - runtimeStateRef.current.simTimeSec) * 1000,
-    });
-    resetMobilityStates();
-    runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);
-    installDecisionOverride();
-    const { frame } = stepRuntimeFrame({
-      profile,
-      replay,
-      speed,
-      paused: true,
-      deltaSec: 0,
-      beamFootprintMultiplier,
-      mapKmPerWorldUnit,
-      // S3-1: inject the display-latch wall clock explicitly so the live step
-      // takes no ambient performance.now() read (pure-step contract). Same value
-      // the step previously read itself — behavior-identical.
-      nowMs: readWallClockMs(),
-      observer,
-      beamLayoutsByShellId,
-      trajectoryCache,
-      hoManager,
-      secondaryHoManagers,
-      ueCount: effectiveUeCount,
-      ueDistributionMode,
-      uePrimaryAnchorMode,
-      ueMobilityMode,
-      ueMobilityParams: effectiveUeMobilityParams,
-      ueDistributionScope,
-      ueDistributionRadiusKm,
-      mobilityStates: mobilityStatesRef.current,
-      state: runtimeStateRef.current,
-    });
-    // S-cells-2: additive cell truth on the seek frame (dt 0 — static reseat at
-    // the seek target; cell model reset by transitionHoManagers above). no-op off lane.
-    attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
-    frameRef.current = frame;
-    publishNextFrameRef.current = true;
-    setVersion(v => v + 1);
-  }, [
-    beamLayoutsByShellId,
-    effectiveUeCount,
-    hoManager,
-    installDecisionOverride,
-    maxTimeSec,
-    observer,
-    profile,
-    replay,
-    transitionHoManagers,
-    resetMobilityStates,
-    secondaryHoManagers,
-    sinrLiveCellModel,
-    speed,
-    beamFootprintMultiplier,
-    mapKmPerWorldUnit,
-    trajectoryCache,
-    ueDistributionMode,
-    uePrimaryAnchorMode,
-    ueMobilityMode,
-    effectiveUeMobilityParams,
-    ueDistributionScope,
-    ueDistributionRadiusKm,
-  ]);
+    buildRuntimeStateAt({ toSec: targetSec, intent: 'seek' });
+  }, [buildRuntimeStateAt]);
 
   useEffect(() => {
     resetToReplayStartFrame();
@@ -461,13 +422,21 @@ export function useSimulation(
   }, [replay.seekRequestKey]);
 
   useEffect(() => {
-    resetAllHoManagers();
-    resetMobilityStates();
-    runtimeStateRef.current = createRuntimeFrameStepState(runtimeStateRef.current.simTimeSec);
-    frameRef.current = createEmptyFrame(runtimeStateRef.current.simTimeSec);
-    publishNextFrameRef.current = true;
-    setVersion(v => v + 1);
-  }, [resetAllHoManagers, resetMobilityStates, signalResetKey]);
+    // S3-3: a signal-control reset is a cold-start at the CURRENT sim-time. Route it
+    // through the one-reset recipe so it publishes a real populated frame instead of
+    // the old createEmptyFrame flicker (and shares the clock-injection / cell-attach
+    // wiring with every other reseat).
+    //
+    // Deps are [signalResetKey] ONLY — deliberately omitting buildRuntimeStateAt, the
+    // same way the mount / handoverReset / seek effects omit their wrapper callbacks.
+    // The recipe carries a wide dep array (profile, replay, speed, observer, …); listing
+    // it here would cold-reset every HO manager whenever any of those live inputs change
+    // — most damagingly a playback `speed` change mid-flight, which would wipe serving
+    // (the served-N/N regression S3-2 fixed). React still invokes the LATEST recipe
+    // closure at fire time (the effect is recreated when signalResetKey changes), so the
+    // reseat uses current values; it just no longer re-fires on speed/observer/etc.
+    buildRuntimeStateAt({ toSec: runtimeStateRef.current.simTimeSec, intent: 'cold-start' });
+  }, [signalResetKey]);
 
   useEffect(() => {
     resetMobilityStates();

@@ -150,6 +150,39 @@ is mandatory and may NOT be `S0_TRACE_IGNORE`'d (truth-layer rule). Beam visuals
   to S4** (cell lane is S4's serving truth) — logged, not fixed here, to keep S3-2 surgical.
 
 ### S3-3 · Minimal one reset recipe + QUAR-S3-STEP retirement (the structural cut)
+
+**✅ DONE (2026-06-11).** `buildRuntimeStateAt({ toSec, intent: 'cold-start'|'seek'|'wrap' })`
+in `useSimulation.ts` collapses the three hand-rolled ~40-line reseat blocks
+(cold-start reset, loop/window wrap, timeline seek) into ONE recipe; `resetToReplayStartFrame`
++ `seekToTimelineFrame` are thin name-preserving wrappers, and the `signalReset` effect now
+routes through it (cold-start) — folding the old `createEmptyFrame` flicker into a real reseat
+frame. QUAR-S3-STEP retired wholesale (3 blocks + `tangle-locks.ts` registry) and replaced by
+the new `validate:s3:one-reset` gate (behavior + structural single-path + imported-constant
+VALUE asserts). `truth.*` geometry-trace ZERO-diff (no `S0_TRACE_IGNORE`); connected-sat
+KNOWN-GAPs unchanged; pure-step + served-survives-wrap still green. Gates re-pointed:
+`timeline-scrubbing`, `phase6b`, `omega-s3` (`startOffset`→`targetOffset`), `phase-3:cpu-budget`
+(reseat sites 4→2 floor). D1 (seek = cold-reseat positions) realized: the recipe runs ONE
+paused dt=0 step, no warm replay.
+
+**Scope deviations from this plan (deliberate, MINIMAL-first; surfaced for the record):**
+1. **`MIN_ELEVATION_DEG` NOT collapsed to one exported source.** `phase6p:746` pins the literal
+   `/export const MIN_ELEVATION_DEG = 15/` regex (a KPI gate, out of QUAR scope), and the
+   "trajectoryFrame.ts copy" the plan named does not exist (trajectoryFrame only duplicates
+   `CACHE_ELEVATION_DEG`/`SIM_*`). The load-bearing parity guarantee is delivered by the
+   imported-constant VALUE asserts (`MIN_ELEVATION_DEG === DEFAULT_MIN_ELEVATION_DEG ===
+   SINR_LIVE_CELL_MIN_ELEVATION_DEG === 15`), which are stronger than the retired text pins and
+   break no out-of-scope gate. `runtimeFrameStep.ts` is left fully FROZEN this slice.
+2. **Cache-invalidation hack NOT folded.** The same-count distribution effect is a
+   continuity-preserving partial update (keeps sim-time + HO), NOT a reset/seek/wrap entry point,
+   and its `secondaryServingCache = null` text is pinned by `phase-3-cpu-budget:407`. Encapsulating
+   it would break that gate for no consolidation gain — left as-is.
+3. **`nextState` immutable-return NOT done / no `reseatFrameAt` extraction.** The recipe builds a
+   fresh `RuntimeFrameStepState` per reseat, so there is no aliasing to de-alias *within* a reseat;
+   the recipe collapses cleanly without it (this section anticipated exactly that — "leave the rest").
+   `stepRuntimeFrame` is untouched (every truth gate drives it directly → ZERO-diff structurally
+   guaranteed). The god-step's continuous-play aliasing is genuine but off the one-reset path; S4
+   owns it where serving truth is extracted.
+
 Scope to what the **one-reset gate + S4 + QUAR retirement** need — do NOT gold-plate.
 Full immutable-state de-aliasing (`nextState` return, ~27 write sites) is done **only as far
 as a clean single reset recipe requires**; if the recipe collapses cleanly without de-aliasing

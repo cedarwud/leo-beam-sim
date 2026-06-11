@@ -433,7 +433,12 @@ section('(e) useSimulation invalidates the secondary cache on distribution/mobil
     if (!invalidates) staleSites += 1;
     searchFrom = useSimulationSource.indexOf(CALL, searchFrom + CALL.length);
   }
-  check(regenSites >= 4, 'found the position-regeneration call sites to audit', `regenSites=${regenSites}`);
+  // S3-3 collapsed the three reseat sites (cold-start reset, seek, signalReset) into
+  // ONE buildRuntimeStateAt recipe, so the position-regeneration sites dropped from 4
+  // to 2 (the recipe + the same-count distribution effect). The load-bearing audit is
+  // staleSites===0 below — every site still pairs its resetMobilityStates() with a
+  // state recreate or a cache clear; this is just the non-vacuous floor.
+  check(regenSites >= 2, 'found the position-regeneration call sites to audit', `regenSites=${regenSites}`);
   check(
     staleSites === 0,
     'every position regeneration recreates state or clears the secondary cache',

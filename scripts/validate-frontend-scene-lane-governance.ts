@@ -1632,31 +1632,17 @@ assertContains(
 // is ADDITIVE: `runtimeFrameStep.ts` stays FROZEN and existing frame fields are
 // byte-identical, so the three MODQN/artifact lanes see ZERO drift. Render does
 // NOT consume the field until S-cells-3 — these locks pin that boundary.
-const useSimulationSource = readRepoFile('src/scene/useSimulation.ts');
+// S3-3: useSimulation/runtimeFrameStep/cellLayout source pins moved to BEHAVIOR /
+// structural / VALUE asserts in validate:s3:one-reset (QUAR-S3-STEP retirement), so
+// those readRepoFile() handles are gone from this file.
 const sinrLiveCellRuntimeSource = readRepoFile('src/scene/sinrLiveCellRuntime.ts');
-const runtimeFrameStepSource = readRepoFile('src/scene/runtimeFrameStep.ts');
-const cellLayoutSource = readRepoFile('src/engine/cells/cellLayout.ts');
 const sceneTypesSource = readRepoFile('src/scene/types.ts');
-// (a) the lane gate: MainScene owns it as sinr-live ONLY and threads it into the
-//     single live useSimulation hook.
-tangleLockGroup('QUAR-S3-STEP', () => {
-assertContains(
-  mainSceneSource,
-  "const useEarthFixedCellTruth = sceneLane === 'sinr-live';",
-  'MainScene gates the earth-fixed cell truth to the sinr-live lane only',
-);
-assertContains(
-  mainSceneSource,
-  'paperUserArea.kmPerWorldUnit,\n    useEarthFixedCellTruth,\n  );',
-  'MainScene threads the cell-truth gate into the live useSimulation hook',
-);
-// (b) the factory is gated (returns null off lane) → the additive no-op.
-assertContains(
-  useSimulationSource,
-  'createSinrLiveCellModel(profile, useEarthFixedCellTruth, replay.epochUtcMs)',
-  'useSimulation builds the cell model only through the lane gate',
-);
-});
+// (a) the lane gate: MainScene owns the cell truth as sinr-live ONLY. QUAR-S3-STEP
+//     block #1 RETIRED (S3-3): the brittle MainScene call-shape pin + the
+//     useSimulation factory-call source-text pin are replaced by BEHAVIOR in
+//     validate:s3:one-reset (the factory returns null off the lane / a model on it, a
+//     null attach is a no-op) plus a robust MainScene lane-ownership assert there.
+//     The permanent additive-boundary asserts below stay.
 assertContains(
   sinrLiveCellRuntimeSource,
   'if (!useEarthFixedCellTruth) return null;',
@@ -1686,13 +1672,10 @@ assertNotContains(
   "from './runtimeFrameStep'",
   'cell-truth adapter must not import the frozen runtime stepper',
 );
-tangleLockGroup('QUAR-S3-STEP', () => {
-assertNotContains(
-  runtimeFrameStepSource,
-  'sinrLiveCell',
-  'runtimeFrameStep.ts stays FROZEN: no cell-truth symbol leaks into buildLinkContext (S-cells-2-A)',
-);
-});
+// QUAR-S3-STEP block #2 RETIRED (S3-3): the FROZEN-text "no sinrLiveCell symbol" pin
+// on runtimeFrameStep.ts is replaced by the structural import-boundary assert in
+// validate:s3:one-reset (the runtime step does not import the cell adapter/model —
+// cell truth ∉ step callee set; the additive boundary holds until S4 folds it).
 // (d) the new SimFrame field is an optional, sinr-live-only addition.
 assertContains(
   sceneTypesSource,
@@ -1706,26 +1689,11 @@ assertContains(
   'sim.sinrLiveCells',
   'MainScene consumes the cell truth in S-cells-3 (cell-truth beam cone render)',
 );
-// (f) elevation-mask parity: the cell candidate visibility mask equals the
-//     runtime linkSats mask (both 15°), pinned to the cell-layout default.
-//     (S3 replaces the literal triple-pin with imported-constant VALUE asserts.)
-tangleLockGroup('QUAR-S3-STEP', () => {
-assertContains(
-  runtimeFrameStepSource,
-  'MIN_ELEVATION_DEG = 15',
-  'runtime linkSats elevation mask is 15°',
-);
-assertContains(
-  cellLayoutSource,
-  'DEFAULT_MIN_ELEVATION_DEG = 15',
-  'cell-layout default elevation mask is 15° (parity with the runtime linkSats mask)',
-);
-assertContains(
-  sinrLiveCellRuntimeSource,
-  'SINR_LIVE_CELL_MIN_ELEVATION_DEG = DEFAULT_MIN_ELEVATION_DEG',
-  'cell-truth adapter pins its mask to the cell-layout default (single source of truth)',
-);
-});
+// (f) elevation-mask parity (runtime linkSats mask == cell-layout default == cell
+//     adapter, all 15°). QUAR-S3-STEP block #3 RETIRED (S3-3): the 15° literal
+//     triple-pin is replaced by imported-constant VALUE asserts in
+//     validate:s3:one-reset (MIN_ELEVATION_DEG === DEFAULT_MIN_ELEVATION_DEG ===
+//     SINR_LIVE_CELL_MIN_ELEVATION_DEG === 15) — stronger than the source-text pins.
 // (g) the runtime-wiring gate is wired into package.json.
 assertContains(
   packageJson,

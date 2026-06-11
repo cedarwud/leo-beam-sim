@@ -173,6 +173,7 @@
     "validate:s2:satellite-identity-stable": "node --import tsx/esm scripts/validate-s2-satellite-identity-stable.tsx",
     "validate:s3:pure-step": "node --import tsx/esm scripts/validate-s3-pure-step.tsx",
     "validate:s3:served-survives-wrap": "node --import tsx/esm scripts/validate-s3-served-survives-wrap.tsx",
+    "validate:s3:one-reset": "node --import tsx/esm scripts/validate-s3-one-reset.tsx",
     "validate:modqn:handover-story-layer": "node --import tsx/esm scripts/validate-modqn-handover-story-layer.ts",
     "validate:modqn:training-scene-source-gaps": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps.ts",
     "validate:modqn:training-scene-source-gaps:browser": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps-browser.ts",

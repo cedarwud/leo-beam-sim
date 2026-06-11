@@ -106,8 +106,9 @@ export const SINR_LIVE_HOP_SLOT_SEC = 2.5;
 /**
  * Elevation mask for the cell truth. Pinned to the cell-layout default (15°),
  * which equals the runtime `MIN_ELEVATION_DEG` (15°) — both are locked equal by
- * the scene-lane-governance gate so the cell candidate visibility matches the
- * runtime `linkSats` filter without importing the THREE-heavy runtime module.
+ * the validate:s3:one-reset imported-constant VALUE asserts (S3-3, replacing the
+ * retired QUAR-S3-STEP literal triple-pin) so the cell candidate visibility matches
+ * the runtime `linkSats` filter without importing the THREE-heavy runtime module.
  */
 export const SINR_LIVE_CELL_MIN_ELEVATION_DEG = DEFAULT_MIN_ELEVATION_DEG;
 

@@ -42,11 +42,11 @@ export const TANGLE_LOCK_RETIREMENT: Record<string, TangleLockGroupContract> = {
     replacement:
       'render-plan matrix asserts for the un-parked cell-truth lane + the S0 connected-sat-has-beam invariant on the cell-cone path',
   },
-  'QUAR-S3-STEP': {
-    retiringSlice: 'S3 (one step, one reset)',
-    replacement:
-      'pure-step test (no wall-clock in truth), ONE-reset-recipe test, geometry-trace before==after diff, and imported-constant VALUE asserts replacing the 15° literal triple-pin and the runtimeFrameStep FROZEN text pin',
-  },
+  // QUAR-S3-STEP RETIRED 2026-06-11 (S3-3, one step/one reset): its three blocks
+  // (cell-lane gate strings, runtimeFrameStep FROZEN-text pin, 15° literal triple-pin)
+  // were replaced wholesale by behavior / structural / imported-constant VALUE asserts
+  // in validate:s3:one-reset, alongside the pure-step (S3-1) + served-survives-wrap
+  // (S3-2) gates. No registry entry remains, so the meta-gate no longer expects it.
   'QUAR-S4-SERVING': {
     retiringSlice: 'S4 (one serving truth per lane)',
     replacement:

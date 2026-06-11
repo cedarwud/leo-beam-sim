@@ -612,7 +612,10 @@ function assertHandoverResetReturnsToReplayStart(): void {
   const block = source.slice(effectStart, effectEnd);
   assertContains(block, 'resetToReplayStartFrame();');
   assertContains(source, 'const resetToReplayStartFrame = useCallback((options?: { timeShift?: boolean }) => {');
-  assertContains(source, 'createRuntimeFrameStepState(startOffset)');
+  // S3-3: resetToReplayStartFrame delegates to the single buildRuntimeStateAt recipe,
+  // which builds the fresh state at the (cold-start) target offset and renders a
+  // paused zero-delta reseat frame — never a blank createEmptyFrame.
+  assertContains(source, 'createRuntimeFrameStepState(targetOffset)');
   assertContains(source, 'paused: true');
   assertContains(source, 'deltaSec: 0');
   assertContains(source, 'frameRef.current = frame');

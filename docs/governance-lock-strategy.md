@@ -32,7 +32,7 @@ Every assert was classified (4-round audit + S0 census, all file:line cited):
 | Group | Retires with | Replacement gates |
 |---|---|---|
 | QUAR-RENDER-RESET | sinr-live render reset (or S5) | un-parked render-plan matrix + cell-cone invariant |
-| QUAR-S3-STEP | S3 one step, one reset | pure-step + one-reset tests, geometry-trace diff, imported-constant VALUE asserts (kills the 15° literal triple-pin + the FROZEN text pin) |
+| ~~QUAR-S3-STEP~~ **RETIRED 2026-06-11 (S3-3)** | S3 one step, one reset | ✅ replaced wholesale by `validate:s3:one-reset` (behavior + structural single-path + imported-constant VALUE asserts — kills the 15° literal triple-pin + the FROZEN text pin), alongside `validate:s3:pure-step` + `validate:s3:served-survives-wrap`. Registry entry + all 3 `tangleLockGroup` blocks deleted. |
 | QUAR-S4-SERVING | S4 one serving truth | serving-equivalence invariants (cell == mosaic == cones == HUD), pun retirement, antenna VALUE asserts via `consistentPeakGainDbi` |
 | QUAR-S5-BEAMRENDER | S5 one beam render | ONE pure selector under invariant tests, mesh-telemetry render gates, ONE style token module |
 | QUAR-S6-BUS | S6 split runtime bus | typed render-plan gates, single control channel contract, lane-transition behavior test |

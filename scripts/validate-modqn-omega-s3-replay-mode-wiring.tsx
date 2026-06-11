@@ -377,8 +377,11 @@ console.log('\n(j) S3HandoverManager in useSimulation.ts');
     'useSimulation.ts nulls overrideRef when not decision-overlay-on-live-sinr (truth invariance)',
   );
   assert(
+    // S3-3: resetToReplayStartFrame delegates to the single buildRuntimeStateAt
+    // recipe, which builds the fresh state at the target offset and publishes a
+    // paused zero-delta reseat frame.
     simSrc.includes('const resetToReplayStartFrame = useCallback((options?: { timeShift?: boolean }) => {')
-    && simSrc.includes('createRuntimeFrameStepState(startOffset)')
+    && simSrc.includes('createRuntimeFrameStepState(targetOffset)')
     && simSrc.includes('paused: true')
     && simSrc.includes('deltaSec: 0')
     && simSrc.includes('frameRef.current = frame'),

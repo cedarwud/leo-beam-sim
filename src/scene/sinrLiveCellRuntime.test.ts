@@ -17,7 +17,8 @@
  *   4. the model the factory returns is resettable (so the hook's
  *      `resetAllHoManagers` → `.reset()` wiring produces a clean cold-attach);
  *   5. elevation-mask parity with the cell-layout default (the runtime
- *      `MIN_ELEVATION_DEG = 15` equality is locked statically in governance).
+ *      `MIN_ELEVATION_DEG = 15` equality is locked by the validate:s3:one-reset
+ *      imported-constant VALUE asserts).
  *
  * Run: `npm run validate:phase-c:sinr-live-cells:runtime`.
  */
@@ -125,7 +126,7 @@ check('SINR_LIVE_CELL_COUNT is a positive integer (the single S-cells-5 tuning p
   assert(Number.isInteger(SINR_LIVE_CELL_COUNT) && SINR_LIVE_CELL_COUNT > 0, 'positive int');
 });
 
-check('elevation-mask parity with the cell-layout default (runtime 15° locked in governance)', () => {
+check('elevation-mask parity with the cell-layout default (runtime 15° locked by validate:s3:one-reset)', () => {
   assertEqual(SINR_LIVE_CELL_MIN_ELEVATION_DEG, DEFAULT_MIN_ELEVATION_DEG, 'mask == cell-layout default');
 });
 

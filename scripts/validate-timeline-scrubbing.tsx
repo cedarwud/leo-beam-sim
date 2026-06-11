@@ -161,27 +161,30 @@ function validateAppWiring(): void {
 
 function validateLiveSimulationResetPath(): void {
   const useSimulationSource = readRepoFile('src/scene/useSimulation.ts');
+  // S3-3: the live seek collapsed into the single buildRuntimeStateAt recipe — it
+  // delegates with intent 'seek', and the shared recipe REBASES the HO managers
+  // (S3-2: keeps serving across the jump) and reseats positions at the target (D1
+  // cold-reseat). The seek-specific body no longer exists.
   assertContains(useSimulationSource, 'const seekToTimelineFrame = useCallback((targetSec: number) => {', 'live seek helper declaration');
-  assertContains(useSimulationSource, 'const targetOffset = normalizeReplayOffset(targetSec, maxTimeSec, replay.loop);', 'live seek normalizes target');
-  // S3-2: a seek is a TIME-SHIFT — it REBASES the HO managers (keeps serving across
-  // the jump) rather than reset()'ing. Scope to the seek body so this can't pass
-  // vacuously on the cold-start resetAllHoManagers() that lives elsewhere in the file.
-  const seekBodyStart = useSimulationSource.indexOf('const seekToTimelineFrame = useCallback((targetSec: number) => {');
-  const seekBody = useSimulationSource.slice(
-    seekBodyStart,
-    useSimulationSource.indexOf('runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);', seekBodyStart),
-  );
-  assertContains(seekBody, "transitionHoManagers({", 'live seek transitions HO managers via the rebase helper');
-  assertContains(seekBody, "kind: 'rebase'", 'live seek REBASES HO managers (keeps serving across the jump), not reset');
-  assertContains(useSimulationSource, 'resetMobilityStates();', 'live seek resets UE mobility states');
-  assertContains(useSimulationSource, 'runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);', 'live seek resets runtime state at target');
-  assertContains(useSimulationSource, 'installDecisionOverride();', 'live seek reinstalls MODQN overlay decision override');
-  assertContains(useSimulationSource, 'paused: true,', 'live seek renders a paused target frame');
-  assertContains(useSimulationSource, 'publishNextFrameRef.current = true;', 'live seek forces next frame publication');
-  assertContains(useSimulationSource, 'setVersion(v => v + 1);', 'live seek triggers a React update');
+  assertContains(useSimulationSource, "buildRuntimeStateAt({ toSec: targetSec, intent: 'seek' });", 'live seek delegates to the one-reset recipe with intent seek');
+  assertContains(useSimulationSource, 'const buildRuntimeStateAt = useCallback(', 'the single construct-state-at-T recipe exists');
+  assertContains(useSimulationSource, 'const targetOffset = normalizeReplayOffset(params.toSec, maxTimeSec, replay.loop);', 'the recipe normalizes the target offset');
+  // the recipe REBASES for the time-shift intents (seek/wrap); only cold-start reset()s.
+  // Scope to the recipe BODY (decl -> its resetMobilityStates()) so the type signature
+  // `{ kind: 'cold-start' } | { kind: 'rebase'; … }` cannot satisfy `kind: 'rebase'`
+  // vacuously (the original gap the dropped seek-body scoping left).
+  const recipeBodyStart = useSimulationSource.indexOf('const buildRuntimeStateAt = useCallback(');
+  const recipeBody = useSimulationSource.slice(recipeBodyStart, useSimulationSource.indexOf('resetMobilityStates();', recipeBodyStart));
+  assertContains(recipeBody, "kind: 'rebase'", 'the recipe REBASES HO managers for seek/wrap (keeps serving across the jump), not reset');
+  assertContains(useSimulationSource, 'resetMobilityStates();', 'the recipe reseats UE mobility states');
+  assertContains(useSimulationSource, 'runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);', 'the recipe resets runtime state at the target offset');
+  assertContains(useSimulationSource, 'installDecisionOverride();', 'the recipe reinstalls the MODQN overlay decision override');
+  assertContains(useSimulationSource, 'paused: true,', 'the recipe renders a paused target frame');
+  assertContains(useSimulationSource, 'publishNextFrameRef.current = true;', 'the recipe forces next frame publication');
+  assertContains(useSimulationSource, 'setVersion(v => v + 1);', 'the recipe triggers a React update');
   assertContains(useSimulationSource, 'if (replay.seekRequestKey === undefined || replay.seekTargetSec === undefined) return;', 'live seek effect requires an explicit request');
   assertContains(useSimulationSource, 'seekToTimelineFrame(replay.seekTargetSec);', 'live seek effect dispatches the requested target');
-  pass('useSimulation seek path resets state machines before rendering target frame');
+  pass('useSimulation seek path delegates to the one-reset recipe (rebase + reseat at target)');
 }
 
 function validateDocs(): void {
