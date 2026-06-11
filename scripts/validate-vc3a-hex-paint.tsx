@@ -252,7 +252,8 @@ function assertCoverMapSelection(): void {
     hysteresis: new Map(),
   });
   assert.equal(painted[0].coveringBeam?.beamKey, 'shell-pro-53-P0-S2:B3');
-  assert.equal(painted[0].coveringBeam?.satTintColor, SATELLITE_TINT_PALETTE[0]);
+  // S2: tint is satId-stable (was display-order 0 => palette[0]).
+  assert.equal(painted[0].coveringBeam?.satTintColor, satelliteTint('shell-pro-53-P0-S2'));
   assert.equal(painted[0].coveringBeam?.frequencyColor, BEAM_FREQUENCY_COLORS[2]);
   assert.equal(painted[0].coveringBeam?.roleColor, BEAM_ROLE_TOKENS.serving.color);
   assert.equal(painted[0].coveringBeam?.isServingOrPending, true);

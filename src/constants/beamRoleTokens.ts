@@ -301,13 +301,35 @@ export function frequencyReuseColor(frequencyIndex: number): string {
   return BEAM_FREQUENCY_COLORS[index];
 }
 
-export function satelliteTintIndex(_satId: string, displayOrder: number): number {
-  const order = Number.isFinite(displayOrder) ? Math.floor(displayOrder) : 0;
-  return ((order % SATELLITE_TINT_PALETTE.length) + SATELLITE_TINT_PALETTE.length) % SATELLITE_TINT_PALETTE.length;
+/**
+ * FNV-1a hash of the satellite id → stable palette index. Same proven hash as
+ * `sinrServingMosaic.hashStringToUnit`. Collisions into the 4-tint palette are
+ * expected and acceptable (ambient/context sats may share a tint; event sats
+ * use role colours, not this tint) — S2 fixes CHURN, not uniqueness.
+ */
+function hashSatIdToTintIndex(satId: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < satId.length; i += 1) {
+    hash ^= satId.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % SATELLITE_TINT_PALETTE.length;
 }
 
-export function satelliteTint(satId: string, displayOrder: number): string {
-  return SATELLITE_TINT_PALETTE[satelliteTintIndex(satId, displayOrder)];
+/**
+ * S2 (sat identity): the tint is a pure function of `satId`, NOT the per-frame
+ * display order — a satellite keeps its colour across frames, so a recolour
+ * means a real identity change rather than a display-set reshuffle (the audited
+ * churn). `displayOrder` is retained for call-site compatibility but IGNORED;
+ * `validate:s2:satellite-identity-stable` locks this invariance so the churning
+ * input cannot be reintroduced.
+ */
+export function satelliteTintIndex(satId: string, _displayOrder?: number): number {
+  return hashSatIdToTintIndex(satId);
+}
+
+export function satelliteTint(satId: string, _displayOrder?: number): string {
+  return SATELLITE_TINT_PALETTE[satelliteTintIndex(satId)];
 }
 
 export function resolveBeamPulseOpacity(input: {

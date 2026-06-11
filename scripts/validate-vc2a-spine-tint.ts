@@ -78,17 +78,27 @@ function assertPaletteInvariants(): void {
 
 function assertAssignmentStability(): void {
   const satIds = ['shell-pro-53-P0-S0', 'shell-pro-53-P0-S1', 'shell-pro-53-P0-S2', 'shell-pro-53-P0-S3'];
-  const first = satIds.map((satId, index) => ({
-    index: satelliteTintIndex(satId, index),
-    tint: satelliteTint(satId, index),
-  }));
-  const second = satIds.map((satId, index) => ({
-    index: satelliteTintIndex(satId, index),
-    tint: satelliteTint(satId, index),
-  }));
+  // S2 (sat identity): the tint is a pure function of satId — INVARIANT to
+  // display order, so a satellite keeps its colour whatever its per-frame
+  // display rank (the audited churn is gone). The retired behaviour reserved
+  // palette[0] (#ffffff) for display-order 0; that is no longer asserted.
+  const palette: readonly string[] = SATELLITE_TINT_PALETTE;
+  for (const satId of satIds) {
+    const tintAtZero = satelliteTint(satId, 0);
+    assert.ok(palette.includes(tintAtZero), `${satId} tint ${tintAtZero} is not a palette colour`);
+    for (const order of [1, 5, 11, 99]) {
+      assert.equal(satelliteTint(satId, order), tintAtZero, `${satId} tint churned with display order ${order}`);
+      assert.equal(
+        satelliteTintIndex(satId, order),
+        satelliteTintIndex(satId, 0),
+        `${satId} tint index churned with display order ${order}`,
+      );
+    }
+  }
 
+  const first = satIds.map(satId => ({ index: satelliteTintIndex(satId), tint: satelliteTint(satId) }));
+  const second = satIds.map(satId => ({ index: satelliteTintIndex(satId), tint: satelliteTint(satId) }));
   assert.deepEqual(second, first, 'satellite tint assignment changed for an unchanged visible-satellite set');
-  assert.equal(first[0].tint.toLowerCase(), '#ffffff', 'display-order zero should reserve white for the lead satellite');
 }
 
 async function assertBrowserFixture() {

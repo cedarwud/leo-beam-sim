@@ -54,7 +54,11 @@ async function assertBrowserFixture() {
     assert.equal(result.canvasReady, true, 'Phase 2C browser fixture did not render a canvas');
 
     const fixtureTints = result.beams.map(beam => beam.satelliteTintColor.toLowerCase());
-    assert.equal(new Set(fixtureTints).size, 4, 'Phase 2C fixture did not expose four distinct marker tint inputs');
+    const paletteLower = SATELLITE_TINT_PALETTE.map(color => color.toLowerCase());
+    // S2: tint is satId-stable (was displayOrder%len → trivially 4-distinct).
+    // Assert multiple distinct PALETTE tints render, not a hash-luck count of 4.
+    assert.ok(new Set(fixtureTints).size >= 2, `Phase 2C fixture marker tints are mono (${new Set(fixtureTints).size} distinct)`);
+    assert.ok(fixtureTints.every(tint => paletteLower.includes(tint)), 'Phase 2C fixture exposed a non-palette marker tint');
 
     return {
       sample,

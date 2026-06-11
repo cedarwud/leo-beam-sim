@@ -10,15 +10,21 @@ import { assertCanvasNonBlank, sampleCanvas, withVc2Browser } from './_vc2-brows
 
 function assertGlyphMapping(): void {
   const satIds = ['shell-pro-53-P0-S0', 'shell-pro-53-P0-S1', 'shell-pro-53-P0-S2', 'shell-pro-53-P0-S3'];
-  const mapped = satIds.map((satId, displayOrder) => {
-    const visualIndex = satelliteTintIndex(satId, displayOrder);
-    return satelliteGlyph(visualIndex);
-  });
-  assert.deepEqual(
-    mapped,
-    SATELLITE_GLYPH_LIBRARY.map(entry => entry.kind),
-    'glyph assignment must share the Phase 2A satellite visual index',
-  );
+  const libraryKinds = new Set(SATELLITE_GLYPH_LIBRARY.map(entry => entry.kind));
+  for (const satId of satIds) {
+    // S2: the glyph derives from the satId-stable visual index, INVARIANT to
+    // display order (collisions into the glyph library are acceptable — the
+    // retired behaviour mapped display-order 0..3 onto the library in order).
+    const glyph = satelliteGlyph(satelliteTintIndex(satId));
+    assert.ok(libraryKinds.has(glyph), `${satId} glyph ${glyph} is not a SATELLITE_GLYPH_LIBRARY kind`);
+    for (const displayOrder of [0, 3, 50]) {
+      assert.equal(
+        satelliteGlyph(satelliteTintIndex(satId, displayOrder)),
+        glyph,
+        `${satId} glyph churned with display order ${displayOrder}`,
+      );
+    }
+  }
 }
 
 function assertShapeDistinctness(): void {
@@ -48,8 +54,13 @@ async function assertBrowserFixture() {
     assertCanvasNonBlank(sample, 'Phase 2B');
 
     const expectedSymbols = SATELLITE_GLYPH_LIBRARY.map(entry => entry.symbol).join('');
-    assert.equal(result.inlineGlyphText, expectedSymbols, 'callout inline glyph echo did not render all four symbols');
-    assert.equal(result.fallbackGlyphText, expectedSymbols, 'font fallback fixture did not render all four glyph symbols');
+    // S2: the inline CALLOUT glyphs follow the fixture's satId-stable visual
+    // index (a permutation of the library), so assert the SET. The fallback
+    // probe renders SATELLITE_GLYPH_LIBRARY in order and is S2-INVARIANT — keep
+    // its exact-order check.
+    const symbolSet = (text: string): string => [...text].sort().join('');
+    assert.equal(symbolSet(result.inlineGlyphText), symbolSet(expectedSymbols), 'callout inline glyph echo did not render all four symbols');
+    assert.equal(result.fallbackGlyphText, expectedSymbols, 'font fallback fixture did not render all four glyph symbols in library order');
 
     const fallbackStyle = await page.locator('[data-testid="vc2-glyph-fallback-probe"]').evaluate(element => {
       const style = getComputedStyle(element);

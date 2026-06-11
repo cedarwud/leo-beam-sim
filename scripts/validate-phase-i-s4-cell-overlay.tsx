@@ -8,7 +8,7 @@ import {
   computeCellScheduleViz,
   type CellScheduleViz,
 } from '../src/scene/useCellSchedule.ts';
-import { satelliteTint } from '../src/constants/beamRoleTokens.ts';
+import { SATELLITE_TINT_PALETTE, satelliteTint } from '../src/constants/beamRoleTokens.ts';
 import { CellOverlay as CellOverlayComponent } from '../src/viz/CellOverlay.tsx';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -179,7 +179,14 @@ const zeroSatSchedule = scheduleAt(0, []);
 expectEqual(zeroSatSchedule.assignmentByCellId.size, 0, 'zero satellites returns activeCount 0 without throwing');
 expectEqual(zeroSatSchedule.slot.idleCellIds.length, 37, 'zero satellites keeps all cells idle');
 expect(scheduleAt(0, [{ id: 'sat-only' }]).assignmentByCellId.size <= 7, 'one satellite is capped at 7 active beams');
-expectEqual(new Set(SATELLITES.map((satellite, index) => satelliteTint(satellite.id, index))).size, 4, 'satelliteTint returns four distinct visual-index colors');
+// S2: tint is satId-stable (was displayOrder%len, which made any 4 sats
+// trivially 4-distinct). Assert the construction-independent invariants: the
+// palette is 4-distinct and every satellite tint is a palette colour.
+expectEqual(new Set(SATELLITE_TINT_PALETTE).size, 4, 'satellite tint palette has four distinct colors');
+expect(
+  SATELLITES.every(satellite => (SATELLITE_TINT_PALETTE as readonly string[]).includes(satelliteTint(satellite.id))),
+  'every satellite tint is a palette color',
+);
 
 const hiddenOverlay = CellOverlayComponent({ schedule: slot0, satelliteTintById: tintById, visible: false });
 expectEqual(hiddenOverlay, null, 'CellOverlay returns null when visible is false');
