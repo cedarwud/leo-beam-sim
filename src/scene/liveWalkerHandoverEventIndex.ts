@@ -22,6 +22,29 @@ export const LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC = SIM_DURATION_SEC;
 export const LIVE_WALKER_HANDOVER_EVENT_INDEX_DEFAULT_STEP_SEC = 1;
 export const LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID = 'live-ue-0';
 
+/**
+ * S4-4 (Decision D4) honest-label note. Both handover event indices are
+ * precomputed OFFLINE by re-running the sim at a FIXED COARSE step
+ * (`generation.simStepSec`; App passes 30 s for the cell-truth scan,
+ * `App.tsx` build site), whereas the live scene advances at a finer variable
+ * per-frame dt (~16 ms). So a clicked cinema marker is a coarse FORECAST of
+ * where a handover lands — not necessarily the exact transition the live scene
+ * displayed (coarser steps + the TTT / ping-pong guards can shift or drop a
+ * transition). Surfaced verbatim by the cinema SINR explainer; pinned by
+ * `validate:s4:event-index-forecast-label`. (D4 = LABEL, not align — re-running
+ * at the live dt over the 7200 s × 100-UE window is build-cost-prohibitive.)
+ *
+ * Orthogonality (S4-4 D4 review): this TIMING-fidelity note coexists with the
+ * index's `claimKind: 'live-truth'` on purpose. `claimKind` is the SOURCE axis
+ * (the rendered SINR is leo's real cell-truth, carried verbatim from the engine
+ * HandoverEvent — NOT a profile projection); this note is the TIMING axis (the
+ * marker positions come from a coarse offline step). They are independent — do
+ * NOT flip `claimKind` to 'profile-derived-forecast' (that would falsely imply
+ * the SINR values are a forecast; the steered live-walker index owns that bucket).
+ */
+export const EVENT_INDEX_COARSE_FORECAST_NOTE =
+  'Coarse offline forecast — handover markers are precomputed at a fixed step; the live scene advances at a finer variable frame rate, so a marker may not match the exact live-displayed transition, or may not occur at all.';
+
 export type LiveWalkerHandoverEventIndexSourceOwner = 'live-walker' | 'sinr-live-cell-truth';
 export type LiveWalkerHandoverEventIndexHorizonKind = 'live-walker-window';
 export type LiveWalkerHandoverEventIndexClaimKind =

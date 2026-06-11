@@ -126,6 +126,11 @@ function createEmptySinrLiveCellIndex(
   return {
     sourceOwner: 'sinr-live-cell-truth',
     horizonKind: 'live-walker-window',
+    // SOURCE axis: the rendered SINR is leo's real cell-truth (verbatim from the
+    // engine HandoverEvent), so this is 'live-truth', NOT a profile projection.
+    // The coarse-offline-step TIMING caveat is a separate axis carried by
+    // EVENT_INDEX_COARSE_FORECAST_NOTE / the cinema explainer (S4-4 D4); do not
+    // conflate them by flipping this to 'profile-derived-forecast'.
     claimKind: 'live-truth',
     durationSec: LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC,
     ueScope: 'cell-truth-ue-events',

@@ -83,6 +83,17 @@
   color: rgba(118, 234, 215, 0.86);
 }
 
+// S4-4 (D4): coarse-offline-forecast caveat. Amber/muted tone + a top divider so
+// the timing-fidelity disclosure reads as a caveat, not body text.
+.leo-handover-cinema-sinr-explainer__forecast {
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 204, 92, 0.18);
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: rgba(255, 213, 138, 0.82);
+}
+
 .leo-handover-cinema-sinr-explainer__claim-stamp {
   margin-top: 1px;
   font-size: 10px;

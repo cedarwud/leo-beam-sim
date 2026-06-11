@@ -19,6 +19,7 @@ import {
   type CinemaCandidateDetail,
   type SinrCandidateRow,
 } from '../app/handoverCinema';
+import { EVENT_INDEX_COARSE_FORECAST_NOTE } from '../scene/liveWalkerHandoverEventIndex';
 
 interface SinrOffsetExplainerProps {
   readonly candidate: CinemaCandidateDetail | null;
@@ -110,6 +111,20 @@ export function SinrOffsetExplainer({ candidate, visible }: SinrOffsetExplainerP
       {delta !== null && (
         <div className="leo-handover-cinema-sinr-explainer__delta" data-testid="sinr-explainer-delta">
           Winner {delta} vs serving
+        </div>
+      )}
+      {/* S4-4 (D4): the sinrLiveCells event index is precomputed OFFLINE at a
+          fixed coarse step (App passes 30 s), while the live scene runs at a
+          finer variable frame dt — so a clicked marker is honestly a coarse
+          FORECAST, not the exact live-displayed transition. This TIMING caveat
+          is orthogonal to the SOURCE-axis claim above (data-live-claim stays
+          'live-truth' because the SINR values ARE real leo cell-truth). */}
+      {model.sourceOwner === 'sinr-live-cell-truth' && (
+        <div
+          className="leo-handover-cinema-sinr-explainer__forecast"
+          data-testid="sinr-explainer-forecast"
+        >
+          {EVENT_INDEX_COARSE_FORECAST_NOTE}
         </div>
       )}
       <div
