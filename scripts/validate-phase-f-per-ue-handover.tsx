@@ -143,7 +143,11 @@ section('(b) useSimulation.ts per-UE manager wiring', () => {
   check(useSimulationSource.includes('const secondaryHoManagers = useMemo('), 'useSimulation tracks secondaryHoManagers with useMemo');
   check(useSimulationSource.includes('new HandoverManager(profile.handover)'), 'useSimulation creates base HandoverManager instances for secondaries');
   check(useSimulationSource.includes('function resetAllHoManagers') || useSimulationSource.includes('const resetAllHoManagers'), 'useSimulation declares resetAllHoManagers helper');
-  check(useSimulationSource.includes('secondaryHoManagers.forEach(manager => manager.reset())'), 'resetAllHoManagers resets all secondary managers');
+  // S3-2: cold-start transition (mount/profile/signalReset/handoverReset) full-resets
+  // every secondary manager; the time-shift transition (loop/window wrap, seek) REBASES
+  // them instead (keeps serving). Both live in transitionHoManagers.
+  check(useSimulationSource.includes('secondaryHoManagers.forEach(manager => manager.reset())'), 'cold-start transition resets all secondary managers');
+  check(useSimulationSource.includes('secondaryHoManagers.forEach(manager => manager.rebase(transition.deltaMs))'), 'S3-2 time-shift transition rebases all secondary managers (keeps serving)');
   check(useSimulationSource.includes('secondaryHoManagers,') && useSimulationSource.includes('ueCount: effectiveUeCount'), 'stepRuntimeFrame receives secondary managers and ueCount');
 });
 

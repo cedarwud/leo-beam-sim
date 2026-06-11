@@ -163,7 +163,16 @@ function validateLiveSimulationResetPath(): void {
   const useSimulationSource = readRepoFile('src/scene/useSimulation.ts');
   assertContains(useSimulationSource, 'const seekToTimelineFrame = useCallback((targetSec: number) => {', 'live seek helper declaration');
   assertContains(useSimulationSource, 'const targetOffset = normalizeReplayOffset(targetSec, maxTimeSec, replay.loop);', 'live seek normalizes target');
-  assertContains(useSimulationSource, 'resetAllHoManagers();', 'live seek resets primary and secondary HO managers');
+  // S3-2: a seek is a TIME-SHIFT — it REBASES the HO managers (keeps serving across
+  // the jump) rather than reset()'ing. Scope to the seek body so this can't pass
+  // vacuously on the cold-start resetAllHoManagers() that lives elsewhere in the file.
+  const seekBodyStart = useSimulationSource.indexOf('const seekToTimelineFrame = useCallback((targetSec: number) => {');
+  const seekBody = useSimulationSource.slice(
+    seekBodyStart,
+    useSimulationSource.indexOf('runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);', seekBodyStart),
+  );
+  assertContains(seekBody, "transitionHoManagers({", 'live seek transitions HO managers via the rebase helper');
+  assertContains(seekBody, "kind: 'rebase'", 'live seek REBASES HO managers (keeps serving across the jump), not reset');
   assertContains(useSimulationSource, 'resetMobilityStates();', 'live seek resets UE mobility states');
   assertContains(useSimulationSource, 'runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);', 'live seek resets runtime state at target');
   assertContains(useSimulationSource, 'installDecisionOverride();', 'live seek reinstalls MODQN overlay decision override');

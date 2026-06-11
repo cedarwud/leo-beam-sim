@@ -268,7 +268,18 @@ section('(f) replay and handover negative assertions', () => {
   check(!/multiUeMobility|ueMobilityMode|mobilityStep|createMobilityStates/.test(replaySource), 'showcaseArtifactToScene.ts has no UE mobility references');
   check(!/multiUeMobility|ueMobilityMode|mobilityStep|createMobilityStates/.test(handoverSource), 'handover-manager.ts has no UE mobility references');
   check(gitDiff('src/showcase/showcaseArtifactToScene.ts').trim() === '', 'showcaseArtifactToScene.ts has no git diff');
-  check(gitDiff('src/engine/handover/handover-manager.ts').trim() === '', 'handover-manager.ts has no git diff');
+  // S3-2: handover-manager.ts is now legitimately owned by the S3 program (it added
+  // rebase()). The old `git diff == ''` freeze enforced nothing post-commit (git diff
+  // is working-tree-vs-index only), so it would wave through ANY committed edit. Replace
+  // it with an HONEST content lock: the file stays UE-mobility-free (asserted at line 269
+  // above) AND keeps the reset-vs-rebase contract — reset() still nukes eventLog (cold
+  // start) while rebase() preserves it (the S3-2 served-survives-wrap fix; the rebase/reset
+  // body equivalence is gated behaviorally by validate:s3:served-survives-wrap).
+  check(handoverSource.includes('rebase(deltaMs: number): void'), 'handover-manager.ts exposes the S3-2 rebase(deltaMs) clock-rebase');
+  check(
+    /reset\(\): void \{[\s\S]*?this\.eventLog = \[\];[\s\S]*?\n {2}\}/.test(handoverSource),
+    'handover-manager.ts reset() still nukes eventLog (cold-start contract; rebase, by contrast, preserves it)',
+  );
 });
 
 section('(g) zero-drift behavioral static mode', () => {

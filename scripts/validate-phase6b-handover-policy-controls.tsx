@@ -611,7 +611,7 @@ function assertHandoverResetReturnsToReplayStart(): void {
   assert.ok(effectStart >= 0, 'expected handoverResetKey useEffect start');
   const block = source.slice(effectStart, effectEnd);
   assertContains(block, 'resetToReplayStartFrame();');
-  assertContains(source, 'const resetToReplayStartFrame = useCallback(() => {');
+  assertContains(source, 'const resetToReplayStartFrame = useCallback((options?: { timeShift?: boolean }) => {');
   assertContains(source, 'createRuntimeFrameStepState(startOffset)');
   assertContains(source, 'paused: true');
   assertContains(source, 'deltaSec: 0');

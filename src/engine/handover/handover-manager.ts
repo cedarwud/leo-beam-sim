@@ -107,6 +107,44 @@ export class HandoverManager {
     this.state = createServingState();
   }
 
+  /**
+   * Consolidation S3-2 — clock REBASE across a sim-time jump (loop wrap, window
+   * re-loop, seek), the non-destructive cousin of {@link reset}.
+   *
+   * A sim-time jump invalidates ONLY the two sim-time-absolute timers this class
+   * holds — `guardUntilMs` and `pendingSinceMs` (both `epochUtcMs + simTimeSec*1000`
+   * milliseconds; S3 plan §1.6). It does NOT invalidate serving (`state`), the
+   * `eventLog`, smoothed SINR, or the serving epoch — those describe *which* link a
+   * UE holds, which a clock jump does not change. `reset()` nuking the `eventLog`
+   * is exactly the served-N/N flicker: the −3 dB re-attach relax
+   * ({@link REATTACH_THRESHOLD_RELAX_DB}) keys off `eventLog.length > 0`, so a
+   * cold-reset UE faces the *strict* threshold and stalls re-acquiring for several
+   * frames across every wrap. Offsetting the two timers by the exact jump
+   * `deltaMs` preserves the elapsed-time relationship the next
+   * `update(simTimeMs)` reads, so the serving link survives the jump.
+   *
+   * Backward jumps (`deltaMs < 0`, the wrap/seek-back case) are clamped: a guard
+   * window cannot start before sim-time zero (`guardUntilMs ≥ 0`), and if a
+   * `pendingSinceMs` would rebase to a negative (pre-epoch) instant the WHOLE
+   * pending is retracted ({@link clearPendingTarget}: target + trigger timer +
+   * since-stamp) — a stamp-less pending left behind would commit on the next
+   * `update()` via the accumulated `triggerTimeSec`, bypassing the
+   * `pendingTargetHoldMs` gate. (Under an exact offset against the absolute UTC
+   * clock these clamps are defensive: for any in-trajectory jump the rebased
+   * values stay positive and never exceed the post-jump clock.)
+   */
+  rebase(deltaMs: number): void {
+    this.guardUntilMs = Math.max(0, this.guardUntilMs + deltaMs);
+    if (this.pendingSinceMs !== null) {
+      const rebasedPendingSinceMs = this.pendingSinceMs + deltaMs;
+      if (rebasedPendingSinceMs >= 0) {
+        this.pendingSinceMs = rebasedPendingSinceMs;
+      } else {
+        this.clearPendingTarget();
+      }
+    }
+  }
+
   getTrackedSinrDb(satId: string | null, beamId: number | null): number | null {
     if (!satId || beamId === null) return null;
     const key = beamAssignmentKey(satId, beamId);

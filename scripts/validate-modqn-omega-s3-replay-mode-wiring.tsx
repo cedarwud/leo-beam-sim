@@ -377,7 +377,7 @@ console.log('\n(j) S3HandoverManager in useSimulation.ts');
     'useSimulation.ts nulls overrideRef when not decision-overlay-on-live-sinr (truth invariance)',
   );
   assert(
-    simSrc.includes('const resetToReplayStartFrame = useCallback(() => {')
+    simSrc.includes('const resetToReplayStartFrame = useCallback((options?: { timeShift?: boolean }) => {')
     && simSrc.includes('createRuntimeFrameStepState(startOffset)')
     && simSrc.includes('paused: true')
     && simSrc.includes('deltaSec: 0')

@@ -267,22 +267,58 @@ export function useSimulation(
       ?? (handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null);
   }, [decisionOverride, hoManager]);
 
+  // S3-2: one helper for both kinds of HO-manager time transition.
+  //  - 'cold-start' (mount, profile change, signalReset, handoverReset): full
+  //    reset() — fresh state, no serving carried.
+  //  - 'rebase' (loop/window wrap, seek): clock-REBASE the steered managers by the
+  //    sim-time jump (offsets only guardUntilMs/pendingSinceMs), keeping serving +
+  //    eventLog so a UE survives the jump instead of cold-re-acquiring under the
+  //    strict re-attach threshold (the served-N/N flicker, S3 plan §1.6).
+  // The cell-truth model (sinrLiveCellModel) ALWAYS resets here — its own
+  // clock-rebase is deferred to S4 (cell lane = S4 serving truth, D5).
+  const transitionHoManagers = useCallback(
+    (transition: { kind: 'cold-start' } | { kind: 'rebase'; deltaMs: number }) => {
+      if (transition.kind === 'rebase') {
+        hoManager.rebase(transition.deltaMs);
+        secondaryHoManagers.forEach(manager => manager.rebase(transition.deltaMs));
+      } else {
+        hoManager.reset();
+        secondaryHoManagers.forEach(manager => manager.reset());
+      }
+      // S-cells-2: reset the cell-truth model in lockstep with the HO managers so
+      // the next cell step is a clean cold-attach (clears per-cell HandoverManagers
+      // + the per-UE serving-transition memory). null on non-sinr-live lanes.
+      sinrLiveCellModel?.reset();
+    },
+    [hoManager, secondaryHoManagers, sinrLiveCellModel],
+  );
+
+  // Cold-start wrapper — the named helper the signalReset effect + per-UE
+  // handover gate (validate:phase-f) reference. Time-shift callers
+  // (resetToReplayStartFrame timeShift, seekToTimelineFrame) call
+  // transitionHoManagers({ kind: 'rebase', … }) directly.
   const resetAllHoManagers = useCallback(() => {
-    hoManager.reset();
-    secondaryHoManagers.forEach(manager => manager.reset());
-    // S-cells-2: reset the cell-truth model in lockstep with the HO managers so
-    // the next cell step is a clean cold-attach (clears per-cell HandoverManagers
-    // + the per-UE serving-transition memory). null on non-sinr-live lanes.
-    sinrLiveCellModel?.reset();
-  }, [hoManager, secondaryHoManagers, sinrLiveCellModel]);
+    transitionHoManagers({ kind: 'cold-start' });
+  }, [transitionHoManagers]);
 
   const resetMobilityStates = useCallback(() => {
     mobilityStatesRef.current = createCurrentMobilityStates();
   }, [createCurrentMobilityStates]);
 
-  const resetToReplayStartFrame = useCallback(() => {
+  const resetToReplayStartFrame = useCallback((options?: { timeShift?: boolean }) => {
     const startOffset = normalizeReplayOffset(replay.startOffsetSec, maxTimeSec, replay.loop);
-    resetAllHoManagers();
+    // S3-2: the windowLength re-loop calls this with `timeShift` — it is a
+    // sim-time jump back to startOffset, so the steered managers REBASE (keep
+    // serving) instead of cold-resetting. Cold-start callers (mount/profile/epoch
+    // effect, handoverReset effect) pass no option and full-reset.
+    if (options?.timeShift) {
+      transitionHoManagers({
+        kind: 'rebase',
+        deltaMs: (startOffset - runtimeStateRef.current.simTimeSec) * 1000,
+      });
+    } else {
+      resetAllHoManagers();
+    }
     resetMobilityStates();
     runtimeStateRef.current = createRuntimeFrameStepState(startOffset);
     installDecisionOverride();
@@ -314,7 +350,7 @@ export function useSimulation(
       state: runtimeStateRef.current,
     });
     // S-cells-2: additive cell truth on the reset frame (dt 0 — single static
-    // step; managers already cleared by resetAllHoManagers above). no-op off lane.
+    // step; managers already transitioned above). no-op off lane.
     attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
     frameRef.current = frame;
     publishNextFrameRef.current = true;
@@ -329,6 +365,7 @@ export function useSimulation(
     profile,
     replay,
     resetAllHoManagers,
+    transitionHoManagers,
     resetMobilityStates,
     secondaryHoManagers,
     sinrLiveCellModel,
@@ -346,7 +383,13 @@ export function useSimulation(
 
   const seekToTimelineFrame = useCallback((targetSec: number) => {
     const targetOffset = normalizeReplayOffset(targetSec, maxTimeSec, replay.loop);
-    resetAllHoManagers();
+    // S3-2: a seek is a TIME-SHIFT — rebase the steered managers by the jump so
+    // serving survives the seek (the served-N/N flicker fix). Position/mobility
+    // still cold-reseat (S3-3 D1); HO-in-progress visuals stay cold (documented).
+    transitionHoManagers({
+      kind: 'rebase',
+      deltaMs: (targetOffset - runtimeStateRef.current.simTimeSec) * 1000,
+    });
     resetMobilityStates();
     runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);
     installDecisionOverride();
@@ -378,7 +421,7 @@ export function useSimulation(
       state: runtimeStateRef.current,
     });
     // S-cells-2: additive cell truth on the seek frame (dt 0 — static reseat at
-    // the seek target; managers cleared by resetAllHoManagers above). no-op off lane.
+    // the seek target; cell model reset by transitionHoManagers above). no-op off lane.
     attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
     frameRef.current = frame;
     publishNextFrameRef.current = true;
@@ -392,7 +435,7 @@ export function useSimulation(
     observer,
     profile,
     replay,
-    resetAllHoManagers,
+    transitionHoManagers,
     resetMobilityStates,
     secondaryHoManagers,
     sinrLiveCellModel,
@@ -478,7 +521,10 @@ export function useSimulation(
       replay.loop
       && runtimeStateRef.current.simTimeSec >= replay.startOffsetSec + windowLength
     ) {
-      resetToReplayStartFrame();
+      // S3-2: the window re-loop is a TIME-SHIFT back to startOffset — rebase the
+      // steered managers (keep serving) instead of cold-reset, so the 100-UE
+      // mosaic does not crash served-N/N on every wrap.
+      resetToReplayStartFrame({ timeShift: true });
       return;
     }
 

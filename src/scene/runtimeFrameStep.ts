@@ -582,8 +582,17 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
 
   const didLoopWrap = replay.loop && state.simTimeSec < previousSimTimeSec;
   if (didLoopWrap) {
-    hoManager.reset();
-    secondaryHoManagers.forEach(manager => manager.reset());
+    // S3-2: a loop wrap is a TIME-SHIFT, not a cold start. Clock-REBASE the
+    // steered HO managers by the (negative) wrap delta — offsetting only their
+    // two sim-time timers — instead of reset(), so a serving UE keeps its link
+    // across the wrap rather than cold-re-acquiring under the strict
+    // (eventLog-empty) re-attach threshold = the served-N/N flicker. The display
+    // latches + recompute caches below still clear; they re-derive next frame
+    // from the rebased managers. (deltaMs uses the offset delta — epochUtcMs
+    // cancels in `epochUtcMs + simTimeSec*1000`, so it equals the managers' clock jump.)
+    const wrapDeltaMs = (state.simTimeSec - previousSimTimeSec) * 1000;
+    hoManager.rebase(wrapDeltaMs);
+    secondaryHoManagers.forEach(manager => manager.rebase(wrapDeltaMs));
     state.recentHo = null;
     state.intraHandoverEvent = null;
     state.intraHandoverVizLatch = null;
