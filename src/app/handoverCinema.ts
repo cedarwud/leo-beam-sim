@@ -34,9 +34,10 @@ export interface CinemaCandidateDetail {
   readonly sourceTimeSec: number;
   readonly kind: LiveWalkerHandoverEventKind;
   readonly fromSatId: string;
-  readonly fromBeamId: number;
+  /** Steered beam id; null on cell-truth events (the cell ids below are the identity, S4-2). */
+  readonly fromBeamId: number | null;
   readonly toSatId: string;
-  readonly toBeamId: number;
+  readonly toBeamId: number | null;
   readonly ueId: string | null;
   readonly fromCellId: number | null;
   readonly toCellId: number | null;
@@ -146,7 +147,8 @@ export type SinrCandidateRole = 'serving' | 'winner';
 export interface SinrCandidateRow {
   readonly beamLabel: string;
   readonly satId: string;
-  readonly beamId: number;
+  /** Steered beam id; null on cell-truth rows (the typed cellId is the unit, S4-2). */
+  readonly beamId: number | null;
   readonly cellId: number | null;
   readonly beamIdentity: string | null;
   readonly frequencyIndex: number | null;
@@ -169,7 +171,7 @@ export interface SinrOffsetExplainerModel {
   readonly claimKind: LiveWalkerDirectorFocusClaimKind;
 }
 
-function beamLabel(satId: string, beamId: number, cellId: number | null): string {
+function beamLabel(satId: string, beamId: number | null, cellId: number | null): string {
   return cellId === null ? `${satId} B${beamId}` : `${satId} C${cellId}`;
 }
 

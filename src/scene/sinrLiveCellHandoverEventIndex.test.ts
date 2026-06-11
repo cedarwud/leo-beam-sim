@@ -65,8 +65,10 @@ check('intra event preserves same sat, old/new cells, SINR delta, source time, a
   assertEqual(event.toSatId, 'SAT-A', 'to sat');
   assertEqual(event.fromCellId, 4, 'from cell');
   assertEqual(event.toCellId, 9, 'to cell');
-  assertEqual(event.fromBeamId, 4, 'from beam id is cell id');
-  assertEqual(event.toBeamId, 9, 'to beam id is cell id');
+  // S4-2 pun retirement: cell-truth rows have NO steered beam id; the typed
+  // from/toCellId above is the handover identity.
+  assertEqual(event.fromBeamId, null, 'from beam id is null (pun retired)');
+  assertEqual(event.toBeamId, null, 'to beam id is null (pun retired)');
   assertEqual(event.ueId, 'live-ue-7', 'ue id');
   assertEqual(event.fromOffAxisDeg, 1.1, 'from off-axis');
   assertEqual(event.toOffAxisDeg, 1.8, 'to off-axis');

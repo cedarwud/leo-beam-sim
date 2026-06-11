@@ -924,17 +924,21 @@ function SceneContent({
     () => {
       if (!showSinrServingMosaic) return EMPTY_SINR_SERVICE_QUEUE_MODEL;
       const cellFrame = sim.sinrLiveCells;
+      // S4-2 pun retirement: cell-lane queue inputs key the serving unit on the
+      // TYPED `servingCellId`; `servingBeamId` stays null (no steered beam here).
       const ues = cellFrame
         ? cellFrame.ues.map(ue => ({
           id: ue.ueId,
           servingSatId: ue.servingSatId,
-          servingBeamId: ue.servingSatId === null ? null : ue.cellId,
+          servingBeamId: null,
+          servingCellId: ue.servingSatId === null ? null : ue.cellId,
           sinrDb: ue.sinrDb,
         }))
         : sim.perUePositions.map(position => ({
           id: position.id,
           servingSatId: position.servingSatId,
           servingBeamId: position.servingBeamId,
+          servingCellId: null,
           sinrDb: position.sinrDb,
         }));
       return deriveSinrLiveServiceQueueModel(ues);

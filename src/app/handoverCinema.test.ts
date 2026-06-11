@@ -64,9 +64,11 @@ function cellEv(overrides: Partial<LiveWalkerHandoverEvent> = {}): LiveWalkerHan
     id: 'evt-cell-intra-1',
     kind: 'intra',
     fromSatId: 'SAT-2',
-    fromBeamId: 8,
+    // S4-2: cell-truth rows carry NULL steered beam ids (mirrors the real
+    // builder); the typed from/toCellId below is the identity.
+    fromBeamId: null,
     toSatId: 'SAT-2',
-    toBeamId: 11,
+    toBeamId: null,
     ueId: 'live-ue-17',
     fromCellId: 8,
     toCellId: 11,
@@ -152,6 +154,8 @@ check('buildCinemaCandidateDetail resolves cell-truth event source, cell ids, UE
   assertEqual(detail.sourceOwner, 'sinr-live-cell-truth', 'sourceOwner');
   assertEqual(detail.claimKind, 'live-truth', 'claimKind');
   assertEqual(detail.ueId, 'live-ue-17', 'ueId');
+  assertEqual(detail.fromBeamId, null, 'cell-truth fromBeamId is null (S4-2 pun retired)');
+  assertEqual(detail.toBeamId, null, 'cell-truth toBeamId is null (S4-2 pun retired)');
   assertEqual(detail.fromCellId, 8, 'fromCellId');
   assertEqual(detail.toCellId, 11, 'toCellId');
   assertEqual(detail.fromOffAxisDeg, 1.25, 'fromOffAxisDeg');

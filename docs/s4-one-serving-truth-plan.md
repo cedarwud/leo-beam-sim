@@ -157,7 +157,47 @@ both folded before commit. The corrected as-built differs from the original plan
   resolved by CLEARING `prevUeServing` on rebase (above) and LOCKED by gate section P (seam inter-HO == reset
   reference). The original "keep prevUeServing" hypothesis was the bug, not the fix.
 
-### S4-2 · Kill the `servingBeamId↔cellId` pun (typed `servingCellId`, ADDITIVE)
+### S4-2 · Kill the `servingBeamId↔cellId` pun (typed `servingCellId`, ADDITIVE) — ✅ DONE
+**As-built deltas vs the plan below (all verified at impl):**
+- **Cell-side consumer surface was larger than the 3 sites + mosaic keying:** the published record is
+  ALSO read by `DiagnosticsDrawer.tsx` (per-UE table renders `servingBeamId` raw — nulling it would
+  blank the column) and `SinrOffsetExplainer.tsx` (row key + `data-beam-id` + `data-logical-beam-id`
+  read `row.beamId`). Both re-pointed to the typed unit (`servingCellId ?? servingBeamId` /
+  `cellId ?? beamId`) — rendered values byte-identical (cell rows always displayed the cell id).
+- **Site 3 took the "null them" arm:** `LiveWalkerHandoverEvent.from/toBeamId` (and the downstream
+  `CinemaCandidateDetail`, `RuntimeCandidateHighlightCommand`, `SinrCandidateRow.beamId`) widened to
+  `number | null`; cell-truth rows carry null + the typed `from/toCellId`. Every cell-event consumer
+  already preferred the cell id (cinema `beamLabel`, rail adapter, `CandidateBeamHighlight` cell
+  placement), so the de-pun is display-invariant; steered rows keep real beam numbers.
+- **QUAR-S4-SERVING block #3 needle UPDATE (same-commit replacement):** the block's
+  `servingBeamId: ue.servingSatId === null ? null : ue.cellId,` pin froze the pun itself and HAD to
+  break with the de-pun. Per binding rule 1's spirit (needle dies in the SAME commit as its
+  replacement), the needle was updated in place to pin the de-punned publish shape (typed
+  `servingCellId` + `servingBeamId: null`), and the replacement gate `validate:s4:pun-retired`
+  landed in the same commit. The group keeps executing (5 blocks); WHOLESALE retirement stays S4-3.
+  ⚠️ The needle update shifted governance line numbers — the §3 S4-3 retirement table's
+  `1529/1561/1884/1940/1990` refs are pre-S4-2 identifiers; S4-3 must locate the 5 blocks by the
+  `tangleLockGroup('QUAR-S4-SERVING'` occurrences, not by line number.
+- **Gate `validate:s4:pun-retired`:** S = comment-stripped structural sweep of src/ + scripts/
+  (480 files, zero `*BeamId: …cellId` assignments) + typed markers at all 3 sites (incl. the
+  formerly-unpinned MainScene queue model); B = behavior: cell-lane records (`servingBeamId` null) count as served,
+  key `${satId}:${cellId}`, HUD beam-load colour == 3D `buildSinrServingUeColorMapFromCells` colour,
+  queue accountant keyed, steered + legacy (field-absent) shapes byte-identical, run-twice A==B;
+  E = event builder emits null beam ids + typed cell ids (inter + intra). All 3 positive-control
+  mutations verified RED (publisher re-pun → S; aggregate ignores typed field → B; event re-pun → S).
+- **ZERO-diff stronger than planned:** the geometry-trace golden matched in FULL (truth + display,
+  no `S0_TRACE_IGNORE`, no re-baseline) — the published record/HUD are not in the golden path.
+  Browser gates green on real :3001 (mosaic served-N/N + queue; cell-truth cinema focus + explainer).
+- **3-lens adversarial review (all 3 lenses converged, execution-verified) — 1 major + 2 minors, ALL
+  folded pre-commit:** (major) `validate:phase-f:per-ue-diagnostics` §(a) pinned the OLD compact
+  `perUePositions` type with a whitespace-only regex → green→red under the cut; rewritten to
+  comment-tolerant per-field asserts incl. `servingCellId` (its remaining red — `undefined;` check
+  (b) — is PRE-EXISTING at HEAD, stash-verified). (minor) the pun gate's sweep now covers scripts/
+  too (480 files), matching its header claim. (minor, S4-3 NOTE) the structural sweep cannot catch
+  an alias-laundered re-pun (`const cid = ue.cellId; servingBeamId: cid`); today the publisher-shape
+  governance needle + gate section B are the redundant layers — **when QUAR-S4-SERVING retires in
+  S4-3, the serving-equivalence gate MUST keep a behavioural publisher-shape assert.**
+
 - Add a typed `servingCellId: number | null` to the sinr-live published per-UE serving record; populate it
   from `ue.cellId` and set `servingBeamId = null` on the cell lane (there is no steered beam under the cell
   model). Re-point the cell-side consumers to the typed field: the mosaic aggregate / service-queue keying

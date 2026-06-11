@@ -47,12 +47,17 @@ export interface LiveWalkerHandoverEvent {
   readonly sourceTimeSec: number;
   readonly kind: LiveWalkerHandoverEventKind;
   readonly fromSatId: string;
-  readonly fromBeamId: number;
+  /**
+   * Steered beam id (live-walker rows). Cell-truth rows carry NULL here — the
+   * earth-fixed `from/toCellId` is their handover identity; the old
+   * `fromBeamId := cellId` pun is retired (S4-2).
+   */
+  readonly fromBeamId: number | null;
   readonly toSatId: string;
-  readonly toBeamId: number;
+  readonly toBeamId: number | null;
   /** UE that produced this row. Old live-Walker forecast rows are always `live-ue-0`. */
   readonly ueId?: string;
-  /** Cell-truth rows use earth-fixed cell ids as the handover beam identity. */
+  /** Cell-truth rows use earth-fixed cell ids as the handover identity. */
   readonly fromCellId?: number;
   readonly toCellId?: number;
   readonly fromBeamIdentity?: string;

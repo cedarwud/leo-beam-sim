@@ -213,9 +213,11 @@ export function createSinrLiveCellHandoverEventFromUeTransition(input: {
     sourceTimeSec,
     kind,
     fromSatId: input.previous.servingSatId,
-    fromBeamId: input.previous.cellId,
+    // S4-2 pun retirement: cell-truth rows have NO steered beam — the
+    // earth-fixed cell ids below are the handover identity.
+    fromBeamId: null,
     toSatId: input.current.servingSatId,
-    toBeamId: input.current.cellId,
+    toBeamId: null,
     ueId: input.current.ueId,
     fromCellId: input.previous.cellId,
     toCellId: input.current.cellId,

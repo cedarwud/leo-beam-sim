@@ -523,7 +523,8 @@ export function DiagnosticsDrawer({
                   <tr key={position.id}>
                     <td>{position.id}</td>
                     <td>{position.servingSatId === null ? '—' : formatSatelliteLabel(position.servingSatId)}</td>
-                    <td>{position.servingBeamId === null ? '—' : position.servingBeamId}</td>
+                    {/* Serving unit: typed cell id on the sinr-live cell lane (S4-2), else the steered beam id. */}
+                    <td>{(position.servingCellId ?? position.servingBeamId) === null ? '—' : position.servingCellId ?? position.servingBeamId}</td>
                     <td>{position.sinrDb === null ? '—' : formatDb(position.sinrDb)}</td>
                   </tr>
                 ))}

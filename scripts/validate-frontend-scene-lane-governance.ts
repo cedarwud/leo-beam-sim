@@ -1899,10 +1899,20 @@ assertContains(
   'const cellTruthUes = sim.sinrLiveCells?.ues;',
   'the published per-UE serving is the cell truth when present (aggregate + diagnostics agree with the cones)',
 );
+// S4-2 needle UPDATE (same-commit replacement, plan §3 S4-2): the old pin froze
+// the `servingBeamId := ue.cellId` PUN; the pun is retired, so the needle now
+// pins the TYPED de-punned publish shape. Its full replacement behavior gate
+// (`validate:s4:pun-retired`) lands in the SAME commit; this block still
+// retires WHOLESALE with the rest of QUAR-S4-SERVING in S4-3.
 assertContains(
   simStatePublisherSource,
-  'servingBeamId: ue.servingSatId === null ? null : ue.cellId,',
-  'cell-truth per-UE serving maps cellId → servingBeamId (unserved → null beam, honest)',
+  'servingCellId: ue.servingSatId === null ? null : ue.cellId,',
+  'cell-truth per-UE serving publishes the TYPED servingCellId (unserved → null, honest; S4-2)',
+);
+assertContains(
+  simStatePublisherSource,
+  'servingBeamId: null,',
+  'cell-lane published per-UE record carries NO steered beam id (cellId↔beamId pun retired, S4-2)',
 );
 });
 

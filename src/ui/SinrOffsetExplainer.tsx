@@ -73,15 +73,19 @@ export function SinrOffsetExplainer({ candidate, visible }: SinrOffsetExplainerP
         {ruleText(model.kind, model.offsetDb)}
       </div>
       <div className="leo-handover-cinema-sinr-explainer__candidates">
+        {/* S4-2: the rendered unit id prefers the TYPED cellId on cell-truth rows
+            (row.beamId is null there — the pun is retired) and falls back to the
+            steered beamId. Rendered values are unchanged: cell rows always showed
+            the cell id in these attributes. */}
         {model.rows.map(row => (
           <div
-            key={`${row.satId}-${row.beamId}-${row.role}`}
+            key={`${row.satId}-${row.cellId ?? row.beamId}-${row.role}`}
             className="leo-handover-cinema-sinr-explainer__candidate"
             data-testid="sinr-candidate-row"
             data-role={row.role}
             data-sat-id={row.satId}
-            data-beam-id={`${row.satId}-${row.beamId}`}
-            data-logical-beam-id={String(row.beamId)}
+            data-beam-id={`${row.satId}-${row.cellId ?? row.beamId}`}
+            data-logical-beam-id={String(row.cellId ?? row.beamId)}
             data-cell-id={row.cellId == null ? '' : String(row.cellId)}
             data-beam-identity={row.beamIdentity ?? ''}
             data-frequency-index={row.frequencyIndex == null ? '' : String(row.frequencyIndex)}

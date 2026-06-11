@@ -338,15 +338,18 @@ export function useSimStatePublisher({
     // S-cells-4c: on the sinr-live lane the published per-UE serving truth is the
     // EARTH-FIXED CELL model (`sim.sinrLiveCells`) so the aggregate HUD + per-UE
     // diagnostics agree with the cones — a UE is "served" only when its cell is lit
-    // and served (servingSatId !== null), `servingBeamId` = its cell id. Off that
-    // lane (no cell truth) the steered per-UE serving is published unchanged.
+    // and served (servingSatId !== null). S4-2 pun retirement: the cell id is
+    // published as the TYPED `servingCellId` and `servingBeamId` is null (there is
+    // no steered beam under the cell model). Off that lane (no cell truth) the
+    // steered per-UE serving is published unchanged with a null `servingCellId`.
     const cellTruthUes = sim.sinrLiveCells?.ues;
     const perUePositions = cellTruthUes !== undefined
       ? (cellTruthUes.length > 1
         ? cellTruthUes.map(ue => ({
           id: ue.ueId,
           servingSatId: ue.servingSatId,
-          servingBeamId: ue.servingSatId === null ? null : ue.cellId,
+          servingBeamId: null,
+          servingCellId: ue.servingSatId === null ? null : ue.cellId,
           sinrDb: ue.sinrDb,
         }))
         : undefined)
@@ -355,6 +358,7 @@ export function useSimStatePublisher({
           id: position.id,
           servingSatId: position.servingSatId,
           servingBeamId: position.servingBeamId,
+          servingCellId: null,
           sinrDb: position.sinrDb,
         }))
         : undefined);

@@ -79,9 +79,10 @@ export interface RuntimeCandidateHighlightCommand {
   sourceTimeSec?: number;
   kind: DirectorFocusKind;
   fromSatId: string;
-  fromBeamId: number;
+  /** Steered beam id; null on cell-truth events (cell ids are the identity there, S4-2). */
+  fromBeamId: number | null;
   toSatId: string;
-  toBeamId: number;
+  toBeamId: number | null;
   ueId?: string | null;
   fromCellId?: number | null;
   toCellId?: number | null;
@@ -210,7 +211,18 @@ export interface SimState {
   perUePositions?: ReadonlyArray<{
     id: string;
     servingSatId: string | null;
+    /**
+     * Steered serving beam id (steered lanes only). On the sinr-live cell lane
+     * this is ALWAYS null — there is no steered beam under the cell model; the
+     * serving unit is the typed `servingCellId` (S4-2 pun retirement).
+     */
     servingBeamId: number | null;
+    /**
+     * Earth-fixed cell id serving this UE (sinr-live cell truth only; null on
+     * steered lanes). Typed S4-2 replacement for the retired
+     * `servingBeamId := cellId` pun.
+     */
+    servingCellId: number | null;
     sinrDb: number | null;
   }>;
   modqnCellServiceReadout?: ModqnCellServiceReadout;

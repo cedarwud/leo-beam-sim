@@ -88,11 +88,22 @@ function assertPresent(markup: string, testId: string, label: string): void {
 }
 
 section('(a) SimState.perUePositions source contract', () => {
+  // S4-2: per-field asserts on the record block (comment-tolerant) instead of a
+  // whitespace-only monolithic regex — the record gained the typed
+  // `servingCellId` (pun retirement) plus doc comments between fields.
   const typesSource = source('src/scene/types.ts');
-  check(
-    /perUePositions\?:\s*ReadonlyArray<\{\s*id:\s*string;\s*servingSatId:\s*string\s*\|\s*null;\s*servingBeamId:\s*number\s*\|\s*null;\s*sinrDb:\s*number\s*\|\s*null;\s*\}>;/m.test(typesSource),
-    'SimState.perUePositions optional compact shape declared',
-  );
+  const blockMatch = typesSource.match(/perUePositions\?:\s*ReadonlyArray<\{([\s\S]*?)\}>;/m);
+  check(blockMatch !== null, 'SimState.perUePositions optional ReadonlyArray record declared');
+  const block = blockMatch?.[1] ?? '';
+  for (const field of [
+    'id: string;',
+    'servingSatId: string | null;',
+    'servingBeamId: number | null;',
+    'servingCellId: number | null;',
+    'sinrDb: number | null;',
+  ]) {
+    check(block.includes(field), `perUePositions record declares ${field}`);
+  }
 });
 
 section('(b) useSimStatePublisher per-UE projection', () => {

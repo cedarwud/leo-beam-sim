@@ -34,14 +34,33 @@ export interface SinrServingMarkerColor {
 
 export interface SinrServingMosaicUeInput {
   readonly servingSatId: string | null;
+  /** Steered serving beam id; ALWAYS null on the sinr-live cell lane (S4-2). */
   readonly servingBeamId: number | null;
+  /**
+   * Earth-fixed serving cell id (sinr-live cell truth, S4-2 typed pun
+   * replacement). When present (non-null) it is the per-sat serving unit the
+   * mosaic keys/colours by; steered-lane records leave it null/absent.
+   */
+  readonly servingCellId?: number | null;
   readonly sinrDb: number | null;
 }
 
+/**
+ * Display serving unit within the serving satellite: the typed earth-fixed
+ * cell id on the cell lane, else the steered beam id. This is "cell drives
+ * display" (explicit, typed), NOT the retired `servingBeamId := cellId` pun —
+ * no field masquerades as another; the lane is discriminated by which typed
+ * field is populated.
+ */
+function servingUnitId(ue: SinrServingMosaicUeInput): number | null {
+  return ue.servingCellId ?? ue.servingBeamId;
+}
+
 export interface SinrServingBeamLoad {
-  /** `${satId}:${beamId}` composite key. */
+  /** `${satId}:${beamId}` composite key (beamId = the serving unit id below). */
   readonly key: string;
   readonly satId: string;
+  /** Serving unit id: the typed cell id on the cell lane, else the steered beam id. */
   readonly beamId: number;
   readonly count: number;
   readonly color: string;
@@ -224,7 +243,8 @@ function percentileNearest(values: readonly number[], percentile: number): numbe
 }
 
 function deriveDemoQueueAccount(ue: SinrServiceQueueUeInput): SinrServiceQueueAccount {
-  const served = isServed(ue.servingSatId, ue.servingBeamId);
+  const unitId = servingUnitId(ue);
+  const served = isServed(ue.servingSatId, unitId);
   const seed = hashStringToUnit(ue.id);
   const arrivalSeed = hashStringToUnit(`${ue.id}:arrival`);
   const sinrPressure = ue.sinrDb === null || !Number.isFinite(ue.sinrDb)
@@ -247,7 +267,7 @@ function deriveDemoQueueAccount(ue: SinrServiceQueueUeInput): SinrServiceQueueAc
     : 0;
   const queueAfterBits = Math.max(0, queueBeforeBits + trafficArrivalBits - servedBits);
   const pressure = clamp01(queueAfterBits / LIVE_SERVICE_DEMO_QUEUE_REFERENCE_BITS);
-  const servingKey = served ? `${ue.servingSatId}:${ue.servingBeamId}` : null;
+  const servingKey = served ? `${ue.servingSatId}:${unitId}` : null;
 
   return {
     ueId: ue.id,
@@ -397,10 +417,11 @@ export function deriveSinrServingMosaicAggregate(
   let sinrCount = 0;
 
   for (const ue of ues) {
-    if (!isServed(ue.servingSatId, ue.servingBeamId)) continue;
+    const unitId = servingUnitId(ue);
+    if (!isServed(ue.servingSatId, unitId)) continue;
     servedCount += 1;
     const satId = ue.servingSatId as string;
-    const beamId = ue.servingBeamId as number;
+    const beamId = unitId as number;
     const key = `${satId}:${beamId}`;
     const entry = loadByKey.get(key) ?? { satId, beamId, count: 0 };
     entry.count += 1;

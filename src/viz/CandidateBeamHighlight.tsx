@@ -55,8 +55,11 @@ const PULSE_HZ = 0.85;
 function findBeamGround(
   satBeams: Map<string, BeamTarget[]>,
   satId: string,
-  beamId: number,
+  beamId: number | null,
 ): { x: number; z: number } | null {
+  // S4-2: cell-truth events carry a null steered beamId (the cell id is their
+  // identity and resolves via findCellGround); there is no beam to look up.
+  if (beamId === null) return null;
   const beams = satBeams.get(satId);
   if (!beams) return null;
   const beam = beams.find(b => b.beamId === beamId);
@@ -97,7 +100,7 @@ export function CandidateBeamHighlight({
     const from = fromCell ?? (fromBeam ? { ...fromBeam, radius: footprintRadius } : null);
     if (from) {
       out.push({
-        key: `source-${candidate.fromSatId}-${candidate.fromBeamId}`,
+        key: `source-${candidate.fromSatId}-${candidate.fromCellId ?? candidate.fromBeamId}`,
         role: 'source',
         x: from.x,
         z: from.z,
@@ -112,7 +115,7 @@ export function CandidateBeamHighlight({
     const to = toCell ?? (toBeam ? { ...toBeam, radius: footprintRadius } : null);
     if (to) {
       out.push({
-        key: `target-${candidate.toSatId}-${candidate.toBeamId}`,
+        key: `target-${candidate.toSatId}-${candidate.toCellId ?? candidate.toBeamId}`,
         role: 'target',
         x: to.x,
         z: to.z,

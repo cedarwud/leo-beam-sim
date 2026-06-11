@@ -1,7 +1,7 @@
 import type { LiveWalkerHandoverEventIndex } from '../scene/liveWalkerHandoverEventIndex';
 import type { HandoverRailEvent } from '../ui/HandoverEventRail';
 
-function formatLiveWalkerBeamLabel(satId: string, beamId: number): string {
+function formatLiveWalkerBeamLabel(satId: string, beamId: number | null): string {
   return `${satId} B${beamId}`;
 }
 
