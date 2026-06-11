@@ -184,6 +184,34 @@ export interface SinrLiveCellFrame {
   readonly interHandoverCount: number;
 }
 
+/**
+ * The cell-truth serving record for the PRIMARY UE (the observer anchor at
+ * `perUePositions[0]`). The single source consumed by BOTH the
+ * connected-sat invariant (`collectConnectedClaims`, the rendered-beam oracle)
+ * AND the InfoPanel publisher (`buildPublishedPrimaryServing`, S5-2b) so the
+ * panel's ACTIVE SERVING label, the cones, and the must-hold invariant all read
+ * ONE primary oracle — no drift. The primary UE sits at index 0 of
+ * `perUePositions`; match it into the cell UE records by id (fall back to the
+ * first cell UE only when there is no primary id at all, mirroring the original
+ * inline resolution byte-for-byte).
+ */
+export function resolvePrimaryCellServingRecord(
+  cellFrame: SinrLiveCellFrame,
+  perUePositions: ReadonlyArray<{ id: string }>,
+): UeCellServingRecord | null {
+  const primaryUeId = perUePositions[0]?.id;
+  if (primaryUeId === undefined) return cellFrame.ues[0] ?? null;
+  return cellFrame.ues.find(ue => ue.ueId === primaryUeId) ?? null;
+}
+
+/** The primary UE's cell-truth serving satId (null when unserved / absent). */
+export function resolvePrimaryCellServingSatId(
+  cellFrame: SinrLiveCellFrame,
+  perUePositions: ReadonlyArray<{ id: string }>,
+): string | null {
+  return resolvePrimaryCellServingRecord(cellFrame, perUePositions)?.servingSatId ?? null;
+}
+
 export interface SinrLiveCellStepInput {
   readonly visibleSats: readonly CellModelSat[];
   readonly ues: readonly UeInput[];

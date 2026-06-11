@@ -233,6 +233,14 @@ export interface SimState {
   /** Backward-compatible right-panel primary fields; prefer the explicit contract fields above. */
   servingSatId: string | null;
   servingBeamId: number | null;
+  /**
+   * Earth-fixed cell id serving the PRIMARY UE on the sinr-live cell lane (S5-2b);
+   * null on steered/MODQN lanes (no cell model). The typed cell unit the InfoPanel
+   * shows when `servingBeamId` is null — the top-level analogue of the per-UE
+   * `servingCellId` (S4-2 pun retirement). The ACTIVE SERVING label sat is the
+   * cell-truth primary serving sat, matching the cones (no steered divergence).
+   */
+  servingCellId: number | null;
   servingElevationDeg: number | null;
   servingRangeKm: number | null;
   pendingTargetSatId: string | null;

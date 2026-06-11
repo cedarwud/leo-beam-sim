@@ -32,6 +32,7 @@ export function createInitialSimState(profile: Profile): SimState {
     panelComparison: { ...emptyPanelComparison, role: 'none' },
     servingSatId: null,
     servingBeamId: null,
+    servingCellId: null,
     servingElevationDeg: null,
     servingRangeKm: null,
     pendingTargetSatId: null,

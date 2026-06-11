@@ -216,6 +216,7 @@ export function hasUiStateChanged(previous: SimState | null, next: SimState): bo
     )
     || previous.servingSatId !== next.servingSatId
     || previous.servingBeamId !== next.servingBeamId
+    || previous.servingCellId !== next.servingCellId
     || previous.pendingTargetSatId !== next.pendingTargetSatId
     || previous.pendingTargetBeamId !== next.pendingTargetBeamId
     || previous.comparisonSatId !== next.comparisonSatId

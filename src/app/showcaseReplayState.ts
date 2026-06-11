@@ -136,6 +136,7 @@ export function createReplayPanelSimState(input: {
     visualFrequencyDiagnostics,
     servingSatId,
     servingBeamId,
+    servingCellId: null,
     servingElevationDeg: null,
     servingRangeKm: null,
     pendingTargetSatId: targetSatId,

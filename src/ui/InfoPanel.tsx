@@ -3,6 +3,7 @@ import type { SimState } from '../scene/types';
 import type { VisualShowcaseChannelMetricKind } from '../scene/visual-showcase-contract';
 import { DuelCard, type DuelSignalTone } from './info-panel/DuelCard';
 import {
+  formatCellServingIdentity,
   formatPanelBeamIdentity,
   formatStatusLabel,
   glyphForSatId,
@@ -105,6 +106,7 @@ export function InfoPanel({
   formulaFamilyLabel,
   servingSatId,
   servingBeamId,
+  servingCellId,
   servingElevationDeg,
   servingRangeKm,
   comparisonSatId,
@@ -119,7 +121,11 @@ export function InfoPanel({
   handoverTriggerProgressSec,
   handoverTriggerSec,
 }: InfoPanelProps) {
-  const hasServingSignal = servingSatId !== null && servingBeamId !== null;
+  // S5-2b: on the sinr-live cell lane the serving unit is the typed cell id
+  // (`servingBeamId` is null under the cell model — there is no steered beam), so
+  // the serving column must render ACTIVE on a cell id too, else the cell-truth
+  // serving sat would blank despite the cones beaming it.
+  const hasServingSignal = servingSatId !== null && (servingBeamId !== null || servingCellId !== null);
   const hasComparisonSignal = comparisonSatId !== null && comparisonBeamId !== null;
   const triggerRatio = handoverTriggerSec > 0
     ? Math.min(handoverTriggerProgressSec / handoverTriggerSec, 1)
@@ -148,7 +154,14 @@ export function InfoPanel({
   const showProfileIdentity = uiMode !== 'tuning';
   const showFormulaTerms = (uiMode === 'tuning' || uiMode === 'diagnostics') && handoverMode !== 'decision-overlay-on-live-sinr';
   const frequencyReuse = profile.beams.frequencyReuse;
-  const servingIdentity = formatPanelBeamIdentity(servingSatId, servingBeamId, frequencyReuse, 'none');
+  // Cell lane (servingBeamId null, servingCellId set): the serving unit is the
+  // earth-fixed cell. Use formatCellServingIdentity — its frequency token is the
+  // 0-indexed `cellFrequencyIndex` the cone render uses, NOT the 1-indexed steered
+  // beam formula in formatPanelBeamIdentity (do NOT collapse these back together,
+  // or the label F-index drifts off the cone colour for every cell ≠ 0 mod reuse).
+  const servingIdentity = servingBeamId === null && servingCellId !== null
+    ? formatCellServingIdentity(servingSatId, servingCellId, frequencyReuse, 'none')
+    : formatPanelBeamIdentity(servingSatId, servingBeamId, frequencyReuse, 'none');
   const comparisonIdentity = formatPanelBeamIdentity(comparisonSatId, comparisonBeamId, frequencyReuse, 'none');
   const servingGlyph = hasServingSignal ? glyphForSatId(servingSatId, satelliteVisualIdentityById) : null;
   const comparisonGlyph = hasComparisonSignal ? glyphForSatId(comparisonSatId, satelliteVisualIdentityById) : null;

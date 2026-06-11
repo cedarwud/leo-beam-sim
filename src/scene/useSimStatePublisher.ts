@@ -16,6 +16,7 @@ import {
   extractBudgetTerms,
   hasUiStateChanged,
   isFiniteBeamSinr,
+  isFinitePanelSinr,
   normalizePanelSignal,
   resolveLatchedBudget,
   resolveLatchedSinr,
@@ -23,6 +24,7 @@ import {
   resolveSignalStatus,
   resolveVisualFrequencyDiagnosticsEntry,
 } from './panelState';
+import { resolvePrimaryCellServingRecord } from './sinrLiveCellModel';
 import { useLatchedSignals } from './useLatchedSignals';
 import { usePanelModeInference } from './usePanelModeInference';
 
@@ -77,6 +79,141 @@ export function buildPublishedPerUePositions(
         sinrDb: position.sinrDb,
       }))
       : undefined);
+}
+
+/**
+ * The published PRIMARY serving block — the ONE source of the InfoPanel
+ * "ACTIVE SERVING" card and its comparison duel.
+ *
+ * S5-2b: on the sinr-live CELL lane (`sim.sinrLiveCells` present) the panel
+ * primary is re-pointed to the CELL-TRUTH primary UE — the SAME
+ * `resolvePrimaryCellServingRecord` the cones and the connected-sat invariant
+ * read — so the labelled serving sat matches the rendered cones (the steered
+ * `sim.serving` could name a DIFFERENT sat than the cones beam, the shipped
+ * ~4/1883 label-vs-cone divergence).
+ *
+ * The cell model exposes NO per-UE candidate / second-best SINR. The only
+ * steered candidate is measured under the 12°/40 dBi steered antenna while the
+ * cell serving SINR is the 50°/33.5 dBi cell antenna at true off-axis (~6-10 dB
+ * lower for the SAME sat). A delta across those two physics would routinely
+ * cross the ~3 dB hysteresis offset and paint a FALSE "candidate better → HO
+ * imminent" — so the comparison column + delta are SUPPRESSED to null on this
+ * lane (single-model honesty; the cell-truth handover STORY lives in the cinema
+ * + SinrOffsetExplainer, the lane's dedicated HO surface).
+ *
+ * Serving elevation/range bypass the steered (satId,beamId)-keyed topo latch
+ * (it would return stale steered values on a satId match) and publish null → the
+ * card renders '—'; the cones/mosaic carry the geometry truth. Off the cell lane
+ * the function returns the steered block VERBATIM (byte-identical passthrough) so
+ * MODQN / artifact-replay lanes are untouched. Exported pure (S4-3 pattern) so
+ * `validate:s5:infopanel-cone-coupling` drives the REAL re-point.
+ */
+export interface PublishedPrimaryServing {
+  servingSatId: string | null;
+  servingBeamId: number | null;
+  servingCellId: number | null;
+  servingSinrDb: number | null;
+  servingElevationDeg: number | null;
+  servingRangeKm: number | null;
+  panelPrimary: PanelPrimaryState;
+  comparisonSatId: string | null;
+  comparisonBeamId: number | null;
+  comparisonSinrDb: number | null;
+  comparisonElevationDeg: number | null;
+  comparisonRangeKm: number | null;
+  comparisonKind: SimState['comparisonKind'];
+  panelComparison: PanelComparisonState;
+  sinrDeltaDb: number | null;
+}
+
+type SuppressedComparison = Pick<
+  PublishedPrimaryServing,
+  | 'comparisonSatId'
+  | 'comparisonBeamId'
+  | 'comparisonSinrDb'
+  | 'comparisonElevationDeg'
+  | 'comparisonRangeKm'
+  | 'comparisonKind'
+  | 'panelComparison'
+  | 'sinrDeltaDb'
+>;
+
+// Cross-model delta hazard (see buildPublishedPrimaryServing): the comparison
+// duel is fully neutralised on the cell lane. The DuelDecisionColumn null-guards
+// sinrDeltaDb so the centre column shows '—' (never a false HO-imminent bar).
+const SUPPRESSED_COMPARISON: SuppressedComparison = {
+  comparisonSatId: null,
+  comparisonBeamId: null,
+  comparisonSinrDb: null,
+  comparisonElevationDeg: null,
+  comparisonRangeKm: null,
+  comparisonKind: null,
+  panelComparison: {
+    role: 'none',
+    satId: null,
+    beamId: null,
+    sinrDb: null,
+    elevationDeg: null,
+    rangeKm: null,
+    status: 'none',
+  },
+  sinrDeltaDb: null,
+};
+
+export function buildPublishedPrimaryServing(
+  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions'>,
+  steered: PublishedPrimaryServing,
+): PublishedPrimaryServing {
+  const cellFrame = sim.sinrLiveCells;
+  if (cellFrame === undefined) return steered; // off-lane: byte-identical steered passthrough.
+
+  const record = resolvePrimaryCellServingRecord(cellFrame, sim.perUePositions);
+  if (record === null || record.servingSatId === null) {
+    // Cell lane, primary UE unserved: blank primary + suppressed comparison.
+    return {
+      servingSatId: null,
+      servingBeamId: null,
+      servingCellId: null,
+      servingSinrDb: null,
+      servingElevationDeg: null,
+      servingRangeKm: null,
+      panelPrimary: {
+        role: 'none',
+        satId: null,
+        beamId: null,
+        sinrDb: null,
+        elevationDeg: null,
+        rangeKm: null,
+        status: 'none',
+      },
+      ...SUPPRESSED_COMPARISON,
+    };
+  }
+
+  const servingSatId = record.servingSatId;
+  const sinrDb = record.sinrDb;
+  // Cell truth is the CURRENT per-frame off-axis SINR (never a stale latch): it
+  // is 'live' when decodable, 'latched' only when below the beam-gain floor
+  // (served-by-assignment, empirically never in the 37-cell config).
+  const status: SignalTruthStatus = isFinitePanelSinr(sinrDb) ? 'live' : 'latched';
+  return {
+    servingSatId,
+    servingBeamId: null,
+    servingCellId: record.cellId,
+    servingSinrDb: sinrDb,
+    servingElevationDeg: null,
+    servingRangeKm: null,
+    panelPrimary: {
+      role: 'serving',
+      satId: servingSatId,
+      beamId: null,
+      sinrDb,
+      elevationDeg: null,
+      rangeKm: null,
+      status,
+    },
+    ...SUPPRESSED_COMPARISON,
+  };
 }
 
 export function useSimStatePublisher({
@@ -382,6 +519,33 @@ export function useSimStatePublisher({
     // the same code path the UI publishes.
     const perUePositions = buildPublishedPerUePositions(sim);
 
+    // S5-2b: re-point the PUBLISHED primary serving (the InfoPanel "ACTIVE
+    // SERVING" card) to the cell-truth primary UE on the sinr-live cell lane —
+    // OVERRIDING the steered duel AFTER inferPanelMode so the pending/recent-ho
+    // branches can never leak a cross-model delta. Off the cell lane this is a
+    // byte-identical passthrough of the steered block assembled here. The
+    // physicalServing / FormulaTermsReadout / budgets / latched-beam bookkeeping
+    // above stay on their STEERED sources (intentional steered-physics
+    // diagnostics; not the ACTIVE SERVING card).
+    const steeredPrimaryServing: PublishedPrimaryServing = {
+      servingSatId: normalizedServing.satId,
+      servingBeamId: normalizedServing.beamId,
+      servingCellId: null,
+      servingSinrDb: normalizedServing.sinrDb,
+      servingElevationDeg: normalizedServingTopo.elevationDeg,
+      servingRangeKm: normalizedServingTopo.rangeKm,
+      panelPrimary,
+      comparisonSatId: normalizedComparison.satId,
+      comparisonBeamId: normalizedComparison.beamId,
+      comparisonSinrDb: normalizedComparison.sinrDb,
+      comparisonElevationDeg: normalizedComparisonTopo.elevationDeg,
+      comparisonRangeKm: normalizedComparisonTopo.rangeKm,
+      comparisonKind: normalizedComparison.satId ? panelMode.panelComparisonKind : null,
+      panelComparison,
+      sinrDeltaDb: panelSinrDeltaDb,
+    };
+    const publishedPrimaryServing = buildPublishedPrimaryServing(sim, steeredPrimaryServing);
+
     const nextIntraHandoverEvent = sim.intraHandoverEvent !== null && sim.intraHandoverWallClockStartMs !== null && sim.intraHandoverWallClockExpiresMs !== null
       ? {
         ...sim.intraHandoverEvent,
@@ -395,26 +559,27 @@ export function useSimStatePublisher({
       formulaFamilyLabel: getFormulaFamilyLabel(profile.formulaFamily),
       satelliteVisualIdentityById,
       physicalServing,
-      panelPrimary,
-      panelComparison,
+      panelPrimary: publishedPrimaryServing.panelPrimary,
+      panelComparison: publishedPrimaryServing.panelComparison,
       visualFrequencyDiagnostics,
       perUePositions,
       modqnCellServiceReadout,
-      servingSatId: normalizedServing.satId,
-      servingBeamId: normalizedServing.beamId,
-      servingElevationDeg: normalizedServingTopo.elevationDeg,
-      servingRangeKm: normalizedServingTopo.rangeKm,
+      servingSatId: publishedPrimaryServing.servingSatId,
+      servingBeamId: publishedPrimaryServing.servingBeamId,
+      servingCellId: publishedPrimaryServing.servingCellId,
+      servingElevationDeg: publishedPrimaryServing.servingElevationDeg,
+      servingRangeKm: publishedPrimaryServing.servingRangeKm,
       pendingTargetSatId: sim.pendingTargetSatId,
       pendingTargetBeamId: sim.pendingTargetBeamId,
       pendingTargetSinrDb,
-      comparisonSatId: normalizedComparison.satId,
-      comparisonBeamId: normalizedComparison.beamId,
-      comparisonElevationDeg: normalizedComparisonTopo.elevationDeg,
-      comparisonRangeKm: normalizedComparisonTopo.rangeKm,
-      comparisonSinrDb: normalizedComparison.sinrDb,
-      comparisonKind: normalizedComparison.satId ? panelMode.panelComparisonKind : null,
+      comparisonSatId: publishedPrimaryServing.comparisonSatId,
+      comparisonBeamId: publishedPrimaryServing.comparisonBeamId,
+      comparisonElevationDeg: publishedPrimaryServing.comparisonElevationDeg,
+      comparisonRangeKm: publishedPrimaryServing.comparisonRangeKm,
+      comparisonSinrDb: publishedPrimaryServing.comparisonSinrDb,
+      comparisonKind: publishedPrimaryServing.comparisonKind,
       intraHandoverEvent: nextIntraHandoverEvent,
-      sinrDeltaDb: panelSinrDeltaDb,
+      sinrDeltaDb: publishedPrimaryServing.sinrDeltaDb,
       recentHoSourceSatId: sim.recentHoSourceSatId,
       recentHoTargetSatId: sim.recentHoTargetSatId,
       recentHoSourceBeamId: sim.recentHoSourceBeamId,
@@ -422,7 +587,7 @@ export function useSimStatePublisher({
       recentHoDeltaDb: sim.recentHoDeltaDb,
       lastHoEvent: sim.lastHoEvent,
       simTimeSec: sim.simTimeSec,
-      sinrDb: normalizedServing.sinrDb ?? -Infinity,
+      sinrDb: publishedPrimaryServing.servingSinrDb ?? -Infinity,
       physicalServingBudget,
       servingBudget,
       handoverOffsetDb: profile.handover.offsetDb,

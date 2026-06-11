@@ -3,7 +3,8 @@ import type { VisualShowcaseChannelMetricKind } from '../../scene/visual-showcas
 import { MIN_VISIBLE_SINR_DB } from '../../constants/sinr';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import type { SimState } from '../../scene/types';
-import { formatBeamIdentity } from '../../utils/formatSatelliteLabel';
+import { formatBeamIdentity, formatBeamIdentityByIndex } from '../../utils/formatSatelliteLabel';
+import { cellFrequencyIndex } from '../../scene/sinrLiveCellModel';
 import type { GlyphKind } from '../../contracts/glyphTypes';
 
 /**
@@ -144,6 +145,32 @@ export function formatPanelBeamIdentity(
 ): string {
   if (!satId || beamId === null) return emptyLabel;
   return formatBeamIdentity({ satId, beamId, frequencyReuse });
+}
+
+/**
+ * S5-2b: the serving-identity string for the sinr-live CELL lane. The cell id is
+ * 0-indexed (cellLayout assigns `cellId: index`, 0..N-1) and its frequency colour
+ * is `cellFrequencyIndex(cellId, reuse) = cellId mod reuse` — the SAME index the
+ * cone render uses (`IlluminatedCellBeam.frequencyIndex`, SinrLiveCellBeamCones).
+ * `formatPanelBeamIdentity` must NOT be used here: it routes through
+ * `getBeamFrequencyIndex` = `(beamId - 1) mod reuse`, the 1-INDEXED steered-beam
+ * formula, which names a DIFFERENT frequency than the cone for every cell except
+ * `cellId ≡ 0 (mod reuse)` (the panel would say "F1" over a cone glowing "F2").
+ * Both the InfoPanel and `validate:s5:infopanel-cone-coupling` call THIS helper so
+ * the label frequency always matches the rendered cone.
+ */
+export function formatCellServingIdentity(
+  satId: string | null,
+  cellId: number | null,
+  frequencyReuse: number,
+  emptyLabel: string,
+): string {
+  if (!satId || cellId === null) return emptyLabel;
+  return formatBeamIdentityByIndex({
+    satId,
+    beamId: cellId,
+    frequencyIndex: cellFrequencyIndex(cellId, frequencyReuse),
+  });
 }
 
 export function glyphForSatId(

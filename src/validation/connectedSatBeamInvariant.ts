@@ -18,6 +18,7 @@
 
 import type { SimFrame, VizFrame } from '../scene/types';
 import { deriveSinrServingMosaicAggregate } from '../scene/sinrServingMosaic';
+import { resolvePrimaryCellServingSatId } from '../scene/sinrLiveCellModel';
 import {
   resolveSinrLiveVisibleBeamSatIds,
   type SteeredMountPlanFlags,
@@ -102,12 +103,13 @@ export interface InvariantReport {
  *    (InfoPanel / SceneTelemetry), population = `deriveSinrServingMosaicAggregate`
  *    over the steered `perUePositions` (SinrServingAggregate) — unchanged.
  *
- * NOTE (S5-2): the InfoPanel "ACTIVE SERVING" TEXT still reads the steered
- * `SimState.serving` (publisher built from `sim.serving`); aligning that label to
- * the cell truth is the separable InfoPanel re-point flagged in D-ORACLE "for
- * confirmation" (a pre-existing label-vs-mosaic divergence shipped in S4, not
- * introduced here). This invariant measures the rendered BEAM (cones), so it
- * reads the cell truth — the lane's actual serving render.
+ * NOTE (S5-2b, retired): the InfoPanel "ACTIVE SERVING" label is now re-pointed
+ * to this SAME primary cell-truth resolver (`resolvePrimaryCellServingSatId`) in
+ * `useSimStatePublisher.buildPublishedPrimaryServing`, so the panel label, the
+ * cones, and this must-hold invariant share ONE primary oracle (no more steered
+ * label-vs-cone divergence). The coupling is guarded by
+ * `validate:s5:infopanel-cone-coupling` (label sat ∈ rendered cone set, MIRROR of
+ * this resolver). This invariant still measures the rendered BEAM (cones).
  */
 export function collectConnectedClaims(frame: SimFrame): ConnectedClaim[] {
   const claims = new Map<string, ConnectedClaim>();
@@ -118,13 +120,11 @@ export function collectConnectedClaims(frame: SimFrame): ConnectedClaim[] {
 
   const cellFrame = frame.sinrLiveCells;
   if (cellFrame !== undefined) {
-    // Cone lane: one cell-truth oracle for all three claim surfaces.
-    // The primary UE sits at index 0 of perUePositions (the observer anchor;
-    // runtimeUeFrame); match it into the cell UE records by id.
-    const primaryUeId = frame.perUePositions[0]?.id;
-    const primaryServingSatId = primaryUeId !== undefined
-      ? cellFrame.ues.find(ue => ue.ueId === primaryUeId)?.servingSatId ?? null
-      : cellFrame.ues[0]?.servingSatId ?? null;
+    // Cone lane: one cell-truth oracle for all three claim surfaces. The primary
+    // resolution is the SHARED resolvePrimaryCellServingSatId (sinrLiveCellModel)
+    // — the SAME source the InfoPanel publisher re-points to (S5-2b), so the
+    // panel label, the cones, and this must-hold invariant cannot drift.
+    const primaryServingSatId = resolvePrimaryCellServingSatId(cellFrame, frame.perUePositions);
     if (primaryServingSatId !== null) add('primary-serving', primaryServingSatId);
     for (const ue of cellFrame.ues) {
       if (ue.servingSatId !== null) add('population-aggregate', ue.servingSatId);
