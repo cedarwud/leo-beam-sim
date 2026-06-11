@@ -8,9 +8,11 @@
  *
  *  1. The single-source scale constants hold their values.
  *  2. `projectSatelliteRenderWorld` selects by `worldFrame` TYPE, not magnitude
- *     — the decisive positive control: a `'live-enu'` coordinate with magnitude
- *     > 1000 is still SCALED (not normalized), where the old code would have
- *     normalized it onto the dome shell.
+ *     — the decisive positive controls: a `'live-enu'` coordinate with magnitude
+ *     > 1000 is still SCALED (not normalized), and (S1b) a `'replay-worldpos'`
+ *     coordinate with magnitude <= 1000 is still NORMALIZED (not scaled), where
+ *     the retired magnitude guess would have done the opposite. The guess
+ *     survives only for legacy/untagged coordinates.
  *  3. End-to-end: the real live pipeline projects EVERY displaySat through the
  *     live-enu branch (world == sim dome-world × satPosScaleFactor), id-matched
  *     to the sim truth — proving the live lane is fully type-driven.
@@ -72,11 +74,25 @@ ok(SKY_DOME_H_RADIUS === 700 && SKY_DOME_V_RADIUS === 400, 'SKY_DOME radii singl
   const liveSmall = projectSatelliteRenderWorld([400, 0, 0], 'live-enu', alt, satPosScaleFactor);
   ok(near(liveSmall.x, 400 * satPosScaleFactor), 'live-enu small coord scaled identically (magnitude ignored)');
 
-  // Replay/legacy path held byte-identical: huge normalizes, small scales.
-  const replayHuge = projectSatelliteRenderWorld([6878, 0, 0], undefined, alt, satPosScaleFactor);
-  ok(near(replayHuge.length(), alt), `replay-worldpos huge coord normalized to altitude ${alt} (legacy path held)`);
-  const replaySmall = projectSatelliteRenderWorld([400, 0, 0], 'replay-worldpos', alt, satPosScaleFactor);
-  ok(near(replaySmall.x, 400 * satPosScaleFactor), 'replay-worldpos small coord (mag<=1000) scaled (legacy path held)');
+  // S1b: replay-worldpos is now magnitude-INDEPENDENT (type-driven), mirroring
+  // live-enu. A small (mag<=1000) replay coord NORMALIZES to the altitude where
+  // the retired magnitude guess would have SCALED it — the Verdict 3 unit control.
+  // Test vector [200,0,0]: mag 200 ≠ SKY_DOME_V_RADIUS, so normalize-to-alt (360)
+  // genuinely differs from scale-by-satPosScaleFactor (180) — not a coincidence.
+  const replayHuge = projectSatelliteRenderWorld([6878, 0, 0], 'replay-worldpos', alt, satPosScaleFactor);
+  ok(near(replayHuge.length(), alt), `replay-worldpos huge coord normalized to altitude ${alt}`);
+  const replaySmall = projectSatelliteRenderWorld([200, 0, 0], 'replay-worldpos', alt, satPosScaleFactor);
+  ok(
+    near(replaySmall.x, alt) && near(replaySmall.length(), alt) && !near(replaySmall.x, 200 * satPosScaleFactor),
+    `replay-worldpos small coord (mag<=1000) NORMALIZED to ${alt} (magnitude IGNORED; retired guess would have scaled to ${200 * satPosScaleFactor})`,
+  );
+
+  // Legacy/untagged path keeps the magnitude guess for satellites no adapter
+  // has tagged yet: huge normalizes, small scales.
+  const legacyHuge = projectSatelliteRenderWorld([6878, 0, 0], undefined, alt, satPosScaleFactor);
+  ok(near(legacyHuge.length(), alt), 'legacy/untagged huge coord normalized (magnitude guess retained)');
+  const legacySmall = projectSatelliteRenderWorld([200, 0, 0], undefined, alt, satPosScaleFactor);
+  ok(near(legacySmall.x, 200 * satPosScaleFactor), 'legacy/untagged small coord scaled (magnitude guess retained)');
 }
 
 // ---- 3. End-to-end: the real live pipeline is fully type-driven ----

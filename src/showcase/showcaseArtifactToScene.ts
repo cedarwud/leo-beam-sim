@@ -209,6 +209,10 @@ function buildSatellites(
     return {
       id: s.id,
       worldPos,
+      // S1b: tag the render-frame explicitly so `useBeamViz` projects by TYPE
+      // (`projectSatelliteRenderWorld`) instead of guessing from `worldPos`
+      // magnitude. `worldPos` here is `coordToWorld(positionEcefKm)` (ecef-km).
+      worldFrame: 'replay-worldpos' as const,
       coordFrameKind: kind,
       displayRole: s.displayRole,
       visible: s.visible,

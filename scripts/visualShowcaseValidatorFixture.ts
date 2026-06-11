@@ -74,7 +74,7 @@ function runnerUpScoreForFrame(frameIndex: number): number {
   );
 }
 
-function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact {
+export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact {
   const satellites = Array.from({ length: SATELLITE_COUNT }, (_, satIndex) => ({
     id: `sat-${satIndex}`,
     sourceId: `synthetic-sat-${satIndex}`,

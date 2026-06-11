@@ -136,9 +136,18 @@ export type WorldPos = readonly [number, number, number];
  * (`useBeamViz`) selects its projection by THIS TYPE instead of guessing the
  * frame from the coordinate magnitude (`mag > 1000`):
  *  - `'live-enu'`     — live adapter; `worldPos` is the sky-dome az/el
- *                       projection in small world-units (NOT ecef-km).
- *  - `'replay-worldpos'` (default when absent) — replay/artifact adapter;
- *                       `worldPos` is `coordToWorld(positionEcefKm)`.
+ *                       projection in small world-units (NOT ecef-km). Scaled
+ *                       by `satPosScaleFactor`, magnitude-independent.
+ *  - `'replay-worldpos'` — replay/artifact adapter; `worldPos` is
+ *                       `coordToWorld(positionEcefKm)` (ecef-km). Normalised
+ *                       onto the dome shell at the visual altitude,
+ *                       magnitude-independent (S1b).
+ *
+ * Both real adapters tag explicitly. `worldFrame` ABSENT does NOT mean
+ * `'replay-worldpos'`: an untagged `worldPos` falls through to the legacy
+ * magnitude guess (`mag > 1000 ? normalize : scale`), which DIVERGES from
+ * `'replay-worldpos'` for a coordinate of magnitude ≤ 1000. New adapters must
+ * tag their satellites; absent is a legacy fallback only.
  */
 export type SatelliteWorldFrameKind = 'live-enu' | 'replay-worldpos';
 
@@ -147,9 +156,9 @@ export interface NormalizedSatellite {
   /** World-space position (post-coordToWorld). */
   readonly worldPos: WorldPos;
   /**
-   * Render-frame of {@link worldPos}. Absent ⇒ `'replay-worldpos'` (legacy
-   * replay default). The live adapter sets `'live-enu'`; see
-   * {@link SatelliteWorldFrameKind}.
+   * Render-frame of {@link worldPos}. Both real adapters set this explicitly
+   * (live ⇒ `'live-enu'`, replay ⇒ `'replay-worldpos'`). Absent ⇒ the legacy
+   * magnitude guess (NOT `'replay-worldpos'`; see {@link SatelliteWorldFrameKind}).
    */
   readonly worldFrame?: SatelliteWorldFrameKind;
   /** Raw producer-side frame; preserved for provenance / diagnostics. */
