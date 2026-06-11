@@ -30,6 +30,7 @@
 //   * docs/modqn-omega-handover-sdd.md §6.1 row "omega-heuristic" (warn tone)
 //   * docs/modqn-omega-handover-sdd.md §9.5 acceptance
 import type { CSSProperties } from 'react';
+import { OVERRIDE_PRIMARY_UE_SCOPE_NOTE } from '../modqn/runtimeControls';
 
 // SDD §4.4 item 1: this exact text. Validator pins the string.
 export const HEURISTIC_NOT_PAPER_BANNER_TEXT =
@@ -63,6 +64,17 @@ const bannerStyle: CSSProperties = {
   userSelect: 'none',
 };
 
+// S4-4 (D3): secondary scope line. Same AA-verified foreground color as the
+// headline (contrast unchanged) but lighter weight / smaller size so the SDD
+// headline stays the dominant line. Honestly scopes the override to the primary
+// UE so the demo never implies it drives the whole served population.
+const scopeNoteStyle: CSSProperties = {
+  marginTop: 2,
+  fontSize: 11,
+  fontWeight: 400,
+  letterSpacing: 0.1,
+};
+
 /**
  * Persistent warning banner shown whenever `handoverMode === 'omega-heuristic'`.
  *
@@ -86,7 +98,16 @@ export function HeuristicNotPaperBanner() {
       data-testid="heuristic-not-paper-banner"
       style={bannerStyle}
     >
-      {HEURISTIC_NOT_PAPER_BANNER_TEXT}
+      <div className="leo-heuristic-not-paper-banner__headline">
+        {HEURISTIC_NOT_PAPER_BANNER_TEXT}
+      </div>
+      <div
+        className="leo-heuristic-not-paper-banner__scope"
+        data-testid="heuristic-not-paper-banner-scope"
+        style={scopeNoteStyle}
+      >
+        {OVERRIDE_PRIMARY_UE_SCOPE_NOTE}
+      </div>
     </div>
   );
 }

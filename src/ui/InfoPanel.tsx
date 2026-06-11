@@ -10,6 +10,7 @@ import {
 } from './info-panel/formatters';
 import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
+import { OVERRIDE_PRIMARY_UE_SCOPE_NOTE } from '../modqn/runtimeControls';
 import type { UiMode } from './uiMode';
 
 type InfoPanelProps = SimState & {
@@ -40,13 +41,18 @@ interface LiveStatusModeCopy {
   triggerAriaLabel: string;
 }
 
-function getLiveStatusModeCopy(mode: RuntimeHandoverMode): LiveStatusModeCopy {
+// S4-4 (Decision D3): the decision/ω override is installed on the PRIMARY UE's
+// HandoverManager only, so every override-mode copy carries the primary-only
+// scope note (the secondary population follows live SINR-offset). Exported so
+// `validate:s4:override-primary-scope` drives the real resolver instead of a
+// source-text pin. The default `sinr-offset` mode never carries the note.
+export function getLiveStatusModeCopy(mode: RuntimeHandoverMode): LiveStatusModeCopy {
   if (mode === 'decision-overlay-on-live-sinr') {
     return {
       label: 'MODQN Overlay Mode',
       detail: 'Live SINR geometry/reference with MODQN replay decision overlay',
       duelBadge: 'MODQN Decision Overlay',
-      duelDetail: 'Viewport uses live SINR geometry and metrics as reference while the serving beam displays the MODQN replay decision overlay.',
+      duelDetail: `Viewport uses live SINR geometry and metrics as reference while the serving beam displays the MODQN replay decision overlay. ${OVERRIDE_PRIMARY_UE_SCOPE_NOTE}`,
       servingCaption: 'MODQN overlay serving link',
       pendingCaption: 'handover target',
       candidateCaption: 'live SINR reference',
@@ -61,7 +67,7 @@ function getLiveStatusModeCopy(mode: RuntimeHandoverMode): LiveStatusModeCopy {
       label: 'ω Heuristic Decision',
       detail: 'Simplified heuristic policy based on live omega weights',
       duelBadge: 'Heuristic Live Decision',
-      duelDetail: 'Serving link follows the live omega weighted heuristic policy. All signal and threshold metrics are computed live.',
+      duelDetail: `Serving link follows the live omega weighted heuristic policy. All signal and threshold metrics are computed live. ${OVERRIDE_PRIMARY_UE_SCOPE_NOTE}`,
       servingCaption: 'heuristic serving link',
       pendingCaption: 'handover target',
       candidateCaption: 'live SINR reference',

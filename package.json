@@ -177,6 +177,7 @@
     "validate:s4:cell-served-survives-wrap": "node --import tsx/esm scripts/validate-s4-cell-served-survives-wrap.tsx",
     "validate:s4:pun-retired": "node --import tsx/esm scripts/validate-s4-pun-retired.ts",
     "validate:s4:serving-equivalence": "node --import tsx/esm scripts/validate-s4-serving-equivalence.tsx",
+    "validate:s4:override-primary-scope": "node --import tsx/esm scripts/validate-s4-override-primary-scope.tsx",
     "validate:modqn:handover-story-layer": "node --import tsx/esm scripts/validate-modqn-handover-story-layer.ts",
     "validate:modqn:training-scene-source-gaps": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps.ts",
     "validate:modqn:training-scene-source-gaps:browser": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps-browser.ts",

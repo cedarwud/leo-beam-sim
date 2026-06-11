@@ -11,6 +11,19 @@ export interface RuntimeOmegaState {
 
 export const DEFAULT_RUNTIME_HANDOVER_MODE: RuntimeHandoverMode = 'sinr-offset';
 
+/**
+ * S4-4 (Decision D3) honest-label note. The ω / decision override is installed
+ * ONLY on the primary UE's HandoverManager (`useSimulation` `hoManager`, 1 of N
+ * UEs — `useSimulation.ts` override-install site). The secondary UE population
+ * and the earth-fixed cell managers take no override parameter; they always
+ * follow the live SINR-offset handover policy. This note is surfaced verbatim by
+ * the heuristic disclosure banner (`HeuristicNotPaperBanner`) and the InfoPanel
+ * override-mode copy so the live-cell-preview demo never implies the override
+ * drives the whole served population. Pinned by `validate:s4:override-primary-scope`.
+ */
+export const OVERRIDE_PRIMARY_UE_SCOPE_NOTE =
+  'Override drives the primary UE only — the rest of the served UEs follow the live SINR-offset policy.';
+
 // MODQN paper-faithful training-time omega, from docs/modqn-omega-handover-sdd.md §12.8.
 export const MODQN_PAPER_FAITHFUL_OMEGA: RuntimeOmegaState = Object.freeze({
   throughput: 0.4,
