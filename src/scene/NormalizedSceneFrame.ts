@@ -130,10 +130,28 @@ export interface TransitionProgress {
  */
 export type WorldPos = readonly [number, number, number];
 
+/**
+ * S1 coordinate authority — explicit render-frame discriminator for the
+ * satellite `worldPos`, set by the adapter that produced it. The renderer
+ * (`useBeamViz`) selects its projection by THIS TYPE instead of guessing the
+ * frame from the coordinate magnitude (`mag > 1000`):
+ *  - `'live-enu'`     — live adapter; `worldPos` is the sky-dome az/el
+ *                       projection in small world-units (NOT ecef-km).
+ *  - `'replay-worldpos'` (default when absent) — replay/artifact adapter;
+ *                       `worldPos` is `coordToWorld(positionEcefKm)`.
+ */
+export type SatelliteWorldFrameKind = 'live-enu' | 'replay-worldpos';
+
 export interface NormalizedSatellite {
   readonly id: string;
   /** World-space position (post-coordToWorld). */
   readonly worldPos: WorldPos;
+  /**
+   * Render-frame of {@link worldPos}. Absent ⇒ `'replay-worldpos'` (legacy
+   * replay default). The live adapter sets `'live-enu'`; see
+   * {@link SatelliteWorldFrameKind}.
+   */
+  readonly worldFrame?: SatelliteWorldFrameKind;
   /** Raw producer-side frame; preserved for provenance / diagnostics. */
   readonly coordFrameKind: VisualShowcaseCoordinateFrameKind;
   /** Producer-declared display role string (e.g. 'serving', 'candidate'). */

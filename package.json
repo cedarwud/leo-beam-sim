@@ -168,6 +168,7 @@
     "validate:frontend:advanced-drawer-modality:browser": "node --import tsx/esm scripts/validate-frontend-advanced-drawer-modality-browser.ts",
     "validate:s0:connected-sat-has-beam": "node --import tsx/esm scripts/validate-s0-connected-sat-has-beam.tsx",
     "validate:s0:geometry-trace": "node --import tsx/esm scripts/validate-s0-geometry-trace.tsx",
+    "validate:s1:coordinate-authority": "node --import tsx/esm scripts/validate-s1-coordinate-authority.tsx",
     "validate:modqn:handover-story-layer": "node --import tsx/esm scripts/validate-modqn-handover-story-layer.ts",
     "validate:modqn:training-scene-source-gaps": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps.ts",
     "validate:modqn:training-scene-source-gaps:browser": "node --import tsx/esm scripts/validate-modqn-training-scene-source-gaps-browser.ts",

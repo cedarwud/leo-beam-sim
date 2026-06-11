@@ -1,3 +1,5 @@
+import { EARTH_KM_PER_DEG } from '../orbit/earth-constants';
+
 export interface CellCenter {
   /** Deterministic cell ID 0..N-1, stable across runs. */
   readonly cellId: number;
@@ -49,7 +51,7 @@ export const DEFAULT_CELL_COUNT = 37;
 export const DEFAULT_MIN_ELEVATION_DEG = 15;
 
 const EARTH_RADIUS_KM = 6371;
-const KM_PER_DEG = 111.32;
+const KM_PER_DEG = EARTH_KM_PER_DEG;
 const DEG_TO_RAD = Math.PI / 180;
 
 /**

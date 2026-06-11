@@ -8,8 +8,7 @@ import {
   type UePerMobilityState,
 } from '../engine/ue/multiUeMobility';
 import type { Profile } from '../profiles/types';
-
-const EARTH_KM_PER_DEG = 111.32;
+import { EARTH_KM_PER_DEG } from '../engine/orbit/earth-constants';
 
 export interface RuntimePerUeSinrPosition {
   id: string;

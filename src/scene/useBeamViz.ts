@@ -14,6 +14,8 @@ import type {
 } from './types';
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 import type { SceneGeometry } from './SceneGeometry';
+import { SKY_DOME_V_RADIUS } from './sceneScale';
+import { projectSatelliteRenderWorld } from './satelliteRenderProjection';
 import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import {
   resolveBeamFrequencyIndex,
@@ -130,7 +132,10 @@ export function useBeamViz(
       ?? (kmToWorldScale !== null
         ? geometry.shellAltitudeKm * kmToWorldScale
         : runtime.appMode === 'sinr-experiment' ? 600 : 900);
-    const satPosScaleFactor = visualSatelliteAltitude / 400;
+    // Rescales the sky-dome's vertical extent (SKY_DOME_V_RADIUS) up to the
+    // configured visual altitude. The former bare `/ 400` magic literal hid
+    // that this divisor IS the dome radius (see sceneScale.ts).
+    const satPosScaleFactor = visualSatelliteAltitude / SKY_DOME_V_RADIUS;
     const footprintRadiusWorldForLayout = (layout: ShellVizLayout): number => (
       kmToWorldScale !== null
         ? layout.footprintRadiusKm * kmToWorldScale
@@ -231,14 +236,14 @@ export function useBeamViz(
     // Build VisibleSat-equivalent list from normalized satellites. WorldPos
     // tuple → THREE.Vector3 wrapping (renderer code uses `.distanceTo` etc.).
     const satellites: VisibleSat[] = frame.satellites.map(s => {
-      let world: THREE.Vector3;
-      const rawPos = new THREE.Vector3(s.worldPos[0], s.worldPos[1], s.worldPos[2]);
-      const mag = rawPos.length();
-      if (mag > 1000) {
-        world = rawPos.clone().normalize().multiplyScalar(visualSatelliteAltitude);
-      } else {
-        world = rawPos.clone().multiplyScalar(satPosScaleFactor);
-      }
+      // S1 coordinate authority: project by the adapter-declared `worldFrame`
+      // TYPE, not by guessing the frame from the coordinate magnitude.
+      const world = projectSatelliteRenderWorld(
+        s.worldPos,
+        s.worldFrame,
+        visualSatelliteAltitude,
+        satPosScaleFactor,
+      );
       return {
         id: s.id,
         shellId: s.shellId ?? '',

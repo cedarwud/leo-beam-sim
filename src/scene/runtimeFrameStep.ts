@@ -1,4 +1,4 @@
-import { createObserverContext } from '../engine/orbit';
+import { createObserverContext, EARTH_KM_PER_DEG } from '../engine/orbit';
 import type { ActiveBeamAssignment, SatelliteSnapshot } from '../engine/signal/types';
 import { computeLinkBudget } from '../engine/signal/link-budget';
 import {
@@ -63,12 +63,12 @@ export {
 } from './trajectoryFrame';
 export type { RuntimePerUeSinrPosition } from './runtimeUeFrame';
 
-// These constants are duplicated with trajectoryFrame.ts so the runtime
-// baseline validator regex can match the literal `export const` declarations.
+// MIN_ELEVATION_DEG / CACHE_ELEVATION_DEG / SIM_* are duplicated with
+// trajectoryFrame.ts; S3 (one step, one reset) consolidates the runtime step.
+// The sky-dome radii are re-exported from their single source (S1).
 export const MIN_ELEVATION_DEG = 15;
 export const CACHE_ELEVATION_DEG = 10;
-export const SKY_DOME_H_RADIUS = 700;
-export const SKY_DOME_V_RADIUS = 400;
+export { SKY_DOME_H_RADIUS, SKY_DOME_V_RADIUS } from './sceneScale';
 export const SIM_DURATION_SEC = 7200;
 export const SIM_STEP_SEC = 20;
 export const MAX_STEERING_EXTRA_RINGS = 3;
@@ -79,7 +79,6 @@ export const SECONDARY_UE_RECOMPUTE_HZ = 12;
 // Deprecated: kept for backward compatibility with event records only.
 export const INTRA_HANDOVER_ARROW_SEC = 2.4;
 const HANDOVER_VISUAL_LATCH_WALLCLOCK_MS = 6000;
-const EARTH_KM_PER_DEG = 111.32;
 const SECONDARY_RECOMPUTE_EPSILON_SEC = 1e-12;
 
 export interface RuntimeRecentHoState {

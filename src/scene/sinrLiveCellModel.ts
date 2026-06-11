@@ -53,6 +53,7 @@ import {
 } from '../engine/cells/cellLayout';
 import { HandoverManager } from '../engine/handover/handover-manager';
 import type { Profile } from '../profiles/types';
+import { EARTH_KM_PER_DEG } from '../engine/orbit/earth-constants';
 
 /**
  * Minimal satellite shape this pure model reads. The runtime's `VisibleSat`
@@ -71,8 +72,6 @@ export interface CellModelSat {
 }
 
 const DEG_TO_RAD = Math.PI / 180;
-/** Matches `runtimeFrameStep.ts` so cell-local ENU and nadir offsets share a frame. */
-const EARTH_KM_PER_DEG = 111.32;
 
 /**
  * `computeLinkBudget` groups co-channel interference by `getBeamFrequencyIndex`

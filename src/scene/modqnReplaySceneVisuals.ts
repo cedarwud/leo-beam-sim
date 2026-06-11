@@ -9,6 +9,7 @@ import type {
   ModqnProducerPosition,
   ModqnSatelliteState,
 } from '../modqn/replay-bundle/types';
+import { EARTH_KM_PER_DEG } from '../engine/orbit/earth-constants';
 
 export const MODQN_REPLAY_SCENE_SOURCE = 'producer-row-truth-with-display-fallback' as const;
 export const MODQN_REPLAY_SCENE_BEAM_COUNT = 7;
@@ -18,7 +19,6 @@ export const MODQN_REPLAY_SCENE_SPACING_WORLD = 132;
 export const MODQN_REPLAY_SCENE_DEFAULT_WORLD_UNITS_PER_KM = 10;
 export const MODQN_REPLAY_SCENE_DEFAULT_SATELLITE_ALTITUDE_WORLD = 380;
 
-const EARTH_KM_PER_DEG = 111.32;
 const SOURCE_BEAM_RADIUS_MIN_WORLD = 42;
 const SOURCE_BEAM_RADIUS_MAX_WORLD = 420;
 const LOCAL_FRAME_VISIBLE_X_WORLD = 2600;

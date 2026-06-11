@@ -97,12 +97,16 @@ export function liveSimToScene(
   // uses the half-angle for cone geometry.
   const halfAngleDeg = (geometry.beamwidth3dBRad / 2) * (180 / Math.PI);
 
-  // Satellite projection. `useBeamViz` reads `sim.satellites[].world`
-  // (THREE.Vector3) directly today; here we surface plain-tuple `worldPos`
-  // alongside live-only display fields (topo / lat / lon / shellId).
+  // Satellite projection. `worldPos` is the live sky-dome az/el projection
+  // (`s.world`, small world-units), tagged honestly via `worldFrame: 'live-enu'`
+  // so `useBeamViz` selects its scaling by TYPE rather than by guessing the
+  // frame from the coordinate magnitude (the former `mag > 1000` heuristic).
+  // `coordFrameKind` stays `'ecef-km'` as a legacy provenance field only — the
+  // value is dome-world units, NOT ecef-km; the renderer no longer reads it.
   const satellites: NormalizedSatellite[] = sim.satellites.map((s) => ({
     id: s.id,
     coordFrameKind: 'ecef-km' as const,
+    worldFrame: 'live-enu' as const,
     worldPos: [s.world.x, s.world.y, s.world.z] as const,
     displayRole: '',
     visible: true,

@@ -59,6 +59,7 @@ import {
   type SceneGeometry,
 } from '../scene/SceneGeometry';
 import { FOOTPRINT_RADIUS_WORLD } from '../scene/beam-geometry-pure';
+import { EARTH_KM_PER_DEG } from '../engine/orbit/earth-constants';
 import type {
   VisualShowcaseArtifact,
   VisualShowcaseBeamRole,
@@ -236,7 +237,7 @@ interface UeReplayProjection {
   readonly ueWorldScale: number;
 }
 
-const KM_PER_DEG = 111.32;
+const KM_PER_DEG = EARTH_KM_PER_DEG;
 
 function computeUeReplayProjection(
   artifact: VisualShowcaseArtifact,
