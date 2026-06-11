@@ -220,7 +220,50 @@ both folded before commit. The corrected as-built differs from the original plan
   is untouched). If the geometry-trace display golden captures the renamed published field, declare it via
   `S0_TRACE_IGNORE` and re-baseline in this commit (display-layer rule). Verify against the golden at impl.
 
-### S4-3 · Antenna VALUE asserts + serving-equivalence gate + QUAR-S4-SERVING wholesale retirement (the structural cut)
+### S4-3 · Antenna VALUE asserts + serving-equivalence gate + QUAR-S4-SERVING wholesale retirement (the structural cut) — ✅ DONE
+**As-built deltas vs the plan below (all review-grounded; 3-lens Workflow review `wf_1f17aa55-192`
+confirmed 1 blocker + 2 majors, ALL folded pre-commit; 8 positive-control mutations verified RED):**
+- **Needle inventory was 23, not 19** (S4-2's in-place needle split on block #3 + block #4's six pins
+  were never re-counted). Disposition: **20 replaced** by behaviour/VALUE asserts, **2 re-wrapped**, **1 net-new pin** (below).
+- **Review BLOCKER + MAJOR (render-wiring half of blocks #2/#3): 2 MainScene needles re-wrapped into
+  QUAR-S5-BEAMRENDER instead of deleted** — the mosaic colour-map derivation gate
+  (`if (!showSinrServingMosaic) return null;`) and the colour-oracle selection
+  (`buildSinrServingUeColorMapFromCells(cellFrame.ues)`). The DATA gates prove the pure functions and
+  the published projection, but WHICH oracle feeds the 3D dots and its lane gating are RENDER-layer
+  selection wiring no behaviour gate observes (a one-line steered re-point / guard delete kept every
+  gate green = the S4 disease returning silently). Only S5's shared selection resolver replaces them
+  behaviourally (rule 3 escape hatch: a newly met tangle pin wraps into its matching group). The
+  retirement-table row #2 promise "browser assert cell==mosaic colour" therefore shipped as: ON-half
+  cardinalities + OFF-half **all-canvas** telemetry-absence + these S5-wrapped pins; the mesh↔aggregate
+  colour tie itself is S5's mesh-telemetry render-gate scope.
+- **Review MAJOR: net-new call-edge pin in QUAR-S6-BUS** — the keystone gate executes the EXPORTED
+  `buildPublishedPerUePositions`; nothing guaranteed the hook still calls it (re-inlined projection +
+  dead export would pass every behavioural gate). Pin: `const perUePositions = buildPublishedPerUePositions(sim);`
+  (retires with the bus-split publisher collapse, the file's own P2 TODO).
+- **Publisher projection extracted as an exported pure function** (`buildPublishedPerUePositions`,
+  `useSimStatePublisher.ts`) so sections P/E1 drive the REAL projection — the S4-2 precondition's
+  behavioural publisher-shape assert. Needle text preserved (pun-retired + phase-f pins intact).
+  Side effect: phase-f per-ue-diagnostics check-(b) — pre-existing red at HEAD (its ordering-sensitive
+  regex never matched the projection's `: undefined)` collapse) — was first incidentally green
+  (file-order shift), then honestly REPLACED with behavioural single-UE→undefined checks on the
+  exported function (both branches; 38→39 checks).
+- Antenna VALUE asserts landed in the new gate's **V section** (8 asserts per the table below) PLUS
+  factory-wiring cast asserts (gain/steer/scan-loss/beamwidth/beamsPerSat/hopSlot reach the constructed
+  model; layout sized by the same beamwidth; profile.antenna untouched after construction+step) —
+  covering block #4's wiring pins too. `sinrLiveCellModel.test.ts` hopping checks re-bound to the
+  runtime consts (`SINR_LIVE_BEAMS_PER_SAT`/`SINR_LIVE_HOP_SLOT_SEC`, cap<19 non-vacuity guard).
+- **E5 caveat (review minor, documented in-gate):** cone-DATA equivalence runs on an all-visible
+  fixture by construction — the production dropout class (render-derived `satelliteWorldById` top-12
+  cap / missing placement / `SINR_LIVE_CONE_MAX_FOCUS_SATS`) cannot turn it red; that is S5's render
+  scope and this gate must not be counted as covering it at QUAR-S5-BEAMRENDER retirement.
+- **Mutations verified RED (8):** publisher alias-launder → equivalence P (sweep stays green = the
+  layering works); `33.5→40` → V1; continuity-lock removal → cells:model; MainScene telemetry
+  always-on → browser OFF-half; queue-source const → mosaic:model VALUE; MainScene steered re-point →
+  S5 pin; derivation-guard delete → S5 pin; call-edge sever → S6 pin.
+- 760 KNOWN-GAP re-tag (D1) landed; count unchanged (760/1); must-hold baseline green. geometry-trace
+  FULL match (truth+display, NO re-baseline). Pre-existing reds unchanged: phase6b LeftSidebarTab,
+  phase6r hoManager.update, handover-story-layer, s5-diagnostics-rate (all stash-verified at HEAD).
+
 Per governance rule 1, QUAR-S4-SERVING deletes **wholesale** in the SAME commit that lands ALL its
 replacements. The group is registered once (`tangle-locks.ts:50-54`) and wraps exactly **5** `tangleLockGroup`
 blocks (`validate-frontend-scene-lane-governance.ts:1529, 1561, 1884, 1940, 1990` — 19 text needles).

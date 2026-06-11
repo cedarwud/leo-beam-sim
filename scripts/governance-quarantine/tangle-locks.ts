@@ -47,11 +47,22 @@ export const TANGLE_LOCK_RETIREMENT: Record<string, TangleLockGroupContract> = {
   // were replaced wholesale by behavior / structural / imported-constant VALUE asserts
   // in validate:s3:one-reset, alongside the pure-step (S3-1) + served-survives-wrap
   // (S3-2) gates. No registry entry remains, so the meta-gate no longer expects it.
-  'QUAR-S4-SERVING': {
-    retiringSlice: 'S4 (one serving truth per lane)',
-    replacement:
-      'serving-truth equivalence invariants (cell truth == mosaic == cones == HUD aggregate), retirement of the servingBeamId↔cellId pun, and antenna-override VALUE asserts derived from consistentPeakGainDbi instead of literal text pins',
-  },
+  // QUAR-S4-SERVING RETIRED 2026-06-11 (S4-3, one serving truth per lane): of
+  // its five blocks' 23 needles, 20 were replaced by behaviour/VALUE asserts —
+  // the keystone validate:s4:serving-equivalence gate (cell truth == published
+  // records == mosaic == HUD aggregate == queue == cone data, on the REAL
+  // exported projection, plus antenna imported-constant VALUE asserts + factory
+  // wiring), the extended validate:phase-c:sinr-serving-mosaic:model/:browser
+  // and validate:phase-c:sinr-live-cells:model behaviour gates, and the
+  // standing validate:s4:pun-retired structural sweep. Per the S4-3 3-lens
+  // review: 2 MainScene render-WIRING needles (the mosaic derivation lane gate
+  // + the colour-oracle cell-truth selection) had no behavioural replacement
+  // short of S5's shared selection resolver and were RE-WRAPPED into
+  // QUAR-S5-BEAMRENDER (rule 3 escape hatch), and 1 net-new call-edge pin
+  // (hook → buildPublishedPerUePositions) joined QUAR-S6-BUS so the keystone
+  // gate provably certifies the projection the hook actually publishes. No
+  // QUAR-S4-SERVING registry entry remains, so the meta-gate no longer
+  // expects it.
   'QUAR-S5-BEAMRENDER': {
     retiringSlice: 'S5 (one beam render)',
     replacement:

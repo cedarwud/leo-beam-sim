@@ -231,6 +231,36 @@ async function main(): Promise<void> {
       0,
       'SINR-serving aggregate is lane-owned: it must NOT mount on the MODQN cell lane',
     );
+    // S4-3 (QUAR-S4-SERVING block #2 replacement): the mosaic mesh-colour +
+    // queue-pressure telemetry threading is GATED to the sinr-live mosaic lane.
+    // The ON half is the healthy-frame snapshot above (mesh > 1, buckets > 1,
+    // instances == 99 read from the canvas dataset); the OFF half is here — NO
+    // canvas on the MODQN lane may carry the sinr-serving telemetry attributes
+    // (ALL canvases swept: a chart canvas mounted before the scene canvas must
+    // not shadow a real leak). Known limits: one off-lane sampled (the other
+    // two lanes share the same render-plan ternaries) and the colour-map
+    // DERIVATION gate itself is pinned in governance (QUAR-S5-BEAMRENDER).
+    const offLaneTelemetryHits = await page.evaluate(() => {
+      const attrs = [
+        'data-sinr-serving-mosaic-color-count',
+        'data-sinr-service-queue-pressure-bucket-count',
+        'data-sinr-service-queue-pressure-instance-count',
+      ];
+      const hits = [];
+      const canvases = document.querySelectorAll('canvas');
+      for (const canvas of canvases) {
+        for (const attr of attrs) {
+          if (canvas.getAttribute(attr) !== null) hits.push(`${attr}=${canvas.getAttribute(attr)}`);
+        }
+      }
+      return { hits, canvasCount: canvases.length };
+    });
+    assert.ok(offLaneTelemetryHits.canvasCount >= 1, 'OFF half is non-vacuous (a canvas is mounted on the MODQN lane)');
+    assert.deepEqual(
+      offLaneTelemetryHits.hits,
+      [],
+      `sinr-serving telemetry must not thread on any MODQN-lane canvas (sinr-live-gated): ${JSON.stringify(offLaneTelemetryHits.hits)}`,
+    );
 
     const realErrors = consoleErrors.filter(e => !/ERR_CONNECTION_REFUSED|:8765|favicon/.test(e));
     assert.deepEqual(realErrors, [], `no real console errors: ${JSON.stringify(realErrors)}`);

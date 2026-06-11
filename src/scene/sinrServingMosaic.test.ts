@@ -16,6 +16,7 @@ import {
   deriveSinrServingMosaicAggregate,
   mosaicColorForServingBeam,
   EMPTY_SINR_SERVING_MOSAIC_AGGREGATE,
+  SINR_LIVE_SERVICE_QUEUE_SOURCE,
   SINR_SERVING_UNSERVED_COLOR,
 } from './sinrServingMosaic';
 
@@ -126,6 +127,43 @@ check('aggregate mean SINR is over served-with-finite-SINR only', () => {
 check('empty input → empty aggregate', () => {
   const agg = deriveSinrServingMosaicAggregate([]);
   assertEqual(agg, EMPTY_SINR_SERVING_MOSAIC_AGGREGATE, 'empty → shared empty constant');
+});
+
+// --- S4-3: QUAR-S4-SERVING block #1 replacement (mosaic module ownership as behaviour) ---
+
+check('queue source label VALUE: the exported const is the display-owned demo label', () => {
+  // Replaces the retired QUAR-S4-SERVING export-text pin with a VALUE assert:
+  // the queue accounting is explicitly display-owned live-service-demo, never
+  // producer proof. (`model.source` equality below ties the model to it.)
+  assertEqual(SINR_LIVE_SERVICE_QUEUE_SOURCE, 'live-service-demo', 'exported queue source const value');
+});
+
+check('cell-lane cross-surface ownership: aggregate + queue + 3D map derive from ONE cell record set and agree', () => {
+  // Replaces the retired QUAR-S4-SERVING module-ownership pins behaviourally:
+  // the mosaic module OWNS colour derivation, the served-N/N aggregate, and the
+  // queue accountant, and on the cell lane all three key the SAME typed
+  // (satId, servingCellId) unit — sim.sinrLiveCells is the one serving record.
+  const cellRecords = [
+    { id: 'u0', servingSatId: 'sat-1', servingBeamId: null, servingCellId: 3, sinrDb: 8 },
+    { id: 'u1', servingSatId: 'sat-1', servingBeamId: null, servingCellId: 3, sinrDb: 2 },
+    { id: 'u2', servingSatId: 'sat-2', servingBeamId: null, servingCellId: 5, sinrDb: -1 },
+    { id: 'u3', servingSatId: null, servingBeamId: null, servingCellId: null, sinrDb: null },
+  ] as const;
+  const agg = deriveSinrServingMosaicAggregate(cellRecords);
+  assertEqual(agg.servedCount, 3, 'aggregate counts cell-lane served (beamId null) records');
+  assertEqual(agg.beamLoads.map(l => l.key).sort().join('|'), 'sat-1:3|sat-2:5', 'aggregate units keyed (satId, cellId)');
+  const queue = deriveSinrLiveServiceQueueModel(cellRecords);
+  assertEqual(queue.source, SINR_LIVE_SERVICE_QUEUE_SOURCE, 'queue model carries the exported source const');
+  assertEqual(queue.byUeId.get('u0')?.servingKey, 'sat-1:3', 'queue keys the same typed unit');
+  assertEqual(queue.byUeId.get('u3')?.servingKey, null, 'unserved stays unserved in the queue');
+  const map3d = buildSinrServingUeColorMapFromCells(
+    cellRecords.map(r => ({ ueId: r.id, servingSatId: r.servingSatId, cellId: r.servingCellId })),
+  );
+  for (const load of agg.beamLoads) {
+    const carrier = cellRecords.find(r => r.servingSatId === load.satId && r.servingCellId === load.beamId)!;
+    assertEqual(map3d.get(carrier.id)!.markerColor, load.color, `3D colour == HUD beam-load colour for ${load.key}`);
+  }
+  assertEqual(map3d.get('u3')!.markerColor, SINR_SERVING_UNSERVED_COLOR, 'unserved UE grey on the 3D map');
 });
 
 check('live-service-demo queue accounts expose per-UE conservation fields', () => {

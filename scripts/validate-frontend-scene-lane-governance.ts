@@ -1526,58 +1526,46 @@ assertContains(
   'const showSinrServingMosaic = showSinrLiveViewport',
   'SINR-serving mosaic is gated sinr-live only (always-on ambient, no producer dependency)',
 );
-tangleLockGroup('QUAR-S4-SERVING', () => {
-assertContains(
-  sinrServingMosaicSource,
-  'export function buildSinrServingUeColorMap',
-  'SINR-serving mosaic owns its own UE colour derivation (distinct module, not deriveModqnServiceMap)',
-);
-assertContains(
-  sinrServingMosaicSource,
-  'export function deriveSinrServingMosaicAggregate',
-  'SINR-serving mosaic owns the served N/N + per-beam-load + mean-SINR aggregate',
-);
-assertContains(
-  sinrServingMosaicSource,
-  "export const SINR_LIVE_SERVICE_QUEUE_SOURCE = 'live-service-demo'",
-  'SINR-live queue accounting is explicitly labelled as display-owned live-service-demo, not producer proof',
-);
-assertContains(
-  sinrServingMosaicSource,
-  'export function deriveSinrLiveServiceQueueModel',
-  'SINR-serving mosaic owns the S2a live-service-demo queue accountant',
-);
-assertContains(
-  sinrServingMosaicSource,
-  'queueBeforeBits + trafficArrivalBits - servedBits',
-  'SINR live-service-demo queue aggregate preserves the queue conservation fields',
-);
-});
+// QUAR-S4-SERVING block #1 RETIRED (S4-3): the mosaic module-ownership /
+// queue-source / queue-conservation export-text pins were replaced by behaviour
+// + VALUE asserts in validate:phase-c:sinr-serving-mosaic:model (the test
+// imports + DRIVES every owned export; SINR_LIVE_SERVICE_QUEUE_SOURCE VALUE
+// assert; cell-lane cross-surface ownership check) and by the keystone
+// validate:s4:serving-equivalence gate (aggregate + queue derived from
+// sim.sinrLiveCells on a real frame).
 assertNotContains(
   sinrServingMosaicSource,
   "from './modqnServiceMap'",
   'SINR-serving mosaic must NOT import the MODQN cell overlay map (distinct lane-owned layer)',
 );
-tangleLockGroup('QUAR-S4-SERVING', () => {
+// QUAR-S4-SERVING block #2 RETIRED (S4-3): the telemetry-THREADING JSX pins
+// were replaced by the LIVE behaviour in
+// validate:phase-c:sinr-serving-mosaic:browser — the ON half reads the
+// mesh-derived colour count / queue-pressure buckets / 99 instances from the
+// canvas dataset on sinr-live; the OFF half asserts those attributes are
+// ABSENT on every MODQN-lane canvas. The block's DERIVATION-GATE needle was
+// NOT behaviourally replaceable yet — re-wrapped below into QUAR-S5-BEAMRENDER
+// together with block #3's colour-oracle wiring needle.
+//
+// S4-3 3-lens review (blocker + major, both execution-verified): the DATA
+// gates prove the pure colour map and the published projection, but WHICH
+// oracle feeds the 3D dots (cell truth, not steered) and the lane-gating of
+// that derivation are RENDER-layer selection wiring no shipped behaviour gate
+// observes — a one-line re-point/guard-delete would re-open the two-oracle
+// viewport (the S4 disease) or override MODQN service-map colours via the
+// mosaic-first merge, with every gate green. Only S5's shared selection
+// resolver replaces these behaviourally (rule 3 escape hatch: a newly met
+// tangle pin wraps into its matching group).
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'if (!showSinrServingMosaic) return null;',
-  'MainScene derives the SINR-serving mosaic colours only under the render-plan gate (sinr-live)',
+  'MainScene derives the SINR-serving mosaic colours only under the render-plan gate (sinr-live) — deleting the guard would override MODQN service-map colours via the mosaic-first merge',
 );
 assertContains(
   mainSceneSource,
-  "colorTelemetryAttr={showSinrServingMosaic ? 'sinrServingMosaicColorCount' : undefined}",
-  'MainScene threads the mosaic mesh-derived colour telemetry only on the sinr-live mosaic lane',
-);
-assertContains(
-  mainSceneSource,
-  "contentionTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureBucketCount' : undefined}",
-  'MainScene threads queue-pressure buffer telemetry only on the sinr-live mosaic lane',
-);
-assertContains(
-  mainSceneSource,
-  "contentionInstanceCountTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureInstanceCount' : undefined}",
-  'MainScene exposes the instanced secondary-UE queue-pressure count for the D3 dense-safe smoke',
+  'buildSinrServingUeColorMapFromCells(cellFrame.ues)',
+  'the 3D mosaic colours UE markers from the CELL truth on sinr-live (one serving oracle per viewport — a steered re-point would silently resurrect the S4 dual-oracle disease)',
 );
 });
 assertContains(
@@ -1881,38 +1869,28 @@ assertContains(
 );
 });
 
-tangleLockGroup('QUAR-S4-SERVING', () => {
-// ── Mosaic + aggregate re-point to the cell truth (S-cells-4c) ──
-// On sinr-live the SERVING displays (3D UE mosaic + the served N/N aggregate HUD +
-// per-UE diagnostics) read the EARTH-FIXED CELL truth, NOT the steered serving — a
-// UE is "connected" (coloured / counted) only when its cell is lit + served, so the
-// dots + cones + counter all agree. The 3D mosaic builds from the cell truth; the
-// HUD/diagnostics read it via the published `perUePositions` (cell truth replaces
-// the steered serving whenever `sim.sinrLiveCells` is present = the sinr-live gate).
-assertContains(
-  mainSceneSource,
-  'buildSinrServingUeColorMapFromCells(cellFrame.ues)',
-  'the 3D mosaic colours UE markers from the cell truth on sinr-live (UE connects only when its cell is lit)',
-);
-assertContains(
-  simStatePublisherSource,
-  'const cellTruthUes = sim.sinrLiveCells?.ues;',
-  'the published per-UE serving is the cell truth when present (aggregate + diagnostics agree with the cones)',
-);
-// S4-2 needle UPDATE (same-commit replacement, plan §3 S4-2): the old pin froze
-// the `servingBeamId := ue.cellId` PUN; the pun is retired, so the needle now
-// pins the TYPED de-punned publish shape. Its full replacement behavior gate
-// (`validate:s4:pun-retired`) lands in the SAME commit; this block still
-// retires WHOLESALE with the rest of QUAR-S4-SERVING in S4-3.
+// QUAR-S4-SERVING block #3 RETIRED (S4-3): the de-punned publisher-shape text
+// needles were replaced by validate:s4:serving-equivalence — it EXECUTES the
+// real exported projection (buildPublishedPerUePositions) on a warmed live
+// frame and asserts the published records are byte-identical to
+// sim.sinrLiveCells.ues with servingBeamId null + typed servingCellId (the
+// behavioural publisher-shape assert that also catches an alias-laundered
+// re-pun), plus the 3D-map/HUD/queue/cone cross-consumer agreement. The
+// structural sweep + typed-marker pins live on in validate:s4:pun-retired.
+// The block's MainScene colour-oracle wiring needle was re-wrapped into
+// QUAR-S5-BEAMRENDER above (render-selection wiring, S5 scope).
+//
+// S4-3 3-lens review (major): the equivalence gate certifies the EXPORTED
+// projection — this call-edge pin guarantees the hook actually publishes
+// through it (a re-inlined projection + dead export would otherwise pass every
+// behavioural gate). Wrapped into QUAR-S6-BUS: the publisher collapse behind
+// the NormalizedSceneFrame seam (the file's own P2 TODO) is bus-split scope,
+// which replaces this with a single-channel contract test.
+tangleLockGroup('QUAR-S6-BUS', () => {
 assertContains(
   simStatePublisherSource,
-  'servingCellId: ue.servingSatId === null ? null : ue.cellId,',
-  'cell-truth per-UE serving publishes the TYPED servingCellId (unserved → null, honest; S4-2)',
-);
-assertContains(
-  simStatePublisherSource,
-  'servingBeamId: null,',
-  'cell-lane published per-UE record carries NO steered beam id (cellId↔beamId pun retired, S4-2)',
+  'const perUePositions = buildPublishedPerUePositions(sim);',
+  'the live SimState publisher publishes the SAME projection validate:s4:serving-equivalence executes (call edge pinned — the gate is blind to a re-inlined projection)',
 );
 });
 
@@ -1947,40 +1925,15 @@ assertNotContains(
 // These locks pin that wiring so it cannot silently regress to a single satellite
 // lighting every cell it can see, or to a timer that hops serving beams off their UEs.
 const sinrLiveCellModelSource = readRepoFile('src/scene/sinrLiveCellModel.ts');
-tangleLockGroup('QUAR-S4-SERVING', () => {
-assertContains(
-  sinrLiveCellRuntimeSource,
-  'beamsPerSat: SINR_LIVE_BEAMS_PER_SAT',
-  'runtime caps the cell model to a per-sat beam budget (beam hopping)',
-);
-assertContains(
-  sinrLiveCellRuntimeSource,
-  'beamwidthOverrideRad: SINR_LIVE_CELL_BEAMWIDTH_RAD',
-  'runtime sets the cell-model link-budget beamwidth to match the cell layout (one antenna)',
-);
-assertContains(
-  sinrLiveCellRuntimeSource,
-  'beamwidth3dBRad: SINR_LIVE_CELL_BEAMWIDTH_RAD',
-  'cell layout is sized by the sinr-live beamwidth (same antenna as the link-budget gain)',
-);
-assertContains(
-  sinrLiveCellModelSource,
-  'applyBeamHoppingCap',
-  'cell model implements the per-sat beam-hopping illumination cap',
-);
-assertContains(
-  sinrLiveCellModelSource,
-  'illuminatedBeams,',
-  'cell model emits the illuminated-beam render surface (S-cells-4b cone source)',
-);
-// Serving continuity (S-cells-4b-fix): the cap LOCKS cells the sat is already
-// serving (a connected beam must not hop off its UE), hopping only the spare budget.
-assertContains(
-  sinrLiveCellModelSource,
-  'this.cellManagers.get(cellId)?.state.satId === satId',
-  'beam-hopping LOCKS already-serving cells (serving continuity; only spare beams hop)',
-);
-});
+// QUAR-S4-SERVING block #4 RETIRED (S4-3): the beam-hopping cap / one-antenna
+// beamwidth / illuminated-beams / serving-continuity text pins were replaced by
+// behaviour bound to the RUNTIME consts: validate:phase-c:sinr-live-cells:model
+// drives the cap (≤ SINR_LIVE_BEAMS_PER_SAT, with an uncapped positive control),
+// the across-slot serving-continuity lock, the idle-honesty bound, and the
+// illuminated-beam surface at the runtime-wired SINR_LIVE_HOP_SLOT_SEC; the
+// factory wiring itself (beamsPerSat / beamwidth / hop slot reach the model;
+// layout sized by the same beamwidth) is VALUE-asserted in
+// validate:s4:serving-equivalence section V.
 // The cap GATES candidate illumination; serving is still SINR + HandoverManager.
 assertContains(
   sinrLiveCellModelSource,
@@ -1997,33 +1950,19 @@ assertContains(
 // factory, (2) the model gates candidates by the EFFECTIVE (overridden) steering
 // limit — not the profile's — so the candidate list matches the scan-loss ceiling,
 // and (3) the runtime gate asserts gain↔beamwidth self-consistency.
-tangleLockGroup('QUAR-S4-SERVING', () => {
-assertContains(
-  sinrLiveCellRuntimeSource,
-  'maxGainDbiOverrideDbi: SINR_LIVE_CELL_MAX_GAIN_DBI',
-  'runtime overrides the cell-model peak gain (self-consistent with the beamwidth)',
-);
-assertContains(
-  sinrLiveCellRuntimeSource,
-  'maxSteeringAngleOverrideDeg: SINR_LIVE_CELL_MAX_STEERING_DEG',
-  'runtime overrides the cell-model steering limit (lifts the 12° coverage bottleneck)',
-);
-assertContains(
-  sinrLiveCellRuntimeSource,
-  'export const SINR_LIVE_CELL_MAX_GAIN_DBI = 33.5',
-  'runtime pins the self-consistent peak gain (33.5 dBi @ 3.32°, η=0.6) — NOT the profile 40 dBi bug',
-);
-assertContains(
-  sinrLiveCellRuntimeSource,
-  'export const SINR_LIVE_CELL_MAX_STEERING_DEG = 50',
-  'runtime pins the wider 50° steering limit (showcase lane only)',
-);
+// QUAR-S4-SERVING block #5 RETIRED (S4-3): the antenna-override literal text
+// pins (`= 33.5` / `= 50`) and the override wiring text pins were replaced by
+// imported-constant VALUE asserts + factory-wiring behaviour in
+// validate:s4:serving-equivalence section V (the S3-3 pattern: assert on the
+// imported const + the constructed model, never on source text); the gain↔
+// beamwidth self-consistency relation is also locked by
+// validate:phase-c:sinr-live-cells:runtime. The effective-steering assert below
+// + the profile-mutation ban stay PERMANENT (structure/behaviour, not text pins).
 assertContains(
   sinrLiveCellModelSource,
   'const maxSteer = this.antenna.maxSteeringAngleDeg',
   'cell model filters candidates by the EFFECTIVE (overridden) steering limit, not profile.antenna',
 );
-});
 // The truth-input is decoupled: the shared profile antenna is left untouched so
 // the steered lane + baseline KPI never drift. The override must NOT be written
 // back into the profile.

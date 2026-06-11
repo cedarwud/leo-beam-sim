@@ -10,6 +10,7 @@ import { createInitialSimState } from '../src/scene/initialSimState';
 import type { SimState } from '../src/scene/types';
 import { loadProfile } from '../src/profiles';
 import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer';
+import { buildPublishedPerUePositions } from '../src/scene/useSimStatePublisher';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
@@ -120,9 +121,22 @@ section('(b) useSimStatePublisher per-UE projection', () => {
   ]) {
     check(publisherSource.includes(expected), `publisher copies compact field ${expected}`);
   }
+  // S4-3: the old ordering-sensitive regex (`length > 1 … : undefined;`) never
+  // matched the projection's actual collapse text (`: undefined)`) — it only
+  // happened to match unrelated latch lines depending on file order. Replaced
+  // with a BEHAVIOURAL check on the exported projection itself.
+  const soloSteered = { perUePositions: [{ id: 'solo', eastKm: 0, northKm: 0, servingSatId: 'S', servingBeamId: 1, sinrDb: 5 }] };
   check(
-    /sim\.perUePositions\.length\s*>\s*1[\s\S]*:\s*undefined;/m.test(publisherSource),
-    'publisher sets SimState.perUePositions undefined when length <= 1',
+    buildPublishedPerUePositions(soloSteered as unknown as Parameters<typeof buildPublishedPerUePositions>[0]) === undefined,
+    'publisher collapses SimState.perUePositions to undefined when length <= 1 (steered branch, behavioural)',
+  );
+  const soloCell = {
+    perUePositions: [],
+    sinrLiveCells: { ues: [{ ueId: 'solo', cellId: 0, cellDistanceKm: 0, offAxisDeg: 0, servingSatId: 'S', beamIdentity: 'S#cell0', frequencyIndex: 0, sinrDb: 5, handoverKind: 'none' }] },
+  };
+  check(
+    buildPublishedPerUePositions(soloCell as unknown as Parameters<typeof buildPublishedPerUePositions>[0]) === undefined,
+    'publisher collapses SimState.perUePositions to undefined when length <= 1 (cell branch, behavioural)',
   );
 });
 

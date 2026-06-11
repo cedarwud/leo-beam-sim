@@ -18,6 +18,9 @@
 import { buildCellLayout } from '../engine/cells/cellLayout';
 import { getBeamFrequencyIndex } from '../utils/beamFrequency';
 import { loadProfile } from '../profiles/index';
+// S4-3 (QUAR-S4-SERVING block #4 replacement): the hopping checks bind to the
+// RUNTIME-wired consts, so the behaviour the gate proves is the shipped config.
+import { SINR_LIVE_BEAMS_PER_SAT, SINR_LIVE_HOP_SLOT_SEC } from './sinrLiveCellRuntime';
 import {
   SinrLiveCellModel,
   type CellModelSat,
@@ -382,35 +385,41 @@ check('serving sat replaced (A leaves, B arrives) → inter-HO end-to-end', () =
 
 // --- beam hopping: per-sat beam cap + rotating illumination window (§5.3) ------
 
-check('beam-hopping cap: one satellite lights at most `beamsPerSat` cells/slot', () => {
+check('beam-hopping cap: one satellite lights at most the runtime-wired beamsPerSat cells/slot', () => {
   const layout = testLayout(19); // 19 candidate cells under one overhead sat
+  // Non-vacuity: the cap must actually bind over this layout (cap < cell count).
+  assert(SINR_LIVE_BEAMS_PER_SAT < 19, `cap test non-vacuous (cap ${SINR_LIVE_BEAMS_PER_SAT} < 19 cells)`);
   const m = new SinrLiveCellModel({
     profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS,
-    beamsPerSat: 7, hopSlotSec: 2.5,
+    beamsPerSat: SINR_LIVE_BEAMS_PER_SAT, hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
   });
   const sat = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
   const f = m.step({ visibleSats: [sat], ues: [], simTimeSec: 0, dtSec: 1 });
-  assert(f.servedCellCount <= 7, `served cells capped to 7 (got ${f.servedCellCount})`);
+  assert(f.servedCellCount <= SINR_LIVE_BEAMS_PER_SAT, `served cells capped to ${SINR_LIVE_BEAMS_PER_SAT} (got ${f.servedCellCount})`);
   assert(f.servedCellCount >= 1, 'at least one cell lit');
   const litCellsBySat = f.cells.filter(c => c.servingSatId === 'A').length;
-  assert(litCellsBySat <= 7, `sat A lights ≤ 7 cells (got ${litCellsBySat})`);
+  assert(litCellsBySat <= SINR_LIVE_BEAMS_PER_SAT, `sat A lights ≤ ${SINR_LIVE_BEAMS_PER_SAT} cells (got ${litCellsBySat})`);
 });
 
-check('no cap by default (beamsPerSat = Infinity) → the overhead sat lights > 7 cells', () => {
+check('no cap by default (beamsPerSat = Infinity) → the overhead sat lights more cells than the cap', () => {
   const layout = testLayout(19);
   const m = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
   const sat = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
   const f = m.step({ visibleSats: [sat], ues: [], simTimeSec: 0, dtSec: 1 });
-  assert(f.servedCellCount > 7, `uncapped pure model lights > 7 cells (got ${f.servedCellCount}) — proves the cap actually constrains`);
+  assert(
+    f.servedCellCount > SINR_LIVE_BEAMS_PER_SAT,
+    `uncapped pure model lights > ${SINR_LIVE_BEAMS_PER_SAT} cells (got ${f.servedCellCount}) — proves the cap actually constrains`,
+  );
 });
 
 check('serving continuity: a beam SERVING a cell does NOT hop off it across slots', () => {
   // The connected-beam invariant (user-reported): once a cell is served, the
   // serving beam stays locked on it across hop slots — it must not blink off.
+  // (QUAR-S4-SERVING block #4's continuity text pin retired into this behaviour.)
   const layout = testLayout(19);
   const m = new SinrLiveCellModel({
     profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS,
-    beamsPerSat: 7, hopSlotSec: 2.5,
+    beamsPerSat: SINR_LIVE_BEAMS_PER_SAT, hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
   });
   const sat = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
   const slot0 = m.step({ visibleSats: [sat], ues: [], simTimeSec: 0, dtSec: 1 });
@@ -418,7 +427,9 @@ check('serving continuity: a beam SERVING a cell does NOT hop off it across slot
   assert(served0.size > 0, 'sat serves at least one cell in slot 0');
   // advance several hop slots
   let f = slot0;
-  for (const t of [2.5, 5, 7.5, 10]) f = m.step({ visibleSats: [sat], ues: [], simTimeSec: t, dtSec: 2.5 });
+  for (let slot = 1; slot <= 4; slot += 1) {
+    f = m.step({ visibleSats: [sat], ues: [], simTimeSec: slot * SINR_LIVE_HOP_SLOT_SEC, dtSec: SINR_LIVE_HOP_SLOT_SEC });
+  }
   const servedLater = new Set(f.cells.filter(c => c.servingSatId === 'A').map(c => c.cellId));
   for (const cellId of served0) {
     assert(servedLater.has(cellId), `served cell ${cellId} stays served across hop slots (beam did not hop off)`);
@@ -429,17 +440,17 @@ check('beam hopping idle honesty: a UE in an un-illuminated cell this slot is un
   const layout = testLayout(19);
   const m = new SinrLiveCellModel({
     profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS,
-    beamsPerSat: 7, hopSlotSec: 2.5,
+    beamsPerSat: SINR_LIVE_BEAMS_PER_SAT, hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
   });
   const sat = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
-  // Put one UE in every cell centre; with a 7-beam cap over 19 cells, > 7 UEs
-  // must be unserved (their cell is dark this slot) — honest, not borrowed.
+  // Put one UE in every cell centre; with the beam cap over 19 cells, the
+  // overflow UEs must be unserved (their cell is dark this slot) — honest.
   const ues = layout.centers.map(c => ({ id: `ue${c.cellId}`, eastKm: c.localXKm, northKm: c.localYKm }));
   const f = m.step({ visibleSats: [sat], ues, simTimeSec: 0, dtSec: 1 });
   const served = f.ues.filter(u => u.servingSatId !== null).length;
   const unserved = f.ues.filter(u => u.servingSatId === null).length;
-  assert(served <= 7, `served UEs bounded by the 7-beam cap (got ${served})`);
-  assert(unserved >= layout.centers.length - 7, `the rest are honestly unserved (got ${unserved})`);
+  assert(served <= SINR_LIVE_BEAMS_PER_SAT, `served UEs bounded by the ${SINR_LIVE_BEAMS_PER_SAT}-beam cap (got ${served})`);
+  assert(unserved >= layout.centers.length - SINR_LIVE_BEAMS_PER_SAT, `the rest are honestly unserved (got ${unserved})`);
 });
 
 console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + serving continuity + idle honesty, illuminated-beam render surface)`);

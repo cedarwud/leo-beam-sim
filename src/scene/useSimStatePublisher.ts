@@ -37,6 +37,48 @@ import { usePanelModeInference } from './usePanelModeInference';
 const UI_STABLE_UPDATE_INTERVAL_MS = 700;
 const UI_HANDOVER_UPDATE_INTERVAL_MS = 250;
 
+/**
+ * The published per-UE serving projection — the ONE place the live frame's
+ * per-UE serving truth becomes the `SimState.perUePositions` display record.
+ *
+ * S-cells-4c: on the sinr-live lane the published per-UE serving truth is the
+ * EARTH-FIXED CELL model (`sim.sinrLiveCells`) so the aggregate HUD + per-UE
+ * diagnostics agree with the cones — a UE is "served" only when its cell is lit
+ * and served (servingSatId !== null). S4-2 pun retirement: the cell id is
+ * published as the TYPED `servingCellId` and `servingBeamId` is null (there is
+ * no steered beam under the cell model). Off that lane (no cell truth) the
+ * steered per-UE serving is published unchanged with a null `servingCellId`.
+ *
+ * Exported as a pure function (S4-3) so the serving-equivalence gate drives the
+ * REAL projection — the behavioural publisher-shape assert that replaces the
+ * retired QUAR-S4-SERVING text needle (an alias-laundered re-pun is invisible
+ * to source sweeps; only executing this code catches it).
+ */
+export function buildPublishedPerUePositions(
+  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions'>,
+): SimState['perUePositions'] {
+  const cellTruthUes = sim.sinrLiveCells?.ues;
+  return cellTruthUes !== undefined
+    ? (cellTruthUes.length > 1
+      ? cellTruthUes.map(ue => ({
+        id: ue.ueId,
+        servingSatId: ue.servingSatId,
+        servingBeamId: null,
+        servingCellId: ue.servingSatId === null ? null : ue.cellId,
+        sinrDb: ue.sinrDb,
+      }))
+      : undefined)
+    : (sim.perUePositions.length > 1
+      ? sim.perUePositions.map(position => ({
+        id: position.id,
+        servingSatId: position.servingSatId,
+        servingBeamId: position.servingBeamId,
+        servingCellId: null,
+        sinrDb: position.sinrDb,
+      }))
+      : undefined);
+}
+
 export function useSimStatePublisher({
   profile,
   sim,
@@ -335,33 +377,10 @@ export function useSimStatePublisher({
         normalizedComparison.beamId,
       ),
     };
-    // S-cells-4c: on the sinr-live lane the published per-UE serving truth is the
-    // EARTH-FIXED CELL model (`sim.sinrLiveCells`) so the aggregate HUD + per-UE
-    // diagnostics agree with the cones — a UE is "served" only when its cell is lit
-    // and served (servingSatId !== null). S4-2 pun retirement: the cell id is
-    // published as the TYPED `servingCellId` and `servingBeamId` is null (there is
-    // no steered beam under the cell model). Off that lane (no cell truth) the
-    // steered per-UE serving is published unchanged with a null `servingCellId`.
-    const cellTruthUes = sim.sinrLiveCells?.ues;
-    const perUePositions = cellTruthUes !== undefined
-      ? (cellTruthUes.length > 1
-        ? cellTruthUes.map(ue => ({
-          id: ue.ueId,
-          servingSatId: ue.servingSatId,
-          servingBeamId: null,
-          servingCellId: ue.servingSatId === null ? null : ue.cellId,
-          sinrDb: ue.sinrDb,
-        }))
-        : undefined)
-      : (sim.perUePositions.length > 1
-        ? sim.perUePositions.map(position => ({
-          id: position.id,
-          servingSatId: position.servingSatId,
-          servingBeamId: position.servingBeamId,
-          servingCellId: null,
-          sinrDb: position.sinrDb,
-        }))
-        : undefined);
+    // The per-UE serving projection lives in buildPublishedPerUePositions (the
+    // pure exported function above) so the serving-equivalence gate executes
+    // the same code path the UI publishes.
+    const perUePositions = buildPublishedPerUePositions(sim);
 
     const nextIntraHandoverEvent = sim.intraHandoverEvent !== null && sim.intraHandoverWallClockStartMs !== null && sim.intraHandoverWallClockExpiresMs !== null
       ? {

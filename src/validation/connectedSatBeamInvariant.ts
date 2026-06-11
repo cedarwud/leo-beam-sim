@@ -46,9 +46,13 @@ export const KNOWN_GAPS: Record<string, KnownGapContract> = {
       'Secondary UEs claim serving sats beyond MAX_BEAM_SATS/top-12, so the aggregate counts beams the steered render never draws (useBeamViz display slice gates truth).',
   },
   'two-serving-oracles-cell-vs-steered': {
-    retiringSlice: 'S4 (one serving truth per lane)',
+    // D1 (s4-one-serving-truth-plan.md §4): S4 unified the cell-side DATA (one
+    // cell serving record, pun retired, equivalence gated) but the must-hold
+    // flip is RENDER-coupled — with cones parked + the steered render frozen, a
+    // cell-serving sat genuinely has no VISIBLE beam — so it lands with S5.
+    retiringSlice: 'S5 (one beam render) — flips to must-hold when the cell-cone layer is the lane\'s mounted render',
     description:
-      'sinr-live runs TWO serving oracles: mosaic/aggregate read the cell truth while the rendered beams are the steered HandoverManager truth — cell-serving sats need not match beamed sats.',
+      'RENDER-layer divergence: sinr-live cell-side DATA is one serving record (S4), but the rendered beams are still the steered HandoverManager truth with the cell cones parked — a cell-serving sat has no visible beam until S5 mounts the cell-cone render.',
   },
   'stale-serving-absent-from-truth-set': {
     retiringSlice: 'S2/S3 (sat identity pipeline + one reset)',
