@@ -90,6 +90,20 @@ async function main(): Promise<void> {
     );
     await page.waitForSelector(CANVAS, { timeout: 20000 });
 
+    // S-ADV-3: the default preset is now `minimal` (no service map), so explicitly
+    // select the Baseline preset (serviceMap = true) from the Advanced setup drawer
+    // before asserting the service-map-derived contention glow.
+    await page.locator('[data-testid="advanced-setup-trigger"]').click();
+    const baselineBtn = page.locator('[data-testid="modqn-layer-preset-baseline-faithful"]');
+    await baselineBtn.waitFor({ state: 'visible', timeout: 20000 });
+    await baselineBtn.click();
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="modqn-layer-preset-control"]')
+        ?.getAttribute('data-modqn-layer-preset') === 'baseline-faithful',
+      undefined,
+      { timeout: 20000 },
+    );
+
     // The live cell lane renders the 100-UE service map and the contention glow
     // actually fires. Headless SwiftShader steps rAF slowly, so poll the live
     // telemetry until the contention appears (or time out → FAIL).

@@ -284,7 +284,14 @@ un-parked.
 
 MODQN live-cell visual presets are lane-owned:
 
-- **Baseline Faithful** is the default. It shows the 100-UE service map,
+- **Minimal** is the default (S-ADV-3). It shows the hex cell rings only — no
+  service map, no UE-count badges, no beam cones, no profile-derived story cues,
+  and no handover arcs. It is the clean default surface (hex overlay + cones +
+  satellite markers + director cinema + scene HUD), and it keeps the default
+  minimal even after the producer un-park flips the service-allocation gate on (a
+  user must switch to Baseline / Service in the Advanced setup drawer to inspect
+  the all-UE map). The richer presets below are an explicit Advanced opt-in.
+- **Baseline Faithful** shows the 100-UE service map,
   satellite/cell coloring, active cell overlay, per-cell UE-count badges, and
   a compact profile-derived service readout for slot/L/cell/UE allocation.
   It keeps beam cones, footprint ellipses, foreground handover cues, and debug
@@ -295,7 +302,10 @@ MODQN live-cell visual presets are lane-owned:
   cues off, and must not appear in replay proof or artifact lanes.
 - **Explain Handover** may add focused beam cones and capped profile-derived
   intra/inter cell reassignment cues. These cues are overlay/demo presentation,
-  not producer proof.
+  not producer proof. The next-slot cell-change arcs (`CellHandoverArcs`) carry an
+  explicit visible honesty caption — "Next-slot cell changes (synthetic preview)"
+  (S-ADV-3) — so the per-arc identity labels are never mistaken for producer-recorded
+  handover events.
 - **Debug** may additionally show footprint ellipses and diagnostic surfaces.
   For MODQN live-cell preview, this can include compact HUD diagnostics for
   slot duration, next-slot cell changes, visible serving satellites, and active

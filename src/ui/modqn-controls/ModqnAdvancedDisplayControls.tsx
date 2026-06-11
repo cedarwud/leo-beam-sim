@@ -14,6 +14,7 @@ interface ModqnAdvancedDisplayControlsProps {
 }
 
 const MODQN_LAYER_PRESET_LABELS: Record<ModqnVisualLayerPreset, string> = {
+  minimal: 'Minimal',
   'baseline-faithful': 'Baseline',
   'service-allocation': 'Service',
   'explain-handover': 'Explain',

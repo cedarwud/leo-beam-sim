@@ -28,9 +28,16 @@ const INTRA_ARC_HALF_SPAN = 9;
 const INTRA_ARC_HEIGHT = 18;
 const INTRA_ARC_Y = 1.1;
 const ARC_LABEL_FONT_SIZE = 5.8;
+const ARC_CAPTION_FONT_SIZE = 7.4;
+const ARC_CAPTION_LIFT = 16;
 const ARC_CLAIM_BOUNDARY = 'profile-derived overlay';
 const ARC_PROOF_STATUS = 'non-proof';
 const ARC_SOURCE = 'profile-derived-demo';
+// S-ADV-3 honesty caption: the arcs are PROFILE-DERIVED next-slot cell-schedule
+// changes, NOT producer-recorded handover events. The per-arc identity labels read
+// like real handovers, so the layer carries one explicit visible caption that names
+// it a synthetic preview (the non-proof status was previously only in userData).
+export const CELL_HANDOVER_ARCS_SYNTHETIC_CAPTION = 'Next-slot cell changes (synthetic preview)';
 
 export function CellHandoverArcs({
   reassignments,
@@ -63,6 +70,7 @@ export function CellHandoverArcs({
   });
   const interCount = arcs.filter(arc => arc.reassignment.kind === 'inter').length;
   const intraCount = arcs.filter(arc => arc.reassignment.kind === 'intra').length;
+  const captionPosition = buildCaptionPosition(arcs);
 
   return (
     <group
@@ -74,8 +82,28 @@ export function CellHandoverArcs({
         source: ARC_SOURCE,
         claimBoundary: ARC_CLAIM_BOUNDARY,
         proofStatus: ARC_PROOF_STATUS,
+        caption: CELL_HANDOVER_ARCS_SYNTHETIC_CAPTION,
       }}
     >
+      {arcs.length > 0 && (
+        <Text
+          name="cell-handover-arcs-caption"
+          position={captionPosition}
+          fontSize={ARC_CAPTION_FONT_SIZE}
+          color="#cbd5f5"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.4}
+          outlineColor="#020617"
+          userData={{
+            source: ARC_SOURCE,
+            claimBoundary: ARC_CLAIM_BOUNDARY,
+            proofStatus: ARC_PROOF_STATUS,
+          }}
+        >
+          {CELL_HANDOVER_ARCS_SYNTHETIC_CAPTION}
+        </Text>
+      )}
       {arcs.map(arc => (
         <group
           key={`${arc.reassignment.cellId}-${arc.reassignment.fromSatId}-${arc.reassignment.toSatId}`}
@@ -139,6 +167,23 @@ export function CellHandoverArcs({
 
 function buildIdentityLabel(reassignment: CellReassignment): string {
   return `${reassignment.fromSatId}/${reassignment.fromBeamIndex} -> ${reassignment.toSatId}/${reassignment.toBeamIndex}`;
+}
+
+// Centroid of the arc label positions, lifted clear above the cluster so the
+// synthetic-preview caption sits over the arcs without overlapping the identity
+// labels. Falls back to a fixed overhead point when no arc geometry resolves.
+function buildCaptionPosition(arcs: readonly ArcRenderItem[]): [number, number, number] {
+  const labelPositions = arcs.map(arc => buildArcLabelPosition(arc.points));
+  if (labelPositions.length === 0) return [0, INTRA_ARC_Y + INTRA_ARC_HEIGHT + ARC_CAPTION_LIFT, 0];
+  let sumX = 0;
+  let maxY = -Infinity;
+  let sumZ = 0;
+  for (const [x, y, z] of labelPositions) {
+    sumX += x;
+    sumZ += z;
+    if (y > maxY) maxY = y;
+  }
+  return [sumX / labelPositions.length, maxY + ARC_CAPTION_LIFT, sumZ / labelPositions.length];
 }
 
 function buildArcLabelPosition(points: readonly [number, number, number][]): [number, number, number] {

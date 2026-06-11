@@ -1,4 +1,5 @@
 export type ModqnVisualLayerPreset =
+  | 'minimal'
   | 'baseline-faithful'
   | 'service-allocation'
   | 'explain-handover'
@@ -21,14 +22,37 @@ export interface ModqnVisualLayerFlags {
   readonly diagnostics: boolean;
 }
 
-export const DEFAULT_MODQN_VISUAL_LAYER_PRESET: ModqnVisualLayerPreset = 'baseline-faithful';
+// S-ADV-3: the default MODQN-LIVE preset is `minimal` (hex cell rings only). The
+// richer presets — the all-UE service map, profile-derived handover-story cues, and
+// next-slot cell-change arcs — are profile-derived overlays that earn their place
+// only as an explicit Advanced opt-in (Rule#10), so the default surface stays the
+// clean hex overlay + cones + markers + cinema + HUD. This also keeps the default
+// minimal even after the producer un-park flips the service-allocation gate on
+// (`showModqnServiceAllocation`) — a user must pick Baseline/Service in Advanced to
+// see the all-UE map.
+export const DEFAULT_MODQN_VISUAL_LAYER_PRESET: ModqnVisualLayerPreset = 'minimal';
 
 export const MODQN_VISUAL_LAYER_PRESETS: readonly ModqnVisualLayerPreset[] = [
+  'minimal',
   'baseline-faithful',
   'service-allocation',
   'explain-handover',
   'debug',
 ];
+
+// Hex cell rings only — the clean default. Everything else (service map, badges,
+// cones, story cues, handover arcs, footprints, diagnostics) is opt-in.
+const MINIMAL_LAYERS: ModqnVisualLayerFlags = {
+  serviceMap: false,
+  activeCellOverlay: true,
+  ueCountBadges: false,
+  beamCones: false,
+  beamConeScope: 'none',
+  handoverStory: false,
+  handoverCues: false,
+  footprintEllipses: false,
+  diagnostics: false,
+};
 
 const BASELINE_FAITHFUL_LAYERS: ModqnVisualLayerFlags = {
   serviceMap: true,
@@ -88,5 +112,6 @@ export function resolveModqnVisualLayers(
   if (preset === 'debug') return DEBUG_LAYERS;
   if (preset === 'service-allocation') return SERVICE_ALLOCATION_LAYERS;
   if (preset === 'explain-handover') return EXPLAIN_HANDOVER_LAYERS;
-  return BASELINE_FAITHFUL_LAYERS;
+  if (preset === 'baseline-faithful') return BASELINE_FAITHFUL_LAYERS;
+  return MINIMAL_LAYERS;
 }

@@ -21,6 +21,7 @@ import {
   resolveSceneLaneRenderPlan,
   resolveSceneLaneUeMarkerShape,
 } from '../src/scene/sceneLaneRenderPlan.ts';
+import { resolveModqnVisualLayers } from '../src/scene/modqnVisualLayers.ts';
 import {
   assertAndSummarizeTangleLockGroups,
   recordTangleLockGroup,
@@ -489,6 +490,7 @@ const timelineBarSource = readRepoFile('src/ui/TimelineBar.tsx');
 const handoverRailSource = readRepoFile('src/ui/HandoverEventRail.tsx');
 const modqnHudSource = readRepoFile('src/ui/modqn-controls/ModqnSceneHud.tsx');
 const modqnVisualLayersSource = readRepoFile('src/scene/modqnVisualLayers.ts');
+const cellHandoverArcsSource = readRepoFile('src/viz/CellHandoverArcs.tsx');
 const modqnServiceMapSource = readRepoFile('src/scene/modqnServiceMap.ts');
 const cellOverlaySource = readRepoFile('src/viz/CellOverlay.tsx');
 const cellBeamConesSource = readRepoFile('src/viz/CellBeamCones.tsx');
@@ -551,7 +553,16 @@ assertNotContains(topologyTabSource, 'K=28 active beams', 'TopologyTab must not 
 assertContains(appPersistenceSource, 'normalizePersistedModqnServingCount(record.cellServingCount)', 'appPersistence normalizes persisted MODQN serving count');
 assertNotContains(appPersistenceSource, 'record.cellServingCount === 12', 'appPersistence must not accept L=12 as a normal value');
 assertContains(appRuntimeConfigSource, 'normalizeRuntimeModqnServingCount(input.sceneTopology.cellServingCount)', 'appRuntimeConfig normalizes runtime MODQN serving count');
-assertContains(modqnVisualLayersSource, "DEFAULT_MODQN_VISUAL_LAYER_PRESET: ModqnVisualLayerPreset = 'baseline-faithful'", 'MODQN visual layers default to baseline faithful preset');
+// S-ADV-3: the default MODQN-LIVE preset is the minimal hex-rings-only surface; the
+// service map / story cues / handover arcs are an explicit Advanced opt-in (Rule#10).
+assertContains(modqnVisualLayersSource, "DEFAULT_MODQN_VISUAL_LAYER_PRESET: ModqnVisualLayerPreset = 'minimal'", 'MODQN visual layers default to the minimal hex-rings-only preset');
+assert.equal(resolveModqnVisualLayers('minimal').activeCellOverlay, true, 'minimal preset keeps the hex cell overlay');
+assert.equal(resolveModqnVisualLayers('minimal').serviceMap, false, 'minimal preset hides the all-UE service map');
+assert.equal(resolveModqnVisualLayers('minimal').ueCountBadges, false, 'minimal preset hides per-cell UE-count badges');
+assert.equal(resolveModqnVisualLayers('minimal').beamCones, false, 'minimal preset hides cell beam cones');
+assert.equal(resolveModqnVisualLayers('minimal').handoverStory, false, 'minimal preset hides the profile-derived story layer');
+assert.equal(resolveModqnVisualLayers('minimal').handoverCues, false, 'minimal preset hides the next-slot cell-change arcs');
+assertContains(cellHandoverArcsSource, "CELL_HANDOVER_ARCS_SYNTHETIC_CAPTION = 'Next-slot cell changes (synthetic preview)'", 'cell-change arcs carry an honest synthetic-preview caption (S-ADV-3)');
 assertContains(modqnVisualLayersSource, "'service-allocation'", 'MODQN visual layers include service allocation preset');
 assertContains(modqnVisualLayersSource, "'explain-handover'", 'MODQN visual layers include explain handover preset');
 assertContains(modqnVisualLayersSource, 'beamCones: false', 'MODQN baseline preset keeps beam cones off');
