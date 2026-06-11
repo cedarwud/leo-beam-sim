@@ -36,11 +36,15 @@ were selection-policy churn on top of divergent truths — not rendering defects
 
 ## 3. Slice plan (core program; each slice = own commit + behavior-gates)
 
-- **S0 Unlock + harness.** Convert the beam/coords/step string-locks that pin
-  current tangle into behavior locks (or temporarily quarantine them); stand up
-  the geometry probe + fixture harness so every later slice is data-verified.
-  NEW invariant test harness: "every satellite the UI calls connected has a
-  visible beam" as a TEST, not a hope.
+- **S0 Unlock + harness. ✅ DONE 2026-06-11** (see
+  [governance-lock-strategy.md](./governance-lock-strategy.md)): ~160 tangle
+  pins quarantined in 7 retirement groups (still executing; registry
+  `scripts/governance-quarantine/tangle-locks.ts`), 3 comment pins deleted;
+  invariant harness landed — `validate:s0:connected-sat-has-beam` ("every
+  satellite the UI calls connected has a visible beam" as a TEST; primary
+  serving = must-hold green, audit gaps measured: cell-vs-steered 760
+  claim-steps, population-cap 1) + `validate:s0:geometry-trace` (paired
+  truth+display golden, determinism + perturbation meta-gates).
 - **S1 Coordinate authority.** One typed `WorldPoint` per frame kind (no
   punning), one km↔world scale, one ENU converter (reuse `topocentric.ts`),
   kill the magnitude>1000 guess + the 5 coercion heuristics + the 6×111.32.
@@ -71,7 +75,10 @@ pair, follow the subject, and replay warm handovers instead of cold-attach);
 C2 timeline single-playhead/single-axis; C3 HUD z-token scale + dead CSS purge.
 
 **Fix IMMEDIATELY regardless (cheap, real):** the drawer-under-timeline
-click-through bug (z-40 vs z-82).
+click-through bug (z-40 vs z-82). **✅ FIXED 2026-06-11** — scrim raised to
+z-100, behavior-locked by `validate:frontend:advanced-drawer-modality:browser`
+(red→green verified; before/after screenshots under
+`output/frontend-consolidation/`).
 
 ## 4. Honest effort
 

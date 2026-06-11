@@ -20,6 +20,10 @@ import {
   resolveSceneLaneRenderPlan,
   resolveSceneLaneUeMarkerShape,
 } from '../src/scene/sceneLaneRenderPlan.ts';
+import {
+  assertAndSummarizeTangleLockGroups,
+  recordTangleLockGroup,
+} from './governance-quarantine/tangle-locks.ts';
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -37,6 +41,15 @@ function assertNotContains(source: string, needle: string, label: string): void 
 
 function countOccurrences(source: string, needle: string): number {
   return source.split(needle).length - 1;
+}
+
+// S0 quarantine wrapper (scripts/governance-quarantine/tangle-locks.ts): the
+// wrapped TANGLE-PIN locks still execute on every run, but they are scheduled
+// for WHOLESALE deletion by the consolidation slice named in the registry,
+// replaced by that slice's behavior gates. Never patch needles inside a group.
+function tangleLockGroup(groupId: string, run: () => void): void {
+  recordTangleLockGroup(groupId);
+  run();
 }
 
 function tabKeys<T extends string>(tabs: readonly { readonly key: T }[]): T[] {
@@ -275,6 +288,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   // `showSinrLiveCellBeams` is pinned false on EVERY lane (the cell-truth MODEL stays
   // computed, dormant, for a future cinema / off-axis render). See
   // `.agent-memory/project_sinr_render_reset_2026-06-08.md`.
+  tangleLockGroup('QUAR-RENDER-RESET', () => {
   assert.equal(
     renderPlan('sinr-live', 'live-sim').showSinrLiveCellBeams,
     false,
@@ -285,6 +299,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     false,
     'cell-truth cones stay parked under director focus too',
   );
+  });
   assert.equal(
     renderPlan('modqn-live-cell-preview', 'live-sim').showSinrLiveCellBeams,
     false,
@@ -510,17 +525,20 @@ assertContains(modqnAdvancedDisplayControlsSource, "'service-allocation': 'Servi
 assertContains(appSource, 'const [modqnVisualLayerPreset, setModqnVisualLayerPreset]', 'App owns MODQN visual layer preset state');
 assertContains(appRuntimeConfigSource, 'resolveModqnVisualLayers(modqnVisualLayerPreset)', 'appRuntimeConfig resolves MODQN visual layers into runtime flags');
 assertContains(cellScheduleSource, 'DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT', 'useCellSchedule names the 28-cell cap as display-only');
-assertContains(cellScheduleSource, 'MODQN action catalog truth is L x 7', 'useCellSchedule documents display cap is not MODQN action truth');
+// (S0: dropped the 'MODQN action catalog truth is L x 7' COMMENT-text pin — zero
+// behavior content; the display-cap honesty stays locked by the two asserts here.)
 assertNotContains(cellScheduleSource, 'PAPER_ACTIVE_BEAMS_PER_SLOT', 'useCellSchedule must not name the display cap as paper action truth');
 assertContains(appExperienceModeSource, "'sinr-experiment': 'hobs-2024-candidate-rich'", 'SINR default profile remains HOBS candidate-rich');
 assertContains(packageJson, '"validate:live-walker:7200-timeline"', 'package exposes committed 7200s live Walker validator');
 assertContains(appRuntimeConfigSource, 'LIVE_SIM_TIMELINE_DURATION_SEC = 7200', 'live timeline is 7200s only with committed validator coverage');
 assertNotContains(appRuntimeConfigSource, 'LIVE_SIM_TIMELINE_DURATION_SEC = 1200', 'live timeline must not fall back to the old 1200s window');
 
+// (S0: App.tsx internal-wiring text pins below are quarantined for S6 — the
+// honesty keeps extracted from this region follow AFTER the group close.)
+tangleLockGroup('QUAR-S6-BUS', () => {
 assertContains(appSource, "from './app/sceneLane'", 'App scene lane import');
 assertContains(appSource, 'modqnReplayProofRequested: modqnReplayProofRequestActive', 'App explicit proof request into scene lane resolver');
 assertContains(appSource, 'shouldRenderModqnReplayScene(sceneLane)', 'App replay proof lane gate');
-assertContains(appSource, 'data-scene-lane={sceneLane}', 'App browser lane telemetry');
 assertContains(appSource, 'showModqnReplayScene={showModqnReplayScene}', 'App MainScene replay prop');
 assertContains(appSource, 'sceneLane={sceneLane}', 'App MainScene lane prop');
 assertContains(appSource, 'sceneLane={sceneLane}', 'App ControlBar lane prop');
@@ -537,7 +555,6 @@ assertContains(appSource, 'producerTraceDisplayDurationSec', 'App separates MODQ
 assertContains(timelineAuthoritySource, 'const producerSourceTimeline: TimelineSurfaceDescriptor', 'Timeline authority keeps producer source timeline separate from display-stretched rail axis');
 assertContains(timelineAuthoritySource, "return { timeline: liveTimeline, rail: liveRail };", 'Timeline authority keeps MODQN live preview rail on the live Walker event index');
 assertContains(timelineAuthoritySource, "return { timeline: producerSourceTimeline, rail: producerTrace };", 'Timeline authority keeps MODQN replay proof bottom timeline on producer source time');
-assertNotContains(appSource, 'producerDisplayTimeline', 'App must not promote the slow-motion producer rail axis into the bottom timeline');
 assertContains(timelineAuthoritySource, 'horizonSec: producerDurationSec', 'Timeline authority keeps producer source horizon seconds separate from display duration');
 assertContains(appSource, 'horizonSec={timelineRailDescriptor.timeline.horizonSec}', 'App passes source horizon seconds to TimelineBar separately');
 assertContains(timelineAuthoritySource, "horizonKind: 'producer-trace'", 'Timeline authority models producer trace horizon explicitly');
@@ -546,12 +563,16 @@ assertContains(appSource, 'const liveTimelineWindowStartSec = demoStartOffset;',
 assertContains(appSource, 'simState.simTimeSec - liveTimelineWindowStartSec', 'App displays live timeline as window elapsed time, not absolute sim offset');
 assertContains(appSource, 'demoStartOffsetSec: demoStartOffset', 'App does not mutate the live Walker window start when seeking');
 assertContains(appSource, 'const absoluteTargetSec = liveTimelineWindowStartSec + target;', 'App converts bottom timeline elapsed seek to absolute Walker time');
+assertContains(appSource, "if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;", 'App routes live lanes to the live Walker event index rail');
+assertContains(appSource, "if (sceneLane === 'modqn-replay-proof') return modqnHandoverRailEvents;", 'App keeps MODQN replay proof on producer rail events');
+});
+// Honesty / authority keeps extracted from the quarantined App-bus region:
+assertContains(appSource, 'data-scene-lane={sceneLane}', 'App browser lane telemetry');
+assertNotContains(appSource, 'producerDisplayTimeline', 'App must not promote the slow-motion producer rail axis into the bottom timeline');
 assertContains(appSource, 'durationSec={timelineRailDescriptor.rail.durationSec}', 'App handover rail uses descriptor-owned duration');
 assertContains(appSource, 'sourceLabel={timelineRailDescriptor.rail.sourceLabel}', 'App handover rail uses descriptor-owned source label');
 assertContains(appSource, 'sourceOwner={timelineRailDescriptor.rail.sourceOwner}', 'App handover rail exposes descriptor source owner');
 assertContains(appSource, 'sourceGapReasons={timelineRailDescriptor.rail.sourceGapReasons}', 'App handover rail exposes descriptor source gaps');
-assertContains(appSource, "if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;", 'App routes live lanes to the live Walker event index rail');
-assertContains(appSource, "if (sceneLane === 'modqn-replay-proof') return modqnHandoverRailEvents;", 'App keeps MODQN replay proof on producer rail events');
 assertContains(appSource, 'const timelineDurationSec = timelineRailDescriptor.timeline.durationSec;', 'App timeline duration is descriptor-owned');
 assertNotContains(
   appSource,
@@ -696,7 +717,7 @@ assert.equal(
   1,
   'App mounts AlgorithmDashboard exactly once (artifact-replay sidebar metrics)',
 );
-{
+tangleLockGroup('QUAR-S6-BUS', () => {
   const metricsMountIndex = appSource.indexOf('<AlgorithmDashboard');
   assert.ok(metricsMountIndex >= 0, 'App AlgorithmDashboard mount exists');
   const metricsSlice = appSource.slice(metricsMountIndex, metricsMountIndex + 220);
@@ -708,7 +729,7 @@ assert.equal(
     artifactTabIndex >= 0 && artifactTabIndex < metricsMountIndex && metricsMountIndex < liveTabIndex,
     'App sidebar metrics are lane-owned inside the artifact right-sidebar branch',
   );
-}
+});
 assertNotContains(algorithmDashboardSource, "from 'three", 'AlgorithmDashboard must not import three');
 assertNotContains(algorithmDashboardSource, 'from "three', 'AlgorithmDashboard must not import three');
 assertNotContains(algorithmDashboardSource, '@react-three/', 'AlgorithmDashboard must not import react-three');
@@ -875,6 +896,7 @@ assertContains(
 // stays live-truth / overlay-demo, never producer proof. Lock the
 // resolver, the live seek + deferred sat-pair focus wiring, and the claim telemetry.
 const liveWalkerDirectorFocusSource = readRepoFile('src/scene/liveWalkerDirectorFocus.ts');
+tangleLockGroup('QUAR-C1-DIRECTOR', () => {
 assertContains(
   liveWalkerDirectorFocusSource,
   'const window = resolveCinematicReplayWindow(events, kind, nowSec, durationSec);',
@@ -885,6 +907,7 @@ assertContains(
   'seekTargetSec: window.startSec,',
   'live Walker Director seek target is a real source-time lead-in, not a fabricated horizon',
 );
+});
 assertContains(
   liveWalkerDirectorFocusSource,
   "export type LiveWalkerDirectorFocusClaimKind = 'live-truth' | 'profile-derived-forecast' | 'overlay-demo';",
@@ -894,6 +917,7 @@ assertContains(
 // lifecycle) was extracted from App into useDirectorOrchestration; App keeps the
 // honesty TELEMETRY JSX + the lane-mapped claim const and mounts the hook.
 const directorOrchestrationSource = readRepoFile('src/app/useDirectorOrchestration.ts');
+tangleLockGroup('QUAR-C1-DIRECTOR', () => {
 assertContains(
   appSource,
   'useDirectorOrchestration({',
@@ -909,16 +933,19 @@ assertContains(
   'resolveLiveWalkerFocusWindow(',
   'director hook resolves the next live Walker handover for the Director focus',
 );
+});
 assertContains(
   appSource,
   "sceneLane === 'modqn-live-cell-preview' ? 'overlay-demo' : 'live-truth'",
   'App labels the live Director focus claim by lane (overlay-demo vs SINR cell truth)',
 );
+tangleLockGroup('QUAR-C1-DIRECTOR', () => {
 assertContains(
   appSource,
   'buildSinrLiveCellHandoverEventIndex({',
   'App builds the SINR-live handover index from sinrLiveCells cell truth',
 );
+});
 assertContains(
   sinrLiveCellHandoverEventIndexSource,
   "sourceOwner: 'sinr-live-cell-truth'",
@@ -929,6 +956,7 @@ assertContains(
   "runtimeFramePath: 'stepRuntimeFrame+sinrLiveCells'",
   'SINR cell-truth event index records the additive sinrLiveCells trajectory path',
 );
+tangleLockGroup('QUAR-C1-DIRECTOR', () => {
 assertContains(
   directorOrchestrationSource,
   'pendingLiveFocusRef.current = {',
@@ -939,6 +967,7 @@ assertContains(
   'camera.requestInterFocus(pending.framing)',
   'director hook passes the resolved live sat-pair framing into the inter-HO Director focus',
 );
+});
 assertContains(
   appSource,
   'data-live-director-focus-claim={directorFocusEnabled ? liveDirectorFocusClaimKind : undefined}',
@@ -949,6 +978,7 @@ assertContains(
   'data-live-director-focus-event-sec={liveDirectorFocusEventSec !== null ? liveDirectorFocusEventSec.toFixed(3) : undefined}',
   'App exposes the resolved live Director focus event source-time (binds the seek to a real indexed event)',
 );
+tangleLockGroup('QUAR-C1-DIRECTOR', () => {
 assertContains(
   directorOrchestrationSource,
   'const cancelPendingLiveFocus = useCallback(() => {',
@@ -959,6 +989,7 @@ assertContains(
   '}, [sceneLane, cancelPendingLiveFocus]);',
   'director hook cancels a stale armed live Director focus on a lane switch (no cross-lane sat-pair leak)',
 );
+});
 assertNotContains(
   liveWalkerDirectorFocusSource,
   'Math.random',
@@ -1065,7 +1096,7 @@ assert.equal(
   1,
   'ArtifactSatelliteCompass is mounted exactly once',
 );
-{
+tangleLockGroup('QUAR-S6-BUS', () => {
   const compassMountIndex = appSource.indexOf('<ArtifactSatelliteCompass');
   assert.ok(compassMountIndex >= 0, 'ArtifactSatelliteCompass mount exists in App');
   const compassGuardSlice = appSource.slice(Math.max(0, compassMountIndex - 160), compassMountIndex);
@@ -1074,7 +1105,7 @@ assert.equal(
     "sceneLane === 'artifact-replay'",
     'ArtifactSatelliteCompass mount is lane-gated to artifact-replay',
   );
-}
+});
 assertContains(
   governanceDoc,
   'Artifact Satellite Azimuth HUD (FIX-5 Option C)',
@@ -1241,6 +1272,7 @@ assertContains(appSource, "sceneSource !== 'artifact-replay' || activeSceneFrame
 assertContains(appSource, 'data-testid="artifact-scene-fail-closed"', 'App artifact scene fail-closed placeholder');
 assertContains(appSource, "if (sceneSource === 'artifact-replay') return;", 'App skips MODQN replay bundle startup fetch in artifact replay');
 assertContains(appSource, "sceneSource !== 'artifact-replay' && modqnReplayFetchError !== null", 'App hides MODQN bundle fetch banner in artifact replay');
+tangleLockGroup('QUAR-S6-BUS', () => {
 assertContains(
   appSource,
   "sceneLane === 'modqn-live-cell-preview' && (",
@@ -1251,6 +1283,7 @@ assertContains(
   "sceneLane === 'modqn-live-cell-preview' && <ServiceStatusBanner appMode={appMode} />",
   'App should hide the MODQN training service banner outside the live cell lane',
 );
+});
 assertNotContains(
   appSource,
   "showModqnReplayScene={appMode === 'modqn-demo'}",
@@ -1281,6 +1314,9 @@ assertContains(handoverRailSource, 'buildEventMapClusters', 'HandoverEventRail b
 assertContains(handoverRailSource, 'data-map-layout="fixed-event-map"', 'HandoverEventRail exposes fixed event-map layout telemetry');
 assertContains(handoverRailSource, 'data-map-order="source-time"', 'HandoverEventRail keeps source-time map ordering');
 assertContains(handoverRailSource, 'data-cursor-mode="independent"', 'HandoverEventRail keeps playback cursor independent from map ordering');
+// (S0: the display-stretched DUAL-AXIS design below is what C2's single-axis
+// rework deletes; source-owner/claim/source-gap honesty attrs stay permanent above.)
+tangleLockGroup('QUAR-C2-TIMELINE', () => {
 assertContains(handoverRailSource, 'data-axis-kind={axisKind}', 'HandoverEventRail exposes source-time vs display-stretched axis telemetry');
 assertContains(handoverRailSource, 'data-axis-sec={safeAxisDurationSec.toFixed(3)}', 'HandoverEventRail exposes display axis seconds separately from source horizon');
 assertContains(handoverRailSource, 'data-axis-current-sec={safeAxisCurrentTimeSec.toFixed(3)}', 'HandoverEventRail exposes display axis cursor seconds');
@@ -1300,6 +1336,7 @@ assertContains(handoverRailSource, "axisKind: 'display-stretched'", 'HandoverEve
 assertContains(handoverRailSource, '--handover-rail-axis-duration', 'HandoverEventRail drives display cursor animation from axis duration');
 assertContains(appSource, 'axisPlaying={!playback.paused}', 'App pauses the handover rail display sweep with playback state');
 assertContains(appSource, 'axisPlaybackRate={playback.effectiveSpeed}', 'App synchronizes handover rail display sweep with playback speed');
+});
 assertContains(handoverRailSource, 'data-marker-cluster-count={String(eventMapClusters.length)}', 'HandoverEventRail exposes marker cluster count');
 assertContains(handoverRailSource, 'data-testid="handover-event-map-track"', 'HandoverEventRail renders a fixed event-map track');
 assertContains(handoverRailSource, 'aria-label="Source-ordered handover event map"', 'HandoverEventRail list is source-ordered, not nearest-event ordered');
@@ -1333,7 +1370,7 @@ assertContains(
 // (Consolidation C1 removed the in-ControlBar playback speed slider; S5a moved
 // MODQN display/policy controls into the Advanced drawer. The upper bound is now
 // the artifact replay display-filter branch that follows the live block.)
-{
+tangleLockGroup('QUAR-S6-BUS', () => {
   const liveOnlyBranchIndex = controlBarSource.indexOf('{showSinrLiveControls && (');
   // Upper bound = the artifact replay branch that follows the SINR-live block.
   // Every live-only control must sit BETWEEN the branch open and that group, so a
@@ -1357,7 +1394,7 @@ assertContains(
       `ControlBar must keep live-only ${label} inside the SINR live branch (before the artifact display-filter branch)`,
     );
   }
-}
+});
 
 assertContains(
   modqnReplayCuePanelSource,
@@ -1489,6 +1526,7 @@ assertContains(
   'const showSinrServingMosaic = showSinrLiveViewport',
   'SINR-serving mosaic is gated sinr-live only (always-on ambient, no producer dependency)',
 );
+tangleLockGroup('QUAR-S4-SERVING', () => {
 assertContains(
   sinrServingMosaicSource,
   'export function buildSinrServingUeColorMap',
@@ -1514,11 +1552,13 @@ assertContains(
   'queueBeforeBits + trafficArrivalBits - servedBits',
   'SINR live-service-demo queue aggregate preserves the queue conservation fields',
 );
+});
 assertNotContains(
   sinrServingMosaicSource,
   "from './modqnServiceMap'",
   'SINR-serving mosaic must NOT import the MODQN cell overlay map (distinct lane-owned layer)',
 );
+tangleLockGroup('QUAR-S4-SERVING', () => {
 assertContains(
   mainSceneSource,
   'if (!showSinrServingMosaic) return null;',
@@ -1539,6 +1579,7 @@ assertContains(
   "contentionInstanceCountTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureInstanceCount' : undefined}",
   'MainScene exposes the instanced secondary-UE queue-pressure count for the D3 dense-safe smoke',
 );
+});
 assertContains(
   groundSceneSource,
   'function publishInstanceColorTelemetry',
@@ -1598,6 +1639,7 @@ const cellLayoutSource = readRepoFile('src/engine/cells/cellLayout.ts');
 const sceneTypesSource = readRepoFile('src/scene/types.ts');
 // (a) the lane gate: MainScene owns it as sinr-live ONLY and threads it into the
 //     single live useSimulation hook.
+tangleLockGroup('QUAR-S3-STEP', () => {
 assertContains(
   mainSceneSource,
   "const useEarthFixedCellTruth = sceneLane === 'sinr-live';",
@@ -1614,6 +1656,7 @@ assertContains(
   'createSinrLiveCellModel(profile, useEarthFixedCellTruth, replay.epochUtcMs)',
   'useSimulation builds the cell model only through the lane gate',
 );
+});
 assertContains(
   sinrLiveCellRuntimeSource,
   'if (!useEarthFixedCellTruth) return null;',
@@ -1643,11 +1686,13 @@ assertNotContains(
   "from './runtimeFrameStep'",
   'cell-truth adapter must not import the frozen runtime stepper',
 );
+tangleLockGroup('QUAR-S3-STEP', () => {
 assertNotContains(
   runtimeFrameStepSource,
   'sinrLiveCell',
   'runtimeFrameStep.ts stays FROZEN: no cell-truth symbol leaks into buildLinkContext (S-cells-2-A)',
 );
+});
 // (d) the new SimFrame field is an optional, sinr-live-only addition.
 assertContains(
   sceneTypesSource,
@@ -1663,6 +1708,8 @@ assertContains(
 );
 // (f) elevation-mask parity: the cell candidate visibility mask equals the
 //     runtime linkSats mask (both 15°), pinned to the cell-layout default.
+//     (S3 replaces the literal triple-pin with imported-constant VALUE asserts.)
+tangleLockGroup('QUAR-S3-STEP', () => {
 assertContains(
   runtimeFrameStepSource,
   'MIN_ELEVATION_DEG = 15',
@@ -1678,6 +1725,7 @@ assertContains(
   'SINR_LIVE_CELL_MIN_ELEVATION_DEG = DEFAULT_MIN_ELEVATION_DEG',
   'cell-truth adapter pins its mask to the cell-layout default (single source of truth)',
 );
+});
 // (g) the runtime-wiring gate is wired into package.json.
 assertContains(
   packageJson,
@@ -1705,13 +1753,16 @@ assertContains(
 // cone layer does NOT render; the steered SatelliteBeams render again (the
 // `&& !showSinrLiveCellBeams` gate below becomes true). D4 may still render a
 // bounded, focus-scoped old/new pair sourced from one focused sinrLiveCells event.
+tangleLockGroup('QUAR-RENDER-RESET', () => {
 assertContains(
   sceneLaneRenderPlanSource,
   'const showSinrLiveCellBeams = false;',
   'ambient cell-truth cones are PARKED (flag false) — steered SatelliteBeams render restored',
 );
+});
 // (i) The ambient cell-cone JSX is retained (gated false); D4 adds a separate
 //     focus-scoped old/new pair mount with mesh-derived telemetry.
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   '<SinrLiveCellBeamCones',
@@ -1737,8 +1788,10 @@ assertContains(
   "candidate.sourceOwner !== 'sinr-live-cell-truth'",
   'Focused old/new pair resolver is inert unless the event source is cell truth',
 );
+});
 // (j) With the flag false this gate is TRUE → the steered SatelliteBeams render on
 //     the sinr-live lane (the original look the user approved).
+tangleLockGroup('QUAR-RENDER-RESET', () => {
 assertContains(
   mainSceneSource,
   '&& !showSinrLiveCellBeams && viz.displaySats',
@@ -1746,11 +1799,6 @@ assertContains(
 );
 // (k) the UE-anchor is RESTORED on sinr-live (the cell cones no longer own the lane),
 //     so the steered beams converge on the UEs like the original render.
-assertContains(
-  mainSceneSource,
-  'S-cells-4 RENDER RESET (2026-06-08): the cell-truth cones are parked',
-  'MainScene restores the steered UE-anchor on sinr-live (cell cones parked)',
-);
 assertContains(
   useBeamVizSource,
   'disableUeAnchor?: boolean',
@@ -1761,6 +1809,7 @@ assertContains(
   '!disableUeAnchor',
   'useBeamViz forces the UE-anchor off when the retirement flag is set',
 );
+});
 // (k) BLOCK-3 import purity: the cone resolver consumes the cell TRUTH only — it
 //     must NOT pull the round-robin scheduler (that display oracle stays
 //     MODQN-lane-only in CellBeamCones.tsx).
@@ -1781,11 +1830,15 @@ assertContains(
 );
 // (l) MainScene places the cones from the SAME layout builder the runtime cell
 //     truth uses, so cellIds match `sim.sinrLiveCells` (no placement drift).
+//     (S5 replaces this text pin with a geometry invariant: cone base == truth
+//     cell centre.)
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'buildSinrLiveCellLayout(profile)',
   'MainScene builds cone placements from the same cell layout as the runtime truth',
 );
+});
 // (m) the render gates are wired into package.json + the live-render suite.
 assertContains(
   packageJson,
@@ -1800,12 +1853,18 @@ assertContains(
 // PARKED (2026-06-08): the cell-cone render browser gate is REMOVED from the
 // live-render suite (with the cones parked there are 0 to assert). The gate SCRIPT
 // is retained (above) for a future un-park; it must not run in the live suite.
+tangleLockGroup('QUAR-RENDER-RESET', () => {
 assertNotContains(
   packageJson,
   'sinr-serving-mosaic:browser && npm run validate:phase-c:sinr-live-cells:render:browser',
   'live-render suite must NOT run the parked cell-cone render browser gate',
 );
+});
 
+// (S5/S0 note: the INTENT of this block — every connected sat shows a beam — is
+// now also covered by the S0 behavior invariant validate:s0:connected-sat-has-beam;
+// the text pins below retire with S5's one-beam-render.)
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 // ── Serving cones, EVERY connected sat, NORMAL-blend, frequency-reuse colour (S-cells-4b-fix) ──
 // Draw SERVING beams only (apex = serving sat, base = served cell) for EVERY serving
 // satellite (focus cap HIGH) so a satellite connected to a UE always shows a beam —
@@ -1852,7 +1911,9 @@ assertContains(
   'focusSatIds: sinrLiveConeFocusSatIds',
   'MainScene passes the focus subset into the cone resolver (readable cone count)',
 );
+});
 
+tangleLockGroup('QUAR-S4-SERVING', () => {
 // ── Mosaic + aggregate re-point to the cell truth (S-cells-4c) ──
 // On sinr-live the SERVING displays (3D UE mosaic + the served N/N aggregate HUD +
 // per-UE diagnostics) read the EARTH-FIXED CELL truth, NOT the steered serving — a
@@ -1875,7 +1936,9 @@ assertContains(
   'servingBeamId: ue.servingSatId === null ? null : ue.cellId,',
   'cell-truth per-UE serving maps cellId → servingBeamId (unserved → null beam, honest)',
 );
+});
 
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 // ── EarthFixedCells green-disc retired (S-cells-4d) ──
 // The legacy 20-hex steered-cover green-disc ground paint is RETIRED on the
 // sinr-live lane — the cell-truth beam cones own the earth-fixed cell story, and
@@ -1892,6 +1955,7 @@ assertNotContains(
   '<EarthFixedCells',
   'MainScene must not mount the retired hex green-disc (no competing 2nd cell layout)',
 );
+});
 
 // ── Beam hopping + serving continuity + coverage (S-cells-3 / 4a / 4b-fix) ──
 // A satellite forms a fixed number of beams (leo = 7), so the cell truth caps each
@@ -1905,6 +1969,7 @@ assertNotContains(
 // These locks pin that wiring so it cannot silently regress to a single satellite
 // lighting every cell it can see, or to a timer that hops serving beams off their UEs.
 const sinrLiveCellModelSource = readRepoFile('src/scene/sinrLiveCellModel.ts');
+tangleLockGroup('QUAR-S4-SERVING', () => {
 assertContains(
   sinrLiveCellRuntimeSource,
   'beamsPerSat: SINR_LIVE_BEAMS_PER_SAT',
@@ -1937,6 +2002,7 @@ assertContains(
   'this.cellManagers.get(cellId)?.state.satId === satId',
   'beam-hopping LOCKS already-serving cells (serving continuity; only spare beams hop)',
 );
+});
 // The cap GATES candidate illumination; serving is still SINR + HandoverManager.
 assertContains(
   sinrLiveCellModelSource,
@@ -1953,6 +2019,7 @@ assertContains(
 // factory, (2) the model gates candidates by the EFFECTIVE (overridden) steering
 // limit — not the profile's — so the candidate list matches the scan-loss ceiling,
 // and (3) the runtime gate asserts gain↔beamwidth self-consistency.
+tangleLockGroup('QUAR-S4-SERVING', () => {
 assertContains(
   sinrLiveCellRuntimeSource,
   'maxGainDbiOverrideDbi: SINR_LIVE_CELL_MAX_GAIN_DBI',
@@ -1978,6 +2045,7 @@ assertContains(
   'const maxSteer = this.antenna.maxSteeringAngleDeg',
   'cell model filters candidates by the EFFECTIVE (overridden) steering limit, not profile.antenna',
 );
+});
 // The truth-input is decoupled: the shared profile antenna is left untouched so
 // the steered lane + baseline KPI never drift. The override must NOT be written
 // back into the profile.
@@ -2020,11 +2088,13 @@ assertContains(
   'resolveSceneLaneUeMarkerShape(sceneLane)',
   'MainScene derives UE marker shape from scene lane',
 );
+tangleLockGroup('QUAR-S6-BUS', () => {
 assertContains(
   mainSceneSource,
   "const showUav = sceneLane === 'sinr-live';",
   'MainScene render isolation probe derives UAV visibility from scene lane',
 );
+});
 assertContains(
   mainSceneSource,
   'data-scene-lane={sceneLane}',
@@ -2035,6 +2105,7 @@ assertContains(
   'el.dataset.sceneLaneSourceCompatible',
   'MainScene canvas exposes lane/source compatibility telemetry'
 );
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'deriveProfileHandoverStoryModel',
@@ -2125,27 +2196,26 @@ assertContains(
   'beamConeScope={modqnVisualLayers.beamConeScope}',
   'MainScene passes visual preset beam cone scope to CellBeamCones',
 );
+});
 // FIX-7 finding #1 (provenance audit 2026-06-04): the phase-3 contention glow
 // MUST derive from the same profile-derived cell-schedule per-UE assignment that
 // `modqnServiceMap` already displays (the lane's authoritative shown serving),
 // NOT the dead `sim.perUePositions` HandoverManager serving (empty on the
 // modqn-demo decision-overlay path). Lock the C1 source and forbid a regression
 // to the empty live serving so the glow cannot silently go non-functional again.
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'deriveBeamLoadContention([...modqnServiceMap.ueById.values()].map(projection => ({',
   'MainScene derives phase-3 contention from the modqnServiceMap cell-schedule assignment (FIX-7 C1)',
 );
+});
 assertNotContains(
   mainSceneSource,
   'deriveBeamLoadContention(sim.perUePositions',
   'MainScene must not re-wire phase-3 contention to the empty live HandoverManager serving (FIX-7 finding #1)',
 );
-assertContains(
-  mainSceneSource,
-  '(NOT producer r3 proof): the glow is a per-UE',
-  'MainScene documents the contention overlay-demo provenance (not producer r3)',
-);
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'const focusBeamLoad = beamLoadContentionEnabled',
@@ -2186,6 +2256,7 @@ assertContains(
   'mesh.scale.set(1, height, 1)',
   'BeamLoadCylinder encodes beam load by cylinder height',
 );
+});
 assertNotContains(
   beamLoadCylinderSource,
   'useFrame(',
@@ -2201,11 +2272,13 @@ assertNotContains(
   '.dispose(',
   'BeamLoadCylinder must not manually dispose pooled objects',
 );
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'import { BeamLoadUploadParticles }',
   'MainScene imports the focused upload-particle layer',
 );
+});
 // FIX-7 follow-up (audit gap #2, last fake-risk; codex P2): the phase-3 S4 cylinder
 // + S5 particles real-render gate reads MESH-derived telemetry the components
 // publish from their ACTUAL post-write mesh state, so a broken mesh-write line is
@@ -2236,6 +2309,7 @@ assertContains(
   '(object as THREE.Mesh).isMesh && object.visible',
   'HandoverStoryLayer render observable counts only visible scene-graph meshes',
 );
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 assertContains(
   mainSceneSource,
   'resolveCellBeamConeItems',
@@ -2396,6 +2470,7 @@ assertContains(
   'mesh.instanceMatrix.needsUpdate = true',
   'Upload particle layer marks instance matrices dirty after updates',
 );
+});
 assertNotContains(
   beamLoadUploadParticlesSource,
   'useState',
@@ -2629,6 +2704,9 @@ assertContains(
   "input.sceneLane === 'modqn-replay-proof'",
   'Scene lane render plan models explicit MODQN replay proof lane',
 );
+// (S0 note: the lane-gating PROPERTY is covered behaviorally by the renderPlan
+// matrix; these whitespace-sensitive exact-JSX pins retire with S5.)
+tangleLockGroup('QUAR-S5-BEAMRENDER', () => {
 for (const [needle, label] of [
   ['{showLiveSceneEffects && <AmbientFootprintRings', 'ambient footprint rings'],
   ['{showLiveSceneEffects && (\\n        <HandoverLinks', 'handover links'],
@@ -2645,6 +2723,7 @@ for (const [needle, label] of [
 ] as const) {
   assertContains(baseSceneLayoutSource, needle.replace('\\n', '\n'), `BaseSceneLayout should source-gate ${label}`);
 }
+});
 assertContains(mainSceneSource, '<ModqnReplaySceneLayer', 'MainScene replay layer host');
 assertContains(mainSceneSource, 'showBoard={showReplayProofLayer}', 'MainScene render-plan-gated replay layer');
 assertContains(mainSceneSource, "enabled: sceneFrame.sceneSource !== 'artifact-replay'", 'MainScene disables live SimState publisher for artifact replay');
@@ -2745,7 +2824,9 @@ assertContains(
   'const handleExperienceChange = useCallback((targetLane: SceneLane) => {',
   'App owns the lane experience transition handler',
 );
-{
+// (S0: the lane-transition PROPERTIES below — focus cancelled, artifact state
+// torn down, URL synced — become an S6 behavior test; the slice pins retire.)
+tangleLockGroup('QUAR-S6-BUS', () => {
   const handlerIndex = appSource.indexOf('const handleExperienceChange = useCallback');
   assert.ok(handlerIndex >= 0, 'handleExperienceChange exists');
   const handlerSlice = appSource.slice(handlerIndex, handlerIndex + 1400);
@@ -2769,7 +2850,7 @@ assertContains(
     'syncSceneSourceToUrl(nextSceneSource);',
     'lane switch keeps the URL in sync so the lane stays deep-linkable / reload-stable',
   );
-}
+});
 assertContains(
   appPersistenceSource,
   'export function syncSceneSourceToUrl(mode: SceneSourceMode): void',
@@ -3155,4 +3236,13 @@ assertContains(
   'governance doc records the dashboard view history (now removed)',
 );
 
+// ── Consolidation S0: the behavior-invariant harness is wired and stays wired ──
+// The quarantined tangle groups above retire ONLY against these replacement
+// gates (scripts/governance-quarantine/tangle-locks.ts) — losing the harness
+// from package.json would silently void the retirement contract.
+assertContains(packageJson, '"validate:s0:connected-sat-has-beam"', 'package exposes the S0 connected-sat-has-beam invariant gate');
+assertContains(packageJson, '"validate:s0:geometry-trace"', 'package exposes the S0 geometry-trace golden gate');
+assertContains(packageJson, '"validate:frontend:advanced-drawer-modality:browser"', 'package exposes the drawer modality behavior gate (z-order click-through class)');
+
+assertAndSummarizeTangleLockGroups(line => console.log(line));
 console.log('validate:frontend:scene-lane-governance passed');
