@@ -44,4 +44,11 @@ actions in a stable canonical order (`satellite-major, beam-minor`, REP-012):
 ## Notes
 - This export change does NOT touch the SINR-live showcase lane (decoupled, leo's own world). It only feeds leo's MODQN replay lane.
 - Keep the existing top-K `objectiveQ` for backward compat; ADD the full per-action arrays.
+- **Axis rule (length A):** `objectiveQByAction`, `scalarizedQByAction`,
+  `decisionActionValidityMask`, and `candidateActionOrder` MUST all be indexed by
+  the dense action catalog (length `A`, `satellite-major, beam-minor`), NOT the
+  physical beam list (`beamStates`, which under a windowed action space is longer,
+  e.g. 144 vs 28). leo sources the dense-Q action order from
+  `policyDiagnostics.candidateActionOrder`; a mask exported on the physical-beam
+  axis makes leo fail closed (source-gap).
 - Reference the leo contract literally: `src/modqn/replay-bundle/denseQProof.ts` (lines 16–35 = field shapes; 220–293 = the mask/tie/self-check rules).

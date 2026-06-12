@@ -6,11 +6,13 @@ import {
   MODQN_DENSE_Q_PROOF_SOURCE_GAP_FIELD,
   MODQN_DENSE_Q_REQUIRED_TIE_BREAK,
   buildModqnDenseQProof,
+  buildModqnDenseQProofFromReplayRow,
   denseQProofSourceGapField,
   rerankModqnDenseQProof,
   type ModqnPolicyDiagnostics,
 } from '../src/modqn/replay-bundle';
 import type { ModqnBeamReference } from '../src/modqn/replay-bundle';
+import type { ModqnReplayEnvelopeRow } from '../src/modqn/replay-bundle/replay-state';
 
 function read(path: string): string {
   return fs.readFileSync(path, 'utf8');
@@ -142,6 +144,53 @@ console.log('validate-modqn-dense-q-proof-adapter');
   assert.equal(result.status, 'source-gap', 'partial dense-Q action coverage blocks proof');
 }
 
+// Windowed action space (regression guard for the 144-vs-28 bug): the replay
+// envelope's producerTruth.candidateActionOrder is the PHYSICAL beam list
+// (= beamStates), which under a windowed action space is LONGER than the dense
+// action catalog. buildModqnDenseQProofFromReplayRow must index dense Q by the
+// catalog (policyDiagnostics.candidateActionOrder), not the physical list.
+{
+  const catalog = [0, 1, 2].map(beamReference); // A = 3 (dense catalog)
+  const physicalBeamList = [0, 1, 2, 3, 4].map(beamReference); // 5 physical beams
+  const row = {
+    producerTruth: {
+      candidateActionOrder: physicalBeamList,
+      decisionActionValidityMask: [true, true, false],
+      policyDiagnostics: {
+        ...completeDiagnostics(),
+        candidateActionOrder: catalog,
+      },
+    },
+  } as unknown as ModqnReplayEnvelopeRow;
+  const result = buildModqnDenseQProofFromReplayRow(row);
+  assert.equal(
+    result.status,
+    'proof-ready',
+    'windowed bundle: dense catalog (not the longer physical beam list) defines the action order',
+  );
+  if (result.status !== 'proof-ready') throw new Error('windowed proof should be ready');
+  assert.equal(result.actionCount, 3, 'action count follows the dense catalog, not the physical beam count');
+  assert.equal(result.selectedActionIndex, 1);
+}
+
+// Legacy bundle: no dense catalog -> fall back to the physical beam order; with
+// no objectiveQByAction it stays source-gap (back-compat: behavior unchanged).
+{
+  const physical = [0, 1, 2].map(beamReference);
+  const row = {
+    producerTruth: {
+      candidateActionOrder: physical,
+      decisionActionValidityMask: [true, true, false],
+      policyDiagnostics: {
+        objectiveWeights: { throughput: 0.5, handover: 0.3, loadBalance: 0.2 },
+        topCandidates: [],
+      },
+    },
+  } as unknown as ModqnReplayEnvelopeRow;
+  const result = buildModqnDenseQProofFromReplayRow(row);
+  assert.equal(result.status, 'source-gap', 'legacy bundle without a dense catalog stays source-gap');
+}
+
 assert.equal(denseQProofSourceGapField(), 'diagnostics.denseQPolicy');
 
 const denseQSource = read('src/modqn/replay-bundle/denseQProof.ts');
@@ -156,6 +205,11 @@ assert.ok(
 assert.ok(
   !denseQSource.includes('reScalarize('),
   'dense-Q proof adapter must not use legacy top-K reScalarize',
+);
+assert.ok(
+  denseQSource.includes('diagnostics?.candidateActionOrder')
+    && denseQSource.includes('?? row.producerTruth.candidateActionOrder'),
+  'replay-row adapter sources the action order from the dense catalog, falling back to the physical beam list',
 );
 
 const decisionVizSource = read('src/ui/modqn-training/DecisionVizPanel.tsx');

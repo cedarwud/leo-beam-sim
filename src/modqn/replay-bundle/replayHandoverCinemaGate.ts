@@ -220,7 +220,13 @@ export function buildModqnReplayHandoverCinemaGate(
 
   const denseQProof = buildModqnDenseQProof({
     policyDiagnostics: focusRow.policyDiagnostics,
-    actionOrder: focusRow.beamStates ?? [],
+    // Index dense Q by the policy action catalog (length A), not the physical
+    // beam list (beamStates) — under a windowed action space they differ and
+    // beamStates source-gaps every row. Legacy bundles omit the catalog and
+    // fall back to beamStates (then stay source-gap with no dense Q). Mirrors
+    // buildModqnDenseQProofFromReplayRow.
+    actionOrder:
+      focusRow.policyDiagnostics?.candidateActionOrder ?? focusRow.beamStates ?? [],
     decisionActionValidityMask: focusRow.decisionActionValidityMask ?? [],
   });
   if (!isModqnDenseQProofReady(denseQProof)) {

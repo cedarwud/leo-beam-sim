@@ -319,9 +319,20 @@ export function buildModqnDenseQProof(
 export function buildModqnDenseQProofFromReplayRow(
   row: ModqnReplayEnvelopeRow,
 ): ModqnDenseQProofResult {
+  const diagnostics = row.producerTruth.policyDiagnostics;
+  // The dense-Q arrays (objectiveQByAction / scalarizedQByAction / the per-action
+  // mask) are indexed by the policy's action catalog
+  // (policyDiagnostics.candidateActionOrder, length A), NOT the physical beam
+  // list (producerTruth.candidateActionOrder = beamStates). Under a windowed
+  // action space (L_w x cells) those lengths differ (e.g. 28 catalog vs 144
+  // physical beams) and feeding beamStates source-gaps every row. Prefer the
+  // catalog when the producer exports it; legacy bundles without a dense catalog
+  // fall back to the physical order and stay source-gap (no objectiveQByAction).
+  const actionOrder = diagnostics?.candidateActionOrder
+    ?? row.producerTruth.candidateActionOrder;
   return buildModqnDenseQProof({
-    policyDiagnostics: row.producerTruth.policyDiagnostics,
-    actionOrder: row.producerTruth.candidateActionOrder,
+    policyDiagnostics: diagnostics,
+    actionOrder,
     decisionActionValidityMask: row.producerTruth.decisionActionValidityMask,
   });
 }

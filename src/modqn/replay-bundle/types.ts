@@ -133,6 +133,14 @@ export interface ModqnPolicyDiagnostics {
   readonly denseActionScores?: readonly number[];
   readonly actionScoreValidityMask?: readonly boolean[];
   readonly actionOrder?: readonly string[];
+  /**
+   * The dense-Q action catalog (length = A), in `satellite-major, beam-minor`
+   * order. The dense per-action arrays below are indexed by THIS catalog, which
+   * — under a windowed action space (L_w x cells) — differs from the physical
+   * beam list `ModqnReplayEnvelopeRow.producerTruth.candidateActionOrder`
+   * (= `beamStates`). Legacy baseline bundles omit it.
+   */
+  readonly candidateActionOrder?: readonly ModqnBeamReference[];
   readonly objectiveQByAction?: readonly ModqnDenseObjectiveQByAction[];
   readonly scalarizedQByAction?: readonly unknown[];
   readonly selectedActionIndex?: number;

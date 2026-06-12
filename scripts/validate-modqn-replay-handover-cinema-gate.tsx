@@ -163,6 +163,33 @@ console.log('validate-modqn-replay-handover-cinema-gate');
 }
 
 {
+  // Windowed action space (regression guard, mirrors the denseQProof.ts fix):
+  // focusRow.beamStates is the PHYSICAL beam list and under a windowed action
+  // space is LONGER than the dense action catalog. The gate must index dense Q
+  // by policyDiagnostics.candidateActionOrder (length A), NOT beamStates.
+  // Reverting cinema-gate to `actionOrder: focusRow.beamStates ?? []` makes the
+  // dense-Q proof source-gap here (5 != 3) and this assertion fails.
+  const catalogBeams = [0, 1, 2].map(beamState); // A = 3 (dense catalog)
+  const physicalBeams = [0, 1, 2, 3, 4].map(beamState); // 5 physical beams
+  const gate = buildModqnReplayHandoverCinemaGate(completeDisplayState({
+    beamStates: physicalBeams,
+    decisionActionValidityMask: [true, true, true],
+    policyDiagnostics: {
+      ...completePolicyDiagnostics(),
+      candidateActionOrder: catalogBeams,
+    },
+  }));
+
+  assert.equal(gate.status, 'ready', 'windowed bundle: dense catalog (not the longer physical beam list) unlocks D6 cinema');
+  assert.equal(gate.sourceGapFields.length, 0, 'windowed ready gate has no source gaps');
+  assert.equal(gate.denseQProof?.status, 'proof-ready', 'windowed dense-Q proof is ready off the catalog');
+  const windowedProof = gate.denseQProof;
+  if (windowedProof && windowedProof.status === 'proof-ready') {
+    assert.equal(windowedProof.actionCount, 3, 'dense-Q action count follows the catalog, not the physical beam count');
+  }
+}
+
+{
   const gate = buildModqnReplayHandoverCinemaGate(completeDisplayState({
     policyDiagnostics: {
       objectiveWeights: { throughput: 0.5, handover: 0.3, loadBalance: 0.2 },
@@ -243,6 +270,11 @@ assertNotIncludes(gateSource, 'liveWalker', 'D6 replay gate must not import live
 assertNotIncludes(gateSource, 'sinr', 'D6 replay gate must not import live SINR state');
 assertNotIncludes(gateSource, '../scene', 'D6 replay gate must not depend on scene renderer fallbacks');
 assertNotIncludes(gateSource, 'useHandoverCinema', 'D6 replay gate must not reuse live cinema runtime');
+assertIncludes(
+  gateSource,
+  'focusRow.policyDiagnostics?.candidateActionOrder ?? focusRow.beamStates',
+  'D6 gate indexes dense Q by the policy action catalog, falling back to the physical beam list',
+);
 
 const panelSource = read('src/ui/ModqnReplayCuePanel.tsx');
 assertIncludes(panelSource, 'buildModqnReplayHandoverCinemaGate', 'cue panel consumes D6 gate');
