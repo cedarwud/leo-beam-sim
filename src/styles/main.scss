@@ -2832,7 +2832,105 @@ canvas {
 }
 
 .leo-inline-drawer-content {
-  max-height: 46vh;
+  max-height: 62vh;
+}
+
+// G1-LEFT-DEFAULT: the SINR-live left default — a light read-only orientation
+// card (lane identity + compact live serving readout + pointer to ⚙ Advanced).
+.leo-sinr-orientation-card {
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(218, 244, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.leo-sinr-orientation-head {
+  display: grid;
+  gap: 2px;
+}
+
+.leo-sinr-orientation-head strong {
+  color: #f6fbff;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.leo-sinr-orientation-head span {
+  color: rgba(229, 244, 251, 0.55);
+  font-size: 11px;
+}
+
+.leo-sinr-orientation-stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  gap: 6px;
+}
+
+.leo-sinr-orientation-stats > div {
+  display: grid;
+  gap: 2px;
+  padding: 6px 7px;
+  border: 1px solid rgba(218, 244, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.leo-sinr-orientation-stats dt {
+  color: rgba(229, 244, 251, 0.55);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.leo-sinr-orientation-stats dd {
+  margin: 0;
+  color: #f6fbff;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.leo-sinr-orientation-hint {
+  margin: 0;
+  color: rgba(229, 244, 251, 0.6);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+// G1-LEFT-DEFAULT: collapsible sections inside the SINR-live ⚙ Advanced drawer
+// (Display & camera default-open; SINR formula + Handover policy default-collapsed).
+.leo-sinr-advanced-section {
+  border: 1px solid rgba(218, 244, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.leo-sinr-advanced-summary {
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: rgba(229, 244, 251, 0.82);
+}
+
+.leo-sinr-advanced-section[open] > .leo-sinr-advanced-summary {
+  border-bottom: 1px solid rgba(218, 244, 255, 0.1);
+}
+
+.leo-sinr-advanced-body {
+  padding: 10px;
+}
+
+// G1-LEFT-DEFAULT (3-lens fix): SignalTuningPanel sets its own inline maxHeight +
+// overflowY. In the left rail it was a direct child of .leo-sidebar-tab-panel,
+// whose override neutralized that so the tab panel owned the single scroll. Inside
+// the Advanced drawer it is no longer that direct child, so re-neutralize here:
+// the drawer body's 62vh scroll is the SOLE scroll owner (no nested inner scrollbar).
+.leo-sinr-advanced-body > .leo-signal-tuning-panel {
+  max-height: none !important;
+  overflow-y: visible !important;
 }
 
 // G1-CONTROLBAR-ADV: SINR-live display/camera controls relocated into the shared

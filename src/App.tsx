@@ -111,6 +111,7 @@ import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
 import { DegenerateDataBanner } from './ui/DegenerateDataBanner';
 import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
+import { SinrLiveOrientationCard } from './ui/SinrLiveOrientationCard';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,
@@ -943,7 +944,7 @@ export function App() {
     resetOmegaDisplayApplied();
     setSimState(createInitialSimState(nextEffectiveProfile));
     playback.resetAutoSlowDismissed();
-    setLeftSidebarTab('signal');
+    setLeftSidebarTab('summary');
     setRightSidebarTab('live');
   }, [
     modqnBundleOmega,
@@ -1928,32 +1929,11 @@ export function App() {
             activeKey={activeLeftSidebarTab}
             onChange={setLeftSidebarTab}
           >
-            {activeLeftSidebarTab === 'signal' ? (
-              <SignalTuningPanel
-                baseProfile={baseProfile}
-                tuning={signalTuning}
-                topology={sceneTopology}
-                sceneVisualScale={sceneVisualScale}
-                hasOverrides={hasSignalOverrides}
-                appMode={appMode}
-                uiMode="tuning"
-                formulaBudget={simState.physicalServingBudget}
-                isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                onTuningChange={handleSignalTuningChange}
-                onTopologyChange={handleSceneTopologyChange}
-                onSceneVisualScaleChange={setSceneVisualScale}
-                onReset={handleResetSignalTuning}
-              />
-            ) : activeLeftSidebarTab === 'handover' ? (
-              <HandoverPolicyControls
-                draft={handoverPolicyDraft}
-                applied={appliedHandoverPolicy}
-                hasDraftChanges={hasHandoverDraftChanges}
-                hasOverrides={hasHandoverResetTarget}
-                onDraftChange={handleHandoverPolicyDraftChange}
-                onApply={handleApplyHandoverPolicy}
-                onReset={handleResetHandoverPolicy}
-              />
+            {activeLeftSidebarTab === 'summary' ? (
+              // G1-LEFT-DEFAULT: the SINR-live left default is a light read-only
+              // orientation card; the SINR-formula + handover-policy tuners moved
+              // into the ⚙ Advanced drawer (mounted below).
+              <SinrLiveOrientationCard perUePositions={simState.perUePositions} />
             ) : activeLeftSidebarTab === 'evidence' ? (
               // S3 purpose-merge: the unified MODQN "Evidence / Replay" rail. The
               // artifact sub-view shows the producer source summary; the live +
@@ -2002,10 +1982,12 @@ export function App() {
               onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
             />
           )}
-          {/* G1-CONTROLBAR-ADV: the SINR-live display/camera controls (density,
-              beam info, camera presets, spotlight, HO-slow) moved off the top bar
-              into this opt-in drawer, mirroring the MODQN Advanced drawer, so the
-              default SINR-live surface stays the scene + Mode + Active-UEs count. */}
+          {/* G1-CONTROLBAR-ADV + G1-LEFT-DEFAULT: the SINR-live opt-in ⚙ Advanced
+              drawer. It holds the relocated top-bar display/camera controls
+              (density, beam info, camera presets, spotlight, HO-slow) AND — as
+              collapsible sections — the SINR-formula + handover-policy tuners that
+              used to occupy the left rail. The default SINR-live surface stays the
+              scene + Mode + Active-UEs count + the light orientation card. */}
           {sceneLane === 'sinr-live' && (
             <SinrLiveDisplayDrawer
               beamDensity={runtime.beamDensity}
@@ -2017,6 +1999,34 @@ export function App() {
               onCameraPresetSelect={camera.selectCameraPreset}
               onCinematicModeChange={camera.setCinematicMode}
               onToggleAutoSlow={playback.toggleAutoSlow}
+              sinrFormulaSection={
+                <SignalTuningPanel
+                  baseProfile={baseProfile}
+                  tuning={signalTuning}
+                  topology={sceneTopology}
+                  sceneVisualScale={sceneVisualScale}
+                  hasOverrides={hasSignalOverrides}
+                  appMode={appMode}
+                  uiMode="tuning"
+                  formulaBudget={simState.physicalServingBudget}
+                  isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                  onTuningChange={handleSignalTuningChange}
+                  onTopologyChange={handleSceneTopologyChange}
+                  onSceneVisualScaleChange={setSceneVisualScale}
+                  onReset={handleResetSignalTuning}
+                />
+              }
+              handoverPolicySection={
+                <HandoverPolicyControls
+                  draft={handoverPolicyDraft}
+                  applied={appliedHandoverPolicy}
+                  hasDraftChanges={hasHandoverDraftChanges}
+                  hasOverrides={hasHandoverResetTarget}
+                  onDraftChange={handleHandoverPolicyDraftChange}
+                  onApply={handleApplyHandoverPolicy}
+                  onReset={handleResetHandoverPolicy}
+                />
+              }
             />
           )}
         </aside>

@@ -16,13 +16,14 @@ import type { PresentationMode } from '../scene/types';
 
 export const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 
-// S3 purpose-merge + S4 drawer move: the left rail collapses the per-sub-lane
-// MODQN tab churn. 'signal'/'handover' stay the SINR rail; 'evidence' is now the
-// SOLE MODQN left rail (see MODQN_LEFT_SIDEBAR_TABS). S4 relocated the training /
-// jobs / ω-weight power tools out of a 'setup' left tab into the opt-in Advanced
-// setup drawer (src/ui/AdvancedSetupDrawer.tsx), so the default MODQN surface is
-// the evidence/replay story, not a training console.
-export type LeftSidebarTab = 'signal' | 'handover' | 'evidence';
+// Left-rail tab model. G1-LEFT-DEFAULT: the SINR-live rail no longer defaults to
+// the heavy SINR-formula tuner — it defaults to a light read-only 'summary'
+// orientation card (src/ui/SinrLiveOrientationCard.tsx); the SINR-formula +
+// handover-policy power tools moved into the opt-in SINR-live Advanced drawer
+// (src/ui/SinrLiveDisplayDrawer.tsx). 'evidence' remains the SOLE MODQN left rail
+// (see MODQN_LEFT_SIDEBAR_TABS); S4 had already relocated the MODQN training /
+// jobs / ω-weight power tools into the opt-in AdvancedSetupDrawer.
+export type LeftSidebarTab = 'summary' | 'evidence';
 export type RightSidebarTab = 'modqn' | 'live' | 'artifact';
 
 export interface AppSidebarTabItem<T extends string> {
@@ -32,14 +33,15 @@ export interface AppSidebarTabItem<T extends string> {
 }
 
 const LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
-  { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
-  { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
+  { key: 'summary', label: 'Live SINR', description: 'scene summary' },
   { key: 'evidence', label: 'Evidence / Replay', description: 'decision trace + artifact source' },
 ];
 
+// G1-LEFT-DEFAULT: the SINR-live left rail is a single light orientation card; the
+// tuners moved to the ⚙ Advanced drawer. One tab → SidebarTabShell hides the
+// tablist, so the default SINR-live left surface is just the summary card.
 const SINR_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
-  LEFT_SIDEBAR_TABS[0], // signal
-  LEFT_SIDEBAR_TABS[1], // handover
+  LEFT_SIDEBAR_TABS[0], // summary
 ];
 
 // S3 + S4: all three MODQN sub-lanes (live cell preview / replay proof / artifact
@@ -48,7 +50,7 @@ const SINR_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
 // single 'Evidence / Replay' tab (decision trace + artifact source summary); the
 // training / jobs / ω-objective power tools moved to the Advanced setup drawer.
 const MODQN_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
-  LEFT_SIDEBAR_TABS[2], // evidence
+  LEFT_SIDEBAR_TABS[1], // evidence
 ];
 
 const RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [
@@ -110,7 +112,7 @@ export function getLeftSidebarTabsForMode(
 }
 
 export function getDefaultLeftSidebarTabForMode(mode: RuntimeHandoverMode): LeftSidebarTab {
-  return mode === 'sinr-offset' ? 'signal' : 'evidence';
+  return mode === 'sinr-offset' ? 'summary' : 'evidence';
 }
 
 export function getLeftSidebarTabsForSceneLane(

@@ -1,17 +1,23 @@
+// G1-LEFT-DEFAULT rewrite. This gate used to assert the SINR-live left rail held
+// the SignalTuningPanel "tuning drawer" with per-uiMode widths and signal/handover
+// tab switching. G1-LEFT-DEFAULT replaced that: the SINR-live left rail is now a
+// light read-only orientation card, and the SINR-formula + handover-policy tuners
+// moved into the non-modal ⚙ Advanced drawer. This gate now asserts the NEW
+// arrangement plus the durable invariants the old gate protected (left-panel
+// clicks must not leak into the canvas OrbitControls; the canvas still rotates on
+// drag).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium, type Browser, type Page } from '@playwright/test';
+import { chromium, type Page } from '@playwright/test';
 import { bootDeterministicPage } from './_v3-deterministic-fixture.ts';
 import { detectAppUrl } from './_vc2-browser-fixture.ts';
 
 const CHECKPOINT_PATH = fileURLToPath(
   new URL('../docs/visual-clarity-proposal/manual-checkpoints/vc4b-post-slice-tuning-drawer-1440x900.png', import.meta.url),
 );
-
-type UiMode = 'presentation' | 'tuning' | 'diagnostics';
 
 interface BrowserBox {
   x: number;
@@ -20,50 +26,14 @@ interface BrowserBox {
   height: number;
 }
 
-interface ModeResult {
-  mode: UiMode;
-  shell: BrowserBox;
-  canvasSlot: BrowserBox;
-  canvas: BrowserBox;
-  leftSlot: BrowserBox;
-  leftPanel: BrowserBox;
-  rightPanel: BrowserBox;
-  drawerState: string | null;
-  handleVisible: boolean;
-  contentVisible: boolean;
-  panelClickCanvasPointers: { before: number; after: number };
-  canvasDragHash: { before: string; after: string };
-  checkpoint?: string;
-}
-
-const EXPECTED_DRAWER_WIDTH: Record<UiMode, number> = {
-  presentation: 432,
-  tuning: 432,
-  diagnostics: 460,
-};
-
 function hashBuffer(buffer: Buffer): string {
   return createHash('sha256').update(buffer).digest('hex');
-}
-
-function assertClose(actual: number, expected: number, tolerance: number, label: string): void {
-  assert.ok(
-    Math.abs(actual - expected) <= tolerance,
-    `${label} expected ${expected}px ± ${tolerance}px, got ${actual}px`,
-  );
 }
 
 async function measureBox(page: Page, selector: string, label: string): Promise<BrowserBox> {
   const box = await page.locator(selector).boundingBox();
   assert.ok(box, `${label} box missing for ${selector}`);
   return box;
-}
-
-async function selectUiMode(page: Page, mode: UiMode): Promise<void> {
-  const modeSelect = page.locator('select[aria-label="UI mode"]');
-  await modeSelect.waitFor({ timeout: 5000 });
-  await modeSelect.selectOption(mode);
-  await page.locator(`.leo-app-shell[data-ui-mode="${mode}"]`).waitFor({ timeout: 5000 });
 }
 
 async function screenshotCanvasHash(page: Page): Promise<string> {
@@ -79,18 +49,6 @@ async function dragInsideBox(page: Page, box: BrowserBox, deltaX: number, deltaY
   await page.mouse.down();
   await page.mouse.move(startX + deltaX, startY + deltaY, { steps: 3 });
   await page.mouse.up();
-  await page.waitForTimeout(80);
-}
-
-async function clickDrawerControl(page: Page, mode: UiMode, leftPanel: BrowserBox): Promise<void> {
-  if (mode === 'presentation') {
-    await page.mouse.click(leftPanel.x + leftPanel.width * 0.5, leftPanel.y + leftPanel.height * 0.5);
-    return;
-  }
-
-  await page.locator('#left-sidebar-tab-handover').click();
-  await page.waitForTimeout(80);
-  await page.locator('#left-sidebar-tab-signal').click();
   await page.waitForTimeout(80);
 }
 
@@ -113,144 +71,98 @@ async function readCanvasPointerDownCount(page: Page): Promise<number> {
   });
 }
 
-async function assertDrawerClickDoesNotHitCanvas(
-  page: Page,
-  mode: UiMode,
-  leftPanel: BrowserBox,
-): Promise<{ before: number; after: number }> {
+async function assertClickDoesNotHitCanvas(page: Page, box: BrowserBox, label: string): Promise<void> {
   const before = await readCanvasPointerDownCount(page);
-  await clickDrawerControl(page, mode, leftPanel);
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await page.waitForTimeout(80);
   const after = await readCanvasPointerDownCount(page);
-  assert.equal(
-    before,
-    after,
-    `${mode} drawer interaction reached the canvas pointer handler; panel events may be leaking into OrbitControls`,
-  );
-  return { before, after };
-}
-
-async function assertCanvasDragRotates(page: Page, canvasSlot: BrowserBox): Promise<{ before: string; after: string }> {
-  const before = await screenshotCanvasHash(page);
-  await dragInsideBox(page, canvasSlot, 180, 48);
-  const after = await screenshotCanvasHash(page);
-  assert.notEqual(
-    before,
-    after,
-    'dragging inside the canvas slot did not change the canvas frame; OrbitControls may not be receiving pointer events',
-  );
-  return { before, after };
-}
-
-async function assertMode(
-  browser: Browser,
-  appUrl: string,
-  mode: UiMode,
-  saveCheckpoint: boolean,
-): Promise<ModeResult> {
-  const page = await bootDeterministicPage({ chromium }, {
-    browser,
-    url: appUrl,
-    seed: 4601,
-    rafMs: 1800,
-    viewport: { width: 1440, height: 900 },
-    waitForSelector: '.leo-shell-row',
-  });
-
-  try {
-    console.log(`[vc4b] ${mode}: booted`);
-    await selectUiMode(page, mode);
-    console.log(`[vc4b] ${mode}: selected`);
-    await page.locator('.leo-shell-canvas canvas').waitFor({ timeout: 5000 });
-    await page.locator('.leo-shell-left .leo-sidebar-tab-shell').waitFor({ timeout: 5000 });
-    await page.locator('.leo-shell-right .leo-info-panel').waitFor({ timeout: 5000 });
-
-    const shell = await measureBox(page, '.leo-shell-row', `${mode} shell row`);
-    const canvasSlot = await measureBox(page, '.leo-shell-canvas', `${mode} canvas slot`);
-    const canvas = await measureBox(page, '.leo-shell-canvas canvas', `${mode} canvas`);
-    const leftSlot = await measureBox(page, '.leo-shell-left', `${mode} left slot`);
-    const leftPanel = await measureBox(page, '.leo-shell-left .leo-sidebar-tab-shell', `${mode} left panel`);
-    const rightPanel = await measureBox(page, '.leo-shell-right .leo-info-panel', `${mode} right panel`);
-    const expectedWidth = EXPECTED_DRAWER_WIDTH[mode];
-    const drawerState = await page.locator('.leo-shell-left .leo-sidebar-tab-shell').getAttribute('data-sidebar-side');
-    const handleVisible = await page.locator('[data-testid="signal-tuning-drawer-handle"]').isVisible();
-    const contentVisible = await page.locator('.leo-shell-left .leo-sidebar-tab-panel').isVisible();
-
-    assertClose(leftSlot.width, expectedWidth, 3, `${mode} left shell slot width`);
-    assertClose(leftPanel.width, expectedWidth, 3, `${mode} tuning drawer width`);
-    assert.ok(canvasSlot.width >= 280, `${mode} canvas slot width collapsed: ${canvasSlot.width}`);
-    assert.ok(canvasSlot.height >= 300, `${mode} canvas slot height collapsed: ${canvasSlot.height}`);
-    assert.ok(rightPanel.width >= 320, `${mode} right panel width regressed: ${rightPanel.width}`);
-    assertClose(canvas.width, canvasSlot.width, 2, `${mode} canvas width`);
-    assertClose(canvas.height, canvasSlot.height, 2, `${mode} canvas height`);
-
-    assert.equal(drawerState, 'left', `${mode} mode should keep the left sidebar tab shell mounted`);
-    assert.equal(handleVisible, false, `${mode} mode should not expose the retired collapsed tuning handle in the top-level sidebar`);
-    assert.equal(contentVisible, true, `${mode} mode should keep the top-level sidebar panel visible`);
-
-    const panelClickCanvasPointers = await assertDrawerClickDoesNotHitCanvas(page, mode, leftPanel);
-    console.log(`[vc4b] ${mode}: drawer pointer isolation passed`);
-    const canvasDragHash = await assertCanvasDragRotates(page, canvasSlot);
-    console.log(`[vc4b] ${mode}: canvas drag passed`);
-
-    let checkpoint: string | undefined;
-    if (saveCheckpoint) {
-      await mkdir(dirname(CHECKPOINT_PATH), { recursive: true });
-      await page.screenshot({ path: CHECKPOINT_PATH, fullPage: true });
-      checkpoint = CHECKPOINT_PATH;
-    }
-
-    return {
-      mode,
-      shell,
-      canvasSlot,
-      canvas,
-      leftSlot,
-      leftPanel,
-      rightPanel,
-      drawerState,
-      handleVisible,
-      contentVisible,
-      panelClickCanvasPointers,
-      canvasDragHash,
-      checkpoint,
-    };
-  } finally {
-    await page.context().close().catch(() => {});
-  }
+  assert.equal(before, after, `${label} click reached the canvas pointer handler; left-panel events may be leaking into OrbitControls`);
 }
 
 async function main(): Promise<void> {
   const appUrl = await detectAppUrl();
   const browser = await chromium.launch();
-  let modes: ModeResult[];
 
   try {
-    modes = [
-      await assertMode(browser, appUrl, 'presentation', true),
-      await assertMode(browser, appUrl, 'tuning', false),
-      await assertMode(browser, appUrl, 'diagnostics', false),
-    ];
+    const page = await bootDeterministicPage({ chromium }, {
+      browser,
+      url: appUrl,
+      seed: 4601,
+      rafMs: 1800,
+      viewport: { width: 1440, height: 900 },
+      waitForSelector: '.leo-shell-row',
+    });
+
+    try {
+      await page.locator('.leo-shell-canvas canvas').waitFor({ timeout: 10_000 });
+      await page.locator('.leo-shell-left .leo-sidebar-tab-shell').waitFor({ timeout: 10_000 });
+      await page.locator('.leo-shell-right .leo-info-panel').waitFor({ timeout: 10_000 });
+
+      // (1) The SINR-live left default is the light read-only orientation card.
+      await page.locator('[data-testid="sinr-live-orientation-card"]').waitFor({ timeout: 5000 });
+      assert.equal(
+        await page.locator('[data-testid="signal-tuning-drawer-handle"]').isVisible(),
+        false,
+        'the retired collapsed tuning handle must not appear in the default left rail (the tuner moved to the ⚙ Advanced drawer)',
+      );
+
+      // (2) Layout sanity: the left slot, canvas, and right panel keep usable widths.
+      const canvasSlot = await measureBox(page, '.leo-shell-canvas', 'canvas slot');
+      const leftSlot = await measureBox(page, '.leo-shell-left', 'left slot');
+      const rightPanel = await measureBox(page, '.leo-shell-right .leo-info-panel', 'right panel');
+      assert.ok(canvasSlot.width >= 280, `canvas slot width collapsed: ${canvasSlot.width}`);
+      assert.ok(canvasSlot.height >= 300, `canvas slot height collapsed: ${canvasSlot.height}`);
+      assert.ok(leftSlot.width >= 280, `left slot width collapsed: ${leftSlot.width}`);
+      assert.ok(rightPanel.width >= 320, `right panel width regressed: ${rightPanel.width}`);
+
+      // (3) Durable invariant: clicking the left panel must not leak into the canvas.
+      const leftPanel = await measureBox(page, '.leo-shell-left .leo-sidebar-tab-shell', 'left panel');
+      await assertClickDoesNotHitCanvas(page, leftPanel, 'left summary panel');
+
+      // (4) Durable invariant: the canvas still rotates on drag.
+      const dragBefore = await screenshotCanvasHash(page);
+      await dragInsideBox(page, canvasSlot, 180, 48);
+      const dragAfter = await screenshotCanvasHash(page);
+      assert.notEqual(dragBefore, dragAfter, 'dragging inside the canvas did not change the frame; OrbitControls may not be receiving pointer events');
+
+      // (5) The relocated tuners live in the non-modal ⚙ Advanced drawer.
+      await page.locator('[data-testid="sinr-live-display-trigger"]').click();
+      await page.locator('[data-testid="sinr-live-display-drawer"]').waitFor({ timeout: 5000 });
+      // Display & camera section is default-open.
+      await page.locator('[data-testid="beam-density-control"]').waitFor({ timeout: 5000 });
+      // Expand the relocated SINR-formula section.
+      await page.locator('[data-testid="sinr-live-advanced-formula"] > summary').click();
+      await page.locator('[data-testid="sinr-formula-page"]').waitFor({ timeout: 5000 });
+      // Expand the relocated handover-policy section.
+      await page.locator('[data-testid="sinr-live-advanced-handover"] > summary').click();
+      await page.locator('[data-testid="handover-policy-controls"]').waitFor({ timeout: 5000 });
+
+      // (6) The non-modal drawer panel still does not leak clicks into the canvas.
+      const drawerBox = await measureBox(page, '[data-testid="sinr-live-display-drawer"]', 'advanced drawer');
+      await assertClickDoesNotHitCanvas(page, drawerBox, 'advanced drawer panel');
+
+      // (7) The disclosure closes on Escape.
+      await page.keyboard.press('Escape');
+      await page.locator('[data-testid="sinr-live-display-drawer"]').waitFor({ state: 'detached', timeout: 5000 });
+
+      await mkdir(dirname(CHECKPOINT_PATH), { recursive: true });
+      await page.screenshot({ path: CHECKPOINT_PATH, fullPage: true });
+
+      console.log('Visual Clarity Phase 4B tuning-drawer (G1-LEFT-DEFAULT) validation passed.');
+      console.log(JSON.stringify({
+        appUrl,
+        canvasSlot,
+        leftSlot,
+        rightPanel,
+        manualScreenshotCheckpoint: CHECKPOINT_PATH,
+        result: 'PASS',
+      }, null, 2));
+    } finally {
+      await page.context().close().catch(() => {});
+    }
   } finally {
     await browser.close();
   }
-
-  const byMode = Object.fromEntries(modes.map(result => [result.mode, result])) as Record<UiMode, ModeResult>;
-  assert.ok(
-    byMode.presentation.canvasSlot.width > byMode.diagnostics.canvasSlot.width + 40,
-    'presentation mode did not keep the canvas wider than the diagnostics sidebar layout',
-  );
-  assert.ok(
-    Math.abs(byMode.presentation.canvasSlot.width - byMode.tuning.canvasSlot.width) <= 4,
-    'presentation and tuning mode should share the same top-level sidebar width at the 1440px checkpoint',
-  );
-
-  console.log('Visual Clarity Phase 4B tuning-drawer validation passed.');
-  console.log(JSON.stringify({
-    appUrl,
-    modes,
-    manualScreenshotCheckpoint: CHECKPOINT_PATH,
-    result: 'PASS',
-  }, null, 2));
 }
 
 main();
