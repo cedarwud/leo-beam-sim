@@ -132,6 +132,7 @@
     "validate:phase-c:handover-cinema:model": "node --import tsx/esm src/app/handoverCinema.test.ts && node --import tsx/esm src/scene/sinrLiveCellHandoverEventIndex.test.ts",
     "validate:phase-c:handover-cinema:browser": "node --import tsx/esm scripts/validate-phase-c-handover-cinema-browser.ts",
     "validate:phase-c:sinr-serving-mosaic:model": "node --import tsx/esm src/scene/sinrServingMosaic.test.ts",
+    "validate:phase-c:handover-ticker:model": "node --import tsx/esm scripts/validate-phase-c-handover-ticker.tsx",
     "validate:phase-c:sinr-serving-mosaic:browser": "node --import tsx/esm scripts/validate-phase-c-sinr-serving-mosaic-browser.ts",
     "validate:phase-c:sinr-service-queue:model": "node --import tsx/esm src/scene/sinrServingMosaic.test.ts",
     "validate:phase-c:sinr-service-queue:browser": "node --import tsx/esm scripts/validate-phase-c-sinr-serving-mosaic-browser.ts",

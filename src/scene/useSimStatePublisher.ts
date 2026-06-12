@@ -564,6 +564,9 @@ export function useSimStatePublisher({
       visualFrequencyDiagnostics,
       perUePositions,
       modqnCellServiceReadout,
+      // G2-TICKER: publish the rolling real-handover log (G2a) so the always-on
+      // handover ticker HUD can count it (display-only; never re-derived here).
+      recentHandoverEvents: sim.sinrLiveCells?.recentHandoverEvents,
       servingSatId: publishedPrimaryServing.servingSatId,
       servingBeamId: publishedPrimaryServing.servingBeamId,
       servingCellId: publishedPrimaryServing.servingCellId,

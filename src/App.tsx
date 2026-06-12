@@ -76,6 +76,8 @@ import { ControlBar } from './ui/ControlBar';
 import { DirectorControls } from './ui/DirectorControls';
 import { SinrOffsetExplainer } from './ui/SinrOffsetExplainer';
 import { SinrServingAggregate } from './ui/SinrServingAggregate';
+import { SinrHandoverTicker } from './ui/SinrHandoverTicker';
+import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC } from './scene/sinrLiveCellModel';
 import { useHandoverCinema } from './app/useHandoverCinema';
 import { toCandidateHighlightCommand } from './app/handoverCinema';
 import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
@@ -2061,6 +2063,14 @@ export function App() {
           />
           <SinrServingAggregate
             perUePositions={simState.perUePositions}
+            visible={sceneLane === 'sinr-live'}
+          />
+          {/* G2-TICKER: always-on rolling count of the REAL live cell-truth
+              handovers (last N sim-seconds, inter/intra split) — the "一直有換手"
+              readout that complements the ambient pulse cones. */}
+          <SinrHandoverTicker
+            recentHandoverEvents={simState.recentHandoverEvents}
+            retentionSec={SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC}
             visible={sceneLane === 'sinr-live'}
           />
           {shouldRenderMainScene ? (

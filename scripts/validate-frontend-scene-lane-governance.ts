@@ -520,6 +520,8 @@ const controlBarSource = readRepoFile('src/ui/ControlBar.tsx');
 // G1-CONTROLBAR-ADV: the SINR-live display/camera controls relocated off the top
 // bar into a lane-mounted Advanced drawer that reuses the shared shell.
 const sinrLiveDisplayDrawerSource = readRepoFile('src/ui/SinrLiveDisplayDrawer.tsx');
+// G2-TICKER: the publisher that publishes the rolling handover log onto SimState.
+const useSimStatePublisherSource = readRepoFile('src/scene/useSimStatePublisher.ts');
 const advancedDrawerShellSource = readRepoFile('src/ui/AdvancedDrawerShell.tsx');
 const modqnAdvancedDisplayControlsSource = readRepoFile('src/ui/modqn-controls/ModqnAdvancedDisplayControls.tsx');
 const topologyTabSource = readRepoFile('src/ui/signal-tuning/TopologyTab.tsx');
@@ -1983,6 +1985,27 @@ assertContains(
   mainSceneSource,
   'telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"',
   'MainScene mounts the live-pulse cone layer with a mesh-derived rendered-count telemetry',
+);
+// (4) G2-TICKER: the always-on rolling handover COUNT HUD (complements the pulse
+//     cones). Lane-gated to sinr-live, fed the PUBLISHED rolling log (not a
+//     re-derived one) — display-only (its own deep gate is
+//     validate:phase-c:handover-ticker:model). The publisher publishes the log
+//     from the same model truth the pulse reads (Rule#6). These pin the wiring so
+//     it cannot silently un-lane or be fed a fabricated source.
+assertContains(
+  appSource,
+  "from './ui/SinrHandoverTicker'",
+  'App imports the always-on handover ticker',
+);
+assertContains(
+  appSource,
+  'recentHandoverEvents={simState.recentHandoverEvents}',
+  'handover ticker is fed the PUBLISHED rolling handover log (display-only, never re-derived)',
+);
+assertContains(
+  useSimStatePublisherSource,
+  'recentHandoverEvents: sim.sinrLiveCells?.recentHandoverEvents',
+  'publisher publishes the rolling handover log from the model truth (Rule#6 display read-out)',
 );
 
 // QUAR-S4-SERVING block #3 RETIRED (S4-3): the de-punned publisher-shape text
