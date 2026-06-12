@@ -67,6 +67,19 @@ and [docs/frontend-mode-lane-separation-sdd.md](./docs/frontend-mode-lane-separa
 before changing `scene/`, `viz/`, `ui/`, or runtime rendering boundaries, and
 update `validate:frontend:scene-lane-governance` when a lane rule changes.
 
+**Mechanical enforcement (binds EVERY agent, not just memory-equipped Claude).**
+These rules are prose — prose is advisory. The load-bearing enforcement is the
+`.githooks/pre-commit` hook, which runs `npm run validate:governance` (lint +
+`scene-lane-governance` + the `s0:connected-sat-has-beam` must-hold +
+`s0:geometry-trace` truth-zero-diff golden) and BLOCKS any commit — by Claude,
+Codex, any agent, or a human — that breaks a foundation guard. Every agent MUST
+run `npm run setup:hooks` once per clone (it sets git `core.hooksPath=.githooks`);
+an agent that skips this, or that did not read these docs, is still caught the
+moment its commit runs the hook. Do NOT normalize `git commit --no-verify` — it
+exists only for a genuinely unrelated pre-existing failure, and the bypasser owns
+the consequence. When a foundation gate's scope changes, update both the gate and
+this hook's gate list together (Rule#9 atomic).
+
 ## 6. Local Docs
 
 | Purpose | File |

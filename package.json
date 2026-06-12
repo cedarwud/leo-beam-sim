@@ -8,6 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
+    "validate:governance": "npm run lint && npm run validate:frontend:scene-lane-governance && npm run validate:s0:connected-sat-has-beam && npm run validate:s0:geometry-trace",
+    "setup:hooks": "git config core.hooksPath .githooks",
     "validate:beam-floor": "node --import tsx/esm scripts/validate-serving-pending-beam-floor.ts",
     "validate:phase1a:recent-ho-ui": "node --import tsx/esm scripts/validate-phase1a-recent-ho-ui.tsx",
     "validate:phase2d:forced-role-state-visuals": "node --import tsx/esm scripts/validate-phase2d-forced-role-state-visuals.ts",
