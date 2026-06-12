@@ -107,6 +107,27 @@ export {
   SKY_DOME_V_RADIUS,
 } from './runtimeFrameStep';
 
+/**
+ * G2-WARMSTART: the CAP on how much sim-time the warm-up run-through may advance the
+ * model through at the first sinr-live cold-start. A freshly attached
+ * `HandoverManager` cannot hand over until its `pingPongGuardSec` (30s) + TTT (3.5s)
+ * elapse, so a cold start shows ZERO handovers (and zero G2c pulse cones) for the
+ * first ~42s of the candidate-rich demo (`demoStartOffsetSec` 450; probe
+ * `scripts/_probe-warmstart.ts`). The run-through STOPS at the first frame that
+ * carries a live pulse (break-on-pulse), so it normally ends at the first post-guard
+ * handover burst (~42s), NOT this cap — the cap only bounds a quiet window
+ * (handovers are bursty, so a fixed endpoint can land in a >4s inter-burst gap and
+ * open with no pulse cones). The warm-up runs the REAL model forward (fabricates
+ * nothing — Rule#6); it is sinr-live-lane only and runs once (the demo open).
+ */
+const SINR_LIVE_WARMUP_CAP_SEC = 130;
+/**
+ * Coarse sim-time step for the warm-up run-through. Matches the offline event index's
+ * 2s scan (the HO guard/TTT are sim-time integrated, so a 2s grain accumulates them
+ * faithfully); break-on-pulse keeps the typical one-time cost to ~21 steps (~0.5s).
+ */
+const SINR_LIVE_WARMUP_STEP_SEC = 2;
+
 export function useSimulation(
   profile: Profile,
   replay: ReplayConfig,
@@ -257,6 +278,12 @@ export function useSimulation(
   );
   const frameRef = useRef<SimFrame>(createEmptyFrame(initialSimTimeSec));
   const publishNextFrameRef = useRef(true);
+  // G2-WARMSTART: the warm-up run-through is a ~0.5s synchronous main-thread cost,
+  // so it runs ONCE — the first sinr-live cold-start (the demo open) — not on every
+  // later cold-start (handover/signal reset, profile switch), which would re-freeze
+  // the UI. Those subsequent cold-starts open cold and re-warm naturally as the sim
+  // plays forward.
+  const hasWarmedOnceRef = useRef(false);
   const [, setVersion] = useState(0);
 
   const installDecisionOverride = useCallback(() => {
@@ -322,7 +349,7 @@ export function useSimulation(
   // reseat publishes a real populated frame (never a blank createEmptyFrame — that
   // removes the old signalReset empty-frame flicker).
   const buildRuntimeStateAt = useCallback(
-    (params: { toSec: number; intent: 'cold-start' | 'seek' | 'wrap' }) => {
+    (params: { toSec: number; intent: 'cold-start' | 'seek' | 'wrap'; warmupSec?: number }) => {
       const targetOffset = normalizeReplayOffset(params.toSec, maxTimeSec, replay.loop);
       if (params.intent === 'cold-start') {
         resetAllHoManagers();
@@ -365,7 +392,77 @@ export function useSimulation(
       // S-cells-2: additive cell truth on the reseat frame (dt 0 — single static
       // step; managers already transitioned above). no-op off lane.
       attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
-      frameRef.current = frame;
+
+      // G2-WARMSTART: on the FIRST sinr-live cold-start (the demo open), advance the
+      // freshly cold-attached managers + cell model PAST the ~42s ping-pong-guard
+      // warm-up so the demo opens WITH a live handover pulse already on screen — a
+      // cold start otherwise shows a static scene with zero handovers (and zero G2c
+      // pulse cones) until the guard elapses. Run-through: step the REAL model forward
+      // in coarse 2s increments (matching the offline event-index scan grain — a
+      // physically-valid post-guard seed, NOT a byte-exact reproduction of the live
+      // ~16ms-grain play), DISCARDING intermediate frames, and STOP the moment the
+      // published frame actually carries a live pulse (recentHandoverEvents > 0) — so
+      // it opens on a handover, not in a between-burst gap, and typically stops at the
+      // first post-guard burst (~42s ≈ 21 steps ≈ ~0.5s one-time synchronous cost),
+      // not the full cap. `params.warmupSec` is the CAP (bounds a quiet window).
+      // Truth-neutral (Rule#6): the real model produces every value; nothing is
+      // fabricated. Lane-gated on the cell model (sinr-live only) AND latched to the
+      // first warm (hasWarmedOnceRef) so later cold-starts do not re-freeze the UI;
+      // seek / wrap / signal-reset pass no warm-up (cold/rebase semantics unchanged).
+      let publishFrame = frame;
+      const warmupCapSec = (sinrLiveCellModel && !hasWarmedOnceRef.current) ? (params.warmupSec ?? 0) : 0;
+      if (warmupCapSec > 0) {
+        hasWarmedOnceRef.current = true;
+        let warmedSec = 0;
+        while (warmedSec < warmupCapSec) {
+          const stepSec = Math.min(SINR_LIVE_WARMUP_STEP_SEC, warmupCapSec - warmedSec);
+          const warm = stepRuntimeFrame({
+            profile,
+            replay,
+            // Advance exactly `stepSec` of sim-time regardless of the user's playback
+            // speed (speed:1 → simTimeSec += stepSec * 1).
+            speed: 1,
+            paused: false,
+            deltaSec: stepSec,
+            beamFootprintMultiplier,
+            mapKmPerWorldUnit,
+            nowMs: readWallClockMs(),
+            observer,
+            beamLayoutsByShellId,
+            trajectoryCache,
+            hoManager,
+            secondaryHoManagers,
+            ueCount: effectiveUeCount,
+            ueDistributionMode,
+            uePrimaryAnchorMode,
+            ueMobilityMode,
+            ueMobilityParams: effectiveUeMobilityParams,
+            ueDistributionScope,
+            ueDistributionRadiusKm,
+            mobilityStates: mobilityStatesRef.current,
+            state: runtimeStateRef.current,
+          });
+          // Faithful to the frozen play loop: on a trajectory wrap, rebase the
+          // externally-attached cell model BEFORE the attach (the step rebases the
+          // steered managers in-step but not the cell model — unreachable at the demo
+          // start 450+cap, but kept so the warm-up can't corrupt cell guards if the
+          // offset/cap ever move near maxTimeSec).
+          if (warm.didLoopWrap) {
+            sinrLiveCellModel?.rebase((warm.frame.simTimeSec - warm.previousSimTimeSec) * 1000);
+          }
+          // Advance the cell model by the real elapsed sim-time (clamped to 0 on a
+          // wrap by attach) so its per-cell managers + the recentHandoverEvents pulse
+          // log warm in lockstep with the steered managers.
+          attachSinrLiveCellFrame(warm.frame, sinrLiveCellModel, warm.frame.simTimeSec - warm.previousSimTimeSec);
+          publishFrame = warm.frame;
+          warmedSec += stepSec;
+          // Stop as soon as the PUBLISHED frame carries a live pulse so the demo opens
+          // on a handover (the guard + the cold-attach 'attach' classification keep
+          // recentHandoverEvents empty until the first real post-guard HO).
+          if ((warm.frame.sinrLiveCells?.recentHandoverEvents.length ?? 0) > 0) break;
+        }
+      }
+      frameRef.current = publishFrame;
       publishNextFrameRef.current = true;
       setVersion(v => v + 1);
     },
@@ -405,6 +502,10 @@ export function useSimulation(
     buildRuntimeStateAt({
       toSec: replay.startOffsetSec,
       intent: options?.timeShift ? 'wrap' : 'cold-start',
+      // G2-WARMSTART: a cold-start opens the demo warm (the recipe latches it to the
+      // FIRST sinr-live cold-start + lane-gates it); a wrap (window re-loop) is a
+      // rebase that already keeps serving, so it passes no warm-up cap.
+      warmupSec: options?.timeShift ? 0 : SINR_LIVE_WARMUP_CAP_SEC,
     });
   }, [buildRuntimeStateAt, replay.startOffsetSec]);
 

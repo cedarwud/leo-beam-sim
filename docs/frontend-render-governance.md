@@ -647,13 +647,20 @@ Before changing scene rendering:
     (`data-sinr-live-handover-pulse-cone-rendered-count`) + a resolved count
     (`data-sinr-live-handover-pulse-cone-count`) so the validator proves the bright cones
     actually drew. Inert on every MODQN / artifact lane.
-  - Note: continuous pulses require the sim to be past the cold-attach warm-up — a
-    freshly attached `HandoverManager` cannot hand over until its `pingPongGuardSec` (30s)
-    + TTT (`triggerTimeSec` 3.5s) elapse, so handovers (and thus pulses) are EMPTY at first.
-    Measured at the candidate-rich profile's dense demo start (`demoStartOffsetSec` 450),
-    the first handover burst lands ~42s into playback (guard + settling), then handovers run
-    ~0.5/s. The companion G2-WARMSTART work advances the sim past this window at load so the
-    demo opens already pulsing.
+  - Companion G2-WARMSTART (`useSimulation.ts`): continuous pulses require the sim past the
+    cold-attach warm-up — a freshly attached `HandoverManager` cannot hand over until its
+    `pingPongGuardSec` (30s) + TTT (`triggerTimeSec` 3.5s) elapse, so a cold start shows ZERO
+    handovers (and zero pulse cones) for the first ~42s at the candidate-rich demo start
+    (`demoStartOffsetSec` 450). On the FIRST sinr-live cold-start the `buildRuntimeStateAt`
+    recipe runs the REAL model forward in 2s steps (run-through, discarding intermediate
+    frames) and STOPS the moment the published frame carries a live pulse (break-on-pulse,
+    typically the first post-guard burst ~42s; a `SINR_LIVE_WARMUP_CAP_SEC=130` cap bounds a
+    quiet window) — so the demo OPENS on a handover, not in a between-burst gap. It is lane-gated
+    (sinr-live only) and latched to the first warm (`hasWarmedOnceRef`), so later cold-starts
+    (handover/signal reset, profile switch) do NOT re-freeze the UI (~0.5s one-time synchronous
+    cost). Truth-neutral (Rule#6); the s0 goldens use their own harness so they stay zero-diff.
+    Gate: `validate:phase-c:warm-start` (cold reseat = 0 handovers dead → break-on-pulse
+    publishes a frame whose `recentHandoverEvents.length > 0`, plus structural + value asserts).
   Validators: `validate:phase-c:sinr-live-cells:render` (the pure resolver: fade curve VALUE
   asserts + old/new cones + age-decay + horizon prune + concurrent events) and
   `validate:phase-c:sinr-live-cells:render:browser` (real warmed sinr-live: the pulse cone

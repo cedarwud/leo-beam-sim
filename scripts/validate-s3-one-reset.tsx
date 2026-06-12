@@ -238,8 +238,13 @@ ok(
 );
 const stepCalls = useSimSrc.split('stepRuntimeFrame({').length - 1;
 ok(
-  stepCalls === 2,
-  `SINGLE-PATH FAILED: expected exactly TWO stepRuntimeFrame calls (recipe reseat + useFrame play), found ${stepCalls}`,
+  // THREE call sites: the recipe's paused dt=0 reseat, the G2-WARMSTART run-through
+  // loop inside the SAME recipe (advances the cold-attached managers past the
+  // ping-pong guard, sinr-live cold-start only), and the useFrame play loop. The
+  // warm-up is part of the one recipe — it adds NO new reseat site
+  // (createRuntimeFrameStepState(targetOffset) is still exactly once, asserted above).
+  stepCalls === 3,
+  `SINGLE-PATH FAILED: expected exactly THREE stepRuntimeFrame calls (recipe reseat + G2-WARMSTART run-through + useFrame play), found ${stepCalls}`,
 );
 // no reseat path publishes a blank frame (the signalReset createEmptyFrame flicker is gone)
 ok(
