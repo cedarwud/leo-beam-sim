@@ -51,6 +51,20 @@ export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32;
 export const SINR_LIVE_CONE_SEGMENTS = 32;
 
 /**
+ * G1-CONE-STYLE apex→base alpha fade. Each cone is brightest at its apex (the
+ * serving satellite) and fades toward the flat ground footprint ring, via a
+ * per-vertex alpha gradient (RGBA vertex colours, RGB left white so the per-cone
+ * `frequencyReuseColor` hue is unchanged — only alpha is graded). The final
+ * fragment alpha is `material.opacity × vertexAlpha`, so the per-cone level
+ * (ambient {@link SINR_LIVE_CONE_AMBIENT_OPACITY} / pair / pulse) is preserved at
+ * the apex and the ground-level overlap — where many cones criss-cross the map —
+ * fades to this fraction, de-tangling the field without touching truth (cones are
+ * outside the geometry-trace snapshot; the apex stays fully opaque so every
+ * serving sat still shows a beam — the connected-sat-has-beam must-hold).
+ */
+export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 0.16;
+
+/**
  * Alpha-composite blending for the cones: bounded, uniform translucency. Additive
  * blending accumulates (no usable middle between too-faint and blown-out at the
  * all-serving population), so NormalBlending is what lets every serving sat show a

@@ -41,6 +41,7 @@ import * as THREE from 'three';
 import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import {
   SINR_LIVE_CONE_AMBIENT_OPACITY,
+  SINR_LIVE_CONE_BASE_ALPHA_FACTOR,
   SINR_LIVE_CONE_BLENDING,
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
@@ -141,6 +142,36 @@ export function buildObliqueBeamConePositions(
   }
   return out;
 }
+
+/**
+ * G1-CONE-STYLE: per-vertex RGBA colours for the apex→base alpha fade. RGB is left
+ * WHITE (1,1,1) so the mesh's `frequencyReuseColor` material colour is the only hue
+ * source (vertex RGB × material colour = material colour); only ALPHA is graded —
+ * 1.0 at the apex vertex of each triangle, {@link SINR_LIVE_CONE_BASE_ALPHA_FACTOR}
+ * at the two ground-ring vertices. Mirrors {@link buildObliqueBeamConePositions}'
+ * `[apex, baseA, baseB]` packing (4 components × 3 verts × `segments`). Static for a
+ * given `segments`/`baseAlpha` (independent of geometry), so it is built once and
+ * shared across every cone mesh.
+ */
+export function buildObliqueBeamConeVertexColors(
+  segments: number = SINR_LIVE_CONE_SEGMENTS,
+  baseAlpha: number = SINR_LIVE_CONE_BASE_ALPHA_FACTOR,
+): Float32Array {
+  const out = new Float32Array(segments * 12);
+  for (let i = 0; i < segments; i += 1) {
+    const o = i * 12;
+    // apex vertex — full alpha
+    out[o] = 1; out[o + 1] = 1; out[o + 2] = 1; out[o + 3] = 1;
+    // base ring vertex A — faded alpha
+    out[o + 4] = 1; out[o + 5] = 1; out[o + 6] = 1; out[o + 7] = baseAlpha;
+    // base ring vertex B — faded alpha
+    out[o + 8] = 1; out[o + 9] = 1; out[o + 10] = 1; out[o + 11] = baseAlpha;
+  }
+  return out;
+}
+
+/** Built once — the apex→base alpha gradient is identical for every cone. */
+const CONE_VERTEX_COLORS = buildObliqueBeamConeVertexColors();
 
 /**
  * Focus subset: pick the top `maxSats` satellites by SERVED-CELL count
@@ -423,6 +454,13 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
     } else {
       geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     }
+    // G1-CONE-STYLE: the apex→base alpha gradient is a static RGBA vertex-colour
+    // buffer (identical for every cone), set once. The material's vertexColors
+    // multiplies it, so the apex stays at the per-cone opacity and the ground ring
+    // fades — only alpha varies (RGB is white), so the hue is untouched.
+    if (!geometry.getAttribute('color')) {
+      geometry.setAttribute('color', new THREE.BufferAttribute(CONE_VERTEX_COLORS, 4));
+    }
     geometry.computeBoundingSphere();
   }, [positions]);
 
@@ -445,6 +483,7 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
       <bufferGeometry ref={geometryRef} />
       <meshBasicMaterial
         color={cone.color}
+        vertexColors
         transparent
         opacity={opacity}
         blending={SINR_LIVE_CONE_BLENDING}

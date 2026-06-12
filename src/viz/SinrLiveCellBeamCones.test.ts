@@ -24,6 +24,7 @@
 import * as THREE from 'three';
 import {
   buildObliqueBeamConePositions,
+  buildObliqueBeamConeVertexColors,
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveCellBeamConeRenderCount,
   resolveSinrLiveCellBeamConeSatelliteCount,
@@ -37,6 +38,7 @@ import type { SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
 import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import {
   SINR_LIVE_CONE_AMBIENT_OPACITY,
+  SINR_LIVE_CONE_BASE_ALPHA_FACTOR,
   SINR_LIVE_CONE_BLENDING,
   SINR_LIVE_CONE_PAIR_OPACITY,
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
@@ -306,6 +308,30 @@ check('S5-2 style tokens (hybrid): ambient 0.08 < pair 0.30, 32 segments, Normal
   assertEqual(posExplicit.length, 5 * 9, 'explicit segments honoured');
   const posDefault = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10);
   assertEqual(posDefault.length, SINR_LIVE_CONE_SEGMENTS * 9, 'default segment count == the style token');
+});
+
+check('G1-CONE-STYLE apex→base alpha fade: apex opaque (must-hold-safe), base faded (de-tangle), hue untouched (RGB white)', () => {
+  assert(
+    SINR_LIVE_CONE_BASE_ALPHA_FACTOR > 0 && SINR_LIVE_CONE_BASE_ALPHA_FACTOR < 1,
+    'base alpha factor is a fade in (0,1) — base faded but never fully invisible',
+  );
+  const segments = 5;
+  const colors = buildObliqueBeamConeVertexColors(segments, SINR_LIVE_CONE_BASE_ALPHA_FACTOR);
+  // 4 components (RGBA) × 3 verts × segments, mirroring the [apex, baseA, baseB] position packing.
+  assertEqual(colors.length, segments * 12, 'RGBA vertex-colour buffer matches the triangle-soup packing');
+  for (let i = 0; i < segments; i += 1) {
+    const o = i * 12;
+    // RGB is white for every vertex → vertex colour does not tint the per-cone hue.
+    for (const c of [o, o + 1, o + 2, o + 4, o + 5, o + 6, o + 8, o + 9, o + 10]) {
+      assertEqual(colors[c], 1, 'vertex RGB is white (hue comes only from the material frequencyReuseColor)');
+    }
+    // Alpha: apex full, both ground-ring vertices faded to the factor.
+    assertEqual(colors[o + 3], 1, 'apex vertex alpha is fully opaque (every serving sat still shows a beam)');
+    approx(colors[o + 7], SINR_LIVE_CONE_BASE_ALPHA_FACTOR, 1e-6, 'base ring vertex A alpha is the faded factor');
+    approx(colors[o + 11], SINR_LIVE_CONE_BASE_ALPHA_FACTOR, 1e-6, 'base ring vertex B alpha is the faded factor');
+  }
+  const defaultColors = buildObliqueBeamConeVertexColors();
+  assertEqual(defaultColors.length, SINR_LIVE_CONE_SEGMENTS * 12, 'default segment count == the style token');
 });
 
 check('S5-2 D4 pair resolver: inert unless the focused event is cell truth; draws the old/new pair (replaces the sourceOwner-guard pin)', () => {
