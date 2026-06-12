@@ -42,9 +42,10 @@ import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import {
   SINR_LIVE_CONE_AMBIENT_OPACITY,
   SINR_LIVE_CONE_BLENDING,
+  SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
 } from '../constants/sinrLiveConeStyle';
-import type { SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
+import { cellFrequencyIndex, type SinrLiveCellFrame, type SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
 import type { RuntimeCandidateHighlightCommand } from '../scene/types';
 import type { WorldPoint } from './CellFootprints';
 
@@ -92,6 +93,22 @@ export interface SinrLiveCellBeamConeRenderItem {
   /** Cone base centre = FIXED cell centre on the ground plane (y = 0). */
   readonly baseCenter: THREE.Vector3;
   readonly baseRadiusWorld: number;
+  /**
+   * Optional PER-ITEM opacity override (G2c live-pulse). When present, the mesh
+   * uses it instead of the group's shared `opacity`, so a single mount can render
+   * cones at independent brightness (each handover pulse fades by its own age).
+   * Omitted on the ambient/pair layers (they use one group opacity).
+   */
+  readonly opacity?: number;
+  /**
+   * Optional STABLE React key (G2c live-pulse). The pulse layer can carry the same
+   * `(cellId, satId)` twice in one frame (old + new of distinct events), so it sets
+   * a per-event/side key here. The ambient + cinema-pair layers OMIT it so they keep
+   * the content-stable `${cellId}-${satId}` key (one serving sat per cell) — never an
+   * array index, which would remount every cone when the serving set reorders on a
+   * beam hop and defeat the persistent-mesh in-place buffer update.
+   */
+  readonly renderKey?: string;
 }
 
 /**
@@ -263,6 +280,100 @@ export function resolveSinrLiveCellHandoverPairConeItems(input: {
   return [from, to].filter((item): item is SinrLiveCellBeamConeRenderItem => item !== null);
 }
 
+/**
+ * G2c live-pulse fade: a handover-pulse cone's opacity as a function of its age
+ * (`simTimeSec − event.sourceTimeSec`). Peak at age 0 (the frame it fires), linear
+ * decay to 0 at the retention horizon, and 0 outside `[0, retentionSec]`. Pure so
+ * the `:model` gate can VALUE-assert the curve (peak / midpoint / horizon). The
+ * fade — not a fixed brightness — is what makes a fired handover read as a pulse.
+ */
+export function sinrLiveHandoverPulseOpacity(
+  ageSec: number,
+  retentionSec: number,
+  peakOpacity: number = SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
+): number {
+  // Finite guard FIRST: a NaN age (NaN simTimeSec) compares false to every bound,
+  // so without this it would fall through to `peak * (1 - NaN)` = NaN and slip past
+  // the resolver's `opacity <= 0` skip into a NaN material opacity. The model guards
+  // simTimeSec finiteness elsewhere; mirror it here so the curve stays clamped to 0
+  // outside its domain, exactly as documented.
+  if (!Number.isFinite(ageSec) || !Number.isFinite(retentionSec) || retentionSec <= 0 || ageSec < 0 || ageSec > retentionSec) return 0;
+  return peakOpacity * (1 - ageSec / retentionSec);
+}
+
+export interface SinrLiveHandoverPulseConeInput {
+  /** This frame's recent real handovers (`frame.sinrLiveCells.recentHandoverEvents`). */
+  readonly recentHandoverEvents: readonly SinrLiveCellHandoverEvent[] | undefined;
+  /** This frame's sim-time; per-event age = `simTimeSec − event.sourceTimeSec`. */
+  readonly simTimeSec: number;
+  /** Retention window the model rolls the events over (fade reaches 0 here). */
+  readonly retentionSec: number;
+  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
+  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+  /**
+   * The profile's frequency-reuse factor (`profile.beams.frequencyReuse`). The pulse
+   * cone must take the cell's REAL frequency colour `cellFrequencyIndex(cellId, reuse)`
+   * — the SAME index the ambient cone uses — so a pulse reads as that cone flaring,
+   * not a different hue (the raw `cellId` would mis-map under the 6-colour palette).
+   */
+  readonly frequencyReuse: number;
+  readonly peakOpacity?: number;
+}
+
+/**
+ * G2c ambient live-handover PULSE resolver: turn the model's per-frame real
+ * handovers into bright, age-faded cones on the old (handed-off) AND new (acquired)
+ * cells of each event — the "handovers are happening" pulse on the faint ambient
+ * field, with NO seek and NO camera move (decoupled from the director cinema). It
+ * is a pure DISPLAY read-out of `recentHandoverEvents` (the same transitions the
+ * model already classified + counted, Rule#6) — it fabricates no handover. Reuses
+ * the same oblique-cone geometry the ambient + cinema-pair cones use
+ * (`buildPairConeItem`), carrying a per-item age-faded `opacity`. Colour stays the
+ * geographic frequency-reuse palette (via `buildPairConeItem`'s `cellId` fallback)
+ * so a pulse reads as the SAME cone flaring, just brighter. An event past the
+ * retention horizon, with a non-rendered sat, or an unplaced cell draws nothing.
+ */
+export function resolveSinrLiveHandoverPulseConeItems(
+  input: SinrLiveHandoverPulseConeInput,
+): readonly SinrLiveCellBeamConeRenderItem[] {
+  const { recentHandoverEvents, simTimeSec, retentionSec, placementByCellId, satelliteWorldById, frequencyReuse } = input;
+  if (!recentHandoverEvents || recentHandoverEvents.length === 0) return [];
+  const peak = input.peakOpacity ?? SINR_LIVE_CONE_PULSE_PEAK_OPACITY;
+
+  const items: SinrLiveCellBeamConeRenderItem[] = [];
+  for (const event of recentHandoverEvents) {
+    const opacity = sinrLiveHandoverPulseOpacity(simTimeSec - event.sourceTimeSec, retentionSec, peak);
+    if (opacity <= 0) continue;
+    // Per-event/side stable key: a UE can hand over more than once within the
+    // retention window, so disambiguate by (ueId, sourceTimeSec, side) — never an
+    // array index (which would remount cones on reorder).
+    const eventKey = `${event.ueId}-${event.sourceTimeSec}`;
+    // The NEW (acquired) cell always exists on a real HO; the OLD (handed-off) cell
+    // exists for inter/intra (a cold attach is never emitted as a handover). Colour
+    // each by the cell's REAL frequency-reuse index (matching the ambient cone), so a
+    // pulse reads as that cone flaring rather than a different hue.
+    const to = buildPairConeItem({
+      satId: event.toSatId,
+      cellId: event.toCellId,
+      frequencyIndex: cellFrequencyIndex(event.toCellId, frequencyReuse),
+      placementByCellId,
+      satelliteWorldById,
+    });
+    if (to) items.push({ ...to, opacity, renderKey: `${eventKey}-to` });
+    if (event.fromSatId !== null && event.fromCellId !== null) {
+      const from = buildPairConeItem({
+        satId: event.fromSatId,
+        cellId: event.fromCellId,
+        frequencyIndex: cellFrequencyIndex(event.fromCellId, frequencyReuse),
+        placementByCellId,
+        satelliteWorldById,
+      });
+      if (from) items.push({ ...from, opacity, renderKey: `${eventKey}-from` });
+    }
+  }
+  return items;
+}
+
 export function resolveSinrLiveCellBeamConeRenderCount(props: SinrLiveCellBeamConesProps): number {
   return resolveSinrLiveCellBeamConeItems(props).length;
 }
@@ -385,7 +496,17 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
   return (
     <group ref={groupRef} name="sinr-live-cell-beam-cones" userData={{ coneCount: cones.length, opacity }}>
       {cones.map(cone => (
-        <ObliqueConeMesh key={`${cone.cellId}-${cone.satId}`} cone={cone} opacity={opacity} />
+        // G2c: a per-item `opacity` (the live-pulse age-fade) overrides the group
+        // opacity so one mount can render cones at independent brightness. Key is the
+        // content-stable `${cellId}-${satId}` for the ambient/pair layers (so a cone
+        // reconciles in place across a beam-hop reorder — keeps the persistent-mesh
+        // in-place buffer update); the pulse layer, which can carry the same
+        // (cell, sat) twice in one frame, supplies its own stable `renderKey`.
+        <ObliqueConeMesh
+          key={cone.renderKey ?? `${cone.cellId}-${cone.satId}`}
+          cone={cone}
+          opacity={cone.opacity ?? opacity}
+        />
       ))}
     </group>
   );

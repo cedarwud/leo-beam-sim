@@ -121,6 +121,18 @@ export interface SceneLaneRenderPlan {
    * lane.
    */
   readonly showSinrLiveCellBeams: boolean;
+  /**
+   * G2c ambient live-handover pulse (the "一直有換手" payoff). Lane-owned to
+   * `sinr-live` ONLY and ALWAYS-ON ambient — DELIBERATELY NOT director-gated (the
+   * decouple from `showCandidateHandoverHighlight`, which needs a manual Director
+   * arm): as the sim plays forward, each real per-frame handover
+   * (`frame.sinrLiveCells.recentHandoverEvents`) flares its old/new cell cones
+   * bright then fades them by age, with no seek and no camera move. A distinct
+   * layer from the static cinema pair (`showCandidateHandoverHighlight`) and the
+   * faint ambient field (`showSinrLiveCellBeams`); inert on every MODQN/artifact
+   * lane.
+   */
+  readonly showSinrLiveHandoverPulse: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
   readonly showReplayProofLayer: boolean;
   readonly showArtifactFpsCounter: boolean;
@@ -180,6 +192,11 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // computed (dormant, for a future cinema / off-axis render); only the CONE render
   // is off. See `.agent-memory/project_sinr_render_reset_2026-06-08.md`.
   const showSinrLiveCellBeams = showSinrLiveViewport;
+  // G2c live-handover pulse: sinr-live ONLY, ALWAYS-ON ambient (NOT director-gated).
+  // Same lane gate as the faint ambient cones — the pulse is the bright, age-faded
+  // overlay of the real per-frame handovers the cell model already classified, so it
+  // mounts whenever the SINR-live viewport is shown, never waiting on a manual arm.
+  const showSinrLiveHandoverPulse = showSinrLiveViewport;
   const showLiveSatelliteMarkers = isLiveScene && (
     input.sceneLane === 'sinr-live'
     || input.sceneLane === 'modqn-live-cell-preview'
@@ -239,6 +256,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     showCandidateHandoverHighlight,
     showSinrServingMosaic,
     showSinrLiveCellBeams,
+    showSinrLiveHandoverPulse,
     // Replaces legacy single-lane anchor: effectiveCinematicMode: showCinematicSpotlight ? input.cinematicMode : 'off'
     effectiveCinematicMode: showCinematicSpotlight
       ? 'spotlight'

@@ -36,6 +36,17 @@ export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.08;
  */
 export const SINR_LIVE_CONE_PAIR_OPACITY = 0.3;
 
+/**
+ * G2c ambient live-handover PULSE peak opacity. When a real per-frame handover
+ * fires (`frame.sinrLiveCells.recentHandoverEvents`), its old/new cells flare
+ * BRIGHT then fade to 0 over the retention window
+ * ({@link ../scene/sinrLiveCellModel.SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC}) —
+ * a continuous, no-seek/no-camera "handovers are happening" pulse on the faint
+ * ambient field. Slightly brighter than the static director pair so a live flash
+ * reads against it; the age-fade (not a fixed value) is what makes it a pulse.
+ */
+export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32;
+
 /** Segments around the flat ground footprint ring of each oblique cone. */
 export const SINR_LIVE_CONE_SEGMENTS = 32;
 

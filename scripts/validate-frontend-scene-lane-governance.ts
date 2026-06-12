@@ -369,10 +369,41 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'artifact replay must not mount the live cell-truth cones',
   );
 
+  // ── SINR-live ambient live-handover PULSE (G2c) lane ownership ──
+  // Lane-owned to sinr-live ONLY and ALWAYS-ON ambient — DELIBERATELY NOT
+  // director-gated (the decouple from the manual-arm cinema): the bright, age-faded
+  // cones of the real per-frame handovers. Inert on every MODQN / artifact lane.
+  assert.equal(
+    renderPlan('sinr-live', 'live-sim').showSinrLiveHandoverPulse,
+    true,
+    'G2c: SINR live owns the ambient live-handover pulse as an always-on ambient default (no director arm)',
+  );
+  assert.equal(
+    renderPlan('sinr-live', 'live-sim', false, 'director').showSinrLiveHandoverPulse,
+    true,
+    'G2c: the live pulse stays on under director focus too (it is decoupled from the cinematic gate, not focus-scoped)',
+  );
+  assert.equal(
+    renderPlan('modqn-live-cell-preview', 'live-sim').showSinrLiveHandoverPulse,
+    false,
+    'MODQN cell preview must not mount the SINR live-handover pulse',
+  );
+  assert.equal(
+    renderPlan('modqn-replay-proof', 'live-sim', true).showSinrLiveHandoverPulse,
+    false,
+    'MODQN replay proof must stay inert for the SINR live-handover pulse (Rule#8)',
+  );
+  assert.equal(
+    renderPlan('artifact-replay', 'artifact-replay').showSinrLiveHandoverPulse,
+    false,
+    'artifact replay must not mount the SINR live-handover pulse',
+  );
+
   const incompatibleArtifact = renderPlan('artifact-replay', 'live-sim');
   assert.equal(incompatibleArtifact.sourceCompatible, false, 'artifact lane must reject live-sim source');
   assert.equal(incompatibleArtifact.showSinrServingMosaic, false, 'incompatible sinr-live source must not show the mosaic');
   assert.equal(incompatibleArtifact.showSinrLiveCellBeams, false, 'incompatible sinr-live source must not show the cell-truth cones');
+  assert.equal(incompatibleArtifact.showSinrLiveHandoverPulse, false, 'incompatible sinr-live source must not show the live-handover pulse');
   assert.equal(incompatibleArtifact.isLiveScene, false, 'incompatible artifact lane must not become live scene');
   assert.equal(incompatibleArtifact.showArtifactFpsCounter, false, 'incompatible artifact lane must not show artifact diagnostics');
   assert.equal(incompatibleArtifact.showLiveSceneEffects, false, 'incompatible artifact lane must not show live effects');
@@ -1837,6 +1868,41 @@ assertContains(
   mainSceneSource,
   'focusSatIds: null',
   'MainScene draws every serving sat (focusSatIds null) — no focus narrowing leaves a serving sat beamless (D-STYLE A)',
+);
+
+// ── SINR-live ambient live-handover PULSE (G2c) lane ownership + decouple locks ──
+// The bright, age-faded cones of the real per-frame handovers
+// (`frame.sinrLiveCells.recentHandoverEvents`). Lane-owned to sinr-live ONLY and
+// ALWAYS-ON ambient — DELIBERATELY decoupled from the manual-arm director cinema
+// (`showCandidateHandoverHighlight`) so the sim playing forward shows continuous
+// handovers with no seek / no camera. Matrix asserts above prove the lane gating
+// + the under-director decouple; these pin the WIRING.
+// (1) the render-plan flag is declared + gated to the sinr-live viewport (NOT
+//     director-coupled — `= showSinrLiveViewport`, no `&& cinematicMode` term).
+assertContains(
+  sceneLaneRenderPlanSource,
+  'showSinrLiveHandoverPulse: boolean',
+  'render plan declares the G2c live-handover pulse flag',
+);
+assertContains(
+  sceneLaneRenderPlanSource,
+  'const showSinrLiveHandoverPulse = showSinrLiveViewport',
+  'G2c pulse is gated sinr-live only + ALWAYS-ON (decoupled from the director cinematic gate)',
+);
+// (2) MainScene derives the pulse cones under the always-on flag (NOT the
+//     director-gated showCandidateHandoverHighlight) from the model's real
+//     recentHandoverEvents truth — a Rule#6 display read-out, no fabricated HO.
+assertContains(
+  mainSceneSource,
+  'recentHandoverEvents: sim.sinrLiveCells?.recentHandoverEvents',
+  'MainScene feeds the live pulse from the model truth (real per-frame handovers, Rule#6)',
+);
+// (3) the pulse layer is mounted with a MESH-derived rendered-count observable so
+//     the browser gate proves the bright cones actually drew (not just resolved).
+assertContains(
+  mainSceneSource,
+  'telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"',
+  'MainScene mounts the live-pulse cone layer with a mesh-derived rendered-count telemetry',
 );
 
 // QUAR-S4-SERVING block #3 RETIRED (S4-3): the de-punned publisher-shape text

@@ -26,6 +26,11 @@
  *    suppressed, so the attr stays honest);
  *  - the render stays live across two reads (cones > 0 at both — the hopping
  *    serving keeps painting, not a one-frame flash);
+ *  - G2c ambient live-handover PULSE fires WITHOUT a director arm: after cranking
+ *    playback to 20x to clear the ~42s cold-attach warm-up, the decoupled pulse
+ *    layer lights real handovers — `data-sinr-live-handover-pulse-cone-count` and
+ *    the mesh-derived `data-sinr-live-handover-pulse-cone-rendered-count` go > 0
+ *    while the director pair stays 0 (proves the pulse is NOT the manual cinema);
  *  - no artifact-lane leak; no console errors.
  *
  * Requires a running dev server. Run: `npm run validate:phase-c:sinr-live-cells:render:browser`.
@@ -115,13 +120,47 @@ async function main(): Promise<void> {
     }
     assert.ok(conesLater > 0, `cell cones keep rendering across frames (recovered count=${conesLater})`);
 
+    // ── G2c ambient live-handover PULSE (decoupled from the director cinema) ──
+    // The bright, age-faded handover cones fire only AFTER the cold-attach warm-up
+    // (pingPongGuardSec 30 + TTT 3.5, ≈ 42s to the first handover burst at the dense
+    // demo start). Crank playback to 20x so that warm-up elapses in a few seconds of
+    // wall time, then poll for the pulse to light a real handover. The DECOUPLE proof
+    // is `pulse > 0` with the director NEVER armed in this run — the pulse mounts on
+    // its own always-on flag, not the manual cinema. The `pairWhilePulsing === 0`
+    // check below is the corroborating (not the primary) evidence: the manual cinema
+    // pair layer stays unmounted while the pulse fires.
+    const fastButton = page.locator('[data-testid="timeline-speed-20x"]').first();
+    if (await fastButton.count()) await fastButton.click();
+    let pulse = 0;
+    let pulseRendered = 0;
+    let pairWhilePulsing = NaN;
+    for (let i = 0; i < 60; i += 1) {
+      await page.waitForTimeout(700);
+      pulse = await numAttr(page, CANVAS, 'data-sinr-live-handover-pulse-cone-count');
+      pulseRendered = await numAttr(page, CANVAS, 'data-sinr-live-handover-pulse-cone-rendered-count');
+      if (pulse > 0 && pulseRendered > 0) {
+        pairWhilePulsing = await numAttr(page, CANVAS, 'data-sinr-live-cell-handover-pair-cone-count');
+        break;
+      }
+    }
+    // PRIMARY decouple proof: the pulse fires with NO director arm anywhere in this run.
+    assert.ok(pulse > 0, `live-handover pulse lights real handovers WITHOUT a director arm — decoupled from the manual cinema (data-sinr-live-handover-pulse-cone-count=${pulse})`);
+    assert.ok(pulseRendered > 0, `live-pulse cones actually render (mesh-derived data-sinr-live-handover-pulse-cone-rendered-count=${pulseRendered})`);
+    // Corroborating: the manual cinema pair layer is unmounted while the pulse fires
+    // (it would only mount on a director arm, which this run never performs).
+    assert.ok(
+      pairWhilePulsing === 0,
+      `manual cinema pair layer stays unmounted while the pulse fires (got pair=${pairWhilePulsing})`,
+    );
+    console.log(`[sinr-live-cell-beams] live pulse: count=${pulse}, meshRendered=${pulseRendered} fired with NO director arm (directorPair=${pairWhilePulsing})`);
+
     // No artifact-lane leak onto the live lane.
     assert.equal(await page.locator('[data-testid="artifact-satellite-compass"]').count(), 0, 'artifact compass must not leak onto the live lane');
     assert.equal(await page.locator('[data-testid="artifact-source-badge"]').count(), 0, 'artifact source badge must not leak onto the live lane');
 
     const realErrors = consoleErrors.filter(e => !/ERR_CONNECTION_REFUSED|:8765|favicon/.test(e));
     assert.deepEqual(realErrors, [], `no real console errors: ${JSON.stringify(realErrors)}`);
-    console.log('[sinr-live-cell-beams] PASS — cell-truth cones at fixed cell centres + UEs off-axis on sinr-live (DATA SOURCE = live SINR engine)');
+    console.log('[sinr-live-cell-beams] PASS — cell-truth cones at fixed cell centres + UEs off-axis + decoupled live-handover pulse on sinr-live (DATA SOURCE = live SINR engine)');
   } finally {
     await browser.close();
   }

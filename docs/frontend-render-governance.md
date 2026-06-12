@@ -52,7 +52,7 @@ they must not share viewport ownership decisions.
 
 | Scene lane | Owner | Source | Allowed viewport proof | Must stay off |
 |---|---|---|---|---|
-| `sinr-live` | live SINR demo | live Walker simulator / configured profile plus `sinrLiveCells` cell-truth trajectory for D4 focus | live satellites, live SINR beams, SINR handover effects, diagnostics, `sinrLiveCells` source-time handover rail for cell-truth focus, handover-cinema candidate-beam highlight + SINR explainer + focus-scoped old/new off-axis beam pair (`sinr-offset` / `live-truth` claim), SINR-serving mosaic (UE markers coloured by serving beam — its OWN layer, NOT the MODQN cell overlay) + aggregate readout (served N/N, per-beam load, mean SINR; `sinr-serving` claim, always-on ambient default) | MODQN replay proof, MODQN cell overlay |
+| `sinr-live` | live SINR demo | live Walker simulator / configured profile plus `sinrLiveCells` cell-truth trajectory for D4 focus | live satellites, live SINR beams, SINR handover effects, diagnostics, `sinrLiveCells` source-time handover rail for cell-truth focus, handover-cinema candidate-beam highlight + SINR explainer + focus-scoped old/new off-axis beam pair (`sinr-offset` / `live-truth` claim), SINR-serving mosaic (UE markers coloured by serving beam — its OWN layer, NOT the MODQN cell overlay) + aggregate readout (served N/N, per-beam load, mean SINR; `sinr-serving` claim, always-on ambient default), ambient live-handover pulse (G2c — bright, age-faded cones on each real per-frame handover's old/new cell from `sinrLiveCells.recentHandoverEvents`; always-on ambient, DECOUPLED from the manual director cinema) | MODQN replay proof, MODQN cell overlay |
 | `modqn-live-cell-preview` | MODQN live preview | live Walker simulator for geometry/SINR plus explicit MODQN decision overlay | hex cell overlay, cell beam cones, satellite markers, director cinema, scene HUD; the all-UE service map + per-cell UE-count badges + service readout/legend/diagnostics grid + phase-3 beam-load cylinder/particles are the **service-allocation family, producer-gated and PARKED OFF by default** (S-FLAG-2); clean cell hopping state, explicit visual layer presets, overlay-labeled handover cues/decision rail | MODQN replay proof, legacy live beam cones, decorative live effects, artifact overlays, the service-allocation family while the producer baseline is degenerate |
 | `modqn-replay-proof` | MODQN evidence proof | immutable MODQN replay artifact/display state | replay proof layer, source-backed or display-proxy replay beams, focused decision trace, producer-horizon replay rail | live cell preview, live SINR beams, artifact overlays, live Walker forecast markers |
 | `artifact-replay` | visual-showcase replay | immutable `visual-showcase-v1` artifact | artifact-provided frame content, replay controls, artifact-owned event rail | live cell preview, MODQN replay proof, live SINR proof effects |
@@ -621,3 +621,42 @@ Before changing scene rendering:
   and `validate:frontend:scene-lane-governance` locks the render-plan gate, the distinct
   module (no MODQN-map import), the gated MainScene mount, the mesh observable, and the
   aggregate claim stamp.
+- Ambient live-handover pulse (G2c) is lane-owned to `sinr-live` and is an always-on
+  ambient layer that delivers the "一直有換手" payoff. The SINR cell model already
+  classifies every per-UE serving transition each frame (intra/inter); G2a exposed them as
+  `frame.sinrLiveCells.recentHandoverEvents` (a rolling window, retention
+  `SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC = 4s`, cleared on reset/rebase since a teleport
+  is not a handover). G2c RENDERS them: a pure resolver
+  (`resolveSinrLiveHandoverPulseConeItems`, `src/viz/SinrLiveCellBeamCones.tsx`) turns each
+  recent handover into bright, age-faded oblique cones on its OLD (handed-off) AND NEW
+  (acquired) cell — reusing the same `buildPairConeItem` geometry the ambient + cinema-pair
+  cones use, carrying a per-item `opacity` from `sinrLiveHandoverPulseOpacity(age, retention)`
+  (peak `SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32` at age 0, linear fade to 0 at the
+  horizon). So as the sim plays forward a fired handover flares its cells then fades — a
+  continuous "handovers are happening" pulse on the faint ambient cone field.
+  - It is DELIBERATELY DECOUPLED from the manual director cinema. The bright cinema pair
+    (`showCandidateHandoverHighlight`) only mounts behind a manual Director arm
+    (`cinematicMode === 'director'`); the pulse is gated by a SEPARATE render-plan flag
+    `showSinrLiveHandoverPulse` (= `showSinrLiveViewport`), so it mounts whenever the SINR
+    viewport is shown, with NO arm, NO seek, and NO camera move. The manual Director cinema
+    stays the on-demand single-handover deep-dive.
+  - It is display-only (Rule#6): a pure read-out of the same transitions the model already
+    classified + counted — it fabricates no handover. It feeds from the COMPLETE serving-sat
+    apex map (`viz.coneApexWorldById`, like the ambient cones) so a handover on any serving
+    sat draws even beyond the display cap. The layer publishes a MESH-derived observable
+    (`data-sinr-live-handover-pulse-cone-rendered-count`) + a resolved count
+    (`data-sinr-live-handover-pulse-cone-count`) so the validator proves the bright cones
+    actually drew. Inert on every MODQN / artifact lane.
+  - Note: continuous pulses require the sim to be past the cold-attach warm-up — a
+    freshly attached `HandoverManager` cannot hand over until its `pingPongGuardSec` (30s)
+    + TTT (`triggerTimeSec` 3.5s) elapse, so handovers (and thus pulses) are EMPTY at first.
+    Measured at the candidate-rich profile's dense demo start (`demoStartOffsetSec` 450),
+    the first handover burst lands ~42s into playback (guard + settling), then handovers run
+    ~0.5/s. The companion G2-WARMSTART work advances the sim past this window at load so the
+    demo opens already pulsing.
+  Validators: `validate:phase-c:sinr-live-cells:render` (the pure resolver: fade curve VALUE
+  asserts + old/new cones + age-decay + horizon prune + concurrent events) and
+  `validate:phase-c:sinr-live-cells:render:browser` (real warmed sinr-live: the pulse cone
+  count + mesh rendered-count fire; absent on the MODQN lane), and
+  `validate:frontend:scene-lane-governance` locks the render-plan flag + always-on/decoupled
+  gate, the model-truth feed, and the mesh-rendered telemetry mount.

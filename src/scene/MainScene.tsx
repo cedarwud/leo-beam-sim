@@ -62,10 +62,12 @@ import {
 import {
   SinrLiveCellBeamCones,
   resolveSinrLiveCellHandoverPairConeItems,
+  resolveSinrLiveHandoverPulseConeItems,
   resolveSinrLiveCellBeamConeItems,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
 import { SINR_LIVE_CONE_PAIR_OPACITY } from '../constants/sinrLiveConeStyle';
+import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC } from './sinrLiveCellModel';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
 import { BeamLoadUploadParticles } from '../viz/BeamLoadUploadParticles';
@@ -601,6 +603,7 @@ function ArtifactSceneContent({
         sinrLiveCellHandoverPairConeCount=""
         sinrLiveCellHandoverPairSourceOwner=""
         sinrLiveCellHandoverPairEventId=""
+        sinrLiveHandoverPulseConeCount=""
         modqnVisualLayerPreset=""
         modqnServiceMapEnabled="0"
         modqnServedUeCount={0}
@@ -877,6 +880,7 @@ function SceneContent({
     showCandidateHandoverHighlight,
     showSinrServingMosaic,
     showSinrLiveCellBeams,
+    showSinrLiveHandoverPulse,
     effectiveCinematicMode,
     showReplayProofLayer,
     showArtifactFpsCounter,
@@ -1116,6 +1120,26 @@ function SceneContent({
       sinrLiveCellPlacementById,
       satelliteWorldById,
     ],
+  );
+  // G2c ambient live-handover pulse: the real per-frame handovers the cell model
+  // classified (`sim.sinrLiveCells.recentHandoverEvents`) → bright, age-faded cones
+  // on each event's old/new cell. ALWAYS-ON on sinr-live (not director-gated) so the
+  // sim playing forward shows continuous handovers with no seek/no camera. Uses the
+  // serving-sat-COMPLETE apex map (`viz.coneApexWorldById`, like the ambient cones)
+  // so a handover on any serving sat draws even beyond the display cap. Display-only
+  // read-out of truth (Rule#6); the serving decision is unchanged.
+  const sinrLiveCellPulseConeItems = useMemo(
+    () => (showSinrLiveHandoverPulse
+      ? resolveSinrLiveHandoverPulseConeItems({
+        recentHandoverEvents: sim.sinrLiveCells?.recentHandoverEvents,
+        simTimeSec: sim.sinrLiveCells?.simTimeSec ?? 0,
+        retentionSec: SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
+        placementByCellId: sinrLiveCellPlacementById,
+        satelliteWorldById: viz.coneApexWorldById,
+        frequencyReuse: profile.beams.frequencyReuse,
+      })
+      : []),
+    [showSinrLiveHandoverPulse, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse],
   );
   const sinrLiveCellServedCount = showSinrLiveCellBeams
     ? sim.sinrLiveCells?.servedCellCount ?? 0
@@ -1374,6 +1398,7 @@ function SceneContent({
         sinrLiveCellHandoverPairConeCount={String(sinrLiveCellHandoverPairConeItems.length)}
         sinrLiveCellHandoverPairSourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}
         sinrLiveCellHandoverPairEventId={runtime.candidateHighlight?.eventId ?? ''}
+        sinrLiveHandoverPulseConeCount={showSinrLiveHandoverPulse ? String(sinrLiveCellPulseConeItems.length) : ''}
         modqnVisualLayerPreset={showCellOverlay ? modqnVisualLayerPreset : ''}
         modqnServiceMapEnabled={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? '1' : '0'}
         modqnServedUeCount={showModqnServiceAllocation ? modqnServiceMap.servedUeCount : 0}
@@ -1544,6 +1569,16 @@ function SceneContent({
           telemetrySourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}
           telemetryEventIdDatasetKey="sinrLiveCellHandoverPairConeRenderedEventId"
           telemetryEventId={runtime.candidateHighlight?.eventId ?? ''}
+        />
+      )}
+      {/* G2c ambient live-handover pulse — bright, age-faded cones on each real
+          per-frame handover. Per-item opacity (the fade) is carried on each cone,
+          so no group opacity is passed. Always-on on sinr-live, decoupled from the
+          director cinema above. */}
+      {sinrLiveCellPulseConeItems.length > 0 && (
+        <SinrLiveCellBeamCones
+          items={sinrLiveCellPulseConeItems}
+          telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"
         />
       )}
       {SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats

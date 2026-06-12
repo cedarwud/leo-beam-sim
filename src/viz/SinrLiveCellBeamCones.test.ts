@@ -28,14 +28,18 @@ import {
   resolveSinrLiveCellBeamConeRenderCount,
   resolveSinrLiveCellBeamConeSatelliteCount,
   resolveSinrLiveCellHandoverPairConeItems,
+  resolveSinrLiveHandoverPulseConeItems,
+  sinrLiveHandoverPulseOpacity,
   resolveTopServingFocusSatIds,
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
+import type { SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
 import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import {
   SINR_LIVE_CONE_AMBIENT_OPACITY,
   SINR_LIVE_CONE_BLENDING,
   SINR_LIVE_CONE_PAIR_OPACITY,
+  SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
 } from '../constants/sinrLiveConeStyle';
 import { buildSinrLiveCellLayout } from '../scene/sinrLiveCellRuntime';
@@ -330,6 +334,107 @@ check('S5-2 D4 pair resolver: inert unless the focused event is cell truth; draw
   });
   assertEqual(pair.length, 2, 'cell-truth event draws the old + new cell-truth cones');
   assert(pair.some(c => c.satId === 'sat-A') && pair.some(c => c.satId === 'sat-B'), 'both old and new sats present');
+});
+
+// ---------------------------------------------------------------------------
+// G2c ambient live-handover PULSE resolver (decoupled from the director cinema).
+// ---------------------------------------------------------------------------
+
+const RET = 4;
+function pulseEvent(opts: Partial<SinrLiveCellHandoverEvent> & { sourceTimeSec: number }): SinrLiveCellHandoverEvent {
+  return {
+    ueId: 'ue-0',
+    kind: 'inter',
+    fromSatId: 'sat-A',
+    fromCellId: 0,
+    toSatId: 'sat-B',
+    toCellId: 2,
+    ...opts,
+  };
+}
+
+const PULSE_REUSE = 3;
+function pulseInput(events: SinrLiveCellHandoverEvent[] | undefined, simTimeSec = 450) {
+  return { recentHandoverEvents: events, simTimeSec, retentionSec: RET, placementByCellId, satelliteWorldById, frequencyReuse: PULSE_REUSE };
+}
+
+console.log('\nSinrLiveCellBeamCones live-pulse resolver checks:');
+
+check('pulse fade curve: peak at age 0, 0 at/after the horizon, half at the midpoint, 0 on NaN', () => {
+  approx(sinrLiveHandoverPulseOpacity(0, RET), SINR_LIVE_CONE_PULSE_PEAK_OPACITY, 1e-9, 'age 0 → peak opacity (0.32)');
+  approx(sinrLiveHandoverPulseOpacity(RET / 2, RET), SINR_LIVE_CONE_PULSE_PEAK_OPACITY / 2, 1e-9, 'midpoint → half peak');
+  assertEqual(sinrLiveHandoverPulseOpacity(RET, RET), 0, 'at the horizon → 0');
+  assertEqual(sinrLiveHandoverPulseOpacity(RET + 0.1, RET), 0, 'past the horizon → 0');
+  assertEqual(sinrLiveHandoverPulseOpacity(-0.1, RET), 0, 'negative age (future event) → 0');
+  // Finite guard: a NaN age must clamp to 0, not fall through to a NaN opacity.
+  assertEqual(sinrLiveHandoverPulseOpacity(NaN, RET), 0, 'NaN age → 0 (finite guard)');
+  assertEqual(sinrLiveHandoverPulseOpacity(0, NaN), 0, 'NaN retention → 0 (finite guard)');
+});
+
+check('no recent handovers (undefined / empty) → no pulse cones (off-lane / cold no-op)', () => {
+  assertEqual(resolveSinrLiveHandoverPulseConeItems(pulseInput(undefined)).length, 0, 'undefined events → no cones');
+  assertEqual(resolveSinrLiveHandoverPulseConeItems(pulseInput([])).length, 0, 'empty events → no cones');
+});
+
+check('a fresh inter-HO draws the OLD + NEW cell cones, both at peak opacity', () => {
+  const items = resolveSinrLiveHandoverPulseConeItems(pulseInput([pulseEvent({ sourceTimeSec: 450 })])); // age 0
+  assertEqual(items.length, 2, 'old (sat-A/cell-0) + new (sat-B/cell-2) cones');
+  assert(items.some(i => i.satId === 'sat-A' && i.cellId === 0), 'old cell cone present');
+  assert(items.some(i => i.satId === 'sat-B' && i.cellId === 2), 'new cell cone present');
+  for (const i of items) approx(i.opacity ?? -1, SINR_LIVE_CONE_PULSE_PEAK_OPACITY, 1e-9, 'fresh pulse cone at peak opacity');
+});
+
+check('a NaN simTimeSec yields NO pulse cones (no NaN-opacity cone slips through)', () => {
+  const items = resolveSinrLiveHandoverPulseConeItems(pulseInput([pulseEvent({ sourceTimeSec: 450 })], NaN));
+  assertEqual(items.length, 0, 'NaN sim-time → every pulse opacity 0 → skipped (no NaN material opacity)');
+});
+
+check('pulse cones fade by age: an older event is dimmer; a horizon-aged event draws nothing', () => {
+  const fresh = resolveSinrLiveHandoverPulseConeItems(pulseInput([pulseEvent({ sourceTimeSec: 449 })])); // age 1
+  const stale = resolveSinrLiveHandoverPulseConeItems(pulseInput([pulseEvent({ sourceTimeSec: 447 })])); // age 3
+  assert((fresh[0].opacity ?? 0) > (stale[0].opacity ?? 0), 'younger pulse is brighter than older');
+  const aged = resolveSinrLiveHandoverPulseConeItems(pulseInput([pulseEvent({ sourceTimeSec: 446 })])); // age 4 = horizon
+  assertEqual(aged.length, 0, 'a pulse aged to the horizon draws nothing (opacity 0 → skipped)');
+});
+
+check('intra-HO (from cell present) draws both cells; an unplaced/unrendered side is skipped', () => {
+  const intra = resolveSinrLiveHandoverPulseConeItems(pulseInput([
+    pulseEvent({ kind: 'intra', fromSatId: 'sat-A', fromCellId: 0, toSatId: 'sat-A', toCellId: 1, sourceTimeSec: 450 }),
+  ]));
+  assertEqual(intra.length, 2, 'intra draws old cell-0 + new cell-1 (same sat)');
+  // New cell has no placement (cell 99) → only the OLD cell draws.
+  const partial = resolveSinrLiveHandoverPulseConeItems(pulseInput([pulseEvent({ toCellId: 99, sourceTimeSec: 450 })]));
+  assertEqual(partial.length, 1, 'unplaced new cell skipped; old cell still pulses');
+  assertEqual(partial[0].cellId, 0, 'the placed old cell-0 drew');
+});
+
+check('multiple concurrent events each pulse independently with DISTINCT stable keys (no array-index churn)', () => {
+  const items = resolveSinrLiveHandoverPulseConeItems(pulseInput([
+    pulseEvent({ ueId: 'ue-0', sourceTimeSec: 450 }), // age 0 → 2 cones
+    pulseEvent({ ueId: 'ue-1', toCellId: 1, sourceTimeSec: 448 }), // age 2 → 2 cones, dimmer
+  ]));
+  assertEqual(items.length, 4, 'two live events → four cones');
+  // Every pulse cone carries a per-event/side stable renderKey (never an array index),
+  // and the four are distinct so React reconciles by identity, not position.
+  assert(items.every(i => typeof i.renderKey === 'string' && i.renderKey.length > 0), 'every pulse cone carries a stable renderKey');
+  assertEqual(new Set(items.map(i => i.renderKey)).size, 4, 'all four pulse cone keys are distinct');
+});
+
+check('pulse cone colour == the cell\'s frequency-reuse colour (matches the ambient cone, NOT raw cellId)', () => {
+  // cellId 3 with reuse 3 → cellFrequencyIndex = 0; the buggy raw-cellId path would
+  // colour by frequencyReuseColor(3). The ambient layer colours cell 3 by
+  // frequencyReuseColor(0), so the pulse must match that, not the raw cellId.
+  const placement3 = new Map<number, SinrLiveCellPlacement>([
+    [3, { cellId: 3, worldX: 10, worldZ: -10, radiusWorld: 12 }],
+  ]);
+  const items = resolveSinrLiveHandoverPulseConeItems({
+    recentHandoverEvents: [pulseEvent({ kind: 'intra', fromSatId: 'sat-A', fromCellId: 3, toSatId: 'sat-A', toCellId: 3, sourceTimeSec: 450 })],
+    simTimeSec: 450, retentionSec: RET, placementByCellId: placement3, satelliteWorldById, frequencyReuse: 3,
+  });
+  assert(items.length >= 1, 'cell-3 pulse cone drew');
+  assertEqual(items[0].frequencyIndex, 0, 'cell 3 under reuse 3 → frequency index 0 (cellId % reuse)');
+  assertEqual(items[0].color, frequencyReuseColor(0), 'pulse colour == ambient frequency-reuse colour for cell 3');
+  assert(items[0].color !== frequencyReuseColor(3), 'pulse colour is NOT the raw-cellId mis-mapping');
 });
 
 console.log(`\nSinrLiveCellBeamCones resolver: ${passed} checks passed.`);
