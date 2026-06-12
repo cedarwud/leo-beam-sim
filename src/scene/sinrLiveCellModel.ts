@@ -85,6 +85,16 @@ const CELL_BEAM_ID_OFFSET = 1;
 
 export type ServingTransitionKind = 'none' | 'intra' | 'inter' | 'attach' | 'drop';
 
+/**
+ * How long (sim-seconds) a fired handover is retained in
+ * {@link SinrLiveCellFrame.recentHandoverEvents} for the ambient live-handover
+ * pulse to fade it out. A display-RETENTION horizon, not a truth parameter: it
+ * only bounds how long a real, already-classified event stays exposed for decay;
+ * the render picks its own fade ≤ this. Sized a touch above the render fade so a
+ * pulse never clips mid-fade.
+ */
+export const SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC = 4;
+
 export interface UeInput {
   readonly id: string;
   /** True position, observer-relative ENU km (east, north). */
@@ -168,6 +178,28 @@ export interface IlluminatedCellBeam {
   readonly serving: boolean;
 }
 
+/**
+ * A real per-UE serving handover the model classified (§5.2). Carries the
+ * old→new (sat, cell) pair + the sim-time it fired, so the ambient live-handover
+ * pulse render (G2) can light the involved cells and decay them by age. It is a
+ * pure READ-OUT of the transitions already classified at
+ * {@link classifyServingTransition} (the same ones counted in
+ * intra/interHandoverCount) — exposing them changes no serving truth (Rule#6). A
+ * cold attach / service drop is NOT a handover and is excluded.
+ */
+export interface SinrLiveCellHandoverEvent {
+  readonly ueId: string;
+  readonly kind: 'intra' | 'inter';
+  /** Sim-time the transition fired; display-decay age = frame.simTimeSec − this. */
+  readonly sourceTimeSec: number;
+  /** Previous serving (the cell the UE handed OFF). For an inter-HO this sat differs from `toSatId`. */
+  readonly fromSatId: string | null;
+  readonly fromCellId: number | null;
+  /** New serving (the cell the UE handed ONTO) — always served on a real HO. */
+  readonly toSatId: string;
+  readonly toCellId: number;
+}
+
 export interface SinrLiveCellFrame {
   readonly simTimeSec: number;
   readonly cells: readonly CellServingRecord[];
@@ -182,6 +214,16 @@ export interface SinrLiveCellFrame {
   readonly servingSatCount: number;
   readonly intraHandoverCount: number;
   readonly interHandoverCount: number;
+  /**
+   * Real handovers that fired within the last
+   * {@link SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC} of sim-time (this frame's plus
+   * the recent rolling window), newest last. The ambient live-handover pulse (G2)
+   * reads these + each event's `sourceTimeSec` to light the involved cells and fade
+   * them by age — so handovers stay visible across the throttled frame publish
+   * instead of flickering for one frame. Cleared on reset/rebase (a teleport is not
+   * a handover). Display read-out of truth; the serving decision is unchanged.
+   */
+  readonly recentHandoverEvents: readonly SinrLiveCellHandoverEvent[];
 }
 
 /**
@@ -445,6 +487,10 @@ export class SinrLiveCellModel {
   private readonly antenna: Profile['antenna'];
   private readonly cellManagers = new Map<number, HandoverManager>();
   private prevUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
+  // Rolling log of handovers fired within the last retention window (sim-time),
+  // for the ambient live-handover pulse to fade by age. Pruned each step; cleared
+  // on reset/rebase (a teleport is not a handover — mirrors prevUeServing).
+  private recentHandovers: SinrLiveCellHandoverEvent[] = [];
 
   constructor(config: SinrLiveCellModelConfig) {
     this.profile = config.profile;
@@ -497,6 +543,7 @@ export class SinrLiveCellModel {
   reset(): void {
     for (const manager of this.cellManagers.values()) manager.reset();
     this.prevUeServing = new Map();
+    this.recentHandovers = [];
   }
 
   /**
@@ -527,6 +574,7 @@ export class SinrLiveCellModel {
   rebase(deltaMs: number): void {
     for (const manager of this.cellManagers.values()) manager.rebase(deltaMs);
     this.prevUeServing = new Map();
+    this.recentHandovers = [];
   }
 
   /**
@@ -719,6 +767,7 @@ export class SinrLiveCellModel {
     const nextUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
     let intraHandoverCount = 0;
     let interHandoverCount = 0;
+    const firedHandovers: SinrLiveCellHandoverEvent[] = [];
     for (const ue of ues) {
       const membership = assignUeToNearestCell(ue, this.cellLayout);
       const cellId = membership.cellId;
@@ -747,9 +796,24 @@ export class SinrLiveCellModel {
       }
 
       const next = { satId: servingSatId, cellId };
-      const kind = classifyServingTransition(this.prevUeServing.get(ue.id) ?? null, next);
+      const prevServing = this.prevUeServing.get(ue.id) ?? null;
+      const kind = classifyServingTransition(prevServing, next);
       if (kind === 'intra') intraHandoverCount += 1;
       else if (kind === 'inter') interHandoverCount += 1;
+      // Emit the real handover for the ambient live-pulse (inter/intra only; a
+      // cold attach / drop is not a handover). next is served on a real HO, so
+      // its sat/cell are non-null.
+      if ((kind === 'intra' || kind === 'inter') && servingSatId !== null && cellId !== null) {
+        firedHandovers.push({
+          ueId: ue.id,
+          kind,
+          sourceTimeSec: simTimeSec,
+          fromSatId: prevServing?.satId ?? null,
+          fromCellId: prevServing?.cellId ?? null,
+          toSatId: servingSatId,
+          toCellId: cellId,
+        });
+      }
       nextUeServing.set(ue.id, next);
 
       ueRecords.push({
@@ -770,6 +834,14 @@ export class SinrLiveCellModel {
     }
     this.prevUeServing = nextUeServing;
 
+    // Roll the recent-handover log forward: append this frame's events, drop any
+    // older than the retention window (and any whose age is negative — a defensive
+    // guard; a real sim-time jump clears the log via reset/rebase). Newest last.
+    this.recentHandovers = [...this.recentHandovers, ...firedHandovers].filter(event => {
+      const ageSec = simTimeSec - event.sourceTimeSec;
+      return ageSec >= 0 && ageSec <= SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC;
+    });
+
     return {
       simTimeSec,
       cells: cellRecords,
@@ -780,6 +852,7 @@ export class SinrLiveCellModel {
       servingSatCount: new Set(finalServingByCell.values()).size,
       intraHandoverCount,
       interHandoverCount,
+      recentHandoverEvents: this.recentHandovers,
     };
   }
 

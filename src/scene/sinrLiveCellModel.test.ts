@@ -22,6 +22,7 @@ import { loadProfile } from '../profiles/index';
 // RUNTIME-wired consts, so the behaviour the gate proves is the shipped config.
 import { SINR_LIVE_BEAMS_PER_SAT, SINR_LIVE_HOP_SLOT_SEC } from './sinrLiveCellRuntime';
 import {
+  SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
   SinrLiveCellModel,
   type CellModelSat,
   assignUeToNearestCell,
@@ -246,6 +247,7 @@ check('cold attach is not a handover; UE crossing into a same-sat cell IS an int
   assertEqual(f0.ues[0].handoverKind, 'attach', 'first acquisition is a cold attach');
   assertEqual(f0.ues[0].cellId, 0, 'UE starts in cell 0');
   assertEqual(f0.intraHandoverCount, 0, 'no intra on attach');
+  assertEqual(f0.recentHandoverEvents.length, 0, 'a cold attach emits NO live-pulse handover event');
 
   // move the UE into the east cell, still under the same overhead sat
   const f1 = model.step({
@@ -259,6 +261,51 @@ check('cold attach is not a handover; UE crossing into a same-sat cell IS an int
   assertEqual(f1.ues[0].handoverKind, 'intra', 'same sat + new cell → intra-HO');
   assertEqual(f1.intraHandoverCount, 1, 'one intra this frame');
   assertEqual(f1.interHandoverCount, 0, 'no inter (sat unchanged)');
+
+  // G2: the intra-HO is exposed as a live-pulse event carrying the old→new pair
+  // + its fire time, so the ambient pulse can light cell 0→cell 1 and fade by age.
+  assertEqual(f1.recentHandoverEvents.length, 1, 'the intra-HO emits exactly one live-pulse event');
+  const ev = f1.recentHandoverEvents[0];
+  assertEqual(ev.kind, 'intra', 'event kind matches the classified transition');
+  assertEqual(ev.ueId, 'm', 'event carries the UE that handed over');
+  assertEqual(ev.fromCellId, 0, 'fromCellId = the cell handed OFF');
+  assertEqual(ev.toCellId, 1, 'toCellId = the cell handed ONTO');
+  assertEqual(ev.fromSatId, 'over', 'intra keeps the same sat (from)');
+  assertEqual(ev.toSatId, 'over', 'intra keeps the same sat (to)');
+  assertEqual(ev.sourceTimeSec, 1, 'event fire-time = the frame sim-time');
+});
+
+check('live-pulse handover events fade out of the retention window by sim-time', () => {
+  const layout = testLayout(7);
+  const model = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
+  const overhead = makeSat({ id: 'over', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const eastCell = layout.centers[1];
+
+  model.step({ visibleSats: [overhead], ues: [{ id: 'm', eastKm: 0, northKm: 0 }], simTimeSec: 0, dtSec: 1 });
+  const fired = model.step({
+    visibleSats: [overhead],
+    ues: [{ id: 'm', eastKm: eastCell.localXKm, northKm: eastCell.localYKm }],
+    simTimeSec: 1,
+    dtSec: 1,
+  });
+  assertEqual(fired.recentHandoverEvents.length, 1, 'the HO is present the frame it fires');
+
+  // Still in window one retention-horizon later (boundary kept), then dropped past it.
+  const atHorizon = model.step({
+    visibleSats: [overhead],
+    ues: [{ id: 'm', eastKm: eastCell.localXKm, northKm: eastCell.localYKm }],
+    simTimeSec: 1 + SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
+    dtSec: 1,
+  });
+  assertEqual(atHorizon.recentHandoverEvents.length, 1, 'the HO is still exposed AT the retention horizon (age = window)');
+
+  const pastHorizon = model.step({
+    visibleSats: [overhead],
+    ues: [{ id: 'm', eastKm: eastCell.localXKm, northKm: eastCell.localYKm }],
+    simTimeSec: 1 + SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC + 0.5,
+    dtSec: 1,
+  });
+  assertEqual(pastHorizon.recentHandoverEvents.length, 0, 'the HO is pruned once it ages past the retention window');
 });
 
 check('idle cells: no visible sats → every cell unserved, every UE null SINR (honest)', () => {
