@@ -1,0 +1,130 @@
+# G3 Step 3 — Family-B dense-Q replay mode (wiring plan)
+
+> Status: PLANNED (recon done, not implemented). Pick this up in a fresh session.
+> Authority for context: `.agent-memory/project_showcase_render_modqn_plan_2026-06-10.md`
+> (the 2026-06-13 section). Recon workflow output (full ~488KB map):
+> `wf_7092bde0-e08` task output. The dense-Q **adapter** bug is already FIXED +
+> committed (`11abe27`); this doc is ONLY the bundle-wiring slice that follows.
+
+## Goal
+Make leo's MODQN replay lane load the producer Grade-2 dense-Q bundle as a NEW
+selectable mode so DecisionViz renders Q1/Q2/Q3 (the G3 "prove MODQN integrated"
+payoff). User decision (2026-06-13): **A — new dedicated Family-B mode**, do NOT
+overwrite the baseline identity.
+
+## Inputs (already done)
+- Producer Grade-2 bundle on disk:
+  `/home/u24/papers/modqn-paper-reproduction/artifacts/dense-q-proof-window-600-130/`
+  (manifest.json + provenance-map.json + timeline/step-trace.jsonl 164MB +
+  visual-showcase-v1.json 26.7MB). ntn-sim-core `validate:visual-showcase:artifact`
+  = OK. Branch `feat/dense-q-export` PR#2, commit `abb0ba5`.
+- leo dense-Q adapter fix `11abe27` (action-order sourced from the catalog) — the
+  proof returns **1000/1000 proof-ready** once the envelope loads this bundle.
+
+## THE KEY FINDING — the bundle is DUAL-AXIS (why this is real work, not a label)
+Per-row shape (verified):
+
+| array | length | axis |
+|---|---|---|
+| `beamStates` | **144** | PHYSICAL render-beams (4 sats; 144 unique `beamId`, only 37 unique `beamIndex`) |
+| `visibilityMask` / `actionValidityMask` / `decisionVisibilityMask` / `decisionActionValidityMask` | **28** | action catalog (A) |
+| `beamLoads` / `beamThroughputs` | **28** | action catalog |
+| `policyDiagnostics.{candidateActionOrder,objectiveQByAction,scalarizedQByAction}` | **28** | action catalog |
+| `satelliteStates` | 4 | — |
+| manifest `baselineSurface` | `{satelliteCount:4, beamCountPerSatellite:7, totalBeamCount:28}` | declares the **catalog** (28), NOT the 144 physical |
+
+leo's replay model assumed `beamStates` IS the action catalog (single axis). BOTH
+shape validators hard-require `beamStates.length === totalBeamCount`:
+- `validateEvidenceCapableBundleShape` (baseline) `replay-state.ts:358` (also pins
+  sourcePath===SELECTED, 28-beam, event counts 82/0/918).
+- `validateUserTrainedBundleShape` (flexible) `replay-state.ts:442` — fails at
+  `:466` (beamStates len), `:475` (unique beamId count===totalBeamCount), `:477`
+  (unique beamIndex count===totalBeamCount).
+
+So **riding user-trained does NOT work**; Family-B needs its OWN dual-axis shape
+validator. This is the same physical-vs-catalog conflation as the original adapter
+bug, now at the bundle-shape level.
+
+## New dual-axis shape validator spec (`validateFamilyBDenseQBundleShape`)
+Per row, assert:
+- `satelliteStates.length === satelliteCount` (4).
+- catalog-axis arrays (`visibilityMask`, `actionValidityMask`,
+  `decisionVisibilityMask`, `decisionActionValidityMask`, `beamLoads`,
+  `beamThroughputs`) length `=== totalBeamCount` (28).
+- `policyDiagnostics.{candidateActionOrder,objectiveQByAction,scalarizedQByAction}`
+  length `=== totalBeamCount` (28). (This is what unlocks the dense-Q proof.)
+- `beamStates.length >= totalBeamCount`, with UNIQUE `beamId` (144 unique) — do
+  NOT assert unique `beamIndex` (only 37 unique; beamIndex repeats across sats).
+  The physical count (144) is not in the manifest; either accept `>= totalBeamCount`
+  + uniqueness, OR add a manifest field `physicalBeamCount` (decide at impl).
+- `previousServing` / `selectedServing` reference a beam in `beamStates` (physical,
+  144) — reuse `assertReferenceMatchesBeamCatalog` against the beamStates map.
+- 1000 rows, 10 slots (or leave row/slot flexible — see risk below).
+- Event counts: flexible, sum to rowCount (125 HOs — NOT baseline 82/0/918).
+
+## File-by-file edit plan (~6-8 files, ~20 points — all governance-locked)
+1. `src/modqn/replay-bundle/replay-state.ts`
+   - New consts after :49: `MODQN_FAMILY_B_DENSE_Q_MODE_KEY` (`'modqn-family-b-dense-q'`),
+     `_MODE_LABEL` (`'MODQN Family-B dense-Q proof'`), `_EVIDENCE_STATUS`
+     (`'family-b-dense-q'`), `_BUNDLE_PATH` (`/tmp/leo-beam-sim/modqn-bundles/dense-q-proof-window-600-130`).
+   - Extend `ModqnReplayEvidenceStatus` (:61), `ModqnReplayAdapterModeKey` (:66),
+     `ModqnReplayAdapterModeLabel` (:71).
+   - NEW `validateFamilyBDenseQBundleShape` (after `validateUserTrainedBundleShape` :482) — spec above.
+   - `createModqnReplayBundleLoadPlan` (:715): add a branch for the new modeKey;
+     **allowlist** the new path at the fail-closed asserts `:359` and `:757`
+     (currently `sourcePath !== SELECTED → fail`).
+   - `createClaimBoundary` (:484): 4th branch (`acceptedEvidenceShape:'family-b-dense-q-proof-window'`,
+     `artifactStatus:'family-b-dense-q-window'`, allowedClaims = honest non-paper-faithful
+     Grade-2 wording; keep shared forbiddenClaims).
+   - `createIdentityMap` (:534): skip beam-layout bridges for the new evidence status
+     (like user-trained — return empty bridges).
+   - `createModqnReplayEnvelopeFromBundle` (:808/:818): call the new validator +
+     map evidenceStatus → new modeKey/modeLabel.
+   - `createDiagnostics` (:699): bridgeStatus `'skipped-family-b-dense-q-window'`.
+   - `loadModqnReplayEnvelopeFromSurfaceReader` (:914): modeKey override for the new status.
+2. `src/modqn/replay-bundle/playback-shell.ts`
+   - Import the new consts; extend the validation-code union (~:110); add dispatcher
+     branch (`:150` — else currently returns `'unexpected-mode'`); NEW
+     `validateFamilyBDenseQPlaybackModel` (rowCount/slotCount + flexible event sum).
+3. `vite.config.ts` — serve the new bundle over `/modqn-bundles/<basename>/...`:
+   add a 2nd accepted basename (`:154` exact-match check) OR symlink + a 2nd FS path
+   const. Skip `ensureModqnBundleExport` for it (producer already exported). NOTE the
+   separate `/showcase-artifacts/visual-showcase-v1.json` middleware is a DIFFERENT
+   consumer — leave it or repoint independently.
+4. `src/App.tsx` — mode-selector state/UI; pass `modeKey` +
+   `sourcePath` to `fetchModqnReplayBundleEnvelope`. Must NOT default-select Family-B.
+5. `src/ui/DegenerateDataBanner.tsx` — **HONESTY**: Family-B is Grade-2-constrained
+   (2 serving sats, 2 unique selected actions, 125 HOs) — NOT degenerate. Gate the
+   banner on `evidenceStatus`/`modeKey`; Family-B needs its own honest disclosure,
+   not the baseline "degenerate" text. (CLAUDE.md Rule#3 — governance review.)
+6. NEW `scripts/validate-modqn-phase7e-dense-q-proof-replay-state.ts` (parallel to
+   phase7c) — load the Family-B bundle from disk, assert envelope identity + dual-axis
+   shape + dense-Q proof-ready over the rows.
+7. Extend `scripts/validate-modqn-phase7d-replay-diagnostics.ts` for the new mode
+   (Rule#9 atomic — gate + aggregate together).
+8. Staging: `ln -s /home/u24/papers/modqn-paper-reproduction/artifacts/dense-q-proof-window-600-130 /tmp/leo-beam-sim/modqn-bundles/dense-q-proof-window-600-130`
+   (or copy). Needed for both disk validators AND the dev-server fetch.
+
+## Fail-closed assert TRAPS (allowlist, do NOT delete)
+`replay-state.ts:359`, `:757` (sourcePath===SELECTED), `playback-shell.ts:150`
+dispatcher else→`'unexpected-mode'`, `createClaimBoundary` 3-status ternary,
+`MODQN_EXPECTED_EVENT_COUNTS` (baseline 82/0/918) — none must fire for the new mode.
+Miss one and the demo fails-closed (source-gap) with no Q1/Q2/Q3.
+
+## Validation sequence
+`npm run lint` → new `validate:modqn:phase7e` → `validate:modqn:replay-handover-cinema-gate`
+→ `validate:modqn:dense-q-proof-adapter` → `validate:governance` → un-park Proof
+sub-view (parked by `408f488`; `ModqnViewToggle` Proof segment + `canToggleModqnReplayProof`)
+→ browser smoke (DecisionViz `data-dense-q-proof-status="proof-ready"`, Q1/Q2/Q3 visible).
+
+## Honesty notes
+- Grade-2 = non-degenerate (125 HOs) but THIN (2 serving sats / 2 unique selected
+  actions). Banner/labels must say "Grade-2 constrained, non-paper-faithful trained
+  replay", never overclaim.
+- This is the MODQN replay lane only; SINR-live showcase stays decoupled.
+
+## Open questions for impl
+- Physical beam count (144): accept `beamStates.length >= totalBeamCount` + beamId
+  uniqueness, or add a manifest `physicalBeamCount` field? (simplest = the former.)
+- Row/slot count: pin 1000/10 (matches this window) or leave flexible for future windows?
+- Mode selector UI placement (ControlBar vs sidebar vs ModqnViewToggle).
