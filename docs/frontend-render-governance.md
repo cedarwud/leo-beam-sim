@@ -320,6 +320,30 @@ MODQN live-cell visual presets are lane-owned:
   `claimKind=overlay-demo` and must not appear in replay proof or artifact
   lanes. It is not the default presentation surface.
 
+### MODQN degenerate-data parking — producer un-park checklist (S-DOC-6)
+
+Every MODQN lane currently replays a **degenerate producer baseline** (1 satellite,
+100 UEs on one beam, 0 handovers, flat SINR — see the baseline MODQN producer-data
+defects report). The 2026-06-12 consolidation (S-FLAG-2 / S-ADV-3 / S-ADV-4 /
+S-LABEL-5) THINNED the default MODQN-LIVE surface to the clean hex overlay + cones +
+satellite markers + director cinema + scene HUD, parking the degenerate readouts
+behind flags / Advanced **without deleting code or data paths** (it is the G3
+dense-Q proof scaffolding). What is parked, where it lives, and how to revive it:
+
+| Parked surface | Gate / location now | Un-park action |
+|---|---|---|
+| All-UE service map, UE-count badges, HUD service readout/legend/diagnostics, phase-3 beam-load cylinder + upload particles | `showModqnServiceAllocation` (= `showCellOverlay && modqnServiceAllocationEnabled`), default OFF via `MODQN_SERVICE_ALLOCATION_PRODUCER_READY=false` | Flip `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` true (or wire a runtime producer-readiness signal into the render-plan input); `?modqnServiceAllocation=1` is the dev/validator override |
+| Rich cell layers (service map, story cues, next-slot arcs) off the default preset | default preset `minimal` (`DEFAULT_MODQN_VISUAL_LAYER_PRESET`) | User opt-in to Baseline / Service / Explain / Debug in the Advanced setup drawer (kept) |
+| Legacy Top-K decision preview | relocated to the Advanced setup drawer (`ModqnTopKDecisionPreview`) | Goes live as real evidence once the producer ships dense-Q; consider re-homing to the default Evidence rail then |
+| MODQN Proof sub-view | hidden until `canToggleModqnReplayProof` | producer dense-Q export flips `buildModqnDenseQProof` → `proof-ready` (re-shows the Proof segment) |
+
+**Single producer trigger:** the dense-Q export request
+(`docs/handoff/producer-dense-q-export-request.md`) plus the four baseline-defect
+fixes (spatial per-beam UE assignment / per-beam pattern+interference / reward-scale
+normalization vs the 982× throughput dominance / real inter-intra HO events). When
+that lands, the honesty relabels (S-LABEL-5: the ModqnSceneHud banner, the ω-editor
+inert note, the DiagnosticsDrawer "not producer proof" note) must be revisited too.
+
 Handover story overlays are lane-owned:
 
 - `sinr-live` uses the existing live SINR beam and handover visuals.
