@@ -67,18 +67,33 @@ and [docs/frontend-mode-lane-separation-sdd.md](./docs/frontend-mode-lane-separa
 before changing `scene/`, `viz/`, `ui/`, or runtime rendering boundaries, and
 update `validate:frontend:scene-lane-governance` when a lane rule changes.
 
-**Mechanical enforcement (binds EVERY agent, not just memory-equipped Claude).**
-These rules are prose — prose is advisory. The load-bearing enforcement is the
-`.githooks/pre-commit` hook, which runs `npm run validate:governance` (lint +
-`scene-lane-governance` + the `s0:connected-sat-has-beam` must-hold +
-`s0:geometry-trace` truth-zero-diff golden) and BLOCKS any commit — by Claude,
-Codex, any agent, or a human — that breaks a foundation guard. Every agent MUST
-run `npm run setup:hooks` once per clone (it sets git `core.hooksPath=.githooks`);
-an agent that skips this, or that did not read these docs, is still caught the
-moment its commit runs the hook. Do NOT normalize `git commit --no-verify` — it
-exists only for a genuinely unrelated pre-existing failure, and the bypasser owns
-the consequence. When a foundation gate's scope changes, update both the gate and
-this hook's gate list together (Rule#9 atomic).
+**Enforcement (layered — and honest about its limits).** Prose is advisory; the
+executable layer is what catches an agent (esp. memory-less Codex) that did not
+read or recall these rules. Three gates, fast→thorough:
+- `.githooks/pre-commit` runs `npm run validate:governance` (lint +
+  `scene-lane-governance` + `s0:connected-sat-has-beam` must-hold +
+  `s0:geometry-trace` truth-zero-diff golden, ~15s) and BLOCKS a breaking commit.
+  Kept fast on purpose so it is not bypass-bait.
+- `npm run validate:governance:full` (~165s, MANUAL) adds the S1–S5 deterministic
+  invariant gates — the full static boundary. Too slow to auto-hook (would breed
+  `--no-verify`); run it before a handoff/PR.
+- `npm run validate:ready` adds the browser/render smoke (`validate:live-render`;
+  needs a running vite + `APP_URL`). Run before declaring render work done.
+Activation is automatic: the `prepare` npm script sets git
+`core.hooksPath=.githooks` on `npm install`, so any agent that installs deps is
+bound (manual fallback `npm run setup:hooks`).
+
+**LIMITS — do not overclaim (codex-reviewed).** This is a COOPERATIVE gate, not
+adversarial enforcement: (1) if `core.hooksPath` was never set the hook silently
+does nothing — git gives no warning; (2) the hook + its scripts live in the
+working tree, so a single commit can both regress AND defang the gate; (3)
+browser/render coverage lives only in the MANUAL `validate:ready`, not the auto
+hook. The threat model it binds is a forgetful / memory-less agent re-breaking a
+solved lock — NOT an agent deliberately subverting governance. The only
+UNBYPASSABLE layer is server-side CI on a PR; the repo has no remote/PR flow yet,
+so when it gets one, wire `validate:governance:full` + `validate:ready` into
+required CI. Do NOT normalize `git commit --no-verify`. When a gate's scope
+changes, update the gate AND these aggregates together (Rule#9 atomic).
 
 ## 6. Local Docs
 
