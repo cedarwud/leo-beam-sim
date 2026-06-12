@@ -21,16 +21,19 @@ import { useEffect, useRef, useState, type ReactElement } from 'react';
 import type { AppExperienceMode } from './appMode';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 import type { ModqnVisualLayerPreset } from '../scene/modqnVisualLayers';
+import type { SimState } from '../scene/types';
 import { ModqnAdvancedDisplayControls } from './modqn-controls/ModqnAdvancedDisplayControls';
 import { TrainingForm } from './modqn-training/TrainingForm';
 import { JobsPanel } from './modqn-training/JobsPanel';
 import { ModqnObjectiveTab } from './ModqnObjectiveTab';
+import { ModqnTopKDecisionPreview } from './ModqnTopKDecisionPreview';
 
 interface AdvancedSetupDrawerProps {
   readonly appMode: AppExperienceMode;
   readonly handoverMode: RuntimeHandoverMode;
   readonly modqnVisualLayerPreset: ModqnVisualLayerPreset;
   readonly showDecisionPolicyControls: boolean;
+  readonly simState: SimState;
   readonly onModqnVisualLayerPresetChange: (preset: ModqnVisualLayerPreset) => void;
   readonly onModqnDecisionPolicyChange: (mode: RuntimeHandoverMode) => void;
 }
@@ -40,6 +43,7 @@ export function AdvancedSetupDrawer({
   handoverMode,
   modqnVisualLayerPreset,
   showDecisionPolicyControls,
+  simState,
   onModqnVisualLayerPresetChange,
   onModqnDecisionPolicyChange,
 }: AdvancedSetupDrawerProps): ReactElement {
@@ -116,6 +120,10 @@ export function AdvancedSetupDrawer({
               <TrainingForm appMode={appMode} />
               <JobsPanel appMode={appMode} />
               <ModqnObjectiveTab />
+              {/* S-ADV-4: the relocated legacy Top-K decision preview (degenerate /
+                  empty on the baseline producer artifact) lives here, off the
+                  default Evidence rail. */}
+              <ModqnTopKDecisionPreview simState={simState} />
             </div>
           </div>
         </div>

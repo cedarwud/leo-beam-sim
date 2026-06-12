@@ -2005,6 +2005,7 @@ export function App() {
               handoverMode={handoverMode}
               modqnVisualLayerPreset={modqnVisualLayerPreset}
               showDecisionPolicyControls={sceneLane === 'modqn-live-cell-preview'}
+              simState={simState}
               onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}
               onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
             />

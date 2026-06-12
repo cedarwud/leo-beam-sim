@@ -175,13 +175,17 @@ interface DecisionTraceRow {
   readonly testId: string;
 }
 
-interface DecisionTrace {
+export interface DecisionTrace {
   readonly rows: readonly DecisionTraceRow[];
   readonly selectionChanged: 'yes' | 'no' | 'unavailable';
   readonly fallbackStatus: string;
 }
 
-function buildDecisionTrace(
+// S-ADV-4: exported so the relocated Top-K decision preview
+// (`ModqnTopKDecisionPreview`, mounted in the Advanced setup drawer) can build the
+// same legacy top-K trace from the shared MODQN handover state. ModqnEvidenceTab
+// still calls it for the provenance fallback status (a KEEP disclosure row).
+export function buildDecisionTrace(
   snapshot: UseModqnHandoverState['bundleSidebarSnapshot'],
   omegaActive: RuntimeOmegaState,
   simState: SimState,
@@ -397,29 +401,13 @@ export function ModqnEvidenceTab({
         </div>
       </section>
 
-      <section
-        className="leo-modqn-evidence-decision-trace"
-        data-testid="modqn-evidence-decision-trace"
-        data-selection-changed={decisionTrace.selectionChanged}
-        data-fallback-status={decisionTrace.fallbackStatus}
-        aria-label="MODQN top-K decision preview"
-      >
-        <div className="leo-modqn-objective-controls__title">Top-K decision preview</div>
-        {decisionTrace.rows.map(row => (
-          <div
-            key={row.testId}
-            className="leo-modqn-evidence-decision-trace__row"
-            data-testid={row.testId}
-          >
-            <span className="leo-modqn-evidence-decision-trace__label">{row.label}</span>
-            <span className="leo-modqn-evidence-decision-trace__value">{row.value}</span>
-          </div>
-        ))}
-        <p className="leo-modqn-evidence-decision-trace__note">
-          Legacy display preview from producer top-K diagnostics, not dense-Q proof. Producer selectedServing remains immutable.
-        </p>
-      </section>
-
+      {/* S-ADV-4: the legacy Top-K decision preview (the degenerate "empty top-K"
+          on the baseline producer artifact) is relocated to the Advanced setup
+          drawer as `ModqnTopKDecisionPreview`. The KEEP disclosure rows
+          (provenance / mode / source gaps / active ω) + the manifest stay here on
+          the default Evidence rail; only the noisy top-K preview moves. The
+          `decisionTrace` is still computed above for the provenance fallback
+          status. */}
       <section
         className="leo-modqn-evidence-manifest"
         data-testid="modqn-evidence-manifest"

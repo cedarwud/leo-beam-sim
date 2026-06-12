@@ -406,6 +406,13 @@ console.log('\n(k) Evidence / telemetry mode gating');
     path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/ModqnEvidenceTab.tsx'),
     'utf8',
   );
+  // S-ADV-4: the legacy Top-K decision preview was relocated from the default
+  // Evidence rail into the Advanced setup drawer; assert its rendered section now
+  // lives in the new component.
+  const topKPreviewSrc = fs.readFileSync(
+    path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/ModqnTopKDecisionPreview.tsx'),
+    'utf8',
+  );
   const infoSrc = fs.readFileSync(
     path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/InfoPanel.tsx'),
     'utf8',
@@ -467,19 +474,30 @@ console.log('\n(k) Evidence / telemetry mode gating');
     && !appSrc.includes("showModqnReplayScene={appMode === 'modqn-demo'}"),
     'App.tsx mounts the display-only replay scene layer only through the explicit scene lane gate',
   );
+  // S-ADV-4: the trace BUILDER (buildDecisionTrace + reScalarize +
+  // scoreModqnPolicyCandidate + row testids) stays in ModqnEvidenceTab because the
+  // provenance fallback status still consumes it; only the RENDERED top-K section
+  // moved out to the Advanced-drawer ModqnTopKDecisionPreview.
   assert(
     evidenceSrc.includes('modqn-evidence-mode-status')
-    && evidenceSrc.includes('modqn-evidence-decision-trace')
+    && evidenceSrc.includes('buildDecisionTrace')
     && evidenceSrc.includes('modqn-evidence-producer-selected')
     && evidenceSrc.includes('modqn-evidence-rescalarized-selected')
     && evidenceSrc.includes('modqn-evidence-selection-changed')
     && evidenceSrc.includes('modqn-evidence-mapped-live-serving')
     && evidenceSrc.includes('reScalarize')
     && evidenceSrc.includes('scoreModqnPolicyCandidate')
-    && evidenceSrc.includes('Top-K decision preview')
-    && evidenceSrc.includes('not dense-Q proof')
-    && !evidenceSrc.includes('LiveKpiStrip'),
-    'ModqnEvidenceTab renders legacy top-K omega preview without embedding the live KPI strip or dense-Q proof claim',
+    && !evidenceSrc.includes('LiveKpiStrip')
+    && !evidenceSrc.includes('modqn-evidence-decision-trace'),
+    'ModqnEvidenceTab keeps the legacy top-K trace builder (for provenance) but no longer renders the top-K section inline or embeds a live KPI strip',
+  );
+  assert(
+    topKPreviewSrc.includes('modqn-evidence-decision-trace')
+    && topKPreviewSrc.includes('Top-K decision preview')
+    && topKPreviewSrc.includes('not dense-Q proof')
+    && topKPreviewSrc.includes('buildDecisionTrace')
+    && !topKPreviewSrc.includes('LiveKpiStrip'),
+    'ModqnTopKDecisionPreview renders the relocated legacy top-K omega preview (Advanced drawer) from the shared builder, without a live KPI strip or dense-Q proof claim',
   );
   assert(
     evidenceSrc.includes('modqn-evidence-provenance-status')

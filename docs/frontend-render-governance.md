@@ -214,7 +214,14 @@ Lane-specific sidebars are part of viewport ownership:
   diagnostics) is reachable on the right rail without entering the dedicated
   replay-proof lane; the drawer + the evidence tab are display-only / overlay-demo
   against the loaded bundle and never assert producer proof. `live` stays the
-  default right tab; `modqn` is opt-in.
+  default right tab; `modqn` is opt-in. **S-ADV-4** relocated the legacy Top-K
+  decision preview off the default Evidence rail into the Advanced drawer
+  (`ModqnTopKDecisionPreview`) — on the degenerate baseline producer artifact its
+  rows are an empty/fail-closed "top-K" with no dense-Q proof, so the default
+  Evidence rail keeps only the meaningful disclosure rows (provenance / mode /
+  source gaps / active ω) + bundle manifest. It is a pure UI-mount move: the same
+  `buildDecisionTrace` (which still feeds the provenance fallback status) renders
+  the same section/testids in the drawer, mutating no producer or live truth.
 - `modqn-replay-proof`: left = unified Evidence / Replay rail; right = MODQN evidence only.
 - `artifact-replay`: left = Evidence rail (artifact source summary); right = artifact truth only.
 
