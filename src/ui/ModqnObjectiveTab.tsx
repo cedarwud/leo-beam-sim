@@ -158,6 +158,9 @@ export function ModqnObjectiveTab({ hookOverride }: Props) {
         <p className="leo-modqn-objective-controls__hint">
           sum = 1; moving one rebalances others
         </p>
+        <p className="leo-modqn-objective-controls__note" data-testid="modqn-objective-degenerate-note">
+          Inert on the degenerate baseline (982× throughput dominance) — re-weighting only changes the top-K preview; meaningful once the producer normalizes rewards.
+        </p>
 
         <label className="leo-modqn-objective-controls__slider-row">
           <span>Throughput</span>

@@ -444,7 +444,8 @@ export function DiagnosticsDrawer({
               <div className="leo-drawer-section__note" style={{ fontSize: 11, opacity: 0.7 }}>
                 Live-engine diagnostic only: counts re-scalarization fallback ticks
                 when the overlay cannot map the user ω preference to the replay top-K set.
-                This is not producer or replay-bundle diagnostics.
+                This is not producer or replay-bundle diagnostics — a live-engine
+                diagnostic, not producer proof.
               </div>
             </div>
           </DrawerSection>

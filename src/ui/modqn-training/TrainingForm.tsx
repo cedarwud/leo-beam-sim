@@ -246,7 +246,7 @@ export function TrainingForm({ appMode }: TrainingFormProps): ReactElement | nul
       </fieldset>
 
       <fieldset className="leo-training-form__fieldset">
-        <legend>Objective</legend>
+        <legend>Training Objective (ω config)</legend>
         <label className="leo-training-form__field">
           <span>ω throughput</span>
           <input type="number" step="0.01" value={form.omegaThroughput} onChange={event => setForm(state => ({ ...state, omegaThroughput: Number(event.target.value) }))} disabled={submitting} />

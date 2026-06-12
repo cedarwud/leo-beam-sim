@@ -134,7 +134,7 @@ console.log('\n(c) TrainingForm mode gate and submit path');
   assert(formSource.includes('Quick'), 'TrainingForm includes Quick preset label fragment');
   assert(formSource.includes('postTrain'), 'TrainingForm imports/calls postTrain');
   assert(formSource.includes('appendSubmittedJobId'), 'TrainingForm persists submitted jobIds');
-  assert(formSource.includes('<legend>Objective</legend>'), 'TrainingForm owns objective weights in training flow');
+  assert(formSource.includes('<legend>Training Objective (ω config)</legend>'), 'TrainingForm owns objective weights in training flow');
   assert(formSource.includes('Coverage estimate'), 'TrainingForm shows beamwidth-to-UE coverage estimate');
   assert(modelSource.includes('theta3dbDeg: state.theta3dbDeg'), 'TrainingForm model submits beamwidth theta3dbDeg');
   assert(

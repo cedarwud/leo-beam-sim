@@ -4,7 +4,7 @@ import type { ModqnVisualLayerPreset } from '../../scene/modqnVisualLayers';
 import type { SimState } from '../../scene/types';
 
 export const MODQN_LIVE_CELL_PREVIEW_BANNER_TEXT =
-  'preview · profile-derived cells · not baseline proof · SNR nadir · Phase III pending';
+  'preview · profile-derived cells · NOT baseline proof · degenerate baseline (1 sat · 100 UE/1 beam · 0 HO) · awaiting dense-Q producer export';
 export const MODQN_BEAM_LOAD_SOURCE_GAP_TEXT =
   'Beam load (UEs/beam): shown · Queue/buffer depth: not modeled (full-buffer)';
 
