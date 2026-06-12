@@ -515,6 +515,10 @@ const appExperienceModeSource = readRepoFile('src/app/appExperienceMode.ts');
 const modqnServingCountSource = readRepoFile('src/modqn/servingCount.ts');
 const timelineAuthoritySource = readRepoFile('src/app/timelineRailAuthority.ts');
 const controlBarSource = readRepoFile('src/ui/ControlBar.tsx');
+// G1-CONTROLBAR-ADV: the SINR-live display/camera controls relocated off the top
+// bar into a lane-mounted Advanced drawer that reuses the shared shell.
+const sinrLiveDisplayDrawerSource = readRepoFile('src/ui/SinrLiveDisplayDrawer.tsx');
+const advancedDrawerShellSource = readRepoFile('src/ui/AdvancedDrawerShell.tsx');
 const modqnAdvancedDisplayControlsSource = readRepoFile('src/ui/modqn-controls/ModqnAdvancedDisplayControls.tsx');
 const topologyTabSource = readRepoFile('src/ui/signal-tuning/TopologyTab.tsx');
 const timelineBarSource = readRepoFile('src/ui/TimelineBar.tsx');
@@ -1450,31 +1454,28 @@ assertContains(
   'sceneLane?: SceneLane;',
   'ControlBar accepts scene lane',
 );
-assertContains(
+// G1-CONTROLBAR-ADV: the SINR-live display/camera controls (beam density,
+// beam-info callouts, camera presets, spotlight, HO-slow) moved off the top bar
+// into the opt-in SinrLiveDisplayDrawer. The ControlBar no longer owns a
+// live-only block — it keeps only the shared Mode select and the lane-aware UE
+// filter. Lane-ownership is UNCHANGED: App mounts the drawer only on the
+// SINR-live lane, mirroring the MODQN AdvancedSetupDrawer's `!== 'sinr-live'`
+// gate. (Consolidation C1 removed the in-ControlBar playback speed slider; S5a
+// moved MODQN display/policy controls into the Advanced drawer.)
+assertNotContains(
   controlBarSource,
-  "const showSinrLiveControls = sceneLane === 'sinr-live';",
-  'ControlBar derives live control ownership from scene lane',
+  'showSinrLiveControls',
+  'ControlBar no longer derives a SINR-live-only control branch (G1-CONTROLBAR-ADV relocated it to SinrLiveDisplayDrawer)',
 );
 assertContains(
-  controlBarSource,
-  '{showSinrLiveControls && (',
-  'ControlBar wraps live-only controls in the SINR live lane',
+  appSource,
+  "from './ui/SinrLiveDisplayDrawer'",
+  'App imports the SINR-live display/camera drawer',
 );
-// Live-only controls remain gated behind the showSinrLiveControls branch.
-// (Consolidation C1 removed the in-ControlBar playback speed slider; S5a moved
-// MODQN display/policy controls into the Advanced drawer. The upper bound is now
-// the artifact replay display-filter branch that follows the live block.)
 tangleLockGroup('QUAR-S6-BUS', () => {
-  const liveOnlyBranchIndex = controlBarSource.indexOf('{showSinrLiveControls && (');
-  // Upper bound = the artifact replay branch that follows the SINR-live block.
-  // Every live-only control must sit BETWEEN the branch open and that group, so a
-  // future edit that accidentally hoists a control out of the SINR-live branch is
-  // caught (codex C1 [P3] + S5a).
-  const artifactReplayBranchIndex = controlBarSource.indexOf('{isArtifactReplay ? (');
-  assert.ok(
-    liveOnlyBranchIndex >= 0 && artifactReplayBranchIndex > liveOnlyBranchIndex,
-    'ControlBar keeps the SINR-live branch before the artifact replay display-filter branch',
-  );
+  // The five relocated controls must NOT regress back into the top bar; each now
+  // lives in the lane-mounted SinrLiveDisplayDrawer instead. A future edit that
+  // re-hoists a control into the ControlBar is caught here.
   for (const [needle, label] of [
     ['data-testid="beam-density-control"', 'beam density controls'],
     ['data-testid="beam-info-toggle"', 'beam info toggle'],
@@ -1482,12 +1483,25 @@ tangleLockGroup('QUAR-S6-BUS', () => {
     ['Spotlight', 'spotlight control copy'],
     ['HO Slow', 'HO slow control copy'],
   ] as const) {
-    const controlIndex = controlBarSource.indexOf(needle, liveOnlyBranchIndex);
-    assert.ok(
-      controlIndex > liveOnlyBranchIndex && controlIndex < artifactReplayBranchIndex,
-      `ControlBar must keep live-only ${label} inside the SINR live branch (before the artifact display-filter branch)`,
+    assertNotContains(
+      controlBarSource,
+      needle,
+      `ControlBar must not re-own ${label} (relocated to SinrLiveDisplayDrawer)`,
+    );
+    assertContains(
+      sinrLiveDisplayDrawerSource,
+      needle,
+      `SinrLiveDisplayDrawer owns the relocated ${label}`,
     );
   }
+  // The drawer is SINR-live-lane-owned: App lane-gates it on the SINR-live lane.
+  const sinrDrawerMountIndex = appSource.indexOf('<SinrLiveDisplayDrawer');
+  assert.ok(sinrDrawerMountIndex >= 0, 'App mounts the SINR-live display drawer');
+  const sinrDrawerGateIndex = appSource.lastIndexOf("sceneLane === 'sinr-live'", sinrDrawerMountIndex);
+  assert.ok(
+    sinrDrawerGateIndex >= 0 && sinrDrawerMountIndex - sinrDrawerGateIndex < 220,
+    'App lane-gates the SINR-live display drawer on the SINR-live lane (mirrors the MODQN drawer gate)',
+  );
 });
 
 assertContains(
@@ -3205,10 +3219,29 @@ assertNotContains(
   'jobs-panel-load-into-scene',
   'JobsPanel no longer renders the old completed-job Load into scene control',
 );
+// G1-CONTROLBAR-ADV: the trigger + modal scrim + focus management live in the
+// shared AdvancedDrawerShell (reused by the SINR-live display drawer). The MODQN
+// drawer keeps the `advanced-setup` testid prefix, so the drawer DOM — and the
+// modality gate's testids — are byte-identical.
+assertContains(
+  advancedDrawerShellSource,
+  'data-testid={`${testIdPrefix}-trigger`}',
+  'Advanced drawer shell exposes the opt-in trigger (testid derived from the lane prefix)',
+);
 assertContains(
   advancedSetupDrawerSource,
-  'data-testid="advanced-setup-trigger"',
-  'Advanced drawer exposes an opt-in trigger',
+  'testIdPrefix="advanced-setup"',
+  'MODQN Advanced drawer keeps the advanced-setup testid prefix (byte-identical DOM)',
+);
+assertContains(
+  sinrLiveDisplayDrawerSource,
+  "from './AdvancedDrawerShell'",
+  'SINR-live display drawer reuses the shared Advanced drawer shell',
+);
+assertContains(
+  sinrLiveDisplayDrawerSource,
+  'testIdPrefix="sinr-live-display"',
+  'SINR-live display drawer mounts the shared shell under its own lane prefix',
 );
 assertContains(
   governanceDoc,

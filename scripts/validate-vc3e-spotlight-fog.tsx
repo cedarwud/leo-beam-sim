@@ -421,6 +421,12 @@ async function assertAppToggleAndUiContrast(
       if (frame === page.mainFrame()) navigationEventsAfterToggle += 1;
     });
 
+    // G1-CONTROLBAR-ADV: the Spotlight toggle moved off the top bar into the
+    // non-modal SINR-live "⚙ Display & camera" disclosure. Open it (no scrim —
+    // the scene stays interactive) so the toggle is present for the assertions.
+    await page.locator('[data-testid="sinr-live-display-trigger"]').click();
+    await page.locator('[data-testid="sinr-live-display-drawer"]').waitFor({ timeout: 5000 });
+
     const checkbox = page.getByLabel('Spotlight mode');
     const initial = await checkbox.isChecked();
     await checkbox.check();
@@ -430,6 +436,11 @@ async function assertAppToggleAndUiContrast(
     await page.waitForTimeout(180);
     const off = await checkbox.isChecked();
     await checkbox.check();
+    // G1-CONTROLBAR-ADV: spotlight is now toggled from the non-modal display
+    // disclosure; close it (Escape) before the checkpoint so the reference image
+    // stays the clean spotlight-on scene (and this exercises the disclosure close).
+    await page.keyboard.press('Escape');
+    await page.locator('[data-testid="sinr-live-display-drawer"]').waitFor({ state: 'detached', timeout: 5000 });
     await page.waitForTimeout(900);
     await freezeRaf(page, 1900);
     await page.screenshot({ path: CHECKPOINT_PATH });

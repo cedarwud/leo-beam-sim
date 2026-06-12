@@ -434,8 +434,14 @@ Before changing scene rendering:
   fallback, and unavailable decision-overlay evidence without adding truth.
 - `MainScene` uses a lane render plan for orchestration while preserving shared
   primitives.
-- Top-bar controls are lane-owned: live density/callout/camera/spotlight/HO-slow
-  controls are limited to `sinr-live`.
+- SINR-live display controls are lane-owned but no longer top-bar-resident
+  (G1-CONTROLBAR-ADV): beam density / callout / camera presets / spotlight /
+  HO-slow moved off the top bar into an opt-in `SinrLiveDisplayDrawer` mounted by
+  App only on `sinr-live`, reusing the shared `AdvancedDrawerShell` (the MODQN
+  `AdvancedSetupDrawer` uses the same shell). The default SINR-live top bar keeps
+  only the shared Mode select and the read-only Active-UEs count. The relocated
+  controls must not regress back into `ControlBar`
+  (`validate:frontend:scene-lane-governance` QUAR-S6-BUS group).
 - Artifact replay now routes through a dedicated artifact scene composer, so
   live simulation and live beam composition hooks are not entered for artifact
   frames.

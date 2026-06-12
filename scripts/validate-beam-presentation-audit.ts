@@ -91,19 +91,22 @@ assertIncludes(
   'MODQN visual-layer presets remain in Advanced',
 );
 
-const controlBar = read('src/ui/ControlBar.tsx');
+// G1-CONTROLBAR-ADV: the SINR-live beam density / callout controls relocated off
+// the top bar into the lane-mounted SinrLiveDisplayDrawer (App gates it on the
+// SINR-live lane). They are still SINR-live scoped — just no longer top-bar-resident.
+const sinrDisplayDrawer = read('src/ui/SinrLiveDisplayDrawer.tsx');
 assertIncludes(
-  controlBar,
-  "const showSinrLiveControls = sceneLane === 'sinr-live';",
-  'beam density and callout controls stay SINR-live scoped',
+  sinrDisplayDrawer,
+  'testIdPrefix="sinr-live-display"',
+  'beam density and callout controls stay SINR-live scoped (relocated to the lane-mounted display drawer)',
 );
 assertIncludes(
-  controlBar,
+  sinrDisplayDrawer,
   'data-testid="beam-density-control"',
   'beam density control is inventoried',
 );
 assertIncludes(
-  controlBar,
+  sinrDisplayDrawer,
   'data-testid="beam-info-toggle"',
   'beam callout control is inventoried',
 );

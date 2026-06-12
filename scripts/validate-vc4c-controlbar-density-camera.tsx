@@ -152,6 +152,12 @@ async function bootAppPage(
     await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
     await page.locator('.leo-app-shell[data-ui-mode="presentation"]').waitFor({ timeout: 30000 });
     await page.locator('.leo-shell-canvas canvas').waitFor({ timeout: 30000 });
+    // G1-CONTROLBAR-ADV: beam density / beam-info / camera presets moved off the
+    // top bar into the non-modal SINR-live "⚙ Display & camera" disclosure. Open
+    // it once and keep it open — it is NON-modal (no scrim), so the timeline
+    // (Pause/Play) and the Mode select stay clickable through the rest of the run.
+    await page.locator('[data-testid="sinr-live-display-trigger"]').click();
+    await page.locator('[data-testid="sinr-live-display-drawer"]').waitFor({ timeout: 5000 });
     await page.locator('[data-testid="beam-density-control"]').waitFor({ timeout: 5000 });
     await page.locator('[data-testid="camera-preset-control"]').waitFor({ timeout: 5000 });
     return page;

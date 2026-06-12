@@ -1,22 +1,17 @@
 import { UI_CLASSES } from '../constants/uiTokens';
 import type { SceneLane } from '../app/sceneLane';
-import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
 import { UI_MODES, isUiMode, type UiMode } from './uiMode';
 
 interface ControlBarProps {
   // Playback (play/pause, speed, scrub, seek) is owned solely by the bottom
   // TimelineBar — the ControlBar no longer duplicates it (consolidation C1).
-  autoSlowEnabled: boolean;
+  //
+  // G1-CONTROLBAR-ADV: the SINR-live display/camera controls (beam density,
+  // beam-info callouts, camera presets, spotlight, HO-slow) moved off the top bar
+  // into the opt-in SinrLiveDisplayDrawer. The ControlBar now only owns the shared
+  // Mode select and the lane-aware UE display filter / read-only count.
   uiMode: UiMode;
-  beamDensity: BeamDensity;
-  beamCalloutsEnabled: boolean;
-  cinematicMode: CinematicMode;
   onUiModeChange: (mode: UiMode) => void;
-  onBeamDensityChange: (density: BeamDensity) => void;
-  onToggleBeamCallouts: () => void;
-  onCameraPresetSelect: (preset: CameraPreset) => void;
-  onCinematicModeChange: (mode: CinematicMode) => void;
-  onToggleAutoSlow: () => void;
 
   // P2b Display-filter & focus UE controls
   sceneSource?: 'live-sim' | 'artifact-replay';
@@ -36,31 +31,9 @@ const UI_MODE_LABELS: Record<UiMode, string> = {
   diagnostics: 'Diagnostics',
 };
 
-const DENSITY_OPTIONS: Array<{ label: string; density: BeamDensity }> = [
-  { label: 'few', density: 'event-only' },
-  { label: 'normal', density: 'event-plus-1' },
-  { label: 'many', density: 'all' },
-];
-
-const CAMERA_PRESETS: Array<{ label: string; preset: CameraPreset }> = [
-  { label: 'Zenith', preset: 'zenith' },
-  { label: 'Oblique', preset: 'oblique' },
-  { label: 'Chase', preset: 'chase' },
-  { label: 'Paper-faithful close-up', preset: 'paper-faithful-closeup' },
-];
-
 export function ControlBar({
-  autoSlowEnabled,
   uiMode,
-  beamDensity,
-  beamCalloutsEnabled,
-  cinematicMode,
   onUiModeChange,
-  onBeamDensityChange,
-  onToggleBeamCallouts,
-  onCameraPresetSelect,
-  onCinematicModeChange,
-  onToggleAutoSlow,
   sceneSource = 'live-sim',
   sceneLane = sceneSource === 'artifact-replay' ? 'artifact-replay' : 'sinr-live',
   liveUeCount = 1,
@@ -72,7 +45,6 @@ export function ControlBar({
   onElevatedUeIdChange,
 }: ControlBarProps) {
   const isArtifactReplay = sceneLane === 'artifact-replay' || sceneSource === 'artifact-replay';
-  const showSinrLiveControls = sceneLane === 'sinr-live';
   return (
     <div className="leo-control-bar">
       <label className="leo-control-bar__field-row">
@@ -93,99 +65,6 @@ export function ControlBar({
           ))}
         </select>
       </label>
-
-      {showSinrLiveControls && (
-        <>
-          <div
-            className="leo-control-bar__density-group"
-            role="group"
-            aria-label="Beam density"
-            data-testid="beam-density-control"
-          >
-            {DENSITY_OPTIONS.map(option => {
-              const selected = beamDensity === option.density;
-              return (
-                <button
-                  key={option.density}
-                  className={`${UI_CLASSES.button} leo-control-bar__density-button`}
-                  type="button"
-                  aria-label={`Set beam density to ${option.label}`}
-                  aria-pressed={selected}
-                  data-testid={`beam-density-${option.label}`}
-                  onClick={() => onBeamDensityChange(option.density)}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <label
-            className="leo-control-bar__toggle"
-            title="Show or hide beam information blocks in the scene"
-          >
-            <input
-              className={UI_CLASSES.checkbox}
-              type="checkbox"
-              aria-label="Show beam information blocks"
-              data-testid="beam-info-toggle"
-              checked={beamCalloutsEnabled}
-              onChange={onToggleBeamCallouts}
-            />
-            Beam Info
-          </label>
-
-          <div
-            className="leo-control-bar__camera-group"
-            role="group"
-            aria-label="Camera presets"
-            data-testid="camera-preset-control"
-          >
-            {CAMERA_PRESETS.map(option => (
-              <button
-                key={option.preset}
-                className={`${UI_CLASSES.button} leo-control-bar__camera-button`}
-                type="button"
-                aria-label={`Set camera preset to ${option.label}`}
-                data-testid={`camera-preset-${option.preset}`}
-                onClick={() => onCameraPresetSelect(option.preset)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-
-          <label
-            className="leo-control-bar__toggle"
-            title="Highlight serving beam path with cinematic spotlight"
-          >
-            <input
-              className={UI_CLASSES.checkbox}
-              type="checkbox"
-              aria-label="Spotlight mode: highlight serving beam path"
-              checked={cinematicMode === 'spotlight'}
-              onChange={event => {
-                onCinematicModeChange(event.target.checked ? 'spotlight' : 'off');
-              }}
-            />
-            Spotlight
-          </label>
-
-          <label
-            className="leo-control-bar__toggle"
-            title="Auto-slow simulation rate during handover events"
-          >
-            <input
-              className={UI_CLASSES.checkbox}
-              type="checkbox"
-              aria-label="Auto slow on handover"
-              checked={autoSlowEnabled}
-              onChange={onToggleAutoSlow}
-            />
-            HO Slow
-          </label>
-        </>
-      )}
 
       {isArtifactReplay ? (
         <>

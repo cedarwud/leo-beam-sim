@@ -6,14 +6,13 @@ import { fileURLToPath } from 'node:url';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { CinematicSeekFadeOverlay } from '../src/ui/CinematicSeekFadeOverlay';
-import { ControlBar } from '../src/ui/ControlBar';
 import { DirectorControls } from '../src/ui/DirectorControls';
 import {
   resolveSceneLaneRenderPlan,
   type SceneLaneRenderPlanInput,
 } from '../src/scene/sceneLaneRenderPlan';
 import { resolveDirectorFocusPose } from '../src/scene/directorFocusPose';
-import type { CameraPreset, DirectorFocusPhase } from '../src/scene/types';
+import type { DirectorFocusPhase } from '../src/scene/types';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
@@ -66,28 +65,13 @@ function extractConstObject(sourceText: string, constName: string): string {
   return match?.[1] ?? '';
 }
 
-function renderControlBarMarkup(): string {
-  const noop = () => undefined;
-  const onCameraPresetSelect = (_preset: CameraPreset) => undefined;
-  return renderToString(
-    <ControlBar
-      autoSlowEnabled={true}
-      uiMode="presentation"
-      beamDensity="event-plus-1"
-      beamCalloutsEnabled={true}
-      cinematicMode="off"
-      onUiModeChange={noop}
-      onBeamDensityChange={noop}
-      onToggleBeamCallouts={noop}
-      onCameraPresetSelect={onCameraPresetSelect}
-      onCinematicModeChange={noop}
-      onToggleAutoSlow={noop}
-    />,
-  );
-}
+// G1-CONTROLBAR-ADV: the camera presets moved off the top bar into the opt-in
+// SinrLiveDisplayDrawer. The buttons render behind the drawer's open state, so
+// the SSR-of-the-component check (section d) is now a source assertion on the
+// drawer instead of a rendered-markup scan.
+const CAMERA_PRESET_DRAWER = 'src/ui/SinrLiveDisplayDrawer.tsx';
 
 const expectedPresets = ['zenith', 'oblique', 'chase', 'paper-faithful-closeup'] as const;
-const expectedTestIds = expectedPresets.map(preset => `camera-preset-${preset}`);
 
 section('(a) CameraPreset union source', () => {
   const typesSource = source('src/scene/types.ts');
@@ -106,9 +90,9 @@ section('(b) MainScene camera pose source', () => {
   check(/Record<CameraPreset/.test(mainSceneSource), 'CAMERA_PRESET_POSES remains typed as Record<CameraPreset, ...>');
 });
 
-section('(c) ControlBar camera preset source', () => {
-  const controlBarSource = source('src/ui/ControlBar.tsx');
-  const presetArray = extractConstArray(controlBarSource, 'CAMERA_PRESETS');
+section('(c) SinrLiveDisplayDrawer camera preset source', () => {
+  const drawerSource = source(CAMERA_PRESET_DRAWER);
+  const presetArray = extractConstArray(drawerSource, 'CAMERA_PRESETS');
   check(countOccurrences(presetArray, /\bpreset:/g) === 4, 'CAMERA_PRESETS array contains 4 preset entries');
   check(presetArray.includes('Paper-faithful close-up'), 'CAMERA_PRESETS contains Paper-faithful close-up label');
   check(presetArray.includes("preset: 'paper-faithful-closeup'"), 'CAMERA_PRESETS contains paper-faithful-closeup preset literal');
@@ -117,12 +101,17 @@ section('(c) ControlBar camera preset source', () => {
   }
 });
 
-section('(d) ControlBar SSR camera preset buttons', () => {
-  const markup = renderControlBarMarkup();
-  check(markup.includes('data-testid="camera-preset-control"'), 'SSR render preserves camera-preset-control parent testid');
-  for (const testId of expectedTestIds) {
-    check(markup.includes(`data-testid="${testId}"`), `SSR render contains ${testId}`);
-  }
+section('(d) SinrLiveDisplayDrawer camera preset button source', () => {
+  // G1-CONTROLBAR-ADV: the camera presets now render inside the opt-in drawer
+  // (behind its open state), so the static SSR markup scan is a source assertion:
+  // the parent group testid + the dynamic child testid template + all 4 preset
+  // entries (section c) together produce the 4 camera-preset-${preset} buttons.
+  const drawerSource = source(CAMERA_PRESET_DRAWER);
+  check(drawerSource.includes('data-testid="camera-preset-control"'), 'drawer renders the camera-preset-control parent group testid');
+  check(
+    drawerSource.includes('data-testid={`camera-preset-${option.preset}`}'),
+    'drawer derives child camera testids from option.preset (produces every expected camera-preset testid)',
+  );
 });
 
 section('(e) CameraPreset Record exhaustiveness source', () => {
@@ -139,14 +128,14 @@ section('(e) CameraPreset Record exhaustiveness source', () => {
 });
 
 section('(f) Regression: existing preset testids still produce-able', () => {
-  const controlBarSource = source('src/ui/ControlBar.tsx');
-  const presetArray = extractConstArray(controlBarSource, 'CAMERA_PRESETS');
+  const drawerSource = source(CAMERA_PRESET_DRAWER);
+  const presetArray = extractConstArray(drawerSource, 'CAMERA_PRESETS');
   for (const preset of ['zenith', 'oblique', 'chase']) {
     check(presetArray.includes(`preset: '${preset}'`), `existing ${preset} array entry still feeds camera-preset-${preset}`);
   }
   check(
-    controlBarSource.includes('data-testid={`camera-preset-${option.preset}`}'),
-    'ControlBar still derives child camera testids from option.preset',
+    drawerSource.includes('data-testid={`camera-preset-${option.preset}`}'),
+    'SinrLiveDisplayDrawer still derives child camera testids from option.preset',
   );
 });
 

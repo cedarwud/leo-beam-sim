@@ -110,6 +110,7 @@ import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
 import { DegenerateDataBanner } from './ui/DegenerateDataBanner';
 import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
+import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,
@@ -1906,17 +1907,8 @@ export function App() {
         </div>
       )}
       <ControlBar
-        autoSlowEnabled={playback.autoSlowEnabled}
         uiMode={uiMode}
-        beamDensity={runtime.beamDensity}
-        beamCalloutsEnabled={beamCalloutsEnabled}
-        cinematicMode={effectiveCinematicMode}
         onUiModeChange={handleUiModeChange}
-        onBeamDensityChange={handleBeamDensityChange}
-        onToggleBeamCallouts={() => setBeamCalloutsEnabled(value => !value)}
-        onCameraPresetSelect={camera.selectCameraPreset}
-        onCinematicModeChange={camera.setCinematicMode}
-        onToggleAutoSlow={playback.toggleAutoSlow}
         sceneSource={sceneSource}
         sceneLane={sceneLane}
         liveUeCount={runtime.ueCount ?? 1}
@@ -2008,6 +2000,23 @@ export function App() {
               simState={simState}
               onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}
               onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
+            />
+          )}
+          {/* G1-CONTROLBAR-ADV: the SINR-live display/camera controls (density,
+              beam info, camera presets, spotlight, HO-slow) moved off the top bar
+              into this opt-in drawer, mirroring the MODQN Advanced drawer, so the
+              default SINR-live surface stays the scene + Mode + Active-UEs count. */}
+          {sceneLane === 'sinr-live' && (
+            <SinrLiveDisplayDrawer
+              beamDensity={runtime.beamDensity}
+              beamCalloutsEnabled={beamCalloutsEnabled}
+              cinematicMode={effectiveCinematicMode}
+              autoSlowEnabled={playback.autoSlowEnabled}
+              onBeamDensityChange={handleBeamDensityChange}
+              onToggleBeamCallouts={() => setBeamCalloutsEnabled(value => !value)}
+              onCameraPresetSelect={camera.selectCameraPreset}
+              onCinematicModeChange={camera.setCinematicMode}
+              onToggleAutoSlow={playback.toggleAutoSlow}
             />
           )}
         </aside>

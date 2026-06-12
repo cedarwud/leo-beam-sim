@@ -2815,6 +2815,48 @@ canvas {
   padding-right: 4px;
 }
 
+// G1-CONTROLBAR-ADV: non-modal inline disclosure variant of the Advanced drawer
+// (SINR-live display/camera). Unlike the MODQN modal drawer there is NO scrim —
+// it expands in-flow at the foot of the left aside so the scene + timeline stay
+// interactive while display controls are adjusted.
+.leo-inline-drawer {
+  flex: 0 0 auto;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(var(--leo-accent-rgb), 0.28);
+  border-radius: 6px;
+  background: rgba(5, 12, 19, 0.92);
+}
+
+.leo-inline-drawer-content {
+  max-height: 46vh;
+}
+
+// G1-CONTROLBAR-ADV: SINR-live display/camera controls relocated into the shared
+// Advanced drawer. Each control group is a labelled section so the relocated
+// top-bar buttons read as intentional groups in the vertical drawer.
+.leo-sinr-display-drawer-section {
+  display: grid;
+  gap: 6px;
+}
+
+.leo-sinr-display-drawer-label {
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: rgba(229, 244, 251, 0.55);
+}
+
+.leo-sinr-display-drawer-section .leo-control-bar__density-group,
+.leo-sinr-display-drawer-section .leo-control-bar__camera-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .leo-modqn-advanced-controls {
   display: grid;
   gap: 12px;

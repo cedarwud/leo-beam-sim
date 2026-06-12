@@ -17,11 +17,17 @@
 // parked. The drawer relocates them; it does not gate or disable them. The
 // drawer trigger is mounted by App.tsx in the left aside, gated on the MODQN
 // lanes (`sceneLane !== 'sinr-live'`).
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+//
+// G1-CONTROLBAR-ADV: the trigger + modal scrim + focus management now live in the
+// shared AdvancedDrawerShell (the SINR-live lane uses the same shell for its own
+// display/camera controls). This component keeps the MODQN content + its
+// `advanced-setup` testid prefix, so the drawer DOM is byte-identical.
+import { type ReactElement } from 'react';
 import type { AppExperienceMode } from './appMode';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 import type { ModqnVisualLayerPreset } from '../scene/modqnVisualLayers';
 import type { SimState } from '../scene/types';
+import { AdvancedDrawerShell } from './AdvancedDrawerShell';
 import { ModqnAdvancedDisplayControls } from './modqn-controls/ModqnAdvancedDisplayControls';
 import { TrainingForm } from './modqn-training/TrainingForm';
 import { JobsPanel } from './modqn-training/JobsPanel';
@@ -47,87 +53,29 @@ export function AdvancedSetupDrawer({
   onModqnVisualLayerPresetChange,
   onModqnDecisionPolicyChange,
 }: AdvancedSetupDrawerProps): ReactElement {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-
-  // a11y: restore focus to the trigger when the drawer closes (Escape / backdrop
-  // / × all route through here), so keyboard focus never lands on a hidden node.
-  const closeDrawer = () => {
-    setOpen(false);
-    triggerRef.current?.focus();
-  };
-
-  useEffect(() => {
-    if (!open) return undefined;
-    // Move focus into the dialog on open.
-    closeRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeDrawer();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
-
   return (
-    <div className="leo-advanced-setup" data-testid="advanced-setup">
-      <button
-        ref={triggerRef}
-        type="button"
-        className="leo-advanced-setup-trigger"
-        data-testid="advanced-setup-trigger"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => setOpen(value => !value)}
-      >
-        <span>⚙ Advanced setup</span>
-        <small>display · policy · training · omega</small>
-      </button>
-      {open && (
-        <div
-          className="leo-advanced-setup-overlay"
-          data-testid="advanced-setup-drawer"
-          role="dialog"
-          aria-modal="true"
-          aria-label="MODQN advanced setup"
-          onClick={closeDrawer}
-        >
-          <div
-            className="leo-advanced-setup-panel"
-            onClick={event => event.stopPropagation()}
-          >
-            <header className="leo-advanced-setup-header">
-              <strong>MODQN advanced setup</strong>
-              <button
-                ref={closeRef}
-                type="button"
-                className="leo-advanced-setup-close"
-                data-testid="advanced-setup-close"
-                aria-label="Close advanced setup"
-                onClick={closeDrawer}
-              >
-                ×
-              </button>
-            </header>
-            <div className="leo-advanced-setup-content leo-sidebar-content-stack">
-              <ModqnAdvancedDisplayControls
-                handoverMode={handoverMode}
-                modqnVisualLayerPreset={modqnVisualLayerPreset}
-                showDecisionPolicyControls={showDecisionPolicyControls}
-                onModqnVisualLayerPresetChange={onModqnVisualLayerPresetChange}
-                onModqnDecisionPolicyChange={onModqnDecisionPolicyChange}
-              />
-              <TrainingForm appMode={appMode} />
-              <JobsPanel appMode={appMode} />
-              <ModqnObjectiveTab />
-              {/* S-ADV-4: the relocated legacy Top-K decision preview (degenerate /
-                  empty on the baseline producer artifact) lives here, off the
-                  default Evidence rail. */}
-              <ModqnTopKDecisionPreview simState={simState} />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    <AdvancedDrawerShell
+      testIdPrefix="advanced-setup"
+      triggerLabel="⚙ Advanced setup"
+      triggerHint="display · policy · training · omega"
+      dialogTitle="MODQN advanced setup"
+      dialogAriaLabel="MODQN advanced setup"
+      closeAriaLabel="Close advanced setup"
+    >
+      <ModqnAdvancedDisplayControls
+        handoverMode={handoverMode}
+        modqnVisualLayerPreset={modqnVisualLayerPreset}
+        showDecisionPolicyControls={showDecisionPolicyControls}
+        onModqnVisualLayerPresetChange={onModqnVisualLayerPresetChange}
+        onModqnDecisionPolicyChange={onModqnDecisionPolicyChange}
+      />
+      <TrainingForm appMode={appMode} />
+      <JobsPanel appMode={appMode} />
+      <ModqnObjectiveTab />
+      {/* S-ADV-4: the relocated legacy Top-K decision preview (degenerate /
+          empty on the baseline producer artifact) lives here, off the
+          default Evidence rail. */}
+      <ModqnTopKDecisionPreview simState={simState} />
+    </AdvancedDrawerShell>
   );
 }
