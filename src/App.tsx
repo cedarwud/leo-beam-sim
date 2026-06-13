@@ -1658,10 +1658,11 @@ export function App() {
     () => directorFocusEnabled && handoverRailEvents.some(event => event.kind === 'inter'),
     [directorFocusEnabled, handoverRailEvents],
   );
-  // ITEM #C honesty: the live Director focus is a profile-derived forecast on the
-  // SINR lane and an overlay-demo on the MODQN cell-preview lane — never producer
-  // proof. This labels the live seek/sat-pair focus, matching the live Walker rail
-  // claim (timelineRailAuthority liveRail.claimKind).
+  // ITEM #C honesty: since the cell-truth cinema migration (e7a08dc) the sinr-live
+  // Director focus is real live SINR cell-truth (`live-truth`) — the SINR values ARE
+  // the live earth-fixed cell-truth engine output, not a forecast — and an
+  // overlay-demo on the MODQN cell-preview lane; never producer proof. This labels
+  // the live seek/sat-pair focus (gated by validate:phase-c:director-cinematic:live).
   const liveDirectorFocusClaimKind: LiveWalkerDirectorFocusClaimKind =
     sceneLane === 'modqn-live-cell-preview' ? 'overlay-demo' : 'live-truth';
 

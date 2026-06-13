@@ -4,12 +4,15 @@
  * (the analog of validate-phase-c-director-cinematic-browser.ts, which covers the
  * artifact-replay lane).
  *
- * DATA SOURCE: live-engine — the in-browser live SINR Walker simulation
- * (`?sceneSource=live-sim&appMode=sinr-experiment`). The dense default Walker
+ * DATA SOURCE: live-engine — the in-browser live SINR simulation
+ * (`?sceneSource=live-sim&appMode=sinr-experiment`). The dense default
  * constellation (hobs-2024-candidate-rich) genuinely produces inter-satellite
- * handovers, classified into the validated `liveWalkerHandoverEventIndex`. This is
- * NOT producer MODQN truth: the live Director focus is honestly labeled
- * `profile-derived-forecast` (asserted below). No producer artifact required.
+ * handovers. Since the cell-truth cinema migration (e7a08dc, 2026-06-10) the
+ * sinr-live lane is backed by the earth-fixed cell-truth model (real live SINR
+ * engine truth), so the live Director focus is honestly labeled `live-truth`
+ * (asserted below) — this is still NOT producer MODQN proof. No producer artifact
+ * required. (Pre-migration the claim was `profile-derived-forecast`; this gate was
+ * synced to the shipped `live-truth` claim on 2026-06-13.)
  *
  * Asserts (hard): the live lane resolves to `sinr-live`; the inter-HO focus
  * becomes enabled (the live forecast produces inter handovers); clicking it
@@ -18,7 +21,7 @@
  * (2) leaves the director FSM idle, (3) drops the effective speed to the 0.25x
  * cinematic tier, (4) actually moves the camera world position (the sat-pair focus
  * tween); and Exit restores the FSM to idle with the speed back to normal. Honesty:
- * the live Director focus claim stays `profile-derived-forecast`.
+ * the live Director focus claim stays `live-truth` (real live SINR, not producer proof).
  *
  * Requires a running dev server (`npm run dev`); pass APP_URL or argv[2] to
  * override. Run: `npm run validate:phase-c:director-cinematic:live:browser`.
@@ -59,13 +62,13 @@ async function main(): Promise<void> {
     assert.equal(await page.locator(DIRECTOR).count(), 1, 'director controls mount on the live lane');
 
     // ── DATA SOURCE / honesty gate ──
-    // The live Director focus is a profile-derived forecast, NOT producer proof.
+    // The sinr-live Director focus is real live SINR cell-truth, NOT producer proof.
     assert.equal(
       await attr(page, SHELL, 'data-live-director-focus-claim'),
-      'profile-derived-forecast',
-      'live Director focus is honestly labeled profile-derived-forecast (not producer proof)',
+      'live-truth',
+      'live Director focus is honestly labeled live-truth (real live SINR, not producer/MODQN proof)',
     );
-    console.log('[director-cinematic-live] DATA SOURCE = live Walker forecast (profile-derived-forecast)');
+    console.log('[director-cinematic-live] DATA SOURCE = live SINR cell-truth (live-truth)');
 
     // The live Walker handover index builds in an effect; wait for the inter-HO
     // focus to enable (the dense default constellation produces inter handovers).
