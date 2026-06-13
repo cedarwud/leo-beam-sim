@@ -9,6 +9,8 @@ import {
   type LiveWalkerDirectorFocusClaimKind,
 } from './scene/liveWalkerDirectorFocus';
 import {
+  MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH,
+  MODQN_FAMILY_B_DENSE_Q_MODE_KEY,
   createModqnReplayPlaybackDisplayState,
   createModqnReplayPlaybackShellModel,
   createOmegaRescalarizedModqnReplayPlaybackDisplayState,
@@ -1084,6 +1086,40 @@ export function App() {
     setSelectedTrainingServiceManifest(null);
     setSelectedTrainingRunMetadata(null);
     setBundleProvenanceKind('paper-faithful');
+    setUserTrainedLoadError(null);
+  }, []);
+
+  // G3: load the producer Family-B dense-Q proof window into the MODQN replay
+  // lane (its OWN mode — Grade-2 constrained, non-paper-faithful). DecisionViz
+  // then renders real per-action Q1/Q2/Q3 from this envelope. Mirrors the
+  // user-trained loader; reverting uses handleRevertToPaperFaithful.
+  const handleLoadFamilyBDenseQ = useCallback(async () => {
+    let result;
+    try {
+      result = await fetchModqnReplayBundleEnvelope({
+        sourcePath: MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH,
+        modeKey: MODQN_FAMILY_B_DENSE_Q_MODE_KEY,
+        sourceOwner: 'modqn-paper-reproduction',
+      });
+    } catch (err) {
+      setUserTrainedLoadError(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    const liveShell = createModqnReplayPlaybackShellModel(result.envelope);
+    const issue = getModqnReplayPlaybackModelValidationIssue(liveShell);
+    if (issue !== null) {
+      setUserTrainedLoadError(issue.message);
+      return;
+    }
+    setModqnReplayEnvelope(result.envelope);
+    setModqnReplayShellModel(liveShell);
+    setModqnReplayDisplayState(createModqnReplayPlaybackDisplayState(liveShell));
+    setSelectedUserTrainedJobId(null);
+    setSelectedTrainingServiceManifest(null);
+    setSelectedTrainingRunMetadata(null);
+    // Family-B is non-paper-faithful → the caution (non-canonical) display
+    // treatment; the loud honesty disclosure is the DegenerateDataBanner variant.
+    setBundleProvenanceKind('user-trained');
     setUserTrainedLoadError(null);
   }, []);
 
@@ -2185,10 +2221,49 @@ export function App() {
                     data-testid="load-into-scene-error-banner"
                     className="leo-load-into-scene-error-banner"
                   >
-                    User-trained bundle load failed: {userTrainedLoadError}
+                    MODQN bundle load failed: {userTrainedLoadError}
                   </div>
                 ) : null}
                 {handoverEventRail}
+                <section
+                  className="leo-modqn-family-b-mode"
+                  aria-label="MODQN Family-B dense-Q proof mode"
+                  data-testid="modqn-family-b-mode-selector"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    padding: '8px 10px',
+                    border: '1px solid #4a3a12',
+                    borderRadius: 6,
+                    background: '#241d0a',
+                  }}
+                >
+                  <strong style={{ fontSize: 12.5, color: '#ffe9a8' }}>MODQN dense-Q proof (Family-B)</strong>
+                  <span style={{ fontSize: 11.5, color: '#cdbb86', lineHeight: 1.35 }}>
+                    Grade-2 constrained, non-paper-faithful. Loads the producer Family-B window so
+                    DecisionViz shows real per-action Q1/Q2/Q3. Illustrative only — not a beats-baseline claim.
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      data-testid="load-family-b-dense-q"
+                      data-active={modqnReplayEnvelope?.evidenceStatus === 'family-b-dense-q' ? 'true' : 'false'}
+                      disabled={modqnReplayEnvelope?.evidenceStatus === 'family-b-dense-q'}
+                      onClick={() => { void handleLoadFamilyBDenseQ(); }}
+                    >
+                      Load Family-B dense-Q proof
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="revert-to-baseline-from-family-b"
+                      disabled={modqnReplayEnvelope?.evidenceStatus !== 'family-b-dense-q'}
+                      onClick={() => { void handleRevertToPaperFaithful(); }}
+                    >
+                      Back to baseline
+                    </button>
+                  </div>
+                </section>
                 <ArtifactPicker
                   appMode={appMode}
                   selectedJobId={selectedUserTrainedJobId}
