@@ -1278,7 +1278,13 @@ export function App() {
     }
 
     let cancelled = false;
-    const index = sceneLane === 'sinr-live'
+    // The cinema handover-event index is an OFFLINE scan (~hundreds of steps x
+    // ueCount UEs) consumed ONLY by the handover rail / Director focus — NOT by
+    // the live scene render. Building it synchronously here blocked the first
+    // scene paint by ~10s on load. Defer it to idle so the live scene paints
+    // immediately and the rail fills in shortly after; the index output is
+    // identical (deterministic), only computed later (Rule#2/#6 unaffected).
+    const computeIndex = () => sceneLane === 'sinr-live'
       ? buildSinrLiveCellHandoverEventIndex({
         profile: effectiveProfile,
         epochUtcMs: APP_EPOCH_MS,
@@ -1305,10 +1311,30 @@ export function App() {
         ueMobilityMode: runtime.ueMobilityMode,
         ueMobilityParams: runtime.ueMobilityParams,
       });
-    if (!cancelled) setLiveWalkerHandoverEventIndex(index);
+    const buildIndex = () => {
+      if (cancelled) return;
+      const index = computeIndex();
+      if (!cancelled) setLiveWalkerHandoverEventIndex(index);
+    };
+    const ric = typeof window !== 'undefined'
+      ? (window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      }).requestIdleCallback
+      : undefined;
+    let idleHandle: number | null = null;
+    let timeoutHandle: number | null = null;
+    if (typeof ric === 'function') {
+      idleHandle = ric(buildIndex, { timeout: 2000 });
+    } else {
+      timeoutHandle = window.setTimeout(buildIndex, 0);
+    }
 
     return () => {
       cancelled = true;
+      if (idleHandle !== null) {
+        (window as Window & { cancelIdleCallback?: (handle: number) => void }).cancelIdleCallback?.(idleHandle);
+      }
+      if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
     };
   }, [
     effectiveProfile,

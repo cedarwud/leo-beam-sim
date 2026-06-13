@@ -235,14 +235,14 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
-          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
-            return 'vendor-react';
-          }
-          if (
-            id.includes('/three/')
-            || id.includes('/@react-three/fiber/')
-            || id.includes('/@react-three/drei/')
-          ) {
+          // Split ONLY the framework-agnostic three.js engine (the heaviest dep,
+          // imports no React). The React render stack (react/react-dom/scheduler)
+          // and its R3F bindings (@react-three/fiber + drei, which read React
+          // internals like useLayoutEffect at module-init) MUST stay together in
+          // one chunk — splitting React away from its consumers caused a cross-
+          // chunk init race ("Cannot read properties of undefined (useLayoutEffect)")
+          // that crashed the prod build while dev (unbundled) worked.
+          if (id.includes('/three/')) {
             return 'vendor-three';
           }
           return 'vendor';

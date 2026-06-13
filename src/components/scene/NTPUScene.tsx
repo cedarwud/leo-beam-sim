@@ -58,6 +58,8 @@ export function NTPUScene({ config = NTPU_CONFIG }: NTPUSceneProps) {
   );
 }
 
-// 預載入模型
+// 預載入模型 — sinr-live (the default/first lane) uses NTPU_CONFIG only;
+// NTPU_LARGE_CONFIG is the MODQN-lane scene, so it is NOT preloaded here (it
+// would add ~5.75MB of eager fetch+parse to the sinr-live first paint). useGLTF
+// loads it on demand when the MODQN lane mounts NTPUScene with that config.
 useGLTF.preload(NTPU_CONFIG.scene.modelPath);
-useGLTF.preload(NTPU_LARGE_CONFIG.scene.modelPath);
