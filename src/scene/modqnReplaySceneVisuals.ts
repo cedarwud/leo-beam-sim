@@ -511,11 +511,11 @@ interface SourceBeamVisualLayout {
 
 function decisionMaskValue(
   focusRow: ModqnReplayPlaybackFocusRow,
-  beamIndex: number,
+  catalogIndex: number | null,
 ): boolean | null {
   const mask = focusRow.decisionActionValidityMask ?? focusRow.actionValidityMask;
-  if (!mask || beamIndex < 0 || beamIndex >= mask.length) return null;
-  return mask[beamIndex] === true;
+  if (!mask || catalogIndex === null || catalogIndex < 0 || catalogIndex >= mask.length) return null;
+  return mask[catalogIndex] === true;
 }
 
 function createSourceBeamVisualLayout(
@@ -530,6 +530,17 @@ function createSourceBeamVisualLayout(
   let previousPosition: ModqnReplayScenePoint | null = null;
   let selectedPosition: ModqnReplayScenePoint | null = null;
 
+  // The decision mask is CATALOG-axis (length A). Under the dual-axis Family-B
+  // window, beamStates is the physical render-beam list whose beamIndex is the
+  // per-satellite physical index (range 9..49, NOT the catalog index), so resolve
+  // each physical beam to its catalog slot via the dense candidateActionOrder (by
+  // beamId). Baseline / legacy bundles carry no dense catalog and beamStates.beamIndex
+  // IS the catalog index, so fall back to keying by beamIndex (behaviour unchanged).
+  const denseCatalog = focusRow.policyDiagnostics?.candidateActionOrder;
+  const catalogIndexByBeamId = denseCatalog
+    ? new Map(denseCatalog.map((entry, index) => [entry.beamId, index]))
+    : null;
+
   for (const beam of beamStates) {
     const footprintAllowed = geometrySource === 'producer-beam-state'
       ? beamFootprintIsRenderable(beam)
@@ -539,7 +550,10 @@ function createSourceBeamVisualLayout(
     const position = producerBeamPosition(beam, worldUnitsPerKm);
     if (position === null) continue;
 
-    const actionValidUnderDecisionMask = decisionMaskValue(focusRow, beam.beamIndex);
+    const catalogIndex = catalogIndexByBeamId
+      ? (catalogIndexByBeamId.get(beam.beamId) ?? null)
+      : beam.beamIndex;
+    const actionValidUnderDecisionMask = decisionMaskValue(focusRow, catalogIndex);
     const role = resolveProducerBeamRole(beam, focusRow.previousServing, focusRow.selectedServing);
     const shouldRender = actionValidUnderDecisionMask === true || role !== 'inactive';
     if (!shouldRender) continue;
