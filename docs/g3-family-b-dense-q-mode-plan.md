@@ -193,13 +193,19 @@ producer window-export should emit the full provenance map; re-export + re-scp.*
 `build_provenance_map` regen was rejected: the Family-B run uses a different cfg/metadata
 schema than that function consumes → would fabricate empty fields.)
 
-**🟡 LATENT (fix before un-parking the family-b 3D replay scene):**
-`src/scene/modqnReplaySceneVisuals.ts` `decisionMaskValue(focusRow, beam.beamIndex)` keys
-the 28-length catalog decision mask by the PHYSICAL `beam.beamIndex` (9..49). Under the
-144/28 envelope this mis-resolves beam validity. It is OFF the shipped path (only the
-PARKED `modqn-replay-proof` lane renders these beams; `shouldRenderModqnReplayScene`).
-Fix when that lane is un-parked for family-b: resolve each physical beam to its catalog
-index via `policyDiagnostics.candidateActionOrder` (by beamId) before reading the mask.
+**✅ FIXED (`f3121c7`) — replay-scene dual-axis mask:**
+`src/scene/modqnReplaySceneVisuals.ts` previously keyed the 28-length catalog decision
+mask by the PHYSICAL `beam.beamIndex` (9..49), so under the 144/28 envelope the SELECTED
+beam fell out of range and 66 beams read a different beam's validity. Now resolves each
+physical beam to its catalog slot via `policyDiagnostics.candidateActionOrder` (by beamId),
+with a beamId→catalogIndex map; baseline/legacy bundles (no dense catalog) fall back to
+`beamIndex` (unchanged). Off the shipped DecisionViz path (only the parked
+`modqn-replay-proof` lane renders these beams) but now correct for a future un-park.
+
+**🔴 PRE-EXISTING (out of G3 scope): `validate:modqn:phase7k` is RED** — a `../engine`
+`EARTH_KM_PER_DEG` import in `modqnReplaySceneVisuals.ts` (S1 coordinate-authority refactor
+`02424aa`, predates this branch; the master SDD's Phase-2-deferred item). Not introduced or
+worsened by G3. Not in `validate:governance` nor the G3 gate set.
 
 **🟢 DISCLOSED minors (acceptable as-is):**
 - `bundleProvenanceKind='user-trained'` for Family-B drives a literally-inaccurate
