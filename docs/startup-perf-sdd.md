@@ -1,6 +1,9 @@
 # Startup / Load-Time Performance SDD — leo-beam-sim
 
-> Status: DRAFT design authority for the load-time workstream (2026-06-13).
+> Status: load-time workstream **DONE for localhost at L5** (2026-06-13). Scene
+> paints 100 UEs at ~5.0 s (accurate probe), under the 6–8 s target. L3 built then
+> ABANDONED (regression; premise was a `waitForFunction` measurement artifact —
+> see §1 + L3). Remaining levers (L1/L2/L4/L6) deferred to a networked deploy.
 > Branch `feat/showcase-phase-0`. Supersedes the single-point handoff
 > `docs/handoff/frontend-loadtime-perf-handoff.md` as the *systematic* plan; that
 > handoff's ledger (S1 crash+defer, S2 index chunk) stays the as-built record.
@@ -22,8 +25,23 @@ hydration). Bespoke code only at the determinism boundary the libs don't cover.
 
 ## 1. Measured cost model (vite preview, prod, sinr-live)
 
-Current: `ueRendered` (scene usable) ≈ **18s**; `app-shell` ≈ 3–5s. Where the
-~18s goes (audit `wf_57330b79-0cd` + direct probe):
+> **⚠️ MEASUREMENT CORRECTION (2026-06-13, L3 session).** The `ueRendered ≈ 18s`
+> (and the post-L5 `~7.5s`) figures below were measured with Playwright
+> `waitForFunction` (rAF polling), which the app's continuous R3F render loop
+> **starves** → every milestone inflated by ~3 s, and the inflation grows with
+> render load. An accurate `setTimeout`+`evaluate` probe
+> (`scripts/_measure-loadtime.ts`) shows the **true** post-L5 numbers: the
+> sinr-live scene paints all 100 UEs **at once at ~5.0 s** (already under the §6
+> 6–8 s target), and the offline index rail lands ~15–16 s (off the paint path).
+> So the dominant first-paint cost is **GLB decode + bundle parse (~5 s)**, NOT the
+> UE-SINR warm — the "~6s UE warm scales with UE count" row below overstated a cost
+> that does not gate first paint (it fits under the GLB/bundle load). This is why
+> **L3 (progressive UE) was abandoned** — see L3. Re-measure with the accurate
+> probe, never `waitForFunction`, for any future load-time work.
+
+Current (waitForFunction-inflated; see correction above): `ueRendered` (scene
+usable) ≈ **18s**; `app-shell` ≈ 3–5s. Where the ~18s goes (audit
+`wf_57330b79-0cd` + direct probe):
 
 | bucket | ~cost | scales with | nature |
 |---|---|---|---|
@@ -109,7 +127,30 @@ reward. `★` = high reward/effort.
   swap must be invisible (guaranteed by the golden).
 - **Reward:** removes most of the ~8s warm from first paint for the default open.
 
-### L3 ★ — Progressive UE load (ramp count past first paint)
+### L3 ✗ ABANDONED (2026-06-13) — Progressive UE load (ramp count past first paint)
+> **Built, fully gated (lint + `validate:governance:full` + a new
+> `validate:startup:progressive-ue` truth golden all green), then REVERTED after
+> accurate measurement showed it is a net regression with no first-paint win.**
+> The premise below — that the UE-count-scaling warm blocks first paint — was a
+> **measurement artifact**: the prior `_chk-render` probe used Playwright
+> `waitForFunction` (rAF polling), which the app's continuous R3F render loop
+> STARVES, inflating every milestone by ~3 s. An accurate `setTimeout`+`evaluate`
+> probe (`scripts/_measure-loadtime.ts`, immune to rAF starvation) measured, same
+> machine, 3 runs each:
+>
+> | median | BEFORE (L5) | AFTER (L3) |
+> |---|---|---|
+> | first-paint (1st UE) | **4.97 s** | 5.11 s |
+> | full-pop (100 UE) | **4.97 s** | **7.96 s** |
+>
+> L5 already paints all 100 UEs **at once at ~5.0 s** (no gap) — first paint is
+> **GLB-decode + bundle-bound, NOT UE-warm-bound**, so dropping the count to 1
+> saves nothing on first paint and the ramp merely delays full population by ~3 s
+> (staggered fill ends LATER than L5's instant-100, perceptually worse too). The
+> ~5.0 s figure is already **under** the §6 target (6–8 s). The only count-truth
+> work (prefix-stable `createMobilityStates`, count-independent engine serving)
+> verified clean — the lever's failure was the cost model, not the truth.
+> ~~Original goal/approach kept below for the record.~~
 - **Goal:** paint terrain + satellites + primary UE immediately; stream the other
   ~99 UEs in after first paint so there is no "waiting" feel. Defers the
   UE-count-scaling ~6s warm off the critical path.
@@ -165,13 +206,25 @@ over **localhost** or **a network/remote deploy**? The preview measurements are
 localhost, which *hides transfer cost*. If networked, the 20MB+ GLB download likely
 dominates → **L1 jumps to first**.
 
-Default recommended order (revisit after the deploy-target answer):
+**STATUS (2026-06-13, after the accurate re-measure): localhost load-time
+workstream is effectively DONE at L5.** The sinr-live scene paints 100 UEs at
+~5.0 s — under the 6–8 s target. The remaining levers do not earn their cost on
+localhost:
 
-1. **L5** (memoize trajectory + defer uav) — cheap, low-risk, unblocks L2.
-2. **L2** (bake/hydrate default t0) — biggest compute win, applies on every deploy.
-3. **L1** (GLB meshopt+KTX2) — **promote to #1 if networked deploy.**
-4. **L3** (progressive UE) — biggest perceived-load win.
-5. **L4** (LOD) / **L6** (Worker index) — polish / rail.
+1. ✅ **L5** (memoize trajectory + defer uav) — DONE; the de-facto finish line.
+2. ✗ **L3** (progressive UE) — ABANDONED: net regression, premise was a
+   measurement artifact (see L3).
+3. ⏸ **L2** (bake/hydrate default t0) — the t0 warm is NOT the first-paint
+   blocker (GLB is), so the win is small on localhost; deferred. Still the
+   compute lever if a future change makes the warm gate paint.
+4. ⏸ **L1** (GLB meshopt+KTX2) — the real first-paint lever (~5 s is GLB+bundle
+   bound), BUT: KTX2 needs the missing `ktx` encoder + risks washing the hero
+   terrain photo; WebP is transfer-only (≈free on localhost). **Promote to #1
+   only for a networked/remote deploy** (transfer dominates there).
+5. ⏸ **L4** (LOD) / **L6** (Worker index) — polish / rail; diminishing returns
+   on localhost.
+
+If a networked deploy lands, re-open L1 first.
 
 Fold the remaining `computeLinkBudget` storm reduction
 (`sinrLiveCellModel.ts:771-800`, SINR-truth golden) into L2/L3 work where it
@@ -214,15 +267,19 @@ upload to the GPU without a main-thread decode. Transcoder version MUST match
 
 ## 6. Measurement protocol + targets
 
-Harness (unchanged): `npm run build` → `npx vite preview --port 4173 --strictPort`
-→ `APP_URL=http://localhost:4173 LANE=sinr-live node --import tsx/esm
-scripts/_probe-loadtime.ts` (milestones) + `scripts/_chk-render.ts` (100 UEs +
-index-populated + 0 errors). Always measure **sinr-live** (preview lacks the
-`/modqn-bundles` middleware).
+Harness: `npm run build` → `npx vite preview --port 4173 --strictPort` →
+`APP_URL=http://localhost:4173 RUNS=3 node --import tsx/esm
+scripts/_measure-loadtime.ts`. Always measure **sinr-live** (preview lacks the
+`/modqn-bundles` middleware). ⚠️ **Use `_measure-loadtime.ts` (setTimeout+evaluate
+polling), NOT `_chk-render.ts` / `_probe-loadtime.ts` (Playwright
+`waitForFunction`)** — the rAF-polling probes are starved by the R3F render loop
+and report ~3 s late (see §1 correction). Kill the preview by its port pid (`ss
+-ltnp | grep 4173`), never `pkill -f "vite preview"` (kills your own shell).
 
-Baseline (S2, batch=12): ueRendered 18.1s · index-populated 17.9s · 100 UEs · 0
-errors. Targets: **scene-visible ≤ ~6–8s**, ueRendered toward ~9–11s, no truth
-regression (`validate:governance:full` + each lever's gate green).
+True baseline (accurate probe, post-L5, 2026-06-13): **first-paint = full-pop ≈
+5.0 s** (100 UEs at once) · index rail ≈ 15–16 s (off the paint path) · 100 UEs ·
+0 errors. **Target scene-visible ≤ 6–8 s is MET.** Hold the line: no truth
+regression (`validate:governance:full` green) and don't regress the ~5 s paint.
 
 ## 7. Out of scope / non-goals
 
