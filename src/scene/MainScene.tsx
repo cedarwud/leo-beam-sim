@@ -1121,14 +1121,21 @@ function SceneContent({
       ? resolveSinrLiveCellHandoverPairConeItems({
         candidate: runtime.candidateHighlight,
         placementByCellId: sinrLiveCellPlacementById,
-        satelliteWorldById,
+        // Serving-sat-COMPLETE apex map (like the ambient + pulse cone layers, S5-2),
+        // NOT the top-12 `satelliteWorldById` display slice: the focused handover's
+        // satellite can sit beyond the display cap — or drop out of it as the
+        // cinematic seeks/restores (focused→restoring) — and the old/new pair cones
+        // must stay drawn for the whole focus, not vanish mid-cinematic. Display cap
+        // applies at DRAW, never at TRUTH (Rule#6). Fixes the pair cones blinking out
+        // at the focused→restoring transition (validate:phase-c:handover-cinema).
+        satelliteWorldById: viz.coneApexWorldById,
       })
       : []),
     [
       showCandidateHandoverHighlight,
       runtime.candidateHighlight,
       sinrLiveCellPlacementById,
-      satelliteWorldById,
+      viz.coneApexWorldById,
     ],
   );
   // G2c ambient live-handover pulse: the real per-frame handovers the cell model
