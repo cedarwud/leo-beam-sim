@@ -610,8 +610,11 @@ function validateFamilyBDenseQBundleShape(bundle: ModqnReplayBundle): void {
     assertArrayLength(diagnostics.scalarizedQByAction, totalBeamCount, `${label}.policyDiagnostics.scalarizedQByAction`);
 
     // --- physical axis (beamStates decoupled from the catalog) ---
-    if (row.beamStates.length < totalBeamCount) {
-      fail(`${label}.beamStates`, `at least totalBeamCount (${totalBeamCount}) physical render-beams`);
+    // Strict: the dual-axis invariant this mode advertises is physical > catalog.
+    // A beamStates.length === totalBeamCount bundle is single-axis (baseline shape)
+    // and must NOT load under the dual-axis mode; matches the phase7e gate's `>`.
+    if (row.beamStates.length <= totalBeamCount) {
+      fail(`${label}.beamStates`, `strictly more than totalBeamCount (${totalBeamCount}) physical render-beams (dual-axis)`);
     }
     const physicalCatalog = new Map(row.beamStates.map(beam => [beam.beamId, beam]));
     if (physicalCatalog.size !== row.beamStates.length) {
@@ -641,6 +644,13 @@ function validateFamilyBDenseQBundleShape(bundle: ModqnReplayBundle): void {
         `${label}.policyDiagnostics.candidateActionOrder[selectedActionIndex].beamId`,
         `selectedServing.beamId ${row.selectedServing.beamId}`,
       );
+    }
+    // Parity with the baseline validator's selected-action mask check: the chosen
+    // catalog action must be valid under its own decision mask (the dense-Q proof
+    // also requires this — keep the shape gate from accepting a selection the mask
+    // marks invalid).
+    if (row.decisionActionValidityMask[selectedActionIndex] !== true) {
+      fail(`${label}.decisionActionValidityMask[selectedActionIndex]`, 'true (selected action valid under its decision mask)');
     }
 
     assertHandoverEventMatchesServingTruth(row, label);

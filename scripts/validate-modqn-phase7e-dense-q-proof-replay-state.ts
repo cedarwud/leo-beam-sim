@@ -15,7 +15,10 @@
 //
 // Parallel to phase7c (baseline). Unlike phase7c it does NOT regenerate the
 // bundle (leo never trains Family-B); it requires the producer-exported bundle
-// staged at MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH.
+// staged at MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH. phase7d (replay-diagnostics) is
+// NOT extended for the family-b mode: this gate subsumes that coverage — it
+// asserts the family-b adapter diagnostics (bridgeStatus, eventCounts that sum to
+// rowCount, producerPolicyDiagnostics) on the real bundle.
 
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -156,6 +159,66 @@ function run(): void {
     }),
     /fail-closed/,
     'family-b mode requires the family-b bundle path (rejects the baseline selected path)',
+  );
+
+  // --- fail-closed REJECTION tests (a gate must prove it rejects, not only accepts) ---
+  // Mutate an in-memory 1-row copy of the real bundle (cheap; the shape + playback
+  // validators accept rowCount>=1) and assert each guard fires. Covers the strict
+  // dual-axis guard, the dual-axis bridge, the dense-Q catalog requirement, the
+  // selected-action mask parity, and — critically — the governance claim that the
+  // provenance-tolerance only allows ABSENCE, never a present-but-wrong version.
+  const firstLine = contents.timelineJsonl.split(/\r?\n/).map(l => l.trim()).filter(Boolean)[0];
+  if (firstLine === undefined) throw new Error('real bundle timeline is empty');
+  const oneRowContents = (mutate?: (row: any) => void) => {
+    const row = JSON.parse(firstLine);
+    if (mutate) mutate(row);
+    return { ...contents, timelineJsonl: JSON.stringify(row) };
+  };
+  const buildFamilyB = (c: typeof contents) => createModqnReplayEnvelopeFromContents(c, {
+    sourcePath: MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH,
+    modeKey: MODQN_FAMILY_B_DENSE_Q_MODE_KEY,
+  });
+
+  // non-vacuous: the unmutated 1-row copy still builds + is proof-ready.
+  {
+    const oneEnv = buildFamilyB(oneRowContents());
+    const oneProof = buildModqnDenseQProofFromReplayRow(oneEnv.replaySlots[0]?.rows[0] as never);
+    assert.ok(isModqnDenseQProofReady(oneProof), '1-row Family-B base copy is dense-Q proof-ready (negative-control baseline)');
+  }
+
+  // provenance present-but-wrong (the exact governance claim the tolerance rests on:
+  // it allows ABSENCE only; a present-but-wrong version must still be rejected).
+  assert.throws(
+    () => buildFamilyB({
+      ...oneRowContents(),
+      provenanceMapJson: JSON.stringify({ bundleSchemaVersion: 'phase-XX-WRONG-VERSION', note: 'tamper' }),
+    }),
+    /expected/,
+    'present-but-wrong provenance bundleSchemaVersion is rejected even under family-b tolerance',
+  );
+  // single-axis beamStates (== catalog A) rejected by the strict dual-axis guard.
+  assert.throws(
+    () => buildFamilyB(oneRowContents(row => { row.beamStates = row.beamStates.slice(0, row.policyDiagnostics.candidateActionOrder.length); })),
+    /fail-closed/,
+    'single-axis beamStates (length == catalog A) is rejected by the strict dual-axis guard',
+  );
+  // catalog-axis selection unbridged from the physical serving beam.
+  assert.throws(
+    () => buildFamilyB(oneRowContents(row => { row.policyDiagnostics.selectedActionIndex = (row.policyDiagnostics.selectedActionIndex + 1) % row.policyDiagnostics.candidateActionOrder.length; })),
+    /fail-closed/,
+    'selectedActionIndex not matching selectedServing.beamIndex is rejected',
+  );
+  // missing dense-Q action catalog (the field that unlocks the proof).
+  assert.throws(
+    () => buildFamilyB(oneRowContents(row => { delete row.policyDiagnostics.candidateActionOrder; })),
+    /fail-closed/,
+    'missing dense action catalog is rejected',
+  );
+  // selected action marked invalid under its own decision mask (parity guard).
+  assert.throws(
+    () => buildFamilyB(oneRowContents(row => { row.decisionActionValidityMask[row.policyDiagnostics.selectedActionIndex] = false; })),
+    /fail-closed/,
+    'selected action invalid under its decision mask is rejected',
   );
 
   console.log('MODQN Phase 7E Family-B dense-Q replay-state validation passed.');

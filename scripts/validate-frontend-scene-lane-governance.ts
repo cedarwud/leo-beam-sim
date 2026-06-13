@@ -3243,6 +3243,37 @@ assertContains(
   "sceneLane !== 'sinr-live' && <DegenerateDataBanner />",
   'App mounts the degenerate-data banner on every MODQN lane (never on SINR)',
 );
+// G3: the Family-B dense-Q banner is the loudest claim-boundary surface for a
+// non-paper-faithful, non-citable proof-of-wiring mode. Pin its honesty content
+// exactly like the baseline degenerate text so a future edit cannot silently
+// strip the disclosure or reintroduce a paper-faithful / beats-baseline / Pareto
+// / effectiveness implication. (Adversarial-review finding, 2026-06-13.)
+// Capture the constant up to the NEXT `export` (not the first `;`) — the banner
+// prose itself contains an inner semicolon, which would truncate a `;`-delimited match.
+const familyBBannerMatch = degenerateDataBannerSource.match(/FAMILY_B_DENSE_Q_BANNER_TEXT\s*=([\s\S]*?)export /);
+assert.ok(familyBBannerMatch, 'Family-B honesty banner exports FAMILY_B_DENSE_Q_BANNER_TEXT');
+const familyBBannerText = familyBBannerMatch[1];
+for (const token of ['Grade-2 constrained', 'non-paper-faithful', 'do not cite', 'not a beats-baseline claim']) {
+  assertContains(familyBBannerText, token, 'Family-B honesty banner disclosure');
+}
+for (const forbidden of ['degenerate', 'Pareto', 'effectiveness']) {
+  assertNotContains(familyBBannerText, forbidden, 'Family-B honesty banner must not mislabel/overclaim');
+}
+assert.equal(
+  countOccurrences(familyBBannerText, 'beats'),
+  countOccurrences(familyBBannerText, 'not a beats-baseline'),
+  'Family-B banner: every "beats" is the "not a beats-baseline" disclaimer',
+);
+assert.equal(
+  countOccurrences(familyBBannerText, 'paper-faithful'),
+  countOccurrences(familyBBannerText, 'non-paper-faithful'),
+  'Family-B banner: every "paper-faithful" is negated as "non-paper-faithful"',
+);
+assertContains(
+  degenerateDataBannerSource,
+  'MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS',
+  'Family-B honesty banner selects its text by the loaded evidence status (cannot be detached from the loaded bundle)',
+);
 assertContains(
   appSource,
   '<AdvancedSetupDrawer',

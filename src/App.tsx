@@ -10,6 +10,7 @@ import {
 } from './scene/liveWalkerDirectorFocus';
 import {
   MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH,
+  MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS,
   MODQN_FAMILY_B_DENSE_Q_MODE_KEY,
   createModqnReplayPlaybackDisplayState,
   createModqnReplayPlaybackShellModel,
@@ -2248,8 +2249,8 @@ export function App() {
                     <button
                       type="button"
                       data-testid="load-family-b-dense-q"
-                      data-active={modqnReplayEnvelope?.evidenceStatus === 'family-b-dense-q' ? 'true' : 'false'}
-                      disabled={modqnReplayEnvelope?.evidenceStatus === 'family-b-dense-q'}
+                      data-active={modqnReplayEnvelope?.evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS ? 'true' : 'false'}
+                      disabled={modqnReplayEnvelope?.evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS}
                       onClick={() => { void handleLoadFamilyBDenseQ(); }}
                     >
                       Load Family-B dense-Q proof
@@ -2257,7 +2258,7 @@ export function App() {
                     <button
                       type="button"
                       data-testid="revert-to-baseline-from-family-b"
-                      disabled={modqnReplayEnvelope?.evidenceStatus !== 'family-b-dense-q'}
+                      disabled={modqnReplayEnvelope?.evidenceStatus !== MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS}
                       onClick={() => { void handleRevertToPaperFaithful(); }}
                     >
                       Back to baseline
