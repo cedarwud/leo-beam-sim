@@ -1,8 +1,12 @@
 # Handoff — frontend load-time performance (started 2026-06-13)
 
-> Controller=Opus. Branch `feat/showcase-phase-0`, HEAD `75601b8` (committed, NOT pushed).
+> Controller=Opus. Branch `feat/showcase-phase-0`, HEAD `3559a6f` (committed, NOT pushed).
 > Open this + `.agent-memory/project_frontend_loadtime_perf_2026-06-13.md` to continue.
 > Scratch probes are untracked `_*.ts` in `scripts/` (repo convention keeps them).
+>
+> **Rank-1 (chunk the index scan) is DONE — commit `3559a6f`.** Next lever = move
+> the scan to a **Web Worker** (erases the rail/paint trade the main-thread chunk
+> still pays); the sim dep-graph was audited Worker-safe. See "Remaining" below.
 
 ## TL;DR
 
@@ -41,17 +45,55 @@ How to measure: `npm run build` → `npx vite preview --port 4173 --strictPort` 
 NOTE: `vite preview` does NOT run the dev-server `/modqn-bundles` middleware → MODQN/
 artifact lanes fall back gracefully; sinr-live is unaffected (measure sinr-live).
 
-## Remaining — the next session's work (ranked, from `wf_57330b79-0cd`)
+## ✅ Rank-1 DONE — chunked the index scan (commit `3559a6f`)
 
-Full scene is still ~22.8s. The big remaining lever:
+`buildSinrLiveCellHandoverEventIndex` is now a resumable builder
+(`createSinrLiveCellHandoverEventIndexBuilder`, `runSlice`/`finalize`); the
+one-shot is that builder drained in a single slice (ONE code path → chunked
+output byte-identical to one-shot by construction). App drives it in batches of
+**12 steps via a `setTimeout(0)` macrotask chain** — NOT `requestIdleCallback`:
+the continuous rAF scene render keeps the page non-idle, so rIC slices fire only
+on their 2 s timeout and the scan takes minutes (measured: rIC pump → rail never
+populated in 40 s; batch=3 macrotask → 43.9 s; batch=12 → 17.9 s).
 
-1. **🥇 chunk/Worker the offline index scan (~11s, still blocks the canvas paint).**
-   `defer` moved it past first paint but it still runs 11s synchronously in idle →
-   starves the canvas render until done. `buildSinrLiveCellHandoverEventIndex`
-   (`src/scene/sinrLiveCellHandoverEventIndex.ts:246`, ~240 steps × 100 UEs) must be
-   made INCREMENTAL (process N steps per `requestIdleCallback` slice, yield between)
-   or moved to a Web Worker. **Truth-sensitive (Rule#2/#6): output must be byte-identical
-   — add an output-equality golden (chunked == one-shot) before shipping.** Medium effort.
+Truth gate: `validate:sinr-live:handover-index-chunked-golden` (byte-identical
+across slice sizes 1/7/∞, deterministic, 2 topologies) — wired into
+`validate:governance:full`. QUAR-C1-DIRECTOR lane lock now pins the builder call.
+
+Measured (vite preview, prod, sinr-live), vs one-shot baseline:
+
+| milestone | one-shot (defer) | **chunk batch=12** |
+|---|---|---|
+| ueRendered (canvas usable) | 22.8s | **18.1s** |
+| index-populated (rail/Director arms) | 20.8s | **17.9s** |
+
+100 UEs render, 0 console errors, `tsc` + `validate:governance:full` green.
+
+**Honest limit (the next lever):** a main-thread chunk CANNOT win both metrics —
+each macrotask yield lets the heavy 100-UE scene render a ~0.3 s frame, so build
+wall ≈ `7s + (240/batch)×0.3s`. Bigger batch → faster rail but coarser scene
+stutter; smaller → smoother scene but slow rail (batch=3's 43.9 s). batch=12 is
+the empirical sweet spot but still pays the frame tax.
+
+## Remaining — the next session's work (ranked)
+
+1. **🥇 Move the scan to a Web Worker (erases the rail/paint trade).** Off-thread
+   → the canvas renders at full rAF the whole time (no frame competition) AND the
+   rail fills in ~8 s of pure compute — beats batch=12 on BOTH axes. The sim
+   dep-graph was **kill-switch audited Worker-safe** (entry layer
+   `sinrLiveCellHandoverEventIndex` + `sinrLiveCellRuntime`/`Model`,
+   `runtimeFrameStep`, `handover-manager`, `multiUeMobility`, `orbit` have no
+   `window`/DOM/Three/React — only the word "window" in sim-time comments). Plan:
+   `new Worker(new URL('./sinrLiveCellHandoverEventIndexWorker.ts', import.meta.url),
+   {type:'module'})`, postMessage the `BuildSinrLiveCellHandoverEventIndexInput`
+   (Profile is structured-cloneable plain JSON), worker calls the **one-shot**
+   (no chunking needed off-thread) and posts the index back; App `setLiveWalker…`
+   on message, `terminate()` on cleanup/cancel. **Risks to verify:** (a) a
+   transitive import touching a browser global → run a worker smoke before wiring;
+   (b) governance relock (App will postMessage, not call the builder — update the
+   QUAR-C1-DIRECTOR lock to pin the worker wiring); (c) the chunked builder +
+   golden stay (the one-shot IS the builder; golden still guards determinism).
+   Medium effort.
 2. **computeLinkBudget storm (~6s).** `src/scene/sinrLiveCellModel.ts:771-796,800` — a
    12 Hz gate is bypassed in-scan so 99 UEs × cells recompute SINR every step; selection
    (`:800`) needs SINR only at serving-transition rows → lazy-FILL (not drop) `sinrDb`
