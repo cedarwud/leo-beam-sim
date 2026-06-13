@@ -6,6 +6,31 @@
 > `wf_7092bde0-e08` task output. The dense-Q **adapter** bug is already FIXED +
 > committed (`11abe27`); this doc is ONLY the bundle-wiring slice that follows.
 
+## START HERE (cold-start checklist — do in order)
+0. Read `.agent-memory/project_showcase_render_modqn_plan_2026-06-10.md` (the
+   2026-06-13 section) + the rest of THIS doc. Context discipline: leo governance
+   core = controller + Workflow review, **NOT codex** (no-memory re-breaks locks).
+1. Confirm clean baseline: `git log --oneline -2` shows `93c1a17` + `11abe27`;
+   run `npm run lint && npm run validate:modqn:dense-q-proof-adapter && npm run
+   validate:modqn:replay-handover-cinema-gate && npm run validate:governance` — all
+   green BEFORE touching anything.
+2. Stage the bundle: `ln -s /home/u24/papers/modqn-paper-reproduction/artifacts/dense-q-proof-window-600-130 /tmp/leo-beam-sim/modqn-bundles/dense-q-proof-window-600-130`
+   (mkdir -p the parent first). Confirm the 3 surfaces resolve (manifest.json,
+   provenance-map.json, timeline/step-trace.jsonl).
+3. Implement file-by-file per "File-by-file edit plan" below — controller writes the
+   governance-locked core (replay-state.ts mode + dual-axis validator,
+   playback-shell.ts, DegenerateDataBanner); fan-out the bounded NEW-file pieces
+   (validate:phase7e script, App.tsx mode-selector) to Workflow subagents fed THIS
+   doc, then review + integrate.
+4. After each file group, run the matching gate. NEVER skip a fail-closed assert
+   (see "Fail-closed assert TRAPS") — allowlist, don't delete.
+5. Final: new `validate:modqn:phase7e` green + `validate:governance` green + browser
+   smoke (DecisionViz `data-dense-q-proof-status="proof-ready"`, Q1/Q2/Q3 visible).
+   Then run an adversarial Workflow review (correctness/governance/honesty) before
+   commit. Commit per slice; push.
+6. Honesty gate: DegenerateDataBanner must NOT call Family-B "degenerate" (it is
+   Grade-2 non-degenerate but thin: 2 serving sats / 2 unique actions / 125 HOs).
+
 ## Goal
 Make leo's MODQN replay lane load the producer Grade-2 dense-Q bundle as a NEW
 selectable mode so DecisionViz renders Q1/Q2/Q3 (the G3 "prove MODQN integrated"
