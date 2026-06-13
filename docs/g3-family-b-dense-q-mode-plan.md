@@ -1,6 +1,16 @@
 # G3 Step 3 — Family-B dense-Q replay mode (wiring plan)
 
-> Status: PLANNED (recon done, not implemented). Pick this up in a fresh session.
+> **Status: EXECUTED 2026-06-13** (Steps 3 + 4 done; commits `3f39b12` model +
+> `6cddbd9` UI + `dc3cd1c` review-hardening on `feat/showcase-phase-0`, pushed).
+> DecisionViz renders `data-dense-q-proof-status="proof-ready"` + Q1/Q2/Q3 for the
+> Family-B window (browser smoke: `sat-98-beam-28: Q1 0.572 · Q2 0.968 · Q3 2.156`,
+> self-check passed, honest non-degenerate banner). New gate
+> `validate:modqn:phase7e-dense-q-proof-replay-state` = 1000/1000 proof-ready +
+> fail-closed reject tests. Adversarial Workflow review: 0 confirmed blockers/majors.
+> **See "Execution findings + follow-ups (2026-06-13)" at the bottom** for the
+> producer provenance-map gap, the latent replay-scene trap, and disclosed minors.
+
+> Status (original): PLANNED (recon done, not implemented). Pick this up in a fresh session.
 > Authority for context: `.agent-memory/project_showcase_render_modqn_plan_2026-06-10.md`
 > (the 2026-06-13 section). Recon workflow output (full ~488KB map):
 > `wf_7092bde0-e08` task output. The dense-Q **adapter** bug is already FIXED +
@@ -153,3 +163,52 @@ sub-view (parked by `408f488`; `ModqnViewToggle` Proof segment + `canToggleModqn
   uniqueness, or add a manifest `physicalBeamCount` field? (simplest = the former.)
 - Row/slot count: pin 1000/10 (matches this window) or leave flexible for future windows?
 - Mode selector UI placement (ControlBar vs sidebar vs ModqnViewToggle).
+
+## Execution findings + follow-ups (2026-06-13)
+
+**How it was built (vs the plan):**
+- Resolved the open questions: physical beam count → `beamStates.length > totalBeamCount`
+  (STRICT, dual-axis) + unique beamId (NOT unique beamIndex); row/slot → flexible
+  (`>= 1`); mode selector → a small load/back-to-baseline control in the MODQN
+  evidence sidebar (co-located with DecisionViz).
+- The serving-ref check could NOT reuse `assertReferenceMatchesBeamCatalog` (it asserts
+  `beam.beamIndex === ref.beamIndex`, but the serving ref carries the CATALOG index
+  while physical beamStates carry the physical index). Added
+  `assertServingReferenceResolvesPhysicalBeam` (matches satId/satIndex/localBeamIndex,
+  not beamIndex) + a dual-axis bridge (`selectedServing.beamIndex === selectedActionIndex`
+  ∈ [0,A) and `candidateActionOrder[sel].beamId === selectedServing.beamId`).
+- The **Proof-lane un-park was NOT needed**: DecisionViz is reachable on the non-parked
+  `modqn-live-cell-preview` lane's "MODQN evidence" right tab (appRuntimeModel returns
+  the modqn right tab there). So `ModqnViewToggle` / `canToggleModqnReplayProof` were
+  left untouched.
+
+**🔴 PRODUCER GAP (needs a durable producer-side fix):** the dense-q-**window** export
+shipped a 251-byte STUB `provenance-map.json` (no `bundleSchemaVersion`, 0 fields). The
+Grade-1 standard export + the baseline both carry the full 63-field map via the producer's
+`build_provenance_map`. Root cause: the window-export path (server-side) did not call
+`build_provenance_map`. leo's fix is a MODE-SCOPED tolerance in `loader.ts` (family-b only;
+the manifest's `bundleSchemaVersion` stays authoritative + strictly checked; a PRESENT-but-
+wrong version is still rejected — pinned by a phase7e reject test). **Durable fix = the
+producer window-export should emit the full provenance map; re-export + re-scp.** (A local
+`build_provenance_map` regen was rejected: the Family-B run uses a different cfg/metadata
+schema than that function consumes → would fabricate empty fields.)
+
+**🟡 LATENT (fix before un-parking the family-b 3D replay scene):**
+`src/scene/modqnReplaySceneVisuals.ts` `decisionMaskValue(focusRow, beam.beamIndex)` keys
+the 28-length catalog decision mask by the PHYSICAL `beam.beamIndex` (9..49). Under the
+144/28 envelope this mis-resolves beam validity. It is OFF the shipped path (only the
+PARKED `modqn-replay-proof` lane renders these beams; `shouldRenderModqnReplayScene`).
+Fix when that lane is un-parked for family-b: resolve each physical beam to its catalog
+index via `policyDiagnostics.candidateActionOrder` (by beamId) before reading the mask.
+
+**🟢 DISCLOSED minors (acceptable as-is):**
+- `bundleProvenanceKind='user-trained'` for Family-B drives a literally-inaccurate
+  "user-trained" chip/disclaimer on ClaimBoundaryBanner / ModqnEvidenceTab. Kept because it
+  is the SAFE direction (never implies paper-faithful/green; every string carries
+  "do not cite" / "not PAP-2024 baseline proof"). A precise fix = extend the flag to a 3rd
+  value (blast radius) or neutralize the Family-B chip wording.
+- `ModqnEvidenceTab` surfaces the producer manifest's reused `baselineSurface`
+  (satelliteCount 4 / beamsPerSat 7 / totalBeamCount 28) verbatim — these are the
+  ACTION-CATALOG dims, not the real 180/9/1 + 144-physical Family-B scenario. Disclosed
+  producer-manifest naming reuse; the banner already says "Grade-2 constrained".
+- `phase7d` was not extended; `phase7e` subsumes the family-b diagnostics coverage.
