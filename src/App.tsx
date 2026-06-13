@@ -199,7 +199,8 @@ import {
   type LiveWalkerHandoverEventIndex,
 } from './scene/liveWalkerHandoverEventIndex';
 import {
-  buildSinrLiveCellHandoverEventIndex,
+  createSinrLiveCellHandoverEventIndexBuilder,
+  type SinrLiveCellHandoverEventIndexBuilder,
 } from './scene/sinrLiveCellHandoverEventIndex';
 import {
   DEFAULT_MODQN_VISUAL_LAYER_PRESET,
@@ -1281,52 +1282,92 @@ export function App() {
     // The cinema handover-event index is an OFFLINE scan (~hundreds of steps x
     // ueCount UEs) consumed ONLY by the handover rail / Director focus — NOT by
     // the live scene render. Building it synchronously here blocked the first
-    // scene paint by ~10s on load. Defer it to idle so the live scene paints
-    // immediately and the rail fills in shortly after; the index output is
-    // identical (deterministic), only computed later (Rule#2/#6 unaffected).
-    const computeIndex = () => sceneLane === 'sinr-live'
-      ? buildSinrLiveCellHandoverEventIndex({
-        profile: effectiveProfile,
-        epochUtcMs: APP_EPOCH_MS,
-        // D4 S3a: keep the offline cell-truth scan bounded while preserving a
-        // source-time trajectory. The browser/runtime still consumes the same
-        // `sinrLiveCells` model for each focused event.
-        simStepSec: 30,
-        ueCount: runtime.ueCount,
-        ueDistributionMode: runtime.ueDistributionMode,
-        uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
-        ueDistributionScope: runtime.ueDistributionScope,
-        ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
-        ueMobilityMode: runtime.ueMobilityMode,
-        ueMobilityParams: runtime.ueMobilityParams,
-      })
-      : buildLiveWalkerHandoverEventIndex({
-        profile: effectiveProfile,
-        epochUtcMs: APP_EPOCH_MS,
-        claimKind: 'overlay-demo',
-        ueDistributionMode: runtime.ueDistributionMode,
-        uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
-        ueDistributionScope: runtime.ueDistributionScope,
-        ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
-        ueMobilityMode: runtime.ueMobilityMode,
-        ueMobilityParams: runtime.ueMobilityParams,
-      });
-    const buildIndex = () => {
-      if (cancelled) return;
-      const index = computeIndex();
-      if (!cancelled) setLiveWalkerHandoverEventIndex(index);
-    };
+    // scene paint by ~10s on load.
+    //
+    // sinr-live is the heavy lane (100 UEs, ~8s): deferring it past first paint
+    // was not enough — one idle burst of that size still starved the canvas
+    // render until done. So drive it INCREMENTALLY across requestIdleCallback
+    // slices: each slice blocks at most one ~30ms sim step, then yields to the
+    // canvas. Output is byte-identical to the one-shot build regardless of slice
+    // size (Rule#2/#6; pinned by validate:sinr-live:handover-index-chunked-golden).
+    // The modqn-live-cell preview index is the cheap 1-UE scan — one deferred
+    // one-shot is fine there.
+    type IdleDeadlineLike = { timeRemaining: () => number };
     const ric = typeof window !== 'undefined'
       ? (window as Window & {
-        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        requestIdleCallback?: (cb: (deadline: IdleDeadlineLike) => void, opts?: { timeout: number }) => number;
       }).requestIdleCallback
       : undefined;
     let idleHandle: number | null = null;
     let timeoutHandle: number | null = null;
-    if (typeof ric === 'function') {
-      idleHandle = ric(buildIndex, { timeout: 2000 });
+    const scheduleIdle = (cb: (deadline?: IdleDeadlineLike) => void): void => {
+      if (typeof ric === 'function') {
+        idleHandle = ric(cb, { timeout: 2000 });
+      } else {
+        timeoutHandle = window.setTimeout(() => cb(undefined), 0);
+      }
+    };
+
+    if (sceneLane === 'sinr-live') {
+      // One sim step is ~30ms for 100 UEs and can't be split without entering the
+      // truth-locked step path. Each macrotask yield lets the heavy 100-UE scene
+      // render a full (~0.3s) frame, so total build wall ≈ 7s + (240/batch)×0.3s:
+      // a bigger batch fills the rail sooner but stutters the scene in coarser
+      // steps. batch=12 (~0.36s blocks) keeps the scene visibly live while landing
+      // the rail in ~27s. (A Web Worker would erase this trade entirely — see the
+      // load-time handoff follow-up.)
+      const STEP_BATCH = 12;
+      let builder: SinrLiveCellHandoverEventIndexBuilder | null = null;
+      const runBatch = (): void => {
+        if (cancelled) return;
+        if (builder === null) {
+          builder = createSinrLiveCellHandoverEventIndexBuilder({
+            profile: effectiveProfile,
+            epochUtcMs: APP_EPOCH_MS,
+            // D4 S3a: keep the offline cell-truth scan bounded while preserving a
+            // source-time trajectory. The browser/runtime still consumes the same
+            // `sinrLiveCells` model for each focused event.
+            simStepSec: 30,
+            ueCount: runtime.ueCount,
+            ueDistributionMode: runtime.ueDistributionMode,
+            uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
+            ueDistributionScope: runtime.ueDistributionScope,
+            ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
+            ueMobilityMode: runtime.ueMobilityMode,
+            ueMobilityParams: runtime.ueMobilityParams,
+          });
+        }
+        if (builder.runSlice(STEP_BATCH)) {
+          if (!cancelled) setLiveWalkerHandoverEventIndex(builder.finalize());
+          return;
+        }
+        // Continue on a MACROTASK, not requestIdleCallback: the live scene's
+        // continuous rAF render keeps the page non-idle, so rIC slices would only
+        // fire on their 2s timeout and the 240-step scan would take minutes.
+        // setTimeout(0) fires every macrotask and still yields a paint between
+        // batches (macrotasks run after rendering in the event loop).
+        timeoutHandle = window.setTimeout(runBatch, 0);
+      };
+      // Kick the first (trajectory-building, heavier) batch off idle so the live
+      // scene paints first; the macrotask chain then drives the rest.
+      scheduleIdle(runBatch);
     } else {
-      timeoutHandle = window.setTimeout(buildIndex, 0);
+      const buildModqnIndex = (): void => {
+        if (cancelled) return;
+        const index = buildLiveWalkerHandoverEventIndex({
+          profile: effectiveProfile,
+          epochUtcMs: APP_EPOCH_MS,
+          claimKind: 'overlay-demo',
+          ueDistributionMode: runtime.ueDistributionMode,
+          uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
+          ueDistributionScope: runtime.ueDistributionScope,
+          ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
+          ueMobilityMode: runtime.ueMobilityMode,
+          ueMobilityParams: runtime.ueMobilityParams,
+        });
+        if (!cancelled) setLiveWalkerHandoverEventIndex(index);
+      };
+      scheduleIdle(buildModqnIndex);
     }
 
     return () => {

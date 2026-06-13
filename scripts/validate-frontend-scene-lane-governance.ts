@@ -1044,8 +1044,8 @@ assertContains(
 tangleLockGroup('QUAR-C1-DIRECTOR', () => {
 assertContains(
   appSource,
-  'buildSinrLiveCellHandoverEventIndex({',
-  'App builds the SINR-live handover index from sinrLiveCells cell truth',
+  'createSinrLiveCellHandoverEventIndexBuilder({',
+  'App builds the SINR-live handover index incrementally (chunked) from sinrLiveCells cell truth',
 );
 });
 assertContains(

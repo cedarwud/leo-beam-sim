@@ -243,9 +243,48 @@ export function createSinrLiveCellHandoverEventFromUeTransition(input: {
   };
 }
 
-export function buildSinrLiveCellHandoverEventIndex(
+/**
+ * Resumable driver for the offline cell-truth handover scan.
+ *
+ * The scan re-runs the sim over the full 7200 s × `ueCount`-UE window
+ * (~240 coarse steps) and is build-cost-heavy (~8 s for 100 UEs). Running it in
+ * one synchronous burst on lane entry starved the first live-scene paint, so the
+ * App drives it INCREMENTALLY across `requestIdleCallback` slices (one ~30 ms sim
+ * step blocks at most), yielding to the canvas between slices.
+ *
+ * Truth invariant (Rule#2/#6): the chunked output is byte-identical to the
+ * one-shot build regardless of slice size — `buildSinrLiveCellHandoverEventIndex`
+ * IS this builder drained in a single slice, so there is one code path. The
+ * slice-size invariance is pinned by `validate:sinr-live:handover-index-chunked-golden`.
+ */
+export interface SinrLiveCellHandoverEventIndexBuilder {
+  /** Total coarse sim steps the scan will run (for progress display only). */
+  readonly totalSteps: number;
+  /** Steps run so far. */
+  stepsCompleted(): number;
+  /** True once every step has run (or the scan short-circuited at setup). */
+  isDone(): boolean;
+  /** Advance up to `maxSteps` coarse sim steps; returns `isDone()`. */
+  runSlice(maxSteps: number): boolean;
+  /** The final index. Throws if called before the scan is done (no partial truth). */
+  finalize(): LiveWalkerHandoverEventIndex;
+}
+
+function terminalSinrLiveCellHandoverEventIndexBuilder(
+  index: LiveWalkerHandoverEventIndex,
+): SinrLiveCellHandoverEventIndexBuilder {
+  return {
+    totalSteps: 0,
+    stepsCompleted: () => 0,
+    isDone: () => true,
+    runSlice: () => true,
+    finalize: () => index,
+  };
+}
+
+export function createSinrLiveCellHandoverEventIndexBuilder(
   input: BuildSinrLiveCellHandoverEventIndexInput,
-): LiveWalkerHandoverEventIndex {
+): SinrLiveCellHandoverEventIndexBuilder {
   const simStepSec = finitePositiveOrFallback(
     input.simStepSec,
     LIVE_WALKER_HANDOVER_EVENT_INDEX_DEFAULT_STEP_SEC,
@@ -257,20 +296,20 @@ export function buildSinrLiveCellHandoverEventIndex(
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
 
   if (maxTimeSec < LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC) {
-    return {
+    return terminalSinrLiveCellHandoverEventIndexBuilder({
       ...baseIndex,
       sourceGapReasons: [
         `live Walker trajectory cache only spans ${maxTimeSec}s; expected ${LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC}s`,
       ],
-    };
+    });
   }
 
   const sinrLiveCellModel = createSinrLiveCellModel(input.profile, true, input.epochUtcMs);
   if (sinrLiveCellModel === null) {
-    return {
+    return terminalSinrLiveCellHandoverEventIndexBuilder({
       ...baseIndex,
       sourceGapReasons: ['sinrLiveCells model is unavailable for the live SINR cell-truth trajectory'],
-    };
+    });
   }
 
   const hoManager = new HandoverManager(input.profile.handover);
@@ -300,6 +339,33 @@ export function buildSinrLiveCellHandoverEventIndex(
   const previousByUeId = new Map<string, UeServingSnapshot>();
   const events: LiveWalkerHandoverEvent[] = [];
 
+  // One sim step. `paused`/`deltaSec` are the only per-call deltas; sharing the
+  // rest keeps the t=0 and loop steps provably identical to the original.
+  const stepFrame = (paused: boolean, deltaSec: number) => stepRuntimeFrame({
+    profile: input.profile,
+    replay,
+    speed: 1,
+    paused,
+    deltaSec,
+    observer,
+    beamLayoutsByShellId,
+    trajectoryCache,
+    hoManager,
+    secondaryHoManagers,
+    state,
+    ueCount,
+    ueDistributionMode,
+    uePrimaryAnchorMode,
+    ueDistributionScope,
+    ueDistributionRadiusKm: input.ueDistributionRadiusKm,
+    ueMobilityMode,
+    ueMobilityParams,
+    mobilityStates,
+  });
+
+  let frame = stepFrame(true, 0).frame;
+  attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
+
   const collectCellTruthEvents = (): void => {
     const cellFrame = frame?.sinrLiveCells;
     if (!cellFrame) return;
@@ -321,78 +387,77 @@ export function buildSinrLiveCellHandoverEventIndex(
       else previousByUeId.set(record.ueId, current);
     }
   };
-
-  let frame = stepRuntimeFrame({
-    profile: input.profile,
-    replay,
-    speed: 1,
-    paused: true,
-    deltaSec: 0,
-    observer,
-    beamLayoutsByShellId,
-    trajectoryCache,
-    hoManager,
-    secondaryHoManagers,
-    state,
-    ueCount,
-    ueDistributionMode,
-    uePrimaryAnchorMode,
-    ueDistributionScope,
-    ueDistributionRadiusKm: input.ueDistributionRadiusKm,
-    ueMobilityMode,
-    ueMobilityParams,
-    mobilityStates,
-  }).frame;
-  attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
   collectCellTruthEvents();
 
-  while (state.simTimeSec < LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC) {
-    const deltaSec = Math.min(
-      simStepSec,
-      LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC - state.simTimeSec,
-    );
-    const result = stepRuntimeFrame({
-      profile: input.profile,
-      replay,
-      speed: 1,
-      paused: false,
-      deltaSec,
-      observer,
-      beamLayoutsByShellId,
-      trajectoryCache,
-      hoManager,
-      secondaryHoManagers,
-      state,
-      ueCount,
-      ueDistributionMode,
-      uePrimaryAnchorMode,
-      ueDistributionScope,
-      ueDistributionRadiusKm: input.ueDistributionRadiusKm,
-      ueMobilityMode,
-      ueMobilityParams,
-      mobilityStates,
-    });
-    frame = result.frame;
-    attachSinrLiveCellFrame(frame, sinrLiveCellModel, frame.simTimeSec - result.previousSimTimeSec);
-    collectCellTruthEvents();
-  }
+  const totalSteps = Math.ceil(
+    LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC / simStepSec,
+  );
+  let stepsDone = 0;
+  let done = state.simTimeSec >= LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC;
 
-  const sourceGapReasons: string[] = [];
-  if (!events.some(event => event.kind === 'intra')) {
-    sourceGapReasons.push('sinrLiveCells trajectory has no intra handover event for the current UE motion/source window');
-  }
-  if (!events.some(event => event.kind === 'inter')) {
-    sourceGapReasons.push('sinrLiveCells trajectory has no inter handover event for the current UE motion/source window');
-  }
+  const runSlice = (maxSteps: number): boolean => {
+    let stepsThisSlice = 0;
+    while (
+      state.simTimeSec < LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC
+      && stepsThisSlice < maxSteps
+    ) {
+      const deltaSec = Math.min(
+        simStepSec,
+        LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC - state.simTimeSec,
+      );
+      const result = stepFrame(false, deltaSec);
+      frame = result.frame;
+      attachSinrLiveCellFrame(frame, sinrLiveCellModel, frame.simTimeSec - result.previousSimTimeSec);
+      collectCellTruthEvents();
+      stepsThisSlice += 1;
+      stepsDone += 1;
+    }
+    if (state.simTimeSec >= LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC) done = true;
+    return done;
+  };
+
+  const finalize = (): LiveWalkerHandoverEventIndex => {
+    if (!done) {
+      throw new Error('SINR cell-truth handover index finalized before the scan completed');
+    }
+    const sourceGapReasons: string[] = [];
+    if (!events.some(event => event.kind === 'intra')) {
+      sourceGapReasons.push('sinrLiveCells trajectory has no intra handover event for the current UE motion/source window');
+    }
+    if (!events.some(event => event.kind === 'inter')) {
+      sourceGapReasons.push('sinrLiveCells trajectory has no inter handover event for the current UE motion/source window');
+    }
+
+    return {
+      ...baseIndex,
+      sourceGapReasons,
+      events: events.sort((a, b) => (
+        a.sourceTimeSec - b.sourceTimeSec
+        || a.kind.localeCompare(b.kind)
+        || (a.ueId ?? '').localeCompare(b.ueId ?? '')
+        || a.id.localeCompare(b.id)
+      )),
+    };
+  };
 
   return {
-    ...baseIndex,
-    sourceGapReasons,
-    events: events.sort((a, b) => (
-      a.sourceTimeSec - b.sourceTimeSec
-      || a.kind.localeCompare(b.kind)
-      || (a.ueId ?? '').localeCompare(b.ueId ?? '')
-      || a.id.localeCompare(b.id)
-    )),
+    totalSteps,
+    stepsCompleted: () => stepsDone,
+    isDone: () => done,
+    runSlice,
+    finalize,
   };
+}
+
+/**
+ * One-shot build = the resumable builder drained in a single slice. Kept as the
+ * sole synchronous entry point (validators, non-render callers); the App render
+ * path drives the builder incrementally instead. Output is identical either way.
+ */
+export function buildSinrLiveCellHandoverEventIndex(
+  input: BuildSinrLiveCellHandoverEventIndexInput,
+): LiveWalkerHandoverEventIndex {
+  const builder = createSinrLiveCellHandoverEventIndexBuilder(input);
+  builder.runSlice(Number.POSITIVE_INFINITY);
+  return builder.finalize();
 }
