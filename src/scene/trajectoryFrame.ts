@@ -23,7 +23,54 @@ export interface UeObserverPosition {
   lonDeg: number;
 }
 
+// L5 (startup-perf SDD): `createTrajectoryCache` is a PURE, deterministic function
+// of (shells, observer lat/lon, epoch). On a sinr-live load it is built at least
+// twice with identical inputs — once for the live scene (`useSimulation`) and once
+// for the offline cinema handover-index scan (`sinrLiveCellHandoverEventIndex`),
+// ~0.9 s each. A single-entry module-level memo lets the second back-to-back build
+// reuse the first. Returning the SAME array reference is safe because the cache is
+// treated strictly read-only downstream: `interpolateVisibleSats` copies scalars
+// and builds fresh `world`/`topo` objects per frame, and nothing mutates a
+// `CachedSatState`. A different key recomputes (single entry → last key wins); the
+// key encodes every input, so a stale/colliding hit is impossible — a miss only
+// ever recomputes the identical deterministic result. The memo-bypassing
+// `computeTrajectoryCache` stays exported for the bake (L2) and the determinism
+// gate, which proves `memoized === fresh compute`.
+let memoizedTrajectoryKey: string | null = null;
+let memoizedTrajectoryCache: CachedSatState[][] | null = null;
+
+function trajectoryCacheKey(
+  profile: Profile,
+  observer: ReturnType<typeof createObserverContext>,
+  epochUtcMs: number,
+): string {
+  return JSON.stringify({
+    shells: profile.orbit.shells,
+    latDeg: observer.latDeg,
+    lonDeg: observer.lonDeg,
+    epochUtcMs,
+  });
+}
+
 export function createTrajectoryCache(
+  profile: Profile,
+  observer: ReturnType<typeof createObserverContext>,
+  epochUtcMs: number,
+): CachedSatState[][] {
+  const key = trajectoryCacheKey(profile, observer, epochUtcMs);
+  if (key === memoizedTrajectoryKey && memoizedTrajectoryCache !== null) {
+    return memoizedTrajectoryCache;
+  }
+  const cache = computeTrajectoryCache(profile, observer, epochUtcMs);
+  memoizedTrajectoryKey = key;
+  memoizedTrajectoryCache = cache;
+  return cache;
+}
+
+// Memo-bypassing pure compute. Prefer `createTrajectoryCache` at runtime; use this
+// only when a fresh, un-memoized cache is required (the L2 bake emitter and the L5
+// determinism gate, which asserts memoized output equals a fresh compute).
+export function computeTrajectoryCache(
   profile: Profile,
   observer: ReturnType<typeof createObserverContext>,
   epochUtcMs: number,

@@ -6,7 +6,7 @@
 // `HandoverToastOverlay`. The replay path will mount a parallel
 // `useReplayPlayback` hook in P3 that constructs NormalizedSceneFrame via
 // `showcaseArtifactToScene` instead.
-import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react';
+import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -885,6 +885,16 @@ function SceneContent({
     showReplayProofLayer,
     showArtifactFpsCounter,
   } = renderPlan;
+  // L5 (startup-perf SDD): flips true one rAF after the first commit — i.e. after the
+  // first paint. Gates deferred mounts of decorative, heavy GLB models (the 9.9 MB
+  // uav.glb) so their fetch + main-thread parse runs OFF the first-paint critical
+  // path. Re-arms on remount (lane change). The model's own <Suspense fallback={null}>
+  // keeps the one-frame-later pop-in seamless.
+  const [afterFirstPaint, setAfterFirstPaint] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setAfterFirstPaint(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
   const modqnVisualLayerPreset = runtime.modqnVisualLayerPreset ?? DEFAULT_MODQN_VISUAL_LAYER_PRESET;
   const modqnVisualLayers = runtime.modqnVisualLayers ?? resolveModqnVisualLayers(modqnVisualLayerPreset);
   // S-FLAG-2: the MODQN service-allocation overlay family (service map + readout +
@@ -1419,7 +1429,7 @@ function SceneContent({
         cameraTransitionRef={cameraTransitionRef}
         controlsRef={controlsRef}
       />
-      {showUav && (
+      {showUav && afterFirstPaint && (
         <Suspense fallback={null}>
           <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
         </Suspense>

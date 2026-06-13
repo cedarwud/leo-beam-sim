@@ -43,5 +43,9 @@ export function UAV({ position, scale = 10 }: UAVProps) {
   );
 }
 
-// 預載入模型
-useGLTF.preload(NTPU_CONFIG.uav.modelPath);
+// L5 (startup-perf SDD): the eager `useGLTF.preload(uav.glb)` was REMOVED. It fired
+// the 9.9 MB fetch + main-thread parse the instant this module was imported (statically
+// by MainScene), competing with the sinr-live first-paint warm even though the UAV is
+// a decorative drone, not part of the first usable frame. MainScene now defers the
+// <UAV> mount until after first paint, so the load kicks off off the critical path and
+// the existing <Suspense fallback={null}> keeps the pop-in seamless.
