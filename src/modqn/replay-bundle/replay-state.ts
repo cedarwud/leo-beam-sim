@@ -45,6 +45,18 @@ export const MODQN_REPLAY_7BEAM_EVIDENCE_STATUS = 'accepted-7beam-baseline' as c
 export const MODQN_USER_TRAINED_MODE_KEY = 'modqn-user-trained' as const;
 export const MODQN_USER_TRAINED_MODE_LABEL = 'MODQN user-trained replay' as const;
 export const MODQN_USER_TRAINED_EVIDENCE_STATUS = 'user-trained' as const;
+// G3 Family-B dense-Q proof: a DUAL-AXIS windowed replay bundle. beamStates is
+// the physical render-beam list (e.g. 144 beams), while masks + the dense-Q
+// catalog (policyDiagnostics.candidateActionOrder/objectiveQByAction/
+// scalarizedQByAction) ride the action catalog (length A = totalBeamCount, e.g.
+// 28). It is its OWN selectable mode (not the 7-beam baseline, not user-trained):
+// Grade-2 constrained, non-paper-faithful trained replay — proves MODQN is wired
+// (real per-action Q1/Q2/Q3 + argmax self-check), NOT a beats-baseline claim.
+export const MODQN_FAMILY_B_DENSE_Q_MODE_KEY = 'modqn-family-b-dense-q' as const;
+export const MODQN_FAMILY_B_DENSE_Q_MODE_LABEL = 'MODQN Family-B dense-Q proof' as const;
+export const MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS = 'family-b-dense-q' as const;
+export const MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH =
+  '/tmp/leo-beam-sim/modqn-bundles/dense-q-proof-window-600-130' as const;
 export const MODQN_FIXTURE_ONLY_EVIDENCE_STATUS = 'fixture-only' as const;
 export const MODQN_REGENERATION_DATE = '2026-05-15' as const;
 export const MODQN_EXPECTED_TIMELINE_ROW_COUNT = 1000 as const;
@@ -61,16 +73,19 @@ export const MODQN_EXPECTED_EVENT_COUNTS: Readonly<Record<ModqnHandoverEventKind
 export type ModqnReplayEvidenceStatus =
   | typeof MODQN_REPLAY_7BEAM_EVIDENCE_STATUS
   | typeof MODQN_USER_TRAINED_EVIDENCE_STATUS
+  | typeof MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS
   | typeof MODQN_FIXTURE_ONLY_EVIDENCE_STATUS;
 
 export type ModqnReplayAdapterModeKey =
   | typeof MODQN_REPLAY_7BEAM_MODE_KEY
   | typeof MODQN_USER_TRAINED_MODE_KEY
+  | typeof MODQN_FAMILY_B_DENSE_Q_MODE_KEY
   | 'sensitivity-demo';
 
 export type ModqnReplayAdapterModeLabel =
   | typeof MODQN_REPLAY_7BEAM_MODE_LABEL
   | typeof MODQN_USER_TRAINED_MODE_LABEL
+  | typeof MODQN_FAMILY_B_DENSE_Q_MODE_LABEL
   | 'Sensitivity/demo';
 
 export type ModqnReplaySourceOwner =
@@ -124,10 +139,12 @@ export interface ModqnReplayEnvelopeClaimBoundary {
   readonly acceptedEvidenceShape:
     | '7-beam producer baseline only'
     | 'user-trained-bundle-not-paper-faithful'
+    | 'family-b-dense-q-proof-window'
     | 'none-fixture-only';
   readonly artifactStatus:
     | 'current-baseline-run-exported-bundle'
     | 'user-trained-bundle-non-evidence'
+    | 'family-b-dense-q-window'
     | 'fixture-only-non-evidence-not-producer-artifact';
   readonly allowedClaims: readonly string[];
   readonly forbiddenClaims: readonly string[];
@@ -219,6 +236,7 @@ export interface ModqnReplayEnvelopeDiagnostics {
     readonly bridgeStatus:
       | 'built-for-accepted-7beam-path'
       | 'skipped-user-trained-bundle'
+      | 'skipped-family-b-dense-q-window'
       | 'skipped-fixture-only-non-evidence';
     readonly requiredSurfaces: readonly string[];
   };
@@ -481,12 +499,163 @@ function validateUserTrainedBundleShape(bundle: ModqnReplayBundle): void {
   }
 }
 
+// G3 Family-B dense-Q serving-reference resolver. Unlike
+// assertReferenceMatchesBeamCatalog, this does NOT assert beamIndex: in a
+// dual-axis bundle the serving reference carries the CATALOG action index while
+// the physical beamStates carry the per-satellite physical beam index, so the two
+// beamIndex values legitimately differ. satId / satIndex / localBeamIndex are
+// axis-invariant and are still pinned to the producer's physical beam.
+function assertServingReferenceResolvesPhysicalBeam(
+  ref: ModqnBeamReference,
+  physicalCatalog: ReadonlyMap<string, ModqnBeamReference>,
+  label: string,
+): void {
+  const beam = physicalCatalog.get(ref.beamId);
+  if (beam === undefined) fail(`${label} ${ref.beamId}`, 'reference present in physical beamStates');
+  if (beam.satId !== ref.satId) fail(`${label}.satId`, `producer value ${beam.satId}`);
+  if (beam.satIndex !== ref.satIndex) fail(`${label}.satIndex`, `producer value ${beam.satIndex}`);
+  if (beam.localBeamIndex !== ref.localBeamIndex) {
+    fail(`${label}.localBeamIndex`, `producer value ${beam.localBeamIndex}`);
+  }
+}
+
+// G3 dual-axis shape validator. Family-B dense-Q windows decouple the PHYSICAL
+// render-beam list (beamStates, e.g. 144) from the ACTION CATALOG (masks + dense
+// Q, length A = totalBeamCount, e.g. 28). The 7-beam + user-trained validators
+// both require beamStates.length === totalBeamCount and reject this shape. This
+// validator keeps the two axes independent and additionally REQUIRES the dense-Q
+// catalog (so the DecisionViz Q1/Q2/Q3 proof is guaranteed renderable) and a
+// dual-axis bridge tying the catalog-axis selection to the physical serving beam.
+// Not paper-faithful evidence; see createClaimBoundary's family-b branch.
+function validateFamilyBDenseQBundleShape(bundle: ModqnReplayBundle): void {
+  if (bundle.sourcePath !== MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH) {
+    fail('sourcePath', `Family-B dense-Q bundle path ${MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH}`);
+  }
+  if (bundle.manifest.bundleSchemaVersion !== MODQN_REPLAY_BUNDLE_SCHEMA_VERSION) {
+    fail('manifest.bundleSchemaVersion', MODQN_REPLAY_BUNDLE_SCHEMA_VERSION);
+  }
+  if (bundle.manifest.paperId !== MODQN_PAPER_ID) fail('manifest.paperId', MODQN_PAPER_ID);
+
+  // Honesty: the producer manifest must self-declare non-paper-faithful, like the
+  // baseline path. Family-B is a retrain window, not 19/37-beam trained evidence.
+  if (bundle.manifest.claimBoundary.notFullPaperFaithfulReproduction !== true) {
+    fail('manifest.claimBoundary.notFullPaperFaithfulReproduction', 'true');
+  }
+  if (bundle.manifest.claimBoundary.not19Or37BeamTrainedEvidence !== true) {
+    fail('manifest.claimBoundary.not19Or37BeamTrainedEvidence', 'true');
+  }
+
+  const satelliteCount = bundle.manifest.baselineSurface.satelliteCount;
+  if (satelliteCount === undefined || satelliteCount <= 0) {
+    fail('manifest.baselineSurface.satelliteCount', 'positive number');
+  }
+  const beamCountPerSatellite = bundle.manifest.baselineSurface.beamCountPerSatellite;
+  if (beamCountPerSatellite <= 0) {
+    fail('manifest.baselineSurface.beamCountPerSatellite', 'positive number');
+  }
+  // totalBeamCount is the action catalog length A (NOT the physical beam count).
+  const totalBeamCount = bundle.manifest.baselineSurface.totalBeamCount;
+  if (totalBeamCount <= 0) fail('manifest.baselineSurface.totalBeamCount', 'positive number');
+  if (totalBeamCount !== satelliteCount * beamCountPerSatellite) {
+    fail('manifest.baselineSurface.totalBeamCount', 'satelliteCount * beamCountPerSatellite');
+  }
+
+  // The dense-Q catalog is what unlocks the DecisionViz Q1/Q2/Q3 proof; require it.
+  const expectsPolicyDiagnostics =
+    booleanRecordValue(bundle.manifest.optionalPolicyDiagnostics, 'present', 'manifest.optionalPolicyDiagnostics') === true;
+  if (!expectsPolicyDiagnostics) {
+    fail('manifest.optionalPolicyDiagnostics.present', 'true for the Family-B dense-Q proof bundle');
+  }
+
+  if (bundle.timelineRows.length < 1) fail('timeline/step-trace.jsonl row count', 'at least 1');
+
+  const slots = new Set<number>();
+  let previousSlotIndex = -Infinity;
+
+  for (const [rowIndex, row] of bundle.timelineRows.entries()) {
+    const label = `timeline.rows[${rowIndex}]`;
+    if (row.slotIndex < previousSlotIndex) fail(`${label}.slotIndex`, 'nondecreasing producer row order');
+    previousSlotIndex = row.slotIndex;
+    slots.add(row.slotIndex);
+
+    if (row.beamCatalogOrder !== MODQN_BEAM_CATALOG_ORDER) fail(`${label}.beamCatalogOrder`, MODQN_BEAM_CATALOG_ORDER);
+    assertProducerOwnedObject(row.userPosition, `${label}.userPosition`);
+    assertProducerOwnedObject(row.decisionUserPosition, `${label}.decisionUserPosition`);
+    assertProducerOwnedObject(row.kpiOverlay, `${label}.kpiOverlay`);
+
+    // --- catalog axis (length A = totalBeamCount) ---
+    assertArrayLength(row.satelliteStates, satelliteCount, `${label}.satelliteStates`);
+    assertArrayLength(row.visibilityMask, totalBeamCount, `${label}.visibilityMask`);
+    assertArrayLength(row.actionValidityMask, totalBeamCount, `${label}.actionValidityMask`);
+    assertArrayLength(row.decisionVisibilityMask, totalBeamCount, `${label}.decisionVisibilityMask`);
+    assertArrayLength(row.decisionActionValidityMask, totalBeamCount, `${label}.decisionActionValidityMask`);
+    assertArrayLength(row.beamLoads, totalBeamCount, `${label}.beamLoads`);
+    assertArrayLength(row.beamThroughputs, totalBeamCount, `${label}.beamThroughputs`);
+
+    // --- dense-Q (catalog axis = A) — guarantees the DecisionViz proof renders ---
+    const diagnostics = row.policyDiagnostics;
+    if (diagnostics === undefined) fail(`${label}.policyDiagnostics`, 'producer policy diagnostics');
+    const candidateActionOrder = diagnostics.candidateActionOrder;
+    if (candidateActionOrder === undefined) {
+      fail(`${label}.policyDiagnostics.candidateActionOrder`, 'dense action catalog');
+    }
+    assertArrayLength(candidateActionOrder, totalBeamCount, `${label}.policyDiagnostics.candidateActionOrder`);
+    if (diagnostics.objectiveQByAction === undefined) {
+      fail(`${label}.policyDiagnostics.objectiveQByAction`, 'dense objective Q by action');
+    }
+    assertArrayLength(diagnostics.objectiveQByAction, totalBeamCount, `${label}.policyDiagnostics.objectiveQByAction`);
+    if (diagnostics.scalarizedQByAction === undefined) {
+      fail(`${label}.policyDiagnostics.scalarizedQByAction`, 'dense scalarized Q by action');
+    }
+    assertArrayLength(diagnostics.scalarizedQByAction, totalBeamCount, `${label}.policyDiagnostics.scalarizedQByAction`);
+
+    // --- physical axis (beamStates decoupled from the catalog) ---
+    if (row.beamStates.length < totalBeamCount) {
+      fail(`${label}.beamStates`, `at least totalBeamCount (${totalBeamCount}) physical render-beams`);
+    }
+    const physicalCatalog = new Map(row.beamStates.map(beam => [beam.beamId, beam]));
+    if (physicalCatalog.size !== row.beamStates.length) {
+      fail(`${label}.beamStates`, 'unique producer beam IDs');
+    }
+    // NOTE: do NOT assert unique beamIndex — physical beamIndex (= per-satellite
+    // beam number) repeats across satellites and is intentionally non-unique.
+
+    // serving references resolve into the physical beamStates by beamId
+    assertServingReferenceResolvesPhysicalBeam(row.previousServing, physicalCatalog, `${label}.previousServing`);
+    assertServingReferenceResolvesPhysicalBeam(row.selectedServing, physicalCatalog, `${label}.selectedServing`);
+
+    // --- dual-axis bridge: the catalog-axis selection ties to the physical serving ---
+    const selectedActionIndex = diagnostics.selectedActionIndex;
+    if (typeof selectedActionIndex !== 'number' || !Number.isInteger(selectedActionIndex)) {
+      fail(`${label}.policyDiagnostics.selectedActionIndex`, 'integer action index');
+    }
+    if (selectedActionIndex < 0 || selectedActionIndex >= totalBeamCount) {
+      fail(`${label}.policyDiagnostics.selectedActionIndex`, `index in [0, ${totalBeamCount})`);
+    }
+    if (row.selectedServing.beamIndex !== selectedActionIndex) {
+      fail(`${label}.selectedServing.beamIndex`, `policyDiagnostics.selectedActionIndex ${selectedActionIndex}`);
+    }
+    const selectedCatalogEntry = candidateActionOrder[selectedActionIndex];
+    if (selectedCatalogEntry === undefined || selectedCatalogEntry.beamId !== row.selectedServing.beamId) {
+      fail(
+        `${label}.policyDiagnostics.candidateActionOrder[selectedActionIndex].beamId`,
+        `selectedServing.beamId ${row.selectedServing.beamId}`,
+      );
+    }
+
+    assertHandoverEventMatchesServingTruth(row, label);
+  }
+
+  if (slots.size < 1) fail('timeline slot count', 'at least 1 producer slot');
+}
+
 function createClaimBoundary(
   sourceClaimBoundary: ModqnClaimBoundary,
   evidenceStatus: ModqnReplayEvidenceStatus,
 ): ModqnReplayEnvelopeClaimBoundary {
   const baselineModqnEvidence = evidenceStatus === MODQN_REPLAY_7BEAM_EVIDENCE_STATUS;
   const userTrainedBundle = evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS;
+  const familyBDenseQBundle = evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS;
 
   return {
     sourceClaimBoundary,
@@ -495,12 +664,16 @@ function createClaimBoundary(
       ? '7-beam producer baseline only'
       : userTrainedBundle
         ? 'user-trained-bundle-not-paper-faithful'
-        : 'none-fixture-only',
+        : familyBDenseQBundle
+          ? 'family-b-dense-q-proof-window'
+          : 'none-fixture-only',
     artifactStatus: baselineModqnEvidence
       ? 'current-baseline-run-exported-bundle'
       : userTrainedBundle
         ? 'user-trained-bundle-non-evidence'
-        : 'fixture-only-non-evidence-not-producer-artifact',
+        : familyBDenseQBundle
+          ? 'family-b-dense-q-window'
+          : 'fixture-only-non-evidence-not-producer-artifact',
     allowedClaims: baselineModqnEvidence
       ? [
           'Producer-owned 7-beam baseline MODQN replay bundle exported from the current baseline run for PAP-2024-MORL-MULTIBEAM.',
@@ -512,7 +685,12 @@ function createClaimBoundary(
             'User-trained MODQN replay bundle. Not paper-faithful evidence.',
             'Showcase replay of user training run output; does not stand in for the 7-beam producer baseline.',
           ]
-        : [
+        : familyBDenseQBundle
+          ? [
+              'Grade-2 constrained, non-paper-faithful Family-B MODQN dense-Q replay window. Proves MODQN is wired (real per-action Q1/Q2/Q3 + original-weight argmax self-check), NOT a beats-baseline claim.',
+              'Replay of a single Family-B retrain eval window; does not stand in for the 7-beam producer baseline and is not a Pareto / effectiveness claim.',
+            ]
+          : [
             'Fixture-only parser and replay-state exercise.',
             'No baseline MODQN evidence claim is emitted for fixture-only paths.',
           ],
@@ -700,7 +878,9 @@ function createDiagnostics(
         ? 'built-for-accepted-7beam-path'
         : evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
           ? 'skipped-user-trained-bundle'
-          : 'skipped-fixture-only-non-evidence',
+          : evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS
+            ? 'skipped-family-b-dense-q-window'
+            : 'skipped-fixture-only-non-evidence',
       requiredSurfaces: loadPlan.requiredSurfaces.map(surface => surface.relativePath),
     },
     producerPolicyDiagnostics: {
@@ -718,6 +898,7 @@ export function createModqnReplayBundleLoadPlan(
   const sourcePath = options.sourcePath ?? SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH;
   const fixtureOnly = options.fixtureOnly === true;
   const userTrainedMode = options.modeKey === MODQN_USER_TRAINED_MODE_KEY;
+  const familyBDenseQMode = options.modeKey === MODQN_FAMILY_B_DENSE_Q_MODE_KEY;
 
   if (userTrainedMode) {
     if (!sourcePath.startsWith('user-trained:')) {
@@ -728,6 +909,46 @@ export function createModqnReplayBundleLoadPlan(
       sourcePath,
       sourceOwner: options.sourceOwner ?? 'modqn-paper-reproduction',
       evidenceStatus: MODQN_USER_TRAINED_EVIDENCE_STATUS,
+      requiredSurfaces: [
+        {
+          contentsKey: 'manifestJson',
+          relativePath: 'manifest.json',
+          absolutePath: appendBundlePath(sourcePath, 'manifest.json'),
+        },
+        {
+          contentsKey: 'provenanceMapJson',
+          relativePath: 'provenance-map.json',
+          absolutePath: appendBundlePath(sourcePath, 'provenance-map.json'),
+        },
+        {
+          contentsKey: 'timelineJsonl',
+          relativePath: 'timeline/step-trace.jsonl',
+          absolutePath: appendBundlePath(sourcePath, 'timeline/step-trace.jsonl'),
+        },
+      ],
+      optionalSurfaces: [
+        {
+          relativePath: 'evaluation/summary.json',
+          absolutePath: appendBundlePath(sourcePath, 'evaluation/summary.json'),
+        },
+      ],
+    };
+  }
+
+  // G3 Family-B dense-Q mode: a SECOND producer-owned evidence-status path that
+  // is allowlisted here (early return) so the selected-path fail-closed assert
+  // below stays intact for every other non-evidence path.
+  if (familyBDenseQMode) {
+    if (sourcePath !== MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH) {
+      fail('sourcePath', `Family-B dense-Q bundle path ${MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH}`);
+    }
+    if (options.sourceOwner !== undefined && options.sourceOwner !== 'modqn-paper-reproduction') {
+      fail('sourceOwner', 'modqn-paper-reproduction for the Family-B dense-Q producer bundle');
+    }
+    return {
+      sourcePath,
+      sourceOwner: 'modqn-paper-reproduction',
+      evidenceStatus: MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS,
       requiredSurfaces: [
         {
           contentsKey: 'manifestJson',
@@ -809,6 +1030,8 @@ export function createModqnReplayEnvelopeFromBundle(
     validateEvidenceCapableBundleShape(bundle);
   } else if (loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS) {
     validateUserTrainedBundleShape(bundle);
+  } else if (loadPlan.evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS) {
+    validateFamilyBDenseQBundleShape(bundle);
   }
 
   const replaySlots = groupRowsBySlot(bundle.timelineRows);
@@ -819,12 +1042,16 @@ export function createModqnReplayEnvelopeFromBundle(
       ? MODQN_REPLAY_7BEAM_MODE_KEY
       : loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
         ? MODQN_USER_TRAINED_MODE_KEY
-        : 'sensitivity-demo',
+        : loadPlan.evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS
+          ? MODQN_FAMILY_B_DENSE_Q_MODE_KEY
+          : 'sensitivity-demo',
     modeLabel: loadPlan.evidenceStatus === MODQN_REPLAY_7BEAM_EVIDENCE_STATUS
       ? MODQN_REPLAY_7BEAM_MODE_LABEL
       : loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
         ? MODQN_USER_TRAINED_MODE_LABEL
-        : 'Sensitivity/demo',
+        : loadPlan.evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS
+          ? MODQN_FAMILY_B_DENSE_Q_MODE_LABEL
+          : 'Sensitivity/demo',
     evidenceStatus: loadPlan.evidenceStatus,
     sourceOwner: loadPlan.sourceOwner,
     sourcePath: loadPlan.sourcePath,
@@ -851,13 +1078,22 @@ export function createModqnReplayEnvelopeFromContents(
   if (contents.sourcePath !== loadPlan.sourcePath) {
     fail('contents.sourcePath', `load-plan path ${loadPlan.sourcePath}`);
   }
-  return createModqnReplayEnvelopeFromBundle(parseModqnReplayBundle(contents), {
+  return createModqnReplayEnvelopeFromBundle(parseModqnReplayBundle(contents, {
+    // G3: the Family-B dense-Q window-export shipped a minimal provenance map
+    // (missing the redundant bundleSchemaVersion stamp). Allowlist its absence
+    // for this mode ONLY; the baseline/evidence path stays strict and the
+    // manifest's authoritative bundleSchemaVersion is checked regardless.
+    tolerateProvenanceSchemaVersionAbsence:
+      loadPlan.evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS,
+  }), {
     ...options,
     sourcePath: loadPlan.sourcePath,
     sourceOwner: loadPlan.sourceOwner,
     modeKey: loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
       ? MODQN_USER_TRAINED_MODE_KEY
-      : options.modeKey,
+      : loadPlan.evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS
+        ? MODQN_FAMILY_B_DENSE_Q_MODE_KEY
+        : options.modeKey,
     fixtureOnly: loadPlan.evidenceStatus === MODQN_FIXTURE_ONLY_EVIDENCE_STATUS,
   });
 }
@@ -913,7 +1149,9 @@ export function loadModqnReplayEnvelopeFromSurfaceReader(
     sourceOwner: loadPlan.sourceOwner,
     modeKey: loadPlan.evidenceStatus === MODQN_USER_TRAINED_EVIDENCE_STATUS
       ? MODQN_USER_TRAINED_MODE_KEY
-      : options.modeKey,
+      : loadPlan.evidenceStatus === MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS
+        ? MODQN_FAMILY_B_DENSE_Q_MODE_KEY
+        : options.modeKey,
     fixtureOnly: loadPlan.evidenceStatus === MODQN_FIXTURE_ONLY_EVIDENCE_STATUS,
   });
 }

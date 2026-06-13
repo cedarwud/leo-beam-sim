@@ -16,6 +16,11 @@ import { spawnSync } from 'child_process';
 // never writes back into modqn-paper-reproduction.
 const MODQN_BUNDLE_FS_PATH =
   '/tmp/leo-beam-sim/modqn-bundles/baseline-modqn-pilot02-rerun-2026-05-15-export';
+// G3 Family-B dense-Q proof bundle. Pre-exported + ntn-validated by the producer
+// and staged read-only here (a symlink into the producer artifacts dir); leo
+// never regenerates it (no training in leo). Served under a SECOND basename.
+const MODQN_FAMILY_B_DENSE_Q_BUNDLE_FS_PATH =
+  '/tmp/leo-beam-sim/modqn-bundles/dense-q-proof-window-600-130';
 const MODQN_BUNDLE_ROUTE_PREFIX = '/modqn-bundles/';
 const MODQN_PRODUCER_REPO_PATH = '/home/u24/papers/modqn-paper-reproduction';
 const MODQN_PRODUCER_BASELINE_RUN_PATH = path.join(
@@ -29,9 +34,9 @@ const MODQN_REQUIRED_BUNDLE_SURFACES = [
   'timeline/step-trace.jsonl',
 ] as const;
 
-function hasRequiredModqnBundleSurfaces(): boolean {
+function hasRequiredModqnBundleSurfaces(root: string = MODQN_BUNDLE_FS_PATH): boolean {
   return MODQN_REQUIRED_BUNDLE_SURFACES.every(relative => (
-    fs.existsSync(path.join(MODQN_BUNDLE_FS_PATH, relative))
+    fs.existsSync(path.join(root, relative))
   ));
 }
 
@@ -151,8 +156,19 @@ function modqnBundleStaticServer(): Plugin {
         if (slash === -1) return next();
         const basename = remainder.slice(0, slash);
         const relative = remainder.slice(slash + 1).split('?')[0] ?? '';
-        const expectedBasename = path.basename(MODQN_BUNDLE_FS_PATH);
-        if (basename !== expectedBasename) {
+        // Resolve the requested basename to its on-disk bundle root. The baseline
+        // bundle may be (re)generated via the producer's modqn-export; the Family-B
+        // dense-Q bundle is pre-exported + ntn-validated by the producer and is
+        // only served read-only (NO regeneration — leo never trains).
+        const bundleRoots: Record<string, { fsRoot: string; regenerate: boolean }> = {
+          [path.basename(MODQN_BUNDLE_FS_PATH)]: { fsRoot: MODQN_BUNDLE_FS_PATH, regenerate: true },
+          [path.basename(MODQN_FAMILY_B_DENSE_Q_BUNDLE_FS_PATH)]: {
+            fsRoot: MODQN_FAMILY_B_DENSE_Q_BUNDLE_FS_PATH,
+            regenerate: false,
+          },
+        };
+        const bundleRoot = bundleRoots[basename];
+        if (bundleRoot === undefined) {
           res.statusCode = 404;
           res.end(`Unknown MODQN bundle basename: ${basename}`);
           return;
@@ -162,13 +178,23 @@ function modqnBundleStaticServer(): Plugin {
           res.end('Path traversal not allowed');
           return;
         }
-        const availability = ensureModqnBundleExport();
-        if (!availability.ok) {
+        if (bundleRoot.regenerate) {
+          const availability = ensureModqnBundleExport();
+          if (!availability.ok) {
+            res.statusCode = 503;
+            res.end(availability.message);
+            return;
+          }
+        } else if (!hasRequiredModqnBundleSurfaces(bundleRoot.fsRoot)) {
           res.statusCode = 503;
-          res.end(availability.message);
+          res.end(
+            `Family-B dense-Q bundle surfaces are missing under ${bundleRoot.fsRoot}. `
+              + 'Stage it first, e.g. ln -sfn <producer artifacts>/dense-q-proof-window-600-130 '
+              + MODQN_FAMILY_B_DENSE_Q_BUNDLE_FS_PATH,
+          );
           return;
         }
-        const filePath = path.join(MODQN_BUNDLE_FS_PATH, relative);
+        const filePath = path.join(bundleRoot.fsRoot, relative);
         fs.stat(filePath, (err, stat) => {
           if (err || !stat.isFile()) {
             res.statusCode = 404;

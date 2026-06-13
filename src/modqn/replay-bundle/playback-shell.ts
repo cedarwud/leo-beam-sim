@@ -1,5 +1,9 @@
 import {
   MODQN_EXPECTED_EVENT_COUNTS,
+  MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH,
+  MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS,
+  MODQN_FAMILY_B_DENSE_Q_MODE_KEY,
+  MODQN_FAMILY_B_DENSE_Q_MODE_LABEL,
   MODQN_REPLAY_7BEAM_EVIDENCE_STATUS,
   MODQN_REPLAY_7BEAM_MODE_KEY,
   MODQN_REPLAY_7BEAM_MODE_LABEL,
@@ -149,6 +153,7 @@ export function getModqnReplayPlaybackModelValidationIssue(
 
   if (model.modeKey === MODQN_REPLAY_7BEAM_MODE_KEY) return validateSevenBeamPlaybackModel(model);
   if (model.modeKey === MODQN_USER_TRAINED_MODE_KEY) return validateUserTrainedPlaybackModel(model);
+  if (model.modeKey === MODQN_FAMILY_B_DENSE_Q_MODE_KEY) return validateFamilyBDenseQPlaybackModel(model);
 
   return validationIssue(
     'unexpected-mode',
@@ -272,6 +277,79 @@ function validateUserTrainedPlaybackModel(
     return validationIssue(
       'unexpected-event-counts',
       'Selected replay display model event counts do not sum to rowCount.',
+    );
+  }
+
+  return null;
+}
+
+// G3 Family-B dense-Q playback is a replay display gate (Grade-2 constrained,
+// non-paper-faithful), NOT paper evidence. Flexible row/slot count like
+// user-trained; event counts only need to sum to rowCount (Family-B carries 125
+// handovers, not the baseline 82/0/918), so MODQN_EXPECTED_EVENT_COUNTS is never
+// applied to this mode.
+function validateFamilyBDenseQPlaybackModel(
+  model: ModqnReplayPlaybackShellModel,
+): ModqnReplayPlaybackModelValidationIssue | null {
+  if (model.modeLabel !== MODQN_FAMILY_B_DENSE_Q_MODE_LABEL) {
+    return validationIssue('unexpected-mode', 'Selected replay display model is not Family-B dense-Q mode.');
+  }
+
+  if (model.evidenceStatus !== MODQN_FAMILY_B_DENSE_Q_EVIDENCE_STATUS) {
+    return validationIssue(
+      'unexpected-evidence-status',
+      'Selected replay display model is not family-b-dense-q evidence status.',
+    );
+  }
+
+  if (
+    model.sourceOwner !== 'modqn-paper-reproduction'
+    || model.sourcePath !== MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH
+  ) {
+    return validationIssue(
+      'unexpected-source',
+      'Selected replay display model does not point at the Family-B dense-Q producer bundle path.',
+    );
+  }
+
+  if (model.stepKind !== 'source-slot') {
+    return validationIssue(
+      'unexpected-step-kind',
+      'Selected replay display model is not read-only source-slot playback.',
+    );
+  }
+
+  if (model.slots.length === 0) {
+    return validationIssue(
+      'missing-slots',
+      'Selected replay display model has no source slots to display.',
+    );
+  }
+
+  if (model.rowCount < 1 || model.slotCount < 1 || model.slots.length !== model.slotCount) {
+    return validationIssue(
+      'unexpected-shape',
+      'Selected replay display model does not match the Family-B dense-Q minimum shape (rowCount>=1 && slotCount>=1 && slots.length===slotCount).',
+    );
+  }
+
+  const eventCountTotal =
+    model.eventCounts.none
+    + model.eventCounts['intra-satellite-beam-switch']
+    + model.eventCounts['inter-satellite-handover'];
+  if (eventCountTotal !== model.rowCount) {
+    return validationIssue(
+      'unexpected-event-counts',
+      'Selected replay display model event counts do not sum to rowCount.',
+    );
+  }
+
+  // Family-B dense-Q exists to render DecisionViz Q1/Q2/Q3; a missing-diagnostics
+  // model would render a blank proof, so fail closed rather than show nothing.
+  if (model.diagnosticsStatus !== 'present-from-producer') {
+    return validationIssue(
+      'unexpected-shape',
+      'Family-B dense-Q replay display model must carry present-from-producer policy diagnostics.',
     );
   }
 

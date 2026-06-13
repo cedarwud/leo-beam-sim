@@ -103,6 +103,7 @@
     "validate:modqn:phase6v-antenna-pattern-convention": "node --import tsx/esm scripts/validate-modqn-phase6v-antenna-pattern-convention.ts",
     "validate:modqn:phase7c-replay-state-model": "node --import tsx/esm scripts/validate-modqn-phase7c-replay-state-model.ts",
     "validate:modqn:phase7d-replay-diagnostics": "node --import tsx/esm scripts/validate-modqn-phase7d-replay-diagnostics.ts",
+    "validate:modqn:phase7e-dense-q-proof-replay-state": "node --import tsx/esm scripts/validate-modqn-phase7e-dense-q-proof-replay-state.ts",
     "validate:modqn:phase7k-replay-scene-layer": "node --import tsx/esm scripts/validate-modqn-phase7k-replay-scene-layer.ts",
     "validate:modqn:visual-showcase:p1ab:channel-metric-value": "node --import tsx/esm scripts/validate-modqn-visual-showcase-p1ab-channel-metric-value.ts",
     "validate:modqn:visual-showcase:p1ab:coord-to-world": "node --import tsx/esm scripts/validate-modqn-visual-showcase-p1ab-coord-to-world.ts",

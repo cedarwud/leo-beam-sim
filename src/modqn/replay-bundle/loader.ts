@@ -244,9 +244,28 @@ export function parseModqnManifest(manifestJson: string): ModqnReplayBundleManif
   return source as unknown as ModqnReplayBundleManifest;
 }
 
-export function parseModqnProvenanceMap(provenanceMapJson: string): ModqnProvenanceMap {
+export interface ParseModqnProvenanceMapOptions {
+  // Default true = strict (baseline / evidence path). The G3 Family-B dense-Q
+  // WINDOW export shipped a minimal provenance map that omits the redundant
+  // bundleSchemaVersion stamp (the manifest's bundleSchemaVersion remains the
+  // authoritative copy, strictly checked in parseModqnManifest + the Family-B
+  // shape validator). When false we TOLERATE its absence — but a PRESENT version
+  // must still match, so a wrong version is never silently accepted. The map
+  // bytes are read verbatim; leo never synthesizes or rewrites producer provenance.
+  readonly requireSchemaVersion?: boolean;
+}
+
+export function parseModqnProvenanceMap(
+  provenanceMapJson: string,
+  options: ParseModqnProvenanceMapOptions = {},
+): ModqnProvenanceMap {
+  const requireSchemaVersion = options.requireSchemaVersion !== false;
   const source = parseJsonObject(provenanceMapJson, 'provenance-map.json');
-  if (source.bundleSchemaVersion !== MODQN_REPLAY_BUNDLE_SCHEMA_VERSION) {
+  if (source.bundleSchemaVersion === undefined) {
+    if (requireSchemaVersion) {
+      fail('provenanceMap.bundleSchemaVersion', MODQN_REPLAY_BUNDLE_SCHEMA_VERSION);
+    }
+  } else if (source.bundleSchemaVersion !== MODQN_REPLAY_BUNDLE_SCHEMA_VERSION) {
     fail('provenanceMap.bundleSchemaVersion', MODQN_REPLAY_BUNDLE_SCHEMA_VERSION);
   }
   return source as unknown as ModqnProvenanceMap;
@@ -280,11 +299,22 @@ export function parseModqnTimelineJsonl(timelineJsonl: string): readonly ModqnRe
   });
 }
 
-export function parseModqnReplayBundle(contents: ModqnReplayBundleContents): ModqnReplayBundle {
+export interface ParseModqnReplayBundleOptions {
+  // Allowlists the G3 Family-B dense-Q window's minimal provenance map (see
+  // ParseModqnProvenanceMapOptions). Baseline / evidence callers omit it → strict.
+  readonly tolerateProvenanceSchemaVersionAbsence?: boolean;
+}
+
+export function parseModqnReplayBundle(
+  contents: ModqnReplayBundleContents,
+  options: ParseModqnReplayBundleOptions = {},
+): ModqnReplayBundle {
   return {
     sourcePath: contents.sourcePath,
     manifest: parseModqnManifest(contents.manifestJson),
-    provenanceMap: parseModqnProvenanceMap(contents.provenanceMapJson),
+    provenanceMap: parseModqnProvenanceMap(contents.provenanceMapJson, {
+      requireSchemaVersion: options.tolerateProvenanceSchemaVersionAbsence !== true,
+    }),
     timelineRows: parseModqnTimelineJsonl(contents.timelineJsonl),
     evaluationSummary: contents.evaluationSummaryJson === undefined
       ? undefined
