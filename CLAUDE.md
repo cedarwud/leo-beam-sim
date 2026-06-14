@@ -75,8 +75,19 @@ read or recall these rules. Three gates, fast→thorough:
   `s0:geometry-trace` truth-zero-diff golden, ~15s) and BLOCKS a breaking commit.
   Kept fast on purpose so it is not bypass-bait.
 - `npm run validate:governance:full` (~165s, MANUAL) adds the S1–S5 deterministic
-  invariant gates — the full static boundary. Too slow to auto-hook (would breed
-  `--no-verify`); run it before a handoff/PR.
+  invariant gates — the CURATED render-invariant boundary (NOT every static
+  validator; ~16 of ~144). Too slow to auto-hook (would breed `--no-verify`); run
+  it before a handoff/PR.
+- `npm run validate:static:all` (~8min, MANUAL) is the COMPLETE static gate +
+  recurrence guard: a self-discovering runner (`scripts/validate-static-all.mjs`)
+  that runs EVERY static `validate:*` leaf, so a new validator can never silently
+  orphan and a refactor that breaks any source-pinned validator is caught. It
+  carries a QUARANTINE list of the known-rotted reds (visible debt, one TODO each)
+  and FAILS if a quarantined validator starts passing (forces cleanup). Run before
+  a handoff/PR alongside governance:full. (Background: a 2026-06-14 triage found 20
+  of the ~128 orphaned static validators had silently rotted — source-pinned
+  asserts that broke when code moved and nobody re-ran them. This is the structural
+  fix for that recurrence.)
 - `npm run validate:ready` adds the browser/render smoke (`validate:live-render`;
   needs a running vite + `APP_URL`). Run before declaring render work done.
 Activation is automatic: the `prepare` npm script sets git
@@ -91,8 +102,8 @@ browser/render coverage lives only in the MANUAL `validate:ready`, not the auto
 hook. The threat model it binds is a forgetful / memory-less agent re-breaking a
 solved lock — NOT an agent deliberately subverting governance. The only
 UNBYPASSABLE layer is server-side CI on a PR; the repo has no remote/PR flow yet,
-so when it gets one, wire `validate:governance:full` + `validate:ready` into
-required CI. Do NOT normalize `git commit --no-verify`. When a gate's scope
+so when it gets one, wire `validate:governance:full` + `validate:static:all` +
+`validate:ready` into required CI. Do NOT normalize `git commit --no-verify`. When a gate's scope
 changes, update the gate AND these aggregates together (Rule#9 atomic).
 
 ## 6. Local Docs

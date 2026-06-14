@@ -520,7 +520,8 @@ function validateStaticContracts(): void {
   assertContains(handoverRail, 'data-click-target-sec={cluster.clickTargetSec.toFixed(3)}', 'handover rail exposes click target telemetry');
   assertContains(handoverRail, 'onClick={() => selectClusterAndSeek(cluster)}', 'handover rail routes marker clicks through source-time selection');
   assertContains(handoverRail, 'seekTo(cluster.clickTargetSec);', 'handover rail clicks seek source time instead of display axis');
-  assertContains(handoverRail, "sourceOwner === 'live-walker' && horizonKind === 'live-walker-window'", 'handover rail gates slow-motion focus to live Walker source horizon');
+  assertContains(handoverRail, "(sourceOwner === 'live-walker' || sourceOwner === 'sinr-live-cell-truth')", 'handover rail gates slow-motion focus to a live Walker source horizon (D4 extended the owner gate to also accept sinr-live cell-truth)');
+  assertContains(handoverRail, "horizonKind === 'live-walker-window'", 'handover rail slow-motion focus stays on the live Walker window horizon');
   assertContains(handoverRail, 'data-focus-axis-kind={slowMotionFocus?.axisKind ?? \'\'}', 'handover rail exposes slow-motion focus display-axis telemetry');
   assertContains(handoverRail, 'data-testid="handover-event-slow-focus"', 'handover rail renders selected live Walker slow-motion focus panel');
   assertContains(handoverRail, "axisKind: 'display-stretched'", 'handover rail slow-motion focus uses a display axis');

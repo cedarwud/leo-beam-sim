@@ -610,10 +610,15 @@ function assertSceneBridgeSource(): void {
     'THREE',
     'plain-data scene visual helper',
   );
-  assertNotContains(
-    helperSource,
-    '../engine',
-    'plain-data scene visual helper',
+  // The helper MAY import the pure display-geometry constant EARTH_KM_PER_DEG
+  // (../engine/orbit/earth-constants) for coordinate math — a fixed conversion
+  // factor, NOT engine truth (no SINR / handover / decision derivation). Ban
+  // every OTHER ../engine import (the signal / handover / channel truth modules).
+  const helperEngineImports = [...helperSource.matchAll(/from '(\.\.\/engine\/[^']+)'/g)].map((m) => m[1]);
+  const forbiddenEngineImports = helperEngineImports.filter((p) => p !== '../engine/orbit/earth-constants');
+  assert.ok(
+    forbiddenEngineImports.length === 0,
+    `plain-data scene visual helper must not derive engine truth (offending engine imports: ${forbiddenEngineImports.join(', ')})`,
   );
   assertNotContains(
     helperSource,
