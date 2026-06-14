@@ -3349,10 +3349,11 @@ assertNotContains(
   'jobs-panel-load-into-scene',
   'JobsPanel no longer renders the old completed-job Load into scene control',
 );
-// G1-CONTROLBAR-ADV: the trigger + modal scrim + focus management live in the
-// shared AdvancedDrawerShell (reused by the SINR-live display drawer). The MODQN
-// drawer keeps the `advanced-setup` testid prefix, so the drawer DOM — and the
-// modality gate's testids — are byte-identical.
+// The shared AdvancedDrawerShell (trigger + modal scrim + focus management) is
+// now reused ONLY by the MODQN Advanced setup drawer (modal). The SINR-live
+// display/tuning surface was inlined into the left aside (always-visible, in-flow,
+// no opt-in ⚙ trigger) so the left rail is not "too empty" — it no longer mounts
+// the shell.
 assertContains(
   advancedDrawerShellSource,
   'data-testid={`${testIdPrefix}-trigger`}',
@@ -3363,15 +3364,15 @@ assertContains(
   'testIdPrefix="advanced-setup"',
   'MODQN Advanced drawer keeps the advanced-setup testid prefix (byte-identical DOM)',
 );
-assertContains(
+assertNotContains(
   sinrLiveDisplayDrawerSource,
-  "from './AdvancedDrawerShell'",
-  'SINR-live display drawer reuses the shared Advanced drawer shell',
+  'AdvancedDrawerShell',
+  'SINR-live display/tuning is inlined in the left aside (no opt-in drawer shell — controls are always visible)',
 );
 assertContains(
   sinrLiveDisplayDrawerSource,
-  'testIdPrefix="sinr-live-display"',
-  'SINR-live display drawer mounts the shared shell under its own lane prefix',
+  'data-testid="sinr-live-display"',
+  'SINR-live display surface renders inline under its lane testid',
 );
 assertContains(
   governanceDoc,

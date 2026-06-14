@@ -1,10 +1,7 @@
-// G1-CONTROLBAR-ADV + G1-LEFT-DEFAULT — the SINR-live opt-in "⚙ Advanced" drawer.
-//
-// North star: 少按鈕 / 直覺 / 零學習. The default SINR-live surface is the scene
-// (mosaic + cones + live-handover pulse) + the shared Mode select + the read-only
-// Active-UEs count in the top bar + the light orientation card in the left rail.
-// Every power/display control lives here behind one ⚙ trigger, in collapsible
-// sections:
+// The SINR-live display / camera / tuning control surface — now rendered INLINE
+// in the left aside (the former opt-in "⚙ Advanced" drawer shell was removed so
+// the left rail is not "too empty"). The controls are always visible, grouped in
+// collapsible <details> sections:
 //   - Display & camera (default-open): beam density, beam-info callouts, camera
 //     presets, spotlight, auto-slow-on-HO — relocated off the top bar
 //     (G1-CONTROLBAR-ADV).
@@ -18,7 +15,6 @@
 import { type ReactElement, type ReactNode } from 'react';
 import { UI_CLASSES } from '../constants/uiTokens';
 import type { BeamDensity, CameraPreset, CinematicMode } from '../scene/types';
-import { AdvancedDrawerShell } from './AdvancedDrawerShell';
 
 const DENSITY_OPTIONS: Array<{ label: string; density: BeamDensity }> = [
   { label: 'few', density: 'event-only' },
@@ -68,14 +64,10 @@ export function SinrLiveDisplayDrawer({
   handoverPolicySection,
 }: SinrLiveDisplayDrawerProps): ReactElement {
   return (
-    <AdvancedDrawerShell
-      testIdPrefix="sinr-live-display"
-      triggerLabel="⚙ Advanced"
-      triggerHint="density · camera · spotlight · SINR formula · handover"
-      dialogTitle="Advanced controls"
-      dialogAriaLabel="SINR-live advanced display, camera and tuning controls"
-      closeAriaLabel="Close advanced controls"
-      modal={false}
+    <section
+      className="leo-sinr-advanced-inline leo-sidebar-content-stack"
+      data-testid="sinr-live-display"
+      aria-label="SINR-live advanced display, camera and tuning controls"
     >
       <details className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-display" open>
         <summary className="leo-sinr-advanced-summary">Display &amp; camera</summary>
@@ -197,18 +189,18 @@ export function SinrLiveDisplayDrawer({
       </details>
 
       {sinrFormulaSection && (
-        <details className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-formula">
+        <details className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-formula" open>
           <summary className="leo-sinr-advanced-summary">SINR formula</summary>
           <div className="leo-sinr-advanced-body">{sinrFormulaSection}</div>
         </details>
       )}
 
       {handoverPolicySection && (
-        <details className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-handover">
+        <details className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-handover" open>
           <summary className="leo-sinr-advanced-summary">Handover policy</summary>
           <div className="leo-sinr-advanced-body">{handoverPolicySection}</div>
         </details>
       )}
-    </AdvancedDrawerShell>
+    </section>
   );
 }

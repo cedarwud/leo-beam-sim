@@ -1758,9 +1758,6 @@ export function App() {
           reachable. Error: {modqnReplayFetchError}
         </div>
       )}
-      <div className="leo-top-nav-row">
-        <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
-      </div>
       {sceneLane !== 'sinr-live' && <DegenerateDataBanner />}
       {sceneLane !== 'sinr-live' && (
         <div className="leo-modqn-subnav-row">
@@ -1783,6 +1780,7 @@ export function App() {
       />
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
+          <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
           <SidebarTabShell
             label="Simulation control sidebar"
             side="left"
