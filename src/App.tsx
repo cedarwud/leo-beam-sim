@@ -1774,7 +1774,6 @@ export function App() {
       <ControlBar
         sceneSource={sceneSource}
         sceneLane={sceneLane}
-        liveUeCount={runtime.ueCount ?? 1}
         ueDisplayCount={ueDisplayCount}
         maxUeCount={showcaseArtifact?.timeline[0]?.ues.length ?? 100}
         onUeDisplayCountChange={setUeDisplayCount}

@@ -25,7 +25,6 @@ interface ViewportResult {
   canvas: BrowserBox;
   leftPanel: BrowserBox;
   rightPanel: BrowserBox;
-  controlBar: BrowserBox;
   checkpoint?: string;
 }
 
@@ -118,14 +117,12 @@ async function assertViewport(
     // measure above; was .leo-shell-right .leo-info-panel before the UI-mode switch
     // — which the gate used to surface via tuning mode — went away.)
     const rightPanel = await measureBox(page, '.leo-shell-right', `${viewport.width}x${viewport.height} right region`);
-    const controlBar = await measureBox(page, '.leo-control-bar', `${viewport.width}x${viewport.height} control bar`);
 
     assert.ok(shell.width > 0 && shell.height > 0, `${viewport.width}x${viewport.height} shell row collapsed`);
     assert.ok(canvasSlot.width >= 240, `${viewport.width}x${viewport.height} canvas slot width collapsed: ${canvasSlot.width}`);
     assert.ok(canvasSlot.height >= 160, `${viewport.width}x${viewport.height} canvas slot height collapsed: ${canvasSlot.height}`);
     assert.ok(leftPanel.width >= 160 && leftPanel.height >= 140, `${viewport.width}x${viewport.height} left panel collapsed: ${JSON.stringify(leftPanel)}`);
     assert.ok(rightPanel.width >= 160 && rightPanel.height >= 140, `${viewport.width}x${viewport.height} right panel collapsed: ${JSON.stringify(rightPanel)}`);
-    assert.ok(controlBar.y + controlBar.height <= shell.y + 2, `${viewport.width}x${viewport.height} control bar overlapped shell row`);
 
     assert.ok(
       Math.abs(canvas.width - canvasSlot.width) <= 2,
@@ -156,7 +153,6 @@ async function assertViewport(
       canvas,
       leftPanel,
       rightPanel,
-      controlBar,
       checkpoint,
     };
   } finally {

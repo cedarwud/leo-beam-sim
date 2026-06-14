@@ -8,12 +8,13 @@ interface ControlBarProps {
   // G1-CONTROLBAR-ADV: the SINR-live display/camera controls (beam density,
   // beam-info callouts, camera presets, spotlight, HO-slow) moved off the top bar
   // into the opt-in SinrLiveDisplayDrawer. After the UI-mode switch was removed
-  // the ControlBar only owns the lane-aware UE display filter / read-only count.
+  // the bar's only remaining job is the artifact-replay UE display-filter + focus
+  // controls; the SINR-live lane renders nothing here (the live UE population is
+  // shown in the left orientation card as "Served N/total").
 
   // P2b Display-filter & focus UE controls
   sceneSource?: 'live-sim' | 'artifact-replay';
   sceneLane?: SceneLane;
-  liveUeCount?: number;
   ueDisplayCount?: number;
   maxUeCount?: number;
   onUeDisplayCountChange?: (count: number) => void;
@@ -25,7 +26,6 @@ interface ControlBarProps {
 export function ControlBar({
   sceneSource = 'live-sim',
   sceneLane = sceneSource === 'artifact-replay' ? 'artifact-replay' : 'sinr-live',
-  liveUeCount = 1,
   ueDisplayCount = 100,
   maxUeCount = 100,
   onUeDisplayCountChange,
@@ -34,43 +34,39 @@ export function ControlBar({
   onElevatedUeIdChange,
 }: ControlBarProps) {
   const isArtifactReplay = sceneLane === 'artifact-replay' || sceneSource === 'artifact-replay';
+  // SINR-live: no top control row. The live UE count lives in the left
+  // SinrLiveOrientationCard (Served N/total); the former read-only "Active UEs"
+  // strip was redundant chrome occupying a whole row.
+  if (!isArtifactReplay) return null;
   return (
     <div className="leo-control-bar">
-      {isArtifactReplay ? (
-        <>
-          <label className="leo-control-bar__field-row">
-            Active UEs:
-            <input
-              className={`${UI_CLASSES.range} leo-control-bar__speed-range`}
-              type="range"
-              min={1}
-              max={maxUeCount}
-              value={ueDisplayCount}
-              aria-label="Active UEs display filter"
-              onChange={e => onUeDisplayCountChange?.(Number(e.target.value))}
-            />
-            <span>showing {ueDisplayCount} of {maxUeCount}</span>
-          </label>
-          <label className="leo-control-bar__field-row">
-            Focus UE:
-            <select
-              className={UI_CLASSES.select + ' leo-control-bar__ue-select'}
-              value={elevatedUeId ?? ''}
-              onChange={e => onElevatedUeIdChange?.(e.target.value)}
-            >
-              {ueIds.map(id => (
-                <option key={id} value={id}>
-                  {id}
-                </option>
-              ))}
-            </select>
-          </label>
-        </>
-      ) : (
-        <span className="leo-control-bar__ue-filter-readonly">
-          Active UEs: {Math.max(1, Math.trunc(liveUeCount))}
-        </span>
-      )}
+      <label className="leo-control-bar__field-row">
+        Active UEs:
+        <input
+          className={`${UI_CLASSES.range} leo-control-bar__speed-range`}
+          type="range"
+          min={1}
+          max={maxUeCount}
+          value={ueDisplayCount}
+          aria-label="Active UEs display filter"
+          onChange={e => onUeDisplayCountChange?.(Number(e.target.value))}
+        />
+        <span>showing {ueDisplayCount} of {maxUeCount}</span>
+      </label>
+      <label className="leo-control-bar__field-row">
+        Focus UE:
+        <select
+          className={UI_CLASSES.select + ' leo-control-bar__ue-select'}
+          value={elevatedUeId ?? ''}
+          onChange={e => onElevatedUeIdChange?.(e.target.value)}
+        >
+          {ueIds.map(id => (
+            <option key={id} value={id}>
+              {id}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
