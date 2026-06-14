@@ -1248,6 +1248,12 @@ assertNotContains(
 // staleness != offline and source-gap distinctions stay byte-identical.
 const mainScssSource = readRepoFile('src/styles/main.scss');
 const tokensScssSource = readRepoFile('src/styles/_tokens.scss');
+const modqnScssSource = readRepoFile('src/styles/_modqn.scss');
+// INV chip selectors may live in main.scss OR an extracted family partial (the
+// INV-1 truth-plane chips moved to _modqn.scss in the main.scss family split).
+// Assert the token-reference contract against the combined styled-surface source
+// so it holds wherever the selector was relocated.
+const styledSurfaceScss = `${mainScssSource}\n${modqnScssSource}`;
 for (const [token, value] of [
   // INV-1 truth-plane (chip text + border are distinct hues, both locked)
   ['--leo-plane-live', '#76ead7'],
@@ -1280,16 +1286,16 @@ for (const [token, value] of [
     `design token ${token} keeps its value-preserving INV literal (now in _tokens.scss)`,
   );
 }
-assertContains(mainScssSource, 'color: var(--leo-plane-live);', 'INV-1 live truth-tone chip references the plane-live token');
-assertContains(mainScssSource, 'color: var(--leo-plane-paper);', 'INV-1 paper truth-tone chip references the plane-paper token');
-assertContains(mainScssSource, 'color: var(--leo-plane-user);', 'INV-1 user truth-tone chip references the plane-user token');
-assertContains(mainScssSource, 'border-color: var(--leo-telemetry-stalled-border);', 'INV-2 stalled badge references the staleness token (distinct from offline)');
-assertContains(mainScssSource, 'border-color: var(--leo-telemetry-offline-border);', 'INV-2 offline badge references the offline token (distinct from stalled)');
-assertContains(mainScssSource, 'border-color: var(--leo-telemetry-idle-border);', 'INV-2 idle badge references the idle token (no-run state distinct from offline)');
+assertContains(styledSurfaceScss, 'color: var(--leo-plane-live);', 'INV-1 live truth-tone chip references the plane-live token');
+assertContains(styledSurfaceScss, 'color: var(--leo-plane-paper);', 'INV-1 paper truth-tone chip references the plane-paper token');
+assertContains(styledSurfaceScss, 'color: var(--leo-plane-user);', 'INV-1 user truth-tone chip references the plane-user token');
+assertContains(styledSurfaceScss, 'border-color: var(--leo-telemetry-stalled-border);', 'INV-2 stalled badge references the staleness token (distinct from offline)');
+assertContains(styledSurfaceScss, 'border-color: var(--leo-telemetry-offline-border);', 'INV-2 offline badge references the offline token (distinct from stalled)');
+assertContains(styledSurfaceScss, 'border-color: var(--leo-telemetry-idle-border);', 'INV-2 idle badge references the idle token (no-run state distinct from offline)');
 assertContains(liveTelemetryPanelSource, 'data-telemetry-status="idle"', 'LiveTelemetryPanel renders an idle (not offline) badge for the no-run empty state');
-assertContains(mainScssSource, 'filter: var(--leo-telemetry-frozen-filter);', 'INV-2 frozen tile references the freeze-filter token');
-assertContains(mainScssSource, 'background: var(--leo-source-gap-chip-bg);', 'INV-3 source-gap chip references the source-gap background token');
-assertContains(mainScssSource, 'color: var(--leo-source-gap-chip-text);', 'INV-3 source-gap chip references the source-gap text token');
+assertContains(styledSurfaceScss, 'filter: var(--leo-telemetry-frozen-filter);', 'INV-2 frozen tile references the freeze-filter token');
+assertContains(styledSurfaceScss, 'background: var(--leo-source-gap-chip-bg);', 'INV-3 source-gap chip references the source-gap background token');
+assertContains(styledSurfaceScss, 'color: var(--leo-source-gap-chip-text);', 'INV-3 source-gap chip references the source-gap text token');
 
 {
   const baseInput = {
