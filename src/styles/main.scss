@@ -1,3 +1,4 @@
+@use './tokens';
 @use './training-form';
 @use './control-bar';
 @use './director-controls';
@@ -13,75 +14,6 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-}
-
-:root {
-  --leo-focus-ring: #8df7e5;
-  --leo-focus-ring-shadow: rgba(141, 247, 229, 0.28);
-
-  // ── Track-2 cross-surface semantic tokens (mirror src/constants/uiTokens.ts) ──
-  // Value-preserving bridge: every token below resolves to the exact literal it
-  // replaced, so the rendered pixels are byte-identical. INV-1/2/3 colours are now
-  // a named, validator-locked contract (validate:frontend:scene-lane-governance)
-  // instead of scattered magic hex. GOVERNANCE: editing a value here changes the
-  // rendered colour — keep resolved bytes identical unless an INV/lane change is
-  // intended and the lane-governance validator + docs are updated in the same slice.
-
-  // Interactive accent (teal #76ead7 === rgb(118,234,215)); alpha-parametrised.
-  --leo-accent-rgb: 118, 234, 215;
-  --leo-accent: #76ead7;
-  --leo-accent-strong: #d8fffa;
-
-  // INV-1 truth-plane provenance. Chip text and border are DISTINCT hues (the
-  // border is not a simple alpha of the chip), so both are tokenised explicitly.
-  --leo-plane-live: #76ead7;
-  --leo-plane-live-border: rgba(118, 234, 215, 0.5);
-  --leo-plane-paper: #8fc0ff;
-  --leo-plane-paper-border: rgba(120, 178, 255, 0.5);
-  --leo-plane-user: #ffce82;
-  --leo-plane-user-border: rgba(255, 200, 110, 0.5);
-
-  // INV-2 telemetry status. "stalled" (freeze-grey) is DISTINCT from "offline"
-  // (red); the frozen tile keeps its grayscale filter. Never collapse these.
-  --leo-telemetry-live-border: rgba(129, 246, 188, 0.32);
-  --leo-telemetry-live-bg: rgba(129, 246, 188, 0.1);
-  --leo-telemetry-live-text: rgba(218, 255, 235, 0.94);
-  --leo-telemetry-stalled-border: rgba(193, 205, 214, 0.32);
-  --leo-telemetry-stalled-bg: rgba(160, 173, 184, 0.12);
-  --leo-telemetry-stalled-text: rgba(218, 226, 232, 0.88);
-  --leo-telemetry-offline-border: rgba(255, 118, 118, 0.32);
-  --leo-telemetry-offline-bg: rgba(255, 118, 118, 0.1);
-  --leo-telemetry-offline-text: rgba(255, 205, 205, 0.94);
-  --leo-telemetry-frozen-border: rgba(193, 205, 214, 0.18);
-  --leo-telemetry-frozen-bg: rgba(163, 176, 190, 0.06);
-  --leo-telemetry-frozen-value: rgba(218, 226, 232, 0.82);
-  --leo-telemetry-frozen-filter: grayscale(0.42);
-  // "idle" = no run loaded. A calm slate neutral, deliberately NOT the offline
-  // red (no alarm) and NOT the live green (nothing running). Distinct from the
-  // stalled grey so the three INV-2 states never read the same.
-  --leo-telemetry-idle-border: rgba(138, 162, 184, 0.34);
-  --leo-telemetry-idle-bg: rgba(138, 162, 184, 0.1);
-  --leo-telemetry-idle-text: rgba(206, 220, 232, 0.86);
-
-  // INV-3 source-gap (absent producer channel → "not shown", never fabricated).
-  --leo-source-gap-rgb: 255, 190, 69;
-  --leo-source-gap-chip-border: rgba(255, 190, 69, 0.34);
-  --leo-source-gap-chip-bg: rgba(255, 190, 69, 0.09);
-  --leo-source-gap-chip-text: rgba(255, 217, 142, 0.92);
-  --leo-source-gap-text: rgba(255, 190, 69, 0.86);
-  --leo-source-gap-detail-text: rgba(255, 217, 142, 0.74);
-
-  // Type weight scale (uiTokens.ts type.weight + the 850/900 SCSS already uses).
-  // Consumed incrementally by the per-surface Track-2 slices.
-  --leo-weight-strong: 700;
-  --leo-weight-heavy: 800;
-  --leo-weight-black: 850;
-  --leo-weight-ultra: 900;
-
-  // Motion durations (consumed incrementally by the per-surface Track-2 slices).
-  --leo-motion-fast: 120ms;
-  --leo-motion-standard: 140ms;
-  --leo-motion-slow: 160ms;
 }
 
 body {

@@ -1247,6 +1247,7 @@ assertNotContains(
 // contract cannot be bypassed by re-hardcoding the hex. Together they prove the
 // staleness != offline and source-gap distinctions stay byte-identical.
 const mainScssSource = readRepoFile('src/styles/main.scss');
+const tokensScssSource = readRepoFile('src/styles/_tokens.scss');
 for (const [token, value] of [
   // INV-1 truth-plane (chip text + border are distinct hues, both locked)
   ['--leo-plane-live', '#76ead7'],
@@ -1274,9 +1275,9 @@ for (const [token, value] of [
   ['--leo-accent-rgb', '118, 234, 215'],
 ] as const) {
   assertContains(
-    mainScssSource,
+    tokensScssSource,
     `${token}: ${value};`,
-    `design token ${token} keeps its value-preserving INV literal`,
+    `design token ${token} keeps its value-preserving INV literal (now in _tokens.scss)`,
   );
 }
 assertContains(mainScssSource, 'color: var(--leo-plane-live);', 'INV-1 live truth-tone chip references the plane-live token');
