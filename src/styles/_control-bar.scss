@@ -54,7 +54,6 @@
 }
 
 .leo-control-bar__handover-mode-group,
-.leo-control-bar__density-group,
 .leo-control-bar__modqn-layer-group {
   display: flex;
   align-items: center;
@@ -76,7 +75,6 @@
 }
 
 .leo-control-bar__handover-mode-button,
-.leo-control-bar__density-button,
 .leo-control-bar__modqn-layer-button {
   cursor: pointer;
   background: transparent;
@@ -91,16 +89,11 @@
   min-width: 106px;
 }
 
-.leo-control-bar__density-button {
-  min-width: 58px;
-}
-
 .leo-control-bar__modqn-layer-button {
   min-width: 74px;
 }
 
 .leo-control-bar__handover-mode-button[aria-pressed="true"],
-.leo-control-bar__density-button[aria-pressed="true"],
 .leo-control-bar__modqn-layer-button[aria-pressed="true"] {
   background: rgba(var(--leo-accent-rgb), 0.2);
   border-color: rgba(var(--leo-accent-rgb), 0.46);
@@ -108,7 +101,6 @@
 }
 
 .leo-control-bar__handover-mode-button:hover:not([aria-pressed="true"]):not(:disabled),
-.leo-control-bar__density-button:hover:not([aria-pressed="true"]),
 .leo-control-bar__modqn-layer-button:hover:not([aria-pressed="true"]) {
   background: rgba(var(--leo-accent-rgb), 0.08);
   color: var(--leo-accent-strong);
@@ -117,28 +109,6 @@
 .leo-control-bar__handover-mode-button:disabled {
   cursor: not-allowed;
   color: rgba(229, 244, 251, 0.42);
-}
-
-.leo-control-bar__camera-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.leo-control-bar__camera-button {
-  cursor: pointer;
-  min-width: 70px;
-  background: rgba(255, 255, 255, 0.075);
-  border: 1px solid rgba(218, 244, 255, 0.16);
-  color: #f6fbff;
-  padding: 4px 10px;
-  border-radius: 6px;
-  transition: background var(--leo-motion-standard) ease, border-color var(--leo-motion-standard) ease;
-}
-
-.leo-control-bar__camera-button:hover {
-  background: rgba(var(--leo-accent-rgb), 0.14);
-  border-color: rgba(var(--leo-accent-rgb), 0.42);
 }
 
 .leo-control-bar__toggle {

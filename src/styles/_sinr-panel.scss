@@ -100,27 +100,6 @@
   overflow-y: visible !important;
 }
 
-// G1-CONTROLBAR-ADV: SINR-live display/camera controls relocated into the shared
-// Advanced drawer. Each control group is a labelled section so the relocated
-// top-bar buttons read as intentional groups in the vertical drawer.
-.leo-sinr-display-drawer-section {
-  display: grid;
-  gap: 6px;
-}
-
-.leo-sinr-display-drawer-label {
-  font-size: 11px;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: rgba(229, 244, 251, 0.55);
-}
-
-.leo-sinr-display-drawer-section .leo-control-bar__density-group,
-.leo-sinr-display-drawer-section .leo-control-bar__camera-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
 
 .leo-signal-tuning-content {
   min-width: 0;

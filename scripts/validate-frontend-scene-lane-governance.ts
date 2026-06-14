@@ -521,6 +521,8 @@ const controlBarSource = readRepoFile('src/ui/ControlBar.tsx');
 // G1-CONTROLBAR-ADV: the SINR-live display/camera controls relocated off the top
 // bar into a lane-mounted Advanced drawer that reuses the shared shell.
 const sinrLiveDisplayDrawerSource = readRepoFile('src/ui/SinrLiveDisplayDrawer.tsx');
+// The compact SINR-live quick-control row (4 display checkboxes) at the rail top.
+const sinrLiveQuickControlsSource = readRepoFile('src/ui/SinrLiveQuickControls.tsx');
 // G2-TICKER: the publisher that publishes the rolling handover log onto SimState.
 const useSimStatePublisherSource = readRepoFile('src/scene/useSimStatePublisher.ts');
 const advancedDrawerShellSource = readRepoFile('src/ui/AdvancedDrawerShell.tsx');
@@ -1487,35 +1489,49 @@ assertContains(
   'App imports the SINR-live display/camera drawer',
 );
 tangleLockGroup('QUAR-S6-BUS', () => {
-  // The five relocated controls must NOT regress back into the top bar; each now
-  // lives in the lane-mounted SinrLiveDisplayDrawer instead. A future edit that
-  // re-hoists a control into the ControlBar is caught here.
+  // The cheap display toggles live in the SinrLiveQuickControls row at the top of
+  // the SINR-live rail — NOT the ControlBar. A future edit that re-hoists one into
+  // the top bar is caught here.
   for (const [needle, label] of [
-    ['data-testid="beam-density-control"', 'beam density controls'],
     ['data-testid="beam-info-toggle"', 'beam info toggle'],
-    ['data-testid="camera-preset-control"', 'camera preset controls'],
+    ['data-testid="non-serving-cones-toggle"', 'non-serving cones toggle'],
     ['Spotlight', 'spotlight control copy'],
     ['HO Slow', 'HO slow control copy'],
   ] as const) {
     assertNotContains(
       controlBarSource,
       needle,
-      `ControlBar must not re-own ${label} (relocated to SinrLiveDisplayDrawer)`,
+      `ControlBar must not own ${label} (lives in SinrLiveQuickControls)`,
     );
     assertContains(
-      sinrLiveDisplayDrawerSource,
+      sinrLiveQuickControlsSource,
       needle,
-      `SinrLiveDisplayDrawer owns the relocated ${label}`,
+      `SinrLiveQuickControls owns ${label}`,
     );
   }
-  // The drawer is SINR-live-lane-owned: App lane-gates it on the SINR-live lane.
-  const sinrDrawerMountIndex = appSource.indexOf('<SinrLiveDisplayDrawer');
-  assert.ok(sinrDrawerMountIndex >= 0, 'App mounts the SINR-live display drawer');
-  const sinrDrawerGateIndex = appSource.lastIndexOf("sceneLane === 'sinr-live'", sinrDrawerMountIndex);
-  assert.ok(
-    sinrDrawerGateIndex >= 0 && sinrDrawerMountIndex - sinrDrawerGateIndex < 220,
-    'App lane-gates the SINR-live display drawer on the SINR-live lane (mirrors the MODQN drawer gate)',
-  );
+  // Beam density + camera presets were RETIRED (beams render at the fixed base
+  // density). They must not reappear on any SINR-live surface.
+  for (const [needle, label] of [
+    ['beam-density-control', 'beam density control'],
+    ['camera-preset-control', 'camera preset control'],
+  ] as const) {
+    assertNotContains(controlBarSource, needle, `${label} is retired — not in ControlBar`);
+    assertNotContains(sinrLiveDisplayDrawerSource, needle, `${label} is retired — not in the SINR-live tuners`);
+    assertNotContains(sinrLiveQuickControlsSource, needle, `${label} is retired — not in the quick controls`);
+  }
+  // Both SINR-live left-rail surfaces are lane-gated on the SINR-live lane in App.
+  for (const [tag, label] of [
+    ['<SinrLiveDisplayDrawer', 'SINR-live tuners'],
+    ['<SinrLiveQuickControls', 'SINR-live quick controls'],
+  ] as const) {
+    const mountIndex = appSource.indexOf(tag);
+    assert.ok(mountIndex >= 0, `App mounts the ${label}`);
+    const gateIndex = appSource.lastIndexOf("sceneLane === 'sinr-live'", mountIndex);
+    assert.ok(
+      gateIndex >= 0 && mountIndex - gateIndex < 260,
+      `App lane-gates the ${label} on the SINR-live lane`,
+    );
+  }
 });
 
 // ── G1-LEFT-DEFAULT: SINR-live left rail = light orientation card; tuners → ⚙ ──

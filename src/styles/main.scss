@@ -93,9 +93,41 @@ canvas {
 
 .leo-shell-left {
   grid-area: left;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  // One unified scrollbar for the whole left rail (Experience switch + quick
+  // controls + orientation card + tuners) — no split top/bottom regions.
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+// Inside the unified left rail the tab shell + its panel must NOT open their own
+// nested scroll (that was the old top/bottom split); they flow in-line so the
+// rail owns the single scroll. (The right rail keeps its own scroll.)
+.leo-shell-left .leo-sidebar-tab-shell {
+  height: auto;
+  overflow: visible;
+}
+
+.leo-shell-left .leo-sidebar-tab-panel {
+  overflow: visible;
+}
+
+// Compact horizontal quick-control row (4 display checkboxes) at the rail top.
+.leo-sinr-quick-controls {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(218, 244, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 12px;
 }
 
 .leo-app-mode-rail {

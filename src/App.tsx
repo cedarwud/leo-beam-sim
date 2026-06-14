@@ -113,6 +113,7 @@ import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
 import { DegenerateDataBanner } from './ui/DegenerateDataBanner';
 import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
+import { SinrLiveQuickControls } from './ui/SinrLiveQuickControls';
 import { DEFAULT_SCENE_DISPLAY_CONFIG } from './scene/sceneDisplayConfig';
 import { SinrLiveOrientationCard } from './ui/SinrLiveOrientationCard';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
@@ -343,7 +344,9 @@ export function App() {
   const activeRightSidebarTab = visibleRightSidebarTabs.some(tab => tab.key === rightSidebarTab)
     ? rightSidebarTab
     : getDefaultRightSidebarTabForSceneLane(sceneLane, handoverMode);
-  const [beamDensityOverride, setBeamDensityOverride] = useState<BeamDensity | null>(null);
+  // Beam density control retired — beams render at the fixed base density
+  // (deriveRuntimeVisualSettings → 'event-plus-1'); no runtime override.
+  const beamDensityOverride: BeamDensity | null = null;
   // Tier-2/3 beam-display seam: display-only cone knobs held in App's OWN state and
   // passed DIRECTLY to MainScene (not through buildAppRuntimeConfig / the runtime
   // memo bag), so a toggle re-renders without the invisible-dep-array tax.
@@ -777,9 +780,6 @@ export function App() {
     markOmegaDisplayApplied();
   }, [markOmegaDisplayApplied]);
 
-  const handleBeamDensityChange = useCallback((nextDensity: BeamDensity) => {
-    setBeamDensityOverride(nextDensity);
-  }, []);
 
   // D-S3 replaces the Phase B stub import { fetchArtifactManifest } path with an all-or-nothing envelope swap.
   const handleLoadIntoScene = useCallback(async (jobId: string) => {
@@ -1781,6 +1781,18 @@ export function App() {
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
           <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
+          {sceneLane === 'sinr-live' && (
+            <SinrLiveQuickControls
+              beamCalloutsEnabled={sceneDisplayConfig.beamCalloutsEnabled}
+              showNonServingCones={sceneDisplayConfig.showNonServingCones}
+              cinematicMode={effectiveCinematicMode}
+              autoSlowEnabled={playback.autoSlowEnabled}
+              onToggleBeamCallouts={() => setSceneDisplayConfig(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
+              onToggleNonServingCones={() => setSceneDisplayConfig(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
+              onCinematicModeChange={camera.setCinematicMode}
+              onToggleAutoSlow={playback.toggleAutoSlow}
+            />
+          )}
           <SidebarTabShell
             label="Simulation control sidebar"
             side="left"
@@ -1841,25 +1853,11 @@ export function App() {
               onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
             />
           )}
-          {/* G1-CONTROLBAR-ADV + G1-LEFT-DEFAULT: the SINR-live opt-in ⚙ Advanced
-              drawer. It holds the relocated top-bar display/camera controls
-              (density, beam info, camera presets, spotlight, HO-slow) AND — as
-              collapsible sections — the SINR-formula + handover-policy tuners that
-              used to occupy the left rail. The default SINR-live surface stays the
-              scene + Mode + Active-UEs count + the light orientation card. */}
+          {/* SINR-live tuners, inlined in the rail: SINR formula + handover policy.
+              The cheap display toggles live in the SinrLiveQuickControls row at the
+              top of the rail; beam density + camera presets were retired. */}
           {sceneLane === 'sinr-live' && (
             <SinrLiveDisplayDrawer
-              beamDensity={runtime.beamDensity}
-              beamCalloutsEnabled={sceneDisplayConfig.beamCalloutsEnabled}
-              showNonServingCones={sceneDisplayConfig.showNonServingCones}
-              cinematicMode={effectiveCinematicMode}
-              autoSlowEnabled={playback.autoSlowEnabled}
-              onBeamDensityChange={handleBeamDensityChange}
-              onToggleBeamCallouts={() => setSceneDisplayConfig(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
-              onToggleNonServingCones={() => setSceneDisplayConfig(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
-              onCameraPresetSelect={camera.selectCameraPreset}
-              onCinematicModeChange={camera.setCinematicMode}
-              onToggleAutoSlow={playback.toggleAutoSlow}
               sinrFormulaSection={
                 <SignalTuningPanel
                   baseProfile={baseProfile}
