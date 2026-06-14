@@ -406,17 +406,17 @@ section('(n) D6b Director framing uses real rail satellite ids', () => {
     'HandoverRailEvent declares optional fromSatId/toSatId',
   );
 
-  const appSource = source('src/App.tsx');
+  const railBuildersSource = source('src/app/handoverRailBuilders.ts');
   check(
-    /const decision = frame\?\.modqnDecision/.test(appSource)
-    && /const decisionSource = decision\?\.previousSatelliteId \?\? null/.test(appSource)
-    && /const decisionTarget = decision\?\.selectedSatelliteId \?\? null/.test(appSource),
+    /const decision = frame\?\.modqnDecision/.test(railBuildersSource)
+    && /const decisionSource = decision\?\.previousSatelliteId \?\? null/.test(railBuildersSource)
+    && /const decisionTarget = decision\?\.selectedSatelliteId \?\? null/.test(railBuildersSource),
     'buildArtifactHandoverRailEvents reads the authoritative per-frame primary modqnDecision pair',
   );
   check(
-    /const primaryInterHo =\s*decisionSource !== null && decisionTarget !== null && decisionSource !== decisionTarget/.test(appSource)
-    && /const fromSatId = primaryInterHo \? decisionSource : null/.test(appSource)
-    && /const toSatId = primaryInterHo \? decisionTarget : null/.test(appSource),
+    /const primaryInterHo =\s*decisionSource !== null && decisionTarget !== null && decisionSource !== decisionTarget/.test(railBuildersSource)
+    && /const fromSatId = primaryInterHo \? decisionSource : null/.test(railBuildersSource)
+    && /const toSatId = primaryInterHo \? decisionTarget : null/.test(railBuildersSource),
     'artifact framing attaches ONLY for a primary inter-HO and fails closed otherwise (no secondary-event misattribution)',
   );
 

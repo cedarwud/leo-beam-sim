@@ -510,6 +510,7 @@ assert.equal(
 );
 
 const appSource = readRepoFile('src/App.tsx');
+const railBuildersSource = readRepoFile('src/app/handoverRailBuilders.ts');
 const appRuntimeModelSource = readRepoFile('src/app/appRuntimeModel.ts');
 const appRuntimeConfigSource = readRepoFile('src/app/appRuntimeConfig.ts');
 const appPersistenceSource = readRepoFile('src/app/appPersistence.ts');
@@ -651,8 +652,8 @@ assertContains(timelineAuthoritySource, 'export function resolveTimelineRailDesc
 assertContains(timelineAuthoritySource, "'profile-derived-forecast'", 'Timeline authority models profile-derived live Walker forecast claims');
 assertContains(appSource, 'buildLiveWalkerHandoverEventIndex({', 'App builds the live Walker event index outside render');
 assertContains(appSource, 'liveWalkerHandoverEventIndexToRailEvents(liveWalkerHandoverEventIndex)', 'App adapts live Walker event index to rail events');
-assertContains(appSource, 'function getModqnReplayVisualTimeline', 'App derives a slow-motion MODQN replay display axis');
-assertContains(appSource, 'MODQN_REPLAY_VISUAL_MIN_DISPLAY_DURATION_SEC = 60', 'App stretches the short legacy producer trace into a readable display playback window');
+assertContains(railBuildersSource, 'function getModqnReplayVisualTimeline', 'handoverRailBuilders derives a slow-motion MODQN replay display axis (extracted from App)');
+assertContains(railBuildersSource, 'MODQN_REPLAY_VISUAL_MIN_DISPLAY_DURATION_SEC = 60', 'handoverRailBuilders stretches the short legacy producer trace into a readable display playback window');
 assertContains(appSource, 'producerTraceDisplayDurationSec', 'App separates MODQN producer source horizon from display-stretched rail duration');
 assertContains(timelineAuthoritySource, 'const producerSourceTimeline: TimelineSurfaceDescriptor', 'Timeline authority keeps producer source timeline separate from display-stretched rail axis');
 assertContains(timelineAuthoritySource, "return { timeline: liveTimeline, rail: liveRail };", 'Timeline authority keeps MODQN live preview rail on the live Walker event index');

@@ -415,6 +415,7 @@ function assertOmegaRescalarizedDisplayState(): void {
 
 function assertSceneBridgeSource(): void {
   const appSource = readRepoFile('src/App.tsx');
+  const railBuildersSource = readRepoFile('src/app/handoverRailBuilders.ts');
   const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
   const sceneLayerSource = readReplaySceneLayerSources();
   const helperSource = readRepoFile('src/scene/modqnReplaySceneVisuals.ts');
@@ -436,19 +437,19 @@ function assertSceneBridgeSource(): void {
     'App replay-to-scene bridge',
   );
   assertContains(
-    appSource,
+    railBuildersSource,
     'MODQN_REPLAY_HANDOVER_SLOT_SEC',
-    'App replay handover slot hold bridge',
+    'handoverRailBuilders replay handover slot hold bridge (extracted from App)',
   );
   assertContains(
-    appSource,
+    railBuildersSource,
     'MODQN_REPLAY_STABLE_SLOT_SEC',
-    'App replay stable slot hold bridge',
+    'handoverRailBuilders replay stable slot hold bridge (extracted from App)',
   );
   assertContains(
-    appSource,
+    railBuildersSource,
     'resolveModqnReplayVisualSlotOffset',
-    'App replay variable-duration slot resolver',
+    'handoverRailBuilders replay variable-duration slot resolver (extracted from App)',
   );
   assertContains(
     appSource,

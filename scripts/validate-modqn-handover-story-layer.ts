@@ -392,6 +392,7 @@ function validateHudDiagnosticsRender(): void {
 function validateStaticContracts(): void {
   const mainScene = readSource('src/scene/MainScene.tsx');
   const app = readSource('src/App.tsx');
+  const railBuilders = readSource('src/app/handoverRailBuilders.ts');
   const appRuntimeConfig = readSource('src/app/appRuntimeConfig.ts');
   const appPersistence = readSource('src/app/appPersistence.ts');
   const appExperienceMode = readSource('src/app/appExperienceMode.ts');
@@ -485,8 +486,8 @@ function validateStaticContracts(): void {
   assertContains(timelineAuthority, 'It does not export a 2-hour Walker handover timeline.', 'timeline authority reports legacy producer horizon source gap');
   assertContains(timelineAuthority, "'profile-derived-forecast'", 'timeline authority labels precomputed SINR rail as profile-derived forecast');
   assertContains(timelineAuthority, "claimKind: input.sceneLane === 'modqn-replay-proof' ? 'producer-proof' : 'overlay-demo'", 'timeline authority separates producer proof from overlay/demo rail claims');
-  assertContains(app, 'function getModqnReplayVisualTimeline', 'App derives slow-motion MODQN replay display axis');
-  assertContains(app, 'MODQN_REPLAY_VISUAL_MIN_DISPLAY_DURATION_SEC = 60', 'App stretches the short legacy producer trace into a readable display playback window');
+  assertContains(railBuilders, 'function getModqnReplayVisualTimeline', 'handoverRailBuilders derives slow-motion MODQN replay display axis (extracted from App)');
+  assertContains(railBuilders, 'MODQN_REPLAY_VISUAL_MIN_DISPLAY_DURATION_SEC = 60', 'handoverRailBuilders stretches the short legacy producer trace into a readable display playback window');
   assertContains(app, 'producerTraceDisplayDurationSec', 'App separates producer trace source horizon from display-stretched rail axis');
   assertContains(timelineAuthority, 'const producerSourceTimeline: TimelineSurfaceDescriptor', 'timeline authority keeps producer source timeline separate from display-stretched rail axis');
   assertContains(timelineAuthority, 'return { timeline: liveTimeline, rail: liveRail };', 'timeline authority keeps MODQN live preview rail on live Walker event index');
