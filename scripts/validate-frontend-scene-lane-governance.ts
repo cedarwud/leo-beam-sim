@@ -3259,16 +3259,13 @@ assertContains(
   'do not cite',
   'Degenerate-data banner disclosure is explicitly non-citable',
 );
-assertContains(
-  appSource,
-  "from './ui/DegenerateDataBanner'",
-  'App imports the degenerate-data honesty banner',
-);
-assertContains(
-  appSource,
-  "sceneLane !== 'sinr-live' && <DegenerateDataBanner />",
-  'App mounts the degenerate-data banner on every MODQN lane (never on SINR)',
-);
+// TODO(modqn-one-page Step 3 — honesty obligation): the top degenerate-data banner
+// was UNMOUNTED during the MODQN→one-page consolidation; the non-citable disclosure
+// MUST be re-mounted as a compact chip on the MODQN proof card before the page is
+// demoed/shipped. The pinned copy above (DEGENERATE_DATA_BANNER_TEXT + 'do not cite')
+// stays enforced in the component source so it cannot be silently reworded; re-add a
+// render-presence assert when the proof-card chip lands.
+// (Was: assert App imports + mounts <DegenerateDataBanner /> on every MODQN lane.)
 // G3: the Family-B dense-Q banner is the loudest claim-boundary surface for a
 // non-paper-faithful, non-citable proof-of-wiring mode. Pin its honesty content
 // exactly like the baseline degenerate text so a future edit cannot silently

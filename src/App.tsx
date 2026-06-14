@@ -110,7 +110,6 @@ import type {
 } from './modqn/training-trigger/types';
 import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
-import { DegenerateDataBanner } from './ui/DegenerateDataBanner';
 import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
 import { SinrLiveQuickControls } from './ui/SinrLiveQuickControls';
@@ -1770,7 +1769,6 @@ export function App() {
           onToggleAutoSlow={playback.toggleAutoSlow}
         />
       )}
-      {sceneLane !== 'sinr-live' && <DegenerateDataBanner />}
       {sceneLane !== 'sinr-live' && (
         <div className="leo-modqn-subnav-row">
           <ModqnViewToggle
