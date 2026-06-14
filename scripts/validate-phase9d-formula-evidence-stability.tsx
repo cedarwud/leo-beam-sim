@@ -97,7 +97,7 @@ function renderPanel({
   const markup = renderToStaticMarkup(
     <InfoPanel
       {...state}
-      uiMode="tuning"
+      showFormulaTerms
       profile={profile}
       isFormulaEvidenceStale={isFormulaEvidenceStale}
     />,

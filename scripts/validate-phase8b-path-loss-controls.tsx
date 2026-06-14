@@ -565,7 +565,7 @@ function assertPlacementCopyAndStaleMarkup(): void {
   const staleInfoMarkup = renderToStaticMarkup(
     <InfoPanel
       {...createInfoState(profile)}
-      uiMode="tuning"
+      showFormulaTerms
       profile={profile}
       isFormulaEvidenceStale
     />,

@@ -347,7 +347,7 @@ function createScenarioState(profile: Profile, scenario: Scenario): SimState {
 function renderScenario(profile: Profile, scenario: Scenario): RenderedScenario {
   const state = createScenarioState(profile, scenario);
   const markup = renderToStaticMarkup(
-    <InfoPanel {...state} uiMode="presentation" profile={profile} />,
+    <InfoPanel {...state} profile={profile} />,
   );
   return {
     scenario,

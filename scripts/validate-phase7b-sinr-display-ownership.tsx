@@ -205,7 +205,7 @@ function run(): void {
   const operationalState = createSimState(profile);
 
   const infoMarkup = renderToStaticMarkup(
-    <InfoPanel {...operationalState} uiMode="tuning" profile={profile} />,
+    <InfoPanel {...operationalState} showFormulaTerms profile={profile} />,
   );
   const infoText = decodeHtmlText(infoMarkup);
 
@@ -249,7 +249,7 @@ function run(): void {
 
   const recentHoState = createRecentHoState(profile);
   const recentInfoMarkup = renderToStaticMarkup(
-    <InfoPanel {...recentHoState} uiMode="tuning" profile={profile} />,
+    <InfoPanel {...recentHoState} showFormulaTerms profile={profile} />,
   );
   const recentInfoText = decodeHtmlText(recentInfoMarkup);
   const recentTuningText = renderTuningPanel(profile, recentHoState).text;

@@ -70,16 +70,6 @@ canvas {
   background: #020912;
 }
 
-.leo-app-shell[data-ui-mode="presentation"] {
-  --leo-left-drawer-width: clamp(340px, 30vw, 440px);
-  --leo-right-drawer-width: clamp(300px, 26vw, 380px);
-}
-
-.leo-app-shell[data-ui-mode="diagnostics"] {
-  --leo-left-drawer-width: clamp(360px, 32vw, 460px);
-  --leo-right-drawer-width: clamp(320px, 28vw, 400px);
-}
-
 .leo-shell-row {
   min-width: 0;
   min-height: 0;
@@ -1258,10 +1248,6 @@ canvas {
   overscroll-behavior: contain;
 }
 
-.leo-app-shell[data-ui-mode="presentation"] .leo-sidebar-tab-panel > .leo-signal-tuning-panel[data-drawer-state="collapsed"] {
-  display: none;
-}
-
 .leo-ui-button,
 .leo-ui-select,
 .leo-ui-range,
@@ -1474,7 +1460,7 @@ canvas {
     gap: 10px;
   }
 
-  .leo-app-shell[data-ui-mode="presentation"] .leo-shell-row {
+  .leo-shell-row {
     grid-template-rows: minmax(300px, 1fr) minmax(200px, 0.45fr) minmax(196px, 0.42fr);
   }
 

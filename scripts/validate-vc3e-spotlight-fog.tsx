@@ -16,10 +16,7 @@ import {
   resolveCinematicSpotlightTargets,
   spotlightRoleForBeam,
 } from '../src/scene/cinematicEffects.ts';
-import {
-  deriveRuntimeVisualSettings,
-  resolveRuntimeCinematicMode,
-} from '../src/scene/runtimeConfig.ts';
+import { deriveRuntimeVisualSettings } from '../src/scene/runtimeConfig.ts';
 import type { BeamTarget } from '../src/viz/SatelliteBeams.tsx';
 import { satelliteGlyph } from '../src/viz/glyphs.ts';
 import { satelliteTint, satelliteTintIndex } from '../src/constants/beamRoleTokens.ts';
@@ -88,10 +85,7 @@ function createBeam(input: {
 }
 
 function assertInvariantSurface(): void {
-  assert.equal(deriveRuntimeVisualSettings('presentation', false).cinematicMode, 'off');
-  assert.equal(resolveRuntimeCinematicMode('presentation', 'spotlight'), 'spotlight');
-  assert.equal(resolveRuntimeCinematicMode('tuning', 'spotlight'), 'spotlight');
-  assert.equal(resolveRuntimeCinematicMode('diagnostics', 'spotlight'), 'spotlight');
+  assert.equal(deriveRuntimeVisualSettings(false).cinematicMode, 'off');
   assert.equal(resolveCinematicLightIntensity(1, 'spotlight'), CINEMATIC_LIGHT_DIM_MULTIPLIER);
   assert.equal(resolveCinematicLightIntensity(1, 'off'), 1);
 
@@ -396,7 +390,6 @@ async function assertAppToggleAndUiContrast(
   await page.addInitScript({
     content: `
       (() => {
-        window.localStorage.setItem('leo-beam-sim.ui-mode.v1', 'presentation');
         let state = 5303 >>> 0;
         Math.random = () => {
           state += 0x6d2b79f5;

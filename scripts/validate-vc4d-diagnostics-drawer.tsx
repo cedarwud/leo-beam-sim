@@ -13,7 +13,6 @@ import type { Profile } from '../src/profiles/types.ts';
 import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
 import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
-import { UI_MODE_STORAGE_KEY, type UiMode } from '../src/ui/uiMode.ts';
 import { detectAppUrl } from './_vc2-browser-fixture.ts';
 
 const RESEARCH_PROFILE_ID = 'hobs-2024-tr38811-research';
@@ -132,15 +131,19 @@ function decodeHtmlText(markup: string): string {
 
 function renderSurfaces(
   profile: Profile,
-  uiMode: UiMode,
+  uiMode: 'presentation' | 'tuning' | 'diagnostics',
   physicalServingBudget: LinkBudgetTerms | null = createBudgetTerms(47.5),
 ): RenderedSurfaces {
   const state = createSimState(profile, physicalServingBudget);
+  // The removed UI-mode mapped to: InfoPanel formula terms on tuning|diagnostics,
+  // DiagnosticsDrawer expanded only on diagnostics. Preserve that mapping here.
+  const showFormulaTerms = uiMode === 'tuning' || uiMode === 'diagnostics';
+  const expanded = uiMode === 'diagnostics';
   const infoMarkup = renderToStaticMarkup(
-    <InfoPanel {...state} uiMode={uiMode} profile={profile} />,
+    <InfoPanel {...state} showFormulaTerms={showFormulaTerms} profile={profile} />,
   );
   const drawerMarkup = renderToStaticMarkup(
-    <DiagnosticsDrawer {...state} uiMode={uiMode} profile={profile} />,
+    <DiagnosticsDrawer {...state} expanded={expanded} profile={profile} />,
   );
   return {
     infoMarkup,
@@ -209,21 +212,22 @@ function assertSsr(): void {
   assertNotContains(legacyDiagnostics.drawerText, 'DPC: research power policy');
 }
 
-async function selectUiMode(page: Page, mode: UiMode): Promise<void> {
-  await page.locator('select[aria-label="UI mode"]').selectOption(mode);
-  await page.locator(`.leo-app-shell[data-ui-mode="${mode}"]`).waitFor({ timeout: 5000 });
-}
-
 async function measureBox(page: Page, selector: string, label: string): Promise<BrowserBox> {
   const box = await page.locator(selector).boundingBox();
   assert.ok(box, `${label} box missing for ${selector}`);
   return box;
 }
 
+async function expandDiagnostics(page: Page): Promise<void> {
+  await page.locator('[data-testid="diagnostics-drawer-tab"]').click();
+  await page
+    .locator('[data-testid="diagnostics-drawer"][data-drawer-state="expanded"]')
+    .waitFor({ timeout: 5000 });
+}
+
 async function assertBrowser(): Promise<{
   appUrl: string;
-  presentationState: string | null;
-  tuningState: string | null;
+  collapsedState: string | null;
   diagnosticsState: string | null;
   infoPanel: BrowserBox;
   drawer: BrowserBox;
@@ -234,9 +238,6 @@ async function assertBrowser(): Promise<{
 
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    await context.addInitScript({
-      content: `window.localStorage.setItem(${JSON.stringify(UI_MODE_STORAGE_KEY)}, 'presentation');`,
-    });
     const page = await context.newPage();
 
     try {
@@ -245,15 +246,11 @@ async function assertBrowser(): Promise<{
       await page.locator('[data-testid="diagnostics-drawer"]').waitFor({ timeout: 5000 });
       await page.locator('.leo-shell-canvas canvas').waitFor({ timeout: 30000 });
 
-      const presentationState = await page.locator('[data-testid="diagnostics-drawer"]').getAttribute('data-drawer-state');
-      assert.equal(presentationState, 'collapsed', 'presentation mode should collapse the diagnostics drawer');
-      assert.equal(await page.locator('[data-testid="dpc-status-block"]').count(), 0, 'DPC block must not render in presentation mode');
+      const collapsedState = await page.locator('[data-testid="diagnostics-drawer"]').getAttribute('data-drawer-state');
+      assert.equal(collapsedState, 'collapsed', 'the diagnostics drawer must start collapsed by default');
+      assert.equal(await page.locator('[data-testid="dpc-status-block"]').count(), 0, 'DPC block must not render while the drawer is collapsed');
 
-      await selectUiMode(page, 'tuning');
-      const tuningState = await page.locator('[data-testid="diagnostics-drawer"]').getAttribute('data-drawer-state');
-      assert.equal(tuningState, 'collapsed', 'tuning mode should collapse the diagnostics drawer');
-
-      await selectUiMode(page, 'diagnostics');
+      await expandDiagnostics(page);
       const drawer = page.locator('[data-testid="diagnostics-drawer"]');
       const diagnosticsState = await drawer.getAttribute('data-drawer-state');
       assert.equal(diagnosticsState, 'expanded', 'diagnostics mode should expand the diagnostics drawer');
@@ -281,8 +278,7 @@ async function assertBrowser(): Promise<{
 
       return {
         appUrl,
-        presentationState,
-        tuningState,
+        collapsedState,
         diagnosticsState,
         infoPanel,
         drawer: drawerBox,

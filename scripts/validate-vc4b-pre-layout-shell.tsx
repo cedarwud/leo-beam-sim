@@ -47,13 +47,6 @@ async function measureBox(page: Page, selector: string, label: string): Promise<
   return box;
 }
 
-async function selectTuningMode(page: Page): Promise<void> {
-  const modeSelect = page.locator('select[aria-label="UI mode"]');
-  await modeSelect.waitFor({ timeout: 5000 });
-  await modeSelect.selectOption('tuning');
-  await page.locator('.leo-app-shell[data-ui-mode="tuning"]').waitFor({ timeout: 5000 });
-}
-
 async function screenshotCanvasHash(page: Page): Promise<string> {
   const screenshot = await page.locator('canvas').screenshot();
   assert.ok(screenshot.length > 5000, `canvas screenshot looked blank: ${screenshot.length} bytes`);
@@ -110,16 +103,21 @@ async function assertViewport(
   });
 
   try {
-    await selectTuningMode(page);
-    await page.locator('.leo-shell-left .leo-signal-tuning-panel').waitFor({ timeout: 5000 });
+    await page.locator('.leo-shell-left').waitFor({ timeout: 5000 });
     await page.locator('.leo-shell-right .leo-info-panel').waitFor({ timeout: 5000 });
     await page.locator('.leo-shell-canvas canvas').waitFor({ timeout: 5000 });
 
     const shell = await measureBox(page, '.leo-shell-row', `${viewport.width}x${viewport.height} shell row`);
     const canvasSlot = await measureBox(page, '.leo-shell-canvas', `${viewport.width}x${viewport.height} canvas slot`);
     const canvas = await measureBox(page, '.leo-shell-canvas canvas', `${viewport.width}x${viewport.height} canvas`);
-    const leftPanel = await measureBox(page, '.leo-shell-left .leo-signal-tuning-panel', `${viewport.width}x${viewport.height} left panel`);
-    const rightPanel = await measureBox(page, '.leo-shell-right .leo-info-panel', `${viewport.width}x${viewport.height} right panel`);
+    const leftPanel = await measureBox(page, '.leo-shell-left', `${viewport.width}x${viewport.height} left rail`);
+    // Measure the right shell REGION (not the InfoPanel's content-dependent
+    // height — its grid intentionally overflows/scrolls). This is a layout-SHELL
+    // gate; the durable invariant is that the right region keeps usable space and
+    // does not overlap the canvas/left rail. (Symmetric with the .leo-shell-left
+    // measure above; was .leo-shell-right .leo-info-panel before the UI-mode switch
+    // — which the gate used to surface via tuning mode — went away.)
+    const rightPanel = await measureBox(page, '.leo-shell-right', `${viewport.width}x${viewport.height} right region`);
     const controlBar = await measureBox(page, '.leo-control-bar', `${viewport.width}x${viewport.height} control bar`);
 
     assert.ok(shell.width > 0 && shell.height > 0, `${viewport.width}x${viewport.height} shell row collapsed`);
@@ -180,7 +178,6 @@ async function assertPointerBehavior(browser: Browser, appUrl: string): Promise<
   });
 
   try {
-    await selectTuningMode(page);
     const canvasSlot = await measureBox(page, '.leo-shell-canvas', 'pointer canvas slot');
     const rightPanel = await measureBox(page, '.leo-shell-right .leo-info-panel', 'pointer right panel');
     const canvasDrag = await assertCanvasDragRotates(page, canvasSlot);

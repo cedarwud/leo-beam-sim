@@ -89,7 +89,7 @@ function captureTrace(): GeometryTrace {
     appMode: 'sinr-experiment',
     presentationMode: 'demo-readability',
     replay,
-    ...deriveRuntimeVisualSettings('tuning', false),
+    ...deriveRuntimeVisualSettings(false),
     beamDensity: 'all',
     viewport: { width: 1600, height: 1000 },
     ueCount: UE_COUNT,

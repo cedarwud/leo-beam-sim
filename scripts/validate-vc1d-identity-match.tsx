@@ -95,7 +95,7 @@ function extractAttr(markup: string, attr: string): string {
 function createRuntime(density: BeamDensity, width: number, height: number): RuntimeConfig {
   return {
     ...BASE_RUNTIME,
-    ...deriveRuntimeVisualSettings(density === 'all' ? 'tuning' : 'presentation', false),
+    ...deriveRuntimeVisualSettings(false),
     beamDensity: density,
     viewport: { width, height },
   };
@@ -491,7 +491,7 @@ function assertVizDensityAndIdentityParity(): void {
   }
 
   const panelMarkup = renderToStaticMarkup(
-    <InfoPanel {...createPanelState(profile)} uiMode="diagnostics" profile={profile} />,
+    <InfoPanel {...createPanelState(profile)} showFormulaTerms profile={profile} />,
   );
   const servingPanelIdentity = extractAttr(
     extractTagByTestId(panelMarkup, 'info-panel-primary-beam-identity'),

@@ -337,19 +337,18 @@ async function runBrowserValidation(appUrl: string): Promise<BrowserValidationRe
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     try {
-      await context.addInitScript(() => {
-        window.localStorage.setItem('leo-beam-sim.ui-mode.v1', 'diagnostics');
-      });
       const page = await context.newPage();
       await page.goto(appUrl, { waitUntil: 'domcontentloaded', timeout: UI_LOAD_TIMEOUT_MS });
       await waitFor('canvas to be present', () => page.evaluate(() => (document.querySelector('canvas') ? true : null)), UI_LOAD_TIMEOUT_MS);
       await waitFor(
-        'expanded DiagnosticsDrawer',
+        'DiagnosticsDrawer to be present',
         () => page.evaluate(() => (
-          document.querySelector('[data-testid="diagnostics-drawer"][data-drawer-state="expanded"]') ? true : null
+          document.querySelector('[data-testid="diagnostics-drawer"]') ? true : null
         )),
         UI_LOAD_TIMEOUT_MS,
       );
+      await page.locator('[data-testid="diagnostics-drawer-tab"]').click();
+      await page.locator('[data-testid="diagnostics-drawer"][data-drawer-state="expanded"]').waitFor({ timeout: 5000 });
       result.drawerExpanded = true;
 
       await setSliderSpeedTo(page, SPEED_TARGET);

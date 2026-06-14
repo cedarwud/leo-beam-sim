@@ -127,31 +127,3 @@
   width: 100%;
 }
 
-.leo-signal-tuning-handle {
-  width: 100%;
-  min-width: 0;
-  height: 100%;
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 12px;
-  border-radius: inherit;
-  background:
-    linear-gradient(180deg, rgba(118, 234, 215, 0.16), rgba(6, 18, 28, 0.84)),
-    rgba(5, 16, 26, 0.9);
-  color: #baf8ef;
-  user-select: none;
-}
-
-.leo-signal-tuning-handle-symbol {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.leo-signal-tuning-handle-rule {
-  width: 1px;
-  min-height: 42px;
-  background: linear-gradient(180deg, transparent, rgba(186, 248, 239, 0.72), transparent);
-}

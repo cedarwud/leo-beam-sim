@@ -12,10 +12,15 @@ import {
 import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 import { OVERRIDE_PRIMARY_UE_SCOPE_NOTE } from '../modqn/runtimeControls';
-import type { UiMode } from './uiMode';
 
 type InfoPanelProps = SimState & {
-  uiMode: UiMode;
+  /**
+   * When true, render the SINR formula-term breakdown (driven by the live
+   * diagnostics toggle that replaced the removed diagnostics UI-mode). Still
+   * suppressed under decision-overlay-on-live-sinr where the offset is not the
+   * authority. Defaults false = the clean showcase look.
+   */
+  showFormulaTerms?: boolean;
   profile: Profile;
   handoverMode?: RuntimeHandoverMode;
   isFormulaEvidenceStale?: boolean;
@@ -98,7 +103,7 @@ export function InfoPanel({
   physicalServing,
   panelPrimary,
   panelComparison,
-  uiMode,
+  showFormulaTerms = false,
   profile,
   handoverMode = 'sinr-offset',
   isFormulaEvidenceStale = false,
@@ -151,8 +156,7 @@ export function InfoPanel({
         : panelComparison.role === 'candidate'
           ? modeCopy.candidateCaption
           : 'no comparison';
-  const showProfileIdentity = uiMode !== 'tuning';
-  const showFormulaTerms = (uiMode === 'tuning' || uiMode === 'diagnostics') && handoverMode !== 'decision-overlay-on-live-sinr';
+  const formulaTermsVisible = showFormulaTerms && handoverMode !== 'decision-overlay-on-live-sinr';
   const frequencyReuse = profile.beams.frequencyReuse;
   // Cell lane (servingBeamId null, servingCellId set): the serving unit is the
   // earth-fixed cell. Use formatCellServingIdentity — its frequency token is the
@@ -183,7 +187,7 @@ export function InfoPanel({
   return (
     <div className="leo-info-panel">
       <div className="leo-info-panel__grid">
-        {showProfileIdentity && (profileId || formulaFamilyLabel) && (
+        {(profileId || formulaFamilyLabel) && (
           <div className="leo-info-panel__profile-card">
             <div className="leo-info-panel__profile-label">SIGNAL PROFILE</div>
             <div className="leo-info-panel__profile-family">{formulaFamilyLabel ?? '—'}</div>
@@ -243,7 +247,7 @@ export function InfoPanel({
         </div>
       </div>
 
-      {showFormulaTerms && (
+      {formulaTermsVisible && (
         <FormulaTermsReadout
           source={physicalServing}
           budget={physicalServingBudget}

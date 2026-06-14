@@ -46,7 +46,7 @@ const BASE_RUNTIME: Omit<RuntimeConfig, 'beamDensity' | 'viewport' | 'effectsEna
 function createRuntime(density: BeamDensity, width: number, height: number): RuntimeConfig {
   return {
     ...BASE_RUNTIME,
-    ...deriveRuntimeVisualSettings(density === 'all' ? 'tuning' : 'presentation', false),
+    ...deriveRuntimeVisualSettings(false),
     beamDensity: density,
     viewport: { width, height },
   };
@@ -223,12 +223,17 @@ function assertV2DensityFixtures(): void {
 
   const all = renderViz(profile, sim, createRuntime('all', 1366, 768));
   assert.equal(all.ambientRings.length, 0, 'all density must not emit Phase 1B ambient rings');
+  // Re-baselined 2026-06-14: the test config now uses the real app runtime visual
+  // settings (effects ON — the former "all"=>tuning=>effects-off path went away with
+  // the UI-mode switch). useBeamViz's grouping orders the prepared/secondary sats
+  // differently under effects-on; the selected beams + roles are unchanged (S1/S2
+  // entries swap position only). leo's own display fixture, not a Rule#4 KPI.
   assert.deepEqual(
     beamFingerprint(all),
     [
       { satId: SAT_IDS[0], beams: [{ beamId: 1, role: 'serving' }, { beamId: 5, role: 'serving' }] },
-      { satId: SAT_IDS[1], beams: [{ beamId: 2, role: 'prepared' }, { beamId: 6, role: 'prepared' }] },
       { satId: SAT_IDS[2], beams: [{ beamId: 3, role: 'secondary' }, { beamId: 7, role: 'secondary' }] },
+      { satId: SAT_IDS[1], beams: [{ beamId: 2, role: 'prepared' }, { beamId: 6, role: 'prepared' }] },
     ],
     'all density changed the pre-Phase-1B cone-beam selection fingerprint',
   );
@@ -264,7 +269,7 @@ function assertReducedMotionSubscription(): void {
   listeners[0]({ matches: true });
   assert.equal(observed.at(-1), true, 'mocked reduced-motion change did not publish true');
   assert.deepEqual(
-    deriveRuntimeVisualSettings('presentation', true).effectsEnabled,
+    deriveRuntimeVisualSettings(true).effectsEnabled,
     { spineParticles: false, orbitTrail: false, servingRipple: false, pendingRipple: false },
     'reducedMotion=true must force all effects off',
   );
@@ -273,14 +278,9 @@ function assertReducedMotionSubscription(): void {
   listeners[0]({ matches: false });
   assert.equal(observed.at(-1), false, 'mocked reduced-motion recovery did not publish false');
   assert.deepEqual(
-    deriveRuntimeVisualSettings('presentation', false).effectsEnabled,
+    deriveRuntimeVisualSettings(false).effectsEnabled,
     { spineParticles: true, orbitTrail: true, servingRipple: true, pendingRipple: true },
     'reducedMotion recovery must re-derive presentation defaults',
-  );
-  assert.deepEqual(
-    deriveRuntimeVisualSettings('diagnostics', false).effectsEnabled,
-    { spineParticles: false, orbitTrail: false, servingRipple: false, pendingRipple: false },
-    'diagnostics defaults should keep effects disabled after recovery',
   );
 
   unsubscribe();

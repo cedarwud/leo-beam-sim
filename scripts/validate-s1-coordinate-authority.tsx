@@ -119,7 +119,7 @@ ok(SKY_DOME_H_RADIUS === 700 && SKY_DOME_V_RADIUS === 400, 'SKY_DOME radii singl
     appMode: 'sinr-experiment',
     presentationMode: 'demo-readability',
     replay,
-    ...deriveRuntimeVisualSettings('tuning', false),
+    ...deriveRuntimeVisualSettings(false),
     beamDensity: 'all',
     viewport: { width: 1600, height: 1000 },
     ueCount: UE_COUNT,

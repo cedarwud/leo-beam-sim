@@ -155,6 +155,39 @@
   text-transform: uppercase;
 }
 
+/* Local diagnostics open/close toggle (replaced the removed diagnostics UI-mode).
+   Collapsed: the full-box "Diagnostics" tab. Expanded: a small "Hide" control. */
+.leo-diagnostics-drawer__toggle {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.leo-diagnostics-drawer__toggle:hover {
+  color: #ffffff;
+}
+
+.leo-diagnostics-drawer[data-drawer-state="expanded"] .leo-diagnostics-drawer__toggle {
+  width: auto;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(137, 205, 255, 0.32);
+  color: rgba(118, 234, 215, 0.92);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
 .leo-drawer-section {
   padding: 11px 12px;
   border-radius: 10px;

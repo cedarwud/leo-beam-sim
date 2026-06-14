@@ -328,8 +328,8 @@ function assertInfoPanelIdentities(): void {
   });
   const pendingMarkup = renderToStaticMarkup(
     <>
-      <InfoPanel {...pendingState} uiMode="diagnostics" profile={profile} />
-      <DiagnosticsDrawer {...pendingState} uiMode="diagnostics" profile={profile} />
+      <InfoPanel {...pendingState} showFormulaTerms profile={profile} />
+      <DiagnosticsDrawer {...pendingState} expanded profile={profile} />
     </>,
   );
   const pendingText = decodeHtmlText(pendingMarkup);
@@ -356,8 +356,8 @@ function assertInfoPanelIdentities(): void {
   });
   const recentHoMarkup = renderToStaticMarkup(
     <>
-      <InfoPanel {...recentHoState} uiMode="diagnostics" profile={profile} />
-      <DiagnosticsDrawer {...recentHoState} uiMode="diagnostics" profile={profile} />
+      <InfoPanel {...recentHoState} showFormulaTerms profile={profile} />
+      <DiagnosticsDrawer {...recentHoState} expanded profile={profile} />
     </>,
   );
   const recentHoText = decodeHtmlText(recentHoMarkup);

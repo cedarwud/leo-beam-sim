@@ -117,10 +117,14 @@ function decodeHtmlText(markup: string): string {
 
 function renderInfoText(profile: Profile, uiMode: 'presentation' | 'tuning' | 'diagnostics'): string {
   const state = createSimState(profile, createBudgetTerms(47.5));
+  // The removed UI-mode mapped to: InfoPanel formula terms on tuning|diagnostics,
+  // DiagnosticsDrawer expanded only on diagnostics. Preserve that here.
+  const showFormulaTerms = uiMode === 'tuning' || uiMode === 'diagnostics';
+  const expanded = uiMode === 'diagnostics';
   return decodeHtmlText(renderToStaticMarkup(
     <>
-      <InfoPanel {...state} uiMode={uiMode} profile={profile} />
-      <DiagnosticsDrawer {...state} uiMode={uiMode} profile={profile} />
+      <InfoPanel {...state} showFormulaTerms={showFormulaTerms} profile={profile} />
+      <DiagnosticsDrawer {...state} expanded={expanded} profile={profile} />
     </>,
   ));
 }
@@ -182,12 +186,12 @@ function run(): void {
     <>
       <InfoPanel
         {...createSimState(researchProfile, null)}
-        uiMode="diagnostics"
+        showFormulaTerms
         profile={researchProfile}
       />
       <DiagnosticsDrawer
         {...createSimState(researchProfile, null)}
-        uiMode="diagnostics"
+        expanded
         profile={researchProfile}
       />
     </>,

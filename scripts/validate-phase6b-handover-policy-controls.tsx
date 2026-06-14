@@ -80,7 +80,6 @@ function renderTuningMarkups() {
       baseProfile={profile}
       tuning={createSignalTuningState(profile)}
       hasOverrides={false}
-      uiMode="tuning"
       formulaBudget={null}
       onTuningChange={() => {}}
       onReset={() => {}}
@@ -183,8 +182,8 @@ function assertModeVisibility(): void {
   const initialState = createInitialSimState(profile);
   const presentationText = decodeHtmlText(renderToStaticMarkup(
     <>
-      <InfoPanel {...initialState} uiMode="presentation" profile={profile} />
-      <DiagnosticsDrawer {...initialState} uiMode="presentation" profile={profile} />
+      <InfoPanel {...initialState} profile={profile} />
+      <DiagnosticsDrawer {...initialState} profile={profile} />
     </>,
   ));
   assertNotContains(presentationText, 'Handover Policy Research Controls');
@@ -194,8 +193,8 @@ function assertModeVisibility(): void {
 
   const diagnosticsText = decodeHtmlText(renderToStaticMarkup(
     <>
-      <InfoPanel {...initialState} uiMode="diagnostics" profile={profile} />
-      <DiagnosticsDrawer {...initialState} uiMode="diagnostics" profile={profile} />
+      <InfoPanel {...initialState} showFormulaTerms profile={profile} />
+      <DiagnosticsDrawer {...initialState} expanded profile={profile} />
     </>,
   ));
   assertContains(diagnosticsText, 'Handover policy (effective)');
@@ -222,7 +221,6 @@ function assertModeVisibility(): void {
   const modqnLiveStatusText = decodeHtmlText(renderToStaticMarkup(
     <InfoPanel
       {...modqnLiveStatusState}
-      uiMode="presentation"
       profile={profile}
       handoverMode="decision-overlay-on-live-sinr"
     />,

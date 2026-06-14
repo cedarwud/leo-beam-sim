@@ -45,15 +45,11 @@ function validateAppRuntimeOverride(): void {
 
 function validateBaseRuntimeUnchanged(): void {
   // deriveRuntimeVisualSettings stays defensive and reducedMotion-aware.
-  const research = deriveRuntimeVisualSettings('research', false);
-  expect(research.effectsEnabled.orbitTrail === false, 'Base research-mode keeps orbitTrail off');
-  expect(research.effectsEnabled.spineParticles === false, 'Base research-mode keeps spineParticles off');
-
-  const presentation = deriveRuntimeVisualSettings('presentation', false);
+  const presentation = deriveRuntimeVisualSettings(false);
   expect(presentation.effectsEnabled.orbitTrail === true, 'Presentation mode enables orbitTrail');
   expect(presentation.effectsEnabled.spineParticles === true, 'Presentation mode enables spineParticles');
 
-  const reduced = deriveRuntimeVisualSettings('presentation', true);
+  const reduced = deriveRuntimeVisualSettings(true);
   expect(reduced.effectsEnabled.orbitTrail === false, 'reducedMotion forces orbitTrail off regardless of uiMode');
   expect(reduced.effectsEnabled.spineParticles === false, 'reducedMotion forces spineParticles off regardless of uiMode');
 }

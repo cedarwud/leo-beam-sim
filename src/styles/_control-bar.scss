@@ -43,7 +43,6 @@
   gap: 6px;
 }
 
-.leo-control-bar__mode-select,
 .leo-control-bar__ue-select {
   cursor: pointer;
   background: rgba(8, 23, 32, 0.96);
@@ -51,13 +50,6 @@
   color: #f6fbff;
   padding: 4px 8px;
   border-radius: 6px;
-}
-
-.leo-control-bar__mode-select {
-  min-width: 138px;
-}
-
-.leo-control-bar__ue-select {
   min-width: 100px;
 }
 

@@ -5,7 +5,6 @@ import type { Profile } from '../profiles/types';
 import type { IntraHandoverEvent, SimState } from '../scene/types';
 import { formatBeamIdentity, formatHandoverReason, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import { formatFrequencyLabel } from '../utils/beamFrequency';
-import type { UiMode } from './uiMode';
 import {
   ModqnHandoverModeContext,
   type RuntimeHandoverMode,
@@ -21,7 +20,11 @@ import {
 // `truthOwnership` / `diagnostics`.
 
 type DiagnosticsDrawerProps = SimState & {
-  uiMode: UiMode;
+  /** Whether the drawer is expanded. Driven by the local diagnostics toggle that
+   * replaced the removed diagnostics UI-mode. Collapsed by default. */
+  expanded?: boolean;
+  /** Toggle handler wired to the collapsed tab / expanded header control. */
+  onToggleExpanded?: () => void;
   profile: Profile;
   /** S3: current handover mode — shows re-scalarization fallback row when 'decision-overlay-on-live-sinr'. */
   handoverMode?: RuntimeHandoverMode;
@@ -144,7 +147,8 @@ function readPublishedIntraStart(event: PublishedIntraHandoverEvent | null): num
 }
 
 export function DiagnosticsDrawer({
-  uiMode,
+  expanded = false,
+  onToggleExpanded,
   profile,
   handoverMode = 'sinr-offset',
   rescalarizeFallbackCount = 0,
@@ -237,7 +241,6 @@ export function DiagnosticsDrawer({
   }, [intraHandoverEvent]);
   const observedMeanMs = observedAggregate.count > 0 ? observedAggregate.sumMs / observedAggregate.count : null;
   const observedPendingFlag: '0' | '1' = intraHandoverEvent !== null ? '1' : '0';
-  const expanded = uiMode === 'diagnostics';
   const frequencyReuse = profile.beams.frequencyReuse;
   const beamPowerControl = profile.channel.beamPowerControl;
   const showDpcStatus =
@@ -277,7 +280,15 @@ export function DiagnosticsDrawer({
         data-drawer-state="collapsed"
         aria-label="Diagnostics drawer"
       >
-        <div data-testid="diagnostics-drawer-tab">Diagnostics</div>
+        <button
+          type="button"
+          className="leo-diagnostics-drawer__toggle"
+          data-testid="diagnostics-drawer-tab"
+          aria-expanded={false}
+          onClick={onToggleExpanded}
+        >
+          Diagnostics
+        </button>
       </section>
     );
   }
@@ -316,6 +327,15 @@ export function DiagnosticsDrawer({
           >
             drawer
           </div>
+          <button
+            type="button"
+            className="leo-diagnostics-drawer__toggle"
+            data-testid="diagnostics-drawer-collapse"
+            aria-expanded
+            onClick={onToggleExpanded}
+          >
+            Hide
+          </button>
         </div>
 
         <DrawerSection

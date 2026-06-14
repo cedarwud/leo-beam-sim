@@ -39,7 +39,6 @@ import {
   deriveRuntimeVisualSettings,
   readPrefersReducedMotion,
   readRuntimeViewport,
-  resolveRuntimeCinematicMode,
   subscribeToReducedMotionPreference,
   subscribeToRuntimeViewport,
 } from './scene/runtimeConfig';
@@ -133,7 +132,6 @@ import { AlgorithmDashboard } from './showcase/dashboard/AlgorithmDashboard';
 import { TrainingTelemetryFeed } from './showcase/dashboard/TrainingTelemetryFeed';
 import type { VisualShowcaseArtifact } from './scene/visual-showcase-contract';
 import type { NormalizedSceneFrame } from './scene/NormalizedSceneFrame';
-import { persistUiMode, readPersistedUiMode, type UiMode } from './ui/uiMode';
 import {
   APP_MODE_HANDOVER_MAP,
   persistAppMode,
@@ -257,7 +255,10 @@ export function App() {
   const [appMode, setAppModeRaw] = useState<AppExperienceMode>(initialRuntime.appMode);
   const profileByModeRef = useRef<ProfileByMode>(initialRuntime.profileByMode);
   const [selectedProfileId, setSelectedProfileId] = useState(initialRuntime.selectedProfileId);
-  const [uiMode, setUiMode] = useState<UiMode>(() => readPersistedUiMode());
+  // Replaces the removed presentation/tuning/diagnostics UI-mode switch: a local
+  // toggle that opens the live diagnostics detail (DiagnosticsDrawer expanded +
+  // InfoPanel formula terms). Defaults closed for the clean showcase look.
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
 
   // S3: handover mode — persisted for sinr-offset/decision-overlay-on-live-sinr, never for omega-heuristic.
   const [handoverMode, setHandoverModeRaw] = useState<RuntimeHandoverMode>(
@@ -465,7 +466,7 @@ export function App() {
 
   const runtimeVisualSettings = useMemo(
     () => {
-      const base = deriveRuntimeVisualSettings(uiMode, reducedMotion);
+      const base = deriveRuntimeVisualSettings(reducedMotion);
       if (appMode !== 'modqn-demo' || reducedMotion) return base;
       return {
         ...base,
@@ -476,12 +477,9 @@ export function App() {
         },
       };
     },
-    [appMode, reducedMotion, uiMode],
+    [appMode, reducedMotion],
   );
-  const effectiveCinematicMode = useMemo(
-    () => resolveRuntimeCinematicMode(uiMode, camera.cinematicMode),
-    [camera.cinematicMode, uiMode],
-  );
+  const effectiveCinematicMode = camera.cinematicMode;
   const runtime = useMemo(() => buildAppRuntimeConfig({
     appMode,
     effectiveProfile,
@@ -672,11 +670,6 @@ export function App() {
     });
   }, [baseProfile, playback, signalTunedProfile]);
 
-  const handleUiModeChange = useCallback((nextMode: UiMode) => {
-    setBeamDensityOverride(null);
-    setUiMode(nextMode);
-    persistUiMode(nextMode);
-  }, []);
 
   const applyHandoverModeSideEffects = useCallback((
     nextMode: RuntimeHandoverMode,
@@ -1717,7 +1710,6 @@ export function App() {
       incrementRescalarizeFallback={incrementRescalarizeFallback}
     >
     <div
-      data-ui-mode={uiMode}
       data-app-mode={appMode}
       data-scene-lane={sceneLane}
       data-artifact-source={
@@ -1780,8 +1772,6 @@ export function App() {
         </div>
       )}
       <ControlBar
-        uiMode={uiMode}
-        onUiModeChange={handleUiModeChange}
         sceneSource={sceneSource}
         sceneLane={sceneLane}
         liveUeCount={runtime.ueCount ?? 1}
@@ -1881,7 +1871,6 @@ export function App() {
                   sceneVisualScale={sceneVisualScale}
                   hasOverrides={hasSignalOverrides}
                   appMode={appMode}
-                  uiMode="tuning"
                   formulaBudget={simState.physicalServingBudget}
                   isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                   onTuningChange={handleSignalTuningChange}
@@ -2034,7 +2023,7 @@ export function App() {
                 {handoverEventRail}
                 <InfoPanel
                   {...simState}
-                  uiMode={uiMode}
+                  showFormulaTerms={diagnosticsOpen}
                   profile={effectiveProfile}
                   handoverMode={handoverMode}
                   isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
@@ -2042,7 +2031,8 @@ export function App() {
                 />
                 <DiagnosticsDrawer
                   {...simState}
-                  uiMode={uiMode}
+                  expanded={diagnosticsOpen}
+                  onToggleExpanded={() => setDiagnosticsOpen(open => !open)}
                   profile={effectiveProfile}
                   handoverMode={handoverMode}
                   rescalarizeFallbackCount={rescalarizeFallbackCount}

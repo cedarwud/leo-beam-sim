@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
-const UI_MODE_STORAGE_KEY = 'leo-beam-sim.ui-mode.v1';
 const BROWSER_USER_DATA_PREFIX = 'leo-beam-sim-phase5d-browser-';
 const REQUEST_TIMEOUT_MS = 900;
 const DEV_SERVER_START_TIMEOUT_MS = 30_000;
@@ -319,9 +318,6 @@ async function assertBrowserReadout(appUrl) {
     : null;
 
   try {
-    await context.addInitScript({
-      content: `window.localStorage.setItem(${JSON.stringify(UI_MODE_STORAGE_KEY)}, 'presentation');`,
-    });
     const page = context.pages()[0] ?? await context.newPage();
     page.on('console', message => {
       if (message.type() === 'error') consoleErrors.push(message.text());
@@ -332,7 +328,6 @@ async function assertBrowserReadout(appUrl) {
 
     try {
       await page.goto(appUrl, { waitUntil: 'domcontentloaded', timeout: UI_LOAD_TIMEOUT_MS });
-      await page.locator('.leo-app-shell[data-ui-mode="presentation"]').waitFor({ timeout: UI_LOAD_TIMEOUT_MS });
       await selectLiveStatusTab(page);
       await page.locator('.leo-shell-right .leo-info-panel').waitFor({ timeout: UI_LOAD_TIMEOUT_MS });
       const canvas = page.locator('.leo-shell-canvas canvas');
@@ -340,11 +335,10 @@ async function assertBrowserReadout(appUrl) {
       const canvasBox = await canvas.boundingBox();
       assert.ok(canvasBox && canvasBox.width > 100 && canvasBox.height > 100, `runtime canvas did not load with usable dimensions: ${JSON.stringify(canvasBox)}`);
 
-      await page.locator('select[aria-label="UI mode"]').selectOption('diagnostics');
-      await page.locator('.leo-app-shell[data-ui-mode="diagnostics"]').waitFor({ timeout: 5_000 });
-
       const drawer = page.locator('[data-testid="diagnostics-drawer"]');
       await drawer.waitFor({ timeout: 5_000 });
+      await page.locator('[data-testid="diagnostics-drawer-tab"]').click();
+      await page.locator('[data-testid="diagnostics-drawer"][data-drawer-state="expanded"]').waitFor({ timeout: 5000 });
       await page.waitForFunction(() => {
         const node = document.querySelector('[data-testid="diagnostics-drawer"]');
         return node?.getAttribute('data-drawer-state') === 'expanded';

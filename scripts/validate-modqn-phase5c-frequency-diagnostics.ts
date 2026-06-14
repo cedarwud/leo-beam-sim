@@ -133,7 +133,7 @@ function renderDrawerText(
   return decodeHtmlText(renderToStaticMarkup(
     React.createElement(DiagnosticsDrawer, {
       ...state,
-      uiMode: 'diagnostics',
+      expanded: true,
       profile,
     }),
   ));

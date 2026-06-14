@@ -77,7 +77,6 @@
     "validate:vc4a:duel-card": "node --import tsx/esm scripts/validate-vc4a-duel-card.tsx",
     "validate:vc4b-pre:layout-shell": "node --import tsx/esm scripts/validate-vc4b-pre-layout-shell.tsx",
     "validate:vc4b:tuning-drawer": "node --import tsx/esm scripts/validate-vc4b-tuning-drawer.tsx",
-    "validate:vc4c:controlbar-density-camera": "node --import tsx/esm scripts/validate-vc4c-controlbar-density-camera.tsx",
     "validate:vc4d:diagnostics-drawer": "node --import tsx/esm scripts/validate-vc4d-diagnostics-drawer.tsx",
     "validate:hobs-tr38811-phase1": "node --import tsx/esm scripts/validate-hobs-tr38811-phase1.ts",
     "validate:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/validate-hobs-tr38811-phase2-dpc.ts",

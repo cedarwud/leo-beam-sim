@@ -91,7 +91,7 @@ const RUNTIME: RuntimeConfig = {
   appMode: 'modqn-demo',
   presentationMode: 'demo-readability',
   replay: { epochUtcMs: CLOCK_EPOCH_MS, startOffsetSec: 0, loop: false, windowLengthSec: 7200 },
-  ...deriveRuntimeVisualSettings('tuning', false),
+  ...deriveRuntimeVisualSettings(false),
   beamDensity: 'all',
   viewport: { width: 1600, height: 1000 },
   ueCount: 100,

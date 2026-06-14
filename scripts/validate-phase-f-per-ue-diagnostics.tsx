@@ -61,7 +61,7 @@ function renderDrawer(perUePositions: SimState['perUePositions']): string {
   return renderToStaticMarkup(
     <DiagnosticsDrawer
       {...simState}
-      uiMode="diagnostics"
+      expanded
       profile={profile}
     />,
   );

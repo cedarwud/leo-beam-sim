@@ -35,7 +35,6 @@ import {
   getFormulaTabAccent,
 } from './signal-tuning/tuningConfig';
 import {
-  collapsedPanelStyle,
   compactDetailsStyle,
   compactSummaryStyle,
   controlStackStyle,
@@ -44,9 +43,8 @@ import {
   pagePanelStyle,
   panelStyle,
 } from './signal-tuning/styles';
-import type { SignalDrawerState, TuningTabKey } from './signal-tuning/types';
+import type { TuningTabKey } from './signal-tuning/types';
 import { formatDbi } from './signal-tuning/formatters';
-import type { UiMode } from './uiMode';
 import type { AppExperienceMode } from './appMode';
 
 interface SignalTuningPanelProps {
@@ -56,7 +54,6 @@ interface SignalTuningPanelProps {
   sceneVisualScale: SceneVisualScaleState;
   hasOverrides: boolean;
   appMode: AppExperienceMode;
-  uiMode: UiMode;
   formulaBudget: LinkBudgetTerms | null;
   isFormulaEvidenceStale?: boolean;
   initialActiveTab?: TuningTabKey;
@@ -66,11 +63,6 @@ interface SignalTuningPanelProps {
   onReset: () => void;
 }
 
-function getSignalDrawerState(uiMode: UiMode): SignalDrawerState {
-  if (uiMode === 'presentation') return 'collapsed';
-  return uiMode;
-}
-
 export function SignalTuningPanel({
   baseProfile,
   tuning,
@@ -78,7 +70,6 @@ export function SignalTuningPanel({
   sceneVisualScale,
   hasOverrides,
   appMode,
-  uiMode,
   formulaBudget,
   isFormulaEvidenceStale = false,
   initialActiveTab = 'signal-power',
@@ -88,7 +79,9 @@ export function SignalTuningPanel({
   onReset,
 }: SignalTuningPanelProps) {
   const [activeTab, setActiveTab] = useState<TuningTabKey>(initialActiveTab);
-  const drawerState = getSignalDrawerState(uiMode);
+  // The panel is always mounted expanded in the tuning drawer; the former
+  // presentation/diagnostics collapse was driven by the now-removed UI-mode
+  // switch, so the collapsed handle/styles are gone.
   const activeTabConfig = getActiveTabConfig(activeTab);
   const isTr38811Formula = baseProfile.formulaFamily === 'hobs-tr38811';
   const fsplEnabled = tuning.pathLossComponents.includes('fspl');
@@ -116,27 +109,15 @@ export function SignalTuningPanel({
   return (
     <aside
       className="leo-signal-tuning-panel"
-      data-drawer-state={drawerState}
+      data-drawer-state="tuning"
       aria-label="Signal tuning controls"
-      aria-expanded={drawerState !== 'collapsed'}
-      style={drawerState === 'collapsed' ? collapsedPanelStyle : panelStyle}
+      aria-expanded
+      style={panelStyle}
     >
-      {drawerState === 'collapsed' && (
-        <div
-          className="leo-signal-tuning-handle"
-          data-testid="signal-tuning-drawer-handle"
-          aria-hidden="true"
-        >
-          <span className="leo-signal-tuning-handle-symbol">γ</span>
-          <span className="leo-signal-tuning-handle-rule" />
-          <span className="leo-signal-tuning-handle-symbol">K</span>
-        </div>
-      )}
       <div
         className="leo-signal-tuning-content"
         data-testid="signal-tuning-drawer-content"
-        hidden={drawerState === 'collapsed'}
-        style={drawerState === 'collapsed' ? { display: 'none' } : drawerContentStyle}
+        style={drawerContentStyle}
       >
         <section
           id="tuning-page-panel-sinr-formula"

@@ -212,8 +212,8 @@ function run(): void {
 
   const combinedMarkup = renderToStaticMarkup(
     <>
-      <InfoPanel {...simState} uiMode="diagnostics" profile={profile} />
-      <DiagnosticsDrawer {...simState} uiMode="diagnostics" profile={profile} />
+      <InfoPanel {...simState} showFormulaTerms profile={profile} />
+      <DiagnosticsDrawer {...simState} expanded profile={profile} />
     </>,
   );
   const combinedText = decodeHtmlText(combinedMarkup);

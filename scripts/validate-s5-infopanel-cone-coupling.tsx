@@ -166,7 +166,7 @@ const runtime: RuntimeConfig = {
   appMode: 'sinr-experiment',
   presentationMode: 'demo-readability',
   replay: { epochUtcMs: APP_EPOCH_MS, startOffsetSec: 0, loop: false, windowLengthSec: 7200 },
-  ...deriveRuntimeVisualSettings('tuning', false),
+  ...deriveRuntimeVisualSettings(false),
   beamDensity: 'all',
   viewport: { width: 1600, height: 1000 },
   ueCount: UE_COUNT,

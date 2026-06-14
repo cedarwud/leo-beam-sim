@@ -1,11 +1,8 @@
 import type {
-  BeamDensity,
-  CinematicMode,
   RuntimeConfig,
   RuntimeEffectsEnabled,
   RuntimeViewport,
 } from './types';
-import type { UiMode } from '../ui/uiMode';
 
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
@@ -46,27 +43,17 @@ function allEffectsEnabled(value: boolean): RuntimeEffectsEnabled {
   };
 }
 
-export function deriveBeamDensity(uiMode: UiMode): BeamDensity {
-  return uiMode === 'presentation' ? 'event-plus-1' : 'all';
-}
-
-export function resolveRuntimeCinematicMode(
-  _uiMode: UiMode,
-  requestedMode: CinematicMode,
-): CinematicMode {
-  return requestedMode;
-}
-
+// The former presentation/tuning/diagnostics UI-mode switch was removed; the
+// showcase always runs the "presentation" look (event-plus-1 beam density,
+// effects on unless reduced-motion). Beam density is still independently
+// overridable at runtime via the SinrLiveDisplayDrawer beam-density control.
 export function deriveRuntimeVisualSettings(
-  uiMode: UiMode,
   reducedMotion: boolean,
 ): RuntimeVisualSettings {
-  const presentationEffects = uiMode === 'presentation';
-
   return {
-    beamDensity: deriveBeamDensity(uiMode),
-    effectsEnabled: reducedMotion ? allEffectsEnabled(false) : allEffectsEnabled(presentationEffects),
-    cinematicMode: resolveRuntimeCinematicMode(uiMode, 'off'),
+    beamDensity: 'event-plus-1',
+    effectsEnabled: allEffectsEnabled(!reducedMotion),
+    cinematicMode: 'off',
     reducedMotion,
   };
 }

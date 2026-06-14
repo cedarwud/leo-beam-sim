@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { chromium, type Page } from '@playwright/test';
 
 const OUTPUT_DIR = 'docs/visual-clarity-proposal/baselines-pre-vc';
-const UI_MODE_STORAGE_KEY = 'leo-beam-sim.ui-mode.v1';
 const EMPTY_SCREENSHOT_THRESHOLD_BYTES = 5 * 1024;
 
 const VIEWPORTS = [
@@ -65,10 +64,6 @@ async function setSpeed(page: Page, speed: number): Promise<void> {
   }, speed);
 }
 
-async function selectUiMode(page: Page, mode: 'presentation' | 'diagnostics'): Promise<void> {
-  await page.locator('select[aria-label="UI mode"]').selectOption(mode);
-}
-
 async function pauseIfRunning(page: Page): Promise<void> {
   const pauseButton = page.getByRole('button', { name: 'Pause' });
   if (await pauseButton.count()) {
@@ -78,10 +73,6 @@ async function pauseIfRunning(page: Page): Promise<void> {
 }
 
 async function prepareScene(page: Page, appUrl: string): Promise<number> {
-  await page.addInitScript(storageKey => {
-    window.localStorage.setItem(storageKey, 'diagnostics');
-  }, UI_MODE_STORAGE_KEY);
-
   await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
   await page.locator('[data-testid="info-panel-primary-sinr-status"]').waitFor({ timeout: 30000 });
   await setSpeed(page, 20);
@@ -93,7 +84,6 @@ async function prepareScene(page: Page, appUrl: string): Promise<number> {
   const value = await hoCount.jsonValue();
 
   await pauseIfRunning(page);
-  await selectUiMode(page, 'presentation');
   await page.locator('[data-testid="info-panel-primary-sinr-status"]').waitFor({ timeout: 5000 });
   await sleep(800);
 
