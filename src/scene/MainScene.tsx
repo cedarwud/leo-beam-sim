@@ -64,9 +64,11 @@ import {
   resolveSinrLiveCellHandoverPairConeItems,
   resolveSinrLiveHandoverPulseConeItems,
   resolveSinrLiveCellBeamConeItems,
+  resolveSinrLiveNonServingConeItems,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
 import { resolveSinrLiveConeLayerOpacity } from '../constants/sinrLiveConeStyle';
+import { DEFAULT_SCENE_DISPLAY_CONFIG, type SceneDisplayConfig } from './sceneDisplayConfig';
 import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC } from './sinrLiveCellModel';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
@@ -135,6 +137,8 @@ interface SceneContentProps {
   onSimUpdate: (state: SimState) => void;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
+  /** Tier-2 display-only beam knobs (direct prop, bypasses the runtime bag). */
+  sceneDisplayConfig?: SceneDisplayConfig;
 }
 
 interface ArtifactSceneContentProps {
@@ -658,6 +662,7 @@ function SceneContent({
   onSimUpdate,
   onLiveSeekLanded,
   sceneFrame: propSceneFrame,
+  sceneDisplayConfig = DEFAULT_SCENE_DISPLAY_CONFIG,
 }: SceneContentProps) {
   const camera = useThree(state => state.camera);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
@@ -1119,6 +1124,30 @@ function SceneContent({
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
     sinrLiveCellBeamConeItems.map(item => item.satId),
   ).size;
+  // Tier-2 OPT-IN non-serving cones (the beam-display show/dim switch): the dim
+  // co-channel / secondary illuminated beams behind the serving field, from the
+  // SEPARATE resolver (resolveSinrLiveCellBeamConeItems stays serving-only for the
+  // s0/s4 serving must-holds). Gated by the direct-prop SceneDisplayConfig switch —
+  // and that switch IS in this dep-array: it is the second half of the
+  // invisible-dep-array bug ("toggle a beam-display value and nothing re-renders")
+  // that the Tier-2 seam fixes. Default OFF → empty array → no mount → no change.
+  const sinrLiveCellNonServingConeItems = useMemo(
+    () => (showSinrLiveCellBeams && sceneDisplayConfig.showNonServingCones
+      ? resolveSinrLiveNonServingConeItems({
+        cellFrame: sim.sinrLiveCells,
+        placementByCellId: sinrLiveCellPlacementById,
+        satelliteWorldById: viz.coneApexWorldById,
+        focusSatIds: null,
+      })
+      : []),
+    [
+      showSinrLiveCellBeams,
+      sceneDisplayConfig.showNonServingCones,
+      sim.sinrLiveCells,
+      sinrLiveCellPlacementById,
+      viz.coneApexWorldById,
+    ],
+  );
   const sinrLiveCellHandoverPairConeItems = useMemo(
     () => (showCandidateHandoverHighlight
       ? resolveSinrLiveCellHandoverPairConeItems({
@@ -1577,6 +1606,15 @@ function SceneContent({
           satelliteTintColor={sat.satelliteTintColor}
         />
       ))}
+      {/* Tier-2 opt-in non-serving cones — dim, painted FIRST (behind) so the
+          serving field reads on top. Default OFF (SceneDisplayConfig). */}
+      {sinrLiveCellNonServingConeItems.length > 0 && (
+        <SinrLiveCellBeamCones
+          items={sinrLiveCellNonServingConeItems}
+          opacity={resolveSinrLiveConeLayerOpacity('nonServing')}
+          telemetryCountDatasetKey="sinrLiveCellNonServingConeRenderedCount"
+        />
+      )}
       {showSinrLiveCellBeams && (
         <SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} />
       )}
@@ -1639,6 +1677,13 @@ interface MainSceneProps {
   onSimUpdate: (state: SimState) => void;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
+  /**
+   * Tier-2 thin DIRECT-PROP seam for display-only beam knobs — passed straight
+   * from App (its own useState), NOT through buildAppRuntimeConfig / the runtime
+   * memo bag, so a toggle re-renders without the invisible-dep-array tax. Optional
+   * (defaults to DEFAULT_SCENE_DISPLAY_CONFIG); the artifact-replay lane ignores it.
+   */
+  sceneDisplayConfig?: SceneDisplayConfig;
 }
 
 export const MainScene = memo(function MainScene({
@@ -1653,6 +1698,7 @@ export const MainScene = memo(function MainScene({
   onSimUpdate,
   onLiveSeekLanded,
   sceneFrame,
+  sceneDisplayConfig = DEFAULT_SCENE_DISPLAY_CONFIG,
 }: MainSceneProps) {
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
   const showUav = sceneLane === 'sinr-live';
@@ -1708,6 +1754,7 @@ export const MainScene = memo(function MainScene({
               onSimUpdate={onSimUpdate}
               onLiveSeekLanded={onLiveSeekLanded}
               sceneFrame={sceneFrame}
+              sceneDisplayConfig={sceneDisplayConfig}
             />
           )}
         </Suspense>

@@ -254,6 +254,57 @@ export function resolveSinrLiveCellBeamConeItems(
   return items;
 }
 
+/**
+ * Tier-2 OPT-IN non-serving cone resolver (the beam-display show/dim switch). One
+ * dim cone per NON-serving illuminated beam — the co-channel / secondary beams the
+ * serving resolver drops at `if (!beam.serving) continue`. SEPARATE from
+ * resolveSinrLiveCellBeamConeItems ON PURPOSE: that function is contractually
+ * serving-only (validate:s0:connected-sat-has-beam's must-hold oracle + the
+ * validate:s4:serving-equivalence hard deepEqual + the render test all assert it),
+ * so non-serving cones must NOT come from relaxing its filter. This is a pure DISPLAY
+ * read-out of the model's non-serving `illuminatedBeams` (Rule#6): it changes no
+ * serving / SINR / handover truth and is never fed into the serving must-hold
+ * oracles. Items carry `serving: false`; the caller mounts them in a SEPARATE group
+ * at the dim `nonServing` opacity behind the serving field, gated by
+ * `SceneDisplayConfig.showNonServingCones` (default OFF). `(cellId, satId)` is unique
+ * within the non-serving set (one illuminating beam per sat per cell), so the default
+ * content-stable key holds. Deterministic in beam order; same placement/apex guards
+ * as the serving resolver.
+ */
+export function resolveSinrLiveNonServingConeItems(
+  props: SinrLiveCellBeamConesProps,
+): readonly SinrLiveCellBeamConeRenderItem[] {
+  const { cellFrame, placementByCellId, satelliteWorldById, focusSatIds } = props;
+  if (!cellFrame) return [];
+  const narrow = focusSatIds && focusSatIds.size > 0 ? focusSatIds : null;
+
+  const items: SinrLiveCellBeamConeRenderItem[] = [];
+  for (const beam of cellFrame.illuminatedBeams) {
+    if (beam.serving) continue; // serving beams own the always-on field; this is the non-serving complement
+    if (narrow && !narrow.has(beam.satId)) continue;
+    const placement = placementByCellId.get(beam.cellId);
+    const satWorld = satelliteWorldById.get(beam.satId);
+    if (!placement || !satWorld) continue;
+    if (placement.radiusWorld <= 0) continue;
+
+    const apex = new THREE.Vector3(satWorld.x, satWorld.y, satWorld.z);
+    const baseCenter = new THREE.Vector3(placement.worldX, 0, placement.worldZ);
+    if (apex.distanceTo(baseCenter) <= 1e-6) continue;
+
+    items.push({
+      cellId: beam.cellId,
+      satId: beam.satId,
+      frequencyIndex: beam.frequencyIndex,
+      color: resolveSinrLiveConeColor(beam.frequencyIndex),
+      serving: false,
+      apex,
+      baseCenter,
+      baseRadiusWorld: placement.radiusWorld,
+    });
+  }
+  return items;
+}
+
 function buildPairConeItem(input: {
   readonly satId: string;
   readonly cellId: number | null | undefined;

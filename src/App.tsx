@@ -114,6 +114,7 @@ import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
 import { DegenerateDataBanner } from './ui/DegenerateDataBanner';
 import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
+import { DEFAULT_SCENE_DISPLAY_CONFIG } from './scene/sceneDisplayConfig';
 import { SinrLiveOrientationCard } from './ui/SinrLiveOrientationCard';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
@@ -343,6 +344,10 @@ export function App() {
     : getDefaultRightSidebarTabForSceneLane(sceneLane, handoverMode);
   const [beamDensityOverride, setBeamDensityOverride] = useState<BeamDensity | null>(null);
   const [beamCalloutsEnabled, setBeamCalloutsEnabled] = useState(true);
+  // Tier-2 beam-display seam: display-only cone knobs held in App's OWN state and
+  // passed DIRECTLY to MainScene (not through buildAppRuntimeConfig / the runtime
+  // memo bag), so a toggle re-renders without the invisible-dep-array tax.
+  const [sceneDisplayConfig, setSceneDisplayConfig] = useState(DEFAULT_SCENE_DISPLAY_CONFIG);
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
   const camera = useCameraControls();
@@ -1861,10 +1866,12 @@ export function App() {
             <SinrLiveDisplayDrawer
               beamDensity={runtime.beamDensity}
               beamCalloutsEnabled={beamCalloutsEnabled}
+              showNonServingCones={sceneDisplayConfig.showNonServingCones}
               cinematicMode={effectiveCinematicMode}
               autoSlowEnabled={playback.autoSlowEnabled}
               onBeamDensityChange={handleBeamDensityChange}
               onToggleBeamCallouts={() => setBeamCalloutsEnabled(value => !value)}
+              onToggleNonServingCones={() => setSceneDisplayConfig(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
               onCameraPresetSelect={camera.selectCameraPreset}
               onCinematicModeChange={camera.setCinematicMode}
               onToggleAutoSlow={playback.toggleAutoSlow}
@@ -1953,6 +1960,7 @@ export function App() {
               onSimUpdate={handleSimUpdate}
               onLiveSeekLanded={handleLiveSeekLanded}
               sceneFrame={activeSceneFrame}
+              sceneDisplayConfig={sceneDisplayConfig}
             />
           ) : (
             <div

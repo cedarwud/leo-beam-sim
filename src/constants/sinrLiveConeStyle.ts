@@ -48,6 +48,16 @@ export const SINR_LIVE_CONE_PAIR_OPACITY = 0.3;
  */
 export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32;
 
+/**
+ * Dim opacity for the OPT-IN non-serving cone layer (Tier-2 show/dim switch,
+ * `SceneDisplayConfig.showNonServingCones`, default OFF). Dimmer than the ambient
+ * serving field ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} = 0.08) so co-channel /
+ * non-serving illuminated beams read as faint background context behind the
+ * serving cones, never competing with them. Display-only (Rule#6): showing these
+ * cones reads non-serving `illuminatedBeams` and changes no serving/SINR truth.
+ */
+export const SINR_LIVE_CONE_NONSERVING_OPACITY = 0.04;
+
 /** Segments around the flat ground footprint ring of each oblique cone. */
 export const SINR_LIVE_CONE_SEGMENTS = 32;
 
@@ -79,8 +89,9 @@ export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.NormalBlending;
  *  - `ambient`: every serving sat's beam, faint, always-on (the base field).
  *  - `pair`: the focused cinema handover pair (old/new cell), bright, on top.
  *  - `pulse`: a real per-frame handover flaring then age-fading (peak brightness).
+ *  - `nonServing`: the OPT-IN dim co-channel / non-serving beams (default OFF).
  */
-export type SinrLiveConeLayer = 'ambient' | 'pair' | 'pulse';
+export type SinrLiveConeLayer = 'ambient' | 'pair' | 'pulse' | 'nonServing';
 
 /**
  * The ONE place mapping a cone layer to its base opacity — Tier-2 beam-display
@@ -100,6 +111,8 @@ export function resolveSinrLiveConeLayerOpacity(layer: SinrLiveConeLayer): numbe
       return SINR_LIVE_CONE_PAIR_OPACITY;
     case 'pulse':
       return SINR_LIVE_CONE_PULSE_PEAK_OPACITY;
+    case 'nonServing':
+      return SINR_LIVE_CONE_NONSERVING_OPACITY;
   }
 }
 

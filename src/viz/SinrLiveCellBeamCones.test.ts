@@ -26,6 +26,7 @@ import {
   buildObliqueBeamConePositions,
   buildObliqueBeamConeVertexColors,
   resolveSinrLiveCellBeamConeItems,
+  resolveSinrLiveNonServingConeItems,
   resolveSinrLiveCellBeamConeRenderCount,
   resolveSinrLiveCellBeamConeSatelliteCount,
   resolveSinrLiveCellHandoverPairConeItems,
@@ -42,6 +43,7 @@ import {
   SINR_LIVE_CONE_BLENDING,
   SINR_LIVE_CONE_PAIR_OPACITY,
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
+  SINR_LIVE_CONE_NONSERVING_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
   resolveSinrLiveConeColor,
   resolveSinrLiveConeLayerOpacity,
@@ -155,6 +157,34 @@ check('illuminating-only beam (serving === false) draws NO cone', () => {
   assertEqual(items.length, 1, 'only the serving beam draws');
   assertEqual(items[0].cellId, 0, 'the serving cell-0 beam');
   assert(items.every(i => i.serving), 'all rendered items are serving');
+});
+
+check('Tier-2 non-serving resolver: the COMPLEMENT — only non-serving beams, serving:false, separate from the serving-only resolver', () => {
+  const frame = frameOf([beam('sat-A', 0, true), beam('sat-A', 2, false), beam('sat-B', 2, false)]);
+  // The serving-only resolver is UNCHANGED: it still drops the non-serving beams
+  // (the s0 connected-sat-has-beam + s4 serving-equivalence must-holds depend on this).
+  const serving = resolveSinrLiveCellBeamConeItems(base({ cellFrame: frame }));
+  assertEqual(serving.length, 1, 'serving resolver still serving-only (1 cone)');
+  assert(serving.every(i => i.serving), 'serving resolver items all serving');
+  // The new separate resolver emits ONLY the non-serving complement.
+  const nonServing = resolveSinrLiveNonServingConeItems(base({ cellFrame: frame }));
+  assertEqual(nonServing.length, 2, 'two non-serving illuminated beams draw dim cones');
+  assert(nonServing.every(i => !i.serving), 'all non-serving items carry serving:false');
+  assert(nonServing.some(i => i.satId === 'sat-A') && nonServing.some(i => i.satId === 'sat-B'), 'both non-serving sats present');
+  // Colour stays the frequency-reuse palette (via the shared resolveSinrLiveConeColor).
+  assertEqual(nonServing[0].color, resolveSinrLiveConeColor(nonServing[0].frequencyIndex), 'non-serving cone keeps the frequency-reuse colour');
+  // Disjoint from the serving set (the two never double-draw the same cone).
+  const servingKeys = new Set(serving.map(i => `${i.cellId}-${i.satId}`));
+  assert(nonServing.every(i => !servingKeys.has(`${i.cellId}-${i.satId}`)), 'non-serving cones are disjoint from serving cones');
+});
+
+check('Tier-2 non-serving resolver: off-lane / empty no-ops + focus narrowing', () => {
+  assertEqual(resolveSinrLiveNonServingConeItems(base({ cellFrame: undefined })).length, 0, 'no frame → no non-serving cones');
+  assertEqual(resolveSinrLiveNonServingConeItems(base({ cellFrame: frameOf([beam('sat-A', 0, true)]) })).length, 0, 'all-serving frame → no non-serving cones');
+  const frame = frameOf([beam('sat-A', 1, false), beam('sat-B', 2, false)]);
+  const narrowed = resolveSinrLiveNonServingConeItems(base({ cellFrame: frame, focusSatIds: new Set(['sat-B']) }));
+  assertEqual(narrowed.length, 1, 'focus narrows non-serving cones too');
+  assertEqual(narrowed[0].satId, 'sat-B', 'kept the focus sat');
 });
 
 check('focusSatIds narrows to those sats (cinema); omitted → all serving sats', () => {
@@ -319,9 +349,14 @@ check('Tier-2 SinrLiveConeStyle resolver: layer→opacity + colour map to the lo
   assertEqual(resolveSinrLiveConeLayerOpacity('ambient'), SINR_LIVE_CONE_AMBIENT_OPACITY, 'resolver ambient == 0.08 token');
   assertEqual(resolveSinrLiveConeLayerOpacity('pair'), SINR_LIVE_CONE_PAIR_OPACITY, 'resolver pair == 0.30 token');
   assertEqual(resolveSinrLiveConeLayerOpacity('pulse'), SINR_LIVE_CONE_PULSE_PEAK_OPACITY, 'resolver pulse == 0.32 peak token');
+  assertEqual(resolveSinrLiveConeLayerOpacity('nonServing'), SINR_LIVE_CONE_NONSERVING_OPACITY, 'resolver nonServing == 0.04 dim token');
   assert(
     resolveSinrLiveConeLayerOpacity('pair') > resolveSinrLiveConeLayerOpacity('ambient'),
     'HYBRID via resolver: focused pair brighter than ambient field',
+  );
+  assert(
+    resolveSinrLiveConeLayerOpacity('nonServing') < resolveSinrLiveConeLayerOpacity('ambient'),
+    'non-serving cones are dimmer than the ambient serving field (background context)',
   );
   // resolveSinrLiveConeColor is the single colour decision (today = frequency reuse).
   for (const idx of [0, 1, 2, 5, 7]) {

@@ -36,10 +36,13 @@ const CAMERA_PRESETS: Array<{ label: string; preset: CameraPreset }> = [
 interface SinrLiveDisplayDrawerProps {
   readonly beamDensity: BeamDensity;
   readonly beamCalloutsEnabled: boolean;
+  /** Tier-2 show/dim switch: draw the dim non-serving (co-channel) cones too. */
+  readonly showNonServingCones: boolean;
   readonly cinematicMode: CinematicMode;
   readonly autoSlowEnabled: boolean;
   readonly onBeamDensityChange: (density: BeamDensity) => void;
   readonly onToggleBeamCallouts: () => void;
+  readonly onToggleNonServingCones: () => void;
   readonly onCameraPresetSelect: (preset: CameraPreset) => void;
   readonly onCinematicModeChange: (mode: CinematicMode) => void;
   readonly onToggleAutoSlow: () => void;
@@ -52,10 +55,12 @@ interface SinrLiveDisplayDrawerProps {
 export function SinrLiveDisplayDrawer({
   beamDensity,
   beamCalloutsEnabled,
+  showNonServingCones,
   cinematicMode,
   autoSlowEnabled,
   onBeamDensityChange,
   onToggleBeamCallouts,
+  onToggleNonServingCones,
   onCameraPresetSelect,
   onCinematicModeChange,
   onToggleAutoSlow,
@@ -116,6 +121,21 @@ export function SinrLiveDisplayDrawer({
                 onChange={onToggleBeamCallouts}
               />
               Beam Info
+            </label>
+
+            <label
+              className="leo-control-bar__toggle"
+              title="Also draw the dim non-serving (co-channel) beam cones behind the serving ones"
+            >
+              <input
+                className={UI_CLASSES.checkbox}
+                type="checkbox"
+                aria-label="Show non-serving beam cones"
+                data-testid="non-serving-cones-toggle"
+                checked={showNonServingCones}
+                onChange={onToggleNonServingCones}
+              />
+              Other beams
             </label>
           </section>
 
