@@ -175,46 +175,78 @@ async function main(): Promise<void> {
     const speedDuring = Number(await attr(page, SHELL, 'data-effective-speed'));
     assert.ok(speedDuring <= CINEMATIC_SPEED, `speed dropped to cinematic tier (${speedDuring})`);
 
-    // 4) The candidate-beam highlight MESH layer renders (mesh-derived telemetry).
-    await page.waitForFunction(
-      (canvasSel: string) => {
-        const v = document.querySelector(canvasSel)?.getAttribute('data-candidate-handover-highlight-rendered-count');
-        return v !== null && Number(v) > 0;
+    // 4 + 4b + 5) Capture the candidate-beam highlight, the old/new off-axis cell
+    // beam pair, and the moved camera pose ATOMICALLY in ONE healthy focused frame.
+    // The cell-truth focus auto-restores after FOCUS_AUTO_EXIT_MS and tears these
+    // meshes down; reading them as three SEQUENTIAL waitForFunction/getAttribute
+    // steps let the auto-restore land BETWEEN reads (highlight present, then the
+    // pair/camera reads find the meshes already gone) and flaked the gate. One
+    // snapshot — mirroring the S2 sinr-serving-mosaic gate's atomic-frame read —
+    // proves the cinema genuinely ACHIEVES the full focused render in a single frame.
+    // This does NOT weaken any assertion: each per-field check below is identical to
+    // the prior sequential asserts; it only removes the inter-read teardown race.
+    const focusSnapshotHandle = await page.waitForFunction(
+      ({ canvasSel, highlightAttr, pairCountAttr, pairSourceAttr, pairEventAttr, eventId, camBefore }: {
+        canvasSel: string;
+        highlightAttr: string;
+        pairCountAttr: string;
+        pairSourceAttr: string;
+        pairEventAttr: string;
+        eventId: string;
+        camBefore: string | null;
+      }) => {
+        const canvas = document.querySelector(canvasSel);
+        if (!canvas) return false;
+        const hlRaw = canvas.getAttribute(highlightAttr);
+        const highlight = hlRaw === null ? NaN : Number(hlRaw);
+        const pcRaw = canvas.getAttribute(pairCountAttr);
+        const pairCount = pcRaw === null ? NaN : Number(pcRaw);
+        const pairSource = canvas.getAttribute(pairSourceAttr);
+        const pairEvent = canvas.getAttribute(pairEventAttr);
+        const camera = canvas.getAttribute('data-camera-position');
+        if (
+          highlight > 0
+          && pairCount === 2
+          && pairSource === 'sinr-live-cell-truth'
+          && pairEvent === eventId
+          && camera !== null && camera !== camBefore
+        ) {
+          return { highlight, pairCount, pairSource, pairEvent, camera };
+        }
+        return false;
       },
-      CANVAS,
+      {
+        canvasSel: CANVAS,
+        highlightAttr: HIGHLIGHT_COUNT_ATTR,
+        pairCountAttr: PAIR_RENDERED_COUNT_ATTR,
+        pairSourceAttr: PAIR_RENDERED_SOURCE_ATTR,
+        pairEventAttr: PAIR_RENDERED_EVENT_ATTR,
+        eventId: focusedEventId,
+        camBefore: cameraBefore,
+      },
       { timeout: 15000, polling: 250 },
     );
-    const highlightCount = Number(await attr(page, CANVAS, HIGHLIGHT_COUNT_ATTR));
-    assert.ok(highlightCount > 0, `candidate-beam highlight rendered ${highlightCount} ring mesh(es)`);
-    assert.ok(highlightCount <= 2, `candidate highlight is the two-beam set, not a flood (got ${highlightCount})`);
+    const focusSnap = (await focusSnapshotHandle.jsonValue()) as {
+      highlight: number;
+      pairCount: number;
+      pairSource: string;
+      pairEvent: string;
+      camera: string;
+    };
+
+    // 4) The candidate-beam highlight MESH layer renders (mesh-derived telemetry).
+    assert.ok(focusSnap.highlight > 0, `candidate-beam highlight rendered ${focusSnap.highlight} ring mesh(es)`);
+    assert.ok(focusSnap.highlight <= 2, `candidate highlight is the two-beam set, not a flood (got ${focusSnap.highlight})`);
 
     // 4b) The old/new off-axis cell beam pair renders as real meshes and carries
     // the SAME event/source owner as the explainer.
-    await page.waitForFunction(
-      ({ canvasSel, countAttr }: { canvasSel: string; countAttr: string }) => {
-        const v = document.querySelector(canvasSel)?.getAttribute(countAttr);
-        return v !== null && Number(v) === 2;
-      },
-      { canvasSel: CANVAS, countAttr: PAIR_RENDERED_COUNT_ATTR },
-      { timeout: 15000, polling: 250 },
-    );
-    const pairCount = Number(await attr(page, CANVAS, PAIR_RENDERED_COUNT_ATTR));
-    assert.equal(pairCount, 2, 'old/new cell-truth beam pair rendered exactly two cone meshes');
-    assert.equal(await attr(page, CANVAS, PAIR_RENDERED_SOURCE_ATTR), 'sinr-live-cell-truth',
-      'old/new pair source owner matches cell truth');
-    assert.equal(await attr(page, CANVAS, PAIR_RENDERED_EVENT_ATTR), focusedEventId,
-      'old/new pair event id matches explainer/director event id');
+    assert.equal(focusSnap.pairCount, 2, 'old/new cell-truth beam pair rendered exactly two cone meshes');
+    assert.equal(focusSnap.pairSource, 'sinr-live-cell-truth', 'old/new pair source owner matches cell truth');
+    assert.equal(focusSnap.pairEvent, focusedEventId, 'old/new pair event id matches explainer/director event id');
 
-    // 5) Camera world position actually moves (sat-pair focus tween).
-    await page.waitForFunction(
-      (before: string | null) =>
-        document.querySelector('canvas[data-camera-position]')?.getAttribute('data-camera-position') !== before,
-      cameraBefore,
-      { timeout: 15000 },
-    );
-    const cameraDuring = await attr(page, CANVAS, 'data-camera-position');
-    assert.notEqual(cameraDuring, cameraBefore, 'camera pose moved on focus');
-    console.log(`[handover-cinema] during: phase=${phaseDuring} speed=${speedDuring} highlight=${highlightCount} pair=${pairCount} camera moved`);
+    // 5) Camera world position actually moved (sat-pair focus tween).
+    assert.notEqual(focusSnap.camera, cameraBefore, 'camera pose moved on focus');
+    console.log(`[handover-cinema] during (atomic frame): phase=${phaseDuring} speed=${speedDuring} highlight=${focusSnap.highlight} pair=${focusSnap.pairCount} camera moved`);
 
     // CQ1 moving-camera coverage is owned by the director-cinematic gates. D4
     // only requires that the auto camera moves to the source-backed event; the
