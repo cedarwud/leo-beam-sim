@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import type { AppExperienceMode } from '../appMode';
-import { readTrainingServiceBaseUrl } from '../../modqn/training-trigger/baseUrl';
+import { hasConfiguredTrainingService, readTrainingServiceBaseUrl } from '../../modqn/training-trigger/baseUrl';
 import { probeService } from '../../modqn/training-trigger/serviceClient';
 import type { ServiceAvailability } from '../../modqn/training-trigger/types';
 
@@ -9,7 +9,10 @@ interface ServiceStatusBannerProps {
 }
 
 export function ServiceStatusBanner({ appMode }: ServiceStatusBannerProps): ReactElement | null {
-  const enabled = appMode === 'modqn-demo';
+  // Opt-in: only probe + warn when a training service URL is actually configured.
+  // The demo ships no training backend, so probing the default :8765 just yields a
+  // permanent red "unreachable" banner — noise, not a real status.
+  const enabled = appMode === 'modqn-demo' && hasConfiguredTrainingService();
   const [availability, setAvailability] = useState<ServiceAvailability | null>(null);
   const [probeKey, setProbeKey] = useState(0);
 

@@ -21,7 +21,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import { getJobs, jobStreamUrl } from '../../modqn/training-trigger/serviceClient';
-import { readTrainingServiceBaseUrl } from '../../modqn/training-trigger/baseUrl';
+import { hasConfiguredTrainingService, readTrainingServiceBaseUrl } from '../../modqn/training-trigger/baseUrl';
 import { parseTrainingProgressEvent } from '../../modqn/training-trigger/parseProgressEvent';
 import { ACTIVE_POLL_INTERVAL_MS, isActiveStatus } from '../../modqn/training-trigger/jobsPolling';
 import type { TrainingJobSummary } from '../../modqn/training-trigger/types';
@@ -44,6 +44,10 @@ export interface TrainingTelemetryFeedProps {
 }
 
 export function TrainingTelemetryFeed({ enabled }: TrainingTelemetryFeedProps): JSX.Element | null {
+  // Only reach the training backend when a service URL is actually configured —
+  // the demo ships none, so polling/SSE against the default :8765 just loops
+  // ERR_CONNECTION_REFUSED. (Opt-in; un-gates the moment a URL is stored.)
+  const liveEnabled = enabled && hasConfiguredTrainingService();
   const [activeJobIds, setActiveJobIds] = useState<readonly string[]>([]);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sourcesRef = useRef<Map<string, ManagedSource>>(new Map());
@@ -75,7 +79,7 @@ export function TrainingTelemetryFeed({ enabled }: TrainingTelemetryFeedProps): 
 
   // Poll active jobs (lightweight; just enough to know which streams to open).
   useEffect(() => {
-    if (!enabled) return;
+    if (!liveEnabled) return;
     let cancelled = false;
 
     const tick = async () => {
@@ -104,7 +108,7 @@ export function TrainingTelemetryFeed({ enabled }: TrainingTelemetryFeedProps): 
       cancelled = true;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
-  }, [enabled]);
+  }, [liveEnabled]);
 
   const activeJobIdsKey = activeJobIds.join('|');
 
@@ -112,7 +116,7 @@ export function TrainingTelemetryFeed({ enabled }: TrainingTelemetryFeedProps): 
   // terminal events / a grace window.
   useEffect(() => {
     const sources = sourcesRef.current;
-    if (!enabled || typeof EventSource === 'undefined') {
+    if (!liveEnabled || typeof EventSource === 'undefined') {
       for (const jobId of [...sources.keys()]) closeSource(jobId);
       return;
     }
@@ -134,7 +138,7 @@ export function TrainingTelemetryFeed({ enabled }: TrainingTelemetryFeedProps): 
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, activeJobIdsKey, openSource, closeSource]);
+  }, [liveEnabled, activeJobIdsKey, openSource, closeSource]);
 
   // Close everything on unmount.
   useEffect(() => {

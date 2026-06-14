@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { AppExperienceMode } from '../appMode';
-import { readTrainingServiceBaseUrl } from '../../modqn/training-trigger/baseUrl';
+import { hasConfiguredTrainingService, readTrainingServiceBaseUrl } from '../../modqn/training-trigger/baseUrl';
 import { getBatch, getJobDetail, getJobs, postCancelJob, deleteJob } from '../../modqn/training-trigger/serviceClient';
 import {
   readSubmittedJobIds,
@@ -174,6 +174,10 @@ function formatBatchCounts(batch: BatchDetail): string {
 
 export function JobsPanel({ appMode }: JobsPanelProps): ReactElement | null {
   const enabled = appMode === 'modqn-demo';
+  // The panel still renders (the tool stays in the Advanced drawer), but it only
+  // POLLS the jobs backend when a training service is actually configured —
+  // otherwise the demo loops ERR_CONNECTION_REFUSED against the default :8765.
+  const pollEnabled = enabled && hasConfiguredTrainingService();
   const [jobs, setJobs] = useState<readonly TrainingJobSummary[]>([]);
   const [history, setHistory] = useState<readonly SubmittedJobRecord[]>([]);
   const [offline, setOffline] = useState(false);
@@ -187,7 +191,7 @@ export function JobsPanel({ appMode }: JobsPanelProps): ReactElement | null {
   const [refreshCount, setRefreshCount] = useState(0);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!pollEnabled) return;
     let cancelled = false;
     setHistory(readSubmittedJobIds());
 
@@ -237,7 +241,7 @@ export function JobsPanel({ appMode }: JobsPanelProps): ReactElement | null {
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [enabled, refreshCount]);
+  }, [pollEnabled, refreshCount]);
 
   const handleRefreshDetail = useCallback(async (jobId: string) => {
     try {
