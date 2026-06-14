@@ -55,7 +55,7 @@ canvas {
 }
 
 .leo-app-shell {
-  --leo-left-drawer-width: clamp(340px, 30vw, 440px);
+  --leo-left-drawer-width: clamp(400px, 34vw, 560px);
   --leo-right-drawer-width: clamp(300px, 26vw, 380px);
 
   width: 100vw;
@@ -77,8 +77,8 @@ canvas {
   display: grid;
   grid-template-areas: "left canvas right";
   grid-template-columns:
-    minmax(300px, var(--leo-left-drawer-width))
-    minmax(520px, 1fr)
+    minmax(360px, var(--leo-left-drawer-width))
+    minmax(480px, 1fr)
     minmax(280px, var(--leo-right-drawer-width));
   gap: 12px;
 }

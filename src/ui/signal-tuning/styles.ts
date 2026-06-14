@@ -2,9 +2,12 @@ import type { CSSProperties } from 'react';
 import { UI_TOKENS } from '../../constants/uiTokens';
 
 export const panelStyle: CSSProperties = {
-  width: 'min(520px, calc(100vw - 24px))',
+  // Fill the (left-rail) container instead of forcing a fixed 520px — otherwise the
+  // SINR-formula panel overflows the rail and gets clipped. The rail width is the
+  // governing dimension now (main.scss --leo-left-drawer-width).
+  width: '100%',
   minWidth: 0,
-  maxWidth: 'calc(100vw - 24px)',
+  maxWidth: '100%',
   maxHeight: 'calc(100vh - 88px)',
   overflowY: 'auto',
   overscrollBehavior: 'contain',
