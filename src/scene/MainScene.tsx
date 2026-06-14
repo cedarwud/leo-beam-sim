@@ -66,7 +66,7 @@ import {
   resolveSinrLiveCellBeamConeItems,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
-import { SINR_LIVE_CONE_PAIR_OPACITY } from '../constants/sinrLiveConeStyle';
+import { resolveSinrLiveConeLayerOpacity } from '../constants/sinrLiveConeStyle';
 import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC } from './sinrLiveCellModel';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
@@ -1583,7 +1583,7 @@ function SceneContent({
       {sinrLiveCellHandoverPairConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellHandoverPairConeItems}
-          opacity={SINR_LIVE_CONE_PAIR_OPACITY}
+          opacity={resolveSinrLiveConeLayerOpacity('pair')}
           telemetryCountDatasetKey="sinrLiveCellHandoverPairConeRenderedCount"
           telemetrySourceOwnerDatasetKey="sinrLiveCellHandoverPairConeRenderedSourceOwner"
           telemetrySourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}

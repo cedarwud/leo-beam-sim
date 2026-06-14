@@ -38,13 +38,13 @@
 import { useEffect, useLayoutEffect, useRef, type JSX } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import {
-  SINR_LIVE_CONE_AMBIENT_OPACITY,
   SINR_LIVE_CONE_BASE_ALPHA_FACTOR,
   SINR_LIVE_CONE_BLENDING,
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
+  resolveSinrLiveConeColor,
+  resolveSinrLiveConeLayerOpacity,
 } from '../constants/sinrLiveConeStyle';
 import { cellFrequencyIndex, type SinrLiveCellFrame, type SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
 import type { RuntimeCandidateHighlightCommand } from '../scene/types';
@@ -244,7 +244,7 @@ export function resolveSinrLiveCellBeamConeItems(
       cellId: beam.cellId,
       satId: beam.satId,
       frequencyIndex: beam.frequencyIndex,
-      color: frequencyReuseColor(beam.frequencyIndex),
+      color: resolveSinrLiveConeColor(beam.frequencyIndex),
       serving: true,
       apex,
       baseCenter,
@@ -274,7 +274,7 @@ function buildPairConeItem(input: {
     cellId: input.cellId,
     satId: input.satId,
     frequencyIndex,
-    color: frequencyReuseColor(frequencyIndex),
+    color: resolveSinrLiveConeColor(frequencyIndex),
     serving: true,
     apex,
     baseCenter,
@@ -501,7 +501,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
   const gl = useThree(state => state.gl);
   const groupRef = useRef<THREE.Group>(null);
   const cones = props.items;
-  const opacity = props.opacity ?? SINR_LIVE_CONE_AMBIENT_OPACITY;
+  const opacity = props.opacity ?? resolveSinrLiveConeLayerOpacity('ambient');
 
   useLayoutEffect(() => {
     const key = props.telemetryCountDatasetKey;

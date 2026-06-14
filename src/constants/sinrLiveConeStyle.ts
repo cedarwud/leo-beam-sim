@@ -26,6 +26,7 @@
  * re-homed here.
  */
 import * as THREE from 'three';
+import { frequencyReuseColor } from './beamRoleTokens';
 
 /** Faint ambient cone opacity — every serving sat's beam (screenshot-locked 0.08). */
 export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.08;
@@ -71,3 +72,46 @@ export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 0.16;
  * beam at one moderate opacity.
  */
 export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.NormalBlending;
+
+/**
+ * Which sinr-live cone LAYER a style is being resolved for. The lane draws three
+ * cone layers over the same oblique geometry, each at its own brightness:
+ *  - `ambient`: every serving sat's beam, faint, always-on (the base field).
+ *  - `pair`: the focused cinema handover pair (old/new cell), bright, on top.
+ *  - `pulse`: a real per-frame handover flaring then age-fading (peak brightness).
+ */
+export type SinrLiveConeLayer = 'ambient' | 'pair' | 'pulse';
+
+/**
+ * The ONE place mapping a cone layer to its base opacity — Tier-2 beam-display
+ * seam (mirrors the clean per-role `resolveBeamConeRoleFactors` for the steered
+ * cones). Before this, the ambient level was a default inside the renderer, the
+ * pair level was picked at the MainScene mount, and the pulse peak was a bare
+ * const — so "the ambient cones are too faint / non-serving should be dimmer"
+ * had no single edit point. Now every cone layer's opacity is resolved here.
+ * Returns the screenshot-locked hybrid values verbatim (D-STYLE A), so this is
+ * behaviour-identical; it only consolidates the CHOICE.
+ */
+export function resolveSinrLiveConeLayerOpacity(layer: SinrLiveConeLayer): number {
+  switch (layer) {
+    case 'ambient':
+      return SINR_LIVE_CONE_AMBIENT_OPACITY;
+    case 'pair':
+      return SINR_LIVE_CONE_PAIR_OPACITY;
+    case 'pulse':
+      return SINR_LIVE_CONE_PULSE_PEAK_OPACITY;
+  }
+}
+
+/**
+ * The ONE place resolving a sinr-live cone's COLOUR — Tier-2 beam-display seam.
+ * Today every sinr-live cone is coloured by the geographic frequency-reuse
+ * pattern (`frequencyReuseColor`, `cellId mod reuse` — adjacent cells differ),
+ * which was previously called inline at three sites inside the renderer. Routing
+ * it through this resolver makes a future re-colour (e.g. by serving-sat tint or
+ * SINR band) a single edit instead of a hunt across the renderer. Behaviour-
+ * identical: it returns exactly `frequencyReuseColor(frequencyIndex)`.
+ */
+export function resolveSinrLiveConeColor(frequencyIndex: number): string {
+  return frequencyReuseColor(frequencyIndex);
+}

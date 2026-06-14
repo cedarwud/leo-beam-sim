@@ -43,6 +43,8 @@ import {
   SINR_LIVE_CONE_PAIR_OPACITY,
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
+  resolveSinrLiveConeColor,
+  resolveSinrLiveConeLayerOpacity,
 } from '../constants/sinrLiveConeStyle';
 import { buildSinrLiveCellLayout } from '../scene/sinrLiveCellRuntime';
 import { loadProfile } from '../profiles/index';
@@ -308,6 +310,23 @@ check('S5-2 style tokens (hybrid): ambient 0.08 < pair 0.30, 32 segments, Normal
   assertEqual(posExplicit.length, 5 * 9, 'explicit segments honoured');
   const posDefault = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10);
   assertEqual(posDefault.length, SINR_LIVE_CONE_SEGMENTS * 9, 'default segment count == the style token');
+});
+
+check('Tier-2 SinrLiveConeStyle resolver: layer→opacity + colour map to the locked tokens (the ONE place; behaviour-identical)', () => {
+  // resolveSinrLiveConeLayerOpacity is the single CHOICE point for each cone
+  // layer's opacity (was: ambient default in the renderer, pair at the MainScene
+  // mount, pulse a bare const). It must return the screenshot-locked values verbatim.
+  assertEqual(resolveSinrLiveConeLayerOpacity('ambient'), SINR_LIVE_CONE_AMBIENT_OPACITY, 'resolver ambient == 0.08 token');
+  assertEqual(resolveSinrLiveConeLayerOpacity('pair'), SINR_LIVE_CONE_PAIR_OPACITY, 'resolver pair == 0.30 token');
+  assertEqual(resolveSinrLiveConeLayerOpacity('pulse'), SINR_LIVE_CONE_PULSE_PEAK_OPACITY, 'resolver pulse == 0.32 peak token');
+  assert(
+    resolveSinrLiveConeLayerOpacity('pair') > resolveSinrLiveConeLayerOpacity('ambient'),
+    'HYBRID via resolver: focused pair brighter than ambient field',
+  );
+  // resolveSinrLiveConeColor is the single colour decision (today = frequency reuse).
+  for (const idx of [0, 1, 2, 5, 7]) {
+    assertEqual(resolveSinrLiveConeColor(idx), frequencyReuseColor(idx), `resolver colour(${idx}) == frequency-reuse colour (behaviour-identical)`);
+  }
 });
 
 check('G1-CONE-STYLE apex→base alpha fade: apex opaque (must-hold-safe), base faded (de-tangle), hue untouched (RGB white)', () => {
