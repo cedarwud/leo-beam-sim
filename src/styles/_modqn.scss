@@ -12,6 +12,12 @@
   padding-left: 2px;
 }
 
+// When the in-MODQN view toggle is parked (renders null), its row is empty —
+// collapse it so it leaves no top strip.
+.leo-modqn-subnav-row:empty {
+  display: none;
+}
+
 .leo-modqn-view-toggle {
   flex: 1 1 auto;
   display: flex;

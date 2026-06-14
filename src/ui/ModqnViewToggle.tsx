@@ -34,8 +34,12 @@ export interface ModqnViewToggleProps {
   readonly proofEnabled: boolean;
 }
 
-function isOptionDisabled(lane: SceneLane, proofEnabled: boolean): boolean {
-  return lane === 'modqn-replay-proof' && !proofEnabled;
+function isOptionDisabled(lane: SceneLane, _proofEnabled: boolean): boolean {
+  // 3-way MODQN nav PARKED to a single page (modqn-live-cell-preview): the Proof +
+  // Artifact sub-views are hidden from the default sub-nav. They remain reachable
+  // SceneLane enum values (CLAUDE.md Rule#4 / nav != lane) and MODQN_VIEW_OPTIONS
+  // stays the source-of-truth — un-parking is just dropping a lane from this guard.
+  return lane === 'modqn-replay-proof' || lane === 'artifact-replay';
 }
 
 function focusViewButton(lane: SceneLane): void {
@@ -57,6 +61,10 @@ export function ModqnViewToggle({ value, onChange, proofEnabled }: ModqnViewTogg
   const visibleOptions = MODQN_VIEW_OPTIONS.filter(
     option => !isOptionDisabled(option.lane, proofEnabled),
   );
+
+  // Parked to one page: with a single (or no) visible view the sub-nav is pure
+  // chrome — render nothing so MODQN is a single fixed page (no 3-way switch).
+  if (visibleOptions.length <= 1) return null;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     let step: number | null = null;
