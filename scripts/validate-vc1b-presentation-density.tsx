@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as THREE from 'three';
-import { chromium, type Browser } from '@playwright/test';
 import { loadProfile } from '../src/profiles/index.ts';
 import type { Profile } from '../src/profiles/types.ts';
 import {
@@ -20,7 +19,6 @@ import type {
 import { useBeamViz } from '../src/scene/useBeamViz.ts';
 import { sceneGeometryFromProfile } from '../src/scene/SceneGeometry.ts';
 import { liveSimToScene } from '../src/showcase/liveSimToScene.ts';
-import { bootDeterministicPage } from './_v3-deterministic-fixture.ts';
 
 const PROFILE_ID = 'hobs-2024-candidate-rich';
 const SAT_IDS = [
@@ -287,80 +285,18 @@ function assertReducedMotionSubscription(): void {
   assert.equal(listeners.length, 0, 'reduced-motion unsubscribe did not remove the listener');
 }
 
-async function detectAppUrl(): Promise<string> {
-  const explicit = process.env.APP_URL ?? process.argv[2];
-  const candidates = explicit
-    ? [explicit]
-    : [
-      'http://127.0.0.1:3000',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:4173',
-      'http://127.0.0.1:4174',
-    ];
-
-  for (const candidate of candidates) {
-    try {
-      const response = await fetch(candidate);
-      if (!response.ok) continue;
-      const html = await response.text();
-      if (html.includes('<title>LEO Beam Sim</title>') || html.includes('/src/main')) {
-        return candidate;
-      }
-    } catch {
-      // Try the next candidate.
-    }
-  }
-
-  throw new Error(`Could not find a running LEO Beam Sim dev server. Tried: ${candidates.join(', ')}`);
-}
-
-async function assertBrowserCalloutCap(
-  browser: Browser,
-  appUrl: string,
-  viewport: { width: number; height: number },
-  expectedCap: number,
-): Promise<number> {
-  const page = await bootDeterministicPage({ chromium }, {
-    url: appUrl,
-    browser,
-    seed: 20261 + viewport.width,
-    rafMs: 1000,
-    viewport,
-    waitForSelector: '[data-testid="info-panel-primary-sinr-status"]',
-  });
-
-  try {
-    await page.evaluate(() => document.fonts?.ready);
-    await page.waitForFunction(() => document.querySelectorAll('[data-testid="beam-callout"]').length > 0);
-    await page.waitForTimeout(500);
-    const count = await page.locator('[data-testid="beam-callout"]').count();
-    const screenshot = await page.screenshot();
-    assert.ok(count <= expectedCap, `${viewport.width}x${viewport.height} rendered ${count} callouts, expected <= ${expectedCap}`);
-    assert.ok(screenshot.length > 5000, `${viewport.width}x${viewport.height} screenshot looked blank`);
-    return count;
-  } finally {
-    await page.context().close();
-  }
-}
-
-async function assertV3BrowserCaps(): Promise<{ appUrl: string; desktopCount: number; compactCount: number }> {
-  const appUrl = await detectAppUrl();
-  const browser = await chromium.launch();
-
-  try {
-    const desktopCount = await assertBrowserCalloutCap(browser, appUrl, { width: 1440, height: 900 }, 6);
-    const compactCount = await assertBrowserCalloutCap(browser, appUrl, { width: 1366, height: 768 }, 4);
-    return { appUrl, desktopCount, compactCount };
-  } finally {
-    await browser.close();
-  }
-}
+// RETIRED 2026-06-14: the v3 browser section (detectAppUrl / assertBrowserCalloutCap /
+// assertV3BrowserCaps) waited via page.waitForFunction for [data-testid="beam-callout"]
+// to appear and asserted a per-viewport callout cap. Beam callouts were retired from the
+// showcase (a live probe renders 0 of them), so this section only ever timed out (30s)
+// testing dead UI — same retirement as the deleted vc4c callout assertion. Do NOT
+// re-add a beam-callout browser assertion here. The static cone-beam selection
+// fingerprint (renderViz/useBeamViz) and the reduced-motion subscription test below
+// remain the real coverage for this validator.
 
 async function main(): Promise<void> {
   assertV2DensityFixtures();
   assertReducedMotionSubscription();
-  const browserResult = await assertV3BrowserCaps();
 
   console.log('Visual Clarity Phase 1B presentation-density validation passed.');
   console.log(JSON.stringify({
@@ -368,7 +304,6 @@ async function main(): Promise<void> {
       densityFixtures: ['event-only', 'event-plus-1 desktop', 'event-plus-1 compact', 'all regression guard'],
       reducedMotionListener: 'passed',
     },
-    v3: browserResult,
     result: 'PASS',
   }, null, 2));
 }

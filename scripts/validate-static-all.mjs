@@ -56,7 +56,7 @@ for (const key of Object.keys(pkg)) {
   if (!m) continue;
   let src = '';
   try { src = readFileSync('scripts/' + m[1], 'utf8'); } catch { continue; }
-  if (/chromium|playwright|newPage|APP_URL/.test(src)) continue; // browser → not here
+  if (/chromium|playwright|newPage|APP_URL|_vc2-browser-fixture|_v3-deterministic-fixture|import[^\n]*\b(?:detectAppUrl|withVc2Browser|bootDeterministicPage)\b/.test(src)) continue; // browser → not here (incl. fixture-hidden chromium; helper names anchored to imports so a retirement comment can't false-exclude a static validator)
   discovered.push({ key, file: m[1] });
 }
 
