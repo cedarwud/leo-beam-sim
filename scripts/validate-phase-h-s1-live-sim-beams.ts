@@ -77,17 +77,19 @@ function validateMainSceneGate(): void {
   );
   pass('MainScene exposes beam cone count telemetry');
 
-  // The legacy SatelliteBeams render gate gained one more lane exclusion
-  // (`&& !showSinrLiveCellBeams`) so the steered cones are also suppressed on
-  // the sinr-live cell-truth lane. The governance intent is unchanged:
-  // showLiveBeamCones still gates the legacy SatelliteBeams render block
-  // (outside the cell lane) through to viz.displaySats.
+  // Tier-2 dead-twin retirement: the legacy steered SatelliteBeams render block
+  // was gated `showLiveBeamCones && !showSinrLiveCellBeams` — and both equal
+  // `showSinrLiveViewport`, so the gate was `X && !X`, provably false on every
+  // lane (it never rendered). It is REMOVED. The live-sim beam render on the
+  // sinr-live lane is now the earth-fixed cell-truth cones (SinrLiveCellBeamCones,
+  // gated by showSinrLiveCellBeams). Same governance intent (MainScene renders the
+  // live-sim beams), pinned to the current render owner.
   assertIncludes(
     source,
-    'showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats',
-    'showLiveBeamCones still gates the legacy SatelliteBeams render block outside the cell lane',
+    '{showSinrLiveCellBeams && (',
+    'MainScene gates the live-sim cell-truth beam cones on showSinrLiveCellBeams',
   );
-  pass('showLiveBeamCones still gates the legacy SatelliteBeams render block outside the cell lane');
+  pass('MainScene gates the live-sim cell-truth beam cones on showSinrLiveCellBeams');
 
   assertIncludes(
     source,
@@ -97,17 +99,17 @@ function validateMainSceneGate(): void {
   pass('showLiveBeamCones is referenced (telemetry + render)');
 
   // The render-plan declaration moved out to sceneLaneRenderPlan.ts (verified by
-  // validateNoCrossSliceLeakage) and the dataset.beamConeCount write (with its
-  // useEffect dep) moved into the SceneTelemetry bridge, so two of the four
-  // original in-MainScene sites legitimately migrated to their dedicated modules.
-  // The three remaining MainScene roles still cover the same gate: render-plan
-  // binding (destructure) + telemetry (beamConeCount compute) + render gate.
+  // validateNoCrossSliceLeakage), the dataset.beamConeCount write moved into the
+  // SceneTelemetry bridge, and the legacy steered SatelliteBeams render gate was
+  // retired (Tier-2 dead twin — it never rendered). The two remaining MainScene
+  // roles still cover the gate: render-plan binding (destructure) + telemetry
+  // (beamConeCount compute).
   const occurrences = (source.match(/showLiveBeamCones/g) ?? []).length;
-  expect(occurrences >= 3, `showLiveBeamCones referenced at least 3 times (render-plan binding + telemetry + render gate); found ${occurrences}`);
+  expect(occurrences >= 2, `showLiveBeamCones referenced at least 2 times (render-plan binding + telemetry); found ${occurrences}`);
 
   expect(
-    source.includes('SatelliteBeams'),
-    'MainScene imports / renders the live SatelliteBeams component',
+    source.includes('SinrLiveCellBeamCones'),
+    'MainScene imports / renders the live SinrLiveCellBeamCones component (the sinr-live beam render owner)',
   );
 
   expect(
@@ -121,13 +123,13 @@ function validateMainSceneGate(): void {
   );
 
   expect(
-    source.includes('viz.beamSatIds'),
-    'MainScene filters live-sim beam render through viz.beamSatIds (no stray cones)',
+    source.includes('resolveSinrLiveCellBeamConeItems'),
+    'MainScene derives the live-sim beam render set from the serving cell truth (no stray cones)',
   );
 
   expect(
     source.includes('footprintRadius'),
-    'MainScene threads footprintRadius into SatelliteBeams (paper beamwidth-derived)',
+    'MainScene threads footprintRadius into the live beam render (paper beamwidth-derived)',
   );
 }
 

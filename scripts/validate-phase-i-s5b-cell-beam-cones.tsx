@@ -397,8 +397,9 @@ expect(
   'MainScene mounts CellBeamCones gated on showCellOverlay and the MODQN beam-cone visual layer scope',
 );
 expect(
-  mainSceneSource.includes('SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats'),
-  'MainScene gates legacy SatelliteBeams with !showCellOverlay and !showSinrLiveCellBeams',
+  mainSceneSource.includes('{showSinrLiveCellBeams && (')
+    && mainSceneSource.includes('<SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} />'),
+  'MainScene mounts the sinr-live cell-truth beam cones (the legacy steered SatelliteBeams block was retired — Tier-2 dead twin)',
 );
 expect(
   renderPlanSource.includes('const showLiveBeamCones = showSinrLiveViewport;'),

@@ -1,3 +1,24 @@
+/**
+ * ⚠️ NOT MOUNTED IN-APP ON ANY LANE (Tier-2 dead-twin retirement, 2026-06-14).
+ *
+ * This is the legacy STEERED beam renderer (apex at the satellite, footprint
+ * glued under the UE). It was retired in-app: on the sinr-live lane the steered
+ * cones were replaced by the earth-fixed cell-truth cones (S-cells-3), and its
+ * MainScene mount was gated `showLiveBeamCones && !showSinrLiveCellBeams` = a
+ * provably-false `X && !X`, so it never rendered anyway. The dead mount made
+ * MainScene falsely point here as if this were the live renderer — the
+ * "改波束改不對 / edit the wrong file" trap. It is gone.
+ *
+ * 👉 To change the LIVE sinr-live beam DISPLAY, edit:
+ *      - src/viz/SinrLiveCellBeamCones.tsx     (the cone renderer)
+ *      - src/constants/sinrLiveConeStyle.ts     (colour / opacity resolver)
+ *
+ * This component survives ONLY as the render subject of the vc1c/vc2 validation
+ * fixtures (src/validation/vc1cFrequencyDemotionFixture.tsx +
+ * vc2NonTextChannelsFixture.tsx) and the beamConeRoleFactors test. Do NOT delete
+ * the file or its exports (BeamCalloutContent / BeamPulseClock / BeamTarget) —
+ * ~9 vc-family validators import them. It is just no longer in the scene graph.
+ */
 import { useEffect, useMemo, useRef } from 'react';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';

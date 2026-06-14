@@ -44,7 +44,7 @@ import { HandoverLinks } from '../viz/HandoverLinks';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
 import { IntraHandoverArrow } from '../viz/IntraHandoverArrow';
 import { IntraGroundShockwave } from '../viz/IntraGroundShockwave';
-import { BeamPulseClock, SatelliteBeams } from '../viz/SatelliteBeams';
+import { BeamPulseClock } from '../viz/SatelliteBeams';
 import { CandidateBeamHighlight } from '../viz/CandidateBeamHighlight';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
 import { SpineParticles } from '../viz/SpineParticles';
@@ -1601,25 +1601,15 @@ function SceneContent({
           telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"
         />
       )}
-      {SHOW_BEAMS && showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats
-        .filter(sat => viz.beamSatIds.has(sat.id))
-        .map(sat => {
-          const beams = viz.satBeams.get(sat.id);
-          if (!beams?.length) return null;
-
-          return (
-            <SatelliteBeams
-              key={`beams-${sat.id}`}
-              satelliteId={sat.id}
-              satellitePosition={sat.world}
-              beams={beams}
-              footprintRadius={viz.footprintRadiusWorld}
-              reducedMotion={runtime.reducedMotion}
-              cinematicMode={effectiveCinematicMode}
-              showCallouts={showBeamCallouts}
-            />
-          );
-        })}
+      {/* Tier-2 dead-twin retirement: the legacy steered <SatelliteBeams> render
+          block was gated `showLiveBeamCones && !showSinrLiveCellBeams`, and both
+          equal `showSinrLiveViewport` — so the gate was `X && !X`, provably false
+          on EVERY lane. It never rendered (zero visual change on removal) but kept
+          MainScene falsely pointing at SatelliteBeams.tsx as if it were the live
+          renderer (the "改波束改不對 — edit the wrong file" trap). The live sinr-live
+          beam render is the earth-fixed cell-truth cones above (SinrLiveCellBeamCones,
+          gated by showSinrLiveCellBeams). The SatelliteBeams component survives only
+          as the vc1c/vc2 validation-fixture subject — it is no longer mounted in-app. */}
       {showCandidateHandoverHighlight && runtime.candidateHighlight != null && (
         <CandidateBeamHighlight
           candidate={runtime.candidateHighlight}

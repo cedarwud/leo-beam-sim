@@ -68,10 +68,14 @@ function validateMainSceneGate(): void {
     'showUav is gated to the SINR live viewport lane',
   );
 
-  expect(
-    source.includes('showCallouts={showBeamCallouts}'),
-    'showBeamCallouts is threaded into SatelliteBeams as showCallouts prop',
-  );
+  // Tier-2 dead-twin retirement: the per-beam callout RENDER lived only on the
+  // legacy steered <SatelliteBeams> cones, gated `showLiveBeamCones &&
+  // !showSinrLiveCellBeams` = `X && !X` (provably false on every lane — it never
+  // rendered) and now REMOVED. showBeamCallouts therefore no longer threads into a
+  // render; it survives as the callout toggle state + telemetry (asserted below)
+  // and the callout COMPONENT (BeamCalloutContent) stays covered by
+  // validateCalloutComponent + the vc1c/vc2 fixtures. The sinr-live cell-cone
+  // render (SinrLiveCellBeamCones) has no per-beam callouts.
 
   // Telemetry publication was refactored out of MainScene into the shared
   // SceneTelemetry component: MainScene now threads the live showBeamCallouts
