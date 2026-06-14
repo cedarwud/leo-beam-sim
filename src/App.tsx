@@ -1758,6 +1758,18 @@ export function App() {
           reachable. Error: {modqnReplayFetchError}
         </div>
       )}
+      {sceneLane === 'sinr-live' && (
+        <SinrLiveQuickControls
+          beamCalloutsEnabled={sceneDisplayConfig.beamCalloutsEnabled}
+          showNonServingCones={sceneDisplayConfig.showNonServingCones}
+          cinematicMode={effectiveCinematicMode}
+          autoSlowEnabled={playback.autoSlowEnabled}
+          onToggleBeamCallouts={() => setSceneDisplayConfig(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
+          onToggleNonServingCones={() => setSceneDisplayConfig(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
+          onCinematicModeChange={camera.setCinematicMode}
+          onToggleAutoSlow={playback.toggleAutoSlow}
+        />
+      )}
       {sceneLane !== 'sinr-live' && <DegenerateDataBanner />}
       {sceneLane !== 'sinr-live' && (
         <div className="leo-modqn-subnav-row">
@@ -1781,18 +1793,6 @@ export function App() {
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
           <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
-          {sceneLane === 'sinr-live' && (
-            <SinrLiveQuickControls
-              beamCalloutsEnabled={sceneDisplayConfig.beamCalloutsEnabled}
-              showNonServingCones={sceneDisplayConfig.showNonServingCones}
-              cinematicMode={effectiveCinematicMode}
-              autoSlowEnabled={playback.autoSlowEnabled}
-              onToggleBeamCallouts={() => setSceneDisplayConfig(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
-              onToggleNonServingCones={() => setSceneDisplayConfig(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
-              onCinematicModeChange={camera.setCinematicMode}
-              onToggleAutoSlow={playback.toggleAutoSlow}
-            />
-          )}
           <SidebarTabShell
             label="Simulation control sidebar"
             side="left"

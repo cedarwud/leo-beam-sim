@@ -74,7 +74,6 @@ export function LaneExperienceBar({ value, onChange }: LaneExperienceBarProps) {
       aria-label="Showcase experience"
       data-testid="lane-experience-bar"
     >
-      <span className="leo-lane-experience-bar__title" aria-hidden="true">Experience</span>
       <div className="leo-lane-experience-bar__group">
         {LANE_EXPERIENCE_OPTIONS.map((option, index) => {
           const active = option.lane === activeSegment;
