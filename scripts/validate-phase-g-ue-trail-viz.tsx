@@ -182,7 +182,7 @@ section('(d) GroundScene mounts UeTrail conditionally', () => {
   check(groundSource.includes('ueTrailHistory !== undefined') && groundSource.includes('<UeTrail history={ueTrailHistory} />'), 'GroundScene mounts UeTrail only when history prop is present');
   check(mainSceneSource.includes('useUeTrailHistory'), 'MainScene imports and calls useUeTrailHistory');
   check(mainSceneSource.includes('runtime.enableUeTrails === true && propSceneFrame === undefined'), 'MainScene gates trail history to live scene when toggle is true');
-  check(mainSceneSource.includes('ueTrailHistory={ueTrailHistory}'), 'MainScene passes ueTrailHistory to GroundScene');
+  check(mainSceneSource.includes('ueTrailHistory={showCellOverlay ? undefined : ueTrailHistory}'), 'MainScene passes ueTrailHistory to GroundScene');
 });
 
 section('(e) TopologyTab toggle + testids', () => {

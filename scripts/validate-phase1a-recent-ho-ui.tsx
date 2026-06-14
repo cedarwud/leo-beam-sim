@@ -87,7 +87,18 @@ function runDeterministicHandoverReplay() {
   assert.equal(manager.state.satId, SOURCE_SAT_ID);
 
   let interHandoverDecision = null as ReturnType<typeof step> | null;
-  for (let i = 0; i < 8; i += 1) {
+  // The initial attach arms the engine's ping-pong guard (`pingPongGuardSec`),
+  // during which every tick returns "handover guard active" before the pending /
+  // trigger-time logic can run. The deterministic inter-HO can therefore only
+  // commit AFTER the guard expires and a stable pending has held for
+  // `triggerTimeSec`. Derive the step budget from the profile's own timing so
+  // this replay self-heals when those params are retuned (e.g. PR-5 raised
+  // `pingPongGuardSec` 5s → 30s, which silently starved the old hard-coded
+  // 8-step loop). dt is 1s per step, so budget ≈ guard + trigger + margin.
+  const interHandoverStepBudget = Math.ceil(
+    profile.handover.pingPongGuardSec + profile.handover.triggerTimeSec,
+  ) + 8;
+  for (let i = 0; i < interHandoverStepBudget; i += 1) {
     const decision = step(2, 22);
     if (decision.action === 'inter-handover') {
       interHandoverDecision = decision;
@@ -112,6 +123,10 @@ function runDeterministicHandoverReplay() {
     deltaDb: lastEvent.deltaDb ?? null,
     hoCount: manager.eventLog.length,
     reason: interHandoverDecision.reason,
+    // Elapsed sim seconds the replay consumed to reach the committed inter-HO.
+    // Feeds the SimState fixture's required `simTimeSec` (read unguarded by
+    // DiagnosticsDrawer for the per-sim-min readout) so the recent-HO UI renders.
+    simTimeSec: (simTimeMs - EPOCH_UTC_MS) / 1000,
   };
 }
 
@@ -147,6 +162,7 @@ function createRecentHoState(): SimState {
       rangeKm: 870,
       status: 'recent-ho',
     },
+    simTimeSec: replay.simTimeSec,
     servingSatId: SOURCE_SAT_ID,
     servingBeamId: SOURCE_BEAM_ID,
     servingElevationDeg: 47.8,

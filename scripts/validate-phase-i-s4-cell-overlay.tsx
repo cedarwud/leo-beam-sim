@@ -225,7 +225,14 @@ expect(
   'Scene lane render plan gates CellOverlay to modqn-live-cell-preview live-sim only',
 );
 expect(
-  renderPlanSource.includes('showEarthFixedCells: showLiveSceneEffects'),
+  // S-cells-4d (commit f2a7bab) RETIRED the legacy 20-hex green-disc ground
+  // paint entirely: `showEarthFixedCells` is now hard-coded `false` on every
+  // lane instead of `showLiveSceneEffects`. This is strictly stronger than the
+  // original gate ("hidden outside live scene effects") — the legacy layer is
+  // now hidden EVERYWHERE, which trivially includes every non-live lane. Same
+  // governance property (legacy EarthFixedCells never leaks onto a non-live
+  // lane), pinned at its current form.
+  renderPlanSource.includes('showEarthFixedCells: false'),
   'Scene lane render plan hides legacy EarthFixedCells outside live scene effects',
 );
 const telemetrySource = readFileSync(path.join(REPO_ROOT, 'src/scene/SceneTelemetry.tsx'), 'utf8');

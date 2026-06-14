@@ -62,10 +62,14 @@ assert.deepEqual(MODQN_TRAINING_SCENE_TRACE_REQUIRED_SECTIONS, [
 ]);
 
 const checklist = getModqnTrainingSceneTraceHandoffChecklist();
-assert.equal(checklist.length, 40, 'handoff checklist mirrors the 40-field trace contract');
+assert.equal(checklist.length, 41, 'handoff checklist mirrors the 41-field trace contract');
 assert.ok(
   checklist.some(item => item.field === 'step.activeBeamSchedule'),
   'handoff checklist includes active beam schedule',
+);
+assert.ok(
+  checklist.some(item => item.field === 'step.queueState'),
+  'handoff checklist includes per-UE queue state',
 );
 assert.ok(
   checklist.some(item => item.field === 'step.nextBeamSchedule'),

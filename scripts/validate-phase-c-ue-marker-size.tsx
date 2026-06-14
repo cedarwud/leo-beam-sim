@@ -255,7 +255,7 @@ section('(f) GroundScene multiplier render fallback source checks', () => {
   );
   check(
     groundSceneCompact.includes('<SecondaryUeInstances')
-      && groundSceneCompact.includes('positions={secondaryPositions}')
+      && groundSceneCompact.includes('ues={secondaryUes}')
       && groundSceneCompact.includes('ueMarkerMultiplier={ueMarkerMultiplier}')
       && groundSceneCompact.includes('markerShape={markerShape}'),
     'GroundScene forwards ueMarkerMultiplier into SecondaryUeInstances',

@@ -83,6 +83,17 @@ function stripComments(source: string): string {
     .replace(/(^|[^:])\/\/.*$/gm, '$1');
 }
 
+// Like stripComments, but preserves line structure (blanks out comment bodies
+// instead of deleting them) so per-line scans keep accurate 1-based line
+// numbers. Used by the runtime-adoption scan so that a real future adoption
+// still reports the correct line, while documentation/JSDoc that merely names
+// `core/channel` (to declare it is NOT imported) is not mistaken for adoption.
+function stripCommentsPreservingLines(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, match => match.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:])\/\/[^\n]*/gm, (_match, prefix: string) => prefix);
+}
+
 function extractImportSources(source: string): string[] {
   const imports: string[] = [];
   const importPattern = /^\s*import\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"];?/gm;
@@ -285,7 +296,11 @@ function assertRuntimeNotAdopted(): void {
   const leaks: string[] = [];
 
   for (const file of scannedFiles) {
-    const text = readRepoFile(file);
+    // Scan executable code only: JSON has no comments, TS/TSX gets comments
+    // blanked (line-structure preserved) so that documentation declaring a
+    // module does NOT import `core/channel` is not misread as an adoption.
+    const rawText = readRepoFile(file);
+    const text = extname(file) === '.json' ? rawText : stripCommentsPreservingLines(rawText);
     for (const [lineIndex, line] of text.split(/\r?\n/).entries()) {
       if (blockedPatterns.some(pattern => pattern.test(line))) {
         leaks.push(`${file}:${lineIndex + 1}: ${line.trim()}`);

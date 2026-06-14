@@ -279,7 +279,9 @@ expectEqual(
 );
 const arcs = arcElement(slot1.cellReassignments);
 expectEqual(arcs.props.name, 'cell-handover-arcs', 'CellHandoverArcs top group is named cell-handover-arcs');
-const arcGroups = childrenOf(arcs);
+const arcGroups = childrenOf(arcs).filter(child => (
+  child.type === 'group' && typeof child.props.name === 'string' && child.props.name.startsWith('cell-ho-arc-')
+));
 expectEqual(arcGroups.length, slot1.cellReassignments.length, 'CellHandoverArcs renders one arc group per reassignment');
 expect(
   arcGroups.some(group => group.props.userData?.kind === 'inter' && group.props.userData?.color === INTER_ARC_COLOR)

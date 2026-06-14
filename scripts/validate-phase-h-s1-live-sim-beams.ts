@@ -65,16 +65,26 @@ function validateMainSceneGate(): void {
   const showUavLine = matchLineContaining(renderPlan, 'showUav:');
   expect(showUavLine !== null, 'MainScene still declares showUav');
 
+  // The dataset.beamConeCount write was extracted into the dedicated
+  // SceneTelemetry bridge (src/scene/SceneTelemetry.tsx). MainScene now exposes
+  // the beam cone count telemetry by feeding the live-computed count into that
+  // bridge via the beamConeCount={...} prop. Same governance intent (MainScene
+  // publishes beam-cone-count telemetry), pinned at its current form.
   assertIncludes(
     source,
-    'dataset.beamConeCount',
+    'beamConeCount={',
     'MainScene exposes beam cone count telemetry',
   );
   pass('MainScene exposes beam cone count telemetry');
 
+  // The legacy SatelliteBeams render gate gained one more lane exclusion
+  // (`&& !showSinrLiveCellBeams`) so the steered cones are also suppressed on
+  // the sinr-live cell-truth lane. The governance intent is unchanged:
+  // showLiveBeamCones still gates the legacy SatelliteBeams render block
+  // (outside the cell lane) through to viz.displaySats.
   assertIncludes(
     source,
-    'showLiveBeamCones && !showCellOverlay && viz.displaySats',
+    'showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats',
     'showLiveBeamCones still gates the legacy SatelliteBeams render block outside the cell lane',
   );
   pass('showLiveBeamCones still gates the legacy SatelliteBeams render block outside the cell lane');
@@ -86,8 +96,14 @@ function validateMainSceneGate(): void {
   );
   pass('showLiveBeamCones is referenced (telemetry + render)');
 
+  // The render-plan declaration moved out to sceneLaneRenderPlan.ts (verified by
+  // validateNoCrossSliceLeakage) and the dataset.beamConeCount write (with its
+  // useEffect dep) moved into the SceneTelemetry bridge, so two of the four
+  // original in-MainScene sites legitimately migrated to their dedicated modules.
+  // The three remaining MainScene roles still cover the same gate: render-plan
+  // binding (destructure) + telemetry (beamConeCount compute) + render gate.
   const occurrences = (source.match(/showLiveBeamCones/g) ?? []).length;
-  expect(occurrences >= 4, `showLiveBeamCones referenced at least 4 times (declaration + telemetry + useEffect dep + render gate); found ${occurrences}`);
+  expect(occurrences >= 3, `showLiveBeamCones referenced at least 3 times (render-plan binding + telemetry + render gate); found ${occurrences}`);
 
   expect(
     source.includes('SatelliteBeams'),

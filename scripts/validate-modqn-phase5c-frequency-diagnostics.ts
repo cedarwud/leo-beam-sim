@@ -98,6 +98,8 @@ function createSimState(
     handoverTriggerProgressSec: 0,
     handoverTriggerSec: profile.handover.triggerTimeSec,
     hoCount: 1,
+    intraHoCount: 0,
+    simTimeSec: 120,
     lastHoReason: 'validation handover complete',
     beamHopEnabled: profile.beamHopping.enabled,
     beamHopSlotIndex: 8,
@@ -208,6 +210,7 @@ function assertDrawerSurfacesFrequencyDiagnostics(): void {
 function assertStaticWiringAndBoundaries(): void {
   const typesSource = readRepoFile('src/scene/types.ts');
   const useBeamVizSource = readRepoFile('src/scene/useBeamViz.ts');
+  const beamVizModelSource = readRepoFile('src/scene/beamVizModel.ts');
   const drawerSource = readRepoFile('src/ui/DiagnosticsDrawer.tsx');
   const packageJson = JSON.parse(readRepoFile('package.json')) as {
     scripts?: Record<string, string>;
@@ -236,6 +239,11 @@ function assertStaticWiringAndBoundaries(): void {
   );
   assert.match(
     useBeamVizSource,
+    /visualFrequencyByBeamKey\.set\(coneEntryKey\(/,
+    'Phase 5B visual frequency map is no longer keyed by the shared cone entry key',
+  );
+  assert.match(
+    beamVizModelSource,
     /return `\$\{satelliteId\}:B\$\{beamId\}`/,
     'Phase 5B visual frequency map key drifted from ${satId}:B${beamId}',
   );

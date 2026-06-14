@@ -22,26 +22,15 @@ import { execFileSync } from 'node:child_process';
 // Each needs its own fix (stale-validator vs real-regression). Listed here so the
 // debt is VISIBLE and a new orphan cannot hide among them. When you GREEN one,
 // DELETE its entry — the runner fails if a quarantined validator passes.
+// 14 of the original 19 quarantined reds were repaired 2026-06-14 (intent-preserving
+// validator fixes, adversarially verified). These 5 remain — each needs a HUMAN
+// decision, NOT a source-pin update:
 const QUARANTINE = new Map([
-  ['validate:beam-floor', 'assert expected:true — diagnose stale vs regression'],
-  ['validate:phase1a:recent-ho-ui', 'assert expected:true — stale UI contract'],
-  ['validate:phase5b:diagnostics-dpc-status', 'TypeError toFixed on undefined — data-shape drift'],
-  ['validate:phase6b:handover-policy-controls', 'DEEPLY STALE: asserts dead sidebar model (LeftSidebarTab objective|signal|handover); rewrite to appRuntimeModel summary|evidence arch'],
-  ['validate:phase6c:handover-policy-placement', 'assert expected:true — likely same stale sidebar/placement contract as phase6b'],
-  ['validate:vc1a:live-legend', 'TypeError toFixed on undefined — data-shape drift'],
-  ['validate:modqn:phase5c-frequency-diagnostics', 'TypeError toFixed on undefined — data-shape drift'],
-  ['validate:modqn:phase6l-channel-index-vendor', 'assert expected:0 — vendor parity drift'],
-  ['validate:modqn:phase6r-runtime-frame-step-boundary', 'failures[] reported — boundary drift'],
-  ['validate:modqn:phase6t-source-channel-shadow-kpi', 'status FAIL — KPI drift'],
-  ['validate:phase-c:ue-marker-size', '51 passed / 1 failed — single stale assert'],
-  ['validate:phase-g:ue-trail-viz', '78 passed / 1 failed — single stale assert'],
-  ['validate:live-walker:7200-timeline', 'module/load error — import drift'],
-  ['validate:modqn:handover-story-layer', 'MULTI-STALE: live-walker owner-gate assert fixed 2026-06-14, but more stale asserts remain (e.g. "not baseline proof" copy) — needs a full sweep'],
-  ['validate:modqn:training-scene-artifact-target', 'module/load error — import drift'],
-  ['validate:phase-h:s1-live-sim-beams', 'assert expected:true — stale live-sim beam contract'],
-  ['validate:phase-h:s3-live-sim-callouts', 'assert expected:true — stale callout contract'],
-  ['validate:phase-i:s4-cell-overlay', 'module/load error — import drift'],
-  ['validate:phase-i:s5a-footprint-handover', 'module/load error — import drift'],
+  ['validate:beam-floor', 'REAL ENGINE REGRESSION — validator is byte-identical to its passing creation; bisection points at src/engine/handover/handover-manager.ts (serving-pending beam-floor fallback). FIX THE ENGINE, never the validator.'],
+  ['validate:modqn:phase6t-source-channel-shadow-kpi', 'RED BY DESIGN — a shadow-comparison guard correctly catching a real channel-model KPI drift. Do NOT silence; investigate the drift (scripts/fixtures/modqn-phase6t-*).'],
+  ['validate:phase6b:handover-policy-controls', 'DEAD ARCHITECTURE — asserts the removed LeftSidebarTab=objective|signal|handover top-level-tab model (now appRuntimeModel summary|evidence). Rewrite to the current sidebar contract, or retire the obsolete placement gate.'],
+  ['validate:phase6c:handover-policy-placement', 'DEAD ARCHITECTURE — shares the phase6b script; the top-level Handover-Policy tab placement it proved was removed by design. Retire or rewrite alongside phase6b.'],
+  ['validate:modqn:phase5c-frequency-diagnostics', 'PARTIAL — repair workflow fixed the stale SimState fixture, but a Phase-5C vendor-boundary assert (scoped files must not import /src/engine/) is still red and is NOT a safe source-pin update; needs a human look.'],
 ]);
 
 // Load-sensitive PERFORMANCE validators: they measure per-frame CPU/timing and

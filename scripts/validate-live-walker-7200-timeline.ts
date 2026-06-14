@@ -212,9 +212,9 @@ function validateTimelineAuthority(): void {
     ...baseInput,
     sceneLane: 'sinr-live',
   });
-  assert.equal(sinrLive.rail.sourceOwner, 'live-walker', 'SINR live rail uses the live Walker event index');
+  assert.equal(sinrLive.rail.sourceOwner, 'sinr-live-cell-truth', 'SINR live rail is owned by the sinr-live cell-truth event index');
   assert.equal(sinrLive.rail.durationSec, TWO_HOUR_TIMELINE_SEC, 'SINR live rail uses the validated 7200s live Walker window');
-  assert.equal(sinrLive.rail.claimKind, 'profile-derived-forecast', 'precomputed SINR live rail is a profile-derived forecast');
+  assert.equal(sinrLive.rail.claimKind, 'live-truth', 'SINR live rail carries the shipped live-truth cell claim');
 
   const proof = resolveTimelineRailDescriptor({
     ...baseInput,

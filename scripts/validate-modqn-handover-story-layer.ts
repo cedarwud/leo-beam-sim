@@ -579,7 +579,7 @@ function validateStaticContracts(): void {
   assertContains(replayLayer, 'beam hopping schedule: source gap', 'replay layer renders source-gap copy');
   assertContains(replayConstants, 'data-handover-story-fake-beam-hopping', 'replay constants clear fake-hopping telemetry');
 
-  assertContains(hud, 'not baseline proof', 'MODQN live cell HUD labels story as not baseline proof');
+  assertContains(hud, 'NOT baseline proof', 'MODQN live cell HUD labels story as not baseline proof');
   assertContains(hud, 'data-modqn-layer-preset', 'MODQN live cell HUD reports visual layer preset');
   assertContains(hud, 'data-testid="modqn-service-readout"', 'MODQN HUD renders service readout');
   assertContains(hud, 'data-service-claim-kind', 'MODQN HUD labels service readout claim kind');
@@ -715,9 +715,9 @@ function validateTimelineAuthority(): void {
     ...baseInput,
     sceneLane: 'sinr-live',
   });
-  expectEqual(sinrLive.rail.sourceOwner, 'live-walker', 'SINR live rail uses live Walker event index');
+  expectEqual(sinrLive.rail.sourceOwner, 'sinr-live-cell-truth', 'SINR live rail uses live Walker event index');
   expectEqual(sinrLive.rail.horizonKind, 'live-walker-window', 'SINR live rail uses live Walker horizon');
-  expectEqual(sinrLive.rail.claimKind, 'profile-derived-forecast', 'SINR precomputed rail is a profile-derived forecast');
+  expectEqual(sinrLive.rail.claimKind, 'live-truth', 'SINR precomputed rail is a profile-derived forecast');
   expectEqual(sinrLive.rail.axisKind, 'source-time', 'SINR live rail uses source-time click targets');
 
   const proof = resolveTimelineRailDescriptor({

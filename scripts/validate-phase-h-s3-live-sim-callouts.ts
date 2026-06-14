@@ -73,9 +73,20 @@ function validateMainSceneGate(): void {
     'showBeamCallouts is threaded into SatelliteBeams as showCallouts prop',
   );
 
+  // Telemetry publication was refactored out of MainScene into the shared
+  // SceneTelemetry component: MainScene now threads the live showBeamCallouts
+  // value into <SceneTelemetry beamCalloutsEnabled=...>, and SceneTelemetry
+  // writes the dataset attribute. Assert the SAME property (MainScene publishes
+  // the beamCalloutsEnabled telemetry attribute reflecting showBeamCallouts) at
+  // its new location/form.
   expect(
-    source.includes('dataset.beamCalloutsEnabled'),
-    'MainScene publishes beamCalloutsEnabled telemetry attribute',
+    source.includes("beamCalloutsEnabled={showBeamCallouts ? '1' : '0'}"),
+    'MainScene publishes beamCalloutsEnabled telemetry reflecting showBeamCallouts',
+  );
+  const sceneTelemetry = readSource('src/scene/SceneTelemetry.tsx');
+  expect(
+    sceneTelemetry.includes('dataset.beamCalloutsEnabled = props.beamCalloutsEnabled'),
+    'SceneTelemetry writes the beamCalloutsEnabled dataset attribute',
   );
 }
 

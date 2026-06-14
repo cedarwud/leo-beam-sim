@@ -87,6 +87,17 @@ function importSpecifiers(source: string): string[] {
   return specifiers;
 }
 
+function stripComments(source: string): string {
+  // Remove block comments (/* ... */) and line comments (// ...) so that prose
+  // describing the post-6Q delegation (e.g. a comment noting that
+  // `hoManager.update()` now fires *inside* stepRuntimeFrame) is not mistaken
+  // for a pre-6Q inlined-loop call. The duplicate-loop token scan must assert
+  // against real code, not documentation.
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
+
 function matchingLines(relativePath: string, pattern: RegExp): string[] {
   const source = readRepoFile(relativePath);
   const matches: string[] = [];
@@ -228,8 +239,14 @@ function validateUseSimulationBoundary(): GuardCheck {
     ['buildLinkContext', /\bbuildLinkContext\b/],
     ['hoManager.update', /\bhoManager\.update\(/],
   ];
+  // The duplicate-loop token scan asserts the pre-6Q inlined frame-step loop no
+  // longer lives in useSimulation (it now delegates to stepRuntimeFrame). Run it
+  // against code-only text so a comment documenting the post-6Q delegation does
+  // not register as a re-inlined call — the intent is "no real pre-6Q loop call",
+  // not "no mention of the helper's internals in prose".
+  const useSimulationCode = stripComments(source);
   for (const [label, pattern] of duplicateLoopTokens) {
-    if (pattern.test(source)) {
+    if (pattern.test(useSimulationCode)) {
       failures.push(`${USE_SIMULATION_PATH} still contains pre-6Q frame-step token ${label}`);
     }
   }
