@@ -495,18 +495,20 @@ assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('artifact-replay', 'decision-overlay-on-live-sinr')),
   'S3: MODQN live + artifact sub-lanes share the same unified left rail',
 );
-// G1-LEFT-DEFAULT: the SINR-live left rail is a single light read-only 'summary'
-// orientation card (SidebarTabShell hides the tablist at one tab); the heavy
-// SINR-formula + handover-policy tuners moved into the ⚙ Advanced drawer.
+// The model still defines a single 'summary' left tab for the SINR-live lane, but
+// the left tab SHELL is now MODQN-only — the SINR-live left rail renders the
+// Experience switch + the inlined SINR-formula/handover tuners directly (the
+// read-only orientation card that used to fill 'summary' was removed). The model
+// entry is retained as the contract default; it is simply no longer rendered.
 assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('sinr-live', 'sinr-offset')),
   ['summary'],
-  'SINR live lane left rail is the single light summary card (tuners moved to the Advanced drawer)',
+  'SINR live lane left-tab model default is still summary (shell now MODQN-only; not rendered for SINR)',
 );
 assert.equal(
   getDefaultLeftSidebarTabForSceneLane('sinr-live', 'sinr-offset'),
   'summary',
-  'SINR live lane defaults the left sidebar to the light summary orientation card',
+  'SINR live lane left-tab model default is summary (contract default; shell is MODQN-only)',
 );
 
 const appSource = readRepoFile('src/App.tsx');
@@ -1542,21 +1544,18 @@ tangleLockGroup('QUAR-S6-BUS', () => {
 // rail is a single light read-only orientation card. App must no longer render a
 // 'signal'/'handover' left-tab branch, and the tuner panels must be injected into
 // the drawer (not the SidebarTabShell).
-const sinrOrientationCardSource = readRepoFile('src/ui/SinrLiveOrientationCard.tsx');
-assertContains(
-  appSource,
-  "from './ui/SinrLiveOrientationCard'",
-  'App imports the SINR-live left orientation card',
-);
-assertContains(
+// The read-only "Live SINR" orientation card was REMOVED (it duplicated the
+// in-scene SinrServingAggregate HUD). The SINR-live left rail is now the Experience
+// switch + the inlined tuners; the left tab shell is MODQN-only.
+assertNotContains(
   appSource,
   '<SinrLiveOrientationCard',
-  'App mounts the SINR-live orientation card on the summary left rail',
+  'SINR-live orientation card removed (duplicated the SinrServingAggregate HUD)',
 );
-assertContains(
+assertNotContains(
   appSource,
-  "activeLeftSidebarTab === 'summary'",
-  'App renders the light summary orientation card as the SINR-live left default',
+  "from './ui/SinrLiveOrientationCard'",
+  'App no longer imports the removed orientation card',
 );
 assertNotContains(
   appSource,
@@ -1588,16 +1587,6 @@ assertContains(
   sinrLiveDisplayDrawerSource,
   'handoverPolicySection',
   'SINR-live Advanced drawer hosts the relocated handover-policy section',
-);
-assertContains(
-  sinrOrientationCardSource,
-  'deriveSinrServingMosaicAggregate',
-  'orientation card reuses the shared serving aggregate (read-only, no invented truth)',
-);
-assertContains(
-  sinrOrientationCardSource,
-  'data-claim-kind="sinr-serving"',
-  'orientation card is lane-truthful (sinr-serving claim, never MODQN/producer)',
 );
 
 assertContains(

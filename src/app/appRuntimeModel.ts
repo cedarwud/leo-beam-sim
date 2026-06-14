@@ -16,13 +16,14 @@ import type { PresentationMode } from '../scene/types';
 
 export const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 
-// Left-rail tab model. G1-LEFT-DEFAULT: the SINR-live rail no longer defaults to
-// the heavy SINR-formula tuner — it defaults to a light read-only 'summary'
-// orientation card (src/ui/SinrLiveOrientationCard.tsx); the SINR-formula +
-// handover-policy power tools moved into the opt-in SINR-live Advanced drawer
-// (src/ui/SinrLiveDisplayDrawer.tsx). 'evidence' remains the SOLE MODQN left rail
-// (see MODQN_LEFT_SIDEBAR_TABS); S4 had already relocated the MODQN training /
-// jobs / ω-weight power tools into the opt-in AdvancedSetupDrawer.
+// Left-rail tab model. The 'summary' tab is retained as the SINR-live contract
+// default, but the left tab SHELL is now MODQN-only — the SINR-live left rail
+// renders the Experience switch + the inlined SINR-formula/handover tuners
+// (src/ui/SinrLiveDisplayDrawer.tsx) directly; the read-only orientation card that
+// used to fill 'summary' was removed (it duplicated the in-scene serving HUD).
+// 'evidence' remains the SOLE MODQN left rail (see MODQN_LEFT_SIDEBAR_TABS); S4
+// relocated the MODQN training / jobs / ω-weight power tools into the opt-in
+// AdvancedSetupDrawer.
 export type LeftSidebarTab = 'summary' | 'evidence';
 export type RightSidebarTab = 'modqn' | 'live' | 'artifact';
 
@@ -37,9 +38,9 @@ const LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
   { key: 'evidence', label: 'Evidence / Replay', description: 'decision trace + artifact source' },
 ];
 
-// G1-LEFT-DEFAULT: the SINR-live left rail is a single light orientation card; the
-// tuners moved to the ⚙ Advanced drawer. One tab → SidebarTabShell hides the
-// tablist, so the default SINR-live left surface is just the summary card.
+// The SINR-live left-tab model default (retained for the contract). The left tab
+// shell is MODQN-only now, so this 'summary' entry is not actually rendered — the
+// SINR-live left rail is the Experience switch + the inlined tuners.
 const SINR_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
   LEFT_SIDEBAR_TABS[0], // summary
 ];

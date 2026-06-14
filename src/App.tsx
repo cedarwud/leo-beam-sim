@@ -114,7 +114,6 @@ import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
 import { SinrLiveQuickControls } from './ui/SinrLiveQuickControls';
 import { DEFAULT_SCENE_DISPLAY_CONFIG } from './scene/sceneDisplayConfig';
-import { SinrLiveOrientationCard } from './ui/SinrLiveOrientationCard';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,
@@ -1792,6 +1791,11 @@ export function App() {
       <div className="leo-shell-row">
         <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
           <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
+          {/* The left tab shell is MODQN-only now (the unified Evidence/Replay rail).
+              The SINR-live left rail is just the Experience switch + the inlined
+              tuners below — the read-only "Live SINR" card was removed (it duplicated
+              the in-scene SinrServingAggregate HUD). */}
+          {sceneLane !== 'sinr-live' && (
           <SidebarTabShell
             label="Simulation control sidebar"
             side="left"
@@ -1799,12 +1803,7 @@ export function App() {
             activeKey={activeLeftSidebarTab}
             onChange={setLeftSidebarTab}
           >
-            {activeLeftSidebarTab === 'summary' ? (
-              // G1-LEFT-DEFAULT: the SINR-live left default is a light read-only
-              // orientation card; the SINR-formula + handover-policy tuners moved
-              // into the ⚙ Advanced drawer (mounted below).
-              <SinrLiveOrientationCard perUePositions={simState.perUePositions} />
-            ) : activeLeftSidebarTab === 'evidence' ? (
+            {activeLeftSidebarTab === 'evidence' ? (
               // S3 purpose-merge: the unified MODQN "Evidence / Replay" rail. The
               // artifact sub-view shows the producer source summary; the live +
               // proof sub-views show the MODQN replay decision-trace cue (which
@@ -1838,6 +1837,7 @@ export function App() {
               )
             ) : null}
           </SidebarTabShell>
+          )}
           {/* S4/S5a: the MODQN setup/display-policy power tools live behind the
               Advanced drawer, so the default MODQN left surface stays Evidence /
               Replay without piling more controls into the top toolbar. */}
