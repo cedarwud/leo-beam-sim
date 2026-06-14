@@ -99,7 +99,6 @@ export interface RuntimeConfig {
   signalResetKey?: string;
   handoverResetKey?: string;
   beamDensity: BeamDensity;
-  beamCalloutsEnabled?: boolean;
   effectsEnabled: RuntimeEffectsEnabled;
   cinematicMode: CinematicMode;
   cameraCommand?: RuntimeCameraCommand;

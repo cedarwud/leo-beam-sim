@@ -117,10 +117,14 @@ function validateCalloutComponent(): void {
 }
 
 function validateRuntimeToggleUntouched(): void {
-  const appRuntimeConfig = readSource('src/app/appRuntimeConfig.ts');
+  // Tier-3: the beam-callout toggle moved OUT of the runtime config bag into the
+  // thin direct-prop SceneDisplayConfig (it is a pure display knob, so it belongs
+  // on the direct prop, not the 17-input runtime memo). Same intent — the toggle is
+  // still wired — pinned to its new home.
+  const sceneDisplayConfig = readSource('src/scene/sceneDisplayConfig.ts');
   expect(
-    appRuntimeConfig.includes('beamCalloutsEnabled'),
-    'appRuntimeConfig still wires beamCalloutsEnabled toggle',
+    sceneDisplayConfig.includes('beamCalloutsEnabled'),
+    'SceneDisplayConfig wires the beamCalloutsEnabled toggle (moved off the runtime bag, Tier-3)',
   );
 }
 

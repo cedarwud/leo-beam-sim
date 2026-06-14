@@ -41,7 +41,6 @@ export interface AppRuntimeConfigInput {
   readonly handoverResetKey: string;
   readonly runtimeVisualSettings: RuntimeVisualSettings;
   readonly beamDensityOverride: BeamDensity | null;
-  readonly beamCalloutsEnabled: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
   readonly cameraCommand: RuntimeConfig['cameraCommand'];
   readonly directorFocusCommand?: RuntimeConfig['directorFocusCommand'];
@@ -75,7 +74,6 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     handoverResetKey: input.handoverResetKey,
     ...input.runtimeVisualSettings,
     beamDensity: input.beamDensityOverride ?? input.runtimeVisualSettings.beamDensity,
-    beamCalloutsEnabled: input.beamCalloutsEnabled,
     cinematicMode: input.effectiveCinematicMode,
     cameraCommand: input.cameraCommand,
     directorFocusCommand: input.directorFocusCommand,

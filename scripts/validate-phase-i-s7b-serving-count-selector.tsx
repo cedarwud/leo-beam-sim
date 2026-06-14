@@ -137,7 +137,6 @@ function runtimeInput(
       reducedMotion: true,
     },
     beamDensityOverride: null,
-    beamCalloutsEnabled: false,
     effectiveCinematicMode: 'off',
     cameraCommand: undefined,
     viewport: { width: 1440, height: 900 },

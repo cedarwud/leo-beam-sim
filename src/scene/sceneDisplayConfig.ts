@@ -31,8 +31,16 @@ export interface SceneDisplayConfig {
    * untouched.
    */
   readonly showNonServingCones: boolean;
+  /**
+   * Show the per-beam info callouts (the "Beam Info" toggle). Display-only label
+   * overlay; feeds the renderPlan's `showBeamCallouts`. Moved here from the runtime
+   * config bag (Tier-3): it is a pure display knob, so it belongs on the direct-prop
+   * seam, not the 17-input runtime memo. Default ON (matches the prior App default).
+   */
+  readonly beamCalloutsEnabled: boolean;
 }
 
 export const DEFAULT_SCENE_DISPLAY_CONFIG: SceneDisplayConfig = {
   showNonServingCones: false,
+  beamCalloutsEnabled: true,
 };

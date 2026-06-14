@@ -542,7 +542,7 @@ function ArtifactSceneContent({
   const effectiveCinematicMode = resolveSceneLaneRenderPlan({
     sceneLane,
     sceneSource: sceneFrame.sceneSource,
-    beamCalloutsEnabled: runtime.beamCalloutsEnabled ?? false,
+    beamCalloutsEnabled: false,
     beamDensity: runtime.beamDensity,
     cinematicMode: runtime.cinematicMode,
     effectsEnabled: runtime.effectsEnabled,
@@ -857,7 +857,7 @@ function SceneContent({
   const renderPlan = resolveSceneLaneRenderPlan({
     sceneLane,
     sceneSource: sceneFrame.sceneSource,
-    beamCalloutsEnabled: runtime.beamCalloutsEnabled ?? false,
+    beamCalloutsEnabled: sceneDisplayConfig.beamCalloutsEnabled,
     beamDensity: runtime.beamDensity,
     cinematicMode: runtime.cinematicMode,
     effectsEnabled: runtime.effectsEnabled,
