@@ -1702,6 +1702,7 @@ export function App() {
     liveDirectorFocusEventSec,
     liveDirectorFocusEventId,
     cancelPendingLiveFocus,
+    handleLiveSeekLanded,
   } = useDirectorOrchestration({
     camera,
     playback,
@@ -1719,7 +1720,6 @@ export function App() {
     currentTimeSec,
     currentTimeSecRef,
     liveSimTimeSecRef,
-    simTimeSec: simState.simTimeSec,
     setLiveTimelineSeekRequest,
     setLiveObservedHandoverRailEvents,
     setModqnReplayVisualElapsedSec,
@@ -2189,6 +2189,7 @@ export function App() {
               showModqnReplayScene={showModqnReplayScene}
               sceneLane={sceneLane}
               onSimUpdate={handleSimUpdate}
+              onLiveSeekLanded={handleLiveSeekLanded}
               sceneFrame={activeSceneFrame}
             />
           ) : (

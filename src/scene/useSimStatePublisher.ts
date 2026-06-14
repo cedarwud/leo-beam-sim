@@ -253,8 +253,9 @@ export function useSimStatePublisher({
 
   const lastUiUpdateAtRef = useRef(0);
   const lastUiStateRef = useRef<SimState | null>(null);
-  // Last published-frame sim cursor, to detect a SEEK / loop-wrap reseat (a
-  // discontinuous simTimeSec jump) and force that frame past the UI throttle.
+  // Previous effect-run sim cursor (updated every run below, NOT only when a frame
+  // is published), to detect a SEEK / loop-wrap reseat — a discontinuous simTimeSec
+  // jump vs the immediately preceding frame — and force that frame past the UI throttle.
   const prevSimTimeSecRef = useRef<number | null>(null);
 
   useEffect(() => {

@@ -37,12 +37,6 @@ export interface LiveTimelineSeekRequest {
   requestKey: string;
 }
 
-// The focus fires once the async live-sim cursor reaches/passes the seek target
-// in the seek direction; this band lets it fire slightly before the exact target
-// (near-event clicks, where the pre-seek pose is already correct) while the
-// past-the-target side stays unbounded so a throttled late publish still triggers.
-const LIVE_DIRECTOR_FOCUS_SEEK_LANDING_TOL_SEC = 1.5;
-
 export interface UseDirectorOrchestrationParams {
   readonly camera: CameraControls;
   readonly playback: PlaybackControls;
@@ -62,8 +56,6 @@ export interface UseDirectorOrchestrationParams {
   readonly currentTimeSecRef: MutableRefObject<number>;
   /** Absolute live sim cursor, set by App's handleSimUpdate, read as "now". */
   readonly liveSimTimeSecRef: MutableRefObject<number>;
-  /** Published (throttled) live sim time; drives the deferred-landing effect. */
-  readonly simTimeSec: number;
   readonly setLiveTimelineSeekRequest: (request: LiveTimelineSeekRequest) => void;
   readonly setLiveObservedHandoverRailEvents: (events: HandoverRailEvent[]) => void;
   readonly setModqnReplayVisualElapsedSec: (sec: number) => void;
@@ -74,6 +66,13 @@ export interface DirectorOrchestration {
   readonly handleDirectorInterFocus: () => void;
   readonly cinematicFadePulse: number | null;
   readonly handleCinematicSeekPeak: () => void;
+  /**
+   * Fired by useSimulation the instant it consumes a seek, carrying that seek's
+   * requestKey. The live cinema fires the armed Director focus on the EXACT matching
+   * key (deterministic landing) instead of watching the throttled published
+   * simTimeSec cross a time band — the publish-skip never-fire fix.
+   */
+  readonly handleLiveSeekLanded: (seekRequestKey: string) => void;
   readonly liveDirectorFocusEventSec: number | null;
   /**
    * Event id of the armed/active live Director focus (null when none). Shares the
@@ -102,7 +101,6 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
     currentTimeSec,
     currentTimeSecRef,
     liveSimTimeSecRef,
-    simTimeSec,
     setLiveTimelineSeekRequest,
     setLiveObservedHandoverRailEvents,
     setModqnReplayVisualElapsedSec,
@@ -127,9 +125,10 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
     readonly kind: 'intra' | 'inter';
     readonly framing: { readonly fromSatId: string | null; readonly toSatId: string | null };
     readonly seekTargetSec: number;
-    // The live sim cursor when the focus was armed, so the landing check knows the
-    // seek DIRECTION (the seek jumps toward seekTargetSec from here).
-    readonly armedSimTimeSec: number;
+    // The seek requestKey this focus is armed against; the deterministic landing
+    // (handleLiveSeekLanded) fires the camera focus the instant useSimulation reports
+    // this exact key consumed — never on the throttled published simTimeSec.
+    readonly requestKey: string;
   } | null>(null);
 
   // ITEM #C: cancel any armed-but-unfired live Director focus. Nulls the deferred
@@ -198,29 +197,27 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
         const runLiveFocusSeek = () => {
           // Play the sim so the slow-mo glides INTO the upcoming handover.
           if (playback.paused) playback.togglePause();
+          const seekRequestKey = `${focusTarget.seekTargetSec.toFixed(3)}:${Date.now().toString(36)}`;
+          // Arm the deferred camera focus BEFORE issuing the seek so the seek-landed
+          // callback (fired when useSimulation consumes this exact requestKey) always
+          // finds the pending focus. The camera focus is deferred — not fired now — so
+          // MainScene's lookupSatWorldPos frames the POST-seek fromSat/toSat positions,
+          // not the pre-seek pose.
+          pendingLiveFocusRef.current = {
+            kind,
+            framing: { fromSatId: focusTarget.fromSatId, toSatId: focusTarget.toSatId },
+            seekTargetSec: focusTarget.seekTargetSec,
+            requestKey: seekRequestKey,
+          };
           // Seek the live timeline exactly as a handover-rail marker click does:
           // the source-time lead-in is consumed as the absolute sim offset by
           // useSimulation.seekToTimelineFrame.
-          setLiveTimelineSeekRequest({
-            targetSec: focusTarget.seekTargetSec,
-            requestKey: `${focusTarget.seekTargetSec.toFixed(3)}:${Date.now().toString(36)}`,
-          });
+          setLiveTimelineSeekRequest({ targetSec: focusTarget.seekTargetSec, requestKey: seekRequestKey });
           setLiveObservedHandoverRailEvents([]);
           setModqnReplayVisualElapsedSec(clampTimelineTime(
             focusTarget.seekTargetSec - liveTimelineWindowStartSec,
             timelineDurationSec,
           ));
-          // Defer the camera focus: the live seek lands a frame later (async sim
-          // loop), so arm it and let the landing effect fire requestFocus once the
-          // scene frame reflects the event time — that is when MainScene's
-          // lookupSatWorldPos resolves the real fromSat/toSat positions for the
-          // pose. Firing now would frame the pre-seek satellite positions.
-          pendingLiveFocusRef.current = {
-            kind,
-            framing: { fromSatId: focusTarget.fromSatId, toSatId: focusTarget.toSatId },
-            seekTargetSec: focusTarget.seekTargetSec,
-            armedSimTimeSec: liveSimTimeSecRef.current,
-          };
         };
         if (reducedMotion) {
           runLiveFocusSeek();
@@ -282,36 +279,25 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
     }
   }, [activeCinematicWindow, camera, camera.directorPhase, currentTimeSec]);
 
-  // ── ITEM #C: live Director focus deferral. The live seek lands asynchronously
-  // (useSimulation jumps the cursor to the target; App's simState is published by
-  // the THROTTLED useSimStatePublisher, which omits simTimeSec from its change
-  // check), so fire the armed camera focus only once the live sim cursor has
-  // PASSED the seek target in the seek direction. MainScene then resolves the
-  // fromSat/toSat world positions from the (unthrottled) post-seek scene frame.
-  //
-  // Direction-aware + throttle-proof: the seek jumps from armedSimTimeSec toward
-  // seekTargetSec. Firing as soon as the cursor reaches/passes the target (with a
-  // small lead band on the approaching side) means a late throttled publish — the
-  // cursor having drifted PAST the target at speed — still triggers it, instead of
-  // a symmetric proximity band the cursor can overshoot before the next publish.
-  // A pre-seek frame sits on the FAR side of the target (the seek has not landed),
-  // so it does not fire early except within the lead band (where the pose is
-  // already near-correct), matching the original self-correcting design.
-  useEffect(() => {
+  // ── ITEM #C: live Director focus DETERMINISTIC landing. The live seek lands
+  // asynchronously (useSimulation rebuilds the frame at the target); App's simState
+  // is published by the THROTTLED useSimStatePublisher, which can SKIP the exact
+  // post-seek simTimeSec for a small / near-event seek — so the old time-band watcher
+  // on the published cursor intermittently never fired (the gate-5 intra never-fire).
+  // Instead, useSimulation calls back the instant it consumes a seek, carrying that
+  // seek's requestKey; we fire the armed focus on the EXACT matching key —
+  // deterministic in either seek direction, immune to publish throttling. Firing only
+  // AFTER the seek frame is built keeps MainScene's lookupSatWorldPos resolving the
+  // POST-seek fromSat/toSat positions for the pose.
+  const handleLiveSeekLanded = useCallback((landedSeekRequestKey: string) => {
     const pending = pendingLiveFocusRef.current;
-    if (pending === null) return;
-    // Already acquiring/focused/restoring → the focus was issued; stop watching.
+    if (pending === null || pending.requestKey !== landedSeekRequestKey) return;
+    // Engage only from idle; a re-arm mid-focus is replaced by the next arm, not queued.
     if (camera.directorPhase !== 'idle') return;
-    const dtSec = simTimeSec - pending.seekTargetSec;
-    const seekIsForward = pending.seekTargetSec >= pending.armedSimTimeSec;
-    const landed = seekIsForward
-      ? dtSec >= -LIVE_DIRECTOR_FOCUS_SEEK_LANDING_TOL_SEC
-      : dtSec <= LIVE_DIRECTOR_FOCUS_SEEK_LANDING_TOL_SEC;
-    if (!landed) return;
     pendingLiveFocusRef.current = null;
     if (pending.kind === 'intra') camera.requestIntraFocus(pending.framing);
     else camera.requestInterFocus(pending.framing);
-  }, [simTimeSec, camera, camera.directorPhase]);
+  }, [camera]);
 
   useEffect(() => {
     if (camera.directorPhase === 'idle' && activeCinematicWindow !== null) {
@@ -373,6 +359,7 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
     handleDirectorInterFocus,
     cinematicFadePulse,
     handleCinematicSeekPeak,
+    handleLiveSeekLanded,
     liveDirectorFocusEventSec,
     liveDirectorFocusEventId,
     cancelPendingLiveFocus,

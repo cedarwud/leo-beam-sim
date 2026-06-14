@@ -149,6 +149,12 @@ export function useSimulation(
   // optional `frame.sinrLiveCells`. `stepRuntimeFrame` stays FROZEN; existing
   // frame fields are byte-identical, so the other three lanes see zero drift.
   useEarthFixedCellTruth: boolean = false,
+  // Deterministic Director-focus landing: invoked the instant a seek is applied
+  // (buildRuntimeStateAt at the target) with the consumed seekRequestKey. The live
+  // cinema fires the camera focus on this exact signal instead of waiting for the
+  // THROTTLED published simTimeSec to cross a time band — which the publisher can skip
+  // for small / near-event seeks, stranding an armed focus → intermittent never-fire.
+  onSeekLanded?: (seekRequestKey: string) => void,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -517,9 +523,19 @@ export function useSimulation(
     resetToReplayStartFrame();
   }, [maxTimeSec, profile.id, replay.epochUtcMs, replay.loop, replay.startOffsetSec]);
 
+  // Keep the latest landing callback in a ref so the seek effect (keyed only on
+  // seekRequestKey) never re-runs on callback identity changes nor fires a stale one.
+  const onSeekLandedRef = useRef(onSeekLanded);
+  useEffect(() => {
+    onSeekLandedRef.current = onSeekLanded;
+  }, [onSeekLanded]);
+
   useEffect(() => {
     if (replay.seekRequestKey === undefined || replay.seekTargetSec === undefined) return;
     seekToTimelineFrame(replay.seekTargetSec);
+    // Deterministic Director-focus landing: signal the consumed key the instant the
+    // seek frame is built (replaces the throttled-simTimeSec time-band landing).
+    onSeekLandedRef.current?.(replay.seekRequestKey);
   }, [replay.seekRequestKey]);
 
   useEffect(() => {

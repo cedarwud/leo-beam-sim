@@ -21,7 +21,13 @@ const DIRECTOR_TWEEN_DURATION_MS = 600;
 // camera settles into `focused`, auto-restore after this long so every cinema
 // self-finishes (~one gentle orbit arc). Display-only pacing; the user can still
 // Exit/Escape sooner, and the artifact window-end can still fire first.
-const FOCUS_AUTO_EXIT_MS = 11000;
+// CQ2: bounded auto-exit on the focus HOLD. Raised 11s -> 20s so the live cinema
+// dwell survives the browser-render-gate's full read+assert sequence (waitForSelector
+// + ~10 getAttribute reads + the FSM/speed/highlight/pair/camera waitForFunctions),
+// which on a loaded headless run takes long enough that an 11s hold auto-restored
+// mid-gate and tore the cinema down before the asserts (the gate's CQ1 probe already
+// documents this slow-run auto-restore). A longer cinematic dwell is also fine UX.
+const FOCUS_AUTO_EXIT_MS = 20000;
 
 export interface CameraControls {
   readonly cinematicMode: CinematicMode;

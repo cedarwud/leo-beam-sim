@@ -18,7 +18,7 @@
  *   actually rendered — not just that a model prop was set (mirrors
  *   `BeamLoadCylinder` / `HandoverStoryLayer`).
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, type JSX } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type JSX } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { HANDOVER_SOURCE_COLOR, HANDOVER_TARGET_COLOR } from '../constants/beamRoleTokens';
@@ -139,20 +139,27 @@ export function CandidateBeamHighlight({
 
   // Mesh-derived telemetry: count the actually-visible ring meshes in the subtree
   // and publish to the canvas dataset (catches a broken mesh render a model-prop
-  // observable would miss). Intentionally runs EVERY render (no deps): under R3F
-  // the child meshes attach to the group across commits, and `groupRef.current` /
-  // the live `satBeams`-derived `rings` are not reliably populated on the first
-  // mount commit, so a `[rings]`-gated effect can publish a stale 0 and never
-  // re-count. Re-running each render keeps the count honest to the live scene.
-  useLayoutEffect(() => {
+  // observable would miss). Published ONLY when the count changes, so the per-frame
+  // settle (in useFrame below) re-counts freely without dataset churn.
+  const publishRingCount = useCallback(() => {
     const group = groupRef.current;
     if (!group) return;
     let count = 0;
     group.traverse(obj => {
       if ((obj as THREE.Mesh).isMesh && obj.visible) count += 1;
     });
+    // Write UNCONDITIONALLY (no changed-guard): the per-frame settle must re-publish
+    // even after the unmount-cleanup delete — React StrictMode double-invokes that
+    // cleanup on mount, deleting the flag while the component stays mounted. A
+    // count-equality guard would strand it deleted (hl=null) forever. A stable string
+    // write per frame is free.
     gl.domElement.dataset.candidateHandoverHighlightRenderedCount = String(count);
     gl.domElement.dataset.candidateHandoverHighlightRendered = count > 0 ? 'true' : 'false';
+  }, [gl]);
+
+  // Commit-time publish (fast path when the ring meshes are already attached).
+  useLayoutEffect(() => {
+    publishRingCount();
   });
 
   // Clear the flags on unmount so a stale 'true' cannot survive a focus exit /
@@ -162,10 +169,15 @@ export function CandidateBeamHighlight({
     delete gl.domElement.dataset.candidateHandoverHighlightRendered;
   }, [gl]);
 
-  // Gentle opacity pulse (display-only); reduced-motion holds the static opacity.
+  // Per-frame settle: re-count after the R3F child ring meshes attach so a stale 0
+  // from the mount-commit traverse (no further React render to re-count) self-
+  // corrects — the highlight-rings=0 the validator caught once intra focus reliably
+  // fired. Runs regardless of reduced motion; only the opacity pulse is motion-gated.
   useFrame(({ clock }) => {
     const group = groupRef.current;
-    if (!group || reducedMotion) return;
+    if (!group) return;
+    publishRingCount();
+    if (reducedMotion) return;
     const opacity = BASE_OPACITY + PULSE_AMP * Math.sin(clock.elapsedTime * PULSE_HZ * Math.PI * 2);
     group.traverse(obj => {
       const mesh = obj as THREE.Mesh;

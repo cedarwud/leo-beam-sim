@@ -133,6 +133,7 @@ interface SceneContentProps {
   showModqnReplayScene: boolean;
   sceneLane: SceneLane;
   onSimUpdate: (state: SimState) => void;
+  onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
 }
 
@@ -655,6 +656,7 @@ function SceneContent({
   showModqnReplayScene,
   sceneLane,
   onSimUpdate,
+  onLiveSeekLanded,
   sceneFrame: propSceneFrame,
 }: SceneContentProps) {
   const camera = useThree(state => state.camera);
@@ -695,6 +697,7 @@ function SceneContent({
     runtime.ueDistributionRadiusKm,
     paperUserArea.kmPerWorldUnit,
     useEarthFixedCellTruth,
+    onLiveSeekLanded,
   );
   const ueTrailHistory = useUeTrailHistory({
     enabled: runtime.enableUeTrails === true && propSceneFrame === undefined,
@@ -1644,6 +1647,7 @@ interface MainSceneProps {
   showModqnReplayScene: boolean;
   sceneLane: SceneLane;
   onSimUpdate: (state: SimState) => void;
+  onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
 }
 
@@ -1657,6 +1661,7 @@ export const MainScene = memo(function MainScene({
   showModqnReplayScene,
   sceneLane,
   onSimUpdate,
+  onLiveSeekLanded,
   sceneFrame,
 }: MainSceneProps) {
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
@@ -1711,6 +1716,7 @@ export const MainScene = memo(function MainScene({
               showModqnReplayScene={showModqnReplayScene}
               sceneLane={sceneLane}
               onSimUpdate={onSimUpdate}
+              onLiveSeekLanded={onLiveSeekLanded}
               sceneFrame={sceneFrame}
             />
           )}
