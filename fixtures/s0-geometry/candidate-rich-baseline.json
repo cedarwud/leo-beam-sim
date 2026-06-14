@@ -24568,14 +24568,14 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 6,
-          "sinrDb": null
+          "beamId": 1,
+          "sinrDb": -1.391708
         },
         "pendingTarget": {
           "satId": null,
           "beamId": null
         },
-        "hoCount": 3,
+        "hoCount": 4,
         "satellites": [
           {
             "id": "shell-polar-P2-S7",
@@ -25209,7 +25209,7 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:6",
+          "live-ue-0>shell-pro-53-P18-S2:1",
           "live-ue-12>shell-pro-53-P18-S2:3",
           "live-ue-13>shell-pro-53-P18-S2:3",
           "live-ue-14>shell-pro-53-P18-S2:1",
@@ -25283,7 +25283,7 @@
           "live-ue-83>shell-pro-53-P18-S2:3",
           "live-ue-84>shell-pro-53-P18-S2:6",
           "live-ue-85>shell-pro-53-P18-S2:1",
-          "live-ue-86>shell-pro-53-P18-S2:6",
+          "live-ue-86>shell-pro-53-P18-S2:5",
           "live-ue-87>shell-pro-53-P18-S2:6",
           "live-ue-88>shell-pro-53-P18-S2:1",
           "live-ue-89>shell-pro-53-P18-S2:1",
@@ -25434,7 +25434,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-pro-42-P11-S5",
+          "shell-polar-P22-S1",
           "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
@@ -25454,17 +25454,17 @@
               {
                 "beamId": 1,
                 "ground": [
-                  387.979381,
+                  0,
                   0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  581.969071,
+                  193.98969,
                   336
                 ],
                 "isServing": false,
@@ -25474,7 +25474,7 @@
               {
                 "beamId": 4,
                 "ground": [
-                  775.958762,
+                  387.979381,
                   0
                 ],
                 "isServing": false,
@@ -25484,20 +25484,10 @@
               {
                 "beamId": 5,
                 "ground": [
-                  581.969071,
+                  193.98969,
                   -336
                 ],
                 "isServing": false,
-                "frequencyIndex": 2,
-                "satelliteTintColor": "#ffffff"
-              },
-              {
-                "beamId": 6,
-                "ground": [
-                  0,
-                  0
-                ],
-                "isServing": true,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               }
@@ -25518,14 +25508,14 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 6,
-          "sinrDb": null
+          "beamId": 1,
+          "sinrDb": -5.667245
         },
         "pendingTarget": {
           "satId": null,
           "beamId": null
         },
-        "hoCount": 3,
+        "hoCount": 4,
         "satellites": [
           {
             "id": "shell-polar-P2-S7",
@@ -26159,7 +26149,7 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:6",
+          "live-ue-0>shell-pro-53-P18-S2:1",
           "live-ue-12>shell-pro-53-P18-S2:3",
           "live-ue-13>shell-pro-53-P18-S2:3",
           "live-ue-14>shell-pro-53-P18-S2:1",
@@ -26233,7 +26223,7 @@
           "live-ue-83>shell-pro-53-P18-S2:3",
           "live-ue-84>shell-pro-53-P18-S2:6",
           "live-ue-85>shell-pro-53-P18-S2:1",
-          "live-ue-86>shell-pro-53-P18-S2:6",
+          "live-ue-86>shell-pro-53-P18-S2:5",
           "live-ue-87>shell-pro-53-P18-S2:6",
           "live-ue-88>shell-pro-53-P18-S2:1",
           "live-ue-89>shell-pro-53-P18-S2:1",
@@ -26386,7 +26376,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-pro-42-P11-S5",
+          "shell-polar-P22-S1",
           "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
@@ -26406,18 +26396,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  705.371465,
-                  -31.044488
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  899.361156,
-                  304.955512
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -26426,8 +26416,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  1093.350846,
-                  -31.044488
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -26436,20 +26426,10 @@
               {
                 "beamId": 5,
                 "ground": [
-                  899.361156,
-                  -367.044488
+                  193.98969,
+                  -336
                 ],
                 "isServing": false,
-                "frequencyIndex": 2,
-                "satelliteTintColor": "#ffffff"
-              },
-              {
-                "beamId": 6,
-                "ground": [
-                  0,
-                  0
-                ],
-                "isServing": true,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               }
@@ -26470,14 +26450,14 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 6,
-          "sinrDb": null
+          "beamId": 1,
+          "sinrDb": -23.359219
         },
         "pendingTarget": {
           "satId": null,
           "beamId": null
         },
-        "hoCount": 3,
+        "hoCount": 4,
         "satellites": [
           {
             "id": "shell-polar-P2-S7",
@@ -27111,7 +27091,95 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:6"
+          "live-ue-0>shell-pro-53-P18-S2:1",
+          "live-ue-12>shell-pro-53-P18-S2:3",
+          "live-ue-13>shell-pro-53-P18-S2:3",
+          "live-ue-14>shell-pro-53-P18-S2:1",
+          "live-ue-16>shell-pro-53-P18-S2:5",
+          "live-ue-17>shell-pro-53-P18-S2:1",
+          "live-ue-18>shell-pro-53-P18-S2:1",
+          "live-ue-19>shell-pro-53-P18-S2:3",
+          "live-ue-20>shell-pro-53-P18-S2:3",
+          "live-ue-21>shell-pro-53-P18-S2:3",
+          "live-ue-23>shell-pro-53-P18-S2:1",
+          "live-ue-24>shell-pro-53-P18-S2:5",
+          "live-ue-25>shell-pro-53-P18-S2:5",
+          "live-ue-26>shell-pro-53-P18-S2:1",
+          "live-ue-27>shell-pro-53-P18-S2:1",
+          "live-ue-28>shell-pro-53-P18-S2:3",
+          "live-ue-29>shell-pro-53-P18-S2:5",
+          "live-ue-2>shell-pro-53-P18-S2:5",
+          "live-ue-30>shell-pro-53-P18-S2:1",
+          "live-ue-31>shell-pro-53-P18-S2:1",
+          "live-ue-32>shell-pro-53-P18-S2:1",
+          "live-ue-33>shell-pro-53-P18-S2:1",
+          "live-ue-34>shell-pro-53-P18-S2:1",
+          "live-ue-35>shell-pro-53-P18-S2:1",
+          "live-ue-36>shell-pro-53-P18-S2:4",
+          "live-ue-37>shell-pro-53-P18-S2:1",
+          "live-ue-38>shell-pro-53-P18-S2:3",
+          "live-ue-39>shell-pro-53-P18-S2:3",
+          "live-ue-3>shell-pro-53-P18-S2:1",
+          "live-ue-40>shell-pro-53-P18-S2:1",
+          "live-ue-41>shell-pro-53-P18-S2:5",
+          "live-ue-42>shell-pro-53-P18-S2:5",
+          "live-ue-43>shell-pro-53-P18-S2:1",
+          "live-ue-44>shell-pro-53-P18-S2:5",
+          "live-ue-45>shell-pro-53-P18-S2:5",
+          "live-ue-46>shell-pro-53-P18-S2:1",
+          "live-ue-48>shell-pro-53-P18-S2:4",
+          "live-ue-49>shell-pro-53-P18-S2:3",
+          "live-ue-4>shell-pro-53-P18-S2:1",
+          "live-ue-50>shell-pro-53-P18-S2:5",
+          "live-ue-51>shell-pro-53-P18-S2:5",
+          "live-ue-53>shell-pro-53-P18-S2:5",
+          "live-ue-54>shell-pro-53-P18-S2:1",
+          "live-ue-56>shell-pro-53-P18-S2:1",
+          "live-ue-57>shell-pro-53-P18-S2:3",
+          "live-ue-59>shell-pro-53-P18-S2:5",
+          "live-ue-5>shell-pro-53-P18-S2:5",
+          "live-ue-60>shell-pro-53-P18-S2:1",
+          "live-ue-61>shell-pro-53-P18-S2:5",
+          "live-ue-62>shell-pro-53-P18-S2:3",
+          "live-ue-63>shell-pro-53-P18-S2:4",
+          "live-ue-64>shell-pro-53-P18-S2:5",
+          "live-ue-65>shell-pro-53-P18-S2:3",
+          "live-ue-66>shell-pro-53-P18-S2:5",
+          "live-ue-67>shell-pro-53-P18-S2:3",
+          "live-ue-68>shell-pro-53-P18-S2:3",
+          "live-ue-69>shell-pro-53-P18-S2:3",
+          "live-ue-6>shell-pro-53-P18-S2:4",
+          "live-ue-70>shell-pro-53-P18-S2:3",
+          "live-ue-72>shell-pro-53-P18-S2:3",
+          "live-ue-73>shell-pro-53-P18-S2:3",
+          "live-ue-74>shell-pro-53-P18-S2:1",
+          "live-ue-75>shell-pro-53-P18-S2:1",
+          "live-ue-76>shell-pro-53-P18-S2:5",
+          "live-ue-77>shell-pro-53-P18-S2:5",
+          "live-ue-78>shell-pro-53-P18-S2:3",
+          "live-ue-79>shell-pro-53-P18-S2:1",
+          "live-ue-7>shell-pro-53-P18-S2:5",
+          "live-ue-80>shell-pro-53-P18-S2:1",
+          "live-ue-81>shell-pro-53-P18-S2:1",
+          "live-ue-82>shell-pro-53-P18-S2:5",
+          "live-ue-83>shell-pro-53-P18-S2:3",
+          "live-ue-84>shell-pro-53-P18-S2:1",
+          "live-ue-85>shell-pro-53-P18-S2:1",
+          "live-ue-86>shell-pro-53-P18-S2:5",
+          "live-ue-87>shell-pro-53-P18-S2:5",
+          "live-ue-88>shell-pro-53-P18-S2:1",
+          "live-ue-89>shell-pro-53-P18-S2:1",
+          "live-ue-8>shell-pro-53-P18-S2:3",
+          "live-ue-90>shell-pro-53-P18-S2:4",
+          "live-ue-91>shell-pro-53-P18-S2:1",
+          "live-ue-92>shell-pro-53-P18-S2:3",
+          "live-ue-93>shell-pro-53-P18-S2:5",
+          "live-ue-94>shell-pro-53-P18-S2:3",
+          "live-ue-95>shell-pro-53-P18-S2:3",
+          "live-ue-96>shell-pro-53-P18-S2:3",
+          "live-ue-97>shell-pro-53-P18-S2:1",
+          "live-ue-98>shell-pro-53-P18-S2:1",
+          "live-ue-9>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
           "shell-polar-P22-S1:22",
@@ -27247,7 +27315,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-pro-42-P11-S5",
+          "shell-polar-P22-S1",
           "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
@@ -27265,12 +27333,42 @@
             "satId": "shell-pro-53-P18-S2",
             "beams": [
               {
-                "beamId": 6,
+                "beamId": 1,
                 "ground": [
                   0,
                   0
                 ],
                 "isServing": true,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  193.98969,
+                  336
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  387.979381,
+                  0
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  193.98969,
+                  -336
+                ],
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               }
@@ -27278,7 +27376,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 0
+        "sinrLabelCount": 1
       }
     },
     {
@@ -27291,14 +27389,14 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 6,
-          "sinrDb": null
+          "beamId": 1,
+          "sinrDb": -26.182636
         },
         "pendingTarget": {
           "satId": null,
           "beamId": null
         },
-        "hoCount": 3,
+        "hoCount": 4,
         "satellites": [
           {
             "id": "shell-polar-P2-S7",
@@ -27932,7 +28030,90 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:6"
+          "live-ue-0>shell-pro-53-P18-S2:1",
+          "live-ue-12>shell-pro-53-P18-S2:3",
+          "live-ue-13>shell-pro-53-P18-S2:3",
+          "live-ue-14>shell-pro-53-P18-S2:1",
+          "live-ue-16>shell-pro-53-P18-S2:5",
+          "live-ue-17>shell-pro-53-P18-S2:1",
+          "live-ue-18>shell-pro-53-P18-S2:1",
+          "live-ue-19>shell-pro-53-P18-S2:3",
+          "live-ue-20>shell-pro-53-P18-S2:3",
+          "live-ue-21>shell-pro-53-P18-S2:3",
+          "live-ue-23>shell-pro-53-P18-S2:4",
+          "live-ue-24>shell-pro-53-P18-S2:5",
+          "live-ue-25>shell-pro-53-P18-S2:5",
+          "live-ue-26>shell-pro-53-P18-S2:1",
+          "live-ue-28>shell-pro-53-P18-S2:3",
+          "live-ue-29>shell-pro-53-P18-S2:5",
+          "live-ue-2>shell-pro-53-P18-S2:5",
+          "live-ue-30>shell-pro-53-P18-S2:1",
+          "live-ue-31>shell-pro-53-P18-S2:1",
+          "live-ue-32>shell-pro-53-P18-S2:1",
+          "live-ue-33>shell-pro-53-P18-S2:1",
+          "live-ue-35>shell-pro-53-P18-S2:1",
+          "live-ue-36>shell-pro-53-P18-S2:4",
+          "live-ue-37>shell-pro-53-P18-S2:1",
+          "live-ue-38>shell-pro-53-P18-S2:3",
+          "live-ue-39>shell-pro-53-P18-S2:3",
+          "live-ue-3>shell-pro-53-P18-S2:1",
+          "live-ue-40>shell-pro-53-P18-S2:1",
+          "live-ue-41>shell-pro-53-P18-S2:5",
+          "live-ue-42>shell-pro-53-P18-S2:1",
+          "live-ue-43>shell-pro-53-P18-S2:5",
+          "live-ue-44>shell-pro-53-P18-S2:5",
+          "live-ue-45>shell-pro-53-P18-S2:5",
+          "live-ue-46>shell-pro-53-P18-S2:1",
+          "live-ue-48>shell-pro-53-P18-S2:4",
+          "live-ue-49>shell-pro-53-P18-S2:3",
+          "live-ue-4>shell-pro-53-P18-S2:1",
+          "live-ue-50>shell-pro-53-P18-S2:5",
+          "live-ue-51>shell-pro-53-P18-S2:1",
+          "live-ue-53>shell-pro-53-P18-S2:5",
+          "live-ue-54>shell-pro-53-P18-S2:1",
+          "live-ue-56>shell-pro-53-P18-S2:1",
+          "live-ue-57>shell-pro-53-P18-S2:3",
+          "live-ue-59>shell-pro-53-P18-S2:1",
+          "live-ue-5>shell-pro-53-P18-S2:5",
+          "live-ue-60>shell-pro-53-P18-S2:1",
+          "live-ue-61>shell-pro-53-P18-S2:5",
+          "live-ue-62>shell-pro-53-P18-S2:3",
+          "live-ue-63>shell-pro-53-P18-S2:4",
+          "live-ue-64>shell-pro-53-P18-S2:1",
+          "live-ue-65>shell-pro-53-P18-S2:3",
+          "live-ue-66>shell-pro-53-P18-S2:5",
+          "live-ue-67>shell-pro-53-P18-S2:3",
+          "live-ue-68>shell-pro-53-P18-S2:3",
+          "live-ue-6>shell-pro-53-P18-S2:4",
+          "live-ue-72>shell-pro-53-P18-S2:3",
+          "live-ue-73>shell-pro-53-P18-S2:3",
+          "live-ue-74>shell-pro-53-P18-S2:1",
+          "live-ue-75>shell-pro-53-P18-S2:1",
+          "live-ue-76>shell-pro-53-P18-S2:5",
+          "live-ue-77>shell-pro-53-P18-S2:5",
+          "live-ue-78>shell-pro-53-P18-S2:3",
+          "live-ue-79>shell-pro-53-P18-S2:1",
+          "live-ue-7>shell-pro-53-P18-S2:5",
+          "live-ue-80>shell-pro-53-P18-S2:1",
+          "live-ue-82>shell-pro-53-P18-S2:1",
+          "live-ue-83>shell-pro-53-P18-S2:3",
+          "live-ue-84>shell-pro-53-P18-S2:1",
+          "live-ue-85>shell-pro-53-P18-S2:1",
+          "live-ue-86>shell-pro-53-P18-S2:5",
+          "live-ue-87>shell-pro-53-P18-S2:5",
+          "live-ue-88>shell-pro-53-P18-S2:1",
+          "live-ue-89>shell-pro-53-P18-S2:1",
+          "live-ue-8>shell-pro-53-P18-S2:3",
+          "live-ue-90>shell-pro-53-P18-S2:4",
+          "live-ue-91>shell-pro-53-P18-S2:1",
+          "live-ue-92>shell-pro-53-P18-S2:3",
+          "live-ue-93>shell-pro-53-P18-S2:5",
+          "live-ue-94>shell-pro-53-P18-S2:3",
+          "live-ue-95>shell-pro-53-P18-S2:3",
+          "live-ue-96>shell-pro-53-P18-S2:3",
+          "live-ue-97>shell-pro-53-P18-S2:1",
+          "live-ue-98>shell-pro-53-P18-S2:1",
+          "live-ue-9>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
           "shell-polar-P22-S1:22",
@@ -28067,7 +28248,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-pro-42-P11-S5",
+          "shell-polar-P22-S1",
           "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
@@ -28085,12 +28266,42 @@
             "satId": "shell-pro-53-P18-S2",
             "beams": [
               {
-                "beamId": 6,
+                "beamId": 1,
                 "ground": [
                   0,
                   0
                 ],
                 "isServing": true,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  193.98969,
+                  336
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  387.979381,
+                  0
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  193.98969,
+                  -336
+                ],
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               }
@@ -28098,7 +28309,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 0
+        "sinrLabelCount": 1
       }
     },
     {
@@ -28111,8 +28322,8 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 5,
-          "sinrDb": -28.864626
+          "beamId": 1,
+          "sinrDb": -34.997547
         },
         "pendingTarget": {
           "satId": null,
@@ -28752,11 +28963,78 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:5",
-          "live-ue-2>shell-pro-53-P18-S2:1",
-          "live-ue-36>shell-pro-53-P18-S2:1",
-          "live-ue-38>shell-pro-53-P18-S2:1",
-          "live-ue-48>shell-pro-53-P18-S2:1"
+          "live-ue-0>shell-pro-53-P18-S2:1",
+          "live-ue-14>shell-pro-53-P18-S2:4",
+          "live-ue-16>shell-pro-53-P18-S2:5",
+          "live-ue-17>shell-pro-53-P18-S2:1",
+          "live-ue-18>shell-pro-53-P18-S2:1",
+          "live-ue-19>shell-pro-53-P18-S2:3",
+          "live-ue-21>shell-pro-53-P18-S2:3",
+          "live-ue-23>shell-pro-53-P18-S2:4",
+          "live-ue-24>shell-pro-53-P18-S2:5",
+          "live-ue-25>shell-pro-53-P18-S2:5",
+          "live-ue-26>shell-pro-53-P18-S2:1",
+          "live-ue-28>shell-pro-53-P18-S2:3",
+          "live-ue-2>shell-pro-53-P18-S2:5",
+          "live-ue-31>shell-pro-53-P18-S2:1",
+          "live-ue-32>shell-pro-53-P18-S2:4",
+          "live-ue-33>shell-pro-53-P18-S2:1",
+          "live-ue-35>shell-pro-53-P18-S2:1",
+          "live-ue-36>shell-pro-53-P18-S2:4",
+          "live-ue-37>shell-pro-53-P18-S2:1",
+          "live-ue-38>shell-pro-53-P18-S2:3",
+          "live-ue-39>shell-pro-53-P18-S2:3",
+          "live-ue-3>shell-pro-53-P18-S2:1",
+          "live-ue-40>shell-pro-53-P18-S2:1",
+          "live-ue-41>shell-pro-53-P18-S2:5",
+          "live-ue-42>shell-pro-53-P18-S2:1",
+          "live-ue-43>shell-pro-53-P18-S2:5",
+          "live-ue-44>shell-pro-53-P18-S2:5",
+          "live-ue-45>shell-pro-53-P18-S2:5",
+          "live-ue-46>shell-pro-53-P18-S2:1",
+          "live-ue-48>shell-pro-53-P18-S2:4",
+          "live-ue-49>shell-pro-53-P18-S2:4",
+          "live-ue-4>shell-pro-53-P18-S2:1",
+          "live-ue-50>shell-pro-53-P18-S2:5",
+          "live-ue-51>shell-pro-53-P18-S2:1",
+          "live-ue-53>shell-pro-53-P18-S2:5",
+          "live-ue-54>shell-pro-53-P18-S2:1",
+          "live-ue-56>shell-pro-53-P18-S2:1",
+          "live-ue-59>shell-pro-53-P18-S2:1",
+          "live-ue-5>shell-pro-53-P18-S2:5",
+          "live-ue-60>shell-pro-53-P18-S2:1",
+          "live-ue-61>shell-pro-53-P18-S2:5",
+          "live-ue-62>shell-pro-53-P18-S2:3",
+          "live-ue-63>shell-pro-53-P18-S2:4",
+          "live-ue-64>shell-pro-53-P18-S2:1",
+          "live-ue-66>shell-pro-53-P18-S2:5",
+          "live-ue-68>shell-pro-53-P18-S2:3",
+          "live-ue-72>shell-pro-53-P18-S2:3",
+          "live-ue-74>shell-pro-53-P18-S2:4",
+          "live-ue-75>shell-pro-53-P18-S2:1",
+          "live-ue-76>shell-pro-53-P18-S2:5",
+          "live-ue-77>shell-pro-53-P18-S2:5",
+          "live-ue-78>shell-pro-53-P18-S2:3",
+          "live-ue-79>shell-pro-53-P18-S2:1",
+          "live-ue-7>shell-pro-53-P18-S2:5",
+          "live-ue-80>shell-pro-53-P18-S2:4",
+          "live-ue-82>shell-pro-53-P18-S2:1",
+          "live-ue-83>shell-pro-53-P18-S2:3",
+          "live-ue-84>shell-pro-53-P18-S2:1",
+          "live-ue-86>shell-pro-53-P18-S2:5",
+          "live-ue-87>shell-pro-53-P18-S2:5",
+          "live-ue-88>shell-pro-53-P18-S2:1",
+          "live-ue-89>shell-pro-53-P18-S2:1",
+          "live-ue-90>shell-pro-53-P18-S2:4",
+          "live-ue-91>shell-pro-53-P18-S2:1",
+          "live-ue-92>shell-pro-53-P18-S2:3",
+          "live-ue-93>shell-pro-53-P18-S2:5",
+          "live-ue-94>shell-pro-53-P18-S2:3",
+          "live-ue-95>shell-pro-53-P18-S2:3",
+          "live-ue-96>shell-pro-53-P18-S2:3",
+          "live-ue-97>shell-pro-53-P18-S2:1",
+          "live-ue-98>shell-pro-53-P18-S2:1",
+          "live-ue-9>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
           "shell-polar-P22-S1:22",
@@ -28917,18 +29195,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  -193.98969,
-                  336
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  0,
-                  672
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -28937,8 +29215,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  193.98969,
-                  336
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -28947,18 +29225,18 @@
               {
                 "beamId": 5,
                 "ground": [
-                  0,
-                  0
+                  193.98969,
+                  -336
                 ],
-                "isServing": true,
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 6,
                 "ground": [
-                  -387.979381,
-                  0
+                  -193.98969,
+                  -336
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -28981,8 +29259,8 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 5,
-          "sinrDb": null
+          "beamId": 1,
+          "sinrDb": -32.382831
         },
         "pendingTarget": {
           "satId": null,
@@ -29622,11 +29900,67 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:5",
-          "live-ue-2>shell-pro-53-P18-S2:1",
+          "live-ue-0>shell-pro-53-P18-S2:1",
+          "live-ue-14>shell-pro-53-P18-S2:4",
+          "live-ue-16>shell-pro-53-P18-S2:5",
+          "live-ue-17>shell-pro-53-P18-S2:1",
+          "live-ue-18>shell-pro-53-P18-S2:1",
+          "live-ue-19>shell-pro-53-P18-S2:3",
+          "live-ue-24>shell-pro-53-P18-S2:5",
+          "live-ue-25>shell-pro-53-P18-S2:5",
+          "live-ue-28>shell-pro-53-P18-S2:3",
+          "live-ue-2>shell-pro-53-P18-S2:5",
+          "live-ue-31>shell-pro-53-P18-S2:1",
+          "live-ue-32>shell-pro-53-P18-S2:4",
+          "live-ue-33>shell-pro-53-P18-S2:1",
+          "live-ue-35>shell-pro-53-P18-S2:1",
           "live-ue-36>shell-pro-53-P18-S2:1",
-          "live-ue-38>shell-pro-53-P18-S2:1",
-          "live-ue-48>shell-pro-53-P18-S2:1"
+          "live-ue-37>shell-pro-53-P18-S2:1",
+          "live-ue-38>shell-pro-53-P18-S2:3",
+          "live-ue-39>shell-pro-53-P18-S2:3",
+          "live-ue-3>shell-pro-53-P18-S2:1",
+          "live-ue-40>shell-pro-53-P18-S2:1",
+          "live-ue-41>shell-pro-53-P18-S2:5",
+          "live-ue-42>shell-pro-53-P18-S2:1",
+          "live-ue-43>shell-pro-53-P18-S2:5",
+          "live-ue-44>shell-pro-53-P18-S2:5",
+          "live-ue-45>shell-pro-53-P18-S2:5",
+          "live-ue-48>shell-pro-53-P18-S2:1",
+          "live-ue-49>shell-pro-53-P18-S2:4",
+          "live-ue-50>shell-pro-53-P18-S2:5",
+          "live-ue-51>shell-pro-53-P18-S2:1",
+          "live-ue-53>shell-pro-53-P18-S2:5",
+          "live-ue-54>shell-pro-53-P18-S2:1",
+          "live-ue-56>shell-pro-53-P18-S2:1",
+          "live-ue-59>shell-pro-53-P18-S2:1",
+          "live-ue-5>shell-pro-53-P18-S2:5",
+          "live-ue-60>shell-pro-53-P18-S2:1",
+          "live-ue-61>shell-pro-53-P18-S2:5",
+          "live-ue-62>shell-pro-53-P18-S2:3",
+          "live-ue-64>shell-pro-53-P18-S2:1",
+          "live-ue-66>shell-pro-53-P18-S2:5",
+          "live-ue-68>shell-pro-53-P18-S2:3",
+          "live-ue-72>shell-pro-53-P18-S2:3",
+          "live-ue-74>shell-pro-53-P18-S2:4",
+          "live-ue-76>shell-pro-53-P18-S2:5",
+          "live-ue-77>shell-pro-53-P18-S2:5",
+          "live-ue-78>shell-pro-53-P18-S2:3",
+          "live-ue-79>shell-pro-53-P18-S2:1",
+          "live-ue-7>shell-pro-53-P18-S2:5",
+          "live-ue-80>shell-pro-53-P18-S2:4",
+          "live-ue-82>shell-pro-53-P18-S2:1",
+          "live-ue-83>shell-pro-53-P18-S2:3",
+          "live-ue-84>shell-pro-53-P18-S2:1",
+          "live-ue-86>shell-pro-53-P18-S2:5",
+          "live-ue-87>shell-pro-53-P18-S2:5",
+          "live-ue-88>shell-pro-53-P18-S2:1",
+          "live-ue-91>shell-pro-53-P18-S2:1",
+          "live-ue-92>shell-pro-53-P18-S2:3",
+          "live-ue-93>shell-pro-53-P18-S2:5",
+          "live-ue-94>shell-pro-53-P18-S2:3",
+          "live-ue-95>shell-pro-53-P18-S2:3",
+          "live-ue-96>shell-pro-53-P18-S2:3",
+          "live-ue-97>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
           "shell-polar-P22-S1:22",
@@ -29786,18 +30120,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  -193.98969,
-                  336
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  0,
-                  672
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -29806,8 +30140,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  193.98969,
-                  336
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -29816,18 +30150,18 @@
               {
                 "beamId": 5,
                 "ground": [
-                  0,
-                  0
+                  193.98969,
+                  -336
                 ],
-                "isServing": true,
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 6,
                 "ground": [
-                  -387.979381,
-                  0
+                  -193.98969,
+                  -336
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -29850,7 +30184,7 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 5,
+          "beamId": 1,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -30491,11 +30825,49 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:5",
-          "live-ue-2>shell-pro-53-P18-S2:1",
+          "live-ue-0>shell-pro-53-P18-S2:1",
+          "live-ue-14>shell-pro-53-P18-S2:4",
+          "live-ue-17>shell-pro-53-P18-S2:1",
+          "live-ue-18>shell-pro-53-P18-S2:1",
+          "live-ue-19>shell-pro-53-P18-S2:3",
+          "live-ue-25>shell-pro-53-P18-S2:5",
+          "live-ue-28>shell-pro-53-P18-S2:3",
+          "live-ue-2>shell-pro-53-P18-S2:5",
+          "live-ue-31>shell-pro-53-P18-S2:1",
+          "live-ue-32>shell-pro-53-P18-S2:4",
+          "live-ue-33>shell-pro-53-P18-S2:1",
+          "live-ue-35>shell-pro-53-P18-S2:1",
           "live-ue-36>shell-pro-53-P18-S2:1",
-          "live-ue-38>shell-pro-53-P18-S2:1",
-          "live-ue-48>shell-pro-53-P18-S2:1"
+          "live-ue-37>shell-pro-53-P18-S2:1",
+          "live-ue-38>shell-pro-53-P18-S2:3",
+          "live-ue-39>shell-pro-53-P18-S2:3",
+          "live-ue-41>shell-pro-53-P18-S2:5",
+          "live-ue-42>shell-pro-53-P18-S2:1",
+          "live-ue-43>shell-pro-53-P18-S2:5",
+          "live-ue-45>shell-pro-53-P18-S2:5",
+          "live-ue-48>shell-pro-53-P18-S2:1",
+          "live-ue-50>shell-pro-53-P18-S2:5",
+          "live-ue-51>shell-pro-53-P18-S2:1",
+          "live-ue-53>shell-pro-53-P18-S2:5",
+          "live-ue-54>shell-pro-53-P18-S2:1",
+          "live-ue-59>shell-pro-53-P18-S2:1",
+          "live-ue-5>shell-pro-53-P18-S2:5",
+          "live-ue-60>shell-pro-53-P18-S2:1",
+          "live-ue-61>shell-pro-53-P18-S2:5",
+          "live-ue-62>shell-pro-53-P18-S2:3",
+          "live-ue-64>shell-pro-53-P18-S2:1",
+          "live-ue-72>shell-pro-53-P18-S2:3",
+          "live-ue-76>shell-pro-53-P18-S2:5",
+          "live-ue-77>shell-pro-53-P18-S2:5",
+          "live-ue-78>shell-pro-53-P18-S2:3",
+          "live-ue-7>shell-pro-53-P18-S2:5",
+          "live-ue-82>shell-pro-53-P18-S2:1",
+          "live-ue-83>shell-pro-53-P18-S2:3",
+          "live-ue-91>shell-pro-53-P18-S2:1",
+          "live-ue-92>shell-pro-53-P18-S2:3",
+          "live-ue-94>shell-pro-53-P18-S2:3",
+          "live-ue-96>shell-pro-53-P18-S2:3",
+          "live-ue-97>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
           "shell-polar-P22-S1:22",
@@ -30654,18 +31026,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  -193.98969,
-                  336
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  0,
-                  672
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -30674,8 +31046,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  193.98969,
-                  336
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -30684,18 +31056,18 @@
               {
                 "beamId": 5,
                 "ground": [
-                  0,
-                  0
+                  193.98969,
+                  -336
                 ],
-                "isServing": true,
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 6,
                 "ground": [
-                  -387.979381,
-                  0
+                  -193.98969,
+                  -336
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -30718,7 +31090,7 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 5,
+          "beamId": 1,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -31359,11 +31731,24 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:5",
-          "live-ue-2>shell-pro-53-P18-S2:1",
+          "live-ue-0>shell-pro-53-P18-S2:1",
+          "live-ue-17>shell-pro-53-P18-S2:1",
+          "live-ue-28>shell-pro-53-P18-S2:3",
+          "live-ue-2>shell-pro-53-P18-S2:5",
           "live-ue-36>shell-pro-53-P18-S2:1",
-          "live-ue-38>shell-pro-53-P18-S2:1",
-          "live-ue-48>shell-pro-53-P18-S2:1"
+          "live-ue-38>shell-pro-53-P18-S2:3",
+          "live-ue-42>shell-pro-53-P18-S2:1",
+          "live-ue-48>shell-pro-53-P18-S2:1",
+          "live-ue-51>shell-pro-53-P18-S2:1",
+          "live-ue-59>shell-pro-53-P18-S2:1",
+          "live-ue-62>shell-pro-53-P18-S2:3",
+          "live-ue-64>shell-pro-53-P18-S2:1",
+          "live-ue-72>shell-pro-53-P18-S2:3",
+          "live-ue-76>shell-pro-53-P18-S2:5",
+          "live-ue-77>shell-pro-53-P18-S2:5",
+          "live-ue-82>shell-pro-53-P18-S2:1",
+          "live-ue-92>shell-pro-53-P18-S2:3",
+          "live-ue-94>shell-pro-53-P18-S2:3"
         ],
         "cellServing": [
           "shell-polar-P22-S1:22",
@@ -31523,18 +31908,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  -193.98969,
-                  336
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  0,
-                  672
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -31543,8 +31928,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  193.98969,
-                  336
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -31553,18 +31938,18 @@
               {
                 "beamId": 5,
                 "ground": [
-                  0,
-                  0
+                  193.98969,
+                  -336
                 ],
-                "isServing": true,
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 6,
                 "ground": [
-                  -387.979381,
-                  0
+                  -193.98969,
+                  -336
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -31587,7 +31972,7 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 5,
+          "beamId": 1,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -32228,8 +32613,8 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:5",
-          "live-ue-2>shell-pro-53-P18-S2:1",
+          "live-ue-0>shell-pro-53-P18-S2:1",
+          "live-ue-2>shell-pro-53-P18-S2:5",
           "live-ue-36>shell-pro-53-P18-S2:1",
           "live-ue-48>shell-pro-53-P18-S2:1"
         ],
@@ -32390,18 +32775,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  -193.98969,
-                  336
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  0,
-                  672
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -32410,8 +32795,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  193.98969,
-                  336
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -32420,18 +32805,18 @@
               {
                 "beamId": 5,
                 "ground": [
-                  0,
-                  0
+                  193.98969,
+                  -336
                 ],
-                "isServing": true,
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 6,
                 "ground": [
-                  -387.979381,
-                  0
+                  -193.98969,
+                  -336
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -32454,7 +32839,7 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 5,
+          "beamId": 1,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -33122,7 +33507,7 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:5"
+          "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
           "shell-pro-42-P10-S5:28",
@@ -33282,18 +33667,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  -193.98969,
-                  336
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  0,
-                  672
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -33302,8 +33687,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  193.98969,
-                  336
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -33312,18 +33697,18 @@
               {
                 "beamId": 5,
                 "ground": [
-                  0,
-                  0
+                  193.98969,
+                  -336
                 ],
-                "isServing": true,
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 6,
                 "ground": [
-                  -387.979381,
-                  0
+                  -193.98969,
+                  -336
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -33346,7 +33731,7 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 5,
+          "beamId": 1,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -34014,7 +34399,7 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:5"
+          "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
           "shell-pro-42-P10-S5:28",
@@ -34176,18 +34561,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  -193.98969,
-                  336
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  0,
-                  672
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -34196,8 +34581,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  193.98969,
-                  336
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -34206,18 +34591,18 @@
               {
                 "beamId": 5,
                 "ground": [
-                  0,
-                  0
+                  193.98969,
+                  -336
                 ],
-                "isServing": true,
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 6,
                 "ground": [
-                  -387.979381,
-                  0
+                  -193.98969,
+                  -336
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -34240,7 +34625,7 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 5,
+          "beamId": 1,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -34908,7 +35293,7 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:5"
+          "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
           "shell-pro-42-P10-S5:28",
@@ -35069,18 +35454,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  -193.98969,
-                  336
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  0,
-                  672
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -35089,8 +35474,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  193.98969,
-                  336
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -35099,18 +35484,18 @@
               {
                 "beamId": 5,
                 "ground": [
-                  0,
-                  0
+                  193.98969,
+                  -336
                 ],
-                "isServing": true,
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 6,
                 "ground": [
-                  -387.979381,
-                  0
+                  -193.98969,
+                  -336
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -35133,7 +35518,7 @@
         },
         "serving": {
           "satId": "shell-pro-53-P18-S2",
-          "beamId": 5,
+          "beamId": 1,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -35801,7 +36186,7 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:5"
+          "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
           "shell-pro-42-P10-S5:28",
@@ -35962,18 +36347,18 @@
               {
                 "beamId": 1,
                 "ground": [
-                  -193.98969,
-                  336
+                  0,
+                  0
                 ],
-                "isServing": false,
+                "isServing": true,
                 "frequencyIndex": 0,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 3,
                 "ground": [
-                  0,
-                  672
+                  193.98969,
+                  336
                 ],
                 "isServing": false,
                 "frequencyIndex": 2,
@@ -35982,8 +36367,8 @@
               {
                 "beamId": 4,
                 "ground": [
-                  193.98969,
-                  336
+                  387.979381,
+                  0
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
@@ -35992,18 +36377,18 @@
               {
                 "beamId": 5,
                 "ground": [
-                  0,
-                  0
+                  193.98969,
+                  -336
                 ],
-                "isServing": true,
+                "isServing": false,
                 "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
                 "beamId": 6,
                 "ground": [
-                  -387.979381,
-                  0
+                  -193.98969,
+                  -336
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,

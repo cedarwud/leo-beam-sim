@@ -216,6 +216,39 @@ export class HandoverManager {
     const currentSinr = this.state.sinrDb;
     this.ensureServingEpoch();
 
+    // Continuity rescue (beam-floor, owner-approved continuity-override). When the
+    // serving beam has LEFT the steering cone — it dropped out of this tick's
+    // candidates, so currentSinr === -Infinity — the UE is about to be stranded:
+    // the next slot the serving satellite can no longer schedule that beam. If a
+    // still-steerable sibling beam on the SAME satellite can carry a real link
+    // (>= the serving floor), switch to it IMMEDIATELY, bypassing the post-inter-HO
+    // ping-pong guard, the intra-switch dwell, AND the serving-epoch no-revisit ban.
+    // Rationale (the truth-boundary design call): a ~16s service outage is worse for
+    // the demo than the ping-pong/dwell those guards prevent, and beam-refining
+    // within the SAME sat is not an inter-satellite ping-pong. Tightly scoped — it
+    // fires ONLY when the serving beam has actually fallen out of the cone AND a
+    // viable same-sat rescue exists, so normal-condition behaviour (guard, dwell,
+    // ban) is unchanged. If no same-sat beam can carry the link, the sat is
+    // genuinely leaving: inter-HO (if a successor is visible) or honest service loss
+    // takes over below.
+    if (currentSinr === -Infinity) {
+      const rescue = sorted.find(
+        candidate =>
+          candidate.satId === this.state.satId
+          && candidate.beamId !== this.state.beamId
+          && candidate.sinrDb >= this.sinrThresholdDb,
+      );
+      if (rescue) {
+        return this.commitDecision(
+          'intra-switch',
+          rescue,
+          sorted,
+          simTimeMs,
+          'continuity rescue: serving beam left the steering cone, switch to steerable sibling',
+        );
+      }
+    }
+
     // Inter-HO owns the hard serving-satellite boundary. Keep its guard and
     // TTT gate ahead of local same-satellite beam refinements so intra-HO
     // cannot immediately shadow every inter-HO.

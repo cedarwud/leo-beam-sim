@@ -22,11 +22,17 @@ import { execFileSync } from 'node:child_process';
 // Each needs its own fix (stale-validator vs real-regression). Listed here so the
 // debt is VISIBLE and a new orphan cannot hide among them. When you GREEN one,
 // DELETE its entry — the runner fails if a quarantined validator passes.
-// 17 of the original 19 quarantined reds have been repaired (intent-preserving
-// validator fixes, adversarially verified). These 2 remain — NEITHER is a
-// validator-fixable issue; each is a real, deliberate red:
+// 18 of the original 19 quarantined reds have been repaired (intent-preserving
+// validator fixes, adversarially verified). beam-floor was the 18th: resolved
+// 2026-06-14 by the owner-approved continuity-override (option A) — a continuity
+// rescue in src/engine/handover/handover-manager.ts that, when the serving beam
+// leaves the steering cone, switches to a still-steerable same-sat sibling
+// immediately (bypassing the post-inter-HO ping-pong guard + the intra dwell + the
+// serving-epoch no-revisit ban), eliminating the ~16s service outage. The
+// s0:geometry-trace golden re-baselined to the corrected (service-restored) truth;
+// the frozen phase6p HOBS SINR KPI baseline + the handover-index goldens did NOT
+// drift. This ONE remains — NOT a validator-fixable issue; a real, deliberate red:
 const QUARANTINE = new Map([
-  ['validate:beam-floor', 'REAL ENGINE REGRESSION (needs an owner decision, NOT a validator fix) — commit ab861c4 added an intra-switch serving-epoch no-revisit ban (servedBeamIdsForServingEpoch) in src/engine/handover/handover-manager.ts; on hobs-2024-candidate-rich it strands the serving UE on a beam that leaves the steering cone -> ~16s service outage (~543-558s) until an inter-HO rescues. The ban is documented intentional demo policy, so the fix is an ENGINE TRUTH-BOUNDARY DESIGN CALL (continuity-override the ban vs re-scope the validator vs accept the outage). Do NOT silence the validator.'],
   ['validate:modqn:phase6t-source-channel-shadow-kpi', 'RED BY DESIGN (accepted deferred state) — a shadow-comparison guard correctly flagging the KNOWN beam-gain divergence between local src/engine/signal/beam-gain.ts (ITU-R S.672-4) and vendored src/core/channel/beam-gain.ts (J1+J3): ~33 dB beamGain diff, pathLoss/steeringLoss diff exactly 0. Engine is NOT regressed (validate:modqn:phase6p-hobs-sinr-kpi-baseline green; computeBeamGainDb byte-untouched). Deferred by Phase 6W CHANNEL_ADOPTION_DEFERRED_PROVENANCE_REQUIRED; unblock = cross-repo (ntn-sim-core) antenna-pattern provenance packet (Phase 6X). Stays red on purpose; never wire into an aggregate.'],
 ]);
 
