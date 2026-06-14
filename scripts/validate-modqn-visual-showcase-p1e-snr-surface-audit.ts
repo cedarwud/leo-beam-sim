@@ -2,8 +2,9 @@
  * P1e (c) — 9-surface SNR / no-interference audit (SDD §9 P1 exit
  * criterion (c) + §3 Q6).
  *
- * SDD audit list:
- *   1. src/ui/LiveKpiStrip.tsx              (line ~104)
+ * SDD audit list (originally 9 surfaces; #1 LiveKpiStrip removed — the
+ * component was deleted as dead code, so it is no longer a rendered SNR
+ * surface that could mislabel SNR as SINR; SDD numbering kept for #2-9):
  *   2. src/viz/SatelliteBeams.tsx           (line ~256)
  *   3. src/viz/BeamCalloutContent.tsx
  *   4. VizFrame.sinrLabels (declared in src/scene/types.ts)
@@ -65,14 +66,8 @@ type SurfaceSpec = {
 };
 
 const SURFACES: ReadonlyArray<SurfaceSpec> = [
-  {
-    label: '1. LiveKpiStrip',
-    file: 'src/ui/LiveKpiStrip.tsx',
-    requireAtLeastOne: [
-      /channelMetricLabelForKind/,
-      /channelMetricVerboseLabelForKind/,
-    ],
-  },
+  // #1 (LiveKpiStrip) removed — the component was deleted as dead code, so it
+  // is no longer a rendered SNR surface that could mislabel SNR as SINR.
   {
     label: '2. SatelliteBeams',
     file: 'src/viz/SatelliteBeams.tsx',

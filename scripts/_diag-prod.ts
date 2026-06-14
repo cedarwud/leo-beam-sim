@@ -1,0 +1,14 @@
+import { chromium } from '@playwright/test';
+const browser = await chromium.launch();
+const page = await browser.newPage();
+const errs: string[] = [], pageErrs: string[] = [], failed: string[] = [];
+page.on('console', m => { if (m.type()==='error') errs.push(m.text().slice(0,200)); });
+page.on('pageerror', e => pageErrs.push(String(e).slice(0,300)));
+page.on('requestfailed', r => failed.push(`${r.url().split('/').slice(-1)[0]} ${r.failure()?.errorText}`));
+page.on('response', r => { if (r.status()>=400) failed.push(`HTTP ${r.status()} ${r.url().split('/').slice(-2).join('/').slice(0,60)}`); });
+await page.goto('http://localhost:4173', { waitUntil:'domcontentloaded' });
+await page.waitForTimeout(8000);
+const hasShell = await page.locator('.leo-app-shell').count();
+const bodyText = (await page.locator('body').innerText().catch(()=> '')).slice(0,300);
+console.log(JSON.stringify({ hasShell, consoleErrors: errs.slice(0,8), pageErrors: pageErrs.slice(0,6), failedRequests: failed.slice(0,12), bodyText }, null, 2));
+await browser.close();
