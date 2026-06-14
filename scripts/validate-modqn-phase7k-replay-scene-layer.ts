@@ -551,10 +551,17 @@ function assertSceneBridgeSource(): void {
     'showLiveSatelliteMarkers && viz.displaySats',
     'MODQN replay must hide live satellite markers and rely on producer-context markers',
   );
+  // Tier-2 dead-twin retirement: the legacy steered SatelliteBeams cone block
+  // (gated `showLiveBeamCones && !showSinrLiveCellBeams` = a provably-false
+  // `X && !X`) is removed, so there is no legacy live SINR cone to leak into
+  // replay. The live SINR cones are now the cell-truth cones gated by
+  // `showSinrLiveCellBeams` (= the sinr-live viewport lane only), so they are
+  // structurally absent on the modqn-replay-proof lane — same intent, pinned to
+  // the lane gate (mirrors the showLiveSatelliteMarkers assertion above).
   assertContains(
     mainSceneSource,
-    'showLiveBeamCones && !showCellOverlay && !showSinrLiveCellBeams && viz.displaySats',
-    'MODQN replay must not also render legacy live SINR beam cones',
+    '{showSinrLiveCellBeams && (',
+    'MODQN replay must not render the live SINR beam cones (they are sinr-live-lane-gated; the legacy steered block is retired)',
   );
   assertContains(
     sceneLayerSource,
