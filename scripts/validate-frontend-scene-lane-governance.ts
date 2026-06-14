@@ -1519,19 +1519,21 @@ tangleLockGroup('QUAR-S6-BUS', () => {
     assertNotContains(sinrLiveDisplayDrawerSource, needle, `${label} is retired — not in the SINR-live tuners`);
     assertNotContains(sinrLiveQuickControlsSource, needle, `${label} is retired — not in the quick controls`);
   }
-  // Both SINR-live left-rail surfaces are lane-gated on the SINR-live lane in App.
-  for (const [tag, label] of [
-    ['<SinrLiveDisplayDrawer', 'SINR-live tuners'],
-    ['<SinrLiveQuickControls', 'SINR-live quick controls'],
-  ] as const) {
-    const mountIndex = appSource.indexOf(tag);
-    assert.ok(mountIndex >= 0, `App mounts the ${label}`);
-    const gateIndex = appSource.lastIndexOf("sceneLane === 'sinr-live'", mountIndex);
-    assert.ok(
-      gateIndex >= 0 && mountIndex - gateIndex < 260,
-      `App lane-gates the ${label} on the SINR-live lane`,
-    );
-  }
+  // The SINR-formula / handover tuners (SinrLiveDisplayDrawer) are SINR-live-gated.
+  const tunersMountIndex = appSource.indexOf('<SinrLiveDisplayDrawer');
+  assert.ok(tunersMountIndex >= 0, 'App mounts the SINR-live tuners');
+  const tunersGateIndex = appSource.lastIndexOf("sceneLane === 'sinr-live'", tunersMountIndex);
+  assert.ok(
+    tunersGateIndex >= 0 && tunersMountIndex - tunersGateIndex < 260,
+    'App lane-gates the SINR-live tuners on the SINR-live lane',
+  );
+  // The quick-control checkboxes (beam info / other beams / spotlight / HO slow)
+  // are GLOBAL display toggles (sceneDisplayConfig + camera + playback) — mounted on
+  // every lane, NOT SINR-live-gated.
+  assert.ok(
+    appSource.indexOf('<SinrLiveQuickControls') >= 0,
+    'App mounts the global quick-control checkboxes',
+  );
 });
 
 // ── G1-LEFT-DEFAULT: SINR-live left rail = light orientation card; tuners → ⚙ ──

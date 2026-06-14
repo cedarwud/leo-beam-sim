@@ -1757,18 +1757,19 @@ export function App() {
           reachable. Error: {modqnReplayFetchError}
         </div>
       )}
-      {sceneLane === 'sinr-live' && (
-        <SinrLiveQuickControls
-          beamCalloutsEnabled={sceneDisplayConfig.beamCalloutsEnabled}
-          showNonServingCones={sceneDisplayConfig.showNonServingCones}
-          cinematicMode={effectiveCinematicMode}
-          autoSlowEnabled={playback.autoSlowEnabled}
-          onToggleBeamCallouts={() => setSceneDisplayConfig(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
-          onToggleNonServingCones={() => setSceneDisplayConfig(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
-          onCinematicModeChange={camera.setCinematicMode}
-          onToggleAutoSlow={playback.toggleAutoSlow}
-        />
-      )}
+      {/* Global display-control row (beam info / other beams / spotlight / HO slow):
+          these toggle sceneDisplayConfig + camera + playback, which apply on every
+          lane — shown on SINR and MODQN alike, not lane-gated. */}
+      <SinrLiveQuickControls
+        beamCalloutsEnabled={sceneDisplayConfig.beamCalloutsEnabled}
+        showNonServingCones={sceneDisplayConfig.showNonServingCones}
+        cinematicMode={effectiveCinematicMode}
+        autoSlowEnabled={playback.autoSlowEnabled}
+        onToggleBeamCallouts={() => setSceneDisplayConfig(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
+        onToggleNonServingCones={() => setSceneDisplayConfig(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
+        onCinematicModeChange={camera.setCinematicMode}
+        onToggleAutoSlow={playback.toggleAutoSlow}
+      />
       {sceneLane !== 'sinr-live' && (
         <div className="leo-modqn-subnav-row">
           <ModqnViewToggle
