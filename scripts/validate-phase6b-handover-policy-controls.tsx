@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { HandoverManager } from '../src/engine/handover/handover-manager.ts';
@@ -20,7 +20,6 @@ import { createSignalTuningState, applySignalTuning } from '../src/signalTuning.
 import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
 import { HandoverPolicyControls } from '../src/ui/HandoverPolicyControls.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
-import { SidebarTabShell, type SidebarTabItem } from '../src/ui/SidebarTabShell.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-candidate-rich';
@@ -67,19 +66,7 @@ function assertNotContains(text: string, unexpected: string): void {
   assert.ok(!text.includes(unexpected), `expected rendered UI not to contain "${unexpected}"`);
 }
 
-type LeftSidebarTab = 'objective' | 'signal' | 'handover';
-
-const LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
-  { key: 'signal', label: 'SINR formula', description: 'SINR tuning' },
-  { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
-];
-
-const MODQN_LEFT_SIDEBAR_TABS: readonly SidebarTabItem<LeftSidebarTab>[] = [
-  { key: 'objective', label: 'MODQN objective', description: 'post-hoc ω weights' },
-  { key: 'handover', label: 'Handover policy', description: 'decision timing gates' },
-];
-
-function renderSidebarTextAndMarkup() {
+function renderTuningMarkups() {
   const profile = loadProfile(PROFILE_ID);
   const applied = createHandoverPolicyTuningState(profile);
   const draft = {
@@ -99,7 +86,7 @@ function renderSidebarTextAndMarkup() {
       onReset={() => {}}
     />,
   );
-  const handoverControls = (
+  const handoverMarkup = renderToStaticMarkup(
     <HandoverPolicyControls
       draft={draft}
       applied={applied}
@@ -108,78 +95,63 @@ function renderSidebarTextAndMarkup() {
       onDraftChange={() => {}}
       onApply={() => {}}
       onReset={() => {}}
-    />
-  );
-  const handoverMarkup = renderToStaticMarkup(handoverControls);
-  const sidebarMarkup = renderToStaticMarkup(
-    <SidebarTabShell
-      label="Simulation control sidebar"
-      side="left"
-      tabs={LEFT_SIDEBAR_TABS}
-      activeKey="handover"
-      onChange={() => {}}
-    >
-      {handoverControls}
-    </SidebarTabShell>,
-  );
-  const modqnSidebarMarkup = renderToStaticMarkup(
-    <SidebarTabShell
-      label="Simulation control sidebar"
-      side="left"
-      tabs={MODQN_LEFT_SIDEBAR_TABS}
-      activeKey="handover"
-      onChange={() => {}}
-    >
-      {handoverControls}
-    </SidebarTabShell>,
+    />,
   );
 
   return {
     signalMarkup,
     handoverMarkup,
-    sidebarMarkup,
-    modqnSidebarMarkup,
-    text: decodeHtmlText(sidebarMarkup),
+    text: decodeHtmlText(handoverMarkup),
     profile,
     applied,
     draft,
   };
 }
 
-function assertAppOwnsTopLevelHandoverTab(): void {
+// G1-declutter (commit c37535e) REMOVED the old top-level left-sidebar tab model
+// (`type LeftSidebarTab = 'objective' | 'signal' | 'handover'` + a "Handover
+// policy" sidebar tab). The current model is a light 'summary' | 'evidence' left
+// rail; the HandoverPolicyControls + SignalTuningPanel power tools now render as
+// the `handoverPolicySection` / `sinrFormulaSection` of the ⚙ Advanced
+// SinrLiveDisplayDrawer. This asserts the CURRENT placement truth, not the dead
+// top-level-tab scaffolding.
+function assertHandoverPolicyLivesInAdvancedDrawer(): void {
+  const runtimeModelSource = readFileSync(
+    new URL('../src/app/appRuntimeModel.ts', import.meta.url),
+    'utf8',
+  );
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   const signalPanelSource = readFileSync(new URL('../src/ui/SignalTuningPanel.tsx', import.meta.url), 'utf8');
-  // Read ALL style partials (the .leo-sidebar-tab-shell rules moved to
-  // _sidebar.scss in the main.scss family split) so the selector assert holds
-  // wherever the rule was relocated.
-  const styleSource = readdirSync(new URL('../src/styles/', import.meta.url))
-    .filter((f) => f.endsWith('.scss'))
-    .map((f) => readFileSync(new URL(`../src/styles/${f}`, import.meta.url), 'utf8'))
-    .join('\n');
 
-  assertContains(appSource, "type LeftSidebarTab = 'objective' | 'signal' | 'handover'");
-  assertContains(appSource, "{ key: 'objective', label: 'MODQN objective'");
-  assertContains(appSource, "{ key: 'signal', label: 'SINR formula'");
-  assertContains(appSource, "{ key: 'handover', label: 'Handover policy'");
-  assertContains(appSource, 'SINR_LEFT_SIDEBAR_TABS');
-  assertContains(appSource, 'MODQN_LEFT_SIDEBAR_TABS');
-  assertContains(appSource, 'SINR_RIGHT_SIDEBAR_TABS');
-  assertContains(appSource, 'MODQN_RIGHT_SIDEBAR_TABS');
-  assertContains(appSource, 'getLeftSidebarTabsForMode');
-  assertContains(appSource, 'getRightSidebarTabsForMode');
-  assertContains(appSource, '<SidebarTabShell');
-  assertContains(appSource, '<HandoverPolicyControls');
-  assertContains(styleSource, '.leo-sidebar-tab-shell[data-tab-count="2"] .leo-sidebar-tab-list');
+  // The old triplet tab model is intentionally gone; the left rail is summary/evidence.
+  assertContains(runtimeModelSource, "export type LeftSidebarTab = 'summary' | 'evidence'");
+  assertNotContains(runtimeModelSource, "'objective' | 'signal' | 'handover'");
+
+  // HandoverPolicyControls is injected as the handoverPolicySection of the ⚙
+  // Advanced SinrLiveDisplayDrawer — NOT a top-level sidebar tab. Assert the
+  // ordered nesting: drawer open → handoverPolicySection prop → the controls.
+  const drawerIndex = appSource.indexOf('<SinrLiveDisplayDrawer');
+  const handoverSectionIndex = appSource.indexOf('handoverPolicySection={', drawerIndex);
+  const handoverControlsIndex = appSource.indexOf('<HandoverPolicyControls', handoverSectionIndex);
+  assert.ok(drawerIndex >= 0, 'expected the SINR-live Advanced drawer mount');
+  assert.ok(
+    handoverSectionIndex > drawerIndex,
+    'expected handoverPolicySection prop inside the Advanced drawer',
+  );
+  assert.ok(
+    handoverControlsIndex > handoverSectionIndex,
+    'expected HandoverPolicyControls passed as the Advanced drawer handoverPolicySection',
+  );
+  assertContains(appSource, 'sinrFormulaSection={');
+
+  // SignalTuningPanel must stay a distinct layer (no embedded handover policy).
   assertNotContains(signalPanelSource, 'HandoverPolicyControls');
   assertNotContains(signalPanelSource, 'handover-policy-page');
   assertNotContains(signalPanelSource, 'tuning-page-tabs');
 }
 
 function assertTuningPlacementAndCopy(): void {
-  const { signalMarkup, handoverMarkup, sidebarMarkup, modqnSidebarMarkup, text } = renderSidebarTextAndMarkup();
-  assertContains(text, 'SINR formula');
-  assertContains(text, 'Handover policy');
-  assertNotContains(text, 'MODQN objective');
+  const { signalMarkup, handoverMarkup, text } = renderTuningMarkups();
   assertContains(text, 'Handover Policy Research Controls');
   assertContains(text, 'policy: sinr-offset');
   assertContains(text, 'read-only');
@@ -198,37 +170,12 @@ function assertTuningPlacementAndCopy(): void {
   assertNotContains(text, 'policy selector');
   assertNotContains(text, 'SINR threshold');
 
-  const topLevelTabsIndex = sidebarMarkup.indexOf('class="leo-sidebar-tab-list"');
-  const objectiveTabIndex = sidebarMarkup.indexOf('id="left-sidebar-tab-objective"');
-  const signalTabIndex = sidebarMarkup.indexOf('id="left-sidebar-tab-signal"');
-  const handoverTabIndex = sidebarMarkup.indexOf('id="left-sidebar-tab-handover"');
-  const policyIndex = sidebarMarkup.indexOf('data-testid="handover-policy-controls"');
-  assert.ok(topLevelTabsIndex >= 0, 'expected sidebar top-level tab list');
-  assert.equal(objectiveTabIndex, -1, 'SINR mode sidebar must not expose MODQN objective tab');
-  assert.ok(signalTabIndex > topLevelTabsIndex, 'expected SINR formula tab in SINR mode sidebar');
-  assert.ok(handoverTabIndex > signalTabIndex, 'expected Handover policy tab next to SINR formula in SINR mode');
-  assert.ok(policyIndex > handoverTabIndex, 'handover policy controls must render in the active top-level sidebar panel');
-
-  const modqnText = decodeHtmlText(modqnSidebarMarkup);
-  assertContains(modqnText, 'MODQN objective');
-  assertContains(modqnText, 'Handover policy');
-  assertContains(modqnText, 'Handover Policy Research Controls');
-  assert.equal(
-    modqnSidebarMarkup.indexOf('id="left-sidebar-tab-signal"'),
-    -1,
-    'MODQN mode sidebar must not expose SINR formula tab',
-  );
-  assert.ok(
-    modqnSidebarMarkup.indexOf('id="left-sidebar-tab-handover"') > modqnSidebarMarkup.indexOf('id="left-sidebar-tab-objective"'),
-    'MODQN mode sidebar must expose Handover policy next to MODQN objective',
-  );
-
   assertContains(signalMarkup, 'data-testid="sinr-formula-page"');
   assertContains(signalMarkup, 'data-testid="sinr-formula-tabs"');
   assertContains(handoverMarkup, 'data-testid="handover-policy-controls"');
   assertNotContains(signalMarkup, 'data-testid="handover-policy-controls"');
   assertNotContains(decodeHtmlText(signalMarkup), 'Handover Policy Research Controls');
-  assertAppOwnsTopLevelHandoverTab();
+  assertHandoverPolicyLivesInAdvancedDrawer();
 }
 
 function assertModeVisibility(): void {
@@ -280,12 +227,17 @@ function assertModeVisibility(): void {
       handoverMode="decision-overlay-on-live-sinr"
     />,
   ));
-  assertContains(modqnLiveStatusText, 'MODQN replay');
-  assertContains(modqnLiveStatusText, 'MODQN selects serving; SINR metrics are live');
-  assertContains(modqnLiveStatusText, 'MODQN-selected live link');
+  // Re-pinned to current MODQN-overlay live-status copy (getLiveStatusModeCopy
+  // in src/ui/InfoPanel.tsx). The consolidation refactors 16e7207 (S4-4a) /
+  // cc959d7 (S5-2b) reworded these strings; the assert INTENT is unchanged —
+  // the MODQN-overlay mode panel must show MODQN-replay-overlay serving copy +
+  // the live Δ SINR + decision-timing gate, and must NOT show "replay evidence".
+  assertContains(modqnLiveStatusText, 'MODQN replay decision overlay');
+  assertContains(modqnLiveStatusText, 'serving beam displays the MODQN replay decision overlay');
+  assertContains(modqnLiveStatusText, 'MODQN overlay serving link');
   assertContains(modqnLiveStatusText, 'live SINR reference');
-  assertContains(modqnLiveStatusText, 'Δ live SINR');
-  assertContains(modqnLiveStatusText, 'Timing Gate');
+  assertContains(modqnLiveStatusText, 'live Δ SINR');
+  assertContains(modqnLiveStatusText, 'decision timing threshold');
   assertNotContains(modqnLiveStatusText, 'MODQN replay evidence');
 }
 
@@ -816,11 +768,11 @@ function run(): void {
   assertInterHandoverUsesBeamLevelVisualParity();
   assertHandoverToastFollowsActivePolicyState();
 
-  console.log('Phase 6C handover policy top-level sidebar tab validation passed.');
+  console.log('Phase 6C handover policy Advanced-drawer placement validation passed.');
   console.log(JSON.stringify({
     profileId: PROFILE_ID,
     asserted: {
-      placement: 'Top mode selector owns SINR/MODQN; left sidebar shows mode-specific controls',
+      placement: 'No top-level handover sidebar tab; the ⚙ Advanced SinrLiveDisplayDrawer hosts the handover-policy + SINR-formula sections (left rail is summary/evidence)',
       copy: ['policy: sinr-offset read-only', 'Handover attach threshold', 'Intra-HO limit per satellite', 'no standalone handover SINR threshold label'],
       state: ['draft does not alter effective policy', 'apply updates effective policy', 'reset state clears stale handover evidence', 'inter gate preempts intra', 'post-inter guard blocks immediate intra', 'intra dwell preview surfaces while accumulating', 'intra epoch guard resets after inter-HO'],
       preservation: ['handover reset returns to replay start offset', 'handover reset publishes a zero-delta initial frame'],

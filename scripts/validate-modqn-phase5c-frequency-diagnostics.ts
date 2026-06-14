@@ -278,7 +278,12 @@ function assertStaticWiringAndBoundaries(): void {
     'Phase 5C docs lost the replay evidence claim boundary',
   );
 
-  const nonScopePathPattern = new RegExp(['src\\/engine\\/sig', 'nal|src\\/engine\\/hand', 'over'].join(''));
+  // Boundary intent: a Phase-5C-scoped display/scene file must not COUPLE into
+  // rigor-critical engine signal/handover (import/require). Match only an
+  // import-specifier context so a cited doc path in prose / a JSX disclosure
+  // string (e.g. DiagnosticsDrawer's "documented in src/engine/handover/...")
+  // is NOT a false positive. (Split-joined so this validator never self-flags.)
+  const nonScopePathPattern = new RegExp(['(?:from|import|require)\\s*\\(?\\s*[\'"][^\'"]*src\\/engine\\/(?:sig', 'nal|hand', 'over)'].join(''));
   const producerIdentityPattern = new RegExp(['parseModqnReplay', 'Bundle|createBeamLayoutBridge', 'Identity'].join(''));
   const replayEvidencePattern = new RegExp(['HOBS\\/SINR live output as MODQN replay', ' evidence'].join(''), 'i');
 

@@ -22,15 +22,12 @@ import { execFileSync } from 'node:child_process';
 // Each needs its own fix (stale-validator vs real-regression). Listed here so the
 // debt is VISIBLE and a new orphan cannot hide among them. When you GREEN one,
 // DELETE its entry — the runner fails if a quarantined validator passes.
-// 14 of the original 19 quarantined reds were repaired 2026-06-14 (intent-preserving
-// validator fixes, adversarially verified). These 5 remain — each needs a HUMAN
-// decision, NOT a source-pin update:
+// 17 of the original 19 quarantined reds have been repaired (intent-preserving
+// validator fixes, adversarially verified). These 2 remain — NEITHER is a
+// validator-fixable issue; each is a real, deliberate red:
 const QUARANTINE = new Map([
-  ['validate:beam-floor', 'REAL ENGINE REGRESSION — validator is byte-identical to its passing creation; bisection points at src/engine/handover/handover-manager.ts (serving-pending beam-floor fallback). FIX THE ENGINE, never the validator.'],
-  ['validate:modqn:phase6t-source-channel-shadow-kpi', 'RED BY DESIGN — a shadow-comparison guard correctly catching a real channel-model KPI drift. Do NOT silence; investigate the drift (scripts/fixtures/modqn-phase6t-*).'],
-  ['validate:phase6b:handover-policy-controls', 'DEAD ARCHITECTURE — asserts the removed LeftSidebarTab=objective|signal|handover top-level-tab model (now appRuntimeModel summary|evidence). Rewrite to the current sidebar contract, or retire the obsolete placement gate.'],
-  ['validate:phase6c:handover-policy-placement', 'DEAD ARCHITECTURE — shares the phase6b script; the top-level Handover-Policy tab placement it proved was removed by design. Retire or rewrite alongside phase6b.'],
-  ['validate:modqn:phase5c-frequency-diagnostics', 'PARTIAL — repair workflow fixed the stale SimState fixture, but a Phase-5C vendor-boundary assert (scoped files must not import /src/engine/) is still red and is NOT a safe source-pin update; needs a human look.'],
+  ['validate:beam-floor', 'REAL ENGINE REGRESSION (needs an owner decision, NOT a validator fix) — commit ab861c4 added an intra-switch serving-epoch no-revisit ban (servedBeamIdsForServingEpoch) in src/engine/handover/handover-manager.ts; on hobs-2024-candidate-rich it strands the serving UE on a beam that leaves the steering cone -> ~16s service outage (~543-558s) until an inter-HO rescues. The ban is documented intentional demo policy, so the fix is an ENGINE TRUTH-BOUNDARY DESIGN CALL (continuity-override the ban vs re-scope the validator vs accept the outage). Do NOT silence the validator.'],
+  ['validate:modqn:phase6t-source-channel-shadow-kpi', 'RED BY DESIGN (accepted deferred state) — a shadow-comparison guard correctly flagging the KNOWN beam-gain divergence between local src/engine/signal/beam-gain.ts (ITU-R S.672-4) and vendored src/core/channel/beam-gain.ts (J1+J3): ~33 dB beamGain diff, pathLoss/steeringLoss diff exactly 0. Engine is NOT regressed (validate:modqn:phase6p-hobs-sinr-kpi-baseline green; computeBeamGainDb byte-untouched). Deferred by Phase 6W CHANNEL_ADOPTION_DEFERRED_PROVENANCE_REQUIRED; unblock = cross-repo (ntn-sim-core) antenna-pattern provenance packet (Phase 6X). Stays red on purpose; never wire into an aggregate.'],
 ]);
 
 // Load-sensitive PERFORMANCE validators: they measure per-frame CPU/timing and
