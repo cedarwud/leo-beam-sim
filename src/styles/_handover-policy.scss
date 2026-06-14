@@ -1,0 +1,142 @@
+// handover-policy family CSS — extracted VERBATIM from main.scss by
+// scripts/_scss-split.mjs (families: policy). Rules are
+// unchanged, only relocated. Verified render-equivalent (_scss-equiv.mjs) + screenshots.
+
+.leo-policy-section-header,
+.leo-policy-control-list {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.leo-policy-section-title-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.leo-policy-section-title {
+  color: #d8fffa;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.leo-policy-readonly-pill {
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 9px;
+  border: 1px solid rgba(118, 234, 215, 0.26);
+  border-radius: 999px;
+  background: rgba(118, 234, 215, 0.09);
+  color: #bffbf2;
+  font-size: 14px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.leo-policy-control-card {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(118, 234, 215, 0.18);
+  border-radius: 8px;
+  background: rgba(7, 24, 34, 0.72);
+}
+
+.leo-policy-control-card[data-draft-changed="true"] {
+  border-color: rgba(118, 234, 215, 0.48);
+  background: rgba(118, 234, 215, 0.09);
+}
+
+.leo-policy-control-heading {
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.leo-policy-control-title-block,
+.leo-policy-control-label,
+.leo-policy-control-applied,
+.leo-policy-control-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.leo-policy-control-label {
+  color: #eefaff;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.leo-policy-control-applied {
+  margin-top: 3px;
+  color: rgba(191, 251, 242, 0.76);
+  font-size: 17px;
+}
+
+.leo-policy-control-value {
+  flex: 0 0 auto;
+  max-width: 44%;
+  padding: 7px 10px;
+  border: 1px solid rgba(118, 234, 215, 0.32);
+  border-radius: 7px;
+  background: rgba(118, 234, 215, 0.1);
+  color: #e8fffb;
+  font-size: 24px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.leo-policy-control-range {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(191, 251, 242, 0.68);
+  font-size: 16px;
+}
+
+.leo-policy-control-details {
+  padding: 7px 8px;
+  border-color: rgba(118, 234, 215, 0.18);
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(229, 244, 251, 0.82);
+  font-size: 17px;
+}
+
+.leo-policy-control-details p {
+  margin: 7px 0 0;
+  line-height: 1.45;
+}
+
+.leo-policy-control-details--section {
+  font-size: 17px;
+}
+
+.leo-policy-control-draft-note {
+  color: rgba(191, 251, 242, 0.76);
+  font-size: 17px;
+}
+
+.leo-policy-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  color: rgba(229, 244, 251, 0.72);
+  font-size: 17px;
+}
+
+.leo-policy-action-row button {
+  min-height: 44px;
+}
+
+.leo-policy-control-card .leo-ui-range {
+  min-height: 30px;
+}

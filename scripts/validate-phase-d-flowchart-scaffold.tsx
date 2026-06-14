@@ -180,7 +180,11 @@ function validateStaticScaffoldSource(): void {
   );
 
   const flowchartStyleStart = styleSource.indexOf('.leo-algorithm-flowchart');
-  const flowchartStyleEnd = styleSource.indexOf('.leo-modqn-objective-controls', flowchartStyleStart);
+  // End marker = the first selector after the flowchart cluster (+ its
+  // reduced-motion @media). Was `.leo-modqn-objective-controls`, which moved to
+  // _modqn.scss in the main.scss family split; `.leo-diagnostics-drawer` is the
+  // selector that now immediately follows the flowchart block in main.scss.
+  const flowchartStyleEnd = styleSource.indexOf('.leo-diagnostics-drawer', flowchartStyleStart);
   assert.ok(flowchartStyleStart >= 0, 'leo-algorithm-flowchart style block exists');
   assert.ok(flowchartStyleEnd > flowchartStyleStart, 'leo-algorithm-flowchart style block has an end boundary');
   const flowchartStyles = styleSource.slice(flowchartStyleStart, flowchartStyleEnd);

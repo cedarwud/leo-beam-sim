@@ -1,0 +1,52 @@
+// info-panel family CSS — extracted VERBATIM from main.scss by
+// scripts/_scss-split.mjs (families: duel, info). Rules are
+// unchanged, only relocated. Verified render-equivalent (_scss-equiv.mjs) + screenshots.
+
+.leo-info-panel {
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  container-type: inline-size;
+}
+
+.leo-info-panel,
+.leo-signal-tuning-panel {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.leo-duel-card {
+  container-type: inline-size;
+}
+
+.leo-duel-card-body {
+  grid-template-areas:
+    "serving"
+    "decision"
+    "comparison";
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.leo-duel-card-body > [data-duel-block="serving"] {
+  grid-area: serving;
+}
+
+.leo-duel-card-body > [data-duel-block="decision"] {
+  grid-area: decision;
+}
+
+.leo-duel-card-body > [data-duel-block="comparison"] {
+  grid-area: comparison;
+}
+
+.leo-duel-decision-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.leo-duel-trigger-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}

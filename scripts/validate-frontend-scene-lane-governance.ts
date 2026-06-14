@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -1248,12 +1248,14 @@ assertNotContains(
 // staleness != offline and source-gap distinctions stay byte-identical.
 const mainScssSource = readRepoFile('src/styles/main.scss');
 const tokensScssSource = readRepoFile('src/styles/_tokens.scss');
-const modqnScssSource = readRepoFile('src/styles/_modqn.scss');
-// INV chip selectors may live in main.scss OR an extracted family partial (the
-// INV-1 truth-plane chips moved to _modqn.scss in the main.scss family split).
-// Assert the token-reference contract against the combined styled-surface source
-// so it holds wherever the selector was relocated.
-const styledSurfaceScss = `${mainScssSource}\n${modqnScssSource}`;
+// INV chip selectors may live in main.scss OR ANY extracted family partial (the
+// main.scss family split scatters them across _modqn / _sidebar / _sinr-panel /
+// etc.). Assert the token-reference contract against ALL styled-surface sources
+// so it holds wherever a selector was relocated.
+const styledSurfaceScss = readdirSync(join(ROOT_DIR, 'src/styles'))
+  .filter((f) => f.endsWith('.scss'))
+  .map((f) => readRepoFile(`src/styles/${f}`))
+  .join('\n');
 for (const [token, value] of [
   // INV-1 truth-plane (chip text + border are distinct hues, both locked)
   ['--leo-plane-live', '#76ead7'],

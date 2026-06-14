@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { HandoverManager } from '../src/engine/handover/handover-manager.ts';
@@ -149,7 +149,13 @@ function renderSidebarTextAndMarkup() {
 function assertAppOwnsTopLevelHandoverTab(): void {
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   const signalPanelSource = readFileSync(new URL('../src/ui/SignalTuningPanel.tsx', import.meta.url), 'utf8');
-  const styleSource = readFileSync(new URL('../src/styles/main.scss', import.meta.url), 'utf8');
+  // Read ALL style partials (the .leo-sidebar-tab-shell rules moved to
+  // _sidebar.scss in the main.scss family split) so the selector assert holds
+  // wherever the rule was relocated.
+  const styleSource = readdirSync(new URL('../src/styles/', import.meta.url))
+    .filter((f) => f.endsWith('.scss'))
+    .map((f) => readFileSync(new URL(`../src/styles/${f}`, import.meta.url), 'utf8'))
+    .join('\n');
 
   assertContains(appSource, "type LeftSidebarTab = 'objective' | 'signal' | 'handover'");
   assertContains(appSource, "{ key: 'objective', label: 'MODQN objective'");
