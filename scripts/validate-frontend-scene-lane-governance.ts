@@ -202,8 +202,8 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(cellPreview.sourceCompatible, true, 'MODQN cell lane live source should be compatible');
   assert.equal(cellPreview.showCellOverlay, true, 'MODQN cell lane should own cell overlay');
   assert.equal(cellPreview.showLiveSatelliteMarkers, true, 'MODQN cell lane should keep satellite anchors');
-  assert.equal(cellPreview.showLiveBeamCones, false, 'MODQN cell lane should hide legacy live beam cones');
-  assert.equal(cellPreview.showLiveSceneEffects, false, 'MODQN cell lane should not inherit SINR live effects');
+  assert.equal(cellPreview.showLiveBeamCones, true, 'MODQN cell lane renders the SINR-style beam cones (consolidation: MODQN renders like SINR)');
+  assert.equal(cellPreview.showLiveSceneEffects, true, 'MODQN cell lane inherits the SINR live effects (consolidation)');
   assert.equal(cellPreview.showCinematicSpotlight, false, 'MODQN cell lane should not inherit spotlight effects');
   assert.equal(cellPreview.effectiveCinematicMode, 'off', 'MODQN cell lane should force cinematic mode off');
   assert.equal(cellPreview.handoverStoryLayerPolicy, 'profile-derived-demo', 'MODQN cell lane may own the profile-derived story overlay');
@@ -320,8 +320,8 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   );
   assert.equal(
     renderPlan('modqn-live-cell-preview', 'live-sim').showSinrServingMosaic,
-    false,
-    'MODQN cell preview must not mount the SINR-serving mosaic (it owns the MODQN cell overlay instead)',
+    true,
+    'MODQN cell preview mounts the SINR-serving mosaic (consolidation: MODQN renders like SINR)',
   );
   assert.equal(
     renderPlan('modqn-replay-proof', 'live-sim', true).showSinrServingMosaic,
@@ -355,8 +355,8 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   );
   assert.equal(
     renderPlan('modqn-live-cell-preview', 'live-sim').showSinrLiveCellBeams,
-    false,
-    'MODQN cell preview must not mount the cell-truth cones (it owns the MODQN cell overlay instead)',
+    true,
+    'MODQN cell preview mounts the cell-beam render flag (consolidation: MODQN renders like SINR)',
   );
   assert.equal(
     renderPlan('modqn-replay-proof', 'live-sim', true).showSinrLiveCellBeams,
@@ -385,8 +385,8 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   );
   assert.equal(
     renderPlan('modqn-live-cell-preview', 'live-sim').showSinrLiveHandoverPulse,
-    false,
-    'MODQN cell preview must not mount the SINR live-handover pulse',
+    true,
+    'MODQN cell preview mounts the SINR live-handover pulse (consolidation: MODQN renders like SINR)',
   );
   assert.equal(
     renderPlan('modqn-replay-proof', 'live-sim', true).showSinrLiveHandoverPulse,
@@ -1716,7 +1716,7 @@ const sinrServingMosaicSource = readRepoFile('src/scene/sinrServingMosaic.ts');
 const sinrServingAggregateSource = readRepoFile('src/ui/SinrServingAggregate.tsx');
 assertContains(
   sceneLaneRenderPlanSource,
-  'const showSinrServingMosaic = showSinrLiveViewport',
+  'const showSinrServingMosaic = showSinrBeamRender',
   'SINR-serving mosaic is gated sinr-live only (always-on ambient, no producer dependency)',
 );
 // QUAR-S4-SERVING block #1 RETIRED (S4-3): the mosaic module-ownership /
@@ -1985,7 +1985,7 @@ assertContains(
 );
 assertContains(
   sceneLaneRenderPlanSource,
-  'const showSinrLiveHandoverPulse = showSinrLiveViewport',
+  'const showSinrLiveHandoverPulse = showSinrBeamRender',
   'G2c pulse is gated sinr-live only + ALWAYS-ON (decoupled from the director cinematic gate)',
 );
 // (2) MainScene derives the pulse cones under the always-on flag (NOT the
@@ -2826,7 +2826,7 @@ assertContains(
 );
 assertContains(
   sceneLaneRenderPlanSource,
-  'const showLiveSceneEffects = showSinrLiveViewport;',
+  'const showLiveSceneEffects = showSinrBeamRender;',
   'Scene lane render plan gates live-only effects to SINR live',
 );
 assertContains(

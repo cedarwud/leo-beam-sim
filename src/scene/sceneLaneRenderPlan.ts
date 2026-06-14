@@ -157,6 +157,12 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   const showSinrLiveViewport = input.sceneLane === 'sinr-live' && isLiveScene;
   const showCellOverlay = input.sceneLane === 'modqn-live-cell-preview' && isLiveScene;
   const showProfileHandoverStoryLayer = showCellOverlay;
+  // MODQN consolidation (Step 2): the SINR-style beam render (steered cones +
+  // serving mosaic + live-handover pulse + live effects) now mounts on BOTH the
+  // live SINR lane AND the MODQN live-cell-preview lane, so MODQN renders beams
+  // like SINR (the MODQN decision overlay then highlights the chosen beam). The
+  // proof/artifact lanes stay inert.
+  const showSinrBeamRender = showSinrLiveViewport || showCellOverlay;
   // S-FLAG-2: the MODQN service-allocation overlay family is `modqn-live-cell-preview`
   // ONLY and parked OFF until the producer baseline is non-degenerate. Default OFF
   // (`?? false`); App threads `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` / the
@@ -168,7 +174,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     input.sceneLane === 'modqn-replay-proof'
     && isLiveScene
     && input.replayProofLayerRequested;
-  const showLiveSceneEffects = showSinrLiveViewport;
+  const showLiveSceneEffects = showSinrBeamRender;
   const showCinematicSpotlight = showSinrLiveViewport && input.cinematicMode === 'spotlight';
   // Director focus is allowed on the live walker lanes (live-focus) and on the
   // artifact-replay lane (cinematic replay). Artifact-replay may own replay speed
@@ -184,24 +190,24 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // SINR-serving mosaic (S2): sinr-live ONLY, always-on ambient default (NOT
   // director-gated). It is a distinct SINR-serving layer, never the MODQN cell
   // overlay — so it is inert on every MODQN/artifact lane.
-  const showSinrServingMosaic = showSinrLiveViewport;
+  const showSinrServingMosaic = showSinrBeamRender;
   // S-cells-4 RENDER RESET (user, 2026-06-08): the earth-fixed cell-truth CONES are
   // PARKED — they washed the viewport with tall spread cones and used the wrong
   // colour. The sinr-live lane renders the ORIGINAL steered `SatelliteBeams`
   // (satellite-tint colour, few converging beams) again. The cell-truth MODEL stays
   // computed (dormant, for a future cinema / off-axis render); only the CONE render
   // is off. See `.agent-memory/project_sinr_render_reset_2026-06-08.md`.
-  const showSinrLiveCellBeams = showSinrLiveViewport;
+  const showSinrLiveCellBeams = showSinrBeamRender;
   // G2c live-handover pulse: sinr-live ONLY, ALWAYS-ON ambient (NOT director-gated).
   // Same lane gate as the faint ambient cones — the pulse is the bright, age-faded
   // overlay of the real per-frame handovers the cell model already classified, so it
   // mounts whenever the SINR-live viewport is shown, never waiting on a manual arm.
-  const showSinrLiveHandoverPulse = showSinrLiveViewport;
+  const showSinrLiveHandoverPulse = showSinrBeamRender;
   const showLiveSatelliteMarkers = isLiveScene && (
     input.sceneLane === 'sinr-live'
     || input.sceneLane === 'modqn-live-cell-preview'
   );
-  const showLiveBeamCones = showSinrLiveViewport;
+  const showLiveBeamCones = showSinrBeamRender;
   const showBeamCallouts = input.beamCalloutsEnabled && showLiveBeamCones;
   const showGroundRipple =
     showLiveSceneEffects
