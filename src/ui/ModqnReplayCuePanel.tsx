@@ -155,7 +155,13 @@ export function ModqnReplayCuePanel({
 
   if (appMode !== 'modqn-demo') return null;
 
-  const proofViewportToggle = (
+  // MODQN consolidation: the "Show/Hide proof in viewport" switch is PARKED — the
+  // MODQN page is a single dense-Q proof page now, so the separate modqn-replay-proof
+  // viewport lane is not user-reachable (this toggle was its only UI trigger). The
+  // toggle component + props + wiring are retained (governance source pins / easy
+  // un-park) but it no longer renders.
+  const PROOF_VIEWPORT_TOGGLE_PARKED = true;
+  const proofViewportToggle = PROOF_VIEWPORT_TOGGLE_PARKED ? null : (
     <ModqnReplayProofViewportToggle
       active={proofViewportActive}
       onActiveChange={onProofViewportActiveChange}
