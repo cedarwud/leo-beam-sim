@@ -178,6 +178,10 @@ export function getDefaultRightSidebarTabForSceneLane(
 ): RightSidebarTab {
   if (lane === 'artifact-replay') return 'artifact';
   if (lane === 'modqn-replay-proof') return 'modqn';
+  // MODQN consolidation: the MODQN page is a PROOF page — default the right rail to
+  // the 'modqn' tab (dense-Q Q1/Q2/Q3 evidence) since the multi-beam scene render is
+  // data-blocked (collapsed producer baseline). 'live' status stays opt-in.
+  if (lane === 'modqn-live-cell-preview') return 'modqn';
   return getDefaultRightSidebarTabForMode(mode);
 }
 

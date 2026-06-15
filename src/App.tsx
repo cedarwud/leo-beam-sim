@@ -688,7 +688,8 @@ export function App() {
       setHandoverModeRaw(nextMode);
       persistHandoverMode(nextMode);
       setLeftSidebarTab('evidence');
-      setRightSidebarTab('live');
+      // MODQN page = proof page: default the right rail to the dense-Q evidence tab.
+      setRightSidebarTab('modqn');
       return;
     }
 

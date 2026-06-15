@@ -427,8 +427,8 @@ assert.deepEqual(
 );
 assert.equal(
   getDefaultRightSidebarTabForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr'),
-  'live',
-  'MODQN live cell preview still DEFAULTS the right sidebar to live status (MODQN evidence is opt-in)',
+  'modqn',
+  'MODQN live cell preview DEFAULTS the right sidebar to the MODQN dense-Q evidence tab (proof page; the scene render is data-blocked)',
 );
 assert.deepEqual(
   tabKeys(getLeftSidebarTabsForSceneLane('modqn-live-cell-preview', 'decision-overlay-on-live-sinr')),
