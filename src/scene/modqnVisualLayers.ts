@@ -40,11 +40,14 @@ export const MODQN_VISUAL_LAYER_PRESETS: readonly ModqnVisualLayerPreset[] = [
   'debug',
 ];
 
-// Hex cell rings only — the clean default. Everything else (service map, badges,
-// cones, story cues, handover arcs, footprints, diagnostics) is opt-in.
+// Clean default for the MODQN PROOF page: NO scene overlay. The MODQN page's value
+// is the dense-Q proof (Q1/Q2/Q3 sidebar), not a scene — and the hex cell overlay
+// flashed meaninglessly on the degenerate producer baseline. The hex overlay,
+// service map, badges, cones, story cues, arcs, footprints, diagnostics are all
+// opt-in via the richer presets.
 const MINIMAL_LAYERS: ModqnVisualLayerFlags = {
   serviceMap: false,
-  activeCellOverlay: true,
+  activeCellOverlay: false,
   ueCountBadges: false,
   beamCones: false,
   beamConeScope: 'none',

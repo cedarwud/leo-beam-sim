@@ -599,8 +599,8 @@ assertNotContains(appPersistenceSource, 'record.cellServingCount === 12', 'appPe
 assertContains(appRuntimeConfigSource, 'normalizeRuntimeModqnServingCount(input.sceneTopology.cellServingCount)', 'appRuntimeConfig normalizes runtime MODQN serving count');
 // S-ADV-3: the default MODQN-LIVE preset is the minimal hex-rings-only surface; the
 // service map / story cues / handover arcs are an explicit Advanced opt-in (Rule#10).
-assertContains(modqnVisualLayersSource, "DEFAULT_MODQN_VISUAL_LAYER_PRESET: ModqnVisualLayerPreset = 'minimal'", 'MODQN visual layers default to the minimal hex-rings-only preset');
-assert.equal(resolveModqnVisualLayers('minimal').activeCellOverlay, true, 'minimal preset keeps the hex cell overlay');
+assertContains(modqnVisualLayersSource, "DEFAULT_MODQN_VISUAL_LAYER_PRESET: ModqnVisualLayerPreset = 'minimal'", 'MODQN visual layers default to the minimal (no-scene-overlay) preset');
+assert.equal(resolveModqnVisualLayers('minimal').activeCellOverlay, false, 'minimal preset hides the hex cell overlay (MODQN is a proof page; the hex flashed meaninglessly on degenerate data — opt-in via richer presets)');
 assert.equal(resolveModqnVisualLayers('minimal').serviceMap, false, 'minimal preset hides the all-UE service map');
 assert.equal(resolveModqnVisualLayers('minimal').ueCountBadges, false, 'minimal preset hides per-cell UE-count badges');
 assert.equal(resolveModqnVisualLayers('minimal').beamCones, false, 'minimal preset hides cell beam cones');
