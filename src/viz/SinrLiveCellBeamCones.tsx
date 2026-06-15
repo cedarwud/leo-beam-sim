@@ -365,6 +365,37 @@ export function resolveSinrLiveCellHandoverPairConeItems(input: {
 }
 
 /**
+ * The ONE handover-candidate cone for the centre UE: the inter-sat target it is
+ * ABOUT to hand over to (`metrics.pendingTargetSatId`), drawn at its CURRENT cell
+ * (an inter handover keeps the cell, swaps the satellite). Returns [] when there is
+ * no pending inter handover (pending sat null, or == the current serving sat = an
+ * intra beam-switch, not a satellite candidate). A pure DISPLAY read of the pending
+ * target the runtime already computed (Rule#6) — it invents no handover. The caller
+ * paints it bright cyan-blue so "the beam you're about to switch to" stands out;
+ * every other satellite's beam stays the faint frequency-reuse context.
+ */
+export function resolveSinrLivePendingCandidateConeItems(input: {
+  readonly pendingTargetSatId: string | null;
+  readonly servingSatId: string | null;
+  readonly primaryCellId: number | null;
+  readonly frequencyReuse: number;
+  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
+  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+}): readonly SinrLiveCellBeamConeRenderItem[] {
+  const { pendingTargetSatId, servingSatId, primaryCellId } = input;
+  if (pendingTargetSatId == null || primaryCellId == null) return [];
+  if (pendingTargetSatId === servingSatId) return []; // intra beam-switch, not a sat candidate
+  const item = buildPairConeItem({
+    satId: pendingTargetSatId,
+    cellId: primaryCellId,
+    frequencyIndex: cellFrequencyIndex(primaryCellId, input.frequencyReuse),
+    placementByCellId: input.placementByCellId,
+    satelliteWorldById: input.satelliteWorldById,
+  });
+  return item ? [item] : [];
+}
+
+/**
  * G2c live-pulse fade: a handover-pulse cone's opacity as a function of its age
  * (`simTimeSec − event.sourceTimeSec`). Peak at age 0 (the frame it fires), linear
  * decay to 0 at the retention horizon, and 0 outside `[0, retentionSec]`. Pure so
@@ -497,6 +528,16 @@ export interface SinrLiveCellBeamConesRenderProps {
    */
   readonly primaryServingSatId?: string | null;
   readonly primaryServingCellId?: number | null;
+  /**
+   * Recolour ONLY the hero (primary serving) cone to this colour (yellow). Other
+   * cones keep their frequency-reuse colour. Set on the ambient mount.
+   */
+  readonly heroColor?: string;
+  /**
+   * Recolour EVERY cone in this mount to this colour. Set on the single-cone
+   * handover-candidate mount (cyan-blue). Omitted elsewhere → frequency-reuse.
+   */
+  readonly coneColorOverride?: string;
   readonly telemetryCountDatasetKey?: string;
   readonly telemetrySourceOwnerDatasetKey?: string;
   readonly telemetrySourceOwner?: string;
@@ -512,8 +553,9 @@ export interface SinrLiveCellBeamConesRenderProps {
  * a new `args` array — that guarantees a persistent cone's apex TRACKS the moving
  * satellite instead of freezing at a stale position.
  */
-function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; dimShallow?: boolean }): JSX.Element {
+function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; dimShallow?: boolean; color?: string }): JSX.Element {
   const { cone, opacity } = props;
+  const color = props.color ?? cone.color;
   const geometryRef = useRef<THREE.BufferGeometry>(null);
   const positions = buildObliqueBeamConePositions(cone.apex, cone.baseCenter, cone.baseRadiusWorld);
   // a-cone: scale opacity by the cone's RENDERED elevation (apex→base angle). A
@@ -559,13 +601,13 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
         serving: cone.serving,
         baseCenterWorld: [cone.baseCenter.x, cone.baseCenter.y, cone.baseCenter.z],
         baseRadiusWorld: cone.baseRadiusWorld,
-        color: cone.color,
+        color,
         opacity: effectiveOpacity,
       }}
     >
       <bufferGeometry ref={geometryRef} />
       <meshBasicMaterial
-        color={cone.color}
+        color={color}
         vertexColors
         transparent
         opacity={effectiveOpacity}
@@ -630,10 +672,14 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           && props.primaryServingCellId != null
           && cone.satId === props.primaryServingSatId
           && cone.cellId === props.primaryServingCellId;
+        const color = isHero && props.heroColor
+          ? props.heroColor
+          : props.coneColorOverride ?? cone.color;
         return (
           <ObliqueConeMesh
             key={cone.renderKey ?? `${cone.cellId}-${cone.satId}`}
             cone={cone}
+            color={color}
             opacity={cone.opacity ?? (isHero ? SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY : opacity)}
             dimShallow={props.dimShallowCones && !isHero}
           />

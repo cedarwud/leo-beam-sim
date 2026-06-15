@@ -43,6 +43,22 @@ export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.08;
 export const SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY = 0.52;
 
 /**
+ * Display palette for the live beam field (a-cone follow-up). The PRIMARY serving
+ * beam (the one serving the centre UE) reads SATURATED YELLOW so it pops as "your
+ * serving beam". The ONE handover-candidate beam (the inter-sat target the centre
+ * UE is about to switch to) reads SATURATED CYAN-BLUE + bright so it stands out as
+ * "the beam you're about to hand over to". Every OTHER beam keeps the geographic
+ * frequency-reuse palette (faint context — NOT recoloured). These overrides apply
+ * only where MainScene passes them; the cinema pair/pulse + vc1c/vc2 fixtures keep
+ * resolveSinrLiveConeColor untouched. Display-only.
+ */
+export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#facc15';
+// Cyan-leaning blue (not the #3b82f6 indigo that read as purple over terrain).
+export const SINR_LIVE_CONE_CANDIDATE_COLOR = '#0ea5e9';
+/** Bright opacity for the single handover-candidate beam so it is clearly visible. */
+export const SINR_LIVE_CONE_CANDIDATE_OPACITY = 0.6;
+
+/**
  * Bright focused handover-pair cone opacity (cinema), drawn over the ambient
  * field so the old/new handover cells read against the faint all-serving layer.
  */
