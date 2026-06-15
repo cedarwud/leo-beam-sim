@@ -684,7 +684,11 @@ function SceneContent({
   // S-cells-2 (ADDITIVE): the earth-fixed cell truth is lane-owned by sinr-live
   // ONLY. Off on the three MODQN/artifact lanes → useSimulation returns frames
   // byte-identical to today (no `sinrLiveCells` field).
-  const useEarthFixedCellTruth = sceneLane === 'sinr-live';
+  // MODQN consolidation: the MODQN live page reuses the SINR scene render directly
+  // (the SINR cell-truth beam cones), so the cell model runs on modqn-live-cell-preview
+  // too — its serving is the live SINR-offset truth (NOT the degenerate MODQN decision
+  // override). The MODQN-ness is the Q-value sidebar overlay, not a different scene.
+  const useEarthFixedCellTruth = sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview';
   const sim = useSimulation(
     profile,
     runtime.replay,

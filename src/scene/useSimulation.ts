@@ -293,11 +293,15 @@ export function useSimulation(
   const [, setVersion] = useState(0);
 
   const installDecisionOverride = useCallback(() => {
-    const overrideInModqnReplay =
-      handoverModeRef.current === 'decision-overlay-on-live-sinr' ? decisionOverride : null;
+    // MODQN consolidation: the MODQN live page reuses the SINR scene render directly,
+    // so the PRIMARY UE now runs the live SINR-offset serving (same as the 99
+    // secondaries) instead of the decision-overlay override. The override re-scalarized
+    // the DEGENERATE producer envelope (collapsed to ~1 beam / 0 multi-beam cones),
+    // which defeated the point of the scene. The MODQN proof is the Q-value sidebar
+    // (reads modqnReplayEnvelope directly), NOT a scene-driving override. The
+    // omega-heuristic path is unchanged.
     hoManager.overrideRef.current =
-      overrideInModqnReplay
-      ?? (handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null);
+      handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null;
   }, [decisionOverride, hoManager]);
 
   // S3-2 / S4-1: one helper for both kinds of HO-manager time transition.

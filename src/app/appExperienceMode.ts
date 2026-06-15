@@ -1,4 +1,3 @@
-import { MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID } from '../profiles';
 import { HANDOVER_MODE_STORAGE_KEY, type RuntimeHandoverMode } from '../modqn/runtimeControls';
 
 export const APP_EXPERIENCE_MODES = ['sinr-experiment', 'modqn-demo'] as const;
@@ -16,9 +15,13 @@ export const APP_MODE_HANDOVER_MAP: Readonly<
   'modqn-demo': 'decision-overlay-on-live-sinr',
 };
 
+// MODQN consolidation: the MODQN live page reuses the SINR scene render directly, so
+// it opens on the SAME candidate-rich 100-UE-spread profile as sinr-experiment (the
+// paper-faithful 4sat/7beam profile is clustered → 0 multi-beam cones). The MODQN
+// proof is the Q-value sidebar (Family-B envelope), not the live scene's geometry.
 export const APP_MODE_DEFAULT_PROFILE: Readonly<Record<AppExperienceMode, string>> = {
   'sinr-experiment': 'hobs-2024-candidate-rich',
-  'modqn-demo': MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID,
+  'modqn-demo': 'hobs-2024-candidate-rich',
 };
 
 export function isAppExperienceMode(value: unknown): value is AppExperienceMode {

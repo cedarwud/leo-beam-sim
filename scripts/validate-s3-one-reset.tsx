@@ -320,12 +320,15 @@ ok(
   additiveProbe.sinrLiveCells === undefined,
   'ADDITIVE FAILED: a null-model attach added a sinrLiveCells field (off-lane frames must be byte-identical)',
 );
-// lane ownership: MainScene gates the cell truth to sinr-live (robust line, not the
-// brittle multi-line call-shape pin the retired block held).
+// lane ownership: MainScene gates the cell truth to the two LIVE SINR-scene lanes —
+// sinr-live AND modqn-live-cell-preview (MODQN consolidation: the MODQN live page
+// reuses the SINR scene render directly). Still OFF on the replay/artifact lanes, so
+// those frames stay byte-identical (no sinrLiveCells field) — the additive probe above
+// still holds for the null-model attach.
 const mainSceneSrc = readFileSync(new URL('../src/scene/MainScene.tsx', import.meta.url), 'utf8');
 ok(
-  mainSceneSrc.includes("const useEarthFixedCellTruth = sceneLane === 'sinr-live';"),
-  'LANE-OWNERSHIP FAILED: MainScene no longer gates the earth-fixed cell truth to the sinr-live lane',
+  mainSceneSrc.includes("const useEarthFixedCellTruth = sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview';"),
+  'LANE-OWNERSHIP FAILED: MainScene no longer gates the earth-fixed cell truth to the live SINR-scene lanes (sinr-live + modqn-live-cell-preview)',
 );
 // thread: MainScene must PASS useEarthFixedCellTruth into the useSimulation hook (not
 // just declare it) — the retired block #1 pinned this; without it the cell truth could
