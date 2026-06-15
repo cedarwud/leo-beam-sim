@@ -117,6 +117,32 @@ export function resolveSinrLiveConeLayerOpacity(layer: SinrLiveConeLayer): numbe
 }
 
 /**
+ * Apparent-elevation DIM band for the ambient cone field — a DISPLAY-only de-
+ * emphasis of near-horizontal cones. A satellite that serves a cell while sitting
+ * low over the horizon (down to the 15° elevation mask) paints a geometrically
+ * SHALLOW cone that reads as "a beam shooting sideways across / off the field"
+ * rather than a beam coming DOWN onto a UE. The truth (which sat serves which cell)
+ * is unchanged — every serving cone still mounts (the s0:connected-sat-has-beam
+ * invariant counts mounted meshes, not opacity); we only fade the ones whose
+ * RENDERED apex→base angle is shallow, so the ambient field reads cleanly. Mirrors
+ * the steered-beam display's existing "< 35° elevation is an edge sat" intuition
+ * (useBeamViz edge penalty). Tunable here, applied in `ObliqueConeMesh` (gated by
+ * the ambient mount's `dimShallowCones`).
+ */
+export const SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG = 22;
+export const SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG = 42;
+export const SINR_LIVE_CONE_DIM_MIN_FACTOR = 0.05;
+
+export function resolveSinrLiveConeElevationDimFactor(apparentElevationDeg: number): number {
+  if (!Number.isFinite(apparentElevationDeg)) return 1;
+  if (apparentElevationDeg >= SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG) return 1;
+  if (apparentElevationDeg <= SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG) return SINR_LIVE_CONE_DIM_MIN_FACTOR;
+  const t = (apparentElevationDeg - SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG)
+    / (SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG - SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG);
+  return SINR_LIVE_CONE_DIM_MIN_FACTOR + t * (1 - SINR_LIVE_CONE_DIM_MIN_FACTOR);
+}
+
+/**
  * The ONE place resolving a sinr-live cone's COLOUR — Tier-2 beam-display seam.
  * Today every sinr-live cone is coloured by the geographic frequency-reuse
  * pattern (`frequencyReuseColor`, `cellId mod reuse` — adjacent cells differ),

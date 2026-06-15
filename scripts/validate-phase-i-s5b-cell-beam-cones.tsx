@@ -398,12 +398,12 @@ expect(
 );
 expect(
   mainSceneSource.includes('{showSinrLiveCellBeams && (')
-    && mainSceneSource.includes('<SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} />'),
+    && mainSceneSource.includes('<SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} dimShallowCones />'),
   'MainScene mounts the sinr-live cell-truth beam cones (the legacy steered SatelliteBeams block was retired — Tier-2 dead twin)',
 );
 expect(
-  renderPlanSource.includes('const showLiveBeamCones = showSinrLiveViewport;'),
-  'Scene lane render plan gates legacy live beam cones to the SINR live viewport',
+  renderPlanSource.includes('const showLiveBeamCones = showSinrBeamRender;'),
+  'Scene lane render plan derives live beam cones from showSinrBeamRender (sinr-live OR the MODQN cell-overlay reuse), not the sinr-live viewport alone',
 );
 expect(
   mainSceneSource.includes('{showLiveSceneEffects && <AmbientFootprintRings'),
@@ -414,9 +414,9 @@ expect(
   'MainScene gates ServingGroundRipple behind showGroundRipple',
 );
 expect(
-  renderPlanSource.includes('const showLiveSceneEffects = showSinrLiveViewport;')
+  renderPlanSource.includes('const showLiveSceneEffects = showSinrBeamRender;')
     && /showOrbitTrail:[\s\S]*?showLiveSceneEffects/.test(renderPlanSource),
-  'MainScene hides OrbitTrail outside live non-cell scene effects',
+  'Scene lane render plan gates OrbitTrail behind showLiveSceneEffects (= showSinrBeamRender: sinr-live OR the MODQN cell-overlay reuse)',
 );
 const telemetrySource = readFileSync(path.join(REPO_ROOT, 'src/scene/SceneTelemetry.tsx'), 'utf8');
 expect(

@@ -1628,7 +1628,10 @@ function SceneContent({
         />
       )}
       {showSinrLiveCellBeams && (
-        <SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} />
+        // a-cone: dim near-horizontal (low-elevation serving sat) cones so the
+        // ambient field reads as beams coming DOWN, not shooting across the field.
+        // Display-only; the serving truth + cone count are unchanged.
+        <SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} dimShallowCones />
       )}
       {sinrLiveCellHandoverPairConeItems.length > 0 && (
         <SinrLiveCellBeamCones

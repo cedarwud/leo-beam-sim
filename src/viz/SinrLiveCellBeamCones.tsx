@@ -44,6 +44,7 @@ import {
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
   resolveSinrLiveConeColor,
+  resolveSinrLiveConeElevationDimFactor,
   resolveSinrLiveConeLayerOpacity,
 } from '../constants/sinrLiveConeStyle';
 import { cellFrequencyIndex, type SinrLiveCellFrame, type SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
@@ -475,6 +476,16 @@ export interface SinrLiveCellBeamConesRenderProps {
    * faint ambient field. Defaulted, not required, so the ambient mount stays terse.
    */
   readonly opacity?: number;
+  /**
+   * Display-only de-emphasis (a-cone): when true, each cone's opacity is scaled by
+   * {@link resolveSinrLiveConeElevationDimFactor} of its RENDERED apex→base angle,
+   * so near-horizontal cones from low-over-the-horizon satellites fade instead of
+   * shooting across the field. Opt-in — only the ambient all-serving field passes it
+   * (the cinema pair / pulse highlights stay full strength). Default OFF, so the
+   * fixture gates that value-assert a fixed cone opacity are unaffected. Truth is
+   * unchanged: every serving cone still mounts (s0 counts meshes, not opacity).
+   */
+  readonly dimShallowCones?: boolean;
   readonly telemetryCountDatasetKey?: string;
   readonly telemetrySourceOwnerDatasetKey?: string;
   readonly telemetrySourceOwner?: string;
@@ -490,10 +501,20 @@ export interface SinrLiveCellBeamConesRenderProps {
  * a new `args` array — that guarantees a persistent cone's apex TRACKS the moving
  * satellite instead of freezing at a stale position.
  */
-function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number }): JSX.Element {
+function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; dimShallow?: boolean }): JSX.Element {
   const { cone, opacity } = props;
   const geometryRef = useRef<THREE.BufferGeometry>(null);
   const positions = buildObliqueBeamConePositions(cone.apex, cone.baseCenter, cone.baseRadiusWorld);
+  // a-cone: scale opacity by the cone's RENDERED elevation (apex→base angle). A
+  // shallow cone (low-over-horizon serving sat) fades toward invisible; a steep
+  // overhead cone is untouched. Geometry-derived → no truth dependency.
+  const apparentElevationDeg = (Math.atan2(
+    cone.apex.y - cone.baseCenter.y,
+    Math.hypot(cone.apex.x - cone.baseCenter.x, cone.apex.z - cone.baseCenter.z),
+  ) * 180) / Math.PI;
+  const effectiveOpacity = props.dimShallow
+    ? opacity * resolveSinrLiveConeElevationDimFactor(apparentElevationDeg)
+    : opacity;
 
   useLayoutEffect(() => {
     const geometry = geometryRef.current;
@@ -528,7 +549,7 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
         baseCenterWorld: [cone.baseCenter.x, cone.baseCenter.y, cone.baseCenter.z],
         baseRadiusWorld: cone.baseRadiusWorld,
         color: cone.color,
-        opacity,
+        opacity: effectiveOpacity,
       }}
     >
       <bufferGeometry ref={geometryRef} />
@@ -536,7 +557,7 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
         color={cone.color}
         vertexColors
         transparent
-        opacity={opacity}
+        opacity={effectiveOpacity}
         blending={SINR_LIVE_CONE_BLENDING}
         depthWrite={false}
         side={THREE.DoubleSide}
@@ -596,6 +617,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           key={cone.renderKey ?? `${cone.cellId}-${cone.satId}`}
           cone={cone}
           opacity={cone.opacity ?? opacity}
+          dimShallow={props.dimShallowCones}
         />
       ))}
     </group>
