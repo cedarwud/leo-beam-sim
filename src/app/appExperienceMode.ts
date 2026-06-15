@@ -112,6 +112,12 @@ export function resolveProfileForAppMode(
   stored: ProfileByMode,
   isKnownProfileId: (id: string) => boolean,
 ): string {
+  // MODQN consolidation: the MODQN live page reuses the SINR scene render directly, so
+  // it ALWAYS uses the candidate-rich default profile — never an independently-persisted
+  // one. A stale persisted `modqn-demo -> paper-faithful` (the old default, saved by any
+  // earlier MODQN visit) renders the DEGENERATE clustered scene (served=0, no beam
+  // cones). Ignoring it here fixes existing browsers without a manual cache clear.
+  if (mode === 'modqn-demo') return APP_MODE_DEFAULT_PROFILE[mode];
   const storedProfileId = stored[mode];
   if (storedProfileId !== undefined && isKnownProfileId(storedProfileId)) {
     return storedProfileId;
