@@ -43,6 +43,7 @@ import {
   SINR_LIVE_CONE_BLENDING,
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
+  SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
   resolveSinrLiveConeColor,
   resolveSinrLiveConeElevationDimFactor,
   resolveSinrLiveConeLayerOpacity,
@@ -486,6 +487,16 @@ export interface SinrLiveCellBeamConesRenderProps {
    * unchanged: every serving cone still mounts (s0 counts meshes, not opacity).
    */
   readonly dimShallowCones?: boolean;
+  /**
+   * The focus/centre UE's serving (satId, cellId). That ONE cone — the primary
+   * serving beam — renders BRIGHT ({@link SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY})
+   * + exempt from the near-horizon dim so the hero beam pops against the faint
+   * ambient field. BOTH must match so only the single protagonist beam lights up
+   * (not the serving sat's whole fan, which would wash the view). Omitted on the
+   * non-serving / pair / pulse mounts. Display-only.
+   */
+  readonly primaryServingSatId?: string | null;
+  readonly primaryServingCellId?: number | null;
   readonly telemetryCountDatasetKey?: string;
   readonly telemetrySourceOwnerDatasetKey?: string;
   readonly telemetrySourceOwner?: string;
@@ -606,20 +617,28 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
 
   return (
     <group ref={groupRef} name="sinr-live-cell-beam-cones" userData={{ coneCount: cones.length, opacity }}>
-      {cones.map(cone => (
-        // G2c: a per-item `opacity` (the live-pulse age-fade) overrides the group
-        // opacity so one mount can render cones at independent brightness. Key is the
-        // content-stable `${cellId}-${satId}` for the ambient/pair layers (so a cone
-        // reconciles in place across a beam-hop reorder — keeps the persistent-mesh
-        // in-place buffer update); the pulse layer, which can carry the same
-        // (cell, sat) twice in one frame, supplies its own stable `renderKey`.
-        <ObliqueConeMesh
-          key={cone.renderKey ?? `${cone.cellId}-${cone.satId}`}
-          cone={cone}
-          opacity={cone.opacity ?? opacity}
-          dimShallow={props.dimShallowCones}
-        />
-      ))}
+      {cones.map(cone => {
+        // The primary serving satellite's beams are the HERO: render them bright +
+        // saturated and exempt from the near-horizon dim, so the sat serving the
+        // centre UE pops against the faint ambient field. A per-item `opacity` (the
+        // live-pulse age-fade) still wins over both. Key is the content-stable
+        // `${cellId}-${satId}` for the ambient/pair layers (so a cone reconciles in
+        // place across a beam-hop reorder — keeps the persistent-mesh in-place buffer
+        // update); the pulse layer supplies its own stable `renderKey`.
+        const isHero = cone.opacity === undefined
+          && props.primaryServingSatId != null
+          && props.primaryServingCellId != null
+          && cone.satId === props.primaryServingSatId
+          && cone.cellId === props.primaryServingCellId;
+        return (
+          <ObliqueConeMesh
+            key={cone.renderKey ?? `${cone.cellId}-${cone.satId}`}
+            cone={cone}
+            opacity={cone.opacity ?? (isHero ? SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY : opacity)}
+            dimShallow={props.dimShallowCones && !isHero}
+          />
+        );
+      })}
     </group>
   );
 }

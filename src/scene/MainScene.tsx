@@ -69,7 +69,7 @@ import {
 } from '../viz/SinrLiveCellBeamCones';
 import { resolveSinrLiveConeLayerOpacity } from '../constants/sinrLiveConeStyle';
 import { DEFAULT_SCENE_DISPLAY_CONFIG, type SceneDisplayConfig } from './sceneDisplayConfig';
-import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC } from './sinrLiveCellModel';
+import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord } from './sinrLiveCellModel';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
 import { BeamLoadUploadParticles } from '../viz/BeamLoadUploadParticles';
@@ -1132,6 +1132,12 @@ function SceneContent({
       : []),
     [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById],
   );
+  // The focus/centre UE's serving (satId, cellId) — the SAME primary oracle the s0
+  // connected-sat invariant + the InfoPanel publisher read. Its one cone renders as
+  // the bright saturated hero beam (resolveSinrLiveConeColor stays, opacity bumped).
+  const primaryServingRecord = sim.sinrLiveCells
+    ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
+    : null;
   const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
     sinrLiveCellBeamConeItems.map(item => item.satId),
@@ -1630,8 +1636,15 @@ function SceneContent({
       {showSinrLiveCellBeams && (
         // a-cone: dim near-horizontal (low-elevation serving sat) cones so the
         // ambient field reads as beams coming DOWN, not shooting across the field.
-        // Display-only; the serving truth + cone count are unchanged.
-        <SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} dimShallowCones />
+        // The primary serving sat's beams render BRIGHT + saturated + dim-exempt
+        // (the hero beam pops against the faint ambient field). Display-only; the
+        // serving truth + cone count are unchanged.
+        <SinrLiveCellBeamCones
+          items={sinrLiveCellBeamConeItems}
+          dimShallowCones
+          primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
+          primaryServingCellId={primaryServingRecord?.cellId ?? null}
+        />
       )}
       {sinrLiveCellHandoverPairConeItems.length > 0 && (
         <SinrLiveCellBeamCones

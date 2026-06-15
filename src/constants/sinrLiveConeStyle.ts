@@ -32,6 +32,17 @@ import { frequencyReuseColor } from './beamRoleTokens';
 export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.08;
 
 /**
+ * Bright opacity for the PRIMARY serving satellite's beams (the sat serving the
+ * focus/centre UE). The all-serving ambient field reads faint (0.08) so the
+ * multibeam context does not blow out, but the one satellite actually serving the
+ * protagonist should read SATURATED + BRIGHT like the original steered serving cone
+ * (BEAM_ROLE_TOKENS.serving was 0.58). It is exempt from the near-horizon dim so the
+ * hero beam always pops, even at moderate elevation. Display-only; serving truth +
+ * cone count unchanged.
+ */
+export const SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY = 0.52;
+
+/**
  * Bright focused handover-pair cone opacity (cinema), drawn over the ambient
  * field so the old/new handover cells read against the faint all-serving layer.
  */

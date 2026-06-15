@@ -398,8 +398,11 @@ expect(
 );
 expect(
   mainSceneSource.includes('{showSinrLiveCellBeams && (')
-    && mainSceneSource.includes('<SinrLiveCellBeamCones items={sinrLiveCellBeamConeItems} dimShallowCones />'),
-  'MainScene mounts the sinr-live cell-truth beam cones (the legacy steered SatelliteBeams block was retired — Tier-2 dead twin)',
+    && mainSceneSource.includes('items={sinrLiveCellBeamConeItems}')
+    && mainSceneSource.includes('dimShallowCones')
+    && mainSceneSource.includes('primaryServingSatId={primaryServingRecord?.servingSatId ?? null}')
+    && mainSceneSource.includes('primaryServingCellId={primaryServingRecord?.cellId ?? null}'),
+  'MainScene mounts the sinr-live cell-truth beam cones with near-horizon dim + bright primary-serving hero (the legacy steered SatelliteBeams block was retired — Tier-2 dead twin)',
 );
 expect(
   renderPlanSource.includes('const showLiveBeamCones = showSinrBeamRender;'),
