@@ -85,8 +85,8 @@ function validateRenderIsolationContracts(): void {
   );
   assertIncludes(
     appRuntimeConfig,
-    "uePrimaryAnchorMode: input.appMode === 'modqn-demo' ? 'distribution' : 'observer'",
-    'appRuntimeConfig keeps MODQN UE0 distribution-sampled while preserving SINR observer anchor',
+    "uePrimaryAnchorMode: 'observer'",
+    'appRuntimeConfig anchors the primary UE to the centred observer on BOTH modes (MODQN consolidation: MODQN reuses the SINR scene, so the old distribution anchor that placed UE0 in a corner is retired)',
   );
   assertIncludes(
     multiUeState,

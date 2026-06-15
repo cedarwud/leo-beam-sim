@@ -87,7 +87,11 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     ueDistributionMode: input.appMode === 'sinr-experiment'
       ? input.sceneTopology.ueDistributionMode ?? 'random'
       : trainingTopology.ueDistributionMode ?? 'random',
-    uePrimaryAnchorMode: input.appMode === 'modqn-demo' ? 'distribution' : 'observer',
+    // MODQN consolidation: the MODQN live page reuses the SINR scene, so the primary
+    // UE is the centred 'observer' protagonist on BOTH modes. The old 'distribution'
+    // anchor (from the paper-faithful MODQN) placed the primary off-centre per the UE
+    // spread → the "主角在角落" orange dot in the lower-left corner.
+    uePrimaryAnchorMode: 'observer',
     // S2: the sinr-experiment profile (hobs-2024-candidate-rich) now carries a
     // uniform-rectangle `ueDistribution` (200x90 km user area), so the secondary
     // population spreads across the WHOLE map and `generateUePositions` takes the
