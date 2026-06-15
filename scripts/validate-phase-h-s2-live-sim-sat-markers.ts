@@ -47,8 +47,8 @@ function validateMainSceneGate(): void {
     .filter(line => line.includes('const showLiveBeamCones'));
   expectEqual(liveBeamLines.length, 1, 'showLiveBeamCones is declared exactly once');
   expect(
-    liveBeamLines[0].includes('showSinrLiveViewport'),
-    'H-S2 carries H-S1 invariant: showLiveBeamCones lane-gated',
+    liveBeamLines[0].includes('showSinrBeamRender'),
+    'H-S2 carries H-S1 invariant: showLiveBeamCones lane-gated (showSinrBeamRender)',
   );
 
   const beamCalloutLines = renderPlan

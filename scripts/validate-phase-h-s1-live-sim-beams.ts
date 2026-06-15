@@ -48,8 +48,8 @@ function validateMainSceneGate(): void {
   const showLiveBeamConesLine = matchLineContaining(renderPlan, 'const showLiveBeamCones =');
   expect(showLiveBeamConesLine !== null, 'MainScene declares showLiveBeamCones');
   expect(
-    showLiveBeamConesLine!.includes('showSinrLiveViewport'),
-    'H-S1: showLiveBeamCones gate uses the SINR live viewport lane',
+    showLiveBeamConesLine!.includes('showSinrBeamRender'),
+    'H-S1: showLiveBeamCones derives from showSinrBeamRender (sinr-live OR the MODQN cell-overlay reuse — both lane-derived, not appMode)',
   );
   expect(
     !showLiveBeamConesLine!.includes("runtime.appMode !== 'modqn-demo'"),
@@ -171,8 +171,8 @@ function validateNoCrossSliceLeakage(): void {
     'showLiveBeamCones is declared exactly once',
   );
   expect(
-    showLiveBeamConesLines[0].includes('showSinrLiveViewport'),
-    'showLiveBeamCones declaration is scene-lane-gated',
+    showLiveBeamConesLines[0].includes('showSinrBeamRender'),
+    'showLiveBeamCones declaration is scene-lane-gated (showSinrBeamRender)',
   );
 }
 

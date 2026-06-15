@@ -96,7 +96,7 @@ function validatePhaseHInvariantsPreserved(): void {
   const source = readSource('src/scene/MainScene.tsx');
   const renderPlan = readSource('src/scene/sceneLaneRenderPlan.ts');
   expect(
-    renderPlan.includes('const showLiveBeamCones = showSinrLiveViewport;'),
+    renderPlan.includes('const showLiveBeamCones = showSinrBeamRender;'),
     'H-S1 invariant preserved',
   );
   expect(

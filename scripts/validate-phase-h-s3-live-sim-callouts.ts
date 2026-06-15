@@ -51,8 +51,8 @@ function validateMainSceneGate(): void {
     .split('\n')
     .filter(line => line.includes('const showLiveBeamCones'));
   expect(
-    liveBeamLines[0]?.includes('showSinrLiveViewport') ?? false,
-    'H-S3 keeps H-S1 invariant: showLiveBeamCones lane-gated',
+    liveBeamLines[0]?.includes('showSinrBeamRender') ?? false,
+    'H-S3 keeps H-S1 invariant: showLiveBeamCones lane-gated (showSinrBeamRender)',
   );
 
   const satMarkerLines = renderPlan
