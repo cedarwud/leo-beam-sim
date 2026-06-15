@@ -357,6 +357,15 @@ export function generateUePositions(params: {
   mode?: UeDistributionMode;
   primaryAnchorMode?: UePrimaryAnchorMode;
   rectangleAreaKm?: UeRectangleAreaKm;
+  /**
+   * Demo intra-handover trigger: an ENU offset (km) applied ONLY to the primary
+   * (index 0) UE — it slides to an adjacent beam cell so the engine genuinely does
+   * an intra (same-sat beam switch). The secondary distribution stays centred on
+   * `primaryEastKm` (this offset is NOT added to the field centre), so only the
+   * protagonist jogs. Default 0 = no jog.
+   */
+  primaryJogEastKm?: number;
+  primaryJogNorthKm?: number;
 }): UePosition[] {
   const {
     primaryEastKm,
@@ -367,9 +376,16 @@ export function generateUePositions(params: {
     mode = 'random',
     primaryAnchorMode = 'observer',
     rectangleAreaKm,
+    primaryJogEastKm = 0,
+    primaryJogNorthKm = 0,
   } = params;
   const ueCount = Math.max(1, Math.trunc(params.ueCount));
-  const primary = createUePosition(0, primaryEastKm, primaryNorthKm, ueWorldScale);
+  const primary = createUePosition(
+    0,
+    primaryEastKm + primaryJogEastKm,
+    primaryNorthKm + primaryJogNorthKm,
+    ueWorldScale,
+  );
 
   if (ueCount === 1 && primaryAnchorMode === 'observer') {
     return [primary];

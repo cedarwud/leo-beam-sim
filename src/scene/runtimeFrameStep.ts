@@ -171,6 +171,10 @@ export interface RuntimeFrameStepInput {
   uePrimaryAnchorMode?: UePrimaryAnchorMode;
   ueDistributionScope?: UeDistributionScope;
   ueDistributionRadiusKm?: number;
+  /** Demo intra-handover jog: ENU offset (km) applied to the PRIMARY UE only so it
+   *  crosses into an adjacent same-sat beam cell and the engine does a real intra. */
+  primaryJogEastKm?: number;
+  primaryJogNorthKm?: number;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   mobilityStates?: UePerMobilityState[];
@@ -554,6 +558,8 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     uePrimaryAnchorMode = 'observer',
     ueDistributionScope = 'beam-footprint',
     ueDistributionRadiusKm: inputUeDistributionRadiusKm,
+    primaryJogEastKm = 0,
+    primaryJogNorthKm = 0,
     ueMobilityMode = 'static',
     ueMobilityParams = DEFAULT_UE_MOBILITY_PARAMS,
     mobilityStates = [],
@@ -689,6 +695,8 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     ueCount,
     primaryEastKm: ueEastKm,
     primaryNorthKm: ueNorthKm,
+    primaryJogEastKm,
+    primaryJogNorthKm,
     primaryFootprintRadiusKm: ueDistributionRadiusKm,
     ueWorldScale,
     // Source: modqn-paper-reproduction/configs/modqn-paper-baseline.resolved-template.yaml

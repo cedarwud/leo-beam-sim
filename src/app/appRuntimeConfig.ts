@@ -52,6 +52,9 @@ export interface AppRuntimeConfigInput {
   // family (parked OFF by default; `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` /
   // `?modqnServiceAllocation=1`). Only meaningful on `modqn-demo`.
   readonly modqnServiceAllocationEnabled?: boolean;
+  /** Demo intra-handover jog: ENU offset (km) for the PRIMARY UE (button-toggled). */
+  readonly primaryJogEastKm?: number;
+  readonly primaryJogNorthKm?: number;
 }
 
 export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConfig {
@@ -100,6 +103,8 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     // candidate-rich satellite reaches ~154 km (16 km footprint + 27.6 km lattice
     // + 110.5 km steering @ 12 deg) > the 100 km map half-width, so map-wide UEs
     // stay served. The PRIMARY UE still anchors at the observer (cinema unaffected).
+    primaryJogEastKm: input.primaryJogEastKm ?? 0,
+    primaryJogNorthKm: input.primaryJogNorthKm ?? 0,
     ueDistributionScope: input.appMode === 'modqn-demo' ? 'service-area' : 'beam-footprint',
     ueDistributionRadiusKm: input.appMode === 'modqn-demo'
       && input.selectedTrainingEnvAxes?.ueArea.distribution === 'uniform-circular'

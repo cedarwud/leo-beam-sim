@@ -155,6 +155,10 @@ export function useSimulation(
   // THROTTLED published simTimeSec to cross a time band — which the publisher can skip
   // for small / near-event seeks, stranding an armed focus → intermittent never-fire.
   onSeekLanded?: (seekRequestKey: string) => void,
+  // Demo intra-handover jog: ENU offset (km) applied to the PRIMARY UE only, so it
+  // crosses into an adjacent same-sat beam cell and the engine does a real intra.
+  primaryJogEastKm: number = 0,
+  primaryJogNorthKm: number = 0,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -391,6 +395,8 @@ export function useSimulation(
         secondaryHoManagers,
         ueCount: effectiveUeCount,
         ueDistributionMode,
+        primaryJogEastKm,
+        primaryJogNorthKm,
         uePrimaryAnchorMode,
         ueMobilityMode,
         ueMobilityParams: effectiveUeMobilityParams,
@@ -444,6 +450,8 @@ export function useSimulation(
             secondaryHoManagers,
             ueCount: effectiveUeCount,
             ueDistributionMode,
+            primaryJogEastKm,
+            primaryJogNorthKm,
             uePrimaryAnchorMode,
             ueMobilityMode,
             ueMobilityParams: effectiveUeMobilityParams,
@@ -637,6 +645,8 @@ export function useSimulation(
       secondaryHoManagers,
       ueCount: effectiveUeCount,
       ueDistributionMode,
+      primaryJogEastKm,
+      primaryJogNorthKm,
       uePrimaryAnchorMode,
       ueMobilityMode,
       ueMobilityParams: effectiveUeMobilityParams,

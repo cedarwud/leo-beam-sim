@@ -720,6 +720,8 @@ function SceneContent({
     paperUserArea.kmPerWorldUnit,
     useEarthFixedCellTruth,
     onLiveSeekLanded,
+    runtime.primaryJogEastKm ?? 0,
+    runtime.primaryJogNorthKm ?? 0,
   );
   const ueTrailHistory = useUeTrailHistory({
     enabled: runtime.enableUeTrails === true && propSceneFrame === undefined,

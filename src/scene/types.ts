@@ -112,6 +112,11 @@ export interface RuntimeConfig {
   uePrimaryAnchorMode?: UePrimaryAnchorMode;
   ueDistributionScope?: UeDistributionScope;
   ueDistributionRadiusKm?: number;
+  /** Demo intra-handover jog: ENU offset (km) applied to the PRIMARY UE only, so a
+   *  button press slides it into an adjacent same-sat beam cell and the engine does
+   *  a real intra handover. Both default 0 (no jog). */
+  primaryJogEastKm?: number;
+  primaryJogNorthKm?: number;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   enableUeTrails?: boolean;

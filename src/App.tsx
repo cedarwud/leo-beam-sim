@@ -480,6 +480,11 @@ export function App() {
     [appMode, reducedMotion],
   );
   const effectiveCinematicMode = camera.cinematicMode;
+  // Demo intra-handover trigger: toggling this ENU offset slides the PRIMARY UE one
+  // beam-lattice step so the engine does a REAL intra (same-sat beam switch). Wired
+  // to the Intra-HO Focus button; the cinema arms alongside so the forward jog-intra
+  // plays in slow motion (a forward event, so it sidesteps the past-event cold-attach).
+  const [primaryUeJogKm, setPrimaryUeJogKm] = useState<{ east: number; north: number }>({ east: 0, north: 0 });
   const runtime = useMemo(() => buildAppRuntimeConfig({
     appMode,
     effectiveProfile,
@@ -498,8 +503,11 @@ export function App() {
     selectedTrainingEnvAxes,
     modqnVisualLayerPreset,
     modqnServiceAllocationEnabled,
+    primaryJogEastKm: primaryUeJogKm.east,
+    primaryJogNorthKm: primaryUeJogKm.north,
   }), [
     appMode,
+    primaryUeJogKm,
     beamDensityOverride,
     camera.cameraCommand,
     camera.directorFocusCommand,
@@ -1608,10 +1616,16 @@ export function App() {
         axisPlaybackRate={playback.effectiveSpeed}
       />
       <DirectorControls
-        intraEnabled={directorIntraButtonEnabled}
+        intraEnabled
         interEnabled={directorInterButtonEnabled}
         phase={camera.directorPhase}
-        onIntraFocus={handoverCinema.armIntra}
+        onIntraFocus={() => {
+          // Press → make a REAL intra happen: arm the cinema (slow-mo + focus on the
+          // next intra) THEN jog the primary UE one beam-lattice step. The jog drives
+          // the engine into a same-sat beam switch the armed cinema then plays back.
+          handoverCinema.armIntra();
+          setPrimaryUeJogKm(prev => (prev.east === 0 ? { east: 28, north: 0 } : { east: 0, north: 0 }));
+        }}
         onInterFocus={handoverCinema.armInter}
         onExit={handoverCinema.exit}
       />
