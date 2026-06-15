@@ -674,9 +674,16 @@ function SceneContent({
   const lastDirectorCommandAtRef = useRef<number | null>(null);
   const directorSnapshotRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const directorFocusOrbitRef = useRef<DirectorFocusOrbitState | null>(null);
+  // MODQN consolidation: the MODQN live page reuses the SINR scene render directly, so
+  // it uses the SAME scene config as sinr-experiment (NTPU_CONFIG: same GLB, scale,
+  // satellite altitude, visualAlpha, and CAMERA that the SINR cell-truth cones are tuned
+  // for). On NTPU_LARGE_CONFIG the larger frame + top-down camera left the faint cones
+  // out of view. The MODQN replay/artifact lanes keep NTPU_LARGE_CONFIG.
   const sceneConfig = useMemo(() => (
-    runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
-  ), [runtime.appMode]);
+    (runtime.appMode === 'sinr-experiment' || sceneLane === 'modqn-live-cell-preview')
+      ? NTPU_CONFIG
+      : NTPU_LARGE_CONFIG
+  ), [runtime.appMode, sceneLane]);
   const paperUserArea = useMemo(
     () => resolveInscribedPaperUserArea(sceneConfig),
     [sceneConfig],
@@ -798,11 +805,12 @@ function SceneContent({
     undefined,
     profile.beamHopping,
     visualScaleMultipliers,
-    // S5-2 PHASE A (working tree): cones un-parked → retire the UE-anchor on
-    // sinr-live (true = anchor OFF) so beams keep true earth-fixed positions and
-    // UEs render off-centre. Lane-gated: modqn-live-cell-preview still renders
-    // steered beams with the anchor ON.
-    sceneLane === 'sinr-live',
+    // S5-2 PHASE A: cones un-parked → retire the UE-anchor on the LIVE SINR-scene
+    // lanes (true = anchor OFF) so beams keep true earth-fixed positions and UEs
+    // render off-centre. MODQN consolidation: modqn-live-cell-preview reuses the SINR
+    // scene render, so it also disables the anchor (anchor-ON squashed all beams onto
+    // the primary UE → no visible cones).
+    sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview',
   );
   const worldUnitsPerKm = 1 / (sceneGeometry.kmPerWorldUnit ?? paperUserArea.kmPerWorldUnit);
   // S-cells-3: ground placements of the FIXED earth-fixed cells for the cell-truth
