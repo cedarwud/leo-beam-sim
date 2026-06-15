@@ -81,6 +81,29 @@ G3 deviation in its own prereg.
 - **D. (only if A–C insufficient) anti-collapse constraint** — enable
   `anti_collapse_min_active_beams_target` / Cap25 admission as a hard floor.
 
+## Concrete launch mechanics (verified against the repo, 2026-06-15)
+
+- **Launcher:** `scripts/family_b_baseline_retrain_runner.py` — flags `--seed-subset`,
+  `--output-dir`, `--parity-only`, `--progress-every`. **No `--prereg`/`--config`:** it is
+  HARDWIRED to the frozen `docs/research/env-foundation/retrain-prereg-family-b.json`
+  (pins `r1_reward_mode: angle_aware_ee`, `episodes: 3000`, seeds [42,137,271], offset_mask on).
+- **Replicate the collapsed baseline (sanity — confirms harness + reproduces collapse):**
+  `MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/family_b_baseline_retrain_runner.py
+  --seed-subset 42 --output-dir artifacts/family-b-r1ee-repro-1seed --progress-every 50`
+- **Throughput-r1 (0a) is NOT a CLI flag — it is a small prereg change** (launcher is
+  prereg-hardwired): (i) `cp` the prereg → `…-r1throughput.json`; (ii) flip
+  `r1_reward_mode: angle_aware_ee → throughput` + update `r1_reward_label` /
+  `r1_reward_provenance` to document the G3 deviation (the prereg already references "the SDD-11
+  throughput-r1 anchor"); (iii) repoint the loader (`src/modqn_paper_reproduction/family_b_retrain/
+  runner_support.py` prereg path, or add a `--prereg` flag — ~2 lines); (iv) run the launcher with a
+  new `--output-dir`. Keep episodes/seeds/eval/replay/eps-schedule IDENTICAL (only r1 changes).
+- **Verdict:** read `artifacts/<out>/seed-42/seed_verdict.json` →
+  `active_beam_count_mean`, `modal_frac_mean`, M1, M4, `qos_served_fraction`; compare vs collapsed
+  B0 + RANDOM.
+- **Check prior evidence first:** an SDD-11 throughput-r1 anchor exists
+  (`docs/research/catfish-faithful-route-a/sdd11-*-prereg.json`) but on the PRE-Family-B env —
+  read its collapse outcome as a prior; the clean test is throughput-r1 on the Family-B env.
+
 ## Eval / acceptance
 
 Use the existing held-out eval + `seed_verdict` harness. For each arm, report vs the
