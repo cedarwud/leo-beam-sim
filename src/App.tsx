@@ -92,7 +92,6 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
-import { ModqnEvidenceTab } from './ui/ModqnEvidenceTab';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
 import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
@@ -2015,7 +2014,7 @@ export function App() {
                   }
                   bundleProvenanceKind={bundleProvenanceKind}
                 />
-                {handoverEventRail}
+                {sceneLane === 'sinr-live' ? handoverEventRail : null}
                 <InfoPanel
                   {...simState}
                   showFormulaTerms={diagnosticsOpen}
@@ -2047,7 +2046,6 @@ export function App() {
                     MODQN bundle load failed: {userTrainedLoadError}
                   </div>
                 ) : null}
-                {handoverEventRail}
                 <section
                   className="leo-modqn-family-b-mode"
                   aria-label="MODQN Family-B dense-Q proof mode"
@@ -2062,11 +2060,6 @@ export function App() {
                     background: '#241d0a',
                   }}
                 >
-                  <strong style={{ fontSize: 12.5, color: '#ffe9a8' }}>MODQN dense-Q proof (Family-B)</strong>
-                  <span style={{ fontSize: 11.5, color: '#cdbb86', lineHeight: 1.35 }}>
-                    Grade-2 constrained, non-paper-faithful. Loads the producer Family-B window so
-                    DecisionViz shows real per-action Q1/Q2/Q3. Illustrative only — not a beats-baseline claim.
-                  </span>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       type="button"
@@ -2094,14 +2087,6 @@ export function App() {
                   artifactReplaySource={showcaseArtifactSource}
                   onLoadEntry={handleLoadIntoScene}
                   onLoadPaperFaithful={handleRevertToPaperFaithful}
-                />
-                <ModqnEvidenceTab
-                  simState={simState}
-                  bandwidthMHz={effectiveProfile.channel.bandwidthMHz}
-                  appliedHandoverOffsetDb={appliedHandoverPolicy.offsetDb}
-                  appliedHandoverTriggerTimeSec={appliedHandoverPolicy.triggerTimeSec}
-                  handoverMode={handoverMode}
-                  bundleProvenanceKind={bundleProvenanceKind}
                 />
                 <RewardCurvePanel
                   envelope={modqnReplayEnvelope}
