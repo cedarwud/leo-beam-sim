@@ -147,7 +147,12 @@ export function isSceneLaneSourceCompatible(input: SceneLaneSourceCompatibilityI
 }
 
 export function resolveSceneLaneUeMarkerShape(sceneLane: SceneLane): SceneLaneUeMarkerShape {
-  return sceneLane === 'sinr-live' ? 'cylinder' : 'sphere';
+  // sinr-live AND the MODQN live page (which reuses the SINR scene render) use the
+  // slim cylinder marker so the live lanes read consistently; only the replay /
+  // artifact proof lanes keep the sphere marker.
+  return sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview'
+    ? 'cylinder'
+    : 'sphere';
 }
 
 export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): SceneLaneRenderPlan {
@@ -235,11 +240,16 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     showLiveSatelliteMarkers,
     showBeamCallouts,
     showLiveSceneEffects,
+    // Spine particles are a sinr-live AMBIENT effect (data streaming along the
+    // steered beams). The MODQN live page reuses the SINR scene for its multi-beam
+    // cones but is a PROOF surface, not the ambient experience — gate spine on
+    // `showSinrLiveViewport` (sinr-live only) so it does not inherit the streaming
+    // particles via the `showSinrBeamRender` OR that lights MODQN's cones.
     showSpineParticles:
       input.effectsEnabled.spineParticles
       && !input.paused
       && !input.reducedMotion
-      && showLiveSceneEffects,
+      && showSinrLiveViewport,
     showOrbitTrail:
       input.effectsEnabled.orbitTrail
       && !input.reducedMotion

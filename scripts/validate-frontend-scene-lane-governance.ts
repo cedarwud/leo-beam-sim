@@ -179,7 +179,7 @@ assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'artifact-replay', sceneSo
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'artifact-replay', sceneSource: 'live-sim' }), false);
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'sinr-live', sceneSource: 'artifact-replay' }), false);
 assert.equal(resolveSceneLaneUeMarkerShape('sinr-live'), 'cylinder');
-assert.equal(resolveSceneLaneUeMarkerShape('modqn-live-cell-preview'), 'sphere');
+assert.equal(resolveSceneLaneUeMarkerShape('modqn-live-cell-preview'), 'cylinder');
 assert.equal(resolveSceneLaneUeMarkerShape('modqn-replay-proof'), 'sphere');
 assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
 
@@ -1647,7 +1647,7 @@ assertContains(
 );
 assertContains(
   sceneLaneRenderPlanSource,
-  "sceneLane === 'sinr-live' ? 'cylinder' : 'sphere'",
+  "sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview'",
   'Scene lane render plan owns UE marker shape instead of raw appMode',
 );
 assertContains(
