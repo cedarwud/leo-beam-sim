@@ -7,7 +7,6 @@ import { loadProfile } from '../src/profiles/index.ts';
 import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
 import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
-import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 import { formatSatelliteLabel } from '../src/utils/formatSatelliteLabel.ts';
@@ -124,8 +123,7 @@ function runDeterministicHandoverReplay() {
     hoCount: manager.eventLog.length,
     reason: interHandoverDecision.reason,
     // Elapsed sim seconds the replay consumed to reach the committed inter-HO.
-    // Feeds the SimState fixture's required `simTimeSec` (read unguarded by
-    // DiagnosticsDrawer for the per-sim-min readout) so the recent-HO UI renders.
+    // Feeds the SimState fixture's required `simTimeSec` so the recent-HO UI renders.
     simTimeSec: (simTimeMs - EPOCH_UTC_MS) / 1000,
   };
 }
@@ -211,10 +209,7 @@ function run(): void {
   const targetLabel = formatSatelliteLabel(TARGET_SAT_ID);
 
   const combinedMarkup = renderToStaticMarkup(
-    <>
-      <InfoPanel {...simState} showFormulaTerms profile={profile} />
-      <DiagnosticsDrawer {...simState} expanded profile={profile} />
-    </>,
+    <InfoPanel {...simState} showFormulaTerms profile={profile} />,
   );
   const combinedText = decodeHtmlText(combinedMarkup);
   assertContains(combinedText, 'HO SOURCE');
@@ -223,7 +218,6 @@ function run(): void {
   assertContains(combinedText, 'recent target / serving now');
   assertContains(combinedText, sourceLabel);
   assertContains(combinedText, targetLabel);
-  assertContains(combinedText, 'DEBUG / VALIDATION');
   assertContains(combinedMarkup, 'data-testid="formula-term-evidence"');
   assertContains(combinedText, 'SINR Formula Terms');
   assertContains(combinedText, 'physical serving source');

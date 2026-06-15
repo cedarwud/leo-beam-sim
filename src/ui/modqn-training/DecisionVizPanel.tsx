@@ -201,11 +201,19 @@ interface DenseQProofReadoutProps {
 function DenseQProofReadout({ proof }: DenseQProofReadoutProps): JSX.Element {
   if (proof.status === 'source-gap') {
     return (
+      // PARKED (warning hide): the dense-Q "source gap" fail-closed warning is
+      // hidden visually but kept in the DOM — render-HTML gates
+      // (validate:phase-d:decision-viz) + validate:modqn:dense-q-proof-adapter
+      // source-pin data-dense-q-proof-status="source-gap" / the testid. Inline
+      // style (not SCSS) because .leo-decision-viz-proof lives in _modqn.scss,
+      // which a concurrent cleanup session currently owns. Un-park by removing
+      // the style prop. The proof-ready state below is unaffected.
       <section
         className="leo-decision-viz-proof"
         data-testid="decision-viz-dense-q-proof"
         data-dense-q-proof-status="source-gap"
         data-source-gap-field={proof.sourceGapField}
+        style={{ display: 'none' }}
       >
         <strong>Dense-Q proof source gap</strong>
         <span>

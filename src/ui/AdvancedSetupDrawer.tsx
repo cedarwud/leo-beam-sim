@@ -61,6 +61,12 @@ export function AdvancedSetupDrawer({
       dialogTitle="MODQN advanced setup"
       dialogAriaLabel="MODQN advanced setup"
       closeAriaLabel="Close advanced setup"
+      // Non-modal inline disclosure (no full-screen scrim). The advanced tools
+      // are degenerate-data power tools you rarely touch live, so dimming the
+      // whole viewport added no value — the drawer now expands in-flow in the
+      // left aside (same modality as the SINR-live lane), scene + timeline stay
+      // live. Behavior-locked by validate:frontend:advanced-drawer-modality.
+      modal={false}
     >
       <ModqnAdvancedDisplayControls
         handoverMode={handoverMode}

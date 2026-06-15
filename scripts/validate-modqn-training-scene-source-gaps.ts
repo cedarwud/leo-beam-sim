@@ -226,52 +226,10 @@ assertNotIncludes(
   'D6 replay handover cinema gate must not depend on renderer fallback state',
 );
 
-const evidenceTab = read('src/ui/ModqnEvidenceTab.tsx');
-assert.ok(
-  evidenceTab.includes('createCurrentModqnReplayProofSourceGaps'),
-  'MODQN evidence tab consumes the canonical source-gap model',
-);
-assert.ok(
-  evidenceTab.includes('data-testid="modqn-evidence-source-gap-list"'),
-  'MODQN evidence tab exposes a source-gap list test hook',
-);
-assert.ok(
-  evidenceTab.includes('data-source-gap-field={gap.field}'),
-  'MODQN evidence tab exposes stable source-gap field ids',
-);
-assert.ok(
-  evidenceTab.includes('data-source-gap-policy={gap.policy}'),
-  'MODQN evidence tab exposes stable source-gap policy ids',
-);
-for (const field of [
-  'timeline.sourceRowIdentity',
-  'timeline.focusUeSelection',
-  'timeline.activeCellState',
-  'timeline.handoverPenaltyAttribution',
-  'diagnostics.denseQPolicy',
-  'traffic.queueRows',
-  'comparison.alignedTimebase',
-] as const) {
-  assert.ok(evidenceTab.includes(field), `MODQN evidence tab labels trace source gap ${field}`);
-}
-
-const browserValidator = read('scripts/validate-modqn-training-scene-source-gaps-browser.ts');
-assert.ok(
-  browserValidator.includes('.leo-app-shell[data-scene-lane="modqn-live-cell-preview"]'),
-  'browser validator checks live preview before proof activation',
-);
-assert.ok(
-  browserValidator.includes('.leo-app-shell[data-scene-lane="modqn-replay-proof"]'),
-  'browser validator checks proof lane after proof activation',
-);
-assert.ok(
-  browserValidator.includes('.leo-app-shell[data-scene-lane="artifact-replay"]'),
-  'browser validator checks artifact replay isolation',
-);
-assert.ok(
-  browserValidator.includes('data-handover-story-fake-beam-hopping'),
-  'browser validator checks fake beam hopping remains disabled',
-);
+// The ModqnEvidenceTab source-gap LIST render (and its dedicated browser gate)
+// were retired with the wall-of-text Evidence rail. The canonical source-gap
+// MODEL contract above is the durable invariant; the proof-level source-gap
+// disclosure now lives on the DecisionViz dense-Q card.
 
 const sdd = read('docs/modqn-training-scene-replay-sdd.md');
 assert.ok(

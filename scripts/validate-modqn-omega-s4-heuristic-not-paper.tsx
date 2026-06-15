@@ -20,10 +20,6 @@
 //   (h) On boot, readPersistedHandoverMode returns 'sinr-offset' for any
 //       stored value other than 'sinr-offset' or 'decision-overlay-on-live-sinr' — including
 //       'omega-heuristic' and arbitrary invalid strings (SDD §4.4 item 2).
-//   (i) DiagnosticsDrawer renders an omega-heuristic section (test-id
-//       `diagnostics-drawer-omega-heuristic`) that shows mode, ω, score
-//       formula, and not-paper warning text when handoverMode is
-//       omega-heuristic.
 //   (j) Heuristic-mode score function picks the best candidate under the
 //       user's ω. Sanity checks the closed-form arithmetic against a
 //       hand-computed argmax.
@@ -343,38 +339,6 @@ console.log('\n(h) readPersistedHandoverMode boot fallback');
       (globalThis as { window?: unknown }).window = originalWindow;
     }
   }
-}
-
-// ---------------------------------------------------------------------------
-// (i) DiagnosticsDrawer omega-heuristic row
-// ---------------------------------------------------------------------------
-console.log('\n(i) DiagnosticsDrawer omega-heuristic row');
-{
-  const drawSrc = readSource('src/ui/DiagnosticsDrawer.tsx');
-  assert(
-    drawSrc.includes("handoverMode === 'omega-heuristic'"),
-    "DiagnosticsDrawer gates section on handoverMode === 'omega-heuristic'",
-  );
-  assert(
-    drawSrc.includes('diagnostics-drawer-omega-heuristic'),
-    'DiagnosticsDrawer omega-heuristic section has testid',
-  );
-  assert(
-    drawSrc.includes('NOT PAPER MODQN'),
-    'DiagnosticsDrawer surfaces NOT PAPER MODQN warning in section title',
-  );
-  assert(
-    drawSrc.includes('Score formula'),
-    'DiagnosticsDrawer surfaces "Score formula" row label',
-  );
-  assert(
-    drawSrc.includes('score(a) = ω_t · normSINR(a) − ω_h · isSwitch(a) − ω_l · normLoad(a)'),
-    'DiagnosticsDrawer shows the score formula in human-readable form',
-  );
-  assert(
-    drawSrc.includes('ModqnHandoverModeContext'),
-    'DiagnosticsDrawer reads ω from ModqnHandoverModeContext',
-  );
 }
 
 // ---------------------------------------------------------------------------

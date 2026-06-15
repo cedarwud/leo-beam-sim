@@ -25,7 +25,6 @@ import path from 'node:path';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ModqnObjectiveTab } from '../src/ui/ModqnObjectiveTab.tsx';
-import { ModqnEvidenceTab } from '../src/ui/ModqnEvidenceTab.tsx';
 import {
   DEFAULT_RUNTIME_HANDOVER_MODE,
   MODQN_PAPER_FAITHFUL_OMEGA,
@@ -45,14 +44,12 @@ import {
   MODQN_BASELINE_BEAMS_PER_SATELLITE,
   MODQN_TOTAL_BASELINE_BEAMS,
 } from '../src/modqn/replay-bundle/identity.ts';
-import type { SimState } from '../src/scene/types.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname ?? '.', '..');
 const DELETED_STUB_PATH = path.join(REPO_ROOT, 'src/ui/useModqnDemoStub.ts');
 const NEW_HOOK_PATH = path.join(REPO_ROOT, 'src/ui/useModqnHandoverState.ts');
 const APP_PATH = path.join(REPO_ROOT, 'src/App.tsx');
 const OBJECTIVE_TAB_PATH = path.join(REPO_ROOT, 'src/ui/ModqnObjectiveTab.tsx');
-const EVIDENCE_TAB_PATH = path.join(REPO_ROOT, 'src/ui/ModqnEvidenceTab.tsx');
 const PLAYBACK_SHELL_PATH = path.join(REPO_ROOT, 'src/modqn/replay-bundle/playback-shell.ts');
 
 function decodeHtmlText(markup: string): string {
@@ -70,28 +67,6 @@ function decodeHtmlText(markup: string): string {
     .trim();
 }
 
-function makeSimState(): SimState {
-  return {
-    simTimeSec: 0,
-    physicalServing: {
-      satId: null,
-      beamId: null,
-      sinrDb: null,
-    },
-    physicalPending: {
-      satId: null,
-      beamId: null,
-      sinrDb: null,
-    },
-    physicalServingBudget: null,
-    intraSwitchPending: null,
-    intraHoCount: 0,
-    hoCount: 0,
-    lastHoEvent: null,
-    beamHopEnabled: false,
-    beamHopSlotIndex: null,
-  } as unknown as SimState;
-}
 
 function makeHook(overrides: {
   omegaActive?: RuntimeOmegaState;
@@ -162,11 +137,9 @@ recordPass('S1.1a', 'App.tsx no longer imports useModqnDemoStub');
 // mention the old name to explain the migration; the check looks for actual
 // import / require statements.
 const objectiveTabSource = readFileSync(OBJECTIVE_TAB_PATH, 'utf8');
-const evidenceTabSource = readFileSync(EVIDENCE_TAB_PATH, 'utf8');
 const importRegex = /(?:import\s+[^;]*?from\s+['"][^'"]*useModqnDemoStub['"])|(?:require\s*\(\s*['"][^'"]*useModqnDemoStub['"])/;
 for (const [label, source] of [
   ['ModqnObjectiveTab.tsx', objectiveTabSource],
-  ['ModqnEvidenceTab.tsx', evidenceTabSource],
 ] as const) {
   assert.equal(
     importRegex.test(source),
@@ -304,70 +277,10 @@ recordPass('S1.2.bundle', 'Bundle sidebar snapshot exposes paperId, schema, beam
   recordPass('S1.3.no-retrain', 'ObjectiveTab markup contains no Retrain button');
 }
 
-// 4. ModqnEvidenceTab renders bundle manifest fields + active ω.
-{
-  const hook = makeHook({
-    omegaActive: { throughput: 0.55, handover: 0.25, loadBalance: 0.2 },
-    omegaSource: 'user-applied',
-  });
-  const markup = renderToStaticMarkup(
-    <ModqnEvidenceTab
-      simState={makeSimState()}
-      bandwidthMHz={400}
-      appliedHandoverOffsetDb={3}
-      appliedHandoverTriggerTimeSec={3.5}
-      hookOverride={hook}
-    />,
-  );
-  const text = decodeHtmlText(markup);
-
-  for (const testId of [
-    'modqn-evidence-tab',
-    'modqn-evidence-manifest',
-    'modqn-evidence-paper-id',
-    'modqn-evidence-bundle-schema-version',
-    'modqn-evidence-total-beam-count',
-    'modqn-evidence-episodes-completed',
-    'modqn-evidence-active-omega',
-    'modqn-evidence-active-omega-throughput',
-    'modqn-evidence-active-omega-handover',
-    'modqn-evidence-active-omega-loadbalance',
-  ]) {
-    assert.ok(
-      markup.includes(`data-testid="${testId}"`),
-      `S1.4.${testId}: EvidenceTab markup missing data-testid="${testId}"`,
-    );
-  }
-  recordPass('S1.4.testids', 'EvidenceTab renders all expected data-testid hooks');
-
-  assert.ok(
-    text.includes(MODQN_PAPER_ID),
-    'S1.4.paper-id: EvidenceTab markup must include paperId',
-  );
-  assert.ok(
-    text.includes(MODQN_REPLAY_BUNDLE_SCHEMA_VERSION),
-    'S1.4.schema: EvidenceTab markup must include bundleSchemaVersion',
-  );
-  assert.ok(
-    text.includes(String(MODQN_TOTAL_BASELINE_BEAMS)),
-    'S1.4.total-beams: EvidenceTab markup must include totalBeamCount',
-  );
-  recordPass('S1.4.manifest', 'EvidenceTab markup contains paperId, schema version, total beams');
-
-  for (const expected of ['0.55', '0.25', '0.20']) {
-    assert.ok(
-      text.includes(expected),
-      `S1.4.active-omega: EvidenceTab active ω must include ${expected}`,
-    );
-  }
-  recordPass('S1.4.active-omega', 'EvidenceTab renders active ω (0.55, 0.25, 0.20)');
-
-  assert.ok(
-    markup.includes('data-omega-source="user-applied"'),
-    'S1.4.source: EvidenceTab carries data-omega-source="user-applied"',
-  );
-  recordPass('S1.4.source', 'EvidenceTab carries data-omega-source="user-applied" when overridden');
-}
+// 4. (retired) The ModqnEvidenceTab manifest/active-ω render check was removed
+//    with the wall-of-text Evidence rail. The bundle manifest + active ω are no
+//    longer surfaced in the MODQN sidebar; the Q-proof lives on the DecisionViz
+//    card. The hook contract that fed them is still asserted in section 6.
 
 // 5. Confirm the hard-coded shell model is unchanged (S2 territory).
 {

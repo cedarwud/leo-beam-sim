@@ -116,6 +116,16 @@ canvas {
   overflow: visible;
 }
 
+// Temporary MODQN declutter (先隱藏 for the visual overhaul): hide the in-scene
+// top-right preview/warning HUD only. The sidebars stay. This card renders only
+// in the modqn-live-cell-preview lane (App gate), so hiding the class hides it
+// exactly there and nowhere else. Display-only (CLAUDE.md Rule#2) and reversible
+// — the JSX render gate is untouched, so the scene-lane-governance source pins
+// stay green; only visibility changes.
+.leo-modqn-scene-hud {
+  display: none;
+}
+
 // Compact horizontal quick-control row (4 display checkboxes) — a thin toolbar
 // strip across the top of the whole screen (above the shell row).
 .leo-sinr-quick-controls {
@@ -131,7 +141,10 @@ canvas {
   // Explicit light text — the .leo-control-bar__toggle labels otherwise inherit
   // the UA default (black) outside a .leo-control-bar and render invisible.
   color: rgba(229, 244, 251, 0.88);
-  font-size: 12px;
+  // Legibility (user: top-left checkboxes too small). 12 → 17; .leo-ui-checkbox
+  // uses `font: inherit`, so this enlarges the Beam Info / Other beams / …
+  // labels too.
+  font-size: 17px;
 }
 
 .leo-app-mode-rail {

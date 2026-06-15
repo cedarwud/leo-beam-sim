@@ -1,19 +1,19 @@
 // G1-CONTROLBAR-ADV — shared opt-in Advanced drawer shell.
 //
-// The MODQN lane (AdvancedSetupDrawer) and the SINR-live lane
-// (SinrLiveDisplayDrawer) both host their non-default controls behind an opt-in
-// "⚙ Advanced" trigger at the foot of the left aside (north star: 少按鈕 / 直覺 /
-// 零學習 — the default surface stays the scene, not a control panel). This shell
-// owns the trigger button, the open/close + focus management, and two render
-// modalities; each lane mounts its own content as children and picks a modality.
+// The MODQN lane (AdvancedSetupDrawer) hosts its non-default controls behind an
+// opt-in "⚙ Advanced" trigger at the foot of the left aside (north star: 少按鈕 /
+// 直覺 / 零學習 — the default surface stays the scene, not a control panel). This
+// shell owns the trigger button, the open/close + focus management, and two
+// render modalities; the lane mounts its own content as children and picks one.
 //
-// modal=true  (MODQN): a left-anchored modal drawer with a fixed scrim that tops
-//   every HUD layer (the timeline must not be clickable through the open modal;
-//   behavior-locked by validate:frontend:advanced-drawer-modality). Right for the
-//   heavy training / jobs / ω-objective power tools — you configure, not watch.
-// modal=false (SINR-live): a non-modal inline disclosure rendered in-flow in the
-//   aside. NO scrim — the scene and timeline stay live so display/camera tweaks
-//   apply WHILE the handover cinema plays. Right for lightweight display toggles.
+// modal=false (current MODQN choice): a non-modal inline disclosure rendered
+//   in-flow in the aside. NO scrim — the scene and timeline stay live while the
+//   drawer is open. Chosen because the advanced tools are degenerate-data power
+//   tools you rarely touch live, so dimming the whole viewport added no value.
+//   Behavior-locked by validate:frontend:advanced-drawer-modality.
+// modal=true (legacy): a left-anchored modal drawer with a fixed full-viewport
+//   scrim that tops every HUD layer (timeline not clickable through the modal).
+//   Retained for callers that genuinely need a watch-blocking config surface.
 //
 // The shell carries NO lane-specific props — the lane decides labels, testid
 // prefix, modality, and content.

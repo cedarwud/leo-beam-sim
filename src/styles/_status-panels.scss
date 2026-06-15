@@ -95,9 +95,14 @@
 
 /* DiagnosticsDrawer - migrated from inline styles */
 .leo-diagnostics-drawer[data-drawer-state="collapsed"] {
-  position: absolute;
-  right: 0;
-  bottom: 0;
+  // In-flow (not absolute/sticky): the collapsed toggle is a normal item at the
+  // foot of the .leo-live-status-stack. A pinned variant (absolute/fixed/sticky)
+  // always floats over ~32px of whatever is at the scroll viewport bottom, hiding
+  // the last handover-list row behind it — the bug being fixed. As a flow item it
+  // scrolls with the list and never covers anything. margin-top auto keeps it at
+  // the bottom when the content is short; align-self right-aligns the pill.
+  align-self: flex-end;
+  margin-top: auto;
   width: min(188px, 100%);
   padding: 8px 10px;
   border-radius: 8px;

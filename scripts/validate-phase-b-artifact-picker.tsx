@@ -198,26 +198,9 @@ console.log('\n(c) ClaimBoundaryBanner user-trained chip');
   );
 }
 
-// ---------------------------------------------------------------------------
-// (d) source grep: ModqnEvidenceTab chip render
-// ---------------------------------------------------------------------------
-console.log('\n(d) ModqnEvidenceTab user-trained chip');
-{
-  const source = fs.readFileSync('src/ui/ModqnEvidenceTab.tsx', 'utf8');
-  assert(
-    source.includes("bundleProvenanceKind?: 'paper-faithful' | 'user-trained'"),
-    'ModqnEvidenceTab exposes bundleProvenanceKind prop',
-  );
-  assert(
-    source.includes('data-testid="modqn-evidence-user-trained-chip"'),
-    'ModqnEvidenceTab includes user-trained chip testid',
-  );
-  assert(/>user-trained</.test(source), 'ModqnEvidenceTab chip text is exactly user-trained');
-  assert(
-    source.includes("bundleProvenanceKind === 'user-trained'"),
-    'ModqnEvidenceTab chip is gated on user-trained provenance',
-  );
-}
+// (d) The ModqnEvidenceTab user-trained chip check was retired with the
+//     wall-of-text Evidence rail; provenance now lives on the DecisionViz card +
+//     the Family-B disclosure line, validated elsewhere.
 
 // ---------------------------------------------------------------------------
 // (e) source grep: App.tsx wires picker + provenance state

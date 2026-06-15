@@ -185,3 +185,46 @@
   max-width: 28px !important;
   padding: 0 !important;
 }
+
+// ── Left-rail legibility bump (user: "整個左側邊欄的字都太小了") ───────────────
+// The left rail packed many 9–12px labels too small to read comfortably. Raise
+// the floor: a base bump for class-less inherited text, a `small` floor (smalls
+// are always sub-labels, never large — flooring them never shrinks anything),
+// plus scoped bumps for the explicit-px small label/value classes. Each
+// `.leo-shell-left` descendant out-specifies its bare-class rule (e.g.
+// `.leo-shell-left .x` = (0,2,0) beats `.x` = (0,1,0)), so no !important is
+// needed; the right rail + scene keep their own sizes.
+.leo-shell-left {
+  font-size: 19px;
+  line-height: 1.5;
+}
+
+.leo-shell-left small {
+  font-size: 17px;
+}
+
+// SINR / MODQN lane buttons stay put (user: "sinr/modqn 的按鈕…不動").
+.leo-shell-left .leo-lane-experience-bar__label {
+  font-size: 19px;
+}
+
+.leo-shell-left .leo-lane-experience-bar__sub {
+  font-size: 15px;
+}
+
+.leo-shell-left .leo-modqn-advanced-controls__label,
+.leo-shell-left .leo-modqn-advanced-controls__header p,
+.leo-shell-left .leo-training-form__coverage-title,
+.leo-shell-left .leo-modqn-evidence-decision-trace__label,
+.leo-shell-left .leo-modqn-evidence-decision-trace__note,
+.leo-shell-left .leo-modqn-replay-panel__metrics span,
+.leo-shell-left .leo-modqn-replay-panel__metrics strong,
+.leo-shell-left .leo-modqn-replay-panel__beam,
+.leo-shell-left .leo-modqn-replay-panel__audit span,
+// `.leo-advanced-setup-trigger small` (in _advanced.scss, loaded after this
+// file) ties the bare `.leo-shell-left small` floor on specificity, so name the
+// trigger explicitly to win the trigger hint ("display · policy · training").
+.leo-shell-left .leo-advanced-setup-trigger small,
+.leo-shell-left legend {
+  font-size: 18px;
+}

@@ -87,7 +87,6 @@ import {
   HandoverEventRail,
   type HandoverRailEvent,
 } from './ui/HandoverEventRail';
-import { DiagnosticsDrawer } from './ui/DiagnosticsDrawer';
 import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
@@ -253,10 +252,6 @@ export function App() {
   const [appMode, setAppModeRaw] = useState<AppExperienceMode>(initialRuntime.appMode);
   const profileByModeRef = useRef<ProfileByMode>(initialRuntime.profileByMode);
   const [selectedProfileId, setSelectedProfileId] = useState(initialRuntime.selectedProfileId);
-  // Replaces the removed presentation/tuning/diagnostics UI-mode switch: a local
-  // toggle that opens the live diagnostics detail (DiagnosticsDrawer expanded +
-  // InfoPanel formula terms). Defaults closed for the clean showcase look.
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
 
   // S3: handover mode — persisted for sinr-offset/decision-overlay-on-live-sinr, never for omega-heuristic.
   const [handoverMode, setHandoverModeRaw] = useState<RuntimeHandoverMode>(
@@ -2031,19 +2026,10 @@ export function App() {
                 {sceneLane === 'sinr-live' ? handoverEventRail : null}
                 <InfoPanel
                   {...simState}
-                  showFormulaTerms={diagnosticsOpen}
                   profile={effectiveProfile}
                   handoverMode={handoverMode}
                   isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                   channelMetricKind={activeSceneFrame?.channelMetricKind}
-                />
-                <DiagnosticsDrawer
-                  {...simState}
-                  expanded={diagnosticsOpen}
-                  onToggleExpanded={() => setDiagnosticsOpen(open => !open)}
-                  profile={effectiveProfile}
-                  handoverMode={handoverMode}
-                  rescalarizeFallbackCount={rescalarizeFallbackCount}
                 />
               </section>
             ) : (

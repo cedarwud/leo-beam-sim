@@ -24,6 +24,10 @@ export type HandoverRailAxisKind = 'source-time' | 'display-stretched';
 export const HANDOVER_RAIL_FOCUS_SOURCE_LEAD_SEC = 10;
 export const HANDOVER_RAIL_FOCUS_SOURCE_TRAIL_SEC = 20;
 export const HANDOVER_RAIL_FOCUS_DISPLAY_SEC = 60;
+// Display-only declutter: the track is binned into at most this many source-time
+// buckets per lane so a dense window (hundreds of live-Walker events across a 2 h
+// horizon) renders as distinct lines instead of an overlapping smear.
+export const HANDOVER_RAIL_TARGET_MARKER_BUCKETS = 30;
 
 export interface HandoverRailEvent {
   readonly id: string;
@@ -90,6 +94,8 @@ function kindLabel(kind: HandoverRailEventKind): string {
   return kind === 'inter' ? 'INTER' : 'INTRA';
 }
 
+// Retained for the source-labeling contract (governance/story-layer source-pins)
+// even though the source-ordered list that displayed them was retired.
 function sourceLabel(source: HandoverRailEventSource): string {
   if (source === 'artifact-replay') return 'artifact';
   if (source === 'modqn-replay') return 'producer trace';
@@ -207,12 +213,28 @@ function summarizeClusterLabels(labels: ReadonlySet<string>, pluralLabel: string
   return `${values.length} ${pluralLabel}`;
 }
 
-function buildEventMapClusters(events: readonly HandoverRailEvent[]): readonly HandoverEventMapCluster[] {
+function buildEventMapClusters(
+  events: readonly HandoverRailEvent[],
+  binWidthSec: number,
+): readonly HandoverEventMapCluster[] {
+  const safeBinWidthSec = isFiniteNumber(binWidthSec) && binWidthSec > 0 ? binWidthSec : 0;
   const clusters = new Map<string, MutableHandoverEventMapCluster>();
+  // `events` arrive pre-sorted by source time (see sortedEvents at the call site),
+  // so the first event seen for a bucket is its earliest. Display-only proximity
+  // binning (Rule#6): events that land in the same source-time bucket (per kind)
+  // collapse into one marker so a dense 2 h window reads as two lanes of distinct
+  // lines, not an unreadable smear. The bucket KEY only groups — the cluster
+  // id/time come from the bucket's earliest event's exact source time, so a lone
+  // event keeps a stable time-based id (20.000s -> cluster-20_000_intra) and
+  // click-to-seek still targets a real event. binWidthSec<=0 = exact-time
+  // clustering (already-sparse windows where every event is its own line).
   for (const event of events) {
     const sourceTimeSec = eventSourceTimeSec(event);
-    const key = `${sourceTimeSec.toFixed(3)}:${event.kind}`;
-    const existing = clusters.get(key);
+    const representativeKey = `${sourceTimeSec.toFixed(3)}:${event.kind}`;
+    const bucketKey = safeBinWidthSec > 0
+      ? `${Math.floor(sourceTimeSec / safeBinWidthSec)}:${event.kind}`
+      : representativeKey;
+    const existing = clusters.get(bucketKey);
     if (existing) {
       existing.fromLabels.add(event.fromLabel);
       existing.toLabels.add(event.toLabel);
@@ -221,8 +243,8 @@ function buildEventMapClusters(events: readonly HandoverRailEvent[]): readonly H
       existing.title = `${kindLabel(event.kind)} handover cluster`;
       continue;
     }
-    clusters.set(key, {
-      id: `cluster-${key.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+    clusters.set(bucketKey, {
+      id: `cluster-${representativeKey.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
       timeSec: sourceTimeSec,
       clickTargetSec: eventClickTargetSec(event),
       axisTimeSec: eventAxisTimeSec(event),
@@ -303,7 +325,16 @@ export function HandoverEventRail({
     .sort(eventSort);
   const intraCount = sortedEvents.filter(event => event.kind === 'intra').reduce((sum, event) => sum + (event.count ?? 1), 0);
   const interCount = sortedEvents.filter(event => event.kind === 'inter').reduce((sum, event) => sum + (event.count ?? 1), 0);
-  const eventMapClusters = buildEventMapClusters(sortedEvents);
+  // Only declutter when the window is genuinely dense: with at most one event per
+  // target bucket every event already renders as its own line, so we keep the
+  // exact-time, all-events-distinct behavior (binWidthSec=0). Past that the track
+  // would smear, so we bin into source-time buckets per lane.
+  const eventMapClusters = buildEventMapClusters(
+    sortedEvents,
+    safeDurationSec > 0 && sortedEvents.length > HANDOVER_RAIL_TARGET_MARKER_BUCKETS
+      ? safeDurationSec / HANDOVER_RAIL_TARGET_MARKER_BUCKETS
+      : 0,
+  );
   const progressPercent = safeAxisDurationSec > 0 ? (safeAxisCurrentTimeSec / safeAxisDurationSec) * 100 : 0;
   const canSeek = !disabled && safeDurationSec > 0;
   const slowMotionFocusEnabled =
@@ -527,45 +558,6 @@ export function HandoverEventRail({
         </div>
       ) : null}
 
-      {eventMapClusters.length > 0 ? (
-        <div className="leo-handover-event-rail__list" aria-label="Source-ordered handover event map">
-          {eventMapClusters.map(cluster => {
-            const active = Math.abs(cluster.axisTimeSec - safeAxisCurrentTimeSec) <= 1.5;
-            return (
-              <button
-                key={`list:${cluster.id}`}
-                type="button"
-                className="leo-handover-event-rail__event"
-                data-kind={cluster.kind}
-                data-active={active ? 'true' : 'false'}
-                data-selected={focusedCluster?.id === cluster.id ? 'true' : 'false'}
-                data-count={String(cluster.count)}
-                data-source-time-sec={cluster.timeSec.toFixed(3)}
-                data-click-target-sec={cluster.clickTargetSec.toFixed(3)}
-                data-axis-time-sec={cluster.axisTimeSec.toFixed(3)}
-                data-testid={`handover-event-row-${cluster.id}`}
-                disabled={!canSeek}
-                onClick={() => selectClusterAndSeek(cluster)}
-              >
-                <span className="leo-handover-event-rail__event-time">{formatTimelineTime(cluster.axisTimeSec)}</span>
-                <span className="leo-handover-event-rail__event-kind">{kindLabel(cluster.kind)}</span>
-                <span className="leo-handover-event-rail__event-main">
-                  <strong>{cluster.title}</strong>
-                  <small>{`${cluster.fromLabel} -> ${cluster.toLabel} · source ${formatTimelineTime(cluster.timeSec)}`}</small>
-                </span>
-                <span className="leo-handover-event-rail__event-source">
-                  {cluster.count > 1 ? `${cluster.count} rows` : sourceLabel(cluster.source)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="leo-handover-event-rail__empty" data-testid="handover-event-rail-empty">
-          <strong>No source-backed handover events</strong>
-          <span>{emptyRailMessage(railSourceLabel, safeDurationSec, sourceGapReasons)}</span>
-        </div>
-      )}
     </section>
   );
 }

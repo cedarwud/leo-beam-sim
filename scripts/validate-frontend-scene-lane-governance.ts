@@ -1455,7 +1455,6 @@ assertContains(appSource, 'axisPlaybackRate={playback.effectiveSpeed}', 'App syn
 });
 assertContains(handoverRailSource, 'data-marker-cluster-count={String(eventMapClusters.length)}', 'HandoverEventRail exposes marker cluster count');
 assertContains(handoverRailSource, 'data-testid="handover-event-map-track"', 'HandoverEventRail renders a fixed event-map track');
-assertContains(handoverRailSource, 'aria-label="Source-ordered handover event map"', 'HandoverEventRail list is source-ordered, not nearest-event ordered');
 assertContains(handoverRailSource, "data-clustered={clustered ? 'true' : 'false'}", 'HandoverEventRail marks clustered same-time events');
 assertNotContains(handoverRailSource, 'getNearestEvents', 'HandoverEventRail must not sort rows by distance to the playback cursor');
 assertNotContains(handoverRailSource, 'nearestEvents', 'HandoverEventRail rows must not be cursor-nearest owned');
@@ -2839,7 +2838,6 @@ assertContains(
 for (const [needle, label] of [
   ['{showLiveSceneEffects && <AmbientFootprintRings', 'ambient footprint rings'],
   ['{showLiveSceneEffects && (\\n        <HandoverLinks', 'handover links'],
-  ['{showLiveSceneEffects && <IntraHandoverArrow', 'intra handover arrow'],
   ['{showLiveSceneEffects && <IntraGroundShockwave', 'intra ground shockwave'],
   ['{showHandoverToastOverlay && <HandoverToastOverlay', 'handover toast overlay'],
 ] as const) {
@@ -3353,11 +3351,13 @@ assertNotContains(
   'jobs-panel-load-into-scene',
   'JobsPanel no longer renders the old completed-job Load into scene control',
 );
-// The shared AdvancedDrawerShell (trigger + modal scrim + focus management) is
-// now reused ONLY by the MODQN Advanced setup drawer (modal). The SINR-live
-// display/tuning surface was inlined into the left aside (always-visible, in-flow,
-// no opt-in ⚙ trigger) so the left rail is not "too empty" — it no longer mounts
-// the shell.
+// The shared AdvancedDrawerShell (trigger + focus management + two modalities)
+// is now reused ONLY by the MODQN Advanced setup drawer, which chooses the
+// NON-MODAL inline modality (no full-viewport scrim — the screen-graying was
+// dropped as unnecessary; behavior-locked by
+// validate:frontend:advanced-drawer-modality). The SINR-live display/tuning
+// surface was inlined into the left aside (always-visible, in-flow, no opt-in ⚙
+// trigger) so the left rail is not "too empty" — it no longer mounts the shell.
 assertContains(
   advancedDrawerShellSource,
   'data-testid={`${testIdPrefix}-trigger`}',
@@ -3367,6 +3367,11 @@ assertContains(
   advancedSetupDrawerSource,
   'testIdPrefix="advanced-setup"',
   'MODQN Advanced drawer keeps the advanced-setup testid prefix (byte-identical DOM)',
+);
+assertContains(
+  advancedSetupDrawerSource,
+  'modal={false}',
+  'MODQN Advanced drawer uses the non-modal inline modality (no full-screen scrim / screen-graying)',
 );
 assertNotContains(
   sinrLiveDisplayDrawerSource,
@@ -3418,7 +3423,7 @@ assertContains(
 // from package.json would silently void the retirement contract.
 assertContains(packageJson, '"validate:s0:connected-sat-has-beam"', 'package exposes the S0 connected-sat-has-beam invariant gate');
 assertContains(packageJson, '"validate:s0:geometry-trace"', 'package exposes the S0 geometry-trace golden gate');
-assertContains(packageJson, '"validate:frontend:advanced-drawer-modality:browser"', 'package exposes the drawer modality behavior gate (z-order click-through class)');
+assertContains(packageJson, '"validate:frontend:advanced-drawer-modality:browser"', 'package exposes the drawer modality behavior gate (non-modal inline: no scrim, timeline stays clickable)');
 
 assertAndSummarizeTangleLockGroups(line => console.log(line));
 console.log('validate:frontend:scene-lane-governance passed');

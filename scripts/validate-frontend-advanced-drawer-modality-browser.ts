@@ -1,22 +1,22 @@
 #!/usr/bin/env node
-// Frontend consolidation — Advanced setup drawer MODALITY behavior gate.
+// Frontend — Advanced setup drawer MODALITY behavior gate (MODQN lane).
 //
-// Live bug this guards (audit 2026-06-10, docs/frontend-consolidation-program.md
-// HUD row): the drawer scrim (.leo-advanced-setup-overlay, position:fixed) and
-// the TimelineBar (.leo-timeline-bar, position:absolute) resolve in the SAME
-// root stacking context, so if the scrim's z-index is below the timeline's the
-// timeline stays clickable THROUGH the open modal. This is the second recurrence
-// of the click-steal class (first: DiagnosticsDrawer chip over Director arm
-// buttons, fixed in S1), so it gets a BEHAVIOR lock, not a string lock: the gate
-// asserts hit-testing and click semantics, not CSS source text.
+// History: the MODQN Advanced drawer used to be a left-anchored MODAL with a
+// fixed full-viewport scrim (.leo-advanced-setup-overlay) that dimmed the whole
+// screen and topped every HUD layer. The user found the screen-graying
+// unnecessary for the showcase (the advanced tools are degenerate-data power
+// tools, rarely touched live), so the MODQN drawer was flipped to a NON-MODAL
+// inline disclosure: it expands in-flow at the foot of the left aside, NO scrim,
+// the scene + timeline stay live while it is open.
 //
-// Asserts, on a real browser against APP_URL (default :3001), MODQN lane:
-//   1. With the drawer open, elementFromPoint over the timeline transport
-//      resolves INTO the drawer overlay (modal actually covers the timeline).
-//   2. Clicking that point closes the drawer (backdrop semantics) and does NOT
-//      reach the timeline play/pause toggle underneath.
-//   3. Sanity (non-vacuous): after the drawer closes, the same point hit-tests
-//      to the timeline bar — proving step 1 measured a genuine overlap.
+// This gate BEHAVIOR-locks the non-modal intent (so a refactor can't silently
+// re-introduce the scrim / click-block). Asserts, on a real browser against
+// APP_URL (default :3001), MODQN lane, with the drawer OPEN:
+//   1. NO .leo-advanced-setup-overlay scrim exists in the DOM (no screen dim).
+//   2. elementFromPoint over the timeline transport resolves INTO the timeline
+//      bar — the open drawer does NOT cover it, so the timeline stays clickable.
+//   3. Non-vacuous: the drawer is genuinely open + rendered (testid present with
+//      a real bounding box) while 1 and 2 hold.
 //
 // STAGE env var only changes the screenshot filename (before/after evidence
 // loops); assertions are identical in every stage.
@@ -51,54 +51,40 @@ async function main(): Promise<void> {
     await page.click('[data-testid="advanced-setup-trigger"]');
     await page.waitForSelector('[data-testid="advanced-setup-drawer"]', { timeout: 10_000 });
 
-    // Pick a probe point that is inside the timeline bar but clear of the drawer
-    // panel, so a click there is backdrop territory (scrim), never panel body.
-    const timelineBox = await page.locator('[data-testid="timeline-bar"]').boundingBox();
-    const panelBox = await page.locator('.leo-advanced-setup-panel').boundingBox();
-    if (!timelineBox || !panelBox) fail('missing timeline or drawer panel bounding box');
-    const probeX = Math.min(
-      timelineBox.x + timelineBox.width - 40,
-      Math.max(panelBox.x + panelBox.width + 40, timelineBox.x + 40),
-    );
-    const probeY = timelineBox.y + timelineBox.height / 2;
-    if (probeX <= panelBox.x + panelBox.width || probeX >= timelineBox.x + timelineBox.width) {
-      fail(`probe point x=${probeX} not in (panel right, timeline right) — layout assumption broke`);
-    }
-
     await page.screenshot({ path: join(OUT_DIR, `advanced-drawer-modality-${STAGE}.png`), fullPage: true });
 
-    // 1. Hit test: the open modal must own the pixel above the timeline.
+    // 1. No screen dim: the modal scrim must not exist while the drawer is open.
+    const scrimCount = await page.locator('.leo-advanced-setup-overlay').count();
+    if (scrimCount !== 0) {
+      fail(`drawer open but ${scrimCount} .leo-advanced-setup-overlay scrim present — screen-graying modal re-introduced`);
+    }
+
+    // 2. Timeline stays interactive: probe the play toggle's own centre, which is
+    //    guaranteed to live inside the timeline bar, and confirm nothing (no
+    //    scrim, no inline drawer body) covers it.
+    const toggleBox = await page.locator('[data-testid="timeline-toggle-play"]').boundingBox();
+    if (!toggleBox) fail('missing timeline play-toggle bounding box');
+    const probeX = toggleBox.x + toggleBox.width / 2;
+    const probeY = toggleBox.y + toggleBox.height / 2;
     const hit = await page.evaluate(([x, y]) => {
       const el = document.elementFromPoint(x as number, y as number);
       if (!el) return 'nothing';
-      if (el.closest('[data-testid="advanced-setup-drawer"]')) return 'overlay';
+      if (el.closest('[data-testid="advanced-setup-drawer"]')) return 'drawer';
+      if (el.closest('.leo-advanced-setup-overlay')) return 'overlay';
       if (el.closest('[data-testid="timeline-bar"]')) return 'timeline';
       return `other:${el.tagName}.${(el as HTMLElement).className}`;
     }, [probeX, probeY]);
-    if (hit !== 'overlay') {
-      fail(`drawer open but elementFromPoint over timeline hits "${hit}" — timeline clickable through modal`);
+    if (hit !== 'timeline') {
+      fail(`drawer open but elementFromPoint over the play toggle hits "${hit}" — open drawer covers the timeline`);
     }
 
-    // 2. Click semantics: backdrop click closes the drawer, play toggle untouched.
-    const playLabelBefore = await page.getAttribute('[data-testid="timeline-toggle-play"]', 'aria-label');
-    await page.mouse.click(probeX, probeY);
-    const drawerStillOpen = await page.locator('[data-testid="advanced-setup-drawer"]').count();
-    if (drawerStillOpen !== 0) fail('click over timeline did not close the drawer (backdrop semantics broken)');
-    const playLabelAfter = await page.getAttribute('[data-testid="timeline-toggle-play"]', 'aria-label');
-    if (playLabelBefore !== playLabelAfter) {
-      fail(`backdrop click leaked to the timeline: play toggle "${playLabelBefore}" -> "${playLabelAfter}"`);
+    // 3. Non-vacuous: the drawer really is open + rendered with a real box.
+    const drawerBox = await page.locator('[data-testid="advanced-setup-drawer"]').boundingBox();
+    if (!drawerBox || drawerBox.width <= 0 || drawerBox.height <= 0) {
+      fail('advanced-setup-drawer has no visible bounding box — gate measured nothing');
     }
 
-    // 3. Non-vacuous: with the drawer closed, the same point belongs to the timeline.
-    const hitClosed = await page.evaluate(([x, y]) => {
-      const el = document.elementFromPoint(x as number, y as number);
-      return el?.closest('[data-testid="timeline-bar"]') ? 'timeline' : 'other';
-    }, [probeX, probeY]);
-    if (hitClosed !== 'timeline') {
-      fail('probe point does not hit the timeline even with the drawer closed — gate measured nothing');
-    }
-
-    console.log(`PASS advanced-drawer-modality stage=${STAGE} probe=(${Math.round(probeX)},${Math.round(probeY)})`);
+    console.log(`PASS advanced-drawer-modality (non-modal inline) stage=${STAGE} probe=(${Math.round(probeX)},${Math.round(probeY)})`);
   } finally {
     await browser.close();
   }

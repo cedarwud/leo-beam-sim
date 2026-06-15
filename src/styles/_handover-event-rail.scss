@@ -199,34 +199,35 @@
   }
 }
 
+// Markers are thin vertical lines, one per source-time bucket (the rail bins
+// dense windows). A line sits on its lane (intra top, inter bottom); a denser
+// bucket reads as a slightly thicker, brighter line. The per-marker count badge
+// is dropped from the track (it re-cluttered a binned rail) — the exact count
+// stays in each marker's tooltip and in the source-ordered list below.
 .leo-handover-event-rail__marker {
   position: absolute;
   z-index: 4;
   top: 25%;
-  left: clamp(8px, var(--handover-rail-left), calc(100% - 8px));
+  left: clamp(4px, var(--handover-rail-left), calc(100% - 4px));
   display: grid;
   place-items: center;
-  min-width: 24px;
-  width: 24px;
-  height: 24px;
+  min-width: 10px;
+  width: 10px;
+  height: 22px;
   padding: 0;
   transform: translate(-50%, -50%);
   border: 0;
-  border-radius: 999px;
   background: transparent;
   cursor: pointer;
 }
 
 .leo-handover-event-rail__marker::before {
   content: '';
-  width: 9px;
-  height: 14px;
-  border: 1px solid rgba(2, 9, 14, 0.78);
-  border-radius: 999px;
+  width: 2px;
+  height: 18px;
+  border-radius: 1px;
   background: var(--handover-rail-intra);
-  box-shadow:
-    0 0 0 2px rgba(111, 247, 238, 0.14),
-    0 0 14px rgba(111, 247, 238, 0.34);
+  box-shadow: 0 0 4px rgba(111, 247, 238, 0.45);
 }
 
 .leo-handover-event-rail__marker[data-kind="inter"] {
@@ -234,36 +235,27 @@
 }
 
 .leo-handover-event-rail__marker[data-kind="inter"]::before {
-  min-width: 11px;
-  width: 11px;
-  height: 14px;
+  width: 2px;
+  height: 18px;
   background: var(--handover-rail-inter);
-  box-shadow:
-    0 0 0 2px rgba(255, 204, 92, 0.14),
-    0 0 16px rgba(255, 204, 92, 0.38);
-}
-
-.leo-handover-event-rail__marker[data-clustered="true"] {
-  width: auto;
-  min-width: 34px;
-  padding: 0 5px;
+  box-shadow: 0 0 4px rgba(255, 204, 92, 0.45);
 }
 
 .leo-handover-event-rail__marker[data-clustered="true"]::before {
-  position: absolute;
-  inset: 4px;
-  width: auto;
-  height: auto;
+  width: 3px;
+  border-radius: 2px;
+}
+
+.leo-handover-event-rail__marker[data-kind="intra"][data-clustered="true"]::before {
+  box-shadow: 0 0 7px rgba(111, 247, 238, 0.6);
+}
+
+.leo-handover-event-rail__marker[data-kind="inter"][data-clustered="true"]::before {
+  box-shadow: 0 0 7px rgba(255, 204, 92, 0.6);
 }
 
 .leo-handover-event-rail__marker-count {
-  position: relative;
-  z-index: 1;
-  color: rgba(3, 10, 14, 0.92);
-  font-size: 9px;
-  font-weight: 900;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
+  display: none;
 }
 
 .leo-handover-event-rail__marker[data-active="true"]::before {

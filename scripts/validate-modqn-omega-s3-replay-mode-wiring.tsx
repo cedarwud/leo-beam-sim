@@ -402,13 +402,10 @@ console.log('\n(k) Evidence / telemetry mode gating');
     path.resolve(import.meta.dirname ?? process.cwd(), '../src/app/appRuntimeModel.ts'),
     'utf8',
   );
-  const evidenceSrc = fs.readFileSync(
-    path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/ModqnEvidenceTab.tsx'),
-    'utf8',
-  );
   // S-ADV-4: the legacy Top-K decision preview was relocated from the default
   // Evidence rail into the Advanced setup drawer; assert its rendered section now
-  // lives in the new component.
+  // lives in the new component. (The wall-of-text Evidence rail itself was later
+  // retired; the trace BUILDER now lives in src/ui/modqnDecisionTrace.ts.)
   const topKPreviewSrc = fs.readFileSync(
     path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/ModqnTopKDecisionPreview.tsx'),
     'utf8',
@@ -475,22 +472,8 @@ console.log('\n(k) Evidence / telemetry mode gating');
     'App.tsx mounts the display-only replay scene layer only through the explicit scene lane gate',
   );
   // S-ADV-4: the trace BUILDER (buildDecisionTrace + reScalarize +
-  // scoreModqnPolicyCandidate + row testids) stays in ModqnEvidenceTab because the
-  // provenance fallback status still consumes it; only the RENDERED top-K section
-  // moved out to the Advanced-drawer ModqnTopKDecisionPreview.
-  assert(
-    evidenceSrc.includes('modqn-evidence-mode-status')
-    && evidenceSrc.includes('buildDecisionTrace')
-    && evidenceSrc.includes('modqn-evidence-producer-selected')
-    && evidenceSrc.includes('modqn-evidence-rescalarized-selected')
-    && evidenceSrc.includes('modqn-evidence-selection-changed')
-    && evidenceSrc.includes('modqn-evidence-mapped-live-serving')
-    && evidenceSrc.includes('reScalarize')
-    && evidenceSrc.includes('scoreModqnPolicyCandidate')
-    && !evidenceSrc.includes('LiveKpiStrip')
-    && !evidenceSrc.includes('modqn-evidence-decision-trace'),
-    'ModqnEvidenceTab keeps the legacy top-K trace builder (for provenance) but no longer renders the top-K section inline or embeds a live KPI strip',
-  );
+  // scoreModqnPolicyCandidate) now lives in src/ui/modqnDecisionTrace.ts; only the
+  // Advanced-drawer ModqnTopKDecisionPreview still renders it.
   assert(
     topKPreviewSrc.includes('modqn-evidence-decision-trace')
     && topKPreviewSrc.includes('Top-K decision preview')
@@ -499,25 +482,9 @@ console.log('\n(k) Evidence / telemetry mode gating');
     && !topKPreviewSrc.includes('LiveKpiStrip'),
     'ModqnTopKDecisionPreview renders the relocated legacy top-K omega preview (Advanced drawer) from the shared builder, without a live KPI strip or dense-Q proof claim',
   );
-  assert(
-    evidenceSrc.includes('modqn-evidence-provenance-status')
-    && evidenceSrc.includes('data-provenance-status={provenanceStatus}')
-    && evidenceSrc.includes('paper-faithful replay context')
-    && evidenceSrc.includes('user-trained replay evidence')
-    && evidenceSrc.includes('top-K fallback preview')
-    && evidenceSrc.includes('provenance unavailable')
-    && evidenceSrc.includes('resolveEvidenceProvenanceStatus')
-    && evidenceSrc.includes('getEvidenceProvenanceCopy'),
-    'ModqnEvidenceTab explicitly labels paper-faithful, user-trained, fallback, and unavailable replay evidence provenance',
-  );
-  assert(
-    evidenceSrc.includes('Live SINR remains the reference surface while MODQN replay decisions are displayed through the decision-overlay path')
-    && evidenceSrc.includes('does not rewrite producer payloads or live truth ownership')
-    && evidenceSrc.includes('replay/evidence context only, not the live decision source')
-    && !evidenceSrc.includes('Replay override active')
-    && !evidenceSrc.includes('replay override path'),
-    'ModqnEvidenceTab decision-overlay copy keeps replay/evidence boundaries and avoids override ownership wording',
-  );
+  // The ModqnEvidenceTab provenance/decision-overlay disclosure copy was retired
+  // with the wall-of-text Evidence rail; the live-status handover-mode copy below
+  // (InfoPanel) carries the surviving display!=truth boundary.
   assert(
     infoSrc.includes('live-status-handover-mode')
     && infoSrc.includes('HANDOVER MODE')

@@ -17,7 +17,6 @@ import {
   type HandoverToastInput,
 } from '../src/viz/handoverToastState.ts';
 import { createSignalTuningState, applySignalTuning } from '../src/signalTuning.ts';
-import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
 import { HandoverPolicyControls } from '../src/ui/HandoverPolicyControls.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
@@ -181,28 +180,12 @@ function assertModeVisibility(): void {
   const profile = loadProfile(PROFILE_ID);
   const initialState = createInitialSimState(profile);
   const presentationText = decodeHtmlText(renderToStaticMarkup(
-    <>
-      <InfoPanel {...initialState} profile={profile} />
-      <DiagnosticsDrawer {...initialState} profile={profile} />
-    </>,
+    <InfoPanel {...initialState} profile={profile} />,
   ));
   assertNotContains(presentationText, 'Handover Policy Research Controls');
   assertNotContains(presentationText, 'Apply policy changes');
   assertNotContains(presentationText, 'Reset to profile defaults');
   assertNotContains(presentationText, 'Handover policy (effective)');
-
-  const diagnosticsText = decodeHtmlText(renderToStaticMarkup(
-    <>
-      <InfoPanel {...initialState} showFormulaTerms profile={profile} />
-      <DiagnosticsDrawer {...initialState} expanded profile={profile} />
-    </>,
-  ));
-  assertContains(diagnosticsText, 'Handover policy (effective)');
-  assertContains(diagnosticsText, 'policy sinr-offset (read-only)');
-  assertContains(diagnosticsText, 'Handover attach threshold');
-  assertNotContains(diagnosticsText, 'Handover Policy Research Controls');
-  assertNotContains(diagnosticsText, 'Apply policy changes');
-  assertNotContains(diagnosticsText, 'Reset to profile defaults');
 
   const modqnLiveStatusState = {
     ...initialState,

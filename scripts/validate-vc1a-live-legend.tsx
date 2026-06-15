@@ -9,7 +9,6 @@ import {
 import { getFormulaFamilyLabel, loadProfile } from '../src/profiles/index.ts';
 import type { Profile } from '../src/profiles/types.ts';
 import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
-import { DiagnosticsDrawer } from '../src/ui/DiagnosticsDrawer.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { BeamCalloutContent, type BeamTarget } from '../src/viz/SatelliteBeams.tsx';
 import {
@@ -327,10 +326,7 @@ function assertInfoPanelIdentities(): void {
     frequencyReuse: profile.beams.frequencyReuse,
   });
   const pendingMarkup = renderToStaticMarkup(
-    <>
-      <InfoPanel {...pendingState} showFormulaTerms profile={profile} />
-      <DiagnosticsDrawer {...pendingState} expanded profile={profile} />
-    </>,
+    <InfoPanel {...pendingState} showFormulaTerms profile={profile} />,
   );
   const pendingText = decodeHtmlText(pendingMarkup);
 
@@ -346,7 +342,6 @@ function assertInfoPanelIdentities(): void {
   assertContains(pendingText, 'PENDING TARGET');
   assertContains(pendingText, servingIdentity);
   assertContains(pendingText, pendingIdentity);
-  assertContains(pendingText, `inter-HO: ${pendingIdentity}`);
 
   const recentHoState = createPanelState(profile, 'recent-ho');
   const sourceIdentity = formatBeamIdentity({
@@ -355,10 +350,7 @@ function assertInfoPanelIdentities(): void {
     frequencyReuse: profile.beams.frequencyReuse,
   });
   const recentHoMarkup = renderToStaticMarkup(
-    <>
-      <InfoPanel {...recentHoState} showFormulaTerms profile={profile} />
-      <DiagnosticsDrawer {...recentHoState} expanded profile={profile} />
-    </>,
+    <InfoPanel {...recentHoState} showFormulaTerms profile={profile} />,
   );
   const recentHoText = decodeHtmlText(recentHoMarkup);
 
@@ -366,7 +358,6 @@ function assertInfoPanelIdentities(): void {
   assertContains(recentHoText, 'HO TARGET');
   assertContains(recentHoText, sourceIdentity);
   assertContains(recentHoText, pendingIdentity);
-  assertContains(recentHoText, `${sourceIdentity} → ${pendingIdentity}`);
 }
 
 function run(): void {
@@ -378,7 +369,7 @@ function run(): void {
   console.log(JSON.stringify({
     helperExamples: 'passed',
     calloutFixtures: ['serving', 'pending', 'approach', 'recent HO source', 'ambient active'],
-    panelRows: ['ACTIVE SERVING', 'PENDING TARGET', 'HO SOURCE', 'HO TARGET', 'Recent HO', 'Last Reason'],
+    panelRows: ['ACTIVE SERVING', 'PENDING TARGET', 'HO SOURCE', 'HO TARGET'],
     result: 'PASS',
   }, null, 2));
 }

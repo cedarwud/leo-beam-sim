@@ -527,7 +527,6 @@ function validateStaticContracts(): void {
   assertContains(handoverRail, "axisKind: 'display-stretched'", 'handover rail slow-motion focus uses a display axis');
   assertContains(handoverRail, '--handover-rail-axis-duration', 'handover rail cursor animation uses display axis duration');
   assertContains(handoverRail, 'data-testid="handover-event-map-track"', 'handover rail renders source-backed event map track');
-  assertContains(handoverRail, 'aria-label="Source-ordered handover event map"', 'handover rail list is source ordered, not nearest-event ordered');
   assertNotContains(handoverRail, 'getNearestEvents', 'handover rail omits nearest-event cursor sorting');
   assertNotContains(handoverRail, 'nearestEvents', 'handover rail omits nearest-event state');
   assertNotContains(handoverRail, '.slice(0, 6)', 'handover rail does not cap rows by nearest window');
@@ -652,28 +651,10 @@ function validateFixedRailEventMapRender(): void {
   assertContains(markup, 'data-axis-sec="20.000"', 'SSR handover event map keeps display axis separate from source horizon');
   assertContains(markup, 'data-axis-playing="true"', 'SSR handover event map enables display sweep while playing');
   assertContains(markup, 'data-axis-playback-rate="2.000"', 'SSR handover event map exposes playback-rate-adjusted display sweep');
-  expectEqual(
-    countOccurrences(markup, 'data-testid="handover-event-row-'),
-    7,
-    'SSR handover event map renders all source-ordered rows',
-  );
+  // The source-ordered event LIST was retired (the top intra/inter marker track
+  // stays). The rail no longer renders per-row list buttons.
+  assertNotContains(markup, 'data-testid="handover-event-row-', 'SSR handover event map no longer renders the source-ordered list');
   assertNotContains(markup, 'data-testid="handover-event-focus"', 'SSR handover event map omits dynamic nearest-event focus card');
-
-  const expectedRowIds = [
-    'handover-event-row-cluster-1_000_intra',
-    'handover-event-row-cluster-2_000_inter',
-    'handover-event-row-cluster-3_000_intra',
-    'handover-event-row-cluster-4_000_inter',
-    'handover-event-row-cluster-5_000_intra',
-    'handover-event-row-cluster-6_000_inter',
-    'handover-event-row-cluster-7_000_intra',
-  ];
-  let previousIndex = -1;
-  for (const rowId of expectedRowIds) {
-    const rowIndex = markup.indexOf(rowId);
-    expect(rowIndex > previousIndex, `SSR handover event map keeps source-time row order for ${rowId}`);
-    previousIndex = rowIndex;
-  }
 }
 
 function validateTimelineAuthority(): void {

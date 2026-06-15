@@ -42,7 +42,6 @@ import { satelliteTint } from '../constants/beamRoleTokens';
 import { AmbientFootprintRings } from '../viz/AmbientFootprintRings';
 import { HandoverLinks } from '../viz/HandoverLinks';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
-import { IntraHandoverArrow } from '../viz/IntraHandoverArrow';
 import { IntraGroundShockwave } from '../viz/IntraGroundShockwave';
 import { BeamPulseClock } from '../viz/SatelliteBeams';
 import { CandidateBeamHighlight } from '../viz/CandidateBeamHighlight';
@@ -1728,7 +1727,6 @@ function SceneContent({
           reducedMotion={runtime.reducedMotion}
         />
       )}
-      {showLiveSceneEffects && <IntraHandoverArrow vizFrame={viz} runtime={runtime} />}
       {showLiveSceneEffects && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
       {showHandoverToastOverlay && <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />}
       {showArtifactFpsCounter && <FPSCounter />}

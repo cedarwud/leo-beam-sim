@@ -1,11 +1,11 @@
 // MODQN mode/sidebar consolidation S-ADV-4 — relocated Top-K decision preview.
 //
 // The legacy "Top-K decision preview" was rendered inline in the default Evidence
-// rail (`ModqnEvidenceTab`). On the degenerate baseline producer artifact its rows
-// are an empty/fail-closed "top-K" with no dense-Q proof, so it adds noise to the
-// default evidence story. S-ADV-4 relocates ONLY this preview into the opt-in
-// Advanced setup drawer; the KEEP disclosure rows (provenance / mode / source gaps
-// / active ω) + the bundle manifest stay on the default Evidence rail.
+// rail (`ModqnEvidenceTab`, since retired). On the degenerate baseline producer
+// artifact its rows are an empty/fail-closed "top-K" with no dense-Q proof, so it
+// added noise to the default evidence story. S-ADV-4 relocated ONLY this preview
+// into the opt-in Advanced setup drawer; the wall-of-text Evidence rail was later
+// removed wholesale (the proof now lives on the DecisionViz card + live scene).
 //
 // It is a pure UI-mount move (Rule#6): it reads the SAME `buildDecisionTrace` over
 // the shared MODQN handover state and renders the SAME section markup / testids; no
@@ -13,7 +13,7 @@
 // "Legacy display preview from producer top-K diagnostics, not dense-Q proof."
 import { useMemo, type ReactElement } from 'react';
 import { useModqnHandoverState } from './useModqnHandoverState';
-import { buildDecisionTrace } from './ModqnEvidenceTab';
+import { buildDecisionTrace } from './modqnDecisionTrace';
 import type { SimState } from '../scene/types';
 
 interface Props {

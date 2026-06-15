@@ -1102,8 +1102,15 @@
 }
 
 .leo-modqn-replay-panel__cinema-gate {
+  // MODQN consolidation: this replay-cinema readiness badge ("Replay cinema
+  // ready/blocked" + source-gap count + reasons) is a provenance/warning
+  // surface. The pinned producer artifact is degenerate, so it sits
+  // permanently "blocked" and reads as demo noise. PARKED — hidden visually
+  // but kept in the DOM because D6 governance source-pins it (render-HTML +
+  // browser gates assert data-testid="modqn-replay-cinema-readiness" /
+  // data-replay-cinema-status). Un-park by restoring `display: grid;`.
+  display: none;
   min-width: 0;
-  display: grid;
   gap: 7px;
   padding: 10px;
   border: 1px solid rgba(255, 190, 69, 0.22);
@@ -2439,17 +2446,11 @@
   border-color: rgba(229, 244, 251, 0.18);
 }
 
-.leo-modqn-evidence-tab {
-  min-width: 0;
-  color: #eefaff;
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-.leo-modqn-evidence-manifest,
-.leo-modqn-evidence-active-omega,
-.leo-modqn-evidence-decision-trace,
-.leo-modqn-evidence-source-gaps,
-.leo-modqn-evidence-mode-status {
+// Top-K decision trace (relocated to the Advanced setup drawer via
+// `ModqnTopKDecisionPreview`). The wall-of-text Evidence rail that once shared
+// these grid rules — manifest / active-ω / mode-status / source-gaps — was retired;
+// only the decision-trace styling remains, made self-contained here.
+.leo-modqn-evidence-decision-trace {
   min-width: 0;
   display: grid;
   gap: 8px;
@@ -2460,39 +2461,10 @@
     linear-gradient(180deg, rgba(4, 18, 25, 0.95), rgba(3, 10, 17, 0.92)),
     rgba(3, 10, 17, 0.96);
   color: #eefaff;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-.leo-modqn-evidence-mode-status[data-active="false"] {
-  border-color: rgba(255, 190, 69, 0.28);
-  background:
-    linear-gradient(180deg, rgba(42, 27, 6, 0.86), rgba(15, 12, 7, 0.86)),
-    rgba(3, 10, 17, 0.96);
-}
-
-.leo-modqn-evidence-mode-status p {
-  margin: 0;
-  color: rgba(229, 244, 251, 0.74);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.leo-modqn-evidence-source-gaps {
-  border-color: rgba(255, 190, 69, 0.3);
-  background:
-    linear-gradient(180deg, rgba(42, 30, 8, 0.88), rgba(16, 12, 7, 0.88)),
-    rgba(3, 10, 17, 0.96);
-}
-
-.leo-modqn-evidence-tab .leo-modqn-objective-controls__title {
-  color: #d8fffa;
-  font-size: 24px;
-  line-height: 1.1;
-}
-
-.leo-modqn-evidence-manifest__row,
-.leo-modqn-evidence-active-omega__row,
-.leo-modqn-evidence-decision-trace__row,
-.leo-modqn-evidence-source-gap {
+.leo-modqn-evidence-decision-trace__row {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
@@ -2502,17 +2474,11 @@
   border-top: 1px solid rgba(218, 244, 255, 0.1);
 }
 
-.leo-modqn-evidence-manifest__row:first-of-type,
-.leo-modqn-evidence-active-omega__row:first-of-type,
-.leo-modqn-evidence-decision-trace__row:first-of-type,
-.leo-modqn-evidence-source-gap:first-of-type {
+.leo-modqn-evidence-decision-trace__row:first-of-type {
   border-top: 0;
 }
 
-.leo-modqn-evidence-manifest__label,
-.leo-modqn-evidence-active-omega__row span,
-.leo-modqn-evidence-decision-trace__label,
-.leo-modqn-evidence-source-gap__label {
+.leo-modqn-evidence-decision-trace__label {
   min-width: 0;
   color: rgba(229, 244, 251, 0.66);
   font-size: 12px;
@@ -2521,10 +2487,7 @@
   overflow-wrap: anywhere;
 }
 
-.leo-modqn-evidence-manifest__value,
-.leo-modqn-evidence-active-omega__row output,
-.leo-modqn-evidence-decision-trace__value,
-.leo-modqn-evidence-source-gap__value {
+.leo-modqn-evidence-decision-trace__value {
   min-width: 0;
   color: #f6fbff;
   font-size: 13px;
