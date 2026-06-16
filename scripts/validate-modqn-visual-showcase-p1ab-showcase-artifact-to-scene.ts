@@ -13,7 +13,6 @@
 import assert from 'node:assert/strict';
 import { showcaseArtifactToScene } from '../src/showcase/showcaseArtifactToScene';
 import { isReplaySceneGeometry } from '../src/scene/SceneGeometry';
-import { isChannelMetricValueShape } from '../src/scene/ChannelMetricValue';
 import { loadValidatorVisualShowcaseArtifact } from './visualShowcaseValidatorFixture';
 
 function test(label: string, fn: () => void): void {
@@ -58,7 +57,8 @@ test('frame 0 handoverState.kind preserved as intra-satellite-beam-switch', () =
 
 test('every UE channel metric is branded with kind=snr-no-interference', () => {
   for (const ue of frame0.ues) {
-    assert.ok(isChannelMetricValueShape(ue.channelMetric));
+    const cm = ue.channelMetric;
+    assert.ok(typeof cm.kind === 'string' && typeof cm.dB === 'number');
     assert.strictEqual(ue.channelMetric.kind, 'snr-no-interference');
   }
 });

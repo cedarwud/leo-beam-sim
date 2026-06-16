@@ -6,12 +6,10 @@
  *     expecting `ChannelMetricValue` (compile-time guarantee, asserted via
  *     `@ts-expect-error` below).
  *   - `makeChannelMetricValue` produces a value carrying the declared kind.
- *   - `isChannelMetricValueShape` accepts the produced value.
  */
 
 import assert from 'node:assert/strict';
 import {
-  isChannelMetricValueShape,
   makeChannelMetricValue,
   type ChannelMetricValue,
 } from '../src/scene/ChannelMetricValue';
@@ -46,18 +44,6 @@ test('makeChannelMetricValue carries kind + dB', () => {
   const v = makeChannelMetricValue('snr-no-interference', 12.5);
   assert.strictEqual(v.kind, 'snr-no-interference');
   assert.strictEqual(v.dB, 12.5);
-});
-
-test('isChannelMetricValueShape accepts produced value', () => {
-  const v = makeChannelMetricValue('sinr-with-interference', 7);
-  assert.ok(isChannelMetricValueShape(v));
-});
-
-test('isChannelMetricValueShape rejects bare values', () => {
-  assert.ok(!isChannelMetricValueShape(42));
-  assert.ok(!isChannelMetricValueShape(null));
-  assert.ok(!isChannelMetricValueShape({ kind: 'snr-no-interference' }));
-  assert.ok(!isChannelMetricValueShape({ dB: 12.5 }));
 });
 
 test('acceptsChannelMetricValue accepts a branded value at runtime', () => {

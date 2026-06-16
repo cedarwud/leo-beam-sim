@@ -47,15 +47,3 @@ export function makeChannelMetricValue(
 ): ChannelMetricValue {
   return { kind, dB } as ChannelMetricValue;
 }
-
-/**
- * Type guard — useful in tests / module-mock validation. Does NOT validate
- * the brand itself (brands are erased at runtime); only the shape.
- */
-export function isChannelMetricValueShape(
-  value: unknown,
-): value is { kind: VisualShowcaseChannelMetricKind; dB: number } {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as { kind?: unknown; dB?: unknown };
-  return typeof v.kind === 'string' && typeof v.dB === 'number';
-}
