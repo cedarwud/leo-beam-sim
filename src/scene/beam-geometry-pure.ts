@@ -21,8 +21,6 @@
  * SDD anchors: §4 D4, §9 P1 exit criterion (b) negative-path enforcement.
  */
 
-import { elevationAngleRad, type CellCenter } from '../engine/cells/cellLayout';
-
 interface EcefKm {
   readonly x: number;
   readonly y: number;
@@ -34,19 +32,6 @@ export interface BeamGeometry {
   footprintRadiusKm: number;
   /** Hexagonal beam-center spacing on the ground, km. */
   spacingKm: number;
-}
-
-export interface CellPointingGeometry {
-  /** Slant range satellite → cell center (km). */
-  readonly slantRangeKm: number;
-  /** Elevation angle of cell as seen from satellite (radians, asin convention). */
-  readonly elevationRad: number;
-  /** Long axis of ground footprint ellipse (km). r_cell / sin(elevation). Clamped to r_cell when elevation ≥ 90°. */
-  readonly footprintLongAxisKm: number;
-  /** Short axis of ground footprint ellipse (km) = r_cell. */
-  readonly footprintShortAxisKm: number;
-  /** Bearing from cell to satellite ground track (radians, 0=north, pi/2=east). Long axis aligns to this. */
-  readonly longAxisBearingRad: number;
 }
 
 /**
@@ -145,57 +130,6 @@ export function offAxisAngleRad(
   return Math.acos(clamp(dot(boresight, userLineOfSight) / denominator, -1, 1));
 }
 
-/**
- * SDD §4.7: compute cell-pointing footprint ellipse geometry for one
- * satellite/cell pair. Long axis = r_cell / sin(elevation), short axis =
- * r_cell, with a low-elevation visualization clamp for stable rendering.
- */
-export function computeCellPointingGeometry(
-  satLatDeg: number,
-  satLonDeg: number,
-  satAltitudeKm: number,
-  cell: Pick<CellCenter, 'latDeg' | 'lonDeg'>,
-  cellRadiusKm: number,
-): CellPointingGeometry {
-  assertFinite(satLatDeg, 'satLatDeg');
-  assertFinite(satLonDeg, 'satLonDeg');
-  assertPositiveFinite(satAltitudeKm, 'satAltitudeKm');
-  assertFinite(cell.latDeg, 'cell.latDeg');
-  assertFinite(cell.lonDeg, 'cell.lonDeg');
-  assertPositiveFinite(cellRadiusKm, 'cellRadiusKm');
-
-  const elevationRad = elevationAngleRad(
-    satLatDeg,
-    satLonDeg,
-    satAltitudeKm,
-    cell.latDeg,
-    cell.lonDeg,
-  );
-  const sinElevation = Math.sin(elevationRad);
-  const minSinForClamp = 1 / FOOTPRINT_LONG_AXIS_MAX_MULT;
-  const footprintLongAxisKm = elevationRad >= Math.PI / 2
-    ? cellRadiusKm
-    : clamp(
-      cellRadiusKm / Math.max(sinElevation, minSinForClamp),
-      cellRadiusKm,
-      FOOTPRINT_LONG_AXIS_MAX_MULT * cellRadiusKm,
-    );
-
-  return {
-    slantRangeKm: slantRangeKm(
-      satLatDeg,
-      satLonDeg,
-      satAltitudeKm,
-      cell.latDeg,
-      cell.lonDeg,
-    ),
-    elevationRad,
-    footprintLongAxisKm,
-    footprintShortAxisKm: cellRadiusKm,
-    longAxisBearingRad: bearingRad(cell.latDeg, cell.lonDeg, satLatDeg, satLonDeg),
-  };
-}
-
 function geodeticToEcefKm(latDeg: number, lonDeg: number, altitudeKm: number): EcefKm {
   const radiusKm = EARTH_RADIUS_KM + altitudeKm;
   const latRad = latDeg * DEG_TO_RAD;
@@ -207,21 +141,6 @@ function geodeticToEcefKm(latDeg: number, lonDeg: number, altitudeKm: number): E
     y: radiusKm * cosLat * Math.sin(lonRad),
     z: radiusKm * Math.sin(latRad),
   };
-}
-
-function bearingRad(
-  fromLatDeg: number,
-  fromLonDeg: number,
-  toLatDeg: number,
-  toLonDeg: number,
-): number {
-  const fromLatRad = fromLatDeg * DEG_TO_RAD;
-  const toLatRad = toLatDeg * DEG_TO_RAD;
-  const deltaLonRad = (toLonDeg - fromLonDeg) * DEG_TO_RAD;
-  const y = Math.sin(deltaLonRad) * Math.cos(toLatRad);
-  const x = (Math.cos(fromLatRad) * Math.sin(toLatRad))
-    - (Math.sin(fromLatRad) * Math.cos(toLatRad) * Math.cos(deltaLonRad));
-  return normalizeRadians(Math.atan2(y, x));
 }
 
 function subtract(a: EcefKm, b: EcefKm): EcefKm {
@@ -242,11 +161,6 @@ function vectorNorm(vector: EcefKm): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function normalizeRadians(value: number): number {
-  const twoPi = Math.PI * 2;
-  return ((value % twoPi) + twoPi) % twoPi;
 }
 
 function assertFinite(value: number, label: string): void {

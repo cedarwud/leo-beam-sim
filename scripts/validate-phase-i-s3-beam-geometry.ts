@@ -3,29 +3,15 @@ import {
   FOOTPRINT_RADIUS_WORLD,
   MAX_BEAMS_PER_SATELLITE,
   computeBeamGeometry,
-  computeCellPointingGeometry,
   offAxisAngleRad,
   slantRangeKm,
 } from '../src/scene/beam-geometry-pure.ts';
-import { elevationAngleRad } from '../src/engine/cells/cellLayout.ts';
 
 interface ValidationResult {
   readonly passed: boolean;
   readonly name: string;
   readonly details?: string;
 }
-
-interface CellLike {
-  readonly latDeg: number;
-  readonly lonDeg: number;
-}
-
-const SAT_LAT_DEG = 40;
-const SAT_LON_DEG = 116;
-const SAT_ALTITUDE_KM = 780;
-const CELL_RADIUS_KM = 14;
-const DEG_TO_RAD = Math.PI / 180;
-const RAD_TO_DEG = 180 / Math.PI;
 
 function check(name: string, assertion: () => void): ValidationResult {
   try {
@@ -61,10 +47,6 @@ function assertBetweenInclusive(value: number, min: number, max: number, label: 
   );
 }
 
-function assertFinite(value: number, label: string): void {
-  assert(Number.isFinite(value), `${label}: expected finite, got ${value}`);
-}
-
 function assertMonotoneIncreasing(values: readonly number[], label: string): void {
   for (let index = 1; index < values.length; index += 1) {
     assert(
@@ -73,63 +55,6 @@ function assertMonotoneIncreasing(values: readonly number[], label: string): voi
     );
   }
 }
-
-function satelliteLonForElevation(targetElevationDeg: number): number {
-  let lowOffsetDeg = 0;
-  let highOffsetDeg = 35;
-
-  for (let iteration = 0; iteration < 80; iteration += 1) {
-    const midOffsetDeg = (lowOffsetDeg + highOffsetDeg) / 2;
-    const elevationDeg = elevationAngleRad(
-      SAT_LAT_DEG,
-      SAT_LON_DEG + midOffsetDeg,
-      SAT_ALTITUDE_KM,
-      SAT_LAT_DEG,
-      SAT_LON_DEG,
-    ) * RAD_TO_DEG;
-
-    if (elevationDeg > targetElevationDeg) {
-      lowOffsetDeg = midOffsetDeg;
-    } else {
-      highOffsetDeg = midOffsetDeg;
-    }
-  }
-
-  return SAT_LON_DEG + ((lowOffsetDeg + highOffsetDeg) / 2);
-}
-
-function geometryAtElevation(targetElevationDeg: number) {
-  const satLonDeg = satelliteLonForElevation(targetElevationDeg);
-  const cell = { latDeg: SAT_LAT_DEG, lonDeg: SAT_LON_DEG };
-  return computeCellPointingGeometry(
-    SAT_LAT_DEG,
-    satLonDeg,
-    SAT_ALTITUDE_KM,
-    cell,
-    CELL_RADIUS_KM,
-  );
-}
-
-function deterministicPayload(value: ReturnType<typeof computeCellPointingGeometry>): string {
-  return JSON.stringify({
-    slantRangeKm: value.slantRangeKm,
-    elevationRad: value.elevationRad,
-    footprintLongAxisKm: value.footprintLongAxisKm,
-    footprintShortAxisKm: value.footprintShortAxisKm,
-    longAxisBearingRad: value.longAxisBearingRad,
-  });
-}
-
-const centerCell: CellLike = { latDeg: SAT_LAT_DEG, lonDeg: SAT_LON_DEG };
-const overheadGeometry = computeCellPointingGeometry(
-  SAT_LAT_DEG,
-  SAT_LON_DEG,
-  SAT_ALTITUDE_KM,
-  centerCell,
-  CELL_RADIUS_KM,
-);
-const oblique30Geometry = geometryAtElevation(30);
-const low5Geometry = geometryAtElevation(5);
 
 const results: ValidationResult[] = [
   check('slant range at sub-satellite cell is altitude', () => {
@@ -184,48 +109,6 @@ const results: ValidationResult[] = [
       'off-axis tracked cell-center angle',
     );
   }),
-  check('overhead cell-pointing geometry is circular with finite bearing', () => {
-    assertClose(overheadGeometry.elevationRad, Math.PI / 2, 1e-3, 'overhead elevation');
-    assertClose(overheadGeometry.footprintLongAxisKm, CELL_RADIUS_KM, 1e-6, 'overhead long axis');
-    assertClose(overheadGeometry.footprintShortAxisKm, CELL_RADIUS_KM, 0, 'overhead short axis');
-    assertFinite(overheadGeometry.longAxisBearingRad, 'overhead longAxisBearingRad');
-  }),
-  check('30 degree elevation footprint long axis is approximately 2x radius', () => {
-    assertClose(oblique30Geometry.elevationRad, 30 * DEG_TO_RAD, 1e-9, '30 degree geometry elevation');
-    assertClose(
-      oblique30Geometry.footprintLongAxisKm,
-      CELL_RADIUS_KM / Math.sin(30 * DEG_TO_RAD),
-      CELL_RADIUS_KM * 0.05,
-      '30 degree long axis',
-    );
-  }),
-  check('footprint long axis is never shorter than short axis across elevations', () => {
-    for (const elevationDeg of [20, 30, 45, 60, 89]) {
-      const geometry = geometryAtElevation(elevationDeg);
-      assert(
-        geometry.footprintLongAxisKm >= geometry.footprintShortAxisKm,
-        `elevation ${elevationDeg}: long=${geometry.footprintLongAxisKm}, short=${geometry.footprintShortAxisKm}`,
-      );
-    }
-  }),
-  check('footprint short axis exactly equals cell radius', () => {
-    for (const elevationDeg of [20, 30, 45, 60, 89]) {
-      const geometry = geometryAtElevation(elevationDeg);
-      assert(
-        geometry.footprintShortAxisKm === CELL_RADIUS_KM,
-        `elevation ${elevationDeg}: short=${geometry.footprintShortAxisKm}`,
-      );
-    }
-  }),
-  check('extremely low elevation footprint long axis is clamped', () => {
-    assertClose(low5Geometry.elevationRad, 5 * DEG_TO_RAD, 1e-9, '5 degree geometry elevation');
-    assertClose(
-      low5Geometry.footprintLongAxisKm,
-      FOOTPRINT_LONG_AXIS_MAX_MULT * CELL_RADIUS_KM,
-      1e-9,
-      'low elevation long-axis clamp',
-    );
-  }),
   check('legacy computeBeamGeometry footprint regression remains unchanged', () => {
     const geometry = computeBeamGeometry(780, 0.0349);
     assertClose(geometry.footprintRadiusKm, 13.62, 0.05, 'legacy footprint radius');
@@ -253,30 +136,6 @@ const results: ValidationResult[] = [
       assertBetweenInclusive(value, 0, Math.PI, `sample ${index} off-axis angle`);
     }
   }),
-  check('cell-pointing elevation matches cellLayout elevationAngleRad', () => {
-    const satLonDeg = satelliteLonForElevation(45);
-    const geometry = computeCellPointingGeometry(40, satLonDeg, 780, centerCell, CELL_RADIUS_KM);
-    const expected = elevationAngleRad(40, satLonDeg, 780, centerCell.latDeg, centerCell.lonDeg);
-    assertClose(geometry.elevationRad, expected, 0, 'elevation helper parity');
-  }),
-  check('cell-pointing geometry is deterministic for identical inputs', () => {
-    const first = computeCellPointingGeometry(40, satelliteLonForElevation(60), 780, centerCell, CELL_RADIUS_KM);
-    const second = computeCellPointingGeometry(40, satelliteLonForElevation(60), 780, centerCell, CELL_RADIUS_KM);
-    assert(
-      deterministicPayload(first) === deterministicPayload(second),
-      `first=${deterministicPayload(first)} second=${deterministicPayload(second)}`,
-    );
-  }),
-  check('cell-pointing slant range equals standalone slantRangeKm', () => {
-    const satLonDeg = satelliteLonForElevation(45);
-    const geometry = computeCellPointingGeometry(40, satLonDeg, 780, centerCell, CELL_RADIUS_KM);
-    const expected = slantRangeKm(40, satLonDeg, 780, centerCell.latDeg, centerCell.lonDeg);
-    assertClose(geometry.slantRangeKm, expected, 0, 'slant range helper parity');
-  }),
-  check('long-axis bearing uses north-zero east-positive convention', () => {
-    const eastGeometry = computeCellPointingGeometry(40, 116.1, 780, centerCell, CELL_RADIUS_KM);
-    assertClose(eastGeometry.longAxisBearingRad, Math.PI / 2, 2e-3, 'eastward bearing');
-  }),
 ];
 
 let passCount = 0;
@@ -293,9 +152,9 @@ for (const [index, result] of results.entries()) {
   }
 }
 
-if (passCount < 22) {
+if (passCount < 15) {
   failCount += 1;
-  console.error(`FAIL ${String(results.length + 1).padStart(2, '0')}: minimum assertion count expected >=22, got ${passCount}`);
+  console.error(`FAIL ${String(results.length + 1).padStart(2, '0')}: minimum assertion count expected >=15, got ${passCount}`);
 }
 
 if (failCount > 0) {
