@@ -117,7 +117,7 @@ console.log('\n(c) JobsPanel poll loop and mode gate');
   const panelSource = fs.readFileSync('src/ui/modqn-training/JobsPanel.tsx', 'utf8');
   assert(panelSource.includes("appMode === 'modqn-demo'"), 'JobsPanel gates on modqn-demo app mode');
   assert(panelSource.includes('if (!enabled) return null;'), 'JobsPanel component has enabled null return');
-  assert(panelSource.includes('if (!enabled) return;'), 'JobsPanel useEffect has enabled early return');
+  assert(panelSource.includes('if (!pollEnabled) return;'), 'JobsPanel useEffect has pollEnabled early return');
   assert(panelSource.includes('computePollIntervalMs('), 'JobsPanel uses computePollIntervalMs helper');
   assert(panelSource.includes('getJobs('), 'JobsPanel calls getJobs');
   assert(panelSource.includes('getBatch('), 'JobsPanel calls getBatch for sensitivity sweep batches');
