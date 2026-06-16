@@ -94,32 +94,16 @@ function kindLabel(kind: HandoverRailEventKind): string {
   return kind === 'inter' ? 'INTER' : 'INTRA';
 }
 
-// Retained for the source-labeling contract (governance/story-layer source-pins)
-// even though the source-ordered list that displayed them was retired.
+// Retained for the source-labeling contract: scene-lane-governance +
+// handover-story-layer source-pin these label strings (e.g. 'producer trace').
+// The source-ordered list that displayed it was retired, so it reads as unused
+// to tsc/orphan-scan — do NOT delete; the validators assert the body strings.
 function sourceLabel(source: HandoverRailEventSource): string {
   if (source === 'artifact-replay') return 'artifact';
   if (source === 'modqn-replay') return 'producer trace';
   if (source === 'sinr-live-cell-truth') return 'SINR cell truth';
   if (source === 'live-walker') return 'live Walker';
   return 'observed';
-}
-
-function emptyRailMessage(
-  railSourceLabel: string,
-  durationSec: number,
-  sourceGapReasons: readonly string[],
-): string {
-  if (sourceGapReasons.length > 0) return sourceGapReasons[0] ?? '';
-  if (durationSec <= 0) return 'Waiting for source-backed timeline data.';
-  if (railSourceLabel.includes('sinrLiveCells') || railSourceLabel.includes('SINR cell')) {
-    return 'sinrLiveCells trajectory has no handover events in this source window.';
-  }
-  if (railSourceLabel.includes('live Walker')) {
-    return 'Source-backed live Walker index has no primary-UE handover events in this window.';
-  }
-  if (railSourceLabel === 'live observed') return 'Pure live SINR mode only exposes events after they occur.';
-  if (railSourceLabel === 'artifact replay') return 'The loaded artifact has no validated handover event index.';
-  return 'The current producer bundle has no handover rows on this timeline.';
 }
 
 function eventSort(a: HandoverRailEvent, b: HandoverRailEvent): number {

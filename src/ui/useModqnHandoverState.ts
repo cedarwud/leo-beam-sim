@@ -87,9 +87,7 @@ import {
 import {
   DEFAULT_MODQN_HANDOVER_MODE_CONTEXT,
   ModqnEnvelopeContext,
-  ModqnEnvelopeProvider,
   ModqnHandoverModeContext,
-  ModqnHandoverModeProvider,
 } from '../modqn/runtimeContext';
 
 // Three modes from SDD §3.2. P1c OQ-7 (CLOSED): the former `'modqn-replay'`

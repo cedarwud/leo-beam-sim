@@ -40,7 +40,6 @@ import {
   type ShellBeamLayout,
 } from './simulationHelpers';
 import {
-  createTrajectoryCache,
   getTrajectoryMaxTimeSec,
   interpolateVisibleSats,
   resolveWaypointObserver,

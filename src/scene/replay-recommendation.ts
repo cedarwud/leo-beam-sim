@@ -17,11 +17,6 @@ const RECOMMEND_STEP_SEC = 10;
 const HIGH_ELEVATION_DEG = 45;
 const RAMP_LEAD_SEC = 45;
 
-function angularSeparationDeg(a: number, b: number): number {
-  const delta = Math.abs(a - b) % 360;
-  return delta > 180 ? 360 - delta : delta;
-}
-
 /**
  * Recommends a starting offset for the demo where satellite density is high.
  * Results are cached in localStorage to prevent blocking on page refreshes.

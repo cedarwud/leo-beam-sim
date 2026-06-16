@@ -33,7 +33,6 @@ import { sceneGeometryFromProfile } from './SceneGeometry';
 import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
 import { ModqnReplaySceneLayer } from './ModqnReplaySceneLayer';
-import { REPLAY_CANVAS_ATTRIBUTES } from './modqn-replay-visuals/constants';
 import { satelliteTint } from '../constants/beamRoleTokens';
 // S-cells-4d: the legacy 20-hex EarthFixedCells green-disc ground paint is retired
 // from the sinr-live lane (the cell-truth beam cones own the earth-fixed cell story

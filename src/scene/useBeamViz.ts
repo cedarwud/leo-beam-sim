@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { useMemo, useRef } from 'react';
 import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
 import { satelliteTint, satelliteTintIndex } from '../constants/beamRoleTokens';
@@ -178,7 +177,6 @@ export function useBeamViz(
     // Live path produced a stub `recentHoTargetSinrDb`; the normalized frame
     // does not currently carry it. Renderer treats absent as null.
     const recentHoTargetSinrDb: number | null = null;
-    const simTimeSec = frame.tSec;
     const beamHopSlotSec = frame.beamHopping.slotSec ?? 0;
 
     // Derive a sim-shape `interHandoverEvent` from `transitionProgress.inter`.
@@ -282,7 +280,6 @@ export function useBeamViz(
 
     // Geometry-derived constants previously read from `Profile`.
     const beamFrequencyReuseCount = geometry.beamFrequencyReuseCount ?? 1;
-    const handoverTriggerTimeSec = geometry.handoverTriggerTimeSec ?? 0;
     const visualBeamColorSource: VisualBeamTarget['visualColorSource'] =
       beamFrequencyReuseCount <= 1 ? 'satellite' : 'frequency';
     const showModqnCandidateBeams =

@@ -596,21 +596,6 @@ export function App() {
   }, [signalEvidenceKey]);
 
   // Replay display-state callback. Required as architectural witness by
-  // validate-modqn-phase7k-r1-control-plane-hardening — must touch only
-  // setModqnReplayDisplayState and never live-control state.
-  const handleModqnReplayDisplayStateChange = useCallback((next: ModqnReplayPlaybackDisplayState | null) => {
-    setModqnReplayDisplayState(current => (
-      current !== null
-      && next !== null
-      && current.slotOffset === next.slotOffset
-      && current.playing === next.playing
-      && current.loopEnabled === next.loopEnabled
-      && current.currentSlot === next.currentSlot
-        ? current
-        : next
-    ));
-  }, []);
-
   const handleSignalTuningChange = useCallback((next: SignalTuningState) => {
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
     startTransition(() => {
@@ -1450,6 +1435,11 @@ export function App() {
   );
   // Each focus button is offered when EITHER the live lane (live-focus) or the
   // artifact-replay lane (cinematic) can back that kind with a real event (Rule#8).
+  // NOTE: directorIntraButtonEnabled is currently unconsumed — the cinema mount
+  // passes interEnabled but no intraEnabled prop (wiring asymmetry, tracked
+  // separately). Retained so the validator-pinned directorIntraEnabled /
+  // directorCinematicIntraEnabled derivations stay live; do not delete in a
+  // dead-code sweep without addressing the intra-button gating.
   const directorIntraButtonEnabled = directorIntraEnabled || directorCinematicIntraEnabled;
   const directorInterButtonEnabled = directorInterEnabled || directorCinematicInterEnabled;
 

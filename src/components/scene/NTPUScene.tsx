@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
-import { NTPU_CONFIG, NTPU_LARGE_CONFIG, type NTPUSceneConfig } from '@/config/ntpu.config';
+import { NTPU_CONFIG, type NTPUSceneConfig } from '@/config/ntpu.config';
 import * as THREE from 'three';
 
 interface NTPUSceneProps {

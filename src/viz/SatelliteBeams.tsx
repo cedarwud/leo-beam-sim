@@ -99,37 +99,6 @@ function createObliqueConeSide(
   return geo;
 }
 
-function createGroundDisc(
-  centerX: number,
-  centerZ: number,
-  radius: number,
-): THREE.BufferGeometry {
-  const positions: number[] = [];
-  const indices: number[] = [];
-
-  positions.push(centerX, 1, centerZ);
-
-  for (let i = 0; i < SEGMENTS; i++) {
-    const angle = (i / SEGMENTS) * Math.PI * 2;
-    positions.push(
-      centerX + Math.cos(angle) * radius,
-      1,
-      centerZ + Math.sin(angle) * radius,
-    );
-  }
-
-  for (let i = 0; i < SEGMENTS; i++) {
-    const next = (i + 1) % SEGMENTS;
-    indices.push(0, i + 1, next + 1);
-  }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setIndex(indices);
-  geo.computeVertexNormals();
-  return geo;
-}
-
 function createCalloutLayout(
   beam: BeamTarget,
   footprintRadius: number,
@@ -245,11 +214,6 @@ function BeamCone({
   const coneGeo = useMemo(
     () => createObliqueConeSide(new THREE.Vector3(sx, sy, sz), gx, gz, footprintRadius),
     [sx, sy, sz, gx, gz, footprintRadius],
-  );
-
-  const discGeo = useMemo(
-    () => createGroundDisc(gx, gz, footprintRadius),
-    [gx, gz, footprintRadius],
   );
 
   const callout = useMemo(
