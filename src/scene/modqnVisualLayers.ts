@@ -105,10 +105,6 @@ const DEBUG_LAYERS: ModqnVisualLayerFlags = {
   diagnostics: true,
 };
 
-export function isModqnVisualLayerPreset(value: string): value is ModqnVisualLayerPreset {
-  return MODQN_VISUAL_LAYER_PRESETS.includes(value as ModqnVisualLayerPreset);
-}
-
 export function resolveModqnVisualLayers(
   preset: ModqnVisualLayerPreset = DEFAULT_MODQN_VISUAL_LAYER_PRESET,
 ): ModqnVisualLayerFlags {

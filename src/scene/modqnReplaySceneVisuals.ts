@@ -15,7 +15,6 @@ export const MODQN_REPLAY_SCENE_SOURCE = 'producer-row-truth-with-display-fallba
 export const MODQN_REPLAY_SCENE_BEAM_COUNT = 7;
 export const MODQN_REPLAY_SCENE_PRODUCER_SATELLITE_COUNT = 4;
 export const MODQN_REPLAY_SCENE_BEAM_RADIUS_WORLD = 58;
-export const MODQN_REPLAY_SCENE_SPACING_WORLD = 132;
 export const MODQN_REPLAY_SCENE_DEFAULT_WORLD_UNITS_PER_KM = 10;
 export const MODQN_REPLAY_SCENE_DEFAULT_SATELLITE_ALTITUDE_WORLD = 380;
 
@@ -145,12 +144,6 @@ export interface ModqnReplaySceneVisualState {
   readonly selected: ModqnReplaySceneEndpointVisual;
   readonly switch: ModqnReplaySceneSwitchVisual;
   readonly truthAudit: ModqnTrainingTruthAudit;
-}
-
-function isCanonicalLocalBeamIndex(value: number): boolean {
-  return Number.isInteger(value)
-    && value >= 0
-    && value < MODQN_REPLAY_SCENE_BEAM_COUNT;
 }
 
 function finiteNumber(value: unknown): value is number {
@@ -293,23 +286,6 @@ function satelliteStateIsRenderable(satellite: ModqnSatelliteState): boolean {
 
 function satelliteStateIsDisplayProxy(satellite: ModqnSatelliteState): boolean {
   return satelliteCoordinateFrameKindIsProxy(stringField(satellite, 'coordinateFrameKind'));
-}
-
-export function createModqnReplayCanonicalBeamPosition(
-  localBeamIndex: number,
-  spacingWorld = MODQN_REPLAY_SCENE_SPACING_WORLD,
-): ModqnReplayScenePoint | null {
-  if (!isCanonicalLocalBeamIndex(localBeamIndex)) return null;
-  if (localBeamIndex === 0) return { x: 0, y: 0, z: 0 };
-
-  const ringIndex = localBeamIndex - 1;
-  const angleRad = (ringIndex / 6) * Math.PI * 2;
-
-  return {
-    x: Math.cos(angleRad) * spacingWorld,
-    y: 0,
-    z: -Math.sin(angleRad) * spacingWorld,
-  };
 }
 
 const INTRA_LENS_SEPARATION_WORLD = 54;

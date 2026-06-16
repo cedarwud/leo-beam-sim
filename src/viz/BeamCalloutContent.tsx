@@ -11,20 +11,6 @@ import type { BeamTarget } from '../scene/beamTargetTypes';
 import { glyphSymbolForKind } from './glyphs';
 
 /**
- * @deprecated Prefer {@link formatBeamChannelMetric} which carries the
- * `ChannelMetricValue.kind` discriminator (SDD §3 Q6). The bare-number
- * variant is kept for the live-sim hot path where `VizFrame.satBeams` carries
- * `sinrDb: number` — kind is implicitly `'sinr-with-interference'` for live.
- *
- * P1d will retire this in favour of the kind-aware variant once the
- * VizFrame.satBeams shape carries `ChannelMetricValue`.
- */
-export function formatBeamSinr(sinrDb?: number | null): string {
-  if (sinrDb === null || sinrDb === undefined || !Number.isFinite(sinrDb)) return '-- dB';
-  return `${sinrDb.toFixed(1)} dB`;
-}
-
-/**
  * Kind-aware variant: renders `"13.4 dB (SINR)"` or `"13.4 dB (SNR)"` etc.
  * based on the producer-declared metric kind. Use this for any callout
  * surfacing a `ChannelMetricValue` (replay path) or when wrapping a live

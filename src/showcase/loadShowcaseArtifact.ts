@@ -36,7 +36,6 @@ import {
 } from '../../../../ntn-sim-core/src/core/contracts/visual-showcase-v1';
 import type {
   VisualShowcaseArtifact,
-  VisualShowcaseChannelMetricKind,
 } from '../scene/visual-showcase-contract';
 
 /** Error kinds the load gate may raise. */
@@ -196,15 +195,4 @@ export function loadShowcaseArtifact(json: unknown): VisualShowcaseArtifact {
   // `validate:visual-showcase:artifact` is the authoritative validator (R3 / OQ-8).
   // This function is the renderer's last-line gate, not a re-implementation.
   return json as VisualShowcaseArtifact;
-}
-
-/**
- * Convenience type-narrower for callers that want the artifact's metric kind
- * eagerly after load.
- */
-export function getArtifactChannelMetricKind(
-  artifact: VisualShowcaseArtifact,
-): VisualShowcaseChannelMetricKind {
-  // Validated above; assert by construction.
-  return artifact.truthOwnership.sinr.channelMetricKind as VisualShowcaseChannelMetricKind;
 }
