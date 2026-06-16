@@ -1394,10 +1394,6 @@ export function App() {
   // alone could let a user trigger slow-mo + camera tour with no underlying
   // event (e.g. a MODQN cell-preview profile that emits zero live-walker HO
   // events), which would be motion without a source.
-  const directorIntraEnabled = useMemo(
-    () => directorFocusEnabled && handoverRailEvents.some(event => event.kind === 'intra'),
-    [directorFocusEnabled, handoverRailEvents],
-  );
   const directorInterEnabled = useMemo(
     () => directorFocusEnabled && handoverRailEvents.some(event => event.kind === 'inter'),
     [directorFocusEnabled, handoverRailEvents],
@@ -1425,22 +1421,14 @@ export function App() {
       && showcaseError === null,
     [sceneSource, replayController, showcaseLoading, showcaseError],
   );
-  const directorCinematicIntraEnabled = useMemo(
-    () => directorCinematicEnabled && artifactHandoverRailEvents.some(event => event.kind === 'intra'),
-    [directorCinematicEnabled, artifactHandoverRailEvents],
-  );
   const directorCinematicInterEnabled = useMemo(
     () => directorCinematicEnabled && artifactHandoverRailEvents.some(event => event.kind === 'inter'),
     [directorCinematicEnabled, artifactHandoverRailEvents],
   );
-  // Each focus button is offered when EITHER the live lane (live-focus) or the
-  // artifact-replay lane (cinematic) can back that kind with a real event (Rule#8).
-  // NOTE: directorIntraButtonEnabled is currently unconsumed — the cinema mount
-  // passes interEnabled but no intraEnabled prop (wiring asymmetry, tracked
-  // separately). Retained so the validator-pinned directorIntraEnabled /
-  // directorCinematicIntraEnabled derivations stay live; do not delete in a
-  // dead-code sweep without addressing the intra-button gating.
-  const directorIntraButtonEnabled = directorIntraEnabled || directorCinematicIntraEnabled;
+  // The inter focus button is gated: offered when EITHER the live lane (live-focus)
+  // or the artifact-replay lane (cinematic) can back an inter event (Rule#8). The
+  // intra button is always actionable — pressing it jogs the primary UE to force a
+  // real intra HO (jog-trigger, 75f7b6b) — so it carries no source-gate.
   const directorInterButtonEnabled = directorInterEnabled || directorCinematicInterEnabled;
 
   const {

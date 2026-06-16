@@ -280,8 +280,8 @@ section('(k) DirectorControls SSR — per-kind source gating + inert disabled st
 
   const appSource = source('src/App.tsx');
   check(
-    /directorIntraEnabled[\s\S]*?handoverRailEvents\.some\(event => event\.kind === 'intra'\)/.test(appSource),
-    'App gates the intra button on a source-backed intra rail event',
+    /onIntraFocus=\{[\s\S]*?handoverCinema\.armIntra\(\)/.test(appSource),
+    'intra focus button is always actionable: it arms the cinema + jogs the UE to force a real intra HO (jog-trigger), so it carries no source-gate',
   );
   check(
     /directorInterEnabled[\s\S]*?handoverRailEvents\.some\(event => event\.kind === 'inter'\)/.test(appSource),
