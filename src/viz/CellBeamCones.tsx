@@ -37,7 +37,6 @@ const DEFAULT_CONE_OPACITY = 0.1;
 const FOCUS_CONE_OPACITY = 0.12;
 const SERVICE_ALLOCATION_CONE_OPACITY = 0.13;
 const FALLBACK_CONE_COLOR = '#93c5fd';
-const LOCAL_APEX = new THREE.Vector3(0, 1, 0);
 const LOCAL_BASE = new THREE.Vector3(0, -1, 0);
 
 export function CellBeamCones(props: CellBeamConesProps): JSX.Element | null {
@@ -192,20 +191,4 @@ export function resolveCellBeamConeOpacity(scope?: ModqnBeamConeScope): number {
   if (scope === 'all-serving-satellites') return SERVICE_ALLOCATION_CONE_OPACITY;
   if (scope === 'focus-satellite') return FOCUS_CONE_OPACITY;
   return DEFAULT_CONE_OPACITY;
-}
-
-export function computeConeApexFromTransform(
-  midpoint: THREE.Vector3,
-  quaternion: THREE.Quaternion,
-  heightWorld: number,
-): THREE.Vector3 {
-  return LOCAL_APEX.clone().multiplyScalar(heightWorld / 2).applyQuaternion(quaternion).add(midpoint);
-}
-
-export function computeConeBaseCenterFromTransform(
-  midpoint: THREE.Vector3,
-  quaternion: THREE.Quaternion,
-  heightWorld: number,
-): THREE.Vector3 {
-  return LOCAL_BASE.clone().multiplyScalar(heightWorld / 2).applyQuaternion(quaternion).add(midpoint);
 }

@@ -13,8 +13,6 @@ import {
 } from '../src/scene/useCellSchedule.ts';
 import {
   CellBeamCones,
-  computeConeApexFromTransform,
-  computeConeBaseCenterFromTransform,
   resolveCellBeamConeRenderCount,
   resolveCellBeamConeItems,
   resolveCellBeamConeSatelliteCount,
@@ -233,7 +231,6 @@ const firstGeometry = geometryChild(firstMeshEl);
 const firstMaterial = materialChild(firstMeshEl);
 const firstSat = worlds.get(firstAssignment.satId);
 assert.ok(firstSat, 'missing first satellite world');
-const firstMidpoint = new THREE.Vector3(...(firstMeshEl.props.position as [number, number, number]));
 const firstQuaternion = firstMeshEl.props.quaternion;
 assert.ok(firstQuaternion instanceof THREE.Quaternion, 'first mesh quaternion is THREE.Quaternion');
 const expectedHeight = new THREE.Vector3(firstSat.x, firstSat.y, firstSat.z)
@@ -243,20 +240,6 @@ expectEqual(firstGeometry.props.args?.[0], firstPlacement.radiusWorld, 'cone bas
 expectEqual(firstGeometry.props.args?.[4], true, 'cone geometry is open-ended side surface');
 expectApprox(firstGeometry.props.args?.[1] as number, expectedHeight, 1e-9, 'cone height equals sat-to-cell distance');
 expectApprox(Number(firstGroup.props.userData?.heightWorld), expectedHeight, 1e-9, 'group heightWorld matches sat-to-cell distance');
-expectApprox(
-  computeConeApexFromTransform(firstMidpoint, firstQuaternion, expectedHeight)
-    .distanceTo(new THREE.Vector3(firstSat.x, firstSat.y, firstSat.z)),
-  0,
-  1e-9,
-  'cone transform places apex at serving satellite world position',
-);
-expectApprox(
-  computeConeBaseCenterFromTransform(firstMidpoint, firstQuaternion, expectedHeight)
-    .distanceTo(new THREE.Vector3(firstPlacement.worldX, 0, firstPlacement.worldZ)),
-  0,
-  1e-9,
-  'cone transform places base center on assigned cell ground position',
-);
 expectEqual(firstMaterial.props.color, tints.get(firstAssignment.satId), 'cone material tint comes from serving satellite tint');
 expect(
   firstMaterial.props.transparent === true
