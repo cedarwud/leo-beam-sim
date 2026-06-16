@@ -30,6 +30,7 @@ import assert from 'node:assert/strict';
 import { chromium, type Browser, type Page } from '@playwright/test';
 import { detectAppUrl } from './_vc2-browser-fixture.ts';
 import { CINEMATIC_LEAD_IN_SEC } from '../src/scene/cinematicReplayWindow.ts';
+import { CINEMATIC_SPEED } from '../src/constants/cinematicSpeed.ts';
 
 const SHELL = '.leo-app-shell';
 const CANVAS = 'canvas[data-camera-position]';
@@ -37,7 +38,6 @@ const DIRECTOR = '[data-testid="director-controls"]';
 const INTER_BTN = '[data-testid="director-inter-focus"]';
 const EXIT_BTN = '[data-testid="director-exit-focus"]';
 const FADE = '[data-testid="cinematic-seek-fade-overlay"]';
-const CINEMATIC_SPEED = 0.25;
 
 async function attr(page: Page, selector: string, name: string): Promise<string | null> {
   return page.getAttribute(selector, name);

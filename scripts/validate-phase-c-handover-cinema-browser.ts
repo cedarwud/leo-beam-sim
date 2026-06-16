@@ -28,6 +28,7 @@
 import assert from 'node:assert/strict';
 import { chromium, type Browser, type Page } from '@playwright/test';
 import { detectAppUrl } from './_vc2-browser-fixture.ts';
+import { CINEMATIC_SPEED } from '../src/constants/cinematicSpeed.ts';
 
 const SHELL = '.leo-app-shell';
 const CANVAS = 'canvas[data-camera-position]';
@@ -41,7 +42,6 @@ const HIGHLIGHT_COUNT_ATTR = 'data-candidate-handover-highlight-rendered-count';
 const PAIR_RENDERED_COUNT_ATTR = 'data-sinr-live-cell-handover-pair-cone-rendered-count';
 const PAIR_RENDERED_SOURCE_ATTR = 'data-sinr-live-cell-handover-pair-cone-rendered-source-owner';
 const PAIR_RENDERED_EVENT_ATTR = 'data-sinr-live-cell-handover-pair-cone-rendered-event-id';
-const CINEMATIC_SPEED = 0.25;
 
 async function attr(page: Page, selector: string, name: string): Promise<string | null> {
   return page.getAttribute(selector, name);
