@@ -156,28 +156,6 @@ const SHOW_BEAMS = true;
 const CAMERA_TWEEN_DURATION_MS = 600;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
 
-const CAMERA_PRESET_POSES: Record<CameraPreset, {
-  position: [number, number, number];
-  target: [number, number, number];
-}> = {
-  zenith: {
-    position: [0, 980, 1],
-    target: [0, 0, 0],
-  },
-  oblique: {
-    position: [0, 600, 750],
-    target: [0, 0, 0],
-  },
-  chase: {
-    position: [520, 260, -620],
-    target: [0, 20, 0],
-  },
-  'paper-faithful-closeup': {
-    position: [0, 320, 380],
-    target: [0, 80, 0],
-  },
-};
-
 interface CameraTweenState {
   preset: CameraPreset | null;
   kind: 'preset' | 'director-acquire' | 'director-restore';

@@ -55,9 +55,13 @@ function countOccurrences(value: string, pattern: RegExp): number {
   return value.match(pattern)?.length ?? 0;
 }
 
-function extractConstObject(sourceText: string, constName: string): string {
-  const match = sourceText.match(new RegExp(`const\\s+${constName}:[\\s\\S]*?=\\s*\\{([\\s\\S]*?)\\};`));
-  return match?.[1] ?? '';
+// The camera-preset poses live in the `cameraPresets` useMemo inside the
+// MainScene component (the consumer applyCameraPose reads it); slice that block.
+function extractCameraPresetsMemo(mainSceneSource: string): string {
+  const start = mainSceneSource.indexOf('const cameraPresets = useMemo');
+  if (start < 0) return '';
+  const end = mainSceneSource.indexOf('}), [alpha]);', start);
+  return end < 0 ? '' : mainSceneSource.slice(start, end);
 }
 
 const expectedPresets = ['zenith', 'oblique', 'chase', 'paper-faithful-closeup'] as const;
@@ -70,26 +74,27 @@ section('(a) CameraPreset union source', () => {
   );
 });
 
-section('(b) MainScene camera pose source', () => {
+section('(b) MainScene camera pose source (live cameraPresets useMemo)', () => {
   const mainSceneSource = source('src/scene/MainScene.tsx');
-  const poseRecord = extractConstObject(mainSceneSource, 'CAMERA_PRESET_POSES');
-  check(poseRecord.includes("'paper-faithful-closeup'"), 'CAMERA_PRESET_POSES contains paper-faithful-closeup key');
-  check(/'paper-faithful-closeup'[\s\S]*?position:\s*\[\s*0,\s*320,\s*380\s*\]/.test(poseRecord), 'paper-faithful-closeup position is [0, 320, 380]');
-  check(/'paper-faithful-closeup'[\s\S]*?target:\s*\[\s*0,\s*80,\s*0\s*\]/.test(poseRecord), 'paper-faithful-closeup target is [0, 80, 0]');
-  check(/Record<CameraPreset/.test(mainSceneSource), 'CAMERA_PRESET_POSES remains typed as Record<CameraPreset, ...>');
+  const poseRecord = extractCameraPresetsMemo(mainSceneSource);
+  check(poseRecord.length > 0, 'MainScene defines the cameraPresets useMemo pose source');
+  check(poseRecord.includes("'paper-faithful-closeup'"), 'cameraPresets contains paper-faithful-closeup key');
+  check(/'paper-faithful-closeup'[\s\S]*?position:\s*\[\s*0,\s*320 \* alpha,\s*380 \* alpha\s*\]/.test(poseRecord), 'paper-faithful-closeup position is [0, 320*alpha, 380*alpha]');
+  check(/'paper-faithful-closeup'[\s\S]*?target:\s*\[\s*0,\s*80 \* alpha,\s*0\s*\]/.test(poseRecord), 'paper-faithful-closeup target is [0, 80*alpha, 0]');
+  check(/const applyCameraPose = \(preset: CameraPreset/.test(mainSceneSource), 'applyCameraPose consumes a CameraPreset-typed pose (live pose application)');
 });
 
-section('(e) CameraPreset Record exhaustiveness source', () => {
+section('(e) CameraPreset exhaustiveness source (cameraPresets useMemo)', () => {
   const mainSceneSource = source('src/scene/MainScene.tsx');
-  const poseRecord = extractConstObject(mainSceneSource, 'CAMERA_PRESET_POSES');
+  const poseRecord = extractCameraPresetsMemo(mainSceneSource);
   for (const preset of expectedPresets) {
     const keyPattern = preset === 'paper-faithful-closeup'
       ? /'paper-faithful-closeup'\s*:/
       : new RegExp(`\\b${preset}\\s*:`);
-    check(keyPattern.test(poseRecord), `CAMERA_PRESET_POSES contains ${preset} key`);
+    check(keyPattern.test(poseRecord), `cameraPresets contains ${preset} key`);
   }
-  check(countOccurrences(poseRecord, /\bposition:\s*\[/g) === 4, 'CAMERA_PRESET_POSES contains 4 position entries');
-  check(countOccurrences(poseRecord, /\btarget:\s*\[/g) === 4, 'CAMERA_PRESET_POSES contains 4 target entries');
+  check(countOccurrences(poseRecord, /\bposition:\s*\[/g) === 4, 'cameraPresets contains 4 position entries');
+  check(countOccurrences(poseRecord, /\btarget:\s*\[/g) === 4, 'cameraPresets contains 4 target entries');
 });
 
 // ----- Phase 2 Director Mode extensions (docs/showcase-master-sdd-v2.md §5) -----
