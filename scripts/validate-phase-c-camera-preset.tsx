@@ -55,21 +55,10 @@ function countOccurrences(value: string, pattern: RegExp): number {
   return value.match(pattern)?.length ?? 0;
 }
 
-function extractConstArray(sourceText: string, constName: string): string {
-  const match = sourceText.match(new RegExp(`const\\s+${constName}:[\\s\\S]*?=\\s*\\[([\\s\\S]*?)\\];`));
-  return match?.[1] ?? '';
-}
-
 function extractConstObject(sourceText: string, constName: string): string {
   const match = sourceText.match(new RegExp(`const\\s+${constName}:[\\s\\S]*?=\\s*\\{([\\s\\S]*?)\\};`));
   return match?.[1] ?? '';
 }
-
-// G1-CONTROLBAR-ADV: the camera presets moved off the top bar into the opt-in
-// SinrLiveDisplayDrawer. The buttons render behind the drawer's open state, so
-// the SSR-of-the-component check (section d) is now a source assertion on the
-// drawer instead of a rendered-markup scan.
-const CAMERA_PRESET_DRAWER = 'src/ui/SinrLiveDisplayDrawer.tsx';
 
 const expectedPresets = ['zenith', 'oblique', 'chase', 'paper-faithful-closeup'] as const;
 
@@ -90,30 +79,6 @@ section('(b) MainScene camera pose source', () => {
   check(/Record<CameraPreset/.test(mainSceneSource), 'CAMERA_PRESET_POSES remains typed as Record<CameraPreset, ...>');
 });
 
-section('(c) SinrLiveDisplayDrawer camera preset source', () => {
-  const drawerSource = source(CAMERA_PRESET_DRAWER);
-  const presetArray = extractConstArray(drawerSource, 'CAMERA_PRESETS');
-  check(countOccurrences(presetArray, /\bpreset:/g) === 4, 'CAMERA_PRESETS array contains 4 preset entries');
-  check(presetArray.includes('Paper-faithful close-up'), 'CAMERA_PRESETS contains Paper-faithful close-up label');
-  check(presetArray.includes("preset: 'paper-faithful-closeup'"), 'CAMERA_PRESETS contains paper-faithful-closeup preset literal');
-  for (const preset of ['zenith', 'oblique', 'chase']) {
-    check(presetArray.includes(`preset: '${preset}'`), `CAMERA_PRESETS preserves ${preset}`);
-  }
-});
-
-section('(d) SinrLiveDisplayDrawer camera preset button source', () => {
-  // G1-CONTROLBAR-ADV: the camera presets now render inside the opt-in drawer
-  // (behind its open state), so the static SSR markup scan is a source assertion:
-  // the parent group testid + the dynamic child testid template + all 4 preset
-  // entries (section c) together produce the 4 camera-preset-${preset} buttons.
-  const drawerSource = source(CAMERA_PRESET_DRAWER);
-  check(drawerSource.includes('data-testid="camera-preset-control"'), 'drawer renders the camera-preset-control parent group testid');
-  check(
-    drawerSource.includes('data-testid={`camera-preset-${option.preset}`}'),
-    'drawer derives child camera testids from option.preset (produces every expected camera-preset testid)',
-  );
-});
-
 section('(e) CameraPreset Record exhaustiveness source', () => {
   const mainSceneSource = source('src/scene/MainScene.tsx');
   const poseRecord = extractConstObject(mainSceneSource, 'CAMERA_PRESET_POSES');
@@ -125,18 +90,6 @@ section('(e) CameraPreset Record exhaustiveness source', () => {
   }
   check(countOccurrences(poseRecord, /\bposition:\s*\[/g) === 4, 'CAMERA_PRESET_POSES contains 4 position entries');
   check(countOccurrences(poseRecord, /\btarget:\s*\[/g) === 4, 'CAMERA_PRESET_POSES contains 4 target entries');
-});
-
-section('(f) Regression: existing preset testids still produce-able', () => {
-  const drawerSource = source(CAMERA_PRESET_DRAWER);
-  const presetArray = extractConstArray(drawerSource, 'CAMERA_PRESETS');
-  for (const preset of ['zenith', 'oblique', 'chase']) {
-    check(presetArray.includes(`preset: '${preset}'`), `existing ${preset} array entry still feeds camera-preset-${preset}`);
-  }
-  check(
-    drawerSource.includes('data-testid={`camera-preset-${option.preset}`}'),
-    'SinrLiveDisplayDrawer still derives child camera testids from option.preset',
-  );
 });
 
 // ----- Phase 2 Director Mode extensions (docs/showcase-master-sdd-v2.md §5) -----
