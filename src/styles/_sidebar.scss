@@ -2,21 +2,6 @@
 // scripts/_scss-split.mjs (families: sidebar). Rules are
 // unchanged, only relocated. Verified render-equivalent (_scss-equiv.mjs) + screenshots.
 
-.leo-sidebar-disclosure--more {
-  margin-top: 12px;
-  padding: 6px 8px;
-  border: 1px dashed rgba(218, 244, 255, 0.18);
-  border-radius: 8px;
-  color: rgba(229, 244, 251, 0.78);
-  font-size: 12px;
-}
-
-.leo-sidebar-disclosure--more > summary {
-  cursor: pointer;
-  color: rgba(229, 244, 251, 0.9);
-  font-weight: 700;
-}
-
 .leo-sidebar-tab-panel > .leo-sidebar-content-stack,
 .leo-sidebar-tab-panel > .leo-modqn-sidebar-stack,
 .leo-sidebar-tab-panel > .leo-live-status-stack {
@@ -122,8 +107,6 @@
   scrollbar-gutter: stable;
 }
 
-.leo-sidebar-disclosure,
-.leo-modqn-boundary-disclosure,
 .leo-policy-control-details {
   min-width: 0;
   border: 1px solid rgba(218, 244, 255, 0.12);
@@ -132,16 +115,6 @@
   color: rgba(229, 244, 251, 0.78);
 }
 
-.leo-sidebar-disclosure {
-  padding: 7px 8px;
-}
-
-.leo-sidebar-disclosure[open] {
-  background: rgba(6, 20, 31, 0.74);
-}
-
-.leo-sidebar-disclosure summary,
-.leo-modqn-boundary-disclosure summary,
 .leo-policy-control-details summary {
   min-height: 32px;
   display: flex;
@@ -153,15 +126,6 @@
   line-height: 1.25;
 }
 
-.leo-sidebar-disclosure > summary,
-.leo-modqn-boundary-disclosure > summary {
-  list-style-position: inside;
-}
-
-.leo-sidebar-disclosure .leo-mode-evidence-strip {
-  margin-top: 7px;
-}
-
 .leo-sidebar-tab-panel > .leo-signal-tuning-panel,
 .leo-live-status-stack > .leo-info-panel,
 .leo-live-status-stack > .leo-diagnostics-drawer[data-drawer-state="expanded"] {
@@ -171,13 +135,6 @@
   max-height: 100% !important;
 }
 
-.leo-sidebar-content-stack > .leo-modqn-integration-panel,
-.leo-modqn-sidebar-stack > .leo-modqn-integration-panel {
-  width: 100%;
-  min-height: 0;
-  max-height: none;
-  overflow: visible;
-}
 
 .leo-sidebar-tab-panel > .leo-signal-tuning-panel[data-drawer-state="collapsed"] {
   width: 28px !important;

@@ -1,3 +1,5 @@
+
+
 @use './tokens';
 @use './training-form';
 @use './control-bar';
@@ -147,57 +149,6 @@ canvas {
   font-size: 17px;
 }
 
-.leo-app-mode-rail {
-  grid-area: rail;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  padding: 8px 4px;
-  background: #02121f;
-  border-right: 1px solid rgba(118, 234, 215, 0.18);
-  min-width: 0;
-}
-
-.leo-app-mode-rail__button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 10px 4px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  color: #b5d6e8;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
-}
-
-.leo-app-mode-rail__button[data-active="true"] {
-  background: rgba(82, 242, 161, 0.16);
-  border-color: rgba(82, 242, 161, 0.65);
-  color: #f4fff8;
-}
-
-.leo-app-mode-rail__button:focus-visible {
-  outline: 2px solid rgba(118, 234, 215, 0.8);
-  outline-offset: 2px;
-}
-
-.leo-app-mode-rail__label {
-  font-size: 12px;
-}
-
-.leo-app-mode-rail__sub {
-  font-size: 10px;
-  opacity: 0.7;
-}
-
 .leo-lane-experience-bar {
   flex: 0 0 auto;
   display: flex;
@@ -265,121 +216,6 @@ canvas {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-}
-
-.leo-tier2-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 10px;
-  border: 1px dashed rgba(255, 190, 69, 0.3);
-  border-radius: 8px;
-  background: rgba(255, 190, 69, 0.04);
-}
-
-.leo-tier2-preview__header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.leo-tier2-preview__note {
-  font-size: 10px;
-  color: rgba(255, 217, 142, 0.86);
-}
-
-.leo-tier2-preview__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-
-.leo-view-mode-toggle {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid rgba(118, 234, 215, 0.22);
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(6, 22, 33, 0.96), rgba(3, 10, 17, 0.94));
-}
-
-.leo-view-mode-toggle__title {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(181, 214, 232, 0.72);
-}
-
-.leo-view-mode-toggle__button {
-  padding: 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  color: #b5d6e8;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
-}
-
-.leo-view-mode-toggle__button:hover:not(:disabled) {
-  border-color: rgba(118, 234, 215, 0.4);
-  color: #eafaff;
-}
-
-.leo-view-mode-toggle__button[data-active="true"] {
-  background: rgba(82, 242, 161, 0.16);
-  border-color: rgba(82, 242, 161, 0.65);
-  color: #f4fff8;
-}
-
-.leo-view-mode-toggle__button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.leo-view-mode-toggle__button:focus-visible {
-  outline: 2px solid rgba(118, 234, 215, 0.8);
-  outline-offset: 2px;
-}
-
-.leo-dashboard-view {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.leo-dashboard-view .leo-algorithm-dock {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.leo-dashboard-view .leo-algorithm-dock__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-}
-
-// TimelineBar is normally an absolute overlay on the 3D canvas; in the dashboard
-// view it must participate in the flex column so it sits below the dock instead of
-// floating over it (codex C3 [P2]).
-.leo-dashboard-view .leo-timeline-bar {
-  position: relative;
-  left: auto;
-  right: auto;
-  bottom: auto;
-  transform: none;
-  width: 100%;
-  flex: 0 0 auto;
 }
 
 .leo-shell-canvas {
@@ -488,94 +324,6 @@ canvas {
   text-align: center;
   white-space: nowrap;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
-}
-
-.leo-mode-evidence-strip {
-  position: relative;
-  z-index: 9;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  pointer-events: none;
-  color: #eefaff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.25;
-}
-
-.leo-mode-evidence-cluster {
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 5px;
-  width: fit-content;
-  max-width: 100%;
-  padding: 6px 7px;
-  border: 1px solid rgba(218, 244, 255, 0.16);
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(5, 16, 26, 0.9), rgba(4, 12, 20, 0.78));
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.26);
-  overflow-wrap: anywhere;
-}
-
-.leo-mode-evidence-cluster--replay {
-  border-color: rgba(118, 234, 215, 0.34);
-}
-
-.leo-mode-evidence-cluster--live {
-  border-color: rgba(65, 199, 255, 0.3);
-}
-
-.leo-mode-evidence-cluster--sensitivity {
-  border-color: rgba(255, 190, 69, 0.32);
-}
-
-.leo-mode-evidence-chip {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  min-height: 22px;
-  padding: 3px 6px;
-  border: 1px solid rgba(218, 244, 255, 0.16);
-  color: #f6fbff;
-  background: rgba(255, 255, 255, 0.06);
-  overflow-wrap: anywhere;
-}
-
-.leo-mode-evidence-chip--replay {
-  border-color: rgba(118, 234, 215, 0.34);
-  color: #d8fffa;
-  background: rgba(118, 234, 215, 0.12);
-}
-
-.leo-mode-evidence-chip--live {
-  border-color: rgba(65, 199, 255, 0.34);
-  color: #dff6ff;
-  background: rgba(65, 199, 255, 0.12);
-}
-
-.leo-mode-evidence-chip--sensitivity {
-  border-color: rgba(255, 190, 69, 0.34);
-  color: #fff1cf;
-  background: rgba(255, 190, 69, 0.11);
-}
-
-.leo-mode-evidence-chip--boundary {
-  border-color: rgba(218, 244, 255, 0.16);
-  color: rgba(229, 244, 251, 0.78);
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.leo-mode-evidence-note {
-  min-width: 0;
-  max-width: 100%;
-  color: rgba(229, 244, 251, 0.82);
-  overflow-wrap: anywhere;
 }
 
 .leo-load-into-scene-error-banner {
@@ -929,6 +677,7 @@ canvas {
   .leo-sidebar-tab-button {
     transition: none;
   }
+
 }
 
 // G1-CONTROLBAR-ADV: non-modal inline disclosure variant of the Advanced drawer
@@ -955,6 +704,7 @@ canvas {
   .leo-advanced-setup-trigger {
     transition: none;
   }
+
 }
 
 .leo-handover-policy-controls {
@@ -1270,6 +1020,7 @@ canvas {
     stroke-opacity: 1;
     stroke-width: 1.8;
   }
+
 }
 
 .leo-diagnostics-drawer {
@@ -1332,6 +1083,7 @@ canvas {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
+
 }
 
 @container (min-width: 680px) {
@@ -1355,6 +1107,7 @@ canvas {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
   }
+
 }
 
 @media (max-width: 1180px) {
@@ -1389,88 +1142,10 @@ canvas {
     font-size: 16px !important;
   }
 
-  .leo-modqn-scene-overlay {
-    top: 12px;
-    left: 12px;
-    width: min(560px, calc(100% - 24px));
-    max-width: 560px;
-  }
-
-  .leo-replay-playback-shell {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "header"
-      "controls"
-      "status"
-      "truth";
-    max-height: 180px;
-  }
-
-  .leo-modqn-integration-panel {
-    grid-template-columns: minmax(0, 1fr);
-    max-height: 172px;
-  }
-
-  .leo-modqn-integration-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .leo-modqn-integration-actions {
-    grid-template-columns: repeat(2, minmax(0, max-content)) minmax(0, 1fr);
-    align-items: center;
-  }
-
-  .leo-replay-playback-controls {
-    justify-content: flex-start;
-  }
-
-  .leo-replay-scene-cues {
-    grid-template-columns: minmax(0, 1fr);
-    max-height: 108px;
-  }
-
-  .leo-replay-scene-cues-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .leo-diagnostics-drawer[data-drawer-state="expanded"] {
     padding: 12px !important;
   }
-}
 
-@media (max-width: 900px) {
-  .leo-proof-strip {
-    height: auto;
-    min-height: 0;
-    max-height: none;
-  }
-
-  .leo-proof-strip-grid {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(3, minmax(0, auto));
-    overflow: auto;
-  }
-
-  .leo-proof-strip-title {
-    font-size: 16px;
-  }
-
-  .leo-proof-strip-metric-row,
-  .leo-proof-strip-servicing-row,
-  .leo-proof-strip-chip-row,
-  .leo-proof-strip-last-decision,
-  .leo-proof-strip-sparkline-head,
-  .leo-proof-strip-compare-row__meta {
-    font-size: 12px;
-  }
-
-  .leo-proof-strip-sparkline {
-    height: 48px;
-  }
-
-  .leo-reward-bullet__svg {
-    width: 180px;
-  }
 }
 
 @media (max-width: 520px) {
@@ -1504,158 +1179,10 @@ canvas {
     max-height: 98px !important;
   }
 
-  .leo-mode-evidence-strip {
-    gap: 3px;
-    font-size: 9px;
-    line-height: 1.08;
-  }
-
-  .leo-mode-evidence-cluster {
-    gap: 2px;
-    padding: 3px 4px;
-    border-radius: 6px;
-  }
-
-  .leo-mode-evidence-chip {
-    min-height: 15px;
-    padding: 0 3px;
-  }
-
-  .leo-modqn-sidebar-stack .leo-mode-evidence-strip {
-    gap: 2px;
-    font-size: 10px;
-    line-height: 1.15;
-  }
-
-  .leo-modqn-sidebar-stack .leo-mode-evidence-cluster {
-    padding: 3px 4px;
-    gap: 2px;
-  }
-
-  .leo-modqn-sidebar-stack .leo-mode-evidence-note {
-    font-size: 10px;
-  }
-
-  .leo-replay-playback-shell {
-    max-height: 132px;
-    padding: 8px;
-    gap: 7px;
-    font-size: 12.5px;
-  }
-
-  .leo-modqn-sidebar-stack .leo-replay-playback-shell {
-    max-height: 132px;
-  }
-
-  .leo-modqn-integration-panel {
-    max-height: 108px;
-    padding: 7px 8px;
-    gap: 6px;
-    font-size: 13px;
-  }
-
-  .leo-modqn-integration-panel--controls {
-    overflow: hidden;
-  }
-
-  .leo-modqn-integration-panel--controls .leo-modqn-integration-card {
-    display: none;
-  }
-
-  .leo-modqn-integration-panel--controls .leo-modqn-integration-heading {
-    gap: 3px;
-  }
-
-  .leo-modqn-integration-panel--controls .leo-modqn-integration-heading small {
-    display: none;
-  }
-
-  .leo-modqn-integration-card {
-    gap: 4px;
-    padding: 5px 6px;
-  }
-
-  .leo-modqn-integration-metrics {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 3px;
-  }
-
-  .leo-modqn-integration-metric {
-    padding: 3px 4px;
-  }
-
-  .leo-modqn-integration-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 5px;
-  }
-
-  .leo-modqn-integration-actions button {
-    min-height: 36px;
-    padding: 6px 8px;
-  }
-
-  .leo-replay-playback-shell--fail-closed {
-    max-height: 120px;
-  }
-
-  .leo-replay-playback-title,
-  .leo-replay-playback-boundaries,
-  .leo-replay-playback-controls {
-    gap: 4px;
-  }
-
-  .leo-replay-playback-title span,
-  .leo-replay-playback-title strong,
-  .leo-replay-playback-boundaries span {
-    min-height: 22px;
-    padding: 3px 5px;
-  }
-
-  .leo-replay-playback-controls button,
-  .leo-replay-loop-toggle {
-    min-height: 36px;
-    padding: 6px 8px;
-  }
-
   .leo-replay-playback-status,
   .leo-replay-truth-summary {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
-  }
-
-  .leo-replay-playback-metric,
-  .leo-replay-truth-row {
-    padding: 4px 5px;
-  }
-
-  .leo-replay-playback-metric strong,
-  .leo-replay-truth-row strong {
-    font-size: 12px;
-  }
-
-  .leo-replay-scene-cues {
-    max-height: 78px;
-    padding: 7px;
-    gap: 6px;
-    font-size: 12px;
-  }
-
-  .leo-modqn-sidebar-stack .leo-replay-scene-cues {
-    max-height: 78px;
-  }
-
-  .leo-replay-scene-cues-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
-  }
-
-  .leo-replay-scene-cue {
-    padding: 4px 5px;
-  }
-
-  .leo-replay-scene-cues-header strong,
-  .leo-replay-scene-cue strong {
-    font-size: 12px;
   }
 
   .leo-signal-tuning-panel {
@@ -1664,56 +1191,6 @@ canvas {
 
   .leo-info-panel {
     height: 100% !important;
-  }
-
-  .leo-modqn-scene-overlay {
-    left: 8px;
-    top: 8px;
-    width: calc(100% - 16px);
-    gap: 6px;
-    padding: 8px;
-    font-size: 11px;
-  }
-
-  .leo-modqn-scene-overlay-header {
-    gap: 5px;
-  }
-
-  .leo-modqn-scene-overlay-header span {
-    font-size: 10px;
-  }
-
-  .leo-modqn-scene-overlay-header strong,
-  .leo-modqn-scene-overlay-node strong {
-    font-size: 12px;
-  }
-
-  .leo-modqn-scene-overlay-path {
-    gap: 5px;
-  }
-
-  .leo-modqn-scene-overlay-node {
-    gap: 2px;
-    padding: 6px;
-  }
-
-  .leo-modqn-scene-overlay-beams {
-    gap: 3px;
-  }
-
-  .leo-modqn-scene-overlay-beam {
-    min-height: 20px;
-    font-size: 10px;
-  }
-
-  .leo-modqn-scene-overlay-node small,
-  .leo-modqn-scene-overlay-footer {
-    display: none;
-  }
-
-  .leo-modqn-scene-overlay-arrow {
-    min-width: 22px;
-    font-size: 13px;
   }
 
 }

@@ -1057,32 +1057,6 @@
   stroke: rgba(232, 251, 255, 0.18);
 }
 
-.leo-modqn-sidebar-stack .leo-mode-evidence-strip {
-  gap: 4px;
-  font-size: 10px;
-  line-height: 1.12;
-}
-
-.leo-modqn-sidebar-stack .leo-mode-evidence-cluster {
-  width: 100%;
-  padding: 4px 5px;
-  gap: 3px;
-  border-radius: 6px;
-}
-
-.leo-modqn-sidebar-stack .leo-mode-evidence-chip {
-  min-height: 16px;
-  padding: 1px 4px;
-}
-
-.leo-modqn-sidebar-stack .leo-mode-evidence-note {
-  font-size: 10px;
-}
-
-.leo-modqn-sidebar-stack > .leo-sidebar-disclosure {
-  order: 3;
-}
-
 .leo-modqn-advanced-controls {
   display: grid;
   gap: 12px;
@@ -1141,19 +1115,9 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.leo-replay-playback-header,
-.leo-replay-playback-controls,
 .leo-replay-playback-status,
-.leo-replay-truth-summary,
-.leo-replay-playback-detail-group,
-.leo-replay-fail-closed-detail {
+.leo-replay-truth-summary {
   min-width: 0;
-}
-
-.leo-replay-playback-detail-group[open] > .leo-replay-playback-boundaries,
-.leo-replay-playback-detail-group[open] > .leo-replay-playback-status,
-.leo-replay-playback-detail-group[open] > .leo-replay-truth-summary {
-  margin-top: 8px;
 }
 
 .leo-replay-playback-status {
@@ -1322,9 +1286,6 @@
   gap: 6px;
 }
 
-.leo-modqn-network-section .leo-modqn-objective-controls__hyperparam-list {
-  margin-top: 8px;
-}
 
 .leo-modqn-objective-controls__network-grid {
   margin-top: 6px;
