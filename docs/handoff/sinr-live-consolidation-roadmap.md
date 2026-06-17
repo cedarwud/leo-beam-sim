@@ -150,9 +150,45 @@ concurrently.
 - **C4** `feat(gate): pulse count==render browser gate` — assert ≥1 pulse cone renders per recorded
   handover within the retention window (atomic read, like the coverage gate).
 
+### Session C5 — ticker throttle-lag fix (cumulative scoreboard)
+
+> ✅ **DONE 2026-06-18 — 3 commits on `main` (NOT pushed), all gated.** Fixes the
+> Session-C FINDING #4 above (the ticker read the THROTTLED published
+> `recentHandoverEvents` window → 0 under 20x while the pulse rendered). C5a
+> `075bdbc` (model `cumulativeIntra/InterHandoverCount`, monotonic, reset on
+> reset+rebase; published; additive) → C5b `6a8f3a5` (ticker renders the cumulative
+> totals "Handovers · this run"; delete `summarizeRecentHandovers` + the dead
+> `SimState.recentHandoverEvents` feed + its publish; rename `data-ho-window-*` →
+> `data-ho-*`; repoint the 2 governance wiring pins onto the cumulative source — the
+> MainScene PULSE pin is UNCHANGED; rewrite the ticker model gate) → C5c `a0ec6f2`
+> (`validate:phase-c:handover-ticker:render:browser`, monotonic + rises while the
+> pulse fires, wired into `validate:live-render`).
+>
+> **Design decision (owner picked B):** a CUMULATIVE scoreboard, NOT a
+> windowed-lossless force-publish. A naive "force-publish on every HO change" would
+> STORM (~13 events / 0.2s wall at 20x = ~65Hz full-SimState publishes vs the 1.4Hz
+> baseline). A monotonic cumulative total is throttle-PROOF: the throttle batches
+> increments instead of dropping events, so even the 700ms publish never under-counts.
+> Reset on reset+rebase mirrors `recentHandovers` (a seek opens a fresh epoch; avoids
+> double-counting a replayed span). The model frame's `recentHandoverEvents` STAYS —
+> the PULSE reads it live off the frame in MainScene, unthrottled (untouched).
+>
+> **Folds in D1's ticker portion** (the ticker source-text pins are repointed onto the
+> cumulative contract). Gates: tsc; handover-ticker:model 4; sinr-live-cells:model 24
+> (+cumulative monotonic/reset test); colour-match 5; cone-render 29; governance +
+> **governance:full**. Live capture: ticker 191→2055 monotonic, pulse-lit-but-ticker-zero
+> 0/36 frames; the new render gate PASS (rose 49→108 while the pulse fired).
+>
+> **`validate:live-render` (9 gates): 7 PASS** incl the new ticker gate; **2
+> PRE-EXISTING reds** — `director-cinematic:live` (the known FIRE-OVERSHOOT tail) and
+> `sinr-serving-mosaic` (sinr-serving telemetry threads onto a MODQN-lane canvas after
+> a lane switch — stale-frame, color-count=13/buckets=7/instances=99). BOTH fail
+> IDENTICALLY on the parent `2f9caa8` (verified by parent-commit checkout) → not C5.
+
 ### Session D — P3 + governance hardening (→ BOUNDARY 4; independent, anytime after A)
 - **D1** convert remaining governance source-text pins (ticker, SinrServingAggregate wording) →
   contract/behaviour pins (the deeper `validate:phase-c:handover-ticker:model` already covers them).
+  ⚠️ The TICKER half is DONE (C5b folded it in); only the SinrServingAggregate wording remains.
 - **D2** UE-panel contract gate (lane-gate behaviour + one colour-authority import check); ≤80 lines.
 - **D3** extend the contract+visual-gate pattern to the rest of the frontend display (open-ended);
   MODQN inherits via shared render.

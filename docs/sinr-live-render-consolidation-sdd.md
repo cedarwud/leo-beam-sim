@@ -154,8 +154,15 @@ USER sees, asserted over N live frames on real `sinr-live`:
 2. **Colour match:** a served UE's marker colour == its serving cone colour for the
    same (satId, cellId). Enforced cheaply as a model invariant (both resolvers call
    one `colorForServing`) + a browser spot-check. Kills E.
-3. **Count == render:** ticker / `recentHandoverEvents` count == rendered pulse flares
-   over a window. Kills the G count≠render family.
+3. **Count == render (RESOLVED via cumulative, C5):** the ticker now shows a MONOTONIC
+   cumulative handover total (`cumulativeIntra/InterHandoverCount`), NOT a sim-time
+   window — so it can never read 0 while the pulse renders. The original windowed
+   `recentHandoverEvents` count was THROTTLE-DROPPED: at 20x its 4-sim-sec window spans
+   ~0.2s wall and empties between the publisher's ~700ms ticks. A cumulative total is
+   throttle-proof (the throttle batches increments). Gate
+   `validate:phase-c:handover-ticker:render:browser` asserts the total rises monotonically
+   while the pulse fires. Kills the G count≠render family. (A windowed-lossless
+   force-publish was rejected — it storms at ~65Hz under the live HO rate.)
 
 These assert BEHAVIOUR, not source text. After this gate exists, an agent's "done"
 is trustworthy — it cannot be green while the viewport is wrong.
