@@ -33,8 +33,10 @@ import {
   resolveSinrLiveCellBeamConeSatelliteCount,
   resolveSinrLiveCellHandoverPairConeItems,
   resolveSinrLiveHandoverPulseConeItems,
+  resolveSinrLiveConeRenderColor,
   sinrLiveHandoverPulseOpacity,
   resolveTopServingFocusSatIds,
+  type SinrLiveCellBeamConeRenderItem,
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
 import type { SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
@@ -48,6 +50,8 @@ import {
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_NONSERVING_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
+  SINR_LIVE_CONE_PULSE_INTRA_COLOR,
+  SINR_LIVE_CONE_PULSE_INTER_COLOR,
   resolveSinrLiveConeColor,
   resolveSinrLiveConeLayerOpacity,
 } from '../constants/sinrLiveConeStyle';
@@ -528,6 +532,48 @@ check('pulse cone colour == the serving-identity colour (reads as the ambient co
     placementByCellId: placement3, satelliteWorldById, focusSatIds: null,
   });
   assertEqual(items[0].color, ambient[0].color, 'pulse colour == the ambient cone colour for the same (satId, cellId)');
+});
+
+check('pulse cones carry the truth event.kind (C2 / Bug H) so the render can paint intra vs inter distinctly', () => {
+  const intra = resolveSinrLiveHandoverPulseConeItems(pulseInput([
+    pulseEvent({ kind: 'intra', fromSatId: 'sat-A', fromCellId: 0, toSatId: 'sat-A', toCellId: 1, sourceTimeSec: 450 }),
+  ]));
+  assert(intra.length === 2 && intra.every(i => i.kind === 'intra'), 'every intra pulse cone is tagged kind=intra (old + new)');
+  const inter = resolveSinrLiveHandoverPulseConeItems(pulseInput([
+    pulseEvent({ kind: 'inter', sourceTimeSec: 450 }),
+  ]));
+  assert(inter.length === 2 && inter.every(i => i.kind === 'inter'), 'every inter pulse cone is tagged kind=inter');
+  // The kind tag is ADDITIVE: the resolver colour stays serving-identity (the per-kind
+  // hue is applied at the render from beamDisplaySpec), so the colour-match invariant
+  // above is unaffected. Only the PULSE layer tags a kind; the ambient cone has none.
+  assertEqual(intra[0].color, colorForServingBeam(intra[0].satId, intra[0].cellId).markerColor, 'kind tag leaves the resolver colour = serving-identity');
+  const ambient = resolveSinrLiveCellBeamConeItems({
+    cellFrame: frameOf([beam('sat-A', 0, true)]),
+    placementByCellId, satelliteWorldById, focusSatIds: null,
+  });
+  assertEqual(ambient[0].kind, undefined, 'an ambient serving cone carries NO kind (only the pulse layer tags one)');
+});
+
+check('render-colour resolution (C2): hero > per-kind pulse > override > serving-identity', () => {
+  const base = (kind?: 'intra' | 'inter'): SinrLiveCellBeamConeRenderItem => ({
+    cellId: 0, satId: 'sat-A', frequencyIndex: 0, color: '#abcdef', serving: true,
+    apex: new THREE.Vector3(), baseCenter: new THREE.Vector3(), baseRadiusWorld: 1, kind,
+  });
+  const opts = { pulseIntraColor: SINR_LIVE_CONE_PULSE_INTRA_COLOR, pulseInterColor: SINR_LIVE_CONE_PULSE_INTER_COLOR };
+  // 4. default: a cone with no kind keeps its serving-identity colour.
+  assertEqual(resolveSinrLiveConeRenderColor(base(), opts), '#abcdef', 'no kind → serving-identity colour');
+  // 2. per-kind pulse colours.
+  assertEqual(resolveSinrLiveConeRenderColor(base('intra'), opts), SINR_LIVE_CONE_PULSE_INTRA_COLOR, 'intra pulse → intra colour');
+  assertEqual(resolveSinrLiveConeRenderColor(base('inter'), opts), SINR_LIVE_CONE_PULSE_INTER_COLOR, 'inter pulse → inter colour');
+  // (intra ≠ inter is guaranteed at compile time — the constants are distinct literals.)
+  // 3. mount override (the candidate cyan mount) wins over serving-identity but a
+  //    kind still wins over the override (a pulse is never the candidate mount).
+  assertEqual(resolveSinrLiveConeRenderColor(base(), { coneColorOverride: '#0ea5e9' }), '#0ea5e9', 'override → override colour when no kind');
+  // 1. hero wins over everything (the protagonist beam, even if somehow kinded).
+  assertEqual(resolveSinrLiveConeRenderColor(base('intra'), { ...opts, isHero: true, heroColor: '#facc15' }), '#facc15', 'hero overrides the per-kind colour');
+  // a per-kind colour absent on the mount → falls through to serving-identity (a
+  // non-pulse mount passes no pulse colours, so a stray kind never recolours it).
+  assertEqual(resolveSinrLiveConeRenderColor(base('intra'), {}), '#abcdef', 'intra cone on a mount with no pulse colours → serving-identity');
 });
 
 console.log(`\nSinrLiveCellBeamCones resolver: ${passed} checks passed.`);

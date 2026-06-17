@@ -115,6 +115,14 @@ export interface SinrLiveCellBeamConeRenderItem {
    * beam hop and defeat the persistent-mesh in-place buffer update.
    */
   readonly renderKey?: string;
+  /**
+   * Optional handover KIND (C2 / Bug H). The PULSE resolver tags each cone with the
+   * truth `event.kind` so the render can paint intra vs inter distinctly
+   * (`beamDisplaySpec.pulseIntraColor / pulseInterColor`). Omitted on every
+   * non-pulse layer (ambient / non-serving / pair / pending) → those keep the
+   * serving-identity colour. A read-out of the model's own classification, no truth.
+   */
+  readonly kind?: 'intra' | 'inter';
 }
 
 /**
@@ -491,7 +499,7 @@ export function resolveSinrLiveHandoverPulseConeItems(
       placementByCellId,
       satelliteWorldById,
     });
-    if (to) items.push({ ...to, opacity, renderKey: `${eventKey}-to` });
+    if (to) items.push({ ...to, opacity, renderKey: `${eventKey}-to`, kind: event.kind });
     if (event.fromSatId !== null && event.fromCellId !== null) {
       const from = buildPairConeItem({
         satId: event.fromSatId,
@@ -500,7 +508,7 @@ export function resolveSinrLiveHandoverPulseConeItems(
         placementByCellId,
         satelliteWorldById,
       });
-      if (from) items.push({ ...from, opacity, renderKey: `${eventKey}-from` });
+      if (from) items.push({ ...from, opacity, renderKey: `${eventKey}-from`, kind: event.kind });
     }
   }
   return items;
@@ -512,6 +520,37 @@ export function resolveSinrLiveCellBeamConeRenderCount(props: SinrLiveCellBeamCo
 
 export function resolveSinrLiveCellBeamConeSatelliteCount(props: SinrLiveCellBeamConesProps): number {
   return new Set(resolveSinrLiveCellBeamConeItems(props).map(item => item.satId)).size;
+}
+
+/**
+ * Pure cone RENDER-colour resolution (C2 / Bug H). Precedence, highest first:
+ *   1. HERO — the primary serving beam (the protagonist), when `isHero`.
+ *   2. per-KIND pulse colour — a pulse cone tagged `intra`/`inter` paints the
+ *      `pulseIntraColor` / `pulseInterColor` so a beam-switch reads distinct from a
+ *      satellite handover.
+ *   3. mount `coneColorOverride` — the single-cone candidate mount's cyan.
+ *   4. the cone's serving-identity `color` — the default (every non-pulse layer).
+ * Pure so the per-kind mapping is VALUE-asserted in the model gate (not eyeballed in
+ * a WebGL screenshot). Display-only: it reads the model's own intra/inter
+ * classification (`item.kind`) and changes no truth (Rule#6).
+ */
+export function resolveSinrLiveConeRenderColor(
+  cone: SinrLiveCellBeamConeRenderItem,
+  opts: {
+    readonly isHero?: boolean;
+    readonly heroColor?: string;
+    readonly pulseIntraColor?: string;
+    readonly pulseInterColor?: string;
+    readonly coneColorOverride?: string;
+  },
+): string {
+  if (opts.isHero && opts.heroColor) return opts.heroColor;
+  const kindColor = cone.kind === 'intra'
+    ? opts.pulseIntraColor
+    : cone.kind === 'inter'
+      ? opts.pulseInterColor
+      : undefined;
+  return kindColor ?? opts.coneColorOverride ?? cone.color;
 }
 
 export interface SinrLiveCellBeamConesRenderProps {
@@ -562,6 +601,15 @@ export interface SinrLiveCellBeamConesRenderProps {
    * handover-candidate mount (cyan-blue). Omitted elsewhere → serving-identity.
    */
   readonly coneColorOverride?: string;
+  /**
+   * C2 (Bug H): per-KIND pulse colours, applied ONLY to cones carrying an
+   * `item.kind` (the pulse layer tags intra/inter from the truth event). A cone with
+   * no kind keeps its serving-identity colour, so passing these on the pulse mount
+   * does not recolour the ambient field. Set from `beamDisplaySpec.pulseIntraColor /
+   * pulseInterColor`; omitted on every non-pulse mount.
+   */
+  readonly pulseIntraColor?: string;
+  readonly pulseInterColor?: string;
   readonly telemetryCountDatasetKey?: string;
   readonly telemetrySourceOwnerDatasetKey?: string;
   readonly telemetrySourceOwner?: string;
@@ -703,9 +751,16 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           && props.primaryServingCellId != null
           && cone.satId === props.primaryServingSatId
           && cone.cellId === props.primaryServingCellId;
-        const color = isHero && props.heroColor
-          ? props.heroColor
-          : props.coneColorOverride ?? cone.color;
+        // C2 (Bug H): a pulse cone tagged with a handover kind paints in the per-kind
+        // colour; a cone with no kind (every non-pulse layer) falls through to its
+        // serving-identity colour. Hero override still wins (the protagonist beam).
+        const color = resolveSinrLiveConeRenderColor(cone, {
+          isHero,
+          heroColor: props.heroColor,
+          pulseIntraColor: props.pulseIntraColor,
+          pulseInterColor: props.pulseInterColor,
+          coneColorOverride: props.coneColorOverride,
+        });
         return (
           <ObliqueConeMesh
             key={cone.renderKey ?? `${cone.cellId}-${cone.satId}`}

@@ -1701,6 +1701,8 @@ function SceneContent({
           items={sinrLiveCellPulseConeItems}
           telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"
           widthScale={beamDisplaySpec.coneWidthScale}
+          pulseIntraColor={beamDisplaySpec.pulseIntraColor}
+          pulseInterColor={beamDisplaySpec.pulseInterColor}
         />
       )}
       {/* Tier-2 dead-twin retirement: the legacy steered <SatelliteBeams> render

@@ -29,7 +29,11 @@
  * Keep them primitive (booleans/numbers) so MainScene's React.memo and the inner
  * cone memos can key on stable values rather than a churning object.
  */
-import { SINR_LIVE_CONE_AMBIENT_OPACITY } from '../constants/sinrLiveConeStyle';
+import {
+  SINR_LIVE_CONE_AMBIENT_OPACITY,
+  SINR_LIVE_CONE_PULSE_INTRA_COLOR,
+  SINR_LIVE_CONE_PULSE_INTER_COLOR,
+} from '../constants/sinrLiveConeStyle';
 
 export interface BeamDisplaySpec {
   /**
@@ -70,6 +74,19 @@ export interface BeamDisplaySpec {
    * the A2 screenshot-locked value), so behaviour-identical.
    */
   readonly servingConeOpacity: number;
+  /**
+   * Display-only PULSE colour by handover kind (C2 / Bug H). When a real handover
+   * flares, the pulse resolver tags each cone with the truth `event.kind`; the
+   * render paints intra pulses {@link pulseIntraColor} and inter pulses
+   * {@link pulseInterColor}, so a beam-switch reads distinct from a satellite
+   * handover at a glance. A cone with no kind (every non-pulse layer) keeps its
+   * serving-identity colour. Prompt-control: "intra 換手用綠色" = set these. This is
+   * a read-out of the model's own intra/inter classification — it alters no truth
+   * (Rule#6). Defaults = the {@link SINR_LIVE_CONE_PULSE_INTRA_COLOR} /
+   * {@link SINR_LIVE_CONE_PULSE_INTER_COLOR} tokens, so behaviour is single-sourced.
+   */
+  readonly pulseIntraColor: string;
+  readonly pulseInterColor: string;
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
@@ -77,4 +94,6 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   beamCalloutsEnabled: true,
   coneWidthScale: 1,
   servingConeOpacity: SINR_LIVE_CONE_AMBIENT_OPACITY,
+  pulseIntraColor: SINR_LIVE_CONE_PULSE_INTRA_COLOR,
+  pulseInterColor: SINR_LIVE_CONE_PULSE_INTER_COLOR,
 };

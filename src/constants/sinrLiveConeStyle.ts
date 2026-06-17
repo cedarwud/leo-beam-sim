@@ -83,6 +83,22 @@ export const SINR_LIVE_CONE_PAIR_OPACITY = 0.3;
 export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32;
 
 /**
+ * C2 (Bug H): per-KIND pulse colours so a fired handover reads as intra vs inter at
+ * a glance, instead of every pulse flaring in its serving-identity hue. The pulse
+ * resolver tags each cone with the truth `event.kind` (`sinrLiveCellModel`); the
+ * render maps that to one of these via `beamDisplaySpec.pulseIntraColor /
+ * pulseInterColor`, falling back to the serving-identity colour when a cone carries
+ * no kind (every non-pulse layer). Display-only (Rule#6): the colour is a read-out
+ * of the model's own intra/inter classification, it changes no truth.
+ *  - intra (same-sat beam switch): EMERALD — the "minor, in-place" hop.
+ *  - inter (satellite handover): ROSE — the "you changed satellite" event; distinct
+ *    from the hero yellow ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}) and the
+ *    candidate cyan ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}).
+ */
+export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#34d399';
+export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#f472b6';
+
+/**
  * Dim opacity for the OPT-IN non-serving cone layer (Tier-2 show/dim switch,
  * `BeamDisplaySpec.showNonServingCones`, default OFF). Dimmer than the ambient
  * serving field ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} = 0.14) so co-channel /
