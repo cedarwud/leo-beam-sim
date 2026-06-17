@@ -32,6 +32,7 @@ import {
   resolveSinrLiveCellBeamConeRenderCount,
   resolveSinrLiveCellBeamConeSatelliteCount,
   resolveSinrLiveHandoverPulseConeItems,
+  resolveTriggeredIntraConeItems,
   resolveSinrLiveConeRenderColor,
   sinrLiveHandoverPulseOpacity,
   resolveTopServingFocusSatIds,
@@ -547,6 +548,50 @@ check('render-colour resolution (C2): hero > per-kind pulse > override > serving
   // a per-kind colour absent on the mount → falls through to serving-identity (a
   // non-pulse mount passes no pulse colours, so a stray kind never recolours it).
   assertEqual(resolveSinrLiveConeRenderColor(base('intra'), {}), '#abcdef', 'intra cone on a mount with no pulse colours → serving-identity');
+});
+
+// ---------------------------------------------------------------------------
+// beam-stage ① #5 — TRIGGERED intra flash resolver (from/to colour split).
+// ---------------------------------------------------------------------------
+const FROM_COLOR = '#f5a524'; // warm
+const TO_COLOR = '#22d3ee';   // cool
+function triggeredInput(event: SinrLiveCellHandoverEvent | null, opacity = 0.5) {
+  return { event, opacity, fromColor: FROM_COLOR, toColor: TO_COLOR, placementByCellId, satelliteWorldById, frequencyReuse: PULSE_REUSE };
+}
+
+console.log('\nSinrLiveCellBeamCones triggered-intra resolver checks:');
+
+check('triggered intra: null event or non-positive opacity → no cones (cold/cleared no-op)', () => {
+  assertEqual(resolveTriggeredIntraConeItems(triggeredInput(null)).length, 0, 'null event → no cones');
+  assertEqual(resolveTriggeredIntraConeItems(triggeredInput(pulseEvent({ sourceTimeSec: 450 }), 0)).length, 0, 'opacity 0 → no cones');
+  assertEqual(resolveTriggeredIntraConeItems(triggeredInput(pulseEvent({ sourceTimeSec: 450 }), -1)).length, 0, 'negative opacity → no cones');
+});
+
+check('triggered intra: from/to COLOUR SPLIT — old cell = fromColor (warm), new cell = toColor (cool)', () => {
+  const items = resolveTriggeredIntraConeItems(triggeredInput(
+    pulseEvent({ kind: 'intra', fromSatId: 'sat-A', fromCellId: 0, toSatId: 'sat-A', toCellId: 1, sourceTimeSec: 450 }),
+    0.5,
+  ));
+  assertEqual(items.length, 2, 'old + new cell cones');
+  const from = items.find(i => i.cellId === 0);
+  const to = items.find(i => i.cellId === 1);
+  assert(from !== undefined && to !== undefined, 'both from + to cones present');
+  assertEqual(from!.color, FROM_COLOR, 'OLD (handed-off) cell paints the WARM fromColor');
+  assertEqual(to!.color, TO_COLOR, 'NEW (acquired) cell paints the COOL toColor');
+  assert(from!.color !== to!.color, 'from/to are DISTINCT colours (directional read — not both one hue)');
+});
+
+check('triggered intra: the caller-driven wall-clock opacity passes through to every cone', () => {
+  const items = resolveTriggeredIntraConeItems(triggeredInput(pulseEvent({ sourceTimeSec: 450 }), 0.42));
+  assert(items.length > 0, 'cones built');
+  for (const i of items) approx(i.opacity ?? -1, 0.42, 1e-9, 'cone carries the passed wall-clock opacity');
+});
+
+check('triggered intra: an unplaced/unrendered side is skipped honestly (no fabricated cone)', () => {
+  const partial = resolveTriggeredIntraConeItems(triggeredInput(pulseEvent({ toCellId: 99, sourceTimeSec: 450 })));
+  assertEqual(partial.length, 1, 'unplaced new cell (99) skipped; old cell still flashes');
+  assertEqual(partial[0].cellId, 0, 'the placed old cell-0 drew');
+  assertEqual(partial[0].color, FROM_COLOR, 'old cell keeps the warm fromColor');
 });
 
 console.log(`\nSinrLiveCellBeamCones resolver: ${passed} checks passed.`);

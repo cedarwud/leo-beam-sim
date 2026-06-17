@@ -61,14 +61,19 @@ import {
   resolveSinrLiveHandoverPulseConeItems,
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveNonServingConeItems,
+  resolveTriggeredIntraConeItems,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
 import {
   SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+  SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
+  SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
+  SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
+  SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
   resolveSinrLiveConeLayerOpacity,
 } from '../constants/sinrLiveConeStyle';
 import { DEFAULT_BEAM_DISPLAY_SPEC, type BeamDisplaySpec } from './beamDisplaySpec';
-import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord } from './sinrLiveCellModel';
+import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord, type SinrLiveCellHandoverEvent } from './sinrLiveCellModel';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
 import { BeamLoadUploadParticles } from '../viz/BeamLoadUploadParticles';
@@ -1170,6 +1175,42 @@ function SceneContent({
       : []),
     [showSinrLiveHandoverPulse, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse],
   );
+  // beam-stage ① #5: the TRIGGERED intra flash. The ambient pulse above fades over
+  // SIM-time (4 s retention → ~0.8 s wall-clock at the 5× demo speed → too brief to
+  // read). The DELIBERATE jog handover (the PROTAGONIST's, `ueId === perUePositions[0].id`)
+  // instead gets a WALL-CLOCK 2.5 s fade with a from(warm)/to(cool) colour split, so the
+  // handover DIRECTION is legible and it reads as DISTINCT from the ambient pulse. Latched
+  // by ref (a new primary handover re-arms the wall-clock start; cleared after the sustain);
+  // recomputed per frame on the same `sim.sinrLiveCells` cadence as the pulse, reading
+  // `performance.now()` for the wall-clock age. Display-only read-out of the model's own
+  // classified handover (Rule#6) — no truth touched.
+  const triggeredIntraLatchRef = useRef<{ event: SinrLiveCellHandoverEvent; startedAtMs: number } | null>(null);
+  const triggeredIntraConeItems = useMemo(() => {
+    if (!showSinrLiveHandoverPulse) { triggeredIntraLatchRef.current = null; return []; }
+    const primaryUeId = sim.perUePositions[0]?.id;
+    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const primaryEvent = primaryUeId
+      ? sim.sinrLiveCells?.recentHandoverEvents.find(e => e.ueId === primaryUeId && e.fromCellId !== null) ?? null
+      : null;
+    const latched = triggeredIntraLatchRef.current;
+    if (primaryEvent && (!latched || latched.event.sourceTimeSec !== primaryEvent.sourceTimeSec)) {
+      triggeredIntraLatchRef.current = { event: primaryEvent, startedAtMs: nowMs };
+    }
+    const cur = triggeredIntraLatchRef.current;
+    if (!cur) return [];
+    const ageMs = nowMs - cur.startedAtMs;
+    if (ageMs > SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS) { triggeredIntraLatchRef.current = null; return []; }
+    const opacity = SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY * (1 - ageMs / SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS);
+    return resolveTriggeredIntraConeItems({
+      event: cur.event,
+      opacity,
+      fromColor: SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
+      toColor: SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
+      placementByCellId: sinrLiveCellPlacementById,
+      satelliteWorldById: viz.coneApexWorldById,
+      frequencyReuse: profile.beams.frequencyReuse,
+    });
+  }, [showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse]);
   const sinrLiveCellServedCount = showSinrLiveCellBeams
     ? sim.sinrLiveCells?.servedCellCount ?? 0
     : 0;
@@ -1647,6 +1688,18 @@ function SceneContent({
           widthScale={beamDisplaySpec.coneWidthScale}
           pulseIntraColor={beamDisplaySpec.pulseIntraColor}
           pulseInterColor={beamDisplaySpec.pulseInterColor}
+        />
+      )}
+      {/* beam-stage ① #5: the TRIGGERED intra flash — the protagonist jog handover held
+          ~2.5s WALL-CLOCK with a from(warm)/to(cool) colour split. Items carry their own
+          per-item wall-clock opacity + explicit from/to colour, so NO group opacity and NO
+          pulse-kind colour props are passed (the explicit item colour wins). Distinct from
+          the ambient sim-time pulse above. */}
+      {triggeredIntraConeItems.length > 0 && (
+        <SinrLiveCellBeamCones
+          items={triggeredIntraConeItems}
+          telemetryCountDatasetKey="sinrLiveTriggeredIntraConeRenderedCount"
+          widthScale={beamDisplaySpec.coneWidthScale}
         />
       )}
       {/* Tier-2 dead-twin retirement: the legacy steered <SatelliteBeams> render

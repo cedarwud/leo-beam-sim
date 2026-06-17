@@ -412,6 +412,25 @@ Before changing scene rendering:
 
 ## Completed Follow-Ups
 
+- beam-stage ① #5 (triggered intra flash): the DELIBERATE protagonist jog handover now
+  renders a distinct, sustained, DIRECTIONAL flash on `sinr-live`. The always-on ambient
+  live-handover pulse fades over SIM-time (4 s retention → ~0.8 s wall-clock at the 5×
+  demo speed → too brief + faint + undirectional to read the jog). The triggered intra
+  (the primary UE's handover, `ueId === perUePositions[0].id`) instead gets a WALL-CLOCK
+  ~2.5 s fade (decoupled from sim speed, so it always reads) with a FROM/TO COLOUR SPLIT
+  — the old (handed-off) cell warm amber, the new (acquired) cell cool cyan — so the
+  handover DIRECTION is legible. A pure resolver (`resolveTriggeredIntraConeItems`,
+  `src/viz/SinrLiveCellBeamCones.tsx`) builds the old+new cones with the explicit from/to
+  colour + the caller's wall-clock opacity; `MainScene` owns the wall-clock LATCH (a ref
+  re-armed on each new primary handover, cleared after the sustain, recomputed on the same
+  per-frame `sim.sinrLiveCells` cadence as the pulse) and mounts it gated by
+  `showSinrLiveHandoverPulse` (sinr-live, decoupled from the Director cinema — no seek, no
+  slow-mo, no camera, per owner choice A). It publishes a MESH-derived
+  `sinrLiveTriggeredIntraConeRenderedCount`. Display-only (Rule#6): a read-out of the
+  model's own classified handover — no SINR/serving/handover truth touched, so the s0
+  golden is unmoved. `validate:phase-c:sinr-live-cells:render` VALUE-asserts the from/to
+  colour split + opacity passthrough; `validate:frontend:scene-lane-governance` locks the
+  mount + the resolver build.
 - beam-stage ① #3 (legible footprint circles): the SINR-live lane now draws crisp
   cell-truth footprint RINGS (`SinrLiveCellFootprintRings`, `src/viz/`) — one ring per
   SERVING cell, at the SAME earth-fixed cell base centre / radius / serving-identity

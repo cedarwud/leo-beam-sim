@@ -1951,6 +1951,21 @@ assertContains(
   'telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"',
   'MainScene mounts the live-pulse cone layer with a mesh-derived rendered-count telemetry',
 );
+// (3b) beam-stage ① #5: the TRIGGERED intra flash — the protagonist jog handover held
+//      ~2.5s WALL-CLOCK (decoupled from the sim-time pulse, which is ~0.8s at 5× speed)
+//      with a from(warm)/to(cool) colour split. Lane-gated to sinr-live (same
+//      showSinrLiveHandoverPulse gate), mesh-rendered-count observable, fed the model's
+//      OWN classified handover (no fabricated truth, Rule#6).
+assertContains(
+  mainSceneSource,
+  'telemetryCountDatasetKey="sinrLiveTriggeredIntraConeRenderedCount"',
+  'MainScene mounts the triggered-intra flash layer with a mesh-derived rendered-count telemetry',
+);
+assertContains(
+  mainSceneSource,
+  'resolveTriggeredIntraConeItems({',
+  'MainScene builds the triggered-intra flash from the wall-clock latch (beam-stage ① #5)',
+);
 // (4) G2-TICKER: the always-on CUMULATIVE handover COUNT HUD (complements the pulse
 //     cones). Lane-gated to sinr-live, fed the PUBLISHED monotonic epoch total (not
 //     a re-derived one) — display-only (its own deep gate is

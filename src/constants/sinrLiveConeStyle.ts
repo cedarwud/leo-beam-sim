@@ -71,6 +71,26 @@ export const SINR_LIVE_FOOTPRINT_RING_SEGMENTS = 64;
 export const SINR_LIVE_FOOTPRINT_RING_Y_LIFT = 0.6;
 
 /**
+ * TRIGGERED intra-HO flash style (beam-stage ① #5 — the protagonist jog handover).
+ *
+ * The ambient live-handover pulse fades over SIM-TIME ({@link SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC}
+ * = 4 s), which at the 5× demo speed collapses to ~0.8 s of WALL-CLOCK — too brief +
+ * faint (0.32) to read, and undirectional (old + new both the serving-identity hue).
+ * The TRIGGERED intra (the deliberate jog) instead gets a WALL-CLOCK 2.5 s fade
+ * (decoupled from sim speed, so it always reads) with a FROM/TO COLOUR SPLIT — the
+ * old (handed-off) cell warm, the new (acquired) cell cool — so the handover DIRECTION
+ * is legible. This is what makes it DISTINCT from the ambient pulse (owner choice A:
+ * colour-split + ~2.5 s sustain, no slow-mo / no camera). Display-only (Rule#6).
+ */
+export const SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS = 2500;
+/** Peak (age-0) opacity of the triggered flash — brighter than the ambient pulse (0.32). */
+export const SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY = 0.62;
+/** OLD (handed-off) cell colour — WARM amber, "leaving". */
+export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = '#f5a524';
+/** NEW (acquired) cell colour — COOL cyan, "arriving". */
+export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#22d3ee';
+
+/**
  * Display palette for the live beam field (a-cone follow-up). The PRIMARY serving
  * beam (the one serving the centre UE) reads SATURATED YELLOW so it pops as "your
  * serving beam". Every OTHER beam keeps the geographic frequency-reuse palette

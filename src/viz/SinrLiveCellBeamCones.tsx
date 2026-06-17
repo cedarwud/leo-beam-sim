@@ -454,6 +454,52 @@ export function resolveSinrLiveHandoverPulseConeItems(
   return items;
 }
 
+/**
+ * beam-stage ① #5 — the TRIGGERED intra flash (distinct from the ambient pulse).
+ *
+ * Builds the OLD (handed-off) + NEW (acquired) cell cones for ONE latched handover
+ * event, with a WALL-CLOCK `opacity` and a FROM/TO COLOUR SPLIT: the old cell paints
+ * `fromColor` (warm — handed off) and the new cell paints `toColor` (cool — acquired),
+ * so the audience reads the handover DIRECTION (warm→cool) instead of the ambient
+ * pulse's single serving-identity hue. Pure (no clock / no React) — the caller drives
+ * the wall-clock latch + fade and passes the resolved `opacity`, so the
+ * `:render` model gate can VALUE-assert the from/to colour split + opacity passthrough.
+ * Returns [] when the event's cells/sats are unplaced/unrendered (honest skip).
+ */
+export function resolveTriggeredIntraConeItems(input: {
+  readonly event: SinrLiveCellHandoverEvent | null;
+  readonly opacity: number;
+  readonly fromColor: string;
+  readonly toColor: string;
+  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
+  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+  readonly frequencyReuse: number;
+}): readonly SinrLiveCellBeamConeRenderItem[] {
+  const { event, opacity, fromColor, toColor, placementByCellId, satelliteWorldById, frequencyReuse } = input;
+  if (!event || opacity <= 0) return [];
+  const items: SinrLiveCellBeamConeRenderItem[] = [];
+  const eventKey = `${event.ueId}-${event.sourceTimeSec}`;
+  const to = buildCellConeItem({
+    satId: event.toSatId,
+    cellId: event.toCellId,
+    frequencyIndex: cellFrequencyIndex(event.toCellId, frequencyReuse),
+    placementByCellId,
+    satelliteWorldById,
+  });
+  if (to) items.push({ ...to, color: toColor, opacity, renderKey: `${eventKey}-trig-to`, kind: event.kind });
+  if (event.fromSatId !== null && event.fromCellId !== null) {
+    const from = buildCellConeItem({
+      satId: event.fromSatId,
+      cellId: event.fromCellId,
+      frequencyIndex: cellFrequencyIndex(event.fromCellId, frequencyReuse),
+      placementByCellId,
+      satelliteWorldById,
+    });
+    if (from) items.push({ ...from, color: fromColor, opacity, renderKey: `${eventKey}-trig-from`, kind: event.kind });
+  }
+  return items;
+}
+
 export function resolveSinrLiveCellBeamConeRenderCount(props: SinrLiveCellBeamConesProps): number {
   return resolveSinrLiveCellBeamConeItems(props).length;
 }
