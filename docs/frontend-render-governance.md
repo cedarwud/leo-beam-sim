@@ -412,6 +412,20 @@ Before changing scene rendering:
 
 ## Completed Follow-Ups
 
+- beam-stage ① #3 (legible footprint circles): the SINR-live lane now draws crisp
+  cell-truth footprint RINGS (`SinrLiveCellFootprintRings`, `src/viz/`) — one ring per
+  SERVING cell, at the SAME earth-fixed cell base centre / radius / serving-identity
+  colour as the serving cone, so each beam reads as a CIRCLE with its UEs scattered
+  off-centre inside. It mounts with the serving cones (gated `showSinrLiveCellBeams`,
+  so sinr-live AND the modqn-live-cell-preview reuse both inherit it) and publishes a
+  MESH-derived `sinrLiveCellFootprintRingRenderedCount`. It REPLACES the retired steered
+  `AmbientFootprintRings`, whose rings sat at `viz.ambientRings` (steered beam ground
+  positions) — a different geometry from the earth-fixed cell centres, so they were
+  misaligned with the cones + the UE serving membership (the lattice-phase ① shift only
+  widened that gap). Display-only (Rule#6): a pure outline of the serving cone bases.
+  The hero serving-cone FILL was lowered (0.52 → 0.36) so the ring is the dominant
+  circle cue. `validate:phase-i:s5b-cell-beam-cones` + `validate:frontend:scene-lane-governance`
+  lock the mount swap (rings in, AmbientFootprintRings out).
 - S-FLAG-2: the MODQN service-allocation overlay family (all-UE service map + UE
   marker colouring, per-cell UE-count badges, HUD service readout/legend/diagnostics
   grid, phase-3 beam-load cylinder + upload particles) is parked behind a single

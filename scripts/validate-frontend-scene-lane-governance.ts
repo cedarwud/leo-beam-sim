@@ -2787,7 +2787,10 @@ assertContains(
 // (S0 note: the lane-gating PROPERTY is covered behaviorally by the renderPlan
 // matrix; these whitespace-sensitive exact-JSX pins retire with S5.)
 for (const [needle, label] of [
-  ['{showLiveSceneEffects && <AmbientFootprintRings', 'ambient footprint rings'],
+  // beam-stage ① #3: cell-truth footprint rings (gated with the serving cones) REPLACE
+  // the retired steered AmbientFootprintRings — rings now sit at the earth-fixed cell
+  // centres (aligned with the cones + UE membership), not the steered beam positions.
+  ['{showSinrLiveCellBeams && (\\n        <SinrLiveCellFootprintRings', 'cell-truth footprint rings'],
   ['{showLiveSceneEffects && (\\n        <HandoverLinks', 'handover links'],
   ['{showLiveSceneEffects && <IntraGroundShockwave', 'intra ground shockwave'],
   ['{showHandoverToastOverlay && <HandoverToastOverlay', 'handover toast overlay'],

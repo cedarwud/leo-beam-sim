@@ -38,7 +38,7 @@ import { satelliteTint } from '../constants/beamRoleTokens';
 // from the sinr-live lane (the cell-truth beam cones own the earth-fixed cell story
 // now). Its hex-cover MODEL stays in `../viz/EarthFixedCells` for reuse + the
 // `validate:vc3a:hex-paint` logic gate; only this scene's usage is removed.
-import { AmbientFootprintRings } from '../viz/AmbientFootprintRings';
+import { SinrLiveCellFootprintRings } from '../viz/SinrLiveCellFootprintRings';
 import { HandoverLinks } from '../viz/HandoverLinks';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
 import { IntraGroundShockwave } from '../viz/IntraGroundShockwave';
@@ -1550,7 +1550,11 @@ function SceneContent({
         />
       )}
       {/* S-cells-4d: EarthFixedCells 20-hex green-disc retired — cell-truth cones own the cell story. */}
-      {showLiveSceneEffects && <AmbientFootprintRings rings={viz.ambientRings} footprintRadiusWorld={viz.footprintRadiusWorld} />}
+      {/* beam-stage ① #3: the legacy steered AmbientFootprintRings (rings at `viz.ambientRings`
+          = steered beam ground positions) is RETIRED — those sat at the wrong geometry vs the
+          earth-fixed cell centres, so they were misaligned with the cones + UE membership (the
+          lattice-phase ① shift widened the gap). The cell-truth footprint rings now render with
+          the serving cones below (`SinrLiveCellFootprintRings`, gated showSinrLiveCellBeams). */}
       {showLiveSceneEffects && (
         <HandoverLinks
           satellites={viz.displaySats}
@@ -1620,6 +1624,16 @@ function SceneContent({
           heroColor={SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}
           primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
           primaryServingCellId={primaryServingRecord?.cellId ?? null}
+        />
+      )}
+      {/* beam-stage ① #3: crisp cell-truth footprint RINGS — one per serving cone, at the
+          SAME base centre / radius / serving-identity colour, so each beam reads as a CIRCLE
+          with its UEs scattered off-centre inside. Replaces the retired steered AmbientFootprintRings. */}
+      {showSinrLiveCellBeams && (
+        <SinrLiveCellFootprintRings
+          items={sinrLiveCellBeamConeItems}
+          widthScale={beamDisplaySpec.coneWidthScale}
+          telemetryCountDatasetKey="sinrLiveCellFootprintRingRenderedCount"
         />
       )}
       {/* G2c ambient live-handover pulse — bright, age-faded cones on each real

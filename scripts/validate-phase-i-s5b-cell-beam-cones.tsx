@@ -392,8 +392,11 @@ expect(
   'Scene lane render plan derives live beam cones from showSinrBeamRender (sinr-live OR the MODQN cell-overlay reuse), not the sinr-live viewport alone',
 );
 expect(
-  mainSceneSource.includes('{showLiveSceneEffects && <AmbientFootprintRings'),
-  'MainScene gates AmbientFootprintRings with live-scene effects',
+  mainSceneSource.includes('{showSinrLiveCellBeams && (')
+    && mainSceneSource.includes('<SinrLiveCellFootprintRings')
+    && mainSceneSource.includes('items={sinrLiveCellBeamConeItems}')
+    && !mainSceneSource.includes('AmbientFootprintRings rings='),
+  'MainScene mounts the cell-truth footprint rings with the serving cones (beam-stage ① #3); the steered AmbientFootprintRings was retired (misaligned with the earth-fixed cell centres)',
 );
 expect(
   mainSceneSource.includes('{showGroundRipple && ('),

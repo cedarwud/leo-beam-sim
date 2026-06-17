@@ -46,8 +46,29 @@ export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.14;
  * (BEAM_ROLE_TOKENS.serving was 0.58). It is exempt from the near-horizon dim so the
  * hero beam always pops, even at moderate elevation. Display-only; serving truth +
  * cone count unchanged.
+ *
+ * beam-stage ① #3 (legible footprint circles): lowered 0.52 → 0.36 so the bright
+ * hero FILL no longer blobs over the cell footprint RINGS — the crisp ground ring
+ * (`SinrLiveCellFootprintRings`) is now the dominant "this is a beam circle" cue,
+ * with the fill a supporting wash. The hero still reads brightest of the field.
  */
-export const SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY = 0.52;
+export const SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY = 0.36;
+
+/**
+ * Cell-truth footprint RING style (beam-stage ① #3 — legible circles).
+ * {@link SinrLiveCellFootprintRings} draws one crisp ground ring per SERVING cell,
+ * at the SAME cell-truth base centre / radius / serving-identity colour as the
+ * serving cone, so each beam reads as a distinct CIRCLE with its UEs scattered
+ * off-centre inside it (it REPLACES the legacy steered `AmbientFootprintRings`,
+ * which sat at the wrong — steered — positions). Display-only (Rule#6).
+ */
+export const SINR_LIVE_FOOTPRINT_RING_OPACITY = 0.55;
+/** Ring inner edge as a fraction of the footprint radius (→ a thin crisp annulus). */
+export const SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR = 0.93;
+/** Ring tessellation (matches the cone base segment count for a smooth circle). */
+export const SINR_LIVE_FOOTPRINT_RING_SEGMENTS = 64;
+/** Tiny ground lift (world units) so the flat ring never z-fights the terrain. */
+export const SINR_LIVE_FOOTPRINT_RING_Y_LIFT = 0.6;
 
 /**
  * Display palette for the live beam field (a-cone follow-up). The PRIMARY serving
