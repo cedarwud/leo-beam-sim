@@ -98,6 +98,41 @@ concurrently.
   physics locked, SDD §3.3). Screenshot.
 
 ### Session C — P1 collapse 4 HO layers → 1 + fix intra (→ BOUNDARY 3)
+
+> ✅ **DONE 2026-06-18 — 5 commits on `main` (NOT pushed), all gated.** C1 `c8523aa`
+> (split the intra button: `director-intra-trigger` = jog/seek-free → pulse vs
+> `director-intra-focus` = `armIntra` cinema; Bug B fixed) → C2 `8fcaad9` (pulse
+> tags `event.kind` → intra emerald `#34d399` / inter rose `#f472b6` via the pure
+> `resolveSinrLiveConeRenderColor`, colours in `beamDisplaySpec`) → C3a `cff70b2`
+> (delete the pending-candidate cone + orphaned candidate tokens) → C3b `5c2a3f9`
+> (collapse the cinema PAIR cone + `CandidateBeamHighlight` + the
+> `showCandidateHandoverHighlight` flag/`candidateHighlight` command/`runtimeWithCinema`
+> plumbing + their governance pins + the `'pair'` cone-layer enum/opacity; rename
+> `buildPairConeItem`→`buildCellConeItem`; rewrite the handover-cinema browser gate;
+> the cinema-arm Focus button + SINR explainer STAY) → C4 `63e4efd`
+> (`validate:phase-c:handover-pulse:render:browser`, count==render via a paused
+> settle, wired into `validate:live-render`).
+> Gates green: tsc; cone-render model 29; handoverCinema model 3; `validate:governance`
+> per-commit; **governance:full** (warm-start 14 + chunked-golden + trajectory-memo);
+> **static:all**; **handover-cinema browser PASS** (explainer + 0.25x slow-mo + exit;
+> camera-move SOFT) + **sinr-live-cells render browser PASS** + **C4 PASS** (count==render
+> 26 cones); `/tmp/sinr-C` screenshots (jog→pulse on a static UE; pulse-only story legible).
+> **Deviations (deliberate):**
+> 1. **C3 split into C3a (pending, independent) + C3b (pair+highlight, coupled +
+>    governance-heavy) — 5 commits not 4**, for safety/reviewability under the
+>    governance serial-bottleneck (DELETE-not-park + one-concern justify it).
+> 2. The handover-cinema gate's CAMERA-move check is now BEST-EFFORT (the explainer +
+>    slow-mo + exit are the hard proof; camera-move is owned by the director-cinematic
+>    gates and load-flaked under heavy external CPU).
+> 3. **C4 reads the pulse count==render with the sim PAUSED** (the resolver count vs
+>    the mesh count are written at different React lifecycle points → skew a frame
+>    under churn; pause freezes + converges them). It measures recorded handovers via
+>    the pulse's own truth-derived count, NOT the ticker (see #4).
+> 4. **FINDING (pre-existing, follow-up):** `SinrHandoverTicker` reads the THROTTLED
+>    published `simState.recentHandoverEvents`, which lags/empties under 20x while the
+>    pulse reads the live sim directly → the "一直有換手" HUD can read 0 while the pulse
+>    renders. Not a C3 regression; a `useSimStatePublisher`/throttle fix for Session D.
+
 - **C1** `fix(intra): jog without the self-defeating armIntra seek (Bug B)` — remove the
   `armIntra()` (seek→rebase clears prevUeServing) from the intra button; jog alone fires the real
   intra; ambient pulse displays it. Keep the cinema arm as a SEPARATE optional Focus button only.
