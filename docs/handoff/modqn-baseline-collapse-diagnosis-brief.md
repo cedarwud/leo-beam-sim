@@ -11,11 +11,36 @@
   server training run. This records the evidence-checked answer so a future
   session does not re-derive it (and does not repeat the wrong first guess).
 
-> **⚠️ STATUS (2026-06-15): HYPOTHESIS — NOT yet validated by training.** The root cause
-> below is derived from (a) reading the actual paper and (b) a local reward-geometry probe
-> (no training). The decisive test — running the paper-faithful `r1=throughput + SNR + 4-sat`
-> baseline and seeing it NOT collapse — is **pending on the server** (worker prompt Arm 0).
-> Treat as a strong hypothesis awaiting confirmation; **report back here after the run.**
+> **🟥 STATUS (2026-06-16): DEFINITIVE (Phase 1) — the paper's MODQN baseline does NOT reproduce, in the
+> paper's OWN clean simple env.** A fresh paper env (4-sat / 7-beam / SNR / no-interference, frozen
+> `algorithms/modqn.py` byte-unchanged, Table-I params, 9000 ep, BOTH [0.5,0.3,0.2] and [1,1,1]) →
+> **COLLAPSED** (`active_beam_count_mean=1.0`, `modal_frac=1.0` every ckpt; achieved Σr1≈0.9 vs paper
+> Table II ≈33). The paper's Σr1≈33 = the **exploratory/random** level (ε=1→r1≈32.5, monotonic decay to
+> ~2 at ε=0.01); the learned greedy policy is **worse than random**. **Root cause = the LETTER's own
+> formulation** (shared-policy net + homogeneous users + global-only load N(t) + simultaneous assignment →
+> identical per-user argmax → one beam): an UNTRAINED net already collapses; widening the user area breaks
+> it (#unique beams 1→2→7 at 200×90→4000²→10000² km); training saturates the first tanh layer 98–99%
+> (cross-user Q dispersion→0). **Ruled out: NOT a modqn.py bug, NOT reward-direction, NOT encoder-saturation.**
+> → reward-direction hypothesis (mine) DEAD; shared-policy-homogenization (fable) CONFIRMED + cleanly
+> localized to the letter (ALL Family-B confounds — Cap25/SINR/EE/28-beam — ruled out). The letter omits the
+> symmetry-breaker (plausibly real STK per-user geometry / per-agent nets / sequential assignment /
+> eval-under-exploration). **This is a reproducibility finding — NOT the user's env or implementation.**
+> Committed `91c4723`; report `docs/research/paper-baseline-modqn-phase1-verdict.md`; code `paper_baseline/`.
+> Thesis implication: reframe around "diagnose + FIX the published collapse" (stronger than "beat a working
+> baseline"); the repo's step3-cause-ablation already found escape arms (active_beam 2.5–7). The Arm-0a note
+> below (throughput on Family-B) is now subsumed by this stronger clean-env result.
+>
+> **🔴 (superseded by Phase 1 above) STATUS: HYPOTHESIS REFUTED by the Arm-0a training run.** Flipping r1→throughput
+> on the Family-B env (3000 ep, seed 42) **STILL COLLAPSED**: `active_beam_count_mean=1.0`,
+> `modal_frac_mean=1.0`, `collapse_class=COLLAPSED`, M1=1701 Mbps = 29% of RANDOM's 5827 (sub-random) —
+> the SAME signature as the angle-aware-EE baseline. **So the collapse is NOT the reward direction.**
+> RANDOM proves spreading yields 3.4× the throughput, yet the policy could not learn to spread → this is
+> the **shared-Q per-user-argmax homogenization** (the fable hypothesis), now CONFIRMED. The reward-scale
+> dominance (448×) and the angle-aware-EE-vs-throughput direction analysis below were a **RED HERRING**
+> (at most secondary); the per-objective reward mechanics are kept for the record but **do NOT explain the
+> collapse.** Lever forward = coordination/architecture (B1=more-state confirmed won't fix it — same state,
+> still collapsed; catfish/B3 = fable's only untried lever, flagged may-fail). Open: does the 4-sat
+> paper-faithful scenario (Arm 0b) also collapse? = scale-vs-architecture question.
 
 ## TL;DR
 
