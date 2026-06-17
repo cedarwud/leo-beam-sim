@@ -962,6 +962,14 @@ function SceneContent({
     },
     [showSinrServingMosaic, sim.sinrLiveCells, sim.perUePositions],
   );
+  // The sinr-serving mosaic COLOUR primitive is shared with the MODQN cell-preview
+  // lane (consolidation: MODQN renders like SINR — governance-locked
+  // showSinrServingMosaic=true on `modqn-live-cell-preview`). But the sinr-serving
+  // mosaic + queue-pressure TELEMETRY attrs are a sinr-live lane PROOF — they stay
+  // sinr-live-owned (matching the SinrServingAggregate HUD's lane-gating + the
+  // mosaic gate contract), never threading onto the MODQN canvas. showSinrServingMosaic
+  // is `sinr-live OR cell-overlay`; exclude the cell-overlay lane for sinr-live-only.
+  const sinrServingTelemetryActive = showSinrServingMosaic && !showCellOverlay;
   // Phase-3 beam-load contention source = the SAME per-UE (satId, beamIndex)
   // cell-schedule assignment that `modqnServiceMap` already uses to colour the UE
   // markers and emit the per-cell UE-count badges (`ueCountByCellId`). Provenance
@@ -1458,9 +1466,12 @@ function SceneContent({
           .filter((u) => u.worldPos !== undefined)
           .map((u, index) => {
             // The primary UE (index 0) stays the red focus anchor; the SINR
-            // mosaic colours the secondary population by serving beam (the G3
-            // money shot). On a MODQN lane the mosaic map is null and colours
-            // come from the cell overlay instead — the two never mix.
+            // serving mosaic colours the secondary population by serving beam (the
+            // G3 money shot). The mosaic COLOUR render is shared with the MODQN
+            // cell-preview lane too (consolidation: showSinrServingMosaic is also
+            // true there); modqnServiceMap is only the fallback where the mosaic
+            // has no colour for a UE. (The sinr-serving TELEMETRY attrs, by
+            // contrast, stay sinr-live-owned — see sinrServingTelemetryActive.)
             const mosaic = index === 0 ? undefined : sinrServingColorById?.get(u.id);
             const service = mosaic ? undefined : modqnServiceMap.ueById.get(u.id);
             // ID alignment verified: liveSimToScene preserves sim.perUePositions
@@ -1483,9 +1494,9 @@ function SceneContent({
         ueTrailHistory={showCellOverlay ? undefined : ueTrailHistory}
         secondaryOpacity={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
         secondaryScale={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
-        colorTelemetryAttr={showSinrServingMosaic ? 'sinrServingMosaicColorCount' : undefined}
-        contentionTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureBucketCount' : undefined}
-        contentionInstanceCountTelemetryAttr={showSinrServingMosaic ? 'sinrServiceQueuePressureInstanceCount' : undefined}
+        colorTelemetryAttr={sinrServingTelemetryActive ? 'sinrServingMosaicColorCount' : undefined}
+        contentionTelemetryAttr={sinrServingTelemetryActive ? 'sinrServiceQueuePressureBucketCount' : undefined}
+        contentionInstanceCountTelemetryAttr={sinrServingTelemetryActive ? 'sinrServiceQueuePressureInstanceCount' : undefined}
       />
       {showCellOverlay && modqnVisualLayers.activeCellOverlay && (
         <CellOverlay

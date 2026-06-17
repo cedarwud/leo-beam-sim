@@ -281,10 +281,11 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(artifact.showLiveSceneEffects, false, 'artifact replay must not inherit SINR live effects');
 
   // ── SINR-serving mosaic (S2) lane ownership ──
-  // Lane-owned to sinr-live ONLY and always-on (NOT director-gated): the ambient
-  // default that colours every UE by its serving beam. It is a DISTINCT
-  // SINR-serving layer, never the MODQN cell overlay — inert on every MODQN /
-  // artifact lane.
+  // The SINR-serving mosaic COLOUR render is always-on ambient on sinr-live (NOT
+  // director-gated) and is ALSO mounted on `modqn-live-cell-preview` (consolidation:
+  // MODQN renders like SINR — asserted true below); it stays inert on the
+  // replay-proof / artifact lanes. (The sinr-serving TELEMETRY/HUD PROOF is gated
+  // tighter — sinr-live-only — in MainScene + the SinrServingAggregate HUD.)
   assert.equal(
     renderPlan('sinr-live', 'live-sim').showSinrServingMosaic,
     true,

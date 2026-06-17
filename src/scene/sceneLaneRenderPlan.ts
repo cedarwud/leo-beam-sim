@@ -94,11 +94,13 @@ export interface SceneLaneRenderPlan {
   /**
    * SINR-serving mosaic (S2). The ambient default on `sinr-live`: every UE
    * marker is coloured by its serving beam (by SINR), partitioning the ~100 UE
-   * dots into a coloured cell mosaic (G3). Lane-owned to `sinr-live` ONLY — it
-   * is a DISTINCT SINR-serving visualisation, NOT the MODQN cell overlay, so it
-   * stays inert on `modqn-live-cell-preview`, `modqn-replay-proof`, and
-   * `artifact-replay`. It is the always-on ambient base, NOT director-gated
-   * (Rule#10 default = mosaic + aggregate).
+   * dots into a coloured cell mosaic (G3). The COLOUR render is ALSO mounted on
+   * `modqn-live-cell-preview` (consolidation: MODQN renders like SINR — see the
+   * `showSinrBeamRender` assignment + the governance matrix); it stays inert on
+   * `modqn-replay-proof` and `artifact-replay`. The sinr-serving TELEMETRY/HUD
+   * PROOF, by contrast, is gated tighter than this flag (sinr-live-owned). It is
+   * the always-on ambient base, NOT director-gated (Rule#10 default = mosaic +
+   * aggregate).
    */
   readonly showSinrServingMosaic: boolean;
   /**
