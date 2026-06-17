@@ -1,7 +1,14 @@
 # Live-SINR + MODQN Shared Beam Stage — Mini-SDD
 
 **Date:** 2026-06-17
-**Status:** Design — written in a hot-context discussion session. EXECUTE in a fresh conversation.
+**Status:** Piece ① (stage geometry) **EXECUTED 2026-06-18** — 3 commits on `main` (pushed):
+`2ee3ef3` lattice phase (protagonist off-centre) → `50eef62` legible cell-truth footprint
+rings (retired misaligned steered rings) → `968c837` wall-clock triggered intra-HO flash
+(from/to colour split — the "intra invisible" fix). Decisions locked: mechanism **A
+lattice-phase** + **0.55r** + **no densify**; #4 keep discrete jog (verified no-code); #5
+colour-split + ~2.5 s wall-clock sustain, no slow-mo, old-warm/new-cool. Pieces ② (proof
+layer) + ③ (universal primitive) remain **NOT started** (② = next; ③ deferred,
+producer-blocked). Ledger: `[[project_beam_stage_shared_render_arch_2026-06-17]]`.
 **Scope:** `leo-beam-sim` beam/cell RENDER (the "stage") + the live-vs-replay decision boundary, across the SINR-live and MODQN lanes. Does **NOT** touch the SINR engine math, the producer artifacts, or MODQN training.
 **Author:** Claude controller, 2026-06-17 architecture discussion with the owner.
 **Related:** `docs/sinr-live-earth-fixed-cells-mini-sdd.md` (the earth-fixed-cell model + the free-beam-reverted history), `docs/sinr-live-render-consolidation-sdd.md` (Sessions A–C5, DONE), `docs/frontend-render-governance.md` (the lane redline). Memory: `[[project_beam_stage_shared_render_arch_2026-06-17]]`.
@@ -44,7 +51,7 @@ Contributing render defects (same session, measured): intra pulse from/to cones 
 
 ## 3. The three pieces (priority order — NOT parallel/big-bang)
 
-### ① Stage fix (live beam geometry) — DO FIRST. leo-owned, low-risk.
+### ① Stage fix (live beam geometry) — ✅ EXECUTED 2026-06-18 (3 commits, all gated + pushed). leo-owned, low-risk.
 Simultaneously (a) solves the original intra-HO-invisible pain and (b) makes the sinr-live + modqn-live stage reasonable (both inherit via the shared `showSinrBeamRender = showSinrLiveViewport || showCellOverlay`, `sceneLaneRenderPlan.ts:163`).
 - **Lattice phase:** offset all cell centres so the ORIGIN is a hex vertex/edge, not a cell centre → nothing sits dead-centre at (0,0) → the observer/protagonist sits off-centre. Touch: `axialToLocalKm` (`cellLayout.ts:230-231`) add a phase offset, or a phase param in `buildCellLayout`. OPEN: exact offset (half-cell, direction) — probe.
 - **Densify (optional):** raise `SINR_LIVE_CELL_COUNT` (`sinrLiveCellRuntime.ts:53`, now 37) so beams visually hit "anywhere" (fine grid, quantisation invisible) while keeping deterministic placement + clean handover. OPEN: amount vs clutter/perf — probe.
