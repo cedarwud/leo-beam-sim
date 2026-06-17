@@ -61,6 +61,29 @@ concurrently.
   pin (one-authority), not source-text. Add npm script.
 
 ### Session B — P1 beamDisplaySpec migration (→ BOUNDARY 2; control surface becomes ONE file)
+
+> ✅ **DONE 2026-06-18 — 4 commits on `refactor/beam-display-contract` (NOT pushed),
+> all gated.** F3 `62639a7` (contract, no consumers) → B1 `d105720` (migrate +
+> delete) → B2 `d835d20` (pin→value asserts) → B3 `912cb8d` (width/opacity knobs).
+> Gates green: tsc; cone-render model 28/0; validate:governance per-commit;
+> **governance:full** (S0–S5 + warm-start 14 + chunked-golden + trajectory-memo);
+> **static:all 137 green / 1 quarantined** (post-B2 AND post-B3, unchanged);
+> **cone-render browser gate PASS** (cones==served, pulse decoupled, live SINR
+> engine); sinr-live screenshots (default identical to A; bumped width 2.2 /
+> opacity 0.45 rendered visibly wider+brighter = knobs live).
+> **Deviations from this plan (deliberate):**
+> 1. F3 was done as its own commit (it had been skipped in the fan-out batch).
+> 2. **B2 is pin-conversion ONLY — the renderPlan alias consts are NOT inlined.**
+>    Only 3 `const X = showSinrBeamRender` *source-text* pins existed (mosaic 1718,
+>    pulse 1987, sceneEffects 2828); deleted them, relying on the existing renderPlan
+>    VALUE asserts (added the one missing `artifact.showLiveSceneEffects==false` to
+>    complete the matrix). The consts themselves are documented semantic layer names,
+>    not mess — the mess was the governance pins freezing them. The critic's
+>    "1718/1987/2828 collision" was real but only 3 pins, all retired cleanly.
+> 3. coneWidthScale scales geometry in `ObliqueConeMesh` only (item + userData keep
+>    truth radius); both knobs wired at the MOUNT props, so NO resolver/memo dep
+>    changes were needed (the direct-prop seam re-renders the mounts).
+
 - **B1** `refactor: migrate showNonServingCones + beamCalloutsEnabled into beamDisplaySpec; delete SceneDisplayConfig`
   — App holds spec in `useState`, direct prop to MainScene; `sceneLaneRenderPlan` reads
   `beamCalloutsEnabled` from spec. Repoint the governance `beamCalloutsEnabled` threading.
