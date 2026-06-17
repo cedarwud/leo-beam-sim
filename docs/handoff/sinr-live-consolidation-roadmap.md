@@ -1,0 +1,116 @@
+# SINR-live Beam Consolidation — Execution Roadmap
+
+**Status:** planning DONE (2026-06-17). Execute from here. Pairs with the SOLUTION
+design [`docs/sinr-live-render-consolidation-sdd.md`](../sinr-live-render-consolidation-sdd.md)
+and the DIAGNOSIS [`docs/handoff/sinr-live-render-consolidation-brief.md`](./sinr-live-render-consolidation-brief.md).
+Branch: `refactor/beam-display-contract` (P0 keystone already committed: `26f46d2`).
+
+Produced by a 5-way decompose + adversarial-critic workflow; the critic's corrections
+are baked in below (merges, dedupes, missed repoints, the arg-name bug, the governance
+bottleneck). ~22 commits, ~3–4 focused sessions.
+
+## Execution model (HYBRID — mostly sequential-solo)
+
+The 5-cluster split is an ANALYTICAL convenience, NOT a parallel map. **Four of five
+clusters write the SAME files** (`sinrLiveConeStyle.ts`, `SinrLiveCellBeamCones.tsx`,
+`MainScene.tsx`, `sceneLaneRenderPlan.ts`, and the governance script) → they cannot run
+concurrently.
+
+- **ONE parallel fan-out batch** (subagents in isolated worktrees) — the only truly
+  disjoint, no-governance-pin, no-screenshot, no-shared-file commits: F1–F5 below.
+- **Then ONE sequential solo lane** (driver + screenshot verification): Session A → B → C → D.
+  Subagents do NOT help here — the bottleneck is the shared governance file + visual
+  verification, both inherently serial.
+
+> 🔴 **THE GLOBAL BOTTLENECK = `scripts/validate-frontend-scene-lane-governance.ts`.**
+> ~8 commits edit it; it is the pre-commit-hook gate; one bad edit RED-blocks every
+> later commit. Never touch it in parallel. Re-run `validate:governance` + (before
+> handoff) `validate:static:all` after each edit.
+
+## Parallel fan-out batch (subagents / worktrees — safe, do anytime)
+
+| id | commit | files | notes |
+|----|--------|-------|-------|
+| F1 | `chore(config): delete dead visualBeamDiameter` | `ntpu.config.ts` | written-never-read; grep first |
+| F2 | `chore(scene): delete stale comment graves` | `sceneLaneRenderPlan.ts:199-205`, `MainScene.tsx:1700-1708` | pure comments; the "PARKED/steered" lie + the SatelliteBeams tombstone |
+| F3 | `feat(scene): add beamDisplaySpec.ts contract (no consumers yet)` | `beamDisplaySpec.ts` (new) | shape = SDD §3.1; `DEFAULT_BEAM_DISPLAY_SPEC` |
+| F4 | `feat(bugD): SinrHandoverTicker intra-only honest label + data-attr` | `SinrHandoverTicker.tsx` | say "not reached by current geometry", NOT "never" |
+| F5 | `feat(bugD): inter-HO==0 geometry gate + beam-control prompt-ref doc` | new gate + `docs/beam-control-prompt-reference.md` | gate uses the chunked-golden epoch (NOT live time) → deterministic |
+
+## Sequential solo lane
+
+### Session A — P0 colour + legibility (→ new-convo BOUNDARY 1; resolves "connected no beam")
+- **A1** `feat(sinr-live): serving-identity colour authority + wire cones + repoint colour validators`
+  — **MERGE the old commit-1+2** (a signature change alone is tsc-RED = forbidden). Create
+  `src/constants/servingColour.ts` exporting `colorForServingBeam(satId, beamId)` (the DEFAULT,
+  not a fallback — avoids `constants/`→`scene/` layering inversion). Both the cone resolver
+  (`SinrLiveCellBeamCones.tsx`) and the UE mosaic (`sinrServingMosaic.ts`) call it.
+  ⚠️ **ARG NAME: `mosaicColorForServingBeam(satId, beamId:number)` — the cone's key is `cellId`
+  used AS `beamId`. Pass the SAME value on both sides or the colour-match gate false-greens.**
+  Repoint: `validate:phase-c:sinr-live-cells:render` (lines 174/241/361/516) **AND `vc1c`
+  (freq-color-demotion) + `vc1d` (identity-match) + `vc2c` (satellite-tint)** — the critic
+  caught these 3 as a MISSED repoint; colour-unify WILL red them. Keep role colours (hero
+  `#facc15`, candidate `#0ea5e9`, pulse) on top — identity colour is for ambient serving cones.
+  Screenshot.
+- **A2** `feat(sinr-live): lift serving cone legibility (opacity 0.08 → ~0.18)` — screenshot at
+  0.14 / 0.18 / 0.22, pick the value where served UEs sit visibly under their beam without
+  washing terrain (user rejected 0.22 for the STEERED look in 2026-06-08; cell cones differ —
+  verify). Update the `0.08` test pin. Screenshot.
+- **A3** `feat(sinr-live): colour-match model invariant gate` — new non-browser validator: on a
+  synthetic frame assert cone.color == UE marker colour for the same (satId, beamId). Contract
+  pin (one-authority), not source-text. Add npm script.
+
+### Session B — P1 beamDisplaySpec migration (→ BOUNDARY 2; control surface becomes ONE file)
+- **B1** `refactor: migrate showNonServingCones + beamCalloutsEnabled into beamDisplaySpec; delete SceneDisplayConfig`
+  — App holds spec in `useState`, direct prop to MainScene; `sceneLaneRenderPlan` reads
+  `beamCalloutsEnabled` from spec. Repoint the governance `beamCalloutsEnabled` threading.
+- **B2** `refactor: collapse showSinrBeamRender aliases + convert their source-text pins → value asserts`
+  — **HIGH risk; FOLD the old P2 pin-wrapping IN HERE** (the critic: P2 and this commit collide on
+  the same governance lines 1718/1987/2828). GOOD NEWS verified: equivalent output-value asserts
+  already exist (governance ~lines 311-400) — delete the text-pin, confirm the value-assert covers
+  it. Do NOT touch `focusSatIds: null` or `buildSinrServingUeColorMapFromCells` (permanent wiring
+  locks, SDD §6/§7). Run `validate:governance` + `validate:static:all` after.
+- **B3** `feat: display-only coneWidthScale + servingConeOpacity knobs in beamDisplaySpec` — width
+  multiplies RENDERED base radius ONLY (never `cellLayout.ts`/`sinrLiveCellRuntime.ts` beamwidth →
+  physics locked, SDD §3.3). Screenshot.
+
+### Session C — P1 collapse 4 HO layers → 1 + fix intra (→ BOUNDARY 3)
+- **C1** `fix(intra): jog without the self-defeating armIntra seek (Bug B)` — remove the
+  `armIntra()` (seek→rebase clears prevUeServing) from the intra button; jog alone fires the real
+  intra; ambient pulse displays it. Keep the cinema arm as a SEPARATE optional Focus button only.
+  Screenshot: intra click → a pulse flare appears.
+- **C2** `feat(pulse): honour event.kind — intra vs inter rendered distinctly (Bug H)` — add
+  optional `kind` to the render item + intra/inter pulse colours; render distinctly; fall back to
+  base colour when absent. Screenshot.
+- **C3** `refactor(layers): collapse to ambient pulse only` — ⚠️ **SCREENSHOT-VERIFY the pulse-only
+  story is legible BEFORE deleting** (the deletes remove the only proof of distinct old/new cells).
+  Then delete in order: pending-candidate cone → cinema pair cone → `CandidateBeamHighlight` (+ its
+  file). Each removes governance pins + telemetry attrs (`sinrLiveCellHandoverPairCone*`,
+  `candidateHandoverHighlightRenderedCount`, the `<CandidateBeamHighlight` mount pin, the 5
+  `showCandidateHandoverHighlight` matrix asserts) — repoint/remove each. Delete the dead
+  `_diag-paircone.ts` / `_diag-highlight.ts`. Screenshot after each.
+- **C4** `feat(gate): pulse count==render browser gate` — assert ≥1 pulse cone renders per recorded
+  handover within the retention window (atomic read, like the coverage gate).
+
+### Session D — P3 + governance hardening (→ BOUNDARY 4; independent, anytime after A)
+- **D1** convert remaining governance source-text pins (ticker, SinrServingAggregate wording) →
+  contract/behaviour pins (the deeper `validate:phase-c:handover-ticker:model` already covers them).
+- **D2** UE-panel contract gate (lane-gate behaviour + one colour-authority import check); ≤80 lines.
+- **D3** extend the contract+visual-gate pattern to the rest of the frontend display (open-ended);
+  MODQN inherits via shared render.
+
+## Hard rules / gotchas (from the critic — do not skip)
+1. **Governance file is serial + fragile** — one driver, re-gate after every edit.
+2. **Merge P0 A1** (no tsc-red intermediate). **Fold P2 pins into B2** (line collision).
+3. **vc1c / vc1d / vc2c WILL red on colour-unify** — repoint them IN A1 (was a missed repoint).
+4. **Arg-name: `beamId` not `cellId`** — same key both sides or the colour-match gate false-greens.
+5. **Screenshot the pulse-only story BEFORE the C3 deletes**, not after.
+6. **Never touch** engine SINR, goldens, the 4 baseline-KPIs, `focusSatIds: null`,
+   `buildSinrServingUeColorMapFromCells`, or the antenna beamwidth (physics).
+7. Every visual commit: screenshot before/after. Every governance-touching commit: `validate:governance`
+   then `validate:static:all` before handoff. One concern per commit. DELETE-not-park.
+
+## New-conversation boundaries
+After **A** (colour+legibility — the "connected no beam" fix), after **B** (one control file),
+after **C** (HO layers collapsed + intra fixed), **D** anytime after A. Each boundary: SDD + this
+roadmap + the commit SHAs + the memory topic = cold-start handoff.
