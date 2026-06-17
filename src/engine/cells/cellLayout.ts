@@ -32,6 +32,16 @@ export interface CellLayoutConfig {
   readonly beamwidth3dBRad: number;
   /** Optional override; default 37. */
   readonly cellCount?: number;
+  /**
+   * Optional lattice PHASE offset in CELL RADII (east, north). Shifts EVERY cell
+   * centre by `cellRadius · offset` (so the offset is scale-free w.r.t. the beam
+   * footprint). It lets a caller move a fixed ground point off a cell centre —
+   * the SINR-live lane uses it so the ENU origin (= the observer-anchored
+   * protagonist UE) sits OFF cell-0's centre instead of dead-centre (beam-stage
+   * ① fix). Default = no shift, so every other caller (the MODQN/producer
+   * `useCellSchedule` round-robin geometry) is byte-identical.
+   */
+  readonly phaseOffsetRadii?: { readonly east: number; readonly north: number };
 }
 
 interface AxialCoordinate {
@@ -74,22 +84,28 @@ export function buildCellLayout(config: CellLayoutConfig): CellLayout {
   }
 
   const cellRadiusKm = config.altitudeKm * Math.tan(config.beamwidth3dBRad / 2);
+  // Lattice phase offset (km), scaled from the cell-radius-relative config. Zero
+  // when unset → byte-identical to the pre-phase layout for every default caller.
+  const phaseXKm = cellRadiusKm * (config.phaseOffsetRadii?.east ?? 0);
+  const phaseYKm = cellRadiusKm * (config.phaseOffsetRadii?.north ?? 0);
   const coordinates = generateAxialCoordinates(count);
   const centers = coordinates.map((coordinate, index): CellCenter => {
     const local = axialToLocalKm(coordinate, cellRadiusKm);
+    const localXKm = local.localXKm + phaseXKm;
+    const localYKm = local.localYKm + phaseYKm;
     const latLon = localKmToLatLon(
       config.centerLatDeg,
       config.centerLonDeg,
-      local.localXKm,
-      local.localYKm,
+      localXKm,
+      localYKm,
     );
 
     return {
       cellId: index,
       latDeg: latLon.latDeg,
       lonDeg: latLon.lonDeg,
-      localXKm: local.localXKm,
-      localYKm: local.localYKm,
+      localXKm,
+      localYKm,
     };
   });
 

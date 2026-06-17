@@ -53,6 +53,27 @@ import {
 export const SINR_LIVE_CELL_COUNT = 37;
 
 /**
+ * Lattice PHASE offset (in cell radii) for the SINR-live earth-fixed grid — the
+ * beam-stage ① stage-geometry fix (`docs/beam-stage-overhaul-sdd.md` §3①).
+ *
+ * The protagonist UE is observer-anchored at ENU (0,0); the unphased lattice puts
+ * cell-0's centre ALSO at (0,0), so the protagonist sat dead-centre in its beam
+ * (the "波束一定打在 UE 正中央" complaint). Shifting EVERY cell centre east by
+ * `0.55 · cellRadius` moves the origin to `0.55 · r` WEST of its cell centre:
+ * visibly off-centre, yet safely inside cell 0 (0.55 < the 0.866·r apothem, so the
+ * nearest-cell membership is unambiguous — not on an edge/vertex). 0.55 is the
+ * owner-chosen "moderate" magnitude (0.5–0.6 r) — dramatic enough to read, gentle
+ * enough that the grid translation barely changes 200×90 coverage.
+ *
+ * Applied ONLY through {@link buildSinrLiveCellLayout}, so it phases the SINR-live
+ * cell TRUTH and the cones/markers that render from it — and, since both the
+ * sinr-live and modqn-live-cell-preview lanes render via the shared
+ * `showSinrBeamRender` path, BOTH inherit it from this one knob. The MODQN/producer
+ * `useCellSchedule` geometry never passes a phase, so it is byte-identical.
+ */
+export const SINR_LIVE_CELL_PHASE_OFFSET_RADII = { east: 0.55, north: 0 } as const;
+
+/**
  * Link-budget / cell-layout 3 dB beamwidth for the SINR-live lane (rad ≈ 3.32°).
  * This now equals the profile antenna beamwidth — a realistic LEO value between
  * Starlink (~1.5–2°) and 3GPP TR 38.821 LEO-600 (~4.4°). Cell SIZE
@@ -142,6 +163,9 @@ export function buildSinrLiveCellLayout(profile: Profile): CellLayout {
     // SINR_LIVE_CELL_MAX_GAIN_DBI.
     beamwidth3dBRad: SINR_LIVE_CELL_BEAMWIDTH_RAD,
     cellCount: SINR_LIVE_CELL_COUNT,
+    // Phase the lattice off the ENU origin so the protagonist UE is off-centre
+    // (beam-stage ①). One knob; sinr-live + modqn-live both inherit it.
+    phaseOffsetRadii: SINR_LIVE_CELL_PHASE_OFFSET_RADII,
   });
 }
 
