@@ -108,6 +108,8 @@ const cellFrame: SinrLiveCellFrame = {
   servingSatCount: new Set(SERVING_PAIRS.map(p => p.satId)).size,
   intraHandoverCount: 0,
   interHandoverCount: 0,
+  cumulativeIntraHandoverCount: 0,
+  cumulativeInterHandoverCount: 0,
   recentHandoverEvents: [],
 };
 

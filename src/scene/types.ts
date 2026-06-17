@@ -217,6 +217,16 @@ export interface SimState {
    * cell lane.
    */
   recentHandoverEvents?: SinrLiveCellFrame['recentHandoverEvents'];
+  /**
+   * G2-TICKER (cumulative): monotonic running totals of intra/inter handovers since
+   * the current continuity epoch, published from `sim.sinrLiveCells` so the always-on
+   * ticker HUD counts the live handover stream WITHOUT the throttle drop that empties
+   * the sim-time `recentHandoverEvents` window between publishes at high playback
+   * speed (the throttle batches increments instead of dropping events). Undefined off
+   * the sinr-live cell lane.
+   */
+  cumulativeIntraHandoverCount?: number;
+  cumulativeInterHandoverCount?: number;
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;

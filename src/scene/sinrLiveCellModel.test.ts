@@ -308,6 +308,43 @@ check('live-pulse handover events fade out of the retention window by sim-time',
   assertEqual(pastHorizon.recentHandoverEvents.length, 0, 'the HO is pruned once it ages past the retention window');
 });
 
+check('cumulative handover totals accumulate monotonically and reset on reset/rebase', () => {
+  const layout = testLayout(7);
+  const model = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
+  const overhead = makeSat({ id: 'over', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const c1 = layout.centers[1];
+  const c2 = layout.centers[2];
+  const atCell = (id: string, c: { localXKm: number; localYKm: number }, simTimeSec: number) =>
+    model.step({ visibleSats: [overhead], ues: [{ id, eastKm: c.localXKm, northKm: c.localYKm }], simTimeSec, dtSec: 1 });
+
+  const f0 = model.step({ visibleSats: [overhead], ues: [{ id: 'm', eastKm: 0, northKm: 0 }], simTimeSec: 0, dtSec: 1 });
+  assertEqual(f0.cumulativeIntraHandoverCount, 0, 'cold attach does not increment the cumulative total');
+  assertEqual(f0.cumulativeInterHandoverCount, 0, 'no inter on attach');
+
+  const f1 = atCell('m', c1, 1);
+  assertEqual(f1.intraHandoverCount, 1, 'one intra this frame (per-frame count)');
+  assertEqual(f1.cumulativeIntraHandoverCount, 1, 'cumulative picks up the first intra-HO');
+
+  const f2 = atCell('m', c2, 2);
+  assertEqual(f2.intraHandoverCount, 1, 'still a per-frame count of 1');
+  assertEqual(f2.cumulativeIntraHandoverCount, 2, 'cumulative is MONOTONIC — it SUMS across frames, unlike the per-frame count');
+
+  const f3 = atCell('m', c2, 3);
+  assertEqual(f3.cumulativeIntraHandoverCount, 2, 'a no-HO frame holds the cumulative total steady (never decrements)');
+
+  // A rebase (timeline seek / loop-wrap) opens a fresh continuity epoch: the totals
+  // reset so a replayed span is never double-counted (mirrors recentHandovers).
+  model.rebase(-2000);
+  const fr = atCell('m', c2, 1);
+  assertEqual(fr.cumulativeIntraHandoverCount, 0, 'rebase resets the cumulative totals (the post-seek re-acquire is not a handover)');
+
+  atCell('m', c1, 2); // bump it back above zero so the reset assertion is meaningful
+  model.reset();
+  const fz = model.step({ visibleSats: [overhead], ues: [{ id: 'm', eastKm: 0, northKm: 0 }], simTimeSec: 0, dtSec: 1 });
+  assertEqual(fz.cumulativeIntraHandoverCount, 0, 'reset zeroes the cumulative totals');
+  assertEqual(fz.cumulativeInterHandoverCount, 0, 'reset zeroes inter too');
+});
+
 check('idle cells: no visible sats → every cell unserved, every UE null SINR (honest)', () => {
   const layout = testLayout(7);
   const model = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });

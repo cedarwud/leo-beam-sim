@@ -102,6 +102,8 @@ function frameWithCells(cells: CellServingRecord[]): SinrLiveCellFrame {
     servingSatCount: new Set(served.map(c => c.servingSatId)).size,
     intraHandoverCount: 0,
     interHandoverCount: 0,
+    cumulativeIntraHandoverCount: 0,
+    cumulativeInterHandoverCount: 0,
     recentHandoverEvents: [],
   };
 }
@@ -118,6 +120,8 @@ function frameOf(beams: IlluminatedCellBeam[]): SinrLiveCellFrame {
     servingSatCount: new Set(servingCells.map(b => b.satId)).size,
     intraHandoverCount: 0,
     interHandoverCount: 0,
+    cumulativeIntraHandoverCount: 0,
+    cumulativeInterHandoverCount: 0,
     recentHandoverEvents: [],
   };
 }

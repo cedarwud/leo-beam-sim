@@ -215,6 +215,16 @@ export interface SinrLiveCellFrame {
   readonly intraHandoverCount: number;
   readonly interHandoverCount: number;
   /**
+   * Monotonic running totals of intra/interHandoverCount since the current
+   * continuity epoch (reset on reset/rebase). The throttle-proof count source for
+   * the always-on ticker HUD: a cumulative total survives any publish cadence (the
+   * throttle batches increments) where the sim-time {@link recentHandoverEvents}
+   * WINDOW empties between publishes at high playback speed. Display read-out of the
+   * already-classified transitions (Rule#6); the serving decision is unchanged.
+   */
+  readonly cumulativeIntraHandoverCount: number;
+  readonly cumulativeInterHandoverCount: number;
+  /**
    * Real handovers that fired within the last
    * {@link SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC} of sim-time (this frame's plus
    * the recent rolling window), newest last. The ambient live-handover pulse (G2)
@@ -491,6 +501,16 @@ export class SinrLiveCellModel {
   // for the ambient live-handover pulse to fade by age. Pruned each step; cleared
   // on reset/rebase (a teleport is not a handover — mirrors prevUeServing).
   private recentHandovers: SinrLiveCellHandoverEvent[] = [];
+  // Monotonic running totals of the per-frame intra/interHandoverCount since the
+  // current continuity epoch began. Unlike `recentHandovers` (a sim-time WINDOW
+  // that empties between throttled publishes at high playback speed), a cumulative
+  // total survives any publish cadence — the throttle batches increments instead of
+  // dropping events — so the always-on ticker HUD never under-counts the live
+  // handover stream. Reset on reset/rebase alongside `recentHandovers`/`prevUeServing`
+  // (a teleport is not a handover; a backward seek must not re-count a replayed
+  // window twice). Display read-out of truth (Rule#6); the serving decision is unchanged.
+  private cumulativeIntraHandoverCount = 0;
+  private cumulativeInterHandoverCount = 0;
 
   constructor(config: SinrLiveCellModelConfig) {
     this.profile = config.profile;
@@ -544,6 +564,8 @@ export class SinrLiveCellModel {
     for (const manager of this.cellManagers.values()) manager.reset();
     this.prevUeServing = new Map();
     this.recentHandovers = [];
+    this.cumulativeIntraHandoverCount = 0;
+    this.cumulativeInterHandoverCount = 0;
   }
 
   /**
@@ -575,6 +597,12 @@ export class SinrLiveCellModel {
     for (const manager of this.cellManagers.values()) manager.rebase(deltaMs);
     this.prevUeServing = new Map();
     this.recentHandovers = [];
+    // The cumulative ticker totals rebase to ZERO with the window: a backward seek
+    // replays an already-counted span, so keeping the pre-seek totals would
+    // DOUBLE-COUNT the replayed handovers. A seek opens a fresh continuity epoch —
+    // the same reason prevUeServing/recentHandovers clear here.
+    this.cumulativeIntraHandoverCount = 0;
+    this.cumulativeInterHandoverCount = 0;
   }
 
   /**
@@ -833,6 +861,10 @@ export class SinrLiveCellModel {
       });
     }
     this.prevUeServing = nextUeServing;
+    // Accumulate this frame's classified handovers into the monotonic epoch totals
+    // (the throttle-proof source for the ticker HUD — see the field declaration).
+    this.cumulativeIntraHandoverCount += intraHandoverCount;
+    this.cumulativeInterHandoverCount += interHandoverCount;
 
     // Roll the recent-handover log forward: append this frame's events, drop any
     // older than the retention window (and any whose age is negative — a defensive
@@ -852,6 +884,8 @@ export class SinrLiveCellModel {
       servingSatCount: new Set(finalServingByCell.values()).size,
       intraHandoverCount,
       interHandoverCount,
+      cumulativeIntraHandoverCount: this.cumulativeIntraHandoverCount,
+      cumulativeInterHandoverCount: this.cumulativeInterHandoverCount,
       recentHandoverEvents: this.recentHandovers,
     };
   }
