@@ -278,6 +278,10 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(artifact.effectiveCinematicMode, 'off', 'artifact replay should force cinematic mode off');
   assert.equal(artifact.handoverStoryLayerPolicy, 'artifact-owned', 'artifact replay should keep handover story artifact-owned');
   assert.equal(artifact.showProfileHandoverStoryLayer, false, 'artifact replay must not mount the profile-derived story overlay');
+  // Completes the showLiveSceneEffects value-assert matrix (sinr-live true L189,
+  // modqn-cell true L206, proof false L265, incompatible false L409) so the
+  // `const showLiveSceneEffects = showSinrBeamRender` source-pin can retire (B2).
+  assert.equal(artifact.showLiveSceneEffects, false, 'artifact replay must not inherit SINR live effects');
 
   // ── Handover-cinema candidate-beam highlight (S1) lane ownership ──
   // Lane-owned to sinr-live ONLY, and only while the director cinematic is engaged.
@@ -1529,7 +1533,7 @@ tangleLockGroup('QUAR-S6-BUS', () => {
     'App lane-gates the SINR-live tuners on the SINR-live lane',
   );
   // The quick-control checkboxes (beam info / other beams / spotlight / HO slow)
-  // are GLOBAL display toggles (sceneDisplayConfig + camera + playback) — mounted on
+  // are GLOBAL display toggles (beamDisplaySpec + camera + playback) — mounted on
   // every lane, NOT SINR-live-gated.
   assert.ok(
     appSource.indexOf('<SinrLiveQuickControls') >= 0,
@@ -1713,11 +1717,12 @@ assertContains(
 // ── SINR-serving mosaic (S2) lane-ownership + distinct-from-MODQN source locks ──
 const sinrServingMosaicSource = readRepoFile('src/scene/sinrServingMosaic.ts');
 const sinrServingAggregateSource = readRepoFile('src/ui/SinrServingAggregate.tsx');
-assertContains(
-  sceneLaneRenderPlanSource,
-  'const showSinrServingMosaic = showSinrBeamRender',
-  'SINR-serving mosaic is gated sinr-live only (always-on ambient, no producer dependency)',
-);
+// P2 ANTI-RECURRENCE (B2): the `const showSinrServingMosaic = showSinrBeamRender`
+// source-text pin RETIRED — the mosaic's lane gating is owned by the renderPlan
+// VALUE asserts above (sinr-live + modqn-cell true; proof + artifact + incompatible
+// false, L311-335 + L404). The text pin froze the implementation spelling (the
+// entropy engine, SDD §5) and even mis-described it ("sinr-live only" — it is also
+// modqn-cell); the value asserts pin the OUTPUT, so the const is now free to move.
 // QUAR-S4-SERVING block #1 RETIRED (S4-3): the mosaic module-ownership /
 // queue-source / queue-conservation export-text pins were replaced by behaviour
 // + VALUE asserts in validate:phase-c:sinr-serving-mosaic:model (the test
@@ -1982,11 +1987,11 @@ assertContains(
   'showSinrLiveHandoverPulse: boolean',
   'render plan declares the G2c live-handover pulse flag',
 );
-assertContains(
-  sceneLaneRenderPlanSource,
-  'const showSinrLiveHandoverPulse = showSinrBeamRender',
-  'G2c pulse is gated sinr-live only + ALWAYS-ON (decoupled from the director cinematic gate)',
-);
+// P2 ANTI-RECURRENCE (B2): the `const showSinrLiveHandoverPulse = showSinrBeamRender`
+// source-text pin RETIRED — the pulse's lane gating + always-on (under-director)
+// decouple are owned by the renderPlan VALUE asserts above (sinr-live true,
+// sinr-live+director true, modqn-cell true, proof + artifact + incompatible false,
+// L376-400 + L406). The OUTPUT is pinned, so the const spelling is free to move.
 // (2) MainScene derives the pulse cones under the always-on flag (NOT the
 //     director-gated showCandidateHandoverHighlight) from the model's real
 //     recentHandoverEvents truth — a Rule#6 display read-out, no fabricated HO.
@@ -2823,11 +2828,11 @@ assertContains(
   "input.sceneLane === 'modqn-live-cell-preview' && isLiveScene",
   'Scene lane render plan gates the live cell overlay lane',
 );
-assertContains(
-  sceneLaneRenderPlanSource,
-  'const showLiveSceneEffects = showSinrBeamRender;',
-  'Scene lane render plan gates live-only effects to SINR live',
-);
+// P2 ANTI-RECURRENCE (B2): the `const showLiveSceneEffects = showSinrBeamRender;`
+// source-text pin RETIRED — live-effects lane gating is owned by the renderPlan
+// VALUE asserts (sinr-live true L189, modqn-cell true L206, proof false L265,
+// artifact false L280, incompatible false L409). The OUTPUT is pinned, so the
+// const spelling is free to move (SDD §5).
 assertContains(
   sceneLaneRenderPlanSource,
   "input.sceneLane === 'modqn-replay-proof'",
