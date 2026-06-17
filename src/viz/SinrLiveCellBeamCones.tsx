@@ -526,6 +526,13 @@ export interface SinrLiveCellBeamConesRenderProps {
    */
   readonly opacity?: number;
   /**
+   * Display-only WIDTH multiplier on every cone's RENDERED base radius
+   * (`beamDisplaySpec.coneWidthScale`, SDD §3.3). Applied in `ObliqueConeMesh` to
+   * the geometry only — the resolver items + userData keep the truth cell radius,
+   * so the antenna beamwidth / gain / SINR are untouched (Rule#6). Default 1.
+   */
+  readonly widthScale?: number;
+  /**
    * Display-only de-emphasis (a-cone): when true, each cone's opacity is scaled by
    * {@link resolveSinrLiveConeElevationDimFactor} of its RENDERED apex→base angle,
    * so near-horizontal cones from low-over-the-horizon satellites fade instead of
@@ -570,11 +577,18 @@ export interface SinrLiveCellBeamConesRenderProps {
  * a new `args` array — that guarantees a persistent cone's apex TRACKS the moving
  * satellite instead of freezing at a stale position.
  */
-function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; dimShallow?: boolean; color?: string }): JSX.Element {
+function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; dimShallow?: boolean; color?: string; widthScale?: number }): JSX.Element {
   const { cone, opacity } = props;
   const color = props.color ?? cone.color;
   const geometryRef = useRef<THREE.BufferGeometry>(null);
-  const positions = buildObliqueBeamConePositions(cone.apex, cone.baseCenter, cone.baseRadiusWorld);
+  // coneWidthScale (display-only, SDD §3.3): scale the RENDERED base radius ONLY.
+  // cone.baseRadiusWorld + the mesh userData below stay = the truth cell radius, so
+  // this never touches the antenna beamwidth that drives gain → SINR (Rule#6).
+  const positions = buildObliqueBeamConePositions(
+    cone.apex,
+    cone.baseCenter,
+    cone.baseRadiusWorld * (props.widthScale ?? 1),
+  );
   // a-cone: scale opacity by the cone's RENDERED elevation (apex→base angle). A
   // shallow cone (low-over-horizon serving sat) fades toward invisible; a steep
   // overhead cone is untouched. Geometry-derived → no truth dependency.
@@ -699,6 +713,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
             color={color}
             opacity={cone.opacity ?? (isHero ? SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY : opacity)}
             dimShallow={props.dimShallowCones && !isHero}
+            widthScale={props.widthScale}
           />
         );
       })}

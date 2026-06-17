@@ -29,6 +29,8 @@
  * Keep them primitive (booleans/numbers) so MainScene's React.memo and the inner
  * cone memos can key on stable values rather than a churning object.
  */
+import { SINR_LIVE_CONE_AMBIENT_OPACITY } from '../constants/sinrLiveConeStyle';
+
 export interface BeamDisplaySpec {
   /**
    * Show the dim NON-SERVING cone layer (co-channel / secondary illuminated
@@ -48,9 +50,31 @@ export interface BeamDisplaySpec {
    * (matches the prior App default).
    */
   readonly beamCalloutsEnabled: boolean;
+  /**
+   * Display-only WIDTH multiplier on the RENDERED cone base radius (SDD §3.3).
+   * Multiplies only the geometry drawn by `buildObliqueBeamConePositions`; the
+   * resolver item's `baseRadiusWorld` and the cone userData stay = the truth cell
+   * radius, so this NEVER touches the antenna beamwidth (`cellLayout.ts` /
+   * `sinrLiveCellRuntime.ts`) that drives gain → SINR (Rule#6 physics lock).
+   * Prompt-control: "波束窄一點" = lower this. Default 1 (behaviour-identical).
+   */
+  readonly coneWidthScale: number;
+  /**
+   * Display-only opacity of the AMBIENT serving cone field (the faint all-serving
+   * layer). Feeds the serving `SinrLiveCellBeamCones` mount's `opacity` prop,
+   * replacing the hardcoded `resolveSinrLiveConeLayerOpacity('ambient')` default.
+   * The hero (primary serving) cone keeps its own brighter opacity, and the
+   * pair / pulse / non-serving layers keep their own style tokens — this is the
+   * serving-field knob only (SDD §3.1 servingConeOpacity, distinct from
+   * primaryConeOpacity). Default = {@link SINR_LIVE_CONE_AMBIENT_OPACITY} (0.14,
+   * the A2 screenshot-locked value), so behaviour-identical.
+   */
+  readonly servingConeOpacity: number;
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   showNonServingCones: false,
   beamCalloutsEnabled: true,
+  coneWidthScale: 1,
+  servingConeOpacity: SINR_LIVE_CONE_AMBIENT_OPACITY,
 };

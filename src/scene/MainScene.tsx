@@ -1648,6 +1648,7 @@ function SceneContent({
         <SinrLiveCellBeamCones
           items={sinrLiveCellNonServingConeItems}
           opacity={resolveSinrLiveConeLayerOpacity('nonServing')}
+          widthScale={beamDisplaySpec.coneWidthScale}
           telemetryCountDatasetKey="sinrLiveCellNonServingConeRenderedCount"
         />
       )}
@@ -1659,6 +1660,8 @@ function SceneContent({
         // serving truth + cone count are unchanged.
         <SinrLiveCellBeamCones
           items={sinrLiveCellBeamConeItems}
+          opacity={beamDisplaySpec.servingConeOpacity}
+          widthScale={beamDisplaySpec.coneWidthScale}
           dimShallowCones
           heroColor={SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}
           primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
@@ -1672,6 +1675,7 @@ function SceneContent({
         <SinrLiveCellBeamCones
           items={sinrLiveCellPendingCandidateConeItems}
           opacity={SINR_LIVE_CONE_CANDIDATE_OPACITY}
+          widthScale={beamDisplaySpec.coneWidthScale}
           coneColorOverride={SINR_LIVE_CONE_CANDIDATE_COLOR}
           telemetryCountDatasetKey="sinrLiveCellPendingCandidateConeRenderedCount"
         />
@@ -1680,6 +1684,7 @@ function SceneContent({
         <SinrLiveCellBeamCones
           items={sinrLiveCellHandoverPairConeItems}
           opacity={resolveSinrLiveConeLayerOpacity('pair')}
+          widthScale={beamDisplaySpec.coneWidthScale}
           telemetryCountDatasetKey="sinrLiveCellHandoverPairConeRenderedCount"
           telemetrySourceOwnerDatasetKey="sinrLiveCellHandoverPairConeRenderedSourceOwner"
           telemetrySourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}
@@ -1695,6 +1700,7 @@ function SceneContent({
         <SinrLiveCellBeamCones
           items={sinrLiveCellPulseConeItems}
           telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"
+          widthScale={beamDisplaySpec.coneWidthScale}
         />
       )}
       {/* Tier-2 dead-twin retirement: the legacy steered <SatelliteBeams> render
