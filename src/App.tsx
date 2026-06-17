@@ -78,7 +78,6 @@ import { DirectorControls } from './ui/DirectorControls';
 import { SinrOffsetExplainer } from './ui/SinrOffsetExplainer';
 import { SinrServingAggregate } from './ui/SinrServingAggregate';
 import { SinrHandoverTicker } from './ui/SinrHandoverTicker';
-import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC } from './scene/sinrLiveCellModel';
 import { useHandoverCinema } from './app/useHandoverCinema';
 import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
@@ -1903,12 +1902,13 @@ export function App() {
             perUePositions={simState.perUePositions}
             visible={sceneLane === 'sinr-live'}
           />
-          {/* G2-TICKER: always-on rolling count of the REAL live cell-truth
-              handovers (last N sim-seconds, inter/intra split) — the "一直有換手"
-              readout that complements the ambient pulse cones. */}
+          {/* G2-TICKER: always-on cumulative count of the REAL live cell-truth
+              handovers this run (inter/intra split) — the "一直有換手" readout that
+              complements the ambient pulse cones. Cumulative (not a sim-time window)
+              so the throttled publish can never drop it under fast playback. */}
           <SinrHandoverTicker
-            recentHandoverEvents={simState.recentHandoverEvents}
-            retentionSec={SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC}
+            cumulativeIntra={simState.cumulativeIntraHandoverCount}
+            cumulativeInter={simState.cumulativeInterHandoverCount}
             visible={sceneLane === 'sinr-live'}
           />
           {shouldRenderMainScene ? (

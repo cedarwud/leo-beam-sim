@@ -1950,12 +1950,14 @@ assertContains(
   'telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"',
   'MainScene mounts the live-pulse cone layer with a mesh-derived rendered-count telemetry',
 );
-// (4) G2-TICKER: the always-on rolling handover COUNT HUD (complements the pulse
-//     cones). Lane-gated to sinr-live, fed the PUBLISHED rolling log (not a
-//     re-derived one) — display-only (its own deep gate is
-//     validate:phase-c:handover-ticker:model). The publisher publishes the log
-//     from the same model truth the pulse reads (Rule#6). These pin the wiring so
-//     it cannot silently un-lane or be fed a fabricated source.
+// (4) G2-TICKER: the always-on CUMULATIVE handover COUNT HUD (complements the pulse
+//     cones). Lane-gated to sinr-live, fed the PUBLISHED monotonic epoch total (not
+//     a re-derived one) — display-only (its own deep gate is
+//     validate:phase-c:handover-ticker:model). The publisher publishes the cumulative
+//     total from the same model truth the pulse reads; cumulative because the sim-time
+//     `recentHandoverEvents` window empties under the UI throttle at fast playback, so
+//     a windowed count under-reported the live stream (Rule#6). These pin the wiring
+//     so it cannot silently un-lane or be fed a fabricated source.
 assertContains(
   appSource,
   "from './ui/SinrHandoverTicker'",
@@ -1963,13 +1965,13 @@ assertContains(
 );
 assertContains(
   appSource,
-  'recentHandoverEvents={simState.recentHandoverEvents}',
-  'handover ticker is fed the PUBLISHED rolling handover log (display-only, never re-derived)',
+  'cumulativeIntra={simState.cumulativeIntraHandoverCount}',
+  'handover ticker is fed the PUBLISHED cumulative handover total (display-only, never re-derived)',
 );
 assertContains(
   useSimStatePublisherSource,
-  'recentHandoverEvents: sim.sinrLiveCells?.recentHandoverEvents',
-  'publisher publishes the rolling handover log from the model truth (Rule#6 display read-out)',
+  'cumulativeIntraHandoverCount: sim.sinrLiveCells?.cumulativeIntraHandoverCount',
+  'publisher publishes the cumulative handover total from the model truth (Rule#6 display read-out)',
 );
 
 // QUAR-S4-SERVING block #3 RETIRED (S4-3): the de-punned publisher-shape text

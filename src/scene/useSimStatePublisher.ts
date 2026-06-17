@@ -573,14 +573,12 @@ export function useSimStatePublisher({
       visualFrequencyDiagnostics,
       perUePositions,
       modqnCellServiceReadout,
-      // G2-TICKER: publish the rolling real-handover log (G2a) so the always-on
-      // handover ticker HUD can count it (display-only; never re-derived here).
-      recentHandoverEvents: sim.sinrLiveCells?.recentHandoverEvents,
-      // G2-TICKER (cumulative): the monotonic epoch totals — the throttle-PROOF
-      // count source. A cumulative total survives this UI throttle (it batches
-      // increments) where the sim-time recentHandoverEvents window empties between
-      // publishes at high playback speed, so the ticker never under-counts the live
-      // handover stream (display-only; never re-derived here).
+      // G2-TICKER: publish the monotonic epoch handover totals so the always-on
+      // ticker HUD counts the live stream (display-only; never re-derived here). A
+      // cumulative total survives this UI throttle (it batches increments) where the
+      // sim-time recentHandoverEvents WINDOW empties between publishes at high
+      // playback speed — so the ticker never under-counts. The PULSE still reads the
+      // sim-time window directly off the live frame in MainScene (unthrottled).
       cumulativeIntraHandoverCount: sim.sinrLiveCells?.cumulativeIntraHandoverCount,
       cumulativeInterHandoverCount: sim.sinrLiveCells?.cumulativeInterHandoverCount,
       servingSatId: publishedPrimaryServing.servingSatId,

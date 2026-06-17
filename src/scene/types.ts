@@ -209,15 +209,6 @@ export interface SimState {
   }>;
   modqnCellServiceReadout?: ModqnCellServiceReadout;
   /**
-   * G2-TICKER: the rolling real-handover log (last
-   * SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC of sim-time, inter/intra), published
-   * from `sim.sinrLiveCells.recentHandoverEvents` (G2a) so the always-on handover
-   * ticker HUD can count it. Display-only — the events are already classified +
-   * pruned by the cell model; the HUD only tallies. Undefined off the sinr-live
-   * cell lane.
-   */
-  recentHandoverEvents?: SinrLiveCellFrame['recentHandoverEvents'];
-  /**
    * G2-TICKER (cumulative): monotonic running totals of intra/inter handovers since
    * the current continuity epoch, published from `sim.sinrLiveCells` so the always-on
    * ticker HUD counts the live handover stream WITHOUT the throttle drop that empties
