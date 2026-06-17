@@ -63,12 +63,9 @@ import {
   resolveSinrLiveHandoverPulseConeItems,
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveNonServingConeItems,
-  resolveSinrLivePendingCandidateConeItems,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
 import {
-  SINR_LIVE_CONE_CANDIDATE_COLOR,
-  SINR_LIVE_CONE_CANDIDATE_OPACITY,
   SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
   resolveSinrLiveConeLayerOpacity,
 } from '../constants/sinrLiveConeStyle';
@@ -1123,29 +1120,6 @@ function SceneContent({
   const primaryServingRecord = sim.sinrLiveCells
     ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
     : null;
-  // The ONE handover-candidate cone: the inter-sat target the centre UE is about to
-  // hand over to (drawn at its current cell). [] when no pending inter handover.
-  const sinrLiveCellPendingCandidateConeItems = useMemo(
-    () => (showSinrLiveCellBeams
-      ? resolveSinrLivePendingCandidateConeItems({
-        pendingTargetSatId: sim.pendingTargetSatId,
-        servingSatId: primaryServingRecord?.servingSatId ?? null,
-        primaryCellId: primaryServingRecord?.cellId ?? null,
-        frequencyReuse: profile.beams.frequencyReuse,
-        placementByCellId: sinrLiveCellPlacementById,
-        satelliteWorldById: viz.coneApexWorldById,
-      })
-      : []),
-    [
-      showSinrLiveCellBeams,
-      sim.pendingTargetSatId,
-      primaryServingRecord?.servingSatId,
-      primaryServingRecord?.cellId,
-      profile.beams.frequencyReuse,
-      sinrLiveCellPlacementById,
-      viz.coneApexWorldById,
-    ],
-  );
   const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
     sinrLiveCellBeamConeItems.map(item => item.satId),
@@ -1666,18 +1640,6 @@ function SceneContent({
           heroColor={SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}
           primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
           primaryServingCellId={primaryServingRecord?.cellId ?? null}
-        />
-      )}
-      {sinrLiveCellPendingCandidateConeItems.length > 0 && (
-        // The single inter-sat handover candidate for the centre UE — bright cyan-
-        // blue so "the beam you're about to switch to" stands out; every other beam
-        // stays faint frequency-reuse context.
-        <SinrLiveCellBeamCones
-          items={sinrLiveCellPendingCandidateConeItems}
-          opacity={SINR_LIVE_CONE_CANDIDATE_OPACITY}
-          widthScale={beamDisplaySpec.coneWidthScale}
-          coneColorOverride={SINR_LIVE_CONE_CANDIDATE_COLOR}
-          telemetryCountDatasetKey="sinrLiveCellPendingCandidateConeRenderedCount"
         />
       )}
       {sinrLiveCellHandoverPairConeItems.length > 0 && (

@@ -388,37 +388,6 @@ export function resolveSinrLiveCellHandoverPairConeItems(input: {
 }
 
 /**
- * The ONE handover-candidate cone for the centre UE: the inter-sat target it is
- * ABOUT to hand over to (`metrics.pendingTargetSatId`), drawn at its CURRENT cell
- * (an inter handover keeps the cell, swaps the satellite). Returns [] when there is
- * no pending inter handover (pending sat null, or == the current serving sat = an
- * intra beam-switch, not a satellite candidate). A pure DISPLAY read of the pending
- * target the runtime already computed (Rule#6) — it invents no handover. The caller
- * paints it bright cyan-blue so "the beam you're about to switch to" stands out;
- * every other satellite's beam stays the faint serving-identity context.
- */
-export function resolveSinrLivePendingCandidateConeItems(input: {
-  readonly pendingTargetSatId: string | null;
-  readonly servingSatId: string | null;
-  readonly primaryCellId: number | null;
-  readonly frequencyReuse: number;
-  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
-  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
-}): readonly SinrLiveCellBeamConeRenderItem[] {
-  const { pendingTargetSatId, servingSatId, primaryCellId } = input;
-  if (pendingTargetSatId == null || primaryCellId == null) return [];
-  if (pendingTargetSatId === servingSatId) return []; // intra beam-switch, not a sat candidate
-  const item = buildPairConeItem({
-    satId: pendingTargetSatId,
-    cellId: primaryCellId,
-    frequencyIndex: cellFrequencyIndex(primaryCellId, input.frequencyReuse),
-    placementByCellId: input.placementByCellId,
-    satelliteWorldById: input.satelliteWorldById,
-  });
-  return item ? [item] : [];
-}
-
-/**
  * G2c live-pulse fade: a handover-pulse cone's opacity as a function of its age
  * (`simTimeSec − event.sourceTimeSec`). Peak at age 0 (the frame it fires), linear
  * decay to 0 at the retention horizon, and 0 outside `[0, retentionSec]`. Pure so
