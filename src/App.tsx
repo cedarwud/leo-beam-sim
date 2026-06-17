@@ -111,7 +111,7 @@ import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
 import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
 import { SinrLiveQuickControls } from './ui/SinrLiveQuickControls';
-import { DEFAULT_SCENE_DISPLAY_CONFIG } from './scene/sceneDisplayConfig';
+import { DEFAULT_BEAM_DISPLAY_SPEC } from './scene/beamDisplaySpec';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,
@@ -343,7 +343,7 @@ export function App() {
   // passed DIRECTLY to MainScene (not through buildAppRuntimeConfig / the runtime
   // memo bag), so a toggle re-renders without the invisible-dep-array tax.
   // (beamCalloutsEnabled moved in here from a dedicated useState — Tier-3.)
-  const [sceneDisplayConfig, setSceneDisplayConfig] = useState(DEFAULT_SCENE_DISPLAY_CONFIG);
+  const [beamDisplaySpec, setBeamDisplaySpec] = useState(DEFAULT_BEAM_DISPLAY_SPEC);
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
   const camera = useCameraControls();
@@ -1744,15 +1744,15 @@ export function App() {
         </div>
       )}
       {/* Global display-control row (beam info / other beams / spotlight / HO slow):
-          these toggle sceneDisplayConfig + camera + playback, which apply on every
+          these toggle beamDisplaySpec + camera + playback, which apply on every
           lane — shown on SINR and MODQN alike, not lane-gated. */}
       <SinrLiveQuickControls
-        beamCalloutsEnabled={sceneDisplayConfig.beamCalloutsEnabled}
-        showNonServingCones={sceneDisplayConfig.showNonServingCones}
+        beamCalloutsEnabled={beamDisplaySpec.beamCalloutsEnabled}
+        showNonServingCones={beamDisplaySpec.showNonServingCones}
         cinematicMode={effectiveCinematicMode}
         autoSlowEnabled={playback.autoSlowEnabled}
-        onToggleBeamCallouts={() => setSceneDisplayConfig(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
-        onToggleNonServingCones={() => setSceneDisplayConfig(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
+        onToggleBeamCallouts={() => setBeamDisplaySpec(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
+        onToggleNonServingCones={() => setBeamDisplaySpec(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
         onCinematicModeChange={camera.setCinematicMode}
         onToggleAutoSlow={playback.toggleAutoSlow}
       />
@@ -1928,7 +1928,7 @@ export function App() {
               onSimUpdate={handleSimUpdate}
               onLiveSeekLanded={handleLiveSeekLanded}
               sceneFrame={activeSceneFrame}
-              sceneDisplayConfig={sceneDisplayConfig}
+              beamDisplaySpec={beamDisplaySpec}
             />
           ) : (
             <div

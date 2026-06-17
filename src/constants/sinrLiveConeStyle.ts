@@ -84,7 +84,7 @@ export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32;
 
 /**
  * Dim opacity for the OPT-IN non-serving cone layer (Tier-2 show/dim switch,
- * `SceneDisplayConfig.showNonServingCones`, default OFF). Dimmer than the ambient
+ * `BeamDisplaySpec.showNonServingCones`, default OFF). Dimmer than the ambient
  * serving field ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} = 0.14) so co-channel /
  * non-serving illuminated beams read as faint background context behind the
  * serving cones, never competing with them. Display-only (Rule#6): showing these

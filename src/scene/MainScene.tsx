@@ -72,7 +72,7 @@ import {
   SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
   resolveSinrLiveConeLayerOpacity,
 } from '../constants/sinrLiveConeStyle';
-import { DEFAULT_SCENE_DISPLAY_CONFIG, type SceneDisplayConfig } from './sceneDisplayConfig';
+import { DEFAULT_BEAM_DISPLAY_SPEC, type BeamDisplaySpec } from './beamDisplaySpec';
 import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord } from './sinrLiveCellModel';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
@@ -143,7 +143,7 @@ interface SceneContentProps {
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
   /** Tier-2 display-only beam knobs (direct prop, bypasses the runtime bag). */
-  sceneDisplayConfig?: SceneDisplayConfig;
+  beamDisplaySpec?: BeamDisplaySpec;
 }
 
 interface ArtifactSceneContentProps {
@@ -645,7 +645,7 @@ function SceneContent({
   onSimUpdate,
   onLiveSeekLanded,
   sceneFrame: propSceneFrame,
-  sceneDisplayConfig = DEFAULT_SCENE_DISPLAY_CONFIG,
+  beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
 }: SceneContentProps) {
   const camera = useThree(state => state.camera);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
@@ -854,7 +854,7 @@ function SceneContent({
   const renderPlan = resolveSceneLaneRenderPlan({
     sceneLane,
     sceneSource: sceneFrame.sceneSource,
-    beamCalloutsEnabled: sceneDisplayConfig.beamCalloutsEnabled,
+    beamCalloutsEnabled: beamDisplaySpec.beamCalloutsEnabled,
     beamDensity: runtime.beamDensity,
     cinematicMode: runtime.cinematicMode,
     effectsEnabled: runtime.effectsEnabled,
@@ -1153,12 +1153,12 @@ function SceneContent({
   // Tier-2 OPT-IN non-serving cones (the beam-display show/dim switch): the dim
   // co-channel / secondary illuminated beams behind the serving field, from the
   // SEPARATE resolver (resolveSinrLiveCellBeamConeItems stays serving-only for the
-  // s0/s4 serving must-holds). Gated by the direct-prop SceneDisplayConfig switch —
+  // s0/s4 serving must-holds). Gated by the direct-prop BeamDisplaySpec switch —
   // and that switch IS in this dep-array: it is the second half of the
   // invisible-dep-array bug ("toggle a beam-display value and nothing re-renders")
   // that the Tier-2 seam fixes. Default OFF → empty array → no mount → no change.
   const sinrLiveCellNonServingConeItems = useMemo(
-    () => (showSinrLiveCellBeams && sceneDisplayConfig.showNonServingCones
+    () => (showSinrLiveCellBeams && beamDisplaySpec.showNonServingCones
       ? resolveSinrLiveNonServingConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
@@ -1168,7 +1168,7 @@ function SceneContent({
       : []),
     [
       showSinrLiveCellBeams,
-      sceneDisplayConfig.showNonServingCones,
+      beamDisplaySpec.showNonServingCones,
       sim.sinrLiveCells,
       sinrLiveCellPlacementById,
       viz.coneApexWorldById,
@@ -1643,7 +1643,7 @@ function SceneContent({
         />
       ))}
       {/* Tier-2 opt-in non-serving cones — dim, painted FIRST (behind) so the
-          serving field reads on top. Default OFF (SceneDisplayConfig). */}
+          serving field reads on top. Default OFF (BeamDisplaySpec). */}
       {sinrLiveCellNonServingConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellNonServingConeItems}
@@ -1738,9 +1738,9 @@ interface MainSceneProps {
    * Tier-2 thin DIRECT-PROP seam for display-only beam knobs — passed straight
    * from App (its own useState), NOT through buildAppRuntimeConfig / the runtime
    * memo bag, so a toggle re-renders without the invisible-dep-array tax. Optional
-   * (defaults to DEFAULT_SCENE_DISPLAY_CONFIG); the artifact-replay lane ignores it.
+   * (defaults to DEFAULT_BEAM_DISPLAY_SPEC); the artifact-replay lane ignores it.
    */
-  sceneDisplayConfig?: SceneDisplayConfig;
+  beamDisplaySpec?: BeamDisplaySpec;
 }
 
 export const MainScene = memo(function MainScene({
@@ -1755,7 +1755,7 @@ export const MainScene = memo(function MainScene({
   onSimUpdate,
   onLiveSeekLanded,
   sceneFrame,
-  sceneDisplayConfig = DEFAULT_SCENE_DISPLAY_CONFIG,
+  beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
 }: MainSceneProps) {
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
   const showUav = sceneLane === 'sinr-live';
@@ -1811,7 +1811,7 @@ export const MainScene = memo(function MainScene({
               onSimUpdate={onSimUpdate}
               onLiveSeekLanded={onLiveSeekLanded}
               sceneFrame={sceneFrame}
-              sceneDisplayConfig={sceneDisplayConfig}
+              beamDisplaySpec={beamDisplaySpec}
             />
           )}
         </Suspense>

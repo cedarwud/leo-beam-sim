@@ -276,7 +276,7 @@ export function resolveSinrLiveCellBeamConeItems(
  * serving / SINR / handover truth and is never fed into the serving must-hold
  * oracles. Items carry `serving: false`; the caller mounts them in a SEPARATE group
  * at the dim `nonServing` opacity behind the serving field, gated by
- * `SceneDisplayConfig.showNonServingCones` (default OFF). `(cellId, satId)` is unique
+ * `BeamDisplaySpec.showNonServingCones` (default OFF). `(cellId, satId)` is unique
  * within the non-serving set (one illuminating beam per sat per cell), so the default
  * content-stable key holds. Deterministic in beam order; same placement/apex guards
  * as the serving resolver.
