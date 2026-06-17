@@ -16,6 +16,7 @@
     "validate:ready": "npm run validate:governance:full && npm run validate:live-render",
     "validate:beam-floor": "node --import tsx/esm scripts/validate-serving-pending-beam-floor.ts",
     "validate:beam:visual-invariants:browser": "node --import tsx/esm scripts/validate-beam-visual-invariants-browser.ts",
+    "validate:beam:colour-match": "node --import tsx/esm scripts/validate-beam-colour-match.ts",
     "validate:phase1a:recent-ho-ui": "node --import tsx/esm scripts/validate-phase1a-recent-ho-ui.tsx",
     "validate:phase2d:forced-role-state-visuals": "node --import tsx/esm scripts/validate-phase2d-forced-role-state-visuals.ts",
     "validate:phase-3:cpu-budget": "node --import tsx/esm scripts/validate-phase-3-cpu-budget.tsx",
