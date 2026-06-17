@@ -142,6 +142,7 @@ function renderDirectorControlsMarkup(props: {
       intraEnabled={props.intraEnabled}
       interEnabled={props.interEnabled}
       phase={props.phase}
+      onIntraTrigger={noop}
       onIntraFocus={noop}
       onInterFocus={noop}
       onExit={noop}
@@ -263,6 +264,7 @@ section('(j) MainScene OrbitControls ownership restore guarantee source', () => 
 section('(k) DirectorControls SSR — per-kind source gating + inert disabled state', () => {
   const allOff = renderDirectorControlsMarkup({ intraEnabled: false, interEnabled: false, phase: 'idle' });
   check(allOff.includes('data-testid="director-controls"'), 'SSR renders the director-controls container');
+  check(allOff.includes('data-testid="director-intra-trigger"'), 'SSR renders the intra TRIGGER button (jog → real intra → pulse, C1)');
   check(allOff.includes('data-testid="director-intra-focus"'), 'SSR renders the intra focus button');
   check(allOff.includes('data-testid="director-inter-focus"'), 'SSR renders the inter focus button');
   check(allOff.includes('data-testid="director-exit-focus"'), 'SSR renders the exit button');
@@ -271,17 +273,25 @@ section('(k) DirectorControls SSR — per-kind source gating + inert disabled st
   check(directorButtonDisabled(allOff, 'director-exit-focus'), 'exit disabled while idle');
 
   const intraOnly = renderDirectorControlsMarkup({ intraEnabled: true, interEnabled: false, phase: 'idle' });
+  check(!directorButtonDisabled(intraOnly, 'director-intra-trigger'), 'intra TRIGGER enabled on the intra-capable lane (jogs to force a real intra)');
   check(!directorButtonDisabled(intraOnly, 'director-intra-focus'), 'intra focus enabled when a source-backed intra event exists');
   check(directorButtonDisabled(intraOnly, 'director-inter-focus'), 'inter focus stays disabled when no inter event exists');
 
   const focused = renderDirectorControlsMarkup({ intraEnabled: true, interEnabled: true, phase: 'focused' });
   check(directorButtonDisabled(focused, 'director-intra-focus'), 'focus buttons disabled while a focus is already active');
+  // C1 decouple: the TRIGGER (live UE jog) is independent of the cinema, so it stays
+  // actionable even while a focus is active — jogging is not a re-arm.
+  check(!directorButtonDisabled(focused, 'director-intra-trigger'), 'intra TRIGGER stays enabled during an active focus (jog decoupled from the cinema seek)');
   check(!directorButtonDisabled(focused, 'director-exit-focus'), 'exit enabled while a focus is active');
 
   const appSource = source('src/App.tsx');
   check(
-    /onIntraFocus=\{[\s\S]*?handoverCinema\.armIntra\(\)/.test(appSource),
-    'intra focus button is always actionable: it arms the cinema + jogs the UE to force a real intra HO (jog-trigger), so it carries no source-gate',
+    /onIntraTrigger=\{[\s\S]*?setPrimaryUeJogKm/.test(appSource),
+    'intra TRIGGER button jogs the primary UE to force a real intra HO — seek-free so the pulse is not rebased away (Bug B fix, C1)',
+  );
+  check(
+    /onIntraFocus=\{handoverCinema\.armIntra\}/.test(appSource),
+    'intra FOCUS button arms the cinema ONLY (no jog) — the seek no longer cold-attaches the jog (C1 decouple)',
   );
   check(
     /directorInterEnabled[\s\S]*?handoverRailEvents\.some\(event => event\.kind === 'inter'\)/.test(appSource),

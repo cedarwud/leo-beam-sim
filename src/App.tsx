@@ -476,9 +476,10 @@ export function App() {
   );
   const effectiveCinematicMode = camera.cinematicMode;
   // Demo intra-handover trigger: toggling this ENU offset slides the PRIMARY UE one
-  // beam-lattice step so the engine does a REAL intra (same-sat beam switch). Wired
-  // to the Intra-HO Focus button; the cinema arms alongside so the forward jog-intra
-  // plays in slow motion (a forward event, so it sidesteps the past-event cold-attach).
+  // beam-lattice step so the engine does a REAL intra (same-sat beam switch). Wired to
+  // the dedicated Intra-HO TRIGGER button (NOT the cinematic Focus button): the jog must
+  // run WITHOUT a seek, because the seek's rebase() clears prevUeServing (cold-attach →
+  // no HO) and wipes recentHandovers (no pulse). Decoupling the two is the Bug B fix (C1).
   const [primaryUeJogKm, setPrimaryUeJogKm] = useState<{ east: number; north: number }>({ east: 0, north: 0 });
   const runtime = useMemo(() => buildAppRuntimeConfig({
     appMode,
@@ -1427,8 +1428,9 @@ export function App() {
   );
   // The inter focus button is gated: offered when EITHER the live lane (live-focus)
   // or the artifact-replay lane (cinematic) can back an inter event (Rule#8). The
-  // intra button is always actionable — pressing it jogs the primary UE to force a
-  // real intra HO (jog-trigger, 75f7b6b) — so it carries no source-gate.
+  // intra TRIGGER button is always actionable — pressing it jogs the primary UE to
+  // force a real intra HO (jog-trigger, 75f7b6b; seek-decoupled in C1) — so it carries
+  // no source-gate. The intra Focus (cinema) button shares the same `intraEnabled`.
   const directorInterButtonEnabled = directorInterEnabled || directorCinematicInterEnabled;
 
   const {
@@ -1592,13 +1594,16 @@ export function App() {
         intraEnabled
         interEnabled={directorInterButtonEnabled}
         phase={camera.directorPhase}
-        onIntraFocus={() => {
-          // Press → make a REAL intra happen: arm the cinema (slow-mo + focus on the
-          // next intra) THEN jog the primary UE one beam-lattice step. The jog drives
-          // the engine into a same-sat beam switch the armed cinema then plays back.
-          handoverCinema.armIntra();
+        onIntraTrigger={() => {
+          // PRIMARY intra action (Bug B fix, C1): jog the primary UE one beam-lattice
+          // step → the engine does a REAL same-sat beam switch → the ambient pulse
+          // flares. NO cinema arm here: arming SEEKS, and the seek's rebase() cleared
+          // prevUeServing (so the jog cold-attached → no HO) AND wiped recentHandovers
+          // (so the pulse never showed). The slow-mo cinematic is the SEPARATE
+          // Intra-HO Focus button below.
           setPrimaryUeJogKm(prev => (prev.east === 0 ? { east: 28, north: 0 } : { east: 0, north: 0 }));
         }}
+        onIntraFocus={handoverCinema.armIntra}
         onInterFocus={handoverCinema.armInter}
         onExit={handoverCinema.exit}
       />
