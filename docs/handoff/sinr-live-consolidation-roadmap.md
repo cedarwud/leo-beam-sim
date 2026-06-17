@@ -181,9 +181,29 @@ concurrently.
 >
 > **`validate:live-render` (9 gates): 7 PASS** incl the new ticker gate; **2
 > PRE-EXISTING reds** — `director-cinematic:live` (the known FIRE-OVERSHOOT tail) and
-> `sinr-serving-mosaic` (sinr-serving telemetry threads onto a MODQN-lane canvas after
-> a lane switch — stale-frame, color-count=13/buckets=7/instances=99). BOTH fail
-> IDENTICALLY on the parent `2f9caa8` (verified by parent-commit checkout) → not C5.
+> `sinr-serving-mosaic`. BOTH fail IDENTICALLY on the parent `2f9caa8` (verified by
+> parent-commit checkout) → not C5.
+
+### Mosaic lane-bleed red — FIXED (2026-06-17, `8745ed2`, follow-up to the C5 finding)
+
+> ✅ **The `sinr-serving-mosaic` OFF-half red is FIXED — 1 commit `8745ed2` on
+> `main` (ahead origin 1, NOT pushed), gated.** Diagnosis (corrects the earlier
+> "stale-frame" label): the OFF-half is a FULL reload onto the MODQN lane, so the
+> lingering telemetry attrs (color-count=13/bucket=7/instance=99) were an ACTIVE
+> write — a render-plan-FLAG lane-bleed. The GroundScene telemetry attr props were
+> gated on `showSinrServingMosaic` (= `showSinrLiveViewport || showCellOverlay`),
+> which is **governance-LOCKED true on `modqn-live-cell-preview`** (governance
+> L298-302, "consolidation: MODQN renders like SINR"). The mosaic COLOUR render is
+> legitimately shared with modqn; the sinr-serving TELEMETRY (a sinr-live lane
+> PROOF) leaked with it. Fix: gate the 3 attr props on
+> `sinrServingTelemetryActive = showSinrServingMosaic && !showCellOverlay`
+> (sinr-live-only); modqn keeps the mosaic colours (`showSinrServingMosaic`
+> unchanged — P2-pinned). Repaired 3 stale "mosaic inert on MODQN" comments
+> (renderPlan docstring, MainScene colour-map comment, the self-contradictory
+> governance comment). Gates: governance (tsc + lane-governance + s0 goldens),
+> `validate:phase-c:sinr-serving-mosaic:browser` (ON sinr-live mesh=20/buckets=7/
+> instances=99; OFF absent on MODQN), governance:full, static:all — all PASS.
+> NEXT: director-cinematic still deferred; then the frontend visual overhaul.
 
 ### Session D — P3 + governance hardening (→ BOUNDARY 4; independent, anytime after A)
 - **D1** convert remaining governance source-text pins (ticker, SinrServingAggregate wording) →
