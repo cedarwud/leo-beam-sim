@@ -80,7 +80,6 @@ import { SinrServingAggregate } from './ui/SinrServingAggregate';
 import { SinrHandoverTicker } from './ui/SinrHandoverTicker';
 import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC } from './scene/sinrLiveCellModel';
 import { useHandoverCinema } from './app/useHandoverCinema';
-import { toCandidateHighlightCommand } from './app/handoverCinema';
 import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
 import {
@@ -1482,14 +1481,6 @@ export function App() {
     }, [cancelPendingLiveFocus, camera]),
   });
 
-  // Display-only candidate-beam highlight command for the scene layer (geometry
-  // only, no SINR/decision truth — Rule#6). Layered onto a thin derived runtime so
-  // the base `runtime` (built earlier, consumed by the orchestration) is untouched.
-  const runtimeWithCinema = useMemo<RuntimeConfig>(
-    () => ({ ...runtime, candidateHighlight: toCandidateHighlightCommand(handoverCinema.focusedCandidate) }),
-    [runtime, handoverCinema.focusedCandidate],
-  );
-
   // Top-level lane navigation (LaneExperienceBar). The single in-app entry point
   // for the viewport lane axis: it owns the sceneSource (live-sim vs
   // artifact-replay) AND appMode (SINR vs MODQN) + proof-request choice, mapping
@@ -1925,7 +1916,7 @@ export function App() {
               speed={playback.effectiveSpeed}
               paused={playback.paused}
               profile={effectiveProfile}
-              runtime={runtimeWithCinema}
+              runtime={runtime}
               visualScaleMultipliers={visualScaleMultipliers}
               modqnReplayDisplayState={renderedModqnReplayDisplayState}
               showModqnReplayScene={showModqnReplayScene}

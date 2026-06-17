@@ -49,7 +49,6 @@ import {
 } from '../constants/sinrLiveConeStyle';
 import { colorForServingBeam } from '../constants/servingColour';
 import { cellFrequencyIndex, type SinrLiveCellFrame, type SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
-import type { RuntimeCandidateHighlightCommand } from '../scene/types';
 import type { WorldPoint } from './CellFootprints';
 
 /**
@@ -103,14 +102,14 @@ export interface SinrLiveCellBeamConeRenderItem {
    * Optional PER-ITEM opacity override (G2c live-pulse). When present, the mesh
    * uses it instead of the group's shared `opacity`, so a single mount can render
    * cones at independent brightness (each handover pulse fades by its own age).
-   * Omitted on the ambient/pair layers (they use one group opacity).
+   * Omitted on the ambient layer (it uses one group opacity).
    */
   readonly opacity?: number;
   /**
    * Optional STABLE React key (G2c live-pulse). The pulse layer can carry the same
    * `(cellId, satId)` twice in one frame (old + new of distinct events), so it sets
-   * a per-event/side key here. The ambient + cinema-pair layers OMIT it so they keep
-   * the content-stable `${cellId}-${satId}` key (one serving sat per cell) — never an
+   * a per-event/side key here. The ambient layer OMITS it so it keeps the
+   * content-stable `${cellId}-${satId}` key (one serving sat per cell) — never an
    * array index, which would remount every cone when the serving set reorders on a
    * beam hop and defeat the persistent-mesh in-place buffer update.
    */
@@ -119,8 +118,8 @@ export interface SinrLiveCellBeamConeRenderItem {
    * Optional handover KIND (C2 / Bug H). The PULSE resolver tags each cone with the
    * truth `event.kind` so the render can paint intra vs inter distinctly
    * (`beamDisplaySpec.pulseIntraColor / pulseInterColor`). Omitted on every
-   * non-pulse layer (ambient / non-serving / pair / pending) → those keep the
-   * serving-identity colour. A read-out of the model's own classification, no truth.
+   * non-pulse layer (ambient / non-serving) → those keep the serving-identity
+   * colour. A read-out of the model's own classification, no truth.
    */
   readonly kind?: 'intra' | 'inter';
 }
@@ -326,7 +325,7 @@ export function resolveSinrLiveNonServingConeItems(
   return items;
 }
 
-function buildPairConeItem(input: {
+function buildCellConeItem(input: {
   readonly satId: string;
   readonly cellId: number | null | undefined;
   readonly frequencyIndex: number | null | undefined;
@@ -346,10 +345,10 @@ function buildPairConeItem(input: {
     cellId: input.cellId,
     satId: input.satId,
     frequencyIndex,
-    // Serving-identity colour (SDD §3.2): pair / pulse / pending cones read as the
-    // SAME cone flaring/highlighted, not a different hue — they match the ambient
-    // serving cone + the UE mosaic for (satId, cellId). Role overrides (cinema
-    // candidate cyan, hero yellow) are still layered on top at the mount.
+    // Serving-identity colour (SDD §3.2): the pulse cone reads as the SAME ambient
+    // serving cone for (satId, cellId) flaring, not a different hue — it matches the
+    // UE mosaic colour. The per-kind intra/inter pulse hue (and the hero yellow) is
+    // layered on at the mount via resolveSinrLiveConeRenderColor, never here.
     color: colorForServingBeam(input.satId, input.cellId).markerColor,
     serving: true,
     apex,
@@ -358,34 +357,6 @@ function buildPairConeItem(input: {
   };
 }
 
-/**
- * D4 S3a focused cinema resolver: draw ONLY the old/new cell-truth pair named by
- * the focused handover event. This does not unpark the ambient cell-cone layer;
- * it is a bounded, focus-scoped display of event-owned `sinrLiveCells` geometry.
- */
-export function resolveSinrLiveCellHandoverPairConeItems(input: {
-  readonly candidate: RuntimeCandidateHighlightCommand | null | undefined;
-  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
-  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
-}): readonly SinrLiveCellBeamConeRenderItem[] {
-  const { candidate } = input;
-  if (!candidate || candidate.sourceOwner !== 'sinr-live-cell-truth') return [];
-  const from = buildPairConeItem({
-    satId: candidate.fromSatId,
-    cellId: candidate.fromCellId,
-    frequencyIndex: candidate.fromFrequencyIndex,
-    placementByCellId: input.placementByCellId,
-    satelliteWorldById: input.satelliteWorldById,
-  });
-  const to = buildPairConeItem({
-    satId: candidate.toSatId,
-    cellId: candidate.toCellId,
-    frequencyIndex: candidate.toFrequencyIndex,
-    placementByCellId: input.placementByCellId,
-    satelliteWorldById: input.satelliteWorldById,
-  });
-  return [from, to].filter((item): item is SinrLiveCellBeamConeRenderItem => item !== null);
-}
 
 /**
  * G2c live-pulse fade: a handover-pulse cone's opacity as a function of its age
@@ -436,8 +407,8 @@ export interface SinrLiveHandoverPulseConeInput {
  * is a pure DISPLAY read-out of `recentHandoverEvents` (the same transitions the
  * model already classified + counted, Rule#6) — it fabricates no handover. Reuses
  * the same oblique-cone geometry the ambient + cinema-pair cones use
- * (`buildPairConeItem`), carrying a per-item age-faded `opacity`. Colour is the
- * serving-identity colour (via `buildPairConeItem` → `colorForServingBeam`) so a
+ * (`buildCellConeItem`), carrying a per-item age-faded `opacity`. Colour is the
+ * serving-identity colour (via `buildCellConeItem` → `colorForServingBeam`) so a
  * pulse reads as the SAME cone flaring, just brighter. An event past the
  * retention horizon, with a non-rendered sat, or an unplaced cell draws nothing.
  */
@@ -459,9 +430,9 @@ export function resolveSinrLiveHandoverPulseConeItems(
     // The NEW (acquired) cell always exists on a real HO; the OLD (handed-off) cell
     // exists for inter/intra (a cold attach is never emitted as a handover). Each
     // carries the cell's frequency-reuse index for telemetry; the render colour is
-    // the serving-identity colour (via buildPairConeItem), so a pulse reads as the
+    // the serving-identity colour (via buildCellConeItem), so a pulse reads as the
     // ambient cone for that (satId, cellId) flaring rather than a different hue.
-    const to = buildPairConeItem({
+    const to = buildCellConeItem({
       satId: event.toSatId,
       cellId: event.toCellId,
       frequencyIndex: cellFrequencyIndex(event.toCellId, frequencyReuse),
@@ -470,7 +441,7 @@ export function resolveSinrLiveHandoverPulseConeItems(
     });
     if (to) items.push({ ...to, opacity, renderKey: `${eventKey}-to`, kind: event.kind });
     if (event.fromSatId !== null && event.fromCellId !== null) {
-      const from = buildPairConeItem({
+      const from = buildCellConeItem({
         satId: event.fromSatId,
         cellId: event.fromCellId,
         frequencyIndex: cellFrequencyIndex(event.fromCellId, frequencyReuse),
@@ -527,10 +498,11 @@ export interface SinrLiveCellBeamConesRenderProps {
   readonly items: readonly SinrLiveCellBeamConeRenderItem[];
   readonly visible?: boolean;
   /**
-   * Cone opacity (S5-2 hybrid, D-STYLE A): the ambient all-serving layer uses the
-   * default {@link SINR_LIVE_CONE_AMBIENT_OPACITY}; the focused cinema handover
-   * pair passes {@link SINR_LIVE_CONE_PAIR_OPACITY} so it reads BRIGHT over the
-   * faint ambient field. Defaulted, not required, so the ambient mount stays terse.
+   * Group cone opacity (S5-2 hybrid, D-STYLE A). The ambient all-serving layer uses
+   * the default {@link SINR_LIVE_CONE_AMBIENT_OPACITY}; the serving mount passes
+   * `beamDisplaySpec.servingConeOpacity`, the non-serving mount the dimmer
+   * `resolveSinrLiveConeLayerOpacity('nonServing')`. The pulse mount omits it — its
+   * cones carry a per-ITEM age-faded opacity that wins. Defaulted, not required.
    */
   readonly opacity?: number;
   /**

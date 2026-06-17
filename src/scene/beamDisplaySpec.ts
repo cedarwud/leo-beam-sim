@@ -13,10 +13,10 @@
  *
  * WHY A DIRECT-PROP SEAM (the "I change a beam-display value and nothing
  * re-renders" bug): every other runtime knob flows through `buildAppRuntimeConfig`
- * → the 17-input `runtime` useMemo → the `runtimeWithCinema` wrap → MainScene's
- * single `runtime` prop. Adding a display knob there means appending it to that
- * dep-array AND to the inner cone useMemos in MainScene — miss either and the edit
- * silently does not re-render. This spec bypasses that bag entirely: App holds it
+ * → the 17-input `runtime` useMemo → MainScene's single `runtime` prop. Adding a
+ * display knob there means appending it to that dep-array AND to the inner cone
+ * useMemos in MainScene — miss either and the edit silently does not re-render.
+ * This spec bypasses that bag entirely: App holds it
  * in its own `useState` and passes it DIRECTLY to MainScene, so a
  * `setBeamDisplaySpec` call changes a distinct prop reference and re-renders
  * MainScene without touching the runtime memo. (The inner cone memos still must key

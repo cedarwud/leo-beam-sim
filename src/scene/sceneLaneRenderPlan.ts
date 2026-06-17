@@ -92,21 +92,13 @@ export interface SceneLaneRenderPlan {
   readonly showCinematicSpotlight: boolean;
   readonly showDirectorFocus: boolean;
   /**
-   * Handover-cinema candidate-beam highlight (S1). Lane-owned to `sinr-live`
-   * ONLY (real SINR, no producer dependency) AND only while the director
-   * cinematic camera is engaged. Inert on `modqn-live-cell-preview`,
-   * `modqn-replay-proof` (Rule#8), and `artifact-replay`.
-   */
-  readonly showCandidateHandoverHighlight: boolean;
-  /**
    * SINR-serving mosaic (S2). The ambient default on `sinr-live`: every UE
    * marker is coloured by its serving beam (by SINR), partitioning the ~100 UE
    * dots into a coloured cell mosaic (G3). Lane-owned to `sinr-live` ONLY — it
    * is a DISTINCT SINR-serving visualisation, NOT the MODQN cell overlay, so it
    * stays inert on `modqn-live-cell-preview`, `modqn-replay-proof`, and
-   * `artifact-replay`. Unlike the candidate highlight it is NOT director-gated:
-   * the mosaic is the always-on ambient base (Rule#10 default = mosaic +
-   * aggregate).
+   * `artifact-replay`. It is the always-on ambient base, NOT director-gated
+   * (Rule#10 default = mosaic + aggregate).
    */
   readonly showSinrServingMosaic: boolean;
   /**
@@ -122,15 +114,14 @@ export interface SceneLaneRenderPlan {
    */
   readonly showSinrLiveCellBeams: boolean;
   /**
-   * G2c ambient live-handover pulse (the "一直有換手" payoff). Lane-owned to
-   * `sinr-live` ONLY and ALWAYS-ON ambient — DELIBERATELY NOT director-gated (the
-   * decouple from `showCandidateHandoverHighlight`, which needs a manual Director
-   * arm): as the sim plays forward, each real per-frame handover
+   * G2c ambient live-handover pulse (the "一直有換手" payoff) — now the SINGLE
+   * handover-visual layer (C3 collapsed the director cinema pair + candidate
+   * highlight into it). Lane-owned to `sinr-live` ONLY and ALWAYS-ON ambient (NOT
+   * director-gated): as the sim plays forward, each real per-frame handover
    * (`frame.sinrLiveCells.recentHandoverEvents`) flares its old/new cell cones
-   * bright then fades them by age, with no seek and no camera move. A distinct
-   * layer from the static cinema pair (`showCandidateHandoverHighlight`) and the
-   * faint ambient field (`showSinrLiveCellBeams`); inert on every MODQN/artifact
-   * lane.
+   * bright (intra vs inter coloured, C2) then fades them by age, with no seek and
+   * no camera move. A distinct layer from the faint ambient serving field
+   * (`showSinrLiveCellBeams`); inert on every MODQN/artifact lane.
    */
   readonly showSinrLiveHandoverPulse: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
@@ -187,11 +178,6 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // the cinematic camera tween + slow-mo are. Replay-proof stays inert (Rule#8).
   const showDirectorFocus =
     (showSinrLiveViewport || showCellOverlay || isArtifactReplay) && input.cinematicMode === 'director';
-  // Handover-cinema candidate highlight (S1): sinr-live ONLY + director cinematic
-  // engaged. Narrower than showDirectorFocus on purpose — S1 builds the real-SINR
-  // candidate story on the live SINR lane with no producer dependency; the MODQN
-  // and artifact variants are later slices.
-  const showCandidateHandoverHighlight = showSinrLiveViewport && input.cinematicMode === 'director';
   // SINR-serving mosaic (S2): sinr-live ONLY, always-on ambient default (NOT
   // director-gated). It is a distinct SINR-serving layer, never the MODQN cell
   // overlay — so it is inert on every MODQN/artifact lane.
@@ -269,7 +255,6 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     showProfileHandoverStoryLayer,
     showCinematicSpotlight,
     showDirectorFocus,
-    showCandidateHandoverHighlight,
     showSinrServingMosaic,
     showSinrLiveCellBeams,
     showSinrLiveHandoverPulse,

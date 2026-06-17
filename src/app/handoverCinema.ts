@@ -20,7 +20,6 @@ import type {
   LiveWalkerHandoverEventKind,
 } from '../scene/liveWalkerHandoverEventIndex';
 import type { LiveWalkerDirectorFocusClaimKind } from '../scene/liveWalkerDirectorFocus';
-import type { RuntimeCandidateHighlightCommand } from '../scene/types';
 import type { SceneLane } from './sceneLane';
 
 /**
@@ -115,30 +114,6 @@ export function buildCinemaCandidateDetail(
     deltaDb: event.deltaDb,
     offsetDb: index.offsetDb,
     claimKind: toDirectorClaimKind(index.claimKind),
-  };
-}
-
-/** Geometry-only command for the scene highlight layer (no SINR/decision truth). */
-export function toCandidateHighlightCommand(
-  detail: CinemaCandidateDetail | null,
-): RuntimeCandidateHighlightCommand | null {
-  if (detail === null) return null;
-  return {
-    eventId: detail.eventId,
-    sourceOwner: detail.sourceOwner,
-    sourceTimeSec: detail.sourceTimeSec,
-    kind: detail.kind,
-    fromSatId: detail.fromSatId,
-    fromBeamId: detail.fromBeamId,
-    toSatId: detail.toSatId,
-    toBeamId: detail.toBeamId,
-    ueId: detail.ueId,
-    fromCellId: detail.fromCellId,
-    toCellId: detail.toCellId,
-    fromFrequencyIndex: detail.fromFrequencyIndex,
-    toFrequencyIndex: detail.toFrequencyIndex,
-    fromOffAxisDeg: detail.fromOffAxisDeg,
-    toOffAxisDeg: detail.toOffAxisDeg,
   };
 }
 

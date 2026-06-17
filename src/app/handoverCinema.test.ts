@@ -8,7 +8,6 @@
 import {
   buildCinemaCandidateDetail,
   decideSinrOffsetExplainer,
-  toCandidateHighlightCommand,
 } from './handoverCinema';
 import type {
   LiveWalkerHandoverEvent,
@@ -174,44 +173,6 @@ check('buildCinemaCandidateDetail fails closed on null index / null id / unknown
   assertNull(buildCinemaCandidateDetail(null, 'evt-inter-1', 'sinr-live'), 'null index');
   assertNull(buildCinemaCandidateDetail(index([ev()]), null, 'sinr-live'), 'null id');
   assertNull(buildCinemaCandidateDetail(index([ev()]), 'nope', 'sinr-live'), 'unknown id');
-});
-
-check('toCandidateHighlightCommand strips SINR (geometry only) and null-passes through', () => {
-  const detail = buildCinemaCandidateDetail(index([ev()]), 'evt-inter-1', 'sinr-live');
-  const cmd = assertNotNull(toCandidateHighlightCommand(detail), 'cmd');
-  assertEqual(cmd.kind, 'inter', 'cmd.kind');
-  assertEqual(cmd.fromSatId, 'SAT-2', 'cmd.fromSatId');
-  assertEqual(cmd.fromBeamId, 3, 'cmd.fromBeamId');
-  assertEqual(cmd.toSatId, 'SAT-5', 'cmd.toSatId');
-  assertEqual(cmd.toBeamId, 1, 'cmd.toBeamId');
-  assertEqual(Object.prototype.hasOwnProperty.call(cmd, 'toSinrDb'), false, 'cmd carries no SINR');
-  assertNull(toCandidateHighlightCommand(null), 'null detail');
-});
-
-check('toCandidateHighlightCommand preserves cell-truth geometry fields but still strips SINR', () => {
-  const detail = buildCinemaCandidateDetail(index([cellEv()], 2, {
-    sourceOwner: 'sinr-live-cell-truth',
-    claimKind: 'live-truth',
-    ueScope: 'cell-truth-ue-events',
-    aggregateUeCount: 100,
-    aggregateClaim: 'cell-truth-event-index',
-    generation: {
-      profileId: 'p',
-      epochUtcMs: 0,
-      simStepSec: 15,
-      handoverPolicyKey: 'k',
-      topologyKey: 't',
-      runtimeFramePath: 'stepRuntimeFrame+sinrLiveCells',
-    },
-  }), 'evt-cell-intra-1', 'sinr-live');
-  const cmd = assertNotNull(toCandidateHighlightCommand(detail), 'cmd');
-  assertEqual(cmd.sourceOwner, 'sinr-live-cell-truth', 'cmd.sourceOwner');
-  assertEqual(cmd.eventId, 'evt-cell-intra-1', 'cmd.eventId');
-  assertEqual(cmd.fromCellId, 8, 'cmd.fromCellId');
-  assertEqual(cmd.toCellId, 11, 'cmd.toCellId');
-  assertEqual(cmd.fromOffAxisDeg, 1.25, 'cmd.fromOffAxisDeg');
-  assertEqual(cmd.toOffAxisDeg, 1.72, 'cmd.toOffAxisDeg');
-  assertEqual(Object.prototype.hasOwnProperty.call(cmd, 'toSinrDb'), false, 'cmd carries no SINR');
 });
 
 check('decideSinrOffsetExplainer emits serving+winner rows, winner selected, no fabrication', () => {

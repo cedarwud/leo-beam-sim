@@ -194,9 +194,6 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(sinr.showReplayProofLayer, false, 'SINR live should not own MODQN replay proof');
   assert.equal(sinr.handoverStoryLayerPolicy, 'sinr-live', 'SINR live should keep the SINR handover story path');
   assert.equal(sinr.showProfileHandoverStoryLayer, false, 'SINR live must not mount the profile-derived story overlay');
-  // Handover-cinema candidate highlight (S1) is gated on the director cinematic
-  // mode, so it is OFF under spotlight even on its own lane.
-  assert.equal(sinr.showCandidateHandoverHighlight, false, 'SINR live candidate highlight stays off outside director mode');
 
   const cellPreview = renderPlan('modqn-live-cell-preview', 'live-sim');
   assert.equal(cellPreview.sourceCompatible, true, 'MODQN cell lane live source should be compatible');
@@ -282,30 +279,6 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   // modqn-cell true L206, proof false L265, incompatible false L409) so the
   // `const showLiveSceneEffects = showSinrBeamRender` source-pin can retire (B2).
   assert.equal(artifact.showLiveSceneEffects, false, 'artifact replay must not inherit SINR live effects');
-
-  // ── Handover-cinema candidate-beam highlight (S1) lane ownership ──
-  // Lane-owned to sinr-live ONLY, and only while the director cinematic is engaged.
-  // Inert on the MODQN cell preview, the replay-proof lane (Rule#8), and artifact.
-  assert.equal(
-    renderPlan('sinr-live', 'live-sim', false, 'director').showCandidateHandoverHighlight,
-    true,
-    'SINR live owns the handover-cinema candidate highlight under director mode',
-  );
-  assert.equal(
-    renderPlan('modqn-live-cell-preview', 'live-sim', false, 'director').showCandidateHandoverHighlight,
-    false,
-    'MODQN cell preview must not mount the S1 candidate highlight (sinr-live only)',
-  );
-  assert.equal(
-    renderPlan('modqn-replay-proof', 'live-sim', true, 'director').showCandidateHandoverHighlight,
-    false,
-    'MODQN replay proof must stay inert for the candidate highlight (Rule#8)',
-  );
-  assert.equal(
-    renderPlan('artifact-replay', 'artifact-replay', false, 'director').showCandidateHandoverHighlight,
-    false,
-    'artifact replay must not mount the live SINR candidate highlight',
-  );
 
   // ── SINR-serving mosaic (S2) lane ownership ──
   // Lane-owned to sinr-live ONLY and always-on (NOT director-gated): the ambient
@@ -549,7 +522,6 @@ const beamLoadUploadParticleHelpersSource = readRepoFile('src/viz/beamLoadUpload
 const groundSceneSource = readRepoFile('src/viz/GroundScene.tsx');
 const modqnReplayCuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
 const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
-const candidateBeamHighlightSource = readRepoFile('src/viz/CandidateBeamHighlight.tsx');
 const sinrOffsetExplainerSource = readRepoFile('src/ui/SinrOffsetExplainer.tsx');
 const handoverCinemaSource = readRepoFile('src/app/handoverCinema.ts');
 const sinrLiveCellHandoverEventIndexSource = readRepoFile('src/scene/sinrLiveCellHandoverEventIndex.ts');
@@ -1658,37 +1630,9 @@ assertContains(
   'showCinematicSpotlight',
   'Scene lane render plan owns cinematic spotlight gating',
 );
-// ── Handover-cinema candidate highlight (S1) lane-ownership source locks ──
-assertContains(
-  sceneLaneRenderPlanSource,
-  'showCandidateHandoverHighlight',
-  'Scene lane render plan owns the handover-cinema candidate-highlight gate',
-);
-assertContains(
-  sceneLaneRenderPlanSource,
-  "const showCandidateHandoverHighlight = showSinrLiveViewport && input.cinematicMode === 'director'",
-  'Candidate highlight is gated sinr-live + director (no producer dependency, inert elsewhere)',
-);
-assertContains(
-  mainSceneSource,
-  'showCandidateHandoverHighlight && runtime.candidateHighlight',
-  'MainScene mounts the candidate highlight only under the render-plan gate + an armed command',
-);
-assertContains(
-  mainSceneSource,
-  '<CandidateBeamHighlight',
-  'MainScene mounts the lane-owned CandidateBeamHighlight layer',
-);
-assertContains(
-  candidateBeamHighlightSource,
-  'dataset.candidateHandoverHighlightRenderedCount',
-  'Candidate highlight publishes a MESH-derived rendered-count observable (validator-provable render)',
-);
-assertContains(
-  candidateBeamHighlightSource,
-  'findCellGround(cellPlacementById, candidate.fromCellId)',
-  'Candidate highlight uses cell placement for D4 cell-truth focused events',
-);
+// ── Handover-cinema SINR explainer (S1) lane-truthful claim locks ──
+// (C3 collapsed the candidate-beam highlight + cinema pair cone into the always-on
+// ambient pulse; the explainer + its honest sinr-offset claim stay.)
 assertContains(
   sinrOffsetExplainerSource,
   'data-claim-kind="sinr-offset"',
@@ -1973,13 +1917,13 @@ assertContains(
   'MainScene draws every serving sat (focusSatIds null) — no focus narrowing leaves a serving sat beamless (D-STYLE A)',
 );
 
-// ── SINR-live ambient live-handover PULSE (G2c) lane ownership + decouple locks ──
+// ── SINR-live ambient live-handover PULSE (G2c) lane ownership locks ──
 // The bright, age-faded cones of the real per-frame handovers
 // (`frame.sinrLiveCells.recentHandoverEvents`). Lane-owned to sinr-live ONLY and
-// ALWAYS-ON ambient — DELIBERATELY decoupled from the manual-arm director cinema
-// (`showCandidateHandoverHighlight`) so the sim playing forward shows continuous
-// handovers with no seek / no camera. Matrix asserts above prove the lane gating
-// + the under-director decouple; these pin the WIRING.
+// ALWAYS-ON ambient — after C3 it is the SINGLE handover-visual layer (the director
+// cinema's candidate-beam highlight + pair cone collapsed into it). The sim playing
+// forward shows continuous handovers with no seek / no camera. Matrix asserts above
+// prove the lane gating; these pin the WIRING.
 // (1) the render-plan flag is declared + gated to the sinr-live viewport (NOT
 //     director-coupled — `= showSinrLiveViewport`, no `&& cinematicMode` term).
 assertContains(
@@ -1988,13 +1932,12 @@ assertContains(
   'render plan declares the G2c live-handover pulse flag',
 );
 // P2 ANTI-RECURRENCE (B2): the `const showSinrLiveHandoverPulse = showSinrBeamRender`
-// source-text pin RETIRED — the pulse's lane gating + always-on (under-director)
-// decouple are owned by the renderPlan VALUE asserts above (sinr-live true,
-// sinr-live+director true, modqn-cell true, proof + artifact + incompatible false,
-// L376-400 + L406). The OUTPUT is pinned, so the const spelling is free to move.
-// (2) MainScene derives the pulse cones under the always-on flag (NOT the
-//     director-gated showCandidateHandoverHighlight) from the model's real
-//     recentHandoverEvents truth — a Rule#6 display read-out, no fabricated HO.
+// source-text pin RETIRED — the pulse's lane gating is owned by the renderPlan VALUE
+// asserts above (sinr-live true, sinr-live+director true, modqn-cell true, proof +
+// artifact + incompatible false, L376-400 + L406). The OUTPUT is pinned, so the const
+// spelling is free to move.
+// (2) MainScene derives the pulse cones under the always-on flag from the model's
+//     real recentHandoverEvents truth — a Rule#6 display read-out, no fabricated HO.
 assertContains(
   mainSceneSource,
   'recentHandoverEvents: sim.sinrLiveCells?.recentHandoverEvents',

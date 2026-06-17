@@ -43,7 +43,6 @@ import { HandoverLinks } from '../viz/HandoverLinks';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
 import { IntraGroundShockwave } from '../viz/IntraGroundShockwave';
 import { BeamPulseClock } from '../viz/SatelliteBeams';
-import { CandidateBeamHighlight } from '../viz/CandidateBeamHighlight';
 import { SatelliteMarker } from '../viz/SatelliteMarker';
 import { SpineParticles } from '../viz/SpineParticles';
 import { OrbitTrail } from '../viz/OrbitTrail';
@@ -59,7 +58,6 @@ import {
 } from '../viz/CellBeamCones';
 import {
   SinrLiveCellBeamCones,
-  resolveSinrLiveCellHandoverPairConeItems,
   resolveSinrLiveHandoverPulseConeItems,
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveNonServingConeItems,
@@ -585,9 +583,6 @@ function ArtifactSceneContent({
         sinrLiveCellServingSatCount=""
         sinrLiveCellServedCount=""
         sinrLiveCellUeOffAxisMaxDeg=""
-        sinrLiveCellHandoverPairConeCount=""
-        sinrLiveCellHandoverPairSourceOwner=""
-        sinrLiveCellHandoverPairEventId=""
         sinrLiveHandoverPulseConeCount=""
         modqnVisualLayerPreset=""
         modqnServiceMapEnabled="0"
@@ -879,7 +874,6 @@ function SceneContent({
     handoverStoryLayerPolicy,
     showProfileHandoverStoryLayer,
     showCinematicSpotlight,
-    showCandidateHandoverHighlight,
     showSinrServingMosaic,
     showSinrLiveCellBeams,
     showSinrLiveHandoverPulse,
@@ -1144,28 +1138,6 @@ function SceneContent({
       showSinrLiveCellBeams,
       beamDisplaySpec.showNonServingCones,
       sim.sinrLiveCells,
-      sinrLiveCellPlacementById,
-      viz.coneApexWorldById,
-    ],
-  );
-  const sinrLiveCellHandoverPairConeItems = useMemo(
-    () => (showCandidateHandoverHighlight
-      ? resolveSinrLiveCellHandoverPairConeItems({
-        candidate: runtime.candidateHighlight,
-        placementByCellId: sinrLiveCellPlacementById,
-        // Serving-sat-COMPLETE apex map (like the ambient + pulse cone layers, S5-2),
-        // NOT the top-12 `satelliteWorldById` display slice: the focused handover's
-        // satellite can sit beyond the display cap — or drop out of it as the
-        // cinematic seeks/restores (focused→restoring) — and the old/new pair cones
-        // must stay drawn for the whole focus, not vanish mid-cinematic. Display cap
-        // applies at DRAW, never at TRUTH (Rule#6). Fixes the pair cones blinking out
-        // at the focused→restoring transition (validate:phase-c:handover-cinema).
-        satelliteWorldById: viz.coneApexWorldById,
-      })
-      : []),
-    [
-      showCandidateHandoverHighlight,
-      runtime.candidateHighlight,
       sinrLiveCellPlacementById,
       viz.coneApexWorldById,
     ],
@@ -1454,9 +1426,6 @@ function SceneContent({
         sinrLiveCellServingSatCount={showSinrLiveCellBeams ? String(renderedSinrLiveCellBeamConeSatelliteCount) : ''}
         sinrLiveCellServedCount={showSinrLiveCellBeams ? String(sinrLiveCellServedCount) : ''}
         sinrLiveCellUeOffAxisMaxDeg={showSinrLiveCellBeams ? sinrLiveCellUeOffAxisMaxDeg.toFixed(3) : ''}
-        sinrLiveCellHandoverPairConeCount={String(sinrLiveCellHandoverPairConeItems.length)}
-        sinrLiveCellHandoverPairSourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}
-        sinrLiveCellHandoverPairEventId={runtime.candidateHighlight?.eventId ?? ''}
         sinrLiveHandoverPulseConeCount={showSinrLiveHandoverPulse ? String(sinrLiveCellPulseConeItems.length) : ''}
         modqnVisualLayerPreset={showCellOverlay ? modqnVisualLayerPreset : ''}
         modqnServiceMapEnabled={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? '1' : '0'}
@@ -1642,18 +1611,6 @@ function SceneContent({
           primaryServingCellId={primaryServingRecord?.cellId ?? null}
         />
       )}
-      {sinrLiveCellHandoverPairConeItems.length > 0 && (
-        <SinrLiveCellBeamCones
-          items={sinrLiveCellHandoverPairConeItems}
-          opacity={resolveSinrLiveConeLayerOpacity('pair')}
-          widthScale={beamDisplaySpec.coneWidthScale}
-          telemetryCountDatasetKey="sinrLiveCellHandoverPairConeRenderedCount"
-          telemetrySourceOwnerDatasetKey="sinrLiveCellHandoverPairConeRenderedSourceOwner"
-          telemetrySourceOwner={runtime.candidateHighlight?.sourceOwner ?? ''}
-          telemetryEventIdDatasetKey="sinrLiveCellHandoverPairConeRenderedEventId"
-          telemetryEventId={runtime.candidateHighlight?.eventId ?? ''}
-        />
-      )}
       {/* G2c ambient live-handover pulse — bright, age-faded cones on each real
           per-frame handover. Per-item opacity (the fade) is carried on each cone,
           so no group opacity is passed. Always-on on sinr-live, decoupled from the
@@ -1676,15 +1633,6 @@ function SceneContent({
           beam render is the earth-fixed cell-truth cones above (SinrLiveCellBeamCones,
           gated by showSinrLiveCellBeams). The SatelliteBeams component survives only
           as the vc1c/vc2 validation-fixture subject — it is no longer mounted in-app. */}
-      {showCandidateHandoverHighlight && runtime.candidateHighlight != null && (
-        <CandidateBeamHighlight
-          candidate={runtime.candidateHighlight}
-          satBeams={viz.satBeams}
-          cellPlacementById={sinrLiveCellPlacementById}
-          footprintRadius={viz.footprintRadiusWorld}
-          reducedMotion={runtime.reducedMotion}
-        />
-      )}
       {showLiveSceneEffects && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
       {showHandoverToastOverlay && <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />}
       {showArtifactFpsCounter && <FPSCounter />}

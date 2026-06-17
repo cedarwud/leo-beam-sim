@@ -60,12 +60,6 @@ export const SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY = 0.52;
 export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#facc15';
 
 /**
- * Bright focused handover-pair cone opacity (cinema), drawn over the ambient
- * field so the old/new handover cells read against the faint all-serving layer.
- */
-export const SINR_LIVE_CONE_PAIR_OPACITY = 0.3;
-
-/**
  * G2c ambient live-handover PULSE peak opacity. When a real per-frame handover
  * fires (`frame.sinrLiveCells.recentHandoverEvents`), its old/new cells flare
  * BRIGHT then fade to 0 over the retention window
@@ -86,8 +80,7 @@ export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32;
  * of the model's own intra/inter classification, it changes no truth.
  *  - intra (same-sat beam switch): EMERALD — the "minor, in-place" hop.
  *  - inter (satellite handover): ROSE — the "you changed satellite" event; distinct
- *    from the hero yellow ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}) and the
- *    candidate cyan ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}).
+ *    from the hero yellow ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}).
  */
 export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#34d399';
 export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#f472b6';
@@ -131,28 +124,25 @@ export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.NormalBlending;
  * Which sinr-live cone LAYER a style is being resolved for. The lane draws three
  * cone layers over the same oblique geometry, each at its own brightness:
  *  - `ambient`: every serving sat's beam, faint, always-on (the base field).
- *  - `pair`: the focused cinema handover pair (old/new cell), bright, on top.
- *  - `pulse`: a real per-frame handover flaring then age-fading (peak brightness).
+ *  - `pulse`: a real per-frame handover flaring then age-fading (peak brightness) —
+ *    the SINGLE handover-visual layer after C3 collapsed the cinema pair into it.
  *  - `nonServing`: the OPT-IN dim co-channel / non-serving beams (default OFF).
  */
-export type SinrLiveConeLayer = 'ambient' | 'pair' | 'pulse' | 'nonServing';
+export type SinrLiveConeLayer = 'ambient' | 'pulse' | 'nonServing';
 
 /**
  * The ONE place mapping a cone layer to its base opacity — Tier-2 beam-display
  * seam (mirrors the clean per-role `resolveBeamConeRoleFactors` for the steered
- * cones). Before this, the ambient level was a default inside the renderer, the
- * pair level was picked at the MainScene mount, and the pulse peak was a bare
- * const — so "the ambient cones are too faint / non-serving should be dimmer"
- * had no single edit point. Now every cone layer's opacity is resolved here.
- * Returns the screenshot-locked hybrid values verbatim (D-STYLE A), so this is
- * behaviour-identical; it only consolidates the CHOICE.
+ * cones). Before this, the ambient level was a default inside the renderer and the
+ * pulse peak was a bare const — so "the ambient cones are too faint / non-serving
+ * should be dimmer" had no single edit point. Now every cone layer's opacity is
+ * resolved here. Returns the screenshot-locked hybrid values verbatim (D-STYLE A),
+ * so this is behaviour-identical; it only consolidates the CHOICE.
  */
 export function resolveSinrLiveConeLayerOpacity(layer: SinrLiveConeLayer): number {
   switch (layer) {
     case 'ambient':
       return SINR_LIVE_CONE_AMBIENT_OPACITY;
-    case 'pair':
-      return SINR_LIVE_CONE_PAIR_OPACITY;
     case 'pulse':
       return SINR_LIVE_CONE_PULSE_PEAK_OPACITY;
     case 'nonServing':

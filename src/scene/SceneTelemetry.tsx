@@ -63,10 +63,6 @@ export interface SceneTelemetryProps {
   sinrLiveCellServedCount: string;
   /** Max off-axis angle (deg) among served UEs — > 0 proves UEs sit off-centre. */
   sinrLiveCellUeOffAxisMaxDeg: string;
-  /** Focus-scoped D4 old/new cell-truth cone pair; empty when no cinema focus is armed. */
-  sinrLiveCellHandoverPairConeCount: string;
-  sinrLiveCellHandoverPairSourceOwner: string;
-  sinrLiveCellHandoverPairEventId: string;
   /** G2c ambient live-pulse cones currently lit (real per-frame handovers, age-faded); empty off the sinr-live lane. */
   sinrLiveHandoverPulseConeCount: string;
   modqnVisualLayerPreset: string;
@@ -138,9 +134,6 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.sinrLiveCellServingSatCount = props.sinrLiveCellServingSatCount;
     el.dataset.sinrLiveCellServedCount = props.sinrLiveCellServedCount;
     el.dataset.sinrLiveCellUeOffAxisMaxDeg = props.sinrLiveCellUeOffAxisMaxDeg;
-    el.dataset.sinrLiveCellHandoverPairConeCount = props.sinrLiveCellHandoverPairConeCount;
-    el.dataset.sinrLiveCellHandoverPairSourceOwner = props.sinrLiveCellHandoverPairSourceOwner;
-    el.dataset.sinrLiveCellHandoverPairEventId = props.sinrLiveCellHandoverPairEventId;
     el.dataset.sinrLiveHandoverPulseConeCount = props.sinrLiveHandoverPulseConeCount;
     el.dataset.modqnVisualLayerPreset = props.modqnVisualLayerPreset;
     el.dataset.modqnServiceMapEnabled = props.modqnServiceMapEnabled;
@@ -201,9 +194,6 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.sinrLiveCellServedCount,
     props.sinrLiveHandoverPulseConeCount,
     props.sinrLiveCellUeOffAxisMaxDeg,
-    props.sinrLiveCellHandoverPairConeCount,
-    props.sinrLiveCellHandoverPairSourceOwner,
-    props.sinrLiveCellHandoverPairEventId,
     props.modqnVisualLayerPreset,
     props.modqnServiceMapEnabled,
     props.modqnServedUeCount,

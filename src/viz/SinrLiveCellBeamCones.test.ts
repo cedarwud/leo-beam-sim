@@ -31,7 +31,6 @@ import {
   resolveSinrLiveNonServingConeItems,
   resolveSinrLiveCellBeamConeRenderCount,
   resolveSinrLiveCellBeamConeSatelliteCount,
-  resolveSinrLiveCellHandoverPairConeItems,
   resolveSinrLiveHandoverPulseConeItems,
   resolveSinrLiveConeRenderColor,
   sinrLiveHandoverPulseOpacity,
@@ -39,6 +38,8 @@ import {
   type SinrLiveCellBeamConeRenderItem,
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
+// (resolveSinrLiveCellHandoverPairConeItems + its test removed in C3 — the cinema
+//  pair cone layer collapsed into the always-on ambient pulse.)
 import type { SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
 import { frequencyReuseColor } from '../constants/beamRoleTokens';
 import { colorForServingBeam } from '../constants/servingColour';
@@ -46,7 +47,6 @@ import {
   SINR_LIVE_CONE_AMBIENT_OPACITY,
   SINR_LIVE_CONE_BASE_ALPHA_FACTOR,
   SINR_LIVE_CONE_BLENDING,
-  SINR_LIVE_CONE_PAIR_OPACITY,
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_NONSERVING_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
@@ -58,7 +58,6 @@ import {
 import { buildSinrLiveCellLayout } from '../scene/sinrLiveCellRuntime';
 import { loadProfile } from '../profiles/index';
 import type { CellServingRecord, IlluminatedCellBeam, SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
-import type { RuntimeCandidateHighlightCommand } from '../scene/types';
 
 let passed = 0;
 function assert(cond: boolean, label: string): void {
@@ -341,10 +340,9 @@ check('S5-2 cone base == the TRUTH cell centre from buildSinrLiveCellLayout (no 
   approx(items[0].baseCenter.y, 0, 1e-9, 'cone base on the ground plane');
 });
 
-check('S5-2 style tokens (hybrid): ambient 0.14 < pair 0.30, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
+check('S5-2 style tokens (hybrid): ambient 0.14 < pulse 0.32, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
   assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.14, 'ambient cone opacity is the screenshot-locked 0.14 (A2 legibility lift from 0.08)');
-  assertEqual(SINR_LIVE_CONE_PAIR_OPACITY, 0.3, 'bright focused-handover-pair cone opacity is 0.30');
-  assert(SINR_LIVE_CONE_PAIR_OPACITY > SINR_LIVE_CONE_AMBIENT_OPACITY, 'HYBRID: the focused pair is brighter than the ambient field');
+  assert(SINR_LIVE_CONE_PULSE_PEAK_OPACITY > SINR_LIVE_CONE_AMBIENT_OPACITY, 'HYBRID: the handover pulse is brighter than the ambient field');
   assertEqual(SINR_LIVE_CONE_SEGMENTS, 32, 'oblique cone ring segment count');
   assertEqual(SINR_LIVE_CONE_BLENDING, THREE.NormalBlending, 'cones use NormalBlending (bounded translucency, no additive washout)');
   const posExplicit = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10, 5);
@@ -355,15 +353,14 @@ check('S5-2 style tokens (hybrid): ambient 0.14 < pair 0.30, 32 segments, Normal
 
 check('Tier-2 SinrLiveConeStyle resolver: layer→opacity + colour map to the locked tokens (the ONE place; behaviour-identical)', () => {
   // resolveSinrLiveConeLayerOpacity is the single CHOICE point for each cone
-  // layer's opacity (was: ambient default in the renderer, pair at the MainScene
-  // mount, pulse a bare const). It must return the screenshot-locked values verbatim.
+  // layer's opacity (was: ambient default in the renderer, pulse a bare const). It
+  // must return the screenshot-locked values verbatim.
   assertEqual(resolveSinrLiveConeLayerOpacity('ambient'), SINR_LIVE_CONE_AMBIENT_OPACITY, 'resolver ambient == 0.14 token');
-  assertEqual(resolveSinrLiveConeLayerOpacity('pair'), SINR_LIVE_CONE_PAIR_OPACITY, 'resolver pair == 0.30 token');
   assertEqual(resolveSinrLiveConeLayerOpacity('pulse'), SINR_LIVE_CONE_PULSE_PEAK_OPACITY, 'resolver pulse == 0.32 peak token');
   assertEqual(resolveSinrLiveConeLayerOpacity('nonServing'), SINR_LIVE_CONE_NONSERVING_OPACITY, 'resolver nonServing == 0.04 dim token');
   assert(
-    resolveSinrLiveConeLayerOpacity('pair') > resolveSinrLiveConeLayerOpacity('ambient'),
-    'HYBRID via resolver: focused pair brighter than ambient field',
+    resolveSinrLiveConeLayerOpacity('pulse') > resolveSinrLiveConeLayerOpacity('ambient'),
+    'HYBRID via resolver: the handover pulse is brighter than the ambient field',
   );
   assert(
     resolveSinrLiveConeLayerOpacity('nonServing') < resolveSinrLiveConeLayerOpacity('ambient'),
@@ -399,34 +396,6 @@ check('G1-CONE-STYLE apex→base alpha fade: apex opaque (must-hold-safe), base 
   }
   const defaultColors = buildObliqueBeamConeVertexColors();
   assertEqual(defaultColors.length, SINR_LIVE_CONE_SEGMENTS * 12, 'default segment count == the style token');
-});
-
-check('S5-2 D4 pair resolver: inert unless the focused event is cell truth; draws the old/new pair (replaces the sourceOwner-guard pin)', () => {
-  const candidateOf = (sourceOwner: 'live-walker' | 'sinr-live-cell-truth'): RuntimeCandidateHighlightCommand => ({
-    sourceOwner,
-    kind: 'inter',
-    fromSatId: 'sat-A',
-    fromBeamId: null,
-    fromCellId: 0,
-    fromFrequencyIndex: 0,
-    toSatId: 'sat-B',
-    toBeamId: null,
-    toCellId: 2,
-    toFrequencyIndex: 2,
-  } as RuntimeCandidateHighlightCommand);
-  const inert = resolveSinrLiveCellHandoverPairConeItems({
-    candidate: candidateOf('live-walker'),
-    placementByCellId,
-    satelliteWorldById,
-  });
-  assertEqual(inert.length, 0, 'pair resolver is inert unless the event source is cell truth');
-  const pair = resolveSinrLiveCellHandoverPairConeItems({
-    candidate: candidateOf('sinr-live-cell-truth'),
-    placementByCellId,
-    satelliteWorldById,
-  });
-  assertEqual(pair.length, 2, 'cell-truth event draws the old + new cell-truth cones');
-  assert(pair.some(c => c.satId === 'sat-A') && pair.some(c => c.satId === 'sat-B'), 'both old and new sats present');
 });
 
 // ---------------------------------------------------------------------------

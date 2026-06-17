@@ -120,39 +120,29 @@ async function main(): Promise<void> {
     }
     assert.ok(conesLater > 0, `cell cones keep rendering across frames (recovered count=${conesLater})`);
 
-    // ── G2c ambient live-handover PULSE (decoupled from the director cinema) ──
+    // ── G2c ambient live-handover PULSE (the SINGLE handover-visual layer, C3) ──
     // The bright, age-faded handover cones fire only AFTER the cold-attach warm-up
     // (pingPongGuardSec 30 + TTT 3.5, ≈ 42s to the first handover burst at the dense
     // demo start). Crank playback to 20x so that warm-up elapses in a few seconds of
-    // wall time, then poll for the pulse to light a real handover. The DECOUPLE proof
-    // is `pulse > 0` with the director NEVER armed in this run — the pulse mounts on
-    // its own always-on flag, not the manual cinema. The `pairWhilePulsing === 0`
-    // check below is the corroborating (not the primary) evidence: the manual cinema
-    // pair layer stays unmounted while the pulse fires.
+    // wall time, then poll for the pulse to light a real handover. The proof is
+    // `pulse > 0` with the director NEVER armed in this run — the pulse mounts on its
+    // own always-on flag, not a manual cinema arm (C3 collapsed the director cinema's
+    // candidate highlight + pair cone INTO this pulse, so it is the only HO layer).
     const fastButton = page.locator('[data-testid="timeline-speed-20x"]').first();
     if (await fastButton.count()) await fastButton.click();
     let pulse = 0;
     let pulseRendered = 0;
-    let pairWhilePulsing = NaN;
     for (let i = 0; i < 60; i += 1) {
       await page.waitForTimeout(700);
       pulse = await numAttr(page, CANVAS, 'data-sinr-live-handover-pulse-cone-count');
       pulseRendered = await numAttr(page, CANVAS, 'data-sinr-live-handover-pulse-cone-rendered-count');
-      if (pulse > 0 && pulseRendered > 0) {
-        pairWhilePulsing = await numAttr(page, CANVAS, 'data-sinr-live-cell-handover-pair-cone-count');
-        break;
-      }
+      if (pulse > 0 && pulseRendered > 0) break;
     }
-    // PRIMARY decouple proof: the pulse fires with NO director arm anywhere in this run.
-    assert.ok(pulse > 0, `live-handover pulse lights real handovers WITHOUT a director arm — decoupled from the manual cinema (data-sinr-live-handover-pulse-cone-count=${pulse})`);
+    // The pulse fires with NO director arm anywhere in this run — it is the always-on
+    // ambient handover layer, mounted on its own flag (not a manual cinema).
+    assert.ok(pulse > 0, `live-handover pulse lights real handovers WITHOUT a director arm — always-on ambient layer (data-sinr-live-handover-pulse-cone-count=${pulse})`);
     assert.ok(pulseRendered > 0, `live-pulse cones actually render (mesh-derived data-sinr-live-handover-pulse-cone-rendered-count=${pulseRendered})`);
-    // Corroborating: the manual cinema pair layer is unmounted while the pulse fires
-    // (it would only mount on a director arm, which this run never performs).
-    assert.ok(
-      pairWhilePulsing === 0,
-      `manual cinema pair layer stays unmounted while the pulse fires (got pair=${pairWhilePulsing})`,
-    );
-    console.log(`[sinr-live-cell-beams] live pulse: count=${pulse}, meshRendered=${pulseRendered} fired with NO director arm (directorPair=${pairWhilePulsing})`);
+    console.log(`[sinr-live-cell-beams] live pulse: count=${pulse}, meshRendered=${pulseRendered} fired with NO director arm`);
 
     // No artifact-lane leak onto the live lane.
     assert.equal(await page.locator('[data-testid="artifact-satellite-compass"]').count(), 0, 'artifact compass must not leak onto the live lane');
