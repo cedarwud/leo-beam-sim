@@ -14,8 +14,10 @@
  *   3. `focusSatIds`, when non-empty, narrows to those sats (cinema handover pair);
  *      omitted/empty → all serving sats draw;
  *   4. cone base = the FIXED cell centre on the GROUND (y = 0), apex = serving sat;
- *   5. colour = FREQUENCY-REUSE colour (one satellite fan is multi-colour, the
- *      multibeam frequency pattern — not a single per-sat tint);
+ *   5. colour = SERVING-IDENTITY colour (`colorForServingBeam(satId, cellId)`, the
+ *      SAME authority the UE mosaic uses) — a serving cone is the same colour as the
+ *      UE dots it serves (SDD §3.2, kills Bug E); the freq-reuse palette is retired
+ *      from the live render (the style fn is retained for a future colour mode);
  *   6. a serving sat not rendered / a cell with no placement is skipped;
  *   7. the OBLIQUE geometry: the base ring lies FLAT on the ground plane.
  *
@@ -37,6 +39,7 @@ import {
 } from './SinrLiveCellBeamCones';
 import type { SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
 import { frequencyReuseColor } from '../constants/beamRoleTokens';
+import { colorForServingBeam } from '../constants/servingColour';
 import {
   SINR_LIVE_CONE_AMBIENT_OPACITY,
   SINR_LIVE_CONE_BASE_ALPHA_FACTOR,
@@ -171,8 +174,9 @@ check('Tier-2 non-serving resolver: the COMPLEMENT — only non-serving beams, s
   assertEqual(nonServing.length, 2, 'two non-serving illuminated beams draw dim cones');
   assert(nonServing.every(i => !i.serving), 'all non-serving items carry serving:false');
   assert(nonServing.some(i => i.satId === 'sat-A') && nonServing.some(i => i.satId === 'sat-B'), 'both non-serving sats present');
-  // Colour stays the frequency-reuse palette (via the shared resolveSinrLiveConeColor).
-  assertEqual(nonServing[0].color, resolveSinrLiveConeColor(nonServing[0].frequencyIndex), 'non-serving cone keeps the frequency-reuse colour');
+  // Colour is the serving-identity colour keyed on (satId, cellId) — one authority
+  // for the whole field (SDD §3.2), not the retired freq-reuse palette.
+  assertEqual(nonServing[0].color, colorForServingBeam(nonServing[0].satId, nonServing[0].cellId).markerColor, 'non-serving cone uses the serving-identity colour');
   // Disjoint from the serving set (the two never double-draw the same cone).
   const servingKeys = new Set(serving.map(i => `${i.cellId}-${i.satId}`));
   assert(nonServing.every(i => !servingKeys.has(`${i.cellId}-${i.satId}`)), 'non-serving cones are disjoint from serving cones');
@@ -230,17 +234,20 @@ check('cone base = FIXED cell centre on the GROUND (NOT the UE/origin), apex = s
   approx(c.apex.y, 900, 1e-9, 'apex at sat-A altitude');
 });
 
-check('colour = FREQUENCY-REUSE colour (multibeam pattern; one sat fan shows multiple hues)', () => {
-  // One satellite serving cells 0 (freq 0) and 2 (freq 2) → its fan is multi-colour
-  // (the multibeam frequency-reuse pattern), NOT a single per-sat tint.
+check('colour = SERVING-IDENTITY colour (matches the UE mosaic for the same satId+cellId — Bug E kill)', () => {
+  // The serving cone colours by colorForServingBeam(satId, cellId) — the SAME
+  // authority buildSinrServingUeColorMapFromCells uses for the UE dots — so a cone
+  // is the same colour as the UEs it serves. One sat over two cells = a shade family
+  // (different cellId → different shade), NOT the retired freq-reuse palette.
   const items = resolveSinrLiveCellBeamConeItems(base({
     cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-A', 2, true)]),
   }));
   const c0 = items.find(i => i.cellId === 0)!;
   const c2 = items.find(i => i.cellId === 2)!;
-  assertEqual(c0.color, frequencyReuseColor(0), 'cell 0 uses freq-0 colour');
-  assertEqual(c2.color, frequencyReuseColor(2), 'cell 2 uses freq-2 colour');
-  assert(c0.color !== c2.color, 'one satellite fan is multi-colour (not mono per sat)');
+  assertEqual(c0.color, colorForServingBeam('sat-A', 0).markerColor, 'cell-0 cone == UE-mosaic colour for (sat-A, cell 0)');
+  assertEqual(c2.color, colorForServingBeam('sat-A', 2).markerColor, 'cell-2 cone == UE-mosaic colour for (sat-A, cell 2)');
+  assert(c0.color !== c2.color, 'same sat, different cell → a shade family (not mono)');
+  assert(c0.color !== frequencyReuseColor(0), 'cone no longer uses the retired freq-reuse palette');
 });
 
 check('serving sat not rendered (absent world position) is skipped', () => {
@@ -358,7 +365,9 @@ check('Tier-2 SinrLiveConeStyle resolver: layer→opacity + colour map to the lo
     resolveSinrLiveConeLayerOpacity('nonServing') < resolveSinrLiveConeLayerOpacity('ambient'),
     'non-serving cones are dimmer than the ambient serving field (background context)',
   );
-  // resolveSinrLiveConeColor is the single colour decision (today = frequency reuse).
+  // resolveSinrLiveConeColor is RETAINED for a future frequency-plan colour mode —
+  // it is no longer the live cone colour (that is the serving-identity
+  // colorForServingBeam, asserted above). It still maps an index → palette entry.
   for (const idx of [0, 1, 2, 5, 7]) {
     assertEqual(resolveSinrLiveConeColor(idx), frequencyReuseColor(idx), `resolver colour(${idx}) == frequency-reuse colour (behaviour-identical)`);
   }
@@ -500,10 +509,10 @@ check('multiple concurrent events each pulse independently with DISTINCT stable 
   assertEqual(new Set(items.map(i => i.renderKey)).size, 4, 'all four pulse cone keys are distinct');
 });
 
-check('pulse cone colour == the cell\'s frequency-reuse colour (matches the ambient cone, NOT raw cellId)', () => {
-  // cellId 3 with reuse 3 → cellFrequencyIndex = 0; the buggy raw-cellId path would
-  // colour by frequencyReuseColor(3). The ambient layer colours cell 3 by
-  // frequencyReuseColor(0), so the pulse must match that, not the raw cellId.
+check('pulse cone colour == the serving-identity colour (reads as the ambient cone for that satId+cellId flaring)', () => {
+  // The pulse must read as the AMBIENT serving cone for the same (satId, cellId)
+  // just brighter — so it shares the serving-identity colour, not a different hue.
+  // The freq index is still recorded for telemetry but no longer drives the colour.
   const placement3 = new Map<number, SinrLiveCellPlacement>([
     [3, { cellId: 3, worldX: 10, worldZ: -10, radiusWorld: 12 }],
   ]);
@@ -512,9 +521,13 @@ check('pulse cone colour == the cell\'s frequency-reuse colour (matches the ambi
     simTimeSec: 450, retentionSec: RET, placementByCellId: placement3, satelliteWorldById, frequencyReuse: 3,
   });
   assert(items.length >= 1, 'cell-3 pulse cone drew');
-  assertEqual(items[0].frequencyIndex, 0, 'cell 3 under reuse 3 → frequency index 0 (cellId % reuse)');
-  assertEqual(items[0].color, frequencyReuseColor(0), 'pulse colour == ambient frequency-reuse colour for cell 3');
-  assert(items[0].color !== frequencyReuseColor(3), 'pulse colour is NOT the raw-cellId mis-mapping');
+  assertEqual(items[0].frequencyIndex, 0, 'cell 3 under reuse 3 → telemetry frequency index 0 (cellId % reuse)');
+  assertEqual(items[0].color, colorForServingBeam('sat-A', 3).markerColor, 'pulse colour == serving-identity colour for (sat-A, cell 3)');
+  const ambient = resolveSinrLiveCellBeamConeItems({
+    cellFrame: frameOf([beam('sat-A', 3, true)]),
+    placementByCellId: placement3, satelliteWorldById, focusSatIds: null,
+  });
+  assertEqual(items[0].color, ambient[0].color, 'pulse colour == the ambient cone colour for the same (satId, cellId)');
 });
 
 console.log(`\nSinrLiveCellBeamCones resolver: ${passed} checks passed.`);

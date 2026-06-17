@@ -21,11 +21,11 @@
  *   actually changed, so "handover = a dot changes colour" stays truthful.
  */
 
+import { colorForServingBeam } from '../constants/servingColour';
+
 /** Unserved marker colours — shared with the MODQN idle palette for coherence. */
 export const SINR_SERVING_UNSERVED_COLOR = '#64748b';
 export const SINR_SERVING_UNSERVED_EMISSIVE = '#334155';
-
-const MOSAIC_SATURATION = 0.72;
 
 export interface SinrServingMarkerColor {
   readonly markerColor: string;
@@ -193,34 +193,16 @@ function hashStringToUnit(value: string): number {
   return ((hash >>> 0) % 1_000_000) / 1_000_000;
 }
 
-/** Pure HSL→hex (h,s,l in [0,1]); avoids a THREE dependency in the model. */
-function hslToHex(h: number, s: number, l: number): string {
-  const a = s * Math.min(l, 1 - l);
-  const channel = (n: number): string => {
-    const k = (n + h * 12) % 12;
-    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-    return Math.round(255 * c).toString(16).padStart(2, '0');
-  };
-  return `#${channel(0)}${channel(8)}${channel(4)}`;
-}
-
 /**
- * Stable, vivid marker colour for a serving (satId, beamId):
- * - the satellite identity drives the HUE FAMILY (stable string hash);
- * - the beam drives a small hue jitter + lightness step, so beams of the same
- *   satellite are a colour family (intra-HO = a shade shift) while a different
- *   satellite is a hue jump (inter-HO = a family change).
+ * Stable, vivid marker colour for a serving (satId, beamId). Delegates to the ONE
+ * serving-identity authority {@link colorForServingBeam} (SDD §3.2) so the UE
+ * marker and the serving CONE for the same (satId, beamId) are the SAME colour —
+ * the user matches a UE to its beam by colour (kills Bug E). Kept as a named
+ * export here for the existing mosaic/serving-equivalence validators; the hash +
+ * palette live in `constants/servingColour`.
  */
 export function mosaicColorForServingBeam(satId: string, beamId: number): SinrServingMarkerColor {
-  const satHue = hashStringToUnit(satId);
-  const beamMod = Math.abs(Math.trunc(beamId));
-  const beamHueJitter = ((beamMod % 6) - 2.5) / 60; // ±~0.04 in hue space
-  const hue = ((satHue + beamHueJitter) % 1 + 1) % 1;
-  const lightness = 0.52 + (beamMod % 3) * 0.07; // 0.52 .. 0.66
-  return {
-    markerColor: hslToHex(hue, MOSAIC_SATURATION, lightness),
-    markerEmissive: hslToHex(hue, MOSAIC_SATURATION, Math.max(0.28, lightness - 0.18)),
-  };
+  return colorForServingBeam(satId, beamId);
 }
 
 function isServed(satId: string | null, beamId: number | null): boolean {

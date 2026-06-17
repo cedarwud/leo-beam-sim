@@ -18,14 +18,14 @@
  * cannot do an oblique cone, so we build the side surface directly (apex → ground
  * ring fan). `meshBasicMaterial` is unlit, so no normals are needed.
  *
- * COLOUR (S-cells-4b-fix2): by FREQUENCY-REUSE colour (`cellId mod reuse`, via
- * `frequencyReuseColor`) — so a satellite's beam fan shows the multi-colour
- * multibeam frequency-reuse pattern (adjacent cells use different frequencies),
- * NOT a single per-satellite tint. (The brief satellite-tint attempt made every
- * satellite's fan mono; the "weird tone" it was meant to cure was actually the
- * idle illuminating-only ghost cones — those are gone here, so the frequency
- * palette reads cleanly. Satellite identity is still legible: a satellite's cones
- * all converge at its apex.)
+ * COLOUR (consolidation SDD §3.2): by SERVING-IDENTITY colour — the SAME
+ * `colorForServingBeam(satId, cellId)` hash the UE mosaic uses for the dots, so a
+ * serving cone is the SAME colour as the UE dots it serves and the user can match
+ * a beam to its UEs by colour (kills Bug E). The satellite drives the hue family
+ * (its fan is one colour family converging at its apex), the cell a shade step.
+ * The geographic frequency-reuse palette is retired from the live render (kept in
+ * `sinrLiveConeStyle.resolveSinrLiveConeColor` only for a future frequency-plan
+ * colour mode). Role overrides (hero yellow, candidate cyan) layer on top.
  *
  * Serving truth = `frame.sinrLiveCells` (S-cells-1/2: per-cell serving sat by
  * SINR + the sinr-offset `HandoverManager`). It is **NOT** the round-robin
@@ -44,10 +44,10 @@ import {
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
   SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
-  resolveSinrLiveConeColor,
   resolveSinrLiveConeElevationDimFactor,
   resolveSinrLiveConeLayerOpacity,
 } from '../constants/sinrLiveConeStyle';
+import { colorForServingBeam } from '../constants/servingColour';
 import { cellFrequencyIndex, type SinrLiveCellFrame, type SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
 import type { RuntimeCandidateHighlightCommand } from '../scene/types';
 import type { WorldPoint } from './CellFootprints';
@@ -85,9 +85,12 @@ export interface SinrLiveCellBeamConesProps {
 export interface SinrLiveCellBeamConeRenderItem {
   readonly cellId: number;
   readonly satId: string;
-  /** Stable geographic frequency colour index (`cellId mod reuse`). */
+  /** Stable geographic frequency colour index (`cellId mod reuse`) — kept for
+   *  telemetry/userData + the retained frequency-plan colour mode; NOT the render
+   *  colour (that is the serving-identity `color` below). */
   readonly frequencyIndex: number;
-  /** Frequency-reuse colour (the multibeam frequency pattern; NOT a per-sat tint). */
+  /** Serving-identity colour `colorForServingBeam(satId, cellId)` — matches this
+   *  cone's served UE dots (SDD §3.2). Role overrides (hero/candidate) apply at the mount. */
   readonly color: string;
   /** Always true on this render path — only SERVING beams draw a cone. */
   readonly serving: boolean;
@@ -219,8 +222,9 @@ export function resolveTopServingFocusSatIds(
  * non-empty, narrows to those satellites (e.g. the cinema handover pair) — a
  * legitimate display filter, the serving truth is unchanged. A serving sat not
  * RENDERED (absent from `satelliteWorldById`) or a cell with no placement is
- * skipped. Deterministic in beam order. Colour = serving-satellite tint (matches
- * the satellite marker).
+ * skipped. Deterministic in beam order. Colour = serving-identity colour
+ * (`colorForServingBeam(satId, cellId)`) — the same authority the UE mosaic uses,
+ * so a cone matches its served UE dots (SDD §3.2).
  */
 export function resolveSinrLiveCellBeamConeItems(
   props: SinrLiveCellBeamConesProps,
@@ -246,7 +250,11 @@ export function resolveSinrLiveCellBeamConeItems(
       cellId: beam.cellId,
       satId: beam.satId,
       frequencyIndex: beam.frequencyIndex,
-      color: resolveSinrLiveConeColor(beam.frequencyIndex),
+      // Serving-identity colour (SDD §3.2): the SAME (satId, cellId) hash the UE
+      // mosaic uses, so this serving cone is the SAME colour as the UE dots it
+      // serves — beam↔UE matchable by colour (kills Bug E). `cellId` is the
+      // serving unit on the cell lane (== the UE mosaic's `cellId`-as-beamId).
+      color: colorForServingBeam(beam.satId, beam.cellId).markerColor,
       serving: true,
       apex,
       baseCenter,
@@ -297,7 +305,10 @@ export function resolveSinrLiveNonServingConeItems(
       cellId: beam.cellId,
       satId: beam.satId,
       frequencyIndex: beam.frequencyIndex,
-      color: resolveSinrLiveConeColor(beam.frequencyIndex),
+      // Serving-identity colour (SDD §3.2) keyed on (satId, cellId) — same authority
+      // as the serving cones + UE mosaic, so the whole field is one colour scheme
+      // (the freq-reuse palette is retired from the live render).
+      color: colorForServingBeam(beam.satId, beam.cellId).markerColor,
       serving: false,
       apex,
       baseCenter,
@@ -327,7 +338,11 @@ function buildPairConeItem(input: {
     cellId: input.cellId,
     satId: input.satId,
     frequencyIndex,
-    color: resolveSinrLiveConeColor(frequencyIndex),
+    // Serving-identity colour (SDD §3.2): pair / pulse / pending cones read as the
+    // SAME cone flaring/highlighted, not a different hue — they match the ambient
+    // serving cone + the UE mosaic for (satId, cellId). Role overrides (cinema
+    // candidate cyan, hero yellow) are still layered on top at the mount.
+    color: colorForServingBeam(input.satId, input.cellId).markerColor,
     serving: true,
     apex,
     baseCenter,
@@ -372,7 +387,7 @@ export function resolveSinrLiveCellHandoverPairConeItems(input: {
  * intra beam-switch, not a satellite candidate). A pure DISPLAY read of the pending
  * target the runtime already computed (Rule#6) — it invents no handover. The caller
  * paints it bright cyan-blue so "the beam you're about to switch to" stands out;
- * every other satellite's beam stays the faint frequency-reuse context.
+ * every other satellite's beam stays the faint serving-identity context.
  */
 export function resolveSinrLivePendingCandidateConeItems(input: {
   readonly pendingTargetSatId: string | null;
@@ -426,10 +441,11 @@ export interface SinrLiveHandoverPulseConeInput {
   readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
   readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
   /**
-   * The profile's frequency-reuse factor (`profile.beams.frequencyReuse`). The pulse
-   * cone must take the cell's REAL frequency colour `cellFrequencyIndex(cellId, reuse)`
-   * — the SAME index the ambient cone uses — so a pulse reads as that cone flaring,
-   * not a different hue (the raw `cellId` would mis-map under the 6-colour palette).
+   * The profile's frequency-reuse factor (`profile.beams.frequencyReuse`). Feeds the
+   * pulse cone's telemetry `frequencyIndex` field (`cellFrequencyIndex(cellId, reuse)`,
+   * the same index the ambient cone records). The RENDER colour is the serving-identity
+   * colour (keyed on satId+cellId), so a pulse already reads as the ambient cone
+   * flaring; this factor no longer drives the hue.
    */
   readonly frequencyReuse: number;
   readonly peakOpacity?: number;
@@ -443,9 +459,9 @@ export interface SinrLiveHandoverPulseConeInput {
  * is a pure DISPLAY read-out of `recentHandoverEvents` (the same transitions the
  * model already classified + counted, Rule#6) — it fabricates no handover. Reuses
  * the same oblique-cone geometry the ambient + cinema-pair cones use
- * (`buildPairConeItem`), carrying a per-item age-faded `opacity`. Colour stays the
- * geographic frequency-reuse palette (via `buildPairConeItem`'s `cellId` fallback)
- * so a pulse reads as the SAME cone flaring, just brighter. An event past the
+ * (`buildPairConeItem`), carrying a per-item age-faded `opacity`. Colour is the
+ * serving-identity colour (via `buildPairConeItem` → `colorForServingBeam`) so a
+ * pulse reads as the SAME cone flaring, just brighter. An event past the
  * retention horizon, with a non-rendered sat, or an unplaced cell draws nothing.
  */
 export function resolveSinrLiveHandoverPulseConeItems(
@@ -464,9 +480,10 @@ export function resolveSinrLiveHandoverPulseConeItems(
     // array index (which would remount cones on reorder).
     const eventKey = `${event.ueId}-${event.sourceTimeSec}`;
     // The NEW (acquired) cell always exists on a real HO; the OLD (handed-off) cell
-    // exists for inter/intra (a cold attach is never emitted as a handover). Colour
-    // each by the cell's REAL frequency-reuse index (matching the ambient cone), so a
-    // pulse reads as that cone flaring rather than a different hue.
+    // exists for inter/intra (a cold attach is never emitted as a handover). Each
+    // carries the cell's frequency-reuse index for telemetry; the render colour is
+    // the serving-identity colour (via buildPairConeItem), so a pulse reads as the
+    // ambient cone for that (satId, cellId) flaring rather than a different hue.
     const to = buildPairConeItem({
       satId: event.toSatId,
       cellId: event.toCellId,
@@ -530,12 +547,12 @@ export interface SinrLiveCellBeamConesRenderProps {
   readonly primaryServingCellId?: number | null;
   /**
    * Recolour ONLY the hero (primary serving) cone to this colour (yellow). Other
-   * cones keep their frequency-reuse colour. Set on the ambient mount.
+   * cones keep their serving-identity colour. Set on the ambient mount.
    */
   readonly heroColor?: string;
   /**
    * Recolour EVERY cone in this mount to this colour. Set on the single-cone
-   * handover-candidate mount (cyan-blue). Omitted elsewhere → frequency-reuse.
+   * handover-candidate mount (cyan-blue). Omitted elsewhere → serving-identity.
    */
   readonly coneColorOverride?: string;
   readonly telemetryCountDatasetKey?: string;
