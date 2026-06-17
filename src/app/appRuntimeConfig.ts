@@ -16,6 +16,21 @@ import {
 export const APP_EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 export const LIVE_SIM_TIMELINE_DURATION_SEC = 7200;
 
+/**
+ * 運鏡 PARK (user 2026-06-17). The LIVE "cinematic camera" — the Director-focus
+ * zoom-in + orbit + restore the Intra/Inter-HO buttons trigger, plus the sinr-live
+ * Spotlight toggle — is TEMPORARILY disabled so the Intra-HO handover EFFECT
+ * (candidate-beam highlight + timeline seek + slow-mo) plays IN PLACE without the
+ * camera flying around. REVERSIBLE: flip to `true` to restore both.
+ *
+ * Scope: the LIVE scene (sinr-live + the MODQN live page, which reuses the SINR
+ * render). The artifact-replay cinematic camera is a separate path and unaffected.
+ * Only the camera POSITION mutation + the Spotlight UI toggle are gated — the
+ * director FSM (`cinematicMode='director'`), the candidate highlight, the seek, and
+ * the slow-mo are intentionally LEFT INTACT.
+ */
+export const LIVE_CINEMATIC_CAMERA_ENABLED = false;
+
 const MODQN_PAPER_BASELINE_UE_COUNT = 100;
 // S2: sinr-live default UE population. `sceneTopology.ueCount` is null by
 // default, but the TopologyTab already SHOWS 100 as the effective default

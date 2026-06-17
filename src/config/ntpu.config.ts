@@ -86,7 +86,7 @@ export const NTPU_CONFIG: NTPUSceneConfig = {
   },
   uav: NTPU_UAV_CONFIG,
   camera: {
-    initialPosition: [0, 400, 500],
+    initialPosition: [0, 500, 650],
     fov: 60,
     near: 0.1,
     far: 10000,

@@ -1,6 +1,7 @@
 import { type ReactElement } from 'react';
 import { UI_CLASSES } from '../constants/uiTokens';
 import type { CinematicMode } from '../scene/types';
+import { LIVE_CINEMATIC_CAMERA_ENABLED } from '../app/appRuntimeConfig';
 
 // The compact SINR-live quick-control row at the top of the left rail: four
 // always-visible checkboxes for the cheap display toggles, laid out horizontally
@@ -59,16 +60,22 @@ export function SinrLiveQuickControls({
         Other beams
       </label>
 
-      <label className="leo-control-bar__toggle" title="Highlight serving beam path with cinematic spotlight">
-        <input
-          className={UI_CLASSES.checkbox}
-          type="checkbox"
-          aria-label="Spotlight mode: highlight serving beam path"
-          checked={cinematicMode === 'spotlight'}
-          onChange={event => onCinematicModeChange(event.target.checked ? 'spotlight' : 'off')}
-        />
-        Spotlight
-      </label>
+      {/* 運鏡 PARK (LIVE_CINEMATIC_CAMERA_ENABLED): Spotlight is part of the live
+          cinematic-camera bundle the user parked. Hidden (not deleted) — the
+          cinematicMode / onCinematicModeChange props stay wired so flipping the flag
+          restores it. */}
+      {LIVE_CINEMATIC_CAMERA_ENABLED && (
+        <label className="leo-control-bar__toggle" title="Highlight serving beam path with cinematic spotlight">
+          <input
+            className={UI_CLASSES.checkbox}
+            type="checkbox"
+            aria-label="Spotlight mode: highlight serving beam path"
+            checked={cinematicMode === 'spotlight'}
+            onChange={event => onCinematicModeChange(event.target.checked ? 'spotlight' : 'off')}
+          />
+          Spotlight
+        </label>
+      )}
 
       <label className="leo-control-bar__toggle" title="Auto-slow simulation rate during handover events">
         <input

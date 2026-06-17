@@ -119,6 +119,7 @@ import {
   resolveModqnVisualLayers,
 } from './modqnVisualLayers';
 import { resolveDirectorFocusPose } from './directorFocusPose';
+import { LIVE_CINEMATIC_CAMERA_ENABLED } from '../app/appRuntimeConfig';
 
 function lookupSatWorldPos(
   satellites: NormalizedSceneFrame['satellites'],
@@ -713,7 +714,7 @@ function SceneContent({
       target: [0, 0, 0] as [number, number, number],
     },
     oblique: {
-      position: [0, 600 * alpha, 750 * alpha] as [number, number, number],
+      position: [0, 800 * alpha, 1000 * alpha] as [number, number, number],
       target: [0, 0, 0] as [number, number, number],
     },
     chase: {
@@ -1305,6 +1306,16 @@ function SceneContent({
     // Rule#8 / §5.4: the Director is inert on lanes the render plan did not
     // mark as director, so stale commands cannot fire later on replay lanes.
     if (effectiveCinematicMode !== 'director') {
+      lastDirectorCommandAtRef.current = command.issuedAtMs;
+      return;
+    }
+
+    // 運鏡 PARK (LIVE_CINEMATIC_CAMERA_ENABLED): suppress the live Director camera
+    // MOTION (acquire/restore tween + orbit) while leaving the director FSM, the
+    // candidate highlight, the seek, and the slow-mo intact — so the Intra/Inter-HO
+    // buttons show the handover effect IN PLACE. Consume the command (advance the
+    // de-dup ref) so the one-shot stays consistent; flip the flag to restore the move.
+    if (!LIVE_CINEMATIC_CAMERA_ENABLED) {
       lastDirectorCommandAtRef.current = command.issuedAtMs;
       return;
     }
