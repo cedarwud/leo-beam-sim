@@ -1951,7 +1951,7 @@ assertContains(
 // S5-2: the serving-cone render pins (serving-only / freq-reuse colour / blending /
 // focus-scoping) RETIRED with QUAR-S5-BEAMRENDER. Their behaviour now lives in
 // BEHAVIOUR gates: validate:phase-c:sinr-live-cells:render asserts serving-only
-// cones + frequency-reuse colour + the style-token VALUES (ambient 0.08 < pair 0.30,
+// cones + serving-identity colour + the style-token VALUES (ambient 0.14 < pair 0.30,
 // 32 segments, NormalBlending) from constants/sinrLiveConeStyle.ts; the focus cap is
 // retired (focusSatIds null = draw EVERY serving sat, D-STYLE A); and the INTENT —
 // every connected sat shows a beam — is ENFORCED as a must-hold by the S0 invariant

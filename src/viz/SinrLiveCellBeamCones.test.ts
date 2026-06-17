@@ -337,8 +337,8 @@ check('S5-2 cone base == the TRUTH cell centre from buildSinrLiveCellLayout (no 
   approx(items[0].baseCenter.y, 0, 1e-9, 'cone base on the ground plane');
 });
 
-check('S5-2 style tokens (hybrid): ambient 0.08 < pair 0.30, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
-  assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.08, 'ambient cone opacity is the screenshot-locked 0.08');
+check('S5-2 style tokens (hybrid): ambient 0.14 < pair 0.30, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
+  assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.14, 'ambient cone opacity is the screenshot-locked 0.14 (A2 legibility lift from 0.08)');
   assertEqual(SINR_LIVE_CONE_PAIR_OPACITY, 0.3, 'bright focused-handover-pair cone opacity is 0.30');
   assert(SINR_LIVE_CONE_PAIR_OPACITY > SINR_LIVE_CONE_AMBIENT_OPACITY, 'HYBRID: the focused pair is brighter than the ambient field');
   assertEqual(SINR_LIVE_CONE_SEGMENTS, 32, 'oblique cone ring segment count');
@@ -353,7 +353,7 @@ check('Tier-2 SinrLiveConeStyle resolver: layer→opacity + colour map to the lo
   // resolveSinrLiveConeLayerOpacity is the single CHOICE point for each cone
   // layer's opacity (was: ambient default in the renderer, pair at the MainScene
   // mount, pulse a bare const). It must return the screenshot-locked values verbatim.
-  assertEqual(resolveSinrLiveConeLayerOpacity('ambient'), SINR_LIVE_CONE_AMBIENT_OPACITY, 'resolver ambient == 0.08 token');
+  assertEqual(resolveSinrLiveConeLayerOpacity('ambient'), SINR_LIVE_CONE_AMBIENT_OPACITY, 'resolver ambient == 0.14 token');
   assertEqual(resolveSinrLiveConeLayerOpacity('pair'), SINR_LIVE_CONE_PAIR_OPACITY, 'resolver pair == 0.30 token');
   assertEqual(resolveSinrLiveConeLayerOpacity('pulse'), SINR_LIVE_CONE_PULSE_PEAK_OPACITY, 'resolver pulse == 0.32 peak token');
   assertEqual(resolveSinrLiveConeLayerOpacity('nonServing'), SINR_LIVE_CONE_NONSERVING_OPACITY, 'resolver nonServing == 0.04 dim token');

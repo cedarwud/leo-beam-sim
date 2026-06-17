@@ -11,29 +11,36 @@
  * The HYBRID look (D-STYLE A → hybrid, user-locked 2026-06-11; screenshot-tuned
  * on :3000):
  *  - AMBIENT: EVERY serving sat's cone, FAINT, so every serving sat is beamed
- *    (the connected-sat-has-beam must-hold) without washing the map. 0.22 washed
- *    out (the look the user rejected), 0.10 read as a rainbow streak, 0.08 reads
- *    clean (map + hex footprints + UE dots show through). NormalBlending
- *    alpha-composites each cone to a bounded translucency — overlaps darken but
- *    never white out — so all connected sats can show a beam at one opacity.
+ *    (the connected-sat-has-beam must-hold) without washing the map. RE-TUNED to
+ *    0.14 (A2, consolidation SDD §8): the original 0.08 was "present but invisible"
+ *    (the "connected sat, no [visible] beam" complaint), and three de-tangling
+ *    features added since let a higher level read clean — the apex→base alpha fade
+ *    ({@link SINR_LIVE_CONE_BASE_ALPHA_FACTOR}), the near-horizon shallow-cone dim,
+ *    and the pulled-back initial camera. 0.18+ washes in dense low-overlap slots
+ *    (the look the user rejected, screenshot-verified), so 0.14 is the legible-
+ *    without-washing setting. NormalBlending alpha-composites each cone to a
+ *    bounded translucency — overlaps darken but never white out — so all connected
+ *    sats can show a beam at one opacity.
  *  - PAIR: the focused cinema handover pair (old/new cell), BRIGHT, drawn on top
  *    of the ambient layer so the handover story stands out against the faint
  *    field.
  *
- * Cone COLOUR is the geographic frequency-reuse pattern (`frequencyReuseColor`,
- * `beamRoleTokens`) — adjacent cells use different frequencies — set per cell in
- * the pure resolver (it is per-cell DATA, not a mesh style knob), so it is not
- * re-homed here.
+ * Cone COLOUR is the SERVING-IDENTITY colour (`colorForServingBeam(satId, cellId)`,
+ * `constants/servingColour`) — the same authority the UE mosaic uses, so a cone is
+ * the colour of the UE dots it serves (A1, SDD §3.2). It is per-cell DATA set in
+ * the pure resolver, not a mesh style knob, so it is not re-homed here. The retired
+ * frequency-reuse mapping (`resolveSinrLiveConeColor`) remains below for a future
+ * frequency-plan colour mode.
  */
 import * as THREE from 'three';
 import { frequencyReuseColor } from './beamRoleTokens';
 
-/** Faint ambient cone opacity — every serving sat's beam (screenshot-locked 0.08). */
-export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.08;
+/** Faint ambient cone opacity — every serving sat's beam (screenshot-locked 0.14). */
+export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.14;
 
 /**
  * Bright opacity for the PRIMARY serving satellite's beams (the sat serving the
- * focus/centre UE). The all-serving ambient field reads faint (0.08) so the
+ * focus/centre UE). The all-serving ambient field reads faint (0.14) so the
  * multibeam context does not blow out, but the one satellite actually serving the
  * protagonist should read SATURATED + BRIGHT like the original steered serving cone
  * (BEAM_ROLE_TOKENS.serving was 0.58). It is exempt from the near-horizon dim so the
@@ -78,7 +85,7 @@ export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32;
 /**
  * Dim opacity for the OPT-IN non-serving cone layer (Tier-2 show/dim switch,
  * `SceneDisplayConfig.showNonServingCones`, default OFF). Dimmer than the ambient
- * serving field ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} = 0.08) so co-channel /
+ * serving field ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} = 0.14) so co-channel /
  * non-serving illuminated beams read as faint background context behind the
  * serving cones, never competing with them. Display-only (Rule#6): showing these
  * cones reads non-serving `illuminatedBeams` and changes no serving/SINR truth.
