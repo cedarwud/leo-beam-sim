@@ -20,6 +20,7 @@
  * serving cones, `showSinrLiveCellBeams`), so this component imports no lane state.
  */
 import { useEffect, useLayoutEffect, useRef, type JSX } from 'react';
+import { Line } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
@@ -104,7 +105,7 @@ export interface SinrLiveCellGridProps {
 }
 
 export function SinrLiveCellGrid(props: SinrLiveCellGridProps): JSX.Element | null {
-  const { placements, opacity = 0.20, color = '#64748b', widthScale = 1.0 } = props;
+  const { placements, opacity = 0.30, color = '#6b7280', widthScale = 1.0 } = props;
   const items = Array.from(placements.values());
   if (items.length === 0) return null;
 
@@ -113,25 +114,27 @@ export function SinrLiveCellGrid(props: SinrLiveCellGridProps): JSX.Element | nu
       {items.map(cell => {
         const radius = cell.radiusWorld * widthScale;
         if (!(radius > 0)) return null;
+
+        // Create 6 points + 1 closing point to draw a clean closed hexagon
+        const points: [number, number, number][] = [];
+        for (let i = 0; i <= 6; i++) {
+          const angle = (i / 6) * Math.PI * 2 + Math.PI / 6;
+          points.push([Math.cos(angle) * radius, 0, Math.sin(angle) * radius]);
+        }
+
         return (
-          <mesh
+          <Line
             key={cell.cellId}
             name={`sinr-live-cell-grid-hexagon-${cell.cellId}`}
             position={[cell.worldX, SINR_LIVE_FOOTPRINT_RING_Y_LIFT - 0.05, cell.worldZ]}
-            rotation={[-Math.PI / 2, 0, Math.PI / 6]}
-            renderOrder={10} // Render slightly below active serving rings (11)
-            frustumCulled={false}
-          >
-            <ringGeometry args={[radius * SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR, radius, 6]} />
-            <meshBasicMaterial
-              color={color}
-              transparent
-              opacity={opacity}
-              side={THREE.DoubleSide}
-              depthWrite={false}
-              toneMapped={false}
-            />
-          </mesh>
+            points={points}
+            color={color}
+            lineWidth={1.2}
+            transparent
+            opacity={opacity}
+            depthWrite={false}
+            renderOrder={10}
+          />
         );
       })}
     </group>
