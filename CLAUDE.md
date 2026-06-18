@@ -62,18 +62,24 @@ When a live-sim feature here needs academic rigor (multi-beam SINR, Doppler, fad
 One viewport frame has one authoritative scene lane. Shared primitives are
 allowed, but shared viewport proof ownership is not. Do not mount SINR live,
 MODQN live-cell preview, MODQN replay proof, and artifact replay layers from
-`appMode` alone. Use [docs/frontend-render-governance.md](./docs/frontend-render-governance.md)
-and [docs/frontend-mode-lane-separation-sdd.md](./docs/frontend-mode-lane-separation-sdd.md)
-before changing `scene/`, `viz/`, `ui/`, or runtime rendering boundaries, and
-update `validate:frontend:scene-lane-governance` when a lane rule changes.
+`appMode` alone. **Before changing `scene/`, `viz/`, `ui/`, `app/`, or any runtime
+rendering boundary, read and follow [docs/frontend-change-contract.md](./docs/frontend-change-contract.md)**
+— the ENFORCED protocol (7 rules + the SACRED invariants + the gate map + a
+dispatch-prompt template). Background: [docs/frontend-render-governance.md](./docs/frontend-render-governance.md)
+and [docs/frontend-mode-lane-separation-sdd.md](./docs/frontend-mode-lane-separation-sdd.md);
+update `validate:frontend:scene-lane-governance` when a lane rule changes. When
+DISPATCHING an agent to do frontend work, paste the contract's dispatch-prompt
+template, isolate the agent in a git worktree, and review its diff before accepting.
 
 **Enforcement (layered — and honest about its limits).** Prose is advisory; the
 executable layer is what catches an agent (esp. memory-less Codex) that did not
 read or recall these rules. Three gates, fast→thorough:
 - `.githooks/pre-commit` runs `npm run validate:governance` (lint +
   `scene-lane-governance` + `s0:connected-sat-has-beam` must-hold +
-  `s0:geometry-trace` truth-zero-diff golden, ~15s) and BLOCKS a breaking commit.
-  Kept fast on purpose so it is not bypass-bait.
+  `s0:geometry-trace` truth-zero-diff golden + `beam:colour-match` VISUAL-truth
+  invariant, ~16s) and BLOCKS a breaking commit. Kept fast on purpose so it is not
+  bypass-bait. (`colour-match` was folded in 2026-06-18 to close the loop-3
+  gate↔visual gap before dispatching frontend agents.)
 - `npm run validate:governance:full` (~165s, MANUAL) adds the S1–S5 deterministic
   invariant gates — the CURATED render-invariant boundary (NOT every static
   validator; ~16 of ~144). Too slow to auto-hook (would breed `--no-verify`); run
@@ -115,6 +121,7 @@ changes, update the gate AND these aggregates together (Rule#9 atomic).
 | HOBS + TR 38.811 SINR baseline | [docs/hobs-tr38811-sinr-mini-sdd.md](./docs/hobs-tr38811-sinr-mini-sdd.md) |
 | SINR runtime parameter contract | [docs/sinr-runtime-parameter-contract.md](./docs/sinr-runtime-parameter-contract.md) |
 | Frontend UX / visual roadmap | [docs/frontend-ux-redesign-sdd.md](./docs/frontend-ux-redesign-sdd.md) |
+| **Frontend change contract (read before ANY frontend edit)** | [docs/frontend-change-contract.md](./docs/frontend-change-contract.md) |
 | Frontend render governance | [docs/frontend-render-governance.md](./docs/frontend-render-governance.md) |
 | Frontend mode/lane separation SDD | [docs/frontend-mode-lane-separation-sdd.md](./docs/frontend-mode-lane-separation-sdd.md) |
 | Scene lane render boundary ADR | [docs/decisions/ADR-001-scene-lane-render-boundary.md](./docs/decisions/ADR-001-scene-lane-render-boundary.md) |
