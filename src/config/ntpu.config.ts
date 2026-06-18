@@ -43,8 +43,6 @@ export interface NTPUSceneConfig {
    * world-space sizes are derived from physical km through kmPerWorldUnit.
    */
   visualSatelliteAltitude: number;
-  /** Visual-only legacy UI hint; not a physics source. */
-  visualBeamDiameter: number;
 }
 
 export interface InscribedPaperUserArea {
@@ -93,7 +91,6 @@ export const NTPU_CONFIG: NTPUSceneConfig = {
   },
   visualAlpha: 0.64,
   visualSatelliteAltitude: 360,
-  visualBeamDiameter: 450,
 };
 
 export const NTPU_LARGE_CONFIG: NTPUSceneConfig = {
@@ -117,5 +114,4 @@ export const NTPU_LARGE_CONFIG: NTPUSceneConfig = {
   },
   visualAlpha: 1.0,
   visualSatelliteAltitude: 600,
-  visualBeamDiameter: 700,
 };
