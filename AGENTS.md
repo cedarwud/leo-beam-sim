@@ -107,9 +107,11 @@ working tree, so a single commit can both regress AND defang the gate; (3)
 browser/render coverage lives only in the MANUAL `validate:ready`, not the auto
 hook. The threat model it binds is a forgetful / memory-less agent re-breaking a
 solved lock — NOT an agent deliberately subverting governance. The only
-UNBYPASSABLE layer is server-side CI on a PR; the repo has no remote/PR flow yet,
-so when it gets one, wire `validate:governance:full` + `validate:static:all` +
-`validate:ready` into required CI. Do NOT normalize `git commit --no-verify`. When a gate's scope
+UNBYPASSABLE layer is server-side CI on a PR. The GitHub remote exists and
+`.github/workflows/governance.yml` (added 2026-06-18) runs `validate:governance:full`
++ `validate:static:all` (+ the browser visual gates, director-cinematic excluded)
+on push/PR — but it only BITES once you mark its `static-gates` job a REQUIRED
+status check in branch protection (Settings → Branches). Do NOT normalize `git commit --no-verify`. When a gate's scope
 changes, update the gate AND these aggregates together (Rule#9 atomic).
 
 ## 6. Local Docs

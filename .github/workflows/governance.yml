@@ -1,0 +1,76 @@
+name: governance
+
+# Server-side enforcement of the frontend-change contract + render governance.
+# This is the ONLY UNBYPASSABLE layer (CLAUDE.md "LIMITS"): the local pre-commit
+# hook is COOPERATIVE — `git commit --no-verify` bypasses it and a single commit
+# can both regress AND defang it (the hook lives in the working tree). A REQUIRED
+# status check here gates the MERGE regardless of local state.
+#
+# TO MAKE IT BITE (one-time, in the GitHub UI):
+#   Settings → Branches → Branch protection rules → add a rule for `main` →
+#   "Require status checks to pass before merging" → select `static-gates`
+#   (and `visual-gates` once you've confirmed it runs green in your runner).
+#
+# What these enforce + why: docs/frontend-change-contract.md.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  static-gates:
+    # The reliable wall: deterministic, no browser. governance:full = lint +
+    # scene-lane-governance + s0 model invariants + colour-match VISUAL-truth +
+    # S1-S5 + goldens. static:all = EVERY static validator (catches a refactor
+    # that orphans/breaks a source-pinned one). Both verified green at 02c076a.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run validate:governance:full
+      - run: npm run validate:static:all
+
+  visual-gates:
+    # The END-TO-END VISUAL gates (the loop-3 fix: what the USER sees, not just
+    # model invariants). Needs a headless browser + a running vite dev server.
+    # EXCLUDES validate:phase-c:director-cinematic:live (a KNOWN pre-existing
+    # FIRE-OVERSHOOT red — when that is fixed, replace the explicit list with the
+    # single `npm run validate:ready`).
+    #
+    # ⚠️ Verify this runs green in YOUR runner before marking it a REQUIRED check:
+    # headless WebGL (100-UE scene) can be slow, and vite.config.ts has a local
+    # MODQN-producer path that degrades the modqn routes when absent (the
+    # sinr-live gates below do not depend on it).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Start vite + run the visual invariant gates
+        env:
+          APP_URL: http://localhost:3000
+        run: |
+          npm run dev &
+          VITE_PID=$!
+          for i in $(seq 1 60); do curl -sf http://localhost:3000 >/dev/null 2>&1 && break; sleep 2; done
+          set -e
+          npm run validate:phase-h:sinr-live-render:browser
+          npm run validate:phase-3:contention-render:browser
+          npm run validate:phase-3:overlay-render:browser
+          npm run validate:phase-c:handover-cinema:browser
+          npm run validate:phase-c:handover-pulse:render:browser
+          npm run validate:phase-c:handover-ticker:render:browser
+          npm run validate:phase-c:sinr-serving-mosaic:browser
+          npm run validate:phase-c:sinr-live-cells:render:browser
+          kill $VITE_PID 2>/dev/null || true
