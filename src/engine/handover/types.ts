@@ -1,5 +1,3 @@
-import type { LinkSample } from '../signal/types';
-
 export interface ServingState {
   satId: string | null;
   beamId: number | null;
@@ -37,12 +35,4 @@ export interface IntraSwitchPreview {
   triggerTimeSec: number;
   triggerTimeTargetSec: number;
   progress: number;
-}
-
-export interface HandoverPolicy {
-  evaluate(
-    current: ServingState,
-    candidates: LinkSample[],
-    dt: number,
-  ): HandoverDecision;
 }
