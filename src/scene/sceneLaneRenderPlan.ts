@@ -184,12 +184,15 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // director-gated). It is a distinct SINR-serving layer, never the MODQN cell
   // overlay — so it is inert on every MODQN/artifact lane.
   const showSinrServingMosaic = showSinrBeamRender;
-  // S-cells-4 RENDER RESET (user, 2026-06-08): the earth-fixed cell-truth CONES are
-  // PARKED — they washed the viewport with tall spread cones and used the wrong
-  // colour. The sinr-live lane renders the ORIGINAL steered `SatelliteBeams`
-  // (satellite-tint colour, few converging beams) again. The cell-truth MODEL stays
-  // computed (dormant, for a future cinema / off-axis render); only the CONE render
-  // is off. See `.agent-memory/project_sinr_render_reset_2026-06-08.md`.
+  // SINR-live earth-fixed cell-truth CONES = the lane's PRIMARY beam render (see the
+  // `showSinrLiveCellBeams` field doc above). Mounts on BOTH live lanes via
+  // `showSinrBeamRender`. HISTORY (de-staled 2026-06-18): the 2026-06-08
+  // "S-cells-4 render reset" briefly PARKED these — that was REVERTED (un-parked
+  // 2026-06-11) and the consolidation built ON them (serving-identity colour,
+  // legible footprint rings, lattice-phase off-centre). The cones DO render; the
+  // legacy steered `SatelliteBeams` mount is RETIRED (dead twin, Tier-2), NOT what
+  // renders here. The old reset note lives in
+  // `.agent-memory/project_sinr_render_reset_2026-06-08.md` (historical only).
   const showSinrLiveCellBeams = showSinrBeamRender;
   // G2c live-handover pulse: sinr-live ONLY, ALWAYS-ON ambient (NOT director-gated).
   // Same lane gate as the faint ambient cones — the pulse is the bright, age-faded
