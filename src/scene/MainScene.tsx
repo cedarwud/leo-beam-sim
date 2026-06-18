@@ -279,7 +279,6 @@ function applyDirectorFocusCommand(ctx: {
   if (command.phase === 'acquiring') {
     const ueWorldPos = sceneFrame.ues[0]?.worldPos;
     if (!ueWorldPos) {
-      lastCommandAtRef.current = command.issuedAtMs;
       return;
     }
     lastCommandAtRef.current = command.issuedAtMs;

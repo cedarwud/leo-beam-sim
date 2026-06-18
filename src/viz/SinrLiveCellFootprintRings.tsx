@@ -75,12 +75,12 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
             key={item.renderKey ?? `${item.cellId}-${item.satId}`}
             name={`sinr-live-cell-footprint-ring-${item.cellId}`}
             position={[item.baseCenter.x, item.baseCenter.y + SINR_LIVE_FOOTPRINT_RING_Y_LIFT, item.baseCenter.z]}
-            rotation={[-Math.PI / 2, 0, 0]}
+            rotation={[-Math.PI / 2, 0, Math.PI / 6]}
             renderOrder={11}
             frustumCulled={false}
             userData={{ cellId: item.cellId, satId: item.satId, color: item.color }}
           >
-            <ringGeometry args={[radius * SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR, radius, SINR_LIVE_FOOTPRINT_RING_SEGMENTS]} />
+            <ringGeometry args={[radius * SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR, radius, 6]} />
             <meshBasicMaterial
               color={item.color}
               transparent

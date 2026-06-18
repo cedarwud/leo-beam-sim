@@ -31,6 +31,7 @@ import { chromium, type Browser, type Page } from '@playwright/test';
 import { detectAppUrl } from './_vc2-browser-fixture.ts';
 import { CINEMATIC_LEAD_IN_SEC } from '../src/scene/cinematicReplayWindow.ts';
 import { CINEMATIC_SPEED } from '../src/constants/cinematicSpeed.ts';
+import { LIVE_CINEMATIC_CAMERA_ENABLED } from '../src/app/appRuntimeConfig.ts';
 
 const SHELL = '.leo-app-shell';
 const CANVAS = 'canvas[data-camera-position]';
@@ -46,9 +47,10 @@ async function attr(page: Page, selector: string, name: string): Promise<string 
 async function main(): Promise<void> {
   const appUrl = process.env.APP_URL ?? process.argv[2] ?? (await detectAppUrl());
   const browser: Browser = await chromium.launch();
+  const consoleErrors: string[] = [];
+  let page: Page | null = null;
   try {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    const consoleErrors: string[] = [];
+    page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     page.on('console', msg => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
     });
@@ -147,17 +149,26 @@ async function main(): Promise<void> {
     const speedDuring = Number(await attr(page, SHELL, 'data-effective-speed'));
     assert.ok(speedDuring <= CINEMATIC_SPEED, `speed dropped to cinematic tier (${speedDuring})`);
 
-    // 4) Camera world position actually changes (the sat-pair focus tween). Headless
-    //    rAF is throttled so poll with a generous window.
-    await page.waitForFunction(
-      (before: string | null) =>
-        document.querySelector('canvas[data-camera-position]')?.getAttribute('data-camera-position') !== before,
-      cameraBefore,
-      { timeout: 15000 },
-    );
-    const cameraDuring = await attr(page, CANVAS, 'data-camera-position');
-    assert.notEqual(cameraDuring, cameraBefore, 'camera pose actually moved on focus');
-    console.log(`[director-cinematic-live] during: phase=${phaseDuring} speed=${speedDuring} seek=${seekTarget}s camera=${cameraDuring} fadeObserved=${fadeObserved}`);
+    if (LIVE_CINEMATIC_CAMERA_ENABLED) {
+      // 4) Camera world position actually changes (the sat-pair focus tween). Headless
+      //    rAF is throttled so poll with a generous window.
+      await page.waitForFunction(
+        (before: string | null) =>
+          document.querySelector('canvas[data-camera-position]')?.getAttribute('data-camera-position') !== before,
+        cameraBefore,
+        { timeout: 15000 },
+      );
+      const cameraDuring = await attr(page!, CANVAS, 'data-camera-position');
+      assert.notEqual(cameraDuring, cameraBefore, 'camera pose actually moved on focus');
+      console.log(`[director-cinematic-live] during: phase=${phaseDuring} speed=${speedDuring} seek=${seekTarget}s camera=${cameraDuring} fadeObserved=${fadeObserved}`);
+    } else {
+      // When cinematic camera is parked, the position must stay exactly the same.
+      // We wait a brief moment to ensure no animation occurred, then assert equality.
+      await page!.waitForTimeout(1000);
+      const cameraDuring = await attr(page!, CANVAS, 'data-camera-position');
+      assert.equal(cameraDuring, cameraBefore, 'camera pose stayed parked (LIVE_CINEMATIC_CAMERA_ENABLED is false)');
+      console.log(`[director-cinematic-live] during (parked): phase=${phaseDuring} speed=${speedDuring} seek=${seekTarget}s camera=${cameraDuring} (verified parked)`);
+    }
 
     await fadeWatch;
     if (!fadeObserved) {
@@ -192,12 +203,25 @@ async function main(): Promise<void> {
     assert.deepEqual(realErrors, [], `no real console errors: ${JSON.stringify(realErrors)}`);
 
     console.log('[director-cinematic-live] PASS — live timeline seeked to a real HO event, camera moved to the sat-pair, speed dropped to 0.25x, FSM restored on exit (DATA SOURCE = live Walker forecast)');
+  } catch (err) {
+    console.error('[DEBUG] Test failed. Console errors:', consoleErrors);
+    try {
+      if (page) {
+        const canvasDataset = await page.$eval('canvas', el => ({ ...(el as HTMLElement).dataset }));
+        const shellDataset = await page.$eval('.leo-app-shell', el => ({ ...(el as HTMLElement).dataset }));
+        console.error('[DEBUG] Canvas dataset:', canvasDataset);
+        console.error('[DEBUG] Shell dataset:', shellDataset);
+      }
+    } catch (evalErr) {
+      console.error('[DEBUG] Failed to evaluate page datasets:', evalErr);
+    }
+    throw err;
   } finally {
     await browser.close();
   }
 }
 
-main().catch(err => {
+main().catch(async err => {
   console.error('[director-cinematic-live] FAILED:', err instanceof Error ? err.message : err);
   process.exit(1);
 });

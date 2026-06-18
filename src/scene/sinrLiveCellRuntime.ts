@@ -71,7 +71,7 @@ export const SINR_LIVE_CELL_COUNT = 37;
  * `showSinrBeamRender` path, BOTH inherit it from this one knob. The MODQN/producer
  * `useCellSchedule` geometry never passes a phase, so it is byte-identical.
  */
-export const SINR_LIVE_CELL_PHASE_OFFSET_RADII = { east: 0.55, north: 0 } as const;
+export const SINR_LIVE_CELL_PHASE_OFFSET_RADII = { east: 0.15, north: 0.30 } as const;
 
 /**
  * Link-budget / cell-layout 3 dB beamwidth for the SINR-live lane (rad ≈ 3.32°).

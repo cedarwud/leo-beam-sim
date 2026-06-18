@@ -211,6 +211,25 @@ function generateAxialCoordinates(count: number): AxialCoordinate[] {
     }
   }
 
+  if (count === 37) {
+    const filtered = coordinates.filter(coord => coord.r !== 3 && coord.r !== -3);
+    const corners: AxialCoordinate[] = [
+      // Northeast (top-right)
+      { q: 3, r: 1 },
+      { q: 2, r: 2 },
+      // Northwest (top-left)
+      { q: -4, r: 1 },
+      { q: -4, r: 2 },
+      // Southeast (bottom-right)
+      { q: 4, r: -1 },
+      { q: 4, r: -2 },
+      // Southwest (bottom-left)
+      { q: -3, r: -1 },
+      { q: -2, r: -2 },
+    ];
+    return [...filtered, ...corners];
+  }
+
   return coordinates;
 }
 
