@@ -38,7 +38,7 @@ import { satelliteTint } from '../constants/beamRoleTokens';
 // from the sinr-live lane (the cell-truth beam cones own the earth-fixed cell story
 // now). Its hex-cover MODEL stays in `../viz/EarthFixedCells` for reuse + the
 // `validate:vc3a:hex-paint` logic gate; only this scene's usage is removed.
-import { SinrLiveCellFootprintRings } from '../viz/SinrLiveCellFootprintRings';
+import { SinrLiveCellFootprintRings, SinrLiveCellGrid } from '../viz/SinrLiveCellFootprintRings';
 import { HandoverLinks } from '../viz/HandoverLinks';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
 import { IntraGroundShockwave } from '../viz/IntraGroundShockwave';
@@ -1694,6 +1694,12 @@ function SceneContent({
       {/* beam-stage ① #3: crisp cell-truth footprint RINGS — one per serving cone, at the
           SAME base centre / radius / serving-identity colour, so each beam reads as a CIRCLE
           with its UEs scattered off-centre inside. Replaces the retired steered AmbientFootprintRings. */}
+      {showSinrLiveCellBeams && (
+        <SinrLiveCellGrid
+          placements={sinrLiveCellPlacementById}
+          widthScale={beamDisplaySpec.coneWidthScale}
+        />
+      )}
       {showSinrLiveCellBeams && (
         <SinrLiveCellFootprintRings
           items={sinrLiveCellBeamConeItems}

@@ -95,3 +95,45 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
     </group>
   );
 }
+
+export interface SinrLiveCellGridProps {
+  readonly placements: ReadonlyMap<number, { cellId: number; worldX: number; worldZ: number; radiusWorld: number }>;
+  readonly opacity?: number;
+  readonly color?: string;
+  readonly widthScale?: number;
+}
+
+export function SinrLiveCellGrid(props: SinrLiveCellGridProps): JSX.Element | null {
+  const { placements, opacity = 0.15, color = '#334155', widthScale = 1.0 } = props;
+  const items = Array.from(placements.values());
+  if (items.length === 0) return null;
+
+  return (
+    <group name="sinr-live-cell-grid">
+      {items.map(cell => {
+        const radius = cell.radiusWorld * widthScale;
+        if (!(radius > 0)) return null;
+        return (
+          <mesh
+            key={cell.cellId}
+            name={`sinr-live-cell-grid-hexagon-${cell.cellId}`}
+            position={[cell.worldX, SINR_LIVE_FOOTPRINT_RING_Y_LIFT - 0.05, cell.worldZ]}
+            rotation={[-Math.PI / 2, 0, Math.PI / 6]}
+            renderOrder={10} // Render slightly below active serving rings (11)
+            frustumCulled={false}
+          >
+            <ringGeometry args={[radius * SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR, radius, 6]} />
+            <meshBasicMaterial
+              color={color}
+              transparent
+              opacity={opacity}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
