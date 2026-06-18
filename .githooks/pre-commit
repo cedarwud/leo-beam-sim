@@ -12,8 +12,11 @@
 #   - scene-lane-governance          — Rule#1-9 (one viewport = one lane, etc.)
 #   - s0:connected-sat-has-beam      — the serving must-hold invariant
 #   - s0:geometry-trace              — truth zero-diff vs the golden (no drift)
+#   - beam:colour-match              — cone colour == its served UE's colour
+#                                      (fast VISUAL-truth invariant, ~0.8s, non-
+#                                      browser; closes the loop-3 gate<->UX gap)
 #
-# A breaking change fails the commit. This is the ~15s foundation set, NOT the
+# A breaking change fails the commit. This is the ~16s foundation set, NOT the
 # full 200+ validator suite (browser/feature gates run separately / in review).
 #
 # Activate once per clone:  npm run setup:hooks   (sets core.hooksPath=.githooks)
