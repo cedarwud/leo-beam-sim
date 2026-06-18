@@ -104,7 +104,7 @@ export interface SinrLiveCellGridProps {
 }
 
 export function SinrLiveCellGrid(props: SinrLiveCellGridProps): JSX.Element | null {
-  const { placements, opacity = 0.15, color = '#334155', widthScale = 1.0 } = props;
+  const { placements, opacity = 0.20, color = '#64748b', widthScale = 1.0 } = props;
   const items = Array.from(placements.values());
   if (items.length === 0) return null;
 
