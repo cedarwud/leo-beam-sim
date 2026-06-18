@@ -36,7 +36,7 @@ import * as THREE from 'three';
 import { frequencyReuseColor } from './beamRoleTokens';
 
 /** Faint ambient cone opacity — every serving sat's beam (screenshot-locked 0.14). */
-export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.14;
+export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.45;
 
 /**
  * Bright opacity for the PRIMARY serving satellite's beams (the sat serving the
@@ -52,7 +52,7 @@ export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.14;
  * (`SinrLiveCellFootprintRings`) is now the dominant "this is a beam circle" cue,
  * with the fill a supporting wash. The hero still reads brightest of the field.
  */
-export const SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY = 0.36;
+export const SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY = 0.8;
 
 /**
  * Cell-truth footprint RING style (beam-stage ① #3 — legible circles).
@@ -109,7 +109,7 @@ export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#facc15';
  * ambient field. Slightly brighter than the static director pair so a live flash
  * reads against it; the age-fade (not a fixed value) is what makes it a pulse.
  */
-export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32;
+export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.8;
 
 /**
  * C2 (Bug H): per-KIND pulse colours so a fired handover reads as intra vs inter at
@@ -123,8 +123,8 @@ export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.32;
  *  - inter (satellite handover): ROSE — the "you changed satellite" event; distinct
  *    from the hero yellow ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}).
  */
-export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#34d399';
-export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#f472b6';
+export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#22d3ee';
+export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#0ea5e9';
 
 /**
  * Dim opacity for the OPT-IN non-serving cone layer (Tier-2 show/dim switch,
@@ -151,7 +151,7 @@ export const SINR_LIVE_CONE_SEGMENTS = 32;
  * outside the geometry-trace snapshot; the apex stays fully opaque so every
  * serving sat still shows a beam — the connected-sat-has-beam must-hold).
  */
-export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 0.16;
+export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 1.0;
 
 /**
  * Alpha-composite blending for the cones: bounded, uniform translucency. Additive
@@ -159,7 +159,7 @@ export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 0.16;
  * all-serving population), so NormalBlending is what lets every serving sat show a
  * beam at one moderate opacity.
  */
-export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.NormalBlending;
+export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.AdditiveBlending;
 
 /**
  * Which sinr-live cone LAYER a style is being resolved for. The lane draws three
