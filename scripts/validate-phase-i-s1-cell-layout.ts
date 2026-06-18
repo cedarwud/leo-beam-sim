@@ -179,13 +179,13 @@ const results: ValidationResult[] = [
     const limitKm = layout.serviceArea.widthKm / 2 + layout.cellRadiusKm;
     assert(maxEastKm <= limitKm, `max |x|=${maxEastKm}, limit=${limitKm}`);
   }),
-  check('all local north/south centers match SDD ring-3 span', () => {
+  check('all local north/south centers match SDD ring-2 span', () => {
     const maxNorthKm = maxAbs(layout.centers.map(cell => cell.localYKm));
-    const expectedRing3NorthKm = layout.cellRadiusKm * 1.5 * 3;
-    assertClose(maxNorthKm, expectedRing3NorthKm, 1e-9, 'max |y| for ring 3');
+    const expectedRing2NorthKm = layout.cellRadiusKm * 1.5 * 2;
+    assertClose(maxNorthKm, expectedRing2NorthKm, 1e-9, 'max |y| for ring 2');
     assert(
       maxNorthKm <= (layout.serviceArea.heightKm / 2) + (1.5 * layout.cellRadiusKm),
-      `max |y|=${maxNorthKm} exceeds ring-3 center envelope`,
+      `max |y|=${maxNorthKm} exceeds ring-2 center envelope`,
     );
   }),
   check('service area dimensions are 200x90 km', () => {
@@ -207,14 +207,19 @@ const results: ValidationResult[] = [
     assert(cells.length === 12, `ring 2 count=${cells.length}`);
     assertIdsInRange(cells, 7, 18, 'ring 2');
   }),
-  check('ring 3 count is 18 and IDs are 19..36', () => {
+  check('ring 3 count is 10 and IDs are 19..28', () => {
     const cells = cellsInRing(3);
-    assert(cells.length === 18, `ring 3 count=${cells.length}`);
-    assertIdsInRange(cells, 19, 36, 'ring 3');
+    assert(cells.length === 10, `ring 3 count=${cells.length}`);
+    assertIdsInRange(cells, 19, 28, 'ring 3');
+  }),
+  check('ring 4 count is 8 and IDs are 29..36', () => {
+    const cells = cellsInRing(4);
+    assert(cells.length === 8, `ring 4 count=${cells.length}`);
+    assertIdsInRange(cells, 29, 36, 'ring 4');
   }),
   check('layout generation is deterministic', assertDeepEqualCenters),
   check('ring-monotone IDs are strictly increasing', () => {
-    for (let ring = 1; ring <= 3; ring += 1) {
+    for (let ring = 1; ring <= 4; ring += 1) {
       const priorMax = Math.max(...cellsInRing(ring - 1).map(cell => cell.cellId));
       const currentMin = Math.min(...cellsInRing(ring).map(cell => cell.cellId));
       assert(currentMin > priorMax, `ring ${ring} min ID ${currentMin} <= prior max ${priorMax}`);

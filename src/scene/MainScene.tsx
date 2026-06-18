@@ -1102,9 +1102,17 @@ function SceneContent({
   // readable instead of blowing out the whole view with every serving sat's fan.
   // Continuity keeps the focus set stable; the breadth of who-is-served stays in
   // the UE mosaic (Rule#6 display filter, serving truth unchanged).
+  // The focus/centre UE's serving (satId, cellId) — the SAME primary oracle the s0
+  // connected-sat invariant + the InfoPanel publisher read. Its one cone renders as
+  // the bright saturated hero beam (resolveSinrLiveConeColor stays, opacity bumped).
+  const primaryServingRecord = sim.sinrLiveCells
+    ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
+    : null;
+
   const sinrLiveCellBeamConeItems = useMemo(
-    () => (showSinrLiveCellBeams
-      ? resolveSinrLiveCellBeamConeItems({
+    () => {
+      if (!showSinrLiveCellBeams) return [];
+      const allItems = resolveSinrLiveCellBeamConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
         // S5-2: the serving-sat-COMPLETE cone-apex map (every projected sat, NOT
@@ -1116,16 +1124,26 @@ function SceneContent({
         // beam (faint, NormalBlending) so every serving sat is beamed. The
         // former top-N focus narrowing is retired; breadth is the render now.
         focusSatIds: null,
-      })
-      : []),
-    [showSinrLiveCellBeams, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById],
+      });
+      if (beamDisplaySpec.showNonServingCones) {
+        return allItems;
+      }
+      // Otherwise, only keep the primary hero serving beam
+      if (!primaryServingRecord) return [];
+      return allItems.filter(
+        item => item.satId === primaryServingRecord.servingSatId && item.cellId === primaryServingRecord.cellId
+      );
+    },
+    [
+      showSinrLiveCellBeams,
+      sim.sinrLiveCells,
+      sim.perUePositions,
+      sinrLiveCellPlacementById,
+      viz.coneApexWorldById,
+      beamDisplaySpec.showNonServingCones,
+      primaryServingRecord,
+    ],
   );
-  // The focus/centre UE's serving (satId, cellId) — the SAME primary oracle the s0
-  // connected-sat invariant + the InfoPanel publisher read. Its one cone renders as
-  // the bright saturated hero beam (resolveSinrLiveConeColor stays, opacity bumped).
-  const primaryServingRecord = sim.sinrLiveCells
-    ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
-    : null;
   const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
     sinrLiveCellBeamConeItems.map(item => item.satId),

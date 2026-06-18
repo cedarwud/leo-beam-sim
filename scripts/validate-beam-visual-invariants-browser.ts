@@ -41,6 +41,11 @@ async function main(): Promise<void> {
     assert.equal(await page.getAttribute(SHELL, 'data-scene-lane'), 'sinr-live', 'lane resolves to sinr-live');
     await page.waitForSelector(CANVAS, { timeout: 20000, state: 'attached' });
 
+    // Toggle the "Other beams" checkbox on to make sure all serving cones render.
+    const checkboxSelector = 'input[data-testid="non-serving-cones-toggle"]';
+    await page.waitForSelector(checkboxSelector, { state: 'visible' });
+    await page.click(checkboxSelector);
+
     // Wait for the rich render to come up before sampling.
     for (let i = 0; i < 40; i += 1) {
       if ((await numAttr(page, 'data-beam-cone-count')) > 0) break;
