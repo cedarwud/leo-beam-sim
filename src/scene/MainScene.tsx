@@ -1464,7 +1464,14 @@ function SceneContent({
         renderedUeCount={sceneFrame.ues.filter(u => u.worldPos !== undefined).length}
         beamLoadContentionUeCount={showModqnServiceAllocation ? beamLoadContentionUeCount : 0}
         visualSatelliteAltitude={String(sceneGeometry.visualSatelliteAltitude ?? '')}
-        beamSatelliteCount={viz.satBeams.size}
+        beamSatelliteCount={
+          showSinrLiveCellBeams
+            // S-cells-3: on the sinr-live lane the cell-truth cones REPLACE
+            // the steered SatelliteBeams, so report the satellite count from
+            // the cones that actually render (keeps the attr honest).
+            ? renderedSinrLiveCellBeamConeSatelliteCount
+            : viz.satBeams.size
+        }
         sceneSource={sceneFrame.sceneSource}
         beamConeCount={
           showSinrLiveCellBeams

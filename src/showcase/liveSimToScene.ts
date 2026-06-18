@@ -53,6 +53,7 @@
 
 import { makeChannelMetricValue } from '../scene/ChannelMetricValue';
 import type {
+  EventRole,
   NormalizedBeam,
   NormalizedLink,
   NormalizedMetrics,
@@ -63,6 +64,7 @@ import type {
 } from '../scene/NormalizedSceneFrame';
 import { isLiveSceneGeometry, type SceneGeometry } from '../scene/SceneGeometry';
 import type { SimFrame } from '../scene/types';
+import { resolvePrimaryCellServingRecord } from '../scene/sinrLiveCellModel';
 import {
   LIVE_CHANNEL_METRIC_KIND,
   deriveLiveSceneFields,
@@ -228,7 +230,7 @@ export function liveSimToScene(
     };
   });
 
-  const metrics: NormalizedMetrics = {
+  let metrics: NormalizedMetrics = {
     channelMetricKind: LIVE_CHANNEL_METRIC_KIND,
     primary: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, sim.serving.sinrDb),
     serving: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, sim.serving.sinrDb),
@@ -238,6 +240,131 @@ export function liveSimToScene(
         ? String(sim.serving.beamId)
         : '',
   };
+
+  // If the cell-truth model is active, align the serving satellite and beam
+  // for the primary UE (and the overall scene metrics) to the cell-truth serving satellite.
+  const primaryUeId = liveUePositions[0]?.id;
+  const primaryServingRecord = sim.sinrLiveCells
+    ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, liveUePositions)
+    : null;
+
+  let handover = derived.handover;
+  let recentHo = derived.recentHo;
+  let pendingTarget = derived.pendingTarget;
+  let transitionProgress = derived.transitionProgress;
+  let eventRoles = derived.eventRoles;
+
+  if (primaryServingRecord) {
+    const servingSatId = primaryServingRecord.servingSatId ?? '';
+    const servingBeamIdStr = primaryServingRecord.beamIdentity ?? '';
+    const servingSinrDb = primaryServingRecord.sinrDb ?? NaN;
+
+    // Find the latest handover event for the primary UE to determine recent HO status
+    const latestHoEvent = sim.sinrLiveCells?.recentHandoverEvents
+      ?.filter(e => e.ueId === primaryUeId)
+      .slice(-1)[0];
+    const ageSec = latestHoEvent ? sim.simTimeSec - latestHoEvent.sourceTimeSec : Infinity;
+    const isRecent = ageSec >= 0 && ageSec < 4; // SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC is 4
+
+    // 1. Override metrics
+    metrics = {
+      channelMetricKind: LIVE_CHANNEL_METRIC_KIND,
+      primary: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, servingSinrDb),
+      serving: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, servingSinrDb),
+      servingSatelliteId: servingSatId,
+      servingBeamId: servingBeamIdStr,
+    };
+
+    // 2. Override primary UE's serving/target details
+    if (ues.length > 0) {
+      ues[0] = {
+        ...ues[0],
+        servingSatelliteId: servingSatId,
+        servingBeamId: servingBeamIdStr,
+        targetSatelliteId: null, // cell-truth model doesn't have prepared target
+        targetBeamId: null,
+        channelMetric: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, servingSinrDb),
+      };
+    }
+
+    // 3. Override handover state
+    handover = {
+      kind: !latestHoEvent || !isRecent
+        ? 'none'
+        : latestHoEvent.kind === 'intra'
+          ? 'intra-satellite-beam-switch'
+          : 'inter-satellite-handover',
+      phase: isRecent ? 'committing' : 'idle',
+      servingSatelliteId: servingSatId,
+      servingBeamId: servingBeamIdStr,
+      targetSatelliteId: null,
+      targetBeamId: null,
+      sourceHandoverOccurred: latestHoEvent !== undefined,
+    };
+
+    // 4. Override recentHo details
+    recentHo = latestHoEvent && isRecent ? {
+      sourceSatId: latestHoEvent.fromSatId ?? '',
+      sourceBeamId: latestHoEvent.fromCellId !== null ? String(latestHoEvent.fromCellId) : '',
+      sourceChannelMetric: undefined,
+      targetSatId: latestHoEvent.toSatId,
+      targetBeamId: String(latestHoEvent.toCellId),
+      ageSec: ageSec,
+    } : undefined;
+
+    // 5. Override pendingTarget (it is none for cell-truth)
+    pendingTarget = undefined;
+
+    // 6. Override transition progress for inter-satellite transitions
+    if (latestHoEvent && latestHoEvent.kind === 'inter' && isRecent) {
+      transitionProgress = {
+        ...transitionProgress,
+        inter: {
+          fromSatId: latestHoEvent.fromSatId ?? '',
+          fromBeamId: latestHoEvent.fromCellId !== null ? String(latestHoEvent.fromCellId) : '',
+          toSatId: latestHoEvent.toSatId,
+          toBeamId: String(latestHoEvent.toCellId),
+          progress01: Math.min(1.0, Math.max(0.0, ageSec / 4)),
+          expiresAtSec: latestHoEvent.sourceTimeSec + 4,
+        },
+      };
+    } else {
+      transitionProgress = {
+        ...transitionProgress,
+        inter: undefined,
+      };
+    }
+
+    // 7. Override event roles
+    const bySatId = new Map<string, EventRole>();
+    const byBeamId = new Map<string, EventRole>();
+
+    if (servingSatId) {
+      const isPostHo = latestHoEvent && isRecent && latestHoEvent.toSatId === servingSatId;
+      const role: EventRole = isPostHo ? 'post-ho' : 'serving';
+      bySatId.set(servingSatId, role);
+      if (servingBeamIdStr) {
+        byBeamId.set(`${servingSatId}:${servingBeamIdStr}`, role);
+      }
+    }
+
+    if (latestHoEvent && isRecent && latestHoEvent.fromSatId) {
+      bySatId.set(latestHoEvent.fromSatId, 'secondary');
+      if (latestHoEvent.fromCellId !== null) {
+        byBeamId.set(`${latestHoEvent.fromSatId}:${latestHoEvent.fromCellId}`, 'secondary');
+      }
+    }
+
+    // Keep approach roles from the steered model if any (since they are calculated
+    // in derived.eventRoles.bySatId based on satellites close to observer, which is useful)
+    for (const [satId, role] of derived.eventRoles.bySatId.entries()) {
+      if (role === 'approach' && !bySatId.has(satId)) {
+        bySatId.set(satId, 'approach');
+      }
+    }
+
+    eventRoles = { bySatId, byBeamId };
+  }
 
   // Live: no per-UE MODQN decisions.
   const perUeDecisions: NormalizedUeDecision[] = [];
@@ -271,12 +398,12 @@ export function liveSimToScene(
     ues,
     beams,
     links,
-    eventRoles: derived.eventRoles,
-    transitionProgress: derived.transitionProgress,
+    eventRoles,
+    transitionProgress,
     beamHopping,
-    pendingTarget: derived.pendingTarget,
-    recentHo: derived.recentHo,
-    handover: derived.handover,
+    pendingTarget,
+    recentHo,
+    handover,
     metrics,
     perUeDecisions,
     geometry,
