@@ -1,3 +1,10 @@
+// QUARANTINED 2026-06-20 — removed from the `validate:live-render` chain (package.json).
+// This gate arms the handover-cinema via DirectorControls on the LIVE lane, but the
+// 49db65d right-sidebar restore removed the live-tab handoverEventRail (DirectorControls
+// + the handover rail) as a parked, non-functional feature ("rebuild later"). The gate
+// now hard-fails at "director controls mount on the live lane: 0 !== 1". Script kept +
+// still runnable manually; re-add it to validate:live-render when the live-lane cinema /
+// handover rail is rebuilt.
 /**
  * Phase C durable browser gate: the HANDOVER CINEMA (D4/S3a) cinema-arm Focus
  * button works on the SINR-live cell-truth lane — arming a handover focus drops to

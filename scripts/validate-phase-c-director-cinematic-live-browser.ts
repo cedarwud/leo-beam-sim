@@ -1,3 +1,10 @@
+// QUARANTINED 2026-06-20 — removed from the `validate:live-render` chain (package.json).
+// This gate requires DirectorControls to mount on the LIVE lane, but the 49db65d
+// right-sidebar restore removed the live-tab handoverEventRail (which carried
+// DirectorControls + the handover rail on the live lane) as a parked, non-functional
+// feature ("rebuild later"). The gate now hard-fails at "director controls mount on the
+// live lane: 0 !== 1". Script kept + still runnable manually; re-add it to
+// validate:live-render when the live-lane cinema / handover rail is rebuilt.
 /**
  * ITEM #C durable browser gate: the Director "cinematic" seek-to-next-handover +
  * satellite-pair framing + 0.25x slow-mo actually works on the LIVE WALKER lane
