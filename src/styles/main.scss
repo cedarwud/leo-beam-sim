@@ -57,8 +57,9 @@ canvas {
 }
 
 .leo-app-shell {
-  --leo-left-drawer-width: clamp(400px, 34vw, 560px);
-  --leo-right-drawer-width: clamp(300px, 26vw, 380px);
+  // Older-tuning sidebar widths (commit 49db65d): left 520px, right 460px fixed.
+  --leo-left-drawer-width: 520px;
+  --leo-right-drawer-width: 460px;
 
   width: 100vw;
   height: 100vh;
@@ -673,6 +674,16 @@ canvas {
   height: 100%;
 }
 
+// Right sidebar (live tab) flush-to-track fix: the inner .leo-info-panel already
+// self-scrolls (its own overflow-y + scrollbar-gutter), so the wrapping tab-panel
+// AND live-status-stack must NOT each ALSO reserve a stable scrollbar gutter — the
+// two 15px reserves stacked and left a ~30px black strip on the right at the 460px
+// drawer width. Scoped to the right shell so the left rail keeps its gutter.
+.leo-shell-right .leo-sidebar-tab-panel,
+.leo-shell-right .leo-live-status-stack {
+  scrollbar-gutter: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .leo-sidebar-tab-button {
     transition: none;
@@ -1075,7 +1086,7 @@ canvas {
   }
 }
 
-@container (min-width: 380px) {
+@container (min-width: 260px) {
   .leo-duel-card-body {
     grid-template-areas:
       "serving comparison"
