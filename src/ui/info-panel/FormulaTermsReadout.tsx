@@ -271,6 +271,18 @@ export function FormulaTermsReadout({
               ? 'stale after edit; waiting for next recomputed frame'
               : formatFormulaSourceProvenance(source.status)}
           </div>
+          {/* W1 disambiguation: the γ result below is the STEERED physical-serving
+              link (re-pointed to the UE, high boresight gain), NOT the off-axis
+              cell-truth serving SINR the BEAM DUEL shows above. Two live surfaces,
+              two models — labelling them stops the values reading as a bug. */}
+          <div style={{
+            marginTop: 4,
+            color: UI_TOKENS.color.text.muted,
+            fontSize: UI_TOKENS.type.size.caption,
+            lineHeight: 1.3,
+          }}>
+            steered physical-serving diagnostic — distinct from the off-axis cell-truth serving SINR in the BEAM DUEL above
+          </div>
         </div>
         <div
           data-testid="formula-result-readout"
