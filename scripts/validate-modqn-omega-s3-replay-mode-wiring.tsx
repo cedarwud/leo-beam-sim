@@ -273,31 +273,12 @@ console.log('\n(g) App.tsx data-handover-criterion attribute');
 }
 
 // ---------------------------------------------------------------------------
-// (h) DiagnosticsDrawer accepts handoverMode + rescalarizeFallbackCount
+// (h) RETIRED 2026-06-20 — src/ui/DiagnosticsDrawer.tsx was deleted in a prior
+// UI refactor (its rescalarize-fallback tally has no current home); this section
+// read that now-missing file and crashed the whole validator. Removed rather than
+// repointed because there is no successor component to pin. The rescalarize
+// fallback wiring, if reintroduced, should get a fresh pin against its new home.
 // ---------------------------------------------------------------------------
-console.log('\n(h) DiagnosticsDrawer props');
-{
-  const drawSrc = fs.readFileSync(
-    path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/DiagnosticsDrawer.tsx'),
-    'utf8',
-  );
-  assert(
-    drawSrc.includes('handoverMode'),
-    'DiagnosticsDrawer.tsx contains handoverMode prop',
-  );
-  assert(
-    drawSrc.includes('rescalarizeFallbackCount'),
-    'DiagnosticsDrawer.tsx contains rescalarizeFallbackCount prop',
-  );
-  assert(
-    drawSrc.includes("handoverMode === 'decision-overlay-on-live-sinr'"),
-    "DiagnosticsDrawer.tsx gates fallback section on handoverMode === 'decision-overlay-on-live-sinr'",
-  );
-  assert(
-    drawSrc.includes('diagnostics-drawer-rescalarize-fallback'),
-    'DiagnosticsDrawer.tsx has rescalarize fallback section testid',
-  );
-}
 
 // ---------------------------------------------------------------------------
 // (i) SINR <-> MODQN switch is wired (now via LaneExperienceBar, not ControlBar)
@@ -483,12 +464,13 @@ console.log('\n(k) Evidence / telemetry mode gating');
     'ModqnTopKDecisionPreview renders the relocated legacy top-K omega preview (Advanced drawer) from the shared builder, without a live KPI strip or dense-Q proof claim',
   );
   // The ModqnEvidenceTab provenance/decision-overlay disclosure copy was retired
-  // with the wall-of-text Evidence rail; the live-status handover-mode copy below
-  // (InfoPanel) carries the surviving display!=truth boundary.
+  // with the wall-of-text Evidence rail. The HANDOVER MODE card + its
+  // data-testid="live-status-handover-mode" were removed 2026-06-20 in the
+  // older-tuning (49db65d) live right-sidebar restore (the live tab now leads with
+  // the BEAM DUEL); the surviving mode-aware live-status wording below
+  // (getLiveStatusModeCopy in InfoPanel) still carries the display!=truth boundary.
   assert(
-    infoSrc.includes('live-status-handover-mode')
-    && infoSrc.includes('HANDOVER MODE')
-    && infoSrc.includes('Live SINR geometry/reference with MODQN replay decision overlay')
+    infoSrc.includes('Live SINR geometry/reference with MODQN replay decision overlay')
     && infoSrc.includes('MODQN overlay serving link')
     && infoSrc.includes('live SINR reference')
     && infoSrc.includes('live Δ SINR'),

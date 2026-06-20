@@ -205,7 +205,6 @@ import {
   DEFAULT_MODQN_VISUAL_LAYER_PRESET,
   type ModqnVisualLayerPreset,
 } from './scene/modqnVisualLayers';
-import { LIVE_SIM_CLAIM_BOUNDARY_INPUT } from './app/liveClaimBoundary';
 import {
   createReplayPanelSimState,
   selectReplayDisplayUes,
@@ -1989,19 +1988,17 @@ export function App() {
               </section>
             ) : activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
-                <ClaimBoundaryBanner
-                  frame={
-                    sceneSource === 'artifact-replay' && activeSceneFrame
-                      ? activeSceneFrame
-                      : LIVE_SIM_CLAIM_BOUNDARY_INPUT
-                  }
-                  bundleProvenanceKind={bundleProvenanceKind}
-                />
-                {sceneLane === 'sinr-live' ? handoverEventRail : null}
+                {/* SINR-live right sidebar = older-commit (49db65d) TUNING-mode layout:
+                    BEAM DUEL + live SINR FORMULA TERMS (showFormulaTerms), wired to the same
+                    computeLinkBudget serving link the LEFT tuning panel drives. The interference/
+                    claim banner, SIGNAL PROFILE + HANDOVER MODE cards, and the intra/inter
+                    handover rail were removed here to match the older tuning sidebar — the
+                    handover rail/Focus is non-functional and to be rebuilt later. */}
                 <InfoPanel
                   {...simState}
                   profile={effectiveProfile}
                   handoverMode={handoverMode}
+                  showFormulaTerms
                   isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                   channelMetricKind={activeSceneFrame?.channelMetricKind}
                 />

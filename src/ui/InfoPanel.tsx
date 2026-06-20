@@ -107,8 +107,6 @@ export function InfoPanel({
   profile,
   handoverMode = 'sinr-offset',
   isFormulaEvidenceStale = false,
-  profileId,
-  formulaFamilyLabel,
   servingSatId,
   servingBeamId,
   servingCellId,
@@ -187,24 +185,9 @@ export function InfoPanel({
   return (
     <div className="leo-info-panel">
       <div className="leo-info-panel__grid">
-        {(profileId || formulaFamilyLabel) && (
-          <div className="leo-info-panel__profile-card">
-            <div className="leo-info-panel__profile-label">SIGNAL PROFILE</div>
-            <div className="leo-info-panel__profile-family">{formulaFamilyLabel ?? '—'}</div>
-            <div className="leo-info-panel__profile-id">{profileId ?? '—'}</div>
-          </div>
-        )}
-
-        <div
-          className="leo-info-panel__profile-card"
-          data-testid="live-status-handover-mode"
-          data-handover-mode={handoverMode}
-        >
-          <div className="leo-info-panel__profile-label">HANDOVER MODE</div>
-          <div className="leo-info-panel__mode-label">{modeCopy.label}</div>
-          <div className="leo-info-panel__mode-detail">{modeCopy.detail}</div>
-        </div>
-
+        {/* SIGNAL PROFILE + HANDOVER MODE cards removed (older-tuning right-sidebar
+            restore): the right sidebar leads straight with the BEAM DUEL. Profile +
+            formula family stay visible in the LEFT tuning panel. */}
         <div role="status" aria-live="polite" aria-label="Serving and comparison beam status">
         <DuelCard
           servingTitle={servingTitle}
@@ -238,7 +221,6 @@ export function InfoPanel({
           stateTone={duelState.tone}
           contextBadgeText={modeCopy.duelBadge}
           contextBadgeTone={handoverMode === 'sinr-offset' ? 'neutral' : 'candidate'}
-          contextDetail={modeCopy.duelDetail}
           deltaLabel={modeCopy.deltaLabel}
           offsetLabel={modeCopy.offsetLabel}
           triggerLabel={modeCopy.triggerLabel}
