@@ -82,6 +82,10 @@ function FormulaTermTile({
       ? formattedValue ? `${formattedValue} stale` : 'stale waiting'
       : 'waiting';
 
+  // W2: per-term accent. The noise tone (σ² + denominator) uses semantic.noise to
+  // match the LEFT formula-tab σ² accent (getFormulaTabAccent in tuningConfig.tsx).
+  // Previously the right tile used semantic.info (#7ba7ff) while the left used
+  // semantic.noise (#8ebaff), so the same σ² term showed two different blues.
   const accent = tone === 'fixed'
     ? UI_TOKENS.color.semantic.fixed
     : tone === 'loss'
@@ -89,7 +93,7 @@ function FormulaTermTile({
       : tone === 'interference'
         ? '#ff8a6b'
         : tone === 'noise'
-          ? UI_TOKENS.color.semantic.info
+          ? UI_TOKENS.color.semantic.noise
           : UI_TOKENS.color.semantic.tuning;
   const background = tone === 'fixed'
     ? 'rgba(247, 217, 123, 0.1)'
@@ -98,7 +102,7 @@ function FormulaTermTile({
       : tone === 'interference'
         ? 'rgba(255, 138, 107, 0.1)'
         : tone === 'noise'
-          ? 'rgba(123, 167, 255, 0.1)'
+          ? 'rgba(142, 186, 255, 0.1)' // semantic.noise #8ebaff tint (was the #7ba7ff/info tint)
           : 'rgba(118, 234, 215, 0.1)';
 
   return (
