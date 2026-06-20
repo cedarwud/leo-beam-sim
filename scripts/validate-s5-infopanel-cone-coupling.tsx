@@ -18,8 +18,10 @@
  *   B (MIRROR): published serving sat === collectConnectedClaims primary-serving
  *     sat. Both call the shared `resolvePrimaryCellServingRecord` → panel ==
  *     invariant == cones, ONE primary oracle, no drift.
- *   C (SINGLE-MODEL): the comparison column + delta are SUPPRESSED to null on the
- *     cell lane (no cross-physics steered-candidate-minus-cell-serving delta).
+ *   C (SINGLE-MODEL, W7): the comparison column shows the CELL-TRUTH runner-up (best
+ *     non-serving candidate, upgrading to the pending HO target) — NEVER the steered
+ *     candidate. The steered beam id never leaks (cell comparison beamId is null) and the
+ *     Δ is a single-model number; the column is blank only when the cell has no contender.
  *   D (NON-VACUOUS): ≥1 sampled frame has a served primary AND >1 coned sat.
  *   E (OFF-LANE byte-identity): with `sinrLiveCells` undefined (steered / MODQN /
  *     artifact lanes) the fn returns the steered block VERBATIM (by reference) —
@@ -28,7 +30,7 @@
  *
  * POSITIVE CONTROLS (each proves a section is non-vacuous — coded to throw):
  *   PC1: a primary cell record re-pointed to an off-cone sat → A fires.
- *   PC2: a non-suppressed comparison object → C fires.
+ *   PC2: a steered candidate leaking onto the cell lane → C fires.
  *   PC3: the by-id resolver vs an unconditional ues[0] resolver disagree on a
  *        reordered frame → B fires.
  *
@@ -123,13 +125,37 @@ function checkLabelInCones(published: PublishedPrimaryServing, coneSatIds: Reado
     `A label∉render: published ACTIVE SERVING sat ${published.servingSatId} is not in the rendered cone set`,
   );
 }
-function checkSuppressed(published: PublishedPrimaryServing): void {
-  assert.equal(published.comparisonSatId, null, 'C: comparison sat not suppressed on cell lane');
-  assert.equal(published.comparisonBeamId, null, 'C: comparison beam not suppressed on cell lane');
-  assert.equal(published.comparisonSinrDb, null, 'C: comparison sinr not suppressed on cell lane');
-  assert.equal(published.comparisonKind, null, 'C: comparisonKind not suppressed on cell lane');
-  assert.equal(published.sinrDeltaDb, null, 'C: sinrDeltaDb not suppressed on cell lane (cross-model delta!)');
-  assert.equal(published.panelComparison.role, 'none', 'C: panelComparison.role not none on cell lane');
+function checkComparison(published: PublishedPrimaryServing): void {
+  // W7: the cell lane now surfaces a comparison, but in the CELL-truth model — never the
+  // steered candidate. The steered beam id must never leak (cell comparison beamId is
+  // null) and the comparison sat must not be the steered candidate. With a contender the Δ
+  // is a real single-model number; without one the column is fully blank.
+  assert.equal(published.comparisonBeamId, null, 'C: cell-lane comparison must not carry a steered beam id (single-model)');
+  assert.notEqual(published.comparisonSatId, STEERED_BLOCK.comparisonSatId, 'C: cell-lane comparison must not be the steered candidate (single-model)');
+  if (published.comparisonSatId === null) {
+    assert.equal(published.comparisonSinrDb, null, 'C: a no-contender frame has null comparison sinr');
+    assert.equal(published.comparisonKind, null, 'C: a no-contender frame has null comparisonKind');
+    assert.equal(published.sinrDeltaDb, null, 'C: a no-contender frame has null delta');
+    assert.equal(published.panelComparison.role, 'none', 'C: a no-contender frame has panelComparison.role none');
+    return;
+  }
+  assert.ok(
+    published.comparisonSinrDb !== null && Number.isFinite(published.comparisonSinrDb),
+    'C: a contender frame has a finite cell-truth comparison sinr',
+  );
+  assert.ok(
+    published.comparisonKind === 'candidate' || published.comparisonKind === 'pending',
+    'C: a contender frame has comparisonKind candidate|pending',
+  );
+  assert.ok(
+    published.panelComparison.role === 'candidate' || published.panelComparison.role === 'pending',
+    'C: a contender frame has panelComparison.role candidate|pending',
+  );
+  assert.ok(
+    published.sinrDeltaDb !== null && Number.isFinite(published.sinrDeltaDb),
+    'C: a contender frame has a finite single-model Δ (serving − contender)',
+  );
+  assert.equal(published.panelComparison.satId, published.comparisonSatId, 'C: panelComparison.satId mirrors comparisonSatId');
 }
 function primaryClaimSatId(frame: SimFrame): string | null {
   return collectConnectedClaims(frame).find(c => c.surface === 'primary-serving')?.satId ?? null;
@@ -239,7 +265,7 @@ for (const { sim, coneSatIds, published } of frames) {
   cellLaneFrames += 1;
   checkLabelInCones(published, coneSatIds);   // A
   checkMirror(published, sim);                // B
-  checkSuppressed(published);                 // C
+  checkComparison(published);                 // C
   if (published.servingSatId !== null) servedFrames += 1;
   if (published.servingSatId !== null && coneSatIds.size > 1) nonVacuousFrame = true;
 }
@@ -319,10 +345,18 @@ assert.ok(pc1Source !== undefined, 'PC1 could not arm: no served cell-lane frame
   assertThrows(() => checkLabelInCones(mutatedPublished, pc1Source.coneSatIds), 'PC1 off-cone label');
 }
 
-// PC2 (C non-vacuous): a non-suppressed comparison object → checkSuppressed throws.
+// PC2 (C non-vacuous): a STEERED candidate leaking onto the cell lane (steered sat + beam
+// id) → checkComparison throws (the single-model guard catches the steered-beam leak).
 assertThrows(
-  () => checkSuppressed({ ...frames[10]!.published, comparisonSatId: 'X', sinrDeltaDb: 5.0, comparisonKind: 'candidate' }),
-  'PC2 re-introduced comparison/delta',
+  () => checkComparison({
+    ...frames[10]!.published,
+    comparisonSatId: STEERED_BLOCK.comparisonSatId,
+    comparisonBeamId: 5,
+    comparisonSinrDb: 9.0,
+    sinrDeltaDb: 5.0,
+    comparisonKind: 'candidate',
+  }),
+  'PC2 steered candidate leaked onto the cell lane',
 );
 
 // PC3 (B non-vacuous): on a frame where the by-id primary differs from ues[0],
@@ -374,7 +408,7 @@ if (pc3Source !== undefined) {
 
 console.log(
   `[${GATE}] ${cellLaneFrames} cell-lane frames, ${servedFrames} served-primary, ` +
-  'A label∈cones + B mirror(panel==invariant==cones) + C single-model suppression all hold',
+  'A label∈cones + B mirror(panel==invariant==cones) + C single-model comparison (cell-truth contender, no steered leak) all hold',
 );
 console.log(`[${GATE}] G label-freq==cone-freq (${freqCheckedFrames} frames), E off-lane passthrough, F determinism A==B, PC1/PC2/PC3/PC4 fired`);
 console.log(`[${GATE}] PASS`);

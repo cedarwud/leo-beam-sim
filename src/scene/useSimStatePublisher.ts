@@ -212,6 +212,28 @@ export function buildPublishedPrimaryServing(
   // W6: real elevation/range for the cell serving sat (display-only); null when the
   // caller provides no lookup (the pure unit gate) — never fabricated.
   const geo = resolveServingGeo?.(servingSatId) ?? { elevationDeg: null, rangeKm: null };
+  // W7: the comparison contender = this UE's serving-cell best NON-serving candidate
+  // (carried on the record from the cell model), in the SAME cell-truth model as serving —
+  // so the Δ is single-model (NOT the steered candidate, which would recreate the W1
+  // γ-mismatch). The role upgrades BEST CANDIDATE → PENDING TARGET when the cell
+  // HandoverManager is mid-trigger (pendingTargetSatId). REPLACES SUPPRESSED_COMPARISON on
+  // the SERVED cell branch (the unserved branch stays suppressed). Display-only (Rule#6).
+  const comparisonSatId = record.comparisonSatId ?? null;
+  const comparisonSinrDb = record.comparisonSinrDb ?? null;
+  const hasComparison = comparisonSatId !== null && comparisonSinrDb !== null && Number.isFinite(comparisonSinrDb);
+  const comparisonGeo = hasComparison && comparisonSatId !== null
+    ? resolveServingGeo?.(comparisonSatId) ?? { elevationDeg: null, rangeKm: null }
+    : { elevationDeg: null, rangeKm: null };
+  const isPendingComparison = hasComparison && (record.pendingTargetSatId ?? null) !== null;
+  const comparisonStatus: SignalTruthStatus = !hasComparison
+    ? 'none'
+    : isFinitePanelSinr(comparisonSinrDb) ? 'live' : 'latched';
+  const comparisonRole: PanelComparisonState['role'] = !hasComparison
+    ? 'none'
+    : isPendingComparison ? 'pending' : 'candidate';
+  const sinrDeltaDb = hasComparison && comparisonSinrDb !== null && isFinitePanelSinr(sinrDb)
+    ? sinrDb - comparisonSinrDb
+    : null;
   return {
     servingSatId,
     servingBeamId: null,
@@ -228,7 +250,22 @@ export function buildPublishedPrimaryServing(
       rangeKm: geo.rangeKm,
       status,
     },
-    ...SUPPRESSED_COMPARISON,
+    comparisonSatId: hasComparison ? comparisonSatId : null,
+    comparisonBeamId: null,
+    comparisonSinrDb: hasComparison ? comparisonSinrDb : null,
+    comparisonElevationDeg: comparisonGeo.elevationDeg,
+    comparisonRangeKm: comparisonGeo.rangeKm,
+    comparisonKind: !hasComparison ? null : isPendingComparison ? 'pending' : 'candidate',
+    panelComparison: {
+      role: comparisonRole,
+      satId: hasComparison ? comparisonSatId : null,
+      beamId: null,
+      sinrDb: hasComparison ? comparisonSinrDb : null,
+      elevationDeg: comparisonGeo.elevationDeg,
+      rangeKm: comparisonGeo.rangeKm,
+      status: comparisonStatus,
+    },
+    sinrDeltaDb,
   };
 }
 
@@ -631,7 +668,12 @@ export function useSimStatePublisher({
       physicalServingBudget,
       servingBudget,
       handoverOffsetDb: profile.handover.offsetDb,
-      handoverTriggerProgressSec: sim.handoverTriggerProgressSec,
+      // W7: on the cell lane show the CELL HandoverManager's trigger progress (so the
+      // PENDING TARGET countdown matches the cell comparison) instead of the steered
+      // manager's; off the cell lane keep the steered value.
+      handoverTriggerProgressSec: sim.sinrLiveCells
+        ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)?.triggerProgressSec ?? 0
+        : sim.handoverTriggerProgressSec,
       handoverTriggerSec: profile.handover.triggerTimeSec,
       hoCount: sim.hoCount,
       intraHoCount: sim.intraHoCount,

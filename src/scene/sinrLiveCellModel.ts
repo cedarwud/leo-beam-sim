@@ -158,6 +158,14 @@ export interface UeCellServingRecord {
    */
   readonly sinrDb: number | null;
   readonly handoverKind: ServingTransitionKind;
+  /** W7: the comparison contender for THIS UE's serving cell (same cellId, runner-up
+   *  sat) + its boresight SINR, plus the cell's pending HO target + trigger progress —
+   *  threaded from the cell record so the duel comparison column works for the
+   *  protagonist UE. Optional (only the live model sets them). */
+  readonly comparisonSatId?: string | null;
+  readonly comparisonSinrDb?: number | null;
+  readonly pendingTargetSatId?: string | null;
+  readonly triggerProgressSec?: number;
 }
 
 /**
@@ -754,6 +762,44 @@ export class SinrLiveCellModel {
       });
     }
 
+    // W7: comparison contender for the protagonist UE's cell. The per-cell handover
+    // DECISION runs on the post-hopping LIT beams (often just the serving sat → no
+    // decision-time runner-up), but the meaningful "who could you switch to" is the best
+    // VISIBLE (pre-hopping) non-serving sat for the cell. Measure it display-only here — it
+    // is NOT fed to any HandoverManager, so the serving decision + the s0 golden stay
+    // unchanged — so the duel comparison ~always has the real inter-HO target. When the
+    // primary cell's manager is mid-trigger, show its pending target instead. One extra
+    // link-budget per frame (the primary cell only — the sole cell the duel shows).
+    const primaryUeId = ues[0]?.id ?? null;
+    let primaryComparison: {
+      comparisonSatId: string | null;
+      comparisonSinrDb: number | null;
+      pendingTargetSatId: string | null;
+      triggerProgressSec: number;
+    } | null = null;
+    if (ues[0] !== undefined) {
+      const primaryCellId = assignUeToNearestCell(ues[0], this.cellLayout).cellId;
+      const primaryCell = primaryCellId === null ? undefined : this.cellById.get(primaryCellId);
+      const primaryServingSat = primaryCellId === null ? null : finalServingByCell.get(primaryCellId) ?? null;
+      if (primaryCell && primaryCellId !== null && primaryServingSat !== null) {
+        const primaryManager = this.managerForCell(primaryCellId);
+        const pendingTargetSatId = primaryManager.state.pendingTarget?.satId ?? null;
+        const visibleCandidates = listCellCandidateSats(primaryCell, linkSats, this.observer, maxSteer, this.minElevationDeg);
+        const samples = this.measureCellCandidates(primaryCell, visibleCandidates, satById, preLitByCell, simTimeSec);
+        const pick = pendingTargetSatId !== null
+          ? samples.find(sample => sample.satId === pendingTargetSatId) ?? null
+          : samples
+            .filter(sample => sample.satId !== primaryServingSat)
+            .reduce<LinkSample | null>((best, s) => (best === null || s.sinrDb > best.sinrDb ? s : best), null);
+        primaryComparison = {
+          comparisonSatId: pick?.satId ?? null,
+          comparisonSinrDb: pick?.sinrDb ?? null,
+          pendingTargetSatId,
+          triggerProgressSec: primaryManager.state.triggerTimeSec,
+        };
+      }
+    }
+
     // 4. Post-decision final lit field for per-UE SINR at true off-axis.
     const finalLit: SatelliteSnapshot[] = [];
     const finalActive: ActiveBeamAssignment[] = [];
@@ -844,6 +890,11 @@ export class SinrLiveCellModel {
       }
       nextUeServing.set(ue.id, next);
 
+      // W7: thread the protagonist UE's comparison contender (computed above for the
+      // primary cell only) into its record; other UEs carry no comparison (the duel only
+      // ever shows the primary UE).
+      const ueComparison = ue.id === primaryUeId ? primaryComparison : null;
+
       ueRecords.push({
         ueId: ue.id,
         cellId,
@@ -858,6 +909,10 @@ export class SinrLiveCellModel {
           : cellFrequencyIndex(cellId, this.profile.beams.frequencyReuse),
         sinrDb,
         handoverKind: kind,
+        comparisonSatId: ueComparison?.comparisonSatId ?? null,
+        comparisonSinrDb: ueComparison?.comparisonSinrDb ?? null,
+        pendingTargetSatId: ueComparison?.pendingTargetSatId ?? null,
+        triggerProgressSec: ueComparison?.triggerProgressSec ?? 0,
       });
     }
     this.prevUeServing = nextUeServing;

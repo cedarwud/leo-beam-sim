@@ -129,7 +129,10 @@ export function InfoPanel({
   // the serving column must render ACTIVE on a cell id too, else the cell-truth
   // serving sat would blank despite the cones beaming it.
   const hasServingSignal = servingSatId !== null && (servingBeamId !== null || servingCellId !== null);
-  const hasComparisonSignal = comparisonSatId !== null && comparisonBeamId !== null;
+  // Cell lane: the contender is a cell id (comparisonBeamId is null), so mirror the
+  // serving :131 fallback — accept a comparison whose serving cell id is set (W7). On the
+  // steered lane comparisonBeamId is non-null so this is unchanged there.
+  const hasComparisonSignal = comparisonSatId !== null && (comparisonBeamId !== null || servingCellId !== null);
   const triggerRatio = handoverTriggerSec > 0
     ? Math.min(handoverTriggerProgressSec / handoverTriggerSec, 1)
     : 0;
@@ -164,7 +167,12 @@ export function InfoPanel({
   const servingIdentity = servingBeamId === null && servingCellId !== null
     ? formatCellServingIdentity(servingSatId, servingCellId, frequencyReuse, 'none')
     : formatPanelBeamIdentity(servingSatId, servingBeamId, frequencyReuse, 'none');
-  const comparisonIdentity = formatPanelBeamIdentity(comparisonSatId, comparisonBeamId, frequencyReuse, 'none');
+  // Cell lane (W7): the contender serves the SAME cell as serving (runner-up sat), so
+  // format it as a cell identity via servingCellId — mirrors the serving branch above so
+  // its F-token tracks the cone colour. Steered lane (comparisonBeamId set) is unchanged.
+  const comparisonIdentity = comparisonBeamId === null && comparisonSatId !== null && servingCellId !== null
+    ? formatCellServingIdentity(comparisonSatId, servingCellId, frequencyReuse, 'none')
+    : formatPanelBeamIdentity(comparisonSatId, comparisonBeamId, frequencyReuse, 'none');
   const servingGlyph = hasServingSignal ? glyphForSatId(servingSatId, satelliteVisualIdentityById) : null;
   const comparisonGlyph = hasComparisonSignal ? glyphForSatId(comparisonSatId, satelliteVisualIdentityById) : null;
   const servingTone: DuelSignalTone = panelPrimary.role === 'ho-source'
