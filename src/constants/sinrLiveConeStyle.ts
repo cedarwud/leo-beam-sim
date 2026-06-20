@@ -55,20 +55,31 @@ export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.45;
 export const SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY = 0.8;
 
 /**
- * Cell-truth footprint RING style (beam-stage ① #3 — legible circles).
- * {@link SinrLiveCellFootprintRings} draws one crisp ground ring per SERVING cell,
- * at the SAME cell-truth base centre / radius / serving-identity colour as the
- * serving cone, so each beam reads as a distinct CIRCLE with its UEs scattered
- * off-centre inside it (it REPLACES the legacy steered `AmbientFootprintRings`,
- * which sat at the wrong — steered — positions). Display-only (Rule#6).
+ * Cell-truth footprint HEX style (beam-stage ① #3 — legible circles; W4 double-layer).
+ * {@link SinrLiveCellFootprintRings} draws TWO nested hexagon bands per SERVING cell —
+ * an outer rim band + an inner concentric band — at the SAME cell-truth base centre /
+ * radius / serving-identity colour as the serving cone, so each beam reads as a
+ * distinct double-hex with its UEs scattered off-centre inside it (it REPLACES the
+ * legacy steered `AmbientFootprintRings`, which sat at the wrong — steered —
+ * positions, and the persistent grey `SinrLiveCellGrid`, removed in W4). Display-only
+ * (Rule#6).
  */
 export const SINR_LIVE_FOOTPRINT_RING_OPACITY = 0.55;
-/** Ring inner edge as a fraction of the footprint radius (→ a thin crisp annulus). */
+/** Outer band: inner edge as a fraction of the footprint radius (a thin crisp rim). */
 export const SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR = 0.93;
-/** Ring tessellation (matches the cone base segment count for a smooth circle). */
-export const SINR_LIVE_FOOTPRINT_RING_SEGMENTS = 64;
-/** Tiny ground lift (world units) so the flat ring never z-fights the terrain. */
+/** Tiny ground lift (world units) so the flat hexes never z-fight the terrain. */
 export const SINR_LIVE_FOOTPRINT_RING_Y_LIFT = 0.6;
+
+/**
+ * W4 double-layer hex (restores the 49db65d look): a SECOND concentric inner hex
+ * band per served cell, nested inside the rim band above. Both bands use the cell's
+ * serving-identity colour (item.color = colorForServingBeam), so the served UE dot,
+ * its cone, and BOTH footprint hexes share one hue (the beam:colour-match invariant).
+ * The gap between the inner band and the rim reads as the classic double hexagon.
+ */
+export const SINR_LIVE_FOOTPRINT_INNER_BAND_INNER_FACTOR = 0.6;
+export const SINR_LIVE_FOOTPRINT_INNER_BAND_OUTER_FACTOR = 0.7;
+export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.5;
 
 /**
  * TRIGGERED intra-HO flash style (beam-stage ① #5 — the protagonist jog handover).

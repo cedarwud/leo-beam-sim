@@ -1,13 +1,17 @@
 /**
- * SINR-live cell-truth footprint RINGS — beam-stage ① #3 (legible circles).
+ * SINR-live cell-truth footprint HEXES — beam-stage ① #3 (legible circles) + W4
+ * double-layer hex (restores the 49db65d look).
  *
- * Draws one crisp ground ring per SERVING earth-fixed cell, from the SAME cell-truth
- * items the serving cones render (`SinrLiveCellBeamConeRenderItem`: base centre,
- * footprint radius, serving-identity colour). So every beam reads as a distinct
- * CIRCLE and the audience sees the UEs scattered OFF-CENTRE inside it (the off-axis
- * story the cone fill alone did not make legible). Cell-truth-aligned by construction
- * — one ring per serving cone item, at the cone's `baseCenter` / `baseRadiusWorld` /
- * `color` — so the ring, its beam cone, and its UE dots share one position + hue.
+ * Draws a DOUBLE-LAYER hexagon (an outer rim band + an inner concentric band) per
+ * SERVING earth-fixed cell, from the SAME cell-truth items the serving cones render
+ * (`SinrLiveCellBeamConeRenderItem`: base centre, footprint radius, serving-identity
+ * colour). So every beam reads as a distinct nested hex and the audience sees the UEs
+ * scattered OFF-CENTRE inside it (the off-axis story the cone fill alone did not make
+ * legible). Cell-truth-aligned by construction — one double-hex per serving cone item,
+ * at the cone's `baseCenter` / `baseRadiusWorld` / `color` — so both bands, the beam
+ * cone, and its UE dots share one position + hue. This also REPLACES the persistent
+ * grey `SinrLiveCellGrid` (the always-on 37-cell background grid), removed in W4 so the
+ * map shows cells ONLY when served.
  *
  * This REPLACES the legacy steered `AmbientFootprintRings`, whose rings sat at the
  * STEERED beam ground positions (`viz.ambientRings`) — a DIFFERENT geometry from the
@@ -20,13 +24,14 @@
  * serving cones, `showSinrLiveCellBeams`), so this component imports no lane state.
  */
 import { useEffect, useLayoutEffect, useRef, type JSX } from 'react';
-import { Line } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
+  SINR_LIVE_FOOTPRINT_INNER_BAND_INNER_FACTOR,
+  SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY,
+  SINR_LIVE_FOOTPRINT_INNER_BAND_OUTER_FACTOR,
   SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR,
   SINR_LIVE_FOOTPRINT_RING_OPACITY,
-  SINR_LIVE_FOOTPRINT_RING_SEGMENTS,
   SINR_LIVE_FOOTPRINT_RING_Y_LIFT,
 } from '../constants/sinrLiveConeStyle';
 import type { SinrLiveCellBeamConeRenderItem } from './SinrLiveCellBeamCones';
@@ -55,7 +60,9 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
     if (!group) return;
     let count = 0;
     group.traverse(obj => {
-      if ((obj as THREE.Mesh).isMesh && obj.visible) count += 1;
+      // Count served CELLS (per-item groups), not meshes — each cell now draws two
+      // band meshes, but this telemetry means "footprints rendered" (= served cells).
+      if (obj.userData?.footprintItem === true && obj.visible) count += 1;
     });
     gl.domElement.dataset[key] = String(count);
   });
@@ -71,72 +78,46 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
       {items.map(item => {
         const radius = item.baseRadiusWorld * widthScale;
         if (!(radius > 0)) return null;
+        // W4 double-layer hex: an OUTER rim band + an INNER concentric band, both in
+        // the cell's serving-identity colour (colour-match: cone == UE == both hexes).
         return (
-          <mesh
+          <group
             key={item.renderKey ?? `${item.cellId}-${item.satId}`}
-            name={`sinr-live-cell-footprint-ring-${item.cellId}`}
+            name={`sinr-live-cell-footprint-${item.cellId}`}
             position={[item.baseCenter.x, item.baseCenter.y + SINR_LIVE_FOOTPRINT_RING_Y_LIFT, item.baseCenter.z]}
             rotation={[-Math.PI / 2, 0, Math.PI / 6]}
-            renderOrder={11}
-            frustumCulled={false}
-            userData={{ cellId: item.cellId, satId: item.satId, color: item.color }}
+            userData={{ footprintItem: true, cellId: item.cellId, satId: item.satId, color: item.color }}
           >
-            <ringGeometry args={[radius * SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR, radius, 6]} />
-            <meshBasicMaterial
-              color={item.color}
-              transparent
-              opacity={SINR_LIVE_FOOTPRINT_RING_OPACITY}
-              side={THREE.DoubleSide}
-              depthWrite={false}
-              toneMapped={false}
-            />
-          </mesh>
+            <mesh name={`sinr-live-cell-footprint-ring-${item.cellId}`} renderOrder={11} frustumCulled={false}>
+              <ringGeometry args={[radius * SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR, radius, 6]} />
+              <meshBasicMaterial
+                color={item.color}
+                transparent
+                opacity={SINR_LIVE_FOOTPRINT_RING_OPACITY}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+                toneMapped={false}
+              />
+            </mesh>
+            <mesh name={`sinr-live-cell-footprint-ring-inner-${item.cellId}`} renderOrder={11} frustumCulled={false}>
+              <ringGeometry args={[radius * SINR_LIVE_FOOTPRINT_INNER_BAND_INNER_FACTOR, radius * SINR_LIVE_FOOTPRINT_INNER_BAND_OUTER_FACTOR, 6]} />
+              <meshBasicMaterial
+                color={item.color}
+                transparent
+                opacity={SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+                toneMapped={false}
+              />
+            </mesh>
+          </group>
         );
       })}
     </group>
   );
 }
 
-export interface SinrLiveCellGridProps {
-  readonly placements: ReadonlyMap<number, { cellId: number; worldX: number; worldZ: number; radiusWorld: number }>;
-  readonly opacity?: number;
-  readonly color?: string;
-  readonly widthScale?: number;
-}
-
-export function SinrLiveCellGrid(props: SinrLiveCellGridProps): JSX.Element | null {
-  const { placements, opacity = 0.30, color = '#6b7280', widthScale = 1.0 } = props;
-  const items = Array.from(placements.values());
-  if (items.length === 0) return null;
-
-  return (
-    <group name="sinr-live-cell-grid">
-      {items.map(cell => {
-        const radius = cell.radiusWorld * widthScale;
-        if (!(radius > 0)) return null;
-
-        // Create 6 points + 1 closing point to draw a clean closed hexagon
-        const points: [number, number, number][] = [];
-        for (let i = 0; i <= 6; i++) {
-          const angle = (i / 6) * Math.PI * 2 + Math.PI / 6;
-          points.push([Math.cos(angle) * radius, 0, Math.sin(angle) * radius]);
-        }
-
-        return (
-          <Line
-            key={cell.cellId}
-            name={`sinr-live-cell-grid-hexagon-${cell.cellId}`}
-            position={[cell.worldX, SINR_LIVE_FOOTPRINT_RING_Y_LIFT - 0.05, cell.worldZ]}
-            points={points}
-            color={color}
-            lineWidth={1.2}
-            transparent
-            opacity={opacity}
-            depthWrite={false}
-            renderOrder={10}
-          />
-        );
-      })}
-    </group>
-  );
-}
+// SinrLiveCellGrid (the persistent grey 37-cell background hex grid, added f0adf3c)
+// was REMOVED in W4 2026-06-20: the restored 49db65d look shows cells ONLY when
+// served (the double-layer footprint hex above), with no always-on background grid.
+// sinrLiveCellPlacementById stays in MainScene — the cone resolvers still use it.
