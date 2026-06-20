@@ -34,8 +34,19 @@ export function usePlaybackControls(
   const [autoSlowEnabled, setAutoSlowEnabled] = useState(true);
   const [autoSlowDismissed, setAutoSlowDismissed] = useState(false);
 
+  // W7b-vis: also auto-slow while the cell-lane BEAM-DUEL is counting toward a handover
+  // (panelComparison.role === 'pending' = the displayed contender is beating serving by the
+  // offset). Without this the duel's time-to-trigger sweeps 0→3.5s SIM in ~0.7s WALL at 5×
+  // and is unreadable. Bounded to the count-up (progress < threshold) so it resumes once the
+  // countdown caps — it does not hold the scene slow indefinitely. Gated by the HO-Slow
+  // toggle (autoSlowEnabled) below, so the user can turn it off / Resume.
+  const cellDuelHandoverPending =
+    simState.panelComparison.role === 'pending'
+    && simState.handoverTriggerProgressSec < simState.handoverTriggerSec;
   const autoSlowActive =
-    simState.pendingTargetSatId !== null || simState.intraHandoverEvent !== null;
+    simState.pendingTargetSatId !== null
+    || simState.intraHandoverEvent !== null
+    || cellDuelHandoverPending;
   const autoSlowApplied = autoSlowEnabled && autoSlowActive && !autoSlowDismissed;
   const effectiveSpeed = directorFocusActive
     ? Math.min(speed, DIRECTOR_FOCUS_SPEED)
