@@ -519,6 +519,14 @@ export class SinrLiveCellModel {
   // window twice). Display read-out of truth (Rule#6); the serving decision is unchanged.
   private cumulativeIntraHandoverCount = 0;
   private cumulativeInterHandoverCount = 0;
+  // W7b: display-only time-to-trigger accumulator for the PRIMARY cell's duel contender.
+  // The cell HandoverManager only counts trigger time on POST-hopping LIT candidates, which
+  // the primary cell rarely has (its lit set is usually just the serving sat) → its trigger
+  // ~never moves; this drives the duel countdown from the DISPLAYED contender's
+  // offset-crossing instead (the engine's inter-HO rule, applied to the shown contender).
+  // NOT a decision input — the serving truth + s0 golden are unchanged.
+  private primaryContenderTriggerSec = 0;
+  private prevPrimaryContenderSatId: string | null = null;
 
   constructor(config: SinrLiveCellModelConfig) {
     this.profile = config.profile;
@@ -762,14 +770,14 @@ export class SinrLiveCellModel {
       });
     }
 
-    // W7: comparison contender for the protagonist UE's cell. The per-cell handover
-    // DECISION runs on the post-hopping LIT beams (often just the serving sat → no
-    // decision-time runner-up), but the meaningful "who could you switch to" is the best
-    // VISIBLE (pre-hopping) non-serving sat for the cell. Measure it display-only here — it
-    // is NOT fed to any HandoverManager, so the serving decision + the s0 golden stay
-    // unchanged — so the duel comparison ~always has the real inter-HO target. When the
-    // primary cell's manager is mid-trigger, show its pending target instead. One extra
-    // link-budget per frame (the primary cell only — the sole cell the duel shows).
+    // W7: comparison contender for the protagonist UE's cell = the best VISIBLE (pre-hopping)
+    // non-serving sat (the real "who could you switch to"). The per-cell handover DECISION
+    // runs on the post-hopping LIT beams (often just the serving sat → no decision-time
+    // runner-up), so measure the visible candidates DISPLAY-ONLY here — NOT fed to any
+    // HandoverManager, so the serving decision + the s0 golden stay unchanged. W7b: the
+    // time-to-trigger + PENDING TARGET role are driven from THIS contender (below), not the
+    // cell manager (whose trigger ~never moves for the primary cell — its lit set is usually
+    // just the serving sat). One extra link-budget per frame (the primary cell only).
     const primaryUeId = ues[0]?.id ?? null;
     let primaryComparison: {
       comparisonSatId: string | null;
@@ -783,21 +791,43 @@ export class SinrLiveCellModel {
       const primaryServingSat = primaryCellId === null ? null : finalServingByCell.get(primaryCellId) ?? null;
       if (primaryCell && primaryCellId !== null && primaryServingSat !== null) {
         const primaryManager = this.managerForCell(primaryCellId);
-        const pendingTargetSatId = primaryManager.state.pendingTarget?.satId ?? null;
+        const servingBoresight = primaryManager.state.sinrDb; // the cell decision basis
         const visibleCandidates = listCellCandidateSats(primaryCell, linkSats, this.observer, maxSteer, this.minElevationDeg);
         const samples = this.measureCellCandidates(primaryCell, visibleCandidates, satById, preLitByCell, simTimeSec);
-        const pick = pendingTargetSatId !== null
-          ? samples.find(sample => sample.satId === pendingTargetSatId) ?? null
-          : samples
-            .filter(sample => sample.satId !== primaryServingSat)
-            .reduce<LinkSample | null>((best, s) => (best === null || s.sinrDb > best.sinrDb ? s : best), null);
+        const pick = samples
+          .filter(sample => sample.satId !== primaryServingSat)
+          .reduce<LinkSample | null>((best, s) => (best === null || s.sinrDb > best.sinrDb ? s : best), null);
+        const comparisonSatId = pick?.satId ?? null;
+        const comparisonSinrDb = pick?.sinrDb ?? null;
+        // W7b display-only countdown: accumulate while THIS contender beats serving by the
+        // offset (the engine's exact inter-HO criterion, candidate.sinr − offset > serving),
+        // reset when it stops or the contender changes, capped at the trigger-time threshold.
+        // PENDING TARGET role = the contender is in this countdown.
+        const offsetDb = this.profile.handover.offsetDb;
+        const triggerCapSec = this.profile.handover.triggerTimeSec;
+        const contenderBeatsOffset = comparisonSatId !== null
+          && comparisonSinrDb !== null
+          && Number.isFinite(servingBoresight)
+          && comparisonSinrDb - offsetDb > servingBoresight;
+        if (contenderBeatsOffset && comparisonSatId === this.prevPrimaryContenderSatId) {
+          this.primaryContenderTriggerSec = Math.min(this.primaryContenderTriggerSec + dtSec, triggerCapSec);
+        } else {
+          this.primaryContenderTriggerSec = contenderBeatsOffset ? Math.min(dtSec, triggerCapSec) : 0;
+        }
+        this.prevPrimaryContenderSatId = contenderBeatsOffset ? comparisonSatId : null;
         primaryComparison = {
-          comparisonSatId: pick?.satId ?? null,
-          comparisonSinrDb: pick?.sinrDb ?? null,
-          pendingTargetSatId,
-          triggerProgressSec: primaryManager.state.triggerTimeSec,
+          comparisonSatId,
+          comparisonSinrDb,
+          pendingTargetSatId: contenderBeatsOffset ? comparisonSatId : null,
+          triggerProgressSec: this.primaryContenderTriggerSec,
         };
+      } else {
+        this.primaryContenderTriggerSec = 0;
+        this.prevPrimaryContenderSatId = null;
       }
+    } else {
+      this.primaryContenderTriggerSec = 0;
+      this.prevPrimaryContenderSatId = null;
     }
 
     // 4. Post-decision final lit field for per-UE SINR at true off-axis.
