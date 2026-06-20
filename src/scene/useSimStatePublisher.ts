@@ -106,12 +106,17 @@ export function buildPublishedPerUePositions(
  * lane (single-model honesty; the cell-truth handover STORY lives in the cinema
  * + SinrOffsetExplainer, the lane's dedicated HO surface).
  *
- * Serving elevation/range bypass the steered (satId,beamId)-keyed topo latch
- * (it would return stale steered values on a satId match) and publish null → the
- * card renders '—'; the cones/mosaic carry the geometry truth. Off the cell lane
- * the function returns the steered block VERBATIM (byte-identical passthrough) so
- * MODQN / artifact-replay lanes are untouched. Exported pure (S4-3 pattern) so
- * `validate:s5:infopanel-cone-coupling` drives the REAL re-point.
+ * Serving elevation/range (W6 2026-06-20): looked up from the CELL serving sat's
+ * OWN topocentric point — NOT the steered (satId,beamId)-keyed latch, which would
+ * return stale steered values on a satId match — via the optional `resolveServingGeo`
+ * lookup the caller threads from `topoBySatId` + `linkRangeKmBySatId` (the SAME source
+ * the steered path uses). Display-only: it fills two card fields and changes no
+ * SINR/serving truth (the `s0:geometry-trace` golden snapshots SimFrame/VizFrame, not
+ * these SimState fields, so no golden moves). When no lookup is provided (the pure unit
+ * gate) they stay null. Off the cell lane the function returns the steered block
+ * VERBATIM (byte-identical passthrough) so MODQN / artifact-replay lanes are untouched.
+ * Exported pure (S4-3 pattern) so `validate:s5:infopanel-cone-coupling` drives the REAL
+ * re-point.
  */
 export interface PublishedPrimaryServing {
   servingSatId: string | null;
@@ -168,6 +173,9 @@ const SUPPRESSED_COMPARISON: SuppressedComparison = {
 export function buildPublishedPrimaryServing(
   sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions'>,
   steered: PublishedPrimaryServing,
+  // W6: resolve the CELL serving sat's elevation/range (from topoBySatId +
+  // linkRangeKmBySatId at the call site). Optional so the pure unit gate can omit it.
+  resolveServingGeo?: (satId: string) => { elevationDeg: number | null; rangeKm: number | null },
 ): PublishedPrimaryServing {
   const cellFrame = sim.sinrLiveCells;
   if (cellFrame === undefined) return steered; // off-lane: byte-identical steered passthrough.
@@ -201,20 +209,23 @@ export function buildPublishedPrimaryServing(
   // is 'live' when decodable, 'latched' only when below the beam-gain floor
   // (served-by-assignment, empirically never in the 37-cell config).
   const status: SignalTruthStatus = isFinitePanelSinr(sinrDb) ? 'live' : 'latched';
+  // W6: real elevation/range for the cell serving sat (display-only); null when the
+  // caller provides no lookup (the pure unit gate) — never fabricated.
+  const geo = resolveServingGeo?.(servingSatId) ?? { elevationDeg: null, rangeKm: null };
   return {
     servingSatId,
     servingBeamId: null,
     servingCellId: record.cellId,
     servingSinrDb: sinrDb,
-    servingElevationDeg: null,
-    servingRangeKm: null,
+    servingElevationDeg: geo.elevationDeg,
+    servingRangeKm: geo.rangeKm,
     panelPrimary: {
       role: 'serving',
       satId: servingSatId,
       beamId: null,
       sinrDb,
-      elevationDeg: null,
-      rangeKm: null,
+      elevationDeg: geo.elevationDeg,
+      rangeKm: geo.rangeKm,
       status,
     },
     ...SUPPRESSED_COMPARISON,
@@ -553,7 +564,19 @@ export function useSimStatePublisher({
       panelComparison,
       sinrDeltaDb: panelSinrDeltaDb,
     };
-    const publishedPrimaryServing = buildPublishedPrimaryServing(sim, steeredPrimaryServing);
+    const publishedPrimaryServing = buildPublishedPrimaryServing(
+      sim,
+      steeredPrimaryServing,
+      // W6: the cell serving sat's El/Range from the same topo + link-range source the
+      // steered path uses (topoBySatId built above, sim.linkRangeKmBySatId).
+      (satId) => {
+        const topo = topoBySatId.get(satId);
+        return {
+          elevationDeg: topo?.elevationDeg ?? null,
+          rangeKm: sim.linkRangeKmBySatId.get(satId) ?? topo?.rangeKm ?? null,
+        };
+      },
+    );
 
     const nextIntraHandoverEvent = sim.intraHandoverEvent !== null && sim.intraHandoverWallClockStartMs !== null && sim.intraHandoverWallClockExpiresMs !== null
       ? {
