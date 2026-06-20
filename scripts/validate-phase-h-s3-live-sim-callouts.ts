@@ -68,14 +68,25 @@ function validateMainSceneGate(): void {
     'showUav is gated to the SINR live viewport lane',
   );
 
-  // Tier-2 dead-twin retirement: the per-beam callout RENDER lived only on the
-  // legacy steered <SatelliteBeams> cones, gated `showLiveBeamCones &&
-  // !showSinrLiveCellBeams` = `X && !X` (provably false on every lane — it never
-  // rendered) and now REMOVED. showBeamCallouts therefore no longer threads into a
-  // render; it survives as the callout toggle state + telemetry (asserted below)
-  // and the callout COMPONENT (BeamCalloutContent) stays covered by
-  // validateCalloutComponent + the vc1c/vc2 fixtures. The sinr-live cell-cone
-  // render (SinrLiveCellBeamCones) has no per-beam callouts.
+  // W5 (2026-06-20): the per-beam callout RENDER is reimplemented on the cell-cone
+  // lane. The legacy render lived only on the retired steered <SatelliteBeams> (gated
+  // `showLiveBeamCones && !showSinrLiveCellBeams` = `X && !X`, never rendered) and was
+  // removed; W5 mounts a NEW dumb cell-cone callout layer (<SinrLiveCellBeamCallouts>)
+  // under showBeamCallouts, fed by the same cell-truth cone items, so the Beam Info
+  // toggle now drives a real render. BeamCalloutContent + <SatelliteBeams> survive only
+  // as the vc1c/vc2 fixtures (validateCalloutComponent).
+  expect(
+    source.includes('<SinrLiveCellBeamCallouts'),
+    'H-S3 W5: MainScene mounts the cell-cone Beam-Info callout layer',
+  );
+  {
+    const calloutMountIndex = source.indexOf('<SinrLiveCellBeamCallouts');
+    const gateIndex = source.lastIndexOf('showBeamCallouts &&', calloutMountIndex);
+    expect(
+      gateIndex >= 0 && calloutMountIndex - gateIndex < 200,
+      'H-S3 W5: the cell-cone Beam-Info callout layer is gated by showBeamCallouts',
+    );
+  }
 
   // Telemetry publication was refactored out of MainScene into the shared
   // SceneTelemetry component: MainScene now threads the live showBeamCallouts
@@ -113,6 +124,25 @@ function validateCalloutComponent(): void {
   expect(
     satBeams.includes('showCallouts'),
     'SatelliteBeams accepts showCallouts prop',
+  );
+}
+
+function validateLiveCalloutComponent(): void {
+  // W5: the LIVE per-beam callout on the cell-cone lane is the new dumb
+  // SinrLiveCellBeamCallouts (NOT the steered BeamCalloutContent). It must keep the
+  // beam-callout testid and read the cell-truth surfaces directly.
+  const callout = readSource('src/viz/SinrLiveCellBeamCallouts.tsx');
+  expect(
+    callout.includes('data-testid="beam-callout"'),
+    'W5: SinrLiveCellBeamCallouts emits the beam-callout testid',
+  );
+  expect(
+    callout.includes('servingSinrByCellId'),
+    'W5: SinrLiveCellBeamCallouts reads the per-cell serving SINR',
+  );
+  expect(
+    callout.includes('SinrLiveCellBeamConeRenderItem'),
+    'W5: SinrLiveCellBeamCallouts is fed by the cell-truth cone items (not a steered BeamTarget)',
   );
 }
 
@@ -157,6 +187,7 @@ function validateReplayPathUntouched(): void {
 
 validateMainSceneGate();
 validateCalloutComponent();
+validateLiveCalloutComponent();
 validateRuntimeToggleUntouched();
 validateSceneSourceContract();
 validateReplayPathUntouched();

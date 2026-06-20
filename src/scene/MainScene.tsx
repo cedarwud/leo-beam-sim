@@ -39,6 +39,7 @@ import { satelliteTint } from '../constants/beamRoleTokens';
 // now). Its hex-cover MODEL stays in `../viz/EarthFixedCells` for reuse + the
 // `validate:vc3a:hex-paint` logic gate; only this scene's usage is removed.
 import { SinrLiveCellFootprintRings } from '../viz/SinrLiveCellFootprintRings';
+import { SinrLiveCellBeamCallouts } from '../viz/SinrLiveCellBeamCallouts';
 import { HandoverLinks } from '../viz/HandoverLinks';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
 import { IntraGroundShockwave } from '../viz/IntraGroundShockwave';
@@ -1144,6 +1145,15 @@ function SceneContent({
       primaryServingRecord,
     ],
   );
+  // W5 Beam-Info callouts: per-cell serving SINR (dB) keyed by cellId, for the
+  // <Html> chips. Reads the cell model's own serving SINR — display-only.
+  const sinrLiveCellServingSinrByCellId = useMemo(() => {
+    const map = new Map<number, number | null>();
+    for (const cell of sim.sinrLiveCells?.cells ?? []) {
+      map.set(cell.cellId, cell.servingSinrDb);
+    }
+    return map;
+  }, [sim.sinrLiveCells]);
   const renderedSinrLiveCellBeamConeCount = sinrLiveCellBeamConeItems.length;
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
     sinrLiveCellBeamConeItems.map(item => item.satId),
@@ -1701,6 +1711,19 @@ function SceneContent({
           items={sinrLiveCellBeamConeItems}
           widthScale={beamDisplaySpec.coneWidthScale}
           telemetryCountDatasetKey="sinrLiveCellFootprintRingRenderedCount"
+        />
+      )}
+      {/* W5 Beam Info: per-beam scene callouts (SAT · Cell·F · serving SINR) on the
+          rendered serving cones, gated by the Beam Info toggle (showBeamCallouts). The
+          old BeamCalloutContent only mounted inside the retired steered SatelliteBeams;
+          this cell-cone callout layer reads the same cell-truth items + per-cell SINR. */}
+      {showBeamCallouts && (
+        <SinrLiveCellBeamCallouts
+          items={sinrLiveCellBeamConeItems}
+          servingSinrByCellId={sinrLiveCellServingSinrByCellId}
+          primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
+          primaryServingCellId={primaryServingRecord?.cellId ?? null}
+          telemetryCountDatasetKey="sinrLiveCellBeamCalloutRenderedCount"
         />
       )}
       {/* G2c ambient live-handover pulse — bright, age-faded cones on each real
