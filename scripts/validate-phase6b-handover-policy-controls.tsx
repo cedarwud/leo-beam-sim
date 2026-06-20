@@ -209,12 +209,15 @@ function assertModeVisibility(): void {
     />,
   ));
   // Re-pinned to current MODQN-overlay live-status copy (getLiveStatusModeCopy
-  // in src/ui/InfoPanel.tsx). The consolidation refactors 16e7207 (S4-4a) /
-  // cc959d7 (S5-2b) reworded these strings; the assert INTENT is unchanged —
-  // the MODQN-overlay mode panel must show MODQN-replay-overlay serving copy +
-  // the live Δ SINR + decision-timing gate, and must NOT show "replay evidence".
-  assertContains(modqnLiveStatusText, 'MODQN replay decision overlay');
-  assertContains(modqnLiveStatusText, 'serving beam displays the MODQN replay decision overlay');
+  // in src/ui/InfoPanel.tsx). The MODQN-overlay mode must still surface its serving
+  // caption + live Δ SINR + decision-timing gate in the BEAM DUEL, and must NOT show
+  // "replay evidence".
+  // W-restore 2026-06-20: the verbose HANDOVER MODE card (modeCopy.detail) + the
+  // DuelCard contextDetail (modeCopy.duelDetail) were removed in the older-tuning
+  // (49db65d) right-sidebar restore, so the long mode-explanation strings ('MODQN
+  // replay decision overlay' / 'serving beam displays the MODQN replay decision
+  // overlay') are no longer RENDERED — their two assertContains were dropped. The
+  // serving caption + labels below still render via the duel and stay pinned.
   assertContains(modqnLiveStatusText, 'MODQN overlay serving link');
   assertContains(modqnLiveStatusText, 'live SINR reference');
   assertContains(modqnLiveStatusText, 'live Δ SINR');
