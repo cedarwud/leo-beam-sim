@@ -1475,6 +1475,10 @@ tangleLockGroup('QUAR-S6-BUS', () => {
     ['data-testid="non-serving-cones-toggle"', 'non-serving cones toggle'],
     ['Spotlight', 'spotlight control copy'],
     ['HO Slow', 'HO slow control copy'],
+    // HO-Slow feedback (readout + Resume) lives in the quick-controls row too,
+    // never the ControlBar.
+    ['data-testid="ho-slow-status"', 'HO slow effective-speed readout'],
+    ['data-testid="ho-slow-dismiss"', 'HO slow resume button'],
   ] as const) {
     assertNotContains(
       controlBarSource,

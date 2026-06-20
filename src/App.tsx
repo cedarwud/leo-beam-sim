@@ -1745,10 +1745,14 @@ export function App() {
         showNonServingCones={beamDisplaySpec.showNonServingCones}
         cinematicMode={effectiveCinematicMode}
         autoSlowEnabled={playback.autoSlowEnabled}
+        effectiveSpeed={playback.effectiveSpeed}
+        autoSlowActive={playback.autoSlowActive}
+        autoSlowApplied={playback.autoSlowApplied}
         onToggleBeamCallouts={() => setBeamDisplaySpec(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
         onToggleNonServingCones={() => setBeamDisplaySpec(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
         onCinematicModeChange={camera.setCinematicMode}
         onToggleAutoSlow={playback.toggleAutoSlow}
+        onDismissAutoSlow={playback.dismissAutoSlow}
       />
       {sceneLane !== 'sinr-live' && (
         <div className="leo-modqn-subnav-row">

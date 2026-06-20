@@ -12,10 +12,17 @@ interface SinrLiveQuickControlsProps {
   readonly showNonServingCones: boolean;
   readonly cinematicMode: CinematicMode;
   readonly autoSlowEnabled: boolean;
+  // HO-Slow feedback (the checkbox alone gave no signal that it slowed): the live
+  // effective scene rate + whether the auto-slow is currently applied, plus a
+  // dismiss to resume normal speed for the in-progress handover.
+  readonly effectiveSpeed: number;
+  readonly autoSlowActive: boolean;
+  readonly autoSlowApplied: boolean;
   readonly onToggleBeamCallouts: () => void;
   readonly onToggleNonServingCones: () => void;
   readonly onCinematicModeChange: (mode: CinematicMode) => void;
   readonly onToggleAutoSlow: () => void;
+  readonly onDismissAutoSlow: () => void;
 }
 
 export function SinrLiveQuickControls({
@@ -23,10 +30,14 @@ export function SinrLiveQuickControls({
   showNonServingCones,
   cinematicMode,
   autoSlowEnabled,
+  effectiveSpeed,
+  autoSlowActive,
+  autoSlowApplied,
   onToggleBeamCallouts,
   onToggleNonServingCones,
   onCinematicModeChange,
   onToggleAutoSlow,
+  onDismissAutoSlow,
 }: SinrLiveQuickControlsProps): ReactElement {
   return (
     <div
@@ -86,6 +97,34 @@ export function SinrLiveQuickControls({
         />
         HO Slow
       </label>
+
+      {/* HO-Slow feedback: the checkbox alone never showed whether the slow was
+          firing. This readout shows the live effective scene rate (drops 5x -> 1x
+          while a handover is mid-trigger) and goes alert-coloured + offers a Resume
+          when the auto-slow is actually applied. Display-only — it reflects
+          playback.effectiveSpeed, it does not set it. */}
+      <span
+        className="leo-ho-slow-status"
+        data-testid="ho-slow-status"
+        data-auto-slow-applied={autoSlowApplied ? '1' : '0'}
+        data-auto-slow-active={autoSlowActive ? '1' : '0'}
+        title={autoSlowApplied
+          ? 'A handover is in progress — the scene is auto-slowed. Resume to skip the slow-mo.'
+          : 'Live scene playback rate (auto-slows during a handover while HO Slow is on).'}
+      >
+        Scene {effectiveSpeed.toFixed(1)}×{autoSlowApplied ? ' · HO Slow' : ''}
+      </span>
+      {autoSlowApplied && (
+        <button
+          type="button"
+          className="leo-ho-slow-dismiss"
+          data-testid="ho-slow-dismiss"
+          onClick={onDismissAutoSlow}
+          title="Resume normal speed for this handover"
+        >
+          Resume
+        </button>
+      )}
     </div>
   );
 }
