@@ -117,9 +117,17 @@ Completed D2 checks:
 
 ### D3: SINR-Live 100-UE Service Proof
 
+> **⚠️ QUEUE LAYER RETIRED 2026-06-21 (`3ee4368`).** The S2a `live-service-demo`
+> queue proof (per-UE backlog from an FNV hash of the UE id — synthetic, NOT
+> producer truth) was removed: overlay queue panel `562e398`, then the in-scene
+> queue glow + the `deriveSinrLiveServiceQueue*` model + the
+> `validate:phase-c:sinr-service-queue:*` aliases `3ee4368`. The S2 serving
+> MOSAIC + aggregate (served N/N, per-beam load, mean SINR) STAY. The queue
+> bullets below are the as-built record at completion.
+
 **Status:** complete on 2026-06-10 for S2/S2a live-service-demo proof,
-including H5/I5 queue focus stories. This slice does not claim producer queue
-proof.
+including H5/I5 queue focus stories (the queue half RETIRED `3ee4368` — see
+above). This slice does not claim producer queue proof.
 
 Goal: prove the other 99 UEs are not decoration before tying the story to MODQN
 replay.
@@ -151,11 +159,9 @@ Validation:
 Completed D3 checks:
 
 - `npm run lint`
-- `npm run validate:phase-c:sinr-service-queue:model`
 - `npm run validate:phase-c:sinr-serving-mosaic:model`
 - `npm run validate:frontend:scene-lane-governance`
 - `APP_URL=http://localhost:3001 npm run validate:phase-c:sinr-serving-mosaic:browser`
-- `APP_URL=http://localhost:3001 npm run validate:phase-c:sinr-service-queue:browser`
 
 ### D4: SINR-Live Handover Cinema Sync
 

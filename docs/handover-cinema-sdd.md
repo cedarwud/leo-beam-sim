@@ -170,11 +170,16 @@ and off-axis telemetry. Legacy live-Walker events remain available for the
 MODQN live-cell overlay demo path, but SINR cell-truth focus is no longer
 claimed from the steered Walker forecast.
 
-**2026-06-10 H5/I5 queue-focus completion.** The `sinr-live` aggregate now
-exposes two lane-owned `live-service-demo` service stories: highest queue
-pressure and best queue rescue. They are panel-level focus/readout stories, not
+**2026-06-10 H5/I5 queue-focus completion.** **⚠️ RETIRED 2026-06-21 (`3ee4368`):
+the `live-service-demo` queue focus stories were a synthetic display layer
+(per-UE backlog from an FNV hash of the UE id — NOT producer truth) and were
+removed: overlay panel `562e398`, then the model + gates `3ee4368`. The serving
+mosaic + aggregate (served N/N, per-beam load, mean SINR) stay. The paragraph
+below is the as-built record.** The `sinr-live` aggregate then
+exposed two lane-owned `live-service-demo` service stories: highest queue
+pressure and best queue rescue. They were panel-level focus/readout stories, not
 new camera runtime, not producer queue proof, and not MODQN replay truth. The
-model and browser gates require the source label, two focus rows, queue delta,
+model and browser gates required the source label, two focus rows, queue delta,
 service surplus, and no per-UE queue labels.
 
 ### 3.3 PROOF layer — support the integration claim (on demand)
@@ -377,7 +382,7 @@ timeline + one "Handover Cinema" control.** Everything else on-demand or in Adva
 |---|---|---|---|
 | **S1** | Cinema controller (arm / intra-inter filter / exit) wrapping the Director handlers + **one** candidate-highlight path + "why (SINR)" explainer panel | **sinr-live, REAL data** | low–med |
 | **S2** | Ambient SINR-serving mosaic + aggregate (`served N/N`, per-beam load) on sinr-live. D3 complete: default 100-UE browser gate proves the mesh colouring and aggregate readout. | sinr-live, real | low |
-| **S2a** | Traffic queue service proof: per-UE queue accountant/source adapter, queue halo/heatmap encoding, and sidebar distribution metrics. D3 complete for `live-service-demo`; queue-aware focus candidates remain in H4/I5. | sinr-live demo now; producer proof later | med |
+| **S2a** | ~~Traffic queue service proof: per-UE queue accountant/source adapter, queue halo/heatmap encoding, and sidebar distribution metrics.~~ **RETIRED `3ee4368`** — the synthetic `live-service-demo` queue demo was removed (overlay panel `562e398`, scene glow layer + model `3ee4368`); the S2 serving mosaic + aggregate stay. Producer-backed queue proof remains a fresh requirement. | ~~sinr-live demo~~ → producer proof later | retired |
 | **S3** | Service links + handover glyphs (intra-flash / inter-arc), focus-scoped; scale-adaptive shots (micro/macro) | sinr-live, real | med |
 | **S3a** | Cell-truth handover cinema sync: derive the next-HO event index from the `sinrLiveCells` trajectory, drive candidate highlight from that event, and render only the focused old/new off-axis beam pair during cinema. **D4 complete:** source/event/off-axis telemetry is validator-locked; ambient all-cell cones remain parked. | sinr-live, real cell truth | done |
 | **S4** | Explainer content abstraction (one panel: SINR reason vs MODQN per-objective Q) | both live lanes | low |

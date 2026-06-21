@@ -304,8 +304,8 @@ Legend:
   - Done when: UI shows served N/N, per-beam load counts, mean/p5 SINR or
     equivalent, and source labels.
   - Evidence: `SinrServingAggregate` shows served N/N, serving beam count,
-    top beam loads, avg SINR, `sinr-serving` claim, and
-    `live-service-demo` queue source.
+    top beam loads, avg SINR, and the `sinr-serving` claim. (The
+    `live-service-demo` queue-source readout was RETIRED with §I, `3ee4368`.)
 - [x] **H4. Focus selection is not permanently fixed to UE-0.**
   - Doc status: handover cinema S2a/S3.
   - Done when: cinema/service inspector can focus the next event UE, highest
@@ -319,13 +319,25 @@ Legend:
   - Doc status: handover cinema meso / queue-rescue shots.
   - Done when: UI can show a cell/beam group migration or queue rescue without
     turning the rest of the UEs into clutter.
-  - Evidence: `SinrServingAggregate` now shows two low-density
-    `live-service-demo` queue focus stories, highest pressure and best rescue,
-    inside the aggregate panel rather than 100 per-UE labels. The browser gate
-    captured `pressure=live-ue-51` and `rescue=live-ue-78` on the existing
-    `:3001` server while keeping instanced queue pressure and no per-UE labels.
+  - Evidence: RETIRED `3ee4368` — the `live-service-demo` queue focus stories
+    were synthetic; removed with §I. As built: `SinrServingAggregate` showed two
+    low-density `live-service-demo` queue focus stories, highest pressure and
+    best rescue, inside the aggregate panel rather than 100 per-UE labels. The
+    browser gate captured `pressure=live-ue-51` and `rescue=live-ue-78` on the
+    existing `:3001` server while keeping instanced queue pressure and no per-UE
+    labels.
 
 ## I. Traffic / Queue Proof
+
+> **⚠️ RETIRED 2026-06-21 (synthetic display debt removed).** The
+> `live-service-demo` queue demo was a display-owned synthetic backlog model
+> (per-UE pressure from an FNV hash of the UE id — NOT producer truth). Removed
+> in two steps: the overlay queue sub-panel (`562e398`), then the in-scene
+> queue-pressure glow layer + the `deriveSinrLiveServiceQueue*` model + its
+> dedicated `validate:phase-c:sinr-service-queue:*` aliases (`3ee4368`). Items
+> I1–I5 below (and the H3/H5 queue evidence above) record the AS-BUILT state at
+> completion; the subsystem no longer ships. Producer-backed queue proof remains
+> a fresh requirement — the replay source-gap `traffic.queueRows` still stands.
 
 - [x] **I1. Per-UE queue accounting exists for SINR live demo or producer replay.**
   - Doc status: handover cinema S2a and replay SDD §0.6.
@@ -338,7 +350,8 @@ Legend:
   - Doc status: replay SDD §0.6.
   - Done when: validator proves
     `queueAfter = max(0, queueBefore + trafficArrivalBits - servedBits)`.
-  - Evidence: `npm run validate:phase-c:sinr-service-queue:model`.
+  - Evidence: `npm run validate:phase-c:sinr-service-queue:model` (alias REMOVED
+    `3ee4368`; the queue-conservation model test was deleted with §I).
 - [x] **I3. Queue visuals are dense-safe.**
   - Doc status: handover cinema S2a.
   - Done when: queue pressure uses instanced halos, heatmaps, and aggregate
