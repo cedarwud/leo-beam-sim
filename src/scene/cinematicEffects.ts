@@ -18,23 +18,22 @@ export interface CinematicSpotlightTarget {
 export const CINEMATIC_LIGHT_DIM_MULTIPLIER = 0.6;
 export const CINEMATIC_FOG_COLOR = '#020912';
 /**
- * Spotlight FogExp2 density. Visibility ≈ `exp(−(density·cameraDist)²)`, so this
- * saturates to the near-black {@link CINEMATIC_FOG_COLOR} as the camera dollies out.
+ * Spotlight FogExp2 density — the ORIGINAL value, unchanged since before 49db65d.
+ * Visibility ≈ `exp(−(density·cameraDist)²)`, so the spotlight saturates to the
+ * near-black {@link CINEMATIC_FOG_COLOR} as the camera dollies toward the 3000 wu
+ * OrbitControls cap. That full-zoom black-out is INHERENT to distance fog (no single
+ * density both dims at the default framing AND stays visible at ~3.7× the distance)
+ * and was TRUE in the old design too — kept as original per owner (2026-06-21,
+ * "如果原本就是這樣設計那就先保留不動").
  *
- * The original 0.00129 was authored (pre-49db65d) for a scene where the spotlight
- * point-lights formed a TIGHT pool under the protagonist UE (UE-anchored beams) and
- * the camera framed it CLOSE. Two later changes broke that envelope without re-tuning
- * the fog: c8d211d spread the point-lights out to earth-fixed cell centres
- * (disableUeAnchor on sinr-live), and f973f9e pulled the default/oblique camera back
- * ~200 wu. At the current default dist ≈ 819 wu, 0.00129 already drowns ~67% of the
- * frame, and a modest zoom-out (≈1185 wu) goes ~90% black — the "must be close /
- * black when zoomed out" report. Lowered to 0.00075 so the spotlight still DIMS +
- * vignettes (focus is also carried by {@link CINEMATIC_LIGHT_DIM_MULTIPLIER} = 0.6)
- * but stays legible across the OrbitControls zoom range (≈69% at 819 wu, ≈45% at
- * 1185 wu; still ~black at the 3000 wu max). Display-only (Rule#6): fog mounts ONLY
- * in spotlight mode, so off-spotlight rendering is untouched.
+ * NB for anyone tempted to lower this: the recent "must be close to see anything"
+ * near-dimming is NOT a fog change — the fog never moved. It came from the f973f9e
+ * camera pull-back (default ≈640→819 wu) + the c8d211d earth-fixed beam spread. The
+ * faithful old-look lever is the CAMERA, not this constant. A 2026-06-21 attempt to
+ * compensate by lowering this to 0.00075 was reverted as an invented value.
+ * Display-only (Rule#6): fog mounts ONLY in spotlight mode.
  */
-export const CINEMATIC_FOG_DENSITY = 0.00075;
+export const CINEMATIC_FOG_DENSITY = 0.00129;
 export const CINEMATIC_EVENT_LIGHT_HEIGHT_WORLD = 12;
 export const CINEMATIC_EVENT_LIGHT_DISTANCE_WORLD = 170;
 export const CINEMATIC_EVENT_LIGHT_DECAY = 1.0;
