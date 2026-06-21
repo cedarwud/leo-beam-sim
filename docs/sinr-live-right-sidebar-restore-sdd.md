@@ -284,6 +284,56 @@ display-only unless noted.
   anchoring to fix a cosmetic spotlight** without an explicit decision: it touches geometry the
   whole lane depends on.
 
+### W9 — Multibeam restore on the cell lane (MEDIUM; DECISION = A, locked 2026-06-21)
+- **Symptom:** each satellite renders only ONE beam (a single hero serving cone). A
+  satellite has 7 beams and the engine models beam hopping — the serving sat (and the
+  candidate sat) should each show multiple beams, with the on-UE beams distinct from
+  the beam-hopping ones lighting other cells.
+- **Root cause (a REGRESSION, git-confirmed):** `c8d211d` (2026-06-07) retired the
+  steered multibeam `SatelliteBeams` on this lane in favour of earth-fixed cell-cones;
+  then `fb5a4972` (2026-06-18) set the DEFAULT to a single hero cone
+  (`MainScene.tsx:1129-1136`: if `!showNonServingCones` → filter `allItems` to
+  `satId===primary.servingSatId && cellId===primary.servingCellId`). `b12ffef7`
+  (2026-06-11) had earlier made BREADTH the default (`focusSatIds:null`), so the
+  `MainScene.tsx:1124-1127` comment ("breadth is the render now") is now STALE.
+  The OLD design (49db65d/ab861c4, git-confirmed) rendered exactly the wanted model:
+  default density `event-plus-1` (~2 beams/sat; `all` → up to `MAX_BEAMS_PER_SATELLITE`=7),
+  up to `MAX_BEAM_SATS`=3 satellites (serving + pending/candidate + approach) with NO
+  toggle, and beam hopping as a first-class concept (`isScheduledActive` separate from
+  `isServing`). The engine STILL computes all of this — `illuminatedBeams` (per cell:
+  serving + candidates, `sinrLiveCellModel.ts:180,852`) + `applyBeamHoppingCap`
+  (≤7 cells/sat/slot, 2.5 s hop). The data is all there; the render hides it by default.
+- **CONSTRAINT:** do NOT un-retire steered `SatelliteBeams` on this lane —
+  `validate-frontend-scene-lane-governance.ts` keeps it suppressed (earth-fixed lane;
+  UE-anchored steered beams are the same anchor tangle as W8). RECONSTRUCT the multibeam
+  from the cell model's `illuminatedBeams` (display-only, feasible).
+- **Fix (Option A — structured restore, the user's pick):**
+  1. Draw the HERO serving satellite's ALL lit cells (its beam-hop multibeam fan, up
+     to 7 this slot) — filter `illuminatedBeams` by `satId === heroServingSatId`, not
+     just the single hero cell.
+  2. Draw the CONTENDER/candidate satellite's beams — identify it via the W7
+     `comparisonSatId` / `pendingTargetSatId` on the primary `UeCellServingRecord`,
+     filter `illuminatedBeams` by that satId.
+  3. STYLE by role: a cell WITH UEs reads bright (serving) / medium (candidate); an
+     empty cell (pure beam-hopping) reads dim — so on-UE vs hopping is legible.
+  4. Cap to ~3 satellites (hero + contender + approach), mirroring the old
+     `MAX_BEAM_SATS`=3, to control the "washes the map" clutter that `fb5a4972`
+     collapsed the field to avoid.
+  5. Keep the existing "Other beams" toggle as the full-field breadth power-view.
+- **Files (likely):** `src/scene/MainScene.tsx` (the cone memo `1113-1147` + a
+  contender/role-aware memo), `src/viz/SinrLiveCellBeamCones.tsx` (resolver: per-sat /
+  role-styled selection from `illuminatedBeams`), `src/constants/sinrLiveConeStyle.ts`
+  (on-UE vs hopping opacities), possibly `src/scene/beamDisplaySpec.ts` (a display knob
+  if needed — respect Rule#5 flag budget). All DISPLAY-only.
+- **Method (verify-by-PIXEL, not validator-green):** screenshot :3000 before/after each
+  step + count rendered cone telemetry; PROBE first which knob actually drives the
+  visible cones (4 cone layers can mask each other; the top-12 display cap
+  `coneApexWorldById`; the dep-array memo "change a value, nothing re-renders" risk at
+  `MainScene.tsx:1161-1167`).
+- **Gates:** `validate:s0:geometry-trace` MUST stay zero-diff (display-only; this only
+  reads `illuminatedBeams`, adds no truth), `validate:governance` incl. `beam:colour-match`
+  (each rendered cone keeps `colorForServingBeam` identity), `validate:ready` (browser).
+
 ---
 
 ## §5. Step 0 — clear the existing governance debt + commit the done restore
@@ -336,12 +386,28 @@ the contract's dispatch template, require `validate:ready` proof, review the dif
 
 ---
 
-## §7. Open decisions (ask the user)
+## §7. Open decisions + status (updated 2026-06-21)
 
-- **W8 Spotlight:** accept spread earth-fixed spotlight, or re-anchor to UE (geometry change)?
-- **W7 comparison semantics:** show BEST CANDIDATE (steady-state runner-up, always present) vs
-  PENDING TARGET (only during a trigger countdown) — or both via the dynamic role? Default:
-  best non-serving candidate, upgrade to pending-target when a HO is mid-trigger.
+DONE: Step-0 + W1–W7 (incl. W7b/c) shipped (`ddee4f5`..`f611dcd`). W7 comparison =
+DYNAMIC (best-candidate → pending-target mid-trigger). Beam-Info callout VISIBILITY bug
+fixed (`34ae0c3` — was mounting but invisible: restored the old `<Html>` envelope, no
+distanceFactor / `zIndexRange [80,20]` / floated). Spotlight "black on zoom" diagnosed:
+the fog NEVER changed; the FogExp2 black-out at the 3000 wu zoom cap is INHERENT +
+original (kept per owner); the real near-look divergence is the f973f9e camera pull-back,
+not the fog — a fog re-tune was tried then REVERTED to the original 0.00129 (`11fc1e2`→
+`b055cd0`).
+
+LOCKED next item: **W9 multibeam restore = Option A** (structured: hero multibeam +
+contender beams, on-UE vs hopping styling, ≤3 sats). Build in a fresh conversation.
+
+STILL OPEN (ask the user):
+- **W8 Spotlight RE-ANCHOR aesthetic:** accept the spread earth-fixed light pool, or
+  re-anchor the spotlight/beams to the UE for the old tight pool? = a geometry change
+  the whole lane (+ modqn-live camera) depends on; the black-on-zoom symptom is already
+  resolved, so this is purely the tight-vs-spread look.
+- **Push:** the unpushed commits (CI runs governance:full + static:all on push; note
+  the `phase7e` dense-q gate may red in CI if the sibling `modqn-paper-reproduction`
+  artifact is absent there — env, not code).
 
 ---
 
