@@ -154,7 +154,6 @@ interface ArtifactSceneContentProps {
   sceneFrame: NormalizedSceneFrame;
 }
 
-const SHOW_BEAMS = true;
 const CAMERA_TWEEN_DURATION_MS = 600;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
 
@@ -1507,7 +1506,7 @@ function SceneContent({
             // steered SatelliteBeams, so report the cones that actually render
             // (keeps this attr honest — it is not the suppressed steered count).
             ? renderedSinrLiveCellBeamConeCount
-            : SHOW_BEAMS && showLiveBeamCones && !showCellOverlay
+            : showLiveBeamCones && !showCellOverlay
               ? [...viz.satBeams.values()].reduce((count, beams) => count + beams.length, 0)
               : 0
         }

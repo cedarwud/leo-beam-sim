@@ -598,10 +598,6 @@ export interface SinrLiveCellBeamConesRenderProps {
   readonly pulseIntraColor?: string;
   readonly pulseInterColor?: string;
   readonly telemetryCountDatasetKey?: string;
-  readonly telemetrySourceOwnerDatasetKey?: string;
-  readonly telemetrySourceOwner?: string;
-  readonly telemetryEventIdDatasetKey?: string;
-  readonly telemetryEventId?: string;
 }
 
 /**
@@ -704,23 +700,13 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
       if ((obj as THREE.Mesh).isMesh && obj.visible) count += 1;
     });
     gl.domElement.dataset[key] = String(count);
-    if (props.telemetrySourceOwnerDatasetKey) {
-      gl.domElement.dataset[props.telemetrySourceOwnerDatasetKey] = props.telemetrySourceOwner ?? '';
-    }
-    if (props.telemetryEventIdDatasetKey) {
-      gl.domElement.dataset[props.telemetryEventIdDatasetKey] = props.telemetryEventId ?? '';
-    }
   });
 
   useEffect(() => () => {
     if (props.telemetryCountDatasetKey) delete gl.domElement.dataset[props.telemetryCountDatasetKey];
-    if (props.telemetrySourceOwnerDatasetKey) delete gl.domElement.dataset[props.telemetrySourceOwnerDatasetKey];
-    if (props.telemetryEventIdDatasetKey) delete gl.domElement.dataset[props.telemetryEventIdDatasetKey];
   }, [
     gl,
     props.telemetryCountDatasetKey,
-    props.telemetrySourceOwnerDatasetKey,
-    props.telemetryEventIdDatasetKey,
   ]);
 
   return (
