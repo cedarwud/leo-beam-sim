@@ -81,22 +81,12 @@ const app = read('src/App.tsx');
 assertIncludes(app, 'onLoadPaperFaithful={handleRevertToPaperFaithful}', 'D7 paper-faithful load is wired through Model Library');
 assertIncludes(app, 'artifactReplaySource={showcaseArtifactSource}', 'D7 synthetic/non-producer source is visible in Model Library');
 
+// The queue focus MODEL stays (the scene mosaic + several validators use it);
+// only the overlay HUD queue sub-panel was removed.
 const queueModel = read('src/scene/sinrServingMosaic.ts');
 assertIncludes(queueModel, 'deriveSinrLiveServiceQueueFocusStories', 'H5/I5 queue focus model exists');
 assertIncludes(queueModel, "'highest-pressure'", 'H5/I5 highest-pressure story kind exists');
 assertIncludes(queueModel, "'best-rescue'", 'H5/I5 best-rescue story kind exists');
-
-const aggregatePanel = read('src/ui/SinrServingAggregate.tsx');
-assertIncludes(aggregatePanel, 'data-testid="sinr-service-queue-focus-stories"', 'H5/I5 queue focus panel exists');
-assertIncludes(aggregatePanel, 'data-queue-focus-kind={story.kind}', 'H5/I5 queue focus rows expose story kind');
-assertIncludes(aggregatePanel, 'data-service-surplus-bits={Math.round(story.serviceSurplusBits)}', 'I5 service surplus is exposed');
-assertIncludes(aggregatePanel, 'live SINR serving · not MODQN · queue demo', 'queue focus stays lane/source labeled');
-
-const browserGate = read('scripts/validate-phase-c-sinr-serving-mosaic-browser.ts');
-assertIncludes(browserGate, 'data-testid="sinr-service-queue-focus-stories"', 'browser gate checks queue focus panel');
-assertIncludes(browserGate, 'highestPressureUe', 'browser gate checks highest-pressure focus');
-assertIncludes(browserGate, 'bestRescueUe', 'browser gate checks best-rescue focus');
-assertIncludes(browserGate, 'queueFocusRows === 2', 'browser gate requires both queue focus rows');
 
 const sourceGaps = read('src/modqn/replay-source-gaps/sourceGaps.ts');
 for (const field of [

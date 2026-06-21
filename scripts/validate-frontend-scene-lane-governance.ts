@@ -1731,21 +1731,6 @@ assertContains(
 );
 assertContains(
   sinrServingAggregateSource,
-  'data-queue-source={queueAggregate.source}',
-  'SINR-serving aggregate exposes the queue source label from the same queue model',
-);
-assertContains(
-  sinrServingAggregateSource,
-  'data-testid="sinr-service-queue-summary"',
-  'SINR-serving aggregate exposes dense queue metrics without per-UE labels',
-);
-assertContains(
-  sinrServingAggregateSource,
-  'data-testid="sinr-service-queue-heatmap"',
-  'SINR-serving aggregate exposes a dense queue heatmap strip from the queue aggregate',
-);
-assertContains(
-  sinrServingAggregateSource,
   'live SINR serving · not MODQN',
   'SINR-serving aggregate carries the lane-truthful "not MODQN" disclosure',
 );
