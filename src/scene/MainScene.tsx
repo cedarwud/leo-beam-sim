@@ -1097,52 +1097,54 @@ function SceneContent({
   // browser gate (UE off-centre = cones at fixed cells while UEs sit off-axis).
   // Resolve the cones ONCE per frame; the component + telemetry both read this
   // memoised array (no redundant resolver passes).
-  // S-cells-4b-fix(3): draw the SERVING beams (apex = serving sat, base = served
-  // cell, frequency-reuse colour) of only a FOCUS SUBSET of satellites — the top
-  // serving sats + the primary UE's serving sat — so the additive-glow cones stay
-  // readable instead of blowing out the whole view with every serving sat's fan.
-  // Continuity keeps the focus set stable; the breadth of who-is-served stays in
-  // the UE mosaic (Rule#6 display filter, serving truth unchanged).
-  // The focus/centre UE's serving (satId, cellId) — the SAME primary oracle the s0
-  // connected-sat invariant + the InfoPanel publisher read. Its one cone renders as
-  // the bright saturated hero beam (resolveSinrLiveConeColor stays, opacity bumped).
+  // W9 step 1 — the sinr-live cell lane renders the serving sat's FULL multibeam fan
+  // (all the cells it serves this slot, post beam-hopping), not just the primary UE's
+  // one cone. The default focuses to a bounded set of target satellites (≤3, mirroring
+  // the retired steered render's MAX_BEAM_SATS=3) so the additive-glow cones stay
+  // readable; the "Other beams" toggle (showNonServingCones) opens the full breadth
+  // power-view. Rule#6 display filter — the serving truth + the s0/s4 must-hold
+  // resolver (focusSatIds=null) are unchanged; this only narrows what is DRAWN.
+  // primaryServingRecord = the focus/centre UE's serving (satId, cellId) — the SAME
+  // primary oracle the s0 connected-sat invariant + the InfoPanel publisher read; its
+  // cone renders as the bright saturated hero beam.
   const primaryServingRecord = sim.sinrLiveCells
     ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
     : null;
 
+  // The ≤3 target satellites whose multibeam fans render by default. W9 step 1 = the
+  // HERO serving satellite only; later steps add the contender + approach sats. Keyed
+  // on the stable satId string so the Set identity (and the cone memo below) stays
+  // stable across renders while the serving sat is unchanged.
+  const sinrLiveTargetSatIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (primaryServingRecord?.servingSatId) ids.add(primaryServingRecord.servingSatId);
+    return ids;
+  }, [primaryServingRecord?.servingSatId]);
+
   const sinrLiveCellBeamConeItems = useMemo(
     () => {
       if (!showSinrLiveCellBeams) return [];
-      const allItems = resolveSinrLiveCellBeamConeItems({
+      // Other-beams power-view (showNonServingCones) → every serving sat (full
+      // breadth). Default → focus to the ≤3 target sats' serving fans. Empty target
+      // set (no primary serving) draws nothing, never the unbounded all-sat firehose.
+      if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds.size === 0) return [];
+      return resolveSinrLiveCellBeamConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
-        // S5-2: the serving-sat-COMPLETE cone-apex map (every projected sat, NOT
-        // the top-12 `satelliteWorldById` display slice) so a cell-serving sat
-        // beyond the display cap still gets a cone — the connected-sat-has-beam
-        // must-hold (display cap applied at DRAW, never at TRUTH).
+        // S5-2: the serving-sat-COMPLETE cone-apex map (every projected sat, NOT the
+        // top-12 `satelliteWorldById` display slice) so a target sat beyond the display
+        // cap still gets a cone (display cap applied at DRAW, never at TRUTH).
         satelliteWorldById: viz.coneApexWorldById,
-        // D-STYLE=A (s5-one-beam-render-plan.md §4): draw EVERY serving sat's
-        // beam (faint, NormalBlending) so every serving sat is beamed. The
-        // former top-N focus narrowing is retired; breadth is the render now.
-        focusSatIds: null,
+        focusSatIds: beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds,
       });
-      if (beamDisplaySpec.showNonServingCones) {
-        return allItems;
-      }
-      // Otherwise, only keep the primary hero serving beam
-      if (!primaryServingRecord) return [];
-      return allItems.filter(
-        item => item.satId === primaryServingRecord.servingSatId && item.cellId === primaryServingRecord.cellId
-      );
     },
     [
       showSinrLiveCellBeams,
       sim.sinrLiveCells,
-      sim.perUePositions,
       sinrLiveCellPlacementById,
       viz.coneApexWorldById,
       beamDisplaySpec.showNonServingCones,
-      primaryServingRecord,
+      sinrLiveTargetSatIds,
     ],
   );
   // W5 Beam-Info callouts: per-cell serving SINR (dB) keyed by cellId, for the
