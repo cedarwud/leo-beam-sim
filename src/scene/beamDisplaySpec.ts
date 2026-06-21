@@ -70,8 +70,8 @@ export interface BeamDisplaySpec {
    * The hero (primary serving) cone keeps its own brighter opacity, and the
    * pair / pulse / non-serving layers keep their own style tokens — this is the
    * serving-field knob only (SDD §3.1 servingConeOpacity, distinct from
-   * primaryConeOpacity). Default = {@link SINR_LIVE_CONE_AMBIENT_OPACITY} (0.14,
-   * the A2 screenshot-locked value), so behaviour-identical.
+   * primaryConeOpacity). Default = {@link SINR_LIVE_CONE_AMBIENT_OPACITY} (0.45,
+   * the screenshot-locked value), so behaviour-identical.
    */
   readonly servingConeOpacity: number;
   /**

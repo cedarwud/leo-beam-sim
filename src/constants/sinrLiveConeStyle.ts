@@ -10,17 +10,14 @@
  *
  * The HYBRID look (D-STYLE A → hybrid, user-locked 2026-06-11; screenshot-tuned
  * on :3000):
- *  - AMBIENT: EVERY serving sat's cone, FAINT, so every serving sat is beamed
- *    (the connected-sat-has-beam must-hold) without washing the map. RE-TUNED to
- *    0.14 (A2, consolidation SDD §8): the original 0.08 was "present but invisible"
- *    (the "connected sat, no [visible] beam" complaint), and three de-tangling
- *    features added since let a higher level read clean — the apex→base alpha fade
+ *  - AMBIENT: EVERY serving sat's cone, so every serving sat is beamed
+ *    (the connected-sat-has-beam must-hold). Currently 0.45
+ *    ({@link SINR_LIVE_CONE_AMBIENT_OPACITY}); three de-tangling features keep the
+ *    higher level legible — the apex→base alpha fade
  *    ({@link SINR_LIVE_CONE_BASE_ALPHA_FACTOR}), the near-horizon shallow-cone dim,
- *    and the pulled-back initial camera. 0.18+ washes in dense low-overlap slots
- *    (the look the user rejected, screenshot-verified), so 0.14 is the legible-
- *    without-washing setting. NormalBlending alpha-composites each cone to a
- *    bounded translucency — overlaps darken but never white out — so all connected
- *    sats can show a beam at one opacity.
+ *    and the pulled-back initial camera. Cones use AdditiveBlending
+ *    ({@link SINR_LIVE_CONE_BLENDING}) so overlapping serving cones accumulate into a
+ *    brighter glow where many sats serve the same area.
  *  - PAIR: the focused cinema handover pair (old/new cell), BRIGHT, drawn on top
  *    of the ambient layer so the handover story stands out against the faint
  *    field.
@@ -35,13 +32,13 @@
 import * as THREE from 'three';
 import { frequencyReuseColor } from './beamRoleTokens';
 
-/** Faint ambient cone opacity — every serving sat's beam (screenshot-locked 0.14). */
+/** Ambient cone opacity — every serving sat's beam (screenshot-locked 0.45). */
 export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.45;
 
 /**
  * Bright opacity for the PRIMARY serving satellite's beams (the sat serving the
- * focus/centre UE). The all-serving ambient field reads faint (0.14) so the
- * multibeam context does not blow out, but the one satellite actually serving the
+ * focus/centre UE). The all-serving ambient field reads dimmer (0.45,
+ * {@link SINR_LIVE_CONE_AMBIENT_OPACITY}), but the one satellite actually serving the
  * protagonist should read SATURATED + BRIGHT like the original steered serving cone
  * (BEAM_ROLE_TOKENS.serving was 0.58). It is exempt from the near-horizon dim so the
  * hero beam always pops, even at moderate elevation. Display-only; serving truth +
@@ -143,9 +140,9 @@ export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.8;
  * pulseInterColor`, falling back to the serving-identity colour when a cone carries
  * no kind (every non-pulse layer). Display-only (Rule#6): the colour is a read-out
  * of the model's own intra/inter classification, it changes no truth.
- *  - intra (same-sat beam switch): EMERALD — the "minor, in-place" hop.
- *  - inter (satellite handover): ROSE — the "you changed satellite" event; distinct
- *    from the hero yellow ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}).
+ *  - intra (same-sat beam switch): CYAN (#22d3ee) — the "minor, in-place" hop.
+ *  - inter (satellite handover): SKY (#0ea5e9) — the "you changed satellite" event;
+ *    distinct from the hero yellow ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}).
  */
 export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#22d3ee';
 export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#0ea5e9';
@@ -153,7 +150,7 @@ export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#0ea5e9';
 /**
  * Dim opacity for the OPT-IN non-serving cone layer (Tier-2 show/dim switch,
  * `BeamDisplaySpec.showNonServingCones`, default OFF). Dimmer than the ambient
- * serving field ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} = 0.14) so co-channel /
+ * serving field ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} = 0.45) so co-channel /
  * non-serving illuminated beams read as faint background context behind the
  * serving cones, never competing with them. Display-only (Rule#6): showing these
  * cones reads non-serving `illuminatedBeams` and changes no serving/SINR truth.
@@ -164,24 +161,26 @@ export const SINR_LIVE_CONE_NONSERVING_OPACITY = 0.04;
 export const SINR_LIVE_CONE_SEGMENTS = 32;
 
 /**
- * G1-CONE-STYLE apex→base alpha fade. Each cone is brightest at its apex (the
- * serving satellite) and fades toward the flat ground footprint ring, via a
- * per-vertex alpha gradient (RGBA vertex colours, RGB left white so the per-cone
- * `frequencyReuseColor` hue is unchanged — only alpha is graded). The final
- * fragment alpha is `material.opacity × vertexAlpha`, so the per-cone level
- * (ambient {@link SINR_LIVE_CONE_AMBIENT_OPACITY} / pair / pulse) is preserved at
- * the apex and the ground-level overlap — where many cones criss-cross the map —
- * fades to this fraction, de-tangling the field without touching truth (cones are
- * outside the geometry-trace snapshot; the apex stays fully opaque so every
- * serving sat still shows a beam — the connected-sat-has-beam must-hold).
+ * G1-CONE-STYLE apex→base alpha factor — the per-vertex alpha at the ground
+ * footprint ring relative to the (full) apex. The cone carries an RGBA vertex
+ * gradient (RGB left white so the per-cone hue is unchanged — only alpha varies);
+ * the final fragment alpha is `material.opacity × vertexAlpha`. At the CURRENT value
+ * 1.0 the base matches the apex, so there is NO apex→base fade — the whole cone draws
+ * at its per-cone level (ambient {@link SINR_LIVE_CONE_AMBIENT_OPACITY} / pulse). The
+ * machinery stays so this can be lowered below 1.0 to re-introduce a ground fade for
+ * de-tangling without touching truth (cones are outside the geometry-trace snapshot;
+ * the apex stays fully opaque so every serving sat still shows a beam — the
+ * connected-sat-has-beam must-hold).
  */
 export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 1.0;
 
 /**
- * Alpha-composite blending for the cones: bounded, uniform translucency. Additive
- * blending accumulates (no usable middle between too-faint and blown-out at the
- * all-serving population), so NormalBlending is what lets every serving sat show a
- * beam at one moderate opacity.
+ * AdditiveBlending for the cones: overlapping serving cones ACCUMULATE into a
+ * brighter glow rather than alpha-compositing to a bounded translucency. This is the
+ * current intended look — where several serving beams cross the same area the field
+ * lights up, reading as a denser multibeam region; the apex→base alpha fade
+ * ({@link SINR_LIVE_CONE_BASE_ALPHA_FACTOR}) + the near-horizon dim keep the ground
+ * overlap from blowing out.
  */
 export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.AdditiveBlending;
 
