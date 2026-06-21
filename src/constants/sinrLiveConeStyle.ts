@@ -71,6 +71,19 @@ export const SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR = 0.93;
 export const SINR_LIVE_FOOTPRINT_RING_Y_LIFT = 0.6;
 
 /**
+ * W5-fix: the Beam-Info callout chip's float height (world units) above the cell
+ * base centre. The W5 reimplementation anchored the `<Html>` chip at the ground
+ * ({@link SINR_LIVE_FOOTPRINT_RING_Y_LIFT} = 0.6) with a `distanceFactor` (shrinks
+ * to sub-pixel at the pulled-back live camera) and `zIndexRange [40,0]` (collapses
+ * under the canvas at distance) → the chip mounted in the DOM but was never visible.
+ * The 49db65d steered callout that DID read floated its label well above the cone
+ * (`height ≈ 28` wu) with NO distanceFactor (constant screen size) and
+ * `zIndexRange [80,20]`. This restores that envelope: float the chip above the cone
+ * so it clears the footprint hex + the hero fill. Display-only (Rule#6).
+ */
+export const SINR_LIVE_CALLOUT_Y_LIFT = 26;
+
+/**
  * W4 double-layer hex (restores the 49db65d look): a SECOND concentric inner hex
  * band per served cell, nested inside the rim band above. Both bands use the cell's
  * serving-identity colour (item.color = colorForServingBeam), so the served UE dot,

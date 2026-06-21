@@ -6,7 +6,8 @@
  * <SatelliteBeams>, so on the cell-cone lane the Beam Info toggle flipped a flag with
  * NO renderer behind it (broke c8d211d / b64cd9a). This is a DUMB renderer (mirrors
  * `SinrLiveCellFootprintRings`): one <Html> chip per rendered serving-cone item,
- * anchored at the cone's base centre, in the cone's serving-identity colour. It does
+ * floated above the cone ({@link SINR_LIVE_CALLOUT_Y_LIFT}), in the cone's
+ * serving-identity colour. It does
  * NOT fake a steered `BeamTarget` — it reads the cell-truth items + the per-cell
  * serving SINR directly, so it cannot drift from the cones / footprint hexes it
  * labels. Display-only (Rule#6): it surfaces the model's own serving identity + SINR,
@@ -16,7 +17,7 @@ import { useEffect, useLayoutEffect, type JSX } from 'react';
 import { Html } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
-import { SINR_LIVE_FOOTPRINT_RING_Y_LIFT } from '../constants/sinrLiveConeStyle';
+import { SINR_LIVE_CALLOUT_Y_LIFT } from '../constants/sinrLiveConeStyle';
 import type { SinrLiveCellBeamConeRenderItem } from './SinrLiveCellBeamCones';
 
 export interface SinrLiveCellBeamCalloutsProps {
@@ -66,10 +67,9 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
         return (
           <Html
             key={item.renderKey ?? `${item.cellId}-${item.satId}`}
-            position={[item.baseCenter.x, item.baseCenter.y + SINR_LIVE_FOOTPRINT_RING_Y_LIFT, item.baseCenter.z]}
+            position={[item.baseCenter.x, item.baseCenter.y + SINR_LIVE_CALLOUT_Y_LIFT, item.baseCenter.z]}
             center
-            distanceFactor={isPrimary ? 16 : 24}
-            zIndexRange={[40, 0]}
+            zIndexRange={[80, 20]}
             style={{ pointerEvents: 'none', userSelect: 'none' }}
           >
             <div
