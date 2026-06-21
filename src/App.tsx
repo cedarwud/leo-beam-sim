@@ -76,8 +76,6 @@ import {
 import { ControlBar } from './ui/ControlBar';
 import { DirectorControls } from './ui/DirectorControls';
 import { SinrOffsetExplainer } from './ui/SinrOffsetExplainer';
-import { SinrServingAggregate } from './ui/SinrServingAggregate';
-import { SinrHandoverTicker } from './ui/SinrHandoverTicker';
 import { useHandoverCinema } from './app/useHandoverCinema';
 import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
@@ -1779,7 +1777,7 @@ export function App() {
           {/* The left tab shell is MODQN-only now (the unified Evidence/Replay rail).
               The SINR-live left rail is just the Experience switch + the inlined
               tuners below — the read-only "Live SINR" card was removed (it duplicated
-              the in-scene SinrServingAggregate HUD). */}
+              the former population served-N/N readout, since also removed). */}
           {sceneLane !== 'sinr-live' && (
           <SidebarTabShell
             label="Simulation control sidebar"
@@ -1901,11 +1899,6 @@ export function App() {
             candidate={handoverCinema.focusedCandidate}
             visible={handoverCinema.cinemaActive && sceneLane === 'sinr-live'}
           />
-          {/* The SinrServingAggregate + SinrHandoverTicker readouts no longer mount
-              in-scene: the two floating telemetry HUDs were promoted into the right
-              sidebar's "LIVE RUN" section (above the per-UE BEAM DUEL) so the scene
-              carries NO floating telemetry windows. They render in the live-tab
-              sidebar branch below, with the same props / lane gate. */}
           {shouldRenderMainScene ? (
             <MainScene
               speed={playback.effectiveSpeed}
@@ -1984,27 +1977,6 @@ export function App() {
               </section>
             ) : activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
-                {/* LIVE RUN = population-scope summary for the whole live cell-truth run,
-                    above the per-UE BEAM DUEL. Holds the two readouts that used to FLOAT
-                    in-scene (now in-flow sidebar blocks, same props + lane gate + testids +
-                    honesty stamps): the served N/N · serving-beam · avg-SINR aggregate and
-                    the cumulative intra/inter handover ticker. */}
-                <section
-                  className="leo-live-run-section"
-                  aria-label="Live run population summary"
-                  data-testid="live-run-section"
-                >
-                  <div className="leo-live-run-section__header">LIVE RUN</div>
-                  <SinrServingAggregate
-                    perUePositions={simState.perUePositions}
-                    visible={sceneLane === 'sinr-live'}
-                  />
-                  <SinrHandoverTicker
-                    cumulativeIntra={simState.cumulativeIntraHandoverCount}
-                    cumulativeInter={simState.cumulativeInterHandoverCount}
-                    visible={sceneLane === 'sinr-live'}
-                  />
-                </section>
                 {/* SINR-live right sidebar = older-commit (49db65d) TUNING-mode layout:
                     BEAM DUEL + live SINR FORMULA TERMS (showFormulaTerms), wired to the same
                     computeLinkBudget serving link the LEFT tuning panel drives. The interference/

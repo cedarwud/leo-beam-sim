@@ -943,8 +943,8 @@ function SceneContent({
   // lane (consolidation: MODQN renders like SINR — governance-locked
   // showSinrServingMosaic=true on `modqn-live-cell-preview`). But the sinr-serving
   // mosaic COLOUR TELEMETRY attr is a sinr-live lane PROOF — it stays
-  // sinr-live-owned (matching the SinrServingAggregate HUD's lane-gating + the
-  // mosaic gate contract), never threading onto the MODQN canvas. showSinrServingMosaic
+  // sinr-live-owned (the mosaic gate contract pins it sinr-live-only), never
+  // threading onto the MODQN canvas. showSinrServingMosaic
   // is `sinr-live OR cell-overlay`; exclude the cell-overlay lane for sinr-live-only.
   const sinrServingTelemetryActive = showSinrServingMosaic && !showCellOverlay;
   // Phase-3 beam-load contention source = the SAME per-UE (satId, beamIndex)

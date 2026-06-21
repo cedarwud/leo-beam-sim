@@ -30,7 +30,7 @@ export type { SteeredMountPlanFlags } from '../scene/sinrLiveBeamSelection';
 export type ConnectedClaimSurface =
   /** InfoPanel ACTIVE SERVING / canvas data-serving-satellite-id (primary UE). */
   | 'primary-serving'
-  /** SinrServingAggregate served-N/N + beam-load rows (all perUePositions). */
+  /** Population served-N/N + beam-load aggregate over all perUePositions (deriveSinrServingMosaicAggregate). */
   | 'population-aggregate'
   /** Earth-fixed cell truth serving beams (sim.sinrLiveCells, S-cells-2/4c). */
   | 'cell-truth-serving';
@@ -101,7 +101,7 @@ export interface InvariantReport {
  *    them here would claim sats the cones never beam and break the must-hold flip.
  *  - **Steered / MODQN lanes** (no cell truth): primary = `frame.serving`
  *    (InfoPanel / SceneTelemetry), population = `deriveSinrServingMosaicAggregate`
- *    over the steered `perUePositions` (SinrServingAggregate) — unchanged.
+ *    over the steered `perUePositions` — unchanged.
  *
  * NOTE (S5-2b, retired): the InfoPanel "ACTIVE SERVING" label is now re-pointed
  * to this SAME primary cell-truth resolver (`resolvePrimaryCellServingSatId`) in

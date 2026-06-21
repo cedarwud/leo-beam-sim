@@ -284,9 +284,9 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   // The SINR-serving mosaic COLOUR render is always-on ambient on sinr-live (NOT
   // director-gated) and is ALSO mounted on `modqn-live-cell-preview` (consolidation:
   // MODQN renders like SINR — asserted true below); it stays inert on the
-  // replay-proof / artifact lanes. (The sinr-serving TELEMETRY/PROOF readout is
-  // gated tighter — sinr-live-only — in MainScene + the SinrServingAggregate
-  // readout, now a right-sidebar "LIVE RUN" section, no longer an in-scene HUD.)
+  // replay-proof / artifact lanes. (The sinr-serving TELEMETRY is gated tighter —
+  // sinr-live-only — in MainScene; the former SinrServingAggregate HUD readout was
+  // removed, so the mosaic COLOUR render is the lane's serving-proof surface.)
   assert.equal(
     renderPlan('sinr-live', 'live-sim').showSinrServingMosaic,
     true,
@@ -504,8 +504,6 @@ const controlBarSource = readRepoFile('src/ui/ControlBar.tsx');
 const sinrLiveDisplayDrawerSource = readRepoFile('src/ui/SinrLiveDisplayDrawer.tsx');
 // The compact SINR-live quick-control row (4 display checkboxes) at the rail top.
 const sinrLiveQuickControlsSource = readRepoFile('src/ui/SinrLiveQuickControls.tsx');
-// G2-TICKER: the publisher that publishes the rolling handover log onto SimState.
-const useSimStatePublisherSource = readRepoFile('src/scene/useSimStatePublisher.ts');
 const advancedDrawerShellSource = readRepoFile('src/ui/AdvancedDrawerShell.tsx');
 const modqnAdvancedDisplayControlsSource = readRepoFile('src/ui/modqn-controls/ModqnAdvancedDisplayControls.tsx');
 const topologyTabSource = readRepoFile('src/ui/signal-tuning/TopologyTab.tsx');
@@ -1525,14 +1523,14 @@ tangleLockGroup('QUAR-S6-BUS', () => {
 // rail is a single light read-only orientation card. App must no longer render a
 // 'signal'/'handover' left-tab branch, and the tuner panels must be injected into
 // the drawer (not the SidebarTabShell).
-// The read-only "Live SINR" orientation card was REMOVED (it duplicated the
-// SinrServingAggregate readout, now a right-sidebar "LIVE RUN" section). The
-// SINR-live left rail is now the Experience switch + the inlined tuners; the left
-// tab shell is MODQN-only.
+// The read-only "Live SINR" orientation card was REMOVED (it duplicated the former
+// SinrServingAggregate population readout, since also removed). The SINR-live left
+// rail is now the Experience switch + the inlined tuners; the left tab shell is
+// MODQN-only.
 assertNotContains(
   appSource,
   '<SinrLiveOrientationCard',
-  'SINR-live orientation card removed (duplicated the SinrServingAggregate readout)',
+  'SINR-live orientation card removed (it duplicated the since-removed SinrServingAggregate population readout)',
 );
 assertNotContains(
   appSource,
@@ -1667,7 +1665,6 @@ assertContains(
 );
 // ── SINR-serving mosaic (S2) lane-ownership + distinct-from-MODQN source locks ──
 const sinrServingMosaicSource = readRepoFile('src/scene/sinrServingMosaic.ts');
-const sinrServingAggregateSource = readRepoFile('src/ui/SinrServingAggregate.tsx');
 // P2 ANTI-RECURRENCE (B2): the `const showSinrServingMosaic = showSinrBeamRender`
 // source-text pin RETIRED — the mosaic's lane gating is owned by the renderPlan
 // VALUE asserts above (sinr-live + modqn-cell true; proof + artifact + incompatible
@@ -1719,26 +1716,6 @@ assertContains(
   groundSceneSource,
   'function publishInstanceColorTelemetry',
   'GroundScene publishes a MESH-derived distinct-colour count (validator-provable mosaic render)',
-);
-assertContains(
-  sinrServingAggregateSource,
-  'data-claim-kind="sinr-serving"',
-  'SINR-serving aggregate is stamped lane-truthful claim-kind="sinr-serving" (never producer/MODQN proof)',
-);
-assertContains(
-  sinrServingAggregateSource,
-  'live SINR serving · not MODQN',
-  'SINR-serving aggregate carries the lane-truthful "not MODQN" disclosure',
-);
-assertContains(
-  appSource,
-  '<SinrServingAggregate',
-  'App mounts the SINR-serving aggregate readout (right-sidebar "LIVE RUN" section)',
-);
-assertContains(
-  appSource,
-  "visible={sceneLane === 'sinr-live'}",
-  'App gates the SINR-serving aggregate HUD to the sinr-live lane',
 );
 
 // ── SINR-live earth-fixed cell truth (S-cells-2, ADDITIVE) lane ownership ──
@@ -1959,29 +1936,6 @@ assertContains(
   mainSceneSource,
   'resolveTriggeredIntraConeItems({',
   'MainScene builds the triggered-intra flash from the wall-clock latch (beam-stage ① #5)',
-);
-// (4) G2-TICKER: the always-on CUMULATIVE handover COUNT HUD (complements the pulse
-//     cones). Lane-gated to sinr-live, fed the PUBLISHED monotonic epoch total (not
-//     a re-derived one) — display-only (its own deep gate is
-//     validate:phase-c:handover-ticker:model). The publisher publishes the cumulative
-//     total from the same model truth the pulse reads; cumulative because the sim-time
-//     `recentHandoverEvents` window empties under the UI throttle at fast playback, so
-//     a windowed count under-reported the live stream (Rule#6). These pin the wiring
-//     so it cannot silently un-lane or be fed a fabricated source.
-assertContains(
-  appSource,
-  "from './ui/SinrHandoverTicker'",
-  'App imports the always-on handover ticker',
-);
-assertContains(
-  appSource,
-  'cumulativeIntra={simState.cumulativeIntraHandoverCount}',
-  'handover ticker is fed the PUBLISHED cumulative handover total (display-only, never re-derived)',
-);
-assertContains(
-  useSimStatePublisherSource,
-  'cumulativeIntraHandoverCount: sim.sinrLiveCells?.cumulativeIntraHandoverCount',
-  'publisher publishes the cumulative handover total from the model truth (Rule#6 display read-out)',
 );
 
 // QUAR-S4-SERVING block #3 RETIRED (S4-3): the de-punned publisher-shape text

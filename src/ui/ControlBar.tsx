@@ -10,7 +10,7 @@ interface ControlBarProps {
   // into the opt-in SinrLiveDisplayDrawer. After the UI-mode switch was removed
   // the bar's only remaining job is the artifact-replay UE display-filter + focus
   // controls; the SINR-live lane renders nothing here (the live UE population is
-  // shown in the in-scene SinrServingAggregate HUD as "served N/N").
+  // shown by the 3D serving mosaic in the scene).
 
   // P2b Display-filter & focus UE controls
   sceneSource?: 'live-sim' | 'artifact-replay';
@@ -34,9 +34,9 @@ export function ControlBar({
   onElevatedUeIdChange,
 }: ControlBarProps) {
   const isArtifactReplay = sceneLane === 'artifact-replay' || sceneSource === 'artifact-replay';
-  // SINR-live: no top control row. The live UE count is shown in the in-scene
-  // SinrServingAggregate HUD (served N/N); the former read-only "Active UEs" strip
-  // was redundant chrome occupying a whole row.
+  // SINR-live: no top control row. The live UE population reads from the 3D serving
+  // mosaic in the scene; the former read-only "Active UEs" strip was redundant
+  // chrome occupying a whole row.
   if (!isArtifactReplay) return null;
   return (
     <div className="leo-control-bar">
