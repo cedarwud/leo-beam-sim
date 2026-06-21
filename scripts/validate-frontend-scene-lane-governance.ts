@@ -1674,12 +1674,11 @@ const sinrServingAggregateSource = readRepoFile('src/ui/SinrServingAggregate.tsx
 // false, L311-335 + L404). The text pin froze the implementation spelling (the
 // entropy engine, SDD §5) and even mis-described it ("sinr-live only" — it is also
 // modqn-cell); the value asserts pin the OUTPUT, so the const is now free to move.
-// QUAR-S4-SERVING block #1 RETIRED (S4-3): the mosaic module-ownership /
-// queue-source / queue-conservation export-text pins were replaced by behaviour
-// + VALUE asserts in validate:phase-c:sinr-serving-mosaic:model (the test
-// imports + DRIVES every owned export; SINR_LIVE_SERVICE_QUEUE_SOURCE VALUE
-// assert; cell-lane cross-surface ownership check) and by the keystone
-// validate:s4:serving-equivalence gate (aggregate + queue derived from
+// QUAR-S4-SERVING block #1 RETIRED (S4-3): the mosaic module-ownership
+// export-text pins were replaced by behaviour + VALUE asserts in
+// validate:phase-c:sinr-serving-mosaic:model (the test imports + DRIVES every
+// owned export; cell-lane cross-surface ownership check) and by the keystone
+// validate:s4:serving-equivalence gate (aggregate derived from
 // sim.sinrLiveCells on a real frame).
 assertNotContains(
   sinrServingMosaicSource,
@@ -1689,11 +1688,11 @@ assertNotContains(
 // QUAR-S4-SERVING block #2 RETIRED (S4-3): the telemetry-THREADING JSX pins
 // were replaced by the LIVE behaviour in
 // validate:phase-c:sinr-serving-mosaic:browser — the ON half reads the
-// mesh-derived colour count / queue-pressure buckets / 99 instances from the
-// canvas dataset on sinr-live; the OFF half asserts those attributes are
-// ABSENT on every MODQN-lane canvas. The block's DERIVATION-GATE needle was
-// NOT behaviourally replaceable yet — re-wrapped below into QUAR-S5-BEAMRENDER
-// together with block #3's colour-oracle wiring needle.
+// mesh-derived colour count from the canvas dataset on sinr-live; the OFF half
+// asserts that attribute is ABSENT on every MODQN-lane canvas. The block's
+// DERIVATION-GATE needle was NOT behaviourally replaceable yet — re-wrapped
+// below into QUAR-S5-BEAMRENDER together with block #3's colour-oracle wiring
+// needle.
 //
 // S5-2 GRADUATION to PERMANENT (was QUAR-S5-BEAMRENDER): WHICH oracle feeds the
 // 3D mosaic dots (cell truth, not steered) and the lane-gating of that derivation
@@ -1720,11 +1719,6 @@ assertContains(
   groundSceneSource,
   'function publishInstanceColorTelemetry',
   'GroundScene publishes a MESH-derived distinct-colour count (validator-provable mosaic render)',
-);
-assertContains(
-  groundSceneSource,
-  'function publishInstanceContentionTelemetry',
-  'GroundScene publishes GEOMETRY-derived queue-pressure bucket telemetry from the instanced aContention buffer',
 );
 assertContains(
   sinrServingAggregateSource,
@@ -1995,7 +1989,7 @@ assertContains(
 // frame and asserts the published records are byte-identical to
 // sim.sinrLiveCells.ues with servingBeamId null + typed servingCellId (the
 // behavioural publisher-shape assert that also catches an alias-laundered
-// re-pun), plus the 3D-map/HUD/queue/cone cross-consumer agreement. The
+// re-pun), plus the 3D-map/HUD/cone cross-consumer agreement. The
 // structural sweep + typed-marker pins live on in validate:s4:pun-retired.
 // The block's MainScene colour-oracle wiring needle was re-wrapped into
 // QUAR-S5-BEAMRENDER above (render-selection wiring, S5 scope).

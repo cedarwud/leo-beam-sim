@@ -81,13 +81,6 @@ const app = read('src/App.tsx');
 assertIncludes(app, 'onLoadPaperFaithful={handleRevertToPaperFaithful}', 'D7 paper-faithful load is wired through Model Library');
 assertIncludes(app, 'artifactReplaySource={showcaseArtifactSource}', 'D7 synthetic/non-producer source is visible in Model Library');
 
-// The queue focus MODEL stays (the scene mosaic + several validators use it);
-// only the overlay HUD queue sub-panel was removed.
-const queueModel = read('src/scene/sinrServingMosaic.ts');
-assertIncludes(queueModel, 'deriveSinrLiveServiceQueueFocusStories', 'H5/I5 queue focus model exists');
-assertIncludes(queueModel, "'highest-pressure'", 'H5/I5 highest-pressure story kind exists');
-assertIncludes(queueModel, "'best-rescue'", 'H5/I5 best-rescue story kind exists');
-
 const sourceGaps = read('src/modqn/replay-source-gaps/sourceGaps.ts');
 for (const field of [
   'diagnostics.denseQPolicy',
@@ -111,7 +104,7 @@ const beamAudit = read('docs/beam-presentation-calibration-audit.md');
 assertIncludes(beamAudit, 'This document is intentionally an audit, not a visual patch.', 'D7 beam work stayed audit-only');
 assertIncludes(beamAudit, 'Do not widen beams or increase steering angle', 'D7 stop rule remains documented');
 
-assertIncludes(todo, 'APP_URL=http://localhost:3001 npm run validate:phase-c:sinr-serving-mosaic:browser', 'final checklist records 3001 queue browser gate');
+assertIncludes(todo, 'APP_URL=http://localhost:3001 npm run validate:phase-c:sinr-serving-mosaic:browser', 'final checklist records the sinr-serving mosaic browser gate');
 assertIncludes(todo, 'APP_URL=http://localhost:3001 npm run capture:beam-presentation-audit', 'final checklist records 3001 beam audit capture');
 assertIncludes(todo, 'npm run validate:modqn:showcase-final-audit', 'final checklist records final audit validator');
 

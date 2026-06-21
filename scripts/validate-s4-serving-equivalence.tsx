@@ -5,7 +5,7 @@
  * The registry promise (`tangle-locks.ts`, retired this slice): on sinr-live
  * there is ONE cell serving record — `sim.sinrLiveCells.ues` — and every
  * cell-side consumer reads it: the 3D mosaic colour map, the served-N/N HUD
- * aggregate, the service-queue accountant, the cone render DATA, and the
+ * aggregate, the cone render DATA, and the
  * published `perUePositions`. This gate drives a REAL warmed live frame
  * (stepRuntimeFrame + attachSinrLiveCellFrame, the production composition) and
  * asserts the cross-consumer agreement as DATA — render-agnostic (no cone layer
@@ -27,9 +27,9 @@
  *      with DISTINGUISHABLE cell ids and asserts the typed output shape.
  *   E. EQUIVALENCE — on the warmed frame: published records == cell truth
  *      byte-for-byte (real projection); 3D colour map == HUD beam-load colour;
- *      aggregate served/keys == cell truth; queue accountant keys == cell
- *      truth; cone DATA (serving illuminated beams → cone items) == served
- *      cells == every served UE's (satId, cellId). Non-vacuous (multi-sat,
+ *      aggregate served/keys == cell truth; cone DATA (serving illuminated
+ *      beams → cone items) == served cells == every served UE's (satId,
+ *      cellId). Non-vacuous (multi-sat,
  *      multi-unit) + run-twice determinism A==B.
  *
  * Run: `npm run validate:s4:serving-equivalence`.
@@ -64,7 +64,6 @@ import type { SinrLiveCellFrame } from '../src/scene/sinrLiveCellModel.ts';
 import { buildPublishedPerUePositions } from '../src/scene/useSimStatePublisher.ts';
 import {
   buildSinrServingUeColorMapFromCells,
-  deriveSinrLiveServiceQueueModel,
   deriveSinrServingMosaicAggregate,
   mosaicColorForServingBeam,
   SINR_SERVING_UNSERVED_COLOR,
@@ -315,17 +314,6 @@ const colorById = buildSinrServingUeColorMapFromCells(ues);
   }
 }
 
-// E4 — service-queue accountant keys the SAME typed serving unit.
-{
-  const queue = deriveSinrLiveServiceQueueModel(published);
-  for (const ue of ues) {
-    const account = queue.byUeId.get(ue.ueId);
-    assert.ok(account !== undefined, `E4: queue account exists for ${ue.ueId}`);
-    const expectedKey = ue.servingSatId === null ? null : servingPairKey(ue.servingSatId, ue.cellId as number);
-    assert.equal(account.servingKey, expectedKey, `E4: queue serving key == cell truth for ${ue.ueId}`);
-  }
-}
-
 // E5 — cone DATA: serving illuminated beams == served cells == every served UE's unit.
 {
   // Synthetic, render-agnostic placement/world inputs: EVERY cell placed, EVERY
@@ -391,7 +379,7 @@ const colorById = buildSinrServingUeColorMapFromCells(ues);
 log(
   `E equivalence: ${servedUes.length}/${ues.length} served, `
   + `${new Set(servedUes.map(ue => ue.servingSatId)).size} serving sats — `
-  + 'published==cells (real projection), 3D==HUD colours, aggregate+queue keyed on the typed unit, '
+  + 'published==cells (real projection), 3D==HUD colours, aggregate keyed on the typed unit, '
   + 'cones==served cells (DATA, all-visible fixture — render dropout class is S5 scope), A==B',
 );
-log('PASS — one cell serving record drives publisher + mosaic + aggregate + queue + cone data (QUAR-S4-SERVING replacement)');
+log('PASS — one cell serving record drives publisher + mosaic + aggregate + cone data (QUAR-S4-SERVING replacement)');

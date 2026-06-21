@@ -11,12 +11,9 @@
 import {
   buildSinrServingUeColorMap,
   buildSinrServingUeColorMapFromCells,
-  deriveSinrLiveServiceQueueFocusStories,
-  deriveSinrLiveServiceQueueModel,
   deriveSinrServingMosaicAggregate,
   mosaicColorForServingBeam,
   EMPTY_SINR_SERVING_MOSAIC_AGGREGATE,
-  SINR_LIVE_SERVICE_QUEUE_SOURCE,
   SINR_SERVING_UNSERVED_COLOR,
 } from './sinrServingMosaic';
 
@@ -131,18 +128,11 @@ check('empty input → empty aggregate', () => {
 
 // --- S4-3: QUAR-S4-SERVING block #1 replacement (mosaic module ownership as behaviour) ---
 
-check('queue source label VALUE: the exported const is the display-owned demo label', () => {
-  // Replaces the retired QUAR-S4-SERVING export-text pin with a VALUE assert:
-  // the queue accounting is explicitly display-owned live-service-demo, never
-  // producer proof. (`model.source` equality below ties the model to it.)
-  assertEqual(SINR_LIVE_SERVICE_QUEUE_SOURCE, 'live-service-demo', 'exported queue source const value');
-});
-
-check('cell-lane cross-surface ownership: aggregate + queue + 3D map derive from ONE cell record set and agree', () => {
+check('cell-lane cross-surface ownership: aggregate + 3D map derive from ONE cell record set and agree', () => {
   // Replaces the retired QUAR-S4-SERVING module-ownership pins behaviourally:
-  // the mosaic module OWNS colour derivation, the served-N/N aggregate, and the
-  // queue accountant, and on the cell lane all three key the SAME typed
-  // (satId, servingCellId) unit — sim.sinrLiveCells is the one serving record.
+  // the mosaic module OWNS colour derivation and the served-N/N aggregate, and
+  // on the cell lane both key the SAME typed (satId, servingCellId) unit —
+  // sim.sinrLiveCells is the one serving record.
   const cellRecords = [
     { id: 'u0', servingSatId: 'sat-1', servingBeamId: null, servingCellId: 3, sinrDb: 8 },
     { id: 'u1', servingSatId: 'sat-1', servingBeamId: null, servingCellId: 3, sinrDb: 2 },
@@ -152,10 +142,6 @@ check('cell-lane cross-surface ownership: aggregate + queue + 3D map derive from
   const agg = deriveSinrServingMosaicAggregate(cellRecords);
   assertEqual(agg.servedCount, 3, 'aggregate counts cell-lane served (beamId null) records');
   assertEqual(agg.beamLoads.map(l => l.key).sort().join('|'), 'sat-1:3|sat-2:5', 'aggregate units keyed (satId, cellId)');
-  const queue = deriveSinrLiveServiceQueueModel(cellRecords);
-  assertEqual(queue.source, SINR_LIVE_SERVICE_QUEUE_SOURCE, 'queue model carries the exported source const');
-  assertEqual(queue.byUeId.get('u0')?.servingKey, 'sat-1:3', 'queue keys the same typed unit');
-  assertEqual(queue.byUeId.get('u3')?.servingKey, null, 'unserved stays unserved in the queue');
   const map3d = buildSinrServingUeColorMapFromCells(
     cellRecords.map(r => ({ ueId: r.id, servingSatId: r.servingSatId, cellId: r.servingCellId })),
   );
@@ -166,71 +152,4 @@ check('cell-lane cross-surface ownership: aggregate + queue + 3D map derive from
   assertEqual(map3d.get('u3')!.markerColor, SINR_SERVING_UNSERVED_COLOR, 'unserved UE grey on the 3D map');
 });
 
-check('live-service-demo queue accounts expose per-UE conservation fields', () => {
-  const model = deriveSinrLiveServiceQueueModel([
-    { id: 'u0', servingSatId: 'sat-1', servingBeamId: 1, sinrDb: 18 },
-    { id: 'u1', servingSatId: 'sat-1', servingBeamId: 2, sinrDb: 4 },
-    { id: 'u2', servingSatId: null, servingBeamId: null, sinrDb: null },
-  ]);
-  assertEqual(model.source, 'live-service-demo', 'queue model is explicitly display-owned demo source');
-  assertEqual(model.accounts.length, 3, 'one queue account per UE');
-  for (const account of model.accounts) {
-    assertEqual(account.source, 'live-service-demo', 'per-UE account carries source');
-    assertEqual(
-      account.queueAfterBits,
-      Math.max(0, account.queueBeforeBits + account.trafficArrivalBits - account.servedBits),
-      `queue conservation holds for ${account.ueId}`,
-    );
-    assertEqual(
-      account.serviceRateBps,
-      account.servedBits,
-      `1 s live-service-demo sample makes rate equal served bits for ${account.ueId}`,
-    );
-  }
-  assertEqual(model.byUeId.get('u1')?.ueId, 'u1', 'queue accounts are addressable by UE id');
-});
-
-check('live-service-demo queue aggregate exposes backlog distribution and dense pressure buckets', () => {
-  const model = deriveSinrLiveServiceQueueModel([
-    { id: 'u0', servingSatId: 'sat-1', servingBeamId: 1, sinrDb: 20 },
-    { id: 'u1', servingSatId: 'sat-1', servingBeamId: 2, sinrDb: 0 },
-    { id: 'u2', servingSatId: null, servingBeamId: null, sinrDb: null },
-    { id: 'u3', servingSatId: 'sat-2', servingBeamId: 4, sinrDb: 9 },
-  ]);
-  assertEqual(model.aggregate.source, 'live-service-demo', 'aggregate carries source');
-  assertEqual(model.aggregate.queueCapableUeCount, 4, 'aggregate counts queue-capable UEs');
-  if (!(model.aggregate.avgQueueBits > 0)) throw new Error('avg queue should be positive');
-  if (!(model.aggregate.p95QueueBits >= model.aggregate.avgQueueBits)) throw new Error('p95 queue should be >= average for this fixture');
-  if (!(model.aggregate.maxQueueBits >= model.aggregate.p95QueueBits)) throw new Error('max queue should be >= p95');
-  if (!(model.aggregate.pressureBucketCount > 1)) throw new Error('fixture should produce non-mono pressure buckets');
-  if (!(model.aggregate.totalArrivalBits > 0)) throw new Error('aggregate exposes arrival bits');
-  const histogramTotal = model.aggregate.pressureHistogram.reduce((sum, count) => sum + count, 0);
-  assertEqual(histogramTotal, model.accounts.length, 'pressure histogram covers every queue account exactly once');
-});
-
-check('live-service-demo queue focus stories identify pressure and rescue without producer proof', () => {
-  const model = deriveSinrLiveServiceQueueModel([
-    { id: 'u0', servingSatId: 'sat-1', servingBeamId: 1, sinrDb: 20 },
-    { id: 'u1', servingSatId: 'sat-1', servingBeamId: 2, sinrDb: 0 },
-    { id: 'u2', servingSatId: null, servingBeamId: null, sinrDb: null },
-    { id: 'u3', servingSatId: 'sat-2', servingBeamId: 4, sinrDb: 25 },
-  ]);
-  const stories = deriveSinrLiveServiceQueueFocusStories(model.accounts);
-  if (stories.highestPressure === null) throw new Error('highest-pressure story should exist');
-  if (stories.bestRescue === null) throw new Error('best-rescue story should exist');
-
-  assertEqual(stories.source, 'live-service-demo', 'focus stories carry demo source');
-  assertEqual(stories.highestPressure.kind, 'highest-pressure', 'highest-pressure story is typed');
-  assertEqual(stories.bestRescue.kind, 'best-rescue', 'best-rescue story is typed');
-  if (!(stories.highestPressure.pressure >= stories.bestRescue.pressure || stories.highestPressure.queueAfterBits >= 0)) {
-    throw new Error('highest-pressure story exposes backlog pressure');
-  }
-  if (!(stories.bestRescue.serviceSurplusBits > 0)) {
-    throw new Error('best-rescue story should have served more bits than arrivals');
-  }
-  if (!(stories.bestRescue.queueDeltaBits > 0)) {
-    throw new Error('best-rescue story should show queue reduction');
-  }
-});
-
-console.log(`\n[sinr-serving-mosaic:model] PASS — ${passed} checks (stable colour, handover recolour, served/total + per-beam load + mean served SINR, live-service-demo queue conservation, no producer-proof fabrication)`);
+console.log(`\n[sinr-serving-mosaic:model] PASS — ${passed} checks (stable colour, handover recolour, served/total + per-beam load + mean served SINR, no producer-proof fabrication)`);

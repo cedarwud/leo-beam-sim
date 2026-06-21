@@ -3,9 +3,9 @@
  * ambient default on the LIVE WALKER sinr-live lane. The ~100-UE population is
  * coloured by serving beam (a real partition, not mono "decoration"), and the
  * always-on aggregate HUD reads `served N/N` + per-beam load + mean live SINR.
- * The synthetic `live-service-demo` queue sub-panel was removed from the overlay
- * HUD; the in-SCENE queue-pressure mosaic layer (canvas `aContention` telemetry)
- * is independent and still checked below.
+ * The synthetic `live-service-demo` queue layer (overlay sub-panel + in-scene
+ * `aContention` telemetry) was REMOVED — this gate now checks the serving mosaic
+ * only.
  *
  * DATA SOURCE: live-engine — the in-browser live SINR Walker simulation
  * (`?sceneSource=live-sim&appMode=sinr-experiment`), default 100 UEs. Every UE's
@@ -22,8 +22,6 @@
  *    multiple serving beams — the G3 money shot);
  *  - the mean served SINR is a finite number (`data-avg-sinr-db`);
  *  - per-beam load rows render;
- *  - in-scene queue pressure reaches the secondary UE InstancedMesh via the
- *    `aContention` buffer (`99` secondary instances), with no per-UE text labels;
  *  - the 3D mosaic actually coloured the markers: the MESH-derived canvas dataset
  *    `data-sinr-serving-mosaic-color-count` > 1 (distinct colours really written to
  *    the InstancedMesh buffer — not just a model prop);
@@ -94,20 +92,12 @@ async function main(): Promise<void> {
         const beams = Number(el.getAttribute('data-serving-beam-count'));
         const meshAttr = canvas.getAttribute('data-sinr-serving-mosaic-color-count');
         const mesh = meshAttr === null ? NaN : Number(meshAttr);
-        const queueMeshBucketAttr = canvas.getAttribute('data-sinr-service-queue-pressure-bucket-count');
-        const queueMeshBuckets = queueMeshBucketAttr === null ? NaN : Number(queueMeshBucketAttr);
-        const queueMeshInstanceAttr = canvas.getAttribute('data-sinr-service-queue-pressure-instance-count');
-        const queueMeshInstances = queueMeshInstanceAttr === null ? NaN : Number(queueMeshInstanceAttr);
         const avgAttr = el.getAttribute('data-avg-sinr-db');
         const avg = avgAttr === null || avgAttr === '' ? NaN : Number(avgAttr);
         const loadRows = el.querySelectorAll('[data-testid="sinr-serving-beam-load"]').length;
-        const queueLabels = el.querySelectorAll('[data-testid="sinr-service-queue-ue-label"]').length;
         if (
           total === 100 && served > 1 && served <= total && beams > 1
           && mesh > 1 && Number.isFinite(avg) && loadRows >= 1
-          && queueMeshBuckets > 1
-          && queueMeshInstances === total - 1
-          && queueLabels === 0
         ) {
           return {
             served,
@@ -116,8 +106,6 @@ async function main(): Promise<void> {
             mesh,
             avg,
             loadRows,
-            queueMeshBuckets,
-            queueMeshInstances,
           };
         }
         return false;
@@ -132,8 +120,6 @@ async function main(): Promise<void> {
       mesh: number;
       avg: number;
       loadRows: number;
-      queueMeshBuckets: number;
-      queueMeshInstances: number;
     };
 
     assert.equal(snap.total, 100, `population uses the default 100-UE service proof size (total=${snap.total})`);
@@ -145,20 +131,11 @@ async function main(): Promise<void> {
     // The 3D mosaic actually coloured the markers (MESH-derived: distinct colours
     // written to the InstancedMesh buffer, not just a model prop).
     assert.ok(snap.mesh > 1, `mosaic wrote ${snap.mesh} distinct instance colours to the mesh (non-mono render)`);
-    // The in-SCENE queue-pressure mosaic layer stays (the overlay queue sub-panel
-    // was removed; the canvas/instanced telemetry is independent of it).
-    assert.ok(snap.queueMeshBuckets > 1, `queue pressure wrote ${snap.queueMeshBuckets} distinct buckets to the instanced buffer`);
-    assert.equal(snap.queueMeshInstances, 99, 'queue pressure is rendered through the 99 secondary UE instanced markers');
-    console.log(`[sinr-serving-mosaic] healthy frame: served=${snap.served}/${snap.total}, beams=${snap.beams}, mesh=${snap.mesh}, avg=${snap.avg} dB, queueMeshBuckets=${snap.queueMeshBuckets}, queueInstances=${snap.queueMeshInstances}`);
+    console.log(`[sinr-serving-mosaic] healthy frame: served=${snap.served}/${snap.total}, beams=${snap.beams}, mesh=${snap.mesh}, avg=${snap.avg} dB`);
 
     // Lane-truthful disclosure on the HUD.
     const hudText = await page.locator(AGGREGATE).innerText();
     assert.match(hudText, /not MODQN/i, 'aggregate HUD carries the "not MODQN" disclosure');
-    assert.equal(
-      await page.locator('[data-testid="sinr-service-queue-ue-label"]').count(),
-      0,
-      'queue pressure must not render 100 per-UE text labels',
-    );
 
     // No artifact-lane leak onto the live lane.
     assert.equal(await page.locator('[data-testid="artifact-satellite-compass"]').count(), 0, 'artifact compass must not leak onto the live lane');
@@ -177,20 +154,18 @@ async function main(): Promise<void> {
       0,
       'SINR-serving aggregate is lane-owned: it must NOT mount on the MODQN cell lane',
     );
-    // S4-3 (QUAR-S4-SERVING block #2 replacement): the mosaic mesh-colour +
-    // queue-pressure telemetry threading is GATED to the sinr-live mosaic lane.
-    // The ON half is the healthy-frame snapshot above (mesh > 1, buckets > 1,
-    // instances == 99 read from the canvas dataset); the OFF half is here — NO
-    // canvas on the MODQN lane may carry the sinr-serving telemetry attributes
-    // (ALL canvases swept: a chart canvas mounted before the scene canvas must
-    // not shadow a real leak). Known limits: one off-lane sampled (the other
-    // two lanes share the same render-plan ternaries) and the colour-map
-    // DERIVATION gate itself is pinned in governance (QUAR-S5-BEAMRENDER).
+    // S4-3 (QUAR-S4-SERVING block #2 replacement): the mosaic mesh-colour
+    // telemetry threading is GATED to the sinr-live mosaic lane. The ON half is
+    // the healthy-frame snapshot above (mesh > 1 read from the canvas dataset);
+    // the OFF half is here — NO canvas on the MODQN lane may carry the
+    // sinr-serving telemetry attribute (ALL canvases swept: a chart canvas
+    // mounted before the scene canvas must not shadow a real leak). Known
+    // limits: one off-lane sampled (the other two lanes share the same
+    // render-plan ternaries) and the colour-map DERIVATION gate itself is
+    // pinned in governance (QUAR-S5-BEAMRENDER).
     const offLaneTelemetryHits = await page.evaluate(() => {
       const attrs = [
         'data-sinr-serving-mosaic-color-count',
-        'data-sinr-service-queue-pressure-bucket-count',
-        'data-sinr-service-queue-pressure-instance-count',
       ];
       const hits = [];
       const canvases = document.querySelectorAll('canvas');
@@ -211,7 +186,7 @@ async function main(): Promise<void> {
     const realErrors = consoleErrors.filter(e => !/ERR_CONNECTION_REFUSED|:8765|favicon/.test(e));
     assert.deepEqual(realErrors, [], `no real console errors: ${JSON.stringify(realErrors)}`);
 
-    console.log('[sinr-serving-mosaic] PASS — ambient 100-UE mosaic + in-scene queue-pressure layer on sinr-live (mesh-derived colour count > 1, instanced queue pressure buckets > 1, no per-UE queue labels, claim=sinr-serving); absent on the MODQN lane (DATA SOURCE = live Walker SINR)');
+    console.log('[sinr-serving-mosaic] PASS — ambient 100-UE mosaic on sinr-live (mesh-derived colour count > 1, claim=sinr-serving); absent on the MODQN lane (DATA SOURCE = live Walker SINR)');
   } finally {
     await browser.close();
   }

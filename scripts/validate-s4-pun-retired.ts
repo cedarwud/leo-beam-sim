@@ -3,9 +3,9 @@
  *
  * The disease (s4-one-serving-truth-plan.md §1 problem 2): on sinr-live the
  * published per-UE record set `servingBeamId := ue.cellId` — a cellId
- * masquerading as a beamId — at THREE sites (useSimStatePublisher, the
- * MainScene queue model, the cell handover event index from/toBeamId), making
- * the aggregate's "serving beams" and the steered serving beam incomparable.
+ * masquerading as a beamId — at the publisher (useSimStatePublisher) and the
+ * cell handover event index (from/toBeamId), making the aggregate's "serving
+ * beams" and the steered serving beam incomparable.
  *
  * The cut (ADDITIVE, Decision D2): a typed `servingCellId` carries the cell
  * identity; `servingBeamId` is null on the cell lane (no steered beam exists
@@ -15,14 +15,14 @@
  *
  * Sections:
  *   S. STRUCTURAL — no source line in src/ (or scripts/) assigns a *BeamId
- *      field from a cellId; the three historical pun sites expose the typed
- *      replacement markers (guards the currently-unpinned MainScene site too).
- *   B. BEHAVIOR — mosaic aggregate + service-queue accountant accept cell-lane
- *      records (servingBeamId null + servingCellId set): served counting, the
- *      `${satId}:${cellId}` keying, and the beam-load colour all agree with the
- *      3D cell colour map (`buildSinrServingUeColorMapFromCells`) — the HUD and
- *      the 3D mosaic read ONE typed serving unit. Steered records (servingCellId
- *      null) are byte-identical to the pre-S4-2 behaviour.
+ *      field from a cellId; the historical pun sites expose the typed
+ *      replacement markers.
+ *   B. BEHAVIOR — the mosaic aggregate accepts cell-lane records (servingBeamId
+ *      null + servingCellId set): served counting, the `${satId}:${cellId}`
+ *      keying, and the beam-load colour all agree with the 3D cell colour map
+ *      (`buildSinrServingUeColorMapFromCells`) — the HUD and the 3D mosaic read
+ *      ONE typed serving unit. Steered records (servingCellId null) are
+ *      byte-identical to the pre-S4-2 behaviour.
  *   E. EVENT BUILDER — a cell-truth handover event carries null from/toBeamId
  *      and the typed from/toCellId (the site-3 de-pun, asserted on behaviour).
  *   Determinism: run-twice A==B on the aggregate output.
@@ -33,7 +33,6 @@ import { join } from 'node:path';
 
 import {
   buildSinrServingUeColorMapFromCells,
-  deriveSinrLiveServiceQueueModel,
   deriveSinrServingMosaicAggregate,
   mosaicColorForServingBeam,
 } from '../src/scene/sinrServingMosaic.ts';
@@ -116,11 +115,6 @@ function listSourceFiles(dir: string): string[] {
     publisher.includes('servingCellId: null,'),
     'S: publisher steered branch publishes an explicit null servingCellId',
   );
-  const mainScene = readFileSync(join(REPO_ROOT, 'src/scene/MainScene.tsx'), 'utf8');
-  assert.ok(
-    mainScene.includes('servingCellId: ue.servingSatId === null ? null : ue.cellId,'),
-    'S: MainScene queue model keys the cell lane on the typed servingCellId (the formerly-unpinned site)',
-  );
   const eventIndex = readFileSync(join(REPO_ROOT, 'src/scene/sinrLiveCellHandoverEventIndex.ts'), 'utf8');
   assert.ok(
     eventIndex.includes('fromBeamId: null,') && eventIndex.includes('toBeamId: null,'),
@@ -131,11 +125,11 @@ function listSourceFiles(dir: string): string[] {
     typesSource.includes('servingCellId: number | null;'),
     'S: the published per-UE record type declares the typed servingCellId',
   );
-  log(`S structural: ${files.length} files swept, 0 pun assignments; typed markers present at all 3 sites`);
+  log(`S structural: ${files.length} files swept, 0 pun assignments; typed markers present at the publisher + event-index sites`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// B. BEHAVIOR — one typed serving unit drives HUD aggregate == queue == 3D map.
+// B. BEHAVIOR — one typed serving unit drives HUD aggregate == 3D map.
 // ─────────────────────────────────────────────────────────────────────────────
 const CELL_LANE_UES = [
   // served cell records: NO steered beam id (null), typed cell id set.
@@ -179,23 +173,6 @@ const CELL_LANE_UES = [
     );
   }
 
-  const queue = deriveSinrLiveServiceQueueModel(CELL_LANE_UES);
-  assert.equal(
-    queue.byUeId.get('ue-0')?.servingKey,
-    'SAT-7:12',
-    'B: queue accountant keys the cell lane on (satId, cellId)',
-  );
-  assert.equal(
-    queue.byUeId.get('ue-4')?.servingKey,
-    null,
-    'B: an unserved cell record stays unserved in the queue accountant',
-  );
-  assert.ok(
-    (queue.byUeId.get('ue-0')?.servedBits ?? 0) > 0,
-    'B: a served cell record (servingBeamId null!) earns service — served-N/N does NOT collapse mid-migration',
-  );
-  assert.equal(queue.byUeId.get('ue-4')?.servedBits, 0, 'B: unserved earns no service');
-
   // Steered-lane records are UNAFFECTED (servingCellId null → the steered beam id keys).
   const steeredUes = [
     { id: 'ue-0', servingSatId: 'SAT-3', servingBeamId: 5, servingCellId: null, sinrDb: 9 },
@@ -215,7 +192,7 @@ const CELL_LANE_UES = [
   // Determinism: run-twice A==B.
   const second = deriveSinrServingMosaicAggregate(CELL_LANE_UES);
   assert.deepEqual(JSON.parse(JSON.stringify(second)), JSON.parse(JSON.stringify(aggregate)), 'B: aggregate is deterministic (A==B)');
-  log(`B behavior: served ${aggregate.servedCount}/${aggregate.totalCount}, units ${keys.join(' ')}, HUD==3D colours, queue keyed, steered+legacy unaffected`);
+  log(`B behavior: served ${aggregate.servedCount}/${aggregate.totalCount}, units ${keys.join(' ')}, HUD==3D colours, steered+legacy unaffected`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

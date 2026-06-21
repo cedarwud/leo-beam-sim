@@ -108,8 +108,6 @@ import {
 import {
   buildSinrServingUeColorMap,
   buildSinrServingUeColorMapFromCells,
-  deriveSinrLiveServiceQueueModel,
-  EMPTY_SINR_SERVICE_QUEUE_MODEL,
 } from './sinrServingMosaic';
 import {
   deriveBeamLoadContention,
@@ -941,35 +939,10 @@ function SceneContent({
     },
     [showSinrServingMosaic, sim.sinrLiveCells, sceneFrame.ues],
   );
-  const sinrServiceQueueModel = useMemo(
-    () => {
-      if (!showSinrServingMosaic) return EMPTY_SINR_SERVICE_QUEUE_MODEL;
-      const cellFrame = sim.sinrLiveCells;
-      // S4-2 pun retirement: cell-lane queue inputs key the serving unit on the
-      // TYPED `servingCellId`; `servingBeamId` stays null (no steered beam here).
-      const ues = cellFrame
-        ? cellFrame.ues.map(ue => ({
-          id: ue.ueId,
-          servingSatId: ue.servingSatId,
-          servingBeamId: null,
-          servingCellId: ue.servingSatId === null ? null : ue.cellId,
-          sinrDb: ue.sinrDb,
-        }))
-        : sim.perUePositions.map(position => ({
-          id: position.id,
-          servingSatId: position.servingSatId,
-          servingBeamId: position.servingBeamId,
-          servingCellId: null,
-          sinrDb: position.sinrDb,
-        }));
-      return deriveSinrLiveServiceQueueModel(ues);
-    },
-    [showSinrServingMosaic, sim.sinrLiveCells, sim.perUePositions],
-  );
   // The sinr-serving mosaic COLOUR primitive is shared with the MODQN cell-preview
   // lane (consolidation: MODQN renders like SINR — governance-locked
   // showSinrServingMosaic=true on `modqn-live-cell-preview`). But the sinr-serving
-  // mosaic + queue-pressure TELEMETRY attrs are a sinr-live lane PROOF — they stay
+  // mosaic COLOUR TELEMETRY attr is a sinr-live lane PROOF — it stays
   // sinr-live-owned (matching the SinrServingAggregate HUD's lane-gating + the
   // mosaic gate contract), never threading onto the MODQN canvas. showSinrServingMosaic
   // is `sinr-live OR cell-overlay`; exclude the cell-overlay lane for sinr-live-only.
@@ -1594,17 +1567,15 @@ function SceneContent({
             // G3 money shot). The mosaic COLOUR render is shared with the MODQN
             // cell-preview lane too (consolidation: showSinrServingMosaic is also
             // true there); modqnServiceMap is only the fallback where the mosaic
-            // has no colour for a UE. (The sinr-serving TELEMETRY attrs, by
-            // contrast, stay sinr-live-owned — see sinrServingTelemetryActive.)
+            // has no colour for a UE. (The sinr-serving mosaic COLOUR telemetry
+            // attr, by contrast, stays sinr-live-owned — see sinrServingTelemetryActive.)
             const mosaic = index === 0 ? undefined : sinrServingColorById?.get(u.id);
             const service = mosaic ? undefined : modqnServiceMap.ueById.get(u.id);
             // ID alignment verified: liveSimToScene preserves sim.perUePositions
             // ids (`live-ue-${index}`), so contention lookup uses UE id, not index.
             const contention = beamLoadContentionEnabled
               ? beamLoadContention.byUeId.get(u.id)?.normalizedLoad ?? 0
-              : (showSinrServingMosaic
-                ? sinrServiceQueueModel.byUeId.get(u.id)?.pressure ?? 0
-                : undefined);
+              : undefined;
             return {
               id: u.id,
               worldPos: u.worldPos as readonly [number, number, number],
@@ -1619,8 +1590,6 @@ function SceneContent({
         secondaryOpacity={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
         secondaryScale={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
         colorTelemetryAttr={sinrServingTelemetryActive ? 'sinrServingMosaicColorCount' : undefined}
-        contentionTelemetryAttr={sinrServingTelemetryActive ? 'sinrServiceQueuePressureBucketCount' : undefined}
-        contentionInstanceCountTelemetryAttr={sinrServingTelemetryActive ? 'sinrServiceQueuePressureInstanceCount' : undefined}
       />
       {showCellOverlay && modqnVisualLayers.activeCellOverlay && (
         <CellOverlay
