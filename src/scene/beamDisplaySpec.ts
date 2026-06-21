@@ -33,6 +33,7 @@ import {
   SINR_LIVE_CONE_AMBIENT_OPACITY,
   SINR_LIVE_CONE_PULSE_INTRA_COLOR,
   SINR_LIVE_CONE_PULSE_INTER_COLOR,
+  SINR_LIVE_CONE_CANDIDATE_COLOR,
 } from '../constants/sinrLiveConeStyle';
 
 export interface BeamDisplaySpec {
@@ -87,6 +88,16 @@ export interface BeamDisplaySpec {
    */
   readonly pulseIntraColor: string;
   readonly pulseInterColor: string;
+  /**
+   * Display-only CANDIDATE cone colour (W9 handover-target highlight). The contender /
+   * approach sats (comparisonSatId / pendingTargetSatId off the primary cell record,
+   * NOT the hero serving sat) render their cones at this hue via `coneColorOverride`, so
+   * the duel target reads distinct from the protagonist's serving fan. A render-time
+   * role colour: the resolver item's serving-identity `color` is unchanged, so the
+   * served-UE colour-match authority is untouched (Rule#6). Prompt-control:
+   * "候選/接手衛星的波束改成藍色" = set this. Default = {@link SINR_LIVE_CONE_CANDIDATE_COLOR}.
+   */
+  readonly candidateConeColor: string;
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
@@ -96,4 +107,5 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   servingConeOpacity: SINR_LIVE_CONE_AMBIENT_OPACITY,
   pulseIntraColor: SINR_LIVE_CONE_PULSE_INTRA_COLOR,
   pulseInterColor: SINR_LIVE_CONE_PULSE_INTER_COLOR,
+  candidateConeColor: SINR_LIVE_CONE_CANDIDATE_COLOR,
 };

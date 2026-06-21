@@ -1156,6 +1156,38 @@ function SceneContent({
       sinrLiveTargetSatIds,
     ],
   );
+  // W9 candidate highlight: the contender + approach sats (NOT the hero serving sat) —
+  // their cones recolour to the candidate hue so the duel/handover target reads distinct
+  // from the protagonist's serving fan. Display-only role colour (Rule#6): the serving
+  // item.color stays serving-identity, so the served-UE colour-match authority is
+  // untouched. Keyed on the stable satId strings (stable Set identity across renders
+  // while those sats hold).
+  const sinrLiveCandidateSatIds = useMemo(() => {
+    const ids = new Set<string>();
+    const serving = primaryServingRecord?.servingSatId;
+    if (primaryServingRecord?.comparisonSatId && primaryServingRecord.comparisonSatId !== serving) {
+      ids.add(primaryServingRecord.comparisonSatId);
+    }
+    if (primaryServingRecord?.pendingTargetSatId && primaryServingRecord.pendingTargetSatId !== serving) {
+      ids.add(primaryServingRecord.pendingTargetSatId);
+    }
+    return ids;
+  }, [
+    primaryServingRecord?.servingSatId,
+    primaryServingRecord?.comparisonSatId,
+    primaryServingRecord?.pendingTargetSatId,
+  ]);
+  // Split the serving fan into the hero sat's cones (serving-identity colour) and the
+  // candidate sats' cones (the coneColorOverride highlight). Footprint rings + callouts
+  // still ride the FULL set below, so every cone keeps its hex + callout.
+  const sinrLiveCellHeroConeItems = useMemo(
+    () => sinrLiveCellBeamConeItems.filter(item => !sinrLiveCandidateSatIds.has(item.satId)),
+    [sinrLiveCellBeamConeItems, sinrLiveCandidateSatIds],
+  );
+  const sinrLiveCellCandidateConeItems = useMemo(
+    () => sinrLiveCellBeamConeItems.filter(item => sinrLiveCandidateSatIds.has(item.satId)),
+    [sinrLiveCellBeamConeItems, sinrLiveCandidateSatIds],
+  );
   // W5 Beam-Info callouts: per-cell serving SINR (dB) keyed by cellId, for the
   // <Html> chips. Reads the cell model's own serving SINR — display-only.
   const sinrLiveCellServingSinrByCellId = useMemo(() => {
@@ -1710,13 +1742,27 @@ function SceneContent({
         // (the hero beam pops against the faint ambient field). Display-only; the
         // serving truth + cone count are unchanged.
         <SinrLiveCellBeamCones
-          items={sinrLiveCellBeamConeItems}
+          items={sinrLiveCellHeroConeItems}
           opacity={beamDisplaySpec.servingConeOpacity}
           widthScale={beamDisplaySpec.coneWidthScale}
           dimShallowCones
           heroColor={SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}
           primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
           primaryServingCellId={primaryServingRecord?.cellId ?? null}
+        />
+      )}
+      {/* W9 candidate highlight: the contender / approach sats' cones, recoloured to the
+          candidate hue (coneColorOverride) so the handover target reads distinct from the
+          protagonist's serving fan. Same opacity/dim as the serving field; display-only
+          role colour — the resolver item.color stays serving-identity (colour-match green). */}
+      {showSinrLiveCellBeams && sinrLiveCellCandidateConeItems.length > 0 && (
+        <SinrLiveCellBeamCones
+          items={sinrLiveCellCandidateConeItems}
+          opacity={beamDisplaySpec.servingConeOpacity}
+          widthScale={beamDisplaySpec.coneWidthScale}
+          dimShallowCones
+          coneColorOverride={beamDisplaySpec.candidateConeColor}
+          telemetryCountDatasetKey="sinrLiveCellCandidateConeRenderedCount"
         />
       )}
       {/* beam-stage ① #3 + W4 double-layer hex: cell-truth footprint HEXES — two nested

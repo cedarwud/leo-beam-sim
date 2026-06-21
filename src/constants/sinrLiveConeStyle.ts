@@ -148,6 +148,18 @@ export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#22d3ee';
 export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#0ea5e9';
 
 /**
+ * Candidate / contender satellite cone hue — the W9 handover-target highlight. The
+ * contender + approach sats (comparisonSatId / pendingTargetSatId, NOT the hero
+ * serving sat) recolour their cones to this so the duel target reads DISTINCT from the
+ * protagonist's serving-identity fan. A display-only role colour (Rule#6): it is a
+ * render-time `coneColorOverride`, the resolver item's serving-identity `color` is
+ * unchanged, so the served UEs' colour-match authority is untouched. Distinct from the
+ * cyan intra / sky inter PULSE hues (a pulse is a momentary HO flash; this is the
+ * steady contender). Prompt-control: "候選波束改個顏色" = set this one field.
+ */
+export const SINR_LIVE_CONE_CANDIDATE_COLOR = '#3b82f6';
+
+/**
  * Dim opacity for the OPT-IN non-serving cone layer (Tier-2 show/dim switch,
  * `BeamDisplaySpec.showNonServingCones`, default OFF). Dimmer than the ambient
  * serving field ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} = 0.45) so co-channel /
