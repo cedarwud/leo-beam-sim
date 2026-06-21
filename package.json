@@ -196,7 +196,6 @@
     "validate:modqn:dense-q-proof-adapter": "node --import tsx/esm scripts/validate-modqn-dense-q-proof-adapter.ts",
     "validate:modqn:replay-handover-cinema-gate": "node --import tsx/esm scripts/validate-modqn-replay-handover-cinema-gate.tsx",
     "validate:modqn:showcase-final-audit": "node --import tsx/esm scripts/validate-modqn-showcase-final-audit.ts",
-    "validate:beam-presentation:audit": "node --import tsx/esm scripts/validate-beam-presentation-audit.ts",
     "capture:beam-presentation-audit": "node --import tsx/esm scripts/capture-beam-presentation-audit.ts",
     "validate:architecture:boundaries": "node --import tsx/esm scripts/validate-architecture-boundaries.ts",
     "validate:modqn:render-isolation": "node --import tsx/esm scripts/validate-modqn-render-isolation.ts",
