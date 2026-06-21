@@ -284,8 +284,9 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   // The SINR-serving mosaic COLOUR render is always-on ambient on sinr-live (NOT
   // director-gated) and is ALSO mounted on `modqn-live-cell-preview` (consolidation:
   // MODQN renders like SINR — asserted true below); it stays inert on the
-  // replay-proof / artifact lanes. (The sinr-serving TELEMETRY/HUD PROOF is gated
-  // tighter — sinr-live-only — in MainScene + the SinrServingAggregate HUD.)
+  // replay-proof / artifact lanes. (The sinr-serving TELEMETRY/PROOF readout is
+  // gated tighter — sinr-live-only — in MainScene + the SinrServingAggregate
+  // readout, now a right-sidebar "LIVE RUN" section, no longer an in-scene HUD.)
   assert.equal(
     renderPlan('sinr-live', 'live-sim').showSinrServingMosaic,
     true,
@@ -1525,12 +1526,13 @@ tangleLockGroup('QUAR-S6-BUS', () => {
 // 'signal'/'handover' left-tab branch, and the tuner panels must be injected into
 // the drawer (not the SidebarTabShell).
 // The read-only "Live SINR" orientation card was REMOVED (it duplicated the
-// in-scene SinrServingAggregate HUD). The SINR-live left rail is now the Experience
-// switch + the inlined tuners; the left tab shell is MODQN-only.
+// SinrServingAggregate readout, now a right-sidebar "LIVE RUN" section). The
+// SINR-live left rail is now the Experience switch + the inlined tuners; the left
+// tab shell is MODQN-only.
 assertNotContains(
   appSource,
   '<SinrLiveOrientationCard',
-  'SINR-live orientation card removed (duplicated the SinrServingAggregate HUD)',
+  'SINR-live orientation card removed (duplicated the SinrServingAggregate readout)',
 );
 assertNotContains(
   appSource,
@@ -1737,7 +1739,7 @@ assertContains(
 assertContains(
   appSource,
   '<SinrServingAggregate',
-  'App mounts the SINR-serving aggregate HUD',
+  'App mounts the SINR-serving aggregate readout (right-sidebar "LIVE RUN" section)',
 );
 assertContains(
   appSource,

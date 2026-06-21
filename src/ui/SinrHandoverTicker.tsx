@@ -1,11 +1,12 @@
 /**
  * SINR-live handover ticker (G2-TICKER).
  *
- * An always-on HUD on the `sinr-live` lane that proves the "一直有換手" goal: a
+ * An always-on readout on the `sinr-live` lane that proves the "一直有換手" goal: a
  * monotonic running COUNT of how many REAL handovers have fired this continuity
  * epoch, split inter (cross-satellite) vs intra (cross-cell). It complements the
- * ambient live-handover PULSE cones — the scene shows the recent flares, the ticker
- * gives the running total.
+ * ambient live-handover PULSE cones — the scene shows the recent flares, this
+ * ticker (a right-sidebar "LIVE RUN" section block; it used to float in-scene
+ * top-right) gives the running total.
  *
  * Why a cumulative total, not a "last N seconds" window: the cell model's
  * `recentHandoverEvents` is a sim-time RETENTION WINDOW that, at high playback

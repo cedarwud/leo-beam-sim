@@ -1,8 +1,9 @@
 /**
  * SINR-serving aggregate readout (S2).
  *
- * The ambient `served N/N` + per-beam load + mean served SINR HUD on the
- * `sinr-live` lane. Always-on (the low-density default per Rule#10): it proves
+ * The ambient `served N/N` + per-beam load + mean served SINR readout for the
+ * `sinr-live` lane — a right-sidebar "LIVE RUN" section block (it used to float
+ * in-scene). Always-on (the low-density default per Rule#10): it proves
  * G3 — every UE in the live population is served and the service is distributed
  * across multiple beams (not "1 UE performs, 99 are decoration").
  *

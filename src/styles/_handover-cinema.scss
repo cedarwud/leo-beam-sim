@@ -101,14 +101,25 @@
   color: rgba(168, 182, 202, 0.66);
 }
 
-// SINR-serving aggregate (S2). Always-on ambient readout on the sinr-live lane,
-// top-left so it never collides with the bottom-left focus explainer.
+// LIVE RUN sidebar section (right rail, above the per-UE BEAM DUEL). Holds the
+// population-scope service aggregate + handover ticker that used to float in-scene.
+// The header mirrors the diagnostics-drawer heading idiom (uppercase, letter-spaced).
+.leo-live-run-section {
+  display: grid;
+  gap: 8px;
+}
+
+.leo-live-run-section__header {
+  color: #dcecf3;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+// SINR-serving aggregate (S2). In-flow sidebar block (was an absolute top-left
+// in-scene HUD) — the population served N/N · serving-beam · avg-SINR readout.
 .leo-sinr-serving-aggregate {
-  position: absolute;
-  left: 16px;
-  top: 76px;
-  z-index: 55;
-  width: min(244px, 32vw);
   display: grid;
   gap: 6px;
   padding: 10px 12px;
@@ -117,11 +128,9 @@
   background:
     linear-gradient(180deg, rgba(118, 234, 215, 0.08), rgba(8, 12, 18, 0.84)),
     rgba(8, 12, 18, 0.84);
-  backdrop-filter: blur(4px);
   color: rgba(236, 244, 255, 0.94);
   font-size: 12px;
   line-height: 1.3;
-  pointer-events: none;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
 }
 
@@ -133,14 +142,9 @@
   color: rgba(176, 230, 220, 0.82);
 }
 
-// G2-TICKER: rolling live-handover count, top-right of the canvas (clear of the
-// top-left service aggregate). Compact + non-interactive, like the aggregate.
+// G2-TICKER: cumulative live-handover count. In-flow sidebar block (was an
+// absolute top-right in-scene HUD) — left-aligned to match the aggregate above it.
 .leo-sinr-ho-ticker {
-  position: absolute;
-  right: 16px;
-  top: 76px;
-  z-index: 55;
-  width: 132px;
   display: grid;
   gap: 4px;
   padding: 10px 12px;
@@ -149,12 +153,9 @@
   background:
     linear-gradient(180deg, rgba(255, 190, 120, 0.08), rgba(8, 12, 18, 0.84)),
     rgba(8, 12, 18, 0.84);
-  backdrop-filter: blur(4px);
   color: rgba(236, 244, 255, 0.94);
   font-size: 12px;
   line-height: 1.3;
-  text-align: right;
-  pointer-events: none;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
 }
 
@@ -175,8 +176,8 @@
 
 .leo-sinr-ho-ticker__split {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 12px;
   font-size: 11px;
   color: rgba(236, 244, 255, 0.78);
 }
