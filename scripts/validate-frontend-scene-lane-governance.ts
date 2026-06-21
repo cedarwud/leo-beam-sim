@@ -1906,20 +1906,28 @@ assertContains(
 // focus-scoping) RETIRED with QUAR-S5-BEAMRENDER. Their behaviour now lives in
 // BEHAVIOUR gates: validate:phase-c:sinr-live-cells:render asserts serving-only
 // cones + serving-identity colour + the style-token VALUES (ambient 0.14 < pair 0.30,
-// 32 segments, NormalBlending) from constants/sinrLiveConeStyle.ts; the focus cap is
-// retired (focusSatIds null = draw EVERY serving sat, D-STYLE A); and the INTENT —
+// 32 segments, NormalBlending) from constants/sinrLiveConeStyle.ts; and the INTENT —
 // every connected sat shows a beam — is ENFORCED as a must-hold by the S0 invariant
 // validate:s0:connected-sat-has-beam (cone-cripple positive control).
 //
-// PERMANENT wiring lock (D-STYLE A, draw-all): MainScene passes focusSatIds null to
-// the cone resolver so EVERY serving sat is beamed (no focus narrowing). The s0
-// must-hold + the validate:phase-c:sinr-live-cells:render "focusSatIds null draws
-// every serving sat" control prove the BEHAVIOUR; this pins that MainScene does not
-// silently re-introduce a focus cap that would leave serving sats beamless.
+// W9 WIRING LOCK (2026-06-21, owner-locked Option A — supersedes the former D-STYLE A
+// "draw EVERY serving sat, focusSatIds null always" default): the sinr-live cell lane
+// renders a BOUNDED multibeam by default — the ≤3 target satellites' fans (hero
+// serving sat + the W7 contender/approach pair, `sinrLiveTargetSatIds`), reconstructed
+// display-only from illuminatedBeams — and opens the FULL breadth (every serving sat,
+// focusSatIds null) only under the "Other beams" power-view (showNonServingCones). The
+// "no serving sat left beamless" INTENT is — and always was — enforced as a must-hold
+// by validate:s0:connected-sat-has-beam (the resolver + connected claims), NOT by the
+// display memo: the prior fb5a4972 1-hero default already narrowed the display to a
+// single (sat,cell) and s0 stayed green, so display narrowing is a Rule#6 display
+// filter, not a truth change. This pins the W9 wiring — MainScene KEEPS the full-
+// breadth escape (focusSatIds null under the power-view) AND bounds the default to the
+// target-sat set — so a regression that drops the breadth power-view or hardcodes an
+// escapeless narrow is caught.
 assertContains(
   mainSceneSource,
-  'focusSatIds: null',
-  'MainScene draws every serving sat (focusSatIds null) — no focus narrowing leaves a serving sat beamless (D-STYLE A)',
+  'beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds',
+  'MainScene bounds the default cell-cone render to the ≤3 target sats (W9 Option A) while keeping the full-breadth escape (focusSatIds null) under the Other-beams power-view',
 );
 
 // ── SINR-live ambient live-handover PULSE (G2c) lane ownership locks ──

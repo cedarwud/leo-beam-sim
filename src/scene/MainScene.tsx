@@ -1170,28 +1170,34 @@ function SceneContent({
   const renderedSinrLiveCellBeamConeSatelliteCount = new Set(
     sinrLiveCellBeamConeItems.map(item => item.satId),
   ).size;
-  // Tier-2 OPT-IN non-serving cones (the beam-display show/dim switch): the dim
-  // co-channel / secondary illuminated beams behind the serving field, from the
-  // SEPARATE resolver (resolveSinrLiveCellBeamConeItems stays serving-only for the
-  // s0/s4 serving must-holds). Gated by the direct-prop BeamDisplaySpec switch —
-  // and that switch IS in this dep-array: it is the second half of the
-  // invisible-dep-array bug ("toggle a beam-display value and nothing re-renders")
-  // that the Tier-2 seam fixes. Default OFF → empty array → no mount → no change.
+  // W9 step 3 — the DIM beam-hopping cells: the co-channel / secondary illuminated
+  // beams (a sat lights a cell it is NOT the chosen server of — pure hopping coverage,
+  // no UE served there) from the SEPARATE non-serving resolver (the serving resolver
+  // stays serving-only for the s0/s4 must-holds). Drawn behind the bright serving fan
+  // at the dim `nonServing` opacity, so on-UE (serving, bright) reads distinct from
+  // hopping (non-serving, dim). Default → the SAME ≤3 target sats' hopping cells (the
+  // hero/contender fans' empty cells); the "Other beams" power-view (showNonServingCones)
+  // opens every non-serving co-channel beam in the field. Display-only (Rule#6); the
+  // showNonServingCones switch + the target-sat set are in the dep-array (the
+  // invisible-dep-array bug fix), so toggling either re-renders.
   const sinrLiveCellNonServingConeItems = useMemo(
-    () => (showSinrLiveCellBeams && beamDisplaySpec.showNonServingCones
-      ? resolveSinrLiveNonServingConeItems({
+    () => {
+      if (!showSinrLiveCellBeams) return [];
+      if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds.size === 0) return [];
+      return resolveSinrLiveNonServingConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
         satelliteWorldById: viz.coneApexWorldById,
-        focusSatIds: null,
-      })
-      : []),
+        focusSatIds: beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds,
+      });
+    },
     [
       showSinrLiveCellBeams,
       beamDisplaySpec.showNonServingCones,
       sim.sinrLiveCells,
       sinrLiveCellPlacementById,
       viz.coneApexWorldById,
+      sinrLiveTargetSatIds,
     ],
   );
   // G2c ambient live-handover pulse: the real per-frame handovers the cell model
@@ -1687,8 +1693,9 @@ function SceneContent({
           satelliteTintColor={sat.satelliteTintColor}
         />
       ))}
-      {/* Tier-2 opt-in non-serving cones — dim, painted FIRST (behind) so the
-          serving field reads on top. Default OFF (BeamDisplaySpec). */}
+      {/* W9 step 3 dim beam-hopping cones — painted FIRST (behind) so the bright
+          serving fan reads on top. Default = the ≤3 target sats' hopping cells (on-UE
+          vs hopping legibility); "Other beams" opens the full non-serving field. */}
       {sinrLiveCellNonServingConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellNonServingConeItems}
