@@ -1893,9 +1893,10 @@ assertContains(
 //
 // W9 WIRING LOCK (2026-06-21, owner-locked Option A — supersedes the former D-STYLE A
 // "draw EVERY serving sat, focusSatIds null always" default): the sinr-live cell lane
-// renders a BOUNDED multibeam by default — the ≤3 target satellites' fans (hero
-// serving sat + the W7 contender/approach pair, `sinrLiveTargetSatIds`), reconstructed
-// display-only from illuminatedBeams — and opens the FULL breadth (every serving sat,
+// renders a BOUNDED multibeam by default — the ≤2 target satellites' fans (hero
+// serving sat + ONLY the imminent inter-handover target `pendingTargetSatId`,
+// `sinrLiveTargetSatIds`; the best-candidate comparison sat no longer lights a beam),
+// reconstructed display-only from illuminatedBeams — and opens the FULL breadth (every serving sat,
 // focusSatIds null) only under the "Other beams" power-view (showNonServingCones). The
 // "no serving sat left beamless" INTENT is — and always was — enforced as a must-hold
 // by validate:s0:connected-sat-has-beam (the resolver + connected claims), NOT by the
@@ -1908,7 +1909,7 @@ assertContains(
 assertContains(
   mainSceneSource,
   'beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds',
-  'MainScene bounds the default cell-cone render to the ≤3 target sats (W9 Option A) while keeping the full-breadth escape (focusSatIds null) under the Other-beams power-view',
+  'MainScene bounds the default cell-cone render to the ≤2 target sats (serving + imminent inter-HO target) while keeping the full-breadth escape (focusSatIds null) under the Other-beams power-view',
 );
 
 // ── SINR-live ambient live-handover PULSE (G2c) lane ownership locks ──

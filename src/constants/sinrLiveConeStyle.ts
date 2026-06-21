@@ -97,19 +97,24 @@ export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.5;
  * The ambient live-handover pulse fades over SIM-TIME ({@link SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC}
  * = 4 s), which at the 5× demo speed collapses to ~0.8 s of WALL-CLOCK — too brief +
  * faint (0.32) to read, and undirectional (old + new both the serving-identity hue).
- * The TRIGGERED intra (the deliberate jog) instead gets a WALL-CLOCK 2.5 s fade
+ * The TRIGGERED intra (the deliberate jog) instead gets a WALL-CLOCK 3.2 s fade
  * (decoupled from sim speed, so it always reads) with a FROM/TO COLOUR SPLIT — the
- * old (handed-off) cell warm, the new (acquired) cell cool — so the handover DIRECTION
- * is legible. This is what makes it DISTINCT from the ambient pulse (owner choice A:
- * colour-split + ~2.5 s sustain, no slow-mo / no camera). Display-only (Rule#6).
+ * old (handed-off) cell vivid ORANGE ("leaving"), the new (acquired) cell vivid VIOLET
+ * ("arriving") — so the same-sat beam switch reads as a bold A→B flip. Peak opacity
+ * 0.95 + 3.2 s sustain so it DOMINATES the ambient pulse (the prior cool-cyan `to`
+ * shared the ambient intra-pulse hue, so the flash drowned in it — orange + violet are
+ * both unique on the scene palette). Owner choice: make the intra colour-switch obvious
+ * + legible as one satellite swapping beams — once the non-serving sats are off
+ * (sinrLiveTargetSatIds = serving + imminent inter-target only), this single-sat A→B
+ * flip IS the intra story. Display-only (Rule#6).
  */
-export const SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS = 2500;
-/** Peak (age-0) opacity of the triggered flash — brighter than the ambient pulse (0.32). */
-export const SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY = 0.62;
-/** OLD (handed-off) cell colour — WARM amber, "leaving". */
-export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = '#f5a524';
-/** NEW (acquired) cell colour — COOL cyan, "arriving". */
-export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#22d3ee';
+export const SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS = 3200;
+/** Peak (age-0) opacity of the triggered flash — dominates the ambient pulse (0.8 peak, fast sim-time fade). */
+export const SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY = 0.95;
+/** OLD (handed-off) cell colour — vivid ORANGE, "leaving" (unique on the scene palette). */
+export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = '#f97316';
+/** NEW (acquired) cell colour — vivid VIOLET, "arriving" (distinct from the cyan ambient pulse + blue candidate). */
+export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#c084fc';
 
 /**
  * Display palette for the live beam field (a-cone follow-up). The PRIMARY serving

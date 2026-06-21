@@ -1083,23 +1083,25 @@ function SceneContent({
     ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
     : null;
 
-  // The ≤3 target satellites whose multibeam fans render by default (mirrors the
-  // retired steered render's MAX_BEAM_SATS=3): the HERO serving sat (step 1) plus the
-  // primary UE's contender + approach sats (step 2) — the W7 duel pair read off the
-  // primary cell record (comparisonSatId = the runner-up the protagonist is compared
-  // against; pendingTargetSatId = the about-to-trigger handover target). The Set
-  // dedups when pending == comparison, so it is naturally ≤3 = the cap. Keyed on the
-  // stable satId strings so the Set identity (and the cone memo below) stays stable
-  // across renders while those sats are unchanged.
+  // The ≤2 target satellites whose multibeam fans render by default: the HERO serving
+  // sat (always) plus — ONLY when a satellite (inter) handover is imminent — the
+  // about-to-trigger handover TARGET sat (`pendingTargetSatId`). So the steady scene is
+  // ONE sat (the server) during normal play + intra (same-sat beam) handovers, and TWO
+  // sats (server + incoming target) only while an inter handover is pending — the
+  // intra-vs-inter beam-count contract the demo reads by. The best-candidate
+  // `comparisonSatId` (the duel runner-up) deliberately does NOT light a beam: a
+  // candidate that is merely "best alternative" is not yet handing over, so showing its
+  // fan re-clutters the map (owner: serving + the imminent target only). It still drives
+  // the sidebar BEAM DUEL — this is a render-focus narrowing, not a truth change. Keyed
+  // on the stable satId strings so the Set identity (and the cone memo below) stays
+  // stable across renders while those sats are unchanged.
   const sinrLiveTargetSatIds = useMemo(() => {
     const ids = new Set<string>();
     if (primaryServingRecord?.servingSatId) ids.add(primaryServingRecord.servingSatId);
-    if (primaryServingRecord?.comparisonSatId) ids.add(primaryServingRecord.comparisonSatId);
     if (primaryServingRecord?.pendingTargetSatId) ids.add(primaryServingRecord.pendingTargetSatId);
     return ids;
   }, [
     primaryServingRecord?.servingSatId,
-    primaryServingRecord?.comparisonSatId,
     primaryServingRecord?.pendingTargetSatId,
   ]);
 
@@ -1129,25 +1131,23 @@ function SceneContent({
       sinrLiveTargetSatIds,
     ],
   );
-  // W9 candidate highlight: the contender + approach sats (NOT the hero serving sat) —
-  // their cones recolour to the candidate hue so the duel/handover target reads distinct
-  // from the protagonist's serving fan. Display-only role colour (Rule#6): the serving
-  // item.color stays serving-identity, so the served-UE colour-match authority is
-  // untouched. Keyed on the stable satId strings (stable Set identity across renders
-  // while those sats hold).
+  // W9 candidate highlight: the imminent inter-handover TARGET sat (NOT the hero serving
+  // sat) — its cones recolour to the candidate hue so the incoming satellite reads
+  // distinct from the protagonist's serving fan. Only the about-to-trigger
+  // `pendingTargetSatId` qualifies (it mirrors the target-sat set above); the
+  // best-candidate `comparisonSatId` no longer lights a beam, so it is not recoloured
+  // either. Display-only role colour (Rule#6): the serving item.color stays
+  // serving-identity, so the served-UE colour-match authority is untouched. Keyed on the
+  // stable satId strings (stable Set identity across renders while those sats hold).
   const sinrLiveCandidateSatIds = useMemo(() => {
     const ids = new Set<string>();
     const serving = primaryServingRecord?.servingSatId;
-    if (primaryServingRecord?.comparisonSatId && primaryServingRecord.comparisonSatId !== serving) {
-      ids.add(primaryServingRecord.comparisonSatId);
-    }
     if (primaryServingRecord?.pendingTargetSatId && primaryServingRecord.pendingTargetSatId !== serving) {
       ids.add(primaryServingRecord.pendingTargetSatId);
     }
     return ids;
   }, [
     primaryServingRecord?.servingSatId,
-    primaryServingRecord?.comparisonSatId,
     primaryServingRecord?.pendingTargetSatId,
   ]);
   // Split the serving fan into the hero sat's cones (serving-identity colour) and the
