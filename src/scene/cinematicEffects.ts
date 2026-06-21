@@ -17,7 +17,24 @@ export interface CinematicSpotlightTarget {
 
 export const CINEMATIC_LIGHT_DIM_MULTIPLIER = 0.6;
 export const CINEMATIC_FOG_COLOR = '#020912';
-export const CINEMATIC_FOG_DENSITY = 0.00129;
+/**
+ * Spotlight FogExp2 density. Visibility ≈ `exp(−(density·cameraDist)²)`, so this
+ * saturates to the near-black {@link CINEMATIC_FOG_COLOR} as the camera dollies out.
+ *
+ * The original 0.00129 was authored (pre-49db65d) for a scene where the spotlight
+ * point-lights formed a TIGHT pool under the protagonist UE (UE-anchored beams) and
+ * the camera framed it CLOSE. Two later changes broke that envelope without re-tuning
+ * the fog: c8d211d spread the point-lights out to earth-fixed cell centres
+ * (disableUeAnchor on sinr-live), and f973f9e pulled the default/oblique camera back
+ * ~200 wu. At the current default dist ≈ 819 wu, 0.00129 already drowns ~67% of the
+ * frame, and a modest zoom-out (≈1185 wu) goes ~90% black — the "must be close /
+ * black when zoomed out" report. Lowered to 0.00075 so the spotlight still DIMS +
+ * vignettes (focus is also carried by {@link CINEMATIC_LIGHT_DIM_MULTIPLIER} = 0.6)
+ * but stays legible across the OrbitControls zoom range (≈69% at 819 wu, ≈45% at
+ * 1185 wu; still ~black at the 3000 wu max). Display-only (Rule#6): fog mounts ONLY
+ * in spotlight mode, so off-spotlight rendering is untouched.
+ */
+export const CINEMATIC_FOG_DENSITY = 0.00075;
 export const CINEMATIC_EVENT_LIGHT_HEIGHT_WORLD = 12;
 export const CINEMATIC_EVENT_LIGHT_DISTANCE_WORLD = 170;
 export const CINEMATIC_EVENT_LIGHT_DECAY = 1.0;
