@@ -1111,15 +1111,25 @@ function SceneContent({
     ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
     : null;
 
-  // The ≤3 target satellites whose multibeam fans render by default. W9 step 1 = the
-  // HERO serving satellite only; later steps add the contender + approach sats. Keyed
-  // on the stable satId string so the Set identity (and the cone memo below) stays
-  // stable across renders while the serving sat is unchanged.
+  // The ≤3 target satellites whose multibeam fans render by default (mirrors the
+  // retired steered render's MAX_BEAM_SATS=3): the HERO serving sat (step 1) plus the
+  // primary UE's contender + approach sats (step 2) — the W7 duel pair read off the
+  // primary cell record (comparisonSatId = the runner-up the protagonist is compared
+  // against; pendingTargetSatId = the about-to-trigger handover target). The Set
+  // dedups when pending == comparison, so it is naturally ≤3 = the cap. Keyed on the
+  // stable satId strings so the Set identity (and the cone memo below) stays stable
+  // across renders while those sats are unchanged.
   const sinrLiveTargetSatIds = useMemo(() => {
     const ids = new Set<string>();
     if (primaryServingRecord?.servingSatId) ids.add(primaryServingRecord.servingSatId);
+    if (primaryServingRecord?.comparisonSatId) ids.add(primaryServingRecord.comparisonSatId);
+    if (primaryServingRecord?.pendingTargetSatId) ids.add(primaryServingRecord.pendingTargetSatId);
     return ids;
-  }, [primaryServingRecord?.servingSatId]);
+  }, [
+    primaryServingRecord?.servingSatId,
+    primaryServingRecord?.comparisonSatId,
+    primaryServingRecord?.pendingTargetSatId,
+  ]);
 
   const sinrLiveCellBeamConeItems = useMemo(
     () => {
