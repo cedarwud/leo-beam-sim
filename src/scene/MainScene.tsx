@@ -1073,11 +1073,12 @@ function SceneContent({
   // memoised array (no redundant resolver passes).
   // W9 step 1 — the sinr-live cell lane renders the serving sat's FULL multibeam fan
   // (all the cells it serves this slot, post beam-hopping), not just the primary UE's
-  // one cone. The default focuses to a bounded set of target satellites (≤3, mirroring
-  // the retired steered render's MAX_BEAM_SATS=3) so the additive-glow cones stay
-  // readable; the "Other beams" toggle (showNonServingCones) opens the full breadth
-  // power-view. Rule#6 display filter — the serving truth + the s0/s4 must-hold
-  // resolver (focusSatIds=null) are unchanged; this only narrows what is DRAWN.
+  // one cone. Semantic focus (7fb5991, sinr-live-semantic-beam-colour-sdd): the default
+  // focuses to the HERO serving satellite ONLY (`sinrLiveTargetSatIds`, size 1) — NOT a
+  // ≤3 set. The imminent-handover target does NOT join this set; it draws a SEPARATE
+  // single blue candidate cone below. The "Other beams" toggle (showNonServingCones)
+  // opens the full breadth power-view. Rule#6 display filter — the serving truth + the
+  // s0/s4 must-hold resolver (focusSatIds=null) are unchanged; this only narrows what is DRAWN.
   // primaryServingRecord = the focus/centre UE's serving (satId, cellId) — the SAME
   // primary oracle the s0 connected-sat invariant + the InfoPanel publisher read; its
   // cone renders as the bright saturated hero beam.
@@ -1106,7 +1107,7 @@ function SceneContent({
     () => {
       if (!showSinrLiveCellBeams) return [];
       // Other-beams power-view (showNonServingCones) → every serving sat (full
-      // breadth). Default → focus to the ≤3 target sats' serving fans. Empty target
+      // breadth). Default → focus to the HERO serving satellite ONLY. Empty target
       // set (no primary serving) draws nothing, never the unbounded all-sat firehose.
       if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds.size === 0) return [];
       return resolveSinrLiveCellBeamConeItems({
@@ -1175,8 +1176,8 @@ function SceneContent({
   // no UE served there) from the SEPARATE non-serving resolver (the serving resolver
   // stays serving-only for the s0/s4 must-holds). Drawn behind the bright serving fan
   // at the dim `nonServing` opacity, so on-UE (serving, bright) reads distinct from
-  // hopping (non-serving, dim). Default → the SAME ≤3 target sats' hopping cells (the
-  // hero/contender fans' empty cells); the "Other beams" power-view (showNonServingCones)
+  // hopping (non-serving, dim). Default → the SAME hero serving satellite's hopping cells
+  // (its own fan's empty cells); the "Other beams" power-view (showNonServingCones)
   // opens every non-serving co-channel beam in the field. Display-only (Rule#6); the
   // showNonServingCones switch + the target-sat set are in the dep-array (the
   // invisible-dep-array bug fix), so toggling either re-renders.
@@ -1210,10 +1211,11 @@ function SceneContent({
   const sinrLiveCellPulseConeItems = useMemo(
     () => (showSinrLiveHandoverPulse
       ? resolveSinrLiveHandoverPulseConeItems({
-        // SEMANTIC scene rule: ONLY the serving + imminent-handover-target satellites
-        // ever fire beams, so the ambient handover pulse is FOCUSED to those target sats
-        // too — a handover on any OTHER satellite no longer flashes a cone on a sat that
-        // is otherwise dark (the "why is a non-serving/non-candidate sat beaming?" fix).
+        // SEMANTIC scene rule: only the HERO serving satellite draws the broad beam
+        // layers, so the ambient handover pulse is FOCUSED to it (`sinrLiveTargetSatIds`,
+        // serving sat only) too — a handover on any OTHER satellite no longer flashes a
+        // cone on a sat that is otherwise dark (the "why is a non-serving/non-candidate sat
+        // beaming?" fix). The imminent-handover target is the separate blue candidate cone, not a pulse.
         // Display-only filter; the model's events are unchanged.
         recentHandoverEvents: (sim.sinrLiveCells?.recentHandoverEvents ?? []).filter(
           e => sinrLiveTargetSatIds.has(e.toSatId)
@@ -1698,8 +1700,8 @@ function SceneContent({
         />
       ))}
       {/* W9 step 3 dim beam-hopping cones — painted FIRST (behind) so the bright
-          serving fan reads on top. Default = the ≤3 target sats' hopping cells (on-UE
-          vs hopping legibility); "Other beams" opens the full non-serving field. */}
+          serving fan reads on top. Default = the hero serving satellite's hopping cells
+          (on-UE vs hopping legibility); "Other beams" opens the full non-serving field. */}
       {sinrLiveCellNonServingConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellNonServingConeItems}
