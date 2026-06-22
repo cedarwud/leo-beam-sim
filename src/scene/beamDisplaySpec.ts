@@ -36,6 +36,7 @@ import {
   SINR_LIVE_CONE_CANDIDATE_COLOR,
   SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
   SINR_LIVE_CONE_BACKGROUND_COLOR,
+  SINR_LIVE_CONE_NONSERVING_OPACITY,
 } from '../constants/sinrLiveConeStyle';
 
 export interface BeamDisplaySpec {
@@ -122,6 +123,17 @@ export interface BeamDisplaySpec {
    * "背景波束改暖灰一點" = set this. Default = the const (behaviour-identical). Display-only.
    */
   readonly backgroundConeColor: string;
+  /**
+   * Display-only opacity of the OPT-IN non-serving cone layer (the dim co-channel /
+   * beam-hopping beams shown when {@link showNonServingCones} is ON). Feeds the
+   * non-serving mount's `opacity` prop, replacing the hardcoded
+   * `resolveSinrLiveConeLayerOpacity('nonServing')` call at the mount (override-map
+   * site #4 — the non-serving layer ignored the only opacity field that existed). Dimmer
+   * than the ambient serving field so co-channel beams read as faint background context.
+   * Prompt-control: "其他/非服務波束明顯一點" = raise this. Default =
+   * {@link SINR_LIVE_CONE_NONSERVING_OPACITY} (0.04), so behaviour-identical. Display-only.
+   */
+  readonly nonServingConeOpacity: number;
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
@@ -134,4 +146,5 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   candidateConeColor: SINR_LIVE_CONE_CANDIDATE_COLOR,
   heroConeColor: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
   backgroundConeColor: SINR_LIVE_CONE_BACKGROUND_COLOR,
+  nonServingConeOpacity: SINR_LIVE_CONE_NONSERVING_OPACITY,
 };

@@ -71,7 +71,6 @@ import {
   SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
   SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
   SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
-  resolveSinrLiveConeLayerOpacity,
 } from '../constants/sinrLiveConeStyle';
 import { DEFAULT_BEAM_DISPLAY_SPEC, type BeamDisplaySpec } from './beamDisplaySpec';
 import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord, type SinrLiveCellHandoverEvent } from './sinrLiveCellModel';
@@ -1703,7 +1702,7 @@ function SceneContent({
       {sinrLiveCellNonServingConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellNonServingConeItems}
-          opacity={resolveSinrLiveConeLayerOpacity('nonServing')}
+          opacity={beamDisplaySpec.nonServingConeOpacity}
           widthScale={beamDisplaySpec.coneWidthScale}
           backgroundColor={beamDisplaySpec.backgroundConeColor}
           telemetryCountDatasetKey="sinrLiveCellNonServingConeRenderedCount"
