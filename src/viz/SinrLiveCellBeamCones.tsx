@@ -18,14 +18,17 @@
  * cannot do an oblique cone, so we build the side surface directly (apex → ground
  * ring fan). `meshBasicMaterial` is unlit, so no normals are needed.
  *
- * COLOUR (consolidation SDD §3.2): by SERVING-IDENTITY colour — the SAME
- * `colorForServingBeam(satId, cellId)` hash the UE mosaic uses for the dots, so a
- * serving cone is the SAME colour as the UE dots it serves and the user can match
- * a beam to its UEs by colour (kills Bug E). The satellite drives the hue family
- * (its fan is one colour family converging at its apex), the cell a shade step.
- * The geographic frequency-reuse palette is retired from the live render (kept in
- * `sinrLiveConeStyle.resolveSinrLiveConeColor` only for a future frequency-plan
- * colour mode). Role overrides (hero yellow, candidate cyan) layer on top.
+ * COLOUR (semantic-beam-colour SDD): the cone RENDER colour is the SEMANTIC
+ * role/state palette — serving GREEN / dim context / candidate BLUE / a
+ * releasing-orange→acquired-green handover flip — applied at the MOUNT via
+ * `resolveSinrLiveConeRenderColor` (hero/kind/override/background precedence), so the
+ * meaning reads in one glance with no legend. The resolver ITEM's serving-identity
+ * `color` (`colorForServingBeam(satId, cellId)`, the SAME hash the per-cell UE mosaic
+ * used) survives as the fixture default (vc1c/vc2) + per-cell DATA, but it is no longer
+ * the live cones' rendered hue. The geographic frequency-reuse palette stays retired
+ * from the live render (kept in `sinrLiveConeStyle.resolveSinrLiveConeColor` only for a
+ * future frequency-plan colour mode). Role overrides (serving green, candidate blue,
+ * releasing orange) layer on top at the mount.
  *
  * Serving truth = `frame.sinrLiveCells` (S-cells-1/2: per-cell serving sat by
  * SINR + the sinr-offset `HandoverManager`). It is **NOT** the round-robin
@@ -347,8 +350,8 @@ function buildCellConeItem(input: {
     frequencyIndex,
     // Serving-identity colour (SDD §3.2): the pulse cone reads as the SAME ambient
     // serving cone for (satId, cellId) flaring, not a different hue — it matches the
-    // UE mosaic colour. The per-kind intra/inter pulse hue (and the hero yellow) is
-    // layered on at the mount via resolveSinrLiveConeRenderColor, never here.
+    // UE mosaic colour. The per-kind intra/inter pulse hue (and the hero serving GREEN)
+    // is layered on at the mount via resolveSinrLiveConeRenderColor, never here.
     color: colorForServingBeam(input.satId, input.cellId).markerColor,
     serving: true,
     apex,
@@ -500,6 +503,37 @@ export function resolveTriggeredIntraConeItems(input: {
   return items;
 }
 
+/**
+ * SEMANTIC candidate cue (Option 1, docs/sinr-live-semantic-beam-colour-sdd.md): the
+ * SINGLE incoming beam — the imminent inter-handover target satellite
+ * (`pendingTargetSatId`) pointing at the protagonist's EARTH-FIXED serving cell
+ * (`primaryCellId`, the same ground cell a different sat would take over). Returns ONE
+ * cone (rendered the candidate blue + dim at the mount), so the incoming satellite reads
+ * as "your next link" without drawing its whole multibeam fan. Returns [] when there is
+ * no pending target, the target IS the serving sat, or the cell/sat is unplaced /
+ * unrendered (honest skip). Display-only (Rule#6) — a geometric "where the candidate
+ * would beam to serve you" cue; it alters no serving / handover / SINR truth.
+ */
+export function resolveCandidateBeamConeItems(input: {
+  readonly pendingTargetSatId: string | null | undefined;
+  readonly servingSatId: string | null | undefined;
+  readonly primaryCellId: number | null | undefined;
+  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
+  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+  readonly frequencyReuse: number;
+}): readonly SinrLiveCellBeamConeRenderItem[] {
+  const { pendingTargetSatId, servingSatId, primaryCellId, placementByCellId, satelliteWorldById, frequencyReuse } = input;
+  if (!pendingTargetSatId || pendingTargetSatId === servingSatId || primaryCellId == null) return [];
+  const cone = buildCellConeItem({
+    satId: pendingTargetSatId,
+    cellId: primaryCellId,
+    frequencyIndex: cellFrequencyIndex(primaryCellId, frequencyReuse),
+    placementByCellId,
+    satelliteWorldById,
+  });
+  return cone ? [{ ...cone, renderKey: `candidate-${pendingTargetSatId}-${primaryCellId}` }] : [];
+}
+
 export function resolveSinrLiveCellBeamConeRenderCount(props: SinrLiveCellBeamConesProps): number {
   return resolveSinrLiveCellBeamConeItems(props).length;
 }
@@ -514,8 +548,10 @@ export function resolveSinrLiveCellBeamConeSatelliteCount(props: SinrLiveCellBea
  *   2. per-KIND pulse colour — a pulse cone tagged `intra`/`inter` paints the
  *      `pulseIntraColor` / `pulseInterColor` so a beam-switch reads distinct from a
  *      satellite handover.
- *   3. mount `coneColorOverride` — the single-cone candidate mount's cyan.
- *   4. the cone's serving-identity `color` — the default (every non-pulse layer).
+ *   3. mount `coneColorOverride` — the single-cone candidate mount's BLUE.
+ *   4. mount `backgroundColor` — the SEMANTIC dim context colour for a non-hero served
+ *      field (replaces the per-sat identity hue on the serving + non-serving mounts).
+ *   5. the cone's serving-identity `color` — the fixture default (vc1c/vc2).
  * Pure so the per-kind mapping is VALUE-asserted in the model gate (not eyeballed in
  * a WebGL screenshot). Display-only: it reads the model's own intra/inter
  * classification (`item.kind`) and changes no truth (Rule#6).
@@ -528,6 +564,7 @@ export function resolveSinrLiveConeRenderColor(
     readonly pulseIntraColor?: string;
     readonly pulseInterColor?: string;
     readonly coneColorOverride?: string;
+    readonly backgroundColor?: string;
   },
 ): string {
   if (opts.isHero && opts.heroColor) return opts.heroColor;
@@ -536,7 +573,7 @@ export function resolveSinrLiveConeRenderColor(
     : cone.kind === 'inter'
       ? opts.pulseInterColor
       : undefined;
-  return kindColor ?? opts.coneColorOverride ?? cone.color;
+  return kindColor ?? opts.coneColorOverride ?? opts.backgroundColor ?? cone.color;
 }
 
 export interface SinrLiveCellBeamConesRenderProps {
@@ -579,15 +616,21 @@ export interface SinrLiveCellBeamConesRenderProps {
   readonly primaryServingSatId?: string | null;
   readonly primaryServingCellId?: number | null;
   /**
-   * Recolour ONLY the hero (primary serving) cone to this colour (yellow). Other
-   * cones keep their serving-identity colour. Set on the ambient mount.
+   * Recolour ONLY the hero (primary serving) cone to this colour (serving GREEN). Other
+   * cones fall to the dim `backgroundColor` context colour. Set on the ambient mount.
    */
   readonly heroColor?: string;
   /**
    * Recolour EVERY cone in this mount to this colour. Set on the single-cone
-   * handover-candidate mount (cyan-blue). Omitted elsewhere → serving-identity.
+   * handover-candidate mount (candidate BLUE). Omitted elsewhere → serving-identity.
    */
   readonly coneColorOverride?: string;
+  /**
+   * SEMANTIC background/context colour for every cone in this mount that is NOT the hero
+   * / a kind-pulse / a coneColorOverride — one dim context colour instead of the per-sat
+   * identity hue. Set on the serving + non-serving field mounts. Display-only.
+   */
+  readonly backgroundColor?: string;
   /**
    * C2 (Bug H): per-KIND pulse colours, applied ONLY to cones carrying an
    * `item.kind` (the pulse layer tags intra/inter from the truth event). A cone with
@@ -733,6 +776,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           pulseIntraColor: props.pulseIntraColor,
           pulseInterColor: props.pulseInterColor,
           coneColorOverride: props.coneColorOverride,
+          backgroundColor: props.backgroundColor,
         });
         return (
           <ObliqueConeMesh

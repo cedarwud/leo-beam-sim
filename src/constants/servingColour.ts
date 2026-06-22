@@ -75,3 +75,28 @@ export function colorForServingBeam(satId: string, beamId: number): ServingIdent
     markerEmissive: hslToHex(hue, SERVING_IDENTITY_SATURATION, Math.max(0.28, lightness - 0.18)),
   };
 }
+
+/**
+ * Per-SATELLITE hue (semantic-beam-colour SDD §5, owner-chosen Option A): a stable
+ * colour from the satellite identity ALONE — no per-beam hue jitter, no per-cell
+ * lightness step. The sinr-live UE mosaic colours its ground dots by this, so the ~100
+ * dots partition by SERVING SATELLITE ("these UEs belong to sat X") — far fewer colours
+ * than the per-(satId, cellId) {@link colorForServingBeam} rainbow, a partition the
+ * viewer reads without a legend.
+ *
+ * Trade-off (owner-accepted): an INTRA handover (same sat, beam→beam) no longer recolours
+ * a dot — the cone's releasing-orange→acquired-green flash carries the intra story now;
+ * only an INTER handover (a serving-satellite change) repartitions the dots' colour. The
+ * hue is the SAME `hashStringToUnit(satId)` family anchor `colorForServingBeam` jitters
+ * around, so a sat's (retired) per-cell family still centres on this hue. Display-only
+ * (CLAUDE.md Rule#6): derives a colour from an already-computed serving satId; reads no
+ * SINR, alters no truth.
+ */
+export function colorForServingSatellite(satId: string): ServingIdentityColor {
+  const hue = hashStringToUnit(satId);
+  const lightness = 0.55;
+  return {
+    markerColor: hslToHex(hue, SERVING_IDENTITY_SATURATION, lightness),
+    markerEmissive: hslToHex(hue, SERVING_IDENTITY_SATURATION, Math.max(0.28, lightness - 0.18)),
+  };
+}

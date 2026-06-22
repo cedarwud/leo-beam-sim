@@ -1,31 +1,48 @@
 #!/usr/bin/env node
 /**
- * Colour-match model invariant gate (consolidation SDD §4.2 / roadmap A3) — the
- * CONTRACT pin that locks Bug E's fix: on the sinr-live cell lane, a served UE's
- * marker colour MUST equal the colour of the serving cone for its (satId, cellId),
- * because both go through the ONE serving-identity authority
- * `colorForServingBeam` (`constants/servingColour`). This is a behaviour/contract
- * pin, NOT a source-text pin: it asserts the OUTPUT (cone colour == UE colour),
- * so moving/renaming code is cheap but routing either resolver through a second
- * colour authority (the regression that re-opens Bug E) turns it RED.
+ * Semantic beam-colour model invariant gate (semantic-beam-colour SDD §5) — REWORKED
+ * from the Bug-E "a served UE's marker colour MUST equal its serving cone's colour"
+ * equality. That equality RETIRED when the cones moved to the SEMANTIC role/state palette
+ * (green serving / dim context / blue candidate / orange→green flip, applied at the mount
+ * by `resolveSinrLiveConeRenderColor`) and the UE dots moved to a per-SATELLITE hue
+ * (Option A) — the cones and the dots are now intentionally DIFFERENT colour schemes.
+ *
+ * What it still locks (behaviour/contract pins, NOT source-text):
+ *  (a) EXISTENCE — every served UE has a serving cone for its (satId, cellId). [the
+ *      surviving half of Bug E; also the s0:connected-sat-has-beam must-hold.]
+ *  (b) the protagonist's serving cone RESOLVES the semantic serving GREEN, a non-hero
+ *      served cone the dim context colour, a candidate the candidate BLUE — through the
+ *      real `resolveSinrLiveConeRenderColor` precedence (the render colour, eyeballed
+ *      nowhere): a regression that drops the hero/override path turns it RED.
+ *  (c) unserved UEs are GREY and grey is never a serving colour.
+ *  (d) the UE mosaic partitions by SERVING SATELLITE (per-sat hue: same sat → one dot
+ *      colour, so an intra-HO does NOT recolour a dot; a serving-sat change does).
+ *  (e) the cone ITEM colour still routes through the ONE serving-identity authority
+ *      `colorForServingBeam` (the per-cell DATA default survives behind the mount override).
  *
  * Pure model test (no browser): drives the real production resolvers
- * (`resolveSinrLiveCellBeamConeItems` for cones, `buildSinrServingUeColorMapFromCells`
- * for the UE mosaic — the SAME pair MainScene mounts) over a synthetic multi-UE /
- * multi-cell frame and checks coverage + colour match end to end.
+ * (`resolveSinrLiveCellBeamConeItems` + `resolveSinrLiveConeRenderColor` for cones,
+ * `buildSinrServingUeColorMapFromCells` for the UE mosaic — the SAME pieces MainScene
+ * mounts) over a synthetic multi-UE / multi-cell frame.
  *
  * Run: `npm run validate:beam:colour-match`.
  */
 import {
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveNonServingConeItems,
+  resolveSinrLiveConeRenderColor,
   type SinrLiveCellPlacement,
 } from '../src/viz/SinrLiveCellBeamCones.tsx';
 import {
   buildSinrServingUeColorMapFromCells,
   SINR_SERVING_UNSERVED_COLOR,
 } from '../src/scene/sinrServingMosaic.ts';
-import { colorForServingBeam } from '../src/constants/servingColour.ts';
+import { colorForServingBeam, colorForServingSatellite } from '../src/constants/servingColour.ts';
+import {
+  SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+  SINR_LIVE_CONE_BACKGROUND_COLOR,
+  SINR_LIVE_CONE_CANDIDATE_COLOR,
+} from '../src/constants/sinrLiveConeStyle.ts';
 import type {
   IlluminatedCellBeam,
   SinrLiveCellFrame,
@@ -113,7 +130,7 @@ const cellFrame: SinrLiveCellFrame = {
   recentHandoverEvents: [],
 };
 
-console.log('beam colour-match invariant checks:');
+console.log('semantic beam-colour invariant checks:');
 
 const coneItems = resolveSinrLiveCellBeamConeItems({
   cellFrame, placementByCellId, satelliteWorldById, focusSatIds: null,
@@ -121,7 +138,7 @@ const coneItems = resolveSinrLiveCellBeamConeItems({
 const ueColors = buildSinrServingUeColorMapFromCells(cellFrame.ues);
 const coneColorByKey = new Map(coneItems.map(c => [`${c.satId}:${c.cellId}`, c.color]));
 
-check('every served UE has a serving cone for its (satId, cellId) AND the same colour (Bug E kill)', () => {
+check('(a) EXISTENCE: every served UE has a serving cone for its (satId, cellId) + a marker colour', () => {
   let servedChecked = 0;
   for (const u of cellFrame.ues) {
     if (u.servingSatId === null || u.cellId === null) continue;
@@ -129,29 +146,85 @@ check('every served UE has a serving cone for its (satId, cellId) AND the same c
     assert(coneColorByKey.has(key), `served UE ${u.ueId} has a serving cone for ${key}`);
     const ueColor = ueColors.get(u.ueId);
     assert(ueColor !== undefined, `UE ${u.ueId} has a marker colour`);
-    assertEqual(ueColor!.markerColor, coneColorByKey.get(key)!, `UE ${u.ueId} marker colour == its serving cone colour (${key})`);
+    // NB: the UE marker colour == cone colour EQUALITY retired with the semantic
+    // redesign (cones = role palette, dots = per-sat); only existence is asserted here.
     servedChecked += 1;
   }
   assertEqual(servedChecked, SERVING_PAIRS.length * 2, 'all served UEs were checked');
 });
 
-check('the colour-match runs through the ONE authority colorForServingBeam (cone == UE == authority)', () => {
+check('(e) the cone ITEM colour still routes through the ONE serving-identity authority colorForServingBeam', () => {
+  // The semantic render colour is applied at the MOUNT (resolveSinrLiveConeRenderColor,
+  // asserted in check (b)); the resolver ITEM colour stays the serving-identity authority
+  // — the per-cell DATA default that survives behind the override. Routing the resolver
+  // through a SECOND colour authority would turn this RED.
   for (const p of SERVING_PAIRS) {
     const key = `${p.satId}:${p.cellId}`;
     const authority = colorForServingBeam(p.satId, p.cellId).markerColor;
-    assertEqual(coneColorByKey.get(key)!, authority, `cone(${key}) == colorForServingBeam`);
-    // and a UE served there carries the same authority colour
-    const someUe = cellFrame.ues.find(u => u.servingSatId === p.satId && u.cellId === p.cellId)!;
-    assertEqual(ueColors.get(someUe.ueId)!.markerColor, authority, `UE on ${key} == colorForServingBeam`);
+    assertEqual(coneColorByKey.get(key)!, authority, `cone(${key}) item colour == colorForServingBeam`);
   }
 });
 
-check('intra family vs inter jump: same sat different cell = different shade; different sat = different colour', () => {
+check('(b) the SEMANTIC render colour resolves: hero serving GREEN / non-hero dim context / candidate BLUE', () => {
+  const heroItem = coneItems.find(c => c.satId === 'sat-A' && c.cellId === 0);
+  assert(heroItem !== undefined, 'a hero cone item exists for the protagonist (sat-A, cell-0)');
+  // the protagonist (isHero) → serving GREEN, the role colour a viewer reads as "your link".
+  assertEqual(
+    resolveSinrLiveConeRenderColor(heroItem!, {
+      isHero: true,
+      heroColor: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+      backgroundColor: SINR_LIVE_CONE_BACKGROUND_COLOR,
+    }),
+    SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+    'the protagonist serving cone renders the semantic serving GREEN',
+  );
+  // a NON-hero served cone falls to the dim context colour (one colour, NOT a per-sat rainbow).
+  const bgItem = coneItems.find(c => c.satId === 'sat-B');
+  assert(bgItem !== undefined, 'a non-hero served cone item exists (sat-B)');
+  assertEqual(
+    resolveSinrLiveConeRenderColor(bgItem!, {
+      heroColor: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+      backgroundColor: SINR_LIVE_CONE_BACKGROUND_COLOR,
+    }),
+    SINR_LIVE_CONE_BACKGROUND_COLOR,
+    'a non-hero served cone renders the dim semantic context colour',
+  );
+  // a candidate cone (the single-cone mount's coneColorOverride) → candidate BLUE.
+  assertEqual(
+    resolveSinrLiveConeRenderColor(bgItem!, { coneColorOverride: SINR_LIVE_CONE_CANDIDATE_COLOR }),
+    SINR_LIVE_CONE_CANDIDATE_COLOR,
+    'a candidate cone renders the candidate BLUE',
+  );
+  // the three semantic role colours are distinct (legible without a legend).
+  assert(
+    SINR_LIVE_CONE_SERVING_PRIMARY_COLOR !== SINR_LIVE_CONE_BACKGROUND_COLOR
+      && SINR_LIVE_CONE_SERVING_PRIMARY_COLOR !== SINR_LIVE_CONE_CANDIDATE_COLOR
+      && SINR_LIVE_CONE_BACKGROUND_COLOR !== SINR_LIVE_CONE_CANDIDATE_COLOR,
+    'serving / context / candidate are three distinct role colours',
+  );
+});
+
+check('(d) the UE mosaic partitions by SERVING SATELLITE (per-sat hue; intra-HO leaves a dot unchanged)', () => {
+  // sat-A serves BOTH cell-0 and cell-1 (an intra family on the cones), but the two UEs'
+  // DOTS are now ONE colour — the per-sat hue — so an intra HO does NOT recolour a dot.
+  const aCell0 = ueColors.get('u-0-a')!.markerColor; // sat-A, cell-0
+  const aCell1 = ueColors.get('u-1-a')!.markerColor; // sat-A, cell-1
+  assertEqual(aCell0, aCell1, 'two UEs on the SAME sat (different cells) share ONE dot colour (intra-HO = no dot recolour)');
+  assertEqual(aCell0, colorForServingSatellite('sat-A').markerColor, 'the dot colour is the per-satellite authority colorForServingSatellite');
+  // a different serving sat = a different dot colour (an INTER handover repartitions).
+  const bCell2 = ueColors.get('u-2-a')!.markerColor; // sat-B, cell-2
+  assert(aCell0 !== bCell2, 'a different serving sat = a different dot colour (inter-HO repartitions the mosaic)');
+});
+
+check('cone ITEM data retains per-(sat,cell) identity (footprint-ring/telemetry colour; the RENDER is semantic)', () => {
+  // The item colour is no longer the rendered cone hue (that is the semantic palette,
+  // check (b)) but it still drives the footprint-ring hex bands + the cone userData, so
+  // its per-cell granularity is pinned: a regression collapsing it would flatten those.
   const a0 = coneColorByKey.get('sat-A:0')!;
   const a1 = coneColorByKey.get('sat-A:1')!;
   const b2 = coneColorByKey.get('sat-B:2')!;
-  assert(a0 !== a1, 'sat-A cell-0 vs cell-1 are a shade family (different)');
-  assert(a0 !== b2, 'sat-A vs sat-B are different colours');
+  assert(a0 !== a1, 'sat-A cell-0 vs cell-1 item colours are a shade family (different)');
+  assert(a0 !== b2, 'sat-A vs sat-B item colours are different');
 });
 
 check('unserved UEs are grey, and grey is never a serving-cone colour', () => {
@@ -172,4 +245,4 @@ check('non-serving cones share the identity authority too (one colour scheme for
   }
 });
 
-console.log(`\nbeam colour-match invariant: ${passed} checks passed.`);
+console.log(`\nsemantic beam-colour invariant: ${passed} checks passed.`);

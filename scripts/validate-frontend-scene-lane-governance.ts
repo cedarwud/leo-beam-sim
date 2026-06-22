@@ -1863,8 +1863,9 @@ assertContains(
 // S5-2: the serving-cone render pins (serving-only / freq-reuse colour / blending /
 // focus-scoping) RETIRED with QUAR-S5-BEAMRENDER. Their behaviour now lives in
 // BEHAVIOUR gates: validate:phase-c:sinr-live-cells:render asserts serving-only
-// cones + serving-identity colour + the style-token VALUES (ambient 0.14 < pair 0.30,
-// 32 segments, NormalBlending) from constants/sinrLiveConeStyle.ts; and the INTENT —
+// cones + serving-identity ITEM colour (the semantic role/state palette is applied at
+// the mount) + the style-token VALUES (ambient 0.45 < pulse 0.8, 32 segments,
+// NormalBlending) from constants/sinrLiveConeStyle.ts; and the INTENT —
 // every connected sat shows a beam — is ENFORCED as a must-hold by the S0 invariant
 // validate:s0:connected-sat-has-beam (cone-cripple positive control).
 //
@@ -1910,10 +1911,13 @@ assertContains(
 // spelling is free to move.
 // (2) MainScene derives the pulse cones under the always-on flag from the model's
 //     real recentHandoverEvents truth — a Rule#6 display read-out, no fabricated HO.
+//     The semantic-beam-colour SDD FOCUSED the pulse to the target sats (`.filter(...)`
+//     on sinrLiveTargetSatIds), so the needle pins the read-from-model-truth prefix; the
+//     focus filter is a display narrowing, the source is still the model's own events.
 assertContains(
   mainSceneSource,
-  'recentHandoverEvents: sim.sinrLiveCells?.recentHandoverEvents',
-  'MainScene feeds the live pulse from the model truth (real per-frame handovers, Rule#6)',
+  'recentHandoverEvents: (sim.sinrLiveCells?.recentHandoverEvents ?? [])',
+  'MainScene feeds the live pulse from the model truth (real per-frame handovers, focused to target sats, Rule#6)',
 );
 // (3) the pulse layer is mounted with a MESH-derived rendered-count observable so
 //     the browser gate proves the bright cones actually drew (not just resolved).

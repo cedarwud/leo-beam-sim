@@ -65,7 +65,7 @@ import { buildPublishedPerUePositions } from '../src/scene/useSimStatePublisher.
 import {
   buildSinrServingUeColorMapFromCells,
   deriveSinrServingMosaicAggregate,
-  mosaicColorForServingBeam,
+  mosaicColorForServingSatellite,
   SINR_SERVING_UNSERVED_COLOR,
 } from '../src/scene/sinrServingMosaic.ts';
 import {
@@ -287,8 +287,8 @@ const colorById = buildSinrServingUeColorMapFromCells(ues);
     } else {
       assert.equal(
         color.markerColor,
-        mosaicColorForServingBeam(ue.servingSatId, ue.cellId as number).markerColor,
-        `E2: ${ue.ueId} coloured by its (satId, cellId) serving unit`,
+        mosaicColorForServingSatellite(ue.servingSatId).markerColor,
+        `E2: ${ue.ueId} coloured by its SERVING SATELLITE (per-sat hue, semantic-beam-colour SDD §5 Option A)`,
       );
     }
   }

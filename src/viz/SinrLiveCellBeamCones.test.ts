@@ -345,11 +345,14 @@ check('S5-2 cone base == the TRUTH cell centre from buildSinrLiveCellLayout (no 
   approx(items[0].baseCenter.y, 0, 1e-9, 'cone base on the ground plane');
 });
 
-check('S5-2 style tokens (hybrid): ambient 0.45 < pulse 0.8, 32 segments, AdditiveBlending (replaces the cone style/opacity/blending pins)', () => {
+check('S5-2 style tokens (hybrid): ambient 0.45 < pulse 0.8, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
   assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.45, 'ambient cone opacity is the screenshot-locked 0.45');
   assert(SINR_LIVE_CONE_PULSE_PEAK_OPACITY > SINR_LIVE_CONE_AMBIENT_OPACITY, 'HYBRID: the handover pulse is brighter than the ambient field');
   assertEqual(SINR_LIVE_CONE_SEGMENTS, 32, 'oblique cone ring segment count');
-  assertEqual(SINR_LIVE_CONE_BLENDING, THREE.AdditiveBlending, 'cones use AdditiveBlending');
+  // semantic-beam-colour SDD §8: cones moved Additive→Normal so each semantic role
+  // colour (green/dim/blue/orange) composites at its OWN hue over the bright terrain
+  // instead of summing into yellow-green / washed-blue (the colour-truth unlock).
+  assertEqual(SINR_LIVE_CONE_BLENDING, THREE.NormalBlending, 'cones use NormalBlending (semantic colour truth)');
   const posExplicit = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10, 5);
   assertEqual(posExplicit.length, 5 * 9, 'explicit segments honoured');
   const posDefault = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10);
@@ -379,10 +382,10 @@ check('Tier-2 SinrLiveConeStyle resolver: layer→opacity + colour map to the lo
   }
 });
 
-check('G1-CONE-STYLE apex→base alpha fade: apex opaque (must-hold-safe), base faded (de-tangle), hue untouched (RGB white)', () => {
+check('G1-CONE-STYLE apex→base alpha: apex opaque (must-hold-safe), base in (0,1] (fade machinery), hue untouched (RGB white)', () => {
   assert(
-    SINR_LIVE_CONE_BASE_ALPHA_FACTOR > 0 && SINR_LIVE_CONE_BASE_ALPHA_FACTOR < 1,
-    'base alpha factor is a fade in (0,1) — base faded but never fully invisible',
+    SINR_LIVE_CONE_BASE_ALPHA_FACTOR > 0 && SINR_LIVE_CONE_BASE_ALPHA_FACTOR <= 1,
+    'base alpha factor in (0,1] — apex-equal at the current 1.0 (fade disabled, the documented default) down to faded; never inverted or fully invisible',
   );
   const segments = 5;
   const colors = buildObliqueBeamConeVertexColors(segments, SINR_LIVE_CONE_BASE_ALPHA_FACTOR);
@@ -539,7 +542,9 @@ check('render-colour resolution (C2): hero > per-kind pulse > override > serving
   // 2. per-kind pulse colours.
   assertEqual(resolveSinrLiveConeRenderColor(base('intra'), opts), SINR_LIVE_CONE_PULSE_INTRA_COLOR, 'intra pulse → intra colour');
   assertEqual(resolveSinrLiveConeRenderColor(base('inter'), opts), SINR_LIVE_CONE_PULSE_INTER_COLOR, 'inter pulse → inter colour');
-  // (intra ≠ inter is guaranteed at compile time — the constants are distinct literals.)
+  // (semantic-beam-colour SDD: intra + inter now resolve to the SAME soft-green ambient
+  //  pulse colour — the intra-vs-inter story moved off the pulse hue onto the 1-sat/2-sat
+  //  read + the triggered orange→green flash; the resolver still maps each kind to its prop.)
   // 3. mount override (the candidate cyan mount) wins over serving-identity but a
   //    kind still wins over the override (a pulse is never the candidate mount).
   assertEqual(resolveSinrLiveConeRenderColor(base(), { coneColorOverride: '#0ea5e9' }), '#0ea5e9', 'override → override colour when no kind');

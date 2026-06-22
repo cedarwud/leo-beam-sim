@@ -22,12 +22,17 @@
  *    of the ambient layer so the handover story stands out against the faint
  *    field.
  *
- * Cone COLOUR is the SERVING-IDENTITY colour (`colorForServingBeam(satId, cellId)`,
- * `constants/servingColour`) — the same authority the UE mosaic uses, so a cone is
- * the colour of the UE dots it serves (A1, SDD §3.2). It is per-cell DATA set in
- * the pure resolver, not a mesh style knob, so it is not re-homed here. The retired
- * frequency-reuse mapping (`resolveSinrLiveConeColor`) remains below for a future
- * frequency-plan colour mode.
+ * Cone RENDER colour is now the SEMANTIC role/state palette
+ * (docs/sinr-live-semantic-beam-colour-sdd.md): serving GREEN
+ * ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}) / dim context
+ * ({@link SINR_LIVE_CONE_BACKGROUND_COLOR}) / candidate BLUE
+ * ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}) / a releasing-orange→acquired-green handover
+ * flip — learnable in one glance, no legend. It is applied at the MOUNT via
+ * `resolveSinrLiveConeRenderColor` (hero/kind/override/background precedence), NOT in the
+ * pure resolver: the resolver item's serving-identity `color` (`colorForServingBeam`)
+ * survives as the fixture default (vc1c/vc2) + the per-cell DATA, so it is not re-homed
+ * here. The retired frequency-reuse mapping (`resolveSinrLiveConeColor`) remains below for
+ * a future frequency-plan colour mode.
  */
 import * as THREE from 'three';
 import { frequencyReuseColor } from './beamRoleTokens';
@@ -99,11 +104,12 @@ export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.5;
  * faint (0.32) to read, and undirectional (old + new both the serving-identity hue).
  * The TRIGGERED intra (the deliberate jog) instead gets a WALL-CLOCK 3.2 s fade
  * (decoupled from sim speed, so it always reads) with a FROM/TO COLOUR SPLIT — the
- * old (handed-off) cell vivid ORANGE ("leaving"), the new (acquired) cell vivid VIOLET
- * ("arriving") — so the same-sat beam switch reads as a bold A→B flip. Peak opacity
- * 0.95 + 3.2 s sustain so it DOMINATES the ambient pulse (the prior cool-cyan `to`
- * shared the ambient intra-pulse hue, so the flash drowned in it — orange + violet are
- * both unique on the scene palette). Owner choice: make the intra colour-switch obvious
+ * old (handed-off) cell vivid releasing-ORANGE ("leaving"), the new (acquired) cell the
+ * serving-link GREEN ("arriving / acquired") — so the same-sat beam switch reads as the
+ * semantic releasing→acquired flip. Peak opacity 0.95 + 3.2 s sustain so it DOMINATES the
+ * ambient pulse (the prior cool-cyan `to` shared the ambient intra-pulse hue, so the flash
+ * drowned in it — orange + green are the semantic releasing→acquired pair, both distinct
+ * from the dim context field). Owner choice: make the intra colour-switch obvious
  * + legible as one satellite swapping beams — once the non-serving sats are off
  * (sinrLiveTargetSatIds = serving + imminent inter-target only), this single-sat A→B
  * flip IS the intra story. Display-only (Rule#6).
@@ -113,18 +119,29 @@ export const SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS = 3200;
 export const SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY = 0.95;
 /** OLD (handed-off) cell colour — vivid ORANGE, "leaving" (unique on the scene palette). */
 export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = '#f97316';
-/** NEW (acquired) cell colour — vivid VIOLET, "arriving" (distinct from the cyan ambient pulse + blue candidate). */
-export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#c084fc';
+/** NEW (acquired) cell colour — GREEN = "arriving / acquired", settling to the serving-link
+ * green ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}); the orange→green flip IS the handover. */
+export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#22c55e';
 
 /**
- * Display palette for the live beam field (a-cone follow-up). The PRIMARY serving
- * beam (the one serving the centre UE) reads SATURATED YELLOW so it pops as "your
- * serving beam". Every OTHER beam keeps the geographic frequency-reuse palette
- * (faint context — NOT recoloured). This override applies only where MainScene
- * passes it (the hero cone); the pulse + vc1c/vc2 fixtures keep
+ * SEMANTIC palette (docs/sinr-live-semantic-beam-colour-sdd.md). The PRIMARY serving
+ * beam (the one serving the centre UE) reads GREEN = "your live serving link"
+ * (connected/acquired), so the viewer knows the colour's MEANING without a legend.
+ * Every OTHER served beam goes the dim {@link SINR_LIVE_CONE_BACKGROUND_COLOR} context
+ * colour (NOT the old arbitrary per-satellite identity hue). This override applies only
+ * where MainScene passes it (the hero cone); the pulse + vc1c/vc2 fixtures keep
  * resolveSinrLiveConeColor untouched. Display-only.
  */
-export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#facc15';
+export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#22c55e';
+/**
+ * SEMANTIC background/context colour — every served beam that is NOT the hero (your
+ * serving link), NOT a candidate, NOT a live handover flash renders this dim green-grey,
+ * so the field reads as "others are served too" context (a muted member of the green
+ * served family, NO blue) instead of an arbitrary per-satellite rainbow. Threaded into
+ * the serving + non-serving cone mounts as `backgroundColor`; faint at the ambient
+ * opacity. Display-only.
+ */
+export const SINR_LIVE_CONE_BACKGROUND_COLOR = '#46544d';
 
 /**
  * G2c ambient live-handover PULSE peak opacity. When a real per-frame handover
@@ -138,19 +155,17 @@ export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#facc15';
 export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.8;
 
 /**
- * C2 (Bug H): per-KIND pulse colours so a fired handover reads as intra vs inter at
- * a glance, instead of every pulse flaring in its serving-identity hue. The pulse
- * resolver tags each cone with the truth `event.kind` (`sinrLiveCellModel`); the
- * render maps that to one of these via `beamDisplaySpec.pulseIntraColor /
- * pulseInterColor`, falling back to the serving-identity colour when a cone carries
- * no kind (every non-pulse layer). Display-only (Rule#6): the colour is a read-out
- * of the model's own intra/inter classification, it changes no truth.
- *  - intra (same-sat beam switch): CYAN (#22d3ee) — the "minor, in-place" hop.
- *  - inter (satellite handover): SKY (#0ea5e9) — the "you changed satellite" event;
- *    distinct from the hero yellow ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}).
+ * SEMANTIC ambient handover-pulse colour (docs/sinr-live-semantic-beam-colour-sdd.md).
+ * A fired handover on a TARGET satellite (serving / imminent-target — the pulse is
+ * FOCUSED to those in MainScene) briefly flares its old/new cells: the population
+ * "a handover just happened here" cue. Kept soft GREEN so it reads as "activity on the
+ * served field" and introduces NO blue. The PROTAGONIST's own handover gets the vivid
+ * orange→green TRIGGERED flash instead (the hero effect), so the ambient pulse no longer
+ * needs to encode intra-vs-inter — both kinds now point at the same soft green blip.
+ * Display-only (Rule#6): a read-out of the model's classified handover, no truth touched.
  */
-export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#22d3ee';
-export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#0ea5e9';
+export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#86efac';
+export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#86efac';
 
 /**
  * Candidate / contender satellite cone hue — the W9 handover-target highlight. The
@@ -159,8 +174,8 @@ export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#0ea5e9';
  * protagonist's serving-identity fan. A display-only role colour (Rule#6): it is a
  * render-time `coneColorOverride`, the resolver item's serving-identity `color` is
  * unchanged, so the served UEs' colour-match authority is untouched. Distinct from the
- * cyan intra / sky inter PULSE hues (a pulse is a momentary HO flash; this is the
- * steady contender). Prompt-control: "候選波束改個顏色" = set this one field.
+ * soft-green ambient PULSE hue and the dim context field (a pulse is a momentary HO
+ * flash; this is the steady contender). Prompt-control: "候選波束改個顏色" = set this one field.
  */
 export const SINR_LIVE_CONE_CANDIDATE_COLOR = '#3b82f6';
 
@@ -192,14 +207,16 @@ export const SINR_LIVE_CONE_SEGMENTS = 32;
 export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 1.0;
 
 /**
- * AdditiveBlending for the cones: overlapping serving cones ACCUMULATE into a
- * brighter glow rather than alpha-compositing to a bounded translucency. This is the
- * current intended look — where several serving beams cross the same area the field
- * lights up, reading as a denser multibeam region; the apex→base alpha fade
- * ({@link SINR_LIVE_CONE_BASE_ALPHA_FACTOR}) + the near-horizon dim keep the ground
- * overlap from blowing out.
+ * NormalBlending for the cones (SEMANTIC colour, docs/sinr-live-semantic-beam-colour-sdd.md).
+ * AdditiveBlending made every cone colour ACCUMULATE with the bright satellite-imagery
+ * terrain beneath it — green summed to yellow-green, slate to washed blue — so a SEMANTIC
+ * colour never read TRUE (its meaning drifted with the background = the "一堆黃綠/藍" muddle
+ * + the colour whack-a-mole). Alpha-compositing (NormalBlending) renders each cone at its
+ * OWN colour over the terrain, so green reads green and the role palette (serving green /
+ * candidate blue / releasing orange) is legible without a legend. We trade the additive
+ * multibeam glow for colour truth — the right call once the colour itself carries the story.
  */
-export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.AdditiveBlending;
+export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.NormalBlending;
 
 /**
  * Which sinr-live cone LAYER a style is being resolved for. The lane draws three

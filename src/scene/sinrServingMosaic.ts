@@ -21,7 +21,7 @@
  *   actually changed, so "handover = a dot changes colour" stays truthful.
  */
 
-import { colorForServingBeam } from '../constants/servingColour';
+import { colorForServingBeam, colorForServingSatellite } from '../constants/servingColour';
 
 /** Unserved marker colours — shared with the MODQN idle palette for coherence. */
 export const SINR_SERVING_UNSERVED_COLOR = '#64748b';
@@ -97,6 +97,18 @@ export function mosaicColorForServingBeam(satId: string, beamId: number): SinrSe
   return colorForServingBeam(satId, beamId);
 }
 
+/**
+ * Per-SATELLITE mosaic colour (semantic-beam-colour SDD §5, owner Option A). Delegates
+ * to the ONE per-sat authority {@link colorForServingSatellite}, so the sinr-live ground
+ * dots partition by SERVING SATELLITE (fewer colours than the per-(sat,cell) rainbow) and
+ * the HUD beam-load aggregate keys per-(sat,cell) but COLOURS per-sat — one colour
+ * authority across both surfaces. Named export for the mosaic/serving-equivalence
+ * validators; the satId hash lives in `constants/servingColour`.
+ */
+export function mosaicColorForServingSatellite(satId: string): SinrServingMarkerColor {
+  return colorForServingSatellite(satId);
+}
+
 function isServed(satId: string | null, beamId: number | null): boolean {
   return satId !== null && satId !== '' && beamId !== null && Number.isFinite(beamId);
 }
@@ -128,11 +140,13 @@ export function buildSinrServingUeColorMap(
  * Per-UE marker colours from the EARTH-FIXED CELL TRUTH (`sim.sinrLiveCells.ues`,
  * S-cells-4c). On the sinr-live lane the serving truth is the cell model, NOT the
  * steered lattice — a UE is "connected" (coloured) ONLY when its cell is lit and
- * served (`servingSatId !== null`); an unserved UE (its cell idle this hopping slot)
- * stays grey. Colour keys on (servingSatId, cellId) so a UE crossing into a new
- * cell of the same sat shifts shade (intra-HO) and a serving-sat change jumps hue
- * (inter-HO) — the mosaic's "handover = a dot changes colour" contract, now on the
- * cell truth instead of the steered serving.
+ * served (`servingSatId !== null` AND a non-null `cellId`); an unserved UE (its cell
+ * idle this hopping slot, or no cell) stays grey. Colour keys on the SERVING SATELLITE
+ * ALONE (semantic-beam-colour SDD §5, owner Option A): the dots partition by sat, so an
+ * INTER handover (serving-sat change) repartitions a dot's colour while an INTRA handover
+ * (same sat, cell→cell) leaves it unchanged — the intra story now rides the cone's
+ * releasing-orange→acquired-green flash, not the dot shade. `cellId` is still read for the
+ * served/unserved gate (an unlit cell = grey), just no longer for the hue.
  */
 export interface SinrServingCellUe {
   readonly ueId: string;
@@ -152,7 +166,7 @@ export function buildSinrServingUeColorMapFromCells(
       });
       continue;
     }
-    out.set(ue.ueId, mosaicColorForServingBeam(ue.servingSatId, ue.cellId));
+    out.set(ue.ueId, mosaicColorForServingSatellite(ue.servingSatId));
   }
   return out;
 }
@@ -195,7 +209,10 @@ export function deriveSinrServingMosaicAggregate(
       satId: value.satId,
       beamId: value.beamId,
       count: value.count,
-      color: mosaicColorForServingBeam(value.satId, value.beamId).markerColor,
+      // Keys/counts stay per-(sat,cell); the COLOUR is per-SATELLITE (Option A), the
+      // same authority the 3D mosaic dots now use — so the HUD aggregate and the map
+      // agree on one colour scheme (cross-surface pin, validate:s4:pun-retired).
+      color: mosaicColorForServingSatellite(value.satId).markerColor,
     }))
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
 

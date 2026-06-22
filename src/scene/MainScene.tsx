@@ -63,10 +63,12 @@ import {
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveNonServingConeItems,
   resolveTriggeredIntraConeItems,
+  resolveCandidateBeamConeItems,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
 import {
   SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+  SINR_LIVE_CONE_BACKGROUND_COLOR,
   SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
   SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
   SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
@@ -1083,26 +1085,21 @@ function SceneContent({
     ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
     : null;
 
-  // The ≤2 target satellites whose multibeam fans render by default: the HERO serving
-  // sat (always) plus — ONLY when a satellite (inter) handover is imminent — the
-  // about-to-trigger handover TARGET sat (`pendingTargetSatId`). So the steady scene is
-  // ONE sat (the server) during normal play + intra (same-sat beam) handovers, and TWO
-  // sats (server + incoming target) only while an inter handover is pending — the
-  // intra-vs-inter beam-count contract the demo reads by. The best-candidate
-  // `comparisonSatId` (the duel runner-up) deliberately does NOT light a beam: a
-  // candidate that is merely "best alternative" is not yet handing over, so showing its
-  // fan re-clutters the map (owner: serving + the imminent target only). It still drives
-  // the sidebar BEAM DUEL — this is a render-focus narrowing, not a truth change. Keyed
-  // on the stable satId strings so the Set identity (and the cone memo below) stays
-  // stable across renders while those sats are unchanged.
+  // SEMANTIC scene focus (docs/sinr-live-semantic-beam-colour-sdd.md): the broad serving
+  // fan / non-serving / footprint / callout / pulse layers focus to the HERO serving
+  // satellite ONLY, so the steady scene is ONE satellite — your serving link. The
+  // imminent inter-handover target does NOT join this broad set (it would flood every
+  // layer with its whole multibeam fan); it draws a SINGLE dim candidate beam below
+  // (`sinrLiveCandidateBeamConeItems`), so "inter = 2 sats" reads as your green fan + ONE
+  // blue incoming beam, not two full fans. Display-only render-focus (Rule#6) — the
+  // serving truth + the s0/s4 must-holds (focusSatIds=null resolver) are unchanged. Keyed
+  // on the stable satId string so the Set identity (and the cone memo) stays stable.
   const sinrLiveTargetSatIds = useMemo(() => {
     const ids = new Set<string>();
     if (primaryServingRecord?.servingSatId) ids.add(primaryServingRecord.servingSatId);
-    if (primaryServingRecord?.pendingTargetSatId) ids.add(primaryServingRecord.pendingTargetSatId);
     return ids;
   }, [
     primaryServingRecord?.servingSatId,
-    primaryServingRecord?.pendingTargetSatId,
   ]);
 
   const sinrLiveCellBeamConeItems = useMemo(
@@ -1131,35 +1128,34 @@ function SceneContent({
       sinrLiveTargetSatIds,
     ],
   );
-  // W9 candidate highlight: the imminent inter-handover TARGET sat (NOT the hero serving
-  // sat) — its cones recolour to the candidate hue so the incoming satellite reads
-  // distinct from the protagonist's serving fan. Only the about-to-trigger
-  // `pendingTargetSatId` qualifies (it mirrors the target-sat set above); the
-  // best-candidate `comparisonSatId` no longer lights a beam, so it is not recoloured
-  // either. Display-only role colour (Rule#6): the serving item.color stays
-  // serving-identity, so the served-UE colour-match authority is untouched. Keyed on the
-  // stable satId strings (stable Set identity across renders while those sats hold).
-  const sinrLiveCandidateSatIds = useMemo(() => {
-    const ids = new Set<string>();
-    const serving = primaryServingRecord?.servingSatId;
-    if (primaryServingRecord?.pendingTargetSatId && primaryServingRecord.pendingTargetSatId !== serving) {
-      ids.add(primaryServingRecord.pendingTargetSatId);
-    }
-    return ids;
-  }, [
-    primaryServingRecord?.servingSatId,
-    primaryServingRecord?.pendingTargetSatId,
-  ]);
-  // Split the serving fan into the hero sat's cones (serving-identity colour) and the
-  // candidate sats' cones (the coneColorOverride highlight). Footprint rings + callouts
-  // still ride the FULL set below, so every cone keeps its hex + callout.
-  const sinrLiveCellHeroConeItems = useMemo(
-    () => sinrLiveCellBeamConeItems.filter(item => !sinrLiveCandidateSatIds.has(item.satId)),
-    [sinrLiveCellBeamConeItems, sinrLiveCandidateSatIds],
-  );
-  const sinrLiveCellCandidateConeItems = useMemo(
-    () => sinrLiveCellBeamConeItems.filter(item => sinrLiveCandidateSatIds.has(item.satId)),
-    [sinrLiveCellBeamConeItems, sinrLiveCandidateSatIds],
+  // SEMANTIC candidate cue (Option 1, docs/sinr-live-semantic-beam-colour-sdd.md): the
+  // SINGLE incoming beam — the imminent inter-handover TARGET sat (`pendingTargetSatId`)
+  // pointing at the protagonist's EARTH-FIXED serving cell (the same ground cell a
+  // different sat would take over). ONE dim blue cone (NOT the candidate sat's whole
+  // multibeam fan), so the green serving link stays the hero and the blue reads as "your
+  // NEXT link". The target sat is deliberately absent from `sinrLiveTargetSatIds` above
+  // (so it floods none of the serving / non-serving / footprint / callout layers); this
+  // single cone is the only thing it draws. Display-only (Rule#6).
+  const sinrLiveCandidateBeamConeItems = useMemo(
+    () => (showSinrLiveCellBeams
+      ? resolveCandidateBeamConeItems({
+        pendingTargetSatId: primaryServingRecord?.pendingTargetSatId,
+        servingSatId: primaryServingRecord?.servingSatId,
+        primaryCellId: primaryServingRecord?.cellId,
+        placementByCellId: sinrLiveCellPlacementById,
+        satelliteWorldById: viz.coneApexWorldById,
+        frequencyReuse: profile.beams.frequencyReuse,
+      })
+      : []),
+    [
+      showSinrLiveCellBeams,
+      primaryServingRecord?.pendingTargetSatId,
+      primaryServingRecord?.servingSatId,
+      primaryServingRecord?.cellId,
+      sinrLiveCellPlacementById,
+      viz.coneApexWorldById,
+      profile.beams.frequencyReuse,
+    ],
   );
   // W5 Beam-Info callouts: per-cell serving SINR (dB) keyed by cellId, for the
   // <Html> chips. Reads the cell model's own serving SINR — display-only.
@@ -1214,7 +1210,15 @@ function SceneContent({
   const sinrLiveCellPulseConeItems = useMemo(
     () => (showSinrLiveHandoverPulse
       ? resolveSinrLiveHandoverPulseConeItems({
-        recentHandoverEvents: sim.sinrLiveCells?.recentHandoverEvents,
+        // SEMANTIC scene rule: ONLY the serving + imminent-handover-target satellites
+        // ever fire beams, so the ambient handover pulse is FOCUSED to those target sats
+        // too — a handover on any OTHER satellite no longer flashes a cone on a sat that
+        // is otherwise dark (the "why is a non-serving/non-candidate sat beaming?" fix).
+        // Display-only filter; the model's events are unchanged.
+        recentHandoverEvents: (sim.sinrLiveCells?.recentHandoverEvents ?? []).filter(
+          e => sinrLiveTargetSatIds.has(e.toSatId)
+            || (e.fromSatId !== null && sinrLiveTargetSatIds.has(e.fromSatId)),
+        ),
         simTimeSec: sim.sinrLiveCells?.simTimeSec ?? 0,
         retentionSec: SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
         placementByCellId: sinrLiveCellPlacementById,
@@ -1222,7 +1226,7 @@ function SceneContent({
         frequencyReuse: profile.beams.frequencyReuse,
       })
       : []),
-    [showSinrLiveHandoverPulse, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse],
+    [showSinrLiveHandoverPulse, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds],
   );
   // beam-stage ① #5: the TRIGGERED intra flash. The ambient pulse above fades over
   // SIM-time (4 s retention → ~0.8 s wall-clock at the 5× demo speed → too brief to
@@ -1701,6 +1705,7 @@ function SceneContent({
           items={sinrLiveCellNonServingConeItems}
           opacity={resolveSinrLiveConeLayerOpacity('nonServing')}
           widthScale={beamDisplaySpec.coneWidthScale}
+          backgroundColor={SINR_LIVE_CONE_BACKGROUND_COLOR}
           telemetryCountDatasetKey="sinrLiveCellNonServingConeRenderedCount"
         />
       )}
@@ -1711,11 +1716,12 @@ function SceneContent({
         // (the hero beam pops against the faint ambient field). Display-only; the
         // serving truth + cone count are unchanged.
         <SinrLiveCellBeamCones
-          items={sinrLiveCellHeroConeItems}
+          items={sinrLiveCellBeamConeItems}
           opacity={beamDisplaySpec.servingConeOpacity}
           widthScale={beamDisplaySpec.coneWidthScale}
           dimShallowCones
           heroColor={SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}
+          backgroundColor={SINR_LIVE_CONE_BACKGROUND_COLOR}
           primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
           primaryServingCellId={primaryServingRecord?.cellId ?? null}
         />
@@ -1724,9 +1730,9 @@ function SceneContent({
           candidate hue (coneColorOverride) so the handover target reads distinct from the
           protagonist's serving fan. Same opacity/dim as the serving field; display-only
           role colour — the resolver item.color stays serving-identity (colour-match green). */}
-      {showSinrLiveCellBeams && sinrLiveCellCandidateConeItems.length > 0 && (
+      {showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
         <SinrLiveCellBeamCones
-          items={sinrLiveCellCandidateConeItems}
+          items={sinrLiveCandidateBeamConeItems}
           opacity={beamDisplaySpec.servingConeOpacity}
           widthScale={beamDisplaySpec.coneWidthScale}
           dimShallowCones

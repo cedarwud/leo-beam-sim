@@ -34,7 +34,7 @@ import { join } from 'node:path';
 import {
   buildSinrServingUeColorMapFromCells,
   deriveSinrServingMosaicAggregate,
-  mosaicColorForServingBeam,
+  mosaicColorForServingSatellite,
 } from '../src/scene/sinrServingMosaic.ts';
 import { createSinrLiveCellHandoverEventFromUeTransition } from '../src/scene/sinrLiveCellHandoverEventIndex.ts';
 
@@ -156,14 +156,17 @@ const CELL_LANE_UES = [
   assert.equal(busiest.key, 'SAT-7:12', 'B: busiest serving unit is the 2-UE cell');
   assert.equal(busiest.count, 2, 'B: per-unit UE counts aggregate on the typed cell id');
 
-  // HUD beam-load colour == 3D mosaic colour for the SAME (satId, cellId): the
-  // cross-surface "one typed serving unit" promise (pre-figures S4-3 equivalence).
+  // HUD beam-load colour == 3D mosaic colour for the SAME serving SATELLITE: the
+  // cross-surface "one colour authority" promise. Colour is now per-sat (semantic-beam-
+  // colour SDD §5, Option A) while the load KEY stays per-(sat,cell) — both surfaces
+  // derive the colour from the SAME satId via mosaicColorForServingSatellite, so a
+  // re-point of either onto a second authority breaks this.
   const cellMapColors = buildSinrServingUeColorMapFromCells(
     CELL_LANE_UES.map(ue => ({ ueId: ue.id, servingSatId: ue.servingSatId, cellId: ue.servingCellId })),
   );
   for (const load of aggregate.beamLoads) {
-    const expected = mosaicColorForServingBeam(load.satId, load.beamId).markerColor;
-    assert.equal(load.color, expected, `B: aggregate colour for ${load.key} derives from the typed unit`);
+    const expected = mosaicColorForServingSatellite(load.satId).markerColor;
+    assert.equal(load.color, expected, `B: aggregate colour for ${load.key} derives from the serving satellite`);
     const carrier = CELL_LANE_UES.find(ue => ue.servingSatId === load.satId && ue.servingCellId === load.beamId);
     assert.ok(carrier !== undefined, `B: a cell record carries ${load.key}`);
     assert.equal(

@@ -95,7 +95,80 @@ Distinguished by **1-sat (intra) vs 2-sat (inter)** + the same orange→green fl
 
 ## 8. Status
 
-PLANNED 2026-06-22 (owner chose semantic + Option A mosaic). Not started. Builds on the
-shipped B1 beam-sat-by-HO-type + B2 vivid intra flash (`d423060`) and the LIVE RUN HUD
-delete (`8cdb8c8`). Continue in-session (the colour-system map is loaded); this doc is the
-handoff if the conversation is switched.
+**S1–S5 COMPLETE 2026-06-22 — committed.** The whole semantic-colour change (S1+S2+S3+S4)
+landed in ONE commit because S1 alone reds the gates (they MUST land with the S4 rework).
+Each step was screenshot-verified on :3000; the doc's earlier "S1 breaks colour-match"
+was IMPRECISE — S1 actually broke (a) the cone unit test's AdditiveBlending assert and
+(b) the scene-lane-governance pulse pin (S1 wrapped `recentHandoverEvents` in a
+`.filter(...)`); colour-match stayed green under S1 and only broke once S3 made the dots
+per-sat. All found + fixed empirically by running each gate.
+
+S2 — DONE: de-staled the retired-colour comments (hero-yellow / candidate-cyan / TO-violet
+/ pulse cyan-sky / "serving-identity colour" cone header) across `sinrLiveConeStyle.ts` +
+`SinrLiveCellBeamCones.tsx`. The cyan/sky/violet CONSTS were already repurposed-in-place by
+S1 (soft-green pulse / green TO), so "retire cleanly" = comment honesty, no orphan consts.
+
+S3 — DONE: `colorForServingSatellite(satId)` added to `servingColour.ts` (satId-only hash,
+no beam jitter/lightness step); `mosaicColorForServingSatellite` wrapper in
+`sinrServingMosaic.ts`. Both `buildSinrServingUeColorMapFromCells` AND
+`deriveSinrServingMosaicAggregate.color` recolour per-sat (keys/counts stay per-(sat,cell);
+cellId still gates served/unserved). Screenshot-confirmed: mosaic distinct-colour count
+21→7 (per-sat partition), green hero cone intact, 0 console errors. Owner-accepted Option-A
+tradeoff: an intra-HO no longer recolours a dot (the cone orange→green flash carries intra).
+
+S4 — DONE (gate rework, all empirically green):
+- `validate-beam-colour-match.ts` REWORKED: retired the UE-dot==cone-colour EQUALITY; now
+  pins (a) existence, (b) the SEMANTIC render resolves green/dim/blue via the real
+  `resolveSinrLiveConeRenderColor`, (c) grey, (d) mosaic per-sat partition, (e) cone ITEM
+  colour still = the `colorForServingBeam` authority. 7 checks green.
+- `SinrLiveCellBeamCones.test.ts`: AdditiveBlending→NormalBlending assert + label; the stale
+  "distinct literals" pulse comment. BONUS: fixed the pre-existing orphan-RED BASE_ALPHA
+  `(0,1)` assert → `(0,1]` (const is intentionally 1.0 = fade-disabled per its own docs) —
+  the cone unit test is now FULLY green (33 checks), no longer a flagged orphan-red.
+- `sinrServingMosaic.test.ts`: per-cell→per-sat colour + FLIPPED the intra assert (same sat,
+  new cell → SAME dot colour now). 10 checks green.
+- `validate-s4-pun-retired.ts` + `validate-s4-serving-equivalence.tsx`: repointed the
+  cross-surface / E2 colour `expected` to `mosaicColorForServingSatellite` (both green).
+- `validate-frontend-scene-lane-governance.ts`: repointed the pulse-source pin to the
+  S1-focused `recentHandoverEvents: (… ?? [])` wiring; de-staled the `0.14<0.30` parenthetical.
+
+S5 — gating: `validate:governance` green (pre-commit will pass); cone-render + mosaic-model
+unit tests green (src/ tests, not in static:all discovery — run manually). Remaining: commit,
+then `validate:static:all` + `validate:ready` (browser) as the thorough post-checks.
+
+DONE (S1, committed):
+- Semantic palette + resolver `backgroundColor`: green serving `#22c55e` / dim green-grey
+  background `#46544d` / candidate blue `#3b82f6` / triggered flash orange `#f97316` → green
+  `#22c55e`. Files: `src/constants/sinrLiveConeStyle.ts`; `src/viz/SinrLiveCellBeamCones.tsx`
+  (`resolveSinrLiveConeRenderColor` gains a `backgroundColor` opt, precedence hero>kind>
+  override>background>identity; props + render call); `src/scene/MainScene.tsx` (import + the
+  serving hero + non-serving mounts pass `backgroundColor`).
+- Ambient pulse FOCUSED to the target sats + recoloured soft green `#86efac` — fixes
+  "non-serving/non-candidate satellites firing beams": the pulse fed ALL `recentHandoverEvents`
+  UNFOCUSED, so any UE's handover flashed a cone on any sat.
+- Candidate = a SINGLE dim incoming beam (Option 1): new exported `resolveCandidateBeamConeItems`
+  (pending sat → the protagonist's EARTH-FIXED serving cell, since the record carries
+  `pendingTargetSatId` but NO candidate cellId — earth-fixed cells share an id across sats);
+  `sinrLiveTargetSatIds` narrowed to {serving} ONLY; the hero/candidate sat-split removed.
+- **🔑 THE UNLOCK — cone blending Additive → Normal** (`SINR_LIVE_CONE_BLENDING`,
+  `sinrLiveConeStyle.ts`): AdditiveBlending summed every cone colour with the bright satellite
+  terrain (green→yellow-green, slate→washed-blue) → NO semantic colour read TRUE = the whole
+  "顏色調不準 / colour whack-a-mole". NormalBlending → green reads green. This was the hidden
+  root the prior beam refactors never touched (they organised colour VALUES, not compositing).
+
+REMAINING (a fresh convo picks up from here + this doc + the working tree):
+- S2: retire the now-unused cyan/sky/violet consts cleanly.
+- S3: mosaic ground dots → per-satellite hue (`src/scene/sinrServingMosaic.ts`,
+  `buildSinrServingUeColorMapFromCells`).
+- S4: REWORK the gates the uncommitted S1 breaks, then COMMIT + static:all + ready:
+  `scripts/validate-beam-colour-match.ts` (the UE-dot==cone-colour equality + the
+  "intra family vs inter jump" shade asserts no longer hold under semantic colour);
+  `src/viz/SinrLiveCellBeamCones.test.ts:352` (asserts AdditiveBlending) + the
+  `resolveSinrLiveConeRenderColor` precedence test (pulse intra/inter colour value asserts);
+  `scripts/validate-frontend-scene-lane-governance.ts` comments (≤2 / contender).
+
+Colour-system map (for a fresh convo): authority `src/constants/servingColour.ts`
+`colorForServingBeam`; resolver `src/viz/SinrLiveCellBeamCones.tsx` `resolveSinrLiveConeRenderColor`;
+cone mounts `src/scene/MainScene.tsx` ~1700-1790; consts `src/constants/sinrLiveConeStyle.ts`;
+frequency `src/utils/beamFrequency.ts` (FRF=3). Builds on shipped `d423060` (B1+B2) and
+`8cdb8c8` (LIVE RUN HUD delete); `main` is ahead origin 3 + this uncommitted S1.

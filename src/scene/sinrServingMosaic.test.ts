@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
  * Pure-model gate for the SINR-serving mosaic (S2). No browser. Asserts the
- * colour is stable + deterministic per serving (satId,beamId), that distinct
- * beams get distinct colours, that a handover (serving-beam change) recolours a
- * dot, and that the aggregate counts served/total + per-beam load + mean served
- * SINR over REAL serving truth only (never invents a serving or a SINR).
+ * colour is stable + deterministic, that distinct serving units get distinct
+ * colours, and that the aggregate counts served/total + per-beam load + mean served
+ * SINR over REAL serving truth only (never invents a serving or a SINR). The CELL-lane
+ * dots colour per-SATELLITE (semantic-beam-colour SDD §5, Option A): an inter-HO (sat
+ * change) recolours a dot, an intra-HO (same sat, new cell) does NOT — the steered-lane
+ * `buildSinrServingUeColorMap` keeps its per-(sat,beam) colour.
  *
  * Run: `npm run validate:phase-c:sinr-serving-mosaic:model`.
  */
@@ -13,6 +15,7 @@ import {
   buildSinrServingUeColorMapFromCells,
   deriveSinrServingMosaicAggregate,
   mosaicColorForServingBeam,
+  mosaicColorForServingSatellite,
   EMPTY_SINR_SERVING_MOSAIC_AGGREGATE,
   SINR_SERVING_UNSERVED_COLOR,
 } from './sinrServingMosaic';
@@ -76,23 +79,25 @@ check('unserved UE (empty serving) gets the muted unserved colour, never a beam 
 
 // --- S-cells-4c: cell-truth mosaic (UE connects only when its cell is lit/served) ---
 
-check('cell-truth mosaic: served UE coloured by (satId,cellId); idle cell → unserved grey', () => {
+check('cell-truth mosaic: served UE coloured by SERVING SATELLITE (per-sat, Option A); idle/no cell → grey', () => {
   const map = buildSinrServingUeColorMapFromCells([
     { ueId: 'u0', servingSatId: 'sat-1', cellId: 3 },
     { ueId: 'u1', servingSatId: null, cellId: 5 },     // cell idle this slot → unserved
     { ueId: 'u2', servingSatId: 'sat-1', cellId: null }, // served sat but no cell → unserved
   ]);
-  assertEqual(map.get('u0')!.markerColor, mosaicColorForServingBeam('sat-1', 3).markerColor, 'served UE = (sat,cell) colour');
+  assertEqual(map.get('u0')!.markerColor, mosaicColorForServingSatellite('sat-1').markerColor, 'served UE = per-satellite colour (cellId no longer in the hue)');
   assertEqual(map.get('u1')!.markerColor, SINR_SERVING_UNSERVED_COLOR, 'unlit cell → grey (UE not connected)');
-  assertEqual(map.get('u2')!.markerColor, SINR_SERVING_UNSERVED_COLOR, 'no cell → grey');
+  assertEqual(map.get('u2')!.markerColor, SINR_SERVING_UNSERVED_COLOR, 'no cell → grey (cellId still gates served/unserved)');
 });
 
-check('cell-truth mosaic: intra-HO (cell change, same sat) recolours; inter-HO (sat change) recolours', () => {
+check('cell-truth mosaic (Option A): intra-HO (cell change, same sat) does NOT recolour; inter-HO (sat change) DOES', () => {
   const t0 = buildSinrServingUeColorMapFromCells([{ ueId: 'm', servingSatId: 'sat-1', cellId: 0 }]);
   const intra = buildSinrServingUeColorMapFromCells([{ ueId: 'm', servingSatId: 'sat-1', cellId: 1 }]);
   const inter = buildSinrServingUeColorMapFromCells([{ ueId: 'm', servingSatId: 'sat-2', cellId: 0 }]);
-  assertNotEqual(t0.get('m')!.markerColor, intra.get('m')!.markerColor, 'crossing into a new cell recolours (intra-HO)');
-  assertNotEqual(t0.get('m')!.markerColor, inter.get('m')!.markerColor, 'serving-sat change recolours (inter-HO)');
+  // Per-sat hue: same sat → same dot colour, so an intra HO leaves the dot unchanged
+  // (the cone's releasing-orange→acquired-green flash carries the intra story now).
+  assertEqual(t0.get('m')!.markerColor, intra.get('m')!.markerColor, 'same sat, new cell keeps the dot colour (intra-HO = no dot recolour)');
+  assertNotEqual(t0.get('m')!.markerColor, inter.get('m')!.markerColor, 'serving-sat change recolours the dot (inter-HO repartitions the mosaic)');
 });
 
 check('aggregate counts served/total, distinct serving beams, and per-beam load', () => {
