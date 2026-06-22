@@ -1095,8 +1095,6 @@ function SceneContent({
     [
       beamDisplaySpec.focusScope,
       primaryServingRecord?.servingSatId,
-      primaryServingRecord?.comparisonSatId,
-      primaryServingRecord?.pendingTargetSatId,
     ],
   );
 

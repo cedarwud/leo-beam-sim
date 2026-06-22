@@ -51,14 +51,20 @@ import {
  * WHICH satellites' beams the sinr-live cell lane draws (display-only render focus, Rule#6 —
  * it narrows what is DRAWN, never the serving truth; s0:connected-sat-has-beam still enforces
  * "no connected sat left beamless" on the resolver, not this filter).
- *  - `'heroOnly'`              — only the HERO serving satellite's fan (today's default).
- *  - `'servingPlusCandidate'`  — the serving sat + the imminent inter-HO target/contender (≤3).
- *  - `'allServing'`            — every serving satellite (the "Other beams" breadth).
- *  - `{ satIds }`              — an explicit set (e.g. "just sats 4 and 7").
+ *  - `'heroOnly'`   — only the HERO serving satellite's fan (today's default). The imminent
+ *                     inter-HO candidate is NOT folded in here — it renders as the SEPARATE
+ *                     single blue candidate cone (`sinrLiveCandidateBeamConeItems`), so the
+ *                     candidate reads as ONE blue "your next link" beam, not its whole fan.
+ *                     (Owner-chosen 2026-06-22; an earlier `'servingPlusCandidate'` mode was
+ *                     removed — folding the candidate sat into this set double-drew it: its
+ *                     full fan rendered grey-background via the focus set AND the standalone
+ *                     blue cone still drew. If a candidate-FAN view is ever wanted, build it
+ *                     with per-sat blue colouring + suppressing the standalone cone, not here.)
+ *  - `'allServing'` — every serving satellite (the "Other beams" breadth).
+ *  - `{ satIds }`   — an explicit set (e.g. "just sats 4 and 7").
  */
 export type BeamFocusScope =
   | 'heroOnly'
-  | 'servingPlusCandidate'
   | 'allServing'
   | { readonly satIds: readonly string[] };
 
@@ -209,7 +215,8 @@ export interface BeamDisplaySpec {
    * the primary serving record; `'allServing'` lifts the filter (every serving sat), the
    * "Other beams" toggle ({@link showNonServingCones}) still forces breadth too. Before this
    * the set was a hardcoded MainScene memo ({serving} only). Default `'heroOnly'` reproduces
-   * today exactly. Prompt-control: "畫服務+候選兩顆 / 畫全部 / 只畫某幾顆". Display-only (Rule#6).
+   * today exactly (the candidate stays its own single blue cone, not folded in). Prompt-control:
+   * "畫全部波束 / 只畫某幾顆衛星". Display-only (Rule#6).
    */
   readonly focusScope: BeamFocusScope;
   /**
@@ -253,19 +260,13 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
  */
 export function resolveBeamFocusSatIds(
   focusScope: BeamFocusScope,
-  record: {
-    readonly servingSatId?: string | null;
-    readonly comparisonSatId?: string | null;
-    readonly pendingTargetSatId?: string | null;
-  } | null,
+  record: { readonly servingSatId?: string | null } | null,
 ): Set<string> | null {
   if (focusScope === 'allServing') return null; // null = lift the focus filter = every serving sat
-  if (typeof focusScope === 'object') return new Set(focusScope.satIds);
+  if (focusScope && typeof focusScope === 'object') return new Set(focusScope.satIds); // `&&` guards a type-unsafe null
+  // 'heroOnly': the serving sat alone (the byte-identical default). The candidate is a SEPARATE
+  // single blue cone, deliberately NOT folded in (see BeamFocusScope).
   const ids = new Set<string>();
   if (record?.servingSatId) ids.add(record.servingSatId);
-  if (focusScope === 'servingPlusCandidate') {
-    if (record?.comparisonSatId) ids.add(record.comparisonSatId);
-    if (record?.pendingTargetSatId) ids.add(record.pendingTargetSatId);
-  }
   return ids;
 }
