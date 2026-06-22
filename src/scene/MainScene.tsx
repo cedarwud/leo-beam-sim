@@ -67,8 +67,6 @@ import {
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
 import {
-  SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
-  SINR_LIVE_CONE_BACKGROUND_COLOR,
   SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
   SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
   SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
@@ -1707,7 +1705,7 @@ function SceneContent({
           items={sinrLiveCellNonServingConeItems}
           opacity={resolveSinrLiveConeLayerOpacity('nonServing')}
           widthScale={beamDisplaySpec.coneWidthScale}
-          backgroundColor={SINR_LIVE_CONE_BACKGROUND_COLOR}
+          backgroundColor={beamDisplaySpec.backgroundConeColor}
           telemetryCountDatasetKey="sinrLiveCellNonServingConeRenderedCount"
         />
       )}
@@ -1722,8 +1720,8 @@ function SceneContent({
           opacity={beamDisplaySpec.servingConeOpacity}
           widthScale={beamDisplaySpec.coneWidthScale}
           dimShallowCones
-          heroColor={SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}
-          backgroundColor={SINR_LIVE_CONE_BACKGROUND_COLOR}
+          heroColor={beamDisplaySpec.heroConeColor}
+          backgroundColor={beamDisplaySpec.backgroundConeColor}
           primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
           primaryServingCellId={primaryServingRecord?.cellId ?? null}
         />

@@ -34,6 +34,8 @@ import {
   SINR_LIVE_CONE_PULSE_INTRA_COLOR,
   SINR_LIVE_CONE_PULSE_INTER_COLOR,
   SINR_LIVE_CONE_CANDIDATE_COLOR,
+  SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+  SINR_LIVE_CONE_BACKGROUND_COLOR,
 } from '../constants/sinrLiveConeStyle';
 
 export interface BeamDisplaySpec {
@@ -98,6 +100,28 @@ export interface BeamDisplaySpec {
    * "候選/接手衛星的波束改成藍色" = set this. Default = {@link SINR_LIVE_CONE_CANDIDATE_COLOR}.
    */
   readonly candidateConeColor: string;
+  /**
+   * Display-only HERO cone colour — the PRIMARY serving beam (the cone serving the
+   * focus/centre UE) renders this via the serving mount's `heroColor` prop (the highest
+   * `resolveSinrLiveConeRenderColor` precedence). SEMANTIC green = "your live serving
+   * link". Before this it was the hardcoded {@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}
+   * literal at the mount, the top-precedence colour a prompt could not reach (override
+   * map site #2). Prompt-control: "服務波束改成黃色" = set this. Default = the const, so
+   * behaviour-identical; the const stays as the single default source. Display-only
+   * (Rule#6): it recolours the hero cone RENDER, the resolver item's serving-identity
+   * `color` (the colour-match authority) is untouched.
+   */
+  readonly heroConeColor: string;
+  /**
+   * Display-only BACKGROUND/context cone colour — every served cone that is NOT the hero,
+   * NOT a candidate, NOT a live handover flash renders this dim colour (the
+   * `resolveSinrLiveConeRenderColor` `backgroundColor` branch on the serving + non-serving
+   * mounts), so the field reads as "others are served too" context. Before this it was the
+   * hardcoded {@link SINR_LIVE_CONE_BACKGROUND_COLOR} literal (the 墨綠 the user asked about),
+   * shadowing item.color with no field to reach it (override map site #3). Prompt-control:
+   * "背景波束改暖灰一點" = set this. Default = the const (behaviour-identical). Display-only.
+   */
+  readonly backgroundConeColor: string;
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
@@ -108,4 +132,6 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   pulseIntraColor: SINR_LIVE_CONE_PULSE_INTRA_COLOR,
   pulseInterColor: SINR_LIVE_CONE_PULSE_INTER_COLOR,
   candidateConeColor: SINR_LIVE_CONE_CANDIDATE_COLOR,
+  heroConeColor: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+  backgroundConeColor: SINR_LIVE_CONE_BACKGROUND_COLOR,
 };
