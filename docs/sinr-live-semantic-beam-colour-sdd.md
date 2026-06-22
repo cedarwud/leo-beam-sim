@@ -41,7 +41,7 @@ read by COLOUR**, since position cannot distinguish overlapping same-sat cones.
 |---|---|---|
 | 🟡 YELLOW | `#eab308` | **Your serving link** (acquired / connected). Brightest = the protagonist's serving beam. |
 | 🔵 BLUE | `#3b82f6` | **A beam TAKING OVER** — the inter candidate (a different sat lining up) AND the intra/inter acquiring cell. Settles to yellow once it is your serving link. |
-| ◼ DIM SLATE | `#46544d` | **Background served beams** (context) — kills the per-sat rainbow → ONE context colour. |
+| ◼ DIM GREY | `#9ca3af` | **Background served beams** (context) — kills the per-sat rainbow → ONE neutral context colour (was `#46544d` 墨綠, too dark + green-tinted). |
 
 **Handover = `yellow (old serving) → blue (taking over) → yellow (settled)` flip.** Consistent
 metaphor: **yellow = your serving link, blue = a beam taking over (candidate / acquiring),

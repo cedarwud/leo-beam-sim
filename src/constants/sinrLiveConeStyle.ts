@@ -142,13 +142,15 @@ export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#3b82f6';
 export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#eab308';
 /**
  * SEMANTIC background/context colour — every served beam that is NOT the hero (your
- * serving link), NOT a candidate, NOT a live handover flash renders this dim green-grey,
- * so the field reads as "others are served too" context (a muted member of the green
- * served family, NO blue) instead of an arbitrary per-satellite rainbow. Threaded into
- * the serving + non-serving cone mounts as `backgroundColor`; faint at the ambient
- * opacity. Display-only.
+ * serving link), NOT a candidate, NOT a live handover flash renders this dim NEUTRAL GREY,
+ * so the field reads as "others are served too" context (no hue = neither serving-yellow nor
+ * takeover-blue) instead of an arbitrary per-satellite rainbow. Owner-chosen 2026-06-22: the
+ * prior `#46544d` 墨綠 was too dark + carried a green tint (orphaned once green left the
+ * palette) → a lighter neutral grey. The DEFAULT of `beamDisplaySpec.backgroundConeColor`
+ * (one-field re-tune). Threaded into the serving + non-serving cone mounts as
+ * `backgroundColor`; faint at the ambient opacity. Display-only.
  */
-export const SINR_LIVE_CONE_BACKGROUND_COLOR = '#46544d';
+export const SINR_LIVE_CONE_BACKGROUND_COLOR = '#9ca3af';
 
 /**
  * G2c ambient live-handover PULSE peak opacity. When a real per-frame handover
