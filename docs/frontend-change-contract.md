@@ -104,11 +104,14 @@ position cannot break it.** That covers a whole family, not just colour:
 | **camera-pose MAGNITUDE / playback SPEED value** | a view transform / `dt` scale — never changes mesh existence or count |
 
 For any of these:
-- **RUN:** `npm run validate:governance` (~16s — INCLUDES `colour-match`, `scene-lane-governance`
-  [locks the INV `:root` tokens + honesty captions], + `beam-display-spec-purity`) **+ ONE
-  screenshot on :3000** (`node --import tsx/esm scripts/_shot-url.ts <label>`, look at the PNG).
-  ≈30s. The screenshot IS the pixel proof (loop-3 "don't trust model-green for a visual claim").
-- **SKIP:** `validate:ready` (the ~T+930s browser smoke) + `validate:static:all` (~8min) — they
+- **RUN:** `npm run validate:visual` — ONE command (≈30s): `validate:governance` (~16s — INCLUDES
+  `colour-match`, `scene-lane-governance` [locks the INV `:root` tokens + honesty captions], +
+  `beam-display-spec-purity`) **then a `:3000` screenshot** (`scripts/shot.ts` → `output/shot/visual-*.png`).
+  LOOK at the PNG — it IS the pixel proof (loop-3 "don't trust model-green for a visual claim").
+  (Needs vite running — `npm run dev`; `shot.ts` warns + skips the screenshot if it isn't, the
+  governance gate still ran.)
+- **SKIP:** `validate:ready` (the ~T+930s, 6-serial-browser smoke, ~11min) + `validate:static:all`
+  (~8min) — they
   verify STRUCTURE these changes cannot move, so running them here is pure wasted wall-clock
   (the "why did changing one hex / one CSS line take 8 minutes?" complaint). This directly
   unblocks the HUD-overhaul backlog, where almost every change is CSS/text.
