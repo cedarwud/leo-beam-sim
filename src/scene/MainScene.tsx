@@ -1871,13 +1871,20 @@ export const MainScene = memo(function MainScene({
       />
       <Starfield starCount={180} />
       <Canvas
-        shadows
+        // PERF (software-WebGL box, no GPU — SwiftShader/llvmpipe, ~3.5 FPS measured):
+        // the bottleneck is FRAGMENT FILL, not mesh count, so cut pixels shaded per frame.
+        // - shadows OFF: the shadow pass renders the whole scene a SECOND time into a 4096²
+        //   map — the single biggest fill cost. (Re-enable `shadows` on a real-GPU demo box.)
+        // - dpr={1}: cap the render resolution; on a HiDPI display dpr=2 is 4× the fragments.
+        // - antialias:false: MSAA on a CPU rasterizer is pure waste (no GPU MSAA hardware).
+        // All display-only (Rule#6) — render config only, no SINR/handover/geometry truth touched.
+        dpr={1}
         gl={{
           toneMapping: ACESFilmicToneMapping,
           toneMappingExposure: 1.2,
           alpha: true,
           powerPreference: 'high-performance',
-          antialias: true,
+          antialias: false,
         }}
       >
         <Suspense fallback={<Html center><div style={{ color: 'white', fontSize: 20 }}>Loading...</div></Html>}>
