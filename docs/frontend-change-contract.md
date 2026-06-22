@@ -86,32 +86,41 @@ The pre-commit hook is the fast foundation set; **the browser VISUAL gates live
 only in `validate:ready`.** A green commit does NOT mean the visual is correct —
 for STRUCTURAL render work you MUST run `validate:ready` and paste its result before
 you say it is done (the loop-3 fix: don't trust model-green for a visual claim). For a
-pure colour/opacity VALUE tweak, see the fast-path immediately below — do NOT burn
-8 minutes on it.
+NON-STRUCTURAL change, see the fast-path immediately below — do NOT burn 8 minutes on it.
 
-### Fast-path — colour / opacity VALUE tweaks (right-size the validation)
+### Fast-path — NON-STRUCTURAL changes (right-size the validation)
 
-A pure **colour or opacity VALUE change** — edit ONE `BeamDisplaySpec` field default
-(a const in `src/constants/sinrLiveConeStyle.ts`), with NO change to geometry, lane
-gating, blending mode, the render-plan, or a mount's STRUCTURE — *cannot* break the heavy
-gates: `s0:geometry-trace` is zero-diff by construction (colour/opacity are outside the
-geometry snapshot), `s0:connected-sat-has-beam` counts MOUNTED meshes (a recolour mounts
-nothing new), and lane separation is untouched. So right-size the validation:
+**The principle:** the heavy browser smoke (`validate:ready` → `validate:phase-h…browser`)
+asserts only 3D STRUCTURE — beam/satellite mesh COUNTS + positions, lane resolution, no
+artifact-leak, no console errors. **A change that cannot alter mesh existence / count /
+position cannot break it.** That covers a whole family, not just colour:
 
-- **RUN:** `npm run validate:governance` (~16s — it INCLUDES `colour-match`, the colour
-  visual-truth gate + the `beam-display-spec-purity` gate) **+ ONE screenshot on :3000**
-  (`node --import tsx/esm scripts/_shot-url.ts <label>`, then look at the PNG). ≈30s total.
-  The screenshot IS the pixel proof (catches a bad hex / blank render) → it satisfies the
-  loop-3 "don't trust model-green for a visual claim" rule for a colour change.
-- **SKIP:** `validate:ready` (the full ~T+930s browser smoke that re-checks beam
-  COUNTS/positions) and `validate:static:all` (~8min) — they verify STRUCTURE a colour/
-  opacity value cannot move, so running them on a recolour is pure wasted wall-clock (the
-  "why did changing one hex take minutes?" complaint).
+| Non-structural change | Why it can't break the structural smoke |
+|---|---|
+| **colour / opacity VALUE** (a `BeamDisplaySpec` field default in `sinrLiveConeStyle.ts`) | outside the geometry snapshot; `s0:geometry-trace` zero-diff; mounts no mesh |
+| **CSS / SCSS** (`src/styles/**`, `main.scss` + partials) | compiles to DOM styling only; mounts no mesh (not even in the binding scope above) |
+| **pure text / caption / HUD copy** | a string change moves no mesh (honesty-locked captions are pinned by `scene-lane-governance`, already in the ~16s gate) |
+| **DOM-only sidebar / panel layout** (`src/ui`, no `<Canvas>` / Three import) | DOM reflow can't move a 3D mesh |
+| **camera-pose MAGNITUDE / playback SPEED value** | a view transform / `dt` scale — never changes mesh existence or count |
 
-CARVE-OUT IS COLOUR/OPACITY VALUES ONLY. A change to **blending mode, cone geometry,
-`focusScope` / which-beams, a mount's structure, a new render layer**, or anything in the
-`beam-display-spec-purity` gate's KNOWN-GAPS list → that IS structural render work → run the
-full `validate:ready` per the row above. When unsure, treat it as structural.
+For any of these:
+- **RUN:** `npm run validate:governance` (~16s — INCLUDES `colour-match`, `scene-lane-governance`
+  [locks the INV `:root` tokens + honesty captions], + `beam-display-spec-purity`) **+ ONE
+  screenshot on :3000** (`node --import tsx/esm scripts/_shot-url.ts <label>`, look at the PNG).
+  ≈30s. The screenshot IS the pixel proof (loop-3 "don't trust model-green for a visual claim").
+- **SKIP:** `validate:ready` (the ~T+930s browser smoke) + `validate:static:all` (~8min) — they
+  verify STRUCTURE these changes cannot move, so running them here is pure wasted wall-clock
+  (the "why did changing one hex / one CSS line take 8 minutes?" complaint). This directly
+  unblocks the HUD-overhaul backlog, where almost every change is CSS/text.
+
+**GUARDRAILS — these stay STRUCTURAL (run the full `validate:ready`), never fast-path them:**
+a **lane switch**; a **new mount / proof layer / mesh**; blending mode, cone geometry,
+`focusScope`/which-beams, or anything in the `beam-display-spec-purity` KNOWN-GAPS; **a change
+to a COUNTED invariant** — the handover-ticker COUNT (`handover-ticker:render:browser`), the
+cinema **focus/restore lifecycle** or **speed TIER** (`director-cinematic` / `handover-cinema`
+browser gates), or the served/beam counts. **When unsure, treat it as structural.** The
+carve-out is "DOM / style / text / colour / pose-magnitude only, no lane / mount / counted-
+invariant change" — not a licence to skip the visual gate on real render work.
 
 Activate the hook on a fresh clone: `npm run setup:hooks`. Do NOT normalize
 `git commit --no-verify`.

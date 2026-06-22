@@ -258,7 +258,8 @@ VALUE change (edit one spec-field default in `sinrLiveConeStyle.ts`, no geometry
 blending / mount-structure change) needs only `validate:governance` (~16s, includes
 `colour-match`) + ONE `:3000` screenshot (~10s) — NOT `validate:ready` (~T+930s browser smoke)
 or `validate:static:all` (~8min), which verify STRUCTURE a recolour cannot move. See the
-"Fast-path — colour/opacity VALUE tweaks" carve-out in `docs/frontend-change-contract.md`.
+"Fast-path — NON-STRUCTURAL changes" carve-out in `docs/frontend-change-contract.md` (colour
+is one row of a broader family — CSS/text/DOM/pose all qualify, with the counted-invariant guardrails).
 This is why every recolour commit in this plan validated in ~30s, not minutes; running the
 heavy browser/static gates on a one-hex change is the "why is changing a colour so slow?"
 anti-pattern.
