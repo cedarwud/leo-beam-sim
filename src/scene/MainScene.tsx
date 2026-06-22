@@ -1720,6 +1720,7 @@ function SceneContent({
           widthScale={beamDisplaySpec.coneWidthScale}
           dimShallowCones
           heroColor={beamDisplaySpec.heroConeColor}
+          heroOpacity={beamDisplaySpec.heroConeOpacity}
           backgroundColor={beamDisplaySpec.backgroundConeColor}
           primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
           primaryServingCellId={primaryServingRecord?.cellId ?? null}

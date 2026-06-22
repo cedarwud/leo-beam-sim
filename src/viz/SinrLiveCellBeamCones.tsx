@@ -621,6 +621,14 @@ export interface SinrLiveCellBeamConesRenderProps {
    */
   readonly heroColor?: string;
   /**
+   * Opacity of the HERO (primary serving) cone. When omitted, falls back to the
+   * {@link SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY} default. Set from
+   * `beamDisplaySpec.heroConeOpacity` on the serving mount so the protagonist beam's
+   * brightness is a spec field, not a const that shadows `opacity` (servingConeOpacity).
+   * A per-item `cone.opacity` (the pulse age-fade) still wins over both.
+   */
+  readonly heroOpacity?: number;
+  /**
    * Recolour EVERY cone in this mount to this colour. Set on the single-cone
    * handover-candidate mount (candidate BLUE). Omitted elsewhere → serving-identity.
    */
@@ -783,7 +791,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
             key={cone.renderKey ?? `${cone.cellId}-${cone.satId}`}
             cone={cone}
             color={color}
-            opacity={cone.opacity ?? (isHero ? SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY : opacity)}
+            opacity={cone.opacity ?? (isHero ? (props.heroOpacity ?? SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY) : opacity)}
             dimShallow={props.dimShallowCones && !isHero}
             widthScale={props.widthScale}
           />

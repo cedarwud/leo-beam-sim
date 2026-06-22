@@ -37,6 +37,7 @@ import {
   SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
   SINR_LIVE_CONE_BACKGROUND_COLOR,
   SINR_LIVE_CONE_NONSERVING_OPACITY,
+  SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
 } from '../constants/sinrLiveConeStyle';
 
 export interface BeamDisplaySpec {
@@ -134,6 +135,17 @@ export interface BeamDisplaySpec {
    * {@link SINR_LIVE_CONE_NONSERVING_OPACITY} (0.04), so behaviour-identical. Display-only.
    */
   readonly nonServingConeOpacity: number;
+  /**
+   * Display-only opacity of the HERO (primary serving) cone — the one beam serving the
+   * focus/centre UE, rendered brighter than the ambient field so it pops. Threaded as the
+   * serving mount's `heroOpacity` prop. Before this, the hero branch forced the hardcoded
+   * {@link SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY} and IGNORED {@link servingConeOpacity}
+   * (override-map site #1 — editing the serving opacity did nothing to the protagonist
+   * beam). Now both are spec fields and the precedence (per-item pulse opacity > hero >
+   * ambient) is explicit. Prompt-control: "主角波束亮一點/暗一點" = set this. Default =
+   * the const (0.8), so behaviour-identical. Display-only (Rule#6).
+   */
+  readonly heroConeOpacity: number;
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
@@ -147,4 +159,5 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   heroConeColor: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
   backgroundConeColor: SINR_LIVE_CONE_BACKGROUND_COLOR,
   nonServingConeOpacity: SINR_LIVE_CONE_NONSERVING_OPACITY,
+  heroConeOpacity: SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
 };
