@@ -47,6 +47,21 @@ import {
   SINR_LIVE_CONE_DIM_MIN_FACTOR,
 } from '../constants/sinrLiveConeStyle';
 
+/**
+ * WHICH satellites' beams the sinr-live cell lane draws (display-only render focus, Rule#6 —
+ * it narrows what is DRAWN, never the serving truth; s0:connected-sat-has-beam still enforces
+ * "no connected sat left beamless" on the resolver, not this filter).
+ *  - `'heroOnly'`              — only the HERO serving satellite's fan (today's default).
+ *  - `'servingPlusCandidate'`  — the serving sat + the imminent inter-HO target/contender (≤3).
+ *  - `'allServing'`            — every serving satellite (the "Other beams" breadth).
+ *  - `{ satIds }`              — an explicit set (e.g. "just sats 4 and 7").
+ */
+export type BeamFocusScope =
+  | 'heroOnly'
+  | 'servingPlusCandidate'
+  | 'allServing'
+  | { readonly satIds: readonly string[] };
+
 export interface BeamDisplaySpec {
   /**
    * Show the dim NON-SERVING cone layer (co-channel / secondary illuminated
@@ -188,6 +203,21 @@ export interface BeamDisplaySpec {
   readonly elevationDimCeilDeg: number;
   readonly elevationDimMinFactor: number;
   readonly heroExemptFromElevationDim: boolean;
+  /**
+   * WHICH satellites' beams the serving / non-serving / footprint / callout / pulse layers
+   * draw (see {@link BeamFocusScope}). The renderer derives the focus sat-id set from this +
+   * the primary serving record; `'allServing'` lifts the filter (every serving sat), the
+   * "Other beams" toggle ({@link showNonServingCones}) still forces breadth too. Before this
+   * the set was a hardcoded MainScene memo ({serving} only). Default `'heroOnly'` reproduces
+   * today exactly. Prompt-control: "畫服務+候選兩顆 / 畫全部 / 只畫某幾顆". Display-only (Rule#6).
+   */
+  readonly focusScope: BeamFocusScope;
+  /**
+   * Whether the ambient handover PULSE follows {@link focusScope} (only flares handovers on the
+   * focused sats) or fires for every sat. Default true = today (the pulse is focused to the
+   * serving sat). Set false to see handover blips across the whole field regardless of focus.
+   */
+  readonly pulseFocusFollowsScope: boolean;
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
@@ -211,4 +241,31 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   elevationDimCeilDeg: SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG,
   elevationDimMinFactor: SINR_LIVE_CONE_DIM_MIN_FACTOR,
   heroExemptFromElevationDim: true,
+  focusScope: 'heroOnly',
+  pulseFocusFollowsScope: true,
 };
+
+/**
+ * Resolve {@link BeamFocusScope} → the focus sat-id set the render memos filter by, or `null`
+ * for "no focus filter" (every serving sat = breadth). Pure (testable; the colour-match /
+ * scene-lane gates can value-assert it). `'heroOnly'` returns just the serving sat — the
+ * byte-identical default. Tolerant of missing record fields (optional). Display-only (Rule#6).
+ */
+export function resolveBeamFocusSatIds(
+  focusScope: BeamFocusScope,
+  record: {
+    readonly servingSatId?: string | null;
+    readonly comparisonSatId?: string | null;
+    readonly pendingTargetSatId?: string | null;
+  } | null,
+): Set<string> | null {
+  if (focusScope === 'allServing') return null; // null = lift the focus filter = every serving sat
+  if (typeof focusScope === 'object') return new Set(focusScope.satIds);
+  const ids = new Set<string>();
+  if (record?.servingSatId) ids.add(record.servingSatId);
+  if (focusScope === 'servingPlusCandidate') {
+    if (record?.comparisonSatId) ids.add(record.comparisonSatId);
+    if (record?.pendingTargetSatId) ids.add(record.pendingTargetSatId);
+  }
+  return ids;
+}

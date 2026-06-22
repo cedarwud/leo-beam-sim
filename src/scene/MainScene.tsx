@@ -66,7 +66,7 @@ import {
   resolveCandidateBeamConeItems,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
-import { DEFAULT_BEAM_DISPLAY_SPEC, type BeamDisplaySpec } from './beamDisplaySpec';
+import { DEFAULT_BEAM_DISPLAY_SPEC, resolveBeamFocusSatIds, type BeamDisplaySpec } from './beamDisplaySpec';
 import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord, type SinrLiveCellHandoverEvent } from './sinrLiveCellModel';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
@@ -1086,13 +1086,19 @@ function SceneContent({
   // blue incoming beam, not two full fans. Display-only render-focus (Rule#6) — the
   // serving truth + the s0/s4 must-holds (focusSatIds=null resolver) are unchanged. Keyed
   // on the stable satId string so the Set identity (and the cone memo) stays stable.
-  const sinrLiveTargetSatIds = useMemo(() => {
-    const ids = new Set<string>();
-    if (primaryServingRecord?.servingSatId) ids.add(primaryServingRecord.servingSatId);
-    return ids;
-  }, [
-    primaryServingRecord?.servingSatId,
-  ]);
+  // The display focus sat-id set is now derived from `beamDisplaySpec.focusScope`
+  // (default 'heroOnly' = the serving sat only, byte-identical with the old hardcoded memo).
+  // `null` = 'allServing' breadth (no focus filter). Keyed on focusScope + the record's sat
+  // ids so the Set identity (and the cone memos) stays stable across unrelated re-renders.
+  const sinrLiveTargetSatIds = useMemo(
+    () => resolveBeamFocusSatIds(beamDisplaySpec.focusScope, primaryServingRecord),
+    [
+      beamDisplaySpec.focusScope,
+      primaryServingRecord?.servingSatId,
+      primaryServingRecord?.comparisonSatId,
+      primaryServingRecord?.pendingTargetSatId,
+    ],
+  );
 
   const sinrLiveCellBeamConeItems = useMemo(
     () => {
@@ -1100,7 +1106,7 @@ function SceneContent({
       // Other-beams power-view (showNonServingCones) → every serving sat (full
       // breadth). Default → focus to the HERO serving satellite ONLY. Empty target
       // set (no primary serving) draws nothing, never the unbounded all-sat firehose.
-      if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds.size === 0) return [];
+      if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds !== null && sinrLiveTargetSatIds.size === 0) return [];
       return resolveSinrLiveCellBeamConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
@@ -1175,7 +1181,7 @@ function SceneContent({
   const sinrLiveCellNonServingConeItems = useMemo(
     () => {
       if (!showSinrLiveCellBeams) return [];
-      if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds.size === 0) return [];
+      if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds !== null && sinrLiveTargetSatIds.size === 0) return [];
       return resolveSinrLiveNonServingConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
@@ -1209,7 +1215,8 @@ function SceneContent({
         // beaming?" fix). The imminent-handover target is the separate blue candidate cone, not a pulse.
         // Display-only filter; the model's events are unchanged.
         recentHandoverEvents: (sim.sinrLiveCells?.recentHandoverEvents ?? []).filter(
-          e => sinrLiveTargetSatIds.has(e.toSatId)
+          e => sinrLiveTargetSatIds === null || !beamDisplaySpec.pulseFocusFollowsScope
+            || sinrLiveTargetSatIds.has(e.toSatId)
             || (e.fromSatId !== null && sinrLiveTargetSatIds.has(e.fromSatId)),
         ),
         simTimeSec: sim.sinrLiveCells?.simTimeSec ?? 0,
@@ -1219,7 +1226,7 @@ function SceneContent({
         frequencyReuse: profile.beams.frequencyReuse,
       })
       : []),
-    [showSinrLiveHandoverPulse, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds],
+    [showSinrLiveHandoverPulse, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope],
   );
   // beam-stage ① #5: the TRIGGERED intra flash. The ambient pulse above fades over
   // SIM-time (4 s retention → ~0.8 s wall-clock at the 5× demo speed → too brief to
