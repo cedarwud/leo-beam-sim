@@ -38,6 +38,10 @@ import {
   SINR_LIVE_CONE_BACKGROUND_COLOR,
   SINR_LIVE_CONE_NONSERVING_OPACITY,
   SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
+  SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
+  SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
+  SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
+  SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
 } from '../constants/sinrLiveConeStyle';
 
 export interface BeamDisplaySpec {
@@ -146,6 +150,21 @@ export interface BeamDisplaySpec {
    * the const (0.8), so behaviour-identical. Display-only (Rule#6).
    */
   readonly heroConeOpacity: number;
+  /**
+   * The TRIGGERED intra-HO flash (the protagonist's deliberate handover) — its FROM/TO
+   * colours, peak opacity, and wall-clock sustain. The handover reads as the old serving
+   * cell ({@link triggeredIntraFromColor}, the serving colour it was, fading) handing to the
+   * new acquiring cell ({@link triggeredIntraToColor}, the takeover BLUE that then settles to
+   * the serving colour). Before this, all four were consts read inside a MainScene memo — a
+   * disjoint code path from the ambient pulse colours, so "change the handover flash colour"
+   * edited the wrong field and the visible flash was unchanged (override-map site for the
+   * triggered layer). Defaults = the SINR_LIVE_TRIGGERED_INTRA_* consts (behaviour-identical).
+   * Prompt-control: "換手閃光改色/更久/更亮" = these. Display-only (Rule#6).
+   */
+  readonly triggeredIntraFromColor: string;
+  readonly triggeredIntraToColor: string;
+  readonly triggeredIntraPeakOpacity: number;
+  readonly triggeredIntraSustainMs: number;
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
@@ -160,4 +179,8 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   backgroundConeColor: SINR_LIVE_CONE_BACKGROUND_COLOR,
   nonServingConeOpacity: SINR_LIVE_CONE_NONSERVING_OPACITY,
   heroConeOpacity: SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
+  triggeredIntraFromColor: SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
+  triggeredIntraToColor: SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
+  triggeredIntraPeakOpacity: SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
+  triggeredIntraSustainMs: SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
 };

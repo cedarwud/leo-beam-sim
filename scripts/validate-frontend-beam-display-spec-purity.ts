@@ -55,20 +55,22 @@ const RENDER_FILE_HEX_ALLOWLIST: Record<string, readonly string[]> = {
  * SERVING_PRIMARY_OPACITY) MUST NOT reappear here — they are spec fields now. As A5 migrates
  * the triggered-intra cluster, this set shrinks to empty.
  */
-const MAINSCENE_APPEARANCE_CONST_ALLOWLIST = new Set([
-  'SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR', // A5 (triggered-intra cluster → spec)
-  'SINR_LIVE_TRIGGERED_INTRA_TO_COLOR', // A5
-  'SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY', // A5
-  // NOTE: SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS is a TIMING const (not COLOR/OPACITY/BLENDING),
-  // outside this check's scope; A5 migrates it onto the spec alongside the others.
+const MAINSCENE_APPEARANCE_CONST_ALLOWLIST = new Set<string>([
+  // EMPTY — A5 migrated the triggered-intra cluster onto BeamDisplaySpec, so MainScene no
+  // longer imports ANY beam-appearance const. A new entry here would mean a NEW un-migrated
+  // mount literal — keep this empty.
 ]);
 
 /** Appearance consts that have ALREADY migrated to the spec — must never reappear in MainScene. */
 const MIGRATED_APPEARANCE_CONSTS = [
-  'SINR_LIVE_CONE_SERVING_PRIMARY_COLOR',
-  'SINR_LIVE_CONE_BACKGROUND_COLOR',
-  'SINR_LIVE_CONE_NONSERVING_OPACITY',
-  'SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY',
+  'SINR_LIVE_CONE_SERVING_PRIMARY_COLOR', // A1
+  'SINR_LIVE_CONE_BACKGROUND_COLOR', // A1
+  'SINR_LIVE_CONE_NONSERVING_OPACITY', // A3
+  'SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY', // A4
+  'SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR', // A5
+  'SINR_LIVE_TRIGGERED_INTRA_TO_COLOR', // A5
+  'SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY', // A5
+  'SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS', // A5
 ];
 
 let checks = 0;

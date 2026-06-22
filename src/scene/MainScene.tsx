@@ -66,12 +66,6 @@ import {
   resolveCandidateBeamConeItems,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
-import {
-  SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
-  SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
-  SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
-  SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
-} from '../constants/sinrLiveConeStyle';
 import { DEFAULT_BEAM_DISPLAY_SPEC, type BeamDisplaySpec } from './beamDisplaySpec';
 import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord, type SinrLiveCellHandoverEvent } from './sinrLiveCellModel';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
@@ -1251,18 +1245,18 @@ function SceneContent({
     const cur = triggeredIntraLatchRef.current;
     if (!cur) return [];
     const ageMs = nowMs - cur.startedAtMs;
-    if (ageMs > SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS) { triggeredIntraLatchRef.current = null; return []; }
-    const opacity = SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY * (1 - ageMs / SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS);
+    if (ageMs > beamDisplaySpec.triggeredIntraSustainMs) { triggeredIntraLatchRef.current = null; return []; }
+    const opacity = beamDisplaySpec.triggeredIntraPeakOpacity * (1 - ageMs / beamDisplaySpec.triggeredIntraSustainMs);
     return resolveTriggeredIntraConeItems({
       event: cur.event,
       opacity,
-      fromColor: SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
-      toColor: SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
+      fromColor: beamDisplaySpec.triggeredIntraFromColor,
+      toColor: beamDisplaySpec.triggeredIntraToColor,
       placementByCellId: sinrLiveCellPlacementById,
       satelliteWorldById: viz.coneApexWorldById,
       frequencyReuse: profile.beams.frequencyReuse,
     });
-  }, [showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse]);
+  }, [showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, beamDisplaySpec.triggeredIntraSustainMs, beamDisplaySpec.triggeredIntraPeakOpacity, beamDisplaySpec.triggeredIntraFromColor, beamDisplaySpec.triggeredIntraToColor]);
   const sinrLiveCellServedCount = showSinrLiveCellBeams
     ? sim.sinrLiveCells?.servedCellCount ?? 0
     : 0;
