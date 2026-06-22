@@ -3,7 +3,7 @@
  * Semantic beam-colour model invariant gate (semantic-beam-colour SDD §5) — REWORKED
  * from the Bug-E "a served UE's marker colour MUST equal its serving cone's colour"
  * equality. That equality RETIRED when the cones moved to the SEMANTIC role/state palette
- * (yellow serving / dim context / blue candidate / purple→yellow handover flip, applied at
+ * (yellow serving / dim context / blue takeover / yellow→blue handover flip, applied at
  * the mount by `resolveSinrLiveConeRenderColor`) and the UE dots moved to a per-SATELLITE hue
  * (Option A) — the cones and the dots are now intentionally DIFFERENT colour schemes.
  *

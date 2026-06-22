@@ -26,37 +26,37 @@ read by COLOUR**, since position cannot distinguish overlapping same-sat cones.
 
 ## 3. Palette — 4 semantic colours + the handover flip
 
-> **RECOLOURED 2026-06-22 (owner-chosen): serving GREEN→YELLOW, releasing ORANGE→PURPLE,
-> the flip is now `purple → yellow`.** Owner picked serving=黃 (intuition "服務=亮黃") and
-> 接手=跳回服務色 (the acquired beam becomes your serving link → takes the serving colour).
-> Releasing moved orange→purple because orange↔yellow are both warm (low-contrast); purple is
-> the YELLOW complementary → the intra flip reads at max contrast, and is distinct from the
-> blue inter-candidate. The ambient pulse moved soft-green→soft-yellow (`#fde047`) to match.
-> Hexes below updated; the role LOGIC (serving / context / candidate / releasing + 1-vs-2-sat)
-> is unchanged. Every colour is now a `beamDisplaySpec` field (control-surface SDD) so this is
-> a one-field change, not a const hunt.
+> **RECOLOURED 2026-06-22 (owner-chosen): serving GREEN→YELLOW, and BLUE unified as "the beam
+> taking over" — the handover flip is `yellow → blue`.** Owner picked serving=黃 (intuition
+> "服務=亮黃") and intra = 黃→藍 (the acquiring beam is BLUE, the SAME blue as the inter
+> candidate, so blue uniformly = "taking over"). The flash draws on top of the new serving
+> cone and fades, so the acquiring cell reads **blue→yellow** = "taking over → settled serving"
+> (this is also why 接手 still ends on the serving colour). The 4-colour model collapses to
+> **🟡 serving / 🔵 takeover / ◼ background / grey unserved** — no green, no orange, no purple.
+> The ambient population pulse is soft blue `#93c5fd` (handover-activity family). Role LOGIC
+> (serving / context / takeover + 1-vs-2-sat) unchanged. Every colour is a `beamDisplaySpec`
+> field (control-surface SDD) so this is a one-field change, not a const hunt.
 
 | Colour | Hex | Meaning (self-evident, no legend) |
 |---|---|---|
 | 🟡 YELLOW | `#eab308` | **Your serving link** (acquired / connected). Brightest = the protagonist's serving beam. |
+| 🔵 BLUE | `#3b82f6` | **A beam TAKING OVER** — the inter candidate (a different sat lining up) AND the intra/inter acquiring cell. Settles to yellow once it is your serving link. |
 | ◼ DIM SLATE | `#46544d` | **Background served beams** (context) — kills the per-sat rainbow → ONE context colour. |
-| 🔵 BLUE | `#3b82f6` | **Candidate / incoming inter-HO target** (a different sat lining up). |
-| 🟣 PURPLE | `#a855f7` | **A beam being RELEASED** (the handover moment — the OLD beam). |
 
-**Handover = `purple (old) → yellow (new)` flip.** Consistent metaphor: **yellow = on /
-acquired, purple = releasing, blue = next (a different sat), dim = background.** Unserved
-stays GREY. Ambient population pulse = soft yellow `#fde047`.
+**Handover = `yellow (old serving) → blue (taking over) → yellow (settled)` flip.** Consistent
+metaphor: **yellow = your serving link, blue = a beam taking over (candidate / acquiring),
+dim = background.** Unserved stays GREY. Ambient population pulse = soft blue `#93c5fd`.
 
 ## 4. intra vs inter (rides the shipped B1 sat-count, `d423060`)
 
-- **intra** — 1 satellite. Old cell flares PURPLE, new cell flares YELLOW; the two cones
-  OVERLAP on the one satellite → the purple→yellow contrast IS the intra signal. (B1
-  already narrows the steady scene to 1 sat here → nothing competes.)
-- **inter** — 2 satellites. The candidate sat is BLUE (lining up); on HO the old sat's
-  beam goes PURPLE and the new sat's YELLOW. (B1 already lights the 2nd sat only when an
-  inter HO is pending.)
+- **intra** — 1 satellite. The old cell (serving yellow) fades, the new cell flares BLUE then
+  settles to yellow; the two cones OVERLAP on the one satellite → the yellow→blue contrast IS
+  the intra signal. (B1 already narrows the steady scene to 1 sat here → nothing competes.)
+- **inter** — 2 satellites. The candidate sat is BLUE (lining up); on HO the old sat's beam
+  (yellow) fades and the new sat's cell flares BLUE→yellow. (B1 already lights the 2nd sat
+  only when an inter HO is pending.)
 
-Distinguished by **1-sat (intra) vs 2-sat (inter)** + the same purple→yellow flip.
+Distinguished by **1-sat (intra) vs 2-sat (inter)** + the same yellow→blue flip.
 
 ## 5. Architecture rework (touch map)
 

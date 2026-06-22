@@ -104,13 +104,12 @@ export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.5;
  * faint (0.32) to read, and undirectional (old + new both the serving-identity hue).
  * The TRIGGERED intra (the deliberate jog) instead gets a WALL-CLOCK 3.2 s fade
  * (decoupled from sim speed, so it always reads) with a FROM/TO COLOUR SPLIT — the
- * old (handed-off) cell vivid releasing-PURPLE ("leaving"), the new (acquired) cell the
- * serving-link YELLOW ("arriving / acquired") — so the same-sat beam switch reads as the
- * semantic releasing→acquired flip. Peak opacity 0.95 + 3.2 s sustain so it DOMINATES the
- * ambient pulse — purple + yellow are complementary, the highest-contrast releasing→acquired
- * pair, both distinct from the dim context field + the blue inter-candidate. Owner choice
- * (2026-06-22): serving=黃, 接手=跳回服務色, so the intra flip is releasing-purple→serving-yellow;
- * make the intra colour-switch obvious
+ * old (handed-off) cell the serving YELLOW it was, fading out; the new (acquiring) cell
+ * BLUE ("taking over"). The flash draws on top of the new serving cone + fades, so the new
+ * cell reads BLUE→YELLOW = acquiring → settled serving. yellow↔blue is the complementary
+ * warm/cool pair = max contrast; blue is the SAME hue as the inter candidate so blue uniformly
+ * means "the beam taking over". Owner choice (2026-06-22): intra = 黃→藍; make the intra
+ * colour-switch obvious
  * + legible as one satellite swapping beams — once the non-serving sats are off
  * (sinrLiveTargetSatIds = serving + imminent inter-target only), this single-sat A→B
  * flip IS the intra story. Display-only (Rule#6).
@@ -118,15 +117,17 @@ export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.5;
 export const SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS = 3200;
 /** Peak (age-0) opacity of the triggered flash — dominates the ambient pulse (0.8 peak, fast sim-time fade). */
 export const SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY = 0.95;
-/** OLD (handed-off) cell colour — vivid PURPLE, "leaving" (unique on the scene palette;
- * complementary to the serving YELLOW so the releasing→acquired flip reads at max contrast,
- * and distinct from the blue inter-candidate which has cleared by the commit). */
-export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = '#a855f7';
-/** NEW (acquired) cell colour — settles to the serving YELLOW
- * ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}); the purple→yellow flip IS the handover.
- * Owner-chosen 2026-06-22 (接手=跳回服務色): the acquired beam becomes your serving link, so it
- * takes the serving colour — kept in sync with SINR_LIVE_CONE_SERVING_PRIMARY_COLOR. */
-export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#eab308';
+/** OLD (handed-off) cell colour — the serving YELLOW it currently is, fading out as the beam
+ * drops ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}). No separate "releasing" hue: the
+ * handover signal is the NEW cell going BLUE, the old one just fades. */
+export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = '#eab308';
+/** NEW (acquiring) cell colour — BLUE = "taking over", the SAME blue as the inter candidate
+ * ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}) so blue UNIFORMLY means "the beam taking over"
+ * (intra new beam + inter candidate). Owner-chosen 2026-06-22 (intra = 黃→藍). The flash
+ * draws ON TOP of the new serving (hero) cone and fades over the sustain, so the cell reads
+ * blue→yellow = "acquiring → now your serving link" (this also satisfies 接手=跳回服務色: the
+ * blue is the transient takeover, the yellow underneath is the settled serving). */
+export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#3b82f6';
 
 /**
  * SEMANTIC palette (docs/sinr-live-semantic-beam-colour-sdd.md). The PRIMARY serving
@@ -164,17 +165,18 @@ export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.8;
  * SEMANTIC ambient handover-pulse colour (docs/sinr-live-semantic-beam-colour-sdd.md).
  * A fired handover on a TARGET satellite (serving / imminent-target — the pulse is
  * FOCUSED to those in MainScene) briefly flares its old/new cells: the population
- * "a handover just happened here" cue. Soft YELLOW so it reads as "a link was (re)acquired
- * on the served field" — the acquired/serving family (owner 2026-06-22: serving=黃), lighter
- * than the {@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR} hero so a transient blip is not
- * mistaken for a steady serving cone; introduces NO blue (blue = a different incoming sat).
- * The PROTAGONIST's own handover gets the vivid purple→yellow TRIGGERED flash instead (the
+ * "a handover just happened here" cue. Soft BLUE — blue uniformly means "handover / takeover
+ * activity" (the inter candidate + the intra/inter acquiring cell are blue too), so a
+ * population handover blip is the same family; lighter ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}
+ * is the solid steady candidate) so a transient flare is not mistaken for the steady candidate
+ * cone. The PROTAGONIST's own handover gets the vivid yellow→blue TRIGGERED flash instead (the
  * hero effect), so the ambient pulse no longer needs to encode intra-vs-inter — both kinds
- * now point at the same soft yellow blip. (Was soft green #86efac, retired with serving=綠.)
- * Display-only (Rule#6): a read-out of the model's classified handover, no truth touched.
+ * now point at the same soft blue blip. (Was soft green #86efac then soft yellow, retired with
+ * the yellow=serving / blue=takeover palette.) Display-only (Rule#6): a read-out of the
+ * model's classified handover, no truth touched.
  */
-export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#fde047';
-export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#fde047';
+export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#93c5fd';
+export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#93c5fd';
 
 /**
  * Candidate / contender satellite cone hue — the W9 handover-target highlight. The
