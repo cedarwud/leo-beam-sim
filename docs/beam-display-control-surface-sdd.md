@@ -253,6 +253,16 @@ is actually needed (YAGNI until then).
 Runs alongside `s0:connected-sat-has-beam`, `s0:geometry-trace` zero-diff, and `beam:colour-match`
 in the governance batch (SACRED invariants preserved).
 
+**Right-size the validation — colour/opacity tweaks are FAST.** A pure colour or opacity
+VALUE change (edit one spec-field default in `sinrLiveConeStyle.ts`, no geometry / lane /
+blending / mount-structure change) needs only `validate:governance` (~16s, includes
+`colour-match`) + ONE `:3000` screenshot (~10s) — NOT `validate:ready` (~T+930s browser smoke)
+or `validate:static:all` (~8min), which verify STRUCTURE a recolour cannot move. See the
+"Fast-path — colour/opacity VALUE tweaks" carve-out in `docs/frontend-change-contract.md`.
+This is why every recolour commit in this plan validated in ~30s, not minutes; running the
+heavy browser/static gates on a one-hex change is the "why is changing a colour so slow?"
+anti-pattern.
+
 ## 8. Risks / invariants (immovable)
 
 - **Validator source-pins** — the repo pins validators by body STRING. The colour/footprint/

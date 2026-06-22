@@ -84,8 +84,34 @@ with the owner first.
 
 The pre-commit hook is the fast foundation set; **the browser VISUAL gates live
 only in `validate:ready`.** A green commit does NOT mean the visual is correct —
-you MUST run `validate:ready` and paste its result before you say a render change
-is done. (This is the loop-3 fix: don't trust model-green for a visual claim.)
+for STRUCTURAL render work you MUST run `validate:ready` and paste its result before
+you say it is done (the loop-3 fix: don't trust model-green for a visual claim). For a
+pure colour/opacity VALUE tweak, see the fast-path immediately below — do NOT burn
+8 minutes on it.
+
+### Fast-path — colour / opacity VALUE tweaks (right-size the validation)
+
+A pure **colour or opacity VALUE change** — edit ONE `BeamDisplaySpec` field default
+(a const in `src/constants/sinrLiveConeStyle.ts`), with NO change to geometry, lane
+gating, blending mode, the render-plan, or a mount's STRUCTURE — *cannot* break the heavy
+gates: `s0:geometry-trace` is zero-diff by construction (colour/opacity are outside the
+geometry snapshot), `s0:connected-sat-has-beam` counts MOUNTED meshes (a recolour mounts
+nothing new), and lane separation is untouched. So right-size the validation:
+
+- **RUN:** `npm run validate:governance` (~16s — it INCLUDES `colour-match`, the colour
+  visual-truth gate + the `beam-display-spec-purity` gate) **+ ONE screenshot on :3000**
+  (`node --import tsx/esm scripts/_shot-url.ts <label>`, then look at the PNG). ≈30s total.
+  The screenshot IS the pixel proof (catches a bad hex / blank render) → it satisfies the
+  loop-3 "don't trust model-green for a visual claim" rule for a colour change.
+- **SKIP:** `validate:ready` (the full ~T+930s browser smoke that re-checks beam
+  COUNTS/positions) and `validate:static:all` (~8min) — they verify STRUCTURE a colour/
+  opacity value cannot move, so running them on a recolour is pure wasted wall-clock (the
+  "why did changing one hex take minutes?" complaint).
+
+CARVE-OUT IS COLOUR/OPACITY VALUES ONLY. A change to **blending mode, cone geometry,
+`focusScope` / which-beams, a mount's structure, a new render layer**, or anything in the
+`beam-display-spec-purity` gate's KNOWN-GAPS list → that IS structural render work → run the
+full `validate:ready` per the row above. When unsure, treat it as structural.
 
 Activate the hook on a fresh clone: `npm run setup:hooks`. Do NOT normalize
 `git commit --no-verify`.
