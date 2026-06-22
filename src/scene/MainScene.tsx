@@ -1712,7 +1712,11 @@ function SceneContent({
           items={sinrLiveCellBeamConeItems}
           opacity={beamDisplaySpec.servingConeOpacity}
           widthScale={beamDisplaySpec.coneWidthScale}
-          dimShallowCones
+          dimShallowCones={beamDisplaySpec.elevationDimEnabled}
+          elevationDimFloorDeg={beamDisplaySpec.elevationDimFloorDeg}
+          elevationDimCeilDeg={beamDisplaySpec.elevationDimCeilDeg}
+          elevationDimMinFactor={beamDisplaySpec.elevationDimMinFactor}
+          heroExemptFromElevationDim={beamDisplaySpec.heroExemptFromElevationDim}
           heroColor={beamDisplaySpec.heroConeColor}
           heroOpacity={beamDisplaySpec.heroConeOpacity}
           backgroundColor={beamDisplaySpec.backgroundConeColor}
@@ -1729,7 +1733,10 @@ function SceneContent({
           items={sinrLiveCandidateBeamConeItems}
           opacity={beamDisplaySpec.servingConeOpacity}
           widthScale={beamDisplaySpec.coneWidthScale}
-          dimShallowCones
+          dimShallowCones={beamDisplaySpec.elevationDimEnabled}
+          elevationDimFloorDeg={beamDisplaySpec.elevationDimFloorDeg}
+          elevationDimCeilDeg={beamDisplaySpec.elevationDimCeilDeg}
+          elevationDimMinFactor={beamDisplaySpec.elevationDimMinFactor}
           coneColorOverride={beamDisplaySpec.candidateConeColor}
           telemetryCountDatasetKey="sinrLiveCellCandidateConeRenderedCount"
         />

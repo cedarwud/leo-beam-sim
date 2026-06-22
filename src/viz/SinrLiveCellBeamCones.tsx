@@ -606,6 +606,17 @@ export interface SinrLiveCellBeamConesRenderProps {
    */
   readonly dimShallowCones?: boolean;
   /**
+   * Elevation-dim BAND params (from `beamDisplaySpec.elevationDim*`): the apparent-elevation
+   * window over which a shallow cone fades (floor → full dim at `elevationDimMinFactor`, ceil
+   * → no dim). Threaded into {@link resolveSinrLiveConeElevationDimFactor}; omitted → the
+   * resolver's const defaults (behaviour-identical for fixtures). `heroExemptFromElevationDim`
+   * (default true) keeps the hero cone full-strength.
+   */
+  readonly elevationDimFloorDeg?: number;
+  readonly elevationDimCeilDeg?: number;
+  readonly elevationDimMinFactor?: number;
+  readonly heroExemptFromElevationDim?: boolean;
+  /**
    * The focus/centre UE's serving (satId, cellId). That ONE cone — the primary
    * serving beam — renders BRIGHT ({@link SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY})
    * + exempt from the near-horizon dim so the hero beam pops against the faint
@@ -659,7 +670,7 @@ export interface SinrLiveCellBeamConesRenderProps {
  * a new `args` array — that guarantees a persistent cone's apex TRACKS the moving
  * satellite instead of freezing at a stale position.
  */
-function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; dimShallow?: boolean; color?: string; widthScale?: number }): JSX.Element {
+function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; dimShallow?: boolean; dimFloorDeg?: number; dimCeilDeg?: number; dimMinFactor?: number; color?: string; widthScale?: number }): JSX.Element {
   const { cone, opacity } = props;
   const color = props.color ?? cone.color;
   const geometryRef = useRef<THREE.BufferGeometry>(null);
@@ -679,7 +690,7 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
     Math.hypot(cone.apex.x - cone.baseCenter.x, cone.apex.z - cone.baseCenter.z),
   ) * 180) / Math.PI;
   const effectiveOpacity = props.dimShallow
-    ? opacity * resolveSinrLiveConeElevationDimFactor(apparentElevationDeg)
+    ? opacity * resolveSinrLiveConeElevationDimFactor(apparentElevationDeg, props.dimFloorDeg, props.dimCeilDeg, props.dimMinFactor)
     : opacity;
 
   useLayoutEffect(() => {
@@ -792,7 +803,10 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
             cone={cone}
             color={color}
             opacity={cone.opacity ?? (isHero ? (props.heroOpacity ?? SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY) : opacity)}
-            dimShallow={props.dimShallowCones && !isHero}
+            dimShallow={props.dimShallowCones && (!isHero || props.heroExemptFromElevationDim === false)}
+            dimFloorDeg={props.elevationDimFloorDeg}
+            dimCeilDeg={props.elevationDimCeilDeg}
+            dimMinFactor={props.elevationDimMinFactor}
             widthScale={props.widthScale}
           />
         );

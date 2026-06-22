@@ -42,6 +42,9 @@ import {
   SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
   SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
   SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
+  SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG,
+  SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG,
+  SINR_LIVE_CONE_DIM_MIN_FACTOR,
 } from '../constants/sinrLiveConeStyle';
 
 export interface BeamDisplaySpec {
@@ -165,6 +168,26 @@ export interface BeamDisplaySpec {
   readonly triggeredIntraToColor: string;
   readonly triggeredIntraPeakOpacity: number;
   readonly triggeredIntraSustainMs: number;
+  /**
+   * Apparent-elevation DIM band for the ambient cone field — a display de-emphasis of
+   * near-horizontal cones (a low-over-the-horizon serving sat paints a shallow cone that
+   * shoots sideways). {@link elevationDimEnabled} turns it on/off; the band fades cones whose
+   * rendered apex→base angle is between {@link elevationDimFloorDeg} (full dim →
+   * {@link elevationDimMinFactor}) and {@link elevationDimCeilDeg} (no dim). The hero beam is
+   * exempt when {@link heroExemptFromElevationDim} so the protagonist always pops.
+   *
+   * This is the INSIDIOUS multiplicative shadow the control surface unmasks: the dim
+   * MULTIPLIES the resolved opacity (down to 5%), silently undercutting a raised
+   * servingConeOpacity, with no field to turn it off — until now. Defaults reproduce the
+   * 22°/42°/0.05/exempt behaviour exactly. Prompt-control: "別把低空波束調暗 / 只壓 15° 以下" =
+   * these. Display-only (Rule#6): every serving cone still mounts (s0 counts meshes, not
+   * opacity); this only fades the rendered alpha.
+   */
+  readonly elevationDimEnabled: boolean;
+  readonly elevationDimFloorDeg: number;
+  readonly elevationDimCeilDeg: number;
+  readonly elevationDimMinFactor: number;
+  readonly heroExemptFromElevationDim: boolean;
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
@@ -183,4 +206,9 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   triggeredIntraToColor: SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
   triggeredIntraPeakOpacity: SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
   triggeredIntraSustainMs: SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
+  elevationDimEnabled: true,
+  elevationDimFloorDeg: SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG,
+  elevationDimCeilDeg: SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG,
+  elevationDimMinFactor: SINR_LIVE_CONE_DIM_MIN_FACTOR,
+  heroExemptFromElevationDim: true,
 };

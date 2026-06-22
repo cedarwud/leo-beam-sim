@@ -278,13 +278,17 @@ export const SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG = 22;
 export const SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG = 42;
 export const SINR_LIVE_CONE_DIM_MIN_FACTOR = 0.05;
 
-export function resolveSinrLiveConeElevationDimFactor(apparentElevationDeg: number): number {
+export function resolveSinrLiveConeElevationDimFactor(
+  apparentElevationDeg: number,
+  floorDeg: number = SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG,
+  ceilDeg: number = SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG,
+  minFactor: number = SINR_LIVE_CONE_DIM_MIN_FACTOR,
+): number {
   if (!Number.isFinite(apparentElevationDeg)) return 1;
-  if (apparentElevationDeg >= SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG) return 1;
-  if (apparentElevationDeg <= SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG) return SINR_LIVE_CONE_DIM_MIN_FACTOR;
-  const t = (apparentElevationDeg - SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG)
-    / (SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG - SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG);
-  return SINR_LIVE_CONE_DIM_MIN_FACTOR + t * (1 - SINR_LIVE_CONE_DIM_MIN_FACTOR);
+  if (apparentElevationDeg >= ceilDeg) return 1;
+  if (apparentElevationDeg <= floorDeg) return minFactor;
+  const t = (apparentElevationDeg - floorDeg) / (ceilDeg - floorDeg);
+  return minFactor + t * (1 - minFactor);
 }
 
 /**
