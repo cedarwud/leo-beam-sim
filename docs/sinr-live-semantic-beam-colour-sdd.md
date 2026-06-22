@@ -26,26 +26,37 @@ read by COLOUR**, since position cannot distinguish overlapping same-sat cones.
 
 ## 3. Palette — 4 semantic colours + the handover flip
 
+> **RECOLOURED 2026-06-22 (owner-chosen): serving GREEN→YELLOW, releasing ORANGE→PURPLE,
+> the flip is now `purple → yellow`.** Owner picked serving=黃 (intuition "服務=亮黃") and
+> 接手=跳回服務色 (the acquired beam becomes your serving link → takes the serving colour).
+> Releasing moved orange→purple because orange↔yellow are both warm (low-contrast); purple is
+> the YELLOW complementary → the intra flip reads at max contrast, and is distinct from the
+> blue inter-candidate. The ambient pulse moved soft-green→soft-yellow (`#fde047`) to match.
+> Hexes below updated; the role LOGIC (serving / context / candidate / releasing + 1-vs-2-sat)
+> is unchanged. Every colour is now a `beamDisplaySpec` field (control-surface SDD) so this is
+> a one-field change, not a const hunt.
+
 | Colour | Hex | Meaning (self-evident, no legend) |
 |---|---|---|
-| 🟢 GREEN | `#22c55e` | **Your serving link** (acquired / connected). Brightest = the protagonist's serving beam. |
-| ◼ DIM SLATE | low-opacity cool (pin in S1) | **Background served beams** (context) — kills the per-sat rainbow → ONE context colour. |
-| 🔵 BLUE | `#3b82f6` | **Candidate / incoming inter-HO target** (lining up). |
-| 🟠 ORANGE | `#f97316` | **A beam being RELEASED** (the handover moment — the OLD beam). |
+| 🟡 YELLOW | `#eab308` | **Your serving link** (acquired / connected). Brightest = the protagonist's serving beam. |
+| ◼ DIM SLATE | `#46544d` | **Background served beams** (context) — kills the per-sat rainbow → ONE context colour. |
+| 🔵 BLUE | `#3b82f6` | **Candidate / incoming inter-HO target** (a different sat lining up). |
+| 🟣 PURPLE | `#a855f7` | **A beam being RELEASED** (the handover moment — the OLD beam). |
 
-**Handover = `orange (old) → green (new)` flip.** Consistent metaphor: **green = on /
-acquired, orange = releasing, blue = next, dim = background.** Unserved stays GREY.
+**Handover = `purple (old) → yellow (new)` flip.** Consistent metaphor: **yellow = on /
+acquired, purple = releasing, blue = next (a different sat), dim = background.** Unserved
+stays GREY. Ambient population pulse = soft yellow `#fde047`.
 
 ## 4. intra vs inter (rides the shipped B1 sat-count, `d423060`)
 
-- **intra** — 1 satellite. Old cell flares ORANGE, new cell flares GREEN; the two cones
-  OVERLAP on the one satellite → the orange→green contrast IS the intra signal. (B1
+- **intra** — 1 satellite. Old cell flares PURPLE, new cell flares YELLOW; the two cones
+  OVERLAP on the one satellite → the purple→yellow contrast IS the intra signal. (B1
   already narrows the steady scene to 1 sat here → nothing competes.)
 - **inter** — 2 satellites. The candidate sat is BLUE (lining up); on HO the old sat's
-  beam goes ORANGE and the new sat's GREEN. (B1 already lights the 2nd sat only when an
+  beam goes PURPLE and the new sat's YELLOW. (B1 already lights the 2nd sat only when an
   inter HO is pending.)
 
-Distinguished by **1-sat (intra) vs 2-sat (inter)** + the same orange→green flip.
+Distinguished by **1-sat (intra) vs 2-sat (inter)** + the same purple→yellow flip.
 
 ## 5. Architecture rework (touch map)
 

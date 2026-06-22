@@ -3,14 +3,14 @@
  * Semantic beam-colour model invariant gate (semantic-beam-colour SDD §5) — REWORKED
  * from the Bug-E "a served UE's marker colour MUST equal its serving cone's colour"
  * equality. That equality RETIRED when the cones moved to the SEMANTIC role/state palette
- * (green serving / dim context / blue candidate / orange→green flip, applied at the mount
- * by `resolveSinrLiveConeRenderColor`) and the UE dots moved to a per-SATELLITE hue
+ * (yellow serving / dim context / blue candidate / purple→yellow handover flip, applied at
+ * the mount by `resolveSinrLiveConeRenderColor`) and the UE dots moved to a per-SATELLITE hue
  * (Option A) — the cones and the dots are now intentionally DIFFERENT colour schemes.
  *
  * What it still locks (behaviour/contract pins, NOT source-text):
  *  (a) EXISTENCE — every served UE has a serving cone for its (satId, cellId). [the
  *      surviving half of Bug E; also the s0:connected-sat-has-beam must-hold.]
- *  (b) the protagonist's serving cone RESOLVES the semantic serving GREEN, a non-hero
+ *  (b) the protagonist's serving cone RESOLVES the semantic serving YELLOW, a non-hero
  *      served cone the dim context colour, a candidate the candidate BLUE — through the
  *      real `resolveSinrLiveConeRenderColor` precedence (the render colour, eyeballed
  *      nowhere): a regression that drops the hero/override path turns it RED.
@@ -165,10 +165,10 @@ check('(e) the cone ITEM colour still routes through the ONE serving-identity au
   }
 });
 
-check('(b) the SEMANTIC render colour resolves: hero serving GREEN / non-hero dim context / candidate BLUE', () => {
+check('(b) the SEMANTIC render colour resolves: hero serving YELLOW / non-hero dim context / candidate BLUE', () => {
   const heroItem = coneItems.find(c => c.satId === 'sat-A' && c.cellId === 0);
   assert(heroItem !== undefined, 'a hero cone item exists for the protagonist (sat-A, cell-0)');
-  // the protagonist (isHero) → serving GREEN, the role colour a viewer reads as "your link".
+  // the protagonist (isHero) → serving YELLOW, the role colour a viewer reads as "your link".
   assertEqual(
     resolveSinrLiveConeRenderColor(heroItem!, {
       isHero: true,
@@ -176,7 +176,7 @@ check('(b) the SEMANTIC render colour resolves: hero serving GREEN / non-hero di
       backgroundColor: SINR_LIVE_CONE_BACKGROUND_COLOR,
     }),
     SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
-    'the protagonist serving cone renders the semantic serving GREEN',
+    'the protagonist serving cone renders the semantic serving YELLOW',
   );
   // a NON-hero served cone falls to the dim context colour (one colour, NOT a per-sat rainbow).
   const bgItem = coneItems.find(c => c.satId === 'sat-B');
