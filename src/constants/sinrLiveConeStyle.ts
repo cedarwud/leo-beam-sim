@@ -57,20 +57,38 @@ export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.45;
 export const SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY = 0.8;
 
 /**
- * Cell-truth footprint HEX style (beam-stage ① #3 — legible circles; W4 double-layer).
- * {@link SinrLiveCellFootprintRings} draws TWO nested hexagon bands per SERVING cell —
- * an outer rim band + an inner concentric band — at the SAME cell-truth base centre /
- * radius / serving-identity colour as the serving cone, so each beam reads as a
- * distinct double-hex with its UEs scattered off-centre inside it (it REPLACES the
- * legacy steered `AmbientFootprintRings`, which sat at the wrong — steered —
- * positions, and the persistent grey `SinrLiveCellGrid`, removed in W4). Display-only
- * (Rule#6).
+ * Cell-truth footprint HEX style — the ab861c4 THREE-LAYER restore (2026-06-22).
+ * {@link SinrLiveCellFootprintRings} draws, per SERVING cell, the rich layered hex the
+ * legacy `EarthFixedCells` drew before it was flattened to two same-colour outline
+ * bands: a faint additive FILL-glow ({@link SINR_LIVE_FOOTPRINT_FILL_OPACITY}) under an
+ * outer BORDER ring ({@link SINR_LIVE_FOOTPRINT_RING_OPACITY}) and a bright inner ROLE
+ * ring ({@link SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY}) — all at the SAME cell-truth base
+ * centre / radius as the serving cone. The COLOUR is reconciled to the SEMANTIC palette
+ * (owner choice B, 2026-06-22): every layer renders the cell's resolved role colour
+ * (hero serving YELLOW / candidate BLUE / context GREY), via `resolveSinrLiveConeRenderColor`
+ * at the mount — so the footprint hex matches its cone + its UE dots (no per-sat rainbow).
+ * It REPLACES the legacy steered `AmbientFootprintRings` (wrong — steered — positions) and
+ * the persistent grey `SinrLiveCellGrid` (W4). Display-only (Rule#6).
  */
-export const SINR_LIVE_FOOTPRINT_RING_OPACITY = 0.55;
-/** Outer band: inner edge as a fraction of the footprint radius (a thin crisp rim). */
-export const SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR = 0.93;
+export const SINR_LIVE_FOOTPRINT_RING_OPACITY = 0.9;
+/**
+ * Outer BORDER ring — ab861c4 radii: a THIN rim straddling the footprint edge
+ * (0.96r inner edge → 1.04r outer edge, so it sits slightly PROUD of the hex like the
+ * original). Colour = the per-sat WHITE/pale tint (`satelliteTint`), so it reads as a
+ * crisp white outline DISTINCT from the role-colour inner ring (the ab861c4 two-tone). */
+export const SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR = 0.96;
+export const SINR_LIVE_FOOTPRINT_RING_OUTER_FACTOR = 1.04;
 /** Tiny ground lift (world units) so the flat hexes never z-fight the terrain. */
 export const SINR_LIVE_FOOTPRINT_RING_Y_LIFT = 0.6;
+/**
+ * ab861c4 fill-glow restore: a faint additive hexagon FILL under the two border rings,
+ * so each served cell reads as the rich 3-layer hex (faint fill + outer border + bright
+ * inner ring) the ab861c4 `EarthFixedCells` drew — NOT the flat 2-band outline it became.
+ * Kept FAINT (a glow, not a solid fill — the rings dominate; owner confirmed the old look
+ * had no solid fill) + AdditiveBlending so it lifts the terrain without a hard panel. The
+ * colour is the cell's SEMANTIC role colour, resolved at the mount, so the fill matches its
+ * border rings + its cone. Display-only (Rule#6). */
+export const SINR_LIVE_FOOTPRINT_FILL_OPACITY = 0.16;
 
 /**
  * W5-fix: the Beam-Info callout chip's float height (world units) above the cell
@@ -86,15 +104,16 @@ export const SINR_LIVE_FOOTPRINT_RING_Y_LIFT = 0.6;
 export const SINR_LIVE_CALLOUT_Y_LIFT = 26;
 
 /**
- * W4 double-layer hex (restores the 49db65d look): a SECOND concentric inner hex
- * band per served cell, nested inside the rim band above. Both bands use the cell's
- * serving-identity colour (item.color = colorForServingBeam), so the served UE dot,
- * its cone, and BOTH footprint hexes share one hue (the beam:colour-match invariant).
- * The gap between the inner band and the rim reads as the classic double hexagon.
+ * ab861c4 inner ROLE ring (the BRIGHTEST element of the 3-layer hex): a thin concentric
+ * inner hex band per served cell. ab861c4 radii: 0.78r → 0.84r, nested just inside the
+ * outer rim (0.96r) so the gap between the two rings is TIGHT (~0.12r) — the original
+ * close-set double hexagon, NOT a wide-spaced pair. Colour = the cell's SEMANTIC role
+ * colour (hero serving YELLOW / candidate BLUE / context GREY): the ab861c4 "the inner
+ * ring turns yellow when the serving beam hits it" two-tone (white outer + role inner).
  */
-export const SINR_LIVE_FOOTPRINT_INNER_BAND_INNER_FACTOR = 0.6;
-export const SINR_LIVE_FOOTPRINT_INNER_BAND_OUTER_FACTOR = 0.7;
-export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.5;
+export const SINR_LIVE_FOOTPRINT_INNER_BAND_INNER_FACTOR = 0.78;
+export const SINR_LIVE_FOOTPRINT_INNER_BAND_OUTER_FACTOR = 0.84;
+export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.95;
 
 /**
  * TRIGGERED intra-HO flash style (beam-stage ① #5 — the protagonist jog handover).
@@ -120,7 +139,7 @@ export const SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY = 0.95;
 /** OLD (handed-off) cell colour — the serving YELLOW it currently is, fading out as the beam
  * drops ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}). No separate "releasing" hue: the
  * handover signal is the NEW cell going BLUE, the old one just fades. */
-export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = '#eab308';
+export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = '#facc15';
 /** NEW (acquiring) cell colour — BLUE = "taking over", the SAME blue as the inter candidate
  * ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}) so blue UNIFORMLY means "the beam taking over"
  * (intra new beam + inter candidate). Owner-chosen 2026-06-22 (intra = 黃→藍). The flash
@@ -139,7 +158,7 @@ export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#3b82f6';
  * (the mount reads the spec field; this const is the single default source). The pulse +
  * vc1c/vc2 fixtures keep resolveSinrLiveConeColor untouched. Display-only.
  */
-export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#eab308';
+export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#facc15';
 /**
  * SEMANTIC background/context colour — every served beam that is NOT the hero (your
  * serving link), NOT a candidate, NOT a live handover flash renders this dim NEUTRAL GREY,
@@ -229,7 +248,7 @@ export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 1.0;
  * candidate blue / releasing orange) is legible without a legend. We trade the additive
  * multibeam glow for colour truth — the right call once the colour itself carries the story.
  */
-export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.NormalBlending;
+export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.AdditiveBlending;
 
 /**
  * Which sinr-live cone LAYER a style is being resolved for. The lane draws three

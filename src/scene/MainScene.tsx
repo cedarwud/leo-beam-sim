@@ -1755,7 +1755,22 @@ function SceneContent({
         <SinrLiveCellFootprintRings
           items={sinrLiveCellBeamConeItems}
           widthScale={beamDisplaySpec.coneWidthScale}
+          heroColor={beamDisplaySpec.heroConeColor}
+          backgroundColor={beamDisplaySpec.backgroundConeColor}
+          primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
+          primaryServingCellId={primaryServingRecord?.cellId ?? null}
           telemetryCountDatasetKey="sinrLiveCellFootprintRingRenderedCount"
+        />
+      )}
+      {/* Candidate footprint hex: the contender / approach cells get the SAME 3-layer hex
+          in the candidate BLUE (coneColorOverride), so a candidate cell reads blue like its
+          cone — the footprint matches the beam. Display-only role colour (Rule#6). */}
+      {showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
+        <SinrLiveCellFootprintRings
+          items={sinrLiveCandidateBeamConeItems}
+          widthScale={beamDisplaySpec.coneWidthScale}
+          coneColorOverride={beamDisplaySpec.candidateConeColor}
+          telemetryCountDatasetKey="sinrLiveCellCandidateFootprintRenderedCount"
         />
       )}
       {/* W5 Beam Info: per-beam scene callouts (SAT · Cell·F · serving SINR) on the
@@ -1872,19 +1887,23 @@ export const MainScene = memo(function MainScene({
       <Starfield starCount={180} />
       <Canvas
         // PERF (software-WebGL box, no GPU — SwiftShader/llvmpipe, ~3.5 FPS measured):
-        // the bottleneck is FRAGMENT FILL, not mesh count, so cut pixels shaded per frame.
-        // - shadows OFF: the shadow pass renders the whole scene a SECOND time into a 4096²
-        //   map — the single biggest fill cost. (Re-enable `shadows` on a real-GPU demo box.)
-        // - dpr={1}: cap the render resolution; on a HiDPI display dpr=2 is 4× the fragments.
-        // - antialias:false: MSAA on a CPU rasterizer is pure waste (no GPU MSAA hardware).
-        // All display-only (Rule#6) — render config only, no SINR/handover/geometry truth touched.
+        // the bottleneck is FRAGMENT FILL, not mesh count. The ONE big motion win that does
+        // NOT touch edge quality is dropping the SHADOW PASS (the whole scene re-rendered into
+        // a 4096² depth map every frame) — so `shadows` is off. dpr + antialias are LEFT AT
+        // DEFAULT on purpose: cutting them sped the frame up but JAGGED every edge (the
+        // footprint hexagons read as "changed"), and on a CPU rasterizer MSAA is the lesser
+        // cost vs the shadow pass — so we keep the crisp edges and take the shadow-pass win.
+        // (Re-enable `shadows` on a real-GPU demo box; drop dpr→1 / antialias→false only if a
+        // viewer explicitly wants more motion at the cost of jagged edges.)
+        // Display-only (Rule#6) — render config only, no SINR/handover/geometry truth touched.
+        shadows={false}
         dpr={1}
         gl={{
           toneMapping: ACESFilmicToneMapping,
           toneMappingExposure: 1.2,
           alpha: true,
           powerPreference: 'high-performance',
-          antialias: false,
+          antialias: true,
         }}
       >
         <Suspense fallback={<Html center><div style={{ color: 'white', fontSize: 20 }}>Loading...</div></Html>}>

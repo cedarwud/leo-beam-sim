@@ -216,10 +216,12 @@ check('(d) the UE mosaic partitions by SERVING SATELLITE (per-sat hue; intra-HO 
   assert(aCell0 !== bCell2, 'a different serving sat = a different dot colour (inter-HO repartitions the mosaic)');
 });
 
-check('cone ITEM data retains per-(sat,cell) identity (footprint-ring/telemetry colour; the RENDER is semantic)', () => {
+check('cone ITEM data retains per-(sat,cell) identity (telemetry / userData identity; the RENDER is semantic)', () => {
   // The item colour is no longer the rendered cone hue (that is the semantic palette,
-  // check (b)) but it still drives the footprint-ring hex bands + the cone userData, so
-  // its per-cell granularity is pinned: a regression collapsing it would flatten those.
+  // check (b)) NOR the footprint-hex hue (the 3-layer footprint restore 2026-06-22 also
+  // renders the SEMANTIC role colour via resolveSinrLiveConeRenderColor); item.color now
+  // survives only as the per-cell DATA identity (cone userData + telemetry), so its
+  // per-cell granularity is pinned: a regression collapsing it would flatten those.
   const a0 = coneColorByKey.get('sat-A:0')!;
   const a1 = coneColorByKey.get('sat-A:1')!;
   const b2 = coneColorByKey.get('sat-B:2')!;

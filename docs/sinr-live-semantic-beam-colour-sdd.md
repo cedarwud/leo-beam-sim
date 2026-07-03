@@ -39,7 +39,7 @@ read by COLOUR**, since position cannot distinguish overlapping same-sat cones.
 
 | Colour | Hex | Meaning (self-evident, no legend) |
 |---|---|---|
-| 🟡 YELLOW | `#eab308` | **Your serving link** (acquired / connected). Brightest = the protagonist's serving beam. |
+| 🟡 YELLOW | `#facc15` | **Your serving link** (acquired / connected). Brightest = the protagonist's serving beam. |
 | 🔵 BLUE | `#3b82f6` | **A beam TAKING OVER** — the inter candidate (a different sat lining up) AND the intra/inter acquiring cell. Settles to yellow once it is your serving link. |
 | ◼ DIM GREY | `#9ca3af` | **Background served beams** (context) — kills the per-sat rainbow → ONE neutral context colour (was `#46544d` 墨綠, too dark + green-tinted). |
 
