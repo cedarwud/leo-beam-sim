@@ -43,6 +43,7 @@
     "validate:modqn:producer-dispatch-envelope": "node --import tsx/esm scripts/validate-modqn-producer-dispatch-envelope.ts",
     "validate:modqn:job-lifecycle-contract": "node --import tsx/esm scripts/validate-modqn-job-lifecycle-contract.ts",
     "validate:modqn:omega-s4-heuristic-not-paper": "node --import tsx/esm scripts/validate-modqn-omega-s4-heuristic-not-paper.tsx",
+    "validate:modqn:decode-parity": "node --import tsx/esm scripts/validate-modqn-decode-parity.ts",
     "smoke:modqn:producer-dispatch": "node --import tsx/esm scripts/smoke-modqn-producer-dispatch.ts",
     "validate:phase-d:app-wire": "node --import tsx/esm scripts/validate-phase-d-app-wire.tsx",
     "validate:phase-d:banner-copy": "node --import tsx/esm scripts/validate-phase-d-banner-copy.tsx",

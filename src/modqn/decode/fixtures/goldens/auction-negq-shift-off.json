@@ -1,0 +1,62 @@
+{
+  "provenance": {
+    "producerRev": "a9290c1cad6db7a3f215e3b93a9da2ec1b282320",
+    "sourcePath": "src/modqn_paper_reproduction/route_b_factorial/auction_decode.py",
+    "generatedAt": "2026-07-03T14:26:38.707103+00:00",
+    "caseId": "auction-negq-shift-off"
+  },
+  "kind": "auction",
+  "note": "SAME V, shift OFF: outside option 0 >= every gain -> all fallback (the FOLD-2 bug)",
+  "params": {
+    "lW": 1,
+    "kCap": 2,
+    "gridCount": 2,
+    "beamsPerSlot": 7,
+    "shiftToNonneg": false
+  },
+  "inputs": {
+    "V": [
+      [
+        -1.0,
+        -9.0,
+        null,
+        null
+      ],
+      [
+        -9.0,
+        -1.0,
+        null,
+        null
+      ]
+    ],
+    "slotCell": [
+      [
+        0,
+        1,
+        0,
+        1
+      ],
+      [
+        0,
+        1,
+        0,
+        1
+      ]
+    ]
+  },
+  "expected": {
+    "auctionOut": [
+      0,
+      1
+    ],
+    "audit": {
+      "nFallback": 2,
+      "openedPerSlot": [
+        0
+      ],
+      "demandedPerSlot": [
+        2
+      ]
+    }
+  }
+}

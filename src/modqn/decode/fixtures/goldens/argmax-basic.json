@@ -1,0 +1,39 @@
+{
+  "provenance": {
+    "producerRev": "a9290c1cad6db7a3f215e3b93a9da2ec1b282320",
+    "sourcePath": "src/modqn_paper_reproduction/route_b_factorial/auction_decode.py",
+    "generatedAt": "2026-07-03T14:26:38.707103+00:00",
+    "caseId": "argmax-basic"
+  },
+  "kind": "argmax",
+  "note": "first-max tie (row0 -> idx1, row1 -> idx2); all-inf row -> idx0",
+  "inputs": {
+    "V": [
+      [
+        1.0,
+        3.0,
+        3.0,
+        null
+      ],
+      [
+        null,
+        null,
+        2.0,
+        2.0
+      ],
+      [
+        null,
+        null,
+        null,
+        null
+      ]
+    ]
+  },
+  "expected": {
+    "argmaxOut": [
+      1,
+      2,
+      0
+    ]
+  }
+}

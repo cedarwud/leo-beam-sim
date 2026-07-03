@@ -1,0 +1,75 @@
+{
+  "provenance": {
+    "producerRev": "a9290c1cad6db7a3f215e3b93a9da2ec1b282320",
+    "sourcePath": "src/modqn_paper_reproduction/route_b_factorial/auction_decode.py",
+    "generatedAt": "2026-07-03T14:26:38.707103+00:00",
+    "caseId": "valuation-basic"
+  },
+  "kind": "valuation",
+  "note": "log2(1+max(cq,0)); masked-off -> -inf; negative cq clamps to 0",
+  "inputs": {
+    "channelQuality": [
+      [
+        3.0,
+        0.0,
+        -2.0,
+        7.0
+      ],
+      [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      [
+        0.5,
+        10.0,
+        -1.0,
+        0.0
+      ]
+    ],
+    "masks": [
+      [
+        true,
+        true,
+        false,
+        true
+      ],
+      [
+        true,
+        false,
+        true,
+        false
+      ],
+      [
+        false,
+        true,
+        true,
+        true
+      ]
+    ],
+    "nActions": 4
+  },
+  "expected": {
+    "V": [
+      [
+        2.0,
+        0.0,
+        null,
+        3.0
+      ],
+      [
+        1.0,
+        null,
+        1.0,
+        null
+      ],
+      [
+        null,
+        3.4594316186372973,
+        0.0,
+        0.0
+      ]
+    ]
+  }
+}

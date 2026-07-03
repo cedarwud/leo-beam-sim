@@ -1,0 +1,62 @@
+{
+  "provenance": {
+    "producerRev": "a9290c1cad6db7a3f215e3b93a9da2ec1b282320",
+    "sourcePath": "src/modqn_paper_reproduction/route_b_factorial/auction_decode.py",
+    "generatedAt": "2026-07-03T14:26:38.707103+00:00",
+    "caseId": "auction-tie-gains"
+  },
+  "kind": "auction",
+  "note": "col0 gain == col1 gain (exactly 8) -> argmax opens the lower-key column first",
+  "params": {
+    "lW": 1,
+    "kCap": 2,
+    "gridCount": 2,
+    "beamsPerSlot": 7,
+    "shiftToNonneg": true
+  },
+  "inputs": {
+    "V": [
+      [
+        10.0,
+        2.0,
+        null,
+        null
+      ],
+      [
+        2.0,
+        10.0,
+        null,
+        null
+      ]
+    ],
+    "slotCell": [
+      [
+        0,
+        1,
+        0,
+        1
+      ],
+      [
+        0,
+        1,
+        0,
+        1
+      ]
+    ]
+  },
+  "expected": {
+    "auctionOut": [
+      0,
+      1
+    ],
+    "audit": {
+      "nFallback": 0,
+      "openedPerSlot": [
+        2
+      ],
+      "demandedPerSlot": [
+        2
+      ]
+    }
+  }
+}
