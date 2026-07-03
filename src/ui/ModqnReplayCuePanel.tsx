@@ -155,12 +155,15 @@ export function ModqnReplayCuePanel({
 
   if (appMode !== 'modqn-demo') return null;
 
-  // MODQN consolidation: the "Show/Hide proof in viewport" switch is PARKED — the
-  // MODQN page is a single dense-Q proof page now, so the separate modqn-replay-proof
-  // viewport lane is not user-reachable (this toggle was its only UI trigger). The
-  // toggle component + props + wiring are retained (governance source pins / easy
-  // un-park) but it no longer renders.
-  const PROOF_VIEWPORT_TOGGLE_PARKED = true;
+  // P2 replay stage (un-parked 2026-07-04): this toggle is the entry into the
+  // modqn-replay-proof lane, which is now the RECORDED dense-Q replay STAGE (red/green
+  // per-UE field + beam cones + hex, artifact-backed, frameloop=demand). It was parked
+  // during the MODQN one-page consolidation when the lane was still the old live-overlay
+  // single-decision board; the P2 stage is what un-parks it. Entry still gates on
+  // handoverMode==='decision-overlay-on-live-sinr' via `canToggleModqnReplayProof` in
+  // App (decoupling that live-policy requirement from the recorded stage is a P3
+  // nav-polish item).
+  const PROOF_VIEWPORT_TOGGLE_PARKED = false;
   const proofViewportToggle = PROOF_VIEWPORT_TOGGLE_PARKED ? null : (
     <ModqnReplayProofViewportToggle
       active={proofViewportActive}

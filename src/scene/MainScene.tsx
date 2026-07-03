@@ -89,6 +89,7 @@ import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 import { FPSCounter } from './FPSCounter';
 import type { SceneLane } from '../app/sceneLane';
 import {
+  isSceneLaneSourceCompatible,
   resolveSceneLaneRenderPlan,
   resolveSceneLaneUeMarkerShape,
 } from './sceneLaneRenderPlan';
@@ -549,7 +550,10 @@ function ArtifactSceneContent({
         simTimeSec={sceneFrame.tSec}
         appMode={runtime.appMode}
         sceneLaneSourceCompatible={
-          sceneLane === 'artifact-replay' && sceneFrame.sceneSource === 'artifact-replay' ? '1' : '0'
+          // P2: use the ONE source-compat authority so the recorded modqn-replay-proof
+          // stage (also artifact-backed) reads compatible, not just the artifact-replay
+          // lane. Was hardcoded to `sceneLane === 'artifact-replay'`.
+          isSceneLaneSourceCompatible({ sceneLane, sceneSource: sceneFrame.sceneSource }) ? '1' : '0'
         }
         liveSimulationEnabled="0"
         ueMarkerShape={ueMarkerShape}

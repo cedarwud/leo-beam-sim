@@ -174,7 +174,13 @@ assert.equal(
 
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'sinr-live', sceneSource: 'live-sim' }), true);
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'modqn-live-cell-preview', sceneSource: 'live-sim' }), true);
-assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'modqn-replay-proof', sceneSource: 'live-sim' }), true);
+// P2 replay stage: modqn-replay-proof now plays the RECORDED window (artifact-backed
+// frame), so it is artifact-source-compatible and NO LONGER live-sim-compatible (the
+// live-sim pin belonged to the retired live-overlay board). Both a positive and a
+// negative case are asserted so the source-compat gate never degenerates into a
+// rubber stamp.
+assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'modqn-replay-proof', sceneSource: 'artifact-replay' }), true);
+assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'modqn-replay-proof', sceneSource: 'live-sim' }), false);
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'artifact-replay', sceneSource: 'artifact-replay' }), true);
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'artifact-replay', sceneSource: 'live-sim' }), false);
 assert.equal(isSceneLaneSourceCompatible({ sceneLane: 'sinr-live', sceneSource: 'artifact-replay' }), false);
@@ -254,16 +260,28 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'artifact replay must never own the MODQN service-allocation family even when the producer gate is enabled',
   );
 
-  const proof = renderPlan('modqn-replay-proof', 'live-sim', true);
-  assert.equal(proof.sourceCompatible, true, 'MODQN proof lane live source should be compatible');
-  assert.equal(proof.showReplayProofLayer, true, 'MODQN proof lane should honor explicit proof request');
+  // P2 replay stage: the MODQN proof lane is now fed the RECORDED window
+  // (artifact-backed frame), so its render plan is resolved with the artifact
+  // source. It is source-compatible and marked as an artifact replay (drives the
+  // frameloop=demand recorded playback + the FPS diagnostic), but it is NOT a live
+  // scene — the retired live-overlay board (`showReplayProofLayer`) stays OFF
+  // (clean-delete deferred to P3), and it never inherits the sinr-live cones /
+  // effects / spotlight. The live-sim combo is now source-INcompatible (fail-closed).
+  const proof = renderPlan('modqn-replay-proof', 'artifact-replay', true);
+  assert.equal(proof.sourceCompatible, true, 'MODQN proof lane recorded-window (artifact) source should be compatible');
+  assert.equal(proof.isArtifactReplay, true, 'MODQN proof lane replays a recorded artifact frame');
+  assert.equal(proof.isLiveScene, false, 'MODQN proof lane is a recorded replay, never a live scene');
+  assert.equal(proof.showReplayProofLayer, false, 'MODQN proof lane retires the live-overlay board (superseded by the recorded field stage; clean-delete deferred to P3)');
   assert.equal(proof.showCellOverlay, false, 'MODQN proof lane should not render cell overlay');
   assert.equal(proof.showLiveBeamCones, false, 'MODQN proof lane should not render legacy live beam cones');
   assert.equal(proof.showLiveSceneEffects, false, 'MODQN proof lane should not inherit SINR live effects');
   assert.equal(proof.showCinematicSpotlight, false, 'MODQN proof lane should not inherit spotlight effects');
-  assert.equal(proof.effectiveCinematicMode, 'off', 'MODQN proof lane should force cinematic mode off');
-  assert.equal(proof.handoverStoryLayerPolicy, 'modqn-replay-source-backed', 'MODQN proof lane must stay source-backed');
+  assert.equal(proof.effectiveCinematicMode, 'off', 'MODQN proof lane forces cinematic mode off unless director is explicitly requested');
+  assert.equal(proof.handoverStoryLayerPolicy, 'disabled', 'MODQN proof lane recorded stage has no live/profile handover story layer (P4 adds the recorded beat track)');
   assert.equal(proof.showProfileHandoverStoryLayer, false, 'MODQN proof lane must not mount the profile-derived story overlay');
+  const proofLiveIncompatible = renderPlan('modqn-replay-proof', 'live-sim', true);
+  assert.equal(proofLiveIncompatible.sourceCompatible, false, 'MODQN proof lane live-sim source is now fail-closed (recorded replay only)');
+  assert.equal(proofLiveIncompatible.showReplayProofLayer, false, 'MODQN proof lane never renders on a live-sim frame');
 
   const artifact = renderPlan('artifact-replay', 'artifact-replay');
   assert.equal(artifact.sourceCompatible, true, 'artifact replay source should be compatible');
@@ -275,9 +293,10 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(artifact.effectiveCinematicMode, 'off', 'artifact replay should force cinematic mode off');
   assert.equal(artifact.handoverStoryLayerPolicy, 'artifact-owned', 'artifact replay should keep handover story artifact-owned');
   assert.equal(artifact.showProfileHandoverStoryLayer, false, 'artifact replay must not mount the profile-derived story overlay');
-  // Completes the showLiveSceneEffects value-assert matrix (sinr-live true L189,
-  // modqn-cell true L206, proof false L265, incompatible false L409) so the
-  // `const showLiveSceneEffects = showSinrBeamRender` source-pin can retire (B2).
+  // Completes the showLiveSceneEffects value-assert matrix (sinr-live true,
+  // modqn-cell true, modqn-replay-proof false [recorded stage], artifact false,
+  // incompatible false below) so the `const showLiveSceneEffects =
+  // showSinrBeamRender` source-pin can retire (B2).
   assert.equal(artifact.showLiveSceneEffects, false, 'artifact replay must not inherit SINR live effects');
 
   // ── SINR-serving mosaic (S2) lane ownership ──
@@ -1360,7 +1379,10 @@ assertContains(appSource, 'data-testid="artifact-replay-sidebar"', 'App folds th
 // left rail no longer has a 'setup' branch.
 assertNotContains(appSource, "activeLeftSidebarTab === 'setup'", 'S4: App no longer renders a Setup left sidebar branch (moved to the Advanced drawer)');
 assertContains(appSource, "activeRightSidebarTab === 'artifact'", 'App artifact right sidebar branch');
-assertContains(appSource, "sceneSource !== 'artifact-replay' || activeSceneFrame !== undefined", 'App artifact scene fail-closed gate');
+// P2: the fail-closed gate now covers BOTH recorded-replay lanes (artifact-replay +
+// the modqn-replay-proof recorded stage) via `recordedReplayActive`; a recorded lane
+// renders only once its window frame resolves, else the fail-closed placeholder shows.
+assertContains(appSource, '!recordedReplayActive || activeSceneFrame !== undefined', 'App recorded-replay scene fail-closed gate');
 assertContains(appSource, 'data-testid="artifact-scene-fail-closed"', 'App artifact scene fail-closed placeholder');
 assertContains(appSource, "if (sceneSource === 'artifact-replay') return;", 'App skips MODQN replay bundle startup fetch in artifact replay');
 assertContains(appSource, "sceneSource !== 'artifact-replay' && modqnReplayFetchError !== null", 'App hides MODQN bundle fetch banner in artifact replay');

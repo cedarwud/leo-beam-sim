@@ -132,7 +132,15 @@ export interface SceneLaneRenderPlan {
 }
 
 export function isSceneLaneSourceCompatible(input: SceneLaneSourceCompatibilityInput): boolean {
-  if (input.sceneLane === 'artifact-replay') {
+  // Recorded-replay lanes require an artifact-backed frame. `modqn-replay-proof`
+  // is the MODQN replay STAGE (P2): App feeds it the recorded dense-Q window via
+  // `showcaseArtifactToScene` (sceneSource==='artifact-replay'), so it is
+  // artifact-source-compatible like `artifact-replay`. The `live-sim` pin it USED
+  // to carry belonged to the retired live-overlay single-decision board (the
+  // `ModqnReplaySceneLayer`, clean-delete deferred to P3); the stage that replaced
+  // it plays a recording, not the live sim. `sinr-live` + `modqn-live-cell-preview`
+  // stay live-sim (negative controls: replay-proof/artifact + live-sim ⇒ false).
+  if (input.sceneLane === 'artifact-replay' || input.sceneLane === 'modqn-replay-proof') {
     return input.sceneSource === 'artifact-replay';
   }
 

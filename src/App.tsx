@@ -219,6 +219,15 @@ interface HandoverPolicyRuntimeState {
 
 const MODQN_REPLAY_VISUAL_TICK_MS = 100;
 
+// Generic artifact-replay lane source (dev middleware serves the pinned producer
+// baseline; see vite.config.ts).
+const SHOWCASE_ARTIFACT_URL = '/showcase-artifacts/visual-showcase-v1.json';
+// P2 replay stage: the modqn-replay-proof lane's recorded window. Served read-only
+// by the /modqn-bundles route (vite.config.ts MODQN_FAMILY_B_DENSE_Q_BUNDLE) — the
+// same dense-Q window the P1 decode parity gate stages. Immutable producer artifact.
+const MODQN_REPLAY_STAGE_WINDOW_URL =
+  '/modqn-bundles/dense-q-proof-window-600-130/visual-showcase-v1.json';
+
 
 export function App() {
   const [sceneSource, setSceneSource] = useState<SceneSourceMode>(() => readSceneSourceFromUrl());
@@ -267,6 +276,16 @@ export function App() {
     [appMode, modqnReplayProofRequestActive, sceneSource],
   );
   const showModqnReplayScene = shouldRenderModqnReplayScene(sceneLane);
+  // P2 replay stage: the modqn-replay-proof lane plays the RECORDED dense-Q window
+  // (an artifact-backed frame via showcaseArtifactToScene) — the same loader +
+  // ShowcaseReplayController path the artifact-replay lane uses, just pointed at the
+  // window under the read-only /modqn-bundles route. `recordedReplayActive` unifies
+  // both recorded-frame lanes; the URL is the only thing that differs.
+  const isRecordedReplayLane = sceneLane === 'modqn-replay-proof';
+  const recordedReplayActive = sceneSource === 'artifact-replay' || isRecordedReplayLane;
+  const recordedReplayArtifactUrl = isRecordedReplayLane
+    ? MODQN_REPLAY_STAGE_WINDOW_URL
+    : SHOWCASE_ARTIFACT_URL;
   // omegaActive snapshot — owned by App so it can be threaded into ModqnHandoverModeContext
   // and read by useSimulation (inside Canvas). Starts at paper-faithful defaults.
   const [omegaActiveForContext, setOmegaActiveForContext] = useState<RuntimeOmegaState>(
@@ -1138,12 +1157,12 @@ export function App() {
   // it down — otherwise the next artifact entry renders the stale artifact
   // instead of failing closed on the loading state (codex S1 [P2]).
   useEffect(() => {
-    if (sceneSource !== 'artifact-replay') return;
+    if (!recordedReplayActive) return;
     let cancelled = false;
     setShowcaseLoading(true);
     setShowcaseError(null);
     setShowcaseArtifactSource(null);
-    fetch('/showcase-artifacts/visual-showcase-v1.json')
+    fetch(recordedReplayArtifactUrl)
       .then(r => {
         if (cancelled) return null;
         if (!r.ok) throw new Error(`HTTP error ${r.status}`);
@@ -1187,7 +1206,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [sceneSource]);
+  }, [recordedReplayActive, recordedReplayArtifactUrl]);
 
   const replayController = useMemo(
     () => (showcaseArtifact ? new ShowcaseReplayController(showcaseArtifact) : null),
@@ -1223,8 +1242,11 @@ export function App() {
   }, [replayController, playback.effectiveSpeed]);
 
   // Animation frame tick loop driving the ShowcaseReplayController cursor.
+  // P2: also drives the modqn-replay-proof recorded window (recordedReplayActive).
+  // frameloop='demand' scrub-only stepping is a P2-F3 refinement; for now the
+  // recorded window plays forward like the artifact-replay lane.
   useEffect(() => {
-    if (sceneSource !== 'artifact-replay' || !replayController || playback.paused) return;
+    if (!recordedReplayActive || !replayController || playback.paused) return;
 
     let lastTime = performance.now();
     let frameId: number;
@@ -1240,7 +1262,7 @@ export function App() {
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [sceneSource, replayController, playback.paused, playback.effectiveSpeed]);
+  }, [recordedReplayActive, replayController, playback.paused, playback.effectiveSpeed]);
 
   const modqnProducerTraceRange = useMemo(
     () => getModqnProducerTraceRange(modqnReplayEnvelope),
@@ -1633,13 +1655,13 @@ export function App() {
   }, [replaySceneFrame, elevatedUeId, ueDisplayCount]);
 
   const activeSceneFrame = useMemo((): NormalizedSceneFrame | undefined => {
-    if (sceneSource !== 'artifact-replay' || !replaySceneFrame) return undefined;
+    if (!recordedReplayActive || !replaySceneFrame) return undefined;
     return {
       ...replaySceneFrame,
       ues: processedUes,
     };
-  }, [sceneSource, replaySceneFrame, processedUes]);
-  const shouldRenderMainScene = sceneSource !== 'artifact-replay' || activeSceneFrame !== undefined;
+  }, [recordedReplayActive, replaySceneFrame, processedUes]);
+  const shouldRenderMainScene = !recordedReplayActive || activeSceneFrame !== undefined;
 
   // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
   // the producer-truth playback cursor. We never recompute SINR or handover
