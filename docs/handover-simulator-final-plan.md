@@ -1,6 +1,6 @@
 # 換手教學／口試模擬器 — 最終建置方案
 
-> **狀態**：定案（2026-07-03）。整合兩份輸入：
+> **狀態**：定案（2026-07-03）；同日使用者已回全部開放問題 → D3/D4/D5/R4/§9/§10 據此更新，排程改 plan-first（P0.5 整頓 → P1 mini-SDD → code）。整合兩份輸入：
 > (1) 內部願景報告 [handover-teaching-defense-simulator-vision.md](./handover-teaching-defense-simulator-vision.md)（§12 開放決策在本文件 §1 逐項解掉）；
 > (2) 外部 deep research 四份（`dr/fable.md`、`dr/flash.md`、`dr/gpt.md`、`dr/pro.md`，已入 repo）。
 > 本文件之後 = 建置期的執行真相來源。誠實 RED LINES（願景報告 §2）全文 binding，此處不重抄。
@@ -9,7 +9,7 @@
 
 ## 0. 一段話
 
-一個頁面、一條 scene lane、一副骨架：**重播錄下的 dense 三目標 Q + 前端 TS 重跑確定性 decode**（argmax ↔ auction、ω、k_cap 全部 decode-time 現算，無 .pt、無 OOD、無 server）。layperson 三關 + 「你來當演算法」在同一份錄影上玩；口試模式 = 同頁開 Expert + provenance + self-check。唯一 heavy 前置 = producer 在 server 匯出「1 個好場景窗 × 5 個 arm」的 dense 矩陣（免 retrain）。前端第一步（decode 移植 + parity gate）**今天就能用現有 artifact 起跑**。
+一個頁面、一條 scene lane、一副骨架：**重播錄下的 dense 三目標 Q + 前端 TS 重跑確定性 decode**（argmax ↔ auction、ω、k_cap 全部 decode-time 現算，無 .pt、無 OOD、無 server）。layperson 三關 + 「你來當演算法」在同一份錄影上玩；口試模式 = 同頁開 Expert + provenance + self-check。唯一 heavy 前置 = producer 在 server 匯出「1 個好場景窗 × 4 個 arm」的 dense 矩陣（免 retrain）。前端第一步（decode 移植 + parity gate）**今天就能用現有 artifact 起跑**。
 
 ---
 
@@ -31,7 +31,7 @@
 - 口試「無 server 可崩」從第一天成立；「切換點」問題消失。
 - **乘數紅利**：replay lane 天生適合 `frameloop="demand"`（互動/scrub 才 render）→ 逃出 live lane 的軟體 WebGL ~9 FPS 天花板（[[project_runtime_perf_software_webgl_2026-06-22]]），這是 live-sim 皮做不到的。
 
-### D3. ablation 矩陣範圍 → **5 份錄影 × 1 個好場景窗（+1 可選）**
+### D3. ablation 矩陣範圍 → **4 份錄影 × 1 個好場景窗**（2026-07-03 使用者定案）
 
 | # | arm | 用途 | 成本 |
 |---|---|---|---|
@@ -39,11 +39,12 @@
 | 2 | route-b B-column（argmax-trained） | 真塌縮 baseline as-trained（回應「你只是在 A 的 Q 上換 decode」） | rollout+export |
 | 3 | catfish-off twin（A2） | 誠實 ablation：切 catfish ≈ 沒差（A1≈A2）、切 decode = 翻 | rollout+export |
 | 4 | RSS_max heuristic | naive/論文 benchmark；layperson 的「基本模式」敘事 | 免訓練，最便宜 |
-| 5 | (可選) DQN_scalar | raw-scalar 誠實 framing：「它加權純量更高，我們贏在 coverage/fairness+EE」當場秀 | rollout+export |
+
+使用者已決：**DQN_scalar 與 round-robin 都不收**。DQN_scalar 降為後補選項（口試風向需要 raw-scalar 現場道具時再 +1 份 rollout+export）；raw-scalar 攻擊改以口頭 + 靜態證據回應（§5 對照表）。
 
 - **k_cap sweep = 0 份額外錄影**：k_cap 是 decode-time → 前端在 hero arm 的 V 上 live 重 decode 即為掃描。win-zone（k≤~10 CI 分離）的統計圖另以**靜態圖資料**從現有 eval JSON 匯出（近乎免費，H3）。
 - **誠實標註（binding）**：live k_cap 掃 = *decode-time counterfactual*（同一份估值換分配器容量），**不是** per-k retrain 的 policy。UI 必須如此標示。若委員追問 trained-at-k，`modqn-weights-consolidated/matched-kcap/` 的已訓 arms 可事後加錄（optional 擴充，每 arm +1 份）。
-- 份數公式驗證：`1（hero 撐所有 decode-time）+ 3~4 個切換 arm` ✓（願景 §5）。
+- 份數公式驗證：`1（hero 撐所有 decode-time）+ 3 個切換 arm` ✓（願景 §5）。
 
 ### D4. 場景挑選 → **資料驅動兩段式，準則先寫死**
 
@@ -52,14 +53,13 @@ leo 端無法憑空選窗；現存 artifact 全是塌縮少換手窗（且 dense
 1. **H1 掃描（heavy）**：hero arm eval-only rollout，逐候選窗記錄：intra 數 / inter 數 / argmax-vs-auction 的 served-fraction delta / 是否含 reset-spike / 衛星可視穩定度 → 產 top-3 候選窗報表。
 2. **人工挑 1 窗**（使用者 + 我看報表）→ H2 只對選定窗做全 arm dense 匯出。
 
-**選窗準則（寫死）**：60–120s 窗內 ≥1 次 intra + ≥3 次 inter；decode 對比 served-fraction 差夠大（紅海→綠有感）；無 window-reset 假換手；k_cap 在窗內掃得出行為差。若掃不到同時滿足的窗 → 備案見 §9-R2。
+**選窗準則（寫死，事件數驅動）**：窗內 ≥1 次 intra + ≥3 次 inter；decode 對比 served-fraction 差夠大（紅海→綠有感）；無 window-reset 假換手；k_cap 在窗內掃得出行為差。
+**窗長語意（2026-07-03 澄清）**：窗長 = 達成上述事件數所需的「**模擬時鐘**」長度，與 demo 播放時間**完全解耦**——前端可任意加速/減速/scrub/重放同一窗，5 分鐘口試大半時間是旋鈕互動（同窗重算），不是線性播片。窗長上限來自 dense 匯出檔案量（每決策步 ≈ U×A×3 Q + mask + slot_cell）。90–120s（env step ≈1s → ~90–120 決策步）為初始猜測，H1 報表按實際事件密度定案。若掃不到同時滿足的窗 → 備案見 §9-R2。
 
-### D5. 主比喻 → 建議「會飛的基地台」＋「開櫃檯」雙層分工（待拍板）
+### D5. 主比喻 → **定案：「基地台」＋「開櫃檯」**（2026-07-03 使用者拍板）
 
-- **場景框架（L1，換手是什麼）＝「會飛的基地台」**：大家都懂手機連基地台；轉折只有一個——基地台在天上高速飛，所以是**塔跑不是你跑**，連線必須跳。這是 telecom 先前技術唯一成熟的敘事弧（訊號在邊緣衰減→切鄰居；dr/fable Area 2）。
+- **場景框架（L1，換手是什麼）＝「基地台」**：大家都懂手機連基地台。「會飛」**不進標籤**——唯一轉折「塔在動、你沒動，所以連線必須跳」由 L1 場景自己演出（衛星可見地飛走、訊號枯萎、跳下一顆）；這個轉折 = 學習目標①，保留在敘事與旁白，不在名稱。telecom 成熟敘事弧（訊號邊緣衰減→切鄰居；dr/fable Area 2）照用。
 - **演算法比喻（L2/L3，分配）＝「開櫃檯」**：`decode_af_physical_auction` 字面上就是 facility-location「greedy 開 ≤k_cap 個櫃檯、把人分到開著的櫃檯」——比喻與真演算法 **1:1 對映**（k_cap＝最多開幾個櫃檯；塌縮＝全部人擠一個櫃檯；ω＝店長在乎快、公平還是省電）。比喻不撒謊，Expert 開關掀開時術語能無縫接上。
-- 備選：公車搶座位（k_cap=座位數，較生活化但 facility-location 對映較弱）、帶位員（同構於開櫃檯）。
-- **使用者拍板**（§9-Q1）。
 
 ---
 
@@ -95,15 +95,16 @@ leo（靜態，無 server）
 
 | 相位 | 內容 | 依賴 | Gate |
 |---|---|---|---|
-| **P0** 資產落地（非 heavy，今天） | commit `dr/` 四份 + 本方案（此環境會吃 untracked 檔） | — | pre-commit |
-| **P1** decode 引擎（非 heavy，**可立即開跑**） | `valuation / decode_a0_argmax / decode_af_physical_auction / column_greedy_decode` → `src/modqn/decode/`（純 TS、無 render）；fixtures：(a) 現有 `dense-q-proof-window-600-130`（已驗含全 28-action 3-目標 dense Q + mask + tieBreak）跑 1000 列 argmax self-check；(b) 本機 python 執行 producer 的 decode 產 auction goldens（合成 V + 邊界案例；秒級、只 import 不改 producer） | — | 新 `validate:modqn:decode-parity`（進 static:all 自發現名冊） |
+| **P0** 資產落地（非 heavy，✅done） | commit `dr/` 四份 + 本方案（此環境會吃 untracked 檔） | — | pre-commit |
+| **P0.5** 開跑前整頓 pre-flight（非 heavy，**P1 之前**） | (a) 收債：footprint-hex WIP `8e4e1e7` 的 :3000 pixel-verify（紅綠場 legibility 地基，P2 不疊在未驗景上）；(b) gate 基線：跑一次 `validate:governance:full` + `validate:static:all`，記錄現存紅（quarantine/已知 deferred 之外的 rot 先修）；(c) 清過期 `scripts/_shot-*` 探針。**明確不做**：App.tsx 拆分、broad Phase B spec 遷移、SCSS 大掃——大掃除先行 = 已知失敗模式（4 次合併嘗試停在 planning），治理靠 per-commit gate 維持 | P0 | governance:full + static:all 基線報告 |
+| **P1** decode 引擎（非 heavy；P0.5 後，**先交 mini-SDD 過目再 code**——plan-first） | `valuation / decode_a0_argmax / decode_af_physical_auction / column_greedy_decode` → `src/modqn/decode/`（純 TS、無 render）；fixtures：(a) 現有 `dense-q-proof-window-600-130`（已驗含全 28-action 3-目標 dense Q + mask + tieBreak）跑 1000 列 argmax self-check；(b) 本機 python 執行 producer 的 decode 產 auction goldens（合成 V + 邊界案例；秒級、只 import 不改 producer） | — | 新 `validate:modqn:decode-parity`（進 static:all 自發現名冊） |
 | **P2** replay 舞台（非 heavy，structural） | 升級 parked `modqn-replay-proof` lane：逐幀重播（instanced 紅/綠 UE 點、波束錐、hex、DOM 標籤上限=主角+鄰近數個）；`frameloop=demand`；先用現有（無聊的）窗開發 | P1 | **contract 全流程**：worktree dispatch + `validate:ready`；flag budget＝重用該 lane 既有 flags |
 | **P3** 旋鈕 + 證明面板（非 heavy） | ω×3 / k_cap / decode 開關 → P1 引擎全窗重算 → toggle-slam（紅→綠分批 cascade）＋覆蓋條/公平條；**self-check chip**（重算==錄下 ✓）+ **provenance chip** + 重掛誠實揭露 chip（[[project_modqn_one_page_consolidation_2026-06-15]] 的 OPEN OBLIGATION 在此清償） | P1+P2 | validate:ready |
 | **P4** 換手事件節拍（非 heavy） | 時間軸換手標記 track（重用已保留的 top track）、慢動作 scrub、「為什麼」面板（該刻各候選 Q1/Q2/Q3 對比）、主角 UE spotlight（順收 W8 debt） | P2 | validate:ready |
 | **P5** 教學層（非 heavy） | L1/L2/L3 漸進解鎖 + 「你來當演算法」（凍幀手動指派、用**同一份錄下 V** 誠實計分 vs AI）+ 雙層標籤（白話預設、🎓Expert 掀術語）+ 導覽→沙盒 | P3+P4 + H2 資料 | validate:ready + 真人試玩 |
 | **P6** 口試硬化（非 heavy） | golden 場景預載、`vite build` 靜態離線驗證、備援錄影錄製、彩排 checklist、Expert 直達 URL、Visibility API 暫停 | P3–P5 + H2 | validate:ready + 口試機實測 |
 | **H1** 場景掃描（**heavy**，est. 數小時） | §1-D4 的掃描 job：hero arm eval rollout + 逐窗統計 → top-3 報表 | 無（可與 P1 平行） | producer 側 |
-| **H2** dense ablation 匯出（**heavy**，est. 數小時–半天） | 選定窗 × 5 arms × §4 欄位 → visual-showcase-v1 + JSONL；ntn-sim-core validator 過 + export self-check（argmax 重現 selected） | H1 + 選窗 | ntn-sim-core validate + leo P1 parity |
+| **H2** dense ablation 匯出（**heavy**，est. 數小時–半天） | 選定窗 × 4 arms × §4 欄位 → visual-showcase-v1 + JSONL；ntn-sim-core validator 過 + export self-check（argmax 重現 selected） | H1 + 選窗 | ntn-sim-core validate + leo P1 parity |
 | **H3** win-zone 圖資料（borderline，可搭 H2 順跑） | 現有 eval JSON → k_cap CI 圖靜態資料 | — | — |
 
 **Heavy 路由（global 規則）**：H1/H2 dispatch 時的 worker prompt 需前綴 server 建議（SSH 至 Ubuntu server、sync producer repo + weights、確認 Python env、開 worker session、貼 prompt；est. wall 見上表）。P1–P6 全部留在本環境。
@@ -128,8 +129,8 @@ leo（靜態，無 server）
 
 **Provenance（每份）**：arm id + weights 路徑 + env config hash + seed + 窗 id + export self-check 結果。
 
-**矩陣**：§1-D3 的 5 arms × H1 選定窗 × 全欄位。**免 retrain**（權重都在 `modqn-weights-consolidated/route-b/` 等）。
-**大小預算**：對照現有 26MB/10 幀窗，估每份 30–80MB（U=100、A≈28–144、60–120s）→ 5 份 ≈ 150–400MB；靜態離線可行，選擇性載入 + gzip；若爆量再議 binary 欄位（開發後期才處理，不前置優化）。
+**矩陣**：§1-D3 的 4 arms × H1 選定窗 × 全欄位。**免 retrain**（權重都在 `modqn-weights-consolidated/route-b/` 等）。
+**大小預算**：對照現有 26MB/10 幀窗，估每份 30–80MB（U=100、A≈28–144、60–120s）→ 4 份 ≈ 120–320MB；靜態離線可行，選擇性載入 + gzip；若爆量再議 binary 欄位（開發後期才處理，不前置優化）。
 **先跑 1-slot smoke**：H2 正式跑前先出 1 個 slot 的小樣本給 leo 驗 parity + loader，再全量（防契約來回）。
 
 ---
@@ -153,8 +154,8 @@ leo（靜態，無 server）
 | 「只有低容量才有用？」 | k_cap live 掃 + CI 圖：誠實秀 win-zone 與高 k 收斂，不藏 |
 | 「不就 catfish/reward 的功勞？」 | 切 catfish arm ≈ 沒變；切 decode = 翻 → 引擎是協調分配那步（A1≈A2） |
 | 「這是動畫還是真的？」 | Expert：self-check chip（TS 重算 argmax(ω·Q) == 錄下 selectedActionIndex，全窗逐幀）+ provenance + 指到 JSONL 列 |
-| 「跟 naive baseline 比呢？」 | 切 RSS_max 錄影（+可選 DQN_scalar） |
-| 「別人加權純量更高？」 | 切 DQN_scalar：raw scalar 它贏——我們的 win 框在 coverage/fairness + EE，畫面同刻證明（RED LINE 正面演出） |
+| 「跟 naive baseline 比呢？」 | 切 RSS_max 錄影 |
+| 「別人加權純量更高？」 | 口頭 + 靜態證據（論文表格/圖）：raw scalar 確實有簡單 DQN 更高——win 框在 coverage/fairness + EE，畫面當場證明（RED LINE 正面演出）。若口試風向需要現場道具，DQN_scalar 錄影列後補（§1-D3） |
 | 「挑過場景吧？」 | 秀 H1 掃描報表（選窗準則 + 全窗統計），窗不是手挑孤例 |
 | 「換個場景/加倍用戶再跑？」 | 誠實邊界：live 換場景 = OOD（訓練 env 與瀏覽器 env 天線模型 6–20dB 漂移）→ 解釋決策因式分解：估值錄一次、分配當場重跑；「重跑分配」我做給你看，「現場重新推論」任何人做了都是不誠實的 demo |
 | 「ω 是不是 cherry-picked？」 | 拖壞它：把 fairness 權重拉到 0 → 紅點回來；拉回 → 救回。權衡透明可操作 |
@@ -229,25 +230,27 @@ leo（靜態，無 server）
 - **R1 匯出契約增補**（`slotCell`/`decodeParams`/`auctionAudit`）需 producer 確認 rollout 時可得（理應是 decode 的現成輸入）。緩解：H2 前先 1-slot smoke（§4）。
 - **R2 掃不到理想窗**（intra+inter+對比同窗）。緩解：放寬窗長／兩窗分工（一窗講換手、一窗講 de-collapse）／inter 豐 intra 少時由 sinr-live 頁誠實分工講 intra。
 - **R3 toggle-slam 在 9 FPS 下不順**。緩解：§7 的分批離散 cascade + demand 渲染；動畫期間可臨時降 dpr<1。
-- **R4 口試機硬體未知**：若口試機也無 GPU 且 Chrome 已移除 SwiftShader fallback，3D context 可能直接起不來 → Canvas-2D 備援（大 scope）才變必要。先驗機再決定，不預付。
+- **R4 口試機硬體 → 已解（2026-07-03）**：口試機 = 使用者自己的筆電、**有 GPU** → Canvas-2D 備援**不做**。改列一項 P6 小工作：runtime GPU 偵測自適應品質（無 GPU dev 盒維持 demand+unlit+dpr1 現況；GPU 筆電可回開 AA/shadows 較豐富外觀），並在該筆電上彩排。備援錄影照舊（便宜保險）。
 - **R5 檔案量**（~150–400MB）：選擇性載入 + gzip；夠用就不做 binary。
 - **R6 k_cap counterfactual 被誤讀成 retrained**：UI 誠實標註（D3）；必要時加錄 matched-kcap arms。
 - **R7 治理稅**：P2 是 structural lane 升級，validators 會動——照 contract 走（worktree dispatch、invariant-pin 不 source-pin、flag budget、validate:ready 貼證）。
 
-### 待使用者決定
+### 使用者已決（2026-07-03 回覆，全部有答案）
 
-- **Q1 比喻拍板**：我推「會飛的基地台」+「開櫃檯」；備選公車搶座位。
-- **Q2 口試機**：自己筆電（有無獨立 GPU？）還是現場機？→ 決定 R4 備援 scope 與彩排計畫。
-- **Q3 arms**：DQN_scalar 收嗎（我推收，raw-scalar 誠實 framing 值回票價）？round-robin（我推跳過，RSS 已夠 naive）？
-- **Q4 舊 modqn live-skin 檢視 clean-delete 時點**：我推 P3 過 validate:ready 後。
-- **Q5 窗長**：60s vs 120s（我推 90–120s，5 分鐘敘事 scrub 才有肉）。
-- **Q6 L2 手動指派** 用凍結錄影幀 + 錄下 V 計分（我推，誠實且省工）vs 另做 live 玩具沙盒？
+- **Q1** 比喻 = 「**基地台**」+「開櫃檯」；「會飛」不進標籤，L1 場景自己演出「塔在動、你沒動」轉折（見 §1-D5）。
+- **Q2** 口試機 = 自己筆電、有 GPU → R4 已解（見上）。
+- **Q3** DQN_scalar 與 round-robin **都不收** → arms = 4 份；DQN_scalar 列後補選項（§1-D3）。
+- **Q4** 舊檢視 clean-delete = P3 過 validate:ready 後（照建議）。
+- **Q5** 澄清後定案：窗長 = 模擬時鐘、與播放解耦；實際窗長由**事件密度 + 檔案量**決定、H1 報表定案（見 §1-D4）。
+- **Q6** L2 = 凍結錄影幀 + 錄下 V 計分（照建議）。
+- 排程偏好：**plan-first**（P1 先交 mini-SDD 過目）+ 開跑前先做 **P0.5 整頓 pre-flight**（§3）。
 
 ---
 
-## 10. 下一步（本對話後立即）
+## 10. 下一步（2026-07-03 使用者回覆後更新）
 
-1. 使用者回 Q1–Q6（未回者按本文件建議值執行）。
-2. **P1 立即開跑**（不等任何 producer 工作；現有 dense-q window 已驗可當第一批 fixtures）。
-3. 起草 **H1 worker prompt**（heavy 標記 + server 路由前綴：SSH、sync repo+weights、Python env、est. wall），交使用者擇時派發；H2 prompt 待選窗後出。
-4. P2 前重讀 `docs/frontend-change-contract.md` 走全套（本文件 §3 已按其 gate map 排程）。
+1. ~~使用者回 Q1–Q6~~ ✅ 已回（§9）；排程改 plan-first + 先整頓。
+2. **P0.5 pre-flight**（§3）：footprint-hex pixel-verify 收債 → gates 基線（governance:full + static:all，記錄/修 rot）→ 清過期 `_shot-*` 探針。
+3. **P1 mini-SDD**：`docs/handover-simulator-p1-decode-port-sdd.md` — 模組佈局、fixture 矩陣（`a//7`、`shift_to_nonneg` per-user row-min、tol、tie、全-invalid 列等邊界案例）、parity gate 規格、驗收準則 → **使用者過目後才 code**。
+4. 起草 **H1 worker prompt**（heavy 標記 + server 路由前綴：SSH、sync repo+weights、Python env、est. wall），交使用者擇時派發；H2 prompt 待選窗後出。
+5. P2 前重讀 `docs/frontend-change-contract.md` 走全套（本文件 §3 已按其 gate map 排程）。
