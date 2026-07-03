@@ -37,9 +37,18 @@
 |---|---|---|---|
 | 1 | **route-b A-column（auction-trained）hero** | 撐全部 decode-time 互動：ω 重加權、k_cap 掃、argmax↔auction counterfactual flip（同一份 V） | rollout+export |
 | 2 | route-b B-column（argmax-trained） | 真塌縮 baseline as-trained（回應「你只是在 A 的 Q 上換 decode」） | rollout+export |
-| 3 | catfish-off twin（**A1** ⚠️） | 誠實 ablation：切 catfish ≈ 沒差（A1≈A2）、切 decode = 翻 | rollout+export |
+| 3 | catfish 對照 arm（**OPEN — 見下方 2026-07-04 更正**） | 誠實 ablation：切 catfish ≈ 沒差、切 decode = 翻 | rollout+export |
 
-> ⚠️ **2026-07-04 H1 更正**：本表原標 arm#3 = 「A2」，但 H1 掃描讀 `run_metadata` 發現 **A2 = catfish-ON（= hero，arm#1）、A1 = catfish-off**。∴ arm#3（catfish-off twin）應鎖 **A1**。不影響 H1 選窗（A1≈A2）。**派 H2 前對 producer `run_metadata` 再驗一次** 才鎖 arm。
+> ⚠️ **2026-07-04 controller 查證更正（取代前一版 `276b183` 的「A2=catfish-ON」宣稱——該宣稱經 run_metadata 直讀證實為錯）**：本機直讀 `modqn-weights-consolidated/route-b/route-b-factorial-2026-06-27/{A1,A2,B1,B2}/seed-42/run_metadata.json` →
+> - **四臂全部 `catfish_enabled=false`、`catfish_ablation="none"`**；A1/A2 `decode=auction`、B1/B2 `decode=argmax`。
+> - A1↔A2 唯一差 = `gamma_per_objective`（A1=null / A2=list）+ `value_stratified.enabled`（A1=false / A2=true）＝**MORL 訓練變體軸，非 catfish 軸**。
+> - ∴ **此樹無任何 catfish-ON arm**，「切 catfish arm ≈ 沒差」的 live 節拍**無法從這 4 臂做出來**。真 catfish-ON 在另一棵 `modqn-weights-consolidated/catfish/…`。
+>
+> **arm#3 = OPEN 決策（待使用者拍板；H2 鎖臂前必 STOP）**：
+> (a) 拉一份真 catfish-ON arm（`catfish/…`，須 auction-trained + 能在選定窗同 reset rollout — H2 先驗可行性）配 A1 → 保住 live「切 catfish」節拍；
+> (b) arm#3 = A2，節拍改講「MORL 訓練變體（per-obj γ + value-stratified）≈ 沒差、decode = 翻」＝誠實但**不同/較弱**的點（非 catfish claim），catfish 攻擊改口頭 + 靜態論文證據；
+> (c) 砍 arm#3，只留 3 臂（hero A / argmax B / RSS_max），catfish 攻擊全走口頭 + 靜態。
+> **連帶**：defense runbook §5「切 catfish arm ≈ 沒變（A1≈A2）」節拍隨 arm#3 決策改寫；「A1≈A2」現只證 MORL-variant 不敏感，**不**證 catfish 非驅動（後者須 `catfish/…` 樹或論文自身 ablation 佐證）。hero（arm#1）= A-column，A1 或 A2 依 H1 handoff（兩者皆 auction-trained catfish-off，hero 身分只在與 arm#3 相對時才要緊）。
 | 4 | RSS_max heuristic | naive/論文 benchmark；layperson 的「基本模式」敘事 | 免訓練，最便宜 |
 
 使用者已決：**DQN_scalar 與 round-robin 都不收**。DQN_scalar 降為後補選項（口試風向需要 raw-scalar 現場道具時再 +1 份 rollout+export）；raw-scalar 攻擊改以口頭 + 靜態證據回應（§5 對照表）。
