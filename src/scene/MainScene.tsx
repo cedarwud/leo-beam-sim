@@ -49,6 +49,7 @@ import { SpineParticles } from '../viz/SpineParticles';
 import { OrbitTrail } from '../viz/OrbitTrail';
 import { ServingGroundRipple } from '../viz/ServingGroundRipple';
 import { GroundScene } from '../viz/GroundScene';
+import { buildReplayServedStarvedColorMap } from './replayFieldColor';
 import { CellOverlay } from '../viz/CellOverlay';
 import { CellHandoverArcs } from '../viz/CellHandoverArcs';
 import {
@@ -538,6 +539,14 @@ function ArtifactSceneContent({
     () => sceneFrame.satellites.filter(satellite => satellite.visible),
     [sceneFrame.satellites],
   );
+  // P2 replay stage: on the modqn-replay-proof lane the recorded field is the sim's
+  // red/green LIFE-DEATH signal (starved UE = red, served = green), from the recorded
+  // per-UE SINR. The plain artifact-replay lane keeps its neutral markers.
+  const isReplayStage = sceneLane === 'modqn-replay-proof';
+  const replayFieldColorById = useMemo(
+    () => (isReplayStage ? buildReplayServedStarvedColorMap(sceneFrame.ues) : null),
+    [isReplayStage, sceneFrame.ues],
+  );
 
   return (
     <BaseSceneLayout sceneConfig={sceneConfig} controlsRef={controlsRef}>
@@ -603,9 +612,19 @@ function ArtifactSceneContent({
       <GroundScene
         ues={sceneFrame.ues
           .filter((u) => u.worldPos !== undefined)
-          .map((u) => ({ id: u.id, worldPos: u.worldPos as readonly [number, number, number] }))}
+          .map((u) => {
+            const color = replayFieldColorById?.get(u.id);
+            return {
+              id: u.id,
+              worldPos: u.worldPos as readonly [number, number, number],
+              markerColor: color?.markerColor,
+              markerEmissive: color?.markerEmissive,
+            };
+          })}
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
         markerShape={ueMarkerShape}
+        unlitMarkers={isReplayStage}
+        colorTelemetryAttr={isReplayStage ? 'replayFieldColorCount' : undefined}
       />
       {visibleSatellites.map((satellite, index) => {
         const eventRole = sceneFrame.eventRoles.bySatId.get(satellite.id);

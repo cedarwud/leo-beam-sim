@@ -53,6 +53,8 @@ interface GroundSceneProps {
    * undefined — no publish, so it stays lane-owned by whoever passes it.
    */
   readonly colorTelemetryAttr?: string;
+  /** UNLIT field mode — see {@link SecondaryUeInstancesProps.unlitMarkers}. */
+  readonly unlitMarkers?: boolean;
 }
 
 /**
@@ -99,6 +101,14 @@ interface SecondaryUeInstancesProps {
   readonly opacity: number;
   readonly scale: number;
   readonly colorTelemetryAttr?: string;
+  /**
+   * UNLIT field mode (P2 replay stage): render the instanced markers with an
+   * unlit `meshBasicMaterial` so the per-instance colour IS the final pixel colour
+   * (red starved / green served reads true — no fixed emissive wash) and the field
+   * is cheaper (basic < standard, matches the demand-render perf budget). Default
+   * (undefined/false) keeps the lit standard material for the live mosaic.
+   */
+  readonly unlitMarkers?: boolean;
 }
 
 interface ShaderNumberUniform {
@@ -247,6 +257,42 @@ function createSecondaryContentionMaterial(
   return material;
 }
 
+/**
+ * Unlit field material (P2 replay stage): drives the emissive straight from the
+ * per-instance colour so the red/green field POPS regardless of scene lighting
+ * (a plain `vertexColors` diffuse stays dark in this dim scene, and the standard
+ * material's fixed emissive would wash it teal). `vColor` carries the InstancedMesh
+ * `instanceColor` when `vertexColors` is on. Unlit look, cheap, colour-true.
+ */
+function createUnlitFieldMaterial(): THREE.MeshStandardMaterial {
+  const material = new THREE.MeshStandardMaterial({
+    color: '#ffffff',
+    // NB: do NOT set vertexColors here. The InstancedMesh's instanceColor already
+    // defines USE_INSTANCING_COLOR → `varying vec3 vColor = instanceColor`. Adding
+    // vertexColors (USE_COLOR) makes the shader ALSO do `vColor *= color` against the
+    // UNBOUND geometry `color` attribute (defaults to 0,0,0), which zeroes vColor →
+    // the whole field renders black. instanceColor alone gives the true per-UE colour.
+    transparent: true,
+    opacity: 1,
+    blending: THREE.NormalBlending,
+    toneMapped: false,
+  });
+  material.onBeforeCompile = (shader) => {
+    // vColor here IS the per-instance colour (from USE_INSTANCING_COLOR). Drive the
+    // emissive from it so the field is unlit-bright and colour-true (red starved /
+    // green served) regardless of the dim scene lighting.
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <emissivemap_fragment>',
+      ['#include <emissivemap_fragment>', 'totalEmissiveRadiance = vColor.rgb;'].join('\n'),
+    );
+  };
+  // NB: do NOT pin customProgramCacheKey to a constant here — that would cache the
+  // program compiled BEFORE the InstancedMesh's instanceColor exists (USE_INSTANCING_COLOR
+  // undefined) and reuse it after, so vColor never picks up the per-instance colour and the
+  // field renders black. Three's default cache key already folds in the shader defines.
+  return material;
+}
+
 function SecondaryUePlainInstances({
   ues,
   ueMarkerMultiplier,
@@ -254,11 +300,20 @@ function SecondaryUePlainInstances({
   opacity,
   scale,
   colorTelemetryAttr,
+  unlitMarkers = false,
 }: SecondaryUeInstancesProps) {
   const gl = useThree(state => state.gl);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const color = useMemo(() => new THREE.Color(), []);
+  const unlitMaterial = useMemo(
+    () => (unlitMarkers ? createUnlitFieldMaterial() : null),
+    [unlitMarkers],
+  );
+  useEffect(() => () => { unlitMaterial?.dispose(); }, [unlitMaterial]);
+  useLayoutEffect(() => {
+    if (unlitMaterial) unlitMaterial.opacity = opacity;
+  }, [unlitMaterial, opacity]);
   const markerRadius = MARKER_RADIUS * 0.45 * ueMarkerMultiplier * scale;
   const markerHeight = MARKER_HEIGHT * 0.7 * ueMarkerMultiplier * scale;
 
@@ -310,15 +365,20 @@ function SecondaryUePlainInstances({
           ]}
         />
       )}
-      <meshStandardMaterial
-        color="#ffffff"
-        emissive={SECONDARY_EMISSIVE}
-        emissiveIntensity={1.4}
-        vertexColors
-        transparent
-        opacity={opacity}
-        blending={THREE.NormalBlending}
-      />
+      {unlitMaterial ? (
+        // P2 replay stage: unlit — emissive = per-instance colour (red/green pops).
+        <primitive object={unlitMaterial} attach="material" />
+      ) : (
+        <meshStandardMaterial
+          color="#ffffff"
+          emissive={SECONDARY_EMISSIVE}
+          emissiveIntensity={1.4}
+          vertexColors
+          transparent
+          opacity={opacity}
+          blending={THREE.NormalBlending}
+        />
+      )}
     </instancedMesh>
   );
 }
@@ -447,6 +507,7 @@ export function GroundScene({
   secondaryOpacity = 0.9,
   secondaryScale = 1,
   colorTelemetryAttr,
+  unlitMarkers = false,
 }: GroundSceneProps) {
   const secondaryUes = useMemo(
     () => ues.slice(1),
@@ -476,6 +537,7 @@ export function GroundScene({
         opacity={secondaryOpacity}
         scale={secondaryScale}
         colorTelemetryAttr={colorTelemetryAttr}
+        unlitMarkers={unlitMarkers}
       />
     </group>
   );
