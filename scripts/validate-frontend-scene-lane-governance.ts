@@ -61,7 +61,6 @@ function tabKeys<T extends string>(tabs: readonly { readonly key: T }[]): T[] {
 function renderPlan(
   sceneLane: Parameters<typeof resolveSceneLaneRenderPlan>[0]['sceneLane'],
   sceneSource: Parameters<typeof resolveSceneLaneRenderPlan>[0]['sceneSource'],
-  replayProofLayerRequested = false,
   cinematicMode: Parameters<typeof resolveSceneLaneRenderPlan>[0]['cinematicMode'] = 'spotlight',
   modqnServiceAllocationEnabled = false,
 ): ReturnType<typeof resolveSceneLaneRenderPlan> {
@@ -80,7 +79,6 @@ function renderPlan(
     paused: false,
     reducedMotion: false,
     recentHoActive: false,
-    replayProofLayerRequested,
     modqnServiceAllocationEnabled,
   });
 }
@@ -197,7 +195,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(sinr.effectiveCinematicMode, 'spotlight', 'SINR live may keep spotlight mode');
   assert.equal(sinr.showUav, true, 'SINR live should own UAV visibility');
   assert.equal(sinr.showCellOverlay, false, 'SINR live should not own MODQN cell overlay');
-  assert.equal(sinr.showReplayProofLayer, false, 'SINR live should not own MODQN replay proof');
+  assert.ok(!('showReplayProofLayer' in sinr), 'render plan exposes NO replay-board flag on any lane (the ModqnReplaySceneLayer board was clean-deleted, P3 slice-3)');
   assert.equal(sinr.handoverStoryLayerPolicy, 'sinr-live', 'SINR live should keep the SINR handover story path');
   assert.equal(sinr.showProfileHandoverStoryLayer, false, 'SINR live must not mount the profile-derived story overlay');
 
@@ -236,7 +234,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   );
   // Producer un-park / dev override (`?modqnServiceAllocation=1`) flips the family
   // ON — but ONLY on the cell lane (the gate is AND-ed with showCellOverlay).
-  const cellPreviewUnparked = renderPlan('modqn-live-cell-preview', 'live-sim', false, 'spotlight', true);
+  const cellPreviewUnparked = renderPlan('modqn-live-cell-preview', 'live-sim', 'spotlight', true);
   assert.equal(
     cellPreviewUnparked.showModqnServiceAllocation,
     true,
@@ -245,17 +243,17 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   // Enabling the gate can never leak the family onto a SINR / replay-proof /
   // artifact lane — those never own the MODQN cell overlay.
   assert.equal(
-    renderPlan('sinr-live', 'live-sim', false, 'spotlight', true).showModqnServiceAllocation,
+    renderPlan('sinr-live', 'live-sim', 'spotlight', true).showModqnServiceAllocation,
     false,
     'SINR live must never own the MODQN service-allocation family even when the producer gate is enabled',
   );
   assert.equal(
-    renderPlan('modqn-replay-proof', 'live-sim', true, 'spotlight', true).showModqnServiceAllocation,
+    renderPlan('modqn-replay-proof', 'live-sim', 'spotlight', true).showModqnServiceAllocation,
     false,
     'MODQN replay proof must never own the service-allocation family even when the producer gate is enabled',
   );
   assert.equal(
-    renderPlan('artifact-replay', 'artifact-replay', false, 'spotlight', true).showModqnServiceAllocation,
+    renderPlan('artifact-replay', 'artifact-replay', 'spotlight', true).showModqnServiceAllocation,
     false,
     'artifact replay must never own the MODQN service-allocation family even when the producer gate is enabled',
   );
@@ -264,14 +262,15 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   // (artifact-backed frame), so its render plan is resolved with the artifact
   // source. It is source-compatible and marked as an artifact replay (drives the
   // frameloop=demand recorded playback + the FPS diagnostic), but it is NOT a live
-  // scene — the retired live-overlay board (`showReplayProofLayer`) stays OFF
-  // (clean-delete deferred to P3), and it never inherits the sinr-live cones /
-  // effects / spotlight. The live-sim combo is now source-INcompatible (fail-closed).
-  const proof = renderPlan('modqn-replay-proof', 'artifact-replay', true);
+  // scene — the live-overlay board (the `ModqnReplaySceneLayer` + its
+  // `showReplayProofLayer` flag) was clean-deleted in P3 slice-3, superseded by the
+  // recorded field stage, and the lane never inherits the sinr-live cones / effects
+  // / spotlight. The live-sim combo is source-INcompatible (fail-closed).
+  const proof = renderPlan('modqn-replay-proof', 'artifact-replay');
   assert.equal(proof.sourceCompatible, true, 'MODQN proof lane recorded-window (artifact) source should be compatible');
   assert.equal(proof.isArtifactReplay, true, 'MODQN proof lane replays a recorded artifact frame');
   assert.equal(proof.isLiveScene, false, 'MODQN proof lane is a recorded replay, never a live scene');
-  assert.equal(proof.showReplayProofLayer, false, 'MODQN proof lane retires the live-overlay board (superseded by the recorded field stage; clean-delete deferred to P3)');
+  assert.ok(!('showReplayProofLayer' in proof), 'MODQN proof lane render plan exposes no replay-board flag (board clean-deleted P3 slice-3; the lane now plays the recorded field stage)');
   assert.equal(proof.showCellOverlay, false, 'MODQN proof lane should not render cell overlay');
   assert.equal(proof.showLiveBeamCones, false, 'MODQN proof lane should not render legacy live beam cones');
   assert.equal(proof.showLiveSceneEffects, false, 'MODQN proof lane should not inherit SINR live effects');
@@ -279,16 +278,16 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
   assert.equal(proof.effectiveCinematicMode, 'off', 'MODQN proof lane forces cinematic mode off unless director is explicitly requested');
   assert.equal(proof.handoverStoryLayerPolicy, 'disabled', 'MODQN proof lane recorded stage has no live/profile handover story layer (P4 adds the recorded beat track)');
   assert.equal(proof.showProfileHandoverStoryLayer, false, 'MODQN proof lane must not mount the profile-derived story overlay');
-  const proofLiveIncompatible = renderPlan('modqn-replay-proof', 'live-sim', true);
+  const proofLiveIncompatible = renderPlan('modqn-replay-proof', 'live-sim');
   assert.equal(proofLiveIncompatible.sourceCompatible, false, 'MODQN proof lane live-sim source is now fail-closed (recorded replay only)');
-  assert.equal(proofLiveIncompatible.showReplayProofLayer, false, 'MODQN proof lane never renders on a live-sim frame');
+  assert.ok(!('showReplayProofLayer' in proofLiveIncompatible), 'MODQN proof lane on a live-sim frame exposes no replay-board flag (fail-closed: sourceCompatible already false above)');
 
   const artifact = renderPlan('artifact-replay', 'artifact-replay');
   assert.equal(artifact.sourceCompatible, true, 'artifact replay source should be compatible');
   assert.equal(artifact.isArtifactReplay, true, 'artifact replay plan should mark artifact replay');
   assert.equal(artifact.showArtifactFpsCounter, true, 'artifact replay may expose artifact FPS diagnostics');
   assert.equal(artifact.showCellOverlay, false, 'artifact replay should not render live cell overlay');
-  assert.equal(artifact.showReplayProofLayer, false, 'artifact replay should not render MODQN proof layer');
+  assert.ok(!('showReplayProofLayer' in artifact), 'artifact replay render plan exposes no replay-board flag');
   assert.equal(artifact.showCinematicSpotlight, false, 'artifact replay should not inherit spotlight effects');
   assert.equal(artifact.effectiveCinematicMode, 'off', 'artifact replay should force cinematic mode off');
   assert.equal(artifact.handoverStoryLayerPolicy, 'artifact-owned', 'artifact replay should keep handover story artifact-owned');
@@ -312,7 +311,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'SINR live owns the SINR-serving mosaic as an always-on ambient default (spotlight mode, no director)',
   );
   assert.equal(
-    renderPlan('sinr-live', 'live-sim', false, 'director').showSinrServingMosaic,
+    renderPlan('sinr-live', 'live-sim', 'director').showSinrServingMosaic,
     true,
     'SINR-serving mosaic stays on under director focus too (it is the ambient base, not focus-scoped)',
   );
@@ -322,7 +321,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'MODQN cell preview mounts the SINR-serving mosaic (consolidation: MODQN renders like SINR)',
   );
   assert.equal(
-    renderPlan('modqn-replay-proof', 'live-sim', true).showSinrServingMosaic,
+    renderPlan('modqn-replay-proof', 'live-sim').showSinrServingMosaic,
     false,
     'MODQN replay proof must stay inert for the SINR-serving mosaic (Rule#8)',
   );
@@ -347,7 +346,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'S5-2: SINR live mounts the cell-truth cones as its beam render (steered SatelliteBeams retired on the lane)',
   );
   assert.equal(
-    renderPlan('sinr-live', 'live-sim', false, 'director').showSinrLiveCellBeams,
+    renderPlan('sinr-live', 'live-sim', 'director').showSinrLiveCellBeams,
     true,
     'S5-2: cell-truth cones stay mounted under director focus too',
   );
@@ -357,7 +356,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'MODQN cell preview mounts the cell-beam render flag (consolidation: MODQN renders like SINR)',
   );
   assert.equal(
-    renderPlan('modqn-replay-proof', 'live-sim', true).showSinrLiveCellBeams,
+    renderPlan('modqn-replay-proof', 'live-sim').showSinrLiveCellBeams,
     false,
     'MODQN replay proof must stay inert for the cell-truth cones (Rule#8)',
   );
@@ -377,7 +376,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'G2c: SINR live owns the ambient live-handover pulse as an always-on ambient default (no director arm)',
   );
   assert.equal(
-    renderPlan('sinr-live', 'live-sim', false, 'director').showSinrLiveHandoverPulse,
+    renderPlan('sinr-live', 'live-sim', 'director').showSinrLiveHandoverPulse,
     true,
     'G2c: the live pulse stays on under director focus too (it is decoupled from the cinematic gate, not focus-scoped)',
   );
@@ -387,7 +386,7 @@ assert.equal(resolveSceneLaneUeMarkerShape('artifact-replay'), 'sphere');
     'MODQN cell preview mounts the SINR live-handover pulse (consolidation: MODQN renders like SINR)',
   );
   assert.equal(
-    renderPlan('modqn-replay-proof', 'live-sim', true).showSinrLiveHandoverPulse,
+    renderPlan('modqn-replay-proof', 'live-sim').showSinrLiveHandoverPulse,
     false,
     'MODQN replay proof must stay inert for the SINR live-handover pulse (Rule#8)',
   );
@@ -550,8 +549,6 @@ const sceneTelemetrySource = readRepoFile('src/scene/SceneTelemetry.tsx');
 const simStatePublisherSource = readRepoFile('src/scene/useSimStatePublisher.ts');
 const panelStateSource = readRepoFile('src/scene/panelState.ts');
 const sceneLaneRenderPlanSource = readRepoFile('src/scene/sceneLaneRenderPlan.ts');
-const replayLayerSource = readRepoFile('src/scene/modqn-replay-visuals/index.tsx');
-const replayTelemetrySource = readRepoFile('src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx');
 const algorithmDockSource = readRepoFile('src/showcase/dashboard/AlgorithmDock.tsx');
 const algorithmDashboardSource = readRepoFile('src/showcase/dashboard/AlgorithmDashboard.tsx');
 const liveTelemetryPanelSource = readRepoFile('src/showcase/dashboard/LiveTelemetryPanel.tsx');
@@ -640,8 +637,12 @@ assertNotContains(appRuntimeConfigSource, 'LIVE_SIM_TIMELINE_DURATION_SEC = 1200
 tangleLockGroup('QUAR-S6-BUS', () => {
 assertContains(appSource, "from './app/sceneLane'", 'App scene lane import');
 assertContains(appSource, 'modqnReplayProofRequested: modqnReplayProofRequestActive', 'App explicit proof request into scene lane resolver');
-assertContains(appSource, 'shouldRenderModqnReplayScene(sceneLane)', 'App replay proof lane gate');
-assertContains(appSource, 'showModqnReplayScene={showModqnReplayScene}', 'App MainScene replay prop');
+// P3 slice-3: the `shouldRenderModqnReplayScene(sceneLane)` App gate + the
+// `showModqnReplayScene={showModqnReplayScene}` MainScene prop were the wiring for
+// the clean-deleted ModqnReplaySceneLayer board; their source-text pins are removed
+// with the board. The lane-authority invariant survives (shouldRenderModqnReplayScene
+// asserts above + the modqnReplayProofRequested request pin here + the appMode-alone
+// negative control below).
 assertContains(appSource, 'sceneLane={sceneLane}', 'App MainScene lane prop');
 assertContains(appSource, 'sceneLane={sceneLane}', 'App ControlBar lane prop');
 assertContains(appSource, "from './app/timelineRailAuthority'", 'App imports timeline and rail authority module');
@@ -1400,8 +1401,8 @@ assertContains(
 });
 assertNotContains(
   appSource,
-  "showModqnReplayScene={appMode === 'modqn-demo'}",
-  'App must not mount MODQN replay proof from appMode alone',
+  "modqnReplayProofRequested: appMode === 'modqn-demo'",
+  'App must not resolve the MODQN replay-proof lane from appMode alone (the lane requires an explicit modqnReplayProofRequested toggle; ModqnReplaySceneLayer board clean-deleted P3 slice-3)',
 );
 assertContains(appRuntimeModelSource, 'MODQN_LEFT_SIDEBAR_TABS', 'App runtime model MODQN left tab (S4 Evidence only; Setup moved to the Advanced drawer)');
 assertContains(appRuntimeModelSource, "key: 'evidence'", 'App runtime model exposes the Evidence / Replay left tab');
@@ -2793,40 +2794,12 @@ for (const [needle, label] of [
 ] as const) {
   assertContains(baseSceneLayoutSource, needle.replace('\\n', '\n'), `BaseSceneLayout should source-gate ${label}`);
 }
-assertContains(mainSceneSource, '<ModqnReplaySceneLayer', 'MainScene replay layer host');
-assertContains(mainSceneSource, 'showBoard={showReplayProofLayer}', 'MainScene render-plan-gated replay layer');
+// P3 slice-3: the `<ModqnReplaySceneLayer` mount + `showBoard={showReplayProofLayer}`
+// gate + the board's `useReplaySceneTelemetry` / source-gap render-string pins were
+// removed with the clean-deleted board. The SimState-publisher artifact fail-closed
+// asserts below are unrelated to the board and stay.
 assertContains(mainSceneSource, "enabled: sceneFrame.sceneSource !== 'artifact-replay'", 'MainScene disables live SimState publisher for artifact replay');
 assertContains(readRepoFile('src/scene/useSimStatePublisher.ts'), 'if (!enabled) return;', 'live SimState publisher supports artifact fail-closed disable');
-assertContains(
-  replayLayerSource,
-  'useReplaySceneTelemetry(visualState, showBoard)',
-  'Replay telemetry should follow the replay layer gate',
-);
-assertContains(
-  replayTelemetrySource,
-  'removeReplayCanvasAttributes(canvas)',
-  'Replay telemetry should clear canvas attributes outside proof lane',
-);
-assertContains(
-  replayTelemetrySource,
-  'data-handover-story-source-gap',
-  'Replay telemetry should report beam-hopping source gaps',
-);
-assertContains(
-  replayTelemetrySource,
-  "data-handover-story-layer', 'modqn-replay-source-backed'",
-  'Replay telemetry should report source-backed handover story policy',
-);
-assertContains(
-  replayTelemetrySource,
-  "data-handover-story-fake-beam-hopping', '0'",
-  'Replay telemetry should explicitly reject fake beam hopping',
-);
-assertContains(
-  replayLayerSource,
-  'beam hopping schedule: source gap',
-  'Replay scene layer should display beam-hopping source gap copy',
-);
 
 for (const [source, label] of [
   [governanceDoc, 'frontend render governance doc'],

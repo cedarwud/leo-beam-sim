@@ -395,14 +395,6 @@ console.log('\n(k) Evidence / telemetry mode gating');
     path.resolve(import.meta.dirname ?? process.cwd(), '../src/ui/InfoPanel.tsx'),
     'utf8',
   );
-  const replayLayerSrc = fs.readFileSync(
-    path.resolve(import.meta.dirname ?? process.cwd(), '../src/scene/modqn-replay-visuals/index.tsx'),
-    'utf8',
-  );
-  const telemetrySrc = fs.readFileSync(
-    path.resolve(import.meta.dirname ?? process.cwd(), '../src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx'),
-    'utf8',
-  );
   assert(
     appSrc.includes('readInitialRuntimeState') && appRuntimeModelSrc.includes('selectedProfileId: DEFAULT_PROFILE_ID')
     && !appSrc.includes('selectedProfileId: handoverMode === \'decision-overlay-on-live-sinr\''),
@@ -447,10 +439,8 @@ console.log('\n(k) Evidence / telemetry mode gating');
     && appSrc.includes('appMode,')
     && appSrc.includes('sceneSource,')
     && appSrc.includes('modqnReplayProofRequested: modqnReplayProofRequestActive')
-    && appSrc.includes('shouldRenderModqnReplayScene(sceneLane)')
-    && appSrc.includes('showModqnReplayScene={showModqnReplayScene}')
-    && !appSrc.includes("showModqnReplayScene={appMode === 'modqn-demo'}"),
-    'App.tsx mounts the display-only replay scene layer only through the explicit scene lane gate',
+    && !appSrc.includes("modqnReplayProofRequested: appMode === 'modqn-demo'"),
+    'App.tsx resolves the MODQN replay-proof lane only through the explicit scene lane gate + an explicit proof request, never from appMode alone (ModqnReplaySceneLayer board clean-deleted P3 slice-3)',
   );
   // S-ADV-4: the trace BUILDER (buildDecisionTrace + reScalarize +
   // scoreModqnPolicyCandidate) now lives in src/ui/modqnDecisionTrace.ts; only the
@@ -483,14 +473,8 @@ console.log('\n(k) Evidence / telemetry mode gating');
     && !infoSrc.includes('paper-faithful replay'),
     'InfoPanel decision-overlay copy has no hard-coded paper/pre-trained provenance claim',
   );
-  assert(
-    replayLayerSrc.includes('useReplaySceneTelemetry(visualState, showBoard)'),
-    'MODQN replay canvas telemetry is gated by showBoard',
-  );
-  assert(
-    telemetrySrc.includes('if (!enabled)') && telemetrySrc.includes('removeReplayCanvasAttributes(canvas)'),
-    'Replay telemetry removes canvas attributes when MODQN replay layer is inactive',
-  );
+  // P3 slice-3: the board telemetry pins (useReplaySceneTelemetry / showBoard gate /
+  // removeReplayCanvasAttributes) were removed with the clean-deleted board.
 }
 
 // ---------------------------------------------------------------------------

@@ -149,12 +149,10 @@ assert.ok(
   'replay scene truth audit fail-closes beam hopping animation',
 );
 
-const replayTelemetry = read('src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx');
-assert.ok(
-  replayTelemetry.includes("data-handover-story-fake-beam-hopping', '0'"),
-  'replay telemetry explicitly rejects fake beam hopping',
-);
-
+// P3 slice-3: the board telemetry fake-beam-hopping pin was removed with the
+// clean-deleted board; the fail-closed provenance invariant is carried by the
+// preserved plain-data helper (sceneVisuals) asserts above + the cue-panel
+// source-gap asserts below.
 const replayCuePanel = read('src/ui/ModqnReplayCuePanel.tsx');
 assert.ok(
   replayCuePanel.includes('createCurrentModqnReplayProofSourceGaps'),

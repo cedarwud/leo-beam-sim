@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -19,16 +19,6 @@ const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function readRepoFile(path: string): string {
   return readFileSync(join(ROOT_DIR, path), 'utf8');
-}
-
-function readReplaySceneLayerSources(): string {
-  const entry = readRepoFile('src/scene/ModqnReplaySceneLayer.tsx');
-  const dirPath = join(ROOT_DIR, 'src/scene/modqn-replay-visuals');
-  const files = readdirSync(dirPath)
-    .filter(name => name.endsWith('.tsx') || name.endsWith('.ts'))
-    .sort();
-  const parts = files.map(name => readFileSync(join(dirPath, name), 'utf8'));
-  return [entry, ...parts].join('\n');
 }
 
 function assertContains(source: string, needle: string, label: string): void {
@@ -417,15 +407,15 @@ function assertSceneBridgeSource(): void {
   const appSource = readRepoFile('src/App.tsx');
   const railBuildersSource = readRepoFile('src/app/handoverRailBuilders.ts');
   const mainSceneSource = readRepoFile('src/scene/MainScene.tsx');
-  const sceneLayerSource = readReplaySceneLayerSources();
   const helperSource = readRepoFile('src/scene/modqnReplaySceneVisuals.ts');
   const cuePanelSource = readRepoFile('src/ui/ModqnReplayCuePanel.tsx');
 
-  assertContains(
-    appSource,
-    'modqnReplayDisplayState={renderedModqnReplayDisplayState}',
-    'App replay-to-scene bridge',
-  );
+  // P3 slice-3: the ModqnReplaySceneLayer board was clean-deleted, so the board
+  // render-string pins (via the retired readReplaySceneLayerSources) and the App→
+  // MainScene→board wiring pins are gone. This function SHRINKS to the surviving
+  // invariants: the App replay-cue/omega bridge, the rail bridge, the plain-data
+  // helper purity, the cue-panel truth hooks, and the MainScene
+  // no-fake-replay-geometry / lane-gating negative controls.
   assertContains(
     appSource,
     "if (handoverMode !== 'decision-overlay-on-live-sinr')",
@@ -461,35 +451,15 @@ function assertSceneBridgeSource(): void {
     'modqnReplayProofRequested: modqnReplayProofRequestActive',
     'App must resolve the scene lane before mounting replay scene proof',
   );
-  assertContains(
-    appSource,
-    'shouldRenderModqnReplayScene(sceneLane)',
-    'App must gate replay scene proof by scene lane',
-  );
-  assertContains(
-    appSource,
-    'showModqnReplayScene={showModqnReplayScene}',
-    'App must pass lane-gated replay proof state into MainScene',
-  );
+  // P3 slice-3: the `shouldRenderModqnReplayScene(sceneLane)` gate + the
+  // `showModqnReplayScene={showModqnReplayScene}` MainScene prop + the MainScene
+  // board import/mount/worldUnitsPerKm pins were the wiring for the clean-deleted
+  // board — removed with it. The appMode-alone negative control survives (repointed
+  // to the surviving lane-request symbol).
   assertNotContains(
     appSource,
-    "showModqnReplayScene={appMode === 'modqn-demo'}",
-    'App must not mount replay scene proof from broad MODQN mode alone',
-  );
-  assertContains(
-    mainSceneSource,
-    'import { ModqnReplaySceneLayer }',
-    'MainScene scene layer import',
-  );
-  assertContains(
-    mainSceneSource,
-    '<ModqnReplaySceneLayer',
-    'MainScene R3F content',
-  );
-  assertContains(
-    mainSceneSource,
-    'worldUnitsPerKm={replayWorldUnitsPerKm}',
-    'MainScene should pass scene scale into the replay truth layer',
+    "modqnReplayProofRequested: appMode === 'modqn-demo'",
+    'App must not resolve the MODQN replay-proof lane from broad MODQN mode alone (explicit request required; board clean-deleted P3 slice-3)',
   );
   assertNotContains(
     mainSceneSource,
@@ -506,41 +476,8 @@ function assertSceneBridgeSource(): void {
     'modqnProducerContextSatellites.map',
     'MODQN replay must not render compressed context satellite lanes',
   );
-  assertNotContains(
-    sceneLayerSource,
-    'producerContextSatellitePositions',
-    'MODQN replay must not use fallback/static producer-context satellite positions',
-  );
-  assertContains(
-    sceneLayerSource,
-    'SatelliteMarker',
-    'R3F replay layer may render source-backed producer satellite states',
-  );
-  assertContains(
-    sceneLayerSource,
-    'data-modqn-replay-producer-satellite-state-count',
-    'MODQN replay should publish producer satellite state count for browser smoke',
-  );
-  assertContains(
-    sceneLayerSource,
-    'data-modqn-replay-rendered-satellite-state-count',
-    'MODQN replay should publish rendered satellite state count for browser smoke',
-  );
-  assertContains(
-    sceneLayerSource,
-    'data-modqn-replay-slot-decision-row-count',
-    'MODQN replay should publish source slot row count for browser smoke',
-  );
-  assertContains(
-    sceneLayerSource,
-    'data-modqn-replay-truth-level',
-    'MODQN replay should publish highest truth level for browser smoke',
-  );
-  assertContains(
-    sceneLayerSource,
-    'data-modqn-replay-source-gap-count',
-    'MODQN replay should publish source-gap count for browser smoke',
-  );
+  // P3 slice-3: board render-string + telemetry pins (producer-context, SatelliteMarker,
+  // data-modqn-replay-* browser-smoke attrs) removed with the clean-deleted board.
   assertContains(
     readRepoFile('src/scene/sceneLaneRenderPlan.ts'),
     "input.sceneLane === 'modqn-replay-proof'",
@@ -563,55 +500,10 @@ function assertSceneBridgeSource(): void {
     '{showSinrLiveCellBeams && (',
     'MODQN replay must not render the live SINR beam cones (they are sinr-live-lane-gated; the legacy steered block is retired)',
   );
-  assertContains(
-    sceneLayerSource,
-    'modqn-replay-scene-beam-discs',
-    'R3F replay beam activation layer',
-  );
-  assertContains(sceneLayerSource, 'producer-beam-state', 'R3F replay should consume producer beamState geometry when present');
-  assertContains(sceneLayerSource, 'producer-display-proxy', 'R3F replay should render display-only producer geometry as a proxy layer');
-  assertContains(sceneLayerSource, 'modqn-replay-proxy-beam-links', 'R3F replay should show proxy satellite-to-footprint beam links');
-  assertContains(sceneLayerSource, 'modqn-replay-scene-beam-footprint', 'R3F replay source-backed beam footprints');
-  assertContains(sceneLayerSource, 'modqn-replay-focused-user', 'R3F replay focused UE marker');
-  assertNotContains(sceneLayerSource, 'modqn-replay-scene-beam-cone', 'R3F replay must not render consumer-invented satellite-to-footprint cones');
-  assertContains(sceneLayerSource, '<circleGeometry', 'R3F replay beam footprints');
-  assertContains(sceneLayerSource, '<ringGeometry', 'R3F replay beam activation rings');
-  assertContains(
-    sceneLayerSource,
-    'modqn-replay-scene-active-beam-pulse',
-    'R3F replay active beam pulse',
-  );
-  assertNotContains(sceneLayerSource, '<planeGeometry', 'R3F replay board must not render a board plane');
-  assertContains(
-    sceneLayerSource,
-    '<Line',
-    'R3F replay switch path',
-  );
-  assertContains(
-    sceneLayerSource,
-    'data-modqn-replay-scene-renderer',
-    'canvas validation attributes',
-  );
-  assertContains(
-    sceneLayerSource,
-    'useReplaySceneTelemetry(visualState, showBoard)',
-    'canvas validation attributes must be inactive outside modqn-replay mode',
-  );
-  assertContains(
-    sceneLayerSource,
-    'if (!enabled)',
-    'canvas validation attributes must be removable when replay layer is inactive',
-  );
-  assertContains(
-    sceneLayerSource,
-    'r3f-world-layer',
-    'canvas validation attributes',
-  );
-  assertNotContains(
-    sceneLayerSource,
-    'ModqnReplaySceneOverlay',
-    'scene layer must not delegate proof to the DOM overlay component',
-  );
+  // P3 slice-3: the board R3F render-string pins (beam-discs/footprints/rings/lines/
+  // active-beam-pulse/no-board-plane/no-consumer-cone/no-DOM-overlay + the canvas
+  // telemetry gate) were removed with the clean-deleted board. The plain-data helper
+  // purity + cue-panel truth-hook invariants below are retained.
   assertNotContains(
     helperSource,
     'THREE',

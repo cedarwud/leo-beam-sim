@@ -193,7 +193,6 @@ import {
 } from './app/appPersistence';
 import {
   resolveSceneLane,
-  shouldRenderModqnReplayScene,
   type SceneLane,
 } from './app/sceneLane';
 import { MODQN_SERVICE_ALLOCATION_PRODUCER_READY } from './scene/sceneLaneRenderPlan';
@@ -298,7 +297,6 @@ export function App() {
     }),
     [appMode, modqnReplayProofRequestActive, sceneSource],
   );
-  const showModqnReplayScene = shouldRenderModqnReplayScene(sceneLane);
   // P2 replay stage: the modqn-replay-proof lane plays the RECORDED dense-Q window
   // (an artifact-backed frame via showcaseArtifactToScene) — the same loader +
   // ShowcaseReplayController path the artifact-replay lane uses, just pointed at the
@@ -2104,8 +2102,6 @@ export function App() {
               profile={effectiveProfile}
               runtime={runtime}
               visualScaleMultipliers={visualScaleMultipliers}
-              modqnReplayDisplayState={renderedModqnReplayDisplayState}
-              showModqnReplayScene={showModqnReplayScene}
               sceneLane={sceneLane}
               onSimUpdate={handleSimUpdate}
               onLiveSeekLanded={handleLiveSeekLanded}

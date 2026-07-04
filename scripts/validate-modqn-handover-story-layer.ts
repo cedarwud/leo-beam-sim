@@ -88,7 +88,6 @@ function countOccurrences(source: string, needle: string): number {
 function renderPlan(
   sceneLane: Parameters<typeof resolveSceneLaneRenderPlan>[0]['sceneLane'],
   sceneSource: Parameters<typeof resolveSceneLaneRenderPlan>[0]['sceneSource'],
-  replayProofLayerRequested = false,
 ): ReturnType<typeof resolveSceneLaneRenderPlan> {
   return resolveSceneLaneRenderPlan({
     sceneLane,
@@ -105,7 +104,6 @@ function renderPlan(
     paused: false,
     reducedMotion: false,
     recentHoActive: false,
-    replayProofLayerRequested,
   });
 }
 
@@ -153,23 +151,24 @@ function validateLanePolicies(): void {
   const preview = renderPlan('modqn-live-cell-preview', 'live-sim');
   expectEqual(preview.handoverStoryLayerPolicy, 'profile-derived-demo', 'MODQN live cell preview owns profile-derived story layer');
   expectEqual(preview.showProfileHandoverStoryLayer, true, 'MODQN live cell preview mounts profile-derived story layer');
-  expectEqual(preview.showReplayProofLayer, false, 'MODQN live cell preview does not mount replay proof');
+  expect(!('showReplayProofLayer' in preview), 'MODQN live cell preview render plan exposes no replay-board flag (board clean-deleted P3 slice-3)');
 
   // P2 replay stage: the MODQN proof lane now plays the RECORDED dense-Q window
   // (artifact-backed frame via showcaseArtifactToScene), so its render plan
   // resolves as an artifact replay — NOT a live scene. The live/profile/
   // source-backed handover story layer is gone (policy 'disabled'; the recorded
-  // beat track is P4), and the retired live-overlay board (showReplayProofLayer)
-  // stays OFF (clean-delete deferred to P3). Mirrors the scene-lane-governance sync.
-  const proof = renderPlan('modqn-replay-proof', 'artifact-replay', true);
+  // beat track is P4), and the live-overlay board (the ModqnReplaySceneLayer + its
+  // showReplayProofLayer flag) was clean-deleted in P3 slice-3, superseded by the
+  // recorded field stage. Mirrors the scene-lane-governance sync.
+  const proof = renderPlan('modqn-replay-proof', 'artifact-replay');
   expectEqual(proof.handoverStoryLayerPolicy, 'disabled', 'MODQN replay proof recorded stage has no live/profile handover story layer');
   expectEqual(proof.showProfileHandoverStoryLayer, false, 'MODQN replay proof does not mount profile-derived story layer');
-  expectEqual(proof.showReplayProofLayer, false, 'MODQN replay proof retires the live-overlay board (superseded by the recorded field)');
+  expect(!('showReplayProofLayer' in proof), 'MODQN replay proof render plan exposes no replay-board flag (board clean-deleted P3 slice-3; superseded by the recorded field)');
   // Negative control: the live-sim combo is now source-incompatible (fail-closed);
   // the recorded proof lane only renders on an artifact frame, never a live one.
-  const proofLiveIncompatible = renderPlan('modqn-replay-proof', 'live-sim', true);
+  const proofLiveIncompatible = renderPlan('modqn-replay-proof', 'live-sim');
   expectEqual(proofLiveIncompatible.sourceCompatible, false, 'MODQN replay proof live-sim source is fail-closed (recorded replay only)');
-  expectEqual(proofLiveIncompatible.showReplayProofLayer, false, 'MODQN replay proof never renders on a live-sim frame');
+  expect(!('showReplayProofLayer' in proofLiveIncompatible), 'MODQN replay proof on a live-sim frame exposes no replay-board flag (fail-closed above)');
 
   const artifact = renderPlan('artifact-replay', 'artifact-replay');
   expectEqual(artifact.handoverStoryLayerPolicy, 'artifact-owned', 'artifact replay story ownership stays artifact-owned');
@@ -423,9 +422,6 @@ function validateStaticContracts(): void {
   const cellSchedule = readSource('src/scene/useCellSchedule.ts');
   const simStatePublisher = readSource('src/scene/useSimStatePublisher.ts');
   const panelState = readSource('src/scene/panelState.ts');
-  const replayTelemetry = readSource('src/scene/modqn-replay-visuals/useReplaySceneTelemetry.tsx');
-  const replayLayer = readSource('src/scene/modqn-replay-visuals/index.tsx');
-  const replayConstants = readSource('src/scene/modqn-replay-visuals/constants.ts');
   const hud = readSource('src/ui/modqn-controls/ModqnSceneHud.tsx');
   const groundScene = readSource('src/viz/GroundScene.tsx');
   const governanceDoc = readSource('docs/frontend-render-governance.md');
@@ -581,14 +577,8 @@ function validateStaticContracts(): void {
   assertNotContains(artifactBody, '<HandoverStoryLayer', 'artifact composer does not mount profile-derived story layer');
   assertContains(artifactBody, 'handoverStoryLayer="artifact-owned"', 'artifact composer reports artifact-owned story policy');
 
-  assertContains(replayTelemetry, 'replayProofBeamHoppingSourceGap()', 'replay telemetry uses source-gap helper');
-  assertContains(replayTelemetry, "data-handover-story-layer', 'modqn-replay-source-backed'", 'replay telemetry reports source-backed story policy');
-  assertContains(replayTelemetry, "data-handover-story-source', 'modqn-replay-proof'", 'replay telemetry reports replay-proof source');
-  assertContains(replayTelemetry, "data-handover-story-source-gap", 'replay telemetry reports source gap');
-  assertContains(replayTelemetry, "data-handover-story-fake-beam-hopping', '0'", 'replay telemetry rejects fake hopping');
-  assertContains(replayLayer, 'beam hopping schedule: source gap', 'replay layer renders source-gap copy');
-  assertContains(replayConstants, 'data-handover-story-fake-beam-hopping', 'replay constants clear fake-hopping telemetry');
-
+  // P3 slice-3: the board telemetry/render source-gap pins (replayTelemetry /
+  // replayLayer / replayConstants) were removed with the clean-deleted board.
   assertContains(hud, 'NOT baseline proof', 'MODQN live cell HUD labels story as not baseline proof');
   assertContains(hud, 'data-modqn-layer-preset', 'MODQN live cell HUD reports visual layer preset');
   assertContains(hud, 'data-testid="modqn-service-readout"', 'MODQN HUD renders service readout');

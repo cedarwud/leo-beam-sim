@@ -49,7 +49,6 @@ function renderPlan(
     paused: false,
     reducedMotion: false,
     recentHoActive: false,
-    replayProofLayerRequested: true,
     modqnServiceAllocationEnabled,
   });
 }

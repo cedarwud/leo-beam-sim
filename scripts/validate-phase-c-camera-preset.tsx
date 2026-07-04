@@ -117,7 +117,6 @@ function directorRenderPlanInput(
     paused: false,
     reducedMotion: false,
     recentHoActive: false,
-    replayProofLayerRequested: false,
     ...overrides,
   };
 }

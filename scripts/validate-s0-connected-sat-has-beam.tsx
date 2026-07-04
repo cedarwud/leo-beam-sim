@@ -141,7 +141,6 @@ const plan = resolveSceneLaneRenderPlan({
   paused: false,
   reducedMotion: false,
   recentHoActive: false,
-  replayProofLayerRequested: false,
 });
 
 function captureViz(sim: SimFrame): VizFrame {

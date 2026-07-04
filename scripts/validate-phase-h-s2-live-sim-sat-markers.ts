@@ -111,16 +111,11 @@ function validateProfileUntouched(): void {
 }
 
 function validateReplayPathUntouched(): void {
-  const replayLayer = readSource('src/scene/modqn-replay-visuals/index.tsx');
-  expect(
-    replayLayer.includes('producer-display-proxy'),
-    'Replay layer keeps producer-display-proxy gating',
-  );
-  expect(
-    replayLayer.includes('SatelliteMarker'),
-    'Replay layer still uses SatelliteMarker for its proxy markers',
-  );
-
+  // P3 slice-3: the board `producer-display-proxy` + `SatelliteMarker` render pins
+  // were removed with the clean-deleted ModqnReplaySceneLayer board; that provenance
+  // invariant is carried by the preserved plain-data helper
+  // (validate:modqn:phase7k-replay-scene-layer). The replay PLAYBACK SHELL contract
+  // below is unrelated to the board and stays.
   const playbackShell = readSource('src/modqn/replay-bundle/playback-shell.ts');
   expect(
     playbackShell.includes('validateSevenBeamPlaybackModel'),
@@ -134,6 +129,6 @@ validateSceneSourceContract();
 validateProfileUntouched();
 validateReplayPathUntouched();
 
-assert.ok(PASSED.length >= 18, `expected >= 18 assertions; got ${PASSED.length}`);
+assert.ok(PASSED.length >= 16, `expected >= 16 assertions; got ${PASSED.length}`);
 
 console.log(`validate-phase-h-s2-live-sim-sat-markers: PASS (${PASSED.length}/0 assertions)`);

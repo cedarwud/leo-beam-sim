@@ -18,7 +18,6 @@ import type {
   RuntimeConfig,
   SimState,
 } from './types';
-import type { ModqnReplayPlaybackDisplayState } from '../modqn/replay-bundle/playback-shell';
 import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import { useSimulation } from './useSimulation';
 import { useUeTrailHistory } from './useUeTrailHistory';
@@ -32,7 +31,6 @@ import {
 import { sceneGeometryFromProfile } from './SceneGeometry';
 import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
-import { ModqnReplaySceneLayer } from './ModqnReplaySceneLayer';
 import { satelliteTint } from '../constants/beamRoleTokens';
 // S-cells-4d: the legacy 20-hex EarthFixedCells green-disc ground paint is retired
 // from the sinr-live lane (the cell-truth beam cones own the earth-fixed cell story
@@ -130,8 +128,6 @@ interface SceneContentProps {
   paused: boolean;
   runtime: RuntimeConfig;
   visualScaleMultipliers: SceneVisualScaleMultipliers;
-  modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
-  showModqnReplayScene: boolean;
   sceneLane: SceneLane;
   onSimUpdate: (state: SimState) => void;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
@@ -513,7 +509,7 @@ function ArtifactSceneContent({
   // Director cinematic on the artifact-replay lane: resolve effectiveCinematicMode
   // through the same lane plan as the live path (single source of truth). Only
   // effectiveCinematicMode is consumed here, so the live-only inputs use inert
-  // defaults (paused/recentHoActive/replayProofLayerRequested do not affect it).
+  // defaults (paused/recentHoActive do not affect it).
   const effectiveCinematicMode = resolveSceneLaneRenderPlan({
     sceneLane,
     sceneSource: sceneFrame.sceneSource,
@@ -524,7 +520,6 @@ function ArtifactSceneContent({
     paused: true,
     reducedMotion: runtime.reducedMotion,
     recentHoActive: false,
-    replayProofLayerRequested: false,
   }).effectiveCinematicMode;
   useDirectorCameraFocus({
     controlsRef,
@@ -649,8 +644,6 @@ function SceneContent({
   paused,
   runtime,
   visualScaleMultipliers,
-  modqnReplayDisplayState,
-  showModqnReplayScene,
   sceneLane,
   onSimUpdate,
   onLiveSeekLanded,
@@ -786,9 +779,6 @@ function SceneContent({
     () => propSceneFrame ?? liveSimToScene(sim, sceneGeometry),
     [propSceneFrame, sim, sceneGeometry],
   );
-  const replayWorldUnitsPerKm = sceneGeometry.kmPerWorldUnit
-    ? 1 / sceneGeometry.kmPerWorldUnit
-    : 1 / paperUserArea.kmPerWorldUnit;
   // P1c §E: live-default display caps per SDD §13 Cat A. Replay path will
   // wire mode-appropriate defaults (default 4 sats / 4 beams / 4 events for
   // the trigger artifact's 4-satellite constellation).
@@ -871,7 +861,6 @@ function SceneContent({
     paused,
     reducedMotion: runtime.reducedMotion,
     recentHoActive,
-    replayProofLayerRequested: showModqnReplayScene,
     // S-FLAG-2: producer-readiness gate for the MODQN service-allocation overlay
     // family (parked OFF by default; `?modqnServiceAllocation=1` / producer un-park
     // flips it). The render plan AND-s it with `showCellOverlay`.
@@ -896,7 +885,6 @@ function SceneContent({
     showSinrLiveCellBeams,
     showSinrLiveHandoverPulse,
     effectiveCinematicMode,
-    showReplayProofLayer,
     showArtifactFpsCounter,
   } = renderPlan;
   // L5 (startup-perf SDD): flips true one rAF after the first commit — i.e. after the
@@ -1321,9 +1309,13 @@ function SceneContent({
   // source-backed handover truth. It is hidden in the baseline preset and only
   // appears in explicit explain/debug presets.
   const showCellReassignmentEventArcs = modqnVisualLayers.handoverCues;
+  // The `modqn-replay-source-backed` story policy already requires the
+  // modqn-replay-proof lane on a live-sim frame, which is exactly what the retired
+  // `showReplayProofLayer` flag encoded — so gating on the policy alone is
+  // value-identical to the old `policy && showReplayProofLayer` (P3 slice-3: the
+  // dead board flag was removed).
   const replayBackedHandoverStoryVisible =
-    handoverStoryLayerPolicy === 'modqn-replay-source-backed'
-    && showReplayProofLayer;
+    handoverStoryLayerPolicy === 'modqn-replay-source-backed';
   const cinematicSpotlightActive = showCinematicSpotlight;
   const cinematicSpotlightTargets = useMemo(
     () => resolveCinematicSpotlightTargets({
@@ -1684,13 +1676,6 @@ function SceneContent({
         />
       )}
       <BeamPulseClock reducedMotion={runtime.reducedMotion} />
-      <ModqnReplaySceneLayer
-        displayState={modqnReplayDisplayState}
-        reducedMotion={runtime.reducedMotion}
-        showBoard={showReplayProofLayer}
-        worldUnitsPerKm={replayWorldUnitsPerKm}
-        visualSatelliteAltitudeWorld={sceneGeometry.visualSatelliteAltitude}
-      />
       {showOrbitTrail && (
         <OrbitTrail satellites={viz.displaySats} />
       )}
@@ -1856,8 +1841,6 @@ interface MainSceneProps {
   profile: Profile;
   runtime: RuntimeConfig;
   visualScaleMultipliers: SceneVisualScaleMultipliers;
-  modqnReplayDisplayState: ModqnReplayPlaybackDisplayState | null;
-  showModqnReplayScene: boolean;
   sceneLane: SceneLane;
   onSimUpdate: (state: SimState) => void;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
@@ -1877,8 +1860,6 @@ export const MainScene = memo(function MainScene({
   profile,
   runtime,
   visualScaleMultipliers,
-  modqnReplayDisplayState,
-  showModqnReplayScene,
   sceneLane,
   onSimUpdate,
   onLiveSeekLanded,
@@ -1953,8 +1934,6 @@ export const MainScene = memo(function MainScene({
               paused={paused}
               runtime={runtime}
               visualScaleMultipliers={visualScaleMultipliers}
-              modqnReplayDisplayState={modqnReplayDisplayState}
-              showModqnReplayScene={showModqnReplayScene}
               sceneLane={sceneLane}
               onSimUpdate={onSimUpdate}
               onLiveSeekLanded={onLiveSeekLanded}

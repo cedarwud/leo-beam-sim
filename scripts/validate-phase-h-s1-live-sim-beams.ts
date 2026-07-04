@@ -201,14 +201,10 @@ function validateProfileUntouched(): void {
 }
 
 function validateReplayPathUntouched(): void {
-  const replayLayer = readSource('src/scene/modqn-replay-visuals/index.tsx');
-  assertIncludes(
-    replayLayer,
-    'producer-display-proxy',
-    'Replay layer keeps producer-display-proxy gating',
-  );
-  pass('Replay layer keeps producer-display-proxy gating');
-
+  // P3 slice-3: the board `producer-display-proxy` gating pin was removed with the
+  // clean-deleted ModqnReplaySceneLayer board; that provenance invariant is carried
+  // by the preserved plain-data helper (validate:modqn:phase7k-replay-scene-layer).
+  // The replay PLAYBACK SHELL contract below is unrelated to the board and stays.
   const playbackShell = readSource('src/modqn/replay-bundle/playback-shell.ts');
   assertIncludes(
     playbackShell,
@@ -224,6 +220,6 @@ validateNoCrossSliceLeakage();
 validateProfileUntouched();
 validateReplayPathUntouched();
 
-assert.ok(PASSED.length >= 25, `expected >= 25 assertions; got ${PASSED.length}`);
+assert.ok(PASSED.length >= 24, `expected >= 24 assertions; got ${PASSED.length}`);
 
 console.log(`validate-phase-h-s1-live-sim-beams: PASS (${PASSED.length}/0 assertions)`);

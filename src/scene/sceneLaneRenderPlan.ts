@@ -35,7 +35,6 @@ export interface SceneLaneRenderPlanInput {
   readonly paused: boolean;
   readonly reducedMotion: boolean;
   readonly recentHoActive: boolean;
-  readonly replayProofLayerRequested: boolean;
   /**
    * S-FLAG-2 producer-readiness gate for the MODQN service-allocation overlay
    * family. Optional; defaults to OFF (parked). App threads
@@ -127,7 +126,6 @@ export interface SceneLaneRenderPlan {
    */
   readonly showSinrLiveHandoverPulse: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
-  readonly showReplayProofLayer: boolean;
   readonly showArtifactFpsCounter: boolean;
 }
 
@@ -136,10 +134,11 @@ export function isSceneLaneSourceCompatible(input: SceneLaneSourceCompatibilityI
   // is the MODQN replay STAGE (P2): App feeds it the recorded dense-Q window via
   // `showcaseArtifactToScene` (sceneSource==='artifact-replay'), so it is
   // artifact-source-compatible like `artifact-replay`. The `live-sim` pin it USED
-  // to carry belonged to the retired live-overlay single-decision board (the
-  // `ModqnReplaySceneLayer`, clean-delete deferred to P3); the stage that replaced
-  // it plays a recording, not the live sim. `sinr-live` + `modqn-live-cell-preview`
-  // stay live-sim (negative controls: replay-proof/artifact + live-sim ⇒ false).
+  // to carry belonged to the live-overlay single-decision board (the
+  // `ModqnReplaySceneLayer`), clean-deleted in P3 slice-3; the recorded stage that
+  // replaced it plays a recording, not the live sim. `sinr-live` +
+  // `modqn-live-cell-preview` stay live-sim (negative controls: replay-proof/
+  // artifact + live-sim ⇒ false).
   if (input.sceneLane === 'artifact-replay' || input.sceneLane === 'modqn-replay-proof') {
     return input.sceneSource === 'artifact-replay';
   }
@@ -176,10 +175,6 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // (AND-ed with `showCellOverlay`).
   const showModqnServiceAllocation =
     showCellOverlay && (input.modqnServiceAllocationEnabled ?? false);
-  const showReplayProofLayer =
-    input.sceneLane === 'modqn-replay-proof'
-    && isLiveScene
-    && input.replayProofLayerRequested;
   const showLiveSceneEffects = showSinrBeamRender;
   const showCinematicSpotlight = showSinrLiveViewport && input.cinematicMode === 'spotlight';
   // Director focus is allowed on the live walker lanes (live-focus) and on the
@@ -277,7 +272,6 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
       : showDirectorFocus
         ? 'director'
         : 'off',
-    showReplayProofLayer,
     showArtifactFpsCounter: isArtifactReplay,
   };
 }

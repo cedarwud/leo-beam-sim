@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { REPLAY_CANVAS_ATTRIBUTES } from './modqn-replay-visuals/constants';
+import { REPLAY_CANVAS_ATTRIBUTES } from './replayCanvasAttributes';
 
 function formatCameraVector(vector: THREE.Vector3): string {
   return [vector.x, vector.y, vector.z].map(value => value.toFixed(2)).join(',');

@@ -174,11 +174,9 @@ function validateSceneSourceContract(): void {
 }
 
 function validateReplayPathUntouched(): void {
-  const replayLayer = readSource('src/scene/modqn-replay-visuals/index.tsx');
-  expect(
-    replayLayer.includes('producer-display-proxy'),
-    'Replay layer keeps producer-display-proxy gating',
-  );
+  // P3 slice-3: the board `producer-display-proxy` gating pin was removed with the
+  // clean-deleted ModqnReplaySceneLayer board; that provenance invariant is carried
+  // by the preserved plain-data helper (validate:modqn:phase7k-replay-scene-layer).
   expect(
     readSource('src/modqn/replay-bundle/playback-shell.ts').includes('validateSevenBeamPlaybackModel'),
     'Replay playback shell keeps strict 7-beam validation',
@@ -192,6 +190,6 @@ validateRuntimeToggleUntouched();
 validateSceneSourceContract();
 validateReplayPathUntouched();
 
-assert.ok(PASSED.length >= 16, `expected >= 16 assertions; got ${PASSED.length}`);
+assert.ok(PASSED.length >= 15, `expected >= 15 assertions; got ${PASSED.length}`);
 
 console.log(`validate-phase-h-s3-live-sim-callouts: PASS (${PASSED.length}/0 assertions)`);

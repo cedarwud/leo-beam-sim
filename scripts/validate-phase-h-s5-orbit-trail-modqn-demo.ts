@@ -97,11 +97,9 @@ function validateProfileUntouched(): void {
 }
 
 function validateReplayPathUntouched(): void {
-  const replayLayer = readSource('src/scene/modqn-replay-visuals/index.tsx');
-  expect(
-    replayLayer.includes('producer-display-proxy'),
-    'Replay layer producer-display-proxy gating untouched',
-  );
+  // P3 slice-3: the board `producer-display-proxy` gating pin was removed with the
+  // clean-deleted ModqnReplaySceneLayer board; that provenance invariant is carried
+  // by the preserved plain-data helper (validate:modqn:phase7k-replay-scene-layer).
   expect(
     readSource('src/modqn/replay-bundle/playback-shell.ts').includes('validateSevenBeamPlaybackModel'),
     'Replay playback shell strict 7-beam validation untouched',
@@ -130,6 +128,6 @@ validateReplayPathUntouched();
 validateOrbitTrailComponent();
 validateScopeReductionDocumented();
 
-assert.ok(PASSED.length >= 18, `expected >= 18 assertions; got ${PASSED.length}`);
+assert.ok(PASSED.length >= 17, `expected >= 17 assertions; got ${PASSED.length}`);
 
 console.log(`validate-phase-h-s5-orbit-trail-modqn-demo: PASS (${PASSED.length}/0 assertions)`);
