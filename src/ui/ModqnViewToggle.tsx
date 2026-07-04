@@ -28,18 +28,22 @@ export const MODQN_VIEW_OPTIONS: readonly ModqnViewOption[] = [
 export interface ModqnViewToggleProps {
   readonly value: SceneLane;
   readonly onChange: (lane: SceneLane) => void;
-  // The replay-proof view needs the canonical decision overlay (live-sim +
-  // modqn-demo + decision-overlay-on-live-sinr). When that precondition is not
-  // met the Proof segment is disabled rather than silently doing nothing.
+  // The replay-proof view's recorded-stage precondition (live-sim + modqn-demo).
+  // App passes `canToggleModqnReplayProof`. P3 slice-3 nav-polish dropped the old
+  // `decision-overlay-on-live-sinr` term: the recorded stage plays an artifact
+  // window, not the live decision-overlay policy, so the Proof entry no longer
+  // depends on it.
   readonly proofEnabled: boolean;
 }
 
 function isOptionDisabled(lane: SceneLane, _proofEnabled: boolean): boolean {
-  // 3-way MODQN nav PARKED to a single page (modqn-live-cell-preview): the Proof +
-  // Artifact sub-views are hidden from the default sub-nav. They remain reachable
-  // SceneLane enum values (CLAUDE.md Rule#4 / nav != lane) and MODQN_VIEW_OPTIONS
-  // stays the source-of-truth — un-parking is just dropping a lane from this guard.
-  return lane === 'modqn-replay-proof' || lane === 'artifact-replay';
+  // P3 slice-3 nav-polish: the Proof sub-view is UN-PARKED — a first-class entry
+  // into the recorded replay-proof STAGE (it was dropped from this guard, per its
+  // note). Only the Artifact sub-view stays hidden from the default sub-nav; it
+  // remains a reachable SceneLane enum value (CLAUDE.md Rule#4 / nav != lane) and
+  // MODQN_VIEW_OPTIONS stays the source-of-truth — un-parking Artifact later is
+  // just dropping it from this guard too.
+  return lane === 'artifact-replay';
 }
 
 function focusViewButton(lane: SceneLane): void {
@@ -52,12 +56,11 @@ function focusViewButton(lane: SceneLane): void {
 }
 
 export function ModqnViewToggle({ value, onChange, proofEnabled }: ModqnViewToggleProps) {
-  // S5-2b consolidation (user-locked): the Proof sub-view is HIDDEN (not merely
-  // disabled) until its producer evidence precondition is met — fewer buttons,
-  // cleaner north star. The lane + gate (proofEnabled) are unchanged; only the
-  // segment's render is dropped while inert. MODQN_VIEW_OPTIONS still carries all
-  // three (source-of-truth) so the un-park is a pure re-show when producer data
-  // lands. Every rendered option here is therefore enabled.
+  // P3 slice-3 nav-polish: the Proof sub-view is UN-PARKED — with modqn-demo live,
+  // `proofEnabled` is true and [Live, Proof] both render (the recorded replay-proof
+  // stage is now a first-class entry). Only the Artifact sub-view stays HIDDEN via
+  // `isOptionDisabled`. MODQN_VIEW_OPTIONS still carries all three (source-of-truth).
+  // Every rendered option here is enabled.
   const visibleOptions = MODQN_VIEW_OPTIONS.filter(
     option => !isOptionDisabled(option.lane, proofEnabled),
   );

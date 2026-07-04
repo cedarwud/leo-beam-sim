@@ -278,10 +278,16 @@ export function App() {
     initialRuntime.handoverMode,
   );
   const [modqnReplayProofRequested, setModqnReplayProofRequested] = useState(false);
+  // P3 slice-3 nav-polish: the recorded replay-proof STAGE plays an artifact window,
+  // so its entry no longer requires the live decision-overlay policy — only the lane
+  // preconditions (live-sim source + modqn-demo). Dropping the old
+  // `handoverMode === 'decision-overlay-on-live-sinr'` term makes the Proof sub-nav a
+  // first-class entry instead of a dead toggle until the user digs into Advanced.
+  // (`renderedModqnReplayDisplayState` still gates the LIVE-lane baseline cue on
+  // decision-overlay at App.tsx ~597; that live path is unchanged.)
   const canToggleModqnReplayProof =
     sceneSource === 'live-sim'
-    && appMode === 'modqn-demo'
-    && handoverMode === 'decision-overlay-on-live-sinr';
+    && appMode === 'modqn-demo';
   const modqnReplayProofRequestActive = canToggleModqnReplayProof && modqnReplayProofRequested;
   const sceneLane = useMemo(
     () => resolveSceneLane({
