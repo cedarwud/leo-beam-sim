@@ -26,8 +26,12 @@ by a source-text-heavy validator and shares files with a live consumer.
 - **But it is heavily source-pinned.** `validate-modqn-phase7k-replay-scene-layer.ts`
   (`assertSceneBridgeSource`) pins ~30 board render strings (`modqn-replay-scene-beam-discs`,
   `useReplaySceneTelemetry(visualState, showBoard)`, `<circleGeometry`, `<Line`, the App→
-  MainScene→board bridge, …). `validate-modqn-omega-s3-replay-mode-wiring.tsx:487` also pins
-  `useReplaySceneTelemetry(visualState, showBoard)`. Deleting the board breaks these.
+  MainScene→board bridge, …). **Controller-verified 2026-07-04: the FULL blast radius is NINE
+  validators**, not the two first assumed — incl. `scene-lane-governance` (a SACRED gate that runs
+  in the pre-commit hook) + `phase-h-s1/s2/s3/s5` + `training-scene-source-gaps` + `omega-s3`
+  (reads both board files) + `handover-story`. So the delete cannot even COMMIT without editing a
+  SACRED pre-commit gate — see §3's 9-item surgery list (non-weakening: dead-board pins removed,
+  lane-authority invariant + negative controls preserved).
 - **The cue panel still shows the WRONG source.** `ModqnReplayCuePanel` renders
   `renderedModqnReplayDisplayState` — the baseline JSONL bundle (single decision, `sat-0`),
   which has nothing to do with the window the scene shows (`sat-97/98`). This is the
@@ -162,27 +166,50 @@ comment (:134-142) — drop "clean-delete deferred to P3" (now done).
 **App.tsx.** Remove `showModqnReplayScene` (:294/2090) + `shouldRenderModqnReplayScene` import
 IFF only feeding the dead flag. (Keep `modqnReplayProofRequested` / `sceneLane` resolution.)
 
-**Validator surgery (atomic in THIS commit, Rule#9):**
-- `validate-modqn-phase7k-replay-scene-layer.ts` — **shrink to real invariants**, do NOT
-  delete: KEEP the helper behaviour tests (`assertFirstSlotVisualState` …
-  `assertOmegaRescalarizedDisplayState`), the claim-boundary counts, the cue-panel truth
-  hooks (680-729), the no-live-identity-leak assert. REMOVE the board block in
-  `assertSceneBridgeSource` (the `readReplaySceneLayerSources()` reads + every board
-  `sceneLayerSource`/MainScene `<ModqnReplaySceneLayer`/`useReplaySceneTelemetry(...)` pin,
-  lines ~416-609). Leave a one-line comment: board retired in P3 slice-3, helper+cue invariants
-  retained.
-- `validate-modqn-omega-s3-replay-mode-wiring.tsx:487` — remove the
-  `useReplaySceneTelemetry(visualState, showBoard)` source-pin (board deleted). If the file's
-  intent survives via other asserts, keep them; else narrow honestly.
-- `validate-modqn-handover-story-layer.ts:156-172` — the `showReplayProofLayer===false` asserts
-  reference a removed flag. REPOINT them to the equivalent post-delete invariant: the
-  `modqn-replay-proof` lane is source-compatible ONLY with `artifact-replay` and mounts NO
-  board (i.e. assert `isSceneLaneSourceCompatible({lane:'modqn-replay-proof', source:'live-sim'})===false`
-  negative control stays, and the render plan no longer exposes a board flag). PRESERVE every
-  fail-closed negative control; do not weaken.
+**Validator surgery — FULL blast radius = 9 validators (controller-verified 2026-07-04 AFTER the
+first agent's honest STOP; the original list here under-scoped it to 3 and wrongly assumed
+`scene-lane-governance` didn't touch the board — it does).** Every edit is atomic in THIS commit
+(Rule#9) and NON-WEAKENING: remove source-text pins on the DELETED board, repoint output asserts
+to the strictly-stronger post-delete invariant, PRESERVE every fail-closed negative control.
 
-**Guard — SACRED invariants stay green:** `s0:connected-sat-has-beam`, `beam:colour-match`,
-`s0:geometry-trace`, `scene-lane-governance`, handover-pulse/ticker. None depend on the board.
+1. **`validate-frontend-scene-lane-governance.ts` — SACRED, runs in the pre-commit hook
+   (`validate:governance`), so editing it in the board-delete commit is MANDATORY or pre-commit
+   fails (Rule#9). Its own assert message (:274) literally says "clean-delete deferred to P3" —
+   this is that P3.** REMOVE: the board-file reads (`readRepoFile('…/modqn-replay-visuals/index.tsx')`
+   + `useReplaySceneTelemetry.tsx`, ~553-554); the source-pins `<ModqnReplaySceneLayer` (~2796),
+   `showBoard={showReplayProofLayer}` (~2797), `useReplaySceneTelemetry(visualState, showBoard)`
+   (~2802), `showModqnReplayScene={showModqnReplayScene}` (~644). REPOINT the four
+   `assert.equal(*.showReplayProofLayer, false)` (~200/274/284/291): the flag is being removed, so
+   replace with the STRONGER fact — the render plan no longer EXPOSES a replay-board flag AND the
+   proof lane is source-compatible only with `artifact-replay`. **PRESERVE the negative control at
+   ~1403** (`assertNotContains(app, "showModqnReplayScene={appMode === 'modqn-demo'}")` = the "don't
+   mount a proof board from appMode alone" render-governance rule): if `showModqnReplayScene` is
+   deleted, keep an equivalent "no lane mounts a proof board from appMode alone" guard. Do NOT
+   weaken the ONE-lane-authority SACRED invariant or any `{proof,live-sim}⇒false` negative control.
+2. `validate-modqn-phase7k-replay-scene-layer.ts` — **shrink to real invariants, do NOT delete**:
+   KEEP the helper behaviour tests (`assertFirstSlotVisualState`…`assertOmegaRescalarizedDisplayState`),
+   claim-boundary counts, cue-panel truth hooks, no-live-identity-leak. REMOVE `readReplaySceneLayerSources()`
+   + every board `sceneLayerSource`/MainScene `<ModqnReplaySceneLayer`/`useReplaySceneTelemetry(...)`
+   pin (~416-609). One-line comment: board retired P3 slice-3, helper+cue invariants retained.
+3. `validate-modqn-omega-s3-replay-mode-wiring.tsx` — reads BOTH board files (~398-405) + pins :487.
+   Remove the board-file reads + board source-pins; keep any non-board omega-wiring asserts.
+4. `validate-modqn-handover-story-layer.ts:156-172` — `showReplayProofLayer===false` asserts on a
+   removed flag → repoint to the post-delete invariant (proof lane artifact-only, no board flag);
+   PRESERVE fail-closed negative controls.
+5. `validate-modqn-training-scene-source-gaps.ts:~152` — reads `useReplaySceneTelemetry.tsx`; remove
+   that read + assert (board deleted). Keep the training source-gap invariants.
+6–9. `validate-phase-h-s1/s2/s3/s5-*.ts` — each `readSource('…/modqn-replay-visuals/index.tsx')` for a
+   `producer-display-proxy` assert. READ each: if it pins the board's internal string, remove it
+   (board gone); if it protects a live-lane "no replay-proxy leak" invariant, repoint to the
+   surviving mechanism. Do NOT weaken any live-sim lane assertion.
+
+After surgery `validate:static:all` must stay green (140→ maybe fewer if a leaf fully retires — only
+phase7k SHRINKS not retires; flag any full retirement). No validator may ORPHAN or pass-in-quarantine.
+
+**Guard — these SACRED invariants stay green (none depend on the board):** `s0:connected-sat-has-beam`,
+`beam:colour-match`, `s0:geometry-trace`, handover-pulse/ticker. **`scene-lane-governance` is itself
+edited above (item 1) — its LANE-AUTHORITY invariant + negative controls MUST survive unchanged; only
+the dead-board source-pins are removed.**
 
 **Classification.** Structural (removes a scene layer + render-plan flags) → full `validate:ready`.
 
