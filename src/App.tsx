@@ -88,6 +88,13 @@ import { SidebarTabShell } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
 import { ReplayArmToggle, type ReplayArm } from './ui/ReplayArmToggle';
+import { CoverageTopbar, CoverageFairnessPanel } from './ui/CoverageFairnessPanel';
+import {
+  currentFrameCoverage,
+  windowServedFractionStats,
+  type CoverageFrame,
+} from './showcase/coverageFairness';
+import { countStarvedUes } from './scene/replayFieldColor';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
 import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
@@ -1752,6 +1759,29 @@ export function App() {
   }, [recordedReplayActive, replaySceneFrame, processedUes]);
   const shouldRenderMainScene = !recordedReplayActive || activeSceneFrame !== undefined;
 
+  // P3 slice-2 B: coverage / fairness aggregation for the modqn-replay-proof lane.
+  // Display-only — reads the producer served/starved truth baked into the recorded
+  // window and aggregates it (win axis = coverage/served). Window stats memoize on
+  // the artifact (96×100 aggregation once per load); the current-frame readouts
+  // track playback via the full-ues replaySceneFrame (so they match the field's
+  // green/red counts exactly). Gated to the recorded-proof lane so the artifact-
+  // replay window (no coverage flags) never pays the aggregation.
+  const coverageStats = useMemo(
+    () =>
+      isRecordedReplayLane && showcaseArtifact
+        ? windowServedFractionStats(showcaseArtifact.timeline as readonly CoverageFrame[])
+        : null,
+    [isRecordedReplayLane, showcaseArtifact],
+  );
+  const currentCoverage = useMemo(
+    () => (isRecordedReplayLane && replaySceneFrame ? currentFrameCoverage(replaySceneFrame) : null),
+    [isRecordedReplayLane, replaySceneFrame],
+  );
+  const currentStarved = useMemo(
+    () => (isRecordedReplayLane && replaySceneFrame ? countStarvedUes(replaySceneFrame.ues) : null),
+    [isRecordedReplayLane, replaySceneFrame],
+  );
+
   // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
   // the producer-truth playback cursor. We never recompute SINR or handover
   // truth here — we only forward producer values (R1).
@@ -1878,6 +1908,7 @@ export function App() {
       {sceneLane === 'modqn-replay-proof' && (
         <div className="leo-modqn-replay-controls-row">
           <ReplayArmToggle arm={replayArm} onArmChange={setReplayArm} />
+          <CoverageTopbar coverage={currentCoverage} />
         </div>
       )}
       <ControlBar
@@ -2116,6 +2147,17 @@ export function App() {
                 className="leo-modqn-sidebar-stack"
                 aria-label="MODQN proof"
               >
+                {/* P3 slice-2 B: the coverage/fairness headline for the recorded
+                    proof lane — the win-axis (served 0.26 → 0.997) made legible.
+                    Display-only; reads producer served/starved truth. */}
+                {sceneLane === 'modqn-replay-proof' ? (
+                  <CoverageFairnessPanel
+                    arm={replayArm}
+                    stats={coverageStats}
+                    currentCoverage={currentCoverage}
+                    currentStarved={currentStarved}
+                  />
+                ) : null}
                 {userTrainedLoadError !== null ? (
                   <div
                     role="alert"

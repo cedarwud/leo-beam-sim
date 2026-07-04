@@ -195,6 +195,184 @@
   white-space: nowrap;
 }
 
+// P3 slice-2 B · coverage / fairness surfaces (display-only, proof lane).
+.leo-coverage-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border: 1px solid rgba(118, 234, 215, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(6, 18, 27, 0.9), rgba(3, 9, 15, 0.88));
+}
+
+.leo-coverage-topbar__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(170, 205, 224, 0.6);
+}
+
+.leo-coverage-topbar__bar {
+  position: relative;
+  display: inline-block;
+  width: 96px;
+  height: 8px;
+  border-radius: 5px;
+  background: rgba(239, 68, 68, 0.28); // starved-red track
+  overflow: hidden;
+}
+
+.leo-coverage-topbar__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background: #22c55e; // served-green fill
+  transition: width 160ms ease;
+}
+
+.leo-coverage-topbar__value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #eafaff;
+  white-space: nowrap;
+}
+
+.leo-coverage-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(118, 234, 215, 0.2);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(6, 20, 28, 0.92), rgba(3, 10, 16, 0.9));
+}
+
+.leo-coverage-panel__header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(190, 224, 240, 0.82);
+}
+
+.leo-coverage-panel__empty {
+  font-size: 12px;
+  opacity: 0.6;
+  margin: 0;
+}
+
+.leo-coverage-panel__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.leo-coverage-panel__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1px;
+  min-height: 58px;
+  padding: 7px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.leo-coverage-panel__stat-value {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #eafaff;
+}
+
+.leo-coverage-panel__stat-label {
+  margin-top: 1px;
+  font-size: 9.5px;
+  line-height: 1.2;
+  text-align: center;
+  color: rgba(210, 228, 240, 0.82);
+}
+
+.leo-coverage-panel__stat-sub {
+  font-size: 8px;
+  line-height: 1.2;
+  text-align: center;
+  opacity: 0.55;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.leo-coverage-panel__lorenz {
+  width: 100%;
+  height: auto;
+}
+
+.leo-coverage-panel__lorenz-title {
+  font-size: 8px;
+  fill: rgba(190, 224, 240, 0.7);
+  letter-spacing: 0.02em;
+}
+
+.leo-coverage-panel__lorenz-area {
+  fill: rgba(239, 68, 68, 0.22); // the Gini gap — bigger red lens = more unequal
+  stroke: none;
+}
+
+.leo-coverage-panel__lorenz-equality {
+  stroke: rgba(170, 205, 224, 0.45);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.leo-coverage-panel__lorenz-curve {
+  fill: none;
+  stroke: #22c55e;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.leo-coverage-panel__lorenz-axis {
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1;
+}
+
+.leo-coverage-panel__lorenz-axis-label {
+  font-size: 8px;
+  fill: rgba(170, 205, 224, 0.55);
+}
+
+.leo-coverage-panel__note {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: rgba(210, 228, 240, 0.86);
+}
+
+.leo-coverage-panel__note--jain {
+  padding: 6px 8px;
+  border-left: 2px solid rgba(239, 68, 68, 0.6);
+  border-radius: 3px;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.leo-coverage-panel__note--win {
+  padding: 6px 8px;
+  border-left: 2px solid rgba(34, 197, 94, 0.6);
+  border-radius: 3px;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.leo-coverage-panel__frame-note {
+  margin: 0;
+  font-size: 9.5px;
+  opacity: 0.6;
+}
+
 .leo-modqn-scene-hud {
   position: absolute;
   top: 14px;
