@@ -87,6 +87,7 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
+import { ReplayArmToggle, type ReplayArm } from './ui/ReplayArmToggle';
 import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';
 import { ArtifactPicker } from './ui/modqn-training/ArtifactPicker';
 import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';
@@ -222,12 +223,18 @@ const MODQN_REPLAY_VISUAL_TICK_MS = 100;
 // Generic artifact-replay lane source (dev middleware serves the pinned producer
 // baseline; see vite.config.ts).
 const SHOWCASE_ARTIFACT_URL = '/showcase-artifacts/visual-showcase-v1.json';
-// P2 replay stage: the modqn-replay-proof lane's recorded window. Served read-only
-// by the /modqn-bundles route (vite.config.ts MODQN_H2_SCENE_A2 scene-only root) —
-// the leo-verified H2 a2 (auction hero) scene window, t0=9000 window [117,213],
-// enriched with producer served/starved coverage truth per UE. Immutable artifact.
-const MODQN_REPLAY_STAGE_WINDOW_URL =
-  '/modqn-bundles/h2-scene-a2-t0_9000-w117_213/visual-showcase-v1.json';
+// P2/P3 replay stage: the modqn-replay-proof lane's recorded windows. Served
+// read-only by the /modqn-bundles route (vite.config.ts MODQN_H2_SCENE_{A2,B1}
+// scene-only roots) — the leo-verified H2 windows, t0=9000 window [117,213],
+// enriched with producer served/starved coverage truth per UE. Immutable artifacts.
+// P3 slice-2: the a2↔b1 toggle-slam swaps WHICH arm the lane fetches — a2 (auction
+// hero, served 100/100 → all-green) ⇄ b1 (argmax baseline, starved 74/100 → red
+// sea). The URL is the only thing that changes; the fetch effect re-flips the field.
+const REPLAY_ARM_WINDOWS: Readonly<Record<ReplayArm, string>> = {
+  a2: '/modqn-bundles/h2-scene-a2-t0_9000-w117_213/visual-showcase-v1.json',
+  b1: '/modqn-bundles/h2-scene-b1-t0_9000-w117_213/visual-showcase-v1.json',
+};
+const REPLAY_ARM_DEFAULT: ReplayArm = 'a2';
 
 
 export function App() {
@@ -284,8 +291,12 @@ export function App() {
   // both recorded-frame lanes; the URL is the only thing that differs.
   const isRecordedReplayLane = sceneLane === 'modqn-replay-proof';
   const recordedReplayActive = sceneSource === 'artifact-replay' || isRecordedReplayLane;
+  // P3 slice-2 a2↔b1 toggle-slam: which recorded arm the proof lane displays.
+  // Changing this reflows `recordedReplayArtifactUrl`, which is a dep of the fetch
+  // effect below → auto re-fetch → the red/green field re-flips. Display-only.
+  const [replayArm, setReplayArm] = useState<ReplayArm>(REPLAY_ARM_DEFAULT);
   const recordedReplayArtifactUrl = isRecordedReplayLane
-    ? MODQN_REPLAY_STAGE_WINDOW_URL
+    ? REPLAY_ARM_WINDOWS[replayArm]
     : SHOWCASE_ARTIFACT_URL;
   // omegaActive snapshot — owned by App so it can be threaded into ModqnHandoverModeContext
   // and read by useSimulation (inside Canvas). Starts at paper-faithful defaults.
@@ -1150,6 +1161,18 @@ export function App() {
     sceneSource,
   ]);
 
+  // P3 slice-2: parsed-artifact cache for the a2↔b1 toggle-slam. The scene windows
+  // are served `no-store` (vite.config.ts), so the browser HTTP cache cannot make a
+  // toggle instant — instead we keep the already-PARSED VisualShowcaseArtifact per
+  // URL here. The first load of each arm warms it; the idle prefetch below warms the
+  // OTHER arm in the background, so every subsequent toggle is an instant in-memory
+  // swap (no 54MB re-fetch/re-parse, no loading flash). Immutable replay inputs
+  // (CLAUDE.md §3) → caching by URL is safe. Scoped to the recorded-proof arm windows
+  // (writes gated on isRecordedReplayLane), so the artifact-replay lane is unchanged.
+  const replayArtifactCacheRef = useRef<
+    Map<string, { artifact: VisualShowcaseArtifact; source: string }>
+  >(new Map());
+
   // P3: fetch visual-showcase-v1 artifact at startup if in artifact-replay mode.
   // The cancelled guard matters now that LaneExperienceBar makes sceneSource a
   // runtime switch: if the user enters artifact-replay (this fetch starts) then
@@ -1159,7 +1182,21 @@ export function App() {
   // instead of failing closed on the loading state (codex S1 [P2]).
   useEffect(() => {
     if (!recordedReplayActive) return;
+    // Instant path: the recorded-proof arm window is already parsed in the cache
+    // (warmed by a prior load or the idle prefetch) — swap it in synchronously so
+    // the toggle-slam flips with no re-fetch and no loading flash.
+    if (isRecordedReplayLane) {
+      const cached = replayArtifactCacheRef.current.get(recordedReplayArtifactUrl);
+      if (cached) {
+        setShowcaseArtifactSource(cached.source);
+        setShowcaseArtifact(cached.artifact);
+        setShowcaseLoading(false);
+        setShowcaseError(null);
+        return;
+      }
+    }
     let cancelled = false;
+    let resolvedSource = HEADER_ABSENT_SOURCE;
     setShowcaseLoading(true);
     setShowcaseError(null);
     setShowcaseArtifactSource(null);
@@ -1175,6 +1212,7 @@ export function App() {
         // distinct HEADER_ABSENT_SOURCE sentinel so it still trips the badge
         // rather than looking like the silent loading (null) state.
         const artifactSource = r.headers.get('X-Showcase-Artifact-Source') ?? HEADER_ABSENT_SOURCE;
+        resolvedSource = artifactSource;
         setShowcaseArtifactSource(artifactSource);
         if (artifactSource !== PRODUCER_PINNED_SOURCE) {
           // Branch the copy so the warning never overclaims: only the synthetic
@@ -1196,6 +1234,14 @@ export function App() {
       .then(data => {
         if (cancelled || data === null) return;
         const art = loadShowcaseArtifact(data);
+        // Warm the parse cache so the reverse toggle is instant. Immutable input,
+        // arm windows only — the artifact-replay lane never writes the cache.
+        if (isRecordedReplayLane) {
+          replayArtifactCacheRef.current.set(recordedReplayArtifactUrl, {
+            artifact: art,
+            source: resolvedSource,
+          });
+        }
         setShowcaseArtifact(art);
         setShowcaseLoading(false);
       })
@@ -1207,7 +1253,49 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [recordedReplayActive, recordedReplayArtifactUrl]);
+  }, [recordedReplayActive, recordedReplayArtifactUrl, isRecordedReplayLane]);
+
+  // P3 slice-2: idle prefetch of the OTHER replay arm into the parse cache above,
+  // so the a2↔b1 toggle-slam is instant. `no-store` defeats the browser HTTP cache,
+  // so we warm a JS-side PARSED cache instead. Recorded-proof lane only; best-effort
+  // (the main fetch is the correctness fallback) and never touches showcaseArtifact.
+  useEffect(() => {
+    if (!isRecordedReplayLane) return;
+    const others = (Object.keys(REPLAY_ARM_WINDOWS) as ReplayArm[])
+      .map(arm => REPLAY_ARM_WINDOWS[arm])
+      .filter(url => url !== recordedReplayArtifactUrl && !replayArtifactCacheRef.current.has(url));
+    if (others.length === 0) return;
+    let cancelled = false;
+    const idle = (cb: () => void): number =>
+      typeof requestIdleCallback === 'function'
+        ? requestIdleCallback(cb, { timeout: 4000 })
+        : (setTimeout(cb, 1200) as unknown as number);
+    const cancelIdle = (handle: number): void => {
+      if (typeof cancelIdleCallback === 'function') cancelIdleCallback(handle);
+      else clearTimeout(handle);
+    };
+    const handle = idle(() => {
+      for (const url of others) {
+        fetch(url)
+          .then(r => (r.ok ? r.json() : null))
+          .then(data => {
+            if (cancelled || data === null) return;
+            if (replayArtifactCacheRef.current.has(url)) return;
+            replayArtifactCacheRef.current.set(url, {
+              artifact: loadShowcaseArtifact(data),
+              source: HEADER_ABSENT_SOURCE,
+            });
+          })
+          .catch(() => {
+            /* prefetch is best-effort; the main fetch effect is the fallback */
+          });
+      }
+    });
+    return () => {
+      cancelled = true;
+      cancelIdle(handle);
+    };
+  }, [isRecordedReplayLane, recordedReplayArtifactUrl]);
 
   const replayController = useMemo(
     () => (showcaseArtifact ? new ShowcaseReplayController(showcaseArtifact) : null),
@@ -1782,6 +1870,14 @@ export function App() {
             onChange={handleExperienceChange}
             proofEnabled={canToggleModqnReplayProof}
           />
+        </div>
+      )}
+      {/* P3 slice-2: the a2↔b1 replay-arm toggle-slam. Only on the recorded
+          proof lane; swaps which producer window the field displays (red sea ⇄
+          all-green). Display-only — App owns the state, the fetch effect flips. */}
+      {sceneLane === 'modqn-replay-proof' && (
+        <div className="leo-modqn-replay-controls-row">
+          <ReplayArmToggle arm={replayArm} onArmChange={setReplayArm} />
         </div>
       )}
       <ControlBar
