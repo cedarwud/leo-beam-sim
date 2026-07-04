@@ -175,12 +175,26 @@ section('(h) Render plan: director is lane-gated to live-walker + artifact-repla
     'director is effective on the modqn-live-cell-preview live lane',
   );
 
-  const replayProof = resolveSceneLaneRenderPlan(
+  // P2 replay stage: modqn-replay-proof now plays the RECORDED window (artifact
+  // source) like artifact-replay, so a director cinematic IS legitimate on the
+  // real lane (seekable recorded timeline; camera = display-only UE focus). The
+  // OLD "director inert on replay-proof" pin belonged to the retired live-overlay
+  // board that fabricated a source horizon — the recorded stage does not.
+  const replayProofRecorded = resolveSceneLaneRenderPlan(
+    directorRenderPlanInput({ sceneLane: 'modqn-replay-proof', sceneSource: 'artifact-replay' }),
+  );
+  check(
+    replayProofRecorded.effectiveCinematicMode === 'director' && replayProofRecorded.showDirectorFocus,
+    'director IS effective on the recorded modqn-replay-proof lane (artifact source), like artifact-replay',
+  );
+  // Negative control: the live-sim combo is now source-incompatible (fail-closed),
+  // so director stays inert on it — a recorded lane never renders on a live frame.
+  const replayProofLiveIncompatible = resolveSceneLaneRenderPlan(
     directorRenderPlanInput({ sceneLane: 'modqn-replay-proof', sceneSource: 'live-sim' }),
   );
   check(
-    replayProof.effectiveCinematicMode === 'off' && !replayProof.showDirectorFocus,
-    'director is INERT on modqn-replay-proof (effectiveCinematicMode resolves off)',
+    replayProofLiveIncompatible.effectiveCinematicMode === 'off' && !replayProofLiveIncompatible.showDirectorFocus,
+    'director is INERT on modqn-replay-proof + live-sim (source-incompatible, fail-closed)',
   );
 
   // Cinematic replay lane: director IS effective on artifact-replay (the replay

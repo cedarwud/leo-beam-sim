@@ -155,10 +155,21 @@ function validateLanePolicies(): void {
   expectEqual(preview.showProfileHandoverStoryLayer, true, 'MODQN live cell preview mounts profile-derived story layer');
   expectEqual(preview.showReplayProofLayer, false, 'MODQN live cell preview does not mount replay proof');
 
-  const proof = renderPlan('modqn-replay-proof', 'live-sim', true);
-  expectEqual(proof.handoverStoryLayerPolicy, 'modqn-replay-source-backed', 'MODQN replay proof story remains source-backed');
+  // P2 replay stage: the MODQN proof lane now plays the RECORDED dense-Q window
+  // (artifact-backed frame via showcaseArtifactToScene), so its render plan
+  // resolves as an artifact replay — NOT a live scene. The live/profile/
+  // source-backed handover story layer is gone (policy 'disabled'; the recorded
+  // beat track is P4), and the retired live-overlay board (showReplayProofLayer)
+  // stays OFF (clean-delete deferred to P3). Mirrors the scene-lane-governance sync.
+  const proof = renderPlan('modqn-replay-proof', 'artifact-replay', true);
+  expectEqual(proof.handoverStoryLayerPolicy, 'disabled', 'MODQN replay proof recorded stage has no live/profile handover story layer');
   expectEqual(proof.showProfileHandoverStoryLayer, false, 'MODQN replay proof does not mount profile-derived story layer');
-  expectEqual(proof.showReplayProofLayer, true, 'MODQN replay proof still mounts only through explicit request');
+  expectEqual(proof.showReplayProofLayer, false, 'MODQN replay proof retires the live-overlay board (superseded by the recorded field)');
+  // Negative control: the live-sim combo is now source-incompatible (fail-closed);
+  // the recorded proof lane only renders on an artifact frame, never a live one.
+  const proofLiveIncompatible = renderPlan('modqn-replay-proof', 'live-sim', true);
+  expectEqual(proofLiveIncompatible.sourceCompatible, false, 'MODQN replay proof live-sim source is fail-closed (recorded replay only)');
+  expectEqual(proofLiveIncompatible.showReplayProofLayer, false, 'MODQN replay proof never renders on a live-sim frame');
 
   const artifact = renderPlan('artifact-replay', 'artifact-replay');
   expectEqual(artifact.handoverStoryLayerPolicy, 'artifact-owned', 'artifact replay story ownership stays artifact-owned');

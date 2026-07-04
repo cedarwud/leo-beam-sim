@@ -66,8 +66,8 @@ ok(renderPlan('modqn-live-cell-preview', 'live-sim').showCellOverlay === true,
   'cell-preview (live) owns showCellOverlay — the Phase 3 overlay surface');
 ok(renderPlan('sinr-live', 'live-sim').showCellOverlay === false,
   'sinr-live does NOT mount Phase 3 cell overlays');
-ok(renderPlan('modqn-replay-proof', 'live-sim').showCellOverlay === false,
-  'modqn-replay-proof does NOT mount Phase 3 cell overlays');
+ok(renderPlan('modqn-replay-proof', 'artifact-replay').showCellOverlay === false,
+  'modqn-replay-proof (recorded artifact stage) does NOT mount Phase 3 cell overlays');
 ok(renderPlan('artifact-replay', 'artifact-replay').showCellOverlay === false,
   'artifact-replay does NOT mount Phase 3 cell overlays');
 

@@ -160,7 +160,7 @@ export function ModqnReplayCuePanel({
   // per-UE field + beam cones + hex, artifact-backed, frameloop=demand). It was parked
   // during the MODQN one-page consolidation when the lane was still the old live-overlay
   // single-decision board; the P2 stage is what un-parks it. Entry still gates on
-  // handoverMode==='decision-overlay-on-live-sinr' via `canToggleModqnReplayProof` in
+  // the decision-overlay live handover policy via `canToggleModqnReplayProof` in
   // App (decoupling that live-policy requirement from the recorded stage is a P3
   // nav-polish item).
   const PROOF_VIEWPORT_TOGGLE_PARKED = false;
