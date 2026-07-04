@@ -25,6 +25,10 @@ import {
   windowServedFractionStats,
   type CoverageFrame,
 } from '../src/showcase/coverageFairness.ts';
+import {
+  deriveWindowReplayCue,
+  type WindowReplayCueFrame,
+} from '../src/showcase/windowReplayCue.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = dirname(HERE);
@@ -165,6 +169,94 @@ function checkArm(exp: ArmExpectation): void {
   );
 }
 
+interface RawWindowUe {
+  readonly id: string;
+  readonly servingSatelliteId: string;
+  readonly servingBeamId: string;
+  readonly targetSatelliteId: string | null;
+  readonly targetBeamId: string | null;
+  readonly served?: boolean;
+  readonly starved?: boolean;
+}
+
+function loadRawFrame0(path: string): { readonly tSec: number; readonly ues: readonly RawWindowUe[] } {
+  const art = JSON.parse(readFileSync(path, 'utf8')) as {
+    timeline?: ReadonlyArray<{ tSec?: number; ues?: readonly RawWindowUe[] }>;
+  };
+  const f0 = art.timeline?.[0];
+  assert.ok(f0 !== undefined && Array.isArray(f0.ues) && f0.ues.length > 0, `${path}: no frame-0 ues`);
+  return { tSec: f0.tSec ?? 0, ues: f0.ues };
+}
+
+// P3 slice-3 window-cue invariant (BEHAVIORAL, not a source grep): the pure display
+// adapter deriveWindowReplayCue reads the recorded window's producer served / serving
+// / target truth for a focus UE, so the modqn-replay-proof cue panel agrees with the
+// on-screen field. Locks: a2 focus UE = served (green) with the frame's serving beam;
+// b1 starved focus UE = served=false (red-sea truth flows); null frame -> null; and the
+// adapter stays display-only (no render/engine import; never names SINR / reward).
+function checkWindowReplayCue(): void {
+  const file = join(SHOWCASE_DIR, 'windowReplayCue.ts');
+  assert.ok(existsSync(file), `windowReplayCue.ts missing: ${file}`);
+  const src = readFileSync(file, 'utf8');
+  const forbidden = /^(react|three)(\/|$)/;
+  const forbiddenPath = /(?:^|\/)(?:viz|app|scene|engine|core)\//;
+  const importRe = /(?:import|export)[^'"]*?from\s+['"]([^'"]+)['"]/g;
+  let m: RegExpExecArray | null;
+  // eslint-disable-next-line no-cond-assign
+  while ((m = importRe.exec(src)) !== null) {
+    const spec = m[1];
+    assert.ok(
+      !forbidden.test(spec) && !forbiddenPath.test(spec),
+      `PURITY: windowReplayCue.ts imports forbidden module '${spec}' (display-only: no render/engine/truth deps)`,
+    );
+  }
+  assert.ok(
+    !/sinr/i.test(src) && !/reward/i.test(src),
+    'PURITY: windowReplayCue.ts must not name SINR or reward (it reads served/serving/target truth only, derives neither)',
+  );
+
+  const a2 = ARMS.find(arm => arm.arm === 'a2');
+  assert.ok(a2 !== undefined, 'a2 arm expectation present');
+  const a2f0 = loadRawFrame0(a2.window);
+  const a2ue0 = a2f0.ues[0];
+  const a2frame: WindowReplayCueFrame = { frameIndex: 0, tSec: a2f0.tSec, ues: a2f0.ues };
+  const a2cue = deriveWindowReplayCue(a2frame, a2ue0.id);
+  assert.ok(a2cue !== null, 'a2 window focus-UE cue must derive');
+  assert.equal(a2cue.focusUeId, a2ue0.id, 'a2 cue focus UE matches the requested UE');
+  assert.equal(a2cue.focusSelection, 'elevated', 'a2 cue reports the elevated focus selection');
+  assert.equal(a2cue.served, true, 'a2 focus UE is served (all-green window)');
+  assert.equal(a2cue.servingBeamId, a2ue0.servingBeamId, 'a2 cue serving beam == recorded frame serving beam');
+  assert.equal(
+    a2cue.servingSatelliteId,
+    a2ue0.servingSatelliteId,
+    'a2 cue serving satellite == recorded frame serving satellite',
+  );
+  assert.ok(
+    ['serving-beam-hold', 'intra-satellite-beam-switch', 'inter-satellite-handover'].includes(a2cue.eventKind),
+    'a2 cue event kind is a valid classification',
+  );
+
+  // Null frame -> null cue (the caller falls back to the baseline cue).
+  assert.equal(deriveWindowReplayCue(null, a2ue0.id), null, 'null frame yields null cue');
+
+  // b1 red sea: a starved focus UE surfaces served=false, proving producer coverage
+  // truth flows through the cue (not just the a2 happy path).
+  const b1 = ARMS.find(arm => arm.arm === 'b1');
+  assert.ok(b1 !== undefined, 'b1 arm expectation present');
+  const b1f0 = loadRawFrame0(b1.window);
+  const starved = b1f0.ues.find(ue => ue.starved === true);
+  assert.ok(starved !== undefined, 'b1 frame0 carries at least one starved UE (red-sea truth)');
+  const b1frame: WindowReplayCueFrame = { frameIndex: 0, tSec: b1f0.tSec, ues: b1f0.ues };
+  const b1cue = deriveWindowReplayCue(b1frame, starved.id);
+  assert.ok(b1cue !== null, 'b1 starved focus-UE cue must derive');
+  assert.equal(b1cue.served, false, 'b1 starved focus UE surfaces served=false (red-sea truth flows)');
+
+  console.log(
+    `  [window-cue] a2 focus ${a2cue.focusUeId} served=${a2cue.served} beam=${a2cue.servingBeamLabel} `
+      + `· b1 starved ${b1cue.focusUeId} served=${b1cue.served} — cue agrees with recorded window`,
+  );
+}
+
 function checkGateWiring(): void {
   // Guard the self-discovery contract: this file must sit in scripts/ so
   // validate-static-all.mjs picks it up (it scans the validate:* leaves).
@@ -180,7 +272,9 @@ function main(): void {
   checkGateWiring();
   checkPurity();
   for (const arm of ARMS) checkArm(arm);
-  console.log('PASS: coverageFairness reproduces the producer coverage win-axis on both H2 windows.');
+  checkWindowReplayCue();
+  console.log('PASS: coverageFairness reproduces the producer coverage win-axis on both H2 windows,');
+  console.log('      and deriveWindowReplayCue agrees with the recorded window on both arms.');
 }
 
 try {

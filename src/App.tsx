@@ -129,6 +129,7 @@ import { LaneExperienceBar } from './ui/LaneExperienceBar';
 import { ModqnViewToggle } from './ui/ModqnViewToggle';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
+import { deriveWindowReplayCue } from './showcase/windowReplayCue';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
 import { AlgorithmDashboard } from './showcase/dashboard/AlgorithmDashboard';
 import { TrainingTelemetryFeed } from './showcase/dashboard/TrainingTelemetryFeed';
@@ -1757,6 +1758,16 @@ export function App() {
     return selectReplayDisplayUes(replaySceneFrame, elevatedUeId, ueDisplayCount);
   }, [replaySceneFrame, elevatedUeId, ueDisplayCount]);
 
+  // P3 slice-3: the modqn-replay-proof cue lens — derive the focus-UE decision from
+  // the SAME recorded window frame the scene renders (producer served/serving/target
+  // truth), so the cue panel and the on-screen red/green field agree. Gated to the
+  // recorded-proof lane; the live lane passes null so its cue keeps the baseline
+  // bundle decision. Display-only (no fetch, no engine, no truth recompute).
+  const windowReplayCue = useMemo(
+    () => (isRecordedReplayLane ? deriveWindowReplayCue(replaySceneFrame, elevatedUeId) : null),
+    [isRecordedReplayLane, replaySceneFrame, elevatedUeId],
+  );
+
   const activeSceneFrame = useMemo((): NormalizedSceneFrame | undefined => {
     if (!recordedReplayActive || !replaySceneFrame) return undefined;
     return {
@@ -1999,6 +2010,7 @@ export function App() {
                   appMode={appMode}
                   displayState={renderedModqnReplayDisplayState}
                   proofViewportActive={sceneLane === 'modqn-replay-proof'}
+                  windowCue={windowReplayCue}
                   onProofViewportActiveChange={
                     canToggleModqnReplayProof ? setModqnReplayProofRequested : undefined
                   }
