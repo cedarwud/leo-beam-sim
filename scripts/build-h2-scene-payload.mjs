@@ -12,9 +12,9 @@
 //
 // Join keys: artifact frame.tSec (0..95) == step-trace timeSec; ue id "ue-N" ==
 // step-trace userIndex N.
-import { readFileSync, writeFileSync, mkdirSync, createReadStream } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, createReadStream, copyFileSync, existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const src = process.argv[2];
 const dst = process.argv[3];
@@ -92,3 +92,17 @@ console.log(
   ' served-joined', joined,
   ' join-miss', joinMiss,
 );
+
+// (3) Co-locate the arm's producer manifest.json into the scene window dir so the
+//     provenance chip (P3 slice-2 D) can read a REAL producer artifact through the
+//     same read-only /modqn-bundles sceneOnly route (no vite change — the route
+//     already serves any file under the window root). The manifest is a sibling of
+//     the source visual-showcase-v1.json. Immutable producer bytes, copied as-is.
+const manifestSrc = join(dirname(src), 'manifest.json');
+if (existsSync(manifestSrc)) {
+  const manifestDst = join(dirname(dst), 'manifest.json');
+  copyFileSync(manifestSrc, manifestDst);
+  console.log('copied manifest.json ->', manifestDst);
+} else {
+  console.log('no sibling manifest.json at', manifestSrc, '(provenance chip will fail-soft)');
+}

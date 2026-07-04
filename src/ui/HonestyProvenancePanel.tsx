@@ -59,17 +59,124 @@ const DISCLOSURE_LINES: readonly DisclosureLine[] = [
   },
 ];
 
-export interface HonestyProvenancePanelProps {
-  readonly arm: ReplayArm;
+// slice-2 D · the fields of the producer manifest.json this panel surfaces. Read
+// read-only through the /modqn-bundles sceneOnly route (staged beside each scene
+// window by build-h2-scene-payload.mjs). Partial — only the display fields.
+export interface ReplayArmManifest {
+  readonly arm?: string;
+  readonly armWhy?: string;
+  readonly decodeKind?: string;
+  readonly trainedWeights?: string;
+  readonly producerHead?: string;
+  readonly producerRepo?: string;
+  readonly eeDefinition?: string;
+  readonly decouple?: string;
+  readonly rowCount?: number;
+  readonly slotCount?: number;
+  readonly READINESS_ONLY?: string;
+  readonly selfChecks?: {
+    readonly dense_q_proof_green_masked_argmax_eq_selected?: boolean;
+    readonly auction_redecode_reproduces_serving_and_audit?: boolean | string;
+    readonly argmax_vs_served_differ_count?: number;
+    readonly served_frac_mean?: number;
+    readonly coverage_min?: number;
+    readonly fairness_jain_mean?: number;
+  };
 }
 
-export function HonestyProvenancePanel({ arm }: HonestyProvenancePanelProps) {
+export interface HonestyProvenancePanelProps {
+  readonly arm: ReplayArm;
+  /** Producer manifest for the current arm, or null when not staged (fail-soft). */
+  readonly manifest?: ReplayArmManifest | null;
+}
+
+function ProvenanceSection({ manifest }: { manifest: ReplayArmManifest | null | undefined }) {
+  if (!manifest) {
+    return (
+      <div className="leo-honesty-panel__provenance">
+        <span className="leo-honesty-panel__prov-title">來源 · Provenance</span>
+        <p className="leo-honesty-panel__prov-missing">
+          Producer manifest not staged for this window (provenance excerpt unavailable — re-stage via
+          build-h2-scene-payload.mjs).
+        </p>
+      </div>
+    );
+  }
+  const sc = manifest.selfChecks;
+  const rows = manifest.rowCount ?? 0;
+  const argmaxEqSelected = sc?.dense_q_proof_green_masked_argmax_eq_selected === true;
+  const auctionRedecode = sc?.auction_redecode_reproduces_serving_and_audit;
+  return (
+    <div className="leo-honesty-panel__provenance">
+      <span className="leo-honesty-panel__prov-title">來源 · Provenance (producer manifest)</span>
+      <div className="leo-honesty-panel__prov-grid">
+        {manifest.arm ? (
+          <>
+            <span className="leo-honesty-panel__prov-key">arm</span>
+            <span className="leo-honesty-panel__prov-val">{manifest.arm} — {manifest.armWhy}</span>
+          </>
+        ) : null}
+        {manifest.decodeKind ? (
+          <>
+            <span className="leo-honesty-panel__prov-key">decode</span>
+            <span className="leo-honesty-panel__prov-val">{manifest.decodeKind}</span>
+          </>
+        ) : null}
+        {manifest.trainedWeights ? (
+          <>
+            <span className="leo-honesty-panel__prov-key">weights</span>
+            <span className="leo-honesty-panel__prov-val">{manifest.trainedWeights}</span>
+          </>
+        ) : null}
+        {manifest.producerHead ? (
+          <>
+            <span className="leo-honesty-panel__prov-key">producer</span>
+            <span className="leo-honesty-panel__prov-val">
+              {manifest.producerRepo ?? 'modqn-paper-reproduction'} @ {manifest.producerHead}
+            </span>
+          </>
+        ) : null}
+        {manifest.eeDefinition ? (
+          <>
+            <span className="leo-honesty-panel__prov-key">EE def</span>
+            <span className="leo-honesty-panel__prov-val">{manifest.eeDefinition}</span>
+          </>
+        ) : null}
+        {manifest.decouple ? (
+          <>
+            <span className="leo-honesty-panel__prov-key">decouple</span>
+            <span className="leo-honesty-panel__prov-val">{manifest.decouple}</span>
+          </>
+        ) : null}
+      </div>
+      {sc ? (
+        <p className="leo-honesty-panel__selfcheck" data-testid="provenance-selfcheck">
+          <strong>Server self-check (static):</strong>{' '}
+          {argmaxEqSelected
+            ? `✓ dense-Q proof — masked-argmax == selectedActionIndex on all ${rows} rows`
+            : '⚠ dense-Q argmax==selected NOT confirmed'}
+          {auctionRedecode === true
+            ? ' · ✓ auction re-decode reproduces serving + audit'
+            : auctionRedecode === 'n/a'
+              ? ' · auction re-decode n/a (argmax arm)'
+              : ''}
+          . Producer-computed, not yet re-run in-browser (that is slice-3).
+        </p>
+      ) : null}
+      {manifest.READINESS_ONLY ? (
+        <p className="leo-honesty-panel__prov-missing">READINESS_ONLY — {manifest.READINESS_ONLY}</p>
+      ) : null}
+    </div>
+  );
+}
+
+export function HonestyProvenancePanel({ arm, manifest }: HonestyProvenancePanelProps) {
   return (
     <section
       className="leo-honesty-panel"
       data-testid="honesty-provenance-panel"
       data-arm={arm}
-      aria-label="Honesty disclosure"
+      aria-label="Honesty disclosure and provenance"
     >
       <header className="leo-honesty-panel__header">誠實揭露 · Honesty disclosure</header>
       <ol className="leo-honesty-panel__list">
@@ -80,6 +187,7 @@ export function HonestyProvenancePanel({ arm }: HonestyProvenancePanelProps) {
           </li>
         ))}
       </ol>
+      <ProvenanceSection manifest={manifest} />
     </section>
   );
 }

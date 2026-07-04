@@ -89,7 +89,7 @@ import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
 import { ReplayArmToggle, type ReplayArm } from './ui/ReplayArmToggle';
 import { CoverageTopbar, CoverageFairnessPanel } from './ui/CoverageFairnessPanel';
-import { HonestyProvenancePanel } from './ui/HonestyProvenancePanel';
+import { HonestyProvenancePanel, type ReplayArmManifest } from './ui/HonestyProvenancePanel';
 import {
   currentFrameCoverage,
   windowServedFractionStats,
@@ -1783,6 +1783,35 @@ export function App() {
     [isRecordedReplayLane, replaySceneFrame],
   );
 
+  // P3 slice-2 D: the current arm's producer manifest, fetched read-only through
+  // the same /modqn-bundles sceneOnly route (staged beside each window by
+  // build-h2-scene-payload.mjs). Tiny (~2.8KB) so a plain per-arm fetch is fine;
+  // fail-soft to null (the provenance chip shows a "not staged" note) when /tmp
+  // was cleared. Display-only — surfaces producer provenance, never drives truth.
+  const [replayManifest, setReplayManifest] = useState<ReplayArmManifest | null>(null);
+  useEffect(() => {
+    if (!isRecordedReplayLane) {
+      setReplayManifest(null);
+      return;
+    }
+    let cancelled = false;
+    const manifestUrl = REPLAY_ARM_WINDOWS[replayArm].replace(
+      'visual-showcase-v1.json',
+      'manifest.json',
+    );
+    fetch(manifestUrl)
+      .then(r => (r.ok ? (r.json() as Promise<ReplayArmManifest>) : null))
+      .then(data => {
+        if (!cancelled) setReplayManifest(data);
+      })
+      .catch(() => {
+        if (!cancelled) setReplayManifest(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isRecordedReplayLane, replayArm]);
+
   // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
   // the producer-truth playback cursor. We never recompute SINR or handover
   // truth here — we only forward producer values (R1).
@@ -2159,7 +2188,7 @@ export function App() {
                       currentCoverage={currentCoverage}
                       currentStarved={currentStarved}
                     />
-                    <HonestyProvenancePanel arm={replayArm} />
+                    <HonestyProvenancePanel arm={replayArm} manifest={replayManifest} />
                   </>
                 ) : null}
                 {userTrainedLoadError !== null ? (
