@@ -373,6 +373,48 @@
   opacity: 0.6;
 }
 
+// P3 slice-2 C(+D) · honesty / provenance disclosure panel (proof lane).
+.leo-honesty-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(234, 179, 8, 0.32); // amber = "read this before you claim"
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(28, 22, 6, 0.9), rgba(14, 11, 4, 0.9));
+}
+
+.leo-honesty-panel__header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(234, 200, 120, 0.9);
+}
+
+.leo-honesty-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.leo-honesty-panel__item {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: rgba(224, 216, 196, 0.9);
+}
+
+.leo-honesty-panel__lead {
+  font-weight: 700;
+  color: #f4e4b8;
+}
+
+.leo-honesty-panel__body {
+  opacity: 0.82;
+}
+
 .leo-modqn-scene-hud {
   position: absolute;
   top: 14px;

@@ -89,6 +89,7 @@ import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
 import { ReplayArmToggle, type ReplayArm } from './ui/ReplayArmToggle';
 import { CoverageTopbar, CoverageFairnessPanel } from './ui/CoverageFairnessPanel';
+import { HonestyProvenancePanel } from './ui/HonestyProvenancePanel';
 import {
   currentFrameCoverage,
   windowServedFractionStats,
@@ -2151,12 +2152,15 @@ export function App() {
                     proof lane — the win-axis (served 0.26 → 0.997) made legible.
                     Display-only; reads producer served/starved truth. */}
                 {sceneLane === 'modqn-replay-proof' ? (
-                  <CoverageFairnessPanel
-                    arm={replayArm}
-                    stats={coverageStats}
-                    currentCoverage={currentCoverage}
-                    currentStarved={currentStarved}
-                  />
+                  <>
+                    <CoverageFairnessPanel
+                      arm={replayArm}
+                      stats={coverageStats}
+                      currentCoverage={currentCoverage}
+                      currentStarved={currentStarved}
+                    />
+                    <HonestyProvenancePanel arm={replayArm} />
+                  </>
                 ) : null}
                 {userTrainedLoadError !== null ? (
                   <div
