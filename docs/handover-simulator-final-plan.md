@@ -47,7 +47,8 @@
 > **使用者定案（2026-07-04）**：「現在不管 catfish 功勞說法，贏在 coordinated decode，照現有事實走。」∴：
 > - **arm#3 鎖 = A1**（同樹同 env → 保證同 reset、免找 weights），角色 = **auction robustness twin**，**不做 catfish 對照**。hero（arm#1）確認 = **A2**（H1 handoff）、B-column = **B1**、arm#4 = RSS_max。
 > - **catfish 說法路 = DEFERRED（非丟棄）**：日後口試若要 live catfish 道具，再從 `catfish/…` 拉真 catfish-ON arm，且 H2 須先驗它吃 route-b 同 reset（跨樹可能不行 → 退回純口頭 + 靜態）。
-> - **defense runbook §5「不就 catfish 的功勞?」改法**：四臂 `catfish_enabled=false`（run_metadata 可證）→ 翻盤純是 coordinated auction decode、catfish 沒參與；**不靠 live 切臂**。
+> - **defense runbook §5「不就 catfish 的功勞?」改法**：四臂 catfish challenger 掛旗但 **operationally inert**（`catfish_enabled=false` + `catfish_intervention_enabled=false` + `total_intervention_ratio=0.0`，四臂一致＝零 catfish 介入；H2 worker 2026-07-04 直讀確認）→ 翻盤純是 coordinated auction decode；**provenance 標 present-but-inert**（別說 catfish「不存在」，要說「掛著但沒作用」，防委員讀到 `catfish_challenger_enabled=True` 反咬）；**不靠 live 切臂**。
+> - **EE 定義（H2 D2，2026-07-04 決）**：producer HEAD `966fd87` 比 H1-era 多 3 個 EE-r1 fix（`211a71a`＝修正舊「÷G_T erroneous」EE）。**決策＝在 HEAD 匯出**（EE 是誠實搭車、非贏因；不把已知錯的 EE 烙進 artifact），**但 gated on** H2 先用 H1 tooling 在 HEAD 重現窗 [117,213] 的 handover/served 計數——重現＝證明 EE 改動只在 reporting、沒滲進 policy/decode（Δserved/coverage/handover/fairness 由 frozen policy+env 決定，與 EE 定義無關）；**不重現則 STOP**。provenance 記錄 EE 用的 commit。
 > - A1 可隨時砍成 3 臂（省 ~25% H2 wall/檔）；H2 未跑前 docs pin 皆可反悔。
 | 4 | RSS_max heuristic | naive/論文 benchmark；layperson 的「基本模式」敘事 | 免訓練，最便宜 |
 
