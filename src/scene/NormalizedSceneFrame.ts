@@ -207,6 +207,14 @@ export interface NormalizedUe {
   readonly candidatesByBeamId?: ReadonlyMap<string, ChannelMetricValue>;
   /** Per-UE decision reference (resolved from `decisionFrames[]`). */
   readonly decisionRef?: string;
+  /**
+   * Producer coverage truth (kpiOverlay `served` / `starved`), when the window
+   * carries it (H2 scene payloads). Optional = back-compat with older windows
+   * that lack it. Display-only consumer: the replay red/green field
+   * (`replayFieldColor.ts`) colours by these when present; it never computes them.
+   */
+  readonly served?: boolean;
+  readonly starved?: boolean;
 }
 
 export interface NormalizedBeam {

@@ -284,6 +284,23 @@ function projectUeWorldPos(
   return [eastKm * proj.ueWorldScale, 0, -northKm * proj.ueWorldScale];
 }
 
+/**
+ * Read producer coverage truth (`served` / `starved`) off a UE sample. These
+ * are kpiOverlay values baked into the H2 scene windows; the frozen
+ * `visual-showcase-v1` contract (owned by ntn-sim-core) does not model them, so
+ * we read them defensively from the sample rather than editing the frozen type.
+ * Pure passthrough — we carry the producer booleans through, never compute them.
+ */
+function readProducerCoverage(
+  u: VisualShowcaseUeSample,
+): { served?: boolean; starved?: boolean } {
+  const extra = u as { served?: unknown; starved?: unknown };
+  return {
+    served: typeof extra.served === 'boolean' ? extra.served : undefined,
+    starved: typeof extra.starved === 'boolean' ? extra.starved : undefined,
+  };
+}
+
 function buildUes(
   samples: readonly VisualShowcaseUeSample[],
   channelMetricKind: VisualShowcaseChannelMetricKind,
@@ -298,6 +315,7 @@ function buildUes(
           ]),
         )
       : undefined;
+    const coverage = readProducerCoverage(u);
     return {
       id: u.id,
       geo: { latDeg: u.geo.latDeg, lonDeg: u.geo.lonDeg, altKm: u.geo.altKm },
@@ -309,6 +327,8 @@ function buildUes(
       channelMetric: makeChannelMetricValue(channelMetricKind, u.sinrDb),
       candidatesByBeamId: candidates,
       decisionRef: u.decisionRef,
+      served: coverage.served,
+      starved: coverage.starved,
     };
   });
 }

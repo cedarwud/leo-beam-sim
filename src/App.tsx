@@ -223,10 +223,11 @@ const MODQN_REPLAY_VISUAL_TICK_MS = 100;
 // baseline; see vite.config.ts).
 const SHOWCASE_ARTIFACT_URL = '/showcase-artifacts/visual-showcase-v1.json';
 // P2 replay stage: the modqn-replay-proof lane's recorded window. Served read-only
-// by the /modqn-bundles route (vite.config.ts MODQN_FAMILY_B_DENSE_Q_BUNDLE) — the
-// same dense-Q window the P1 decode parity gate stages. Immutable producer artifact.
+// by the /modqn-bundles route (vite.config.ts MODQN_H2_SCENE_A2 scene-only root) —
+// the leo-verified H2 a2 (auction hero) scene window, t0=9000 window [117,213],
+// enriched with producer served/starved coverage truth per UE. Immutable artifact.
 const MODQN_REPLAY_STAGE_WINDOW_URL =
-  '/modqn-bundles/dense-q-proof-window-600-130/visual-showcase-v1.json';
+  '/modqn-bundles/h2-scene-a2-t0_9000-w117_213/visual-showcase-v1.json';
 
 
 export function App() {

@@ -21,6 +21,19 @@ const MODQN_BUNDLE_FS_PATH =
 // never regenerates it (no training in leo). Served under a SECOND basename.
 const MODQN_FAMILY_B_DENSE_Q_BUNDLE_FS_PATH =
   '/tmp/leo-beam-sim/modqn-bundles/dense-q-proof-window-600-130';
+// P2 replay stage (H2): the leo-verified H2 scene payloads for the
+// modqn-replay-proof lane. These are SCENE-ONLY `visual-showcase-v1` windows
+// (no manifest / provenance-map / step-trace envelope — the dense-Q proof loads
+// separately). a2 = auction hero (producer served 100/100 → all-green field);
+// b1 = argmax baseline (producer starved 74/100 → red sea), staged for the
+// red/green mechanism proof. Served read-only; leo never regenerates them.
+const MODQN_H2_SCENE_A2_FS_PATH =
+  '/tmp/leo-beam-sim/modqn-bundles/h2-scene-a2-t0_9000-w117_213';
+const MODQN_H2_SCENE_B1_FS_PATH =
+  '/tmp/leo-beam-sim/modqn-bundles/h2-scene-b1-t0_9000-w117_213';
+// A scene-only bundle root requires ONLY this single surface (skip the
+// 3-surface envelope check the dense-Q / baseline bundles need).
+const MODQN_SCENE_ONLY_REQUIRED_SURFACE = 'visual-showcase-v1.json';
 const MODQN_BUNDLE_ROUTE_PREFIX = '/modqn-bundles/';
 const MODQN_PRODUCER_REPO_PATH = '/home/u24/papers/modqn-paper-reproduction';
 const MODQN_PRODUCER_BASELINE_RUN_PATH = path.join(
@@ -160,11 +173,24 @@ function modqnBundleStaticServer(): Plugin {
         // bundle may be (re)generated via the producer's modqn-export; the Family-B
         // dense-Q bundle is pre-exported + ntn-validated by the producer and is
         // only served read-only (NO regeneration — leo never trains).
-        const bundleRoots: Record<string, { fsRoot: string; regenerate: boolean }> = {
+        const bundleRoots: Record<
+          string,
+          { fsRoot: string; regenerate: boolean; sceneOnly?: boolean }
+        > = {
           [path.basename(MODQN_BUNDLE_FS_PATH)]: { fsRoot: MODQN_BUNDLE_FS_PATH, regenerate: true },
           [path.basename(MODQN_FAMILY_B_DENSE_Q_BUNDLE_FS_PATH)]: {
             fsRoot: MODQN_FAMILY_B_DENSE_Q_BUNDLE_FS_PATH,
             regenerate: false,
+          },
+          [path.basename(MODQN_H2_SCENE_A2_FS_PATH)]: {
+            fsRoot: MODQN_H2_SCENE_A2_FS_PATH,
+            regenerate: false,
+            sceneOnly: true,
+          },
+          [path.basename(MODQN_H2_SCENE_B1_FS_PATH)]: {
+            fsRoot: MODQN_H2_SCENE_B1_FS_PATH,
+            regenerate: false,
+            sceneOnly: true,
           },
         };
         const bundleRoot = bundleRoots[basename];
@@ -183,6 +209,19 @@ function modqnBundleStaticServer(): Plugin {
           if (!availability.ok) {
             res.statusCode = 503;
             res.end(availability.message);
+            return;
+          }
+        } else if (bundleRoot.sceneOnly) {
+          // Scene-only H2 window: the ONLY required surface is
+          // visual-showcase-v1.json (no manifest / provenance-map / step-trace
+          // envelope — the dense-Q proof loads separately). Skip the 3-surface
+          // envelope check.
+          if (!fs.existsSync(path.join(bundleRoot.fsRoot, MODQN_SCENE_ONLY_REQUIRED_SURFACE))) {
+            res.statusCode = 503;
+            res.end(
+              `H2 scene-only window surface is missing under ${bundleRoot.fsRoot}. `
+                + `Expected ${MODQN_SCENE_ONLY_REQUIRED_SURFACE}.`,
+            );
             return;
           }
         } else if (!hasRequiredModqnBundleSurfaces(bundleRoot.fsRoot)) {
