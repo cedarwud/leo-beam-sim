@@ -1909,6 +1909,15 @@ export const MainScene = memo(function MainScene({
       />
       <Starfield starCount={180} />
       <Canvas
+        // PERF (recorded proof stage): the modqn-replay-proof lane plays a RECORDED
+        // artifact, so it renders ON-DEMAND (mount + scrub/interaction + each
+        // frame-advance re-render) instead of a continuous rAF — escaping the ~9 FPS
+        // software-WebGL ceiling while idle/paused. The live lanes keep 'always'
+        // (their ambient effects + live sim animation need every frame). Positions
+        // flow declaratively from `sceneFrame` props, so a playback tick re-renders
+        // the graph and r3f invalidates one frame; nothing is driven imperatively
+        // that 'demand' would freeze. Display-only (Rule#6) — no truth touched.
+        frameloop={sceneLane === 'modqn-replay-proof' ? 'demand' : 'always'}
         // PERF (software-WebGL box, no GPU — SwiftShader/llvmpipe, ~3.5 FPS measured):
         // the bottleneck is FRAGMENT FILL, not mesh count. The ONE big motion win that does
         // NOT touch edge quality is dropping the SHADOW PASS (the whole scene re-rendered into
