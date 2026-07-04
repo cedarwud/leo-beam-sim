@@ -67,22 +67,29 @@ Controller pre-scan of `route-b-factorial-2026-06-27/{A1,A2,B1,B2}/seed-*/run_me
   variants), with paired_delta **A0→AF: served +0.267, min_coverage +0.8125** (the
   de-collapse win) and **A0→RSS_max: served −0.423**.
 
-**⚠️ Flag back to the controller/user:** the plan's "arm#3 = catfish-off twin" does
-NOT map cleanly onto route-b-factorial, because **none of A1/A2/B1/B2 is catfish-ON**
-— so a catfish on/off contrast cannot come from this tree. The catfish-ON counterpart
-lives in a different weights tree (`modqn-weights-consolidated/catfish/…`,
-e.g. `per-objective-catfish` / `catfish-faithful-route-a-pilot-2026-06-02`). Resolve
-arm#3 one of two ways and RECORD which you chose in provenance:
+**✅ RESOLVED (controller-verified + user decision, 2026-07-04):** direct read of
+`{A1,A2,B1,B2}/seed-42/run_metadata.json` confirms **all four are catfish_enabled=false,
+catfish_ablation=none** — there is NO catfish-ON arm in this tree, so a catfish on/off
+contrast cannot come from it. **User decision:** drop the catfish-credit framing for now
+— the win is claimed via the coordinated auction decode alone, on current facts. So arm#3
+is NOT a catfish contrast; it is the second route-b auction arm (**A1**) as an honest
+robustness twin of hero **A2**. (The real-catfish path — pulling a catfish-ON arm from
+`modqn-weights-consolidated/catfish/…`, e.g. `per-objective-catfish` /
+`catfish-faithful-route-a-pilot-2026-06-02` — is DEFERRED, not deleted; only revisit if
+the defense later needs a live catfish prop, and only after verifying it shares route-b's
+reset.) The locked matrix:
 
 | # | arm | trained weights | recorded `decodeKind` | purpose |
 |---|---|---|---|---|
-| 1 | **hero (A-column, auction-trained)** | route-b-factorial A-column — pick the A-arm H1 used as hero (likely **A1**; confirm vs H1 handoff) | `auction` (`shift_to_nonneg=True`) | carries ALL decode-time interaction (frontend re-decodes A0⇄AF, k_cap sweep, ω) off its dense Q |
+| 1 | **hero (A-column, auction-trained)** | route-b-factorial **A2** (H1 handoff CONFIRMED — H1 ran its scan on A2, seed-42) | `auction` (`shift_to_nonneg=True`) | carries ALL decode-time interaction (frontend re-decodes A0⇄AF, k_cap sweep, ω) off its dense Q |
 | 2 | **B-column (argmax-trained)** | route-b-factorial **B1** (or B2) | `argmax` | genuinely argmax-TRAINED → stays collapsed as-trained (answers "you only swapped decode on A's Q") |
-| 3 | **catfish contrast** — user lock = **A1** (per plan §1-D3 correction), VERIFY vs run_metadata | **either** the OTHER route-b A-arm as a MORL-variant twin (A1↔A2, honest "≈ no diff") **OR** a real catfish-ON arm from `catfish/…` paired against A1 | `auction` | honesty ablation:切 catfish ≈ no change (A1≈A2, RED LINE) vs 切 decode = flips |
+| 3 | **A1** (auction robustness twin of hero A2) — user lock 2026-07-04; NOT a catfish contrast | route-b-factorial **A1** | `auction` (`shift_to_nonneg=True`) | robustness: a 2nd independently-trained auction arm also de-collapses (win is not one training config's fluke). Frame it as robustness, never as catfish |
 | 4 | **RSS_max heuristic** | none (computed) | `argmax`-over-RSS (heuristic; note it is NOT a learned-Q decode) | naive/paper benchmark; the layperson "basic mode" |
 
-If the user's "lock A1" and the pre-scan disagree, STOP and report — do not silently
-pick. (User explicitly asked for a run_metadata re-verify before locking arm#3.)
+Still VERIFY each arm's run_metadata before locking (hero **A2** / argmax **B1** /
+robustness **A1** / RSS_max computed): confirm A2 + A1 `decode=auction` &
+`catfish_enabled=false`, B1 `decode=argmax`. If any disagrees with this table, STOP and
+report — do not silently pick.
 
 ### 3. Export contract (per arm, per decision step) — MUST match leo P1
 **Base dense-Q fields** (from `producer-dense-q-export-request.md`, axis = dense action
