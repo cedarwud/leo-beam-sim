@@ -201,6 +201,60 @@ function runGoldenParity(goldens: DecodeGolden[]): void {
   console.log(`  [goldens] ${goldens.length} golden cases parity + determinism OK`);
 }
 
+// A shape-2 auction golden is a scalarize-argmax golden that ALSO carries the
+// physical-auction payload (slotCell + params + expected auctionOut/audit). The
+// generic scalarize-argmax path above already locks the argmax-anchor; this block
+// locks the full shape-2 chain on REAL leo-verified H2 dense-Q: stack the per-user
+// 3-objective Q (U×A×3) -> ω scalarize -> decodeAfPhysicalAuction must reproduce the
+// RECORDED serving (selectedServing.beamIndex) + auctionAudit. The predicate uniquely
+// selects the shape-2 golden — the 18 synthetic goldens either lack objectiveQByAction
+// (auction-*) or the auction payload (scalarize-argmax-omega-*).
+function isShape2AuctionGolden(g: DecodeGolden): boolean {
+  return (
+    g.kind === 'scalarize-argmax'
+    && Array.isArray(g.inputs.objectiveQByAction)
+    && Array.isArray(g.inputs.slotCell)
+    && g.params !== undefined
+    && Array.isArray(g.expected.auctionOut)
+    && g.expected.audit !== undefined
+  );
+}
+
+function runShape2AuctionFixtures(goldens: DecodeGolden[]): void {
+  const shape2 = goldens.filter(isShape2AuctionGolden);
+  assert.ok(
+    shape2.length >= 1,
+    'at least one shape-2 auction golden exists (real leo-verified H2 dense-Q slot)',
+  );
+  for (const g of shape2) {
+    const id = g.provenance.caseId;
+    const inp = g.inputs;
+    // shape-2: stack the U×A per-action 3-objective Q into a scalarized V (ω·Q).
+    const v = scalarizeMatrix(
+      inp.objectiveQByAction!,
+      inp.objectiveWeights!,
+      inp.mask!,
+      inp.invalidActionSentinel,
+    );
+    // the auction decodes the SAME scalarized V the generic scalarize-argmax path froze.
+    assertNestedClose(vMatrixToNested(v), g.expected.scalarized!, 1e-9, `${id} shape-2 scalarized`);
+    const res = decodeAfPhysicalAuction(v, inp.slotCell!, g.params!, { returnAudit: true });
+    assert.deepEqual(res.out, g.expected.auctionOut, `${id}: shape-2 auction out != recorded serving`);
+    assert.deepEqual(res.audit, g.expected.audit, `${id}: shape-2 auction audit != recorded audit`);
+    // [determinism] a second run must be byte-identical (no hidden state / RNG).
+    const res2 = decodeAfPhysicalAuction(v, inp.slotCell!, g.params!, { returnAudit: true });
+    assert.deepEqual(res2.out, res.out, `${id}: non-deterministic shape-2 auction out`);
+    assert.deepEqual(res2.audit, res.audit, `${id}: non-deterministic shape-2 auction audit`);
+    const anchor = g.expected.argmaxOut ?? [];
+    const decouple = res.out.filter((s, u) => s !== anchor[u]).length;
+    console.log(
+      `  [shape-2 auction] ${id}: ${res.out.length} UE ω-scalarize→auction reproduce serving + audit `
+        + `${JSON.stringify(res.audit!.openedPerSlot)}/nFallback ${res.audit!.nFallback}; `
+        + `decouple ${decouple}/${res.out.length} vs argmax-anchor`,
+    );
+  }
+}
+
 interface RowDiag {
   candidateActionOrder: unknown[];
   decisionActionValidityMask: boolean[];
@@ -270,6 +324,7 @@ async function main(): Promise<void> {
   checkPurity();
   const goldens = loadGoldens();
   runGoldenParity(goldens);
+  runShape2AuctionFixtures(goldens);
   await runRealDataFixtures();
   console.log('PASS: TS decode engine reproduces the frozen Python decode + the recorded dense-Q self-check.');
 }
