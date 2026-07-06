@@ -9,10 +9,19 @@ import {
   MODQN_BEAM_COUNT_CLAIM_LABELS,
   getModqnBeamCountBridgeClaim,
 } from '../src/modqn/replay-bundle/index.ts';
+import { skipIfDataUnavailable } from './lib/ci-data-guard.ts';
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_COMMIT = '54b44159084fca606afc90ad104b1ddbf23844fc';
 const SOURCE_LINK_BUDGET_PATH = '/home/u24/papers/ntn-sim-core/src/core/channel/link-budget.ts';
+
+// CI-environment guard (P2 SN-3c): the vendor-integrity re-hash reads the frozen
+// ntn-sim-core source in the read-only sibling checkout. Skip (visibly, exit 0 +
+// marker) when that checkout is absent — the hosted-CI signature. See
+// scripts/lib/ci-data-guard.ts for the SKIP semantics.
+skipIfDataUnavailable([
+  { path: SOURCE_LINK_BUDGET_PATH, why: 'ntn-sim-core vendor source for the link-budget.ts integrity re-hash (sibling checkout required)' },
+]);
 const DESTINATION_LINK_BUDGET_PATH = 'src/core/channel/link-budget.ts';
 const LINK_BUDGET_SHA256 = '06179394f7263291de3d6e26af8b11d44098433f7c8dc0a90ec2b53388278953';
 const ALLOWED_IMPORTS = [

@@ -51,8 +51,18 @@ import {
   PINNED_VISUAL_SHOWCASE_ARTIFACT_SHA256,
   loadValidatorVisualShowcaseArtifact,
 } from './visualShowcaseValidatorFixture';
+import { skipIfDataUnavailable } from './lib/ci-data-guard';
 
 const NTN_SIM_CORE_DIR = '/home/u24/papers/ntn-sim-core';
+
+// CI-environment guard (P2 SN-3c): this validator spawns ntn-sim-core's
+// validate:visual-showcase:artifact oracle inside the read-only sibling checkout.
+// Skip (visibly, exit 0 + marker) when that checkout is absent — the hosted-CI
+// signature. See scripts/lib/ci-data-guard.ts for the SKIP semantics.
+skipIfDataUnavailable([{
+  path: `${NTN_SIM_CORE_DIR}/package.json`,
+  why: 'ntn-sim-core sibling checkout — spawns its validate:visual-showcase:artifact oracle on the trigger artifact',
+}]);
 
 function test(label: string, fn: () => void): void {
   try {

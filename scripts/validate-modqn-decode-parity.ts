@@ -40,6 +40,7 @@ import {
   vMatrixToNested,
   type DecodeGolden,
 } from '../src/modqn/decode/index.ts';
+import { skipIfDataUnavailable } from './lib/ci-data-guard.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = dirname(HERE);
@@ -53,6 +54,16 @@ const PRODUCER_TARGET =
   '/home/u24/papers/modqn-paper-reproduction/artifacts/dense-q-proof-window-600-130';
 const TIMELINE = join(STAGING, 'timeline/step-trace.jsonl');
 const EXPECTED_ROWS = 1000;
+
+// CI-environment guard (P2 SN-3c): the staged /tmp symlink is this validator's
+// data contract and it cannot self-heal (a human must re-stage after a reboot),
+// so a missing staging is a visible SKIP (exit 0 + marker naming the restore
+// command) rather than a red — on the dev machine AND on a hosted CI runner.
+// See scripts/lib/ci-data-guard.ts for the SKIP semantics.
+skipIfDataUnavailable([{
+  path: TIMELINE,
+  why: `staged dense-Q proof window for real-data decode parity — /tmp cleared on reboot; restore: ln -sfn ${PRODUCER_TARGET} ${STAGING}`,
+}]);
 
 // -inf-aware float compare for nested (number|null)[][] (null == -Infinity).
 function assertNestedClose(

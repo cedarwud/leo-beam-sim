@@ -7,6 +7,7 @@ import {
   MODQN_REPLAY_BUNDLE_SCHEMA_VERSION,
   MODQN_BASELINE_BEAMS_PER_SATELLITE,
   MODQN_BEAM_COUNT_CLAIM_LABELS,
+  MODQN_PRODUCER_BASELINE_RUN_PATH,
   MODQN_TOTAL_BASELINE_BEAMS,
   SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH,
   SUPPORTED_MODQN_HANDOVER_EVENT_KINDS,
@@ -22,8 +23,22 @@ import {
   type ModqnHandoverEventKind,
 } from '../src/modqn/replay-bundle/index.ts';
 import { ensureModqnCurrentBaselineExport } from './support/modqn-current-baseline-export.ts';
+import { skipIfDataUnavailable } from './lib/ci-data-guard.ts';
 
 const EXPECTED_TIMELINE_ROWS = 1000;
+
+// CI-environment guard (P2 SN-3c): the default staged bundle is /tmp-ephemeral and
+// self-heals from the producer repo via ensureModqnCurrentBaselineExport(); an
+// explicit argv[2] bundle path is never guarded. Skip (visibly, exit 0 + marker)
+// only when the staging AND the producer baseline run are BOTH absent — the
+// hosted-CI signature. See scripts/lib/ci-data-guard.ts for the SKIP semantics.
+if (process.argv[2] === undefined) {
+  skipIfDataUnavailable([{
+    path: join(SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH, 'manifest.json'),
+    why: 'staged baseline pilot02 replay bundle — /tmp staging; self-heals from the producer repo when present',
+    regenerableFrom: MODQN_PRODUCER_BASELINE_RUN_PATH,
+  }]);
+}
 
 function readBundleFromPath(bundlePath: string) {
   const evaluationSummaryPath = join(bundlePath, 'evaluation/summary.json');

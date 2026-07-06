@@ -20,6 +20,7 @@ import {
   MODQN_BEAM_COUNT_CLAIM_LABELS,
   getModqnBeamCountBridgeClaim,
 } from '../src/modqn/replay-bundle/index.ts';
+import { skipIfDataUnavailable } from './lib/ci-data-guard.ts';
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_COMMIT = '54b44159084fca606afc90ad104b1ddbf23844fc';
@@ -44,6 +45,15 @@ const COPIED_FILES = [
     allowedImports: [] as string[],
   },
 ] as const;
+
+// CI-environment guard (P2 SN-3c): assertVendorCopyIntegrity() re-hashes the frozen
+// ntn-sim-core source files in the read-only sibling checkout. Skip (visibly,
+// exit 0 + marker) when that checkout is absent — the hosted-CI signature. See
+// scripts/lib/ci-data-guard.ts for the SKIP semantics.
+skipIfDataUnavailable(COPIED_FILES.map(({ sourcePath }) => ({
+  path: sourcePath,
+  why: 'ntn-sim-core vendor source for the channel-remainder integrity re-hash (sibling checkout required)',
+})));
 
 const FORBIDDEN_VENDOR_PATHS = [
   'src/core/profiles',

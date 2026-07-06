@@ -29,6 +29,7 @@ import {
   deriveWindowReplayCue,
   type WindowReplayCueFrame,
 } from '../src/showcase/windowReplayCue.ts';
+import { skipIfDataUnavailable } from './lib/ci-data-guard.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = dirname(HERE);
@@ -79,6 +80,17 @@ const ARMS: readonly ArmExpectation[] = [
 ];
 
 const ORACLE_TOL = 2e-3;
+
+// CI-environment guard (P2 SN-3c): the staged H2 scene windows are this
+// validator's data contract and it cannot self-heal (a human must re-stage after
+// a reboot — loadWindowFrames() documents the exact command), so a missing
+// staging is a visible SKIP (exit 0 + marker naming the missing window) rather
+// than a red — on the dev machine AND on a hosted CI runner. See
+// scripts/lib/ci-data-guard.ts for the SKIP semantics.
+skipIfDataUnavailable(ARMS.map(({ arm, window }) => ({
+  path: window,
+  why: `staged H2 ${arm} scene window — /tmp cleared on reboot; re-stage via node scripts/build-h2-scene-payload.mjs (see loadWindowFrames)`,
+})));
 
 function checkPurity(): void {
   // The coverage aggregator must stay display-only: no render/engine truth deps.

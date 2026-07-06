@@ -11,6 +11,7 @@ import {
   MODQN_BEAM_COUNT_CLAIM_LABELS,
   getModqnBeamCountBridgeClaim,
 } from '../src/modqn/replay-bundle/index.ts';
+import { skipIfDataUnavailable } from './lib/ci-data-guard.ts';
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_COMMIT = '54b44159084fca606afc90ad104b1ddbf23844fc';
@@ -18,6 +19,15 @@ const SOURCE_CONSTANTS_PATH = '/home/u24/papers/ntn-sim-core/src/core/common/con
 const SOURCE_BEAM_GAIN_PATH = '/home/u24/papers/ntn-sim-core/src/core/channel/beam-gain.ts';
 const DESTINATION_CONSTANTS_PATH = 'src/core/common/constants.ts';
 const DESTINATION_BEAM_GAIN_PATH = 'src/core/channel/beam-gain.ts';
+
+// CI-environment guard (P2 SN-3c): the vendor-integrity re-hash reads the frozen
+// ntn-sim-core source files in the read-only sibling checkout. Skip (visibly,
+// exit 0 + marker) when that checkout is absent — the hosted-CI signature. See
+// scripts/lib/ci-data-guard.ts for the SKIP semantics.
+skipIfDataUnavailable([
+  { path: SOURCE_CONSTANTS_PATH, why: 'ntn-sim-core vendor source for the constants.ts integrity re-hash (sibling checkout required)' },
+  { path: SOURCE_BEAM_GAIN_PATH, why: 'ntn-sim-core vendor source for the beam-gain.ts integrity re-hash (sibling checkout required)' },
+]);
 
 const SOURCE_CONSTANTS_SHA256 = '4054c6e70979539843f3216ef5e31e6876715b40464fee2d7332ddaaa0f0ab7a';
 const SOURCE_BEAM_GAIN_SHA256 = '359f2d34c67755f9f77885ea64da817c7b3caad282305994c56094a768129813';

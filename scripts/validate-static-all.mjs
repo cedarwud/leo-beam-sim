@@ -67,13 +67,28 @@ for (const key of Object.keys(pkg)) {
   discovered.push({ key, file: m[1] }); // file is repo-relative (scripts/... or src/...)
 }
 
-const gatedRed = [], staleQuarantine = [];
+// DATA-DEPENDENT validators (staged /tmp bundles, read-only sibling repos) self-
+// report an unavailable environment by printing this marker to stdout and exiting
+// 0 — see scripts/lib/ci-data-guard.ts (keep the literal in sync). The runner
+// NAMES and COUNTS them as `skipped`: neither green (the assertions did not run)
+// nor red (absence of machine-local data is an environment fact, not a code
+// regression — the hosted-CI case). A skip is also NOT quarantine evidence in
+// either direction. Marker + exit-0 is required; a bare exit-0 stays a pass, so a
+// validator can never silently stop validating.
+const SKIP_MARKER = '[SKIP-DATA-UNAVAILABLE]';
+
+const gatedRed = [], staleQuarantine = [], skipped = [];
 let ran = 0;
 for (const { key, file } of discovered) {
   let pass = true;
-  try { execFileSync('node', ['--import', 'tsx/esm', file], { stdio: 'pipe', timeout: 90000 }); }
+  let out = '';
+  try { out = execFileSync('node', ['--import', 'tsx/esm', file], { stdio: 'pipe', timeout: 90000, encoding: 'utf8' }); }
   catch { pass = false; }
   ran += 1;
+  if (pass && out.includes(SKIP_MARKER)) {
+    skipped.push(key);
+    continue;
+  }
   if (QUARANTINE.has(key)) {
     if (pass) staleQuarantine.push(key);
   } else if (!pass) {
@@ -86,7 +101,10 @@ for (const { key, file } of discovered) {
 const discoveredKeys = new Set(discovered.map((d) => d.key));
 for (const key of QUARANTINE.keys()) if (!discoveredKeys.has(key)) staleQuarantine.push(`${key} (no longer discovered)`);
 
-console.log(`\n===== validate:static:all — ${ran} static validators run, ${QUARANTINE.size} quarantined =====`);
+// A quarantined validator that SKIPPED did not run its assertions, so it counts
+// neither as "still red" nor as "now green" — keep the quarantine entry as-is.
+const quarantinedActive = QUARANTINE.size - skipped.filter((k) => QUARANTINE.has(k)).length;
+console.log(`\n===== validate:static:all — ${ran} static validators run, ${skipped.length} skipped (data unavailable), ${quarantinedActive} quarantined =====`);
 if (gatedRed.length) {
   console.log(`\n✗ ${gatedRed.length} GATED validator(s) RED (a refactor broke one, or a NEW validator is red — fix it or, if it is pre-existing rot, add it to QUARANTINE with a TODO):`);
   for (const k of gatedRed) console.log(`    ${k}`);
@@ -95,6 +113,10 @@ if (staleQuarantine.length) {
   console.log(`\n✗ ${staleQuarantine.length} QUARANTINED validator(s) now GREEN or gone — DELETE them from QUARANTINE:`);
   for (const k of staleQuarantine) console.log(`    ${k}`);
 }
+if (skipped.length) {
+  console.log(`\n○ ${skipped.length} validator(s) SKIPPED — required machine-local data unavailable in this environment (each printed a [SKIP-DATA-UNAVAILABLE] line naming the missing path; on the dev machine re-stage the data and re-run):`);
+  for (const k of skipped) console.log(`    ${k}`);
+}
 const ok = gatedRed.length === 0 && staleQuarantine.length === 0;
-console.log(ok ? `\n✓ static gate intact: ${ran - QUARANTINE.size} gated green, ${QUARANTINE.size} known-red quarantined (visible debt).` : '\n✗ static gate FAILED — see above.');
+console.log(ok ? `\n✓ static gate intact: ${ran - skipped.length - quarantinedActive - gatedRed.length} gated green, ${skipped.length} skipped (data unavailable), ${quarantinedActive} known-red quarantined (visible debt).` : '\n✗ static gate FAILED — see above.');
 process.exit(ok ? 0 : 1);

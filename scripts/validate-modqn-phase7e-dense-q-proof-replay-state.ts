@@ -38,6 +38,17 @@ import {
   type ModqnReplayBundleContents,
   type ModqnReplayEnvelope,
 } from '../src/modqn/replay-bundle/index.ts';
+import { skipIfDataUnavailable } from './lib/ci-data-guard.ts';
+
+// CI-environment guard (P2 SN-3c): the staged /tmp symlink is this validator's
+// data contract and it cannot self-heal (a human must re-stage after a reboot),
+// so a missing staging is a visible SKIP (exit 0 + marker naming the restore
+// command) rather than a red — on the dev machine AND on a hosted CI runner.
+// See scripts/lib/ci-data-guard.ts for the SKIP semantics.
+skipIfDataUnavailable([{
+  path: MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH,
+  why: `staged Family-B dense-Q replay bundle — /tmp cleared on reboot; restore: ln -sfn <modqn-paper-reproduction>/artifacts/dense-q-proof-window-600-130 ${MODQN_FAMILY_B_DENSE_Q_BUNDLE_PATH}`,
+}]);
 
 function loadFamilyBContents(): ModqnReplayBundleContents {
   const plan = createModqnReplayBundleLoadPlan({

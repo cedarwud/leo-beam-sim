@@ -7,6 +7,7 @@ import {
   MODQN_REPLAY_7BEAM_EVIDENCE_STATUS,
   MODQN_REPLAY_7BEAM_MODE_KEY,
   MODQN_REPLAY_7BEAM_MODE_LABEL,
+  MODQN_PRODUCER_BASELINE_RUN_PATH,
   MODQN_TOTAL_BASELINE_BEAMS,
   SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH,
   createModqnReplayBundleLoadPlan,
@@ -20,6 +21,18 @@ import {
   type ModqnReplayEnvelope,
 } from '../src/modqn/replay-bundle/index.ts';
 import { ensureModqnCurrentBaselineExport } from './support/modqn-current-baseline-export.ts';
+import { skipIfDataUnavailable } from './lib/ci-data-guard.ts';
+
+// CI-environment guard (P2 SN-3c): the staged bundle is /tmp-ephemeral and
+// self-heals from the producer repo via ensureModqnCurrentBaselineExport(). Skip
+// (visibly, exit 0 + marker) only when the staging AND the producer baseline run
+// are BOTH absent — the hosted-CI signature. See scripts/lib/ci-data-guard.ts for
+// the SKIP semantics.
+skipIfDataUnavailable([{
+  path: join(SELECTED_MODQN_PHASE7C_REPLAY_BUNDLE_PATH, 'manifest.json'),
+  why: 'staged baseline pilot02 replay bundle — /tmp staging; self-heals from the producer repo when present',
+  regenerableFrom: MODQN_PRODUCER_BASELINE_RUN_PATH,
+}]);
 
 function readSurfaceFromDisk(surface: ModqnReplayBundleSurface): string | undefined {
   if (!existsSync(surface.absolutePath)) return undefined;
