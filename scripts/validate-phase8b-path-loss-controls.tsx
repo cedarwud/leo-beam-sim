@@ -6,8 +6,9 @@ import { computeLinkBudget } from '../src/engine/signal/link-budget.ts';
 import { sampleLosStateTr38811 } from '../src/engine/signal/los-probability.ts';
 import { computeFsplDb, computePathLossDb } from '../src/engine/signal/path-loss.ts';
 import type { ActiveBeamAssignment, SatelliteSnapshot, UEPosition } from '../src/engine/signal/types.ts';
-import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
 import { loadProfile, profileList } from '../src/profiles/index.ts';
+import { createSceneTopologyState } from '../src/sceneTopology.ts';
+import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import {
   DEFAULT_CHANNEL_LOSS_OVERRIDES,
   DEFAULT_TR38811_CHANNEL,
@@ -368,23 +369,24 @@ function createInfoState(profile: Profile): SimState {
 
 function renderLossPanelMarkup(profile: Profile, tuning = createSignalTuningState(profile)): string {
   return renderToStaticMarkup(
+    // Aligned to the CURRENT SignalTuningPanelProps: the removed legacy props
+    // (currentSinrDb/formulaSource/handover-policy sextet) were never destructured
+    // by the panel any more, so dropping them is render-identical; the added
+    // topology/visual-scale/appMode props are unread outside the (unrendered)
+    // topology tab, and FormulaTabList ignores appMode (`void appMode`).
     <SignalTuningPanel
       baseProfile={profile}
       tuning={tuning}
+      topology={createSceneTopologyState()}
+      sceneVisualScale={createSceneVisualScaleState()}
+      appMode="sinr-experiment"
       hasOverrides={hasSignalTuningOverrides(profile, tuning)}
-      currentSinrDb={12.5}
       formulaBudget={createBudgetTerms()}
-      formulaSource={createFormulaSource()}
       initialActiveTab="loss"
-      handoverDraft={createHandoverPolicyTuningState(profile)}
-      appliedHandoverPolicy={createHandoverPolicyTuningState(profile)}
-      hasHandoverDraftChanges={false}
-      hasHandoverOverrides={false}
       onTuningChange={() => {}}
+      onTopologyChange={() => {}}
+      onSceneVisualScaleChange={() => {}}
       onReset={() => {}}
-      onHandoverDraftChange={() => {}}
-      onApplyHandoverPolicy={() => {}}
-      onResetHandoverPolicy={() => {}}
     />,
   );
 }
@@ -542,20 +544,16 @@ function assertPlacementCopyAndStaleMarkup(): void {
     <SignalTuningPanel
       baseProfile={profile}
       tuning={createSignalTuningState(profile)}
+      topology={createSceneTopologyState()}
+      sceneVisualScale={createSceneVisualScaleState()}
+      appMode="sinr-experiment"
       hasOverrides={false}
-      currentSinrDb={12.5}
       formulaBudget={createBudgetTerms()}
-      formulaSource={createFormulaSource()}
       isFormulaEvidenceStale
-      handoverDraft={createHandoverPolicyTuningState(profile)}
-      appliedHandoverPolicy={createHandoverPolicyTuningState(profile)}
-      hasHandoverDraftChanges={false}
-      hasHandoverOverrides={false}
       onTuningChange={() => {}}
+      onTopologyChange={() => {}}
+      onSceneVisualScaleChange={() => {}}
       onReset={() => {}}
-      onHandoverDraftChange={() => {}}
-      onApplyHandoverPolicy={() => {}}
-      onResetHandoverPolicy={() => {}}
     />,
   );
   const staleTuningText = decodeHtmlText(staleTuningMarkup);

@@ -161,11 +161,13 @@ const profile = loadProfile(PROFILE_ID);
         { ueId: 'ue-c', cellId: 9, cellDistanceKm: 1, offAxisDeg: 0.1, servingSatId: 'SAT-2', beamIdentity: 'SAT-2#cell9', frequencyIndex: 0, sinrDb: -2, handoverKind: 'none' },
       ],
     } as unknown as SinrLiveCellFrame,
-    // decoy steered records — the cell branch must IGNORE them (cell truth wins)
+    // decoy steered records — the cell branch must IGNORE them (cell truth wins).
+    // groundX/groundZ/pendingTarget*/triggerProgressSec were added to the SimFrame
+    // record after this fixture was written; the publisher reads none of them.
     perUePositions: [
-      { id: 'ue-a', eastKm: 0, northKm: 0, servingSatId: 'WRONG', servingBeamId: 99, sinrDb: 0 },
-      { id: 'ue-b', eastKm: 0, northKm: 0, servingSatId: 'WRONG', servingBeamId: 99, sinrDb: 0 },
-      { id: 'ue-c', eastKm: 0, northKm: 0, servingSatId: 'WRONG', servingBeamId: 99, sinrDb: 0 },
+      { id: 'ue-a', groundX: 0, groundZ: 0, eastKm: 0, northKm: 0, servingSatId: 'WRONG', servingBeamId: 99, sinrDb: 0, pendingTargetSatId: null, pendingTargetBeamId: null, triggerProgressSec: 0 },
+      { id: 'ue-b', groundX: 0, groundZ: 0, eastKm: 0, northKm: 0, servingSatId: 'WRONG', servingBeamId: 99, sinrDb: 0, pendingTargetSatId: null, pendingTargetBeamId: null, triggerProgressSec: 0 },
+      { id: 'ue-c', groundX: 0, groundZ: 0, eastKm: 0, northKm: 0, servingSatId: 'WRONG', servingBeamId: 99, sinrDb: 0, pendingTargetSatId: null, pendingTargetBeamId: null, triggerProgressSec: 0 },
     ],
   };
   const published = buildPublishedPerUePositions(cellSim as Parameters<typeof buildPublishedPerUePositions>[0]);
@@ -184,8 +186,8 @@ const profile = loadProfile(PROFILE_ID);
   // Steered lane (no cell truth): beam id preserved, cell id null.
   const steeredSim = {
     perUePositions: [
-      { id: 's-0', eastKm: 0, northKm: 0, servingSatId: 'SAT-3', servingBeamId: 5, sinrDb: 9 },
-      { id: 's-1', eastKm: 0, northKm: 0, servingSatId: null, servingBeamId: null, sinrDb: null },
+      { id: 's-0', groundX: 0, groundZ: 0, eastKm: 0, northKm: 0, servingSatId: 'SAT-3', servingBeamId: 5, sinrDb: 9, pendingTargetSatId: null, pendingTargetBeamId: null, triggerProgressSec: 0 },
+      { id: 's-1', groundX: 0, groundZ: 0, eastKm: 0, northKm: 0, servingSatId: null, servingBeamId: null, sinrDb: null, pendingTargetSatId: null, pendingTargetBeamId: null, triggerProgressSec: 0 },
     ],
   };
   const steered = buildPublishedPerUePositions(steeredSim as Parameters<typeof buildPublishedPerUePositions>[0]);

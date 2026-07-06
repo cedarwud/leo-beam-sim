@@ -274,12 +274,18 @@ function HookCaptureSync({
   renderToStaticMarkup(
     React.createElement(
       ModqnEnvelopeProvider,
-      { envelope: fetched.envelope, slotOffset: 0 },
-      React.createElement(HookCaptureSync, {
-        capture: (h: UseModqnHandoverState) => {
-          captured = h;
-        },
-      }),
+      // children passed inside props: ModqnEnvelopeProviderProps requires the
+      // `children` key, and createElement's rest-children overload does not
+      // satisfy a required prop. React renders props.children identically.
+      {
+        envelope: fetched.envelope,
+        slotOffset: 0,
+        children: React.createElement(HookCaptureSync, {
+          capture: (h: UseModqnHandoverState) => {
+            captured = h;
+          },
+        }),
+      },
     ),
   );
   const hook = captured as UseModqnHandoverState | null;
@@ -340,7 +346,9 @@ function HookCaptureSync({
       },
     }),
   );
-  const nonNullHook = captured as UseModqnHandoverState;
+  // `| null` mirrors the 4b idiom: TS does not track the closure assignment, so a
+  // bare non-null cast is rejected; hasOwnProperty.call accepts the union as-is.
+  const nonNullHook = captured as UseModqnHandoverState | null;
   const expectedKeys = [
     'omegaDraft',
     'omegaActive',
@@ -369,8 +377,11 @@ function HookCaptureSync({
   const markup = renderToStaticMarkup(
     React.createElement(
       ModqnEnvelopeProvider,
-      { envelope: fetched.envelope, slotOffset: 0 },
-      React.createElement(ModqnObjectiveTab, {}),
+      {
+        envelope: fetched.envelope,
+        slotOffset: 0,
+        children: React.createElement(ModqnObjectiveTab, {}),
+      },
     ),
   );
   assert.ok(

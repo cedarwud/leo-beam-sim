@@ -236,7 +236,8 @@ async function startTemporaryDevServer() {
 }
 
 async function terminateTemporaryDevServer(
-  child: import('node:child_process').ChildProcessWithoutNullStreams,
+  // The real spawn() return under stdio ['ignore','pipe','pipe'] (stdin is null).
+  child: import('node:child_process').ChildProcessByStdio<null, import('node:stream').Readable, import('node:stream').Readable>,
 ): Promise<ChildProcessResult> {
   if (!child.pid || child.exitCode !== null) {
     return { pid: child.pid ?? null, stopped: child.exitCode !== null, signal: child.signalCode ?? null };

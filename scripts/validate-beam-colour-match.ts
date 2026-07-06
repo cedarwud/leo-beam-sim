@@ -196,10 +196,14 @@ check('(b) the SEMANTIC render colour resolves: hero serving YELLOW / non-hero d
     'a candidate cone renders the candidate BLUE',
   );
   // the three semantic role colours are distinct (legible without a legend).
+  // Type-only `as string` widens: the constants are literal-typed, so TS flags
+  // the (currently always-true) tripwire as a no-overlap comparison (TS2367).
+  // The guard is intentional — it fires only if the src constants are ever
+  // edited to collide — and the widen changes no runtime value or comparison.
   assert(
-    SINR_LIVE_CONE_SERVING_PRIMARY_COLOR !== SINR_LIVE_CONE_BACKGROUND_COLOR
-      && SINR_LIVE_CONE_SERVING_PRIMARY_COLOR !== SINR_LIVE_CONE_CANDIDATE_COLOR
-      && SINR_LIVE_CONE_BACKGROUND_COLOR !== SINR_LIVE_CONE_CANDIDATE_COLOR,
+    (SINR_LIVE_CONE_SERVING_PRIMARY_COLOR as string) !== SINR_LIVE_CONE_BACKGROUND_COLOR
+      && (SINR_LIVE_CONE_SERVING_PRIMARY_COLOR as string) !== SINR_LIVE_CONE_CANDIDATE_COLOR
+      && (SINR_LIVE_CONE_BACKGROUND_COLOR as string) !== SINR_LIVE_CONE_CANDIDATE_COLOR,
     'serving / context / candidate are three distinct role colours',
   );
 });

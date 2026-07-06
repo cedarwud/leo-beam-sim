@@ -61,6 +61,10 @@ type FrameSample = Readonly<{
   speed: number | null;
 }>;
 
+/** Local inverse of Readonly<T> for the one construction site that fills the
+ *  result in place; everything downstream still reads the Readonly view. */
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+
 type BrowserValidationResult = Readonly<{
   arrowDetected: boolean;
   startWallClockMs: number | null;
@@ -218,7 +222,7 @@ function collectForbiddenCopyViolations(bodyText: string): ForbiddenCopyViolatio
   const ignoreContext = /\b(not|no|does not|do not|without|separate|separated|read-only|read only|only|forbidden|must not|sensitivity\/demo)\b/i;
   const rules: Array<{ name: string; pattern: RegExp }> = [
     {
-      name: 'HOBS/SINR live as MODQN replay evidence',
+      name: 'HOBS/SINR live as MODQN replay evidence', // forbidden-claim rule name — this validator BANS the phrase (not a claim)
       pattern: /\bhobs\/sinr\b(?:(?![.;\n]).){0,120}\bmodqn\b(?:(?![.;\n]).){0,120}\b(?:replay|artifact)\b(?:(?![.;\n]).){0,80}\b(?:evidence|truth|ground truth|provenance)\b/i,
     },
     {
@@ -280,7 +284,8 @@ async function startTemporaryDevServer() {
 }
 
 async function terminateTemporaryDevServer(
-  child: import('node:child_process').ChildProcessWithoutNullStreams,
+  // The real spawn() return under stdio ['ignore','pipe','pipe'] (stdin is null).
+  child: import('node:child_process').ChildProcessByStdio<null, import('node:stream').Readable, import('node:stream').Readable>,
 ): Promise<ChildProcessResult> {
   if (!child.pid || child.exitCode !== null) {
     return { pid: child.pid ?? null, stopped: child.exitCode !== null, signal: child.signalCode ?? null };
@@ -315,14 +320,16 @@ function assertAppUrlOn5173(pageUrl: string): void {
   );
 }
 
-function toNumber(value: string | null): number | null {
+function toNumber(value: string | number | null): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseSceneSpeed(sceneText: string): number | null {
-  const match = /Scene:\s*([0-9.]+)x(?:\s*\(([^)]*)\))?/u.exec(sceneText);
-  return Number.isFinite(Number(match?.[1])) ? Number(match[1]) : null;
+function parseSceneSpeed(sceneText: string | undefined): number | null {
+  // `?? ''` is output-identical to the pre-typed behaviour: exec(undefined)
+  // coerced to the string "undefined", which this pattern never matches either.
+  const match = /Scene:\s*([0-9.]+)x(?:\s*\(([^)]*)\))?/u.exec(sceneText ?? '');
+  return Number.isFinite(Number(match?.[1])) ? Number(match?.[1]) : null;
 }
 
 async function waitFor<T>(
@@ -362,7 +369,7 @@ async function readArrowState(page: Page): Promise<ArrowTelemetry> {
 
 async function setSliderSpeedTo(page: Page, speed: number): Promise<void> {
   await page.evaluate((value) => {
-    const slider = document.querySelector('input[type="range"]');
+    const slider = document.querySelector<HTMLInputElement>('input[type="range"]');
     if (!slider) {
       throw new Error('expected a speed slider input');
     }
@@ -394,7 +401,12 @@ async function collectTargetSamples(
   const frameSamples: FrameSample[] = [];
   const sampleWindowMs = INTRA_VISUAL_LATCH_MS + 600;
 
-  const initialSource = startSample ?? (await readArrowState(page) as FrameSample & { wallClockMs: number });
+  // Honest union: the only call site always passes `startSample` (a FrameSample,
+  // which has no sceneText), so the readArrowState fallback branch is dead at
+  // runtime today; the old `as FrameSample` cast mislabeled ArrowTelemetry
+  // (opacity is a string there). toNumber/parseSceneSpeed accept both members.
+  const initialSource: (FrameSample & { sceneText?: undefined }) | ArrowTelemetry =
+    startSample ?? await readArrowState(page);
   const initialSample: FrameSample = {
     wallClockMs: Number.isFinite(initialSource.wallClockMs) ? initialSource.wallClockMs : performance.now(),
     active: initialSource.active,
@@ -528,7 +540,7 @@ async function runBrowserValidation(appUrl: string): Promise<BrowserValidationRe
     args: ['--disable-dev-shm-usage', '--use-angle=swiftshader-webgl'],
   });
 
-  const result: BrowserValidationResult = {
+  const result: Mutable<BrowserValidationResult> = {
     arrowDetected: false,
     startWallClockMs: null,
     samples: [],
@@ -601,11 +613,13 @@ async function runBrowserValidation(appUrl: string): Promise<BrowserValidationRe
       const postStart = await collectTargetSamples(page, result.startWallClockMs, eventStartFrameSample);
 
       const samples = SAMPLE_TARGET_SECONDS.map(targetSec => {
-        const targetWallClockMs = result.startWallClockMs + targetSec * 1000;
+        // Same value as result.startWallClockMs (assigned from this const above);
+        // the local keeps the non-null type across the callback boundary.
+        const targetWallClockMs = correctedStartWallClockMs + targetSec * 1000;
         const frameSample = interpolateSampleAtWallClock(postStart.frameSamples, targetWallClockMs);
         return {
           targetSec,
-          elapsedSec: (frameSample.wallClockMs - result.startWallClockMs) / 1000,
+          elapsedSec: (frameSample.wallClockMs - correctedStartWallClockMs) / 1000,
           wallClockMs: frameSample.wallClockMs,
           opacity: frameSample.opacity,
           speed: frameSample.speed,

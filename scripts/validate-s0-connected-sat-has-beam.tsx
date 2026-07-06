@@ -108,7 +108,12 @@ const geometry = sceneGeometryFromProfile({
 // resolver here produces the SAME cone set the lane renders. The cone APEX is the
 // serving-sat-complete `viz.coneApexWorldById` (all projected sats, not the
 // top-12 display slice) so a serving sat beyond the display cap still cones.
-const worldUnitsPerKm = 1 / geometry.kmPerWorldUnit;
+// TYPE-HONESTY (SN-5): geometry.kmPerWorldUnit is optional and this profile stub
+// does NOT set it, so at runtime this has always been 1/undefined = NaN — the
+// `?? NaN` is value-identical and makes it explicit. (MainScene falls back to
+// paperUserArea.kmPerWorldUnit; here the NaN placements are inert because the
+// invariant consumes only the resolver's satId set, never the coordinates.)
+const worldUnitsPerKm = 1 / (geometry.kmPerWorldUnit ?? NaN);
 const cellLayout = buildSinrLiveCellLayout(profile);
 const placementByCellId = new Map<number, SinrLiveCellPlacement>(
   cellLayout.centers.map(center => [center.cellId, {

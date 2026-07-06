@@ -90,6 +90,9 @@ function makeHook(overrides: {
     bundlePolicyDiagnostics:
       overrides.bundlePolicyDiagnostics ?? snapshot?.policyDiagnostics ?? null,
     bundleSidebarSnapshot: snapshot,
+    // Added to UseModqnHandoverState after this fixture was written; 0 is the
+    // hook's own default-context value and ModqnObjectiveTab never reads it.
+    rescalarizeFallbackCount: 0,
     setOmegaDraft: () => {},
     applyOmega: () => {},
     resetOmega: () => {},

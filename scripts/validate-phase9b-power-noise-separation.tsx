@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
 import { loadProfile } from '../src/profiles/index.ts';
-import type { LinkBudgetTerms, SignalSourceState } from '../src/scene/types.ts';
+import type { LinkBudgetTerms } from '../src/scene/types.ts';
+import { createSceneTopologyState } from '../src/sceneTopology.ts';
+import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import {
   applySignalTuning,
   createSignalTuningState,
@@ -86,41 +87,31 @@ function createBudgetTerms(): LinkBudgetTerms {
   };
 }
 
-function createFormulaSource(): SignalSourceState {
-  return {
-    satId: 'sat-a',
-    beamId: 1,
-    sinrDb: 12.5,
-    elevationDeg: 55,
-    rangeKm: 900,
-    status: 'live',
-  };
-}
-
 type TestTab = 'signal-power' | 'beam' | 'receiver-gain' | 'thermal-noise';
 
 function renderPanel(initialActiveTab: TestTab, isFormulaEvidenceStale = false) {
   const profile = loadProfile(PROFILE_ID);
   const tuning = createSignalTuningState(profile);
   const markup = renderToStaticMarkup(
+    // Aligned to the CURRENT SignalTuningPanelProps: the removed legacy props
+    // (currentSinrDb/formulaSource/handover-policy sextet) were never destructured
+    // by the panel any more, so dropping them is render-identical; the added
+    // topology/visual-scale/appMode props are unread outside the (unrendered)
+    // topology tab, and FormulaTabList ignores appMode (`void appMode`).
     <SignalTuningPanel
       baseProfile={profile}
       tuning={tuning}
+      topology={createSceneTopologyState()}
+      sceneVisualScale={createSceneVisualScaleState()}
+      appMode="sinr-experiment"
       hasOverrides={false}
-      currentSinrDb={12.5}
       formulaBudget={createBudgetTerms()}
-      formulaSource={createFormulaSource()}
       isFormulaEvidenceStale={isFormulaEvidenceStale}
       initialActiveTab={initialActiveTab}
-      handoverDraft={createHandoverPolicyTuningState(profile)}
-      appliedHandoverPolicy={createHandoverPolicyTuningState(profile)}
-      hasHandoverDraftChanges={false}
-      hasHandoverOverrides={false}
       onTuningChange={() => {}}
+      onTopologyChange={() => {}}
+      onSceneVisualScaleChange={() => {}}
       onReset={() => {}}
-      onHandoverDraftChange={() => {}}
-      onApplyHandoverPolicy={() => {}}
-      onResetHandoverPolicy={() => {}}
     />,
   );
 

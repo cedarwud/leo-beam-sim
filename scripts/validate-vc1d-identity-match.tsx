@@ -45,6 +45,11 @@ const BASE_RUNTIME: Omit<
   RuntimeConfig,
   'beamDensity' | 'viewport' | 'effectsEnabled' | 'cinematicMode' | 'reducedMotion'
 > = {
+  // RuntimeConfig.appMode became required after this fixture was written.
+  // 'sinr-experiment' keeps useBeamViz's density/slice branches on the same
+  // (non-modqn) path the fixture always exercised; the identity assertions
+  // read tint/glyph propagation, which is appMode-independent.
+  appMode: 'sinr-experiment',
   presentationMode: 'demo-readability',
   replay: {
     epochUtcMs: Date.UTC(2026, 0, 1, 0, 0, 0),
@@ -232,6 +237,21 @@ function createForcedSimFrame(profile: Profile): SimFrame {
     hoCount: 1,
     lastHoReason: '',
     simTimeSec: 90,
+    // SimFrame fields added after this fixture was written; inert "no event /
+    // origin / no UEs" values — none are read by the identity-propagation paths
+    // this validator asserts on.
+    lastHoEvent: null,
+    intraHoCount: 0,
+    intraHandoverEvent: null,
+    intraHandoverPreview: null,
+    intraHandoverWallClockStartMs: null,
+    intraHandoverWallClockExpiresMs: null,
+    interHandoverEvent: null,
+    interHandoverWallClockStartMs: null,
+    interHandoverWallClockExpiresMs: null,
+    ueGroundX: 0,
+    ueGroundZ: 0,
+    perUePositions: [],
   };
 }
 
@@ -291,6 +311,16 @@ function createPanelState(profile: Profile): SimState {
     sinrDeltaDb: 0.5,
     recentHoSourceSatId: null,
     recentHoTargetSatId: null,
+    // SimState fields added after this fixture was written; inert values —
+    // InfoPanel never destructures these, and servingCellId is short-circuited
+    // behind the non-null servingBeamId/comparisonBeamId here.
+    servingCellId: null,
+    recentHoSourceBeamId: null,
+    recentHoTargetBeamId: null,
+    recentHoDeltaDb: null,
+    lastHoEvent: null,
+    simTimeSec: 0,
+    intraHoCount: 0,
     sinrDb: 18.7,
     physicalServingBudget: createBudgetTerms(0),
     servingBudget: createBudgetTerms(1),

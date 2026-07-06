@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Children, isValidElement, type ReactElement } from 'react';
+import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
 import {
   CELL_SCHEDULE_VIZ_SLOT_SEC,
   computeCellScheduleViz,
@@ -39,7 +39,7 @@ const SATELLITES = [
 type AnyElement = ReactElement<{
   name?: string;
   userData?: Record<string, unknown>;
-  children?: unknown;
+  children?: ReactNode;
   cellId?: number;
   satelliteWorld?: WorldPoint;
   color?: string;

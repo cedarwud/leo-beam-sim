@@ -135,6 +135,15 @@ function createPanelState(profile: Profile, mode: 'pending' | 'recent-ho'): SimS
       rangeKm: 820,
       status: isRecentHo ? 'recent-ho' : 'live',
     },
+    // SimState fields added after this fixture was written; inert values —
+    // InfoPanel never destructures the recentHo*-beam ids, the identity map
+    // already defaults to {}, and servingCellId is short-circuited behind the
+    // non-null servingBeamId/comparisonBeamId here.
+    satelliteVisualIdentityById: {},
+    servingCellId: null,
+    recentHoSourceBeamId: null,
+    recentHoTargetBeamId: null,
+    recentHoDeltaDb: null,
     servingSatId: primarySatId,
     servingBeamId: primaryBeamId,
     servingElevationDeg: 50.1,

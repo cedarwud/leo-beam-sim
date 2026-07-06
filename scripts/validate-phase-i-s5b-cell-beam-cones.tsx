@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Children, isValidElement, type ReactElement } from 'react';
+import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { satelliteTint } from '../src/constants/beamRoleTokens.ts';
 import {
@@ -38,7 +38,7 @@ type AnyElement = ReactElement<{
   position?: readonly [number, number, number];
   quaternion?: THREE.Quaternion;
   userData?: Record<string, unknown>;
-  children?: unknown;
+  children?: ReactNode;
   args?: readonly unknown[];
   color?: string;
   opacity?: number;

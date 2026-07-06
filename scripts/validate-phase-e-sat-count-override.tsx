@@ -90,11 +90,11 @@ section('(a) sceneTopology.ts source exports', () => {
 section('(b) applySceneTopology behavior', () => {
   const profile = syntheticProfile();
   const before = deepClone(profile);
+  // Spread the src-owned all-null state so the fixture tracks the current
+  // SceneTopologyState shape; null is the canonical "no override" for every field.
   const applied = applySceneTopology(profile, {
+    ...nullTopology,
     satsPerPlane: 6,
-    beamCountPerSatellite: null,
-    ueCount: null,
-    ueDistributionMode: null,
   });
 
   check(applied !== profile, 'satsPerPlane override returns a new profile object');
@@ -114,10 +114,8 @@ section('(b) applySceneTopology behavior', () => {
   check(deepEqual(noOverride.orbit.shells[0], profile.orbit.shells[0]), 'null satsPerPlane leaves shells[0] shape equal');
 
   const beamOverride = applySceneTopology(profile, {
-    satsPerPlane: null,
+    ...nullTopology,
     beamCountPerSatellite: 19,
-    ueCount: null,
-    ueDistributionMode: null,
   });
   check(beamOverride.beams.perSatellite === 19, 'beamCountPerSatellite overrides beams.perSatellite to 19');
   check(beamOverride.beams.maxActivePerSat === 19, 'beamCountPerSatellite overrides beams.maxActivePerSat to 19');

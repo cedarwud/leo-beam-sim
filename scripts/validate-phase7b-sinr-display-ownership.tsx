@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
 import { loadProfile } from '../src/profiles/index.ts';
 import type { Profile } from '../src/profiles/types.ts';
 import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
+import { createSceneTopologyState } from '../src/sceneTopology.ts';
+import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
@@ -73,6 +74,18 @@ function createSimState(profile: Profile): SimState {
       rangeKm: 940,
       status: 'derived',
     },
+    // SimState fields added after this fixture was written; inert values —
+    // InfoPanel never destructures simTimeSec/intraHoCount/lastHoEvent/recentHo*,
+    // satelliteVisualIdentityById already defaults to {}, and servingCellId is
+    // short-circuited behind the non-null servingBeamId/comparisonBeamId here.
+    satelliteVisualIdentityById: {},
+    servingCellId: null,
+    recentHoSourceBeamId: null,
+    recentHoTargetBeamId: null,
+    recentHoDeltaDb: null,
+    lastHoEvent: null,
+    simTimeSec: 0,
+    intraHoCount: 0,
     servingSatId: SERVING_SAT_ID,
     servingBeamId: SERVING_BEAM_ID,
     servingElevationDeg: 54.2,
@@ -170,22 +183,24 @@ function decodeHtmlText(markup: string): string {
 
 function renderTuningPanel(profile: Profile, state: SimState) {
   const markup = renderToStaticMarkup(
+    // Aligned to the CURRENT SignalTuningPanelProps. The ownership point this
+    // validator makes is now enforced structurally too: the panel interface no
+    // longer even ACCEPTS currentSinrDb/formulaSource — the old "feed it SINR and
+    // assert it does not display it" props were silently ignored (never
+    // destructured), so dropping them is render-identical; the negative needles
+    // below still assert the panel renders no operational SINR readout.
     <SignalTuningPanel
       baseProfile={profile}
       tuning={createTuningState(profile)}
+      topology={createSceneTopologyState()}
+      sceneVisualScale={createSceneVisualScaleState()}
+      appMode="sinr-experiment"
       hasOverrides
-      currentSinrDb={state.physicalServing.sinrDb ?? -Infinity}
       formulaBudget={state.physicalServingBudget}
-      formulaSource={state.physicalServing}
-      handoverDraft={createHandoverPolicyTuningState(profile)}
-      appliedHandoverPolicy={createHandoverPolicyTuningState(profile)}
-      hasHandoverDraftChanges={false}
-      hasHandoverOverrides={false}
       onTuningChange={() => {}}
+      onTopologyChange={() => {}}
+      onSceneVisualScaleChange={() => {}}
       onReset={() => {}}
-      onHandoverDraftChange={() => {}}
-      onApplyHandoverPolicy={() => {}}
-      onResetHandoverPolicy={() => {}}
     />,
   );
 

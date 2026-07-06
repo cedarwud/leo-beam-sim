@@ -249,7 +249,8 @@ async function startTemporaryDevServer() {
 }
 
 async function terminateTemporaryDevServer(
-  child: import('node:child_process').ChildProcessWithoutNullStreams,
+  // The real spawn() return under stdio ['ignore','pipe','pipe'] (stdin is null).
+  child: import('node:child_process').ChildProcessByStdio<null, import('node:stream').Readable, import('node:stream').Readable>,
 ): Promise<ChildProcessResult> {
   if (!child.pid || child.exitCode !== null) {
     return { pid: child.pid ?? null, stopped: child.exitCode !== null, signal: child.signalCode ?? null };
@@ -284,7 +285,7 @@ function collectForbiddenCopyViolations(bodyText: string): ForbiddenCopyViolatio
   const ignoreContext = /\b(not|no|does not|do not|without|separate|separated|read-only|read only|only|forbidden|must not|sensitivity\/demo)\b/i;
   const rules: Array<{ name: string; pattern: RegExp }> = [
     {
-      name: 'HOBS/SINR live as MODQN replay evidence',
+      name: 'HOBS/SINR live as MODQN replay evidence', // forbidden-claim rule name — this validator BANS the phrase (not a claim)
       pattern: /\bhobs\/sinr\b(?:(?![.;\n]).){0,120}\bmodqn\b(?:(?![.;\n]).){0,120}\b(?:replay|artifact)\b(?:(?![.;\n]).){0,80}\b(?:evidence|truth|ground truth|provenance)\b/i,
     },
     {

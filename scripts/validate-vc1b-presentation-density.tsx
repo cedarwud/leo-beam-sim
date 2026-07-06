@@ -31,6 +31,11 @@ const SAT_IDS = [
 ] as const;
 
 const BASE_RUNTIME: Omit<RuntimeConfig, 'beamDensity' | 'viewport' | 'effectsEnabled' | 'cinematicMode' | 'reducedMotion'> = {
+  // RuntimeConfig.appMode became required after this fixture was written.
+  // 'sinr-experiment' keeps useBeamViz's density/slice branches on the same
+  // (non-modqn) path the fixture always exercised — the point of this validator
+  // is density semantics, which 'modqn-demo' would coerce to 'all'.
+  appMode: 'sinr-experiment',
   presentationMode: 'demo-readability',
   replay: {
     epochUtcMs: Date.UTC(2026, 0, 1, 0, 0, 0),
@@ -153,6 +158,21 @@ function createForcedSimFrame(profile: Profile): SimFrame {
     hoCount: 1,
     lastHoReason: '',
     simTimeSec: 90,
+    // SimFrame fields added after this fixture was written; inert "no event /
+    // origin / no UEs" values — none are read by the density/grouping paths
+    // this validator asserts on.
+    lastHoEvent: null,
+    intraHoCount: 0,
+    intraHandoverEvent: null,
+    intraHandoverPreview: null,
+    intraHandoverWallClockStartMs: null,
+    intraHandoverWallClockExpiresMs: null,
+    interHandoverEvent: null,
+    interHandoverWallClockStartMs: null,
+    interHandoverWallClockExpiresMs: null,
+    ueGroundX: 0,
+    ueGroundZ: 0,
+    perUePositions: [],
   };
 }
 

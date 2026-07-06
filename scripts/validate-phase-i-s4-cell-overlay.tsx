@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Children, isValidElement, type ReactElement } from 'react';
+import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
 import {
   CELL_SCHEDULE_VIZ_SLOT_SEC,
   computeCellScheduleViz,
@@ -28,7 +28,7 @@ const SATELLITES = [
 type GroupElement = ReactElement<{
   name?: string;
   userData?: Record<string, unknown>;
-  children?: unknown;
+  children?: ReactNode;
 }>;
 
 const PASSED: string[] = [];
@@ -56,7 +56,12 @@ function expectApprox(actual: number, expected: number, epsilon: number, label: 
   pass(label);
 }
 
-function scheduleAt(simTimeSec: number, satellites = SATELLITES): CellScheduleViz {
+function scheduleAt(
+  simTimeSec: number,
+  // Widened from the inferred SATELLITES tuple type so the zero-sat / synthetic-id
+  // fixtures below type-check; matches UseCellScheduleInput's element shape.
+  satellites: ReadonlyArray<{ id: string }> = SATELLITES,
+): CellScheduleViz {
   return computeCellScheduleViz({
     simTimeSec,
     altitudeKm: ALTITUDE_KM,
@@ -106,7 +111,7 @@ const slot0 = scheduleAt(0);
 const slot1 = scheduleAt(CELL_SCHEDULE_VIZ_SLOT_SEC);
 const slot2 = scheduleAt(CELL_SCHEDULE_VIZ_SLOT_SEC * 2 + 0.49);
 const duplicateSlot0 = scheduleAt(0);
-const tintById = new Map(SATELLITES.map((satellite, index) => [
+const tintById = new Map<string, string>(SATELLITES.map((satellite, index) => [
   satellite.id,
   satelliteTint(satellite.id, index),
 ]));

@@ -108,11 +108,11 @@ section('(a) TopologyTab.tsx beam-count source contract', () => {
 section('(b) applySceneTopology beam-count behavior', () => {
   const profile = syntheticProfile(7);
   const before = deepClone(profile);
+  // Spread the src-owned all-null state so the fixture tracks the current
+  // SceneTopologyState shape; null is the canonical "no override" for every field.
   const applied = applySceneTopology(profile, {
-    satsPerPlane: null,
+    ...nullTopology,
     beamCountPerSatellite: 19,
-    ueCount: null,
-    ueDistributionMode: null,
   });
 
   check(applied !== profile, 'beam-count override returns a new profile object');
@@ -126,10 +126,8 @@ section('(b) applySceneTopology beam-count behavior', () => {
   check(deepEqual(noOverride.beams, profile.beams), 'null beam-count topology leaves beams shape equal');
 
   const sameValueOverride = applySceneTopology(profile, {
-    satsPerPlane: null,
+    ...nullTopology,
     beamCountPerSatellite: 7,
-    ueCount: null,
-    ueDistributionMode: null,
   });
   check(sameValueOverride !== profile, 'same-value beam-count override still returns a new profile object');
   check(sameValueOverride.beams.perSatellite === 7, 'same-value beam-count override keeps perSatellite at 7');
@@ -138,17 +136,10 @@ section('(b) applySceneTopology beam-count behavior', () => {
 });
 
 section('(c) reset key includes beam-count override', () => {
-  const baseKey = getSceneTopologyResetKey({
-    satsPerPlane: null,
-    beamCountPerSatellite: null,
-    ueCount: null,
-    ueDistributionMode: null,
-  });
+  const baseKey = getSceneTopologyResetKey(nullTopology);
   const beamKey = getSceneTopologyResetKey({
-    satsPerPlane: null,
+    ...nullTopology,
     beamCountPerSatellite: 19,
-    ueCount: null,
-    ueDistributionMode: null,
   });
   check(baseKey !== beamKey, 'reset keys differ when only beamCountPerSatellite changes');
 });

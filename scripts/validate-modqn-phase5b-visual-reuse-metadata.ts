@@ -15,6 +15,10 @@ import type {
   VisibleSat,
   VizFrame,
 } from '../src/scene/types.ts';
+import {
+  CORE_LAYOUT_FREQUENCY_REUSE_VALUES,
+  type CoreLayoutFrequencyReuse,
+} from '../src/scene/beam-layout.ts';
 import { useBeamViz } from '../src/scene/useBeamViz.ts';
 import { sceneGeometryFromProfile } from '../src/scene/SceneGeometry.ts';
 import { liveSimToScene } from '../src/showcase/liveSimToScene.ts';
@@ -45,6 +49,11 @@ function readRepoFile(relativePath: string): string {
 
 function createRuntime(density: BeamDensity): RuntimeConfig {
   return {
+    // RuntimeConfig.appMode became required after this fixture was written.
+    // 'sinr-experiment' keeps useBeamViz's density/slice branches on the same
+    // (non-modqn) path the fixture always exercised; the assertions read only
+    // frequency metadata, which is appMode-independent.
+    appMode: 'sinr-experiment',
     presentationMode: 'demo-readability',
     replay: {
       epochUtcMs: Date.UTC(2026, 0, 1, 0, 0, 0),
@@ -111,6 +120,20 @@ function reuseGroupForBeam(
     : (beamId - 1) % frequencyReuse;
 }
 
+/**
+ * Runtime-checked narrow to the src contract `CoreLayoutFrequencyReuse` (1|3|7).
+ * The core-layout fixture only ever feeds 3, so this never throws today; if a
+ * future fixture feeds an illegal reuse it fails loudly instead of being cast over.
+ */
+function toCoreLayoutFrequencyReuse(value: number): CoreLayoutFrequencyReuse {
+  if (!(CORE_LAYOUT_FREQUENCY_REUSE_VALUES as readonly number[]).includes(value)) {
+    throw new Error(
+      `fixture coreLayoutFrequencyReuse ${value} is outside the src contract (${CORE_LAYOUT_FREQUENCY_REUSE_VALUES.join('|')})`,
+    );
+  }
+  return value as CoreLayoutFrequencyReuse;
+}
+
 function createBeamCells(
   frequencyReuse: number,
   mode: MetadataMode,
@@ -131,7 +154,7 @@ function createBeamCells(
           reuseGroup,
           reuseGroupSource: source,
           runtimeFrequencyReuse: frequencyReuse,
-          coreLayoutFrequencyReuse: source === 'core-layout' ? frequencyReuse : 1,
+          coreLayoutFrequencyReuse: source === 'core-layout' ? toCoreLayoutFrequencyReuse(frequencyReuse) : 1,
         }
         : {}),
     };
@@ -219,6 +242,21 @@ function createSimFrame(profile: Profile, mode: MetadataMode): SimFrame {
     hoCount: 1,
     lastHoReason: '',
     simTimeSec: 60,
+    // SimFrame fields added after this fixture was written; inert "no event /
+    // origin / no UEs" values — none are read by the frequency-metadata paths
+    // this validator asserts on.
+    lastHoEvent: null,
+    intraHoCount: 0,
+    intraHandoverEvent: null,
+    intraHandoverPreview: null,
+    intraHandoverWallClockStartMs: null,
+    intraHandoverWallClockExpiresMs: null,
+    interHandoverEvent: null,
+    interHandoverWallClockStartMs: null,
+    interHandoverWallClockExpiresMs: null,
+    ueGroundX: 0,
+    ueGroundZ: 0,
+    perUePositions: [],
   };
 }
 

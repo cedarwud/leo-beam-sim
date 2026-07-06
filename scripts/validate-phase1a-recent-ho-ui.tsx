@@ -5,7 +5,8 @@ import { HandoverManager } from '../src/engine/handover/handover-manager.ts';
 import type { LinkSample } from '../src/engine/signal/types.ts';
 import { loadProfile } from '../src/profiles/index.ts';
 import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
-import { createHandoverPolicyTuningState } from '../src/handoverPolicyTuning.ts';
+import { createSceneTopologyState } from '../src/sceneTopology.ts';
+import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
@@ -161,6 +162,17 @@ function createRecentHoState(): SimState {
       status: 'recent-ho',
     },
     simTimeSec: replay.simTimeSec,
+    // SimState fields added after this fixture was written; inert values —
+    // InfoPanel never destructures intraHoCount/lastHoEvent/recentHo*-beam ids,
+    // satelliteVisualIdentityById already defaults to {}, and servingCellId is
+    // short-circuited behind the non-null servingBeamId/comparisonBeamId here.
+    satelliteVisualIdentityById: {},
+    servingCellId: null,
+    recentHoSourceBeamId: null,
+    recentHoTargetBeamId: null,
+    recentHoDeltaDb: null,
+    lastHoEvent: null,
+    intraHoCount: 0,
     servingSatId: SOURCE_SAT_ID,
     servingBeamId: SOURCE_BEAM_ID,
     servingElevationDeg: 47.8,
@@ -223,22 +235,22 @@ function run(): void {
   assertContains(combinedText, 'physical serving source');
 
   const tuningText = decodeHtmlText(renderToStaticMarkup(
+    // Aligned to the CURRENT SignalTuningPanelProps: the removed legacy props
+    // (currentSinrDb/formulaSource/handover-policy sextet) were never destructured
+    // by the panel any more, so dropping them is render-identical; the negative
+    // needles below still assert the panel owns no serving/HO-source identity copy.
     <SignalTuningPanel
       baseProfile={profile}
       tuning={createSignalTuningState(profile)}
+      topology={createSceneTopologyState()}
+      sceneVisualScale={createSceneVisualScaleState()}
+      appMode="sinr-experiment"
       hasOverrides={false}
-      currentSinrDb={simState.physicalServing.sinrDb ?? -Infinity}
       formulaBudget={simState.physicalServingBudget}
-      formulaSource={simState.physicalServing}
-      handoverDraft={createHandoverPolicyTuningState(profile)}
-      appliedHandoverPolicy={createHandoverPolicyTuningState(profile)}
-      hasHandoverDraftChanges={false}
-      hasHandoverOverrides={false}
       onTuningChange={() => {}}
+      onTopologyChange={() => {}}
+      onSceneVisualScaleChange={() => {}}
       onReset={() => {}}
-      onHandoverDraftChange={() => {}}
-      onApplyHandoverPolicy={() => {}}
-      onResetHandoverPolicy={() => {}}
     />,
   ));
 

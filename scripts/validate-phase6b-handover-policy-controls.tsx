@@ -17,6 +17,8 @@ import {
   type HandoverToastInput,
 } from '../src/viz/handoverToastState.ts';
 import { createSignalTuningState, applySignalTuning } from '../src/signalTuning.ts';
+import { createSceneTopologyState } from '../src/sceneTopology.ts';
+import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import { HandoverPolicyControls } from '../src/ui/HandoverPolicyControls.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
@@ -75,12 +77,20 @@ function renderTuningMarkups() {
     sinrThresholdDb: applied.sinrThresholdDb + 1,
   };
   const signalMarkup = renderToStaticMarkup(
+    // Props added to SignalTuningPanel after this validator was written; all-null
+    // topology + default visual scale are unread outside the (unrendered) topology
+    // tab, and FormulaTabList ignores appMode (`void appMode`).
     <SignalTuningPanel
       baseProfile={profile}
       tuning={createSignalTuningState(profile)}
+      topology={createSceneTopologyState()}
+      sceneVisualScale={createSceneVisualScaleState()}
+      appMode="sinr-experiment"
       hasOverrides={false}
       formulaBudget={null}
       onTuningChange={() => {}}
+      onTopologyChange={() => {}}
+      onSceneVisualScaleChange={() => {}}
       onReset={() => {}}
     />,
   );

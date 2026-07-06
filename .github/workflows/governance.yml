@@ -37,6 +37,10 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
+      # P2 SN-5 slice B: the scripts/ tsconfig is error-free as of this commit;
+      # an independent step so a scripts/ type regression names itself in the UI
+      # (governance:full also chains it locally after validate:governance).
+      - run: npm run typecheck:scripts
       - run: npm run validate:governance:full
       - run: npm run validate:static:all
 

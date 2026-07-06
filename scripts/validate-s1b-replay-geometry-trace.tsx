@@ -220,7 +220,9 @@ let minInputMag = Infinity;
 // ---- Perturbation positive control: the diff must catch a 1e-3 bump ----
 const perturbed = JSON.parse(JSON.stringify(traceA)) as ReplayTrace & { steps: { displaySats: { world: (number | null)[] }[] }[] };
 const mid = Math.floor(traceA.steps.length / 2);
-const targetWorld = perturbed.steps[mid].displaySats[0].world;
+// Type-only view: the intersection type keeps ReplayTrace's readonly tuple for
+// `world`, but this JSON.parse clone is a plain mutable array at runtime.
+const targetWorld = perturbed.steps[mid].displaySats[0].world as (number | null)[];
 targetWorld[0] = (targetWorld[0] ?? 0) + 1e-3;
 const perturbDiffs = diffGeometryTrace(traceA, perturbed, { floatTolerance: FLOAT_TOLERANCE });
 assert.ok(

@@ -221,7 +221,11 @@ function validateTruthChipTones(): void {
 
 function validateModeAndReplayBanner(): void {
   console.log('\n(c) mode gating and source boundary');
-  const hobsMarkup = renderHud({ appMode: 'hobs-demo' });
+  // 'hobs-demo' was the pre-rename name of the non-MODQN mode; the current
+  // AppExperienceMode union is exactly ['sinr-experiment','modqn-demo'], so
+  // 'sinr-experiment' is the same "outside modqn-demo" probe with a legal value
+  // (ModqnSceneHud gates on `appMode !== 'modqn-demo'` → identical null render).
+  const hobsMarkup = renderHud({ appMode: 'sinr-experiment' });
   expect(hobsMarkup === '', 'HUD returns null outside modqn-demo');
 
   const replayMarkup = renderHud({

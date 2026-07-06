@@ -243,6 +243,16 @@ function baseState(profile: Profile): SimState {
     sinrDeltaDb: null,
     recentHoSourceSatId: null,
     recentHoTargetSatId: null,
+    // SimState fields added after this fixture was written; inert values —
+    // InfoPanel never destructures these, and servingCellId sits behind the
+    // non-null servingBeamId / null comparisonSatId short-circuits here.
+    servingCellId: null,
+    recentHoSourceBeamId: null,
+    recentHoTargetBeamId: null,
+    recentHoDeltaDb: null,
+    lastHoEvent: null,
+    simTimeSec: 0,
+    intraHoCount: 0,
     sinrDb: 18.4,
     physicalServingBudget: createBudgetTerms(0),
     servingBudget: createBudgetTerms(1),
@@ -382,7 +392,8 @@ function assertV2Scenario(profile: Profile, rendered: RenderedScenario): void {
 
   const primaryIdentity = formatBeamIdentity({
     satId: rendered.state.servingSatId,
-    beamId: rendered.state.servingBeamId,
+    // Non-null by construction: every scenario state sets a numeric servingBeamId.
+    beamId: rendered.state.servingBeamId!,
     frequencyReuse: profile.beams.frequencyReuse,
   });
   assert.equal(

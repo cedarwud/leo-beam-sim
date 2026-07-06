@@ -64,6 +64,9 @@ function renderedFrame(): ClaimBoundaryBannerInput {
       storyKind: 'modqn-handover-baseline',
       allowedClaims: ['baseline MODQN multi-UE replay artifact'],
       forbiddenClaims: ['not paper-faithful evidence'],
+      // VisualShowcaseClaimBoundary gained a required `source` field; the banner
+      // decision function never reads it (storyKind/allowed/forbidden only).
+      source: 'phase-d-banner-copy fixture',
     },
     evidenceStatus: {
       status: 'baseline',
@@ -84,6 +87,7 @@ function fallbackFrame(): ClaimBoundaryBannerInput {
       storyKind: 'modqn-handover-baseline',
       allowedClaims: [],
       forbiddenClaims: ['not paper-faithful evidence'],
+      source: 'phase-d-banner-copy fixture',
     },
   } as ClaimBoundaryBannerInput;
 }
