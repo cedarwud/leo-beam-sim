@@ -239,14 +239,21 @@ export const SINR_LIVE_CONE_SEGMENTS = 32;
 export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 1.0;
 
 /**
- * NormalBlending for the cones (SEMANTIC colour, docs/sinr-live-semantic-beam-colour-sdd.md).
- * AdditiveBlending made every cone colour ACCUMULATE with the bright satellite-imagery
- * terrain beneath it — green summed to yellow-green, slate to washed blue — so a SEMANTIC
- * colour never read TRUE (its meaning drifted with the background = the "一堆黃綠/藍" muddle
- * + the colour whack-a-mole). Alpha-compositing (NormalBlending) renders each cone at its
- * OWN colour over the terrain, so green reads green and the role palette (serving green /
- * candidate blue / releasing orange) is legible without a legend. We trade the additive
- * multibeam glow for colour truth — the right call once the colour itself carries the story.
+ * AdditiveBlending for the cones — the CURRENT, owner-pixel-verified look
+ * (8e4e1e7, 2026-07-03: ab861c4 3-layer footprint restore; evidence
+ * output/shot/candshot-2.png — serving yellow 3-layer + candidate blue cone/ring,
+ * verified against the FINAL yellow/blue palette, which no longer depends on the
+ * green-vs-terrain hue separation the semantic era needed).
+ *
+ * History, because this value has flipped twice and the trade-off is real:
+ * NormalBlending (7fb5991, semantic-colour era, see
+ * docs/sinr-live-semantic-beam-colour-sdd.md §8) composited each cone at its OWN
+ * hue so a role colour read true over the bright satellite-imagery terrain;
+ * AdditiveBlending accumulates with the terrain (brighter, glowing multibeam
+ * field) at the cost of hue drift over bright ground. That bright-terrain washout
+ * is a KNOWN OPEN P3 紅綠場 item — if this flips again, update the S5-2
+ * style-token pin in src/viz/SinrLiveCellBeamCones.test.ts in the SAME commit
+ * (test and token rotted apart once already, 07-03→07-07, P2 SN-1 finding).
  */
 export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.AdditiveBlending;
 

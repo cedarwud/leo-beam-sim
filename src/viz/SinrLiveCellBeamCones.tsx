@@ -193,7 +193,7 @@ const CONE_VERTEX_COLORS = buildObliqueBeamConeVertexColors();
  * (deterministic; tie-break satId ascending) + a force-included `preferredSatId`
  * (the primary UE's serving sat) — real serving sats, NOT the old "most-illuminating"
  * fallback that drew the wrong sat. The ambient lane currently passes a HIGH cap (it
- * shows every connected sat's beam via NormalBlending without washout), so this
+ * shows every connected sat's beam via the shared SINR_LIVE_CONE_BLENDING token), so this
  * narrowing is reserved for the CINEMA (c2) to spotlight the handover pair. Continuity
  * keeps the chosen set stable frame-to-frame. Breadth of who-is-served stays in the
  * UE mosaic (Rule#6 display filter; serving truth unchanged).

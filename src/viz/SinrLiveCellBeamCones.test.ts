@@ -345,14 +345,18 @@ check('S5-2 cone base == the TRUTH cell centre from buildSinrLiveCellLayout (no 
   approx(items[0].baseCenter.y, 0, 1e-9, 'cone base on the ground plane');
 });
 
-check('S5-2 style tokens (hybrid): ambient 0.45 < pulse 0.8, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
+check('S5-2 style tokens (hybrid): ambient 0.45 < pulse 0.8, 32 segments, AdditiveBlending (replaces the cone style/opacity/blending pins)', () => {
   assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.45, 'ambient cone opacity is the screenshot-locked 0.45');
   assert(SINR_LIVE_CONE_PULSE_PEAK_OPACITY > SINR_LIVE_CONE_AMBIENT_OPACITY, 'HYBRID: the handover pulse is brighter than the ambient field');
   assertEqual(SINR_LIVE_CONE_SEGMENTS, 32, 'oblique cone ring segment count');
-  // semantic-beam-colour SDD §8: cones moved Additive→Normal so each semantic role
-  // colour (green/dim/blue/orange) composites at its OWN hue over the bright terrain
-  // instead of summing into yellow-green / washed-blue (the colour-truth unlock).
-  assertEqual(SINR_LIVE_CONE_BLENDING, THREE.NormalBlending, 'cones use NormalBlending (semantic colour truth)');
+  // Blending decision chain: 7fb5991 (2026-06-22) moved Additive→Normal for semantic
+  // colour truth; 8e4e1e7 (2026-07-03, ab861c4 3-layer footprint restore) deliberately
+  // restored Additive — owner PIXEL-VERIFIED that look (output/shot/candshot-2.png).
+  // This pin tracks the CURRENT owner-approved token; the bright-terrain washout
+  // trade-off is an OPEN P3 紅綠場 item and may flip this again (update pin WITH token
+  // in the SAME commit — this assert rotted invisibly 07-03→07-07 while src tests sat
+  // outside the static:all discovery; closed by P2 SN-1).
+  assertEqual(SINR_LIVE_CONE_BLENDING, THREE.AdditiveBlending, 'cones use AdditiveBlending (8e4e1e7 pixel-verified restore)');
   const posExplicit = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10, 5);
   assertEqual(posExplicit.length, 5 * 9, 'explicit segments honoured');
   const posDefault = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10);
