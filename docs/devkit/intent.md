@@ -38,4 +38,5 @@
 
 ## 新項提案區（agent 寫入，使用者裁決）
 
-- **P2 健檢 backlog（2026-07-07）**：完整分級清單見 [reports/health-2026-07-07.md](./reports/health-2026-07-07.md)——第零優先＝安全網包 SN-1..SN-5（CI 復活鏈＋static:all 盲區＋scripts 型別覆蓋）；P1＝北極星鏈補路由/sdd-index 修真/工作樹 15 檔 commit。使用者圈選後逐項轉上方正式條目。
+- **P2 健檢 backlog（2026-07-07）**：完整分級清單見 [reports/health-2026-07-07.md](./reports/health-2026-07-07.md)。**安全網包 SN-1..5＋W-1 已全數完成（2026-07-07，commits f07bba9..16a5268）**；剩餘圈選項＝P1（北極星鏈補路由、sdd-index 修真）＋P2/P3 各項。
+- **SN-5 獵物清單（slice B 發現，待圈選）**：①`vc4a-duel-card` 既有紅（瀏覽器級孤兒，InfoPanel duel 演化 vs 殭屍 mock，修 PASS 需行為變更）；②`wall-clock-latch` 既有紅（同族——speed slider DOM 移位）；③omega-s1/s2 validator 檔無 npm key（static:all 永掃不到＝recurrence-guard 盲區；三擇一：補 key/移 parked/刪）；④phase6o/p/r/u/v changed-files 掃描×髒樹×字面量的結構隱患（已拆當前雷、根治待議）；⑤s0-connected 的 profile stub 幾何 NaN 已顯式化（檔頭註解與 MainScene 不一致，要不要補 stub 預設值待議）。
