@@ -26,8 +26,16 @@ Thumbs.db
 .vscode/
 *.code-workspace
 
-# claude
-.claude/
+# claude — devkit 共享層白名單：settings/hooks/兩支 devkit skill 進 git，
+# 其餘（settings.local、worktrees、devkit-local、工作區 symlink）照舊忽略
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/leo-pipeline/
+!.claude/skills/leo-intake/
+.claude/scratch/
 .gstack/
 
 # Bridge symlink to Claude memory (user-private, not tracked)

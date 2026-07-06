@@ -131,6 +131,7 @@ changes, update the gate AND these aggregates together (Rule#9 atomic).
 | MODQN ω-weighted handover mini-SDD | [docs/modqn-omega-handover-sdd.md](./docs/modqn-omega-handover-sdd.md) |
 | MODQN training-trigger backend mini-SDD | [docs/modqn-training-trigger-backend-sdd.md](./docs/modqn-training-trigger-backend-sdd.md) |
 | Research implementation backlog | [docs/research-implementation-backlog.md](./docs/research-implementation-backlog.md) |
+| AI DevKit governance layer（調度守則／判斷 rubric／安全側寫／維護協議／模板） | [docs/devkit/](./docs/devkit/) |
 
 ## 7. Supplemental Engineering Skill Routing
 
@@ -187,3 +188,39 @@ controller's decisions and reintroduce solved problems.
 
 The canonical bridge implementation reference is
 `modqn-paper-reproduction/AGENTS.md` §Agent Memory Bridge.
+
+## 10. AI DevKit（制度層＋pipeline）
+
+本 repo 於 2026-07-06 安裝 ai-devkit 0.16（P1 路由）。本節只做路由與速查；規則本體在 `docs/devkit/`。個人層與狀態檔（偏好側寫、決策日誌、metrics、假設帳、pipeline-state）實體在 repo 外、**永不 commit**（`.claude/devkit-local` symlink，見該目錄 README）；共享層（docs/devkit/、兩支 skill、hooks、settings.json）**要 commit**。
+
+### 人類速查（白話即可，不用記指令）
+
+- 「**跑 pipeline**」／「繼續上次的」→ 用 `leo-pipeline` skill：讀狀態檔、從斷點續跑（冪等，重跑不重做）。
+- 「**我要做 X**」／模糊新需求＋素材 → 用 `leo-intake` skill：先復述再選項式提問（每輪 ≤5 題、給具體選項不問抽象題）→ 產出 spec＋假設帳 → 進 `docs/devkit/intent.md`。
+- **關卡怎麼答**：系統批次打包問（互動時 AskUserQuestion；非互動時寫入狀態檔 `gate_requests`，之後任一 session 白話回覆即可續跑）。無人值守時所有詢問預設答案＝「暫停」。
+- **報告在哪**：健檢／診斷報告落 `docs/devkit/reports/`；抽查與決策紀錄在 `.claude/devkit-local/`。
+- 「**彙整 devkit 提案**」→ 收一輪套件修訂提案（流程在 `~/.claude/skills/ai-devkit/SKILL.md`）。
+- 「**跑 devkit 同步**」→ 套件版本智能合併（系統只提醒、永不自動改裝）。
+
+### Agent 路由（開工前按任務讀）
+
+| 情境 | 讀 |
+|---|---|
+| 任何派工／預算／抽查／升降級／重活路由 | [docs/devkit/dispatch-rules.md](./docs/devkit/dispatch-rules.md) |
+| 判斷完成／升級／停下問人／換路訊號 | [docs/devkit/judgment-rubric.md](./docs/devkit/judgment-rubric.md) |
+| 權限側寫／外部內容檢疫／新依賴／audit | [docs/devkit/security-profiles.md](./docs/devkit/security-profiles.md) |
+| 改制度檔／教訓分流／postmortem／棘輪 | [docs/devkit/maintenance-protocol.md](./docs/devkit/maintenance-protocol.md) |
+| Claude 系模型行為（含 effort） | [docs/devkit/model-facts-successor.md](./docs/devkit/model-facts-successor.md) |
+| Codex／Gemini 派工 | [docs/devkit/model-facts-challenger.md](./docs/devkit/model-facts-challenger.md) |
+| 派工模板 ×5＋eval | [docs/devkit/templates/](./docs/devkit/templates/) |
+| backlog（優先序只有使用者能改） | [docs/devkit/intent.md](./docs/devkit/intent.md) |
+| 採用／包裝／自建盤點 | [docs/devkit/adoption-decisions.md](./docs/devkit/adoption-decisions.md) |
+| 專案級教訓 | [docs/devkit/lessons/](./docs/devkit/lessons/) |
+| 生產回饋（demo 場次觀察／flake 名單） | [docs/devkit/production-feedback.md](./docs/devkit/production-feedback.md) |
+
+### 不變量與誠實條款
+
+- **條款分級**：`[通則]`＝任何等級模型遵守；`[鷹架]`＝為較弱模型而設。未標示＝[通則]。頂級模型（官方定位高於 Opus 檔位，如 Fable/Mythos）可憑判斷偏離鷹架但要說明理由；模型拿不準自己等級就當非頂級。
+- **位階**：`docs/frontend-change-contract.md` 與 SACRED validators 是本 repo 原生憲法，**優先於 devkit 模板與守則**；衝突時走 frontend contract 並回報衝突。
+- **系統極限**：拆解、驗證、多樣本評審補得了執行品質；模糊題與品味判斷補不了——遇到時升級模型、外部第二意見、或明說做不到。三個殘差只對沖不消除：閘門評估力（每個建議附「何時會被證明是錯的＋逃生路線＋更無聊可逆的替代案」）、未知的未知（縮短到現實的距離、真的用）、系統自身故障（break-glass：回滾到已知良好狀態＋完整失敗軌跡落檔＋帶去 fresh session 問最強模型）。
+- **context 安心語**：context 會被 harness 自動摘要壓縮——不要因對話變長而提前收尾、精簡工作或提議開新 session；狀態照常落檔即可。
