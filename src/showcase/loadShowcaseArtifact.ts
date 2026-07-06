@@ -33,7 +33,7 @@ import {
   VISUAL_SHOWCASE_V1_CHANNEL_METRIC_KINDS,
   VISUAL_SHOWCASE_V1_PROFILE_VALUES,
   VISUAL_SHOWCASE_V1_SCHEMA_VERSION,
-} from '../../../../ntn-sim-core/src/core/contracts/visual-showcase-v1';
+} from '../core/contracts/visual-showcase-v1';
 import type {
   VisualShowcaseArtifact,
 } from '../scene/visual-showcase-contract';

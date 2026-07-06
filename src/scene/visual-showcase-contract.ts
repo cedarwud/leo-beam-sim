@@ -1,15 +1,15 @@
 /**
  * visual-showcase-v1 contract type re-export.
  *
- * The frozen contract lives in `ntn-sim-core/src/core/contracts/visual-showcase-v1.ts`
- * (v1.1, frozen 2026-04-29). leo-beam-sim must consume those types verbatim;
- * we re-export them here so showcase / scene modules do not embed the absolute
- * path everywhere.
+ * The frozen contract (v1.1, frozen 2026-04-29, owned by ntn-sim-core) is
+ * vendored verbatim at `src/core/contracts/visual-showcase-v1.ts` (P2 SN-3a;
+ * see that file's vendor header for the source commit). leo-beam-sim must
+ * consume those types verbatim; we re-export them here so showcase / scene
+ * modules do not embed the contract path everywhere.
  *
- * `tsconfig.json` `moduleResolution: bundler` allows relative imports outside
- * `src/`; we use `import type` so this is purely a compile-time dependency
- * with no runtime cost. There is intentionally no value import — the contract
- * file ships runtime constants too, but we deliberately do not re-export them
+ * We use `import type` so this is purely a compile-time dependency with no
+ * runtime cost. There is intentionally no value import — the contract file
+ * ships runtime constants too, but we deliberately do not re-export them
  * here because the schema-gate code in `loadShowcaseArtifact` needs them via a
  * direct value import (see that file).
  *
@@ -54,4 +54,4 @@ export type {
   VisualShowcaseTruthOwnershipRecord,
   VisualShowcaseUeEntity,
   VisualShowcaseUeSample,
-} from '../../../../ntn-sim-core/src/core/contracts/visual-showcase-v1';
+} from '../core/contracts/visual-showcase-v1';
