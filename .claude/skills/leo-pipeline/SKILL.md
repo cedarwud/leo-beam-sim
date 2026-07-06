@@ -16,18 +16,18 @@ argument-hint: "[空白＝從斷點續跑；或指名階段如 P2]"
      - **本 repo 已裝過 devkit**（`docs/devkit/` 存在）＝新機器或 symlink 斷：告知使用者本機個人層未建置，給兩選項——(a) 最小重建：mkdir 實體目錄 `~/.claude/projects/<本 repo 的 slug>/devkit/`＋重建 `.claude/devkit-local` symlink＋初始化狀態檔（**最小 schema 見本檔末尾附錄 A**，不依賴任何個人層檔案）；`next_stage` 依 `docs/devkit/reports/health-*.md` 有無判定——有 → P3 並以最新 health 檔日期回填 `last_health_report`、無 → P2（注意 `diagnosis-*.md` 是 P1 診斷，**不算**健檢報告）；route_history 記一行「rebuilt on <host>」；(b) 停下等使用者。
      - **本 repo 沒裝過 devkit**（`docs/devkit/` 不存在）：才走 §1 首次路由偵測。
    - 任一情境都**不得在無狀態檔下直接開工**。
-2. **租約（藍圖 §13）**：檢查 `lease`，三分支——
-   - `lease` 為 null 或屬本 session → **立即寫入自己的 `{session, ts}` 取得租約**（null 是 SessionEnd hook 正常歸還後的常態）。
-   - 他人 session 且 `ts` 距今 <30 分鐘 → 本 session **唯讀模式**（＝不寫狀態檔、不派變更類工作；閱讀、諮詢、回答使用者照常），告知使用者。
-   - 他人 session 且 `ts` 距今 ≥30 分鐘 → 接管：寫入 `{session, ts}`＋audit log 記一行接管事件。
-   之後每次寫狀態檔都刷新 `ts`。
+2. **租約（藍圖 §13，v0.22 語義）**：**租約的宣告值（session id＋時間戳）只有 SessionStart/SessionEnd hooks 能寫**——controller 在 Bash 拿不到自身 session id，手寫必然錯配（他專案實證：手寫租約＋切 effort 換 id → 被自己的租約鎖成唯讀）。controller 只做三件：
+   - **讀**：`lease` 為 null 或屬本 session（hook 已代取）→ 正常作業。
+   - 他人 session 且 `ts` 距今 <30 分鐘 → 本 session **唯讀模式**（＝不寫狀態檔、不派變更類工作；閱讀、諮詢、回答使用者照常），告知使用者。**例外＝使用者在場明示續作**：使用者是最高權威，不必等過期，直接走下一條接管。
+   - 接管（過期或使用者在場明示）：controller **把 `lease` 置空（寫 null）**＋audit 記接管事件——寫 null 不需要知道自身 id、不會錯配；owner 回填由下次 SessionStart hook 執行。
+   controller 寫狀態檔時**不碰 lease 欄**（簿記寫其他欄位照常）。
 3. **版本比對**：`devkit_version` vs `~/.claude/skills/ai-devkit/SKILL.md` 首段版本號。
    - 狀態檔較舊 → 回報末尾附一行：「安裝版 vX 落後套件 vY，說『跑 devkit 同步』可拉齊」。
    - 狀態檔較新（多機常見）→ 附一行：「本機 ai-devkit skill 落後，`git -C /home/u24/papers/ai-devkit pull && ./install.sh` 拉齊」。
    - 兩者皆**只提醒、不自行改裝**。
 4. **提案庫檢查**：`.claude/devkit-proposals.md` 中「狀態：未處理」≥3 條或最舊逾 30 天 → 回報末尾附一行提醒「說『彙整 devkit 提案』收一輪」。
 5. **待決事項上桌**：`gate_requests[]` 有未決 → 批次呈給使用者（互動時 AskUserQuestion；一次打包全部）。`spot_check.due[]` 非空 → 把待抽查工作項（spec＋驗收證據指針）一併打包。
-6. **健檢保鮮**：`last_health_report` 距今 >90 天，或使用者宣告專案大改 → 先插入一輪 P2，完成後回到原記錄階段。
+6. **健檢保鮮**：`last_health_report` 距今 >90 天（空值＝從未健檢＝視為過期），或使用者宣告專案大改 → **先把當前階段寫入 `resume_phase` 欄**、插入一輪 P2；P2 完成（報告出爐且圈選請求已呈）讀 `resume_phase` 回原階段並清空該欄——原階段記在檔不記在腦（v0.22：缺此欄＝插入後回不去）。
 
 ## 1. 路由
 
@@ -39,7 +39,7 @@ argument-hint: "[空白＝從斷點續跑；或指名階段如 P2]"
 
 ### P2 健檢（評估與執行拆開：報告先出，使用者圈選才動刀）
 
-1. 變體開關判定（接手陌生碼／原型轉正／維護模式）——本 repo 常態＝三者皆否；隨路由回報判定證據，回報即生效，使用者可異議。
+1. 變體開關判定（接手陌生碼／原型轉正／**輕量健檢**〔舊名「維護模式」，v0.22 改稱以免與全域維護態混淆〕）——本 repo 常態＝三者皆否；隨路由回報判定證據，回報即生效，使用者可異議。若狀態檔曾進**全域維護態**，其出口＝使用者明示回到開發或給新目標時改回 P3（只有入口沒有出口會困住後續 session）。
 2. **scout 報價**：派廉價偵查（Explore／codegraph）列工作項 → 估算＝項數×單價＋固定開銷（信賴區間）→ 預算等級判定 → L 以上開硬關卡等核准。
 3. 核准後 fan-out（多代理需該關卡一併核准）評估維度：架構與邊界、技術債、測試/validator 覆蓋（含 quarantine 清單現況）、安全、效能（軟體 WebGL ~9 FPS 天花板脈絡）、demo 就緒度。每維產出：發現＋證據（檔案:行號）＋影響＋驗收條件＋建議執行模型與預算等級。
 4. 產出：`docs/devkit/reports/health-YYYY-MM-DD.md` ＋分級 backlog 併入 `docs/devkit/intent.md` 提案區。**backlog 第零優先永遠是補安全網缺口**。fitness functions 缺口 → 提案新 validator（走 repo 慣例）。
@@ -60,11 +60,12 @@ argument-hint: "[空白＝從斷點續跑；或指名階段如 P2]"
 
 1. DoD 對照 judgment-rubric §2（按工作類型）。
 2. `metrics.jsonl` append 一行：`{ts, task_type, template_id, template_ver, items, est_tokens, actual_tokens, minutes, rounds, overrun_reason, result, spot_check}`（`template_ver` 抄模板檔首行版本標記——缺了它，維護迴圈的模板改良無法歸因）。
-3. **抽查擲骰**（公式與費率照 dispatch-rules §8；seed 讀 `.claude/devkit-local/spot-check.json`）：抽中 → `spot_check.due[]` append 工作項 id＋證據指針；audit log 記擲骰結果（中/不中都記）。
+3. **抽查擲骰**（公式與費率照 dispatch-rules §8；seed 讀 `.claude/devkit-local/spot-check.json`；item id＝開工時從 `work_item_seq` 取號的 `wi-<seq>`）：抽中 → `spot_check.pending[]` append（`{item, roll, rate, evidence_ref}`；`due`＝pending 非空的投影）＋metrics 該項 result 記 `pass-pending-spotcheck`；`history[]` 每次查骰 append（中/不中都記）。**出口**：使用者抽查裁決後 controller 跑 resolve——pass＝metrics 補記 pass、出列；fail＝走 §8 失敗三件（AIMD 重置＋回爐＋教訓）。
 4. audit log append（schema 照 security-profiles §5）。
 5. 暫存清理（鐵律 6）：scratchpad／`.claude/scratch/` 自產物歸零；雛形拋棄或走轉正關卡。
 6. 狀態檔 flush（work_items.completed append）＋租約刷新。
 7. 若成果涉及對外可見（push／發布）→ 停在 gate，不自行執行。
+8. **里程碑＝換 session 的正確時機**（v0.22 正面規則）：工作項關帳／驗收裁決落檔／階段交付完成時，若本 session 已跨多個工作項或明顯變長，**主動建議使用者收尾換新 session**——安心語防「提早收尾」、此條防「永不收尾」（他專案實測 186 session 僅 1 次壓縮＝反面教材）。狀態已落檔，新 session 零損失。
 
 ## 4. 關卡協議
 
@@ -92,21 +93,35 @@ argument-hint: "[空白＝從斷點續跑；或指名階段如 P2]"
 
 ```json
 {
-  "devkit_version": "0.16",
+  "devkit_version": "0.22",
   "installed_at": "<原安裝日，抄 docs/devkit/adoption-decisions.md 標頭>",
   "route_history": [{ "date": "<今天>", "route": "rebuilt on <host>", "note": "個人層重建" }],
   "phase": "rebuilt",
   "next_stage": "<P3 若 docs/devkit/reports/health-*.md 存在，否則 P2>",
+  "resume_phase": null,
   "config": { "constitution_layer": "project", "high_risk": false,
               "attention_budget_min_per_day": 30, "commit_shared_layer": true,
               "multi_agent_authorization": "逐 session 由使用者訊息授權" },
   "aimd_threshold": 20,
+  "aimd_approvals_streak": 0,
   "lease": null,
+  "work_item_seq": 9,
+  "current_goal": null,
   "work_items": { "completed": [], "active": null, "blocked": [] },
   "gate_requests": [],
-  "spot_check": { "due": [] },
+  "spot_check": { "due": false, "pending": [], "history": [] },
   "last_health_report": "<最新 health-*.md 的日期，無則 null>"
 }
+```
+
+欄位語義（v0.21/0.22 三性質，弱模型 resume 後不失能的關鍵）：
+- `current_goal`：進行中的 L/XL 目標＝`{desc, budget: {est_tokens, approved_on, spent_tokens, hard_cap_tokens}}`——預算錨外部化，§7 檢查點的分母；核准當下同次寫入；每次派工回帳累加 spent（harness 計數優先、自估 ×3）。無進行中大目標＝null。
+- `work_item_seq`：工作項單調計數器，開工取號 +1、id=`wi-<seq>`（agent 不自命名——防挑骰）。
+- `spot_check.pending[]`＋`history[]`＋resolve 生命週期：見 dispatch-rules §8；`due` 是 pending 非空的投影。
+- `gate_requests[]` 每題帶 id（批次回覆「B、A、C」要能對應）。
+- `lease`：只有 hooks 寫宣告值；controller 只讀或置 null（接管）。
+```json
+{ "註": "上方 json 為主體；本塊僅補欄位語義，重建時照抄主體即可" }
 ```
 
 同目錄一併 touch：`metrics.jsonl`、`audit-log.jsonl`（空檔）；`spot-check.json` 交給 SessionStart hook 自動生成。個人層檔案（偏好側寫等）缺失不阻擋 pipeline——用到時提示使用者該檔在他機，或以 repo 內 decision-log 種子重建。

@@ -191,7 +191,7 @@ The canonical bridge implementation reference is
 
 ## 10. AI DevKit（制度層＋pipeline）
 
-本 repo 於 2026-07-06 安裝 ai-devkit 0.16（P1 路由）。本節只做路由與速查；規則本體在 `docs/devkit/`。個人層與狀態檔（偏好側寫、決策日誌、metrics、假設帳、pipeline-state）實體在 repo 外、**永不 commit**（`.claude/devkit-local` symlink，見該目錄 README）；共享層（docs/devkit/、兩支 skill、hooks、settings.json）**要 commit**。
+本 repo 於 2026-07-06 安裝 ai-devkit 0.16（P1 路由；2026-07-07 同步至 0.22——含 §16 接班交接、狀態檔三性質 schema、租約 hooks 獨佔）。本節只做路由與速查；規則本體在 `docs/devkit/`。**接手模型（Opus/Sonnet 檔位）先讀 [docs/devkit/succession-handbook.md](./docs/devkit/succession-handbook.md)**——判斷分工位階、品味兩清單、data-blind playbook 都在那。個人層與狀態檔（偏好側寫、決策日誌、metrics、假設帳、pipeline-state）實體在 repo 外、**永不 commit**（`.claude/devkit-local` symlink，見該目錄 README）；共享層（docs/devkit/、兩支 skill、hooks、settings.json）**要 commit**。
 
 ### 人類速查（白話即可，不用記指令）
 
@@ -217,10 +217,11 @@ The canonical bridge implementation reference is
 | 採用／包裝／自建盤點 | [docs/devkit/adoption-decisions.md](./docs/devkit/adoption-decisions.md) |
 | 專案級教訓 | [docs/devkit/lessons/](./docs/devkit/lessons/) |
 | 生產回饋（demo 場次觀察／flake 名單） | [docs/devkit/production-feedback.md](./docs/devkit/production-feedback.md) |
+| 接班手冊（接手模型第一讀；判斷分工／品味清單／playbook） | [docs/devkit/succession-handbook.md](./docs/devkit/succession-handbook.md) |
 
 ### 不變量與誠實條款
 
 - **條款分級**：`[通則]`＝任何等級模型遵守；`[鷹架]`＝為較弱模型而設。未標示＝[通則]。頂級模型（官方定位高於 Opus 檔位，如 Fable/Mythos）可憑判斷偏離鷹架但要說明理由；模型拿不準自己等級就當非頂級。
 - **位階**：`docs/frontend-change-contract.md` 與 SACRED validators 是本 repo 原生憲法，**優先於 devkit 模板與守則**；衝突時走 frontend contract 並回報衝突。
 - **系統極限**：拆解、驗證、多樣本評審補得了執行品質；模糊題與品味判斷補不了——遇到時升級模型、外部第二意見、或明說做不到。三個殘差只對沖不消除：閘門評估力（每個建議附「何時會被證明是錯的＋逃生路線＋更無聊可逆的替代案」）、未知的未知（縮短到現實的距離、真的用）、系統自身故障（break-glass：回滾到已知良好狀態＋完整失敗軌跡落檔＋帶去 fresh session 問最強模型）。
-- **context 安心語**：context 會被 harness 自動摘要壓縮——不要因對話變長而提前收尾、精簡工作或提議開新 session；狀態照常落檔即可。
+- **context 安心語＋換 session 正面規則**：context 會被 harness 自動摘要壓縮——不要因對話變長而提前收尾或精簡工作；**換 session 的唯一正確時機＝里程碑關帳**（工作項關帳／驗收裁決落檔／階段交付完成），屆時由 controller 主動建議——安心語防「提早收尾」、此句防「永不收尾」（v0.22）。

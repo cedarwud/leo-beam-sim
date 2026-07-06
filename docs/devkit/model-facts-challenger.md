@@ -12,7 +12,7 @@
 
 ## Codex 派工守則（審查主力）
 
-1. **禁止要求 upfront 計畫、preamble、中途進度回報**——官方明言會誘發提前停止。Claude 模板的「先列計畫」「隨時回報」段落派給 Codex 前要刪掉。
+1. **禁止要求 upfront 計畫、preamble、中途進度回報**——官方明言會誘發提前停止。出處是**按模型版本記載**的行為（prompt-guidance 的 GPT-5.x-Codex 分節＋codex_prompting_guide cookbook；薄的 /codex/prompting 產品頁**沒有**此警語）——模型換代時對現行版本重驗，勿當跨代永久事實（v0.22 同步）。Claude 模板的「先列計畫」「隨時回報」段落派給 Codex 前要刪掉。
 2. **短、outcome-first、附驗證方式**：把重現步驟、要跑的 lint/test 指令寫進 prompt；任務切小片。「Codex produces higher-quality outputs when it can verify its work」。
 3. **reasoning effort 是最後手段不是第一槓桿**（與 Claude 相反）：先強化完成契約與驗證迴圈，再動 `-c 'model_reasoning_effort="…"'`。consult＝medium、bounded diff 審查＝high；**xhigh 別當預設**（gstack 實測 ~23× token、50 分鐘級 hang）。
 4. **標準非互動呼叫**（本機 wrapper 實作）：

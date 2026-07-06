@@ -32,26 +32,52 @@ if [ -f "$STATE" ] && [ -f "$SKILL_MD" ]; then
   fi
 fi
 
-# 3) 提案庫條數
+# 3) 提案庫條數（v0.19 canonical 計數：「## 」開頭且不含 [resolved 的標題＝未處理）
 PROP="$DK/devkit-proposals.md"
 if [ -f "$PROP" ]; then
-  N="$(grep -c '狀態：未處理' "$PROP" 2>/dev/null || true)"
+  N="$(grep -c '^## ' "$PROP" 2>/dev/null || true)"
+  R="$(grep -c '^## \[resolved' "$PROP" 2>/dev/null || true)"
   case "$N" in (''|*[!0-9]*) N=0;; esac
-  if [ "$N" -ge 3 ]; then
-    OUT="${OUT}[devkit] 提案庫有 ${N} 條未處理，說「彙整 devkit 提案」收一輪\n"
+  case "$R" in (''|*[!0-9]*) R=0;; esac
+  U=$(( N - R ))
+  if [ "$U" -ge 3 ]; then
+    OUT="${OUT}[devkit] 提案庫有 ${U} 條未處理，說「彙整 devkit 提案」收一輪\n"
   fi
 fi
 
-# 4) 待決 gate_requests／抽查 due（需要 python3；沒有就留給 pipeline 開場儀式）
+# 4) 租約取得（藍圖 §13 v0.22：租約宣告值只有 hooks 能寫——本 hook 有 session_id，controller 沒有）
+#    ＋待決 gate_requests／抽查 pending 提醒（需要 python3；沒有就留給 pipeline 開場儀式）
+#    heredoc 紀律：stdin 已在上方以 cat 收畢；python 走 argv，不讀 stdin（maintenance-protocol §2b）。
 if command -v python3 >/dev/null 2>&1 && [ -f "$STATE" ]; then
-  P="$(python3 - "$STATE" 2>/dev/null <<'PYEOF'
-import json, sys
+  P="$(python3 - "$STATE" "$SID" 2>/dev/null <<'PYEOF'
+import json, sys, time
+from datetime import datetime, timezone
 try:
-    d = json.load(open(sys.argv[1]))
+    p, sid = sys.argv[1], sys.argv[2]
+    d = json.load(open(p))
+    # 租約：null/自己/過期(>=30min) → 本 hook 取得；他人未過期 → 提醒唯讀
+    lease = d.get("lease")
+    now = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+    def acquire():
+        d["lease"] = {"session": sid, "ts": now}
+        json.dump(d, open(p, "w"), ensure_ascii=False, indent=2)
+    if not lease or lease.get("session") == sid:
+        acquire()
+    else:
+        try:
+            ts = datetime.fromisoformat(lease.get("ts"))
+            age_min = (datetime.now(timezone.utc) - ts.astimezone(timezone.utc)).total_seconds() / 60
+        except Exception:
+            age_min = 9999
+        if age_min >= 30:
+            acquire()
+            print(f"[devkit] 過期租約已接管（原 session {lease.get('session','?')[:8]}…，{int(age_min)} 分鐘前）")
+        else:
+            print(f"[devkit] 他 session 持有租約（{int(age_min)} 分鐘前活躍）——本 session 唯讀模式；使用者在場明示續作可接管（把 lease 置 null）")
     g = len(d.get("gate_requests") or [])
-    s = len((d.get("spot_check") or {}).get("due") or [])
+    s = len((d.get("spot_check") or {}).get("pending") or [])
     if g or s:
-        print(f"[devkit] 待決事項：gate_requests={g}、抽查 due={s}——說「跑 pipeline」上桌處理")
+        print(f"[devkit] 待決事項：gate_requests={g}、抽查 pending={s}——說「跑 pipeline」上桌處理")
 except Exception:
     pass
 PYEOF

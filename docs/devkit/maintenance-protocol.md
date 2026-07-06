@@ -25,6 +25,13 @@
 
 教訓格式（lessons/）：一課一檔、檔名 `YYYY-MM-DD-slug.md`、檔首一行摘要、正文寫明為什麼重要＋怎麼應用。已在制度檔載明的不重複記；錯了就刪。分類拿不準：先放 lessons/，「彙整 devkit 提案」時會順掃升格。
 
+## 2b. 制度檔寫作紀律（v0.22 同步補）
+
+- **單一權威值**：任何清單、門檻、參數只在一處定義，其餘檔案引用不重述數值——複製 N 份必漂移。本 repo 的 canonical 落點：抽查費率與擲骰公式＝dispatch-rules §8；預算級距＝dispatch-rules §6；DoD＝judgment-rubric §2；SACRED 清單＝frontend-change-contract。
+- **fitness／gate 邏輯不得在文檔內嵌可照抄的平行實作**：制度檔對每條 gate 只寫意圖＋正反例＋指向 runner（本 repo＝validate script 本身），doc 重述實作邏輯必漂移。
+- **理解測試提示固定附一句**：「答不出或覺得模糊，就指出讓你拿不準的原句」——誤讀直接定位到待改句。
+- **hook 落地 DoD**：fail-open hook 必配「應觸發案例」的行為測試（read-back 驗不出靜默失效）；「pipe 資料」與「heredoc 餵 `python3 -`＋讀 stdin」不併用（heredoc 接管 stdin、pipe 資料被靜默丟棄——本 repo hooks 現行寫法＝先 `cat` 收 stdin 再 heredoc、python 走 argv，合規）。
+
 ## 3. 維護迴圈（排程間隔：每月一次，或 metrics.jsonl 新增 ≥20 行時；現階段手動觸發）
 
 檢查清單（產出是報告＋制度變更 diff，過關卡後生效）：

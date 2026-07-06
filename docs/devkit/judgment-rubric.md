@@ -24,7 +24,9 @@
 | 重構／搬移 | 上列 ＋ `npm run validate:static:all` 通過（source-pinned validator 是否被打破；~8min，手動；**由 controller 於交接時執行**——實作 subagent 不必自跑，fresh 驗收 agent 對此列以 controller 的執行紀錄為準） |
 | 交接／PR 前 | `validate:governance:full`（~165s）＋ `validate:static:all` |
 | 文檔 | 內部連結有效 ＋ 與 code 實況不矛盾（抽 2-3 個宣稱對源碼核對） |
-| 制度檔（devkit 自身） | read-back ＋ 弱模型理解測試過（維護協議） |
+| 制度檔（devkit 自身） | read-back ＋ 弱模型理解測試過（維護協議；接班交接檔用**接手模型本尊**測，見 succession-handbook） |
+| hooks／攔截器 | 上列 ＋「應觸發案例」行為測試（fail-open hook 的 read-back 驗不出靜默失效；maintenance-protocol §2b） |
+| CI／workflow 改動 | tsc/governance 照常 ＋ `gh auth status` 確認 workflow scope（缺→`gh auth refresh -s workflow`，別等 push 才炸）＋ **乾淨 worktree 首驗**（`git worktree add` 到 HEAD 實測綠——本地綠含未 commit WIP，CI 跑的是乾淨 checkout；此驗證 controller 自己做，§13 禁 subagent 樹級操作） |
 
 ✅ 正例：slice 完成回報附「tsc 0 錯、governance 綠、驗收 agent PASS（軌跡在 X）」三個可指認的 tool 結果。
 ❌ 反例：「已完成並測試」但 session 內沒有任何測試指令的 tool 結果——這是虛報，回報前逐項對照實際 tool 結果。
@@ -58,6 +60,10 @@
 
 ✅ 正例：agent 回報「此任務會弱化 SACRED validator，STOP 上呈」——這是模範行為，記入教訓庫正例。
 ❌ 反例：把 assert 從嚴改鬆讓 gate 綠——抽查抓到即回爐＋postmortem。
+
+## 4b. 在途實驗先有 playbook 才准看數字 [通則]（v0.22 §16）
+
+「結果晚於裁決者離場」的在途實驗／外部產出（本 repo 現有兩件：CI 首跑、EE producer relay），必須先有 data-blind 裁決 playbook（結果分支 × 封閉措辭選單 × 後續動作，含第 0 步有效性 gate）才准看數字；先看了才補寫 → 結論標 post-hoc ＋強制第二意見＋使用者確認。選單外的結論句＝越權，停下問使用者。本 repo 的 playbook 在 [succession-handbook.md](./succession-handbook.md)。
 
 ## 5. 品質底線驗法 [通則]
 
