@@ -23,7 +23,11 @@ jobs:
     # The reliable wall: deterministic, no browser. governance:full = lint +
     # scene-lane-governance + s0 model invariants + colour-match VISUAL-truth +
     # S1-S5 + goldens. static:all = EVERY static validator (catches a refactor
-    # that orphans/breaks a source-pinned one). Both verified green at 02c076a.
+    # that orphans/breaks a source-pinned one). NOTE (P2 2026-07-07): "verified
+    # green at 02c076a" was a LOCAL verification only — this job has never been
+    # green on a hosted runner (cross-repo imports + machine-path-dependent
+    # validators; being fixed by SN-3a/SN-3c). Do not mark REQUIRED until 3
+    # consecutive green runs.
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -70,7 +74,10 @@ jobs:
           npm run validate:phase-3:overlay-render:browser
           npm run validate:phase-c:handover-cinema:browser
           npm run validate:phase-c:handover-pulse:render:browser
-          npm run validate:phase-c:handover-ticker:render:browser
+          # handover-ticker:render:browser removed 2026-07-07 (P2 SN-3b): the
+          # validator + npm key were deleted in 8cdb8c8 (LIVE RUN HUD cards
+          # retired) but this list was never synced — Rule#9 violation that made
+          # visual-gates deterministically red since 06-22.
           npm run validate:phase-c:sinr-serving-mosaic:browser
           npm run validate:phase-c:sinr-live-cells:render:browser
           kill $VITE_PID 2>/dev/null || true
