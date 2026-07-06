@@ -14,6 +14,13 @@
 // Browser validators (need a running vite + APP_URL) are excluded — they live in
 // `validate:ready` / `validate:live-render`. This gate is STATIC only.
 //
+// 2026-07-07 (P2 SN-1): discovery extended from `scripts/` to also match
+// `src/**/*.test.ts` single-command validators — the P2 health check found 14+
+// src-based test validators (plus 2 hidden inside a `&&` compound and 1 with no
+// npm key at all) that this runner silently skipped, re-opening the exact
+// orphan-rot channel this file exists to close. Aggregates (`&&`, `npm run`)
+// are still skipped by design; their leaves must each have a single-command key.
+//
 // Run before a handoff/PR:  npm run validate:static:all   (~8 min)
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -52,19 +59,19 @@ for (const key of Object.keys(pkg)) {
   if (EXCLUDE.has(key)) continue; // load-sensitive perf test — run standalone
   const cmd = pkg[key];
   if (cmd.includes('&&') || !cmd.includes('node --import')) continue; // aggregates only
-  const m = cmd.match(/scripts\/(\S+)/);
+  const m = cmd.match(/((?:scripts|src)\/\S+)/);
   if (!m) continue;
   let src = '';
-  try { src = readFileSync('scripts/' + m[1], 'utf8'); } catch { continue; }
+  try { src = readFileSync(m[1], 'utf8'); } catch { continue; }
   if (/chromium|playwright|newPage|APP_URL|_vc2-browser-fixture|_v3-deterministic-fixture|import[^\n]*\b(?:detectAppUrl|withVc2Browser|bootDeterministicPage)\b/.test(src)) continue; // browser → not here (incl. fixture-hidden chromium; helper names anchored to imports so a retirement comment can't false-exclude a static validator)
-  discovered.push({ key, file: m[1] });
+  discovered.push({ key, file: m[1] }); // file is repo-relative (scripts/... or src/...)
 }
 
 const gatedRed = [], staleQuarantine = [];
 let ran = 0;
 for (const { key, file } of discovered) {
   let pass = true;
-  try { execFileSync('node', ['--import', 'tsx/esm', 'scripts/' + file], { stdio: 'pipe', timeout: 90000 }); }
+  try { execFileSync('node', ['--import', 'tsx/esm', file], { stdio: 'pipe', timeout: 90000 }); }
   catch { pass = false; }
   ran += 1;
   if (QUARANTINE.has(key)) {
