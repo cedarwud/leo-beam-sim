@@ -55,10 +55,13 @@ effort 語義（官方）：effort 是行為訊號不是硬 token 預算；`high
 
 失敗處理的階梯（§5 鐵律 4），沿階梯**上移一級**才算升級，同級原樣重試不算、且不得超過兩輪：
 
-1. **升 effort**（如 Sonnet high → xhigh）
-2. **換更強模型**（Sonnet → Opus；Opus → 問使用者是否動用最強檔）
-3. **換方法或重新拆解**（換 approach、縮小範圍、改先寫測試）
-4. **問人**（把失敗軌跡完整帶上：試了什麼、輸出什麼、卡在哪）
+1. **升 effort**（如 Sonnet high → xhigh；派工層無旋鈕時視為空階跳過，見 §3 落地限制）
+2. **換更強模型**（Sonnet → Opus xhigh）。**Opus xhigh 是本環境的常備最強檔**（Fable 級只在使用者特別開的 session 出現，不當作階梯的一級）。
+3. **多版本評審選優**（Opus xhigh 之上的替代品）：同一 spec 派 2-3 個**互相隔離**的實作 agent（各自 worktree、prompt 加一句不同的切入角），fresh-context 評審 agent 按驗收條件逐項評分選優、可從落選版嫁接好段落——用成本買回判斷力。適用：驗收條件明確但做法開放的難題。不適用：品味題（多版本只會給你三種品味，仍要人裁）。
+4. **換方法或重新拆解**（換 approach、縮小範圍、改先寫測試）
+5. **問人**（把失敗軌跡完整帶上：試了什麼、輸出什麼、卡在哪）
+
+**跳梯直達「問人」的三類題 [通則]**（不浪費預算爬梯；此句是通則、不隨本節的鷹架標籤放寬）：視覺/敘事品味取捨；SACRED validator 或 gate 的**語義**變更（repoint/加強不算）；跨 repo 合約變動（producer schema、vendor 邊界、baseline）。
 
 - 同一子任務連錯兩次 → 帶完整失敗軌跡升級，不第三次原樣重派。
 - 某一級不可用（已是最高 effort、無更強模型）→ 跳過走下一級，不停在空階。
@@ -128,6 +131,23 @@ roll=$(( 0x$(printf '%s:%s' "$seed" "$item_id" | sha256sum | cut -c1-8) % 100 ))
 - 實作／唯讀／審計／測試／SDD 起草 → 留本環境。
 - 並列多個 worker prompt 時逐一標 **heavy**／**non-heavy** 供使用者路由。
 
-## 11. 工作暫存慣例 [通則]
+## 11. worktree 派工與回收協議 [通則]
+
+（2026-07-07 安裝 session 實戰結晶——兩個 agent 都踩過 stale-HEAD、一個中流死，全部有既定解法，照做不用重新發明。）
+
+**派工時寫進 prompt 的開工序**：
+1. `git log --oneline -3` 確認 worktree 含最新 main 的 HEAD commit（worktree 可能從舊 HEAD 建出）；缺 → `git merge main --no-edit`（這是 subagent 唯一允許的 merge，且只能 merge 進自己的 worktree 分支）。merge 若衝突 → **STOP 回報 controller，不硬解**。開工時核對一次即可，不需每輪重查（main 若在任務中前進，回收序的主樹重驗會接住差異）。
+2. `ln -s <主樹絕對路徑>/node_modules ./node_modules` 借依賴（不跑 npm ci、不裝東西）。
+3. 改動留 worktree、不 commit 不 push——回收是 controller 的事。
+
+**controller 回收序**（agent 回報後）：
+1. 親驗＝judgment-rubric §5 三件中的 **(1) 機械宣稱重算＋(2) 高風險 hunk 逐行讀**（第 (3) 件在下面第 3 步做——順序刻意如此，不是重複清單）。
+2. 移植：新增檔 `cp`；已追蹤檔 `git -C <worktree> diff | git apply`（或 `--3way`）；衝突手解——常見型＝controller 與 agent 改了同一檔（如 runner），合體原則是兩邊意圖都保留、逐行確認。
+3. **主樹重驗**：關鍵驗證指令在主樹再跑一次（worktree 側的綠不能直接沿用——基底可能不同）。
+4. controller commit（過 pre-commit gate）→ `git worktree remove --force` ＋刪分支。
+
+**agent 中流死（API error / stalled）**：用 SendMessage 對**同一個 agent** 續推（它的 context 與 worktree 都還在），訊息寫「從斷點續跑＋原任務書要的完整回報」。不重派新 agent——重派＝丟掉它已讀進去的全部脈絡。例外：同一 agent **連續 2 次**中流死或續推無回應 → 改重派新 agent，prompt 附上前手的 scratchpad 筆記路徑與已知進度（中流死是基礎設施故障，不算 §4 的「連錯兩次」驗收失敗）。
+
+## 12. 工作暫存慣例 [通則]
 
 實驗腳本／中間輸出／一次性草稿不得散落專案源碼：優先用 harness scratchpad（本環境 `/tmp/claude-1000/...-leo-beam-sim/<session>/scratchpad`）；跨 session 要留的用 `.claude/scratch/`（gitignored）。關帳時清空（鐵律 6）。既有慣例補充：本 repo 的拋棄式探針腳本命名 `scripts/_*.ts`（gitignore 未涵蓋、靠命名慣例辨識）——新增探針沿用此慣例並在關帳時刪除；歷史遺留的 `scripts/_*` 與 `.githooks/` 未追蹤檔不是本系統轄區，未經使用者指示不得清理。

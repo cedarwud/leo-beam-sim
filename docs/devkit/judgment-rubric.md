@@ -65,6 +65,7 @@
 - **審查兩段式**：審查 agent 先全報（附信心與嚴重度、不篩選），controller 或第二 agent 再篩——直接叫審查者「只報重要的」會漏報（接班模型忠實守門檻）。第二段篩選的操作規則：可排序、可聚合，**P1/P2 不得靜默丟棄**（呈報或明寫「已評估不採納＋理由」）；低信心 P3 可聚合成一行總結；第一段全量清單落檔留審計——存 `.claude/devkit-local/` 或由 audit log 引用**持久路徑**（不得只存 /tmp scratchpad：reboot 即失，違反三週回溯），不隨篩選消失。
 - **negative-control**：驗證 validator／gate 類改動時，故意注入一個已知壞例，確認 gate 真的會紅（本 repo 既有慣例，memory: beam-control-surface）。
 - **視覺宣稱要像素證據**：render 類「已修好」必附截圖或 validate:ready 輸出（前例：PIXEL-VERIFIED 慣例）。
+- **併單前最小親驗三件**（controller 收 worktree agent 成果時，一件不省；執行時序對應 dispatch-rules §11 回收序——(1)(2) 在移植**前**、(3) 在移植**後**，不是三件連做也不是做兩遍）：(1) 機械可驗宣稱重算一次——SHA-256、錯誤計數、grep 命中數，agent 說多少你自己算一次；**重算對不上＝宣稱不實：該成果不併、回爐＋記教訓庫（比照抽查失敗處置）**；(2) 高風險 hunk 逐行讀——SACRED 檔、gate 接線、任何會改 emitted JS 的段；(3) 驗證指令主樹重跑——worktree 側的綠只證明它的基底，不證明合併後的主樹。二元宣稱（如 static:all 全綠）的重算顆粒度＝主樹重跑該指令一次並核對總結行數字，不需逐支比對。
 - **外部宣稱要落檔覆核**：引據對不上的發現一律撤回（security-profiles.md 檢疫規則）。
 
 ## 6. 完成回報格式 [通則]

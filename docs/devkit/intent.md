@@ -1,5 +1,22 @@
 # 意圖檔（backlog）— leo-beam-sim
 
+## NEXT runway（單一排序；接手 session 由上往下拿，一次一項）
+
+> 2026-07-07 Fable 收官排定。1-2 有 mini-SDD／spec 可照圖施工；3-6 機械；7+ 等條件。派工粒度＝一列一 slice。
+
+| # | 項 | 型 | 依據 |
+|---|---|---|---|
+| 1 | self-check live 重算 chip | 設計已編譯 | `docs/handover-simulator-p3-selfcheck-chip-sdd.md`（Fable 定稿） |
+| 2 | Jain live 讀 manifest | 小實作 | 同 SDD 附錄 B（一頁 spec） |
+| 3 | 北極星鏈 5 份補路由（CLAUDE.md §6＋AGENTS.md 鏡像＋sdd-index 入口） | 機械 S | health-2026-07-07 D-1 |
+| 4 | sdd-index Active 表修真 | 機械 S/M | health D-2 |
+| 5 | superseded 13 份補 banner＋3 殭屍 status＋beam-display-spec status 修真 | 機械 S | health P2 |
+| 6 | vite in-range 升 7.3.6＋audit 歸零＋satellite.js 移除（一次做） | 機械 S | health P2（E 路） |
+| 7 | CI 3 綠後綁 required check（軟模式已決；使用者 GitHub UI 5 分鐘） | 等 push | health SN-4 |
+| 8 | 獵物五項圈選（vc4a／wall-clock 兩支瀏覽器級既有紅、omega 孤兒檔、changed-files 地雷根治、s0 stub 幾何） | 待使用者 | 下方提案區 |
+| 9 | EE 子專案（等 producer relay；開工檢查單見該條目） | blocked | 條目 3 |
+| 10 | S6/C1/C2 tangle-lock 排程決策（598 needles 的退場條件） | 待使用者 | health P2 |
+
 > 所有工作的源頭。每項帶 why 與 non-goals。**只有使用者能改優先序**；agent 可補充事實欄位、可提案新項（狀態＝proposed）。北極星脈絡見 `.agent-memory/`（教學/口試雙用途換手模擬器；最終方案 `docs/handover-simulator-final-plan.md`）。
 >
 > 種子建檔：2026-07-06 安裝 session，內容取自 controller memory 的 NEXT 清單；優先序沿用 memory 記載，使用者可隨時重排。
@@ -19,6 +36,7 @@
 ### 3. EE 子專案（angle-aware EE/power 旋鈕；NEXT 候選③，**blocked**）
 - **why**：defense＝旋鈕反駁、education＝live meter。producer `angle_aware_ee.py` 的 G_T(θ) J1/J3 是正確的角度依賴 power。
 - **硬 blocker**：H2 export 無 `H`（+I_hat/σ²）→ 純 leo live EE 不可能 → **等使用者發 producer relay**。
+- **relay 到貨開工檢查單**（Fable 預編，屆時逐項打勾再動工）：①驗 producer 匯出 schema 真的含 `H`＋`I_hat`＋σ²（逐欄位對 step-trace 抽 3 slot 核對，別信 changelog）；②G_T(θ) 用 producer `angle_aware_ee.py` 的 J1/J3 定義、對照 leo 已有 `beam-gain.ts` bessel-j1j3 出參數 parity gate（同 P1 decode-parity 模式：golden 抽 slot 凍結）；③EE 顯示層走 BeamDisplaySpec 控制面慣例、不進 truth 層；④勿重演 `211a71a` 的 double-count（÷G_T 是 family_b-eval 修正、非 angle-awareness 本身——詳 memory topic）。
 - **non-goals**：不在 leo 側重算物理真值（違反 repo 邊界 1）。
 - 詳：memory `project_angle_aware_ee_display_plan_2026-07-04`。
 
