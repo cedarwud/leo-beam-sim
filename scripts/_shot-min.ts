@@ -1,7 +1,7 @@
 import { chromium } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 const APP='http://localhost:3000', SHELL='.leo-app-shell', C='canvas[data-camera-position]';
-const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+const sleep=(ms: number)=>new Promise(r=>setTimeout(r,ms));
 await mkdir('output/min',{recursive:true});
 const b=await chromium.launch(); const p=await b.newPage({viewport:{width:1280,height:800}});
 await p.goto(APP,{waitUntil:'domcontentloaded'}); await p.waitForSelector(SHELL,{timeout:40000}); await p.waitForSelector(C,{timeout:40000});

@@ -1,4 +1,4 @@
-import type { Browser, BrowserContext, BrowserContextOptions, Page, Playwright } from '@playwright/test';
+import type { Browser, BrowserContext, BrowserContextOptions, BrowserType, Page } from '@playwright/test';
 
 export interface BootDeterministicPageOptions {
   url: string;
@@ -134,7 +134,9 @@ export async function freezeRaf(page: Page, atMs: number): Promise<void> {
 }
 
 export async function bootDeterministicPage(
-  playwright: Pick<Playwright, 'chromium'>,
+  // Structural type: @playwright/test does not export a `Playwright` type;
+  // callers pass the module object, and only `.chromium` is used here.
+  playwright: { chromium: BrowserType },
   opts: BootDeterministicPageOptions,
 ): Promise<Page> {
   const seed = opts.seed ?? 1337;

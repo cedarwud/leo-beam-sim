@@ -82,7 +82,9 @@ for (const source of sources) {
       assert.equal(item.currentConsumerPaths.length, 0, `${source} ${requirement.field} source-gap has no paths`);
       assert.equal(
         item.sourceGapField,
-        requirement.sourceGapField,
+        // Type-only `in` narrowing: entries without the optional field read as
+        // undefined either way, so the compared value is unchanged.
+        'sourceGapField' in requirement ? requirement.sourceGapField : undefined,
         `${source} ${requirement.field} source-gap follows contract mapping`,
       );
     } else {

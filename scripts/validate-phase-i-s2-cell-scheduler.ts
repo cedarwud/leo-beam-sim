@@ -78,7 +78,7 @@ function check(name: string, assertion: () => void): ValidationResult {
   }
 }
 
-function assert(condition: boolean, message: string): void {
+function assert(condition: boolean, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }
@@ -112,7 +112,7 @@ function compareAssignments(a: CellAssignment, b: CellAssignment): number {
 }
 
 function assertUnique(values: readonly string[] | readonly number[], label: string): void {
-  assert(new Set(values).size === values.length, `${label}: ${values.join(', ')}`);
+  assert(new Set<string | number>(values).size === values.length, `${label}: ${values.join(', ')}`);
 }
 
 function assignmentCellIds(slot: CellScheduleSlot): readonly number[] {

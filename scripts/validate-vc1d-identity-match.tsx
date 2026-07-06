@@ -431,9 +431,9 @@ function assertEventCalloutIdentityScaffold(): void {
       `${fixture.name} did not expose the canonical identity`,
     );
     assert.ok(text.includes(satelliteLabel), `${fixture.name} callout did not include ${satelliteLabel}: ${text}`);
-    assert.ok(text.includes(style.operatorLabel), `${fixture.name} did not include ${style.operatorLabel}: ${text}`);
+    assert.ok(text.includes(style.operatorLabel!), `${fixture.name} did not include ${style.operatorLabel}: ${text}`);
     assert.ok(
-      text.indexOf(satelliteLabel) < text.indexOf(style.operatorLabel),
+      text.indexOf(satelliteLabel) < text.indexOf(style.operatorLabel!),
       `${fixture.name} owner chip did not precede the identity line: ${text}`,
     );
   }

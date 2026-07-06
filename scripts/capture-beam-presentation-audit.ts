@@ -13,8 +13,8 @@ const MV = (lane: string) => `[data-testid="modqn-view-${lane}"]`;
 
 interface Snapshot {
   readonly label: string;
-  readonly shell: Record<string, string>;
-  readonly canvas: Record<string, string>;
+  readonly shell: Record<string, string | undefined>;
+  readonly canvas: Record<string, string | undefined>;
   readonly controls: Record<string, string | boolean | null>;
 }
 
@@ -24,7 +24,8 @@ function assertLocalhost3001(url: string): void {
   assert.equal(parsed.port, '3001', 'D7 before capture must use port 3001');
 }
 
-async function dataset(page: Page, selector: string): Promise<Record<string, string>> {
+// DOMStringMap spreads type as string | undefined per key.
+async function dataset(page: Page, selector: string): Promise<Record<string, string | undefined>> {
   return page.$eval(selector, element => ({ ...(element as HTMLElement).dataset }));
 }
 

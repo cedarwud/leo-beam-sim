@@ -178,7 +178,7 @@ const geometry = sceneGeometryFromProfile({
   orbit: { shells: profile.orbit.shells.map(s => ({ id: s.id, altitudeKm: s.altitudeKm })) },
   beams: { frequencyReuse: profile.beams.frequencyReuse },
 });
-const worldUnitsPerKm = 1 / geometry.kmPerWorldUnit;
+const worldUnitsPerKm = 1 / geometry.kmPerWorldUnit!;
 const cellLayout = buildSinrLiveCellLayout(profile);
 const placementByCellId = new Map<number, SinrLiveCellPlacement>(
   cellLayout.centers.map(center => [center.cellId, {

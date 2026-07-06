@@ -280,7 +280,13 @@ function assertBeamGainFixtures(): void {
 }
 
 function assertOffAxisFixtures(): void {
-  const fixtures = [
+  // Tuple annotation keeps the per-fixture `as const` args spreadable: a union
+  // of readonly tuples is not itself a tuple type for spread-call purposes.
+  const fixtures: ReadonlyArray<{
+    label: string;
+    args: readonly [number, number, number, number, number];
+    expected: number;
+  }> = [
     {
       label: 'boresight',
       args: [0, 0, 0, 0, 550] as const,

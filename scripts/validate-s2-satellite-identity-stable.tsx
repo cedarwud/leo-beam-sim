@@ -112,10 +112,10 @@ function run(): void {
         glyphsBySatId.set(sat.id, new Set());
         ordersBySatId.set(sat.id, new Set());
       }
-      tintsBySatId.get(sat.id)!.add(sat.satelliteTintColor);
+      tintsBySatId.get(sat.id)!.add(sat.satelliteTintColor!);
       glyphsBySatId.get(sat.id)!.add(String(sat.satelliteGlyph));
       ordersBySatId.get(sat.id)!.add(displayOrder);
-      allTints.add(sat.satelliteTintColor);
+      allTints.add(sat.satelliteTintColor!);
     });
   }
 

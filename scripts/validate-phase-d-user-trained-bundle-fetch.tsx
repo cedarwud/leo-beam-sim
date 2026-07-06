@@ -250,7 +250,10 @@ console.log('\n(c) Exported async function shape');
 console.log('\n(d) Composition: surfaces fetched + envelope success under user-trained mode');
 {
   const calls: string[] = [];
-  let result: Awaited<ReturnType<typeof fetchUserTrainedBundleEnvelope>> | null = null;
+  // The `null as ...` initializer keeps TS from narrowing `result` to `null`
+  // across the withFetch callback assignment (closure writes are not tracked
+  // by control-flow analysis). Type-layer only; runtime value is still null.
+  let result = null as Awaited<ReturnType<typeof fetchUserTrainedBundleEnvelope>> | null;
   await withFetch(
     fixtureFetch(buildValidSevenBeamSurfaces(), calls),
     async () => {

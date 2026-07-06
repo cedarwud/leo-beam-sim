@@ -1,0 +1,18 @@
+{
+  "//": [
+    "P2 SN-5: static type coverage for scripts/ (validator scripts).",
+    "Extends root tsconfig (strict, jsx react-jsx, moduleResolution bundler, @/* paths).",
+    "include adds 'src' because scripts import src symbols relatively — they must share one program.",
+    "allowImportingTsExtensions: scripts import './lib/ci-data-guard.ts' with explicit .ts suffix (legal under noEmit).",
+    "lib deviation from root (ES2020 -> ES2023): validator scripts run on Node >=20 and already use String.replaceAll (ES2021) and Array.at (ES2022) at runtime; root src stays on ES2020 for the browser bundle.",
+    "scripts/*.mjs (e.g. validate-static-all.mjs) are intentionally OUT of scope: allowJs stays off; they are plain JS runners, not typed validators.",
+    "Wired into validate:governance:full + CI static-gates, NOT the ~16s pre-commit hook (kept fast by design)."
+  ],
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+  },
+  "include": ["scripts", "src"]
+}

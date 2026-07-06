@@ -29,7 +29,9 @@ interface BrowserProbe {
   readonly httpFailures: readonly string[];
 }
 
-type Dataset = Record<string, string>;
+// DOMStringMap spreads type as string | undefined per key; the validator's
+// datasetNumber/assertDatasetValue helpers already assert presence fail-loud.
+type Dataset = Record<string, string | undefined>;
 
 function liveSourceUrl(appUrl: string): string {
   const url = new URL(appUrl);

@@ -16,13 +16,14 @@ import {
   getTrainingSceneTraceRequirementsForLane,
   type ModqnTrainingSceneLane,
   type ModqnTrainingSceneTraceField,
+  type ModqnTrainingSceneTraceRequirement,
 } from '../src/modqn/training-scene-trace';
 
 function read(path: string): string {
   return fs.readFileSync(path, 'utf8');
 }
 
-function requirement(field: ModqnTrainingSceneTraceField) {
+function requirement(field: ModqnTrainingSceneTraceField): ModqnTrainingSceneTraceRequirement {
   const item = MODQN_TRAINING_SCENE_TRACE_REQUIREMENTS.find(candidate => candidate.field === field);
   assert.ok(item, `trace requirement exists: ${field}`);
   return item;
@@ -213,7 +214,7 @@ assert.deepEqual(
 
 for (const item of MODQN_TRAINING_SCENE_TRACE_REQUIREMENTS) {
   assert.ok(item.requiredProducerPaths.length > 0, `${item.field} lists producer paths`);
-  if (item.sourceGapField !== undefined) {
+  if ('sourceGapField' in item && item.sourceGapField !== undefined) {
     assert.ok(
       MODQN_REPLAY_SOURCE_GAP_FIELDS.includes(item.sourceGapField),
       `${item.field} source gap is registered: ${item.sourceGapField}`,

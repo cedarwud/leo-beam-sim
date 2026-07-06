@@ -36,7 +36,7 @@ for (let i = 0; i < 400; i++) {
 console.log('=== COLD FIRST ARM ===');
 logs.length = 0;
 await p.click(INTRA).catch(() => {});
-let traj = ''; let prev = ''; const t0 = Date.now();
+let traj = ''; let prev: string | null = ''; const t0 = Date.now();
 let reachedFocused = false; let focusedStart = -1; let focusedEnd = -1;
 for (let i = 0; i < 110; i++) {
   await new Promise(r => setTimeout(r, 150));

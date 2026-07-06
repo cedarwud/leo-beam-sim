@@ -443,7 +443,7 @@ async function assertAppToggleAndUiContrast(
     assert.equal(off, false, 'spotlight control did not toggle back off');
     assert.equal(navigationEventsAfterToggle, 0, 'spotlight toggle must not navigate or reload the app');
 
-    const contrastRatio = await page.evaluate(`
+    const contrastRatio = await page.evaluate<number>(`
       (() => {
         const element = document.querySelector('[data-testid="info-panel-primary-beam-identity"]');
         if (!(element instanceof HTMLElement)) {
