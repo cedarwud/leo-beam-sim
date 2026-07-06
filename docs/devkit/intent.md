@@ -38,4 +38,4 @@
 
 ## 新項提案區（agent 寫入，使用者裁決）
 
-（空）
+- **P2 健檢 backlog（2026-07-07）**：完整分級清單見 [reports/health-2026-07-07.md](./reports/health-2026-07-07.md)——第零優先＝安全網包 SN-1..SN-5（CI 復活鏈＋static:all 盲區＋scripts 型別覆蓋）；P1＝北極星鏈補路由/sdd-index 修真/工作樹 15 檔 commit。使用者圈選後逐項轉上方正式條目。
