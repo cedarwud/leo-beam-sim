@@ -26,17 +26,13 @@ Thumbs.db
 .vscode/
 *.code-workspace
 
-# claude — devkit 共享層白名單：settings/hooks/兩支 devkit skill 進 git，
-# 其餘（settings.local、worktrees、devkit-local、工作區 symlink）照舊忽略
-.claude/*
-!.claude/settings.json
-!.claude/hooks/
-!.claude/skills/
-.claude/skills/*
-!.claude/skills/leo-pipeline/
-!.claude/skills/leo-intake/
-.claude/scratch/
+# claude — devkit 制度層已轉私有側庫 devkit-vault（symlink 回本機、不進 leo git）。
+# 交付準備：對外交付版不含 AI 鷹架。.claude 全數不追蹤（settings/hooks/兩支 skill/devkit-local/scratch/工作區 symlink）。
+.claude/
 .gstack/
+
+# devkit 制度文件已轉側庫（docs/devkit → vault symlink，不進 leo git）
+docs/devkit
 
 # Bridge symlink to Claude memory (user-private, not tracked)
 .agent-memory
