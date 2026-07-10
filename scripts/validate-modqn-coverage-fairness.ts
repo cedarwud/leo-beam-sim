@@ -81,16 +81,18 @@ const ARMS: readonly ArmExpectation[] = [
 
 const ORACLE_TOL = 2e-3;
 
-// CI-environment guard (P2 SN-3c): the staged H2 scene windows are this
-// validator's data contract and it cannot self-heal (a human must re-stage after
-// a reboot — loadWindowFrames() documents the exact command), so a missing
-// staging is a visible SKIP (exit 0 + marker naming the missing window) rather
-// than a red — on the dev machine AND on a hosted CI runner. See
+// CI-environment guard (P2 SN-3c; placement fixed 2026-07-10): the staged H2
+// scene windows are the data contract of the BEHAVIORAL sections only. The
+// purity greps (coverageFairness + windowReplayCue display-only boundary) are
+// data-free and always run — hosted CI included — so the guard fires in main()
+// after them, right before the data-dependent sections. See
 // scripts/lib/ci-data-guard.ts for the SKIP semantics.
-skipIfDataUnavailable(ARMS.map(({ arm, window }) => ({
-  path: window,
-  why: `staged H2 ${arm} scene window — /tmp cleared on reboot; re-stage via node scripts/build-h2-scene-payload.mjs (see loadWindowFrames)`,
-})));
+function skipBehavioralIfUnstaged(): void {
+  skipIfDataUnavailable(ARMS.map(({ arm, window }) => ({
+    path: window,
+    why: `staged H2 ${arm} scene window (purity sections DID run and pass before this skip) — /tmp cleared on reboot; re-stage: npm run stage:h2`,
+  })));
+}
 
 function checkPurity(): void {
   // The coverage aggregator must stay display-only: no render/engine truth deps.
@@ -114,19 +116,17 @@ function checkPurity(): void {
 
 function loadWindowFrames(path: string): readonly CoverageFrame[] {
   if (!existsSync(path)) {
-    // Best-effort hint about whether the ablation source is present for a rebuild.
+    // Best-effort hint about whether the /tmp ablation copy is present for a rebuild.
     const srcHint = existsSync(DENSE_ABLATION)
-      ? `The dense-ablation source IS present (${DENSE_ABLATION}).`
-      : `The dense-ablation source is ALSO missing (${DENSE_ABLATION}).`;
+      ? `The /tmp dense-ablation copy IS present (${DENSE_ABLATION}).`
+      : `The /tmp dense-ablation copy is ALSO missing (${DENSE_ABLATION}).`;
     throw new Error(
       `staged H2 scene window missing: ${path}\n`
         + `  (/tmp is cleared on reboot — the known-fragile staging convention).\n`
         + `  ${srcHint}\n`
-        + `  Re-stage the scene windows from the ablation source (SDD §8 R2):\n`
-        + `    node scripts/build-h2-scene-payload.mjs \\\n`
-        + `      ${DENSE_ABLATION}/<arm>-t0_9000-w117_213/visual-showcase-v1.json \\\n`
-        + `      ${BUNDLES}/h2-scene-<arm>-t0_9000-w117_213/visual-showcase-v1.json \\\n`
-        + `      ${DENSE_ABLATION}/<arm>-t0_9000-w117_213/timeline/step-trace.jsonl`,
+        + `  Re-stage everything with ONE command (stages from the durable local mirror in\n`
+        + `  modqn-weights-consolidated; prints the server-pull command if the mirror is missing):\n`
+        + `    npm run stage:h2`,
     );
   }
   const art = JSON.parse(readFileSync(path, 'utf8')) as { timeline?: readonly CoverageFrame[] };
@@ -206,7 +206,7 @@ function loadRawFrame0(path: string): { readonly tSec: number; readonly ues: rea
 // on-screen field. Locks: a2 focus UE = served (green) with the frame's serving beam;
 // b1 starved focus UE = served=false (red-sea truth flows); null frame -> null; and the
 // adapter stays display-only (no render/engine import; never names SINR / reward).
-function checkWindowReplayCue(): void {
+function checkWindowReplayCuePurity(): void {
   const file = join(SHOWCASE_DIR, 'windowReplayCue.ts');
   assert.ok(existsSync(file), `windowReplayCue.ts missing: ${file}`);
   const src = readFileSync(file, 'utf8');
@@ -226,7 +226,10 @@ function checkWindowReplayCue(): void {
     !/sinr/i.test(src) && !/reward/i.test(src),
     'PURITY: windowReplayCue.ts must not name SINR or reward (it reads served/serving/target truth only, derives neither)',
   );
+  console.log('  [purity] windowReplayCue.ts clean (no render/engine import; never names SINR/reward)');
+}
 
+function checkWindowReplayCueBehavior(): void {
   const a2 = ARMS.find(arm => arm.arm === 'a2');
   assert.ok(a2 !== undefined, 'a2 arm expectation present');
   const a2f0 = loadRawFrame0(a2.window);
@@ -283,8 +286,10 @@ function main(): void {
   console.log('validate:modqn:coverage-fairness');
   checkGateWiring();
   checkPurity();
+  checkWindowReplayCuePurity();
+  skipBehavioralIfUnstaged();
   for (const arm of ARMS) checkArm(arm);
-  checkWindowReplayCue();
+  checkWindowReplayCueBehavior();
   console.log('PASS: coverageFairness reproduces the producer coverage win-axis on both H2 windows,');
   console.log('      and deriveWindowReplayCue agrees with the recorded window on both arms.');
 }

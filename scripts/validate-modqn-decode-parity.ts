@@ -19,6 +19,9 @@
 //                matches the exported scalarizedQByAction (rel 1e-6) and re-argmaxes
 //                to the same selected action.
 //
+// Goldens / purity / provenance are data-free and ALWAYS run (hosted CI included);
+// only the real-window fixtures skip — visibly — when the /tmp staging is absent.
+//
 // Assertions are BEHAVIORAL (run fixtures, compare outputs) — NOT source-pinned
 // string greps (frontend-change-contract Rule 4). The two structural asserts
 // (purity, provenance) guard the engine's boundary + the golden's authenticity.
@@ -55,15 +58,22 @@ const PRODUCER_TARGET =
 const TIMELINE = join(STAGING, 'timeline/step-trace.jsonl');
 const EXPECTED_ROWS = 1000;
 
-// CI-environment guard (P2 SN-3c): the staged /tmp symlink is this validator's
-// data contract and it cannot self-heal (a human must re-stage after a reboot),
-// so a missing staging is a visible SKIP (exit 0 + marker naming the restore
-// command) rather than a red — on the dev machine AND on a hosted CI runner.
-// See scripts/lib/ci-data-guard.ts for the SKIP semantics.
-skipIfDataUnavailable([{
-  path: TIMELINE,
-  why: `staged dense-Q proof window for real-data decode parity — /tmp cleared on reboot; restore: ln -sfn ${PRODUCER_TARGET} ${STAGING}`,
-}]);
+// CI-environment guard (P2 SN-3c; placement fixed 2026-07-10): the staged /tmp
+// symlink is the data contract of the REAL-WINDOW section ONLY. The committed
+// goldens + purity + provenance sections are data-free and must run
+// UNCONDITIONALLY — including on a hosted CI runner — so a decode-engine
+// regression can never ride a data-unavailable skip through CI. The guard
+// therefore fires in main() right before the data-dependent section (a
+// pre-guard assert failure exits 1, so a real red can never be mislabeled as a
+// skip). See scripts/lib/ci-data-guard.ts for the SKIP semantics.
+function skipRealWindowIfUnstaged(): void {
+  skipIfDataUnavailable([{
+    path: TIMELINE,
+    why: 'staged dense-Q proof window for real-data decode parity '
+      + '(goldens/purity/provenance DID run and pass before this skip) — /tmp cleared on reboot; '
+      + `restore: npm run stage:h2 (or ln -sfn ${PRODUCER_TARGET} ${STAGING})`,
+  }]);
+}
 
 // -inf-aware float compare for nested (number|null)[][] (null == -Infinity).
 function assertNestedClose(
@@ -281,9 +291,10 @@ async function runRealDataFixtures(): Promise<void> {
     throw new Error(
       `real dense-q staging missing: ${TIMELINE}\n`
         + `  (/tmp is cleared on reboot — this is the known-fragile staging convention).\n`
-        + `  Rebuild the symlink:\n`
+        + `  Re-stage everything: npm run stage:h2\n`
+        + `  (or rebuild just this symlink:\n`
         + `    mkdir -p ${dirname(STAGING)}\n`
-        + `    ln -sfn ${PRODUCER_TARGET} ${STAGING}`,
+        + `    ln -sfn ${PRODUCER_TARGET} ${STAGING})`,
     );
   }
   const rl = createInterface({ input: createReadStream(TIMELINE), crlfDelay: Infinity });
@@ -336,6 +347,7 @@ async function main(): Promise<void> {
   const goldens = loadGoldens();
   runGoldenParity(goldens);
   runShape2AuctionFixtures(goldens);
+  skipRealWindowIfUnstaged();
   await runRealDataFixtures();
   console.log('PASS: TS decode engine reproduces the frozen Python decode + the recorded dense-Q self-check.');
 }

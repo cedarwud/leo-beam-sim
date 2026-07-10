@@ -16,9 +16,13 @@
 //     missing dependency to stdout, so the validate:static-all runner can
 //     detect, NAME and COUNT skipped validators ("M skipped (data
 //     unavailable)"). A validator can never silently stop validating.
-//   - Call this BEFORE any data readFileSync/spawn — immediately after imports
-//     and path constants, never after assertions have started (a half-run
-//     validator that then "skips" would mislabel a real failure).
+//   - Call this BEFORE the first DATA-dependent read/spawn. Default placement is
+//     module top, immediately after imports and path constants. A validator MAY
+//     run purely data-FREE sections first (committed fixtures, purity greps) so
+//     a hosted CI runner still gates those — this is safe because a pre-guard
+//     assert failure exits 1, i.e. a real red can never be mislabeled as a skip
+//     (only pass-then-skip is possible). The marker `why` should then say what
+//     DID run before the skip. Never call it after DATA assertions have started.
 //   - `regenerableFrom` is ONLY for validators that SELF-HEAL: if the validator
 //     itself can autonomously rebuild the missing data from this source and
 //     still PASS (e.g. ensureModqnCurrentBaselineExport() re-exports the /tmp
