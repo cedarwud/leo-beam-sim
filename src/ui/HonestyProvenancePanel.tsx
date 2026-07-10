@@ -159,7 +159,11 @@ function ProvenanceSection({ manifest }: { manifest: ReplayArmManifest | null | 
             ? ' · ✓ auction re-decode reproduces serving + audit'
             : auctionRedecode === 'n/a'
               ? ' · auction re-decode n/a (argmax arm)'
-              : ''}
+              : auctionRedecode === undefined
+                ? ''
+                // fail LOUD: a failed producer self-check must never render as
+                // silence (2026-07-10 truth-audit — honesty surfaces fail visibly).
+                : ` · ⚠ auction re-decode self-check NOT passing (manifest: ${String(auctionRedecode)})`}
           . Producer-computed, not yet re-run in-browser (that is slice-3).
         </p>
       ) : null}
