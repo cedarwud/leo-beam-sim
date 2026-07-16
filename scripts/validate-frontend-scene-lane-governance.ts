@@ -553,13 +553,12 @@ const algorithmDockSource = readRepoFile('src/showcase/dashboard/AlgorithmDock.t
 const algorithmDashboardSource = readRepoFile('src/showcase/dashboard/AlgorithmDashboard.tsx');
 const liveTelemetryPanelSource = readRepoFile('src/showcase/dashboard/LiveTelemetryPanel.tsx');
 const governanceDoc = readRepoFile('docs/frontend-render-governance.md');
+const frontendChangeContract = readRepoFile('docs/frontend-change-contract.md');
 const laneSdd = readRepoFile('docs/frontend-mode-lane-separation-sdd.md');
 const handoverStorySdd = readRepoFile('docs/modqn-handover-story-layer-sdd.md');
 const realisticGeometrySdd = readRepoFile('docs/modqn-realistic-beam-geometry-cross-repo-sdd.md');
 const realisticGeometryProducerBrief = readRepoFile('docs/modqn-realistic-beam-geometry-phase-ii-producer-brief.md');
 const adr = readRepoFile('docs/decisions/ADR-001-scene-lane-render-boundary.md');
-const agentsDoc = readRepoFile('AGENTS.md');
-const claudeDoc = readRepoFile('CLAUDE.md');
 const packageJson = readRepoFile('package.json');
 
 assertContains(modqnServingCountSource, 'MODQN_SERVING_COUNT_OPTIONS = [2, 3, 4, 5, 6, 7, 8] as const', 'MODQN formal serving-count options are L=2..8');
@@ -2037,7 +2036,7 @@ assertContains(
 
 // ── SINR-live antenna truth-input override (S-cells-4a) ──
 // The showcase lane sets its OWN self-consistent peak gain + wider steering as a
-// decoupled SINR-live-only truth-input (CLAUDE.md Rule#1/#4): the shared
+// decoupled SINR-live-only truth-input (frontend-change-contract Rule#7): the shared
 // `profile.antenna` is NEVER mutated, so the steered lane + baseline-KPI windows
 // stay byte-identical. Peak gain MUST be self-consistent with the beamwidth (no
 // >100%-efficiency bug). These locks pin (1) the overrides are wired into the
@@ -2818,15 +2817,12 @@ assertContains(handoverStorySdd, 'not baseline proof', 'handover story SDD demo 
 assertContains(handoverStorySdd, 'suppresses these foreground event arcs', 'handover story SDD records MODQN preview event-arc suppression');
 assertContains(governanceDoc, 'without foregrounding them as source-backed', 'governance doc records MODQN preview foreground-event suppression');
 
+// The tracked frontend constitution owns this lane invariant. Local agent-carrier topology is
+// intentionally outside the deliverable and is verified by ai-devkit attach, not this render gate.
 assertContains(
-  agentsDoc,
-  'Frontend Render Governance Rule',
-  'AGENTS governance entry',
-);
-assertContains(
-  claudeDoc,
-  'Frontend Render Governance Rule',
-  'CLAUDE governance entry',
+  frontendChangeContract,
+  'ONE viewport frame = ONE authoritative scene lane',
+  'frontend change contract lane invariant',
 );
 assertContains(
   packageJson,
@@ -3148,7 +3144,7 @@ assertContains(
 
 // ── MODQN tab consolidation S4: degenerate-data honesty banner + Advanced drawer ──
 // The MODQN lanes replay a DEGENERATE producer run (see the defects report): 100
-// UEs on a single beam, 0 handovers, 1 satellite. Governance (CLAUDE.md Rule#3)
+// UEs on a single beam, 0 handovers, 1 satellite. Frontend render governance
 // requires a loud, non-citable disclosure on EVERY MODQN lane. Separately, the
 // Setup power tools (training / jobs / ω-objective) move behind an opt-in drawer
 // so the default MODQN surface is the evidence/replay story, not a training

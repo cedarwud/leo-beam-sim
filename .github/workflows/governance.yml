@@ -1,7 +1,8 @@
 name: governance
 
 # Server-side enforcement of the frontend-change contract + render governance.
-# This is the ONLY UNBYPASSABLE layer (CLAUDE.md "LIMITS"): the local pre-commit
+# This is the ONLY UNBYPASSABLE layer (frontend-change-contract "Honest limits"):
+# the local pre-commit
 # hook is COOPERATIVE — `git commit --no-verify` bypasses it and a single commit
 # can both regress AND defang it (the hook lives in the working tree). A REQUIRED
 # status check here gates the MERGE regardless of local state.

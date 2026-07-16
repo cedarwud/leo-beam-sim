@@ -53,7 +53,7 @@ the mess regrows. The rules ARE the anti-entropy mechanism.
    (visual angle / width / colour / opacity) live in `src/scene/beamDisplaySpec.ts`
    and multiply the RENDER only. The antenna beamwidth / gain / link-budget / the
    `s0:geometry-trace` golden are physics truth — do not touch them to make
-   something look different. (CLAUDE.md Rules #2, #6.)
+   something look different.
 
 ## SACRED invariants (a gate fails if you break one)
 
@@ -161,8 +161,8 @@ When the controller dispatches via the Agent tool it SHOULD use
 
 ## Honest limits (do not overclaim)
 
-The pre-commit hook + static gates are COOPERATIVE, not adversarial (CLAUDE.md
-"LIMITS"): `git commit --no-verify` bypasses them; the hook lives in the working
+The pre-commit hook + static gates are COOPERATIVE, not adversarial:
+`git commit --no-verify` bypasses them; the hook lives in the working
 tree so one commit can both regress and defang it; the browser visual coverage is
 only in the MANUAL `validate:ready`. The ONLY unbypassable layer is **server-side
 CI on a PR** (`.github/workflows/`), which gates merges regardless of local state.
@@ -174,4 +174,3 @@ one.
 
 - `docs/handoff/sinr-live-render-consolidation-brief.md` — the diagnosis + the 3 loops in full.
 - `docs/frontend-render-governance.md` + `docs/decisions/ADR-001-scene-lane-render-boundary.md` — the lane / truth-vs-display boundary.
-- `CLAUDE.md` / `AGENTS.md` — "Frontend Render Governance Rule" + the layered-enforcement description.
