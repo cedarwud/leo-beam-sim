@@ -8,8 +8,9 @@ import type { ClaimBoundaryBannerInput } from '../ui/ClaimBoundaryBanner';
  * is loaded, so we feed the banner a static stub that mirrors the live-stub
  * shape emitted by `liveSimToScene` (allowedClaims / forbiddenClaims identical
  * to the producer-validated live boundary). The banner therefore renders in
- * `kind: 'rendered'` mode with the live SINR claim and the live forbidden-claim
- * list active.
+ * `kind: 'rendered'` mode with the live SINR + derived r1 EE claims and the live
+ * forbidden-claim list active. Keep both lists byte-identical to
+ * `liveSimToScene`'s — they are the same boundary stated twice.
  */
 export const LIVE_SIM_CLAIM_BOUNDARY_INPUT: ClaimBoundaryBannerInput = {
   sceneSource: 'live-sim',
@@ -20,7 +21,10 @@ export const LIVE_SIM_CLAIM_BOUNDARY_INPUT: ClaimBoundaryBannerInput = {
   claimBoundary: {
     kind: 'live-stub',
     storyKind: 'live-sinr-sim',
-    allowedClaims: ['interference-aware SINR (live)'],
+    allowedClaims: [
+      'interference-aware SINR (live)',
+      'reward-surface r1 EE derived from live SINR (bit/joule)',
+    ],
     forbiddenClaims: [
       'Multi-Catfish-MODQN effectiveness',
       'Catfish-EE',

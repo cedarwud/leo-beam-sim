@@ -412,8 +412,15 @@ export function liveSimToScene(
     claimBoundary: {
       kind: 'live-stub',
       storyKind: 'live-sinr-sim',
-      // Live path makes no MODQN / Multi-Catfish / EE claims.
-      allowedClaims: ['interference-aware SINR (live)'],
+      // Live path makes no MODQN / Multi-Catfish EE-EFFECTIVENESS claims. The r1
+      // EE term below is the reward-surface ratio B_alloc·log2(1+γ)/P_beam
+      // derived from the live SINR (see `src/utils/energyEfficiency.ts`);
+      // it is a rendered quantity, NOT a superiority / energy-saving result, so
+      // the forbidden list underneath is unchanged.
+      allowedClaims: [
+        'interference-aware SINR (live)',
+        'reward-surface r1 EE derived from live SINR (bit/joule)',
+      ],
       forbiddenClaims: [
         'Multi-Catfish-MODQN effectiveness',
         'Catfish-EE',

@@ -110,6 +110,21 @@ export function formatSlantRange(rangeKm: number | null): string {
   return `${rangeKm.toFixed(0)} km`;
 }
 
+/**
+ * r1 energy efficiency η, in bit/joule. Raw η runs to ~1e6 for a 100 MHz /
+ * 100 W beam, so the unit prefix adapts rather than printing an unreadable
+ * digit run. `Gb/J` / `Mb/J` / `kb/J` are bit-per-joule decades — NOT byte
+ * units.
+ */
+export function formatR1EnergyEfficiency(bitsPerJoule: number | null): string {
+  if (bitsPerJoule === null || !Number.isFinite(bitsPerJoule)) return '—';
+  const magnitude = Math.abs(bitsPerJoule);
+  if (magnitude >= 1e9) return `${(bitsPerJoule / 1e9).toFixed(2)} Gb/J`;
+  if (magnitude >= 1e6) return `${(bitsPerJoule / 1e6).toFixed(2)} Mb/J`;
+  if (magnitude >= 1e3) return `${(bitsPerJoule / 1e3).toFixed(2)} kb/J`;
+  return `${bitsPerJoule.toFixed(2)} b/J`;
+}
+
 export function formatDb(value: number): string {
   return `${value.toFixed(1)} dB`;
 }

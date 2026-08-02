@@ -4,6 +4,7 @@ import { UI_TOKENS } from '../../constants/uiTokens';
 import {
   channelMetricLabelForKind,
   formatElevation,
+  formatR1EnergyEfficiency,
   formatSlantRange,
   sinrColor,
 } from './formatters';
@@ -86,12 +87,14 @@ function SinrReadout({
 function CompactSignalMetric({
   label,
   value,
+  testId,
 }: {
   label: string;
   value: string;
+  testId?: string;
 }) {
   return (
-    <div style={{
+    <div data-testid={testId} style={{
       display: 'flex',
       justifyContent: 'space-between',
       gap: 6,
@@ -193,6 +196,7 @@ export function DuelSignalColumn({
   isActive,
   glyph,
   sinrDb,
+  r1EnergyEfficiencyBitsPerJoule,
   elevationDeg,
   rangeKm,
   tone,
@@ -207,6 +211,14 @@ export function DuelSignalColumn({
   isActive: boolean;
   glyph: GlyphKind | null;
   sinrDb: number | null;
+  /**
+   * r1 energy efficiency η in bit/joule for THIS column's link, or null when the
+   * column has no transmit-power truth to price the denominator with. Only the
+   * serving column receives a value today: `SimState` carries a link budget (and
+   * so a `txPowerDbm`) for the serving beam, not for the comparison beam.
+   * Passing null renders an em dash — never a value borrowed from another beam.
+   */
+  r1EnergyEfficiencyBitsPerJoule: number | null;
   elevationDeg: number | null;
   rangeKm: number | null;
   tone: DuelSignalTone;
@@ -287,6 +299,11 @@ export function DuelSignalColumn({
         display: 'grid',
         gap: 5,
       }}>
+        <CompactSignalMetric
+          testId={`${testId}-r1-ee-readout`}
+          label="R1 EE"
+          value={formatR1EnergyEfficiency(isActive ? r1EnergyEfficiencyBitsPerJoule : null)}
+        />
         <CompactSignalMetric
           label="El"
           value={formatElevation(isActive ? elevationDeg : null)}

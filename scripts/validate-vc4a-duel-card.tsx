@@ -9,7 +9,7 @@ import { satelliteTint, satelliteTintIndex } from '../src/constants/beamRoleToke
 import { getFormulaFamilyLabel, loadProfile } from '../src/profiles/index.ts';
 import type { Profile } from '../src/profiles/types.ts';
 import type { LinkBudgetTerms, SatelliteVisualIdentity, SimState } from '../src/scene/types.ts';
-import { InfoPanel } from '../src/ui/InfoPanel.tsx';
+import { InfoPanel, getLiveStatusModeCopy } from '../src/ui/InfoPanel.tsx';
 import { formatBeamIdentity } from '../src/utils/formatSatelliteLabel.ts';
 import { glyphSymbolForKind, satelliteGlyph } from '../src/viz/glyphs.ts';
 import { bootDeterministicPage } from './_v3-deterministic-fixture.ts';
@@ -385,9 +385,19 @@ function assertV2Scenario(profile: Profile, rendered: RenderedScenario): void {
   assertContains(rendered.markup, 'data-duel-block="decision"');
   assertContains(rendered.markup, 'data-duel-block="comparison"');
   assertContains(rendered.text, 'Beam duel');
-  assertContains(rendered.text, 'Δ SINR');
-  assertContains(rendered.text, 'Need Offset');
-  assertContains(rendered.text, 'Trigger Time');
+  // The decision strip's three labels are OWNED by `getLiveStatusModeCopy` (they
+  // differ per handover mode), so pin the CONTRACT — the strip renders the
+  // resolver's labels for the mode under test — instead of the wording. The old
+  // 'Need Offset' / 'Trigger Time' literals were a source-text pin that went
+  // stale the moment the copy moved into the resolver, which is the debt
+  // docs/frontend-change-contract.md rule 4 forbids. `validate:s4:override-
+  // primary-scope` already drives the same resolver; this matches that pattern.
+  // `renderScenario` mounts InfoPanel without `handoverMode`, so its default
+  // 'sinr-offset' mode is the one on screen here.
+  const decisionCopy = getLiveStatusModeCopy('sinr-offset');
+  assertContains(rendered.text, decisionCopy.deltaLabel);
+  assertContains(rendered.text, decisionCopy.offsetLabel);
+  assertContains(rendered.text, decisionCopy.triggerLabel);
   assertNotContains(rendered.text, 'Handover decision');
 
   const primaryIdentity = formatBeamIdentity({
@@ -744,7 +754,19 @@ async function assertBrowserScenario(
   const checkpoint = await screenshotPath(`vc4a-fixture-${rendered.scenario}-1440x900.png`);
 
   try {
-    await page.setContent(browserHtml(rendered.markup), { waitUntil: 'load' });
+    // The "standard" fixture asserts the TWO-COLUMN layout (serving | comparison,
+    // decision spanning underneath). That layout only exists between the 2-column
+    // and 3-column container breakpoints, so the panel MUST be width-pinned into
+    // that band — left unpinned it stretched to the 1440 viewport, landed in the
+    // ≥680px THREE-column layout, and the two-column assertions below could never
+    // hold. 540px puts the card at ~514px, which resolves to the same two-column
+    // layout under BOTH this fixture's stylesheet and the app's real one.
+    // ⚠ Known debt (not this commit's concern): the stylesheet embedded above is a
+    // COPY of the app's, and its 2-column breakpoint (380px) has drifted from the
+    // real `src/styles/main.scss` (260px). Widths in the 260–380px band therefore
+    // render differently here than in the app — the `narrow` fixture sits in that
+    // band. Fixing that means feeding the gate the real stylesheet.
+    await page.setContent(browserHtml(rendered.markup, { panelWidthPx: 540 }), { waitUntil: 'load' });
     const panel = page.locator('.leo-info-panel');
     const card = page.locator('[data-testid="info-panel-duel-card"]');
     await card.waitFor({ timeout: 5000 });
@@ -812,7 +834,17 @@ async function assertLiveAppViewport(
   try {
     const panelBox = await page.locator('.leo-info-panel').boundingBox();
     const cardBox = await page.locator('[data-testid="info-panel-duel-card"]').boundingBox();
-    const controlBox = await page.locator('.leo-control-bar').boundingBox();
+    // ControlBar renders ONLY on the artifact-replay lane (`ControlBar.tsx:40`
+    // early-returns null otherwise), so on the default sinr-live lane the element
+    // is absent from the DOM. Playwright's `boundingBox()` WAITS on a missing
+    // locator and times out instead of returning null, which silently defeated
+    // the `if (controlBox)` guard below — probe the count first, so the overlap
+    // check still runs on the lanes that do mount it and is skipped on those
+    // that legitimately do not.
+    const controlBarLocator = page.locator('.leo-control-bar');
+    const controlBox = (await controlBarLocator.count()) > 0
+      ? await controlBarLocator.boundingBox()
+      : null;
     assert.ok(panelBox, `${viewport.width}x${viewport.height} live panel box missing`);
     assert.ok(cardBox, `${viewport.width}x${viewport.height} live duel card box missing`);
     assert.ok(panelBox.width > 300, `${viewport.width}x${viewport.height} live panel width collapsed`);

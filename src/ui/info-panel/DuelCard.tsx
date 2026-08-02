@@ -28,6 +28,7 @@ export function DuelCard({
   hasServingSignal,
   servingGlyph,
   servingSinrDb,
+  servingR1EnergyEfficiencyBitsPerJoule,
   servingElevationDeg,
   servingRangeKm,
   servingTone,
@@ -65,6 +66,8 @@ export function DuelCard({
   hasServingSignal: boolean;
   servingGlyph: GlyphKind | null;
   servingSinrDb: number | null;
+  /** r1 EE η (bit/joule) for the serving link; null when it cannot be priced. */
+  servingR1EnergyEfficiencyBitsPerJoule: number | null;
   servingElevationDeg: number | null;
   servingRangeKm: number | null;
   servingTone: DuelSignalTone;
@@ -158,6 +161,7 @@ export function DuelCard({
           isActive={hasServingSignal}
           glyph={servingGlyph}
           sinrDb={servingSinrDb}
+          r1EnergyEfficiencyBitsPerJoule={servingR1EnergyEfficiencyBitsPerJoule}
           elevationDeg={servingElevationDeg}
           rangeKm={servingRangeKm}
           tone={servingTone}
@@ -185,6 +189,11 @@ export function DuelCard({
           identity={comparisonIdentity}
           isActive={hasComparisonSignal}
           glyph={comparisonGlyph}
+          // The comparison beam has no link budget in `SimState`, so there is no
+          // transmit power to price its EE denominator with. Render the em dash
+          // rather than reusing the serving beam's power (that would fabricate a
+          // per-beam number and misread as a serving-vs-candidate EE comparison).
+          r1EnergyEfficiencyBitsPerJoule={null}
           sinrDb={comparisonSinrDb}
           elevationDeg={comparisonElevationDeg}
           rangeKm={comparisonRangeKm}

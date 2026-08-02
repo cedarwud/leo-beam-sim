@@ -1,3 +1,5 @@
+import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
+import { computeR1EnergyEfficiency } from '../utils/energyEfficiency';
 import type { Profile } from '../profiles/types';
 import type { SimState } from '../scene/types';
 import type { VisualShowcaseChannelMetricKind } from '../scene/visual-showcase-contract';
@@ -120,6 +122,7 @@ export function InfoPanel({
   sinrDeltaDb,
   sinrDb,
   physicalServingBudget,
+  servingBudget,
   handoverOffsetDb,
   handoverTriggerProgressSec,
   handoverTriggerSec,
@@ -159,6 +162,39 @@ export function InfoPanel({
           : 'no comparison';
   const formulaTermsVisible = showFormulaTerms && handoverMode !== 'decision-overlay-on-live-sinr';
   const frequencyReuse = profile.beams.frequencyReuse;
+  // r1 EE η, rendered beside the ACTIVE SERVING SINR it is derived from. The
+  // numerator MUST use the same `sinrDb` this card displays, and the denominator
+  // must be that same lane's transmit power — a cross-lane pairing would repeat
+  // the W1 γ-mismatch the comparison column is suppressed to avoid (the cell
+  // antenna is 50°/33.5 dBi, the steered one 12°/40 dBi; the same UE reads
+  // ~6-10 dB apart across them). So the power source branches on the SAME lane
+  // discriminator the identity strings above use:
+  //   - cell lane (`servingCellId` set): `SinrLiveCellModel.linkBudgetOptions`
+  //     passes NO `beamPowerOverrideDbmByKey`, so every cell beam transmits at
+  //     `channel.maxTxPowerDbm`. `validate:r1-energy-efficiency:model` pins the
+  //     "no override ⇒ maxTxPowerDbm" half of that against the real link budget;
+  //     the cell record itself carries no power term, so the OTHER half — that
+  //     the cell lane keeps passing no override — is a read-the-source
+  //     assumption. If cell-lane power control is ever added, thread the
+  //     effective power onto `UeCellServingRecord` and read it here.
+  //   - steered lane: `servingBudget` is resolved from the very (sat, beam) that
+  //     produced the displayed SINR, and its `txPowerDbm` is the EFFECTIVE value,
+  //     so beam power control moves η honestly.
+  // The reference's beam-load term cancels out of this ratio — see
+  // `src/utils/energyEfficiency.ts` for the derivation and the claim scope.
+  const isCellLane = servingCellId !== null;
+  const servingTxPowerDbm = isCellLane
+    ? profile.channel.maxTxPowerDbm
+    : servingBudget?.txPowerDbm ?? null;
+  // Blank η on exactly the same floor `SinrReadout` blanks its dB on, so the two
+  // readouts can never disagree about whether there is a signal at all (a dashed
+  // SINR beside a live-looking "0.00 b/J" would read as a broken panel).
+  const servingR1EnergyEfficiency = computeR1EnergyEfficiency({
+    sinrDb: sinrDb > MIN_VISIBLE_SINR_DB ? sinrDb : null,
+    txPowerDbm: servingTxPowerDbm,
+    bandwidthMHz: profile.channel.bandwidthMHz,
+    frequencyReuse,
+  });
   // Cell lane (servingBeamId null, servingCellId set): the serving unit is the
   // earth-fixed cell. Use formatCellServingIdentity — its frequency token is the
   // 0-indexed `cellFrequencyIndex` the cone render uses, NOT the 1-indexed steered
@@ -206,6 +242,7 @@ export function InfoPanel({
           hasServingSignal={hasServingSignal}
           servingGlyph={servingGlyph}
           servingSinrDb={sinrDb}
+          servingR1EnergyEfficiencyBitsPerJoule={servingR1EnergyEfficiency?.bitsPerJoule ?? null}
           servingElevationDeg={servingElevationDeg}
           servingRangeKm={servingRangeKm}
           servingTone={servingTone}
