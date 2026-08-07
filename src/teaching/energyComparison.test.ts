@@ -10,7 +10,7 @@ import {
 
 const BASELINE: ClassroomEnergyComparisonArm = Object.freeze({
   role: 'baseline',
-  txPowerDbm: 24,
+  txPowerDbm: 50,
   windowStartSimTimeSec: 100,
   windowEndSimTimeSec: 160,
   elapsedSec: 60,
@@ -21,11 +21,18 @@ const BASELINE: ClassroomEnergyComparisonArm = Object.freeze({
   runEeMbitPerJ: 1,
   lowSinrThresholdDb: 14,
   handoverCount: 2,
+  servingLoad: 1,
+  servingSinrDb: 10,
+  throughputMbps: 69,
+  serviceStatus: 'served',
+  serviceIdentity: 'sat-a/cell-0',
+  producerStatus: 'valid',
+  absenceReason: null,
 });
 
 const CANDIDATE: ClassroomEnergyComparisonArm = Object.freeze({
   role: 'candidate',
-  txPowerDbm: 23,
+  txPowerDbm: 35,
   windowStartSimTimeSec: 100,
   windowEndSimTimeSec: 160,
   elapsedSec: 60,
@@ -36,13 +43,20 @@ const CANDIDATE: ClassroomEnergyComparisonArm = Object.freeze({
   runEeMbitPerJ: 1.1,
   lowSinrThresholdDb: 14,
   handoverCount: 3,
+  servingLoad: 1,
+  servingSinrDb: 9,
+  throughputMbps: 66,
+  serviceStatus: 'served',
+  serviceIdentity: 'sat-a/cell-0',
+  producerStatus: 'valid',
+  absenceReason: null,
 });
 
 function candidateWith(patch: Partial<ClassroomEnergyComparisonArm>): ClassroomEnergyComparisonArm {
   return Object.freeze({ ...CANDIDATE, ...patch });
 }
 
-test('qualified 24 dBm baseline and 23 dBm candidate pair passes all gates', () => {
+test('qualified 50 dBm baseline and 35 dBm candidate pair passes all gates', () => {
   const result = compareClassroomEnergyArms(BASELINE, CANDIDATE);
 
   assert.strictEqual(result.comparable, true);

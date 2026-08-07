@@ -664,7 +664,9 @@ assertContains(timelineAuthoritySource, 'LEGACY_PRODUCER_TRACE_SOURCE_GAP', 'Tim
 assertContains(appSource, 'const liveTimelineWindowStartSec = demoStartOffset;', 'App anchors live timeline display to the selected live Walker window');
 assertContains(appSource, 'simState.simTimeSec - liveTimelineWindowStartSec', 'App displays live timeline as window elapsed time, not absolute sim offset');
 assertContains(appSource, 'demoStartOffsetSec: demoStartOffset', 'App does not mutate the live Walker window start when seeking');
-assertContains(appSource, 'const absoluteTargetSec = liveTimelineWindowStartSec + target;', 'App converts bottom timeline elapsed seek to absolute Walker time');
+assertContains(appSource, 'const absoluteTargetSec = Math.min(', 'App bounds the absolute live seek target before dispatch');
+assertContains(appSource, 'liveTimelineWindowStartSec + target', 'App converts bottom timeline elapsed seek to absolute Walker time');
+assertContains(appSource, 'LIVE_SIM_TIMELINE_DURATION_SEC', 'App clamps the live seek target to the governed timeline authority');
 assertContains(appSource, "if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;", 'App routes live lanes to the live Walker event index rail');
 assertContains(appSource, "if (sceneLane === 'modqn-replay-proof') return modqnHandoverRailEvents;", 'App keeps MODQN replay proof on producer rail events');
 });
@@ -1385,7 +1387,7 @@ assertContains(appSource, "activeRightSidebarTab === 'artifact'", 'App artifact 
 assertContains(appSource, '!recordedReplayActive || activeSceneFrame !== undefined', 'App recorded-replay scene fail-closed gate');
 assertContains(appSource, 'data-testid="artifact-scene-fail-closed"', 'App artifact scene fail-closed placeholder');
 assertContains(appSource, "if (sceneSource === 'artifact-replay') return;", 'App skips MODQN replay bundle startup fetch in artifact replay');
-assertContains(appSource, "sceneSource !== 'artifact-replay' && modqnReplayFetchError !== null", 'App hides MODQN bundle fetch banner in artifact replay');
+assertNotContains(appSource, 'modqnReplayFetchError', 'App must not retain the retired MODQN replay-fetch error banner state');
 tangleLockGroup('QUAR-S6-BUS', () => {
 assertContains(
   appSource,
@@ -2211,8 +2213,13 @@ assertContains(
 );
 assertContains(
   mainSceneSource,
-  'markerColor: mosaic?.markerColor ?? service?.markerColor',
+  'markerColor: isOtherHandover',
   'MainScene passes mosaic-or-cell-service colors to UE markers (sinr-serving mosaic falls back to the MODQN cell overlay only on the MODQN lane)',
+);
+assertContains(
+  mainSceneSource,
+  'mosaic?.markerColor ?? service?.markerColor',
+  'MainScene uses the SINR mosaic first and MODQN service-map color only as the fallback',
 );
 assertContains(
   groundSceneSource,
@@ -2779,10 +2786,10 @@ for (const [needle, label] of [
   // beam-stage ① #3: cell-truth footprint rings (gated with the serving cones) REPLACE
   // the retired steered AmbientFootprintRings — rings now sit at the earth-fixed cell
   // centres (aligned with the cones + UE membership), not the steered beam positions.
-  ['{showSinrLiveCellBeams && (\\n        <SinrLiveCellFootprintRings', 'cell-truth footprint rings'],
-  ['{showLiveSceneEffects && (\\n        <HandoverLinks', 'handover links'],
-  ['{showLiveSceneEffects && <IntraGroundShockwave', 'intra ground shockwave'],
-  ['{showHandoverToastOverlay && <HandoverToastOverlay', 'handover toast overlay'],
+  ['{showSinrLiveCellBeams && !manualHandoverActive && (\\n        <SinrLiveCellFootprintRings', 'cell-truth footprint rings'],
+  ['{showLiveSceneEffects && !manualHandoverActive && (\\n        <HandoverLinks', 'handover links'],
+  ['{showLiveSceneEffects && !manualHandoverActive && <IntraGroundShockwave', 'intra ground shockwave'],
+  ['{showHandoverToastOverlay && (\\n        <HandoverToastOverlay', 'handover toast overlay'],
 ] as const) {
   assertContains(mainSceneSource, needle.replace('\\n', '\n'), `MainScene should source-gate ${label}`);
 }
@@ -2837,20 +2844,25 @@ assertContains(
 // stay governance-safe (cancel armed/active Director focus + tear down stale
 // artifact-replay state on leave) so it cannot become a naive setSceneSource.
 const laneExperienceBarSource = readRepoFile('src/ui/LaneExperienceBar.tsx');
-assertContains(
+assertNotContains(
   appSource,
   "from './ui/LaneExperienceBar'",
-  'App imports the top-level LaneExperienceBar',
+  'App does not retain the retired top-level LaneExperienceBar import',
 );
 assert.equal(
   countOccurrences(appSource, '<LaneExperienceBar'),
-  1,
-  'LaneExperienceBar is mounted exactly once',
+  0,
+  'LaneExperienceBar is not mounted after the MODQN sub-nav consolidation',
 );
 assertContains(
   appSource,
-  '<LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />',
-  'LaneExperienceBar is fed the resolved scene lane and the governance-safe transition handler',
+  "from './ui/ModqnViewToggle'",
+  'App imports the current MODQN view toggle for in-MODQN lane navigation',
+);
+assertContains(
+  appSource,
+  '<ModqnViewToggle',
+  'MODQN view toggle is mounted for in-MODQN lane navigation',
 );
 assertContains(
   appSource,

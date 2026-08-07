@@ -86,6 +86,16 @@ export type TeachingCanonicalReadout = Pick<
   /** Optional preserves compatibility with direct card callers before the live seam. */
   perUserContributions?: CanonicalEeSnapshot['perUserContributions'];
   errorCode?: CanonicalEeSnapshot['errorCode'];
+  /** Optional keeps direct card fixtures compatible while the live producer is wired. */
+  evaluationSampleCount?: CanonicalEeSnapshot['evaluationSampleCount'];
+  frameSimTimeSec?: CanonicalEeSnapshot['frameSimTimeSec'];
+  actualRfOutputW?: CanonicalEeSnapshot['actualRfOutputW'];
+  ratedRfOutputW?: CanonicalEeSnapshot['ratedRfOutputW'];
+  evaluationDataMbit?: CanonicalEeSnapshot['evaluationDataMbit'];
+  evaluationEnergyJ?: CanonicalEeSnapshot['evaluationEnergyJ'];
+  evaluationWindowStartSec?: CanonicalEeSnapshot['evaluationWindowStartSec'];
+  evaluationWindowEndSec?: CanonicalEeSnapshot['evaluationWindowEndSec'];
+  servingBeamIdentity?: CanonicalEeSnapshot['servingBeamIdentity'];
 };
 
 /**
@@ -314,8 +324,14 @@ function CanonicalUserTable({
   return (
     <div
       data-testid="canonical-per-user-contributions"
+      hidden
       style={{
-        display: 'grid',
+        // Keep the producer/user rows in the record-facing readout shape, but
+        // remove this diagnostic block from the classroom right rail. The
+        // worksheet uses the aggregate identity and exports the full rows;
+        // inline display:none is required because it otherwise overrides the
+        // browser's user-agent [hidden] rule.
+        display: 'none',
         gap: UI_TOKENS.space.xs,
         padding: `${UI_TOKENS.space.md}px ${UI_TOKENS.space.lg}px`,
         color: UI_TOKENS.color.text.secondary,
@@ -370,6 +386,7 @@ function CanonicalUserTable({
               <th scope="col" style={headCellStyle}>{t('panel.energy.canonicalUsers.status')}</th>
               <th scope="col" style={headCellStyle}>{t('panel.energy.canonicalUsers.satellite')}</th>
               <th scope="col" style={headCellStyle}>{t('panel.energy.canonicalUsers.cell')}</th>
+              <th scope="col" style={headCellStyle}>{t('panel.energy.canonicalUsers.beam')}</th>
               <th scope="col" style={{ ...headCellStyle, textAlign: 'right' }}>{t('panel.energy.canonicalUsers.load')}</th>
               <th scope="col" style={{ ...headCellStyle, textAlign: 'right' }}>{t('panel.energy.canonicalUsers.bandwidth')} ({bandwidthUnit})</th>
               <th scope="col" style={{ ...headCellStyle, textAlign: 'right' }}>{t('panel.energy.canonicalUsers.sinr')} ({decibel})</th>
@@ -380,13 +397,13 @@ function CanonicalUserTable({
           <tbody>
             {users === null ? (
               <tr data-testid="canonical-user-details-unavailable">
-                <td colSpan={9} style={{ ...bodyCellStyle, color: UI_TOKENS.color.text.faint }}>
+                <td colSpan={10} style={{ ...bodyCellStyle, color: UI_TOKENS.color.text.faint }}>
                   {TEACHING_ABSENT_DASH} {t('panel.energy.canonicalUsers.unavailable')}
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr data-testid="canonical-user-details-empty">
-                <td colSpan={9} style={{ ...bodyCellStyle, color: UI_TOKENS.color.text.faint }}>
+                <td colSpan={10} style={{ ...bodyCellStyle, color: UI_TOKENS.color.text.faint }}>
                   {t('panel.energy.canonicalUsers.empty')}
                 </td>
               </tr>
@@ -409,6 +426,9 @@ function CanonicalUserTable({
                   </td>
                   <td data-testid={`canonical-user-cell-${user.ueId}`} style={{ ...bodyCellStyle, whiteSpace: 'nowrap' }}>
                     {canonicalText(user.cellId)}
+                  </td>
+                  <td data-testid={`canonical-user-beam-${user.ueId}`} style={{ ...bodyCellStyle, overflowWrap: 'anywhere' }}>
+                    {canonicalText(user.beamIdentity)}
                   </td>
                   <td data-testid={`canonical-user-load-${user.ueId}`} style={{ ...bodyCellStyle, textAlign: 'right' }}>
                     <CanonicalMetric testId={`canonical-user-load-value-${user.ueId}`} value={user.assignedBeamLoad} digits={0} />
@@ -631,6 +651,62 @@ export function TeachingEnergyCard({
         unit={mbps}
       />
 
+      <GroupHeading>{t('panel.energy.t3Title')}</GroupHeading>
+      <div
+        data-testid="t3-controlled-fixture"
+        style={{
+          display: 'grid',
+          gap: UI_TOKENS.space.xs,
+          padding: '3px 9px 6px',
+          color: UI_TOKENS.color.text.faint,
+          fontSize: UI_TOKENS.type.size.tiny,
+          lineHeight: 1.35,
+        }}
+      >
+        <span>{t('panel.energy.t3Source')}: {readout?.t3FixedComparison.sourceKind ?? TEACHING_ABSENT_DASH}</span>
+        <span>{t('panel.energy.t3FixedInputs')}: U = {readout?.t3FixedComparison.assignedBeamLoad ?? TEACHING_ABSENT_DASH}, SINR = {readout?.t3FixedComparison.sinrDb ?? TEACHING_ABSENT_DASH} {decibel}</span>
+      </div>
+      <LedgerRow
+        testId="t3-fixed-bandwidth"
+        label={t('panel.energy.t3Bandwidth')}
+        help={<PanelHelp helpId="panel.energy.t3Bandwidth" titleText={t('panel.energy.t3Bandwidth')} bodyText={t('panel.energy.t3BandwidthHelp')} />}
+        value={teachingNumber(readout?.t3FixedComparison.bandwidthMHz, 2)}
+        unit={t('common.unit.mhz')}
+      />
+      <LedgerRow
+        testId="t3-fixed-reuse"
+        label={t('panel.energy.t3Reuse')}
+        help={<PanelHelp helpId="panel.energy.t3Reuse" titleText={t('panel.energy.t3Reuse')} bodyText={t('panel.energy.t3ReuseHelp')} />}
+        value={teachingNumber(readout?.t3FixedComparison.frequencyReuse, 0)}
+      />
+      <LedgerRow
+        testId="t3-fixed-allocated-bandwidth"
+        label={t('panel.energy.t3AllocatedBandwidth')}
+        help={<PanelHelp helpId="panel.energy.t3AllocatedBandwidth" titleText={t('panel.energy.t3AllocatedBandwidth')} bodyText={t('panel.energy.t3AllocatedBandwidthHelp')} />}
+        value={teachingNumber(readout?.t3FixedComparison.allocatedBandwidthMHz, 2)}
+        unit={t('common.unit.mhz')}
+      />
+      <LedgerRow
+        testId="t3-fixed-throughput"
+        label={t('panel.energy.t3Rate')}
+        help={<PanelHelp helpId="panel.energy.t3Rate" titleText={t('panel.energy.t3Rate')} bodyText={t('panel.energy.t3RateHelp')} />}
+        value={teachingNumber(readout?.t3FixedComparison.throughputMbps, 2)}
+        unit={mbps}
+      />
+      <LedgerRow
+        testId="t3-fixed-data"
+        label={t('panel.energy.t3Data')}
+        help={<PanelHelp helpId="panel.energy.t3Data" titleText={t('panel.energy.t3Data')} bodyText={t('panel.energy.t3DataHelp')} />}
+        value={teachingNumber(readout?.t3FixedComparison.dataMbit, 2)}
+        unit="Mbit"
+      />
+      <div
+        data-testid="t3-fixed-status"
+        style={{ padding: '0 9px 5px', color: UI_TOKENS.color.text.faint, fontSize: UI_TOKENS.type.size.tiny }}
+      >
+        {t('panel.energy.t3Status')}: {readout?.t3FixedComparison.producerStatus ?? TEACHING_ABSENT_DASH}; {t('panel.energy.t3Identity')}: {readout?.t3FixedComparison.serviceIdentity ?? TEACHING_ABSENT_DASH}
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: UI_TOKENS.space.sm }}>
         <GroupHeading>{tx('panel.energy.groupRun')}</GroupHeading>
         <div style={{ display: 'flex', alignItems: 'center', gap: UI_TOKENS.space.xs, marginBottom: 2 }}>
@@ -831,7 +907,7 @@ export function TeachingEnergyCard({
       />
 
       <div style={{ marginTop: UI_TOKENS.space.md }}>
-        <GroupHeading>{tx('panel.energy.canonicalTitle')}</GroupHeading>
+        <GroupHeading>{t('panel.energy.canonicalTitle')}</GroupHeading>
         <div
           data-testid="canonical-scope-note"
           style={{
@@ -882,6 +958,69 @@ export function TeachingEnergyCard({
           </div>
         </div>
         <div style={{ display: 'grid', gap: UI_TOKENS.space.xs, padding: '4px 0' }}>
+          <LedgerRow
+            testId="canonical-frame-sim-time"
+            label={t('panel.energy.canonicalFrameTime')}
+            help={<PanelHelp helpId="panel.energy.canonicalFrameTime" titleText={t('panel.energy.canonicalFrameTime')} bodyText={t('panel.energy.canonicalFrameTimeHelp')} />}
+            value={teachingNumber(canonicalReadout?.frameSimTimeSec, 2)}
+            unit={t('common.unit.second')}
+          />
+          <LedgerRow
+            testId="canonical-actual-rf"
+            label={t('panel.energy.canonicalActualRf')}
+            help={<PanelHelp helpId="panel.energy.canonicalActualRf" titleText={t('panel.energy.canonicalActualRf')} bodyText={t('panel.energy.canonicalActualRfHelp')} />}
+            value={teachingNumber(canonicalReadout?.actualRfOutputW, 3)}
+            unit={watt}
+          />
+          <LedgerRow
+            testId="canonical-rated-rf"
+            label={t('panel.energy.canonicalRatedRf')}
+            help={<PanelHelp helpId="panel.energy.canonicalRatedRf" titleText={t('panel.energy.canonicalRatedRf')} bodyText={t('panel.energy.canonicalRatedRfHelp')} />}
+            value={teachingNumber(canonicalReadout?.ratedRfOutputW, 3)}
+            unit={watt}
+          />
+          <LedgerRow
+            testId="canonical-evaluation-samples"
+            label={t('panel.energy.canonicalSampleWindow')}
+            help={<PanelHelp helpId="panel.energy.canonicalSampleWindow" titleText={t('panel.energy.canonicalSampleWindow')} bodyText={t('panel.energy.canonicalSampleWindowHelp')} />}
+            value={canonicalReadout?.evaluationSampleCount === undefined
+              ? TEACHING_ABSENT_DASH
+              : canonicalReadout.evaluationSampleCount === 0
+                ? t('panel.energy.canonicalBaseline')
+                : `${canonicalReadout.evaluationSampleCount}`}
+          />
+          <LedgerRow
+            testId="canonical-evaluation-data"
+            label={t('panel.energy.canonicalEvaluationData')}
+            help={<PanelHelp helpId="panel.energy.canonicalEvaluationData" titleText={t('panel.energy.canonicalEvaluationData')} bodyText={t('panel.energy.canonicalEvaluationDataHelp')} />}
+            value={teachingNumber(canonicalReadout?.evaluationDataMbit, 2)}
+            unit="Mbit"
+          />
+          <LedgerRow
+            testId="canonical-evaluation-energy"
+            label={t('panel.energy.canonicalEvaluationEnergy')}
+            help={<PanelHelp helpId="panel.energy.canonicalEvaluationEnergy" titleText={t('panel.energy.canonicalEvaluationEnergy')} bodyText={t('panel.energy.canonicalEvaluationEnergyHelp')} />}
+            value={teachingNumber(canonicalReadout?.evaluationEnergyJ, 2)}
+            unit={joule}
+          />
+          <LedgerRow
+            testId="canonical-evaluation-window"
+            label={t('panel.energy.canonicalEvaluationWindow')}
+            help={<PanelHelp helpId="panel.energy.canonicalEvaluationWindow" titleText={t('panel.energy.canonicalEvaluationWindow')} bodyText={t('panel.energy.canonicalEvaluationWindowHelp')} />}
+            value={canonicalReadout?.evaluationWindowStartSec !== null
+              && canonicalReadout?.evaluationWindowStartSec !== undefined
+              && canonicalReadout?.evaluationWindowEndSec !== null
+              && canonicalReadout?.evaluationWindowEndSec !== undefined
+              ? `${canonicalReadout.evaluationWindowStartSec.toFixed(2)}–${canonicalReadout.evaluationWindowEndSec.toFixed(2)}`
+              : TEACHING_ABSENT_DASH}
+            unit={t('common.unit.second')}
+          />
+          <LedgerRow
+            testId="canonical-serving-beam"
+            label={t('panel.energy.canonicalServingBeam')}
+            help={<PanelHelp helpId="panel.energy.canonicalServingBeam" titleText={t('panel.energy.canonicalServingBeam')} bodyText={t('panel.energy.canonicalServingBeamHelp')} />}
+            value={canonicalText(canonicalReadout?.servingBeamIdentity)}
+          />
           <LedgerRow
             testId="canonical-system-power"
             label={t('kpi.systemPowerW.label')}

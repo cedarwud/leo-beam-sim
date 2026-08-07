@@ -159,7 +159,10 @@ import {
   type ClassroomEnergyComparisonArmRole,
   type ClassroomEnergyComparisonResult,
   type TeachingEnergyReadout,
+  type TeachingT3FixedComparisonReadout,
   type ExperimentRecord,
+  type ExperimentRecordFieldMap,
+  type ExperimentTaskId,
 } from './teaching';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
@@ -290,6 +293,12 @@ export interface ClassroomEnergyCaptureInput {
   readonly windowStartSimTimeSec: number | null;
   readonly windowEndSimTimeSec: number;
   readonly readout: TeachingEnergyReadout | null;
+  readonly servingLoad: number | null;
+  readonly servingSinrDb: number | null;
+  readonly serviceStatus: string | null;
+  readonly serviceIdentity: string | null;
+  readonly producerStatus: string | null;
+  readonly absenceReason: string | null;
 }
 
 function isFiniteNonNegative(value: unknown): value is number {
@@ -325,6 +334,17 @@ export function getClassroomEnergyCaptureBlockReason(
     || !Number.isFinite(readout.lowSinrThresholdDb)
     || !isFiniteNonNegative(readout.handoverCount)
   ) return 'missing-readout';
+  if (
+    !isFiniteNonNegative(input.servingLoad)
+    || (input.servingSinrDb !== null && !Number.isFinite(input.servingSinrDb))
+    || !Number.isFinite(readout.throughputMbps ?? NaN)
+    || input.serviceStatus === null
+    || input.serviceStatus.length === 0
+    || input.serviceIdentity === null
+    || input.serviceIdentity.length === 0
+    || input.producerStatus === null
+    || input.producerStatus.length === 0
+  ) return 'missing-readout';
 
   return null;
 }
@@ -347,7 +367,69 @@ export function freezeClassroomEnergyArm(
     runEeMbitPerJ: readout.runEeMbitPerJ as number,
     lowSinrThresholdDb: readout.lowSinrThresholdDb as number,
     handoverCount: readout.handoverCount as number,
+    servingLoad: input.servingLoad as number,
+    servingSinrDb: input.servingSinrDb,
+    throughputMbps: readout.throughputMbps as number,
+    serviceStatus: input.serviceStatus as string,
+    serviceIdentity: input.serviceIdentity as string,
+    producerStatus: input.producerStatus as string,
+    absenceReason: input.absenceReason,
   });
+}
+
+function finiteOrNull(value: number | null | undefined): number | null {
+  return value !== null && value !== undefined && Number.isFinite(value) ? value : null;
+}
+
+function energyTuningRecordMap(tuning: EnergyTuningState): ExperimentRecordFieldMap {
+  return {
+    paEfficiency: finiteOrNull(tuning.paEfficiency),
+    circuitPowerW: finiteOrNull(tuning.circuitPowerW),
+    energyPerHandoverJ: finiteOrNull(tuning.energyPerHandoverJ),
+  };
+}
+
+function classroomArmRecordMap(arm: ClassroomEnergyComparisonArm | null): ExperimentRecordFieldMap | null {
+  if (arm === null) return null;
+  return {
+    role: arm.role,
+    txPowerDbm: finiteOrNull(arm.txPowerDbm),
+    windowStartSimTimeSec: finiteOrNull(arm.windowStartSimTimeSec),
+    windowEndSimTimeSec: finiteOrNull(arm.windowEndSimTimeSec),
+    elapsedSec: finiteOrNull(arm.elapsedSec),
+    cumulativeDataMbit: finiteOrNull(arm.cumulativeDataMbit),
+    totalEnergyJ: finiteOrNull(arm.totalEnergyJ),
+    lowSinrRatioPct: finiteOrNull(arm.lowSinrRatioPct),
+    runEeMbitPerJ: finiteOrNull(arm.runEeMbitPerJ),
+    lowSinrThresholdDb: finiteOrNull(arm.lowSinrThresholdDb),
+    handoverCount: finiteOrNull(arm.handoverCount),
+    servingLoad: finiteOrNull(arm.servingLoad),
+    servingSinrDb: finiteOrNull(arm.servingSinrDb),
+    throughputMbps: finiteOrNull(arm.throughputMbps),
+    serviceStatus: arm.serviceStatus,
+    serviceIdentity: arm.serviceIdentity,
+    producerStatus: arm.producerStatus,
+    absenceReason: arm.absenceReason,
+  };
+}
+
+function classroomComparisonRecordMap(result: ClassroomEnergyComparisonResult | null): ExperimentRecordFieldMap | null {
+  if (result === null) return null;
+  return {
+    comparable: result.comparable,
+    dataRetentionRatio: finiteOrNull(result.dataRetentionRatio),
+    energySavingPct: finiteOrNull(result.energySavingPct),
+    lowSinrDeltaPp: finiteOrNull(result.lowSinrDeltaPp),
+    runEeRatio: finiteOrNull(result.runEeRatio),
+    serviceQualified: result.serviceQualified,
+    qualified: result.qualified,
+    reasonCode: result.reasonCode,
+    reasonCodes: result.reasonCodes.join('|'),
+    dataRetentionGate: result.gates.dataRetention,
+    lowSinrGate: result.gates.lowSinr,
+    runEeGate: result.gates.runEe,
+    energySavingGate: result.gates.energySaving,
+  };
 }
 
 export function App() {
@@ -370,7 +452,21 @@ export function App() {
   } | null>(null);
   const manualHandoverWasPausedRef = useRef(false);
 
-  const [experimentRecord, setExperimentRecord] = useState<ExperimentRecord | null>(null);
+  // Keep one immutable record per task in this browser session. The selector is
+  // a task viewer as well as the next-capture target; switching back to T1 must
+  // not erase the T1 record that was already captured. This is intentionally
+  // session-local — JSON/CSV downloads remain the durable handoff.
+  const [experimentRecordsByTask, setExperimentRecordsByTask] = useState<
+    Partial<Record<ExperimentTaskId, ExperimentRecord>>
+  >({});
+  const [selectedExperimentTask, setSelectedExperimentTask] = useState<ExperimentTaskId>('T1');
+  const experimentRecord = experimentRecordsByTask[selectedExperimentTask] ?? null;
+  const experimentRunIdRef = useRef<string | null>(null);
+  const experimentCaptureIndexRef = useRef(0);
+  const lastExperimentChangedControlsRef = useRef<ExperimentRecordFieldMap>({});
+  const lastEnergyActionRef = useRef<string | null>(null);
+  const lastEnergyBeforeRef = useRef<ExperimentRecordFieldMap | null>(null);
+  const lastEnergyAfterRef = useRef<ExperimentRecordFieldMap | null>(null);
 
   const currentTimeSecRef = useRef(0);
   // ITEM #C live Director focus: the absolute live sim cursor (set in
@@ -896,9 +992,13 @@ export function App() {
     setTeachingEnergyExplicitEpoch(e => e + 1);
   }, []);
   const handleTeachingEnergyReset = useCallback(() => {
+    const currentParams = energyTuningRecordMap(energyTuning);
+    lastEnergyActionRef.current = 'restart-measurement';
+    lastEnergyBeforeRef.current = currentParams;
+    lastEnergyAfterRef.current = currentParams;
     clearEnergyLedgerWindow(false);
     setMeasurementResetEpoch(e => e + 1);
-  }, [clearEnergyLedgerWindow]);
+  }, [clearEnergyLedgerWindow, energyTuning]);
   const energyLedgerResetKey = getEnergyLedgerResetKey(energyLedgerSignalKey, energyTuning);
 
   const teachingEnergy = useMemo<TeachingEnergyReadout>(() => {
@@ -991,6 +1091,39 @@ export function App() {
       }
     }
 
+    const t3BandwidthMHz = Number.isFinite(signalTuning.bandwidthMHz) && signalTuning.bandwidthMHz > 0
+      ? signalTuning.bandwidthMHz
+      : null;
+    const t3FrequencyReuse = Number.isInteger(signalTuning.frequencyReuse) && signalTuning.frequencyReuse > 0
+      ? signalTuning.frequencyReuse
+      : null;
+    const t3AllocatedBandwidthMHz = t3BandwidthMHz !== null && t3FrequencyReuse !== null
+      ? t3BandwidthMHz / t3FrequencyReuse
+      : null;
+    const t3ThroughputMbps = t3BandwidthMHz !== null && t3FrequencyReuse !== null
+      ? computeTeachingThroughputMbps({
+        sinrDb: 0,
+        bandwidthMHz: t3BandwidthMHz,
+        frequencyReuse: t3FrequencyReuse,
+      })
+      : null;
+    const t3FixedComparison: TeachingT3FixedComparisonReadout = {
+      sourceKind: 'deterministic-fixture',
+      assignedBeamLoad: 1,
+      sinrDb: 0,
+      bandwidthMHz: t3BandwidthMHz,
+      frequencyReuse: t3FrequencyReuse,
+      allocatedBandwidthMHz: t3AllocatedBandwidthMHz,
+      throughputMbps: t3ThroughputMbps,
+      dataMbit: t3ThroughputMbps !== null && ledger.elapsedSec > 0
+        ? t3ThroughputMbps * ledger.elapsedSec
+        : null,
+      serviceStatus: 'served',
+      serviceIdentity: 't3-fixed-u1-sinr0',
+      producerStatus: t3ThroughputMbps !== null ? 'valid' : 'pending',
+      absenceReason: t3ThroughputMbps === null ? 'invalid-B-or-K' : null,
+    };
+
     return {
       powerTrain,
       throughputMbps,
@@ -1005,6 +1138,7 @@ export function App() {
       totalEnergyJ: perHandoverJ === null ? null : computeTotalEnergyJ(ledger, perHandoverJ),
       lowSinrRatioPct: computeLowSinrRatioPct(ledger),
       lowSinrThresholdDb: DEFAULT_LOW_SINR_THRESHOLD_DB,
+      t3FixedComparison,
     };
   }, [
     classroomComparisonContextKey,
@@ -1019,6 +1153,24 @@ export function App() {
   ]);
 
   const classroomLiveSinrScene = sceneSource === 'live-sim' && sceneLane === 'sinr-live';
+  const classroomPrimaryUeId = simState.perUePositions?.[0]?.id ?? null;
+  const classroomServingEvidence = useMemo(() => {
+    const primaryUser = classroomPrimaryUeId === null
+      ? null
+      : simState.canonicalEe?.perUserContributions?.find(user => user.ueId === classroomPrimaryUeId) ?? null;
+    const serviceStatus = simState.servingSatId === null ? 'unserved' : 'served';
+    const serviceIdentity = simState.servingSatId === null
+      ? 'unserved'
+      : `${simState.servingSatId}/${simState.servingCellId ?? simState.servingBeamId ?? 'unknown'}`;
+    return {
+      servingLoad: primaryUser?.assignedBeamLoad ?? null,
+      servingSinrDb: Number.isFinite(simState.sinrDb) ? simState.sinrDb : null,
+      serviceStatus,
+      serviceIdentity,
+      producerStatus: simState.canonicalEe?.status ?? 'pending',
+      absenceReason: simState.canonicalEe?.errorCode ?? null,
+    };
+  }, [classroomPrimaryUeId, simState]);
   const classroomCaptureInput = useCallback((role: ClassroomEnergyComparisonArmRole): ClassroomEnergyCaptureInput => ({
     role,
     expectedTxPowerDbm: role === 'baseline'
@@ -1033,7 +1185,9 @@ export function App() {
     windowStartSimTimeSec: energyLedgerWindowStartSimTimeSecRef.current,
     windowEndSimTimeSec: simState.simTimeSec,
     readout: teachingEnergy,
+    ...classroomServingEvidence,
   }), [
+    classroomServingEvidence,
     classroomComparisonContextKey,
     classroomLiveSinrScene,
     playback.paused,
@@ -1073,72 +1227,212 @@ export function App() {
   );
 
   const handleCaptureExperimentRecord = useCallback(() => {
-    const record: ExperimentRecord = {
-      experimentId: Date.now().toString(),
+    const taskId = selectedExperimentTask;
+    const captureIndex = experimentCaptureIndexRef.current + 1;
+    experimentCaptureIndexRef.current = captureIndex;
+    if (experimentRunIdRef.current === null) {
+      experimentRunIdRef.current = `run-${baseProfile.id}-${Date.now()}`;
+    }
+    const runId = experimentRunIdRef.current;
+    const windowEndSec = finiteOrNull(simState.simTimeSec) ?? 0;
+    const windowStartSec = finiteOrNull(energyLedgerWindowStartSimTimeSecRef.current) ?? windowEndSec;
+    const durationSec = Math.max(0, windowEndSec - windowStartSec);
+    const windowId = durationSec > 0
+      ? `${windowStartSec}-${windowEndSec}`
+      : `unformed-${windowEndSec}`;
+    const t3 = teachingEnergy?.t3FixedComparison ?? null;
+    const canonical = simState.canonicalEe ?? null;
+    const sampleWindow = canonical === null
+      ? null
+      : canonical.evaluationSampleCount === 0
+        ? 'baseline'
+        : `${canonical.evaluationSampleCount} samples ${canonical.evaluationWindowStartSec ?? '—'}-${canonical.evaluationWindowEndSec ?? '—'} s`;
+    const currentEnergyParams = energyTuningRecordMap(energyTuning);
+    const t4Before = taskId === 'T4' ? lastEnergyBeforeRef.current : null;
+    const t4After = taskId === 'T4' ? lastEnergyAfterRef.current ?? currentEnergyParams : null;
+    const t5Comparison = classroomComparisonRecordMap(classroomComparison);
+    const t5Status = classroomComparison === null
+      ? null
+      : classroomComparison.qualified === null
+        ? 'WITHHELD'
+        : classroomComparison.qualified
+          ? 'QUALIFIED'
+          : 'NOT-QUALIFIED';
+    const changedControls: ExperimentRecordFieldMap = taskId === 'T3'
+      ? {
+        bandwidthMHz: finiteOrNull(t3?.bandwidthMHz),
+        frequencyReuse: finiteOrNull(t3?.frequencyReuse),
+      }
+      : taskId === 'T4'
+        ? { resetAction: lastEnergyActionRef.current }
+        : taskId === 'T5'
+          ? { maxTxPowerDbm: finiteOrNull(signalTuning.maxTxPowerDbm) }
+        : { ...lastExperimentChangedControlsRef.current };
+    const unchangedControls: ExperimentRecordFieldMap = taskId === 'T3'
+      ? { assignedBeamLoad: 1, sinrDb: 0 }
+      : taskId === 'T5'
+        ? { comparisonContextKey: classroomComparisonContextKey, measurementWindow: windowId }
+        : {};
+
+    const recordWithoutAbsenceReasons = {
+      schemaVersion: 't1-t6-experiment-record-v1' as const,
+      taskId,
+      experimentId: `${taskId}-${runId}-${captureIndex}`,
+      runId,
+      captureIndex,
+      capturedAtIso: new Date().toISOString(),
       scenarioIdentity: baseProfile.id,
-      windowId: `${energyLedgerWindowStartSimTimeSecRef.current ?? 0}-${simState.simTimeSec}`,
-      windowStartSec: energyLedgerWindowStartSimTimeSecRef.current ?? 0,
-      windowEndSec: simState.simTimeSec,
-      changedInput: null,
-      unchangedInputs: null,
+      profileIdentity: effectiveProfile.id,
+      sceneSource,
+      sceneLane,
+      windowId,
+      windowStartSec,
+      windowEndSec,
+      durationSec,
+      changedInput: taskId === 'T1'
+        ? 'eta_PA / P_circuit'
+        : taskId === 'T2'
+          ? 'eta_PA / P_circuit / e_HO'
+          : taskId === 'T3'
+            ? 'B / K'
+            : taskId === 'T4'
+              ? 'Restart measurement or Restore energy defaults'
+              : taskId === 'T5'
+                ? 'P_t: 50 -> 35 dBm'
+                : 'canonical measurement window',
+      unchangedInputs: taskId === 'T3'
+        ? 'U=1; SINR=0 dB'
+        : taskId === 'T5'
+          ? 'scene/profile/service context and time window'
+          : 'values not named as changed remain as read',
+      changedControls,
+      unchangedControls,
       units: {
+        rfOutput: 'W',
+        totalPower: 'W',
         totalEnergy: 'J',
+        throughput: 'Mbit/s',
+        data: 'Mbit',
         runEe: 'Mbit/J',
-        txPower: 'dBm',
-        throughput: 'Mbps',
+        lowSinr: '%',
+        actualRf: 'W',
+        ratedRf: 'W',
       },
       absenceReason: null,
-      interpretation: null,
-      tradeoff: null,
-      limitation: null,
+      interpretation: taskId === 'T3'
+        ? 'Recompute fixed U=1, SINR=0 dB rate from B/K.'
+        : taskId === 'T5'
+          ? 'Read the gated verdict from the two captured actual-data arms.'
+          : taskId === 'T6'
+            ? 'Read canonical producer values; actual and rated RF are separate.'
+            : 'Read the producer values in the selected task section.',
+      tradeoff: taskId === 'T5' ? 'No verdict is inferred when the comparison is withheld.' : null,
+      limitation: taskId === 'T3' ? 'Deterministic fixture; not a live transmit-power claim.' : null,
 
-      paEfficiency: null,
-      rfOutput: null,
-      paInput: null,
-      circuitPower: null,
-      totalPower: null,
-      scopeStatus: null,
+      paEfficiency: taskId === 'T1' ? finiteOrNull(energyTuning.paEfficiency) : null,
+      rfOutput: taskId === 'T1' ? finiteOrNull(teachingEnergy?.powerTrain?.rfTxPowerW) : null,
+      paInput: taskId === 'T1' ? finiteOrNull(teachingEnergy?.powerTrain?.paInputW) : null,
+      circuitPower: taskId === 'T1' ? finiteOrNull(teachingEnergy?.powerTrain?.circuitPowerW) : null,
+      totalPower: taskId === 'T1' ? finiteOrNull(teachingEnergy?.powerTrain?.totalPowerW) : null,
+      scopeStatus: taskId === 'T1' ? (teachingEnergy?.powerTrain === null ? null : 'teaching-runtime') : null,
 
-      energyKnobs: null,
-      paPower: null,
-      handoverEnergy: null,
-      handoverCount: teachingEnergy?.handoverCount ?? null,
-      radioEnergy: null,
-      totalEnergy: teachingEnergy?.totalEnergyJ ?? null,
-      runEe: teachingEnergy?.runEeMbitPerJ ?? null,
-      lowSinr: teachingEnergy?.lowSinrRatioPct ?? null,
+      energyKnobs: taskId === 'T2' ? currentEnergyParams : null,
+      paPower: taskId === 'T2' ? finiteOrNull(teachingEnergy?.powerTrain?.paInputW) : null,
+      handoverEnergy: taskId === 'T2' ? finiteOrNull(teachingEnergy?.handoverEnergyJ) : null,
+      handoverCount: taskId === 'T2' ? finiteOrNull(teachingEnergy?.handoverCount) : null,
+      radioEnergy: taskId === 'T2' ? finiteOrNull(teachingEnergy?.cumulativeEnergyJ) : null,
+      totalEnergy: taskId === 'T2' ? finiteOrNull(teachingEnergy?.totalEnergyJ) : null,
+      runEe: taskId === 'T2' ? finiteOrNull(teachingEnergy?.runEeMbitPerJ) : null,
+      lowSinr: taskId === 'T2' ? finiteOrNull(teachingEnergy?.lowSinrRatioPct) : null,
 
-      txPower: signalTuning.maxTxPowerDbm,
-      bandwidth: signalTuning.bandwidthMHz,
-      reuseFactor: signalTuning.frequencyReuse,
-      load: null,
-      sinr: null,
-      throughput: teachingEnergy?.cumulativeDataMbit ? teachingEnergy.cumulativeDataMbit / Math.max(1, (simState.simTimeSec - (energyLedgerWindowStartSimTimeSecRef.current ?? 0))) : null,
-      data: teachingEnergy?.cumulativeDataMbit ?? null,
-      serviceStatus: null,
+      bandwidth: taskId === 'T3' ? finiteOrNull(t3?.bandwidthMHz) : null,
+      reuseFactor: taskId === 'T3' ? finiteOrNull(t3?.frequencyReuse) : null,
+      load: taskId === 'T3' ? finiteOrNull(t3?.assignedBeamLoad) : null,
+      sinr: taskId === 'T3' ? finiteOrNull(t3?.sinrDb) : null,
+      throughput: taskId === 'T3' ? finiteOrNull(t3?.throughputMbps) : null,
+      data: taskId === 'T3' ? finiteOrNull(t3?.dataMbit) : null,
+      serviceStatus: taskId === 'T3' ? t3?.serviceStatus ?? null : null,
+      servingSatellite: null,
+      servingCell: null,
+      servingBeam: taskId === 'T3' ? t3?.serviceIdentity ?? null : null,
+      sourceKind: taskId === 'T3' ? t3?.sourceKind ?? null : null,
 
-      beforeParams: null,
-      afterParams: null,
-      dataT4: null,
-      energyT4: null,
-      windowIdT4: null,
-      simulationClock: simState.simTimeSec,
-      playbackState: playback.paused ? 'paused' : 'playing',
+      beforeParams: t4Before,
+      afterParams: t4After,
+      dataT4: taskId === 'T4' ? finiteOrNull(teachingEnergy?.cumulativeDataMbit) : null,
+      energyT4: taskId === 'T4' ? finiteOrNull(teachingEnergy?.totalEnergyJ) : null,
+      windowIdT4: taskId === 'T4' ? windowId : null,
+      simulationClock: taskId === 'T4' ? windowEndSec : null,
+      playbackState: taskId === 'T4' ? (playback.paused ? 'paused' : 'playing') : null,
+      resetAction: taskId === 'T4' ? lastEnergyActionRef.current : null,
 
-      explicitStateStatus: null,
+      explicitStateStatus: t5Status,
+      baselineArm: taskId === 'T5' ? classroomArmRecordMap(classroomBaselineArm) : null,
+      candidateArm: taskId === 'T5' ? classroomArmRecordMap(classroomCandidateArm) : null,
+      comparison: taskId === 'T5' ? t5Comparison : null,
 
-      producerStatus: null,
-      systemPower: null,
-      instantaneousEe: null,
-      perUserContributionSum: null,
-      ratioOfSums: null,
-      sampleWindow: null,
-      actualRf: null,
-      ratedRf: null,
-      serviceBeam: null,
+      producerStatus: taskId === 'T6' ? canonical?.status ?? null : null,
+      systemPower: taskId === 'T6' ? finiteOrNull(canonical?.systemPowerW) : null,
+      instantaneousEe: taskId === 'T6' ? finiteOrNull(canonical?.eeInstMbitPerJ) : null,
+      perUserContributionSum: taskId === 'T6' ? finiteOrNull(canonical?.contributionSumMbitPerJ) : null,
+      ratioOfSums: taskId === 'T6' ? finiteOrNull(canonical?.eeEvalMbitPerJ) : null,
+      sampleWindow: taskId === 'T6' ? sampleWindow : null,
+      actualRf: taskId === 'T6' ? finiteOrNull(canonical?.actualRfOutputW) : null,
+      ratedRf: taskId === 'T6' ? finiteOrNull(canonical?.ratedRfOutputW) : null,
+      serviceBeam: taskId === 'T6' ? canonical?.servingBeamIdentity ?? null : null,
+      frameSimTime: taskId === 'T6' ? finiteOrNull(canonical?.frameSimTimeSec) : null,
+      evaluationData: taskId === 'T6' ? finiteOrNull(canonical?.evaluationDataMbit) : null,
+      evaluationEnergy: taskId === 'T6' ? finiteOrNull(canonical?.evaluationEnergyJ) : null,
+      perUserContributions: taskId === 'T6' && canonical?.perUserContributions !== null && canonical?.perUserContributions !== undefined
+        ? canonical.perUserContributions.map(user => ({
+          ueId: user.ueId,
+          status: user.status ?? null,
+          satId: user.satId ?? null,
+          cellId: finiteOrNull(user.cellId),
+          beamIdentity: user.beamIdentity ?? null,
+          load: finiteOrNull(user.assignedBeamLoad),
+          bandwidthMHz: finiteOrNull(user.allocatedBandwidthMHz),
+          sinrDb: finiteOrNull(user.sinrDb),
+          rateMbps: finiteOrNull(user.rateMbps),
+          contributionMbitPerJ: finiteOrNull(user.contributionMbitPerJ),
+        }))
+        : null,
+    } satisfies Omit<ExperimentRecord, 'fieldAbsenceReasons'>;
+    const fieldAbsenceReasons: Record<string, string> = {};
+    for (const [key, value] of Object.entries(recordWithoutAbsenceReasons)) {
+      if (value === null) {
+        fieldAbsenceReasons[key] = key === 'absenceReason'
+          ? 'no-blocking-condition'
+          : key === 'interpretation' || key === 'tradeoff' || key === 'limitation'
+            ? 'not-applicable-to-selected-task'
+            : `not-selected-or-unavailable-for-${taskId}`;
+      }
+    }
+    const record: ExperimentRecord = {
+      ...recordWithoutAbsenceReasons,
+      fieldAbsenceReasons,
     };
-    setExperimentRecord(record);
-  }, [baseProfile.id, simState.simTimeSec, teachingEnergy, signalTuning, playback.paused]);
+    setExperimentRecordsByTask(current => ({
+      ...current,
+      [taskId]: record,
+    }));
+  }, [
+    baseProfile.id,
+    classroomBaselineArm,
+    classroomCandidateArm,
+    classroomComparison,
+    classroomComparisonContextKey,
+    effectiveProfile.id,
+    energyTuning,
+    playback.paused,
+    sceneLane,
+    sceneSource,
+    selectedExperimentTask,
+    signalTuning.maxTxPowerDbm,
+    simState.canonicalEe,
+    simState.simTimeSec,
+    teachingEnergy,
+  ]);
 
   const requestManualHandover = useCallback((kind: 'intra' | 'inter') => {
     manualHandoverWasPausedRef.current = playback.paused;
@@ -1195,9 +1489,19 @@ export function App() {
   // Scene TOPOLOGY changes below keep their transition: those really do rebuild
   // the constellation.
   const handleSignalTuningChange = useCallback((next: SignalTuningState) => {
+    const changed: Record<string, number> = {};
+    if (next.maxTxPowerDbm !== signalTuning.maxTxPowerDbm) changed.maxTxPowerDbm = next.maxTxPowerDbm;
+    if (next.bandwidthMHz !== signalTuning.bandwidthMHz) changed.bandwidthMHz = next.bandwidthMHz;
+    if (next.frequencyReuse !== signalTuning.frequencyReuse) changed.frequencyReuse = next.frequencyReuse;
+    if (Object.keys(changed).length > 0) {
+      lastExperimentChangedControlsRef.current = {
+        ...lastExperimentChangedControlsRef.current,
+        ...changed,
+      };
+    }
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
     setSignalTuning(next);
-  }, []);
+  }, [signalTuning]);
 
   const handleSceneTopologyChange = useCallback((next: SceneTopologyState) => {
     startTransition(() => {
@@ -1209,6 +1513,12 @@ export function App() {
   // snap every control back, not 20 seconds later.
   const handleResetSignalTuning = useCallback(() => {
     const next = createSignalTuningState(baseProfile);
+    lastExperimentChangedControlsRef.current = {
+      ...lastExperimentChangedControlsRef.current,
+      maxTxPowerDbm: next.maxTxPowerDbm,
+      bandwidthMHz: next.bandwidthMHz,
+      frequencyReuse: next.frequencyReuse,
+    };
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
     setSignalTuning(next);
   }, [baseProfile]);
@@ -1217,9 +1527,20 @@ export function App() {
   // measurement-window reset above and from the signal-tuning reset. It must
   // restore the teaching circuit knob to the model default of 3 W without
   // touching scene topology, playback, or the canonical P_sys boundary.
+  const handleEnergyTuningChange = useCallback((next: EnergyTuningState) => {
+    lastEnergyActionRef.current = 'energy-parameter-change';
+    lastEnergyBeforeRef.current = energyTuningRecordMap(energyTuning);
+    lastEnergyAfterRef.current = energyTuningRecordMap(next);
+    setEnergyTuning(next);
+  }, [energyTuning]);
+
   const handleResetEnergyTuning = useCallback(() => {
-    setEnergyTuning({ ...DEFAULT_ENERGY_TUNING });
-  }, []);
+    const next = { ...DEFAULT_ENERGY_TUNING };
+    lastEnergyActionRef.current = 'restore-energy-defaults';
+    lastEnergyBeforeRef.current = energyTuningRecordMap(energyTuning);
+    lastEnergyAfterRef.current = energyTuningRecordMap(next);
+    setEnergyTuning(next);
+  }, [energyTuning]);
 
   const handleHandoverPolicyDraftChange = useCallback((next: HandoverPolicyTuningState) => {
     setHandoverPolicyState(current => ({
@@ -2723,7 +3044,7 @@ export function App() {
                   formulaBudget={simState.physicalServingBudget}
                   isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                   energyTuning={energyTuning}
-                  onEnergyTuningChange={setEnergyTuning}
+                  onEnergyTuningChange={handleEnergyTuningChange}
                   onEnergyTuningReset={handleResetEnergyTuning}
                   onTuningChange={handleSignalTuningChange}
                   onTopologyChange={handleSceneTopologyChange}
@@ -2884,6 +3205,8 @@ export function App() {
                     onClearArms: handleClearClassroomArms,
                   }}
                   experimentRecord={experimentRecord}
+                  selectedExperimentTask={selectedExperimentTask}
+                  onExperimentTaskChange={setSelectedExperimentTask}
                   onCaptureExperimentRecord={handleCaptureExperimentRecord}
                 />
               </section>

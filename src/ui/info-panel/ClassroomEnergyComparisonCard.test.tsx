@@ -22,6 +22,13 @@ const BASELINE: ClassroomEnergyComparisonArm = Object.freeze({
   runEeMbitPerJ: 1,
   lowSinrThresholdDb: 14,
   handoverCount: 2,
+  servingLoad: 1,
+  servingSinrDb: 10,
+  throughputMbps: 10,
+  serviceStatus: 'served',
+  serviceIdentity: 'sat-a/cell-0',
+  producerStatus: 'valid',
+  absenceReason: null,
 });
 
 const CANDIDATE: ClassroomEnergyComparisonArm = Object.freeze({
@@ -37,6 +44,13 @@ const CANDIDATE: ClassroomEnergyComparisonArm = Object.freeze({
   runEeMbitPerJ: 1.1,
   lowSinrThresholdDb: 14,
   handoverCount: 3,
+  servingLoad: 1,
+  servingSinrDb: 9,
+  throughputMbps: 9,
+  serviceStatus: 'served',
+  serviceIdentity: 'sat-a/cell-0',
+  producerStatus: 'valid',
+  absenceReason: null,
 });
 
 function props(overrides: Partial<ClassroomEnergyComparisonCardProps> = {}): ClassroomEnergyComparisonCardProps {
@@ -67,7 +81,7 @@ function render(propsValue: ClassroomEnergyComparisonCardProps, locale: 'zh-TW' 
 }
 
 const qualifiedZh = render(props(), 'zh-TW');
-assert.match(qualifiedZh, /教學能源比較/);
+assert.match(qualifiedZh, /T5 實際資料功率減降反證/);
 assert.match(qualifiedZh, /替換基準快照/);
 assert.match(qualifiedZh, /替換候選快照/);
 assert.match(qualifiedZh, /衛星發射功率/);
@@ -81,7 +95,7 @@ assert.equal((qualifiedZh.match(/data-gate-state="pass"/g) ?? []).length, 5);
 assert.doesNotMatch(qualifiedZh, /資料不足/);
 
 const qualifiedEn = render(props(), 'en');
-assert.match(qualifiedEn, /Teaching energy comparison/);
+assert.match(qualifiedEn, /T5 Actual-data power-reduction falsifier/);
 assert.match(qualifiedEn, /Replace baseline snapshot/);
 assert.match(qualifiedEn, /Replace candidate snapshot/);
 assert.equal((qualifiedEn.match(/data-gate-state="pass"/g) ?? []).length, 5);

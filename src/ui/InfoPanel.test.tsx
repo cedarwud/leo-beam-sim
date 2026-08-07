@@ -28,6 +28,20 @@ const teachingEnergy: TeachingEnergyReadout = {
   runEeMbitPerJ: 0.4,
   lowSinrThresholdDb: 0,
   lowSinrRatioPct: 0,
+  t3FixedComparison: {
+    sourceKind: 'deterministic-fixture',
+    assignedBeamLoad: 1,
+    sinrDb: 0,
+    bandwidthMHz: 20,
+    frequencyReuse: 1,
+    allocatedBandwidthMHz: 20,
+    throughputMbps: 20,
+    dataMbit: 20,
+    serviceStatus: 'served',
+    serviceIdentity: 't3-fixed-u1-sinr0',
+    producerStatus: 'valid',
+    absenceReason: null,
+  },
 };
 
 const markup = renderToStaticMarkup(
@@ -42,6 +56,14 @@ const markup = renderToStaticMarkup(
         contributionSumMbitPerJ: 1.5,
         eeEvalMbitPerJ: null,
         evaluationSampleCount: 0,
+        frameSimTimeSec: 1,
+        actualRfOutputW: 1,
+        ratedRfOutputW: 2,
+        evaluationDataMbit: null,
+        evaluationEnergyJ: null,
+        evaluationWindowStartSec: null,
+        evaluationWindowEndSec: null,
+        servingBeamIdentity: 'sat-a#cell0',
         perUserContributions: [{ ueId: 'ue-live', contributionMbitPerJ: 1.5 }],
         errorCode: null,
       }}

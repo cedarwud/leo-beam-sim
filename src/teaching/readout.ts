@@ -1,6 +1,27 @@
 import type { PowerTrainBreakdown } from './energyModel';
 
 /**
+ * T3 is an algebra isolation exercise.  It deliberately does not carry a
+ * transmit-power field: the controlled comparison fixes U=1 and SINR=0 dB,
+ * then exposes only the B/K allocation and the resulting rate.  The source
+ * label makes the deterministic producer boundary visible in the worksheet.
+ */
+export interface TeachingT3FixedComparisonReadout {
+  readonly sourceKind: 'deterministic-fixture';
+  readonly assignedBeamLoad: 1;
+  readonly sinrDb: 0;
+  readonly bandwidthMHz: number | null;
+  readonly frequencyReuse: number | null;
+  readonly allocatedBandwidthMHz: number | null;
+  readonly throughputMbps: number | null;
+  readonly dataMbit: number | null;
+  readonly serviceStatus: 'served';
+  readonly serviceIdentity: 't3-fixed-u1-sinr0';
+  readonly producerStatus: 'valid' | 'pending';
+  readonly absenceReason: string | null;
+}
+
+/**
  * The single teaching energy/EE read model handed to the right-hand panel.
  *
  * Assembled once in `App.tsx` from the live `SimState` plus the energy tuning
@@ -71,4 +92,6 @@ export interface TeachingEnergyReadout {
    * value.
    */
   readonly lowSinrThresholdDb?: number | null;
+  /** Fixed-U/SINR B/K fixture used by T3; never a live transmit-power claim. */
+  readonly t3FixedComparison: TeachingT3FixedComparisonReadout;
 }

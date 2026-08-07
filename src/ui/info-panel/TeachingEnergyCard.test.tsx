@@ -23,6 +23,20 @@ const dummyReadout: TeachingEnergyReadout = {
   runEeMbitPerJ: 28.57,
   lowSinrThresholdDb: 0,
   lowSinrRatioPct: 10,
+  t3FixedComparison: {
+    sourceKind: 'deterministic-fixture',
+    assignedBeamLoad: 1,
+    sinrDb: 0,
+    bandwidthMHz: 20,
+    frequencyReuse: 1,
+    allocatedBandwidthMHz: 20,
+    throughputMbps: 20,
+    dataMbit: 200,
+    serviceStatus: 'served',
+    serviceIdentity: 't3-fixed-u1-sinr0',
+    producerStatus: 'valid',
+    absenceReason: null,
+  },
 };
 
 const canonicalPass: TeachingCanonicalReadout = {
@@ -38,6 +52,7 @@ const canonicalPass: TeachingCanonicalReadout = {
       status: 'served',
       satId: 'sat-a',
       cellId: 0,
+      beamIdentity: 'sat-a#cell0',
       assignedBeamLoad: 2,
       allocatedBandwidthMHz: 5,
       sinrDb: 4,
@@ -49,6 +64,7 @@ const canonicalPass: TeachingCanonicalReadout = {
       status: 'served',
       satId: 'sat-b',
       cellId: 1,
+      beamIdentity: 'sat-b#cell1',
       assignedBeamLoad: 1,
       allocatedBandwidthMHz: 10,
       sinrDb: -2,
@@ -122,11 +138,13 @@ const markupCanonicalPass = renderToStaticMarkup(
 assert.match(markupCanonicalPass, /data-testid="canonical-status"[^>]*>[\s\S]*VALID/);
 assert.match(markupCanonicalPass, /data-testid="canonical-identity"[^>]*>[\s\S]*PASS/);
 assert.match(markupCanonicalPass, /data-testid="canonical-user-contribution-ue-1"/);
+assert.match(markupCanonicalPass, /data-testid="canonical-per-user-contributions"[^>]* hidden/);
 assert.match(markupCanonicalPass, /data-testid="canonical-user-details-table"/);
 for (const testId of [
   'canonical-user-status-ue-1',
   'canonical-user-satellite-ue-1',
-  'canonical-user-cell-ue-1',
+      'canonical-user-cell-ue-1',
+  'canonical-user-beam-ue-1',
   'canonical-user-load-ue-1',
   'canonical-user-bandwidth-ue-1',
   'canonical-user-sinr-ue-1',
@@ -140,6 +158,7 @@ assert.match(canonicalPassText, /Canonical per-user detail/);
 assert.match(canonicalPassText, /ue-1.*SERVED.*sat-a.*0.*2.*5\.00 MHz.*4\.00 dB.*5\.25 Mbit\/s.*1\.200 Mbit\/J/);
 assert.match(canonicalPassText, /ue-2.*SERVED.*sat-b.*1.*1.*10\.00 MHz.*-2\.00 dB.*8\.50 Mbit\/s.*1\.745 Mbit\/J/);
 assert.match(canonicalPassText, /not physical per-user transmit power/);
+assert.match(canonicalPassText, /sat-a#cell0/);
 assert.match(canonicalPassText, /Sum identity Σ_u r_\{1,u\} = EE_inst/);
 assert.match(canonicalPassText, /Partial-payload scope/);
 

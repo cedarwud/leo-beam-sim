@@ -23,6 +23,20 @@ const READOUT: TeachingEnergyReadout = {
   handoverCount: 2,
   lowSinrRatioPct: 10,
   lowSinrThresholdDb: 14,
+  t3FixedComparison: {
+    sourceKind: 'deterministic-fixture',
+    assignedBeamLoad: 1,
+    sinrDb: 0,
+    bandwidthMHz: 20,
+    frequencyReuse: 1,
+    allocatedBandwidthMHz: 20,
+    throughputMbps: 20,
+    dataMbit: 1200,
+    serviceStatus: 'served',
+    serviceIdentity: 't3-fixed-u1-sinr0',
+    producerStatus: 'valid',
+    absenceReason: null,
+  },
 };
 
 function input(overrides: Partial<ClassroomEnergyCaptureInput> = {}): ClassroomEnergyCaptureInput {
@@ -38,6 +52,12 @@ function input(overrides: Partial<ClassroomEnergyCaptureInput> = {}): ClassroomE
     windowStartSimTimeSec: 100,
     windowEndSimTimeSec: 160,
     readout: READOUT,
+    servingLoad: 1,
+    servingSinrDb: 10,
+    serviceStatus: 'served',
+    serviceIdentity: 'sat-a/cell-0',
+    producerStatus: 'valid',
+    absenceReason: null,
     ...overrides,
   };
 }

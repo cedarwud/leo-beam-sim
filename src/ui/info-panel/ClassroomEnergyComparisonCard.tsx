@@ -223,6 +223,9 @@ export function ClassroomEnergyComparisonCard({
             color: UI_TOKENS.color.text.primary,
             fontWeight: UI_TOKENS.type.weight.strong,
             textAlign: 'left',
+            whiteSpace: 'normal',
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
           }}
         >
           {buttonLabel} ({targetTxPowerDbm} {t('common.unit.dbm')})
@@ -230,7 +233,14 @@ export function ClassroomEnergyComparisonCard({
         {!capture.canCapture && capture.reason !== null && (
           <span
             id={reasonId}
-            style={{ color: UI_TOKENS.color.text.muted, fontSize: UI_TOKENS.type.size.tiny, lineHeight: 1.35 }}
+            style={{
+              color: UI_TOKENS.color.text.muted,
+              fontSize: UI_TOKENS.type.size.tiny,
+              lineHeight: 1.35,
+              minWidth: 0,
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
+            }}
           >
             {captureReasonCopy(capture.reason, t)}
           </span>
@@ -248,6 +258,12 @@ export function ClassroomEnergyComparisonCard({
       : t('panel.energyComparison.candidate');
     const rows = [
       [t('param.maxTxPowerDbm.label'), armValue(arm?.txPowerDbm, t('common.unit.dbm'), 0)],
+      [t('panel.energyComparison.rawLoad'), armValue(arm?.servingLoad, '', 0).trim()],
+      [t('panel.energyComparison.rawSinr'), armValue(arm?.servingSinrDb, t('common.unit.db'))],
+      [t('panel.energyComparison.rawThroughput'), armValue(arm?.throughputMbps, t('common.unit.mbps'))],
+      [t('panel.energyComparison.rawServiceStatus'), arm?.serviceStatus ?? '—'],
+      [t('panel.energyComparison.rawServiceIdentity'), arm?.serviceIdentity ?? '—'],
+      [t('panel.energyComparison.rawProducerStatus'), arm?.producerStatus ?? '—'],
       [tx('panel.energy.elapsed'), armValue(arm?.elapsedSec, t('common.unit.second'))],
       [t('kpi.cumulativeDeliveredData.label'), armValue(arm?.cumulativeDataMbit, 'Mbit')],
       [t('kpi.totalEnergy.label'), armValue(arm?.totalEnergyJ, t('common.unit.joule'))],
@@ -267,19 +283,19 @@ export function ClassroomEnergyComparisonCard({
           background: UI_TOKENS.color.surface.cardSubtle,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: UI_TOKENS.space.sm, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, color: UI_TOKENS.color.text.panel, fontSize: UI_TOKENS.type.size.body, fontWeight: UI_TOKENS.type.weight.strong }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: UI_TOKENS.space.sm, alignItems: 'baseline', flexWrap: 'wrap', minWidth: 0 }}>
+          <h3 style={{ margin: 0, minWidth: 0, color: UI_TOKENS.color.text.panel, fontSize: UI_TOKENS.type.size.body, fontWeight: UI_TOKENS.type.weight.strong, overflowWrap: 'anywhere' }}>
             {title}
           </h3>
-          <span style={{ color: UI_TOKENS.color.text.muted, fontSize: UI_TOKENS.type.size.tiny }}>
+          <span style={{ minWidth: 0, color: UI_TOKENS.color.text.muted, fontSize: UI_TOKENS.type.size.tiny, overflowWrap: 'anywhere' }}>
             {armStatusLabel(arm, t)}
           </span>
         </div>
-        <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.lg}px`, margin: `${UI_TOKENS.space.lg}px 0 0`, fontSize: UI_TOKENS.type.size.tiny }}>
+        <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(0, 1fr)', gap: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.lg}px`, margin: `${UI_TOKENS.space.lg}px 0 0`, fontSize: UI_TOKENS.type.size.tiny, minWidth: 0 }}>
           {rows.map(([label, value]) => (
             <div key={label} style={{ display: 'contents' }}>
-              <dt style={{ color: UI_TOKENS.color.text.muted, minWidth: 0 }}>{label}</dt>
-              <dd style={{ margin: 0, color: UI_TOKENS.color.text.primary, fontFamily: UI_TOKENS.type.family.mono, textAlign: 'right', whiteSpace: 'nowrap' }}>{value}</dd>
+              <dt style={{ color: UI_TOKENS.color.text.muted, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{label}</dt>
+              <dd style={{ margin: 0, minWidth: 0, color: UI_TOKENS.color.text.primary, fontFamily: UI_TOKENS.type.family.mono, textAlign: 'right', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{value}</dd>
             </div>
           ))}
         </dl>
@@ -300,18 +316,21 @@ export function ClassroomEnergyComparisonCard({
         border: `1px solid ${UI_TOKENS.color.border.metric}`,
         display: 'grid',
         gap: UI_TOKENS.space.lg,
+        minWidth: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ display: 'grid', gap: UI_TOKENS.space.xs }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: UI_TOKENS.space.md, flexWrap: 'wrap' }}>
-          <h2 id="classroom-energy-comparison-title" style={{ margin: 0, color: UI_TOKENS.color.text.panel, fontSize: UI_TOKENS.type.size.body, fontWeight: UI_TOKENS.type.weight.heavy }}>
+      <div style={{ display: 'grid', gap: UI_TOKENS.space.xs, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: UI_TOKENS.space.md, flexWrap: 'wrap', minWidth: 0 }}>
+          <h2 id="classroom-energy-comparison-title" style={{ margin: 0, minWidth: 0, color: UI_TOKENS.color.text.panel, fontSize: UI_TOKENS.type.size.body, fontWeight: UI_TOKENS.type.weight.heavy, overflowWrap: 'anywhere' }}>
             {t('panel.energyComparison.title')}
           </h2>
-          <span style={{ color: UI_TOKENS.color.text.muted, fontSize: UI_TOKENS.type.size.tiny }}>
+          <span style={{ minWidth: 0, maxWidth: '100%', color: UI_TOKENS.color.text.muted, fontSize: UI_TOKENS.type.size.tiny, textAlign: 'right', overflowWrap: 'anywhere' }}>
             {t('param.maxTxPowerDbm.label')}: {formatNumber(currentTxPowerDbm, 0)} {t('common.unit.dbm')}
           </span>
         </div>
-        <p style={{ margin: 0, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.tiny, lineHeight: 1.45 }}>
+        <p style={{ margin: 0, minWidth: 0, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.tiny, lineHeight: 1.45, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
           {t('panel.energyComparison.subtitle')}
         </p>
       </div>
@@ -329,47 +348,64 @@ export function ClassroomEnergyComparisonCard({
             background: UI_TOKENS.color.surface.cardFaint,
             color: UI_TOKENS.color.semantic.warning.badge,
             fontSize: UI_TOKENS.type.size.tiny,
+            minWidth: 0,
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
           }}
         >
-          {settingsChanged && <span>{contextDrifted ? t('panel.energyComparison.settingsChanged') : t('panel.energyComparison.contextMismatch')}</span>}
-          {windowMismatch && <span>{t('panel.energyComparison.windowMismatch')}</span>}
+          {settingsChanged && <span style={{ minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{contextDrifted ? t('panel.energyComparison.settingsChanged') : t('panel.energyComparison.contextMismatch')}</span>}
+          {windowMismatch && <span style={{ minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{t('panel.energyComparison.windowMismatch')}</span>}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: UI_TOKENS.space.md }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: UI_TOKENS.space.md, minWidth: 0 }}>
         {renderArm('baseline', baseline)}
         {renderArm('candidate', candidate)}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: UI_TOKENS.space.md }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: UI_TOKENS.space.md, minWidth: 0 }}>
         {renderCaptureControl('baseline', baseline, baselineCapture, baselineTargetTxPowerDbm, onCaptureBaseline)}
         {renderCaptureControl('candidate', candidate, candidateCapture, candidateTargetTxPowerDbm, onCaptureCandidate)}
       </div>
 
-      <button
-        type="button"
-        className={UI_CLASSES.button}
-        onClick={onClearArms}
-        disabled={baseline === null && candidate === null}
-        aria-describedby={baseline === null && candidate === null ? 'classroom-energy-clear-help' : undefined}
-        data-testid="classroom-energy-clear"
+      <div
+        data-testid="classroom-energy-clear-control"
         style={{
-          justifySelf: 'start',
-          minHeight: 38,
-          padding: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.lg}px`,
-          border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-          borderRadius: UI_TOKENS.radius.md,
-          background: UI_TOKENS.color.surface.cardFaint,
-          color: UI_TOKENS.color.text.secondary,
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.md}px`,
+          minWidth: 0,
         }}
       >
-        {t('panel.energyComparison.clear')}
-      </button>
-      {baseline === null && candidate === null && (
-        <span id="classroom-energy-clear-help" style={{ color: UI_TOKENS.color.text.muted, fontSize: UI_TOKENS.type.size.tiny }}>
-          {t('panel.energyComparison.disabled.noSnapshots')}
-        </span>
-      )}
+        <button
+          type="button"
+          className={UI_CLASSES.button}
+          onClick={onClearArms}
+          disabled={baseline === null && candidate === null}
+          aria-describedby={baseline === null && candidate === null ? 'classroom-energy-clear-help' : undefined}
+          data-testid="classroom-energy-clear"
+          style={{
+            minHeight: 38,
+            maxWidth: '100%',
+            padding: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.lg}px`,
+            border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+            borderRadius: UI_TOKENS.radius.md,
+            background: UI_TOKENS.color.surface.cardFaint,
+            color: UI_TOKENS.color.text.secondary,
+            whiteSpace: 'normal',
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
+          }}
+        >
+          {t('panel.energyComparison.clear')}
+        </button>
+        {baseline === null && candidate === null && (
+          <span id="classroom-energy-clear-help" style={{ flex: '1 1 12rem', minWidth: 0, color: UI_TOKENS.color.text.muted, fontSize: UI_TOKENS.type.size.tiny, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+            {t('panel.energyComparison.disabled.noSnapshots')}
+          </span>
+        )}
+      </div>
 
       <div data-testid="classroom-energy-gates" style={{ display: 'grid', gap: UI_TOKENS.space.sm }}>
         {GATE_DEFINITIONS.map(definition => {
@@ -387,23 +423,26 @@ export function ClassroomEnergyComparisonCard({
               data-gate-state={state === absent ? 'missing' : state === t('panel.energyComparison.pass') ? 'pass' : 'fail'}
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) auto auto',
+                gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 12rem)',
                 gap: UI_TOKENS.space.md,
                 alignItems: 'baseline',
                 padding: `${UI_TOKENS.space.sm}px 0`,
                 borderTop: `1px solid ${UI_TOKENS.color.border.subtle}`,
+                minWidth: 0,
               }}
             >
-              <span style={{ color: UI_TOKENS.color.text.secondary, minWidth: 0 }}>{gateLabel(definition)}</span>
-              <span style={{ color: UI_TOKENS.color.text.muted, fontFamily: UI_TOKENS.type.family.mono, whiteSpace: 'nowrap' }}>
-                {formatMetric(
-                  definition.metric,
-                  comparisonComplete ? result : null,
-                  absent,
-                  t('panel.energyComparison.percentagePoints'),
-                )}
-              </span>
-              <strong style={{ color: stateTone, whiteSpace: 'nowrap' }}>{state}</strong>
+              <span style={{ color: UI_TOKENS.color.text.secondary, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{gateLabel(definition)}</span>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', flexWrap: 'wrap', gap: `0 ${UI_TOKENS.space.sm}px`, minWidth: 0 }}>
+                <span style={{ color: UI_TOKENS.color.text.muted, minWidth: 0, fontFamily: UI_TOKENS.type.family.mono, textAlign: 'right', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                  {formatMetric(
+                    definition.metric,
+                    comparisonComplete ? result : null,
+                    absent,
+                    t('panel.energyComparison.percentagePoints'),
+                  )}
+                </span>
+                <strong style={{ color: stateTone, minWidth: 0, textAlign: 'right', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{state}</strong>
+              </div>
             </div>
           );
         })}
@@ -417,16 +456,17 @@ export function ClassroomEnergyComparisonCard({
             alignItems: 'baseline',
             paddingTop: UI_TOKENS.space.md,
             borderTop: `1px solid ${UI_TOKENS.color.border.metric}`,
+            minWidth: 0,
           }}
         >
-          <strong style={{ color: UI_TOKENS.color.text.panel }}>{t('panel.energyComparison.overall')}</strong>
-          <strong style={{ color: comparisonComplete && result?.qualified === true ? UI_TOKENS.color.semantic.good : comparisonComplete ? UI_TOKENS.color.semantic.danger : UI_TOKENS.color.text.muted, whiteSpace: 'nowrap' }}>
+          <strong style={{ color: UI_TOKENS.color.text.panel, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{t('panel.energyComparison.overall')}</strong>
+          <strong style={{ color: comparisonComplete && result?.qualified === true ? UI_TOKENS.color.semantic.good : comparisonComplete ? UI_TOKENS.color.semantic.danger : UI_TOKENS.color.text.muted, minWidth: 0, textAlign: 'right', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
             {statusLabel(comparisonComplete ? result?.qualified ?? null : null)}
           </strong>
         </div>
       </div>
 
-      <p style={{ margin: 0, color: UI_TOKENS.color.text.faint, fontSize: UI_TOKENS.type.size.tiny, lineHeight: 1.4 }}>
+      <p style={{ margin: 0, minWidth: 0, color: UI_TOKENS.color.text.faint, fontSize: UI_TOKENS.type.size.tiny, lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
         {comparisonComplete
           ? t('panel.energyComparison.failClosedNote')
           : t('panel.energyComparison.dataInsufficientNote')}

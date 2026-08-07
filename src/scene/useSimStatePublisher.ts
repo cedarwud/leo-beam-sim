@@ -37,6 +37,7 @@ import {
   computeBeamshiftCanonicalEe,
   type BeamshiftCanonicalEeInput,
   type BeamshiftCanonicalInstantaneousEe,
+  type BeamshiftCanonicalEvaluationSnapshot,
 } from '../teaching/beamshiftCanonicalEe';
 import {
   CanonicalEeInputError,
@@ -129,7 +130,15 @@ function projectCanonicalEeSnapshot(
   instantaneous: BeamshiftCanonicalInstantaneousEe,
   evaluationSampleCount: number,
   eeEvalMbitPerJ: number | null,
+  evaluation: BeamshiftCanonicalEvaluationSnapshot | null,
+  evaluationWindowStartSec: number | null,
 ): CanonicalEeSnapshot {
+  const actualRfOutputW = instantaneous.rfOutputPowerDbm === Number.NEGATIVE_INFINITY
+    ? 0
+    : dbmToWatts(instantaneous.rfOutputPowerDbm);
+  const servingBeamIdentity = instantaneous.users.find(
+    user => user.satId !== null && user.cellId !== null,
+  );
   return {
     status: instantaneous.status,
     sumIdentity: instantaneous.sumIdentity,
@@ -138,11 +147,30 @@ function projectCanonicalEeSnapshot(
     contributionSumMbitPerJ: instantaneous.contributionSumMbitPerJ,
     eeEvalMbitPerJ,
     evaluationSampleCount,
+    frameSimTimeSec: instantaneous.frameSimTimeSec,
+    actualRfOutputW: Number.isFinite(actualRfOutputW) ? actualRfOutputW : null,
+    ratedRfOutputW: Number.isFinite(instantaneous.ratedMaxRfOutputW)
+      ? instantaneous.ratedMaxRfOutputW
+      : null,
+    evaluationDataMbit: evaluationSampleCount > 0 ? evaluation?.totalDataMbit ?? null : null,
+    evaluationEnergyJ: evaluationSampleCount > 0 ? evaluation?.totalEnergyJ ?? null : null,
+    evaluationWindowStartSec,
+    evaluationWindowEndSec: evaluationSampleCount > 0
+      ? evaluation?.lastFrameSimTimeSec ?? instantaneous.frameSimTimeSec
+      : null,
+    servingBeamIdentity: servingBeamIdentity !== undefined
+      && servingBeamIdentity.satId !== null
+      && servingBeamIdentity.cellId !== null
+      ? `${servingBeamIdentity.satId}#cell${servingBeamIdentity.cellId}`
+      : null,
     perUserContributions: instantaneous.users.map(user => ({
       ueId: user.ueId,
       status: user.status,
       satId: user.satId,
       cellId: user.cellId,
+      beamIdentity: user.satId !== null && user.cellId !== null
+        ? `${user.satId}#cell${user.cellId}`
+        : null,
       assignedBeamLoad: user.assignedBeamLoad,
       allocatedBandwidthMHz: user.allocatedBandwidthMHz,
       sinrDb: user.sinrDb,
@@ -162,6 +190,14 @@ function invalidCanonicalEeSnapshot(errorCode: CanonicalEeErrorCode): CanonicalE
     contributionSumMbitPerJ: null,
     eeEvalMbitPerJ: null,
     evaluationSampleCount: 0,
+    frameSimTimeSec: null,
+    actualRfOutputW: null,
+    ratedRfOutputW: null,
+    evaluationDataMbit: null,
+    evaluationEnergyJ: null,
+    evaluationWindowStartSec: null,
+    evaluationWindowEndSec: null,
+    servingBeamIdentity: null,
     perUserContributions: null,
     errorCode,
   };
@@ -176,6 +212,14 @@ function pendingCanonicalEeSnapshot(errorCode: CanonicalEeErrorCode | null): Can
     contributionSumMbitPerJ: null,
     eeEvalMbitPerJ: null,
     evaluationSampleCount: 0,
+    frameSimTimeSec: null,
+    actualRfOutputW: null,
+    ratedRfOutputW: null,
+    evaluationDataMbit: null,
+    evaluationEnergyJ: null,
+    evaluationWindowStartSec: null,
+    evaluationWindowEndSec: null,
+    servingBeamIdentity: null,
     perUserContributions: null,
     errorCode,
   };
@@ -193,6 +237,7 @@ export class CanonicalEePublisherSession {
   private configIdentity: string | null = null;
   private seekRequestKey: string | undefined;
   private seekRequestKeyInitialized = false;
+  private evaluationWindowStartSec: number | null = null;
   private snapshot: CanonicalEeSnapshot = pendingCanonicalEeSnapshot(null);
 
   getSnapshot(): CanonicalEeSnapshot {
@@ -203,6 +248,7 @@ export class CanonicalEePublisherSession {
     this.accumulator.reset();
     this.previousSimTimeSec = null;
     this.baselineRequired = true;
+    this.evaluationWindowStartSec = null;
     this.snapshot = pendingCanonicalEeSnapshot(null);
   }
 
@@ -210,6 +256,7 @@ export class CanonicalEePublisherSession {
     this.accumulator.reset();
     this.previousSimTimeSec = null;
     this.baselineRequired = true;
+    this.evaluationWindowStartSec = null;
     if (simTimeSec !== undefined && Number.isFinite(simTimeSec) && simTimeSec >= 0) {
       this.accumulator.seek(simTimeSec);
     }
@@ -253,7 +300,7 @@ export class CanonicalEePublisherSession {
         const instantaneous = computeBeamshiftCanonicalEe(input);
         this.previousSimTimeSec = simTimeSec;
         this.baselineRequired = false;
-        this.snapshot = projectCanonicalEeSnapshot(instantaneous, 0, null);
+        this.snapshot = projectCanonicalEeSnapshot(instantaneous, 0, null, null, null);
         return this.snapshot;
       } catch (error) {
         return this.recordInvalid(simTimeSec, error);
@@ -269,7 +316,7 @@ export class CanonicalEePublisherSession {
         const instantaneous = computeBeamshiftCanonicalEe(input);
         this.previousSimTimeSec = simTimeSec;
         this.baselineRequired = false;
-        this.snapshot = projectCanonicalEeSnapshot(instantaneous, 0, null);
+        this.snapshot = projectCanonicalEeSnapshot(instantaneous, 0, null, null, null);
         return this.snapshot;
       } catch (error) {
         return this.recordInvalid(simTimeSec, error);
@@ -277,12 +324,18 @@ export class CanonicalEePublisherSession {
     }
 
     try {
+      const previousFrameTimeSec = this.previousSimTimeSec;
       const appended = this.accumulator.append(input, dt);
       this.previousSimTimeSec = simTimeSec;
+      if (this.evaluationWindowStartSec === null) {
+        this.evaluationWindowStartSec = previousFrameTimeSec;
+      }
       this.snapshot = projectCanonicalEeSnapshot(
         appended.instantaneous,
         appended.evaluation.sampleCount,
         appended.evaluation.sampleCount > 0 ? appended.evaluation.eeEvalMbitPerJ : null,
+        appended.evaluation,
+        this.evaluationWindowStartSec,
       );
       return this.snapshot;
     } catch (error) {

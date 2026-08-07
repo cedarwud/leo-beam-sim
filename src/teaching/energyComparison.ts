@@ -6,8 +6,8 @@
  * must supply the two snapshots and this module only compares them.
  */
 
-export const CLASSROOM_BASELINE_TX_POWER_DBM = 24 as const;
-export const CLASSROOM_CANDIDATE_TX_POWER_DBM = 23 as const;
+export const CLASSROOM_BASELINE_TX_POWER_DBM = 50 as const;
+export const CLASSROOM_CANDIDATE_TX_POWER_DBM = 35 as const;
 
 export type ClassroomEnergyComparisonArmRole = 'baseline' | 'candidate';
 
@@ -25,6 +25,14 @@ export type ClassroomEnergyComparisonArm = Readonly<{
   readonly runEeMbitPerJ: number;
   readonly lowSinrThresholdDb: number;
   readonly handoverCount: number;
+  /** Raw service evidence retained beside the aggregate comparison values. */
+  readonly servingLoad: number;
+  readonly servingSinrDb: number | null;
+  readonly throughputMbps: number;
+  readonly serviceStatus: string;
+  readonly serviceIdentity: string;
+  readonly producerStatus: string;
+  readonly absenceReason: string | null;
 }>;
 
 /** The sole authority for the classroom qualification thresholds. */
@@ -196,6 +204,33 @@ function validateArm(
     addReason(reasons, 'INVALID_CONTEXT_KEY');
   }
 
+  const rawLoad = rawArm.servingLoad;
+  if (rawLoad === undefined || rawLoad === null) {
+    addReason(reasons, 'MISSING_VALUE');
+  } else if (!isFiniteNumber(rawLoad)) {
+    addReason(reasons, 'NON_FINITE_VALUE');
+  } else if (rawLoad < 0) {
+    addReason(reasons, 'NEGATIVE_VALUE');
+  }
+  const rawSinr = rawArm.servingSinrDb;
+  if (rawSinr !== null && rawSinr !== undefined && !isFiniteNumber(rawSinr)) {
+    addReason(reasons, 'NON_FINITE_VALUE');
+  }
+  const rawThroughput = rawArm.throughputMbps;
+  if (rawThroughput === undefined || rawThroughput === null) {
+    addReason(reasons, 'MISSING_VALUE');
+  } else if (!isFiniteNumber(rawThroughput)) {
+    addReason(reasons, 'NON_FINITE_VALUE');
+  } else if (rawThroughput < 0) {
+    addReason(reasons, 'NEGATIVE_VALUE');
+  }
+  for (const field of ['serviceStatus', 'serviceIdentity', 'producerStatus'] as const) {
+    const fieldValue = rawArm[field];
+    if (typeof fieldValue !== 'string' || fieldValue.length === 0) {
+      addReason(reasons, 'MISSING_VALUE');
+    }
+  }
+
   if (reasons.length > 0) return { arm: null, reasonCodes: reasons };
   return {
     arm: rawArm as unknown as ClassroomEnergyComparisonArm,
@@ -228,7 +263,7 @@ function withheldResult(
 }
 
 /**
- * Compares the frozen 24 dBm baseline arm with the frozen 23 dBm candidate arm.
+ * Compares the frozen 50 dBm baseline arm with the frozen 35 dBm candidate arm.
  * All identity/configuration/window comparisons are exact (`===`); this API
  * intentionally exposes no implicit numeric tolerance.
  */
@@ -321,4 +356,3 @@ export function compareClassroomEnergyArms(
     reasonCodes: EMPTY_REASON_CODES,
   });
 }
-

@@ -246,6 +246,9 @@ test('publisher preserves every producer per-user field without recomputation', 
       status: user.status,
       satId: user.satId,
       cellId: user.cellId,
+      beamIdentity: user.satId !== null && user.cellId !== null
+        ? `${user.satId}#cell${user.cellId}`
+        : null,
       assignedBeamLoad: user.assignedBeamLoad,
       allocatedBandwidthMHz: user.allocatedBandwidthMHz,
       sinrDb: user.sinrDb,

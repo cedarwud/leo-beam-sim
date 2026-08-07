@@ -48,6 +48,8 @@ export interface CanonicalEeUserContribution {
   /** Producer-backed serving identity; null means the field is unavailable. */
   readonly satId?: string | null;
   readonly cellId?: number | null;
+  /** Typed serving beam/cell identity; null means no service identity. */
+  readonly beamIdentity?: string | null;
   /** Assigned active-beam load U used by the producer's bandwidth split. */
   readonly assignedBeamLoad?: number;
   readonly allocatedBandwidthMHz?: number;
@@ -67,6 +69,18 @@ export interface CanonicalEeSnapshot {
   /** Absent until at least one positive-duration sample is integrated. */
   readonly eeEvalMbitPerJ: number | null;
   readonly evaluationSampleCount: number;
+  /** Last producer frame represented by the instantaneous readout. */
+  readonly frameSimTimeSec: number | null;
+  /** Actual RF output and governed rated cap, kept as separate fields. */
+  readonly actualRfOutputW: number | null;
+  readonly ratedRfOutputW: number | null;
+  /** Ratio-of-sums totals and the explicit accumulated window boundary. */
+  readonly evaluationDataMbit: number | null;
+  readonly evaluationEnergyJ: number | null;
+  readonly evaluationWindowStartSec: number | null;
+  readonly evaluationWindowEndSec: number | null;
+  /** Primary serving beam identity for the visible canonical sample. */
+  readonly servingBeamIdentity: string | null;
   readonly perUserContributions: readonly CanonicalEeUserContribution[] | null;
   readonly errorCode: CanonicalEeErrorCode | null;
 }
@@ -80,6 +94,14 @@ export function createPendingCanonicalEeSnapshot(): CanonicalEeSnapshot {
     contributionSumMbitPerJ: null,
     eeEvalMbitPerJ: null,
     evaluationSampleCount: 0,
+    frameSimTimeSec: null,
+    actualRfOutputW: null,
+    ratedRfOutputW: null,
+    evaluationDataMbit: null,
+    evaluationEnergyJ: null,
+    evaluationWindowStartSec: null,
+    evaluationWindowEndSec: null,
+    servingBeamIdentity: null,
     perUserContributions: null,
     errorCode: null,
   };

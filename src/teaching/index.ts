@@ -64,7 +64,10 @@ export {
   type BeamshiftCanonicalUeStatus,
 } from './beamshiftCanonicalEe';
 
-export type { TeachingEnergyReadout } from './readout';
+export type {
+  TeachingEnergyReadout,
+  TeachingT3FixedComparisonReadout,
+} from './readout';
 
 export {
   TEACHING_CLAIM_LABEL,
@@ -90,4 +93,14 @@ export {
   type ClassroomEnergyComparisonThresholds,
 } from './energyComparison';
 
-export type { ExperimentRecord } from './experimentRecord';
+export {
+  experimentRecordToCsv,
+  experimentRecordToJson,
+  findExperimentRecordNonFiniteFields,
+  validateExperimentRecord,
+  type ExperimentRecord,
+  type ExperimentRecordFieldMap,
+  type ExperimentRecordScalar,
+  type ExperimentTaskId,
+  type ExperimentRecordUserRow,
+} from './experimentRecord';
