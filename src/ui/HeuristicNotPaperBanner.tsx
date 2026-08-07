@@ -55,7 +55,7 @@ const bannerStyle: CSSProperties = {
   background: HEURISTIC_NOT_PAPER_BANNER_BG_COLOR,
   color: HEURISTIC_NOT_PAPER_BANNER_FG_COLOR,
   padding: '8px 16px',
-  fontSize: 13,
+  fontSize: 15,
   fontWeight: 600,
   letterSpacing: 0.2,
   textAlign: 'center',
@@ -70,7 +70,7 @@ const bannerStyle: CSSProperties = {
 // UE so the demo never implies it drives the whole served population.
 const scopeNoteStyle: CSSProperties = {
   marginTop: 2,
-  fontSize: 11,
+  fontSize: 13,
   fontWeight: 400,
   letterSpacing: 0.1,
 };

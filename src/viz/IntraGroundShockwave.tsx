@@ -2,8 +2,8 @@ import { useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
-  HANDOVER_SOURCE_COLOR,
-  HANDOVER_TARGET_COLOR,
+  INTRA_HANDOVER_SOURCE_COLOR,
+  INTRA_HANDOVER_TARGET_COLOR,
 } from '../constants/beamRoleTokens';
 import type { RuntimeConfig, VizFrame, VizIntraHandoverEvent } from '../scene/types';
 
@@ -125,7 +125,7 @@ function IntraGroundShockwaveMesh({
   }, [footprintRadius]);
 
   const sourceMat = useMemo(() => new THREE.MeshBasicMaterial({
-    color: HANDOVER_SOURCE_COLOR,
+    color: INTRA_HANDOVER_SOURCE_COLOR,
     transparent: true,
     opacity: reducedMotion ? REDUCED_MOTION_SOURCE_OPACITY : SOURCE_OPACITY_START,
     depthWrite: false,
@@ -134,7 +134,7 @@ function IntraGroundShockwaveMesh({
   }), [reducedMotion]);
 
   const targetMat = useMemo(() => new THREE.MeshBasicMaterial({
-    color: HANDOVER_TARGET_COLOR,
+    color: INTRA_HANDOVER_TARGET_COLOR,
     transparent: true,
     opacity: reducedMotion ? REDUCED_MOTION_TARGET_OPACITY : 0,
     depthWrite: false,

@@ -4,8 +4,9 @@ import { Line, Text } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
-  HANDOVER_SOURCE_COLOR,
   HANDOVER_TARGET_COLOR,
+  INTRA_HANDOVER_SOURCE_COLOR,
+  INTRA_HANDOVER_TARGET_COLOR,
   INTER_HANDOVER_COLOR,
 } from '../constants/beamRoleTokens';
 import type {
@@ -180,12 +181,13 @@ function IntraStoryEvent({ event }: { readonly event: HandoverStoryEvent }) {
       }}
     >
       <group position={[event.ground.x, STORY_Y + 0.6, event.ground.z]}>
-        {ringMesh(sourceOuter, sourceOuter + 3.2, HANDOVER_SOURCE_COLOR, 0.78, 45)}
-        {ringMesh(targetOuter, targetOuter + 4.8, HANDOVER_TARGET_COLOR, 0.9, 46)}
+        {/* Intra story: same-satellite target wears the orange, not candidate blue. */}
+        {ringMesh(sourceOuter, sourceOuter + 3.2, INTRA_HANDOVER_SOURCE_COLOR, 0.78, 45)}
+        {ringMesh(targetOuter, targetOuter + 4.8, INTRA_HANDOVER_TARGET_COLOR, 0.9, 46)}
       </group>
       <Line
         points={arcPoints}
-        color={HANDOVER_TARGET_COLOR}
+        color={INTRA_HANDOVER_TARGET_COLOR}
         lineWidth={4.8}
         transparent
         opacity={0.95}
@@ -195,7 +197,7 @@ function IntraStoryEvent({ event }: { readonly event: HandoverStoryEvent }) {
       <PulseDot curve={pulseCurve} color="#ffffff" radius={3.2} renderOrder={49} />
       <Text
         position={[event.ground.x, STORY_Y + event.radiusWorld * 1.05, event.ground.z]}
-        fontSize={8.5}
+        fontSize={10.5}
         color="#fff7ed"
         anchorX="center"
         anchorY="middle"
@@ -288,7 +290,7 @@ function InterStoryEvent({
       ) : null}
       <Text
         position={[event.ground.x, STORY_Y + event.radiusWorld * 1.18, event.ground.z]}
-        fontSize={8.5}
+        fontSize={10.5}
         color="#f5e8ff"
         anchorX="center"
         anchorY="middle"

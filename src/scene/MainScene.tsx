@@ -63,10 +63,24 @@ import {
   resolveSinrLiveNonServingConeItems,
   resolveTriggeredIntraConeItems,
   resolveCandidateBeamConeItems,
+  resolveTopServingFocusSatIds,
   type SinrLiveCellPlacement,
 } from '../viz/SinrLiveCellBeamCones';
-import { DEFAULT_BEAM_DISPLAY_SPEC, resolveBeamFocusSatIds, type BeamDisplaySpec } from './beamDisplaySpec';
+import {
+  DEFAULT_BEAM_DISPLAY_SPEC,
+  resolveBeamFocusSatIds,
+  resolveTriggeredHandoverTargetColor,
+  type BeamDisplaySpec,
+} from './beamDisplaySpec';
 import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord, type SinrLiveCellHandoverEvent } from './sinrLiveCellModel';
+import { MANUAL_HANDOVER_DISPLAY_MS, resolveManualHandoverDemoEvent } from './manualHandoverDemo';
+import {
+  annotateOtherHandoverDisplayUes,
+  filterOtherHandoverDisplayUes,
+  selectOtherHandoverUeIds,
+} from './otherHandoverUeSelector';
+import { resolveRecentPrimaryIntraHandoverEvent } from './intraHandoverVisualState';
+import { resolveHandoverConeEnvelope } from '../constants/sinrLiveConeStyle';
 import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
 import { BeamLoadUploadParticles } from '../viz/BeamLoadUploadParticles';
@@ -145,6 +159,103 @@ interface ArtifactSceneContentProps {
 
 const CAMERA_TWEEN_DURATION_MS = 600;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
+/**
+ * How many satellites the beam-cone focus falls back to when the protagonist has NO
+ * serving satellite this slot (see the `sinrLiveTargetSatIds` F4 note). Bounded on
+ * purpose: the point is "the viewport is never beamless", not "draw everything" —
+ * 2 matches the ≤2 breadth the W9 display wiring already allows.
+ */
+const SINR_LIVE_EMPTY_FOCUS_FALLBACK_SATS = 2;
+
+/**
+ * How often the manual-handover demonstration republishes its wall clock (ms).
+ *
+ * The demonstration is a 6 s wall-clock animation, so its progress needs a CLOCK, and
+ * that clock has to be a re-render (the envelope is derived in the component body). At
+ * 60 fps a per-frame `setState` would be 360 renders — and `triggeredIntraConeItems`'s
+ * memo has a 14-entry dep array, so each one is a full cone recompute. 50 ms (~20 Hz) is
+ * far above the perceptual threshold for a fade that lasts seconds, at ~1/3 the cost.
+ */
+const MANUAL_HANDOVER_TICK_INTERVAL_MS = 50;
+
+/** The manual-handover demonstration's per-frame tick bookkeeping (see {@link resolveManualHandoverTick}). */
+interface ManualHandoverTickState {
+  /** Which request this tick belongs to — a NEW button press restarts the clock. */
+  readonly requestId: number;
+  /** Wall clock at the last published tick. */
+  readonly publishedAtMs: number;
+  /** The window has elapsed and the final frame was published — go quiet. */
+  readonly settled: boolean;
+}
+
+/**
+ * PURE tick decision for the manual-handover demonstration (2026-08-06 bug fix).
+ *
+ * THE BUG: `App.requestManualHandover` calls `playback.setPaused(true)` BEFORE arming the
+ * request, so from that moment `useSimulation` publishes no frames and NOTHING re-renders
+ * MainScene for the whole 6 s window. The demonstration's age was derived from
+ * `performance.now()` in the component BODY, which therefore evaluated exactly once, at
+ * age ≈ 0 — so `resolveManualHandoverConeEnvelope` was pinned to phase 1
+ * (`fromOpacity = peak`, `toOpacity = 0`) and the audience saw ONE beam for six seconds
+ * and then nothing. The four-phase envelope was never wrong; it was never ADVANCED.
+ *
+ * THE CLOCK: R3F's `useFrame`, which runs on the Canvas render loop
+ * (`frameloop="always"` on every live lane). `paused` gates `stepRuntimeFrame`, NOT the
+ * R3F loop — so this keeps ticking precisely while the sim is stopped, which is exactly
+ * the window that needs it.
+ *
+ * Pure + exported so the throttle/lifecycle can be executed and VALUE-asserted headlessly
+ * (a React-free simulated frame loop) instead of inferred from reading the component.
+ *
+ * Returns the next tick state and whether the caller should publish a re-render:
+ *  - request disarmed → clear the state, publish once (so the last frame drops the cue);
+ *  - a new/changed requestId → publish immediately (frame 1 of the demonstration);
+ *  - past the display window → publish ONE final frame, then `settled` silences it (no
+ *    permanent per-frame setState after the demonstration ends);
+ *  - otherwise publish only when `intervalMs` has elapsed since the last publish.
+ */
+export function resolveManualHandoverTick(input: {
+  readonly requestId: number | undefined;
+  readonly startedAtMs: number | undefined;
+  readonly nowMs: number;
+  readonly displayMs: number;
+  readonly previous: ManualHandoverTickState | null;
+  readonly intervalMs?: number;
+}): { readonly next: ManualHandoverTickState | null; readonly publish: boolean } {
+  const intervalMs = input.intervalMs ?? MANUAL_HANDOVER_TICK_INTERVAL_MS;
+  if (input.requestId === undefined || input.startedAtMs === undefined) {
+    // Disarmed. Publish once IF we were ticking, so the frame that drops the cue draws.
+    return { next: null, publish: input.previous !== null };
+  }
+  const previous = input.previous;
+  if (previous === null || previous.requestId !== input.requestId) {
+    return { next: { requestId: input.requestId, publishedAtMs: input.nowMs, settled: false }, publish: true };
+  }
+  if (input.nowMs - input.startedAtMs > input.displayMs) {
+    if (previous.settled) return { next: previous, publish: false };
+    return { next: { ...previous, publishedAtMs: input.nowMs, settled: true }, publish: true };
+  }
+  if (input.nowMs - previous.publishedAtMs < intervalMs) return { next: previous, publish: false };
+  return { next: { requestId: input.requestId, publishedAtMs: input.nowMs, settled: false }, publish: true };
+}
+
+/**
+ * PURE manual-handover progress: wall-clock age → the envelope's 0…1 progress ratio.
+ * Exported so "does the demonstration actually advance while the sim is paused?" is an
+ * executable question. `startedAtMs === undefined` (disarmed) yields an infinite age, which
+ * is what makes `manualHandoverActive` false.
+ */
+export function resolveManualHandoverProgress(input: {
+  readonly startedAtMs: number | undefined;
+  readonly nowMs: number;
+  readonly displayMs: number;
+}): { readonly ageMs: number; readonly progressSec: number; readonly progressRatio: number } {
+  const ageMs = input.startedAtMs === undefined
+    ? Number.POSITIVE_INFINITY
+    : Math.max(0, input.nowMs - input.startedAtMs);
+  const progressSec = Math.min(input.displayMs / 1000, ageMs / 1000);
+  return { ageMs, progressSec, progressRatio: progressSec / (input.displayMs / 1000) };
+}
 
 interface CameraTweenState {
   preset: CameraPreset | null;
@@ -564,6 +675,11 @@ function ArtifactSceneContent({
         uavVisible="0"
         uePrimaryAnchorMode={runtime.uePrimaryAnchorMode ?? 'observer'}
         firstUePosition={formatScenePosition(sceneFrame.ues[0]?.worldPos)}
+        otherHandoverFilterEnabled="0"
+        otherHandoverPendingUeCount={0}
+        otherHandoverSelectedUeCount={0}
+        otherHandoverCueUeCount={0}
+        otherHandoverSelectedUeIds=""
         renderedUeCount={sceneFrame.ues.filter(u => u.worldPos !== undefined).length}
         beamLoadContentionUeCount={0}
         visualSatelliteAltitude={String(sceneFrame.geometry.visualSatelliteAltitude ?? '')}
@@ -717,7 +833,10 @@ function SceneContent({
       target: [0, 0, 0] as [number, number, number],
     },
     oblique: {
-      position: [0, 800 * alpha, 1000 * alpha] as [number, number, number],
+      // Keep the live default pulled back after the display-only satellite
+      // altitude increase; NTPU_CONFIG has visualAlpha < 1, so use a larger
+      // base pose rather than letting alpha return to the old close-up.
+      position: [0, 1400 * alpha, 1850 * alpha] as [number, number, number],
       target: [0, 0, 0] as [number, number, number],
     },
     chase: {
@@ -778,6 +897,39 @@ function SceneContent({
   const sceneFrame = useMemo(
     () => propSceneFrame ?? liveSimToScene(sim, sceneGeometry),
     [propSceneFrame, sim, sceneGeometry],
+  );
+  const selectedOtherHandoverUeIds = useMemo(
+    () => new Set(selectOtherHandoverUeIds({
+      ues: sim.perUePositions ?? [],
+      primaryUeId: sceneFrame.ues[0]?.id,
+      triggerTimeSec: profile.handover.triggerTimeSec,
+      maxOtherHandoverUes: sceneConfig.maxOtherHandoverUes,
+    })),
+    [
+      profile.handover.triggerTimeSec,
+      sceneConfig.maxOtherHandoverUes,
+      sceneFrame.ues,
+      sim.perUePositions,
+    ],
+  );
+  const displayedUes = useMemo(() => {
+    const primaryUeId = sceneFrame.ues[0]?.id;
+    const visibleUes = beamDisplaySpec.showOtherHandoverUes
+      ? filterOtherHandoverDisplayUes(sceneFrame.ues, primaryUeId, selectedOtherHandoverUeIds)
+      : sceneFrame.ues;
+    return annotateOtherHandoverDisplayUes(
+      visibleUes,
+      primaryUeId,
+      beamDisplaySpec.showOtherHandoverUes ? selectedOtherHandoverUeIds : new Set(),
+    );
+  }, [
+    beamDisplaySpec.showOtherHandoverUes,
+    sceneFrame.ues,
+    selectedOtherHandoverUeIds,
+  ]);
+  const pendingOtherHandoverUeCount = useMemo(
+    () => (sim.perUePositions ?? []).filter(ue => ue.pendingTargetSatId !== null).length,
+    [sim.perUePositions],
   );
   // P1c §E: live-default display caps per SDD §13 Cat A. Replay path will
   // wire mode-appropriate defaults (default 4 sats / 4 beams / 4 events for
@@ -1087,6 +1239,73 @@ function SceneContent({
   const primaryServingRecord = sim.sinrLiveCells
     ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
     : null;
+  const manualHandoverEvent = useMemo(
+    () => runtime.manualHandoverRequestId === undefined || runtime.manualHandoverKind === undefined
+      ? null
+      : resolveManualHandoverDemoEvent(
+        runtime.manualHandoverKind,
+        sim.sinrLiveCells,
+        sim.perUePositions[0]?.id,
+        [...viz.coneApexWorldById.keys()],
+      ),
+    [
+      runtime.manualHandoverRequestId,
+      runtime.manualHandoverKind,
+      sim.sinrLiveCells,
+      sim.perUePositions,
+      viz.coneApexWorldById,
+    ],
+  );
+  // The demonstration's wall CLOCK. It must be state, not a bare `performance.now()` read:
+  // the component body only re-evaluates on a render, and the button PAUSES the sim before
+  // arming the request, so no frame publish ever comes to trigger one. Driven by the
+  // throttled `useFrame` tick below (R3F's loop is independent of `paused`), so the
+  // envelope actually walks 單 → 雙 → 單 instead of freezing on phase 1.
+  const [manualHandoverNowMs, setManualHandoverNowMs] = useState<number | null>(null);
+  const manualHandoverTickRef = useRef<ManualHandoverTickState | null>(null);
+  useFrame(() => {
+    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const { next, publish } = resolveManualHandoverTick({
+      requestId: runtime.manualHandoverRequestId,
+      startedAtMs: runtime.manualHandoverStartedAtMs,
+      nowMs,
+      displayMs: MANUAL_HANDOVER_DISPLAY_MS,
+      previous: manualHandoverTickRef.current,
+    });
+    manualHandoverTickRef.current = next;
+    if (publish) setManualHandoverNowMs(next === null ? null : nowMs);
+  });
+  const manualHandoverProgress = resolveManualHandoverProgress({
+    startedAtMs: runtime.manualHandoverStartedAtMs,
+    // Before the first tick lands (the very frame the button arms the request) fall back to
+    // a direct clock read, so frame 1 is age ≈ 0 rather than a stale value from a prior run.
+    nowMs: manualHandoverNowMs ?? (typeof performance === 'undefined' ? Date.now() : performance.now()),
+    displayMs: MANUAL_HANDOVER_DISPLAY_MS,
+  });
+  const manualHandoverAgeMs = manualHandoverProgress.ageMs;
+  // F1 (2026-08-06): `manualHandoverEvent !== null` is part of the ACTIVE condition,
+  // not just of the draw condition. `manualHandoverActive` blanks every other beam
+  // layer (serving / candidate / non-serving / pulse / footprints / callouts) so the
+  // demonstration cue owns the frame — but the cue itself only draws when
+  // `manualHandoverEvent` resolved. When the two disagreed (event null, active true)
+  // the button produced a fully BLACK scene for the whole display window: everything
+  // suppressed, nothing put back. Deriving both from the same condition makes that
+  // state unreachable — no event, no suppression. No cycle: `manualHandoverEvent`
+  // (above) does not read `manualHandoverActive`.
+  const manualHandoverActive = runtime.manualHandoverRequestId !== undefined
+    && runtime.manualHandoverKind !== undefined
+    && manualHandoverEvent !== null
+    && manualHandoverAgeMs <= MANUAL_HANDOVER_DISPLAY_MS;
+  const manualHandoverProgressSec = manualHandoverProgress.progressSec;
+  // The explicit demo is UE-centred, not cell-centred: both transition cones
+  // must terminate at the red primary UE so the audience can see that the link
+  // is changing for this UE rather than jumping between unrelated cells.
+  const manualHandoverGroundTarget = useMemo(() => {
+    const worldPos = sceneFrame.ues[0]?.worldPos;
+    return worldPos === undefined
+      ? new THREE.Vector3(sim.ueGroundX, 0, sim.ueGroundZ)
+      : new THREE.Vector3(worldPos[0], worldPos[1], worldPos[2]);
+  }, [sceneFrame.ues, sim.ueGroundX, sim.ueGroundZ]);
 
   // SEMANTIC scene focus (docs/sinr-live-semantic-beam-colour-sdd.md): the broad serving
   // fan / non-serving / footprint / callout / pulse layers focus to the HERO serving
@@ -1101,16 +1320,79 @@ function SceneContent({
   // (default 'heroOnly' = the serving sat only, byte-identical with the old hardcoded memo).
   // `null` = 'allServing' breadth (no focus filter). Keyed on focusScope + the record's sat
   // ids so the Set identity (and the cone memos) stays stable across unrelated re-renders.
+  //
+  // F4 (2026-08-06) — the EMPTY-FOCUS fallback. `resolveBeamFocusSatIds` returns an
+  // EMPTY set whenever the protagonist has no serving satellite this slot (beam
+  // hopping under K<N, a coverage gap, the first frames before warm-up). Every cone
+  // layer below then short-circuits to `[]` and the viewport goes completely BLACK —
+  // even while thirty-odd OTHER cells are being served right there. Owner: 「應該隨時
+  // 都要有波束才對」. So when the focus set comes back empty we fall back to the top
+  // SERVING satellites by served-cell count (`resolveTopServingFocusSatIds`, bounded
+  // to 2 — the same ≤2 breadth the W9 wiring lock allows), never to `null`, which
+  // would be the unbounded all-sat firehose the original comment warns against.
+  // Display-only (Rule#6): this picks what is DRAWN, it reads serving truth and
+  // changes none of it. An all-unserved frame still yields an empty set → still
+  // draws nothing, which is then honest rather than a bug.
+  // Identity note: the memo now also keys on the cell frame (the fallback needs it),
+  // so the Set identity is per-frame in fallback mode. Every consumer memo below
+  // already keys on `sim.sinrLiveCells`, so this adds no recompute.
   const sinrLiveTargetSatIds = useMemo(
-    () => resolveBeamFocusSatIds(beamDisplaySpec.focusScope, primaryServingRecord),
+    () => {
+      const focus = resolveBeamFocusSatIds(beamDisplaySpec.focusScope, primaryServingRecord);
+      if (focus !== null && focus.size === 0) {
+        return resolveTopServingFocusSatIds(sim.sinrLiveCells, SINR_LIVE_EMPTY_FOCUS_FALLBACK_SATS, null);
+      }
+      return focus;
+    },
     [
       beamDisplaySpec.focusScope,
       primaryServingRecord?.servingSatId,
+      sim.sinrLiveCells,
+    ],
+  );
+
+  // The ONE appearance palette for every cone + footprint mount (2026-08-06 consolidation).
+  // Built once from `beamDisplaySpec` and handed to all five cone mounts + both footprint
+  // mounts, so a mount no longer carries its own colour/opacity precedence — it declares
+  // its LAYER, each cone's ROLE is derived, and the role decides colour + opacity in the
+  // single decision point `resolveSinrLiveConeRoleStyle`. Every value here is a spec field,
+  // so the prompt-editable control surface is unchanged.
+  const sinrLiveConePalette = useMemo(
+    () => ({
+      heroColor: beamDisplaySpec.heroConeColor,
+      servingFanColor: beamDisplaySpec.servingFanConeColor,
+      backgroundColor: beamDisplaySpec.backgroundConeColor,
+      candidateColor: beamDisplaySpec.candidateConeColor,
+      candidateFanColor: beamDisplaySpec.candidateFanConeColor,
+      pulseIntraColor: beamDisplaySpec.pulseIntraColor,
+      pulseInterColor: beamDisplaySpec.pulseInterColor,
+      heroOpacity: beamDisplaySpec.heroConeOpacity,
+      servingConeOpacity: beamDisplaySpec.servingConeOpacity,
+      backgroundOpacity: beamDisplaySpec.backgroundConeOpacity,
+      candidateOpacity: beamDisplaySpec.candidateConeOpacity,
+      candidateFanOpacity: beamDisplaySpec.candidateFanConeOpacity,
+      nonServingOpacity: beamDisplaySpec.nonServingConeOpacity,
+    }),
+    [
+      beamDisplaySpec.heroConeColor,
+      beamDisplaySpec.servingFanConeColor,
+      beamDisplaySpec.backgroundConeColor,
+      beamDisplaySpec.candidateConeColor,
+      beamDisplaySpec.candidateFanConeColor,
+      beamDisplaySpec.pulseIntraColor,
+      beamDisplaySpec.pulseInterColor,
+      beamDisplaySpec.heroConeOpacity,
+      beamDisplaySpec.servingConeOpacity,
+      beamDisplaySpec.backgroundConeOpacity,
+      beamDisplaySpec.candidateConeOpacity,
+      beamDisplaySpec.candidateFanConeOpacity,
+      beamDisplaySpec.nonServingConeOpacity,
     ],
   );
 
   const sinrLiveCellBeamConeItems = useMemo(
     () => {
+      if (manualHandoverActive) return [];
       if (!showSinrLiveCellBeams) return [];
       // Other-beams power-view (showNonServingCones) → every serving sat (full
       // breadth). Default → focus to the HERO serving satellite ONLY. Empty target
@@ -1128,6 +1410,7 @@ function SceneContent({
     },
     [
       showSinrLiveCellBeams,
+      manualHandoverActive,
       sim.sinrLiveCells,
       sinrLiveCellPlacementById,
       viz.coneApexWorldById,
@@ -1135,16 +1418,19 @@ function SceneContent({
       sinrLiveTargetSatIds,
     ],
   );
-  // SEMANTIC candidate cue (Option 1, docs/sinr-live-semantic-beam-colour-sdd.md): the
-  // SINGLE incoming beam — the imminent inter-handover TARGET sat (`pendingTargetSatId`)
-  // pointing at the protagonist's EARTH-FIXED serving cell (the same ground cell a
-  // different sat would take over). ONE dim blue cone (NOT the candidate sat's whole
-  // multibeam fan), so the green serving link stays the hero and the blue reads as "your
-  // NEXT link". The target sat is deliberately absent from `sinrLiveTargetSatIds` above
-  // (so it floods none of the serving / non-serving / footprint / callout layers); this
-  // single cone is the only thing it draws. Display-only (Rule#6).
+  // SEMANTIC candidate cue: the imminent inter-handover TARGET sat (`pendingTargetSatId`)
+  // and the beams it is painting. 2026-08-06 OWNER DECISION — it now draws that satellite's
+  // own BOUNDED multibeam fan, not a single cone (「候選波束…也要有其他波束打在其他地方，不能
+  // 只有一個波束」). The cone on YOUR cell keeps the bright candidate blue; the rest of that
+  // ONE satellite's beams are the darker, fainter candidate-fan role, so the serving link
+  // stays the brightest thing on screen. Bounded by `candidateFanMaxCones` over a single
+  // satId — it can never widen into the all-sat firehose. The target sat is still
+  // deliberately absent from `sinrLiveTargetSatIds` above (so it floods none of the serving
+  // / non-serving / callout layers); this fan is the only thing it draws. Display-only (Rule#6).
   const sinrLiveCandidateBeamConeItems = useMemo(
-    () => (showSinrLiveCellBeams
+    () => (manualHandoverActive
+      ? []
+      : showSinrLiveCellBeams
       ? resolveCandidateBeamConeItems({
         pendingTargetSatId: primaryServingRecord?.pendingTargetSatId,
         servingSatId: primaryServingRecord?.servingSatId,
@@ -1152,16 +1438,21 @@ function SceneContent({
         placementByCellId: sinrLiveCellPlacementById,
         satelliteWorldById: viz.coneApexWorldById,
         frequencyReuse: profile.beams.frequencyReuse,
+        cellFrame: sim.sinrLiveCells,
+        maxFanCones: beamDisplaySpec.candidateFanMaxCones,
       })
       : []),
     [
       showSinrLiveCellBeams,
+      manualHandoverActive,
       primaryServingRecord?.pendingTargetSatId,
       primaryServingRecord?.servingSatId,
       primaryServingRecord?.cellId,
       sinrLiveCellPlacementById,
       viz.coneApexWorldById,
       profile.beams.frequencyReuse,
+      sim.sinrLiveCells,
+      beamDisplaySpec.candidateFanMaxCones,
     ],
   );
   // W5 Beam-Info callouts: per-cell serving SINR (dB) keyed by cellId, for the
@@ -1189,6 +1480,7 @@ function SceneContent({
   // invisible-dep-array bug fix), so toggling either re-renders.
   const sinrLiveCellNonServingConeItems = useMemo(
     () => {
+      if (manualHandoverActive) return [];
       if (!showSinrLiveCellBeams) return [];
       if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds !== null && sinrLiveTargetSatIds.size === 0) return [];
       return resolveSinrLiveNonServingConeItems({
@@ -1200,6 +1492,7 @@ function SceneContent({
     },
     [
       showSinrLiveCellBeams,
+      manualHandoverActive,
       beamDisplaySpec.showNonServingCones,
       sim.sinrLiveCells,
       sinrLiveCellPlacementById,
@@ -1215,7 +1508,7 @@ function SceneContent({
   // so a handover on any serving sat draws even beyond the display cap. Display-only
   // read-out of truth (Rule#6); the serving decision is unchanged.
   const sinrLiveCellPulseConeItems = useMemo(
-    () => (showSinrLiveHandoverPulse
+    () => (showSinrLiveHandoverPulse && !manualHandoverActive
       ? resolveSinrLiveHandoverPulseConeItems({
         // SEMANTIC scene rule: only the HERO serving satellite draws the broad beam
         // layers, so the ambient handover pulse is FOCUSED to it (`sinrLiveTargetSatIds`,
@@ -1224,24 +1517,36 @@ function SceneContent({
         // beaming?" fix). The imminent-handover target is the separate blue candidate cone, not a pulse.
         // Display-only filter; the model's events are unchanged.
         recentHandoverEvents: (sim.sinrLiveCells?.recentHandoverEvents ?? []).filter(
-          e => sinrLiveTargetSatIds === null || !beamDisplaySpec.pulseFocusFollowsScope
-            || sinrLiveTargetSatIds.has(e.toSatId)
-            || (e.fromSatId !== null && sinrLiveTargetSatIds.has(e.fromSatId)),
-        ),
+            e => sinrLiveTargetSatIds === null || !beamDisplaySpec.pulseFocusFollowsScope
+              || sinrLiveTargetSatIds.has(e.toSatId)
+              || (e.fromSatId !== null && sinrLiveTargetSatIds.has(e.fromSatId)),
+          ),
         simTimeSec: sim.sinrLiveCells?.simTimeSec ?? 0,
         retentionSec: SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
         placementByCellId: sinrLiveCellPlacementById,
         satelliteWorldById: viz.coneApexWorldById,
         frequencyReuse: profile.beams.frequencyReuse,
+        // PER-SIDE focus gate (2026-08-06). The event filter above admits an event when
+        // EITHER end touches a focused sat — but an INTER handover's two ends are two
+        // DIFFERENT satellites, so the far end still lit a cone on a satellite that draws
+        // nothing else, for one of the other 99 UEs. Measured: 50% of all pulse cones, and
+        // 100% of the `from` sides, were exactly that. The gate keeps a side only when its
+        // OWN satellite is focused, or when the handover is the protagonist's (whose inter
+        // HO should show both ends — that is the story). Display-only (Rule#6).
+        focusSatIds: beamDisplaySpec.pulseFocusFollowsScope ? sinrLiveTargetSatIds : null,
+        protagonistUeId: sim.perUePositions[0]?.id ?? null,
       })
       : []),
-    [showSinrLiveHandoverPulse, sim.sinrLiveCells, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope],
+    [showSinrLiveHandoverPulse, manualHandoverActive, manualHandoverEvent, manualHandoverProgressSec, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope],
   );
   // beam-stage ① #5: the TRIGGERED intra flash. The ambient pulse above fades over
   // SIM-time (4 s retention → ~0.8 s wall-clock at the 5× demo speed → too brief to
   // read). The DELIBERATE jog handover (the PROTAGONIST's, `ueId === perUePositions[0].id`)
-  // instead gets a WALL-CLOCK 2.5 s fade with a from(warm)/to(cool) colour split, so the
-  // handover DIRECTION is legible and it reads as DISTINCT from the ambient pulse. Latched
+  // instead gets a WALL-CLOCK fade (`beamDisplaySpec.triggeredIntraSustainMs`) with a
+  // from(warm)/to(cool) colour split, so the handover DIRECTION is legible and it reads as
+  // DISTINCT from the ambient pulse. Since 2026-08-06 BOTH cues (this one and the MANUAL
+  // demonstration) walk the SAME five-phase `resolveHandoverConeEnvelope`; only the window
+  // differs (triggeredIntraSustainMs vs the longer MANUAL_HANDOVER_DISPLAY_MS). Latched
   // by ref (a new primary handover re-arms the wall-clock start; cleared after the sustain);
   // recomputed per frame on the same `sim.sinrLiveCells` cadence as the pulse, reading
   // `performance.now()` for the wall-clock age. Display-only read-out of the model's own
@@ -1249,11 +1554,63 @@ function SceneContent({
   const triggeredIntraLatchRef = useRef<{ event: SinrLiveCellHandoverEvent; startedAtMs: number } | null>(null);
   const triggeredIntraConeItems = useMemo(() => {
     if (!showSinrLiveHandoverPulse) { triggeredIntraLatchRef.current = null; return []; }
+    // Manual buttons use this same from/to renderer for BOTH kinds. It is an
+    // independent display cue, so it must not enter the model's recent-event log
+    // or compete with the ambient pulse layer.
+    if (manualHandoverActive && manualHandoverEvent) {
+      // FIVE-PHASE sequencing (2026-08-06). The manual cue used to hand BOTH cones one
+      // shared linear decay, so they appeared together and vanished together — the
+      // owner's 「2個同時連線，然後就結束了」. The envelope gives each cone its own alpha
+      // (serve → candidate fades in → both held → old fades out → settled), which is the
+      // actual shape of a handover. The REAL-handover branch below now walks the SAME
+      // envelope on its own shorter window, so the two cues read identically.
+      const envelope = resolveHandoverConeEnvelope(
+        manualHandoverProgressSec / (MANUAL_HANDOVER_DISPLAY_MS / 1000),
+        beamDisplaySpec.triggeredIntraPeakOpacity,
+      );
+      return resolveTriggeredIntraConeItems({
+        event: manualHandoverEvent,
+        fromOpacity: envelope.fromOpacity,
+        toOpacity: envelope.toOpacity,
+        fromColor: beamDisplaySpec.triggeredIntraFromColor,
+        toColor: resolveTriggeredHandoverTargetColor(manualHandoverEvent.kind, beamDisplaySpec),
+        placementByCellId: sinrLiveCellPlacementById,
+        satelliteWorldById: viz.coneApexWorldById,
+        frequencyReuse: profile.beams.frequencyReuse,
+        baseCenterOverride: manualHandoverGroundTarget,
+        fromBaseRadiusScale: 0.84,
+        toBaseRadiusScale: 1,
+      });
+    }
+    // CONCURRENCY, measured (2026-08-06) — why ONE latch is enough here. This layer is
+    // PROTAGONIST-ONLY: the filter below keeps `e.ueId === primaryUeId`, so the 99 other
+    // UEs handing over in the same frame never touch this ref (they are the ambient pulse
+    // layer's business, and that layer is per-event with its own keys). What CAN collide is
+    // the protagonist handing over twice inside one sustain window: the re-arm below then
+    // restarts the envelope at phase 1 and the first story is cut off mid-act.
+    //
+    // Measured (100 UEs, 240 x 5 s steps, four hobs profiles): the protagonist NEVER has
+    // more than ONE event in a single frame, so the selection below is never an arbitrary
+    // pick between rivals. Across profiles it re-arms 0–11 times per 1200 s; on three of
+    // the four the closest re-arm is 150 s+ of sim time and the window closes long first.
+    // hobs-2024-mobile-demo-aircraft is the outlier at a 5 s minimum gap, where above 1x
+    // playback a story WILL be cut off. The numbers live on the sustain const's doc comment
+    // in `src/constants/sinrLiveConeStyle.ts` (this file may not name that const:
+    // `validate:frontend:beam-display-spec-purity` holds MainScene to `beamDisplaySpec.*`).
+    //
+    // A MULTI-latch would not fix that and is deliberately NOT built: the protagonist has
+    // one link, so its back-to-back handovers are sequential, not concurrent — drawing two
+    // overlapping stories for one UE would be a lie. If the truncation ever needs fixing
+    // the honest shapes are a QUEUE (finish act 5, then start the next story) or simply
+    // accepting it, since a re-arm restarts at "one beam" and so degrades to "handovers are
+    // coming fast" rather than back to the lockstep blink this replaced.
     const primaryUeId = sim.perUePositions[0]?.id;
     const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
-    const primaryEvent = primaryUeId
-      ? sim.sinrLiveCells?.recentHandoverEvents.find(e => e.ueId === primaryUeId && e.fromCellId !== null) ?? null
-      : null;
+    const primaryEvent = resolveRecentPrimaryIntraHandoverEvent({
+      events: sim.sinrLiveCells?.recentHandoverEvents,
+      primaryUeId,
+      simTimeSec: sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec,
+    });
     const latched = triggeredIntraLatchRef.current;
     if (primaryEvent && (!latched || latched.event.sourceTimeSec !== primaryEvent.sourceTimeSec)) {
       triggeredIntraLatchRef.current = { event: primaryEvent, startedAtMs: nowMs };
@@ -1262,17 +1619,40 @@ function SceneContent({
     if (!cur) return [];
     const ageMs = nowMs - cur.startedAtMs;
     if (ageMs > beamDisplaySpec.triggeredIntraSustainMs) { triggeredIntraLatchRef.current = null; return []; }
-    const opacity = beamDisplaySpec.triggeredIntraPeakOpacity * (1 - ageMs / beamDisplaySpec.triggeredIntraSustainMs);
+    // REAL handover flash — the SAME five-phase envelope the manual demonstration walks
+    // (2026-08-06, owner: 「現在場上的 intra/inter handover 的呈現都要跟 show intra/inter 的
+    // 效果一樣，2個波束要呈現出兩個交接的效果」). It used to hand BOTH cones one shared linear
+    // decay (`fromOpacity: opacity, toOpacity: opacity`), so the two beams lit together and
+    // died together and there was no visible handOVER — just a synchronised blink under an
+    // "intra handover" badge. Now the old link holds while the new one fades in, both are
+    // held, then the old one releases: 單 → 雙 → 單.
+    //
+    // TIME HONESTY — this is a RETROSPECTIVE RE-ENACTMENT, not a live transmission. The
+    // cell model classifies a handover only AFTER it has happened, so `startedAtMs` is
+    // when the event was first OBSERVED, and the "candidate appears → trigger timer →
+    // switch" ordering is replayed forwards from that instant. The candidate really
+    // appeared BEFORE t=0, not at 19% of the animation. The ORDER is the teaching truth;
+    // the timing is not the wall-clock truth. Do not read this cue as a live timeline.
+    //
+    // Shape shared, length not: the manual demo spends MANUAL_HANDOVER_DISPLAY_MS (8 s,
+    // sim paused) on the envelope, this one spends the shorter
+    // `beamDisplaySpec.triggeredIntraSustainMs` (5 s) because it fires mid-playback and
+    // must finish before the protagonist's NEXT handover re-arms the latch below.
+    const envelope = resolveHandoverConeEnvelope(
+      ageMs / beamDisplaySpec.triggeredIntraSustainMs,
+      beamDisplaySpec.triggeredIntraPeakOpacity,
+    );
     return resolveTriggeredIntraConeItems({
       event: cur.event,
-      opacity,
+      fromOpacity: envelope.fromOpacity,
+      toOpacity: envelope.toOpacity,
       fromColor: beamDisplaySpec.triggeredIntraFromColor,
-      toColor: beamDisplaySpec.triggeredIntraToColor,
+      toColor: resolveTriggeredHandoverTargetColor(cur.event.kind, beamDisplaySpec),
       placementByCellId: sinrLiveCellPlacementById,
       satelliteWorldById: viz.coneApexWorldById,
       frequencyReuse: profile.beams.frequencyReuse,
     });
-  }, [showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, beamDisplaySpec.triggeredIntraSustainMs, beamDisplaySpec.triggeredIntraPeakOpacity, beamDisplaySpec.triggeredIntraFromColor, beamDisplaySpec.triggeredIntraToColor]);
+  }, [showSinrLiveHandoverPulse, manualHandoverActive, manualHandoverEvent, manualHandoverProgressSec, manualHandoverGroundTarget, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, beamDisplaySpec.triggeredIntraSustainMs, beamDisplaySpec.triggeredIntraPeakOpacity, beamDisplaySpec.triggeredIntraFromColor, beamDisplaySpec.triggeredIntraToColor, beamDisplaySpec.candidateConeColor]);
   const sinrLiveCellServedCount = showSinrLiveCellBeams
     ? sim.sinrLiveCells?.servedCellCount ?? 0
     : 0;
@@ -1510,7 +1890,12 @@ function SceneContent({
         uavVisible={showUav ? '1' : '0'}
         uePrimaryAnchorMode={runtime.uePrimaryAnchorMode ?? 'observer'}
         firstUePosition={formatScenePosition(sceneFrame.ues[0]?.worldPos)}
-        renderedUeCount={sceneFrame.ues.filter(u => u.worldPos !== undefined).length}
+        otherHandoverFilterEnabled={beamDisplaySpec.showOtherHandoverUes ? '1' : '0'}
+        otherHandoverPendingUeCount={pendingOtherHandoverUeCount}
+        otherHandoverSelectedUeCount={selectedOtherHandoverUeIds.size}
+        otherHandoverCueUeCount={displayedUes.filter(u => u.isOtherHandover === true).length}
+        otherHandoverSelectedUeIds={Array.from(selectedOtherHandoverUeIds).join(',')}
+        renderedUeCount={displayedUes.filter(u => u.worldPos !== undefined).length}
         beamLoadContentionUeCount={showModqnServiceAllocation ? beamLoadContentionUeCount : 0}
         visualSatelliteAltitude={String(sceneGeometry.visualSatelliteAltitude ?? '')}
         beamSatelliteCount={
@@ -1576,7 +1961,7 @@ function SceneContent({
       )}
 
       <GroundScene
-        ues={sceneFrame.ues
+        ues={displayedUes
           .filter((u) => u.worldPos !== undefined)
           .map((u, index) => {
             // The primary UE (index 0) stays the red focus anchor; the SINR
@@ -1593,12 +1978,18 @@ function SceneContent({
             const contention = beamLoadContentionEnabled
               ? beamLoadContention.byUeId.get(u.id)?.normalizedLoad ?? 0
               : undefined;
+            const isOtherHandover = u.isOtherHandover === true;
             return {
               id: u.id,
               worldPos: u.worldPos as readonly [number, number, number],
-              markerColor: mosaic?.markerColor ?? service?.markerColor,
-              markerEmissive: mosaic?.markerEmissive ?? service?.markerEmissive,
+              markerColor: isOtherHandover
+                ? '#facc15'
+                : mosaic?.markerColor ?? service?.markerColor,
+              markerEmissive: isOtherHandover
+                ? '#f59e0b'
+                : mosaic?.markerEmissive ?? service?.markerEmissive,
               contention,
+              isOtherHandover,
             };
           })}
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
@@ -1665,7 +2056,7 @@ function SceneContent({
           earth-fixed cell centres, so they were misaligned with the cones + UE membership (the
           lattice-phase ① shift widened the gap). The cell-truth footprint rings now render with
           the serving cones below (`SinrLiveCellFootprintRings`, gated showSinrLiveCellBeams). */}
-      {showLiveSceneEffects && (
+      {showLiveSceneEffects && !manualHandoverActive && (
         <HandoverLinks
           satellites={viz.displaySats}
           eventRoles={viz.eventRoles}
@@ -1690,7 +2081,7 @@ function SceneContent({
           pendingEnabled={runtime.effectsEnabled.pendingRipple}
           paused={paused}
           reducedMotion={runtime.reducedMotion}
-          recentHoActive={recentHoActive}
+          recentHoActive={recentHoActive && !manualHandoverActive}
         />
       )}
 
@@ -1706,16 +2097,16 @@ function SceneContent({
       {/* W9 step 3 dim beam-hopping cones — painted FIRST (behind) so the bright
           serving fan reads on top. Default = the hero serving satellite's hopping cells
           (on-UE vs hopping legibility); "Other beams" opens the full non-serving field. */}
-      {sinrLiveCellNonServingConeItems.length > 0 && (
+      {!manualHandoverActive && sinrLiveCellNonServingConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellNonServingConeItems}
-          opacity={beamDisplaySpec.nonServingConeOpacity}
+          layer="nonServing"
+          palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
-          backgroundColor={beamDisplaySpec.backgroundConeColor}
           telemetryCountDatasetKey="sinrLiveCellNonServingConeRenderedCount"
         />
       )}
-      {showSinrLiveCellBeams && (
+      {showSinrLiveCellBeams && !manualHandoverActive && (
         // a-cone: dim near-horizontal (low-elevation serving sat) cones so the
         // ambient field reads as beams coming DOWN, not shooting across the field.
         // The primary serving sat's beams render BRIGHT + saturated + dim-exempt
@@ -1723,16 +2114,14 @@ function SceneContent({
         // serving truth + cone count are unchanged.
         <SinrLiveCellBeamCones
           items={sinrLiveCellBeamConeItems}
-          opacity={beamDisplaySpec.servingConeOpacity}
+          layer="serving"
+          palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
           dimShallowCones={beamDisplaySpec.elevationDimEnabled}
           elevationDimFloorDeg={beamDisplaySpec.elevationDimFloorDeg}
           elevationDimCeilDeg={beamDisplaySpec.elevationDimCeilDeg}
           elevationDimMinFactor={beamDisplaySpec.elevationDimMinFactor}
           heroExemptFromElevationDim={beamDisplaySpec.heroExemptFromElevationDim}
-          heroColor={beamDisplaySpec.heroConeColor}
-          heroOpacity={beamDisplaySpec.heroConeOpacity}
-          backgroundColor={beamDisplaySpec.backgroundConeColor}
           primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
           primaryServingCellId={primaryServingRecord?.cellId ?? null}
         />
@@ -1741,16 +2130,16 @@ function SceneContent({
           candidate hue (coneColorOverride) so the handover target reads distinct from the
           protagonist's serving fan. Same opacity/dim as the serving field; display-only
           role colour — the resolver item.color stays serving-identity (colour-match green). */}
-      {showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
+      {showSinrLiveCellBeams && !manualHandoverActive && sinrLiveCandidateBeamConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCandidateBeamConeItems}
-          opacity={beamDisplaySpec.servingConeOpacity}
+          layer="candidate"
+          palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
           dimShallowCones={beamDisplaySpec.elevationDimEnabled}
           elevationDimFloorDeg={beamDisplaySpec.elevationDimFloorDeg}
           elevationDimCeilDeg={beamDisplaySpec.elevationDimCeilDeg}
           elevationDimMinFactor={beamDisplaySpec.elevationDimMinFactor}
-          coneColorOverride={beamDisplaySpec.candidateConeColor}
           telemetryCountDatasetKey="sinrLiveCellCandidateConeRenderedCount"
         />
       )}
@@ -1759,12 +2148,12 @@ function SceneContent({
           colour, so each beam reads as a distinct double-hex with its UEs scattered off-centre
           inside. Replaces the retired steered AmbientFootprintRings AND the persistent grey
           SinrLiveCellGrid (cells show only when served). */}
-      {showSinrLiveCellBeams && (
+      {showSinrLiveCellBeams && !manualHandoverActive && (
         <SinrLiveCellFootprintRings
           items={sinrLiveCellBeamConeItems}
+          layer="serving"
+          palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
-          heroColor={beamDisplaySpec.heroConeColor}
-          backgroundColor={beamDisplaySpec.backgroundConeColor}
           primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
           primaryServingCellId={primaryServingRecord?.cellId ?? null}
           telemetryCountDatasetKey="sinrLiveCellFootprintRingRenderedCount"
@@ -1773,11 +2162,12 @@ function SceneContent({
       {/* Candidate footprint hex: the contender / approach cells get the SAME 3-layer hex
           in the candidate BLUE (coneColorOverride), so a candidate cell reads blue like its
           cone — the footprint matches the beam. Display-only role colour (Rule#6). */}
-      {showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
+      {showSinrLiveCellBeams && !manualHandoverActive && sinrLiveCandidateBeamConeItems.length > 0 && (
         <SinrLiveCellFootprintRings
           items={sinrLiveCandidateBeamConeItems}
+          layer="candidate"
+          palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
-          coneColorOverride={beamDisplaySpec.candidateConeColor}
           telemetryCountDatasetKey="sinrLiveCellCandidateFootprintRenderedCount"
         />
       )}
@@ -1785,7 +2175,7 @@ function SceneContent({
           rendered serving cones, gated by the Beam Info toggle (showBeamCallouts). The
           old BeamCalloutContent only mounted inside the retired steered SatelliteBeams;
           this cell-cone callout layer reads the same cell-truth items + per-cell SINR. */}
-      {showBeamCallouts && (
+      {showBeamCallouts && !manualHandoverActive && (
         <SinrLiveCellBeamCallouts
           items={sinrLiveCellBeamConeItems}
           servingSinrByCellId={sinrLiveCellServingSinrByCellId}
@@ -1801,10 +2191,10 @@ function SceneContent({
       {sinrLiveCellPulseConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellPulseConeItems}
+          layer="pulse"
+          palette={sinrLiveConePalette}
           telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"
           widthScale={beamDisplaySpec.coneWidthScale}
-          pulseIntraColor={beamDisplaySpec.pulseIntraColor}
-          pulseInterColor={beamDisplaySpec.pulseInterColor}
         />
       )}
       {/* beam-stage ① #5: the TRIGGERED intra flash — the protagonist jog handover held
@@ -1815,6 +2205,8 @@ function SceneContent({
       {triggeredIntraConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={triggeredIntraConeItems}
+          layer="triggered"
+          palette={sinrLiveConePalette}
           telemetryCountDatasetKey="sinrLiveTriggeredIntraConeRenderedCount"
           widthScale={beamDisplaySpec.coneWidthScale}
         />
@@ -1828,8 +2220,24 @@ function SceneContent({
           beam render is the earth-fixed cell-truth cones above (SinrLiveCellBeamCones,
           gated by showSinrLiveCellBeams). The SatelliteBeams component survives only
           as the vc1c/vc2 validation-fixture subject — it is no longer mounted in-app. */}
-      {showLiveSceneEffects && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
-      {showHandoverToastOverlay && <HandoverToastOverlay frame={sceneFrame} interTriggerSec={profile.handover.triggerTimeSec} />}
+      {showLiveSceneEffects && !manualHandoverActive && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
+      {showHandoverToastOverlay && (
+        <HandoverToastOverlay
+          frame={sceneFrame}
+          interTriggerSec={profile.handover.triggerTimeSec}
+          manualHandover={manualHandoverActive && manualHandoverEvent
+            ? {
+              kind: manualHandoverEvent.kind,
+              sourceSatId: manualHandoverEvent.fromSatId,
+              sourceBeamId: manualHandoverEvent.fromCellId,
+              targetSatId: manualHandoverEvent.toSatId,
+              targetBeamId: manualHandoverEvent.toCellId,
+              progressSec: manualHandoverProgressSec,
+              targetSec: MANUAL_HANDOVER_DISPLAY_MS / 1000,
+            }
+            : null}
+        />
+      )}
       {showArtifactFpsCounter && <FPSCounter />}
     </BaseSceneLayout>
   );
@@ -1886,6 +2294,8 @@ export const MainScene = memo(function MainScene({
         data-ue-primary-anchor-mode={runtime.uePrimaryAnchorMode ?? 'observer'}
         data-live-timeline-seek-key={runtime.replay.seekRequestKey ?? ''}
         data-live-timeline-seek-target={runtime.replay.seekTargetSec?.toFixed(3) ?? ''}
+        data-manual-handover-request-id={runtime.manualHandoverRequestId?.toString() ?? ''}
+        data-manual-handover-kind={runtime.manualHandoverKind ?? ''}
         hidden
       />
       <Starfield starCount={180} />
@@ -1919,7 +2329,7 @@ export const MainScene = memo(function MainScene({
           antialias: true,
         }}
       >
-        <Suspense fallback={<Html center><div style={{ color: 'white', fontSize: 20 }}>Loading...</div></Html>}>
+        <Suspense fallback={<Html center><div style={{ color: 'white', fontSize: 22 }}>Loading...</div></Html>}>
           {sceneFrame?.sceneSource === 'artifact-replay' ? (
             <ArtifactSceneContent
               runtime={runtime}

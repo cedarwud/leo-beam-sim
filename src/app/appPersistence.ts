@@ -52,8 +52,8 @@ export function readSceneSourceFromUrl(): SceneSourceMode {
   return src === 'artifact-replay' ? 'artifact-replay' : 'live-sim';
 }
 
-// Keep the URL in sync with a runtime sceneSource switch (LaneExperienceBar) so
-// the lane is deep-linkable and reload-stable. Display-only: it mirrors the
+// Keep the URL in sync with the internal runtime sceneSource switch so the lane
+// is deep-linkable and reload-stable. Display-only: it mirrors the
 // already-applied state, never drives truth. `live-sim` clears the param (the
 // default), `artifact-replay` sets it so readSceneSourceFromUrl re-resolves the
 // same lane on reload.

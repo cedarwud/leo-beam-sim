@@ -118,8 +118,56 @@ export const SINR_LIVE_CELL_MAX_STEERING_DEG = 50;
 /** SINR-live-only scan loss at max steering (dB); paired with the wider 50° steering. */
 export const SINR_LIVE_CELL_SCAN_LOSS_DB = 4.5;
 
-/** Beams (simultaneous lit cells) per satellite — leo multibeam = 7. Beam hopping caps to this. */
+/**
+ * DEFAULT beams (simultaneous lit cells) per satellite — leo multibeam = 7. Beam
+ * hopping caps to this.
+ *
+ * This is now the FALLBACK, not the lane's fixed truth: the EFFECTIVE value is
+ * resolved per live profile by {@link resolveSinrLiveBeamsPerSat}. It stays
+ * exported (and stays 7) because it is the value every profile in `src/profiles`
+ * carries, so the model/runtime/serving-equivalence gates that pin against it are
+ * unchanged on the shipped profiles.
+ */
 export const SINR_LIVE_BEAMS_PER_SAT = 7;
+
+/**
+ * Hard upper bound on the resolved beams-per-satellite (see
+ * {@link resolveSinrLiveBeamsPerSat}).
+ *
+ * Pinned to {@link SINR_LIVE_CELL_COUNT}: a satellite cannot simultaneously light
+ * more earth-fixed cells than the tiling HAS, so anything above this is
+ * unrepresentable rather than merely expensive. It also bounds the render: the
+ * cone count is `Σ_sat (lit cells)`, so at the cap the ~6–9 qualifying sats of a
+ * live frame resolve at most `37 × 9 ≈ 333` cones — the same order as today's
+ * measured 30–37 and still inside the focus-scoped cone budget. Raising
+ * SINR_LIVE_CELL_COUNT would raise this automatically; that is deliberate (one
+ * tuning point, per the SINR_LIVE_CELL_COUNT doc).
+ */
+export const SINR_LIVE_MAX_BEAMS_PER_SAT = SINR_LIVE_CELL_COUNT;
+
+/**
+ * Resolve how many cells one satellite may light per hop slot on the SINR-live
+ * cell lane, from the LIVE profile — which is what makes the Topology tab's
+ * "Beam count per satellite" control (7 / 19 / 37) actually reach this lane.
+ * `applySceneTopology` writes the user's choice into BOTH `beams.perSatellite`
+ * and `beams.maxActivePerSat`; this lane's quantity is "simultaneously lit
+ * cells", i.e. `maxActivePerSat`, with `perSatellite` as the fallback for
+ * profiles that omit it.
+ *
+ * FAIL CLOSED: a missing / non-numeric / non-finite (NaN, ±Infinity) value
+ * returns {@link SINR_LIVE_BEAMS_PER_SAT} (7) rather than propagating garbage
+ * into the hop scheduler. A finite non-integer is floored (a fractional beam
+ * count is a magnitude, not a hard error). The result is then clamped to
+ * `[1, SINR_LIVE_MAX_BEAMS_PER_SAT]`, so it is always a usable integer ≥ 1 and
+ * can never exceed the cell tiling.
+ */
+export function resolveSinrLiveBeamsPerSat(profile: Profile): number {
+  const raw = profile.beams?.maxActivePerSat ?? profile.beams?.perSatellite;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return SINR_LIVE_BEAMS_PER_SAT;
+  const floored = Math.floor(raw);
+  if (!Number.isFinite(floored)) return SINR_LIVE_BEAMS_PER_SAT;
+  return Math.min(SINR_LIVE_MAX_BEAMS_PER_SAT, Math.max(1, floored));
+}
 
 /** Beam-hopping slot duration (s): the lit cell window advances each slot. */
 export const SINR_LIVE_HOP_SLOT_SEC = 2.5;
@@ -188,9 +236,12 @@ export function createSinrLiveCellModel(
     observer: { latDeg: profile.orbit.observerLatDeg, lonDeg: profile.orbit.observerLonDeg },
     minElevationDeg: SINR_LIVE_CELL_MIN_ELEVATION_DEG,
     epochUtcMs,
-    // Beam hopping: each satellite lights ≤7 cells/slot, rotating; link-budget
-    // beamwidth matches the cell layout (one antenna).
-    beamsPerSat: SINR_LIVE_BEAMS_PER_SAT,
+    // Beam hopping: each satellite lights ≤N cells/slot, rotating; link-budget
+    // beamwidth matches the cell layout (one antenna). N comes from the LIVE
+    // profile (`resolveSinrLiveBeamsPerSat`), so the Topology tab's beam-count
+    // control reaches this lane; it falls back to SINR_LIVE_BEAMS_PER_SAT (7),
+    // which is what every shipped profile carries.
+    beamsPerSat: resolveSinrLiveBeamsPerSat(profile),
     hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
     // SINR-live-only antenna truth-input overrides (S-cells-4a). They are layered
     // over the profile antenna and never mutate it → the steered lane + baseline

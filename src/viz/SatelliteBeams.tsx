@@ -28,6 +28,7 @@ import {
   HANDOVER_ARROW_COLOR,
   HANDOVER_SOURCE_COLOR,
   HANDOVER_TARGET_COLOR,
+  INTRA_HANDOVER_TARGET_COLOR,
   frequencyReuseColor,
   resolveBeamPulseOpacity,
   resolveHandoverVisualTransition,
@@ -181,11 +182,17 @@ function BeamCone({
     progress: beam.handoverTransitionProgress ?? 1,
     reducedMotion,
   });
+  // The TARGET colour is the one that tells the two event kinds apart: an
+  // intra-switch lands on the same satellite (orange, serving family), an
+  // inter-handover lands on a different one (candidate blue). The source beam is
+  // serving-yellow either way, so it is not routed per kind.
   const handoverOverlayColor =
     isHandoverSource
       ? HANDOVER_SOURCE_COLOR
       : isHandoverTarget
-        ? HANDOVER_TARGET_COLOR
+        ? (handoverRole === 'intraTargetNewServing'
+          ? INTRA_HANDOVER_TARGET_COLOR
+          : HANDOVER_TARGET_COLOR)
         : null;
   const displayColor = handoverOverlayColor ?? color;
   const baseConeOpacity = isHandoverSource

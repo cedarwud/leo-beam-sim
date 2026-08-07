@@ -19,6 +19,7 @@ export interface PlaybackControls {
   readonly autoSlowApplied: boolean;
   readonly autoSlowEnabled: boolean;
   readonly togglePause: () => void;
+  readonly setPaused: (next: boolean) => void;
   readonly setSpeed: (next: number) => void;
   readonly dismissAutoSlow: () => void;
   readonly toggleAutoSlow: () => void;
@@ -59,6 +60,7 @@ export function usePlaybackControls(
   }, [autoSlowActive]);
 
   const togglePause = useCallback(() => setPaused(p => !p), []);
+  const setPausedValue = useCallback((next: boolean) => setPaused(next), []);
   const dismissAutoSlow = useCallback(() => setAutoSlowDismissed(true), []);
   const toggleAutoSlow = useCallback(() => setAutoSlowEnabled(e => !e), []);
   const resetAutoSlowDismissed = useCallback(() => setAutoSlowDismissed(false), []);
@@ -72,6 +74,7 @@ export function usePlaybackControls(
       autoSlowApplied,
       autoSlowEnabled,
       togglePause,
+      setPaused: setPausedValue,
       setSpeed,
       dismissAutoSlow,
       toggleAutoSlow,
@@ -86,6 +89,7 @@ export function usePlaybackControls(
       autoSlowApplied,
       autoSlowEnabled,
       togglePause,
+      setPausedValue,
       dismissAutoSlow,
       toggleAutoSlow,
       resetAutoSlowDismissed,

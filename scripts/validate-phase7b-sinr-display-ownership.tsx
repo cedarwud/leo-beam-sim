@@ -7,7 +7,17 @@ import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
 import { createSceneTopologyState } from '../src/sceneTopology.ts';
 import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
+import {
+  assertAttr,
+  assertContainsTestId,
+  assertNoTestId,
+  assertTestId,
+  assertTestIdAttr,
+  assertValueInAttrElement,
+  attrValuesIn,
+} from './lib/dom-structure.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
+import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 import { formatSatelliteLabel } from '../src/utils/formatSatelliteLabel.ts';
 
@@ -200,6 +210,8 @@ function renderTuningPanel(profile: Profile, state: SimState) {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
+      energyTuning={DEFAULT_ENERGY_TUNING}
+      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );
@@ -215,6 +227,23 @@ function assertNotContains(text: string, unexpected: string): void {
   assert.ok(!text.includes(unexpected), `expected rendered UI not to contain "${unexpected}"`);
 }
 
+/**
+ * The ten SINR formula terms, as the right panel's evidence grid names them.
+ * `data-term` is the contract; the visible label is copy and may be translated.
+ */
+const FORMULA_TERMS = [
+  'signalDbm',
+  'effectiveTxPower',
+  'transmitGain',
+  'receiverGain',
+  'pathLoss',
+  'scanLoss',
+  'intraInterference',
+  'interInterference',
+  'noiseDbm',
+  'denominator',
+] as const;
+
 function run(): void {
   const profile = loadProfile(PROFILE_ID);
   const operationalState = createSimState(profile);
@@ -224,44 +253,58 @@ function run(): void {
   );
   const infoText = decodeHtmlText(infoMarkup);
 
-  assertContains(infoMarkup, 'data-testid="info-panel-primary-sinr-status"');
-  assertContains(infoMarkup, 'data-testid="info-panel-comparison-sinr-status"');
-  assertContains(infoMarkup, 'data-ownership="operational-sinr-status"');
-  assertContains(infoMarkup, 'data-testid="formula-result-readout"');
-  assertContains(infoMarkup, 'data-testid="formula-term-evidence"');
-  assertContains(infoMarkup, 'data-ownership="formula-verification"');
+  // RIGHT PANEL owns operational SINR status: two duel columns, each declaring
+  // its ownership, plus the physical-serving formula verification block.
+  assertTestId(infoMarkup, 'info-panel-primary-sinr-status');
+  assertTestId(infoMarkup, 'info-panel-comparison-sinr-status');
+  assertTestIdAttr(infoMarkup, 'info-panel-primary-sinr-status', 'data-ownership', 'operational-sinr-status');
+  assertTestIdAttr(infoMarkup, 'info-panel-comparison-sinr-status', 'data-ownership', 'operational-sinr-status');
+  assertTestIdAttr(infoMarkup, 'info-panel-primary-sinr-status', 'data-duel-block', 'serving');
+  assertTestIdAttr(infoMarkup, 'info-panel-comparison-sinr-status', 'data-duel-block', 'comparison');
+  assertTestIdAttr(infoMarkup, 'formula-result-readout', 'data-ownership', 'formula-verification');
+  assertTestIdAttr(infoMarkup, 'formula-term-evidence', 'data-ownership', 'formula-verification');
+
+  // The two operational SINR readouts show the values they were handed, in their
+  // own columns (numbers + unit symbols survive translation).
+  assertValueInAttrElement(infoMarkup, 'data-duel-block', 'serving', '13.4 dB', 'right panel');
+  assertValueInAttrElement(infoMarkup, 'data-duel-block', 'comparison', '11.1 dB', 'right panel');
+
+  // The formula evidence grid still exposes all ten terms, by term identity.
+  assert.deepEqual(
+    attrValuesIn(infoMarkup, 'data-term'),
+    [...FORMULA_TERMS],
+    'right panel must keep the full SINR formula term grid',
+  );
+
+  // NOTE (agent-M): the uppercase role tokens ACTIVE SERVING / BEST CANDIDATE /
+  // HO SOURCE are still asserted as literal copy below. They are the one
+  // invariant on this surface with no structural carrier yet: the duel columns
+  // expose POSITION (`data-duel-block`) but not ROLE. Adding
+  // `data-panel-role="serving|ho-source|pending|ho-target|candidate|none"` to
+  // the two columns in `src/ui/info-panel/DuelSignalColumn.tsx` would let these
+  // become structural too. Until then they stay, because dropping them would
+  // weaken the gate.
   assertContains(infoText, 'ACTIVE SERVING');
   assertContains(infoText, 'BEST CANDIDATE');
-  assertContains(infoText, '13.4 dB');
-  assertContains(infoText, '11.1 dB');
-  assertContains(infoText, 'SINR Formula Terms');
-  assertContains(infoText, 'γ result');
-  assertContains(infoText, 'numerator / signalDbm');
-  assertContains(infoText, 'intra interference');
-  assertContains(infoText, 'inter interference');
-  assertContains(infoText, 'noise σ² / noiseDbm');
-  assertContains(infoText, 'transmit gain pattern');
-  assertContains(infoText, 'receiver gain');
-  assertContains(infoText, 'path loss');
-  assertContains(infoText, 'effective transmit power');
-  assertContains(infoMarkup, 'data-term="signalDbm"');
-  assertContains(infoMarkup, 'data-term="transmitGain"');
-  assertContains(infoMarkup, 'data-term="receiverGain"');
-  assertContains(infoMarkup, 'data-term="pathLoss"');
-  assertContains(infoMarkup, 'data-term="intraInterference"');
-  assertContains(infoMarkup, 'data-term="interInterference"');
-  assertContains(infoMarkup, 'data-term="noiseDbm"');
 
+  // LEFT PANEL keeps the editable formula tabs and controls…
   const { markup: tuningMarkup, text: tuningText } = renderTuningPanel(profile, operationalState);
-  assertContains(tuningMarkup, 'data-testid="sinr-formula-tabs"');
-  assertContains(tuningText, 'SINR Formula Tuning');
-  assertContains(tuningText, 'Per-beam transmit power');
-  assertNotContains(tuningMarkup, 'data-testid="formula-result-readout"');
-  assertNotContains(tuningMarkup, 'data-testid="formula-term-evidence"');
+  assertTestId(tuningMarkup, 'sinr-formula-tabs');
+  assertContainsTestId(tuningMarkup, 'signal-power-controls', 'pt-signal-power-control');
+  // …and owns NO operational readout: no formula result, no term evidence, and
+  // no element claiming either ownership role.
+  assertNoTestId(tuningMarkup, 'formula-result-readout', 'left panel');
+  assertNoTestId(tuningMarkup, 'formula-term-evidence', 'left panel');
+  assertNoTestId(tuningMarkup, 'info-panel-primary-sinr-status', 'left panel');
+  assertNoTestId(tuningMarkup, 'info-panel-comparison-sinr-status', 'left panel');
+  assert.deepEqual(attrValuesIn(tuningMarkup, 'data-ownership'), [], 'left panel must claim no display ownership');
+  assert.deepEqual(attrValuesIn(tuningMarkup, 'data-term'), [], 'left panel must not render formula term cells');
   assertNotContains(tuningText, 'ACTIVE SERVING');
   assertNotContains(tuningText, 'BEST CANDIDATE');
   assertNotContains(tuningText, 'PENDING TARGET');
 
+  // RECENT-HO: the right panel may re-point its primary column at the HO source,
+  // but the formula evidence must stay tied to PHYSICAL SERVING.
   const recentHoState = createRecentHoState(profile);
   const recentInfoMarkup = renderToStaticMarkup(
     <InfoPanel {...recentHoState} showFormulaTerms profile={profile} />,
@@ -271,11 +314,28 @@ function run(): void {
   const physicalServingLabel = formatSatelliteLabel(SERVING_SAT_ID);
   const hoSourceLabel = formatSatelliteLabel(RECENT_SOURCE_SAT_ID);
 
-  assertContains(recentInfoText, 'HO SOURCE');
   assertContains(recentInfoText, hoSourceLabel);
   assertContains(recentInfoText, physicalServingLabel);
-  assertContains(recentInfoText, 'physical serving source');
-  assertContains(recentInfoMarkup, 'data-testid="formula-term-evidence"');
+  // See the note above: HO SOURCE has no structural carrier yet either.
+  assertContains(recentInfoText, 'HO SOURCE');
+  assertTestId(recentInfoMarkup, 'formula-term-evidence');
+
+  /*
+   * THE ACTUAL OWNERSHIP CLAIM, asserted directly.
+   *
+   * The fixture deliberately feeds two DIFFERENT budgets: physicalServingBudget
+   * = createBudgetTerms(1) and servingBudget = createBudgetTerms(-1). So the
+   * signal term reads -87.5 dBm if the grid is (correctly) sourced from the
+   * physical serving link, and -89.5 dBm if it has drifted to the recent-HO
+   * source card. The old gate only pinned the words "physical serving source",
+   * which would have survived exactly that drift.
+   */
+  assertValueInAttrElement(recentInfoMarkup, 'data-term', 'signalDbm', '-87.5 dBm', 'recent-HO right panel');
+  assertNotContains(
+    decodeHtmlText(recentInfoMarkup).replace(/-87\.5 dBm/g, ''),
+    '-89.5 dBm',
+  );
+
   assertNotContains(recentTuningText, hoSourceLabel);
   assertNotContains(recentTuningText, physicalServingLabel);
   assertNotContains(recentTuningText, 'HO SOURCE');

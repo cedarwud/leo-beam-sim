@@ -2,6 +2,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import {
+  assertContainsTestId,
+  assertNoTestId,
+  assertNotContainsTestId,
+  assertTestId,
+  assertTestIdAttr,
+  assertValueInTestId,
+  extractElementByTestId,
+} from './lib/dom-structure.ts';
 import { loadProfile } from '../src/profiles/index.ts';
 import type { LinkBudgetTerms } from '../src/scene/types.ts';
 import { createSceneTopologyState } from '../src/sceneTopology.ts';
@@ -14,62 +23,13 @@ import {
   hasSignalTuningOverrides,
   type SignalTuningState,
 } from '../src/signalTuning.ts';
+import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-paper-default';
 
-function decodeHtmlText(markup: string): string {
-  return markup
-    .replace(/<script[\s\S]*?<\/script>/g, ' ')
-    .replace(/<style[\s\S]*?<\/style>/g, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#x27;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function assertContains(text: string, expected: string): void {
   assert.ok(text.includes(expected), `expected content to contain "${expected}"`);
-}
-
-function assertNotContains(text: string, unexpected: string): void {
-  assert.ok(!text.includes(unexpected), `expected content not to contain "${unexpected}"`);
-}
-
-function extractElementByTestId(markup: string, testId: string): string {
-  const attr = `data-testid="${testId}"`;
-  const attrIndex = markup.indexOf(attr);
-  assert.notEqual(attrIndex, -1, `expected markup to contain ${attr}`);
-
-  const start = markup.lastIndexOf('<', attrIndex);
-  assert.notEqual(start, -1, `expected opening tag for ${testId}`);
-
-  const tagMatch = /^<([a-zA-Z][\w:-]*)/.exec(markup.slice(start));
-  assert.ok(tagMatch, `expected tag name for ${testId}`);
-  const tagName = tagMatch[1];
-  const tagPattern = /<\/?([a-zA-Z][\w:-]*)(?:\s[^<>]*)?>/g;
-  tagPattern.lastIndex = start;
-
-  let depth = 0;
-  for (let match = tagPattern.exec(markup); match !== null; match = tagPattern.exec(markup)) {
-    const token = match[0];
-    const name = match[1];
-    if (name !== tagName) continue;
-
-    if (token.startsWith('</')) {
-      depth -= 1;
-      if (depth === 0) return markup.slice(start, match.index + token.length);
-    } else if (!token.endsWith('/>')) {
-      depth += 1;
-    }
-  }
-
-  assert.fail(`expected closing tag for ${testId}`);
 }
 
 function createBudgetTerms(): LinkBudgetTerms {
@@ -111,81 +71,135 @@ function renderPanel(initialActiveTab: TestTab, isFormulaEvidenceStale = false) 
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
+      energyTuning={DEFAULT_ENERGY_TUNING}
+      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );
 
-  return { markup, text: decodeHtmlText(markup) };
+  return { markup };
+}
+
+/**
+ * Structural identity of each tuning group.
+ *
+ * WHAT THIS PROTECTS: every scalar of the SINR expression must render in exactly
+ * one tab, on the correct side of the fraction, and must never bleed into another
+ * term's control group. That is a PLACEMENT invariant, so it is asserted through
+ * placement (`data-formula-side` + test-id containment) rather than through the
+ * English headings that used to stand in for it. Headings are copy; copy is now
+ * bilingual and student-facing, and a gate that pins copy silently becomes a gate
+ * against translating the UI.
+ */
+const TUNING_GROUPS = {
+  signalPower: {
+    tab: 'signal-power',
+    section: 'signal-power-controls',
+    side: 'numerator',
+    ownControls: ['pt-signal-power-control'],
+    foreignControls: ['gtmax-transmit-gain-control', 'gr-receiver-gain-control', 'bandwidth-thermal-noise-control', 'n0-thermal-noise-control'],
+    helpTriggers: ['help-popover-trigger-param.maxTxPowerDbm'],
+  },
+  beam: {
+    tab: 'beam',
+    section: 'beam-gain-controls',
+    side: 'numerator',
+    ownControls: ['gtmax-transmit-gain-control'],
+    foreignControls: ['pt-signal-power-control', 'gr-receiver-gain-control', 'bandwidth-thermal-noise-control', 'n0-thermal-noise-control'],
+    helpTriggers: ['help-popover-trigger-param.maxGainDbi'],
+  },
+  receiverGain: {
+    tab: 'receiver-gain',
+    section: 'receiver-gain-controls',
+    side: 'numerator',
+    ownControls: ['gr-receiver-gain-control'],
+    foreignControls: ['pt-signal-power-control', 'gtmax-transmit-gain-control', 'bandwidth-thermal-noise-control', 'n0-thermal-noise-control'],
+    helpTriggers: ['help-popover-trigger-param.ueAntennaMaxGainDbi'],
+  },
+  thermalNoise: {
+    tab: 'thermal-noise',
+    section: 'thermal-noise-controls',
+    side: 'denominator',
+    ownControls: ['bandwidth-thermal-noise-control', 'n0-thermal-noise-control'],
+    foreignControls: ['pt-signal-power-control', 'gtmax-transmit-gain-control', 'gr-receiver-gain-control'],
+    helpTriggers: ['help-popover-trigger-param.bandwidthMHz', 'help-popover-trigger-param.noisePsdDbmHz'],
+  },
+} as const;
+
+type TuningGroup = (typeof TUNING_GROUPS)[keyof typeof TUNING_GROUPS];
+
+function assertGroupStructure(group: TuningGroup): string {
+  const { markup } = renderPanel(group.tab);
+  const where = `${group.section} tab`;
+
+  // The group sits on the correct side of the SINR fraction. This is the
+  // machine-readable form of the old "Transmit Power / numerator" heading pin.
+  assertTestIdAttr(markup, group.section, 'data-formula-side', group.side, where);
+
+  for (const control of group.ownControls) {
+    assertContainsTestId(markup, group.section, control, where);
+    // Every editable scalar keeps an attached explanation hook. The COPY inside
+    // it is free to be localized or moved behind the help popover; the hook is
+    // the contract, so "a slider with no explanation at all" still fails.
+    assertContainsTestId(markup, control, `${control}-details`, where);
+    // …and it keeps its own range affordance, so the editable bound stays visible.
+    assertContainsTestId(markup, control, `${control}-range-endpoints`, where);
+  }
+
+  // Term bleed: no other term's control may render inside this group, and no
+  // other term's control may render anywhere on this tab page.
+  for (const foreign of group.foreignControls) {
+    assertNotContainsTestId(markup, group.section, foreign, where);
+    assertNoTestId(markup, foreign, `${where} (whole page)`);
+  }
+
+  // The group states its own formula context (the section header block), rather
+  // than borrowing the neighbouring group's.
+  assertContainsTestId(markup, group.section, `${group.section}-formula-context`, where);
+
+  // The parameter identity is asserted through the help-popover id, which names
+  // the tuning FIELD (`param.<field>`) — locale-independent and unambiguous.
+  for (const helpTrigger of group.helpTriggers) {
+    assertContainsTestId(markup, group.section, helpTrigger, where);
+  }
+
+  return markup;
 }
 
 function assertUiSeparation(): void {
-  const source = readFileSync(new URL('../src/ui/SignalTuningPanel.tsx', import.meta.url), 'utf8');
-  assertNotContains(source, "key: 'power'");
-  assertNotContains(source, "title: 'Power'");
-  assertNotContains(source, 'P<sub>t</sub> / σ²');
-  assertNotContains(source, 'Signal strength, receiver override, and thermal noise.');
+  // The retired combined "Power" tab: asserted against the RENDERED tab strip
+  // rather than against a source-literal in one file, so moving the tab table to
+  // another module can no longer make this pass vacuously.
+  const { markup: tabStripPage } = renderPanel('signal-power');
+  const tabStrip = extractElementByTestId(tabStripPage, 'sinr-formula-tabs');
+  assert.ok(
+    !/id="sinr-formula-tab-power"/.test(tabStrip),
+    'expected the retired combined P_t / sigma^2 "power" tab to be gone from the tab strip',
+  );
+  for (const group of Object.values(TUNING_GROUPS)) {
+    assert.ok(
+      tabStrip.includes(`id="sinr-formula-tab-${group.tab}"`),
+      `expected a dedicated "${group.tab}" tab in the formula tab strip`,
+    );
+  }
 
-  const signal = renderPanel('signal-power');
-  const signalControlsMarkup = extractElementByTestId(signal.markup, 'signal-power-controls');
-  const signalControlsText = decodeHtmlText(signalControlsMarkup);
-  assertContains(signalControlsMarkup, 'data-formula-side="numerator"');
-  assertContains(signalControlsMarkup, 'data-testid="pt-signal-power-control"');
-  assertNotContains(signalControlsMarkup, 'data-testid="gtmax-transmit-gain-control"');
-  assertNotContains(signalControlsMarkup, 'data-testid="gr-receiver-gain-control"');
-  assertContains(signalControlsText, 'Transmit Power / numerator');
-  assertContains(signal.text, 'Per-beam transmit power');
-  assertContains(signalControlsText, 'This tab controls transmit power only');
-  assertNotContains(signalControlsText, 'Max transmit gain');
-  assertNotContains(signalControlsText, 'Receiver Gain / numerator');
-  assertContains(signal.text, 'Receiver Gain');
-  assertNotContains(signal.text, 'Thermal Noise / denominator');
-  assertNotContains(signal.text, 'Channel bandwidth');
-  assertNotContains(signal.text, 'Noise PSD');
+  for (const group of Object.values(TUNING_GROUPS)) {
+    assertGroupStructure(group);
+  }
 
-  const beam = renderPanel('beam');
-  assertContains(beam.markup, 'data-testid="gtmax-transmit-gain-control"');
-  assertContains(beam.text, 'Transmit Gain');
-  assertContains(beam.text, 'Max transmit gain');
-  assertNotContains(beam.markup, 'data-testid="gr-receiver-gain-control"');
-
-  const receiver = renderPanel('receiver-gain');
-  const receiverControlsMarkup = extractElementByTestId(receiver.markup, 'receiver-gain-controls');
-  const receiverControlsText = decodeHtmlText(receiverControlsMarkup);
-  assertContains(receiverControlsMarkup, 'data-formula-side="numerator"');
-  assertContains(receiverControlsMarkup, 'data-testid="gr-receiver-gain-control"');
-  assertContains(receiverControlsText, 'Receiver Gain / numerator');
-  assertContains(receiverControlsText, 'Receiver gain');
-  assertContains(receiverControlsText, 'Receive-side antenna gain in the SINR signal path');
-  assertNotContains(receiverControlsText, 'Per-beam transmit power');
-  assertNotContains(receiverControlsText, 'Max transmit gain');
-  assertNotContains(receiverControlsText, 'Research Override');
-  assertNotContains(receiverControlsText, 'HOBS paper');
-
+  // Thermal-noise extras: sigma^2 is a READ-ONLY derived readout, not a fourth
+  // editable knob, and it reports its own evidence freshness.
   const noise = renderPanel('thermal-noise');
-  const noiseControlsMarkup = extractElementByTestId(noise.markup, 'thermal-noise-controls');
-  const noiseControlsText = decodeHtmlText(noiseControlsMarkup);
-  assertContains(noiseControlsMarkup, 'data-formula-side="denominator"');
-  assertContains(noiseControlsMarkup, 'data-testid="thermal-noise-floor-readout"');
-  assertContains(noiseControlsMarkup, 'data-readonly="true"');
-  assertContains(noiseControlsMarkup, 'data-formula-evidence-status="current"');
-  assertContains(noiseControlsMarkup, 'data-testid="bandwidth-thermal-noise-control"');
-  assertContains(noiseControlsMarkup, 'data-testid="n0-thermal-noise-control"');
-  assertContains(noiseControlsText, 'Thermal Noise / denominator');
-  assertContains(noiseControlsText, 'Noise floor');
-  assertContains(noiseControlsText, '-104.2 dBm');
-  assertContains(noiseControlsText, 'Read-only computed σ² / noise floor');
-  assertContains(noiseControlsText, 'Channel bandwidth');
-  assertContains(noiseControlsText, 'Noise PSD');
-  assertContains(noiseControlsText, 'They are not transmit-power controls');
-  assertNotContains(noiseControlsText, 'Transmit Power / numerator');
-  assertNotContains(noiseControlsText, 'Per-beam transmit power');
-  assertNotContains(noiseControlsText, 'Max transmit gain');
-  assertNotContains(noiseControlsText, 'Receiver gain');
+  assertContainsTestId(noise.markup, 'thermal-noise-controls', 'thermal-noise-floor-readout');
+  assertTestIdAttr(noise.markup, 'thermal-noise-floor-readout', 'data-readonly', 'true');
+  assertTestIdAttr(noise.markup, 'thermal-noise-floor-readout', 'data-formula-evidence-status', 'current');
+  // The computed noise floor still shows the value it was handed. Numbers and
+  // unit symbols survive translation, so pinning them stays honest.
+  assertValueInTestId(noise.markup, 'thermal-noise-floor-readout', '-104.2 dBm');
 
   const staleNoise = renderPanel('thermal-noise', true);
-  assertContains(staleNoise.markup, 'data-testid="thermal-noise-floor-readout"');
-  assertContains(staleNoise.markup, 'data-formula-evidence-status="stale"');
-  assertContains(staleNoise.text, 'stale after edit; waiting for the next recomputed frame');
+  assertTestId(staleNoise.markup, 'thermal-noise-floor-readout');
+  assertTestIdAttr(staleNoise.markup, 'thermal-noise-floor-readout', 'data-formula-evidence-status', 'stale');
 }
 
 function assertTuningWiringAndEvidencePath(): void {
@@ -265,11 +279,11 @@ function run(): void {
   console.log(JSON.stringify({
     asserted: {
       ui: [
-        'P_t renders under Transmit Power / numerator',
-        'G_{t,max} renders under Transmit Gain',
-        'G^R renders under its own Receiver Gain / numerator tab',
-        'B, N_0, and read-only computed sigma^2 / noise floor render under Thermal Noise / denominator',
-        'the old combined P_t / sigma^2 Power tab label is removed',
+        'each tuning group declares its own data-formula-side (P_t / G^T / G^R numerator, B + N_0 denominator)',
+        'each editable scalar renders inside its own group, with its -details and -range-endpoints hooks',
+        'no term control leaks into another term group, or onto another term tab at all',
+        'sigma^2 renders as a data-readonly="true" derived readout carrying its evidence status',
+        'the retired combined "power" tab is gone from the rendered tab strip',
       ],
       wiring: [
         'P_t, G_{t,max}, G^R, B, and N_0 still map to the same tuning/profile fields',

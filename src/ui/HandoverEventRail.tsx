@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { formatTimelineTime } from './TimelineBar';
 
 export type HandoverRailEventKind = 'intra' | 'inter';
@@ -67,6 +67,8 @@ export interface HandoverEventRailProps {
   readonly axisPlaying?: boolean;
   readonly axisPlaybackRate?: number;
   readonly initialFocusedEventId?: string;
+  /** Director focus id from the source index; null clears the rail selection on exit. */
+  readonly directorFocusedEventId?: string | null;
 }
 
 export interface HandoverRailSlowMotionFocus {
@@ -112,6 +114,7 @@ function eventSort(a: HandoverRailEvent, b: HandoverRailEvent): number {
 
 interface HandoverEventMapCluster {
   readonly id: string;
+  readonly eventIds: readonly string[];
   readonly timeSec: number;
   readonly clickTargetSec: number;
   readonly axisTimeSec: number;
@@ -126,6 +129,7 @@ interface HandoverEventMapCluster {
 
 interface MutableHandoverEventMapCluster {
   id: string;
+  eventIds: string[];
   timeSec: number;
   clickTargetSec: number;
   axisTimeSec: number;
@@ -220,6 +224,7 @@ function buildEventMapClusters(
       : representativeKey;
     const existing = clusters.get(bucketKey);
     if (existing) {
+      existing.eventIds.push(event.id);
       existing.fromLabels.add(event.fromLabel);
       existing.toLabels.add(event.toLabel);
       existing.count += eventRowCount(event);
@@ -229,6 +234,7 @@ function buildEventMapClusters(
     }
     clusters.set(bucketKey, {
       id: `cluster-${representativeKey.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+      eventIds: [event.id],
       timeSec: sourceTimeSec,
       clickTargetSec: eventClickTargetSec(event),
       axisTimeSec: eventAxisTimeSec(event),
@@ -245,6 +251,7 @@ function buildEventMapClusters(
   return [...clusters.values()]
     .map(cluster => ({
       id: cluster.id,
+      eventIds: cluster.eventIds,
       timeSec: cluster.timeSec,
       clickTargetSec: cluster.clickTargetSec,
       axisTimeSec: cluster.axisTimeSec,
@@ -287,8 +294,12 @@ export function HandoverEventRail({
   axisPlaying = false,
   axisPlaybackRate = 1,
   initialFocusedEventId,
+  directorFocusedEventId,
 }: HandoverEventRailProps) {
   const [focusedEventId, setFocusedEventId] = useState<string | null>(initialFocusedEventId ?? null);
+  useEffect(() => {
+    if (directorFocusedEventId !== undefined) setFocusedEventId(directorFocusedEventId);
+  }, [directorFocusedEventId]);
   const safeDurationSec = Math.max(0, isFiniteNumber(durationSec) ? durationSec : 0);
   const safeCurrentTimeSec = clampTime(currentTimeSec, safeDurationSec);
   const safeAxisDurationSec = Math.max(
@@ -331,7 +342,9 @@ export function HandoverEventRail({
   const headline = eventMapClusters.length > 0
     ? `${eventMapClusters.length} marker${eventMapClusters.length === 1 ? '' : 's'}`
     : 'No HO index';
-  const focusedCluster = eventMapClusters.find(cluster => cluster.id === focusedEventId) ?? null;
+  const focusedCluster = eventMapClusters.find(cluster => (
+    cluster.id === focusedEventId || cluster.eventIds.includes(focusedEventId ?? '')
+  )) ?? null;
   const slowMotionFocus = slowMotionFocusEnabled && focusedCluster !== null
     ? deriveHandoverRailSlowMotionFocus({
       eventId: focusedCluster.id,

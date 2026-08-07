@@ -1,5 +1,3 @@
-import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
-import { computeR1EnergyEfficiency } from '../utils/energyEfficiency';
 import type { Profile } from '../profiles/types';
 import type { SimState } from '../scene/types';
 import type { VisualShowcaseChannelMetricKind } from '../scene/visual-showcase-contract';
@@ -12,6 +10,11 @@ import {
   resolveDuelStateLabel,
 } from './info-panel/formatters';
 import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
+import { EnergyEfficiencyCard } from './info-panel/EnergyEfficiencyCard';
+import { TeachingEnergyCard } from './info-panel/TeachingEnergyCard';
+import { PanelHelp, usePanelCopy } from './info-panel/panelHelp';
+import { UI_TOKENS } from '../constants/uiTokens';
+import type { TeachingEnergyReadout } from '../teaching';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 import { OVERRIDE_PRIMARY_UE_SCOPE_NOTE } from '../modqn/runtimeControls';
 
@@ -33,6 +36,16 @@ type InfoPanelProps = SimState & {
    * reserved for the slice PRs — this prop only exposes the contract surface.
    */
   channelMetricKind?: VisualShowcaseChannelMetricKind;
+  /**
+   * Teaching energy/EE read model (Wave 2 props contract). Assembled once in
+   * `App.tsx` from the live SimState plus the energy tuning controls, so the
+   * left controls, the scene and this readout all describe the same instant.
+   *
+   * `undefined` = not wired yet (the ledger section is simply absent — better
+   * than an all-dash card nobody asked for). `null` = wired but this frame has
+   * nothing trustworthy, which renders as dashes, never zeroes.
+   */
+  teachingEnergy?: TeachingEnergyReadout | null;
 };
 
 interface LiveStatusModeCopy {
@@ -122,11 +135,14 @@ export function InfoPanel({
   sinrDeltaDb,
   sinrDb,
   physicalServingBudget,
-  servingBudget,
+  ch5DemoPaperEnergyEfficiency,
   handoverOffsetDb,
   handoverTriggerProgressSec,
   handoverTriggerSec,
+  hoCount,
+  teachingEnergy,
 }: InfoPanelProps) {
+  const { t, tx } = usePanelCopy();
   // S5-2b: on the sinr-live cell lane the serving unit is the typed cell id
   // (`servingBeamId` is null under the cell model — there is no steered beam), so
   // the serving column must render ACTIVE on a cell id too, else the cell-truth
@@ -141,9 +157,28 @@ export function InfoPanel({
     : 0;
   const servingTitle = panelPrimary.role === 'ho-source' ? 'HO SOURCE' : 'ACTIVE SERVING';
   const modeCopy = getLiveStatusModeCopy(handoverMode);
+  // Plain-language column names. The uppercase role tokens above stay on
+  // screen (scene, event rail and validators all speak them); these are what a
+  // student reads first.
+  const servingFriendlyTitle = panelPrimary.role === 'ho-source'
+    ? tx('panel.role.hoSource')
+    : tx('panel.role.activeServing');
+  // Non-default handover modes carry a display-vs-truth distinction in their
+  // caption ("live SINR reference" is NOT the deciding authority under the
+  // overlay). That nuance rides along as a quiet caption note rather than being
+  // dropped for tidiness; under the plain sinr-offset mode there is nothing
+  // extra to say, so no note is emitted.
+  const modeNote = (note: string): string | undefined => (
+    handoverMode === 'sinr-offset' ? undefined : note
+  );
   const servingCaption = panelPrimary.role === 'ho-source'
+    ? tx('panel.caption.previousSource')
+    : tx('panel.caption.serving');
+  // 'previous source' / 'recent target …' are the canonical role captions the
+  // recent-HO surfaces (and `validate:phase1a:recent-ho-ui`) speak.
+  const servingCaptionNote = panelPrimary.role === 'ho-source'
     ? 'previous source'
-    : modeCopy.servingCaption;
+    : modeNote(modeCopy.servingCaption);
   const comparisonTitle =
     panelComparison.role === 'pending'
       ? 'PENDING TARGET'
@@ -152,49 +187,36 @@ export function InfoPanel({
         : panelComparison.role === 'candidate'
           ? 'BEST CANDIDATE'
           : 'COMPARISON';
+  const comparisonFriendlyTitle =
+    panelComparison.role === 'pending'
+      ? tx('panel.role.pendingTarget')
+      : panelComparison.role === 'ho-target'
+        ? tx('panel.role.hoTarget')
+        : panelComparison.role === 'candidate'
+          ? tx('panel.role.bestCandidate')
+          : tx('panel.role.comparison');
   const comparisonCaption =
     panelComparison.role === 'pending'
-      ? modeCopy.pendingCaption
+      ? tx('panel.caption.pending')
       : panelComparison.role === 'ho-target'
-        ? panelComparison.satId === physicalServing.satId ? 'recent target / serving now' : 'recent target'
+        ? panelComparison.satId === physicalServing.satId
+          ? tx('panel.caption.recentTargetServing')
+          : tx('panel.caption.recentTarget')
         : panelComparison.role === 'candidate'
-          ? modeCopy.candidateCaption
-          : 'no comparison';
+          ? tx('panel.caption.candidate')
+          : tx('panel.caption.none');
+  const comparisonCaptionNote =
+    panelComparison.role === 'pending'
+      ? modeNote(modeCopy.pendingCaption)
+      : panelComparison.role === 'ho-target'
+        ? panelComparison.satId === physicalServing.satId
+          ? 'recent target / serving now'
+          : 'recent target'
+        : panelComparison.role === 'candidate'
+          ? modeNote(modeCopy.candidateCaption)
+          : undefined;
   const formulaTermsVisible = showFormulaTerms && handoverMode !== 'decision-overlay-on-live-sinr';
   const frequencyReuse = profile.beams.frequencyReuse;
-  // r1 EE η, rendered beside the ACTIVE SERVING SINR it is derived from. The
-  // numerator MUST use the same `sinrDb` this card displays, and the denominator
-  // must be that same lane's transmit power — a cross-lane pairing would repeat
-  // the W1 γ-mismatch the comparison column is suppressed to avoid (the cell
-  // antenna is 50°/33.5 dBi, the steered one 12°/40 dBi; the same UE reads
-  // ~6-10 dB apart across them). So the power source branches on the SAME lane
-  // discriminator the identity strings above use:
-  //   - cell lane (`servingCellId` set): `SinrLiveCellModel.linkBudgetOptions`
-  //     passes NO `beamPowerOverrideDbmByKey`, so every cell beam transmits at
-  //     `channel.maxTxPowerDbm`. `validate:r1-energy-efficiency:model` pins the
-  //     "no override ⇒ maxTxPowerDbm" half of that against the real link budget;
-  //     the cell record itself carries no power term, so the OTHER half — that
-  //     the cell lane keeps passing no override — is a read-the-source
-  //     assumption. If cell-lane power control is ever added, thread the
-  //     effective power onto `UeCellServingRecord` and read it here.
-  //   - steered lane: `servingBudget` is resolved from the very (sat, beam) that
-  //     produced the displayed SINR, and its `txPowerDbm` is the EFFECTIVE value,
-  //     so beam power control moves η honestly.
-  // The reference's beam-load term cancels out of this ratio — see
-  // `src/utils/energyEfficiency.ts` for the derivation and the claim scope.
-  const isCellLane = servingCellId !== null;
-  const servingTxPowerDbm = isCellLane
-    ? profile.channel.maxTxPowerDbm
-    : servingBudget?.txPowerDbm ?? null;
-  // Blank η on exactly the same floor `SinrReadout` blanks its dB on, so the two
-  // readouts can never disagree about whether there is a signal at all (a dashed
-  // SINR beside a live-looking "0.00 b/J" would read as a broken panel).
-  const servingR1EnergyEfficiency = computeR1EnergyEfficiency({
-    sinrDb: sinrDb > MIN_VISIBLE_SINR_DB ? sinrDb : null,
-    txPowerDbm: servingTxPowerDbm,
-    bandwidthMHz: profile.channel.bandwidthMHz,
-    frequencyReuse,
-  });
   // Cell lane (servingBeamId null, servingCellId set): the serving unit is the
   // earth-fixed cell. Use formatCellServingIdentity — its frequency token is the
   // 0-indexed `cellFrequencyIndex` the cone render uses, NOT the 1-indexed steered
@@ -235,19 +257,22 @@ export function InfoPanel({
         <div role="status" aria-live="polite" aria-label="Serving and comparison beam status">
         <DuelCard
           servingTitle={servingTitle}
+          servingFriendlyTitle={servingFriendlyTitle}
           servingCaption={servingCaption}
+          servingCaptionNote={servingCaptionNote}
           servingBadgeText={panelPrimary.role === 'ho-source' ? 'recent HO' : formatStatusLabel(panelPrimary.status)}
           servingBadgeTone="serving"
           servingIdentity={servingIdentity}
           hasServingSignal={hasServingSignal}
           servingGlyph={servingGlyph}
           servingSinrDb={sinrDb}
-          servingR1EnergyEfficiencyBitsPerJoule={servingR1EnergyEfficiency?.bitsPerJoule ?? null}
           servingElevationDeg={servingElevationDeg}
           servingRangeKm={servingRangeKm}
           servingTone={servingTone}
           comparisonTitle={comparisonTitle}
+          comparisonFriendlyTitle={comparisonFriendlyTitle}
           comparisonCaption={comparisonCaption}
+          comparisonCaptionNote={comparisonCaptionNote}
           comparisonBadgeText={formatStatusLabel(panelComparison.status)}
           comparisonBadgeTone="candidate"
           comparisonIdentity={comparisonIdentity}
@@ -270,9 +295,56 @@ export function InfoPanel({
           offsetLabel={modeCopy.offsetLabel}
           triggerLabel={modeCopy.triggerLabel}
           triggerAriaLabel={modeCopy.triggerAriaLabel}
+          handoverCount={hoCount}
         />
         </div>
       </div>
+
+      {/* Teaching energy breakdown — the Σ-over-time story (Σ Mbit / Σ J). */}
+      {teachingEnergy === undefined ? null : (
+        <TeachingEnergyCard readout={teachingEnergy} />
+      )}
+
+      {/* CONTRACT §1 / §4: the field-wide card is a DIFFERENT quantity from the
+          energy breakdown — an instantaneous, cross-UE, coverage-weighted bit/J
+          from `src/utils/paperEnergyEfficiency.ts`, not a time integral, and its
+          power comes from the beam-load model rather than the power sliders. The
+          two are kept in separate, separately-labelled sections precisely so
+          nobody reads them as two views of one number; the two headings carry
+          that distinction, and the "?" holds the one-line note. */}
+      <div style={{
+        marginTop: UI_TOKENS.space.xl,
+        paddingTop: UI_TOKENS.space.lg,
+        borderTop: `1px solid ${UI_TOKENS.color.border.subtle}`,
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          minWidth: 0,
+          color: UI_TOKENS.color.semantic.tuningSoft,
+          fontSize: UI_TOKENS.type.size.body,
+          fontWeight: UI_TOKENS.type.weight.heavy,
+          letterSpacing: 0.4,
+        }}>
+          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{t('panel.overallEe.title')}</span>
+          {/* The two headings — 耗能明細 / 全場即時效率 — now carry the
+              distinction themselves, so no paragraph re-explains it on the card
+              face. The "?" holds one sentence on what each side accumulates and
+              where its power comes from. */}
+          <PanelHelp
+            helpId="panel.overallEe"
+            titleText={t('panel.overallEe.title')}
+            bodyText={`${t('panel.overallEe.divider')} ${t('panel.overallEe.help')}`}
+            meta={<>{t('formula.ee.caption')}</>}
+          />
+        </div>
+      </div>
+
+      <EnergyEfficiencyCard
+        energyEfficiency={ch5DemoPaperEnergyEfficiency}
+        powerSurface={profile.energyEfficiency?.paper}
+      />
 
       {formulaTermsVisible && (
         <FormulaTermsReadout
@@ -280,6 +352,7 @@ export function InfoPanel({
           budget={physicalServingBudget}
           isFormulaEvidenceStale={isFormulaEvidenceStale}
           frequencyReuse={frequencyReuse}
+          servingCellId={servingCellId}
         />
       )}
     </div>

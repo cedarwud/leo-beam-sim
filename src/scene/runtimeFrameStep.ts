@@ -664,10 +664,10 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     ? buildBeamPowerOverrideDbmByKey(state.beamPowerControlRuntime.statesByKey)
     : undefined;
 
-  const ueObserver = resolveWaypointObserver(profile.ueMobility, state.simTimeSec, observer.latDeg, observer.lonDeg);
+  const waypointObserver = resolveWaypointObserver(profile.ueMobility, state.simTimeSec, observer.latDeg, observer.lonDeg);
 
-  const ueEastKm = (ueObserver.lonDeg - observer.lonDeg) * EARTH_KM_PER_DEG * Math.cos(observer.latDeg * Math.PI / 180);
-  const ueNorthKm = (ueObserver.latDeg - observer.latDeg) * EARTH_KM_PER_DEG;
+  const ueEastKm = (waypointObserver.lonDeg - observer.lonDeg) * EARTH_KM_PER_DEG * Math.cos(observer.latDeg * Math.PI / 180);
+  const ueNorthKm = (waypointObserver.latDeg - observer.latDeg) * EARTH_KM_PER_DEG;
   const primaryShell = profile.orbit.shells[0];
   const primaryGeometry = primaryShell
     ? computeBeamGeometry(primaryShell.altitudeKm, profile.antenna.beamwidth3dBRad)
@@ -723,6 +723,16 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     primaryFootprintRadiusKm: primaryGeometry.footprintRadiusKm,
     ueWorldScale,
   });
+  // Keep the demo jog on the real handover decision path. Without this bridge
+  // the marker moved, but HandoverManager continued evaluating the old waypoint.
+  const primaryPosition = perUePositions[0];
+  const observerCosLat = Math.cos(observer.latDeg * Math.PI / 180);
+  const ueObserver: UeObserverPosition = {
+    latDeg: observer.latDeg + primaryPosition.northKm / EARTH_KM_PER_DEG,
+    lonDeg: observer.lonDeg + primaryPosition.eastKm / (
+      EARTH_KM_PER_DEG * Math.max(Math.abs(observerCosLat), 1e-6)
+    ),
+  };
   const ueGroundX = perUePositions[0].groundX;
   const ueGroundZ = perUePositions[0].groundZ;
   const preDecisionContext = buildLinkContext(

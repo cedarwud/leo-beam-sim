@@ -200,7 +200,7 @@ These are the recommended first-wave controls for a live SINR panel.
 |---|---|---|---|---|---|---|---|
 | `f_c` | Carrier frequency | `channel.frequencyGHz` | GHz | slider / numeric input | `10` to `40` | next-frame recompute | feeds FSPL and composite path loss |
 | `B` | Channel bandwidth | `channel.bandwidthMHz` | MHz | slider / numeric input | `5` to `400` | next-frame recompute | feeds `σ²` through `N = N_0 + 10log10(B)` |
-| `P_t` | Per-beam transmit power | `channel.maxTxPowerDbm` | dBm | slider / numeric input | `30` to `60` | next-frame recompute | base Tx power before any DPC override |
+| `P_t` | Per-beam transmit power | `channel.maxTxPowerDbm` | dBm | slider / numeric input | `10` to `60` | next-frame recompute | base Tx power before any DPC override |
 | `N_0` | Noise PSD | `channel.noisePsdDbmHz` | dBm/Hz | slider / numeric input | `-180` to `-160` | next-frame recompute | directly changes noise floor |
 | `G_{t,max}` | Max transmit gain | `antenna.maxGainDbi` | dBi | slider / numeric input | `20` to `60` | next-frame recompute | directly shifts received signal power |
 | `θ_{3dB}` | 3 dB beamwidth | `antenna.beamwidth3dBRad` | degrees in UI, radians internally | slider / numeric input | `1°` to `8°` | recompute + layout-sensitive | affects beam gain pattern and beam footprint geometry |
@@ -257,12 +257,13 @@ These may still be adjustable elsewhere, but not inside the SINR-parameter UI.
 ### Topology Overrides (Phase E)
 
 > User vision (recorded in `.agent-memory/project_paper_faithful_vision.md`)
-> places sat-count, beam-count, and UE-count overrides inside the
-> SINR-mode left sidebar. To satisfy this without reverting the
-> formula-tab classification, Phase E ships a `Topology` tab inside
-> `SignalTuningPanel` classed as `Simulation Setting`, NOT as a
-> paper-facing SINR formula tab. The tab is gated on
-> `appMode === 'sinr-experiment'`; it never appears in `modqn-demo`.
+> places sat-count, beam-count, and UE-count overrides inside the live-scene
+> left sidebar. To satisfy this without reverting the formula-tab
+> classification, the live `sinr-live` lane exposes a `Topology` main tab
+> inside `SignalTuningPanel`, while the shared `modqn-live-cell-preview` lane
+> mounts the same `TopologyTab` directly. Both are classed as
+> `Simulation Setting`, NOT as paper-facing SINR formula tabs. Recorded replay
+> lanes do not mount these controls and remain producer-backed/read-only.
 >
 > Parameters in the Topology tab follow `Simulation Setting` semantics
 > (no paper symbol mapping; reset implications documented in
@@ -287,9 +288,9 @@ These may still be adjustable elsewhere, but not inside the SINR-parameter UI.
 > `SceneTopologyState`. The slider sits in the Topology tab alongside
 > sat-count and beam-count overrides as a `Simulation Setting`. The
 > UE-count override extends the live engine to maintain N independent
-> per-UE state vectors with per-UE SINR + per-UE handover state. The
-> override is gated on `appMode === 'sinr-experiment'`; in
-> `modqn-demo` the paper-faithful 100-UE baseline applies.
+> per-UE state vectors with per-UE SINR + per-UE handover state. It is available
+> on both live scene lanes; in `modqn-demo`, a selected training environment
+> remains the fallback only when no explicit scene override is set.
 
 ### UE Mobility (Phase G)
 

@@ -70,6 +70,27 @@ export type { BeamVizDisplayCaps } from './beamVizModel';
 const MAX_APPROACH_PREVIEW_BEAMS = MAX_BEAMS_PER_SATELLITE - 1;
 const MIN_APPROACH_HOLD_SEC = 4;
 
+/**
+ * How far above the geometrically-derived height the satellites are drawn
+ * (owner call 2026-08-06: 現在衛星太低了要加高).
+ *
+ * The derived value is the true altitude in scene units, which puts the shell
+ * so close to the ground plane that the beam cones are short and steep and the
+ * satellites read as hovering rather than orbiting. This lift is DISPLAY ONLY:
+ * it moves where the satellite mesh and the cone apex are drawn, and changes
+ * nothing about range, elevation, path loss, SINR or the handover decision —
+ * those all run on the real kilometres upstream.
+ *
+ * A profile that sets `visualSatelliteAltitude` explicitly opts out: its value
+ * is taken verbatim, since it is already an authored display height.
+ *
+ * Exported because `validate:s1:coordinate-authority` reconstructs the expected
+ * `satPosScaleFactor` to check the live-enu projection end-to-end. It used to
+ * hard-code the fallback arithmetic, which meant this display choice lived in
+ * two places and moving one silently failed the other.
+ */
+export const DERIVED_VISUAL_ALTITUDE_LIFT = 1.5;
+
 interface BeamSelectionSpec {
   beamId: number;
   role?: VizFrame['eventRoles'] extends Map<string, infer T> ? T : never;
@@ -129,8 +150,8 @@ export function useBeamViz(
         : null;
     const visualSatelliteAltitude = configuredVisualSatelliteAltitude
       ?? (kmToWorldScale !== null
-        ? geometry.shellAltitudeKm * kmToWorldScale
-        : runtime.appMode === 'sinr-experiment' ? 600 : 900);
+        ? geometry.shellAltitudeKm * kmToWorldScale * DERIVED_VISUAL_ALTITUDE_LIFT
+        : (runtime.appMode === 'sinr-experiment' ? 600 : 900) * DERIVED_VISUAL_ALTITUDE_LIFT);
     // Rescales the sky-dome's vertical extent (SKY_DOME_V_RADIUS) up to the
     // configured visual altitude. The former bare `/ 400` magic literal hid
     // that this divisor IS the dome radius (see sceneScale.ts).

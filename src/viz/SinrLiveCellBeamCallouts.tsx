@@ -87,7 +87,7 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
                 boxShadow: isPrimary ? `0 0 10px ${item.color}66` : 'none',
                 color: '#ffffff',
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-                fontSize: isPrimary ? 12 : 10,
+                fontSize: isPrimary ? 14 : 12,
                 lineHeight: 1.2,
                 textAlign: 'center',
                 whiteSpace: 'nowrap',

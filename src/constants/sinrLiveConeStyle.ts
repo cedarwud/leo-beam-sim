@@ -11,23 +11,42 @@
  * The HYBRID look (D-STYLE A → hybrid, user-locked 2026-06-11; screenshot-tuned
  * on :3000):
  *  - AMBIENT: EVERY serving sat's cone, so every serving sat is beamed
- *    (the connected-sat-has-beam must-hold). Currently 0.45
+ *    (the connected-sat-has-beam must-hold). Currently 0.55
  *    ({@link SINR_LIVE_CONE_AMBIENT_OPACITY}); three de-tangling features keep the
  *    higher level legible — the apex→base alpha fade
  *    ({@link SINR_LIVE_CONE_BASE_ALPHA_FACTOR}), the near-horizon shallow-cone dim,
- *    and the pulled-back initial camera. Cones use AdditiveBlending
- *    ({@link SINR_LIVE_CONE_BLENDING}) so overlapping serving cones accumulate into a
- *    brighter glow where many sats serve the same area.
+ *    and the pulled-back initial camera. Cones use NormalBlending
+ *    ({@link SINR_LIVE_CONE_BLENDING}) so a cone's HUE is constant and only its
+ *    saturation/strength varies with opacity (owner call 2026-08-06: 顏色不要洗白).
  *  - PAIR: the focused cinema handover pair (old/new cell), BRIGHT, drawn on top
  *    of the ambient layer so the handover story stands out against the faint
  *    field.
  *
+ * ROLE PALETTE (2026-08-06 consolidation + FINAL owner spec). A cone's colour + opacity are
+ * decided in ONE place, {@link resolveSinrLiveConeRoleStyle}, from its explicit ROLE.
+ *
+ * COLOUR MARKS ROLE, AND ONLY ROLE. 「只有服務波束是黃色，候選波束是藍色，其他都用灰色」 —
+ * exactly two STEADY coloured roles (the beam serving you = YELLOW, the beam about to serve
+ * you = BLUE, both bright and saturated at 0.80), and every other steady cone is neutral grey
+ * separated by ALPHA alone: serving fan 0.40 > candidate fan 0.28 > background 0.18 > opt-in
+ * non-serving 0.12. Event overlays add one deliberate distinction: an INTRA target is ORANGE
+ * (same satellite, still the serving family), while an INTER target is BLUE (another satellite).
+ * This is an event colour, not a third steady role.
+ *
+ * HIERARCHY IS ALPHA, NEVER A DARKER SWATCH. Darkening a colour in sRGB shifts its
+ * perceived HUE (yellow → brown, blue → violet — both owner-reported when "one step
+ * darker" variants were tried), so 「不要用濃淡好了，就用透明度就好」. A handover therefore
+ * fades one hue out and the other in without either changing colour.
+ *
  * Cone RENDER colour is now the SEMANTIC role/state palette
- * (docs/sinr-live-semantic-beam-colour-sdd.md): serving GREEN
- * ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}) / dim context
+ * (docs/sinr-live-semantic-beam-colour-sdd.md): serving YELLOW `#facc15`
+ * ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}) / dim neutral context
  * ({@link SINR_LIVE_CONE_BACKGROUND_COLOR}) / candidate BLUE
- * ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}) / a releasing-orange→acquired-green handover
- * flip — learnable in one glance, no legend. It is applied at the MOUNT via
+ * ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}) / a fading-yellow→acquiring-blue handover
+ * flip — learnable in one glance, no legend. (This paragraph used to say "serving
+ * GREEN" and "releasing-orange→acquired-green": both were left over from the palette
+ * that was retired on 2026-06-22, and contradicted the actual constants below plus
+ * every other comment in this file. Corrected 2026-08-06.) It is applied at the MOUNT via
  * `resolveSinrLiveConeRenderColor` (hero/kind/override/background precedence), NOT in the
  * pure resolver: the resolver item's serving-identity `color` (`colorForServingBeam`)
  * survives as the fixture default (vc1c/vc2) + the per-cell DATA, so it is not re-homed
@@ -35,10 +54,29 @@
  * a future frequency-plan colour mode.
  */
 import * as THREE from 'three';
-import { frequencyReuseColor } from './beamRoleTokens';
+import {
+  frequencyReuseColor,
+  INTRA_HANDOVER_SOURCE_COLOR,
+  INTRA_HANDOVER_TARGET_COLOR,
+} from './beamRoleTokens';
 
-/** Ambient cone opacity — every serving sat's beam (screenshot-locked 0.45). */
-export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.45;
+/**
+ * Ambient cone opacity - the SERVING-FAN role (your satellite's other beams, neutral grey).
+ *
+ * 0.45 -> 0.24 -> 0.45 -> 0.55 -> 0.40. The 0.24 dip was a misdiagnosis (the "white/grey
+ * wash" came from the ADDITIVE blend saturating the terrain, not from the opacity); the
+ * 0.55 spike belonged to a rejected design in which this fan was YELLOW and therefore had
+ * to out-vote the green terrain to stay yellow.
+ *
+ * Under the FINAL spec this layer is neutral CONTEXT, so it has no hue to defend and the
+ * only question is legibility ordering. 0.40 places it clearly below the two coloured roles
+ * (0.80) and clearly above the candidate fan (0.28) and the background (0.18), while
+ * staying dim enough to answer 「那個其他波束的灰色再淡一些」.
+ *
+ * PIN NOTE: `src/viz/SinrLiveCellBeamCones.test.ts` VALUE-asserts this number. Change both
+ * in the same commit (this pin rotted apart once already, P2 SN-1).
+ */
+export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.4;
 
 /**
  * Bright opacity for the PRIMARY serving satellite's beams (the sat serving the
@@ -132,21 +170,153 @@ export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.95;
  * + legible as one satellite swapping beams — once the non-serving sats are off
  * (sinrLiveTargetSatIds = serving + imminent inter-target only), this single-sat A→B
  * flip IS the intra story. Display-only (Rule#6).
+ *
+ * 3200 → 5000 (2026-08-06, owner: 「現在場上的 intra/inter handover 的呈現都要跟 show
+ * intra/inter 的效果一樣，2個波束要呈現出兩個交接的效果」). The real handover no longer
+ * fades both cones together — it walks the SAME five-phase
+ * {@link resolveHandoverConeEnvelope} the manual demonstration walks, so the sustain is
+ * now a five-act budget rather than a single decay. At 3200 ms the four narrated acts get
+ * 600 ms each, which is the exact duration the manual demo was raised OFF (2500 → 8000)
+ * because ~600 ms is below the time it takes a viewer to move their eyes from one cone to
+ * the other; the whole thing read as "two beams blinked at once". 5000 ms gives each act
+ * ~937 ms plus a 1250 ms settled tail.
+ *
+ * Why not the manual demo's 8000 ms: the manual cue PAUSES the sim and owns the frame, so
+ * it can afford to be long. The real flash fires mid-playback while the protagonist keeps
+ * handing over, and a window longer than the gap to its NEXT handover gets truncated when
+ * the latch in `MainScene` re-arms. Measured (100 UEs, 240 x 5 s steps, protagonist =
+ * perUePositions[0]) — closest protagonist re-arm, in SIM seconds:
+ *
+ *   hobs-2024-candidate-rich       5 re-arms, gaps 310/150/320/210 s → min 150 s
+ *   hobs-2024-tr38811-research     2 re-arms, gap 200 s             → min 200 s
+ *   hobs-2024-paper-default        0 re-arms in the whole window    → n/a
+ *   hobs-2024-mobile-demo-aircraft 11 re-arms, min gap 5 s          → min 5 s
+ *
+ * So on three of the four profiles even an 8 s window closes with room to spare; the
+ * aircraft profile is the outlier where the protagonist re-arms every 5–10 s of sim time
+ * and NO readable window survives above 1x playback. 5000 ms is the choice that keeps the
+ * story readable everywhere and still fits the aircraft profile at 1x, where 8000 ms would
+ * not. Truncation is the accepted failure mode: a re-arm restarts the envelope at "one
+ * beam", so a truncated story degrades to "handovers are coming fast", never back to the
+ * two-beams-blinking-in-lockstep bug this replaced.
  */
-export const SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS = 3200;
+export const SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS = 5000;
 /** Peak (age-0) opacity of the triggered flash — dominates the ambient pulse (0.8 peak, fast sim-time fade). */
 export const SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY = 0.95;
 /** OLD (handed-off) cell colour — the serving YELLOW it currently is, fading out as the beam
  * drops ({@link SINR_LIVE_CONE_SERVING_PRIMARY_COLOR}). No separate "releasing" hue: the
- * handover signal is the NEW cell going BLUE, the old one just fades. */
-export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = '#facc15';
-/** NEW (acquiring) cell colour — BLUE = "taking over", the SAME blue as the inter candidate
- * ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}) so blue UNIFORMLY means "the beam taking over"
- * (intra new beam + inter candidate). Owner-chosen 2026-06-22 (intra = 黃→藍). The flash
- * draws ON TOP of the new serving (hero) cone and fades over the sustain, so the cell reads
- * blue→yellow = "acquiring → now your serving link" (this also satisfies 接手=跳回服務色: the
- * blue is the transient takeover, the yellow underneath is the settled serving). */
-export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = '#3b82f6';
+ * handover signal is the NEW cell taking the event-kind colour, while the old one just fades. */
+export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = INTRA_HANDOVER_SOURCE_COLOR;
+/** NEW (acquiring) cell colour for an INTRA handover — ORANGE keeps the event on the same
+ * satellite's serving family while distinguishing it from the INTER candidate BLUE. The
+ * explicit INTER demo uses {@link INTER_HANDOVER_TARGET_COLOR} through the display-spec
+ * target-colour resolver. */
+export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = INTRA_HANDOVER_TARGET_COLOR;
+
+// ---------------------------------------------------------------------------
+// The SHARED handover cone envelope (2026-08-06).
+//
+// This used to be `resolveManualHandoverConeEnvelope` in `src/scene/manualHandoverDemo.ts`
+// and only the top-bar demonstration button walked it; the REAL handover flash handed both
+// of its cones ONE shared decay, so they lit together and died together. Owner: 「現在場景
+// 中央上方出現 intra handover 的 badge 時，根本就沒有動畫阿，現在場上的 intra/inter handover
+// 的呈現都要跟 show intra/inter 的效果一樣，2個波束要呈現出兩個交接的效果」. Both paths now
+// walk this one envelope, so the name lost its `Manual` and the function moved here — the
+// module that already owns "how bright is this cone", next to the sustain budget the real
+// path measures its progress against.
+//
+// The envelope's only input is `progress01`, so the SHAPE is shared while the LENGTH is
+// each caller's own: the manual demo spends `MANUAL_HANDOVER_DISPLAY_MS` (8 s, sim paused)
+// walking it, the real flash spends {@link SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS} (5 s,
+// mid-playback).
+// ---------------------------------------------------------------------------
+
+/**
+ * The five teaching phases, as fractions of the caller's own window. Each boundary is
+ * where a phase ENDS; the last phase (`settled`) runs from `releasing` to 1.
+ *
+ * | phase     | progress    | old beam   | new beam  | what the viewer is being shown |
+ * |-----------|-------------|------------|-----------|--------------------------------|
+ * | serving   | 0–18.75%    | full       | absent    | this is the current link |
+ * | measuring | 18.75–37.5% | full       | fading in | a candidate appears, measurement starts |
+ * | holding   | 37.5–56.25% | full       | full      | trigger timer running, both links up |
+ * | releasing | 56.25–75%   | fading out | full      | handover done, old link released |
+ * | settled   | 75–100%     | absent     | full      | one beam again, on the new link |
+ *
+ * The `settled` tail is a quarter of the window and is load-bearing: when `from` only
+ * reached alpha 0 at progress exactly 1.0, the fade finished on the very last frame and
+ * the "one beam again" state was never actually on screen — the story read as single →
+ * double and then stopped, missing its third act.
+ */
+export const HANDOVER_CONE_PHASE_END = {
+  serving: 0.1875,
+  measuring: 0.375,
+  holding: 0.5625,
+  releasing: 0.75,
+} as const;
+
+export type HandoverConePhase = 'serving' | 'measuring' | 'holding' | 'releasing' | 'settled';
+
+export interface HandoverConeEnvelope {
+  /** Alpha for the OLD (from) cone. 0 → the renderer emits no old cone. */
+  readonly fromOpacity: number;
+  /** Alpha for the NEW (to) cone. 0 → the renderer emits no new cone. */
+  readonly toOpacity: number;
+  readonly phase: HandoverConePhase;
+}
+
+/** Hermite smoothstep, clamped — a fade-in/out with no visible corner at either end. */
+function smoothstep01(t: number): number {
+  if (!Number.isFinite(t) || t <= 0) return 0;
+  if (t >= 1) return 1;
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * (progress01, peakOpacity) → the two cone alphas + the phase label.
+ *
+ * Each cone owns its OWN alpha: the new beam ramps in over `measuring` and the old beam
+ * only lets go over `releasing`, so the OVERLAP (`holding`) is visible as a deliberate
+ * held state rather than being the whole event. The ramps are smoothstep, not linear, so
+ * a fade has no hard start/stop edge.
+ *
+ * TIME-HONESTY — read this before believing the picture. On the REAL handover path this
+ * envelope is a RETROSPECTIVE RE-ENACTMENT, not a live broadcast. The cell model classifies
+ * a handover only AFTER it has already happened, so the flash starts at the moment the
+ * event is first observed and then narrates "candidate appears → both held → old released"
+ * forwards from there. The candidate did not appear at t+1 s of the animation; it appeared
+ * some time BEFORE t=0. The ordering is the teaching truth (this is the sequence a handover
+ * goes through), the timing is not the wall-clock truth. The MANUAL demonstration button is
+ * the same shape and is not even tied to a real event. Neither path may be read as a live
+ * timeline, and neither decides anything: this is display-only (Rule#6) — it returns two
+ * alphas and changes no serving / SINR / handover state.
+ *
+ * @param progress01 elapsed / total, clamped internally to [0, 1].
+ * @param peakOpacity the fully-on alpha (the caller's spec peak).
+ */
+export function resolveHandoverConeEnvelope(
+  progress01: number,
+  peakOpacity: number,
+): HandoverConeEnvelope {
+  const peak = Number.isFinite(peakOpacity) ? Math.max(0, peakOpacity) : 0;
+  const p = !Number.isFinite(progress01) ? 0 : Math.min(1, Math.max(0, progress01));
+  const { serving, measuring, holding, releasing } = HANDOVER_CONE_PHASE_END;
+  // to: absent until `serving` ends, smooth in across the `measuring` window, then full.
+  const toOpacity = peak * smoothstep01((p - serving) / (measuring - serving));
+  // from: full until `holding` ends, then smooth out across the `releasing` window —
+  // which closes at `releasing`, not at 1.0, so the settled tail is real screen time.
+  const fromOpacity = peak * (1 - smoothstep01((p - holding) / (releasing - holding)));
+  const phase: HandoverConePhase = p < serving
+    ? 'serving'
+    : p < measuring
+      ? 'measuring'
+      : p < holding
+        ? 'holding'
+        : p < releasing
+          ? 'releasing'
+          : 'settled';
+  return { fromOpacity, toOpacity, phase };
+}
 
 /**
  * SEMANTIC palette (docs/sinr-live-semantic-beam-colour-sdd.md). The PRIMARY serving
@@ -168,8 +338,85 @@ export const SINR_LIVE_CONE_SERVING_PRIMARY_COLOR = '#facc15';
  * palette) → a lighter neutral grey. The DEFAULT of `beamDisplaySpec.backgroundConeColor`
  * (one-field re-tune). Threaded into the serving + non-serving cone mounts as
  * `backgroundColor`; faint at the ambient opacity. Display-only.
+ *
+ * OPEN TENSION (2026-08-06, NOT changed here — needs an owner palette call). Under
+ * {@link SINR_LIVE_CONE_BLENDING} = Normal the composite is
+ * `alpha × cone + (1 − alpha) × terrain`, and the terrain is the green campus/aerial
+ * GLB. A NEUTRAL cone colour has no hue of its own, so it can only DILUTE the terrain's
+ * green — never oppose it. Most cones on screen are this layer, which is why the field
+ * reads green. Measured over a mid-green terrain (`#4a7a3a`), relative green cast
+ * (green-excess ÷ luminance): 0.40 at alpha 0.24 → 0.25 at 0.45 → 0.19 at 0.55. Raising
+ * alpha keeps helping but eats the contrast that carries the role palette, and fully
+ * cancelling the green would need a cone colour with green-excess ≈ −0.27 — a
+ * pink/lavender, well outside this palette. So: leave it neutral and accept a residual
+ * green tint, or trade "context has no hue" for a slight cool/violet lean. That is a
+ * semantics decision, not a render fix — and it is NOT reachable by the pure-alpha lever,
+ * because this role is now deliberately the FAINTEST steady layer (0.22,
+ * {@link SINR_LIVE_CONE_BACKGROUND_OPACITY}). STILL OPEN, needs an owner call.
+ *
+ * The role that USED to carry this problem across most of the screen — the serving
+ * satellite's own fan — no longer uses this colour at all: it is the serving yellow
+ * ({@link SINR_LIVE_CONE_SERVING_FAN_COLOR}). So the residual green tint is now confined
+ * to genuine background context, which is a far smaller share of the frame.
  */
 export const SINR_LIVE_CONE_BACKGROUND_COLOR = '#9ca3af';
+
+/**
+ * SERVING-FAN colour - the OTHER beams of the satellite that is serving the protagonist
+ * (same sat as the hero, different cell).
+ *
+ * FINAL OWNER SPEC 2026-08-06: 「只有服務波束是黃色，候選波束是藍色，其他都用灰色」. COLOUR
+ * MARKS ROLE, nothing else. There are exactly TWO coloured roles on this lane - the beam
+ * serving you (yellow) and the beam about to serve you (blue) - and everything else is
+ * neutral CONTEXT. A satellite's other beams are context, not a role, so this is an ALIAS
+ * of {@link SINR_LIVE_CONE_BACKGROUND_COLOR}. Its presence is carried by ALPHA alone
+ * ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} 0.40 - above the candidate fan, below the two
+ * coloured roles).
+ *
+ * TWO REJECTED ATTEMPTS, recorded so neither is retried:
+ *  1. amber-600 `#ca8a04`, a "one step darker" yellow -> read as BROWN. Darkening a yellow
+ *     in sRGB drops R and G together while B is already near zero, so the perceived HUE
+ *     shifts to olive/brown instead of the yellow simply getting dimmer. (The blue side
+ *     failed identically: a darker blue read as VIOLET.) Hence the standing rule - hue
+ *     values are FIXED, hierarchy is alpha: 「不要用濃淡好了，就用透明度就好」.
+ *  2. the full serving fan in the HERO yellow at a lower alpha. Legible, but it made the
+ *     whole satellite read as "your link" and spent the palette's strongest signal on
+ *     context. Owner rejected: the fan is 脈絡, not a role.
+ */
+export const SINR_LIVE_CONE_SERVING_FAN_COLOR = SINR_LIVE_CONE_BACKGROUND_COLOR;
+
+/**
+ * Ambient opacity for the BACKGROUND role - a serving cone belonging to some OTHER
+ * satellite (visible under the "Other beams" power-view, `focusScope: 'allServing'`, or
+ * the F4 empty-focus fallback). Owner 2026-08-06: 「那個其他波束的灰色再淡一些」.
+ *
+ * It used to share {@link SINR_LIVE_CONE_AMBIENT_OPACITY} with the serving fan, so "yours"
+ * and "somebody else's" drew at the SAME strength. Every grey layer is now separated by
+ * ALPHA alone: serving fan 0.40 > candidate fan 0.28 > this 0.18 > the opt-in non-serving
+ * layer 0.12. Effective alpha 0.18 overhead, and 0.18 x
+ * {@link SINR_LIVE_CONE_DIM_MIN_FACTOR} (0.25) = 0.045 for a shallow near-horizon cone:
+ * clear of the 0.023 "mathematically present, optically absent" level the dim floor was
+ * raised to escape, so this does not re-open that bug. This is the FAINTEST dim-eligible
+ * layer, so 0.045 is the floor of the whole cone render.
+ *
+ * Honest caveat, NOT fixable with alpha: this colour is neutral, so at ANY alpha it can
+ * only dilute the green terrain, never oppose it - a faint grey cone over green imagery
+ * still reads slightly green. That is the OPEN palette tension documented on
+ * {@link SINR_LIVE_CONE_BACKGROUND_COLOR}; closing it needs an owner call on the context
+ * HUE, not another opacity tweak.
+ */
+export const SINR_LIVE_CONE_BACKGROUND_OPACITY = 0.18;
+
+
+/**
+ * Upper BOUND on the candidate satellite's fan (cones per frame, INCLUDING the primary
+ * "your next link" cone). Mirrors the serving lane's bounded-multibeam discipline (a sat
+ * forms a fixed beam budget, leo = 7): the candidate fan is a bounded read-out of that
+ * satellite's OWN illuminated beams, never the all-sat firehose the W9 wiring lock warns
+ * about. Raising it cannot pull in a second satellite — the resolver filters on the one
+ * `pendingTargetSatId` — it only widens how many of that sat's beams are drawn.
+ */
+export const SINR_LIVE_CANDIDATE_FAN_MAX_CONES = 7;
 
 /**
  * G2c ambient live-handover PULSE peak opacity. When a real per-frame handover
@@ -183,21 +430,18 @@ export const SINR_LIVE_CONE_BACKGROUND_COLOR = '#9ca3af';
 export const SINR_LIVE_CONE_PULSE_PEAK_OPACITY = 0.8;
 
 /**
- * SEMANTIC ambient handover-pulse colour (docs/sinr-live-semantic-beam-colour-sdd.md).
- * A fired handover on a TARGET satellite (serving / imminent-target — the pulse is
- * FOCUSED to those in MainScene) briefly flares its old/new cells: the population
- * "a handover just happened here" cue. Soft BLUE — blue uniformly means "handover / takeover
- * activity" (the inter candidate + the intra/inter acquiring cell are blue too), so a
- * population handover blip is the same family; lighter ({@link SINR_LIVE_CONE_CANDIDATE_COLOR}
- * is the solid steady candidate) so a transient flare is not mistaken for the steady candidate
- * cone. The PROTAGONIST's own handover gets the vivid yellow→blue TRIGGERED flash instead (the
- * hero effect), so the ambient pulse no longer needs to encode intra-vs-inter — both kinds
- * now point at the same soft blue blip. (Was soft green #86efac then soft yellow, retired with
- * the yellow=serving / blue=takeover palette.) Display-only (Rule#6): a read-out of the
- * model's classified handover, no truth touched.
+ * SEMANTIC ambient handover-pulse colours (docs/sinr-live-semantic-beam-colour-sdd.md).
+ * A fired handover on a TARGET satellite (serving / imminent-target — the pulse is FOCUSED to
+ * those in MainScene) briefly flares its old/new cells: the population "a handover just
+ * happened here" cue. The latest owner rule (2026-08-06) keeps the two event kinds visibly
+ * distinct: INTRA = orange, INTER = candidate blue. The pulse is still lighter than the solid
+ * candidate role, so a transient flare is not mistaken for the steady candidate cone. The
+ * INTER value intentionally matches `SINR_LIVE_CONE_CANDIDATE_COLOR` below; it is written here
+ * before that declaration so the token initialisation order stays acyclic.
+ * Display-only (Rule#6): a read-out of the model's classified handover, no truth touched.
  */
-export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = '#93c5fd';
-export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#93c5fd';
+export const SINR_LIVE_CONE_PULSE_INTRA_COLOR = INTRA_HANDOVER_TARGET_COLOR;
+export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#3b82f6';
 
 /**
  * Candidate / contender satellite cone hue — the W9 handover-target highlight. The
@@ -212,14 +456,47 @@ export const SINR_LIVE_CONE_PULSE_INTER_COLOR = '#93c5fd';
 export const SINR_LIVE_CONE_CANDIDATE_COLOR = '#3b82f6';
 
 /**
- * Dim opacity for the OPT-IN non-serving cone layer (Tier-2 show/dim switch,
- * `BeamDisplaySpec.showNonServingCones`, default OFF). Dimmer than the ambient
- * serving field ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} = 0.45) so co-channel /
- * non-serving illuminated beams read as faint background context behind the
- * serving cones, never competing with them. Display-only (Rule#6): showing these
- * cones reads non-serving `illuminatedBeams` and changes no serving/SINR truth.
+ * CANDIDATE-FAN colour + opacity, and the PRIMARY candidate cone's opacity.
+ *
+ * The candidate satellite draws its own BOUNDED multibeam fan (owner 2026-08-06: 「候選波束
+ * 除了藍色的打在 ue 上之外，也要有其他波束打在其他地方，不能只有一個波束」) - but under the
+ * FINAL colour spec only ONE of those cones is BLUE: the one landing on the protagonist's
+ * cell, because that is the ROLE ("the beam about to serve you"). The rest of that
+ * satellite's beams are context, so the fan colour is an ALIAS of
+ * {@link SINR_LIVE_CONE_BACKGROUND_COLOR}, separated from every other grey layer by alpha
+ * (0.28: below the serving fan's 0.40, above the background's 0.18).
+ *
+ * The PRIMARY candidate cone is an EQUAL-WEIGHT role to the hero, not a subordinate one -
+ * "your current link" and "your next link" are the two halves of the handover story, so it
+ * carries the same 0.80 alpha as {@link SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY}. It was
+ * briefly 0.50, which under NormalBlending is half green terrain: the blue read MUDDY
+ * (owner: the colours should be 「比較亮比較飽合」). Over the mid-green terrain
+ * (`#4a7a3a` = 74,122,58), `#3b82f6` (59,130,246) composites to (66,126,152) at 0.50 -
+ * green and blue nearly tied - versus (62,128,208) at 0.80, an unambiguous blue.
  */
-export const SINR_LIVE_CONE_NONSERVING_OPACITY = 0.04;
+export const SINR_LIVE_CONE_CANDIDATE_FAN_COLOR = SINR_LIVE_CONE_BACKGROUND_COLOR;
+export const SINR_LIVE_CONE_CANDIDATE_FAN_OPACITY = 0.28;
+export const SINR_LIVE_CONE_CANDIDATE_OPACITY = 0.8;
+
+/**
+ * Dim opacity for the OPT-IN non-serving cone layer (Tier-2 show/dim switch,
+ * `BeamDisplaySpec.showNonServingCones`, default OFF) - the co-channel / beam-hopping
+ * beams that serve nobody.
+ *
+ * 0.04 -> 0.12 (2026-08-06). 0.04 under NormalBlending means the composite is 96% terrain:
+ * the layer was mounted, counted, and optically ABSENT - the same "mathematically present,
+ * optically absent" failure the {@link SINR_LIVE_CONE_DIM_MIN_FACTOR} floor was raised to
+ * escape. That is a real defect for an OPT-IN layer whose entire purpose is "show me the
+ * beams you are not serving with": if turning it on changes nothing visible, the toggle
+ * lies. (Note this mount passes NO `dimShallowCones`, so 0.12 is also the EFFECTIVE alpha
+ * - it is not multiplied down further.)
+ *
+ * It stays the FAINTEST steady layer, below the background context role
+ * ({@link SINR_LIVE_CONE_BACKGROUND_OPACITY} 0.22), so "not serving anyone" still reads as
+ * the quietest thing on screen. Display-only (Rule#6): showing these cones reads
+ * non-serving `illuminatedBeams` and changes no serving/SINR truth.
+ */
+export const SINR_LIVE_CONE_NONSERVING_OPACITY = 0.12;
 
 /** Segments around the flat ground footprint ring of each oblique cone. */
 export const SINR_LIVE_CONE_SEGMENTS = 32;
@@ -239,23 +516,34 @@ export const SINR_LIVE_CONE_SEGMENTS = 32;
 export const SINR_LIVE_CONE_BASE_ALPHA_FACTOR = 1.0;
 
 /**
- * AdditiveBlending for the cones — the CURRENT, owner-pixel-verified look
- * (8e4e1e7, 2026-07-03: ab861c4 3-layer footprint restore; evidence
- * output/shot/candshot-2.png — serving yellow 3-layer + candidate blue cone/ring,
- * verified against the FINAL yellow/blue palette, which no longer depends on the
- * green-vs-terrain hue separation the semantic era needed).
+ * NormalBlending for the cones — OWNER DECISION 2026-08-06: hue correctness beats
+ * glow. Verbatim ask: 「顏色不要洗白，就是原本的顏色變淡跟變濃這樣」 +
+ * 「候選衛星應該要是藍色吧?怎麼會是白色?」. Under NormalBlending a cone composites at
+ * its OWN colour, so low alpha = pale blue and high alpha = deep blue — the hue is
+ * CONSTANT and only the strength varies, which is exactly the requested
+ * "same colour, lighter↔heavier" read.
  *
- * History, because this value has flipped twice and the trade-off is real:
- * NormalBlending (7fb5991, semantic-colour era, see
- * docs/sinr-live-semantic-beam-colour-sdd.md §8) composited each cone at its OWN
- * hue so a role colour read true over the bright satellite-imagery terrain;
- * AdditiveBlending accumulates with the terrain (brighter, glowing multibeam
- * field) at the cost of hue drift over bright ground. That bright-terrain washout
- * is a KNOWN OPEN P3 紅綠場 item — if this flips again, update the S5-2
- * style-token pin in src/viz/SinrLiveCellBeamCones.test.ts in the SAME commit
- * (test and token rotted apart once already, 07-03→07-07, P2 SN-1 finding).
+ * Why Additive had to go: additive ADDS the cone's RGB onto whatever is behind it.
+ * The candidate blue {@link SINR_LIVE_CONE_CANDIDATE_COLOR} `#3b82f6` is
+ * (0.23, 0.51, 0.96); over the bright satellite-imagery terrain all three channels
+ * saturate to 1.0 at the opacities the hero/candidate layers use → the cone renders
+ * WHITE and the blue/yellow role palette stops carrying meaning. That washout was
+ * already logged as the OPEN P3 紅綠場 item; this closes it in favour of the palette.
+ *
+ * History, because this value has now flipped three times and the trade-off is real:
+ * NormalBlending (7fb5991, 2026-06-22, semantic-colour era, see
+ * docs/sinr-live-semantic-beam-colour-sdd.md §8) → AdditiveBlending (8e4e1e7,
+ * 2026-07-03, ab861c4 3-layer footprint restore, evidence output/shot/candshot-2.png)
+ * → NormalBlending (2026-08-06, this decision). What Additive bought was the glowing
+ * accumulation where several serving cones overlap; that glow is NOT worth losing the
+ * hue, because the hue is the only legend-free encoding of role (serving yellow /
+ * candidate + acquiring blue / context grey).
+ *
+ * If this flips AGAIN, update the S5-2 style-token pin in
+ * src/viz/SinrLiveCellBeamCones.test.ts in the SAME commit (test and token rotted
+ * apart once already, 07-03→07-07, P2 SN-1 finding).
  */
-export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.AdditiveBlending;
+export const SINR_LIVE_CONE_BLENDING: THREE.Blending = THREE.NormalBlending;
 
 /**
  * Which sinr-live cone LAYER a style is being resolved for. The lane draws three
@@ -273,8 +561,8 @@ export type SinrLiveConeLayer = 'ambient' | 'pulse' | 'nonServing';
  * cones). Before this, the ambient level was a default inside the renderer and the
  * pulse peak was a bare const — so "the ambient cones are too faint / non-serving
  * should be dimmer" had no single edit point. Now every cone layer's opacity is
- * resolved here. Returns the screenshot-locked hybrid values verbatim (D-STYLE A),
- * so this is behaviour-identical; it only consolidates the CHOICE.
+ * resolved here. The ambient value is intentionally tuned below the handover
+ * pulse so the persistent white/grey field does not compete with the event cue.
  */
 export function resolveSinrLiveConeLayerOpacity(layer: SinrLiveConeLayer): number {
   switch (layer) {
@@ -302,7 +590,17 @@ export function resolveSinrLiveConeLayerOpacity(layer: SinrLiveConeLayer): numbe
  */
 export const SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG = 22;
 export const SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG = 42;
-export const SINR_LIVE_CONE_DIM_MIN_FACTOR = 0.05;
+/**
+ * VISIBILITY FLOOR (2026-08-06). The dim factor MULTIPLIES the layer opacity, so at
+ * the old 0.05 a shallow ambient cone rendered at 0.45 × 0.05 = 0.023 effective alpha
+ * — mathematically present, optically absent, which reads to a student as "the
+ * connected satellite has no beam". The de-emphasis intent (a low-over-horizon beam
+ * should recede, not dominate) is preserved at 0.25: a shallow cone still draws ~4×
+ * fainter than an overhead one, but stays visible. Display-only — the s0
+ * connected-sat-has-beam invariant counts MOUNTED meshes, so this changes no gate,
+ * only whether a mounted mesh can actually be seen.
+ */
+export const SINR_LIVE_CONE_DIM_MIN_FACTOR = 0.25;
 
 export function resolveSinrLiveConeElevationDimFactor(
   apparentElevationDeg: number,
@@ -328,4 +626,161 @@ export function resolveSinrLiveConeElevationDimFactor(
  */
 export function resolveSinrLiveConeColor(frequencyIndex: number): string {
   return frequencyReuseColor(frequencyIndex);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * THE ONE CONE APPEARANCE DECISION POINT (2026-08-06 consolidation)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * What a cone MEANS on screen. This is the input the appearance decision is made
+ * from — it is passed/derived EXPLICITLY (`SinrLiveCellBeamConeRenderItem.role` or
+ * `resolveSinrLiveConeRole`), never sniffed from an incidental signal.
+ *
+ * (The retired implicit signal, for the record: the hero used to be recognised by
+ * `cone.opacity === undefined` AND a satId+cellId match. That coupled "is this the
+ * protagonist's beam" to "does this layer happen to carry a per-item alpha" — so
+ * stamping an opacity on the ambient resolver, for any reason, would have silently
+ * turned the hero grey. Roles are now named.)
+ *
+ *  - `hero`             the protagonist's own serving beam — your live link.
+ *  - `servingFan`       another beam of the SAME satellite that serves you.
+ *  - `background`       a serving beam of some OTHER satellite (context: "others are served too").
+ *  - `candidatePrimary` the imminent handover target's beam on YOUR cell — your next link.
+ *  - `candidateFan`     another beam of that same candidate satellite.
+ *  - `nonServing`       the opt-in co-channel / beam-hopping layer (not serving anyone).
+ *  - `pulse`            an age-faded live-handover flare (colour by the truth `event.kind`).
+ *  - `triggered`        the wall-clock triggered/manual handover flash (explicit from/to colour).
+ */
+export type SinrLiveConeRole =
+  | 'hero'
+  | 'servingFan'
+  | 'background'
+  | 'candidatePrimary'
+  | 'candidateFan'
+  | 'nonServing'
+  | 'pulse'
+  | 'triggered';
+
+/**
+ * The tunable appearance inputs a MOUNT supplies (every field defaults to the token
+ * above, so an omitted field is never a hole). MainScene builds ONE of these from
+ * `beamDisplaySpec` and hands the SAME object to every cone/footprint mount, which is
+ * what makes the five mounts share a single appearance authority instead of each
+ * threading its own `heroColor` / `backgroundColor` / `coneColorOverride` trio.
+ *
+ * It intentionally does NOT import `BeamDisplaySpec` (that module imports THIS one — the
+ * dependency must stay one-way), so the field names are the ROLE names, not spec names.
+ */
+export interface SinrLiveConePalette {
+  readonly heroColor?: string;
+  readonly servingFanColor?: string;
+  readonly backgroundColor?: string;
+  readonly candidateColor?: string;
+  readonly candidateFanColor?: string;
+  readonly pulseIntraColor?: string;
+  readonly pulseInterColor?: string;
+  readonly heroOpacity?: number;
+  readonly servingConeOpacity?: number;
+  readonly backgroundOpacity?: number;
+  readonly candidateOpacity?: number;
+  readonly candidateFanOpacity?: number;
+  readonly nonServingOpacity?: number;
+}
+
+/** The resolved appearance of ONE cone: what colour to paint, and at what alpha. */
+export interface SinrLiveConeStyle {
+  readonly color: string;
+  readonly opacity: number;
+}
+
+/**
+ * The per-cone data the decision reads: its serving-identity colour (the last-resort
+ * default + the explicit colour the triggered layer stamps), the truth handover `kind`
+ * (pulse hue), and a per-ITEM opacity (the pulse age-fade / the triggered wall-clock
+ * envelope) which ALWAYS wins over the role's base alpha.
+ */
+export interface SinrLiveConeStyleInput {
+  readonly color?: string;
+  readonly kind?: 'intra' | 'inter';
+  readonly opacity?: number;
+}
+
+/**
+ * THE decision point: (role, palette, cone) → (colour, opacity). Pure, total, and
+ * VALUE-assertable — every role is asserted in `src/viz/SinrLiveCellBeamCones.test.ts`
+ * rather than eyeballed in a WebGL screenshot.
+ *
+ * Why it lives HERE and not in the renderer: `validate:frontend:beam-display-spec-purity`
+ * holds `src/viz/SinrLiveCellBeamCones.tsx` and `SinrLiveCellFootprintRings.tsx` at ZERO
+ * colour literals, and names `sinrLiveConeStyle.ts` as the colour-authority home. So the
+ * defaults can only be spelled here — which is also the right place, since this file is
+ * already the single source of the tokens they default to.
+ *
+ * Precedence inside a role is fixed and shallow: an explicit per-ITEM opacity beats the
+ * role's base alpha; a mount-supplied palette colour beats the token default. There is no
+ * cross-role fallthrough — the ROLE decides, so "why is this cone grey?" has exactly one
+ * answer to look up.
+ *
+ * Display-only (Rule#6): it reads role + already-classified truth (`kind`) and changes no
+ * serving / SINR / handover decision.
+ */
+export function resolveSinrLiveConeRoleStyle(
+  role: SinrLiveConeRole,
+  palette: SinrLiveConePalette = {},
+  cone: SinrLiveConeStyleInput = {},
+): SinrLiveConeStyle {
+  switch (role) {
+    case 'hero':
+      return {
+        color: palette.heroColor ?? SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+        opacity: cone.opacity ?? palette.heroOpacity ?? SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
+      };
+    case 'servingFan':
+      return {
+        color: palette.servingFanColor ?? SINR_LIVE_CONE_SERVING_FAN_COLOR,
+        opacity: cone.opacity ?? palette.servingConeOpacity ?? SINR_LIVE_CONE_AMBIENT_OPACITY,
+      };
+    case 'background':
+      return {
+        color: palette.backgroundColor ?? SINR_LIVE_CONE_BACKGROUND_COLOR,
+        opacity: cone.opacity ?? palette.backgroundOpacity ?? SINR_LIVE_CONE_BACKGROUND_OPACITY,
+      };
+    case 'candidatePrimary':
+      return {
+        color: palette.candidateColor ?? SINR_LIVE_CONE_CANDIDATE_COLOR,
+        opacity: cone.opacity ?? palette.candidateOpacity ?? SINR_LIVE_CONE_CANDIDATE_OPACITY,
+      };
+    case 'candidateFan':
+      return {
+        color: palette.candidateFanColor ?? SINR_LIVE_CONE_CANDIDATE_FAN_COLOR,
+        opacity: cone.opacity ?? palette.candidateFanOpacity ?? SINR_LIVE_CONE_CANDIDATE_FAN_OPACITY,
+      };
+    case 'nonServing':
+      return {
+        color: palette.backgroundColor ?? SINR_LIVE_CONE_BACKGROUND_COLOR,
+        opacity: cone.opacity ?? palette.nonServingOpacity ?? SINR_LIVE_CONE_NONSERVING_OPACITY,
+      };
+    case 'pulse': {
+      // The pulse hue comes from the model's OWN intra/inter classification. A pulse cone
+      // with no kind (never emitted by the pulse resolver, but the type allows it) keeps
+      // its serving-identity colour so it reads as "that cone flaring".
+      const kindColor = cone.kind === 'intra'
+        ? palette.pulseIntraColor ?? SINR_LIVE_CONE_PULSE_INTRA_COLOR
+        : cone.kind === 'inter'
+          ? palette.pulseInterColor ?? SINR_LIVE_CONE_PULSE_INTER_COLOR
+          : undefined;
+      return {
+        color: kindColor ?? cone.color ?? SINR_LIVE_CONE_BACKGROUND_COLOR,
+        opacity: cone.opacity ?? SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
+      };
+    }
+    case 'triggered':
+      // The triggered resolver stamps the explicit from/to colour on each item, so the
+      // ITEM colour IS the decision here; the token is only the never-taken fallback.
+      return {
+        color: cone.color ?? SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
+        opacity: cone.opacity ?? SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
+      };
+  }
 }

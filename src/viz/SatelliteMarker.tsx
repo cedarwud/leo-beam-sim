@@ -66,7 +66,7 @@ export function SatelliteMarker({
       )}
       <Text
         position={[0, 20, 0]}
-        fontSize={eventRole ? roleToken.markerFontSize : 10}
+        fontSize={eventRole ? roleToken.markerFontSize : 12}
         color={accent}
         anchorX="center"
         anchorY="middle"

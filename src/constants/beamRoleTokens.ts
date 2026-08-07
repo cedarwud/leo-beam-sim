@@ -66,14 +66,33 @@ export const SATELLITE_TINT_PALETTE = [
 ] as const;
 
 export const RECENT_HO_FADE_WINDOW_SEC = 5;
+
+/*
+ * HANDOVER EVENT COLOURS — the two event kinds must never read alike.
+ *
+ * INTER (satellite → satellite): serving YELLOW leaves, candidate BLUE arrives.
+ * The target is a different satellite, so it wears the candidate colour, which is
+ * what "a link to somewhere else" means everywhere else in this UI.
+ *
+ * INTRA (beam → beam on the SAME satellite): the target is NOT somewhere else, so
+ * painting it candidate-blue told the same story as an inter-HO. It now takes an
+ * ORANGE from the serving family (owner call 2026-08-06) — near enough to the
+ * serving yellow to read as "still this satellite", far enough to be unmistakable
+ * next to it. Source stays serving-yellow for both kinds.
+ */
 export const INTRA_HANDOVER_SOURCE_COLOR = UI_TOKENS.color.semantic.serving.accent;
-export const INTRA_HANDOVER_TARGET_COLOR = UI_TOKENS.color.semantic.candidate.accent;
+export const INTRA_HANDOVER_TARGET_COLOR = '#fb923c';
+export const INTER_HANDOVER_SOURCE_COLOR = UI_TOKENS.color.semantic.serving.accent;
+export const INTER_HANDOVER_TARGET_COLOR = UI_TOKENS.color.semantic.candidate.accent;
 // Inter-satellite handover accent (purple). Single source for the cell-arc +
 // sky-ribbon inter-HO visuals (P5) — was hardcoded '#a855f7' in two components.
 export const INTER_HANDOVER_COLOR = '#a855f7';
 export const INTRA_HANDOVER_ARROW_COLOR = INTRA_HANDOVER_TARGET_COLOR;
-export const HANDOVER_SOURCE_COLOR = INTRA_HANDOVER_SOURCE_COLOR;
-export const HANDOVER_TARGET_COLOR = INTRA_HANDOVER_TARGET_COLOR;
+// Kind-agnostic aliases. They resolve to the INTER pair, which is the unchanged
+// serving-yellow → candidate-blue baseline; anything that knows it is drawing an
+// intra-switch must reach for the INTRA_* pair instead.
+export const HANDOVER_SOURCE_COLOR = INTER_HANDOVER_SOURCE_COLOR;
+export const HANDOVER_TARGET_COLOR = INTER_HANDOVER_TARGET_COLOR;
 export const HANDOVER_ARROW_COLOR = HANDOVER_TARGET_COLOR;
 
 export interface IntraHandoverVisualTransition {
@@ -190,7 +209,7 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     calloutMinWidth: 88,
     calloutGlowPx: 20,
     markerScale: 7,
-    markerFontSize: 12,
+    markerFontSize: 14,
     markerLightIntensity: 1,
   },
   pending: {
@@ -210,7 +229,7 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     calloutMinWidth: 88,
     calloutGlowPx: 18,
     markerScale: 6.2,
-    markerFontSize: 11,
+    markerFontSize: 13,
     markerLightIntensity: 0.65,
   },
   approach: {
@@ -230,7 +249,7 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     calloutMinWidth: 92,
     calloutGlowPx: 14,
     markerScale: 5.8,
-    markerFontSize: 10,
+    markerFontSize: 12,
     markerLightIntensity: 0.45,
   },
   recentSource: {
@@ -250,7 +269,7 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     calloutMinWidth: 82,
     calloutGlowPx: 10,
     markerScale: 5.6,
-    markerFontSize: 10,
+    markerFontSize: 12,
     markerLightIntensity: 0.25,
   },
   otherActive: {
@@ -270,7 +289,7 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     calloutMinWidth: 66,
     calloutGlowPx: 10,
     markerScale: 5,
-    markerFontSize: 10,
+    markerFontSize: 12,
     markerLightIntensity: 0,
   },
   inactive: {
@@ -290,7 +309,7 @@ export const BEAM_ROLE_TOKENS: Record<BeamVisualRole, BeamRoleToken> = {
     calloutMinWidth: 66,
     calloutGlowPx: 6,
     markerScale: 5,
-    markerFontSize: 10,
+    markerFontSize: 12,
     markerLightIntensity: 0,
   },
 };

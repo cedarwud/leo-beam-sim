@@ -92,10 +92,14 @@ export interface IntraTransitionProgress {
   wallClockExpiresMs?: number;
   /** Live-only: distinguishes the pre-switch dwell `preview` from the
    * committed event. `kind === 'preview'` uses `previewProgressSec`/
-   * `previewTargetSec` (in seconds) instead of the wallclock latches. */
-  kind?: 'committed' | 'preview';
+   * `previewTargetSec` (in seconds) instead of the wallclock latches.
+   * `kind === 'recent'` is a cell-truth event retained for the short visual
+   * handover window and uses `recentProgressSec`/`recentTargetSec`. */
+  kind?: 'committed' | 'preview' | 'recent';
   previewProgressSec?: number;
   previewTargetSec?: number;
+  recentProgressSec?: number;
+  recentTargetSec?: number;
 }
 
 export interface InterTransitionProgress {
@@ -106,11 +110,14 @@ export interface InterTransitionProgress {
   progress01: number;
   expiresAtSec: number;
   /** Live-only: distinguishes the pending pre-trigger phase from the
-   * committed phase. */
-  kind?: 'pending' | 'committed';
+   * committed phase. `recent` is a short cell-truth event display window. */
+  kind?: 'pending' | 'committed' | 'recent';
   /** Live-only: raw progress / target in seconds (pending phase). */
   pendingProgressSec?: number;
   pendingTargetSec?: number;
+  /** Live-only: raw progress / target in seconds for a recent cell-truth event. */
+  recentProgressSec?: number;
+  recentTargetSec?: number;
   /** Live-only: wallclock latches (committed phase). */
   wallClockStartMs?: number;
   wallClockExpiresMs?: number;

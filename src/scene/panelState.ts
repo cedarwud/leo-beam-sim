@@ -179,6 +179,51 @@ function hasModqnCellServiceReadoutChanged(
   });
 }
 
+function hasPaperEnergyEfficiencySummaryChanged(
+  previous: NonNullable<SimState['livePaperEnergyEfficiency']>['loadSummary'] | null,
+  next: NonNullable<SimState['livePaperEnergyEfficiency']>['loadSummary'] | null,
+): boolean {
+  if (!previous || !next) return previous !== next;
+  return previous.count !== next.count
+    || hasNumericDelta(previous.min, next.min, 0.1)
+    || hasNumericDelta(previous.median, next.median, 0.1)
+    || hasNumericDelta(previous.p95, next.p95, 0.1)
+    || hasNumericDelta(previous.max, next.max, 0.1)
+    || hasNumericDelta(previous.mean, next.mean, 0.1);
+}
+
+function hasPaperEnergyEfficiencyChanged(
+  previous: SimState['livePaperEnergyEfficiency'],
+  next: SimState['livePaperEnergyEfficiency'],
+): boolean {
+  if (!previous || !next) return previous !== next;
+  return previous.totalUeCount !== next.totalUeCount
+    || previous.servedUeCount !== next.servedUeCount
+    || previous.finiteSinrServedUeCount !== next.finiteSinrServedUeCount
+    || previous.publishedReferenceMbitsPerJoule !== next.publishedReferenceMbitsPerJoule
+    || hasNumericDelta(previous.coverageFraction, next.coverageFraction, 0.005)
+    || hasNumericDelta(
+      previous.coverageWeightedBitsPerJoule,
+      next.coverageWeightedBitsPerJoule,
+      1000,
+    )
+    || hasNumericDelta(previous.perServedUeBitsPerJoule, next.perServedUeBitsPerJoule, 1000)
+    || hasPaperEnergyEfficiencySummaryChanged(previous.loadSummary, next.loadSummary)
+    || hasPaperEnergyEfficiencySummaryChanged(
+      previous.throughputSummaryBps,
+      next.throughputSummaryBps,
+    )
+    || hasPaperEnergyEfficiencySummaryChanged(previous.powerSummaryW, next.powerSummaryW)
+    || hasPaperEnergyEfficiencySummaryChanged(
+      previous.perUeRawPowerSummaryW,
+      next.perUeRawPowerSummaryW,
+    )
+    || hasPaperEnergyEfficiencySummaryChanged(
+      previous.sinrDbSummary,
+      next.sinrDbSummary,
+    );
+}
+
 function hasSatelliteVisualIdentityChanged(
   previous: SimState['satelliteVisualIdentityById'],
   next: SimState['satelliteVisualIdentityById'],
@@ -213,6 +258,14 @@ export function hasUiStateChanged(previous: SimState | null, next: SimState): bo
     || hasModqnCellServiceReadoutChanged(
       previous.modqnCellServiceReadout,
       next.modqnCellServiceReadout,
+    )
+    || hasPaperEnergyEfficiencyChanged(
+      previous.livePaperEnergyEfficiency,
+      next.livePaperEnergyEfficiency,
+    )
+    || hasPaperEnergyEfficiencyChanged(
+      previous.ch5DemoPaperEnergyEfficiency,
+      next.ch5DemoPaperEnergyEfficiency,
     )
     || previous.servingSatId !== next.servingSatId
     || previous.servingBeamId !== next.servingBeamId

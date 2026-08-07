@@ -67,6 +67,7 @@ import {
   resolveSinrLiveCellBeamConeItems,
   type SinrLiveCellPlacement,
 } from '../src/viz/SinrLiveCellBeamCones.tsx';
+import { resolvePrimaryCellServingSatId } from '../src/scene/sinrLiveCellModel.ts';
 import { captureVizFrame } from '../src/validation/vizFrameProbe.tsx';
 import type { RuntimeConfig, SimFrame, VizFrame } from '../src/scene/types.ts';
 import {
@@ -164,6 +165,11 @@ const knownGapCounts = new Map<string, number>();
 const knownGapExamples = new Map<string, string>();
 let positiveControlDone = false;
 let nonPrimaryControlDone = false;
+// Screen-always-has-beams invariant bookkeeping (see the in-loop block).
+let stepsWithServedCells = 0;
+let stepsHeroUnservedWhileFieldServed = 0;
+let beamlessControlDone = false;
+const beamlessScreenFailures: { step: number; tSec: number; arm: string; servedCellCount: number }[] = [];
 
 for (let step = 0; step < STEP_COUNT; step += 1) {
   advanceClock();
@@ -190,15 +196,64 @@ for (let step = 0; step < STEP_COUNT; step += 1) {
   // resolver + APEX map MainScene uses (focusSatIds null = draw every serving
   // sat, D-STYLE A). With showSinrLiveCellBeams flipped true, this is the lane's
   // visible-beam set (the steered branch is gone).
-  const coneSatIds = new Set(
-    resolveSinrLiveCellBeamConeItems({
+  const coneItems = resolveSinrLiveCellBeamConeItems({
+    cellFrame: out.frame.sinrLiveCells,
+    placementByCellId,
+    satelliteWorldById: viz.coneApexWorldById,
+    focusSatIds: null,
+  });
+  const coneSatIds = new Set(coneItems.map(item => item.satId));
+  const report = evaluateConnectedSatBeamInvariant({ frame: out.frame, viz, plan, coneSatIds });
+
+  // ── SCREEN-ALWAYS-HAS-BEAMS invariant ──────────────────────────────────────
+  // "As long as ANY cell is served, the renderable serving-cone count must be > 0."
+  // Two arms, because the lane resolves cones twice over:
+  //   (a) DRAW-ALL (focusSatIds null) — truth→render completeness: a frame whose
+  //       truth says N cells are served must not resolve to an empty cone set.
+  //   (b) HERO-ONLY FOCUS — the sharp end. The protagonist's serving sat is the
+  //       focus set; when the protagonist is UNSERVED that set is EMPTY, and the
+  //       resolver's `focusSatIds.size > 0 ? … : null` fallback must widen back to
+  //       draw-all. Without that fallback an unserved protagonist blanks every cone
+  //       on screen while the field is still serving 30+ cells — the regression this
+  //       arm exists to catch.
+  const servedCellCount = out.frame.sinrLiveCells?.servedCellCount ?? 0;
+  const primaryServingSatId = out.frame.sinrLiveCells
+    ? resolvePrimaryCellServingSatId(out.frame.sinrLiveCells, out.frame.perUePositions)
+    : null;
+  const heroFocusSatIds = new Set(primaryServingSatId === null ? [] : [primaryServingSatId]);
+  const heroFocusConeItems = resolveSinrLiveCellBeamConeItems({
+    cellFrame: out.frame.sinrLiveCells,
+    placementByCellId,
+    satelliteWorldById: viz.coneApexWorldById,
+    focusSatIds: heroFocusSatIds,
+  });
+  if (servedCellCount > 0) {
+    stepsWithServedCells += 1;
+    if (primaryServingSatId === null) stepsHeroUnservedWhileFieldServed += 1;
+    if (coneItems.length === 0) {
+      beamlessScreenFailures.push({ step, tSec, arm: 'draw-all', servedCellCount });
+    }
+    if (heroFocusConeItems.length === 0) {
+      beamlessScreenFailures.push({ step, tSec, arm: 'hero-only-focus', servedCellCount });
+    }
+  }
+
+  // Positive control for the arms above: narrowing the focus onto a satellite that
+  // serves NOTHING must collapse the cone set to empty — proving these assertions
+  // measure the resolver's cone output and would fire on a real blank-screen bug.
+  if (!beamlessControlDone && servedCellCount > 0 && coneItems.length > 0) {
+    const bogusFocusItems = resolveSinrLiveCellBeamConeItems({
       cellFrame: out.frame.sinrLiveCells,
       placementByCellId,
       satelliteWorldById: viz.coneApexWorldById,
-      focusSatIds: null,
-    }).map(item => item.satId),
-  );
-  const report = evaluateConnectedSatBeamInvariant({ frame: out.frame, viz, plan, coneSatIds });
+      focusSatIds: new Set(['__no-such-satellite__']),
+    });
+    assert.equal(
+      bogusFocusItems.length, 0,
+      'beamless-screen positive control failed: a focus set naming no serving satellite still resolved cones — the screen-always-has-beams assertions are not measuring the cone resolver',
+    );
+    beamlessControlDone = true;
+  }
 
   totalClaims += report.claims.length;
   if (report.claims.length > 0) stepsWithClaims += 1;
@@ -257,6 +312,11 @@ assert.ok(stepsWithClaims > STEP_COUNT / 2, `vacuous run: only ${stepsWithClaims
 assert.ok(stepsWithBeams > STEP_COUNT / 2, `vacuous run: only ${stepsWithBeams}/${STEP_COUNT} steps had visible beams`);
 assert.ok(positiveControlDone, 'positive control never armed (no step had a beamed primary serving sat)');
 assert.ok(nonPrimaryControlDone, 'non-primary positive control never armed (no step had a second beamed serving sat)');
+assert.ok(
+  stepsWithServedCells > STEP_COUNT / 2,
+  `vacuous screen-always-has-beams check: only ${stepsWithServedCells}/${STEP_COUNT} steps had a served cell at all`,
+);
+assert.ok(beamlessControlDone, 'beamless-screen positive control never armed (no step had both a served cell and a cone)');
 
 console.log(`[${GATE}] ${STEP_COUNT} steps x ${STEP_SEC}s, ${UE_COUNT} UEs, ${totalClaims} connected claims checked`);
 for (const [id, count] of [...knownGapCounts.entries()].sort()) {
@@ -265,6 +325,24 @@ for (const [id, count] of [...knownGapCounts.entries()].sort()) {
 }
 if (knownGapCounts.size === 0) {
   console.log('  KNOWN-GAP: none observed in this window (gaps are lane/window dependent — informational)');
+}
+
+console.log(
+  `  SCREEN-ALWAYS-HAS-BEAMS: ${stepsWithServedCells}/${STEP_COUNT} steps had a served cell; `
+  + `all of them resolved >0 serving cones under BOTH draw-all and hero-only focus. `
+  + `${stepsHeroUnservedWhileFieldServed} of those steps had an UNSERVED protagonist while the field was still served `
+  + `(the empty-focus fallback arm; 0 means this window never exercised it).`,
+);
+
+if (beamlessScreenFailures.length > 0) {
+  for (const failure of beamlessScreenFailures.slice(0, 5)) {
+    console.error(
+      `  BEAMLESS-SCREEN violation at step ${failure.step} (t=${failure.tSec}s), arm=${failure.arm}: `
+      + `${failure.servedCellCount} cell(s) served but 0 serving cones resolved`,
+    );
+  }
+  console.error(`[${GATE}] FAIL — ${beamlessScreenFailures.length} beamless-screen violation(s): served cells with zero renderable serving cones`);
+  process.exit(1);
 }
 
 if (mustHoldFailures.length > 0) {

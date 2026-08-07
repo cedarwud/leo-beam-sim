@@ -43,6 +43,8 @@ export interface NTPUSceneConfig {
    * world-space sizes are derived from physical km through kmPerWorldUnit.
    */
   visualSatelliteAltitude: number;
+  /** Maximum number of non-primary UEs shown by the handover display filter. */
+  maxOtherHandoverUes: number;
 }
 
 export interface InscribedPaperUserArea {
@@ -84,13 +86,18 @@ export const NTPU_CONFIG: NTPUSceneConfig = {
   },
   uav: NTPU_UAV_CONFIG,
   camera: {
-    initialPosition: [0, 500, 650],
+    // Live default framing: the display-only satellite altitude is now 780 km,
+    // so the former close position clipped the upper satellite markers/cones.
+    initialPosition: [0, 900, 1200],
     fov: 60,
     near: 0.1,
     far: 10000,
   },
   visualAlpha: 0.64,
-  visualSatelliteAltitude: 360,
+  // Live-scene display baseline aligned with the repository's 780 km LEO reference.
+  // This is world-space framing only; physical profile altitude and SINR inputs stay separate.
+  visualSatelliteAltitude: 780,
+  maxOtherHandoverUes: 6,
 };
 
 export const NTPU_LARGE_CONFIG: NTPUSceneConfig = {
@@ -114,4 +121,5 @@ export const NTPU_LARGE_CONFIG: NTPUSceneConfig = {
   },
   visualAlpha: 1.0,
   visualSatelliteAltitude: 600,
+  maxOtherHandoverUes: 6,
 };

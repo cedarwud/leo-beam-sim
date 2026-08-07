@@ -34,6 +34,8 @@ export interface GroundSceneUe {
   readonly markerColor?: string;
   readonly markerEmissive?: string;
   readonly contention?: number;
+  /** Display-only cue for a secondary UE selected by the live HO filter. */
+  readonly isOtherHandover?: boolean;
 }
 
 interface GroundSceneProps {
@@ -84,8 +86,30 @@ function publishInstanceColorTelemetry(
   gl.domElement.dataset[attr] = String(seen.size);
 }
 
-const MARKER_HEIGHT = 16;
-const MARKER_RADIUS = 26;
+/**
+ * Marker SIZE (crowding, measured — not taste). The sinr-live default screen is
+ * ~100 UEs on the 200x90 km paper user area (1375.9 x 619.1 world units, 1 wu =
+ * 0.1454 km). Measured nearest-neighbour (NN) distance between the 99 secondary
+ * markers on a warmed live frame:
+ *   random    (default): min 13.3 / p05 19.5 / p25 29.8 / median 47.6 wu
+ *   clustered          : min  0.1 / p05  2.7 / p25  7.4 / median 12.1 wu
+ * At the previous MARKER_RADIUS = 26 the secondary cylinder radius was
+ * 26*0.6 = 15.6 wu, i.e. a 31.2 wu DIAMETER against a 12.1 wu clustered median
+ * NN — 94.9% of clustered markers overlapped a neighbour and 62.6% had a
+ * neighbour's CENTRE inside their own disc (the "一坨" blob).
+ *
+ * MARKER_RADIUS = 10 is the LARGEST radius that satisfies "the median marker
+ * does not overlap its nearest neighbour" on the worst distribution:
+ * 2 * (10 * 0.6) = 12.0 wu <= clustered median NN 12.1 wu. Measured effect:
+ * clustered overlap 94.9% -> 49.5%, centre-inside 62.6% -> 17.2%; the default
+ * random distribution goes 26.3% -> 0.0%. Shrinking further hits a floor
+ * (centre-inside plateaus at ~14% because the clustered generator emits pairs
+ * ~0.1 wu apart — no marker size separates those) while costing legibility.
+ * MARKER_HEIGHT shrinks by the SAME 10/26 ratio so the marker keeps its shape
+ * (isotropic scale, not a re-proportioning).
+ */
+const MARKER_HEIGHT = 6;
+const MARKER_RADIUS = 10;
 const MARKER_RADIAL_SEGMENTS = 16;
 const PRIMARY_COLOR = '#ff3333';
 const PRIMARY_EMISSIVE = '#ff1111';
@@ -93,6 +117,33 @@ const SECONDARY_COLOR = '#00ffcc'; // cyber cyan for high contrast in dark mode
 const SECONDARY_EMISSIVE = '#00aa88';
 const SECONDARY_GLOW_STRENGTH = 1.6;
 const SECONDARY_GLOW_PULSE_SPEED = 3.0;
+const OTHER_HANDOVER_COLOR = '#facc15';
+const OTHER_HANDOVER_RING_INNER_FACTOR = 1.65;
+const OTHER_HANDOVER_RING_OUTER_FACTOR = 2.25;
+
+/**
+ * Marker OUTLINE (individuality under overlap). Size alone cannot fix the
+ * clustered case — 49.5% of clustered markers still touch a neighbour at
+ * MARKER_RADIUS = 10, and touching flat-shaded discs of the same colour fuse
+ * into one silhouette. Each marker therefore carries a dark ANNULUS lifted just
+ * above its own silhouette plane, so it is drawn OVER whatever neighbour disc it
+ * overlaps and every marker keeps a visible boundary.
+ *
+ * Inner factor 0.94 < cos(pi/MARKER_RADIAL_SEGMENTS_SECONDARY=12) = 0.966, the
+ * inradius/circumradius ratio of the 12-gon cylinder cross-section — so the ring
+ * bites slightly INTO the coloured top face at every angle and leaves no
+ * uncovered sliver between disc edge and stroke. Outer 1.5 gives a stroke
+ * 0.56 * radius wide (~3.4 wu at the default scale ≈ 3 px at the default
+ * camera): thick enough to read, thin enough that the coloured core still
+ * dominates the marker.
+ */
+const SECONDARY_RIM_INNER_FACTOR = 0.94;
+const SECONDARY_RIM_OUTER_FACTOR = 1.5;
+const SECONDARY_RIM_SEGMENTS = 24;
+/** Near-black with a cool cast so the stroke reads as shadow, not as a colour. */
+const MARKER_RIM_COLOR = '#05070d';
+/** World units the stroke sits above the marker silhouette plane (depth win). */
+const MARKER_RIM_LIFT = 0.35;
 
 interface SecondaryUeInstancesProps {
   readonly ues: ReadonlyArray<GroundSceneUe>;
@@ -142,18 +193,54 @@ function PrimaryUeMarker({
     : 18 * ueMarkerMultiplier;
   const resolvedMarkerColor = markerColor ?? PRIMARY_COLOR;
   const resolvedMarkerEmissive = markerEmissive ?? markerColor ?? PRIMARY_EMISSIVE;
+  // Silhouette plane the outline stroke sits on: the flat top for the cylinder
+  // marker, the equator for the sphere marker (both are the top-down outline).
+  const rimY = markerShape === 'sphere' ? markerRadius : markerHeight;
 
   return (
     <group position={[x, y, z]}>
-      {/* 暗色半透明底盤以提高在複雜地景紋理上的視覺對比度 */}
+      {/*
+        暗色半透明底盤以提高在複雜地景紋理上的視覺對比度。
+        MARKER_RADIUS dropped 26 -> 10 to un-clump the ~100 UE field, so the
+        plate factor rises 2.2 -> 4.2 to keep the protagonist's GROUND footprint
+        (42 wu vs the previous 57.2 wu) in the same league — the primary must
+        stay the obvious focus even though its core shrank with everyone else's.
+      */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-        <ringGeometry args={[0, markerRadius * 2.2, 32]} />
+        <ringGeometry args={[0, markerRadius * 4.2, 32]} />
         <meshBasicMaterial
           color="#000000"
           opacity={0.65}
           transparent
           depthWrite={false}
         />
+      </mesh>
+
+      {/*
+        Protagonist halo: an annulus in the marker's own colour just outside the
+        dark plate. Size shrank for everyone, so the primary is re-marked by a
+        ring NO secondary marker carries — identity by ornament, not by bulk.
+      */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+        <ringGeometry args={[markerRadius * 4.2, markerRadius * 5.0, 48]} />
+        <meshBasicMaterial
+          color={resolvedMarkerColor}
+          opacity={0.85}
+          transparent
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Same dark outline the secondary field wears — one visual language. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, rimY + MARKER_RIM_LIFT, 0]}>
+        <ringGeometry
+          args={[
+            markerRadius * SECONDARY_RIM_INNER_FACTOR,
+            markerRadius * SECONDARY_RIM_OUTER_FACTOR,
+            SECONDARY_RIM_SEGMENTS,
+          ]}
+        />
+        <meshBasicMaterial color={MARKER_RIM_COLOR} side={THREE.DoubleSide} />
       </mesh>
 
       <mesh position={[0, markerY, 0]}>
@@ -177,7 +264,7 @@ function PrimaryUeMarker({
       </mesh>
       <Text
         position={[0, labelY, 0]}
-        fontSize={12}
+        fontSize={14}
         color={resolvedMarkerColor}
         anchorX="center"
         anchorY="middle"
@@ -493,10 +580,154 @@ function SecondaryUeGlowInstances({
   );
 }
 
+/**
+ * Dark outline stroke for the secondary UE field — the anti-blob layer.
+ *
+ * One extra InstancedMesh (one draw call for the whole field) of flat annuli,
+ * one per marker, lifted {@link MARKER_RIM_LIFT} above that marker's silhouette
+ * plane. Because every stroke sits ABOVE every coloured core, an overlapping
+ * neighbour's core is drawn UNDER this marker's stroke, so two touching markers
+ * still show a hard boundary instead of fusing into one blob. It carries NO
+ * per-instance colour: a neutral stroke separates two same-colour neighbours
+ * (the case a colour-derived stroke cannot), and the colour telemetry stays on
+ * the core mesh where the mosaic claim is made.
+ *
+ * The core radius is mirrored from the core meshes EXACTLY, including their
+ * cylinder/sphere asymmetry (the cylinder lane ignores `scale`), so the stroke
+ * can never drift off the disc it outlines.
+ */
+function SecondaryUeRimInstances({
+  ues,
+  ueMarkerMultiplier,
+  markerShape,
+  opacity,
+  scale,
+}: SecondaryUeInstancesProps) {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const coreRadius = markerShape === 'sphere'
+    ? MARKER_RADIUS * 0.45 * ueMarkerMultiplier * scale
+    : MARKER_RADIUS * 0.6 * ueMarkerMultiplier;
+  const markerHeight = MARKER_HEIGHT * 0.7 * ueMarkerMultiplier * scale;
+  const silhouetteY = markerShape === 'sphere' ? coreRadius : markerHeight;
+
+  useLayoutEffect(() => {
+    if (!meshRef.current) return;
+    const mesh = meshRef.current;
+    for (let i = 0; i < ues.length; i++) {
+      const [x, y, z] = ues[i].worldPos;
+      dummy.position.set(x, y + silhouetteY + MARKER_RIM_LIFT, z);
+      dummy.rotation.set(-Math.PI / 2, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.count = ues.length;
+  }, [ues, dummy, silhouetteY]);
+
+  if (ues.length === 0) return null;
+
+  return (
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, Math.max(ues.length, 1)]}
+    >
+      <ringGeometry
+        args={[
+          coreRadius * SECONDARY_RIM_INNER_FACTOR,
+          coreRadius * SECONDARY_RIM_OUTER_FACTOR,
+          SECONDARY_RIM_SEGMENTS,
+        ]}
+      />
+      <meshBasicMaterial
+        color={MARKER_RIM_COLOR}
+        side={THREE.DoubleSide}
+        transparent
+        opacity={opacity}
+      />
+    </instancedMesh>
+  );
+}
+
+/**
+ * High-contrast ring for the small, user-selected secondary-UE set. The normal
+ * UE field remains instanced and colour-coded; only the capped handover subset
+ * gets these lightweight per-UE rings, so the checkbox has an unmistakable cue
+ * without turning every marker into a label or a separate mesh.
+ */
+function SecondaryUeHandoverRings({
+  ues,
+  ueMarkerMultiplier,
+  markerShape,
+  scale,
+}: SecondaryUeInstancesProps) {
+  const handoverUes = useMemo(
+    () => ues.filter(ue => ue.isOtherHandover),
+    [ues],
+  );
+  const coreRadius = markerShape === 'sphere'
+    ? MARKER_RADIUS * 0.45 * ueMarkerMultiplier * scale
+    : MARKER_RADIUS * 0.6 * ueMarkerMultiplier;
+  const markerHeight = MARKER_HEIGHT * 0.7 * ueMarkerMultiplier * scale;
+  const silhouetteY = markerShape === 'sphere' ? coreRadius : markerHeight;
+
+  if (handoverUes.length === 0) return null;
+
+  return (
+    <group>
+      {handoverUes.map((ue, index) => {
+        const [x, y, z] = ue.worldPos;
+        return (
+          <group key={`other-handover-highlight-${ue.id ?? `${x}-${z}-${index}`}`}>
+            <mesh
+              rotation={[-Math.PI / 2, 0, 0]}
+              position={[x, y + silhouetteY + MARKER_RIM_LIFT + 0.12, z]}
+            >
+              <ringGeometry
+                args={[
+                  coreRadius * OTHER_HANDOVER_RING_INNER_FACTOR,
+                  coreRadius * OTHER_HANDOVER_RING_OUTER_FACTOR,
+                  32,
+                ]}
+              />
+              <meshBasicMaterial
+                color={OTHER_HANDOVER_COLOR}
+                side={THREE.DoubleSide}
+                transparent
+                opacity={0.98}
+                depthWrite={false}
+              />
+            </mesh>
+            <Text
+              position={[x, y + silhouetteY + 14 * ueMarkerMultiplier, z]}
+              fontSize={7 * ueMarkerMultiplier}
+              color={OTHER_HANDOVER_COLOR}
+              anchorX="center"
+              anchorY="middle"
+              outlineWidth={1}
+              outlineColor="#05070d"
+            >
+              HO
+            </Text>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 function SecondaryUeInstances(props: SecondaryUeInstancesProps) {
   const glowEnabled = props.ues.some(ue => ue.contention !== undefined);
-  if (!glowEnabled) return <SecondaryUePlainInstances {...props} />;
-  return <SecondaryUeGlowInstances {...props} />;
+  return (
+    <>
+      <SecondaryUeRimInstances {...props} />
+      <SecondaryUeHandoverRings {...props} />
+      {glowEnabled
+        ? <SecondaryUeGlowInstances {...props} />
+        : <SecondaryUePlainInstances {...props} />}
+    </>
+  );
 }
 
 export function GroundScene({

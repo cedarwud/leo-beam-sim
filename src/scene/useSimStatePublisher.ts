@@ -4,6 +4,7 @@ import type { Profile } from '../profiles/types';
 import type {
   PanelComparisonState,
   PanelPrimaryState,
+  LinkBudgetTerms,
   SignalSourceState,
   SignalTruthStatus,
   SimFrame,
@@ -25,6 +26,7 @@ import {
   resolveVisualFrequencyDiagnosticsEntry,
 } from './panelState';
 import { resolvePrimaryCellServingRecord } from './sinrLiveCellModel';
+import { computePaperEnergyEfficiency } from '../utils/paperEnergyEfficiency';
 import { useLatchedSignals } from './useLatchedSignals';
 import { usePanelModeInference } from './usePanelModeInference';
 
@@ -266,6 +268,67 @@ export function buildPublishedPrimaryServing(
       status: comparisonStatus,
     },
     sinrDeltaDb,
+  };
+}
+
+/**
+ * Publish formula evidence from the same primary-UE cell-truth record as the
+ * ACTIVE SERVING card.
+ *
+ * The steered lane keeps its existing source and latches byte-for-byte. Once
+ * `sinrLiveCells` exists, however, the cell model is the only authority: its
+ * `servingLinkSample` is the complete budget sample that produced the primary
+ * UE's `sinrDb`. A missing sample is fail-closed so an old steered budget can
+ * never masquerade as current cell-truth evidence.
+ */
+export interface PublishedFormulaEvidence {
+  source: SignalSourceState;
+  budget: LinkBudgetTerms | null;
+}
+
+export function buildPublishedFormulaEvidence(
+  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions'>,
+  steered: PublishedFormulaEvidence,
+): PublishedFormulaEvidence {
+  const cellFrame = sim.sinrLiveCells;
+  if (cellFrame === undefined) return steered;
+
+  const record = resolvePrimaryCellServingRecord(cellFrame, sim.perUePositions);
+  const sample = record?.servingLinkSample ?? null;
+  if (
+    record === null
+    || record === undefined
+    || record.servingSatId === null
+    || record.cellId === null
+    || sample === null
+  ) {
+    return {
+      source: {
+        satId: null,
+        beamId: null,
+        sinrDb: null,
+        elevationDeg: null,
+        rangeKm: null,
+        status: 'none',
+      },
+      budget: null,
+    };
+  }
+
+  const sinrDb = record.sinrDb;
+  return {
+    source: {
+      // `beamId: null` is intentional: the cell id is the serving unit on
+      // this lane, while the internal cellLinkBudget beam id stays inside the
+      // LinkSample and is never presented as a steered beam identity.
+      satId: record.servingSatId,
+      beamId: null,
+      sinrDb,
+      elevationDeg: null,
+      rangeKm: null,
+      status: isFinitePanelSinr(sinrDb) ? 'live' : 'latched',
+    },
+    budget: extractBudgetTerms(sample),
   };
 }
 
@@ -524,6 +587,10 @@ export function useSimStatePublisher({
         physicalServingSignal.sinrDb,
       ),
     };
+    const publishedFormulaEvidence = buildPublishedFormulaEvidence(sim, {
+      source: physicalServing,
+      budget: physicalServingBudget,
+    });
     const panelPrimary: PanelPrimaryState = {
       role: panelPrimaryRole,
       satId: normalizedServing.satId,
@@ -575,15 +642,29 @@ export function useSimStatePublisher({
     // pure exported function above) so the serving-equivalence gate executes
     // the same code path the UI publishes.
     const perUePositions = buildPublishedPerUePositions(sim);
+    const livePaperEnergyEfficiency = sim.sinrLiveCells
+      ? computePaperEnergyEfficiency({
+        frame: sim.sinrLiveCells,
+        bandwidthMHz: profile.channel.bandwidthMHz,
+        frequencyReuse: profile.beams.frequencyReuse,
+        powerSurface: profile.energyEfficiency?.paper,
+      })
+      : null;
+    const ch5DemoPaperEnergyEfficiency = sim.sinrLiveCells && profile.energyEfficiency?.paper
+      ? computePaperEnergyEfficiency({
+        frame: sim.sinrLiveCells,
+        bandwidthMHz: profile.energyEfficiency.paper.ch5DemoBandwidthMHz,
+        frequencyReuse: profile.energyEfficiency.paper.ch5DemoFrequencyReuse,
+        powerSurface: profile.energyEfficiency.paper,
+      })
+      : null;
 
     // S5-2b: re-point the PUBLISHED primary serving (the InfoPanel "ACTIVE
     // SERVING" card) to the cell-truth primary UE on the sinr-live cell lane —
     // OVERRIDING the steered duel AFTER inferPanelMode so the pending/recent-ho
-    // branches can never leak a cross-model delta. Off the cell lane this is a
-    // byte-identical passthrough of the steered block assembled here. The
-    // physicalServing / FormulaTermsReadout / budgets / latched-beam bookkeeping
-    // above stay on their STEERED sources (intentional steered-physics
-    // diagnostics; not the ACTIVE SERVING card).
+    // branches can never leak a cross-model delta. The formula evidence above
+    // is re-pointed to the SAME cell-truth record; off the cell lane both
+    // projections remain byte-identical steered passthroughs.
     const steeredPrimaryServing: PublishedPrimaryServing = {
       servingSatId: normalizedServing.satId,
       servingBeamId: normalizedServing.beamId,
@@ -627,12 +708,14 @@ export function useSimStatePublisher({
       profileId: profile.id,
       formulaFamilyLabel: getFormulaFamilyLabel(profile.formulaFamily),
       satelliteVisualIdentityById,
-      physicalServing,
+      physicalServing: publishedFormulaEvidence.source,
       panelPrimary: publishedPrimaryServing.panelPrimary,
       panelComparison: publishedPrimaryServing.panelComparison,
       visualFrequencyDiagnostics,
       perUePositions,
       modqnCellServiceReadout,
+      livePaperEnergyEfficiency,
+      ch5DemoPaperEnergyEfficiency,
       servingSatId: publishedPrimaryServing.servingSatId,
       servingBeamId: publishedPrimaryServing.servingBeamId,
       servingCellId: publishedPrimaryServing.servingCellId,
@@ -657,8 +740,11 @@ export function useSimStatePublisher({
       lastHoEvent: sim.lastHoEvent,
       simTimeSec: sim.simTimeSec,
       sinrDb: publishedPrimaryServing.servingSinrDb ?? -Infinity,
-      physicalServingBudget,
-      servingBudget,
+      physicalServingBudget: publishedFormulaEvidence.budget,
+      // Keep the legacy second budget field aligned on the cell lane too. It is
+      // not rendered directly, but leaving it steered would preserve a hidden
+      // second formula authority for future consumers.
+      servingBudget: sim.sinrLiveCells ? publishedFormulaEvidence.budget : servingBudget,
       handoverOffsetDb: profile.handover.offsetDb,
       // W7: on the cell lane show the CELL HandoverManager's trigger progress (so the
       // PENDING TARGET countdown matches the cell comparison) instead of the steered

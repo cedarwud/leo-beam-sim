@@ -1,11 +1,40 @@
 import { UI_TOKENS } from '../../constants/uiTokens';
 import type { VisualShowcaseChannelMetricKind } from '../../scene/visual-showcase-contract';
 import type { GlyphKind } from '../../contracts/glyphTypes';
+import { PanelHelp, usePanelCopy } from './panelHelp';
 import { StatusBadge, type StatusBadgeTone } from './StatusBadge';
 import { DuelDecisionColumn } from './DuelDecisionColumn';
-import { DuelSignalColumn, type DuelSignalTone } from './DuelSignalColumn';
+import { DuelSignalColumn, type DuelColumnHelpKeys, type DuelSignalTone } from './DuelSignalColumn';
 
 export type { DuelSignalTone } from './DuelSignalColumn';
+
+/**
+ * "?" wiring for the serving column. Serving and comparison use different
+ * catalog entries (they answer different questions) and different `helpId`s
+ * (globally unique — the id becomes a `data-testid` and keys the single-open
+ * popover store, so El/Range need a per-column suffix).
+ */
+const SERVING_HELP_KEYS: DuelColumnHelpKeys = {
+  identityHelpId: 'kpi.servingIdentity',
+  identityTitleKey: 'kpi.servingIdentity.label',
+  identityBodyKey: 'kpi.servingIdentity.help',
+  sinrHelpId: 'kpi.servingSinr',
+  sinrTitleKey: 'kpi.servingSinr.label',
+  sinrBodyKey: 'kpi.servingSinr.help',
+  elevationHelpId: 'kpi.elevation.serving',
+  rangeHelpId: 'kpi.range.serving',
+};
+
+const COMPARISON_HELP_KEYS: DuelColumnHelpKeys = {
+  identityHelpId: 'kpi.pendingTarget',
+  identityTitleKey: 'kpi.pendingTarget.label',
+  identityBodyKey: 'kpi.pendingTarget.help',
+  sinrHelpId: 'kpi.candidateSinr',
+  sinrTitleKey: 'kpi.candidateSinr.label',
+  sinrBodyKey: 'kpi.candidateSinr.help',
+  elevationHelpId: 'kpi.elevation.candidate',
+  rangeHelpId: 'kpi.range.candidate',
+};
 
 /**
  * P1e (c) audit-list hook (PR-0.5 backfill): the channel-metric kind both
@@ -21,19 +50,22 @@ export type DuelCardChannelMetricProp = {
 
 export function DuelCard({
   servingTitle,
+  servingFriendlyTitle,
   servingCaption,
+  servingCaptionNote,
   servingBadgeText,
   servingBadgeTone,
   servingIdentity,
   hasServingSignal,
   servingGlyph,
   servingSinrDb,
-  servingR1EnergyEfficiencyBitsPerJoule,
   servingElevationDeg,
   servingRangeKm,
   servingTone,
   comparisonTitle,
+  comparisonFriendlyTitle,
   comparisonCaption,
+  comparisonCaptionNote,
   comparisonBadgeText,
   comparisonBadgeTone,
   comparisonIdentity,
@@ -57,22 +89,27 @@ export function DuelCard({
   offsetLabel,
   triggerLabel,
   triggerAriaLabel,
+  handoverCount,
 }: {
   servingTitle: string;
+  /** Plain-language name for the serving column, shown above the role token. */
+  servingFriendlyTitle: string;
   servingCaption: string;
+  servingCaptionNote?: string;
   servingBadgeText: string;
   servingBadgeTone: StatusBadgeTone;
   servingIdentity: string;
   hasServingSignal: boolean;
   servingGlyph: GlyphKind | null;
   servingSinrDb: number | null;
-  /** r1 EE η (bit/joule) for the serving link; null when it cannot be priced. */
-  servingR1EnergyEfficiencyBitsPerJoule: number | null;
   servingElevationDeg: number | null;
   servingRangeKm: number | null;
   servingTone: DuelSignalTone;
   comparisonTitle: string;
+  /** Plain-language name for the comparison column. */
+  comparisonFriendlyTitle: string;
   comparisonCaption: string;
+  comparisonCaptionNote?: string;
   comparisonBadgeText: string;
   comparisonBadgeTone: StatusBadgeTone;
   comparisonIdentity: string;
@@ -96,7 +133,10 @@ export function DuelCard({
   offsetLabel?: string;
   triggerLabel?: string;
   triggerAriaLabel?: string;
+  handoverCount?: number;
 }) {
+  const { tx } = usePanelCopy();
+
   return (
     <section
       data-testid="info-panel-duel-card"
@@ -118,15 +158,26 @@ export function DuelCard({
         alignItems: 'center',
       }}>
         <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          minWidth: 0,
           color: UI_TOKENS.color.text.controlLabel,
           fontSize: UI_TOKENS.type.size.caption,
           fontWeight: UI_TOKENS.type.weight.heavy,
-          textTransform: 'uppercase',
         }}>
-          Beam duel
+          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{tx('panel.duel.title')}</span>
+          <PanelHelp
+            helpId="panel.duel"
+            titleText={tx('panel.duel.title')}
+            bodyText={tx('panel.duel.help')}
+          />
         </div>
         <StatusBadge tone={contextBadgeTone}>{contextBadgeText}</StatusBadge>
       </div>
+
+      {/* The card's explanatory paragraph lives behind the header "?" — the
+          card face itself carries only labels, values, units and status chips. */}
       {contextDetail ? (
         <div
           data-testid="info-panel-live-context-detail"
@@ -154,14 +205,16 @@ export function DuelCard({
           testId="info-panel-primary-sinr-status"
           identityTestId="info-panel-primary-beam-identity"
           title={servingTitle}
+          friendlyTitle={servingFriendlyTitle}
+          helpKeys={SERVING_HELP_KEYS}
           caption={servingCaption}
+          captionNote={servingCaptionNote}
           badgeText={servingBadgeText}
           badgeTone={servingBadgeTone}
           identity={servingIdentity}
           isActive={hasServingSignal}
           glyph={servingGlyph}
           sinrDb={servingSinrDb}
-          r1EnergyEfficiencyBitsPerJoule={servingR1EnergyEfficiencyBitsPerJoule}
           elevationDeg={servingElevationDeg}
           rangeKm={servingRangeKm}
           tone={servingTone}
@@ -174,6 +227,7 @@ export function DuelCard({
           triggerRatio={triggerRatio}
           stateLabel={stateLabel}
           stateTone={stateTone}
+          handoverCount={handoverCount}
           deltaLabel={deltaLabel}
           offsetLabel={offsetLabel}
           triggerLabel={triggerLabel}
@@ -183,17 +237,15 @@ export function DuelCard({
           testId="info-panel-comparison-sinr-status"
           identityTestId="info-panel-comparison-beam-identity"
           title={comparisonTitle}
+          friendlyTitle={comparisonFriendlyTitle}
+          helpKeys={COMPARISON_HELP_KEYS}
           caption={comparisonCaption}
+          captionNote={comparisonCaptionNote}
           badgeText={comparisonBadgeText}
           badgeTone={comparisonBadgeTone}
           identity={comparisonIdentity}
           isActive={hasComparisonSignal}
           glyph={comparisonGlyph}
-          // The comparison beam has no link budget in `SimState`, so there is no
-          // transmit power to price its EE denominator with. Render the em dash
-          // rather than reusing the serving beam's power (that would fabricate a
-          // per-beam number and misread as a serving-vs-candidate EE comparison).
-          r1EnergyEfficiencyBitsPerJoule={null}
           sinrDb={comparisonSinrDb}
           elevationDeg={comparisonElevationDeg}
           rangeKm={comparisonRangeKm}

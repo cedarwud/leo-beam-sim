@@ -124,13 +124,18 @@ section('(b) applySceneTopology behavior', () => {
 section('(c) App.tsx source wiring', () => {
   const appSource = source('src/App.tsx');
   const appPersistenceSource = source('src/app/appPersistence.ts');
-  check(appSource.includes('applySceneTopology(applySignalTuning('), 'App.tsx composes applySceneTopology(applySignalTuning(...))');
+  check(
+    appSource.includes('applySceneTopology(trainingProfile, activeSceneTopology)')
+      && appSource.includes('applyTrainingEnvAxesToProfile'),
+    'App.tsx applies live scene topology after signal and training profile layers',
+  );
   check(appSource.includes('getSceneTopologyResetKey('), 'App.tsx joins getSceneTopologyResetKey into reset chain');
   check(appPersistenceSource.includes('SCENE_TOPOLOGY_OVERRIDES_KEY'), 'appPersistence.ts uses SCENE_TOPOLOGY_OVERRIDES_KEY');
   check(appSource.includes('appMode={appMode}'), 'App.tsx passes appMode into SignalTuningPanel');
   check(
-    appSource.includes("appMode === 'sinr-experiment' ? sceneTopology : createSceneTopologyState()"),
-    'App.tsx gates topology overlay on appMode',
+    appSource.includes('liveSceneTopologyControlsEnabled')
+      && appSource.includes("sceneLane === 'modqn-live-cell-preview'"),
+    'App.tsx enables topology overrides on both live scene lanes',
   );
 });
 
@@ -142,11 +147,11 @@ section('(d) SignalTuningPanel.tsx source wiring', () => {
   check(panelSource.includes("activeTab === 'topology'"), 'SignalTuningPanel renders TopologyTab for topology activeTab');
 });
 
-section('(e) FormulaTabList.tsx app-mode gate', () => {
+section('(e) FormulaTabList.tsx scene-tab availability', () => {
   const tabListSource = source('src/ui/signal-tuning/FormulaTabList.tsx');
   check(
-    tabListSource.includes("tab.key !== 'topology' || appMode === 'sinr-experiment'"),
-    "FormulaTabList gates topology tab on appMode === 'sinr-experiment'",
+    tabListSource.includes('const visibleTabs = TUNING_TABS'),
+    'FormulaTabList keeps all SINR term tabs available without an app-mode scene gate',
   );
 });
 

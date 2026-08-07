@@ -1,5 +1,9 @@
 import type { LinkSample } from './types';
-import type { BeamPowerControlConfig, Profile } from '../../profiles/types';
+import {
+  resolveMaxTxPowerDbm,
+  type BeamPowerControlConfig,
+  type Profile,
+} from '../../profiles/types';
 
 export interface BeamPowerControlState {
   txPowerDbm: number;
@@ -40,11 +44,12 @@ export function updateBeamPowerControlStates(
   channel: Profile['channel'],
 ): Map<string, BeamPowerControlState> {
   const nextStatesByKey = new Map(previousStatesByKey);
+  const maxTxPowerDbm = resolveMaxTxPowerDbm(channel);
 
   for (const sample of samples) {
     const key = beamPowerKey(sample.satId, sample.beamId);
     const previousState = nextStatesByKey.get(key) ?? {
-      txPowerDbm: channel.maxTxPowerDbm,
+      txPowerDbm: maxTxPowerDbm,
       stepDb: powerControl.stepDb,
       efficiencyScore: null,
     } satisfies BeamPowerControlState;
@@ -65,7 +70,7 @@ export function updateBeamPowerControlStates(
     const nextTxPowerDbm = clamp(
       previousState.txPowerDbm + nextStepDb,
       powerControl.minTxPowerDbm,
-      channel.maxTxPowerDbm,
+      maxTxPowerDbm,
     );
 
     nextStatesByKey.set(key, {

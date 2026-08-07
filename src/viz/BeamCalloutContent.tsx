@@ -92,7 +92,7 @@ export function BeamCalloutContent({
         boxShadow: `0 0 ${style.calloutGlowPx}px ${color}66`,
         color: '#ffffff',
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-        fontSize: isEmphasized ? 12 : 11,
+        fontSize: isEmphasized ? 14 : 13,
         lineHeight: 1.05,
         letterSpacing: 0,
         textAlign: 'center',
@@ -163,7 +163,7 @@ export function BeamCalloutContent({
         ) : identityLine}
       </div>
       {style.slotStateLabel && (
-        <div style={{ color: '#dbeafe', fontSize: 10, fontWeight: 800 }}>{style.slotStateLabel}</div>
+        <div style={{ color: '#dbeafe', fontSize: 12, fontWeight: 800 }}>{style.slotStateLabel}</div>
       )}
       <div style={{ fontWeight: isEmphasized ? 700 : 600 }}>{sinrLabel}</div>
     </div>

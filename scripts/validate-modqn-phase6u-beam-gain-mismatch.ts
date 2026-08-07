@@ -11,7 +11,11 @@ import {
   computeOffAxisDeg as computeEngineOffAxisDeg,
 } from '../src/engine/signal/beam-gain.ts';
 import { loadProfile } from '../src/profiles/index.ts';
-import type { GainModel, Profile } from '../src/profiles/types.ts';
+import {
+  resolveMaxTxPowerDbm,
+  type GainModel,
+  type Profile,
+} from '../src/profiles/types.ts';
 import {
   applyHandoverPolicyTuning,
   createHandoverPolicyTuningState,
@@ -611,7 +615,7 @@ function createAnalyticCases(fixture: Phase6UFixtureFile): BeamGainCase[] {
   const altitudeKm = defaultProfile.orbit.shells[0]?.altitudeKm ?? 550;
   const beamDiameterKm = 2 * altitudeKm * Math.tan(defaultProfile.antenna.beamwidth3dBRad / 2);
   const engineBeamwidth3dBDeg = defaultProfile.antenna.beamwidth3dBRad * (180 / Math.PI);
-  const txPowerDbm = defaultProfile.channel.maxTxPowerDbm;
+  const txPowerDbm = resolveMaxTxPowerDbm(defaultProfile.channel);
   const noisePowerDbm = defaultProfile.channel.noisePsdDbmHz
     + 10 * Math.log10(defaultProfile.channel.bandwidthMHz * 1e6);
   const pathLossDb = computeCoreFspl(altitudeKm, defaultProfile.channel.frequencyGHz) + 2.15;
@@ -690,7 +694,7 @@ function createAnalyticCases(fixture: Phase6UFixtureFile): BeamGainCase[] {
       altitudeKm,
       slantRangeKm: altitudeKm / Math.sin(45 * Math.PI / 180),
       beamDiameterKm,
-      txPowerDbm: tr38811Profile.channel.maxTxPowerDbm,
+      txPowerDbm: resolveMaxTxPowerDbm(tr38811Profile.channel),
       pathLossDb: computeCoreFspl(altitudeKm / Math.sin(45 * Math.PI / 180), tr38811Profile.channel.frequencyGHz) + 2.15,
       noisePowerDbm,
       elevationDeg: 45,

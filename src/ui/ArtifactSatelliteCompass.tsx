@@ -102,7 +102,7 @@ export function ArtifactSatelliteCompass(props: {
     >
       <div
         style={{
-          fontSize: 10.5,
+          fontSize: 12.5,
           fontWeight: 700,
           letterSpacing: '0.06em',
           textTransform: 'uppercase',
@@ -135,7 +135,7 @@ export function ArtifactSatelliteCompass(props: {
                 x={text.x}
                 y={text.y + 3}
                 textAnchor="middle"
-                fontSize={8}
+                fontSize={10}
                 fill="rgba(170,200,235,0.78)"
               >
                 {label}
@@ -169,7 +169,7 @@ export function ArtifactSatelliteCompass(props: {
                 x={dot.x}
                 y={dot.y - 5}
                 textAnchor="middle"
-                fontSize={7}
+                fontSize={9}
                 fill="rgba(255, 214, 160, 0.92)"
               >
                 {index}
@@ -180,7 +180,7 @@ export function ArtifactSatelliteCompass(props: {
       </svg>
       <div
         data-testid="artifact-satellite-compass-honesty"
-        style={{ fontSize: 9.5, lineHeight: 1.3, opacity: 0.82, marginTop: 2 }}
+        style={{ fontSize: 11.5, lineHeight: 1.3, opacity: 0.82, marginTop: 2 }}
       >
         {SATELLITE_COMPASS_HONESTY_LABEL}
       </div>

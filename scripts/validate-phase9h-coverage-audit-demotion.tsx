@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import {
+  assertContainsTestId,
+  assertNoTestId,
+  assertNotContainsTestId,
+  assertTestId,
+  assertTestIdOrder,
+  openingTagOfTestId,
+} from './lib/dom-structure.ts';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { loadProfile } from '../src/profiles/index.ts';
@@ -7,6 +15,7 @@ import type { LinkBudgetTerms } from '../src/scene/types.ts';
 import { createSceneTopologyState } from '../src/sceneTopology.ts';
 import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
+import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-paper-default';
@@ -69,6 +78,8 @@ function renderPanel(initialActiveTab: 'signal-power' | 'loss' = 'signal-power')
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
+      energyTuning={DEFAULT_ENERGY_TUNING}
+      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );
@@ -76,48 +87,86 @@ function renderPanel(initialActiveTab: 'signal-power' | 'loss' = 'signal-power')
   return { markup, text: decodeHtmlText(markup) };
 }
 
+/**
+ * The demotion this gate protects is an ORDERING fact: the editable control is
+ * the primary action and the explanatory context is the footnote below it, and
+ * the old coverage/assumptions audit surface is gone from the primary flow
+ * entirely. Both are asserted through test-id document order and test-id
+ * absence — not through the English headings that used to proxy for them.
+ */
 function assertCoverageSummaryIsRemovedFromPrimaryFlow(): void {
   const { markup, text } = renderPanel('signal-power');
-  const tabIndex = markup.indexOf('data-testid="sinr-formula-tabs"');
-  const controlsIndex = markup.indexOf('data-testid="signal-power-controls"');
-  const ptControlIndex = markup.indexOf('data-testid="pt-signal-power-control"');
-  const formulaContextIndex = markup.indexOf('data-testid="signal-power-controls-formula-context"');
-  const disclosureIndex = markup.indexOf('data-testid="sinr-coverage-assumptions-disclosure"');
 
-  assert.ok(tabIndex >= 0, 'expected SINR formula tabs to render');
-  assert.ok(controlsIndex > tabIndex, 'expected active formula controls after tabs');
-  assert.ok(ptControlIndex > controlsIndex, 'expected editable P_t control as the first content inside the signal-power section');
-  assert.ok(formulaContextIndex > ptControlIndex, 'expected section formula context after the editable P_t control');
-  assert.equal(disclosureIndex, -1, 'coverage / assumptions should not remain as a separate disclosure in the primary tuning flow');
-  assertNotContains(markup, 'data-testid="sinr-coverage-audit"');
+  assertTestIdOrder(markup, [
+    'sinr-formula-tabs',
+    'signal-power-controls',
+    'pt-signal-power-control',
+    'signal-power-controls-formula-context',
+  ], 'primary SINR tuning flow');
+
+  assertNoTestId(markup, 'sinr-coverage-assumptions-disclosure', 'primary tuning flow');
+  assertNoTestId(markup, 'sinr-coverage-audit', 'primary tuning flow');
+  // Negative copy bans: these do not force any particular language into the DOM,
+  // so they stay as a belt-and-braces check that the retired surface has not
+  // simply been re-titled.
   assertNotContains(text, 'Coverage audit');
   assertNotContains(text, 'Coverage / assumptions');
 }
 
+/** A `<details>` that must be open on arrival, not folded away behind a click. */
+function assertOpenByDefault(markup: string, testId: string): void {
+  const openTag = openingTagOfTestId(markup, testId);
+  assert.ok(
+    /^<details\b/.test(openTag) && / open(=|\s|>)/.test(openTag),
+    `expected "${testId}" to render as a <details> that is open by default; opening tag was ${openTag}`,
+  );
+}
+
 function assertEssentialContextRemainsInline(): void {
   const signal = renderPanel('signal-power');
-  const ptControlIndex = signal.markup.indexOf('data-testid="pt-signal-power-control"');
-  const activeNotesIndex = signal.markup.indexOf('data-testid="active-tab-formula-context"');
-  const overviewIndex = signal.markup.indexOf('data-testid="sinr-overview-disclosure"');
 
-  assertContains(signal.text, 'Receiver Gain');
-  assertContains(signal.markup, '<details open="" data-testid="sinr-overview-disclosure"');
-  assertContains(signal.markup, '<details open="" data-testid="active-tab-formula-context"');
-  assert.ok(activeNotesIndex > ptControlIndex, 'expected active-tab notes after the primary editable control');
-  assert.ok(overviewIndex > activeNotesIndex, 'expected SINR overview below active-tab notes');
-  assertContains(signal.text, 'SINR overview');
-  assertContains(signal.text, 'Formula / notes');
-  assertContains(signal.text, 'P t starts the desired-signal numerator');
-  assertContains(signal.text, 'This tab controls transmit power only. Receiver gain has its own tab.');
-  assertContains(signal.text, 'Base transmit power before dynamic power control overrides.');
-  assertContains(signal.text, 'Raising it strengthens both the serving beam and any co-channel interferers.');
-  assertContains(signal.markup, 'data-testid="pt-signal-power-control-range-endpoints"');
+  // G^R stays discoverable as its own tab rather than being folded into P_t.
+  const tabStrip = openingTagOfTestId(signal.markup, 'sinr-formula-tabs');
+  assert.ok(tabStrip.length > 0, 'expected the SINR formula tab strip to render');
+  assertTestId(signal.markup, 'sinr-formula-tabs');
+  assert.ok(
+    signal.markup.includes('id="sinr-formula-tab-receiver-gain"'),
+    'expected G^R to remain reachable as its own tab, not folded into the P_t group',
+  );
+  assertNotContainsTestId(signal.markup, 'signal-power-controls', 'gr-receiver-gain-control');
+
+  // Context is present and expanded on arrival, BELOW the primary editable control.
+  assertOpenByDefault(signal.markup, 'active-tab-formula-context');
+  assertOpenByDefault(signal.markup, 'sinr-overview-disclosure');
+  assertTestIdOrder(signal.markup, [
+    'pt-signal-power-control',
+    'active-tab-formula-context',
+    'sinr-overview-disclosure',
+  ], 'signal-power tab');
+
+  // The parameter card keeps its own first-use context next to the slider: the
+  // explanation hook, the "what changes if I move it" hook, and the range.
+  assertContainsTestId(signal.markup, 'pt-signal-power-control', 'pt-signal-power-control-details');
+  assertContainsTestId(signal.markup, 'pt-signal-power-control', 'pt-signal-power-control-effect');
+  assertContainsTestId(signal.markup, 'pt-signal-power-control', 'pt-signal-power-control-range-endpoints');
+
   assertNotContains(signal.text, 'HOBS paper parameter table');
   assertNotContains(signal.text, 'Research Override / teaching control');
 
+  // Path-loss sensitivity controls stay visible in the Loss group: the per-term
+  // path-loss cards keep their own switch, range and detail hooks, and the
+  // sensitivity group renders as its own section beneath them (it carries the
+  // TR 38.811 help affordance, and gains an editable clutter control only in the
+  // TR 38.811 profile — so its PRESENCE, not its contents, is the invariant here).
   const loss = renderPanel('loss');
-  assertContains(loss.markup, 'data-testid="loss-sensitivity-controls"');
-  assertContains(loss.text, 'Advanced sensitivity controls for simulator constants');
+  assertTestIdOrder(loss.markup, ['loss-formula-controls', 'loss-sensitivity-controls'], 'loss tab');
+  for (const term of ['fspl', 'atmospheric', 'scintillation', 'shadow-fading']) {
+    assertContainsTestId(loss.markup, 'loss-formula-controls', `path-loss-term-${term}`, 'loss tab');
+    assertContainsTestId(loss.markup, `path-loss-term-${term}`, `path-loss-term-${term}-switch`, 'loss tab');
+    assertContainsTestId(loss.markup, `path-loss-term-${term}`, `path-loss-term-${term}-range-meta`, 'loss tab');
+    assertContainsTestId(loss.markup, `path-loss-term-${term}`, `path-loss-term-${term}-details`, 'loss tab');
+  }
+  assertContainsTestId(loss.markup, 'loss-sensitivity-controls', 'help-popover-trigger-section.tr38811', 'loss tab');
 }
 
 function assertSourceDoesNotKeepOldAuditSurface(): void {

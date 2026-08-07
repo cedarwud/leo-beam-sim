@@ -27,9 +27,22 @@
 .leo-director-controls__label {
   flex: 0 0 auto;
   color: rgba(229, 244, 251, 0.54);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.7px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.leo-director-controls__section-label {
+  flex: 0 0 auto;
+  margin-left: 2px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(218, 244, 255, 0.16);
+  color: rgba(229, 244, 251, 0.42);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.55px;
   line-height: 1;
   text-transform: uppercase;
 }
@@ -44,7 +57,7 @@
   background: rgba(255, 255, 255, 0.06);
   color: rgba(246, 251, 255, 0.9);
   font: inherit;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   line-height: 1.2;
   transition: background var(--leo-motion-standard) ease, border-color var(--leo-motion-standard) ease, color var(--leo-motion-standard) ease, opacity var(--leo-motion-standard) ease;
@@ -54,6 +67,64 @@
   border-color: rgba(var(--leo-accent-rgb), 0.42);
   background: rgba(var(--leo-accent-rgb), 0.14);
   color: var(--leo-accent-strong);
+}
+
+.leo-director-controls__btn[data-testid="director-intra-focus"]:hover:not(:disabled) {
+  border-color: rgba(111, 247, 238, 0.58);
+  background: rgba(111, 247, 238, 0.14);
+  color: #d9fffb;
+}
+
+.leo-director-controls__btn[data-testid="director-inter-focus"]:hover:not(:disabled) {
+  border-color: rgba(255, 204, 92, 0.58);
+  background: rgba(255, 204, 92, 0.14);
+  color: #fff1c9;
+}
+
+.leo-director-controls__hint {
+  flex: 1 1 100%;
+  min-width: 0;
+  color: rgba(229, 244, 251, 0.48);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.leo-director-controls__color-key {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(229, 244, 251, 0.64);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.leo-director-controls__color-key > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.leo-director-controls__color-key i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 7px currentColor;
+}
+
+.leo-director-controls__color-key i[data-color="from"] {
+  background: #facc15;
+  color: #facc15;
+}
+
+.leo-director-controls__color-key i[data-color="to"] {
+  background: #3b82f6;
+  color: #3b82f6;
 }
 
 .leo-director-controls__btn--exit:hover:not(:disabled) {

@@ -65,8 +65,13 @@ function validateRenderIsolationContracts(): void {
 
   assert.equal(NTPU_OBSERVER.latitude, 40, 'scene observer latitude tracks paper center');
   assert.equal(NTPU_OBSERVER.longitude, 116, 'scene observer longitude tracks paper center');
-  assert.ok(NTPU_CONFIG.visualSatelliteAltitude < 780, 'SINR visual satellite altitude is compressed');
+  assert.equal(NTPU_CONFIG.visualSatelliteAltitude, 780, 'SINR live visual satellite altitude uses the 780 baseline');
   assert.ok(NTPU_LARGE_CONFIG.visualSatelliteAltitude < 780, 'MODQN visual satellite altitude is compressed');
+  assertIncludes(
+    mainScene,
+    'visualSatelliteAltitude: sceneConfig.visualSatelliteAltitude',
+    'MainScene threads the live scene visual altitude into SceneGeometry',
+  );
 
   assertIncludes(
     useBeamViz,

@@ -19,8 +19,16 @@ import {
 import { createSignalTuningState, applySignalTuning } from '../src/signalTuning.ts';
 import { createSceneTopologyState } from '../src/sceneTopology.ts';
 import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
+import {
+  assertAttr,
+  assertNoAttr,
+  assertTestId,
+  attrValuesIn,
+  extractElementByTestId,
+} from './lib/dom-structure.ts';
 import { HandoverPolicyControls } from '../src/ui/HandoverPolicyControls.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
+import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-candidate-rich';
@@ -91,6 +99,8 @@ function renderTuningMarkups() {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
+      energyTuning={DEFAULT_ENERGY_TUNING}
+      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );
@@ -158,43 +168,123 @@ function assertHandoverPolicyLivesInAdvancedDrawer(): void {
   assertNotContains(signalPanelSource, 'tuning-page-tabs');
 }
 
+/**
+ * Every editable handover-policy scalar, by the FIELD it writes.
+ *
+ * `data-policy-field` is the row's real identity: it names the
+ * `HandoverPolicyState` key the slider mutates. The English row labels this gate
+ * used to pin ("Handover offset margin", "Ping-pong guard window", ...) were
+ * only ever a proxy for that, and pinning them made the panel untranslatable.
+ */
+const POLICY_FIELDS = [
+  'offsetDb',
+  'triggerTimeSec',
+  'pingPongGuardSec',
+  'sinrSmoothingSec',
+  'intraSwitchTimeSec',
+  'maxIntraSwitchesPerServingEpoch',
+  'pendingTargetHoldSec',
+  'sinrThresholdDb',
+] as const;
+
 function assertTuningPlacementAndCopy(): void {
   const { signalMarkup, handoverMarkup, text } = renderTuningMarkups();
-  assertContains(text, 'Handover Policy Research Controls');
-  assertContains(text, 'policy: sinr-offset');
-  assertContains(text, 'read-only');
-  assertContains(text, 'Handover offset margin');
-  assertContains(text, 'Inter-HO trigger time');
-  assertContains(text, 'Ping-pong guard window');
-  assertContains(text, 'Decision SINR smoothing');
-  assertContains(text, 'Same-satellite beam dwell');
-  assertContains(text, 'Intra-HO limit per satellite');
-  assertContains(text, 'Maximum same-satellite beam switches before the next inter-satellite handover resets the counter.');
-  assertContains(text, 'Pending target hold');
-  assertContains(text, 'Handover attach threshold');
-  assertContains(text, 'Apply policy changes');
-  assertContains(text, 'Reset to profile defaults');
-  assertContains(text, 'Applied value remains');
+  const policyPanel = extractElementByTestId(handoverMarkup, 'handover-policy-controls');
+
+  // The panel exposes exactly the eight policy scalars, once each.
+  assert.deepEqual(
+    attrValuesIn(policyPanel, 'data-policy-field').sort(),
+    [...POLICY_FIELDS].sort(),
+    'handover policy panel must expose exactly the eight policy fields',
+  );
+
+  // Draft/apply separation is a STATE fact, carried per row. The fixture renders
+  // with hasDraftChanges, so at least one row must be flagged as drafted — this
+  // is what the old "Applied value remains" copy pin was standing in for.
+  assert.ok(
+    attrValuesIn(policyPanel, 'data-draft-changed').includes('true'),
+    'a drafted-but-unapplied policy row must declare data-draft-changed="true"',
+  );
+
+  // The applied policy is surfaced read-only (the policy id itself is a code
+  // token, not prose, so pinning it stays language-neutral).
+  assertTestId(policyPanel, 'handover-policy-readonly');
+  assertContains(decodeHtmlText(extractElementByTestId(policyPanel, 'handover-policy-readonly')), 'sinr-offset');
+
+  /*
+   * Apply / Reset remain available as two actions in the panel's action row.
+   * RESOLVED 2026-08-06 (owner): losing the explicit affordance IS intended.
+   * The owner asked for the read-only policy pill and both (usually disabled)
+   * Apply / Reset buttons to go, along with the "Draft matches the applied
+   * policy." status line — an edit-then-confirm ceremony is not something a
+   * student should have to perform. `src/ui/HandoverPolicyControls.tsx` now
+   * auto-applies from a post-commit effect (`applyRef` + settle timer).
+   *
+   * So the pinned invariant moves from the affordance to the CONTRACT it stood
+   * for: a policy edit must still reach the engine. Two halves, because neither
+   * alone survives a plausible regression:
+   *   1. the action row must stay gone, so the ceremony cannot creep back in;
+   *   2. `onApply` must still be invoked from the component, so deleting the
+   *      buttons cannot silently orphan the prop and strand every edit in a
+   *      draft nobody applies.
+   *
+   * (2) is a source-text check rather than a rendered-markup one on purpose:
+   * the apply fires from an effect, which server-side rendering never runs, so
+   * there is nothing in the markup to observe. A `data-policy-auto-apply`
+   * carrier on the panel would make it a first-class structural hook.
+   */
+  assert.ok(
+    !/leo-policy-action-row/.test(policyPanel),
+    'the Apply / Reset action row was removed on purpose; it must not come back',
+  );
+  const policySource = readFileSync(
+    new URL('../src/ui/HandoverPolicyControls.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.ok(
+    /onApply\s*\(\s*\)/.test(policySource) || /applyRef\.current\s*\(\s*\)/.test(policySource),
+    'policy edits must still reach the engine: the panel has to invoke onApply somewhere',
+  );
+
+  // Advanced rows stay behind their own disclosure rather than crowding the
+  // primary list.
+  assertTestId(policyPanel, 'handover-policy-primary-controls');
+  assertTestId(policyPanel, 'handover-policy-advanced');
+
+  // Negative bans (do not force any language into the DOM): the retired policy
+  // selector and the retired free-form SINR threshold label must not come back.
   assertNotContains(text, 'policy selector');
   assertNotContains(text, 'SINR threshold');
 
+  // The SINR formula panel stays a distinct layer and never hosts policy rows.
   assertContains(signalMarkup, 'data-testid="sinr-formula-page"');
   assertContains(signalMarkup, 'data-testid="sinr-formula-tabs"');
-  assertContains(handoverMarkup, 'data-testid="handover-policy-controls"');
   assertNotContains(signalMarkup, 'data-testid="handover-policy-controls"');
-  assertNotContains(decodeHtmlText(signalMarkup), 'Handover Policy Research Controls');
+  assert.deepEqual(
+    attrValuesIn(signalMarkup, 'data-policy-field'),
+    [],
+    'the SINR formula panel must not host handover policy rows',
+  );
   assertHandoverPolicyLivesInAdvancedDrawer();
 }
 
 function assertModeVisibility(): void {
   const profile = loadProfile(PROFILE_ID);
   const initialState = createInitialSimState(profile);
-  const presentationText = decodeHtmlText(renderToStaticMarkup(
+  const presentationMarkup = renderToStaticMarkup(
     <InfoPanel {...initialState} profile={profile} />,
-  ));
-  assertNotContains(presentationText, 'Handover Policy Research Controls');
-  assertNotContains(presentationText, 'Apply policy changes');
-  assertNotContains(presentationText, 'Reset to profile defaults');
+  );
+  const presentationText = decodeHtmlText(presentationMarkup);
+  // Presentation mode hosts NO handover-policy editor. Asserted structurally
+  // (test id + policy-field absence) rather than by banning the English panel
+  // title, so a translated panel cannot sneak back in.
+  assertNoAttr(presentationMarkup, 'data-testid', 'handover-policy-controls', 'presentation mode');
+  assertNoAttr(presentationMarkup, 'data-testid', 'handover-policy-primary-controls', 'presentation mode');
+  assert.deepEqual(
+    attrValuesIn(presentationMarkup, 'data-policy-field'),
+    [],
+    'presentation mode must not render any editable handover policy row',
+  );
   assertNotContains(presentationText, 'Handover policy (effective)');
 
   const modqnLiveStatusState = {
@@ -228,6 +318,14 @@ function assertModeVisibility(): void {
   // replay decision overlay' / 'serving beam displays the MODQN replay decision
   // overlay') are no longer RENDERED — their two assertContains were dropped. The
   // serving caption + labels below still render via the duel and stay pinned.
+  // NOTE (agent-M): the four needles below are still literal English copy. The
+  // MODQN-overlay live-status distinction ("the live SINR readout is a
+  // REFERENCE here, not the deciding authority") has no structural carrier on
+  // this surface — the duel card does not expose the runtime handover mode.
+  // Adding data-handover-mode={handoverMode} to the duel card in
+  // src/ui/info-panel/DuelCard.tsx (fed from InfoPanel) would let these become
+  // structural. Until then they stay, because dropping them would weaken the
+  // gate to nothing.
   assertContains(modqnLiveStatusText, 'MODQN overlay serving link');
   assertContains(modqnLiveStatusText, 'live SINR reference');
   assertContains(modqnLiveStatusText, 'live Δ SINR');

@@ -93,7 +93,7 @@ export function ArtifactSourceBadge(props: { source: string | null }): ReactElem
         background: '#5a2d00',
         color: '#ffe9c7',
         padding: '6px 16px',
-        fontSize: 12.5,
+        fontSize: 14.5,
         borderBottom: '1px solid #b25c00',
         display: 'flex',
         gap: 12,

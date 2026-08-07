@@ -1,69 +1,28 @@
 import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import {
+  assertAttr,
+  assertContainsTestId,
+  assertNoAttr,
+  assertNotContainsTestId,
+  assertTestIdAttr,
+  attrValuesIn,
+  decodeHtmlText,
+  extractElementByTestId,
+} from './lib/dom-structure.ts';
 import { loadProfile } from '../src/profiles/index.ts';
 import type { LinkBudgetTerms } from '../src/scene/types.ts';
 import { createSceneTopologyState } from '../src/sceneTopology.ts';
 import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
+import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-paper-default';
 
-function decodeHtmlText(markup: string): string {
-  return markup
-    .replace(/<script[\s\S]*?<\/script>/g, ' ')
-    .replace(/<style[\s\S]*?<\/style>/g, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#x27;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function assertContains(text: string, expected: string): void {
-  assert.ok(text.includes(expected), `expected content to contain "${expected}"`);
-}
-
 function assertNotContains(text: string, unexpected: string): void {
   assert.ok(!text.includes(unexpected), `expected content not to contain "${unexpected}"`);
-}
-
-function extractElementByTestId(markup: string, testId: string): string {
-  const attr = `data-testid="${testId}"`;
-  const attrIndex = markup.indexOf(attr);
-  assert.notEqual(attrIndex, -1, `expected markup to contain ${attr}`);
-
-  const start = markup.lastIndexOf('<', attrIndex);
-  assert.notEqual(start, -1, `expected opening tag for ${testId}`);
-
-  const tagMatch = /^<([a-zA-Z][\w:-]*)/.exec(markup.slice(start));
-  assert.ok(tagMatch, `expected tag name for ${testId}`);
-  const tagName = tagMatch[1];
-  const tagPattern = /<\/?([a-zA-Z][\w:-]*)(?:\s[^<>]*)?>/g;
-  tagPattern.lastIndex = start;
-
-  let depth = 0;
-  for (let match = tagPattern.exec(markup); match !== null; match = tagPattern.exec(markup)) {
-    const token = match[0];
-    const name = match[1];
-    if (name !== tagName) continue;
-
-    if (token.startsWith('</')) {
-      depth -= 1;
-      if (depth === 0) {
-        return markup.slice(start, match.index + token.length);
-      }
-    } else if (!token.endsWith('/>')) {
-      depth += 1;
-    }
-  }
-
-  assert.fail(`expected closing tag for ${testId}`);
 }
 
 function createBudgetTerms(): LinkBudgetTerms {
@@ -108,6 +67,8 @@ function renderPanel(initialActiveTab: TestTab = 'signal-power') {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
+      energyTuning={DEFAULT_ENERGY_TUNING}
+      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );
@@ -115,102 +76,125 @@ function renderPanel(initialActiveTab: TestTab = 'signal-power') {
   return { markup, text: decodeHtmlText(markup) };
 }
 
+/**
+ * The formula map is the panel's claim about WHICH SIDE OF THE FRACTION each
+ * term lives on, and WHO OWNS it. Both facts are already carried machine-
+ * readably by `data-formula-side` and `data-term-owner`, so that is what this
+ * gate reads. Pinning the English tile captions instead ("Receiver gain",
+ * "Co-channel interference") only ever tested the copy — and made the copy
+ * un-translatable, which is how the un-earned regression got in.
+ */
+const NUMERATOR_CHAIN = ['transmit-power', 'path-gain-loss', 'transmit-gain', 'receiver-gain'] as const;
+const DENOMINATOR_TERMS = ['interference', 'thermal-noise'] as const;
+
 function assertFormulaMapOwnership(): void {
   const signal = renderPanel('signal-power');
-  assertContains(signal.markup, 'data-testid="sinr-formula-map"');
-  assertContains(signal.markup, 'P<sub>t</sub> -&gt; H/L -&gt; G<sup>T</sup> -&gt; G<sup>R</sup>');
+  const map = extractElementByTestId(signal.markup, 'sinr-formula-map', 'signal-power tab');
 
-  const numerator = extractElementByTestId(signal.markup, 'formula-map-numerator');
-  const numeratorText = decodeHtmlText(numerator);
-  assertContains(numerator, 'data-formula-side="numerator"');
-  assertContains(numerator, 'data-testid="formula-map-pt"');
-  assertContains(numerator, 'data-testid="formula-map-hl"');
-  assertContains(numerator, 'data-testid="formula-map-gt"');
-  assertContains(numerator, 'data-testid="formula-map-gr"');
-  assertContains(numeratorText, 'Numerator / Signal Path');
-  assertContains(numeratorText, 'Transmit power');
-  assertContains(numeratorText, 'Path gain / loss');
-  assertContains(numeratorText, 'Satellite beam gain');
-  assertContains(numeratorText, 'Receiver gain');
-  assertContains(numeratorText, 'Sensitivity');
+  const numerator = extractElementByTestId(map, 'formula-map-numerator');
+  assertTestIdAttr(map, 'formula-map-numerator', 'data-formula-side', 'numerator');
+  assertContainsTestId(map, 'formula-map-numerator', 'formula-map-pt');
+  assertContainsTestId(map, 'formula-map-numerator', 'formula-map-hl');
+  assertContainsTestId(map, 'formula-map-numerator', 'formula-map-gt');
+  assertContainsTestId(map, 'formula-map-numerator', 'formula-map-gr');
 
-  const denominator = extractElementByTestId(signal.markup, 'formula-map-denominator');
-  const denominatorText = decodeHtmlText(denominator);
-  assertContains(denominator, 'data-formula-side="denominator"');
-  assertContains(denominator, 'data-testid="formula-map-interference"');
-  assertContains(denominator, 'data-testid="formula-map-sigma"');
-  assertContains(denominator, 'I<sup>a</sup> + I<sup>b</sup>');
-  assertContains(denominator, 'σ²');
-  assertContains(denominatorText, 'Denominator / Impairments');
-  assertContains(denominatorText, 'Co-channel interference');
-  assertContains(denominatorText, 'Thermal noise floor');
-  assertNotContains(denominator, 'data-testid="formula-map-gr"');
-  assertNotContains(denominatorText, 'Receiver gain');
-  assertNotContains(denominatorText, 'Research Override');
+  // The signal path is an ORDERED chain P_t -> H/L -> G^T -> G^R. Asserting the
+  // sequence of term owners replaces the old pin on the rendered notation string
+  // and is strictly stronger: it fails on a reordering the notation pin allowed.
+  assert.deepEqual(
+    attrValuesIn(numerator, 'data-term-owner'),
+    [...NUMERATOR_CHAIN],
+    'numerator map must present the full signal chain, in signal-path order',
+  );
+  // Every numerator tile declares the numerator side on its own element, so a
+  // tile cannot be visually filed under the numerator while claiming otherwise.
+  for (const tile of ['formula-map-pt', 'formula-map-hl', 'formula-map-gt', 'formula-map-gr']) {
+    assertTestIdAttr(numerator, tile, 'data-formula-side', 'numerator');
+  }
 
-  const grTile = extractElementByTestId(signal.markup, 'formula-map-gr');
-  const grTileText = decodeHtmlText(grTile);
-  assertContains(grTile, 'data-formula-side="numerator"');
-  assertContains(grTile, 'data-term-owner="receiver-gain"');
-  assertContains(grTileText, 'Receiver gain');
-  assertContains(grTileText, 'Sensitivity');
-  assertContains(grTileText, 'receive-side gain');
-  assertContains(grTileText, 'Independent numerator term');
-  assertContains(grTileText, 'not transmit power or satellite beam gain');
-  assertNotContains(grTileText, 'HOBS');
-  assertNotContains(grTileText, 'Research Override');
+  const denominator = extractElementByTestId(map, 'formula-map-denominator');
+  assertTestIdAttr(map, 'formula-map-denominator', 'data-formula-side', 'denominator');
+  assertContainsTestId(map, 'formula-map-denominator', 'formula-map-interference');
+  assertContainsTestId(map, 'formula-map-denominator', 'formula-map-sigma');
+  assert.deepEqual(
+    attrValuesIn(denominator, 'data-term-owner'),
+    [...DENOMINATOR_TERMS],
+    'denominator map must present exactly the impairment terms',
+  );
+  assertTestIdAttr(denominator, 'formula-map-interference', 'data-formula-side', 'denominator');
+  assertTestIdAttr(denominator, 'formula-map-sigma', 'data-formula-side', 'denominator');
 
-  const ptTile = extractElementByTestId(signal.markup, 'formula-map-pt');
-  assertNotContains(ptTile, 'data-testid="formula-map-gr"');
-  assertNotContains(decodeHtmlText(ptTile), 'Receiver gain');
+  // G^R is a NUMERATOR term. It must not appear on the impairment side at all —
+  // neither as a tile nor as an owner claim.
+  assertNotContainsTestId(map, 'formula-map-denominator', 'formula-map-gr');
+  assertNoAttr(denominator, 'data-term-owner', 'receiver-gain', 'denominator map');
+  assertNotContains(decodeHtmlText(denominator), 'Research Override');
 
-  const gtTile = extractElementByTestId(signal.markup, 'formula-map-gt');
-  assertNotContains(gtTile, 'data-testid="formula-map-gr"');
-  assertNotContains(decodeHtmlText(gtTile), 'Receiver gain');
+  // G^R is an INDEPENDENT numerator tile: it owns receiver gain, and it is not
+  // nested inside (i.e. presented as a sub-property of) P_t or G^T.
+  assertTestIdAttr(numerator, 'formula-map-gr', 'data-term-owner', 'receiver-gain');
+  const grTile = extractElementByTestId(numerator, 'formula-map-gr');
+  assertNotContains(decodeHtmlText(grTile), 'Research Override');
+  for (const sibling of ['formula-map-pt', 'formula-map-gt', 'formula-map-hl']) {
+    assertNotContainsTestId(numerator, sibling, 'formula-map-gr');
+    assertNoAttr(
+      extractElementByTestId(numerator, sibling),
+      'data-term-owner',
+      'receiver-gain',
+      `${sibling} tile`,
+    );
+  }
 }
 
+/**
+ * The map's ownership claim must match where the EDITABLE controls actually
+ * live: a term that the map files under the numerator must not be editable from
+ * a denominator control group, and vice versa.
+ */
+const CONTROL_GROUPS = [
+  { tab: 'signal-power', section: 'signal-power-controls', side: 'numerator', own: 'pt-signal-power-control' },
+  { tab: 'beam', section: 'beam-gain-controls', side: 'numerator', own: 'gtmax-transmit-gain-control' },
+  { tab: 'receiver-gain', section: 'receiver-gain-controls', side: 'numerator', own: 'gr-receiver-gain-control' },
+  { tab: 'thermal-noise', section: 'thermal-noise-controls', side: 'denominator', own: 'bandwidth-thermal-noise-control' },
+] as const;
+
+const ALL_TERM_CONTROLS = [
+  'pt-signal-power-control',
+  'gtmax-transmit-gain-control',
+  'gr-receiver-gain-control',
+  'bandwidth-thermal-noise-control',
+  'n0-thermal-noise-control',
+] as const;
+
 function assertControlGroupingStillSeparated(): void {
+  for (const group of CONTROL_GROUPS) {
+    const { markup } = renderPanel(group.tab);
+    assertTestIdAttr(markup, group.section, 'data-formula-side', group.side, group.tab);
+    assertContainsTestId(markup, group.section, group.own, group.tab);
+
+    for (const control of ALL_TERM_CONTROLS) {
+      const belongsHere = control === group.own
+        || (group.section === 'thermal-noise-controls' && control.endsWith('-thermal-noise-control'));
+      if (belongsHere) continue;
+      assertNotContainsTestId(markup, group.section, control, group.tab);
+    }
+
+    // A control group never swallows the map tile of a term it does not own.
+    assertNotContainsTestId(markup, group.section, 'sinr-formula-map', group.tab);
+    assertNotContains(decodeHtmlText(extractElementByTestId(markup, group.section)), 'Research Override');
+  }
+
+  // The G^R control specifically is not a child of the P_t control.
   const signal = renderPanel('signal-power');
-  const signalPower = extractElementByTestId(signal.markup, 'signal-power-controls');
-  const ptControl = extractElementByTestId(signal.markup, 'pt-signal-power-control');
+  assertNotContainsTestId(signal.markup, 'pt-signal-power-control', 'gr-receiver-gain-control');
 
-  assertContains(signalPower, 'data-formula-side="numerator"');
-  assertContains(signalPower, 'data-testid="pt-signal-power-control"');
-  assertNotContains(signalPower, 'data-testid="gr-receiver-gain-control"');
-  assertNotContains(signalPower, 'data-testid="gtmax-transmit-gain-control"');
-  assertNotContains(ptControl, 'data-testid="gr-receiver-gain-control"');
-  assertNotContains(decodeHtmlText(ptControl), 'Receiver gain');
-  assertNotContains(decodeHtmlText(ptControl), 'Research Override');
-
-  const beam = renderPanel('beam');
-  const transmitGain = extractElementByTestId(beam.markup, 'gtmax-transmit-gain-control');
-  assertContains(decodeHtmlText(transmitGain), 'Max transmit gain');
-  assertNotContains(beam.markup, 'data-testid="gr-receiver-gain-control"');
-
-  const receiver = renderPanel('receiver-gain');
-  const receiverGain = extractElementByTestId(receiver.markup, 'receiver-gain-controls');
-  const grControl = extractElementByTestId(receiver.markup, 'gr-receiver-gain-control');
-  assertContains(receiverGain, 'data-formula-side="numerator"');
-  assertContains(receiverGain, 'data-testid="gr-receiver-gain-control"');
-  assertContains(decodeHtmlText(grControl), 'Receiver gain');
-  assertContains(decodeHtmlText(receiverGain), 'independently from P_t and G^T');
-  assertNotContains(receiverGain, 'data-testid="pt-signal-power-control"');
-  assertNotContains(receiverGain, 'data-testid="gtmax-transmit-gain-control"');
-  assertNotContains(decodeHtmlText(receiverGain), 'Research Override');
-  assertNotContains(decodeHtmlText(receiverGain), 'HOBS');
-
+  // The thermal-noise page keeps sigma^2 as a read-only derived readout beside
+  // its two editable inputs, and the denominator map there still excludes G^R.
   const noise = renderPanel('thermal-noise');
-  const thermalNoise = extractElementByTestId(noise.markup, 'thermal-noise-controls');
-  assertContains(thermalNoise, 'data-formula-side="denominator"');
-  assertContains(thermalNoise, 'data-testid="thermal-noise-floor-readout"');
-  assertContains(thermalNoise, 'data-testid="bandwidth-thermal-noise-control"');
-  assertContains(thermalNoise, 'data-testid="n0-thermal-noise-control"');
-  assertNotContains(thermalNoise, 'data-testid="gr-receiver-gain-control"');
-  assertNotContains(decodeHtmlText(thermalNoise), 'Receiver gain');
-  assertNotContains(decodeHtmlText(thermalNoise), 'Research Override');
-
-  const denominator = extractElementByTestId(noise.markup, 'formula-map-denominator');
-  assertNotContains(denominator, 'data-testid="formula-map-gr"');
+  assertContainsTestId(noise.markup, 'thermal-noise-controls', 'thermal-noise-floor-readout');
+  assertContainsTestId(noise.markup, 'thermal-noise-controls', 'n0-thermal-noise-control');
+  assertNotContainsTestId(noise.markup, 'formula-map-denominator', 'formula-map-gr');
+  assertAttr(noise.markup, 'data-readonly', 'true', 'thermal-noise page');
 }
 
 function run(): void {
@@ -221,14 +205,14 @@ function run(): void {
   console.log(JSON.stringify({
     asserted: {
       formulaMap: [
-        'numerator map contains P_t, H/L, G^T, and independent G^R',
-        'denominator map contains I^a + I^b and sigma^2',
-        'G^R carries receiver gain and sensitivity-control copy',
+        'numerator map presents the ordered chain transmit-power -> path-gain-loss -> transmit-gain -> receiver-gain',
+        'denominator map presents exactly interference + thermal-noise, and never claims receiver-gain',
+        'every map tile declares its own data-formula-side and data-term-owner',
         'G^R is not inside the P_t control group',
         'G^R is not in the denominator map',
       ],
       preserved: [
-        'P_t, G^T, and G^R controls render in separate numerator-side tabs',
+        'each control group declares the same formula side its map tile claims',
         'existing thermal-noise controls remain denominator-side controls',
       ],
     },

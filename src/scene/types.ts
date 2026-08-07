@@ -16,6 +16,7 @@ import type {
 } from './modqnVisualLayers';
 import type { ModqnCellServiceReadout } from './modqnServiceMap';
 import type { SinrLiveCellFrame } from './sinrLiveCellModel';
+import type { PaperEnergyEfficiency } from '../utils/paperEnergyEfficiency';
 
 export type { BeamTarget, VisualBeamTarget } from './beamTargetTypes';
 
@@ -90,6 +91,10 @@ export interface RuntimeConfig {
    *  a real intra handover. Both default 0 (no jog). */
   primaryJogEastKm?: number;
   primaryJogNorthKm?: number;
+  /** One-shot explicit live demo cue; not a source-backed trajectory event. */
+  manualHandoverRequestId?: number;
+  manualHandoverKind?: 'intra' | 'inter';
+  manualHandoverStartedAtMs?: number;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   enableUeTrails?: boolean;
@@ -208,6 +213,18 @@ export interface SimState {
     sinrDb: number | null;
   }>;
   modqnCellServiceReadout?: ModqnCellServiceReadout;
+  /**
+   * Live cell-truth paper-style EE. This is intentionally separate from the
+   * R1 reward-surface link metric: it prices each live (sat, earth-fixed-cell)
+   * group with the profile's load-dependent (3.37) power surface.
+   */
+  livePaperEnergyEfficiency?: PaperEnergyEfficiency | null;
+  /**
+   * Temporary Ch5-aligned display projection. It reuses the same live U/γ/cell
+   * truth but substitutes the profile-backed full-500-MHz comparison point;
+   * it never drives serving, SINR, or scene geometry.
+   */
+  ch5DemoPaperEnergyEfficiency?: PaperEnergyEfficiency | null;
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;

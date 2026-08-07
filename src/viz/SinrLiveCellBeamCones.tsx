@@ -42,13 +42,15 @@ import { useEffect, useLayoutEffect, useRef, type JSX } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
+  SINR_LIVE_CANDIDATE_FAN_MAX_CONES,
   SINR_LIVE_CONE_BASE_ALPHA_FACTOR,
   SINR_LIVE_CONE_BLENDING,
   SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
   SINR_LIVE_CONE_SEGMENTS,
-  SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
   resolveSinrLiveConeElevationDimFactor,
-  resolveSinrLiveConeLayerOpacity,
+  resolveSinrLiveConeRoleStyle,
+  type SinrLiveConePalette,
+  type SinrLiveConeRole,
 } from '../constants/sinrLiveConeStyle';
 import { colorForServingBeam } from '../constants/servingColour';
 import { cellFrequencyIndex, type SinrLiveCellFrame, type SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
@@ -125,6 +127,61 @@ export interface SinrLiveCellBeamConeRenderItem {
    * colour. A read-out of the model's own classification, no truth.
    */
   readonly kind?: 'intra' | 'inter';
+  /**
+   * EXPLICIT appearance role (2026-08-06 consolidation). Set by a resolver that already
+   * knows what a cone MEANS and cannot be re-derived at the mount from (satId, cellId)
+   * alone — today: the candidate resolver, which emits ONE `candidatePrimary` cone (your
+   * next link, on YOUR cell) plus a bounded `candidateFan` of that same satellite's other
+   * beams. When present it WINS over the mount's layer-based derivation
+   * ({@link resolveSinrLiveConeRole}); when absent the layer derives the role. Never a
+   * truth field — it selects colour/opacity only (Rule#6).
+   */
+  readonly role?: SinrLiveConeRole;
+}
+
+/**
+ * Which cone LAYER a mount is (the five `<SinrLiveCellBeamCones/>` mounts in MainScene).
+ * The layer plus the hero identity is enough to DERIVE every cone's role, so a mount
+ * declares what it is once instead of threading a different colour trio each time.
+ */
+export type SinrLiveConeMountLayer = 'serving' | 'candidate' | 'nonServing' | 'pulse' | 'triggered';
+
+/**
+ * PURE role derivation — the explicit replacement for the retired implicit hero signal.
+ *
+ * The hero used to be recognised as "`cone.opacity === undefined` AND satId+cellId match",
+ * which silently coupled the protagonist's colour to whether its layer happened to carry a
+ * per-item alpha, and — worse — collapsed "another beam of YOUR satellite" and "some other
+ * satellite's beam" into ONE grey role. That collapse is precisely why the serving fan read
+ * green: the fan of the satellite serving you was painted the hueless context colour.
+ *
+ * Precedence: an item's EXPLICIT `role` wins (the candidate resolver knows more than the
+ * mount); otherwise the mount's layer decides, and on the serving layer the hero identity
+ * splits it three ways (hero / servingFan / background).
+ */
+export function resolveSinrLiveConeRole(input: {
+  readonly layer: SinrLiveConeMountLayer;
+  readonly satId: string;
+  readonly cellId: number;
+  readonly itemRole?: SinrLiveConeRole;
+  readonly heroSatId?: string | null;
+  readonly heroCellId?: number | null;
+}): SinrLiveConeRole {
+  if (input.itemRole !== undefined) return input.itemRole;
+  switch (input.layer) {
+    case 'pulse':
+      return 'pulse';
+    case 'triggered':
+      return 'triggered';
+    case 'nonServing':
+      return 'nonServing';
+    case 'candidate':
+      return 'candidatePrimary';
+    case 'serving': {
+      if (input.heroSatId == null || input.satId !== input.heroSatId) return 'background';
+      return input.heroCellId != null && input.cellId === input.heroCellId ? 'hero' : 'servingFan';
+    }
+  }
 }
 
 /**
@@ -400,6 +457,27 @@ export interface SinrLiveHandoverPulseConeInput {
    */
   readonly frequencyReuse: number;
   readonly peakOpacity?: number;
+  /**
+   * PER-CONE-SIDE focus gate (2026-08-06 — the "random blue beams flashing on satellites
+   * that are otherwise dark, nowhere near the target UE" fix). Measured on the default
+   * profile (candidate-rich, 100 UEs, 240 s): of 104 pulse cones drawn, **52 (exactly
+   * 50%, and 100% of the `from` sides) sat on a satellite outside the focus set**, and
+   * only 5 of the 65 events that reached the resolver belonged to the protagonist.
+   *
+   * Why the caller's EVENT filter could not catch it: an event is admitted if EITHER end
+   * touches a focus sat, but an INTER handover's two ends are by definition two DIFFERENT
+   * satellites — so admitting it on its `to` end still emitted a cone on the `from`
+   * satellite, which draws nothing else and belongs to one of the other 99 UEs. Every
+   * measured off-focus cone was of exactly that shape.
+   *
+   * The gate is per SIDE, not per event: a side draws when its own satellite is in focus,
+   * or when the event belongs to the protagonist (whose inter handover SHOULD show both
+   * ends — that is the handover story). `null`/omitted focus set = no gate (unchanged
+   * behaviour for callers that do not focus). Display-only (Rule#6): the model's events
+   * are untouched; this only decides which of them paint.
+   */
+  readonly focusSatIds?: ReadonlySet<string> | null;
+  readonly protagonistUeId?: string | null;
 }
 
 /**
@@ -421,6 +499,13 @@ export function resolveSinrLiveHandoverPulseConeItems(
   const { recentHandoverEvents, simTimeSec, retentionSec, placementByCellId, satelliteWorldById, frequencyReuse } = input;
   if (!recentHandoverEvents || recentHandoverEvents.length === 0) return [];
   const peak = input.peakOpacity ?? SINR_LIVE_CONE_PULSE_PEAK_OPACITY;
+  const focusSatIds = input.focusSatIds ?? null;
+  const protagonistUeId = input.protagonistUeId ?? null;
+  /** A cone side draws when its OWN sat is in focus, or the event is the protagonist's. */
+  const sideDraws = (event: SinrLiveCellHandoverEvent, satId: string): boolean =>
+    focusSatIds === null
+    || (protagonistUeId !== null && event.ueId === protagonistUeId)
+    || focusSatIds.has(satId);
 
   const items: SinrLiveCellBeamConeRenderItem[] = [];
   for (const event of recentHandoverEvents) {
@@ -435,15 +520,17 @@ export function resolveSinrLiveHandoverPulseConeItems(
     // carries the cell's frequency-reuse index for telemetry; the render colour is
     // the serving-identity colour (via buildCellConeItem), so a pulse reads as the
     // ambient cone for that (satId, cellId) flaring rather than a different hue.
-    const to = buildCellConeItem({
-      satId: event.toSatId,
-      cellId: event.toCellId,
-      frequencyIndex: cellFrequencyIndex(event.toCellId, frequencyReuse),
-      placementByCellId,
-      satelliteWorldById,
-    });
+    const to = sideDraws(event, event.toSatId)
+      ? buildCellConeItem({
+        satId: event.toSatId,
+        cellId: event.toCellId,
+        frequencyIndex: cellFrequencyIndex(event.toCellId, frequencyReuse),
+        placementByCellId,
+        satelliteWorldById,
+      })
+      : null;
     if (to) items.push({ ...to, opacity, renderKey: `${eventKey}-to`, kind: event.kind });
-    if (event.fromSatId !== null && event.fromCellId !== null) {
+    if (event.fromSatId !== null && event.fromCellId !== null && sideDraws(event, event.fromSatId)) {
       const from = buildCellConeItem({
         satId: event.fromSatId,
         cellId: event.fromCellId,
@@ -461,36 +548,78 @@ export function resolveSinrLiveHandoverPulseConeItems(
  * beam-stage ① #5 — the TRIGGERED intra flash (distinct from the ambient pulse).
  *
  * Builds the OLD (handed-off) + NEW (acquired) cell cones for ONE latched handover
- * event, with a WALL-CLOCK `opacity` and a FROM/TO COLOUR SPLIT: the old cell paints
- * `fromColor` (warm — handed off) and the new cell paints `toColor` (cool — acquired),
- * so the audience reads the handover DIRECTION (warm→cool) instead of the ambient
- * pulse's single serving-identity hue. Pure (no clock / no React) — the caller drives
- * the wall-clock latch + fade and passes the resolved `opacity`, so the
- * `:render` model gate can VALUE-assert the from/to colour split + opacity passthrough.
+ * event, with INDEPENDENT wall-clock opacities and a FROM/TO COLOUR SPLIT: the old cell
+ * paints `fromColor` (warm — handed off) and the new cell paints `toColor` (cool —
+ * acquired), so the audience reads the handover DIRECTION (warm→cool) instead of the
+ * ambient pulse's single serving-identity hue.
+ *
+ * `fromOpacity` / `toOpacity` are SEPARATE (2026-08-06). They used to be one shared
+ * `opacity`, which forced both cones to appear and disappear together — the scene the
+ * owner rejected: 「現在是2個同時連線，然後就結束了」. A handover is a SEQUENCE (serve →
+ * candidate appears → both held while TTT runs → old link released), and that sequence
+ * is only expressible if each cone owns its own alpha. A cone whose opacity is ≤ 0 is
+ * NOT emitted at all, so "the new beam has not arrived yet" is an absent cone rather
+ * than an invisible one.
+ *
+ * Pure (no clock / no React) — the caller drives the wall-clock latch + the per-phase
+ * envelope and passes the resolved opacities, so the `:render` model gate can
+ * VALUE-assert the from/to colour split + the independent opacity passthrough.
  * Returns [] when the event's cells/sats are unplaced/unrendered (honest skip).
  */
 export function resolveTriggeredIntraConeItems(input: {
   readonly event: SinrLiveCellHandoverEvent | null;
-  readonly opacity: number;
+  /** Alpha of the OLD (handed-off) cone. ≤ 0 → the old cone is not emitted. */
+  readonly fromOpacity: number;
+  /** Alpha of the NEW (acquiring) cone. ≤ 0 → the new cone is not emitted. */
+  readonly toOpacity: number;
   readonly fromColor: string;
   readonly toColor: string;
   readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
   readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
   readonly frequencyReuse: number;
+  /** Manual demo only: make both transition cones terminate at the primary UE. */
+  readonly baseCenterOverride?: THREE.Vector3;
+  /** Slightly nest the two manual cones so both colours remain visible at one target. */
+  readonly fromBaseRadiusScale?: number;
+  readonly toBaseRadiusScale?: number;
 }): readonly SinrLiveCellBeamConeRenderItem[] {
-  const { event, opacity, fromColor, toColor, placementByCellId, satelliteWorldById, frequencyReuse } = input;
-  if (!event || opacity <= 0) return [];
-  const items: SinrLiveCellBeamConeRenderItem[] = [];
-  const eventKey = `${event.ueId}-${event.sourceTimeSec}`;
-  const to = buildCellConeItem({
-    satId: event.toSatId,
-    cellId: event.toCellId,
-    frequencyIndex: cellFrequencyIndex(event.toCellId, frequencyReuse),
+  const {
+    event,
+    fromOpacity,
+    toOpacity,
+    fromColor,
+    toColor,
     placementByCellId,
     satelliteWorldById,
-  });
-  if (to) items.push({ ...to, color: toColor, opacity, renderKey: `${eventKey}-trig-to`, kind: event.kind });
-  if (event.fromSatId !== null && event.fromCellId !== null) {
+    frequencyReuse,
+    baseCenterOverride,
+    fromBaseRadiusScale = 1,
+    toBaseRadiusScale = 1,
+  } = input;
+  if (!event) return [];
+  if (fromOpacity <= 0 && toOpacity <= 0) return [];
+  const items: SinrLiveCellBeamConeRenderItem[] = [];
+  const eventKey = `${event.ueId}-${event.sourceTimeSec}`;
+  const placeAtManualTarget = (item: SinrLiveCellBeamConeRenderItem, radiusScale: number) => (
+    baseCenterOverride === undefined
+      ? item
+      : {
+        ...item,
+        baseCenter: baseCenterOverride.clone(),
+        baseRadiusWorld: item.baseRadiusWorld * radiusScale,
+      }
+  );
+  const to = toOpacity > 0
+    ? buildCellConeItem({
+      satId: event.toSatId,
+      cellId: event.toCellId,
+      frequencyIndex: cellFrequencyIndex(event.toCellId, frequencyReuse),
+      placementByCellId,
+      satelliteWorldById,
+    })
+    : null;
+  if (to) items.push({ ...placeAtManualTarget(to, toBaseRadiusScale), color: toColor, opacity: toOpacity, renderKey: `${eventKey}-trig-to`, kind: event.kind });
+  if (fromOpacity > 0 && event.fromSatId !== null && event.fromCellId !== null) {
     const from = buildCellConeItem({
       satId: event.fromSatId,
       cellId: event.fromCellId,
@@ -498,21 +627,39 @@ export function resolveTriggeredIntraConeItems(input: {
       placementByCellId,
       satelliteWorldById,
     });
-    if (from) items.push({ ...from, color: fromColor, opacity, renderKey: `${eventKey}-trig-from`, kind: event.kind });
+    if (from) items.push({ ...placeAtManualTarget(from, fromBaseRadiusScale), color: fromColor, opacity: fromOpacity, renderKey: `${eventKey}-trig-from`, kind: event.kind });
   }
   return items;
 }
 
 /**
- * SEMANTIC candidate cue (Option 1, docs/sinr-live-semantic-beam-colour-sdd.md): the
- * SINGLE incoming beam — the imminent inter-handover target satellite
- * (`pendingTargetSatId`) pointing at the protagonist's EARTH-FIXED serving cell
- * (`primaryCellId`, the same ground cell a different sat would take over). Returns ONE
- * cone (rendered the candidate blue + dim at the mount), so the incoming satellite reads
- * as "your next link" without drawing its whole multibeam fan. Returns [] when there is
- * no pending target, the target IS the serving sat, or the cell/sat is unplaced /
- * unrendered (honest skip). Display-only (Rule#6) — a geometric "where the candidate
- * would beam to serve you" cue; it alters no serving / handover / SINR truth.
+ * SEMANTIC candidate cue: the imminent inter-handover target satellite
+ * (`pendingTargetSatId`) and the beams it is painting — the "your next link" story.
+ *
+ * 2026-08-06 — OWNER DECISION, supersedes the original "ONE dim blue cone (NOT the
+ * candidate sat's whole multibeam fan)" design. Verbatim: 「候選波束除了藍色的打在 ue 上
+ * 之外，也要有其他波束打在其他地方，不能只有一個波束」. The single-cone design was chosen
+ * because a whole extra fan was expected to drown the frame; the owner has now seen it and
+ * wants the fan, because one lone cone made the candidate satellite look like it had a
+ * single beam — which is not how a multibeam LEO satellite works, and is the opposite of
+ * the lesson the scene is meant to teach.
+ *
+ * The frame is protected by LAYERING, not by omission (see
+ * {@link SINR_LIVE_CONE_CANDIDATE_FAN_COLOR}): cone #1 — the one landing on YOUR cell —
+ * keeps the bright candidate blue and the `candidatePrimary` role; the rest take the
+ * darker `candidateFan` role at a lower alpha, strictly below the serving fan, so the
+ * link you are ON always stays the brightest thing on screen.
+ *
+ * BOUNDED, never a firehose: the fan comes ONLY from `cellFrame.illuminatedBeams` entries
+ * whose `satId` IS the one pending-target satellite, capped at `maxFanCones`
+ * (default {@link SINR_LIVE_CANDIDATE_FAN_MAX_CONES} = the per-sat beam budget) INCLUDING
+ * the primary cone. Raising the cap can never admit a second satellite. Deterministic in
+ * beam order; a cell already drawn is never drawn twice.
+ *
+ * Returns [] when there is no pending target, the target IS the serving sat, or the
+ * cell/sat is unplaced / unrendered (honest skip). Display-only (Rule#6) — a geometric
+ * read-out of that satellite's own illuminated beams; it alters no serving / handover /
+ * SINR truth.
  */
 export function resolveCandidateBeamConeItems(input: {
   readonly pendingTargetSatId: string | null | undefined;
@@ -521,17 +668,46 @@ export function resolveCandidateBeamConeItems(input: {
   readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
   readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
   readonly frequencyReuse: number;
+  /** The cell truth the candidate's own fan is read from. Omitted → the primary cone only. */
+  readonly cellFrame?: SinrLiveCellFrame | undefined;
+  /** Upper bound on cones INCLUDING the primary. Default {@link SINR_LIVE_CANDIDATE_FAN_MAX_CONES}. */
+  readonly maxFanCones?: number;
 }): readonly SinrLiveCellBeamConeRenderItem[] {
   const { pendingTargetSatId, servingSatId, primaryCellId, placementByCellId, satelliteWorldById, frequencyReuse } = input;
   if (!pendingTargetSatId || pendingTargetSatId === servingSatId || primaryCellId == null) return [];
-  const cone = buildCellConeItem({
+  const maxCones = input.maxFanCones ?? SINR_LIVE_CANDIDATE_FAN_MAX_CONES;
+  if (maxCones <= 0) return [];
+
+  const items: SinrLiveCellBeamConeRenderItem[] = [];
+  const drawnCellIds = new Set<number>();
+  const primary = buildCellConeItem({
     satId: pendingTargetSatId,
     cellId: primaryCellId,
     frequencyIndex: cellFrequencyIndex(primaryCellId, frequencyReuse),
     placementByCellId,
     satelliteWorldById,
   });
-  return cone ? [{ ...cone, renderKey: `candidate-${pendingTargetSatId}-${primaryCellId}` }] : [];
+  if (primary) {
+    items.push({ ...primary, role: 'candidatePrimary', renderKey: `candidate-${pendingTargetSatId}-${primaryCellId}` });
+    drawnCellIds.add(primaryCellId);
+  }
+
+  for (const beam of input.cellFrame?.illuminatedBeams ?? []) {
+    if (items.length >= maxCones) break;
+    if (beam.satId !== pendingTargetSatId) continue; // ONE satellite — the bound that matters
+    if (drawnCellIds.has(beam.cellId)) continue;
+    const cone = buildCellConeItem({
+      satId: beam.satId,
+      cellId: beam.cellId,
+      frequencyIndex: beam.frequencyIndex,
+      placementByCellId,
+      satelliteWorldById,
+    });
+    if (!cone) continue;
+    drawnCellIds.add(beam.cellId);
+    items.push({ ...cone, role: 'candidateFan', renderKey: `candidate-fan-${beam.satId}-${beam.cellId}` });
+  }
+  return items;
 }
 
 export function resolveSinrLiveCellBeamConeRenderCount(props: SinrLiveCellBeamConesProps): number {
@@ -543,18 +719,23 @@ export function resolveSinrLiveCellBeamConeSatelliteCount(props: SinrLiveCellBea
 }
 
 /**
- * Pure cone RENDER-colour resolution (C2 / Bug H). Precedence, highest first:
- *   1. HERO — the primary serving beam (the protagonist), when `isHero`.
- *   2. per-KIND pulse colour — a pulse cone tagged `intra`/`inter` paints the
- *      `pulseIntraColor` / `pulseInterColor` so a beam-switch reads distinct from a
- *      satellite handover.
- *   3. mount `coneColorOverride` — the single-cone candidate mount's BLUE.
- *   4. mount `backgroundColor` — the SEMANTIC dim context colour for a non-hero served
- *      field (replaces the per-sat identity hue on the serving + non-serving mounts).
+ * LEGACY opts-shaped cone RENDER-colour resolution (C2 / Bug H) — RETAINED because
+ * `validate:beam:colour-match` and `SinrLiveCellFootprintRings` call it in this shape.
+ * Behaviour is byte-identical to before; it is now a thin ADAPTER that maps the old
+ * option flags onto a ROLE and delegates the actual decision to
+ * {@link resolveSinrLiveConeRoleStyle} (the ONE appearance decision point). Precedence,
+ * highest first — unchanged:
+ *   1. HERO — the primary serving beam (the protagonist), when `isHero` + `heroColor`.
+ *   2. per-KIND pulse colour (`pulseIntraColor` / `pulseInterColor`) when the cone carries
+ *      the truth `kind` AND the caller supplied that colour.
+ *   3. mount `coneColorOverride` — the candidate mount's BLUE.
+ *   4. mount `backgroundColor` — the dim context colour.
  *   5. the cone's serving-identity `color` — the fixture default (vc1c/vc2).
- * Pure so the per-kind mapping is VALUE-asserted in the model gate (not eyeballed in
- * a WebGL screenshot). Display-only: it reads the model's own intra/inter
- * classification (`item.kind`) and changes no truth (Rule#6).
+ *
+ * NEW code should call {@link resolveSinrLiveConeRoleStyle} with an explicit role instead:
+ * this signature cannot express `servingFan` vs `background` (it collapses both to
+ * `backgroundColor`), which is the very ambiguity the role split exists to remove.
+ * Display-only (Rule#6).
  */
 export function resolveSinrLiveConeRenderColor(
   cone: SinrLiveCellBeamConeRenderItem,
@@ -567,13 +748,22 @@ export function resolveSinrLiveConeRenderColor(
     readonly backgroundColor?: string;
   },
 ): string {
-  if (opts.isHero && opts.heroColor) return opts.heroColor;
-  const kindColor = cone.kind === 'intra'
-    ? opts.pulseIntraColor
-    : cone.kind === 'inter'
-      ? opts.pulseInterColor
-      : undefined;
-  return kindColor ?? opts.coneColorOverride ?? opts.backgroundColor ?? cone.color;
+  if (opts.isHero && opts.heroColor) {
+    return resolveSinrLiveConeRoleStyle('hero', { heroColor: opts.heroColor }, cone).color;
+  }
+  if (cone.kind === 'intra' && opts.pulseIntraColor !== undefined) {
+    return resolveSinrLiveConeRoleStyle('pulse', { pulseIntraColor: opts.pulseIntraColor }, cone).color;
+  }
+  if (cone.kind === 'inter' && opts.pulseInterColor !== undefined) {
+    return resolveSinrLiveConeRoleStyle('pulse', { pulseInterColor: opts.pulseInterColor }, cone).color;
+  }
+  if (opts.coneColorOverride !== undefined) {
+    return resolveSinrLiveConeRoleStyle('candidatePrimary', { candidateColor: opts.coneColorOverride }, cone).color;
+  }
+  if (opts.backgroundColor !== undefined) {
+    return resolveSinrLiveConeRoleStyle('background', { backgroundColor: opts.backgroundColor }, cone).color;
+  }
+  return cone.color;
 }
 
 export interface SinrLiveCellBeamConesRenderProps {
@@ -581,13 +771,20 @@ export interface SinrLiveCellBeamConesRenderProps {
   readonly items: readonly SinrLiveCellBeamConeRenderItem[];
   readonly visible?: boolean;
   /**
-   * Group cone opacity (S5-2 hybrid, D-STYLE A). The ambient all-serving layer uses
-   * the default {@link SINR_LIVE_CONE_AMBIENT_OPACITY}; the serving mount passes
-   * `beamDisplaySpec.servingConeOpacity`, the non-serving mount the dimmer
-   * `resolveSinrLiveConeLayerOpacity('nonServing')`. The pulse mount omits it — its
-   * cones carry a per-ITEM age-faded opacity that wins. Defaulted, not required.
+   * WHICH cone layer this mount is. The single input that replaced the old per-mount
+   * colour trio (`heroColor` + `backgroundColor` + `coneColorOverride` + `pulse*Color` +
+   * `opacity` + `heroOpacity`): the mount declares what it IS, each cone's ROLE is derived
+   * from that ({@link resolveSinrLiveConeRole}), and the role decides colour + opacity in
+   * ONE place ({@link resolveSinrLiveConeRoleStyle}). Default `'serving'`.
    */
-  readonly opacity?: number;
+  readonly layer?: SinrLiveConeMountLayer;
+  /**
+   * The tunable appearance values (from `beamDisplaySpec`, built ONCE by MainScene and
+   * shared by every cone + footprint mount). Every field is optional and falls back to the
+   * `sinrLiveConeStyle` token, so an omitted palette renders the locked defaults — which is
+   * what the fixture gates rely on.
+   */
+  readonly palette?: SinrLiveConePalette;
   /**
    * Display-only WIDTH multiplier on every cone's RENDERED base radius
    * (`beamDisplaySpec.coneWidthScale`, SDD §3.3). Applied in `ObliqueConeMesh` to
@@ -617,48 +814,14 @@ export interface SinrLiveCellBeamConesRenderProps {
   readonly elevationDimMinFactor?: number;
   readonly heroExemptFromElevationDim?: boolean;
   /**
-   * The focus/centre UE's serving (satId, cellId). That ONE cone — the primary
-   * serving beam — renders BRIGHT ({@link SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY})
-   * + exempt from the near-horizon dim so the hero beam pops against the faint
-   * ambient field. BOTH must match so only the single protagonist beam lights up
-   * (not the serving sat's whole fan, which would wash the view). Omitted on the
-   * non-serving / pair / pulse mounts. Display-only.
+   * The focus/centre UE's serving (satId, cellId) — the HERO identity. On the `serving`
+   * layer it splits the mount three ways: the matching (sat, cell) is the `hero` (bright,
+   * dim-exempt), the SAME satellite's other cells are the `servingFan` (the yellow family),
+   * and any OTHER satellite's cones are `background` context. Omitted on the candidate /
+   * non-serving / pulse / triggered mounts. Display-only.
    */
   readonly primaryServingSatId?: string | null;
   readonly primaryServingCellId?: number | null;
-  /**
-   * Recolour ONLY the hero (primary serving) cone to this colour (serving GREEN). Other
-   * cones fall to the dim `backgroundColor` context colour. Set on the ambient mount.
-   */
-  readonly heroColor?: string;
-  /**
-   * Opacity of the HERO (primary serving) cone. When omitted, falls back to the
-   * {@link SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY} default. Set from
-   * `beamDisplaySpec.heroConeOpacity` on the serving mount so the protagonist beam's
-   * brightness is a spec field, not a const that shadows `opacity` (servingConeOpacity).
-   * A per-item `cone.opacity` (the pulse age-fade) still wins over both.
-   */
-  readonly heroOpacity?: number;
-  /**
-   * Recolour EVERY cone in this mount to this colour. Set on the single-cone
-   * handover-candidate mount (candidate BLUE). Omitted elsewhere → serving-identity.
-   */
-  readonly coneColorOverride?: string;
-  /**
-   * SEMANTIC background/context colour for every cone in this mount that is NOT the hero
-   * / a kind-pulse / a coneColorOverride — one dim context colour instead of the per-sat
-   * identity hue. Set on the serving + non-serving field mounts. Display-only.
-   */
-  readonly backgroundColor?: string;
-  /**
-   * C2 (Bug H): per-KIND pulse colours, applied ONLY to cones carrying an
-   * `item.kind` (the pulse layer tags intra/inter from the truth event). A cone with
-   * no kind keeps its serving-identity colour, so passing these on the pulse mount
-   * does not recolour the ambient field. Set from `beamDisplaySpec.pulseIntraColor /
-   * pulseInterColor`; omitted on every non-pulse mount.
-   */
-  readonly pulseIntraColor?: string;
-  readonly pulseInterColor?: string;
   readonly telemetryCountDatasetKey?: string;
 }
 
@@ -750,7 +913,8 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
   const gl = useThree(state => state.gl);
   const groupRef = useRef<THREE.Group>(null);
   const cones = props.items;
-  const opacity = props.opacity ?? resolveSinrLiveConeLayerOpacity('ambient');
+  const layer = props.layer ?? 'serving';
+  const palette = props.palette;
 
   useLayoutEffect(() => {
     const key = props.telemetryCountDatasetKey;
@@ -772,38 +936,35 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
   ]);
 
   return (
-    <group ref={groupRef} name="sinr-live-cell-beam-cones" userData={{ coneCount: cones.length, opacity }}>
+    <group ref={groupRef} name="sinr-live-cell-beam-cones" userData={{ coneCount: cones.length, layer }}>
       {cones.map(cone => {
-        // The primary serving satellite's beams are the HERO: render them bright +
-        // saturated and exempt from the near-horizon dim, so the sat serving the
-        // centre UE pops against the faint ambient field. A per-item `opacity` (the
-        // live-pulse age-fade) still wins over both. Key is the content-stable
-        // `${cellId}-${satId}` for the ambient/pair layers (so a cone reconciles in
-        // place across a beam-hop reorder — keeps the persistent-mesh in-place buffer
-        // update); the pulse layer supplies its own stable `renderKey`.
-        const isHero = cone.opacity === undefined
-          && props.primaryServingSatId != null
-          && props.primaryServingCellId != null
-          && cone.satId === props.primaryServingSatId
-          && cone.cellId === props.primaryServingCellId;
-        // C2 (Bug H): a pulse cone tagged with a handover kind paints in the per-kind
-        // colour; a cone with no kind (every non-pulse layer) falls through to its
-        // serving-identity colour. Hero override still wins (the protagonist beam).
-        const color = resolveSinrLiveConeRenderColor(cone, {
-          isHero,
-          heroColor: props.heroColor,
-          pulseIntraColor: props.pulseIntraColor,
-          pulseInterColor: props.pulseInterColor,
-          coneColorOverride: props.coneColorOverride,
-          backgroundColor: props.backgroundColor,
+        // ONE decision, two steps, both pure + value-asserted: what does this cone MEAN
+        // (role), and what does that role LOOK like (colour + opacity). The mount no
+        // longer carries a colour/opacity precedence of its own — it declares its layer
+        // and the hero identity, and everything else follows from the role table.
+        //
+        // Key is the content-stable `${cellId}-${satId}` for the serving/candidate layers
+        // (so a cone reconciles in place across a beam-hop reorder — keeps the
+        // persistent-mesh in-place buffer update); the pulse / triggered / candidate-fan
+        // layers supply their own stable `renderKey`.
+        const role = resolveSinrLiveConeRole({
+          layer,
+          satId: cone.satId,
+          cellId: cone.cellId,
+          itemRole: cone.role,
+          heroSatId: props.primaryServingSatId,
+          heroCellId: props.primaryServingCellId,
         });
+        const style = resolveSinrLiveConeRoleStyle(role, palette, cone);
         return (
           <ObliqueConeMesh
             key={cone.renderKey ?? `${cone.cellId}-${cone.satId}`}
             cone={cone}
-            color={color}
-            opacity={cone.opacity ?? (isHero ? (props.heroOpacity ?? SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY) : opacity)}
-            dimShallow={props.dimShallowCones && (!isHero || props.heroExemptFromElevationDim === false)}
+            color={style.color}
+            opacity={style.opacity}
+            // The hero beam is exempt from the near-horizon dim so your own link always
+            // pops; every other role fades with a shallow apex→base angle.
+            dimShallow={props.dimShallowCones && (role !== 'hero' || props.heroExemptFromElevationDim === false)}
             dimFloorDeg={props.elevationDimFloorDeg}
             dimCeilDeg={props.elevationDimCeilDeg}
             dimMinFactor={props.elevationDimMinFactor}

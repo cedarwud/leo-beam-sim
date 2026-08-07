@@ -105,8 +105,8 @@ section('(a) GroundScene.tsx source contract', () => {
     'PrimaryUeMarker text y offset scales with ueMarkerMultiplier',
   );
   check(
-    groundSceneCompact.includes('fontSize={12}'),
-    'PrimaryUeMarker label font size remains fixed at 12',
+    groundSceneCompact.includes('fontSize={14}'),
+    'PrimaryUeMarker label font size remains fixed at 14',
   );
   check(
     groundSceneCompact.includes('MARKER_RADIUS*0.6*ueMarkerMultiplier,MARKER_RADIUS*0.6*ueMarkerMultiplier,markerHeight,12'),

@@ -42,11 +42,14 @@ import {
   SINR_LIVE_FOOTPRINT_RING_OPACITY,
   SINR_LIVE_FOOTPRINT_RING_OUTER_FACTOR,
   SINR_LIVE_FOOTPRINT_RING_Y_LIFT,
+  resolveSinrLiveConeRoleStyle,
+  type SinrLiveConePalette,
 } from '../constants/sinrLiveConeStyle';
 import { satelliteTint } from '../constants/beamRoleTokens';
 import {
-  resolveSinrLiveConeRenderColor,
+  resolveSinrLiveConeRole,
   type SinrLiveCellBeamConeRenderItem,
+  type SinrLiveConeMountLayer,
 } from './SinrLiveCellBeamCones';
 
 export interface SinrLiveCellFootprintRingsProps {
@@ -55,14 +58,14 @@ export interface SinrLiveCellFootprintRingsProps {
   /** Mirror the cone `coneWidthScale` so the hex tracks the rendered footprint. */
   readonly widthScale?: number;
   /**
-   * SEMANTIC colour inputs — the SAME the cone mount passes, so the footprint hex
-   * resolves the identical role colour as its cone (`resolveSinrLiveConeRenderColor`
-   * precedence: hero → override → background → item identity). All optional: with none
-   * passed, the hex falls back to the item's serving-identity `color`.
+   * SEMANTIC colour inputs — the SAME layer + palette the cone mount is given, so the
+   * footprint hex resolves the IDENTICAL role colour as the cone it sits under (2026-08-06:
+   * previously it took its own `heroColor`/`backgroundColor`/`coneColorOverride` trio, which
+   * could — and after the serving-fan split WOULD — drift from the cone's colour). All
+   * optional: with none passed, every role falls back to its `sinrLiveConeStyle` token.
    */
-  readonly heroColor?: string;
-  readonly backgroundColor?: string;
-  readonly coneColorOverride?: string;
+  readonly layer?: SinrLiveConeMountLayer;
+  readonly palette?: SinrLiveConePalette;
   readonly primaryServingSatId?: string | null;
   readonly primaryServingCellId?: number | null;
   /** Optional canvas dataset key for the rendered-hex count (validator proof). */
@@ -72,7 +75,8 @@ export interface SinrLiveCellFootprintRingsProps {
 export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProps): JSX.Element | null {
   const gl = useThree(state => state.gl);
   const groupRef = useRef<THREE.Group>(null);
-  const { items, heroColor, backgroundColor, coneColorOverride } = props;
+  const { items, palette } = props;
+  const layer = props.layer ?? 'serving';
   const widthScale = props.widthScale ?? 1;
   const primaryServingSatId = props.primaryServingSatId ?? null;
   const primaryServingCellId = props.primaryServingCellId ?? null;
@@ -110,15 +114,18 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
         // serving YELLOW / candidate BLUE / context GREY), resolved EXACTLY as the cone mount
         // does. So the hex matches its cone in role colour but keeps the white rim distinct.
         const borderColor = satelliteTint(item.satId);
-        const isHero = primaryServingSatId !== null
-          && item.satId === primaryServingSatId
-          && item.cellId === primaryServingCellId;
-        const roleColor = resolveSinrLiveConeRenderColor(item, {
-          isHero,
-          heroColor,
-          coneColorOverride,
-          backgroundColor,
-        });
+        const roleColor = resolveSinrLiveConeRoleStyle(
+          resolveSinrLiveConeRole({
+            layer,
+            satId: item.satId,
+            cellId: item.cellId,
+            itemRole: item.role,
+            heroSatId: primaryServingSatId,
+            heroCellId: primaryServingCellId,
+          }),
+          palette,
+          item,
+        ).color;
         // ab861c4 3-layer hex: a faint additive FILL-glow under a WHITE outer BORDER ring
         // (proud rim 0.96→1.04r) and a bright role-colour inner ring (tight 0.78→0.84r).
         return (

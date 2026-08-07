@@ -26,37 +26,51 @@ read by COLOUR**, since position cannot distinguish overlapping same-sat cones.
 
 ## 3. Palette — 4 semantic colours + the handover flip
 
-> **RECOLOURED 2026-06-22 (owner-chosen): serving GREEN→YELLOW, and BLUE unified as "the beam
-> taking over" — the handover flip is `yellow → blue`.** Owner picked serving=黃 (intuition
-> "服務=亮黃") and intra = 黃→藍 (the acquiring beam is BLUE, the SAME blue as the inter
-> candidate, so blue uniformly = "taking over"). The flash draws on top of the new serving
-> cone and fades, so the acquiring cell reads **blue→yellow** = "taking over → settled serving"
-> (this is also why 接手 still ends on the serving colour). The 4-colour model collapses to
-> **🟡 serving / 🔵 takeover / ◼ background / grey unserved** — no green, no orange, no purple.
-> The ambient population pulse is soft blue `#93c5fd` (handover-activity family). Role LOGIC
-> (serving / context / takeover + 1-vs-2-sat) unchanged. Every colour is a `beamDisplaySpec`
+> **RECOLOURED 2026-06-22 (owner-chosen steady-role palette): serving GREEN→YELLOW, and BLUE
+> is the candidate/takeover role.** Owner picked serving=黃 (intuition "服務=亮黃") and the
+> steady candidate = BLUE. The 4-colour model collapses to **🟡 serving / 🔵 candidate / ◼
+> background / grey unserved** — no green in the steady palette. The earlier event-overlay
+> rule also used blue for intra; the latest owner override below reserves ORANGE for an intra
+> event target while keeping the steady candidate blue. Every colour is a `beamDisplaySpec`
 > field (control-surface SDD) so this is a one-field change, not a const hunt.
 
 | Colour | Hex | Meaning (self-evident, no legend) |
 |---|---|---|
 | 🟡 YELLOW | `#facc15` | **Your serving link** (acquired / connected). Brightest = the protagonist's serving beam. |
-| 🔵 BLUE | `#3b82f6` | **A beam TAKING OVER** — the inter candidate (a different sat lining up) AND the intra/inter acquiring cell. Settles to yellow once it is your serving link. |
+| 🔵 BLUE | `#3b82f6` | **The candidate / next link** — especially the inter target satellite. The steady role remains blue; an intra event overlay uses the orange override below. |
 | ◼ DIM GREY | `#9ca3af` | **Background served beams** (context) — kills the per-sat rainbow → ONE neutral context colour (was `#46544d` 墨綠, too dark + green-tinted). |
 
-**Handover = `yellow (old serving) → blue (taking over) → yellow (settled)` flip.** Consistent
-metaphor: **yellow = your serving link, blue = a beam taking over (candidate / acquiring),
-dim = background.** Unserved stays GREY. Ambient population pulse = soft blue `#93c5fd`.
+**Steady handover cue = `yellow (old serving) → blue (candidate) → yellow (settled)` flip.**
+Consistent metaphor: **yellow = your serving link, blue = a candidate/next link, dim =
+background.** Unserved stays GREY. Event-pulse colours follow the latest kind-specific rule
+below rather than the historical soft-blue population pulse.
 
 ## 4. intra vs inter (rides the shipped B1 sat-count, `d423060`)
 
-- **intra** — 1 satellite. The old cell (serving yellow) fades, the new cell flares BLUE then
-  settles to yellow; the two cones OVERLAP on the one satellite → the yellow→blue contrast IS
-  the intra signal. (B1 already narrows the steady scene to 1 sat here → nothing competes.)
+- **intra** — 1 satellite. In the historical baseline, the old cell (serving yellow) faded and
+  the new cell flared BLUE; the latest owner override below changes that event target to ORANGE
+  so the same-satellite switch is not confused with inter-HO. (B1 already narrows the steady
+  scene to 1 sat here → nothing competes.)
 - **inter** — 2 satellites. The candidate sat is BLUE (lining up); on HO the old sat's beam
   (yellow) fades and the new sat's cell flares BLUE→yellow. (B1 already lights the 2nd sat
   only when an inter HO is pending.)
 
-Distinguished by **1-sat (intra) vs 2-sat (inter)** + the same yellow→blue flip.
+Distinguished by **1-sat (intra) vs 2-sat (inter)** plus the event-overlay colour override below.
+
+### Latest owner override — 2026-08-06
+
+The steady-role palette above remains unchanged: serving is yellow, the candidate is blue,
+and context is neutral. For the **handover event overlays**, the owner then required that the
+two event kinds must not look alike and that the live scene match the `Show Intra` / `Show
+Inter` demonstrations:
+
+- **intra:** old serving cell `#facc15` → new same-satellite cell orange `#fb923c`;
+- **inter:** old serving cell `#facc15` → new other-satellite cell candidate blue `#3b82f6`.
+
+This override applies to the live per-event pulse and to the manual/triggered two-cone
+sequence. It is display-only: event `kind` is read from the model, while serving, SINR, and
+handover truth remain untouched. The implementation authority is
+`src/constants/sinrLiveConeStyle.ts` plus `src/scene/beamDisplaySpec.ts`.
 
 ## 5. Architecture rework (touch map)
 

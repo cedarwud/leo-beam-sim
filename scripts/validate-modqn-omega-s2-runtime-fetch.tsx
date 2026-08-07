@@ -6,8 +6,8 @@
 //      App.tsx. (The const may remain in playback-shell.ts as a typed
 //      reference.)
 //   2. App.tsx fetches the bundle at runtime via fetchModqnReplayBundleEnvelope.
-//   3. Fetch failure surfaces a visible banner and falls back to the typed
-//      reference shell model.
+//   3. Fetch failure keeps the typed-reference shell model as a silent
+//      rendering fallback.
 //   4. modqn-1sat-7beam profile is registered, selector label is
 //      "MODQN 1-sat 7-beam (replay)".
 //   5. useModqnHandoverState's bundlePolicyDiagnostics originates from the
@@ -100,17 +100,18 @@ assert.ok(
 );
 recordPass('S2.1c', 'playback-shell.ts still exports the typed reference const');
 
-// 1d. App.tsx mounts the fetch-failure banner with the expected data-testid +
-// data-modqn-bundle-fetch-status="failed" capture metadata.
-assert.ok(
+// 1d. A failed bundle fetch must not mount the removed warning banner.
+assert.equal(
   appSource.includes('data-testid="modqn-bundle-fetch-banner"'),
-  'S2.1d: App.tsx must mount the fetch-failure banner with data-testid',
+  false,
+  'S2.1d: App.tsx must not mount the removed MODQN bundle fetch warning banner',
 );
-assert.ok(
-  appSource.includes('data-modqn-bundle-fetch-status="failed"'),
-  'S2.1d: App.tsx banner must carry data-modqn-bundle-fetch-status="failed"',
+assert.equal(
+  appSource.includes('leo-modqn-bundle-fetch-banner'),
+  false,
+  'S2.1d: App.tsx must not mount the removed MODQN bundle fetch warning banner',
 );
-recordPass('S2.1d', 'App.tsx banner exposes data-testid + data-modqn-bundle-fetch-status');
+recordPass('S2.1d', 'App.tsx keeps the MODQN fetch fallback silent');
 
 // 2. Profile registry.
 const profileEntry = profileList.find(p => p.id === MODQN_1SAT_7BEAM_PROFILE_ID);
@@ -215,7 +216,7 @@ assert.equal(fallback.rowCount, 1000, 'S2.3c: fallback shell model still has 100
 recordPass('S2.3c', 'getModqnReplayPlaybackFallbackShellModel returns the typed reference (fetch-failure fallback)');
 
 // 3d. Fetch failure surfaces ModqnRuntimeBundleFetchError, not a generic
-// crash. App.tsx catches this and pivots to the banner + fallback.
+// crash. App.tsx catches this and keeps the typed-reference fallback.
 let caught: unknown = null;
 try {
   await fetchModqnReplayBundleEnvelope({

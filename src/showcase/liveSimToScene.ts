@@ -315,22 +315,54 @@ export function liveSimToScene(
     // 5. Override pendingTarget (it is none for cell-truth)
     pendingTarget = undefined;
 
-    // 6. Override transition progress for inter-satellite transitions
-    if (latestHoEvent && latestHoEvent.kind === 'inter' && isRecent) {
-      transitionProgress = {
-        ...transitionProgress,
-        inter: {
-          fromSatId: latestHoEvent.fromSatId ?? '',
-          fromBeamId: latestHoEvent.fromCellId !== null ? String(latestHoEvent.fromCellId) : '',
-          toSatId: latestHoEvent.toSatId,
-          toBeamId: String(latestHoEvent.toCellId),
-          progress01: Math.min(1.0, Math.max(0.0, ageSec / 4)),
-          expiresAtSec: latestHoEvent.sourceTimeSec + 4,
-        },
-      };
+    // 6. Override transition progress with the PRIMARY cell-truth event. The
+    // generic live derivation can still carry a short-lived intra preview while
+    // the cell-truth source reports an inter event; leaving both fields populated
+    // made the toast's intra-first policy label an inter event as "Intra". These
+    // source fields are mutually exclusive here, while the generic policy remains
+    // unchanged for non-cell-truth live frames.
+    if (latestHoEvent && isRecent) {
+      const recentProgressSec = Math.max(0, ageSec);
+      const recentTargetSec = 4;
+      const progress01 = Math.min(1.0, Math.max(0.0, recentProgressSec / recentTargetSec));
+      if (latestHoEvent.kind === 'inter') {
+        transitionProgress = {
+          intra: undefined,
+          inter: {
+            fromSatId: latestHoEvent.fromSatId ?? '',
+            fromBeamId: latestHoEvent.fromCellId !== null ? String(latestHoEvent.fromCellId) : '',
+            toSatId: latestHoEvent.toSatId,
+            toBeamId: String(latestHoEvent.toCellId),
+            progress01,
+            expiresAtSec: latestHoEvent.sourceTimeSec + recentTargetSec,
+            kind: 'recent',
+            recentProgressSec,
+            recentTargetSec,
+          },
+        };
+      } else {
+        transitionProgress = {
+          intra: {
+            fromBeamId: latestHoEvent.fromCellId !== null ? String(latestHoEvent.fromCellId) : '',
+            toBeamId: String(latestHoEvent.toCellId),
+            progress01,
+            expiresAtSec: latestHoEvent.sourceTimeSec + recentTargetSec,
+            satId: latestHoEvent.toSatId,
+            triggeredAtSec: latestHoEvent.sourceTimeSec,
+            kind: 'recent',
+            recentProgressSec,
+            recentTargetSec,
+          },
+          inter: undefined,
+        };
+      }
     } else {
       transitionProgress = {
-        ...transitionProgress,
+        // Cell-truth owns the primary UE's handover state on this lane. Do not
+        // leak a concurrent steered intra preview into the renderer when the
+        // cell-truth source is idle or its recent event has expired; that object
+        // is enough for useBeamViz to paint the yellow intra source role.
+        intra: undefined,
         inter: undefined,
       };
     }
@@ -412,14 +444,19 @@ export function liveSimToScene(
     claimBoundary: {
       kind: 'live-stub',
       storyKind: 'live-sinr-sim',
-      // Live path makes no MODQN / Multi-Catfish EE-EFFECTIVENESS claims. The r1
-      // EE term below is the reward-surface ratio B_alloc·log2(1+γ)/P_beam
-      // derived from the live SINR (see `src/utils/energyEfficiency.ts`);
-      // it is a rendered quantity, NOT a superiority / energy-saving result, so
-      // the forbidden list underneath is unchanged.
+      // Live path makes no MODQN / Multi-Catfish EE-EFFECTIVENESS claims. The
+      // two live EE readouts below are rendered quantities: r1 is the
+      // reward-surface ratio B_alloc·log2(1+γ)/P_beam, while paper-style EE
+      // uses live cell truth + the profile-backed load-dependent power surface
+      // (see `src/utils/energyEfficiency.ts` and
+      // `src/utils/paperEnergyEfficiency.ts`). Neither is a superiority /
+      // energy-saving result or a paper reproduction, so the forbidden list
+      // underneath is unchanged.
       allowedClaims: [
         'interference-aware SINR (live)',
         'reward-surface r1 EE derived from live SINR (bit/joule)',
+        'load-dependent live cell-truth EE readout (bit/joule; not paper reproduction)',
+        'Ch5-aligned live U/gamma EE projection (display-only; not paper reproduction)',
       ],
       forbiddenClaims: [
         'Multi-Catfish-MODQN effectiveness',

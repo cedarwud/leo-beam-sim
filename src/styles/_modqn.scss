@@ -33,7 +33,7 @@
 
 .leo-modqn-view-toggle__title {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -88,13 +88,13 @@
 }
 
 .leo-modqn-view-toggle__label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .leo-modqn-view-toggle__sub {
-  font-size: 9px;
+  font-size: 11px;
   opacity: 0.62;
   white-space: nowrap;
   overflow: hidden;
@@ -130,7 +130,7 @@
 
 .leo-replay-arm-toggle__title {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -184,13 +184,13 @@
 }
 
 .leo-replay-arm-toggle__label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .leo-replay-arm-toggle__sub {
-  font-size: 9px;
+  font-size: 11px;
   opacity: 0.62;
   white-space: nowrap;
 }
@@ -208,7 +208,7 @@
 }
 
 .leo-coverage-topbar__label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -234,7 +234,7 @@
 }
 
 .leo-coverage-topbar__value {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: #eafaff;
   white-space: nowrap;
@@ -251,7 +251,7 @@
 }
 
 .leo-coverage-panel__header {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -259,7 +259,7 @@
 }
 
 .leo-coverage-panel__empty {
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.6;
   margin: 0;
 }
@@ -284,7 +284,7 @@
 }
 
 .leo-coverage-panel__stat-value {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.15;
   color: #eafaff;
@@ -292,14 +292,14 @@
 
 .leo-coverage-panel__stat-label {
   margin-top: 1px;
-  font-size: 9.5px;
+  font-size: 11.5px;
   line-height: 1.2;
   text-align: center;
   color: rgba(210, 228, 240, 0.82);
 }
 
 .leo-coverage-panel__stat-sub {
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1.2;
   text-align: center;
   opacity: 0.55;
@@ -313,7 +313,7 @@
 }
 
 .leo-coverage-panel__lorenz-title {
-  font-size: 8px;
+  font-size: 10px;
   fill: rgba(190, 224, 240, 0.7);
   letter-spacing: 0.02em;
 }
@@ -342,13 +342,13 @@
 }
 
 .leo-coverage-panel__lorenz-axis-label {
-  font-size: 8px;
+  font-size: 10px;
   fill: rgba(170, 205, 224, 0.55);
 }
 
 .leo-coverage-panel__note {
   margin: 0;
-  font-size: 10.5px;
+  font-size: 12.5px;
   line-height: 1.4;
   color: rgba(210, 228, 240, 0.86);
 }
@@ -369,7 +369,7 @@
 
 .leo-coverage-panel__frame-note {
   margin: 0;
-  font-size: 9.5px;
+  font-size: 11.5px;
   opacity: 0.6;
 }
 
@@ -385,7 +385,7 @@
 }
 
 .leo-honesty-panel__header {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -401,7 +401,7 @@
 }
 
 .leo-honesty-panel__item {
-  font-size: 10.5px;
+  font-size: 12.5px;
   line-height: 1.4;
   color: rgba(224, 216, 196, 0.9);
 }
@@ -426,7 +426,7 @@
 }
 
 .leo-honesty-panel__prov-title {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -437,7 +437,7 @@
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 2px 10px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -457,14 +457,14 @@
   border-radius: 4px;
   border-left: 2px solid rgba(34, 197, 94, 0.6);
   background: rgba(34, 197, 94, 0.08);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.4;
   color: rgba(220, 240, 224, 0.9);
 }
 
 .leo-honesty-panel__prov-missing {
   margin: 0;
-  font-size: 10px;
+  font-size: 12px;
   opacity: 0.6;
 }
 
@@ -487,12 +487,12 @@
   color: #eefaff;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.3;
 }
 
 .leo-modqn-scene-hud__chip {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -529,7 +529,7 @@
   border: 1px solid rgba(255, 190, 69, 0.45);
   background: rgba(58, 38, 6, 0.78);
   color: #ffd98a;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.3;
   white-space: normal;
@@ -550,7 +550,7 @@
 .leo-modqn-scene-hud__metrics dt {
   margin: 0;
   color: rgba(229, 244, 251, 0.6);
-  font-size: 9px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -558,7 +558,7 @@
 .leo-modqn-scene-hud__metrics dd {
   margin: 0;
   color: #eefaff;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -569,7 +569,7 @@
   border: 1px solid rgba(255, 190, 69, 0.32);
   background: rgba(58, 38, 6, 0.54);
   color: rgba(255, 225, 154, 0.92);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 760;
   line-height: 1.25;
   white-space: normal;
@@ -598,7 +598,7 @@
   min-width: 0;
   overflow: hidden;
   color: #b8fff2;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
   line-height: 1.15;
   text-overflow: ellipsis;
@@ -607,7 +607,7 @@
 
 .leo-modqn-scene-hud__service-callout span {
   color: rgba(240, 249, 255, 0.9);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
@@ -619,7 +619,7 @@
   min-width: 0;
   overflow: hidden;
   color: rgba(191, 219, 254, 0.74);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -641,7 +641,7 @@
   border-radius: 5px;
   background: rgba(15, 23, 42, 0.66);
   color: rgba(240, 249, 255, 0.88);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -660,7 +660,7 @@
   gap: 5px;
   min-width: 0;
   color: rgba(226, 232, 240, 0.86);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
@@ -701,7 +701,7 @@
   min-width: 0;
   overflow: hidden;
   color: rgba(209, 250, 229, 0.78);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -725,7 +725,7 @@
   background: linear-gradient(180deg, rgba(4, 22, 31, 0.9), rgba(2, 9, 15, 0.86));
   color: #eefaff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.28;
 }
 
@@ -761,7 +761,7 @@
 
 .leo-modqn-replay-panel__header strong {
   color: #d8fffa;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
 }
 
@@ -800,7 +800,7 @@
 
 .leo-modqn-replay-panel__node strong {
   color: #f6fbff;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
 }
 
@@ -817,7 +817,7 @@
   align-content: center;
   justify-content: center;
   color: #d8fffa;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
 }
 
@@ -866,12 +866,12 @@
 
 .leo-modqn-replay-panel__metrics span {
   color: rgba(229, 244, 251, 0.62);
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .leo-modqn-replay-panel__metrics strong {
   color: #f6fbff;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.1;
   overflow-wrap: anywhere;
   text-align: center;
@@ -887,7 +887,7 @@
   border-radius: 6px;
   background: rgba(148, 163, 184, 0.1);
   color: rgba(229, 244, 251, 0.76);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -915,7 +915,7 @@
 
 .leo-modqn-replay-panel__source-gaps-title {
   color: #ffe5a3;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -941,12 +941,12 @@
 
 .leo-modqn-replay-panel__source-gap strong {
   color: #fff1bd;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .leo-modqn-replay-panel__source-gap span {
   color: rgba(255, 245, 214, 0.76);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.38;
 }
 
@@ -989,7 +989,7 @@
 
 .leo-modqn-replay-panel__cinema-gate strong {
   color: #fff1bd;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -1000,7 +1000,7 @@
 
 .leo-modqn-replay-panel__cinema-gate span {
   color: rgba(255, 245, 214, 0.76);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.38;
 }
 
@@ -1044,7 +1044,7 @@
 
 .leo-jobs-panel__progress-readout {
   color: #aeb9c3;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.2;
 }
 
@@ -1061,7 +1061,7 @@
   background: rgba(255, 75, 75, 0.06);
   color: #ffb3b3;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 16px;
   text-align: center;
   line-height: 1.35;
 }
@@ -1073,7 +1073,7 @@
 
   h3 {
     margin: 0 0 2px 0;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -1121,14 +1121,14 @@
 
 .leo-jobs-panel__job-id {
   font-family: monospace;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   color: #ffffff;
 }
 
 .leo-jobs-panel__status {
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 3px 8px;
@@ -1159,19 +1159,19 @@
 
 .leo-jobs-panel__meta,
 .leo-jobs-panel__summary {
-  font-size: 14px;
+  font-size: 16px;
   color: rgba(255, 255, 255, 0.85);
   line-height: 1.35;
 }
 
 .leo-jobs-panel__stream-metrics {
-  font-size: 12px;
+  font-size: 14px;
   color: rgba(245, 176, 66, 0.9);
   font-variant-numeric: tabular-nums;
 }
 
 .leo-jobs-panel__note {
-  font-size: 13px;
+  font-size: 15px;
   color: #ff8b8b;
   font-style: italic;
 }
@@ -1192,7 +1192,7 @@
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.045);
   color: rgba(255, 255, 255, 0.82);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.25;
 
   span {
@@ -1205,7 +1205,7 @@
   strong {
     flex: 0 0 auto;
     color: #f5b042;
-    font-size: 11px;
+    font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -1215,7 +1215,7 @@
   width: 100%;
   padding: 10px;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   border-radius: 4px;
   cursor: pointer;
@@ -1255,7 +1255,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   font-family: monospace;
-  font-size: 12px;
+  font-size: 14px;
   color: #62e283;
   overflow-x: auto;
   max-height: 110px;
@@ -1264,7 +1264,7 @@
 }
 
 .leo-jobs-panel__empty {
-  font-size: 14px;
+  font-size: 16px;
   text-align: center;
   color: rgba(255, 255, 255, 0.85);
   margin: 16px 0;
@@ -1283,14 +1283,14 @@
 .leo-reward-curve-panel__header {
   margin-bottom: 8px;
   color: #f6fbff;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0;
 }
 
 .leo-reward-curve-panel__empty {
   color: rgba(232, 251, 255, 0.72);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.35;
 }
 
@@ -1312,13 +1312,13 @@
 
 .leo-reward-curve-chart__title {
   fill: rgba(246, 251, 255, 0.9);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .leo-reward-curve-chart__axis {
   fill: rgba(232, 251, 255, 0.54);
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .leo-reward-curve-chart__axis-line {
@@ -1339,7 +1339,7 @@
   gap: 4px;
   margin-bottom: 8px;
   color: #f6fbff;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.35;
   letter-spacing: 0;
@@ -1354,13 +1354,13 @@
   border-radius: 4px;
   background: rgba(245, 176, 66, 0.08);
   color: rgba(246, 251, 255, 0.88);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.28;
 }
 
 .leo-decision-viz-proof strong {
   color: #f5b042;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -1399,24 +1399,24 @@
 .leo-decision-viz-empty {
   margin: 0;
   color: rgba(232, 251, 255, 0.72);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.35;
 }
 
 .leo-decision-viz-chart-title {
   fill: rgba(246, 251, 255, 0.9);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .leo-decision-viz-label {
   fill: rgba(232, 251, 255, 0.78);
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .leo-decision-viz-value {
   fill: rgba(232, 251, 255, 0.7);
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .leo-decision-viz-axis {
@@ -1439,14 +1439,14 @@
 
 .leo-modqn-advanced-controls__header strong {
   color: #f6fbff;
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: 0;
 }
 
 .leo-modqn-advanced-controls__header p {
   margin: 0;
   color: rgba(229, 244, 251, 0.58);
-  font-size: 11.5px;
+  font-size: 13.5px;
   line-height: 1.35;
 }
 
@@ -1457,7 +1457,7 @@
 
 .leo-modqn-advanced-controls__label {
   color: rgba(229, 244, 251, 0.68);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.2px;
   text-transform: uppercase;
@@ -1525,7 +1525,7 @@
 }
 
 .leo-modqn-objective-controls__title {
-  font-size: 30px;
+  font-size: 32px;
   line-height: 1.08;
   font-weight: 800;
   color: #d8fffa;
@@ -1533,7 +1533,7 @@
 
 .leo-modqn-objective-controls__hint {
   color: rgba(229, 244, 251, 0.68);
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.22;
 }
 
@@ -1543,7 +1543,7 @@
   gap: 4px;
   align-content: start;
   color: rgba(229, 244, 251, 0.88);
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .leo-modqn-objective-controls__slider-row > span {
@@ -1553,7 +1553,7 @@
 .leo-modqn-objective-controls__slider-row > output {
   justify-self: end;
   margin-top: -2px;
-  font-size: 22px;
+  font-size: 24px;
   color: #bffbf2;
   line-height: 1;
 }
@@ -1616,7 +1616,7 @@
 .leo-modqn-evidence-decision-trace__label {
   min-width: 0;
   color: rgba(229, 244, 251, 0.66);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.6px;
   text-transform: uppercase;
   overflow-wrap: anywhere;
@@ -1625,7 +1625,7 @@
 .leo-modqn-evidence-decision-trace__value {
   min-width: 0;
   color: #f6fbff;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   text-align: right;
   overflow-wrap: anywhere;
@@ -1642,7 +1642,7 @@
 .leo-modqn-evidence-decision-trace__note {
   margin: 2px 0 0;
   color: rgba(229, 244, 251, 0.62);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
 }
 
@@ -1666,12 +1666,12 @@
 
 .leo-modqn-objective-controls__hyperparam-copy {
   color: rgba(229, 244, 251, 0.66);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .leo-modqn-objective-controls__hyperparam-copy {
   color: rgba(229, 244, 251, 0.66);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .leo-modqn-objective-controls__hyperparam-list {

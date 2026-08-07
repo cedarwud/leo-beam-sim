@@ -9,6 +9,13 @@ import type { LinkBudgetTerms } from '../src/scene/types.ts';
 import { createSceneTopologyState } from '../src/sceneTopology.ts';
 import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
+import {
+  assertContainsTestId,
+  assertTestId,
+} from './lib/dom-structure.ts';
+import { EN, LocaleProvider, ZH_TW } from '../src/i18n/index.ts';
+import type { Locale } from '../src/i18n/types.ts';
+import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 import type { TuningTabKey } from '../src/ui/signal-tuning/types.ts';
 
@@ -59,9 +66,10 @@ function createBudgetTerms(): LinkBudgetTerms {
   };
 }
 
-function renderPanel(initialActiveTab: TuningTabKey) {
+function renderPanel(initialActiveTab: TuningTabKey, locale: Locale) {
   const profile = loadProfile(PROFILE_ID);
   const markup = renderToStaticMarkup(
+    <LocaleProvider initialLocale={locale}>
     // Aligned to the CURRENT SignalTuningPanelProps: the removed legacy props
     // (currentSinrDb/formulaSource/handover-policy sextet) were never destructured
     // by the panel any more, so dropping them is render-identical; the added
@@ -79,13 +87,34 @@ function renderPanel(initialActiveTab: TuningTabKey) {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
+      energyTuning={DEFAULT_ENERGY_TUNING}
+      onEnergyTuningChange={() => {}}
       onReset={() => {}}
-    />,
+    />
+    </LocaleProvider>,
   );
 
   return { markup, text: decodeHtmlText(markup) };
 }
 
+const LOCALES = ['zh-TW', 'en'] as const satisfies readonly Locale[];
+
+/**
+ * WHAT THIS GATE PROTECTS: provenance / paper jargon ("Research Override",
+ * "HOBS", "paper-backed", ...) must not surface in a primary user workflow,
+ * while the parameters themselves stay present and editable.
+ *
+ * The ban is a NEGATIVE copy assertion, so it never forces English into the DOM
+ * and stays valid under translation — it is kept, and STRENGTHENED: it now runs
+ * against every shipped locale, not just the default one. A jargon term leaking
+ * into the English catalog used to be invisible to this gate.
+ *
+ * The old POSITIVE copy assertions ("TR 38.811 Sensitivity", "Receive-side
+ * antenna gain in the SINR signal path.") existed only to prove the surface had
+ * not been deleted wholesale to satisfy the ban. That is a structural claim, so
+ * it is now made structurally — via the control test ids and their explanation
+ * hooks — and holds in any language.
+ */
 function assertNoBannedPrimaryCopy(text: string, surface: string): void {
   for (const banned of BANNED_PRIMARY_COPY) {
     assertNotContains(text, banned);
@@ -93,31 +122,96 @@ function assertNoBannedPrimaryCopy(text: string, surface: string): void {
   console.log(`PASS: ${surface} primary text has no paper/provenance jargon`);
 }
 
+/**
+ * The surface must still BE there. Asserted through test ids so the check
+ * cannot be satisfied by an empty tab, and cannot be broken by translating it.
+ */
+function assertSurfaceStillPresent(
+  markup: string,
+  section: string,
+  controls: readonly string[],
+  surface: string,
+): void {
+  assertTestId(markup, section, surface);
+  for (const control of controls) {
+    assertContainsTestId(markup, section, control, surface);
+  }
+}
+
 function validateLossCopy(): void {
-  const { markup, text } = renderPanel('loss');
-  assertContains(markup, 'data-testid="loss-sensitivity-controls"');
-  assertContains(text, 'TR 38.811 Sensitivity');
-  assertContains(text, 'Advanced sensitivity controls for simulator constants');
-  assertContains(text, 'TR 38.811 NLoS clutter sensitivity control for seeded NLoS samples only.');
-  assertContains(text, 'Editable in the TR 38.811 profile');
-  assertContains(text, 'TR 38.811 sensitivity profile');
-  assertContains(text, 'TR 38.811 path-loss model');
-  assertContains(text, 'Seeded LoS samples do not change.');
-  assertNoBannedPrimaryCopy(text, 'Loss tab');
+  for (const locale of LOCALES) {
+    const { markup, text } = renderPanel('loss', locale);
+    // The TR 38.811 sensitivity group still renders, still carries its own help
+    // affordance, and still exposes the editable NLoS clutter control that only
+    // the TR 38.811 profile provides.
+    assertSurfaceStillPresent(
+      markup,
+      'loss-sensitivity-controls',
+      ['help-popover-trigger-section.tr38811', 'lcl-nlos-control'],
+      `Loss tab (${locale})`,
+    );
+    assertContainsTestId(markup, 'lcl-nlos-control', 'lcl-nlos-control-details', `Loss tab (${locale})`);
+    assertContainsTestId(markup, 'lcl-nlos-control', 'lcl-nlos-control-effect', `Loss tab (${locale})`);
+    assertNoBannedPrimaryCopy(text, `Loss tab (${locale})`);
+  }
 }
 
 function validateSignalPowerCopy(): void {
-  const { text } = renderPanel('signal-power');
-  assertContains(text, 'Receiver Gain');
-  assertContains(text, 'This tab controls transmit power only. Receiver gain has its own tab.');
-  assertNoBannedPrimaryCopy(text, 'Signal Power tab');
+  for (const locale of LOCALES) {
+    const { markup, text } = renderPanel('signal-power', locale);
+    assertSurfaceStillPresent(
+      markup,
+      'signal-power-controls',
+      ['pt-signal-power-control', 'help-popover-trigger-param.maxTxPowerDbm'],
+      `Signal Power tab (${locale})`,
+    );
+    // G^R keeps its own tab rather than being absorbed into the P_t group.
+    assert.ok(
+      markup.includes('id="sinr-formula-tab-receiver-gain"'),
+      `expected a separate receiver-gain tab to stay reachable (${locale})`,
+    );
+    assertNoBannedPrimaryCopy(text, `Signal Power tab (${locale})`);
+  }
 }
 
 function validateReceiverGainCopy(): void {
-  const { text } = renderPanel('receiver-gain');
-  assertContains(text, 'Receiver gain');
-  assertContains(text, 'Receive-side antenna gain in the SINR signal path.');
-  assertNoBannedPrimaryCopy(text, 'Receiver Gain tab');
+  for (const locale of LOCALES) {
+    const { markup, text } = renderPanel('receiver-gain', locale);
+    assertSurfaceStillPresent(
+      markup,
+      'receiver-gain-controls',
+      ['gr-receiver-gain-control', 'help-popover-trigger-param.ueAntennaMaxGainDbi'],
+      `Receiver Gain tab (${locale})`,
+    );
+    assertContainsTestId(markup, 'gr-receiver-gain-control', 'gr-receiver-gain-control-details', `Receiver Gain tab (${locale})`);
+    assertNoBannedPrimaryCopy(text, `Receiver Gain tab (${locale})`);
+  }
+}
+
+/**
+ * COVERAGE HOLE THIS CLOSES: the panel's explanatory copy now lives behind help
+ * popovers, and a popover panel only mounts while it is open — so none of it
+ * appears in server-rendered markup. A rendered-text ban therefore cannot see
+ * the single largest body of user-facing prose in the panel.
+ *
+ * Ban the jargon at its SOURCE instead: the shipped translation catalogs. This
+ * is language-neutral (it checks every locale) and catches the copy whether it
+ * is rendered inline, in a tooltip, or in a popover.
+ */
+function assertCatalogsCarryNoProvenanceJargon(): void {
+  for (const [name, dict] of [['ZH_TW', ZH_TW], ['EN', EN]] as const) {
+    const entries = Object.entries(dict as Record<string, string>);
+    assert.ok(entries.length > 0, `expected the ${name} catalog to be populated`);
+    for (const [key, value] of entries) {
+      for (const banned of BANNED_PRIMARY_COPY) {
+        assert.ok(
+          !value.includes(banned),
+          `${name}["${key}"] must not carry provenance jargon "${banned}"; got: ${value}`,
+        );
+      }
+    }
+    console.log(`PASS: ${name} catalog (${entries.length} keys) has no paper/provenance jargon`);
+  }
 }
 
 function validateSourceStillKeepsInternalGuardrails(): void {
@@ -133,4 +227,5 @@ function validateSourceStillKeepsInternalGuardrails(): void {
 validateLossCopy();
 validateSignalPowerCopy();
 validateReceiverGainCopy();
+assertCatalogsCarryNoProvenanceJargon();
 validateSourceStillKeepsInternalGuardrails();

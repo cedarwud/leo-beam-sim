@@ -5,6 +5,10 @@ import { loadProfile } from '../src/profiles/index.ts';
 import type { Profile } from '../src/profiles/types.ts';
 import { createInitialSimState } from '../src/scene/initialSimState.ts';
 import type { LinkBudgetTerms, SignalSourceState, SimState } from '../src/scene/types.ts';
+import {
+  assertAttrCount,
+  assertValueInAttrElement,
+} from './lib/dom-structure.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-paper-default';
@@ -153,33 +157,38 @@ function assertStableEvidenceShell(markup: string, status: EvidenceStatus): void
   }
 }
 
+/**
+ * Every term cell must show ITS OWN value, in its own cell.
+ *
+ * The old gate asserted these numbers against the whole panel's text, alongside
+ * the English `hiddenLabel` of each cell ("numerator / signalDbm", "receiver
+ * gain", ...). Both were weak proxies: the labels only proved English copy was
+ * present, and a page-wide value search would happily pass if two cells swapped
+ * their numbers. Binding the value to `data-term` proves the real invariant, and
+ * a translated label cannot break it.
+ */
+const EXPECTED_TERM_VALUES: ReadonlyArray<readonly [term: string, value: string]> = [
+  ['signalDbm', '-88.5 dBm'],
+  ['effectiveTxPower', '50.5 dBm'],
+  ['transmitGain', '5.6 dB'],
+  ['receiverGain', '2.5 dBi'],
+  ['pathLoss', '151.8 dB'],
+  ['scanLoss', '1.2 dB'],
+  ['intraInterference', '-113.2 dBm'],
+  ['interInterference', '-110.7 dBm'],
+  ['noiseDbm', '-104.2 dBm'],
+  ['denominator', '-103.1 dBm'],
+];
+
 function run(): void {
   const current = renderPanel({
     formulaBudget: createBudgetTerms(),
     formulaSource: createCurrentFormulaSource(),
   });
   assertStableEvidenceShell(current.markup, 'current');
-  assertContains(current.text, 'Current computeLinkBudget term values for the physical serving formula source.');
-  assertContains(current.text, 'numerator / signalDbm');
-  assertContains(current.text, 'effective transmit power');
-  assertContains(current.text, 'transmit gain pattern');
-  assertContains(current.text, 'receiver gain');
-  assertContains(current.text, 'path loss');
-  assertContains(current.text, 'scan loss');
-  assertContains(current.text, 'intra interference');
-  assertContains(current.text, 'inter interference');
-  assertContains(current.text, 'noise σ² / noiseDbm');
-  assertContains(current.text, 'denominator');
-  assertContains(current.text, '-88.5 dBm');
-  assertContains(current.text, '50.5 dBm');
-  assertContains(current.text, '5.6 dB');
-  assertContains(current.text, '2.5 dBi');
-  assertContains(current.text, '151.8 dB');
-  assertContains(current.text, '1.2 dB');
-  assertContains(current.text, '-113.2 dBm');
-  assertContains(current.text, '-110.7 dBm');
-  assertContains(current.text, '-104.2 dBm');
-  assertContains(current.text, '-103.1 dBm');
+  for (const [term, value] of EXPECTED_TERM_VALUES) {
+    assertValueInAttrElement(current.markup, 'data-term', term, value, 'current evidence');
+  }
 
   const stale = renderPanel({
     formulaBudget: createBudgetTerms(),
@@ -187,22 +196,32 @@ function run(): void {
     isFormulaEvidenceStale: true,
   });
   assertStableEvidenceShell(stale.markup, 'stale');
-  assertContains(stale.text, 'Formula evidence is stale after a runtime edit');
-  assertContains(stale.text, '-88.5 dBm stale');
-  assertContains(stale.text, 'last-known values are labeled stale');
+  // Stale evidence keeps the LAST-KNOWN number in the same cell — it does not
+  // blank the grid — and every cell declares itself stale rather than current.
+  for (const [term, value] of EXPECTED_TERM_VALUES) {
+    assertValueInAttrElement(stale.markup, 'data-term', term, value, 'stale evidence');
+  }
   assertNotContains(stale.markup, 'data-formula-evidence-status="current"');
-  assertNotContains(stale.text, 'Current computeLinkBudget term values');
 
   const waiting = renderPanel({
     formulaBudget: null,
     formulaSource: createWaitingFormulaSource(),
   });
   assertStableEvidenceShell(waiting.markup, 'waiting');
-  assertContains(waiting.text, 'No physical serving source yet');
-  assertContains(waiting.text, 'Waiting for a physical serving formula source');
-  assert.equal((waiting.text.match(/\bwaiting\b/g) ?? []).length >= EXPECTED_TERMS.length, true);
   assertNotContains(waiting.markup, 'data-formula-evidence-status="current"');
-  assertNotContains(waiting.text, 'Current computeLinkBudget term values');
+  // Every one of the ten cells is individually in the waiting state (plus the
+  // grid, the evidence block and the card that wrap them).
+  assertAttrCount(
+    waiting.markup,
+    'data-formula-evidence-status',
+    'waiting',
+    EXPECTED_TERMS.length + 3,
+    'waiting evidence',
+  );
+  // …and none of them is showing a stale number it no longer has a source for.
+  for (const [, value] of EXPECTED_TERM_VALUES) {
+    assertNotContains(waiting.text, value);
+  }
 
   console.log('Phase 9D formula term evidence stability validation passed.');
   console.log(JSON.stringify({

@@ -36,7 +36,7 @@ export const collapsedPanelStyle: CSSProperties = {
 
 export const drawerContentStyle: CSSProperties = {
   display: 'grid',
-  gap: 0,
+  gap: 14,
   minWidth: 0,
   width: '100%',
 };
@@ -87,6 +87,43 @@ export const explanatoryTextStyle: CSSProperties = {
   color: UI_TOKENS.color.text.secondary,
   fontSize: UI_TOKENS.type.size.body,
   lineHeight: 1.48,
+};
+
+/** Student-facing control label: the first thing read, so it stays large. */
+export const controlLabelStyle: CSSProperties = {
+  fontSize: UI_TOKENS.type.size.bodyLg,
+  color: UI_TOKENS.color.text.controlLabel,
+  fontWeight: UI_TOKENS.type.weight.heavy,
+  lineHeight: 1.3,
+};
+
+/**
+ * The canonical English/technical term shown under a localized label, so a
+ * student can still map the control back to the formula in the textbook.
+ * Never smaller than 14px (UI_TOKENS.type.size.tiny).
+ */
+export const canonicalTermStyle: CSSProperties = {
+  fontSize: UI_TOKENS.type.size.tiny,
+  color: UI_TOKENS.color.text.faint,
+  fontWeight: UI_TOKENS.type.weight.strong,
+  letterSpacing: 0.2,
+  lineHeight: 1.3,
+  whiteSpace: 'nowrap',
+};
+
+/** Group heading inside a tab: gives the stack of sliders a visual hierarchy. */
+export const groupTitleStyle: CSSProperties = {
+  fontSize: UI_TOKENS.type.size.bodyLg,
+  color: UI_TOKENS.color.text.controlLabel,
+  fontWeight: UI_TOKENS.type.weight.heavy,
+  letterSpacing: 0.2,
+  lineHeight: 1.3,
+};
+
+export const captionTextStyle: CSSProperties = {
+  fontSize: UI_TOKENS.type.size.caption,
+  color: UI_TOKENS.color.text.secondary,
+  lineHeight: 1.55,
 };
 
 export const srOnlyStyle: CSSProperties = {

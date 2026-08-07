@@ -22,6 +22,12 @@ export interface SceneTelemetryProps {
   uavVisible: string;
   uePrimaryAnchorMode: string;
   firstUePosition: string;
+  /** Diagnostic projection for the optional secondary-handover display. */
+  otherHandoverFilterEnabled: string;
+  otherHandoverPendingUeCount: string | number;
+  otherHandoverSelectedUeCount: string | number;
+  otherHandoverCueUeCount: string | number;
+  otherHandoverSelectedUeIds: string;
   /**
    * Count of UE markers GroundScene actually renders (worldPos-bearing UEs).
    * Provenance audit 2026-06-04: gives the artifact-replay real-data scene gate a
@@ -111,6 +117,11 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.uavVisible = props.uavVisible;
     el.dataset.uePrimaryAnchorMode = props.uePrimaryAnchorMode;
     el.dataset.firstUePosition = props.firstUePosition;
+    el.dataset.otherHandoverFilterEnabled = props.otherHandoverFilterEnabled;
+    el.dataset.otherHandoverPendingUeCount = String(props.otherHandoverPendingUeCount);
+    el.dataset.otherHandoverSelectedUeCount = String(props.otherHandoverSelectedUeCount);
+    el.dataset.otherHandoverCueUeCount = String(props.otherHandoverCueUeCount);
+    el.dataset.otherHandoverSelectedUeIds = props.otherHandoverSelectedUeIds;
     el.dataset.renderedUeCount = String(props.renderedUeCount);
     el.dataset.beamLoadContentionUeCount = String(props.beamLoadContentionUeCount);
     el.dataset.visualSatelliteAltitude = props.visualSatelliteAltitude;
@@ -171,6 +182,11 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.uavVisible,
     props.uePrimaryAnchorMode,
     props.firstUePosition,
+    props.otherHandoverFilterEnabled,
+    props.otherHandoverPendingUeCount,
+    props.otherHandoverSelectedUeCount,
+    props.otherHandoverCueUeCount,
+    props.otherHandoverSelectedUeIds,
     props.renderedUeCount,
     props.beamLoadContentionUeCount,
     props.visualSatelliteAltitude,

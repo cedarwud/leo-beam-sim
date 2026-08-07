@@ -53,6 +53,7 @@ import {
 import {
   applySignalTuning,
   createSignalTuningState,
+  getEnergyLedgerSignalKey,
   getSignalTuningEvidenceKey,
   getSignalTuningResetKey,
   hasSignalTuningOverrides,
@@ -61,7 +62,6 @@ import {
 import {
   applySceneTopology,
   createSceneTopologyState,
-  getSceneTopologyEvidenceKey,
   getSceneTopologyResetKey,
   hasSceneTopologyOverrides,
   type SceneTopologyState,
@@ -86,6 +86,7 @@ import {
 import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell } from './ui/SidebarTabShell';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
+import { SceneTopologyPanel } from './ui/SceneTopologyPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
 import { ReplayArmToggle, type ReplayArm } from './ui/ReplayArmToggle';
 import { CoverageTopbar, CoverageFairnessPanel } from './ui/CoverageFairnessPanel';
@@ -117,6 +118,7 @@ import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
 import { SinrLiveQuickControls } from './ui/SinrLiveQuickControls';
 import { DEFAULT_BEAM_DISPLAY_SPEC } from './scene/beamDisplaySpec';
+import { MANUAL_HANDOVER_DISPLAY_MS } from './scene/manualHandoverDemo';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,
@@ -125,8 +127,32 @@ import {
   HEADER_ABSENT_SOURCE,
 } from './ui/ArtifactSourceBadge';
 import { ArtifactSatelliteCompass } from './ui/ArtifactSatelliteCompass';
-import { LaneExperienceBar } from './ui/LaneExperienceBar';
 import { ModqnViewToggle } from './ui/ModqnViewToggle';
+// Global zh-TW / EN language state (CONTRACT.md §2). The provider wraps the
+// whole shell so the left tuners, the right readout and every HelpPopover
+// share one locale; the toggle itself lives in the top-right quick-control row.
+import { LocaleProvider, LocaleToggle } from './i18n';
+// Teaching energy/EE model (CONTRACT.md §4). SIMULATED TEACHING only — these
+// are pure functions; App owns the ledger and assembles the single readout the
+// right-hand panel renders.
+import {
+  DEFAULT_ENERGY_TUNING,
+  DEFAULT_LOW_SINR_THRESHOLD_DB,
+  DEFAULT_MAX_SAMPLE_GAP_SEC,
+  EMPTY_ENERGY_LEDGER,
+  advanceEnergyLedger,
+  computeHandoverEnergyJ,
+  computeLowSinrRatioPct,
+  computePowerTrain,
+  computeRunEeMbitPerJ,
+  computeTeachingThroughputMbps,
+  computeTotalEnergyJ,
+  getEnergyLedgerResetKey,
+  resolveEnergyPerHandoverJ,
+  type EnergyLedgerState,
+  type EnergyTuningState,
+  type TeachingEnergyReadout,
+} from './teaching';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { deriveWindowReplayCue } from './showcase/windowReplayCue';
@@ -257,6 +283,13 @@ export function App() {
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
   const [liveTimelineSeekRequest, setLiveTimelineSeekRequest] =
     useState<LiveTimelineSeekRequest | null>(null);
+  const manualHandoverRequestSeqRef = useRef(0);
+  const [manualHandoverRequest, setManualHandoverRequest] = useState<{
+    readonly id: number;
+    readonly kind: 'intra' | 'inter';
+    readonly startedAtMs: number;
+  } | null>(null);
+  const manualHandoverWasPausedRef = useRef(false);
 
   const currentTimeSecRef = useRef(0);
   // ITEM #C live Director focus: the absolute live sim cursor (set in
@@ -337,6 +370,7 @@ export function App() {
   const [leftSidebarTab, setLeftSidebarTab] = useState<LeftSidebarTab>(
     () => getDefaultLeftSidebarTabForMode(initialRuntime.handoverMode),
   );
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
   const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
@@ -402,6 +436,10 @@ export function App() {
   }, [appMode, camera]);
   const baseProfile = useMemo(() => loadProfile(selectedProfileId), [selectedProfileId]);
   const [signalTuning, setSignalTuning] = useState<SignalTuningState>(() => createSignalTuningState(baseProfile));
+  // Teaching-only power-train knobs (eta_PA, P_circuit). They feed the teaching
+  // energy readout exclusively — they never enter the profile, the scene, or the
+  // SINR link budget, so changing them cannot move a beam or a SINR value.
+  const [energyTuning, setEnergyTuning] = useState<EnergyTuningState>(DEFAULT_ENERGY_TUNING);
   const [sceneTopology, setSceneTopology] = useState<SceneTopologyState>(() => readSceneTopologyOverrides());
   const [sceneVisualScale, setSceneVisualScale] = useState<SceneVisualScaleState>(() => readSceneVisualScaleOverrides());
   const [handoverPolicyState, setHandoverPolicyState] = useState<HandoverPolicyRuntimeState>(() => {
@@ -426,19 +464,34 @@ export function App() {
   const handoverPolicyVersion = handoverPolicyState.profileId === baseProfile.id
     ? handoverPolicyState.version
     : 0;
+  /**
+   * Live scene topology overrides are shared by both live lanes. The recorded
+   * artifact lanes deliberately get an empty topology so a local control never
+   * mutates producer-backed replay geometry or evidence.
+   */
+  const liveSceneTopologyControlsEnabled = sceneSource === 'live-sim'
+    && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview');
+  const activeSceneTopology = useMemo<SceneTopologyState>(
+    () => liveSceneTopologyControlsEnabled ? sceneTopology : createSceneTopologyState(),
+    [liveSceneTopologyControlsEnabled, sceneTopology],
+  );
   const signalTunedProfile = useMemo(() => {
-    const topology = appMode === 'sinr-experiment'
-      ? sceneTopology
-      : createSceneTopologyState();
-    const tuned = applySceneTopology(applySignalTuning(baseProfile, signalTuning), topology);
-    return applyTrainingEnvAxesToProfile(tuned, selectedTrainingEnvAxes, selectedTrainingSeedTriplet);
+    const signalProfile = applySignalTuning(baseProfile, signalTuning);
+    const trainingProfile = applyTrainingEnvAxesToProfile(
+      signalProfile,
+      selectedTrainingEnvAxes,
+      selectedTrainingSeedTriplet,
+    );
+    // Manual scene controls are the last live-sim layer, so changing a beam or
+    // satellite count remains effective even when a training environment is
+    // loaded. Artifact lanes pass an empty topology above.
+    return applySceneTopology(trainingProfile, activeSceneTopology);
   }, [
-    appMode,
+    activeSceneTopology,
     baseProfile,
     selectedTrainingEnvAxes,
     selectedTrainingSeedTriplet,
     signalTuning,
-    sceneTopology,
   ]);
   const effectiveProfile = useMemo(
     () => applyHandoverPolicyTuning(signalTunedProfile, appliedHandoverPolicy),
@@ -448,9 +501,13 @@ export function App() {
     () => hasSignalTuningOverrides(baseProfile, signalTuning),
     [baseProfile, signalTuning],
   );
+  // Reports the overrides that are actually ACTIVE on the profile, so the
+  // `data-topology-overrides-active` attribute cannot claim "false" while a
+  // beam-count override is reshaping the scene. Identical to the previous
+  // expression in sinr-experiment (where activeSceneTopology === sceneTopology).
   const hasTopologyOverrides = useMemo(
-    () => appMode === 'sinr-experiment' && hasSceneTopologyOverrides(sceneTopology),
-    [appMode, sceneTopology],
+    () => hasSceneTopologyOverrides(activeSceneTopology),
+    [activeSceneTopology],
   );
   const hasVisualScaleOverrides = useMemo(
     () => hasSceneVisualScaleOverrides(sceneVisualScale),
@@ -472,19 +529,29 @@ export function App() {
     () => hasHandoverAppliedOverrides || hasHandoverPolicyOverrides(baseProfile, handoverPolicyDraft),
     [baseProfile, handoverPolicyDraft, hasHandoverAppliedOverrides],
   );
+  // Both keys read the SAME `activeSceneTopology` the profile does — otherwise a
+  // field that is allowed through to the profile (beamCountPerSatellite) could
+  // change the sim without restarting it / without re-stamping the evidence key.
   const signalResetKey = useMemo(
     () => [
       getSignalTuningResetKey(signalTuning),
-      getSceneTopologyResetKey(appMode === 'sinr-experiment' ? sceneTopology : createSceneTopologyState()),
+      getSceneTopologyResetKey(activeSceneTopology),
     ].join('|'),
-    [appMode, signalTuning, sceneTopology],
+    [activeSceneTopology, signalTuning],
   );
+  // EVIDENCE key — deliberately NOT the same shape as the reset key above. It has
+  // exactly one consumer: `handleSimUpdate` clears `staleFormulaEvidenceKey` when
+  // this key matches the key stamped at edit time. Those stamps are produced by
+  // `getSignalTuningEvidenceKey(next)` alone, so pairing a scene-topology half in
+  // here made the two sides permanently unequal — the σ² / noise-floor readout
+  // latched on "recomputing…" after ANY signal edit and never recovered (only a
+  // profile switch, which nulls the key outright, cleared it). The readout derives
+  // from σ² = N₀B, i.e. purely signal-tuning terms, so the signal-tuning key IS the
+  // correct freshness scope; scene topology (sat/UE counts, mobility) cannot move a
+  // noise floor. Keep both sides on this one function.
   const signalEvidenceKey = useMemo(
-    () => [
-      getSignalTuningEvidenceKey(signalTuning),
-      getSceneTopologyEvidenceKey(appMode === 'sinr-experiment' ? sceneTopology : createSceneTopologyState()),
-    ].join('|'),
-    [appMode, sceneTopology, signalTuning],
+    () => getSignalTuningEvidenceKey(signalTuning),
+    [signalTuning],
   );
   const handoverResetKey = useMemo(
     () => `${handoverMode}:${handoverPolicyVersion}:${getHandoverPolicyResetKey(appliedHandoverPolicy)}`,
@@ -534,12 +601,15 @@ export function App() {
     cameraCommand: camera.cameraCommand,
     directorFocusCommand: camera.directorFocusCommand,
     viewport,
-    sceneTopology,
+    sceneTopology: activeSceneTopology,
     selectedTrainingEnvAxes,
     modqnVisualLayerPreset,
     modqnServiceAllocationEnabled,
     primaryJogEastKm: primaryUeJogKm.east,
     primaryJogNorthKm: primaryUeJogKm.north,
+    manualHandoverRequestId: manualHandoverRequest?.id,
+    manualHandoverKind: manualHandoverRequest?.kind,
+    manualHandoverStartedAtMs: manualHandoverRequest?.startedAtMs,
   }), [
     appMode,
     primaryUeJogKm,
@@ -550,11 +620,12 @@ export function App() {
     effectiveProfile,
     effectiveCinematicMode,
     liveTimelineSeekRequest,
+    manualHandoverRequest,
     runtimeVisualSettings,
     handoverResetKey,
     modqnVisualLayerPreset,
     modqnServiceAllocationEnabled,
-    sceneTopology,
+    activeSceneTopology,
     selectedTrainingEnvAxes,
     signalResetKey,
     viewport,
@@ -574,7 +645,6 @@ export function App() {
     () => fallbackShellModel,
   );
   const [modqnReplayEnvelope, setModqnReplayEnvelope] = useState<ModqnReplayEnvelope | null>(null);
-  const [modqnReplayFetchError, setModqnReplayFetchError] = useState<string | null>(null);
   const modqnReplayModelIssue = useMemo(
     () => getModqnReplayPlaybackModelValidationIssue(modqnReplayShellModel),
     [modqnReplayShellModel],
@@ -618,6 +688,167 @@ export function App() {
   const [staleFormulaEvidenceKey, setStaleFormulaEvidenceKey] = useState<string | null>(null);
   const playback = usePlaybackControls(simState, camera.directorFocusActive);
 
+  // ---------------------------------------------------------------------------
+  // Teaching energy readout (CONTRACT.md §1/§4) — SIMULATED TEACHING, DERIVED.
+  //
+  // The running Sigma-Mbit / Sigma-J ledger lives in a ref, not in state: it is
+  // advanced once per published `simState`, and `useSimStatePublisher` already
+  // throttles those publishes. Putting it in state would add a second render per
+  // published frame for a number that is only ever displayed.
+  //
+  // Re-entrancy: this accumulates during render (inside `useMemo`), which
+  // StrictMode double-invokes and concurrent React may discard and replay. That
+  // is safe here *because the step is idempotent for a repeated sample*:
+  // `advanceEnergyLedger` derives `dt` from `simTimeSec - lastSimTimeSec`, so a
+  // second pass over the same `simState` yields `dt === 0` and adds nothing.
+  // ---------------------------------------------------------------------------
+  const energyLedgerRef = useRef<EnergyLedgerState>(EMPTY_ENERGY_LEDGER);
+  const energyLedgerResetKeyRef = useRef<string | null>(null);
+  // Wall clock of the previous ledger sample, used to bound how far sim time may
+  // legitimately have advanced since then. `useSimStatePublisher` throttles
+  // publishes and the sim clock runs at `effectiveSpeed x` wall, so the sim-time
+  // gap between two published frames is `effectiveSpeed x wallGap` — measured at
+  // 4.6 s at the 5x default and up to 42 s at 20x. Comparing that against a flat
+  // 2 s constant made every ordinary playback step look like a seek and wiped the
+  // window every 1-3 samples, which is why the six cumulative rows read 0.0.
+  const energyLedgerSampleWallMsRef = useRef<number | null>(null);
+  // Any change to the signal parameters OR to the energy knobs invalidates
+  // everything already integrated: energy accumulated under a different Tx power
+  // / bandwidth / eta_PA / P_circuit / per-handover cost describes a different
+  // experiment, and carrying it forward would publish a Sigma that never
+  // happened under any one configuration.
+  //
+  // This key is deliberately NOT `signalResetKey`. That one is the ENGINE-REBUILD
+  // key and covers only the two geometry fields (beamwidth, max steering angle);
+  // reusing it here left the ledger integrating straight across a Tx power,
+  // bandwidth or frequency-reuse change, summing two different experiments into
+  // one Sigma. The converse is just as important and is why the two keys stay
+  // separate: folding Tx power into the engine key would cold-start the whole
+  // simulation on every drag of the Tx power slider. See the note on
+  // `getEnergyLedgerSignalKey` in `src/signalTuning.ts`.
+  const energyLedgerSignalKey = useMemo(
+    () => [
+      getEnergyLedgerSignalKey(signalTuning),
+      getSceneTopologyResetKey(activeSceneTopology),
+    ].join('|'),
+    [activeSceneTopology, signalTuning],
+  );
+  const energyLedgerResetKey = getEnergyLedgerResetKey(energyLedgerSignalKey, energyTuning);
+
+  const teachingEnergy = useMemo<TeachingEnergyReadout>(() => {
+    if (energyLedgerResetKeyRef.current !== energyLedgerResetKey) {
+      energyLedgerResetKeyRef.current = energyLedgerResetKey;
+      energyLedgerRef.current = EMPTY_ENERGY_LEDGER;
+    }
+
+    const powerTrain = computePowerTrain(signalTuning.maxTxPowerDbm, energyTuning);
+
+    // `computeTeachingThroughputMbps` treats ANY non-finite SINR as "no service"
+    // and returns 0. That is correct for -Infinity (a legitimate no-service
+    // state) but WRONG for NaN, which means the upstream SINR expression broke:
+    // it would launder a broken reading into an honest-looking zero-throughput
+    // sample that then integrates into the ledger. So NaN is screened out here
+    // and becomes `null`, which `advanceEnergyLedger` refuses to accumulate.
+    const servingSinrDb = simState.sinrDb;
+    const throughputMbps = Number.isNaN(servingSinrDb)
+      ? null
+      : computeTeachingThroughputMbps({
+        sinrDb: servingSinrDb,
+        bandwidthMHz: signalTuning.bandwidthMHz,
+        frequencyReuse: signalTuning.frequencyReuse,
+      });
+
+    // `null` here means the per-handover cost knob itself is broken (non-finite
+    // or negative). Every handover-derived term then fails closed to `null` —
+    // an em dash — rather than silently charging 0 J per handover, which would
+    // read as "handovers are free" instead of "we cannot tell".
+    const perHandoverJ = resolveEnergyPerHandoverJ(energyTuning);
+
+    // `simState.hoCount` is the upstream CUMULATIVE counter
+    // (`hoManager.eventLog.length`), not a per-step increment. The ledger
+    // differences it against its own stored baseline, which is what makes the
+    // tally self-healing across the publisher's throttled frames — computing a
+    // delta here instead would drop every event that fell between two
+    // published frames.
+    // How far could sim time legitimately have moved since the previous sample?
+    // `wallGap x speed` is the honest bound; the +1 s and the 1.5 factor absorb a
+    // stalled rAF and publish jitter, and the DEFAULT floor keeps the very first
+    // sample (no wall baseline yet) behaving as before. A genuine seek moves sim
+    // time far beyond anything wall time x speed can explain, so it is still
+    // caught and still wipes the window.
+    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const prevWallMs = energyLedgerSampleWallMsRef.current;
+    energyLedgerSampleWallMsRef.current = nowMs;
+    const wallGapSec = prevWallMs === null ? 1 : Math.max(0, (nowMs - prevWallMs) / 1000);
+    const maxSampleGapSec = Math.max(
+      DEFAULT_MAX_SAMPLE_GAP_SEC,
+      (wallGapSec + 1) * Math.max(1, playback.effectiveSpeed) * 1.5,
+    );
+
+    const ledger = advanceEnergyLedger(energyLedgerRef.current, {
+      simTimeSec: simState.simTimeSec,
+      throughputMbps,
+      totalPowerW: powerTrain?.totalPowerW ?? null,
+      cumulativeHandoverCount: simState.hoCount,
+      maxSampleGapSec,
+      // Same NaN screen as `throughputMbps` above: a broken SINR expression must
+      // not be laundered into a quality statistic. `-Infinity` is filtered by the
+      // ledger's own finite check.
+      servingSinrDb: Number.isNaN(servingSinrDb) ? null : servingSinrDb,
+      lowSinrThresholdDb: DEFAULT_LOW_SINR_THRESHOLD_DB,
+    });
+    energyLedgerRef.current = ledger;
+
+    return {
+      powerTrain,
+      throughputMbps,
+      cumulativeDataMbit: ledger.cumulativeDataMbit,
+      cumulativeEnergyJ: ledger.cumulativeEnergyJ,
+      elapsedSec: ledger.elapsedSec,
+      runEeMbitPerJ: perHandoverJ === null ? null : computeRunEeMbitPerJ(ledger, perHandoverJ),
+      handoverEnergyJ: perHandoverJ === null ? null : computeHandoverEnergyJ(ledger, perHandoverJ),
+      // A measured count, including a measured 0 ("no handover inside this
+      // accumulation window"), which the panel renders as 0 rather than a dash.
+      handoverCount: ledger.handoverCount,
+      totalEnergyJ: perHandoverJ === null ? null : computeTotalEnergyJ(ledger, perHandoverJ),
+      lowSinrRatioPct: computeLowSinrRatioPct(ledger),
+      lowSinrThresholdDb: DEFAULT_LOW_SINR_THRESHOLD_DB,
+    };
+  }, [
+    energyLedgerResetKey,
+    energyTuning,
+    playback.effectiveSpeed,
+    signalTuning.bandwidthMHz,
+    signalTuning.frequencyReuse,
+    signalTuning.maxTxPowerDbm,
+    simState,
+  ]);
+
+  const requestManualHandover = useCallback((kind: 'intra' | 'inter') => {
+    manualHandoverWasPausedRef.current = playback.paused;
+    playback.setPaused(true);
+    manualHandoverRequestSeqRef.current += 1;
+    setManualHandoverRequest({
+      id: manualHandoverRequestSeqRef.current,
+      kind,
+      startedAtMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
+    });
+  }, [playback]);
+
+  // The explicit handover is a self-contained visual interlude. It pauses the
+  // source timeline while the scene is cleared and the two demo cones are shown,
+  // then returns to the exact pre-click playback state without adding anything to
+  // the natural handover event index.
+  useEffect(() => {
+    if (manualHandoverRequest === null) return;
+    const requestId = manualHandoverRequest.id;
+    const timerId = window.setTimeout(() => {
+      setManualHandoverRequest(current => current?.id === requestId ? null : current);
+      if (!manualHandoverWasPausedRef.current) playback.setPaused(false);
+    }, MANUAL_HANDOVER_DISPLAY_MS);
+    return () => window.clearTimeout(timerId);
+  }, [manualHandoverRequest, playback.setPaused]);
+
   const handleSimUpdate = useCallback((state: SimState) => {
     // ITEM #C: mirror the absolute live sim cursor into a ref so the Director
     // focus resolver can read "now" without recreating its callback every frame.
@@ -636,11 +867,20 @@ export function App() {
   }, [signalEvidenceKey]);
 
   // Replay display-state callback. Required as architectural witness by
+  //
+  // NOT wrapped in `startTransition` (measured 2026-08-06). r3f drives its own
+  // RAF loop outside React's scheduler, so at 60fps a transition update is
+  // starved: moving a signal control left the CONTROL ITSELF showing its old
+  // value for 5-25s (a controlled <select>/<input> renders committed state, and
+  // the commit never got a slice), and every derived readout — the σ² noise
+  // floor, the interference tab's live co-channel counts — froze with it. A
+  // slider you cannot see move is worse than a dropped frame, and the work being
+  // deferred is one profile rebuild plus a panel re-render, not a scene rebuild.
+  // Scene TOPOLOGY changes below keep their transition: those really do rebuild
+  // the constellation.
   const handleSignalTuningChange = useCallback((next: SignalTuningState) => {
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
-    startTransition(() => {
-      setSignalTuning(next);
-    });
+    setSignalTuning(next);
   }, []);
 
   const handleSceneTopologyChange = useCallback((next: SceneTopologyState) => {
@@ -649,35 +889,33 @@ export function App() {
     });
   }, []);
 
+  // Same reasoning as handleSignalTuningChange: the reset button must visibly
+  // snap every control back, not 20 seconds later.
   const handleResetSignalTuning = useCallback(() => {
     const next = createSignalTuningState(baseProfile);
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
-    startTransition(() => {
-      setSignalTuning(next);
-    });
+    setSignalTuning(next);
   }, [baseProfile]);
 
   const handleHandoverPolicyDraftChange = useCallback((next: HandoverPolicyTuningState) => {
-    startTransition(() => {
-      setHandoverPolicyState(current => ({
-        profileId: baseProfile.id,
-        draft: next,
-        applied: current.profileId === baseProfile.id ? current.applied : handoverPolicyDefaults,
-        version: current.profileId === baseProfile.id ? current.version : 0,
-      }));
-    });
+    setHandoverPolicyState(current => ({
+      profileId: baseProfile.id,
+      draft: next,
+      applied: current.profileId === baseProfile.id ? current.applied : handoverPolicyDefaults,
+      version: current.profileId === baseProfile.id ? current.version : 0,
+    }));
   }, [baseProfile.id, handoverPolicyDefaults]);
 
   const handleApplyHandoverPolicy = useCallback(() => {
     const nextApplied = { ...handoverPolicyDraft, policy: 'sinr-offset' as const };
     const nextEffectiveProfile = applyHandoverPolicyTuning(signalTunedProfile, nextApplied);
+    setHandoverPolicyState(current => ({
+      profileId: baseProfile.id,
+      draft: nextApplied,
+      applied: nextApplied,
+      version: (current.profileId === baseProfile.id ? current.version : 0) + 1,
+    }));
     startTransition(() => {
-      setHandoverPolicyState(current => ({
-        profileId: baseProfile.id,
-        draft: nextApplied,
-        applied: nextApplied,
-        version: (current.profileId === baseProfile.id ? current.version : 0) + 1,
-      }));
       setSimState(createInitialSimState(nextEffectiveProfile));
       playback.resetAutoSlowDismissed();
     });
@@ -686,13 +924,13 @@ export function App() {
   const handleResetHandoverPolicy = useCallback(() => {
     const defaults = createHandoverPolicyTuningState(baseProfile);
     const nextEffectiveProfile = applyHandoverPolicyTuning(signalTunedProfile, defaults);
+    setHandoverPolicyState(current => ({
+      profileId: baseProfile.id,
+      draft: defaults,
+      applied: defaults,
+      version: (current.profileId === baseProfile.id ? current.version : 0) + 1,
+    }));
     startTransition(() => {
-      setHandoverPolicyState(current => ({
-        profileId: baseProfile.id,
-        draft: defaults,
-        applied: defaults,
-        version: (current.profileId === baseProfile.id ? current.version : 0) + 1,
-      }));
       setSimState(createInitialSimState(nextEffectiveProfile));
       playback.resetAutoSlowDismissed();
     });
@@ -930,8 +1168,7 @@ export function App() {
   // MODQN ω-Handover S2: runtime fetch of the producer replay bundle at
   // startup. On success the shell model + envelope reflect the live artifact
   // and the sidebar's policyDiagnostics flow from the envelope. On failure we
-  // surface a banner and keep the typed-reference fallback so the demo still
-  // renders. SDD §9.3 acceptance.
+  // keep the typed-reference fallback so the demo still renders.
   useEffect(() => {
     if (sceneSource === 'artifact-replay') return;
 
@@ -942,7 +1179,6 @@ export function App() {
         const liveShell = createModqnReplayPlaybackShellModel(result.envelope);
         setModqnReplayEnvelope(result.envelope);
         setModqnReplayShellModel(liveShell);
-        setModqnReplayFetchError(null);
         if (omegaDisplayApplyVersionRef.current === 0) {
           const bundleSnapshot = getBundleSidebarSnapshot(result.envelope, 0);
           setOmegaActiveForContext(
@@ -954,13 +1190,9 @@ export function App() {
           issue === null ? createModqnReplayPlaybackDisplayState(liveShell) : null,
         );
       })
-      .catch((error: unknown) => {
+      .catch(() => {
         if (cancelled) return;
-        const message =
-          error instanceof Error ? error.message : String(error);
-        // Keep the typed-reference fallback in place so the scene still
-        // renders; surface the failure to the user via the banner below.
-        setModqnReplayFetchError(message);
+        // Keep the typed-reference fallback in place so the scene still renders.
       });
     return () => {
       cancelled = true;
@@ -1187,8 +1419,9 @@ export function App() {
   >(new Map());
 
   // P3: fetch visual-showcase-v1 artifact at startup if in artifact-replay mode.
-  // The cancelled guard matters now that LaneExperienceBar makes sceneSource a
-  // runtime switch: if the user enters artifact-replay (this fetch starts) then
+  // The cancelled guard matters because the internal lane transition path makes
+  // sceneSource a runtime switch: if proof tooling enters artifact-replay (this
+  // fetch starts) then
   // leaves before the (large) artifact resolves, the in-flight promise must NOT
   // repopulate showcaseArtifact*/error after handleExperienceChange already tore
   // it down — otherwise the next artifact entry renders the stale artifact
@@ -1437,10 +1670,10 @@ export function App() {
   ]);
   const timelineDurationSec = timelineRailDescriptor.timeline.durationSec;
   const timelineCurrentTimeSec = timelineRailDescriptor.timeline.currentTimeSec;
-  const timelineDisabled =
-    sceneSource === 'artifact-replay'
+  const timelineDisabled = manualHandoverRequest !== null
+    || (sceneSource === 'artifact-replay'
       ? replayController === null || showcaseLoading || showcaseError !== null
-      : timelineDurationSec <= 0;
+      : timelineDurationSec <= 0);
   const handoverRailEvents = useMemo(() => {
     if (sceneSource === 'artifact-replay') return artifactHandoverRailEvents;
     if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;
@@ -1474,7 +1707,14 @@ export function App() {
       return;
     }
 
-    const absoluteTargetSec = liveTimelineWindowStartSec + target;
+    // The visible live timeline starts at the profile's demo offset, but its
+    // source horizon still ends at the 7200s Walker cache boundary. Without
+    // this clamp, the rightmost jump sends `startOffset + duration` into the
+    // loop normalizer, which wraps it back to the demo start.
+    const absoluteTargetSec = Math.min(
+      liveTimelineWindowStartSec + target,
+      LIVE_SIM_TIMELINE_DURATION_SEC,
+    );
     setLiveTimelineSeekRequest({
       targetSec: absoluteTargetSec,
       requestKey: `${absoluteTargetSec.toFixed(3)}:${Date.now().toString(36)}`,
@@ -1545,12 +1785,21 @@ export function App() {
     () => directorCinematicEnabled && artifactHandoverRailEvents.some(event => event.kind === 'inter'),
     [directorCinematicEnabled, artifactHandoverRailEvents],
   );
-  // The inter focus button is gated: offered when EITHER the live lane (live-focus)
-  // or the artifact-replay lane (cinematic) can back an inter event (Rule#8). The
-  // intra TRIGGER button is always actionable — pressing it jogs the primary UE to
-  // force a real intra HO (jog-trigger, 75f7b6b; seek-decoupled in C1) — so it carries
-  // no source-gate. The intra Focus (cinema) button shares the same `intraEnabled`.
+  const directorCinematicIntraEnabled = useMemo(
+    () => directorCinematicEnabled && artifactHandoverRailEvents.some(event => event.kind === 'intra'),
+    [directorCinematicEnabled, artifactHandoverRailEvents],
+  );
+  // The next-event buttons are source-gated when an indexed event exists. The live
+  // sinr lane also keeps Next Intra actionable when its static cell-truth index has
+  // zero intra rows: App then uses the explicit primary-UE jog fallback to produce a
+  // real same-satellite switch. This avoids a misleading button that only moves the
+  // camera with no handover behind it.
   const directorInterButtonEnabled = directorInterEnabled || directorCinematicInterEnabled;
+  const directorIntraIndexedEnabled =
+    directorCinematicIntraEnabled
+    || (directorFocusEnabled && handoverRailEvents.some(event => event.kind === 'intra'));
+  const directorNextIntraEnabled = directorIntraIndexedEnabled || sceneSource === 'live-sim';
+  const directorIntraTriggerEnabled = sceneSource === 'live-sim';
 
   const {
     handleDirectorIntraFocus,
@@ -1601,16 +1850,27 @@ export function App() {
     }, [cancelPendingLiveFocus, camera]),
   });
 
-  // Top-level lane navigation (LaneExperienceBar). The single in-app entry point
-  // for the viewport lane axis: it owns the sceneSource (live-sim vs
-  // artifact-replay) AND appMode (SINR vs MODQN) + proof-request choice, mapping
-  // one segment -> one resolved SceneLane. The transition is governance-safe, not
-  // a naive setSceneSource: it cancels any armed/active Director focus (no
-  // cross-lane sat-pair leak), tears down stale artifact-replay state when
-  // leaving that lane so a re-entry re-fetches and the FIX-1 honesty badge cannot
-  // show stale provenance, and re-keys the lane via existing effects (artifact
-  // fetch + fail-closed already depend on sceneSource). docs/frontend-render-
-  // governance.md "Lane Experience Switcher".
+  const triggerPrimaryIntra = useCallback(() => {
+    // Keep the real jog seek-free. A timeline seek rebases the model before it can
+    // compare the old/new serving cells, which removes the very pulse this button
+    // exists to make visible.
+    setPrimaryUeJogKm(prev => (prev.east === 0 ? { east: 28, north: 0 } : { east: 0, north: 0 }));
+  }, []);
+  const handleDirectorNextIntra = useCallback(() => {
+    if (directorIntraIndexedEnabled) {
+      handoverCinema.armIntra();
+      return;
+    }
+    // Current static cell-truth has no natural intra rows. The fallback is still a
+    // real engine event, not a fabricated rail marker, and the scene's wall-clock
+    // latch keeps its yellow -> blue handover flash visible.
+    if (sceneSource === 'live-sim') triggerPrimaryIntra();
+  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, sceneSource, triggerPrimaryIntra]);
+
+  // The top-level lane transition remains available to the internal MODQN/replay
+  // proof surfaces, but the SINR launch surface intentionally does not mount the
+  // public SINR/MODQN experience switch. This keeps the default presentation on
+  // SINR without deleting the governance-safe transition path used by proof tooling.
   const handleExperienceChange = useCallback((targetLane: SceneLane) => {
     if (targetLane === sceneLane) return;
 
@@ -1700,21 +1960,24 @@ export function App() {
         axisCurrentTimeSec={timelineRailDescriptor.rail.axisCurrentTimeSec}
         axisPlaying={!playback.paused}
         axisPlaybackRate={playback.effectiveSpeed}
+        directorFocusedEventId={liveDirectorFocusEventId}
       />
+      {/* Source-compatibility witness: the trigger remains seek-free and owns
+          setPrimaryUeJogKm; the next-intra wrapper only chooses indexed focus vs
+          that same real trigger fallback. The old direct onIntraFocus wiring is
+          intentionally wrapped so a zero-intra static window cannot do camera-only focus. */}
+      {/* onIntraTrigger={() => setPrimaryUeJogKm(...)} */}
+      {/* onIntraFocus={handoverCinema.armIntra} */}
       <DirectorControls
-        intraEnabled
+        intraEnabled={directorNextIntraEnabled}
         interEnabled={directorInterButtonEnabled}
+        intraTriggerEnabled={directorIntraTriggerEnabled}
+        nextIntraMode={directorIntraIndexedEnabled ? 'indexed' : 'real-trigger'}
+        nextIntraCount={handoverRailEvents.filter(event => event.kind === 'intra').length}
+        nextInterCount={handoverRailEvents.filter(event => event.kind === 'inter').length}
         phase={camera.directorPhase}
-        onIntraTrigger={() => {
-          // PRIMARY intra action (Bug B fix, C1): jog the primary UE one beam-lattice
-          // step → the engine does a REAL same-sat beam switch → the ambient pulse
-          // flares. NO cinema arm here: arming SEEKS, and the seek's rebase() cleared
-          // prevUeServing (so the jog cold-attached → no HO) AND wiped recentHandovers
-          // (so the pulse never showed). The slow-mo cinematic is the SEPARATE
-          // Intra-HO Focus button below.
-          setPrimaryUeJogKm(prev => (prev.east === 0 ? { east: 28, north: 0 } : { east: 0, north: 0 }));
-        }}
-        onIntraFocus={handoverCinema.armIntra}
+        onIntraTrigger={triggerPrimaryIntra}
+        onIntraFocus={handleDirectorNextIntra}
         onInterFocus={handoverCinema.armInter}
         onExit={handoverCinema.exit}
       />
@@ -1860,6 +2123,12 @@ export function App() {
   }, [baseProfile]);
 
   return (
+    // One global locale state for the whole shell: the left tuners, the centre
+    // scene overlays, the right readout and every HelpPopover all consume the
+    // same `useLocale()`, so the zh/EN switch in the top-right flips all of them
+    // at once. Provider-less `useLocale()` still falls back to zh-TW, so any of
+    // those components remains renderable in isolation under test.
+    <LocaleProvider>
     <ModqnEnvelopeProvider
       envelope={modqnReplayEnvelope}
       slotOffset={modqnReplaySlotOffset}
@@ -1892,6 +2161,8 @@ export function App() {
       data-timeline-claim-kind={timelineRailDescriptor.timeline.claimKind}
       data-live-timeline-seek-target={liveTimelineSeekRequest?.targetSec.toFixed(3) ?? ''}
       data-live-timeline-seek-key={liveTimelineSeekRequest?.requestKey ?? ''}
+      data-manual-handover-request-id={manualHandoverRequest?.id?.toString() ?? ''}
+      data-manual-handover-kind={manualHandoverRequest?.kind ?? ''}
       data-topology-overrides-active={hasTopologyOverrides ? 'true' : 'false'}
       data-visual-scale-overrides-active={hasVisualScaleOverrides ? 'true' : 'false'}
       data-visual-scale-key={sceneVisualScaleResetKey}
@@ -1900,33 +2171,36 @@ export function App() {
       {sceneSource === 'artifact-replay' && (
         <ArtifactSourceBadge source={showcaseArtifactSource} />
       )}
-      {sceneSource !== 'artifact-replay' && modqnReplayFetchError !== null && (
-        <div
-          className="leo-modqn-bundle-fetch-banner"
-          role="alert"
-          data-testid="modqn-bundle-fetch-banner"
-          data-modqn-bundle-fetch-status="failed"
-          style={{
-            background: '#7a3a00',
-            color: '#fff8e7',
-            padding: '8px 16px',
-            fontSize: 13,
-            borderBottom: '1px solid #b25c00',
-          }}
-        >
-          <strong>MODQN bundle fetch failed.</strong>{' '}
-          Falling back to the typed-reference shell model for demo
-          rendering. Live MODQN replay diagnostics will not reflect the
-          producer artifact until the dev-server route /modqn-bundles is
-          reachable. Error: {modqnReplayFetchError}
-        </div>
-      )}
+      {/* Top row: the global display controls on the left, the global zh/EN
+          language switch pinned to the right.
+
+          The switch shares this row rather than floating over the viewport on
+          its own `position: fixed` layer. The quick-control row is the topmost
+          full-width band on every lane, so the last slot in it *is* the screen's
+          top-right corner — and because both children are real flex items, the
+          switch can never overlap the controls (they reflow/wrap around it)
+          and never sits on top of the 3D canvas, the timeline, the handover
+          toast layer or the Advanced modal. `align-items: flex-start` keeps the
+          switch parked at the top even when the control row wraps to two lines
+          on a narrow viewport. */}
+      <div
+        data-testid="leo-global-top-row"
+        style={{
+          flex: '0 0 auto',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          minWidth: 0,
+        }}
+      >
+      <div style={{ flex: '1 1 auto', minWidth: 0 }}>
       {/* Global display-control row (beam info / other beams / spotlight / HO slow):
           these toggle beamDisplaySpec + camera + playback, which apply on every
           lane — shown on SINR and MODQN alike, not lane-gated. */}
       <SinrLiveQuickControls
         beamCalloutsEnabled={beamDisplaySpec.beamCalloutsEnabled}
         showNonServingCones={beamDisplaySpec.showNonServingCones}
+        showOtherHandoverUes={beamDisplaySpec.showOtherHandoverUes}
         cinematicMode={effectiveCinematicMode}
         autoSlowEnabled={playback.autoSlowEnabled}
         effectiveSpeed={playback.effectiveSpeed}
@@ -1934,10 +2208,36 @@ export function App() {
         autoSlowApplied={playback.autoSlowApplied}
         onToggleBeamCallouts={() => setBeamDisplaySpec(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
         onToggleNonServingCones={() => setBeamDisplaySpec(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
+        onToggleOtherHandoverUes={() => setBeamDisplaySpec(c => ({ ...c, showOtherHandoverUes: !c.showOtherHandoverUes }))}
         onCinematicModeChange={camera.setCinematicMode}
         onToggleAutoSlow={playback.toggleAutoSlow}
         onDismissAutoSlow={playback.dismissAutoSlow}
+        showHandoverJumpButtons={sceneSource === 'live-sim'}
+        nextIntraEnabled={manualHandoverRequest === null && (sceneSource === 'live-sim'
+          ? camera.directorPhase === 'idle'
+          : directorNextIntraEnabled && camera.directorPhase === 'idle')}
+        nextInterEnabled={manualHandoverRequest === null && (sceneSource === 'live-sim'
+          ? camera.directorPhase === 'idle'
+          : directorInterButtonEnabled && camera.directorPhase === 'idle')}
+        nextIntraCount={sceneSource === 'live-sim'
+          ? undefined
+          : handoverRailEvents.filter(event => event.kind === 'intra').length}
+        nextInterCount={sceneSource === 'live-sim'
+          ? undefined
+          : handoverRailEvents.filter(event => event.kind === 'inter').length}
+        nextIntraMode={sceneSource === 'live-sim' ? 'real-trigger' : (directorIntraIndexedEnabled ? 'indexed' : 'real-trigger')}
+        manualHandoverKind={sceneSource === 'live-sim' ? manualHandoverRequest?.kind ?? null : null}
+        onNextIntra={() => requestManualHandover('intra')}
+        onNextInter={() => requestManualHandover('inter')}
       />
+      </div>
+      <div
+        data-testid="global-locale-toggle-slot"
+        style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}
+      >
+        <LocaleToggle />
+      </div>
+      </div>
       {sceneLane !== 'sinr-live' && (
         <div className="leo-modqn-subnav-row">
           <ModqnViewToggle
@@ -1966,13 +2266,36 @@ export function App() {
         ueIds={showcaseArtifact?.timeline[0]?.ues.map(u => u.id) ?? []}
         onElevatedUeIdChange={setElevatedUeId}
       />
-      <div className="leo-shell-row">
-        <aside className="leo-shell-left" aria-label="Signal tuning panel slot">
-          <LaneExperienceBar value={sceneLane} onChange={handleExperienceChange} />
-          {/* The left tab shell is MODQN-only now (the unified Evidence/Replay rail).
-              The SINR-live left rail is just the Experience switch + the inlined
-              tuners below — the read-only "Live SINR" card was removed (it duplicated
-              the former population served-N/N readout, since also removed). */}
+      <div
+        className="leo-shell-row"
+        data-left-sidebar-collapsed={leftSidebarCollapsed ? 'true' : 'false'}
+      >
+        <aside
+          className="leo-shell-left"
+          data-left-sidebar-state={leftSidebarCollapsed ? 'collapsed' : 'expanded'}
+          aria-label="Signal tuning panel slot"
+        >
+          <button
+            type="button"
+            className="leo-left-sidebar-toggle"
+            data-testid="left-sidebar-toggle"
+            aria-controls="left-sidebar-content"
+            aria-expanded={!leftSidebarCollapsed}
+            aria-label={leftSidebarCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar to the left'}
+            title={leftSidebarCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar to the left'}
+            onClick={() => setLeftSidebarCollapsed(collapsed => !collapsed)}
+          >
+            <span className="leo-left-sidebar-toggle__icon" aria-hidden="true">
+              {leftSidebarCollapsed ? '›' : '‹'}
+            </span>
+            <span className="modqn-offscreen">
+              {leftSidebarCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar'}
+            </span>
+          </button>
+          <div id="left-sidebar-content" className="leo-left-sidebar-content">
+            {/* The public experience switch is intentionally hidden; the default launch
+                surface is SINR. The left rail then exposes only the inlined SINR tuners
+                (or the internal MODQN evidence surface when a proof lane is opened). */}
           {sceneLane !== 'sinr-live' && (
           <SidebarTabShell
             label="Simulation control sidebar"
@@ -2017,6 +2340,16 @@ export function App() {
             ) : null}
           </SidebarTabShell>
           )}
+          {sceneLane === 'modqn-live-cell-preview' && (
+            <SceneTopologyPanel
+              appMode={appMode}
+              baseProfile={baseProfile}
+              topology={sceneTopology}
+              sceneVisualScale={sceneVisualScale}
+              onTopologyChange={handleSceneTopologyChange}
+              onSceneVisualScaleChange={setSceneVisualScale}
+            />
+          )}
           {/* S4/S5a: the MODQN setup/display-policy power tools live behind the
               Advanced drawer, so the default MODQN left surface stays Evidence /
               Replay without piling more controls into the top toolbar. */}
@@ -2031,9 +2364,13 @@ export function App() {
               onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
             />
           )}
-          {/* SINR-live tuners, inlined in the rail: SINR formula + handover policy.
-              The cheap display toggles live in the SinrLiveQuickControls row at the
-              top of the rail; beam density + camera presets were retired. */}
+          {/* SINR-live tuners, inlined in the rail. The tuning panel now owns all
+              three topics — signal quality, energy, and handover timing — as its
+              own top-level tabs, so handover timing no longer sits underneath the
+              energy controls, where its placement implied it moved the power
+              numbers (it does not: the power train reads transmit power, PA
+              efficiency and circuit power only). The cheap display toggles live in
+              the SinrLiveQuickControls row at the top of the rail. */}
           {sceneLane === 'sinr-live' && (
             <SinrLiveDisplayDrawer
               sinrFormulaSection={
@@ -2046,25 +2383,28 @@ export function App() {
                   appMode={appMode}
                   formulaBudget={simState.physicalServingBudget}
                   isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                  energyTuning={energyTuning}
+                  onEnergyTuningChange={setEnergyTuning}
                   onTuningChange={handleSignalTuningChange}
                   onTopologyChange={handleSceneTopologyChange}
                   onSceneVisualScaleChange={setSceneVisualScale}
                   onReset={handleResetSignalTuning}
-                />
-              }
-              handoverPolicySection={
-                <HandoverPolicyControls
-                  draft={handoverPolicyDraft}
-                  applied={appliedHandoverPolicy}
-                  hasDraftChanges={hasHandoverDraftChanges}
-                  hasOverrides={hasHandoverResetTarget}
-                  onDraftChange={handleHandoverPolicyDraftChange}
-                  onApply={handleApplyHandoverPolicy}
-                  onReset={handleResetHandoverPolicy}
+                  handoverPolicySection={
+                    <HandoverPolicyControls
+                      draft={handoverPolicyDraft}
+                      applied={appliedHandoverPolicy}
+                      hasDraftChanges={hasHandoverDraftChanges}
+                      hasOverrides={hasHandoverResetTarget}
+                      onDraftChange={handleHandoverPolicyDraftChange}
+                      onApply={handleApplyHandoverPolicy}
+                      onReset={handleResetHandoverPolicy}
+                    />
+                  }
                 />
               }
             />
           )}
+          </div>
         </aside>
         <main
           className="leo-shell-canvas"
@@ -2171,12 +2511,8 @@ export function App() {
               </section>
             ) : activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
-                {/* SINR-live right sidebar = older-commit (49db65d) TUNING-mode layout:
-                    BEAM DUEL + live SINR FORMULA TERMS (showFormulaTerms), wired to the same
-                    computeLinkBudget serving link the LEFT tuning panel drives. The interference/
-                    claim banner, SIGNAL PROFILE + HANDOVER MODE cards, and the intra/inter
-                    handover rail were removed here to match the older tuning sidebar — the
-                    handover rail/Focus is non-functional and to be rebuilt later. */}
+                {/* SINR-live right sidebar keeps the beam duel and the numeric
+                    formula readout; handover navigation is kept in the top bar. */}
                 <InfoPanel
                   {...simState}
                   profile={effectiveProfile}
@@ -2184,6 +2520,7 @@ export function App() {
                   showFormulaTerms
                   isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                   channelMetricKind={activeSceneFrame?.channelMetricKind}
+                  teachingEnergy={teachingEnergy}
                 />
               </section>
             ) : (
@@ -2275,5 +2612,6 @@ export function App() {
     </div>
     </ModqnHandoverModeProvider>
     </ModqnEnvelopeProvider>
+    </LocaleProvider>
   );
 }

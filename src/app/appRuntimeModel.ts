@@ -18,9 +18,10 @@ export const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 
 // Left-rail tab model. The 'summary' tab is retained as the SINR-live contract
 // default, but the left tab SHELL is now MODQN-only — the SINR-live left rail
-// renders the Experience switch + the inlined SINR-formula/handover tuners
-// (src/ui/SinrLiveDisplayDrawer.tsx) directly; the read-only orientation card that
-// used to fill 'summary' was removed (it duplicated the in-scene serving HUD).
+// renders the inlined SINR-formula/handover tuners (src/ui/SinrLiveDisplayDrawer.tsx)
+// directly; the public SINR/MODQN experience switch is intentionally hidden, and
+// the read-only orientation card that used to fill 'summary' was removed (it
+// duplicated the in-scene serving HUD).
 // 'evidence' remains the SOLE MODQN left rail (see MODQN_LEFT_SIDEBAR_TABS); S4
 // relocated the MODQN training / jobs / ω-weight power tools into the opt-in
 // AdvancedSetupDrawer.
@@ -40,7 +41,7 @@ const LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
 
 // The SINR-live left-tab model default (retained for the contract). The left tab
 // shell is MODQN-only now, so this 'summary' entry is not actually rendered — the
-// SINR-live left rail is the Experience switch + the inlined tuners.
+// SINR-live left rail is the inlined tuners.
 const SINR_LEFT_SIDEBAR_TABS: readonly AppSidebarTabItem<LeftSidebarTab>[] = [
   LEFT_SIDEBAR_TABS[0], // summary
 ];

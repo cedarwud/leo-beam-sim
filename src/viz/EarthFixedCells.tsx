@@ -294,7 +294,7 @@ function CellComponent({ cell, showDebugLabels }: { cell: CellData; showDebugLab
       {showDebugLabels && coveringBeam && (
         <Text
           position={[0, 8, 0]}
-          fontSize={14}
+          fontSize={16}
           color="#ffffff"
           anchorX="center"
           anchorY="middle"

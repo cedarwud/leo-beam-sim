@@ -18,6 +18,7 @@
 import { buildCellLayout } from '../engine/cells/cellLayout';
 import { getBeamFrequencyIndex } from '../utils/beamFrequency';
 import { loadProfile } from '../profiles/index';
+import { applySignalTuning, createSignalTuningState } from '../signalTuning';
 // S4-3 (QUAR-S4-SERVING block #4 replacement): the hopping checks bind to the
 // RUNTIME-wired consts, so the behaviour the gate proves is the shipped config.
 import { SINR_LIVE_BEAMS_PER_SAT, SINR_LIVE_HOP_SLOT_SEC } from './sinrLiveCellRuntime';
@@ -229,6 +230,9 @@ check('CQ3 FIX: a UE off the cell centre keeps a real off-axis angle and is stil
   assert(off.offAxisDeg < 2, 'off-axis stays within a beamwidth for an in-cell UE');
   assert(centre.servingSatId === 'over' && off.servingSatId === 'over', 'both UEs served by the overhead sat');
   assert(Number.isFinite(off.sinrDb ?? NaN), 'off-centre UE has a finite SINR');
+  assert(off.servingLinkSample !== null && off.servingLinkSample !== undefined, 'cell UE record keeps its complete serving LinkSample');
+  assertEqual(off.servingLinkSample?.sinrDb, off.sinrDb, 'record SINR equals the stored serving LinkSample SINR');
+  assert(Number.isFinite(off.servingLinkSample?.signalDbm ?? NaN), 'stored serving LinkSample keeps the signal term');
   // The off-axis angle must PENALISE the SINR (beam-gain rolloff in computeLinkBudget),
   // not merely populate a display field — this is the load-bearing half of the CQ3 fix.
   assert((off.sinrDb ?? Infinity) < (centre.sinrDb ?? -Infinity), 'off-axis UE SINR rolls off below the cell-centre UE (off-axis flows into the link budget)');
@@ -537,4 +541,33 @@ check('beam hopping idle honesty: a UE in an un-illuminated cell this slot is un
   assert(unserved >= layout.centers.length - SINR_LIVE_BEAMS_PER_SAT, `the rest are honestly unserved (got ${unserved})`);
 });
 
-console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + serving continuity + idle honesty, illuminated-beam render surface)`);
+check('signal-profile update preserves live cell handover continuity', () => {
+  const layout = testLayout(7);
+  const model = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
+  const overhead = makeSat({ id: 'over', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const eastCell = layout.centers[1]!;
+
+  model.step({ visibleSats: [overhead], ues: [{ id: 'm', eastKm: 0, northKm: 0 }], simTimeSec: 0, dtSec: 0 });
+  const fired = model.step({
+    visibleSats: [overhead],
+    ues: [{ id: 'm', eastKm: eastCell.localXKm, northKm: eastCell.localYKm }],
+    simTimeSec: 1,
+    dtSec: 1,
+  });
+  assertEqual(fired.recentHandoverEvents.length, 1, 'pre-update frame has a live intra-HO');
+
+  const tuning = createSignalTuningState(profile);
+  tuning.maxTxPowerDbm += 1;
+  model.updateRuntimeProfile(applySignalTuning(profile, tuning), 7);
+
+  const after = model.step({
+    visibleSats: [overhead],
+    ues: [{ id: 'm', eastKm: eastCell.localXKm, northKm: eastCell.localYKm }],
+    simTimeSec: 2,
+    dtSec: 1,
+  });
+  assertEqual(after.ues[0].handoverKind, 'none', 'profile update does not cold-attach the UE');
+  assertEqual(after.recentHandoverEvents.length, 1, 'profile update preserves the live-HO pulse window');
+});
+
+console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + serving continuity + idle honesty, live signal-profile continuity, illuminated-beam render surface)`);

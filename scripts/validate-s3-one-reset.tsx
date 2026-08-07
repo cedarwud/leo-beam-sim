@@ -227,8 +227,8 @@ ok(
   'SINGLE-PATH FAILED: seekToTimelineFrame does not delegate to the recipe (seek)',
 );
 ok(
-  useSimSrc.includes("buildRuntimeStateAt({ toSec: runtimeStateRef.current.simTimeSec, intent: 'cold-start' });"),
-  'SINGLE-PATH FAILED: the signalReset effect does not delegate to the recipe (cold-start)',
+  /buildRuntimeStateAt\(\{\s*toSec: runtimeStateRef\.current\.simTimeSec,\s*intent: 'cold-start',\s*preserveCellTruth: true,\s*\}\);/.test(useSimSrc),
+  'SINGLE-PATH FAILED: the signalReset effect does not delegate to the recipe (cold-start with cell-truth continuity)',
 );
 // the reseat collapsed to ONE site (was three hand-rolled blocks)
 const reseatSites = useSimSrc.split('createRuntimeFrameStepState(targetOffset)').length - 1;
@@ -260,7 +260,7 @@ const recipeBodyStart = useSimSrc.indexOf('const buildRuntimeStateAt = useCallba
 ok(recipeBodyStart !== -1, 'SINGLE-PATH FAILED: buildRuntimeStateAt recipe body not found');
 const recipeBody = useSimSrc.slice(recipeBodyStart, useSimSrc.indexOf('resetMobilityStates();', recipeBodyStart));
 ok(
-  /if \(params\.intent === 'cold-start'\) \{\s*resetAllHoManagers\(\);/.test(recipeBody),
+  /if \(params\.intent === 'cold-start'\) \{\s*resetAllHoManagers\(\{ preserveCellTruth: params\.preserveCellTruth \}\);/.test(recipeBody),
   'INTENT DISPATCH FAILED: the cold-start branch does not reset() the HO managers',
 );
 ok(

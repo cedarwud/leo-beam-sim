@@ -87,14 +87,14 @@
 }
 
 .leo-sidebar-tab-button span {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.15;
 }
 
 .leo-sidebar-tab-button small {
   color: rgba(229, 244, 251, 0.58);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.2;
 }
 
@@ -152,21 +152,21 @@
 // `.leo-shell-left .x` = (0,2,0) beats `.x` = (0,1,0)), so no !important is
 // needed; the right rail + scene keep their own sizes.
 .leo-shell-left {
-  font-size: 19px;
+  font-size: 21px;
   line-height: 1.5;
 }
 
 .leo-shell-left small {
-  font-size: 17px;
+  font-size: 19px;
 }
 
 // SINR / MODQN lane buttons stay put (user: "sinr/modqn 的按鈕…不動").
 .leo-shell-left .leo-lane-experience-bar__label {
-  font-size: 19px;
+  font-size: 21px;
 }
 
 .leo-shell-left .leo-lane-experience-bar__sub {
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .leo-shell-left .leo-modqn-advanced-controls__label,
@@ -183,5 +183,5 @@
 // trigger explicitly to win the trigger hint ("display · policy · training").
 .leo-shell-left .leo-advanced-setup-trigger small,
 .leo-shell-left legend {
-  font-size: 18px;
+  font-size: 20px;
 }

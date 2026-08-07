@@ -2,13 +2,19 @@ import type { DirectorFocusPhase } from '../scene/types';
 
 export interface DirectorControlsProps {
   /**
-   * Intra-HO is always actionable on the live lane: the Trigger button jogs the
-   * primary UE one beam-lattice step to FORCE a real same-sat handover, and the
-   * cinematic Focus arms slow-mo on the next intra event.
+   * The next-intra navigation affordance is actionable on the live lane even when
+   * the static cell-truth index has no natural intra rows: in that case App wires
+   * it to the real primary-UE jog fallback.
    */
   readonly intraEnabled: boolean;
-  /** Inter-HO focus is offered only when the rail carries a source-backed inter event. */
+  /** Next inter navigation is offered only when the rail carries a source-backed event. */
   readonly interEnabled: boolean;
+  /** The explicit real intra trigger is live-sim-only; defaults to intraEnabled for old callers. */
+  readonly intraTriggerEnabled?: boolean;
+  /** `indexed` seeks the next source event; `real-trigger` performs a real same-sat jog. */
+  readonly nextIntraMode?: 'indexed' | 'real-trigger';
+  readonly nextIntraCount?: number;
+  readonly nextInterCount?: number;
   readonly phase: DirectorFocusPhase;
   /**
    * PRIMARY intra action (Bug B fix, C1): jog the primary UE one beam-lattice step
@@ -19,9 +25,8 @@ export interface DirectorControlsProps {
    */
   readonly onIntraTrigger: () => void;
   /**
-   * OPTIONAL cinematic intra focus: arm the 0.25x slow-mo + camera close-up on the
-   * next intra handover. A SEPARATE button from the trigger so its seek no longer
-   * defeats the jog's pulse (Bug B). Disabled while a focus is already active.
+   * Next intra action: seek/focus the next indexed intra event, or use the live
+   * trigger fallback when the current static window contains no intra row.
    */
   readonly onIntraFocus: () => void;
   readonly onInterFocus: () => void;
@@ -31,6 +36,10 @@ export interface DirectorControlsProps {
 export function DirectorControls({
   intraEnabled,
   interEnabled,
+  intraTriggerEnabled = intraEnabled,
+  nextIntraMode = 'indexed',
+  nextIntraCount,
+  nextInterCount,
   phase,
   onIntraTrigger,
   onIntraFocus,
@@ -38,18 +47,18 @@ export function DirectorControls({
   onExit,
 }: DirectorControlsProps) {
   const active = phase !== 'idle';
-  // A disabled focus button is otherwise a silent grey button — the most common
-  // case is the canonical 89s baseline artifact, which carries 82 intra-HO events
-  // but 0 inter-satellite handovers, so Inter-HO Focus is correctly disabled.
-  // Explain WHY on hover instead of leaving it inert and unexplained.
   const intraTriggerTitle =
-    'Trigger a real intra-HO — jog the primary UE one beam step so the engine hands it to a sibling beam; the ambient pulse flares (no camera move)';
-  const intraFocusTitle = intraEnabled
-    ? 'Cinematic intra-HO focus — tight beam-level close-up + slow motion on the next intra event'
-    : 'No beam-switch (intra-HO) event in the current artifact / live window — intra-HO focus unavailable';
-  const interTitle = interEnabled
-    ? 'Cinematic inter-HO focus — wide satellite-context shot + slow motion'
-    : 'No inter-satellite handover in the current artifact / live window — inter-HO focus unavailable';
+    'Trigger a real intra-HO — jog the primary UE one beam step so the engine hands it to a sibling beam; the yellow-to-blue flash stays on screen (no camera seek)';
+  const intraNextTitle = nextIntraMode === 'real-trigger'
+    ? 'No indexed intra row exists in the static window; trigger the next real same-satellite beam switch now'
+    : 'Jump to the next indexed intra-HO event, seek to its lead-in, and play it in slow motion';
+  const intraNextLabel = nextIntraMode === 'real-trigger' ? 'Next Intra · trigger' : 'Next Intra';
+  const interNextTitle = interEnabled
+    ? 'Jump to the next indexed inter-HO event, seek to its lead-in, and play it in slow motion'
+    : 'No inter-satellite handover exists in the current source window';
+  const countLabel = (count: number | undefined): string => (
+    typeof count === 'number' ? ` · ${count}` : ''
+  );
   return (
     <div
       className="leo-director-controls"
@@ -58,30 +67,19 @@ export function DirectorControls({
       data-director-enabled={intraEnabled || interEnabled ? '1' : '0'}
       data-director-intra-enabled={intraEnabled ? '1' : '0'}
       data-director-inter-enabled={interEnabled ? '1' : '0'}
+      data-director-intra-mode={nextIntraMode}
     >
       <span className="leo-director-controls__label">Director</span>
-      {/* PRIMARY action: force a real intra HO (jog) → ambient pulse flares. Stays
-          actionable even during an active focus — jogging the live UE is decoupled
-          from the cinema (Bug B fix, C1). */}
-      <button
-        type="button"
-        className="leo-director-controls__btn"
-        data-testid="director-intra-trigger"
-        disabled={!intraEnabled}
-        onClick={onIntraTrigger}
-        title={intraTriggerTitle}
-      >
-        Intra-HO
-      </button>
+      <span className="leo-director-controls__section-label">Jump to next</span>
       <button
         type="button"
         className="leo-director-controls__btn"
         data-testid="director-intra-focus"
         disabled={!intraEnabled || active}
         onClick={onIntraFocus}
-        title={intraFocusTitle}
+        title={intraNextTitle}
       >
-        Intra-HO Focus
+        {intraNextLabel}{countLabel(nextIntraCount)}
       </button>
       <button
         type="button"
@@ -89,10 +87,33 @@ export function DirectorControls({
         data-testid="director-inter-focus"
         disabled={!interEnabled || active}
         onClick={onInterFocus}
-        title={interTitle}
+        title={interNextTitle}
       >
-        Inter-HO Focus
+        Next Inter{countLabel(nextInterCount)}
       </button>
+
+      {/* Explicit live trigger: separate from navigation so it never seeks/rebases
+          the sim before the real intra pulse can be observed. */}
+      <button
+        type="button"
+        className="leo-director-controls__btn"
+        data-testid="director-intra-trigger"
+        disabled={!intraTriggerEnabled}
+        onClick={onIntraTrigger}
+        title={intraTriggerTitle}
+      >
+        Trigger Intra
+      </button>
+      <span className="leo-director-controls__hint">
+        {nextIntraMode === 'real-trigger' ? 'static window: real intra trigger · yellow → blue' : 'indexed event: lead-in + slow-mo'}
+      </span>
+      {nextIntraMode === 'real-trigger' && (
+        <span className="leo-director-controls__color-key" aria-label="Intra handover colour cue: yellow to blue">
+          <span><i data-color="from" aria-hidden="true" />old beam</span>
+          <span aria-hidden="true">→</span>
+          <span><i data-color="to" aria-hidden="true" />new beam</span>
+        </span>
+      )}
       <button
         type="button"
         className="leo-director-controls__btn leo-director-controls__btn--exit"

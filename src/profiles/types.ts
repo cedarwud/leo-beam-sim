@@ -41,12 +41,51 @@ export const DEFAULT_TR38811_CHANNEL: Tr38811ChannelConfig = {
   nlosClutterLossDb: 20,
 };
 
+/** Default per-beam transmit power P_t when a profile omits it, in dBm. */
+export const DEFAULT_MAX_TX_POWER_DBM = 20;
+
 export interface BeamPowerControlConfig {
   mode: BeamPowerControlMode;
   updatePeriodSec: number;
   stepDb: number;
   minTxPowerDbm: number;
   sinrThresholdDb: number;
+}
+
+export interface ChannelConfig {
+  frequencyGHz: number;
+  bandwidthMHz: number;
+  /** Base per-beam transmit power P_t; omitted profiles use DEFAULT_MAX_TX_POWER_DBM. */
+  maxTxPowerDbm?: number;
+  noisePsdDbmHz: number;
+  pathLossComponents: PathLossComponent[];
+  lossOverrides?: Partial<ChannelLossOverrides>;
+  tr38811?: Partial<Tr38811ChannelConfig>;
+  beamPowerControl?: BeamPowerControlConfig;
+}
+
+export function resolveMaxTxPowerDbm(
+  channel: Pick<ChannelConfig, 'maxTxPowerDbm'>,
+): number {
+  return channel.maxTxPowerDbm ?? DEFAULT_MAX_TX_POWER_DBM;
+}
+
+/**
+ * The paper-style EE readout uses the load-dependent per-beam power surface
+ * from (3.37). It is profile-backed so the panel never hides these constants
+ * in a UI or utility literal. `publishedReferenceMbitsPerJoule` is the
+ * current Chapter 5 comparison anchor, not a claim that this live scene
+ * reproduces the paper experiment. The `ch5Demo*` fields are a temporary,
+ * display-only operating-point projection; they do not change live link truth.
+ */
+export interface PaperEnergyEfficiencyConfig {
+  beamPowerBaseW: number;
+  beamPowerLoadScaleW: number;
+  beamPowerLoadExponent: number;
+  beamPowerMaxW: number;
+  publishedReferenceMbitsPerJoule: number;
+  ch5DemoBandwidthMHz: number;
+  ch5DemoFrequencyReuse: number;
 }
 
 export interface Shell {
@@ -99,6 +138,9 @@ export interface Profile {
   paper: string;
   profileClass: ProfileClass;
   formulaFamily: FormulaFamily;
+  energyEfficiency?: {
+    paper: PaperEnergyEfficiencyConfig;
+  };
 
   orbit: {
     type: 'walker';
@@ -126,16 +168,7 @@ export interface Profile {
     maxGainDbi: number;
   };
 
-  channel: {
-    frequencyGHz: number;
-    bandwidthMHz: number;
-    maxTxPowerDbm: number;
-    noisePsdDbmHz: number;
-    pathLossComponents: PathLossComponent[];
-    lossOverrides?: Partial<ChannelLossOverrides>;
-    tr38811?: Partial<Tr38811ChannelConfig>;
-    beamPowerControl?: BeamPowerControlConfig;
-  };
+  channel: ChannelConfig;
 
   handover: {
     policy: 'sinr-offset';

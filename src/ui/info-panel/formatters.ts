@@ -125,6 +125,17 @@ export function formatR1EnergyEfficiency(bitsPerJoule: number | null): string {
   return `${bitsPerJoule.toFixed(2)} b/J`;
 }
 
+/** Format the paper comparison anchor / headline with an explicit bit unit. */
+export function formatMbitsPerJoule(bitsPerJoule: number | null): string {
+  if (bitsPerJoule === null || !Number.isFinite(bitsPerJoule)) return '—';
+  return `${(bitsPerJoule / 1e6).toFixed(2)} Mbits/J`;
+}
+
+export function formatPercent(fraction: number | null): string {
+  if (fraction === null || !Number.isFinite(fraction)) return '—';
+  return `${(fraction * 100).toFixed(1)}%`;
+}
+
 export function formatDb(value: number): string {
   return `${value.toFixed(1)} dB`;
 }

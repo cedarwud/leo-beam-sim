@@ -28,7 +28,9 @@ import {
 import {
   attachSinrLiveCellFrame,
   createSinrLiveCellModel,
+  resolveSinrLiveBeamsPerSat,
 } from './sinrLiveCellRuntime';
+import { planSeekSettle, SEEK_SETTLE_MAX_STEP_SEC } from './seekSettle';
 import { reScalarize } from '../modqn/replay-bundle/rescalarize';
 import { computeHeuristicNotPaperScore } from '../engine/handover/decision-override';
 import {
@@ -127,6 +129,20 @@ const SINR_LIVE_WARMUP_CAP_SEC = 130;
  * faithfully); break-on-pulse keeps the typical one-time cost to ~21 steps (~0.5s).
  */
 const SINR_LIVE_WARMUP_STEP_SEC = 2;
+/**
+ * Float-accumulation slack for the run-through loop's remaining-time test, so a
+ * settle whose window is not an exact multiple of its grain cannot leave a
+ * sub-nanosecond residual step behind.
+ */
+const RUN_THROUGH_EPSILON_SEC = 1e-9;
+
+function normalizeSeekOffset(targetSec: number, maxTimeSec: number, loop: boolean): number {
+  if (maxTimeSec <= 0 || !Number.isFinite(targetSec)) return 0;
+  // A seek to the source horizon is a request for the last available frame;
+  // normal playback still uses normalizeReplayOffset so its loop wraps to 0.
+  if (loop && targetSec >= maxTimeSec) return maxTimeSec;
+  return normalizeReplayOffset(targetSec, maxTimeSec, loop);
+}
 
 export function useSimulation(
   profile: Profile,
@@ -267,14 +283,43 @@ export function useSimulation(
     ),
     [effectiveUeCount, profile.handover],
   );
+  // Profile adapters may allocate a fresh `orbit.shells` array while leaving
+  // the actual constellation unchanged (for example, when a signal slider is
+  // adjusted on a training-backed profile). Key the cell model by the values
+  // that define its layout/trajectory structure, not by that container's
+  // identity, so ordinary signal tuning cannot accidentally cold-recreate the
+  // model and erase its handover continuity.
+  const sinrLiveCellModelStructureKey = [
+    profile.id,
+    profile.orbit.observerLatDeg,
+    profile.orbit.observerLonDeg,
+    profile.orbit.shells.map(shell => [
+      shell.id,
+      shell.altitudeKm,
+      shell.inclinationDeg,
+      shell.planes,
+      shell.satsPerPlane,
+      shell.serviceAreaPassTargetsSec?.join(',') ?? 'none',
+      shell.phasePerturbation === false ? 'fixed' : 'jitter',
+    ].join(':')).join('|'),
+  ].join('|');
   // S-cells-2 (ADDITIVE): the earth-fixed cell-truth model. `null` on every lane
-  // but sinr-live (the gate is off → byte-identical frames there). Recreated only
-  // on a profile / lane-gate / epoch change, which also resets its internal cell
-  // HandoverManagers — the intended full reset for those transitions.
+  // but sinr-live (the gate is off → byte-identical frames there). Its identity
+  // changes only for a structural scene/profile/epoch or handover-policy change.
+  // Ordinary signal tuning refreshes the profile in place below, so the internal
+  // cell HandoverManagers keep their serving/guard/event continuity.
   const sinrLiveCellModel = useMemo(
     () => createSinrLiveCellModel(profile, useEarthFixedCellTruth, replay.epochUtcMs),
-    [profile, useEarthFixedCellTruth, replay.epochUtcMs],
+    [
+      sinrLiveCellModelStructureKey,
+      handoverResetKey,
+      useEarthFixedCellTruth,
+      replay.epochUtcMs,
+    ],
   );
+  useEffect(() => {
+    sinrLiveCellModel?.updateRuntimeProfile(profile, resolveSinrLiveBeamsPerSat(profile));
+  }, [profile, sinrLiveCellModel]);
   const effectiveUeMobilityParams = ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS;
   const ueDeterministicSeed = profile.ueDistribution?.seed ?? 42;
   const createCurrentMobilityStates = useCallback(() => (
@@ -310,7 +355,9 @@ export function useSimulation(
 
   // S3-2 / S4-1: one helper for both kinds of HO-manager time transition.
   //  - 'cold-start' (mount, profile change, signalReset, handoverReset): full
-  //    reset() — fresh state, no serving carried.
+  //    reset() — fresh state, no serving carried. The signalReset entry point
+  //    may opt out of resetting the cell truth because signal tuning is a
+  //    next-frame recompute, not a new cell-serving continuity epoch.
   //  - 'rebase' (loop/window wrap, seek): clock-REBASE the managers by the
   //    sim-time jump (offsets only guardUntilMs/pendingSinceMs), keeping serving +
   //    eventLog so a UE survives the jump instead of cold-re-acquiring under the
@@ -320,7 +367,10 @@ export function useSimulation(
   // steered managers (was: ALWAYS reset — the D5 hole deferred from S3-2). null on
   // non-sinr-live lanes.
   const transitionHoManagers = useCallback(
-    (transition: { kind: 'cold-start' } | { kind: 'rebase'; deltaMs: number }) => {
+    (
+      transition: { kind: 'cold-start' } | { kind: 'rebase'; deltaMs: number },
+      options: { preserveCellTruth?: boolean } = {},
+    ) => {
       if (transition.kind === 'rebase') {
         hoManager.rebase(transition.deltaMs);
         secondaryHoManagers.forEach(manager => manager.rebase(transition.deltaMs));
@@ -328,7 +378,7 @@ export function useSimulation(
       } else {
         hoManager.reset();
         secondaryHoManagers.forEach(manager => manager.reset());
-        sinrLiveCellModel?.reset();
+        if (!options.preserveCellTruth) sinrLiveCellModel?.reset();
       }
     },
     [hoManager, secondaryHoManagers, sinrLiveCellModel],
@@ -338,8 +388,8 @@ export function useSimulation(
   // handover gate (validate:phase-f) reference. Time-shift callers
   // (resetToReplayStartFrame timeShift, seekToTimelineFrame) call
   // transitionHoManagers({ kind: 'rebase', … }) directly.
-  const resetAllHoManagers = useCallback(() => {
-    transitionHoManagers({ kind: 'cold-start' });
+  const resetAllHoManagers = useCallback((options?: { preserveCellTruth?: boolean }) => {
+    transitionHoManagers({ kind: 'cold-start' }, options);
   }, [transitionHoManagers]);
 
   const resetMobilityStates = useCallback(() => {
@@ -353,7 +403,8 @@ export function useSimulation(
   // instead of three near-identical ~40-line copies. `intent` selects the HO-manager
   // time transition:
   //   - 'cold-start' (mount / profile / epoch / signalReset / handoverReset): full
-  //     reset() — fresh managers, no serving carried.
+  //     reset() — fresh managers, no serving carried. Signal-reset callers can
+  //     preserve the cell truth while reseating the steered managers.
   //   - 'seek' | 'wrap' (timeline seek, loop/window re-loop): clock-REBASE the
   //     steered managers by the sim-time jump (S3-2) so a UE keeps its serving link
   //     across the jump instead of cold-re-acquiring under the strict re-attach
@@ -363,10 +414,27 @@ export function useSimulation(
   // reseat publishes a real populated frame (never a blank createEmptyFrame — that
   // removes the old signalReset empty-frame flicker).
   const buildRuntimeStateAt = useCallback(
-    (params: { toSec: number; intent: 'cold-start' | 'seek' | 'wrap'; warmupSec?: number }) => {
-      const targetOffset = normalizeReplayOffset(params.toSec, maxTimeSec, replay.loop);
+    (params: {
+      toSec: number;
+      intent: 'cold-start' | 'seek' | 'wrap';
+      warmupSec?: number;
+      preserveCellTruth?: boolean;
+    }) => {
+      const landingOffset = params.intent === 'seek'
+        ? normalizeSeekOffset(params.toSec, maxTimeSec, replay.loop)
+        : normalizeReplayOffset(params.toSec, maxTimeSec, replay.loop);
+      // SEEK-SETTLE: a seek reseats one settle-window BEFORE its landing and runs the
+      // real model forward to it (see ./seekSettle). Without that, the landed frame's
+      // HandoverManagers are all inside a fresh ping-pong guard and have paid dt=0, so
+      // NO UE can be observed mid-handover — the secondary-handover display filter then
+      // finds nothing to select at any seek target. cold-start / wrap keep their
+      // existing semantics (settleSec 0 → the reseat IS the landing).
+      const settle = params.intent === 'seek'
+        ? planSeekSettle(profile.handover, landingOffset)
+        : { settleSec: 0, stepSec: SEEK_SETTLE_MAX_STEP_SEC, reseatOffsetSec: landingOffset };
+      const targetOffset = settle.reseatOffsetSec;
       if (params.intent === 'cold-start') {
-        resetAllHoManagers();
+        resetAllHoManagers({ preserveCellTruth: params.preserveCellTruth });
       } else {
         transitionHoManagers({
           kind: 'rebase',
@@ -427,11 +495,22 @@ export function useSimulation(
       // seek / wrap / signal-reset pass no warm-up (cold/rebase semantics unchanged).
       let publishFrame = frame;
       const warmupCapSec = (sinrLiveCellModel && !hasWarmedOnceRef.current) ? (params.warmupSec ?? 0) : 0;
-      if (warmupCapSec > 0) {
-        hasWarmedOnceRef.current = true;
+      // ONE run-through loop serves both reseat kinds, so this stays a single recipe:
+      //   - G2-WARMSTART (cold-start): run PAST the target, up to the cap, and stop
+      //     early at the first live pulse so the demo opens on a handover.
+      //   - SEEK-SETTLE (seek): run from the earlier reseat EXACTLY up to the landing —
+      //     no early stop, because the landing sim-time is the user's request and must
+      //     be exact. It ends with real guard/TTT state instead of a dt=0 dead frame.
+      // They are mutually exclusive (a seek passes no warm-up cap; a cold-start plans
+      // no settle), and both advance the REAL model — neither fabricates a handover.
+      const runThroughSec = warmupCapSec > 0 ? warmupCapSec : settle.settleSec;
+      const runThroughStepSec = warmupCapSec > 0 ? SINR_LIVE_WARMUP_STEP_SEC : settle.stepSec;
+      const stopOnFirstPulse = warmupCapSec > 0;
+      if (runThroughSec > 0) {
+        if (warmupCapSec > 0) hasWarmedOnceRef.current = true;
         let warmedSec = 0;
-        while (warmedSec < warmupCapSec) {
-          const stepSec = Math.min(SINR_LIVE_WARMUP_STEP_SEC, warmupCapSec - warmedSec);
+        while (runThroughSec - warmedSec > RUN_THROUGH_EPSILON_SEC) {
+          const stepSec = Math.min(runThroughStepSec, runThroughSec - warmedSec);
           const warm = stepRuntimeFrame({
             profile,
             replay,
@@ -474,10 +553,11 @@ export function useSimulation(
           attachSinrLiveCellFrame(warm.frame, sinrLiveCellModel, warm.frame.simTimeSec - warm.previousSimTimeSec);
           publishFrame = warm.frame;
           warmedSec += stepSec;
-          // Stop as soon as the PUBLISHED frame carries a live pulse so the demo opens
-          // on a handover (the guard + the cold-attach 'attach' classification keep
-          // recentHandoverEvents empty until the first real post-guard HO).
-          if ((warm.frame.sinrLiveCells?.recentHandoverEvents.length ?? 0) > 0) break;
+          // Warm-up only: stop as soon as the PUBLISHED frame carries a live pulse so
+          // the demo opens on a handover (the guard + the cold-attach 'attach'
+          // classification keep recentHandoverEvents empty until the first real
+          // post-guard HO). A seek settle never breaks early — it must land on T.
+          if (stopOnFirstPulse && (warm.frame.sinrLiveCells?.recentHandoverEvents.length ?? 0) > 0) break;
         }
       }
       frameRef.current = publishFrame;
@@ -564,7 +644,15 @@ export function useSimulation(
     // (the served-N/N regression S3-2 fixed). React still invokes the LATEST recipe
     // closure at fire time (the effect is recreated when signalResetKey changes), so the
     // reseat uses current values; it just no longer re-fires on speed/observer/etc.
-    buildRuntimeStateAt({ toSec: runtimeStateRef.current.simTimeSec, intent: 'cold-start' });
+    // Signal controls are next-frame recomputes. Reset the steered lane as
+    // required by the existing engine key, but keep the earth-fixed cell truth
+    // continuity so the visible handover stream does not enter a fresh guard/TTT
+    // dead zone on every slider change.
+    buildRuntimeStateAt({
+      toSec: runtimeStateRef.current.simTimeSec,
+      intent: 'cold-start',
+      preserveCellTruth: true,
+    });
   }, [signalResetKey]);
 
   useEffect(() => {

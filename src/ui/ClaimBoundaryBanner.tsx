@@ -32,6 +32,7 @@
 
 import type { ReactElement } from 'react';
 import type { NormalizedSceneFrame } from '../scene/NormalizedSceneFrame';
+import { renderInlineFormula } from './common/inlineFormula';
 
 export type ClaimBoundaryBannerInput = Pick<
   NormalizedSceneFrame,
@@ -190,7 +191,21 @@ export function ClaimBoundaryBanner(props: {
       data-story-kind={decision.storyKind}
       data-evidence-status={decision.evidenceStatus}
     >
-      <strong className="claim-boundary-banner__title">{decision.title}</strong>
+      {/*
+        Producer claim text is prose that carries notation — `E_HO`, `e_HO`,
+        `P_total`, `U_{s,v}` — and until now it was printed with the raw ASCII
+        `_` showing, right next to on-panel formulas that are properly typeset.
+        `renderInlineFormula` closes that gap.
+
+        It changes PRESENTATION ONLY, and deliberately downstream of the D8
+        gate: `decideClaimBoundaryBanner` above still matches forbidden phrases
+        against the raw strings, so no amount of subscript rendering can sneak a
+        blocked claim past it. The scanner is also total and conservative — it
+        returns the original string untouched when there is no `_`/`^` to
+        interpret, and leaves anything it does not confidently understand as
+        literal text — so a producer string can never be mangled or dropped.
+      */}
+      <strong className="claim-boundary-banner__title">{renderInlineFormula(decision.title)}</strong>
       {props.bundleProvenanceKind === 'user-trained' ? (
         <span className="claim-boundary-banner__chip claim-boundary-banner__chip--user-trained" data-testid="claim-boundary-banner-user-trained-chip">user-trained</span>
       ) : null}
@@ -202,11 +217,11 @@ export function ClaimBoundaryBanner(props: {
           User-trained MODQN replay · paperFaithful: false · do not cite as PAP-2024 baseline evidence
         </span>
       ) : null}
-      <span className="claim-boundary-banner__subtitle">{decision.subtitle}</span>
+      <span className="claim-boundary-banner__subtitle">{renderInlineFormula(decision.subtitle)}</span>
       {decision.details.length > 0 && (
         <ul className="claim-boundary-banner__notes">
           {decision.details.map((note, i) => (
-            <li key={i}>{note}</li>
+            <li key={i}>{renderInlineFormula(note)}</li>
           ))}
         </ul>
       )}

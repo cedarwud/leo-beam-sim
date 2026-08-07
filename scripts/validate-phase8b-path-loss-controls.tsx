@@ -24,7 +24,16 @@ import {
   getSignalTuningResetKey,
   hasSignalTuningOverrides,
 } from '../src/signalTuning.ts';
+import {
+  assertContainsTestId,
+  assertValueInAttrElement,
+  assertTestId,
+  assertTestIdAttr,
+  assertValueInTestId,
+  extractElementByTestId,
+} from './lib/dom-structure.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
+import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const EPSILON_DB = 1e-9;
@@ -386,6 +395,8 @@ function renderLossPanelMarkup(profile: Profile, tuning = createSignalTuningStat
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
+      energyTuning={DEFAULT_ENERGY_TUNING}
+      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );
@@ -419,16 +430,22 @@ function assertPhase8DNlosClutterUx(): void {
   );
 
   const trMarkup = renderLossPanelMarkup(trProfile, trTuning);
-  const trText = decodeHtmlText(trMarkup);
-  assertContains(trMarkup, 'data-testid="lcl-nlos-control"');
-  assertContains(trMarkup, 'aria-label="NLoS clutter loss (dB)"');
+  // The invariant is that L_cl,NLoS is EDITABLE in the TR 38.811 profile, over
+  // the 0-40 dB range, with its explanation attached. Asserted through the
+  // control's own test id, its enabled state and its numeric bounds — the old
+  // English strings ("Editable in the TR 38.811 profile") only proved the copy.
+  assertTestId(trMarkup, 'lcl-nlos-control');
+  assertTestIdAttr(trMarkup, 'lcl-nlos-control', 'data-control-active', 'true');
   assert.match(
     trMarkup,
-    /aria-label="NLoS clutter loss \(dB\)" aria-disabled="false" min="0" max="40" step="0\.5"/,
+    /aria-disabled="false" min="0" max="40" step="0\.5"/,
     'hobs-tr38811 L_cl,NLoS must render as an editable 0-40 dB range',
   );
-  assertContains(trText, 'Editable in the TR 38.811 profile');
-  assertContains(trText, 'Seeded LoS samples do not change');
+  assertContainsTestId(trMarkup, 'lcl-nlos-control', 'lcl-nlos-control-details');
+  assertContainsTestId(trMarkup, 'lcl-nlos-control', 'lcl-nlos-control-effect');
+  assertContainsTestId(trMarkup, 'lcl-nlos-control', 'lcl-nlos-control-range-endpoints');
+  assertValueInTestId(trMarkup, 'lcl-nlos-control-range-endpoints', '0.0 dB');
+  assertValueInTestId(trMarkup, 'lcl-nlos-control-range-endpoints', '40.0 dB');
   assertNotContains(trMarkup, 'data-testid="lcl-nlos-inactive-callout"');
 
   const legacyProfile = loadProfile('hobs-2024-paper-default');
@@ -439,12 +456,9 @@ function assertPhase8DNlosClutterUx(): void {
   assertNotContains(legacyMarkup, 'data-control-type="inactive-callout"');
   assertNotContains(legacyMarkup, 'aria-label="NLoS clutter loss TR 38.811-only inactive"');
   assertNotContains(legacyMarkup, 'data-testid="lcl-nlos-control"');
-  assertNotContains(legacyMarkup, 'aria-label="NLoS clutter loss (dB)"');
+  assertNotContains(legacyMarkup, 'data-testid="lcl-nlos-control-range-endpoints"');
+  assertNotContains(legacyMarkup, 'data-testid="lcl-nlos-control-details"');
   assertNotContains(legacyText, 'Lcl,NLoS');
-  assertNotContains(legacyText, 'NLoS clutter loss');
-  assertNotContains(legacyText, 'TR 38.811 NLoS clutter');
-  assertNotContains(legacyText, 'Legacy HOBS formulas ignore this value');
-  assertNotContains(legacyText, 'Seeded LoS samples do not change');
 }
 
 function assertPlacementCopyAndStaleMarkup(): void {
@@ -464,14 +478,15 @@ function assertPlacementCopyAndStaleMarkup(): void {
     .map(path => readFileSync(new URL(path, import.meta.url), 'utf8'))
     .join('\n');
   const tokenSource = readFileSync(new URL('../src/constants/uiTokens.ts', import.meta.url), 'utf8');
+  // Group placement is asserted through the RENDERED test ids further down and
+  // in `validate:phase9h`; the source-literal pins on the English section titles
+  // ('title="Path-loss stack"', 'Advanced sensitivity controls for simulator
+  // constants', 'Formula / notes') were removed — they froze the copy in place
+  // without proving anything the test ids do not already prove.
   assertContains(tuningSource, 'testId="loss-formula-controls"');
-  assertContains(tuningSource, 'title="Path-loss stack"');
   assertContains(tuningSource, 'testId="loss-sensitivity-controls"');
-  assertContains(tuningSource, 'title="TR 38.811 Sensitivity"');
-  assertContains(tuningSource, 'Advanced sensitivity controls for simulator constants');
   assertContains(tuningSource, 'data-testid="sinr-overview-disclosure"');
   assertContains(tuningSource, 'data-testid="active-tab-formula-context"');
-  assertContains(tuningSource, 'Formula / notes');
   assertContains(tuningSource, 'data-testid={testId ? `${testId}-details` : undefined}');
   assertContains(tuningSource, 'data-testid={testId ? `${testId}-range-endpoints` : undefined}');
   assertContains(tuningSource, 'active={atmosphericEnabled}');
@@ -486,7 +501,8 @@ function assertPlacementCopyAndStaleMarkup(): void {
   assertContains(tuningSource, 'accentColor={UI_TOKENS.color.semantic.loss}');
   assertNotContains(tuningSource, 'semantic.pathLoss');
   assertNotContains(tuningSource, 'NlosClutterInactiveCallout');
-  assertContains(tuningSource, 'Read-only in Phase 8B; no editable environment selector');
+  // The TR 38.811 environment stays READ-ONLY: what matters is that no editable
+  // environment control is rendered, which is asserted structurally below.
   assertNotContains(tuningSource, 'TR 38.811 environment selector');
   assertNotContains(tuningSource, 'beamPowerControl');
   assertContains(tokenSource, "loss: '#58bff0'");
@@ -502,10 +518,10 @@ function assertPlacementCopyAndStaleMarkup(): void {
   assertContains(defaultSwitchMarkup, 'data-testid="path-loss-term-scintillation"');
   assertContains(defaultSwitchMarkup, 'data-testid="path-loss-term-shadow-fading"');
   assertContains(defaultSwitchMarkup, 'data-testid="path-loss-term-scintillation-switch"');
-  assertContains(defaultSwitchMarkup, 'aria-label="Scale (dB)"');
-  assertContains(defaultSwitchMarkup, 'aria-label="Gas absorption path-loss component on"');
   assertContains(defaultSwitchMarkup, 'role="switch"');
-  assertContains(defaultSwitchMarkup, 'data-path-loss-term-state="on"');
+  assertTestIdAttr(defaultSwitchMarkup, 'path-loss-term-atmospheric', 'data-path-loss-term-state', 'on');
+  assertTestIdAttr(defaultSwitchMarkup, 'path-loss-term-scintillation', 'data-path-loss-term-state', 'on');
+  assertTestIdAttr(defaultSwitchMarkup, 'path-loss-term-shadow-fading', 'data-path-loss-term-state', 'on');
 
   const scintillationRowStart = defaultSwitchMarkup.indexOf('data-testid="path-loss-term-scintillation"');
   const shadowRowStart = defaultSwitchMarkup.indexOf('data-testid="path-loss-term-shadow-fading"');
@@ -513,11 +529,18 @@ function assertPlacementCopyAndStaleMarkup(): void {
   const scintillationRow = defaultSwitchMarkup.slice(scintillationRowStart, shadowRowStart);
   assertContains(scintillationRow, 'data-testid="path-loss-term-scintillation-switch"');
   assertContains(scintillationRow, 'data-testid="path-loss-term-scintillation-range-meta"');
-  assertContains(scintillationRow, 'title="Adds a small elevation-dependent fading margin."');
-  assertContains(scintillationRow, 'aria-label="Scale (dB)"');
+  // The editable bound is a NUMBER, not a sentence. Pin it at its source (the
+  // range input's own min/max/step) and require the row to surface the same
+  // bound to the reader. "Min"/"Max" are copy and are no longer required.
+  assert.match(
+    scintillationRow,
+    /<input[^>]*type="range"[^>]*min="0" max="1" step="0\.01"/,
+    'scintillation scale must render as an editable 0-1 dB range',
+  );
+  assert.match(scintillationRow, /<input[^>]*value="0\.05"/, 'scintillation scale must render its current value');
+  assertValueInTestId(scintillationRow, 'path-loss-term-scintillation-range-meta', '0.00 dB');
+  assertValueInTestId(scintillationRow, 'path-loss-term-scintillation-range-meta', '1.00 dB');
   assertContains(scintillationRow, '0.05 dB');
-  assertContains(scintillationRow, 'Min 0.00 dB');
-  assertContains(scintillationRow, 'Max 1.00 dB');
   assertNotContains(scintillationRow, '#f7d97b');
   assertNotContains(scintillationRow, '#f6fbff');
   assertContains(scintillationRow, '#58bff0');
@@ -525,16 +548,21 @@ function assertPlacementCopyAndStaleMarkup(): void {
   const scintillationDetailsStart = scintillationRow.indexOf('data-testid="path-loss-term-scintillation-details"');
   assert.ok(scintillationDetailsStart >= 0, 'expected scintillation details block');
   const scintillationDetails = scintillationRow.slice(scintillationDetailsStart);
-  assertContains(scintillationDetails, 'Adds a small elevation-dependent fading margin.');
-  assertNotContains(scintillationDetails, 'Range ');
-  assertNotContains(scintillationDetails, 'Min ');
-  assertNotContains(scintillationDetails, 'Max ');
+  // The details block explains the term; the RANGE belongs to the range meta,
+  // not to the prose. Asserted as separation-of-concerns between the two hooks
+  // rather than by pinning the explanation sentence itself.
+  assert.ok(
+    decodeHtmlText(scintillationDetails).length > 0,
+    'expected the scintillation term to carry a non-empty explanation block',
+  );
+  assertNotContains(scintillationDetails, '0.00 dB');
+  assertNotContains(scintillationDetails, '1.00 dB');
 
   const offSwitchMarkup = renderLossPanelMarkup(profile, {
     ...createSignalTuningState(profile),
     pathLossComponents: ['fspl'],
   });
-  assertContains(offSwitchMarkup, 'aria-label="Scintillation path-loss component off"');
+  assertTestIdAttr(offSwitchMarkup, 'path-loss-term-scintillation', 'data-path-loss-term-state', 'off');
   assertContains(offSwitchMarkup, 'aria-checked="false"');
   assertContains(offSwitchMarkup, 'data-path-loss-term-state="off"');
   assertContains(offSwitchMarkup, 'data-state="off"');
@@ -553,11 +581,15 @@ function assertPlacementCopyAndStaleMarkup(): void {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
+      energyTuning={DEFAULT_ENERGY_TUNING}
+      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );
-  const staleTuningText = decodeHtmlText(staleTuningMarkup);
-  assertContains(staleTuningText, 'SINR Formula Tuning');
+  // The tuning panel still renders its editable formula surface, and still owns
+  // no formula-term evidence readout.
+  assertTestId(staleTuningMarkup, 'sinr-formula-tabs');
+  assertTestId(staleTuningMarkup, 'sinr-formula-page');
   assertNotContains(staleTuningMarkup, 'data-testid="formula-term-evidence"');
 
   const staleInfoMarkup = renderToStaticMarkup(
@@ -568,15 +600,19 @@ function assertPlacementCopyAndStaleMarkup(): void {
       isFormulaEvidenceStale
     />,
   );
-  const staleInfoText = decodeHtmlText(staleInfoMarkup);
-  assertContains(staleInfoMarkup, 'data-formula-evidence-status="stale"');
-  assertContains(staleInfoText, 'stale after edit; waiting for next recomputed frame');
-  assertContains(staleInfoText, 'Formula evidence is stale after a runtime edit');
-  assertContains(staleInfoMarkup, 'data-testid="formula-term-evidence"');
-  assertContains(staleInfoMarkup, 'data-testid="formula-term-grid"');
+  // Staleness is a STATE, carried on the card, the evidence block, the grid and
+  // every term cell — and the last-known number stays in its own cell rather
+  // than being blanked. That is the whole invariant; the English sentences
+  // ("Formula evidence is stale after a runtime edit") only described it.
+  assertTestId(staleInfoMarkup, 'formula-term-evidence');
+  assertTestId(staleInfoMarkup, 'formula-term-grid');
+  assertTestIdAttr(staleInfoMarkup, 'formula-verification-card', 'data-formula-evidence-status', 'stale');
+  assertTestIdAttr(staleInfoMarkup, 'formula-term-evidence', 'data-formula-evidence-status', 'stale');
+  assertTestIdAttr(staleInfoMarkup, 'formula-term-grid', 'data-formula-evidence-status', 'stale');
+  assertNotContains(staleInfoMarkup, 'data-formula-evidence-status="current"');
   assertContains(staleInfoMarkup, 'data-term="signalDbm"');
   assertContains(staleInfoMarkup, 'data-term="denominator"');
-  assertContains(staleInfoText, '-91.0 dBm stale');
+  assertValueInAttrElement(staleInfoMarkup, 'data-term', 'signalDbm', '-91.0 dBm', 'stale evidence');
 }
 
 function assertResetAndRuntimeBoundaries(): void {

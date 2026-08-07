@@ -1,16 +1,30 @@
+import type { ReactNode } from 'react';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import { formatDeltaDb } from './formatters';
+import { PanelHelp, usePanelCopy } from './panelHelp';
 import { StatusBadge, type StatusBadgeTone } from './StatusBadge';
 
 function DuelMetricTile({
   label,
+  friendlyLabel,
+  help,
   value,
+  testId,
 }: {
+  /**
+   * Mode-specific label owned by `getLiveStatusModeCopy` in InfoPanel.tsx.
+   * `validate:vc4a:duel-card` pins that the strip renders the resolver's own
+   * labels, so this string stays on screen verbatim — the plain-language name
+   * is shown above it and the full definition lives behind the "?".
+   */
   label: string;
+  friendlyLabel: string;
+  help?: ReactNode;
   value: string;
+  testId?: string;
 }) {
   return (
-    <div style={{
+    <div data-testid={testId} style={{
       minWidth: 0,
       maxWidth: '100%',
       padding: '7px 7px',
@@ -22,7 +36,20 @@ function DuelMetricTile({
       overflowWrap: 'normal',
     }}>
       <div style={{
-        color: UI_TOKENS.color.text.secondary,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        minWidth: 0,
+        color: UI_TOKENS.color.text.primary,
+        fontSize: UI_TOKENS.type.size.tiny,
+        fontWeight: UI_TOKENS.type.weight.strong,
+        lineHeight: 1.15,
+      }}>
+        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{friendlyLabel}</span>
+        {help}
+      </div>
+      <div style={{
+        color: UI_TOKENS.color.text.muted,
         fontSize: UI_TOKENS.type.size.tiny,
         lineHeight: 1.15,
         marginBottom: 3,
@@ -54,6 +81,7 @@ export function DuelDecisionColumn({
   triggerRatio,
   stateLabel,
   stateTone,
+  handoverCount,
   deltaLabel = 'Δ SINR',
   offsetLabel = 'Need Offset',
   triggerLabel = 'Trigger Time',
@@ -66,11 +94,14 @@ export function DuelDecisionColumn({
   triggerRatio: number;
   stateLabel: string;
   stateTone: StatusBadgeTone;
+  /** Handovers completed so far in this run. */
+  handoverCount?: number;
   deltaLabel?: string;
   offsetLabel?: string;
   triggerLabel?: string;
   triggerAriaLabel?: string;
 }) {
+  const { t, tx } = usePanelCopy();
   const progressPercent = Math.round(triggerRatio * 100);
 
   return (
@@ -93,7 +124,17 @@ export function DuelDecisionColumn({
         overflowWrap: 'normal',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'center', minWidth: 0, width: '100%', overflow: 'hidden' }}>
+      {/* PENDING TARGET already names the handover state; omit only the redundant center badge. */}
+      <div
+        aria-hidden={stateLabel === 'pending' ? true : undefined}
+        style={{
+          display: stateLabel === 'pending' ? 'none' : 'flex',
+          justifyContent: 'center',
+          minWidth: 0,
+          width: '100%',
+          overflow: 'hidden',
+        }}
+      >
         <StatusBadge tone={stateTone}>
           {stateLabel}
         </StatusBadge>
@@ -101,11 +142,32 @@ export function DuelDecisionColumn({
 
       <div className="leo-duel-decision-metrics" style={{ minWidth: 0, width: '100%' }}>
         <DuelMetricTile
+          testId="info-panel-duel-delta-tile"
+          friendlyLabel={t('kpi.sinrDelta.label')}
           label={deltaLabel}
+          help={(
+            <PanelHelp
+              helpId="kpi.sinrDelta"
+              titleKey="kpi.sinrDelta.label"
+              bodyKey="kpi.sinrDelta.help"
+              formula={<>Δ = γ<sub>candidate</sub> − γ<sub>serving</sub></>}
+              meta={<>{t('common.unit.db')}</>}
+            />
+          )}
           value={formatDeltaDb(sinrDeltaDb)}
         />
         <DuelMetricTile
+          testId="info-panel-duel-offset-tile"
+          friendlyLabel={tx('panel.handoverOffset.label')}
           label={offsetLabel}
+          help={(
+            <PanelHelp
+              helpId="panel.handoverOffset"
+              titleText={tx('panel.handoverOffset.label')}
+              bodyText={tx('panel.handoverOffset.help')}
+              meta={<>{t('common.unit.db')}</>}
+            />
+          )}
           value={`+${handoverOffsetDb.toFixed(1)} dB`}
         />
       </div>
@@ -118,7 +180,27 @@ export function DuelDecisionColumn({
           fontSize: UI_TOKENS.type.size.caption,
           lineHeight: 1.25,
         }}>
-          <span style={{ whiteSpace: 'nowrap' }}>{triggerLabel}</span>
+          <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            minWidth: 0,
+          }}>
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{t('kpi.tttProgress.label')}</span>
+            <PanelHelp
+              helpId="kpi.tttProgress"
+              titleKey="kpi.tttProgress.label"
+              bodyKey="kpi.tttProgress.help"
+              meta={<>{t('common.unit.second')}</>}
+            />
+          </span>
+          <span style={{
+            color: UI_TOKENS.color.text.muted,
+            fontSize: UI_TOKENS.type.size.tiny,
+            whiteSpace: 'nowrap',
+          }}>
+            {triggerLabel}
+          </span>
           <span style={{ color: UI_TOKENS.color.text.secondary, whiteSpace: 'nowrap' }}>
             {triggerProgressSec.toFixed(1)} / {triggerSec.toFixed(1)} s
           </span>
@@ -150,6 +232,49 @@ export function DuelDecisionColumn({
           />
         </div>
       </div>
+
+      {handoverCount === undefined ? null : (
+        <div
+          data-testid="info-panel-duel-handover-count"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 6,
+            minWidth: 0,
+            width: '100%',
+            overflow: 'hidden',
+            color: UI_TOKENS.color.text.secondary,
+            fontSize: UI_TOKENS.type.size.tiny,
+            lineHeight: 1.2,
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{tx('panel.field.handoverCount')}</span>
+            <PanelHelp
+              helpId="kpi.handoverCount"
+              titleKey="kpi.handoverCount.label"
+              bodyKey="kpi.handoverCount.help"
+            />
+          </span>
+          <span style={{
+            flexShrink: 0,
+            color: UI_TOKENS.color.text.primary,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
+          }}>
+            {handoverCount}
+            <span style={{
+              marginLeft: 3,
+              color: UI_TOKENS.color.text.secondary,
+              fontWeight: UI_TOKENS.type.weight.strong,
+            }}>
+              {tx('panel.field.handoverCount.unit')}
+            </span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

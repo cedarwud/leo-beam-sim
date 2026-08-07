@@ -50,3 +50,58 @@
   align-items: center;
   gap: 12px;
 }
+
+.leo-ee-card {
+  container-type: inline-size;
+}
+
+.leo-ee-card__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.leo-ee-card__aggregation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-items: stretch;
+  margin-top: 12px;
+}
+
+.leo-ee-card__aggregation-step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: baseline;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.leo-ee-card__aggregation-value {
+  justify-self: end;
+}
+
+.leo-ee-card__aggregation-detail {
+  grid-column: 1 / -1;
+}
+
+.leo-ee-card__metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+@container (min-width: 320px) {
+  .leo-ee-card__header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .leo-ee-card__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

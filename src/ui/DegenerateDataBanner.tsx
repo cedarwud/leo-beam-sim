@@ -55,7 +55,7 @@ function bannerStyle(background: string, color: string, borderColor: string): CS
     background,
     color,
     padding: '7px 16px',
-    fontSize: 12.5,
+    fontSize: 14.5,
     fontWeight: 600,
     letterSpacing: 0.2,
     textAlign: 'center',

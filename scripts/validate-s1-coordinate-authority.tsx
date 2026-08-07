@@ -32,6 +32,7 @@ Date.now = () => clockMs;
 import { projectSatelliteRenderWorld } from '../src/scene/satelliteRenderProjection.ts';
 import { EARTH_KM_PER_DEG } from '../src/engine/orbit/earth-constants.ts';
 import { SKY_DOME_H_RADIUS, SKY_DOME_V_RADIUS } from '../src/scene/sceneScale.ts';
+import { DERIVED_VISUAL_ALTITUDE_LIFT } from '../src/scene/useBeamViz.ts';
 import { loadProfile } from '../src/profiles/index.ts';
 import { createObserverContext } from '../src/engine/orbit';
 import { HandoverManager } from '../src/engine/handover/handover-manager';
@@ -133,8 +134,13 @@ ok(SKY_DOME_H_RADIUS === 700 && SKY_DOME_V_RADIUS === 400, 'SKY_DOME radii singl
   const viz = captureVizFrame({ sim: out.frame, geometry, runtime, beamHopping: profile.beamHopping });
 
   // Geometry has no visualSatelliteAltitude / kmPerWorldUnit → useBeamViz
-  // fallback: sinr-experiment ⇒ 600; satPosScaleFactor = 600 / 400 = 1.5.
-  const satScale = 600 / SKY_DOME_V_RADIUS;
+  // fallback: sinr-experiment ⇒ 600, then the display-only altitude lift.
+  // DERIVED_VISUAL_ALTITUDE_LIFT is IMPORTED, not re-typed: the point of this
+  // check is that the display world equals the sim world times whatever scale
+  // factor the renderer actually used, not that the factor equals some number
+  // this file remembers. Re-typing it made a display tweak look like a
+  // coordinate-authority violation.
+  const satScale = (600 * DERIVED_VISUAL_ALTITUDE_LIFT) / SKY_DOME_V_RADIUS;
   const simById = new Map(out.frame.satellites.map(s => [s.id, s.world]));
   ok(viz.displaySats.length > 0, 'live pipeline produced display satellites');
   let matched = 0;

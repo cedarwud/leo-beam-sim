@@ -72,6 +72,25 @@ export function resolveHandoverToastState(
       progressRatio: clamp01(progressSec / targetSec),
     };
   }
+  if (
+    intra && intra.kind === 'recent'
+    && intra.recentProgressSec !== undefined
+    && intra.recentTargetSec !== undefined
+    && intra.recentProgressSec < Math.max(intra.recentTargetSec, 1e-6)
+  ) {
+    const targetSec = Math.max(intra.recentTargetSec, 1e-6);
+    const progressSec = Math.max(0, intra.recentProgressSec);
+    return {
+      kind: 'intra',
+      sourceSatId: intra.satId ?? null,
+      sourceBeamId: Number(intra.fromBeamId),
+      targetSatId: intra.satId ?? null,
+      targetBeamId: Number(intra.toBeamId),
+      progressSec,
+      targetSec,
+      progressRatio: clamp01(progressSec / targetSec),
+    };
+  }
 
   const inter = input.transitionProgress.inter;
   if (
@@ -103,6 +122,25 @@ export function resolveHandoverToastState(
       1e-6,
     );
     const progressSec = Math.max(0, (wallClockNowMs - inter.wallClockStartMs) / 1000);
+    return {
+      kind: 'inter',
+      sourceSatId: inter.fromSatId,
+      sourceBeamId: Number(inter.fromBeamId),
+      targetSatId: inter.toSatId,
+      targetBeamId: Number(inter.toBeamId),
+      progressSec,
+      targetSec,
+      progressRatio: clamp01(progressSec / targetSec),
+    };
+  }
+  if (
+    inter && inter.kind === 'recent'
+    && inter.recentProgressSec !== undefined
+    && inter.recentTargetSec !== undefined
+    && inter.recentProgressSec < Math.max(inter.recentTargetSec, 1e-6)
+  ) {
+    const targetSec = Math.max(inter.recentTargetSec, 1e-6);
+    const progressSec = Math.max(0, inter.recentProgressSec);
     return {
       kind: 'inter',
       sourceSatId: inter.fromSatId,

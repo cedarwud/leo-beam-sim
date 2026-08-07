@@ -30,7 +30,13 @@
  * cone memos can key on stable values rather than a churning object.
  */
 import {
+  SINR_LIVE_CANDIDATE_FAN_MAX_CONES,
   SINR_LIVE_CONE_AMBIENT_OPACITY,
+  SINR_LIVE_CONE_BACKGROUND_OPACITY,
+  SINR_LIVE_CONE_CANDIDATE_FAN_COLOR,
+  SINR_LIVE_CONE_CANDIDATE_FAN_OPACITY,
+  SINR_LIVE_CONE_CANDIDATE_OPACITY,
+  SINR_LIVE_CONE_SERVING_FAN_COLOR,
   SINR_LIVE_CONE_PULSE_INTRA_COLOR,
   SINR_LIVE_CONE_PULSE_INTER_COLOR,
   SINR_LIVE_CONE_CANDIDATE_COLOR,
@@ -69,6 +75,8 @@ export type BeamFocusScope =
   | { readonly satIds: readonly string[] };
 
 export interface BeamDisplaySpec {
+  /** Display-only filter for the secondary UEs that are currently in handover. */
+  readonly showOtherHandoverUes: boolean;
   /**
    * Show the dim NON-SERVING cone layer (co-channel / secondary illuminated
    * beams) behind the serving cones. Default OFF: the serving cones are the
@@ -103,8 +111,8 @@ export interface BeamDisplaySpec {
    * The hero (primary serving) cone keeps its own brighter opacity, and the
    * pair / pulse / non-serving layers keep their own style tokens — this is the
    * serving-field knob only (SDD §3.1 servingConeOpacity, distinct from
-   * primaryConeOpacity). Default = {@link SINR_LIVE_CONE_AMBIENT_OPACITY} (0.45,
-   * the screenshot-locked value), so behaviour-identical.
+   * primaryConeOpacity). Default = {@link SINR_LIVE_CONE_AMBIENT_OPACITY} (0.40 — the top
+   * of the neutral-grey alpha ladder, below the two coloured roles at 0.80).
    */
   readonly servingConeOpacity: number;
   /**
@@ -113,7 +121,7 @@ export interface BeamDisplaySpec {
    * render paints intra pulses {@link pulseIntraColor} and inter pulses
    * {@link pulseInterColor}, so a beam-switch reads distinct from a satellite
    * handover at a glance. A cone with no kind (every non-pulse layer) keeps its
-   * serving-identity colour. Prompt-control: "intra 換手用綠色" = set these. This is
+   * serving-identity colour. Prompt-control: "intra 換手用橘色" = set these. This is
    * a read-out of the model's own intra/inter classification — it alters no truth
    * (Rule#6). Defaults = the {@link SINR_LIVE_CONE_PULSE_INTRA_COLOR} /
    * {@link SINR_LIVE_CONE_PULSE_INTER_COLOR} tokens, so behaviour is single-sourced.
@@ -153,6 +161,50 @@ export interface BeamDisplaySpec {
    */
   readonly backgroundConeColor: string;
   /**
+   * Display-only SERVING-FAN cone colour (2026-08-06) — the OTHER beams of the satellite
+   * that serves the protagonist (same sat as the hero, different cell). Before this they
+   * shared {@link backgroundConeColor}, a hueless grey, so under NormalBlending the whole
+   * fan could only dilute the green terrain and read green (owner: 「服務波束目前看起來還是
+   * 很綠」). Now the fan is the low-luminance sibling of {@link heroConeColor}, so the
+   * serving satellite reads as ONE yellow family with the hero as its brightest member.
+   * Prompt-control: "服務扇形換個黃" = set this. Default =
+   * {@link SINR_LIVE_CONE_SERVING_FAN_COLOR}. Display-only (Rule#6).
+   */
+  readonly servingFanConeColor: string;
+  /**
+   * Display-only opacity of the BACKGROUND role — a serving cone belonging to some OTHER
+   * satellite (seen under the "Other beams" power-view / `focusScope: 'allServing'` / the
+   * empty-focus fallback). It used to share {@link servingConeOpacity}, so "your fan" and
+   * "someone else's fan" drew at the same strength; with the serving fan promoted to
+   * yellow the context layer must step back (owner: 「那個其他波束的灰色再淡一些」).
+   * Prompt-control: "其他衛星的波束再淡一點/明顯一點" = set this. Default =
+   * {@link SINR_LIVE_CONE_BACKGROUND_OPACITY}. Display-only.
+   */
+  readonly backgroundConeOpacity: number;
+  /**
+   * Display-only CANDIDATE-FAN colour + opacity + cone BOUND (2026-08-06). The candidate
+   * satellite now draws its own bounded multibeam fan, not a single cone (owner: 「候選波
+   * 束…也要有其他波束打在其他地方，不能只有一個波束」). The cone on YOUR cell keeps
+   * {@link candidateConeColor} (your next link); the rest of that satellite's beams take
+   * neutral GREY (FINAL spec: only the beam about to serve YOU is blue — the candidate
+   * satellite's other beams are context). Hierarchy across the grey layers is alpha alone:
+   * serving fan 0.40 > candidate fan 0.28 > background 0.18 > non-serving 0.12. {@link candidateFanMaxCones} bounds how many of that ONE satellite's
+   * beams are drawn (it can never pull in a second satellite). Prompt-control:
+   * "候選扇形再多/再少幾根" = the max; "候選扇形再淡一點" = the opacity. Defaults = the
+   * SINR_LIVE_CONE_CANDIDATE_FAN_* / SINR_LIVE_CANDIDATE_FAN_MAX_CONES tokens.
+   * Display-only (Rule#6): a geometric read-out of that sat's illuminated beams.
+   */
+  readonly candidateFanConeColor: string;
+  readonly candidateFanConeOpacity: number;
+  readonly candidateFanMaxCones: number;
+  /**
+   * Display-only opacity of the PRIMARY candidate cone (the one landing on YOUR cell).
+   * Its own field rather than borrowing {@link servingConeOpacity}, so "the serving fan
+   * beats the candidate" is a value a gate can assert instead of an accident of two mounts
+   * passing the same field. Default = {@link SINR_LIVE_CONE_CANDIDATE_OPACITY} (0.5).
+   */
+  readonly candidateConeOpacity: number;
+  /**
    * Display-only opacity of the OPT-IN non-serving cone layer (the dim co-channel /
    * beam-hopping beams shown when {@link showNonServingCones} is ON). Feeds the
    * non-serving mount's `opacity` prop, replacing the hardcoded
@@ -160,7 +212,8 @@ export interface BeamDisplaySpec {
    * site #4 — the non-serving layer ignored the only opacity field that existed). Dimmer
    * than the ambient serving field so co-channel beams read as faint background context.
    * Prompt-control: "其他/非服務波束明顯一點" = raise this. Default =
-   * {@link SINR_LIVE_CONE_NONSERVING_OPACITY} (0.04), so behaviour-identical. Display-only.
+   * {@link SINR_LIVE_CONE_NONSERVING_OPACITY} (0.12 — 0.04 was optically absent under
+   * NormalBlending, so the opt-in toggle changed nothing visible). Display-only.
    */
   readonly nonServingConeOpacity: number;
   /**
@@ -178,8 +231,9 @@ export interface BeamDisplaySpec {
    * The TRIGGERED intra-HO flash (the protagonist's deliberate handover) — its FROM/TO
    * colours, peak opacity, and wall-clock sustain. The handover reads as the old serving
    * cell ({@link triggeredIntraFromColor}, the serving colour it was, fading) handing to the
-   * new acquiring cell ({@link triggeredIntraToColor}, the takeover BLUE that then settles to
-   * the serving colour). Before this, all four were consts read inside a MainScene memo — a
+   * new acquiring cell ({@link triggeredIntraToColor}, the INTRA target ORANGE that then settles
+   * to the serving colour). The explicit INTER demonstration uses `candidateConeColor` (BLUE)
+   * for its target. Before this, all four were consts read inside a MainScene memo — a
    * disjoint code path from the ambient pulse colours, so "change the handover flash colour"
    * edited the wrong field and the visible flash was unchanged (override-map site for the
    * triggered layer). Defaults = the SINR_LIVE_TRIGGERED_INTRA_* consts (behaviour-identical).
@@ -228,6 +282,7 @@ export interface BeamDisplaySpec {
 }
 
 export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
+  showOtherHandoverUes: false,
   showNonServingCones: false,
   beamCalloutsEnabled: true,
   coneWidthScale: 1,
@@ -237,6 +292,12 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   candidateConeColor: SINR_LIVE_CONE_CANDIDATE_COLOR,
   heroConeColor: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
   backgroundConeColor: SINR_LIVE_CONE_BACKGROUND_COLOR,
+  servingFanConeColor: SINR_LIVE_CONE_SERVING_FAN_COLOR,
+  backgroundConeOpacity: SINR_LIVE_CONE_BACKGROUND_OPACITY,
+  candidateFanConeColor: SINR_LIVE_CONE_CANDIDATE_FAN_COLOR,
+  candidateFanConeOpacity: SINR_LIVE_CONE_CANDIDATE_FAN_OPACITY,
+  candidateFanMaxCones: SINR_LIVE_CANDIDATE_FAN_MAX_CONES,
+  candidateConeOpacity: SINR_LIVE_CONE_CANDIDATE_OPACITY,
   nonServingConeOpacity: SINR_LIVE_CONE_NONSERVING_OPACITY,
   heroConeOpacity: SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
   triggeredIntraFromColor: SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
@@ -251,6 +312,21 @@ export const DEFAULT_BEAM_DISPLAY_SPEC: BeamDisplaySpec = {
   focusScope: 'heroOnly',
   pulseFocusFollowsScope: true,
 };
+
+/**
+ * Resolve the target colour for the triggered/manual handover layer.
+ *
+ * The live primary latch is currently intra-only, while the top-bar demonstration can show
+ * either kind. Keeping this mapping beside the display spec prevents the renderer from
+ * hard-coding a second inter colour path: intra reads the dedicated event colour, inter reuses
+ * the candidate/next-link blue. Display-only; it changes no handover truth.
+ */
+export function resolveTriggeredHandoverTargetColor(
+  kind: 'intra' | 'inter',
+  spec: Pick<BeamDisplaySpec, 'triggeredIntraToColor' | 'candidateConeColor'>,
+): string {
+  return kind === 'intra' ? spec.triggeredIntraToColor : spec.candidateConeColor;
+}
 
 /**
  * Resolve {@link BeamFocusScope} → the focus sat-id set the render memos filter by, or `null`

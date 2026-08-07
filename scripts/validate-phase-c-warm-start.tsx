@@ -165,8 +165,20 @@ ok(
   'STRUCTURAL: the first-warm latch is set so later cold-starts (handover/signal reset, profile switch) do not re-warm',
 );
 ok(
-  useSimSrc.includes('if ((warm.frame.sinrLiveCells?.recentHandoverEvents.length ?? 0) > 0) break;'),
+  useSimSrc.includes('if (stopOnFirstPulse && (warm.frame.sinrLiveCells?.recentHandoverEvents.length ?? 0) > 0) break;'),
   'STRUCTURAL: break-on-pulse — the warm-up stops on the first frame that carries a live pulse (opens on a handover)',
+);
+// The run-through loop is now shared with the SEEK-SETTLE (a seek reseats one settle
+// window early and runs the real model up to its landing). Break-on-pulse must stay
+// WARM-UP-ONLY: a settle that stopped early would land short of the sim-time the user
+// asked for. `stopOnFirstPulse` is exactly the warm-up predicate.
+ok(
+  useSimSrc.includes('const stopOnFirstPulse = warmupCapSec > 0;'),
+  'STRUCTURAL: break-on-pulse is gated to the warm-up — a seek settle must land exactly on its target',
+);
+ok(
+  useSimSrc.includes('const runThroughStepSec = warmupCapSec > 0 ? SINR_LIVE_WARMUP_STEP_SEC : settle.stepSec;'),
+  'STRUCTURAL: the warm-up keeps its own coarse grain when it owns the run-through',
 );
 ok(
   useSimSrc.includes('sinrLiveCellModel?.rebase((warm.frame.simTimeSec - warm.previousSimTimeSec) * 1000);'),
@@ -176,10 +188,12 @@ ok(
   useSimSrc.includes('warmupSec: options?.timeShift ? 0 : SINR_LIVE_WARMUP_CAP_SEC,'),
   'STRUCTURAL: the cold-start mount path warms (cap); a wrap (window re-loop) does NOT',
 );
-// seek (timeline scrub) must NOT warm — it stays a pure rebase to the target.
+// seek (timeline scrub) must NOT warm — it passes no cap, so it can never advance
+// PAST its target. (It does settle UP TO the target; see src/scene/seekSettle.ts and
+// src/scene/seekSettleRuntime.test.ts — a bounded pre-roll, not a warm-up.)
 ok(
   useSimSrc.includes("buildRuntimeStateAt({ toSec: targetSec, intent: 'seek' });"),
-  'STRUCTURAL: seekToTimelineFrame stays a plain seek (no warm-up)',
+  'STRUCTURAL: seekToTimelineFrame stays a plain seek (no warm-up cap)',
 );
 
 // ── VALUE: the warm-up constants this gate asserts match the source ──

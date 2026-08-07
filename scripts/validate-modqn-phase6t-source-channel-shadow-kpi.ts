@@ -7,7 +7,11 @@ import { HandoverManager } from '../src/engine/handover/handover-manager.ts';
 import type { HandoverEvent } from '../src/engine/handover/types.ts';
 import type { ActiveBeamAssignment, LinkSample } from '../src/engine/signal/types.ts';
 import { loadProfile } from '../src/profiles/index.ts';
-import type { GainModel, Profile } from '../src/profiles/types.ts';
+import {
+  resolveMaxTxPowerDbm,
+  type GainModel,
+  type Profile,
+} from '../src/profiles/types.ts';
 import {
   applyHandoverPolicyTuning,
   createHandoverPolicyTuningState,
@@ -1042,11 +1046,12 @@ function compareDpcPowerSummary(
 
   const powerControl = profile?.channel.beamPowerControl;
   if (powerControl && after.txPowerDbm.min !== null && after.txPowerDbm.max !== null) {
-    if (after.txPowerDbm.min < powerControl.minTxPowerDbm || after.txPowerDbm.max > profile.channel.maxTxPowerDbm) {
+    const maxTxPowerDbm = resolveMaxTxPowerDbm(profile.channel);
+    if (after.txPowerDbm.min < powerControl.minTxPowerDbm || after.txPowerDbm.max > maxTxPowerDbm) {
       failures.push({
         profileId,
         field: 'dpc.txPowerDbm.bounds',
-        before: `${powerControl.minTxPowerDbm}..${profile.channel.maxTxPowerDbm}`,
+        before: `${powerControl.minTxPowerDbm}..${maxTxPowerDbm}`,
         after: `${after.txPowerDbm.min}..${after.txPowerDbm.max}`,
         drift: null,
         tolerance: 'exact',

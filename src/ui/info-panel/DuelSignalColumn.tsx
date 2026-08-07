@@ -1,15 +1,16 @@
+import type { ReactNode } from 'react';
 import { BEAM_ROLE_TOKENS } from '../../constants/beamRoleTokens';
 import { MIN_VISIBLE_SINR_DB } from '../../constants/sinr';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import {
   channelMetricLabelForKind,
   formatElevation,
-  formatR1EnergyEfficiency,
   formatSlantRange,
   sinrColor,
 } from './formatters';
 import type { GlyphKind } from '../../contracts/glyphTypes';
 import { PanelBeamIdentity } from './Identity';
+import { PanelHelp, usePanelCopy } from './panelHelp';
 import { StatusBadge, type StatusBadgeTone } from './StatusBadge';
 
 // P1e (c) audit-list hook (PR-0.5 backfill): `channelMetricLabelForKind` is
@@ -86,43 +87,71 @@ function SinrReadout({
 
 function CompactSignalMetric({
   label,
+  help,
   value,
+  valueUnit,
   testId,
+  emphasis = 'default',
 }: {
   label: string;
+  /** "?" trigger for this field's definition. */
+  help?: ReactNode;
   value: string;
+  valueUnit?: string;
   testId?: string;
+  emphasis?: 'default' | 'primary';
 }) {
+  const isPrimary = emphasis === 'primary';
+
   return (
-    <div data-testid={testId} style={{
+    <div data-testid={testId} data-metric-emphasis={emphasis} style={{
       display: 'flex',
       justifyContent: 'space-between',
+      alignItems: 'center',
       gap: 6,
       minWidth: 0,
-      padding: '5px 6px',
-      borderRadius: UI_TOKENS.radius.sm,
-      background: UI_TOKENS.color.surface.card,
-      border: `1px solid ${UI_TOKENS.color.border.metric}`,
+      padding: isPrimary ? '8px 9px' : '5px 6px',
+      borderRadius: isPrimary ? UI_TOKENS.radius.md : UI_TOKENS.radius.sm,
+      background: isPrimary ? UI_TOKENS.color.surface.cardSubtle : UI_TOKENS.color.surface.card,
+      border: `1px solid ${isPrimary ? UI_TOKENS.color.border.focus : UI_TOKENS.color.border.metric}`,
       overflowWrap: 'normal',
     }}>
       <span style={{
-        color: UI_TOKENS.color.text.secondary,
-        fontSize: UI_TOKENS.type.size.tiny,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        minWidth: 0,
+        color: isPrimary ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
+        fontSize: isPrimary ? UI_TOKENS.type.size.caption : UI_TOKENS.type.size.tiny,
+        fontWeight: isPrimary ? UI_TOKENS.type.weight.strong : undefined,
         lineHeight: 1.15,
-        whiteSpace: 'nowrap',
       }}>
-        {label}
+        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
+        {help}
       </span>
       <span style={{
         minWidth: 0,
         color: UI_TOKENS.color.text.primary,
-        fontSize: UI_TOKENS.type.size.tiny,
+        fontSize: isPrimary ? UI_TOKENS.type.size.bodyLg : UI_TOKENS.type.size.tiny,
         fontWeight: UI_TOKENS.type.weight.heavy,
         lineHeight: 1.15,
         textAlign: 'right',
         whiteSpace: 'nowrap',
       }}>
         {value}
+        {valueUnit ? (
+          <span
+            data-testid={testId ? `${testId}-unit` : undefined}
+            style={{
+              marginLeft: 3,
+              color: UI_TOKENS.color.text.secondary,
+              fontSize: UI_TOKENS.type.size.tiny,
+              fontWeight: UI_TOKENS.type.weight.strong,
+            }}
+          >
+            {valueUnit}
+          </span>
+        ) : null}
       </span>
     </div>
   );
@@ -185,44 +214,68 @@ function duelSignalToneStyle(tone: DuelSignalTone) {
   };
 }
 
+/**
+ * Which "?" definitions this column's fields point at. Serving and comparison
+ * columns show the same *kinds* of numbers but mean different things, so they
+ * get different catalog entries — and every `helpId` must be unique across the
+ * whole app (it becomes a `data-testid` and drives the single-open popover
+ * store), hence the per-column suffixes.
+ */
+export interface DuelColumnHelpKeys {
+  readonly identityHelpId: string;
+  readonly identityTitleKey: string;
+  readonly identityBodyKey: string;
+  readonly sinrHelpId: string;
+  readonly sinrTitleKey: string;
+  readonly sinrBodyKey: string;
+  readonly elevationHelpId: string;
+  readonly rangeHelpId: string;
+}
+
 export function DuelSignalColumn({
   testId,
   identityTestId,
   title,
+  friendlyTitle,
   caption,
+  captionNote,
   badgeText,
   badgeTone,
   identity,
   isActive,
   glyph,
   sinrDb,
-  r1EnergyEfficiencyBitsPerJoule,
   elevationDeg,
   rangeKm,
   tone,
+  helpKeys,
 }: {
   testId: string;
   identityTestId: string;
+  /** Canonical uppercase role token (ACTIVE SERVING / PENDING TARGET / ...). */
   title: string;
+  /** Plain-language name for the same thing, shown as the primary heading. */
+  friendlyTitle: string;
   caption: string;
+  /**
+   * Canonical/technical restatement of the caption, shown as a quiet suffix.
+   * Carries the handover-mode nuance ("live SINR reference" is a reference, not
+   * the deciding authority) and the role tokens that `validate:phase1a:recent-
+   * ho-ui` pins ("previous source", "recent target / serving now").
+   */
+  captionNote?: string;
   badgeText: string;
   badgeTone: StatusBadgeTone;
   identity: string;
   isActive: boolean;
   glyph: GlyphKind | null;
   sinrDb: number | null;
-  /**
-   * r1 energy efficiency η in bit/joule for THIS column's link, or null when the
-   * column has no transmit-power truth to price the denominator with. Only the
-   * serving column receives a value today: `SimState` carries a link budget (and
-   * so a `txPowerDbm`) for the serving beam, not for the comparison beam.
-   * Passing null renders an em dash — never a value borrowed from another beam.
-   */
-  r1EnergyEfficiencyBitsPerJoule: number | null;
   elevationDeg: number | null;
   rangeKm: number | null;
   tone: DuelSignalTone;
+  helpKeys: DuelColumnHelpKeys;
 }) {
+  const { t, tx } = usePanelCopy();
   const toneStyle = duelSignalToneStyle(tone);
 
   return (
@@ -249,12 +302,46 @@ export function DuelSignalColumn({
         gap: 5,
         minWidth: 0,
       }}>
+        {/* Plain-language heading first; the canonical uppercase role token is
+            kept directly beneath it (it is the label the scene, the event rail
+            and the validators all speak), just demoted to a quiet chip. */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          minWidth: 0,
+          maxWidth: '100%',
+          color: toneStyle.title,
+          fontSize: UI_TOKENS.type.size.body,
+          fontWeight: UI_TOKENS.type.weight.heavy,
+          lineHeight: 1.2,
+        }}>
+          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{friendlyTitle}</span>
+          {/* The role sentence ("the link currently providing service", …) used
+              to sit on the card face. It is now part of this "?" body, so the
+              column keeps only its heading, the role token, the status chip and
+              the numbers. */}
+          <PanelHelp
+            helpId={helpKeys.identityHelpId}
+            titleKey={helpKeys.identityTitleKey}
+            bodyText={`${t(helpKeys.identityBodyKey)} ${caption}`}
+          />
+        </div>
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 5,
+          minWidth: 0,
+          maxWidth: '100%',
+        }}>
         <div style={{
           minWidth: 0,
-          color: toneStyle.title,
-          fontSize: UI_TOKENS.type.size.caption,
-          fontWeight: UI_TOKENS.type.weight.heavy,
+          color: UI_TOKENS.color.text.muted,
+          fontSize: UI_TOKENS.type.size.tiny,
+          fontWeight: UI_TOKENS.type.weight.strong,
           textTransform: 'uppercase',
+          letterSpacing: 0.4,
           lineHeight: 1.1,
           whiteSpace: 'nowrap',
         }}>
@@ -263,15 +350,22 @@ export function DuelSignalColumn({
         <StatusBadge tone={badgeTone}>
           {badgeText}
         </StatusBadge>
+        </div>
       </div>
 
-      <div style={{
-        color: toneStyle.caption,
-        fontSize: UI_TOKENS.type.size.caption,
-        lineHeight: 1.25,
-      }}>
-        {caption}
-      </div>
+      {/* Only the short canonical note stays visible (`previous source`,
+          `recent target / serving now`, and the handover-mode nuance) — those
+          are role tags, not prose, and `validate:phase1a:recent-ho-ui` reads
+          them off the screen. The full sentence moved into the heading "?". */}
+      {captionNote ? (
+        <div style={{
+          color: UI_TOKENS.color.text.faint,
+          fontSize: UI_TOKENS.type.size.tiny,
+          lineHeight: 1.25,
+        }}>
+          {captionNote}
+        </div>
+      ) : null}
 
       <div
         data-testid={identityTestId}
@@ -289,6 +383,30 @@ export function DuelSignalColumn({
         <PanelBeamIdentity identity={identity} glyph={glyph} />
       </div>
 
+      {/* The big number used to sit here unlabelled — a student had no way to
+          know what it measured. Label + "?" go ABOVE it (not beside it) so the
+          readout keeps its own row: `validate:vc4a:duel-card` measures that the
+          34px figure still fits inside a 360px-wide column. */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        minWidth: 0,
+        marginBottom: -4,
+        color: toneStyle.caption,
+        fontSize: UI_TOKENS.type.size.tiny,
+        fontWeight: UI_TOKENS.type.weight.strong,
+        lineHeight: 1.2,
+      }}>
+        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{tx('panel.field.signalQuality')}</span>
+        <PanelHelp
+          helpId={helpKeys.sinrHelpId}
+          titleKey={helpKeys.sinrTitleKey}
+          bodyKey={helpKeys.sinrBodyKey}
+          formula={<>γ = S / (I<sup>a</sup> + I<sup>b</sup> + σ²)</>}
+          meta={<>{t('common.unit.db')} · {t('formula.sinr.caption')}</>}
+        />
+      </div>
       <SinrReadout
         testId={`${testId}-sinr-readout`}
         sinrDb={sinrDb}
@@ -300,16 +418,27 @@ export function DuelSignalColumn({
         gap: 5,
       }}>
         <CompactSignalMetric
-          testId={`${testId}-r1-ee-readout`}
-          label="R1 EE"
-          value={formatR1EnergyEfficiency(isActive ? r1EnergyEfficiencyBitsPerJoule : null)}
-        />
-        <CompactSignalMetric
-          label="El"
+          label={tx('panel.field.elevation')}
+          help={(
+            <PanelHelp
+              helpId={helpKeys.elevationHelpId}
+              titleKey="kpi.elevation.label"
+              bodyKey="kpi.elevation.help"
+              meta={<>{t('common.unit.deg')}</>}
+            />
+          )}
           value={formatElevation(isActive ? elevationDeg : null)}
         />
         <CompactSignalMetric
-          label="Range"
+          label={tx('panel.field.range')}
+          help={(
+            <PanelHelp
+              helpId={helpKeys.rangeHelpId}
+              titleKey="kpi.range.label"
+              bodyKey="kpi.range.help"
+              meta={<>{t('common.unit.km')}</>}
+            />
+          )}
           value={formatSlantRange(isActive ? rangeKm : null)}
         />
       </div>

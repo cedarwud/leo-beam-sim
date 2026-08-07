@@ -50,6 +50,17 @@
       "nlosClutterLossDb": 20
     }
   },
+  "energyEfficiency": {
+    "paper": {
+      "beamPowerBaseW": 0.25,
+      "beamPowerLoadScaleW": 0.35,
+      "beamPowerLoadExponent": 0.5,
+      "beamPowerMaxW": 10,
+      "publishedReferenceMbitsPerJoule": 596.92,
+      "ch5DemoBandwidthMHz": 500,
+      "ch5DemoFrequencyReuse": 1
+    }
+  },
   "handover": {
     "policy": "sinr-offset",
     "sinrThresholdDb": -5,

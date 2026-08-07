@@ -8,6 +8,7 @@
 
 import {
   DEFAULT_TR38811_CHANNEL,
+  resolveMaxTxPowerDbm,
   type Profile,
 } from '../../profiles/types';
 import type {
@@ -87,6 +88,7 @@ export function computeLinkBudget(
   const tr38811Environment = channel.tr38811?.environment ?? DEFAULT_TR38811_CHANNEL.environment;
   const tr38811NlosClutterLossDb =
     channel.tr38811?.nlosClutterLossDb ?? DEFAULT_TR38811_CHANNEL.nlosClutterLossDb;
+  const maxTxPowerDbm = resolveMaxTxPowerDbm(channel);
 
   // Noise power: N = N0 * BW
   const bandwidthHz = channel.bandwidthMHz * 1e6;
@@ -131,7 +133,7 @@ export function computeLinkBudget(
         },
       );
       const txPowerDbm = beamPowerOverrideDbmByKey?.get(`${sat.id}:${beam.beamId}`)
-        ?? channel.maxTxPowerDbm;
+        ?? maxTxPowerDbm;
 
       const linkSignalBeforeReceiverGainDbm =
         txPowerDbm

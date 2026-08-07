@@ -34,6 +34,8 @@ import {
   resolveSinrLiveHandoverPulseConeItems,
   resolveTriggeredIntraConeItems,
   resolveSinrLiveConeRenderColor,
+  resolveSinrLiveConeRole,
+  resolveCandidateBeamConeItems,
   sinrLiveHandoverPulseOpacity,
   resolveTopServingFocusSatIds,
   type SinrLiveCellBeamConeRenderItem,
@@ -42,7 +44,11 @@ import {
 // (resolveSinrLiveCellHandoverPairConeItems + its test removed in C3 — the cinema
 //  pair cone layer collapsed into the always-on ambient pulse.)
 import type { SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
-import { frequencyReuseColor } from '../constants/beamRoleTokens';
+import { MANUAL_HANDOVER_DISPLAY_MS } from '../scene/manualHandoverDemo';
+import {
+  frequencyReuseColor,
+  INTRA_HANDOVER_TARGET_COLOR,
+} from '../constants/beamRoleTokens';
 import { colorForServingBeam } from '../constants/servingColour';
 import {
   SINR_LIVE_CONE_AMBIENT_OPACITY,
@@ -53,9 +59,29 @@ import {
   SINR_LIVE_CONE_SEGMENTS,
   SINR_LIVE_CONE_PULSE_INTRA_COLOR,
   SINR_LIVE_CONE_PULSE_INTER_COLOR,
+  SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+  SINR_LIVE_CONE_BACKGROUND_COLOR,
+  SINR_LIVE_CONE_CANDIDATE_COLOR,
+  SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
+  SINR_LIVE_CONE_SERVING_FAN_COLOR,
+  SINR_LIVE_CONE_BACKGROUND_OPACITY,
+  SINR_LIVE_CONE_CANDIDATE_FAN_COLOR,
+  SINR_LIVE_CONE_CANDIDATE_FAN_OPACITY,
+  SINR_LIVE_CONE_CANDIDATE_OPACITY,
+  SINR_LIVE_CONE_DIM_MIN_FACTOR,
+  SINR_LIVE_CANDIDATE_FAN_MAX_CONES,
+  SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
+  HANDOVER_CONE_PHASE_END,
+  resolveHandoverConeEnvelope,
   resolveSinrLiveConeColor,
   resolveSinrLiveConeLayerOpacity,
+  resolveSinrLiveConeRoleStyle,
+  type SinrLiveConeRole,
 } from '../constants/sinrLiveConeStyle';
+import {
+  DEFAULT_BEAM_DISPLAY_SPEC,
+  resolveTriggeredHandoverTargetColor,
+} from '../scene/beamDisplaySpec';
 import { buildSinrLiveCellLayout } from '../scene/sinrLiveCellRuntime';
 import { loadProfile } from '../profiles/index';
 import type { CellServingRecord, IlluminatedCellBeam, SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
@@ -345,18 +371,25 @@ check('S5-2 cone base == the TRUTH cell centre from buildSinrLiveCellLayout (no 
   approx(items[0].baseCenter.y, 0, 1e-9, 'cone base on the ground plane');
 });
 
-check('S5-2 style tokens (hybrid): ambient 0.45 < pulse 0.8, 32 segments, AdditiveBlending (replaces the cone style/opacity/blending pins)', () => {
-  assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.45, 'ambient cone opacity is the screenshot-locked 0.45');
+check('S5-2 style tokens (hybrid): ambient 0.45 < pulse 0.8, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
+  // 0.45 restored 2026-08-06: under NormalBlending a LOW ambient alpha lets the green
+  // terrain dominate the composite, which is what made the whole field read green.
+  // 0.45 -> 0.55 -> 0.40 (FINAL owner spec 2026-08-06): the serving fan is neutral GREY
+  // context, so it has no hue to defend — only its place in the alpha ladder matters
+  // (0.80 coloured roles > 0.40 serving fan > 0.28 candidate fan > 0.18 background).
+  assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.4, 'serving-fan (grey context) opacity sits below the two coloured roles and above the other grey layers');
   assert(SINR_LIVE_CONE_PULSE_PEAK_OPACITY > SINR_LIVE_CONE_AMBIENT_OPACITY, 'HYBRID: the handover pulse is brighter than the ambient field');
   assertEqual(SINR_LIVE_CONE_SEGMENTS, 32, 'oblique cone ring segment count');
   // Blending decision chain: 7fb5991 (2026-06-22) moved Additive→Normal for semantic
   // colour truth; 8e4e1e7 (2026-07-03, ab861c4 3-layer footprint restore) deliberately
-  // restored Additive — owner PIXEL-VERIFIED that look (output/shot/candshot-2.png).
-  // This pin tracks the CURRENT owner-approved token; the bright-terrain washout
-  // trade-off is an OPEN P3 紅綠場 item and may flip this again (update pin WITH token
-  // in the SAME commit — this assert rotted invisibly 07-03→07-07 while src tests sat
-  // outside the static:all discovery; closed by P2 SN-1).
-  assertEqual(SINR_LIVE_CONE_BLENDING, THREE.AdditiveBlending, 'cones use AdditiveBlending (8e4e1e7 pixel-verified restore)');
+  // restored Additive — owner PIXEL-VERIFIED that look (output/shot/candshot-2.png);
+  // 2026-08-06 moved it BACK to Normal on an explicit owner call (顏色不要洗白 /
+  // 候選衛星應該要是藍色) — Additive saturates #3b82f6 to white over bright terrain, which
+  // destroys the yellow/blue role palette. This pin tracks the CURRENT owner-approved
+  // token; update pin WITH token in the SAME commit if it flips again (this assert
+  // rotted invisibly 07-03→07-07 while src tests sat outside the static:all discovery;
+  // closed by P2 SN-1).
+  assertEqual(SINR_LIVE_CONE_BLENDING, THREE.NormalBlending, 'cones use NormalBlending (2026-08-06 owner call: constant hue, opacity = lighter↔heavier)');
   const posExplicit = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10, 5);
   assertEqual(posExplicit.length, 5 * 9, 'explicit segments honoured');
   const posDefault = buildObliqueBeamConePositions(new THREE.Vector3(0, 9, 0), new THREE.Vector3(1, 0, 1), 10);
@@ -546,9 +579,8 @@ check('render-colour resolution (C2): hero > per-kind pulse > override > serving
   // 2. per-kind pulse colours.
   assertEqual(resolveSinrLiveConeRenderColor(base('intra'), opts), SINR_LIVE_CONE_PULSE_INTRA_COLOR, 'intra pulse → intra colour');
   assertEqual(resolveSinrLiveConeRenderColor(base('inter'), opts), SINR_LIVE_CONE_PULSE_INTER_COLOR, 'inter pulse → inter colour');
-  // (semantic-beam-colour SDD: intra + inter now resolve to the SAME soft-green ambient
-  //  pulse colour — the intra-vs-inter story moved off the pulse hue onto the 1-sat/2-sat
-  //  read + the triggered orange→green flash; the resolver still maps each kind to its prop.)
+  assertEqual(SINR_LIVE_CONE_PULSE_INTRA_COLOR, INTRA_HANDOVER_TARGET_COLOR, 'intra pulse uses the intra target colour');
+  assertEqual(SINR_LIVE_CONE_PULSE_INTER_COLOR, SINR_LIVE_CONE_CANDIDATE_COLOR, 'inter pulse uses the candidate blue');
   // 3. mount override (the candidate cyan mount) wins over serving-identity but a
   //    kind still wins over the override (a pulse is never the candidate mount).
   assertEqual(resolveSinrLiveConeRenderColor(base(), { coneColorOverride: '#0ea5e9' }), '#0ea5e9', 'override → override colour when no kind');
@@ -559,14 +591,72 @@ check('render-colour resolution (C2): hero > per-kind pulse > override > serving
   assertEqual(resolveSinrLiveConeRenderColor(base('intra'), {}), '#abcdef', 'intra cone on a mount with no pulse colours → serving-identity');
 });
 
+check('SEMANTIC palette VALUE pin: hero YELLOW / context GREY / candidate BLUE resolve to the real tokens the mount passes', () => {
+  // Regression guard for "the cones look green / the hero is not yellow" (2026-08-06).
+  // The NormalBlending switch changed how a cone COMPOSITES, and the ambient level
+  // changes how much terrain shows through — neither may change which colour a role
+  // RESOLVES to. This asserts the resolved values, not a screenshot.
+  const item = (over: Partial<SinrLiveCellBeamConeRenderItem> = {}): SinrLiveCellBeamConeRenderItem => ({
+    cellId: 0, satId: 'sat-A', frequencyIndex: 0, color: '#abcdef', serving: true,
+    apex: new THREE.Vector3(), baseCenter: new THREE.Vector3(), baseRadiusWorld: 1, ...over,
+  });
+  // The mount passes spec fields, so pin the spec → token wiring first: a re-tint that
+  // only edited the spec default would otherwise slip past a token-only assert.
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.heroConeColor, SINR_LIVE_CONE_SERVING_PRIMARY_COLOR, 'spec heroConeColor == the serving token');
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.backgroundConeColor, SINR_LIVE_CONE_BACKGROUND_COLOR, 'spec backgroundConeColor == the context token');
+  // The literal values, so a silent palette drift is loud.
+  assertEqual(SINR_LIVE_CONE_SERVING_PRIMARY_COLOR, '#facc15', 'serving/hero is YELLOW #facc15 (NOT green — the file header said "serving GREEN" until 2026-08-06)');
+  assertEqual(SINR_LIVE_CONE_CANDIDATE_COLOR, '#3b82f6', 'candidate is BLUE #3b82f6');
+  // What the serving mount actually resolves for each role.
+  const mount = {
+    isHero: false,
+    heroColor: DEFAULT_BEAM_DISPLAY_SPEC.heroConeColor,
+    backgroundColor: DEFAULT_BEAM_DISPLAY_SPEC.backgroundConeColor,
+  };
+  assertEqual(
+    resolveSinrLiveConeRenderColor(item(), { ...mount, isHero: true }),
+    '#facc15',
+    'HERO cone resolves YELLOW on the serving mount',
+  );
+  assertEqual(
+    resolveSinrLiveConeRenderColor(item(), mount),
+    SINR_LIVE_CONE_BACKGROUND_COLOR,
+    'non-hero serving cone resolves the dim CONTEXT colour (not its per-sat identity hue)',
+  );
+  assertEqual(
+    resolveSinrLiveConeRenderColor(item(), { ...mount, coneColorOverride: SINR_LIVE_CONE_CANDIDATE_COLOR }),
+    '#3b82f6',
+    'CANDIDATE mount resolves BLUE',
+  );
+  // The hero path is only reachable for cones with NO per-item opacity (the mount's
+  // `isHero` requires `cone.opacity === undefined`). Pin that the ambient serving
+  // resolver leaves it undefined — if it ever started stamping one, every hero cone
+  // would silently fall back to the grey context colour.
+  const servingItems = resolveSinrLiveCellBeamConeItems({
+    cellFrame: frameOf([beam('sat-A', 0, true), beam('sat-B', 1, true)]),
+    placementByCellId,
+    satelliteWorldById,
+    focusSatIds: null,
+  });
+  assert(servingItems.length > 0, 'serving cones built');
+  for (const c of servingItems) {
+    assertEqual(c.opacity, undefined, 'ambient serving items carry NO per-item opacity (the isHero precondition)');
+  }
+});
+
 // ---------------------------------------------------------------------------
 // beam-stage ① #5 — TRIGGERED intra flash resolver (from/to colour split).
 // ---------------------------------------------------------------------------
 const FROM_COLOR = '#f5a524'; // warm
 const TO_COLOR = '#22d3ee';   // cool
 function triggeredInput(event: SinrLiveCellHandoverEvent | null, opacity = 0.5) {
-  return { event, opacity, fromColor: FROM_COLOR, toColor: TO_COLOR, placementByCellId, satelliteWorldById, frequencyReuse: PULSE_REUSE };
+  return { event, fromOpacity: opacity, toOpacity: opacity, fromColor: FROM_COLOR, toColor: TO_COLOR, placementByCellId, satelliteWorldById, frequencyReuse: PULSE_REUSE };
 }
+function splitTriggeredInput(event: SinrLiveCellHandoverEvent, fromOpacity: number, toOpacity: number) {
+  return { event, fromOpacity, toOpacity, fromColor: FROM_COLOR, toColor: TO_COLOR, placementByCellId, satelliteWorldById, frequencyReuse: PULSE_REUSE };
+}
+/** An intra event whose from/to cells are BOTH placed, so a phase can drop exactly one. */
+const SEQUENCED_EVENT = pulseEvent({ kind: 'intra', fromSatId: 'sat-A', fromCellId: 0, toSatId: 'sat-A', toCellId: 1, sourceTimeSec: 450 });
 
 console.log('\nSinrLiveCellBeamCones triggered-intra resolver checks:');
 
@@ -601,6 +691,450 @@ check('triggered intra: an unplaced/unrendered side is skipped honestly (no fabr
   assertEqual(partial.length, 1, 'unplaced new cell (99) skipped; old cell still flashes');
   assertEqual(partial[0].cellId, 0, 'the placed old cell-0 drew');
   assertEqual(partial[0].color, FROM_COLOR, 'old cell keeps the warm fromColor');
+});
+
+// ---------------------------------------------------------------------------
+// 2026-08-06 — the from/to opacities are INDEPENDENT, and the manual demo's
+// four-phase envelope that drives them. Owner: 「inter 應該是先一個連線，然後另一個進來，
+// 等一段時間後原本的斷掉，但是現在是2個同時連線，然後就結束了」.
+// ---------------------------------------------------------------------------
+check('triggered intra: fromOpacity / toOpacity are INDEPENDENT (a phase can hold one cone while the other is absent)', () => {
+  // phase 1 shape: old link only — the new cone must not exist at all, not merely be invisible.
+  const servingOnly = resolveTriggeredIntraConeItems(splitTriggeredInput(SEQUENCED_EVENT, 0.9, 0));
+  assertEqual(servingOnly.length, 1, 'to-opacity 0 → the NEW cone is not emitted');
+  assertEqual(servingOnly[0].cellId, 0, 'the surviving cone is the OLD (from) cell');
+  approx(servingOnly[0].opacity ?? -1, 0.9, 1e-9, 'the old cone carries its OWN opacity');
+  // phase 4 end shape: new link only — the old cone is released.
+  const acquiredOnly = resolveTriggeredIntraConeItems(splitTriggeredInput(SEQUENCED_EVENT, 0, 0.9));
+  assertEqual(acquiredOnly.length, 1, 'from-opacity 0 → the OLD cone is not emitted');
+  assertEqual(acquiredOnly[0].cellId, 1, 'the surviving cone is the NEW (to) cell');
+  // phase 2/3 shape: both up, at DIFFERENT alphas (the shared-opacity bug would equalise them).
+  const both = resolveTriggeredIntraConeItems(splitTriggeredInput(SEQUENCED_EVENT, 0.9, 0.3));
+  assertEqual(both.length, 2, 'both cones drawn while the links overlap');
+  approx(both.find(i => i.cellId === 0)!.opacity ?? -1, 0.9, 1e-9, 'old cone keeps fromOpacity');
+  approx(both.find(i => i.cellId === 1)!.opacity ?? -1, 0.3, 1e-9, 'new cone keeps toOpacity');
+});
+
+console.log('\nShared handover cone envelope checks (manual demo + REAL handover flash):');
+
+check('both windows are long enough to narrate the phases', () => {
+  // BOTH callers walk this envelope now, so BOTH windows must clear the readability bar.
+  // The narrated acts are the first four; the fifth (`settled`) is the tail.
+  const shortestActFraction = Math.min(
+    HANDOVER_CONE_PHASE_END.serving,
+    HANDOVER_CONE_PHASE_END.measuring - HANDOVER_CONE_PHASE_END.serving,
+    HANDOVER_CONE_PHASE_END.holding - HANDOVER_CONE_PHASE_END.measuring,
+    HANDOVER_CONE_PHASE_END.releasing - HANDOVER_CONE_PHASE_END.holding,
+    1 - HANDOVER_CONE_PHASE_END.releasing,
+  );
+  assert(MANUAL_HANDOVER_DISPLAY_MS >= 4000, 'the manual demo window gets >= 1s per phase');
+  // The 2026-08-06 regression the owner reported ("no animation") was the real flash NOT
+  // walking this envelope at all. Now that it does, its window must not be so short that
+  // the phases collapse back into a blink — ~600ms/act is what the manual demo was raised
+  // OFF of. 900ms is the floor.
+  assert(
+    SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS * shortestActFraction >= 900,
+    `the REAL handover window gives every act >= 900ms (got ${(SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS * shortestActFraction).toFixed(0)}ms)`,
+  );
+  // …and not so long that it routinely outlives the gap to the protagonist's next handover,
+  // which would re-arm the latch mid-story. The manual window is the deliberate outlier
+  // (it pauses the sim), so the real one must stay strictly under it.
+  assert(
+    SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS < MANUAL_HANDOVER_DISPLAY_MS,
+    'the mid-playback window stays shorter than the sim-paused demonstration window',
+  );
+  assert(
+    HANDOVER_CONE_PHASE_END.serving < HANDOVER_CONE_PHASE_END.measuring
+    && HANDOVER_CONE_PHASE_END.measuring < HANDOVER_CONE_PHASE_END.holding
+    && HANDOVER_CONE_PHASE_END.holding < HANDOVER_CONE_PHASE_END.releasing
+    && HANDOVER_CONE_PHASE_END.releasing < 1,
+    'the phase boundaries are strictly ordered inside the window',
+  );
+});
+
+check('envelope: phase 1 = old link ALONE (the new beam has not arrived)', () => {
+  for (const p of [0, 0.1, 0.18]) {
+    const e = resolveHandoverConeEnvelope(p, 1);
+    assertEqual(e.phase, 'serving', `p=${p} is the serving phase`);
+    approx(e.fromOpacity, 1, 1e-9, 'the current link is at full strength');
+    approx(e.toOpacity, 0, 1e-9, 'no candidate beam yet');
+  }
+});
+
+check('envelope: phase 2 = the candidate FADES IN while the old link holds', () => {
+  // The MEASURING window midpoint — (serving + measuring) / 2, i.e. 0.28125 at the
+  // current boundaries. Pinned by expression so a boundary edit cannot silently
+  // desynchronise the probe point from the phase it claims to sample.
+  const measuringMid = (HANDOVER_CONE_PHASE_END.serving + HANDOVER_CONE_PHASE_END.measuring) / 2;
+  const mid = resolveHandoverConeEnvelope(measuringMid, 1);
+  assertEqual(mid.phase, 'measuring', 'mid-ramp is the measuring phase');
+  approx(mid.fromOpacity, 1, 1e-9, 'the old link does NOT dip while the candidate arrives');
+  approx(mid.toOpacity, 0.5, 1e-9, 'smoothstep is exactly half-way at the window midpoint');
+  const early = resolveHandoverConeEnvelope(0.22, 1);
+  assert(early.toOpacity > 0 && early.toOpacity < mid.toOpacity, 'the candidate ramps up monotonically');
+});
+
+check('envelope: phase 3 = BOTH links held (the overlap is a visible state, not the whole event)', () => {
+  for (const p of [0.38, 0.46, 0.55]) {
+    const e = resolveHandoverConeEnvelope(p, 1);
+    assertEqual(e.phase, 'holding', `p=${p} is the holding phase`);
+    approx(e.fromOpacity, 1, 1e-9, 'old link still up during the trigger timer');
+    approx(e.toOpacity, 1, 1e-9, 'new link fully up during the trigger timer');
+  }
+});
+
+check('envelope: phase 4 = the OLD link releases while the new one stays up', () => {
+  const releasingMid = (HANDOVER_CONE_PHASE_END.holding + HANDOVER_CONE_PHASE_END.releasing) / 2;
+  const mid = resolveHandoverConeEnvelope(releasingMid, 1);
+  assertEqual(mid.phase, 'releasing', 'mid-release is the releasing phase');
+  approx(mid.toOpacity, 1, 1e-9, 'the acquired link stays at full strength');
+  approx(mid.fromOpacity, 0.5, 1e-9, 'the old link is half-released at the window midpoint');
+  const end = resolveHandoverConeEnvelope(1, 1);
+  approx(end.fromOpacity, 0, 1e-9, 'the old link is fully released at the end');
+  approx(end.toOpacity, 1, 1e-9, 'only the new link remains');
+});
+
+check('envelope: the two cones are NEVER a single shared curve, and never both dark', () => {
+  let sawFromOnly = false;
+  let sawToOnly = false;
+  let sawBoth = false;
+  let sawDifferent = false;
+  for (let i = 0; i <= 100; i += 1) {
+    const { fromOpacity, toOpacity } = resolveHandoverConeEnvelope(i / 100, 0.95);
+    assert(fromOpacity > 0 || toOpacity > 0, `p=${i / 100} still shows at least one beam (never a blank frame)`);
+    assert(fromOpacity >= 0 && fromOpacity <= 0.95 && toOpacity >= 0 && toOpacity <= 0.95, 'opacities stay inside [0, peak]');
+    if (fromOpacity > 0 && toOpacity === 0) sawFromOnly = true;
+    if (fromOpacity === 0 && toOpacity > 0) sawToOnly = true;
+    if (fromOpacity > 0 && toOpacity > 0) sawBoth = true;
+    if (Math.abs(fromOpacity - toOpacity) > 1e-6) sawDifferent = true;
+  }
+  assert(sawFromOnly, 'there is a window where ONLY the old link is up');
+  assert(sawToOnly, 'there is a window where ONLY the new link is up');
+  assert(sawBoth, 'there is a window where BOTH are up (the trigger-timer overlap)');
+  assert(sawDifferent, 'the two cones are driven by DISTINCT curves (regression guard for the shared-opacity bug)');
+});
+
+check('envelope: out-of-range / non-finite progress is clamped, never NaN', () => {
+  const before = resolveHandoverConeEnvelope(-1, 0.8);
+  approx(before.fromOpacity, 0.8, 1e-9, 'progress < 0 clamps to the opening frame');
+  approx(before.toOpacity, 0, 1e-9, 'progress < 0 has no candidate yet');
+  const after = resolveHandoverConeEnvelope(9, 0.8);
+  approx(after.fromOpacity, 0, 1e-9, 'progress > 1 clamps to the closing frame');
+  approx(after.toOpacity, 0.8, 1e-9, 'progress > 1 keeps the acquired link');
+  const nan = resolveHandoverConeEnvelope(Number.NaN, 0.8);
+  assert(Number.isFinite(nan.fromOpacity) && Number.isFinite(nan.toOpacity), 'NaN progress yields finite opacities');
+  const nanPeak = resolveHandoverConeEnvelope(0.5, Number.NaN);
+  assert(Number.isFinite(nanPeak.fromOpacity) && Number.isFinite(nanPeak.toOpacity), 'NaN peak yields finite opacities');
+});
+
+check('REAL handover path: age/sustain through the envelope draws 單 → 雙 → 單 (the "no animation" regression guard)', () => {
+  // The exact expression MainScene's real-handover branch evaluates:
+  //   resolveHandoverConeEnvelope(ageMs / triggeredIntraSustainMs, triggeredIntraPeakOpacity)
+  // fed straight into the SAME cone resolver the branch calls. Before 2026-08-06 this
+  // branch passed ONE opacity to both cones, so the count sequence was 2 → 2 → 2 → 0:
+  // two beams blinking in lockstep, no handOVER. The owner's report was 「根本就沒有動畫阿」.
+  const sustainMs = SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS;
+  const peak = DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraPeakOpacity;
+  const counts: number[] = [];
+  const phases: string[] = [];
+  for (let ageMs = 0; ageMs <= sustainMs; ageMs += sustainMs / 20) {
+    const env = resolveHandoverConeEnvelope(ageMs / sustainMs, peak);
+    phases.push(env.phase);
+    counts.push(resolveTriggeredIntraConeItems({
+      event: SEQUENCED_EVENT,
+      fromOpacity: env.fromOpacity,
+      toOpacity: env.toOpacity,
+      fromColor: DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraFromColor,
+      toColor: DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraToColor,
+      placementByCellId, satelliteWorldById, frequencyReuse: PULSE_REUSE,
+    }).length);
+  }
+  assertEqual(counts[0], 1, 'the story OPENS on one beam — the current link alone');
+  assert(counts.includes(2), 'there is a stretch where BOTH beams are up (the handover overlap)');
+  assertEqual(counts[counts.length - 1], 1, 'the story CLOSES on one beam — settled on the new link');
+  assert(counts.every(c => c >= 1), 'the cue never goes blank mid-story');
+  // Monotone shape: it must be 1 → 2 → 1, not 1 → 2 → 1 → 2 → 1 (a flicker).
+  const transitions = counts.filter((c, i) => i > 0 && c !== counts[i - 1]).length;
+  assertEqual(transitions, 2, 'exactly two transitions: one beam becomes two, two become one');
+  // All five phases are actually reachable at this sampling rate — none is a null act.
+  for (const phase of ['serving', 'measuring', 'holding', 'releasing', 'settled']) {
+    assert(phases.includes(phase), `the ${phase} phase is on screen for real time, not a single frame`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 2026-08-06 CONSOLIDATION — the ONE cone appearance decision point.
+//
+// Before this, "what colour + how bright is this cone" was spread over a five-level
+// precedence inside `resolveSinrLiveConeRenderColor`, a separate opacity ternary at the
+// mount, an IMPLICIT hero signal (`cone.opacity === undefined`), and a different colour
+// prop trio per mount. Now: a cone has a ROLE (explicit or derived), and the role decides
+// colour + opacity in `resolveSinrLiveConeRoleStyle`. These checks VALUE-assert every role
+// so the palette can never drift by screenshot.
+// ---------------------------------------------------------------------------
+console.log('\nSinrLiveCellBeamCones role decision-point checks:');
+
+check('role DERIVATION: mount layer + hero identity → role (no implicit `cone.opacity === undefined` signal)', () => {
+  const hero = { layer: 'serving' as const, heroSatId: 'sat-A', heroCellId: 0 };
+  assertEqual(resolveSinrLiveConeRole({ ...hero, satId: 'sat-A', cellId: 0 }), 'hero', 'hero sat + hero cell → hero');
+  assertEqual(resolveSinrLiveConeRole({ ...hero, satId: 'sat-A', cellId: 1 }), 'servingFan', 'hero SAT, other cell → servingFan (was collapsed into the grey context role)');
+  assertEqual(resolveSinrLiveConeRole({ ...hero, satId: 'sat-B', cellId: 0 }), 'background', 'other satellite → background context');
+  assertEqual(resolveSinrLiveConeRole({ layer: 'serving', satId: 'sat-A', cellId: 0 }), 'background', 'no hero identity → background (never a false hero)');
+  assertEqual(resolveSinrLiveConeRole({ layer: 'nonServing', satId: 'sat-A', cellId: 0 }), 'nonServing', 'non-serving layer');
+  assertEqual(resolveSinrLiveConeRole({ layer: 'pulse', satId: 'sat-A', cellId: 0 }), 'pulse', 'pulse layer');
+  assertEqual(resolveSinrLiveConeRole({ layer: 'triggered', satId: 'sat-A', cellId: 0 }), 'triggered', 'triggered layer');
+  assertEqual(resolveSinrLiveConeRole({ layer: 'candidate', satId: 'sat-C', cellId: 3 }), 'candidatePrimary', 'candidate layer default');
+  // An EXPLICIT item role wins — the candidate resolver knows more than the mount does.
+  assertEqual(
+    resolveSinrLiveConeRole({ ...hero, satId: 'sat-A', cellId: 0, itemRole: 'candidateFan' }),
+    'candidateFan',
+    'an explicit item role overrides the layer derivation',
+  );
+  // The RETIRED implicit signal: a per-item opacity must no longer be able to un-hero a cone.
+  assertEqual(
+    resolveSinrLiveConeRole({ ...hero, satId: 'sat-A', cellId: 0 }),
+    'hero',
+    'hero derivation does not consult cone.opacity (the retired implicit signal)',
+  );
+});
+
+check('role → COLOUR + OPACITY table (defaults): every role resolves to its locked token', () => {
+  const table: Record<string, { color: string; opacity: number }> = {
+    hero: { color: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR, opacity: SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY },
+    servingFan: { color: SINR_LIVE_CONE_BACKGROUND_COLOR, opacity: SINR_LIVE_CONE_AMBIENT_OPACITY },
+    background: { color: SINR_LIVE_CONE_BACKGROUND_COLOR, opacity: SINR_LIVE_CONE_BACKGROUND_OPACITY },
+    candidatePrimary: { color: SINR_LIVE_CONE_CANDIDATE_COLOR, opacity: SINR_LIVE_CONE_CANDIDATE_OPACITY },
+    candidateFan: { color: SINR_LIVE_CONE_BACKGROUND_COLOR, opacity: SINR_LIVE_CONE_CANDIDATE_FAN_OPACITY },
+    nonServing: { color: SINR_LIVE_CONE_BACKGROUND_COLOR, opacity: SINR_LIVE_CONE_NONSERVING_OPACITY },
+  };
+  for (const [role, expected] of Object.entries(table)) {
+    const style = resolveSinrLiveConeRoleStyle(role as SinrLiveConeRole);
+    assertEqual(style.color, expected.color, `role ${role} colour`);
+    assertEqual(style.opacity, expected.opacity, `role ${role} opacity`);
+  }
+  // The two event layers colour from the cone, not the role token.
+  const pulseIntra = resolveSinrLiveConeRoleStyle('pulse', {}, { kind: 'intra', color: '#abcdef' });
+  assertEqual(pulseIntra.color, SINR_LIVE_CONE_PULSE_INTRA_COLOR, 'pulse intra colour');
+  assertEqual(pulseIntra.opacity, SINR_LIVE_CONE_PULSE_PEAK_OPACITY, 'pulse default peak opacity');
+  assertEqual(resolveSinrLiveConeRoleStyle('pulse', {}, { kind: 'inter' }).color, SINR_LIVE_CONE_PULSE_INTER_COLOR, 'pulse inter colour');
+  const triggered = resolveSinrLiveConeRoleStyle('triggered', {}, { color: '#22d3ee', opacity: 0.42 });
+  assertEqual(triggered.color, '#22d3ee', 'triggered paints the item\'s explicit from/to colour');
+  approx(triggered.opacity, 0.42, 1e-9, 'triggered carries the wall-clock envelope opacity');
+});
+
+check('role → style: a per-ITEM opacity always wins over the role base alpha (the pulse fade / triggered envelope)', () => {
+  for (const role of ['hero', 'servingFan', 'background', 'candidatePrimary', 'candidateFan', 'nonServing'] as const) {
+    approx(resolveSinrLiveConeRoleStyle(role, {}, { opacity: 0.137 }).opacity, 0.137, 1e-9, `${role} honours a per-item opacity`);
+  }
+});
+
+check('role → style: the MOUNT palette (beamDisplaySpec) overrides every token, and the spec defaults ARE the tokens', () => {
+  // The spec is the prompt-editable control surface; its defaults must be the tokens, or a
+  // "change the beam colour" edit would land on a field the render does not read.
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.servingFanConeColor, SINR_LIVE_CONE_SERVING_FAN_COLOR, 'spec servingFanConeColor == token');
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.backgroundConeOpacity, SINR_LIVE_CONE_BACKGROUND_OPACITY, 'spec backgroundConeOpacity == token');
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.candidateFanConeColor, SINR_LIVE_CONE_CANDIDATE_FAN_COLOR, 'spec candidateFanConeColor == token');
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.candidateFanConeOpacity, SINR_LIVE_CONE_CANDIDATE_FAN_OPACITY, 'spec candidateFanConeOpacity == token');
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.candidateFanMaxCones, SINR_LIVE_CANDIDATE_FAN_MAX_CONES, 'spec candidateFanMaxCones == token');
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.candidateConeOpacity, SINR_LIVE_CONE_CANDIDATE_OPACITY, 'spec candidateConeOpacity == token');
+  const palette = {
+    heroColor: '#111111', servingFanColor: '#222222', backgroundColor: '#333333',
+    candidateColor: '#444444', candidateFanColor: '#555555',
+    heroOpacity: 0.91, servingConeOpacity: 0.51, backgroundOpacity: 0.11,
+    candidateFanOpacity: 0.21, nonServingOpacity: 0.01,
+  };
+  assertEqual(resolveSinrLiveConeRoleStyle('hero', palette).color, '#111111', 'palette heroColor wins');
+  assertEqual(resolveSinrLiveConeRoleStyle('servingFan', palette).color, '#222222', 'palette servingFanColor wins');
+  assertEqual(resolveSinrLiveConeRoleStyle('background', palette).color, '#333333', 'palette backgroundColor wins');
+  assertEqual(resolveSinrLiveConeRoleStyle('candidatePrimary', palette).color, '#444444', 'palette candidateColor wins');
+  approx(resolveSinrLiveConeRoleStyle('candidatePrimary', { candidateOpacity: 0.33 }).opacity, 0.33, 1e-9, 'palette candidateOpacity wins');
+  assertEqual(resolveSinrLiveConeRoleStyle('candidateFan', palette).color, '#555555', 'palette candidateFanColor wins');
+  assertEqual(resolveSinrLiveConeRoleStyle('nonServing', palette).color, '#333333', 'nonServing shares the background context colour');
+  approx(resolveSinrLiveConeRoleStyle('hero', palette).opacity, 0.91, 1e-9, 'palette heroOpacity wins');
+  approx(resolveSinrLiveConeRoleStyle('servingFan', palette).opacity, 0.51, 1e-9, 'palette servingConeOpacity wins');
+  approx(resolveSinrLiveConeRoleStyle('background', palette).opacity, 0.11, 1e-9, 'palette backgroundOpacity wins');
+  approx(resolveSinrLiveConeRoleStyle('candidateFan', palette).opacity, 0.21, 1e-9, 'palette candidateFanOpacity wins');
+  approx(resolveSinrLiveConeRoleStyle('nonServing', palette).opacity, 0.01, 1e-9, 'palette nonServingOpacity wins');
+});
+
+check('FINAL COLOUR SPEC: colour marks ROLE and only role — exactly two coloured roles, everything else neutral grey', () => {
+  // Owner 2026-08-06: 「只有服務波束是黃色，候選波束是藍色，其他都用灰色」.
+  const s = (role: SinrLiveConeRole) => resolveSinrLiveConeRoleStyle(role);
+  assertEqual(s('hero').color, SINR_LIVE_CONE_SERVING_PRIMARY_COLOR, 'the beam SERVING you is the only yellow');
+  assertEqual(s('candidatePrimary').color, SINR_LIVE_CONE_CANDIDATE_COLOR, 'the beam ABOUT TO serve you is the only blue');
+  for (const role of ['servingFan', 'candidateFan', 'background', 'nonServing'] as const) {
+    assertEqual(s(role).color, SINR_LIVE_CONE_BACKGROUND_COLOR, `${role} is neutral context grey (a fan is 脈絡, not a role)`);
+  }
+  // The rejected "darker sibling" swatches must never come back: within the render there
+  // are exactly THREE distinct cone colours, not a family per role.
+  const distinct = new Set((['hero', 'candidatePrimary', 'servingFan', 'candidateFan', 'background', 'nonServing'] as const).map(r => s(r).color));
+  assertEqual(distinct.size, 3, 'exactly three cone colours exist: serving yellow, candidate blue, context grey');
+});
+
+check('FINAL ALPHA LADDER: hierarchy is opacity alone, both coloured roles carry equal weight, nothing falls below the visibility floor', () => {
+  const s = (role: SinrLiveConeRole) => resolveSinrLiveConeRoleStyle(role);
+  // The two coloured roles are EQUAL-weight halves of the handover story, and both must be
+  // strong enough that the green terrain cannot mute them under NormalBlending.
+  assertEqual(s('candidatePrimary').opacity, s('hero').opacity, '"your link" and "your next link" carry the same weight');
+  assert(s('hero').opacity >= 0.75, 'the coloured roles are bright + saturated (0.5 read muddy over the green terrain)');
+  // Grey ladder, strictly ordered.
+  assert(s('hero').opacity > s('servingFan').opacity, 'both coloured roles beat every grey layer');
+  assert(s('servingFan').opacity > s('candidateFan').opacity, 'your satellite\'s fan reads above the candidate\'s fan');
+  assert(s('candidateFan').opacity > s('background').opacity, 'the candidate fan reads above unrelated satellites');
+  assert(s('background').opacity > s('nonServing').opacity, 'the opt-in non-serving layer is the faintest');
+  // VISIBILITY FLOOR. The shallow-cone dim multiplies the serving + candidate mounts (the
+  // non-serving mount passes no dimShallowCones, so its 0.12 IS its effective alpha).
+  // Nothing may land near the 0.023 "mathematically present, optically absent" level.
+  for (const role of ['servingFan', 'background', 'candidatePrimary', 'candidateFan'] as const) {
+    const effective = s(role).opacity * SINR_LIVE_CONE_DIM_MIN_FACTOR;
+    assert(effective > 0.04, `${role} stays visible at the shallow-cone dim floor (effective ${effective.toFixed(4)})`);
+  }
+  assert(resolveSinrLiveConeLayerOpacity('nonServing') > 0.1, 'the opt-in non-serving layer is actually visible when switched on (0.04 was 96% terrain)');
+});
+
+check('HANDOVER FADE is pure alpha: the from/to cones keep their event-kind hue for the whole envelope', () => {
+  // Owner: 「換手的時候再用透明度來做漸淡跟漸濃」 — the old link's YELLOW fades out and the new
+  // intra link's ORANGE fades in; neither swaps swatch mid-transition.
+  const seen = { from: new Set<string>(), to: new Set<string>() };
+  for (let i = 0; i <= 20; i += 1) {
+    const env = resolveHandoverConeEnvelope(i / 20, DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraPeakOpacity);
+    const items = resolveTriggeredIntraConeItems({
+      event: SEQUENCED_EVENT,
+      fromOpacity: env.fromOpacity,
+      toOpacity: env.toOpacity,
+      fromColor: DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraFromColor,
+      toColor: DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraToColor,
+      placementByCellId, satelliteWorldById, frequencyReuse: PULSE_REUSE,
+    });
+    for (const item of items) {
+      const style = resolveSinrLiveConeRoleStyle('triggered', {}, item);
+      (item.cellId === SEQUENCED_EVENT.fromCellId ? seen.from : seen.to).add(style.color);
+    }
+  }
+  assertEqual(seen.from.size, 1, 'the releasing cone keeps ONE colour across the whole envelope');
+  assertEqual(seen.to.size, 1, 'the acquiring cone keeps ONE colour across the whole envelope');
+  assertEqual([...seen.from][0], SINR_LIVE_CONE_SERVING_PRIMARY_COLOR, 'the releasing cone is the serving YELLOW, fading out');
+  assertEqual([...seen.to][0], INTRA_HANDOVER_TARGET_COLOR, 'the intra acquiring cone is ORANGE, fading in');
+});
+
+check('HANDOVER EVENT PALETTE: intra is orange and inter is blue on both pulse and triggered layers', () => {
+  assertEqual(resolveTriggeredHandoverTargetColor('intra', DEFAULT_BEAM_DISPLAY_SPEC), INTRA_HANDOVER_TARGET_COLOR, 'intra triggered target is orange');
+  assertEqual(resolveTriggeredHandoverTargetColor('inter', DEFAULT_BEAM_DISPLAY_SPEC), SINR_LIVE_CONE_CANDIDATE_COLOR, 'inter triggered target is blue');
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraToColor, INTRA_HANDOVER_TARGET_COLOR, 'spec owns the intra target token');
+  assertEqual(DEFAULT_BEAM_DISPLAY_SPEC.candidateConeColor, SINR_LIVE_CONE_CANDIDATE_COLOR, 'spec reuses candidate blue for inter');
+});
+
+check('LEGACY resolveSinrLiveConeRenderColor still delegates with byte-identical precedence (colour-match gate + footprint rings depend on it)', () => {
+  const item = (over: Partial<SinrLiveCellBeamConeRenderItem> = {}): SinrLiveCellBeamConeRenderItem => ({
+    cellId: 0, satId: 'sat-A', frequencyIndex: 0, color: '#abcdef', serving: true,
+    apex: new THREE.Vector3(), baseCenter: new THREE.Vector3(), baseRadiusWorld: 1, ...over,
+  });
+  assertEqual(resolveSinrLiveConeRenderColor(item(), { isHero: true, heroColor: '#facc15' }), '#facc15', 'hero opt still wins');
+  assertEqual(resolveSinrLiveConeRenderColor(item({ kind: 'intra' }), { pulseIntraColor: INTRA_HANDOVER_TARGET_COLOR }), INTRA_HANDOVER_TARGET_COLOR, 'kind opt still second');
+  assertEqual(resolveSinrLiveConeRenderColor(item(), { coneColorOverride: '#3b82f6', backgroundColor: '#9ca3af' }), '#3b82f6', 'override still beats background');
+  assertEqual(resolveSinrLiveConeRenderColor(item(), { backgroundColor: '#9ca3af' }), '#9ca3af', 'background still beats item identity');
+  assertEqual(resolveSinrLiveConeRenderColor(item(), {}), '#abcdef', 'item identity is still the floor');
+});
+
+// ---------------------------------------------------------------------------
+// 2026-08-06 — the pulse PER-SIDE focus gate (the "random blue beams" fix) and the
+// candidate FAN (the owner's "not just one beam").
+// ---------------------------------------------------------------------------
+console.log('\nSinrLiveCellBeamCones pulse focus-gate + candidate-fan checks:');
+
+check('pulse focus gate: an INTER handover only paints the side whose OWN satellite is focused', () => {
+  // The exact measured pathology: an event admitted because its `to` end is the focused
+  // hero sat still lit a cone on the `from` satellite, which draws nothing else.
+  const event = pulseEvent({ ueId: 'ue-other', kind: 'inter', fromSatId: 'sat-A', fromCellId: 0, toSatId: 'sat-B', toCellId: 2, sourceTimeSec: 450 });
+  const ungated = resolveSinrLiveHandoverPulseConeItems(pulseInput([event]));
+  assertEqual(ungated.length, 2, 'with no focus set both sides draw (unchanged behaviour)');
+  const gated = resolveSinrLiveHandoverPulseConeItems({
+    ...pulseInput([event]), focusSatIds: new Set(['sat-B']), protagonistUeId: 'ue-0',
+  });
+  assertEqual(gated.length, 1, 'the off-focus `from` side is dropped');
+  assertEqual(gated[0].satId, 'sat-B', 'only the focused satellite paints');
+  assertEqual(gated[0].cellId, 2, 'and only on its own cell');
+});
+
+check('pulse focus gate: the PROTAGONIST\'s own handover still shows BOTH ends (the story is the point)', () => {
+  const mine = pulseEvent({ ueId: 'ue-0', kind: 'inter', fromSatId: 'sat-A', fromCellId: 0, toSatId: 'sat-B', toCellId: 2, sourceTimeSec: 450 });
+  const gated = resolveSinrLiveHandoverPulseConeItems({
+    ...pulseInput([mine]), focusSatIds: new Set(['sat-B']), protagonistUeId: 'ue-0',
+  });
+  assertEqual(gated.length, 2, 'the protagonist\'s inter handover keeps its old + new cone');
+  assert(gated.some(i => i.satId === 'sat-A') && gated.some(i => i.satId === 'sat-B'), 'both satellites paint for the protagonist');
+});
+
+check('pulse focus gate: an event entirely OFF focus paints nothing at all', () => {
+  const other = pulseEvent({ ueId: 'ue-other', kind: 'inter', fromSatId: 'sat-A', fromCellId: 0, toSatId: 'sat-A', toCellId: 1, sourceTimeSec: 450 });
+  const gated = resolveSinrLiveHandoverPulseConeItems({
+    ...pulseInput([other]), focusSatIds: new Set(['sat-B']), protagonistUeId: 'ue-0',
+  });
+  assertEqual(gated.length, 0, 'no focused satellite on either side → no cone');
+  // An EMPTY focus set is a real state (the protagonist is unserved this slot) and must
+  // gate everything off, not be treated as "no filter".
+  assertEqual(
+    resolveSinrLiveHandoverPulseConeItems({ ...pulseInput([other]), focusSatIds: new Set<string>(), protagonistUeId: 'ue-0' }).length,
+    0,
+    'an empty focus set gates every non-protagonist cone off',
+  );
+});
+
+check('candidate FAN: the candidate satellite draws its own bounded multibeam fan, not one lone cone', () => {
+  const fanPlacements = new Map<number, SinrLiveCellPlacement>(
+    [0, 1, 2, 3, 4].map(id => [id, { cellId: id, worldX: 20 * (id + 1), worldZ: -15 * (id + 1), radiusWorld: 10 }]),
+  );
+  const cellFrame = frameOf([
+    beam('sat-B', 0, true), // the protagonist's cell — the primary candidate cone
+    beam('sat-B', 1, false),
+    beam('sat-B', 2, true),
+    beam('sat-B', 3, false),
+    beam('sat-A', 4, true), // a DIFFERENT satellite — must never be pulled in
+  ]);
+  const items = resolveCandidateBeamConeItems({
+    pendingTargetSatId: 'sat-B', servingSatId: 'sat-A', primaryCellId: 0,
+    placementByCellId: fanPlacements, satelliteWorldById, frequencyReuse: 3, cellFrame,
+  });
+  assert(items.length > 1, 'the candidate now draws a FAN (the 2026-08-06 owner decision), not a single cone');
+  assertEqual(new Set(items.map(i => i.satId)).size, 1, 'the fan is ONE satellite — never the all-sat firehose');
+  assertEqual(items[0].role, 'candidatePrimary', 'the cone on YOUR cell is the primary (bright blue) role');
+  assertEqual(items[0].cellId, 0, 'the primary cone is on the protagonist cell');
+  assert(items.slice(1).every(i => i.role === 'candidateFan'), 'every other cone is the dimmer fan role');
+  assertEqual(new Set(items.map(i => i.cellId)).size, items.length, 'no cell is drawn twice');
+  assert(items.every(i => typeof i.renderKey === 'string'), 'every candidate cone carries a stable renderKey');
+  assertEqual(new Set(items.map(i => i.renderKey)).size, items.length, 'candidate render keys are distinct');
+  // The fan is bounded, INCLUDING the primary.
+  const capped = resolveCandidateBeamConeItems({
+    pendingTargetSatId: 'sat-B', servingSatId: 'sat-A', primaryCellId: 0,
+    placementByCellId: fanPlacements, satelliteWorldById, frequencyReuse: 3, cellFrame, maxFanCones: 2,
+  });
+  assertEqual(capped.length, 2, 'maxFanCones bounds the fan (primary included)');
+  assertEqual(capped[0].role, 'candidatePrimary', 'the primary cone survives the cap first');
+  assertEqual(
+    resolveCandidateBeamConeItems({
+      pendingTargetSatId: 'sat-B', servingSatId: 'sat-A', primaryCellId: 0,
+      placementByCellId: fanPlacements, satelliteWorldById, frequencyReuse: 3, cellFrame, maxFanCones: 0,
+    }).length,
+    0,
+    'maxFanCones 0 draws nothing',
+  );
+});
+
+check('candidate FAN: unchanged no-ops (no pending target / target IS the serving sat / no cell frame)', () => {
+  const args = {
+    placementByCellId, satelliteWorldById, frequencyReuse: PULSE_REUSE, primaryCellId: 0,
+  };
+  assertEqual(resolveCandidateBeamConeItems({ ...args, pendingTargetSatId: null, servingSatId: 'sat-A' }).length, 0, 'no pending target → nothing');
+  assertEqual(resolveCandidateBeamConeItems({ ...args, pendingTargetSatId: 'sat-A', servingSatId: 'sat-A' }).length, 0, 'target IS the serving sat → nothing');
+  assertEqual(
+    resolveCandidateBeamConeItems({ ...args, pendingTargetSatId: 'sat-B', servingSatId: 'sat-A', primaryCellId: null }).length,
+    0,
+    'no protagonist cell → nothing',
+  );
+  // Omitting the cell frame degrades to exactly the OLD single-cone behaviour.
+  const single = resolveCandidateBeamConeItems({ ...args, pendingTargetSatId: 'sat-B', servingSatId: 'sat-A' });
+  assertEqual(single.length, 1, 'no cell frame → the primary cone only (the pre-2026-08-06 shape)');
+  assertEqual(single[0].role, 'candidatePrimary', 'and it is the primary role');
 });
 
 console.log(`\nSinrLiveCellBeamCones resolver: ${passed} checks passed.`);

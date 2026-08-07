@@ -70,6 +70,10 @@ export interface AppRuntimeConfigInput {
   /** Demo intra-handover jog: ENU offset (km) for the PRIMARY UE (button-toggled). */
   readonly primaryJogEastKm?: number;
   readonly primaryJogNorthKm?: number;
+  /** One-shot explicit live demo cue; not a source-backed trajectory event. */
+  readonly manualHandoverRequestId?: number;
+  readonly manualHandoverKind?: 'intra' | 'inter';
+  readonly manualHandoverStartedAtMs?: number;
 }
 
 export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConfig {
@@ -96,15 +100,17 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     cameraCommand: input.cameraCommand,
     directorFocusCommand: input.directorFocusCommand,
     viewport: input.viewport,
-    ueCount: input.appMode === 'sinr-experiment'
-      ? input.sceneTopology.ueCount ?? SINR_LIVE_DEFAULT_UE_COUNT
-      : input.selectedTrainingEnvAxes?.nUsers ?? MODQN_PAPER_BASELINE_UE_COUNT,
+    ueCount: input.sceneTopology.ueCount
+      ?? (input.appMode === 'sinr-experiment'
+        ? SINR_LIVE_DEFAULT_UE_COUNT
+        : input.selectedTrainingEnvAxes?.nUsers ?? MODQN_PAPER_BASELINE_UE_COUNT),
     cellServingCount: input.appMode === 'modqn-demo'
       ? normalizeRuntimeModqnServingCount(input.sceneTopology.cellServingCount)
       : undefined,
-    ueDistributionMode: input.appMode === 'sinr-experiment'
-      ? input.sceneTopology.ueDistributionMode ?? 'random'
-      : trainingTopology.ueDistributionMode ?? 'random',
+    ueDistributionMode: input.sceneTopology.ueDistributionMode
+      ?? (input.appMode === 'sinr-experiment'
+        ? 'random'
+        : trainingTopology.ueDistributionMode ?? 'random'),
     // MODQN consolidation: the MODQN live page reuses the SINR scene, so the primary
     // UE is the centred 'observer' protagonist on BOTH modes. The old 'distribution'
     // anchor (from the paper-faithful MODQN) placed the primary off-centre per the UE
@@ -120,20 +126,27 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     // stay served. The PRIMARY UE still anchors at the observer (cinema unaffected).
     primaryJogEastKm: input.primaryJogEastKm ?? 0,
     primaryJogNorthKm: input.primaryJogNorthKm ?? 0,
+    manualHandoverRequestId: input.manualHandoverRequestId,
+    manualHandoverKind: input.manualHandoverKind,
+    manualHandoverStartedAtMs: input.manualHandoverStartedAtMs,
     ueDistributionScope: input.appMode === 'modqn-demo' ? 'service-area' : 'beam-footprint',
     ueDistributionRadiusKm: input.appMode === 'modqn-demo'
       && input.selectedTrainingEnvAxes?.ueArea.distribution === 'uniform-circular'
       ? input.selectedTrainingEnvAxes.ueArea.radiusKm
       : undefined,
-    ueMobilityMode: input.appMode === 'sinr-experiment'
-      ? input.sceneTopology.ueMobilityMode ?? 'static'
-      : trainingTopology.ueMobilityMode ?? 'static',
-    ueMobilityParams: input.appMode === 'sinr-experiment'
-      ? input.sceneTopology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS
-      : trainingTopology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS,
-    enableUeTrails: input.appMode === 'sinr-experiment'
+    ueMobilityMode: input.sceneTopology.ueMobilityMode
+      ?? (input.appMode === 'sinr-experiment'
+        ? 'static'
+        : trainingTopology.ueMobilityMode ?? 'static'),
+    ueMobilityParams: input.sceneTopology.ueMobilityParams
+      ?? (input.appMode === 'sinr-experiment'
+        ? DEFAULT_UE_MOBILITY_PARAMS
+        : trainingTopology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS),
+    enableUeTrails: input.sceneTopology.enableUeTrails !== null
       ? input.sceneTopology.enableUeTrails === true
-      : trainingTopology.enableUeTrails === true,
+      : input.appMode === 'sinr-experiment'
+        ? false
+        : trainingTopology.enableUeTrails === true,
     modqnVisualLayerPreset,
     modqnVisualLayers: modqnVisualLayerPreset
       ? resolveModqnVisualLayers(modqnVisualLayerPreset)

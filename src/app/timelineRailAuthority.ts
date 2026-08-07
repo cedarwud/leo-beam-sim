@@ -108,7 +108,7 @@ function getModqnProducerTraceLabel(
   const prefix = bundleProvenanceKind === 'paper-faithful'
     ? 'Legacy producer trace'
     : 'Producer trace';
-  return `${prefix} ${range?.rangeLabel ?? 'source rows'} - not Walker`;
+  return `${prefix} ${range?.rangeLabel ?? 'source rows'} - not live`;
 }
 
 export function resolveTimelineRailDescriptor(input: {
@@ -128,13 +128,13 @@ export function resolveTimelineRailDescriptor(input: {
 }): TimelineRailDescriptor {
   const liveTimeline: TimelineSurfaceDescriptor = {
     sourceLabel: input.sceneLane === 'modqn-live-cell-preview'
-      ? 'MODQN overlay on live Walker - demo'
-      : 'Live Walker timeline',
+      ? 'MODQN overlay on live timeline - demo'
+      : 'Live timeline',
     sourceOwner: 'live-walker',
     horizonKind: 'live-walker-window',
     horizonLabel: input.sceneLane === 'modqn-live-cell-preview'
-      ? `Live Walker timeline ${formatDurationLabel(input.liveDurationSec)} with MODQN overlay`
-      : `Live Walker timeline ${formatDurationLabel(input.liveDurationSec)}`,
+      ? `Live timeline ${formatDurationLabel(input.liveDurationSec)} with MODQN overlay`
+      : `Live timeline ${formatDurationLabel(input.liveDurationSec)}`,
     horizonSec: input.liveDurationSec,
     claimKind: input.sceneLane === 'modqn-live-cell-preview' ? 'overlay-demo' : 'live-truth',
     durationSec: input.liveDurationSec,
@@ -150,13 +150,13 @@ export function resolveTimelineRailDescriptor(input: {
   const liveRail: TimelineSurfaceDescriptor = {
     ...liveTimeline,
     sourceLabel: input.sceneLane === 'modqn-live-cell-preview'
-      ? 'live Walker event index - MODQN overlay'
+      ? 'live event index - MODQN overlay'
       : 'sinrLiveCells event index - cell truth',
     sourceOwner: input.sceneLane === 'modqn-live-cell-preview'
       ? 'live-walker'
       : 'sinr-live-cell-truth',
     horizonLabel: input.sceneLane === 'modqn-live-cell-preview'
-      ? `live Walker event index ${formatDurationLabel(input.liveDurationSec)} with MODQN overlay`
+      ? `live event index ${formatDurationLabel(input.liveDurationSec)} with MODQN overlay`
       : `sinrLiveCells cell-truth trajectory on ${formatDurationLabel(input.liveDurationSec)} window`,
     claimKind: input.sceneLane === 'modqn-live-cell-preview'
       ? 'overlay-demo'
@@ -218,7 +218,7 @@ export function resolveTimelineRailDescriptor(input: {
     sourceEndSec: input.producerTraceRange?.endSec,
     sourceGapReasons: input.bundleProvenanceKind === 'paper-faithful'
       ? [LEGACY_PRODUCER_TRACE_SOURCE_GAP]
-      : ['Source gap: producer replay exports only its own trace horizon; it is not a live Walker forecast.'],
+      : ['Source gap: producer replay exports only its own trace horizon; it is not a live-timeline forecast.'],
     axisKind: 'display-stretched',
     axisLabel: 'rail readability display axis',
     axisDurationSec: producerAxisDurationSec,

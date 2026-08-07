@@ -11,6 +11,10 @@ import {
 interface Props {
   frame: NormalizedSceneFrame;
   interTriggerSec: number;
+  manualHandover?: Pick<
+    HandoverToastState,
+    'kind' | 'sourceSatId' | 'sourceBeamId' | 'targetSatId' | 'targetBeamId' | 'progressSec' | 'targetSec'
+  > | null;
 }
 
 function formatEndpoint(satId: string | null, beamId: number | null): string {
@@ -25,10 +29,16 @@ function formatToastPath(state: HandoverToastState): string {
   return `${formatEndpoint(state.sourceSatId, state.sourceBeamId)} -> ${formatEndpoint(state.targetSatId, state.targetBeamId)}`;
 }
 
-export function HandoverToastOverlay({ frame, interTriggerSec }: Props) {
+export function HandoverToastOverlay({ frame, interTriggerSec, manualHandover = null }: Props) {
   const { gl } = useThree();
   const wallClockNowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
-  const toast = resolveHandoverToastState(frame, interTriggerSec, wallClockNowMs);
+  const manualToast: HandoverToastState | null = manualHandover === null
+    ? null
+    : {
+      ...manualHandover,
+      progressRatio: Math.max(0, Math.min(1, manualHandover.progressSec / Math.max(manualHandover.targetSec, 1e-6))),
+    };
+  const toast = manualToast ?? resolveHandoverToastState(frame, interTriggerSec, wallClockNowMs);
 
   useEffect(() => {
     const canvas = gl.domElement;

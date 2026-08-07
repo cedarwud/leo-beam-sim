@@ -6,15 +6,17 @@ import {
   formatDb,
   formatDbm,
   formatDbi,
+  formatCellServingIdentity,
   formatPanelBeamIdentity,
   formatSinr,
   sinrColor,
 } from './formatters';
+import { PanelHelp, usePanelCopy } from './panelHelp';
 import { StatusBadge } from './StatusBadge';
 
 // P1e (c) audit-list hook (PR-0.5 backfill): keep `channelMetricLabelForKind`
-// in scope so the SINR-derived terms (line ~245 "SINR Formula Terms" heading)
-// can later branch to "SNR Formula Terms" when the producer-declared kind is
+// in scope so the SINR-derived terms (the card heading) can later branch to a
+// "SNR Formula Terms" heading when the producer-declared kind is
 // `'snr-no-interference'`. Full heading branching is reserved for the slice
 // PRs — this constant keeps the contract surface in scope.
 const _FORMULA_TERMS_DEFAULT_LABEL = channelMetricLabelForKind(undefined);
@@ -56,24 +58,47 @@ function formatFormulaTermValue(value: number | null, unit: FormulaTermUnit): st
   return formatDbm(value);
 }
 
-function FormulaTermTile({
+/**
+ * One line of the fraction: `[op] [symbol] [label] [?] ............ [value]`.
+ *
+ * The `op` glyph ("＋" / "－" / "＝") is what makes the group visibly compose,
+ * the same device the energy card uses for its power and energy trains — a
+ * student can read the group top-to-bottom and check the arithmetic by eye.
+ *
+ * `order` exists because the DOM order of `data-term` cells is a CONTRACT
+ * (`validate:phase9d:formula-evidence-stability` deep-equals the ten term ids
+ * in a fixed sequence, and phase7b / phase1a re-assert it). The numerator's
+ * SUM (`signalDbm`) is first in that sequence but has to read LAST on screen,
+ * after the terms it is the sum of — so it keeps its DOM position and moves
+ * visually with flex `order`.
+ */
+function FormulaTermRow({
   dataTerm,
   status,
+  op,
   symbol,
   label,
-  hiddenLabel,
+  help,
   value,
   unit = 'dBm',
   tone = 'default',
+  emphasis = 'term',
+  order,
 }: {
   dataTerm: string;
   status: FormulaEvidenceStatus;
+  /** "＋" / "－" / "＝" — how this term enters its group. */
+  op?: string;
   symbol: ReactNode;
   label: string;
-  hiddenLabel?: string;
+  /** "?" trigger for this term's definition. */
+  help?: ReactNode;
   value: number | null;
   unit?: FormulaTermUnit;
   tone?: 'default' | 'fixed' | 'signal' | 'loss' | 'interference' | 'noise';
+  /** `sum` is the group's "＝" line: the value the terms above it compose into. */
+  emphasis?: 'term' | 'sum';
+  order?: number;
 }) {
   const formattedValue = formatFormulaTermValue(value, unit);
   const valueLabel = status === 'current'
@@ -95,62 +120,68 @@ function FormulaTermTile({
         : tone === 'noise'
           ? UI_TOKENS.color.semantic.noise
           : UI_TOKENS.color.semantic.tuning;
-  const background = tone === 'fixed'
-    ? 'rgba(247, 217, 123, 0.1)'
-    : tone === 'loss'
-      ? 'rgba(88, 191, 240, 0.09)'
-      : tone === 'interference'
-        ? 'rgba(255, 138, 107, 0.1)'
-        : tone === 'noise'
-          ? 'rgba(142, 186, 255, 0.1)' // semantic.noise #8ebaff tint (was the #7ba7ff/info tint)
-          : 'rgba(118, 234, 215, 0.1)';
 
   return (
     <div
       data-term={dataTerm}
       data-formula-evidence-status={status}
       style={{
-        display: 'grid',
-        gap: 4,
+        order,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
         minWidth: 0,
-        padding: '9px 10px',
+        padding: emphasis === 'sum' ? '6px 8px' : '3px 8px',
         borderRadius: UI_TOKENS.radius.md,
-        background,
-        border: `1px solid ${accent}24`,
+        background: emphasis === 'sum' ? `${accent}14` : 'transparent',
+        border: `1px solid ${emphasis === 'sum' ? `${accent}33` : 'transparent'}`,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-        <span style={{
-          fontFamily: UI_TOKENS.type.family.math,
-          fontSize: UI_TOKENS.type.size.body,
-          color: accent,
-          fontWeight: UI_TOKENS.type.weight.heavy,
-          whiteSpace: 'nowrap',
-        }}>
-          {symbol}
-        </span>
-        <span style={{
-          minWidth: 0,
-          color: UI_TOKENS.color.text.muted,
-          fontSize: UI_TOKENS.type.size.tiny,
-          lineHeight: 1.2,
-          textTransform: 'uppercase',
-          overflowWrap: 'anywhere',
-        }}>
-          {label}
-          {hiddenLabel && hiddenLabel !== label && <span style={srOnlyStyle}> {hiddenLabel}</span>}
-        </span>
-      </div>
-      <div style={{
-        color: status === 'current'
-          ? accent
-          : UI_TOKENS.color.text.faint,
-        fontSize: UI_TOKENS.type.size.body,
+      <span aria-hidden="true" style={{
+        width: 13,
+        flexShrink: 0,
+        color: UI_TOKENS.color.text.muted,
+        fontFamily: UI_TOKENS.type.family.math,
+        fontSize: UI_TOKENS.type.size.tiny,
+      }}>
+        {op ?? ''}
+      </span>
+      <span style={{
+        flexShrink: 0,
+        minWidth: 26,
+        fontFamily: UI_TOKENS.type.family.math,
+        fontSize: UI_TOKENS.type.size.small,
+        color: accent,
         fontWeight: UI_TOKENS.type.weight.heavy,
+        whiteSpace: 'nowrap',
+      }}>
+        {symbol}
+      </span>
+      <span style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        flex: 1,
+        minWidth: 0,
+        color: emphasis === 'sum' ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
+        fontSize: UI_TOKENS.type.size.tiny,
+        fontWeight: emphasis === 'sum' ? UI_TOKENS.type.weight.heavy : UI_TOKENS.type.weight.strong,
+        lineHeight: 1.25,
+      }}>
+        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
+        {help}
+      </span>
+      <span style={{
+        flexShrink: 0,
+        color: status === 'current' ? accent : UI_TOKENS.color.text.faint,
+        fontSize: emphasis === 'sum' ? UI_TOKENS.type.size.body : UI_TOKENS.type.size.small,
+        fontWeight: UI_TOKENS.type.weight.heavy,
+        fontVariantNumeric: 'tabular-nums',
         lineHeight: 1.2,
+        whiteSpace: 'nowrap',
       }}>
         {valueLabel}
-      </div>
+      </span>
     </div>
   );
 }
@@ -158,32 +189,50 @@ function FormulaTermTile({
 function TermGroup({
   title,
   tone,
+  help,
+  hint,
   children,
 }: {
   title: string;
   tone: string;
+  help?: ReactNode;
+  /** One line stating how the group's terms compose into its sum. */
+  hint: string;
   children: ReactNode;
 }) {
   return (
     <section style={{
       display: 'grid',
-      gap: 7,
+      gap: 5,
       padding: '9px',
       borderRadius: UI_TOKENS.radius.lg,
       background: UI_TOKENS.color.surface.cardFaint,
       border: `1px solid ${tone}24`,
     }}>
       <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        minWidth: 0,
         color: tone,
         fontSize: UI_TOKENS.type.size.caption,
         fontWeight: UI_TOKENS.type.weight.heavy,
         letterSpacing: 0.5,
         textTransform: 'uppercase',
       }}>
-        {title}
+        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{title}</span>
+        {help}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 7 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
         {children}
+      </div>
+      <div style={{
+        color: UI_TOKENS.color.text.faint,
+        fontSize: UI_TOKENS.type.size.tiny,
+        lineHeight: 1.35,
+        overflowWrap: 'anywhere',
+      }}>
+        {hint}
       </div>
     </section>
   );
@@ -194,13 +243,19 @@ export function FormulaTermsReadout({
   budget,
   isFormulaEvidenceStale,
   frequencyReuse,
+  servingCellId,
 }: {
   source: SimState['physicalServing'];
   budget: SimState['physicalServingBudget'];
   isFormulaEvidenceStale: boolean;
   frequencyReuse: number;
+  /** Cell-truth serving unit on sinr-live; null on steered/replay lanes. */
+  servingCellId: number | null;
 }) {
-  const hasFormulaSource = source.satId !== null && source.beamId !== null;
+  const { t, tx } = usePanelCopy();
+  const hasSteeredFormulaSource = source.satId !== null && source.beamId !== null;
+  const hasCellFormulaSource = source.satId !== null && source.beamId === null && servingCellId !== null;
+  const hasFormulaSource = hasSteeredFormulaSource || hasCellFormulaSource;
   const formulaEvidenceStatus: FormulaEvidenceStatus = isFormulaEvidenceStale
     ? 'stale'
     : budget !== null && hasFormulaSource
@@ -211,26 +266,46 @@ export function FormulaTermsReadout({
     : source.sinrDb !== null && Number.isFinite(source.sinrDb)
       ? `${formatSinr(source.sinrDb)}${formulaEvidenceStatus === 'stale' ? ' stale' : ''}`
       : formulaEvidenceStatus;
-  const sourceLabel = hasFormulaSource
-    ? formatPanelBeamIdentity(source.satId, source.beamId, frequencyReuse, 'No physical serving source yet')
-    : 'No physical serving source yet';
+  const sourceLabel = hasCellFormulaSource
+    ? formatCellServingIdentity(source.satId, servingCellId, frequencyReuse, 'No serving source yet')
+    : hasSteeredFormulaSource
+      ? formatPanelBeamIdentity(source.satId, source.beamId, frequencyReuse, 'No physical serving source yet')
+      : 'No serving source yet';
   const statusLabel = formulaEvidenceStatus === 'current'
     ? source.status
     : formulaEvidenceStatus;
+  // Student-facing state line. The canonical English provenance token stays in
+  // the DOM as sr-only text (below) so machine readers keep the vocabulary the
+  // pre-i18n surface exposed.
+  const statusCopy = formulaEvidenceStatus === 'stale'
+    ? tx('panel.formulaTerms.status.stale')
+    : formulaEvidenceStatus === 'waiting'
+      ? tx('panel.formulaTerms.status.waiting')
+      : source.status === 'live'
+        ? tx('panel.formulaTerms.status.live')
+        : tx('panel.formulaTerms.status.latched');
+  const canonicalStatusCopy = formulaEvidenceStatus === 'stale'
+    ? 'stale after edit; waiting for next recomputed frame'
+    : hasCellFormulaSource
+      ? `${formatFormulaSourceProvenance(source.status)} for the current primary UE sinr-live cell-truth link`
+      : formatFormulaSourceProvenance(source.status);
+  const evidenceAuthority = hasCellFormulaSource
+    ? 'the current primary UE sinr-live cell-truth LinkSample'
+    : 'computeLinkBudget';
   const evidenceCopy = formulaEvidenceStatus === 'current' && source.status === 'live'
-    ? 'Live values from computeLinkBudget.'
+    ? `Live values from ${evidenceAuthority}.`
     : formulaEvidenceStatus === 'current'
-      ? 'Last-known values for the latched source.'
+      ? `Last-known values for ${evidenceAuthority}.`
       : formulaEvidenceStatus === 'stale'
         ? 'Edited. Waiting for the next recomputed frame.'
-        : 'Waiting for a physical serving source.';
+        : 'Waiting for a serving link sample.';
   const legacyEvidenceCopy = formulaEvidenceStatus === 'current' && source.status === 'live'
-    ? 'Current computeLinkBudget term values for the physical serving formula source.'
+    ? `Current term values for ${evidenceAuthority}.`
     : formulaEvidenceStatus === 'current'
-      ? 'Last-known computeLinkBudget term values for the latched physical serving formula source.'
+      ? `Last-known term values for ${evidenceAuthority}.`
       : formulaEvidenceStatus === 'stale'
         ? 'Formula evidence is stale after a runtime edit; last-known values are labeled stale.'
-        : 'Waiting for a physical serving formula source; placeholders keep the term grid stable.';
+        : 'Waiting for a serving link sample; placeholders keep the term grid stable.';
 
   return (
     <div
@@ -255,7 +330,10 @@ export function FormulaTermsReadout({
             letterSpacing: 0.6,
             textTransform: 'uppercase',
           }}>
-            SINR Formula Terms
+            {tx('panel.formulaTerms.title')}
+            {/* Canonical English heading, preserved for machine readers that
+                learned this surface before it was translated. */}
+            <span style={srOnlyStyle}> SINR Formula Terms</span>
           </div>
           <div style={{
             marginTop: 5,
@@ -271,21 +349,8 @@ export function FormulaTermsReadout({
             fontSize: UI_TOKENS.type.size.caption,
             lineHeight: 1.35,
           }}>
-            {formulaEvidenceStatus === 'stale'
-              ? 'stale after edit; waiting for next recomputed frame'
-              : formatFormulaSourceProvenance(source.status)}
-          </div>
-          {/* W1 disambiguation: the γ result below is the STEERED physical-serving
-              link (re-pointed to the UE, high boresight gain), NOT the off-axis
-              cell-truth serving SINR the BEAM DUEL shows above. Two live surfaces,
-              two models — labelling them stops the values reading as a bug. */}
-          <div style={{
-            marginTop: 4,
-            color: UI_TOKENS.color.text.muted,
-            fontSize: UI_TOKENS.type.size.caption,
-            lineHeight: 1.3,
-          }}>
-            steered physical-serving diagnostic — distinct from the off-axis cell-truth serving SINR in the BEAM DUEL above
+            {statusCopy}
+            <span style={srOnlyStyle}> {canonicalStatusCopy}</span>
           </div>
         </div>
         <div
@@ -309,8 +374,9 @@ export function FormulaTermsReadout({
             fontWeight: UI_TOKENS.type.weight.heavy,
             letterSpacing: 0.5,
             textTransform: 'uppercase',
+            textAlign: 'right',
           }}>
-            γ result
+            {tx('panel.formulaTerms.result')}
           </div>
           <div style={{
             color: formulaEvidenceStatus === 'current' ? sinrColor(source.sinrDb ?? -Infinity) : UI_TOKENS.color.text.faint,
@@ -320,16 +386,26 @@ export function FormulaTermsReadout({
           }}>
             {formulaResultLabel}
           </div>
+          <div style={{
+            color: UI_TOKENS.color.text.faint,
+            fontSize: UI_TOKENS.type.size.tiny,
+            lineHeight: 1.3,
+            textAlign: 'right',
+          }}>
+            {tx('panel.formulaTerms.resultHint')}
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-        <StatusBadge tone={formulaEvidenceStatus === 'current' ? 'serving' : 'warning'}>
-          {statusLabel}
-        </StatusBadge>
-        <StatusBadge tone="neutral">
-          computeLinkBudget
-        </StatusBadge>
+      <div aria-hidden="true" style={{ display: 'none' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+          <StatusBadge tone={formulaEvidenceStatus === 'current' ? 'serving' : 'warning'}>
+            {statusLabel}
+          </StatusBadge>
+          <StatusBadge tone="neutral">
+            computeLinkBudget
+          </StatusBadge>
+        </div>
       </div>
 
       <div
@@ -342,117 +418,225 @@ export function FormulaTermsReadout({
           gap: 9,
         }}
       >
-        <div style={{
-          color: UI_TOKENS.color.text.muted,
-          fontSize: UI_TOKENS.type.size.caption,
-          lineHeight: 1.4,
-        }}>
-          {evidenceCopy}
-          <span style={srOnlyStyle}>{legacyEvidenceCopy}</span>
+        <div aria-hidden="true" style={{ display: 'none' }}>
+          <div style={{
+            color: UI_TOKENS.color.text.muted,
+            fontSize: UI_TOKENS.type.size.caption,
+            lineHeight: 1.4,
+          }}>
+            {evidenceCopy}
+            <span style={srOnlyStyle}>{legacyEvidenceCopy}</span>
+          </div>
         </div>
         <div
           data-testid="formula-term-grid"
           data-formula-evidence-status={formulaEvidenceStatus}
           style={{ display: 'grid', gap: 9 }}
         >
-          <TermGroup title="Signal path" tone={UI_TOKENS.color.semantic.tuning}>
-            <FormulaTermTile
+          <TermGroup
+            title={tx('panel.formulaTerms.numerator')}
+            tone={UI_TOKENS.color.semantic.tuning}
+            hint={tx('panel.formulaTerms.numeratorHint')}
+            help={(
+              <PanelHelp
+                helpId="panel.formulaTerms"
+                titleText={tx('panel.formulaTerms.numerator')}
+                bodyText={`${tx('panel.formulaTerms.numerator.help')} ${tx('panel.formulaTerms.help')}`}
+                formula={<>γ = S / (I<sup>a</sup> + I<sup>b</sup> + σ²)</>}
+                meta={<>{t('formula.sinr.caption')}</>}
+              />
+            )}
+          >
+            {/* DOM-first (term-id order is a contract), read last on screen. */}
+            <FormulaTermRow
               dataTerm="signalDbm"
               status={formulaEvidenceStatus}
+              op="＝"
+              order={1}
               symbol={<>S</>}
-              label="Signal total"
-              hiddenLabel="numerator / signalDbm"
+              label={tx('panel.formulaTerms.signalTotal.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.signalTotal"
+                  titleText={tx('panel.formulaTerms.signalTotal.label')}
+                  bodyText={tx('panel.formulaTerms.signalTotal.help')}
+                  meta={<>{t('common.unit.dbm')}</>}
+                />
+              )}
               value={budget?.signalDbm ?? null}
               tone="signal"
+              emphasis="sum"
             />
-            <FormulaTermTile
+            <FormulaTermRow
               dataTerm="effectiveTxPower"
               status={formulaEvidenceStatus}
               symbol={<>P<sub>t</sub></>}
-              label="Tx power"
-              hiddenLabel="effective transmit power"
+              label={tx('panel.formulaTerms.txPower.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.txPower"
+                  titleText={tx('panel.formulaTerms.txPower.label')}
+                  bodyText={tx('panel.formulaTerms.txPower.help')}
+                  meta={<>{t('common.unit.dbm')}</>}
+                />
+              )}
               value={budget?.txPowerDbm ?? null}
               tone="signal"
             />
-            <FormulaTermTile
+            <FormulaTermRow
               dataTerm="transmitGain"
               status={formulaEvidenceStatus}
+              op="＋"
               symbol={<>G<sup>T</sup></>}
-              label="Tx gain"
-              hiddenLabel="transmit gain pattern"
+              label={tx('panel.formulaTerms.txGain.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.txGain"
+                  titleText={tx('panel.formulaTerms.txGain.label')}
+                  bodyText={tx('panel.formulaTerms.txGain.help')}
+                  meta={<>{t('common.unit.db')}</>}
+                />
+              )}
               value={budget?.beamGainDb ?? null}
               unit="dB"
               tone="signal"
             />
-            <FormulaTermTile
+            <FormulaTermRow
               dataTerm="receiverGain"
               status={formulaEvidenceStatus}
+              op="＋"
               symbol={<>G<sup>R</sup></>}
-              label="Rx gain"
-              hiddenLabel="receiver gain"
+              label={tx('panel.formulaTerms.rxGain.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.rxGain"
+                  titleText={tx('panel.formulaTerms.rxGain.label')}
+                  bodyText={tx('panel.formulaTerms.rxGain.help')}
+                  meta={<>{t('common.unit.dbi')}</>}
+                />
+              )}
               value={budget?.receiverGainDbi ?? null}
               unit="dBi"
               tone="fixed"
             />
-          </TermGroup>
-          <TermGroup title="Loss" tone="#58bff0">
-            <FormulaTermTile
+            <FormulaTermRow
               dataTerm="pathLoss"
               status={formulaEvidenceStatus}
+              op="－"
               symbol={<>L</>}
-              label="Path loss"
-              hiddenLabel="path loss"
+              label={tx('panel.formulaTerms.pathLoss.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.pathLoss"
+                  titleText={tx('panel.formulaTerms.pathLoss.label')}
+                  bodyText={tx('panel.formulaTerms.pathLoss.help')}
+                  meta={<>{t('common.unit.db')}</>}
+                />
+              )}
               value={budget?.pathLossDb ?? null}
               unit="dB"
               tone="loss"
             />
-            <FormulaTermTile
+            <FormulaTermRow
               dataTerm="scanLoss"
               status={formulaEvidenceStatus}
+              op="－"
               symbol={<>L<sub>scan</sub></>}
-              label="Scan loss"
-              hiddenLabel="scan loss"
+              label={tx('panel.formulaTerms.scanLoss.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.scanLoss"
+                  titleText={tx('panel.formulaTerms.scanLoss.label')}
+                  bodyText={tx('panel.formulaTerms.scanLoss.help')}
+                  meta={<>{t('common.unit.db')}</>}
+                />
+              )}
               value={budget?.steeringLossDb ?? null}
               unit="dB"
               tone="loss"
             />
           </TermGroup>
-          <TermGroup title="Interference + noise" tone={UI_TOKENS.color.semantic.info}>
-            <FormulaTermTile
+          <TermGroup
+            title={tx('panel.formulaTerms.denominator')}
+            tone={UI_TOKENS.color.semantic.noise}
+            hint={tx('panel.formulaTerms.denominatorHint')}
+            help={(
+              <PanelHelp
+                helpId="panel.formulaTerms.denominator"
+                titleText={tx('panel.formulaTerms.denominator')}
+                bodyText={tx('panel.formulaTerms.denominator.help')}
+                formula={<>D = I<sup>a</sup> + I<sup>b</sup> + σ²</>}
+                meta={<>{t('common.unit.dbm')}</>}
+              />
+            )}
+          >
+            <FormulaTermRow
               dataTerm="intraInterference"
               status={formulaEvidenceStatus}
               symbol={<>I<sup>a</sup></>}
-              label="Inside sat"
-              hiddenLabel="intra interference"
+              label={tx('panel.formulaTerms.intraInterference.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.intraInterference"
+                  titleText={tx('panel.formulaTerms.intraInterference.label')}
+                  bodyText={tx('panel.formulaTerms.intraInterference.help')}
+                  meta={<>{t('common.unit.dbm')}</>}
+                />
+              )}
               value={budget?.intraInterferenceDbm ?? null}
               tone="interference"
             />
-            <FormulaTermTile
+            <FormulaTermRow
               dataTerm="interInterference"
               status={formulaEvidenceStatus}
+              op="＋"
               symbol={<>I<sup>b</sup></>}
-              label="Other sat"
-              hiddenLabel="inter interference"
+              label={tx('panel.formulaTerms.interInterference.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.interInterference"
+                  titleText={tx('panel.formulaTerms.interInterference.label')}
+                  bodyText={tx('panel.formulaTerms.interInterference.help')}
+                  meta={<>{t('common.unit.dbm')}</>}
+                />
+              )}
               value={budget?.interInterferenceDbm ?? null}
               tone="interference"
             />
-            <FormulaTermTile
+            <FormulaTermRow
               dataTerm="noiseDbm"
               status={formulaEvidenceStatus}
+              op="＋"
               symbol={<>σ²</>}
-              label="Noise floor"
-              hiddenLabel="noise σ² / noiseDbm"
+              label={tx('panel.formulaTerms.noise.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.noise"
+                  titleText={tx('panel.formulaTerms.noise.label')}
+                  bodyText={tx('panel.formulaTerms.noise.help')}
+                  meta={<>{t('common.unit.dbm')}</>}
+                />
+              )}
               value={budget?.noiseDbm ?? null}
               tone="noise"
             />
-            <FormulaTermTile
+            <FormulaTermRow
               dataTerm="denominator"
               status={formulaEvidenceStatus}
+              op="＝"
               symbol={<>D</>}
-              label="Denominator"
-              hiddenLabel="denominator"
+              label={tx('panel.formulaTerms.denominatorTotal.label')}
+              help={(
+                <PanelHelp
+                  helpId="panel.formulaTerms.denominatorTotal"
+                  titleText={tx('panel.formulaTerms.denominatorTotal.label')}
+                  bodyText={tx('panel.formulaTerms.denominatorTotal.help')}
+                  meta={<>{t('common.unit.dbm')}</>}
+                />
+              )}
               value={budget?.denominatorDbm ?? null}
               tone="noise"
+              emphasis="sum"
             />
           </TermGroup>
         </div>

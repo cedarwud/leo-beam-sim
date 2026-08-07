@@ -146,7 +146,8 @@ function validateAppWiring(): void {
   const appSource = readRepoFile('src/App.tsx');
   assertContains(appSource, 'const target = clampTimelineTime(targetSec, timelineDurationSec);', 'timeline seek target clamp');
   assertContains(appSource, 'replayController?.seek(target);', 'artifact replay seek wiring');
-  assertContains(appSource, 'const absoluteTargetSec = liveTimelineWindowStartSec + target;', 'live seek absolute time mapping');
+  assertContains(appSource, 'liveTimelineWindowStartSec + target', 'live seek absolute time mapping');
+  assertContains(appSource, 'LIVE_SIM_TIMELINE_DURATION_SEC', 'live seek clamps to the source horizon');
   assertContains(appSource, 'setLiveTimelineSeekRequest({', 'live seek request state');
   assertContains(appSource, 'setLiveObservedHandoverRailEvents([]);', 'live seek clears observed handover rail events');
   assertContains(appSource, 'data-timeline-current-time-sec={timelineCurrentTimeSec.toFixed(3)}', 'app shell current time dataset');
@@ -168,7 +169,8 @@ function validateLiveSimulationResetPath(): void {
   assertContains(useSimulationSource, 'const seekToTimelineFrame = useCallback((targetSec: number) => {', 'live seek helper declaration');
   assertContains(useSimulationSource, "buildRuntimeStateAt({ toSec: targetSec, intent: 'seek' });", 'live seek delegates to the one-reset recipe with intent seek');
   assertContains(useSimulationSource, 'const buildRuntimeStateAt = useCallback(', 'the single construct-state-at-T recipe exists');
-  assertContains(useSimulationSource, 'const targetOffset = normalizeReplayOffset(params.toSec, maxTimeSec, replay.loop);', 'the recipe normalizes the target offset');
+  assertContains(useSimulationSource, 'normalizeSeekOffset(params.toSec, maxTimeSec, replay.loop)', 'seek uses the end-preserving target normalizer');
+  assertContains(useSimulationSource, 'normalizeReplayOffset(params.toSec, maxTimeSec, replay.loop)', 'non-seek intents keep the existing replay normalizer');
   // the recipe REBASES for the time-shift intents (seek/wrap); only cold-start reset()s.
   // Scope to the recipe BODY (decl -> its resetMobilityStates()) so the type signature
   // `{ kind: 'cold-start' } | { kind: 'rebase'; … }` cannot satisfy `kind: 'rebase'`

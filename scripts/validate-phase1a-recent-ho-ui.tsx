@@ -8,7 +8,16 @@ import type { LinkBudgetTerms, SimState } from '../src/scene/types.ts';
 import { createSceneTopologyState } from '../src/sceneTopology.ts';
 import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
+import {
+  assertNoTestId,
+  assertTestId,
+  assertTestIdAttr,
+  assertValueInAttrElement,
+  assertValueInTestId,
+  attrValuesIn,
+} from './lib/dom-structure.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
+import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 import { formatSatelliteLabel } from '../src/utils/formatSatelliteLabel.ts';
 
@@ -224,17 +233,31 @@ function run(): void {
     <InfoPanel {...simState} showFormulaTerms profile={profile} />,
   );
   const combinedText = decodeHtmlText(combinedMarkup);
+  // NOTE (agent-M): the four uppercase role tokens / role captions below are the
+  // one invariant on this surface with no structural carrier yet — the duel
+  // columns expose POSITION (`data-duel-block`) but not ROLE. Adding
+  // `data-panel-role` + `data-panel-role-caption` to the two columns in
+  // src/ui/info-panel/DuelSignalColumn.tsx would let these become structural.
+  // They stay for now; dropping them would weaken the gate.
   assertContains(combinedText, 'HO SOURCE');
   assertContains(combinedText, 'previous source');
   assertContains(combinedText, 'HO TARGET');
   assertContains(combinedText, 'recent target / serving now');
   assertContains(combinedText, sourceLabel);
   assertContains(combinedText, targetLabel);
-  assertContains(combinedMarkup, 'data-testid="formula-term-evidence"');
-  assertContains(combinedText, 'SINR Formula Terms');
-  assertContains(combinedText, 'physical serving source');
 
-  const tuningText = decodeHtmlText(renderToStaticMarkup(
+  // The right panel owns the formula evidence, and that evidence stays tied to
+  // the PHYSICAL SERVING link. The fixture feeds two different budgets
+  // (physicalServingBudget = createBudgetTerms(2) -> -90.0 dBm, servingBudget =
+  // createBudgetTerms(0) -> -92.0 dBm), so the signal term reads -90.0 dBm only
+  // if the grid is sourced from physical serving. The old gate pinned the words
+  // "physical serving source", which would have survived exactly that drift.
+  assertTestId(combinedMarkup, 'formula-term-evidence');
+  assertTestIdAttr(combinedMarkup, 'formula-term-evidence', 'data-ownership', 'formula-verification');
+  assertValueInAttrElement(combinedMarkup, 'data-term', 'signalDbm', '-90.0 dBm', 'recent-HO right panel');
+  assertNotContains(combinedText, '-92.0 dBm');
+
+  const tuningMarkup = renderToStaticMarkup(
     // Aligned to the CURRENT SignalTuningPanelProps: the removed legacy props
     // (currentSinrDb/formulaSource/handover-policy sextet) were never destructured
     // by the panel any more, so dropping them is render-identical; the negative
@@ -250,21 +273,36 @@ function run(): void {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
+      energyTuning={DEFAULT_ENERGY_TUNING}
+      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
-  ));
+  );
+  const tuningText = decodeHtmlText(tuningMarkup);
 
-  assertContains(tuningText, 'receiver gain');
-  assertContains(tuningText, '0.0 dBi');
-  assertContains(tuningText, 'Receiver Gain');
+  // LEFT PANEL keeps G^R discoverable: its own tab in the formula strip, and its
+  // own numerator-side tile in the formula map showing the live receiver gain.
+  // (Asserted structurally; the old pins on the words "receiver gain" /
+  // "Receiver Gain" broke the moment the panel was translated.)
+  assert.ok(
+    tuningMarkup.includes('id="sinr-formula-tab-receiver-gain"'),
+    'expected G^R to keep its own tab in the SINR formula tab strip',
+  );
+  assertTestIdAttr(tuningMarkup, 'formula-map-gr', 'data-term-owner', 'receiver-gain');
+  assertTestIdAttr(tuningMarkup, 'formula-map-gr', 'data-formula-side', 'numerator');
+  assertValueInTestId(tuningMarkup, 'formula-map-gr', '0.0 dBi');
+
   assertNotContains(tuningText, 'HOBS paper parameter table does not provide');
   assertNotContains(tuningText, 'Research Override / teaching control');
   assertNotContains(tuningText, '0 dBi fixed');
   assertNotContains(tuningText, targetLabel);
   assertNotContains(tuningText, sourceLabel);
-  assertNotContains(tuningText, 'Current formula terms');
-  assertNotContains(tuningText, 'Formula Verification');
-  assertNotContains(tuningText, 'SINR Formula Terms');
+  // The tuning panel owns NO operational readout: no evidence block, no term
+  // cells, no display-ownership claim of any kind.
+  assertNoTestId(tuningMarkup, 'formula-term-evidence', 'left panel');
+  assertNoTestId(tuningMarkup, 'formula-verification-card', 'left panel');
+  assert.deepEqual(attrValuesIn(tuningMarkup, 'data-term'), [], 'left panel must not render formula term cells');
+  assert.deepEqual(attrValuesIn(tuningMarkup, 'data-ownership'), [], 'left panel must claim no display ownership');
   assertNotContains(tuningText, 'ACTIVE SERVING');
   assertNotContains(tuningText, 'HO SOURCE');
 
@@ -274,8 +312,8 @@ function run(): void {
     source: { satId: SOURCE_SAT_ID, label: sourceLabel, beamId: SOURCE_BEAM_ID },
     physicalServing: { satId: TARGET_SAT_ID, label: targetLabel, beamId: TARGET_BEAM_ID },
     asserted: {
-      rightPanel: ['HO SOURCE', 'previous source', 'HO TARGET', 'recent target / serving now', 'physical serving formula terms'],
-      leftPanel: ['SINR Formula Tuning', 'compact formula tabs', 'G^R receiver gain copy'],
+      rightPanel: ['HO SOURCE', 'previous source', 'HO TARGET', 'recent target / serving now', 'formula terms sourced from physicalServingBudget, not the recent-HO card'],
+      leftPanel: ['G^R keeps its own formula tab', 'G^R map tile is numerator-side and shows the live receiver gain', 'no formula term cells and no display-ownership claim'],
       forbiddenLeftPanelCopy: ['Formula Verification', 'SINR Formula Terms', 'Current formula terms', 'ACTIVE SERVING', 'HO SOURCE', sourceLabel, targetLabel],
     },
   }, null, 2));

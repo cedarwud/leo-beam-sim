@@ -157,6 +157,12 @@ export interface UeCellServingRecord {
    * layout / very distant UE.
    */
   readonly sinrDb: number | null;
+  /**
+   * The exact primary-UE/cell-serving LinkSample used to produce `sinrDb`.
+   * The runtime model always populates this when the serving cell has a
+   * decodable sample; optional keeps older pure-fixture records source-safe.
+   */
+  readonly servingLinkSample?: LinkSample | null;
   readonly handoverKind: ServingTransitionKind;
   /** W7: the comparison contender for THIS UE's serving cell (same cellId, runner-up
    *  sat) + its boresight SINR, plus the cell's pending HO target + trigger progress —
@@ -494,15 +500,19 @@ function buildCellBeamSnapshot(
 }
 
 export class SinrLiveCellModel {
-  private readonly profile: Profile;
+  private profile: Profile;
   private readonly cellLayout: CellLayout;
   private readonly cellById: Map<number, CellCenter>;
   private readonly observer: { latDeg: number; lonDeg: number };
   private readonly minElevationDeg: number;
   private readonly epochUtcMs: number;
-  private readonly beamsPerSat: number;
+  private beamsPerSat: number;
   private readonly hopSlotSec: number;
-  private readonly antenna: Profile['antenna'];
+  private readonly beamwidthOverrideRad?: number;
+  private readonly maxGainDbiOverrideDbi?: number;
+  private readonly maxSteeringAngleOverrideDeg?: number;
+  private readonly scanLossAtMaxSteeringOverrideDb?: number;
+  private antenna: Profile['antenna'];
   private readonly cellManagers = new Map<number, HandoverManager>();
   private prevUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
   // Rolling log of handovers fired within the last retention window (sim-time),
@@ -537,22 +547,47 @@ export class SinrLiveCellModel {
     this.epochUtcMs = config.epochUtcMs;
     this.beamsPerSat = config.beamsPerSat ?? Infinity;
     this.hopSlotSec = config.hopSlotSec && config.hopSlotSec > 0 ? config.hopSlotSec : 2.5;
+    this.beamwidthOverrideRad = config.beamwidthOverrideRad;
+    this.maxGainDbiOverrideDbi = config.maxGainDbiOverrideDbi;
+    this.maxSteeringAngleOverrideDeg = config.maxSteeringAngleOverrideDeg;
+    this.scanLossAtMaxSteeringOverrideDb = config.scanLossAtMaxSteeringOverrideDb;
     // SINR-live-only antenna overrides (S-cells-4a): beamwidth / peak gain /
     // steering / scan loss are layered over the profile antenna WITHOUT mutating
     // `profile.antenna` (the shared SINR oracle for the steered lane + baseline
     // KPI stays byte-identical). When no override is supplied the spread is a
     // value-identical shallow copy → the pure-model default is unchanged.
-    this.antenna = {
-      ...config.profile.antenna,
-      ...(config.beamwidthOverrideRad != null ? { beamwidth3dBRad: config.beamwidthOverrideRad } : {}),
-      ...(config.maxGainDbiOverrideDbi != null ? { maxGainDbi: config.maxGainDbiOverrideDbi } : {}),
-      ...(config.maxSteeringAngleOverrideDeg != null
-        ? { maxSteeringAngleDeg: config.maxSteeringAngleOverrideDeg }
+    this.antenna = this.resolveAntenna(config.profile);
+  }
+
+  private resolveAntenna(profile: Profile): Profile['antenna'] {
+    return {
+      ...profile.antenna,
+      ...(this.beamwidthOverrideRad != null ? { beamwidth3dBRad: this.beamwidthOverrideRad } : {}),
+      ...(this.maxGainDbiOverrideDbi != null ? { maxGainDbi: this.maxGainDbiOverrideDbi } : {}),
+      ...(this.maxSteeringAngleOverrideDeg != null
+        ? { maxSteeringAngleDeg: this.maxSteeringAngleOverrideDeg }
         : {}),
-      ...(config.scanLossAtMaxSteeringOverrideDb != null
-        ? { scanLossAtMaxSteeringDb: config.scanLossAtMaxSteeringOverrideDb }
+      ...(this.scanLossAtMaxSteeringOverrideDb != null
+        ? { scanLossAtMaxSteeringDb: this.scanLossAtMaxSteeringOverrideDb }
         : {}),
     };
+  }
+
+  /**
+   * Refresh profile-backed link-budget inputs without destroying cell-serving
+   * continuity. Signal tuning is a next-frame recompute, not a new replay epoch:
+   * the per-cell HandoverManagers, `prevUeServing`, recent pulse window and
+   * cumulative counters must all survive the update.
+   *
+   * The caller must recreate this model when the handover policy, cell layout,
+   * observer/epoch, or another structural runtime identity changes. The optional
+   * beam budget is supplied by the runtime resolver so topology tuning follows
+   * the same clamp/fail-closed policy as a newly-created model.
+   */
+  updateRuntimeProfile(profile: Profile, beamsPerSat = this.beamsPerSat): void {
+    this.profile = profile;
+    this.beamsPerSat = beamsPerSat;
+    this.antenna = this.resolveAntenna(profile);
   }
 
   private managerForCell(cellId: number): HandoverManager {
@@ -675,7 +710,27 @@ export class SinrLiveCellModel {
       if (spare > 0) {
         const others = sorted.filter(cellId => !lockedSet.has(cellId));
         if (others.length > 0) {
-          const start = (slotIndex * spare) % others.length;
+          // COVERAGE DE-PHASING (the "screen has no beams" root fix). Every
+          // qualifying sat's ground reach (~655 km at 50° scan) dwarfs the cell
+          // field (~±83 km), so `sorted` — and therefore `others` — is the SAME
+          // 37-cell list for most sats. Without a per-sat term, `start` depends
+          // only on (slotIndex, spare), so on any COLD START (page reload at a
+          // persisted timeline position, or a seek that takes the cell-model
+          // reset() branch) every sat has locked=[] / spare=beams and they all
+          // light the IDENTICAL contiguous window `(slotIndex*beams) mod 37` —
+          // measured: 6–13 of the ~9–19 qualifying sats on one 7-cell window,
+          // 7/37 cells served, and a cell outside the window (e.g. the
+          // protagonist's) starved for 16–25 hop slots (40–62 s).
+          // `satPhase` spreads those windows deterministically across the ring.
+          // DETERMINISTIC BY CONSTRUCTION: a pure FNV-style hash of the satId
+          // string — no Math.random(), no Date/performance clock, no mutable
+          // state. The same (satId, slotIndex, others) always yields the same
+          // window, so replays/goldens stay reproducible.
+          // Scheduling only: the beam budget is still `beams`, `locked`
+          // (continuity) is untouched and still takes priority, and the SERVING
+          // sat of a lit cell is still chosen by SINR + HandoverManager.
+          const satPhase = [...satId].reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) >>> 0, 0);
+          const start = (slotIndex * spare + satPhase) % others.length;
           for (let k = 0; k < spare; k += 1) {
             illuminated.add(`${satId}#${others[(start + k) % others.length]}`);
           }
@@ -887,6 +942,7 @@ export class SinrLiveCellModel {
         : 0;
 
       let sinrDb: number | null = null;
+      let servingLinkSample: LinkSample | null = null;
       if (cell && sat && servingSatId !== null) {
         const uePos: UEPosition = {
           latDeg: 0, // unused by computeLinkBudget (reads offsets only)
@@ -896,7 +952,8 @@ export class SinrLiveCellModel {
         };
         const samples = computeLinkBudget(uePos, finalLit, finalOptions);
         const beamId = cellLinkBudgetBeamId(cell.cellId);
-        sinrDb = samples.find(s => s.satId === servingSatId && s.beamId === beamId)?.sinrDb ?? null;
+        servingLinkSample = samples.find(s => s.satId === servingSatId && s.beamId === beamId) ?? null;
+        sinrDb = servingLinkSample?.sinrDb ?? null;
       }
 
       const next = { satId: servingSatId, cellId };
@@ -938,6 +995,7 @@ export class SinrLiveCellModel {
           ? null
           : cellFrequencyIndex(cellId, this.profile.beams.frequencyReuse),
         sinrDb,
+        servingLinkSample,
         handoverKind: kind,
         comparisonSatId: ueComparison?.comparisonSatId ?? null,
         comparisonSinrDb: ueComparison?.comparisonSinrDb ?? null,

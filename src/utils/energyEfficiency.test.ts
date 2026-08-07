@@ -21,6 +21,7 @@
 import { computeR1EnergyEfficiency } from './energyEfficiency';
 import { computeLinkBudget } from '../engine/signal/link-budget';
 import { loadProfile } from '../profiles/index';
+import { resolveMaxTxPowerDbm } from '../profiles/types';
 import type { SatelliteSnapshot, UEPosition } from '../engine/signal/types';
 
 let passed = 0;
@@ -202,6 +203,7 @@ check('D2. a floor-sentinel SINR yields a real but vanishing eta, not NaN', () =
 // skewing a rendered η.
 check('E. link-budget txPowerDbm is maxTxPowerDbm without an override, the override with one', () => {
   const profile = loadProfile('hobs-2024-candidate-rich');
+  const maxTxPowerDbm = resolveMaxTxPowerDbm(profile.channel);
   const ue: UEPosition = { latDeg: 0, lonDeg: 0, offsetEastKm: 0, offsetNorthKm: 0 };
   const sat: SatelliteSnapshot = {
     id: 'sat-probe',
@@ -228,12 +230,12 @@ check('E. link-budget txPowerDbm is maxTxPowerDbm without an override, the overr
   if (!servingPlain) throw new Error('probe beam produced no link sample');
   assertClose(
     servingPlain.txPowerDbm,
-    profile.channel.maxTxPowerDbm,
+    maxTxPowerDbm,
     1e-12,
     'no override ⇒ maxTxPowerDbm',
   );
 
-  const overriddenDbm = profile.channel.maxTxPowerDbm - 6;
+  const overriddenDbm = maxTxPowerDbm - 6;
   const overridden = computeLinkBudget(ue, [sat], {
     ...config,
     beamPowerOverrideDbmByKey: new Map([['sat-probe:1', overriddenDbm]]),

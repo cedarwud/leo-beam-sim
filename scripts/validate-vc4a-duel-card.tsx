@@ -373,6 +373,12 @@ function assertV2Scenario(profile: Profile, rendered: RenderedScenario): void {
     1,
     `${rendered.scenario} must render one duel card`,
   );
+  assert.equal(
+    countOccurrences(rendered.markup, /data-testid="energy-efficiency-card"/g),
+    1,
+    `${rendered.scenario} must render one dedicated EE card`,
+  );
+  assertNotContains(rendered.markup, 'paper-ee-readout');
   assertContains(rendered.markup, 'data-testid="info-panel-duel-center"');
   assertContains(rendered.markup, 'data-testid="info-panel-duel-body"');
   assertContains(rendered.markup, 'data-testid="info-panel-duel-trigger-progress"');

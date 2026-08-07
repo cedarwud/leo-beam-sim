@@ -1,10 +1,13 @@
 // The SINR-live tuning surface, rendered INLINE in the left aside (always visible,
-// in-flow, one scroll). It holds only the heavy tuners now:
-//   - SINR formula (collapsible <details>, open by default)
-//   - Handover policy (collapsible <details>, open by default)
-// The cheap display toggles moved to the compact SinrLiveQuickControls row at the
-// top of the rail; beam density + camera presets were retired. App injects the
-// tuner panels as nodes so this component does not prop-drill their large sets.
+// in-flow, one scroll). App injects the tuner panels as nodes so this component does
+// not prop-drill their large sets.
+//
+// The two `<details>` wrappers ("SINR formula" / "Handover policy") are gone
+// (owner call 2026-08-06: 把 "SINR formula" 刪除，不需要再下拉收合了). The panel it
+// wraps now carries its own SINR / EE / Policy / Scene tab strip, so an outer
+// collapsible was a second, redundant navigation layer around a surface that
+// already navigates itself — and its English summary was the last untranslated
+// heading on the rail. The containers keep their test ids.
 import { type ReactElement, type ReactNode } from 'react';
 
 interface SinrLiveDisplayDrawerProps {
@@ -25,17 +28,15 @@ export function SinrLiveDisplayDrawer({
       aria-label="SINR-live tuning controls"
     >
       {sinrFormulaSection && (
-        <details className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-formula" open>
-          <summary className="leo-sinr-advanced-summary">SINR formula</summary>
+        <div className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-formula">
           <div className="leo-sinr-advanced-body">{sinrFormulaSection}</div>
-        </details>
+        </div>
       )}
 
       {handoverPolicySection && (
-        <details className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-handover" open>
-          <summary className="leo-sinr-advanced-summary">Handover policy</summary>
+        <div className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-handover">
           <div className="leo-sinr-advanced-body">{handoverPolicySection}</div>
-        </details>
+        </div>
       )}
     </section>
   );
