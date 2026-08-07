@@ -11,11 +11,10 @@ import {
   ENERGY_TUNING_RANGES,
 } from './energyModel';
 
-test('computePowerTrain: 24 dBm with default tuning (paEff=0.35, circuit=3W)', () => {
+test('computePowerTrain: 24 dBm with default teaching tuning (paEff=0.35, circuit=3W)', () => {
   const result = computePowerTrain(24, DEFAULT_ENERGY_TUNING);
   assert.notStrictEqual(result, null);
   assert.ok(result);
-  assert.strictEqual(DEFAULT_ENERGY_TUNING.circuitPowerW, 3);
   assert.ok(
     Math.abs(result.rfTxPowerW - 0.2512) < 1e-3,
     `rfTxPowerW expected ~0.2512, got ${result.rfTxPowerW}`,
@@ -62,6 +61,13 @@ test('computePowerTrain: non-finite circuitPowerW fails closed to null', () => {
   );
 });
 
+test('computePowerTrain: negative circuitPowerW fails closed even when the sum stays positive', () => {
+  assert.strictEqual(
+    computePowerTrain(24, { paEfficiency: 0.35, circuitPowerW: -0.1 }),
+    null,
+  );
+});
+
 test('computePowerTrain: totalPowerW <= 0 fails closed to null (pathological negative circuit power)', () => {
   // rfTxPowerW at -200 dBm ~ 0, paInputW ~ 0, total = 0 + (-100) < 0 -> must be null.
   const result = computePowerTrain(-200, { paEfficiency: 0.35, circuitPowerW: -100 });
@@ -77,13 +83,22 @@ test('computeTeachingThroughputMbps: sinrDb = -Infinity (no service) returns 0, 
   assert.strictEqual(mbps, 0);
 });
 
-test('computeTeachingThroughputMbps: sinrDb = NaN is treated as non-finite/no-service -> 0', () => {
+test('computeTeachingThroughputMbps: sinrDb = NaN fails closed to null', () => {
   const mbps = computeTeachingThroughputMbps({
     sinrDb: Number.NaN,
     bandwidthMHz: 20,
     frequencyReuse: 1,
   });
-  assert.strictEqual(mbps, 0);
+  assert.strictEqual(mbps, null);
+});
+
+test('computeTeachingThroughputMbps: sinrDb = +Infinity fails closed to null', () => {
+  const mbps = computeTeachingThroughputMbps({
+    sinrDb: Number.POSITIVE_INFINITY,
+    bandwidthMHz: 20,
+    frequencyReuse: 1,
+  });
+  assert.strictEqual(mbps, null);
 });
 
 test('computeTeachingThroughputMbps: matches Shannon formula for a normal SINR', () => {
@@ -130,13 +145,14 @@ test('computeTeachingThroughputMbps: frequencyReuse <= 0 fails closed to null', 
 });
 
 test('ENERGY_TUNING_RANGES brackets DEFAULT_ENERGY_TUNING for both knobs', () => {
+  assert.strictEqual(DEFAULT_ENERGY_TUNING.circuitPowerW, 3);
   assert.ok(DEFAULT_ENERGY_TUNING.paEfficiency >= ENERGY_TUNING_RANGES.paEfficiency.min);
   assert.ok(DEFAULT_ENERGY_TUNING.paEfficiency <= ENERGY_TUNING_RANGES.paEfficiency.max);
   assert.ok(DEFAULT_ENERGY_TUNING.circuitPowerW >= ENERGY_TUNING_RANGES.circuitPowerW.min);
   assert.ok(DEFAULT_ENERGY_TUNING.circuitPowerW <= ENERGY_TUNING_RANGES.circuitPowerW.max);
 });
 
-test('ENERGY_TUNING_RANGES brackets DEFAULT_ENERGY_TUNING for the handover-energy knob too', () => {
+test('ENERGY_TUNING_RANGES brackets and represents the handover-energy default', () => {
   const range = ENERGY_TUNING_RANGES.energyPerHandoverJ;
   assert.strictEqual(DEFAULT_ENERGY_PER_HANDOVER_J, 3);
   assert.ok(DEFAULT_ENERGY_PER_HANDOVER_J >= range.min);
@@ -144,6 +160,11 @@ test('ENERGY_TUNING_RANGES brackets DEFAULT_ENERGY_TUNING for the handover-energ
   assert.strictEqual(DEFAULT_ENERGY_TUNING.energyPerHandoverJ, DEFAULT_ENERGY_PER_HANDOVER_J);
   // min must be exactly 0 so the term can be switched off and A/B'd.
   assert.strictEqual(range.min, 0);
+  assert.strictEqual(
+    (DEFAULT_ENERGY_PER_HANDOVER_J - range.min) % range.step,
+    0,
+    'the default must be an exact HTML range step so the rendered control keeps its 3 J value',
+  );
 });
 
 test('DEFAULT_ENERGY_PER_HANDOVER_J is non-zero but not dominant at the reference setup', () => {

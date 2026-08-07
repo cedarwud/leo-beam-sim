@@ -33,6 +33,7 @@ export function EnergyTab({
   maxTxPowerDbm,
   energyTuning,
   onEnergyTuningChange,
+  onEnergyTuningReset,
 }: {
   /**
    * Comes from the existing SINR tuning state — the two panels share one P_tx.
@@ -43,6 +44,7 @@ export function EnergyTab({
   maxTxPowerDbm: number;
   energyTuning: EnergyTuningState;
   onEnergyTuningChange: (next: EnergyTuningState) => void;
+  onEnergyTuningReset?: () => void;
 }) {
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
@@ -71,15 +73,37 @@ export function EnergyTab({
       */}
       <FormulaHeader
         testId="energy-formula-header"
-        title={say('tab.energy.heading', '能源效率公式', 'The energy-efficiency formula')}
+        title={t('panel.energy.teachingKnobTitle')}
         accent={ENERGY_ACCENT}
+        caption={t('panel.energy.teachingScopeNote')}
+        action={(
+          <button
+            type="button"
+            data-testid="energy-parameters-reset"
+            onClick={onEnergyTuningReset}
+            disabled={onEnergyTuningReset === undefined}
+            style={{
+              border: '1px solid rgba(195, 166, 255, 0.42)',
+              borderRadius: 6,
+              background: 'rgba(195, 166, 255, 0.10)',
+              color: '#e7ddff',
+              padding: '3px 7px',
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: onEnergyTuningReset === undefined ? 'not-allowed' : 'pointer',
+              opacity: onEnergyTuningReset === undefined ? 0.5 : 1,
+            }}
+          >
+            {t('panel.energy.restoreDefaults.label')}
+          </button>
+        )}
         // Owner call 2026-08-06: no `claim` badge. The visible "模擬資料" chip is
         // gone here for the same reason it went from `TeachingEnergyCard` — the
         // machine-readable marker stays as `data-teaching-claim` on the page
         // wrapper above, so anything needing the provenance can still read it,
         // while the student no longer reads a label whose only job was to
         // caveat numbers this tab no longer shows.
-        help={{ helpId: 'formula.energy', body: t('formula.energy.caption') }}
+        help={{ helpId: 'panel.energy.teachingKnobHelp', body: t('panel.energy.teachingKnobHelp') }}
       >
         <FormulaRow
           testId="energy-formula-row-prf"
@@ -139,12 +163,12 @@ export function EnergyTab({
           note={wattUnit}
           source={say(
             'formula.ee.row.ptotal.source',
-            'P_circuit ← 本頁的電路功率參數；本式為 EE 的分母',
-            'P_circuit ← the circuit-power control on this tab; this line is the denominator of EE',
+            'P_circuit ← 本頁的電路功率參數；本式是 non-canonical Run EE 的分母',
+            'P_circuit ← the circuit-power control; this is the denominator of non-canonical Run EE',
           )}
           help={{
             helpId: 'formula.ee.row.ptotal',
-            title: say('formula.ee.row.ptotal.title', 'P_total：總消耗功率', 'P_total: total power consumption'),
+            title: say('formula.ee.row.ptotal.title', 'P_total：教學總功率', 'P_total: teaching-scope total power'),
             body: say(
               'formula.ee.row.ptotal.help',
               'P_circuit 為與傳輸負載無關的固定消耗，涵蓋控制電路與散熱等。與放大器輸入功率相加即為當下的總消耗功率。',
@@ -206,22 +230,97 @@ export function EnergyTab({
           testId="energy-formula-row-ee"
           accent={ENERGY_ACCENT}
           emphasis
-          expression={<>EE = Σ(R · Δt) / (Σ(P<sub>total</sub> · Δt) + E<sub>HO</sub>)</>}
+          expression={<>EE<sub>teaching</sub> = Σ(R · Δt) / (Σ(P<sub>total</sub> · Δt) + E<sub>HO</sub>)</>}
           note={t('common.unit.mbitPerJoule')}
           source={say(
             'formula.ee.row.ee.source',
-            '全程累積後相除；結果顯示於右側面板',
-            'Accumulated over the run, then divided; the result is shown in the right-hand panel',
+            'non-canonical scope 的全程累積後相除；結果顯示於右側面板',
+            'Accumulated over the non-canonical scope; the result is shown in the right-hand panel',
           )}
           help={{
             helpId: 'formula.ee.row.ee',
-            title: say('formula.ee.row.ee.title', 'EE：每焦耳傳輸的資料量', 'EE: data delivered per joule'),
-            body: t('formula.ee.caption'),
+            title: say('formula.ee.row.ee.title', 'EE_teaching：每焦耳傳輸的資料量', 'EE_teaching: data delivered per joule'),
+            body: t('panel.energy.teachingScopeNote'),
             effect: say(
               'formula.ee.row.ee.effect',
               '任一參數變更會重置累積量，因不同參數組合屬於不同的實驗條件。',
               'Changing any parameter resets the accumulation, since a different parameter set is a different experimental condition.',
             ),
+          }}
+        />
+      </FormulaHeader>
+
+      <FormulaHeader
+        testId="canonical-energy-formula-header"
+        title={t('panel.energy.canonicalTitle')}
+        accent="#4ADE80"
+        help={{ helpId: 'panel.energy.canonicalHelp', body: t('panel.energy.canonicalHelp') }}
+      >
+        <FormulaRow
+          testId="canonical-formula-row-psys"
+          accent="#4ADE80"
+          expression={<>P<sub>sys</sub> = Σ<sub>s,v</sub> P<sup>tot</sup><sub>s,v</sub></>}
+          note={wattUnit}
+          source={say('formula.canonical.psys.source', '來自核心模組', 'Provided by core module')}
+          help={{
+            helpId: 'kpi.systemPowerW.help',
+            title: t('kpi.systemPowerW.label'),
+            body: t('kpi.systemPowerW.help'),
+            effect: say('formula.canonical.psys.effect', '不受單一連線參數影響。', 'Not affected by single-link parameters.'),
+          }}
+        />
+        <FormulaRow
+          testId="canonical-formula-row-r1u"
+          accent="#4ADE80"
+          expression={<>r<sub>1,u</sub> = R<sub>u</sub> / P<sub>sys</sub></>}
+          note={t('common.unit.mbitPerJoule')}
+          source={say('formula.canonical.r1u.source', '由 canonical producer 保留每位使用者貢獻', 'Preserved per-user contribution from the canonical producer')}
+          help={{
+            helpId: 'kpi.contributionSumMbitPerJ',
+            title: t('kpi.perUserContribution.label'),
+            body: t('kpi.contributionSumMbitPerJ.help'),
+            effect: say('formula.canonical.r1u.effect', '每位使用者使用同一個 P_sys 分母；不是個人實體發射功率。', 'Every user uses the same P_sys denominator; this is not personal physical transmit power.'),
+          }}
+        />
+        <FormulaRow
+          testId="canonical-formula-row-eeinst"
+          accent="#4ADE80"
+          expression={<>EE<sub>inst</sub> = Σ<sub>u</sub> R<sub>u</sub> / P<sub>sys</sub></>}
+          note={t('common.unit.mbitPerJoule')}
+          source={say('formula.canonical.eeinst.source', '來自核心模組', 'Provided by core module')}
+          help={{
+            helpId: 'kpi.eeInstMbitPerJ.help',
+            title: t('kpi.eeInstMbitPerJ.label'),
+            body: t('kpi.eeInstMbitPerJ.help'),
+            effect: say('formula.canonical.eeinst.effect', '瞬時計算之系統整體能源效率。', 'Instantaneous system-wide energy efficiency.'),
+          }}
+        />
+        <FormulaRow
+          testId="canonical-formula-row-identity"
+          accent="#4ADE80"
+          emphasis
+          expression={<>Σ<sub>u</sub> r<sub>1,u</sub> = EE<sub>inst</sub></>}
+          note={t('common.unit.mbitPerJoule')}
+          source={say('formula.canonical.identity.source', '右側面板顯示 PASS / FAIL / PENDING', 'The right-hand panel reports PASS / FAIL / PENDING')}
+          help={{
+            helpId: 'kpi.contributionSumMbitPerJ',
+            title: t('panel.energy.canonicalIdentity.label'),
+            body: t('kpi.contributionSumMbitPerJ.help'),
+            effect: say('formula.canonical.identity.effect', '未取得 producer 值時維持 PENDING，不把缺值當成零。', 'Without producer values it stays PENDING; missing values are never treated as zero.'),
+          }}
+        />
+        <FormulaRow
+          testId="canonical-formula-row-eeeval"
+          accent="#4ADE80"
+          emphasis
+          expression={<>EE<sub>eval</sub> = (Σ<sub>t</sub> Σ<sub>u</sub> R<sub>u</sub> Δt) / (Σ<sub>t</sub> P<sub>sys</sub> Δt)</>}
+          note={t('common.unit.mbitPerJoule')}
+          source={say('formula.canonical.eeeval.source', '來自核心模組', 'Provided by core module')}
+          help={{
+            helpId: 'kpi.eeEvalMbitPerJ.help',
+            title: t('kpi.eeEvalMbitPerJ.label'),
+            body: t('kpi.eeEvalMbitPerJ.help'),
+            effect: say('formula.canonical.eeeval.effect', '依時間累積之比例和能源效率。', 'Time-accumulated ratio-of-sums EE.'),
           }}
         />
       </FormulaHeader>

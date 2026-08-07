@@ -1,6 +1,6 @@
 import { useEffect, useRef, type MutableRefObject } from 'react';
 import { getFormulaFamilyLabel } from '../profiles';
-import type { Profile } from '../profiles/types';
+import { resolveMaxTxPowerDbm, type Profile } from '../profiles/types';
 import type {
   PanelComparisonState,
   PanelPrimaryState,
@@ -9,6 +9,8 @@ import type {
   SignalTruthStatus,
   SimFrame,
   SimState,
+  CanonicalEeErrorCode,
+  CanonicalEeSnapshot,
   VisualFrequencyDiagnosticsState,
   VizFrame,
 } from './types';
@@ -29,6 +31,16 @@ import { resolvePrimaryCellServingRecord } from './sinrLiveCellModel';
 import { computePaperEnergyEfficiency } from '../utils/paperEnergyEfficiency';
 import { useLatchedSignals } from './useLatchedSignals';
 import { usePanelModeInference } from './usePanelModeInference';
+import {
+  BeamshiftCanonicalEeAccumulator,
+  BeamshiftCanonicalEeInputError,
+  computeBeamshiftCanonicalEe,
+  type BeamshiftCanonicalEeInput,
+  type BeamshiftCanonicalInstantaneousEe,
+} from '../teaching/beamshiftCanonicalEe';
+import {
+  CanonicalEeInputError,
+} from '../teaching/canonicalEnergyEfficiency';
 
 // P1d: this hook now receives `frame: NormalizedSceneFrame` and forwards it
 // to `usePanelModeInference`. The bulk of the SimState publication still
@@ -45,6 +57,239 @@ const UI_HANDOVER_UPDATE_INTERVAL_MS = 250;
 // not playback. Paired with the backward check below it identifies a cursor
 // discontinuity that must be published immediately (see the gate).
 const SEEK_FORWARD_JUMP_SEC = 5;
+
+function dbmToWatts(dbm: number): number {
+  return 10 ** ((dbm - 30) / 10);
+}
+
+export interface CanonicalEeInputResolution {
+  readonly input: BeamshiftCanonicalEeInput | null;
+  readonly configIdentity: string;
+  readonly errorCode: CanonicalEeErrorCode | null;
+}
+
+/**
+ * Resolve the producer input from the effective profile and the untouched live
+ * cell frame. The profile's explicit `channel.maxTxPowerDbm` is the only
+ * governed rated-cap source currently carried by this lane. `resolveMaxTxPowerDbm`
+ * supplies the actual live control value, but its fallback is never promoted to
+ * a rated cap when the source field is absent.
+ */
+export function resolveCanonicalEeInput(
+  frame: NonNullable<SimFrame['sinrLiveCells']>,
+  profile: Profile,
+): CanonicalEeInputResolution {
+  const actualRfOutputDbm = resolveMaxTxPowerDbm(profile.channel);
+  const ratedSourceDbm = profile.channel.maxTxPowerDbm;
+  const configIdentity = [
+    profile.id,
+    profile.channel.bandwidthMHz,
+    profile.beams.frequencyReuse,
+    actualRfOutputDbm,
+    ratedSourceDbm ?? 'missing',
+  ].join('|');
+
+  if (ratedSourceDbm === undefined) {
+    return {
+      input: null,
+      configIdentity,
+      errorCode: 'MISSING_RATED_MAX_RF_OUTPUT',
+    };
+  }
+
+  const ratedMaxRfOutputW = dbmToWatts(resolveMaxTxPowerDbm(profile.channel));
+  if (!Number.isFinite(ratedMaxRfOutputW) || ratedMaxRfOutputW <= 0) {
+    return {
+      input: null,
+      configIdentity,
+      errorCode: 'INVALID_RATED_MAX_RF_OUTPUT',
+    };
+  }
+
+  return {
+    input: {
+      frame,
+      bandwidthMHz: profile.channel.bandwidthMHz,
+      frequencyReuse: profile.beams.frequencyReuse,
+      rfOutputPowerDbm: actualRfOutputDbm,
+      ratedMaxRfOutputW,
+    },
+    configIdentity,
+    errorCode: null,
+  };
+}
+
+function canonicalErrorCode(error: unknown): CanonicalEeErrorCode {
+  if (error instanceof BeamshiftCanonicalEeInputError) return error.code;
+  if (error instanceof CanonicalEeInputError) return error.code;
+  return 'INVALID_CANONICAL_CONFIG';
+}
+
+function projectCanonicalEeSnapshot(
+  instantaneous: BeamshiftCanonicalInstantaneousEe,
+  evaluationSampleCount: number,
+  eeEvalMbitPerJ: number | null,
+): CanonicalEeSnapshot {
+  return {
+    status: instantaneous.status,
+    sumIdentity: instantaneous.sumIdentity,
+    systemPowerW: instantaneous.systemPowerW,
+    eeInstMbitPerJ: instantaneous.eeInstMbitPerJ,
+    contributionSumMbitPerJ: instantaneous.contributionSumMbitPerJ,
+    eeEvalMbitPerJ,
+    evaluationSampleCount,
+    perUserContributions: instantaneous.users.map(user => ({
+      ueId: user.ueId,
+      status: user.status,
+      satId: user.satId,
+      cellId: user.cellId,
+      assignedBeamLoad: user.assignedBeamLoad,
+      allocatedBandwidthMHz: user.allocatedBandwidthMHz,
+      sinrDb: user.sinrDb,
+      rateMbps: user.rateMbps,
+      contributionMbitPerJ: user.contributionMbitPerJ,
+    })),
+    errorCode: null,
+  };
+}
+
+function invalidCanonicalEeSnapshot(errorCode: CanonicalEeErrorCode): CanonicalEeSnapshot {
+  return {
+    status: 'invalid',
+    sumIdentity: null,
+    systemPowerW: null,
+    eeInstMbitPerJ: null,
+    contributionSumMbitPerJ: null,
+    eeEvalMbitPerJ: null,
+    evaluationSampleCount: 0,
+    perUserContributions: null,
+    errorCode,
+  };
+}
+
+function pendingCanonicalEeSnapshot(errorCode: CanonicalEeErrorCode | null): CanonicalEeSnapshot {
+  return {
+    status: 'pending',
+    sumIdentity: null,
+    systemPowerW: null,
+    eeInstMbitPerJ: null,
+    contributionSumMbitPerJ: null,
+    eeEvalMbitPerJ: null,
+    evaluationSampleCount: 0,
+    perUserContributions: null,
+    errorCode,
+  };
+}
+
+/**
+ * Stateful canonical measurement window owned by the publisher. It makes the
+ * baseline, timestamp, seek, configuration, and fail-closed rules executable
+ * without putting the full producer frame into React state.
+ */
+export class CanonicalEePublisherSession {
+  private readonly accumulator = new BeamshiftCanonicalEeAccumulator();
+  private previousSimTimeSec: number | null = null;
+  private baselineRequired = true;
+  private configIdentity: string | null = null;
+  private seekRequestKey: string | undefined;
+  private seekRequestKeyInitialized = false;
+  private snapshot: CanonicalEeSnapshot = pendingCanonicalEeSnapshot(null);
+
+  getSnapshot(): CanonicalEeSnapshot {
+    return this.snapshot;
+  }
+
+  resetWindow(): void {
+    this.accumulator.reset();
+    this.previousSimTimeSec = null;
+    this.baselineRequired = true;
+    this.snapshot = pendingCanonicalEeSnapshot(null);
+  }
+
+  private resetAndReanchor(simTimeSec?: number): void {
+    this.accumulator.reset();
+    this.previousSimTimeSec = null;
+    this.baselineRequired = true;
+    if (simTimeSec !== undefined && Number.isFinite(simTimeSec) && simTimeSec >= 0) {
+      this.accumulator.seek(simTimeSec);
+    }
+  }
+
+  private recordInvalid(simTimeSec: number | undefined, error: unknown): CanonicalEeSnapshot {
+    this.resetAndReanchor(simTimeSec);
+    this.previousSimTimeSec = typeof simTimeSec === 'number' && Number.isFinite(simTimeSec)
+      ? simTimeSec
+      : null;
+    this.snapshot = invalidCanonicalEeSnapshot(canonicalErrorCode(error));
+    return this.snapshot;
+  }
+
+  advance(
+    resolution: CanonicalEeInputResolution,
+    seekRequestKey?: string,
+  ): CanonicalEeSnapshot {
+    const configChanged = this.configIdentity !== null
+      && this.configIdentity !== resolution.configIdentity;
+    const seekChanged = this.seekRequestKeyInitialized
+      && this.seekRequestKey !== seekRequestKey;
+    this.configIdentity = resolution.configIdentity;
+    this.seekRequestKey = seekRequestKey;
+    this.seekRequestKeyInitialized = true;
+
+    if (configChanged || seekChanged) {
+      this.resetAndReanchor();
+    }
+
+    if (resolution.input === null) {
+      this.resetAndReanchor();
+      this.snapshot = pendingCanonicalEeSnapshot(resolution.errorCode);
+      return this.snapshot;
+    }
+
+    const input = resolution.input;
+    const simTimeSec = input.frame.simTimeSec;
+    if (this.baselineRequired || this.previousSimTimeSec === null) {
+      try {
+        const instantaneous = computeBeamshiftCanonicalEe(input);
+        this.previousSimTimeSec = simTimeSec;
+        this.baselineRequired = false;
+        this.snapshot = projectCanonicalEeSnapshot(instantaneous, 0, null);
+        return this.snapshot;
+      } catch (error) {
+        return this.recordInvalid(simTimeSec, error);
+      }
+    }
+
+    const dt = simTimeSec - this.previousSimTimeSec;
+    if (dt === 0) return this.snapshot;
+
+    if (!Number.isFinite(dt) || dt < 0) {
+      this.resetAndReanchor(simTimeSec);
+      try {
+        const instantaneous = computeBeamshiftCanonicalEe(input);
+        this.previousSimTimeSec = simTimeSec;
+        this.baselineRequired = false;
+        this.snapshot = projectCanonicalEeSnapshot(instantaneous, 0, null);
+        return this.snapshot;
+      } catch (error) {
+        return this.recordInvalid(simTimeSec, error);
+      }
+    }
+
+    try {
+      const appended = this.accumulator.append(input, dt);
+      this.previousSimTimeSec = simTimeSec;
+      this.snapshot = projectCanonicalEeSnapshot(
+        appended.instantaneous,
+        appended.evaluation.sampleCount,
+        appended.evaluation.sampleCount > 0 ? appended.evaluation.eeEvalMbitPerJ : null,
+      );
+      return this.snapshot;
+    } catch (error) {
+      return this.recordInvalid(simTimeSec, error);
+    }
+  }
+}
 
 /**
  * The published per-UE serving projection — the ONE place the live frame's
@@ -339,6 +584,8 @@ export function useSimStatePublisher({
   viz,
   signalResetKey,
   handoverResetKey,
+  measurementResetEpoch = 0,
+  seekRequestKey,
   latchedBeamSinrByKeyRef,
   onSimUpdate,
   enabled = true,
@@ -350,6 +597,8 @@ export function useSimStatePublisher({
   viz: VizFrame;
   signalResetKey?: string;
   handoverResetKey?: string;
+  measurementResetEpoch?: number;
+  seekRequestKey?: string;
   latchedBeamSinrByKeyRef: MutableRefObject<Map<string, number>>;
   onSimUpdate: (state: SimState) => void;
   enabled?: boolean;
@@ -364,6 +613,10 @@ export function useSimStatePublisher({
 
   const lastUiUpdateAtRef = useRef(0);
   const lastUiStateRef = useRef<SimState | null>(null);
+  const canonicalEePublisherRef = useRef<CanonicalEePublisherSession | null>(null);
+  if (canonicalEePublisherRef.current === null) {
+    canonicalEePublisherRef.current = new CanonicalEePublisherSession();
+  }
   // Previous effect-run sim cursor (updated every run below, NOT only when a frame
   // is published), to detect a SEEK / loop-wrap reseat — a discontinuous simTimeSec
   // jump vs the immediately preceding frame — and force that frame past the UI throttle.
@@ -372,7 +625,22 @@ export function useSimStatePublisher({
   useEffect(() => {
     lastUiUpdateAtRef.current = 0;
     lastUiStateRef.current = null;
-  }, [signalResetKey, handoverResetKey]);
+  }, [signalResetKey, handoverResetKey, measurementResetEpoch, seekRequestKey]);
+
+  useEffect(() => {
+    canonicalEePublisherRef.current?.resetWindow();
+  }, [measurementResetEpoch]);
+
+  useEffect(() => {
+    if (enabled) return;
+    // A producer-backed replay lane does not publish canonical live samples.
+    // Drop the live window so returning to the live lane starts at a baseline
+    // instead of integrating across two unrelated scene sources.
+    canonicalEePublisherRef.current?.resetWindow();
+    prevSimTimeSecRef.current = null;
+    lastUiUpdateAtRef.current = 0;
+    lastUiStateRef.current = null;
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -659,6 +927,28 @@ export function useSimStatePublisher({
       })
       : null;
 
+    const canonicalEeInputResolution = sim.sinrLiveCells
+      ? resolveCanonicalEeInput(sim.sinrLiveCells, profile)
+      : null;
+    const canonicalEe = canonicalEeInputResolution
+      ? canonicalEePublisherRef.current!.advance(
+        {
+          ...canonicalEeInputResolution,
+          // Geometry/handover reset keys identify the live canonical source
+          // context even when B/K/P happen to remain numerically unchanged.
+          configIdentity: [
+            canonicalEeInputResolution.configIdentity,
+            signalResetKey ?? '',
+            handoverResetKey ?? '',
+          ].join('|'),
+        },
+        seekRequestKey,
+      )
+      : (() => {
+        canonicalEePublisherRef.current!.resetWindow();
+        return canonicalEePublisherRef.current!.getSnapshot();
+      })();
+
     // S5-2b: re-point the PUBLISHED primary serving (the InfoPanel "ACTIVE
     // SERVING" card) to the cell-truth primary UE on the sinr-live cell lane —
     // OVERRIDING the steered duel AFTER inferPanelMode so the pending/recent-ho
@@ -716,6 +1006,7 @@ export function useSimStatePublisher({
       modqnCellServiceReadout,
       livePaperEnergyEfficiency,
       ch5DemoPaperEnergyEfficiency,
+      canonicalEe,
       servingSatId: publishedPrimaryServing.servingSatId,
       servingBeamId: publishedPrimaryServing.servingBeamId,
       servingCellId: publishedPrimaryServing.servingCellId,
@@ -795,5 +1086,15 @@ export function useSimStatePublisher({
       lastUiUpdateAtRef.current = nowMs;
       onSimUpdate(nextState);
     }
-  }, [enabled, modqnCellServiceReadout, onSimUpdate, sim]);
+  }, [
+    enabled,
+    handoverResetKey,
+    measurementResetEpoch,
+    modqnCellServiceReadout,
+    onSimUpdate,
+    profile,
+    seekRequestKey,
+    signalResetKey,
+    sim,
+  ]);
 }

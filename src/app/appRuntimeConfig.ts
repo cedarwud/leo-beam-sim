@@ -52,6 +52,8 @@ export interface AppRuntimeConfigInput {
   readonly demoStartOffsetSec: number;
   readonly liveTimelineSeekTargetSec?: number;
   readonly liveTimelineSeekRequestKey?: string;
+  /** Explicit measurement-window reset; does not rebuild or retune the simulation. */
+  readonly measurementResetEpoch?: number;
   readonly signalResetKey: string;
   readonly handoverResetKey: string;
   readonly runtimeVisualSettings: RuntimeVisualSettings;
@@ -92,6 +94,7 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
       seekTargetSec: input.liveTimelineSeekTargetSec,
       seekRequestKey: input.liveTimelineSeekRequestKey,
     },
+    measurementResetEpoch: input.measurementResetEpoch ?? 0,
     signalResetKey: input.signalResetKey,
     handoverResetKey: input.handoverResetKey,
     ...input.runtimeVisualSettings,

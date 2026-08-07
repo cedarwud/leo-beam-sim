@@ -20,9 +20,8 @@
 //      described as an average of throughput/power — that would be a different
 //      (and wrong) quantity dressed up as this one.
 //   4. `TEACHING_CLAIM_LABEL` stays on the section as `data-claim-label` so
-//      machine readers can still see the provenance. The STUDENT-facing marker
-//      is `common.simulatedTeaching` ("模擬資料" / "Simulated"), rendered once
-//      as a chip next to the card title — not repeated on every row.
+//      machine readers can still see the provenance. The student-facing scope
+//      note explicitly says this P_total / Run EE chain is non-canonical.
 //
 // This card is deliberately NOT merged with `EnergyEfficiencyCard`. That card
 // shows an instantaneous, cross-UE, coverage-weighted bit/J from
@@ -32,6 +31,7 @@
 // splice the contract forbids.
 import type { ReactNode } from 'react';
 import { UI_TOKENS } from '../../constants/uiTokens';
+import type { CanonicalEeSnapshot, CanonicalEeUserContribution } from '../../scene/types';
 import {
   TEACHING_ABSENT_DASH,
   TEACHING_CLAIM_LABEL,
@@ -65,6 +65,28 @@ function teachingNumber(value: number | null | undefined, digits: number): strin
 function isMeasured(value: number | null | undefined): value is number {
   return value !== null && value !== undefined && Number.isFinite(value);
 }
+
+export type TeachingCanonicalStatus = 'pending' | 'valid' | 'zero-activity' | 'invalid';
+
+/**
+ * UI projection of the ADR-003 producer. The projection is deliberately
+ * nullable/optional: an unavailable producer is a pending gate, not a zero
+ * reading. `perUserContributions` keeps the additive r_1,u values available to
+ * the classroom surface without reconstructing them from the teaching knob.
+ */
+export type TeachingCanonicalReadout = Pick<
+  CanonicalEeSnapshot,
+  | 'status'
+  | 'sumIdentity'
+  | 'systemPowerW'
+  | 'eeInstMbitPerJ'
+  | 'contributionSumMbitPerJ'
+  | 'eeEvalMbitPerJ'
+> & {
+  /** Optional preserves compatibility with direct card callers before the live seam. */
+  perUserContributions?: CanonicalEeSnapshot['perUserContributions'];
+  errorCode?: CanonicalEeSnapshot['errorCode'];
+};
 
 /**
  * Low-SINR row copy. It has no `panelHelp` dictionary key yet, so it lives here
@@ -200,10 +222,227 @@ function GroupHeading({ children }: { children: string }) {
   );
 }
 
+type CanonicalUserStatus = CanonicalEeUserContribution['status'];
+
+function canonicalText(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === '') return TEACHING_ABSENT_DASH;
+  return String(value);
+}
+
+function canonicalUserStatusLabel(
+  status: CanonicalUserStatus,
+  t: (key: string) => string,
+): string {
+  if (status === 'served') return t('panel.energy.canonicalUserStatus.served');
+  if (status === 'outage') return t('panel.energy.canonicalUserStatus.outage');
+  if (status === 'unserved') return t('panel.energy.canonicalUserStatus.unserved');
+  return TEACHING_ABSENT_DASH;
+}
+
+function canonicalUserStatusTone(status: CanonicalUserStatus): 'serving' | 'warning' | 'neutral' {
+  if (status === 'served') return 'serving';
+  if (status === 'outage') return 'warning';
+  return 'neutral';
+}
+
+function CanonicalMetric({
+  testId,
+  value,
+  digits,
+  unit,
+}: {
+  testId: string;
+  value: number | null | undefined;
+  digits: number;
+  unit?: string;
+}) {
+  return (
+    <span
+      data-testid={testId}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        gap: UI_TOKENS.space.xs,
+        whiteSpace: 'nowrap',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {teachingNumber(value, digits)}
+      {unit ? (
+        <span style={{ color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.tiny }}>
+          {unit}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function CanonicalUserTable({
+  users,
+  t,
+  bandwidthUnit,
+  decibel,
+  mbps,
+  mbitPerJoule,
+}: {
+  users: CanonicalEeSnapshot['perUserContributions'];
+  t: (key: string) => string;
+  bandwidthUnit: string;
+  decibel: string;
+  mbps: string;
+  mbitPerJoule: string;
+}) {
+  const headCellStyle = {
+    padding: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.md}px`,
+    color: UI_TOKENS.color.text.secondary,
+    fontSize: UI_TOKENS.type.size.tiny,
+    fontWeight: UI_TOKENS.type.weight.heavy,
+    lineHeight: 1.25,
+    textAlign: 'left' as const,
+    whiteSpace: 'nowrap' as const,
+    borderBottom: `1px solid ${UI_TOKENS.color.border.soft}`,
+  };
+  const bodyCellStyle = {
+    padding: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.md}px`,
+    color: UI_TOKENS.color.text.primary,
+    fontSize: UI_TOKENS.type.size.tiny,
+    lineHeight: 1.3,
+    verticalAlign: 'top' as const,
+    borderTop: `1px solid ${UI_TOKENS.color.border.subtle}`,
+  };
+
+  return (
+    <div
+      data-testid="canonical-per-user-contributions"
+      style={{
+        display: 'grid',
+        gap: UI_TOKENS.space.xs,
+        padding: `${UI_TOKENS.space.md}px ${UI_TOKENS.space.lg}px`,
+        color: UI_TOKENS.color.text.secondary,
+        fontSize: UI_TOKENS.type.size.tiny,
+        lineHeight: 1.35,
+        minWidth: 0,
+      }}
+    >
+      <div
+        data-testid="canonical-user-details-note"
+        id="canonical-user-details-note"
+        style={{
+          color: UI_TOKENS.color.text.faint,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {t('panel.energy.canonicalUsers.note')}
+      </div>
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          overscrollBehaviorX: 'contain',
+          border: `1px solid ${UI_TOKENS.color.border.metric}`,
+          borderRadius: UI_TOKENS.radius.md,
+          background: UI_TOKENS.color.surface.cardFaint,
+        }}
+      >
+        <table
+          data-testid="canonical-user-details-table"
+          aria-describedby="canonical-user-details-note"
+          style={{
+            width: '100%',
+            minWidth: '42rem',
+            borderCollapse: 'collapse',
+            tableLayout: 'auto',
+          }}
+        >
+          <caption style={{
+            padding: `${UI_TOKENS.space.md}px ${UI_TOKENS.space.md}px ${UI_TOKENS.space.sm}px`,
+            color: UI_TOKENS.color.text.primary,
+            fontSize: UI_TOKENS.type.size.small,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            textAlign: 'left',
+          }}>
+            {t('panel.energy.canonicalUsers.title')}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col" style={headCellStyle}>{t('panel.energy.canonicalUsers.ue')}</th>
+              <th scope="col" style={headCellStyle}>{t('panel.energy.canonicalUsers.status')}</th>
+              <th scope="col" style={headCellStyle}>{t('panel.energy.canonicalUsers.satellite')}</th>
+              <th scope="col" style={headCellStyle}>{t('panel.energy.canonicalUsers.cell')}</th>
+              <th scope="col" style={{ ...headCellStyle, textAlign: 'right' }}>{t('panel.energy.canonicalUsers.load')}</th>
+              <th scope="col" style={{ ...headCellStyle, textAlign: 'right' }}>{t('panel.energy.canonicalUsers.bandwidth')} ({bandwidthUnit})</th>
+              <th scope="col" style={{ ...headCellStyle, textAlign: 'right' }}>{t('panel.energy.canonicalUsers.sinr')} ({decibel})</th>
+              <th scope="col" style={{ ...headCellStyle, textAlign: 'right' }}>{t('panel.energy.canonicalUsers.rate')} ({mbps})</th>
+              <th scope="col" style={{ ...headCellStyle, textAlign: 'right' }}>{t('kpi.perUserContribution.label')} ({mbitPerJoule})</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users === null ? (
+              <tr data-testid="canonical-user-details-unavailable">
+                <td colSpan={9} style={{ ...bodyCellStyle, color: UI_TOKENS.color.text.faint }}>
+                  {TEACHING_ABSENT_DASH} {t('panel.energy.canonicalUsers.unavailable')}
+                </td>
+              </tr>
+            ) : users.length === 0 ? (
+              <tr data-testid="canonical-user-details-empty">
+                <td colSpan={9} style={{ ...bodyCellStyle, color: UI_TOKENS.color.text.faint }}>
+                  {t('panel.energy.canonicalUsers.empty')}
+                </td>
+              </tr>
+            ) : users.map(user => {
+              const statusLabel = canonicalUserStatusLabel(user.status, t);
+              return (
+                <tr key={user.ueId} data-testid={`canonical-user-row-${user.ueId}`}>
+                  <th scope="row" data-testid={`canonical-user-id-${user.ueId}`} style={{ ...bodyCellStyle, fontWeight: UI_TOKENS.type.weight.heavy, whiteSpace: 'nowrap' }}>
+                    {user.ueId}
+                  </th>
+                  <td data-testid={`canonical-user-status-${user.ueId}`} style={bodyCellStyle}>
+                    {user.status ? (
+                      <span aria-label={statusLabel}>
+                        <StatusBadge tone={canonicalUserStatusTone(user.status)}>{statusLabel}</StatusBadge>
+                      </span>
+                    ) : TEACHING_ABSENT_DASH}
+                  </td>
+                  <td data-testid={`canonical-user-satellite-${user.ueId}`} style={{ ...bodyCellStyle, overflowWrap: 'anywhere' }}>
+                    {canonicalText(user.satId)}
+                  </td>
+                  <td data-testid={`canonical-user-cell-${user.ueId}`} style={{ ...bodyCellStyle, whiteSpace: 'nowrap' }}>
+                    {canonicalText(user.cellId)}
+                  </td>
+                  <td data-testid={`canonical-user-load-${user.ueId}`} style={{ ...bodyCellStyle, textAlign: 'right' }}>
+                    <CanonicalMetric testId={`canonical-user-load-value-${user.ueId}`} value={user.assignedBeamLoad} digits={0} />
+                  </td>
+                  <td data-testid={`canonical-user-bandwidth-${user.ueId}`} style={{ ...bodyCellStyle, textAlign: 'right' }}>
+                    <CanonicalMetric testId={`canonical-user-bandwidth-value-${user.ueId}`} value={user.allocatedBandwidthMHz} digits={2} unit={bandwidthUnit} />
+                  </td>
+                  <td data-testid={`canonical-user-sinr-${user.ueId}`} style={{ ...bodyCellStyle, textAlign: 'right' }}>
+                    <CanonicalMetric testId={`canonical-user-sinr-value-${user.ueId}`} value={user.sinrDb} digits={2} unit={decibel} />
+                  </td>
+                  <td data-testid={`canonical-user-rate-${user.ueId}`} style={{ ...bodyCellStyle, textAlign: 'right' }}>
+                    <CanonicalMetric testId={`canonical-user-rate-value-${user.ueId}`} value={user.rateMbps} digits={2} unit={mbps} />
+                  </td>
+                  <td data-testid={`canonical-user-contribution-${user.ueId}`} style={{ ...bodyCellStyle, textAlign: 'right' }}>
+                    <CanonicalMetric testId={`canonical-user-contribution-value-${user.ueId}`} value={user.contributionMbitPerJ} digits={3} unit={mbitPerJoule} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function TeachingEnergyCard({
   readout,
+  canonicalReadout,
+  onReset,
 }: {
   readout: TeachingEnergyReadout | null;
+  canonicalReadout?: TeachingCanonicalReadout | null;
+  onReset?: () => void;
 }) {
   const { locale, t, tx } = usePanelCopy();
   const powerTrain = readout?.powerTrain ?? null;
@@ -222,6 +461,22 @@ export function TeachingEnergyCard({
     teachingNumber(readout?.lowSinrThresholdDb, 0),
     decibel,
   );
+  const canonicalStatus = canonicalReadout?.status ?? 'pending';
+  const canonicalStatusLabel = canonicalStatus === 'valid'
+    ? t('panel.energy.canonicalStatus.valid')
+    : canonicalStatus === 'zero-activity'
+      ? t('panel.energy.canonicalStatus.zeroActivity')
+      : canonicalStatus === 'invalid'
+        ? t('panel.energy.canonicalStatus.invalid')
+        : t('panel.energy.canonicalStatus.pending');
+  const canonicalIdentity = canonicalReadout?.sumIdentity === true
+    ? t('panel.energy.canonicalIdentity.pass')
+    : canonicalReadout?.sumIdentity === false
+      ? t('panel.energy.canonicalIdentity.fail')
+      : t('panel.energy.canonicalIdentity.pending');
+  const canonicalErrorCode = canonicalReadout?.errorCode ?? null;
+  const canonicalStatusTone = canonicalStatus === 'valid' ? 'serving' : canonicalStatus === 'invalid' ? 'warning' : 'neutral';
+  const canonicalIdentityTone = canonicalReadout?.sumIdentity === false ? 'warning' : canonicalReadout?.sumIdentity === true ? 'serving' : 'neutral';
 
   return (
     <section
@@ -267,11 +522,21 @@ export function TeachingEnergyCard({
             meta={<>{t('formula.energy.caption')}</>}
           />
         </span>
-        {/* Owner call 2026-08-06: the visible "模擬資料" chip is gone. The
-            machine-readable marker stays on the section wrapper below
-            (`data-claim-label`), so anything that needs the provenance can
-            still read it; the student just no longer reads a label whose only
-            job was to caveat the numbers. */}
+        {/* The machine-readable teaching claim stays on the section wrapper;
+            the explicit non-canonical scope note below is the student-facing
+            boundary for P_total and Run EE. */}
+      </div>
+
+      <div
+        data-testid="teaching-scope-note"
+        style={{
+          color: UI_TOKENS.color.text.faint,
+          fontSize: UI_TOKENS.type.size.tiny,
+          lineHeight: 1.4,
+          padding: '2px 0 4px',
+        }}
+      >
+        {t('panel.energy.teachingScopeNote')}
       </div>
 
       <GroupHeading>{tx('panel.energy.groupPower')}</GroupHeading>
@@ -366,7 +631,34 @@ export function TeachingEnergyCard({
         unit={mbps}
       />
 
-      <GroupHeading>{tx('panel.energy.groupRun')}</GroupHeading>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: UI_TOKENS.space.sm }}>
+        <GroupHeading>{tx('panel.energy.groupRun')}</GroupHeading>
+        <div style={{ display: 'flex', alignItems: 'center', gap: UI_TOKENS.space.xs, marginBottom: 2 }}>
+          <button
+            type="button"
+            onClick={onReset}
+            data-testid="teaching-energy-reset"
+            disabled={readout === null || onReset === undefined}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+              borderRadius: UI_TOKENS.radius.sm,
+              color: UI_TOKENS.color.text.secondary,
+              fontSize: UI_TOKENS.type.size.tiny,
+              padding: '2px 6px',
+              cursor: readout === null || onReset === undefined ? 'not-allowed' : 'pointer',
+              opacity: readout === null || onReset === undefined ? 0.5 : 1,
+            }}
+          >
+            {t('panel.energy.reset.label')}
+          </button>
+          <PanelHelp
+            helpId="panel.energy.reset"
+            titleText={t('panel.energy.reset.label')}
+            bodyText={t('panel.energy.reset.help')}
+          />
+        </div>
+      </div>
       <LedgerRow
         testId="teaching-energy-elapsed"
         label={tx('panel.energy.elapsed')}
@@ -537,6 +829,126 @@ export function TeachingEnergyCard({
         emphasis={isMeasured(readout?.lowSinrRatioPct) ? 'default' : 'absent'}
         trailing={<StatusBadge tone="neutral">{LOW_SINR_TIER_TAG}</StatusBadge>}
       />
+
+      <div style={{ marginTop: UI_TOKENS.space.md }}>
+        <GroupHeading>{tx('panel.energy.canonicalTitle')}</GroupHeading>
+        <div
+          data-testid="canonical-scope-note"
+          style={{
+            color: UI_TOKENS.color.text.faint,
+            fontSize: UI_TOKENS.type.size.tiny,
+            lineHeight: 1.4,
+            padding: '3px 9px 5px',
+          }}
+        >
+          {t('panel.energy.canonicalScopeNote')}
+        </div>
+        <div style={{ display: 'grid', gap: UI_TOKENS.space.xs, padding: '2px 0 4px' }}>
+          <div
+            data-testid="canonical-status"
+            data-canonical-error-code={canonicalErrorCode ?? ''}
+            role="status"
+            aria-live="polite"
+            style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: UI_TOKENS.space.sm, padding: '3px 9px' }}
+          >
+            <span style={{ color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.tiny, fontWeight: UI_TOKENS.type.weight.strong }}>
+              {t('panel.energy.canonicalStatus.label')}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: UI_TOKENS.space.xs, minWidth: 0 }}>
+              <StatusBadge tone={canonicalStatusTone}>{canonicalStatusLabel}</StatusBadge>
+              {canonicalErrorCode ? (
+                <span
+                  data-testid="canonical-error-text"
+                  style={{
+                    color: UI_TOKENS.color.semantic.warning.badge,
+                    fontSize: UI_TOKENS.type.size.tiny,
+                    fontWeight: UI_TOKENS.type.weight.strong,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {t('panel.energy.canonicalError.label')}: {canonicalErrorCode}
+                </span>
+              ) : null}
+            </span>
+          </div>
+          <div
+            data-testid="canonical-identity"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: UI_TOKENS.space.sm, padding: '3px 9px' }}
+          >
+            <span style={{ color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.tiny, fontWeight: UI_TOKENS.type.weight.strong }}>
+              {t('panel.energy.canonicalIdentity.label')}
+            </span>
+            <StatusBadge tone={canonicalIdentityTone}>{canonicalIdentity}</StatusBadge>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gap: UI_TOKENS.space.xs, padding: '4px 0' }}>
+          <LedgerRow
+            testId="canonical-system-power"
+            label={t('kpi.systemPowerW.label')}
+            help={(
+              <PanelHelp
+                helpId="kpi.systemPowerW"
+                titleKey="kpi.systemPowerW.label"
+                bodyKey="kpi.systemPowerW.help"
+                meta={<>{watt}</>}
+              />
+            )}
+            value={teachingNumber(canonicalReadout?.systemPowerW, 3)}
+            unit={watt}
+          />
+          <LedgerRow
+            testId="canonical-ee-inst"
+            label={t('kpi.eeInstMbitPerJ.label')}
+            help={(
+              <PanelHelp
+                helpId="kpi.eeInstMbitPerJ"
+                titleKey="kpi.eeInstMbitPerJ.label"
+                bodyKey="kpi.eeInstMbitPerJ.help"
+                meta={<>{mbitPerJoule}</>}
+              />
+            )}
+            value={teachingNumber(canonicalReadout?.eeInstMbitPerJ, 3)}
+            unit={mbitPerJoule}
+          />
+          <LedgerRow
+            testId="canonical-contribution-sum"
+            label={t('kpi.contributionSumMbitPerJ.label')}
+            help={(
+              <PanelHelp
+                helpId="kpi.contributionSumMbitPerJ"
+                titleKey="kpi.contributionSumMbitPerJ.label"
+                bodyKey="kpi.contributionSumMbitPerJ.help"
+                meta={<>{mbitPerJoule}</>}
+              />
+            )}
+            value={teachingNumber(canonicalReadout?.contributionSumMbitPerJ, 3)}
+            unit={mbitPerJoule}
+          />
+          <LedgerRow
+            testId="canonical-ee-eval"
+            label={t('kpi.eeEvalMbitPerJ.label')}
+            help={(
+              <PanelHelp
+                helpId="kpi.eeEvalMbitPerJ"
+                titleKey="kpi.eeEvalMbitPerJ.label"
+                bodyKey="kpi.eeEvalMbitPerJ.help"
+                meta={<>{mbitPerJoule}</>}
+              />
+            )}
+            value={teachingNumber(canonicalReadout?.eeEvalMbitPerJ, 3)}
+            unit={mbitPerJoule}
+            emphasis="result"
+          />
+          <CanonicalUserTable
+            users={canonicalReadout?.perUserContributions ?? null}
+            t={t}
+            bandwidthUnit={t('common.unit.mhz')}
+            decibel={decibel}
+            mbps={mbps}
+            mbitPerJoule={mbitPerJoule}
+          />
+        </div>
+      </div>
 
       {readout === null ? (
         <div style={{

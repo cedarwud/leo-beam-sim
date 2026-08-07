@@ -1168,6 +1168,8 @@ function SceneContent({
     viz,
     signalResetKey: runtime.signalResetKey,
     handoverResetKey: runtime.handoverResetKey,
+    measurementResetEpoch: runtime.measurementResetEpoch,
+    seekRequestKey: runtime.replay.seekRequestKey,
     latchedBeamSinrByKeyRef,
     onSimUpdate,
     enabled: sceneFrame.sceneSource !== 'artifact-replay',

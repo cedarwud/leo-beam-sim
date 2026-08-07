@@ -6,7 +6,7 @@
  * load-dependent, cross-UE average bit/J snapshot; it has no time integration,
  * no PA efficiency, no circuit power, and no delivered-data concept. This file
  * exists to teach the *other* half of the story: how RF Tx power turns into a
- * total electrical power draw (PA input + fixed circuit power), and how a
+ * total electrical power draw (PA input + fixed teaching circuit power), and how a
  * Shannon-capped teaching throughput number is derived from SINR. Neither
  * concept here should ever be blended with `paperEnergyEfficiency.ts`'s output.
  *
@@ -20,11 +20,13 @@
  * these instantaneous quantities into a run-level (Σ Mbit / Σ J) reading.
  */
 
+import { sumInstantaneousPowerW } from './canonicalEnergyEfficiency';
+
 export interface EnergyTuningState {
   /** eta_PA: fraction of PA input power that becomes RF output power. */
   readonly paEfficiency: number; // 0.05..1, default 0.35
-  /** Fixed (load-independent) electronics/circuit power draw, in watts. */
-  readonly circuitPowerW: number; // 0..100, default 3
+  /** Fixed teaching-only electronics/circuit power draw, in watts. */
+  readonly circuitPowerW: number; // 0..100, default/reset 3 W
   /**
    * e_HO: energy charged to the ledger for each handover event, in joules.
    *
@@ -76,16 +78,17 @@ export const DEFAULT_ENERGY_TUNING: EnergyTuningState = {
  * - min 0 turns the term off entirely (degenerates to the radio-only ledger),
  *   so a student can A/B the handover term against its own absence;
  * - max 500 J is ~1.73 s of the reference 288.71 W draw per handover; at N = 10
- *   over 60 s that is 5 000 J against 17 322.9 J of radio energy, i.e. 22.4% of
- *   the total (36.6% at N = 20). Enough to make the ping-pong lesson dramatic,
+ *   over 60 s that is 5 000 J against 17 322.9 J of radio energy, i.e. 22.5% of
+ *   the total (36.7% at N = 20). Enough to make the ping-pong lesson dramatic,
  *   not enough for the readout to become pure handover accounting;
- * - step 5 J gives 100 positions across the range, matching the granularity of
- *   the other two knobs (95 positions for eta_PA, 100 for P_circuit).
+ * - step 1 J keeps the authoritative 3 J default on an exact HTML range
+ *   position, so the control's displayed and accessibility values agree with
+ *   the model state.
  */
 export const ENERGY_TUNING_RANGES: Record<keyof EnergyTuningState, { min: number; max: number; step: number }> = {
   paEfficiency: { min: 0.05, max: 1, step: 0.01 },
   circuitPowerW: { min: 0, max: 100, step: 1 },
-  energyPerHandoverJ: { min: 0, max: 500, step: 5 },
+  energyPerHandoverJ: { min: 0, max: 500, step: 1 },
 };
 
 /**
@@ -116,7 +119,7 @@ export interface PowerTrainBreakdown {
   /** rfTxPowerW / paEfficiency */
   readonly paInputW: number;
   readonly circuitPowerW: number;
-  /** paInputW + circuitPowerW — the breakdown must always sum back to this. */
+  /** paInputW + teaching circuitPowerW — a simulated teaching total in W. */
   readonly totalPowerW: number;
 }
 
@@ -135,7 +138,7 @@ export function computePowerTrain(
 
   const { paEfficiency, circuitPowerW } = tuning;
   if (!Number.isFinite(paEfficiency) || paEfficiency <= 0) return null;
-  if (!Number.isFinite(circuitPowerW)) return null;
+  if (!Number.isFinite(circuitPowerW) || circuitPowerW < 0) return null;
 
   const rfTxPowerW = Math.pow(10, txPowerDbm / 10) / 1000;
   if (!Number.isFinite(rfTxPowerW) || rfTxPowerW < 0) return null;
@@ -143,7 +146,10 @@ export function computePowerTrain(
   const paInputW = rfTxPowerW / paEfficiency;
   if (!Number.isFinite(paInputW)) return null;
 
-  const totalPowerW = paInputW + circuitPowerW;
+  const totalPowerW = sumInstantaneousPowerW([
+    { label: 'teaching PA input', powerW: paInputW },
+    { label: 'teaching circuitPowerW knob', powerW: circuitPowerW },
+  ]);
   if (!Number.isFinite(totalPowerW) || totalPowerW <= 0) return null;
 
   return {
@@ -169,8 +175,8 @@ export interface TeachingThroughputArgs {
  * `/home/u24/papers/beamshift/src/teaching/experiment/run.ts` `spectralEfficiency()`
  * (~L220-223) and its throughput usage (~L365-376).
  *
- * - A non-finite sinrDb (e.g. -Infinity, meaning "no service currently") is a
- *   valid state, not a failure: it means zero throughput, so this returns `0`.
+ * - -Infinity is the explicit "no service currently" sentinel and returns `0`.
+ * - NaN and +Infinity are invalid upstream readings and fail closed to `null`.
  * - A non-finite or non-positive bandwidthMHz/frequencyReuse is an invalid
  *   configuration, so this fails closed to `null`.
  */
@@ -180,11 +186,11 @@ export function computeTeachingThroughputMbps(args: TeachingThroughputArgs): num
   if (!Number.isFinite(bandwidthMHz) || bandwidthMHz <= 0) return null;
   if (!Number.isFinite(frequencyReuse) || frequencyReuse <= 0) return null;
 
-  if (!Number.isFinite(sinrDb)) {
-    // No service (e.g. -Infinity SINR) is a legitimate outcome: zero
-    // throughput is the honest answer, not a computation failure.
+  if (sinrDb === Number.NEGATIVE_INFINITY) {
+    // No service is a legitimate outcome: zero throughput is the honest answer.
     return 0;
   }
+  if (!Number.isFinite(sinrDb)) return null;
 
   const linearSinr = Math.pow(10, sinrDb / 10);
   const spectralEff = Math.min(8, Math.max(0, Math.log2(1 + linearSinr)));

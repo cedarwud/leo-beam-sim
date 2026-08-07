@@ -72,6 +72,12 @@ import {
   resolveEnergyPerHandoverJ,
   type EnergyTuningState,
 } from './energyModel';
+import {
+  CanonicalEeInputError,
+  computeEvaluationEeFromTotals,
+  computeInstantaneousEe,
+  type InstantaneousEeResult,
+} from './canonicalEnergyEfficiency';
 
 export interface EnergyLedgerState {
   readonly cumulativeDataMbit: number;
@@ -261,12 +267,14 @@ export function advanceEnergyLedger(
     return EMPTY_ENERGY_LEDGER;
   }
 
+  const rebaselineSample = (): EnergyLedgerState => ({
+    ...prev,
+    lastSimTimeSec: simTimeSec,
+    ...stepHandoverTally(prev, cumulativeHandoverCount, 'rebaseline'),
+  });
+
   if (prev.lastSimTimeSec === null) {
-    return {
-      ...prev,
-      lastSimTimeSec: simTimeSec,
-      ...stepHandoverTally(prev, cumulativeHandoverCount, 'rebaseline'),
-    };
+    return rebaselineSample();
   }
 
   const dt = simTimeSec - prev.lastSimTimeSec;
@@ -283,18 +291,44 @@ export function advanceEnergyLedger(
     return EMPTY_ENERGY_LEDGER;
   }
 
+  // The existing App route supplies one teaching throughput and one teaching
+  // total-power reading. Route that pair through the canonical instantaneous
+  // domain and identity checks before any accumulation occurs, but only after
+  // the timestamp continuity gate above has had a chance to clear a seeked
+  // window. Null/non-finite samples retain the historical "advance time only"
+  // policy; finite negative values and positive-rate/zero-power values fail
+  // closed through the typed canonical error instead of reaching the
+  // multiplications below.
+  let instantaneousEe: InstantaneousEeResult | null = null;
+  if (
+    throughputMbps !== null
+    && totalPowerW !== null
+    && Number.isFinite(throughputMbps)
+    && Number.isFinite(totalPowerW)
+  ) {
+    try {
+      instantaneousEe = computeInstantaneousEe({
+        ratesMbps: [throughputMbps],
+        systemPowerW: totalPowerW,
+      });
+    } catch (error) {
+      if (!(error instanceof CanonicalEeInputError)) throw error;
+      return rebaselineSample();
+    }
+  }
+
   if (
     throughputMbps === null ||
     totalPowerW === null ||
     !Number.isFinite(throughputMbps) ||
     !Number.isFinite(totalPowerW)
   ) {
-    return {
-      ...prev,
-      lastSimTimeSec: simTimeSec,
-      ...stepHandoverTally(prev, cumulativeHandoverCount, 'rebaseline'),
-    };
+    return rebaselineSample();
   }
+
+  // The numeric branch above must have produced a validated result. Keep the
+  // guard explicit so a future change cannot bypass the canonical seam.
+  if (instantaneousEe === null) return rebaselineSample();
 
   // Quality tally rides on the same accepted-sample path as everything else, so
   // the ratio always describes exactly the window that produced the Sigma above.
@@ -310,8 +344,8 @@ export function advanceEnergyLedger(
   const hasSinr = sinrDb !== null && sinrDb !== undefined && Number.isFinite(sinrDb);
 
   return {
-    cumulativeDataMbit: prev.cumulativeDataMbit + throughputMbps * dt,
-    cumulativeEnergyJ: prev.cumulativeEnergyJ + totalPowerW * dt,
+    cumulativeDataMbit: prev.cumulativeDataMbit + instantaneousEe.totalThroughputMbps * dt,
+    cumulativeEnergyJ: prev.cumulativeEnergyJ + instantaneousEe.systemPowerW * dt,
     elapsedSec: prev.elapsedSec + dt,
     lastSimTimeSec: simTimeSec,
     lowSinrSampleCount:
@@ -397,10 +431,18 @@ export function computeRunEeMbitPerJ(
   if (totalEnergyJ === null || totalEnergyJ <= 0) return null;
 
   const { cumulativeDataMbit } = ledger;
-  if (!Number.isFinite(cumulativeDataMbit)) return null;
-
-  const ee = cumulativeDataMbit / totalEnergyJ;
-  return Number.isFinite(ee) ? ee : null;
+  try {
+    const evaluation = computeEvaluationEeFromTotals({
+      totalDataMbit: cumulativeDataMbit,
+      totalEnergyJ,
+    });
+    // The legacy teaching readout keeps its historical empty-window `null`,
+    // while the canonical API explicitly returns zero for zero activity.
+    return evaluation.status === 'zero-activity' ? null : evaluation.eeEvalMbitPerJ;
+  } catch (error) {
+    if (!(error instanceof CanonicalEeInputError)) throw error;
+    return null;
+  }
 }
 
 /**

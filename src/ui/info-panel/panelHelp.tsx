@@ -66,7 +66,7 @@ const LOCAL_ZH: Record<string, string> = {
   'panel.handoverOffset.help': '候選連線的 SINR 高出目前連線的最小 dB 值，達到此值後才啟動換手判斷。門檻過小時連線會在兩顆衛星之間反覆切換（乒乓效應），過大時則延後離開品質已下降的連線。',
 
   'panel.energy.title': '耗能明細',
-  'panel.energy.subtitle': '本卡為這一段模擬的傳輸資料量與消耗能量的累計。',
+  'panel.energy.subtitle': '本卡為當前量測視窗內的傳輸資料量與消耗能量累計。',
   'panel.energy.help': '無線電能量為各時刻的總功率與該時間步長度乘積的總和；以相同方式對吞吐量求和即得累積傳輸量。換手能量另計，兩者相加為總耗能。累積傳輸量與總耗能之比即為整段累積效率。',
   'panel.energy.groupPower': '瞬時功率',
   'panel.energy.groupThroughput': '瞬時吞吐量',
@@ -172,7 +172,7 @@ const LOCAL_EN: Record<string, string> = {
   'panel.handoverOffset.help': 'The minimum margin, in dB, by which the candidate SINR must exceed the current link before the handover decision starts. Too small a margin makes the link alternate between two satellites (the ping-pong effect); too large a margin delays leaving a link whose quality has already degraded.',
 
   'panel.energy.title': 'Energy breakdown',
-  'panel.energy.subtitle': 'The running total of data delivered and energy consumed over this simulation run.',
+  'panel.energy.subtitle': 'The running total of data delivered and energy consumed over the current measurement window.',
   'panel.energy.help': 'Radio energy is the sum of the total power at each instant multiplied by the length of that time step; cumulative data is the same sum applied to throughput. Handover energy is counted separately, and the two add up to total energy. Cumulative data divided by total energy is the run-accumulated energy efficiency.',
   'panel.energy.groupPower': 'Instantaneous power',
   'panel.energy.groupThroughput': 'Instantaneous throughput',

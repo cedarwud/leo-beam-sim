@@ -5,7 +5,7 @@
 // No refactor required.
 import { getFormulaFamilyLabel } from '../profiles';
 import type { Profile } from '../profiles/types';
-import type { SignalSourceState, SimState } from './types';
+import { createPendingCanonicalEeSnapshot, type SignalSourceState, type SimState } from './types';
 
 function createEmptySignalSource(): SignalSourceState {
   return {
@@ -32,6 +32,7 @@ export function createInitialSimState(profile: Profile): SimState {
     panelComparison: { ...emptyPanelComparison, role: 'none' },
     livePaperEnergyEfficiency: null,
     ch5DemoPaperEnergyEfficiency: null,
+    canonicalEe: createPendingCanonicalEeSnapshot(),
     servingSatId: null,
     servingBeamId: null,
     servingCellId: null,

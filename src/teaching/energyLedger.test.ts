@@ -99,6 +99,28 @@ test('simTimeSec jump > 2s (loop wrap) resets to EMPTY_ENERGY_LEDGER', () => {
   assert.deepStrictEqual(jump, EMPTY_ENERGY_LEDGER);
 });
 
+test('a large seek clears the old window before rejecting an invalid sample', () => {
+  const first = advanceEnergyLedger(EMPTY_ENERGY_LEDGER, {
+    simTimeSec: 0,
+    throughputMbps: 100,
+    totalPowerW: 20,
+  });
+  const normal = advanceEnergyLedger(first, {
+    simTimeSec: 1,
+    throughputMbps: 100,
+    totalPowerW: 20,
+  });
+  assert.strictEqual(normal.cumulativeDataMbit, 100);
+  assert.strictEqual(normal.cumulativeEnergyJ, 20);
+
+  const invalidSeek = advanceEnergyLedger(normal, {
+    simTimeSec: 1000,
+    throughputMbps: -1,
+    totalPowerW: 20,
+  });
+  assert.deepStrictEqual(invalidSeek, EMPTY_ENERGY_LEDGER);
+});
+
 // ---------------------------------------------------------------------------
 // maxSampleGapSec: caller-supplied jump threshold (playback-throttled callers)
 // ---------------------------------------------------------------------------
@@ -240,6 +262,40 @@ test('null totalPowerW advances time only and never pollutes accumulation', () =
   assert.strictEqual(step2.cumulativeEnergyJ, 0);
   assert.strictEqual(step2.elapsedSec, 0);
   assert.strictEqual(step2.lastSimTimeSec, 1);
+});
+
+test('negative or positive-throughput/zero-power samples fail closed without integration', () => {
+  const step1 = advanceEnergyLedger(EMPTY_ENERGY_LEDGER, {
+    simTimeSec: 0,
+    throughputMbps: 100,
+    totalPowerW: 20,
+  });
+
+  const negativeRate = advanceEnergyLedger(step1, {
+    simTimeSec: 1,
+    throughputMbps: -1,
+    totalPowerW: 20,
+  });
+  assert.strictEqual(negativeRate.cumulativeDataMbit, 0);
+  assert.strictEqual(negativeRate.cumulativeEnergyJ, 0);
+  assert.strictEqual(negativeRate.lastSimTimeSec, 1);
+
+  const zeroPower = advanceEnergyLedger(negativeRate, {
+    simTimeSec: 2,
+    throughputMbps: 1,
+    totalPowerW: 0,
+  });
+  assert.strictEqual(zeroPower.cumulativeDataMbit, 0);
+  assert.strictEqual(zeroPower.cumulativeEnergyJ, 0);
+  assert.strictEqual(zeroPower.lastSimTimeSec, 2);
+
+  const recovered = advanceEnergyLedger(zeroPower, {
+    simTimeSec: 3,
+    throughputMbps: 100,
+    totalPowerW: 20,
+  });
+  assert.strictEqual(recovered.cumulativeDataMbit, 100);
+  assert.strictEqual(recovered.cumulativeEnergyJ, 20);
 });
 
 test('a null sample in the middle of a run does not corrupt prior or subsequent accumulation', () => {

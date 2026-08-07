@@ -109,6 +109,7 @@ interface SignalTuningPanelProps {
    */
   readonly energyTuning: EnergyTuningState;
   readonly onEnergyTuningChange: (next: EnergyTuningState) => void;
+  readonly onEnergyTuningReset?: () => void;
   /**
    * Slot for the handover-timing controls, rendered as this panel's third
    * topic. It arrives as a node rather than as prop-drilled state so this file
@@ -137,6 +138,7 @@ export function SignalTuningPanel({
   // scripts render it without the energy props); the App always passes them.
   energyTuning = DEFAULT_ENERGY_TUNING,
   onEnergyTuningChange = () => {},
+  onEnergyTuningReset = () => {},
   handoverPolicySection,
 }: SignalTuningPanelProps) {
   const [mainTab, setMainTab] = useState<MainTabKey>(initialMainTab);
@@ -997,6 +999,7 @@ export function SignalTuningPanel({
             maxTxPowerDbm={tuning.maxTxPowerDbm}
             energyTuning={energyTuning}
             onEnergyTuningChange={onEnergyTuningChange}
+            onEnergyTuningReset={onEnergyTuningReset}
           />
         )}
 

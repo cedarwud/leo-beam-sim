@@ -10,11 +10,14 @@ import {
   resolveDuelStateLabel,
 } from './info-panel/formatters';
 import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
-import { EnergyEfficiencyCard } from './info-panel/EnergyEfficiencyCard';
-import { TeachingEnergyCard } from './info-panel/TeachingEnergyCard';
-import { PanelHelp, usePanelCopy } from './info-panel/panelHelp';
-import { UI_TOKENS } from '../constants/uiTokens';
-import type { TeachingEnergyReadout } from '../teaching';
+import { TeachingEnergyCard, type TeachingCanonicalReadout } from './info-panel/TeachingEnergyCard';
+import {
+  ClassroomEnergyComparisonCard,
+  type ClassroomEnergyComparisonCardProps,
+} from './info-panel/ClassroomEnergyComparisonCard';
+import { ExperimentRecordCard } from './info-panel/ExperimentRecordCard';
+import { usePanelCopy } from './info-panel/panelHelp';
+import type { TeachingEnergyReadout, ExperimentRecord } from '../teaching';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 import { OVERRIDE_PRIMARY_UE_SCOPE_NOTE } from '../modqn/runtimeControls';
 
@@ -46,6 +49,11 @@ type InfoPanelProps = SimState & {
    * nothing trustworthy, which renders as dashes, never zeroes.
    */
   teachingEnergy?: TeachingEnergyReadout | null;
+  canonicalReadout?: TeachingCanonicalReadout | null;
+  onTeachingEnergyReset?: () => void;
+  classroomEnergyComparison?: ClassroomEnergyComparisonCardProps;
+  experimentRecord?: ExperimentRecord | null;
+  onCaptureExperimentRecord?: () => void;
 };
 
 interface LiveStatusModeCopy {
@@ -135,14 +143,19 @@ export function InfoPanel({
   sinrDeltaDb,
   sinrDb,
   physicalServingBudget,
-  ch5DemoPaperEnergyEfficiency,
   handoverOffsetDb,
   handoverTriggerProgressSec,
   handoverTriggerSec,
   hoCount,
+  canonicalEe,
   teachingEnergy,
+  canonicalReadout,
+  onTeachingEnergyReset,
+  classroomEnergyComparison,
+  experimentRecord,
+  onCaptureExperimentRecord,
 }: InfoPanelProps) {
-  const { t, tx } = usePanelCopy();
+  const { tx } = usePanelCopy();
   // S5-2b: on the sinr-live cell lane the serving unit is the typed cell id
   // (`servingBeamId` is null under the cell model — there is no steered beam), so
   // the serving column must render ACTIVE on a cell id too, else the cell-truth
@@ -302,49 +315,32 @@ export function InfoPanel({
 
       {/* Teaching energy breakdown — the Σ-over-time story (Σ Mbit / Σ J). */}
       {teachingEnergy === undefined ? null : (
-        <TeachingEnergyCard readout={teachingEnergy} />
+        <TeachingEnergyCard
+          readout={teachingEnergy}
+          canonicalReadout={canonicalReadout ?? canonicalEe ?? null}
+          onReset={onTeachingEnergyReset}
+        />
       )}
 
-      {/* CONTRACT §1 / §4: the field-wide card is a DIFFERENT quantity from the
-          energy breakdown — an instantaneous, cross-UE, coverage-weighted bit/J
-          from `src/utils/paperEnergyEfficiency.ts`, not a time integral, and its
-          power comes from the beam-load model rather than the power sliders. The
-          two are kept in separate, separately-labelled sections precisely so
-          nobody reads them as two views of one number; the two headings carry
-          that distinction, and the "?" holds the one-line note. */}
-      <div style={{
-        marginTop: UI_TOKENS.space.xl,
-        paddingTop: UI_TOKENS.space.lg,
-        borderTop: `1px solid ${UI_TOKENS.color.border.subtle}`,
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          minWidth: 0,
-          color: UI_TOKENS.color.semantic.tuningSoft,
-          fontSize: UI_TOKENS.type.size.body,
-          fontWeight: UI_TOKENS.type.weight.heavy,
-          letterSpacing: 0.4,
-        }}>
-          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{t('panel.overallEe.title')}</span>
-          {/* The two headings — 耗能明細 / 全場即時效率 — now carry the
-              distinction themselves, so no paragraph re-explains it on the card
-              face. The "?" holds one sentence on what each side accumulates and
-              where its power comes from. */}
-          <PanelHelp
-            helpId="panel.overallEe"
-            titleText={t('panel.overallEe.title')}
-            bodyText={`${t('panel.overallEe.divider')} ${t('panel.overallEe.help')}`}
-            meta={<>{t('formula.ee.caption')}</>}
-          />
-        </div>
-      </div>
+      {classroomEnergyComparison && (
+        <ClassroomEnergyComparisonCard {...classroomEnergyComparison} />
+      )}
 
-      <EnergyEfficiencyCard
-        energyEfficiency={ch5DemoPaperEnergyEfficiency}
-        powerSurface={profile.energyEfficiency?.paper}
-      />
+      {onCaptureExperimentRecord && (
+        <div style={{ marginTop: '16px' }}>
+          <button
+            onClick={onCaptureExperimentRecord}
+            className="leo-button"
+            style={{ width: '100%', padding: '8px', backgroundColor: 'var(--leo-surface-subtle)', color: 'var(--leo-text-primary)', border: '1px solid var(--leo-border)', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            擷取實驗紀錄
+          </button>
+        </div>
+      )}
+
+      {experimentRecord && (
+        <ExperimentRecordCard record={experimentRecord} />
+      )}
 
       {formulaTermsVisible && (
         <FormulaTermsReadout

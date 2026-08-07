@@ -17,6 +17,11 @@ import type {
 import type { ModqnCellServiceReadout } from './modqnServiceMap';
 import type { SinrLiveCellFrame } from './sinrLiveCellModel';
 import type { PaperEnergyEfficiency } from '../utils/paperEnergyEfficiency';
+import type { CanonicalEeInputErrorCode } from '../teaching/canonicalEnergyEfficiency';
+import type {
+  BeamshiftCanonicalEeInputErrorCode,
+  BeamshiftCanonicalUeStatus,
+} from '../teaching/beamshiftCanonicalEe';
 
 export type { BeamTarget, VisualBeamTarget } from './beamTargetTypes';
 
@@ -27,6 +32,58 @@ export type DirectorFocusKind = 'intra' | 'inter';
 export type DirectorFocusPhase = 'idle' | 'acquiring' | 'focused' | 'restoring';
 export type CameraPreset = 'zenith' | 'oblique' | 'chase' | 'paper-faithful-closeup';
 export type UeDistributionScope = 'beam-footprint' | 'service-area';
+
+export type CanonicalEeSnapshotStatus = 'pending' | 'valid' | 'zero-activity' | 'invalid';
+
+export type CanonicalEeErrorCode =
+  | 'MISSING_RATED_MAX_RF_OUTPUT'
+  | 'INVALID_CANONICAL_CONFIG'
+  | BeamshiftCanonicalEeInputErrorCode
+  | CanonicalEeInputErrorCode;
+
+export interface CanonicalEeUserContribution {
+  readonly ueId: string;
+  /** Producer-backed status; optional only for older direct card fixtures. */
+  readonly status?: BeamshiftCanonicalUeStatus;
+  /** Producer-backed serving identity; null means the field is unavailable. */
+  readonly satId?: string | null;
+  readonly cellId?: number | null;
+  /** Assigned active-beam load U used by the producer's bandwidth split. */
+  readonly assignedBeamLoad?: number;
+  readonly allocatedBandwidthMHz?: number;
+  readonly sinrDb?: number | null;
+  readonly rateMbps?: number;
+  /** Additive r_{1,u}; this is not a user's physical transmit power. */
+  readonly contributionMbitPerJ: number;
+}
+
+/** Publisher-to-UI projection of the canonical partial-payload producer boundary. */
+export interface CanonicalEeSnapshot {
+  readonly status: CanonicalEeSnapshotStatus;
+  readonly sumIdentity: boolean | null;
+  readonly systemPowerW: number | null;
+  readonly eeInstMbitPerJ: number | null;
+  readonly contributionSumMbitPerJ: number | null;
+  /** Absent until at least one positive-duration sample is integrated. */
+  readonly eeEvalMbitPerJ: number | null;
+  readonly evaluationSampleCount: number;
+  readonly perUserContributions: readonly CanonicalEeUserContribution[] | null;
+  readonly errorCode: CanonicalEeErrorCode | null;
+}
+
+export function createPendingCanonicalEeSnapshot(): CanonicalEeSnapshot {
+  return {
+    status: 'pending',
+    sumIdentity: null,
+    systemPowerW: null,
+    eeInstMbitPerJ: null,
+    contributionSumMbitPerJ: null,
+    eeEvalMbitPerJ: null,
+    evaluationSampleCount: 0,
+    perUserContributions: null,
+    errorCode: null,
+  };
+}
 
 export interface ReplayConfig {
   epochUtcMs: number;
@@ -71,6 +128,8 @@ export interface RuntimeConfig {
   appMode: AppExperienceMode;
   presentationMode: PresentationMode;
   replay: ReplayConfig;
+  /** Explicit measurement-window reset; parameters remain unchanged. */
+  measurementResetEpoch?: number;
   signalResetKey?: string;
   handoverResetKey?: string;
   beamDensity: BeamDensity;
@@ -225,6 +284,8 @@ export interface SimState {
    * it never drives serving, SINR, or scene geometry.
    */
   ch5DemoPaperEnergyEfficiency?: PaperEnergyEfficiency | null;
+  /** Live ADR-003 projection; absent on producer-backed replay lanes. */
+  canonicalEe?: CanonicalEeSnapshot | null;
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;

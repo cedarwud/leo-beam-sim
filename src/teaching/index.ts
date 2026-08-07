@@ -17,6 +17,22 @@ export {
 } from './energyModel';
 
 export {
+  CANONICAL_EE_UNITS,
+  CanonicalEeInputError,
+  computeEvaluationEe,
+  computeEvaluationEeFromTotals,
+  computeInstantaneousEe,
+  sumInstantaneousPowerW,
+  type CanonicalEeInputErrorCode,
+  type EvaluationEeResult,
+  type EvaluationEeStep,
+  type EvaluationEeTotals,
+  type InstantaneousEeInput,
+  type InstantaneousEeResult,
+  type InstantaneousPowerComponent,
+} from './canonicalEnergyEfficiency';
+
+export {
   DEFAULT_LOW_SINR_THRESHOLD_DB,
   DEFAULT_MAX_SAMPLE_GAP_SEC,
   EMPTY_ENERGY_LEDGER,
@@ -30,6 +46,24 @@ export {
   type EnergyLedgerSample,
 } from './energyLedger';
 
+// The live BeamShift canonical producer is exposed here for the controller's
+// eventual frame bridge. App intentionally does not synthesize its required
+// SinrLiveCellFrame from the teaching SimState summary.
+export {
+  BEAMSHIFT_CANONICAL_EE_SCOPE,
+  BEAMSHIFT_CANONICAL_POWER_ASSUMPTIONS,
+  BeamshiftCanonicalEeAccumulator,
+  BeamshiftCanonicalEeInputError,
+  computeBeamshiftCanonicalEe,
+  type BeamshiftCanonicalBeamPower,
+  type BeamshiftCanonicalEeInput,
+  type BeamshiftCanonicalEeInputErrorCode,
+  type BeamshiftCanonicalEvaluationSnapshot,
+  type BeamshiftCanonicalInstantaneousEe,
+  type BeamshiftCanonicalUeContribution,
+  type BeamshiftCanonicalUeStatus,
+} from './beamshiftCanonicalEe';
+
 export type { TeachingEnergyReadout } from './readout';
 
 export {
@@ -40,3 +74,20 @@ export {
   HANDOVER_ENERGY_MODEL_NOTE,
   HANDOVER_ENERGY_ABSENT_NOTE,
 } from './claimBoundary';
+
+export {
+  CLASSROOM_BASELINE_TX_POWER_DBM,
+  CLASSROOM_CANDIDATE_TX_POWER_DBM,
+  CLASSROOM_ENERGY_COMPARISON_THRESHOLDS,
+  COURSE_ENERGY_COMPARISON_THRESHOLDS,
+  compareClassroomEnergyArms,
+  type ClassroomEnergyComparisonArm,
+  type ClassroomEnergyComparisonArmRole,
+  type ClassroomEnergyComparisonGate,
+  type ClassroomEnergyComparisonGates,
+  type ClassroomEnergyComparisonReasonCode,
+  type ClassroomEnergyComparisonResult,
+  type ClassroomEnergyComparisonThresholds,
+} from './energyComparison';
+
+export type { ExperimentRecord } from './experimentRecord';
