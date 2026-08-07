@@ -167,6 +167,10 @@ export function ClassroomEnergyComparisonCard({
   const lowSinrLabel = t('panel.energyComparison.lowSinrLabel')
     .replace('{threshold}', formatNumber(lowSinrThreshold, 0))
     .replace('{unit}', t('common.unit.db'));
+  const matchedDurationHint = baseline !== null && candidate === null
+    ? t('panel.energyComparison.matchedDurationHint')
+      .replace('{seconds}', baseline.elapsedSec.toFixed(1))
+    : null;
   const gateLabel = (definition: (typeof GATE_DEFINITIONS)[number]): string => {
     const label = t(definition.labelKey);
     if (definition.key === 'dataRetention') {
@@ -333,6 +337,20 @@ export function ClassroomEnergyComparisonCard({
         <p style={{ margin: 0, minWidth: 0, color: UI_TOKENS.color.text.secondary, fontSize: UI_TOKENS.type.size.tiny, lineHeight: 1.45, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
           {t('panel.energyComparison.subtitle')}
         </p>
+        {matchedDurationHint !== null && (
+          <p
+            data-testid="classroom-energy-matched-duration-hint"
+            style={{
+              margin: 0,
+              color: UI_TOKENS.color.text.muted,
+              fontSize: UI_TOKENS.type.size.tiny,
+              lineHeight: 1.4,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {matchedDurationHint}
+          </p>
+        )}
       </div>
 
       {(settingsChanged || windowMismatch) && (

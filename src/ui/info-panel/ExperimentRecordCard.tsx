@@ -1,4 +1,5 @@
 import type { ExperimentRecord, ExperimentRecordScalar, ExperimentTaskId } from '../../teaching';
+import { UI_TOKENS } from '../../constants/uiTokens';
 import {
   experimentRecordToCsv,
   experimentRecordToJson,
@@ -135,6 +136,19 @@ export function ExperimentRecordCard({ record }: ExperimentRecordCardProps) {
     );
   };
 
+  const downloadButtonStyle = {
+    minHeight: 40,
+    padding: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.md}px`,
+    background: UI_TOKENS.color.surface.fieldSoft,
+    color: UI_TOKENS.color.text.primary,
+    border: `1px solid ${UI_TOKENS.color.border.metric}`,
+    borderRadius: UI_TOKENS.radius.md,
+    cursor: validation.valid ? 'pointer' : 'not-allowed',
+    fontSize: UI_TOKENS.type.size.tiny,
+    fontWeight: UI_TOKENS.type.weight.strong,
+    lineHeight: 1.25,
+  } as const;
+
   return (
     <section
       className="leo-info-panel__card"
@@ -187,7 +201,7 @@ export function ExperimentRecordCard({ record }: ExperimentRecordCardProps) {
           onClick={handleDownloadJson}
           disabled={!validation.valid}
           data-testid="download-record-json"
-          style={{ padding: '8px', backgroundColor: 'var(--leo-accent)', color: '#fff', border: 'none', borderRadius: '4px', cursor: validation.valid ? 'pointer' : 'not-allowed' }}
+          style={downloadButtonStyle}
         >
           下載 JSON 紀錄
         </button>
@@ -196,7 +210,7 @@ export function ExperimentRecordCard({ record }: ExperimentRecordCardProps) {
           onClick={handleDownloadCsv}
           disabled={!validation.valid}
           data-testid="download-record-csv"
-          style={{ padding: '8px', backgroundColor: 'var(--leo-surface-card)', color: 'var(--leo-text-primary)', border: '1px solid var(--leo-border)', borderRadius: '4px', cursor: validation.valid ? 'pointer' : 'not-allowed' }}
+          style={downloadButtonStyle}
         >
           下載 CSV 紀錄
         </button>

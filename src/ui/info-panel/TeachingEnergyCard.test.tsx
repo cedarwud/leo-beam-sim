@@ -98,6 +98,8 @@ const markupZh = renderToStaticMarkup(
 
 assert.match(markupZh, /data-testid="teaching-energy-reset"/);
 assert.match(markupZh, /重新開始量測/);
+assert.match(markupZh, /data-testid="teaching-energy-reset"[^>]*style="[^"]*background:rgba\(12, 35, 44, 0\.72\)/);
+assert.match(markupZh, /data-testid="teaching-energy-reset"[^>]*style="[^"]*border:1px solid rgba\(218,244,255,0\.18\)/);
 assert.match(markupZh, /此區顯示單一連線的功率鏈與本次量測時間窗的累積效率。/);
 assert.doesNotMatch(markupZh, /disabled/);
 
@@ -110,6 +112,8 @@ const markupEn = renderToStaticMarkup(
 
 assert.match(markupEn, /data-testid="teaching-energy-reset"/);
 assert.match(markupEn, /Restart measurement/);
+assert.match(markupEn, /data-testid="teaching-energy-reset"[^>]*style="[^"]*background:rgba\(12, 35, 44, 0\.72\)/);
+assert.match(markupEn, /data-testid="teaching-energy-reset"[^>]*border:1px solid rgba\(218,244,255,0\.18\)/);
 assert.match(markupEn, /data-testid="teaching-scope-note"/);
 assert.match(markupEn, /This section shows the power chain for one link and its accumulated efficiency over the current measurement window\./);
 assert.doesNotMatch(markupEn, /non-canonical|must not|canonical system P_sys/);

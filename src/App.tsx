@@ -301,6 +301,22 @@ export interface ClassroomEnergyCaptureInput {
   readonly absenceReason: string | null;
 }
 
+/**
+ * Context drift is meaningful only after a measurement window has been locked.
+ * During app boot the scene/profile/service context can settle across several
+ * frames; treating that initialization as a learner edit leaves a fresh T5
+ * permanently blocked before the first sample exists.
+ */
+export function shouldMarkClassroomEnergyContextDrift(
+  hasLockedMeasurementWindow: boolean,
+  previousContextKey: string | null,
+  currentContextKey: string,
+): boolean {
+  return hasLockedMeasurementWindow
+    && previousContextKey !== null
+    && previousContextKey !== currentContextKey;
+}
+
 function isFiniteNonNegative(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
@@ -1001,16 +1017,41 @@ export function App() {
   }, [clearEnergyLedgerWindow, energyTuning]);
   const energyLedgerResetKey = getEnergyLedgerResetKey(energyLedgerSignalKey, energyTuning);
 
+  // Before the first T5 arm exists, a context change cannot make a comparison
+  // stale. Re-anchor the empty classroom run automatically instead of asking
+  // a learner to diagnose a boot-time/profile-load transition and click a
+  // recovery button before the first capture. Once either arm is frozen, this
+  // path is disabled and context drift remains a hard capture block.
+  useEffect(() => {
+    if (
+      classroomBaselineArm === null
+      && classroomCandidateArm === null
+      && classroomComparisonContextDriftedRef.current
+    ) {
+      clearEnergyLedgerWindow(false);
+    }
+  }, [
+    classroomBaselineArm,
+    classroomCandidateArm,
+    classroomComparisonContextKey,
+    clearEnergyLedgerWindow,
+  ]);
+
   const teachingEnergy = useMemo<TeachingEnergyReadout>(() => {
     const previousContextKey = classroomComparisonContextKeyRef.current;
-    if (previousContextKey !== null && previousContextKey !== classroomComparisonContextKey) {
+    const hasLockedMeasurementWindow = energyLedgerWindowStartSimTimeSecRef.current !== null;
+    if (shouldMarkClassroomEnergyContextDrift(
+      hasLockedMeasurementWindow,
+      previousContextKey,
+      classroomComparisonContextKey,
+    )) {
       classroomComparisonContextDriftedRef.current = true;
     }
     if (energyLedgerResetKeyRef.current !== energyLedgerResetKey) {
       energyLedgerResetKeyRef.current = energyLedgerResetKey;
       energyLedgerRef.current = EMPTY_ENERGY_LEDGER;
       energyLedgerWindowStartSimTimeSecRef.current = null;
-      if (previousContextKey === null || previousContextKey === classroomComparisonContextKey) {
+      if (!hasLockedMeasurementWindow || previousContextKey === null || previousContextKey === classroomComparisonContextKey) {
         classroomComparisonContextKeyRef.current = null;
         classroomComparisonContextDriftedRef.current = false;
       } else {

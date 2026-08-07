@@ -8,6 +8,7 @@ import {
 import {
   freezeClassroomEnergyArm,
   getClassroomEnergyCaptureBlockReason,
+  shouldMarkClassroomEnergyContextDrift,
   type ClassroomEnergyCaptureInput,
 } from './App';
 
@@ -68,6 +69,9 @@ assert.equal(getClassroomEnergyCaptureBlockReason(input({ readout: { ...READOUT,
 assert.equal(getClassroomEnergyCaptureBlockReason(input({ contextDrifted: true })), 'context-mismatch');
 assert.equal(getClassroomEnergyCaptureBlockReason(input({ currentContextKey: 'new-context' })), 'context-mismatch');
 assert.equal(getClassroomEnergyCaptureBlockReason(input({ windowStartSimTimeSec: 160, windowEndSimTimeSec: 160 })), 'invalid-window');
+assert.equal(shouldMarkClassroomEnergyContextDrift(false, 'boot-context', 'settled-context'), false);
+assert.equal(shouldMarkClassroomEnergyContextDrift(true, 'locked-context', 'settled-context'), true);
+assert.equal(shouldMarkClassroomEnergyContextDrift(true, 'locked-context', 'locked-context'), false);
 
 const frozenBaseline = freezeClassroomEnergyArm(input());
 assert.notEqual(frozenBaseline, null);
@@ -85,11 +89,11 @@ assert.equal(Object.isFrozen(frozenCandidate), true);
 
 const mismatchedWindow = compareClassroomEnergyArms(
   frozenBaseline!,
-  Object.freeze({ ...frozenCandidate!, windowEndSimTimeSec: 161 }),
+  Object.freeze({ ...frozenCandidate!, windowEndSimTimeSec: 161, elapsedSec: 61 }),
 );
 assert.equal(mismatchedWindow.comparable, false);
 assert.equal(mismatchedWindow.qualified, null);
-assert.ok(mismatchedWindow.reasonCodes.includes('WINDOW_END_MISMATCH'));
+assert.ok(mismatchedWindow.reasonCodes.includes('WINDOW_DURATION_MISMATCH'));
 assert.deepEqual(mismatchedWindow.gates, {
   dataRetention: null,
   lowSinr: null,

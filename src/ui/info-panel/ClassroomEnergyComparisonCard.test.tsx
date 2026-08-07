@@ -132,7 +132,7 @@ assert.doesNotMatch(failClosed, /PASS|FAIL/);
 
 const mismatch = render(
   props({
-    result: compareClassroomEnergyArms(BASELINE, { ...CANDIDATE, windowEndSimTimeSec: 161 } as ClassroomEnergyComparisonArm),
+    result: compareClassroomEnergyArms(BASELINE, { ...CANDIDATE, windowEndSimTimeSec: 161, elapsedSec: 61 } as ClassroomEnergyComparisonArm),
     contextDrifted: true,
   }),
   'zh-TW',
@@ -140,5 +140,11 @@ const mismatch = render(
 assert.match(mismatch, /場景或設定已變更，請重新開始量測。/);
 assert.match(mismatch, /量測窗口不一致/);
 assert.doesNotMatch(mismatch, />PASS</);
+
+const matchedDurationHint = render(
+  props({ candidate: null, result: null }),
+  'en',
+);
+assert.match(matchedDurationHint, /Baseline duration: 60\.0 s/);
 
 console.log('ClassroomEnergyComparisonCard SSR validation passed.');

@@ -8,6 +8,14 @@
 
 export const CLASSROOM_BASELINE_TX_POWER_DBM = 50 as const;
 export const CLASSROOM_CANDIDATE_TX_POWER_DBM = 35 as const;
+/**
+ * Sequential live captures cannot share the same absolute simulation clock.
+ * They are matched by elapsed measurement duration instead; raw start/end
+ * timestamps remain in each arm for audit/export. A half-second tolerance
+ * absorbs the pause/capture frame boundary without accepting a materially
+ * different window.
+ */
+export const CLASSROOM_MATCHED_WINDOW_TOLERANCE_SEC = 0.5 as const;
 
 export type ClassroomEnergyComparisonArmRole = 'baseline' | 'candidate';
 
@@ -310,13 +318,14 @@ export function compareClassroomEnergyArms(
   if (baselineArm.lowSinrThresholdDb !== candidateArm.lowSinrThresholdDb) {
     addReason(reasons, 'LOW_SINR_THRESHOLD_MISMATCH');
   }
-  if (baselineArm.windowStartSimTimeSec !== candidateArm.windowStartSimTimeSec) {
-    addReason(reasons, 'WINDOW_START_MISMATCH');
-  }
-  if (baselineArm.windowEndSimTimeSec !== candidateArm.windowEndSimTimeSec) {
-    addReason(reasons, 'WINDOW_END_MISMATCH');
-  }
-  if (baselineArm.elapsedSec !== candidateArm.elapsedSec) {
+  // The arms are captured sequentially in a live scene, so their absolute
+  // simulation timestamps necessarily differ. What makes the teaching A/B
+  // valid is the matched-duration window; the raw timestamps stay visible in
+  // the record so the learner can audit the two runs.
+  if (
+    Math.abs(baselineArm.elapsedSec - candidateArm.elapsedSec)
+    > CLASSROOM_MATCHED_WINDOW_TOLERANCE_SEC
+  ) {
     addReason(reasons, 'WINDOW_DURATION_MISMATCH');
   }
 

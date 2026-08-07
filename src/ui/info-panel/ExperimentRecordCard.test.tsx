@@ -93,5 +93,9 @@ test('ExperimentRecordCard renders every shared/task field and both exports', ()
   assert.match(html, /data-record-field="perUserContributions"/);
   assert.match(html, /下載 JSON 紀錄/);
   assert.match(html, /下載 CSV 紀錄/);
+  assert.match(html, /data-testid="download-record-json"[^>]*style="[^"]*background:rgba\(12, 35, 44, 0\.72\)/);
+  assert.match(html, /data-testid="download-record-json"[^>]*style="[^"]*border:1px solid rgba\(218,244,255,0\.18\)/);
+  assert.match(html, /data-testid="download-record-csv"[^>]*style="[^"]*background:rgba\(12, 35, 44, 0\.72\)/);
+  assert.match(html, /data-testid="download-record-csv"[^>]*style="[^"]*border:1px solid rgba\(218,244,255,0\.18\)/);
   assert.match(html, /data-record-valid="true"/);
 });

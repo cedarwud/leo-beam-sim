@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 
 import {
   CLASSROOM_ENERGY_COMPARISON_THRESHOLDS,
+  CLASSROOM_MATCHED_WINDOW_TOLERANCE_SEC,
   compareClassroomEnergyArms,
   type ClassroomEnergyComparisonArm,
 } from './energyComparison';
@@ -112,22 +113,31 @@ test('context mismatch withholds every derived value and gate', () => {
   assert.ok(result.reasonCodes.includes('CONTEXT_KEY_MISMATCH'));
 });
 
-test('window start, end, or duration mismatch withholds the comparison', () => {
-  for (const [field, reasonCode] of [
-    ['windowStartSimTimeSec', 'WINDOW_START_MISMATCH'],
-    ['windowEndSimTimeSec', 'WINDOW_END_MISMATCH'],
-    ['elapsedSec', 'WINDOW_DURATION_MISMATCH'],
-  ] as const) {
-    const result = compareClassroomEnergyArms(
-      BASELINE,
-      candidateWith({ [field]: CANDIDATE[field] + 1 }),
-    );
+test('sequential arms may have different absolute timestamps when duration matches', () => {
+  const result = compareClassroomEnergyArms(
+    BASELINE,
+    candidateWith({ windowStartSimTimeSec: 400, windowEndSimTimeSec: 460 }),
+  );
 
-    assert.strictEqual(result.comparable, false, field);
-    assert.strictEqual(result.dataRetentionRatio, null, field);
-    assert.strictEqual(result.qualified, null, field);
-    assert.ok(result.reasonCodes.includes(reasonCode), field);
-  }
+  assert.strictEqual(result.comparable, true);
+  assert.strictEqual(result.qualified, true);
+});
+
+test('matched-duration tolerance is explicit and longer mismatches withhold the comparison', () => {
+  const withinTolerance = compareClassroomEnergyArms(
+    BASELINE,
+    candidateWith({ elapsedSec: CANDIDATE.elapsedSec + CLASSROOM_MATCHED_WINDOW_TOLERANCE_SEC }),
+  );
+  assert.strictEqual(withinTolerance.comparable, true);
+
+  const outsideTolerance = compareClassroomEnergyArms(
+    BASELINE,
+    candidateWith({ elapsedSec: CANDIDATE.elapsedSec + CLASSROOM_MATCHED_WINDOW_TOLERANCE_SEC + 0.01 }),
+  );
+  assert.strictEqual(outsideTolerance.comparable, false);
+  assert.strictEqual(outsideTolerance.dataRetentionRatio, null);
+  assert.strictEqual(outsideTolerance.qualified, null);
+  assert.ok(outsideTolerance.reasonCodes.includes('WINDOW_DURATION_MISMATCH'));
 });
 
 test('missing and non-finite arm values fail closed with withheld outputs', () => {

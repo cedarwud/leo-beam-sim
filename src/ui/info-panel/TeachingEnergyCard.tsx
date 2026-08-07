@@ -716,12 +716,15 @@ export function TeachingEnergyCard({
             data-testid="teaching-energy-reset"
             disabled={readout === null || onReset === undefined}
             style={{
-              background: 'transparent',
-              border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-              borderRadius: UI_TOKENS.radius.sm,
-              color: UI_TOKENS.color.text.secondary,
+              minHeight: 40,
+              padding: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.md}px`,
+              background: UI_TOKENS.color.surface.fieldSoft,
+              border: `1px solid ${UI_TOKENS.color.border.metric}`,
+              borderRadius: UI_TOKENS.radius.md,
+              color: UI_TOKENS.color.text.primary,
               fontSize: UI_TOKENS.type.size.tiny,
-              padding: '2px 6px',
+              fontWeight: UI_TOKENS.type.weight.strong,
+              lineHeight: 1.25,
               cursor: readout === null || onReset === undefined ? 'not-allowed' : 'pointer',
               opacity: readout === null || onReset === undefined ? 0.5 : 1,
             }}
