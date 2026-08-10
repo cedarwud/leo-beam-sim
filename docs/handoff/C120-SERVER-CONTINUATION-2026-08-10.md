@@ -64,6 +64,12 @@ surface must continue to show exactly:
   with epoch `2026-08-09T07:31:30.248256Z`, which is later than the donor's
   fixed `06:30Z` target. Keep it for a separately reviewed later-target or
   real-data adapter; do not let `latest` mutate the teaching fixture.
+- Canonical runtime defaults resolve from
+  `~/papers/modqn-paper-reproduction`; both local and server runtime/golden
+  files match the pinned hashes `e838...4131` and `2d9d...0519`. Production
+  overrides remain available as `C120_CANONICAL_RUNTIME_PATH`,
+  `C120_GOLDEN_FIXTURE_PATH`, and `C120_PYTHON`; hash verification is never
+  bypassed.
 - The superseded `77c3...89fa` bundle and raw capture directories are ignored;
   do not promote them or treat them as current input.
 - `dist/`, `output/`, `.playwright-cli/`, dependencies, and browser runtime

@@ -4,6 +4,8 @@ import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import type { Readable } from 'node:stream';
+import { homedir } from 'node:os';
+import { resolve } from 'node:path';
 
 import {
   C120RealDataError,
@@ -15,10 +17,23 @@ export const C120_CANONICAL_RUNTIME_SHA256 =
   'e838246b7c82e4ccb01b323d92d5e49ab3f849039e31312f20a96adc52154131';
 export const C120_GOLDEN_FIXTURE_SHA256 =
   '2d9de6552e9a8ad037b8d76999fd291938f6fefe64f6ec075b2ea19d76070519';
+
+function configuredPath(name: string, fallback: string): string {
+  const configured = process.env[name];
+  return configured === undefined || configured.trim() === '' ? fallback : resolve(configured);
+}
+
+const C120_DEFAULT_MODQN_ROOT = resolve(homedir(), 'papers/modqn-paper-reproduction');
 export const C120_DEFAULT_CANONICAL_RUNTIME_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/src/modqn_paper_reproduction/runtime/angle_aware_ee.py';
+  configuredPath(
+    'C120_CANONICAL_RUNTIME_PATH',
+    resolve(C120_DEFAULT_MODQN_ROOT, 'src/modqn_paper_reproduction/runtime/angle_aware_ee.py'),
+  );
 export const C120_DEFAULT_GOLDEN_FIXTURE_PATH =
-  '/home/u24/leo-satcom-lab/contracts/angle-aware-ee-v1/golden-vectors.json';
+  configuredPath(
+    'C120_GOLDEN_FIXTURE_PATH',
+    resolve(C120_DEFAULT_MODQN_ROOT, 'tests/fixtures/angle-aware-ee-v1/golden-vectors.json'),
+  );
 export const C120_CANONICAL_UNITS = Object.freeze({
   angle: 'rad',
   channelGain: 'linear',
@@ -513,8 +528,8 @@ function pythonBridgeRunner(pythonExecutable: string, timeoutMs: number): C120Pi
 
 function defaultPythonExecutable(): string {
   const configured = process.env.C120_PYTHON;
-  if (configured !== undefined && configured.trim() !== '') return configured;
-  const preferred = '/home/u24/papers/modqn-paper-reproduction/.venv/bin/python';
+  if (configured !== undefined && configured.trim() !== '') return resolve(configured);
+  const preferred = resolve(C120_DEFAULT_MODQN_ROOT, '.venv/bin/python');
   return existsSync(preferred) ? preferred : 'python3';
 }
 
