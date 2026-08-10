@@ -1,0 +1,2333 @@
+{
+  "bundleVersion": "c90-learning-bundle-v1",
+  "sessionId": "c90-fixture-course-c90-v1-session-0",
+  "exportedAt": "2026-08-09T09:27:31.818Z",
+  "readyCheckCompleted": true,
+  "course": {
+    "courseId": "C-90-ENERGY-1",
+    "title": "Energy decisions in an NTPU LEO pass",
+    "providerKind": "fixture",
+    "providerId": "fixture-course-c90-v1",
+    "contractVersion": "c90-energy-1-fixture-v1",
+    "scenario": {
+      "contractVersion": "c90-energy-1-fixture-v1",
+      "providerKind": "fixture",
+      "providerId": "fixture-course-c90-v1",
+      "fixtureId": "c90-ntpu-energy-fixture-v1",
+      "scenarioId": "ntpu-pass-01",
+      "tleSourceId": "tle-c90-class-pinned-v1",
+      "targetUtc": "2026-08-09T06:30:00Z"
+    },
+    "claimBoundary": "SIMULATED TEACHING DATA / NOT LIVE BACKEND / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED",
+    "claimLevels": [
+      "SIMULATED_TEACHING",
+      "NOT_LIVE_BACKEND",
+      "NOT_MEASURED",
+      "NOT_CANONICAL_PARITY_VERIFIED"
+    ],
+    "availableStages": [
+      "ready",
+      "tle",
+      "e1",
+      "e2",
+      "iot",
+      "competition",
+      "complete"
+    ]
+  },
+  "scenario": {
+    "contractVersion": "c90-energy-1-fixture-v1",
+    "providerKind": "fixture",
+    "providerId": "fixture-course-c90-v1",
+    "fixtureId": "c90-ntpu-energy-fixture-v1",
+    "scenarioId": "ntpu-pass-01",
+    "tleSourceId": "tle-c90-class-pinned-v1",
+    "targetUtc": "2026-08-09T06:30:00Z"
+  },
+  "claimBoundary": "SIMULATED TEACHING DATA / NOT LIVE BACKEND / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED",
+  "provenance": {
+    "providerId": "fixture-course-c90-v1",
+    "fixtureId": "c90-ntpu-energy-fixture-v1",
+    "deterministicReplay": true,
+    "source": "fixture-provider"
+  },
+  "prediction": {
+    "tle": "TLE gives pinned source fields; the program derives TEME and NTPU look angles; the course adds the versioned fixture scenario.",
+    "e1": "Low power lowers W but may miss the deadline; balanced may give the best qualified service-energy tradeoff.",
+    "e2": "Wait for stable improvement before switching; compare service time and total J.",
+    "iot": "Send alarms now and batch routine data into the better legal window."
+  },
+  "e1": {
+    "prediction": "Low power lowers W but may miss the deadline; balanced may give the best qualified service-energy tradeoff.",
+    "checkpointUpdate": "After frame 1, rate and active-time direction matter together with W.",
+    "armOrder": [
+      "balanced",
+      "low-power",
+      "fast-finish"
+    ],
+    "completedArmIds": [
+      "balanced",
+      "low-power",
+      "fast-finish"
+    ],
+    "selectedArm": "balanced",
+    "verdict": "qualify",
+    "explanation": "Balanced is qualified: low-power saves instantaneous W but misses service, while fast-finish uses more W and J.",
+    "arms": [
+      {
+        "id": "balanced",
+        "label": "Balanced",
+        "shortLabel": "平衡",
+        "changedPolicy": "中等功率控制；優先維持可交付服務",
+        "learnerPrompt": "預測：它會如何平衡完成時間與總 J？",
+        "frames": [
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-balanced-0"
+            },
+            "frameIndex": 0,
+            "elapsedSec": 0,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                -420,
+                700,
+                -250
+              ],
+              "altitudeKm": 700
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                -140,
+                8,
+                110
+              ],
+              "qualityLabel": "steady",
+              "trendLabel": "baseline"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 820,
+              "azimuthDeg": 248,
+              "elevationDeg": 36
+            },
+            "service": {
+              "rateMbps": 0,
+              "deliveredDataMbit": 0,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 24,
+              "energyJ": 0.1,
+              "eeMbitPerJ": 0
+            }
+          },
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-balanced-1"
+            },
+            "frameIndex": 1,
+            "elapsedSec": 60,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                -120,
+                735,
+                -90
+              ],
+              "altitudeKm": 720
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                -60,
+                8,
+                70
+              ],
+              "qualityLabel": "good",
+              "trendLabel": "stable"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 790,
+              "azimuthDeg": 266,
+              "elevationDeg": 42
+            },
+            "service": {
+              "rateMbps": 0.6,
+              "deliveredDataMbit": 36,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 24,
+              "energyJ": 130,
+              "eeMbitPerJ": 0.277
+            }
+          },
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-balanced-2"
+            },
+            "frameIndex": 2,
+            "elapsedSec": 120,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                210,
+                760,
+                90
+              ],
+              "altitudeKm": 740
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                45,
+                8,
+                28
+              ],
+              "qualityLabel": "good",
+              "trendLabel": "stable"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 760,
+              "azimuthDeg": 288,
+              "elevationDeg": 48
+            },
+            "service": {
+              "rateMbps": 0.7,
+              "deliveredDataMbit": 78,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 23,
+              "energyJ": 270,
+              "eeMbitPerJ": 0.289
+            }
+          },
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-balanced-3"
+            },
+            "frameIndex": 3,
+            "elapsedSec": 180,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                520,
+                780,
+                270
+              ],
+              "altitudeKm": 760
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                112,
+                8,
+                -24
+              ],
+              "qualityLabel": "good",
+              "trendLabel": "stable"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 775,
+              "azimuthDeg": 310,
+              "elevationDeg": 44
+            },
+            "service": {
+              "rateMbps": 0.67,
+              "deliveredDataMbit": 120,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 22,
+              "energyJ": 402,
+              "eeMbitPerJ": 0.299
+            }
+          }
+        ],
+        "outcome": {
+          "completionSec": 180,
+          "deadlineSec": 220,
+          "serviceStatus": "served",
+          "deliveredDataMbit": 120,
+          "powerW": 22,
+          "energyJ": 402,
+          "eeMbitPerJ": 0.299
+        }
+      },
+      {
+        "id": "low-power",
+        "label": "Low-power",
+        "shortLabel": "低功率",
+        "changedPolicy": "較低功率上限；接受較慢的資料進度",
+        "learnerPrompt": "預測：較低 W 是否一定讓任務更省能？",
+        "frames": [
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-low-power-0"
+            },
+            "frameIndex": 0,
+            "elapsedSec": 0,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                -420,
+                700,
+                -250
+              ],
+              "altitudeKm": 700
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                -140,
+                8,
+                110
+              ],
+              "qualityLabel": "weak",
+              "trendLabel": "lower cap"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 820,
+              "azimuthDeg": 248,
+              "elevationDeg": 36
+            },
+            "service": {
+              "rateMbps": 0,
+              "deliveredDataMbit": 0,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 14,
+              "energyJ": 0.1,
+              "eeMbitPerJ": 0
+            }
+          },
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-low-power-1"
+            },
+            "frameIndex": 1,
+            "elapsedSec": 72,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                -120,
+                735,
+                -90
+              ],
+              "altitudeKm": 720
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                -60,
+                8,
+                70
+              ],
+              "qualityLabel": "weak",
+              "trendLabel": "slow start"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 790,
+              "azimuthDeg": 266,
+              "elevationDeg": 42
+            },
+            "service": {
+              "rateMbps": 0.4,
+              "deliveredDataMbit": 24,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 14,
+              "energyJ": 110,
+              "eeMbitPerJ": 0.218
+            }
+          },
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-low-power-2"
+            },
+            "frameIndex": 2,
+            "elapsedSec": 144,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                210,
+                760,
+                90
+              ],
+              "altitudeKm": 740
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                45,
+                8,
+                28
+              ],
+              "qualityLabel": "fair",
+              "trendLabel": "late progress"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 760,
+              "azimuthDeg": 288,
+              "elevationDeg": 48
+            },
+            "service": {
+              "rateMbps": 0.53,
+              "deliveredDataMbit": 56,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 13,
+              "energyJ": 246,
+              "eeMbitPerJ": 0.228
+            }
+          },
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-low-power-3"
+            },
+            "frameIndex": 3,
+            "elapsedSec": 236,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                520,
+                780,
+                270
+              ],
+              "altitudeKm": 760
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                112,
+                8,
+                -24
+              ],
+              "qualityLabel": "fair",
+              "trendLabel": "deadline risk"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 775,
+              "azimuthDeg": 310,
+              "elevationDeg": 44
+            },
+            "service": {
+              "rateMbps": 0.48,
+              "deliveredDataMbit": 104,
+              "deadlineSec": 220,
+              "status": "deadline-missed"
+            },
+            "energy": {
+              "powerW": 12,
+              "energyJ": 396,
+              "eeMbitPerJ": 0.263
+            }
+          }
+        ],
+        "outcome": {
+          "completionSec": 236,
+          "deadlineSec": 220,
+          "serviceStatus": "deadline-missed",
+          "deliveredDataMbit": 104,
+          "powerW": 12,
+          "energyJ": 396,
+          "eeMbitPerJ": 0.263
+        }
+      },
+      {
+        "id": "fast-finish",
+        "label": "Fast-finish",
+        "shortLabel": "快速完成",
+        "changedPolicy": "較高功率；用更快的 rate 換取較短 active time",
+        "learnerPrompt": "預測：更快完成是否會抵銷較高的 W？",
+        "frames": [
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-fast-finish-0"
+            },
+            "frameIndex": 0,
+            "elapsedSec": 0,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                -420,
+                700,
+                -250
+              ],
+              "altitudeKm": 700
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                -140,
+                8,
+                110
+              ],
+              "qualityLabel": "strong",
+              "trendLabel": "high cap"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 820,
+              "azimuthDeg": 248,
+              "elevationDeg": 36
+            },
+            "service": {
+              "rateMbps": 0,
+              "deliveredDataMbit": 0,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 38,
+              "energyJ": 0.1,
+              "eeMbitPerJ": 0
+            }
+          },
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-fast-finish-1"
+            },
+            "frameIndex": 1,
+            "elapsedSec": 47,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                -120,
+                735,
+                -90
+              ],
+              "altitudeKm": 720
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                -60,
+                8,
+                70
+              ],
+              "qualityLabel": "strong",
+              "trendLabel": "fast progress"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 790,
+              "azimuthDeg": 266,
+              "elevationDeg": 42
+            },
+            "service": {
+              "rateMbps": 0.73,
+              "deliveredDataMbit": 44,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 38,
+              "energyJ": 160,
+              "eeMbitPerJ": 0.275
+            }
+          },
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-fast-finish-2"
+            },
+            "frameIndex": 2,
+            "elapsedSec": 94,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                210,
+                760,
+                90
+              ],
+              "altitudeKm": 740
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                45,
+                8,
+                28
+              ],
+              "qualityLabel": "strong",
+              "trendLabel": "fast progress"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 760,
+              "azimuthDeg": 288,
+              "elevationDeg": 48
+            },
+            "service": {
+              "rateMbps": 0.77,
+              "deliveredDataMbit": 90,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 36,
+              "energyJ": 310,
+              "eeMbitPerJ": 0.29
+            }
+          },
+          {
+            "identity": {
+              "contractVersion": "c90-energy-1-fixture-v1",
+              "providerKind": "fixture",
+              "providerId": "fixture-course-c90-v1",
+              "fixtureId": "c90-ntpu-energy-fixture-v1",
+              "scenarioId": "ntpu-pass-01",
+              "targetUtc": "2026-08-09T06:30:00Z",
+              "frameId": "e1-fast-finish-3"
+            },
+            "frameIndex": 3,
+            "elapsedSec": 142,
+            "satellite": {
+              "id": "leo-course-sat-01",
+              "position": [
+                520,
+                780,
+                270
+              ],
+              "altitudeKm": 760
+            },
+            "beam": {
+              "id": "beam-ntpu-a",
+              "position": [
+                112,
+                8,
+                -24
+              ],
+              "qualityLabel": "strong",
+              "trendLabel": "complete early"
+            },
+            "link": {
+              "servingBeamId": "beam-ntpu-a",
+              "visible": true,
+              "rangeKm": 775,
+              "azimuthDeg": 310,
+              "elevationDeg": 44
+            },
+            "service": {
+              "rateMbps": 0.82,
+              "deliveredDataMbit": 120,
+              "deadlineSec": 220,
+              "status": "served"
+            },
+            "energy": {
+              "powerW": 34,
+              "energyJ": 450,
+              "eeMbitPerJ": 0.267
+            }
+          }
+        ],
+        "outcome": {
+          "completionSec": 142,
+          "deadlineSec": 220,
+          "serviceStatus": "served",
+          "deliveredDataMbit": 120,
+          "powerW": 34,
+          "energyJ": 450,
+          "eeMbitPerJ": 0.267
+        }
+      }
+    ]
+  },
+  "e2": {
+    "prediction": "Wait for stable improvement before switching; compare service time and total J.",
+    "traceAAction": "wait",
+    "traceAReplayAction": "switch-now",
+    "traceBAction": "remain",
+    "frozenRule": "Switch only after stable improvement.",
+    "verdict": "qualify",
+    "explanation": "Trace A improves steadily, but Trace B only improves briefly; the frozen rule is conditional, not universal.",
+    "traceA": {
+      "id": "trace-a",
+      "title": "Trace A · 穩定改善",
+      "trend": "候選 beam 的改善會持續一段時間",
+      "changedInput": "Trace A：candidate quality stable improvement",
+      "branches": [
+        {
+          "action": "switch-now",
+          "label": "Switch now",
+          "plainLanguageRule": "看到候選鏈路變好就現在切換",
+          "frames": [
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-switch-now-0"
+              },
+              "frameIndex": 0,
+              "elapsedSec": 0,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -420,
+                  700,
+                  -250
+                ],
+                "altitudeKm": 700
+              },
+              "beam": {
+                "id": "beam-ntpu-b",
+                "position": [
+                  -140,
+                  8,
+                  110
+                ],
+                "qualityLabel": "candidate rising",
+                "trendLabel": "improving"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-b",
+                "visible": true,
+                "rangeKm": 820,
+                "azimuthDeg": 248,
+                "elevationDeg": 36
+              },
+              "service": {
+                "rateMbps": 0,
+                "deliveredDataMbit": 0,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 24,
+                "energyJ": 0.1,
+                "eeMbitPerJ": 0
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-switch-now-1"
+              },
+              "frameIndex": 1,
+              "elapsedSec": 57,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -120,
+                  735,
+                  -90
+                ],
+                "altitudeKm": 720
+              },
+              "beam": {
+                "id": "beam-ntpu-b",
+                "position": [
+                  -60,
+                  8,
+                  70
+                ],
+                "qualityLabel": "good",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-b",
+                "visible": true,
+                "rangeKm": 790,
+                "azimuthDeg": 266,
+                "elevationDeg": 42
+              },
+              "service": {
+                "rateMbps": 0.57,
+                "deliveredDataMbit": 34,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 24,
+                "energyJ": 110,
+                "eeMbitPerJ": 0.309
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-switch-now-2"
+              },
+              "frameIndex": 2,
+              "elapsedSec": 113,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  210,
+                  760,
+                  90
+                ],
+                "altitudeKm": 740
+              },
+              "beam": {
+                "id": "beam-ntpu-b",
+                "position": [
+                  45,
+                  8,
+                  28
+                ],
+                "qualityLabel": "good",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-b",
+                "visible": true,
+                "rangeKm": 760,
+                "azimuthDeg": 288,
+                "elevationDeg": 48
+              },
+              "service": {
+                "rateMbps": 0.57,
+                "deliveredDataMbit": 68,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 23,
+                "energyJ": 214,
+                "eeMbitPerJ": 0.318
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-switch-now-3"
+              },
+              "frameIndex": 3,
+              "elapsedSec": 170,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  520,
+                  780,
+                  270
+                ],
+                "altitudeKm": 760
+              },
+              "beam": {
+                "id": "beam-ntpu-b",
+                "position": [
+                  112,
+                  8,
+                  -24
+                ],
+                "qualityLabel": "good",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-b",
+                "visible": true,
+                "rangeKm": 775,
+                "azimuthDeg": 310,
+                "elevationDeg": 44
+              },
+              "service": {
+                "rateMbps": 0.7,
+                "deliveredDataMbit": 110,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 21,
+                "energyJ": 318,
+                "eeMbitPerJ": 0.346
+              }
+            }
+          ],
+          "outcome": {
+            "completionSec": 170,
+            "deadlineSec": 220,
+            "serviceStatus": "served",
+            "deliveredDataMbit": 110,
+            "powerW": 21,
+            "energyJ": 318,
+            "eeMbitPerJ": 0.346
+          }
+        },
+        {
+          "action": "wait",
+          "label": "Wait for stable improvement",
+          "plainLanguageRule": "只有改善穩定才切換",
+          "frames": [
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-wait-0"
+              },
+              "frameIndex": 0,
+              "elapsedSec": 0,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -420,
+                  700,
+                  -250
+                ],
+                "altitudeKm": 700
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  -140,
+                  8,
+                  110
+                ],
+                "qualityLabel": "candidate rising",
+                "trendLabel": "wait"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 820,
+                "azimuthDeg": 248,
+                "elevationDeg": 36
+              },
+              "service": {
+                "rateMbps": 0,
+                "deliveredDataMbit": 0,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 23,
+                "energyJ": 0.1,
+                "eeMbitPerJ": 0
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-wait-1"
+              },
+              "frameIndex": 1,
+              "elapsedSec": 63,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -120,
+                  735,
+                  -90
+                ],
+                "altitudeKm": 720
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  -60,
+                  8,
+                  70
+                ],
+                "qualityLabel": "fair",
+                "trendLabel": "settling"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 790,
+                "azimuthDeg": 266,
+                "elevationDeg": 42
+              },
+              "service": {
+                "rateMbps": 0.5,
+                "deliveredDataMbit": 30,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 22,
+                "energyJ": 100,
+                "eeMbitPerJ": 0.3
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-wait-2"
+              },
+              "frameIndex": 2,
+              "elapsedSec": 126,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  210,
+                  760,
+                  90
+                ],
+                "altitudeKm": 740
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  45,
+                  8,
+                  28
+                ],
+                "qualityLabel": "good",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 760,
+                "azimuthDeg": 288,
+                "elevationDeg": 48
+              },
+              "service": {
+                "rateMbps": 0.67,
+                "deliveredDataMbit": 70,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 21,
+                "energyJ": 198,
+                "eeMbitPerJ": 0.354
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-wait-3"
+              },
+              "frameIndex": 3,
+              "elapsedSec": 188,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  520,
+                  780,
+                  270
+                ],
+                "altitudeKm": 760
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  112,
+                  8,
+                  -24
+                ],
+                "qualityLabel": "good",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 775,
+                "azimuthDeg": 310,
+                "elevationDeg": 44
+              },
+              "service": {
+                "rateMbps": 0.67,
+                "deliveredDataMbit": 110,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 20,
+                "energyJ": 294,
+                "eeMbitPerJ": 0.374
+              }
+            }
+          ],
+          "outcome": {
+            "completionSec": 188,
+            "deadlineSec": 220,
+            "serviceStatus": "served",
+            "deliveredDataMbit": 110,
+            "powerW": 20,
+            "energyJ": 294,
+            "eeMbitPerJ": 0.374
+          }
+        },
+        {
+          "action": "remain",
+          "label": "Remain on current beam",
+          "plainLanguageRule": "先留在目前鏈路直到任務結束",
+          "frames": [
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-remain-0"
+              },
+              "frameIndex": 0,
+              "elapsedSec": 0,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -420,
+                  700,
+                  -250
+                ],
+                "altitudeKm": 700
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  -140,
+                  8,
+                  110
+                ],
+                "qualityLabel": "current weak",
+                "trendLabel": "remain"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 820,
+                "azimuthDeg": 248,
+                "elevationDeg": 36
+              },
+              "service": {
+                "rateMbps": 0,
+                "deliveredDataMbit": 0,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 22,
+                "energyJ": 0.1,
+                "eeMbitPerJ": 0
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-remain-1"
+              },
+              "frameIndex": 1,
+              "elapsedSec": 77,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -120,
+                  735,
+                  -90
+                ],
+                "altitudeKm": 720
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  -60,
+                  8,
+                  70
+                ],
+                "qualityLabel": "weak",
+                "trendLabel": "declining"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 790,
+                "azimuthDeg": 266,
+                "elevationDeg": 42
+              },
+              "service": {
+                "rateMbps": 0.43,
+                "deliveredDataMbit": 26,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 22,
+                "energyJ": 108,
+                "eeMbitPerJ": 0.241
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-remain-2"
+              },
+              "frameIndex": 2,
+              "elapsedSec": 154,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  210,
+                  760,
+                  90
+                ],
+                "altitudeKm": 740
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  45,
+                  8,
+                  28
+                ],
+                "qualityLabel": "weak",
+                "trendLabel": "declining"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 760,
+                "azimuthDeg": 288,
+                "elevationDeg": 48
+              },
+              "service": {
+                "rateMbps": 0.47,
+                "deliveredDataMbit": 54,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 21,
+                "energyJ": 230,
+                "eeMbitPerJ": 0.235
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-a-remain-3"
+              },
+              "frameIndex": 3,
+              "elapsedSec": 230,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  520,
+                  780,
+                  270
+                ],
+                "altitudeKm": 760
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  112,
+                  8,
+                  -24
+                ],
+                "qualityLabel": "weak",
+                "trendLabel": "deadline risk"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 775,
+                "azimuthDeg": 310,
+                "elevationDeg": 44
+              },
+              "service": {
+                "rateMbps": 0.5,
+                "deliveredDataMbit": 84,
+                "deadlineSec": 220,
+                "status": "deadline-missed"
+              },
+              "energy": {
+                "powerW": 20,
+                "energyJ": 330,
+                "eeMbitPerJ": 0.255
+              }
+            }
+          ],
+          "outcome": {
+            "completionSec": 230,
+            "deadlineSec": 220,
+            "serviceStatus": "deadline-missed",
+            "deliveredDataMbit": 84,
+            "powerW": 20,
+            "energyJ": 330,
+            "eeMbitPerJ": 0.255
+          }
+        }
+      ]
+    },
+    "traceB": {
+      "id": "trace-b",
+      "title": "Trace B · 短暫改善後回落",
+      "trend": "候選 beam 只短暫變好，之後回落",
+      "changedInput": "Trace B：only the future candidate-link trend changes",
+      "branches": [
+        {
+          "action": "switch-now",
+          "label": "Switch now",
+          "plainLanguageRule": "看到候選鏈路變好就現在切換",
+          "frames": [
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-switch-now-0"
+              },
+              "frameIndex": 0,
+              "elapsedSec": 0,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -420,
+                  700,
+                  -250
+                ],
+                "altitudeKm": 700
+              },
+              "beam": {
+                "id": "beam-ntpu-b",
+                "position": [
+                  -140,
+                  8,
+                  110
+                ],
+                "qualityLabel": "brief rise",
+                "trendLabel": "improving briefly"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-b",
+                "visible": true,
+                "rangeKm": 820,
+                "azimuthDeg": 248,
+                "elevationDeg": 36
+              },
+              "service": {
+                "rateMbps": 0,
+                "deliveredDataMbit": 0,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 25,
+                "energyJ": 0.1,
+                "eeMbitPerJ": 0
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-switch-now-1"
+              },
+              "frameIndex": 1,
+              "elapsedSec": 75,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -120,
+                  735,
+                  -90
+                ],
+                "altitudeKm": 720
+              },
+              "beam": {
+                "id": "beam-ntpu-b",
+                "position": [
+                  -60,
+                  8,
+                  70
+                ],
+                "qualityLabel": "brief good",
+                "trendLabel": "peak"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-b",
+                "visible": true,
+                "rangeKm": 790,
+                "azimuthDeg": 266,
+                "elevationDeg": 42
+              },
+              "service": {
+                "rateMbps": 0.53,
+                "deliveredDataMbit": 32,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 25,
+                "energyJ": 125,
+                "eeMbitPerJ": 0.256
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-switch-now-2"
+              },
+              "frameIndex": 2,
+              "elapsedSec": 150,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  210,
+                  760,
+                  90
+                ],
+                "altitudeKm": 740
+              },
+              "beam": {
+                "id": "beam-ntpu-b",
+                "position": [
+                  45,
+                  8,
+                  28
+                ],
+                "qualityLabel": "falling",
+                "trendLabel": "declining"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-b",
+                "visible": true,
+                "rangeKm": 760,
+                "azimuthDeg": 288,
+                "elevationDeg": 48
+              },
+              "service": {
+                "rateMbps": 0.43,
+                "deliveredDataMbit": 58,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 24,
+                "energyJ": 244,
+                "eeMbitPerJ": 0.238
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-switch-now-3"
+              },
+              "frameIndex": 3,
+              "elapsedSec": 224,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  520,
+                  780,
+                  270
+                ],
+                "altitudeKm": 760
+              },
+              "beam": {
+                "id": "beam-ntpu-b",
+                "position": [
+                  112,
+                  8,
+                  -24
+                ],
+                "qualityLabel": "weak",
+                "trendLabel": "declining"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-b",
+                "visible": true,
+                "rangeKm": 775,
+                "azimuthDeg": 310,
+                "elevationDeg": 44
+              },
+              "service": {
+                "rateMbps": 0.5,
+                "deliveredDataMbit": 88,
+                "deadlineSec": 220,
+                "status": "deadline-missed"
+              },
+              "energy": {
+                "powerW": 22,
+                "energyJ": 352,
+                "eeMbitPerJ": 0.25
+              }
+            }
+          ],
+          "outcome": {
+            "completionSec": 224,
+            "deadlineSec": 220,
+            "serviceStatus": "deadline-missed",
+            "deliveredDataMbit": 88,
+            "powerW": 22,
+            "energyJ": 352,
+            "eeMbitPerJ": 0.25
+          }
+        },
+        {
+          "action": "wait",
+          "label": "Wait for stable improvement",
+          "plainLanguageRule": "只有改善穩定才切換",
+          "frames": [
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-wait-0"
+              },
+              "frameIndex": 0,
+              "elapsedSec": 0,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -420,
+                  700,
+                  -250
+                ],
+                "altitudeKm": 700
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  -140,
+                  8,
+                  110
+                ],
+                "qualityLabel": "brief rise",
+                "trendLabel": "wait"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 820,
+                "azimuthDeg": 248,
+                "elevationDeg": 36
+              },
+              "service": {
+                "rateMbps": 0,
+                "deliveredDataMbit": 0,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 23,
+                "energyJ": 0.1,
+                "eeMbitPerJ": 0
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-wait-1"
+              },
+              "frameIndex": 1,
+              "elapsedSec": 60,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -120,
+                  735,
+                  -90
+                ],
+                "altitudeKm": 720
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  -60,
+                  8,
+                  70
+                ],
+                "qualityLabel": "fair",
+                "trendLabel": "settling"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 790,
+                "azimuthDeg": 266,
+                "elevationDeg": 42
+              },
+              "service": {
+                "rateMbps": 0.57,
+                "deliveredDataMbit": 34,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 22,
+                "energyJ": 104,
+                "eeMbitPerJ": 0.327
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-wait-2"
+              },
+              "frameIndex": 2,
+              "elapsedSec": 120,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  210,
+                  760,
+                  90
+                ],
+                "altitudeKm": 740
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  45,
+                  8,
+                  28
+                ],
+                "qualityLabel": "good",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 760,
+                "azimuthDeg": 288,
+                "elevationDeg": 48
+              },
+              "service": {
+                "rateMbps": 0.63,
+                "deliveredDataMbit": 72,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 21,
+                "energyJ": 205,
+                "eeMbitPerJ": 0.351
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-wait-3"
+              },
+              "frameIndex": 3,
+              "elapsedSec": 180,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  520,
+                  780,
+                  270
+                ],
+                "altitudeKm": 760
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  112,
+                  8,
+                  -24
+                ],
+                "qualityLabel": "good",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 775,
+                "azimuthDeg": 310,
+                "elevationDeg": 44
+              },
+              "service": {
+                "rateMbps": 0.63,
+                "deliveredDataMbit": 110,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 20,
+                "energyJ": 302,
+                "eeMbitPerJ": 0.364
+              }
+            }
+          ],
+          "outcome": {
+            "completionSec": 180,
+            "deadlineSec": 220,
+            "serviceStatus": "served",
+            "deliveredDataMbit": 110,
+            "powerW": 20,
+            "energyJ": 302,
+            "eeMbitPerJ": 0.364
+          }
+        },
+        {
+          "action": "remain",
+          "label": "Remain on current beam",
+          "plainLanguageRule": "先留在目前鏈路直到任務結束",
+          "frames": [
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-remain-0"
+              },
+              "frameIndex": 0,
+              "elapsedSec": 0,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -420,
+                  700,
+                  -250
+                ],
+                "altitudeKm": 700
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  -140,
+                  8,
+                  110
+                ],
+                "qualityLabel": "current steady",
+                "trendLabel": "remain"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 820,
+                "azimuthDeg": 248,
+                "elevationDeg": 36
+              },
+              "service": {
+                "rateMbps": 0,
+                "deliveredDataMbit": 0,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 22,
+                "energyJ": 0.1,
+                "eeMbitPerJ": 0
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-remain-1"
+              },
+              "frameIndex": 1,
+              "elapsedSec": 70,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  -120,
+                  735,
+                  -90
+                ],
+                "altitudeKm": 720
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  -60,
+                  8,
+                  70
+                ],
+                "qualityLabel": "fair",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 790,
+                "azimuthDeg": 266,
+                "elevationDeg": 42
+              },
+              "service": {
+                "rateMbps": 0.5,
+                "deliveredDataMbit": 30,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 22,
+                "energyJ": 112,
+                "eeMbitPerJ": 0.268
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-remain-2"
+              },
+              "frameIndex": 2,
+              "elapsedSec": 140,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  210,
+                  760,
+                  90
+                ],
+                "altitudeKm": 740
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  45,
+                  8,
+                  28
+                ],
+                "qualityLabel": "fair",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 760,
+                "azimuthDeg": 288,
+                "elevationDeg": 48
+              },
+              "service": {
+                "rateMbps": 0.57,
+                "deliveredDataMbit": 64,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 21,
+                "energyJ": 222,
+                "eeMbitPerJ": 0.288
+              }
+            },
+            {
+              "identity": {
+                "contractVersion": "c90-energy-1-fixture-v1",
+                "providerKind": "fixture",
+                "providerId": "fixture-course-c90-v1",
+                "fixtureId": "c90-ntpu-energy-fixture-v1",
+                "scenarioId": "ntpu-pass-01",
+                "targetUtc": "2026-08-09T06:30:00Z",
+                "frameId": "e2-trace-b-remain-3"
+              },
+              "frameIndex": 3,
+              "elapsedSec": 210,
+              "satellite": {
+                "id": "leo-course-sat-01",
+                "position": [
+                  520,
+                  780,
+                  270
+                ],
+                "altitudeKm": 760
+              },
+              "beam": {
+                "id": "beam-ntpu-a",
+                "position": [
+                  112,
+                  8,
+                  -24
+                ],
+                "qualityLabel": "fair",
+                "trendLabel": "stable"
+              },
+              "link": {
+                "servingBeamId": "beam-ntpu-a",
+                "visible": true,
+                "rangeKm": 775,
+                "azimuthDeg": 310,
+                "elevationDeg": 44
+              },
+              "service": {
+                "rateMbps": 0.53,
+                "deliveredDataMbit": 96,
+                "deadlineSec": 220,
+                "status": "served"
+              },
+              "energy": {
+                "powerW": 20,
+                "energyJ": 310,
+                "eeMbitPerJ": 0.31
+              }
+            }
+          ],
+          "outcome": {
+            "completionSec": 210,
+            "deadlineSec": 220,
+            "serviceStatus": "served",
+            "deliveredDataMbit": 96,
+            "powerW": 20,
+            "energyJ": 310,
+            "eeMbitPerJ": 0.31
+          }
+        }
+      ]
+    }
+  },
+  "iot": {
+    "prediction": "Send alarms now and batch routine data into the better legal window.",
+    "selectedRule": "IGNORE ALARM AND SEND BULK ONLY IN WINDOW C",
+    "revisedRule": "SEND EVERYTHING IMMEDIATELY AND NEVER BATCH",
+    "verdict": "qualify",
+    "explanation": "The prepared revision keeps more tasks fresh with less active time, but my edited text did not produce a different branch.",
+    "tasks": [
+      {
+        "id": "alarm",
+        "label": "Flood alarm",
+        "arrivalSec": 18,
+        "window": "18–42 s",
+        "freshnessGoal": "必須 fresh",
+        "value": "立即告警"
+      },
+      {
+        "id": "environment",
+        "label": "Air quality sample",
+        "arrivalSec": 34,
+        "window": "34–118 s",
+        "freshnessGoal": "118 s 前 fresh",
+        "value": "週期環境資料"
+      },
+      {
+        "id": "bulk",
+        "label": "Image batch",
+        "arrivalSec": 62,
+        "window": "62–176 s",
+        "freshnessGoal": "可延後但不可無限 stale",
+        "value": "delay-tolerant bulk"
+      }
+    ],
+    "runs": [
+      {
+        "version": "baseline",
+        "label": "Baseline · send immediately",
+        "rule": "每次 arrival 都立即送出",
+        "taskResults": [
+          {
+            "taskId": "alarm",
+            "status": "delivered-fresh",
+            "deliveredMbit": 24
+          },
+          {
+            "taskId": "environment",
+            "status": "delivered-stale",
+            "deliveredMbit": 32
+          },
+          {
+            "taskId": "bulk",
+            "status": "expired",
+            "deliveredMbit": 40
+          }
+        ],
+        "deliveredDataMbit": 96,
+        "expiredCount": 1,
+        "freshCount": 1,
+        "activeTimeSec": 120,
+        "energyJ": 260,
+        "eeMbitPerJ": 0.369,
+        "frame": {
+          "identity": {
+            "contractVersion": "c90-energy-1-fixture-v1",
+            "providerKind": "fixture",
+            "providerId": "fixture-course-c90-v1",
+            "fixtureId": "c90-ntpu-energy-fixture-v1",
+            "scenarioId": "ntpu-pass-01",
+            "targetUtc": "2026-08-09T06:30:00Z",
+            "frameId": "iot-baseline"
+          },
+          "frameIndex": 0,
+          "elapsedSec": 120,
+          "satellite": {
+            "id": "leo-course-sat-01",
+            "position": [
+              210,
+              760,
+              90
+            ],
+            "altitudeKm": 740
+          },
+          "beam": {
+            "id": "beam-ntpu-a",
+            "position": [
+              45,
+              8,
+              28
+            ],
+            "qualityLabel": "good",
+            "trendLabel": "same mission window"
+          },
+          "link": {
+            "servingBeamId": "beam-ntpu-a",
+            "visible": true,
+            "rangeKm": 760,
+            "azimuthDeg": 288,
+            "elevationDeg": 48
+          },
+          "service": {
+            "rateMbps": 0.68,
+            "deliveredDataMbit": 96,
+            "deadlineSec": 190,
+            "status": "served"
+          },
+          "energy": {
+            "powerW": 22,
+            "energyJ": 260,
+            "eeMbitPerJ": 0.369
+          }
+        }
+      },
+      {
+        "version": "learner",
+        "label": "Learner rule",
+        "rule": "IF alarm → send now; routine → batch for next good window",
+        "taskResults": [
+          {
+            "taskId": "alarm",
+            "status": "delivered-fresh",
+            "deliveredMbit": 24
+          },
+          {
+            "taskId": "environment",
+            "status": "delivered-fresh",
+            "deliveredMbit": 32
+          },
+          {
+            "taskId": "bulk",
+            "status": "delivered-fresh",
+            "deliveredMbit": 40
+          }
+        ],
+        "deliveredDataMbit": 96,
+        "expiredCount": 0,
+        "freshCount": 3,
+        "activeTimeSec": 100,
+        "energyJ": 218,
+        "eeMbitPerJ": 0.44,
+        "frame": {
+          "identity": {
+            "contractVersion": "c90-energy-1-fixture-v1",
+            "providerKind": "fixture",
+            "providerId": "fixture-course-c90-v1",
+            "fixtureId": "c90-ntpu-energy-fixture-v1",
+            "scenarioId": "ntpu-pass-01",
+            "targetUtc": "2026-08-09T06:30:00Z",
+            "frameId": "iot-learner"
+          },
+          "frameIndex": 1,
+          "elapsedSec": 100,
+          "satellite": {
+            "id": "leo-course-sat-01",
+            "position": [
+              210,
+              760,
+              90
+            ],
+            "altitudeKm": 740
+          },
+          "beam": {
+            "id": "beam-ntpu-a",
+            "position": [
+              45,
+              8,
+              28
+            ],
+            "qualityLabel": "good",
+            "trendLabel": "same mission window"
+          },
+          "link": {
+            "servingBeamId": "beam-ntpu-a",
+            "visible": true,
+            "rangeKm": 760,
+            "azimuthDeg": 288,
+            "elevationDeg": 48
+          },
+          "service": {
+            "rateMbps": 0.68,
+            "deliveredDataMbit": 96,
+            "deadlineSec": 190,
+            "status": "served"
+          },
+          "energy": {
+            "powerW": 20,
+            "energyJ": 218,
+            "eeMbitPerJ": 0.44
+          }
+        }
+      },
+      {
+        "version": "revision",
+        "label": "One revision",
+        "rule": "保留 alarm 優先，bulk 改到 window 3，保護 freshness",
+        "taskResults": [
+          {
+            "taskId": "alarm",
+            "status": "delivered-fresh",
+            "deliveredMbit": 24
+          },
+          {
+            "taskId": "environment",
+            "status": "delivered-fresh",
+            "deliveredMbit": 32
+          },
+          {
+            "taskId": "bulk",
+            "status": "delivered-fresh",
+            "deliveredMbit": 48
+          }
+        ],
+        "deliveredDataMbit": 104,
+        "expiredCount": 0,
+        "freshCount": 3,
+        "activeTimeSec": 108,
+        "energyJ": 230,
+        "eeMbitPerJ": 0.452,
+        "frame": {
+          "identity": {
+            "contractVersion": "c90-energy-1-fixture-v1",
+            "providerKind": "fixture",
+            "providerId": "fixture-course-c90-v1",
+            "fixtureId": "c90-ntpu-energy-fixture-v1",
+            "scenarioId": "ntpu-pass-01",
+            "targetUtc": "2026-08-09T06:30:00Z",
+            "frameId": "iot-revision"
+          },
+          "frameIndex": 2,
+          "elapsedSec": 108,
+          "satellite": {
+            "id": "leo-course-sat-01",
+            "position": [
+              210,
+              760,
+              90
+            ],
+            "altitudeKm": 740
+          },
+          "beam": {
+            "id": "beam-ntpu-a",
+            "position": [
+              45,
+              8,
+              28
+            ],
+            "qualityLabel": "good",
+            "trendLabel": "same mission window"
+          },
+          "link": {
+            "servingBeamId": "beam-ntpu-a",
+            "visible": true,
+            "rangeKm": 760,
+            "azimuthDeg": 288,
+            "elevationDeg": 48
+          },
+          "service": {
+            "rateMbps": 0.68,
+            "deliveredDataMbit": 104,
+            "deadlineSec": 190,
+            "status": "served"
+          },
+          "energy": {
+            "powerW": 20,
+            "energyJ": 230,
+            "eeMbitPerJ": 0.452
+          }
+        }
+      }
+    ]
+  },
+  "ideaCard": {
+    "sensedData": "room temperature and occupancy",
+    "stateToPredict": "future occupancy trend",
+    "baseline": "fixed-rate HVAC schedule",
+    "controlAction": "change HVAC duty cycle from predicted occupancy",
+    "powerTimePathway": "lower active compressor time while tracking peak W",
+    "energyIndicator": "whole-room energy in Wh over one class period",
+    "serviceConstraint": "temperature must remain 22 to 26 C",
+    "falsifier": "no lower Wh or comfort violations in repeated matched periods"
+  }
+}

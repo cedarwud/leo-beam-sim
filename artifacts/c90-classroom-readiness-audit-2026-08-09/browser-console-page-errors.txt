@@ -1,0 +1,16 @@
+C-90 classroom-readiness audit browser log
+Date: 2026-08-09 Asia/Taipei
+Session: c90-audit-20260809
+
+Current direct /course/c90 navigation:
+- console errors: 0
+- console warnings: 0
+- surfaced page errors / silent exceptions: 0
+- failed current-page resource requests: 0
+- current C-90 resources: local production assets, /scenes/NTPU.glb, and /favicon.svg on 127.0.0.1 only
+
+Accumulated session observations:
+- Four Chrome WebGL performance warnings reported GPU stall due to ReadPixels while screenshots were captured.
+- No WebGL context loss was reported.
+- One informational legacy-app log appeared only while auditing the default / route.
+- The external CDN request visible in the accumulated request list belonged to the legacy / route, not the direct C-90 navigation. The fresh C-90 performance resource list contained only local URLs.

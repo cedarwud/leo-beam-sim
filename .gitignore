@@ -48,5 +48,10 @@ S__*.jpeg
 # Local QA output (screenshots, browser runs)
 output/
 
+# C-120 superseded capture outputs. The active, content-addressed class bundle
+# is public/course/c120/real-data/703f0e3a...01421 and is tracked explicitly.
+.scratch/c120-real-data/captures/
+public/course/c120/real-data/77c3b73f9caaab22873983e704347e9c4c8ad5a386bd4af53beb23f071be89fa/
+
 # Standalone screenshots dropped into repo root
 modqn-*.png

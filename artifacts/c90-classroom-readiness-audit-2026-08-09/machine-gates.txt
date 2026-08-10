@@ -1,0 +1,27 @@
+C-90 classroom-readiness audit machine gates
+Date: 2026-08-09 Asia/Taipei
+cwd: /home/u24/demo/leo-beam-sim
+HEAD: d3ab66794cfda75f55bfd98d25202ca45289b3ae
+
+git diff --check
+- exit: 0
+- output: none
+
+npm run test:course
+- exit: 0
+- 15 tests passed, 0 failed (6 provider/contract, 5 session, 4 source/static route tests)
+- measured command wall time: 0.576 s
+
+npm run lint
+- exit: 0
+- script: tsc --noEmit
+- measured command wall time: 8.272 s
+
+npm run build
+- exit: 0
+- script: tsc && vite build
+- Vite 7.1.12; 872 modules transformed; built in 6.68 s
+- measured command wall time: 15.430 s
+- warning: App-CkUjxDW8.js was 941.46 kB and exceeded the configured 900 kB chunk warning threshold; the isolated C90CourseRoute chunk was 81.60 kB (23.65 kB gzip).
+
+These green gates establish compilation and the assertions currently encoded by the repo. They do not override the fresh browser semantic failures recorded by this audit.
