@@ -19,7 +19,10 @@ const requestedTleDataRoot = optionValue('--tle-data-root');
 const TLE_DATA_ROOT = requestedTleDataRoot === undefined
   ? resolve(REPO_ROOT, '../tle_data')
   : resolve(requestedTleDataRoot);
-const ARCHIVE_QUERY = resolve(TLE_DATA_ROOT, 'scripts/tle_archive_query.py');
+const requestedArchiveQuery = optionValue('--archive-query');
+const ARCHIVE_QUERY = requestedArchiveQuery === undefined
+  ? resolve(SCRIPT_DIR, 'tle_archive_query.py')
+  : resolve(requestedArchiveQuery);
 const OUTPUT_PATH = resolve(REPO_ROOT, 'src/course/fixtures/c90-tle-study.generated.json');
 
 const DEFAULT_TARGET_UTC = '2026-08-09T06:30:00.000Z';
@@ -47,7 +50,7 @@ const SOURCE_SPECS = Object.freeze([
     role: 'teaching-comparison',
   },
   {
-    archiveDate: 'latest',
+    archiveDate: '20260808',
     label: '課程指定的 recent archived TLE',
     shortLabel: '課程資料',
     role: 'course-compatible',
@@ -292,9 +295,9 @@ function buildStudy() {
         accessNote: 'Current amateur-satellite element sets; not a OneWeb archive replacement.',
       },
     ],
-    archiveCatalogCommand: 'python3 ../tle_data/scripts/tle_archive_query.py catalog --constellation oneweb',
-    updateCommand: 'cd ../tle_data && ./scripts/daily_tle_download_enhanced.sh --constellation oneweb',
-    generationCommand: `npm run generate:c90:tle-study -- --target ${TARGET_UTC}`,
+    archiveCatalogCommand: 'python3 scripts/tle_archive_query.py --root /absolute/path/to/tle_data catalog --constellation oneweb',
+    updateCommand: 'Run the external archive repository updater separately; never fetch during class.',
+    generationCommand: `npm run generate:c90:tle-study -- --tle-data-root /absolute/path/to/tle_data --target ${TARGET_UTC}`,
     boundary: 'Precomputed model output for simulated teaching; not measured truth and not a live backend.',
   };
 }

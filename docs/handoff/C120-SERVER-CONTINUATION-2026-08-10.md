@@ -57,6 +57,13 @@ surface must continue to show exactly:
 
 - Active bundled snapshot:
   `703f0e3ae9224c58ca8e77e9f535c06a3d71789b7a3bd07707ac7f5844201421`.
+- The read-only archive query helper is versioned at
+  `scripts/tle_archive_query.py`; an external TLE repository now supplies data
+  only. The deterministic C-90 donor source is pinned to archive `20260808`.
+  Server archive `20260809` contains source `oneweb-49100-20260809-c710546b95f6`
+  with epoch `2026-08-09T07:31:30.248256Z`, which is later than the donor's
+  fixed `06:30Z` target. Keep it for a separately reviewed later-target or
+  real-data adapter; do not let `latest` mutate the teaching fixture.
 - The superseded `77c3...89fa` bundle and raw capture directories are ignored;
   do not promote them or treat them as current input.
 - `dist/`, `output/`, `.playwright-cli/`, dependencies, and browser runtime

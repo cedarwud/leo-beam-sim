@@ -70,7 +70,7 @@
       "sourceKind": "archive-snapshot",
       "provenance": "SOURCE",
       "constellation": "oneweb",
-      "requestedArchiveDate": "latest",
+      "requestedArchiveDate": "20260808",
       "archiveDate": "20260808",
       "archivePath": "oneweb/tle/oneweb_20260808.tle",
       "archiveSha256": "9073c56572cb4053950a3f913e0e69235fc210a9025fa1c897f7730b8120edc1",
@@ -92910,8 +92910,8 @@
       "accessNote": "Current amateur-satellite element sets; not a OneWeb archive replacement."
     }
   ],
-  "archiveCatalogCommand": "python3 ../tle_data/scripts/tle_archive_query.py catalog --constellation oneweb",
-  "updateCommand": "cd ../tle_data && ./scripts/daily_tle_download_enhanced.sh --constellation oneweb",
-  "generationCommand": "npm run generate:c90:tle-study -- --target 2026-08-09T06:30:00.000Z",
+  "archiveCatalogCommand": "python3 scripts/tle_archive_query.py --root /absolute/path/to/tle_data catalog --constellation oneweb",
+  "updateCommand": "Run the external archive repository updater separately; never fetch during class.",
+  "generationCommand": "npm run generate:c90:tle-study -- --tle-data-root /absolute/path/to/tle_data --target 2026-08-09T06:30:00.000Z",
   "boundary": "Precomputed model output for simulated teaching; not measured truth and not a live backend."
 }
