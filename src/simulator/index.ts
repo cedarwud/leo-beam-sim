@@ -1,8 +1,6 @@
 export * from './types';
 export {
-  chooseDefaultSatelliteId,
   loadTleSnapshot,
-  loadTleSnapshotPair,
   loadTleSnapshotWindow,
   loadTleWebArchiveCatalog,
   parseTleSnapshotText,

@@ -1,6 +1,6 @@
 # TLE archive and canonical EE simulator SDD
 
-Status: **Accepted contract; implementation pending**
+Status: **Accepted contract; bounded v1 implemented and browser verified**
 
 Date: 2026-08-11
 
@@ -16,6 +16,10 @@ Implement two bounded simulator capabilities:
    angle-aware EE closure.
 
 This SDD does not define an energy-saving policy or Phase-1 platform upload.
+
+The bounded v1 is mounted at `/simulator`. It uses an explicitly uncalibrated
+Taipei/nadir-reference adapter so the canonical chain is observable; this does
+not elevate the adapter into thesis-scenario or calibrated-link authority.
 
 ## 2. Runtime architecture
 

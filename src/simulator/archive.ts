@@ -4,7 +4,7 @@ import { validateTleArchiveManifest, validateTleLines } from '../tle/validation'
 import { TLE_PROPAGATION_MODEL, TLE_SOURCE_KIND, type TleArchiveEntry } from '../tle/types';
 import type {
   LoadedTleSnapshot,
-  LoadedTleSnapshotPair,
+  LoadedTleSnapshotWindow,
   TleWebArchiveCatalog,
   TleWebArchiveSnapshot,
 } from './types';
@@ -271,7 +271,7 @@ export async function loadTleSnapshotWindow(
   catalog: TleWebArchiveCatalog,
   requestedInstantUtc: string,
   fetcher: Fetcher = browserFetcher,
-): Promise<LoadedTleSnapshotPair> {
+): Promise<LoadedTleSnapshotWindow> {
   const requested = parseUtcInstant(requestedInstantUtc, 'requestedInstantUtc');
   const candidateMetadata = snapshotsCoveringWindow(catalog, requested.ms);
   const snapshots = await Promise.all(candidateMetadata.map(metadata => loadTleSnapshot(metadata, fetcher)));
@@ -288,15 +288,6 @@ export async function loadTleSnapshotWindow(
     archiveId: catalog.archiveId,
   });
   return Object.freeze({ catalog, current, previous, snapshots: Object.freeze(ordered), manifest });
-}
-
-/** @deprecated Use loadTleSnapshotWindow; retained for controller compatibility. */
-export const loadTleSnapshotPair = loadTleSnapshotWindow;
-
-export function chooseDefaultSatelliteId(snapshot: LoadedTleSnapshot): string {
-  const id = snapshot.entries[0]?.satelliteId;
-  if (id === undefined) tleFail('INVALID_MANIFEST', `${snapshot.metadata.path} contains no satellite records`);
-  return id;
 }
 
 export type { Fetcher as TleArchiveFetcher };

@@ -182,19 +182,19 @@ function buildTrajectory(
 }
 
 export function createSimulatorTleState(
-  pair: LoadedTleSnapshotWindow,
+  window: LoadedTleSnapshotWindow,
   requestedInstantUtc: string,
   selectedSatelliteId?: string,
 ): SimulatorTleState {
   const requested = parseUtcInstant(requestedInstantUtc, 'requestedInstantUtc');
-  const candidateIds = [...new Set(pair.current.entries.map(entry => entry.satelliteId))].sort();
+  const candidateIds = [...new Set(window.current.entries.map(entry => entry.satelliteId))].sort();
   if (candidateIds.length === 0) throw new Error('current TLE snapshot contains no satellites');
   const propagationFrame = createTlePropagationFrame(
-    pair.manifest,
+    window.manifest,
     requested.value,
     {
       satelliteIds: candidateIds,
-      maxPropagationAgeMs: pair.catalog.maxPropagationAgeMs,
+      maxPropagationAgeMs: window.catalog.maxPropagationAgeMs,
     },
   );
   const scored = propagationFrame.satellites
@@ -205,10 +205,10 @@ export function createSimulatorTleState(
     .sort((left, right) => right.geometry.elevationDeg - left.geometry.elevationDeg);
   const selected = selectedIdsOrBest(scored, selectedSatelliteId);
   const selectedSnapshot = resolveTleSnapshot(
-    pair.manifest,
+    window.manifest,
     requested.value,
     selected.satellite.satelliteId,
-    { maxPropagationAgeMs: pair.catalog.maxPropagationAgeMs },
+    { maxPropagationAgeMs: window.catalog.maxPropagationAgeMs },
   );
   if (selected.geometry.elevationDeg < 0) {
     throw new Error('no archived OneWeb satellite is above the Taipei horizon at the requested instant');
@@ -224,11 +224,11 @@ export function createSimulatorTleState(
     selectedSatellite,
     groundPositionTemeKm,
     trajectory,
-    currentArchiveDate: pair.current.metadata.archiveDate,
-    previousArchiveDate: pair.previous?.metadata.archiveDate ?? null,
-    currentSnapshot: pair.current,
-    previousSnapshot: pair.previous,
-    catalog: pair.catalog,
+    currentArchiveDate: window.current.metadata.archiveDate,
+    previousArchiveDate: window.previous?.metadata.archiveDate ?? null,
+    currentSnapshot: window.current,
+    previousSnapshot: window.previous,
+    catalog: window.catalog,
   });
 }
 

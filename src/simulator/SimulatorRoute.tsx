@@ -310,8 +310,8 @@ export function SimulatorRoute({ catalogUrl = SIMULATOR_CATALOG_URL, initialTaip
     void (async () => {
       try {
         const utc = simulatorTaipeiDateTimeToUtc(taipeiDateTime);
-        const pair = await loadTleSnapshotWindow(catalog, utc);
-        const nextState = createSimulatorTleState(pair, utc);
+        const window = await loadTleSnapshotWindow(catalog, utc);
+        const nextState = createSimulatorTleState(window, utc);
         if (cancelled || currentRequest !== requestId.current) return;
         setTleState(nextState);
         setStatus('ready');

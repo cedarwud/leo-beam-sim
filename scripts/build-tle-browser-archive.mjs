@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -198,7 +198,9 @@ async function main() {
 
   await mkdir(options.output, { recursive: true });
   for (const snapshot of snapshots) {
-    await copyFile(resolve(options.source, snapshot.fileName), resolve(options.output, snapshot.fileName));
+    const outputPath = resolve(options.output, snapshot.fileName);
+    await copyFile(resolve(options.source, snapshot.fileName), outputPath);
+    await chmod(outputPath, 0o644);
   }
   await writeFile(resolve(options.output, 'catalog.json'), `${JSON.stringify(catalog, null, 2)}\n`, 'utf8');
   await verifyOutput(options.output, snapshots, catalog);

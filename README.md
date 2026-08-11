@@ -57,7 +57,7 @@ capture / degraded state 用
 
 ### 環境需求
 
-- **Git LFS** — 本專案使用 Git LFS 管理 3D 模型檔案（`.glb`），必須先安裝才能正確 clone
+- **Git LFS** — 本專案使用 Git LFS 管理 3D 模型與年度 TLE 快照，必須先安裝才能正確 clone
 - **Node.js** >= 18
 - **npm** >= 9
 
@@ -106,6 +106,16 @@ npm run preview
 
 開發伺服器啟動後會自動開啟瀏覽器，伺服器綁定 `0.0.0.0:3000`，同網路的裝置也可透過區域 IP 存取。
 
+年度 archived-TLE／canonical-EE 模擬器位於：
+
+```text
+http://localhost:3000/simulator
+```
+
+這個 route 提供 Asia/Taipei 日期時間選擇、TLE-derived SGP4 軌跡，以及
+SINR、Power、Throughput、EE 四個共享同一 frame 的正式分頁。它不宣稱
+live telemetry、節能成效或一期平台整合。
+
 ### 可用指令
 
 | 指令 | 說明 |
@@ -114,6 +124,9 @@ npm run preview
 | `npm run build` | TypeScript 型別檢查 + Vite 生產建置 |
 | `npm run preview` | 本地預覽 `dist/` 建置產物 |
 | `npm run lint` | 執行 TypeScript 型別檢查（不輸出檔案） |
+| `npm run build:tle-archive` | 從唯讀外部來源重建 browser TLE catalog/assets |
+| `npm run check:tle-archive` | 驗證 363 份 TLE、epoch bounds、checksum 與內容指紋 |
+| `npm run test:active-simulator` | 執行 TLE、canonical EE 與 shared-frame focused tests |
 
 ## 研究文件
 

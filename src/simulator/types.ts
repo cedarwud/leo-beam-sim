@@ -44,16 +44,13 @@ export interface LoadedTleSnapshot {
   readonly sha256: string;
 }
 
-export interface LoadedTleSnapshotPair {
+export interface LoadedTleSnapshotWindow {
   readonly catalog: TleWebArchiveCatalog;
   readonly current: LoadedTleSnapshot;
   readonly previous: LoadedTleSnapshot | null;
   readonly snapshots: readonly LoadedTleSnapshot[];
   readonly manifest: TleArchiveManifest;
 }
-
-/** Preferred name: the loaded set is an epoch-covering window, not just a pair. */
-export type LoadedTleSnapshotWindow = LoadedTleSnapshotPair;
 
 export interface OrbitTrajectoryPoint {
   readonly instantUtc: string;

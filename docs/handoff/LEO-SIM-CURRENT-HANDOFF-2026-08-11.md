@@ -1,6 +1,6 @@
 # Leo simulator current handoff: archived TLE and canonical EE
 
-Status: **AUTHORITY FROZEN / IMPLEMENT IN THIS CONTROLLER SESSION**
+Status: **BOUNDED V1 IMPLEMENTED / FOCUSED AND BROWSER VERIFIED**
 
 Date: 2026-08-11
 
@@ -14,6 +14,34 @@ Complete two non-heavy workstreams in `/home/u24/demo/leo-beam-sim`:
 
 Do not implement an energy-saving policy or Phase-1 platform upload. Those
 directions are explicitly unresolved.
+
+## 1.1 Implemented checkpoint
+
+Implementation commit: `c9f8982` (`feat: add archived TLE canonical EE simulator`)
+
+The dedicated route is:
+
+```text
+/simulator
+```
+
+Implemented surfaces:
+
+- `public/tle-archive/oneweb/`: 363 Git-LFS OneWeb snapshots plus a
+  content-addressed catalog with per-file epoch bounds;
+- `src/tle/**`: fail-closed archive validation, deterministic newest-prior
+  resolution, Asia/Taipei conversion, and SGP4 propagation;
+- `src/analysis/canonicalEe/**`: frozen Family-B canonical EE producer and
+  ratio-of-sums evaluation API;
+- `src/simulator/**`: epoch-window loader, immutable shared analysis frame,
+  TLE-derived 3D trajectory, and exactly four formal projections; and
+- `src/main.tsx`: route mounting without changing the historical default app.
+
+The browser scenario is deliberately explicit: one Taipei ground terminal,
+one nadir-reference beam, and an uncalibrated `1e-8` normalized link scale.
+The adapter makes cap effects observable but is not a paper-scenario or RF
+link-budget reproduction. The canonical EE algebra itself remains the frozen
+contract.
 
 ## 2. Required reading
 
@@ -45,7 +73,7 @@ Preserve all unrelated WIP. Stage only exact owned paths. Do not use
 `git add .`, `git add -A`, `commit -a`, reset, stash, restore, clean, or force
 push.
 
-## 4. Execution order
+## 4. Implementation record
 
 The verified TLE source is `/home/u24/demo/tle_data/oneweb/tle`: 363 archived
 OneWeb snapshots from 2025-07-27 through 2026-08-08 at the freeze. Treat that
@@ -64,17 +92,16 @@ upstream closure. `src/course/c120/backend/canonicalRuntime.ts` is the closest
 TypeScript science donor, but its course binding is historical; extract or
 adapt it into a neutral, tested producer.
 
-Execution order:
+Completed execution order:
 
-1. inventory the existing TLE and EE runtime paths;
-2. freeze new shared types and conformance fixtures under controller ownership;
-3. implement TLE archive resolution and tests in an isolated module;
-4. implement canonical EE producer and tests in an isolated module;
-5. integrate both into one shared analysis frame;
-6. replace the independent SINR `P_t` state with the canonical cap input;
-7. mount Power, SINR, Throughput, and EE projections;
-8. run focused tests, typecheck/build, and fresh-browser validation; and
-9. commit and push only reviewed paths authorized in this session.
+1. inventoried the existing TLE and EE runtime paths;
+2. froze shared types and conformance fixtures;
+3. implemented and tested archive resolution and SGP4;
+4. implemented and tested the canonical EE producer;
+5. integrated both into one immutable `SimulationAnalysisFrame`;
+6. exposed `P_beam_max` instead of an independent actual-power `P_t`;
+7. mounted Power, SINR, Throughput, and EE projections; and
+8. ran focused tests, production build, and fresh-browser validation.
 
 ## 5. Parallel ownership
 
@@ -101,13 +128,39 @@ presentation, C-120, shared app, or another worker's paths.
 - TLE selection is archived SGP4 evidence, not live telemetry.
 - TLE switching is not handover and is not energy-saving evidence.
 
-## 7. Completion evidence
+## 7. Verification evidence
 
-Do not call the work complete without:
+Verified on 2026-08-11:
 
-- deterministic archive-boundary and timezone tests;
-- canonical Python-to-TypeScript conformance cases;
-- cap, coupled-power, zero, and ratio-of-sums tests;
-- production build;
-- fresh-browser evidence for date/time switching and all four pages; and
-- a final path-scoped diff showing unrelated WIP was not staged.
+- `npm run test:active-simulator` passes archive integrity, TLE boundary,
+  timezone, SGP4, Python-vector parity, cap, zero, ratio-of-sums, epoch-window,
+  and shared-frame tests;
+- 2 x 651 all-satellite resolution and propagation measured about 10 ms after
+  removing repeated manifest validation;
+- `npm run build` passes;
+- a fresh Chromium session at `/simulator` showed all four projections with
+  zero console errors;
+- changing `P_beam_max` from 2 W to 1 W changed the shared actual `P_DL` from
+  2 W to 1 W and propagated into SINR, throughput, and EE;
+- changing 2026-08-08 to 2026-03-01 changed the TLE frame, selected satellite,
+  TLE epoch, trajectory, and analysis frame atomically;
+- an unavailable pre-archive instant preserved the prior accepted frame and
+  displayed the refusal; and
+- a 390 px browser viewport had equal scroll/client width and no horizontal
+  overflow.
+
+The repository-wide pre-commit hook remains red on the pre-existing
+`validate:s0:geometry-trace` fixture drift (1610 diffs). The new route does not
+modify that legacy scene geometry. Focused tests, build, and browser evidence
+are green; do not normalize or silently re-baseline the old fixture here.
+
+## 8. Remaining limits
+
+- Evaluation EE is currently an explicitly labelled single-frame
+  ratio-of-sums. Cross-time accumulation is not yet mounted in the UI.
+- The normalized geometry/channel adapter is not a calibrated RF link budget
+  and is not a claim of reproducing the thesis scenario.
+- The canonical payload-power boundary excludes bus, TT&C, thermal, and other
+  whole-spacecraft terms.
+- Energy-saving policy, baseline/candidate evidence, and Phase-1 platform
+  integration remain unresolved and unimplemented.

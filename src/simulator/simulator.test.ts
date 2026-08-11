@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
-  loadTleSnapshotPair,
+  loadTleSnapshotWindow,
   loadTleWebArchiveCatalog,
   parseTleWebArchiveCatalog,
 } from './archive';
@@ -28,16 +28,16 @@ assert.equal(catalog.snapshots[0]?.identityCount, catalog.snapshots[0]?.recordCo
 // The archive filename date is not an epoch boundary.  At this instant the
 // 20260808 file contains valid epochs even though the request is still on
 // 20260807 UTC; the loader must include it in the epoch-covering candidates.
-const boundaryPair = await loadTleSnapshotPair(
+const boundaryWindow = await loadTleSnapshotWindow(
   catalog,
   '2026-08-07T23:59:59.000Z',
   fetchFromPublic,
 );
-assert.ok(boundaryPair.snapshots.some(snapshot => snapshot.metadata.archiveDate === '20260808'));
-assert.equal(boundaryPair.current.metadata.archiveDate, '20260808');
-assert.ok(boundaryPair.manifest.entries.length >= 651);
+assert.ok(boundaryWindow.snapshots.some(snapshot => snapshot.metadata.archiveDate === '20260808'));
+assert.equal(boundaryWindow.current.metadata.archiveDate, '20260808');
+assert.ok(boundaryWindow.manifest.entries.length >= 651);
 
-const state = createSimulatorTleState(boundaryPair, '2026-08-07T23:59:59.000Z');
+const state = createSimulatorTleState(boundaryWindow, '2026-08-07T23:59:59.000Z');
 assert.ok(state.propagationFrame.satellites.length >= 651);
 assert.ok(state.trajectory.length >= 10);
 assert.ok(state.selectedSatelliteId.length > 0);

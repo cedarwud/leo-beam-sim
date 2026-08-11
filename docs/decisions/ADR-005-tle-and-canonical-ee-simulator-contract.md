@@ -165,3 +165,16 @@ contract.
   implementation.
 - The two accepted workstreams are non-heavy implementation and remain in the
   current environment unless a later task introduces long training or sweeps.
+
+## Implementation record
+
+Bounded v1 was implemented in commit `c9f8982` and mounted at `/simulator`.
+The route consumes a 363-snapshot OneWeb browser archive, resolves an
+epoch-covering file window, propagates with SGP4, and publishes one immutable
+analysis frame to SINR, Power, Throughput, and EE. Focused tests, production
+build, desktop browser interaction, fail-closed retention, and a 390 px
+responsive check passed on 2026-08-11.
+
+The current scenario adapter is explicitly uncalibrated and the UI labels
+evaluation EE as single-frame. No energy-saving or Phase-1 platform decision
+is implied by this implementation record.
