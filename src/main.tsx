@@ -13,6 +13,8 @@ const isC120Route = window.location.pathname === '/course/c120'
   || new URLSearchParams(window.location.search).get('course') === 'c120';
 const isC90Route = window.location.pathname === '/course/c90'
   || new URLSearchParams(window.location.search).get('course') === 'c90';
+const isCanonicalSimulatorRoute = window.location.pathname === '/simulator'
+  || new URLSearchParams(window.location.search).get('simulator') === 'canonical';
 const C120_BOOTSTRAP_CLAIM = 'SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED';
 
 function C120BootstrapFailure({ message }: { readonly message: string }) {
@@ -71,6 +73,16 @@ async function bootstrap() {
     ReactDOM.createRoot(container).render(
       <StrictMode>
         <C90CourseRoute />
+      </StrictMode>
+    );
+    return;
+  }
+
+  if (isCanonicalSimulatorRoute) {
+    const { SimulatorRoute } = await import('./simulator/SimulatorRoute');
+    ReactDOM.createRoot(container).render(
+      <StrictMode>
+        <SimulatorRoute />
       </StrictMode>
     );
     return;

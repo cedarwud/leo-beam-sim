@@ -1,0 +1,90 @@
+.simulator-route {
+  --sim-bg: #07131d;
+  --sim-panel: #0d202c;
+  --sim-panel-strong: #102b3a;
+  --sim-border: rgba(157, 219, 214, .2);
+  --sim-text: #eaf7f5;
+  --sim-muted: #9db8bb;
+  --sim-accent: #76ead7;
+  --sim-warm: #ffde85;
+  --sim-alert: #ffd28a;
+  min-height: 100vh;
+  height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color-scheme: dark;
+  color: var(--sim-text);
+  background: radial-gradient(circle at 86% 0%, rgba(34, 97, 111, .24), transparent 34rem), var(--sim-bg);
+  font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  line-height: 1.55;
+  padding: clamp(1rem, 3vw, 3.5rem);
+  box-sizing: border-box;
+}
+
+.simulator-route::-webkit-scrollbar { width: .68rem; }
+.simulator-route::-webkit-scrollbar-track { background: rgba(4, 16, 24, .74); }
+.simulator-route::-webkit-scrollbar-thumb { border: 2px solid rgba(4, 16, 24, .74); border-radius: 999px; background: rgba(118, 234, 215, .3); }
+.simulator-route::-webkit-scrollbar-thumb:hover { background: rgba(118, 234, 215, .52); }
+
+.simulator-route *, .simulator-route *::before, .simulator-route *::after { box-sizing: border-box; }
+.simulator-route code { color: var(--sim-accent); font: .85em/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.simulator-header { display: flex; justify-content: space-between; gap: 2rem; max-width: 1220px; margin: 0 auto 1.5rem; align-items: flex-start; }
+.simulator-eyebrow { margin: 0 0 .5rem; color: var(--sim-accent); font-size: .74rem; letter-spacing: .13em; font-weight: 800; }
+.simulator-header h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 3.3rem); line-height: 1.07; letter-spacing: -.03em; }
+.simulator-lede { max-width: 760px; margin: .8rem 0 0; color: var(--sim-muted); font-size: clamp(.95rem, 1.5vw, 1.12rem); }
+.simulator-contract-badge { display: grid; gap: .18rem; min-width: 12rem; padding: .9rem 1rem; border: 1px solid var(--sim-border); border-radius: .85rem; background: rgba(10, 29, 40, .82); text-align: right; }
+.simulator-contract-badge span, .simulator-contract-badge small { color: var(--sim-muted); font-size: .74rem; }
+.simulator-contract-badge strong { color: var(--sim-warm); }
+.simulator-timebar, .simulator-provenance, .simulator-scene-card, .simulator-analysis-card { max-width: 1220px; margin: 0 auto 1rem; border: 1px solid var(--sim-border); background: rgba(10, 29, 40, .88); border-radius: 1rem; }
+.simulator-timebar { display: grid; grid-template-columns: minmax(15rem, 1fr) minmax(18rem, .9fr); gap: 1rem; padding: 1rem; }
+.simulator-timebar__input, .simulator-timebar__conversion { display: grid; gap: .35rem; align-content: center; }
+.simulator-timebar label, .simulator-timebar__conversion span { color: var(--sim-accent); font-weight: 800; font-size: .82rem; }
+.simulator-timebar input { width: min(100%, 19rem); min-height: 2.8rem; border: 1px solid var(--sim-border); border-radius: .5rem; color: var(--sim-text); background: #06141d; padding: .55rem .7rem; font: inherit; color-scheme: dark; }
+.simulator-timebar__input span { color: var(--sim-muted); font-size: .8rem; }
+.simulator-timebar__conversion { border-left: 1px solid var(--sim-border); padding-left: 1rem; }
+.simulator-timebar__conversion strong { font: .92rem ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.simulator-secondary-button { width: fit-content; border: 1px solid rgba(118, 234, 215, .45); border-radius: .5rem; color: var(--sim-accent); background: transparent; padding: .46rem .7rem; cursor: pointer; font: inherit; font-size: .82rem; }
+.simulator-secondary-button:hover, .simulator-secondary-button:focus-visible { background: rgba(118, 234, 215, .12); }
+.simulator-secondary-button:disabled { opacity: .45; cursor: not-allowed; }
+.simulator-route button:focus-visible, .simulator-route input:focus-visible, .simulator-route [tabindex]:focus-visible { outline: 3px solid var(--sim-warm); outline-offset: 2px; }
+.simulator-provenance { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; padding: .72rem 1rem; }
+.simulator-provenance div { min-width: 0; display: grid; gap: .12rem; }
+.simulator-provenance span { color: var(--sim-muted); font-size: .72rem; }
+.simulator-provenance strong { color: var(--sim-text); font: .75rem ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.simulator-alert { max-width: 1220px; margin: 0 auto 1rem; display: grid; gap: .25rem; padding: .85rem 1rem; border: 1px solid rgba(255, 210, 138, .5); border-radius: .75rem; color: var(--sim-alert); background: rgba(72, 47, 18, .38); }
+.simulator-alert span { color: #ffe8bf; font-size: .86rem; overflow-wrap: anywhere; }
+.simulator-scene-card { padding: 1rem; }
+.simulator-scene-card__heading { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: .8rem; }
+.simulator-scene-card h2, .simulator-section h2 { margin: 0; font-size: 1.08rem; letter-spacing: -.01em; }
+.simulator-scene-card p, .simulator-section__heading p { margin: .22rem 0 0; color: var(--sim-muted); font-size: .84rem; }
+.simulator-source-badge { white-space: nowrap; border: 1px solid rgba(118, 234, 215, .4); border-radius: 999px; padding: .35rem .6rem; color: var(--sim-accent); font-size: .7rem; font-weight: 800; letter-spacing: .06em; }
+.simulator-orbit-scene { position: relative; min-height: 23rem; overflow: hidden; border: 1px solid rgba(118, 234, 215, .15); border-radius: .75rem; background: #07131d; }
+.simulator-orbit-scene canvas { display: block; width: 100%; height: 23rem; }
+.simulator-orbit-legend { position: absolute; left: .75rem; bottom: .65rem; display: flex; flex-wrap: wrap; gap: .65rem; padding: .4rem .55rem; border-radius: .45rem; background: rgba(4, 15, 23, .76); color: #c9e0df; font-size: .72rem; }
+.simulator-orbit-legend span { display: inline-flex; gap: .35rem; align-items: center; }
+.orbit-legend-line { width: 1.1rem; border-top: 2px solid var(--sim-accent); }
+.orbit-legend-dot { width: .55rem; height: .55rem; display: inline-block; border-radius: 50%; }
+.orbit-legend-dot--satellite { background: var(--sim-warm); }.orbit-legend-dot--ground { background: #ff7d8f; }
+.simulator-analysis-card { overflow: hidden; }
+.simulator-tablist { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--sim-border); }
+.simulator-tablist button { display: grid; gap: .1rem; min-height: 4.2rem; border: 0; border-bottom: 3px solid transparent; color: var(--sim-muted); background: transparent; padding: .8rem .7rem .65rem; cursor: pointer; font: inherit; text-align: left; }
+.simulator-tablist button strong { color: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9rem; }
+.simulator-tablist button span { font-size: .77rem; }
+.simulator-tablist button:hover { background: rgba(118, 234, 215, .06); color: var(--sim-text); }.simulator-tablist button.is-active, .simulator-tablist button[aria-selected="true"] { border-color: var(--sim-accent); color: var(--sim-text); background: rgba(118, 234, 215, .09); }.simulator-tablist button.is-active strong, .simulator-tablist button[aria-selected="true"] strong { color: var(--sim-accent); }
+.simulator-tabpanel { padding: 1rem; }
+.simulator-panel-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 1rem; }
+.simulator-section { min-width: 0; padding: 1rem; border: 1px solid rgba(157, 219, 214, .14); border-radius: .75rem; background: rgba(7, 19, 29, .48); }
+.simulator-section__heading { margin-bottom: .85rem; }.simulator-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.simulator-field { display: grid; gap: .28rem; min-width: 0; padding: .7rem; border: 1px solid rgba(157, 219, 214, .13); border-radius: .6rem; background: rgba(14, 39, 53, .55); }
+.simulator-field__heading { display: flex; justify-content: space-between; gap: .5rem; font-size: .83rem; font-weight: 800; }.simulator-field__heading small { color: var(--sim-accent); font-size: .7rem; white-space: nowrap; }
+.simulator-field input { width: 100%; min-height: 2.35rem; color: var(--sim-text); background: #06141d; border: 1px solid rgba(157, 219, 214, .25); border-radius: .4rem; padding: .4rem .5rem; font: .94rem ui-monospace, SFMono-Regular, Menlo, monospace; color-scheme: dark; }
+.simulator-field__description, .simulator-field__source { color: var(--sim-muted); font-size: .74rem; line-height: 1.4; }.simulator-field__source { color: #bddbd7; }
+.simulator-section > .simulator-secondary-button { margin-top: .8rem; }
+.simulator-ledger { margin: 0; display: grid; gap: .3rem; }.simulator-ledger__row { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid rgba(157, 219, 214, .11); }.simulator-ledger__row:last-child { border-bottom: 0; }.simulator-ledger dt { color: var(--sim-muted); font-size: .8rem; }.simulator-ledger dd { margin: 0; color: var(--sim-text); font: .82rem ui-monospace, SFMono-Regular, Menlo, monospace; text-align: right; overflow-wrap: anywhere; }.simulator-ledger dd small { margin-left: .25rem; color: var(--sim-accent); }.simulator-ledger dd span { display: block; color: var(--sim-muted); font: .68rem/1.35 "Noto Sans TC", sans-serif; }
+.simulator-metrics-grid { display: grid; gap: .65rem; margin-bottom: .9rem; }.simulator-metrics-grid--four { grid-template-columns: repeat(4, minmax(0, 1fr)); }.simulator-metrics-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }.simulator-metric { min-width: 0; display: grid; gap: .22rem; padding: .75rem; border: 1px solid rgba(118, 234, 215, .16); border-radius: .6rem; background: rgba(14, 39, 53, .55); }.simulator-metric__label { color: var(--sim-muted); font-size: .75rem; }.simulator-metric__value { color: var(--sim-text); font: 1.05rem ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }.simulator-metric__value small { margin-left: .25rem; color: var(--sim-accent); font: .7rem "Noto Sans TC", sans-serif; }.simulator-metric__detail { color: #bddbd7; font-size: .7rem; }
+.simulator-explanation { padding: .75rem; border-left: 3px solid var(--sim-accent); background: rgba(118, 234, 215, .06); color: #cde5e1; font-size: .83rem; }.simulator-explanation p { margin: .4rem 0 0; }.simulator-explanation p:first-child { margin-top: 0; }.simulator-note { margin: .8rem 0 0; color: var(--sim-muted); font-size: .77rem; }
+.simulator-state { max-width: 1220px; min-height: 18rem; margin: 0 auto 1rem; display: grid; place-content: center; justify-items: center; gap: .5rem; padding: 2rem; border: 1px dashed var(--sim-border); border-radius: 1rem; text-align: center; }.simulator-state h2 { margin: 0; }.simulator-state p { max-width: 38rem; margin: 0; color: var(--sim-muted); }.simulator-state--error { border-color: rgba(255, 210, 138, .45); }.simulator-spinner { width: 2.2rem; height: 2.2rem; border: 3px solid rgba(118, 234, 215, .2); border-top-color: var(--sim-accent); border-radius: 50%; animation: simulator-spin .8s linear infinite; }@keyframes simulator-spin { to { transform: rotate(360deg); } }
+.simulator-footer { max-width: 1220px; margin: 1.2rem auto 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1.2rem; color: #789395; font-size: .72rem; }
+@media (max-width: 900px) { .simulator-header { display: block; }.simulator-contract-badge { width: fit-content; margin-top: 1rem; text-align: left; }.simulator-panel-grid { grid-template-columns: 1fr; }.simulator-provenance { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .simulator-route { padding: .8rem; }.simulator-timebar { grid-template-columns: 1fr; }.simulator-timebar__conversion { border-left: 0; border-top: 1px solid var(--sim-border); padding: .8rem 0 0; }.simulator-scene-card__heading { display: block; }.simulator-source-badge { display: inline-block; margin-top: .65rem; }.simulator-orbit-scene, .simulator-orbit-scene canvas { min-height: 18rem; height: 18rem; }.simulator-tablist button { min-height: 3.8rem; padding-inline: .35rem; }.simulator-tablist button strong { font-size: .75rem; }.simulator-tablist button span { font-size: .66rem; }.simulator-tabpanel { padding: .55rem; }.simulator-section { padding: .75rem; }.simulator-form-grid, .simulator-metrics-grid--four, .simulator-metrics-grid--three { grid-template-columns: 1fr; }.simulator-provenance { grid-template-columns: 1fr; }.simulator-footer { display: grid; } }
+@media (prefers-reduced-motion: reduce) { .simulator-spinner { animation: none; } }

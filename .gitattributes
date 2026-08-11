@@ -3,3 +3,6 @@
 # Preserve byte-exact upstream response bodies used by content-addressed C-120 bundles.
 /public/course/c120/real-data/*/oneweb-0314-current.json binary
 /public/course/c120/real-data/*/oneweb-0314-current.tle binary
+
+# Year-scale browser TLE snapshots are byte-exact source artifacts.
+/public/tle-archive/oneweb/*.tle filter=lfs diff=lfs merge=lfs -text
