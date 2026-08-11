@@ -34,8 +34,10 @@ import { SinrFormulaMap } from './signal-tuning/FormulaMap';
 import { FormulaFraction, FormulaHeader } from './signal-tuning/FormulaHeader';
 import { FormulaTabList } from './signal-tuning/FormulaTabList';
 import { MainTabList } from './signal-tuning/MainTabList';
+import { PowerTab } from './signal-tuning/PowerTab';
 import { SinrOverview } from './signal-tuning/SinrOverview';
 import { TopologyTab } from './signal-tuning/TopologyTab';
+import { ThroughputTab } from './signal-tuning/ThroughputTab';
 import { tx, txBi } from './signal-tuning/labels';
 import {
   FREQUENCY_REUSE_OPTIONS,
@@ -1000,6 +1002,25 @@ export function SignalTuningPanel({
             energyTuning={energyTuning}
             onEnergyTuningChange={onEnergyTuningChange}
             onEnergyTuningReset={onEnergyTuningReset}
+          />
+        )}
+
+        {mainTab === 'power' && (
+          <PowerTab
+            tuning={tuning}
+            energyTuning={energyTuning}
+            onTuningChange={onTuningChange}
+            onEnergyTuningChange={onEnergyTuningChange}
+            onEnergyTuningReset={onEnergyTuningReset}
+          />
+        )}
+
+        {mainTab === 'throughput' && (
+          <ThroughputTab
+            tuning={tuning}
+            formulaBudget={formulaBudget}
+            isFormulaEvidenceStale={isFormulaEvidenceStale}
+            onTuningChange={onTuningChange}
           />
         )}
 

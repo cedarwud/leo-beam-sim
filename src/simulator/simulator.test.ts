@@ -33,11 +33,26 @@ assert.deepEqual(SIMULATOR_TABS.map(tab => tab.id), ['sinr', 'ee', 'power', 'thr
 const entrySource = await readFile('src/main.tsx', 'utf8');
 assert.match(
   entrySource,
-  /window\.location\.pathname === '\/'[\s\S]*window\.location\.pathname === '\/simulator'/,
-  'the formal simulator must own both the bare product entry and /simulator',
+  /isCanonicalSimulatorRoute = window\.location\.pathname === '\/simulator'/,
+  'the formal simulator must remain directly reachable at /simulator',
 );
-assert.match(entrySource, /window\.location\.pathname === '\/legacy'/);
-assert.match(entrySource, /query\.get\('app'\) === 'legacy'/);
+assert.doesNotMatch(
+  entrySource,
+  /isCanonicalSimulatorRoute[\s\S]{0,240}window\.location\.pathname === '\/'/,
+  'the bare product entry must fall through to the original App',
+);
+const homeAppSource = await readFile('src/App.tsx', 'utf8');
+const simulatorRouteSource = await readFile('src/simulator/SimulatorRoute.tsx', 'utf8');
+assert.doesNotMatch(
+  homeAppSource,
+  /(?:href|assign)\s*(?:=|\()\s*['"]\/course\/c120/,
+  'the original homepage must not expose a C-120 jump control',
+);
+assert.doesNotMatch(
+  simulatorRouteSource,
+  /(?:href|assign)\s*(?:=|\()\s*['"]\/course\/c120/,
+  'the formal simulator must not expose a C-120 jump control',
+);
 
 // Select one complete prior publication rather than merging overlapping daily
 // revisions into a synthetic manifest.

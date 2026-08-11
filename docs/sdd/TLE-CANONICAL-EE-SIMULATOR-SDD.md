@@ -17,8 +17,8 @@ Implement two bounded simulator capabilities:
 
 This SDD does not define an energy-saving policy or Phase-1 platform upload.
 
-The bounded v1 is mounted at `/` and `/simulator`; the historical application
-is retained at `/legacy`. It uses an explicitly uncalibrated
+The bounded v1 is mounted at `/simulator`; the original Walker/handover
+application remains at `/`. It uses an explicitly uncalibrated
 Taipei/nadir-reference adapter so the canonical chain is observable; this does
 not elevate the adapter into thesis-scenario or calibrated-link authority.
 

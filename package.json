@@ -24,6 +24,7 @@
     "test:tle": "node --import tsx/esm src/tle/tle.test.ts",
     "test:canonical-ee": "node --import tsx/esm src/analysis/canonicalEe/canonicalEe.test.ts",
     "test:simulator": "node --import tsx/esm src/simulator/archive.test.ts && node --import tsx/esm src/simulator/simulator.test.ts",
+    "test:homepage-projections": "node --import tsx/esm src/ui/signal-tuning/MainTabList.test.tsx && node --import tsx/esm src/ui/signal-tuning/PowerTab.test.tsx && node --import tsx/esm src/ui/signal-tuning/ThroughputTab.test.tsx",
     "test:active-simulator": "npm run check:tle-archive && npm run test:tle && npm run test:canonical-ee && npm run test:simulator",
     "typecheck:scripts": "tsc -p tsconfig.scripts.json",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",

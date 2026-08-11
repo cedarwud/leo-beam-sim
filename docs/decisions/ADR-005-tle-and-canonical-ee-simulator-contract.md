@@ -170,17 +170,22 @@ contract.
 - Direct `P_t` experimentation changes meaning: it controls a declared cap,
   not an independently injected actual power.
 - Historical C-120/LoRa material remains recoverable without steering current
-  implementation.
+  implementation. It remains a direct-only route with no homepage or simulator
+  navigation control; removing the route, tests, bundled assets, and scripts is
+  a separate cleanup decision rather than a side effect of changing the active
+  simulator entry.
 - The two accepted workstreams are non-heavy implementation and remain in the
   current environment unless a later task introduces long training or sweeps.
 
 ## Implementation record
 
-Bounded v1 was implemented in commit `c9f8982` and first mounted at
-`/simulator`. Owner feedback subsequently established that a side route was
-not sufficient product integration: the formal simulator now owns both `/`
-and `/simulator`, while the historical Walker/handover application remains
-available at `/legacy` and through its preserved query deep links.
+Bounded v1 was implemented in commit `c9f8982` and mounted at `/simulator`.
+The original Walker/handover application remains the `/` entry. Owner direction
+keeps the two surfaces separately addressable and does not add navigation
+buttons between them at this stage. The homepage presents `SINR / EE / Power /
+Throughput` in its existing visual system; its added Power and Throughput pages
+remain explicitly non-canonical teaching projections. The `/simulator` route is
+still the canonical shared-frame implementation.
 The follow-up constellation checkpoint adds selectable OneWeb and Starlink
 archives: 363 valid OneWeb snapshots and 360 of 361 Starlink source snapshots.
 The one excluded Starlink source file is identified by filename, SHA-256, and

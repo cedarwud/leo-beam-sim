@@ -5,23 +5,21 @@ import { txBi } from './labels';
 import type { MainTabKey } from './types';
 
 /**
- * The top-level split of the left panel. The six terms of γ (P_t, H(L), G^T(θ),
- * G^R, I, σ²) are still all there — they just live one level down, inside SINR.
- * Scene topology, which is not a term of γ at all, is a peer tab here instead.
+ * The visible top-level split of the left panel. The six terms of γ (P_t,
+ * H(L), G^T(θ), G^R, I, σ²) remain one level down inside SINR. Power and
+ * throughput are teaching projections over the existing tuning state, while
+ * the legacy handover and topology pages remain mounted in `SignalTuningPanel`
+ * for runtime compatibility but are intentionally not navigation targets.
  *
- * On screen each button carries ONLY its short identifier — `SINR`, `EE`,
- * `Policy`, `Scene` — and nothing else. The glyph prefix and the one-line description
- * that used to sit next to it are gone from the visible label: on a narrow rail
- * three three-part captions wrap to four lines each and bury the tabs they are
- * labelling. The full name and the description are still there, in `title` and
- * `aria-label`, so hover and screen readers lose nothing.
- *
- * This is the same rule the formula sub-tab strip follows (notation only on the
- * button, prose behind the "?"), so the two levels read as one system.
+ * Each button carries only its short identifier. The full localized name and
+ * explanation stay in `title` and `aria-label`, matching the formula sub-tab
+ * strip and keeping the narrow rail readable.
  */
 const PANEL_ID_BY_TAB: Record<MainTabKey, string> = {
   sinr: 'tuning-page-panel-sinr-formula',
   energy: 'tuning-page-panel-energy',
+  power: 'tuning-page-panel-power',
+  throughput: 'tuning-page-panel-throughput',
   handover: 'tuning-page-panel-handover',
   scene: 'tuning-page-panel-scene',
 };
@@ -38,6 +36,12 @@ export function MainTabList({
 }) {
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
+
+  // Kept as a source-compatible prop for callers that still pass the old
+  // handover slot. It no longer changes navigation: Policy is deliberately
+  // not a visible main tab, and its runtime/state/component contract remains
+  // in SignalTuningPanel for the Advanced drawer and Walker scene.
+  void showHandoverTab;
 
   const tabs: ReadonlyArray<{
     key: MainTabKey;
@@ -62,33 +66,31 @@ export function MainTabList({
       hint: txBi(t, isEnglish, 'tab.energy.hint', '功率鏈與能源效率', 'Power train and energy efficiency'),
       accent: '#c3a6ff',
     },
-    ...(showHandoverTab
-      ? [{
-        key: 'handover' as MainTabKey,
-        short: 'Policy',
-        label: txBi(t, isEnglish, 'tab.handover.label', '換手判定', 'Handover'),
-        hint: txBi(
-          t,
-          isEnglish,
-          'tab.handover.hint',
-          '換手偏移門檻與觸發時間',
-          'Handover offset margin and trigger time',
-        ),
-        accent: UI_TOKENS.color.semantic.candidate.accent,
-      }]
-      : []),
     {
-      key: 'scene',
-      short: 'Scene',
-      label: txBi(t, isEnglish, 'tab.scene.label', '場景設定', 'Scene setup'),
+      key: 'power',
+      short: 'Power',
+      label: txBi(t, isEnglish, 'tab.power.label', '功率', 'Power'),
       hint: txBi(
         t,
         isEnglish,
-        'tab.scene.hint',
-        '衛星數、每顆衛星的波束數與使用者分布；變更後模擬重新開始',
-        'Satellite count, beams per satellite and user distribution; changing one restarts the run',
+        'tab.power.hint',
+        '調整發射功率、功率放大器效率與固定電路功耗',
+        'Tune transmit power, PA efficiency, and fixed circuit draw',
       ),
-      accent: UI_TOKENS.color.semantic.fixed,
+      accent: UI_TOKENS.color.semantic.good,
+    },
+    {
+      key: 'throughput',
+      short: 'Throughput',
+      label: txBi(t, isEnglish, 'tab.throughput.label', '吞吐量', 'Throughput'),
+      hint: txBi(
+        t,
+        isEnglish,
+        'tab.throughput.hint',
+        '用即時 SINR、頻寬與頻率重複使用估算教學吞吐量',
+        'Project teaching throughput from live SINR, bandwidth, and reuse',
+      ),
+      accent: UI_TOKENS.color.semantic.info,
     },
   ];
 
@@ -126,7 +128,10 @@ export function MainTabList({
       aria-orientation="horizontal"
       style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
+        // The tuning rail is intentionally narrow (~250px). A two-by-two
+        // layout keeps all four identifiers readable instead of squeezing
+        // "Power" / "Throughput" into clipped single-row cells.
+        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
         gap: 8,
       }}
     >
@@ -157,8 +162,8 @@ export function MainTabList({
               justifyItems: 'center',
               alignContent: 'center',
               textAlign: 'center',
-              minHeight: 48,
-              padding: '10px 12px',
+              minHeight: 44,
+              padding: '8px 4px',
               borderRadius: UI_TOKENS.radius.lg,
               border: active ? `1px solid ${tab.accent}` : `1px solid ${UI_TOKENS.color.border.subtle}`,
               background: active
@@ -172,9 +177,9 @@ export function MainTabList({
           >
             <span style={{
               fontFamily: UI_TOKENS.type.family.math,
-              fontSize: UI_TOKENS.type.size.bodyLg,
+              fontSize: UI_TOKENS.type.size.tiny,
               fontWeight: UI_TOKENS.type.weight.heavy,
-              letterSpacing: 0.6,
+              letterSpacing: 0.2,
               lineHeight: 1.2,
               color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
               whiteSpace: 'nowrap',

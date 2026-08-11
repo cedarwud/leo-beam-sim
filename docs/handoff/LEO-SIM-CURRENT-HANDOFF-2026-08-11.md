@@ -19,15 +19,24 @@ directions are explicitly unresolved.
 
 Implementation commit: `c9f8982` (`feat: add archived TLE canonical EE simulator`)
 
-The formal simulator routes are:
+The formal simulator route is:
 
 ```text
-/
 /simulator
 ```
 
-The historical Walker/handover application is retained at `/legacy`; its
-Policy/Scene navigation is not the formal simulator's primary navigation.
+The original Walker/handover application remains the `/` homepage. No
+cross-navigation button is added between these surfaces yet.
+
+The homepage left rail now exposes `SINR / EE / Power / Throughput` in the
+existing Walker application style. Its Power and Throughput pages reuse the
+historical live tuning state and are explicitly labelled non-canonical teaching
+projections; `/simulator` remains the full canonical shared-frame surface.
+
+The historical `/course/c120` surface is direct-route only. It has no entry
+control on `/` or `/simulator`; retain it as recoverable history unless a later
+owner decision authorizes removal of the route together with its tests,
+materializer scripts, and bundled assets.
 
 Implemented surfaces:
 
@@ -41,9 +50,8 @@ Implemented surfaces:
   ratio-of-sums evaluation API;
 - `src/simulator/**`: atomic published-snapshot loader, immutable shared analysis frame,
   TLE-derived 3D trajectory, and exactly four formal projections; and
-- `src/main.tsx`: the formal simulator owns the bare product entry and
-  `/simulator`; the historical application remains explicitly reachable at
-  `/legacy` and through preserved query deep links.
+- `src/main.tsx`: `/simulator` mounts the formal simulator, while the bare
+  product entry continues to mount the original application.
 
 The browser scenario is deliberately explicit: one Taipei ground terminal,
 one nadir-reference beam, and an uncalibrated `1e-8` normalized link scale.

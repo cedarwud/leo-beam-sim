@@ -1,26 +1,20 @@
 import type { ReactNode } from 'react';
 
 /**
- * Top-level tabs. The formula-term tabs below are a *secondary* level inside
- * `sinr`, so nothing that was already wired up is lost — only the first thing
- * you look at changed.
+ * Top-level tab state used by the tuning panel.
  *
- * `handover` is not a third formula: it decides which satellite the link is on,
- * so it belongs neither in the SINR fraction nor in the power train. It only
- * appears when the app hands the panel a handover section.
- *
- * `scene` is not a formula either, and that is exactly why it is up here. Its
- * fields — how many satellites, how many beams each, how many users and how
- * they move — are the shape of the simulated world, not terms of γ. While it
- * sat inside SINR as a seventh "formula term" (under the symbol N_sat) it read
- * as though the satellite count were a factor of the fraction, which it is not:
- *
- *     γ = (P_t · H · G^T · G^R) / (I^a + I^b + σ²)
- *
- * contains none of them. Changing one restarts the run; changing a real term
- * only recomputes it.
+ * The visible navigation is deliberately fixed to `sinr`, `energy`, `power`,
+ * and `throughput`. `handover` and `scene` remain in this state union because
+ * their panels and runtime props are still part of the Walker/handover scene
+ * contract; `MainTabList` simply does not expose those legacy views as tabs.
  */
-export type MainTabKey = 'sinr' | 'energy' | 'handover' | 'scene';
+export type MainTabKey =
+  | 'sinr'
+  | 'energy'
+  | 'power'
+  | 'throughput'
+  | 'handover'
+  | 'scene';
 
 /**
  * The six terms of γ, one sub-tab each. `topology` is deliberately NOT here any
