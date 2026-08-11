@@ -9,8 +9,22 @@ import type {
 } from '../tle';
 
 export const SIMULATOR_CONTRACT_VERSION = 'family-b-thesis-3.13-3.17-v1' as const;
-export const SIMULATOR_CATALOG_URL = '/tle-archive/oneweb/catalog.json';
 export const SIMULATOR_TIME_ZONE = 'Asia/Taipei' as const;
+
+export type SimulatorConstellation = 'oneweb' | 'starlink';
+
+export const SIMULATOR_CONSTELLATIONS: readonly {
+  readonly id: SimulatorConstellation;
+  readonly label: string;
+}[] = Object.freeze([
+  { id: 'oneweb', label: 'OneWeb' },
+  { id: 'starlink', label: 'Starlink' },
+]);
+
+export const SIMULATOR_CATALOG_URLS: Readonly<Record<SimulatorConstellation, string>> = Object.freeze({
+  oneweb: '/tle-archive/oneweb/catalog.json',
+  starlink: '/tle-archive/starlink/catalog.json',
+});
 
 export interface TleWebArchiveSnapshot {
   readonly archiveDate: string;
@@ -23,16 +37,24 @@ export interface TleWebArchiveSnapshot {
   readonly sha256: string;
 }
 
+export interface TleWebArchiveExcludedSnapshot {
+  readonly fileName: string;
+  readonly sha256: string;
+  readonly reason: string;
+}
+
 export interface TleWebArchiveCatalog {
   readonly schemaVersion: 'tle-web-archive-v1';
   readonly archiveId: string;
   readonly archiveContentSha256?: string;
-  readonly constellation: 'oneweb';
+  readonly constellation: SimulatorConstellation;
   readonly sourceKind: 'ARCHIVED_TLE';
   readonly propagationModel: 'SGP4';
   readonly firstArchiveDate: string;
   readonly lastArchiveDate: string;
   readonly snapshotCount: number;
+  readonly sourceSnapshotCount?: number;
+  readonly excludedSnapshots?: readonly TleWebArchiveExcludedSnapshot[];
   readonly maxPropagationAgeMs: number;
   readonly snapshots: readonly TleWebArchiveSnapshot[];
 }
@@ -44,11 +66,9 @@ export interface LoadedTleSnapshot {
   readonly sha256: string;
 }
 
-export interface LoadedTleSnapshotWindow {
+export interface LoadedTleSnapshotSelection {
   readonly catalog: TleWebArchiveCatalog;
-  readonly current: LoadedTleSnapshot;
-  readonly previous: LoadedTleSnapshot | null;
-  readonly snapshots: readonly LoadedTleSnapshot[];
+  readonly snapshot: LoadedTleSnapshot;
   readonly manifest: TleArchiveManifest;
 }
 
@@ -65,10 +85,8 @@ export interface SimulatorTleState {
   readonly selectedSatellite: PropagatedSatelliteState;
   readonly groundPositionTemeKm: Vector3;
   readonly trajectory: readonly OrbitTrajectoryPoint[];
-  readonly currentArchiveDate: string;
-  readonly previousArchiveDate: string | null;
-  readonly currentSnapshot: LoadedTleSnapshot;
-  readonly previousSnapshot: LoadedTleSnapshot | null;
+  readonly archiveDate: string;
+  readonly archiveSnapshot: LoadedTleSnapshot;
   readonly catalog: TleWebArchiveCatalog;
 }
 
@@ -120,10 +138,10 @@ export interface SimulatorEeLedger {
 }
 
 export interface SimulatorProvenance {
+  readonly constellation: SimulatorConstellation;
   readonly archiveCatalogUrl: string;
   readonly archiveId: string;
-  readonly currentArchiveDate: string;
-  readonly previousArchiveDate: string | null;
+  readonly archiveDate: string;
   readonly selectedTlePath: string;
   readonly selectedTleEpochUtc: string;
   readonly sourceKind: 'ARCHIVED_TLE';
@@ -160,9 +178,9 @@ export type SimulatorTab = 'sinr' | 'power' | 'throughput' | 'ee';
 
 export const SIMULATOR_TABS: readonly { readonly id: SimulatorTab; readonly label: string; readonly shortLabel: string }[] = Object.freeze([
   { id: 'sinr', label: 'SINR', shortLabel: '鏈路品質' },
+  { id: 'ee', label: 'EE', shortLabel: '能效' },
   { id: 'power', label: 'Power', shortLabel: '功率' },
   { id: 'throughput', label: 'Throughput', shortLabel: '吞吐量' },
-  { id: 'ee', label: 'EE', shortLabel: '能效' },
 ]);
 
 export const DEFAULT_SIMULATOR_PARAMETERS: Readonly<SimulatorParameters> = Object.freeze({

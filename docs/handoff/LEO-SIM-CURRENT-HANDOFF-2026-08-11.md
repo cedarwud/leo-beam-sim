@@ -8,9 +8,9 @@ Date: 2026-08-11
 
 Complete two non-heavy workstreams in `/home/u24/demo/leo-beam-sim`:
 
-1. date/time selection over the available TLE archive with atomic TLE-derived
-   SGP4 recomputation; and
-2. one canonical angle-aware EE state feeding Power, SINR, Throughput, and EE.
+1. OneWeb／Starlink and date/time selection over the available TLE archives
+   with atomic TLE-derived SGP4 recomputation; and
+2. one canonical angle-aware EE state feeding SINR, EE, Power, and Throughput.
 
 Do not implement an energy-saving policy or Phase-1 platform upload. Those
 directions are explicitly unresolved.
@@ -19,23 +19,31 @@ directions are explicitly unresolved.
 
 Implementation commit: `c9f8982` (`feat: add archived TLE canonical EE simulator`)
 
-The dedicated route is:
+The formal simulator routes are:
 
 ```text
+/
 /simulator
 ```
+
+The historical Walker/handover application is retained at `/legacy`; its
+Policy/Scene navigation is not the formal simulator's primary navigation.
 
 Implemented surfaces:
 
 - `public/tle-archive/oneweb/`: 363 Git-LFS OneWeb snapshots plus a
   content-addressed catalog with per-file epoch bounds;
+- `public/tle-archive/starlink/`: 360 valid Git-LFS Starlink snapshots plus a
+  catalog that records the one content-addressed invalid-source exclusion;
 - `src/tle/**`: fail-closed archive validation, deterministic newest-prior
   resolution, Asia/Taipei conversion, and SGP4 propagation;
 - `src/analysis/canonicalEe/**`: frozen Family-B canonical EE producer and
   ratio-of-sums evaluation API;
-- `src/simulator/**`: epoch-window loader, immutable shared analysis frame,
+- `src/simulator/**`: atomic published-snapshot loader, immutable shared analysis frame,
   TLE-derived 3D trajectory, and exactly four formal projections; and
-- `src/main.tsx`: route mounting without changing the historical default app.
+- `src/main.tsx`: the formal simulator owns the bare product entry and
+  `/simulator`; the historical application remains explicitly reachable at
+  `/legacy` and through preserved query deep links.
 
 The browser scenario is deliberately explicit: one Taipei ground terminal,
 one nadir-reference beam, and an uncalibrated `1e-8` normalized link scale.
@@ -75,10 +83,13 @@ push.
 
 ## 4. Implementation record
 
-The verified TLE source is `/home/u24/demo/tle_data/oneweb/tle`: 363 archived
-OneWeb snapshots from 2025-07-27 through 2026-08-08 at the freeze. Treat that
-repository as read-only. Use `scripts/tle_archive_query.py` as the build-time
-catalog/provenance helper; the browser must consume a generated manifest.
+The verified TLE sources are `/home/u24/demo/tle_data/oneweb/tle` and
+`/home/u24/demo/tle_data/starlink/tle`, spanning 2025-07-27 through 2026-08-08.
+OneWeb contributes 363 valid snapshots. Starlink contributes 360 valid browser
+snapshots from 361 source files; `starlink_20260528.tle` is excluded as a whole
+because source line 15197 is 70 columns. Its exact SHA-256 and reason live in
+the generated catalog. Treat the source repository as read-only; the browser
+must consume generated manifests rather than filesystem discovery.
 
 The current main scene uses custom Walker/Kepler propagation and a fixed epoch,
 not SGP4. Historical C-90 selectors replay precomputed bundles and are not an
@@ -100,7 +111,7 @@ Completed execution order:
 4. implemented and tested the canonical EE producer;
 5. integrated both into one immutable `SimulationAnalysisFrame`;
 6. exposed `P_beam_max` instead of an independent actual-power `P_t`;
-7. mounted Power, SINR, Throughput, and EE projections; and
+7. mounted SINR, EE, Power, and Throughput projections; and
 8. ran focused tests, production build, and fresh-browser validation.
 
 ## 5. Parallel ownership
@@ -133,7 +144,7 @@ presentation, C-120, shared app, or another worker's paths.
 Verified on 2026-08-11:
 
 - `npm run test:active-simulator` passes archive integrity, TLE boundary,
-  timezone, SGP4, Python-vector parity, cap, zero, ratio-of-sums, epoch-window,
+  timezone, SGP4, Python-vector parity, cap, zero, ratio-of-sums, snapshot selection,
   and shared-frame tests;
 - 2 x 651 all-satellite resolution and propagation measured about 10 ms after
   removing repeated manifest validation;

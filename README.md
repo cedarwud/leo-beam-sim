@@ -106,15 +106,25 @@ npm run preview
 
 開發伺服器啟動後會自動開啟瀏覽器，伺服器綁定 `0.0.0.0:3000`，同網路的裝置也可透過區域 IP 存取。
 
-年度 archived-TLE／canonical-EE 模擬器位於：
+年度 archived-TLE／canonical-EE 模擬器現在是預設主入口，亦保留明確路徑：
 
 ```text
+http://localhost:3000/
 http://localhost:3000/simulator
 ```
 
-這個 route 提供 Asia/Taipei 日期時間選擇、TLE-derived SGP4 軌跡，以及
-SINR、Power、Throughput、EE 四個共享同一 frame 的正式分頁。它不宣稱
-live telemetry、節能成效或一期平台整合。
+這個 route 提供 OneWeb／Starlink 星系切換、Asia/Taipei 日期時間選擇、
+TLE-derived SGP4 軌跡，以及 SINR、EE、Power、Throughput 四個共享同一
+frame 的正式分頁。它不宣稱 live telemetry、節能成效或一期平台整合。
+
+歷史 Walker／handover 展示介面保留於 `http://localhost:3000/legacy`；其
+`SINR / EE / Policy / Scene` 分頁不是目前 formal simulator 的主導覽，也
+不得被解讀為 canonical EE 的四個 projection。
+
+Browser archive 包含 363 份 OneWeb snapshot，以及 360 份通過嚴格驗證的
+Starlink snapshot。Starlink 外部來源的 361 份中，`starlink_20260528.tle`
+含一筆 70 欄的非法 TLE line 1，因此以來源 SHA-256 鎖定並在 catalog 明列
+排除；來源 repository 保持唯讀，沒有猜測或修造該筆資料。
 
 ### 可用指令
 
@@ -124,14 +134,14 @@ live telemetry、節能成效或一期平台整合。
 | `npm run build` | TypeScript 型別檢查 + Vite 生產建置 |
 | `npm run preview` | 本地預覽 `dist/` 建置產物 |
 | `npm run lint` | 執行 TypeScript 型別檢查（不輸出檔案） |
-| `npm run build:tle-archive` | 從唯讀外部來源重建 browser TLE catalog/assets |
-| `npm run check:tle-archive` | 驗證 363 份 TLE、epoch bounds、checksum 與內容指紋 |
+| `npm run build:tle-archive` | 從唯讀外部來源重建 OneWeb／Starlink browser TLE catalog/assets |
+| `npm run check:tle-archive` | 驗證兩個星系的 TLE、epoch bounds、checksum、排除表與內容指紋 |
 | `npm run test:active-simulator` | 執行 TLE、canonical EE 與 shared-frame focused tests |
 
 ## 研究文件
 
 - `docs/decisions/ADR-005-tle-and-canonical-ee-simulator-contract.md` — 目前模擬器的最高層產品決策：年度 TLE 日期／時間切換，以及與論文和正式訓練一致的 canonical angle-aware EE。
-- `docs/sdd/TLE-CANONICAL-EE-SIMULATOR-SDD.md` — 目前實作規格：TLE archive/SGP4、單一分析狀態，以及 Power、SINR、Throughput、EE 四個共用資料來源的分頁。
+- `docs/sdd/TLE-CANONICAL-EE-SIMULATOR-SDD.md` — 目前實作規格：TLE archive/SGP4、單一分析狀態，以及 SINR、EE、Power、Throughput 四個共用資料來源的分頁。
 - `docs/handoff/LEO-SIM-CURRENT-HANDOFF-2026-08-11.md` — 目前 controller 的實作順序、ownership 與驗收條件。
 - `docs/sdd-index.md` — 目前 MODQN / handover / 100 UE showcase 的 SDD 入口、文件分類與開發順序
 - `docs/SDD.md` — 目前場景、模擬、渲染的整體設計說明

@@ -6,3 +6,4 @@
 
 # Year-scale browser TLE snapshots are byte-exact source artifacts.
 /public/tle-archive/oneweb/*.tle filter=lfs diff=lfs merge=lfs -text
+/public/tle-archive/starlink/*.tle filter=lfs diff=lfs merge=lfs -text

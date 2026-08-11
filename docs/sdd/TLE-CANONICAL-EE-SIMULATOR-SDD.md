@@ -12,12 +12,13 @@ Implement two bounded simulator capabilities:
 
 1. select an archived date/time and recompute the real TLE-derived SGP4
    satellite state; and
-2. expose Power, SINR, Throughput, and EE as four views of the same canonical
+2. expose SINR, EE, Power, and Throughput as four views of the same canonical
    angle-aware EE closure.
 
 This SDD does not define an energy-saving policy or Phase-1 platform upload.
 
-The bounded v1 is mounted at `/simulator`. It uses an explicitly uncalibrated
+The bounded v1 is mounted at `/` and `/simulator`; the historical application
+is retained at `/legacy`. It uses an explicitly uncalibrated
 Taipei/nadir-reference adapter so the canonical chain is observable; this does
 not elevate the adapter into thesis-scenario or calibrated-link authority.
 
@@ -42,10 +43,10 @@ canonical EE frame producer
                                       |
                                       v
 one immutable SimulationAnalysisFrame
-  -> Power page
   -> SINR page
-  -> Throughput page
   -> EE page
+  -> Power page
+  -> Throughput page
 ```
 
 No page owns a scientific formula. Pages render the shared frame and dispatch
@@ -68,10 +69,19 @@ timestamp is forbidden.
 
 ### 3.2 Archive manifest
 
-The current year-scale source is the read-only external archive at
-`/home/u24/demo/tle_data/oneweb/tle`. At the 2026-08-11 inventory it contains
-363 OneWeb snapshots spanning 2025-07-27 through 2026-08-08. The external
-repository is not an implementation target and must not be modified.
+The current year-scale sources are the read-only external archives at
+`/home/u24/demo/tle_data/oneweb/tle` and
+`/home/u24/demo/tle_data/starlink/tle`. At the 2026-08-11 inventory they contain
+363 OneWeb snapshots and 361 Starlink source snapshots spanning 2025-07-27
+through 2026-08-08. The external repository is not an implementation target
+and must not be modified.
+
+All 363 OneWeb snapshots validate. Exactly one Starlink source snapshot,
+`starlink_20260528.tle`, contains an invalid 70-column line 1. The browser
+archive excludes that whole snapshot through a reviewed filename + SHA-256
+allowlist and records the exclusion reason in `catalog.json`; the remaining
+360 snapshots retain byte-exact source content. Unexpected validation errors
+or changes to the excluded source hash fail the build.
 
 `scripts/tle_archive_query.py` is the existing build-time catalog and
 provenance helper. The active browser runtime must consume a checked-in or
@@ -94,19 +104,29 @@ interface TleArchiveEntry {
 The browser must not recursively discover arbitrary local files. A build-time
 or checked-in manifest enumerates the allowed archive inputs.
 
+The UI exposes OneWeb and Starlink as explicit choices. Switching constellation
+loads and validates a different catalog, and cannot merely relabel an existing
+frame.
+
 The isolated worker seam is `src/tle/**`. Existing Walker/Kepler propagation
 under `src/engine/orbit/**` remains unchanged until controller integration.
 
 ### 3.3 Snapshot resolution
 
-For each satellite identity:
+For each requested constellation and instant:
 
-1. parse and validate all candidate epochs;
-2. reject malformed identities, duplicate conflicting epochs, or invalid TLE
-   lines;
-3. choose the maximum epoch satisfying `epoch <= requestedInstant`;
-4. enforce the manifest-declared maximum propagation age; and
-5. return unavailable if no candidate passes.
+1. parse and validate the catalog metadata and candidate publication ranges;
+2. prefer the newest overlapping publication whose maximum epoch is not later
+   than the requested instant; fall back to the newest overlapping publication
+   only when no complete-prior publication exists;
+3. do not merge records from different publications;
+4. admit only records satisfying `epoch <= requestedInstant` and the
+   manifest-declared maximum propagation age; and
+5. return unavailable if no record passes.
+
+The single-publication rule is required because successive Starlink files can
+contain different element content for the same identity and epoch. Arbitrarily
+merging those revisions would violate the conflict contract.
 
 The maximum propagation age belongs to archive metadata and must not be hidden
 inside a component.
@@ -280,6 +300,8 @@ that worker.
 ### TLE gates
 
 - first, middle, and last available archive instants resolve deterministically;
+- OneWeb and Starlink each load their own content-addressed catalog and produce
+  distinct TLE frame provenance;
 - timezone round-trips preserve the UTC instant;
 - malformed or unavailable snapshots fail closed;
 - switching time changes the TLE frame and recomputes SGP4 positions;

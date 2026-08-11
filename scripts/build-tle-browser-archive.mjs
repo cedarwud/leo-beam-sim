@@ -7,27 +7,80 @@ import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, '..');
-const DEFAULT_SOURCE = resolve(REPO_ROOT, '../tle_data/oneweb/tle');
-const DEFAULT_OUTPUT = resolve(REPO_ROOT, 'public/tle-archive/oneweb');
-const NAME_PATTERN = /^oneweb_(\d{8})\.tle$/;
+const DEFAULT_CONSTELLATION = 'oneweb';
+const CONSTELLATIONS = Object.freeze({
+  oneweb: Object.freeze({
+    source: resolve(REPO_ROOT, '../tle_data/oneweb/tle'),
+    output: resolve(REPO_ROOT, 'public/tle-archive/oneweb'),
+    namePattern: /^oneweb_(\d{8})\.tle$/,
+  }),
+  starlink: Object.freeze({
+    source: resolve(REPO_ROOT, '../tle_data/starlink/tle'),
+    output: resolve(REPO_ROOT, 'public/tle-archive/starlink'),
+    namePattern: /^starlink_(\d{8})\.tle$/,
+  }),
+});
 const MAX_PROPAGATION_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const TLE_LINE_LENGTH = 69;
+const SOURCE_EXCLUSIONS = Object.freeze({
+  oneweb: Object.freeze([]),
+  starlink: Object.freeze([
+    Object.freeze({
+      fileName: 'starlink_20260528.tle',
+      sha256: '20596c4397ee1b9ae0d97ce3003299d47b60fbaa254527d5907bbf8ade3c4c1c',
+      reason: 'invalid 70-column TLE line 1 at source line 15197',
+    }),
+  ]),
+});
 
 function parseArgs(argv) {
-  const options = { source: DEFAULT_SOURCE, output: DEFAULT_OUTPUT, check: false };
+  const options = {
+    constellation: DEFAULT_CONSTELLATION,
+    source: null,
+    output: null,
+    check: false,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (token === '--check') {
       options.check = true;
+    } else if (token === '--constellation') {
+      const value = argv[++index];
+      if (!value || value.startsWith('--')) throw new Error('--constellation requires a value');
+      options.constellation = value;
+    } else if (token.startsWith('--constellation=')) {
+      options.constellation = token.slice('--constellation='.length);
+      if (!options.constellation) throw new Error('--constellation requires a value');
     } else if (token === '--source') {
-      options.source = resolve(argv[++index] ?? '');
+      const value = argv[++index];
+      if (!value || value.startsWith('--')) throw new Error('--source requires a value');
+      options.source = resolve(value);
+    } else if (token.startsWith('--source=')) {
+      const value = token.slice('--source='.length);
+      if (!value) throw new Error('--source requires a value');
+      options.source = resolve(value);
     } else if (token === '--out') {
-      options.output = resolve(argv[++index] ?? '');
+      const value = argv[++index];
+      if (!value || value.startsWith('--')) throw new Error('--out requires a value');
+      options.output = resolve(value);
+    } else if (token.startsWith('--out=')) {
+      const value = token.slice('--out='.length);
+      if (!value) throw new Error('--out requires a value');
+      options.output = resolve(value);
     } else {
       throw new Error(`unknown argument: ${token}`);
     }
   }
-  return options;
+  const constellation = CONSTELLATIONS[options.constellation];
+  if (!constellation) {
+    throw new Error(`unsupported constellation: ${options.constellation} (expected oneweb or starlink)`);
+  }
+  return {
+    ...options,
+    source: options.source ?? constellation.source,
+    output: options.output ?? constellation.output,
+    namePattern: constellation.namePattern,
+  };
 }
 
 function sha256(bytes) {
@@ -113,45 +166,67 @@ function validateTleText(text, fileName) {
   };
 }
 
-async function collectSource(source) {
+async function collectSource({ source, constellation, namePattern }) {
   const names = (await readdir(source))
-    .filter(name => NAME_PATTERN.test(name))
+    .filter(name => namePattern.test(name))
     .sort();
-  if (names.length === 0) throw new Error(`no OneWeb TLE snapshots found in ${source}`);
+  if (names.length === 0) throw new Error(`no ${constellation} TLE snapshots found in ${source}`);
 
   const snapshots = [];
+  const exclusions = [];
+  const expectedExclusions = new Map(SOURCE_EXCLUSIONS[constellation].map(exclusion => [exclusion.fileName, exclusion]));
   for (const fileName of names) {
-    const match = NAME_PATTERN.exec(fileName);
+    const match = namePattern.exec(fileName);
     assertArchiveDate(match[1], fileName);
     const bytes = await readFile(resolve(source, fileName));
+    const digest = sha256(bytes);
+    const exclusion = expectedExclusions.get(fileName);
+    if (exclusion !== undefined) {
+      if (digest !== exclusion.sha256) {
+        throw new Error(`${fileName} no longer matches its reviewed source exclusion; expected ${exclusion.sha256}, found ${digest}`);
+      }
+      exclusions.push(exclusion);
+      expectedExclusions.delete(fileName);
+      continue;
+    }
     const validation = validateTleText(bytes.toString('utf8'), fileName);
     snapshots.push({
       archiveDate: match[1],
-      path: `/tle-archive/oneweb/${fileName}`,
+      path: `/tle-archive/${constellation}/${fileName}`,
       fileName,
       byteLength: bytes.byteLength,
       ...validation,
-      sha256: sha256(bytes),
+      sha256: digest,
       bytes,
     });
   }
-  return snapshots;
+  if (expectedExclusions.size > 0) {
+    throw new Error(`reviewed source exclusions are missing: ${[...expectedExclusions.keys()].join(', ')}`);
+  }
+  return { snapshots, exclusions, sourceSnapshotCount: names.length };
 }
 
-function publicCatalog(snapshots) {
+function publicCatalog(snapshots, constellation, exclusions, sourceSnapshotCount) {
   const first = snapshots[0].archiveDate;
   const last = snapshots[snapshots.length - 1].archiveDate;
-  const archiveContentSha256 = sha256(Buffer.from(snapshots.map(snapshot => `${snapshot.fileName}:${snapshot.sha256}`).join('\n')));
+  const archiveContentSha256 = sha256(Buffer.from([
+    ...snapshots.map(snapshot => `${snapshot.fileName}:${snapshot.sha256}`),
+    ...exclusions.map(exclusion => `EXCLUDED:${exclusion.fileName}:${exclusion.sha256}:${exclusion.reason}`),
+  ].join('\n')));
   return {
     schemaVersion: 'tle-web-archive-v1',
-    archiveId: `oneweb-${first}-${last}-${archiveContentSha256.slice(0, 12)}`,
+    archiveId: `${constellation}-${first}-${last}-${archiveContentSha256.slice(0, 12)}`,
     archiveContentSha256,
-    constellation: 'oneweb',
+    constellation,
     sourceKind: 'ARCHIVED_TLE',
     propagationModel: 'SGP4',
     firstArchiveDate: first,
     lastArchiveDate: last,
     snapshotCount: snapshots.length,
+    ...(exclusions.length === 0 ? {} : {
+      sourceSnapshotCount,
+      excludedSnapshots: exclusions,
+    }),
     maxPropagationAgeMs: MAX_PROPAGATION_AGE_MS,
     snapshots: snapshots.map(({ archiveDate, path, byteLength, recordCount, identityCount, minEpochUtc, maxEpochUtc, sha256: digest }) => ({
       archiveDate,
@@ -166,12 +241,15 @@ function publicCatalog(snapshots) {
   };
 }
 
-async function verifyOutput(output, snapshots, catalog) {
+async function verifyOutput(output, snapshots, catalog, namePattern) {
   const expectedCatalog = `${JSON.stringify(catalog, null, 2)}\n`;
-  const actualCatalog = await readFile(resolve(output, 'catalog.json'), 'utf8');
+  const catalogPath = resolve(output, 'catalog.json');
+  const catalogStat = await stat(catalogPath);
+  if ((catalogStat.mode & 0o777) !== 0o644) throw new Error('catalog.json must have mode 0644');
+  const actualCatalog = await readFile(catalogPath, 'utf8');
   if (actualCatalog !== expectedCatalog) throw new Error('catalog.json is stale');
 
-  const outputNames = (await readdir(output)).filter(name => NAME_PATTERN.test(name)).sort();
+  const outputNames = (await readdir(output)).filter(name => namePattern.test(name)).sort();
   const expectedNames = snapshots.map(snapshot => snapshot.fileName);
   if (JSON.stringify(outputNames) !== JSON.stringify(expectedNames)) {
     throw new Error('browser archive file set does not match the source archive');
@@ -179,6 +257,7 @@ async function verifyOutput(output, snapshots, catalog) {
   for (const snapshot of snapshots) {
     const outputPath = resolve(output, snapshot.fileName);
     const outputStat = await stat(outputPath);
+    if ((outputStat.mode & 0o777) !== 0o644) throw new Error(`${snapshot.fileName} must have mode 0644`);
     if (outputStat.size !== snapshot.byteLength) throw new Error(`${snapshot.fileName} byte length drift`);
     const outputBytes = await readFile(outputPath);
     if (sha256(outputBytes) !== snapshot.sha256) throw new Error(`${snapshot.fileName} content drift`);
@@ -187,12 +266,12 @@ async function verifyOutput(output, snapshots, catalog) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const snapshots = await collectSource(options.source);
-  const catalog = publicCatalog(snapshots);
+  const { snapshots, exclusions, sourceSnapshotCount } = await collectSource(options);
+  const catalog = publicCatalog(snapshots, options.constellation, exclusions, sourceSnapshotCount);
 
   if (options.check) {
-    await verifyOutput(options.output, snapshots, catalog);
-    console.log(`TLE browser archive verified: ${snapshots.length} snapshots`);
+    await verifyOutput(options.output, snapshots, catalog, options.namePattern);
+    console.log(`TLE browser archive verified: ${snapshots.length}/${sourceSnapshotCount} snapshots (${exclusions.length} excluded)`);
     return;
   }
 
@@ -202,9 +281,11 @@ async function main() {
     await copyFile(resolve(options.source, snapshot.fileName), outputPath);
     await chmod(outputPath, 0o644);
   }
-  await writeFile(resolve(options.output, 'catalog.json'), `${JSON.stringify(catalog, null, 2)}\n`, 'utf8');
-  await verifyOutput(options.output, snapshots, catalog);
-  console.log(`TLE browser archive built: ${snapshots.length} snapshots (${catalog.firstArchiveDate}..${catalog.lastArchiveDate})`);
+  const catalogPath = resolve(options.output, 'catalog.json');
+  await writeFile(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8');
+  await chmod(catalogPath, 0o644);
+  await verifyOutput(options.output, snapshots, catalog, options.namePattern);
+  console.log(`TLE browser archive built: ${snapshots.length}/${sourceSnapshotCount} snapshots (${exclusions.length} excluded; ${catalog.firstArchiveDate}..${catalog.lastArchiveDate})`);
 }
 
 await main();

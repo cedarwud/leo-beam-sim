@@ -4,14 +4,16 @@ import { validateTleArchiveManifest, validateTleLines } from '../tle/validation'
 import { TLE_PROPAGATION_MODEL, TLE_SOURCE_KIND, type TleArchiveEntry } from '../tle/types';
 import type {
   LoadedTleSnapshot,
-  LoadedTleSnapshotWindow,
+  LoadedTleSnapshotSelection,
+  SimulatorConstellation,
   TleWebArchiveCatalog,
+  TleWebArchiveExcludedSnapshot,
   TleWebArchiveSnapshot,
 } from './types';
 
 const ARCHIVE_DATE_PATTERN = /^(\d{4})(\d{2})(\d{2})$/;
-const SNAPSHOT_PATH_PATTERN = /^\/tle-archive\/oneweb\/oneweb_(\d{8})\.tle$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+const SUPPORTED_CONSTELLATIONS = new Set<SimulatorConstellation>(['oneweb', 'starlink']);
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -52,14 +54,25 @@ function finitePositiveInteger(value: unknown, label: string): number {
   return value;
 }
 
-function parseSnapshotMetadata(raw: unknown, index: number): TleWebArchiveSnapshot {
+function parseConstellation(value: unknown): SimulatorConstellation {
+  if (typeof value !== 'string' || !SUPPORTED_CONSTELLATIONS.has(value as SimulatorConstellation)) {
+    archiveFail('browser catalog constellation must be oneweb or starlink', { value });
+  }
+  return value as SimulatorConstellation;
+}
+
+function parseSnapshotMetadata(
+  raw: unknown,
+  index: number,
+  constellation: SimulatorConstellation,
+): TleWebArchiveSnapshot {
   if (raw === null || typeof raw !== 'object') archiveFail(`snapshot ${index} must be an object`);
   const candidate = raw as Record<string, unknown>;
   const archiveDate = requiredText(candidate.archiveDate, `snapshot ${index}.archiveDate`);
   archiveDateMs(archiveDate, `snapshot ${index}.archiveDate`);
   const path = requiredText(candidate.path, `snapshot ${index}.path`);
-  const pathMatch = SNAPSHOT_PATH_PATTERN.exec(path);
-  if (pathMatch === null || pathMatch[1] !== archiveDate) {
+  const expectedPath = `/tle-archive/${constellation}/${constellation}_${archiveDate}.tle`;
+  if (path !== expectedPath) {
     archiveFail(`snapshot ${index}.path must bind to its archiveDate`, { path, archiveDate });
   }
   const sha256 = requiredText(candidate.sha256, `snapshot ${index}.sha256`);
@@ -83,12 +96,32 @@ function parseSnapshotMetadata(raw: unknown, index: number): TleWebArchiveSnapsh
   });
 }
 
+function parseExcludedSnapshot(
+  raw: unknown,
+  index: number,
+  constellation: SimulatorConstellation,
+): TleWebArchiveExcludedSnapshot {
+  if (raw === null || typeof raw !== 'object') archiveFail(`excluded snapshot ${index} must be an object`);
+  const candidate = raw as Record<string, unknown>;
+  const fileName = requiredText(candidate.fileName, `excluded snapshot ${index}.fileName`);
+  const prefix = `${constellation}_`;
+  const archiveDate = fileName.startsWith(prefix) && fileName.endsWith('.tle')
+    ? fileName.slice(prefix.length, -4)
+    : '';
+  if (!/^\d{8}$/.test(archiveDate)) archiveFail(`excluded snapshot ${index}.fileName is outside the ${constellation} archive`);
+  archiveDateMs(archiveDate, `excluded snapshot ${index}.fileName date`);
+  const sha256 = requiredText(candidate.sha256, `excluded snapshot ${index}.sha256`);
+  if (!SHA256_PATTERN.test(sha256)) archiveFail(`excluded snapshot ${index}.sha256 must be a lowercase SHA-256 digest`);
+  const reason = requiredText(candidate.reason, `excluded snapshot ${index}.reason`);
+  return Object.freeze({ fileName, sha256, reason });
+}
+
 /** Validate the checked-in browser catalog before any snapshot is fetched. */
 export function parseTleWebArchiveCatalog(raw: unknown): TleWebArchiveCatalog {
   if (raw === null || typeof raw !== 'object') archiveFail('TLE browser catalog must be an object');
   const candidate = raw as Record<string, unknown>;
   if (candidate.schemaVersion !== 'tle-web-archive-v1') archiveFail('unsupported TLE browser catalog schema');
-  if (candidate.constellation !== 'oneweb') archiveFail('browser catalog is not the OneWeb archive');
+  const constellation = parseConstellation(candidate.constellation);
   if (candidate.sourceKind !== TLE_SOURCE_KIND) archiveFail(`browser catalog sourceKind must be ${TLE_SOURCE_KIND}`);
   if (candidate.propagationModel !== TLE_PROPAGATION_MODEL) archiveFail(`browser catalog propagationModel must be ${TLE_PROPAGATION_MODEL}`);
   const archiveId = requiredText(candidate.archiveId, 'archiveId');
@@ -106,8 +139,25 @@ export function parseTleWebArchiveCatalog(raw: unknown): TleWebArchiveCatalog {
     archiveFail('catalog maxPropagationAgeMs must be finite and non-negative');
   }
   if (!Array.isArray(candidate.snapshots) || candidate.snapshots.length === 0) archiveFail('catalog snapshots must be non-empty');
-  const snapshots = candidate.snapshots.map((snapshot, index) => parseSnapshotMetadata(snapshot, index));
+  const snapshots = candidate.snapshots.map((snapshot, index) => parseSnapshotMetadata(snapshot, index, constellation));
   if (candidate.snapshotCount !== snapshots.length) archiveFail('catalog snapshotCount does not match snapshots');
+  const excludedSnapshots = candidate.excludedSnapshots === undefined
+    ? undefined
+    : Array.isArray(candidate.excludedSnapshots)
+      ? candidate.excludedSnapshots.map((snapshot, index) => parseExcludedSnapshot(snapshot, index, constellation))
+      : archiveFail('catalog excludedSnapshots must be an array');
+  const sourceSnapshotCount = candidate.sourceSnapshotCount === undefined
+    ? undefined
+    : finitePositiveInteger(candidate.sourceSnapshotCount, 'sourceSnapshotCount');
+  if ((excludedSnapshots === undefined) !== (sourceSnapshotCount === undefined)) {
+    archiveFail('catalog sourceSnapshotCount and excludedSnapshots must be declared together');
+  }
+  if (excludedSnapshots !== undefined && sourceSnapshotCount !== snapshots.length + excludedSnapshots.length) {
+    archiveFail('catalog sourceSnapshotCount must equal valid plus excluded snapshots');
+  }
+  if (excludedSnapshots !== undefined && new Set(excludedSnapshots.map(snapshot => snapshot.fileName)).size !== excludedSnapshots.length) {
+    archiveFail('catalog excludedSnapshots must not repeat file names');
+  }
   if (snapshots[0]?.archiveDate !== firstArchiveDate || snapshots[snapshots.length - 1]?.archiveDate !== lastArchiveDate) {
     archiveFail('catalog first/last archive dates do not match snapshots');
   }
@@ -120,12 +170,14 @@ export function parseTleWebArchiveCatalog(raw: unknown): TleWebArchiveCatalog {
     schemaVersion: 'tle-web-archive-v1',
     archiveId,
     ...(archiveContentSha256 === undefined ? {} : { archiveContentSha256 }),
-    constellation: 'oneweb',
+    constellation,
     sourceKind: TLE_SOURCE_KIND,
     propagationModel: TLE_PROPAGATION_MODEL,
     firstArchiveDate,
     lastArchiveDate,
     snapshotCount: snapshots.length,
+    ...(sourceSnapshotCount === undefined ? {} : { sourceSnapshotCount }),
+    ...(excludedSnapshots === undefined ? {} : { excludedSnapshots: Object.freeze(excludedSnapshots) }),
     maxPropagationAgeMs,
     snapshots: Object.freeze(snapshots),
   });
@@ -266,28 +318,48 @@ function snapshotsCoveringWindow(catalog: TleWebArchiveCatalog, requestedMs: num
   return Object.freeze(candidates);
 }
 
-/** Load every catalog snapshot whose epoch range can contribute to this request. */
-export async function loadTleSnapshotWindow(
+/** Select and validate one atomic published snapshot for this request. */
+export async function loadTleSnapshotSelection(
   catalog: TleWebArchiveCatalog,
   requestedInstantUtc: string,
   fetcher: Fetcher = browserFetcher,
-): Promise<LoadedTleSnapshotWindow> {
+): Promise<LoadedTleSnapshotSelection> {
   const requested = parseUtcInstant(requestedInstantUtc, 'requestedInstantUtc');
   const candidateMetadata = snapshotsCoveringWindow(catalog, requested.ms);
-  const snapshots = await Promise.all(candidateMetadata.map(metadata => loadTleSnapshot(metadata, fetcher)));
-  const ordered = [...snapshots].sort((left, right) => left.metadata.archiveDate.localeCompare(right.metadata.archiveDate));
-  const current = ordered
-    .filter(snapshot => parseUtcInstant(snapshot.metadata.minEpochUtc).ms <= requested.ms)
-    .sort((left, right) => right.metadata.maxEpochUtc.localeCompare(left.metadata.maxEpochUtc))[0]
-    ?? ordered[ordered.length - 1]!;
-  const currentIndex = ordered.findIndex(snapshot => snapshot.metadata.archiveDate === current.metadata.archiveDate);
-  const previous = currentIndex > 0 ? ordered[currentIndex - 1]! : null;
-  const entries = ordered.flatMap(snapshot => snapshot.entries);
-  const manifest = validateTleArchiveManifest(entries, {
+  // Each source file is an atomic published catalog snapshot. Do not merge
+  // successive files: Starlink can legitimately revise element content while
+  // retaining an epoch, and cross-publication mixing would create a false
+  // identity+epoch conflict. Pick the newest overlapping publication, then
+  // admit only records whose own epochs are valid at the requested instant.
+  const completePriorCandidates = candidateMetadata.filter(metadata => (
+    parseUtcInstant(metadata.maxEpochUtc, `${metadata.archiveDate}.maxEpochUtc`).ms <= requested.ms
+  ));
+  const selectionPool = completePriorCandidates.length > 0 ? completePriorCandidates : candidateMetadata;
+  const selectedMetadata = [...selectionPool].sort((left, right) => (
+    right.archiveDate.localeCompare(left.archiveDate)
+    || right.maxEpochUtc.localeCompare(left.maxEpochUtc)
+  ))[0]!;
+  const snapshot = await loadTleSnapshot(selectedMetadata, fetcher);
+  const lowerBoundMs = requested.ms - catalog.maxPropagationAgeMs;
+  const validEntries = snapshot.entries.filter(entry => {
+    const epochMs = parseUtcInstant(entry.epochUtc, `${entry.satelliteId}.epochUtc`).ms;
+    return epochMs <= requested.ms && epochMs >= lowerBoundMs;
+  });
+  if (validEntries.length === 0) {
+    tleFail('NO_PRIOR_SNAPSHOT', 'selected archive snapshot has no valid TLE records at the requested instant', {
+      requestedInstantUtc: requested.value,
+      archiveDate: snapshot.metadata.archiveDate,
+    });
+  }
+  const manifest = validateTleArchiveManifest(validEntries, {
     maxPropagationAgeMs: catalog.maxPropagationAgeMs,
     archiveId: catalog.archiveId,
   });
-  return Object.freeze({ catalog, current, previous, snapshots: Object.freeze(ordered), manifest });
+  return Object.freeze({
+    catalog,
+    snapshot,
+    manifest,
+  });
 }
 
 export type { Fetcher as TleArchiveFetcher };

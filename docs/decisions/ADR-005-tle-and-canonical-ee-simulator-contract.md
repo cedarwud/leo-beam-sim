@@ -58,10 +58,18 @@ Hard rules:
   Asia/Taipei time, but conversion must be visible and reversible.
 - Each selected instant resolves to an explicit TLE snapshot with source,
   epoch, satellite identity, and archive provenance.
-- Snapshot selection is deterministic. The initial rule is the newest valid
-  TLE epoch not later than the requested instant. If no acceptable snapshot is
-  available, the simulator reports unavailable rather than substituting a
-  generated orbit.
+- The available OneWeb and Starlink archives are separate, selectable source
+  adapters. A constellation switch must replace the catalog, published
+  snapshot, SGP4 frame, and all downstream analysis atomically.
+- Snapshot selection is deterministic. Among publications overlapping the
+  requested validity interval, the adapter prefers the newest publication
+  whose maximum epoch is not later than the requested instant; only when none
+  exists may it use the newest overlapping publication. Within that single
+  publication it admits only records with `epoch <= requestedInstant` and age
+  not exceeding the catalog maximum. It never mixes successive publications,
+  because a provider may revise TLE content while retaining an epoch. If no
+  acceptable record remains, the simulator reports unavailable rather than
+  substituting a generated orbit.
 - Satellite state is recomputed with SGP4 at the selected instant. Date/time
   changes atomically replace the selected snapshot and all derived positions.
 - The result is labelled **TLE-derived SGP4**, not live telemetry and not a
@@ -118,7 +126,7 @@ Hard rules:
 - Editable model parameters are limited to parameters with a declared role in
   ADR-003, including beam/satellite caps, PA efficiency, RFC power, BB power,
   and a formally defined event-power input.
-- The Power, SINR, Throughput, and EE pages are projections of one immutable
+- The SINR, EE, Power, and Throughput pages are projections of one immutable
   per-tick result. They may not recalculate separate formulas.
 - Evaluation EE is the ratio of accumulated delivered bits to accumulated
   consumed energy, never the arithmetic mean of instantaneous EE values.
@@ -168,12 +176,19 @@ contract.
 
 ## Implementation record
 
-Bounded v1 was implemented in commit `c9f8982` and mounted at `/simulator`.
-The route consumes a 363-snapshot OneWeb browser archive, resolves an
-epoch-covering file window, propagates with SGP4, and publishes one immutable
-analysis frame to SINR, Power, Throughput, and EE. Focused tests, production
-build, desktop browser interaction, fail-closed retention, and a 390 px
-responsive check passed on 2026-08-11.
+Bounded v1 was implemented in commit `c9f8982` and first mounted at
+`/simulator`. Owner feedback subsequently established that a side route was
+not sufficient product integration: the formal simulator now owns both `/`
+and `/simulator`, while the historical Walker/handover application remains
+available at `/legacy` and through its preserved query deep links.
+The follow-up constellation checkpoint adds selectable OneWeb and Starlink
+archives: 363 valid OneWeb snapshots and 360 of 361 Starlink source snapshots.
+The one excluded Starlink source file is identified by filename, SHA-256, and
+validation reason in its catalog; no TLE is repaired or fabricated. The route
+resolves one epoch-covering published snapshot, propagates with SGP4, and publishes one
+immutable analysis frame to SINR, EE, Power, and Throughput. Focused tests,
+production build, desktop browser interaction, fail-closed retention, and a
+390 px responsive check are required for the checkpoint.
 
 The current scenario adapter is explicitly uncalibrated and the UI labels
 evaluation EE as single-frame. No energy-saving or Phase-1 platform decision

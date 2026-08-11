@@ -15,13 +15,17 @@ import {
 import { resolveTleSnapshot } from '../tle/resolver';
 import type { Vector3 } from '../tle/types';
 import type {
-  LoadedTleSnapshotWindow,
+  LoadedTleSnapshotSelection,
   OrbitTrajectoryPoint,
   SimulationAnalysisFrame,
   SimulatorParameters,
   SimulatorTleState,
 } from './types';
-import { SIMULATOR_CONTRACT_VERSION, SIMULATOR_TIME_ZONE } from './types';
+import {
+  SIMULATOR_CATALOG_URLS,
+  SIMULATOR_CONTRACT_VERSION,
+  SIMULATOR_TIME_ZONE,
+} from './types';
 
 const TAIPEI_LATITUDE_RAD = (25.0330 * Math.PI) / 180;
 const TAIPEI_LONGITUDE_RAD = (121.5654 * Math.PI) / 180;
@@ -182,19 +186,19 @@ function buildTrajectory(
 }
 
 export function createSimulatorTleState(
-  window: LoadedTleSnapshotWindow,
+  selection: LoadedTleSnapshotSelection,
   requestedInstantUtc: string,
   selectedSatelliteId?: string,
 ): SimulatorTleState {
   const requested = parseUtcInstant(requestedInstantUtc, 'requestedInstantUtc');
-  const candidateIds = [...new Set(window.current.entries.map(entry => entry.satelliteId))].sort();
+  const candidateIds = [...new Set(selection.manifest.entries.map(entry => entry.satelliteId))].sort();
   if (candidateIds.length === 0) throw new Error('current TLE snapshot contains no satellites');
   const propagationFrame = createTlePropagationFrame(
-    window.manifest,
+    selection.manifest,
     requested.value,
     {
       satelliteIds: candidateIds,
-      maxPropagationAgeMs: window.catalog.maxPropagationAgeMs,
+      maxPropagationAgeMs: selection.catalog.maxPropagationAgeMs,
     },
   );
   const scored = propagationFrame.satellites
@@ -205,13 +209,13 @@ export function createSimulatorTleState(
     .sort((left, right) => right.geometry.elevationDeg - left.geometry.elevationDeg);
   const selected = selectedIdsOrBest(scored, selectedSatelliteId);
   const selectedSnapshot = resolveTleSnapshot(
-    window.manifest,
+    selection.manifest,
     requested.value,
     selected.satellite.satelliteId,
-    { maxPropagationAgeMs: window.catalog.maxPropagationAgeMs },
+    { maxPropagationAgeMs: selection.catalog.maxPropagationAgeMs },
   );
   if (selected.geometry.elevationDeg < 0) {
-    throw new Error('no archived OneWeb satellite is above the Taipei horizon at the requested instant');
+    throw new Error(`no archived ${selection.catalog.constellation} satellite is above the Taipei horizon at the requested instant`);
   }
   const selectedSatellite = selected.satellite;
   const groundPositionTemeKm = selected.geometry.groundPositionTemeKm;
@@ -224,11 +228,9 @@ export function createSimulatorTleState(
     selectedSatellite,
     groundPositionTemeKm,
     trajectory,
-    currentArchiveDate: window.current.metadata.archiveDate,
-    previousArchiveDate: window.previous?.metadata.archiveDate ?? null,
-    currentSnapshot: window.current,
-    previousSnapshot: window.previous,
-    catalog: window.catalog,
+    archiveDate: selection.snapshot.metadata.archiveDate,
+    archiveSnapshot: selection.snapshot,
+    catalog: selection.catalog,
   });
 }
 
@@ -341,10 +343,10 @@ export function buildSimulationAnalysisFrame(
       aggregation: 'ratio-of-sums',
     }),
     provenance: freeze({
-      archiveCatalogUrl: '/tle-archive/oneweb/catalog.json',
+      constellation: tleState.catalog.constellation,
+      archiveCatalogUrl: SIMULATOR_CATALOG_URLS[tleState.catalog.constellation],
       archiveId: tleState.catalog.archiveId,
-      currentArchiveDate: tleState.currentArchiveDate,
-      previousArchiveDate: tleState.previousArchiveDate,
+      archiveDate: tleState.archiveDate,
       selectedTlePath: tleState.selectedSnapshot.sourcePath,
       selectedTleEpochUtc: tleState.selectedSnapshot.epochUtc,
       sourceKind: 'ARCHIVED_TLE',

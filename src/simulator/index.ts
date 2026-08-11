@@ -1,7 +1,7 @@
 export * from './types';
 export {
   loadTleSnapshot,
-  loadTleSnapshotWindow,
+  loadTleSnapshotSelection,
   loadTleWebArchiveCatalog,
   parseTleSnapshotText,
   parseTleWebArchiveCatalog,

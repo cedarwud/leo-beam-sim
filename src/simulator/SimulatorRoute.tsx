@@ -9,15 +9,17 @@ import {
   type ReactNode,
 } from 'react';
 import { parseTaipeiLocalDateTime, utcToAsiaTaipei } from '../tle/timezone';
-import { loadTleSnapshotWindow, loadTleWebArchiveCatalog } from './archive';
+import { loadTleSnapshotSelection, loadTleWebArchiveCatalog } from './archive';
 import { buildSimulationAnalysisFrame, createSimulatorTleState, simulatorTaipeiDateTimeToUtc } from './analysis';
 import { SimulatorOrbitScene } from './SimulatorOrbitScene';
 import {
   DEFAULT_SIMULATOR_PARAMETERS,
-  SIMULATOR_CATALOG_URL,
+  SIMULATOR_CATALOG_URLS,
+  SIMULATOR_CONSTELLATIONS,
   SIMULATOR_TABS,
   SIMULATOR_TIME_ZONE,
   type SimulationAnalysisFrame,
+  type SimulatorConstellation,
   type SimulatorLoadStatus,
   type SimulatorParameters,
   type SimulatorTab,
@@ -47,6 +49,17 @@ function formatNumber(value: number, maximumFractionDigits = 3): string {
 function formatScientific(value: number, digits = 3): string {
   if (!Number.isFinite(value)) return '—';
   return value.toExponential(digits);
+}
+
+function constellationLabel(constellation: SimulatorConstellation): string {
+  return SIMULATOR_CONSTELLATIONS.find(option => option.id === constellation)?.label ?? constellation;
+}
+
+function catalogQualityNote(catalog: TleWebArchiveCatalog | null): string | null {
+  if (catalog === null) return null;
+  const excludedCount = catalog.excludedSnapshots?.length ?? 0;
+  if (excludedCount === 0 || catalog.sourceSnapshotCount === undefined) return null;
+  return `Catalog quality：${catalog.snapshotCount}/${catalog.sourceSnapshotCount} valid snapshots；${excludedCount} source snapshot${excludedCount === 1 ? '' : 's'} excluded。`;
 }
 
 function updateNumber(
@@ -123,13 +136,22 @@ function Section({ title, subtitle, children }: { readonly title: string; readon
   );
 }
 
-function ProvenanceStrip({ frame }: { readonly frame: SimulationAnalysisFrame }) {
+function ProvenanceStrip({
+  frame,
+  requestedConstellation,
+}: {
+  readonly frame: SimulationAnalysisFrame;
+  readonly requestedConstellation: SimulatorConstellation;
+}) {
+  const acceptedConstellation = frame.tleState.catalog.constellation;
   return (
     <div className="simulator-provenance" aria-label="Frame identity and provenance">
+      <div><span>Requested constellation</span><strong>{constellationLabel(requestedConstellation)}</strong></div>
+      <div><span>Accepted constellation</span><strong>{constellationLabel(acceptedConstellation)}</strong></div>
       <div><span>Frame</span><strong>{frame.frameId}</strong></div>
       <div><span>TLE frame</span><strong>{frame.tleFrameId}</strong></div>
       <div><span>衛星／TLE epoch</span><strong>{frame.selectedSatelliteId} · {frame.tleEpochUtc}</strong></div>
-      <div><span>來源</span><strong>TLE-derived SGP4 · {frame.provenance.currentArchiveDate}</strong></div>
+      <div><span>來源 catalog</span><strong>{frame.provenance.archiveCatalogUrl} · {frame.provenance.archiveDate}</strong></div>
     </div>
   );
 }
@@ -225,6 +247,7 @@ function ThroughputPanel({ frame, parameters, setParameters }: {
 }
 
 function EePanel({ frame }: { readonly frame: SimulationAnalysisFrame }) {
+  const acceptedConstellation = frame.tleState.catalog.constellation;
   return (
     <div className="simulator-panel-grid">
       <Section title="Energy efficiency" subtitle="本頁只投影 canonical numerator／denominator；不以不同公式重算。">
@@ -242,7 +265,7 @@ function EePanel({ frame }: { readonly frame: SimulationAnalysisFrame }) {
         <p className="simulator-note">目前 evaluation 只示範單一 frame 的 ratio-of-sums；不能解讀成跨時間累積，也不能解讀成節能比較或平台實測。</p>
       </Section>
       <Section title="能效邊界與來源" subtitle="保持物理量與證據邊界清楚。">
-        <div className="simulator-explanation"><p><strong>來源：</strong>{frame.provenance.archiveCatalogUrl} → {frame.provenance.selectedTlePath}</p><p><strong>模型：</strong>{frame.provenance.propagationModel}，TLE epoch {frame.tleEpochUtc}；時間切換是 snapshot selection，不是 handover，也不產生 event energy。</p><p><strong>情境：</strong>固定 Taipei ground terminal + nadir-reference beam + 1e-8 normalized link scale。這能展示 canonical 計算鏈，但不是校準 RF link budget，也不宣稱論文場景重現。</p></div>
+        <div className="simulator-explanation"><p><strong>來源：</strong>{frame.provenance.archiveCatalogUrl} → {frame.provenance.selectedTlePath}</p><p><strong>接受 constellation：</strong>{constellationLabel(acceptedConstellation)}；<strong>模型：</strong>{frame.provenance.propagationModel}，TLE epoch {frame.tleEpochUtc}；時間切換是 snapshot selection，不是 handover，也不產生 event energy。</p><p><strong>情境：</strong>固定 Taipei ground terminal + nadir-reference beam + 1e-8 normalized link scale。這能展示 canonical 計算鏈，但不是校準 RF link budget，也不宣稱論文場景重現。</p></div>
       </Section>
     </div>
   );
@@ -266,12 +289,16 @@ function EmptyState({ status, message }: { readonly status: SimulatorLoadStatus;
 }
 
 export interface SimulatorRouteProps {
-  readonly catalogUrl?: string;
+  readonly initialConstellation?: SimulatorConstellation;
   readonly initialTaipeiDateTime?: string;
 }
 
 /** Archived-TLE / canonical-EE route. The controller can mount this component under any URL. */
-export function SimulatorRoute({ catalogUrl = SIMULATOR_CATALOG_URL, initialTaipeiDateTime = DEFAULT_TAIPEI_LOCAL }: SimulatorRouteProps) {
+export function SimulatorRoute({
+  initialConstellation = 'oneweb',
+  initialTaipeiDateTime = DEFAULT_TAIPEI_LOCAL,
+}: SimulatorRouteProps) {
+  const [requestedConstellation, setRequestedConstellation] = useState<SimulatorConstellation>(initialConstellation);
   const [catalog, setCatalog] = useState<TleWebArchiveCatalog | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [taipeiDateTime, setTaipeiDateTime] = useState(initialTaipeiDateTime);
@@ -283,21 +310,38 @@ export function SimulatorRoute({ catalogUrl = SIMULATOR_CATALOG_URL, initialTaip
   const [parameters, setParameters] = useState<SimulatorParameters>({ ...DEFAULT_SIMULATOR_PARAMETERS });
   const lastAcceptedFrame = useRef<SimulationAnalysisFrame | null>(null);
   const requestId = useRef(0);
+  const requestedCatalogUrl = SIMULATOR_CATALOG_URLS[requestedConstellation];
 
   useEffect(() => {
     let cancelled = false;
+    requestId.current += 1;
     setCatalogError(null);
-    void loadTleWebArchiveCatalog(catalogUrl).then(nextCatalog => {
-      if (!cancelled) setCatalog(nextCatalog);
-    }).catch(error => {
-      if (!cancelled) {
-        setCatalog(null);
-        setCatalogError(readableError(error));
-        setStatus('error');
+    setLoadError(null);
+    setStatus('loading');
+    setCatalog(null);
+    setTleState(null);
+    setFallbackFrame(lastAcceptedFrame.current);
+    void (async () => {
+      try {
+        if (typeof requestedCatalogUrl !== 'string' || requestedCatalogUrl.trim() === '') {
+          throw new Error(`沒有 ${constellationLabel(requestedConstellation)} 的 archived catalog URL`);
+        }
+        const nextCatalog = await loadTleWebArchiveCatalog(requestedCatalogUrl);
+        if (nextCatalog.constellation !== requestedConstellation) {
+          throw new Error(`catalog constellation mismatch：requested ${constellationLabel(requestedConstellation)}，received ${constellationLabel(nextCatalog.constellation)}`);
+        }
+        if (!cancelled) setCatalog(nextCatalog);
+      } catch (error) {
+        if (!cancelled) {
+          setCatalog(null);
+          setCatalogError(readableError(error));
+          setFallbackFrame(lastAcceptedFrame.current);
+          setStatus('error');
+        }
       }
-    });
+    })();
     return () => { cancelled = true; };
-  }, [catalogUrl]);
+  }, [requestedCatalogUrl, requestedConstellation]);
 
   useEffect(() => {
     if (catalog === null) return;
@@ -306,12 +350,12 @@ export function SimulatorRoute({ catalogUrl = SIMULATOR_CATALOG_URL, initialTaip
     let cancelled = false;
     setStatus('loading');
     setLoadError(null);
-    setFallbackFrame(null);
+    setFallbackFrame(lastAcceptedFrame.current);
     void (async () => {
       try {
         const utc = simulatorTaipeiDateTimeToUtc(taipeiDateTime);
-        const window = await loadTleSnapshotWindow(catalog, utc);
-        const nextState = createSimulatorTleState(window, utc);
+        const selection = await loadTleSnapshotSelection(catalog, utc);
+        const nextState = createSimulatorTleState(selection, utc);
         if (cancelled || currentRequest !== requestId.current) return;
         setTleState(nextState);
         setStatus('ready');
@@ -355,19 +399,28 @@ export function SimulatorRoute({ catalogUrl = SIMULATOR_CATALOG_URL, initialTaip
     if (catalog !== null) setTaipeiDateTime(`${formatArchiveDate(catalog.lastArchiveDate)}T20:00`);
   }, [catalog]);
 
+  const changeConstellation = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const nextConstellation = event.currentTarget.value;
+    if (!SIMULATOR_CONSTELLATIONS.some(option => option.id === nextConstellation)) return;
+    setRequestedConstellation(nextConstellation as SimulatorConstellation);
+  }, []);
+
   const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const index = SIMULATOR_TABS.findIndex(tab => tab.id === activeTab);
-    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
+    const movingForward = event.key === 'ArrowRight' || event.key === 'ArrowDown';
     const nextIndex = event.key === 'Home'
       ? 0
       : event.key === 'End'
         ? SIMULATOR_TABS.length - 1
-        : (index + (event.key === 'ArrowRight' ? 1 : -1) + SIMULATOR_TABS.length) % SIMULATOR_TABS.length;
+        : (index + (movingForward ? 1 : -1) + SIMULATOR_TABS.length) % SIMULATOR_TABS.length;
     const nextTab = SIMULATOR_TABS[nextIndex]!;
     setActiveTab(nextTab.id);
     document.getElementById(`simulator-tab-${nextTab.id}`)?.focus();
   };
+
+  const qualityNote = catalogQualityNote(catalog);
 
   return (
     <main className="simulator-route" lang="zh-Hant">
@@ -375,38 +428,77 @@ export function SimulatorRoute({ catalogUrl = SIMULATOR_CATALOG_URL, initialTaip
         <div>
           <p className="simulator-eyebrow">LEO BEAM SIMULATOR · FORMAL ANALYSIS ROUTE</p>
           <h1>Archived TLE × canonical EE</h1>
-          <p className="simulator-lede">選擇 Asia/Taipei 時間，驗證 archived TLE 後以 SGP4 產生一個 immutable frame；SINR、Power、Throughput、EE 都從同一份結果解讀。</p>
+          <p className="simulator-lede">選擇 constellation 與 Asia/Taipei 時間，驗證 archived TLE 後以 SGP4 產生一個 immutable frame；SINR、EE、Power、Throughput 都從同一份結果解讀。</p>
         </div>
         <div className="simulator-contract-badge"><span>contract</span><strong>family-B · v1</strong><small>{SIMULATOR_TIME_ZONE}</small></div>
       </header>
+
+      <section className="simulator-constellation-bar" aria-label="Constellation selector">
+        <div className="simulator-constellation-bar__heading">
+          <p className="simulator-eyebrow">ARCHIVED TLE SOURCE</p>
+          <h2>選擇衛星星座</h2>
+          <p>切換後會重新驗證對應 catalog；若新資料未通過驗證，畫面只保留上一個 accepted frame。</p>
+        </div>
+        <fieldset className="simulator-constellation-selector">
+          <legend>Constellation</legend>
+          <div className="simulator-constellation-selector__options">
+            {SIMULATOR_CONSTELLATIONS.map(option => (
+              <label key={option.id} className={`simulator-constellation-option${requestedConstellation === option.id ? ' is-selected' : ''}`} htmlFor={`simulator-constellation-${option.id}`}>
+                <input id={`simulator-constellation-${option.id}`} type="radio" name="simulator-constellation" value={option.id} checked={requestedConstellation === option.id} onChange={changeConstellation} />
+                <span>
+                  <strong>{option.label}</strong>
+                  <small>{option.id === 'oneweb' ? 'LEO archive · oneweb' : 'LEO archive · starlink'}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="simulator-constellation-selector__status" role="status" aria-live="polite">
+            Requested：<strong>{constellationLabel(requestedConstellation)}</strong>
+            {' · '}
+            Accepted frame：<strong>{frame === null ? '尚未接受' : constellationLabel(frame.tleState.catalog.constellation)}</strong>
+          </p>
+          {qualityNote !== null && <p className="simulator-constellation-selector__quality">{qualityNote}</p>}
+        </fieldset>
+      </section>
 
       <section className="simulator-timebar" aria-label="Archived TLE time selector">
         <div className="simulator-timebar__input"><label htmlFor="simulator-time">時間（{SIMULATOR_TIME_ZONE}）</label><input id="simulator-time" type="datetime-local" value={taipeiDateTime} min={catalog ? archiveDateInput(catalog.firstArchiveDate) : undefined} max={catalog ? archiveDateInput(catalog.lastArchiveDate, true) : undefined} step={60} onChange={changeTime} /><span>內部會轉成明確 UTC，再解析不晚於該 instant 的最新 TLE epoch。</span></div>
         <div className="simulator-timebar__conversion"><span>UTC conversion</span><strong>{(() => { try { return simulatorTaipeiDateTimeToUtc(taipeiDateTime); } catch { return '等待有效時間'; } })()}</strong><button className="simulator-secondary-button" type="button" onClick={resetTime} disabled={catalog === null}>回到 archive latest</button></div>
       </section>
 
-      {frame !== null && <ProvenanceStrip frame={frame} />}
+      {frame !== null && <ProvenanceStrip frame={frame} requestedConstellation={requestedConstellation} />}
       {(status === 'error' || computed.error !== null) && <div className="simulator-alert" role="alert"><strong>這次更新未被接受，畫面保留上一個 accepted frame。</strong><span>{error}</span></div>}
 
       {frame === null ? <EmptyState status={status} message={error ?? undefined} /> : (
-        <>
-          <section className="simulator-scene-card">
-            <div className="simulator-scene-card__heading"><div><h2>SGP4 orbit / trajectory</h2><p>目前選中的 serving candidate：{frame.selectedSatelliteId}；場景與四個 tabs 共用 frame <code>{frame.frameId}</code>。</p></div><span className="simulator-source-badge">ARCHIVED_TLE · SGP4</span></div>
-            <SimulatorOrbitScene frame={frame} />
-          </section>
-          <section className="simulator-analysis-card" aria-label="Canonical analysis projections">
-            <div className="simulator-tablist" role="tablist" aria-label="Canonical analysis views">
+        <section className="simulator-workspace" aria-label="Simulation workspace">
+          <aside className="simulator-analysis-rail" aria-label="Canonical analysis projections">
+            <div className="simulator-analysis-rail__heading">
+              <p className="simulator-eyebrow">FRAME ANALYSIS</p>
+              <h2>分析工作區</h2>
+              <p>四個 projections 讀取同一個 accepted frame。</p>
+            </div>
+            <div className="simulator-tablist" role="tablist" aria-orientation="vertical" aria-label="Canonical analysis views">
               {SIMULATOR_TABS.map(tab => (
                 <button key={tab.id} id={`simulator-tab-${tab.id}`} type="button" role="tab" aria-selected={activeTab === tab.id} aria-controls={`simulator-panel-${tab.id}`} tabIndex={activeTab === tab.id ? 0 : -1} className={activeTab === tab.id ? 'is-active' : ''} onClick={() => setActiveTab(tab.id)} onKeyDown={handleTabKeyDown}>
                   <strong>{tab.label}</strong><span>{tab.shortLabel}</span>
                 </button>
               ))}
             </div>
-            <div id={`simulator-panel-${activeTab}`} className="simulator-tabpanel" role="tabpanel" aria-labelledby={`simulator-tab-${activeTab}`} tabIndex={0}>
-              <TabPanel activeTab={activeTab} frame={frame} parameters={parameters} setParameters={setParameters} />
-            </div>
-          </section>
-        </>
+            <p className="simulator-analysis-rail__status" role="status" aria-live="polite">Active view：<strong>{SIMULATOR_TABS.find(tab => tab.id === activeTab)?.label}</strong></p>
+          </aside>
+
+          <div className="simulator-workspace__main">
+            <section className="simulator-scene-card">
+              <div className="simulator-scene-card__heading"><div><h2>SGP4 orbit / trajectory</h2><p>Requested：<strong>{constellationLabel(requestedConstellation)}</strong> · accepted：<strong>{constellationLabel(frame.tleState.catalog.constellation)}</strong>；目前選中的 serving candidate：{frame.selectedSatelliteId}；場景與 SINR、EE、Power、Throughput tabs 共用 frame <code>{frame.frameId}</code>。</p></div><span className="simulator-source-badge">ARCHIVED_TLE · {constellationLabel(frame.tleState.catalog.constellation)} · SGP4</span></div>
+              <SimulatorOrbitScene frame={frame} />
+            </section>
+            <section className="simulator-analysis-card" aria-label="Active canonical analysis projection">
+              <div id={`simulator-panel-${activeTab}`} className="simulator-tabpanel" role="tabpanel" aria-labelledby={`simulator-tab-${activeTab}`} tabIndex={0}>
+                <TabPanel activeTab={activeTab} frame={frame} parameters={parameters} setParameters={setParameters} />
+              </div>
+            </section>
+          </div>
+        </section>
       )}
 
       <footer className="simulator-footer"><span>Source: read-only browser archive</span><span>Time switching is snapshot selection, not handover.</span><span>Normalized geometry adapter is not a calibrated RF link budget.</span></footer>

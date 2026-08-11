@@ -8,13 +8,24 @@ if (!root) {
 }
 
 const container = root;
+const query = new URLSearchParams(window.location.search);
 
 const isC120Route = window.location.pathname === '/course/c120'
-  || new URLSearchParams(window.location.search).get('course') === 'c120';
+  || query.get('course') === 'c120';
 const isC90Route = window.location.pathname === '/course/c90'
-  || new URLSearchParams(window.location.search).get('course') === 'c90';
-const isCanonicalSimulatorRoute = window.location.pathname === '/simulator'
-  || new URLSearchParams(window.location.search).get('simulator') === 'canonical';
+  || query.get('course') === 'c90';
+const isLegacyAppRoute = window.location.pathname === '/legacy'
+  || query.get('app') === 'legacy'
+  // Preserve the historical query-based deep links while making the bare
+  // product entry point the formal archived-TLE / canonical-EE simulator.
+  || query.has('view')
+  || query.has('sceneSource')
+  || query.has('modqnServiceAllocation');
+const isCanonicalSimulatorRoute = !isLegacyAppRoute && (
+  window.location.pathname === '/'
+  || window.location.pathname === '/simulator'
+  || query.get('simulator') === 'canonical'
+);
 const C120_BOOTSTRAP_CLAIM = 'SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED';
 
 function C120BootstrapFailure({ message }: { readonly message: string }) {

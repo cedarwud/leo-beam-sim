@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { loadTleSnapshotWindow, loadTleWebArchiveCatalog, parseTleWebArchiveCatalog } from './archive';
+import {
+  loadTleSnapshot,
+  loadTleSnapshotSelection,
+  loadTleWebArchiveCatalog,
+  parseTleWebArchiveCatalog,
+} from './archive';
 import { resolveTleSnapshot } from '../tle/resolver';
 
 const fetchFromPublic = async (path: RequestInfo | URL): Promise<Response> => (
@@ -8,24 +13,36 @@ const fetchFromPublic = async (path: RequestInfo | URL): Promise<Response> => (
 );
 
 const catalog = await loadTleWebArchiveCatalog('/tle-archive/oneweb/catalog.json', fetchFromPublic);
-const boundary = await loadTleSnapshotWindow(catalog, '2026-08-07T23:59:59.000Z', fetchFromPublic);
+assert.equal(catalog.constellation, 'oneweb');
 
-// The filename date is not the TLE epoch boundary. The next-dated file must
-// be loaded because its minEpochUtc is still before this requested instant.
-assert.ok(boundary.snapshots.some(snapshot => snapshot.metadata.archiveDate === '20260808'));
-assert.ok(boundary.snapshots.some(snapshot => snapshot.metadata.minEpochUtc <= '2026-08-07T23:59:59.000Z'));
+const starlinkCatalog = await loadTleWebArchiveCatalog('/tle-archive/starlink/catalog.json', fetchFromPublic);
+assert.equal(starlinkCatalog.constellation, 'starlink');
+assert.equal(starlinkCatalog.snapshotCount, 360);
+assert.equal(starlinkCatalog.sourceSnapshotCount, 361);
+assert.equal(starlinkCatalog.excludedSnapshots?.length, 1);
+const starlinkLatestMetadata = starlinkCatalog.snapshots[starlinkCatalog.snapshots.length - 1]!;
+const starlinkLatest = await loadTleSnapshot(starlinkLatestMetadata, fetchFromPublic);
+assert.equal(starlinkLatest.entries.length, starlinkLatestMetadata.recordCount);
+assert.ok(starlinkLatest.entries.length > catalog.snapshots[catalog.snapshots.length - 1]!.recordCount);
+
+const boundary = await loadTleSnapshotSelection(catalog, '2026-08-07T23:59:59.000Z', fetchFromPublic);
+
+// Prefer the newest atomic publication whose complete epoch range is already
+// prior to the requested instant; do not mix it with a later revision.
+assert.equal(boundary.snapshot.metadata.archiveDate, '20260807');
+assert.ok(boundary.snapshot.metadata.maxEpochUtc <= '2026-08-07T23:59:59.000Z');
 
 const boundaryInstant = '2026-08-07T23:59:59.000Z';
-const nextDatedEntry = boundary.current.entries.find(entry => Date.parse(entry.epochUtc) <= Date.parse(boundaryInstant));
-assert.ok(nextDatedEntry, 'the next-dated snapshot should contain at least one usable prior epoch');
+const nextDatedEntry = boundary.manifest.entries.find(entry => Date.parse(entry.epochUtc) <= Date.parse(boundaryInstant));
+assert.ok(nextDatedEntry, 'the selected snapshot should contain at least one usable prior epoch');
 const boundaryResolved = resolveTleSnapshot(boundary.manifest, boundaryInstant, nextDatedEntry!.satelliteId);
-assert.equal(boundaryResolved.sourcePath, '/tle-archive/oneweb/oneweb_20260808.tle');
+assert.equal(boundaryResolved.sourcePath, boundary.snapshot.metadata.path);
 
-// A later instant can resolve an epoch from that next-dated file rather than
-// silently assuming that archiveDate is the element epoch.
-const later = await loadTleSnapshotWindow(catalog, '2026-08-08T03:00:00.000Z', fetchFromPublic);
-const satelliteId = later.current.entries[0]!.satelliteId;
-const resolved = resolveTleSnapshot(later.manifest, '2026-08-08T03:00:00.000Z', satelliteId);
+// Once the next publication's complete epoch range is prior, it becomes the
+// selected atomic source.
+const later = await loadTleSnapshotSelection(catalog, '2026-08-08T12:00:00.000Z', fetchFromPublic);
+const satelliteId = later.manifest.entries[0]!.satelliteId;
+const resolved = resolveTleSnapshot(later.manifest, '2026-08-08T12:00:00.000Z', satelliteId);
 assert.equal(resolved.sourcePath, '/tle-archive/oneweb/oneweb_20260808.tle');
 
 const malformedBounds = {
