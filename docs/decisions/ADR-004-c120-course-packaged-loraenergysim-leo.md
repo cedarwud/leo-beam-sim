@@ -2,7 +2,7 @@
 
 ## Status
 
-**Accepted by owner direction; implementation pending SDD acceptance and contract freeze**
+**Superseded for active simulator development by ADR-005; retained as a historical course decision**
 
 Date: 2026-08-10
 

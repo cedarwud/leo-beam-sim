@@ -1,5 +1,11 @@
 # leo-beam-sim — Software Design Document (v2)
 
+The active archived-TLE and canonical-EE implementation contract is
+[`docs/sdd/TLE-CANONICAL-EE-SIMULATOR-SDD.md`](./sdd/TLE-CANONICAL-EE-SIMULATOR-SDD.md),
+governed by
+[`ADR-005`](./decisions/ADR-005-tle-and-canonical-ee-simulator-contract.md).
+The remainder of this document is the older simulator baseline.
+
 For current MODQN / handover / 100-UE showcase development order, use
 [`docs/sdd-index.md`](./sdd-index.md). This baseline SDD remains useful for
 the simulator architecture, but it is not the active roadmap for the current

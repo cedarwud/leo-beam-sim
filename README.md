@@ -117,6 +117,9 @@ npm run preview
 
 ## 研究文件
 
+- `docs/decisions/ADR-005-tle-and-canonical-ee-simulator-contract.md` — 目前模擬器的最高層產品決策：年度 TLE 日期／時間切換，以及與論文和正式訓練一致的 canonical angle-aware EE。
+- `docs/sdd/TLE-CANONICAL-EE-SIMULATOR-SDD.md` — 目前實作規格：TLE archive/SGP4、單一分析狀態，以及 Power、SINR、Throughput、EE 四個共用資料來源的分頁。
+- `docs/handoff/LEO-SIM-CURRENT-HANDOFF-2026-08-11.md` — 目前 controller 的實作順序、ownership 與驗收條件。
 - `docs/sdd-index.md` — 目前 MODQN / handover / 100 UE showcase 的 SDD 入口、文件分類與開發順序
 - `docs/SDD.md` — 目前場景、模擬、渲染的整體設計說明
 - `docs/hobs-tr38811-sinr-mini-sdd.md` — HOBS + TR 38.811 的 SINR 研究設計補充
