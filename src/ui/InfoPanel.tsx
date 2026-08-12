@@ -1,7 +1,6 @@
 import type { Profile } from '../profiles/types';
 import type { SimState } from '../scene/types';
 import type { VisualShowcaseChannelMetricKind } from '../scene/visual-showcase-contract';
-import { UI_TOKENS } from '../constants/uiTokens';
 import { DuelCard, type DuelSignalTone } from './info-panel/DuelCard';
 import {
   formatCellServingIdentity,
@@ -11,14 +10,7 @@ import {
   resolveDuelStateLabel,
 } from './info-panel/formatters';
 import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
-import { TeachingEnergyCard, type TeachingCanonicalReadout } from './info-panel/TeachingEnergyCard';
-import {
-  ClassroomEnergyComparisonCard,
-  type ClassroomEnergyComparisonCardProps,
-} from './info-panel/ClassroomEnergyComparisonCard';
-import { ExperimentRecordCard } from './info-panel/ExperimentRecordCard';
 import { usePanelCopy } from './info-panel/panelHelp';
-import type { TeachingEnergyReadout, ExperimentRecord, ExperimentTaskId } from '../teaching';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 import { OVERRIDE_PRIMARY_UE_SCOPE_NOTE } from '../modqn/runtimeControls';
 
@@ -38,34 +30,8 @@ type InfoPanelProps = SimState & {
    * should render. Live engine = `'sinr-with-interference'`; replay artifact
    * = `'snr-no-interference'`. Optional; full label-branching wiring is
    * reserved for the slice PRs — this prop only exposes the contract surface.
-   */
+  */
   channelMetricKind?: VisualShowcaseChannelMetricKind;
-  /**
-   * Teaching energy/EE read model (Wave 2 props contract). Assembled once in
-   * `App.tsx` from the live SimState plus the energy tuning controls, so the
-   * left controls, the scene and this readout all describe the same instant.
-   *
-   * `undefined` = not wired yet (the ledger section is simply absent — better
-   * than an all-dash card nobody asked for). `null` = wired but this frame has
-   * nothing trustworthy, which renders as dashes, never zeroes.
-   */
-  teachingEnergy?: TeachingEnergyReadout | null;
-  canonicalReadout?: TeachingCanonicalReadout | null;
-  onTeachingEnergyReset?: () => void;
-  classroomEnergyComparison?: ClassroomEnergyComparisonCardProps;
-  experimentRecord?: ExperimentRecord | null;
-  selectedExperimentTask?: ExperimentTaskId;
-  onExperimentTaskChange?: (task: ExperimentTaskId) => void;
-  onCaptureExperimentRecord?: () => void;
-};
-
-const EXPERIMENT_TASK_LABELS: Record<ExperimentTaskId, string> = {
-  T1: 'T1 功率鏈',
-  T2: 'T2 累積能源',
-  T3: 'T3 固定 B/K',
-  T4: 'T4 重設與復原',
-  T5: 'T5 實際資料 50/35 dBm',
-  T6: 'T6 canonical EE',
 };
 
 interface LiveStatusModeCopy {
@@ -159,18 +125,8 @@ export function InfoPanel({
   handoverTriggerProgressSec,
   handoverTriggerSec,
   hoCount,
-  canonicalEe,
-  teachingEnergy,
-  canonicalReadout,
-  onTeachingEnergyReset,
-  classroomEnergyComparison,
-  experimentRecord,
-  selectedExperimentTask = 'T1',
-  onExperimentTaskChange,
-  onCaptureExperimentRecord,
 }: InfoPanelProps) {
   const { tx } = usePanelCopy();
-  const selectedExperimentTaskLabel = EXPERIMENT_TASK_LABELS[selectedExperimentTask];
   // S5-2b: on the sinr-live cell lane the serving unit is the typed cell id
   // (`servingBeamId` is null under the cell model — there is no steered beam), so
   // the serving column must render ACTIVE on a cell id too, else the cell-truth
@@ -327,66 +283,6 @@ export function InfoPanel({
         />
         </div>
       </div>
-
-      {/* Teaching energy breakdown — the Σ-over-time story (Σ Mbit / Σ J). */}
-      {teachingEnergy === undefined ? null : (
-        <TeachingEnergyCard
-          readout={teachingEnergy}
-          canonicalReadout={canonicalReadout ?? canonicalEe ?? null}
-          onReset={onTeachingEnergyReset}
-        />
-      )}
-
-      {classroomEnergyComparison && (
-        <ClassroomEnergyComparisonCard {...classroomEnergyComparison} />
-      )}
-
-      {onCaptureExperimentRecord && (
-        <div style={{ marginTop: '16px' }}>
-          <div
-            data-testid="experiment-record-task-label"
-            style={{ marginBottom: '8px', color: 'var(--leo-text-secondary)', fontSize: '14px', fontWeight: 700 }}
-          >
-            目前實驗題目：{selectedExperimentTaskLabel}
-          </div>
-          <button
-            onClick={onCaptureExperimentRecord}
-            data-testid="capture-experiment-record"
-            className="leo-button"
-            aria-label={`擷取 ${selectedExperimentTaskLabel} 實驗紀錄`}
-            title="按下後固定目前量測窗口，並在下方顯示可匯出的紀錄"
-            style={{
-              width: '100%',
-              minHeight: 42,
-              padding: `${UI_TOKENS.space.sm}px ${UI_TOKENS.space.md}px`,
-              background: UI_TOKENS.color.surface.fieldSoft,
-              color: UI_TOKENS.color.text.primary,
-              border: `1px solid ${UI_TOKENS.color.border.tuningPanel}`,
-              borderRadius: UI_TOKENS.radius.md,
-              cursor: 'pointer',
-              fontSize: UI_TOKENS.type.size.tiny,
-              fontWeight: UI_TOKENS.type.weight.strong,
-              textAlign: 'left',
-            }}
-          >
-            擷取 {selectedExperimentTaskLabel} 實驗紀錄
-          </button>
-        </div>
-      )}
-
-      {onCaptureExperimentRecord && !experimentRecord && (
-        <div
-          data-testid="experiment-record-empty"
-          role="status"
-          style={{ marginTop: '8px', color: 'var(--leo-text-muted)', fontSize: '12px' }}
-        >
-          尚未擷取 {selectedExperimentTask} 實驗紀錄；完成該題量測後按「擷取實驗紀錄」。
-        </div>
-      )}
-
-      {experimentRecord && (
-        <ExperimentRecordCard record={experimentRecord} />
-      )}
 
       {formulaTermsVisible && (
         <FormulaTermsReadout

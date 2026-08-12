@@ -18,7 +18,7 @@ function assertDomainError(code: CanonicalEeInputError['code'], operation: () =>
   });
 }
 
-test('sumInstantaneousPowerW is the single additive input for the teaching power route', () => {
+test('sumInstantaneousPowerW is the single additive input for canonical system power', () => {
   assert.strictEqual(
     sumInstantaneousPowerW([
       { label: 'teaching PA input', powerW: 1.25 },

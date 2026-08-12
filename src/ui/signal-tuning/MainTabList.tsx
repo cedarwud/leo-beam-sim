@@ -14,9 +14,11 @@ import type { MainTabKey } from './types';
  * explanation stay in `title` and `aria-label`, matching the formula sub-tab
  * strip and keeping the narrow rail readable.
  */
-const PANEL_ID_BY_TAB: Record<MainTabKey, string> = {
-  sinr: 'tuning-page-panel-sinr-canonical',
-  energy: 'tuning-page-panel-ee-canonical',
+// `aria-controls` is optional for a tab. SINR and EE are rendered as result
+// projections by the homepage, but those sections intentionally do not expose
+// stable panel ids; emitting invented ids would leave broken references in the
+// accessibility tree. Keep controls only for panels with real ids.
+const PANEL_ID_BY_TAB: Partial<Record<MainTabKey, string>> = {
   power: 'tuning-page-panel-power',
   throughput: 'tuning-page-panel-throughput',
   handover: 'tuning-page-panel-handover',
@@ -62,7 +64,7 @@ export function MainTabList({
       key: 'energy',
       short: 'EE',
       label: t('tab.energy.label'),
-      hint: txBi(t, isEnglish, 'tab.energy.hint', '同一吞吐量分子與 canonical P_sys 分母', 'Shared throughput numerator and canonical P_sys denominator'),
+      hint: txBi(t, isEnglish, 'tab.energy.hint', '同一吞吐量分子與完整 P_sys 分母', 'Shared throughput numerator and full P_sys denominator'),
       accent: '#c3a6ff',
     },
     {
@@ -73,8 +75,8 @@ export function MainTabList({
         t,
         isEnglish,
         'tab.power.hint',
-        '調整 beam／satellite 上限與 canonical 功耗參數',
-        'Tune beam/satellite caps and canonical power-model inputs',
+        '調整波束／衛星上限與功耗參數',
+        'Tune beam/satellite caps and power-model inputs',
       ),
       accent: UI_TOKENS.color.semantic.good,
     },

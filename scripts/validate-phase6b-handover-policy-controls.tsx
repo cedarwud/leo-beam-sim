@@ -28,7 +28,6 @@ import {
 } from './lib/dom-structure.ts';
 import { HandoverPolicyControls } from '../src/ui/HandoverPolicyControls.tsx';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
-import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-candidate-rich';
@@ -99,8 +98,6 @@ function renderTuningMarkups() {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
-      energyTuning={DEFAULT_ENERGY_TUNING}
-      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );
@@ -126,41 +123,33 @@ function renderTuningMarkups() {
   };
 }
 
-// G1-declutter (commit c37535e) REMOVED the old top-level left-sidebar tab model
-// (`type LeftSidebarTab = 'objective' | 'signal' | 'handover'` + a "Handover
-// policy" sidebar tab). The current model is a light 'summary' | 'evidence' left
-// rail; the HandoverPolicyControls + SignalTuningPanel power tools now render as
-// the `handoverPolicySection` / `sinrFormulaSection` of the ⚙ Advanced
-// SinrLiveDisplayDrawer. This asserts the CURRENT placement truth, not the dead
-// top-level-tab scaffolding.
-function assertHandoverPolicyLivesInAdvancedDrawer(): void {
+// The archived-TLE homepage publishes one analysis frame to its paired left
+// parameter rail and right result rail. Walker handover policy belongs to a
+// different legacy runtime, so its controls must not be injected into that
+// homepage rail. Keep validating the policy component and manager below, but
+// pin the active placement boundary here.
+function assertHandoverPolicySeparatedFromCanonicalHomepage(): void {
   const runtimeModelSource = readFileSync(
     new URL('../src/app/appRuntimeModel.ts', import.meta.url),
     'utf8',
   );
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   const signalPanelSource = readFileSync(new URL('../src/ui/SignalTuningPanel.tsx', import.meta.url), 'utf8');
+  const drawerSource = readFileSync(new URL('../src/ui/SinrLiveDisplayDrawer.tsx', import.meta.url), 'utf8');
 
   // The old triplet tab model is intentionally gone; the left rail is summary/evidence.
   assertContains(runtimeModelSource, "export type LeftSidebarTab = 'summary' | 'evidence'");
   assertNotContains(runtimeModelSource, "'objective' | 'signal' | 'handover'");
 
-  // HandoverPolicyControls is injected as the handoverPolicySection of the ⚙
-  // Advanced SinrLiveDisplayDrawer — NOT a top-level sidebar tab. Assert the
-  // ordered nesting: drawer open → handoverPolicySection prop → the controls.
+  // The drawer remains the lane-gated host of the homepage parameters, but it
+  // cannot accept or mount the unrelated Walker handover-policy controls.
   const drawerIndex = appSource.indexOf('<SinrLiveDisplayDrawer');
-  const handoverSectionIndex = appSource.indexOf('handoverPolicySection={', drawerIndex);
-  const handoverControlsIndex = appSource.indexOf('<HandoverPolicyControls', handoverSectionIndex);
   assert.ok(drawerIndex >= 0, 'expected the SINR-live Advanced drawer mount');
-  assert.ok(
-    handoverSectionIndex > drawerIndex,
-    'expected handoverPolicySection prop inside the Advanced drawer',
-  );
-  assert.ok(
-    handoverControlsIndex > handoverSectionIndex,
-    'expected HandoverPolicyControls passed as the Advanced drawer handoverPolicySection',
-  );
-  assertContains(appSource, 'sinrFormulaSection={');
+  assertContains(appSource, 'parameterSection={');
+  assertNotContains(appSource, 'handoverPolicySection={');
+  assertNotContains(appSource, '<HandoverPolicyControls');
+  assertContains(drawerSource, 'parameterSection');
+  assertNotContains(drawerSource, 'handoverPolicySection');
 
   // SignalTuningPanel must stay a distinct layer (no embedded handover policy).
   assertNotContains(signalPanelSource, 'HandoverPolicyControls');
@@ -265,7 +254,7 @@ function assertTuningPlacementAndCopy(): void {
     [],
     'the SINR formula panel must not host handover policy rows',
   );
-  assertHandoverPolicyLivesInAdvancedDrawer();
+  assertHandoverPolicySeparatedFromCanonicalHomepage();
 }
 
 function assertModeVisibility(): void {
@@ -860,11 +849,11 @@ function run(): void {
   assertInterHandoverUsesBeamLevelVisualParity();
   assertHandoverToastFollowsActivePolicyState();
 
-  console.log('Phase 6C handover policy Advanced-drawer placement validation passed.');
+  console.log('Phase 6C handover policy runtime and homepage-separation validation passed.');
   console.log(JSON.stringify({
     profileId: PROFILE_ID,
     asserted: {
-      placement: 'No top-level handover sidebar tab; the ⚙ Advanced SinrLiveDisplayDrawer hosts the handover-policy + SINR-formula sections (left rail is summary/evidence)',
+      placement: 'No top-level handover sidebar tab and no handover-policy controls inside the archived-TLE homepage parameter rail',
       copy: ['policy: sinr-offset read-only', 'Handover attach threshold', 'Intra-HO limit per satellite', 'no standalone handover SINR threshold label'],
       state: ['draft does not alter effective policy', 'apply updates effective policy', 'reset state clears stale handover evidence', 'inter gate preempts intra', 'post-inter guard blocks immediate intra', 'intra dwell preview surfaces while accumulating', 'intra epoch guard resets after inter-HO'],
       preservation: ['handover reset returns to replay start offset', 'handover reset publishes a zero-delta initial frame'],

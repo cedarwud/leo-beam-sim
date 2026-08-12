@@ -15,7 +15,6 @@ import {
 } from './lib/dom-structure.ts';
 import { EN, LocaleProvider, ZH_TW } from '../src/i18n/index.ts';
 import type { Locale } from '../src/i18n/types.ts';
-import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 import type { TuningTabKey } from '../src/ui/signal-tuning/types.ts';
 
@@ -87,8 +86,6 @@ function renderPanel(initialActiveTab: TuningTabKey, locale: Locale) {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
-      energyTuning={DEFAULT_ENERGY_TUNING}
-      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />
     </LocaleProvider>,

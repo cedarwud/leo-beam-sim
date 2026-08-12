@@ -2,17 +2,12 @@ import { useState, type ReactNode } from 'react';
 import { UI_CLASSES, UI_TOKENS } from '../constants/uiTokens';
 import { useLocale } from '../i18n';
 import {
-  DEFAULT_ENERGY_TUNING,
-  type EnergyTuningState,
-} from '../teaching';
-import {
   DEFAULT_TR38811_CHANNEL,
   type GainModel,
   type PathLossComponent,
   type Profile,
 } from '../profiles/types';
 import type { LinkBudgetTerms } from '../scene/types';
-import type { SimulatorTab } from '../simulator/types';
 import {
   PATH_LOSS_COMPONENT_ORDER,
   type SignalTuningState,
@@ -30,11 +25,9 @@ import {
 } from './signal-tuning/ControlSections';
 import { HelpPopover } from './common/HelpPopover';
 import { NumericControl, PathLossTermControl, SelectControl } from './signal-tuning/Controls';
-import { EnergyTab } from './signal-tuning/EnergyTab';
 import { SinrFormulaMap } from './signal-tuning/FormulaMap';
 import { FormulaFraction, FormulaHeader } from './signal-tuning/FormulaHeader';
 import { FormulaTabList } from './signal-tuning/FormulaTabList';
-import { HomepageCanonicalAnalysis } from './signal-tuning/HomepageCanonicalAnalysis';
 import { MainTabList } from './signal-tuning/MainTabList';
 import { SinrOverview } from './signal-tuning/SinrOverview';
 import { TopologyTab } from './signal-tuning/TopologyTab';
@@ -65,20 +58,17 @@ import { formatDbi } from './signal-tuning/formatters';
 import type { AppExperienceMode } from './appMode';
 
 /**
- * Left panel, student-facing layout.
+ * Left panel for the active canonical analysis surface.
  *
- * Top level is up to three topics — "signal quality (SINR)", "energy (EE)" and
- * "handover timing" — not seven pieces of notation. Long explanations are no
- * longer printed under every slider: each control's label row ends in a "?"
- * that opens a localized definition + "what changes if I move this"
- * (HelpPopover, `placement="left"`).
+ * The visible top level is exactly four projections of one immutable frame:
+ * SINR, EE, Power and Throughput. Long explanations are not printed under every
+ * slider: each control's label row ends in a "?" that opens a localized
+ * definition + "what changes if I move this" (HelpPopover,
+ * `placement="left"`).
  *
- * Each of the first two tabs opens with the whole expression it is about — the
- * SINR fraction, then the power-train chain — and nothing else: the prose that
- * used to sit under every heading now lives behind a "?". The sub-tab strip
- * carries notation only, for the same reason. Handover timing has no formula of
- * its own: it changes which satellite is serving, so it moves the SINR the link
- * happens to see, and never appears in the power train.
+ * The hidden `scene` and `handover` branches remain compatibility consumers for
+ * older deep links and validators; MainTabList does not expose them on the
+ * canonical homepage.
  *
  * Nothing that was wired up was removed: the seven formula-term tabs (P_t,
  * H(L), G^T(θ), G^R, I, σ², scene topology) all still exist, one level down
@@ -101,17 +91,6 @@ interface SignalTuningPanelProps {
   onTopologyChange: (next: SceneTopologyState) => void;
   onSceneVisualScaleChange: (next: SceneVisualScaleState) => void;
   onReset: () => void;
-  /**
-   * Teaching energy knobs (η_PA, P_circuit, e_HO) — see WAVE2 props contract.
-   *
-   * Inputs only. The energy tab deliberately carries NO read-only power/energy
-   * numbers: those live once, on the right-hand `TeachingEnergyCard`, so there
-   * is exactly one place on screen that states each value. No ledger is
-   * prop-drilled into this panel for that reason.
-   */
-  readonly energyTuning: EnergyTuningState;
-  readonly onEnergyTuningChange: (next: EnergyTuningState) => void;
-  readonly onEnergyTuningReset?: () => void;
   /**
    * Slot for the handover-timing controls, rendered as this panel's third
    * topic. It arrives as a node rather than as prop-drilled state so this file
@@ -136,11 +115,6 @@ export function SignalTuningPanel({
   onTopologyChange,
   onSceneVisualScaleChange,
   onReset,
-  // Defaulted so the panel still renders standalone (the repo's validate
-  // scripts render it without the energy props); the App always passes them.
-  energyTuning = DEFAULT_ENERGY_TUNING,
-  onEnergyTuningChange = () => {},
-  onEnergyTuningReset = () => {},
   handoverPolicySection,
 }: SignalTuningPanelProps) {
   const [mainTab, setMainTab] = useState<MainTabKey>(initialMainTab);
@@ -197,12 +171,6 @@ export function SignalTuningPanel({
     });
   };
 
-  const canonicalTab: SimulatorTab | null = mainTab === 'energy'
-    ? 'ee'
-    : mainTab === 'sinr' || mainTab === 'power' || mainTab === 'throughput'
-      ? mainTab
-      : null;
-
   return (
     <aside
       className="leo-signal-tuning-panel"
@@ -222,9 +190,7 @@ export function SignalTuningPanel({
           onChange={setMainTab}
         />
 
-        {canonicalTab !== null && <HomepageCanonicalAnalysis activeTab={canonicalTab} />}
-
-        <div hidden={canonicalTab !== null} aria-hidden={canonicalTab !== null || undefined}>
+        <div>
 
         {mainTab === 'sinr' && (
         <section
@@ -1006,18 +972,9 @@ export function SignalTuningPanel({
           </section>
         )}
 
-        {mainTab === 'energy' && (
-          <EnergyTab
-            maxTxPowerDbm={tuning.maxTxPowerDbm}
-            energyTuning={energyTuning}
-            onEnergyTuningChange={onEnergyTuningChange}
-            onEnergyTuningReset={onEnergyTuningReset}
-          />
-        )}
-
-        {/* Third topic, deliberately separate from the energy tab: these
-            controls pick WHICH satellite the link sits on, they do not appear
-            anywhere in the power train. */}
+        {/* Compatibility-only handover branch. These controls choose which
+            satellite serves the link; they are not a factor in the canonical
+            power train and are not exposed by the four-tab homepage. */}
         {mainTab === 'handover' && handoverPolicySection != null && (
           <section
             id="tuning-page-panel-handover"

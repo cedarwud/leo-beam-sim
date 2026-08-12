@@ -19,6 +19,11 @@ assert.doesNotMatch(markup, /signal-tuning-main-tab-handover/);
 assert.doesNotMatch(markup, /signal-tuning-main-tab-scene/);
 assert.doesNotMatch(markup, /teaching throughput/i);
 assert.doesNotMatch(markup, /Tune transmit power/i);
-assert.match(markup, /aria-controls="tuning-page-panel-sinr-canonical"/);
+// SINR and EE are homepage result projections without stable panel ids. Their
+// tabs therefore omit aria-controls instead of pointing at invented targets.
+assert.doesNotMatch(markup, /id="signal-tuning-main-tab-sinr"[^>]*aria-controls=/);
+assert.doesNotMatch(markup, /id="signal-tuning-main-tab-energy"[^>]*aria-controls=/);
+assert.match(markup, /id="signal-tuning-main-tab-power"[^>]*aria-controls="tuning-page-panel-power"/);
+assert.match(markup, /id="signal-tuning-main-tab-throughput"[^>]*aria-controls="tuning-page-panel-throughput"/);
 
 console.log('MainTabList exposes exactly SINR, EE, Power, and Throughput in a narrow-rail layout.');

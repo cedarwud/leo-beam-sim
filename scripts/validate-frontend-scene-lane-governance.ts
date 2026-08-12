@@ -1524,7 +1524,7 @@ tangleLockGroup('QUAR-S6-BUS', () => {
     assertNotContains(sinrLiveDisplayDrawerSource, needle, `${label} is retired — not in the SINR-live tuners`);
     assertNotContains(sinrLiveQuickControlsSource, needle, `${label} is retired — not in the quick controls`);
   }
-  // The SINR-formula / handover tuners (SinrLiveDisplayDrawer) are SINR-live-gated.
+  // The archived-TLE homepage parameter surface is SINR-live-gated.
   const tunersMountIndex = appSource.indexOf('<SinrLiveDisplayDrawer');
   assert.ok(tunersMountIndex >= 0, 'App mounts the SINR-live tuners');
   const tunersGateIndex = appSource.lastIndexOf("sceneLane === 'sinr-live'", tunersMountIndex);
@@ -1541,12 +1541,10 @@ tangleLockGroup('QUAR-S6-BUS', () => {
   );
 });
 
-// ── G1-LEFT-DEFAULT: SINR-live left rail = light orientation card; tuners → ⚙ ──
-// The heavy SINR-formula + handover-policy tuners moved OFF the default left rail
-// into the SINR-live ⚙ Advanced drawer (collapsible sections). The default left
-// rail is a single light read-only orientation card. App must no longer render a
-// 'signal'/'handover' left-tab branch, and the tuner panels must be injected into
-// the drawer (not the SidebarTabShell).
+// ── G1-LEFT-DEFAULT: SINR-live left rail = archived-TLE parameters ───────────
+// The homepage injects one archived-TLE parameter surface into the lane-gated
+// drawer. Walker handover-policy controls use a different runtime and must not
+// be mixed into that formal input rail.
 // The read-only "Live SINR" orientation card was REMOVED (it duplicated the former
 // SinrServingAggregate population readout, since also removed). The SINR-live left
 // rail is now the Experience switch + the inlined tuners; the left tab shell is
@@ -1571,26 +1569,26 @@ assertNotContains(
   "activeLeftSidebarTab === 'handover'",
   'G1-LEFT-DEFAULT: App no longer renders a handover-policy left tab branch (moved to the Advanced drawer)',
 );
-// The relocated tuners are injected into the SINR-live Advanced drawer as nodes.
+// The parameter surface is injected into the SINR-live drawer as one node.
 assertContains(
   appSource,
-  'sinrFormulaSection={',
-  'App injects the SINR-formula tuner into the SINR-live Advanced drawer',
+  'parameterSection={',
+  'App injects the archived-TLE parameter surface into the SINR-live drawer',
 );
-assertContains(
+assertNotContains(
   appSource,
   'handoverPolicySection={',
-  'App injects the handover-policy tuner into the SINR-live Advanced drawer',
+  'App keeps Walker handover-policy controls out of the archived-TLE homepage rail',
 );
 assertContains(
   sinrLiveDisplayDrawerSource,
-  'sinrFormulaSection',
-  'SINR-live Advanced drawer hosts the relocated SINR-formula section',
+  'parameterSection',
+  'SINR-live drawer hosts the archived-TLE parameter surface',
 );
-assertContains(
+assertNotContains(
   sinrLiveDisplayDrawerSource,
   'handoverPolicySection',
-  'SINR-live Advanced drawer hosts the relocated handover-policy section',
+  'SINR-live drawer does not expose a legacy handover-policy slot',
 );
 
 assertContains(

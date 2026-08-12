@@ -247,19 +247,14 @@ const CATALOG_FIXTURES: readonly Fixture[] = [
     expected: '使用者裝置（手機／終端機）天線的接收增益 G[^R]，代表它把入射電波轉換成可用訊號功率的能力。',
   },
   {
-    key: 'ZH param.paEfficiency.label',
-    input: '功率放大器效率 η_PA',
-    expected: '功率放大器效率 η[_PA]',
+    key: 'ZH param.maxGainDbi.help',
+    input: '衛星天線在波束中心方向的最大增益 G^T，決定該波束把功率集中到什麼程度。',
+    expected: '衛星天線在波束中心方向的最大增益 G[^T]，決定該波束把功率集中到什麼程度。',
   },
   {
-    key: 'ZH param.paEfficiency.effect',
-    input: '效率越低，相同發射功率所需的輸入功率越大（P_PA ＝ P_RF ÷ η_PA），總功率上升、EE 下降；調高則相反，相同的訊號強度只需較少的電功率。',
-    expected: '效率越低，相同發射功率所需的輸入功率越大（P[_PA] ＝ P[_RF] ÷ η[_PA]），總功率上升、EE 下降；調高則相反，相同的訊號強度只需較少的電功率。',
-  },
-  {
-    key: 'ZH param.circuitPowerW.help',
-    input: '功率放大器以外，衛星維持運作所需的固定電功率 P_circuit（處理器、冷卻與其他電路）。它與發射功率及傳輸量無關，直接加入總功率：P_total ＝ P_PA + P_circuit。',
-    expected: '功率放大器以外，衛星維持運作所需的固定電功率 P[_circuit]（處理器、冷卻與其他電路）。它與發射功率及傳輸量無關，直接加入總功率：P[_total] ＝ P[_PA] + P[_circuit]。',
+    key: 'ZH param.frequencyReuse.help',
+    input: '頻率重複使用係數 K 把作用中的波束分成 K 組，僅同組波束之間產生同頻干擾。K 同時是吞吐量公式 R ＝ (B ÷ K)·log₂(1+SINR) 中 B/K 的分母。',
+    expected: '頻率重複使用係數 K 把作用中的波束分成 K 組，僅同組波束之間產生同頻干擾。K 同時是吞吐量公式 R ＝ (B ÷ K)·log₂(1+SINR) 中 B/K 的分母。',
   },
   {
     key: 'ZH formula.sinr.symbolHelp',
@@ -267,29 +262,9 @@ const CATALOG_FIXTURES: readonly Fixture[] = [
     expected: 'γ 即 SINR。分子 P[_t] · H · G[^T] · G[^R] 是發射功率經過通道衰減與收發天線增益之後，實際送達接收端的訊號功率；分母 I[^a] + I[^b] + σ² 是同一時刻的同頻干擾功率與熱雜訊功率之和。比值越大，訊號相對於干擾與雜訊越強。',
   },
   {
-    key: 'ZH formula.energy.caption',
-    input: '能量是功率對時間的累積：每個時間步消耗 P_total × Δt 焦耳，逐步加總即為累積耗能 ΣJ ＝ Σ P_total(t)·Δt。以相同方式累積各步送出的資料量，即得累積傳輸量 ΣMbit ＝ Σ R(t)·Δt。',
-    expected: '能量是功率對時間的累積：每個時間步消耗 P[_total] × Δt 焦耳，逐步加總即為累積耗能 ΣJ ＝ Σ P[_total](t)·Δt。以相同方式累積各步送出的資料量，即得累積傳輸量 ΣMbit ＝ Σ R(t)·Δt。',
-  },
-  {
-    key: 'ZH formula.power.caption',
-    input: '發射功率先由 dBm 換算為瓦：P_RF ＝ 10^(P_tx/10) ÷ 1000。功率放大器每輸出 1 W 射頻功率需輸入 1/η_PA W 電功率，故 P_PA ＝ P_RF ÷ η_PA。再加上固定的電路功耗，即為此刻的系統總功率 P_total ＝ P_PA + P_circuit，單位為瓦（W）。',
-    expected: '發射功率先由 dBm 換算為瓦：P[_RF] ＝ 10^(P[_tx]/10) ÷ 1000。功率放大器每輸出 1 W 射頻功率需輸入 1/η[_PA] W 電功率，故 P[_PA] ＝ P[_RF] ÷ η[_PA]。再加上固定的電路功耗，即為此刻的系統總功率 P[_total] ＝ P[_PA] + P[_circuit]，單位為瓦（W）。',
-  },
-  {
-    key: 'ZH kpi.totalPower.help',
-    input: '此刻衛星消耗的總電功率：P_total ＝ P_PA + P_circuit，單位為瓦（W）。將各時刻的 P_total 對時間累積，即得累積耗能。',
-    expected: '此刻衛星消耗的總電功率：P[_total] ＝ P[_PA] + P[_circuit]，單位為瓦（W）。將各時刻的 P[_total] 對時間累積，即得累積耗能。',
-  },
-  {
-    key: 'ZH kpi.cumulativeEnergy.help',
-    input: '自模擬開始累積消耗的能量總量：ΣJ ＝ Σ P_total(t)·Δt，即各時間步的總功率乘上該步的時間長度後加總，單位為焦耳（J）。',
-    expected: '自模擬開始累積消耗的能量總量：ΣJ ＝ Σ P[_total](t)·Δt，即各時間步的總功率乘上該步的時間長度後加總，單位為焦耳（J）。',
-  },
-  {
     key: 'ZH kpi.instantaneousEe.help',
-    input: '此刻的吞吐量除以此刻的總功率：R ÷ P_total，單位 Mbit/J。它隨 SINR 與功率設定即時變動，用於觀察單一參數調整當下的效果。',
-    expected: '此刻的吞吐量除以此刻的總功率：R ÷ P[_total]，單位 Mbit/J。它隨 SINR 與功率設定即時變動，用於觀察單一參數調整當下的效果。',
+    input: '此刻所有使用者吞吐量總和除以同一幀的系統功率：Σ_u R_u ÷ P_sys，單位 Mbit/J。它是唯讀的跨使用者即時摘要。',
+    expected: '此刻所有使用者吞吐量總和除以同一幀的系統功率：Σ[_u] R[_u] ÷ P[_sys]，單位 Mbit/J。它是唯讀的跨使用者即時摘要。',
   },
   {
     key: 'EN param.maxTxPowerDbm.help',
@@ -297,24 +272,19 @@ const CATALOG_FIXTURES: readonly Fixture[] = [
     expected: 'The signal strength each satellite beam transmits, in dBm. It sets the received signal power in the SINR numerator; in watts, P[_RF] = 10^(P[_tx]/10) ÷ 1000.',
   },
   {
-    key: 'EN param.paEfficiency.help',
-    input: 'The efficiency η_PA with which the power amplifier converts input electrical power into RF output power, on a scale of 0 to 1. At η_PA = 0.4, each 1 W of RF output requires 2.5 W of input power; the remainder becomes heat.',
-    expected: 'The efficiency η[_PA] with which the power amplifier converts input electrical power into RF output power, on a scale of 0 to 1. At η[_PA] = 0.4, each 1 W of RF output requires 2.5 W of input power; the remainder becomes heat.',
+    key: 'EN param.maxGainDbi.help',
+    input: 'The peak gain G^T of the satellite antenna along the beam-center direction, setting how tightly that beam concentrates power.',
+    expected: 'The peak gain G[^T] of the satellite antenna along the beam-center direction, setting how tightly that beam concentrates power.',
+  },
+  {
+    key: 'EN param.frequencyReuse.help',
+    input: 'The frequency reuse factor K divides the active beams into K groups, so only beams within the same group interfere with each other. K is also the denominator of B/K in the throughput formula R = (B ÷ K)·log₂(1+SINR).',
+    expected: 'The frequency reuse factor K divides the active beams into K groups, so only beams within the same group interfere with each other. K is also the denominator of B/K in the throughput formula R = (B ÷ K)·log₂(1+SINR).',
   },
   {
     key: 'EN formula.sinr.symbolHelp',
     input: 'γ is the SINR. The numerator P_t · H · G^T · G^R is the transmit power after channel loss and the transmit and receive antenna gains — the signal power that actually reaches the receiver. The denominator I^a + I^b + σ² is the co-channel interference power plus thermal noise power at that same instant. The larger the ratio, the stronger the signal relative to interference and noise.',
     expected: 'γ is the SINR. The numerator P[_t] · H · G[^T] · G[^R] is the transmit power after channel loss and the transmit and receive antenna gains — the signal power that actually reaches the receiver. The denominator I[^a] + I[^b] + σ² is the co-channel interference power plus thermal noise power at that same instant. The larger the ratio, the stronger the signal relative to interference and noise.',
-  },
-  {
-    key: 'EN formula.ee.caption',
-    input: 'Energy efficiency EE is a ratio: the numerator is the data delivered, the denominator is the energy consumed, in Mbit/J — how many megabits each joule of energy can carry. The larger the value, the less power the same data costs. Instantaneous EE takes R ÷ P_total at this moment; run EE takes ΣMbit ÷ ΣJ over the whole run.',
-    expected: 'Energy efficiency EE is a ratio: the numerator is the data delivered, the denominator is the energy consumed, in Mbit/J — how many megabits each joule of energy can carry. The larger the value, the less power the same data costs. Instantaneous EE takes R ÷ P[_total] at this moment; run EE takes ΣMbit ÷ ΣJ over the whole run.',
-  },
-  {
-    key: 'EN kpi.paInputPower.help',
-    input: 'The input electrical power the amplifier requires to produce that RF output: P_PA = P_RF ÷ η_PA. The lower the efficiency, the more P_PA exceeds P_RF, and the difference becomes heat.',
-    expected: 'The input electrical power the amplifier requires to produce that RF output: P[_PA] = P[_RF] ÷ η[_PA]. The lower the efficiency, the more P[_PA] exceeds P[_RF], and the difference becomes heat.',
   },
 ];
 

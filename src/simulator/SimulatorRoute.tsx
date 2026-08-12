@@ -167,11 +167,11 @@ function PowerPanel({ frame, parameters, setParameters }: {
     <div className="simulator-panel-grid">
       <Section title="可編輯的 canonical power inputs" subtitle="這五個欄位是限制條件／功耗模型參數；P_DL_actual 與 PA 功率不是輸入欄位。">
         <div className="simulator-form-grid">
-          <NumberField id="beam-power-cap" label="P_beam_max（beam 上限）" unit="W" value={parameters.beamPowerCapW} min={0.001} step={0.01} description="單一 beam 的 RF 輸出上限。" source="Power constraint；會限制 p_req。" onChange={update('beamPowerCapW')} />
-          <NumberField id="satellite-power-cap" label="P_sat_max（衛星上限）" unit="W" value={parameters.satellitePowerCapW} min={0.001} step={0.01} description="同一衛星所有 active beams 的 aggregate RF 上限。" source="Satellite cap；在 beam cap 後套用。" onChange={update('satellitePowerCapW')} />
+          <NumberField id="beam-power-cap" label="P_beam_max（beam 上限）" unit="W" value={parameters.beamPowerCapW} min={0.001} step={0.001} description="單一 beam 的 RF 輸出上限。" source="Power constraint；會限制 p_req。" onChange={update('beamPowerCapW')} />
+          <NumberField id="satellite-power-cap" label="P_sat_max（衛星上限）" unit="W" value={parameters.satellitePowerCapW} min={0.001} step={0.001} description="同一衛星所有 active beams 的 aggregate RF 上限。" source="Satellite cap；在 beam cap 後套用。" onChange={update('satellitePowerCapW')} />
           <NumberField id="eta-max" label="eta_max（PA 上限）" unit="0–1" value={parameters.etaMax} min={0.001} max={1} step={0.01} description="canonical load-dependent PA 曲線的上界。" source="Amplifier model bound；實際 eta_PA 由結果推導。" onChange={update('etaMax')} />
-          <NumberField id="rfc-power" label="P_RFC（RF chain）" unit="W / active beam" value={parameters.rfcPowerW} min={0.001} step={0.01} description="每個 active beam 分攤的 RF-chain 功率。" source="Power ledger；隨 active beam 計入。" onChange={update('rfcPowerW')} />
-          <NumberField id="bb-power" label="P_BB（baseband）" unit="W / satellite" value={parameters.basebandPerSatelliteW} min={0.001} step={0.01} description="衛星 baseband 功率，按 active beam 分攤。" source="Power ledger；不是 RF output。" onChange={update('basebandPerSatelliteW')} />
+          <NumberField id="rfc-power" label="P_RFC（RF chain）" unit="W / active beam" value={parameters.rfcPowerW} min={0.001} step={0.001} description="每個 active beam 分攤的 RF-chain 功率。" source="Power ledger；隨 active beam 計入。" onChange={update('rfcPowerW')} />
+          <NumberField id="bb-power" label="P_BB（baseband）" unit="W / satellite" value={parameters.basebandPerSatelliteW} min={0.001} step={0.001} description="衛星 baseband 功率，按 active beam 分攤。" source="Power ledger；不是 RF output。" onChange={update('basebandPerSatelliteW')} />
         </div>
         <button className="simulator-secondary-button" type="button" onClick={() => setParameters(DEFAULT_SIMULATOR_PARAMETERS)}>重設 canonical power inputs</button>
       </Section>

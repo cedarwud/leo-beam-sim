@@ -202,3 +202,39 @@ production build, desktop browser interaction, fail-closed retention, and a
 The current scenario adapter is explicitly uncalibrated and the UI labels
 evaluation EE as single-frame. No energy-saving or Phase-1 platform decision
 is implied by this implementation record.
+
+### 2026-08-12 active-surface cleanup
+
+The former homepage classroom experiment chain is retired, not merely hidden.
+The active application no longer constructs the teaching power ledger, the
+50/35 dBm comparison arms, or T1-T6 capture/export state. Their right-panel
+cards, hidden energy tab, domain modules, generator, and dedicated tests are
+removed. Timeline seeks still increment a generic analysis-window reset epoch
+so the retained canonical Walker producer never accumulates evidence across a
+discontinuous time jump.
+
+This cleanup does not change the canonical archived-TLE producer, the four
+shared projections, Walker scene behavior, `/simulator`, or the historical
+direct-only `/course/c120` route. The separate historical paper-EE card is not
+part of this decision and remains quarantined from the active formal pages.
+
+### 2026-08-12 homepage input/result ownership
+
+The homepage uses one lifted archived-TLE analysis state for both side rails.
+The left rail owns the OneWeb／Starlink selector, Asia/Taipei date/time, every
+editable model input, and the fixed or geometry-derived parameters needed to
+understand the calculation. The right rail owns the final SINR, EE, Power, and
+Throughput values and their interpretation. The active tab is shared, so the
+parameter page on the left and the result page on the right always describe the
+same accepted immutable frame.
+
+Walker handover-policy controls are excluded from this homepage rail. They
+belong to the retained legacy scene runtime and do not contribute to the
+archived-TLE analysis frame or its right-rail results.
+
+Starlink is the homepage default; OneWeb remains an equal selectable source.
+Changing constellation or time is fail-closed: the new request must pass the
+catalog, snapshot, and TLE checks before it replaces the prior accepted result.
+The homepage no longer prints contract version, analysis frame ID, or an
+all-caps canonical provenance banner. Those fields remain in the internal frame
+for reproducibility and remain visible on the dedicated `/simulator` route.

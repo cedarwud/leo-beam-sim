@@ -1,5 +1,6 @@
 /**
- * ADR-003 energy-efficiency algebra for the V3 teaching boundary.
+ * ADR-003 energy-efficiency aggregation used by the retained canonical
+ * Walker producer.
  *
  * Units are deliberately explicit:
  *   - `ratesMbps`: R_u in Mbit/s
@@ -9,10 +10,8 @@
  *   - `totalDataMbit` / `totalEnergyJ`: Mbit / J
  *
  * This module owns the EE aggregation seam, not the physical source of power.
- * The existing V3 teaching adapter supplies its simulated `totalPowerW` here;
- * that value remains a teaching power-chain output and must not be renamed to
- * ADR `P_sys` or used to claim empirical/canonical hardware closure. The
- * `circuitPowerW` control is therefore intentionally absent from this API.
+ * Callers must supply one already-resolved canonical `P_sys` for the same
+ * frame as the rate vector. No classroom power-chain input belongs here.
  */
 
 export const CANONICAL_EE_UNITS = {
@@ -252,10 +251,8 @@ export interface EvaluationEeResult extends EvaluationEeTotals {
 }
 
 /**
- * Evaluates already-aggregated ratio-of-sums totals. This is also the adapter
- * seam for legacy teaching ledgers that already hold Mbit and J totals; it
- * keeps their arithmetic on the same canonical fail-closed branch without
- * claiming that their teaching power boundary is ADR `P_sys`.
+ * Evaluates already-aggregated canonical ratio-of-sums totals while preserving
+ * the same fail-closed domain rules as the instantaneous path.
  */
 export function computeEvaluationEeFromTotals(totals: EvaluationEeTotals): EvaluationEeResult {
   if (!Number.isFinite(totals.totalDataMbit)) {

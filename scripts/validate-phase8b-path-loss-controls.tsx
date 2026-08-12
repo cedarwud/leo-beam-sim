@@ -33,7 +33,6 @@ import {
   extractElementByTestId,
 } from './lib/dom-structure.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
-import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const EPSILON_DB = 1e-9;
@@ -395,8 +394,6 @@ function renderLossPanelMarkup(profile: Profile, tuning = createSignalTuningStat
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
-      energyTuning={DEFAULT_ENERGY_TUNING}
-      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );
@@ -581,8 +578,6 @@ function assertPlacementCopyAndStaleMarkup(): void {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
-      energyTuning={DEFAULT_ENERGY_TUNING}
-      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );

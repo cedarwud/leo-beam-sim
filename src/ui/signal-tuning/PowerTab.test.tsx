@@ -1,12 +1,9 @@
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { computeCanonicalEe, CANONICAL_EE_CONFORMANCE_FIXTURES } from '../../analysis/canonicalEe';
 import { LocaleProvider } from '../../i18n';
 import { DEFAULT_SIMULATOR_PARAMETERS, type SimulatorParameters } from '../../simulator/types';
 import { PowerTab } from './PowerTab';
 
-const fixture = CANONICAL_EE_CONFORMANCE_FIXTURES[0]!;
-const result = computeCanonicalEe(fixture.input);
 const parameters: SimulatorParameters = {
   ...DEFAULT_SIMULATOR_PARAMETERS,
   beamPowerCapW: 2,
@@ -20,7 +17,6 @@ let changedParameters: SimulatorParameters | null = null;
 const markup = renderToStaticMarkup(
   <LocaleProvider initialLocale="en">
     <PowerTab
-      result={result}
       parameters={parameters}
       onParametersChange={next => { changedParameters = next; }}
     />
@@ -28,8 +24,12 @@ const markup = renderToStaticMarkup(
 );
 
 assert.match(markup, /data-testid="power-canonical-page"/);
-assert.match(markup, /data-canonical-status="canonical"/);
-assert.match(markup, /data-canonical-contract="family-b-thesis-3\.13-3\.17-v1"/);
+
+// The left rail is the parameter surface.  Its producer identity and final
+// frame results belong to the right-side result surface, so this component
+// must not render the old visible CANONICAL/family/frame summary.
+assert.doesNotMatch(markup, /CANONICAL\s*·\s*family-b-thesis/);
+assert.doesNotMatch(markup, /data-testid="homepage-canonical-frame-identity"/);
 
 // The homepage Power tab must not expose the old direct transmit-power knob.
 assert.doesNotMatch(markup, /data-testid="power-tab-tx-power-control"/);
@@ -42,17 +42,21 @@ assert.match(markup, /data-testid="power-tab-satellite-cap-control"/);
 assert.match(markup, /data-testid="power-tab-eta-max-control"/);
 assert.match(markup, /data-testid="power-tab-rfc-control"/);
 assert.match(markup, /data-testid="power-tab-bb-control"/);
-assert.match(markup, /data-testid="power-tab-requested-power-readout"[^>]*data-readonly="true"/);
-assert.match(markup, /data-testid="power-tab-actual-power-readout"[^>]*data-readonly="true"/);
-assert.match(markup, /data-testid="power-tab-pa-efficiency-readout"[^>]*data-readonly="true"/);
-assert.match(markup, /data-testid="power-tab-pa-readout"[^>]*data-readonly="true"/);
-assert.match(markup, /data-testid="power-tab-system-power-readout"[^>]*data-readonly="true"/);
-assert.match(markup, /P<sub>DL,actual<\/sub>/);
 
-// The display is sourced from the frozen conformance result, not a local
-// `P_t`/teaching formula: the fixture's p_req and P_sys values must be visible.
-assert.match(markup, /7\.177e-5 W/);
-assert.match(markup, /0\.5988735882771666|5\.989e-1 W/);
+// Final computed values are owned by the right sidebar.  In particular, the
+// left Power tab must not duplicate the old result card or expose stale
+// result testids that make it look like a second producer.
+assert.doesNotMatch(markup, /data-testid="power-canonical-readout"/);
+for (const testId of [
+  'power-tab-requested-power-readout',
+  'power-tab-actual-power-readout',
+  'power-tab-pa-efficiency-readout',
+  'power-tab-pa-readout',
+  'power-tab-rfc-readout',
+  'power-tab-system-power-readout',
+]) {
+  assert.doesNotMatch(markup, new RegExp(`data-testid="${testId}"`));
+}
 assert.equal(changedParameters, null, 'static rendering must not mutate parameter state');
 
-console.log('PowerTab uses the canonical EE result, exposes only canonical inputs, and keeps derived power read-only.');
+console.log('PowerTab exposes only canonical power inputs; final power results stay off the left rail.');

@@ -24,9 +24,9 @@
  * separate "commit" step no longer has anything to commit.
  *
  * Scope note for anyone extending this file: these values decide WHICH
- * satellite/beam serves the link. They are not part of the power train
- * (`computePowerTrain` reads transmit power, PA efficiency and circuit power
- * only), so no copy here should be written as if tuning them saves energy.
+ * satellite/beam serves the legacy Walker link. They do not own the archived-
+ * TLE analysis frame or any EE power input and are intentionally not mounted in
+ * the homepage parameter rail.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { UI_CLASSES, UI_TOKENS } from '../constants/uiTokens';

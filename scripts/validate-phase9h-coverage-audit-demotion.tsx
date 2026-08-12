@@ -15,7 +15,6 @@ import type { LinkBudgetTerms } from '../src/scene/types.ts';
 import { createSceneTopologyState } from '../src/sceneTopology.ts';
 import { createSceneVisualScaleState } from '../src/sceneVisualScale.ts';
 import { createSignalTuningState } from '../src/signalTuning.ts';
-import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 
 const PROFILE_ID = 'hobs-2024-paper-default';
@@ -78,8 +77,6 @@ function renderPanel(initialActiveTab: 'signal-power' | 'loss' = 'signal-power')
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
-      energyTuning={DEFAULT_ENERGY_TUNING}
-      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );

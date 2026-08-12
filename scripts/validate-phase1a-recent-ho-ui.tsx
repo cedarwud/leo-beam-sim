@@ -17,7 +17,6 @@ import {
   attrValuesIn,
 } from './lib/dom-structure.ts';
 import { InfoPanel } from '../src/ui/InfoPanel.tsx';
-import { DEFAULT_ENERGY_TUNING } from '../src/teaching/energyModel.ts';
 import { SignalTuningPanel } from '../src/ui/SignalTuningPanel.tsx';
 import { formatSatelliteLabel } from '../src/utils/formatSatelliteLabel.ts';
 
@@ -273,8 +272,6 @@ function run(): void {
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
-      energyTuning={DEFAULT_ENERGY_TUNING}
-      onEnergyTuningChange={() => {}}
       onReset={() => {}}
     />,
   );

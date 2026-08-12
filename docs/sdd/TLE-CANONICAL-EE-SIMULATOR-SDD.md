@@ -2,7 +2,7 @@
 
 Status: **Accepted contract; bounded v1 implemented and browser verified**
 
-Date: 2026-08-11
+Date: 2026-08-12
 
 Authority: `docs/decisions/ADR-005-tle-and-canonical-ee-simulator-contract.md`
 
@@ -21,10 +21,14 @@ The bounded v1 is mounted at `/simulator`; the original Walker/handover
 application remains at `/`. It uses an explicitly uncalibrated
 Taipei/nadir-reference adapter so the canonical chain is observable; this does
 not elevate the adapter into thesis-scenario or calibrated-link authority.
-The homepage's four visible analysis tabs may compactly project that canonical
-producer in the Walker visual system, but they must publish a separate frame
-identity and must not imply that the retained Walker scene supplied the frame.
-No homepage tab may restore direct `P_t` or a page-local EE/throughput formula.
+The homepage's four visible analysis tabs compactly project that producer in the
+Walker visual system. One lifted state owns the accepted frame: the left rail
+contains source selection plus editable and fixed input parameters, while the
+right rail contains only the final values and interpretation for the same
+active tab. Internal frame identity remains available for reproducibility but
+is not printed as primary homepage content. The retained Walker scene must not
+be represented as the source of that frame. No homepage tab may restore direct
+`P_t` or a page-local EE/throughput formula.
 
 ## 2. Runtime architecture
 
@@ -285,7 +289,10 @@ SINR calculators.
 Existing implementations are classified before integration:
 
 - canonical-compatible functions may be reused after conformance tests;
-- teaching-only functions remain labelled and disconnected from formal state;
+- teaching-only functions must remain labelled and disconnected from formal
+  state when retained; the former homepage ledger, 50/35 dBm comparison, and
+  T1-T6 capture chain were retired on 2026-08-12 because they had no active
+  formal consumer;
 - legacy power or coverage-weighted metrics cannot feed the four formal pages;
 - the current `maxTxPowerDbm` / `P_t` UI state is migrated to a precise
   canonical cap and is not silently reused as actual `P_DL`.
@@ -298,6 +305,11 @@ The isolated EE worker seam is `src/analysis/canonicalEe/**`. Existing
 `src/teaching/**`, `src/utils/**`, `src/App.tsx`, and live scene publishers are
 controller-owned integration or historical paths and must not be edited by
 that worker.
+
+The retained `src/teaching/**` surface contains only canonical EE helpers used
+by the active producer. Timeline discontinuities may reset a generic analysis
+epoch, but no removed classroom ledger state or compatibility tab may be
+reintroduced through that reset seam.
 
 ## 7. Verification
 
@@ -327,8 +339,14 @@ that worker.
 
 - TypeScript checks and focused unit tests pass;
 - production build passes;
-- a fresh browser run demonstrates date/time switching and all four pages;
-- labels disclose TLE-derived SGP4 and the EE contract version; and
+- a fresh browser run demonstrates OneWeb／Starlink and date/time switching plus
+  all four paired parameter/result pages;
+- the homepage left rail has no final-value duplication and the right rail has
+  no editable inputs;
+- the homepage left rail does not mix Walker handover-policy controls into the
+  archived-TLE parameter set;
+- the dedicated `/simulator` route discloses TLE-derived SGP4 and the EE
+  contract version while homepage provenance remains internal; and
 - no UI copy claims energy savings or Phase-1 platform integration.
 
 ## 8. Deferred decisions

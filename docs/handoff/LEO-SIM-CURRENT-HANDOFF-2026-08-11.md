@@ -2,7 +2,7 @@
 
 Status: **BOUNDED V1 IMPLEMENTED / FOCUSED AND BROWSER VERIFIED**
 
-Date: 2026-08-11
+Date: 2026-08-12
 
 ## 1. Active outcome
 
@@ -28,18 +28,37 @@ The formal simulator route is:
 The original Walker/handover application remains the `/` homepage. No
 cross-navigation button is added between these surfaces yet.
 
-The homepage left rail now exposes `SINR / EE / Power / Throughput` in the
-existing Walker application style. Those four visible pages consume one
-explicit archived-TLE canonical analysis frame. They no longer expose direct
-`P_t/maxTxPowerDbm`, editable `P_DL_actual`, or page-local teaching power/rate
-formulas. The restored Walker scene remains a legacy visual and is explicitly
-not the same frame; `/simulator` remains the full surface where the SGP4 scene,
-time selector, and four projections share one frame.
+The homepage uses the existing Walker application style with paired
+`SINR / EE / Power / Throughput` pages. One lifted archived-TLE state feeds both
+rails: the left rail contains the OneWeb／Starlink and Asia/Taipei time selectors
+plus every editable or fixed calculation parameter; the right rail contains
+only the final value and interpretation for the same active page. Starlink is
+the homepage default and OneWeb remains selectable. The homepage no longer
+prints the contract-version／constellation／frame-ID provenance block. These
+fields remain in the internal immutable frame and on `/simulator`.
+
+The legacy Walker handover-policy controls are not mounted in this parameter
+rail because they do not feed the archived-TLE frame or the paired right-side
+results.
+
+Neither rail exposes direct `P_t/maxTxPowerDbm`, editable `P_DL_actual`, or a
+page-local teaching power/rate formula. The restored Walker scene remains a
+legacy visual and is explicitly not the same frame; `/simulator` remains the
+full surface where the SGP4 scene, time selector, provenance, and four
+projections share one frame.
 
 The historical `/course/c120` surface is direct-route only. It has no entry
 control on `/` or `/simulator`; retain it as recoverable history unless a later
 owner decision authorizes removal of the route together with its tests,
 materializer scripts, and bundled assets.
+
+The obsolete homepage classroom experiment chain has been removed end to end:
+no teaching ledger, 50/35 dBm matched-arm comparison, T1-T6 capture/export
+state, right-side cards, hidden legacy energy tab, or generator runs in the
+active application. Timeline seek handling retains only the generic
+canonical-analysis reset needed to prevent accumulation across discontinuous
+time. This is a cleanup of the superseded classroom path, not a change to the
+archived-TLE/canonical-EE contract.
 
 Implemented surfaces:
 
@@ -152,7 +171,7 @@ presentation, C-120, shared app, or another worker's paths.
 
 ## 7. Verification evidence
 
-Verified on 2026-08-11:
+Verified on 2026-08-12:
 
 - `npm run test:active-simulator` passes archive integrity, TLE boundary,
   timezone, SGP4, Python-vector parity, cap, zero, ratio-of-sums, snapshot selection,
@@ -166,6 +185,9 @@ Verified on 2026-08-11:
   2 W to 1 W and propagated into SINR, throughput, and EE;
 - changing 2026-08-08 to 2026-03-01 changed the TLE frame, selected satellite,
   TLE epoch, trajectory, and analysis frame atomically;
+- the homepage selected Starlink by default, switched atomically to OneWeb,
+  kept constellation and time controls on the left, and displayed the final
+  active-tab values on the right without a visible frame/provenance banner;
 - an unavailable pre-archive instant preserved the prior accepted frame and
   displayed the refusal; and
 - a 390 px browser viewport had equal scroll/client width and no horizontal
@@ -186,3 +208,7 @@ are green; do not normalize or silently re-baseline the old fixture here.
   whole-spacecraft terms.
 - Energy-saving policy, baseline/candidate evidence, and Phase-1 platform
   integration remain unresolved and unimplemented.
+- The repository-wide Phase 8B validator currently also pins older typography
+  literals (`14/17/18/27`) while the checked-in token authority is
+  `16/19/20/29`; treat that maintenance drift separately from simulator
+  formula or runtime verification.

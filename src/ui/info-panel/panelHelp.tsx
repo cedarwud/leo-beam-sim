@@ -65,43 +65,6 @@ const LOCAL_ZH: Record<string, string> = {
   'panel.handoverOffset.label': '換手安全門檻',
   'panel.handoverOffset.help': '候選連線的 SINR 高出目前連線的最小 dB 值，達到此值後才啟動換手判斷。門檻過小時連線會在兩顆衛星之間反覆切換（乒乓效應），過大時則延後離開品質已下降的連線。',
 
-  'panel.energy.title': '耗能明細',
-  'panel.energy.subtitle': '本卡為當前量測視窗內的傳輸資料量與消耗能量累計。',
-  'panel.energy.help': '無線電能量為各時刻的總功率與該時間步長度乘積的總和；以相同方式對吞吐量求和即得累積傳輸量。換手能量另計，兩者相加為總耗能。累積傳輸量與總耗能之比即為整段累積效率。',
-  'panel.energy.groupPower': '瞬時功率',
-  'panel.energy.groupThroughput': '瞬時吞吐量',
-  'panel.energy.groupRun': '累計量',
-  'panel.energy.sumHint': 'PA 輸入功率 ＋ 電路功率 ＝ 總功率',
-  'panel.energy.energySumHint': '無線電能量 ＋ 換手能量 ＝ 總耗能',
-  'panel.energy.runEeFormula': 'Run EE ＝ ΣMbit ÷ (Σ P_total·Δt ＋ E_HO)',
-  'panel.energy.handoverCount.help': '此累積區間內發生的換手次數，乘上每次換手耗能 e_HO 即為換手能量 E_HO。此數值與累積量同時歸零重算，因此不必然等於整段模擬的換手總次數。',
-  'panel.energy.elapsed': '已累積時間',
-  'panel.energy.elapsed.help': '實際計入累積量的模擬秒數。拖動時間軸或重新開始時累積量歸零重算，因此此數值不必然等於畫面上的模擬時鐘。',
-  'panel.energy.waiting': '等待模擬資料',
-
-  'panel.overallEe.title': '全場即時效率',
-  'panel.overallEe.divider': '耗能明細為主角連線的整段累積；全場即時效率為全場所有使用者的當下平均，功率取自波束負載模型。',
-  'panel.overallEe.help': '全場即時效率固定於單一時刻，對該時刻所有使用者的能源效率取覆蓋率加權平均，單位 bit/J。其功率來自論文的波束負載模型，不受功率調整滑桿影響。',
-
-  'panel.ee.headline.help': '此刻所有使用者能源效率的覆蓋率加權平均，屬單一時刻的橫斷面統計量。整段時間的 ΣMbit ÷ ΣJ 由耗能明細的整段累積效率表示。',
-  'panel.ee.servedAverage.label': '被服務使用者的平均 EE',
-  'panel.ee.servedAverage.help': '僅計入有波束提供服務的使用者，取其能源效率的平均值。未被服務的使用者不列入此平均。',
-  'panel.ee.coverageStep.help': '以覆蓋率對被服務使用者的平均 EE 加權後，即為全場即時效率。覆蓋率越低，未被服務的使用者比例越高，全場即時效率越低。',
-  'panel.ee.bandwidth.label': '計算 EE 時用的頻寬',
-  'panel.ee.bandwidth.help': '計算吞吐量時假設每個連線可用的頻寬。頻寬越大，相同訊號品質下可傳送的資料量越多。',
-  'panel.ee.population.label': '使用者總數',
-  'panel.ee.population.help': '此場景中的使用者裝置總數，以及其中被服務與未被服務的數量。',
-  'panel.ee.beamLoad.label': '每道波束上的使用者數',
-  'panel.ee.beamLoad.help': '平均每一道作用中的波束所服務的使用者數。同一道波束上的使用者越多，每位使用者分得的資源越少。',
-  'panel.ee.throughput.label': '被服務使用者的吞吐量',
-  'panel.ee.throughput.help': '被服務使用者每秒接收資料量的平均值，為能源效率算式的分子。',
-  'panel.ee.sinr.label': '被服務使用者的訊號品質',
-  'panel.ee.sinr.help': '被服務使用者的平均訊號品質，單位為 dB。',
-  'panel.ee.beamPower.label': '每道波束的功率',
-  'panel.ee.beamPower.help': '平均每一道波束消耗的功率，單位為瓦。模型中波束所服務的使用者越多，配給該波束的功率越高。',
-  'panel.ee.perUePower.label': '每個使用者分攤到的功率',
-  'panel.ee.perUePower.help': '一道波束的功率平均分配給其所服務的使用者後，每位使用者分攤到的瓦數，為能源效率算式的分母。',
-
   'panel.formulaTerms.title': '訊號品質公式各項',
   'panel.formulaTerms.help': '訊號品質公式的逐項拆解，分子與分母各自列出其組成項與合成結果。',
   'panel.formulaTerms.result': '公式結果 γ',
@@ -171,43 +134,6 @@ const LOCAL_EN: Record<string, string> = {
   'panel.handoverOffset.label': 'Switching safety margin',
   'panel.handoverOffset.help': 'The minimum margin, in dB, by which the candidate SINR must exceed the current link before the handover decision starts. Too small a margin makes the link alternate between two satellites (the ping-pong effect); too large a margin delays leaving a link whose quality has already degraded.',
 
-  'panel.energy.title': 'Energy breakdown',
-  'panel.energy.subtitle': 'The running total of data delivered and energy consumed over the current measurement window.',
-  'panel.energy.help': 'Radio energy is the sum of the total power at each instant multiplied by the length of that time step; cumulative data is the same sum applied to throughput. Handover energy is counted separately, and the two add up to total energy. Cumulative data divided by total energy is the run-accumulated energy efficiency.',
-  'panel.energy.groupPower': 'Instantaneous power',
-  'panel.energy.groupThroughput': 'Instantaneous throughput',
-  'panel.energy.groupRun': 'Cumulative totals',
-  'panel.energy.sumHint': 'PA input + circuit = total power',
-  'panel.energy.energySumHint': 'radio energy + handover energy = total energy',
-  'panel.energy.runEeFormula': 'Run EE = ΣMbit ÷ (Σ P_total·Δt + E_HO)',
-  'panel.energy.handoverCount.help': 'The number of handovers that occurred inside this accumulation window; multiplied by the energy per handover e_HO it gives the handover energy E_HO. It resets together with the other totals, so it need not match the handover count for the whole run.',
-  'panel.energy.elapsed': 'Time accumulated',
-  'panel.energy.elapsed.help': 'The simulation seconds actually folded into the totals. Scrubbing the timeline or restarting resets the ledger, so this value need not match the simulation clock on screen.',
-  'panel.energy.waiting': 'Waiting for simulation data',
-
-  'panel.overallEe.title': 'Field-wide instantaneous EE',
-  'panel.overallEe.divider': 'The energy breakdown accumulates over the whole run for the primary link; field-wide instantaneous EE averages across every user at this instant, with power taken from the beam-load model.',
-  'panel.overallEe.help': "Field-wide instantaneous EE fixes a single instant and takes the coverage-weighted average of every user's energy efficiency at that instant, in bit/J. Its power comes from the paper's beam-load model and does not respond to the power sliders.",
-
-  'panel.ee.headline.help': 'The coverage-weighted average energy efficiency across all users at this instant — a single-instant cross-section statistic. The whole-run ΣMbit ÷ ΣJ is reported as run-accumulated EE in the energy breakdown.',
-  'panel.ee.servedAverage.label': 'Mean EE of served users',
-  'panel.ee.servedAverage.help': 'Averages only the users a beam is providing service to. Users with no service are excluded from this average.',
-  'panel.ee.coverageStep.help': 'The mean EE of served users, weighted by coverage, gives the field-wide instantaneous EE. The lower the coverage, the larger the share of users receiving no service, and the lower that value becomes.',
-  'panel.ee.bandwidth.label': 'Bandwidth assumed by this metric',
-  'panel.ee.bandwidth.help': 'The bandwidth each link is assumed to receive when throughput is computed. A larger bandwidth carries more data at the same signal quality.',
-  'panel.ee.population.label': 'Total users',
-  'panel.ee.population.help': 'The number of user devices in this scene, together with the served and unserved counts.',
-  'panel.ee.beamLoad.label': 'Users per beam',
-  'panel.ee.beamLoad.help': 'The average number of users served by each active beam. The more users share a beam, the fewer resources each one receives.',
-  'panel.ee.throughput.label': 'Throughput of served users',
-  'panel.ee.throughput.help': 'The average data rate received by a served user — the numerator of the energy-efficiency ratio.',
-  'panel.ee.sinr.label': 'Signal quality of served users',
-  'panel.ee.sinr.help': 'The average signal quality, in dB, of the users receiving service.',
-  'panel.ee.beamPower.label': 'Power per beam',
-  'panel.ee.beamPower.help': 'The average power an active beam consumes, in watts. In the model, the more users a beam serves, the more power it is allocated.',
-  'panel.ee.perUePower.label': 'Power share per user',
-  'panel.ee.perUePower.help': "A beam's power divided evenly among the users it serves — the denominator of the energy-efficiency ratio.",
-
   'panel.formulaTerms.title': 'Signal-quality formula terms',
   'panel.formulaTerms.help': 'A term-by-term breakdown of the signal-quality formula: the numerator and the denominator each list their component terms and the value they combine into.',
   'panel.formulaTerms.result': 'Formula result γ',
@@ -270,13 +196,8 @@ export function usePanelCopy(): PanelCopy {
  * Right-panel "?" trigger. Same component and same a11y contract as the left
  * panel's, only pre-configured for this side of the screen.
  *
- * `order` exists for one specific reason: `src/ui/info-panel/
- * EnergyEfficiencyCard.test.tsx` pins the card's text as
- * `label → value → detail` adjacency. A trigger placed between label and value
- * in the DOM injects a "?" into that text and breaks the pin. Rendering the
- * trigger first in the DOM and moving it visually with flex `order` keeps the
- * label/value text adjacent while the "?" still appears to the right of the
- * label on screen.
+ * `order` lets callers keep label/value text adjacent in the DOM while placing
+ * the help trigger at the visual edge of the row.
  */
 export function PanelHelp({
   order,

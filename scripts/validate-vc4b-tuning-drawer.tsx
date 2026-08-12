@@ -1,11 +1,8 @@
-// G1-LEFT-DEFAULT rewrite. This gate used to assert the SINR-live left rail held
-// the SignalTuningPanel "tuning drawer" with per-uiMode widths and signal/handover
-// tab switching. G1-LEFT-DEFAULT replaced that: the SINR-live left rail is now a
-// light read-only orientation card, and the SINR-formula + handover-policy tuners
-// moved into the non-modal ⚙ Advanced drawer. This gate now asserts the NEW
-// arrangement plus the durable invariants the old gate protected (left-panel
-// clicks must not leak into the canvas OrbitControls; the canvas still rotates on
-// drag).
+// VC4B tuning-rail gate. The homepage now mounts the canonical archived-TLE
+// source/parameter rail inline in the left shell. Keep this browser check focused
+// on that active structure and the durable shell/pointer invariants; retired
+// tab-shell, collapsed-handle, and handover-policy selectors are not part of the
+// homepage contract.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
@@ -95,29 +92,54 @@ async function main(): Promise<void> {
 
     try {
       await page.locator('.leo-shell-canvas canvas').waitFor({ timeout: 10_000 });
-      await page.locator('.leo-shell-left .leo-sidebar-tab-shell').waitFor({ timeout: 10_000 });
-      await page.locator('.leo-shell-right .leo-info-panel').waitFor({ timeout: 10_000 });
+      await page.locator('.leo-shell-left').waitFor({ timeout: 10_000 });
+      await page.locator('[data-testid="sinr-live-display"]').waitFor({ timeout: 10_000 });
+      await page.locator('[data-testid="homepage-canonical-controls"]').waitFor({ timeout: 10_000 });
+      await page.locator('[data-testid="homepage-canonical-source-controls"]').waitFor({ timeout: 10_000 });
+      await page.locator('[data-testid="signal-tuning-main-tabs"]').waitFor({ timeout: 10_000 });
+      await page.locator('[data-testid="homepage-sinr-parameters"]').waitFor({ timeout: 10_000 });
+      await page.locator('.leo-shell-right').waitFor({ timeout: 10_000 });
 
-      // (1) The SINR-live left default is the light read-only orientation card.
-      await page.locator('[data-testid="sinr-live-orientation-card"]').waitFor({ timeout: 5000 });
+      // (1) The active homepage rail owns the source selector, canonical tabs,
+      // and read-only SINR inputs. Retired left-shell/policy controls stay absent.
       assert.equal(
-        await page.locator('[data-testid="signal-tuning-drawer-handle"]').isVisible(),
-        false,
-        'the retired collapsed tuning handle must not appear in the default left rail (the tuner moved to the ⚙ Advanced drawer)',
+        await page.locator('.leo-shell-left .leo-sidebar-tab-shell').count(),
+        0,
+        'the homepage must not remount the retired left sidebar tab shell',
+      );
+      assert.equal(
+        await page.locator('[data-testid="signal-tuning-drawer-handle"]').count(),
+        0,
+        'the retired collapsed tuning handle must not appear in the homepage rail',
+      );
+      assert.equal(
+        await page.locator('[data-testid="handover-policy-controls"]').count(),
+        0,
+        'legacy handover-policy controls must not appear in the canonical homepage rail',
+      );
+      assert.equal(
+        await page.locator('[data-testid="signal-tuning-main-tabs"] [role="tab"]').count(),
+        4,
+        'the canonical homepage rail must expose exactly four analysis tabs',
+      );
+      assert.equal(
+        await page.locator('#signal-tuning-main-tab-sinr').getAttribute('aria-selected'),
+        'true',
+        'SINR must be the default canonical homepage tab',
       );
 
       // (2) Layout sanity: the left slot, canvas, and right panel keep usable widths.
       const canvasSlot = await measureBox(page, '.leo-shell-canvas', 'canvas slot');
       const leftSlot = await measureBox(page, '.leo-shell-left', 'left slot');
-      const rightPanel = await measureBox(page, '.leo-shell-right .leo-info-panel', 'right panel');
+      const rightPanel = await measureBox(page, '.leo-shell-right', 'right result rail');
       assert.ok(canvasSlot.width >= 280, `canvas slot width collapsed: ${canvasSlot.width}`);
       assert.ok(canvasSlot.height >= 300, `canvas slot height collapsed: ${canvasSlot.height}`);
       assert.ok(leftSlot.width >= 280, `left slot width collapsed: ${leftSlot.width}`);
       assert.ok(rightPanel.width >= 320, `right panel width regressed: ${rightPanel.width}`);
 
       // (3) Durable invariant: clicking the left panel must not leak into the canvas.
-      const leftPanel = await measureBox(page, '.leo-shell-left .leo-sidebar-tab-shell', 'left panel');
-      await assertClickDoesNotHitCanvas(page, leftPanel, 'left summary panel');
+      const leftPanel = await measureBox(page, '[data-testid="homepage-canonical-controls"]', 'canonical tuning rail');
+      await assertClickDoesNotHitCanvas(page, leftPanel, 'canonical tuning rail');
 
       // (4) Durable invariant: the canvas still rotates on drag.
       const dragBefore = await screenshotCanvasHash(page);
@@ -125,30 +147,19 @@ async function main(): Promise<void> {
       const dragAfter = await screenshotCanvasHash(page);
       assert.notEqual(dragBefore, dragAfter, 'dragging inside the canvas did not change the frame; OrbitControls may not be receiving pointer events');
 
-      // (5) The relocated tuners live in the non-modal ⚙ Advanced drawer.
-      await page.locator('[data-testid="sinr-live-display-trigger"]').click();
-      await page.locator('[data-testid="sinr-live-display-drawer"]').waitFor({ timeout: 5000 });
-      // Display & camera section is default-open.
-      await page.locator('[data-testid="beam-density-control"]').waitFor({ timeout: 5000 });
-      // Expand the relocated SINR-formula section.
-      await page.locator('[data-testid="sinr-live-advanced-formula"] > summary').click();
-      await page.locator('[data-testid="sinr-formula-page"]').waitFor({ timeout: 5000 });
-      // Expand the relocated handover-policy section.
-      await page.locator('[data-testid="sinr-live-advanced-handover"] > summary').click();
-      await page.locator('[data-testid="handover-policy-controls"]').waitFor({ timeout: 5000 });
-
-      // (6) The non-modal drawer panel still does not leak clicks into the canvas.
-      const drawerBox = await measureBox(page, '[data-testid="sinr-live-display-drawer"]', 'advanced drawer');
-      await assertClickDoesNotHitCanvas(page, drawerBox, 'advanced drawer panel');
-
-      // (7) The disclosure closes on Escape.
-      await page.keyboard.press('Escape');
-      await page.locator('[data-testid="sinr-live-display-drawer"]').waitFor({ state: 'detached', timeout: 5000 });
+      // (5) Switching the canonical rail to editable-input tabs keeps the same
+      // source/parameter surface and exposes the expected page structures.
+      await page.locator('#signal-tuning-main-tab-power').click();
+      await page.locator('[data-testid="power-canonical-page"]').waitFor({ timeout: 5000 });
+      await page.locator('#signal-tuning-main-tab-throughput').click();
+      await page.locator('[data-testid="throughput-canonical-page"]').waitFor({ timeout: 5000 });
+      await page.locator('#signal-tuning-main-tab-sinr').click();
+      await page.locator('[data-testid="homepage-sinr-parameters"]').waitFor({ timeout: 5000 });
 
       await mkdir(dirname(CHECKPOINT_PATH), { recursive: true });
       await page.screenshot({ path: CHECKPOINT_PATH, fullPage: true });
 
-      console.log('Visual Clarity Phase 4B tuning-drawer (G1-LEFT-DEFAULT) validation passed.');
+      console.log('Visual Clarity Phase 4B canonical tuning-rail validation passed.');
       console.log(JSON.stringify({
         appUrl,
         canvasSlot,

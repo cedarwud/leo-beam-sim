@@ -46,14 +46,11 @@ import {
   applyHandoverPolicyTuning,
   createHandoverPolicyTuningState,
   getHandoverPolicyResetKey,
-  hasHandoverPolicyOverrides,
-  sameHandoverPolicyTuning,
   type HandoverPolicyTuningState,
 } from './handoverPolicyTuning';
 import {
   applySignalTuning,
   createSignalTuningState,
-  getEnergyLedgerSignalKey,
   getSignalTuningEvidenceKey,
   getSignalTuningResetKey,
   hasSignalTuningOverrides,
@@ -84,9 +81,12 @@ import {
   type HandoverRailEvent,
 } from './ui/HandoverEventRail';
 import { InfoPanel } from './ui/InfoPanel';
-import type { ClassroomEnergyCaptureBlockReason } from './ui/info-panel/ClassroomEnergyComparisonCard';
 import { SidebarTabShell } from './ui/SidebarTabShell';
-import { SignalTuningPanel } from './ui/SignalTuningPanel';
+import { HomepageCanonicalAnalysis } from './ui/signal-tuning/HomepageCanonicalAnalysis';
+import { HomepageCanonicalControls } from './ui/signal-tuning/HomepageCanonicalControls';
+import { useHomepageCanonicalAnalysis } from './ui/signal-tuning/useHomepageCanonicalAnalysis';
+import type { MainTabKey } from './ui/signal-tuning/types';
+import type { SimulatorTab } from './simulator/types';
 import { SceneTopologyPanel } from './ui/SceneTopologyPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
 import { ReplayArmToggle, type ReplayArm } from './ui/ReplayArmToggle';
@@ -113,7 +113,6 @@ import type {
   TrainingRunMetadata,
   TrainingServiceManifest,
 } from './modqn/training-trigger/types';
-import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import { HeuristicNotPaperBanner } from './ui/HeuristicNotPaperBanner';
 import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
@@ -133,37 +132,6 @@ import { ModqnViewToggle } from './ui/ModqnViewToggle';
 // whole shell so the left tuners, the right readout and every HelpPopover
 // share one locale; the toggle itself lives in the top-right quick-control row.
 import { LocaleProvider, LocaleToggle } from './i18n';
-// Teaching energy/EE model (CONTRACT.md §4). SIMULATED TEACHING only — these
-// are pure functions; App owns the ledger and assembles the single readout the
-// right-hand panel renders.
-import {
-  CLASSROOM_BASELINE_TX_POWER_DBM,
-  CLASSROOM_CANDIDATE_TX_POWER_DBM,
-  DEFAULT_ENERGY_TUNING,
-  DEFAULT_LOW_SINR_THRESHOLD_DB,
-  DEFAULT_MAX_SAMPLE_GAP_SEC,
-  EMPTY_ENERGY_LEDGER,
-  advanceEnergyLedger,
-  computeHandoverEnergyJ,
-  computeLowSinrRatioPct,
-  computePowerTrain,
-  computeRunEeMbitPerJ,
-  computeTeachingThroughputMbps,
-  computeTotalEnergyJ,
-  compareClassroomEnergyArms,
-  getEnergyLedgerResetKey,
-  resolveEnergyPerHandoverJ,
-  type EnergyLedgerState,
-  type EnergyTuningState,
-  type ClassroomEnergyComparisonArm,
-  type ClassroomEnergyComparisonArmRole,
-  type ClassroomEnergyComparisonResult,
-  type TeachingEnergyReadout,
-  type TeachingT3FixedComparisonReadout,
-  type ExperimentRecord,
-  type ExperimentRecordFieldMap,
-  type ExperimentTaskId,
-} from './teaching';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { deriveWindowReplayCue } from './showcase/windowReplayCue';
@@ -281,173 +249,6 @@ const REPLAY_ARM_WINDOWS: Readonly<Record<ReplayArm, string>> = {
 };
 const REPLAY_ARM_DEFAULT: ReplayArm = 'a2';
 
-export interface ClassroomEnergyCaptureInput {
-  readonly role: ClassroomEnergyComparisonArmRole;
-  readonly expectedTxPowerDbm: number;
-  readonly txPowerDbm: number;
-  readonly liveSinrScene: boolean;
-  readonly paused: boolean;
-  readonly contextDrifted: boolean;
-  readonly currentContextKey: string;
-  readonly lockedContextKey: string | null;
-  readonly windowStartSimTimeSec: number | null;
-  readonly windowEndSimTimeSec: number;
-  readonly readout: TeachingEnergyReadout | null;
-  readonly servingLoad: number | null;
-  readonly servingSinrDb: number | null;
-  readonly serviceStatus: string | null;
-  readonly serviceIdentity: string | null;
-  readonly producerStatus: string | null;
-  readonly absenceReason: string | null;
-}
-
-/**
- * Context drift is meaningful only after a measurement window has been locked.
- * During app boot the scene/profile/service context can settle across several
- * frames; treating that initialization as a learner edit leaves a fresh T5
- * permanently blocked before the first sample exists.
- */
-export function shouldMarkClassroomEnergyContextDrift(
-  hasLockedMeasurementWindow: boolean,
-  previousContextKey: string | null,
-  currentContextKey: string,
-): boolean {
-  return hasLockedMeasurementWindow
-    && previousContextKey !== null
-    && previousContextKey !== currentContextKey;
-}
-
-function isFiniteNonNegative(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
-}
-
-export function getClassroomEnergyCaptureBlockReason(
-  input: ClassroomEnergyCaptureInput,
-): ClassroomEnergyCaptureBlockReason | null {
-  if (!input.liveSinrScene) return 'not-live-sinr-scene';
-  if (!input.paused) return 'timeline-running';
-  if (!Number.isFinite(input.txPowerDbm) || input.txPowerDbm !== input.expectedTxPowerDbm) return 'wrong-power';
-  if (
-    input.contextDrifted
-    || input.lockedContextKey === null
-    || input.lockedContextKey.length === 0
-    || input.lockedContextKey !== input.currentContextKey
-  ) return 'context-mismatch';
-  if (
-    !isFiniteNonNegative(input.windowStartSimTimeSec)
-    || !Number.isFinite(input.windowEndSimTimeSec)
-    || input.windowEndSimTimeSec <= input.windowStartSimTimeSec
-  ) return 'invalid-window';
-
-  const readout = input.readout;
-  if (
-    readout === null
-    || !isFiniteNonNegative(readout.elapsedSec)
-    || !isFiniteNonNegative(readout.cumulativeDataMbit)
-    || !isFiniteNonNegative(readout.totalEnergyJ)
-    || !isFiniteNonNegative(readout.lowSinrRatioPct)
-    || !isFiniteNonNegative(readout.runEeMbitPerJ)
-    || !Number.isFinite(readout.lowSinrThresholdDb)
-    || !isFiniteNonNegative(readout.handoverCount)
-  ) return 'missing-readout';
-  if (
-    !isFiniteNonNegative(input.servingLoad)
-    || (input.servingSinrDb !== null && !Number.isFinite(input.servingSinrDb))
-    || !Number.isFinite(readout.throughputMbps ?? NaN)
-    || input.serviceStatus === null
-    || input.serviceStatus.length === 0
-    || input.serviceIdentity === null
-    || input.serviceIdentity.length === 0
-    || input.producerStatus === null
-    || input.producerStatus.length === 0
-  ) return 'missing-readout';
-
-  return null;
-}
-
-export function freezeClassroomEnergyArm(
-  input: ClassroomEnergyCaptureInput,
-): ClassroomEnergyComparisonArm | null {
-  if (getClassroomEnergyCaptureBlockReason(input) !== null || input.readout === null) return null;
-  const readout = input.readout;
-  return Object.freeze({
-    role: input.role,
-    txPowerDbm: input.txPowerDbm,
-    windowStartSimTimeSec: input.windowStartSimTimeSec as number,
-    windowEndSimTimeSec: input.windowEndSimTimeSec,
-    elapsedSec: readout.elapsedSec,
-    comparisonContextKey: input.currentContextKey,
-    cumulativeDataMbit: readout.cumulativeDataMbit,
-    totalEnergyJ: readout.totalEnergyJ as number,
-    lowSinrRatioPct: readout.lowSinrRatioPct as number,
-    runEeMbitPerJ: readout.runEeMbitPerJ as number,
-    lowSinrThresholdDb: readout.lowSinrThresholdDb as number,
-    handoverCount: readout.handoverCount as number,
-    servingLoad: input.servingLoad as number,
-    servingSinrDb: input.servingSinrDb,
-    throughputMbps: readout.throughputMbps as number,
-    serviceStatus: input.serviceStatus as string,
-    serviceIdentity: input.serviceIdentity as string,
-    producerStatus: input.producerStatus as string,
-    absenceReason: input.absenceReason,
-  });
-}
-
-function finiteOrNull(value: number | null | undefined): number | null {
-  return value !== null && value !== undefined && Number.isFinite(value) ? value : null;
-}
-
-function energyTuningRecordMap(tuning: EnergyTuningState): ExperimentRecordFieldMap {
-  return {
-    paEfficiency: finiteOrNull(tuning.paEfficiency),
-    circuitPowerW: finiteOrNull(tuning.circuitPowerW),
-    energyPerHandoverJ: finiteOrNull(tuning.energyPerHandoverJ),
-  };
-}
-
-function classroomArmRecordMap(arm: ClassroomEnergyComparisonArm | null): ExperimentRecordFieldMap | null {
-  if (arm === null) return null;
-  return {
-    role: arm.role,
-    txPowerDbm: finiteOrNull(arm.txPowerDbm),
-    windowStartSimTimeSec: finiteOrNull(arm.windowStartSimTimeSec),
-    windowEndSimTimeSec: finiteOrNull(arm.windowEndSimTimeSec),
-    elapsedSec: finiteOrNull(arm.elapsedSec),
-    cumulativeDataMbit: finiteOrNull(arm.cumulativeDataMbit),
-    totalEnergyJ: finiteOrNull(arm.totalEnergyJ),
-    lowSinrRatioPct: finiteOrNull(arm.lowSinrRatioPct),
-    runEeMbitPerJ: finiteOrNull(arm.runEeMbitPerJ),
-    lowSinrThresholdDb: finiteOrNull(arm.lowSinrThresholdDb),
-    handoverCount: finiteOrNull(arm.handoverCount),
-    servingLoad: finiteOrNull(arm.servingLoad),
-    servingSinrDb: finiteOrNull(arm.servingSinrDb),
-    throughputMbps: finiteOrNull(arm.throughputMbps),
-    serviceStatus: arm.serviceStatus,
-    serviceIdentity: arm.serviceIdentity,
-    producerStatus: arm.producerStatus,
-    absenceReason: arm.absenceReason,
-  };
-}
-
-function classroomComparisonRecordMap(result: ClassroomEnergyComparisonResult | null): ExperimentRecordFieldMap | null {
-  if (result === null) return null;
-  return {
-    comparable: result.comparable,
-    dataRetentionRatio: finiteOrNull(result.dataRetentionRatio),
-    energySavingPct: finiteOrNull(result.energySavingPct),
-    lowSinrDeltaPp: finiteOrNull(result.lowSinrDeltaPp),
-    runEeRatio: finiteOrNull(result.runEeRatio),
-    serviceQualified: result.serviceQualified,
-    qualified: result.qualified,
-    reasonCode: result.reasonCode,
-    reasonCodes: result.reasonCodes.join('|'),
-    dataRetentionGate: result.gates.dataRetention,
-    lowSinrGate: result.gates.lowSinr,
-    runEeGate: result.gates.runEe,
-    energySavingGate: result.gates.energySaving,
-  };
-}
-
 export function App() {
   const [sceneSource, setSceneSource] = useState<SceneSourceMode>(() => readSceneSourceFromUrl());
   const [showcaseArtifact, setShowcaseArtifact] = useState<VisualShowcaseArtifact | null>(null);
@@ -467,22 +268,6 @@ export function App() {
     readonly startedAtMs: number;
   } | null>(null);
   const manualHandoverWasPausedRef = useRef(false);
-
-  // Keep one immutable record per task in this browser session. The selector is
-  // a task viewer as well as the next-capture target; switching back to T1 must
-  // not erase the T1 record that was already captured. This is intentionally
-  // session-local — JSON/CSV downloads remain the durable handoff.
-  const [experimentRecordsByTask, setExperimentRecordsByTask] = useState<
-    Partial<Record<ExperimentTaskId, ExperimentRecord>>
-  >({});
-  const [selectedExperimentTask, setSelectedExperimentTask] = useState<ExperimentTaskId>('T1');
-  const experimentRecord = experimentRecordsByTask[selectedExperimentTask] ?? null;
-  const experimentRunIdRef = useRef<string | null>(null);
-  const experimentCaptureIndexRef = useRef(0);
-  const lastExperimentChangedControlsRef = useRef<ExperimentRecordFieldMap>({});
-  const lastEnergyActionRef = useRef<string | null>(null);
-  const lastEnergyBeforeRef = useRef<ExperimentRecordFieldMap | null>(null);
-  const lastEnergyAfterRef = useRef<ExperimentRecordFieldMap | null>(null);
 
   const currentTimeSecRef = useRef(0);
   // ITEM #C live Director focus: the absolute live sim cursor (set in
@@ -565,6 +350,13 @@ export function App() {
   );
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
+  const [homepageCanonicalTab, setHomepageCanonicalTab] = useState<MainTabKey>('sinr');
+  const homepageCanonicalAnalysis = useHomepageCanonicalAnalysis();
+  const homepageCanonicalResultTab: SimulatorTab = homepageCanonicalTab === 'energy'
+    ? 'ee'
+    : homepageCanonicalTab === 'power' || homepageCanonicalTab === 'throughput'
+      ? homepageCanonicalTab
+      : 'sinr';
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
   const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
   const [userTrainedLoadError, setUserTrainedLoadError] = useState<string | null>(null);
@@ -629,10 +421,6 @@ export function App() {
   }, [appMode, camera]);
   const baseProfile = useMemo(() => loadProfile(selectedProfileId), [selectedProfileId]);
   const [signalTuning, setSignalTuning] = useState<SignalTuningState>(() => createSignalTuningState(baseProfile));
-  // Teaching-only power-train knobs (eta_PA, P_circuit). They feed the teaching
-  // energy readout exclusively — they never enter the profile, the scene, or the
-  // SINR link budget, so changing them cannot move a beam or a SINR value.
-  const [energyTuning, setEnergyTuning] = useState<EnergyTuningState>(DEFAULT_ENERGY_TUNING);
   const [sceneTopology, setSceneTopology] = useState<SceneTopologyState>(() => readSceneTopologyOverrides());
   const [sceneVisualScale, setSceneVisualScale] = useState<SceneVisualScaleState>(() => readSceneVisualScaleOverrides());
   const [handoverPolicyState, setHandoverPolicyState] = useState<HandoverPolicyRuntimeState>(() => {
@@ -648,9 +436,6 @@ export function App() {
     () => createHandoverPolicyTuningState(baseProfile),
     [baseProfile],
   );
-  const handoverPolicyDraft = handoverPolicyState.profileId === baseProfile.id
-    ? handoverPolicyState.draft
-    : handoverPolicyDefaults;
   const appliedHandoverPolicy = handoverPolicyState.profileId === baseProfile.id
     ? handoverPolicyState.applied
     : handoverPolicyDefaults;
@@ -710,18 +495,6 @@ export function App() {
     () => getSceneVisualScaleResetKey(sceneVisualScale),
     [sceneVisualScale],
   );
-  const hasHandoverAppliedOverrides = useMemo(
-    () => hasHandoverPolicyOverrides(baseProfile, appliedHandoverPolicy),
-    [baseProfile, appliedHandoverPolicy],
-  );
-  const hasHandoverDraftChanges = useMemo(
-    () => !sameHandoverPolicyTuning(handoverPolicyDraft, appliedHandoverPolicy),
-    [handoverPolicyDraft, appliedHandoverPolicy],
-  );
-  const hasHandoverResetTarget = useMemo(
-    () => hasHandoverAppliedOverrides || hasHandoverPolicyOverrides(baseProfile, handoverPolicyDraft),
-    [baseProfile, handoverPolicyDraft, hasHandoverAppliedOverrides],
-  );
   // Both keys read the SAME `activeSceneTopology` the profile does — otherwise a
   // field that is allowed through to the profile (beamCountPerSatellite) could
   // change the sim without restarting it / without re-stamping the evidence key.
@@ -749,66 +522,6 @@ export function App() {
   const handoverResetKey = useMemo(
     () => `${handoverMode}:${handoverPolicyVersion}:${getHandoverPolicyResetKey(appliedHandoverPolicy)}`,
     [appliedHandoverPolicy, handoverMode, handoverPolicyVersion],
-  );
-  // Classroom A/B context: transmit power is the one intentional arm change,
-  // so normalize only that field before reusing the existing signal serializer.
-  // Every other signal, topology, energy, handover, profile and training axis is
-  // part of the context lock. The lock is a comparison guard, not a second
-  // ledger-reset formula.
-  const classroomComparisonSignalKey = useMemo(
-    () => getEnergyLedgerSignalKey({ ...signalTuning, maxTxPowerDbm: 0 }),
-    [signalTuning],
-  );
-  const classroomComparisonTopologyKey = getSceneTopologyResetKey(activeSceneTopology);
-  const classroomComparisonEnergyKey = useMemo(
-    () => getEnergyLedgerResetKey(
-      `${classroomComparisonSignalKey}|${classroomComparisonTopologyKey}`,
-      energyTuning,
-    ),
-    [classroomComparisonSignalKey, classroomComparisonTopologyKey, energyTuning],
-  );
-  const classroomTrainingContextKey = useMemo(() => {
-    const trainingAxes = selectedTrainingEnvAxes === undefined
-      ? null
-      : {
-        ...selectedTrainingEnvAxes,
-        // Training tx power is represented by the live signal knob for this A/B
-        // bridge. Keep the rest of the service axes in the context lock.
-        channel: {
-          ...selectedTrainingEnvAxes.channel,
-          txPowerW: 'excluded-from-classroom-context',
-        },
-      };
-    return JSON.stringify({
-      axes: trainingAxes,
-      seedTriplet: selectedTrainingSeedTriplet ?? null,
-      jobId: selectedUserTrainedJobId,
-    });
-  }, [selectedTrainingEnvAxes, selectedTrainingSeedTriplet, selectedUserTrainedJobId]);
-  const classroomComparisonContextKey = useMemo(
-    () => [
-      `scene:${sceneSource}:${sceneLane}:${appMode}`,
-      `profile:${baseProfile.id}:${effectiveProfile.id}`,
-      `signal:${classroomComparisonSignalKey}`,
-      `topology:${classroomComparisonTopologyKey}`,
-      `energy:${classroomComparisonEnergyKey}`,
-      `handover:${handoverResetKey}`,
-      `training:${classroomTrainingContextKey}`,
-      `service:${bundleProvenanceKind}`,
-    ].join('|'),
-    [
-      appMode,
-      baseProfile.id,
-      bundleProvenanceKind,
-      classroomComparisonEnergyKey,
-      classroomComparisonSignalKey,
-      classroomComparisonTopologyKey,
-      classroomTrainingContextKey,
-      effectiveProfile.id,
-      handoverResetKey,
-      sceneLane,
-      sceneSource,
-    ],
   );
   // Memoize recommendation to prevent recalculating on every render,
   // but this still runs during the first render. 
@@ -840,6 +553,8 @@ export function App() {
   // run WITHOUT a seek, because the seek's rebase() clears prevUeServing (cold-attach →
   // no HO) and wipes recentHandovers (no pulse). Decoupling the two is the Bug B fix (C1).
   const [primaryUeJogKm, setPrimaryUeJogKm] = useState<{ east: number; north: number }>({ east: 0, north: 0 });
+  // Generic analysis-window reset. Timeline seeks invalidate accumulated
+  // canonical EE evidence even though the retired classroom ledger is gone.
   const [measurementResetEpoch, setMeasurementResetEpoch] = useState(0);
   const runtime = useMemo(() => buildAppRuntimeConfig({
     appMode,
@@ -943,537 +658,9 @@ export function App() {
   ]);
   const [staleFormulaEvidenceKey, setStaleFormulaEvidenceKey] = useState<string | null>(null);
   const playback = usePlaybackControls(simState, camera.directorFocusActive);
-
-  // ---------------------------------------------------------------------------
-  // Teaching energy readout (CONTRACT.md §1/§4) — SIMULATED TEACHING, DERIVED.
-  //
-  // The running Sigma-Mbit / Sigma-J ledger lives in a ref, not in state: it is
-  // advanced once per published `simState`, and `useSimStatePublisher` already
-  // throttles those publishes. Putting it in state would add a second render per
-  // published frame for a number that is only ever displayed.
-  //
-  // Re-entrancy: this accumulates during render (inside `useMemo`), which
-  // StrictMode double-invokes and concurrent React may discard and replay. That
-  // is safe here *because the step is idempotent for a repeated sample*:
-  // `advanceEnergyLedger` derives `dt` from `simTimeSec - lastSimTimeSec`, so a
-  // second pass over the same `simState` yields `dt === 0` and adds nothing.
-  // ---------------------------------------------------------------------------
-  const energyLedgerRef = useRef<EnergyLedgerState>(EMPTY_ENERGY_LEDGER);
-  const energyLedgerResetKeyRef = useRef<string | null>(null);
-  // Wall clock of the previous ledger sample, used to bound how far sim time may
-  // legitimately have advanced since then. `useSimStatePublisher` throttles
-  // publishes and the sim clock runs at `effectiveSpeed x` wall, so the sim-time
-  // gap between two published frames is `effectiveSpeed x wallGap` — measured at
-  // 4.6 s at the 5x default and up to 42 s at 20x. Comparing that against a flat
-  // 2 s constant made every ordinary playback step look like a seek and wiped the
-  // window every 1-3 samples, which is why the six cumulative rows read 0.0.
-  const energyLedgerSampleWallMsRef = useRef<number | null>(null);
-  // Any change to the signal parameters OR to the energy knobs invalidates
-  // everything already integrated: energy accumulated under a different Tx power
-  // / bandwidth / eta_PA / P_circuit / per-handover cost describes a different
-  // experiment, and carrying it forward would publish a Sigma that never
-  // happened under any one configuration.
-  //
-  // This key is deliberately NOT `signalResetKey`. That one is the ENGINE-REBUILD
-  // key and covers only the two geometry fields (beamwidth, max steering angle);
-  // reusing it here left the ledger integrating straight across a Tx power,
-  // bandwidth or frequency-reuse change, summing two different experiments into
-  // one Sigma. The converse is just as important and is why the two keys stay
-  // separate: folding Tx power into the engine key would cold-start the whole
-  // simulation on every drag of the Tx power slider. See the note on
-  // `getEnergyLedgerSignalKey` in `src/signalTuning.ts`.
-  const energyLedgerSignalKey = useMemo(
-    () => [
-      getEnergyLedgerSignalKey(signalTuning),
-      getSceneTopologyResetKey(activeSceneTopology),
-    ].join('|'),
-    [activeSceneTopology, signalTuning],
-  );
-  // This is intentionally separate from `elapsedSec`: invalid samples can move
-  // the ledger's last timestamp without contributing elapsed time.
-  const energyLedgerWindowStartSimTimeSecRef = useRef<number | null>(null);
-  const classroomComparisonContextKeyRef = useRef<string | null>(null);
-  const classroomComparisonContextDriftedRef = useRef(false);
-  const energyLedgerSeekPendingRef = useRef(false);
-  const [teachingEnergyExplicitEpoch, setTeachingEnergyExplicitEpoch] = useState(0);
-  const [classroomBaselineArm, setClassroomBaselineArm] = useState<ClassroomEnergyComparisonArm | null>(null);
-  const [classroomCandidateArm, setClassroomCandidateArm] = useState<ClassroomEnergyComparisonArm | null>(null);
-  const clearEnergyLedgerWindow = useCallback((waitForLiveSeek: boolean) => {
-    energyLedgerRef.current = EMPTY_ENERGY_LEDGER;
-    energyLedgerSampleWallMsRef.current = null;
-    energyLedgerWindowStartSimTimeSecRef.current = null;
-    classroomComparisonContextKeyRef.current = null;
-    classroomComparisonContextDriftedRef.current = false;
-    energyLedgerSeekPendingRef.current = waitForLiveSeek;
-    setTeachingEnergyExplicitEpoch(e => e + 1);
+  const resetAnalysisWindow = useCallback(() => {
+    setMeasurementResetEpoch(epoch => epoch + 1);
   }, []);
-  const handleTeachingEnergyReset = useCallback(() => {
-    const currentParams = energyTuningRecordMap(energyTuning);
-    lastEnergyActionRef.current = 'restart-measurement';
-    lastEnergyBeforeRef.current = currentParams;
-    lastEnergyAfterRef.current = currentParams;
-    clearEnergyLedgerWindow(false);
-    setMeasurementResetEpoch(e => e + 1);
-  }, [clearEnergyLedgerWindow, energyTuning]);
-  const energyLedgerResetKey = getEnergyLedgerResetKey(energyLedgerSignalKey, energyTuning);
-
-  // Before the first T5 arm exists, a context change cannot make a comparison
-  // stale. Re-anchor the empty classroom run automatically instead of asking
-  // a learner to diagnose a boot-time/profile-load transition and click a
-  // recovery button before the first capture. Once either arm is frozen, this
-  // path is disabled and context drift remains a hard capture block.
-  useEffect(() => {
-    if (
-      classroomBaselineArm === null
-      && classroomCandidateArm === null
-      && classroomComparisonContextDriftedRef.current
-    ) {
-      clearEnergyLedgerWindow(false);
-    }
-  }, [
-    classroomBaselineArm,
-    classroomCandidateArm,
-    classroomComparisonContextKey,
-    clearEnergyLedgerWindow,
-  ]);
-
-  const teachingEnergy = useMemo<TeachingEnergyReadout>(() => {
-    const previousContextKey = classroomComparisonContextKeyRef.current;
-    const hasLockedMeasurementWindow = energyLedgerWindowStartSimTimeSecRef.current !== null;
-    if (shouldMarkClassroomEnergyContextDrift(
-      hasLockedMeasurementWindow,
-      previousContextKey,
-      classroomComparisonContextKey,
-    )) {
-      classroomComparisonContextDriftedRef.current = true;
-    }
-    if (energyLedgerResetKeyRef.current !== energyLedgerResetKey) {
-      energyLedgerResetKeyRef.current = energyLedgerResetKey;
-      energyLedgerRef.current = EMPTY_ENERGY_LEDGER;
-      energyLedgerWindowStartSimTimeSecRef.current = null;
-      if (!hasLockedMeasurementWindow || previousContextKey === null || previousContextKey === classroomComparisonContextKey) {
-        classroomComparisonContextKeyRef.current = null;
-        classroomComparisonContextDriftedRef.current = false;
-      } else {
-        classroomComparisonContextDriftedRef.current = true;
-      }
-    }
-
-    const powerTrain = computePowerTrain(signalTuning.maxTxPowerDbm, energyTuning);
-
-    // Only -Infinity is the explicit no-service state. NaN and +Infinity mean
-    // the upstream SINR expression is unusable, so they fail closed to null and
-    // never enter the measurement ledger as an honest-looking zero-throughput
-    // sample.
-    const servingSinrDb = simState.sinrDb;
-    const isNoServiceSinr = servingSinrDb === Number.NEGATIVE_INFINITY;
-    const isFiniteSinr = Number.isFinite(servingSinrDb);
-    const throughputMbps = isNoServiceSinr || isFiniteSinr
-      ? computeTeachingThroughputMbps({
-        sinrDb: servingSinrDb,
-        bandwidthMHz: signalTuning.bandwidthMHz,
-        frequencyReuse: signalTuning.frequencyReuse,
-      })
-      : null;
-
-    // `null` here means the per-handover cost knob itself is broken (non-finite
-    // or negative). Every handover-derived term then fails closed to `null` —
-    // an em dash — rather than silently charging 0 J per handover, which would
-    // read as "handovers are free" instead of "we cannot tell".
-    const perHandoverJ = resolveEnergyPerHandoverJ(energyTuning);
-
-    // `simState.hoCount` is the upstream CUMULATIVE counter
-    // (`hoManager.eventLog.length`), not a per-step increment. The ledger
-    // differences it against its own stored baseline, which is what makes the
-    // tally self-healing across the publisher's throttled frames — computing a
-    // delta here instead would drop every event that fell between two
-    // published frames.
-    // How far could sim time legitimately have moved since the previous sample?
-    // `wallGap x speed` is the honest bound; the +1 s and the 1.5 factor absorb a
-    // stalled rAF and publish jitter, and the DEFAULT floor keeps the very first
-    // sample (no wall baseline yet) behaving as before. A genuine seek moves sim
-    // time far beyond anything wall time x speed can explain, so it is still
-    // caught and still wipes the window.
-    const seekPending = energyLedgerSeekPendingRef.current;
-    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
-    const prevWallMs = energyLedgerSampleWallMsRef.current;
-    if (!seekPending) energyLedgerSampleWallMsRef.current = nowMs;
-    const wallGapSec = prevWallMs === null ? 1 : Math.max(0, (nowMs - prevWallMs) / 1000);
-    const maxSampleGapSec = Math.max(
-      DEFAULT_MAX_SAMPLE_GAP_SEC,
-      (wallGapSec + 1) * Math.max(1, playback.effectiveSpeed) * 1.5,
-    );
-
-    const ledger = seekPending
-      ? EMPTY_ENERGY_LEDGER
-      : advanceEnergyLedger(energyLedgerRef.current, {
-        simTimeSec: simState.simTimeSec,
-        throughputMbps,
-        totalPowerW: powerTrain?.totalPowerW ?? null,
-        cumulativeHandoverCount: simState.hoCount,
-        maxSampleGapSec,
-        // Quality statistics require a finite SINR. The -Infinity no-service
-        // sentinel is represented by the absence of a usable quality sample,
-        // while NaN/+Infinity fail closed in the same way.
-        servingSinrDb: isFiniteSinr ? servingSinrDb : null,
-        lowSinrThresholdDb: DEFAULT_LOW_SINR_THRESHOLD_DB,
-      });
-    energyLedgerRef.current = ledger;
-    if (ledger === EMPTY_ENERGY_LEDGER) {
-      energyLedgerSampleWallMsRef.current = null;
-      if (!seekPending && !classroomComparisonContextDriftedRef.current) {
-        energyLedgerWindowStartSimTimeSecRef.current = null;
-        classroomComparisonContextKeyRef.current = null;
-      }
-    } else if (!seekPending && energyLedgerWindowStartSimTimeSecRef.current === null && ledger.lastSimTimeSec !== null) {
-      energyLedgerWindowStartSimTimeSecRef.current = simState.simTimeSec;
-      if (classroomComparisonContextKeyRef.current === null) {
-        classroomComparisonContextKeyRef.current = classroomComparisonContextKey;
-      }
-    }
-
-    const t3BandwidthMHz = Number.isFinite(signalTuning.bandwidthMHz) && signalTuning.bandwidthMHz > 0
-      ? signalTuning.bandwidthMHz
-      : null;
-    const t3FrequencyReuse = Number.isInteger(signalTuning.frequencyReuse) && signalTuning.frequencyReuse > 0
-      ? signalTuning.frequencyReuse
-      : null;
-    const t3AllocatedBandwidthMHz = t3BandwidthMHz !== null && t3FrequencyReuse !== null
-      ? t3BandwidthMHz / t3FrequencyReuse
-      : null;
-    const t3ThroughputMbps = t3BandwidthMHz !== null && t3FrequencyReuse !== null
-      ? computeTeachingThroughputMbps({
-        sinrDb: 0,
-        bandwidthMHz: t3BandwidthMHz,
-        frequencyReuse: t3FrequencyReuse,
-      })
-      : null;
-    const t3FixedComparison: TeachingT3FixedComparisonReadout = {
-      sourceKind: 'deterministic-fixture',
-      assignedBeamLoad: 1,
-      sinrDb: 0,
-      bandwidthMHz: t3BandwidthMHz,
-      frequencyReuse: t3FrequencyReuse,
-      allocatedBandwidthMHz: t3AllocatedBandwidthMHz,
-      throughputMbps: t3ThroughputMbps,
-      dataMbit: t3ThroughputMbps !== null && ledger.elapsedSec > 0
-        ? t3ThroughputMbps * ledger.elapsedSec
-        : null,
-      serviceStatus: 'served',
-      serviceIdentity: 't3-fixed-u1-sinr0',
-      producerStatus: t3ThroughputMbps !== null ? 'valid' : 'pending',
-      absenceReason: t3ThroughputMbps === null ? 'invalid-B-or-K' : null,
-    };
-
-    return {
-      powerTrain,
-      throughputMbps,
-      cumulativeDataMbit: ledger.cumulativeDataMbit,
-      cumulativeEnergyJ: ledger.cumulativeEnergyJ,
-      elapsedSec: ledger.elapsedSec,
-      runEeMbitPerJ: perHandoverJ === null ? null : computeRunEeMbitPerJ(ledger, perHandoverJ),
-      handoverEnergyJ: perHandoverJ === null ? null : computeHandoverEnergyJ(ledger, perHandoverJ),
-      // A measured count, including a measured 0 ("no handover inside this
-      // accumulation window"), which the panel renders as 0 rather than a dash.
-      handoverCount: ledger.handoverCount,
-      totalEnergyJ: perHandoverJ === null ? null : computeTotalEnergyJ(ledger, perHandoverJ),
-      lowSinrRatioPct: computeLowSinrRatioPct(ledger),
-      lowSinrThresholdDb: DEFAULT_LOW_SINR_THRESHOLD_DB,
-      t3FixedComparison,
-    };
-  }, [
-    classroomComparisonContextKey,
-    energyLedgerResetKey,
-    energyTuning,
-    playback.effectiveSpeed,
-    signalTuning.bandwidthMHz,
-    signalTuning.frequencyReuse,
-    signalTuning.maxTxPowerDbm,
-    simState,
-    teachingEnergyExplicitEpoch,
-  ]);
-
-  const classroomLiveSinrScene = sceneSource === 'live-sim' && sceneLane === 'sinr-live';
-  const classroomPrimaryUeId = simState.perUePositions?.[0]?.id ?? null;
-  const classroomServingEvidence = useMemo(() => {
-    const primaryUser = classroomPrimaryUeId === null
-      ? null
-      : simState.canonicalEe?.perUserContributions?.find(user => user.ueId === classroomPrimaryUeId) ?? null;
-    const serviceStatus = simState.servingSatId === null ? 'unserved' : 'served';
-    const serviceIdentity = simState.servingSatId === null
-      ? 'unserved'
-      : `${simState.servingSatId}/${simState.servingCellId ?? simState.servingBeamId ?? 'unknown'}`;
-    return {
-      servingLoad: primaryUser?.assignedBeamLoad ?? null,
-      servingSinrDb: Number.isFinite(simState.sinrDb) ? simState.sinrDb : null,
-      serviceStatus,
-      serviceIdentity,
-      producerStatus: simState.canonicalEe?.status ?? 'pending',
-      absenceReason: simState.canonicalEe?.errorCode ?? null,
-    };
-  }, [classroomPrimaryUeId, simState]);
-  const classroomCaptureInput = useCallback((role: ClassroomEnergyComparisonArmRole): ClassroomEnergyCaptureInput => ({
-    role,
-    expectedTxPowerDbm: role === 'baseline'
-      ? CLASSROOM_BASELINE_TX_POWER_DBM
-      : CLASSROOM_CANDIDATE_TX_POWER_DBM,
-    txPowerDbm: signalTuning.maxTxPowerDbm,
-    liveSinrScene: classroomLiveSinrScene,
-    paused: playback.paused,
-    contextDrifted: classroomComparisonContextDriftedRef.current,
-    currentContextKey: classroomComparisonContextKey,
-    lockedContextKey: classroomComparisonContextKeyRef.current,
-    windowStartSimTimeSec: energyLedgerWindowStartSimTimeSecRef.current,
-    windowEndSimTimeSec: simState.simTimeSec,
-    readout: teachingEnergy,
-    ...classroomServingEvidence,
-  }), [
-    classroomServingEvidence,
-    classroomComparisonContextKey,
-    classroomLiveSinrScene,
-    playback.paused,
-    signalTuning.maxTxPowerDbm,
-    simState.simTimeSec,
-    teachingEnergy,
-  ]);
-  const baselineCaptureInput = classroomCaptureInput('baseline');
-  const candidateCaptureInput = classroomCaptureInput('candidate');
-  const baselineCaptureReason = getClassroomEnergyCaptureBlockReason(baselineCaptureInput);
-  const candidateCaptureReason = getClassroomEnergyCaptureBlockReason(candidateCaptureInput);
-  const captureClassroomArm = useCallback((role: ClassroomEnergyComparisonArmRole) => {
-    const input = classroomCaptureInput(role);
-    const arm = freezeClassroomEnergyArm(input);
-    if (arm === null) return;
-    if (role === 'baseline') {
-      setClassroomBaselineArm(arm);
-    } else {
-      setClassroomCandidateArm(arm);
-    }
-  }, [classroomCaptureInput]);
-  const handleCaptureBaseline = useCallback(() => {
-    captureClassroomArm('baseline');
-  }, [captureClassroomArm]);
-  const handleCaptureCandidate = useCallback(() => {
-    captureClassroomArm('candidate');
-  }, [captureClassroomArm]);
-  const handleClearClassroomArms = useCallback(() => {
-    setClassroomBaselineArm(null);
-    setClassroomCandidateArm(null);
-  }, []);
-  const classroomComparison = useMemo<ClassroomEnergyComparisonResult | null>(
-    () => classroomBaselineArm !== null && classroomCandidateArm !== null
-      ? compareClassroomEnergyArms(classroomBaselineArm, classroomCandidateArm)
-      : null,
-    [classroomBaselineArm, classroomCandidateArm],
-  );
-
-  const handleCaptureExperimentRecord = useCallback(() => {
-    const taskId = selectedExperimentTask;
-    const captureIndex = experimentCaptureIndexRef.current + 1;
-    experimentCaptureIndexRef.current = captureIndex;
-    if (experimentRunIdRef.current === null) {
-      experimentRunIdRef.current = `run-${baseProfile.id}-${Date.now()}`;
-    }
-    const runId = experimentRunIdRef.current;
-    const windowEndSec = finiteOrNull(simState.simTimeSec) ?? 0;
-    const windowStartSec = finiteOrNull(energyLedgerWindowStartSimTimeSecRef.current) ?? windowEndSec;
-    const durationSec = Math.max(0, windowEndSec - windowStartSec);
-    const windowId = durationSec > 0
-      ? `${windowStartSec}-${windowEndSec}`
-      : `unformed-${windowEndSec}`;
-    const t3 = teachingEnergy?.t3FixedComparison ?? null;
-    const canonical = simState.canonicalEe ?? null;
-    const sampleWindow = canonical === null
-      ? null
-      : canonical.evaluationSampleCount === 0
-        ? 'baseline'
-        : `${canonical.evaluationSampleCount} samples ${canonical.evaluationWindowStartSec ?? '—'}-${canonical.evaluationWindowEndSec ?? '—'} s`;
-    const currentEnergyParams = energyTuningRecordMap(energyTuning);
-    const t4Before = taskId === 'T4' ? lastEnergyBeforeRef.current : null;
-    const t4After = taskId === 'T4' ? lastEnergyAfterRef.current ?? currentEnergyParams : null;
-    const t5Comparison = classroomComparisonRecordMap(classroomComparison);
-    const t5Status = classroomComparison === null
-      ? null
-      : classroomComparison.qualified === null
-        ? 'WITHHELD'
-        : classroomComparison.qualified
-          ? 'QUALIFIED'
-          : 'NOT-QUALIFIED';
-    const changedControls: ExperimentRecordFieldMap = taskId === 'T3'
-      ? {
-        bandwidthMHz: finiteOrNull(t3?.bandwidthMHz),
-        frequencyReuse: finiteOrNull(t3?.frequencyReuse),
-      }
-      : taskId === 'T4'
-        ? { resetAction: lastEnergyActionRef.current }
-        : taskId === 'T5'
-          ? { maxTxPowerDbm: finiteOrNull(signalTuning.maxTxPowerDbm) }
-        : { ...lastExperimentChangedControlsRef.current };
-    const unchangedControls: ExperimentRecordFieldMap = taskId === 'T3'
-      ? { assignedBeamLoad: 1, sinrDb: 0 }
-      : taskId === 'T5'
-        ? { comparisonContextKey: classroomComparisonContextKey, measurementWindow: windowId }
-        : {};
-
-    const recordWithoutAbsenceReasons = {
-      schemaVersion: 't1-t6-experiment-record-v1' as const,
-      taskId,
-      experimentId: `${taskId}-${runId}-${captureIndex}`,
-      runId,
-      captureIndex,
-      capturedAtIso: new Date().toISOString(),
-      scenarioIdentity: baseProfile.id,
-      profileIdentity: effectiveProfile.id,
-      sceneSource,
-      sceneLane,
-      windowId,
-      windowStartSec,
-      windowEndSec,
-      durationSec,
-      changedInput: taskId === 'T1'
-        ? 'eta_PA / P_circuit'
-        : taskId === 'T2'
-          ? 'eta_PA / P_circuit / e_HO'
-          : taskId === 'T3'
-            ? 'B / K'
-            : taskId === 'T4'
-              ? 'Restart measurement or Restore energy defaults'
-              : taskId === 'T5'
-                ? 'P_t: 50 -> 35 dBm'
-                : 'canonical measurement window',
-      unchangedInputs: taskId === 'T3'
-        ? 'U=1; SINR=0 dB'
-        : taskId === 'T5'
-          ? 'scene/profile/service context and time window'
-          : 'values not named as changed remain as read',
-      changedControls,
-      unchangedControls,
-      units: {
-        rfOutput: 'W',
-        totalPower: 'W',
-        totalEnergy: 'J',
-        throughput: 'Mbit/s',
-        data: 'Mbit',
-        runEe: 'Mbit/J',
-        lowSinr: '%',
-        actualRf: 'W',
-        ratedRf: 'W',
-      },
-      absenceReason: null,
-      interpretation: taskId === 'T3'
-        ? 'Recompute fixed U=1, SINR=0 dB rate from B/K.'
-        : taskId === 'T5'
-          ? 'Read the gated verdict from the two captured actual-data arms.'
-          : taskId === 'T6'
-            ? 'Read canonical producer values; actual and rated RF are separate.'
-            : 'Read the producer values in the selected task section.',
-      tradeoff: taskId === 'T5' ? 'No verdict is inferred when the comparison is withheld.' : null,
-      limitation: taskId === 'T3' ? 'Deterministic fixture; not a live transmit-power claim.' : null,
-
-      paEfficiency: taskId === 'T1' ? finiteOrNull(energyTuning.paEfficiency) : null,
-      rfOutput: taskId === 'T1' ? finiteOrNull(teachingEnergy?.powerTrain?.rfTxPowerW) : null,
-      paInput: taskId === 'T1' ? finiteOrNull(teachingEnergy?.powerTrain?.paInputW) : null,
-      circuitPower: taskId === 'T1' ? finiteOrNull(teachingEnergy?.powerTrain?.circuitPowerW) : null,
-      totalPower: taskId === 'T1' ? finiteOrNull(teachingEnergy?.powerTrain?.totalPowerW) : null,
-      scopeStatus: taskId === 'T1' ? (teachingEnergy?.powerTrain === null ? null : 'teaching-runtime') : null,
-
-      energyKnobs: taskId === 'T2' ? currentEnergyParams : null,
-      paPower: taskId === 'T2' ? finiteOrNull(teachingEnergy?.powerTrain?.paInputW) : null,
-      handoverEnergy: taskId === 'T2' ? finiteOrNull(teachingEnergy?.handoverEnergyJ) : null,
-      handoverCount: taskId === 'T2' ? finiteOrNull(teachingEnergy?.handoverCount) : null,
-      radioEnergy: taskId === 'T2' ? finiteOrNull(teachingEnergy?.cumulativeEnergyJ) : null,
-      totalEnergy: taskId === 'T2' ? finiteOrNull(teachingEnergy?.totalEnergyJ) : null,
-      runEe: taskId === 'T2' ? finiteOrNull(teachingEnergy?.runEeMbitPerJ) : null,
-      lowSinr: taskId === 'T2' ? finiteOrNull(teachingEnergy?.lowSinrRatioPct) : null,
-
-      bandwidth: taskId === 'T3' ? finiteOrNull(t3?.bandwidthMHz) : null,
-      reuseFactor: taskId === 'T3' ? finiteOrNull(t3?.frequencyReuse) : null,
-      load: taskId === 'T3' ? finiteOrNull(t3?.assignedBeamLoad) : null,
-      sinr: taskId === 'T3' ? finiteOrNull(t3?.sinrDb) : null,
-      throughput: taskId === 'T3' ? finiteOrNull(t3?.throughputMbps) : null,
-      data: taskId === 'T3' ? finiteOrNull(t3?.dataMbit) : null,
-      serviceStatus: taskId === 'T3' ? t3?.serviceStatus ?? null : null,
-      servingSatellite: null,
-      servingCell: null,
-      servingBeam: taskId === 'T3' ? t3?.serviceIdentity ?? null : null,
-      sourceKind: taskId === 'T3' ? t3?.sourceKind ?? null : null,
-
-      beforeParams: t4Before,
-      afterParams: t4After,
-      dataT4: taskId === 'T4' ? finiteOrNull(teachingEnergy?.cumulativeDataMbit) : null,
-      energyT4: taskId === 'T4' ? finiteOrNull(teachingEnergy?.totalEnergyJ) : null,
-      windowIdT4: taskId === 'T4' ? windowId : null,
-      simulationClock: taskId === 'T4' ? windowEndSec : null,
-      playbackState: taskId === 'T4' ? (playback.paused ? 'paused' : 'playing') : null,
-      resetAction: taskId === 'T4' ? lastEnergyActionRef.current : null,
-
-      explicitStateStatus: t5Status,
-      baselineArm: taskId === 'T5' ? classroomArmRecordMap(classroomBaselineArm) : null,
-      candidateArm: taskId === 'T5' ? classroomArmRecordMap(classroomCandidateArm) : null,
-      comparison: taskId === 'T5' ? t5Comparison : null,
-
-      producerStatus: taskId === 'T6' ? canonical?.status ?? null : null,
-      systemPower: taskId === 'T6' ? finiteOrNull(canonical?.systemPowerW) : null,
-      instantaneousEe: taskId === 'T6' ? finiteOrNull(canonical?.eeInstMbitPerJ) : null,
-      perUserContributionSum: taskId === 'T6' ? finiteOrNull(canonical?.contributionSumMbitPerJ) : null,
-      ratioOfSums: taskId === 'T6' ? finiteOrNull(canonical?.eeEvalMbitPerJ) : null,
-      sampleWindow: taskId === 'T6' ? sampleWindow : null,
-      actualRf: taskId === 'T6' ? finiteOrNull(canonical?.actualRfOutputW) : null,
-      ratedRf: taskId === 'T6' ? finiteOrNull(canonical?.ratedRfOutputW) : null,
-      serviceBeam: taskId === 'T6' ? canonical?.servingBeamIdentity ?? null : null,
-      frameSimTime: taskId === 'T6' ? finiteOrNull(canonical?.frameSimTimeSec) : null,
-      evaluationData: taskId === 'T6' ? finiteOrNull(canonical?.evaluationDataMbit) : null,
-      evaluationEnergy: taskId === 'T6' ? finiteOrNull(canonical?.evaluationEnergyJ) : null,
-      perUserContributions: taskId === 'T6' && canonical?.perUserContributions !== null && canonical?.perUserContributions !== undefined
-        ? canonical.perUserContributions.map(user => ({
-          ueId: user.ueId,
-          status: user.status ?? null,
-          satId: user.satId ?? null,
-          cellId: finiteOrNull(user.cellId),
-          beamIdentity: user.beamIdentity ?? null,
-          load: finiteOrNull(user.assignedBeamLoad),
-          bandwidthMHz: finiteOrNull(user.allocatedBandwidthMHz),
-          sinrDb: finiteOrNull(user.sinrDb),
-          rateMbps: finiteOrNull(user.rateMbps),
-          contributionMbitPerJ: finiteOrNull(user.contributionMbitPerJ),
-        }))
-        : null,
-    } satisfies Omit<ExperimentRecord, 'fieldAbsenceReasons'>;
-    const fieldAbsenceReasons: Record<string, string> = {};
-    for (const [key, value] of Object.entries(recordWithoutAbsenceReasons)) {
-      if (value === null) {
-        fieldAbsenceReasons[key] = key === 'absenceReason'
-          ? 'no-blocking-condition'
-          : key === 'interpretation' || key === 'tradeoff' || key === 'limitation'
-            ? 'not-applicable-to-selected-task'
-            : `not-selected-or-unavailable-for-${taskId}`;
-      }
-    }
-    const record: ExperimentRecord = {
-      ...recordWithoutAbsenceReasons,
-      fieldAbsenceReasons,
-    };
-    setExperimentRecordsByTask(current => ({
-      ...current,
-      [taskId]: record,
-    }));
-  }, [
-    baseProfile.id,
-    classroomBaselineArm,
-    classroomCandidateArm,
-    classroomComparison,
-    classroomComparisonContextKey,
-    effectiveProfile.id,
-    energyTuning,
-    playback.paused,
-    sceneLane,
-    sceneSource,
-    selectedExperimentTask,
-    signalTuning.maxTxPowerDbm,
-    simState.canonicalEe,
-    simState.simTimeSec,
-    teachingEnergy,
-  ]);
 
   const requestManualHandover = useCallback((kind: 'intra' | 'inter') => {
     manualHandoverWasPausedRef.current = playback.paused;
@@ -1530,19 +717,9 @@ export function App() {
   // Scene TOPOLOGY changes below keep their transition: those really do rebuild
   // the constellation.
   const handleSignalTuningChange = useCallback((next: SignalTuningState) => {
-    const changed: Record<string, number> = {};
-    if (next.maxTxPowerDbm !== signalTuning.maxTxPowerDbm) changed.maxTxPowerDbm = next.maxTxPowerDbm;
-    if (next.bandwidthMHz !== signalTuning.bandwidthMHz) changed.bandwidthMHz = next.bandwidthMHz;
-    if (next.frequencyReuse !== signalTuning.frequencyReuse) changed.frequencyReuse = next.frequencyReuse;
-    if (Object.keys(changed).length > 0) {
-      lastExperimentChangedControlsRef.current = {
-        ...lastExperimentChangedControlsRef.current,
-        ...changed,
-      };
-    }
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
     setSignalTuning(next);
-  }, [signalTuning]);
+  }, []);
 
   const handleSceneTopologyChange = useCallback((next: SceneTopologyState) => {
     startTransition(() => {
@@ -1554,74 +731,9 @@ export function App() {
   // snap every control back, not 20 seconds later.
   const handleResetSignalTuning = useCallback(() => {
     const next = createSignalTuningState(baseProfile);
-    lastExperimentChangedControlsRef.current = {
-      ...lastExperimentChangedControlsRef.current,
-      maxTxPowerDbm: next.maxTxPowerDbm,
-      bandwidthMHz: next.bandwidthMHz,
-      frequencyReuse: next.frequencyReuse,
-    };
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
     setSignalTuning(next);
   }, [baseProfile]);
-
-  // Energy-parameter restoration is intentionally separate from the
-  // measurement-window reset above and from the signal-tuning reset. It must
-  // restore the teaching circuit knob to the model default of 3 W without
-  // touching scene topology, playback, or the canonical P_sys boundary.
-  const handleEnergyTuningChange = useCallback((next: EnergyTuningState) => {
-    lastEnergyActionRef.current = 'energy-parameter-change';
-    lastEnergyBeforeRef.current = energyTuningRecordMap(energyTuning);
-    lastEnergyAfterRef.current = energyTuningRecordMap(next);
-    setEnergyTuning(next);
-  }, [energyTuning]);
-
-  const handleResetEnergyTuning = useCallback(() => {
-    const next = { ...DEFAULT_ENERGY_TUNING };
-    lastEnergyActionRef.current = 'restore-energy-defaults';
-    lastEnergyBeforeRef.current = energyTuningRecordMap(energyTuning);
-    lastEnergyAfterRef.current = energyTuningRecordMap(next);
-    setEnergyTuning(next);
-  }, [energyTuning]);
-
-  const handleHandoverPolicyDraftChange = useCallback((next: HandoverPolicyTuningState) => {
-    setHandoverPolicyState(current => ({
-      profileId: baseProfile.id,
-      draft: next,
-      applied: current.profileId === baseProfile.id ? current.applied : handoverPolicyDefaults,
-      version: current.profileId === baseProfile.id ? current.version : 0,
-    }));
-  }, [baseProfile.id, handoverPolicyDefaults]);
-
-  const handleApplyHandoverPolicy = useCallback(() => {
-    const nextApplied = { ...handoverPolicyDraft, policy: 'sinr-offset' as const };
-    const nextEffectiveProfile = applyHandoverPolicyTuning(signalTunedProfile, nextApplied);
-    setHandoverPolicyState(current => ({
-      profileId: baseProfile.id,
-      draft: nextApplied,
-      applied: nextApplied,
-      version: (current.profileId === baseProfile.id ? current.version : 0) + 1,
-    }));
-    startTransition(() => {
-      setSimState(createInitialSimState(nextEffectiveProfile));
-      playback.resetAutoSlowDismissed();
-    });
-  }, [baseProfile.id, handoverPolicyDraft, playback, signalTunedProfile]);
-
-  const handleResetHandoverPolicy = useCallback(() => {
-    const defaults = createHandoverPolicyTuningState(baseProfile);
-    const nextEffectiveProfile = applyHandoverPolicyTuning(signalTunedProfile, defaults);
-    setHandoverPolicyState(current => ({
-      profileId: baseProfile.id,
-      draft: defaults,
-      applied: defaults,
-      version: (current.profileId === baseProfile.id ? current.version : 0) + 1,
-    }));
-    startTransition(() => {
-      setSimState(createInitialSimState(nextEffectiveProfile));
-      playback.resetAutoSlowDismissed();
-    });
-  }, [baseProfile, playback, signalTunedProfile]);
-
 
   const applyHandoverModeSideEffects = useCallback((
     nextMode: RuntimeHandoverMode,
@@ -2375,24 +1487,24 @@ export function App() {
   ]);
 
   const requestLiveTimelineSeek = useCallback((request: LiveTimelineSeekRequest) => {
-    clearEnergyLedgerWindow(true);
+    resetAnalysisWindow();
     setLiveTimelineSeekRequest(request);
-  }, [clearEnergyLedgerWindow]);
+  }, [resetAnalysisWindow]);
 
   const handleTimelineSeek = useCallback((targetSec: number) => {
     const target = clampTimelineTime(targetSec, timelineDurationSec);
     if (sceneSource === 'artifact-replay') {
-      clearEnergyLedgerWindow(false);
+      resetAnalysisWindow();
       replayController?.seek(target);
       return;
     }
     if (timelineRailDescriptor.timeline.axisKind === 'display-stretched') {
-      clearEnergyLedgerWindow(false);
+      resetAnalysisWindow();
       setModqnReplayVisualElapsedSec(clampTimelineTime(target, timelineRailDescriptor.timeline.axisDurationSec));
       return;
     }
     if (sceneLane === 'modqn-replay-proof') {
-      clearEnergyLedgerWindow(false);
+      resetAnalysisWindow();
       const railAxisDurationSec = timelineRailDescriptor.rail.axisDurationSec;
       const visualTargetSec = timelineDurationSec > 0 && railAxisDurationSec > 0
         ? (target / timelineDurationSec) * railAxisDurationSec
@@ -2416,7 +1528,7 @@ export function App() {
     setLiveObservedHandoverRailEvents([]);
     setModqnReplayVisualElapsedSec(target);
   }, [
-    clearEnergyLedgerWindow,
+    resetAnalysisWindow,
     liveTimelineWindowStartSec,
     replayController,
     requestLiveTimelineSeek,
@@ -2527,10 +1639,10 @@ export function App() {
     setLiveObservedHandoverRailEvents,
     setModqnReplayVisualElapsedSec,
   });
-  const handleLiveSeekLandedForEnergy = useCallback((seekRequestKey: string) => {
-    clearEnergyLedgerWindow(false);
+  const handleLiveSeekLandedWithAnalysisReset = useCallback((seekRequestKey: string) => {
+    resetAnalysisWindow();
     handleLiveSeekLanded(seekRequestKey);
-  }, [clearEnergyLedgerWindow, handleLiveSeekLanded]);
+  }, [handleLiveSeekLanded, resetAnalysisWindow]);
 
   // Handover cinema controller (S1): wraps the Director focus handlers above with
   // an arm/intra-inter-filter/exit surface and resolves the focused handover's
@@ -3065,43 +2177,16 @@ export function App() {
               onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
             />
           )}
-          {/* SINR-live tuners, inlined in the rail. The tuning panel now owns all
-              three topics — signal quality, energy, and handover timing — as its
-              own top-level tabs, so handover timing no longer sits underneath the
-              energy controls, where its placement implied it moved the power
-              numbers (it does not: the power train reads transmit power, PA
-              efficiency and circuit power only). The cheap display toggles live in
-              the SinrLiveQuickControls row at the top of the rail. */}
+          {/* Homepage input rail. It owns every editable or fixed calculation
+              parameter; final values are rendered from the same accepted frame
+              in the right rail. */}
           {sceneLane === 'sinr-live' && (
             <SinrLiveDisplayDrawer
-              sinrFormulaSection={
-                <SignalTuningPanel
-                  baseProfile={baseProfile}
-                  tuning={signalTuning}
-                  topology={sceneTopology}
-                  sceneVisualScale={sceneVisualScale}
-                  hasOverrides={hasSignalOverrides}
-                  appMode={appMode}
-                  formulaBudget={simState.physicalServingBudget}
-                  isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                  energyTuning={energyTuning}
-                  onEnergyTuningChange={handleEnergyTuningChange}
-                  onEnergyTuningReset={handleResetEnergyTuning}
-                  onTuningChange={handleSignalTuningChange}
-                  onTopologyChange={handleSceneTopologyChange}
-                  onSceneVisualScaleChange={setSceneVisualScale}
-                  onReset={handleResetSignalTuning}
-                  handoverPolicySection={
-                    <HandoverPolicyControls
-                      draft={handoverPolicyDraft}
-                      applied={appliedHandoverPolicy}
-                      hasDraftChanges={hasHandoverDraftChanges}
-                      hasOverrides={hasHandoverResetTarget}
-                      onDraftChange={handleHandoverPolicyDraftChange}
-                      onApply={handleApplyHandoverPolicy}
-                      onReset={handleResetHandoverPolicy}
-                    />
-                  }
+              parameterSection={
+                <HomepageCanonicalControls
+                  analysis={homepageCanonicalAnalysis}
+                  activeTab={homepageCanonicalTab}
+                  onActiveTabChange={setHomepageCanonicalTab}
                 />
               }
             />
@@ -3146,7 +2231,7 @@ export function App() {
               visualScaleMultipliers={visualScaleMultipliers}
               sceneLane={sceneLane}
               onSimUpdate={handleSimUpdate}
-              onLiveSeekLanded={handleLiveSeekLandedForEnergy}
+              onLiveSeekLanded={handleLiveSeekLandedWithAnalysisReset}
               sceneFrame={activeSceneFrame}
               beamDisplaySpec={beamDisplaySpec}
             />
@@ -3213,22 +2298,21 @@ export function App() {
               </section>
             ) : activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
-                {/* SINR-live right sidebar keeps the beam duel and the numeric
-                    formula readout; handover navigation is kept in the top bar. */}
-                {/* The homepage's visible power/EE authority is now the
-                    archived-TLE canonical frame in the left rail. Do not
-                    co-display the legacy teaching P_total, 50/35 dBm T5, or
-                    T1-T6 capture cards as if they shared that frame. The
-                    Walker-side duel and formula terms remain explicitly
-                    scene-local readouts, not canonical controls. */}
-                <InfoPanel
-                  {...simState}
-                  profile={effectiveProfile}
-                  handoverMode={handoverMode}
-                  showFormulaTerms
-                  isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                  channelMetricKind={activeSceneFrame?.channelMetricKind}
-                />
+                {sceneLane === 'sinr-live' ? (
+                  <HomepageCanonicalAnalysis
+                    analysis={homepageCanonicalAnalysis}
+                    activeTab={homepageCanonicalResultTab}
+                  />
+                ) : (
+                  <InfoPanel
+                    {...simState}
+                    profile={effectiveProfile}
+                    handoverMode={handoverMode}
+                    showFormulaTerms
+                    isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                    channelMetricKind={activeSceneFrame?.channelMetricKind}
+                  />
+                )}
               </section>
             ) : (
               <section

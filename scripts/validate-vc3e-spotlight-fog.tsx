@@ -406,7 +406,7 @@ async function assertAppToggleAndUiContrast(
 
   try {
     await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
-    await page.locator('[data-testid="info-panel-primary-sinr-status"]').waitFor({ timeout: 30000 });
+    await page.locator('.leo-shell-right').waitFor({ timeout: 30000 });
     await page.locator('canvas').waitFor({ timeout: 30000 });
     await page.evaluate(() => document.fonts?.ready);
 
@@ -414,13 +414,10 @@ async function assertAppToggleAndUiContrast(
       if (frame === page.mainFrame()) navigationEventsAfterToggle += 1;
     });
 
-    // G1-CONTROLBAR-ADV: the Spotlight toggle moved off the top bar into the
-    // non-modal SINR-live "⚙ Display & camera" disclosure. Open it (no scrim —
-    // the scene stays interactive) so the toggle is present for the assertions.
-    await page.locator('[data-testid="sinr-live-display-trigger"]').click();
-    await page.locator('[data-testid="sinr-live-display-drawer"]').waitFor({ timeout: 5000 });
-
-    const checkbox = page.getByLabel('Spotlight mode');
+    // Spotlight remains a global presentation control in the top row. It is
+    // intentionally independent from the canonical input/result rails below.
+    await page.locator('[data-testid="sinr-live-quick-controls"]').waitFor({ timeout: 5000 });
+    const checkbox = page.getByRole('checkbox', { name: /Spotlight mode/i });
     const initial = await checkbox.isChecked();
     await checkbox.check();
     await page.waitForTimeout(320);
@@ -429,11 +426,6 @@ async function assertAppToggleAndUiContrast(
     await page.waitForTimeout(180);
     const off = await checkbox.isChecked();
     await checkbox.check();
-    // G1-CONTROLBAR-ADV: spotlight is now toggled from the non-modal display
-    // disclosure; close it (Escape) before the checkpoint so the reference image
-    // stays the clean spotlight-on scene (and this exercises the disclosure close).
-    await page.keyboard.press('Escape');
-    await page.locator('[data-testid="sinr-live-display-drawer"]').waitFor({ state: 'detached', timeout: 5000 });
     await page.waitForTimeout(900);
     await freezeRaf(page, 1900);
     await page.screenshot({ path: CHECKPOINT_PATH });
@@ -445,9 +437,9 @@ async function assertAppToggleAndUiContrast(
 
     const contrastRatio = await page.evaluate<number>(`
       (() => {
-        const element = document.querySelector('[data-testid="info-panel-primary-beam-identity"]');
+        const element = document.querySelector('[data-testid="homepage-canonical-source-controls"]');
         if (!(element instanceof HTMLElement)) {
-          throw new Error('info-panel primary identity element was not found');
+          throw new Error('canonical homepage source-control element was not found');
         }
 
         function parseRgb(input) {
