@@ -117,10 +117,13 @@ TLE-derived SGP4 軌跡，以及 SINR、EE、Power、Throughput 四個共享同�
 frame 的正式分頁。它不宣稱 live telemetry、節能成效或一期平台整合。
 
 首頁 `http://localhost:3000/` 保留原本的 Walker／handover 展示介面。
-左側導覽固定顯示 `SINR / EE / Power / Throughput`；新增的 Power 與
-Throughput 頁沿用原介面風格與既有 live tuning state，並明示為
-non-canonical teaching projections。完整 canonical shared-frame controls
-仍位於 `/simulator`。兩個畫面目前沒有互相跳轉按鈕。
+左側導覽固定顯示 `SINR / EE / Power / Throughput`，並以原介面風格投影
+同一份明示的 archived-TLE canonical analysis frame。首頁不再提供可直接
+覆寫實際發射功率的 `P_t`；Power 只調整 `P_beam_max`、`P_sat_max`、
+`eta_max`、`P_RFC`、`P_BB`，所有 `p_req`、`P_DL_actual`、SINR、rate、
+`P_sys` 與 EE 都是共用 producer 的唯讀衍生量。右側 Walker 場景仍是
+保留的既有視覺，不冒充該 analysis frame；具備相符 SGP4 場景與日期選擇的
+完整工作區仍位於 `/simulator`。兩個畫面目前沒有互相跳轉按鈕。
 
 Browser archive 包含 363 份 OneWeb snapshot，以及 360 份通過嚴格驗證的
 Starlink snapshot。Starlink 外部來源的 361 份中，`starlink_20260528.tle`

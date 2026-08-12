@@ -17,5 +17,8 @@ assert.doesNotMatch(markup, /Policy/);
 assert.doesNotMatch(markup, /Scene/);
 assert.doesNotMatch(markup, /signal-tuning-main-tab-handover/);
 assert.doesNotMatch(markup, /signal-tuning-main-tab-scene/);
+assert.doesNotMatch(markup, /teaching throughput/i);
+assert.doesNotMatch(markup, /Tune transmit power/i);
+assert.match(markup, /aria-controls="tuning-page-panel-sinr-canonical"/);
 
 console.log('MainTabList exposes exactly SINR, EE, Power, and Throughput in a narrow-rail layout.');

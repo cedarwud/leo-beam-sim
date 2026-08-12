@@ -29,9 +29,12 @@ The original Walker/handover application remains the `/` homepage. No
 cross-navigation button is added between these surfaces yet.
 
 The homepage left rail now exposes `SINR / EE / Power / Throughput` in the
-existing Walker application style. Its Power and Throughput pages reuse the
-historical live tuning state and are explicitly labelled non-canonical teaching
-projections; `/simulator` remains the full canonical shared-frame surface.
+existing Walker application style. Those four visible pages consume one
+explicit archived-TLE canonical analysis frame. They no longer expose direct
+`P_t/maxTxPowerDbm`, editable `P_DL_actual`, or page-local teaching power/rate
+formulas. The restored Walker scene remains a legacy visual and is explicitly
+not the same frame; `/simulator` remains the full surface where the SGP4 scene,
+time selector, and four projections share one frame.
 
 The historical `/course/c120` surface is direct-route only. It has no entry
 control on `/` or `/simulator`; retain it as recoverable history unless a later

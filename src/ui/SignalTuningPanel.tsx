@@ -12,6 +12,7 @@ import {
   type Profile,
 } from '../profiles/types';
 import type { LinkBudgetTerms } from '../scene/types';
+import type { SimulatorTab } from '../simulator/types';
 import {
   PATH_LOSS_COMPONENT_ORDER,
   type SignalTuningState,
@@ -33,11 +34,10 @@ import { EnergyTab } from './signal-tuning/EnergyTab';
 import { SinrFormulaMap } from './signal-tuning/FormulaMap';
 import { FormulaFraction, FormulaHeader } from './signal-tuning/FormulaHeader';
 import { FormulaTabList } from './signal-tuning/FormulaTabList';
+import { HomepageCanonicalAnalysis } from './signal-tuning/HomepageCanonicalAnalysis';
 import { MainTabList } from './signal-tuning/MainTabList';
-import { PowerTab } from './signal-tuning/PowerTab';
 import { SinrOverview } from './signal-tuning/SinrOverview';
 import { TopologyTab } from './signal-tuning/TopologyTab';
-import { ThroughputTab } from './signal-tuning/ThroughputTab';
 import { tx, txBi } from './signal-tuning/labels';
 import {
   FREQUENCY_REUSE_OPTIONS,
@@ -197,6 +197,12 @@ export function SignalTuningPanel({
     });
   };
 
+  const canonicalTab: SimulatorTab | null = mainTab === 'energy'
+    ? 'ee'
+    : mainTab === 'sinr' || mainTab === 'power' || mainTab === 'throughput'
+      ? mainTab
+      : null;
+
   return (
     <aside
       className="leo-signal-tuning-panel"
@@ -215,6 +221,10 @@ export function SignalTuningPanel({
           showHandoverTab={handoverPolicySection != null}
           onChange={setMainTab}
         />
+
+        {canonicalTab !== null && <HomepageCanonicalAnalysis activeTab={canonicalTab} />}
+
+        <div hidden={canonicalTab !== null} aria-hidden={canonicalTab !== null || undefined}>
 
         {mainTab === 'sinr' && (
         <section
@@ -1005,25 +1015,6 @@ export function SignalTuningPanel({
           />
         )}
 
-        {mainTab === 'power' && (
-          <PowerTab
-            tuning={tuning}
-            energyTuning={energyTuning}
-            onTuningChange={onTuningChange}
-            onEnergyTuningChange={onEnergyTuningChange}
-            onEnergyTuningReset={onEnergyTuningReset}
-          />
-        )}
-
-        {mainTab === 'throughput' && (
-          <ThroughputTab
-            tuning={tuning}
-            formulaBudget={formulaBudget}
-            isFormulaEvidenceStale={isFormulaEvidenceStale}
-            onTuningChange={onTuningChange}
-          />
-        )}
-
         {/* Third topic, deliberately separate from the energy tab: these
             controls pick WHICH satellite the link sits on, they do not appear
             anywhere in the power train. */}
@@ -1061,6 +1052,7 @@ export function SignalTuningPanel({
             {handoverPolicySection}
           </section>
         )}
+        </div>
       </div>
     </aside>
   );

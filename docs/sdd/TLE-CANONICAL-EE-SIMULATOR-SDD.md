@@ -21,6 +21,10 @@ The bounded v1 is mounted at `/simulator`; the original Walker/handover
 application remains at `/`. It uses an explicitly uncalibrated
 Taipei/nadir-reference adapter so the canonical chain is observable; this does
 not elevate the adapter into thesis-scenario or calibrated-link authority.
+The homepage's four visible analysis tabs may compactly project that canonical
+producer in the Walker visual system, but they must publish a separate frame
+identity and must not imply that the retained Walker scene supplied the frame.
+No homepage tab may restore direct `P_t` or a page-local EE/throughput formula.
 
 ## 2. Runtime architecture
 

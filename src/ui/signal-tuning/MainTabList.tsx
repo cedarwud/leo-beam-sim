@@ -5,19 +5,18 @@ import { txBi } from './labels';
 import type { MainTabKey } from './types';
 
 /**
- * The visible top-level split of the left panel. The six terms of γ (P_t,
- * H(L), G^T(θ), G^R, I, σ²) remain one level down inside SINR. Power and
- * throughput are teaching projections over the existing tuning state, while
- * the legacy handover and topology pages remain mounted in `SignalTuningPanel`
- * for runtime compatibility but are intentionally not navigation targets.
+ * The visible top-level split of the left panel. All four tabs project one
+ * canonical analysis frame. The legacy direct-P_t, teaching-energy, handover,
+ * and topology surfaces remain mounted only as hidden compatibility history
+ * inside `SignalTuningPanel`; they are not navigation targets.
  *
  * Each button carries only its short identifier. The full localized name and
  * explanation stay in `title` and `aria-label`, matching the formula sub-tab
  * strip and keeping the narrow rail readable.
  */
 const PANEL_ID_BY_TAB: Record<MainTabKey, string> = {
-  sinr: 'tuning-page-panel-sinr-formula',
-  energy: 'tuning-page-panel-energy',
+  sinr: 'tuning-page-panel-sinr-canonical',
+  energy: 'tuning-page-panel-ee-canonical',
   power: 'tuning-page-panel-power',
   throughput: 'tuning-page-panel-throughput',
   handover: 'tuning-page-panel-handover',
@@ -56,14 +55,14 @@ export function MainTabList({
       key: 'sinr',
       short: 'SINR',
       label: t('tab.sinr.label'),
-      hint: txBi(t, isEnglish, 'tab.sinr.hint', '訊號功率、干擾與雜訊項', 'Signal power, interference and noise terms'),
+      hint: txBi(t, isEnglish, 'tab.sinr.hint', '同一 P_DL_actual 推導的訊號、干擾與雜訊', 'Signal, interference, and noise derived from one P_DL_actual'),
       accent: UI_TOKENS.color.semantic.tuning,
     },
     {
       key: 'energy',
       short: 'EE',
       label: t('tab.energy.label'),
-      hint: txBi(t, isEnglish, 'tab.energy.hint', '功率鏈與能源效率', 'Power train and energy efficiency'),
+      hint: txBi(t, isEnglish, 'tab.energy.hint', '同一吞吐量分子與 canonical P_sys 分母', 'Shared throughput numerator and canonical P_sys denominator'),
       accent: '#c3a6ff',
     },
     {
@@ -74,8 +73,8 @@ export function MainTabList({
         t,
         isEnglish,
         'tab.power.hint',
-        '調整發射功率、功率放大器效率與固定電路功耗',
-        'Tune transmit power, PA efficiency, and fixed circuit draw',
+        '調整 beam／satellite 上限與 canonical 功耗參數',
+        'Tune beam/satellite caps and canonical power-model inputs',
       ),
       accent: UI_TOKENS.color.semantic.good,
     },
@@ -87,8 +86,8 @@ export function MainTabList({
         t,
         isEnglish,
         'tab.throughput.hint',
-        '用即時 SINR、頻寬與頻率重複使用估算教學吞吐量',
-        'Project teaching throughput from live SINR, bandwidth, and reuse',
+        '調整服務目標與 beam 頻寬；SINR 與速率保持唯讀',
+        'Tune service target and beam bandwidth; SINR and rate remain derived',
       ),
       accent: UI_TOKENS.color.semantic.info,
     },

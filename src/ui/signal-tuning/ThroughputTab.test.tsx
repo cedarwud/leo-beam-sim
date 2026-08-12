@@ -1,59 +1,41 @@
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
+import {
+  CANONICAL_EE_CONFORMANCE_FIXTURES,
+  computeCanonicalEe,
+} from '../../analysis/canonicalEe';
 import { LocaleProvider } from '../../i18n';
-import { loadProfile } from '../../profiles';
-import { createSignalTuningState } from '../../signalTuning';
+import { DEFAULT_SIMULATOR_PARAMETERS } from '../../simulator/types';
 import { ThroughputTab } from './ThroughputTab';
 
-const profile = loadProfile('hobs-2024-paper-default');
-const tuning = {
-  ...createSignalTuningState(profile),
-  bandwidthMHz: 20,
-  frequencyReuse: 2,
-};
-const formulaBudget = {
-  signalDbm: -80,
-  intraInterferenceDbm: -110,
-  interInterferenceDbm: -110,
-  noiseDbm: -110,
-  denominatorDbm: -100,
-  txPowerDbm: 30,
-  pathLossDb: 150,
-  beamGainDb: 20,
-  steeringLossDb: 1,
-  receiverGainDbi: 0,
+const fixture = CANONICAL_EE_CONFORMANCE_FIXTURES[1]!;
+const result = computeCanonicalEe(fixture.input);
+const parameters = {
+  ...DEFAULT_SIMULATOR_PARAMETERS,
+  minimumRateBps: fixture.input.config.minimumRateBps,
+  beamBandwidthHz: fixture.input.config.beamBandwidthHz,
 };
 
-const currentMarkup = renderToStaticMarkup(
+const markup = renderToStaticMarkup(
   <LocaleProvider initialLocale="en">
     <ThroughputTab
-      tuning={tuning}
-      formulaBudget={formulaBudget}
-      onTuningChange={() => {}}
+      result={result}
+      parameters={parameters}
+      onParametersChange={() => {}}
     />
   </LocaleProvider>,
 );
 
-assert.match(currentMarkup, /data-testid="throughput-teaching-page"/);
-assert.match(currentMarkup, /data-teaching-claim="SIMULATED TEACHING"/);
-assert.match(currentMarkup, /data-testid="throughput-tab-bandwidth-control"/);
-assert.match(currentMarkup, /data-testid="throughput-tab-frequency-reuse-control"/);
-assert.match(currentMarkup, /data-throughput-status="current"/);
-assert.match(currentMarkup, /data-testid="throughput-tab-sinr-readout"[\s\S]*20\.00 dB/);
-assert.match(currentMarkup, /data-testid="throughput-tab-rate-readout"[\s\S]*66\.58 Mbit\/s/);
-assert.match(currentMarkup, /Non-canonical teaching projection/);
+assert.match(markup, /data-testid="throughput-canonical-page"/);
+assert.match(markup, /data-canonical-status="canonical"/);
+assert.match(markup, /data-testid="throughput-tab-minimum-rate-control"/);
+assert.match(markup, /data-testid="throughput-tab-bandwidth-control"/);
+assert.match(markup, /data-testid="throughput-tab-gamma-readout"/);
+assert.match(markup, /data-testid="throughput-tab-requested-power-readout"/);
+assert.match(markup, /data-testid="throughput-tab-actual-power-readout"/);
+assert.match(markup, /data-testid="throughput-tab-sinr-readout"/);
+assert.match(markup, /data-testid="throughput-tab-rate-readout"/);
+assert.doesNotMatch(markup, /frequency-reuse-control/);
+assert.doesNotMatch(markup, /Non-canonical teaching projection/);
 
-const staleMarkup = renderToStaticMarkup(
-  <LocaleProvider initialLocale="en">
-    <ThroughputTab
-      tuning={tuning}
-      formulaBudget={formulaBudget}
-      isFormulaEvidenceStale
-      onTuningChange={() => {}}
-    />
-  </LocaleProvider>,
-);
-assert.match(staleMarkup, /data-throughput-status="stale"/);
-assert.match(staleMarkup, /data-testid="throughput-tab-rate-readout"[\s\S]*—/);
-
-console.log('ThroughputTab exposes shared B/K controls and fails closed on stale formula evidence.');
+console.log('ThroughputTab projects the shared canonical result and edits only R_min/B_beam.');

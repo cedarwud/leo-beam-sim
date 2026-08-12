@@ -3215,6 +3215,12 @@ export function App() {
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
                 {/* SINR-live right sidebar keeps the beam duel and the numeric
                     formula readout; handover navigation is kept in the top bar. */}
+                {/* The homepage's visible power/EE authority is now the
+                    archived-TLE canonical frame in the left rail. Do not
+                    co-display the legacy teaching P_total, 50/35 dBm T5, or
+                    T1-T6 capture cards as if they shared that frame. The
+                    Walker-side duel and formula terms remain explicitly
+                    scene-local readouts, not canonical controls. */}
                 <InfoPanel
                   {...simState}
                   profile={effectiveProfile}
@@ -3222,33 +3228,6 @@ export function App() {
                   showFormulaTerms
                   isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                   channelMetricKind={activeSceneFrame?.channelMetricKind}
-                  teachingEnergy={teachingEnergy}
-                  onTeachingEnergyReset={handleTeachingEnergyReset}
-                  classroomEnergyComparison={{
-                    baseline: classroomBaselineArm,
-                    candidate: classroomCandidateArm,
-                    result: classroomComparison,
-                    currentTxPowerDbm: signalTuning.maxTxPowerDbm,
-                    currentLowSinrThresholdDb: teachingEnergy.lowSinrThresholdDb,
-                    baselineTargetTxPowerDbm: CLASSROOM_BASELINE_TX_POWER_DBM,
-                    candidateTargetTxPowerDbm: CLASSROOM_CANDIDATE_TX_POWER_DBM,
-                    baselineCapture: {
-                      canCapture: baselineCaptureReason === null,
-                      reason: baselineCaptureReason,
-                    },
-                    candidateCapture: {
-                      canCapture: candidateCaptureReason === null,
-                      reason: candidateCaptureReason,
-                    },
-                    contextDrifted: classroomComparisonContextDriftedRef.current,
-                    onCaptureBaseline: handleCaptureBaseline,
-                    onCaptureCandidate: handleCaptureCandidate,
-                    onClearArms: handleClearClassroomArms,
-                  }}
-                  experimentRecord={experimentRecord}
-                  selectedExperimentTask={selectedExperimentTask}
-                  onExperimentTaskChange={setSelectedExperimentTask}
-                  onCaptureExperimentRecord={handleCaptureExperimentRecord}
                 />
               </section>
             ) : (

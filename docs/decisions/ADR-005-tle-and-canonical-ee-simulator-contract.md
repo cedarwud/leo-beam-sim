@@ -183,9 +183,13 @@ Bounded v1 was implemented in commit `c9f8982` and mounted at `/simulator`.
 The original Walker/handover application remains the `/` entry. Owner direction
 keeps the two surfaces separately addressable and does not add navigation
 buttons between them at this stage. The homepage presents `SINR / EE / Power /
-Throughput` in its existing visual system; its added Power and Throughput pages
-remain explicitly non-canonical teaching projections. The `/simulator` route is
-still the canonical shared-frame implementation.
+Throughput` in its existing visual system. All four homepage projections now
+consume one explicitly identified archived-TLE canonical analysis frame; the
+direct `P_t/maxTxPowerDbm` control and the page-local teaching power/throughput
+formulas are excluded from that visible surface. The restored Walker scene is
+retained as a legacy visual and is not represented as the same analysis frame.
+The `/simulator` route remains the complete canonical workspace where the SGP4
+scene, time selector, and the four projections share one frame.
 The follow-up constellation checkpoint adds selectable OneWeb and Starlink
 archives: 363 valid OneWeb snapshots and 360 of 361 Starlink source snapshots.
 The one excluded Starlink source file is identified by filename, SHA-256, and
