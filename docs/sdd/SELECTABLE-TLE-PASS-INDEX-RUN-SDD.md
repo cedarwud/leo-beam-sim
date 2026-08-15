@@ -562,6 +562,17 @@ filesystem, HTTP, or canonical EE module. It is therefore reusable by a later
 Worker, server, or artifact adapter without making any one transport the
 scientific authority.
 
+The isolated `src/tle/runArtifact/**` seam parses the staged transport envelope
+`selectable-tle-artifact-envelope-v1`, which maps its nested source, geometry,
+analysis, and chunk receipts into the public `AcceptedRunManifest` contract
+only after the full producer gate. It
+recomputes `passIndexKey` and `runKey`, verifies child byte length and SHA-256,
+and binds each JSON child envelope back to the same source snapshot, geometry,
+analysis identity, payload kind, and anchor descriptor. Opaque lookup keys are
+not filesystem paths. Structural parsing deliberately exposes no `runReady`
+flag: only the complete canonical producer/publication gate may unlock the
+public timeline.
+
 The real-data shadow report at
 `.scratch/tle-pass-index-spike/results/20260808-default-summary.json` records
 the 2026-08-08 OneWeb and Starlink snapshot digests. For those two fixtures,

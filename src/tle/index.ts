@@ -6,3 +6,4 @@ export * from './validation';
 export * from './resolver';
 export * from './propagation';
 export * from './passIndex';
+export * from './runArtifact';
