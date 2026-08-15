@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "tle-pass-index-spike-summary-v1",
+  "status": "PASS_SPIKE_NOT_ACCEPTANCE_GATE",
+  "recordedAtUtc": "2026-08-15T16:24:34.000Z",
+  "requestedT0Utc": "2026-08-08T12:00:00.000Z",
+  "observerId": "ntpu-wgs84-v1",
+  "config": {
+    "durationS": 7200,
+    "exactStepS": 30,
+    "coarseStepS": 120,
+    "chunkDurationS": 600,
+    "endpointPaddingS": 120,
+    "horizonElevationDeg": 0,
+    "coarseGuardElevationDeg": -20
+  },
+  "fixtures": [
+    {
+      "constellation": "oneweb",
+      "archiveDate": "20260808",
+      "snapshotSha256": "9073c56572cb4053950a3f913e0e69235fc210a9025fa1c897f7730b8120edc1",
+      "sourceSatelliteCount": 651,
+      "denseVisibleIdentityCount": 273,
+      "chunkCandidateCounts": [182, 185, 185, 192, 191, 186, 180, 187, 184, 180, 182, 187],
+      "missedVisibleIdentityCount": 0,
+      "missedVisibleSampleCount": 0,
+      "densePropagationAttempts": 156891,
+      "chunkedPropagationAttempts": 85620,
+      "attemptReductionPercent": 45.4270799472245,
+      "denseReferenceMs": 144.194257,
+      "chunkedIndexedMs": 86.88819299999994,
+      "processMaxRssMiB": 374.76953125
+    },
+    {
+      "constellation": "starlink",
+      "archiveDate": "20260808",
+      "snapshotSha256": "66bcbcd3292702e2103273c61801b3fef6aa39abf135f7b9309065dfd73ff50d",
+      "sourceSatelliteCount": 10760,
+      "denseVisibleIdentityCount": 5195,
+      "chunkCandidateCounts": [3205, 3234, 3227, 3184, 3156, 3136, 3098, 3101, 3120, 3137, 3144, 3153],
+      "missedVisibleIdentityCount": 0,
+      "missedVisibleSampleCount": 0,
+      "densePropagationAttempts": 2593160,
+      "chunkedPropagationAttempts": 1438933,
+      "attemptReductionPercent": 44.510442857363216,
+      "denseReferenceMs": 2185.113236,
+      "chunkedIndexedMs": 1794.7866240000003,
+      "processMaxRssMiB": 374.9609375
+    }
+  ],
+  "limitations": [
+    "Zero misses are empirical for these two snapshot/window fixtures, not a mathematical guarantee.",
+    "Timings are one process-local spike run, not cold/warm p95 acceptance evidence.",
+    "Peak RSS includes archive loading, indexed scans, and the dense comparison in one process.",
+    "Pass-event, serving-sequence, handover-trace, canonical-frame, and browser publication parity remain unverified."
+  ]
+}
