@@ -551,7 +551,32 @@ This SDD does not:
 * expose partially computed anchors through the current public timeline; or
 * authorize implementation before ADR-010 acceptance and the completion gates.
 
-## 15. References
+## 15. Staged implementation checkpoint
+
+The first architecture/spike checkpoint is commit `2e07da0`. The next isolated
+core is `src/tle/passIndex/**`. It owns only deterministic time-chunk
+admission, fail-open uncertainty handling, proof-backed exclusion receipts,
+and content-key identity. The conservative classifier is injected; the core
+imports no simulator observer, active pass planner, RunBundle, React,
+filesystem, HTTP, or canonical EE module. It is therefore reusable by a later
+Worker, server, or artifact adapter without making any one transport the
+scientific authority.
+
+The real-data shadow report at
+`.scratch/tle-pass-index-spike/results/20260808-default-summary.json` records
+the 2026-08-08 OneWeb and Starlink snapshot digests. For those two fixtures,
+the experimental 600-second sampled screen had zero missed per-anchor visible
+samples. That screen remains a shadow measurement: sparse samples are not fed
+to the production core as an exclusion proof.
+
+This is not the ADR-010 completion gate. A conservative envelope adapter and
+its proof contract, formal pass extractor/planner parity, serving sequence,
+handover trace, canonical frames/EE, cold/warm p95 and stage RSS,
+digest-verified payload artifacts, and browser atomic-publication behavior
+remain open. Until those close, the current dense runtime remains the public
+product path and the time-chunked core must stay shadow-only.
+
+## 16. References
 
 * `docs/decisions/ADR-010-snapshot-pass-index-run-architecture.md`
 * `docs/decisions/ADR-005-tle-and-canonical-ee-simulator-contract.md`
