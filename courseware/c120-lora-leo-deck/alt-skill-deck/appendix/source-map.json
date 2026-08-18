@@ -1,0 +1,135 @@
+[
+  {
+    "slide": 1,
+    "page_id": "P098",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 7 或 98；兩頁概念去重後只保留一個來源入口。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 2,
+    "page_id": "P099",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 8 或 107；移除 donor 數值，只保留 model lineage。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 3,
+    "page_id": "P100",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 9–10、108–109；合併為一頁 source vocabulary。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 4,
+    "page_id": "P101",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 5、11、30–31、110–111；去除專業推導與 donor 門檻。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 5,
+    "page_id": "P102",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 13、15、22–24；保留概念，排除 donor RF 數值。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 6,
+    "page_id": "P103",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 14、32、37；與 core unit 頁去重。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 7,
+    "page_id": "P104",
+    "route": "快速深化",
+    "donor_source": "BeamShift e2 12；作為 Lab B optional counterexample。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 8,
+    "page_id": "P105",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 16／17、21、25–29、112；重寫為單一 accounting page。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 9,
+    "page_id": "P106",
+    "route": "快速深化",
+    "donor_source": "BeamShift e2 20、36–37、70–75；深化 fair-baseline 概念。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 10,
+    "page_id": "P107",
+    "route": "快速深化",
+    "donor_source": "BeamShift e2 38–39；整併為 debrief causal spine。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 11,
+    "page_id": "P108",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 70–75；current values 全數由 course evidence 提供。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 12,
+    "page_id": "P109",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 96–97；改寫為 current endpoint record。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 13,
+    "page_id": "P110",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 113；保留四類 classifier。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 14,
+    "page_id": "P111",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 19–21、28–29、32–33；current ADR／SDD 優先。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 15,
+    "page_id": "P112",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 96–97 的 lineage 概念；current package contract 重寫。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 16,
+    "page_id": "P113",
+    "route": "技術附錄",
+    "donor_source": "Current SDD 為主；BeamShift e2 70–75 提供 evidence qualification 概念。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 17,
+    "page_id": "P114",
+    "route": "技術附錄",
+    "donor_source": "BeamShift e2 113–114；依 ADR-004 trust boundary 重寫。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 18,
+    "page_id": "P115",
+    "route": "快速深化",
+    "donor_source": "BeamShift e2 2、4、19；僅保留 transfer mechanism。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  },
+  {
+    "slide": 19,
+    "page_id": "P116",
+    "route": "交接紀錄",
+    "donor_source": "BeamShift e2 96–97、113–114 與 donor disposition map。",
+    "authority": "ADR-004 / C120 SDD / ALT handoff"
+  }
+]

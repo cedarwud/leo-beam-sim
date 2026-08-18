@@ -1,0 +1,9 @@
+{
+  "status": "SUPERSEDED",
+  "slide_count": 13,
+  "render_dpi": 150,
+  "pdf": "courseware/c120-lora-leo-deck/alt-skill-deck/local-qa/part-a-p001-p008-expanded/render-original/LoRaEnergySim-LEO-ALT-PART-A-V2-P001-P008-REVIEW.pdf",
+  "images": "slide-*.png",
+  "contact_sheet": "contact-sheet.png",
+  "scope": "pre-artifact-boundary expansion baseline; final 16-page render is in render-fixed/"
+}

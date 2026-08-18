@@ -1,0 +1,2677 @@
+{
+  "schema": "template_fill_pptx_plan.v1",
+  "status": "confirmed",
+  "source_pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/full-deck-v2_ppt169_20260811/sources/educate-layout-sampler-v2.pptx",
+  "accepted_warnings": [
+    {
+      "code": "post_compose",
+      "reason": "Native body placeholders are only an initial Fill Native base; post-compose replaces them with editable DrawingML objects."
+    }
+  ],
+  "slides": [
+    {
+      "source_slide": 1,
+      "purpose": "cover hero",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 1",
+        "why_fit": "Authored Layout 'cover hero' maps to a matching native shell; Visual 'endpoint radio-state ribbon 與一個變動服務窗口。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s01_sh2",
+          "text": "每一次 SEND、WAIT、SLEEP 都是能源決策"
+        },
+        {
+          "slot_id": "s01_sh3",
+          "text": "C-120｜LoRaEnergySim × 智慧節能與物聯網應用"
+        }
+      ],
+      "notes": "今天先不從衛星名詞開始。我們從一個 IoT endpoint 的選擇開始：現在送、短暫等待，或進入低功耗休眠。每個選擇會改變 radio state 停留時間、封包結果與服務，最後才在 endpoint energy ledger 中留下可追溯的 J。這堂課要做的是把一個小小的 policy edit 走完一條證據鏈，而不是背一個漂亮的數字。 恢復提示：若 claim 被擴大，停在分層圖，回到 endpoint/system boundary；不可把模擬資料說成 live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "causal flow",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'causal flow' maps to a matching native shell; Visual '六段箭頭流程圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "節能是一條可檢驗的因果鏈"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "observation → policy → action → state / packet → service → J。"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "六段箭頭流程圖。"
+        }
+      ],
+      "notes": "請看箭頭，不要跳到最右邊。先有已經發生的 observation，policy 才選 action；action 會改變等待、喚醒、處理、收發與封包結果；服務條件確認後，才談功率乘上時間累積出的 endpoint energy。每一步都能回到 result 或 replay。若只看到動畫變化，卻沒有 state、packet、service 或 energy 的差異，我們就不能稱為節能證據。 恢復提示：若 claim 被擴大，停在分層圖，回到 endpoint/system boundary；不可把模擬資料說成 live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "scope map",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'scope map' maps to a matching native shell; Visual 'IoT endpoint 的 state／packet／energy 三層卡片。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "LoRaEnergySim 為什麼直接服務智慧節能與 IoT"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "低功耗節點、封包與重試、睡眠／處理／TX／RX、可觀察結果。"
+        }
+      ],
+      "notes": "智慧節能不是只把功率欄位改小，而是讓裝置在工作與等待之間做出可解釋的取捨。LoRaEnergySim 的相關模型正好把 endpoint 的 sleep、processing、transmit、receive、packet、collision、retry 與 energy 結果連起來；因此它能支援 IoT 的決策教學。課程 wrapper 會把這個機制縮成可重現的課程場景，不要求大家安裝研究型全套工具。 恢復提示：若 claim 被擴大，停在分層圖，回到 endpoint/system boundary；不可把模擬資料說成 live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "hero timeline",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 5",
+        "why_fit": "Authored Layout 'hero timeline' maps to a matching native shell; Visual '一條 NTPU contact-window timeline。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "LEO 只提供會改變的服務窗口"
+        }
+      ],
+      "notes": "LEO 在這裡不是衛星工程課的終點。它提供一個很直觀的 changing service window：可服務的機會會出現、消失、變短或變長。這種變動能讓「現在送還是等一下」變得可觀察；同一個機制也能轉到智慧農場的上行窗口、HVAC 的低負載時段或邊緣設備的可用連線。請把 LEO 當成例子，不要把課程 claim 擴張成 live satellite measurement。 恢復提示：若 claim 被擴大，停在分層圖，回到 endpoint/system boundary；不可把模擬資料說成 live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "split compare",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'split compare' maps to a matching native shell; Visual 'endpoint replay 與 C-120 system replay 的分層圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "兩層 evidence 不能互相冒充"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "endpoint layer:queue / packet / state / endpoint J"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "system layer:既有 C-120 authority。"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "endpoint replay 與 C-120 system replay 的分層圖。"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "endpoint replay 與 C-120 system replay 的分層圖。"
+        }
+      ],
+      "notes": "左邊的 endpoint replay 可以回答封包、佇列、radio state、endpoint energy 與 endpoint service；右邊的 system replay 才承擔既有 C-120 的 canonical fields。兩層可以共享 scenario、clock 和 workbook，但欄位不能因為名稱相似就互相改寫。今天看到的 endpoint J 必須留在 endpoint layer；它不是整個部署、衛星或 wall-plug energy。 恢復提示：若 claim 被擴大，停在分層圖，回到 endpoint/system boundary；不可把模擬資料說成 live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "loop diagram",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'loop diagram' maps to a matching native shell; Visual '`predict → edit → run → import → replay → withheld` 圓環。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "從預測走到可反駁的結果"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "先寫預測，再執行"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "withheld case 不准 retune。"
+        }
+      ],
+      "notes": "每個 lab 都遵循這條學習路徑，但每一頁會換一種畫面，不會把它變成固定問答。先記下你預期哪個 state time、packet outcome、service 或 endpoint J 會變；再只改標記區塊；接著跑 baseline 與 candidate，匯入 result 看 replay，最後用沒有調參的 withheld case 檢驗假說。預測被推翻時，保留它，因為那就是最有用的教學結果。 恢復提示：若 claim 被擴大，停在分層圖，回到 endpoint/system boundary；不可把模擬資料說成 live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "single annotated card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 5",
+        "why_fit": "Authored Layout 'single annotated card' maps to a matching native shell; Visual '`student_policy.py` 的 marked block 卡片。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "一個小改動，必須能追到一個機制"
+        }
+      ],
+      "notes": "這張卡片只問一件事：你改的那一行，透過哪個機制影響哪一筆 evidence？例如把 pace gap 拉長，可能改變等待、喚醒與封包時機；提高 hold 穩定門檻，可能拒絕短暫品質尖峰；調整 batch 或 urgent margin，可能改變佇列年齡與 deadline 結果。若改動無法連到這些事件，就先不要跑；若結果沒有 consequential diff，就記錄 gate 未通過，不用畫面效果替代。 恢復提示：若 claim 被擴大，停在分層圖，回到 endpoint/system boundary；不可把模擬資料說成 live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "route map",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'route map' maps to a matching native shell; Visual '十個節點的路徑圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "今天的教學路徑"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "why → setup → endpoint model → anchor → A → B → recovery → C → evidence → transfer。"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "十個節點的路徑圖。"
+        }
+      ],
+      "notes": "這張是路線圖，不是倒數計時器。先把工具與場景的關係講清楚，再完成能回復的 setup；接著建立 endpoint state 與服務邊界的共同語言，逐一跑三個 labs，保存 workbook，最後把機制轉到其他 IoT 場景。若某個節點受阻，沿著同一場景的 recovery 分支回來，不切換成另一個學習問題。 恢復提示：若 claim 被擴大，停在分層圖，回到 endpoint/system boundary；不可把模擬資料說成 live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "claim shield",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 5",
+        "why_fit": "Authored Layout 'claim shield' maps to a matching native shell; Visual '四層 claim ladder。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "開場檢查點：先確認 claim 邊界"
+        }
+      ],
+      "notes": "在進入命令前，我們先把能說什麼與不能說什麼放在同一張圖。這是 course-owned、deterministic、simulated 的 endpoint energy lab；不是 live telemetry，不是量測結果，也不是 canonical parity 通過。這個邊界不是警語而已，它會出現在 result、replay、Leo import 與 workbook provenance。之後若看見未凍結的 URL、畫面或 KPI，我們用 placeholder 保留缺口。 恢復提示：若 claim 被擴大，停在分層圖，回到 endpoint/system boundary；不可把模擬資料說成 live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "folder anatomy",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'folder anatomy' maps to a matching native shell; Visual '`c120-lora-energy-lab/` 資料夾樹。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "套件根目錄是一條 provenance 邊界"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "README、setup.sh / setup.cmd、course.sh / course.cmd、student_policy.py、schemas/。"
+        }
+      ],
+      "notes": "拿到 release 後，不要從不同 branch 拼檔案。Server 上目前的 ZIP inventory 已驗證為單一 `c120-lora-energy-lab/` 根目錄與 65 個檔案，包含說明、setup、launcher、policy、fallback 與 schemas。解壓後請確認仍是這個單一根目錄；這樣 runner、policy、scenario 與驗證契約才來自同一份 reviewed bytes。根目錄不對、必要檔案缺失，先停在 provenance gate。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "checksum card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'checksum card' maps to a matching native shell; Visual 'ZIP 與 SHA-256 檔案的相鄰卡片。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "下載指定 archive，先核對 identity"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "http://120.126.151.102:4192/c120-lora-energy-lab-v1.zip\nhttp://120.126.151.102:4192/c120-lora-energy-lab-v1.zip.sha256\nSHA-256:ae887f751b93dbcbdb2289b0593fc2ccebed01da05e2e7034db0c24f692bf46e。"
+        }
+      ],
+      "notes": "請只從畫面上的兩個 URL 取得同名 ZIP 與 checksum。Linux 用 `sha256sum -c c120-lora-energy-lab-v1.zip.sha256`，macOS 用 `shasum -a 256` 後逐字比較，Windows PowerShell 用 `Get-FileHash .\\\\c120-lora-energy-lab-v1.zip -Algorithm SHA256`，再與畫面上的 64 位 hash 比對。這一步保護的是 artifact identity，不是 energy evidence。Server 端目前已驗證 listener、ZIP bytes 與 checksum 內容一致；controller 對外 HEAD 曾回 200，但完整 GET rehearsal 尚未穩定通過，因此不把它擴張成所有教室網路均已驗證。hash 不符就停止，不改用相似 archive。 恢復提示：URL 無法下載時先保留錯誤並確認教室網路能連到 `120.126.151.102:4192`；checksum 不符或必要檔案缺失時停止，重新取得同一個 owner 指定 archive，不從其他 branch 拼檔。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "split shell",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'split shell' maps to a matching native shell; Visual 'CMD 與 PowerShell 的提示字元對照卡。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "Windows 原生先確認 shell 與 launcher"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "C:\\...> → py -3.11"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "PS C:\\...> → .\\setup.cmd。"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "CMD 與 PowerShell 的提示字元對照卡。"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "CMD 與 PowerShell 的提示字元對照卡。"
+        }
+      ],
+      "notes": "如果畫面開頭是 `C:\\...>`，我們在 CMD；如果是 `PS C:\\...>`，我們在 PowerShell。兩者都能使用 Python Launcher，但環境變數寫法不同。先執行 `py --list`，再執行 `py -3.11 --version`。看到 Python 3.11.x 才進入 setup；不要因為 `python` 指向另一個版本就繼續。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "recovery ladder",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'recovery ladder' maps to a matching native shell; Visual 'Python 3.11 installer → launcher → version check。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "沒有 Python 3.11 時的 Windows 安裝路徑"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "https://www.python.org/downloads/windows/"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "Python 3.11.x / Windows installer (64-bit)\n安裝 Python Launcher\n重新開啟 shell → py --list。"
+        }
+      ],
+      "notes": "如果 `py --list` 沒有 3.11，請開啟畫面上的 Python 官方 Windows 下載頁，選擇 Python 3.11.x 的 64-bit installer；安裝時保留 Python Launcher。完成後關閉再開 CMD 或 PowerShell，重跑 `py --list` 與 `py -3.11 --version`。這不是把最新版本硬塞進課程，而是建立 runner 預期的 minor-version 邊界。若 installer、PATH 或 launcher 仍失敗，改用下一頁的 uv recovery；不修改 lock。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "terminal command ribbon",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'terminal command ribbon' maps to a matching native shell; Visual '三行 PowerShell command ribbon。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "uv 是 Python 3.11 的 recovery 工具"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "winget install --id=astral-sh.uv -e\nuv python install 3.11\nuv python find 3.11。"
+        }
+      ],
+      "notes": "當 launcher 找不到 3.11，我們可以用 uv 取得 exact interpreter。先裝 uv，再跑 `uv --version`，接著 `uv python install 3.11` 與 `uv python find 3.11`。最後一行要回傳實際 interpreter path；它只用來建立這份 package 的 `.venv`。如果 uv 仍找不到，保留錯誤，走 fallback；不要把 uv recovery 說成已完成的 fresh setup。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "environment split",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'environment split' maps to a matching native shell; Visual 'system Python 與 `.venv\\Scripts\\python.exe` 的隔離圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "Windows 用 package-local `.venv`"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "system Python ≠ course .venv"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "不要共享 WSL .venv。"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "system Python 與 `.venv\\Scripts\\python.exe` 的隔離圖。"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "system Python 與 `.venv\\Scripts\\python.exe` 的隔離圖。"
+        }
+      ],
+      "notes": "隔離環境讓這份 runner 的 dependency graph 不受其他專案污染，也讓錯誤能從 package root 回復。Windows 的 interpreter 應落在 `.venv\\Scripts\\python.exe`，不能拿 WSL 的 `.venv/bin/python` 來用。正常上課不必 activate；launcher 會優先找 package-local venv。需要診斷時才執行 `.\\.venv\\Scripts\\python.exe --version`。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "command-to-receipt",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'command-to-receipt' maps to a matching native shell; Visual 'PowerShell command 與 READY receipt 的左右箭頭。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "Windows 執行 setup 與 verify"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "$env:PYTHON_BIN = \"py -3.11\"\n.\\setup.cmd\n.\\course.cmd verify\nREADY / PLACEHOLDER。"
+        }
+      ],
+      "notes": "在 package root 的 PowerShell，先設定 `$env:PYTHON_BIN = \"py -3.11\"`，再執行 `.\\setup.cmd`，完成後執行 `.\\course.cmd verify`。setup 的作用是建立 venv 並依 lock 安裝；verify 的作用是檢查 Python、wrapper、lock、policy API 和 scenario identity。預期是 machine-readable `READY` receipt；目前 Windows native command 與 receipt 尚未 clean-run，所以只把 `READY / PLACEHOLDER` 留在畫面。版本或 identity 失敗就停在這一 gate。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "shell identity",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'shell identity' maps to a matching native shell; Visual 'PowerShell 安裝／清單與 Ubuntu `pwd / uname -a` 的雙視窗。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "WSL 先確認它真的是 Ubuntu shell"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "PowerShell (系統管理員):wsl --install -d Ubuntu"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "wsl -l -v\nUbuntu:pwd\nuname -a；不要混用 .venv。"
+        }
+      ],
+      "notes": "WSL 是另一個 shell 與檔案環境。尚未安裝時，在系統管理員 PowerShell 執行 `wsl --install -d Ubuntu`，依 Windows 提示重新啟動並完成 Ubuntu 使用者設定；已安裝時先用 `wsl -l -v` 確認 Ubuntu。進入 Ubuntu 後再執行 `pwd` 與 `uname -a`。如果看到 Linux home 路徑，才使用 `setup.sh`；Windows 端的 `setup.cmd` 不要在這裡執行。先辨識環境，才能讓後面的 path、venv 和 recovery 可信。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "toolchain ladder",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'toolchain ladder' maps to a matching native shell; Visual '`apt → curl → uv → Python 3.11` 階梯。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "WSL 安裝工具與 uv"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "sudo apt update"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "sudo apt install -y curl unzip\ncurl -LsSf https://astral.sh/uv/install.sh | sh。"
+        }
+      ],
+      "notes": "在 Ubuntu shell 先更新套件索引並安裝 `curl`、`unzip`，再依 uv 官方 installer 安裝 uv。重新開 shell 後跑 `uv --version`、`uv python install 3.11`、`uv python find 3.11`。這些步驟只是讓 WSL 有可選的 exact interpreter；它們不會產生 course result。若 installer 被 policy 或網路擋住，留下錯誤並回到同 scenario fallback。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "path flow",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'path flow' maps to a matching native shell; Visual '`/mnt/c/...` → `~/c120-course/` → package root。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "WSL 解壓與建立 `.venv`"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "PYTHON_BIN=\"$(uv python find 3.11)\""
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "bash setup.sh"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": ".venv/bin/python。"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "`/mnt/c/...` → `~/c120-course/` → package root。"
+        }
+      ],
+      "notes": "如果 ZIP 在 Windows Downloads，可從 `/mnt/c/Users/<YourName>/Downloads/` 複製到 WSL 的 Linux home，再在 WSL 內解壓。進入 package root 後執行 `PYTHON_BIN=\"$(uv python find 3.11)\" bash setup.sh`。這會建立 WSL 專用的 `.venv/bin/python`；不要把 Windows 既有 venv 帶過來。接著同一個 shell 執行 `bash course.sh verify`。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "single terminal",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'single terminal' maps to a matching native shell; Visual 'POSIX command pair。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "POSIX runner 的最小入口"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "PYTHON_BIN=python3.11 bash setup.sh\nbash course.sh verify。"
+        }
+      ],
+      "notes": "在 Linux 或 macOS 的 POSIX shell，先以 `PYTHON_BIN=python3.11 bash setup.sh` 指定 interpreter，再以 `bash course.sh verify` 做同一份 gate。這與 Windows、WSL 的 launcher 不同，但驗證目的相同：package-local venv、lock、policy API、scenario 與 claim boundary 都要一致。現在這條 POSIX path 也保持實機排演 placeholder。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "receipt anatomy",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'receipt anatomy' maps to a matching native shell; Visual 'machine-readable receipt 欄位放大卡。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "`READY` receipt 是下一步的入場券"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "status: READY\nPython 3.11.x"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "scenario_id\npolicy_api_version；engine_mode。"
+        }
+      ],
+      "notes": "請在 receipt 中找 status、Python version、scenario identity、policy API、lock、engine mode、upstream execution 和 claim boundary。`READY` 表示環境和契約可以進入 runner；它不表示已完成任何節能實驗。缺欄位、版本不符或出現不同 scenario，先讀失敗 gate；不要手改 receipt 讓它看起來通過。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "decision fork",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'decision fork' maps to a matching native shell; Visual '`READY` 與 `RECOVERABLE ERROR` 的分叉牌。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "setup 失敗不等於 energy result"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "讀錯誤 → 修最小邊界\n無法完成 → same-scenario fallback。"
+        }
+      ],
+      "notes": "如果 setup 或 verify 出現錯誤，先確認 Python minor、package root、lock 與 scenario；只修目前 gate 指出的最小問題。若仍無法建立 READY，就選同 scenario fallback，並把 source mode 記成 fallback。這保留相同的學習問題與 provenance，但不冒充本機 policy execution。不要把安裝等待拿來填 energy evidence。 恢復提示：若 shell、版本、lock 或 receipt 不符，保留錯誤並回到 setup gate；仍受阻就使用同 scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "guarded file",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'guarded file' maps to a matching native shell; Visual '`student_policy.py` 與四個鎖頭。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "可編輯檔案只有一個"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "只編輯 marked blocks\nscenario / schemas / runner / generated JSON = read-only。"
+        }
+      ],
+      "notes": "在整個實驗中，我們只改 `student_policy.py` 的 marked blocks。不要改 upstream framework、scenario、schema、runner、Leo code 或 generated JSON。這個邊界讓 policy hash、predecessor 和 freeze receipt 能解釋結果。若檔案本身與 release 不同，停止編輯，回到 package identity 或 checkpoint restore。 恢復提示：若 policy guard 或 syntax 失敗，只修 marked block 的最小行；不要改 runner、schema 或 generated JSON。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "input/output card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'input/output card' maps to a matching native shell; Visual 'observation card → legal action card。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "policy API 的輸入是現在能觀察到的事"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "observation"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "choose_action(...)\nWAIT / SLEEP / SEND_ONE / SEND_URGENT / FLUSH_BATCH。"
+        }
+      ],
+      "notes": "policy 只能依當下允許的 observation 做選擇。它不能偷看未來品質、future energy 或 result summary；也不能回傳不在契約內的 action。請先說出 observation 代表什麼，再說 action 會觸發哪個 state 或 packet 行為。這是控制面，不是讓大家重寫 simulator。 恢復提示：若 policy guard 或 syntax 失敗，只修 marked block 的最小行；不要改 runner、schema 或 generated JSON。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "code callout",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'code callout' maps to a matching native shell; Visual '一行斜體常數與範圍護欄。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "Python survival：常數是受控旋鈕"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "PACE_GAP_STEPS、REST_DURING_GAP、BATCH_SIZE、URGENT_MARGIN_S\nbounded values only。"
+        }
+      ],
+      "notes": "這裡只需要讀懂變數名稱、等號和允許值。斜體顯示的變數是 policy 的控制點；runner 會檢查它們是否在 bounded range。改一個常數前，先寫出它可能改變的 state、queue 或 service；改完保留一個小 diff。實際 release line number 沒有凍結，畫面不填行號。 恢復提示：若 policy guard 或 syntax 失敗，只修 marked block 的最小行；不要改 runner、schema 或 generated JSON。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "branch diagram",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'branch diagram' maps to a matching native shell; Visual '`if / elif / else` 的三叉決策樹。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "Python survival：條件只處理當前 observation"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "現在看到的條件 → 一個 legal action\n不要讀 future outcome。"
+        }
+      ],
+      "notes": "看一個 Boolean 條件時，先圈出它讀的是哪個 observation，再指出每一個分支會回傳什麼 action。這會把程式閱讀連到機制：條件成立，裝置可能等待、睡眠或送出；條件不成立，則走另一個合法路徑。若 syntax 或名稱錯誤，修 marked block 的最小行，不碰 runner。 恢復提示：若 policy guard 或 syntax 失敗，只修 marked block 的最小行；不要改 runner、schema 或 generated JSON。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "before/after code card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'before/after code card' maps to a matching native shell; Visual '三行縮排示意與 action token。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "Python survival：縮排與 return"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "choose_action(observation)"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "return WAIT\nreturn SLEEP\nreturn SEND_ONE。"
+        }
+      ],
+      "notes": "縮排決定條件屬於哪個分支，`return` 決定 runner 收到哪個 action。請不要在課堂中追 framework traceback；若錯誤指向 marked line，就修該行並重新做 policy guard；若指向非 marked 區域，保留錯誤，走 recovery。這一頁的目的只是讓大家能安全讀與改小段 Python。 恢復提示：若 policy guard 或 syntax 失敗，只修 marked block 的最小行；不要改 runner、schema 或 generated JSON。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "state ribbon",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'state ribbon' maps to a matching native shell; Visual '`SLEEP → WAKE → PROCESS → TX/RX → WAIT` 狀態帶。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "endpoint 狀態：名稱要和機制對齊"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "SLEEP、WAIT、WAKE、PROCESS、TX、RX。"
+        }
+      ],
+      "notes": "先把狀態名稱和可觀察機制分開。SLEEP 是低功耗休息；WAIT 是 awake idle；WAKE 有回復成本；PROCESS、TX、RX 都各有時間與功率。不要把所有空檔都叫 sleep，也不要把狀態標籤直接當成 energy saving。後面的 result ledger 會把 state duration 逐項列出。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "two-lane timing",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'two-lane timing' maps to a matching native shell; Visual 'WAIT 與 SLEEP 的雙泳道時間線。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "WAIT 是 awake idle，SLEEP 會帶來 wake 成本"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "WAIT = 保持清醒"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "SLEEP = 低功耗 + wake latency/energy。"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "WAIT 與 SLEEP 的雙泳道時間線。"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "WAIT 與 SLEEP 的雙泳道時間線。"
+        }
+      ],
+      "notes": "這是 Lab A 的核心。WAIT 可能不增加睡眠喚醒，但裝置仍清醒；SLEEP 可能降低 idle power，卻要付 wake latency 和 wake energy。哪一個較好，不能只看功率，還要看 service、deadline、packet outcome 與整段 state time。這是一個待驗證的方向，不是預先保證的 KPI。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "packet lifecycle",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'packet lifecycle' maps to a matching native shell; Visual '`generated → attempt → retry → delivered / expired` 卡片流。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "封包生命週期：送出不是交付"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "attempt、retry、delivered、expired、queue age。"
+        }
+      ],
+      "notes": "每一個 packet 先進 queue，再可能產生 attempt；attempt 可能成功、重試或逾期。SEND action 只代表一次決策，不等於 delivered service。講師要把 queue age、attempt、retry、delivered、expired 分開念給大家聽，讓後面比較 candidate 時不會只看一次 TX。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "gate diagram",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'gate diagram' maps to a matching native shell; Visual 'service gate 包住 endpoint energy ledger。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "service boundary 先於 energy 比較"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "先確認 job / window / delivery\n再比較 J。"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "service gate 包住 endpoint energy ledger。"
+        }
+      ],
+      "notes": "比較兩個 policy 前，先確認是不是同一個 job、同一個 service window、同一個 endpoint boundary，以及 delivered bits 或 deadline 條件是否可比。若 candidate 少送很多封包，J 下降不能直接叫節能；先說服務是否保住。這個 gate 會在三個 labs 都重現，但畫面只保留必要的判讀卡。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "area chart",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'area chart' maps to a matching native shell; Visual '`P(t)` 曲線下的面積。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "W 是速率，J 是累積結果"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "power = rate\nenergy = area under P(t)"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "W、J。"
+        }
+      ],
+      "notes": "W 描述某一時刻的功率，J 描述功率隨時間累積的能量。低峰值但拖很久，可能累積更多 J；短暫高峰也要放回 service 和 deadline 看。不要把畫面上的 power 欄位直接當節省，也不要拿 endpoint J 去代表整個 system。公式頁會把這個關係寫成 LaTeX。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "equation canvas",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'equation canvas' maps to a matching native shell; Visual 'Office Math 公式 `E_endpoint`。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "公式：endpoint energy 的範圍"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "LaTeX source:E_{endpoint}=\\sum_{s\\in\\mathcal{S}}P_s t_s"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "endpoint boundary。"
+        }
+      ],
+      "notes": "公式只把 endpoint radio 與 processing course assumptions 的累積關係說清楚：每個 state 的功率乘上停留時間，再加總。`E_endpoint` 的下標提醒我們它不是 whole-system energy。這裡不填入未產生的數字；結果要從 runner artifact 讀取。若 PowerPoint 不能顯示 Office Math，使用同一公式的向量 fallback，不顯示原始 LaTeX 當成公式畫面。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "equation + unit ladder",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'equation + unit ladder' maps to a matching native shell; Visual '`η_E` 公式與單位階梯。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "公式：服務效率的分子與分母"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "LaTeX source:\\eta_E=\\frac{D_{delivered}}{E_{endpoint}}\ndelivered bits / J。"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "`η_E` 公式與單位階梯。"
+        }
+      ],
+      "notes": "這個比值的分子是 delivered data，分母是 endpoint energy；兩邊的 boundary 與 units 都要對上。若資料沒有交付或能量 scope 不明，就不能直接報 bit/J。公式幫助我們檢查語義，不會在 browser 端重新計算科學結果。這一頁只教如何讀分子、分母與 scope。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "provenance spine",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'provenance spine' maps to a matching native shell; Visual '四層 provenance chain。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "來源、模型、課程假設、結果"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "source → model → course assumption → result"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "scenario_id / seed / policy hash。"
+        }
+      ],
+      "notes": "不要把來源、模型與課程假設壓成一個神秘數字。pinned source 或 TLE 是 source；模型轉成 contact、quality、state 和 packet trace；course wrapper 加入 traffic、wake 或 mission rule；policy action 才產生 result。沿著 scenario_id、seed、policy hash 和 artifact path 往回查，才能判讀一筆數據的來處。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "identity spine",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'identity spine' maps to a matching native shell; Visual 'runner → result → replay → workbook 的同色 identity token。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "一個 `scenario_id` 綁住整條鏈"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "c120-ntpu-energy-decision-01"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "scenario / anchor / policy / replay。"
+        }
+      ],
+      "notes": "同一個 scenario identity 要出現在 scenario package、runner result、endpoint replay 與 workbook。它讓我們知道比較的是同一個問題，而不是把兩張相似畫面拼在一起。當 identity、anchor、seed、schema 或 unit 不一致，Leo importer 要 fail closed；講師不以改 JSON 的方式繞過它。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "fairness frame",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'fairness frame' maps to a matching native shell; Visual 'baseline / candidate 的三個鎖定條。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "公平 baseline：固定 job、window、boundary"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "FIXED:scenario / seed / job\nCONTROLLED:policy block\nOBSERVED:queue / service / state / J。"
+        }
+      ],
+      "notes": "baseline 不是一張舊截圖，而是後面比較的 control。固定 scenario、seed、job、window、traffic 與 energy boundary，只讓目前 lab 的 marked block 改變。結果觀察 queue、packet、service、state time 和 endpoint J。任何比較若偷偷換了 trace、scope 或 policy，就先判定不公平。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "window timeline",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'window timeline' maps to a matching native shell; Visual 'contact window 上的 legal / illegal action marks。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "LEO window：合法與不合法的 action"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "window open"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "window closed\nWAIT / SEND\nsame anchor。"
+        }
+      ],
+      "notes": "窗口開啟時，send、wait 或 batch 的後果可能不同；窗口關閉時，延後可能變成 service loss。請先看固定 anchor 與 traffic，再判斷某個 action 是否落在合法 service window。這頁不是教 TLE 推導，而是把 changing opportunity 接回 endpoint policy 的選擇。 恢復提示：若欄位、單位、scope 或 identity 不完整，停止比較，回到相同 scenario 的 artifact；不要補填數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "lab hero",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 5",
+        "why_fit": "Authored Layout 'lab hero' maps to a matching native shell; Visual '同一批 packet 在兩種送出節奏上的雙泳道。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "Lab A：同一份工作，不同 pace"
+        }
+      ],
+      "notes": "Lab A 只問一個可測問題：固定工作與窗口時，送出的 pace 和 rest 選擇，會如何改變 queue、state time、service 與 endpoint J？先不要開檔案。請每個人先說一個方向性的預測，然後我們用 baseline 和 candidate 來驗證；沒有 evidence 就不提前宣布答案。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "annotated code",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'annotated code' maps to a matching native shell; Visual '`PACE_GAP_STEPS` marked line 的放大框。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "先讀 `PACE_GAP_STEPS`"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "gap 變大 → send opportunity 改變\nline number:PLACEHOLDER。"
+        }
+      ],
+      "notes": "請只讀變數名稱與它進入 decision 的位置。這個控制點描述送出之間的步距；它不是直接指定 energy。先預測 gap 改變後 queue age、attempt timing、awake idle、service 和 J 的方向，再改一個合法值。正式 release 的行號與畫面尚未凍結，因此這裡明示 placeholder。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "branch card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'branch card' maps to a matching native shell; Visual '`WAIT` / `SLEEP` 的二選一分支。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "再讀 `REST_DURING_GAP`"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "REST_DURING_GAP = WAIT or SLEEP\nwake cost must be observed。"
+        }
+      ],
+      "notes": "這個控制點把空檔送進 WAIT 或 SLEEP。選 WAIT 時，裝置保持清醒；選 SLEEP 時，可能降低 idle power，但要付 wake latency 和 wake energy。先把這個機制寫成 prediction；candidate 結果要同時看 state ledger、service 和 J，不接受只看一個功率欄位。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "prediction canvas",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'prediction canvas' maps to a matching native shell; Visual '四格 prediction card。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "Lab A 的 prediction lock"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "queue age、service、state time、endpoint J"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "before run。"
+        }
+      ],
+      "notes": "在執行前，請寫下四個觀察：queue age 會怎麼走、service 是否保持、哪個 state time 會改變、endpoint J 可能往哪裡走。這不是猜 KPI；它是一個可以被 result 推翻的判讀句。若之後只有 label 或動畫變化，沒有這四類 evidence 的 consequential diff，Lab A gate 就不算完成。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "terminal focus",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'terminal focus' maps to a matching native shell; Visual '一條 baseline command 與 stdout JSON。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "A-01：跑 untouched baseline"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "bash course.sh run --lab A --case baseline\nWindows:course.cmd run --lab A --case baseline\nresult_path:PLACEHOLDER。"
+        }
+      ],
+      "notes": "先不改 policy，執行 baseline。POSIX/WSL 使用 `bash course.sh run --lab A --case baseline`，Windows 使用 `course.cmd run --lab A --case baseline`。這一步建立 control，固定 scenario 和 seed，並輸出 stdout JSON；請複製 JSON 指出的 `result_path`，不要靠檔名猜 run。現在命令與 clean artifact 尚未完成 controller fresh rehearsal，畫面保留 placeholder。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "source diff",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'source diff' maps to a matching native shell; Visual 'baseline 與 candidate 的單一 diff。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "A-02：只改 A marked block 並 freeze"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "lab-a-pace-rest\nbash course.sh run --lab A --case candidate --freeze\nWindows:course.cmd run --lab A --case candidate --freeze\npolicy SHA:PLACEHOLDER。"
+        }
+      ],
+      "notes": "現在才編輯 `lab-a-pace-rest`，只改 `PACE_GAP_STEPS` 或 `REST_DURING_GAP` 的合法內容。先說出你的 prediction，保存原始檔案，再執行 candidate freeze。freeze 會綁定 scenario、anchor、policy SHA、predecessor 與 seed；預期會有 candidate result、receipt 和 A checkpoint。若沒有 queue、packet、service、state 或 J 的 consequential diff，先記錄 gate 失敗，不再亂調參。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "evidence compare",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'evidence compare' maps to a matching native shell; Visual 'baseline/candidate 雙欄 evidence ledger。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "A-03：匯入 candidate，先看同一個 boundary"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "same scenario"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "same job"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "queue / service / state / J"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "endpoint layer。"
+        }
+      ],
+      "notes": "把 candidate result 和配對 replay 帶進 Leo，與 baseline 並排看。同一個 scenario、job、window 和 endpoint boundary 先打勾，再比較 queue、packet、state 和 J。若 service 不同，先說 service trade-off；不要用較低 J 直接宣布節能。現行 LoRa endpoint browser pixel 和 KPI 尚未凍結，這裡只放 evidence placeholder。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "state ledger",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'state ledger' maps to a matching native shell; Visual 'WAIT/SLEEP/WAKE/PROCESS/TX/RX 的橫向 ledger。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "A-04：讀懂 state ledger"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "state duration\nwake latency"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "TX/RX attempts\nenergy scope。"
+        }
+      ],
+      "notes": "請沿著 ledger 從左到右讀，不要只抓總 J。先看 WAIT 是否變長，再看 SLEEP 是否帶來 WAKE；接著確認 PROCESS、TX、RX 的時間與 attempt。最後把差異連回 policy action。若 artifact 沒有 state 或 scope 欄位，判定 evidence 不完整，回到相符 result 或 fallback。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "packet-to-service bridge",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'packet-to-service bridge' maps to a matching native shell; Visual 'packet ledger → service gate 的箭頭。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "A-05：把 packet 結果接回 service"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "attempt ≠ delivered\nretry / expired"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "service verdict。"
+        }
+      ],
+      "notes": "candidate 是否真的支持工作，要看 delivered、expired、retry 與 deadline，而不是只看 SEND 次數。若 packet retry 增加，TX time 和 J 可能增加；若等待跨過 window，service 可能下降。請用一個完整句子判讀：哪個 action 改變哪個 packet outcome，這個 outcome 是否仍滿足 service。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "receipt chain",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'receipt chain' maps to a matching native shell; Visual 'baseline → candidate → `lab-a-frozen` receipt 鏈。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "A-06：檢查 A freeze lineage"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "predecessor"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "policy SHA\nactive_block_id\nfreeze receipt。"
+        }
+      ],
+      "notes": "freeze 不只是按鈕，它是 withheld case 的入場條件。請確認 candidate 的 policy SHA 與 baseline 不同，receipt 指向同一 scenario 和 anchor，checkpoint 名稱為 A frozen。若 receipt、checkpoint 或 predecessor 缺失，停止進入 hidden，回到 candidate 的最小修復。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "withheld window",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'withheld window' maps to a matching native shell; Visual '同一 policy 跨兩個不同窗口的對照圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "A-07：用 hidden case 檢驗，不再 retune"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "bash course.sh run --lab A --case hidden"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "Windows:course.cmd run --lab A --case hidden\npolicy SHA unchanged。"
+        }
+      ],
+      "notes": "保持 A frozen policy，不再編輯，執行 hidden case；Windows 使用對應的 `course.cmd`。hidden 會用另一個成本或 service-window 條件測試原先的 pace/rest 假說。預期 policy SHA 不變，結果有自己的 queue、service、state 和 J。若方向相反，這是 counterexample；不要回頭改 policy 讓它變漂亮。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "causal sentence",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'causal sentence' maps to a matching native shell; Visual '`A edit → mechanism → evidence → verdict` 四段句卡。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "Lab A debrief：一條因果句就夠"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "我改了…\n因此…"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "result 顯示…\n在 hidden…。"
+        }
+      ],
+      "notes": "請每個人完成一句可反駁敘述：「我改了 A 的哪一個控制點，因此改變了哪個 state 或 packet 機制；result 顯示哪一項 evidence；在 hidden 條件下這個結論仍成立或被推翻。」這句話比背一個 J 更有價值，也把 predictor、runner 與 replay 綁回同一條 lineage。 恢復提示：若 A result 缺失或沒有 consequential diff，保留 stdout 與錯誤，restore A checkpoint 或選 matching fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "quality trace hero",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 5",
+        "why_fit": "Authored Layout 'quality trace hero' maps to a matching native shell; Visual '一條 quality/contact trace 與 send-ready band。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "Lab B：現在送，還是等到更穩定？"
+        }
+      ],
+      "notes": "Lab B 把 changing opportunity 換成品質 trace。問題不是品質越高越好，而是裝置在噪聲或短暫尖峰中，何時進入 send-ready、何時退出、要穩定多久。這會影響切換、retry、service 和 endpoint J。先讀 trace，再讀 policy；不要先調 threshold。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "threshold crossing",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'threshold crossing' maps to a matching native shell; Visual 'quality curve 穿越 enter threshold。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "`ENTER_QUALITY`：何時進入 send-ready"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "quality ≥ ENTER_QUALITY\nenter event\nline number:PLACEHOLDER。"
+        }
+      ],
+      "notes": "enter threshold 決定何時從等待轉進可送狀態。先指出 trace 中第一次真正越過 threshold 的位置，再預測 mode transition、attempt 和 service。這個欄位不是直接的 energy knob；它透過切換與後續 packet 行為產生結果。正式 line number 與 field mapping 尚未凍結，保留 placeholder。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "hysteresis band",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'hysteresis band' maps to a matching native shell; Visual 'enter/exit 兩條 threshold 中間的 band。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "`EXIT_QUALITY`：為什麼不能只用一條線"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "ENTER_QUALITY ≠ EXIT_QUALITY\navoid ping-pong。"
+        }
+      ],
+      "notes": "如果 enter 和 exit 共用一條線，品質在邊界抖動時，mode 可能來回切換；這就是 ping-pong。把 exit threshold 放在不同位置，是為了讓已進入的狀態有穩定帶。講師要讓大家先預測切換次數、WAIT、TX/RX 和 service，再看 trace evidence。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "hold counter",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'hold counter' maps to a matching native shell; Visual '逐格累積的 stability counter。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "`STABLE_STEPS`：拒絕短暫尖峰"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "stable_count < STABLE_STEPS"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "hold\nstable_count = STABLE_STEPS → switch。"
+        }
+      ],
+      "notes": "STABLE_STEPS 把「看起來變好」和「連續穩定」分開。未達計數時保持 hold，達到計數才切換。這可能減少 ping-pong，但也可能錯過短窗口；所以要把 transition、queue、service 與 energy 一起看。不要只用切換次數判定成功。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "trace annotation",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'trace annotation' maps to a matching native shell; Visual 'Trace A 上的三個預測標記。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "Lab B 的 Trace A prediction"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "預測 entry\n預測 hold\n預測 service / endpoint J。"
+        }
+      ],
+      "notes": "請在 Trace A 上標出你認為會 enter、會 hold、會 exit 的位置，並寫下可能的 service 與 endpoint J 方向。這不是把未來輸入偷塞進 policy，而是課前的可反駁假說。下一步 baseline 和 candidate 會在同一條 Trace A 上比較。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "terminal focus",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'terminal focus' maps to a matching native shell; Visual 'Trace A baseline command 與 result path。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "B-01：Trace A baseline"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "bash course.sh run --lab B --case trace-a-baseline\nWindows:course.cmd run --lab B --case trace-a-baseline\nresult_path:PLACEHOLDER。"
+        }
+      ],
+      "notes": "保持 A frozen predecessor，先跑 B Trace A baseline。這一步固定 quality/contact trace，建立 enter/exit/hold 候選的 control。stdout 會回傳 run identity 與 result path；請保留配對 replay。命令名稱、實際 path 與 clean result 尚未完成排演，因此畫面不填現成數字。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "threshold diff",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'threshold diff' maps to a matching native shell; Visual '三個 B 常數中的單一 diff。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "B-02：改 B marked block 並 freeze"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "lab-b-enter-exit-hold"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "ENTER_QUALITY / EXIT_QUALITY / STABLE_STEPS\nbash course.sh run --lab B --case trace-a-candidate --freeze\nWindows:course.cmd run --lab B --case trace-a-candidate --freeze。"
+        }
+      ],
+      "notes": "只修改 B marked block 中的合法 threshold 或 stable steps，保留 A frozen predecessor。執行 Trace A candidate freeze，讓 receipt 綁定 B policy SHA、Trace A、scenario 與 predecessor。若改到其他 block、trace 或 engine，runner 應在執行前拒絕；若 evidence 只變了畫面標籤，記錄 consequential-fixture gate 未通過。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "transition ledger",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'transition ledger' maps to a matching native shell; Visual 'mode transition 與 packet/service 的同步表。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "B-03：讀 transition 與 service，不只讀品質"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "quality trace\nmode transition"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "attempt / retry\nservice；endpoint J。"
+        }
+      ],
+      "notes": "比較 candidate 時，先定位 enter、hold、exit，再看這些 transition 造成的 attempt、retry、queue 和 service。品質數值只是 observation context，不是 delivered service，也不是 energy。若 policy 反應更慢，要問它保住了什麼；若切換更多，要問它付出了什麼。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "gate card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'gate card' maps to a matching native shell; Visual 'B frozen receipt 的鎖與 predecessor 箭頭。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "B-04：確認 freeze receipt 才能進 Trace B"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "lab-b-frozen\npolicy SHA"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "Trace A\npredecessor = A frozen。"
+        }
+      ],
+      "notes": "Trace B 是 withheld，不是再調參的 playground。先檢查 B frozen receipt、checkpoint、policy SHA 和 predecessor；任何一項缺失就不要執行 withheld。freeze 的目的，是讓 Trace B 真正回答「同一 policy 在新 trace 是否仍有用」。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "withheld trace",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'withheld trace' maps to a matching native shell; Visual '同一個 frozen policy 跨 Trace A / B。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "B-05：Trace B 不 retune"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "bash course.sh run --lab B --case trace-b\nWindows:course.cmd run --lab B --case trace-b\npolicy SHA unchanged。"
+        }
+      ],
+      "notes": "保持 B frozen policy，執行 Trace B；Windows 使用對應的 `course.cmd`。此時不再改 threshold 或 stable steps。預期 result 沿用 B policy SHA，並提供 transition、queue、service、state 和 endpoint J。若 Trace B 露出 counterexample，這是泛化邊界，不是失敗到要隨機重調。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "counterexample compare",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'counterexample compare' maps to a matching native shell; Visual '兩條 transition traces。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "B-06：辨識 too-slow 與 ping-pong"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "too-slow"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "ping-pong"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "service loss"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "保留 counterexample。"
+        }
+      ],
+      "notes": "如果 hold 太長，可能 too-slow，錯過 service window；如果 enter/exit 太近，可能 ping-pong，付出額外切換與 retry。請把 trace 上的事件和 endpoint ledger 對起來，最後說明是哪個 trade-off 被觀察到。不要把畫面上較平滑的線直接當成較省能量。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "verdict card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 5",
+        "why_fit": "Authored Layout 'verdict card' maps to a matching native shell; Visual '`policy condition → transition → service/energy → verdict`。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "Lab B debrief：hysteresis 是條件，不是保證"
+        }
+      ],
+      "notes": "請用「在 Trace A…；在 Trace B…」兩句話回答。hysteresis 可能減少 ping-pong，但也可能讓切換太慢；它是一個在特定 trace、job 和 service boundary 下的條件式結論。把 B receipt、policy SHA、Trace B result 和 counterexample 一起保留，讓別人能重查。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "checkpoint stack",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'checkpoint stack' maps to a matching native shell; Visual 'A frozen、B frozen 與 workbook checkpoint 三層堆疊。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "Recovery checkpoint：保存 A/B lineage"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "artifacts/receipts/\nartifacts/checkpoints/"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "workbook prediction + result。"
+        }
+      ],
+      "notes": "在進入 C 前，保存目前的 policy、receipt、checkpoint、result/replay pair 和 prediction。若中斷，先用 status 找可用 checkpoint，再 restore 所需 role；不要覆寫既有 artifact。這一步的價值是保持 lineage，不是補出一個看似完整的數字。 恢復提示：若 B receipt、predecessor 或 policy SHA 不符，停止 withheld，restore A/B checkpoint；不可 retune。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "queue hero",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 5",
+        "why_fit": "Authored Layout 'queue hero' maps to a matching native shell; Visual 'queue cards 接到長窗口與短窗口。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "Lab C：佇列、批次、休眠或 urgent send"
+        }
+      ],
+      "notes": "Lab C 把問題拉到 IoT traffic：多個資料等待時，要不要累積成 batch？快到 deadline 時，要不要 urgent send？批次可能減少 activation，卻增加 queue age；urgent 可能保住 delivery，卻付出較高 state cost。先看 queue 與 window，再改 policy。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "three-card compare",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'three-card compare' maps to a matching native shell; Visual 'queue age、deadline、freshness 三張訊息卡。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "queue、deadline、freshness 不是同一欄"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "queue age"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "deadline"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "freshness"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "delivered / expired。"
+        }
+      ],
+      "notes": "queue age 告訴我們等了多久；deadline 告訴我們何時失效；freshness 告訴我們資料還有沒有用。batch 讓 queue 變長，不代表一定過期；urgent 讓 action 提前，也不代表一定 delivered。請把這三個欄位分開讀，最後才把它們與 endpoint J 對照。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "queue-to-flush",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'queue-to-flush' maps to a matching native shell; Visual '訊息累積到 flush 的階梯。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "`BATCH_SIZE`：少 activation 還是多等待"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "BATCH_SIZE\nflush\nactivation count\nqueue age。"
+        }
+      ],
+      "notes": "BATCH_SIZE 影響何時把累積的資料送出。較大的 batch 可能減少醒來與 TX 次數，但 queue age、freshness 和 deadline 風險上升；較小的 batch 可能更即時，卻增加 activation。預測時要同時寫 activation、delivered、expired、state time 和 J。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "deadline gauge",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'deadline gauge' maps to a matching native shell; Visual 'deadline gauge 與 urgent margin。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "`URGENT_MARGIN_S`：何時跳過一般節奏"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "deadline − now ≤ URGENT_MARGIN_S\nSEND_URGENT\n不要偷看結果。"
+        }
+      ],
+      "notes": "urgent margin 是 action decision 的門檻：當距離 deadline 的剩餘空間太小，policy 可以選擇 SEND_URGENT。這個判斷使用現在可見的時間與資料，不應讀 future delivered 或 future energy。預期是 urgent action 改變 packet timing 與 service；endpoint J 的方向仍要由 result 驗證。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "trade-off canvas",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'trade-off canvas' maps to a matching native shell; Visual '`activation ↔ delay ↔ service ↔ J` 的四向平衡圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "Lab C prediction：先寫 trade-off"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "batching"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "urgency\ndelivered bits\nendpoint J。"
+        }
+      ],
+      "notes": "請先寫一個 trade-off，而不是預測單向節省。例如「較大的 batch 可能降低 activation，但若 queue age 穿過 deadline，delivered bits 會下降」。這種句子能被 candidate、revision 和 surprise 逐步驗證。若預測不成立，保留完整 packet ledger。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "terminal focus",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'terminal focus' maps to a matching native shell; Visual 'C baseline command 與 stdout JSON。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "C-01：跑 baseline"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "bash course.sh run --lab C --case baseline\nWindows:course.cmd run --lab C --case baseline。"
+        }
+      ],
+      "notes": "保持 B frozen predecessor，先跑 C baseline；不要加 `--freeze`。這個 control 固定 traffic、deadline 和 contact window，讓後面的 batching/urgent 改動有比較基準。請保存 result path 和配對 replay；如果 predecessor 不符，先 restore B checkpoint，不要把 C 直接跑下去。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "single diff card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'single diff card' maps to a matching native shell; Visual 'C marked block 的一個小 diff。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "C-02：只做一次 candidate edit"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "lab-c-batch-urgent\nBATCH_SIZE or URGENT_MARGIN_S\nbash course.sh run --lab C --case candidate\nWindows:course.cmd run --lab C --case candidate。"
+        }
+      ],
+      "notes": "現在只改 C marked block，選擇 BATCH_SIZE 或 URGENT_MARGIN_S 的一個方向，保存 prediction 後執行 candidate；不要加 freeze。candidate 的 purpose 是讓我們先看到第一個結果，決定是否需要一次有理由的 revision。若沒有 queue、state、service 或 J 的 consequential change，先記錄 gate failure。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "ledger table",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'ledger table' maps to a matching native shell; Visual 'queue cards 與 delivered/expired packet ledger。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "C-03：讀 queue 與 packet ledger"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "queue age\nattempt"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "retry\ndelivered；expired。"
+        }
+      ],
+      "notes": "先從 packet ledger 讀發生了什麼，再回到 policy。candidate 是讓 queue 多等了一輪，還是把 urgent 資料提前送出？是否增加 retry 或 expired？請把每個差異連回 action 時機，避免用總數字遮掉 service loss。現在的 endpoint artifact path 和 KPI 仍是 placeholder。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "state-energy ribbon",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'state-energy ribbon' maps to a matching native shell; Visual 'PROCESS/TX/RX/SLEEP/WAKE 的能量帶。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "C-04：讀 state 與 endpoint J"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "state duration\nP_s × t_s\nE_endpoint\nservice gate。"
+        }
+      ],
+      "notes": "沿著 state 帶讀：batch 是否減少 activation？urgent 是否增加 awake/TX？有沒有 wake latency？把這些時間帶放進 `E_endpoint` 的累積關係，再回頭檢查 delivered bits 與 deadline。若 service 不同，先報 trade-off，不以 J 單項排名。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "candidate-to-revision",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'candidate-to-revision' maps to a matching native shell; Visual 'candidate evidence → 一個 revision arrow。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "C-05：根據 evidence 做唯一一次 revision"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "one reason\none marked-block change"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "no second revision。"
+        }
+      ],
+      "notes": "revision 不是試到好看為止。從 candidate ledger 指出一個具體問題，例如 queue age 太長或 urgent margin 太晚；只在 C marked block 做一次有理由的修改，更新 prediction。若需要第二次 revision，Lab C gate 仍未完成，保留這個結論，不能把後續 surprise 當成有效比較。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "freeze receipt",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'freeze receipt' maps to a matching native shell; Visual 'C candidate checkpoint → C frozen receipt。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "C-06：revision freeze"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "bash course.sh run --lab C --case revision --freeze\nWindows:course.cmd run --lab C --case revision --freeze"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "lab-c-frozen\npolicy SHA。"
+        }
+      ],
+      "notes": "執行 revision freeze，讓 receipt 綁定 C candidate predecessor、scenario、policy SHA 和目前的 C block。預期會有 revision result、freeze receipt、C frozen JSON 與 policy checkpoint。完成後 policy 不再編輯；任何 identity、schema 或 policy mismatch 都回到上一頁的最小修復。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "surprise scenario",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'surprise scenario' maps to a matching native shell; Visual '短窗口中的突發 traffic 與 frozen policy。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "C-07：surprise case 保持 frozen policy"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "bash course.sh run --lab C --case surprise\nWindows:course.cmd run --lab C --case surprise\npolicy SHA unchanged\nsurprise。"
+        }
+      ],
+      "notes": "保持 C revision frozen policy，執行 surprise；不要再改 BATCH_SIZE 或 URGENT_MARGIN_S。surprise 會把同一 policy 放進突發 traffic 或較短 opportunity，觀察 queue、service、state 與 endpoint J。結果可以支持或推翻 revision 的假說；無論方向如何，都保留 receipt 與 replay。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "three-ledger verdict",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'three-ledger verdict' maps to a matching native shell; Visual 'candidate / revision / surprise 三欄 ledger。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "Lab C debrief：用 packet、service、J 一起判讀"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "packet outcome\nservice"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "endpoint J\ncounterexample。"
+        }
+      ],
+      "notes": "最後請用三個 ledger 完成判讀：packet 是否交付、service 是否保住、endpoint J 如何累積。candidate 的問題、revision 的理由、surprise 的反例要分開記錄。不要把較低 J、較高 delivered bits 或較少 activation 任一項單獨升格成普遍節能結論。 恢復提示：若 C lineage、packet ledger 或 service evidence 不完整，保留目前 artifact，回到 matching result 或 same-scenario fallback。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "artifact pair",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'artifact pair' maps to a matching native shell; Visual 'result/replay 雙檔案與同一 `run_id` 的連結。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "先保存 result 與配對 replay"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "artifacts/<run_id>/result.json\nartifacts/<run_id>/endpoint-replay.json"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "stdout result_path。"
+        }
+      ],
+      "notes": "每次 runner 成功，stdout 會告訴我們真正的 `result_path`。請把 result 和同目錄的 endpoint replay 一起保存，並記下 case、policy SHA、scenario identity 和 prediction。不要靠 timestamp 或檔名猜 run，也不要手改 JSON。這兩個檔案是後面 Leo import 能否建立完整 evidence chain 的起點。 恢復提示：若 result 或 replay 缺一個，保留 stdout 和錯誤，回到 exact case 的 matching fallback；不要拼接不同 run。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "setup panel",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'setup panel' maps to a matching native shell; Visual 'Leo runner setup panel 的兩個互斥選項。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "在 Leo 先記 setup mode"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "READY receipt → 記錄 READY\nsame-scenario fallback → 記錄 fallback。"
+        }
+      ],
+      "notes": "打開 Leo `/course` 的 runner panel。若外部 runner 已看到 READY，選記錄 READY；若 setup 無法完成，選有標籤的 same-scenario fallback。這個按鈕只記錄 setup mode，不會自動匯入 result，也不會在 Leo 執行 Python。當前 panel 操作與 pixel 尚未由 Windows/WSL clean rehearsal 完成，畫面只放 placeholder。 恢復提示：若 setup mode 與 artifact source 不一致，停止 import，先改回相符的 READY 或 fallback provenance。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "import control",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'import control' maps to a matching native shell; Visual 'Leo import control 與一個 matching result path。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "匯入 exact result，不上傳 policy source"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "匯入 result.json"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "fresh:artifacts/<run_id>/...\nfallback:fallback_artifacts/...。"
+        }
+      ],
+      "notes": "在 import control 選擇 exact case 的 result.json；fresh run 用 stdout 指出的 artifact，fallback 用 manifest 指定的 matching path。Leo 只接收 JSON，不執行 `student_policy.py`。匯入前核對配對 endpoint replay，讓 workbook 能保存 run ID、policy SHA、predecessor 與 replay identity。LoRa endpoint import pixel 尚未凍結，不能放假的成功畫面。 恢復提示：若匯入被拒絕，保留 importer error，核對 result/replay pair 與 case，再選相同 scenario 的 fallback；不要改上傳檔案內容。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "validation ladder",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'validation ladder' maps to a matching native shell; Visual '六階 validation ladder，最後才落到 replay。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "importer 逐層檢查 provenance"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "schema → identity → units → policy / seed → provenance → replay。"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "六階 validation ladder，最後才落到 replay。"
+        }
+      ],
+      "notes": "importer 先檢查 JSON shape，再檢查 scenario、anchor、case、seed、policy、units、runner provenance 和 energy scope；全部通過後才 materialize endpoint replay。這裡採用 donor 的 evidence qualification 概念，但已改寫成當前 result/replay contract。任何一層失敗都要保持 session 不變，不能留下半筆 ledger。 恢復提示：任一 gate 失敗就回到命名的 artifact 或 same-scenario fallback；不以空陣列、零值或手改 hash 假裝通過。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "replay timeline",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'replay timeline' maps to a matching native shell; Visual 'endpoint replay timeline 上的 queue、packet 與 state markers。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "replay 把 result 變成可讀時間線"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "queue"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "packet"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "radio state"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "contact / handover；endpoint energy。"
+        }
+      ],
+      "notes": "import 成功後，Leo 只 materialize 已驗證的 endpoint replay。請沿時間線先看 queue，再看 packet attempt/delivery，再看 radio state，最後看 contact context 與 endpoint energy。這是把 machine-readable result 變成可以講解的 evidence；它不是 browser-side 科學 producer，也不是重新計算另一套公式。 恢復提示：若 replay marker 與 result identity 不相符，回到 importer gate，保留 session 不變；不要手動畫事件。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "screenshot evidence",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'screenshot evidence' maps to a matching native shell; Visual 'current server preview import/replay screenshot，附來源與 boundary 標籤。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "server preview 可以證明什麼"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "Server preview 已驗證\nWindows native:PLACEHOLDER"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "endpoint KPI:PLACEHOLDER。"
+        }
+      ],
+      "notes": "這張畫面只能說明 server preview 的 import/replay path 曾被驗證；不能推導 Windows native、WSL fresh run 或 endpoint KPI 已完成。講解時指出 screenshot 的來源、artifact source 和 claim ceiling。畫面若沒有 current evidence，就只放明示 placeholder，不重畫一張看似真的 browser。 恢復提示：若瀏覽器 evidence 來源或 scenario 不明，移除畫面，改走 matching fallback 的 artifact packet；保留未驗證標籤。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "workbook export",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'workbook export' maps to a matching native shell; Visual 'workbook export control 與保存檔欄位卡。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "匯出可重開的 Energy Decision Workbook"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "匯出可重開的學習單\npredictions"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "run ledger\nreplay IDs；source mode。"
+        }
+      ],
+      "notes": "import 成功後匯出 workbook。保存的不只是最後一個 J，而是 scenario identity、prediction、run/import/freeze records、replay IDs、artifact source、claim 與 recovery provenance。講師示範按 export，讓檔案落在可辨識的位置；不把 export 當成重新計算，也不把檔案存在視為 COMPLETE。 恢復提示：若 export 失敗，先保留已匯入 artifact 與 stdout，使用 backup；缺少欄位就標記 INCOMPLETE，不手改 status。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "reopen loop",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'reopen loop' maps to a matching native shell; Visual 'workbook 由保存檔回到同一個 evidence ledger 的回路。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "關閉再 reopen，驗證 provenance 仍在"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "export → close → reopen"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "same scenario_id\nsame run / replay records。"
+        }
+      ],
+      "notes": "關閉 `/course` 後，用「匯入並重新開啟學習單」選擇保存檔。請核對 scenario_id、已匯入 run/replay、endpoint replay identity、completed evidence 和 source mode 都回來。reopen 只恢復已驗證資料，不會重跑 policy，也不會補造結果。這是交接與中斷復原的 proof。 恢復提示：若 identity 不符或 evidence 缺失，保留 INCOMPLETE，回到同一 scenario 重新匯入；不要把舊 workbook 改名成新場景。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "fail-closed dialog",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'fail-closed dialog' maps to a matching native shell; Visual 'mismatch rejection dialog，旁邊是一個未變動的 workbook ledger。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "mismatch 必須 fail closed"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "identity / unit / schema mismatch\nsession unchanged"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "REJECTED。"
+        }
+      ],
+      "notes": "示範一個 scenario、unit、schema 或 policy provenance 不一致的 artifact。正確行為是拒絕，且 session/workbook 不留下半筆資料。這個失敗是安全邊界，也是教學邊界：不能為了讓畫面出現而降低驗證。講師要讓大家說出 rejected 的原因，再回到 matching artifact。 恢復提示：保存錯誤訊息，核對 manifest、scenario、case 與配對 replay；仍不符就選 same-scenario fallback，絕不修改 gate。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "fallback map",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'fallback map' maps to a matching native shell; Visual '十個 case label 指向十組 matching fallback pair 的地圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "fallback 是同一場景的可追溯復原"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "artifact_source: same-scenario-fallback\nmanifest.json\nmatching result + replay。"
+        }
+      ],
+      "notes": "fallback 不是一張相似預設畫面。先保留 `fallback_artifacts/manifest.json`，再依 exact label 選 A baseline、A candidate、A hidden、B Trace A/B、C baseline/candidate/revision/surprise 的 matching result 與 replay。Leo 要顯示 source mode 是 fallback；這表示課程可繼續，但不證明本機 policy 曾執行。 恢復提示：若 manifest、case label 或 scenario identity 不配對，停止使用，回到 owner 指定 release 或重新解壓同一 archive。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "recovery code",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'recovery code' maps to a matching native shell; Visual 'checkpoint restore 的三步回復箭頭。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "policy guard 失敗：只恢復 marked block"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "status → restore --checkpoint → policy guard\nartifacts untouched。"
+        }
+      ],
+      "notes": "若 policy guard 報 UTF-8/LF、marker、AST、名稱或 action 錯誤，先執行 `course.sh status` 找可用 checkpoint；再用對應的 `restore --checkpoint lab-a-frozen`、`lab-b-frozen`、`lab-c-candidate` 或 `lab-c-frozen`。Windows 使用 `course.cmd` 等價命令。restore 只回復 active policy bytes，應保留 artifacts。修好後重新驗證，不要重做整個結果集。 恢復提示：checkpoint 不存在或 identity 不符，就回到 release-default 或 matching fallback；不可從不同 Lab 拼 policy。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "recovery route",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'recovery route' maps to a matching native shell; Visual '從 runner error 到 workbook reopen 的單一路徑。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "一條完整的中斷復原路徑"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "保留錯誤 → 核對 identity → restore / fallback → import → reopen。"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "從 runner error 到 workbook reopen 的單一路徑。"
+        }
+      ],
+      "notes": "現在把整條 recovery 念一次：保留命令輸出與錯誤；核對 scenario、policy、case、unit 和 replay identity；能 restore 就恢復正確 checkpoint，不能就選 matching same-scenario fallback；重新 import，最後 reopen workbook。任何一步都不補造 KPI。這條路讓課程在環境或瀏覽器受阻時，仍保留同一條因果鏈。 恢復提示：若 recovery provenance 無法說清楚，將本次 session 標成 INCOMPLETE，停止向下宣稱完成。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "availability sort",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'availability sort' maps to a matching native shell; Visual '可在 action 前取得與只能在 run 後讀到的兩欄分類。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "evidence clinic：決策時可取得什麼"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "decision-time input\npost-action outcome\n不可互換。"
+        }
+      ],
+      "notes": "把 policy 能看到的 observation 放在左邊，把 run 後才出現的 delivered、retry、endpoint J 和 outcome 放在右邊。policy 只能用左邊資訊做 action；右邊只能作為事後 evidence。這個分層能避免 future leakage，也讓 result 的因果解釋可信。 恢復提示：若某欄位的取得時點不明，暫停使用，標成 PLACEHOLDER，回到 API contract；不要猜它是合法 observation。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "legal-illegal feature",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'legal-illegal feature' maps to a matching native shell; Visual 'legal feature 與 leaky feature 的紅綠分流。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "leakage 會讓假說看起來很強"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "合法:現在的 quality / queue / deadline\n禁止:future delivery / future energy。"
+        }
+      ],
+      "notes": "如果 policy 偷看 future delivery 或 future energy，結果看似更好，卻沒有真實決策意義。請把每個 observation 對回 runner API：它在 action 當下是否已存在？若不是，就從 policy 移除，並在 prediction 中說明限制。evidence clinic 的目的不是追求最高分，而是守住可反駁的控制面。 恢復提示：發現 leakage 時，恢復 release policy 或 checkpoint，重新做 prediction；保留原結果但標成 invalid experiment。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "evidence record",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'evidence record' maps to a matching native shell; Visual '一筆 record 卡片串起 source、policy、result、replay 與 verdict。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "一筆 evidence record 要能自我說明"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "source\nidentity"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "mechanism\nevidence；claim class。"
+        }
+      ],
+      "notes": "這頁採用 donor 的 evidence record 概念，但把內容重寫成目前課程的 artifact lineage。每筆結論至少要能回到 source mode、scenario、policy SHA、run/replay、energy scope、service boundary 和 claim class。只寫一句「比較省」不足以交接；要說哪個機制造成哪個 evidence，以及範圍到哪裡。 恢復提示：若 record 缺 identity、scope 或 source mode，維持 INCOMPLETE；不以畫面或預期值補上缺欄位。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "claim classifier",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'claim classifier' maps to a matching native shell; Visual '四欄 claim classifier，底部標示 `course ceiling = simulated teaching data`。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "measured、derived、assumed、simulated"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "measured\nderived\nassumed\nsimulated。"
+        }
+      ],
+      "notes": "measured 需要實體或儀器證據；derived 需要 frozen inputs、model 和 lineage；assumed 是課程設定；simulated 是 fixture、runner 或 endpoint replay output。分類不是品質排行榜，而是宣稱範圍。現在這份課程的 endpoint result 屬於 simulated teaching data，不能升格成 measured KPI。 恢復提示：分類不清時保留 placeholder，回查 artifact provenance；不要因為欄位精細或畫面漂亮就升格 claim。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "authority boundary",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'authority boundary' maps to a matching native shell; Visual '兩個有明確邊界的 energy ledgers。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "endpoint layer 與 system layer 的邊界"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "endpoint J 不等於 system consumed J\n共享 scenario ≠ 共享語義。"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "兩個有明確邊界的 energy ledgers。"
+        }
+      ],
+      "notes": "再次把最容易混淆的兩層放在一起。endpoint layer 能回答 endpoint state、packet、queue、service 和 endpoint J；system layer 保留既有 C-120 authoritative replay。它們共享 anchor、clock 和 workbook，但沒有自動 mapping。講師在讀每個欄位前，先說「這是哪一層」。 恢復提示：若欄位來源或 boundary 不明，停止做 bit/J 或 system 比較，回到 schema 與 authority map。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "transfer map",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'transfer map' maps to a matching native shell; Visual 'IoT 農場 sensor 到 gateway 的機會窗口圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "把同一機制轉到智慧農場"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "soil sensor\n上行機會\nbatch / sleep / urgent\nservice + endpoint J。"
+        }
+      ],
+      "notes": "請把 LEO 名稱拿掉，只留下 mechanism：sensor 有資料，連線機會會變，policy 要在 freshness、service 與 energy 間選擇。農場可以使用 batch、sleep 或 urgent，但要重新定義 traffic、deadline、power model 與 service boundary。不能把 LEO 的 contact window 或數字直接搬過去。 恢復提示：若 transfer 只換了場景名、沒有重定義 service 或 energy scope，回到 endpoint model，標成未完成假說。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "domain cards",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'domain cards' maps to a matching native shell; Visual '三個 domain card 共同指向一條 causal spine。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "HVAC、edge、物流：機會變動仍是同一個問題"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "HVAC"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "edge inference"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "logistics"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "opportunity → policy → service / energy。"
+        }
+      ],
+      "notes": "HVAC 的 opportunity 可能是低負載時段，edge inference 可能是可用算力窗口，物流可能是車輛或網路連線窗口。三者都能使用「何時工作、何時等待、何時批次」的機制；但每個 domain 的 deadline、delivered work 和 power boundary 都要重新定義。LEO 只示範 changing opportunity，不是 transfer 的必要條件。 恢復提示：若 domain claim 需要 LEO 數字或未提供的 measured power，刪除該 claim，保留 mechanism placeholder。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "hypothesis card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'hypothesis card' maps to a matching native shell; Visual '一張可填寫但不是空白表格的 hypothesis card。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "寫一個可被推翻的競賽假說"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "在固定 ______ 下，若改變 ______，則 ______ 會改變，因為 ______\n若 ______，假說被推翻。"
+        }
+      ],
+      "notes": "請把假說寫成 policy、mechanism、evidence 和 held-out condition 的句子。例如在固定 job、window 和 endpoint boundary 下，若調整 batch 或 urgency，則 queue/service/state J 會以某個方向改變，因為 action timing 改了；在 surprise case 出現相反結果時，假說就被推翻。不要填入尚未產生的數字。 恢復提示：若假說只有「更省」而沒有 mechanism 或 falsifier，回到第 68 頁的 trade-off card 重寫。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "provenance appendix",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'provenance appendix' maps to a matching native shell; Visual 'TLE source、model 與 contact context 的三層箭頭。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "Appendix：TLE 只負責提供時間與位置來源"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "pinned source → model → contact context\nLEO = changing window example。"
+        }
+      ],
+      "notes": "這一頁是可選 vocabulary，不是要求大家推導軌道。TLE 是 source；模型把它轉成 position/contact context；課程再把 context 接到 scenario。真正重要的是 provenance 與固定 identity，不是背一個衛星名。這是從 BeamShift appendix 改寫的來源概念，沒有搬入 legacy satellite-first opening。 恢復提示：若 source、epoch 或 scenario anchor 未凍結，停止引用 contact 畫面，標成 PLACEHOLDER；不要自行抓最新 TLE。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "minimal model",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'minimal model' maps to a matching native shell; Visual 'position sample 點穿過 contact boundary 的圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "Appendix：SGP4 與 contact window 的最小讀法"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "position over time"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "contact open / closed\nnot live telemetry。"
+        }
+      ],
+      "notes": "只需要知道模型把時間輸入轉成位置與可服務窗口的 context；不必在課堂推導 SGP4。當 window open 時，policy 有一組 action opportunity；window closed 時，等待可能造成 service trade-off。這些是 course scenario 的 simulated inputs，不是當下衛星遙測。 恢復提示：若有人把 contact 圖說成 live pass，回到 claim shield，改用 simulated / source-verified 的準確語句。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "vocabulary ladder",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'vocabulary ladder' maps to a matching native shell; Visual 'dB observation 透過 threshold 進入 policy 的最小流程。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "Appendix：quality、dB 與 action context"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "quality observation ≠ service"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "dB / linear\n不要求 link-budget 推導。"
+        }
+      ],
+      "notes": "quality trace 只是 policy 的 observation context；它不等於 delivered service、endpoint energy 或 bit/J。若需要讀 dB，只要理解對數尺度與線性量的差異，不要把 donor 的 link-budget 或 RF producer 搬進課堂。當 quality field 或 unit 未凍結，就只講概念並保留 placeholder。 恢復提示：unit、field mapping 或 boundary 不清時，停在 observation 層，不做跨欄位的數值比較。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "unit ladder",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 6",
+        "why_fit": "Authored Layout 'unit ladder' maps to a matching native shell; Visual '五個單位 token 從 state ledger 接到 service gate。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "Appendix：W、J、bit/s、delivered bits、bit/J"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": "W = power rate\nJ = accumulated energy"
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "bit/s = rate\ndelivered bits；bit/J = service per energy。"
+        }
+      ],
+      "notes": "依序念五個 token：W 是功率速率，J 是累積能量，bit/s 是資料率，delivered bits 是真正交付量，bit/J 是在清楚 boundary 下的服務效率。donor 的 throughput/power/energy 概念已在此去重；任何數字都要回到 result scope。沒有 delivered 或 energy scope，就不要宣稱 bit/J。 恢復提示：若 unit 混用，停止比較，回查 schema、公式與 endpoint/system boundary；不自行換算補值。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "lineage map",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'lineage map' maps to a matching native shell; Visual 'provenance spine 與四個可追溯節點。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "Appendix：source → model → assumption → result"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "source"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "model\ncourse assumption\nresult；policy hash。"
+        }
+      ],
+      "notes": "source 可能是 pinned upstream reference；model 產生 trace；course assumption 決定 traffic、state 或 energy scope；policy action 產生 result。請讓每一個 claim 都能沿著 policy hash、scenario、seed 與 replay ID 往回查。若某個數字沒有 lineage，就把它留在 placeholder。 恢復提示：provenance 斷裂時，回到最近一個有 identity 的 artifact，保留斷點，不重建看似完整的鏈。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "API card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'API card' maps to a matching native shell; Visual 'observation-to-action API card。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "Appendix：`student_policy.py` 的 allowed API"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "allowed observations → WAIT / SLEEP / SEND_ONE / SEND_URGENT / FLUSH_BATCH\nAPI version:PLACEHOLDER。"
+        }
+      ],
+      "notes": "這張卡是 policy 操作邊界，不是完整 Python 教科書。請讀 allowed observation、合法 action 和 marked block；不要改 engine、schema、scientific formula 或 generated output。實際 API version、line number 和 released field mapping 尚未 freeze，因此畫面只保留 placeholder。每個 action 都要能在 event/replay 中留下 evidence，否則不算 consequential。 恢復提示：API 與檔案版本不符時，恢復 release policy 或 checkpoint，不能自行發明 action 名稱。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "contract flow",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'contract flow' maps to a matching native shell; Visual '五份 schema 連成一條 contract flow。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "Appendix：scenario、result、receipt、replay 的契約流"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "scenario.schema → result.schema → freeze-receipt.schema → endpoint-replay.schema → workbook。"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "五份 schema 連成一條 contract flow。"
+        }
+      ],
+      "notes": "scenario 定義固定問題；result 記錄 runner outcome；freeze receipt 綁定 policy lineage；endpoint replay 定義 Leo 能重現的事件；workbook 保存整條學習證據。這些 schema 是互相連接的 contract，不是讓課堂自行改欄位的練習。實際 schema instance、hash 與 current artifact 未完全 freeze，維持 placeholder。 恢復提示：schema validation 失敗時，保留 error 與 input，不手改欄位，改選 matching release artifact。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "validation gates",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 3",
+        "why_fit": "Authored Layout 'validation gates' maps to a matching native shell; Visual '每一關通過才向下的閘門。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "Appendix：fail-closed validation ladder"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "shape → identity → units → policy → provenance"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "fail = no partial update。"
+        }
+      ],
+      "notes": "fail closed 的重點是「不通過就不寫入」。先檢查 shape，再核對 identity、units、policy/seed 和 provenance；任何一關失敗，Leo session/workbook 都保持原狀。這種行為同時保護 evidence 邊界與使用者對結果的信任。 恢復提示：回讀錯誤所指出的 gate，重選 exact artifact 或 fallback；不要關掉 validation 或刪除欄位。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "source boundary",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 2",
+        "why_fit": "Authored Layout 'source boundary' maps to a matching native shell; Visual 'upstream、course package、Leo JSON seam 的三方邊界圖。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "Appendix：課程 wrapper 與 upstream license boundary"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "course wrapper\npinned upstream reference\nJSON seam\nGPL-3.0 review。"
+        }
+      ],
+      "notes": "課程 wrapper 以 documented JSON 與 pinned reference 溝通；Leo 不 import 或 link upstream Python modules，也不在 server 執行上傳的 policy。這個邊界既是技術設計，也是 license 與安全設計。今天只使用課程提供的 package 與 contract，不要求大家讀完整 upstream repository。 恢復提示：任何人若要把 upstream、Leo source 或 generated artifact 改成課堂操作，停止並交回 owner review；課堂只保留 bounded policy edit。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "glossary card",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 5",
+        "why_fit": "Authored Layout 'glossary card' maps to a matching native shell; Visual 'glossary tokens 與 claim shield。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "Appendix：field glossary 與 claim ceiling"
+        }
+      ],
+      "notes": "最後把容易混淆的詞再讀一次：queue 是等待中的工作，packet 是傳輸單位，service 是符合課程 boundary 的交付，state time 是狀態停留，endpoint J 是 endpoint scope 的累積能量。所有 runner/replay output 目前都在 simulated teaching claim ceiling 內。詞彙清楚，才不會把同名欄位互相冒充。 恢復提示：若有人以 live、measured、whole-system 或 canonical parity 描述課程 result，回到 claim shield，改用 evidence status 標示。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "fast branch",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 4",
+        "why_fit": "Authored Layout 'fast branch' maps to a matching native shell; Visual 'frozen policy 直接連到新的 counterexample card。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "快速分支：同一 policy，新的 held-out 條件"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "freeze policy"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "new opportunity / trace"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "predict → run → compare"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "no retune。"
+        }
+      ],
+      "notes": "如果班級進度較快，不增加任意 slider；使用同一個 frozen policy 和新的 fair condition。先預測 window、quality、queue 或 urgency 改變時的 service/state/J，再執行對應 withheld case。這個分支的價值是檢查結論是否依賴某一條 trace，不是追求更低的數字。 恢復提示：若沒有 frozen receipt 或新的 condition 未標 identity，就回到主路徑，使用已保存的 result/replay，不另造 case。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "exit gate",
+      "layout_rationale": {
+        "layout_pattern": "educate sampler archetype 5",
+        "why_fit": "Authored Layout 'exit gate' maps to a matching native shell; Visual 'workbook、hypothesis、falsifier 三張卡回到同一 scenario identity。' is composed after fill.",
+        "risk": "Post-compose render QA governs text capacity and evidence-image scope."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "退出：留下可重開、可反駁的 evidence chain"
+        }
+      ],
+      "notes": "下課前請確認 workbook 能保存並 reopen，prediction、result、replay、freeze、fallback 與 claim provenance 都在；再用一句話說出 hypothesis 和會推翻它的 condition。缺少 runner、browser 或 endpoint evidence 就保留 INCOMPLETE，這是正確的 evidence 狀態，不是要用數字補滿。最後再說一次：LoRaEnergySim 支援智慧節能與 IoT 的 endpoint 因果教學；LEO 只是 changing service window 的例子。 恢復提示：若無法完成 export/reopen，保留已產生的 artifact 與錯誤，使用 backup 或 same-scenario fallback；不得宣稱 classroom-ready、live 或 measured。",
+      "table_edits": [],
+      "chart_edits": []
+    }
+  ]
+}

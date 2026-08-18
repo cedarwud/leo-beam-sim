@@ -1,0 +1,249 @@
+[P108] ppt/slides/slide1.xml
+節能判讀需要服務、工作量與能量
+同一 qualified window 內，服務、已送達工作量與 scoped energy 必須共同成立。
+current evidence example｜A / baseline｜來源：同情境備用資料
+服務 verdict（服務判定）
+來源：service evaluator
+值：FAIL／Boolean
+作用：服務條件 gate。
+delivered work（已送達工作量）
+來源：packet ledger
+值：4800 bit
+作用：效率分子。
+scoped energy（有範圍能量）
+來源：endpoint result
+值：6.92 J
+作用：同一 endpoint 的分母。
+判讀順序：服務 → 已送達資料 → 端點 J → 端點 bit/J。服務 FAIL 時，效率只描述此 run；策略分類保留 trade-off 或 failure。
+1
+NOTES ppt/notesSlides/notesSlide1.xml
+本頁將節能判讀固定在服務、工作量與能量的共同範圍。畫面中的 A／baseline 來源標為同情境備用資料，顯示服務 FAIL、4800 bit、6.92 J 與端點 bit/J 693.641618；這組數值只作為同一 endpoint run 的讀法示例。服務 verdict 是第一個 gate，delivered work 提供效率分子，scoped energy 提供同一 endpoint boundary 的分母；服務 FAIL 時，結果分類保留 trade-off 或 failure。來源依 current /course field-interpretation 與同情境備用資料而定；概念來源為 BeamShift e2 70–75，current authority 以 ADR-004、C120 SDD 與 ALT handoff 為準。
+1
+
+[P109] ppt/slides/slide2.xml
+可重建的證據紀錄
+evidence record（證據紀錄）將來源、identity（識別）、機制、觀察與限制放在同一條可重建脈絡。
+current ledger evidence
+A / baseline｜來源：同情境備用資料
+服務 FAIL｜端點能量 6.92 J
+可重建條件
+來源模式：同情境備用資料
+觀察路徑：result → replay → service
+限制：current run identity 待補
+source mode（來源模式）
+同情境備用資料
+run_id（執行識別碼）
+待補（runner record）
+scenario（情境）
+ntpu-energy-decision-01
+scope（範圍）
+endpoint radio／processing
+mechanism（機制）
+policy → event → service
+limitation（限制）
+simulated teaching data
+identity／scope 缺漏 → INCOMPLETE；保留 result／replay 與 recovery target。
+2
+NOTES ppt/notesSlides/notesSlide2.xml
+本頁把 evidence record 寫成可重建資料結構。source mode 說明實際執行或同情境備用資料，run_id 連結 result 與 endpoint replay，scenario 與 scope 限定同一個情境和 endpoint boundary，mechanism 把 policy、event 與 service 接起來，limitation 則固定 simulated teaching data 的 claim ceiling。畫面中的 ledger 來源清楚標示同情境備用資料；current run identity 沿用 record 保存，投影片以待補表示未在畫面資產中公開的識別內容。identity 或 scope 缺漏時狀態為 INCOMPLETE，原始 result、replay 與 recovery target 維持可追溯。概念來源為 BeamShift e2 96–97；current authority 以 ADR-004、C120 SDD、ALT handoff 與 current /course field-interpretation 為準。
+2
+
+[P110] ppt/slides/slide3.xml
+證據來源分類
+來源與 model lineage 決定 claim class；分類描述證據生成方式，不作優劣排名。
+measured（實測）
+來源：instrument
+單位：隨物理量
+作用：支援 bounded measurement claim。
+derived（模型推導）
+來源：source + model
+單位：隨輸出
+作用：保留 model／time lineage。
+assumed（課程假設）
+來源：course contract
+單位：隨參數
+作用：限定 assumption-scoped explanation。
+simulated（模擬輸出）
+來源：runner artifact
+單位：依 schema
+作用：目前 endpoint result 的分類。
+直接取得
+加上模型
+契約指定
+目前 claim ceiling：SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED
+來源不明時降低 claim class；欄位狀態標示「待補」，保留 provenance。
+3
+NOTES ppt/notesSlides/notesSlide3.xml
+證據分類描述資料如何生成，不作優劣排名。measured 來自 instrument 的直接取得，derived 由 source 加上 model 推導，assumed 由 course contract 指定，simulated 則由 runner artifact 產生；目前 endpoint result 屬於 simulated teaching data。分類同時限定可使用的語句強度，來源或 lineage 不完整時降低 claim class 並標示待補。頁面保留完整 claim ceiling：SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。概念來源為 BeamShift e2 113；current authority 以 ADR-004、C120 SDD 與 ALT handoff 為準。
+3
+
+[P111] ppt/slides/slide4.xml
+端點與系統能量邊界
+兩層 replay 共用 scenario／clock anchor；field authority 與 energy semantics 仍分離。
+共享錨點｜scenario_id、clock、workbook context
+endpoint evidence layer
+endpoint_energy_j（端點累積能量）
+來源：LoRaEnergySim result
+單位：J
+範圍：endpoint radio／processing
+判讀：比較同一 endpoint boundary 的 policy 結果
+目前 endpoint result：simulated teaching data
+system / canonical layer
+system consumed J（系統消耗能量）
+來源：C-120 provider contract
+單位：J
+範圍：LEO／system evidence authority
+判讀：與 endpoint J 分開保存；current value 待補
+canonical efficiency（權威系統效率）｜bit/J｜current value 待補
+相同 J 單位；語義由 boundary 與 authority 決定。
+4
+NOTES ppt/notesSlides/notesSlide4.xml
+本頁分開 endpoint 與 system 的能量 authority。endpoint_energy_j 由 LoRaEnergySim result 提供，單位為 J，範圍是 endpoint radio／processing；system consumed J 由 C-120 provider contract 提供，範圍屬 LEO／system evidence；canonical efficiency 由 canonical source 定義，單位為 bit/J，當前值以待補表示。兩層可以共享 scenario、clock 與 workbook context，但相同 J 單位不形成語義等價。endpoint 欄位不寫入 system 或 canonical fields；scope 不明時停止 bit/J 判讀。概念來源為 BeamShift e2 19–21、28–29、32–33；current authority 以 ADR-004、C120 SDD 與 ALT handoff 為準。
+4
+
+[P112] ppt/slides/slide5.xml
+策略至 Leo 匯入的血緣
+唯一可編輯的 policy（策略）block（區塊）產生 JSON；Leo 依 identity（識別）、schema（結構）、units（單位）與 provenance（來源脈絡）建立 endpoint replay（端點重播）。
+01｜policy edit
+URGENT_MARGIN_S = 20
+student_policy.py
+marked block
+唯一可編輯 node
+02｜local runner
+policy identity
+result.json
+endpoint-replay.json
+03｜Leo import gate
+schema
+scenario identity
+units／provenance
+04｜endpoint replay
+queue／action
+radio state／packet
+endpoint energy
+產生
+驗證
+materialize
+policy identity 綁定 permitted edit 與 result／replay；Leo 接收 JSON，Python 留在 local runner。
+可追溯 diff 必須出現在 action、state、packet、service 或 endpoint energy。
+5
+NOTES ppt/notesSlides/notesSlide5.xml
+本頁沿著 policy 至 Leo import 的 lineage 閱讀。student_policy.py 的 marked block 是唯一可編輯 node；local runner 以 policy identity 產生 result.json 與 endpoint-replay.json；Leo import gate 核對 schema、scenario identity、units 與 provenance，再 materialize endpoint replay。policy identity 將 permitted edit 綁定到 artifact，只有 action、state、packet、service 或 endpoint energy 出現 consequential diff，才形成教學證據。Leo 的輸入介面是 JSON，Python 執行留在 local runner；version、policy identity 或 scenario mismatch 時回到 release checkpoint 或 matching fallback。概念來源為 BeamShift e2 96–97；current authority 以 ADR-004、C120 SDD、ALT handoff、package README 與 schemas 為準。
+5
+
+[P113] ppt/slides/slide6.xml
+情境至比較紀錄的契約鏈
+scenario（情境）、receipt（收據）、result（結果）、replay（重播）與 workbook（比較紀錄）以 identity（識別）、units（單位）、seed（種子）、policy（策略）與 source mode（來源模式）維持同一契約。
+scenario（情境）
+來源：package
+固定 inputs／cases
+structured record
+識別：ntpu-energy-decision-01
+receipt（凍結收據）
+來源：runner
+保存 predecessor
+policy lineage
+identity record
+result（結果檔）
+來源：runner
+summary／service
+endpoint energy
+JSON artifact
+replay（事件重播）
+來源：runner／provider
+ordered events
+state changes
+frame context
+workbook（比較紀錄）
+來源：browser
+prediction／result
+reopen state
+source mode
+import gate：validation failure 時，session／workbook 保持原狀；matching artifact 或 same-scenario fallback 才能恢復 lineage。
+source mode：實際執行與同情境備用資料分開陳述。
+6
+NOTES ppt/notesSlides/notesSlide6.xml
+本頁把 scenario、receipt、result、replay 與 workbook 讀成一條 contract。scenario 固定 inputs 與 cases，receipt 保存 predecessor 與 policy lineage，result 保存 summary、service 與 endpoint energy，replay 以 ordered events 呈現 state changes，workbook 保存 prediction、result lineage 與 reopen state。validation failure 時 session 與 workbook 保持原狀，合法恢復路徑是 matching artifact 或 same-scenario fallback；source mode 依實際執行或同情境備用資料原樣記錄。概念以 current SDD 為主，並採用 BeamShift e2 70–75 的 evidence qualification 概念；current authority 以 ADR-004、C120 SDD、ALT handoff 與 package schemas 為準。
+6
+
+[P114] ppt/slides/slide7.xml
+來源、模型、假設與授權邊界
+pinned upstream（固定上游）、course wrapper（課程包裝）、documented JSON（文件化 JSON）與 Leo application（Leo 應用）以清楚介面與授權邊界分離。
+source（來源）
+upstream package／scenario
+原始 code 或 data
+決定 provenance
+model（模型）
+runner implementation
+equations／state machine
+input → simulated events
+assumption（假設）
+course wrapper
+typed parameters
+界定教學簡化與 endpoint scope
+license（授權）
+repository metadata
+GPL upstream boundary
+code reuse／distribution rule
+documented JSON seam：course wrapper 與 Leo application 交換 result／replay；source 與 application source 分界。
+可編輯面限於 marked policy block；其他變更回到 owner review。
+7
+NOTES ppt/notesSlides/notesSlide7.xml
+本頁說明 source、model、assumption 與 license 的邊界。source 指向 pinned upstream package 或 scenario，model 指向 runner 的 equations 與 state machine，assumption 由 course wrapper 明示，license 由 repository metadata 與 GPL upstream boundary 約束。documented JSON 是 course wrapper 與 Leo application 的介面，保留 source disclosure、result classification 與 trust boundary；可編輯面仍限於 marked policy block。涉及 upstream、Leo source、schema 或 scientific semantics 的變更回到 owner review。概念來源為 BeamShift e2 113–114；current authority 以 ADR-004、C120 SDD、ALT handoff、package LICENSE 與 THIRD_PARTY_NOTICES 為準。
+7
+
+[P115] ppt/slides/slide8.xml
+控制機制遷移至其他 IoT 場域
+changing opportunity（變動機會）仍驅動 send、wait、sleep、batch、urgent；移轉時重新定義 service（服務）與 energy boundary（能量邊界）。
+機制核心
+job（工作量）
+opportunity（時機）
+policy（策略）
+service（服務）
+boundary（能量範圍）
+智慧農業
+job：感測上傳
+opportunity：閘道可用時段
+boundary：端點 radio／processing
+HVAC
+job：狀態回報
+opportunity：低負載／可連線時段
+boundary：控制器與網路端點
+edge application
+job：事件批次
+opportunity：資源與 deadline
+boundary：edge node／gateway
+transfer verdict：同一 control mechanism；service、deadline、traffic 與 energy scope 需重定義。target-domain value 待補。
+8
+NOTES ppt/notesSlides/notesSlide8.xml
+本頁將 changing opportunity 的控制機制轉移到其他 IoT 場域。job 定義需要完成的工作，opportunity 描述可服務時機，policy 將 observation 映射為 action，service 與 energy boundary 則必須在新場域重新定義。智慧農業、HVAC 與 edge application 可以沿用 send、wait、sleep、batch、urgent 的控制 vocabulary，但不沿用 LEO 的數值或 boundary；target-domain value 以待補表示。transfer hypothesis 應留下 falsifier，讓結果能縮小而非擴大 claim。概念來源為 BeamShift e2 2、4、19；current authority 以 ADR-004、C120 SDD 與 ALT handoff 為準。
+8
+
+[P116] ppt/slides/slide9.xml
+可重開、可反駁、可追溯的交接紀錄
+交接狀態由 evidence record（證據紀錄）、frozen identity（凍結識別）、workbook reopen state（比較紀錄重開狀態）與 claim class（主張類別）共同決定。
+可重開
+workbook export
+→ reopen
+→ identity check
+可反駁
+prediction
+→ result／replay
+→ counterexample
+可追溯
+source
+→ policy
+→ evidence／limitation
+handoff gate
+COMPLETE
+evidence ready
+INCOMPLETE
+recovery target
+claim class 由 current source／model／assumption lineage 限定；donor material 保留為 concept／source trail。
+缺漏 gate → 保留缺口 → 返回 artifact 或 same-scenario fallback；claim ceiling 維持既定範圍。
+concept source：BeamShift e2 96–97、113–114；current evidence：本 artifact 與 authority record。
+9
+NOTES ppt/notesSlides/notesSlide9.xml
+本頁以可重開、可反駁、可追溯收束交接紀錄。可重開要求 workbook export、reopen 與 identity check；可反駁要求 prediction、result／replay 與 counterexample；可追溯要求 source、policy、evidence 與 limitation 彼此連結。COMPLETE 只在 required evidence 齊備時成立，INCOMPLETE 需保留缺口與 recovery target；claim class 由 current source、model 與 assumption lineage 限定。Donor material 只保留為 concept 與 source trail，current evidence 由本 artifact 與 authority record 提供。概念來源為 BeamShift e2 96–97、113–114 與 donor disposition map；current authority 以 ADR-004、C120 SDD 與 ALT handoff 為準。
+9
+

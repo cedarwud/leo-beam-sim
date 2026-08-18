@@ -1,0 +1,31 @@
+{
+  "schema": "ppt-master.source_to_md.profile.v1",
+  "converter": "ppt_to_md.py",
+  "conversion_type": "pptx",
+  "source": {
+    "path": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/opening-checkpoint_ppt169_20260811/exports/c120-lora-leo-opening-native_20260811_024300.pptx",
+    "name": "c120-lora-leo-opening-native_20260811_024300.pptx",
+    "suffix": ".pptx",
+    "kind": "file",
+    "exists": true,
+    "size_bytes": 863228
+  },
+  "outputs": {
+    "markdown": "readback.md",
+    "asset_dir": "",
+    "image_manifest": "",
+    "image_count": 0
+  },
+  "markdown": {
+    "line_count": 150,
+    "char_count": 3782,
+    "heading_count": 19,
+    "table_count": 0,
+    "image_ref_count": 0,
+    "link_count": 0
+  },
+  "warnings": [
+    "Slide 1: SmartArt scan failed: Missing required PPTX part: ppt/slides/slide1.xml",
+    "Slide 2: SmartArt scan failed: Missing required PPTX part: ppt/slides/slide2.xml"
+  ]
+}

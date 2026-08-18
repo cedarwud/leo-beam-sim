@@ -1,0 +1,41 @@
+{
+  "deck": "LoRaEnergySim-LEO-ALT-APPENDIX-V2-P098-P107-REVIEW",
+  "page_ids": [
+    "P098",
+    "P099",
+    "P100",
+    "P101",
+    "P102",
+    "P103",
+    "P104",
+    "P105",
+    "P106",
+    "P107"
+  ],
+  "source_map": "/home/sat/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/appendix/source-map.json",
+  "construction_route": "python-pptx from educate.pptx source slide 2 / slideLayout2.xml",
+  "template": "/home/sat/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "fonts": {
+    "cjk": "標楷體",
+    "latin": "Times New Roman"
+  },
+  "title_pt": 28,
+  "primary_text_pt": 24,
+  "label_text_pt": "18-22",
+  "background_author_fill": "unset",
+  "current_evidence": "待補：TLE epoch/raw bytes, dB source/timing, and frozen counterexample trace are not in the current package evidence record",
+  "donor_policy": "topic donor only; no donor bytes, screenshots, numbers, master, or stale semantics",
+  "donor_sources": [
+    "BeamShift e2 7 或 98；兩頁概念去重後只保留一個來源入口。",
+    "BeamShift e2 8 或 107；移除 donor 數值，只保留 model lineage。",
+    "BeamShift e2 9–10、108–109；合併為一頁 source vocabulary。",
+    "BeamShift e2 5、11、30–31、110–111；去除專業推導與 donor 門檻。",
+    "BeamShift e2 13、15、22–24；保留概念，排除 donor RF 數值。",
+    "BeamShift e2 14、32、37；與 core unit 頁去重。",
+    "BeamShift e2 12；作為 Lab B optional counterexample。",
+    "BeamShift e2 16／17、21、25–29、112；重寫為單一 accounting page。",
+    "BeamShift e2 20、36–37、70–75；深化 fair-baseline 概念。",
+    "BeamShift e2 38–39；整併為 debrief causal spine。"
+  ]
+}

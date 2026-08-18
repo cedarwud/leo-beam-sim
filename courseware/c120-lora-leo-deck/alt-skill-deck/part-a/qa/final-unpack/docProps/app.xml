@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <Template>佈景主題1</Template>
+  <TotalTime>42739</TotalTime>
+  <Words>64</Words>
+  <Application>Microsoft Office PowerPoint</Application>
+  <PresentationFormat>寬螢幕</PresentationFormat>
+  <Paragraphs>5</Paragraphs>
+  <Slides>2</Slides>
+  <Notes>0</Notes>
+  <HiddenSlides>0</HiddenSlides>
+  <MMClips>0</MMClips>
+  <ScaleCrop>false</ScaleCrop>
+  <HeadingPairs>
+    <vt:vector size="6" baseType="variant">
+      <vt:variant>
+        <vt:lpstr>使用字型</vt:lpstr>
+      </vt:variant>
+      <vt:variant>
+        <vt:i4>5</vt:i4>
+      </vt:variant>
+      <vt:variant>
+        <vt:lpstr>佈景主題</vt:lpstr>
+      </vt:variant>
+      <vt:variant>
+        <vt:i4>1</vt:i4>
+      </vt:variant>
+      <vt:variant>
+        <vt:lpstr>投影片標題</vt:lpstr>
+      </vt:variant>
+      <vt:variant>
+        <vt:i4>2</vt:i4>
+      </vt:variant>
+    </vt:vector>
+  </HeadingPairs>
+  <TitlesOfParts>
+    <vt:vector size="8" baseType="lpstr">
+      <vt:lpstr>Times-Roman</vt:lpstr>
+      <vt:lpstr>Arial</vt:lpstr>
+      <vt:lpstr>Calibri</vt:lpstr>
+      <vt:lpstr>Symbol</vt:lpstr>
+      <vt:lpstr>Times New Roman</vt:lpstr>
+      <vt:lpstr>2_佈景主題1</vt:lpstr>
+      <vt:lpstr>Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System</vt:lpstr>
+      <vt:lpstr>上行 LEO 衛星 BH 系統</vt:lpstr>
+    </vt:vector>
+  </TitlesOfParts>
+  <Company/>
+  <LinksUpToDate>false</LinksUpToDate>
+  <SharedDoc>false</SharedDoc>
+  <HyperlinksChanged>false</HyperlinksChanged>
+  <AppVersion>16.0000</AppVersion>
+</Properties>

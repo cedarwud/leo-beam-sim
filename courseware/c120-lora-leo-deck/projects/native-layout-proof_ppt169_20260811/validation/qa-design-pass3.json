@@ -1,0 +1,43 @@
+{
+  "status": "FAIL",
+  "pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/c120-native-layout-proof-design-pass3.pptx",
+  "template": "/home/u24/ppt-master/template/educate.pptx",
+  "latex_source": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/assets/energy-equations.tex",
+  "metrics": {
+    "slide_count": 6,
+    "logical_layout_targets": [
+      "ppt/slideLayouts/slideLayout1.xml",
+      "ppt/slideLayouts/slideLayout2.xml",
+      "ppt/slideLayouts/slideLayout3.xml",
+      "ppt/slideLayouts/slideLayout4.xml",
+      "ppt/slideLayouts/slideLayout5.xml",
+      "ppt/slideLayouts/slideLayout7.xml"
+    ],
+    "distinct_layout_count": 6,
+    "native_math_carriers": 0,
+    "native_office_math_equations": 0,
+    "titles": [
+      "LoRaEnergySim × 智慧節能與物聯網應用",
+      "節能不是只看功率變小",
+      "LEO 只提供會改變的服務窗口",
+      "先跑基準，再只改一個 policy block",
+      "公式把操作連到證據",
+      "一筆 result，先看證據鏈"
+    ],
+    "styled_visible_runs": 42,
+    "command_runs_at_18pt": 3,
+    "italic_variable_runs": 1,
+    "slide_level_background_nodes": 0,
+    "full_slide_solid_fills": 0,
+    "notes_parts": 6,
+    "nonempty_notes": 6,
+    "footer_fields": 0,
+    "footer_placeholders": 0,
+    "authority_text_hits": 0,
+    "latex_source_sha256": "a3c4be5b155a5e4cd53837a64395a9b9c27825794dfc323ef97d0f336c9036dd"
+  },
+  "warnings": [],
+  "errors": [
+    "logical slide 5 must contain editable a14:m / OMML equations"
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "schema": "template_fill_pptx_plan.v1",
+  "status": "draft",
+  "source_pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/opening-checkpoint_ppt169_20260811/sources/educate.pptx",
+  "accepted_warnings": [],
+  "slides": [
+    {
+      "source_slide": 1,
+      "purpose": "cover_candidate",
+      "layout_rationale": {
+        "layout_pattern": "",
+        "why_fit": "",
+        "risk": ""
+      },
+      "replacements": [
+        {
+          "slot_id": "s01_sh2",
+          "old_text": "Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System",
+          "text": "Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System"
+        },
+        {
+          "slot_id": "s01_sh3",
+          "old_text": "IEEE Internet of Things, 2025.",
+          "text": "IEEE Internet of Things, 2025."
+        }
+      ],
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "ending_candidate",
+      "layout_rationale": {
+        "layout_pattern": "",
+        "why_fit": "",
+        "risk": ""
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "old_text": "上行 LEO 衛星 BH 系統",
+          "text": "上行 LEO 衛星 BH 系統"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "old_text": "位於受照射波束內的終端將會受到同頻跨波束干擾。",
+          "text": "位於受照射波束內的終端將會受到同頻跨波束干擾。"
+        },
+        {
+          "slot_id": "s02_sh4",
+          "old_text": "Songsong Cai et al. “Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System,” IEEE Internet of Things, 2025.",
+          "text": "Songsong Cai et al. “Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System,” IEEE Internet of Things, 2025."
+        }
+      ],
+      "table_edits": [],
+      "chart_edits": []
+    }
+  ]
+}

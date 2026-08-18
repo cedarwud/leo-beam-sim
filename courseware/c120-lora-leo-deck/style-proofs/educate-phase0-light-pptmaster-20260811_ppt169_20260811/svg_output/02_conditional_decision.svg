@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1280" height="720" viewBox="0 0 1280 720" font-family="&quot;Times New Roman&quot;, DFKai-SB, &quot;標楷體&quot;, serif" data-pptx-master="master_01" data-pptx-master-name="slideMaster1" data-pptx-layout="layout_05" data-pptx-layout-name="只有標題" data-pptx-show-master-shapes="true" data-pptx-show-inherited-shapes="true">
+  <defs>
+    <marker id="arrow-navy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <polygon points="0,0 10,5 0,10" fill="#17223B"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" id="master-master_01-1-1" data-pptx-layer="master" data-pptx-editable="false"/>
+  <image href="../images/image1.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none" id="master-master_01-3-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r0"/>
+  <path d="M 44.67 26.5 L 44.67 99.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1028-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r14"/>
+  <path d="M 22 82.33 L 1258 82.33" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1029-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r12"/>
+  <path d="M 22 655.17 L 1258 655.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1030-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r11"/>
+  <image href="../images/image2.png" x="0" y="642.13" width="1280" height="22.7" preserveAspectRatio="none" id="master-master_01-2-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r2"/>
+  <image href="../images/image3.png" x="1072" y="0" width="208" height="29.71" preserveAspectRatio="none" id="master-master_01-4-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r6"/>
+  <image href="../images/image2.png" x="0" y="642.13" width="1280" height="22.7" preserveAspectRatio="none" id="layout-layout_05-4-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r2"/>
+
+  <g id="slot-layout_05-2" data-pptx-placeholder="title" data-pptx-bounds="57.78 15.83 1200.89 60">
+    <text x="67.38" y="58" text-anchor="start" xml:space="preserve" font-size="37.33" font-weight="bold" fill="#17223B" data-pptx-carrier="true">短窗口決策：服務、佇列與能量</text>
+  </g>
+  <g id="slot-layout_05-3" data-pptx-placeholder="slide-number" data-pptx-bounds="1148 665.67 93.33 50" data-pptx-idx="10">
+    <text x="1234" y="700" text-anchor="end" font-family="&quot;Times New Roman&quot;, serif" font-size="14" fill="#35377F" data-pptx-carrier="true">02</text>
+  </g>
+
+  <g id="policy-index" data-pptx-bounds="69 118 253 432">
+    <rect x="69" y="118" width="6" height="432" rx="3" fill="#35377F"/>
+    <rect x="91" y="122" width="128" height="34" rx="17" fill="#17223B"/>
+    <text x="155" y="146" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="20" font-weight="bold" fill="#FFFFFF">DECIDE · 02</text>
+    <text x="91" y="202" font-size="32" font-weight="bold" fill="#17223B">只改一個值</text>
+    <rect x="91" y="230" width="190" height="68" rx="18" fill="#F4F7FB" stroke="#C7D1E3" stroke-width="2"/>
+    <text x="186" y="260" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#35377F">BATCH_SIZE</text>
+    <text x="186" y="286" text-anchor="middle" font-size="20" fill="#17223B">批次大小</text>
+    <text x="186" y="333" text-anchor="middle" font-size="20" font-weight="bold" fill="#9B79D0">或</text>
+    <rect x="91" y="352" width="190" height="68" rx="18" fill="#F2ECFA" stroke="#9B79D0" stroke-width="2"/>
+    <text x="186" y="382" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="17" font-weight="bold" fill="#35377F">URGENT_MARGIN_S</text>
+    <text x="186" y="408" text-anchor="middle" font-size="20" fill="#17223B">緊急提前量</text>
+    <line x1="91" y1="456" x2="281" y2="456" stroke="#C7D1E3" stroke-width="2"/>
+    <text x="91" y="488" font-size="18" fill="#60708A">mission contract 不變<tspan x="91" dy="29">只換 batching / urgency</tspan></text>
+  </g>
+
+  <g id="crossing-window" data-pptx-bounds="327 118 620 330">
+    <text x="327" y="151" font-size="30" font-weight="bold" fill="#17223B">窗口一交會，先決定服務動作</text>
+    <text x="327" y="180" font-size="20" fill="#60708A">現在換、等穩定，還是維持？</text>
+
+    <polygon points="348,225 760,291 760,349 348,417" fill="#E9F7F8" fill-opacity="0.88" stroke="#28B8C7" stroke-width="3"/>
+    <polygon points="374,417 776,338 776,282 374,214" fill="#FCE9E6" fill-opacity="0.78" stroke="#EA6A5A" stroke-width="3"/>
+    <text x="366" y="245" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#177B85">CURRENT LINK</text>
+    <text x="385" y="407" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#9B3E35">CANDIDATE LINK</text>
+
+    <circle cx="642" cy="316" r="78" fill="#FFF5D6" stroke="#F4B942" stroke-width="3"/>
+    <text x="642" y="304" text-anchor="middle" font-size="24" font-weight="bold" fill="#17223B">決策點</text>
+    <text x="642" y="340" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="20" font-weight="bold" fill="#876416">SERVICE FIRST</text>
+
+    <line x1="720" y1="316" x2="778" y2="316" stroke="#17223B" stroke-width="3"/>
+    <line x1="778" y1="244" x2="778" y2="388" stroke="#17223B" stroke-width="2"/>
+    <line x1="778" y1="244" x2="795" y2="244" stroke="#17223B" stroke-width="2" marker-end="url(#arrow-navy)"/>
+    <line x1="778" y1="316" x2="795" y2="316" stroke="#17223B" stroke-width="2" marker-end="url(#arrow-navy)"/>
+    <line x1="778" y1="388" x2="795" y2="388" stroke="#17223B" stroke-width="2" marker-end="url(#arrow-navy)"/>
+    <rect x="805" y="220" width="118" height="48" rx="24" fill="#FCE9E6" stroke="#EA6A5A" stroke-width="2"/>
+    <text x="864" y="251" text-anchor="middle" font-size="20" font-weight="bold" fill="#9B3E35">現在換</text>
+    <rect x="805" y="292" width="136" height="48" rx="24" fill="#FFF5D6" stroke="#F4B942" stroke-width="2"/>
+    <text x="873" y="323" text-anchor="middle" font-size="20" font-weight="bold" fill="#876416">等穩定</text>
+    <rect x="805" y="364" width="118" height="48" rx="24" fill="#E9F7F8" stroke="#28B8C7" stroke-width="2"/>
+    <text x="864" y="395" text-anchor="middle" font-size="20" font-weight="bold" fill="#177B85">維持</text>
+  </g>
+
+  <g id="service-gates" data-pptx-bounds="967 118 259 330">
+    <text x="967" y="151" font-family="&quot;Times New Roman&quot;, serif" font-size="20" font-weight="bold" fill="#35377F">ORDERED GATES</text>
+    <line x1="989" y1="185" x2="989" y2="421" stroke="#C7D1E3" stroke-width="3"/>
+    <circle cx="989" cy="201" r="15" fill="#28B8C7"/>
+    <text x="989" y="208" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#FFFFFF">1</text>
+    <text x="1018" y="198" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#17223B">CONTACT CLOSED</text>
+    <text x="1018" y="224" font-family="&quot;Times New Roman&quot;, serif" font-size="18" fill="#9B79D0">→ SLEEP</text>
+    <circle cx="989" cy="266" r="15" fill="#EA6A5A"/>
+    <text x="989" y="273" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#FFFFFF">2</text>
+    <text x="1018" y="263" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#17223B">URGENT DUE</text>
+    <text x="1018" y="289" font-family="&quot;Times New Roman&quot;, serif" font-size="18" fill="#9B3E35">→ SEND_URGENT</text>
+    <circle cx="989" cy="331" r="15" fill="#9B79D0"/>
+    <text x="989" y="338" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#FFFFFF">3</text>
+    <text x="1018" y="328" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#17223B">PACING GAP</text>
+    <text x="1018" y="354" font-family="&quot;Times New Roman&quot;, serif" font-size="18" fill="#177B85">→ WAIT / SLEEP</text>
+    <circle cx="989" cy="396" r="15" fill="#4EA978"/>
+    <text x="989" y="403" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#FFFFFF">4</text>
+    <text x="1018" y="393" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#17223B">QUALITY READY</text>
+    <text x="1018" y="419" font-family="&quot;Times New Roman&quot;, serif" font-size="18" fill="#387A56">→ FLUSH / ONE</text>
+  </g>
+
+  <g id="freeze-evidence-lane" data-pptx-bounds="327 466 899 134">
+    <rect x="327" y="470" width="124" height="34" rx="17" fill="#9B79D0"/>
+    <text x="389" y="494" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#FFFFFF">EVIDENCE</text>
+    <line x1="467" y1="487" x2="1198" y2="487" stroke="#CBBDE3" stroke-width="3"/>
+    <circle cx="520" cy="487" r="9" fill="#FFFFFF" stroke="#9B79D0" stroke-width="3"/>
+    <text x="520" y="529" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" fill="#17223B">baseline</text>
+    <circle cx="674" cy="487" r="9" fill="#FFFFFF" stroke="#9B79D0" stroke-width="3"/>
+    <text x="674" y="529" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" fill="#17223B">candidate</text>
+    <circle cx="850" cy="487" r="9" fill="#FFFFFF" stroke="#9B79D0" stroke-width="3"/>
+    <text x="850" y="529" text-anchor="middle" font-size="18" fill="#17223B">一次證據修訂</text>
+    <circle cx="1012" cy="487" r="15" fill="#35377F"/>
+    <text x="1012" y="529" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#35377F">FREEZE</text>
+    <circle cx="1166" cy="487" r="9" fill="#FFFFFF" stroke="#EA6A5A" stroke-width="3"/>
+    <text x="1166" y="529" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#9B3E35">WITHHELD</text>
+    <text x="1218" y="553" text-anchor="end" font-family="&quot;Times New Roman&quot;, serif" font-size="18" fill="#60708A">SERVICE / MECHANISM / STATE / ENERGY</text>
+    <line x1="327" y1="582" x2="371" y2="582" stroke="#4EA978" stroke-width="6" stroke-linecap="round"/>
+    <text x="389" y="590" font-size="20" font-weight="bold" fill="#17223B">服務失敗不得用 bit/J 蓋過；FREEZE 後不再 retune</text>
+  </g>
+
+  <g id="claim-boundary" data-pptx-bounds="69 616 1157 20">
+    <text x="647.5" y="631" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="14" font-weight="bold" fill="#60708A">SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED</text>
+  </g>
+</svg>

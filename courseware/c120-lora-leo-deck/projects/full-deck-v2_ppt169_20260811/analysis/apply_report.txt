@@ -1,0 +1,3 @@
+
+STDERR:
+Template-filled PPTX -> /home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/full-deck-v2_ppt169_20260811/exports/native-layout-base_20260811_000000.pptx

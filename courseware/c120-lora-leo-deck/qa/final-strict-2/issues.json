@@ -1,0 +1,17 @@
+{
+  "slide-02": {
+    "shape-021": {
+      "name": "Text 18",
+      "text": "\u5617\u8a66\u8207\u7d50\u679c",
+      "bounds_in": {
+        "x": 4.86,
+        "y": 3.4,
+        "w": 1.52,
+        "h": 0.2
+      },
+      "overflow": {
+        "overflow_inches": 0.135
+      }
+    }
+  }
+}

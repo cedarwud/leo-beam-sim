@@ -114,6 +114,11 @@ export interface CanonicalEePowerLedger {
 
 export interface CanonicalEeThroughputLedger {
   readonly signalUW: NumberVector;
+  /** Same-satellite, co-channel interference I^intra_u. */
+  readonly intraSatelliteInterferenceUW: NumberVector;
+  /** Other-satellite, co-channel interference I^inter_u. */
+  readonly interSatelliteInterferenceUW: NumberVector;
+  /** I^intra_u + I^inter_u; retained as the denominator-facing total. */
   readonly interferenceUW: NumberVector;
   readonly sinrU: NumberVector;
   readonly rateUBps: NumberVector;
@@ -129,6 +134,14 @@ export interface CanonicalEeLedger {
   readonly sumIdentity: true;
   readonly sumIdentityErrorBitsPerJ: number;
   readonly zeroOverZero: boolean;
+}
+
+/** Canonical channel gain values for one user/beam link. */
+export interface CanonicalEeHDiagnostics {
+  /** Raw h used by received-power, interference, SINR, and rate paths. */
+  readonly rawH: number;
+  /** h^div = max(h, epsilon_h), used only as the requested-power divisor. */
+  readonly hDiv: number;
 }
 
 /** Complete immutable per-tick canonical result. */
@@ -151,6 +164,8 @@ export interface CanonicalEeResult {
   readonly etaPaB: NumberVector;
   readonly pTotBW: NumberVector;
   readonly signalUW: NumberVector;
+  readonly intraSatelliteInterferenceUW: NumberVector;
+  readonly interSatelliteInterferenceUW: NumberVector;
   readonly interferenceUW: NumberVector;
   readonly sinrU: NumberVector;
   readonly rateUBps: NumberVector;

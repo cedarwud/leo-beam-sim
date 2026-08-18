@@ -1,0 +1,7 @@
+你是 server `~/leo-beam-sim` 的 C-120 implementation controller，使用 GPT-5.6 Sol ultra。這是 non-heavy implementation；互斥工作可派最多兩個 Luna/max sub-agent。
+
+依 repo instructions、`docs/decisions/ADR-004-c120-course-packaged-loraenergysim-leo.md`、`docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md` 與 `docs/handoff/C120-LORA-LEO-NEXT-CONTROLLER-2026-08-10.md`，完成 course-packaged LoRaEnergySim + Leo 的最低教學版。coherent simulated data 可接受；學生必須能安裝、修改 policy、執行 A/B/C、匯入 `/course`、觀察節能因果並保存／重開 workbook。
+
+先做 git、worktree、tmux、active-writer preflight，保留所有 dirty WIP；ownership 或 contract 重疊就停止。Controller 獨佔 shared contract、integration、route/session/workbook 與 browser evidence；worker 必須有互斥的精確 owned/forbidden paths。
+
+依 SDD 完成 runner、strict import、雙層 replay、recovery 與教學流程；跑 focused tests、typecheck/lint、production build，以及 fresh-browser 全流程、keyboard、窄 viewport、reset/resume、incomplete/complete export/reopen。最後只回報完成行為、證據、未通過項目與 claim ceiling；不得越權宣稱 classroom-ready、20-seat、measured、live、canonical 或 backend complete。除非另有明確授權，不 commit/push。

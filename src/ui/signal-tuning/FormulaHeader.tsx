@@ -2,8 +2,11 @@ import type { ReactNode } from 'react';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
 import { HelpPopover } from '../common/HelpPopover';
+import { renderFormulaText } from '../common/formulaText';
 import { txBi } from './labels';
 import { captionTextStyle, formulaTextStyle, groupTitleStyle } from './styles';
+
+export { renderFormulaText } from '../common/formulaText';
 
 /**
  * The formula block that sits at the very top of each main tab. A student
@@ -81,7 +84,9 @@ export function FormulaHeader({
         {/* Empty left spacer: it is what puts the title on the card's centre
             line instead of the centre of the space the badge cluster leaves. */}
         {centered && <span aria-hidden="true" />}
-        <div style={{ ...groupTitleStyle, color: accent, textAlign: centered ? 'center' : 'left' }}>{title}</div>
+        <div style={{ ...groupTitleStyle, color: accent, textAlign: centered ? 'center' : 'left' }}>
+          {renderFormulaText(title)}
+        </div>
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -104,7 +109,7 @@ export function FormulaHeader({
                 whiteSpace: 'nowrap',
               }}
             >
-              {claim}
+              {renderFormulaText(claim)}
             </span>
           )}
           {help && (
@@ -121,7 +126,9 @@ export function FormulaHeader({
       </div>
       <div style={{ display: 'grid', gap: 8, justifyItems: centered ? 'center' : 'stretch' }}>{children}</div>
       {caption && (
-        <div style={{ ...captionTextStyle, textAlign: centered ? 'center' : undefined }}>{caption}</div>
+        <div style={{ ...captionTextStyle, textAlign: centered ? 'center' : undefined }}>
+          {renderFormulaText(caption)}
+        </div>
       )}
     </section>
   );
@@ -190,7 +197,7 @@ export function FormulaRow({
               whiteSpace: 'nowrap',
               fontWeight: UI_TOKENS.type.weight.strong,
             }}>
-              {note}
+              {renderFormulaText(note)}
             </div>
           )}
           {help && (
@@ -210,7 +217,7 @@ export function FormulaRow({
           color: UI_TOKENS.color.text.secondary,
           lineHeight: 1.5,
         }}>
-          {source}
+          {typeof source === 'string' ? renderFormulaText(source) : source}
         </div>
       )}
     </div>
@@ -275,6 +282,43 @@ export function FormulaFraction({
         </span>
       </span>
     </div>
+  );
+}
+
+/** Inline stacked fraction for a formula row or a product containing a ratio. */
+export function InlineFormulaFraction({
+  numerator,
+  denominator,
+  label,
+  testId,
+}: {
+  readonly numerator: ReactNode;
+  readonly denominator: ReactNode;
+  readonly label: string;
+  readonly testId?: string;
+}) {
+  return (
+    <span
+      data-testid={testId}
+      role="math"
+      aria-label={label}
+      style={{
+        display: 'inline-grid',
+        justifyItems: 'stretch',
+        alignItems: 'center',
+        verticalAlign: 'middle',
+        lineHeight: 1.05,
+        margin: '0 3px',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span aria-hidden="true" style={{ borderBottom: '1px solid currentColor', padding: '0 3px', textAlign: 'center' }}>
+        {numerator}
+      </span>
+      <span aria-hidden="true" style={{ padding: '0 3px', textAlign: 'center' }}>
+        {denominator}
+      </span>
+    </span>
   );
 }
 

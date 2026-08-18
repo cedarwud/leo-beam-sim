@@ -27,7 +27,7 @@ import {
 } from './types';
 import './SimulatorRoute.scss';
 
-const DEFAULT_TAIPEI_LOCAL = '2026-08-08T20:00';
+const DEFAULT_TAIPEI_LOCAL = '2026-08-12T20:00';
 
 function readableError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -209,7 +209,7 @@ function SinrPanel({ frame }: { readonly frame: SimulationAnalysisFrame }) {
         ]} />
       </Section>
       <Section title="如何解讀" subtitle="先看 signal／interference／noise，再看 realized SINR；Power tab 的 cap 變更會沿同一鏈路傳到這裡。">
-        <div className="simulator-explanation"><strong>{link.qosMet ? '目前達到服務目標' : '目前未達服務目標'}</strong><p>服務目標由 Throughput tab 的 R_min 決定。這個畫面以衛星 nadir 作為單一 beam 的 boresight reference，並使用明示的 1e-8 normalized link scale；它是透明展示情境，不是校準的真實 RF link budget。</p></div>
+        <div className="simulator-explanation"><strong>{link.qosMet ? '目前達到服務目標' : '目前未達服務目標'}</strong><p>服務目標由 Throughput 分頁的「每位使用者最低傳輸速率要求」決定。通道增益使用所選 TLE 幾何推導的路徑損耗 H = 10⁻ᴸ⁄¹⁰；大氣、閃爍、陰影裕度與接收增益仍是明示的實驗假設，不代表硬體量測或完整校準。</p></div>
       </Section>
     </div>
   );
@@ -227,14 +227,14 @@ function ThroughputPanel({ frame, parameters, setParameters }: {
       <Section title="Throughput inputs" subtitle="服務目標與 bandwidth 只在這個 projection 編輯；SINR、rate 與 P_DL_actual 仍是 derived。">
         <div className="simulator-form-grid">
           <NumberField id="minimum-rate" label="R_min（service target）" unit="bit/s" value={parameters.minimumRateBps} min={1} step={1000} description="此 beam 要求的最低服務速率。" source="gamma_req；決定 requested power。" onChange={update('minimumRateBps')} />
-          <NumberField id="beam-bandwidth" label="B_beam（bandwidth）" unit="Hz" value={parameters.beamBandwidthHz} min={1} step={10000} description="每個 beam 的可用頻寬。" source="gamma_req 與 rate formula。" onChange={update('beamBandwidthHz')} />
+          <NumberField id="system-bandwidth" label="B_sys（system bandwidth）" unit="Hz" value={parameters.systemBandwidthHz} min={1} step={1000000} description="整個系統的可用頻寬；B_beam 由 B_sys / K_FR 推導。" source="Throughput formula；K_FR 由 SINR controls 提供。" onChange={update('systemBandwidthHz')} />
         </div>
       </Section>
       <Section title="Realized throughput" subtitle="這裡直接投影 canonical throughput ledger，不另算 SINR 或 rate。">
         <div className="simulator-metrics-grid simulator-metrics-grid--three">
           <Metric label="User rate R_u" value={formatNumber(link.rateBps, 1)} unit=" bit/s" detail={link.qosMet ? 'QoS met' : 'QoS not met'} />
           <Metric label="Total rate" value={formatNumber(frame.throughput.totalRateBps, 1)} unit=" bit/s" detail="service-set sum" />
-          <Metric label="Spectral efficiency" value={formatNumber(link.rateBps / Math.max(parameters.beamBandwidthHz, 1), 4)} unit=" bit/s/Hz" detail="derived" />
+          <Metric label="Spectral efficiency" value={formatNumber(link.rateBps / Math.max(frame.scenario.derived.beamBandwidthHz, 1), 4)} unit=" bit/s/Hz" detail="derived from B_beam" />
         </div>
         <ReadOnlyTable rows={[
           { label: 'gamma_req', value: formatScientific(frame.canonical.gammaReqB[0] ?? 0), unit: ' linear', note: 'derived from R_min / B_beam' },
@@ -265,7 +265,7 @@ function EePanel({ frame }: { readonly frame: SimulationAnalysisFrame }) {
         <p className="simulator-note">目前 evaluation 只示範單一 frame 的 ratio-of-sums；不能解讀成跨時間累積，也不能解讀成節能比較或平台實測。</p>
       </Section>
       <Section title="能效邊界與來源" subtitle="保持物理量與證據邊界清楚。">
-        <div className="simulator-explanation"><p><strong>來源：</strong>{frame.provenance.archiveCatalogUrl} → {frame.provenance.selectedTlePath}</p><p><strong>接受 constellation：</strong>{constellationLabel(acceptedConstellation)}；<strong>模型：</strong>{frame.provenance.propagationModel}，TLE epoch {frame.tleEpochUtc}；時間切換是 snapshot selection，不是 handover，也不產生 event energy。</p><p><strong>情境：</strong>固定 Taipei ground terminal + nadir-reference beam + 1e-8 normalized link scale。這能展示 canonical 計算鏈，但不是校準 RF link budget，也不宣稱論文場景重現。</p></div>
+        <div className="simulator-explanation"><p><strong>來源：</strong>{frame.provenance.archiveCatalogUrl} → {frame.provenance.selectedTlePath}</p><p><strong>接受 constellation：</strong>{constellationLabel(acceptedConstellation)}；<strong>模型：</strong>{frame.provenance.propagationModel}，TLE epoch {frame.tleEpochUtc}；時間切換是 snapshot selection，不是 handover，也不產生 event energy。</p><p><strong>情境：</strong>固定 NTPU ground terminal + TLE/SGP4 幾何 + H = 10⁻ᴸ⁄¹⁰ 的路徑損耗鏈。通道與硬體輸入仍是可重現的實驗假設，不宣稱為量測校準或完整論文場景重現。</p></div>
       </Section>
     </div>
   );

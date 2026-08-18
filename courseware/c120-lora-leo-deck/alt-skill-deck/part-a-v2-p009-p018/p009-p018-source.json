@@ -1,0 +1,228 @@
+{
+  "source": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/part-a/slides.json",
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "shell": "source slide 2 / slideLayout2.xml only",
+  "owned_pages": [
+    "P009",
+    "P010",
+    "P011",
+    "P012",
+    "P013",
+    "P014",
+    "P015",
+    "P016",
+    "P017",
+    "P018"
+  ],
+  "slides": [
+    {
+      "id": "P009",
+      "title": "P009｜Provenance 與 Claim Ceiling",
+      "body": [
+        "`provenance`（來源鏈）：source = package receipt、scenario、policy identity、run artifact；purpose = 連結輸入與輸出；unit = structured record；interpretation = 追溯 evidence scope。",
+        "`source_mode`（來源模式）：source = result metadata；purpose = 區分 `student-run` 與 `same-scenario-fallback`；unit = enum；interpretation = 來源分類保持原值。",
+        "`claim_boundary`（主張邊界）：source = course contract；purpose = 標示 evidence class；unit = fixed string；interpretation = `SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED`。",
+        "`package identity`（套件識別）：source = release manifest；purpose = 綁定 package 與 artifact；unit = identifier；interpretation = identity mismatch stops import。",
+        "結果解讀依 source_mode、scenario identity、policy identity 與 claim_boundary 一起進行。"
+      ],
+      "layout": "wide",
+      "visual": {
+        "kind": "shield",
+        "compact": true,
+        "labels": [
+          "來源鏈",
+          "主張邊界",
+          "可比較欄位"
+        ]
+      },
+      "notes": "這一頁建立 provenance 規則。結果的來源模式、情境識別、策略識別與主張邊界必須一起保留；同情境回復資料仍標示自己的來源分類。課程證據的固定主張上限是連貫教學模擬資料，且明示非 live、非 measured、非 canonical parity。"
+    },
+    {
+      "id": "P010",
+      "title": "P010｜Release asset 與 package root",
+      "body": [
+        "`release asset`（發布封裝）：source = course package distribution；purpose = 提供同一組 runner files；unit = archive file；interpretation = package identity boundary。",
+        "`lora-energy-lab-v1.zip`（課程封裝檔）：source = release page；purpose = transport package root；unit = file；interpretation = 解壓後形成單一 `lora-energy-lab/` 根目錄。",
+        "`README.zh-TW.md`、`setup.sh`、`setup.cmd`、`course.sh`、`course.cmd`、`student_policy.py`：source = package root；purpose = 說明、設定、驗證、執行與 policy；unit = files；interpretation = required surface。",
+        "`schemas/`（結構契約目錄）與 `fallback_artifacts/`（同情境回復資料目錄）：source = package root；purpose = validate and recover；unit = directories；interpretation = preserve scenario identity。"
+      ],
+      "layout": "wide",
+      "visual": {
+        "kind": "anatomy",
+        "compact": true,
+        "labels": [
+          "lora-energy-lab/",
+          "setup／course",
+          "student_policy.py",
+          "schemas／fallback"
+        ]
+      },
+      "notes": "這一頁說明 release asset 的交付邊界。解壓後的唯一 package root 同時包含說明、平台啟動器、驗證命令、策略檔、結構契約與回復資料。任何 root inventory 差異都先歸類為 package identity 問題。"
+    },
+    {
+      "id": "P011",
+      "title": "P011｜Package identity gate 與 root inventory",
+      "body": [
+        "`package identity`（套件識別）：source = release manifest + root inventory；purpose = verify required files are one coherent package；unit = identifier/list；interpretation = identity mismatch stops setup。",
+        "`package root`（套件根目錄）：source = extracted release asset；purpose = anchor setup.sh／setup.cmd and course.sh／course.cmd；unit = directory；interpretation = `.venv` and artifacts stay local。",
+        "Required inventory：README、兩套 setup／launcher、`student_policy.py`、schemas、fallback_artifacts。",
+        "Gate result：root complete → interpreter gate；root incomplete → 保留錯誤並重新取得同一 release asset。"
+      ],
+      "layout": "gate",
+      "visual": {
+        "kind": "gate",
+        "labels": [
+          "root inventory",
+          "identity gate",
+          "interpreter gate"
+        ]
+      },
+      "notes": "這一頁把 package identity 變成可判讀的 gate。根目錄先確認必要檔案與啟動器，再進入 interpreter gate；根目錄不完整時保留錯誤，不能以補檔方式改變 package identity。"
+    },
+    {
+      "id": "P012",
+      "title": "P012｜Windows shell identity 與 Python 3.11",
+      "body": [
+        "`CMD`（Windows 命令提示字元）：source = Windows native shell；purpose = execute `.cmd` launcher；unit = shell type；interpretation = path uses `\\`。",
+        "`PowerShell`（Windows 管理命令殼）：source = Windows native shell；purpose = execute `.cmd` and inspect receipt；unit = shell type；interpretation = command syntax differs from CMD。",
+        "`Python 3.11.x`（固定直譯器版本）：source = runner frozen contract；purpose = create package-local `.venv`；unit = version；interpretation = version gate before setup。",
+        "Commands：`py --list`；`py -3.11 --version` → expected `Python 3.11.x`。"
+      ],
+      "layout": "compare",
+      "visual": {
+        "kind": "compare",
+        "labels": [
+          "CMD",
+          "PowerShell",
+          "Python 3.11.x"
+        ]
+      },
+      "notes": "Windows 先辨識命令殼，再確認固定直譯器版本。CMD 與 PowerShell 都執行 .cmd 啟動器，但語法與路徑規則不同；3.11.x 版本 gate 通過後才進入 package-local venv 建立。"
+    },
+    {
+      "id": "P013",
+      "title": "P013｜Windows interpreter recovery",
+      "body": [
+        "`uv`（Python 執行環境管理工具）：source = official runtime manager；purpose = obtain and locate exact Python 3.11；unit = tool／version／path；interpretation = interpreter recovery only。",
+        "`uv python install 3.11`：source = uv tool；purpose = install exact minor；unit = command；interpretation = creates available interpreter。",
+        "`uv python find 3.11`：source = uv tool；purpose = return interpreter path；unit = path string；interpretation = path passes to setup。",
+        "Recovery result is an interpreter path；package setup and `READY` receipt remain later gates。"
+      ],
+      "layout": "ladder",
+      "visual": {
+        "kind": "ladder",
+        "labels": [
+          "取得 uv",
+          "安裝 3.11",
+          "定位 path",
+          "進入 setup"
+        ]
+      },
+      "notes": "uv 只處理 Python 3.11 interpreter 的取得與定位。uv command 成功會產生可交給 setup 的 path；package-local venv、lock 驗證與 READY receipt 仍由後續 package 命令產生。"
+    },
+    {
+      "id": "P014",
+      "title": "P014｜POSIX／WSL shell separation",
+      "body": [
+        "`POSIX`（Unix-like shell 環境）：source = macOS／Linux／WSL；purpose = run `.sh`；unit = environment class；interpretation = path uses `/`。",
+        "`WSL`（Windows Subsystem for Linux；Windows 的 Linux 執行層）：source = host platform；purpose = run Ubuntu／Linux tools；unit = environment class；interpretation = owns a separate `.venv`。",
+        "`Ubuntu`（Linux 發行版）：source = WSL distribution；purpose = provide verified Linux shell；unit = distribution name；interpretation = `setup.sh` and `course.sh` run inside this boundary。",
+        "Identity check：`pwd` shows Linux path；`uname -a` begins with Linux。"
+      ],
+      "layout": "split",
+      "visual": {
+        "kind": "compare",
+        "labels": [
+          "Windows",
+          "WSL／Ubuntu",
+          "POSIX path"
+        ]
+      },
+      "notes": "POSIX 與 WSL 使用 .sh 啟動器，但 WSL 具有自己的 Linux filesystem、interpreter 與 .venv。Ubuntu shell identity 以 pwd 和 uname -a 核對；Windows 的 .cmd 路徑不跨入這個環境。"
+    },
+    {
+      "id": "P015",
+      "title": "P015｜package-local .venv 隔離",
+      "body": [
+        "`.venv`（套件本地虛擬環境）：source = Python `venv` module；purpose = isolate locked dependencies and policy；unit = directory；interpretation = launcher uses its own interpreter。",
+        "`venv`（虛擬環境標準模組）：source = Python standard library；purpose = create `.venv`；unit = module；interpretation = environment creation mechanism, not an interpreter version。",
+        "Windows path：`.venv\\Scripts\\python.exe`；POSIX path：`.venv/bin/python`。",
+        "Package-local Python should report `Python 3.11.x`；啟用只作診斷，正常 launcher 直接呼叫 package-local interpreter。"
+      ],
+      "layout": "path",
+      "visual": {
+        "kind": "path",
+        "labels": [
+          "package root",
+          ".venv",
+          "Windows path",
+          "POSIX path"
+        ]
+      },
+      "notes": "這一頁分開說明 .venv 目錄與 venv 標準模組。目錄必須位於 package root，Windows 與 POSIX 具有不同 interpreter path；正常 launcher 不需要先啟用環境，會直接使用 package-local Python。"
+    },
+    {
+      "id": "P016",
+      "title": "P016｜Windows setup 與 READY receipt",
+      "body": [
+        "`setup.cmd`（Windows 設定啟動器）：source = package root；purpose = create `.venv`, install locked dependencies, run verification；unit = executable file；interpretation = prepares package boundary。",
+        "`course.cmd verify`（Windows 驗證命令）：source = package launcher；purpose = re-check interpreter／lock／scenario／policy contract；unit = command；interpretation = emits verification receipt。",
+        "`READY`（環境就緒狀態）：source = `artifacts/verify-receipt.json`；purpose = indicate environment／contract gate passed；unit = enum；interpretation = runner may enter case execution。",
+        "Expected fields：status READY、Python 3.11.x、scenario identity、engine mode、claim boundary。"
+      ],
+      "layout": "receipt",
+      "visual": {
+        "kind": "receipt",
+        "labels": [
+          "setup.cmd",
+          "course.cmd verify",
+          "READY",
+          "verify receipt"
+        ]
+      },
+      "notes": "Windows package root 執行 setup.cmd，接著由 course.cmd verify 重查同一組 gate。READY 是環境與契約就緒狀態，receipt 會保存版本、scenario、engine mode 與 claim boundary；case artifact 仍要另行產生。"
+    },
+    {
+      "id": "P017",
+      "title": "P017｜WSL identity gate",
+      "body": [
+        "`wsl --install -d Ubuntu`（WSL 安裝命令）：source = Windows PowerShell；purpose = create Ubuntu distribution when absent；unit = command；interpretation = host setup only。",
+        "`wsl -l -v`（WSL 分發清單）：source = Windows command；purpose = show distribution／version／status；unit = list；interpretation = selects correct Ubuntu boundary。",
+        "`wsl -d Ubuntu`（進入命令）：source = Windows command；purpose = open Ubuntu shell；unit = command；interpretation = subsequent `.sh` commands belong to Linux。",
+        "Ubuntu shell evidence：`pwd` Linux path and `uname -a` Linux kernel label。"
+      ],
+      "layout": "ladder",
+      "visual": {
+        "kind": "ladder",
+        "labels": [
+          "Windows shell",
+          "wsl -l -v",
+          "Ubuntu",
+          "Linux shell"
+        ]
+      },
+      "notes": "WSL 安裝與進入是 shell identity gate。確認 Ubuntu 分發存在後，wsl -d Ubuntu 開啟 Linux shell；之後的 .sh、apt 與 .venv/bin/python 都屬於這個 Linux 邊界。"
+    },
+    {
+      "id": "P018",
+      "title": "P018｜WSL toolchain ladder",
+      "body": [
+        "`apt`（Linux 套件管理器）：source = Ubuntu；purpose = obtain `curl` and `unzip`；unit = command／tool；interpretation = provides release extraction prerequisites。",
+        "`curl`（命令列傳輸工具）：source = Ubuntu package；purpose = retrieve uv installer；unit = tool；interpretation = environment setup input。",
+        "`unzip`（封裝解壓工具）：source = Ubuntu package；purpose = expand release asset；unit = tool；interpretation = creates package root。",
+        "Order：apt update／install → uv version／install／find → Python 3.11 path。"
+      ],
+      "layout": "ladder",
+      "visual": {
+        "kind": "ladder",
+        "labels": [
+          "apt",
+          "curl／unzip",
+          "uv",
+          "Python 3.11"
+        ]
+      },
+      "notes": "Ubuntu toolchain 依序建立解壓與 runtime prerequisites，再取得 Python 3.11。這些命令只建立可用環境，不產生 case result；任何錯誤都留在目前的環境邊界處理。"
+    }
+  ]
+}

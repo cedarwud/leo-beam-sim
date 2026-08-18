@@ -6,7 +6,7 @@
 // `HandoverToastOverlay`. The replay path will mount a parallel
 // `useReplayPlayback` hook in P3 that constructs NormalizedSceneFrame via
 // `showcaseArtifactToScene` instead.
-import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -16,6 +16,7 @@ import type { Profile } from '../profiles/types';
 import type {
   CameraPreset,
   RuntimeConfig,
+  SimFrame,
   SimState,
 } from './types';
 import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
@@ -62,9 +63,12 @@ import {
   resolveSinrLiveCellBeamConeItems,
   resolveSinrLiveNonServingConeItems,
   resolveTriggeredIntraConeItems,
+  resolveCinemaHandoverPairConeItems,
+  resolveCinemaInterServingFanConeItems,
   resolveCandidateBeamConeItems,
   resolveTopServingFocusSatIds,
   type SinrLiveCellPlacement,
+  type SinrLiveCinemaHandoverCandidate,
 } from '../viz/SinrLiveCellBeamCones';
 import {
   DEFAULT_BEAM_DISPLAY_SPEC,
@@ -75,13 +79,22 @@ import {
 import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord, type SinrLiveCellHandoverEvent } from './sinrLiveCellModel';
 import { MANUAL_HANDOVER_DISPLAY_MS, resolveManualHandoverDemoEvent } from './manualHandoverDemo';
 import {
+  resolveHandoverCinemaDisplayMs,
+  resolveHandoverCinemaReady,
+  resolveHandoverCinemaEnvelope,
+  resolveHandoverDisplayIsolation,
+  resolveInterCinemaPairAnchor,
+  type InterCinemaPairAnchor,
+  type InterCinemaApexWorld,
+} from './handoverDisplayIsolation';
+import {
   annotateOtherHandoverDisplayUes,
   filterOtherHandoverDisplayUes,
   selectOtherHandoverUeIds,
 } from './otherHandoverUeSelector';
 import { resolveRecentPrimaryIntraHandoverEvent } from './intraHandoverVisualState';
 import { resolveHandoverConeEnvelope } from '../constants/sinrLiveConeStyle';
-import { buildSinrLiveCellLayout } from './sinrLiveCellRuntime';
+import { buildSinrLiveCellLayout, resolveSinrLiveBeamsPerSat } from './sinrLiveCellRuntime';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
 import { BeamLoadUploadParticles } from '../viz/BeamLoadUploadParticles';
 import { HandoverStoryLayer } from '../viz/HandoverStoryLayer';
@@ -126,6 +139,22 @@ import {
 } from './modqnVisualLayers';
 import { resolveDirectorFocusPose } from './directorFocusPose';
 import { LIVE_CINEMATIC_CAMERA_ENABLED } from '../app/appRuntimeConfig';
+import type { SimulationAnalysisFrame, SimulatorConstellation } from '../simulator/types';
+import { adaptSimulationAnalysisFrameToArchivedTleSimFrame } from './archivedTleSimFrameAdapter';
+import {
+  ARCHIVED_TLE_DISPLAY_CELL_IDS,
+  buildArchivedTleSevenCellPlacement,
+  type ArchivedTleSevenCellPlacement,
+} from './archivedTleSevenCellPlacement';
+import {
+  isScenePresenterEnabled,
+  readScenePresentationStageFromSearch,
+  resolveScenePresentationPlan,
+  type ScenePresentationPlan,
+  type ScenePresentationStageId,
+} from './presentation/scenePresentation';
+import { ScenePresentationToolbar } from './presentation/ScenePresentationToolbar';
+import { DEFAULT_SATELLITE_CONSTELLATION } from '../viz/satelliteModelCatalog';
 
 function lookupSatWorldPos(
   satellites: NormalizedSceneFrame['satellites'],
@@ -134,6 +163,22 @@ function lookupSatWorldPos(
   if (!satId) return null;
   const sat = satellites.find(candidate => candidate.id === satId);
   return sat ? sat.worldPos : null;
+}
+
+function ScenePresentationCanvasTelemetry({
+  plan,
+}: {
+  readonly plan: ScenePresentationPlan;
+}) {
+  const gl = useThree(state => state.gl);
+  useEffect(() => {
+    gl.domElement.dataset.scenePresentationStage = plan.stage;
+    gl.domElement.dataset.scenePresentationVisibleLayers = Object.entries(plan.visible)
+      .filter(([, visible]) => visible)
+      .map(([layer]) => layer)
+      .join(',');
+  }, [gl, plan]);
+  return null;
 }
 
 interface SceneContentProps {
@@ -146,8 +191,29 @@ interface SceneContentProps {
   onSimUpdate: (state: SimState) => void;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
+  /** Display-only spacecraft model family; archived frames carry this from provenance. */
+  constellation?: SimulatorConstellation;
+  /** Presentation-only mount plan; existing lane gates remain authoritative. */
+  presentationPlan: ScenePresentationPlan;
   /** Tier-2 display-only beam knobs (direct prop, bypasses the runtime bag). */
   beamDisplaySpec?: BeamDisplaySpec;
+  /** Focused live handover-cinema candidate used only by the cone presentation layer. */
+  handoverCinemaCandidate?: SinrLiveCinemaHandoverCandidate | null;
+}
+
+interface SceneRenderContentProps extends SceneContentProps {
+  /** Fully resolved scene state. The renderer must not infer its orbit source. */
+  sim: SimFrame;
+  /** Prevent archived-TLE presentation state from publishing into the legacy live rail. */
+  simSource: 'live' | 'archived-tle';
+  /** Optional seven-cell placement carried by the immutable canonical TLE frame. */
+  canonicalScenario?: SimulationAnalysisFrame['scenario'];
+  /** Same-frame comparison identity; this is not a handover-pending claim. */
+  canonicalCandidateSatelliteId?: string | null;
+  /** One exact display mapping shared by adapter, cones, footprints, and UEs. */
+  archivedTlePlacement?: ArchivedTleSevenCellPlacement;
+  /** Exact live seek key consumed by useSimulation; display-only cinema timing gate. */
+  liveSeekLandedKey?: string | null;
 }
 
 interface ArtifactSceneContentProps {
@@ -155,6 +221,7 @@ interface ArtifactSceneContentProps {
   visualScaleMultipliers: SceneVisualScaleMultipliers;
   sceneLane: SceneLane;
   sceneFrame: NormalizedSceneFrame;
+  presentationPlan: ScenePresentationPlan;
 }
 
 const CAMERA_TWEEN_DURATION_MS = 600;
@@ -185,6 +252,15 @@ interface ManualHandoverTickState {
   /** Wall clock at the last published tick. */
   readonly publishedAtMs: number;
   /** The window has elapsed and the final frame was published — go quiet. */
+  readonly settled: boolean;
+}
+
+/** Focused cinema pair clock; keyed by the indexed event, not by simulation state. */
+interface CinemaHandoverTickState {
+  readonly eventId: string;
+  readonly startedAtMs: number;
+  readonly publishedAtMs: number;
+  readonly ready: boolean;
   readonly settled: boolean;
 }
 
@@ -611,6 +687,7 @@ function ArtifactSceneContent({
   visualScaleMultipliers,
   sceneLane,
   sceneFrame,
+  presentationPlan,
 }: ArtifactSceneContentProps) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const sceneConfig = useMemo(() => (
@@ -655,7 +732,12 @@ function ArtifactSceneContent({
   );
 
   return (
-    <BaseSceneLayout sceneConfig={sceneConfig} controlsRef={controlsRef}>
+    <BaseSceneLayout
+      sceneConfig={sceneConfig}
+      controlsRef={controlsRef}
+      campusVisible={presentationPlan.visible.campus}
+    >
+      <ScenePresentationCanvasTelemetry plan={presentationPlan} />
       <SceneTelemetry
         visibleSatelliteCount={visibleSatellites.length}
         firstSatellitePosition={formatScenePosition(visibleSatellites[0]?.worldPos)}
@@ -720,24 +802,28 @@ function ArtifactSceneContent({
         controlsRef={controlsRef}
         shouldClearReplayAttributes={true}
       />
-      <GroundScene
-        ues={sceneFrame.ues
-          .filter((u) => u.worldPos !== undefined)
-          .map((u) => {
-            const color = replayFieldColorById?.get(u.id);
-            return {
-              id: u.id,
-              worldPos: u.worldPos as readonly [number, number, number],
-              markerColor: color?.markerColor,
-              markerEmissive: color?.markerEmissive,
-            };
-          })}
-        ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
-        markerShape={ueMarkerShape}
-        unlitMarkers={isReplayStage}
-        colorTelemetryAttr={isReplayStage ? 'replayFieldColorCount' : undefined}
-      />
-      {visibleSatellites.map((satellite, index) => {
+      {presentationPlan.visible.ues && (
+        <GroundScene
+          ues={sceneFrame.ues
+            .filter((u) => u.worldPos !== undefined)
+            .map((u) => {
+              const color = replayFieldColorById?.get(u.id);
+              return {
+                id: u.id,
+                worldPos: u.worldPos as readonly [number, number, number],
+                markerColor: color?.markerColor,
+                markerEmissive: color?.markerEmissive,
+              };
+            })}
+          ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
+          markerShape={ueMarkerShape}
+          unlitMarkers={isReplayStage}
+          colorTelemetryAttr={isReplayStage ? 'replayFieldColorCount' : undefined}
+        />
+      )}
+      {(presentationPlan.visible['selected-satellite']
+        || presentationPlan.visible['candidate-satellite']
+        || presentationPlan.visible['context-satellites']) && visibleSatellites.map((satellite, index) => {
         const eventRole = sceneFrame.eventRoles.bySatId.get(satellite.id);
         return (
           <SatelliteMarker
@@ -746,26 +832,198 @@ function ArtifactSceneContent({
             label={formatSatelliteLabel(satellite.id)}
             eventRole={eventRole === 'inactive' ? undefined : eventRole}
             satelliteTintColor={satelliteTint(satellite.id, index)}
+            constellation={DEFAULT_SATELLITE_CONSTELLATION}
           />
         );
       })}
-      <FPSCounter />
+      {presentationPlan.visible.diagnostics && <FPSCounter />}
     </BaseSceneLayout>
   );
 }
 
-function SceneContent({
+/**
+ * Live-orbit source wrapper. Keeping the hook here lets the renderer below be
+ * reused verbatim by an archived-TLE source without mounting a hidden Walker
+ * simulation beside it.
+ */
+function SceneContent(props: SceneContentProps) {
+  const {
+    profile,
+    speed,
+    paused,
+    runtime,
+    visualScaleMultipliers,
+    sceneLane,
+    onLiveSeekLanded,
+  } = props;
+  const [liveSeekLandedKey, setLiveSeekLandedKey] = useState<string | null>(null);
+  const handleLiveSeekLanded = useCallback((seekRequestKey: string) => {
+    setLiveSeekLandedKey(seekRequestKey);
+    onLiveSeekLanded?.(seekRequestKey);
+  }, [onLiveSeekLanded]);
+  const sceneConfig = useMemo(() => (
+    (runtime.appMode === 'sinr-experiment' || sceneLane === 'modqn-live-cell-preview')
+      ? NTPU_CONFIG
+      : NTPU_LARGE_CONFIG
+  ), [runtime.appMode, sceneLane]);
+  const paperUserArea = useMemo(
+    () => resolveInscribedPaperUserArea(sceneConfig),
+    [sceneConfig],
+  );
+  const useEarthFixedCellTruth = sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview';
+  const sim = useSimulation(
+    profile,
+    runtime.replay,
+    speed,
+    paused,
+    runtime.signalResetKey,
+    runtime.handoverResetKey,
+    visualScaleMultipliers.beamFootprintMultiplier,
+    runtime.ueCount,
+    runtime.ueDistributionMode,
+    runtime.uePrimaryAnchorMode,
+    runtime.ueMobilityMode,
+    runtime.ueMobilityParams,
+    runtime.ueDistributionScope,
+    runtime.ueDistributionRadiusKm,
+    paperUserArea.kmPerWorldUnit,
+    useEarthFixedCellTruth,
+    handleLiveSeekLanded,
+    runtime.primaryJogEastKm ?? 0,
+    runtime.primaryJogNorthKm ?? 0,
+    runtime.beamCountBySatellite,
+  );
+
+  return <SceneRenderContent {...props} sim={sim} simSource="live" liveSeekLandedKey={liveSeekLandedKey} />;
+}
+
+interface ArchivedTleSceneContentProps extends SceneContentProps {
+  readonly frame: SimulationAnalysisFrame | null;
+  readonly nextFrame: SimulationAnalysisFrame | null;
+  readonly visualOffsetSec: number;
+}
+
+/**
+ * Archived-TLE source wrapper for the exact same scene renderer used by the
+ * original live homepage. Only the `SimFrame` producer changes here.
+ */
+function ArchivedTleSceneContent({
+  frame,
+  nextFrame,
+  visualOffsetSec,
+  ...renderProps
+}: ArchivedTleSceneContentProps) {
+  const sceneConfig = useMemo(() => (
+    (renderProps.runtime.appMode === 'sinr-experiment'
+      || renderProps.sceneLane === 'modqn-live-cell-preview')
+      ? NTPU_CONFIG
+      : NTPU_LARGE_CONFIG
+  ), [renderProps.runtime.appMode, renderProps.sceneLane]);
+  const paperUserArea = useMemo(
+    () => resolveInscribedPaperUserArea(sceneConfig),
+    [sceneConfig],
+  );
+  const archivedTlePlacement = useMemo<ArchivedTleSevenCellPlacement | null>(() => {
+    if (frame === null) return null;
+    const layout = buildSinrLiveCellLayout(renderProps.profile);
+    const sourceCells = ARCHIVED_TLE_DISPLAY_CELL_IDS.map(displayCellId => {
+      const source = layout.centers.find(cell => cell.cellId === displayCellId);
+      if (source === undefined) {
+        throw new Error(`archived TLE display source cell ${displayCellId} is missing from the 37-cell layout`);
+      }
+      return {
+        displayCellId,
+        centerKm: [source.localXKm, source.localYKm] as const,
+      };
+    });
+    return buildArchivedTleSevenCellPlacement({
+      cells: frame.scenario.cells,
+      sourceCellRadiusKm: layout.cellRadiusKm,
+      sourceCells,
+      // The 200 x 90 km paper rectangle is an inscribed analysis area.  The
+      // renderer's ground mesh is larger, so fit the historical source layout
+      // against the actual configured scene bounds converted to the same km
+      // scale.  Keeping this mapping at fitScale=1 preserves the old phase and
+      // spacing while still proving the selected footprints fit the scene.
+      boundsKm: {
+        widthKm: sceneConfig.scene.measuredBoundsWu.width
+          * sceneConfig.scene.scale
+          * paperUserArea.kmPerWorldUnit,
+        heightKm: sceneConfig.scene.measuredBoundsWu.depth
+          * sceneConfig.scene.scale
+          * paperUserArea.kmPerWorldUnit,
+      },
+    });
+  }, [
+    frame?.scenario.cells,
+    paperUserArea.kmPerWorldUnit,
+    renderProps.profile,
+    sceneConfig.scene.measuredBoundsWu.depth,
+    sceneConfig.scene.measuredBoundsWu.width,
+    sceneConfig.scene.scale,
+  ]);
+  const sim = useMemo(
+    () => frame === null
+      ? null
+      : adaptSimulationAnalysisFrameToArchivedTleSimFrame(frame, {
+        nextFrame,
+        visualOffsetSec,
+        worldUnitsPerKm: 1 / paperUserArea.kmPerWorldUnit,
+        displayPlacement: archivedTlePlacement ?? undefined,
+      }),
+    [archivedTlePlacement, frame, nextFrame, paperUserArea.kmPerWorldUnit, visualOffsetSec],
+  );
+
+  if (frame === null || sim === null) {
+    return <Html center><div style={{ color: 'white', fontSize: 18 }}>TLE 場景計算中</div></Html>;
+  }
+
+  return (
+    <SceneRenderContent
+      {...renderProps}
+      sim={sim}
+      simSource="archived-tle"
+      canonicalScenario={frame.scenario}
+      canonicalCandidateSatelliteId={frame.tleState.candidateSatellite?.satelliteId ?? null}
+      archivedTlePlacement={archivedTlePlacement ?? undefined}
+      constellation={frame.provenance.constellation}
+    />
+  );
+}
+
+function resolveDisplayedBeamBudget(
+  profile: Profile,
+  runtime: RuntimeConfig,
+  satelliteId: string | null | undefined,
+): number {
+  const perSatelliteOverride = satelliteId === null || satelliteId === undefined
+    ? undefined
+    : runtime.beamCountBySatellite?.[satelliteId];
+  if (typeof perSatelliteOverride === 'number' && Number.isFinite(perSatelliteOverride)) {
+    return Math.max(1, Math.floor(perSatelliteOverride));
+  }
+  return resolveSinrLiveBeamsPerSat(profile);
+}
+
+function SceneRenderContent({
   profile,
-  speed,
   paused,
   runtime,
   visualScaleMultipliers,
   sceneLane,
   onSimUpdate,
-  onLiveSeekLanded,
   sceneFrame: propSceneFrame,
   beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
-}: SceneContentProps) {
+  handoverCinemaCandidate = null,
+  sim,
+  simSource,
+  canonicalScenario,
+  canonicalCandidateSatelliteId,
+  archivedTlePlacement,
+  liveSeekLandedKey = null,
+  constellation = DEFAULT_SATELLITE_CONSTELLATION,
+  presentationPlan,
+}: SceneRenderContentProps) {
   const camera = useThree(state => state.camera);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const cameraPresetRef = useRef<string | null>('manual');
@@ -790,37 +1048,11 @@ function SceneContent({
     () => resolveInscribedPaperUserArea(sceneConfig),
     [sceneConfig],
   );
-  // S-cells-2 (ADDITIVE): the earth-fixed cell truth is lane-owned by sinr-live
-  // ONLY. Off on the three MODQN/artifact lanes → useSimulation returns frames
-  // byte-identical to today (no `sinrLiveCells` field).
-  // MODQN consolidation: the MODQN live page reuses the SINR scene render directly
-  // (the SINR cell-truth beam cones), so the cell model runs on modqn-live-cell-preview
-  // too — its serving is the live SINR-offset truth (NOT the degenerate MODQN decision
-  // override). The MODQN-ness is the Q-value sidebar overlay, not a different scene.
   const useEarthFixedCellTruth = sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview';
-  const sim = useSimulation(
-    profile,
-    runtime.replay,
-    speed,
-    paused,
-    runtime.signalResetKey,
-    runtime.handoverResetKey,
-    visualScaleMultipliers.beamFootprintMultiplier,
-    runtime.ueCount,
-    runtime.ueDistributionMode,
-    runtime.uePrimaryAnchorMode,
-    runtime.ueMobilityMode,
-    runtime.ueMobilityParams,
-    runtime.ueDistributionScope,
-    runtime.ueDistributionRadiusKm,
-    paperUserArea.kmPerWorldUnit,
-    useEarthFixedCellTruth,
-    onLiveSeekLanded,
-    runtime.primaryJogEastKm ?? 0,
-    runtime.primaryJogNorthKm ?? 0,
-  );
   const ueTrailHistory = useUeTrailHistory({
-    enabled: runtime.enableUeTrails === true && propSceneFrame === undefined,
+    enabled: simSource === 'live'
+      && runtime.enableUeTrails === true
+      && propSceneFrame === undefined,
     perUePositions: sim.perUePositions,
     resetKey: runtime.signalResetKey,
   });
@@ -957,6 +1189,15 @@ function SceneContent({
   // and its UEs share one frame. Empty off the sinr-live lane.
   const sinrLiveCellPlacementById = useMemo<ReadonlyMap<number, SinrLiveCellPlacement>>(() => {
     if (!useEarthFixedCellTruth) return new Map();
+    if (canonicalScenario !== undefined && archivedTlePlacement !== undefined) {
+      const placement = archivedTlePlacement;
+      return new Map(placement.cells.map(cell => [cell.canonicalCellId, {
+        cellId: cell.canonicalCellId,
+        worldX: cell.centerKm[0] * worldUnitsPerKm,
+        worldZ: -cell.centerKm[1] * worldUnitsPerKm,
+        radiusWorld: cell.radiusKm * worldUnitsPerKm,
+      }]));
+    }
     const layout = buildSinrLiveCellLayout(profile);
     return new Map(layout.centers.map(center => [center.cellId, {
       cellId: center.cellId,
@@ -964,7 +1205,7 @@ function SceneContent({
       worldZ: -center.localYKm * worldUnitsPerKm,
       radiusWorld: layout.cellRadiusKm * worldUnitsPerKm,
     }]));
-  }, [useEarthFixedCellTruth, profile, worldUnitsPerKm]);
+  }, [archivedTlePlacement, canonicalScenario, useEarthFixedCellTruth, profile, worldUnitsPerKm]);
   const cellSchedule = useCellSchedule({
     simTimeSec: sceneFrame.tSec,
     altitudeKm: sceneGeometry.shellAltitudeKm,
@@ -1172,7 +1413,7 @@ function SceneContent({
     seekRequestKey: runtime.replay.seekRequestKey,
     latchedBeamSinrByKeyRef,
     onSimUpdate,
-    enabled: sceneFrame.sceneSource !== 'artifact-replay',
+    enabled: simSource === 'live' && sceneFrame.sceneSource !== 'artifact-replay',
     modqnCellServiceReadout,
   });
   const handoverStoryModel = useMemo(
@@ -1241,6 +1482,31 @@ function SceneContent({
   const primaryServingRecord = sim.sinrLiveCells
     ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
     : null;
+  const renderedCandidateSatelliteId = simSource === 'archived-tle'
+    ? canonicalCandidateSatelliteId
+    : primaryServingRecord?.pendingTargetSatId;
+  const candidateDisplayCellFrame = useMemo(() => {
+    if (
+      simSource !== 'archived-tle'
+      || renderedCandidateSatelliteId === null
+      || renderedCandidateSatelliteId === undefined
+      || sim.sinrLiveCells === undefined
+    ) {
+      return sim.sinrLiveCells;
+    }
+    // The immutable TLE frame defines a same-instant comparison satellite, not
+    // a pending handover. Supply its seven display beams only to the candidate
+    // resolver; the SimFrame handover fields remain null and no TTT is claimed.
+    return {
+      ...sim.sinrLiveCells,
+      illuminatedBeams: sim.sinrLiveCells.cells.map(cell => ({
+        satId: renderedCandidateSatelliteId,
+        cellId: cell.cellId,
+        frequencyIndex: cell.frequencyIndex,
+        serving: false,
+      })),
+    };
+  }, [renderedCandidateSatelliteId, sim.sinrLiveCells, simSource]);
   const manualHandoverEvent = useMemo(
     () => runtime.manualHandoverRequestId === undefined || runtime.manualHandoverKind === undefined
       ? null
@@ -1264,7 +1530,15 @@ function SceneContent({
   // throttled `useFrame` tick below (R3F's loop is independent of `paused`), so the
   // envelope actually walks 單 → 雙 → 單 instead of freezing on phase 1.
   const [manualHandoverNowMs, setManualHandoverNowMs] = useState<number | null>(null);
+  const [cinemaHandoverNowMs, setCinemaHandoverNowMs] = useState<number | null>(null);
   const manualHandoverTickRef = useRef<ManualHandoverTickState | null>(null);
+  const cinemaHandoverTickRef = useRef<CinemaHandoverTickState | null>(null);
+  const cinemaHandoverReady = resolveHandoverCinemaReady({
+    active: handoverCinemaCandidate !== null,
+    kind: handoverCinemaCandidate?.kind,
+    requestedSeekKey: runtime.replay.seekRequestKey,
+    landedSeekKey: liveSeekLandedKey,
+  });
   useFrame(() => {
     const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
     const { next, publish } = resolveManualHandoverTick({
@@ -1276,6 +1550,42 @@ function SceneContent({
     });
     manualHandoverTickRef.current = next;
     if (publish) setManualHandoverNowMs(next === null ? null : nowMs);
+
+    const cinemaEventId = handoverCinemaCandidate?.eventId;
+    const previousCinema = cinemaHandoverTickRef.current;
+    if (cinemaEventId === undefined) {
+      if (previousCinema !== null) {
+        cinemaHandoverTickRef.current = null;
+        setCinemaHandoverNowMs(null);
+      }
+    } else if (previousCinema === null || previousCinema.eventId !== cinemaEventId) {
+      cinemaHandoverTickRef.current = {
+        eventId: cinemaEventId,
+        startedAtMs: nowMs,
+        publishedAtMs: nowMs,
+        ready: cinemaHandoverReady,
+        settled: false,
+      };
+      setCinemaHandoverNowMs(cinemaHandoverReady ? nowMs : null);
+    } else if (!previousCinema.ready && cinemaHandoverReady) {
+      cinemaHandoverTickRef.current = {
+        ...previousCinema,
+        startedAtMs: nowMs,
+        publishedAtMs: nowMs,
+        ready: true,
+        settled: false,
+      };
+      setCinemaHandoverNowMs(nowMs);
+    } else if (!cinemaHandoverReady) {
+      // The candidate is known during the fade/seek arm window, but its story
+      // clock must remain at phase 0 until useSimulation reports this exact seek.
+    } else if (!previousCinema.settled && nowMs - previousCinema.startedAtMs > resolveHandoverCinemaDisplayMs(handoverCinemaCandidate?.kind ?? null)) {
+      cinemaHandoverTickRef.current = { ...previousCinema, publishedAtMs: nowMs, settled: true };
+      setCinemaHandoverNowMs(nowMs);
+    } else if (!previousCinema.settled && nowMs - previousCinema.publishedAtMs >= MANUAL_HANDOVER_TICK_INTERVAL_MS) {
+      cinemaHandoverTickRef.current = { ...previousCinema, publishedAtMs: nowMs };
+      setCinemaHandoverNowMs(nowMs);
+    }
   });
   const manualHandoverProgress = resolveManualHandoverProgress({
     startedAtMs: runtime.manualHandoverStartedAtMs,
@@ -1286,19 +1596,41 @@ function SceneContent({
   });
   const manualHandoverAgeMs = manualHandoverProgress.ageMs;
   // F1 (2026-08-06): `manualHandoverEvent !== null` is part of the ACTIVE condition,
-  // not just of the draw condition. `manualHandoverActive` blanks every other beam
-  // layer (serving / candidate / non-serving / pulse / footprints / callouts) so the
-  // demonstration cue owns the frame — but the cue itself only draws when
-  // `manualHandoverEvent` resolved. When the two disagreed (event null, active true)
-  // the button produced a fully BLACK scene for the whole display window: everything
-  // suppressed, nothing put back. Deriving both from the same condition makes that
-  // state unreachable — no event, no suppression. No cycle: `manualHandoverEvent`
-  // (above) does not read `manualHandoverActive`.
+  // not just of the draw condition. The manual cue overlays the moving scene; the
+  // display-isolation policy below removes the timeline's primary/candidate/event
+  // layers while preserving the dim beam context. When the event cannot resolve, the
+  // cue is inactive and the normal scene remains available. No cycle:
+  // `manualHandoverEvent` (above) does not read this flag.
   const manualHandoverActive = runtime.manualHandoverRequestId !== undefined
     && runtime.manualHandoverKind !== undefined
     && manualHandoverEvent !== null
     && manualHandoverAgeMs <= MANUAL_HANDOVER_DISPLAY_MS;
   const manualHandoverProgressSec = manualHandoverProgress.progressSec;
+  const cinemaHandoverTick = cinemaHandoverTickRef.current;
+  const cinemaHandoverDisplayMs = resolveHandoverCinemaDisplayMs(handoverCinemaCandidate?.kind ?? null);
+  const cinemaHandoverClockMs = cinemaHandoverNowMs
+    ?? (typeof performance === 'undefined' ? Date.now() : performance.now());
+  const cinemaHandoverStartedAtMs = handoverCinemaCandidate !== null
+    && cinemaHandoverTick?.eventId === handoverCinemaCandidate.eventId
+    && cinemaHandoverReady
+    && cinemaHandoverTick.ready
+    ? cinemaHandoverTick.startedAtMs
+    : cinemaHandoverClockMs;
+  const cinemaHandoverProgress = resolveManualHandoverProgress({
+    startedAtMs: handoverCinemaCandidate === null ? undefined : cinemaHandoverStartedAtMs,
+    nowMs: cinemaHandoverReady ? cinemaHandoverClockMs : cinemaHandoverStartedAtMs,
+    displayMs: cinemaHandoverDisplayMs,
+  });
+  const cinemaHandoverEnvelope = resolveHandoverCinemaEnvelope(
+    handoverCinemaCandidate?.kind ?? null,
+    cinemaHandoverProgress.progressRatio,
+    beamDisplaySpec.triggeredIntraPeakOpacity,
+  );
+  const handoverDisplayIsolation = resolveHandoverDisplayIsolation({
+    manualHandoverActive,
+    cinemaCandidateActive: handoverCinemaCandidate !== null,
+    cinemaCandidateKind: handoverCinemaCandidate?.kind ?? null,
+  });
   // The explicit demo is UE-centred, not cell-centred: both transition cones
   // must terminate at the red primary UE so the audience can see that the link
   // is changing for this UE rather than jumping between unrelated cells.
@@ -1308,6 +1640,110 @@ function SceneContent({
       ? new THREE.Vector3(sim.ueGroundX, 0, sim.ueGroundZ)
       : new THREE.Vector3(worldPos[0], worldPos[1], worldPos[2]);
   }, [sceneFrame.ues, sim.ueGroundX, sim.ueGroundZ]);
+  const primaryUeId = sim.perUePositions[0]?.id ?? null;
+  const primaryUeCellRecord = sim.sinrLiveCells?.ues.find(ue => ue.ueId === primaryUeId) ?? null;
+  // The live seek rebuilds the frame from a reset state. Keep the complete visible
+  // pair from the instant the inter shot is armed, otherwise the pair can change to
+  // the post-seek serving/pending record on a later render.
+  const cinemaInterPairAnchorRef = useRef<InterCinemaPairAnchor | null>(null);
+  if (handoverCinemaCandidate?.kind !== 'inter') {
+    cinemaInterPairAnchorRef.current = null;
+  } else if (cinemaInterPairAnchorRef.current?.eventId !== handoverCinemaCandidate.eventId) {
+    // Prefer the actual pre-seek serving record only when it is not already the
+    // indexed target. If the first render lands after the seek, the event detail
+    // is the stable presentation fallback; adopting the post-seek record here
+    // would make the service beam jump before the story starts.
+    const currentServingSatId = primaryUeCellRecord?.servingSatId ?? null;
+    const currentCellId = primaryUeCellRecord?.cellId ?? null;
+    const currentRecordLooksPreSeek = currentServingSatId !== null
+      && currentServingSatId !== handoverCinemaCandidate.toSatId;
+    const fromSatId = currentRecordLooksPreSeek
+      ? currentServingSatId
+      : handoverCinemaCandidate.fromSatId;
+    const fromCellId = currentRecordLooksPreSeek
+      ? currentCellId
+      : handoverCinemaCandidate.fromCellId;
+    const pendingTargetSatId = primaryUeCellRecord?.pendingTargetSatId ?? null;
+    const toSatId = currentRecordLooksPreSeek
+      && pendingTargetSatId !== null
+      && pendingTargetSatId !== fromSatId
+      ? pendingTargetSatId
+      : handoverCinemaCandidate.toSatId;
+    const toCellId = handoverCinemaCandidate.toCellId ?? (currentRecordLooksPreSeek ? currentCellId : null);
+    const readApexWorld = (satId: string): InterCinemaApexWorld | undefined => {
+      const world = viz.coneApexWorldById.get(satId);
+      return world === undefined ? undefined : { x: world.x, y: world.y, z: world.z };
+    };
+    cinemaInterPairAnchorRef.current = resolveInterCinemaPairAnchor({
+      eventId: handoverCinemaCandidate.eventId,
+      captured: null,
+      fallback: {
+        fromSatId,
+        fromCellId,
+        toSatId,
+        toCellId,
+        fromApexWorld: readApexWorld(fromSatId),
+        toApexWorld: readApexWorld(toSatId),
+      },
+    });
+  }
+  const cinemaInterPairAnchor = cinemaInterPairAnchorRef.current;
+  const cinemaInterSatelliteWorldById = useMemo(() => {
+    const worldById = new Map(viz.coneApexWorldById);
+    if (cinemaInterPairAnchor?.fromApexWorld !== undefined && !worldById.has(cinemaInterPairAnchor.fromSatId)) {
+      worldById.set(cinemaInterPairAnchor.fromSatId, cinemaInterPairAnchor.fromApexWorld);
+    }
+    if (cinemaInterPairAnchor?.toApexWorld !== undefined && !worldById.has(cinemaInterPairAnchor.toSatId)) {
+      worldById.set(cinemaInterPairAnchor.toSatId, cinemaInterPairAnchor.toApexWorld);
+    }
+    return worldById;
+  }, [cinemaInterPairAnchor, viz.coneApexWorldById]);
+  // The offline cell-truth index supplies the real event/time for the cinema. The
+  // pair is now a presentation snapshot: later live-frame changes cannot replace
+  // either side while the teaching animation is running.
+  const cinemaPairCandidate = useMemo(() => {
+    if (handoverCinemaCandidate === null || handoverCinemaCandidate.kind !== 'inter') return handoverCinemaCandidate;
+    const pairAnchor = cinemaInterPairAnchor?.eventId === handoverCinemaCandidate.eventId
+      ? cinemaInterPairAnchor
+      : null;
+    if (pairAnchor === null) return handoverCinemaCandidate;
+    return {
+      ...handoverCinemaCandidate,
+      fromSatId: pairAnchor.fromSatId,
+      fromCellId: pairAnchor.fromCellId,
+      toSatId: pairAnchor.toSatId,
+      toCellId: pairAnchor.toCellId,
+    };
+  }, [cinemaInterPairAnchor, handoverCinemaCandidate]);
+
+  // The inter cinema is intentionally self-contained: after the live seek, rebuild a
+  // display-only two-satellite fan frame from the already-published earth-fixed cells.
+  // This keeps the anchored source satellite's other beams visible even when the live
+  // frame has moved on to the target satellite. It is never passed back to the model.
+  const cinemaInterDisplayCellFrame = useMemo(() => {
+    if (cinemaPairCandidate?.kind !== 'inter' || sim.sinrLiveCells === undefined) {
+      return sim.sinrLiveCells;
+    }
+    const sourceSatId = cinemaPairCandidate.fromSatId;
+    const targetSatId = cinemaPairCandidate.toSatId;
+    return {
+      ...sim.sinrLiveCells,
+      illuminatedBeams: sim.sinrLiveCells.cells.flatMap(cell => [
+        {
+          satId: sourceSatId,
+          cellId: cell.cellId,
+          frequencyIndex: cell.frequencyIndex,
+          serving: false,
+        },
+        {
+          satId: targetSatId,
+          cellId: cell.cellId,
+          frequencyIndex: cell.frequencyIndex,
+          serving: false,
+        },
+      ]),
+    };
+  }, [cinemaPairCandidate, sim.sinrLiveCells]);
 
   // SEMANTIC scene focus (docs/sinr-live-semantic-beam-colour-sdd.md): the broad serving
   // fan / non-serving / footprint / callout / pulse layers focus to the HERO serving
@@ -1394,13 +1830,13 @@ function SceneContent({
 
   const sinrLiveCellBeamConeItems = useMemo(
     () => {
-      if (manualHandoverActive) return [];
       if (!showSinrLiveCellBeams) return [];
+      if (handoverDisplayIsolation.hideNormalBeamField) return [];
       // Other-beams power-view (showNonServingCones) → every serving sat (full
       // breadth). Default → focus to the HERO serving satellite ONLY. Empty target
       // set (no primary serving) draws nothing, never the unbounded all-sat firehose.
       if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds !== null && sinrLiveTargetSatIds.size === 0) return [];
-      return resolveSinrLiveCellBeamConeItems({
+      const items = resolveSinrLiveCellBeamConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
         // S5-2: the serving-sat-COMPLETE cone-apex map (every projected sat, NOT the
@@ -1409,15 +1845,29 @@ function SceneContent({
         satelliteWorldById: viz.coneApexWorldById,
         focusSatIds: beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds,
       });
+      if (
+        !handoverDisplayIsolation.hidePrimaryServingBeam
+        || primaryServingRecord?.servingSatId == null
+        || primaryServingRecord.cellId == null
+      ) {
+        return items;
+      }
+      return items.filter(item => (
+        item.satId !== primaryServingRecord.servingSatId
+        || item.cellId !== primaryServingRecord.cellId
+      ));
     },
     [
       showSinrLiveCellBeams,
-      manualHandoverActive,
       sim.sinrLiveCells,
       sinrLiveCellPlacementById,
       viz.coneApexWorldById,
       beamDisplaySpec.showNonServingCones,
       sinrLiveTargetSatIds,
+      handoverDisplayIsolation.hideNormalBeamField,
+      handoverDisplayIsolation.hidePrimaryServingBeam,
+      primaryServingRecord?.servingSatId,
+      primaryServingRecord?.cellId,
     ],
   );
   // SEMANTIC candidate cue: the imminent inter-handover TARGET sat (`pendingTargetSatId`)
@@ -1425,38 +1875,107 @@ function SceneContent({
   // own BOUNDED multibeam fan, not a single cone (「候選波束…也要有其他波束打在其他地方，不能
   // 只有一個波束」). The cone on YOUR cell keeps the bright candidate blue; the rest of that
   // ONE satellite's beams are the darker, fainter candidate-fan role, so the serving link
-  // stays the brightest thing on screen. Bounded by `candidateFanMaxCones` over a single
-  // satId — it can never widen into the all-sat firehose. The target sat is still
+  // stays the brightest thing on screen. Bounded by that satellite's live beam budget
+  // over a single satId — it can never widen into the all-sat firehose. The target sat is still
   // deliberately absent from `sinrLiveTargetSatIds` above (so it floods none of the serving
   // / non-serving / callout layers); this fan is the only thing it draws. Display-only (Rule#6).
   const sinrLiveCandidateBeamConeItems = useMemo(
-    () => (manualHandoverActive
-      ? []
-      : showSinrLiveCellBeams
-      ? resolveCandidateBeamConeItems({
-        pendingTargetSatId: primaryServingRecord?.pendingTargetSatId,
-        servingSatId: primaryServingRecord?.servingSatId,
-        primaryCellId: primaryServingRecord?.cellId,
+    () => {
+      if (!showSinrLiveCellBeams || handoverDisplayIsolation.hideCandidateFan) {
+        if (!handoverDisplayIsolation.showCinemaCandidateFan) return [];
+      }
+      if (!showSinrLiveCellBeams) return [];
+
+      const isInterCinema = handoverDisplayIsolation.showCinemaCandidateFan
+        && cinemaPairCandidate?.kind === 'inter';
+      const pendingTargetSatId = isInterCinema
+        ? cinemaPairCandidate.toSatId
+        : renderedCandidateSatelliteId;
+      const servingSatId = isInterCinema
+        ? cinemaPairCandidate.fromSatId
+        : primaryServingRecord?.servingSatId;
+      const primaryCellId = isInterCinema
+        ? cinemaPairCandidate.toCellId
+        : primaryServingRecord?.cellId;
+      const candidateBeamBudget = resolveDisplayedBeamBudget(profile, runtime, pendingTargetSatId);
+      const items = resolveCandidateBeamConeItems({
+        pendingTargetSatId,
+        servingSatId,
+        primaryCellId,
         placementByCellId: sinrLiveCellPlacementById,
-        satelliteWorldById: viz.coneApexWorldById,
+        satelliteWorldById: isInterCinema ? cinemaInterSatelliteWorldById : viz.coneApexWorldById,
         frequencyReuse: profile.beams.frequencyReuse,
-        cellFrame: sim.sinrLiveCells,
-        maxFanCones: beamDisplaySpec.candidateFanMaxCones,
-      })
-      : []),
+        cellFrame: isInterCinema ? cinemaInterDisplayCellFrame : candidateDisplayCellFrame,
+        maxFanCones: candidateBeamBudget,
+      });
+      if (!isInterCinema) return items;
+
+      // The exact candidate primary cone is owned by the cinema pair. Keep only
+      // the target satellite's other beams here and let them follow its target
+      // opacity, so the whole fan arrives and leaves as one handover actor.
+      const targetOpacity = cinemaHandoverEnvelope.phase === 'settled'
+        ? beamDisplaySpec.triggeredIntraPeakOpacity
+        : cinemaHandoverEnvelope.toOpacity;
+      const candidateFanOpacity = beamDisplaySpec.candidateFanConeOpacity * targetOpacity;
+      if (candidateFanOpacity <= 0) return [];
+      return items
+        .filter(item => item.role === 'candidateFan')
+        .map(item => ({ ...item, opacity: candidateFanOpacity }));
+    },
     [
       showSinrLiveCellBeams,
-      manualHandoverActive,
-      primaryServingRecord?.pendingTargetSatId,
+      handoverDisplayIsolation.hideCandidateFan,
+      handoverDisplayIsolation.showCinemaCandidateFan,
+      renderedCandidateSatelliteId,
       primaryServingRecord?.servingSatId,
       primaryServingRecord?.cellId,
+      cinemaPairCandidate,
+      cinemaHandoverEnvelope,
+      beamDisplaySpec.candidateFanConeOpacity,
+      beamDisplaySpec.triggeredIntraPeakOpacity,
       sinrLiveCellPlacementById,
       viz.coneApexWorldById,
+      cinemaInterSatelliteWorldById,
       profile.beams.frequencyReuse,
-      sim.sinrLiveCells,
-      beamDisplaySpec.candidateFanMaxCones,
+      candidateDisplayCellFrame,
+      cinemaInterDisplayCellFrame,
+      profile,
+      runtime.beamCountBySatellite,
     ],
   );
+
+  // Inter-only source fan: the pair owns the primary source cone, while this bounded
+  // fan keeps the rest of the original serving satellite's beams visible until the
+  // source side releases. Display-only; no serving ownership or live calculation moves.
+  const sinrLiveCinemaInterServingFanConeItems = useMemo(() => {
+    if (
+      !showSinrLiveCellBeams
+      || !handoverDisplayIsolation.showCinemaCandidateFan
+      || cinemaPairCandidate?.kind !== 'inter'
+    ) return [];
+    const sourceBeamBudget = resolveDisplayedBeamBudget(profile, runtime, cinemaPairCandidate.fromSatId);
+    return resolveCinemaInterServingFanConeItems({
+      candidate: cinemaPairCandidate,
+      opacity: beamDisplaySpec.servingConeOpacity * cinemaHandoverEnvelope.fromOpacity,
+      placementByCellId: sinrLiveCellPlacementById,
+      satelliteWorldById: cinemaInterSatelliteWorldById,
+      frequencyReuse: profile.beams.frequencyReuse,
+      cellFrame: cinemaInterDisplayCellFrame,
+      maxFanCones: sourceBeamBudget,
+    });
+  }, [
+    showSinrLiveCellBeams,
+    handoverDisplayIsolation.showCinemaCandidateFan,
+    cinemaPairCandidate,
+    beamDisplaySpec.servingConeOpacity,
+    cinemaHandoverEnvelope,
+    sinrLiveCellPlacementById,
+    cinemaInterSatelliteWorldById,
+    profile.beams.frequencyReuse,
+    cinemaInterDisplayCellFrame,
+    profile,
+    runtime.beamCountBySatellite,
+  ]);
   // W5 Beam-Info callouts: per-cell serving SINR (dB) keyed by cellId, for the
   // <Html> chips. Reads the cell model's own serving SINR — display-only.
   const sinrLiveCellServingSinrByCellId = useMemo(() => {
@@ -1482,8 +2001,7 @@ function SceneContent({
   // invisible-dep-array bug fix), so toggling either re-renders.
   const sinrLiveCellNonServingConeItems = useMemo(
     () => {
-      if (manualHandoverActive) return [];
-      if (!showSinrLiveCellBeams) return [];
+      if (!showSinrLiveCellBeams || handoverDisplayIsolation.hideNormalBeamField) return [];
       if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds !== null && sinrLiveTargetSatIds.size === 0) return [];
       return resolveSinrLiveNonServingConeItems({
         cellFrame: sim.sinrLiveCells,
@@ -1494,7 +2012,7 @@ function SceneContent({
     },
     [
       showSinrLiveCellBeams,
-      manualHandoverActive,
+      handoverDisplayIsolation.hideNormalBeamField,
       beamDisplaySpec.showNonServingCones,
       sim.sinrLiveCells,
       sinrLiveCellPlacementById,
@@ -1510,7 +2028,7 @@ function SceneContent({
   // so a handover on any serving sat draws even beyond the display cap. Display-only
   // read-out of truth (Rule#6); the serving decision is unchanged.
   const sinrLiveCellPulseConeItems = useMemo(
-    () => (showSinrLiveHandoverPulse && !manualHandoverActive
+    () => (!handoverDisplayIsolation.hideTimelinePulse && showSinrLiveHandoverPulse
       ? resolveSinrLiveHandoverPulseConeItems({
         // SEMANTIC scene rule: only the HERO serving satellite draws the broad beam
         // layers, so the ambient handover pulse is FOCUSED to it (`sinrLiveTargetSatIds`,
@@ -1539,7 +2057,7 @@ function SceneContent({
         protagonistUeId: sim.perUePositions[0]?.id ?? null,
       })
       : []),
-    [showSinrLiveHandoverPulse, manualHandoverActive, manualHandoverEvent, manualHandoverProgressSec, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope],
+    [handoverDisplayIsolation.hideTimelinePulse, showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope],
   );
   // beam-stage ① #5: the TRIGGERED intra flash. The ambient pulse above fades over
   // SIM-time (4 s retention → ~0.8 s wall-clock at the 5× demo speed → too brief to
@@ -1584,6 +2102,7 @@ function SceneContent({
         toBaseRadiusScale: 1,
       });
     }
+    if (handoverDisplayIsolation.hideTimelineTriggered) return [];
     // CONCURRENCY, measured (2026-08-06) — why ONE latch is enough here. This layer is
     // PROTAGONIST-ONLY: the filter below keeps `e.ueId === primaryUeId`, so the 99 other
     // UEs handing over in the same frame never touch this ref (they are the ambient pulse
@@ -1654,7 +2173,52 @@ function SceneContent({
       satelliteWorldById: viz.coneApexWorldById,
       frequencyReuse: profile.beams.frequencyReuse,
     });
-  }, [showSinrLiveHandoverPulse, manualHandoverActive, manualHandoverEvent, manualHandoverProgressSec, manualHandoverGroundTarget, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, beamDisplaySpec.triggeredIntraSustainMs, beamDisplaySpec.triggeredIntraPeakOpacity, beamDisplaySpec.triggeredIntraFromColor, beamDisplaySpec.triggeredIntraToColor, beamDisplaySpec.candidateConeColor]);
+  }, [showSinrLiveHandoverPulse, manualHandoverActive, manualHandoverEvent, handoverDisplayIsolation.hideTimelineTriggered, manualHandoverProgressSec, manualHandoverGroundTarget, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, beamDisplaySpec.triggeredIntraSustainMs, beamDisplaySpec.triggeredIntraPeakOpacity, beamDisplaySpec.triggeredIntraFromColor, beamDisplaySpec.triggeredIntraToColor, beamDisplaySpec.candidateConeColor]);
+  // Focused cinema pair: the candidate detail is already resolved from the live
+  // handover index, so draw its exact old/new cell cones above the ordinary field.
+  // The acquired side stays visible after the narrated transition while the focus
+  // remains armed; this keeps the final handover state readable instead of ending
+  // on an empty viewport. Display-only; no simulation record is changed.
+  const sinrLiveCinemaHandoverPairConeItems = useMemo(() => {
+    if (!showSinrLiveCellBeams || cinemaPairCandidate === null) return [];
+    return resolveCinemaHandoverPairConeItems({
+      candidate: cinemaPairCandidate,
+      fromOpacity: cinemaHandoverEnvelope.fromOpacity,
+      toOpacity: cinemaHandoverEnvelope.phase === 'settled'
+        ? beamDisplaySpec.triggeredIntraPeakOpacity
+        : cinemaHandoverEnvelope.toOpacity,
+      fromColor: beamDisplaySpec.triggeredIntraFromColor,
+      toColor: resolveTriggeredHandoverTargetColor(cinemaPairCandidate.kind, beamDisplaySpec),
+      placementByCellId: sinrLiveCellPlacementById,
+      satelliteWorldById: cinemaInterSatelliteWorldById,
+      frequencyReuse: profile.beams.frequencyReuse,
+      baseCenterOverride: cinemaPairCandidate.kind === 'inter' ? manualHandoverGroundTarget : undefined,
+      fromBaseRadiusScale: cinemaPairCandidate.kind === 'inter' ? 0.84 : undefined,
+      toBaseRadiusScale: cinemaPairCandidate.kind === 'inter' ? 1 : undefined,
+    });
+  }, [
+    showSinrLiveCellBeams,
+    cinemaPairCandidate,
+    manualHandoverGroundTarget,
+    cinemaHandoverEnvelope,
+    beamDisplaySpec.triggeredIntraPeakOpacity,
+    beamDisplaySpec.triggeredIntraFromColor,
+    beamDisplaySpec.triggeredIntraToColor,
+    beamDisplaySpec.candidateConeColor,
+    sinrLiveCellPlacementById,
+    cinemaInterSatelliteWorldById,
+    profile.beams.frequencyReuse,
+  ]);
+  // Keep the marker roles aligned with the anchored inter shot while the live
+  // simulation is being rebuilt at the selected event lead-in. This is a
+  // presentation identity only; the right rail and the published serving truth
+  // continue to read the live frame unchanged.
+  const cinemaDisplayServingSatId = handoverCinemaCandidate?.kind === 'inter' && cinemaPairCandidate !== null
+    ? cinemaPairCandidate.fromSatId
+    : sceneFrame.metrics.servingSatelliteId;
+  const cinemaDisplayCandidateSatId = handoverCinemaCandidate?.kind === 'inter' && cinemaPairCandidate !== null
+    ? cinemaPairCandidate.toSatId
+    : renderedCandidateSatelliteId;
   const sinrLiveCellServedCount = showSinrLiveCellBeams
     ? sim.sinrLiveCells?.servedCellCount ?? 0
     : 0;
@@ -1874,10 +2438,12 @@ function SceneContent({
     <BaseSceneLayout
       sceneConfig={sceneConfig}
       controlsRef={controlsRef}
-      cinematicSpotlightActive={cinematicSpotlightActive}
+      campusVisible={presentationPlan.visible.campus}
+      cinematicSpotlightActive={cinematicSpotlightActive && presentationPlan.visible['event-effects']}
       effectiveCinematicMode={effectiveCinematicMode}
-      cinematicSpotlightTargets={cinematicSpotlightTargets}
+      cinematicSpotlightTargets={presentationPlan.visible['event-effects'] ? cinematicSpotlightTargets : []}
     >
+      <ScenePresentationCanvasTelemetry plan={presentationPlan} />
       <SceneTelemetry
         visibleSatelliteCount={viz.displaySats.length}
         firstSatellitePosition={viz.displaySats[0] ? formatCameraVector(viz.displaySats[0].world) : ''}
@@ -1908,7 +2474,11 @@ function SceneContent({
             ? renderedSinrLiveCellBeamConeSatelliteCount
             : viz.satBeams.size
         }
-        sceneSource={sceneFrame.sceneSource}
+        // Archived-TLE reuses the normalized scene frame for geometry, but its
+        // provenance must not fall back to the frame's historical live-sim tag.
+        // Keep the live branch byte-for-byte unchanged while exposing the source
+        // actually used by this shared renderer to the canvas telemetry.
+        sceneSource={simSource === 'archived-tle' ? 'archived-tle' : sceneFrame.sceneSource}
         beamConeCount={
           showSinrLiveCellBeams
             // S-cells-3: on the sinr-live lane the cell-truth cones REPLACE the
@@ -1956,13 +2526,13 @@ function SceneContent({
         cameraTransitionRef={cameraTransitionRef}
         controlsRef={controlsRef}
       />
-      {showUav && afterFirstPaint && (
+      {presentationPlan.visible.uav && showUav && afterFirstPaint && (
         <Suspense fallback={null}>
           <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
         </Suspense>
       )}
 
-      <GroundScene
+      {presentationPlan.visible.ues && <GroundScene
         ues={displayedUes
           .filter((u) => u.worldPos !== undefined)
           .map((u, index) => {
@@ -1974,13 +2544,16 @@ function SceneContent({
             // has no colour for a UE. (The sinr-serving mosaic COLOUR telemetry
             // attr, by contrast, stays sinr-live-owned — see sinrServingTelemetryActive.)
             const mosaic = index === 0 ? undefined : sinrServingColorById?.get(u.id);
-            const service = mosaic ? undefined : modqnServiceMap.ueById.get(u.id);
+            const service = mosaic || !presentationPlan.visible['load-overlays']
+              ? undefined
+              : modqnServiceMap.ueById.get(u.id);
             // ID alignment verified: liveSimToScene preserves sim.perUePositions
             // ids (`live-ue-${index}`), so contention lookup uses UE id, not index.
-            const contention = beamLoadContentionEnabled
+            const contention = presentationPlan.visible['load-overlays'] && beamLoadContentionEnabled
               ? beamLoadContention.byUeId.get(u.id)?.normalizedLoad ?? 0
               : undefined;
-            const isOtherHandover = u.isOtherHandover === true;
+            const isOtherHandover = presentationPlan.visible['event-effects']
+              && u.isOtherHandover === true;
             return {
               id: u.id,
               worldPos: u.worldPos as readonly [number, number, number],
@@ -1996,12 +2569,18 @@ function SceneContent({
           })}
         ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
         markerShape={ueMarkerShape}
-        ueTrailHistory={showCellOverlay ? undefined : ueTrailHistory}
-        secondaryOpacity={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
-        secondaryScale={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
+        ueTrailHistory={presentationPlan.visible['motion-guides'] && !showCellOverlay
+          ? ueTrailHistory
+          : undefined}
+        secondaryOpacity={presentationPlan.visible['load-overlays']
+          && showModqnServiceAllocation
+          && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
+        secondaryScale={presentationPlan.visible['load-overlays']
+          && showModqnServiceAllocation
+          && modqnVisualLayers.serviceMap ? 0.72 : 1.0}
         colorTelemetryAttr={sinrServingTelemetryActive ? 'sinrServingMosaicColorCount' : undefined}
-      />
-      {showCellOverlay && modqnVisualLayers.activeCellOverlay && (
+      />}
+      {presentationPlan.visible['ground-overlays'] && showCellOverlay && modqnVisualLayers.activeCellOverlay && (
         <CellOverlay
           schedule={cellSchedule}
           satelliteTintById={satelliteTintById}
@@ -2011,20 +2590,20 @@ function SceneContent({
           showUeCounts={modqnVisualLayers.ueCountBadges && showModqnServiceAllocation}
         />
       )}
-      {showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory && (
+      {presentationPlan.visible['event-effects'] && showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory && (
         <HandoverStoryLayer
           model={handoverStoryModel}
           satelliteTintById={satelliteTintById}
         />
       )}
-      {showCellOverlay && (
+      {presentationPlan.visible['event-effects'] && showCellOverlay && (
         <CellHandoverArcs
           visible={showCellReassignmentEventArcs}
           reassignments={profileDerivedHandoverCues}
           satelliteWorldById={satelliteWorldById}
         />
       )}
-      {showCellOverlay && modqnVisualLayers.beamCones && (
+      {presentationPlan.visible['serving-beams'] && showCellOverlay && modqnVisualLayers.beamCones && (
         <CellBeamCones
           schedule={cellSchedule}
           satelliteWorldById={satelliteWorldById}
@@ -2034,7 +2613,7 @@ function SceneContent({
           appMode={runtime.appMode}
         />
       )}
-      {showCellOverlay && modqnVisualLayers.handoverStory && showModqnServiceAllocation && (
+      {presentationPlan.visible['load-overlays'] && showCellOverlay && modqnVisualLayers.handoverStory && showModqnServiceAllocation && (
         <BeamLoadCylinder
           worldPos={focusedCellBeamConeUe?.worldPos}
           normalizedLoad={focusBeamLoad?.normalizedLoad ?? 0}
@@ -2043,7 +2622,7 @@ function SceneContent({
           visible={(focusBeamLoad?.load ?? 0) > 0}
         />
       )}
-      {uploadParticlesEnabled && (
+      {presentationPlan.visible['load-overlays'] && uploadParticlesEnabled && (
         <BeamLoadUploadParticles
           focusCones={uploadParticleFocusCones}
           beamLoadContention={beamLoadContention}
@@ -2058,7 +2637,7 @@ function SceneContent({
           earth-fixed cell centres, so they were misaligned with the cones + UE membership (the
           lattice-phase ① shift widened the gap). The cell-truth footprint rings now render with
           the serving cones below (`SinrLiveCellFootprintRings`, gated showSinrLiveCellBeams). */}
-      {showLiveSceneEffects && !manualHandoverActive && (
+      {presentationPlan.visible['event-effects'] && showLiveSceneEffects && !handoverDisplayIsolation.hideTimelineEffects && (
         <HandoverLinks
           satellites={viz.displaySats}
           eventRoles={viz.eventRoles}
@@ -2069,13 +2648,13 @@ function SceneContent({
         />
       )}
       <BeamPulseClock reducedMotion={runtime.reducedMotion} />
-      {showOrbitTrail && (
+      {presentationPlan.visible['motion-guides'] && showOrbitTrail && (
         <OrbitTrail satellites={viz.displaySats} />
       )}
-      {showSpineParticles && (
+      {presentationPlan.visible['motion-guides'] && showSpineParticles && (
         <SpineParticles satellites={viz.displaySats} satBeams={viz.satBeams} />
       )}
-      {showGroundRipple && (
+      {presentationPlan.visible['event-effects'] && showGroundRipple && (
         <ServingGroundRipple
           satBeams={viz.satBeams}
           footprintRadius={viz.footprintRadiusWorld}
@@ -2083,23 +2662,32 @@ function SceneContent({
           pendingEnabled={runtime.effectsEnabled.pendingRipple}
           paused={paused}
           reducedMotion={runtime.reducedMotion}
-          recentHoActive={recentHoActive && !manualHandoverActive}
+          recentHoActive={recentHoActive && !handoverDisplayIsolation.hideTimelineEffects}
         />
       )}
 
-      {showLiveSatelliteMarkers && viz.displaySats.map(sat => (
-        <SatelliteMarker
-          key={sat.id}
-          position={sat.world}
-          label={formatSatelliteLabel(sat.id)}
-          eventRole={viz.eventRoles.get(sat.id)}
-          satelliteTintColor={sat.satelliteTintColor}
-        />
-      ))}
+      {showLiveSatelliteMarkers && viz.displaySats.map(sat => {
+        const layer = sat.id === cinemaDisplayServingSatId
+          ? 'selected-satellite'
+          : sat.id === cinemaDisplayCandidateSatId
+            ? 'candidate-satellite'
+            : 'context-satellites';
+        if (!presentationPlan.visible[layer]) return null;
+        return (
+          <SatelliteMarker
+            key={sat.id}
+            position={sat.world}
+            label={formatSatelliteLabel(sat.id)}
+            eventRole={viz.eventRoles.get(sat.id)}
+            satelliteTintColor={sat.satelliteTintColor}
+            constellation={constellation}
+          />
+        );
+      })}
       {/* W9 step 3 dim beam-hopping cones — painted FIRST (behind) so the bright
           serving fan reads on top. Default = the hero serving satellite's hopping cells
           (on-UE vs hopping legibility); "Other beams" opens the full non-serving field. */}
-      {!manualHandoverActive && sinrLiveCellNonServingConeItems.length > 0 && (
+      {presentationPlan.visible['ambient-beams'] && sinrLiveCellNonServingConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellNonServingConeItems}
           layer="nonServing"
@@ -2108,7 +2696,7 @@ function SceneContent({
           telemetryCountDatasetKey="sinrLiveCellNonServingConeRenderedCount"
         />
       )}
-      {showSinrLiveCellBeams && !manualHandoverActive && (
+      {presentationPlan.visible['serving-beams'] && showSinrLiveCellBeams && (
         // a-cone: dim near-horizontal (low-elevation serving sat) cones so the
         // ambient field reads as beams coming DOWN, not shooting across the field.
         // The primary serving sat's beams render BRIGHT + saturated + dim-exempt
@@ -2128,11 +2716,25 @@ function SceneContent({
           primaryServingCellId={primaryServingRecord?.cellId ?? null}
         />
       )}
+      {presentationPlan.visible['serving-beams'] && showSinrLiveCellBeams && sinrLiveCinemaInterServingFanConeItems.length > 0 && (
+        <SinrLiveCellBeamCones
+          items={sinrLiveCinemaInterServingFanConeItems}
+          layer="serving"
+          palette={sinrLiveConePalette}
+          widthScale={beamDisplaySpec.coneWidthScale}
+          dimShallowCones={beamDisplaySpec.elevationDimEnabled}
+          elevationDimFloorDeg={beamDisplaySpec.elevationDimFloorDeg}
+          elevationDimCeilDeg={beamDisplaySpec.elevationDimCeilDeg}
+          elevationDimMinFactor={beamDisplaySpec.elevationDimMinFactor}
+          heroExemptFromElevationDim={beamDisplaySpec.heroExemptFromElevationDim}
+          telemetryCountDatasetKey="sinrLiveCinemaInterServingFanRenderedCount"
+        />
+      )}
       {/* W9 candidate highlight: the contender / approach sats' cones, recoloured to the
           candidate hue (coneColorOverride) so the handover target reads distinct from the
           protagonist's serving fan. Same opacity/dim as the serving field; display-only
           role colour — the resolver item.color stays serving-identity (colour-match green). */}
-      {showSinrLiveCellBeams && !manualHandoverActive && sinrLiveCandidateBeamConeItems.length > 0 && (
+      {presentationPlan.visible['candidate-beams'] && showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCandidateBeamConeItems}
           layer="candidate"
@@ -2150,9 +2752,10 @@ function SceneContent({
           colour, so each beam reads as a distinct double-hex with its UEs scattered off-centre
           inside. Replaces the retired steered AmbientFootprintRings AND the persistent grey
           SinrLiveCellGrid (cells show only when served). */}
-      {showSinrLiveCellBeams && !manualHandoverActive && (
+      {presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !manualHandoverActive && (
         <SinrLiveCellFootprintRings
           items={sinrLiveCellBeamConeItems}
+          visible={!handoverDisplayIsolation.hideNormalBeamField}
           layer="serving"
           palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
@@ -2164,7 +2767,7 @@ function SceneContent({
       {/* Candidate footprint hex: the contender / approach cells get the SAME 3-layer hex
           in the candidate BLUE (coneColorOverride), so a candidate cell reads blue like its
           cone — the footprint matches the beam. Display-only role colour (Rule#6). */}
-      {showSinrLiveCellBeams && !manualHandoverActive && sinrLiveCandidateBeamConeItems.length > 0 && (
+      {presentationPlan.visible['candidate-footprints'] && showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
         <SinrLiveCellFootprintRings
           items={sinrLiveCandidateBeamConeItems}
           layer="candidate"
@@ -2177,7 +2780,7 @@ function SceneContent({
           rendered serving cones, gated by the Beam Info toggle (showBeamCallouts). The
           old BeamCalloutContent only mounted inside the retired steered SatelliteBeams;
           this cell-cone callout layer reads the same cell-truth items + per-cell SINR. */}
-      {showBeamCallouts && !manualHandoverActive && (
+      {presentationPlan.visible.annotations && showBeamCallouts && sinrLiveCellBeamConeItems.length > 0 && (
         <SinrLiveCellBeamCallouts
           items={sinrLiveCellBeamConeItems}
           servingSinrByCellId={sinrLiveCellServingSinrByCellId}
@@ -2190,7 +2793,7 @@ function SceneContent({
           per-frame handover. Per-item opacity (the fade) is carried on each cone,
           so no group opacity is passed. Always-on on sinr-live, decoupled from the
           director cinema above. */}
-      {sinrLiveCellPulseConeItems.length > 0 && (
+      {presentationPlan.visible['event-effects'] && sinrLiveCellPulseConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellPulseConeItems}
           layer="pulse"
@@ -2204,12 +2807,24 @@ function SceneContent({
           per-item wall-clock opacity + explicit from/to colour, so NO group opacity and NO
           pulse-kind colour props are passed (the explicit item colour wins). Distinct from
           the ambient sim-time pulse above. */}
-      {triggeredIntraConeItems.length > 0 && (
+      {presentationPlan.visible['event-effects'] && triggeredIntraConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={triggeredIntraConeItems}
           layer="triggered"
           palette={sinrLiveConePalette}
           telemetryCountDatasetKey="sinrLiveTriggeredIntraConeRenderedCount"
+          widthScale={beamDisplaySpec.coneWidthScale}
+        />
+      )}
+      {/* Focused cinema pair: exact source/candidate cones from the indexed event.
+          The display-isolation policy suppresses the normal candidate fan and timeline
+          event layers while this is active, leaving these two handover ends legible. */}
+      {presentationPlan.visible['event-effects'] && sinrLiveCinemaHandoverPairConeItems.length > 0 && (
+        <SinrLiveCellBeamCones
+          items={sinrLiveCinemaHandoverPairConeItems}
+          layer="triggered"
+          palette={sinrLiveConePalette}
+          telemetryCountDatasetKey="sinrLiveCinemaHandoverPairRenderedCount"
           widthScale={beamDisplaySpec.coneWidthScale}
         />
       )}
@@ -2222,8 +2837,8 @@ function SceneContent({
           beam render is the earth-fixed cell-truth cones above (SinrLiveCellBeamCones,
           gated by showSinrLiveCellBeams). The SatelliteBeams component survives only
           as the vc1c/vc2 validation-fixture subject — it is no longer mounted in-app. */}
-      {showLiveSceneEffects && !manualHandoverActive && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
-      {showHandoverToastOverlay && (
+      {presentationPlan.visible['event-effects'] && showLiveSceneEffects && !handoverDisplayIsolation.hideTimelineEffects && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
+      {presentationPlan.visible['event-effects'] && showHandoverToastOverlay && (!handoverDisplayIsolation.hideTimelineEffects || manualHandoverActive) && (
         <HandoverToastOverlay
           frame={sceneFrame}
           interTriggerSec={profile.handover.triggerTimeSec}
@@ -2240,7 +2855,7 @@ function SceneContent({
             : null}
         />
       )}
-      {showArtifactFpsCounter && <FPSCounter />}
+      {presentationPlan.visible.diagnostics && showArtifactFpsCounter && <FPSCounter />}
     </BaseSceneLayout>
   );
 }
@@ -2256,12 +2871,28 @@ interface MainSceneProps {
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
   /**
+   * Accepted immutable archived-TLE frame for the homepage centre.  Passing
+   * this prop (including `null` while the first frame loads) selects the TLE
+   * scene lane and prevents the legacy Walker runtime from mounting.
+   */
+  canonicalAnalysisFrame?: SimulationAnalysisFrame | null;
+  /** Adjacent completed TLE anchor for centre-only visual interpolation. */
+  canonicalAnalysisNextFrame?: SimulationAnalysisFrame | null;
+  /** Continuous source-time offset from the canonical lower anchor. */
+  canonicalVisualOffsetSec?: number;
+  /**
    * Tier-2 thin DIRECT-PROP seam for display-only beam knobs — passed straight
    * from App (its own useState), NOT through buildAppRuntimeConfig / the runtime
    * memo bag, so a toggle re-renders without the invisible-dep-array tax. Optional
    * (defaults to DEFAULT_BEAM_DISPLAY_SPEC); the artifact-replay lane ignores it.
    */
   beamDisplaySpec?: BeamDisplaySpec;
+  /**
+   * Focused live handover-cinema candidate. This is a presentation-only projection
+   * of the indexed event; the scene uses its exact old/new cell identities to draw
+   * the pair and never feeds it back into the simulation.
+   */
+  handoverCinemaCandidate?: SinrLiveCinemaHandoverCandidate | null;
 }
 
 export const MainScene = memo(function MainScene({
@@ -2274,10 +2905,35 @@ export const MainScene = memo(function MainScene({
   onSimUpdate,
   onLiveSeekLanded,
   sceneFrame,
+  canonicalAnalysisFrame,
+  canonicalAnalysisNextFrame,
+  canonicalVisualOffsetSec = 0,
   beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
+  handoverCinemaCandidate = null,
 }: MainSceneProps) {
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
   const showUav = sceneLane === 'sinr-live';
+  const homepageTleSceneActive = canonicalAnalysisFrame !== undefined;
+  const [presentationStage, setPresentationStage] = useState<ScenePresentationStageId>(() => (
+    typeof window === 'undefined'
+      ? 'full'
+      : readScenePresentationStageFromSearch(window.location.search)
+  ));
+  const presentationPlan = useMemo(
+    () => resolveScenePresentationPlan(presentationStage),
+    [presentationStage],
+  );
+  const presenterEnabled = useMemo(
+    () => typeof window !== 'undefined' && isScenePresenterEnabled(window.location.search),
+    [],
+  );
+  const selectPresentationStage = (stage: ScenePresentationStageId): void => {
+    setPresentationStage(stage);
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('sceneStage', stage);
+    window.history.replaceState(window.history.state, '', url);
+  };
 
   return (
     <div className="leo-main-scene" data-testid="leo-main-scene" style={{
@@ -2298,9 +2954,47 @@ export const MainScene = memo(function MainScene({
         data-live-timeline-seek-target={runtime.replay.seekTargetSec?.toFixed(3) ?? ''}
         data-manual-handover-request-id={runtime.manualHandoverRequestId?.toString() ?? ''}
         data-manual-handover-kind={runtime.manualHandoverKind ?? ''}
+        data-scene-source={homepageTleSceneActive ? 'archived-tle' : (sceneFrame?.sceneSource ?? 'live-simulation')}
+        data-scene-presentation-stage={presentationPlan.stage}
+        data-scene-presentation-visible-layers={Object.entries(presentationPlan.visible)
+          .filter(([, visible]) => visible)
+          .map(([layer]) => layer)
+          .join(',')}
         hidden
       />
-      <Starfield starCount={180} />
+      {homepageTleSceneActive && (
+        <div
+          data-testid="homepage-tle-center"
+          data-analysis-frame-id={canonicalAnalysisFrame?.frameId ?? ''}
+          data-tle-frame-id={canonicalAnalysisFrame?.tleFrameId ?? ''}
+          data-selected-satellite-id={canonicalAnalysisFrame?.selectedSatelliteId ?? ''}
+          data-instant-utc={canonicalAnalysisFrame?.instantUtc ?? ''}
+          data-selected-position-teme-km={canonicalAnalysisFrame
+            ? [
+              canonicalAnalysisFrame.tleState.selectedSatellite.positionTemeKm.x,
+              canonicalAnalysisFrame.tleState.selectedSatellite.positionTemeKm.y,
+              canonicalAnalysisFrame.tleState.selectedSatellite.positionTemeKm.z,
+            ].join(',')
+            : ''}
+          data-selected-velocity-teme-km-per-sec={canonicalAnalysisFrame
+            ? [
+              canonicalAnalysisFrame.tleState.selectedSatellite.velocityTemeKmPerSec.x,
+              canonicalAnalysisFrame.tleState.selectedSatellite.velocityTemeKmPerSec.y,
+              canonicalAnalysisFrame.tleState.selectedSatellite.velocityTemeKmPerSec.z,
+            ].join(',')
+            : ''}
+          data-scene-source="archived-tle"
+          data-propagation-model={canonicalAnalysisFrame?.provenance.propagationModel ?? ''}
+          data-archive-id={canonicalAnalysisFrame?.provenance.archiveId ?? ''}
+          data-run-anchor-count={canonicalAnalysisFrame?.runAnchor?.anchorCount ?? ''}
+          data-run-duration-sec={canonicalAnalysisFrame?.runAnchor?.durationSec ?? ''}
+          data-run-step-sec={canonicalAnalysisFrame?.runAnchor?.stepSec ?? ''}
+          data-earth-sphere="false"
+          data-handover-decision="not-in-frame"
+          hidden
+        />
+      )}
+      {presentationPlan.visible.backdrop && <Starfield starCount={180} />}
       <Canvas
         // PERF (recorded proof stage): the modqn-replay-proof lane plays a RECORDED
         // artifact, so it renders ON-DEMAND (mount + scrub/interaction + each
@@ -2332,12 +3026,30 @@ export const MainScene = memo(function MainScene({
         }}
       >
         <Suspense fallback={<Html center><div style={{ color: 'white', fontSize: 22 }}>Loading...</div></Html>}>
-          {sceneFrame?.sceneSource === 'artifact-replay' ? (
+          {homepageTleSceneActive ? (
+            <ArchivedTleSceneContent
+              frame={canonicalAnalysisFrame ?? null}
+              nextFrame={canonicalAnalysisNextFrame ?? null}
+              visualOffsetSec={canonicalVisualOffsetSec}
+              profile={profile}
+              speed={speed}
+              paused={paused}
+              runtime={runtime}
+              visualScaleMultipliers={visualScaleMultipliers}
+              sceneLane={sceneLane}
+              onSimUpdate={onSimUpdate}
+              onLiveSeekLanded={onLiveSeekLanded}
+              beamDisplaySpec={beamDisplaySpec}
+              handoverCinemaCandidate={handoverCinemaCandidate}
+              presentationPlan={presentationPlan}
+            />
+          ) : sceneFrame?.sceneSource === 'artifact-replay' ? (
             <ArtifactSceneContent
               runtime={runtime}
               visualScaleMultipliers={visualScaleMultipliers}
               sceneLane={sceneLane}
               sceneFrame={sceneFrame}
+              presentationPlan={presentationPlan}
             />
           ) : (
             <SceneContent
@@ -2351,10 +3063,20 @@ export const MainScene = memo(function MainScene({
               onLiveSeekLanded={onLiveSeekLanded}
               sceneFrame={sceneFrame}
               beamDisplaySpec={beamDisplaySpec}
+              handoverCinemaCandidate={handoverCinemaCandidate}
+              presentationPlan={presentationPlan}
             />
           )}
         </Suspense>
       </Canvas>
+      {presenterEnabled && (
+        <div className="scene-presentation-toolbar-host">
+          <ScenePresentationToolbar
+            currentStage={presentationPlan.stage}
+            onStageChange={selectPresentationStage}
+          />
+        </div>
+      )}
     </div>
   );
 });

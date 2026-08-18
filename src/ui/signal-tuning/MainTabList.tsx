@@ -5,8 +5,8 @@ import { txBi } from './labels';
 import type { MainTabKey } from './types';
 
 /**
- * The visible top-level split of the left panel. All four tabs project one
- * canonical analysis frame. The legacy direct-P_t, teaching-energy, handover,
+ * The visible top-level split of the left panel starts with scenario data, then
+ * exposes the four canonical analysis projections. The legacy direct-P_t, teaching-energy, handover,
  * and topology surfaces remain mounted only as hidden compatibility history
  * inside `SignalTuningPanel`; they are not navigation targets.
  *
@@ -14,11 +14,12 @@ import type { MainTabKey } from './types';
  * explanation stay in `title` and `aria-label`, matching the formula sub-tab
  * strip and keeping the narrow rail readable.
  */
-// `aria-controls` is optional for a tab. SINR and EE are rendered as result
-// projections by the homepage, but those sections intentionally do not expose
-// stable panel ids; emitting invented ids would leave broken references in the
-// accessibility tree. Keep controls only for panels with real ids.
+// `aria-controls` is optional for a tab. Every visible canonical page now has
+// a stable panel id; the legacy entries remain only for source compatibility.
 const PANEL_ID_BY_TAB: Partial<Record<MainTabKey, string>> = {
+  scenario: 'tuning-page-panel-scenario-data',
+  sinr: 'tuning-page-panel-sinr-formula',
+  energy: 'tuning-page-panel-energy',
   power: 'tuning-page-panel-power',
   throughput: 'tuning-page-panel-throughput',
   handover: 'tuning-page-panel-handover',
@@ -54,18 +55,37 @@ export function MainTabList({
     accent: string;
   }> = [
     {
+      key: 'scenario',
+      short: 'Scenario',
+      label: txBi(t, isEnglish, 'tab.scenario.label', '場景資料', 'Scenario data'),
+      hint: txBi(
+        t,
+        isEnglish,
+        'tab.scenario.hint',
+        '設定星座與模擬日期時間',
+        'Set the constellation and simulation date/time',
+      ),
+      accent: UI_TOKENS.color.semantic.info,
+    },
+    {
       key: 'sinr',
       short: 'SINR',
       label: t('tab.sinr.label'),
-      hint: txBi(t, isEnglish, 'tab.sinr.hint', '同一 P_DL_actual 推導的訊號、干擾與雜訊', 'Signal, interference, and noise derived from one P_DL_actual'),
+      hint: txBi(t, isEnglish, 'tab.sinr.hint', '由套用功率上限後的實際 RF 輸出計算訊號、干擾與雜訊', 'Signal, interference, and noise from post-cap RF output'),
       accent: UI_TOKENS.color.semantic.tuning,
     },
     {
-      key: 'energy',
-      short: 'EE',
-      label: t('tab.energy.label'),
-      hint: txBi(t, isEnglish, 'tab.energy.hint', '同一吞吐量分子與完整 P_sys 分母', 'Shared throughput numerator and full P_sys denominator'),
-      accent: '#c3a6ff',
+      key: 'throughput',
+      short: 'Throughput',
+      label: txBi(t, isEnglish, 'tab.throughput.label', '吞吐量', 'Throughput'),
+      hint: txBi(
+        t,
+        isEnglish,
+        'tab.throughput.hint',
+        '查看服務目標、系統頻寬與對應的 SINR／速率',
+        'View the service target, system bandwidth, SINR, and rate',
+      ),
+      accent: UI_TOKENS.color.semantic.info,
     },
     {
       key: 'power',
@@ -76,22 +96,16 @@ export function MainTabList({
         isEnglish,
         'tab.power.hint',
         '調整波束／衛星上限與功耗參數',
-        'Tune beam/satellite caps and power-model inputs',
+        'Adjust beam and satellite caps and power inputs',
       ),
       accent: UI_TOKENS.color.semantic.good,
     },
     {
-      key: 'throughput',
-      short: 'Throughput',
-      label: txBi(t, isEnglish, 'tab.throughput.label', '吞吐量', 'Throughput'),
-      hint: txBi(
-        t,
-        isEnglish,
-        'tab.throughput.hint',
-        '調整服務目標與 beam 頻寬；SINR 與速率保持唯讀',
-        'Tune service target and beam bandwidth; SINR and rate remain derived',
-      ),
-      accent: UI_TOKENS.color.semantic.info,
+      key: 'energy',
+      short: 'EE',
+      label: t('tab.energy.label'),
+      hint: txBi(t, isEnglish, 'tab.energy.hint', '總吞吐量除以系統功率', 'Total throughput divided by system power'),
+      accent: '#c3a6ff',
     },
   ];
 
@@ -129,8 +143,8 @@ export function MainTabList({
       aria-orientation="horizontal"
       style={{
         display: 'grid',
-        // The tuning rail is intentionally narrow (~250px). A two-by-two
-        // layout keeps all four identifiers readable instead of squeezing
+        // The tuning rail is intentionally narrow (~250px). A two-column
+        // layout keeps all five identifiers readable instead of squeezing
         // "Power" / "Throughput" into clipped single-row cells.
         gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
         gap: 8,
@@ -145,6 +159,7 @@ export function MainTabList({
             className={`${UI_CLASSES.button} ${UI_CLASSES.tab}`}
             type="button"
             role="tab"
+            data-tab-layout={tab.key === 'scenario' ? 'full-width' : 'two-column'}
             aria-selected={active}
             aria-controls={PANEL_ID_BY_TAB[tab.key]}
             tabIndex={active ? 0 : -1}
@@ -156,6 +171,7 @@ export function MainTabList({
             onKeyDown={event => handleKeyDown(event, index)}
             style={{
               cursor: 'pointer',
+              gridColumn: tab.key === 'scenario' ? '1 / -1' : undefined,
               display: 'grid',
               gap: 3,
               // Centred, like the formula sub-tab strip below it: the button is

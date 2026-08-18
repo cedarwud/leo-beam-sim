@@ -1,0 +1,229 @@
+{
+  "schema": "c120-part-b-v2-p028-p045-qa-v1",
+  "status": "PASS",
+  "output": "/tmp/c120-style-b028-p045/LoRaEnergySim-LEO-ALT-PART-B-V2-P028-P045-REVIEW.pptx",
+  "slide_count": 18,
+  "notes_count": 18,
+  "layout_targets": [
+    "ppt/slideLayouts/slideLayout2.xml"
+  ],
+  "all_slides_layout2": true,
+  "slide_level_background_count": 0,
+  "creation_id_count": 0,
+  "creation_ids_unique": true,
+  "authored_font_floor_pt": 16.0,
+  "authored_font_attributes": {
+    "latin": {
+      "Times New Roman": 731
+    },
+    "ea": {
+      "標楷體": 731
+    },
+    "cs": {
+      "Times New Roman": 731
+    }
+  },
+  "font_contract_errors": [],
+  "notes_body_placeholders": 18,
+  "formula_slides": [
+    {
+      "slide": 6,
+      "omath": 1
+    },
+    {
+      "slide": 7,
+      "omath": 1
+    }
+  ],
+  "template_owned_parts_preserved": true,
+  "recursive_xml_parse_errors": [],
+  "relationship_target_errors": [],
+  "forbidden_language_hits": [],
+  "slide_reports": [
+    {
+      "slide": 1,
+      "part": "ppt/slides/slide1.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 36,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 2,
+      "part": "ppt/slides/slide2.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 39,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 3,
+      "part": "ppt/slides/slide3.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 44,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 4,
+      "part": "ppt/slides/slide4.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 39,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 5,
+      "part": "ppt/slides/slide5.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 37,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 6,
+      "part": "ppt/slides/slide6.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 37,
+      "omath_count": 1,
+      "has_slide_background": false
+    },
+    {
+      "slide": 7,
+      "part": "ppt/slides/slide7.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 32,
+      "omath_count": 1,
+      "has_slide_background": false
+    },
+    {
+      "slide": 8,
+      "part": "ppt/slides/slide8.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 40,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 9,
+      "part": "ppt/slides/slide9.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 28,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 10,
+      "part": "ppt/slides/slide10.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 31,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 11,
+      "part": "ppt/slides/slide11.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 36,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 12,
+      "part": "ppt/slides/slide12.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 40,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 13,
+      "part": "ppt/slides/slide13.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 39,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 14,
+      "part": "ppt/slides/slide14.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 36,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 15,
+      "part": "ppt/slides/slide15.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 51,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 16,
+      "part": "ppt/slides/slide16.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 68,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 17,
+      "part": "ppt/slides/slide17.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 49,
+      "omath_count": 0,
+      "has_slide_background": false
+    },
+    {
+      "slide": 18,
+      "part": "ppt/slides/slide18.xml",
+      "layout_targets": [
+        "ppt/slideLayouts/slideLayout2.xml"
+      ],
+      "authored_text_count": 49,
+      "omath_count": 0,
+      "has_slide_background": false
+    }
+  ],
+  "warnings": [],
+  "limitations": [
+    "LibreOffice executable is absent in the server environment; render and PowerPoint reopen are deferred to controller environment.",
+    "Current evidence images are clean element captures labelled as same-scenario fallback; no SHA-like identifier is embedded."
+  ]
+}

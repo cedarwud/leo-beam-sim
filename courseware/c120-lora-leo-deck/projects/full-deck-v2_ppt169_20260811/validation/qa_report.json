@@ -1,0 +1,25 @@
+{
+  "schema": "c120-full-deck-v2-qa-v1",
+  "status": "PASS",
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/full-deck-v2_ppt169_20260811/exports/c120-lora-leo-classroom-v2-editable.pptx",
+  "slide_count": 108,
+  "notes_count": 108,
+  "native_math_shapes": 4,
+  "exact_latex_metadata": [
+    "E_{endpoint}=\\\\sum_{s\\\\in\\\\mathcal{S}}P_s t_s",
+    "\\\\eta_E=\\\\frac{D_{delivered}}{E_{endpoint}}"
+  ],
+  "slide_background_nodes": 0,
+  "forbidden_word_or_minutes": 0,
+  "archetype_longest_run": 2,
+  "overflow_candidates": [],
+  "inherited_footer_nodes": [],
+  "errors": [],
+  "warnings": [
+    "slide 1: title anchor is not explicit in XML"
+  ],
+  "limitations": [
+    "Native Office Math edit/save/reopen in Microsoft PowerPoint is not exercised here; OMML plus an SVG fallback is embedded.",
+    "Rendered pixels require human acceptance; contact sheets and targeted page renders are provided."
+  ]
+}

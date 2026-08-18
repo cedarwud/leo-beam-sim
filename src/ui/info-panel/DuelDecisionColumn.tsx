@@ -86,23 +86,35 @@ export function DuelDecisionColumn({
   offsetLabel = 'Need Offset',
   triggerLabel = 'Trigger Time',
   triggerAriaLabel = 'Handover trigger progress',
+  decisionUnavailableReason,
 }: {
   sinrDeltaDb: number | null;
-  handoverOffsetDb: number;
-  triggerProgressSec: number;
-  triggerSec: number;
-  triggerRatio: number;
+  handoverOffsetDb: number | null;
+  triggerProgressSec: number | null;
+  triggerSec: number | null;
+  triggerRatio: number | null;
   stateLabel: string;
   stateTone: StatusBadgeTone;
   /** Handovers completed so far in this run. */
-  handoverCount?: number;
+  handoverCount?: number | null;
   deltaLabel?: string;
   offsetLabel?: string;
   triggerLabel?: string;
   triggerAriaLabel?: string;
+  /**
+   * The TLE canonical frame compares links but does not own a handover policy.
+   * When present, retain the familiar decision-column structure while showing
+   * honest unavailable values instead of profile defaults or fabricated zeroes.
+   */
+  decisionUnavailableReason?: string;
 }) {
   const { t, tx } = usePanelCopy();
-  const progressPercent = Math.round(triggerRatio * 100);
+  const hasHandoverDecision = decisionUnavailableReason === undefined
+    && handoverOffsetDb !== null
+    && triggerProgressSec !== null
+    && triggerSec !== null
+    && triggerRatio !== null;
+  const progressPercent = hasHandoverDecision ? Math.round(triggerRatio * 100) : 0;
 
   return (
     <div
@@ -150,7 +162,7 @@ export function DuelDecisionColumn({
               helpId="kpi.sinrDelta"
               titleKey="kpi.sinrDelta.label"
               bodyKey="kpi.sinrDelta.help"
-              formula={<>Δ = γ<sub>candidate</sub> − γ<sub>serving</sub></>}
+              formula={<>Δγ</>}
               meta={<>{t('common.unit.db')}</>}
             />
           )}
@@ -168,7 +180,7 @@ export function DuelDecisionColumn({
               meta={<>{t('common.unit.db')}</>}
             />
           )}
-          value={`+${handoverOffsetDb.toFixed(1)} dB`}
+          value={hasHandoverDecision ? `+${handoverOffsetDb!.toFixed(1)} dB` : '—'}
         />
       </div>
 
@@ -202,35 +214,50 @@ export function DuelDecisionColumn({
             {triggerLabel}
           </span>
           <span style={{ color: UI_TOKENS.color.text.secondary, whiteSpace: 'nowrap' }}>
-            {triggerProgressSec.toFixed(1)} / {triggerSec.toFixed(1)} s
+            {hasHandoverDecision ? `${triggerProgressSec!.toFixed(1)} / ${triggerSec!.toFixed(1)} s` : '—'}
           </span>
         </div>
-        <div
-          data-testid="info-panel-duel-trigger-progress"
-          role="progressbar"
-          aria-label={triggerAriaLabel}
-          aria-valuemin={0}
-          aria-valuemax={triggerSec}
-          aria-valuenow={Math.min(triggerProgressSec, triggerSec)}
-          data-trigger-progress={progressPercent}
-          style={{
-            height: 8,
-            background: UI_TOKENS.color.border.subtle,
-            borderRadius: UI_TOKENS.radius.pill,
-            overflow: 'hidden',
-          }}
-        >
-          <div style={{
-            width: `${progressPercent}%`,
-            height: '100%',
-            background: sinrDeltaDb !== null && sinrDeltaDb >= handoverOffsetDb
-              ? UI_TOKENS.color.semantic.good
-              : UI_TOKENS.color.semantic.info,
-            borderRadius: UI_TOKENS.radius.pill,
-            transition: 'width 120ms linear',
-          }}
-          />
-        </div>
+        {hasHandoverDecision ? (
+          <div
+            data-testid="info-panel-duel-trigger-progress"
+            role="progressbar"
+            aria-label={triggerAriaLabel}
+            aria-valuemin={0}
+            aria-valuemax={triggerSec!}
+            aria-valuenow={Math.min(triggerProgressSec!, triggerSec!)}
+            data-trigger-progress={progressPercent}
+            data-handover-decision="available"
+            style={{
+              height: 8,
+              background: UI_TOKENS.color.border.subtle,
+              borderRadius: UI_TOKENS.radius.pill,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{
+              width: `${progressPercent}%`,
+              height: '100%',
+              background: sinrDeltaDb !== null && sinrDeltaDb >= handoverOffsetDb!
+                ? UI_TOKENS.color.semantic.good
+                : UI_TOKENS.color.semantic.info,
+              borderRadius: UI_TOKENS.radius.pill,
+              transition: 'width 120ms linear',
+            }}
+            />
+          </div>
+        ) : (
+          <div
+            data-testid="info-panel-duel-trigger-progress"
+            data-handover-decision="not-in-frame"
+            style={{
+              color: UI_TOKENS.color.text.faint,
+              fontSize: UI_TOKENS.type.size.tiny,
+              lineHeight: 1.35,
+            }}
+          >
+            {decisionUnavailableReason}
+          </div>
+        )}
       </div>
 
       {handoverCount === undefined ? null : (
@@ -264,7 +291,7 @@ export function DuelDecisionColumn({
             fontVariantNumeric: 'tabular-nums',
             whiteSpace: 'nowrap',
           }}>
-            {handoverCount}
+            {handoverCount === null ? '—' : handoverCount}
             <span style={{
               marginLeft: 3,
               color: UI_TOKENS.color.text.secondary,

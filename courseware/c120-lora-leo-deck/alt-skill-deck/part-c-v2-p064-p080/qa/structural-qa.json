@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/part-c-v2-p064-p080/build/LoRaEnergySim-LEO-ALT-PART-C-V2-P064-P080-REVIEW.pptx",
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "slides": 18,
+  "notes": 18,
+  "layout": "slideLayout2.xml only",
+  "authored_background": "unset",
+  "min_authored_font_pt": 17.0,
+  "max_authored_font_pt": 24.0,
+  "errors": [],
+  "warnings": [],
+  "visual_render": "PASS: LibreOffice PDF rendered and 18 original-size PNGs reviewed",
+  "powerpoint_reopen": "PASS: python-pptx reopened published-equivalent output"
+}

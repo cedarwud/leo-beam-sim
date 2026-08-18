@@ -1,0 +1,296 @@
+<!-- Slide number: 1 -->
+# P019｜WSL package path
+release 來源與 Linux package root 必須分開
+
+Windows
+Downloads
+/mnt/c/.../Downloads
+~/c120-course
+lora-energy-lab/
+release asset
+WSL 讀取位置
+Linux staging path
+setup + .venv root
+
+cp 複製 release → pwd 核對 package root
+pwd（目前目錄命令）｜來源：POSIX shell｜作用：確認 package root
+單位：path string｜判讀：輸出位於 Linux home 下的 lora-energy-lab/
+
+### Notes:
+WSL 會讀取 Windows Downloads 中的 release asset，但 Linux 的 setup 與虛擬環境必須在 Linux home 完成。命令中的 `/mnt/c/.../Downloads` 是 WSL mount 讀取位置，`cp` 將兩個 release files 複製到 `~/c120-course`，最後進入 `lora-energy-lab/` 並以 `pwd` 核對 package root。這個路徑分離保持 `.venv/bin/python`、lock 與 shell script 屬於同一份 Linux package。
+
+<!-- Slide number: 2 -->
+# P020｜POSIX／WSL setup 與 verify
+先固定 Python 3.11，再建立 READY receipt
+
+setup.sh
+course.sh verify
+建立 .venv
+安裝 lock dependencies
+核對 interpreter / contract
+輸出 READY receipt
+PYTHON_BIN=python3.11 → .venv/bin/python → READY
+PYTHON_BIN（Python 執行器路徑變數）｜來源：shell environment｜作用：選擇 exact 3.11 interpreter
+單位：path string｜判讀：提供給 setup；成功後由 package-local .venv/bin/python 執行 verify
+
+### Notes:
+POSIX 與 WSL 的 setup 需要一個明確的 Python 3.11.x interpreter。`PYTHON_BIN` 來自 shell environment，作用是把 `python3.11` 或 `uv python find 3.11` 的 path 交給 `setup.sh`；setup 建立 package-local `.venv`、安裝 lock dependencies，`course.sh verify` 再核對 exact interpreter 與 course contract。預期狀態是 `READY`、Python 3.11.x 與 `.venv/bin/python`；此 gate 尚未產生任何 lab case result。
+
+<!-- Slide number: 3 -->
+# P021a｜查看 READY receipt
+同一份 receipt，可用三種 shell 讀取
+
+POSIX／WSL
+PowerShell
+Windows CMD
+sed -n '1,80p'
+artifacts/verify-receipt.json
+Get-Content
+verify-receipt.json
+type
+verify-receipt.json
+一份 verify-receipt.json；讀取 provenance 不變
+verify-receipt.json（驗證收據檔）｜來源：setup／verify command｜作用：記錄 environment 與 contract gate
+單位：JSON artifact｜判讀：解讀 setup evidence；不代替 case result
+
+### Notes:
+`verify-receipt.json` 是 setup 與 verify command 寫入的驗證收據檔。POSIX 使用 `sed`，PowerShell 使用 `Get-Content`，Windows CMD 使用 `type`；三個命令都只讀取同一份 artifact。收據的欄位用來描述環境與契約 gate，case result 仍由後續 run command 另行產生，兩種 provenance 不混用。
+
+<!-- Slide number: 4 -->
+# P021b｜READY receipt：狀態與識別欄位
+READY 只證明 identity 一致，不代表 case result
+
+status
+python_version
+scenario_id
+policy_api_version
+READY gate
+3.11.x
+fixed case identity
+observation / action contract
+READY：環境與契約一致｜result identity 另行產生
+status（狀態）｜來源：verify receipt｜作用：表示 gate 是否可進入 case
+單位：enum｜判讀：READY 只描述環境與契約一致；result identity 仍需另行產生
+
+### Notes:
+READY receipt 的第一組欄位描述狀態與 identity。`status` 必須是 READY，`python_version` 必須是 3.11.x；`scenario_id` 將固定情境和 case 綁定，`policy_api_version` 將允許的 observation 與 action 契約綁定。這些欄位表示 setup gate 通過，並不表示能量結果已經存在。
+
+<!-- Slide number: 5 -->
+# P021c｜READY receipt：引擎與主張欄位
+producer mode 決定 evidence boundary
+
+engine_mode
+upstream_execution
+claim_boundary
+simulated adapter
+false
+simulated / non-live
+READY 是 setup gate；result.json 另有 run identity
+engine_mode（執行引擎模式）｜來源：runner metadata｜作用：分類 producer
+單位：enum｜判讀：coherent-course-simulated-adapter；不延伸為上游程式執行
+
+### Notes:
+`engine_mode`、`upstream_execution` 與 `claim_boundary` 共同描述 producer 和 evidence scope。engine mode 是 `coherent-course-simulated-adapter`，上游程式執行狀態為 false，claim boundary 固定標示 simulated teaching data、非 live、非 measured 與非 canonical parity。因此 READY 表示環境與契約一致；case result 仍需用自己的 run identity 保存，兩者不互相代替。
+
+<!-- Slide number: 6 -->
+# P022｜Setup gate recovery 與 same-scenario fallback
+gate 受阻時，保留資料來源分類
+
+READY
+READY 受阻
+fallback
+exact case run
+產生 result / replay
+repair Python / root / lock
+same scenario
+result + replay pair
+result.json + endpoint-replay.json 保留同一 scenario
+artifact_source（資料來源分類）｜來源：result metadata｜作用：標示 local policy run 或 fallback
+單位：enum｜判讀：來源模式維持原值；同情境回復資料不改寫成本機執行
+
+### Notes:
+setup 或 verify 受阻時，artifact source 必須保持可見。可修復的問題只在 Python minor、package root、lock 或 policy boundary 內處理；若 local setup 仍無法建立 READY，同一個 lab／case 的 `result.json` 與 `endpoint-replay.json` 以 pair 方式提供 recovery。`artifact_source` 是 result metadata 的資料來源分類，fallback 保持 `same-scenario-fallback`，不改寫成本機 policy execution claim。
+
+<!-- Slide number: 7 -->
+# P023｜Bounded edit surface：student_policy.py
+只編輯 student_policy.py 的 marked block
+
+01｜檔案
+02｜區段
+03｜固定
+04｜輸出
+student_policy.py
+A / B / C marked block
+scenario + schemas
+runner → result / replay
+一次只開啟目前 lab 的 marked block；其他 boundary 保持原樣
+marked block（標記區段）｜來源：file markers｜作用：界定一個 lab 的 edit surface
+單位：source range｜判讀：每次只保留一個 active region；其他 package boundary 維持 read-only
+
+### Notes:
+`student_policy.py` 是 package root 內唯一的策略檔。目前檔案的三個 markers 是 `lab-a-pace-rest`、`lab-b-enter-exit-hold` 與 `lab-c-batch-urgent`；每個 lab 只在自己的區段變更常數。scenario、schemas、runner 與 generated JSON 分別是固定輸入、契約、執行器與輸出；保留這些 boundary，policy identity 和結果 lineage 才能被比較。
+
+<!-- Slide number: 8 -->
+# P024a｜Observation 是 decision-time input
+決策只讀當下 observation，回傳一個 legal action
+
+目前 observation
+choose_action
+legal action
+contact_open
+quality_band / stable_steps
+讀 current input
+回傳一個 action
+窗口關閉
+→ SLEEP
+
+future quality／future energy／result summary 不屬於 input
+choose_action(observation)（策略函式）｜來源：policy API｜作用：讀 current observation 並回傳一個合法 action
+單位：function contract｜判讀：不讀 future 或 result summary；輸出交給 runner 產生事件
+
+### Notes:
+`choose_action(observation)` 是 policy API 的函式契約。`contact_open` 來自當下 scenario observation，`quality_band` 來自目前 trace，`stable_steps` 來自連續觀察；窗口關閉時，函式回傳 `SLEEP`，讓 runner 進入合法的低功耗分支。future quality、future energy 與 result summary 不屬於 decision-time input，因此 action 是對當下資訊的控制輸出，而不是對結果的回看。
+
+<!-- Slide number: 9 -->
+# P024b｜Observation 欄位與合法 action
+queue、deadline、前一動作補齊 decision-time 邊界
+
+runner state
+queue + deadline
+合法輸出
+steps_since_send
+previous_action
+queue_size
+urgent_due_in_s
+WAIT / SLEEP
+SEND_* / FLUSH_BATCH
+contact_remaining_s 影響 send timing；輸出仍限於 API enum
+queue_size（佇列數量）｜來源：endpoint queue｜作用：提供 batching／urgency input
+單位：packet count｜判讀：決定送出壓力；合法輸出仍限於 policy API enum
+
+### Notes:
+`steps_since_send`、`queue_size`、`urgent_due_in_s`、`previous_action` 與 `contact_remaining_s` 都是 runner 在決策時提供的欄位。它們的單位分別是 steps、packet count、秒、action enum 與秒；作用是控制節奏、批次、期限、轉移與窗口時機。函式只能回傳 `WAIT`、`SLEEP`、`SEND_ONE`、`SEND_URGENT` 或 `FLUSH_BATCH`，因此條件分支的結果仍被限制在合法 action 邊界。
+
+<!-- Slide number: 10 -->
+# P025a｜Lab A／B 的受控常數
+一次只改一個常數，才能比較 A／B 後果
+
+Lab A｜pace
+Lab A｜rest
+Lab B｜enter／exit
+Lab B｜hold
+PACE_GAP_STEPS = 2
+REST_DURING_GAP = SLEEP
+ENTER = 2 / EXIT = 1
+STABLE_STEPS = 2
+candidate：A → WAIT｜B → STABLE_STEPS = 1
+hysteresis（遲滯控制）｜來源：enter／exit／hold constants｜作用：分開進入、退出與 hold 條件
+單位：rule｜判讀：降低 ping-pong transition；仍需用 packet／service／energy evidence 判讀
+
+### Notes:
+Lab A 使用 `PACE_GAP_STEPS` 與 `REST_DURING_GAP` 描述送出間隔和空檔 action；封裝 baseline 是 2 與 `SLEEP`。Lab B 使用 `ENTER_QUALITY = 2`、`EXIT_QUALITY = 1` 與 `STABLE_STEPS = 2` 描述 send-ready 的進入、退出與連續穩定條件。候選變更分別是把 A 的休息 action 改為 `WAIT`，或把 B 的 hold 改為 1；每次只動一個 marked constant，並以 state、packet、service 與 endpoint energy 比較。
+
+<!-- Slide number: 11 -->
+# P025b｜Lab C 的佇列與緊急常數
+Lab C 把 queue batching 與 deadline protection 接到 action
+
+BATCH_SIZE
+URGENT_MARGIN_S
+action surface
+= 3
+queue → flush
+= 20
+deadline → urgent
+FLUSH_BATCH
+SEND_URGENT
+candidate／revision：每次只改一個 marked constant
+URGENT_MARGIN_S（緊急餘裕秒數）｜來源：Lab C marked block｜作用：提供期限分支的比較值
+單位：s｜判讀：值變更後觀察 urgent action、delivery、deadline 與 endpoint J
+
+### Notes:
+Lab C 的 `BATCH_SIZE` 來自 marked block，單位是 packet count，作用是決定 queue 何時成組送出；`URGENT_MARGIN_S` 的單位是秒，作用是讓期限逼近時啟動 `SEND_URGENT`。`FLUSH_BATCH` 是 policy API 的合法 action，將 queue 連接到 process、TX、RX 與 delivery events。candidate 與 revision 各自只改一個 marked constant，withheld case 保持 frozen policy，用來讀取條件式的 queue、service 與 energy 後果。
+
+<!-- Slide number: 12 -->
+# P026a｜讀取條件與 action 分支
+branch order 把 observation 轉成 legal action
+
+01｜窗口
+02｜期限
+03｜節奏
+contact_open = false
+→ SLEEP
+urgent due ≤ margin
+→ SEND_URGENT
+steps < gap
+→ WAIT / SLEEP
+
+先窗口，再期限，再節奏；每段回傳合法 action
+urgent_pending（緊急封包待處理）｜來源：queue／deadline observation｜作用：顯示 urgent packet 是否存在
+單位：Boolean｜判讀：啟動 deadline branch；action 後仍需讀 packet／service evidence
+
+### Notes:
+目前 policy 的 branch order 先檢查窗口，再檢查緊急期限，最後檢查送出節奏。窗口關閉時，`contact_open` 為 false，回傳 `SLEEP` 以維持 send legality；urgent packet 逼近 `URGENT_MARGIN_S` 時，回傳 `SEND_URGENT`；距離上次送出仍小於 `PACE_GAP_STEPS` 時，回傳 A block 指定的 `REST_DURING_GAP`。`urgent_pending` 是 queue／deadline observation 的 Boolean，作用是啟動期限分支；條件本身是機制入口，結果仍要從事件 ledger 判讀。
+
+<!-- Slide number: 13 -->
+# P026b｜Action 後果的事件讀法
+action 後果沿 state → packet → service → endpoint J 讀取
+
+WAIT
+SLEEP
+SEND_*
+結果層
+AWAKE_IDLE
+清醒閒置
+SLEEP + WAKE
+休息與喚醒
+PROCESS → TX → RX
+packet outcome
+service result
+endpoint_energy_j
+較低 J 且 service fail：energy／service trade-off
+endpoint_energy_j（端點能量）｜來源：endpoint radio／processing model｜作用：累積狀態與轉換能量
+單位：J｜判讀：只屬 endpoint evidence layer；與 LEO／system／canonical energy 分開
+
+### Notes:
+`WAIT` 會產生 `AWAKE_IDLE` interval，`SLEEP` 會產生 `SLEEP` interval，後續再次啟動 action 時可能出現 `WAKE` transition。`SEND_ONE`、`SEND_URGENT` 與 `FLUSH_BATCH` 會沿 process、TX、RX 形成 packet attempt、retry、delivery 或 expiry。`endpoint_energy_j` 來自 endpoint radio／processing model，單位是 J；它必須和 service result 一起判讀。較低 J 與 service fail 同時出現時，證據分類是 energy／service trade-off；它不會被改稱為 LEO、system 或 canonical energy。
+
+<!-- Slide number: 14 -->
+# P027a｜Python indentation 與 return
+縮排決定 branch；return 把 action 交給 runner
+
+indentation
+return
+syntax gate
+if ...:
+return SLEEP
+一個 legal action
+回到 runner
+py_compile
+只檢查語法
+錯誤時只修 active marked block；scenario／runner 保持原樣
+return（回傳）｜來源：policy function｜作用：將一個合法 action 交給 runner
+單位：action enum｜判讀：若縮排或名稱錯誤，保留錯誤並只修 active marked block
+
+### Notes:
+Python 的 `indentation` 是 code structure，作用是把 statements 放入正確的條件分支；`return` 來自 policy function，作用是將一個 action enum 送回 runner，結束這一個 decision step。目前 package 的最小骨架在窗口關閉時回傳 `SLEEP`，窗口開啟後回傳 `WAIT`。compile command 只檢查語法；若出現錯誤，修復目前 active marked block，scenario、runner 與 schema 保持原狀。
+
+<!-- Slide number: 15 -->
+# P027b｜Lab A baseline run 與結果入口
+baseline 先建立 control artifact，再進入比較
+
+baseline
+run command
+result + replay
+packaged policy
++ fixed scenario
+course.sh run --lab A
+--case baseline
+result.json
+endpoint-replay.json
+
+result.json + endpoint-replay.json → Part B observation
+result_path（結果檔路徑）｜來源：command JSON output｜作用：定位 result.json
+單位：path string｜判讀：與同一 run directory 的 endpoint replay 配對；作為觀察入口
+
+### Notes:
+Lab A baseline 使用 packaged policy、fixed scenario 與 baseline case 建立 control artifact。POSIX 使用 `bash course.sh run --lab A --case baseline`，Windows 使用 `course.cmd run --lab A --case baseline`；runner stdout 會輸出 `status: OK`、`run_id` 與 `result_path`，其中 OK 只描述 artifact status。`result_path` 指向 `result.json`，同一個 run directory 內的 `endpoint-replay.json` 提供 action、state、queue 與 packet timing。保存 prediction 與這兩個配對入口後，下一段即可依 state、packet、service 與 endpoint energy 讀取 baseline，並開始 Part B 的受控比較。

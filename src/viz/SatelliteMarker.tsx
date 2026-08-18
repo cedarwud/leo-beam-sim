@@ -4,6 +4,12 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { operatorLabelForEventRole, tokenForEventRole } from '../constants/beamRoleTokens';
 import type { EventRole } from '../scene/types';
+import type { SimulatorConstellation } from '../simulator/types';
+import {
+  DEFAULT_SATELLITE_CONSTELLATION,
+  SATELLITE_MODEL_CATALOG,
+  satelliteModelForConstellation,
+} from './satelliteModelCatalog';
 
 interface SatelliteMarkerProps {
   position: THREE.Vector3;
@@ -11,9 +17,11 @@ interface SatelliteMarkerProps {
   eventRole?: EventRole;
   satelliteTintColor?: string;
   scaleMultiplier?: number;
+  constellation?: SimulatorConstellation;
+  /** Context models can remain readable without adding a label for every sat. */
+  showLabel?: boolean;
 }
 
-const SAT_MODEL_PATH = '/models/sat.glb';
 const SATELLITE_BODY_TINT_BLEND = 0.46;
 
 export function resolveSatelliteTintedColor(baseColor: string, tintColor: string): string {
@@ -34,8 +42,11 @@ export function SatelliteMarker({
   eventRole,
   satelliteTintColor,
   scaleMultiplier = 1,
+  constellation = DEFAULT_SATELLITE_CONSTELLATION,
+  showLabel = true,
 }: SatelliteMarkerProps) {
-  const { scene } = useGLTF(SAT_MODEL_PATH);
+  const model = satelliteModelForConstellation(constellation);
+  const { scene } = useGLTF(model.path);
   const roleToken = tokenForEventRole(eventRole);
   const roleLabel = operatorLabelForEventRole(eventRole, true);
   const accent = eventRole ? roleToken.color : satelliteTintColor ?? '#aaccff';
@@ -60,23 +71,28 @@ export function SatelliteMarker({
 
   return (
     <group position={position}>
-      <primitive object={cloned} scale={scale} />
+      <group rotation={model.rotation} scale={model.scale * scale}>
+        <primitive object={cloned} position={model.centerOffset} />
+      </group>
       {roleToken.markerLightIntensity > 0 && (
         <pointLight color={markerLightColor} intensity={roleToken.markerLightIntensity} distance={80} decay={2} />
       )}
-      <Text
-        position={[0, 20, 0]}
-        fontSize={eventRole ? roleToken.markerFontSize : 12}
-        color={accent}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={1}
-        outlineColor="#000000"
-      >
-        {roleLabel ? `${label} ${roleLabel}` : label}
-      </Text>
+      {showLabel && (
+        <Text
+          position={[0, 20, 0]}
+          fontSize={eventRole ? roleToken.markerFontSize : 12}
+          color={accent}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={1}
+          outlineColor="#000000"
+        >
+          {roleLabel ? `${label} ${roleLabel}` : label}
+        </Text>
+      )}
     </group>
   );
 }
 
-useGLTF.preload(SAT_MODEL_PATH);
+useGLTF.preload(SATELLITE_MODEL_CATALOG.starlink.path);
+useGLTF.preload(SATELLITE_MODEL_CATALOG.oneweb.path);

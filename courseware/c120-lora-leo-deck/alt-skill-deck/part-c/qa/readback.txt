@@ -1,0 +1,755 @@
+<!-- Slide number: 1 -->
+# P064｜Lab C：佇列要等批次，還是 urgent deadline 優先？
+一個門檻，三種結果：先保住服務，再讀 endpoint J
+
+QUEUE AGE
+DEADLINE
+ENDPOINT J
+normal 與 urgent
+等待／批次壓力
+最晚完成時間
+資料 freshness
+累積能量
+不能取代 gate
+urgent branch → action timing → packet outcome → service／deadline → endpoint J
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+Lab C 把 queue、batch、urgent deadline 和 endpoint J 放進同一個 service window。閱讀順序固定為 service、deadline、能量差異；畫面上的數值只作 coherent simulated result。
+
+<!-- Slide number: 2 -->
+# P065｜先讀原始 student_policy.py：原本的門檻怎麼工作？
+原始行為：完整 function 先看窗口，再看 urgent branch
+
+窗口關閉
+BATCH_SIZE = 3
+URGENT_MARGIN_S = 20
+
+observation.urgent_pending and
+observation.urgent_due_in_s <= URGENT_MARGIN_S:
+    return SEND_URGENT
+
+steps_since_send < PACE_GAP_STEPS:
+    return REST_DURING_GAP
+
+quality_ready and queue_size >= BATCH_SIZE:
+    return FLUSH_BATCH
+return SEND_ONE / WAIT
+SLEEP
+
+urgent_due_in_s ≤ 20
+SEND_URGENT
+
+pacing gap
+REST_DURING_GAP
+
+quality + queue
+FLUSH_BATCH / SEND_ONE
+
+其他
+WAIT
+原始門檻 20 可能較早介入 urgent，優先於 pacing／batch；觀察送出時點與 gate，再描述 J。條件：queue 已達 BATCH_SIZE 時，urgent branch 的返回 action 為何？
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+先沿著原始 branch 說出窗口、urgent、pacing、batch、wait 的返回順序。完整中文句與具體問題都放在投影上，使每個 action 均回到程式條件。
+
+<!-- Slide number: 3 -->
+# P066｜第一輪 compact run／receipt：baseline → candidate
+一頁快速 run：命令完成後立刻保存 result_path
+
+BASELINE
+CANDIDATE
+bash course.sh run --lab C --case baseline
+
+untouched policy
+stdout → result_path
+bash course.sh run --lab C --case candidate
+
+完成 margin 5 edit
+stdout → result_path
+receipt 只證明 artifact path 被產出；下一步讀來源、identity、service、replay。不要用 run 本身拖長教學。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+這一頁只集中第一輪的兩個 exact case，命令完成後立即保存 stdout 的 result_path。跑本身不承擔教學時間，下一頁的 edit 與 prediction 才是解釋核心。
+
+<!-- Slide number: 4 -->
+# P067｜第一次 exact edit：URGENT_MARGIN_S = 5
+第一次 exact edit：只改一個 marked line，其他 branch 保持原樣
+
+修改前完整句
+修改後完整句
+URGENT_MARGIN_S = 20
+它是 urgent override 門檻，不直接定義能量。
+問題：哪個 observation 使 urgent branch 先返回？
+URGENT_MARGIN_S = 5
+期限更逼近時才觸發 SEND_URGENT。
+問題：service 與 deadline 欄位的狀態為何？
+
+BATCH_SIZE = 3
+URGENT_MARGIN_S = 5    ← exact edit
+POLICY SURFACE｜marked block only｜SIMULATED TEACHING DATA
+
+### Notes:
+先朗讀修改前的完整句與問題，再朗讀修改後的完整句與問題。只改 URGENT_MARGIN_S，其他 marked block、runner、scenario、schema 與 energy model 保持不動。
+
+<!-- Slide number: 5 -->
+# P068｜candidate run 前的 prediction lock
+prediction lock：margin 5 先寫機制，再跑 candidate
+
+urgent timing
+queue／packet
+service／deadline
+state／endpoint J
+可能較晚／較早觸發
+等待、delivery、expiry
+可能 PASS，也可能 FAIL
+wake／TX／retry 再解釋
+
+完整句：URGENT_MARGIN_S 改成 5 後，預測 action 時機會改變；以 packet、service、deadline、state ledger 檢驗。判讀條件：哪個 gate 失敗會推翻「只是省能量」？
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+把 margin 5 的預測寫成可反駁句，避免押一個漂亮 KPI。要求同時指出 urgent action、queue、service／deadline 與 state／endpoint J 的證據位置。
+
+<!-- Slide number: 6 -->
+# P069｜第一次 before／after：candidate 的 bit/J 受 gate 約束
+before／after：先 gate，後 endpoint bit/J
+
+baseline｜20
+candidate｜5
+10,400 bit
+10.66 J
+975.609756 bit/J
+service PASS｜deadline PASS
+9,600 bit
+9.74 J
+985.626283 bit/J
+service FAIL｜deadline FAIL
+因果句：margin 5 使 urgent override 更晚，少交付 800 bit，兩個 gate FAIL；較高 bit/J 不得改寫成成功節能。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+這兩筆是 operation contract 的 packaged same-scenario deterministic fallback 參考，fresh measurement claim 不適用。閱讀順序固定為 service、deadline、完整因果句，再描述較低 J 與較高 bit/J。
+
+<!-- Slide number: 7 -->
+# P070｜第二次 exact edit：URGENT_MARGIN_S = 30
+第二次 exact revision：只改一個 marked line，其他 branch 保持原樣
+
+修改前完整句
+修改後完整句
+URGENT_MARGIN_S = 5
+它是 urgent override 門檻，不直接定義能量。
+問題：哪個 observation 使 urgent branch 先返回？
+URGENT_MARGIN_S = 30
+期限更逼近時才觸發 SEND_URGENT。
+問題：service 與 deadline 欄位的狀態為何？
+
+BATCH_SIZE = 3
+URGENT_MARGIN_S = 30    ← exact edit
+POLICY SURFACE｜marked block only｜SIMULATED TEACHING DATA
+
+### Notes:
+candidate 的 failure 要保留下來，revision 只針對太晚介入提出修正。修改前後都要問是否能保住 deadline，以及還要一起讀哪些 state／J evidence。
+
+<!-- Slide number: 8 -->
+# P071｜revision run 前：較早介入的可反駁預測
+prediction lock：margin 30 先寫機制，再跑 candidate
+
+urgent timing
+queue／packet
+service／deadline
+state／endpoint J
+可能較晚／較早觸發
+等待、delivery、expiry
+可能 PASS，也可能 FAIL
+wake／TX／retry 再解釋
+
+完整句：URGENT_MARGIN_S 改成 30 後，預測 action 時機會改變；以 packet、service、deadline、state ledger 檢驗。判讀條件：哪個 gate 失敗會推翻「只是省能量」？
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+revision 預測可能較早花 endpoint energy，required packet 可能在期限前完成。J 上升且 deadline 變成 PASS 時，trade-off 由 delivery、deadline 與 state ledger 定義，結果不縮成單一效率數字。
+
+<!-- Slide number: 9 -->
+# P072｜第二輪 compact run／receipt：revision freeze → surprise
+一頁快速 run：命令完成後立刻保存 result_path
+
+REVISION + FREEZE
+SURPRISE WITHHELD
+bash course.sh run --lab C --case revision --freeze
+
+margin 30
+freeze receipt + result_path
+bash course.sh run --lab C --case surprise
+
+policy bytes unchanged
+result_path → replay
+receipt 只證明 artifact path 被產出；下一步讀來源、identity、service、replay。不要用 run 本身拖長教學。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+這一頁只列 revision freeze 與 surprise 的 exact commands。surprise 沿用 frozen policy，不新增 edit、不重新調參，完成後立即保存兩個新的 stdout result_path。
+
+<!-- Slide number: 10 -->
+# P073｜before／after／revision：三筆結果要沿同一條因果鏈讀
+三筆 deterministic fallback：同一 scenario，先看 gate
+role
+margin
+delivered bit
+endpoint J
+bit/J
+service／deadline
+before／baseline
+20
+10,400
+10.66
+975.609756
+PASS／PASS
+after／candidate
+5
+9,600
+9.74
+985.626283
+FAIL／FAIL
+revision
+30
+10,400
+10.66
+975.609756
+PASS／PASS
+完整句：candidate 少交付且兩個 gate 失敗；revision 在固定 fallback 恢復 gate，所以解釋的是較早介入的 trade-off；結論不延伸為 30 永遠最佳。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+把 baseline、candidate、revision 放在同一個 deterministic fallback ledger。candidate 的 bit/J 優勢被 service／deadline 否決，revision 的改善只屬於固定條件。
+
+<!-- Slide number: 11 -->
+# P074｜surprise withheld：policy frozen，反例留存
+withheld：policy frozen，反例不重調
+
+FROZEN REVISION
+SURPRISE FALLBACK
+URGENT_MARGIN_S = 30
+policy bytes unchanged
+保留 revision receipt
+不新增 edit
+2,400 delivered bit
+5.41 J｜443.622921 bit/J
+3 retransmissions
+3 expired packets
+service FAIL｜deadline FAIL
+具體問題：5.41 J 比 revision 低，是否再改 margin？答案：不要；service／deadline FAIL，保存 result_path 與 provenance，使 surprise 界定 claim ceiling。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+surprise 的 2,400 bit、5.41 J、3 次重傳與 3 張逾期封包是 fallback 參考。它界定 margin 30 的適用邊界；第三次調參不在規格內。
+
+<!-- Slide number: 12 -->
+# P075｜Lab C debrief：service／deadline gate 優先於 J
+gate-first：service／deadline 先於 endpoint J
+
+1｜service
+
+2｜deadline
+
+工作是否保住
+3｜delivery
+
+期限／freshness
+4｜endpoint J
+bit／expired／retry
+最後才描述
+收束句：margin 會改變 deadline／energy trade-off；效果依 service condition 而定，高 bit/J 不構成成功判定。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+gate-first 階梯收束 Lab C。結論是 urgent margin 改變 deadline／energy trade-off，而且效果依 service condition 而定；結論不延伸為 margin 30 永遠最佳。
+
+<!-- Slide number: 13 -->
+# P076｜網站責任：驗證、重播、保存
+website boundary：artifact validation → replay → workbook
+
+本機 runner
+import gate
+Leo replay
+Workbook
+student_policy.py
+產生 result.json
+schema／identity／units
+lineage／identity
+endpoint fields
+queue／event／timeline
+prediction／role
+source／checkpoint
+terminal runner 產生 result.json；網站讀取通過 gate 的 artifact，提供 replay 與 workbook 保存。Python 執行與驗證屬 terminal runner，provider context 保持獨立。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+Leo /course 接收 runner 已產生的 result.json 與配對 replay。網站責任範圍為 validation、replay、workbook 保存；student_policy.py 的執行與驗證歸屬 terminal runner，READY 屬 browser record。
+
+<!-- Slide number: 14 -->
+# P077｜import gate：source／gates／identity 的讀取順序
+import ladder：source → gates → identity → accepted／rejected
+
+![08-header.png](Actualuploadheaderevidence.jpg)
+
+GATE ORDER
+選 result.json
+format／schema
+experiment／case identity
+lineage／policy identity
+import state
+匯入狀態：已接受｜實驗 A／baseline｜來源：實際執行
+驗證範圍：endpoint result 的 schema、identity、units 與 provenance。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+實際 upload 或同情境 fallback 提供來源、schema、identity、lineage、identity 和 import state。accepted 表示 endpoint artifact 通過匯入契約；provider 與 live measurement 不列入此 claim。
+
+<!-- Slide number: 15 -->
+# P078｜frame selector 與事件脈絡：回到 policy branch
+replay 的一個 frame 同時帶著八個欄位與事件脈絡
+Frame 00
+Frame 01
+Frame 02
+Frame 03
+
+Radio
+Action
+Queue count
+累積 endpoint J
+SLEEP／TX／RX
+WAIT／SEND_URGENT
+尚待處理
+run-to-frame
+
+Elapsed
+Contact ID
+Contact
+Quality
+trace elapsed
+目前 contact
+開／關
+ordinal quality_band
+frame → queue → event → timeline → policy branch；Action 顯示 — 表示該 frame 無新 action，radio state 仍由 Radio 欄位定義。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+replay 定義為 selector、八個欄位、queue、event 與 timeline 的同一條事件脈絡。每一次切 frame 都把 action 對回 student_policy.py 的 branch。
+
+<!-- Slide number: 16 -->
+# P079｜Workbook：prediction、result、replay、source、identity
+Workbook：完成度與策略分數分離
+
+填寫 evidence
+保存與恢復
+prediction
+result／replay lineage
+source／identity
+role／service gate
+checkpoint #／完成度
+建立／恢復
+匯出／重新開啟
+0/10 表示 workbook 段落完成度；policy score 由 service／J 欄位定義
+重新開啟重新核對 run identity、source、role 和 service；缺失 evidence 顯示待補，完成狀態由實際紀錄定義。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+Workbook 保存 prediction、結果 lineage、source、identity 與 recovery 狀態。完成度與 checkpoint 屬課程紀錄；service、energy 與策略排序由其他欄位定義。
+
+<!-- Slide number: 17 -->
+# P080｜保存與重開：checkpoint 不會替缺失證據補答案
+保存、重設、復原、匯出、重開：每個 control 有自己的責任
+
+建立存檔點
+恢復存檔點
+重設本機進度
+保存可恢復的 prediction／identity
+回到已保存狀態
+清除本機課程紀錄
+
+復原重設
+匯出學習單
+重新開啟學習單
+撤回 reset 的本機狀態
+保存可攜的 workbook
+再核對 identity／source
+reset／undo 管理本機紀錄；runner、import gate、service gate 與 withheld result 各自保留原始 lineage。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+建立 checkpoint、恢復、重設、復原、匯出與重新開啟都只管理本機課程紀錄。重開後仍要重新核對 run identity、source、role 和 service gate。
+
+<!-- Slide number: 18 -->
+# P081｜transfer：智慧農場把 gate-first 變成灌溉決策
+transfer：智慧農場 仍然先 gate，再談 energy
+
+urgent
+service
+energy
+灌溉告警／水位期限
+作物／水位被保住
+泵浦 endpoint J
+轉移內容是一條因果句：condition → policy branch → event → service evidence → scoped endpoint J；KPI 需依場景另行定義。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+把 Lab C 的 urgent deadline 映射到灌溉告警，把 endpoint J 映射到泵浦能源；服務 gate 優先於節能描述。這是 transfer reasoning，未提供 live farm KPI。
+
+<!-- Slide number: 19 -->
+# P082｜transfer：HVAC 先守舒適與設備 deadline
+transfer：HVAC 仍然先 gate，再談 energy
+
+urgent
+service
+energy
+舒適／設備保護
+deadline／freshness
+風機／壓縮機 J
+轉移內容是一條因果句：condition → policy branch → event → service evidence → scoped endpoint J；KPI 需依場景另行定義。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+HVAC 的 urgent branch 語義包含舒適度、設備保護或尖峰事件。先確認 service condition 與 deadline，再比較控制動作造成的能源差異。
+
+<!-- Slide number: 20 -->
+# P083｜transfer：edge inference 先守 freshness，再看 Joule
+transfer：edge inference 仍然先 gate，再談 energy
+
+urgent
+service
+energy
+fresh inference deadline
+任務完成／結果新鮮
+edge endpoint Joule
+轉移內容是一條因果句：condition → policy branch → event → service evidence → scoped endpoint J；KPI 需依場景另行定義。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+edge inference 把 packet delivery 換成新鮮度與任務完成，仍保留 source、trace、gate 與 endpoint scope。低 Joule 但 stale output 不能先稱為成功。
+
+<!-- Slide number: 21 -->
+# P084｜transfer exit：把可移植的因果句帶回 workbook
+transfer exit：把可移植的因果句帶回 workbook
+
+CONDITION
+BRANCH
+EVENT
+CLAIM
+哪個窗口／期限？
+哪個 policy action？
+queue／retry／expiry？
+scope 與反例？
+需要 fresh run 時，保存目前 result／replay／workbook identity，再依核准流程另開；website scope 為驗證、重播與保存，Python 結果由 terminal runner receipt 定義。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+最後保留 condition、policy branch、event／service evidence、energy scope 和 claim ceiling。若需要 fresh run，先保存目前 identity，再依核准流程另開，不在 website 偷補結果。
+
+<!-- Slide number: 22 -->
+# P085｜current /course：來源與匯入 gate 分屏讀取
+current /course：source、case、identity、source label 要先讀
+
+![08-header.png](Currentacceptedupload.jpg)
+
+![03-fallback.png](Samescenariofallback.jpg)
+實際上傳｜A / baseline｜source 實際執行
+同情境 fallback｜source 分開標示
+實際執行與同情境 fallback 分別保存 artifact source 與 run identity。
+資料類型：coherent simulated endpoint result。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+左側是本次 browser session 已接受的 A／baseline endpoint upload，右側是同情境 fallback。source、case、identity 和 import gate 構成閱讀欄位；claim 維持 coherent simulated result、browser record、not measured。
+
+<!-- Slide number: 23 -->
+# P086｜current /course：service-first summary
+service-first summary：四個欄位有固定閱讀順序
+
+![08-summary.png](Currentsummaryevidence.jpg)
+
+1｜服務
+FAIL
+
+2｜已送達
+4,800 bit
+
+3｜端點能量
+6.92 J
+
+4｜端點 bit/J
+693.641618
+完整句：這一筆先是 service FAIL；再描述 delivery、endpoint J、bit/J。效率數字僅描述 run，不得把失敗改成成功。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+accepted endpoint teaching evidence 顯示 service FAIL、6.92 J、4,800 bit 和 693.641618 bit/J。這四個欄位要按 service、delivered、endpoint J、bit/J 順序讀，不得使效率數字改寫 FAIL。
+
+<!-- Slide number: 24 -->
+# P087｜current /course：frame selector 與八個 replay fields
+frame selector：前四欄的來源、值型態與作用
+
+![08-fields.png](Frameselectorevidence.jpg)
+
+Radio｜無線電狀態
+Action｜策略動作
+來源：endpoint replay frame
+值：分類；作用：state transition
+成功：frame 更新；失敗：selector 狀態維持
+來源：policy event
+值：分類或 —；作用：對回 branch
+成功：event 更新；失敗：原 action 維持
+
+Queue count｜佇列數
+累積 endpoint J｜端點能量
+來源：frame queue ledger
+值：封包數；作用：批次／等待判讀
+成功：數值更新；失敗：原 queue 狀態維持
+來源：endpoint energy ledger
+值：J；作用：run-to-frame 累積
+成功：J 更新；失敗：原 frame 值維持
+selector 讀取 endpoint frame；八欄、queue 與 event 以同一 frame identity 更新。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+選擇器改變 replay frame，八個欄位要一起讀：Radio、Action、queue count、累積 endpoint J、elapsed、Contact ID、Contact、ordinal Quality。Quality 採 ordinal band；frame selector 使用各自 frame identity，不使用固定抽樣。
+
+<!-- Slide number: 25 -->
+# P088｜current /course：queue 與 packet event 是因果錨點
+queue 與 packet event：先找 delivered／expired 的證據
+
+![08-queue.png](Currentqueueevidence.jpg)
+
+生成／入 queue
+attempt
+retry／collision
+delivered／expired
+normal-1
+evt-0000
+frame n+1
+service gate
+queue 變空 ≠ delivered；要看 packet event、expired、deadline 與 service。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+queue 告訴我們當下還有什麼工作，packet event 告訴我們這個 frame 發生什麼。先追生成、入列、attempt、retry、delivered 或 expired，再回到 service summary。
+
+<!-- Slide number: 26 -->
+# P089｜current /course：timeline 對回 student_policy.py 分支
+timeline：把每個 frame 對回 policy branch，不當連續功率圖
+
+![06-timeline.png](Currenttimelineevidence.jpg)
+
+contact_open = false
+SLEEP
+
+urgent_pending ∧ due ≤ margin
+SEND_URGENT
+
+steps_since_send < gap
+REST_DURING_GAP
+
+quality_ready ∧ queue ≥ batch
+FLUSH_BATCH
+
+其餘
+WAIT／SEND_ONE
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+timeline 把 contact、quality、radio state 和 action 放在同一個 frame 序列；它描述 transition，不描述連續功率。每個 transition 對回 contact、urgent、pacing、batch 或 wait branch。
+
+<!-- Slide number: 27 -->
+# P090｜current /course：ledger 顯示目前選取，best strategy 另由 gate 定義
+execution ledger：目前選取 ≠ 最佳策略
+
+![08-ledger.png](Currentexecutionledger.jpg)
+
+experiment／case
+display
+屬於哪個 lab／case
+目前選取；best strategy 另由 gate 定義
+
+role
+service
+baseline／candidate／revision／withheld
+每列保留 gate
+
+endpoint J
+source
+同 boundary 比較
+actual 與 fallback 分開
+source 不同，不能只比較 J。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+execution ledger 核對 experiment、case、role、service、endpoint J、source 和 run identity。畫面選到的列屬選取狀態；實際執行與 fallback 來源分開陳述。
+
+<!-- Slide number: 28 -->
+# P091｜current /course：provider 與 endpoint 是兩層證據
+provider ↔ endpoint：兩層 evidence 各自有 identity
+
+![04-provider.png](Providerevidence.jpg)
+
+IMPORTED ENDPOINT RESULT
+source／run identity
+summary／replay／ledger
+endpoint scope
+canonical parity：待補
+Evidence view：目前記錄 503 MODQN bundle requests 與 WebGL／GLTF warnings；provider browser status：待補。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+provider 只說明 LEO scenario、TLE、contact、cell、frequency 和 dB 的 opportunity context，endpoint result 說明 imported runner artifact。Evidence view 的 503 MODQN 與 WebGL／GLTF warnings 不可宣稱 provider browser PASS。
+
+<!-- Slide number: 29 -->
+# P092｜current /course：Workbook controls 與證據保存
+Workbook controls：任務紀錄、證據鎖定與 recovery 要分開
+
+![05-workbook.png](Workbookcontrolsevidence.jpg)
+
+依課程簡報填寫完整證據學習單
+開啟 Leo 任務紀錄
+展開 workbook；答案驗證另由 evidence gate 處理
+展開 task 1–10
+
+檢查證據並繼續
+證據已鎖定
+檢查目前段落，解鎖下一段
+保存段落；scientific parity 另行驗證
+task ✓ 是保存狀態；仍要回到 result、replay、service 與因果句。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+依課程簡報填寫完整證據學習單、開啟 Leo 任務紀錄、checkpoint、restore、reset、undo、export、reopen 都要分別說明。這些 control 管理紀錄與回復，不替代 runner 或 scientific parity。
+
+<!-- Slide number: 30 -->
+# P093｜current /course：rejection 與 recovery fail closed
+rejection／recovery：fail closed，原 session 不悄悄變動
+
+![00-prepare.png](Fallbackenvironmentevidence.jpg)
+
+格式／schema
+identity／lineage
+保留錯誤 → 對照 contract
+回 matching artifact
+
+immutable duplicate
+provider 503
+停止重按 → 保留 session
+保留 warning，不稱 browser PASS
+Recovery：保留原始錯誤與 path；matching artifact、release backup 或 matching fallback 提供回復，surprise provenance 維持原值。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+格式、identity、lineage 和 immutable duplicate 的錯誤維持原 session 狀態。matching artifact、release backup 或明確 fallback 提供 recovery 路徑；JSON、case 與 surprise provenance 維持原值。
+
+<!-- Slide number: 31 -->
+# P094｜Prepare 的 READY：browser-local terminal receipt record
+Prepare：READY 是 browser-local record；run proof 由 runner receipt 定義
+
+![09-ready.png](READYcurrentscreen.jpg)
+
+記錄 READY
+只記錄 terminal 已看見 machine-readable READY
+Leo 沒有執行／驗證 Python
+
+記錄備用環境
+誠實標示 setup／verify 無法完成
+改走 same-scenario fallback
+READY 語義：browser-local terminal receipt record；setup／verify／run／upload 與 result.json 由 terminal runner receipts 定義，Lab gate 另行判讀。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+記錄 READY 表示 terminal 已看見 machine-readable READY；Leo 端維持 browser-local record，Python 執行與驗證歸屬 terminal runner。安裝、verify、run、upload 與 Lab 完成由各自 receipt 定義；記錄備用環境表示採用 fallback 路徑。
+
+<!-- Slide number: 32 -->
+# P095｜全站導覽與 fallback loader：按鈕只改畫面狀態
+全站 nav／language／fallback loader：只改焦點與來源
+
+直接前往操作區
+返回 Leo 首頁
+繁中／EN
+準備
+跳到工作台
+離開課程區
+切換語言
+看 setup／READY 狀態
+
+實驗 A／B／C
+證據
+學習單
+載入下一筆備用資料
+切換 workbench
+provider／endpoint boundary
+checkpoint／export／reopen
+依順序載入，不挑 best
+各 gate 仍由 identity／service 與 runner receipt 定義；切頁、切語言、載入 fallback 屬畫面狀態，Python 執行屬 terminal runner。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+全站導覽、語言切換、準備、實驗 A／B／C、證據、學習單與 fallback loader 只改焦點、語言或資料選擇。切頁不會完成 identity、service 或 upload gate。
+
+<!-- Slide number: 33 -->
+# P096｜Task lock 與證據按鈕：檢查課程段落，不代替 runner
+Task 1–10：解鎖課程段落，不代替 runner
+
+Task 1
+Task 2
+Task 3
+Task 4
+Task 5
+disabled → ✓ 保存
+disabled → ✓ 保存
+disabled → ✓ 保存
+disabled → ✓ 保存
+disabled → ✓ 保存
+
+Task 6
+Task 7
+Task 8
+Task 9
+Task 10
+disabled → ✓ 保存
+disabled → ✓ 保存
+disabled → ✓ 保存
+disabled → ✓ 保存
+disabled → ✓ 保存
+
+檢查證據並繼續
+證據已鎖定
+檢查目前段落條件，通過才解鎖下一段
+保存完成段落，不等於 scientific parity
+✓ 表示段落保存；service／deadline、runner、replay 與策略 verdict 由各自 evidence 定義。
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+任務 1–10 的勾選與證據已鎖定是保存狀態，檢查證據並繼續只檢查目前課程段落。它不執行 Python、不重算 replay，也不宣布策略 PASS。
+
+<!-- Slide number: 34 -->
+# P097｜Provider replay controls：provider frames 與 endpoint result 分層
+provider replay controls：各自移動，各自保留 frame identity
+
+![06-timeline.png](Providerreplaytimeline.jpg)
+
+播放結果
+暫停重播
+slider
+←
+下一個畫面 →
+provider replay play
+pause
+選 provider frame
+上一畫面
+下一 provider frame
+
+endpoint frame selector
+system replay timeline
+八欄＋queue＋event 跟著 endpoint frame 更新
+provider context；endpoint time：獨立 frame identity
+待補：LoRa runner／endpoint replay fresh evidence｜SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED
+
+### Notes:
+播放結果、暫停重播、slider、上一畫面和下一個畫面只控制 provider replay。endpoint selector 與 system replay timeline 各自保存 frame identity；兩層時間需分開判讀。

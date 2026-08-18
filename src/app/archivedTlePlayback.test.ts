@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { advanceArchivedTlePlaybackCursor } from './archivedTlePlayback';
+
+const appSource = readFileSync(
+  fileURLToPath(new URL('../App.tsx', import.meta.url)),
+  'utf8',
+);
+
+assert.equal(
+  advanceArchivedTlePlaybackCursor({
+    currentTimeSec: 0,
+    deltaSec: 1,
+    selectedSpeed: 5,
+    durationSec: 7200,
+  }),
+  5,
+  'archived-TLE playback must advance at the selected 5x transport rate',
+);
+assert.equal(
+  advanceArchivedTlePlaybackCursor({
+    currentTimeSec: 0,
+    deltaSec: 6,
+    selectedSpeed: 5,
+    durationSec: 7200,
+  }),
+  30,
+  'selected 5x should reach the next 30-second archived anchor in six wall-clock seconds',
+);
+assert.equal(
+  advanceArchivedTlePlaybackCursor({
+    currentTimeSec: 7199,
+    deltaSec: 1,
+    selectedSpeed: 5,
+    durationSec: 7200,
+  }),
+  7200,
+  'archived playback must clamp at the complete run end',
+);
+
+const archivedPlaybackEffect = appSource.match(
+  /Archived-TLE homepage playback advances[\s\S]*?\n  }, \[[\s\S]*?\n  \]\);/,
+)?.[0] ?? '';
+assert.match(
+  archivedPlaybackEffect,
+  /selectedSpeed:\s*playback\.speed/,
+  'the archived-TLE effect must use selected playback.speed, not effectiveSpeed',
+);
+assert.doesNotMatch(
+  archivedPlaybackEffect,
+  /selectedSpeed:\s*playback\.effectiveSpeed/,
+  'legacy Walker auto-slow must not control archived-TLE playback',
+);
+
+console.log('Archived-TLE playback uses selected transport speed and clamps to the published run.');

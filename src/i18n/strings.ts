@@ -37,63 +37,63 @@ export const ZH_TW = {
   'param.maxTxPowerDbm.label': '衛星發射功率',
   'param.maxTxPowerDbm.unit': 'dBm',
   'param.maxTxPowerDbm.help':
-    '衛星每道波束送出的訊號強度，以 dBm 表示。它決定 SINR 分子中的接收訊號功率；換算成瓦為 P_RF ＝ 10^(P_tx/10) ÷ 1000。',
+    '衛星波束的 RF 輸出設定，以 dBm 表示；它會影響 SINR 分子使用的鏈路功率 p^r_{u,s,v}(t, θ)。',
   'param.maxTxPowerDbm.effect':
     '調高：分子的接收訊號功率上升，SINR 提高，耗電同步增加。同頻的其他波束一併變強時，分母的干擾項也會變大，因此 SINR 的淨改善會被部分抵銷。',
 
   'param.ueAntennaMaxGainDbi.label': '地面接收天線增益',
   'param.ueAntennaMaxGainDbi.unit': 'dBi',
   'param.ueAntennaMaxGainDbi.help':
-    '使用者裝置（手機／終端機）天線的接收增益 G^R，代表它把入射電波轉換成可用訊號功率的能力。',
+    '使用者裝置的接收增益；此因素納入有效通道 h_{u,s,v}(t, θ)，不在簡化 SINR 主式中另列。',
   'param.ueAntennaMaxGainDbi.effect':
     '調高：接收端訊號功率提高，serving 與 candidate 的 SINR 一起上升。衛星端的發射功率與波束間的干擾量維持不變。',
 
   'param.bandwidthMHz.label': '頻道頻寬',
   'param.bandwidthMHz.unit': 'MHz',
   'param.bandwidthMHz.help':
-    '這條無線電頻道的頻寬 B。它同時出現在兩處：吞吐量公式 R ＝ (B ÷ K)·log₂(1+SINR) 中 B/K 的分子，以及 SINR 分母的熱雜訊項 σ² ＝ N₀·B。',
+    '這條無線電頻道的頻寬 B^w；它會影響鏈路速率 R_{u,s,v}(t, θ) 與接收雜訊 σ²。',
   'param.bandwidthMHz.effect':
-    '調寬：分母的熱雜訊 σ² 等比例變大，其他條件不變時 SINR 下降；但 B/K 這個乘數同時變大。最終吞吐量取決於兩者的淨效果。',
+    '調寬：接收雜訊 σ² 會增加，SINR 可能下降；同時單一波束的 B^w 增加，鏈路速率也會受到影響。',
 
   'param.noisePsdDbmHz.label': '雜訊功率密度',
   'param.noisePsdDbmHz.unit': 'dBm/Hz',
   'param.noisePsdDbmHz.help':
-    '雜訊功率密度 N₀，即每赫茲頻寬中的雜訊功率，源自接收機的熱雜訊。它與頻寬相乘後構成 SINR 分母的雜訊項 σ² ＝ N₀·B。',
+    '每赫茲頻寬中的接收雜訊強度；它是形成 SINR 分母雜訊項 σ² 的輸入。',
   'param.noisePsdDbmHz.effect':
     '調高（數值變得比較不負）：分母的雜訊項 σ² 變大，SINR 下降；接收訊號本來就弱的連線降幅最明顯。',
 
   'param.frequencyGHz.label': '載波頻率',
   'param.frequencyGHz.unit': 'GHz',
   'param.frequencyGHz.help':
-    '訊號使用的載波頻率 f。自由空間損耗 Lfs 隨頻率平方成長，因此頻率越高，同樣距離下的路徑損耗越大。',
+    '訊號使用的載波頻率；頻率越高，複合有效通道 h_{u,s,v}(t, θ) 通常越弱。',
   'param.frequencyGHz.effect':
-    '調高：自由空間損耗 Lfs 增加，相同距離下分子的接收訊號功率下降，SINR 隨之下降。',
+    '調高：複合有效通道 h_{u,s,v}(t, θ) 可能降低，分子的訊號功率與 SINR 也會下降。',
 
   'param.atmosphericZenithLossDb.label': '大氣吸收損耗（天頂值）',
   'param.atmosphericZenithLossDb.unit': 'dB',
   'param.atmosphericZenithLossDb.help':
-    '訊號穿越大氣層時被氣體分子吸收的損耗 Lg，以衛星位於天頂時的數值為基準。仰角越低，訊號在大氣中的路徑越長，實際損耗越大。',
+    '訊號穿越大氣層時的吸收損耗；它會被收進有效通道 h_{u,s,v}(t, θ)。',
   'param.atmosphericZenithLossDb.effect':
-    '調高：損耗項 Lg 變大，分子的接收訊號功率下降，SINR 隨之下降；低仰角連線的降幅大於高仰角連線。',
+    '調高：有效通道 h_{u,s,v}(t, θ) 變弱，分子的訊號功率與 SINR 隨之下降；低仰角連線通常更敏感。',
 
   'param.scintillationScaleDb.label': '閃爍衰落幅度',
   'param.scintillationScaleDb.unit': 'dB',
   'param.scintillationScaleDb.help':
-    '大氣亂流造成的訊號隨機起伏，此處以一個與仰角相關的餘裕值 Lsc 表示其平均振幅。',
+    '大氣亂流造成的訊號起伏；此因素會被收進有效通道 h_{u,s,v}(t, θ)。',
   'param.scintillationScaleDb.effect':
-    '調高：損耗項 Lsc 變大，分子的接收訊號功率下降，SINR 隨之下降，對應訊號較不穩定的環境。',
+    '調高：有效通道 h_{u,s,v}(t, θ) 變弱，分子的訊號功率與 SINR 隨之下降，代表更不穩定的訊號環境。',
 
   'param.shadowFadingMarginDb.label': '陰影衰落餘裕',
   'param.shadowFadingMarginDb.unit': 'dB',
   'param.shadowFadingMarginDb.help':
-    '訊號被建築物、地形等障礙物遮蔽而額外損失的功率，此處以固定餘裕值 Lsf 表示。',
+    '訊號被建築物、地形等障礙物遮蔽而產生的額外損失；此因素會被收進有效通道 h_{u,s,v}(t, θ)。',
   'param.shadowFadingMarginDb.effect':
-    '調高：損耗項 Lsf 變大，分子的接收訊號功率下降，SINR 隨之下降，對應遮蔽較嚴重的環境。',
+    '調高：有效通道 h_{u,s,v}(t, θ) 變弱，分子的訊號功率與 SINR 隨之下降，代表遮蔽較嚴重的環境。',
 
   'param.tr38811NlosClutterLossDb.label': '非視距雜波損耗（TR 38.811）',
   'param.tr38811NlosClutterLossDb.unit': 'dB',
   'param.tr38811NlosClutterLossDb.help':
-    '在非視距（NLoS）條件下，訊號被建築物、樹木等雜物額外吸收的損耗 Lcl。僅作用於 TR 38.811 公式家族中被判定為 NLoS 的取樣點。',
+    '在非視距（NLoS）條件下，訊號被建築物、樹木等雜物額外吸收的損耗；它會被收進有效通道 h_{u,s,v}(t, θ)。',
   'param.tr38811NlosClutterLossDb.effect':
     '調高：被判定為 NLoS 的取樣點分子訊號功率下降、SINR 下降；判定為 LoS（視距）的取樣點維持原值。',
 
@@ -113,7 +113,7 @@ export const ZH_TW = {
 
   'param.model.label': '波束增益模型',
   'param.model.help':
-    '決定增益隨偏離波束中心角度衰減的函數形狀。Bessel J1/J3、Bessel J1、Flat Top 對應不同的天線孔徑假設。',
+    '決定發射增益 G^T(θ) 隨離軸角 θ 變化的模型形狀。',
   'param.model.effect':
     '切換模型會改變離軸衰減的速率，影響波束邊緣使用者的 SINR；波束中心的最大增益維持不變。',
 
@@ -131,18 +131,18 @@ export const ZH_TW = {
   'param.scanLossAtMaxSteeringDb.effect':
     '調高：偏轉角越大的波束損失越多增益，原本排名較前的候選波束可能因此退出最佳選擇。',
 
-  'param.frequencyReuse.label': '頻率重複使用係數 K',
+  'param.frequencyReuse.label': '頻率重用群組數',
   'param.frequencyReuse.help':
-    '頻率重複使用係數 K 把作用中的波束分成 K 組，僅同組波束之間產生同頻干擾。K 同時是吞吐量公式 R ＝ (B ÷ K)·log₂(1+SINR) 中 B/K 的分母。',
+    '將作用中的波束分成指定數量的頻率重用群組；同組波束才會形成同頻干擾。',
   'param.frequencyReuse.effect':
-    '調小（例如 K=1）：所有波束共用同一頻率，分母的干擾項最大，SINR 下降、換手更難完成。調大：同頻干擾減少、SINR 上升，但每道波束可用的頻寬 B/K 隨之縮小，吞吐量未必同步提高。',
+    '調小：共享頻率的波束增加，總干擾 I_{u,s,v}(t, θ) 可能變大。調大：同頻干擾可能減少，但單一波束的 B^w 也會重新分配。',
 
   // ---------------------------------------------------------------------
   // tab.* — top-level left-panel tabs and their panel headings.
   // ---------------------------------------------------------------------
 
   'tab.sinr.label': 'SINR 訊號與干擾雜訊比',
-  'tab.sinr.heading': 'SINR 的定義',
+  'tab.sinr.heading': 'SINR 公式',
   'tab.energy.label': '能源效率',
 
   // ---------------------------------------------------------------------
@@ -155,7 +155,7 @@ export const ZH_TW = {
   'formula.sinr.fractionHint':
     '分子：服務波束送達的訊號功率。分母：同頻干擾功率與背景雜訊功率之和。',
   'formula.sinr.symbolHelp':
-    'γ 即 SINR。分子 P_t · H · G^T · G^R 是發射功率經過通道衰減與收發天線增益之後，實際送達接收端的訊號功率；分母 I^a + I^b + σ² 是同一時刻的同頻干擾功率與熱雜訊功率之和。比值越大，訊號相對於干擾與雜訊越強。',
+    'γ_{u,s,v}(t, θ) 即 SINR。分子使用鏈路功率 p^r_{u,s,v}(t, θ) 與有效通道 h_{u,s,v}(t, θ)；分母使用總干擾 I_{u,s,v}(t, θ) 與接收雜訊 σ²。比值越大，訊號相對於干擾與雜訊越強。',
   // ---------------------------------------------------------------------
   // kpi.* — right-side info panel readouts (src/ui/InfoPanel.tsx,
   // src/ui/info-panel/DuelCard.tsx) and the read-only noise floor
@@ -200,11 +200,11 @@ export const ZH_TW = {
 
   'kpi.noiseFloor.label': '雜訊底線',
   'kpi.noiseFloor.help':
-    '雜訊底線 σ² ＝ 雜訊功率密度 N₀ × 頻寬 B，是 SINR 分母中與干擾無關、恆定存在的一項。此數值由目前參數計算得出，為唯讀。',
+    '雜訊底線 σ² 是 SINR 分母中與同頻干擾無關的接收雜訊功率，由目前設定形成。',
 
   'kpi.instantaneousEe.label': '瞬時能源效率',
   'kpi.instantaneousEe.help':
-    '此刻所有使用者吞吐量總和除以同一幀的系統功率：Σ_u R_u ÷ P_sys，單位 Mbit/J。它是唯讀的跨使用者即時摘要。',
+    '此刻所有服務鏈路的總吞吐量與共同系統總功率 P^N(t, θ) 的比值，顯示每焦耳可傳送的資料量。',
 
   'kpi.coverage.label': '覆蓋率',
   'kpi.coverage.help':
@@ -262,63 +262,63 @@ export const EN: Record<I18nKey, string> = {
   'param.maxTxPowerDbm.label': 'Satellite transmit power',
   'param.maxTxPowerDbm.unit': 'dBm',
   'param.maxTxPowerDbm.help':
-    'The signal strength each satellite beam transmits, in dBm. It sets the received signal power in the SINR numerator; in watts, P_RF = 10^(P_tx/10) ÷ 1000.',
+    'The satellite beam RF-output setting, in dBm; it affects the link power p^r_{u,s,v}(t, θ) shown in the SINR numerator.',
   'param.maxTxPowerDbm.effect':
     'Raise it: received signal power in the numerator rises, SINR improves, and power draw rises with it. When other co-channel beams rise as well, the interference term in the denominator grows too, so part of the SINR gain is offset.',
 
   'param.ueAntennaMaxGainDbi.label': 'Ground receiver gain',
   'param.ueAntennaMaxGainDbi.unit': 'dBi',
   'param.ueAntennaMaxGainDbi.help':
-    "The receive gain G^R of the user device's antenna — how well it converts the incident wave into usable signal power.",
+    'The user-device receive gain; it is included in the effective channel h_{u,s,v}(t, θ) and is not a separate factor in the simplified SINR formula.',
   'param.ueAntennaMaxGainDbi.effect':
     'Raise it: received signal power increases, so serving and candidate SINR rise together. Satellite transmit power and inter-beam interference are unchanged.',
 
   'param.bandwidthMHz.label': 'Channel bandwidth',
   'param.bandwidthMHz.unit': 'MHz',
   'param.bandwidthMHz.help':
-    'The bandwidth B of this radio channel. It appears in two places: as the numerator of B/K in the throughput formula R = (B ÷ K)·log₂(1+SINR), and in the thermal noise term of the SINR denominator, σ² = N₀·B.',
+    'The bandwidth B^w of this radio channel; it affects the link rate R_{u,s,v}(t, θ) and receiver noise σ².',
   'param.bandwidthMHz.effect':
-    'Widen it: thermal noise σ² in the denominator grows proportionally, so SINR falls if nothing else changes — but the B/K multiplier grows at the same time. Where throughput lands depends on the net of the two.',
+    'Widen it: receiver noise σ² rises and SINR may fall, while the single-beam B^w also rises and changes the link rate.',
 
   'param.noisePsdDbmHz.label': 'Noise power density',
   'param.noisePsdDbmHz.unit': 'dBm/Hz',
   'param.noisePsdDbmHz.help':
-    'Noise power density N₀ — the noise power in each hertz of bandwidth, originating as thermal noise in the receiver. Multiplied by bandwidth it forms the noise term of the SINR denominator, σ² = N₀·B.',
+    'The receiver-noise intensity per hertz of bandwidth; it is an input to the SINR denominator noise term σ².',
   'param.noisePsdDbmHz.effect':
     'Raise it (make it less negative): the noise term σ² in the denominator grows and SINR falls, with the largest drop on links whose received signal is already weak.',
 
   'param.frequencyGHz.label': 'Carrier frequency',
   'param.frequencyGHz.unit': 'GHz',
   'param.frequencyGHz.help':
-    'The carrier frequency f the signal rides on. Free-space loss Lfs grows with the square of frequency, so a higher carrier means more path loss over the same distance.',
+    'The carrier frequency of the signal; increasing it usually weakens the effective channel h_{u,s,v}(t, θ).',
   'param.frequencyGHz.effect':
-    'Raise it: free-space loss Lfs increases, the received signal power in the numerator falls at the same distance, and SINR drops with it.',
+    'Raise it: the effective channel h_{u,s,v}(t, θ) may weaken, reducing numerator signal power and SINR.',
 
   'param.atmosphericZenithLossDb.label': 'Atmospheric absorption (zenith)',
   'param.atmosphericZenithLossDb.unit': 'dB',
   'param.atmosphericZenithLossDb.help':
-    'The loss Lg from gas molecules absorbing the signal as it crosses the atmosphere, referenced to the satellite at zenith. At lower elevation the path through the atmosphere is longer, so the actual loss is greater.',
+    'Signal absorption while crossing the atmosphere; it is included in the effective channel h_{u,s,v}(t, θ).',
   'param.atmosphericZenithLossDb.effect':
-    'Raise it: the loss term Lg grows, received signal power in the numerator falls, and SINR drops — more steeply for low-elevation links than high-elevation ones.',
+    'Raise it: the effective channel h_{u,s,v}(t, θ) weakens, reducing numerator signal power and SINR; low-elevation links are usually more sensitive.',
 
   'param.scintillationScaleDb.label': 'Scintillation fading margin',
   'param.scintillationScaleDb.unit': 'dB',
   'param.scintillationScaleDb.help':
-    'Random fluctuation of the signal caused by atmospheric turbulence, represented here by an elevation-dependent margin Lsc standing for its average amplitude.',
+    'Signal fluctuation caused by atmospheric turbulence; it is included in the effective channel h_{u,s,v}(t, θ).',
   'param.scintillationScaleDb.effect':
-    'Raise it: the loss term Lsc grows, received signal power in the numerator falls, and SINR drops — corresponding to a less stable signal environment.',
+    'Raise it: the effective channel h_{u,s,v}(t, θ) weakens, reducing numerator signal power and SINR and representing a less stable signal environment.',
 
   'param.shadowFadingMarginDb.label': 'Shadow fading margin',
   'param.shadowFadingMarginDb.unit': 'dB',
   'param.shadowFadingMarginDb.help':
-    'Power lost when buildings, terrain, or similar obstacles block the path, represented here by a fixed margin Lsf.',
+    'Additional loss when buildings, terrain, or similar obstacles block the path; it is included in the effective channel h_{u,s,v}(t, θ).',
   'param.shadowFadingMarginDb.effect':
-    'Raise it: the loss term Lsf grows, received signal power in the numerator falls, and SINR drops — corresponding to a more heavily obstructed environment.',
+    'Raise it: the effective channel h_{u,s,v}(t, θ) weakens, reducing numerator signal power and SINR and representing a more obstructed environment.',
 
   'param.tr38811NlosClutterLossDb.label': 'NLoS clutter loss (TR 38.811)',
   'param.tr38811NlosClutterLossDb.unit': 'dB',
   'param.tr38811NlosClutterLossDb.help':
-    'The additional loss Lcl absorbed by clutter such as buildings and trees under non-line-of-sight (NLoS) conditions. It applies only to samples classified NLoS in the TR 38.811 formula family.',
+    'Additional loss from buildings, trees, and similar clutter under non-line-of-sight (NLoS) conditions; it is included in h_{u,s,v}(t, θ).',
   'param.tr38811NlosClutterLossDb.effect':
     'Raise it: for samples classified NLoS, numerator signal power falls and SINR drops; samples classified LoS keep their existing values.',
 
@@ -338,7 +338,7 @@ export const EN: Record<I18nKey, string> = {
 
   'param.model.label': 'Beam gain model',
   'param.model.help':
-    'Sets the shape of the function by which gain rolls off with angle away from beam center. Bessel J1/J3, Bessel J1, and Flat Top correspond to different antenna-aperture assumptions.',
+    'Sets the model shape for the transmit gain G^T(θ) as the off-axis angle θ changes.',
   'param.model.effect':
     'Switching models changes the rate of off-axis roll-off, which affects SINR for users near the beam edge. Peak gain at beam center is unchanged.',
 
@@ -356,18 +356,18 @@ export const EN: Record<I18nKey, string> = {
   'param.scanLossAtMaxSteeringDb.effect':
     'Raise it: beams at larger steering angles lose more gain, which can drop a previously top-ranked candidate beam out of contention.',
 
-  'param.frequencyReuse.label': 'Frequency reuse factor K',
+  'param.frequencyReuse.label': 'Frequency-reuse group count',
   'param.frequencyReuse.help':
-    'The frequency reuse factor K divides the active beams into K groups, so only beams within the same group interfere with each other. K is also the denominator of B/K in the throughput formula R = (B ÷ K)·log₂(1+SINR).',
+    'Divides active beams into the selected number of frequency-reuse groups; only beams in the same group form co-channel interference.',
   'param.frequencyReuse.effect':
-    'Lower it (e.g. K=1): every beam shares one frequency, the interference term in the denominator is at its largest, SINR falls and handovers are harder to complete. Raise it: co-channel interference drops and SINR rises, but the bandwidth B/K available to each beam shrinks, so throughput does not necessarily follow.',
+    'Lower it: more beams share a frequency, so total interference I_{u,s,v}(t, θ) may rise. Raise it: co-channel interference may fall, while single-beam B^w is redistributed.',
 
   // ---------------------------------------------------------------------
   // tab.*
   // ---------------------------------------------------------------------
 
   'tab.sinr.label': 'SINR (signal-to-interference-plus-noise ratio)',
-  'tab.sinr.heading': 'Definition of SINR',
+  'tab.sinr.heading': 'SINR formula',
   'tab.energy.label': 'Energy Efficiency',
 
   // ---------------------------------------------------------------------
@@ -379,7 +379,7 @@ export const EN: Record<I18nKey, string> = {
   'formula.sinr.fractionHint':
     'Numerator: the signal power delivered by the serving beam. Denominator: co-channel interference power plus background noise power.',
   'formula.sinr.symbolHelp':
-    'γ is the SINR. The numerator P_t · H · G^T · G^R is the transmit power after channel loss and the transmit and receive antenna gains — the signal power that actually reaches the receiver. The denominator I^a + I^b + σ² is the co-channel interference power plus thermal noise power at that same instant. The larger the ratio, the stronger the signal relative to interference and noise.',
+    'γ_{u,s,v}(t, θ) is SINR. The numerator uses link power p^r_{u,s,v}(t, θ) and effective channel h_{u,s,v}(t, θ); the denominator uses total interference I_{u,s,v}(t, θ) and receiver noise σ². A larger ratio means a stronger signal relative to interference and noise.',
   // ---------------------------------------------------------------------
   // kpi.*
   // ---------------------------------------------------------------------
@@ -422,11 +422,11 @@ export const EN: Record<I18nKey, string> = {
 
   'kpi.noiseFloor.label': 'Noise floor',
   'kpi.noiseFloor.help':
-    'The noise floor σ² = noise power density N₀ × bandwidth B. It is the term of the SINR denominator that is present regardless of interference. This value is computed from the current settings and is read-only.',
+    'The noise floor σ² is the receiver-noise term in the SINR denominator and is independent of co-channel interference. It is formed from the current settings.',
 
   'kpi.instantaneousEe.label': 'Instantaneous EE',
   'kpi.instantaneousEe.help':
-    "The sum of all user throughput in this frame divided by the same frame's system power: Σ_u R_u ÷ P_sys, in Mbit/J. It is a read-only cross-user instantaneous summary.",
+    'The ratio of total served-link throughput to common system power P^N(t, θ) in this frame, showing how much data is delivered per joule.',
 
   'kpi.coverage.label': 'Coverage',
   'kpi.coverage.help':

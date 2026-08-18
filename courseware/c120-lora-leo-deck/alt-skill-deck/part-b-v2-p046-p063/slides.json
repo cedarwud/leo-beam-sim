@@ -1,0 +1,179 @@
+{
+  "schema": "c120-alt-part-b-v2-p046-p063-manifest-v1",
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "shell": "source slide 2 / slideLayout2.xml only",
+  "background_author_fill": "unset",
+  "fonts": {
+    "cjk": "標楷體",
+    "latin": "Times New Roman"
+  },
+  "title_pt": 28,
+  "primary_body_pt": 24,
+  "minimum_authored_pt": 16,
+  "claim_boundary": "SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED",
+  "pages": [
+    {
+      "order": 1,
+      "source_page": "P046",
+      "title": "A freeze：把 candidate 綁成可追溯 policyfreeze receipt 固定 policy identity；hidden 只接受配對的 checkpoint。A baseline原始 policy固定 scenario／seedcandidate + freezeREST_DURING_GAP = WAIT留下 receipt + checkpointA hiddenpolicy 不再改只換 case 條件receipt｜凍結收據--freeze 產生；記下 policy、scenario、seed role。作用：確認後續 case 使用同一個 policy identity。checkpoint｜策略快照同一 run 保存 .json + .py；可復原前序 policy。作用：identity 不符時停止，不直接進 hidden。freeze_receipt（凍結收據識別）｜來源：candidate stdout／receipt｜作用：配對後續 policy｜單位：hash-like identity｜判讀：對得上才可進 hidden資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P046。A candidate 將 Lab A 的 marked value 改為 WAIT 後，以 `--freeze` 產生 receipt 與 checkpoint。receipt 記錄 policy identity、scenario、seed role 與 active block；checkpoint 保存可復原的 policy source。hidden 不再改 policy，只在同一 frozen identity 下讀取另一個 case。這個 lineage 讓後續差異可以回到條件與事件，而不是混入新的 edit。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若 receipt 或 checkpoint 缺失，先從 baseline policy 還原，重新執行 A candidate 的 `--freeze`；尚未取得配對 identity 前不進 hidden。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 36-39; topic-level redraw only"
+    },
+    {
+      "order": 2,
+      "source_page": "P047",
+      "title": "A hidden：同一 policy，檢查新的 casewithheld case 改變 contact／traffic 條件；frozen policy 保持不變。固定的 policyA checkpoint：REST_DURING_GAP = WAITpolicy edit：0同一 policy identity新的 case 條件才是檢驗因素要讀的 evidenceresult_path 指向本次 result.json同目錄保留 endpoint-replay.jsonservice、delivery、endpoint J：待補數值以同一 run pair 為準同一 policy 在新 case 出現不同結果，結論只描述可被這組條件支持的範圍。withheld（保留 case）｜來源：scenario contract｜作用：檢查條件邊界｜單位：case role｜判讀：不同結果不是新的調參證據資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P047。A hidden 只替換 case 條件，不替換 frozen policy。讀取 command stdout 的 `result_path`，再配對同一 run 目錄的 `endpoint-replay.json`。如果 service、delivery 或 endpoint J 方向改變，這是對條件邊界的資訊；結論不延伸成所有 window 或 traffic 都相同。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若 hidden path 缺失，從 `artifacts/checkpoints/lab-a-frozen.py` 還原 policy，重新執行 exact hidden case，使用新 stdout result_path。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 36-39; topic-level redraw only"
+    },
+    {
+      "order": 3,
+      "source_page": "P048",
+      "title": "Lab A 結論：state、service、J 要一起讀一個數字不能代替因果；先確認 state 怎麼變，再對照 service 與 endpoint J。條件同一 scenarioA frozen identitystateWAIT／SLEEPstate intervalservicedelivery、deadline與 freshness gateendpoint Jradio／processing端點能量SLEEP → WAIT 先改變 state interval，再觀察 packet／service；endpoint J 的變化只在同一 identity、同一 run pair 下解讀。state_interval（狀態區間）｜來源：result events｜作用：把 action 接到時間｜單位：s｜判讀：對照 packet、service、endpoint J資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P048。Lab A 收束時，`state_interval` 來自 result events，單位是秒；它把 WAIT 或 SLEEP 的 action 接到後續時間與 energy bucket。接著讀 packet delivery、service gate 與同一 result 的 `endpoint_energy_j`。這種讀法保留 mechanism、service 與端點 scope，避免把單一 J 值當成完整結論。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若三個 result／replay pair 的 identity 無法配對，回到 A freeze gate，重新取得正確 stdout result_path；不手改 JSON。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 36-39; topic-level redraw only"
+    },
+    {
+      "order": 4,
+      "source_page": "P049",
+      "title": "Lab B：一個 hold 參數，連到整條 energy ledgerLoRaEnergySim 的價值在於把品質觀測、封包事件與端點 energy 放到同一條可追溯鏈。1｜觀測 qualityquality_bandstable_steps2｜模式事件MODE_CHANGE何時進入 send-ready3｜封包結果attempt／retrydelivery／collision4｜端點 energyradio／processingendpoint_energy_jLEO input｜服務窗口service_window 定義合法傳輸機會。它改變可用條件；policy edit 仍只在 endpoint decision block。可解釋的比較同一 scenario 比較 baseline／candidate／withheld。結果仍是 simulated teaching data，不是 live measurement。endpoint_energy_j（端點能量）｜來源：result energy breakdown｜作用：讀 radio／processing 成本｜單位：J｜判讀：不可改稱 LEO/system energy資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P049。Lab B 使用 LoRaEnergySim 的 energy-state vocabulary 來串起 quality observation、MODE_CHANGE、packet outcome 與 endpoint energy。這使 hold 參數不只是品質分數，而能沿事件鏈追問何時進入 send-ready、是否取得傳送機會、是否付出 retry 或 radio／processing 成本。LEO 只提供 changing service window 的情境輸入；本套件的結果是固定 scenario 的 simulated teaching data。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若前序 A policy 不是 frozen，先還原 `artifacts/checkpoints/lab-a-frozen.py`，完成 compile 後再開始 Lab B。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 5,
+      "source_page": "P050",
+      "title": "Lab B：找到唯一可編輯的決策區塊整份檔案保持原樣；本 lab 只改一個 marked block 內的 STABLE_STEPS。檔案位置student_policy.pyrunner 每個固定 step 提供 observation；choose_action() 依條件回傳 action。# === LORA EDITABLE: lab-b-enter-exit-hold ===ENTER_QUALITY = 2EXIT_QUALITY = 1STABLE_STEPS = 2# === LORA END EDITABLE: lab-b-enter-exit-hold ===固定 AREST_DURING_GAP = WAIT固定 CURGENT_MARGIN_S = 20固定執行器runner／scenario／schemasactive_block_id（作用區塊）｜來源：policy／freeze receipt｜作用：鎖定可編輯範圍｜單位：block name｜判讀：不是整份檔案都可改資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P050。Lab B 的實際檔案是 `student_policy.py`，作用區塊是 `lab-b-enter-exit-hold`。ENTER_QUALITY=2 與 EXIT_QUALITY=1 先保持不動；本 lab 的唯一 edit 是 STABLE_STEPS。Lab A 的 frozen block、Lab C block、runner、scenario 與 schema 都是固定條件。這個界線讓後續結果可歸因於一個變數。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若 marked block 或 predecessor identity 與頁面不同，先停止執行，從 A frozen checkpoint 恢復，再檢查 package baseline。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 6,
+      "source_page": "P051",
+      "title": "Lab B：Before 的 baseline先以原始 STABLE_STEPS = 2 建立 Trace A baseline；這頁只讀 code，不先宣稱結果。# === LORA EDITABLE: lab-b-enter-exit-hold ===ENTER_QUALITY = 2EXIT_QUALITY = 1STABLE_STEPS = 2# === LORA END EDITABLE: lab-b-enter-exit-hold ===固定門檻ENTER_QUALITY = 2品質達 2 才有進入資格。保持門檻EXIT_QUALITY = 1已進入後維持 1 或以上，不因小幅下降立即退出。STABLE_STEPS（穩定步數）｜來源：student_policy.py B block｜作用：限制進入時機｜單位：step｜判讀：baseline 需要連續 2 次觀測資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P051。Before code 顯示 B marked block 的五行相關內容。ENTER_QUALITY=2 定義品質達標；EXIT_QUALITY=1 定義已進入後的保持下限。STABLE_STEPS=2 則要求同一正品質連續出現兩個固定 step，才可進入 send-ready。只有這個數值屬於本頁之後的 edit。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。先保持 baseline policy 不變，執行 Trace A baseline；stdout 印出的 result_path 是之後比較的基準。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 7,
+      "source_page": "P052",
+      "title": "Lab B：After 的 candidate唯一 edit：STABLE_STEPS 從 2 改成 1；其它行、其它 block、其它檔案保持原樣。# === LORA EDITABLE: lab-b-enter-exit-hold ===ENTER_QUALITY = 2EXIT_QUALITY = 1STABLE_STEPS = 1# === LORA END EDITABLE: lab-b-enter-exit-hold ===one-line diffBefore：STABLE_STEPS = 2After：STABLE_STEPS = 1保持不變ENTER=2、EXIT=1、A frozen block、C block、runner、scenario、schemas。STABLE_STEPS（穩定步數）｜來源：student_policy.py B block｜作用：改變進入 timing｜單位：step｜判讀：candidate 只保留 1 次觀測資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P052。After code 顯示相同的 B block，只有數字 1 被標示為 changed value。ENTER_QUALITY、EXIT_QUALITY、中文註解、Lab A frozen block、Lab C block、runner、scenario、schemas 與檔案格式都保持原樣。這是一個 bounded edit；候選效果要由 Trace A candidate 的事件與結果驗證。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。存檔後先做 compile，再執行 Trace A candidate 的 `--freeze`；若多於一個值改變，回到 baseline policy 重做。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 8,
+      "source_page": "P053",
+      "title": "Lab B：兩個穩定觀測 versus 一個相同 quality trace 下，hold 的差別是進入 send-ready 的時間；不是直接指定封包成功。baseline：兩次確認第 1 次品質達 2第 2 次品質仍穩定第 2 次完成 → MODE_CHANGE短暫 spike 不會立刻進入candidate：一次確認第 1 次品質達 2第 1 次完成 → MODE_CHANGE可能提早一個固定 stepMODE_CHANGE（模式切換事件）｜來源：result events／replay｜作用：確認進入 timing｜單位：event｜判讀：再對照 packet、service、J資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P053。Baseline 的 STABLE_STEPS=2 需要兩個連續穩定觀測；第一次達標只開始累積，第二次仍穩定才記錄 MODE_CHANGE。Candidate 的值為 1，第一次達標就可能進入 send-ready。這個機制只改變 decision timing；封包是否送達仍由窗口、runner 與 packet outcome 決定。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。Trace A 要讀 MODE_CHANGE 的時間，再讀 packet、service 與 endpoint J；若沒有事件證據，不把 timing prediction 當成結果。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 9,
+      "source_page": "P054",
+      "title": "Trace A：先建立可驗證的比較A frozen predecessor 固定；先跑 baseline，再跑 candidate freeze，最後以同一 policy 做 Trace B。baselineA frozenB：STABLE_STEPS=2不加 freezecandidate只改 B：2→1Trace A建立 freezewithheld保持 B frozenTrace B 新 case不再調參baseline prediction較晚進入；可能少一次早期嘗試。candidate prediction較早進入；service opportunity 可能增加，也可能付出更多 radio／processing。判讀規則只有 event → packet → service → J 的配對才支持因果句。policy lineage（策略脈絡）｜來源：freeze receipt／checkpoint｜作用：固定比較前提｜單位：identity｜判讀：baseline／candidate／withheld 不混 policy資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P054。Trace A 比較的前提是 A frozen predecessor。Baseline 使用 STABLE_STEPS=2；candidate 只改為 1，並以 `--freeze` 產生 B checkpoint；Trace B 維持這個 frozen policy，改看 withheld case。預測是可被反駁的工作假設：較早進入可能增加 service opportunity，也可能增加 radio／processing 成本。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。執行順序不可交換；candidate freeze 缺失時不進 Trace B，先恢復 A checkpoint 並重跑 candidate freeze。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 10,
+      "source_page": "P055",
+      "title": "Trace A 與 Trace B：Linux／macOS 終端機下列命令在 package 根目錄執行；WSL 也使用這組 Linux 指令，stdout 會印出 result_path。Trace A baseline｜原始 B policybash course.sh run --lab B --case trace-a-baselineTrace A candidate｜2→1 + freezebash course.sh run --lab B --case trace-a-candidate --freezeTrace B｜保持 B frozen 的 withheld casebash course.sh run --lab B --case trace-bresult_path（結果路徑）｜來源：command stdout｜作用：選取本次 result.json｜單位：file path｜判讀：不要自行猜 run directory資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P055。Linux 與 macOS 終端機使用 `bash course.sh`；WSL 同樣使用這組 Linux launcher。第一條建立 Trace A baseline；第二條在 STABLE_STEPS=1 的 policy 下建立 candidate freeze；第三條保持 B frozen 執行 Trace B。每一條成功命令都在 stdout 印出本次 `result_path`，後續以該路徑找 result.json。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若命令失敗，保留 stdout／stderr；candidate freeze 缺失時不執行 Trace B，先回到 A checkpoint 並重做 candidate。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 11,
+      "source_page": "P056",
+      "title": "同一流程：Windows PowerShell／Command PromptWindows 使用相同參數；PowerShell 與 Command Prompt 只替換 launcher 名稱。PowerShell｜.\\course.cmd.\\course.cmd run --lab B --case trace-a-baseline.\\course.cmd run --lab B --case trace-a-candidate --freeze.\\course.cmd run --lab B --case trace-bCommand Prompt｜course.cmdcourse.cmd run --lab B --case trace-a-baselinecourse.cmd run --lab B --case trace-a-candidate --freezecourse.cmd run --lab B --case trace-bbaseline → candidate --freeze → Trace B；每次 stdout 都保存新的 result_pathlauncher（執行器入口）｜來源：Windows shell｜作用：呼叫同一 course contract｜單位：command｜判讀：PowerShell 與 Command Prompt 不混用語法資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P056。Windows PowerShell 以 ` .\\course.cmd ` 呼叫三個 Lab B cases；Command Prompt 以 `course.cmd` 呼叫同樣三個參數。PowerShell 版本的前綴包含 `.` 與反斜線；Command Prompt 版本不含這個前綴。案例順序保持 baseline、candidate `--freeze`、Trace B，stdout 仍是 result_path 的唯一選取入口。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若 shell 解析錯誤，改用該 shell 的完整 launcher，不混用引號或換行；保留錯誤後重新執行 exact case。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 12,
+      "source_page": "P057",
+      "title": "每次 run 都產生一對可追溯檔案runner 的輸出不是一個孤立數字；result 與 replay 共同保留同一 run identity。stdout命令列印出result_pathresult.jsonsummary、events、policy／scenario identityendpoint-replay.json同目錄的 state、queue、packet replayrun directoryartifacts/<run_id>/result.json同目錄的 endpoint-replay.json 必須保留。freeze 時多一層 lineage--freeze 另寫 receipt 與 checkpoint。checkpoint 是 policy source，不是結果檔。endpoint-replay.json（端點事件回放）｜來源：same run directory｜作用：重現 state／queue／packet｜單位：JSON artifact｜判讀：不可與另一 run 混配資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P057。每次成功 run 的 stdout 都會印出 `result_path`。該路徑指向 `artifacts/<run_id>/result.json`；同一目錄的 `endpoint-replay.json` 保存 state、queue 與 packet 的回放資料。candidate 加上 `--freeze` 時，另外保存 receipt 與 checkpoint。policy checkpoint 用來恢復 lineage，不能代替遺失的 result。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若 result 或 replay 缺一，保留原始 stdout path，不手改 JSON；回到最後一個有效 checkpoint，重跑 exact case 取得新的 pair。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 13,
+      "source_page": "P058",
+      "title": "讀取結果：先看 service，再看 packet、state、endpoint J服務是否完成是第一個判斷；後面三層用來解釋成功、失敗與 energy trade-off。1SERVICEdeadline／freshness／delivery先判斷服務 gate2PACKETattempt／retry／collision說明交付成本3STATEMODE_CHANGE、WAIT／SLEEP說明 timing4ENDPOINT Jradio／processing J只代表端點 scopeservice FAIL 時，較小的 endpoint J 不能把服務失敗改寫成成功。service_pass（服務布林狀態）｜來源：result summary／service gate｜作用：先判斷 deadline、freshness、delivery｜單位：true／false｜判讀：PASS 才進入 trade-off 解釋資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P058。結果判讀固定採四層順序。第一層 service 讀 deadline、freshness 與 delivery；第二層 packet 讀 attempted、retry、collision 與 delivered；第三層 state 讀 MODE_CHANGE 與 WAIT／SLEEP／PROCESS／TX／RX 的時間；第四層讀 endpoint_energy_j。endpoint J 只描述 endpoint radio／processing scope，不是 LEO 或整個 system energy。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若 service_pass、packet 或 state 欄位缺失，先確認 result／replay 是同一 run pair，再進行解讀。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 14,
+      "source_page": "P059",
+      "title": "Trace A：candidate 送達增加，但 service 仍未通過current evidence 將 baseline 與 candidate 放在同一條 service → packet → state → J 判讀鏈。Trace A baseline｜STABLE_STEPS = 2service_pass：falsedelivered：1／4　expired：3retries：1　collisions：1endpoint_energy_j：8.86 JTrace A candidate｜STABLE_STEPS = 1service_pass：falsedelivered：3／4　expired：1retries：1　collisions：1endpoint_energy_j：10.66 Jcandidate：送達 1／4 → 3／4、逾時 3 → 1；endpoint J 8.86 → 10.66（+1.80 J），service 仍為 false。MODE_CHANGE（模式切換事件）｜來源：result events｜作用：連接 edit 與 service timing｜單位：event time｜判讀：先填事件，再填 packet／service／J資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "current local evidence embedded; no screenshot",
+      "speaker_note": "P059。Trace A current evidence 顯示：STABLE_STEPS 由 2 改成 1 後，delivered 從 1/4 增至 3/4，expired 從 3 降至 1；retries 與 collisions 都維持 1。endpoint energy 從 8.86 J 增至 10.66 J，增加 1.80 J，但 service_pass 仍為 false。因此 candidate 改善送達數，不等於完成 service gate。 這組數值來自 current Trace A baseline／candidate result pair；後續仍以同一 run 的 replay 對照 MODE_CHANGE 與 state interval，不把 service false 寫成成功。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 15,
+      "source_page": "P060",
+      "title": "Trace B：frozen candidate 仍未通過 serviceTrace B 使用同一個 frozen candidate；新的 case 顯示條件邊界，而不是整體改善證據。Trace A candidate｜frozen policySTABLE_STEPS = 1delivered：3／4　expired：1service_pass：falseendpoint_energy_j：10.66 JTrace B｜withheld evidence同一 frozen policy；case 條件改變delivered：1／3　expired：2service_pass：falseendpoint_energy_j：5.43 JTrace B service_pass 仍為 false；不能把單一 J 值 5.43 宣稱為整體改善。withheld（保留條件）｜來源：Trace B scenario contract｜作用：檢驗外推邊界｜單位：case role｜判讀：frozen policy 不因結果改寫資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "current local evidence embedded; no screenshot",
+      "speaker_note": "P060。Trace B 沿用 Trace A candidate 的 frozen policy，但 current evidence 顯示 delivered 只有 1/3、expired 為 2、service_pass 仍為 false、endpoint energy 為 5.43 J。Trace B 沒有通過 service，因此 5.43 J 只能描述這個 withheld case 的端點成本，不能覆蓋服務失敗，也不能支持整體改善。 保持 B checkpoint 與 policy identity 不變；若 B evidence pair 缺失，先恢復 A predecessor，重新執行 Trace A candidate `--freeze`，再跑 Trace B。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 16,
+      "source_page": "P061",
+      "title": "Lab B 結論：送達增加，service 仍未通過LoRaEnergySim energy ledger 顯示 candidate 的送達收益伴隨端點成本；Trace B 未通過 service。Trace A｜送達變化baseline：delivered 1／4candidate：delivered 3／4expired：3 → 1service_pass：false → falseTrace A｜端點成本endpoint J：8.86 → 10.66增加：+1.80 Jretries：1 → 1collisions：1 → 1Trace B｜主張邊界frozen candidatedelivered：1／3expired：2；J：5.43service_pass：false結論句：candidate 增加送達但增加 energy，且仍未 service pass；Trace B 未通過，不能宣稱整體改善。claim ceiling（主張上限）｜來源：Trace A／Trace B pairs｜作用：界定可外推範圍｜單位：condition set｜判讀：J 變小不覆蓋 service failure資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "current local evidence embedded; no screenshot",
+      "speaker_note": "P061。current evidence 的 Lab B 結論是條件式的：Trace A candidate 將 delivered 從 1/4 提高到 3/4、expired 從 3 降到 1，但 endpoint energy 從 8.86 J 增至 10.66 J，且 service_pass 仍為 false。Trace B 使用 frozen candidate，delivered 只有 1/3、expired 為 2、endpoint energy 為 5.43 J，service_pass 同樣為 false。因此 candidate 增加送達並不等於整體改善；Trace B 未通過 service，不能宣稱跨 case 的改善。LoRaEnergySim energy ledger 的幫助在於把這個送達／成本／服務 trade-off 放在同一條可追溯鏈。 保留 B freeze 與兩組 result／replay identity；若欄位不符，回到 B freeze gate，不重新改 policy。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 11-12; topic-level redraw only"
+    },
+    {
+      "order": 17,
+      "source_page": "P062",
+      "title": "中斷時：先恢復 policy，再重跑 exact casepolicy checkpoint 只恢復 lineage；compile 後重新 run，才會產生新的 result_path。01｜copy放回最後有效A／B checkpoint02｜compile確認 policy語法可載入03｜exact rerun同一 case不改 runner／JSON04｜new pair保存新的 path配對 replayLinux／macOS 終端機／WSLcp artifacts/checkpoints/lab-b-frozen.py student_policy.py.venv/bin/python -m py_compile student_policy.pyWindows Command Promptcopy /Y artifacts\\checkpoints\\lab-b-frozen.py student_policy.py.venv\\Scripts\\python.exe -m py_compile student_policy.pycheckpoint（策略快照）｜來源：artifacts/checkpoints｜作用：恢復 policy lineage｜單位：Python source｜判讀：不會復原遺失的 result資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P062。中斷復原分成 copy、compile、exact rerun、new pair 四步。Linux／macOS 終端機與 WSL 使用 cp 和 `.venv/bin/python`；Windows Command Prompt 使用 copy /Y 和 `.venv\\Scripts\\python.exe`。copy 只恢復 B frozen policy，compile 只確認語法；同一 case 重新 run 才會取得新的 result_path 與同目錄 replay。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若缺少 result 或 replay，不手改 artifact；從最後一個 identity 正確的 checkpoint 恢復，依原 case contract 重新執行。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 70-75; topic-level redraw only"
+    },
+    {
+      "order": 18,
+      "source_page": "P063",
+      "title": "result.json 匯入 /course：驗證後才進 workbook網站接收 runner 的 result.json；驗證 identity 後讀取配對 replay，保存可回溯的比較紀錄。1｜選檔stdout result_path選該次 result.json2｜驗證schema／identity／units不符就 fail closed3｜回放同目錄 endpoint-replay.jsonstate／queue／packet4｜保存service → packet → state → J寫入 workbook lineage網站讀取／保存讀 result.json 並驗證；materialize 同 run replay。保存 baseline／candidate／withheld lineage。網站不做的事不接收或執行 student_policy.py；不把 endpoint J 改稱 LEO／system energy。result.json（執行結果）｜來源：runner stdout result_path｜作用：匯入 /course 的 evidence｜單位：JSON artifact｜判讀：與 endpoint replay 同 run 配對資料界線：固定 scenario 的 simulated teaching data；結果以本次 stdout result_path 與同目錄 replay 為準",
+      "layout": "slideLayout2.xml",
+      "evidence_status": "待補：no screenshot or fabricated run result embedded",
+      "speaker_note": "P063。匯入 /course 時，選擇 stdout 的 `result_path` 所指向的 `result.json`，不要上傳 policy source。網站驗證 schema、scenario、case、units、policy lineage 與 provenance；通過後讀取同一目錄的 `endpoint-replay.json`，把 service、packet、state 與 endpoint J 保存到 workbook。讀取順序仍是 service → packet → state → endpoint J。identity、unit 或 provenance 不符時 fail closed，原 workbook 不變。 目前 evidence 尚待取得，數值欄位維持待補；讀取時使用本次 stdout 印出的 result_path，並以同一產物目錄的 endpoint-replay.json 配對。若匯入失敗，保留錯誤與原始 stdout path；回到中斷復原步驟重跑 exact case，取得新的 result／replay pair，不手改 JSON。 資料分類維持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "donor_source": "donor-analysis/donor-insertion-map.md:e2 70-75; topic-level redraw only"
+    }
+  ]
+}

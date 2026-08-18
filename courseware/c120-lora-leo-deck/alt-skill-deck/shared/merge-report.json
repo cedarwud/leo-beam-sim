@@ -1,0 +1,610 @@
+{
+  "status": "INITIAL_MERGED_REVIEW",
+  "output": "/home/u24/demo/leo-beam-sim/courseware/LoRaEnergySim-LEO-ALT-REVIEW.pptx",
+  "input_counts": {
+    "part_a": 33,
+    "part_b": 36,
+    "part_c": 34,
+    "appendix_available": 19
+  },
+  "base_total": 103,
+  "appendix_selected_source_slides": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    8,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    19
+  ],
+  "final_slide_count": 116,
+  "maximum_slide_contract": 116,
+  "source_map": [
+    {
+      "final_slide": 1,
+      "source_deck": "Part A",
+      "source_slide": 1
+    },
+    {
+      "final_slide": 2,
+      "source_deck": "Part A",
+      "source_slide": 2
+    },
+    {
+      "final_slide": 3,
+      "source_deck": "Part A",
+      "source_slide": 3
+    },
+    {
+      "final_slide": 4,
+      "source_deck": "Part A",
+      "source_slide": 4
+    },
+    {
+      "final_slide": 5,
+      "source_deck": "Part A",
+      "source_slide": 5
+    },
+    {
+      "final_slide": 6,
+      "source_deck": "Part A",
+      "source_slide": 6
+    },
+    {
+      "final_slide": 7,
+      "source_deck": "Part A",
+      "source_slide": 7
+    },
+    {
+      "final_slide": 8,
+      "source_deck": "Part A",
+      "source_slide": 8
+    },
+    {
+      "final_slide": 9,
+      "source_deck": "Part A",
+      "source_slide": 9
+    },
+    {
+      "final_slide": 10,
+      "source_deck": "Part A",
+      "source_slide": 10
+    },
+    {
+      "final_slide": 11,
+      "source_deck": "Part A",
+      "source_slide": 11
+    },
+    {
+      "final_slide": 12,
+      "source_deck": "Part A",
+      "source_slide": 12
+    },
+    {
+      "final_slide": 13,
+      "source_deck": "Part A",
+      "source_slide": 13
+    },
+    {
+      "final_slide": 14,
+      "source_deck": "Part A",
+      "source_slide": 14
+    },
+    {
+      "final_slide": 15,
+      "source_deck": "Part A",
+      "source_slide": 15
+    },
+    {
+      "final_slide": 16,
+      "source_deck": "Part A",
+      "source_slide": 16
+    },
+    {
+      "final_slide": 17,
+      "source_deck": "Part A",
+      "source_slide": 17
+    },
+    {
+      "final_slide": 18,
+      "source_deck": "Part A",
+      "source_slide": 18
+    },
+    {
+      "final_slide": 19,
+      "source_deck": "Part A",
+      "source_slide": 19
+    },
+    {
+      "final_slide": 20,
+      "source_deck": "Part A",
+      "source_slide": 20
+    },
+    {
+      "final_slide": 21,
+      "source_deck": "Part A",
+      "source_slide": 21
+    },
+    {
+      "final_slide": 22,
+      "source_deck": "Part A",
+      "source_slide": 22
+    },
+    {
+      "final_slide": 23,
+      "source_deck": "Part A",
+      "source_slide": 23
+    },
+    {
+      "final_slide": 24,
+      "source_deck": "Part A",
+      "source_slide": 24
+    },
+    {
+      "final_slide": 25,
+      "source_deck": "Part A",
+      "source_slide": 25
+    },
+    {
+      "final_slide": 26,
+      "source_deck": "Part A",
+      "source_slide": 26
+    },
+    {
+      "final_slide": 27,
+      "source_deck": "Part A",
+      "source_slide": 27
+    },
+    {
+      "final_slide": 28,
+      "source_deck": "Part A",
+      "source_slide": 28
+    },
+    {
+      "final_slide": 29,
+      "source_deck": "Part A",
+      "source_slide": 29
+    },
+    {
+      "final_slide": 30,
+      "source_deck": "Part A",
+      "source_slide": 30
+    },
+    {
+      "final_slide": 31,
+      "source_deck": "Part A",
+      "source_slide": 31
+    },
+    {
+      "final_slide": 32,
+      "source_deck": "Part A",
+      "source_slide": 32
+    },
+    {
+      "final_slide": 33,
+      "source_deck": "Part A",
+      "source_slide": 33
+    },
+    {
+      "final_slide": 34,
+      "source_deck": "Part B",
+      "source_slide": 1
+    },
+    {
+      "final_slide": 35,
+      "source_deck": "Part B",
+      "source_slide": 2
+    },
+    {
+      "final_slide": 36,
+      "source_deck": "Part B",
+      "source_slide": 3
+    },
+    {
+      "final_slide": 37,
+      "source_deck": "Part B",
+      "source_slide": 4
+    },
+    {
+      "final_slide": 38,
+      "source_deck": "Part B",
+      "source_slide": 5
+    },
+    {
+      "final_slide": 39,
+      "source_deck": "Part B",
+      "source_slide": 6
+    },
+    {
+      "final_slide": 40,
+      "source_deck": "Part B",
+      "source_slide": 7
+    },
+    {
+      "final_slide": 41,
+      "source_deck": "Part B",
+      "source_slide": 8
+    },
+    {
+      "final_slide": 42,
+      "source_deck": "Part B",
+      "source_slide": 9
+    },
+    {
+      "final_slide": 43,
+      "source_deck": "Part B",
+      "source_slide": 10
+    },
+    {
+      "final_slide": 44,
+      "source_deck": "Part B",
+      "source_slide": 11
+    },
+    {
+      "final_slide": 45,
+      "source_deck": "Part B",
+      "source_slide": 12
+    },
+    {
+      "final_slide": 46,
+      "source_deck": "Part B",
+      "source_slide": 13
+    },
+    {
+      "final_slide": 47,
+      "source_deck": "Part B",
+      "source_slide": 14
+    },
+    {
+      "final_slide": 48,
+      "source_deck": "Part B",
+      "source_slide": 15
+    },
+    {
+      "final_slide": 49,
+      "source_deck": "Part B",
+      "source_slide": 16
+    },
+    {
+      "final_slide": 50,
+      "source_deck": "Part B",
+      "source_slide": 17
+    },
+    {
+      "final_slide": 51,
+      "source_deck": "Part B",
+      "source_slide": 18
+    },
+    {
+      "final_slide": 52,
+      "source_deck": "Part B",
+      "source_slide": 19
+    },
+    {
+      "final_slide": 53,
+      "source_deck": "Part B",
+      "source_slide": 20
+    },
+    {
+      "final_slide": 54,
+      "source_deck": "Part B",
+      "source_slide": 21
+    },
+    {
+      "final_slide": 55,
+      "source_deck": "Part B",
+      "source_slide": 22
+    },
+    {
+      "final_slide": 56,
+      "source_deck": "Part B",
+      "source_slide": 23
+    },
+    {
+      "final_slide": 57,
+      "source_deck": "Part B",
+      "source_slide": 24
+    },
+    {
+      "final_slide": 58,
+      "source_deck": "Part B",
+      "source_slide": 25
+    },
+    {
+      "final_slide": 59,
+      "source_deck": "Part B",
+      "source_slide": 26
+    },
+    {
+      "final_slide": 60,
+      "source_deck": "Part B",
+      "source_slide": 27
+    },
+    {
+      "final_slide": 61,
+      "source_deck": "Part B",
+      "source_slide": 28
+    },
+    {
+      "final_slide": 62,
+      "source_deck": "Part B",
+      "source_slide": 29
+    },
+    {
+      "final_slide": 63,
+      "source_deck": "Part B",
+      "source_slide": 30
+    },
+    {
+      "final_slide": 64,
+      "source_deck": "Part B",
+      "source_slide": 31
+    },
+    {
+      "final_slide": 65,
+      "source_deck": "Part B",
+      "source_slide": 32
+    },
+    {
+      "final_slide": 66,
+      "source_deck": "Part B",
+      "source_slide": 33
+    },
+    {
+      "final_slide": 67,
+      "source_deck": "Part B",
+      "source_slide": 34
+    },
+    {
+      "final_slide": 68,
+      "source_deck": "Part B",
+      "source_slide": 35
+    },
+    {
+      "final_slide": 69,
+      "source_deck": "Part B",
+      "source_slide": 36
+    },
+    {
+      "final_slide": 70,
+      "source_deck": "Part C",
+      "source_slide": 1
+    },
+    {
+      "final_slide": 71,
+      "source_deck": "Part C",
+      "source_slide": 2
+    },
+    {
+      "final_slide": 72,
+      "source_deck": "Part C",
+      "source_slide": 3
+    },
+    {
+      "final_slide": 73,
+      "source_deck": "Part C",
+      "source_slide": 4
+    },
+    {
+      "final_slide": 74,
+      "source_deck": "Part C",
+      "source_slide": 5
+    },
+    {
+      "final_slide": 75,
+      "source_deck": "Part C",
+      "source_slide": 6
+    },
+    {
+      "final_slide": 76,
+      "source_deck": "Part C",
+      "source_slide": 7
+    },
+    {
+      "final_slide": 77,
+      "source_deck": "Part C",
+      "source_slide": 8
+    },
+    {
+      "final_slide": 78,
+      "source_deck": "Part C",
+      "source_slide": 9
+    },
+    {
+      "final_slide": 79,
+      "source_deck": "Part C",
+      "source_slide": 10
+    },
+    {
+      "final_slide": 80,
+      "source_deck": "Part C",
+      "source_slide": 11
+    },
+    {
+      "final_slide": 81,
+      "source_deck": "Part C",
+      "source_slide": 12
+    },
+    {
+      "final_slide": 82,
+      "source_deck": "Part C",
+      "source_slide": 13
+    },
+    {
+      "final_slide": 83,
+      "source_deck": "Part C",
+      "source_slide": 14
+    },
+    {
+      "final_slide": 84,
+      "source_deck": "Part C",
+      "source_slide": 15
+    },
+    {
+      "final_slide": 85,
+      "source_deck": "Part C",
+      "source_slide": 16
+    },
+    {
+      "final_slide": 86,
+      "source_deck": "Part C",
+      "source_slide": 17
+    },
+    {
+      "final_slide": 87,
+      "source_deck": "Part C",
+      "source_slide": 18
+    },
+    {
+      "final_slide": 88,
+      "source_deck": "Part C",
+      "source_slide": 19
+    },
+    {
+      "final_slide": 89,
+      "source_deck": "Part C",
+      "source_slide": 20
+    },
+    {
+      "final_slide": 90,
+      "source_deck": "Part C",
+      "source_slide": 21
+    },
+    {
+      "final_slide": 91,
+      "source_deck": "Part C",
+      "source_slide": 22
+    },
+    {
+      "final_slide": 92,
+      "source_deck": "Part C",
+      "source_slide": 23
+    },
+    {
+      "final_slide": 93,
+      "source_deck": "Part C",
+      "source_slide": 24
+    },
+    {
+      "final_slide": 94,
+      "source_deck": "Part C",
+      "source_slide": 25
+    },
+    {
+      "final_slide": 95,
+      "source_deck": "Part C",
+      "source_slide": 26
+    },
+    {
+      "final_slide": 96,
+      "source_deck": "Part C",
+      "source_slide": 27
+    },
+    {
+      "final_slide": 97,
+      "source_deck": "Part C",
+      "source_slide": 28
+    },
+    {
+      "final_slide": 98,
+      "source_deck": "Part C",
+      "source_slide": 29
+    },
+    {
+      "final_slide": 99,
+      "source_deck": "Part C",
+      "source_slide": 30
+    },
+    {
+      "final_slide": 100,
+      "source_deck": "Part C",
+      "source_slide": 31
+    },
+    {
+      "final_slide": 101,
+      "source_deck": "Part C",
+      "source_slide": 32
+    },
+    {
+      "final_slide": 102,
+      "source_deck": "Part C",
+      "source_slide": 33
+    },
+    {
+      "final_slide": 103,
+      "source_deck": "Part C",
+      "source_slide": 34
+    },
+    {
+      "final_slide": 104,
+      "source_deck": "Appendix",
+      "source_slide": 1
+    },
+    {
+      "final_slide": 105,
+      "source_deck": "Appendix",
+      "source_slide": 2
+    },
+    {
+      "final_slide": 106,
+      "source_deck": "Appendix",
+      "source_slide": 3
+    },
+    {
+      "final_slide": 107,
+      "source_deck": "Appendix",
+      "source_slide": 4
+    },
+    {
+      "final_slide": 108,
+      "source_deck": "Appendix",
+      "source_slide": 5
+    },
+    {
+      "final_slide": 109,
+      "source_deck": "Appendix",
+      "source_slide": 8
+    },
+    {
+      "final_slide": 110,
+      "source_deck": "Appendix",
+      "source_slide": 12
+    },
+    {
+      "final_slide": 111,
+      "source_deck": "Appendix",
+      "source_slide": 13
+    },
+    {
+      "final_slide": 112,
+      "source_deck": "Appendix",
+      "source_slide": 14
+    },
+    {
+      "final_slide": 113,
+      "source_deck": "Appendix",
+      "source_slide": 15
+    },
+    {
+      "final_slide": 114,
+      "source_deck": "Appendix",
+      "source_slide": 16
+    },
+    {
+      "final_slide": 115,
+      "source_deck": "Appendix",
+      "source_slide": 17
+    },
+    {
+      "final_slide": 116,
+      "source_deck": "Appendix",
+      "source_slide": 19
+    }
+  ]
+}

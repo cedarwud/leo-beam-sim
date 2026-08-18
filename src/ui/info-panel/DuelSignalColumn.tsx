@@ -12,6 +12,7 @@ import type { GlyphKind } from '../../contracts/glyphTypes';
 import { PanelBeamIdentity } from './Identity';
 import { PanelHelp, usePanelCopy } from './panelHelp';
 import { StatusBadge, type StatusBadgeTone } from './StatusBadge';
+import { InlineFormulaFraction } from '../signal-tuning/FormulaHeader';
 
 // P1e (c) audit-list hook (PR-0.5 backfill): `channelMetricLabelForKind` is
 // imported so the bare numeric SINR readout below can later branch its label
@@ -403,7 +404,13 @@ export function DuelSignalColumn({
           helpId={helpKeys.sinrHelpId}
           titleKey={helpKeys.sinrTitleKey}
           bodyKey={helpKeys.sinrBodyKey}
-          formula={<>γ = S / (I<sup>a</sup> + I<sup>b</sup> + σ²)</>}
+          formula={(
+            <>γ<sub>u,s,v</sub>(t, θ) = <InlineFormulaFraction
+              numerator={<><i>p</i><sup>r</sup><sub>u,s,v</sub>(t, θ) · h<sub>u,s,v</sub>(t, θ)</>}
+              denominator={<>I<sub>u,s,v</sub>(t, θ) + σ²</>}
+              label="link power times effective channel divided by total interference plus noise"
+            /></>
+          )}
           meta={<>{t('common.unit.db')} · {t('formula.sinr.caption')}</>}
         />
       </div>

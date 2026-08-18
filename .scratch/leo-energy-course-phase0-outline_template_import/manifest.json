@@ -1,0 +1,336 @@
+{
+  "source": {
+    "pptx": "/home/u24/demo/leo-beam-sim/.scratch/leo-energy-course-phase0-outline.pptx",
+    "name": "leo-energy-course-phase0-outline.pptx"
+  },
+  "slideSize": {
+    "width_emu": 12192000,
+    "height_emu": 6858000,
+    "width_px": 1280,
+    "height_px": 720
+  },
+  "theme": {
+    "colors": {
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#44546A",
+      "lt2": "#E7E6E6",
+      "accent1": "#4472C4",
+      "accent2": "#ED7D31",
+      "accent3": "#A5A5A5",
+      "accent4": "#FFC000",
+      "accent5": "#5B9BD5",
+      "accent6": "#70AD47",
+      "hlink": "#0563C1",
+      "folHlink": "#954F72"
+    },
+    "fonts": {
+      "majorLatin": "Noto Sans TC",
+      "minorLatin": "Noto Sans TC"
+    }
+  },
+  "assets": {
+    "exportDir": "assets",
+    "commonAssets": [],
+    "allAssets": [],
+    "assetMap": {}
+  },
+  "pageTypeCandidates": {
+    "content_candidate": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "cover_candidate": [
+      1
+    ],
+    "ending_candidate": [
+      8
+    ]
+  },
+  "layouts": [
+    {
+      "path": "ppt/slideLayouts/slideLayout1.xml",
+      "name": "slideLayout1.xml",
+      "displayName": "DEFAULT",
+      "layoutType": null,
+      "svgFile": "layout_01_slideLayout1.svg",
+      "parentPath": "ppt/slideMasters/slideMaster1.xml",
+      "themePath": null,
+      "theme": null,
+      "backgroundAsset": null,
+      "imageAssets": [],
+      "shapeImageAssets": [],
+      "placeholders": [],
+      "textSamples": [],
+      "textCount": 0,
+      "shapeCount": 2,
+      "drawableShapeCount": 0,
+      "usedBySlides": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "showMasterShapes": true
+    }
+  ],
+  "masters": [
+    {
+      "path": "ppt/slideMasters/slideMaster1.xml",
+      "name": "slideMaster1.xml",
+      "displayName": "slideMaster1",
+      "layoutType": null,
+      "svgFile": "master_01_slideMaster1.svg",
+      "parentPath": null,
+      "themePath": "ppt/theme/theme1.xml",
+      "theme": {
+        "colors": {
+          "dk1": "#000000",
+          "lt1": "#FFFFFF",
+          "dk2": "#44546A",
+          "lt2": "#E7E6E6",
+          "accent1": "#4472C4",
+          "accent2": "#ED7D31",
+          "accent3": "#A5A5A5",
+          "accent4": "#FFC000",
+          "accent5": "#5B9BD5",
+          "accent6": "#70AD47",
+          "hlink": "#0563C1",
+          "folHlink": "#954F72"
+        },
+        "fonts": {
+          "majorLatin": "Noto Sans TC",
+          "minorLatin": "Noto Sans TC"
+        }
+      },
+      "backgroundAsset": null,
+      "imageAssets": [],
+      "shapeImageAssets": [],
+      "placeholders": [],
+      "textSamples": [],
+      "textCount": 0,
+      "shapeCount": 2,
+      "drawableShapeCount": 0,
+      "usedBySlides": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "slides": [
+    {
+      "index": 1,
+      "name": "slide1.xml",
+      "svgFile": "slide_01.svg",
+      "flatSvgFile": null,
+      "slidePath": "ppt/slides/slide1.xml",
+      "layoutPath": "ppt/slideLayouts/slideLayout1.xml",
+      "masterPath": "ppt/slideMasters/slideMaster1.xml",
+      "showInheritedShapes": true,
+      "backgroundAsset": null,
+      "backgroundSource": null,
+      "imageAssets": [],
+      "textSamples": [
+        "NTPU",
+        "WORKING TITLE · OWNER REVIEW",
+        "軌跡會變，",
+        "節能判斷也要會變",
+        "NTPU 低軌衛星情境 × 功率與時間 × 換手 × IoT × 競賽轉移",
+        "不是衛星專家課｜是能源決策實驗室"
+      ],
+      "textCount": 6,
+      "shapeCount": 108,
+      "placeholders": [],
+      "pageType": "cover_candidate"
+    },
+    {
+      "index": 2,
+      "name": "slide2.xml",
+      "svgFile": "slide_02.svg",
+      "flatSvgFile": null,
+      "slidePath": "ppt/slides/slide2.xml",
+      "layoutPath": "ppt/slideLayouts/slideLayout1.xml",
+      "masterPath": "ppt/slideMasters/slideMaster1.xml",
+      "showInheritedShapes": true,
+      "backgroundAsset": null,
+      "backgroundSource": null,
+      "imageAssets": [],
+      "textSamples": [
+        "STAGE 1",
+        "00–10",
+        "TLE-to-NTPU｜先知道場景從哪裡來",
+        "核心問題",
+        "一筆精簡軌道資料，如何成為眼前可用的 NTPU 衛星場景？",
+        "QUESTION  →  LEARNER ACTION  →  OBSERVABLE RESULT  →  MEANING  →  RECOVERY / STATUS"
+      ],
+      "textCount": 6,
+      "shapeCount": 57,
+      "placeholders": [],
+      "pageType": "content_candidate"
+    },
+    {
+      "index": 3,
+      "name": "slide3.xml",
+      "svgFile": "slide_03.svg",
+      "flatSvgFile": null,
+      "slidePath": "ppt/slides/slide3.xml",
+      "layoutPath": "ppt/slideLayouts/slideLayout1.xml",
+      "masterPath": "ppt/slideMasters/slideMaster1.xml",
+      "showInheritedShapes": true,
+      "backgroundAsset": null,
+      "backgroundSource": null,
+      "imageAssets": [],
+      "textSamples": [
+        "STAGE 2",
+        "10–32",
+        "E1｜功率、啟用時間、能源與 EE",
+        "核心問題",
+        "降低發射功率，一定是最省能源、而且服務合格的選擇嗎？",
+        "QUESTION  →  LEARNER ACTION  →  OBSERVABLE RESULT  →  MEANING  →  RECOVERY / STATUS"
+      ],
+      "textCount": 6,
+      "shapeCount": 69,
+      "placeholders": [],
+      "pageType": "content_candidate"
+    },
+    {
+      "index": 4,
+      "name": "slide4.xml",
+      "svgFile": "slide_04.svg",
+      "flatSvgFile": null,
+      "slidePath": "ppt/slides/slide4.xml",
+      "layoutPath": "ppt/slideLayouts/slideLayout1.xml",
+      "masterPath": "ppt/slideMasters/slideMaster1.xml",
+      "showInheritedShapes": true,
+      "backgroundAsset": null,
+      "backgroundSource": null,
+      "imageAssets": [],
+      "textSamples": [
+        "STAGE 3",
+        "32–54",
+        "E2｜換手時機與鏈路能源後果",
+        "核心問題",
+        "另一個波束變好時，要現在換、等穩定再換，還是維持？",
+        "QUESTION  →  LEARNER ACTION  →  OBSERVABLE RESULT  →  MEANING  →  RECOVERY / STATUS"
+      ],
+      "textCount": 6,
+      "shapeCount": 64,
+      "placeholders": [],
+      "pageType": "content_candidate"
+    },
+    {
+      "index": 5,
+      "name": "slide5.xml",
+      "svgFile": "slide_05.svg",
+      "flatSvgFile": null,
+      "slidePath": "ppt/slides/slide5.xml",
+      "layoutPath": "ppt/slideLayouts/slideLayout1.xml",
+      "masterPath": "ppt/slideMasters/slideMaster1.xml",
+      "showInheritedShapes": true,
+      "backgroundAsset": null,
+      "backgroundSource": null,
+      "imageAssets": [],
+      "textSamples": [
+        "STAGE 4",
+        "54–84",
+        "條件式 E3｜外部接觸 artifact 與策略穩健性",
+        "核心問題",
+        "較長接觸窗口一定較省嗎？凍結策略換到新軌跡仍成立嗎？",
+        "QUESTION  →  LEARNER ACTION  →  OBSERVABLE RESULT  →  MEANING  →  RECOVERY / STATUS"
+      ],
+      "textCount": 6,
+      "shapeCount": 68,
+      "placeholders": [],
+      "pageType": "content_candidate"
+    },
+    {
+      "index": 6,
+      "name": "slide6.xml",
+      "svgFile": "slide_06.svg",
+      "flatSvgFile": null,
+      "slidePath": "ppt/slides/slide6.xml",
+      "layoutPath": "ppt/slideLayouts/slideLayout1.xml",
+      "masterPath": "ppt/slideMasters/slideMaster1.xml",
+      "showInheritedShapes": true,
+      "backgroundAsset": null,
+      "backgroundSource": null,
+      "imageAssets": [],
+      "textSamples": [
+        "STAGE 5",
+        "84–102",
+        "IoT 挑戰｜優先、批次與資料新鮮度",
+        "核心問題",
+        "有限傳輸機會下，哪些資料要現在送、批次送，或先排優先？",
+        "QUESTION  →  LEARNER ACTION  →  OBSERVABLE RESULT  →  MEANING  →  RECOVERY / STATUS"
+      ],
+      "textCount": 6,
+      "shapeCount": 62,
+      "placeholders": [],
+      "pageType": "content_candidate"
+    },
+    {
+      "index": 7,
+      "name": "slide7.xml",
+      "svgFile": "slide_07.svg",
+      "flatSvgFile": null,
+      "slidePath": "ppt/slides/slide7.xml",
+      "layoutPath": "ppt/slideLayouts/slideLayout1.xml",
+      "masterPath": "ppt/slideMasters/slideMaster1.xml",
+      "showInheritedShapes": true,
+      "backgroundAsset": null,
+      "backgroundSource": null,
+      "imageAssets": [],
+      "textSamples": [
+        "STAGE 6",
+        "102–114",
+        "競賽轉移｜從機制到可否證構想",
+        "核心問題",
+        "哪一個課中機制，可以變成智慧節能或 IoT 的競賽方向？",
+        "QUESTION  →  LEARNER ACTION  →  OBSERVABLE RESULT  →  MEANING  →  RECOVERY / STATUS"
+      ],
+      "textCount": 6,
+      "shapeCount": 60,
+      "placeholders": [],
+      "pageType": "content_candidate"
+    },
+    {
+      "index": 8,
+      "name": "slide8.xml",
+      "svgFile": "slide_08.svg",
+      "flatSvgFile": null,
+      "slidePath": "ppt/slides/slide8.xml",
+      "layoutPath": "ppt/slideLayouts/slideLayout1.xml",
+      "masterPath": "ppt/slideMasters/slideMaster1.xml",
+      "showInheritedShapes": true,
+      "backgroundAsset": null,
+      "backgroundSource": null,
+      "imageAssets": [],
+      "textSamples": [
+        "STAGE 7",
+        "114–120",
+        "提取、自學、匯出與硬緩衝",
+        "核心問題",
+        "離開投影片後，能不能自己重建三條能源因果鏈？",
+        "QUESTION  →  LEARNER ACTION  →  OBSERVABLE RESULT  →  MEANING  →  RECOVERY / STATUS"
+      ],
+      "textCount": 6,
+      "shapeCount": 58,
+      "placeholders": [],
+      "pageType": "ending_candidate"
+    }
+  ]
+}

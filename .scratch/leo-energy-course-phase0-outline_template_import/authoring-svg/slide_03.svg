@@ -1,0 +1,443 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1280" height="720" viewBox="0 0 1280 720"><defs><marker id="marrow1" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="2.5" markerHeight="2.5" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 10 5 L 0 10 z" fill="#F4B942" /></marker></defs><rect x="0" y="0" width="1280" height="720" fill="#F5F1E8" />
+<g id="shape-2" data-pptx-object="shape" data-pptx-frame="53.76 40.32 108.48 32.64" data-pptx-prst="roundRect" data-pptx-source-ref="slide:2">
+
+<path d="M 53.76 45.76 A 5.44 5.44 0 0 1 59.2 40.32 L 156.8 40.32 A 5.44 5.44 0 0 1 162.24 45.76 L 162.24 67.52 A 5.44 5.44 0 0 1 156.8 72.96 L 59.2 72.96 A 5.44 5.44 0 0 1 53.76 67.52 Z" fill="#F4B942" stroke-width="1.33333" stroke="#F4B942" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-3" data-pptx-object="shape" data-pptx-frame="61.44 42.24 93.12 28.8" data-pptx-prst="rect" data-pptx-source-ref="slide:3">
+
+<path d="M 61.44 42.24 L 154.56 42.24 L 154.56 71.04 L 61.44 71.04 Z" fill="none" />
+
+
+<text x="108" y="60.81" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" font-weight="bold">STAGE 2</tspan></text>
+</g>
+<g id="shape-4" data-pptx-object="shape" data-pptx-frame="1106.88 40.32 120 32.64" data-pptx-prst="roundRect" data-pptx-source-ref="slide:4">
+
+<path d="M 1106.88 45.76 A 5.44 5.44 0 0 1 1112.32 40.32 L 1221.44 40.32 A 5.44 5.44 0 0 1 1226.88 45.76 L 1226.88 67.52 A 5.44 5.44 0 0 1 1221.44 72.96 L 1112.32 72.96 A 5.44 5.44 0 0 1 1106.88 67.52 Z" fill="#FFFFFF" stroke-width="1.33333" stroke="#FFFFFF" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-5" data-pptx-object="shape" data-pptx-frame="1114.56 42.24 104.64 28.8" data-pptx-prst="rect" data-pptx-source-ref="slide:5">
+
+<path d="M 1114.56 42.24 L 1219.2 42.24 L 1219.2 71.04 L 1114.56 71.04 Z" fill="none" />
+
+
+<text x="1166.88" y="60.97" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="17.33" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="17.33" font-weight="bold">10–32</tspan></text>
+</g>
+<g id="shape-6" data-pptx-object="shape" data-pptx-frame="178.56 32.64 844.8 46.08" data-pptx-prst="rect" data-pptx-source-ref="slide:6">
+
+<path d="M 178.56 32.64 L 1023.36 32.64 L 1023.36 78.72 L 178.56 78.72 Z" fill="none" />
+
+
+<text x="178.56" y="64.68" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="36" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="36" font-weight="bold">E1｜功率、啟用時間、能源與 EE</tspan></text>
+</g>
+<g id="shape-7" data-pptx-object="shape" data-pptx-frame="55.68 103.68 96 21.12" data-pptx-prst="rect" data-pptx-source-ref="slide:7">
+
+<path d="M 55.68 103.68 L 151.68 103.68 L 151.68 124.8 L 55.68 124.8 Z" fill="none" />
+
+
+<text x="55.68" y="118.41" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" fill="#F4B942" font-weight="bold" letter-spacing="1.6"><tspan fill="#F4B942" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" font-weight="bold" letter-spacing="1.6">核心問題</tspan></text>
+</g>
+<g id="shape-8" data-pptx-object="shape" data-pptx-frame="155.52 90.24 1051.2 55.68" data-pptx-prst="rect" data-pptx-source-ref="slide:8">
+
+<path d="M 155.52 90.24 L 1206.72 90.24 L 1206.72 145.92 L 155.52 145.92 Z" fill="none" />
+
+
+<text x="155.52" y="125.75" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="30.67" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="30.67" font-weight="bold">降低發射功率，一定是最省能源、而且服務合格的選擇嗎？</tspan></text>
+</g>
+<g id="shape-9" data-pptx-object="shape" data-pptx-frame="53.76 146.88 837.12 26.88" data-pptx-prst="roundRect" data-pptx-source-ref="slide:9">
+
+<path d="M 53.76 151.36 A 4.48 4.48 0 0 1 58.24 146.88 L 886.4 146.88 A 4.48 4.48 0 0 1 890.88 151.36 L 890.88 169.28 A 4.48 4.48 0 0 1 886.4 173.76 L 58.24 173.76 A 4.48 4.48 0 0 1 53.76 169.28 Z" fill="#EBE6DC" stroke-width="1.33333" stroke="#EBE6DC" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-10" data-pptx-object="shape" data-pptx-frame="67.2 150.24 808.32 17.28" data-pptx-prst="rect" data-pptx-source-ref="slide:10">
+
+<path d="M 67.2 150.24 L 875.52 150.24 L 875.52 167.52 L 67.2 167.52 Z" fill="none" />
+
+
+<text x="67.2" y="162.45" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14.27" fill="#60708A" font-weight="bold" letter-spacing="0.47"><tspan fill="#60708A" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14.27" font-weight="bold" letter-spacing="0.47">QUESTION  →  LEARNER ACTION  →  OBSERVABLE RESULT  →  MEANING  →  RECOVERY / STATUS</tspan></text>
+</g>
+<g id="shape-11" data-pptx-object="shape" data-pptx-frame="61.44 193.92 393.6 28.8" data-pptx-prst="rect" data-pptx-source-ref="slide:11">
+
+<path d="M 61.44 193.92 L 455.04 193.92 L 455.04 222.72 L 61.44 222.72 Z" fill="none" />
+
+
+<text x="61.44" y="213.65" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="21.33" fill="#60708A" font-weight="bold"><tspan fill="#60708A" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="21.33" font-weight="bold">先預測，再完成三個離散策略</tspan></text>
+</g>
+<g id="shape-12" data-pptx-object="shape" data-pptx-frame="63.36 235.2 326.4 78.72" data-pptx-prst="roundRect" data-pptx-source-ref="slide:12">
+
+<path d="M 63.36 248.32 A 13.12 13.12 0 0 1 76.48 235.2 L 376.64 235.2 A 13.12 13.12 0 0 1 389.76 248.32 L 389.76 300.8 A 13.12 13.12 0 0 1 376.64 313.92 L 76.48 313.92 A 13.12 13.12 0 0 1 63.36 300.8 Z" fill="#FFFDF7" stroke-width="1.33333" stroke="#28B8C7" />
+
+
+</g>
+<g id="shape-13" data-pptx-object="shape" data-pptx-frame="81.6 252.48 118.08 28.8" data-pptx-prst="roundRect" data-pptx-source-ref="slide:13">
+
+<path d="M 81.6 257.28 A 4.8 4.8 0 0 1 86.4 252.48 L 194.88 252.48 A 4.8 4.8 0 0 1 199.68 257.28 L 199.68 276.48 A 4.8 4.8 0 0 1 194.88 281.28 L 86.4 281.28 A 4.8 4.8 0 0 1 81.6 276.48 Z" fill="#28B8C7" stroke-width="1.33333" stroke="#28B8C7" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-14" data-pptx-object="shape" data-pptx-frame="89.28 254.4 102.72 24.96" data-pptx-prst="rect" data-pptx-source-ref="slide:14">
+
+<path d="M 89.28 254.4 L 192 254.4 L 192 279.36 L 89.28 279.36 Z" fill="none" />
+
+
+<text x="140.64" y="270.71" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" font-weight="bold">BALANCED</tspan></text>
+</g>
+<g id="shape-15" data-pptx-object="shape" data-pptx-frame="218.88 247.68 144 40.32" data-pptx-prst="rect" data-pptx-source-ref="slide:15">
+
+<path d="M 218.88 247.68 L 362.88 247.68 L 362.88 288 L 218.88 288 Z" fill="none" />
+
+
+<text x="290.88" y="273.17" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="21.33" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="21.33" font-weight="bold">共同參考</tspan></text>
+</g>
+<g id="shape-16" data-pptx-object="shape" data-pptx-frame="63.36 329.28 326.4 78.72" data-pptx-prst="roundRect" data-pptx-source-ref="slide:16">
+
+<path d="M 63.36 342.4 A 13.12 13.12 0 0 1 76.48 329.28 L 376.64 329.28 A 13.12 13.12 0 0 1 389.76 342.4 L 389.76 394.88 A 13.12 13.12 0 0 1 376.64 408 L 76.48 408 A 13.12 13.12 0 0 1 63.36 394.88 Z" fill="#FFFDF7" stroke-width="1.33333" stroke="#4EA978" />
+
+
+</g>
+<g id="shape-17" data-pptx-object="shape" data-pptx-frame="81.6 346.56 118.08 28.8" data-pptx-prst="roundRect" data-pptx-source-ref="slide:17">
+
+<path d="M 81.6 351.36 A 4.8 4.8 0 0 1 86.4 346.56 L 194.88 346.56 A 4.8 4.8 0 0 1 199.68 351.36 L 199.68 370.56 A 4.8 4.8 0 0 1 194.88 375.36 L 86.4 375.36 A 4.8 4.8 0 0 1 81.6 370.56 Z" fill="#4EA978" stroke-width="1.33333" stroke="#4EA978" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-18" data-pptx-object="shape" data-pptx-frame="89.28 348.48 102.72 24.96" data-pptx-prst="rect" data-pptx-source-ref="slide:18">
+
+<path d="M 89.28 348.48 L 192 348.48 L 192 373.44 L 89.28 373.44 Z" fill="none" />
+
+
+<text x="140.64" y="364.79" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" font-weight="bold">LOW-POWER</tspan></text>
+</g>
+<g id="shape-19" data-pptx-object="shape" data-pptx-frame="218.88 341.76 144 40.32" data-pptx-prst="rect" data-pptx-source-ref="slide:19">
+
+<path d="M 218.88 341.76 L 362.88 341.76 L 362.88 382.08 L 218.88 382.08 Z" fill="none" />
+
+
+<text x="290.88" y="367.25" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="21.33" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="21.33" font-weight="bold">較低當下 W</tspan></text>
+</g>
+<g id="shape-20" data-pptx-object="shape" data-pptx-frame="63.36 423.36 326.4 78.72" data-pptx-prst="roundRect" data-pptx-source-ref="slide:20">
+
+<path d="M 63.36 436.48 A 13.12 13.12 0 0 1 76.48 423.36 L 376.64 423.36 A 13.12 13.12 0 0 1 389.76 436.48 L 389.76 488.96 A 13.12 13.12 0 0 1 376.64 502.08 L 76.48 502.08 A 13.12 13.12 0 0 1 63.36 488.96 Z" fill="#FFFDF7" stroke-width="1.33333" stroke="#EA6A5A" />
+
+
+</g>
+<g id="shape-21" data-pptx-object="shape" data-pptx-frame="81.6 440.64 118.08 28.8" data-pptx-prst="roundRect" data-pptx-source-ref="slide:21">
+
+<path d="M 81.6 445.44 A 4.8 4.8 0 0 1 86.4 440.64 L 194.88 440.64 A 4.8 4.8 0 0 1 199.68 445.44 L 199.68 464.64 A 4.8 4.8 0 0 1 194.88 469.44 L 86.4 469.44 A 4.8 4.8 0 0 1 81.6 464.64 Z" fill="#EA6A5A" stroke-width="1.33333" stroke="#EA6A5A" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-22" data-pptx-object="shape" data-pptx-frame="89.28 442.56 102.72 24.96" data-pptx-prst="rect" data-pptx-source-ref="slide:22">
+
+<path d="M 89.28 442.56 L 192 442.56 L 192 467.52 L 89.28 467.52 Z" fill="none" />
+
+
+<text x="140.64" y="458.87" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" font-weight="bold">FAST-FINISH</tspan></text>
+</g>
+<g id="shape-23" data-pptx-object="shape" data-pptx-frame="218.88 435.84 144 40.32" data-pptx-prst="rect" data-pptx-source-ref="slide:23">
+
+<path d="M 218.88 435.84 L 362.88 435.84 L 362.88 476.16 L 218.88 476.16 Z" fill="none" />
+
+
+<text x="290.88" y="461.33" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="21.33" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="21.33" font-weight="bold">較短啟用時間？</tspan></text>
+</g>
+<g id="shape-24" data-pptx-object="shape" data-pptx-frame="412.8 329.28 62.4 0" data-pptx-prst="line" data-pptx-source-ref="slide:24">
+
+<path d="M 412.8 329.28 L 475.2 329.28" fill="none" stroke-width="2.8" stroke="#F4B942" marker-end="url(#marrow1)" />
+
+
+</g>
+<g id="shape-25" data-pptx-object="shape" data-pptx-frame="491.52 208.32 302.4 307.2" data-pptx-prst="roundRect" data-pptx-source-ref="slide:25">
+
+<path d="M 491.52 258.72 A 50.4 50.4 0 0 1 541.92 208.32 L 743.52 208.32 A 50.4 50.4 0 0 1 793.92 258.72 L 793.92 465.12 A 50.4 50.4 0 0 1 743.52 515.52 L 541.92 515.52 A 50.4 50.4 0 0 1 491.52 465.12 Z" fill="#14213D" stroke-width="1.33333" stroke="#14213D" />
+
+
+</g>
+<g id="shape-26" data-pptx-object="shape" data-pptx-frame="526.08 233.28 232.32 34.56" data-pptx-prst="rect" data-pptx-source-ref="slide:26">
+
+<path d="M 526.08 233.28 L 758.4 233.28 L 758.4 267.84 L 526.08 267.84 Z" fill="none" />
+
+
+<text x="642.24" y="257.56" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="28" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="28" font-weight="bold">合格的能源判斷</tspan></text>
+</g>
+<g id="shape-27" data-pptx-object="shape" data-pptx-frame="587.52 295.68 110.4 110.4" data-pptx-prst="ellipse" data-pptx-source-ref="slide:27">
+
+<path d="M 587.52 350.88 A 55.2 55.2 0 0 1 642.72 295.68 A 55.2 55.2 0 0 1 697.92 350.88 A 55.2 55.2 0 0 1 642.72 406.08 A 55.2 55.2 0 0 1 587.52 350.88 Z" fill="#F4B942" stroke-width="1.33333" stroke="#F4B942" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-28" data-pptx-object="shape" data-pptx-frame="602.88 313.92 78.72 46.08" data-pptx-prst="rect" data-pptx-source-ref="slide:28">
+
+<path d="M 602.88 313.92 L 681.6 313.92 L 681.6 360 L 602.88 360 Z" fill="none" />
+
+
+<text x="642.24" y="334.32" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="24" fill="#0B132B" font-weight="bold"><tspan fill="#0B132B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="24" font-weight="bold">服務</tspan></text>
+<text x="642.24" y="363.12" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="24" fill="#0B132B" font-weight="bold"><tspan fill="#0B132B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="24" font-weight="bold">門檻</tspan></text>
+</g>
+<g id="shape-29" data-pptx-object="shape" data-pptx-frame="516.48 298.56 69.12 69.12" data-pptx-prst="ellipse" data-pptx-source-ref="slide:29">
+
+<path d="M 516.48 333.12 A 34.56 34.56 0 0 1 551.04 298.56 A 34.56 34.56 0 0 1 585.6 333.12 A 34.56 34.56 0 0 1 551.04 367.68 A 34.56 34.56 0 0 1 516.48 333.12 Z" fill="#28B8C7" stroke-width="1.33333" stroke="#28B8C7" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-30" data-pptx-object="shape" data-pptx-frame="521.28 316.8 59.52 24" data-pptx-prst="rect" data-pptx-source-ref="slide:30">
+
+<path d="M 521.28 316.8 L 580.8 316.8 L 580.8 340.8 L 521.28 340.8 Z" fill="none" />
+
+
+<text x="551.04" y="334.37" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20.67" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20.67" font-weight="bold">W</tspan></text>
+</g>
+<g id="shape-31" data-pptx-object="shape" data-pptx-frame="699.84 297.6 69.12 69.12" data-pptx-prst="ellipse" data-pptx-source-ref="slide:31">
+
+<path d="M 699.84 332.16 A 34.56 34.56 0 0 1 734.4 297.6 A 34.56 34.56 0 0 1 768.96 332.16 A 34.56 34.56 0 0 1 734.4 366.72 A 34.56 34.56 0 0 1 699.84 332.16 Z" fill="#9B79D0" stroke-width="1.33333" stroke="#9B79D0" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-32" data-pptx-object="shape" data-pptx-frame="704.64 315.84 59.52 24" data-pptx-prst="rect" data-pptx-source-ref="slide:32">
+
+<path d="M 704.64 315.84 L 764.16 315.84 L 764.16 339.84 L 704.64 339.84 Z" fill="none" />
+
+
+<text x="734.4" y="333.41" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20.67" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20.67" font-weight="bold">時間</tspan></text>
+</g>
+<g id="shape-33" data-pptx-object="shape" data-pptx-frame="525.12 419.52 69.12 69.12" data-pptx-prst="ellipse" data-pptx-source-ref="slide:33">
+
+<path d="M 525.12 454.08 A 34.56 34.56 0 0 1 559.68 419.52 A 34.56 34.56 0 0 1 594.24 454.08 A 34.56 34.56 0 0 1 559.68 488.64 A 34.56 34.56 0 0 1 525.12 454.08 Z" fill="#EA6A5A" stroke-width="1.33333" stroke="#EA6A5A" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-34" data-pptx-object="shape" data-pptx-frame="529.92 437.76 59.52 24" data-pptx-prst="rect" data-pptx-source-ref="slide:34">
+
+<path d="M 529.92 437.76 L 589.44 437.76 L 589.44 461.76 L 529.92 461.76 Z" fill="none" />
+
+
+<text x="559.68" y="455.33" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20.67" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20.67" font-weight="bold">J</tspan></text>
+</g>
+<g id="shape-35" data-pptx-object="shape" data-pptx-frame="683.52 420.48 69.12 69.12" data-pptx-prst="ellipse" data-pptx-source-ref="slide:35">
+
+<path d="M 683.52 455.04 A 34.56 34.56 0 0 1 718.08 420.48 A 34.56 34.56 0 0 1 752.64 455.04 A 34.56 34.56 0 0 1 718.08 489.6 A 34.56 34.56 0 0 1 683.52 455.04 Z" fill="#4EA978" stroke-width="1.33333" stroke="#4EA978" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-36" data-pptx-object="shape" data-pptx-frame="688.32 438.72 59.52 24" data-pptx-prst="rect" data-pptx-source-ref="slide:36">
+
+<path d="M 688.32 438.72 L 747.84 438.72 L 747.84 462.72 L 688.32 462.72 Z" fill="none" />
+
+
+<text x="718.08" y="456.29" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20.67" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20.67" font-weight="bold">bit/J</tspan></text>
+</g>
+<g id="shape-37" data-pptx-object="shape" data-pptx-frame="816 208.32 403.2 307.2" data-pptx-prst="roundRect" data-pptx-source-ref="slide:37">
+
+<path d="M 816 259.52 A 51.2 51.2 0 0 1 867.2 208.32 L 1168 208.32 A 51.2 51.2 0 0 1 1219.2 259.52 L 1219.2 464.32 A 51.2 51.2 0 0 1 1168 515.52 L 867.2 515.52 A 51.2 51.2 0 0 1 816 464.32 Z" fill="#FFFDF7" stroke-width="1.33333" stroke="#C9D2D8" />
+
+
+</g>
+<g id="shape-38" data-pptx-object="shape" data-pptx-frame="842.88 233.28 120 29.76" data-pptx-prst="roundRect" data-pptx-source-ref="slide:38">
+
+<path d="M 842.88 238.24 A 4.96 4.96 0 0 1 847.84 233.28 L 957.92 233.28 A 4.96 4.96 0 0 1 962.88 238.24 L 962.88 258.08 A 4.96 4.96 0 0 1 957.92 263.04 L 847.84 263.04 A 4.96 4.96 0 0 1 842.88 258.08 Z" fill="#F4B942" stroke-width="1.33333" stroke="#F4B942" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-39" data-pptx-object="shape" data-pptx-frame="850.56 235.2 104.64 25.92" data-pptx-prst="rect" data-pptx-source-ref="slide:39">
+
+<path d="M 850.56 235.2 L 955.2 235.2 L 955.2 261.12 L 850.56 261.12 Z" fill="none" />
+
+
+<text x="902.88" y="252.33" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" font-weight="bold">可觀察結果</tspan></text>
+</g>
+<g id="shape-40" data-pptx-object="shape" data-pptx-frame="844.8 286.08 78.72 27.84" data-pptx-prst="roundRect" data-pptx-source-ref="slide:40">
+
+<path d="M 844.8 290.72 A 4.64 4.64 0 0 1 849.44 286.08 L 918.88 286.08 A 4.64 4.64 0 0 1 923.52 290.72 L 923.52 309.28 A 4.64 4.64 0 0 1 918.88 313.92 L 849.44 313.92 A 4.64 4.64 0 0 1 844.8 309.28 Z" fill="#14213D" stroke-width="1.33333" stroke="#14213D" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-41" data-pptx-object="shape" data-pptx-frame="852.48 288 63.36 24" data-pptx-prst="rect" data-pptx-source-ref="slide:41">
+
+<path d="M 852.48 288 L 915.84 288 L 915.84 312 L 852.48 312 Z" fill="none" />
+
+
+<text x="884.16" y="303.5" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" font-weight="bold">W</tspan></text>
+</g>
+<g id="shape-42" data-pptx-object="shape" data-pptx-frame="940.8 284.16 232.32 28.8" data-pptx-prst="rect" data-pptx-source-ref="slide:42">
+
+<path d="M 940.8 284.16 L 1173.12 284.16 L 1173.12 312.96 L 940.8 312.96 Z" fill="none" />
+
+
+<text x="940.8" y="303.56" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" font-weight="bold">當下功率</tspan></text>
+</g>
+<g id="shape-43" data-pptx-object="shape" data-pptx-frame="844.8 327.36 78.72 27.84" data-pptx-prst="roundRect" data-pptx-source-ref="slide:43">
+
+<path d="M 844.8 332 A 4.64 4.64 0 0 1 849.44 327.36 L 918.88 327.36 A 4.64 4.64 0 0 1 923.52 332 L 923.52 350.56 A 4.64 4.64 0 0 1 918.88 355.2 L 849.44 355.2 A 4.64 4.64 0 0 1 844.8 350.56 Z" fill="#14213D" stroke-width="1.33333" stroke="#14213D" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-44" data-pptx-object="shape" data-pptx-frame="852.48 329.28 63.36 24" data-pptx-prst="rect" data-pptx-source-ref="slide:44">
+
+<path d="M 852.48 329.28 L 915.84 329.28 L 915.84 353.28 L 852.48 353.28 Z" fill="none" />
+
+
+<text x="884.16" y="344.78" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" font-weight="bold">TIME</tspan></text>
+</g>
+<g id="shape-45" data-pptx-object="shape" data-pptx-frame="940.8 325.44 232.32 28.8" data-pptx-prst="rect" data-pptx-source-ref="slide:45">
+
+<path d="M 940.8 325.44 L 1173.12 325.44 L 1173.12 354.24 L 940.8 354.24 Z" fill="none" />
+
+
+<text x="940.8" y="344.84" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" font-weight="bold">完成／啟用多久</tspan></text>
+</g>
+<g id="shape-46" data-pptx-object="shape" data-pptx-frame="844.8 368.64 78.72 27.84" data-pptx-prst="roundRect" data-pptx-source-ref="slide:46">
+
+<path d="M 844.8 373.28 A 4.64 4.64 0 0 1 849.44 368.64 L 918.88 368.64 A 4.64 4.64 0 0 1 923.52 373.28 L 923.52 391.84 A 4.64 4.64 0 0 1 918.88 396.48 L 849.44 396.48 A 4.64 4.64 0 0 1 844.8 391.84 Z" fill="#14213D" stroke-width="1.33333" stroke="#14213D" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-47" data-pptx-object="shape" data-pptx-frame="852.48 370.56 63.36 24" data-pptx-prst="rect" data-pptx-source-ref="slide:47">
+
+<path d="M 852.48 370.56 L 915.84 370.56 L 915.84 394.56 L 852.48 394.56 Z" fill="none" />
+
+
+<text x="884.16" y="386.06" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" font-weight="bold">J</tspan></text>
+</g>
+<g id="shape-48" data-pptx-object="shape" data-pptx-frame="940.8 366.72 232.32 28.8" data-pptx-prst="rect" data-pptx-source-ref="slide:48">
+
+<path d="M 940.8 366.72 L 1173.12 366.72 L 1173.12 395.52 L 940.8 395.52 Z" fill="none" />
+
+
+<text x="940.8" y="386.12" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" font-weight="bold">累積能源</tspan></text>
+</g>
+<g id="shape-49" data-pptx-object="shape" data-pptx-frame="844.8 409.92 78.72 27.84" data-pptx-prst="roundRect" data-pptx-source-ref="slide:49">
+
+<path d="M 844.8 414.56 A 4.64 4.64 0 0 1 849.44 409.92 L 918.88 409.92 A 4.64 4.64 0 0 1 923.52 414.56 L 923.52 433.12 A 4.64 4.64 0 0 1 918.88 437.76 L 849.44 437.76 A 4.64 4.64 0 0 1 844.8 433.12 Z" fill="#4EA978" stroke-width="1.33333" stroke="#4EA978" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-50" data-pptx-object="shape" data-pptx-frame="852.48 411.84 63.36 24" data-pptx-prst="rect" data-pptx-source-ref="slide:50">
+
+<path d="M 852.48 411.84 L 915.84 411.84 L 915.84 435.84 L 852.48 435.84 Z" fill="none" />
+
+
+<text x="884.16" y="427.34" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" font-weight="bold">SERVICE</tspan></text>
+</g>
+<g id="shape-51" data-pptx-object="shape" data-pptx-frame="940.8 408 232.32 28.8" data-pptx-prst="rect" data-pptx-source-ref="slide:51">
+
+<path d="M 940.8 408 L 1173.12 408 L 1173.12 436.8 L 940.8 436.8 Z" fill="none" />
+
+
+<text x="940.8" y="427.4" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" font-weight="bold">交付量與期限</tspan></text>
+</g>
+<g id="shape-52" data-pptx-object="shape" data-pptx-frame="844.8 451.2 78.72 27.84" data-pptx-prst="roundRect" data-pptx-source-ref="slide:52">
+
+<path d="M 844.8 455.84 A 4.64 4.64 0 0 1 849.44 451.2 L 918.88 451.2 A 4.64 4.64 0 0 1 923.52 455.84 L 923.52 474.4 A 4.64 4.64 0 0 1 918.88 479.04 L 849.44 479.04 A 4.64 4.64 0 0 1 844.8 474.4 Z" fill="#14213D" stroke-width="1.33333" stroke="#14213D" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-53" data-pptx-object="shape" data-pptx-frame="852.48 453.12 63.36 24" data-pptx-prst="rect" data-pptx-source-ref="slide:53">
+
+<path d="M 852.48 453.12 L 915.84 453.12 L 915.84 477.12 L 852.48 477.12 Z" fill="none" />
+
+
+<text x="884.16" y="468.62" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14" font-weight="bold">EE</tspan></text>
+</g>
+<g id="shape-54" data-pptx-object="shape" data-pptx-frame="940.8 449.28 232.32 28.8" data-pptx-prst="rect" data-pptx-source-ref="slide:54">
+
+<path d="M 940.8 449.28 L 1173.12 449.28 L 1173.12 478.08 L 940.8 478.08 Z" fill="none" />
+
+
+<text x="940.8" y="468.68" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="20" font-weight="bold">合格邊界內 bit/J</tspan></text>
+</g>
+<g id="shape-55" data-pptx-object="shape" data-pptx-frame="846.72 482.88 340.8 24" data-pptx-prst="rect" data-pptx-source-ref="slide:55">
+
+<path d="M 846.72 482.88 L 1187.52 482.88 L 1187.52 506.88 L 846.72 506.88 Z" fill="none" />
+
+
+<text x="846.72" y="497.05" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" fill="#60708A" font-weight="bold"><tspan fill="#60708A" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" font-weight="bold">中途更新一次預測；終點再作「接受／保留條</tspan><tspan x="846.72" dy="20" fill="#60708A" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" font-weight="bold">件／拒絕」。</tspan></text>
+</g>
+<g id="shape-56" data-pptx-object="shape" data-pptx-frame="55.68 564.48 715.2 98.88" data-pptx-prst="roundRect" data-pptx-source-ref="slide:56">
+
+<path d="M 55.68 580.96 A 16.48 16.48 0 0 1 72.16 564.48 L 754.4 564.48 A 16.48 16.48 0 0 1 770.88 580.96 L 770.88 646.88 A 16.48 16.48 0 0 1 754.4 663.36 L 72.16 663.36 A 16.48 16.48 0 0 1 55.68 646.88 Z" fill="#FFFDF7" stroke-width="1.33333" stroke="#C9D2D8" />
+
+
+</g>
+<g id="shape-57" data-pptx-object="shape" data-pptx-frame="74.88 578.88 148.8 29.76" data-pptx-prst="roundRect" data-pptx-source-ref="slide:57">
+
+<path d="M 74.88 583.84 A 4.96 4.96 0 0 1 79.84 578.88 L 218.72 578.88 A 4.96 4.96 0 0 1 223.68 583.84 L 223.68 603.68 A 4.96 4.96 0 0 1 218.72 608.64 L 79.84 608.64 A 4.96 4.96 0 0 1 74.88 603.68 Z" fill="#F4B942" stroke-width="1.33333" stroke="#F4B942" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-58" data-pptx-object="shape" data-pptx-frame="82.56 580.8 133.44 25.92" data-pptx-prst="rect" data-pptx-source-ref="slide:58">
+
+<path d="M 82.56 580.8 L 216 580.8 L 216 606.72 L 82.56 606.72 Z" fill="none" />
+
+
+<text x="149.28" y="597.93" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" font-weight="bold">能源／競賽意義</tspan></text>
+</g>
+<g id="shape-59" data-pptx-object="shape" data-pptx-frame="240 575.04 505.92 63.36" data-pptx-prst="rect" data-pptx-source-ref="slide:59">
+
+<path d="M 240 575.04 L 745.92 575.04 L 745.92 638.4 L 240 638.4 Z" fill="none" />
+
+
+<text x="240" y="599.02" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="22" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="22" font-weight="bold">省 W 不等於省 J；較快也可能耗能過高。先通過服</tspan><tspan x="240" dy="26.4" fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="22" font-weight="bold">務門檻，才有資格比較 EE。</tspan></text>
+</g>
+<g id="shape-60" data-pptx-object="shape" data-pptx-frame="789.12 564.48 434.88 98.88" data-pptx-prst="roundRect" data-pptx-source-ref="slide:60">
+
+<path d="M 789.12 580.96 A 16.48 16.48 0 0 1 805.6 564.48 L 1207.52 564.48 A 16.48 16.48 0 0 1 1224 580.96 L 1224 646.88 A 16.48 16.48 0 0 1 1207.52 663.36 L 805.6 663.36 A 16.48 16.48 0 0 1 789.12 646.88 Z" fill="#FFFDF7" stroke-width="1.33333" stroke="#C9D2D8" />
+
+
+</g>
+<g id="shape-61" data-pptx-object="shape" data-pptx-frame="808.32 578.88 126.72 29.76" data-pptx-prst="roundRect" data-pptx-source-ref="slide:61">
+
+<path d="M 808.32 583.84 A 4.96 4.96 0 0 1 813.28 578.88 L 930.08 578.88 A 4.96 4.96 0 0 1 935.04 583.84 L 935.04 603.68 A 4.96 4.96 0 0 1 930.08 608.64 L 813.28 608.64 A 4.96 4.96 0 0 1 808.32 603.68 Z" fill="#F4B942" stroke-width="1.33333" stroke="#F4B942" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-62" data-pptx-object="shape" data-pptx-frame="816 580.8 111.36 25.92" data-pptx-prst="rect" data-pptx-source-ref="slide:62">
+
+<path d="M 816 580.8 L 927.36 580.8 L 927.36 606.72 L 816 606.72 Z" fill="none" />
+
+
+<text x="871.68" y="597.93" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16.67" font-weight="bold">復原／狀態</tspan></text>
+</g>
+<g id="shape-63" data-pptx-object="shape" data-pptx-frame="944.64 574.08 257.28 36.48" data-pptx-prst="rect" data-pptx-source-ref="slide:63">
+
+<path d="M 944.64 574.08 L 1201.92 574.08 L 1201.92 610.56 L 944.64 610.56 Z" fill="none" />
+
+
+<text x="944.64" y="597.15" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="19.33" fill="#17223B" font-weight="bold"><tspan fill="#17223B" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="19.33" font-weight="bold">提示 → 同任務回播 → 改試另一策略。</tspan></text>
+</g>
+<g id="shape-64" data-pptx-object="shape" data-pptx-frame="944.64 616.32 257.28 24" data-pptx-prst="rect" data-pptx-source-ref="slide:64">
+
+<path d="M 944.64 616.32 L 1201.92 616.32 L 1201.92 640.32 L 944.64 640.32 Z" fill="none" />
+
+
+<text x="944.64" y="629.35" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" fill="#60708A" font-weight="bold"><tspan fill="#60708A" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" font-weight="bold">核心已接受｜Phase-1 結果只可標示</tspan><tspan x="944.64" dy="18.4" fill="#60708A" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" font-weight="bold">為模擬</tspan></text>
+</g>
+<g id="shape-65" data-pptx-object="shape" data-pptx-frame="52.8 685.44 748.8 17.28" data-pptx-prst="rect" data-pptx-source-ref="slide:65">
+
+<path d="M 52.8 685.44 L 801.6 685.44 L 801.6 702.72 L 52.8 702.72 Z" fill="none" />
+
+
+<text x="52.8" y="698.47" text-anchor="start" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" fill="#60708A" font-weight="bold"><tspan fill="#60708A" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="15.33" font-weight="bold">PHASE 0｜架構總覽，非完整教學頁</tspan></text>
+</g>
+<g id="shape-66" data-pptx-object="shape" data-pptx-frame="1171.2 682.56 52.8 19.2" data-pptx-prst="rect" data-pptx-source-ref="slide:66">
+
+<path d="M 1171.2 682.56 L 1224 682.56 L 1224 701.76 L 1171.2 701.76 Z" fill="none" />
+
+
+<text x="1224" y="696.16" text-anchor="end" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16" fill="#60708A" font-weight="bold"><tspan fill="#60708A" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="16" font-weight="bold">03</tspan></text>
+</g>
+<g id="shape-67" data-pptx-object="shape" data-pptx-frame="820.8 678.72 321.6 24.96" data-pptx-prst="roundRect" data-pptx-source-ref="slide:67">
+
+<path d="M 820.8 682.88 A 4.16 4.16 0 0 1 824.96 678.72 L 1138.24 678.72 A 4.16 4.16 0 0 1 1142.4 682.88 L 1142.4 699.52 A 4.16 4.16 0 0 1 1138.24 703.68 L 824.96 703.68 A 4.16 4.16 0 0 1 820.8 699.52 Z" fill="#E8E3DA" stroke-width="1.33333" stroke="#E8E3DA" stroke-opacity="0" />
+
+
+</g>
+<g id="shape-68" data-pptx-object="shape" data-pptx-frame="833.28 681.12 297.6 16.32" data-pptx-prst="rect" data-pptx-source-ref="slide:68">
+
+<path d="M 833.28 681.12 L 1130.88 681.12 L 1130.88 697.44 L 833.28 697.44 Z" fill="none" />
+
+
+<text x="982.08" y="693.36" text-anchor="middle" xml:space="preserve" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14.4" fill="#60708A" font-weight="bold"><tspan fill="#60708A" font-family="&quot;Noto Sans TC&quot;, sans-serif" font-size="14.4" font-weight="bold">模擬教學｜非即時｜非量測｜未驗證 parity</tspan></text>
+</g></svg>

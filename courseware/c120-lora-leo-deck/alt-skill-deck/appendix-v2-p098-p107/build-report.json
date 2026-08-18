@@ -1,0 +1,30 @@
+{
+  "status": "INITIAL_EDITABLE_REVIEW",
+  "output": "/home/sat/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/LoRaEnergySim-LEO-ALT-APPENDIX-V2-P098-P107-REVIEW.pptx",
+  "owned_workspace": "/home/sat/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/appendix-v2-p098-p107",
+  "template": "/home/sat/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "slide_count": 10,
+  "page_ids": [
+    "P098",
+    "P099",
+    "P100",
+    "P101",
+    "P102",
+    "P103",
+    "P104",
+    "P105",
+    "P106",
+    "P107"
+  ],
+  "layout_contract": "all authored slides use source slide 2 / slideLayout2.xml",
+  "background_fill": "unset",
+  "speaker_notes": 10,
+  "native_office_math": {
+    "slide": "P105",
+    "count": 1
+  },
+  "current_evidence": "neutral待補 states used where current source/trace evidence is absent",
+  "visual_rendering": "deferred: server has no LibreOffice executable",
+  "powerpoint_reopen": "deferred: controller environment"
+}

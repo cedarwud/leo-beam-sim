@@ -1,0 +1,21 @@
+{
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "shell": "source slide 2 / slideLayout2.xml only",
+  "background_author_fill": "unset",
+  "fonts": {
+    "cjk": "標楷體",
+    "latin": "Times New Roman"
+  },
+  "title_pt": 28,
+  "body_baseline_pt": 24,
+  "minimum_body_pt": 16,
+  "minimum_used_in_builder_pt": 18,
+  "slide_count": 33,
+  "slide_layouts": [
+    "slideLayout2.xml"
+  ],
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/LoRaEnergySim-LEO-ALT-PART-A-REVIEW.pptx",
+  "notes_embedded": true,
+  "formulas": "none in Part A; no raster formulas"
+}

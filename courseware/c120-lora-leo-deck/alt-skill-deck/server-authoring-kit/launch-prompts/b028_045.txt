@@ -1,0 +1,2 @@
+Read completely and follow, in this precedence order: `courseware/c120-lora-leo-deck/alt-skill-deck/server-authoring-kit/SERVER-OVERRIDES.md`, `courseware/c120-lora-leo-deck/alt-skill-deck/dispatch-prompts/COMMON-V2-WRITER.md`, and `courseware/c120-lora-leo-deck/alt-skill-deck/dispatch-prompts/part-b-p028-p045.md`. Execute the assigned writer task now. Produce an early valid root-level PPTX, then continue structural QA. Respect exact ownership and do not touch any other writer lane.
+

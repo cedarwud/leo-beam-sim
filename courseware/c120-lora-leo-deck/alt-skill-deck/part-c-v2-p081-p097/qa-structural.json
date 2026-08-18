@@ -1,0 +1,21 @@
+{
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/latest/LoRaEnergySim-LEO-ALT-PART-C-V2-P081-P097-REVIEW.pptx",
+  "zip_integrity": true,
+  "slide_count": 17,
+  "notes_count": 17,
+  "layout_targets": [
+    "../slideLayouts/slideLayout2.xml"
+  ],
+  "all_layout2": true,
+  "slide_background_count": 0,
+  "recursive_xml_errors": [],
+  "relationship_errors": [],
+  "creation_id_count": 17,
+  "creation_ids_unique": true,
+  "minimum_authored_font_pt": 16.0,
+  "font_contract_errors": [],
+  "forbidden_hits": [],
+  "placeholder_hits": [],
+  "notes_short": [],
+  "status": "PASS"
+}

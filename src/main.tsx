@@ -14,8 +14,28 @@ const isC120Route = window.location.pathname === '/course/c120'
   || query.get('course') === 'c120';
 const isC90Route = window.location.pathname === '/course/c90'
   || query.get('course') === 'c90';
-const isCanonicalSimulatorRoute = window.location.pathname === '/simulator'
-  || query.get('simulator') === 'canonical';
+// Compatibility routes for the pre-canonical Walker shell. The homepage and the
+// explicit aliases deliberately fall through to App, where the route selects
+// the legacy presentation layer; keeping them out of the canonical development
+// query avoids an accidental second simulator runtime on an old bookmark.
+const isLegacyWalkerRoute = window.location.pathname === '/'
+  || window.location.pathname === '/legacy'
+  || window.location.pathname === '/walker';
+// The canonical simulator query remains an explicit development surface for
+// non-public paths. The public /simulator pathname is reserved for the unified
+// Visual Lab surface below.
+const isCanonicalSimulatorDevelopmentRoute = window.location.pathname !== '/simulator'
+  && !isLegacyWalkerRoute
+  && query.get('simulator') === 'canonical';
+const isUnifiedVisualLabRoute = window.location.pathname === '/simulator'
+  || window.location.pathname === '/visual-lab'
+  || window.location.pathname === '/explain'
+  || window.location.pathname === '/prototype/scientific-explain'
+  || window.location.pathname === '/prototype/scientific-explain-3d'
+  || window.location.pathname === '/prototype/scientific-explain-2d'
+  // Keep the existing direct prototype locator available while it shares the
+  // same runtime as the public aliases.
+  || window.location.pathname === '/prototype/visual-lab-g0';
 const C120_BOOTSTRAP_CLAIM = 'SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED';
 
 function C120BootstrapFailure({ message }: { readonly message: string }) {
@@ -79,11 +99,21 @@ async function bootstrap() {
     return;
   }
 
-  if (isCanonicalSimulatorRoute) {
+  if (isCanonicalSimulatorDevelopmentRoute) {
     const { SimulatorRoute } = await import('./simulator/SimulatorRoute');
     ReactDOM.createRoot(container).render(
       <StrictMode>
         <SimulatorRoute />
+      </StrictMode>
+    );
+    return;
+  }
+
+  if (isUnifiedVisualLabRoute) {
+    const { UnifiedVisualLabPrototype } = await import('./prototype/visual-lab-g0/UnifiedVisualLabPrototype');
+    ReactDOM.createRoot(container).render(
+      <StrictMode>
+        <UnifiedVisualLabPrototype />
       </StrictMode>
     );
     return;

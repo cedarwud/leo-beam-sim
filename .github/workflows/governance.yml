@@ -42,6 +42,8 @@ jobs:
       # an independent step so a scripts/ type regression names itself in the UI
       # (governance:full also chains it locally after validate:governance).
       - run: npm run typecheck:scripts
+      - run: npm run test:simulator
+      - run: npm run test:visual-lab
       - run: npm run validate:governance:full
       - run: npm run validate:static:all
 

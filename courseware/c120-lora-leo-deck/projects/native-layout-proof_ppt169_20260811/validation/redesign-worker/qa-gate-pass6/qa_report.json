@@ -1,0 +1,105 @@
+{
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/redesign-worker/c120-native-layout-proof-redesign-pass6.pptx",
+  "outdir": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/redesign-worker/qa-gate-pass6",
+  "style_preset": "executive-clinical",
+  "max_loops": 1,
+  "overflow_count": 26,
+  "overlap_count": 0,
+  "placeholder_hits": [],
+  "issue_slide_count": 4,
+  "issue_shape_count": 26,
+  "geometry_violations": [
+    {
+      "type": "empty_ratio_too_high",
+      "shape_ids": [],
+      "severity": "warning",
+      "delta_inches": 0.2254,
+      "suggested_fix": "Increase purposeful visual structure to reduce dead zones.",
+      "slide_type": "content",
+      "effective_max_empty_ratio": 0.62,
+      "slide_index": 0
+    },
+    {
+      "type": "empty_ratio_too_high",
+      "shape_ids": [],
+      "severity": "warning",
+      "delta_inches": 0.0565,
+      "suggested_fix": "Increase purposeful visual structure to reduce dead zones.",
+      "slide_type": "content",
+      "effective_max_empty_ratio": 0.62,
+      "slide_index": 1
+    },
+    {
+      "type": "empty_ratio_too_high",
+      "shape_ids": [],
+      "severity": "warning",
+      "delta_inches": 0.0696,
+      "suggested_fix": "Increase purposeful visual structure to reduce dead zones.",
+      "slide_type": "content",
+      "effective_max_empty_ratio": 0.62,
+      "slide_index": 3
+    },
+    {
+      "type": "empty_ratio_too_high",
+      "shape_ids": [],
+      "severity": "warning",
+      "delta_inches": 0.22,
+      "suggested_fix": "Increase purposeful visual structure to reduce dead zones.",
+      "slide_type": "content",
+      "effective_max_empty_ratio": 0.62,
+      "slide_index": 4
+    }
+  ],
+  "geometry_error_count": 0,
+  "geometry_warning_count": 4,
+  "visual_warning_count": 0,
+  "visual_info_count": 2,
+  "visual_report": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/redesign-worker/qa-gate-pass6/visual_qa.json",
+  "visual_rc": 0,
+  "render_rc": 0,
+  "render_stdout_tail": "",
+  "rendered_slide_count": 0,
+  "expected_slide_count": 6,
+  "visual_review_warning_count": 0,
+  "visual_review_info_count": 0,
+  "visual_review_report": "",
+  "visual_review_markdown": "",
+  "visual_review_contact_sheet": "",
+  "visual_review_rc": 0,
+  "visual_review_stdout_tail": "",
+  "design_error_count": 0,
+  "design_warning_count": 0,
+  "design_report": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/redesign-worker/qa-gate-pass6/design_rules.json",
+  "design_rc": 0,
+  "density_score_by_slide": [
+    {
+      "slide_index": 0,
+      "density_score": 0.1546
+    },
+    {
+      "slide_index": 1,
+      "density_score": 0.3235
+    },
+    {
+      "slide_index": 2,
+      "density_score": 0.6931
+    },
+    {
+      "slide_index": 3,
+      "density_score": 0.3104
+    },
+    {
+      "slide_index": 4,
+      "density_score": 0.16
+    },
+    {
+      "slide_index": 5,
+      "density_score": 0.4597
+    }
+  ],
+  "font_families": [
+    "Times New Roman"
+  ],
+  "manual_review_passed": false,
+  "strict_geometry": true
+}

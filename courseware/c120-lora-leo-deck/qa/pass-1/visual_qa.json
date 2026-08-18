@@ -1,0 +1,12 @@
+[
+  {
+    "slide": 7,
+    "severity": "warning",
+    "type": "underfilled_card_row",
+    "count": 2,
+    "y": 3.77,
+    "box_h": 0.93,
+    "avg_fill_pct": 23,
+    "suggestion": "2 cards in a row are visually underfilled (~23% text fill). Reduce height toward 0.6\" or add supporting content."
+  }
+]

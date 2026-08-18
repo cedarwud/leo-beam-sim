@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="220" viewBox="0 0 1200 220">
+  <rect width="1200" height="220" fill="white" fill-opacity="0"/>
+  <text x="600" y="140" text-anchor="middle" fill="#2f327f" font-family="Times New Roman, serif" font-size="82">
+    <tspan>E</tspan><tspan baseline-shift="sub" font-size="48">endpoint</tspan>
+    <tspan baseline-shift="baseline" font-size="82"> = ∑</tspan><tspan baseline-shift="sub" font-size="48">s ∈ S</tspan>
+    <tspan baseline-shift="baseline" font-size="82"> P</tspan><tspan baseline-shift="sub" font-size="48">s</tspan>
+    <tspan baseline-shift="baseline" font-size="82"> t</tspan><tspan baseline-shift="sub" font-size="48">s</tspan>
+  </text>
+</svg>

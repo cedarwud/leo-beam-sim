@@ -19,7 +19,6 @@ type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Respons
 
 const browserFetcher: Fetcher = (input, init) => globalThis.fetch(input, init);
 const snapshotPromiseCache = new Map<string, Promise<LoadedTleSnapshot>>();
-const catalogPromiseCache = new Map<string, Promise<TleWebArchiveCatalog>>();
 
 function archiveFail(message: string, details?: Readonly<Record<string, unknown>>): never {
   throw new TleArchiveError('INVALID_MANIFEST', message, details);
@@ -240,10 +239,14 @@ export function parseTleSnapshotText(
   return Object.freeze(entries);
 }
 
-async function fetchResponse(fetcher: Fetcher, path: string): Promise<Response> {
+async function fetchResponse(
+  fetcher: Fetcher,
+  path: string,
+  cache: RequestCache = 'force-cache',
+): Promise<Response> {
   let response: Response;
   try {
-    response = await fetcher(path, { cache: 'force-cache' });
+    response = await fetcher(path, { cache });
   } catch (error) {
     throw new TleArchiveError('INVALID_MANIFEST', `unable to fetch archived TLE resource ${path}`, { cause: String(error) });
   }
@@ -255,15 +258,15 @@ export async function loadTleWebArchiveCatalog(
   catalogUrl = '/tle-archive/oneweb/catalog.json',
   fetcher: Fetcher = browserFetcher,
 ): Promise<TleWebArchiveCatalog> {
-  const cached = fetcher === browserFetcher ? catalogPromiseCache.get(catalogUrl) : undefined;
-  if (cached !== undefined) return cached;
-  const request = loadTleWebArchiveCatalogUncached(catalogUrl, fetcher);
-  if (fetcher === browserFetcher) catalogPromiseCache.set(catalogUrl, request);
-  return request;
+  // Catalog files are mutable indexes: adding a new daily snapshot changes
+  // the same URL. Always revalidate them so a long-lived dev/browser session
+  // cannot keep resolving against yesterday's archive. The immutable daily
+  // TLE resources remain force-cached below.
+  return loadTleWebArchiveCatalogUncached(catalogUrl, fetcher);
 }
 
 async function loadTleWebArchiveCatalogUncached(catalogUrl: string, fetcher: Fetcher): Promise<TleWebArchiveCatalog> {
-  const response = await fetchResponse(fetcher, catalogUrl);
+  const response = await fetchResponse(fetcher, catalogUrl, 'no-cache');
   let raw: unknown;
   try {
     raw = await response.json();

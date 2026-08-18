@@ -1,0 +1,4 @@
+No,Filename,Width,Height,AspectRatio,PixelAspectRatio,SourceDisplayRatio,RatioSource,Format,HasTransparentPixels,UsageCount,DisplayRatioVariants,AssetKind,SvgRenderable,PptxNativeSupported,SizeKB,Category
+1,image1.png,1920,1440,1.33,1.33,,native,PNG,True,1,,bitmap,True,True,721.2,Standard landscape
+2,image2.png,2312,41,56.39,56.39,,native,PNG,False,1,,bitmap,True,True,52.4,Ultra-wide
+3,image3.png,427,61,7.00,7.00,,native,PNG,False,1,,bitmap,True,True,26.6,Ultra-wide

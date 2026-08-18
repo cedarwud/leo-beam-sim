@@ -1,74 +1,48 @@
 import type { ReactNode } from 'react';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import type { GainModel, PathLossComponent } from '../../profiles/types';
+import {
+  SIMPLIFIED_EE_BEAM_INDEX,
+  SIMPLIFIED_EE_LINK_INDEX,
+} from './simplifiedEeSymbols';
 import type { TuningTab, TuningTabKey } from './types';
 
 export const TUNING_TABS: readonly TuningTab[] = [
   {
     key: 'signal-power',
-    symbol: <>P<sub>t</sub></>,
-    title: 'Transmit Power',
-    subtitle: 'Per-beam transmit power.',
-    formula: <>P<sub>t</sub> starts the desired-signal numerator.</>,
-    formulaExpr: <>S ∝ P<sub>t</sub> · H · G<sup>T</sup> · G<sup>R</sup></>,
-    note: 'Use this page for per-beam transmit power before beam gain, path loss, and receiver gain are applied.',
+    symbol: <><i>p</i><sup>r</sup><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    title: 'RF Output',
+    subtitle: 'Actual per-beam RF output.',
+    formula: <>P<sup>o</sup><sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t, θ) = z<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t)P<sup>r</sup><sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t, θ)</>,
+    formulaExpr: <>P<sup>o</sup><sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t, θ) = z<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t)P<sup>r</sup><sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t, θ)</>,
+    note: 'The actual RF output is shared by the signal, interference, rate, PA, and EE chain.',
   },
   {
-    key: 'loss',
-    // NOTATION RULE (owner, 2026-08-06): the three surfaces must line up —
-    // the γ definition, this term chip, and the tunable parameters under it.
-    // γ's numerator factor is written `H`, so the chip is `H`, full stop; the
-    // page then SHOWS how its sliders build that H (`H = 10^(-L/10)`, then the
-    // L stack). A chip that said `H(L)` named a symbol γ never uses.
-    symbol: <>H</>,
-    // The numerator factor is the linear channel GAIN H; what this page tunes is
-    // the dB LOSS stack L. Naming the tab plain "Loss" contradicted its own
-    // symbol and subtitle, so the term keeps both halves.
-    title: 'Channel Gain / Path Loss',
-    subtitle: 'Path gain and propagation loss terms.',
-    formula: <>H ≈ 10<sup>-L/10</sup>, L = L<sub>fs</sub> + L<sub>g</sub> + L<sub>sc</sub> + L<sub>sf</sub></>,
-    note: 'Use this page to study how carrier frequency and propagation assumptions move every received beam power.',
-  },
-  {
-    key: 'beam',
-    // NOTATION RULE (see the `H` term above): the chip carries the symbol γ
-    // itself uses. γ multiplies by `G^T`; the bare θ the chip used to append is
-    // the per-UE off-axis angle the runtime computes, never a control on this
-    // page. How the sliders build G^T is shown on the page, by the section
-    // formula G^T = G_t,max + G(θ) - L_scan.
-    symbol: <>G<sup>T</sup></>,
-    title: 'Transmit Gain',
-    subtitle: 'Satellite beam gain and scan loss.',
-    formula: <>G<sup>T</sup> = G<sub>t,max</sub> + G(θ) - L<sub>scan</sub></>,
-    note: 'Use this page when beam shape, steering reach, or edge-of-beam attenuation is the question.',
-  },
-  {
-    key: 'receiver-gain',
-    symbol: <>G<sup>R</sup></>,
-    title: 'Receiver Gain',
-    subtitle: 'Receive-side numerator gain.',
-    formula: <>G<sup>R</sup> is the receive-side gain in the desired-signal numerator.</>,
-    formulaExpr: <>S ∝ P<sub>t</sub> · H · G<sup>T</sup> · G<sup>R</sup></>,
-    note: 'Use this page to tune the terminal-side gain without mixing it into transmit power or satellite beam gain.',
+    key: 'channel',
+    symbol: <>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    title: 'Effective Channel',
+    subtitle: 'Angle-aware effective channel used by the SINR numerator.',
+    formula: <>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    formulaExpr: <>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    note: 'h_{u,s,v}(t,θ) is the effective channel used by the SINR numerator.',
   },
   {
     key: 'interference',
-    // NOTATION RULE (see `H`): γ's denominator reads I^a + I^b, so the chip does
-    // too — the comma form named a pair γ never writes.
-    symbol: <>I<sup>a</sup> + I<sup>b</sup></>,
+    symbol: <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
     title: 'Interf.',
-    subtitle: 'Co-channel interference grouping.',
-    formula: <>Denominator interference is I<sup>a</sup> + I<sup>b</sup>, grouped by frequency reuse K.</>,
-    formulaExpr: <>I = I<sup>a</sup> + I<sup>b</sup>, K = 1…7</>,
-    note: 'Use this page to make the scene harsher or cleaner by changing how many active beams reuse the same frequency.',
+    subtitle: 'Total co-channel interference used by the SINR denominator.',
+    formula: <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    formulaExpr: <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    note: 'Frequency grouping determines the total co-channel interference I_{u,s,v}(t,θ).',
   },
   {
     key: 'thermal-noise',
     symbol: <>σ²</>,
     title: 'Thermal Noise',
     subtitle: 'Denominator thermal-noise controls.',
-    formula: <>σ² = N<sub>0</sub>B</>,
-    note: 'Use this page for bandwidth and noise density terms that raise the denominator noise floor.',
+    formula: <>σ²</>,
+    formulaExpr: <>σ²</>,
+    note: 'σ² is the interference-independent noise term in the SINR denominator.',
   },
 ];
 
@@ -104,7 +78,15 @@ export const PATH_LOSS_LABELS: Record<PathLossComponent, { symbol: ReactNode; la
 };
 
 export function getActiveTabConfig(activeTab: TuningTabKey): TuningTab {
-  return TUNING_TABS.find(tab => tab.key === activeTab) ?? TUNING_TABS[0];
+  const normalizedTab = normalizeTuningTabKey(activeTab);
+  return TUNING_TABS.find(tab => tab.key === normalizedTab) ?? TUNING_TABS[0];
+}
+
+export function normalizeTuningTabKey(activeTab: TuningTabKey): TuningTabKey {
+  if (activeTab === 'loss' || activeTab === 'beam' || activeTab === 'receiver-gain') {
+    return 'channel';
+  }
+  return activeTab;
 }
 export function getFormulaTabAccent(tabKey: TuningTabKey): string {
   switch (tabKey) {
@@ -112,10 +94,9 @@ export function getFormulaTabAccent(tabKey: TuningTabKey): string {
       return UI_TOKENS.color.semantic.noise;
     case 'interference':
       return '#ff8a6b';
+    case 'channel':
     case 'loss':
-      return UI_TOKENS.color.semantic.loss;
     case 'receiver-gain':
-      return UI_TOKENS.color.semantic.fixed;
     case 'beam':
       return UI_TOKENS.color.semantic.beam;
     case 'signal-power':
@@ -127,12 +108,11 @@ export function getFormulaTabShortLabel(tabKey: TuningTabKey): string {
   switch (tabKey) {
     case 'signal-power':
       return 'Power';
+    case 'channel':
     case 'loss':
-      return 'Loss';
     case 'beam':
-      return 'Beam';
     case 'receiver-gain':
-      return 'Receiver';
+      return 'Channel';
     case 'interference':
       return 'Interf.';
     case 'thermal-noise':
@@ -153,38 +133,44 @@ export function getFormulaTabNoteCopy(tabKey: TuningTabKey): {
     case 'signal-power':
       return {
         key: 'tab.sub.signalPower.note',
-        zh: '每波束發射功率 P_t，為分子鏈在天線增益、路徑損耗與接收增益之前的起始項。',
-        en: 'Per-beam transmit power P_t, the first factor of the numerator, before beam gain, path loss, and receiver gain are applied.',
+        zh: '鏈路功率 p^r_{u,s,v}(t,θ) 先聚合為 P^r_{s,v}(t,θ)，再得到共享實際輸出 P^o_{s,v}(t,θ)。',
+        en: 'Link power p^r_{u,s,v}(t,θ) is aggregated into P^r_{s,v}(t,θ), then becomes shared actual output P^o_{s,v}(t,θ).',
+      };
+    case 'channel':
+      return {
+        key: 'tab.sub.channel.note',
+        zh: '有效通道 h_{u,s,v}(t,θ) 收合傳播、接收端與角度相關因素。',
+        en: 'Effective channel h_{u,s,v}(t,θ) collects propagation, receive-side, and angle-dependent factors.',
       };
     case 'loss':
       return {
         key: 'tab.sub.loss.note',
-        zh: '路徑損耗與傳播假設：載波頻率與各損耗項共同決定每一道波束的接收功率。',
-        en: 'Path loss and propagation assumptions: carrier frequency and the loss terms jointly set the received power of every beam.',
+        zh: '傳播、接收端與衰落因素會被收進有效通道 h_{u,s,v}(t,θ)。',
+        en: 'Propagation, receive-side, and fading factors are collected into effective channel h_{u,s,v}(t,θ).',
       };
     case 'beam':
       return {
         key: 'tab.sub.beam.note',
-        zh: '波束寬度、可轉向角度與邊緣衰減，共同構成衛星端的 G^T 項。',
-        en: 'Beamwidth, steering range, and edge-of-beam attenuation, which together form the satellite-side G^T term.',
+        zh: 'G^T(θ) 將離軸角帶入有效通道。',
+        en: 'G^T(θ) carries the off-axis angle into the effective channel.',
       };
     case 'receiver-gain':
       return {
         key: 'tab.sub.receiverGain.note',
-        zh: '地面終端天線增益 G^R，獨立於發射功率 P_t 與衛星天線增益 G^T。',
-        en: 'Terminal antenna gain G^R, independent of transmit power P_t and satellite beam gain G^T.',
+        zh: '接收端增益納入 h_{u,s,v}(t,θ)，不在簡化主式中另列。',
+        en: 'Receive-side gain is included in h_{u,s,v}(t,θ) and is not listed separately in the simplified main formula.',
       };
     case 'interference':
       return {
         key: 'tab.sub.interference.note',
-        zh: '頻率重複使用因子 K 決定同頻作用中波束的數量，即分母的同頻干擾強度。',
-        en: 'The frequency-reuse factor K sets how many active beams share a frequency group, and therefore the co-channel interference in the denominator.',
+        zh: '頻率分組決定哪些作用中波束共享頻率，進而形成 I_{u,s,v}(t,θ)。',
+        en: 'Frequency grouping determines which active beams share a frequency and form I_{u,s,v}(t,θ).',
       };
     case 'thermal-noise':
       return {
         key: 'tab.sub.thermalNoise.note',
-        zh: '頻寬 B 與雜訊功率密度 N₀ 決定分母的熱雜訊底線 σ² = N₀B。',
-        en: 'Bandwidth B and noise power density N₀ set the denominator thermal-noise floor σ² = N₀B.',
+        zh: 'σ² 是 SINR 分母中與干擾無關的雜訊項。',
+        en: 'σ² is the interference-independent noise term in the SINR denominator.',
       };
   }
 }
@@ -228,6 +214,8 @@ export function getFormulaTabLabelCopy(tabKey: TuningTabKey): {
   switch (tabKey) {
     case 'signal-power':
       return { key: 'tab.sub.signalPower.label', zh: '發射功率', en: 'Power' };
+    case 'channel':
+      return { key: 'tab.sub.channel.label', zh: '有效通道', en: 'Channel' };
     case 'loss':
       return { key: 'tab.sub.loss.label', zh: '路徑損耗', en: 'Loss' };
     case 'beam':

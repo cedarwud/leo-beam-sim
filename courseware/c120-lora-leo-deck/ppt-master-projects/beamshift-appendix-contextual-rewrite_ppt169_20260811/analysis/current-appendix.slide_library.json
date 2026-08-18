@@ -1,0 +1,4582 @@
+{
+  "schema": "template_fill_pptx_library.v1",
+  "source_pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/ppt-master-projects/beamshift-appendix-contextual-rewrite_ppt169_20260811/sources/LoRaEnergySim-LEO-ALT-APPENDIX-REVIEW.pptx",
+  "slide_count": 19,
+  "canvas_px": {
+    "width": 1280,
+    "height": 720
+  },
+  "slides": [
+    {
+      "slide_index": 1,
+      "page_type": "cover_candidate",
+      "text_summary": "TLE：固定來源與情境錨點\n技術附錄\nTLE（兩行軌道元素）保存 scenario 使用的來源文字與 epoch；此頁只建立來源 provenance。\nsource_id（來源識別碼）：scenario package 產生；字串、無單位；連結固定來源與後續推導。\nepoch（來源時刻）：TLE 文字提供；時間戳；界定元素所對應的基準時刻。\nraw bytes（原始位元組）：pinned source 保存；byte 序列；供 identity 與重建核對。\n判讀｜current source identity 尚未隨本次教材凍結，畫面狀態維持「待取得 current evidence」。\n恢復｜來源、epoch 或 scenario identity 缺漏時，附錄停在來源層，後續推導不成立。",
+      "slots": [
+        {
+          "slot_id": "s01_sh2",
+          "role": "title_candidate",
+          "text": "TLE：固定來源與情境錨點",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s01_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s01_sh4",
+          "role": "title_candidate",
+          "text": "TLE（兩行軌道元素）保存 scenario 使用的來源文字與 epoch；此頁只建立來源 provenance。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s01_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 192,
+            "width": 1099,
+            "height": 279
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s01_sh6",
+          "role": "body_candidate",
+          "text": "source_id（來源識別碼）：scenario package 產生；字串、無單位；連結固定來源與後續推導。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 112,
+            "y": 209,
+            "width": 1051,
+            "height": 65
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s01_sh8",
+          "role": "body_candidate",
+          "text": "epoch（來源時刻）：TLE 文字提供；時間戳；界定元素所對應的基準時刻。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 112,
+            "y": 290,
+            "width": 1051,
+            "height": 65
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s01_sh10",
+          "role": "body_candidate",
+          "text": "raw bytes（原始位元組）：pinned source 保存；byte 序列；供 identity 與重建核對。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 112,
+            "y": 371,
+            "width": 1051,
+            "height": 65
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s01_sh12",
+          "role": "body_candidate",
+          "text": "判讀｜current source identity 尚未隨本次教材凍結，畫面狀態維持「待取得 current evidence」。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s01_sh13",
+          "role": "body_candidate",
+          "text": "恢復｜來源、epoch 或 scenario identity 缺漏時，附錄停在來源層，後續推導不成立。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 2,
+      "page_type": "content_candidate",
+      "text_summary": "SGP4：平均元素至目標時間狀態\n技術附錄\nSGP4（簡化一般擾動模型）讀取 TLE／GP 與 target time，輸出 position／velocity 的模型推導狀態。\ntarget time\nposition\nvelocity\ntarget time（目標時間）：scenario clock 提供；時間戳；指定模型推進時點。\nposition（位置向量）：SGP4 產生；km；描述 TEME reference frame 中的位置。\nvelocity（速度向量）：SGP4 產生；km/s；描述同一 frame 與時刻的速度。\n判讀｜輸出分類為 derived（模型推導），其證據強度由 source、model version、time 與 units lineage 決定。\n恢復｜model version、target time 或 units 缺漏時，狀態標記為「待取得 current evidence」。",
+      "slots": [
+        {
+          "slot_id": "s02_sh2",
+          "role": "title_candidate",
+          "text": "SGP4：平均元素至目標時間狀態",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh4",
+          "role": "title_candidate",
+          "text": "SGP4（簡化一般擾動模型）讀取 TLE／GP 與 target time，輸出 position／velocity 的模型推導狀態。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 96,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s02_sh6",
+          "role": "label_candidate",
+          "text": "target time",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 104,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 442,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s02_sh9",
+          "role": "label_candidate",
+          "text": "position",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 449,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 787,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s02_sh12",
+          "role": "label_candidate",
+          "text": "velocity",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 795,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh13",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 299,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s02_sh14",
+          "role": "body_candidate",
+          "text": "target time（目標時間）：scenario clock 提供；時間戳；指定模型推進時點。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 288,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh15",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 360,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s02_sh16",
+          "role": "body_candidate",
+          "text": "position（位置向量）：SGP4 產生；km；描述 TEME reference frame 中的位置。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 349,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh17",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 421,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s02_sh18",
+          "role": "body_candidate",
+          "text": "velocity（速度向量）：SGP4 產生；km/s；描述同一 frame 與時刻的速度。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 411,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh20",
+          "role": "body_candidate",
+          "text": "判讀｜輸出分類為 derived（模型推導），其證據強度由 source、model version、time 與 units lineage 決定。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh21",
+          "role": "body_candidate",
+          "text": "恢復｜model version、target time 或 units 缺漏時，狀態標記為「待取得 current evidence」。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 3,
+      "page_type": "content_candidate",
+      "text_summary": "TEME 至地面站方向的座標轉換\n技術附錄\nReference frame 轉換把衛星狀態依序映射到地固與觀測者座標；每一步保留 frame 與 units。\nTEME\nECEF\nENU\nTEME（真赤道平春分點座標）：SGP4 輸出 frame；位置 km、速度 km/s；保存軌道模型狀態。\nECEF（地心地固座標）：frame conversion 產生；km；把向量連結到旋轉地球。\nENU（東北天座標）：observer location 產生；km；形成 azimuth／elevation／range。\n判讀｜azimuth（方位角）與 elevation（仰角）為 degree；range（斜距）為 km，三者皆屬 observer-frame derived field。\n恢復｜frame 或 unit mapping 不完整時，不進入品質與 policy 比較。",
+      "slots": [
+        {
+          "slot_id": "s03_sh2",
+          "role": "title_candidate",
+          "text": "TEME 至地面站方向的座標轉換",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh4",
+          "role": "title_candidate",
+          "text": "Reference frame 轉換把衛星狀態依序映射到地固與觀測者座標；每一步保留 frame 與 units。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 96,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s03_sh6",
+          "role": "label_candidate",
+          "text": "TEME",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 104,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 442,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s03_sh9",
+          "role": "label_candidate",
+          "text": "ECEF",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 449,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 787,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s03_sh12",
+          "role": "label_candidate",
+          "text": "ENU",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 795,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh13",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 299,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s03_sh14",
+          "role": "body_candidate",
+          "text": "TEME（真赤道平春分點座標）：SGP4 輸出 frame；位置 km、速度 km/s；保存軌道模型狀態。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 288,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh15",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 360,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s03_sh16",
+          "role": "body_candidate",
+          "text": "ECEF（地心地固座標）：frame conversion 產生；km；把向量連結到旋轉地球。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 349,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh17",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 421,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s03_sh18",
+          "role": "body_candidate",
+          "text": "ENU（東北天座標）：observer location 產生；km；形成 azimuth／elevation／range。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 411,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh20",
+          "role": "body_candidate",
+          "text": "判讀｜azimuth（方位角）與 elevation（仰角）為 degree；range（斜距）為 km，三者皆屬 observer-frame derived field。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s03_sh21",
+          "role": "body_candidate",
+          "text": "恢復｜frame 或 unit mapping 不完整時，不進入品質與 policy 比較。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 4,
+      "page_type": "content_candidate",
+      "text_summary": "幾何與品質的分層 gate\n技術附錄\n四類欄位進入不同模型分支，service opportunity 需通過 current scenario 所定義的必要 gate。\nG1\nelevation（仰角）：geometry derivation 產生；degree；判定地平線可見性。\nG2\nboresight angle（離軸角）：beam geometry 產生；degree；描述波束中心偏離。\nG3\nrange（斜距）：observer frame 產生；km；進入 path／timing context。\nG4\nquality（品質分類）：runner observation 產生；ordinal、無物理單位；供 policy threshold 判斷。\n判讀｜visibility、geometry、quality 與 delivered service 分層保存，任何單一 gate 皆不能取代 service evidence。\n恢復｜欄位來源或 units 未凍結時，candidate 維持 unqualified。",
+      "slots": [
+        {
+          "slot_id": "s04_sh2",
+          "role": "title_candidate",
+          "text": "幾何與品質的分層 gate",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh4",
+          "role": "title_candidate",
+          "text": "四類欄位進入不同模型分支，service opportunity 需通過 current scenario 所定義的必要 gate。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 190,
+            "width": 113,
+            "height": 54
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s04_sh6",
+          "role": "label_candidate",
+          "text": "G1",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 94,
+            "y": 196,
+            "width": 101,
+            "height": 40
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh7",
+          "role": "body_candidate",
+          "text": "elevation（仰角）：geometry derivation 產生；degree；判定地平線可見性。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 223,
+            "y": 189,
+            "width": 970,
+            "height": 59
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 256,
+            "width": 113,
+            "height": 54
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s04_sh9",
+          "role": "label_candidate",
+          "text": "G2",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 94,
+            "y": 262,
+            "width": 101,
+            "height": 40
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh10",
+          "role": "body_candidate",
+          "text": "boresight angle（離軸角）：beam geometry 產生；degree；描述波束中心偏離。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 223,
+            "y": 255,
+            "width": 970,
+            "height": 59
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 322,
+            "width": 113,
+            "height": 54
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s04_sh12",
+          "role": "label_candidate",
+          "text": "G3",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 94,
+            "y": 328,
+            "width": 101,
+            "height": 40
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh13",
+          "role": "body_candidate",
+          "text": "range（斜距）：observer frame 產生；km；進入 path／timing context。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 223,
+            "y": 321,
+            "width": 970,
+            "height": 59
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh14",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 388,
+            "width": 113,
+            "height": 54
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s04_sh15",
+          "role": "label_candidate",
+          "text": "G4",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 94,
+            "y": 394,
+            "width": 101,
+            "height": 40
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh16",
+          "role": "body_candidate",
+          "text": "quality（品質分類）：runner observation 產生；ordinal、無物理單位；供 policy threshold 判斷。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 223,
+            "y": 387,
+            "width": 970,
+            "height": 59
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh18",
+          "role": "body_candidate",
+          "text": "判讀｜visibility、geometry、quality 與 delivered service 分層保存，任何單一 gate 皆不能取代 service evidence。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s04_sh19",
+          "role": "body_candidate",
+          "text": "恢復｜欄位來源或 units 未凍結時，candidate 維持 unqualified。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 5,
+      "page_type": "content_candidate",
+      "text_summary": "quality／dB：policy 的觀測情境\n技術附錄\nquality 是 decision-time observation；若 current contract 使用 dB，log value 需連結明確 source、unit 與 timing。\nquality_band（品質帶）：runner observation 產生；ordinal、無 dB 單位；供 enter／hold／exit 條件讀取。\ndB（分貝）：模型欄位在已定義 ratio source 時產生；dB；表達 logarithmic ratio。\nthreshold（門檻）：student_policy.py marked block 提供；與觀測同型別；決定 action branch。\n判讀｜quality observation 只描述 action context；service、endpoint energy 與 bit/J 由不同 result fields 提供。\n恢復｜units 或 observation timing 未知時，欄位標記 unavailable，返回 policy API ",
+      "slots": [
+        {
+          "slot_id": "s05_sh2",
+          "role": "title_candidate",
+          "text": "quality／dB：policy 的觀測情境",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s05_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s05_sh4",
+          "role": "body_candidate",
+          "text": "quality 是 decision-time observation；若 current contract 使用 dB，log value 需連結明確 source、unit 與 timing。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s05_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 194,
+            "width": 533,
+            "height": 267
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s05_sh6",
+          "role": "body_candidate",
+          "text": "quality_band（品質帶）：runner observation 產生；ordinal、無 dB 單位；供 enter／hold／exit 條件讀取。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 213,
+            "width": 491,
+            "height": 89
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s05_sh7",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 672,
+            "y": 194,
+            "width": 533,
+            "height": 267
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s05_sh8",
+          "role": "body_candidate",
+          "text": "dB（分貝）：模型欄位在已定義 ratio source 時產生；dB；表達 logarithmic ratio。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 693,
+            "y": 213,
+            "width": 491,
+            "height": 89
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s05_sh9",
+          "role": "body_candidate",
+          "text": "threshold（門檻）：student_policy.py marked block 提供；與觀測同型別；決定 action branch。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 693,
+            "y": 321,
+            "width": 491,
+            "height": 89
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s05_sh11",
+          "role": "body_candidate",
+          "text": "判讀｜quality observation 只描述 action context；service、endpoint energy 與 bit/J 由不同 result fields 提供。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s05_sh12",
+          "role": "body_candidate",
+          "text": "恢復｜units 或 observation timing 未知時，欄位標記 unavailable，返回 policy API 定義。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 6,
+      "page_type": "content_candidate",
+      "text_summary": "throughput、delivered bits 與 service\n技術附錄\n傳輸速率、已送達工作量與服務判定分別描述過程、輸出與 gate。\nthroughput（吞吐率）：result aggregation 產生；bit/s；描述指定 interval 的 delivered rate。\ndelivered_bits（已送達位元）：packet ledger 產生；bit；累積符合 delivery 定義的工作量。\nservice_pass（服務通過）：service evaluator 產生；Boolean、無單位；整合 delivery、deadline 與 freshness 條件。\n判讀｜energy efficiency 僅在相同 boundary、qualified window 與 service condition 下比較。\n恢復｜packet 或 service evidence 缺漏時，比較狀態維持 incomplete。",
+      "slots": [
+        {
+          "slot_id": "s06_sh2",
+          "role": "title_candidate",
+          "text": "throughput、delivered bits 與 service",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s06_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s06_sh4",
+          "role": "title_candidate",
+          "text": "傳輸速率、已送達工作量與服務判定分別描述過程、輸出與 gate。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s06_sh6",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 116,
+            "y": 210,
+            "width": 27,
+            "height": 27
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s06_sh7",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 259,
+            "width": 344,
+            "height": 204
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s06_sh8",
+          "role": "body_candidate",
+          "text": "throughput（吞吐率）：result aggregation 產生；bit/s；描述指定 interval 的 delivered rate。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 102,
+            "y": 276,
+            "width": 309,
+            "height": 169
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s06_sh9",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 613,
+            "y": 210,
+            "width": 27,
+            "height": 27
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s06_sh10",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 474,
+            "y": 259,
+            "width": 344,
+            "height": 204
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s06_sh11",
+          "role": "body_candidate",
+          "text": "delivered_bits（已送達位元）：packet ledger 產生；bit；累積符合 delivery 定義的工作量。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 492,
+            "y": 276,
+            "width": 309,
+            "height": 169
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s06_sh12",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 1110,
+            "y": 210,
+            "width": 27,
+            "height": 27
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s06_sh13",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 864,
+            "y": 259,
+            "width": 344,
+            "height": 204
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s06_sh14",
+          "role": "body_candidate",
+          "text": "service_pass（服務通過）：service evaluator 產生；Boolean、無單位；整合 delivery、deadline 與 freshness 條件。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 881,
+            "y": 276,
+            "width": 309,
+            "height": 169
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s06_sh16",
+          "role": "body_candidate",
+          "text": "判讀｜energy efficiency 僅在相同 boundary、qualified window 與 service condition 下比較。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s06_sh17",
+          "role": "body_candidate",
+          "text": "恢復｜packet 或 service evidence 缺漏時，比較狀態維持 incomplete。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 7,
+      "page_type": "content_candidate",
+      "text_summary": "切換時機的兩種失敗型態\n快速深化\nFrozen policy 在兩條 held-out trace 上揭示 delayed switch 與 ping-pong 的事件特徵。\n型態 A\ndelayed switch（延遲切換）：transition ledger 產生；event timing；可能造成服務中斷或錯過窗口。\nping-pong（往返切換）：transition ledger 產生；event count／timing；顯示條件過度敏感。\n型態 B／判讀\ncontinuity（服務連續性）：service trace 產生；Boolean／duration；連結切換與 packet outcome。\n判讀｜transition count 屬事件證據；energy verdict 仍需 scoped state duration、packet/service 與 endpoint J。\n恢復｜policy identity 或 trace identity 不相符時，返回 Lab B freeze record。",
+      "slots": [
+        {
+          "slot_id": "s07_sh2",
+          "role": "title_candidate",
+          "text": "切換時機的兩種失敗型態",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s07_sh3",
+          "role": "title_candidate",
+          "text": "快速深化",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s07_sh4",
+          "role": "title_candidate",
+          "text": "Frozen policy 在兩條 held-out trace 上揭示 delayed switch 與 ping-pong 的事件特徵。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s07_sh5",
+          "role": "label_candidate",
+          "text": "型態 A",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 188,
+            "width": 533,
+            "height": 36
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s07_sh6",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 228,
+            "width": 533,
+            "height": 237
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s07_sh7",
+          "role": "body_candidate",
+          "text": "delayed switch（延遲切換）：transition ledger 產生；event timing；可能造成服務中斷或錯過窗口。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 248,
+            "width": 490,
+            "height": 84
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s07_sh8",
+          "role": "body_candidate",
+          "text": "ping-pong（往返切換）：transition ledger 產生；event count／timing；顯示條件過度敏感。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 346,
+            "width": 490,
+            "height": 84
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s07_sh9",
+          "role": "label_candidate",
+          "text": "型態 B／判讀",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 650,
+            "y": 188,
+            "width": 533,
+            "height": 36
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s07_sh10",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 650,
+            "y": 228,
+            "width": 533,
+            "height": 237
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s07_sh11",
+          "role": "body_candidate",
+          "text": "continuity（服務連續性）：service trace 產生；Boolean／duration；連結切換與 packet outcome。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 671,
+            "y": 248,
+            "width": 490,
+            "height": 84
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s07_sh13",
+          "role": "body_candidate",
+          "text": "判讀｜transition count 屬事件證據；energy verdict 仍需 scoped state duration、packet/service 與 endpoint J。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s07_sh14",
+          "role": "body_candidate",
+          "text": "恢復｜policy identity 或 trace identity 不相符時，返回 Lab B freeze record。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 8,
+      "page_type": "content_candidate",
+      "text_summary": "功率與能量的帳本範圍\n技術附錄\nPower 描述瞬時速率，energy 描述指定 boundary 內 power 隨 time 的累積。\nP(t)（時間函數功率）\nenergy model 提供；W＝J/s；依 radio state 與 processing state 取值。\nstate duration（狀態停留時間）\nendpoint replay 產生；s；決定每個 power bucket 的累積量。\nendpoint_energy_j（端點累積能量）\nrunner result 產生；J；涵蓋 endpoint radio／processing course boundary。\n判讀｜RF output、PA input、static term、endpoint J 與 system J 各有獨立 source 與 scope。\n恢復｜未建模項維持 absent；scope 未定時停止 bit/J 判讀。",
+      "slots": [
+        {
+          "slot_id": "s08_sh2",
+          "role": "title_candidate",
+          "text": "功率與能量的帳本範圍",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh4",
+          "role": "title_candidate",
+          "text": "Power 描述瞬時速率，energy 描述指定 boundary 內 power 隨 time 的累積。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 200,
+            "width": 353,
+            "height": 254
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s08_sh6",
+          "role": "body_candidate",
+          "text": "P(t)（時間函數功率）",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 106,
+            "y": 218,
+            "width": 319,
+            "height": 60
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh7",
+          "role": "body_candidate",
+          "text": "energy model 提供；W＝J/s；依 radio state 與 processing state 取值。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 289,
+            "width": 311,
+            "height": 139
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 477,
+            "y": 200,
+            "width": 353,
+            "height": 254
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s08_sh9",
+          "role": "label_candidate",
+          "text": "state duration（狀態停留時間）",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 494,
+            "y": 218,
+            "width": 319,
+            "height": 60
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh10",
+          "role": "body_candidate",
+          "text": "endpoint replay 產生；s；決定每個 power bucket 的累積量。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 498,
+            "y": 289,
+            "width": 311,
+            "height": 139
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 866,
+            "y": 200,
+            "width": 353,
+            "height": 254
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s08_sh12",
+          "role": "label_candidate",
+          "text": "endpoint_energy_j（端點累積能量）",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 883,
+            "y": 218,
+            "width": 319,
+            "height": 60
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh13",
+          "role": "body_candidate",
+          "text": "runner result 產生；J；涵蓋 endpoint radio／processing course boundary。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 887,
+            "y": 289,
+            "width": 311,
+            "height": 139
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh15",
+          "role": "body_candidate",
+          "text": "判讀｜RF output、PA input、static term、endpoint J 與 system J 各有獨立 source 與 scope。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s08_sh16",
+          "role": "body_candidate",
+          "text": "恢復｜未建模項維持 absent；scope 未定時停止 bit/J 判讀。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 9,
+      "page_type": "content_candidate",
+      "text_summary": "公平 A/B 的固定條件\n快速深化\nBaseline 與 candidate 共享 scenario、seed、service window、units 與 predecessor，只允許一個 marked policy change。\nG1\nscenario（情境）：scenario package 提供；structured record；固定 job、window 與 model inputs。\nG2\nseed（隨機種子）：runner command 提供；integer、無物理單位；固定 deterministic branch。\nG3\npredecessor（前置結果）：freeze receipt 提供；identity；維持 A/B lineage。\nG4\nconsequential diff（具因果影響的差異）：result/replay comparison 產生；typed events；證明修改進入 runtime path。\n判讀｜identity mismatch 或 null diff 屬 comparison gate failure，不能形成 ener",
+      "slots": [
+        {
+          "slot_id": "s09_sh2",
+          "role": "title_candidate",
+          "text": "公平 A/B 的固定條件",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh3",
+          "role": "title_candidate",
+          "text": "快速深化",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh4",
+          "role": "body_candidate",
+          "text": "Baseline 與 candidate 共享 scenario、seed、service window、units 與 predecessor，只允許一個 marked policy change。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 190,
+            "width": 113,
+            "height": 54
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s09_sh6",
+          "role": "label_candidate",
+          "text": "G1",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 94,
+            "y": 196,
+            "width": 101,
+            "height": 40
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh7",
+          "role": "body_candidate",
+          "text": "scenario（情境）：scenario package 提供；structured record；固定 job、window 與 model inputs。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 223,
+            "y": 189,
+            "width": 970,
+            "height": 59
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 256,
+            "width": 113,
+            "height": 54
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s09_sh9",
+          "role": "label_candidate",
+          "text": "G2",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 94,
+            "y": 262,
+            "width": 101,
+            "height": 40
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh10",
+          "role": "body_candidate",
+          "text": "seed（隨機種子）：runner command 提供；integer、無物理單位；固定 deterministic branch。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 223,
+            "y": 255,
+            "width": 970,
+            "height": 59
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 322,
+            "width": 113,
+            "height": 54
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s09_sh12",
+          "role": "label_candidate",
+          "text": "G3",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 94,
+            "y": 328,
+            "width": 101,
+            "height": 40
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh13",
+          "role": "body_candidate",
+          "text": "predecessor（前置結果）：freeze receipt 提供；identity；維持 A/B lineage。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 223,
+            "y": 321,
+            "width": 970,
+            "height": 59
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh14",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 388,
+            "width": 113,
+            "height": 54
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s09_sh15",
+          "role": "label_candidate",
+          "text": "G4",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 94,
+            "y": 394,
+            "width": 101,
+            "height": 40
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh16",
+          "role": "body_candidate",
+          "text": "consequential diff（具因果影響的差異）：result/replay comparison 產生；typed events；證明修改進入 runtime path。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 223,
+            "y": 387,
+            "width": 970,
+            "height": 59
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh18",
+          "role": "body_candidate",
+          "text": "判讀｜identity mismatch 或 null diff 屬 comparison gate failure，不能形成 energy result。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s09_sh19",
+          "role": "body_candidate",
+          "text": "恢復｜恢復相符 checkpoint 或 same-scenario fallback，再重建比較。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 10,
+      "page_type": "content_candidate",
+      "text_summary": "控制至證據的因果骨架\n快速深化\nstudent_policy.py 的唯一修改須沿 action、state、packet／service 與 endpoint energy 留下對應證據。\naction\nradio state\npacket outcome\naction（策略動作）：policy callback 產生；enum、無單位；選擇 WAIT、SLEEP 或 send family。\nradio state（無線電狀態）：runner state machine 產生；enum、無單位；決定 duration 與 energy bucket。\npacket outcome（封包結果）：packet ledger 產生；category／timestamp；連結 delivery、expiry 與 retry。\n判讀｜中介 state evidence 將 code change 與 result field 連成可反駁因果句。\n恢復｜預測保留；若中介 evidence 無差異，返回 marked block 與 policy API。",
+      "slots": [
+        {
+          "slot_id": "s10_sh2",
+          "role": "title_candidate",
+          "text": "控制至證據的因果骨架",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh3",
+          "role": "title_candidate",
+          "text": "快速深化",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh4",
+          "role": "title_candidate",
+          "text": "student_policy.py 的唯一修改須沿 action、state、packet／service 與 endpoint energy 留下對應證據。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 96,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s10_sh6",
+          "role": "label_candidate",
+          "text": "action",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 104,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 442,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s10_sh9",
+          "role": "label_candidate",
+          "text": "radio state",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 449,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 787,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s10_sh12",
+          "role": "label_candidate",
+          "text": "packet outcome",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 795,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh13",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 299,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s10_sh14",
+          "role": "body_candidate",
+          "text": "action（策略動作）：policy callback 產生；enum、無單位；選擇 WAIT、SLEEP 或 send family。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 288,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh15",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 360,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s10_sh16",
+          "role": "body_candidate",
+          "text": "radio state（無線電狀態）：runner state machine 產生；enum、無單位；決定 duration 與 energy bucket。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 349,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh17",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 421,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s10_sh18",
+          "role": "body_candidate",
+          "text": "packet outcome（封包結果）：packet ledger 產生；category／timestamp；連結 delivery、expiry 與 retry。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 411,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh20",
+          "role": "body_candidate",
+          "text": "判讀｜中介 state evidence 將 code change 與 result field 連成可反駁因果句。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s10_sh21",
+          "role": "body_candidate",
+          "text": "恢復｜預測保留；若中介 evidence 無差異，返回 marked block 與 policy API。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 11,
+      "page_type": "content_candidate",
+      "text_summary": "節能判讀需要服務、工作量與能量\n技術附錄\n同一 qualified window 內同時核對 delivered work、service／quality 與 scoped energy。\ndelivered work（已送達工作量）\npacket ledger 產生；bit；提供效率 numerator。\nservice verdict（服務判定）\nservice evaluator 產生；Boolean／reason；限定比較有效性。\nscoped energy（有範圍的能量）\nendpoint result 產生；J；提供同 boundary denominator。\n判讀｜較低 J 且 service loss 的結果分類為 trade-off 或 failure；資料完整度不足時分類為 incomplete。\n恢復｜保留原始 result/replay 與 missing-field status，不補寫預期值。",
+      "slots": [
+        {
+          "slot_id": "s11_sh2",
+          "role": "title_candidate",
+          "text": "節能判讀需要服務、工作量與能量",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh4",
+          "role": "title_candidate",
+          "text": "同一 qualified window 內同時核對 delivered work、service／quality 與 scoped energy。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 200,
+            "width": 353,
+            "height": 254
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s11_sh6",
+          "role": "label_candidate",
+          "text": "delivered work（已送達工作量）",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 106,
+            "y": 218,
+            "width": 319,
+            "height": 60
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh7",
+          "role": "body_candidate",
+          "text": "packet ledger 產生；bit；提供效率 numerator。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 289,
+            "width": 311,
+            "height": 139
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 477,
+            "y": 200,
+            "width": 353,
+            "height": 254
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s11_sh9",
+          "role": "label_candidate",
+          "text": "service verdict（服務判定）",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 494,
+            "y": 218,
+            "width": 319,
+            "height": 60
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh10",
+          "role": "body_candidate",
+          "text": "service evaluator 產生；Boolean／reason；限定比較有效性。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 498,
+            "y": 289,
+            "width": 311,
+            "height": 139
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 866,
+            "y": 200,
+            "width": 353,
+            "height": 254
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s11_sh12",
+          "role": "label_candidate",
+          "text": "scoped energy（有範圍的能量）",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 883,
+            "y": 218,
+            "width": 319,
+            "height": 60
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh13",
+          "role": "body_candidate",
+          "text": "endpoint result 產生；J；提供同 boundary denominator。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 887,
+            "y": 289,
+            "width": 311,
+            "height": 139
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh15",
+          "role": "body_candidate",
+          "text": "判讀｜較低 J 且 service loss 的結果分類為 trade-off 或 failure；資料完整度不足時分類為 incomplete。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s11_sh16",
+          "role": "body_candidate",
+          "text": "恢復｜保留原始 result/replay 與 missing-field status，不補寫預期值。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 12,
+      "page_type": "content_candidate",
+      "text_summary": "可重建的 evidence record\n技術附錄\nEvidence record 連結 source mode、identity、mechanism、observed evidence 與 limitation。\nsource mode（來源模式）：importer 產生；actual run／fallback category；界定證據來源。\nrun_id（執行識別碼）：runner 產生；字串、無單位；連結 result 與 endpoint replay。\nscope（範圍）：schema／authority map 提供；category；限定 endpoint 或 system interpretation。\n判讀｜完整 record 允許重建修改、輸入、觀察與限制；缺少 identity 或 scope 時狀態為 INCOMPLETE。\n恢復｜current record 待取得；donor screenshot 與預期值不填入缺口。",
+      "slots": [
+        {
+          "slot_id": "s12_sh2",
+          "role": "title_candidate",
+          "text": "可重建的 evidence record",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s12_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s12_sh4",
+          "role": "body_candidate",
+          "text": "Evidence record 連結 source mode、identity、mechanism、observed evidence 與 limitation。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s12_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 192,
+            "width": 1099,
+            "height": 279
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s12_sh6",
+          "role": "body_candidate",
+          "text": "source mode（來源模式）：importer 產生；actual run／fallback category；界定證據來源。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 112,
+            "y": 209,
+            "width": 1051,
+            "height": 65
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s12_sh8",
+          "role": "body_candidate",
+          "text": "run_id（執行識別碼）：runner 產生；字串、無單位；連結 result 與 endpoint replay。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 112,
+            "y": 290,
+            "width": 1051,
+            "height": 65
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s12_sh10",
+          "role": "body_candidate",
+          "text": "scope（範圍）：schema／authority map 提供；category；限定 endpoint 或 system interpretation。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 112,
+            "y": 371,
+            "width": 1051,
+            "height": 65
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s12_sh12",
+          "role": "body_candidate",
+          "text": "判讀｜完整 record 允許重建修改、輸入、觀察與限制；缺少 identity 或 scope 時狀態為 INCOMPLETE。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s12_sh13",
+          "role": "body_candidate",
+          "text": "恢復｜current record 待取得；donor screenshot 與預期值不填入缺口。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 13,
+      "page_type": "content_candidate",
+      "text_summary": "證據來源分類\n技術附錄\n來源與 model lineage 決定 claim class；分類描述證據生成方式，不作優劣排名。\nmeasured（實測）：instrument 直接取得；unit 隨物理量；支援 bounded measurement claim。\nderived（模型推導）：source 加 model 產生；unit 隨輸出；需保留 model／time lineage。\nassumed（課程假設）：course contract 指定；unit 隨參數；只支援 assumption-scoped explanation。\nsimulated（模擬輸出）：runner 產生；unit 隨 schema；本課 endpoint result 的目前分類。\n判讀｜目前 claim ceiling 為 course-packaged simulated endpoint-energy lab；current owner evidence 改變前維持此分類。\n恢復｜來源不明時降低 claim，欄位標示「待取得 current evidence」。",
+      "slots": [
+        {
+          "slot_id": "s13_sh2",
+          "role": "title_candidate",
+          "text": "證據來源分類",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s13_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s13_sh4",
+          "role": "title_candidate",
+          "text": "來源與 model lineage 決定 claim class；分類描述證據生成方式，不作優劣排名。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s13_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 192,
+            "width": 534,
+            "height": 118
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s13_sh6",
+          "role": "body_candidate",
+          "text": "measured（實測）：instrument 直接取得；unit 隨物理量；支援 bounded measurement claim。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 108,
+            "y": 204,
+            "width": 495,
+            "height": 94
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s13_sh7",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 649,
+            "y": 192,
+            "width": 534,
+            "height": 118
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s13_sh8",
+          "role": "body_candidate",
+          "text": "derived（模型推導）：source 加 model 產生；unit 隨輸出；需保留 model／time lineage。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 668,
+            "y": 204,
+            "width": 495,
+            "height": 94
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s13_sh9",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 331,
+            "width": 534,
+            "height": 118
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s13_sh10",
+          "role": "body_candidate",
+          "text": "assumed（課程假設）：course contract 指定；unit 隨參數；只支援 assumption-scoped explanation。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 108,
+            "y": 343,
+            "width": 495,
+            "height": 94
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s13_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 649,
+            "y": 331,
+            "width": 534,
+            "height": 118
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s13_sh12",
+          "role": "body_candidate",
+          "text": "simulated（模擬輸出）：runner 產生；unit 隨 schema；本課 endpoint result 的目前分類。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 668,
+            "y": 343,
+            "width": 495,
+            "height": 94
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s13_sh14",
+          "role": "body_candidate",
+          "text": "判讀｜目前 claim ceiling 為 course-packaged simulated endpoint-energy lab；current owner evidence 改變前維持此分類。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s13_sh15",
+          "role": "body_candidate",
+          "text": "恢復｜來源不明時降低 claim，欄位標示「待取得 current evidence」。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 14,
+      "page_type": "content_candidate",
+      "text_summary": "endpoint 與 system 能量邊界\n技術附錄\n兩層 replay 可共享 scenario／clock anchor，但 field authority 與 energy semantics 分離。\nendpoint_energy_j（端點能量）：LoRaEnergySim result 產生；J；涵蓋 endpoint radio／processing boundary。\nsystem consumed J（系統消耗能量）：C-120 provider contract 產生；J；屬 LEO／system evidence authority。\ncanonical efficiency（權威系統效率）：canonical source 定義；bit/J；需要完整 system numerator／denominator。\n判讀｜相同 J unit 不形成語義等價；endpoint 欄位不寫入 system／canonical fields。\n恢復｜scope 不明時停止所有 bit/J comparison，返回 authority map。",
+      "slots": [
+        {
+          "slot_id": "s14_sh2",
+          "role": "title_candidate",
+          "text": "endpoint 與 system 能量邊界",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s14_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s14_sh4",
+          "role": "title_candidate",
+          "text": "兩層 replay 可共享 scenario／clock anchor，但 field authority 與 energy semantics 分離。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s14_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 194,
+            "width": 533,
+            "height": 267
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s14_sh6",
+          "role": "body_candidate",
+          "text": "endpoint_energy_j（端點能量）：LoRaEnergySim result 產生；J；涵蓋 endpoint radio／processing boundary。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 213,
+            "width": 491,
+            "height": 89
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s14_sh7",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 672,
+            "y": 194,
+            "width": 533,
+            "height": 267
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s14_sh8",
+          "role": "body_candidate",
+          "text": "system consumed J（系統消耗能量）：C-120 provider contract 產生；J；屬 LEO／system evidence authority。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 693,
+            "y": 213,
+            "width": 491,
+            "height": 89
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s14_sh9",
+          "role": "body_candidate",
+          "text": "canonical efficiency（權威系統效率）：canonical source 定義；bit/J；需要完整 system numerator／denominator。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 693,
+            "y": 321,
+            "width": 491,
+            "height": 89
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s14_sh11",
+          "role": "body_candidate",
+          "text": "判讀｜相同 J unit 不形成語義等價；endpoint 欄位不寫入 system／canonical fields。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s14_sh12",
+          "role": "body_candidate",
+          "text": "恢復｜scope 不明時停止所有 bit/J comparison，返回 authority map。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 15,
+      "page_type": "content_candidate",
+      "text_summary": "policy 至 Leo import 的 lineage\n技術附錄\nstudent_policy.py 是唯一可編輯 node；deterministic run 產生 result／replay JSON，Leo 只執行 validation 與 materialization。\npolicy identity\nresult.json\nendpoint-replay.json\npolicy identity（策略識別）：runner 產生；字串、無物理單位；連結 permitted edit 與 artifact。\nresult.json（結果檔）：runner 產生；structured JSON；保存 summary、service 與 endpoint energy。\nendpoint-replay.json（端點重播檔）：runner 產生；event JSON；保存 queue、action、state 與 packet timeline。\n判讀｜Leo 接收通過 gate 的 JSON；label 或 animation 變化需有 consequential artif",
+      "slots": [
+        {
+          "slot_id": "s15_sh2",
+          "role": "title_candidate",
+          "text": "policy 至 Leo import 的 lineage",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh4",
+          "role": "body_candidate",
+          "text": "student_policy.py 是唯一可編輯 node；deterministic run 產生 result／replay JSON，Leo 只執行 validation 與 materialization。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 96,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s15_sh6",
+          "role": "label_candidate",
+          "text": "policy identity",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 104,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 442,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s15_sh9",
+          "role": "label_candidate",
+          "text": "result.json",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 449,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 787,
+            "y": 197,
+            "width": 312,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s15_sh12",
+          "role": "label_candidate",
+          "text": "endpoint-replay.json",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 795,
+            "y": 202,
+            "width": 297,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 26.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh13",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 299,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s15_sh14",
+          "role": "body_candidate",
+          "text": "policy identity（策略識別）：runner 產生；字串、無物理單位；連結 permitted edit 與 artifact。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 288,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh15",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 360,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s15_sh16",
+          "role": "body_candidate",
+          "text": "result.json（結果檔）：runner 產生；structured JSON；保存 summary、service 與 endpoint energy。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 349,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh17",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 421,
+            "width": 14,
+            "height": 14
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s15_sh18",
+          "role": "body_candidate",
+          "text": "endpoint-replay.json（端點重播檔）：runner 產生；event JSON；保存 queue、action、state 與 packet timeline。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 109,
+            "y": 411,
+            "width": 1099,
+            "height": 57
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh20",
+          "role": "body_candidate",
+          "text": "判讀｜Leo 接收通過 gate 的 JSON；label 或 animation 變化需有 consequential artifact diff 才具教學證據。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s15_sh21",
+          "role": "body_candidate",
+          "text": "恢復｜version、policy identity 或 scenario mismatch 時返回 release checkpoint 或 matching fallback。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 16,
+      "page_type": "content_candidate",
+      "text_summary": "scenario 至 workbook 的契約鏈\n技術附錄\n五個物件以 identity、units、seed、policy 與 source mode 共同維持 all-or-nothing import。\nscenario\nreceipt\nreplay\nworkbook\nscenario（情境定義）：package 來源；structured record、無物理單位；固定 inputs 與 cases。\nreceipt（凍結收據）：runner 來源；identity record、無物理單位；保存 predecessor 與 policy lineage。\nreplay（事件重播）：runner／provider 來源；ordered events；以事件時間呈現 state changes。\nworkbook（比較紀錄）：browser 寫入；JSON、無物理單位；保存 prediction 與 result lineage。\n判讀｜validation failure 時 session 與 workbook 保持原狀，契約鏈不接受局部寫入。\n恢復｜選擇 exact mat",
+      "slots": [
+        {
+          "slot_id": "s16_sh2",
+          "role": "title_candidate",
+          "text": "scenario 至 workbook 的契約鏈",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh4",
+          "role": "title_candidate",
+          "text": "五個物件以 identity、units、seed、policy 與 source mode 共同維持 all-or-nothing import。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 96,
+            "y": 197,
+            "width": 226,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s16_sh6",
+          "role": "label_candidate",
+          "text": "scenario",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 104,
+            "y": 202,
+            "width": 210,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 355,
+            "y": 197,
+            "width": 226,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s16_sh9",
+          "role": "label_candidate",
+          "text": "receipt",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 363,
+            "y": 202,
+            "width": 210,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 614,
+            "y": 197,
+            "width": 226,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s16_sh12",
+          "role": "label_candidate",
+          "text": "replay",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 622,
+            "y": 202,
+            "width": 210,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh14",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 874,
+            "y": 197,
+            "width": 226,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s16_sh15",
+          "role": "label_candidate",
+          "text": "workbook",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 881,
+            "y": 202,
+            "width": 210,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 25.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh16",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 288,
+            "width": 12,
+            "height": 12
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s16_sh17",
+          "role": "body_candidate",
+          "text": "scenario（情境定義）：package 來源；structured record、無物理單位；固定 inputs 與 cases。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 108,
+            "y": 276,
+            "width": 1094,
+            "height": 52
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh18",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 341,
+            "width": 12,
+            "height": 12
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s16_sh19",
+          "role": "body_candidate",
+          "text": "receipt（凍結收據）：runner 來源；identity record、無物理單位；保存 predecessor 與 policy lineage。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 108,
+            "y": 328,
+            "width": 1094,
+            "height": 52
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh20",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 394,
+            "width": 12,
+            "height": 12
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s16_sh21",
+          "role": "body_candidate",
+          "text": "replay（事件重播）：runner／provider 來源；ordered events；以事件時間呈現 state changes。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 108,
+            "y": 381,
+            "width": 1094,
+            "height": 52
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh22",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 84,
+            "y": 446,
+            "width": 12,
+            "height": 12
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s16_sh23",
+          "role": "body_candidate",
+          "text": "workbook（比較紀錄）：browser 寫入；JSON、無物理單位；保存 prediction 與 result lineage。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 108,
+            "y": 434,
+            "width": 1094,
+            "height": 52
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh25",
+          "role": "body_candidate",
+          "text": "判讀｜validation failure 時 session 與 workbook 保持原狀，契約鏈不接受局部寫入。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s16_sh26",
+          "role": "body_candidate",
+          "text": "恢復｜選擇 exact matching artifact 或 same-scenario fallback，不手動改寫 schema fields。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 17,
+      "page_type": "content_candidate",
+      "text_summary": "source、model、assumption 與 license\n技術附錄\nPinned upstream、course wrapper、documented JSON 與 Leo application 以清楚介面分離。\nsource（來源）：upstream package／scenario 提供；code 或 data；決定原始 provenance。\nmodel（模型）：runner implementation 提供；equations／state machine；把 input 轉為 simulated events。\nassumption（假設）：course wrapper 明示；typed parameter；界定教學簡化。\nlicense（授權）：repository metadata 提供；legal category；限制 code reuse 與 distribution。\n判讀｜Course wrapper 與 JSON seam 維持 GPL upstream 與 Leo application 的技術／授權分界。\n恢復｜涉及 upstream、Leo ",
+      "slots": [
+        {
+          "slot_id": "s17_sh2",
+          "role": "title_candidate",
+          "text": "source、model、assumption 與 license",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s17_sh3",
+          "role": "title_candidate",
+          "text": "技術附錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s17_sh4",
+          "role": "title_candidate",
+          "text": "Pinned upstream、course wrapper、documented JSON 與 Leo application 以清楚介面分離。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s17_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 79,
+            "y": 200,
+            "width": 245,
+            "height": 274
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s17_sh6",
+          "role": "body_candidate",
+          "text": "source（來源）：upstream package／scenario 提供；code 或 data；決定原始 provenance。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 94,
+            "y": 219,
+            "width": 214,
+            "height": 230
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s17_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 372,
+            "y": 200,
+            "width": 245,
+            "height": 274
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s17_sh9",
+          "role": "body_candidate",
+          "text": "model（模型）：runner implementation 提供；equations／state machine；把 input 轉為 simulated events。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 388,
+            "y": 219,
+            "width": 214,
+            "height": 230
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s17_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 666,
+            "y": 200,
+            "width": 245,
+            "height": 274
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s17_sh12",
+          "role": "body_candidate",
+          "text": "assumption（假設）：course wrapper 明示；typed parameter；界定教學簡化。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 682,
+            "y": 219,
+            "width": 214,
+            "height": 230
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s17_sh14",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 960,
+            "y": 200,
+            "width": 245,
+            "height": 274
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s17_sh15",
+          "role": "body_candidate",
+          "text": "license（授權）：repository metadata 提供；legal category；限制 code reuse 與 distribution。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 975,
+            "y": 219,
+            "width": 214,
+            "height": 230
+          },
+          "text_metrics": {
+            "font_size_px": 24.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s17_sh17",
+          "role": "body_candidate",
+          "text": "判讀｜Course wrapper 與 JSON seam 維持 GPL upstream 與 Leo application 的技術／授權分界。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s17_sh18",
+          "role": "body_candidate",
+          "text": "恢復｜涉及 upstream、Leo source、schema 或 scientific semantics 的修改回到 owner review。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 18,
+      "page_type": "content_candidate",
+      "text_summary": "機制遷移至其他 IoT 場域\n快速深化\nChanging opportunity 仍會形成 send／wait／sleep／batch／urgent 的控制與 service-energy trade-off。\nLEO window\n智慧農業\nHVAC\nedge\njob（工作量）：application model 產生；packet／task units；定義需完成的工作。\nopportunity（可服務機會）：environment trace 產生；time／quality fields；限制 action 時機。\npolicy（策略）：marked control 提供；enum／threshold；把 observation 映射為 action。\nfalsifier（反證條件）：hypothesis record 提供；Boolean criterion；指出預測失效的 evidence。\n判讀｜智慧農業、HVAC 或 edge application 需重新定義 service、deadline、traffic 與 energy boundary。\n恢復｜只有 label",
+      "slots": [
+        {
+          "slot_id": "s18_sh2",
+          "role": "title_candidate",
+          "text": "機制遷移至其他 IoT 場域",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh3",
+          "role": "title_candidate",
+          "text": "快速深化",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh4",
+          "role": "body_candidate",
+          "text": "Changing opportunity 仍會形成 send／wait／sleep／batch／urgent 的控制與 service-energy trade-off。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 79,
+            "y": 192,
+            "width": 240,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s18_sh6",
+          "role": "label_candidate",
+          "text": "LEO window",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 199,
+            "width": 221,
+            "height": 51
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh8",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 372,
+            "y": 192,
+            "width": 240,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s18_sh9",
+          "role": "label_candidate",
+          "text": "智慧農業",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 382,
+            "y": 199,
+            "width": 221,
+            "height": 51
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh11",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 666,
+            "y": 192,
+            "width": 240,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s18_sh12",
+          "role": "label_candidate",
+          "text": "HVAC",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 676,
+            "y": 199,
+            "width": 221,
+            "height": 51
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh14",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 960,
+            "y": 192,
+            "width": 240,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s18_sh15",
+          "role": "label_candidate",
+          "text": "edge",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 970,
+            "y": 199,
+            "width": 221,
+            "height": 51
+          },
+          "text_metrics": {
+            "font_size_px": 24.67,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh16",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 280,
+            "width": 532,
+            "height": 81
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s18_sh17",
+          "role": "body_candidate",
+          "text": "job（工作量）：application model 產生；packet／task units；定義需完成的工作。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 105,
+            "y": 289,
+            "width": 499,
+            "height": 62
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh18",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 670,
+            "y": 280,
+            "width": 532,
+            "height": 81
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s18_sh19",
+          "role": "body_candidate",
+          "text": "opportunity（可服務機會）：environment trace 產生；time／quality fields；限制 action 時機。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 686,
+            "y": 289,
+            "width": 499,
+            "height": 62
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh20",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 376,
+            "width": 532,
+            "height": 81
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s18_sh21",
+          "role": "body_candidate",
+          "text": "policy（策略）：marked control 提供；enum／threshold；把 observation 映射為 action。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 105,
+            "y": 385,
+            "width": 499,
+            "height": 62
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh22",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 670,
+            "y": 376,
+            "width": 532,
+            "height": 81
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s18_sh23",
+          "role": "body_candidate",
+          "text": "falsifier（反證條件）：hypothesis record 提供；Boolean criterion；指出預測失效的 evidence。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 686,
+            "y": 385,
+            "width": 499,
+            "height": 62
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh25",
+          "role": "body_candidate",
+          "text": "判讀｜智慧農業、HVAC 或 edge application 需重新定義 service、deadline、traffic 與 energy boundary。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s18_sh26",
+          "role": "body_candidate",
+          "text": "恢復｜只有 label 變更而 boundary 未重定義時，transfer record 維持 incomplete。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 19,
+      "page_type": "ending_candidate",
+      "text_summary": "可重開、可反駁、可追溯的交接紀錄\n交接紀錄\n交接狀態由 frozen policy／result identity、workbook reopen state、evidence record 與 claim class 共同決定。\nCOMPLETE（完整）：required evidence 全部存在；status、無單位；允許依 bounded claim 交接。\nINCOMPLETE（未完整）：至少一個 required gate 缺漏；status、無單位；保留缺口與 recovery target。\nclaim class（主張分類）：authority record 提供；category；限制可陳述的證據強度。\n判讀｜Donor material 保留為 concept／source trail；current course evidence 由本次 artifact 與 authority 提供。\n恢復｜缺漏 gate 返回對應頁或 same-scenario fallback，claim 維持既定 ceiling。",
+      "slots": [
+        {
+          "slot_id": "s19_sh2",
+          "role": "title_candidate",
+          "text": "可重開、可反駁、可追溯的交接紀錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 20,
+            "width": 993,
+            "height": 50
+          },
+          "text_metrics": {
+            "font_size_px": 37.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s19_sh3",
+          "role": "title_candidate",
+          "text": "交接紀錄",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 69,
+            "y": 79,
+            "width": 149,
+            "height": 26
+          },
+          "text_metrics": {
+            "font_size_px": 21.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s19_sh4",
+          "role": "body_candidate",
+          "text": "交接狀態由 frozen policy／result identity、workbook reopen state、evidence record 與 claim class 共同決定。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 73,
+            "y": 108,
+            "width": 1147,
+            "height": 69
+          },
+          "text_metrics": {
+            "font_size_px": 29.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s19_sh5",
+          "role": "label_candidate",
+          "text": "",
+          "paragraph_count": 0,
+          "geometry": {
+            "x": 88,
+            "y": 192,
+            "width": 1099,
+            "height": 279
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 0
+          }
+        },
+        {
+          "slot_id": "s19_sh6",
+          "role": "body_candidate",
+          "text": "COMPLETE（完整）：required evidence 全部存在；status、無單位；允許依 bounded claim 交接。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 112,
+            "y": 209,
+            "width": 1051,
+            "height": 65
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s19_sh8",
+          "role": "body_candidate",
+          "text": "INCOMPLETE（未完整）：至少一個 required gate 缺漏；status、無單位；保留缺口與 recovery target。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 112,
+            "y": 290,
+            "width": 1051,
+            "height": 65
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s19_sh10",
+          "role": "body_candidate",
+          "text": "claim class（主張分類）：authority record 提供；category；限制可陳述的證據強度。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 112,
+            "y": 371,
+            "width": 1051,
+            "height": 65
+          },
+          "text_metrics": {
+            "font_size_px": 26.0,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s19_sh12",
+          "role": "body_candidate",
+          "text": "判讀｜Donor material 保留為 concept／source trail；current course evidence 由本次 artifact 與 authority 提供。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 497,
+            "width": 1100,
+            "height": 67
+          },
+          "text_metrics": {
+            "font_size_px": 23.33,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s19_sh13",
+          "role": "body_candidate",
+          "text": "恢復｜缺漏 gate 返回對應頁或 same-scenario fallback，claim 維持既定 ceiling。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": 88,
+            "y": 568,
+            "width": 1100,
+            "height": 56
+          },
+          "text_metrics": {
+            "font_size_px": 22.0,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    }
+  ],
+  "plan_contract": {
+    "schema": "template_fill_pptx_plan.v1",
+    "slides": [
+      {
+        "source_slide": 1,
+        "purpose": "封面 / 章节 / 内容 / 结尾",
+        "replacements": [
+          {
+            "slot_id": "s01_sh2",
+            "text": "替换后的文字"
+          }
+        ],
+        "table_edits": [
+          {
+            "table_id": "s01_tbl3",
+            "cells": [
+              {
+                "row": 0,
+                "col": 0,
+                "text": "替换后的单元格"
+              }
+            ]
+          }
+        ],
+        "chart_edits": [
+          {
+            "chart_id": "s01_ch4",
+            "categories": [
+              "A",
+              "B"
+            ],
+            "series": [
+              {
+                "name": "系列1",
+                "values": [
+                  1,
+                  2
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

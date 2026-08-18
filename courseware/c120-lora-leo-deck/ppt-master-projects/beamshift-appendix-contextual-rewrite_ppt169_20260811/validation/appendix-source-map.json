@@ -1,0 +1,135 @@
+[
+  {
+    "slide": 1,
+    "page_id": "P098",
+    "title": "這份附錄處理哪些問題",
+    "donor_source": "donor disposition map；current ADR-004／SDD",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 2,
+    "page_id": "P099",
+    "title": "從服務視窗到端點結果的完整鏈",
+    "donor_source": "e2 2、4–6、38–39；ADR-004",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 3,
+    "page_id": "P100",
+    "title": "情境資料從哪裡開始",
+    "donor_source": "e2 7 或 98；duplicate opening deduplicated",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 4,
+    "page_id": "P101",
+    "title": "固定來源如何形成服務視窗",
+    "donor_source": "e2 8–10、107–109",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 5,
+    "page_id": "P102",
+    "title": "可見、品質合格與完成服務是三個層次",
+    "donor_source": "e2 5、11、30–31、110–111",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 6,
+    "page_id": "P103",
+    "title": "quality 欄位如何影響策略分支",
+    "donor_source": "e2 13、15、22–24；current Lab B policy API",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 7,
+    "page_id": "P104",
+    "title": "速率、送達量與服務判定各自代表什麼",
+    "donor_source": "e2 14、32、37",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 8,
+    "page_id": "P105",
+    "title": "狀態停留時間如何累積為端點能量",
+    "donor_source": "e2 16／17、21、25–29、112；current endpoint boundary",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 9,
+    "page_id": "P106",
+    "title": "低能量結果的四種判定",
+    "donor_source": "e2 70–75",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 10,
+    "page_id": "P107",
+    "title": "A／B 比較固定哪些條件",
+    "donor_source": "e2 20、36–37、70–75",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 11,
+    "page_id": "P108",
+    "title": "程式修改後應出現哪些中介證據",
+    "donor_source": "e2 38–39；current result／replay contract",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 12,
+    "page_id": "P109",
+    "title": "Lab A 延伸：WAIT 與 SLEEP 的狀態帳本",
+    "donor_source": "current Lab A；e2 accounting concept",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 13,
+    "page_id": "P110",
+    "title": "Lab B 延伸：切換太慢與過度往返",
+    "donor_source": "e2 12；current Lab B",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 14,
+    "page_id": "P111",
+    "title": "Lab C 延伸：批次與緊急資料",
+    "donor_source": "current Lab C authority",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 15,
+    "page_id": "P112",
+    "title": "result.json 匯入流程與目前證據邊界",
+    "donor_source": "e2 96–97；current SDD import contract",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 16,
+    "page_id": "P113",
+    "title": "對照 Part C 讀取 /course 欄位",
+    "donor_source": "current SDD／browser evidence gate",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 17,
+    "page_id": "P114",
+    "title": "READY 記錄的目的",
+    "donor_source": "current package readiness contract",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 18,
+    "page_id": "P115",
+    "title": "資料來源與能量範圍要同時標記",
+    "donor_source": "e2 19–21、96–97、113；ADR-004",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  },
+  {
+    "slide": 19,
+    "page_id": "P116",
+    "title": "依問題返回對應操作頁",
+    "donor_source": "donor disposition map；current deck route",
+    "authority": "ADR-004 / C120 SDD / current artifact"
+  }
+]

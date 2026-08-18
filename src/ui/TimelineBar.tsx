@@ -1,7 +1,7 @@
 import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react';
 
 const SPEED_PRESETS = [1, 2, 5, 10, 20] as const;
-const STEP_SECONDS = 10;
+const DEFAULT_STEP_SECONDS = 10;
 const TICK_RATIOS = [0, 0.25, 0.5, 0.75, 1] as const;
 
 export type TimelineSpeedPreset = (typeof SPEED_PRESETS)[number];
@@ -15,6 +15,10 @@ export interface TimelineBarProps {
   readonly onTogglePause: () => void;
   readonly onSeek: (targetTimeSec: number) => void;
   readonly onSpeedChange: (speed: TimelineSpeedPreset) => void;
+  /** Keyboard and transport step in seconds. Also the default scrubber step. */
+  readonly stepSec?: number;
+  /** Optional finer scrubber step; transport and keyboard keep `stepSec`. */
+  readonly scrubStepSec?: number;
   readonly disabled?: boolean;
   readonly className?: string;
   readonly sourceOwner: string;
@@ -62,6 +66,8 @@ export function TimelineBar({
   onTogglePause,
   onSeek,
   onSpeedChange,
+  stepSec = DEFAULT_STEP_SECONDS,
+  scrubStepSec,
   disabled = false,
   className,
   sourceOwner,
@@ -71,6 +77,10 @@ export function TimelineBar({
   claimKind,
 }: TimelineBarProps) {
   const safeDurationSec = Math.max(0, isFiniteNumber(durationSec) ? durationSec : 0);
+  const safeStepSec = isFiniteNumber(stepSec) && stepSec > 0 ? stepSec : DEFAULT_STEP_SECONDS;
+  const safeScrubStepSec = isFiniteNumber(scrubStepSec ?? NaN) && (scrubStepSec as number) > 0
+    ? scrubStepSec as number
+    : safeStepSec;
   const safeHorizonSec = Math.max(
     0,
     isFiniteNumber(horizonSec ?? NaN) ? horizonSec as number : safeDurationSec,
@@ -109,16 +119,16 @@ export function TimelineBar({
       seekTo(safeDurationSec);
     } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      seekTo(safeCurrentTimeSec - 1);
+      seekTo(safeCurrentTimeSec - safeStepSec);
     } else if (event.key === 'ArrowRight') {
       event.preventDefault();
-      seekTo(safeCurrentTimeSec + 1);
+      seekTo(safeCurrentTimeSec + safeStepSec);
     } else if (event.key === 'PageDown') {
       event.preventDefault();
-      seekTo(safeCurrentTimeSec - STEP_SECONDS);
+      seekTo(safeCurrentTimeSec - safeStepSec);
     } else if (event.key === 'PageUp') {
       event.preventDefault();
-      seekTo(safeCurrentTimeSec + STEP_SECONDS);
+      seekTo(safeCurrentTimeSec + safeStepSec);
     }
   };
 
@@ -155,10 +165,10 @@ export function TimelineBar({
         <button
           className="leo-timeline-bar__button"
           type="button"
-          aria-label="Step backward 10 seconds"
+          aria-label={`Step backward ${safeStepSec} seconds`}
           data-testid="timeline-step-backward"
           disabled={isTimelineDisabled || safeCurrentTimeSec <= 0}
-          onClick={() => seekTo(safeCurrentTimeSec - STEP_SECONDS)}
+          onClick={() => seekTo(safeCurrentTimeSec - safeStepSec)}
         >
           <TimelineIcon icon="step-backward" />
         </button>
@@ -175,10 +185,10 @@ export function TimelineBar({
         <button
           className="leo-timeline-bar__button"
           type="button"
-          aria-label="Step forward 10 seconds"
+          aria-label={`Step forward ${safeStepSec} seconds`}
           data-testid="timeline-step-forward"
           disabled={isTimelineDisabled || safeCurrentTimeSec >= safeDurationSec}
-          onClick={() => seekTo(safeCurrentTimeSec + STEP_SECONDS)}
+          onClick={() => seekTo(safeCurrentTimeSec + safeStepSec)}
         >
           <TimelineIcon icon="step-forward" />
         </button>
@@ -240,9 +250,9 @@ export function TimelineBar({
           type="range"
           min={0}
           max={safeDurationSec}
-          step={0.1}
+          step={safeScrubStepSec}
           value={safeCurrentTimeSec}
-          aria-label="Timeline scrubber"
+          aria-label={`Timeline scrubber (${safeScrubStepSec}-second steps)`}
           aria-valuetext={`${currentTimeLabel} of ${durationLabel}`}
           data-testid="timeline-scrubber"
           disabled={isTimelineDisabled}

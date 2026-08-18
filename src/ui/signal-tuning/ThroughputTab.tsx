@@ -1,32 +1,28 @@
 import { UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
 import type { SimulatorParameters } from '../../simulator/types';
-import { NumericControl } from './Controls';
-import { FormulaHeader, FormulaRow } from './FormulaHeader';
+import { CanonicalReadOnlyParameter } from './CanonicalParameterPrimitives';
+import { FormulaHeader, FormulaRow, InlineFormulaFraction } from './FormulaHeader';
+import { formatFrequency, formatRate } from './formatters';
 import { txBi } from './labels';
-import {
-  captionTextStyle,
-  controlStackStyle,
-  groupTitleStyle,
-  pagePanelStyle,
-} from './styles';
+import { SIMPLIFIED_EE_BEAM_INDEX, SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
+import { controlStackStyle, groupTitleStyle, pagePanelStyle } from './styles';
+import type { HomepageCanonicalAnalysisState } from './useHomepageCanonicalAnalysis';
 
 const THROUGHPUT_ACCENT = UI_TOKENS.color.semantic.info;
 
 /** Canonical throughput inputs for the homepage's left rail. */
 export function ThroughputTab({
   parameters,
-  onParametersChange,
+  analysis,
 }: {
   readonly parameters: SimulatorParameters;
-  readonly onParametersChange: (next: SimulatorParameters) => void;
+  readonly analysis: HomepageCanonicalAnalysisState;
 }) {
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
   const say = (key: string, zh: string, en: string) => txBi(t, isEnglish, key, zh, en);
-  const update = (patch: Partial<SimulatorParameters>) => {
-    onParametersChange({ ...parameters, ...patch });
-  };
+  const calculatedRate = analysis.frame?.links[0]?.rateBps ?? null;
 
   return (
     <section
@@ -43,67 +39,54 @@ export function ThroughputTab({
         accent={THROUGHPUT_ACCENT}
         caption={say(
           'panel.throughput.canonical.scope',
-          'R_min 與 B_beam 是輸入；gamma_req、p_req、P_DL_actual、SINR 與 R_u 皆由同一條計算鏈推導。',
-          'R_min and B_beam are inputs; gamma_req, p_req, P_DL_actual, SINR, and R_u are all derived by one calculation chain.',
+          'R^m 與 B^w 決定目標 γ^r、服務頻寬與使用者速率；速率由頻寬、服務負載與選定服務鏈路上的 γ 決定。',
+          'R^m and B^w determine target γ^r and user rate; rate uses bandwidth, serving load, and realized γ on the selected serving link.',
         )}
       >
         <FormulaRow
           testId="throughput-canonical-formula-row"
           accent={THROUGHPUT_ACCENT}
           emphasis
-          expression={<>R<sub>u</sub> = (B<sub>beam</sub> / U<sub>b</sub>) log<sub>2</sub>(1 + SINR<sub>u</sub>)</>}
-          note="bit/s"
-          source={say(
-            'panel.throughput.canonical.source',
-            'SINR 與實際功率來自同一個 immutable frame',
-            'SINR and actual power come from the same immutable frame',
+          expression={(
+            <>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ) = <InlineFormulaFraction
+              numerator={<>B<sup>w</sup></>}
+              denominator={<>U<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t)</>}
+              label="beam bandwidth divided by serving users"
+            /> log<sub>2</sub>(1 + γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ))</>
           )}
+          note="bit/s"
+          source={isEnglish
+            ? <>U<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t) is the number of users served by the serving beam.</>
+            : <>U<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t) 是服務波束的服務人數。</>}
         />
       </FormulaHeader>
 
       <div style={controlStackStyle}>
-        <div style={groupTitleStyle}>{say('section.throughput.inputs', '可調整的模型輸入', 'Editable model inputs')}</div>
-        <NumericControl
-          testId="throughput-tab-minimum-rate-control"
-          symbol={<>R<sub>min</sub></>}
-          label={say('throughput.minimumRate.label', '最低服務速率', 'Minimum service rate')}
-          unit="bit/s"
-          value={parameters.minimumRateBps}
-          min={1_000}
-          max={10_000_000}
-          step={1_000}
-          description={say('throughput.minimumRate.description', '用來推導 gamma_req 與需求 RF 功率的服務目標。', 'Service target used to derive gamma_req and requested RF power.')}
-          effect={say('throughput.minimumRate.effect', '目標越高，gamma_req 越高，也越可能在套用功率上限後無法達標。', 'A higher target raises gamma_req and may leave the link power-limited after caps.')}
-          helpId="param.throughputTab.minimumRateBps"
-          accentColor={THROUGHPUT_ACCENT}
-          formatValue={value => `${value.toLocaleString('en-US', { maximumFractionDigits: 0 })} bit/s`}
-          onChange={minimumRateBps => update({ minimumRateBps })}
+        <div style={groupTitleStyle}>{say('homepage.throughput.calculated.title', '計算值', 'Calculated value')}</div>
+        <CanonicalReadOnlyParameter
+          testId="throughput-tab-calculated-value"
+          label={<>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>}
+          value={formatRate(calculatedRate)}
+          note={say('homepage.throughput.calculated.note', '目前服務鏈路的實際吞吐量', 'Calculated throughput of the current serving link')}
+          accent={THROUGHPUT_ACCENT}
         />
-        <NumericControl
-          testId="throughput-tab-bandwidth-control"
-          symbol={<>B<sub>beam</sub></>}
-          label={say('throughput.bandwidth.label', '每道波束頻寬', 'Per-beam bandwidth')}
-          unit="Hz"
-          value={parameters.beamBandwidthHz}
-          min={100_000}
-          max={500_000_000}
-          step={100_000}
-          description={say('throughput.bandwidth.description', '分配給 active beam 的服務頻寬。', 'Service bandwidth assigned to the active beam.')}
-          effect={say('throughput.bandwidth.effect', '會同時改變 gamma_req 與實際速率；SINR 仍由完整計算鏈產生。', 'It changes gamma_req and realized rate together; SINR still comes from the full calculation chain.')}
-          helpId="param.throughputTab.beamBandwidthHz"
-          accentColor={THROUGHPUT_ACCENT}
-          formatValue={value => `${(value / 1_000_000).toFixed(1)} MHz`}
-          onChange={beamBandwidthHz => update({ beamBandwidthHz })}
+        <div style={groupTitleStyle}>{say('section.throughput.values', '參數值', 'Parameter values')}</div>
+        <CanonicalReadOnlyParameter
+          testId="throughput-tab-minimum-rate-value"
+          label={<>R<sup>m</sup></>}
+          value={formatRate(parameters.minimumRateBps)}
+          note={say('throughput.minimumRate.note', '每位使用者最低傳輸速率要求', 'Per-user minimum transmission-rate requirement')}
+          accent={THROUGHPUT_ACCENT}
+        />
+        <CanonicalReadOnlyParameter
+          testId="throughput-tab-system-bandwidth-value"
+          label={<>B<sup>w</sup></>}
+          value={formatFrequency(parameters.systemBandwidthHz)}
+          note={say('throughput.systemBandwidth.note', '服務頻寬', 'Service bandwidth')}
+          accent={THROUGHPUT_ACCENT}
         />
       </div>
 
-      <p style={captionTextStyle}>
-        {say(
-          'section.throughput.resultLocation',
-          'γ_req、p_req、P_DL_actual、SINR 與 R_u 會在右側顯示為最終計算結果。',
-          'gamma_req, p_req, P_DL_actual, SINR, and R_u appear in the right rail as final calculated results.',
-        )}
-      </p>
     </section>
   );
 }

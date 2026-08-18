@@ -1,0 +1,96 @@
+{
+  "schema": "c120-native-proof-redesign-v1",
+  "status": "PASS",
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/c120-native-layout-proof-equations-pass3.pptx",
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/redesign-worker/c120-native-layout-proof-redesign-pass6.pptx",
+  "logical_slide_count": 6,
+  "titles": [
+    "LoRaEnergySim × 智慧節能與物聯網應用",
+    "節能不是只看功率變小",
+    "LEO 只提供會改變的服務窗口",
+    "先跑基準，再只改一個 policy block",
+    "公式把操作連到證據",
+    "一筆 result，先看證據鏈"
+  ],
+  "background_policy": "inherit educate.pptx slide/layout/master artwork; no slide-level fill added",
+  "footer_policy": "content rebuilt without bottom banner/page-number/text footer",
+  "footer_shapes_removed": 25,
+  "footer_removals_by_part": {
+    "ppt/slideLayouts/slideLayout1.xml": 2,
+    "ppt/slideLayouts/slideLayout10.xml": 2,
+    "ppt/slideLayouts/slideLayout2.xml": 3,
+    "ppt/slideLayouts/slideLayout3.xml": 2,
+    "ppt/slideLayouts/slideLayout4.xml": 3,
+    "ppt/slideLayouts/slideLayout5.xml": 2,
+    "ppt/slideLayouts/slideLayout6.xml": 2,
+    "ppt/slideLayouts/slideLayout7.xml": 2,
+    "ppt/slideLayouts/slideLayout8.xml": 2,
+    "ppt/slideLayouts/slideLayout9.xml": 2,
+    "ppt/slideMasters/slideMaster1.xml": 3
+  },
+  "font_policy": {
+    "chinese": "標楷體",
+    "latin": "Times New Roman",
+    "title_pt": 28,
+    "body_pt": 24,
+    "command_pt": 18
+  },
+  "design_rules": [
+    "one main visual per slide",
+    "transparent native lines/open frames",
+    "no large solid cards",
+    "no fixed five-question framework"
+  ],
+  "layouts": [
+    {
+      "layout": "cover + causal route",
+      "main_visual": "four-node route marker",
+      "logical_slide": 1,
+      "title": "LoRaEnergySim × 智慧節能與物聯網應用"
+    },
+    {
+      "layout": "five-node horizontal causal flow",
+      "main_visual": "policy-to-service chain",
+      "logical_slide": 2,
+      "title": "節能不是只看功率變小"
+    },
+    {
+      "layout": "open split frame + service-window timeline",
+      "main_visual": "core-to-window comparison",
+      "logical_slide": 3,
+      "title": "LEO 只提供會改變的服務窗口"
+    },
+    {
+      "layout": "vertical runbook spine",
+      "main_visual": "three-step executable path",
+      "logical_slide": 4,
+      "title": "先跑基準，再只改一個 policy block"
+    },
+    {
+      "layout": "central equation canvas",
+      "main_visual": "two native equations",
+      "native_equation_shapes": 2,
+      "fallback_svg_preserved": true,
+      "fallback_png_added": true,
+      "logical_slide": 5,
+      "title": "公式把操作連到證據"
+    },
+    {
+      "layout": "evidence chain + right image",
+      "main_visual": "server preview browser evidence",
+      "screenshot_sha256": "a515857ef52f0a76536aa725967b273bb2e33c2eeafe225e4be7cba775782687",
+      "logical_slide": 6,
+      "title": "一筆 result，先看證據鏈"
+    }
+  ],
+  "native_equations": {
+    "editable_omml": true,
+    "a14_m_count": 2,
+    "omath_count": 2,
+    "fallback_svg_preserved": true,
+    "fallback_png_added": true
+  },
+  "screenshot_sha256": "a515857ef52f0a76536aa725967b273bb2e33c2eeafe225e4be7cba775782687",
+  "notes_policy": "speaker notes are preserved byte-for-byte from input archive",
+  "template_policy": "input template relationship/theme/media retained; only new evidence/equation media appended"
+}

@@ -1,0 +1,187 @@
+- main [ref=e3]:
+  - link "直接前往操作區" [ref=e4] [cursor=pointer]:
+    - /url: "#c120-operation-shell"
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - paragraph [ref=e7]: LoRaEnergySim + Leo
+      - heading "LoRa 結果匯入與 Replay" [level=1] [ref=e8]
+      - paragraph [ref=e9]: Policy 修改與 A／B／C 執行都在下載套件中完成；此頁只接收 result.json、顯示證據並保存 workbook。
+    - group "語言切換" [ref=e11]:
+      - button "切換為繁體中文" [pressed] [ref=e12] [cursor=pointer]: 繁中
+      - button "切換為英文" [ref=e13] [cursor=pointer]: EN
+  - status [ref=e14]: Endpoint 結果已匯入：A/baseline。這些 J 與 bit/J 只屬於 endpoint radio/processing 邊界。
+  - navigation "LoRa 實驗操作區" [ref=e15]:
+    - link [ref=e16] [cursor=pointer]:
+      - /url: "?view=prepare"
+      - generic [ref=e17]: "1"
+      - strong [ref=e18]: 準備
+    - link [ref=e19] [cursor=pointer]:
+      - /url: "?view=lab-a"
+      - generic [ref=e20]: "2"
+      - strong [ref=e21]: Lab A
+    - link [ref=e22] [cursor=pointer]:
+      - /url: "?view=lab-b"
+      - generic [ref=e23]: "3"
+      - strong [ref=e24]: Lab B
+    - link [ref=e25] [cursor=pointer]:
+      - /url: "?view=lab-c"
+      - generic [ref=e26]: "4"
+      - strong [ref=e27]: Lab C
+    - link [ref=e28] [cursor=pointer]:
+      - /url: "?view=evidence"
+      - generic [ref=e29]: "5"
+      - strong [ref=e30]: 證據
+    - link [ref=e31] [cursor=pointer]:
+      - /url: "?view=workbook"
+      - generic [ref=e32]: "6"
+      - strong [ref=e33]: 學習單
+  - region [ref=e34]:
+    - generic [ref=e36]:
+      - paragraph [ref=e37]: 結果工作台
+      - heading "Lab A · 匯入 pace / rest 實驗" [level=2] [ref=e38]
+    - generic [ref=e39]:
+      - generic [ref=e40]:
+        - generic [ref=e41] [cursor=pointer]:
+          - strong [ref=e42]: 選擇 runner 產生的 result.json
+          - generic [ref=e43]: 檔案會先通過 schema、identity 與 lineage gate，失敗不改 workbook。
+          - button "選擇 runner 產生的 result.json 檔案會先通過 schema、identity 與 lineage gate，失敗不改 workbook。" [active] [ref=e44]
+        - generic [ref=e45]:
+          - status [ref=e46]:
+            - strong [ref=e47]: 匯入狀態
+            - generic [ref=e48]: 已完整匯入 A/baseline；session 只在所有 gate 通過後更新。
+            - code [ref=e53]: sha256:b7917abc4e57e236b69dc8f8ecd45f5111b47da4efe5cfeb9a893b840d413000
+          - button "載入同 scenario fallback" [ref=e49] [cursor=pointer]
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - strong [ref=e56]: 匯入的端點資料
+          - paragraph [ref=e57]: 依 endpoint 時鐘原樣呈現；左側波束是固定情境，不會隨這裡同步移動，也不是全系統能量。
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - term [ref=e60]: Service
+            - definition [ref=e61]: FAIL
+          - generic [ref=e62]:
+            - term [ref=e63]: Endpoint energy
+            - definition [ref=e64]: 6.92 J
+          - generic [ref=e65]:
+            - term [ref=e66]: Delivered
+            - definition [ref=e67]: 4800 bit
+          - generic [ref=e68]:
+            - term [ref=e69]: Endpoint bit/J
+            - definition [ref=e70]: "693.641618"
+        - region [ref=e71]:
+          - generic [ref=e72]:
+            - strong [ref=e73]: Endpoint replay · 選取 frame
+            - combobox "選擇 replay frame" [ref=e74]:
+              - option "1 / 56 · 0s" [selected]
+              - option "2 / 56 · 0s"
+              - option "3 / 56 · 10s"
+              - option "4 / 56 · 10s"
+              - option "5 / 56 · 20s"
+              - option "6 / 56 · 20s"
+              - option "7 / 56 · 20s"
+              - option "8 / 56 · 30s"
+              - option "9 / 56 · 30s"
+              - option "10 / 56 · 40s"
+              - option "11 / 56 · 40s"
+              - option "12 / 56 · 40s"
+              - option "13 / 56 · 50s"
+              - option "14 / 56 · 50s"
+              - option "15 / 56 · 60s"
+              - option "16 / 56 · 60s"
+              - option "17 / 56 · 70s"
+              - option "18 / 56 · 70s"
+              - option "19 / 56 · 70s"
+              - option "20 / 56 · 80s"
+              - option "21 / 56 · 80s"
+              - option "22 / 56 · 90s"
+              - option "23 / 56 · 90s"
+              - option "24 / 56 · 100s"
+              - option "25 / 56 · 100s"
+              - option "26 / 56 · 100s"
+              - option "27 / 56 · 101s"
+              - option "28 / 56 · 102s"
+              - option "29 / 56 · 104s"
+              - option "30 / 56 · 105s"
+              - option "31 / 56 · 105s"
+              - option "32 / 56 · 105s"
+              - option "33 / 56 · 105s"
+              - option "34 / 56 · 110s"
+              - option "35 / 56 · 110s"
+              - option "36 / 56 · 120s"
+              - option "37 / 56 · 120s"
+              - option "38 / 56 · 130s"
+              - option "39 / 56 · 130s"
+              - option "40 / 56 · 130s"
+              - option "41 / 56 · 130s"
+              - option "42 / 56 · 131s"
+              - option "43 / 56 · 132s"
+              - option "44 / 56 · 134s"
+              - option "45 / 56 · 135s"
+              - option "46 / 56 · 135s"
+              - option "47 / 56 · 135s"
+              - option "48 / 56 · 140s"
+              - option "49 / 56 · 150s"
+              - option "50 / 56 · 150s"
+              - option "51 / 56 · 160s"
+              - option "52 / 56 · 160s"
+              - option "53 / 56 · 170s"
+              - option "54 / 56 · 170s"
+              - option "55 / 56 · 170s"
+              - option "56 / 56 · 180s"
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - text: 無線電 Radio
+              - strong [ref=e77]: SLEEP
+            - generic [ref=e78]:
+              - text: 動作 Action
+              - strong [ref=e79]: —
+            - generic [ref=e80]:
+              - text: 佇列數 Queue count
+              - strong [ref=e81]: "1"
+            - generic [ref=e82]:
+              - text: 累積端點 J Cumulative endpoint J
+              - strong [ref=e83]: 0 J
+            - generic [ref=e84]:
+              - text: 經過時間 Elapsed
+              - strong [ref=e85]: 0s
+            - generic [ref=e86]:
+              - text: 接觸 ID Contact ID
+              - strong [ref=e87]: —
+            - generic [ref=e88]:
+              - text: 接觸狀態 Contact
+              - strong [ref=e89]: 關閉
+            - generic [ref=e90]:
+              - text: 品質 Quality
+              - strong [ref=e91]: "0"
+        - generic [ref=e92]:
+          - region [ref=e93]:
+            - heading "目前佇列 Queue" [level=3] [ref=e94]
+            - list "目前排隊封包" [ref=e95]:
+              - listitem [ref=e96]:
+                - code [ref=e97]: normal-1
+          - region [ref=e98]:
+            - heading "目前封包事件 Packet events" [level=3] [ref=e99]
+            - list "目前封包事件" [ref=e100]:
+              - listitem [ref=e101]:
+                - code [ref=e102]: evt-0000
+        - group [ref=e103]:
+          - generic "展開 radio／接觸時間軸" [ref=e104] [cursor=pointer]
+        - region "Run ledger" [ref=e105]:
+          - table [ref=e106]:
+            - rowgroup [ref=e107]:
+              - row [ref=e108]:
+                - columnheader "Lab / case" [ref=e109]
+                - columnheader "Role" [ref=e110]
+                - columnheader "Service" [ref=e111]
+                - columnheader "Endpoint J" [ref=e112]
+                - columnheader "Source" [ref=e113]
+            - rowgroup [ref=e114]:
+              - row [ref=e115]:
+                - rowheader "A / baseline" [ref=e116]
+                - cell "baseline" [ref=e117]
+                - cell "FAIL" [ref=e118]
+                - cell "6.92 J" [ref=e119]
+                - cell "student-run" [ref=e120]
+  - generic [ref=e50]:
+    - generic [ref=e51]: 進度保存在本機，也可匯出後重新開啟。
+    - generic [ref=e52]: SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED

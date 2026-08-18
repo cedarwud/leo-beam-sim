@@ -163,6 +163,8 @@ export interface RuntimeConfig {
   viewport: RuntimeViewport;
   ueCount?: number;
   cellServingCount?: number;
+  /** Per-satellite beam budgets for the live cell-truth scheduler. */
+  beamCountBySatellite?: Readonly<Record<string, number>>;
   ueDistributionMode?: UeDistributionMode;
   uePrimaryAnchorMode?: UePrimaryAnchorMode;
   ueDistributionScope?: UeDistributionScope;

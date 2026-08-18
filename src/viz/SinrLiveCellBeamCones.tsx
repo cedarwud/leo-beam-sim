@@ -185,6 +185,45 @@ export function resolveSinrLiveConeRole(input: {
 }
 
 /**
+ * Preserve the server-baseline spotlight hierarchy: primary and event cones
+ * remain legible through scene fog, while contextual fans stay atmospheric.
+ */
+export function resolveSinrLiveConeFog(role: SinrLiveConeRole): boolean {
+  switch (role) {
+    case 'hero':
+    case 'candidatePrimary':
+    case 'pulse':
+    case 'triggered':
+      return false;
+    case 'servingFan':
+    case 'candidateFan':
+    case 'background':
+    case 'nonServing':
+      return true;
+  }
+}
+
+/**
+ * Decide whether the display-only shallow-cone de-emphasis applies to a role.
+ *
+ * The primary candidate is a semantic counterpart to the primary serving beam:
+ * it must remain recognisably blue even when its real TLE geometry is near the
+ * horizon.  Candidate fan/context cones retain the shallow fade.  This changes
+ * only rendered opacity; it does not alter the candidate identity, frame, or
+ * serving/handover truth.
+ */
+export function shouldDimSinrLiveConeRole(
+  role: SinrLiveConeRole,
+  dimShallowCones: boolean | undefined,
+  heroExemptFromElevationDim: boolean | undefined,
+): boolean {
+  if (!dimShallowCones) return false;
+  if (role === 'candidatePrimary') return false;
+  if (role === 'hero') return heroExemptFromElevationDim === false;
+  return true;
+}
+
+/**
  * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)
  * fanned to a flat ground ring (y = `baseCenter.y`, i.e. 0) of `radius` around the
  * cell centre. Returns a packed position `Float32Array` (3 verts × `segments`
@@ -633,6 +672,106 @@ export function resolveTriggeredIntraConeItems(input: {
 }
 
 /**
+ * Focused handover-cinema pair: resolve the exact old and new cell cones from
+ * the indexed event, rather than reusing the current `pendingTargetSatId` fan.
+ *
+ * The cinema controller supplies this candidate from the live cell-truth index.
+ * Cell ids are therefore required for this earth-fixed renderer; a missing id
+ * fails closed instead of guessing a cell from a satellite or UE position.
+ * Display-only (Rule#6): the helper reads already-classified event identities
+ * and changes no serving, SINR, or handover state.
+ */
+export interface SinrLiveCinemaHandoverCandidate {
+  readonly eventId: string;
+  readonly ueId: string | null;
+  readonly kind: 'intra' | 'inter';
+  readonly sourceTimeSec: number;
+  readonly fromSatId: string;
+  readonly fromCellId: number | null;
+  readonly toSatId: string;
+  readonly toCellId: number | null;
+}
+
+export function resolveCinemaHandoverPairConeItems(input: {
+  readonly candidate: SinrLiveCinemaHandoverCandidate | null;
+  readonly fromOpacity: number;
+  readonly toOpacity: number;
+  readonly fromColor: string;
+  readonly toColor: string;
+  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
+  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+  readonly frequencyReuse: number;
+  /** Optional teaching anchor: both pair cones terminate at the same primary UE. */
+  readonly baseCenterOverride?: THREE.Vector3;
+  /** Slightly nest the pair at one UE so both semantic colours remain visible. */
+  readonly fromBaseRadiusScale?: number;
+  readonly toBaseRadiusScale?: number;
+}): readonly SinrLiveCellBeamConeRenderItem[] {
+  const { candidate } = input;
+  if (
+    candidate === null
+    || (candidate.fromCellId === null && candidate.toCellId === null)
+    || (input.fromOpacity <= 0 && input.toOpacity <= 0)
+  ) return [];
+
+  const items: SinrLiveCellBeamConeRenderItem[] = [];
+  const eventKey = `cinema-${candidate.eventId}`;
+  const placeAtCinemaTarget = (item: SinrLiveCellBeamConeRenderItem, radiusScale: number) => (
+    input.baseCenterOverride === undefined
+      ? item
+      : {
+        ...item,
+        baseCenter: input.baseCenterOverride.clone(),
+        baseRadiusWorld: item.baseRadiusWorld * radiusScale,
+      }
+  );
+  const from = input.fromOpacity > 0
+    ? buildCellConeItem({
+      satId: candidate.fromSatId,
+      cellId: candidate.fromCellId,
+      frequencyIndex: candidate.fromCellId === null
+        ? null
+        : cellFrequencyIndex(candidate.fromCellId, input.frequencyReuse),
+      placementByCellId: input.placementByCellId,
+      satelliteWorldById: input.satelliteWorldById,
+    })
+    : null;
+  if (from) {
+    items.push({
+      ...placeAtCinemaTarget(from, input.fromBaseRadiusScale ?? 1),
+      color: input.fromColor,
+      opacity: input.fromOpacity,
+      renderKey: `${eventKey}-from`,
+      kind: candidate.kind,
+      role: 'triggered',
+    });
+  }
+
+  const to = input.toOpacity > 0
+    ? buildCellConeItem({
+      satId: candidate.toSatId,
+      cellId: candidate.toCellId,
+      frequencyIndex: candidate.toCellId === null
+        ? null
+        : cellFrequencyIndex(candidate.toCellId, input.frequencyReuse),
+      placementByCellId: input.placementByCellId,
+      satelliteWorldById: input.satelliteWorldById,
+    })
+    : null;
+  if (to) {
+    items.push({
+      ...placeAtCinemaTarget(to, input.toBaseRadiusScale ?? 1),
+      color: input.toColor,
+      opacity: input.toOpacity,
+      renderKey: `${eventKey}-to`,
+      kind: candidate.kind,
+      role: 'triggered',
+    });
+  }
+  return items;
+}
+
+/**
  * SEMANTIC candidate cue: the imminent inter-handover target satellite
  * (`pendingTargetSatId`) and the beams it is painting — the "your next link" story.
  *
@@ -708,6 +847,50 @@ export function resolveCandidateBeamConeItems(input: {
     items.push({ ...cone, role: 'candidateFan', renderKey: `candidate-fan-${beam.satId}-${beam.cellId}` });
   }
   return items;
+}
+
+/**
+ * Inter-cinema presentation fan for the OLD serving satellite. The pair resolver
+ * owns the primary source cone; this helper owns only that satellite's other beams
+ * and gives them an explicit serving-fan role so they fade with the source side.
+ * It reads a display frame supplied by the caller and never changes handover truth.
+ */
+export function resolveCinemaInterServingFanConeItems(input: {
+  readonly candidate: SinrLiveCinemaHandoverCandidate | null;
+  readonly opacity: number;
+  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
+  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+  readonly frequencyReuse: number;
+  readonly cellFrame?: SinrLiveCellFrame | undefined;
+  readonly maxFanCones?: number;
+}): readonly SinrLiveCellBeamConeRenderItem[] {
+  const { candidate } = input;
+  if (
+    candidate === null
+    || candidate.kind !== 'inter'
+    || candidate.fromCellId === null
+    || !Number.isFinite(input.opacity)
+    || input.opacity <= 0
+  ) return [];
+
+  const sourceItems = resolveCandidateBeamConeItems({
+    pendingTargetSatId: candidate.fromSatId,
+    servingSatId: candidate.toSatId,
+    primaryCellId: candidate.fromCellId,
+    placementByCellId: input.placementByCellId,
+    satelliteWorldById: input.satelliteWorldById,
+    frequencyReuse: input.frequencyReuse,
+    cellFrame: input.cellFrame,
+    maxFanCones: input.maxFanCones,
+  });
+  return sourceItems
+    .filter(item => item.role === 'candidateFan')
+    .map(item => ({
+      ...item,
+      role: 'servingFan' as const,
+      opacity: input.opacity,
+      renderKey: `cinema-${candidate.eventId}-from-fan-${item.cellId}`,
+    }));
 }
 
 export function resolveSinrLiveCellBeamConeRenderCount(props: SinrLiveCellBeamConesProps): number {
@@ -833,7 +1016,7 @@ export interface SinrLiveCellBeamConesRenderProps {
  * a new `args` array — that guarantees a persistent cone's apex TRACKS the moving
  * satellite instead of freezing at a stale position.
  */
-function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; dimShallow?: boolean; dimFloorDeg?: number; dimCeilDeg?: number; dimMinFactor?: number; color?: string; widthScale?: number }): JSX.Element {
+function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; fog: boolean; dimShallow?: boolean; dimFloorDeg?: number; dimCeilDeg?: number; dimMinFactor?: number; color?: string; widthScale?: number }): JSX.Element {
   const { cone, opacity } = props;
   const color = props.color ?? cone.color;
   const geometryRef = useRef<THREE.BufferGeometry>(null);
@@ -899,6 +1082,7 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
         transparent
         opacity={effectiveOpacity}
         blending={SINR_LIVE_CONE_BLENDING}
+        fog={props.fog}
         depthWrite={false}
         side={THREE.DoubleSide}
         toneMapped={false}
@@ -956,15 +1140,17 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           heroCellId: props.primaryServingCellId,
         });
         const style = resolveSinrLiveConeRoleStyle(role, palette, cone);
+        const fog = resolveSinrLiveConeFog(role);
         return (
           <ObliqueConeMesh
             key={cone.renderKey ?? `${cone.cellId}-${cone.satId}`}
             cone={cone}
             color={style.color}
             opacity={style.opacity}
+            fog={fog}
             // The hero beam is exempt from the near-horizon dim so your own link always
             // pops; every other role fades with a shallow apex→base angle.
-            dimShallow={props.dimShallowCones && (role !== 'hero' || props.heroExemptFromElevationDim === false)}
+            dimShallow={shouldDimSinrLiveConeRole(role, props.dimShallowCones, props.heroExemptFromElevationDim)}
             dimFloorDeg={props.elevationDimFloorDeg}
             dimCeilDeg={props.elevationDimCeilDeg}
             dimMinFactor={props.elevationDimMinFactor}

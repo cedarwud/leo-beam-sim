@@ -1,0 +1,121 @@
+{
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/redesign-worker/c120-native-layout-proof-redesign-pass6.pptx",
+  "style_preset": "executive-clinical",
+  "renderer_detected": "pptxgenjs",
+  "summary": {
+    "slide_count": 6,
+    "violation_count": 4,
+    "error_count": 0,
+    "warning_count": 4,
+    "density_score_by_slide": [
+      {
+        "slide_index": 0,
+        "density_score": 0.1546
+      },
+      {
+        "slide_index": 1,
+        "density_score": 0.3235
+      },
+      {
+        "slide_index": 2,
+        "density_score": 0.6931
+      },
+      {
+        "slide_index": 3,
+        "density_score": 0.3104
+      },
+      {
+        "slide_index": 4,
+        "density_score": 0.16
+      },
+      {
+        "slide_index": 5,
+        "density_score": 0.4597
+      }
+    ]
+  },
+  "slides": [
+    {
+      "slide_index": 0,
+      "slide_type": "content",
+      "violations": [
+        {
+          "type": "empty_ratio_too_high",
+          "shape_ids": [],
+          "severity": "warning",
+          "delta_inches": 0.2254,
+          "suggested_fix": "Increase purposeful visual structure to reduce dead zones.",
+          "slide_type": "content",
+          "effective_max_empty_ratio": 0.62
+        }
+      ],
+      "density_score": 0.1546,
+      "empty_ratio": 0.8454
+    },
+    {
+      "slide_index": 1,
+      "slide_type": "content",
+      "violations": [
+        {
+          "type": "empty_ratio_too_high",
+          "shape_ids": [],
+          "severity": "warning",
+          "delta_inches": 0.0565,
+          "suggested_fix": "Increase purposeful visual structure to reduce dead zones.",
+          "slide_type": "content",
+          "effective_max_empty_ratio": 0.62
+        }
+      ],
+      "density_score": 0.3235,
+      "empty_ratio": 0.6765
+    },
+    {
+      "slide_index": 2,
+      "slide_type": "content",
+      "violations": [],
+      "density_score": 0.6931,
+      "empty_ratio": 0.3069
+    },
+    {
+      "slide_index": 3,
+      "slide_type": "content",
+      "violations": [
+        {
+          "type": "empty_ratio_too_high",
+          "shape_ids": [],
+          "severity": "warning",
+          "delta_inches": 0.0696,
+          "suggested_fix": "Increase purposeful visual structure to reduce dead zones.",
+          "slide_type": "content",
+          "effective_max_empty_ratio": 0.62
+        }
+      ],
+      "density_score": 0.3104,
+      "empty_ratio": 0.6896
+    },
+    {
+      "slide_index": 4,
+      "slide_type": "content",
+      "violations": [
+        {
+          "type": "empty_ratio_too_high",
+          "shape_ids": [],
+          "severity": "warning",
+          "delta_inches": 0.22,
+          "suggested_fix": "Increase purposeful visual structure to reduce dead zones.",
+          "slide_type": "content",
+          "effective_max_empty_ratio": 0.62
+        }
+      ],
+      "density_score": 0.16,
+      "empty_ratio": 0.84
+    },
+    {
+      "slide_index": 5,
+      "slide_type": "content",
+      "violations": [],
+      "density_score": 0.4597,
+      "empty_ratio": 0.5403
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name="" />
+        <p:cNvGrpSpPr />
+        <p:nvPr />
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0" />
+          <a:ext cx="0" cy="0" />
+          <a:chOff x="0" y="0" />
+          <a:chExt cx="0" cy="0" />
+        </a:xfrm>
+      </p:grpSpPr>
+    <p:sp><p:nvSpPr><p:cNvPr id="2" name="Native title placeholder" /><p:cNvSpPr><a:spLocks noGrp="1" /></p:cNvSpPr><p:nvPr><p:ph type="title" /></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="550333" y="150813" /><a:ext cx="11438467" cy="571500" /></a:xfrm></p:spPr><p:txBody><a:bodyPr /><a:lstStyle /><a:p><a:r><a:rPr lang="zh-TW" /><a:t>[[TITLE]]</a:t></a:r><a:endParaRPr lang="zh-TW" /></a:p></p:txBody></p:sp></p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping />
+  </p:clrMapOvr>
+</p:sld>

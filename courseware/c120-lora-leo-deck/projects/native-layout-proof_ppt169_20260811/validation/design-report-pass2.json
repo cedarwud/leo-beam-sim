@@ -1,0 +1,26 @@
+{
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/c120-native-layout-proof-fonted-pass2.pptx",
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/c120-native-layout-proof-design-pass2.pptx",
+  "slide_count": 6,
+  "background_policy": "no slide-level background or solid fill added",
+  "footer_shapes_removed": 24,
+  "footer_removals_by_part": {
+    "ppt/slideLayouts/slideLayout1.xml": 2,
+    "ppt/slideLayouts/slideLayout10.xml": 2,
+    "ppt/slideLayouts/slideLayout2.xml": 3,
+    "ppt/slideLayouts/slideLayout3.xml": 2,
+    "ppt/slideLayouts/slideLayout4.xml": 2,
+    "ppt/slideLayouts/slideLayout5.xml": 2,
+    "ppt/slideLayouts/slideLayout6.xml": 2,
+    "ppt/slideLayouts/slideLayout7.xml": 2,
+    "ppt/slideLayouts/slideLayout8.xml": 2,
+    "ppt/slideLayouts/slideLayout9.xml": 2,
+    "ppt/slideMasters/slideMaster1.xml": 3
+  },
+  "cover_subtitle_shapes_centered": 1,
+  "causal_shapes_centered": 1,
+  "logical_slide_6_removed_placeholder": "Native content placeholder 1",
+  "screenshot": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/evidence/browser-server-preview/02-endpoint-replay-imported.png",
+  "screenshot_sha256": "a515857ef52f0a76536aa725967b273bb2e33c2eeafe225e4be7cba775782687",
+  "visible_evidence_boundary": "Server preview verified; Windows native pending"
+}

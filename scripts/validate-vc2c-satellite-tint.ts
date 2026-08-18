@@ -45,7 +45,7 @@ function assertMaterialTintHelper(): void {
 
 async function assertBrowserFixture() {
   return withVc2Browser(async (page, appUrl) => {
-    const modelResponse = await fetch(new URL('/models/sat.glb', appUrl));
+    const modelResponse = await fetch(new URL('/models/satellite-starlink.glb', appUrl));
     assert.ok(modelResponse.ok, 'satellite GLB model was not reachable through the Vite dev server');
 
     const result = await page.evaluate(async () => window.__renderVc2NonTextChannelsFixture());

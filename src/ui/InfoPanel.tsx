@@ -240,6 +240,7 @@ export function InfoPanel({
             formula family stay visible in the LEFT tuning panel. */}
         <div role="status" aria-live="polite" aria-label="Serving and comparison beam status">
         <DuelCard
+          hideHeaderTitle
           servingTitle={servingTitle}
           servingFriendlyTitle={servingFriendlyTitle}
           servingCaption={servingCaption}

@@ -1,0 +1,181 @@
+{
+  "schema": "template_fill_pptx_plan.v1",
+  "status": "confirmed",
+  "source_pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/sources/educate-layout-sampler-v2.pptx",
+  "accepted_warnings": [
+    {
+      "plan_slide": 1,
+      "slot_id": "s01_sh3",
+      "code": "text_capacity",
+      "reason": "The native cover subtitle is intentionally longer than the journal citation and will be checked at the required twenty-four point rendered size."
+    },
+    {
+      "plan_slide": 2,
+      "slot_id": "s02_sh2",
+      "code": "text_capacity",
+      "reason": "The source token is not a capacity reference; the title inherits the wide native title placeholder and will be rendered at twenty-eight point."
+    },
+    {
+      "plan_slide": 2,
+      "slot_id": "s02_sh3",
+      "code": "text_capacity",
+      "reason": "The source token is not a capacity reference; five short lines intentionally occupy the full native content placeholder."
+    },
+    {
+      "plan_slide": 3,
+      "slot_id": "s03_sh2",
+      "code": "text_capacity",
+      "reason": "The source token is not a capacity reference; the native title region spans the slide width and will be visually checked."
+    }
+  ],
+  "slides": [
+    {
+      "source_slide": 1,
+      "purpose": "course opening",
+      "layout_rationale": {
+        "layout_pattern": "native educate cover",
+        "why_fit": "The original cover owns the course promise and preserves the template artwork without an added slide fill.",
+        "risk": "Mixed Chinese and English text requires a post-fill font contract check."
+      },
+      "replacements": [
+        {
+          "slot_id": "s01_sh2",
+          "text": "LoRaEnergySim × 智慧節能與物聯網應用"
+        },
+        {
+          "slot_id": "s01_sh3",
+          "text": "從 policy 變更，看見 service 與 endpoint energy 的因果"
+        }
+      ],
+      "notes": "這堂課從物聯網終端的能源決策開始。當終端選擇傳送、等待、批次或休眠時，封包服務與能量會一起改變；我們要學的是如何把操作連回可以驗證的因果，而不是背誦一個漂亮數字。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "direct course relationship",
+      "layout_rationale": {
+        "layout_pattern": "native title plus one dominant object",
+        "why_fit": "One large causal chain is the single visual and does not compete with secondary cards.",
+        "risk": "The chain must remain short enough to preserve the template's large type."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "節能不是只看功率變小"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "policy 選擇\n↓\nradio state 停留時間\n↓\npower × time\n↓\nendpoint energy\n↓\nservice 判讀"
+        }
+      ],
+      "notes": "請沿著這條因果鏈由上往下讀。策略先改變終端停在哪個無線狀態，以及停留多久；功率乘上時間才會累積為能量，最後還要回頭檢查必要服務是否守住。只看到功率下降，還不能直接下節能結論。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 3,
+      "purpose": "separate course core from the LEO example",
+      "layout_rationale": {
+        "layout_pattern": "native equal two-object split",
+        "why_fit": "The two native halves keep the transferable IoT mechanism separate from the changing-window example.",
+        "risk": "Each half must use compact phrases rather than paragraph prose."
+      },
+      "replacements": [
+        {
+          "slot_id": "s03_sh2",
+          "text": "LEO 只提供會改變的服務窗口"
+        },
+        {
+          "slot_id": "s03_sh3",
+          "text": "課程核心\n\nLoRa endpoint\npolicy / queue\nradio state / energy"
+        },
+        {
+          "slot_id": "s03_sh4",
+          "text": "LEO 範例\n\n窗口會開、會關\n品質會改變\n等待會產生後果"
+        }
+      ],
+      "notes": "左側才是課程核心：終端策略、佇列、無線狀態與能量證據。右側的 LEO 只提供一個服務機會會改變的例子，讓現在送或稍後送產生可見差異。同一套思考可以移轉到智慧農場、空調控制、邊緣推論與物流感測。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 4,
+      "purpose": "baseline and bounded edit operation",
+      "layout_rationale": {
+        "layout_pattern": "native comparison with two labeled columns",
+        "why_fit": "The template's paired columns express control versus one bounded policy change.",
+        "risk": "Commands must wrap predictably at twenty-four point body text."
+      },
+      "replacements": [
+        {
+          "slot_id": "s04_sh2",
+          "text": "先跑基準，再只改一個 policy block"
+        },
+        {
+          "slot_id": "s04_sh3",
+          "text": "基準"
+        },
+        {
+          "slot_id": "s04_sh4",
+          "text": "先驗證環境\nbash course.sh verify\n\n保持 policy 不變\nbash course.sh run --lab A --case baseline"
+        },
+        {
+          "slot_id": "s04_sh5",
+          "text": "一次變更"
+        },
+        {
+          "slot_id": "s04_sh6",
+          "text": "只改 lab-a-pace-rest\n\n先寫下預測，再執行\nbash course.sh run --lab A --case candidate --freeze"
+        }
+      ],
+      "notes": "右側不是另一套任務，而是相對於左側控制線的一次變更。先讓基準留下可辨識的 result，再只修改指定 marked block；執行前先預測佇列、服務、狀態時間與終端能量會往哪個方向改變。若同時改了多個區域，結果就無法回答是哪個機制造成差異。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 5,
+      "purpose": "typeset formula interpretation",
+      "layout_rationale": {
+        "layout_pattern": "native title-only evidence canvas",
+        "why_fit": "The clean template canvas leaves one dominant region for two typeset equations and their interpretation.",
+        "risk": "Equations and explanatory shapes are inserted by the documented OOXML post-process, not as raw LaTeX text."
+      },
+      "replacements": [
+        {
+          "slot_id": "s05_sh2",
+          "text": "公式把操作連到證據"
+        }
+      ],
+      "notes": "第一個式子把每個無線狀態的功率乘上停留時間，再累積成終端能量。第二個式子用成功送達的資料量除以同一個能量邊界；若 delivered-data 或 energy boundary 不同，就不能直接拿兩個效率值比較。這兩個式子不是裝飾，而是用來追問哪個操作改變了哪一段功率乘時間。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 6,
+      "purpose": "result interpretation checklist",
+      "layout_rationale": {
+        "layout_pattern": "native asymmetric picture-and-text layout",
+        "why_fit": "A narrow evidence index anchors a wider interpretation field and creates a visibly different closing composition.",
+        "risk": "The five evidence rows need deliberate line spacing at the fixed body size."
+      },
+      "replacements": [
+        {
+          "slot_id": "s06_sh2",
+          "text": "一筆 result，先看證據鏈"
+        },
+        {
+          "slot_id": "s06_sh3",
+          "text": ""
+        },
+        {
+          "slot_id": "s06_sh4",
+          "text": "身份 / lineage\n\n服務 / deadline / freshness\n\n機制 / queue / packet / state\n\n能量 / power × time\n\n判讀 / 支持、反駁、待查"
+        }
+      ],
+      "notes": "這張畫面來自已驗證的 server preview 匯入流程；它證明目前的瀏覽器路徑能讀取同一份 result，但不代表 Windows 原生執行已通過。匯入之後先確認身份與 lineage，再檢查必要服務，接著用佇列、封包與狀態時間解釋能量差異。若身份不一致、服務證據缺失或機制沒有產生後果，結論就應保持證據不足。",
+      "table_edits": [],
+      "chart_edits": []
+    }
+  ]
+}

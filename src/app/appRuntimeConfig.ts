@@ -103,6 +103,7 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     cameraCommand: input.cameraCommand,
     directorFocusCommand: input.directorFocusCommand,
     viewport: input.viewport,
+    beamCountBySatellite: input.sceneTopology.beamCountBySatellite,
     ueCount: input.sceneTopology.ueCount
       ?? (input.appMode === 'sinr-experiment'
         ? SINR_LIVE_DEFAULT_UE_COUNT

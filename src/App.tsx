@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MainScene } from './scene/MainScene';
 import { loadProfile } from './profiles';
 import type { Profile } from './profiles/types';
@@ -72,8 +72,8 @@ import {
 } from './sceneVisualScale';
 import { ControlBar } from './ui/ControlBar';
 import { DirectorControls } from './ui/DirectorControls';
-import { SinrOffsetExplainer } from './ui/SinrOffsetExplainer';
 import { useHandoverCinema } from './app/useHandoverCinema';
+import { shouldSuppressInterSeekFade } from './scene/handoverDisplayIsolation';
 import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
 import {
@@ -82,11 +82,12 @@ import {
 } from './ui/HandoverEventRail';
 import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell } from './ui/SidebarTabShell';
-import { HomepageCanonicalAnalysis } from './ui/signal-tuning/HomepageCanonicalAnalysis';
 import { HomepageCanonicalControls } from './ui/signal-tuning/HomepageCanonicalControls';
+import { HomepageCanonicalServingComparison } from './ui/signal-tuning/HomepageCanonicalServingComparison';
+import { HomepageRightRail } from './ui/signal-tuning/HomepageRightRail';
+import { SignalTuningPanel } from './ui/SignalTuningPanel';
 import { useHomepageCanonicalAnalysis } from './ui/signal-tuning/useHomepageCanonicalAnalysis';
 import type { MainTabKey } from './ui/signal-tuning/types';
-import type { SimulatorTab } from './simulator/types';
 import { SceneTopologyPanel } from './ui/SceneTopologyPanel';
 import { ModqnReplayCuePanel } from './ui/ModqnReplayCuePanel';
 import { ReplayArmToggle, type ReplayArm } from './ui/ReplayArmToggle';
@@ -127,7 +128,6 @@ import {
   HEADER_ABSENT_SOURCE,
 } from './ui/ArtifactSourceBadge';
 import { ArtifactSatelliteCompass } from './ui/ArtifactSatelliteCompass';
-import { ModqnViewToggle } from './ui/ModqnViewToggle';
 // Global zh-TW / EN language state (CONTRACT.md §2). The provider wraps the
 // whole shell so the left tuners, the right readout and every HelpPopover
 // share one locale; the toggle itself lives in the top-right quick-control row.
@@ -157,6 +157,7 @@ import {
   isKnownProfileId,
   normalizeRuntimeOmega,
   readInitialRuntimeState,
+  resolveHomepageInitialRuntimeState,
   type InitialRuntimeState,
   type LeftSidebarTab,
   type RightSidebarTab,
@@ -173,11 +174,14 @@ import {
 } from './app/appRuntimeConfig';
 import {
   clampTimelineTime,
+  createArchivedTleRunTimelineDescriptor,
   getModqnProducerTraceRange,
   resolveTimelineRailDescriptor,
 } from './app/timelineRailAuthority';
+import { advanceArchivedTlePlaybackCursor } from './app/archivedTlePlayback';
 import {
   liveWalkerHandoverEventIndexToRailEvents,
+  selectDirectorHandoverEvents,
 } from './app/liveWalkerHandoverRailAdapter';
 import {
   buildArtifactHandoverRailEvents,
@@ -250,7 +254,22 @@ const REPLAY_ARM_WINDOWS: Readonly<Record<ReplayArm, string>> = {
 const REPLAY_ARM_DEFAULT: ReplayArm = 'a2';
 
 export function App() {
-  const [sceneSource, setSceneSource] = useState<SceneSourceMode>(() => readSceneSourceFromUrl());
+  // `/` is the original public Walker surface. `/legacy` and `/walker` remain
+  // explicit aliases so old bookmarks and comparison screenshots keep working;
+  // `/simulator` now serves the unified Visual Lab route.
+  // This restores the pre-canonical Walker scene and its formula/tuning shell
+  // without forking the renderer or the simulation engine.
+  // Keep this as a route-level presentation choice; it must not fork the renderer
+  // or duplicate the simulation engine.
+  const isLegacyWalkerRoute = typeof window !== 'undefined'
+    && (
+      window.location.pathname === '/'
+      || window.location.pathname === '/legacy'
+      || window.location.pathname === '/walker'
+    );
+  const [sceneSource, setSceneSource] = useState<SceneSourceMode>(() => (
+    isLegacyWalkerRoute ? 'live-sim' : readSceneSourceFromUrl()
+  ));
   const [showcaseArtifact, setShowcaseArtifact] = useState<VisualShowcaseArtifact | null>(null);
   const [showcaseArtifactSource, setShowcaseArtifactSource] = useState<string | null>(null);
   const [showcaseLoading, setShowcaseLoading] = useState(false);
@@ -277,7 +296,7 @@ export function App() {
   const liveSimTimeSecRef = useRef(0);
   const initialRuntimeRef = useRef<InitialRuntimeState | null>(null);
   if (initialRuntimeRef.current === null) {
-    initialRuntimeRef.current = readInitialRuntimeState();
+    initialRuntimeRef.current = resolveHomepageInitialRuntimeState(readInitialRuntimeState());
   }
   const initialRuntime = initialRuntimeRef.current;
   const [appMode, setAppModeRaw] = useState<AppExperienceMode>(initialRuntime.appMode);
@@ -352,11 +371,6 @@ export function App() {
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
   const [homepageCanonicalTab, setHomepageCanonicalTab] = useState<MainTabKey>('sinr');
   const homepageCanonicalAnalysis = useHomepageCanonicalAnalysis();
-  const homepageCanonicalResultTab: SimulatorTab = homepageCanonicalTab === 'energy'
-    ? 'ee'
-    : homepageCanonicalTab === 'power' || homepageCanonicalTab === 'throughput'
-      ? homepageCanonicalTab
-      : 'sinr';
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
   const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
   const [userTrainedLoadError, setUserTrainedLoadError] = useState<string | null>(null);
@@ -662,27 +676,28 @@ export function App() {
     setMeasurementResetEpoch(epoch => epoch + 1);
   }, []);
 
-  const requestManualHandover = useCallback((kind: 'intra' | 'inter') => {
+  const requestMovingIntraDemo = useCallback(() => {
     manualHandoverWasPausedRef.current = playback.paused;
-    playback.setPaused(true);
+    // The display-only fallback must keep the source timeline running so the
+    // source satellite and its beam apex continue to move during the cue.
+    playback.setPaused(false);
     manualHandoverRequestSeqRef.current += 1;
     setManualHandoverRequest({
       id: manualHandoverRequestSeqRef.current,
-      kind,
+      kind: 'intra',
       startedAtMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
     });
   }, [playback]);
 
-  // The explicit handover is a self-contained visual interlude. It pauses the
-  // source timeline while the scene is cleared and the two demo cones are shown,
-  // then returns to the exact pre-click playback state without adding anything to
-  // the natural handover event index.
+  // The fallback is a display-only same-satellite beam-switch cue. It runs on the
+  // moving source timeline, then returns to the exact pre-click playback state
+  // without adding anything to the natural handover event index.
   useEffect(() => {
     if (manualHandoverRequest === null) return;
     const requestId = manualHandoverRequest.id;
     const timerId = window.setTimeout(() => {
       setManualHandoverRequest(current => current?.id === requestId ? null : current);
-      if (!manualHandoverWasPausedRef.current) playback.setPaused(false);
+      if (manualHandoverWasPausedRef.current) playback.setPaused(true);
     }, MANUAL_HANDOVER_DISPLAY_MS);
     return () => window.clearTimeout(timerId);
   }, [manualHandoverRequest, playback.setPaused]);
@@ -714,17 +729,16 @@ export function App() {
   // floor, the interference tab's live co-channel counts — froze with it. A
   // slider you cannot see move is worse than a dropped frame, and the work being
   // deferred is one profile rebuild plus a panel re-render, not a scene rebuild.
-  // Scene TOPOLOGY changes below keep their transition: those really do rebuild
-  // the constellation.
+  // Scene topology edits rebuild the constellation, but the selected value must
+  // commit immediately so a controlled radio cannot be overwritten by the live
+  // frame publisher while the rebuild is pending.
   const handleSignalTuningChange = useCallback((next: SignalTuningState) => {
     setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next));
     setSignalTuning(next);
   }, []);
 
   const handleSceneTopologyChange = useCallback((next: SceneTopologyState) => {
-    startTransition(() => {
-      setSceneTopology(next);
-    });
+    setSceneTopology(next);
   }, []);
 
   // Same reasoning as handleSignalTuningChange: the reset button must visibly
@@ -968,7 +982,11 @@ export function App() {
   // and the sidebar's policyDiagnostics flow from the envelope. On failure we
   // keep the typed-reference fallback so the demo still renders.
   useEffect(() => {
-    if (sceneSource === 'artifact-replay') return;
+    // The canonical SINR/TLE homepage does not consume MODQN replay evidence.
+    // Do not trigger its dev-server export path behind an unrelated workspace;
+    // it can block archived-TLE requests and makes the visible homepage depend
+    // on a backend surface that is neither displayed nor used by its formulas.
+    if (sceneSource === 'artifact-replay' || appMode !== 'modqn-demo') return;
 
     let cancelled = false;
     fetchModqnReplayBundleEnvelope()
@@ -995,7 +1013,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [sceneSource]);
+  }, [appMode, sceneSource]);
 
   useEffect(() => {
     setModqnReplayVisualElapsedSec(0);
@@ -1149,6 +1167,7 @@ export function App() {
             ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
             ueMobilityMode: runtime.ueMobilityMode,
             ueMobilityParams: runtime.ueMobilityParams,
+            beamCountBySatellite: runtime.beamCountBySatellite,
           });
         }
         if (builder.runSlice(STEP_BATCH)) {
@@ -1200,6 +1219,7 @@ export function App() {
     runtime.ueMobilityMode,
     runtime.ueMobilityParams,
     runtime.uePrimaryAnchorMode,
+    runtime.beamCountBySatellite,
     sceneLane,
     sceneSource,
   ]);
@@ -1424,6 +1444,16 @@ export function App() {
     () => liveWalkerHandoverEventIndexToRailEvents(liveWalkerHandoverEventIndex),
     [liveWalkerHandoverEventIndex],
   );
+  const liveWalkerDirectorHandoverRailEvents = useMemo(() => {
+    if (liveWalkerHandoverEventIndex === null) return [];
+    return liveWalkerHandoverEventIndexToRailEvents({
+      ...liveWalkerHandoverEventIndex,
+      events: selectDirectorHandoverEvents(
+        liveWalkerHandoverEventIndex,
+        liveWalkerHandoverEventIndex.events,
+      ),
+    });
+  }, [liveWalkerHandoverEventIndex]);
   const liveTimelineWindowStartSec = demoStartOffset;
   const liveTimelineElapsedSec = clampTimelineTime(
     simState.simTimeSec - liveTimelineWindowStartSec,
@@ -1435,7 +1465,7 @@ export function App() {
       && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
       && liveWalkerHandoverEventIndex === null
     ) {
-      return ['Source gap: live Walker handover event index is not ready.'] as const;
+      return ['Source gap: live-scene handover event index is not ready.'] as const;
     }
     return liveWalkerHandoverEventIndex?.sourceGapReasons ?? [];
   }, [liveWalkerHandoverEventIndex, sceneLane, sceneSource]);
@@ -1466,12 +1496,116 @@ export function App() {
     liveTimelineElapsedSec,
     liveWalkerHandoverEventIndexSourceGapReasons,
   ]);
-  const timelineDurationSec = timelineRailDescriptor.timeline.durationSec;
-  const timelineCurrentTimeSec = timelineRailDescriptor.timeline.currentTimeSec;
+  const archivedTleTimelineDescriptor = useMemo(
+    () => createArchivedTleRunTimelineDescriptor({
+      runReady: homepageCanonicalAnalysis.runReady ?? false,
+      durationSec: homepageCanonicalAnalysis.timelineDurationSec ?? 7200,
+      currentTimeSec: homepageCanonicalAnalysis.timelineCurrentTimeSec ?? 0,
+      stepSec: homepageCanonicalAnalysis.timelineStepSec ?? 30,
+    }),
+    [
+      homepageCanonicalAnalysis.runReady,
+      homepageCanonicalAnalysis.timelineCurrentTimeSec,
+      homepageCanonicalAnalysis.timelineDurationSec,
+      homepageCanonicalAnalysis.timelineStepSec,
+    ],
+  );
+  // The homepage's visible timeline is a fully materialized archived-TLE run.
+  // Other lanes retain the existing Walker/artifact/proof authority unchanged.
+  const activeTimelineDescriptor = sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+    ? archivedTleTimelineDescriptor
+    : timelineRailDescriptor.timeline;
+  const timelineDurationSec = activeTimelineDescriptor.durationSec;
+  const timelineCurrentTimeSec = activeTimelineDescriptor.currentTimeSec;
+  const archivedTleTimelineCurrentTimeRef = useRef(timelineCurrentTimeSec);
+  archivedTleTimelineCurrentTimeRef.current = timelineCurrentTimeSec;
+  const archivedTleSelectTimelineTimeRef = useRef<((targetSec: number) => void) | undefined>(
+    homepageCanonicalAnalysis.selectTimelineTimeSec,
+  );
+  archivedTleSelectTimelineTimeRef.current = homepageCanonicalAnalysis.selectTimelineTimeSec;
   const timelineDisabled = manualHandoverRequest !== null
-    || (sceneSource === 'artifact-replay'
+    || (sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+      ? !(homepageCanonicalAnalysis.runReady ?? false)
+      : sceneSource === 'artifact-replay'
       ? replayController === null || showcaseLoading || showcaseError !== null
       : timelineDurationSec <= 0);
+
+  // Archived-TLE homepage playback advances only inside the already-published
+  // two-hour run. The lower/upper 30-second SGP4 anchors bracket a continuous
+  // display interpolation; no browser-time propagation or uncomputed seek is
+  // introduced. All other lanes keep their existing transport loops.
+  useEffect(() => {
+    if (
+      sceneLane !== 'sinr-live'
+      || isLegacyWalkerRoute
+      || !(homepageCanonicalAnalysis.runReady ?? false)
+      || playback.paused
+      || timelineDurationSec <= 0
+      || typeof window === 'undefined'
+    ) {
+      return;
+    }
+
+    const initialTimeSec = archivedTleTimelineCurrentTimeRef.current;
+    if (initialTimeSec >= timelineDurationSec) {
+      playback.setPaused(true);
+      return;
+    }
+
+    let lastTimeMs = performance.now();
+    // React may batch the anchor-state update for several RAF callbacks. Keep
+    // a local source-time cursor so playback still advances between commits;
+    // the ref is consulted only to detect an external scrub/anchor jump.
+    let playbackCursorSec = initialTimeSec;
+    let lastRequestedTimeSec = initialTimeSec;
+    let lastPublishedAtMs = lastTimeMs;
+    let frameId = 0;
+    const tick = (nowMs: number): void => {
+      const deltaSec = Math.max(0, (nowMs - lastTimeMs) / 1000);
+      lastTimeMs = nowMs;
+      const externallySelectedSec = archivedTleTimelineCurrentTimeRef.current;
+      if (Math.abs(externallySelectedSec - lastRequestedTimeSec) >= 15) {
+        playbackCursorSec = externallySelectedSec;
+      }
+      playbackCursorSec = advanceArchivedTlePlaybackCursor({
+        currentTimeSec: playbackCursorSec,
+        deltaSec,
+        selectedSpeed: playback.speed,
+        durationSec: timelineDurationSec,
+      });
+      lastRequestedTimeSec = playbackCursorSec;
+      archivedTleTimelineCurrentTimeRef.current = playbackCursorSec;
+      const targetSec = Math.min(
+        playbackCursorSec,
+        timelineDurationSec,
+      );
+      // Twenty UI publications per wall-clock second keep the centre visually
+      // continuous without forcing the entire App tree through a 60 Hz React
+      // render loop. The TLE positions themselves remain bracketed by the
+      // completed 30-second SGP4 anchors.
+      if (nowMs - lastPublishedAtMs >= 50 || targetSec >= timelineDurationSec) {
+        lastPublishedAtMs = nowMs;
+        archivedTleSelectTimelineTimeRef.current?.(targetSec);
+      }
+      if (targetSec >= timelineDurationSec) {
+        playback.setPaused(true);
+        return;
+      }
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [
+    homepageCanonicalAnalysis.runReady,
+    playback.speed,
+    playback.paused,
+    playback.setPaused,
+    isLegacyWalkerRoute,
+    sceneLane,
+    timelineDurationSec,
+  ]);
+
   const handoverRailEvents = useMemo(() => {
     if (sceneSource === 'artifact-replay') return artifactHandoverRailEvents;
     if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;
@@ -1487,12 +1621,31 @@ export function App() {
   ]);
 
   const requestLiveTimelineSeek = useCallback((request: LiveTimelineSeekRequest) => {
+    // The archived-TLE homepage has no live Walker seek path. Keep every
+    // caller (including the legacy Director wrapper) on the same published
+    // anchor selector so it cannot accidentally rebase the live simulator.
+    if (sceneLane === 'sinr-live' && !isLegacyWalkerRoute) {
+      if (homepageCanonicalAnalysis.runReady ?? false) {
+        homepageCanonicalAnalysis.selectTimelineTimeSec?.(request.targetSec);
+      }
+      return;
+    }
     resetAnalysisWindow();
     setLiveTimelineSeekRequest(request);
-  }, [resetAnalysisWindow]);
+  }, [homepageCanonicalAnalysis, isLegacyWalkerRoute, resetAnalysisWindow, sceneLane]);
 
   const handleTimelineSeek = useCallback((targetSec: number) => {
     const target = clampTimelineTime(targetSec, timelineDurationSec);
+    // Archived-TLE homepage: the hook owns the published anchor and the
+    // canonical frame. Never route this surface through Walker rebase/seek or
+    // reset the live analysis window; a seek selects only an already-computed
+    // 30-second anchor from the immutable run.
+    if (sceneLane === 'sinr-live' && !isLegacyWalkerRoute) {
+      if (homepageCanonicalAnalysis.runReady ?? false) {
+        homepageCanonicalAnalysis.selectTimelineTimeSec?.(target);
+      }
+      return;
+    }
     if (sceneSource === 'artifact-replay') {
       resetAnalysisWindow();
       replayController?.seek(target);
@@ -1529,6 +1682,8 @@ export function App() {
     setModqnReplayVisualElapsedSec(target);
   }, [
     resetAnalysisWindow,
+    homepageCanonicalAnalysis,
+    isLegacyWalkerRoute,
     liveTimelineWindowStartSec,
     replayController,
     requestLiveTimelineSeek,
@@ -1563,8 +1718,10 @@ export function App() {
   // event (e.g. a MODQN cell-preview profile that emits zero live-walker HO
   // events), which would be motion without a source.
   const directorInterEnabled = useMemo(
-    () => directorFocusEnabled && handoverRailEvents.some(event => event.kind === 'inter'),
-    [directorFocusEnabled, handoverRailEvents],
+    () => directorFocusEnabled
+      && handoverRailEvents.some(event => event.kind === 'inter')
+      && liveWalkerDirectorHandoverRailEvents.some(event => event.kind === 'inter'),
+    [directorFocusEnabled, handoverRailEvents, liveWalkerDirectorHandoverRailEvents],
   );
   // ITEM #C honesty: since the cell-truth cinema migration (e7a08dc) the sinr-live
   // Director focus is real live SINR cell-truth (`live-truth`) — the SINR values ARE
@@ -1598,14 +1755,13 @@ export function App() {
     [directorCinematicEnabled, artifactHandoverRailEvents],
   );
   // The next-event buttons are source-gated when an indexed event exists. The live
-  // sinr lane also keeps Next Intra actionable when its static cell-truth index has
-  // zero intra rows: App then uses the explicit primary-UE jog fallback to produce a
-  // real same-satellite switch. This avoids a misleading button that only moves the
-  // camera with no handover behind it.
+  // sinr lane keeps Show Intra actionable when its static cell-truth index has zero
+  // intra rows: the DirectorControls trigger remains the real UE-jog path, while the
+  // top-bar fallback is a moving, display-only same-satellite beam-switch cue.
   const directorInterButtonEnabled = directorInterEnabled || directorCinematicInterEnabled;
   const directorIntraIndexedEnabled =
     directorCinematicIntraEnabled
-    || (directorFocusEnabled && handoverRailEvents.some(event => event.kind === 'intra'));
+    || (directorFocusEnabled && liveWalkerDirectorHandoverRailEvents.some(event => event.kind === 'intra'));
   const directorNextIntraEnabled = directorIntraIndexedEnabled || sceneSource === 'live-sim';
   const directorIntraTriggerEnabled = sceneSource === 'live-sim';
 
@@ -1625,7 +1781,7 @@ export function App() {
     directorCinematicEnabled,
     directorFocusEnabled,
     artifactHandoverRailEvents,
-    liveWalkerHandoverRailEvents,
+    liveWalkerHandoverRailEvents: liveWalkerDirectorHandoverRailEvents,
     liveDirectorFocusClaimKind,
     liveDirectorRailDurationSec: timelineRailDescriptor.rail.durationSec,
     timelineDurationSec,
@@ -1662,6 +1818,12 @@ export function App() {
     }, [cancelPendingLiveFocus, camera]),
   });
 
+  const hideBeamInfoForHandover = useCallback(() => {
+    setBeamDisplaySpec(current => current.beamCalloutsEnabled
+      ? { ...current, beamCalloutsEnabled: false }
+      : current);
+  }, []);
+
   const triggerPrimaryIntra = useCallback(() => {
     // Keep the real jog seek-free. A timeline seek rebases the model before it can
     // compare the old/new serving cells, which removes the very pulse this button
@@ -1669,6 +1831,7 @@ export function App() {
     setPrimaryUeJogKm(prev => (prev.east === 0 ? { east: 28, north: 0 } : { east: 0, north: 0 }));
   }, []);
   const handleDirectorNextIntra = useCallback(() => {
+    hideBeamInfoForHandover();
     if (directorIntraIndexedEnabled) {
       handoverCinema.armIntra();
       return;
@@ -1677,7 +1840,23 @@ export function App() {
     // real engine event, not a fabricated rail marker, and the scene's wall-clock
     // latch keeps its yellow -> blue handover flash visible.
     if (sceneSource === 'live-sim') triggerPrimaryIntra();
-  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, sceneSource, triggerPrimaryIntra]);
+  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, hideBeamInfoForHandover, sceneSource, triggerPrimaryIntra]);
+  const handleQuickIntra = useCallback(() => {
+    hideBeamInfoForHandover();
+    if (directorIntraIndexedEnabled) {
+      handoverCinema.armIntra();
+      return;
+    }
+    if (sceneSource === 'live-sim') requestMovingIntraDemo();
+  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, hideBeamInfoForHandover, requestMovingIntraDemo, sceneSource]);
+  const handleDirectorNextInter = useCallback(() => {
+    hideBeamInfoForHandover();
+    handoverCinema.armInter();
+  }, [handoverCinema.armInter, hideBeamInfoForHandover]);
+  const handleQuickInter = useCallback(() => {
+    hideBeamInfoForHandover();
+    handoverCinema.armInter();
+  }, [handoverCinema.armInter, hideBeamInfoForHandover]);
 
   // The top-level lane transition remains available to the internal MODQN/replay
   // proof surfaces, but the SINR launch surface intentionally does not mount the
@@ -1723,6 +1902,10 @@ export function App() {
   }, [appMode, applyHandoverModeSideEffects, camera, cancelPendingLiveFocus, effectiveProfile, handleAppModeChange, handoverMode, sceneLane, sceneSource]);
 
   const handleHandoverRailSeek = useCallback((targetSec: number) => {
+    if (sceneLane === 'sinr-live') {
+      handleTimelineSeek(targetSec);
+      return;
+    }
     if (directorFocusEnabled) {
       const sourceTarget = clampTimelineTime(targetSec, timelineRailDescriptor.rail.durationSec);
       requestLiveTimelineSeek({
@@ -1742,6 +1925,7 @@ export function App() {
     handleTimelineSeek,
     liveTimelineWindowStartSec,
     requestLiveTimelineSeek,
+    sceneLane,
     timelineDurationSec,
     timelineRailDescriptor.rail.durationSec,
   ]);
@@ -1791,7 +1975,7 @@ export function App() {
         phase={camera.directorPhase}
         onIntraTrigger={triggerPrimaryIntra}
         onIntraFocus={handleDirectorNextIntra}
-        onInterFocus={handoverCinema.armInter}
+        onInterFocus={handleDirectorNextInter}
         onExit={handoverCinema.exit}
       />
     </>
@@ -1808,12 +1992,14 @@ export function App() {
       onTogglePause={playback.togglePause}
       onSeek={handleTimelineSeek}
       onSpeedChange={handleTimelineSpeedChange}
+      stepSec={sceneLane === 'sinr-live' && !isLegacyWalkerRoute ? (homepageCanonicalAnalysis.timelineStepSec ?? 30) : undefined}
+      scrubStepSec={sceneLane === 'sinr-live' && !isLegacyWalkerRoute ? 1 : undefined}
       disabled={timelineDisabled}
-      sourceOwner={timelineRailDescriptor.timeline.sourceOwner}
-      horizonKind={timelineRailDescriptor.timeline.horizonKind}
-      horizonLabel={timelineRailDescriptor.timeline.horizonLabel}
-      horizonSec={timelineRailDescriptor.timeline.horizonSec}
-      claimKind={timelineRailDescriptor.timeline.claimKind}
+      sourceOwner={activeTimelineDescriptor.sourceOwner}
+      horizonKind={activeTimelineDescriptor.horizonKind}
+      horizonLabel={activeTimelineDescriptor.horizonLabel}
+      horizonSec={activeTimelineDescriptor.horizonSec}
+      claimKind={activeTimelineDescriptor.claimKind}
     />
   );
 
@@ -1957,6 +2143,7 @@ export function App() {
     <div
       data-app-mode={appMode}
       data-scene-lane={sceneLane}
+      data-legacy-walker-route={isLegacyWalkerRoute ? 'true' : undefined}
       data-artifact-source={
         sceneSource === 'artifact-replay' ? (showcaseArtifactSource ?? 'pending') : undefined
       }
@@ -1969,9 +2156,9 @@ export function App() {
       data-timeline-current-time-sec={timelineCurrentTimeSec.toFixed(3)}
       data-timeline-duration-sec={timelineDurationSec.toFixed(3)}
       data-timeline-disabled={timelineDisabled ? 'true' : 'false'}
-      data-timeline-source-owner={timelineRailDescriptor.timeline.sourceOwner}
-      data-timeline-horizon-kind={timelineRailDescriptor.timeline.horizonKind}
-      data-timeline-claim-kind={timelineRailDescriptor.timeline.claimKind}
+      data-timeline-source-owner={activeTimelineDescriptor.sourceOwner}
+      data-timeline-horizon-kind={activeTimelineDescriptor.horizonKind}
+      data-timeline-claim-kind={activeTimelineDescriptor.claimKind}
       data-live-timeline-seek-target={liveTimelineSeekRequest?.targetSec.toFixed(3) ?? ''}
       data-live-timeline-seek-key={liveTimelineSeekRequest?.requestKey ?? ''}
       data-manual-handover-request-id={manualHandoverRequest?.id?.toString() ?? ''}
@@ -2007,9 +2194,10 @@ export function App() {
         }}
       >
       <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-      {/* Global display-control row (beam info / other beams / spotlight / HO slow):
-          these toggle beamDisplaySpec + camera + playback, which apply on every
-          lane — shown on SINR and MODQN alike, not lane-gated. */}
+      {/* Global display controls remain available on the SINR/TLE homepage as
+          well as the replay lanes. The current scene still consumes
+          beamDisplaySpec for callouts, secondary beams and cinematic display;
+          hiding this whole row made those existing controls unreachable. */}
       <SinrLiveQuickControls
         beamCalloutsEnabled={beamDisplaySpec.beamCalloutsEnabled}
         showNonServingCones={beamDisplaySpec.showNonServingCones}
@@ -2025,23 +2213,26 @@ export function App() {
         onCinematicModeChange={camera.setCinematicMode}
         onToggleAutoSlow={playback.toggleAutoSlow}
         onDismissAutoSlow={playback.dismissAutoSlow}
-        showHandoverJumpButtons={sceneSource === 'live-sim'}
-        nextIntraEnabled={manualHandoverRequest === null && (sceneSource === 'live-sim'
-          ? camera.directorPhase === 'idle'
-          : directorNextIntraEnabled && camera.directorPhase === 'idle')}
-        nextInterEnabled={manualHandoverRequest === null && (sceneSource === 'live-sim'
-          ? camera.directorPhase === 'idle'
-          : directorInterButtonEnabled && camera.directorPhase === 'idle')}
+        showHandoverJumpButtons={sceneSource === 'live-sim'
+          && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')}
+        nextIntraEnabled={manualHandoverRequest === null
+          && directorNextIntraEnabled
+          && camera.directorPhase === 'idle'}
+        nextInterEnabled={manualHandoverRequest === null
+          && directorInterButtonEnabled
+          && camera.directorPhase === 'idle'}
         nextIntraCount={sceneSource === 'live-sim'
           ? undefined
           : handoverRailEvents.filter(event => event.kind === 'intra').length}
         nextInterCount={sceneSource === 'live-sim'
           ? undefined
           : handoverRailEvents.filter(event => event.kind === 'inter').length}
-        nextIntraMode={sceneSource === 'live-sim' ? 'real-trigger' : (directorIntraIndexedEnabled ? 'indexed' : 'real-trigger')}
+        nextIntraMode={sceneSource === 'live-sim'
+          ? (directorIntraIndexedEnabled ? 'indexed' : 'moving-beam-demo')
+          : (directorIntraIndexedEnabled ? 'indexed' : 'real-trigger')}
         manualHandoverKind={sceneSource === 'live-sim' ? manualHandoverRequest?.kind ?? null : null}
-        onNextIntra={() => requestManualHandover('intra')}
-        onNextInter={() => requestManualHandover('inter')}
+        onNextIntra={handleQuickIntra}
+        onNextInter={handleQuickInter}
       />
       </div>
       <div
@@ -2051,15 +2242,6 @@ export function App() {
         <LocaleToggle />
       </div>
       </div>
-      {sceneLane !== 'sinr-live' && (
-        <div className="leo-modqn-subnav-row">
-          <ModqnViewToggle
-            value={sceneLane}
-            onChange={handleExperienceChange}
-            proofEnabled={canToggleModqnReplayProof}
-          />
-        </div>
-      )}
       {/* P3 slice-2: the a2↔b1 replay-arm toggle-slam. Only on the recorded
           proof lane; swaps which producer window the field displays (red sea ⇄
           all-green). Display-only — App owns the state, the fetch effect flips. */}
@@ -2183,11 +2365,31 @@ export function App() {
           {sceneLane === 'sinr-live' && (
             <SinrLiveDisplayDrawer
               parameterSection={
-                <HomepageCanonicalControls
-                  analysis={homepageCanonicalAnalysis}
-                  activeTab={homepageCanonicalTab}
-                  onActiveTabChange={setHomepageCanonicalTab}
-                />
+                isLegacyWalkerRoute ? (
+                  <SignalTuningPanel
+                    baseProfile={baseProfile}
+                    tuning={signalTuning}
+                    topology={activeSceneTopology}
+                    sceneVisualScale={sceneVisualScale}
+                    hasOverrides={hasSignalOverrides || hasTopologyOverrides || hasVisualScaleOverrides}
+                    appMode={appMode}
+                    formulaBudget={simState.physicalServingBudget}
+                    canonicalAnalysis={homepageCanonicalAnalysis}
+                    isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                    onTuningChange={handleSignalTuningChange}
+                    onTopologyChange={handleSceneTopologyChange}
+                    servingSatelliteId={simState.servingSatId}
+                    candidateSatelliteId={simState.pendingTargetSatId ?? simState.comparisonSatId}
+                    onSceneVisualScaleChange={setSceneVisualScale}
+                    onReset={handleResetSignalTuning}
+                  />
+                ) : (
+                  <HomepageCanonicalControls
+                    analysis={homepageCanonicalAnalysis}
+                    activeTab={homepageCanonicalTab}
+                    onActiveTabChange={setHomepageCanonicalTab}
+                  />
+                )
               }
             />
           )}
@@ -2218,10 +2420,6 @@ export function App() {
             />
           )}
           {handoverMode === 'omega-heuristic' && sceneLane === 'modqn-live-cell-preview' && <HeuristicNotPaperBanner />}
-          <SinrOffsetExplainer
-            candidate={handoverCinema.focusedCandidate}
-            visible={handoverCinema.cinemaActive && sceneLane === 'sinr-live'}
-          />
           {shouldRenderMainScene ? (
             <MainScene
               speed={playback.effectiveSpeed}
@@ -2233,7 +2431,21 @@ export function App() {
               onSimUpdate={handleSimUpdate}
               onLiveSeekLanded={handleLiveSeekLandedWithAnalysisReset}
               sceneFrame={activeSceneFrame}
+              canonicalAnalysisFrame={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+                ? homepageCanonicalAnalysis.frame
+                : undefined}
+              canonicalAnalysisNextFrame={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+                ? homepageCanonicalAnalysis.visualNextFrame
+                : undefined}
+              canonicalVisualOffsetSec={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+                ? Math.max(
+                  0,
+                  timelineCurrentTimeSec
+                    - (homepageCanonicalAnalysis.frame?.runAnchor?.elapsedSec ?? timelineCurrentTimeSec),
+                )
+                : undefined}
               beamDisplaySpec={beamDisplaySpec}
+              handoverCinemaCandidate={sceneLane === 'sinr-live' ? handoverCinema.focusedCandidate : null}
             />
           ) : (
             <div
@@ -2252,20 +2464,29 @@ export function App() {
             <CinematicSeekFadeOverlay
               pulseKey={cinematicFadePulse}
               reducedMotion={runtime.reducedMotion}
+              suppressVisual={shouldSuppressInterSeekFade(handoverCinema.armFilter)}
               onPeak={handleCinematicSeekPeak}
             />
           )}
           {timelineBar}
         </main>
-        <aside className="leo-shell-right" aria-label="Signal status panel slot">
-          {sceneLane === 'modqn-live-cell-preview' && <ServiceStatusBanner appMode={appMode} />}
-          <SidebarTabShell
-            label="Simulation status sidebar"
-            side="right"
-            tabs={visibleRightSidebarTabs}
-            activeKey={activeRightSidebarTab}
-            onChange={setRightSidebarTab}
-          >
+        <aside className="leo-shell-right" aria-label="Calculated values panel">
+          {sceneLane === 'sinr-live' && !isLegacyWalkerRoute ? (
+            <HomepageRightRail
+              analysis={homepageCanonicalAnalysis}
+            >
+              <HomepageCanonicalServingComparison frame={homepageCanonicalAnalysis.frame} />
+            </HomepageRightRail>
+          ) : (
+            <>
+              {sceneLane === 'modqn-live-cell-preview' && <ServiceStatusBanner appMode={appMode} />}
+              <SidebarTabShell
+                label="Simulation status sidebar"
+                side="right"
+                tabs={visibleRightSidebarTabs}
+                activeKey={activeRightSidebarTab}
+                onChange={setRightSidebarTab}
+              >
             {activeRightSidebarTab === 'artifact' ? (
               <section
                 className="leo-sidebar-content-stack"
@@ -2298,21 +2519,14 @@ export function App() {
               </section>
             ) : activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
-                {sceneLane === 'sinr-live' ? (
-                  <HomepageCanonicalAnalysis
-                    analysis={homepageCanonicalAnalysis}
-                    activeTab={homepageCanonicalResultTab}
-                  />
-                ) : (
-                  <InfoPanel
-                    {...simState}
-                    profile={effectiveProfile}
-                    handoverMode={handoverMode}
-                    showFormulaTerms
-                    isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                    channelMetricKind={activeSceneFrame?.channelMetricKind}
-                  />
-                )}
+                <InfoPanel
+                  {...simState}
+                  profile={effectiveProfile}
+                  handoverMode={handoverMode}
+                  showFormulaTerms
+                  isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                  channelMetricKind={activeSceneFrame?.channelMetricKind}
+                />
               </section>
             ) : (
               <section
@@ -2396,7 +2610,9 @@ export function App() {
                 />
               </section>
             )}
-          </SidebarTabShell>
+              </SidebarTabShell>
+            </>
+          )}
         </aside>
       </div>
       <TrainingTelemetryFeed enabled={appMode === 'modqn-demo'} />

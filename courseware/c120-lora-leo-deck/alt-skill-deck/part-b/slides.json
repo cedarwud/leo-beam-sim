@@ -1,0 +1,763 @@
+{
+  "schema": "c120-alt-skill-part-b-slides-v1",
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "layout_contract": {
+    "source_slide": 2,
+    "source_layout": "ppt/slideLayouts/slideLayout2.xml",
+    "all_slides_use_layout2": true,
+    "background": "inherited/unset",
+    "footer_logo_page_number": "inherited"
+  },
+  "typography": {
+    "title_pt": 28,
+    "body_baseline_pt": 24,
+    "minimum_pt": 16,
+    "cjk": "標楷體/DFKai-SB",
+    "latin": "Times New Roman",
+    "formula": "native Office Math / OMML"
+  },
+  "claim_boundary": "SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED｜NOT CANONICAL-PARITY-VERIFIED",
+  "slides": [
+    {
+      "order": 1,
+      "source_page": "P028",
+      "title": "Radio state 與停留時間：endpoint energy 的積分基礎",
+      "body": {
+        "evidence": "FALLBACK ARTIFACT｜SIMULATED",
+        "purpose": "建立 state vocabulary、觸發條件、duration 與 energy bucket 的對照。",
+        "mechanism": "SLEEP 是低功耗休息；WAIT 是 awake idle；WAKE、PROCESS、TX、RX 都會留下時間與功率。",
+        "expected": "完整 ledger 由 state interval、power、duration 與 endpoint J 組成；action 名稱只標記一次決策。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "SLEEP → WAKE → PROCESS → TX → RX；WAIT = awake idle"
+      },
+      "layout": "states",
+      "notes": "P028。Radio state 與停留時間：endpoint energy 的積分基礎。目的：建立 state vocabulary、觸發條件、duration 與 energy bucket 的對照。作用機制：SLEEP 是低功耗休息；WAIT 是 awake idle；WAKE、PROCESS、TX、RX 都會留下時間與功率。觀察與判讀：完整 ledger 由 state interval、power、duration 與 endpoint J 組成；action 名稱只標記一次決策。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 2,
+      "source_page": "P029",
+      "title": "Lab A：SLEEP 與 WAIT 的 service／energy 比較",
+      "body": {
+        "evidence": "LAB A MECHANISM｜SIMULATED TEACHING DATA",
+        "purpose": "固定挑戰、成功 gate 與一個 exact edit。",
+        "mechanism": "SLEEP 降低 idle power 並支付 wake；WAIT 維持 awake idle 並增加 awake-idle；service 與整段 J 共同形成結果。",
+        "expected": "固定 scenario／seed／traffic／window／endpoint boundary，再讀 delivered、deadline、freshness 與 endpoint J。",
+        "recovery": "保留 stdout／stderr；用 A checkpoint 或同 scenario fallback 恢復，不再調參。",
+        "context": "",
+        "command": "",
+        "visual": "同一工作：SLEEP ↔ WAIT → state → packet → service → J"
+      },
+      "layout": "challenge",
+      "notes": "P029。Lab A：SLEEP 與 WAIT 的 service／energy 比較。目的：固定挑戰、成功 gate 與一個 exact edit。作用機制：SLEEP 降低 idle power 並支付 wake；WAIT 維持 awake idle 並增加 awake-idle；service 與整段 J 共同形成結果。觀察與判讀：固定 scenario／seed／traffic／window／endpoint boundary，再讀 delivered、deadline、freshness 與 endpoint J。操作受阻時的復原：保留 stdout／stderr；用 A checkpoint 或同 scenario fallback 恢復，不再調參。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 3,
+      "source_page": "P030",
+      "title": "封包生命週期：送出與交付分開判定",
+      "body": {
+        "evidence": "FALLBACK ARTIFACT｜SIMULATED",
+        "purpose": "packet ledger 定義交付事件；energy ledger 定義 endpoint 累積。",
+        "mechanism": "generated → queue → attempt → collision／retry → delivered 或 expired → service verdict。",
+        "expected": "attempted、retransmissions、unique_delivered、expired 與 deadline 必須一起讀。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "generated → queue → attempt → retry → delivered／expired → verdict"
+      },
+      "layout": "packet",
+      "notes": "P030。封包生命週期：送出與交付分開判定。目的：packet ledger 定義交付事件；energy ledger 定義 endpoint 累積。作用機制：generated → queue → attempt → collision／retry → delivered 或 expired → service verdict。觀察與判讀：attempted、retransmissions、unique_delivered、expired 與 deadline 必須一起讀。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 4,
+      "source_page": "P031",
+      "title": "Service gate 與 endpoint J 的比較順序",
+      "body": {
+        "evidence": "BOUNDARY RULE｜SIMULATED TEACHING DATA",
+        "purpose": "防止少做工作被誤教成更有效率。",
+        "mechanism": "same identity → delivered／deadline／freshness → service_pass → endpoint J。",
+        "expected": "兩次結果須有相同 scenario、job、window、traffic 與 endpoint scope。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "same scenario → service gate → endpoint energy"
+      },
+      "layout": "gate",
+      "notes": "P031。Service gate 與 endpoint J 的比較順序。目的：防止少做工作被誤教成更有效率。作用機制：same identity → delivered／deadline／freshness → service_pass → endpoint J。觀察與判讀：兩次結果須有相同 scenario、job、window、traffic 與 endpoint scope。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 5,
+      "source_page": "P032",
+      "title": "W 是瞬間功率，J 是整段累積",
+      "body": {
+        "evidence": "MODEL BOUNDARY｜SIMULATED",
+        "purpose": "把 power rate 與時間累積出的 energy 分開讀。",
+        "mechanism": "WAIT／SLEEP 使用固定 clock step；PROCESS、TX、RX、WAKE 另有 transition cost。",
+        "expected": "沿著 interval 看 duration，再把 awake_idle、sleep、wake、process、TX、RX 加回 total。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "P(t) height + time span → endpoint J"
+      },
+      "layout": "power",
+      "notes": "P032。W 是瞬間功率，J 是整段累積。目的：把 power rate 與時間累積出的 energy 分開讀。作用機制：WAIT／SLEEP 使用固定 clock step；PROCESS、TX、RX、WAKE 另有 transition cost。觀察與判讀：沿著 interval 看 duration，再把 awake_idle、sleep、wake、process、TX、RX 加回 total。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {
+        "model_bridge": "donor-analysis/donor-insertion-map.md:e2 14,16/17,19-21",
+        "fair_baseline": "donor-analysis/donor-insertion-map.md:e2 20,36-37",
+        "lab_b_branch": "donor-analysis/donor-insertion-map.md:e2 11-12",
+        "provenance": "donor-analysis/donor-insertion-map.md; topic-level redraw only",
+        "disposition": "adopt-after-rewrite; no donor bytes, screenshots, KPIs, formulas, or notes copied"
+      }
+    },
+    {
+      "order": 6,
+      "source_page": "P033",
+      "title": "endpoint energy 公式只涵蓋 endpoint 邊界",
+      "body": {
+        "evidence": "EDITABLE OFFICE MATH｜SIMULATED",
+        "purpose": "讀懂每個 endpoint state 的功率與停留時間如何累積。",
+        "mechanism": "E_endpoint = Σ P_s t_s；endpoint scope 包含 radio／processing，不包含 satellite／gateway／whole-system wall-plug。",
+        "expected": "native Office Math 可編輯；數值仍由 result artifact 提供。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "E_endpoint = Σ P_s t_s"
+      },
+      "layout": "formula-energy",
+      "notes": "P033。endpoint energy 公式只涵蓋 endpoint 邊界。目的：讀懂每個 endpoint state 的功率與停留時間如何累積。作用機制：E_endpoint = Σ P_s t_s；endpoint scope 包含 radio／processing，不包含 satellite／gateway／whole-system wall-plug。觀察與判讀：native Office Math 可編輯；數值仍由 result artifact 提供。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [
+        "E_endpoint = Σ P_s t_s"
+      ],
+      "donor-source": {
+        "model_bridge": "donor-analysis/donor-insertion-map.md:e2 14,16/17,19-21",
+        "fair_baseline": "donor-analysis/donor-insertion-map.md:e2 20,36-37",
+        "lab_b_branch": "donor-analysis/donor-insertion-map.md:e2 11-12",
+        "provenance": "donor-analysis/donor-insertion-map.md; topic-level redraw only",
+        "disposition": "adopt-after-rewrite; no donor bytes, screenshots, KPIs, formulas, or notes copied"
+      }
+    },
+    {
+      "order": 7,
+      "source_page": "P034",
+      "title": "energy efficiency 的分子與分母要同一個邊界",
+      "body": {
+        "evidence": "EDITABLE OFFICE MATH｜SIMULATED",
+        "purpose": "同時確認 delivered data 分子、endpoint energy 分母與 units。",
+        "mechanism": "η_E = D_delivered / E_endpoint；bit ÷ J = bit/J；service_pass 仍是獨立 gate。",
+        "expected": "native Office Math 可編輯；efficiency ratio 與 delivery、deadline verdict 分開判定。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "η_E = D_delivered / E_endpoint；bit/J"
+      },
+      "layout": "formula-eff",
+      "notes": "P034。energy efficiency 的分子與分母要同一個邊界。目的：同時確認 delivered data 分子、endpoint energy 分母與 units。作用機制：η_E = D_delivered / E_endpoint；bit ÷ J = bit/J；service_pass 仍是獨立 gate。觀察與判讀：native Office Math 可編輯；efficiency ratio 與 delivery、deadline verdict 分開判定。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [
+        "η_E = D_delivered / E_endpoint"
+      ],
+      "donor-source": {
+        "model_bridge": "donor-analysis/donor-insertion-map.md:e2 14,16/17,19-21",
+        "fair_baseline": "donor-analysis/donor-insertion-map.md:e2 20,36-37",
+        "lab_b_branch": "donor-analysis/donor-insertion-map.md:e2 11-12",
+        "provenance": "donor-analysis/donor-insertion-map.md; topic-level redraw only",
+        "disposition": "adopt-after-rewrite; no donor bytes, screenshots, KPIs, formulas, or notes copied"
+      }
+    },
+    {
+      "order": 8,
+      "source_page": "P035",
+      "title": "來源、模型、課程假設與結果要分開",
+      "body": {
+        "evidence": "PROVENANCE SPINE｜SIMULATED",
+        "purpose": "沿 scenario、seed、policy identity 與 artifact source 回溯一筆結果。",
+        "mechanism": "source → model → course assumption → result；上游 provenance 參考不等於上游程式被執行。",
+        "expected": "runner_provenance.upstream_execution=false；claim boundary 隨 artifact 保存。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "source → model → course → result"
+      },
+      "layout": "layers",
+      "notes": "P035。來源、模型、課程假設與結果要分開。目的：沿 scenario、seed、policy identity 與 artifact source 回溯一筆結果。作用機制：source → model → course assumption → result；上游 provenance 參考不等於上游程式被執行。觀察與判讀：runner_provenance.upstream_execution=false；claim boundary 隨 artifact 保存。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 9,
+      "source_page": "P036",
+      "title": "執行結果如何進入重播與工作簿",
+      "body": {
+        "evidence": "IDENTITY GATE｜FAIL CLOSED",
+        "purpose": "確保 scenario、anchor、policy、seed 與 units 在整條鏈一致。",
+        "mechanism": "scenario package → result.json → endpoint-replay.json → Leo replay → workbook；mismatch 不猜身份。",
+        "expected": "同一 ntpu-energy-decision-01、scenario identity、anchor identity、policy identity、seed 與 units。",
+        "recovery": "identity mismatch：保留輸入與錯誤，回到 matching artifact；不可手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "scenario → result → replay → workbook"
+      },
+      "layout": "identity",
+      "notes": "P036。執行結果如何進入重播與工作簿。目的：確保 scenario、anchor、policy、seed 與 units 在整條鏈一致。作用機制：scenario package → result.json → endpoint-replay.json → Leo replay → workbook；mismatch 不猜身份。觀察與判讀：同一 ntpu-energy-decision-01、scenario identity、anchor identity、policy identity、seed 與 units。操作受阻時的復原：identity mismatch：保留輸入與錯誤，回到 matching artifact；不可手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 10,
+      "source_page": "P037",
+      "title": "Baseline：固定條件下的 control execution",
+      "body": {
+        "evidence": "CONTROL RULE｜SIMULATED",
+        "purpose": "固定條件，使目前 lab 僅有 marked block 變動。",
+        "mechanism": "固定 scenario／seed／traffic／window／endpoint scope；只改一個 marked block；觀察 state／packet／service／J。",
+        "expected": "若 scenario identity、traffic 或 scope 偷換，A/B 失去因果資格。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "FIXED → ONE EDIT → OBSERVE"
+      },
+      "layout": "control",
+      "notes": "P037。Baseline：固定條件下的 control execution。目的：固定條件，使目前 lab 僅有 marked block 變動。作用機制：固定 scenario／seed／traffic／window／endpoint scope；只改一個 marked block；觀察 state／packet／service／J。觀察與判讀：若 scenario identity、traffic 或 scope 偷換，A/B 失去因果資格。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {
+        "model_bridge": "donor-analysis/donor-insertion-map.md:e2 14,16/17,19-21",
+        "fair_baseline": "donor-analysis/donor-insertion-map.md:e2 20,36-37",
+        "lab_b_branch": "donor-analysis/donor-insertion-map.md:e2 11-12",
+        "provenance": "donor-analysis/donor-insertion-map.md; topic-level redraw only",
+        "disposition": "adopt-after-rewrite; no donor bytes, screenshots, KPIs, formulas, or notes copied"
+      }
+    },
+    {
+      "order": 11,
+      "source_page": "P038",
+      "title": "LEO：changing-service-window trace 的輸入範例",
+      "body": {
+        "evidence": "WINDOW CONTEXT｜NOT LIVE",
+        "purpose": "為 Lab B 的 quality window 問題建立 changing opportunity 背景。",
+        "mechanism": "contact_open、quality_band、contact_remaining_s 進入 observation；窗口關閉時只接受 SLEEP。",
+        "expected": "changing-service-window trace 依序提供 closed、contact-a、closed、contact-b、closed 的輸入。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "",
+        "command": "",
+        "visual": "closed → contact-a → closed → contact-b → closed"
+      },
+      "layout": "window",
+      "notes": "P038。LEO：changing-service-window trace 的輸入範例。目的：為 Lab B 的 quality window 問題建立 changing opportunity 背景。作用機制：contact_open、quality_band、contact_remaining_s 進入 observation；窗口關閉時只接受 SLEEP。觀察與判讀：changing-service-window trace 依序提供 closed、contact-a、closed、contact-b、closed 的輸入。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 12,
+      "source_page": "P039",
+      "title": "Lab A：等待空檔的 radio state 比較",
+      "body": {
+        "evidence": "LAB A MECHANISM｜SIMULATED",
+        "purpose": "固定 scenario、case workload、service window、seed、endpoint energy model 與 PACE_GAP_STEPS = 2。",
+        "mechanism": "SLEEP（低功耗休息）→ WAKE cost；WAIT（清醒閒置）→ awake-idle energy。唯一修改：REST_DURING_GAP = SLEEP → WAIT。",
+        "expected": "比較 state duration、wake event／energy、packet outcome、service result 與 endpoint_energy_j；唯一修改 → state 變化 → packet/service → endpoint energy。",
+        "recovery": "保留 stdout／stderr；用 A checkpoint 或同 scenario fallback 恢復，不再調參。",
+        "context": "",
+        "command": "",
+        "visual": "機制假說 → baseline → edit → run → compare → hidden"
+      },
+      "layout": "lab-a-hero",
+      "notes": "P039。Lab A：等待空檔的 radio state 比較。目的：固定 scenario、case workload、service window、seed、endpoint energy model 與 PACE_GAP_STEPS = 2。作用機制：SLEEP（低功耗休息）→ WAKE cost；WAIT（清醒閒置）→ awake-idle energy。唯一修改：REST_DURING_GAP = SLEEP → WAIT。觀察與判讀：比較 state duration、wake event／energy、packet outcome、service result 與 endpoint_energy_j；唯一修改 → state 變化 → packet/service → endpoint energy。操作受阻時的復原：保留 stdout／stderr；用 A checkpoint 或同 scenario fallback 恢復，不再調參。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 13,
+      "source_page": "P040",
+      "title": "A-00：Baseline decision 與 Trace evidence",
+      "body": {
+        "evidence": "FALLBACK ARTIFACT｜SIMULATED",
+        "purpose": "以 P042 第一條 stdout result_path 建立 A control。",
+        "mechanism": "contact_open=false（服務窗口布林狀態）→ SLEEP；steps_since_send < PACE_GAP_STEPS（間隔步數）→ REST_DURING_GAP；gap 結束後選擇 WAIT 或 SEND。",
+        "expected": "參考 baseline：6.92 J、4,800 bit、service_pass=FAIL；實際以 stdout path 為準。",
+        "recovery": "P042 baseline result／replay 缺失時重跑該命令，使用新的 stdout result_path，不猜路徑。",
+        "context": "P042 第一條 stdout result_path；A release block",
+        "command": "",
+        "visual": "decision card → baseline evidence card"
+      },
+      "layout": "baseline-a",
+      "notes": "P040。A-00：Baseline decision 與 Trace evidence。目的：以 P042 第一條 stdout result_path 建立 A control。作用機制：contact_open=false（服務窗口布林狀態）→ SLEEP；steps_since_send < PACE_GAP_STEPS（間隔步數）→ REST_DURING_GAP；gap 結束後選擇 WAIT 或 SEND。觀察與判讀：參考 baseline：6.92 J、4,800 bit、service_pass=FAIL；實際以 stdout path 為準。操作受阻時的復原：P042 baseline result／replay 缺失時重跑該命令，使用新的 stdout result_path，不猜路徑。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 14,
+      "source_page": "P041",
+      "title": "A-01：把空檔的 REST 改成 WAIT",
+      "body": {
+        "evidence": "EXACT EDIT｜POLICY SURFACE",
+        "purpose": "只改 Lab A 的一個 marked block，使 action 差異具可歸因性。",
+        "mechanism": "PACE_GAP_STEPS=2 保持不變；唯一修改為 REST_DURING_GAP：SLEEP → WAIT；state 變化由 packet／service／J result 觀察。",
+        "expected": "backup + py_compile 回傳碼 0；active block 清楚顯示 REST_DURING_GAP = WAIT。",
+        "recovery": "若 guard 或 syntax 失敗，從 student_policy.before-A-edit.py 還原，只重新 compile。",
+        "context": "package root；student_policy.py；lab-a-pace-rest marked block",
+        "command": "POSIX: cp student_policy.py student_policy.before-A-edit.py\n.venv/bin/python -m py_compile student_policy.py\nWindows: copy /Y student_policy.py student_policy.before-A-edit.py\n.venv\\Scripts\\python.exe -m py_compile student_policy.py",
+        "visual": "PACE_GAP_STEPS = 2\nREST_DURING_GAP = SLEEP  →  WAIT"
+      },
+      "layout": "edit-a",
+      "notes": "P041。A-01：把空檔的 REST 改成 WAIT。目的：只改 Lab A 的一個 marked block，使 action 差異具可歸因性。作用機制：PACE_GAP_STEPS=2 保持不變；唯一修改為 REST_DURING_GAP：SLEEP → WAIT；state 變化由 packet／service／J result 觀察。觀察與判讀：backup + py_compile 回傳碼 0；active block 清楚顯示 REST_DURING_GAP = WAIT。操作受阻時的復原：若 guard 或 syntax 失敗，從 student_policy.before-A-edit.py 還原，只重新 compile。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 15,
+      "source_page": "P042",
+      "title": "A-02：baseline、candidate 與 hidden 的執行 receipt",
+      "body": {
+        "evidence": "COMPACT RUN RECEIPT｜SIMULATED",
+        "purpose": "Lab A 三個 case 共用 stdout result_path 讀法。",
+        "mechanism": "baseline → A exact edit + candidate --freeze → hidden frozen policy；每一條 path 與同 run replay 配對。",
+        "expected": "每次成功 stdout 有 status=OK、artifact_source=student-run、新 result_path；candidate 另有 lab-a-frozen checkpoint。",
+        "recovery": "任一步失敗保留 stdout／stderr；還原 A edit 後重跑該段，freeze 缺失不得進 hidden。",
+        "context": "package root；A policy；每次 runner stdout",
+        "command": "",
+        "visual": "three-stage command / receipt ribbon"
+      },
+      "layout": "run-a",
+      "notes": "P042。A-02：baseline、candidate 與 hidden 的執行 receipt。目的：Lab A 三個 case 共用 stdout result_path 讀法。作用機制：baseline → A exact edit + candidate --freeze → hidden frozen policy；每一條 path 與同 run replay 配對。觀察與判讀：每次成功 stdout 有 status=OK、artifact_source=student-run、新 result_path；candidate 另有 lab-a-frozen checkpoint。操作受阻時的復原：任一步失敗保留 stdout／stderr；還原 A edit 後重跑該段，freeze 缺失不得進 hidden。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 16,
+      "source_page": "P043",
+      "title": "A-03：Identity boundary 與 before／after 比較",
+      "body": {
+        "evidence": "RESULT PATH｜SIMULATED",
+        "purpose": "開啟 P042 的 baseline／candidate paths，核對 identity 後填 before／after 句。",
+        "mechanism": "scenario identity、policy identity、summary、claim boundary 與同 run endpoint-replay 必須可配對。",
+        "expected": "baseline 6.92 J／4,800 bit；candidate 8.86 J／4,800 bit；兩者 service 都 FAIL。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "使用 P042 stdout result_path，不使用預填檔名",
+        "command": "",
+        "visual": "baseline ↔ identity gate ↔ candidate"
+      },
+      "layout": "compare-a",
+      "notes": "P043。A-03：Identity boundary 與 before／after 比較。目的：開啟 P042 的 baseline／candidate paths，核對 identity 後填 before／after 句。作用機制：scenario identity、policy identity、summary、claim boundary 與同 run endpoint-replay 必須可配對。觀察與判讀：baseline 6.92 J／4,800 bit；candidate 8.86 J／4,800 bit；兩者 service 都 FAIL。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 17,
+      "source_page": "P044",
+      "title": "A-04：state ledger 與 endpoint J 的來源",
+      "body": {
+        "evidence": "STATE LEDGER｜SIMULATED",
+        "purpose": "從 candidate events 與 energy_breakdown_j 找 WAIT 的 awake-idle／wake 成本。",
+        "mechanism": "WAIT 取代 gap 的 SLEEP 後，awake idle 可能增加、wake 可能減少；兩類 bucket 構成 total J 的解釋。",
+        "expected": "參考：awake_idle=6.00 J、sleep=0.04 J、wake=0.02 J、process=0.16 J、tx=2.40 J、rx=0.24 J。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "candidate P042 result_path；events + energy_breakdown_j",
+        "command": "",
+        "visual": "state interval → energy bucket → endpoint J"
+      },
+      "layout": "ledger-a",
+      "notes": "P044。A-04：state ledger 與 endpoint J 的來源。目的：從 candidate events 與 energy_breakdown_j 找 WAIT 的 awake-idle／wake 成本。作用機制：WAIT 取代 gap 的 SLEEP 後，awake idle 可能增加、wake 可能減少；兩類 bucket 構成 total J 的解釋。觀察與判讀：參考：awake_idle=6.00 J、sleep=0.04 J、wake=0.02 J、process=0.16 J、tx=2.40 J、rx=0.24 J。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 18,
+      "source_page": "P045",
+      "title": "A-05：attempted 不等於 delivered",
+      "body": {
+        "evidence": "PACKET / SERVICE｜SIMULATED",
+        "purpose": "把 attempted、retry、delivered、expired 接回 service verdict。",
+        "mechanism": "一次 SEND 是 decision；collision／retry／deadline 共同決定 packet outcome；service_pass 與 deadline_pass 定義 service gate。",
+        "expected": "參考 candidate：attempted=2、retransmissions=1、delivered_bits=4,800、expired=3、service_pass=FAIL、deadline_pass=FAIL。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "candidate P042 result.json + 同目錄 endpoint-replay.json",
+        "command": "",
+        "visual": "packet ledger → service verdict"
+      },
+      "layout": "packet-a",
+      "notes": "P045。A-05：attempted 不等於 delivered。目的：把 attempted、retry、delivered、expired 接回 service verdict。作用機制：一次 SEND 是 decision；collision／retry／deadline 共同決定 packet outcome；service_pass 與 deadline_pass 定義 service gate。觀察與判讀：參考 candidate：attempted=2、retransmissions=1、delivered_bits=4,800、expired=3、service_pass=FAIL、deadline_pass=FAIL。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 19,
+      "source_page": "P046",
+      "title": "A-06：freeze 是 hidden 的入場條件",
+      "body": {
+        "evidence": "FREEZE GATE｜SIMULATED",
+        "purpose": "讀 P042 candidate freeze 的 lineage；freeze receipt 是唯讀 evidence。",
+        "mechanism": "lab-a-frozen receipt 綁定 policy identity、predecessor、active_block_id、scenario、seed 與 receipt identity。",
+        "expected": "存在 artifacts/checkpoints/lab-a-frozen.{json,py}；identity 與 active_block_id=lab-a-pace-rest 對得上。",
+        "recovery": "hidden 執行條件為完整 checkpoint 與 identity；缺失時還原 baseline，回到 P042 candidate --freeze。",
+        "context": "P042 candidate checkpoint；hidden entry",
+        "command": "",
+        "visual": "baseline → candidate + freeze → hidden gate"
+      },
+      "layout": "freeze-a",
+      "notes": "P046。A-06：freeze 是 hidden 的入場條件。目的：讀 P042 candidate freeze 的 lineage；freeze receipt 是唯讀 evidence。作用機制：lab-a-frozen receipt 綁定 policy identity、predecessor、active_block_id、scenario、seed 與 receipt identity。觀察與判讀：存在 artifacts/checkpoints/lab-a-frozen.{json,py}；identity 與 active_block_id=lab-a-pace-rest 對得上。操作受阻時的復原：hidden 執行條件為完整 checkpoint 與 identity；缺失時還原 baseline，回到 P042 candidate --freeze。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 20,
+      "source_page": "P047",
+      "title": "A-07：hidden 只檢驗，不再調參",
+      "body": {
+        "evidence": "WITHHELD｜SIMULATED COUNTEREXAMPLE",
+        "purpose": "讀 P042 第三條 hidden path，保留 frozen policy 並縮小 claim。",
+        "mechanism": "REST_DURING_GAP=WAIT 與 policy identity 不變；新 contact／traffic condition 可改變結果。",
+        "expected": "參考 hidden：3.61 J、0 bit、service_pass=FAIL；這是 counterexample。",
+        "recovery": "hidden path 缺失時還原 lab-a-frozen.py，回到 P042 hidden 命令；不使用 hardcoded fallback path。",
+        "context": "P042 第三條 stdout result_path；A frozen policy",
+        "command": "",
+        "visual": "frozen policy → hidden condition → qualified claim"
+      },
+      "layout": "withheld-a",
+      "notes": "P047。A-07：hidden 只檢驗，不再調參。目的：讀 P042 第三條 hidden path，保留 frozen policy 並縮小 claim。作用機制：REST_DURING_GAP=WAIT 與 policy identity 不變；新 contact／traffic condition 可改變結果。觀察與判讀：參考 hidden：3.61 J、0 bit、service_pass=FAIL；這是 counterexample。操作受阻時的復原：hidden path 缺失時還原 lab-a-frozen.py，回到 P042 hidden 命令；不使用 hardcoded fallback path。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 21,
+      "source_page": "P048",
+      "title": "Lab A 結論：state、service 與 J 的因果句",
+      "body": {
+        "evidence": "CONDITIONAL CLAIM｜SIMULATED",
+        "purpose": "把 state、packet／service、J 與 primary／hidden 條件串成一句。",
+        "mechanism": "同一 scenario／policy identity 下，WAIT 的 state 機制可能改變 packet outcome；hidden case 定義 claim ceiling。",
+        "expected": "句型：在 ______ trace，WAIT 透過 ______ state 改變 ______ packet／service，J ______；hidden ______，所以結論 ______。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "P042 三個 stdout result_path + replay pair",
+        "command": "",
+        "visual": "condition → mechanism → evidence → claim ceiling"
+      },
+      "layout": "debrief-a",
+      "notes": "P048。Lab A 結論：state、service 與 J 的因果句。目的：把 state、packet／service、J 與 primary／hidden 條件串成一句。作用機制：同一 scenario／policy identity 下，WAIT 的 state 機制可能改變 packet outcome；hidden case 定義 claim ceiling。觀察與判讀：句型：在 ______ trace，WAIT 透過 ______ state 改變 ______ packet／service，J ______；hidden ______，所以結論 ______。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 22,
+      "source_page": "P049",
+      "title": "Lab B：quality hold 與 service window",
+      "body": {
+        "evidence": "LAB B QUESTION｜SIMULATED",
+        "purpose": "定義 quality trace、enter、hold、exit 與 service-window transition。",
+        "mechanism": "quality_band + stable_steps → REST／SEND_READY transition → packet／deadline／service → endpoint J。",
+        "expected": "固定 A frozen predecessor，只改 B stable hold，最後用 Trace B 找 too-slow counterexample。",
+        "recovery": "receipt、predecessor 或 policy identity 不符時停止 withheld，恢復 A／B checkpoint。",
+        "context": "",
+        "command": "",
+        "visual": "quality trace → enter / hold / exit → service window"
+      },
+      "layout": "lab-b-hero",
+      "notes": "P049。Lab B：quality hold 與 service window。目的：定義 quality trace、enter、hold、exit 與 service-window transition。作用機制：quality_band + stable_steps → REST／SEND_READY transition → packet／deadline／service → endpoint J。觀察與判讀：固定 A frozen predecessor，只改 B stable hold，最後用 Trace B 找 too-slow counterexample。操作受阻時的復原：receipt、predecessor 或 policy identity 不符時停止 withheld，恢復 A／B checkpoint。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 23,
+      "source_page": "P050",
+      "title": "ENTER_QUALITY：send-ready 的進入閾值",
+      "body": {
+        "evidence": "THRESHOLD MODEL｜SIMULATED",
+        "purpose": "說明 quality crossing 如何進入 send-ready。",
+        "mechanism": "切換條件：quality_band ≥ ENTER_QUALITY 且 stable_steps ≥ STABLE_STEPS；threshold 是 decision gate，非 energy knob。",
+        "expected": "ENTER_QUALITY=2、EXIT_QUALITY=1、STABLE_STEPS=2；下一步只改第三行。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "student_policy.py lab-b-enter-exit-hold block",
+        "command": "",
+        "visual": "quality 0 → 1 → 2 → 3；enter at 2"
+      },
+      "layout": "enter-b",
+      "notes": "P050。ENTER_QUALITY：send-ready 的進入閾值。目的：說明 quality crossing 如何進入 send-ready。作用機制：切換條件：quality_band ≥ ENTER_QUALITY 且 stable_steps ≥ STABLE_STEPS；threshold 是 decision gate，非 energy knob。觀察與判讀：ENTER_QUALITY=2、EXIT_QUALITY=1、STABLE_STEPS=2；下一步只改第三行。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 24,
+      "source_page": "P051",
+      "title": "EXIT_QUALITY：enter／exit 的雙閾值",
+      "body": {
+        "evidence": "HYSTERESIS MODEL｜SIMULATED",
+        "purpose": "用 enter／exit 分離避免品質邊界 ping-pong。",
+        "mechanism": "ENTER_QUALITY=2；已進入後 quality≥EXIT_QUALITY=1 時保持 send-ready；quality < 1 時退出。",
+        "expected": "兩條 threshold 形成 hysteresis band；transition、retry、service、J 仍須由 result 驗證。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "same quality trace；send_mode_active branch",
+        "command": "",
+        "visual": "enter ≥2 ｜ hold ≥1 ｜ exit <1"
+      },
+      "layout": "exit-b",
+      "notes": "P051。EXIT_QUALITY：enter／exit 的雙閾值。目的：用 enter／exit 分離避免品質邊界 ping-pong。作用機制：ENTER_QUALITY=2；已進入後 quality≥EXIT_QUALITY=1 時保持 send-ready；quality < 1 時退出。觀察與判讀：兩條 threshold 形成 hysteresis band；transition、retry、service、J 仍須由 result 驗證。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {
+        "model_bridge": "donor-analysis/donor-insertion-map.md:e2 14,16/17,19-21",
+        "fair_baseline": "donor-analysis/donor-insertion-map.md:e2 20,36-37",
+        "lab_b_branch": "donor-analysis/donor-insertion-map.md:e2 11-12",
+        "provenance": "donor-analysis/donor-insertion-map.md; topic-level redraw only",
+        "disposition": "adopt-after-rewrite; no donor bytes, screenshots, KPIs, formulas, or notes copied"
+      }
+    },
+    {
+      "order": 25,
+      "source_page": "P052",
+      "title": "STABLE_STEPS：拒絕短暫尖峰",
+      "body": {
+        "evidence": "HOLD MODEL｜SIMULATED",
+        "purpose": "把短暫 quality spike 與連續穩定分開。",
+        "mechanism": "engine 每個固定 clock step 更新 stable_steps；stable_steps=2 時 send_mode_active 切成 ready；改成 1 會縮短 hold。",
+        "expected": "Prediction：STABLE_STEPS=1 可能提早一個 step 的 MODE_CHANGE；packet／service／J 由 result 觀察。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "student_policy.py B marked block",
+        "command": "",
+        "visual": "spike: hold；stable 1→2: switch"
+      },
+      "layout": "stable-b",
+      "notes": "P052。STABLE_STEPS：拒絕短暫尖峰。目的：把短暫 quality spike 與連續穩定分開。作用機制：engine 每個固定 clock step 更新 stable_steps；stable_steps=2 時 send_mode_active 切成 ready；改成 1 會縮短 hold。觀察與判讀：Prediction：STABLE_STEPS=1 可能提早一個 step 的 MODE_CHANGE；packet／service／J 由 result 觀察。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 26,
+      "source_page": "P053",
+      "title": "Lab B Trace A：transition prediction 與執行",
+      "body": {
+        "evidence": "PREDICTION LOCK｜SIMULATED",
+        "purpose": "在 action 前標出 enter、hold、exit；prediction 與 result 以同一 trace 對照。",
+        "mechanism": "policy 讀取當下／過去 observation；future trace 與 result summary 不在 policy input。",
+        "expected": "填入 enter step、hold 連續步數、exit quality、service／J 方向；再執行 P056。",
+        "recovery": "A policy 的 frozen predecessor 是 observation 的固定前提；缺失時還原 lab-a-frozen.py。",
+        "context": "Trace A；A frozen predecessor；B candidate target=1",
+        "command": "",
+        "visual": "Trace A quality curve + four prediction blanks"
+      },
+      "layout": "prediction-b",
+      "notes": "P053。Lab B Trace A：transition prediction 與執行。目的：在 action 前標出 enter、hold、exit；prediction 與 result 以同一 trace 對照。作用機制：policy 讀取當下／過去 observation；future trace 與 result summary 不在 policy input。觀察與判讀：填入 enter step、hold 連續步數、exit quality、service／J 方向；再執行 P056。操作受阻時的復原：A policy 的 frozen predecessor 是 observation 的固定前提；缺失時還原 lab-a-frozen.py。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 27,
+      "source_page": "P054",
+      "title": "B-01：Baseline decision 與 Trace A evidence",
+      "body": {
+        "evidence": "FALLBACK ARTIFACT｜SIMULATED",
+        "purpose": "用 P056 第一條 stdout path 建立 Trace A control。",
+        "mechanism": "A block 保持 WAIT；B hold=2；quality≥2 且 stable_steps≥2 時切換 send-ready。",
+        "expected": "參考 Trace A baseline：8.86 J、4,800 bit、service_pass=FAIL。",
+        "recovery": "P056 baseline pair 缺失時重新使用 baseline command 取新 stdout path，不猜路徑。",
+        "context": "P056 第一條 stdout result_path；A frozen + B hold=2",
+        "command": "",
+        "visual": "A predecessor → Trace A baseline → control evidence"
+      },
+      "layout": "baseline-b",
+      "notes": "P054。B-01：Baseline decision 與 Trace A evidence。目的：用 P056 第一條 stdout path 建立 Trace A control。作用機制：A block 保持 WAIT；B hold=2；quality≥2 且 stable_steps≥2 時切換 send-ready。觀察與判讀：參考 Trace A baseline：8.86 J、4,800 bit、service_pass=FAIL。操作受阻時的復原：P056 baseline pair 缺失時重新使用 baseline command 取新 stdout path，不猜路徑。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 28,
+      "source_page": "P055",
+      "title": "B-02：把穩定等待從 2 改成 1",
+      "body": {
+        "evidence": "EXACT EDIT｜POLICY SURFACE",
+        "purpose": "只改 B marked block 的 stable hold，測試較快進入 send-ready。",
+        "mechanism": "ENTER_QUALITY=2、EXIT_QUALITY=1 與 A WAIT 保持原樣；STABLE_STEPS=1 改變 MODE_CHANGE 時機。",
+        "expected": "backup + py_compile 回傳碼 0；active block 顯示 STABLE_STEPS = 1。",
+        "recovery": "B guard 失敗時從 student_policy.before-B-edit.py 還原；A frozen block 與 runner 維持原樣。",
+        "context": "package root；student_policy.py；lab-b-enter-exit-hold marked block",
+        "command": "POSIX: cp student_policy.py student_policy.before-B-edit.py\n.venv/bin/python -m py_compile student_policy.py\nWindows: copy /Y student_policy.py student_policy.before-B-edit.py\n.venv\\Scripts\\python.exe -m py_compile student_policy.py",
+        "visual": "ENTER_QUALITY = 2\nEXIT_QUALITY = 1\nSTABLE_STEPS = 2  →  1"
+      },
+      "layout": "edit-b",
+      "notes": "P055。B-02：把穩定等待從 2 改成 1。目的：只改 B marked block 的 stable hold，測試較快進入 send-ready。作用機制：ENTER_QUALITY=2、EXIT_QUALITY=1 與 A WAIT 保持原樣；STABLE_STEPS=1 改變 MODE_CHANGE 時機。觀察與判讀：backup + py_compile 回傳碼 0；active block 顯示 STABLE_STEPS = 1。操作受阻時的復原：B guard 失敗時從 student_policy.before-B-edit.py 還原；A frozen block 與 runner 維持原樣。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 29,
+      "source_page": "P056",
+      "title": "B-03：Trace A baseline、candidate 與 Trace B 的執行 receipt",
+      "body": {
+        "evidence": "COMPACT RUN RECEIPT｜SIMULATED",
+        "purpose": "Lab B 三個 case 共用 stdout result_path 讀法。",
+        "mechanism": "A frozen + B=2 baseline → B=1 candidate --freeze → B frozen Trace B；每次 path 配同 run replay。",
+        "expected": "三次 stdout 有 status=OK、artifact_source=student-run、新 result_path；candidate 另有 lab-b-frozen checkpoint。",
+        "recovery": "任一步失敗保留 stdout／stderr；還原 B edit 後重跑該段，freeze 缺失不得進 Trace B。",
+        "context": "package root；A predecessor + B policy；每次 runner stdout",
+        "command": "",
+        "visual": "three-stage command / receipt ribbon"
+      },
+      "layout": "run-b",
+      "notes": "P056。B-03：Trace A baseline、candidate 與 Trace B 的執行 receipt。目的：Lab B 三個 case 共用 stdout result_path 讀法。作用機制：A frozen + B=2 baseline → B=1 candidate --freeze → B frozen Trace B；每次 path 配同 run replay。觀察與判讀：三次 stdout 有 status=OK、artifact_source=student-run、新 result_path；candidate 另有 lab-b-frozen checkpoint。操作受阻時的復原：任一步失敗保留 stdout／stderr；還原 B edit 後重跑該段，freeze 缺失不得進 Trace B。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 30,
+      "source_page": "P057",
+      "title": "B-04：品質與 service 分開判定，transition 串接機制",
+      "body": {
+        "evidence": "TRANSITION / SERVICE｜SIMULATED",
+        "purpose": "沿 P056 paths 對齊 MODE_CHANGE、packet、deadline、service 與 J。",
+        "mechanism": "STABLE_STEPS=1 改變 enter timing；PACKET_ATTEMPT、retry、delivered、expired 由 result 觀察。",
+        "expected": "參考 Trace A candidate：attempted=4、delivered_bits=9,600、expired=1、10.66 J、service_pass=FAIL。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "Trace A candidate P056 result_path + endpoint replay",
+        "command": "",
+        "visual": "quality → MODE_CHANGE → packet → service/J"
+      },
+      "layout": "transition-b",
+      "notes": "P057。B-04：品質與 service 分開判定，transition 串接機制。目的：沿 P056 paths 對齊 MODE_CHANGE、packet、deadline、service 與 J。作用機制：STABLE_STEPS=1 改變 enter timing；PACKET_ATTEMPT、retry、delivered、expired 由 result 觀察。觀察與判讀：參考 Trace A candidate：attempted=4、delivered_bits=9,600、expired=1、10.66 J、service_pass=FAIL。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 31,
+      "source_page": "P058",
+      "title": "B-05：freeze evidence 決定 Trace B 閱讀資格",
+      "body": {
+        "evidence": "FREEZE GATE｜SIMULATED",
+        "purpose": "讀 P056 candidate freeze 的 lineage；freeze receipt 是唯讀 evidence。",
+        "mechanism": "lab-b-frozen 綁定 A predecessor、B policy identity、active_block_id、Trace A、scenario 與 receipt identity。",
+        "expected": "存在 artifacts/checkpoints/lab-b-frozen.{json,py}；active_block_id=lab-b-enter-exit-hold，identity 與 predecessor 對得上。",
+        "recovery": "Trace B 執行條件為 candidate checkpoint 與 identity；缺失時還原 lab-a-frozen.py，回到 P056 candidate --freeze。",
+        "context": "P056 candidate checkpoint；Trace B entry",
+        "command": "",
+        "visual": "A frozen → B frozen → Trace B gate"
+      },
+      "layout": "freeze-b",
+      "notes": "P058。B-05：freeze evidence 決定 Trace B 閱讀資格。目的：讀 P056 candidate freeze 的 lineage；freeze receipt 是唯讀 evidence。作用機制：lab-b-frozen 綁定 A predecessor、B policy identity、active_block_id、Trace A、scenario 與 receipt identity。觀察與判讀：存在 artifacts/checkpoints/lab-b-frozen.{json,py}；active_block_id=lab-b-enter-exit-hold，identity 與 predecessor 對得上。操作受阻時的復原：Trace B 執行條件為 candidate checkpoint 與 identity；缺失時還原 lab-a-frozen.py，回到 P056 candidate --freeze。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 32,
+      "source_page": "P059",
+      "title": "B-06：Trace B：frozen policy 的 withheld verification",
+      "body": {
+        "evidence": "WITHHELD｜SIMULATED COUNTEREXAMPLE",
+        "purpose": "讀 P056 第三條 Trace B path，判斷 hold=1 的泛化邊界。",
+        "mechanism": "STABLE_STEPS=1 與 REST_DURING_GAP=WAIT 不變；新窗口／traffic 可暴露不同 outcome。",
+        "expected": "參考 Trace B：5.43 J、4,800 bit、expired=2、service_pass=FAIL。",
+        "recovery": "Trace B path 來源固定為 stdout result_path；缺失時還原 lab-b-frozen.py，回到 P056 第三條命令。",
+        "context": "P056 第三條 stdout result_path；B frozen policy",
+        "command": "",
+        "visual": "B frozen policy → Trace B → claim ceiling"
+      },
+      "layout": "withheld-b",
+      "notes": "P059。B-06：Trace B：frozen policy 的 withheld verification。目的：讀 P056 第三條 Trace B path，判斷 hold=1 的泛化邊界。作用機制：STABLE_STEPS=1 與 REST_DURING_GAP=WAIT 不變；新窗口／traffic 可暴露不同 outcome。觀察與判讀：參考 Trace B：5.43 J、4,800 bit、expired=2、service_pass=FAIL。操作受阻時的復原：Trace B path 來源固定為 stdout result_path；缺失時還原 lab-b-frozen.py，回到 P056 第三條命令。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 33,
+      "source_page": "P060",
+      "title": "B-07：too-slow 與 ping-pong 是兩種不同問題",
+      "body": {
+        "evidence": "FAILURE MODE｜SIMULATED",
+        "purpose": "用 MODE_CHANGE、packet outcome 與 endpoint ledger 區分兩種失敗。",
+        "mechanism": "too-slow：hold 太久錯過窗口；ping-pong：enter／exit 太近，多次 transition、retry 與額外 J。",
+        "expected": "每個 failure mode 以事件與 summary 判定；平滑 quality 線維持為 context evidence。",
+        "recovery": "兩個 result policy identity 不同時回到 B freeze，使用同一個 checkpoint。",
+        "context": "Trace A／Trace B；同一 B policy identity",
+        "command": "",
+        "visual": "too-slow ↔ ping-pong comparison"
+      },
+      "layout": "counter-b",
+      "notes": "P060。B-07：too-slow 與 ping-pong 是兩種不同問題。目的：用 MODE_CHANGE、packet outcome 與 endpoint ledger 區分兩種失敗。作用機制：too-slow：hold 太久錯過窗口；ping-pong：enter／exit 太近，多次 transition、retry 與額外 J。觀察與判讀：每個 failure mode 以事件與 summary 判定；平滑 quality 線維持為 context evidence。操作受阻時的復原：兩個 result policy identity 不同時回到 B freeze，使用同一個 checkpoint。",
+      "formulas": [],
+      "donor-source": {
+        "model_bridge": "donor-analysis/donor-insertion-map.md:e2 14,16/17,19-21",
+        "fair_baseline": "donor-analysis/donor-insertion-map.md:e2 20,36-37",
+        "lab_b_branch": "donor-analysis/donor-insertion-map.md:e2 11-12",
+        "provenance": "donor-analysis/donor-insertion-map.md; topic-level redraw only",
+        "disposition": "adopt-after-rewrite; no donor bytes, screenshots, KPIs, formulas, or notes copied"
+      }
+    },
+    {
+      "order": 34,
+      "source_page": "P061",
+      "title": "Lab B 結論：hysteresis 的條件與邊界",
+      "body": {
+        "evidence": "CONDITIONAL CLAIM｜SIMULATED",
+        "purpose": "把 Trace A 支持的機制與 Trace B 暴露的邊界一起保留。",
+        "mechanism": "hold=1 可能增加 delivery 但 service 仍失敗；效果受 window、traffic、deadline 與 endpoint scope 約束。",
+        "expected": "條件式句型：Trace A ______；Trace B ______；因此 hysteresis 有效的條件是 ______。",
+        "recovery": "result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+        "context": "P056 Trace A／Trace B result_path + replay pairs",
+        "command": "",
+        "visual": "Trace A support + Trace B boundary → claim ceiling"
+      },
+      "layout": "debrief-b",
+      "notes": "P061。Lab B 結論：hysteresis 的條件與邊界。目的：把 Trace A 支持的機制與 Trace B 暴露的邊界一起保留。作用機制：hold=1 可能增加 delivery 但 service 仍失敗；效果受 window、traffic、deadline 與 endpoint scope 約束。觀察與判讀：條件式句型：Trace A ______；Trace B ______；因此 hysteresis 有效的條件是 ______。操作受阻時的復原：result／replay 不成 pair 時保留錯誤，回到該次 stdout result_path，不手改 JSON。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 35,
+      "source_page": "P062",
+      "title": "中斷復原：policy lineage 與新結果分開保存",
+      "body": {
+        "evidence": "RECOVERY CONTRACT｜SOURCE-BOUND",
+        "purpose": "從最後一個 identity 正確的 checkpoint 回到可重跑階段。",
+        "mechanism": "policy checkpoint 復原 policy lineage；重跑產生新的 stdout result_path 與配對 replay。",
+        "expected": "copy → py_compile → exact case；新結果使用新的 stdout path。",
+        "recovery": "result／replay 遺失時不手改 JSON；回 checkpoint 重跑；主機受阻則保留 same-scenario fallback 標籤。",
+        "context": "package root；A/B checkpoints、receipts、result/replay pairs",
+        "command": "POSIX: cp artifacts/checkpoints/lab-a-frozen.py student_policy.py\ncp artifacts/checkpoints/lab-b-frozen.py student_policy.py\ncp student_policy.A-baseline.py student_policy.py\n.venv/bin/python -m py_compile student_policy.py\nWindows: copy /Y artifacts\\checkpoints\\lab-a-frozen.py student_policy.py",
+        "visual": "A frozen ↔ B frozen ↔ release baseline；restore → compile → rerun"
+      },
+      "layout": "recovery",
+      "notes": "P062。中斷復原：policy lineage 與新結果分開保存。目的：從最後一個 identity 正確的 checkpoint 回到可重跑階段。作用機制：policy checkpoint 復原 policy lineage；重跑產生新的 stdout result_path 與配對 replay。觀察與判讀：copy → py_compile → exact case；新結果使用新的 stdout path。操作受阻時的復原：result／replay 遺失時不手改 JSON；回 checkpoint 重跑；主機受阻則保留 same-scenario fallback 標籤。",
+      "formulas": [],
+      "donor-source": {}
+    },
+    {
+      "order": 36,
+      "source_page": "P063",
+      "title": "result.json 匯入：網站驗證、回放與工作簿",
+      "body": {
+        "evidence": "IMPORT BOUNDARY｜SIMULATED",
+        "purpose": "自然銜接 Leo /course：網站驗證 result／replay，不執行 policy。",
+        "mechanism": "stdout result_path → 選取 result.json → 驗證 schema／identity／units／provenance → 讀同 run endpoint-replay.json → workbook。",
+        "expected": "成功顯示同一 scenario、case、run identity、replay；不一致時 fail closed，原 workbook 不被悄悄改寫。",
+        "recovery": "匯入失敗保留錯誤與 stdout path；回 P062 checkpoint 重跑 exact case，再用新 path 匯入。",
+        "context": "Leo /course import control；result.json + endpoint-replay.json",
+        "command": "",
+        "visual": "runner → validator → replay → workbook"
+      },
+      "layout": "bridge",
+      "notes": "P063。result.json 匯入：網站驗證、回放與工作簿。目的：自然銜接 Leo /course：網站驗證 result／replay，不執行 policy。作用機制：stdout result_path → 選取 result.json → 驗證 schema／identity／units／provenance → 讀同 run endpoint-replay.json → workbook。觀察與判讀：成功顯示同一 scenario、case、run identity、replay；不一致時 fail closed，原 workbook 不被悄悄改寫。操作受阻時的復原：匯入失敗保留錯誤與 stdout path；回 P062 checkpoint 重跑 exact case，再用新 path 匯入。",
+      "formulas": [],
+      "donor-source": {}
+    }
+  ],
+  "equations": [
+    {
+      "slide": 6,
+      "key": "E_endpoint",
+      "returncode": 0,
+      "stdout": "ddef3cf4020f752e1a9\",\n        \"ppt/slideLayouts/slideLayout8.xml\": \"281e509ad4ab5f1347fdb20aa38629dfa3e225e401c8bac0b1773a37a5d1155d\",\n        \"ppt/slideLayouts/slideLayout9.xml\": \"d724f3ceda6a7c6955aab3ecc060c032d627ab3616edab1c705943ed2fef6bde\",\n        \"ppt/slideMasters/_rels/slideMaster1.xml.rels\": \"ed14dfadb2527d7488ee43bdb18969103d910e6c566492fa34895dc3e1698ea1\",\n        \"ppt/slideMasters/slideMaster1.xml\": \"6cdc77f070e1cc1a568e13392542d72847b58069750087e057c0afea9b0df867\",\n        \"ppt/theme/theme1.xml\": \"c128da77426350f7cb31a0993c3e628f1027c0e5cc1afbeabe77a11e58480a46\",\n        \"ppt/theme/theme2.xml\": \"f766d7b87d9c267ab3ddaf1a2e40a332821f625225f458dafb3fc0ff7f1483ff\"\n      },\n      \"violations\": [],\n      \"notes_preserved\": true,\n      \"masters_layouts_preserved\": true\n    }\n  }\n}\n",
+      "stderr": ""
+    },
+    {
+      "slide": 7,
+      "key": "eta_E",
+      "returncode": 0,
+      "stdout": "ddef3cf4020f752e1a9\",\n        \"ppt/slideLayouts/slideLayout8.xml\": \"281e509ad4ab5f1347fdb20aa38629dfa3e225e401c8bac0b1773a37a5d1155d\",\n        \"ppt/slideLayouts/slideLayout9.xml\": \"d724f3ceda6a7c6955aab3ecc060c032d627ab3616edab1c705943ed2fef6bde\",\n        \"ppt/slideMasters/_rels/slideMaster1.xml.rels\": \"ed14dfadb2527d7488ee43bdb18969103d910e6c566492fa34895dc3e1698ea1\",\n        \"ppt/slideMasters/slideMaster1.xml\": \"6cdc77f070e1cc1a568e13392542d72847b58069750087e057c0afea9b0df867\",\n        \"ppt/theme/theme1.xml\": \"c128da77426350f7cb31a0993c3e628f1027c0e5cc1afbeabe77a11e58480a46\",\n        \"ppt/theme/theme2.xml\": \"f766d7b87d9c267ab3ddaf1a2e40a332821f625225f458dafb3fc0ff7f1483ff\"\n      },\n      \"violations\": [],\n      \"notes_preserved\": true,\n      \"masters_layouts_preserved\": true\n    }\n  }\n}\n",
+      "stderr": ""
+    }
+  ]
+}

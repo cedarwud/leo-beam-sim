@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1280" height="720" viewBox="0 0 1280 720" data-pptx-master="master_01" data-pptx-master-name="slideMaster1" data-pptx-layout="layout_06" data-pptx-layout-name="空白" data-pptx-show-master-shapes="true" data-pptx-show-inherited-shapes="true"><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" id="master-master_01-1-1" data-pptx-layer="master" data-pptx-editable="false" />
+<image href="../images/image1.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none" id="master-master_01-3-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r0" />
+<path d="M 44.67 26.5 L 44.67 99.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1028-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r14" />
+
+
+<path d="M 22 82.33 L 1258 82.33" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1029-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r12" />
+
+
+<path d="M 22 655.17 L 1258 655.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1030-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r11" />
+
+
+<image href="../images/image2.png" x="0" y="642.13" width="1280" height="22.7" preserveAspectRatio="none" id="master-master_01-2-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r2" />
+<image href="../images/image3.png" x="1072" y="0" width="208" height="29.71" preserveAspectRatio="none" id="master-master_01-4-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r6" />
+<image href="../images/image2.png" x="0" y="642.13" width="1280" height="22.7" preserveAspectRatio="none" id="layout-layout_06-3-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r2" />
+<g id="slot-layout_06-2" data-pptx-placeholder="slide-number" data-pptx-bounds="1148 665.67 93.33 50" data-pptx-idx="10"><text x="9.6" y="25.2" text-anchor="start" xml:space="preserve" font-family="sans-serif" font-size="24" fill="#000000" data-pptx-carrier="true" data-pptx-native-ref="r8" />
+</g></svg>

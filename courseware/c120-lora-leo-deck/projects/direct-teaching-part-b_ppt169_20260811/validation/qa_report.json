@@ -1,0 +1,581 @@
+{
+  "schema": "c120-direct-teaching-part-b-qa-v1",
+  "status": "PASS",
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/direct-teaching-part-b_ppt169_20260811/exports/c120-lora-leo-direct-teaching-part-b-editable_20260811.pptx",
+  "slide_count": 49,
+  "expected_slide_count": 49,
+  "notes_count": 49,
+  "expected_notes_count": 49,
+  "omml_count": 2,
+  "omml_slides": [
+    [
+      6,
+      1
+    ],
+    [
+      7,
+      1
+    ]
+  ],
+  "slide_level_background_nodes": 0,
+  "overflow_candidates": [],
+  "low_text_pt": [],
+  "font_contract": {
+    "latin": "Times New Roman",
+    "east_asia": "標楷體",
+    "violations": []
+  },
+  "title_sizes": [
+    {
+      "slide": 1,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 2,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 2,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 2,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 2,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 2,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 3,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 4,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 4,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 4,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 5,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 6,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 7,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 8,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 9,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 10,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 11,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 12,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 13,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 14,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 15,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 16,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 17,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 18,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 19,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 20,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 21,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 22,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 22,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 22,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 23,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 24,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 25,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 26,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 27,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 28,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 28,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 29,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 29,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 30,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 30,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 31,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 32,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 33,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 34,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 35,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 36,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 37,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 38,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 39,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 40,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 41,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 41,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 41,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 42,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 43,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 44,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 45,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 46,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 47,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 48,
+      "size_pt": 28.0
+    },
+    {
+      "slide": 49,
+      "size_pt": 28.0
+    }
+  ],
+  "bright_orange_text": [],
+  "template_master_layout_theme_footer_preserved": true,
+  "layout_contract": {
+    "expected_target": "ppt/slideLayouts/slideLayout2.xml",
+    "targets": [
+      {
+        "slide": "1",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "2",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "3",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "4",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "5",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "6",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "7",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "8",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "9",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "10",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "11",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "12",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "13",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "14",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "15",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "16",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "17",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "18",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "19",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "20",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "21",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "22",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "23",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "24",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "25",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "26",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "27",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "28",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "29",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "30",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "31",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "32",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "33",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "34",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "35",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "36",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "37",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "38",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "39",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "40",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "41",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "42",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "43",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "44",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "45",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "46",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "47",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "48",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      },
+      {
+        "slide": "49",
+        "target": "ppt/slideLayouts/slideLayout2.xml"
+      }
+    ],
+    "all_content_shell": true
+  },
+  "language_policy": {
+    "banned_terms": [
+      "講師",
+      "老師",
+      "學生",
+      "全班",
+      "你",
+      "請",
+      "記得",
+      "完成這堂課",
+      "讓結果可教也可追溯",
+      "能回答",
+      "能指出",
+      "能說出",
+      "可以回答",
+      "可教",
+      "讓結果可以反駁原先想法",
+      "不對，就先停下來",
+      "先辨認 radio state，才談省電",
+      "先……才……",
+      "舊截圖",
+      "不要縮成截圖",
+      "只放必要欄位",
+      "截圖安排",
+      "版面",
+      "Fit",
+      "投影片應放",
+      "講稿提示",
+      "截圖",
+      "placeholder",
+      "evidence placeholder",
+      "本頁不",
+      "本頁",
+      "這一頁",
+      "policy SHA",
+      "scenario hash",
+      "anchor hash",
+      "policy hash",
+      "policy_sha256",
+      "SHA-256",
+      "checksum",
+      "hash-verification",
+      "ZIP-test",
+      "zip test",
+      "先...才...",
+      "...",
+      "…",
+      "備課",
+      "meta",
+      "口語",
+      "SHA",
+      "sha256",
+      "student_policy.A-baseline.py",
+      "<checkpoint>.py"
+    ],
+    "hits": [],
+    "slide_xml_and_notes_scan": "PASS"
+  },
+  "ellipsis_policy": {
+    "hits": [],
+    "scan": "PASS"
+  },
+  "speaker_notes": {
+    "count": 49,
+    "minimum_chars": 483,
+    "all_nonempty": true
+  },
+  "text_size_contract": {
+    "classroom_body_min_pt": 20,
+    "operational_exact_command_min_pt": 18,
+    "hard_floor_pt": 18,
+    "hard_floor_scan": "PASS",
+    "operational_pages": [
+      19,
+      20,
+      38,
+      39
+    ]
+  },
+  "field_explanation_contract": {
+    "audit_pages": 36,
+    "audit_path": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/direct-teaching-part-b_ppt169_20260811/validation/field-explanation-audit.json"
+  },
+  "footer_contract": {
+    "line_and_text_media": "ppt/media/image2.png",
+    "logo_media": "ppt/media/image3.png",
+    "page_number_placeholder": "native layout/master sldNum"
+  },
+  "formula_contract": {
+    "native_office_math_only": true,
+    "formula_preview_removed": true,
+    "formula_picture_count": 0
+  },
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Microsoft PowerPoint open/reopen remains controller-owned.",
+    "LibreOffice PDF render is a visual check; OMML editability is structurally checked."
+  ]
+}

@@ -1,0 +1,277 @@
+{
+  "status": "PASS",
+  "deck": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/latest/LoRaEnergySim-LEO-ALT-CORE-CLASSROOM-WITH-NOTES-REVIEW.pptx",
+  "source": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/core-classroom/notes/core-speaker-notes.json",
+  "slides": 43,
+  "notes_referenced": 43,
+  "notes_parts": 43,
+  "matched": 43,
+  "presentation_order": [
+    {
+      "presentation_index": 1,
+      "semantic_key": "opening.finite-battery-changing-service-window",
+      "visible_title": "有限電池 × 變動服務窗口",
+      "slide_part": "ppt/slides/slide1.xml"
+    },
+    {
+      "presentation_index": 2,
+      "semantic_key": "foundation.loraenergysim-model",
+      "visible_title": "LoRaEnergySim 是什麼",
+      "slide_part": "ppt/slides/slide2.xml"
+    },
+    {
+      "presentation_index": 3,
+      "semantic_key": "foundation.upstream-capabilities",
+      "visible_title": "原始上游套件已做什麼",
+      "slide_part": "ppt/slides/slide3.xml"
+    },
+    {
+      "presentation_index": 4,
+      "semantic_key": "foundation.course-packaging",
+      "visible_title": "課程封裝補了什麼",
+      "slide_part": "ppt/slides/slide4.xml"
+    },
+    {
+      "presentation_index": 5,
+      "semantic_key": "foundation.competition-relevance",
+      "visible_title": "為什麼競賽要用它",
+      "slide_part": "ppt/slides/slide5.xml"
+    },
+    {
+      "presentation_index": 6,
+      "semantic_key": "workflow.run-produces-artifacts",
+      "visible_title": "只有 run case 才產生結果檔",
+      "slide_part": "ppt/slides/slide6.xml"
+    },
+    {
+      "presentation_index": 7,
+      "semantic_key": "workflow.course-import-boundary",
+      "visible_title": "課程頁 /course 只匯入結果檔",
+      "slide_part": "ppt/slides/slide7.xml"
+    },
+    {
+      "presentation_index": 8,
+      "semantic_key": "workflow.baseline-candidate-withheld-reading-order",
+      "visible_title": "三次匯入，沿同一解讀順序",
+      "slide_part": "ppt/slides/slide8.xml"
+    },
+    {
+      "presentation_index": 9,
+      "semantic_key": "mechanism.action-service-energy",
+      "visible_title": "一次動作，同時改變服務與能量",
+      "slide_part": "ppt/slides/slide9.xml"
+    },
+    {
+      "presentation_index": 10,
+      "semantic_key": "mechanism.event-supported-attribution",
+      "visible_title": "先讀中間事件，再讀最終結果",
+      "slide_part": "ppt/slides/slide10.xml"
+    },
+    {
+      "presentation_index": 11,
+      "semantic_key": "workflow.four-step-operation-loop",
+      "visible_title": "固定情境中的四步操作閉環",
+      "slide_part": "ppt/slides/slide11.xml"
+    },
+    {
+      "presentation_index": 12,
+      "semantic_key": "mechanism.event-bridge",
+      "visible_title": "中間事件是因果歸因的必要橋樑",
+      "slide_part": "ppt/slides/slide12.xml"
+    },
+    {
+      "presentation_index": 13,
+      "semantic_key": "evidence.runner-claim-boundary",
+      "visible_title": "Runner 證據有明確邊界",
+      "slide_part": "ppt/slides/slide13.xml"
+    },
+    {
+      "presentation_index": 14,
+      "semantic_key": "context.leo-changing-service-window",
+      "visible_title": "LEO 是變動服務窗口的工作範例",
+      "slide_part": "ppt/slides/slide14.xml"
+    },
+    {
+      "presentation_index": 15,
+      "semantic_key": "workflow.prediction-to-result",
+      "visible_title": "從預測到結果，保留可反駁路徑",
+      "slide_part": "ppt/slides/slide15.xml"
+    },
+    {
+      "presentation_index": 16,
+      "semantic_key": "experiments.three-controlled-blocks",
+      "visible_title": "三個實驗到底改什麼",
+      "slide_part": "ppt/slides/slide16.xml"
+    },
+    {
+      "presentation_index": 17,
+      "semantic_key": "foundation.loraenergysim-value",
+      "visible_title": "LoRaEnergySim 提供的三項價值",
+      "slide_part": "ppt/slides/slide17.xml"
+    },
+    {
+      "presentation_index": 18,
+      "semantic_key": "setup.move-release-into-linux",
+      "visible_title": "把下載資料搬進 Linux 課程資料夾",
+      "slide_part": "ppt/slides/slide18.xml"
+    },
+    {
+      "presentation_index": 19,
+      "semantic_key": "setup.create-venv-ready",
+      "visible_title": "建立環境並確認 READY",
+      "slide_part": "ppt/slides/slide19.xml"
+    },
+    {
+      "presentation_index": 20,
+      "semantic_key": "setup.ready-is-not-case-result",
+      "visible_title": "READY 只代表環境可用",
+      "slide_part": "ppt/slides/slide20.xml"
+    },
+    {
+      "presentation_index": 21,
+      "semantic_key": "setup.verify-case-identity",
+      "visible_title": "確認環境與案例身份",
+      "slide_part": "ppt/slides/slide21.xml"
+    },
+    {
+      "presentation_index": 22,
+      "semantic_key": "provenance.claim-boundary",
+      "visible_title": "說清資料來源與主張邊界",
+      "slide_part": "ppt/slides/slide22.xml"
+    },
+    {
+      "presentation_index": 23,
+      "semantic_key": "recovery.repair-or-preserve",
+      "visible_title": "卡住時修復或保留來源",
+      "slide_part": "ppt/slides/slide23.xml"
+    },
+    {
+      "presentation_index": 24,
+      "semantic_key": "policy.editable-blocks",
+      "visible_title": "只可修改三個標記區塊",
+      "slide_part": "ppt/slides/slide24.xml"
+    },
+    {
+      "presentation_index": 25,
+      "semantic_key": "policy.observation-inputs",
+      "visible_title": "程式每次判斷會看什麼",
+      "slide_part": "ppt/slides/slide25.xml"
+    },
+    {
+      "presentation_index": 26,
+      "semantic_key": "policy.decision-order",
+      "visible_title": "判斷順序如何產生動作",
+      "slide_part": "ppt/slides/slide26.xml"
+    },
+    {
+      "presentation_index": 27,
+      "semantic_key": "policy.indentation-return",
+      "visible_title": "縮排與回傳決定程式走哪條路",
+      "slide_part": "ppt/slides/slide27.xml"
+    },
+    {
+      "presentation_index": 28,
+      "semantic_key": "lab-a.baseline-command",
+      "visible_title": "先建立基準結果再比較",
+      "slide_part": "ppt/slides/slide28.xml"
+    },
+    {
+      "presentation_index": 29,
+      "semantic_key": "lab-a.locate-marked-block",
+      "visible_title": "先找到唯一要改的地方",
+      "slide_part": "ppt/slides/slide29.xml"
+    },
+    {
+      "presentation_index": 30,
+      "semantic_key": "lab-a.edit-sleep-to-wait",
+      "visible_title": "只改這一行：SLEEP → WAIT",
+      "slide_part": "ppt/slides/slide30.xml"
+    },
+    {
+      "presentation_index": 31,
+      "semantic_key": "lab-a.execute-sequence",
+      "visible_title": "為什麼 SLEEP → WAIT，接著怎麼執行",
+      "slide_part": "ppt/slides/slide31.xml"
+    },
+    {
+      "presentation_index": 32,
+      "semantic_key": "lab-a.read-evidence",
+      "visible_title": "上傳後怎麼解讀",
+      "slide_part": "ppt/slides/slide32.xml"
+    },
+    {
+      "presentation_index": 33,
+      "semantic_key": "lab-b.locate-marked-block",
+      "visible_title": "先找到唯一要改的地方",
+      "slide_part": "ppt/slides/slide33.xml"
+    },
+    {
+      "presentation_index": 34,
+      "semantic_key": "lab-b.edit-stable-steps",
+      "visible_title": "只改這一行：2 → 1",
+      "slide_part": "ppt/slides/slide34.xml"
+    },
+    {
+      "presentation_index": 35,
+      "semantic_key": "lab-b.execute-sequence",
+      "visible_title": "為什麼 2 → 1，接著怎麼執行",
+      "slide_part": "ppt/slides/slide35.xml"
+    },
+    {
+      "presentation_index": 36,
+      "semantic_key": "lab-b.read-evidence",
+      "visible_title": "上傳後怎麼解讀",
+      "slide_part": "ppt/slides/slide36.xml"
+    },
+    {
+      "presentation_index": 37,
+      "semantic_key": "lab-c.locate-marked-block",
+      "visible_title": "先找到唯一要改的地方",
+      "slide_part": "ppt/slides/slide37.xml"
+    },
+    {
+      "presentation_index": 38,
+      "semantic_key": "lab-c.baseline-margin-20",
+      "visible_title": "基準值｜Baseline：URGENT_MARGIN_S = 20",
+      "slide_part": "ppt/slides/slide38.xml"
+    },
+    {
+      "presentation_index": 39,
+      "semantic_key": "lab-c.candidate-margin-5",
+      "visible_title": "候選值｜Candidate：URGENT_MARGIN_S = 5",
+      "slide_part": "ppt/slides/slide39.xml"
+    },
+    {
+      "presentation_index": 40,
+      "semantic_key": "lab-c.revision-margin-30",
+      "visible_title": "修訂值｜Revision：URGENT_MARGIN_S = 30",
+      "slide_part": "ppt/slides/slide40.xml"
+    },
+    {
+      "presentation_index": 41,
+      "semantic_key": "lab-c.threshold-mechanism",
+      "visible_title": "為什麼 5 秒可能太晚，30 秒可能更早",
+      "slide_part": "ppt/slides/slide41.xml"
+    },
+    {
+      "presentation_index": 42,
+      "semantic_key": "lab-c.execute-sequence",
+      "visible_title": "四次執行的固定順序",
+      "slide_part": "ppt/slides/slide42.xml"
+    },
+    {
+      "presentation_index": 43,
+      "semantic_key": "lab-c.read-evidence",
+      "visible_title": "上傳後怎麼解讀",
+      "slide_part": "ppt/slides/slide43.xml"
+    }
+  ],
+  "unmatched_slides": [],
+  "unused_source_keys": [],
+  "ambiguous_semantic_keys": [],
+  "short_notes": [],
+  "embedded_note_mismatches": [],
+  "forbidden_language_hits": [],
+  "source_errors": [],
+  "errors": []
+}

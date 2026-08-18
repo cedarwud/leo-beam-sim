@@ -3,12 +3,14 @@ import type { ReactNode } from 'react';
 /**
  * Top-level tab state used by the tuning panel.
  *
- * The visible navigation is deliberately fixed to `sinr`, `energy`, `power`,
- * and `throughput`. `handover` and `scene` remain in this state union because
- * their panels and runtime props are still part of the Walker/handover scene
- * contract; `MainTabList` simply does not expose those legacy views as tabs.
+ * The visible navigation starts with the local scenario-data preview, followed
+ * by the four canonical analysis projections. `handover` and `scene` remain in
+ * this state union because their panels and runtime props are still part of the
+ * Walker/handover scene contract; `MainTabList` does not expose those legacy
+ * views as tabs.
  */
 export type MainTabKey =
+  | 'scenario'
   | 'sinr'
   | 'energy'
   | 'power'
@@ -17,16 +19,19 @@ export type MainTabKey =
   | 'scene';
 
 /**
- * The six terms of γ, one sub-tab each. `topology` is deliberately NOT here any
- * more — see `MainTabKey.scene` above.
+ * The four visible terms of γ. The former loss/beam/receiver-gain keys remain
+ * as compatibility aliases for older deep links and validation fixtures, but
+ * they are represented by the single visible effective-channel tab.
  */
 export type TuningTabKey =
   | 'signal-power'
+  | 'channel'
+  | 'interference'
+  | 'thermal-noise'
+  // Compatibility aliases; not rendered in the visible tab strip.
   | 'loss'
   | 'beam'
-  | 'receiver-gain'
-  | 'interference'
-  | 'thermal-noise';
+  | 'receiver-gain';
 
 export type SignalDrawerState = 'collapsed' | 'tuning' | 'diagnostics';
 

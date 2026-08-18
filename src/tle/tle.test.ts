@@ -5,6 +5,7 @@ import {
   asiaTaipeiToUtc,
   computeTleChecksum,
   createTlePropagationFrame,
+  deriveSatelliteAltitudeKm,
   isTleArchiveError,
   parseTleEpoch,
   propagateTleSnapshot,
@@ -143,6 +144,12 @@ assert.notDeepEqual(
 );
 assert.equal(frameAtEpoch.resolvedEpochsUtc['ONEWEB-0012'], first.epochUtc);
 assert.equal(frameAtEpoch.satellites[0]?.provenance.archiveId, 'test-archive');
+const propagatedAltitudeKm = deriveSatelliteAltitudeKm(
+  frameAtEpoch.satellites[0]!.positionTemeKm,
+  frameAtEpoch.requestedInstantUtc,
+);
+assert.ok(Number.isFinite(propagatedAltitudeKm) && propagatedAltitudeKm > 0);
+assert.ok(propagatedAltitudeKm > 400 && propagatedAltitudeKm < 2_000);
 assert.ok(Object.isFrozen(frameAtEpoch));
 assert.ok(Object.isFrozen(frameAtEpoch.satellites));
 assert.ok(Object.isFrozen(frameAtEpoch.satellites[0]?.positionTemeKm));

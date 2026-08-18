@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "scope": "P081-P097",
+  "rendering": "PASS",
+  "renderer": "LibreOffice 24.2.7.2 oosplash via isolated /tmp AF_UNIX bind shim",
+  "rendered_pages": 17,
+  "render_dpi": 144,
+  "render_pdf": "/tmp/c120-style-c081-p097/render-pass5/LoRaEnergySim-LEO-ALT-PART-C-V2-P081-P097-REVIEW.pdf",
+  "render_png_dir": "/tmp/c120-style-c081-p097/render-pass5-png/",
+  "visual_review": [
+    "all 17 pages rendered at original 16:9 proportion",
+    "contact sheets reviewed for density, overlap, clipping, contrast, and footer/logo boundary",
+    "P084 revision line-break repaired and re-rendered",
+    "current clean crops preserved; unavailable panels remain marked 待補",
+    "service-first order and endpoint energy boundary visually retained"
+  ],
+  "native_powerpoint_reopen": "NOT_RUN in current sandbox; python-pptx reopen and recursive XML validation passed",
+  "clean_current_crops": [
+    "element-2026-08-11T03-06-45-152Z.png",
+    "element-2026-08-11T03-06-47-569Z.png",
+    "element-2026-08-11T03-06-50-920Z.png"
+  ]
+}

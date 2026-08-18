@@ -175,6 +175,7 @@ export function useSimulation(
   // crosses into an adjacent same-sat beam cell and the engine does a real intra.
   primaryJogEastKm: number = 0,
   primaryJogNorthKm: number = 0,
+  beamCountBySatellite: Readonly<Record<string, number>> = {},
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -318,8 +319,12 @@ export function useSimulation(
     ],
   );
   useEffect(() => {
-    sinrLiveCellModel?.updateRuntimeProfile(profile, resolveSinrLiveBeamsPerSat(profile));
-  }, [profile, sinrLiveCellModel]);
+    sinrLiveCellModel?.updateRuntimeProfile(
+      profile,
+      resolveSinrLiveBeamsPerSat(profile),
+      beamCountBySatellite,
+    );
+  }, [beamCountBySatellite, profile, sinrLiveCellModel]);
   const effectiveUeMobilityParams = ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS;
   const ueDeterministicSeed = profile.ueDistribution?.seed ?? 42;
   const createCurrentMobilityStates = useCallback(() => (
@@ -687,7 +692,14 @@ export function useSimulation(
   useEffect(() => {
     // Profile-backed SINR controls must refresh the React UI even when simulation time is paused.
     publishNextFrameRef.current = true;
-  }, [profile, beamFootprintMultiplier, ueDistributionScope, ueDistributionRadiusKm, mapKmPerWorldUnit]);
+  }, [
+    profile,
+    beamCountBySatellite,
+    beamFootprintMultiplier,
+    ueDistributionScope,
+    ueDistributionRadiusKm,
+    mapKmPerWorldUnit,
+  ]);
 
   useFrame((_, delta) => {
     if (trajectoryCache.length === 0) return;

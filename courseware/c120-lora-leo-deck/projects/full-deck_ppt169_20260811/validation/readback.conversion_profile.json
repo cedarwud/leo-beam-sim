@@ -1,0 +1,31 @@
+{
+  "schema": "ppt-master.source_to_md.profile.v1",
+  "converter": "ppt_to_md.py",
+  "conversion_type": "pptx",
+  "source": {
+    "path": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/full-deck_ppt169_20260811/exports/c120-lora-leo-full-deck-native_20260811_030600.pptx",
+    "name": "c120-lora-leo-full-deck-native_20260811_030600.pptx",
+    "suffix": ".pptx",
+    "kind": "file",
+    "exists": true,
+    "size_bytes": 1200825
+  },
+  "outputs": {
+    "markdown": "readback.md",
+    "asset_dir": "",
+    "image_manifest": "",
+    "image_count": 0
+  },
+  "markdown": {
+    "line_count": 1841,
+    "char_count": 86670,
+    "heading_count": 217,
+    "table_count": 0,
+    "image_ref_count": 0,
+    "link_count": 0
+  },
+  "warnings": [
+    "Slide 1: SmartArt scan failed: Missing required PPTX part: ppt/slides/slide1.xml",
+    "Slide 2: SmartArt scan failed: Missing required PPTX part: ppt/slides/slide2.xml"
+  ]
+}

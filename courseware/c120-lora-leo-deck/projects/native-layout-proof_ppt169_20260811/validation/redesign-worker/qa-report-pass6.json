@@ -1,0 +1,36 @@
+{
+  "schema": "c120-native-proof-redesign-qa-v1",
+  "status": "PASS",
+  "artifact": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/redesign-worker/c120-native-layout-proof-redesign-pass6.pptx",
+  "slide_count": 6,
+  "title_roster_ok": true,
+  "font_policy": {
+    "title_pt": 28,
+    "body_pt": 24,
+    "command_pt": 18,
+    "chinese": "標楷體",
+    "latin": "Times New Roman"
+  },
+  "forbidden_text": {
+    "forbidden_text_hits": {
+      "學生": false,
+      "分鐘": false,
+      "120分鐘": false
+    },
+    "visible_text_has_forbidden": false
+  },
+  "background_and_geometry": {
+    "a14_m_count": 2,
+    "omath_count": 2,
+    "slide_level_background_nodes": 0,
+    "full_slide_shape_count": 0
+  },
+  "footer_shapes_removed": 25,
+  "native_equation_assertions": {
+    "a14_m_at_least_2": true,
+    "omath_at_least_2": true
+  },
+  "screenshot_present": true,
+  "fallback_png_present": true,
+  "limitation": "structural QA does not replace PowerPoint edit/reopen acceptance or Windows native rehearsal"
+}

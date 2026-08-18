@@ -1,0 +1,107 @@
+P064｜Lab C：佇列要等批次，還是 urgent deadline 優先？
+Lab C 把 queue、batch、urgent deadline 和 endpoint J 放進同一個 service window。閱讀順序固定為 service、deadline、能量差異；畫面上的數值只作 coherent simulated result。
+
+P065｜先讀原始 student_policy.py：原本的門檻怎麼工作？
+先沿著原始 branch 說出窗口、urgent、pacing、batch、wait 的返回順序。完整中文句與具體問題都放在投影上，使每個 action 均回到程式條件。
+
+P066｜第一輪 compact run／receipt：baseline → candidate
+這一頁只集中第一輪的兩個 exact case，命令完成後立即保存 stdout 的 result_path。跑本身不承擔教學時間，下一頁的 edit 與 prediction 才是解釋核心。
+
+P067｜第一次 exact edit：URGENT_MARGIN_S = 5
+先朗讀修改前的完整句與問題，再朗讀修改後的完整句與問題。只改 URGENT_MARGIN_S，其他 marked block、runner、scenario、schema 與 energy model 保持不動。
+
+P068｜candidate run 前的 prediction lock
+把 margin 5 的預測寫成可反駁句，避免押一個漂亮 KPI。要求同時指出 urgent action、queue、service／deadline 與 state／endpoint J 的證據位置。
+
+P069｜第一次 before／after：candidate 的 bit/J 受 gate 約束
+這兩筆是 operation contract 的 packaged same-scenario deterministic fallback 參考，fresh measurement claim 不適用。閱讀順序固定為 service、deadline、完整因果句，再描述較低 J 與較高 bit/J。
+
+P070｜第二次 exact edit：URGENT_MARGIN_S = 30
+candidate 的 failure 要保留下來，revision 只針對太晚介入提出修正。修改前後都要問是否能保住 deadline，以及還要一起讀哪些 state／J evidence。
+
+P071｜revision run 前：較早介入的可反駁預測
+revision 預測可能較早花 endpoint energy，required packet 可能在期限前完成。J 上升且 deadline 變成 PASS 時，trade-off 由 delivery、deadline 與 state ledger 定義，結果不縮成單一效率數字。
+
+P072｜第二輪 compact run／receipt：revision freeze → surprise
+這一頁只列 revision freeze 與 surprise 的 exact commands。surprise 沿用 frozen policy，不新增 edit、不重新調參，完成後立即保存兩個新的 stdout result_path。
+
+P073｜before／after／revision：三筆結果要沿同一條因果鏈讀
+把 baseline、candidate、revision 放在同一個 deterministic fallback ledger。candidate 的 bit/J 優勢被 service／deadline 否決，revision 的改善只屬於固定條件。
+
+P074｜surprise withheld：policy frozen，反例留存
+surprise 的 2,400 bit、5.41 J、3 次重傳與 3 張逾期封包是 fallback 參考。它界定 margin 30 的適用邊界；第三次調參不在規格內。
+
+P075｜Lab C debrief：service／deadline gate 優先於 J
+gate-first 階梯收束 Lab C。結論是 urgent margin 改變 deadline／energy trade-off，而且效果依 service condition 而定；結論不延伸為 margin 30 永遠最佳。
+
+P076｜網站責任：驗證、重播、保存；Python 由 terminal runner 執行
+Leo /course 接收 runner 已產生的 result.json 與配對 replay。網站責任範圍為 validation、replay、workbook 保存；student_policy.py 的執行與驗證歸屬 terminal runner，READY 屬 browser record。
+
+P077｜import gate：source／gates／hash 的讀取順序
+實際 upload 或同情境 fallback 提供來源、schema、identity、lineage、hash 和 import state。accepted 表示 endpoint artifact 通過匯入契約；provider 與 live measurement 不列入此 claim。
+
+P078｜frame selector 與事件脈絡：回到 policy branch
+replay 定義為 selector、八個欄位、queue、event 與 timeline 的同一條事件脈絡。每一次切 frame 都把 action 對回 student_policy.py 的 branch。
+
+P079｜Workbook：prediction、result、replay、source、hash
+Workbook 保存 prediction、結果 lineage、source、hash 與 recovery 狀態。完成度與 checkpoint 屬課程紀錄；service、energy 與策略排序由其他欄位定義。
+
+P080｜保存與重開：checkpoint 不會替缺失證據補答案
+建立 checkpoint、恢復、重設、復原、匯出與重新開啟都只管理本機課程紀錄。重開後仍要重新核對 run identity、source、role 和 service gate。
+
+P081｜transfer：智慧農場把 gate-first 變成灌溉決策
+把 Lab C 的 urgent deadline 映射到灌溉告警，把 endpoint J 映射到泵浦能源；服務 gate 優先於節能描述。這是 transfer reasoning，未提供 live farm KPI。
+
+P082｜transfer：HVAC 先守舒適與設備 deadline
+HVAC 的 urgent branch 語義包含舒適度、設備保護或尖峰事件。先確認 service condition 與 deadline，再比較控制動作造成的能源差異。
+
+P083｜transfer：edge inference 先守 freshness，再看 Joule
+edge inference 把 packet delivery 換成新鮮度與任務完成，仍保留 source、trace、gate 與 endpoint scope。低 Joule 但 stale output 不能先稱為成功。
+
+P084｜transfer exit：把可移植的因果句帶回 workbook
+最後保留 condition、policy branch、event／service evidence、energy scope 和 claim ceiling。若需要 fresh run，先保存目前 identity，再依核准流程另開，不在 website 偷補結果。
+
+P085｜current /course：來源與匯入 gate 分屏讀取
+左側是本次 browser session 已接受的 A／baseline endpoint upload，右側是同情境 fallback。source、case、hash 和 import gate 構成閱讀欄位；claim 維持 coherent simulated result、browser record、not measured。
+
+P086｜current /course：service-first summary
+accepted endpoint teaching evidence 顯示 service FAIL、6.92 J、4,800 bit 和 693.641618 bit/J。這四個欄位要按 service、delivered、endpoint J、bit/J 順序讀，不得使效率數字改寫 FAIL。
+
+P087｜current /course：frame selector 與八個 replay fields
+選擇器改變 replay frame，八個欄位要一起讀：Radio、Action、queue count、累積 endpoint J、elapsed、Contact ID、Contact、ordinal Quality。Quality 採 ordinal band；frame selector 使用各自 frame identity，不使用固定抽樣。
+
+P088｜current /course：queue 與 packet event 是因果錨點
+queue 告訴我們當下還有什麼工作，packet event 告訴我們這個 frame 發生什麼。先追生成、入列、attempt、retry、delivered 或 expired，再回到 service summary。
+
+P089｜current /course：timeline 對回 student_policy.py 分支
+timeline 把 contact、quality、radio state 和 action 放在同一個 frame 序列；它描述 transition，不描述連續功率。每個 transition 對回 contact、urgent、pacing、batch 或 wait branch。
+
+P090｜current /course：ledger 顯示目前選取，best strategy 另由 gate 定義
+execution ledger 核對 experiment、case、role、service、endpoint J、source 和 run identity。畫面選到的列屬選取狀態；實際執行與 fallback 來源分開陳述。
+
+P091｜current /course：provider 與 endpoint 是兩層證據
+provider 只說明 LEO scenario、TLE、contact、cell、frequency 和 dB 的 opportunity context，endpoint result 說明 imported runner artifact。Evidence view 的 503 MODQN 與 WebGL／GLTF warnings 不可宣稱 provider browser PASS。
+
+P092｜current /course：Workbook controls 與證據保存
+依課程簡報填寫完整證據學習單、開啟 Leo 任務紀錄、checkpoint、restore、reset、undo、export、reopen 都要分別說明。這些 control 管理紀錄與回復，不替代 runner 或 scientific parity。
+
+P093｜current /course：rejection 與 recovery fail closed
+格式、identity、lineage 和 immutable duplicate 的錯誤維持原 session 狀態。matching artifact、release backup 或明確 fallback 提供 recovery 路徑；JSON、case 與 surprise provenance 維持原值。
+
+P094｜Prepare 的 READY：browser-local terminal receipt record
+記錄 READY 表示 terminal 已看見 machine-readable READY；Leo 端維持 browser-local record，Python 執行與驗證歸屬 terminal runner。安裝、verify、run、upload 與 Lab 完成由各自 receipt 定義；記錄備用環境表示採用 fallback 路徑。
+
+P095｜全站導覽與 fallback loader：按鈕只改畫面狀態
+全站導覽、語言切換、準備、實驗 A／B／C、證據、學習單與 fallback loader 只改焦點、語言或資料選擇。切頁不會完成 identity、service 或 upload gate。
+
+P096｜Task lock 與證據按鈕：檢查課程段落，不代替 runner
+任務 1–10 的勾選與證據已鎖定是保存狀態，檢查證據並繼續只檢查目前課程段落。它不執行 Python、不重算 replay，也不宣布策略 PASS。
+
+P097｜Provider replay controls：provider frames 與 endpoint result 分層
+播放結果、暫停重播、slider、上一畫面和下一個畫面只控制 provider replay。endpoint selector 與 system replay timeline 各自保存 frame identity；兩層時間需分開判讀。
+
+P098｜current /course：八個 replay 欄位的後四欄
+Elapsed、Contact ID、Contact 與 Quality 各自具有來源、值型態、作用與失敗不變項。四欄均隨 endpoint frame selector 更新，Quality 維持 ordinal quality_band 分類。
+
+P099｜current /course：控制項的讀寫、成功變化與失敗不變項
+Prepare、導覽與 fallback、Workbook、replay 與 task controls 分組說明。每組列出動作、讀取／寫入資料、成功後狀態與驗證失敗時維持不變的資料。

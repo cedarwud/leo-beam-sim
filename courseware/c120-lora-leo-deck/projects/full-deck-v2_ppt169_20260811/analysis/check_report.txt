@@ -1,0 +1,119 @@
+check-plan: ok=173 warn=115 error=0
+WARN P01 source=1 s01_sh3 label_candidate old=26 new=41.5 ratio=1.6: short label exceeds original visual width; rewrite shorter
+WARN P02 source=3 s03_sh2 title_candidate old=9 new=24 ratio=2.67: title is too long for the original slot; rewrite first
+WARN P03 source=2 s02_sh2 title_candidate old=9 new=40 ratio=4.44: title is too long for the original slot; rewrite first
+WARN P03 source=2 s02_sh3 label_candidate old=13 new=56 ratio=4.31: short label exceeds original visual width; rewrite shorter
+WARN P05 source=4 s04_sh3 label_candidate old=13 new=42 ratio=3.23: short label exceeds original visual width; rewrite shorter
+WARN P05 source=4 s04_sh5 label_candidate old=13 new=43 ratio=3.31: short label exceeds original visual width; rewrite shorter
+WARN P06 source=3 s03_sh2 title_candidate old=9 new=22 ratio=2.44: title is too long for the original slot; rewrite first
+WARN P08 source=3 s03_sh2 title_candidate old=9 new=14 ratio=1.56: title is too long for the original slot; rewrite first
+WARN P10 source=2 s02_sh2 title_candidate old=9 new=30 ratio=3.33: title is too long for the original slot; rewrite first
+WARN P10 source=2 s02_sh3 label_candidate old=13 new=79 ratio=6.08: short label exceeds original visual width; rewrite shorter
+WARN P11 source=2 s02_sh2 title_candidate old=9 new=31 ratio=3.44: title is too long for the original slot; rewrite first
+WARN P11 source=2 s02_sh3 label_candidate old=13 new=191 ratio=14.69: short label exceeds original visual width; rewrite shorter
+WARN P12 source=4 s04_sh5 label_candidate old=13 new=33 ratio=2.54: short label exceeds original visual width; rewrite shorter
+WARN P13 source=3 s03_sh2 title_candidate old=9 new=33 ratio=3.67: title is too long for the original slot; rewrite first
+WARN P14 source=2 s02_sh2 title_candidate old=9 new=28 ratio=3.11: title is too long for the original slot; rewrite first
+WARN P14 source=2 s02_sh3 label_candidate old=13 new=69 ratio=5.31: short label exceeds original visual width; rewrite shorter
+WARN P15 source=4 s04_sh3 label_candidate old=13 new=24.5 ratio=1.88: short label exceeds original visual width; rewrite shorter
+WARN P15 source=4 s04_sh5 label_candidate old=13 new=50 ratio=3.85: short label exceeds original visual width; rewrite shorter
+WARN P16 source=2 s02_sh2 title_candidate old=9 new=24 ratio=2.67: title is too long for the original slot; rewrite first
+WARN P16 source=2 s02_sh3 label_candidate old=13 new=73 ratio=5.62: short label exceeds original visual width; rewrite shorter
+WARN P17 source=3 s03_sh2 title_candidate old=9 new=28 ratio=3.11: title is too long for the original slot; rewrite first
+WARN P18 source=3 s03_sh2 title_candidate old=9 new=15 ratio=1.67: title is too long for the original slot; rewrite first
+WARN P19 source=4 s04_sh3 label_candidate old=13 new=32 ratio=2.46: short label exceeds original visual width; rewrite shorter
+WARN P20 source=2 s02_sh2 title_candidate old=9 new=21 ratio=2.33: title is too long for the original slot; rewrite first
+WARN P20 source=2 s02_sh3 label_candidate old=13 new=54 ratio=4.15: short label exceeds original visual width; rewrite shorter
+WARN P22 source=2 s02_sh2 title_candidate old=9 new=27 ratio=3.0: title is too long for the original slot; rewrite first
+WARN P22 source=2 s02_sh3 label_candidate old=13 new=50 ratio=3.85: short label exceeds original visual width; rewrite shorter
+WARN P23 source=2 s02_sh2 title_candidate old=9 new=18 ratio=2.0: title is too long for the original slot; rewrite first
+WARN P23 source=2 s02_sh3 label_candidate old=13 new=67 ratio=5.15: short label exceeds original visual width; rewrite shorter
+WARN P24 source=3 s03_sh2 title_candidate old=9 new=33 ratio=3.67: title is too long for the original slot; rewrite first
+WARN P25 source=2 s02_sh2 title_candidate old=9 new=30 ratio=3.33: title is too long for the original slot; rewrite first
+WARN P25 source=2 s02_sh3 label_candidate old=13 new=79 ratio=6.08: short label exceeds original visual width; rewrite shorter
+WARN P26 source=2 s02_sh2 title_candidate old=9 new=41 ratio=4.56: title is too long for the original slot; rewrite first
+WARN P26 source=2 s02_sh3 label_candidate old=13 new=51.5 ratio=3.96: short label exceeds original visual width; rewrite shorter
+WARN P27 source=3 s03_sh2 title_candidate old=9 new=28 ratio=3.11: title is too long for the original slot; rewrite first
+WARN P28 source=2 s02_sh2 title_candidate old=9 new=30 ratio=3.33: title is too long for the original slot; rewrite first
+WARN P28 source=2 s02_sh3 label_candidate old=13 new=36 ratio=2.77: short label exceeds original visual width; rewrite shorter
+WARN P29 source=4 s04_sh5 label_candidate old=13 new=27 ratio=2.08: short label exceeds original visual width; rewrite shorter
+WARN P30 source=2 s02_sh2 title_candidate old=9 new=26 ratio=2.89: title is too long for the original slot; rewrite first
+WARN P30 source=2 s02_sh3 label_candidate old=13 new=46 ratio=3.54: short label exceeds original visual width; rewrite shorter
+WARN P33 source=3 s03_sh2 title_candidate old=9 new=26 ratio=2.89: title is too long for the original slot; rewrite first
+WARN P35 source=3 s03_sh2 title_candidate old=9 new=26 ratio=2.89: title is too long for the original slot; rewrite first
+WARN P36 source=3 s03_sh2 title_candidate old=9 new=27 ratio=3.0: title is too long for the original slot; rewrite first
+WARN P37 source=2 s02_sh2 title_candidate old=9 new=39 ratio=4.33: title is too long for the original slot; rewrite first
+WARN P37 source=2 s02_sh3 label_candidate old=13 new=77 ratio=5.92: short label exceeds original visual width; rewrite shorter
+WARN P38 source=3 s03_sh2 title_candidate old=9 new=31 ratio=3.44: title is too long for the original slot; rewrite first
+WARN P40 source=2 s02_sh2 title_candidate old=9 new=20 ratio=2.22: title is too long for the original slot; rewrite first
+WARN P40 source=2 s02_sh3 label_candidate old=13 new=51.5 ratio=3.96: short label exceeds original visual width; rewrite shorter
+WARN P41 source=2 s02_sh2 title_candidate old=9 new=21 ratio=2.33: title is too long for the original slot; rewrite first
+WARN P41 source=2 s02_sh3 label_candidate old=13 new=51 ratio=3.92: short label exceeds original visual width; rewrite shorter
+WARN P42 source=3 s03_sh2 title_candidate old=9 new=20 ratio=2.22: title is too long for the original slot; rewrite first
+WARN P43 source=2 s02_sh2 title_candidate old=9 new=25 ratio=2.78: title is too long for the original slot; rewrite first
+WARN P43 source=2 s02_sh3 label_candidate old=13 new=102 ratio=7.85: short label exceeds original visual width; rewrite shorter
+WARN P44 source=2 s02_sh2 title_candidate old=9 new=30 ratio=3.33: title is too long for the original slot; rewrite first
+WARN P44 source=2 s02_sh3 label_candidate old=13 new=133 ratio=10.23: short label exceeds original visual width; rewrite shorter
+WARN P45 source=4 s04_sh2 title_candidate old=9 new=39 ratio=4.33: title is too long for the original slot; rewrite first
+WARN P48 source=3 s03_sh2 title_candidate old=9 new=24 ratio=2.67: title is too long for the original slot; rewrite first
+WARN P49 source=3 s03_sh2 title_candidate old=9 new=34 ratio=3.78: title is too long for the original slot; rewrite first
+WARN P52 source=2 s02_sh2 title_candidate old=9 new=35 ratio=3.89: title is too long for the original slot; rewrite first
+WARN P52 source=2 s02_sh3 label_candidate old=13 new=55.5 ratio=4.27: short label exceeds original visual width; rewrite shorter
+WARN P53 source=2 s02_sh2 title_candidate old=9 new=36 ratio=4.0: title is too long for the original slot; rewrite first
+WARN P53 source=2 s02_sh3 label_candidate old=13 new=42.5 ratio=3.27: short label exceeds original visual width; rewrite shorter
+WARN P54 source=3 s03_sh2 title_candidate old=9 new=28 ratio=3.11: title is too long for the original slot; rewrite first
+WARN P55 source=2 s02_sh2 title_candidate old=9 new=22 ratio=2.44: title is too long for the original slot; rewrite first
+WARN P55 source=2 s02_sh3 label_candidate old=13 new=40 ratio=3.08: short label exceeds original visual width; rewrite shorter
+WARN P56 source=2 s02_sh2 title_candidate old=9 new=20 ratio=2.22: title is too long for the original slot; rewrite first
+WARN P56 source=2 s02_sh3 label_candidate old=13 new=118 ratio=9.08: short label exceeds original visual width; rewrite shorter
+WARN P57 source=3 s03_sh2 title_candidate old=9 new=28 ratio=3.11: title is too long for the original slot; rewrite first
+WARN P60 source=2 s02_sh2 title_candidate old=9 new=20 ratio=2.22: title is too long for the original slot; rewrite first
+WARN P60 source=2 s02_sh3 label_candidate old=13 new=95 ratio=7.31: short label exceeds original visual width; rewrite shorter
+WARN P66 source=2 s02_sh2 title_candidate old=9 new=36 ratio=4.0: title is too long for the original slot; rewrite first
+WARN P66 source=2 s02_sh3 label_candidate old=13 new=40 ratio=3.08: short label exceeds original visual width; rewrite shorter
+WARN P67 source=2 s02_sh2 title_candidate old=9 new=35 ratio=3.89: title is too long for the original slot; rewrite first
+WARN P67 source=2 s02_sh3 label_candidate old=13 new=53.5 ratio=4.12: short label exceeds original visual width; rewrite shorter
+WARN P68 source=3 s03_sh2 title_candidate old=9 new=29 ratio=3.22: title is too long for the original slot; rewrite first
+WARN P69 source=2 s02_sh2 title_candidate old=9 new=16 ratio=1.78: title is too long for the original slot; rewrite first
+WARN P69 source=2 s02_sh3 label_candidate old=13 new=79 ratio=6.08: short label exceeds original visual width; rewrite shorter
+WARN P70 source=2 s02_sh2 title_candidate old=9 new=27 ratio=3.0: title is too long for the original slot; rewrite first
+WARN P70 source=2 s02_sh3 label_candidate old=13 new=126 ratio=9.69: short label exceeds original visual width; rewrite shorter
+WARN P72 source=2 s02_sh2 title_candidate old=9 new=24 ratio=2.67: title is too long for the original slot; rewrite first
+WARN P72 source=2 s02_sh3 label_candidate old=13 new=43.5 ratio=3.35: short label exceeds original visual width; rewrite shorter
+WARN P75 source=2 s02_sh2 title_candidate old=9 new=34 ratio=3.78: title is too long for the original slot; rewrite first
+WARN P75 source=2 s02_sh3 label_candidate old=13 new=105 ratio=8.08: short label exceeds original visual width; rewrite shorter
+WARN P78 source=2 s02_sh2 title_candidate old=9 new=18 ratio=2.0: title is too long for the original slot; rewrite first
+WARN P78 source=2 s02_sh3 label_candidate old=13 new=59 ratio=4.54: short label exceeds original visual width; rewrite shorter
+WARN P79 source=3 s03_sh2 title_candidate old=9 new=35 ratio=3.89: title is too long for the original slot; rewrite first
+WARN P80 source=3 s03_sh2 title_candidate old=9 new=26 ratio=2.89: title is too long for the original slot; rewrite first
+WARN P84 source=3 s03_sh2 title_candidate old=9 new=32 ratio=3.56: title is too long for the original slot; rewrite first
+WARN P86 source=2 s02_sh2 title_candidate old=9 new=30 ratio=3.33: title is too long for the original slot; rewrite first
+WARN P86 source=2 s02_sh3 label_candidate old=13 new=74 ratio=5.69: short label exceeds original visual width; rewrite shorter
+WARN P87 source=2 s02_sh2 title_candidate old=9 new=34 ratio=3.78: title is too long for the original slot; rewrite first
+WARN P87 source=2 s02_sh3 label_candidate old=13 new=59 ratio=4.54: short label exceeds original visual width; rewrite shorter
+WARN P88 source=3 s03_sh2 title_candidate old=9 new=22 ratio=2.44: title is too long for the original slot; rewrite first
+WARN P89 source=2 s02_sh2 title_candidate old=9 new=32 ratio=3.56: title is too long for the original slot; rewrite first
+WARN P89 source=2 s02_sh3 label_candidate old=13 new=46 ratio=3.54: short label exceeds original visual width; rewrite shorter
+WARN P90 source=2 s02_sh2 title_candidate old=9 new=25 ratio=2.78: title is too long for the original slot; rewrite first
+WARN P90 source=2 s02_sh3 label_candidate old=13 new=67 ratio=5.15: short label exceeds original visual width; rewrite shorter
+WARN P92 source=2 s02_sh2 title_candidate old=9 new=37 ratio=4.11: title is too long for the original slot; rewrite first
+WARN P92 source=2 s02_sh3 label_candidate old=13 new=33 ratio=2.54: short label exceeds original visual width; rewrite shorter
+WARN P94 source=2 s02_sh2 title_candidate old=9 new=22 ratio=2.44: title is too long for the original slot; rewrite first
+WARN P94 source=2 s02_sh3 label_candidate old=13 new=55 ratio=4.23: short label exceeds original visual width; rewrite shorter
+WARN P95 source=4 s04_sh2 title_candidate old=9 new=40 ratio=4.44: title is too long for the original slot; rewrite first
+WARN P96 source=2 s02_sh2 title_candidate old=9 new=24 ratio=2.67: title is too long for the original slot; rewrite first
+WARN P96 source=2 s02_sh3 label_candidate old=13 new=78 ratio=6.0: short label exceeds original visual width; rewrite shorter
+WARN P97 source=2 s02_sh2 title_candidate old=9 new=37 ratio=4.11: title is too long for the original slot; rewrite first
+WARN P97 source=2 s02_sh3 label_candidate old=13 new=61 ratio=4.69: short label exceeds original visual width; rewrite shorter
+WARN P98 source=3 s03_sh2 title_candidate old=9 new=39 ratio=4.33: title is too long for the original slot; rewrite first
+WARN P99 source=3 s03_sh2 title_candidate old=9 new=36 ratio=4.0: title is too long for the original slot; rewrite first
+WARN P101 source=3 s03_sh2 title_candidate old=9 new=41.5 ratio=4.61: title is too long for the original slot; rewrite first
+WARN P102 source=2 s02_sh2 title_candidate old=9 new=41 ratio=4.56: title is too long for the original slot; rewrite first
+WARN P102 source=2 s02_sh3 label_candidate old=13 new=87.5 ratio=6.73: short label exceeds original visual width; rewrite shorter
+WARN P103 source=3 s03_sh2 title_candidate old=9 new=51 ratio=5.67: title is too long for the original slot; rewrite first
+WARN P104 source=3 s03_sh2 title_candidate old=9 new=37 ratio=4.11: title is too long for the original slot; rewrite first
+WARN P105 source=2 s02_sh2 title_candidate old=9 new=46 ratio=5.11: title is too long for the original slot; rewrite first
+WARN P105 source=2 s02_sh3 label_candidate old=13 new=59 ratio=4.54: short label exceeds original visual width; rewrite shorter
+
+STDERR:
+Check report -> /home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/full-deck-v2_ppt169_20260811/analysis/check_report.json

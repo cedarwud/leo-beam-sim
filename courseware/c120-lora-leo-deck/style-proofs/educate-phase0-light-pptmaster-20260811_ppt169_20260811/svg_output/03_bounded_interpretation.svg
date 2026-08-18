@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1280" height="720" viewBox="0 0 1280 720" font-family="&quot;Times New Roman&quot;, DFKai-SB, &quot;標楷體&quot;, serif" data-pptx-master="master_01" data-pptx-master-name="slideMaster1" data-pptx-layout="layout_05" data-pptx-layout-name="只有標題" data-pptx-show-master-shapes="true" data-pptx-show-inherited-shapes="true">
+  <defs>
+    <marker id="arrow-navy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <polygon points="0,0 10,5 0,10" fill="#17223B"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" id="master-master_01-1-1" data-pptx-layer="master" data-pptx-editable="false"/>
+  <image href="../images/image1.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none" id="master-master_01-3-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r0"/>
+  <path d="M 44.67 26.5 L 44.67 99.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1028-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r14"/>
+  <path d="M 22 82.33 L 1258 82.33" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1029-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r12"/>
+  <path d="M 22 655.17 L 1258 655.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1030-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r11"/>
+  <image href="../images/image2.png" x="0" y="642.13" width="1280" height="22.7" preserveAspectRatio="none" id="master-master_01-2-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r2"/>
+  <image href="../images/image3.png" x="1072" y="0" width="208" height="29.71" preserveAspectRatio="none" id="master-master_01-4-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r6"/>
+  <image href="../images/image2.png" x="0" y="642.13" width="1280" height="22.7" preserveAspectRatio="none" id="layout-layout_05-4-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r2"/>
+
+  <g id="slot-layout_05-2" data-pptx-placeholder="title" data-pptx-bounds="57.78 15.83 1200.89 60">
+    <text x="67.38" y="58" text-anchor="start" xml:space="preserve" font-size="37.33" font-weight="bold" fill="#17223B" data-pptx-carrier="true">能量變好，不等於系統成功</text>
+  </g>
+  <g id="slot-layout_05-3" data-pptx-placeholder="slide-number" data-pptx-bounds="1148 665.67 93.33 50" data-pptx-idx="10">
+    <text x="1234" y="700" text-anchor="end" font-family="&quot;Times New Roman&quot;, serif" font-size="14" fill="#35377F" data-pptx-carrier="true">03</text>
+  </g>
+
+  <g id="editorial-contrast" data-pptx-bounds="69 118 1157 232">
+    <rect x="69" y="118" width="6" height="222" rx="3" fill="#35377F"/>
+    <rect x="91" y="122" width="118" height="34" rx="17" fill="#17223B"/>
+    <text x="150" y="146" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="20" font-weight="bold" fill="#FFFFFF">CLAIM · 03</text>
+
+    <ellipse cx="626" cy="229" rx="112" ry="96" fill="#F2ECFA"/>
+    <ellipse cx="975" cy="226" rx="203" ry="88" fill="#FFF5D6" fill-opacity="0.78"/>
+    <text x="95" y="257" font-family="&quot;Times New Roman&quot;, serif" font-size="52" font-weight="bold" fill="#17223B">Prediction</text>
+    <text x="626" y="257" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="78" font-weight="bold" fill="#EA6A5A">≠</text>
+    <text x="784" y="257" font-family="&quot;Times New Roman&quot;, serif" font-size="52" font-weight="bold" fill="#17223B">Saving</text>
+    <text x="102" y="302" font-size="20" font-weight="bold" fill="#28B8C7">看見下降趨勢</text>
+    <text x="784" y="302" font-size="20" font-weight="bold" fill="#876416">證明系統成功</text>
+    <text x="1212" y="341" text-anchor="end" font-size="22" font-weight="bold" fill="#17223B">先通過服務，再談能量</text>
+  </g>
+
+  <g id="evidence-runway" data-pptx-bounds="69 354 1157 130">
+    <text x="91" y="379" font-size="30" font-weight="bold" fill="#17223B">證據鏈不能跳步</text>
+    <line x1="170" y1="427" x2="1127" y2="427" stroke="#C7D1E3" stroke-width="4"/>
+    <line x1="194" y1="427" x2="354" y2="427" stroke="#17223B" stroke-width="4" marker-end="url(#arrow-navy)"/>
+    <line x1="402" y1="427" x2="574" y2="427" stroke="#17223B" stroke-width="4" marker-end="url(#arrow-navy)"/>
+    <line x1="626" y1="427" x2="794" y2="427" stroke="#17223B" stroke-width="4" marker-end="url(#arrow-navy)"/>
+    <line x1="850" y1="427" x2="1042" y2="427" stroke="#17223B" stroke-width="4" marker-end="url(#arrow-navy)"/>
+
+    <circle cx="170" cy="427" r="18" fill="#FFFFFF" stroke="#35377F" stroke-width="4"/>
+    <text x="170" y="412" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#35377F">IDENTITY</text>
+    <text x="170" y="470" text-anchor="middle" font-size="18" fill="#60708A">情境／seed／freeze</text>
+
+    <circle cx="378" cy="427" r="22" fill="#E9F6EF" stroke="#4EA978" stroke-width="4"/>
+    <text x="378" y="412" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#387A56">SERVICE</text>
+    <text x="378" y="470" text-anchor="middle" font-size="18" fill="#60708A">delivery／deadline／fresh</text>
+
+    <circle cx="602" cy="427" r="26" fill="#E9F7F8" stroke="#28B8C7" stroke-width="4"/>
+    <text x="602" y="412" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#177B85">MECHANISM</text>
+    <text x="602" y="470" text-anchor="middle" font-size="18" fill="#60708A">queue／retry／state</text>
+
+    <circle cx="822" cy="427" r="30" fill="#FFF5D6" stroke="#F4B942" stroke-width="4"/>
+    <text x="822" y="412" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#876416">ENDPOINT J</text>
+    <text x="822" y="470" text-anchor="middle" font-size="18" fill="#60708A">同一 boundary</text>
+
+    <circle cx="1080" cy="427" r="38" fill="#F2ECFA" stroke="#9B79D0" stroke-width="4"/>
+    <text x="1080" y="434" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="20" font-weight="bold" fill="#6D4C9B">CLAIM</text>
+    <text x="1080" y="477" text-anchor="middle" font-size="14" fill="#60708A">supports／contradicts／insufficient</text>
+  </g>
+
+  <g id="bounded-claim" data-pptx-bounds="69 496 1157 106">
+    <line x1="69" y1="500" x2="69" y2="598" stroke="#9B79D0" stroke-width="6" stroke-linecap="round"/>
+    <text x="91" y="525" font-size="20" font-weight="bold" fill="#35377F">可辯護的結論句</text>
+    <text x="91" y="556" font-family="&quot;Times New Roman&quot;, DFKai-SB, serif" font-size="18" fill="#17223B">固定 identity ＋ service pass ＋ mechanism trace ＋同一 endpoint boundary → conditional claim</text>
+    <circle cx="101" cy="583" r="7" fill="#EA6A5A"/>
+    <text x="119" y="590" font-size="18" fill="#9B3E35">replay identity 失敗 → 保留 prior state / same-scenario fallback；不可捏造 KPI</text>
+
+    <rect x="965" y="506" width="112" height="34" rx="17" fill="#E9F6EF" stroke="#4EA978" stroke-width="2"/>
+    <text x="1021" y="529" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#387A56">COMPLETE</text>
+    <rect x="1090" y="506" width="128" height="34" rx="17" fill="#FCE9E6" stroke="#EA6A5A" stroke-width="2"/>
+    <text x="1154" y="529" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#9B3E35">INCOMPLETE</text>
+  </g>
+
+  <g id="claim-boundary" data-pptx-bounds="69 616 1157 20">
+    <text x="647.5" y="631" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="14" font-weight="bold" fill="#60708A">SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED</text>
+  </g>
+</svg>

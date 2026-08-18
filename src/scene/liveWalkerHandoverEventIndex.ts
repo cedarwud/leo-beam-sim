@@ -300,7 +300,7 @@ export function buildLiveWalkerHandoverEventIndex(
     return {
       ...baseIndex,
       sourceGapReasons: [
-        `live Walker trajectory cache only spans ${maxTimeSec}s; expected ${LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC}s`,
+        `live satellite trajectory cache only spans ${maxTimeSec}s; expected ${LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC}s`,
       ],
     };
   }

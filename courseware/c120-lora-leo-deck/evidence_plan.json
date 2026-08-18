@@ -1,0 +1,113 @@
+{
+  "topic": "C-120 LoRaEnergySim + Leo opening checkpoint",
+  "source_policy": "Use current local authority only; unsupported current commands, screenshots, KPI values, URLs, line numbers and browser states stay as explicit placeholders.",
+  "items": [
+    {
+      "id": "EV-01",
+      "claim": "Competition framing is 智慧節能與物聯網應用 and expects data-driven energy/control applications.",
+      "source_title": "platform intro",
+      "source_note": "/home/u24/papers/platform/intro.md lines 6–12",
+      "used_on_slides": ["S01"],
+      "visual_use": "subtitle/source-line"
+    },
+    {
+      "id": "EV-02",
+      "claim": "LoRaEnergySim endpoint state and packet model connects policy to sleep, processing, TX/RX, retry, delivery and energy consequences.",
+      "source_title": "ADR-004",
+      "source_note": "docs/decisions/ADR-004-c120-course-packaged-loraenergysim-leo.md lines 24–38",
+      "used_on_slides": ["S01", "S03"],
+      "visual_use": "state-ribbon labels"
+    },
+    {
+      "id": "EV-03",
+      "claim": "Opening causal chain is state/data → policy → packet/service consequence → power × time → energy → evidence → transferable IoT idea.",
+      "source_title": "C120 integration SDD",
+      "source_note": "docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md lines 1082–1096",
+      "used_on_slides": ["S02"],
+      "visual_use": "flow"
+    },
+    {
+      "id": "EV-04",
+      "claim": "Wrapper-added awake-idle/wake assumptions and endpoint energy are not native measurement or canonical system energy.",
+      "source_title": "C120 integration SDD",
+      "source_note": "docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md lines 883–907",
+      "used_on_slides": ["S03", "S05"],
+      "visual_use": "boundary callout"
+    },
+    {
+      "id": "EV-05",
+      "claim": "LEO supplies changing service opportunities and is not the course specialist destination.",
+      "source_title": "C120 integration SDD",
+      "source_note": "docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md lines 14–37 and 1082–1096",
+      "used_on_slides": ["S04"],
+      "visual_use": "hero caption"
+    },
+    {
+      "id": "EV-06",
+      "claim": "Existing C120AuthoritativeReplay and new C120LoraEndpointReplay remain separate evidence layers while sharing scenario anchor and clock.",
+      "source_title": "C120 integration SDD",
+      "source_note": "docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md lines 366–388",
+      "used_on_slides": ["S05"],
+      "visual_use": "comparison"
+    },
+    {
+      "id": "EV-07",
+      "claim": "The intended learner loop includes prepared runner setup, bounded student_policy.py edit, deterministic run, strict JSON import, replay, withheld case and workbook.",
+      "source_title": "ADR-004 and C120 integration SDD",
+      "source_note": "ADR-004 lines 42–71; SDD lines 14–31 and 287–295",
+      "used_on_slides": ["S06"],
+      "visual_use": "flow"
+    },
+    {
+      "id": "EV-08",
+      "claim": "Every required action must show Do / Why / Mechanism / Expect / Interpret.",
+      "source_title": "C120 integration SDD",
+      "source_note": "docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md lines 273–295",
+      "used_on_slides": ["S07"],
+      "visual_use": "operation grammar"
+    },
+    {
+      "id": "EV-09",
+      "claim": "Release URL, command names, case names, output paths and policy line numbers are release API and are not yet frozen for final teaching pages.",
+      "source_title": "C120 integration SDD",
+      "source_note": "docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md lines 297–299 and 762–766",
+      "used_on_slides": ["S07", "S09"],
+      "visual_use": "visible placeholder label"
+    },
+    {
+      "id": "EV-10",
+      "claim": "Draft SDD proposes 5+8+8+8+21+21+5+23+10+11 = 120 minutes and marks it for owner review.",
+      "value": "120",
+      "unit": "min",
+      "date_or_period": "SDD draft 2026-08-10",
+      "source_title": "C120 integration SDD",
+      "source_note": "docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md lines 115–170",
+      "used_on_slides": ["S08"],
+      "visual_use": "timeline"
+    },
+    {
+      "id": "EV-11",
+      "claim": "Owner must review the opening 8–10 slides before full deck production.",
+      "source_title": "C120 integration SDD",
+      "source_note": "docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md lines 1321–1352",
+      "used_on_slides": ["S09"],
+      "visual_use": "decision gate"
+    },
+    {
+      "id": "EV-12",
+      "claim": "Current claim ceiling is bounded novice validation, not classroom-ready/live/measured/canonical parity.",
+      "source_title": "C120 integration SDD",
+      "source_note": "docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md lines 1570–1585",
+      "used_on_slides": ["S01", "S03", "S05", "S09"],
+      "visual_use": "footer/source-line"
+    }
+  ],
+  "chart_candidates": [],
+  "open_questions": [
+    "Owner accepts or revises the draft ten-segment exact-120 clock.",
+    "Immutable release URL, supported Python version, exact commands/cases/output paths and student_policy.py line numbers are frozen.",
+    "Current runner, import, browser and screenshot evidence exists and is source-stable.",
+    "Owner chooses how educate.pptx is applied despite its two-slide light native structure.",
+    "Owner accepts opening visual/story checkpoint before full 98–116 page production."
+  ]
+}

@@ -17,6 +17,8 @@ import type { CinematicMode } from './types';
 export interface BaseSceneLayoutProps {
   sceneConfig: NTPUSceneConfig;
   controlsRef: React.RefObject<OrbitControlsImpl | null>;
+  /** Presentation-only mount gate; camera, controls, and lighting stay active. */
+  campusVisible?: boolean;
   cinematicSpotlightActive?: boolean;
   effectiveCinematicMode?: CinematicMode;
   cinematicSpotlightTargets?: CinematicSpotlightTarget[];
@@ -26,6 +28,7 @@ export interface BaseSceneLayoutProps {
 export function BaseSceneLayout({
   sceneConfig,
   controlsRef,
+  campusVisible = true,
   cinematicSpotlightActive = false,
   effectiveCinematicMode = 'off',
   cinematicSpotlightTargets = [],
@@ -81,9 +84,11 @@ export function BaseSceneLayout({
         />
       ))}
 
-      <Suspense fallback={null}>
-        <NTPUScene config={sceneConfig} />
-      </Suspense>
+      {campusVisible && (
+        <Suspense fallback={null}>
+          <NTPUScene config={sceneConfig} />
+        </Suspense>
+      )}
 
       {children}
     </>

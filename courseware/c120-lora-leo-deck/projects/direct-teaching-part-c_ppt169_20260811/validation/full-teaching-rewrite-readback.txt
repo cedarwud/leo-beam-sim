@@ -1,0 +1,4 @@
+slides=66
+status=PASS
+rendered=0
+output=/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/direct-teaching-part-c_ppt169_20260811/exports/c120-lora-leo-part-c-teaching-rewrite-review_20260811.pptx

@@ -1,13 +1,13 @@
 {
   "schemaVersion": "tle-web-archive-v1",
-  "archiveId": "oneweb-20250727-20260808-6d3db90981e7",
-  "archiveContentSha256": "6d3db90981e7c41b56f90d85320ba832591ffbc59b3fe48d3b07978fee233b7d",
+  "archiveId": "oneweb-20250727-20260816-dd68291d080d",
+  "archiveContentSha256": "dd68291d080d4e3e6b5a5a672a85c2a63547a5010664a47ea7e95ea998e3513c",
   "constellation": "oneweb",
   "sourceKind": "ARCHIVED_TLE",
   "propagationModel": "SGP4",
   "firstArchiveDate": "20250727",
-  "lastArchiveDate": "20260808",
-  "snapshotCount": 363,
+  "lastArchiveDate": "20260816",
+  "snapshotCount": 371,
   "maxPropagationAgeMs": 604800000,
   "snapshots": [
     {
@@ -3639,6 +3639,86 @@
       "minEpochUtc": "2026-08-07T21:06:05.514Z",
       "maxEpochUtc": "2026-08-08T08:00:01.000Z",
       "sha256": "9073c56572cb4053950a3f913e0e69235fc210a9025fa1c897f7730b8120edc1"
+    },
+    {
+      "archiveDate": "20260809",
+      "path": "/tle-archive/oneweb/oneweb_20260809.tle",
+      "byteLength": 109368,
+      "recordCount": 651,
+      "identityCount": 651,
+      "minEpochUtc": "2026-08-08T07:23:32.524Z",
+      "maxEpochUtc": "2026-08-09T07:53:43.154Z",
+      "sha256": "8980ed5da6ce50ea5c4cf2ba8f68ae90533b873cc9d55c7c5805205790783bb3"
+    },
+    {
+      "archiveDate": "20260810",
+      "path": "/tle-archive/oneweb/oneweb_20260810.tle",
+      "byteLength": 109368,
+      "recordCount": 651,
+      "identityCount": 651,
+      "minEpochUtc": "2026-08-08T07:23:32.524Z",
+      "maxEpochUtc": "2026-08-10T14:00:01.999Z",
+      "sha256": "d318ac8ff025cd120c11aed4927953ccc0be4b90a96230750dd56e5269ba0941"
+    },
+    {
+      "archiveDate": "20260811",
+      "path": "/tle-archive/oneweb/oneweb_20260811.tle",
+      "byteLength": 109368,
+      "recordCount": 651,
+      "identityCount": 651,
+      "minEpochUtc": "2026-08-10T15:36:00.598Z",
+      "maxEpochUtc": "2026-08-11T06:00:02.999Z",
+      "sha256": "ead0ef4ec872a9f3394c48eff383ed4250a0d733e07acbaa30edbc40723f4763"
+    },
+    {
+      "archiveDate": "20260812",
+      "path": "/tle-archive/oneweb/oneweb_20260812.tle",
+      "byteLength": 109368,
+      "recordCount": 651,
+      "identityCount": 651,
+      "minEpochUtc": "2026-08-11T17:27:27.146Z",
+      "maxEpochUtc": "2026-08-12T06:00:02.999Z",
+      "sha256": "dfa98ca0c4812cf5df9a4b182e46f3d4de082abc94434b9b90c5ad5b59734e11"
+    },
+    {
+      "archiveDate": "20260813",
+      "path": "/tle-archive/oneweb/oneweb_20260813.tle",
+      "byteLength": 109368,
+      "recordCount": 651,
+      "identityCount": 651,
+      "minEpochUtc": "2026-08-12T06:17:54.729Z",
+      "maxEpochUtc": "2026-08-13T06:00:02.000Z",
+      "sha256": "ea9ca4d6497f6a96a1ef01c4cfc006854d4382ed93ef323dd397de75f361119c"
+    },
+    {
+      "archiveDate": "20260814",
+      "path": "/tle-archive/oneweb/oneweb_20260814.tle",
+      "byteLength": 109368,
+      "recordCount": 651,
+      "identityCount": 651,
+      "minEpochUtc": "2026-08-13T19:43:21.822Z",
+      "maxEpochUtc": "2026-08-14T08:08:24.824Z",
+      "sha256": "e38a1e9884140c8b1254e3cde5b81f75cd49a53376661c75d044e4ef0577b15b"
+    },
+    {
+      "archiveDate": "20260815",
+      "path": "/tle-archive/oneweb/oneweb_20260815.tle",
+      "byteLength": 109368,
+      "recordCount": 651,
+      "identityCount": 651,
+      "minEpochUtc": "2026-08-14T21:39:04.489Z",
+      "maxEpochUtc": "2026-08-15T10:14:06.948Z",
+      "sha256": "f2a8273cbc70bf6fb6a8d71b65b1c63da3c9b2e0f12593a23f0fa129735c943d"
+    },
+    {
+      "archiveDate": "20260816",
+      "path": "/tle-archive/oneweb/oneweb_20260816.tle",
+      "byteLength": 109368,
+      "recordCount": 651,
+      "identityCount": 651,
+      "minEpochUtc": "2026-08-15T15:36:07.284Z",
+      "maxEpochUtc": "2026-08-16T08:00:02.000Z",
+      "sha256": "2161b7e2a42ac58c31558408cc5480cd253b25c6190e464eef2dd67197719b3e"
     }
   ]
 }

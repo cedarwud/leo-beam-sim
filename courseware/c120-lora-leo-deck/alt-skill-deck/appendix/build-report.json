@@ -1,0 +1,16 @@
+{
+  "status": "INITIAL_EDITABLE_REVIEW",
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/LoRaEnergySim-LEO-ALT-APPENDIX-REVIEW.pptx",
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "slide_count": 19,
+  "layout_contract": "all slides relate to slideLayout2.xml",
+  "title_pt": 28,
+  "body_pt_range": [
+    18,
+    22
+  ],
+  "background_fill": "unset",
+  "speaker_notes": 19,
+  "current_evidence": "neutral placeholders where evidence is not frozen"
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "c120-deck-asset-plan.v1",
+  "policy": "Local authoritative assets and editable shapes only for the opening checkpoint. No generated screenshots or KPI imagery.",
+  "template": {
+    "path": "/home/u24/ppt-master/template/educate.pptx",
+    "sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+    "use": "requested native template; currently usable only as two light slide shells and protected EDU brand/safe-bound reference",
+    "status": "blocked_pending_owner_route_choice"
+  },
+  "editable_visuals": [
+    {"id": "endpoint_state_ribbon", "slides": ["S01"], "kind": "native shapes", "status": "planned"},
+    {"id": "causal_chain", "slides": ["S02"], "kind": "native shapes", "status": "planned"},
+    {"id": "scope_comparison", "slides": ["S03"], "kind": "native shapes", "status": "planned"},
+    {"id": "moving_window_hero", "slides": ["S04"], "kind": "native shapes", "status": "planned"},
+    {"id": "two_layer_replay", "slides": ["S05"], "kind": "native shapes", "status": "planned"},
+    {"id": "learner_loop", "slides": ["S06"], "kind": "native shapes", "status": "planned"},
+    {"id": "operation_grammar", "slides": ["S07"], "kind": "native shapes", "status": "planned"},
+    {"id": "exact_120_bands", "slides": ["S08"], "kind": "native shapes", "status": "planned"},
+    {"id": "owner_gate", "slides": ["S09"], "kind": "native shapes", "status": "planned"}
+  ],
+  "evidence_placeholders": [
+    {
+      "id": "current_runner_receipt",
+      "label": "PLACEHOLDER — CURRENT RUNNER RECEIPT NOT FROZEN",
+      "allowed_on": ["future setup pages"],
+      "blocked_reason": "API/commands/current evidence not frozen"
+    },
+    {
+      "id": "current_leo_import_replay",
+      "label": "PLACEHOLDER — CURRENT BROWSER EVIDENCE NOT CAPTURED",
+      "allowed_on": ["future result pages"],
+      "blocked_reason": "browser evidence not source-stable"
+    },
+    {
+      "id": "current_policy_code",
+      "label": "PLACEHOLDER — RELEASE LINE NUMBERS/API PENDING C120-LORA-00",
+      "allowed_on": ["future code pages"],
+      "blocked_reason": "student_policy.py release API not frozen"
+    }
+  ],
+  "external_images": [],
+  "generated_images": []
+}

@@ -1,0 +1,156 @@
+{
+  "schema": "template_fill_pptx_library.v1",
+  "source_pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/sources/educate.pptx",
+  "slide_count": 2,
+  "canvas_px": {
+    "width": 1280,
+    "height": 720
+  },
+  "slides": [
+    {
+      "slide_index": 1,
+      "page_type": "cover_candidate",
+      "text_summary": "Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System\nIEEE Internet of Things, 2025.",
+      "slots": [
+        {
+          "slot_id": "s01_sh2",
+          "role": "title_candidate",
+          "text": "Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": null,
+            "y": null,
+            "width": null,
+            "height": null
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s01_sh3",
+          "role": "label_candidate",
+          "text": "IEEE Internet of Things, 2025.",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": null,
+            "y": null,
+            "width": null,
+            "height": null
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    },
+    {
+      "slide_index": 2,
+      "page_type": "ending_candidate",
+      "text_summary": "上行 LEO 衛星 BH 系統\n位於受照射波束內的終端將會受到同頻跨波束干擾。\nSongsong Cai et al. “Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System,” IEEE Internet of Things, 2025.",
+      "slots": [
+        {
+          "slot_id": "s02_sh2",
+          "role": "title_candidate",
+          "text": "上行 LEO 衛星 BH 系統",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": null,
+            "y": null,
+            "width": null,
+            "height": null
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh3",
+          "role": "label_candidate",
+          "text": "位於受照射波束內的終端將會受到同頻跨波束干擾。",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": null,
+            "y": null,
+            "width": null,
+            "height": null
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 1
+          }
+        },
+        {
+          "slot_id": "s02_sh4",
+          "role": "body_candidate",
+          "text": "Songsong Cai et al. “Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System,” IEEE Internet of Things, 2025.",
+          "paragraph_count": 1,
+          "geometry": {
+            "x": null,
+            "y": null,
+            "width": null,
+            "height": null
+          },
+          "text_metrics": {
+            "font_size_px": null,
+            "paragraph_count": 1
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [],
+      "diagrams": []
+    }
+  ],
+  "plan_contract": {
+    "schema": "template_fill_pptx_plan.v1",
+    "slides": [
+      {
+        "source_slide": 1,
+        "purpose": "封面 / 章节 / 内容 / 结尾",
+        "replacements": [
+          {
+            "slot_id": "s01_sh2",
+            "text": "替换后的文字"
+          }
+        ],
+        "table_edits": [
+          {
+            "table_id": "s01_tbl3",
+            "cells": [
+              {
+                "row": 0,
+                "col": 0,
+                "text": "替换后的单元格"
+              }
+            ]
+          }
+        ],
+        "chart_edits": [
+          {
+            "chart_id": "s01_ch4",
+            "categories": [
+              "A",
+              "B"
+            ],
+            "series": [
+              {
+                "name": "系列1",
+                "values": [
+                  1,
+                  2
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

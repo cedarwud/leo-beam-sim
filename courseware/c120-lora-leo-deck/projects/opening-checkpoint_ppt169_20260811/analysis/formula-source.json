@@ -1,0 +1,13 @@
+{
+  "schema": "c120_formula_source.v1",
+  "items": [
+    {
+      "slide": 2,
+      "id": "endpoint-energy-accumulation",
+      "latex": "E_{\\mathit{endpoint}}=\\sum_s P_s t_s",
+      "claim_scope": "course-packaged simulated endpoint-energy relation",
+      "rendering": "editable LaTeX source text in native template body placeholder",
+      "font_contract": "formula run italic; surrounding prose roman"
+    }
+  ]
+}

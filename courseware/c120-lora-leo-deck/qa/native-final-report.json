@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/build/c120-lora-leo-opening-checkpoint-native-template-zh-TW.pptx",
+  "template": "/home/u24/ppt-master/template/educate.pptx",
+  "metrics": {
+    "slide_count": 9,
+    "preserved_template_assets": 27,
+    "title_count": 9,
+    "styled_visible_runs": 27,
+    "formula_runs": 1,
+    "variable_runs": 0,
+    "slide_level_background_nodes": 0,
+    "full_slide_solid_fills": 0,
+    "notes_parts": 9,
+    "nonempty_notes": 9,
+    "fixed_titles": {
+      "1": "每一次 SEND、WAIT、SLEEP，都是能源決策",
+      "2": "節能是一條可檢驗因果鏈",
+      "3": "LoRa 證據邊界",
+      "4": "LEO：變動服務窗口範例",
+      "5": "兩層 evidence 不互相冒充",
+      "6": "從預測到驗證",
+      "7": "操作與修改的五問框架",
+      "8": "120 分鐘：setup 與 labs",
+      "9": "Opening checkpoint"
+    }
+  },
+  "warnings": [],
+  "errors": []
+}

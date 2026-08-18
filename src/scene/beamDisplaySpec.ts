@@ -111,7 +111,7 @@ export interface BeamDisplaySpec {
    * The hero (primary serving) cone keeps its own brighter opacity, and the
    * pair / pulse / non-serving layers keep their own style tokens — this is the
    * serving-field knob only (SDD §3.1 servingConeOpacity, distinct from
-   * primaryConeOpacity). Default = {@link SINR_LIVE_CONE_AMBIENT_OPACITY} (0.40 — the top
+   * primaryConeOpacity). Default = {@link SINR_LIVE_CONE_AMBIENT_OPACITY} (0.24 — the top
    * of the neutral-grey alpha ladder, below the two coloured roles at 0.80).
    */
   readonly servingConeOpacity: number;
@@ -188,7 +188,7 @@ export interface BeamDisplaySpec {
    * {@link candidateConeColor} (your next link); the rest of that satellite's beams take
    * neutral GREY (FINAL spec: only the beam about to serve YOU is blue — the candidate
    * satellite's other beams are context). Hierarchy across the grey layers is alpha alone:
-   * serving fan 0.40 > candidate fan 0.28 > background 0.18 > non-serving 0.12. {@link candidateFanMaxCones} bounds how many of that ONE satellite's
+   * serving fan 0.24 > candidate fan 0.20 > background 0.18 > non-serving 0.12. {@link candidateFanMaxCones} bounds how many of that ONE satellite's
    * beams are drawn (it can never pull in a second satellite). Prompt-control:
    * "候選扇形再多/再少幾根" = the max; "候選扇形再淡一點" = the opacity. Defaults = the
    * SINR_LIVE_CONE_CANDIDATE_FAN_* / SINR_LIVE_CANDIDATE_FAN_MAX_CONES tokens.

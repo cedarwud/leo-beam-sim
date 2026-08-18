@@ -1,0 +1,366 @@
+<!-- Slide number: 1 -->
+# 把下載資料搬進 Linux 課程資料夾
+這一步只做路徑準備：把 release 帶進 Linux，再確認程式根目錄
+
+① 這個工作區
+② 程式不改
+③ 進入根目錄
+④ 核對結果
+WSL＝Windows 內的 Linux
+讀 /mnt/c/.../Downloads
+student_policy.py 不動
+只複製 release 副本
+下一步集中到 Linux
+lora-energy-lab/
+執行 pwd 只讀位置
+路徑不對就先停止
+先把下載副本放進 Linux，再確認根目錄；路徑錯會讓後續設定讀錯檔
+pwd（目前目錄命令）｜來源：Linux／macOS 終端機（WSL 也使用 Linux 指令）｜作用：確認目前位置
+單位：路徑文字｜判讀：輸出應位於 Linux home 的課程資料夾
+
+### Notes:
+命令先讀取 Windows Downloads，再把 release 副本寫到 Linux staging；它不修改 Windows 原檔、`student_policy.py` 或任何 marked block。下一步進入 `lora-energy-lab/`，用 `pwd` 讀取目前位置；要檢查的 website／artifact field 是 package root 與來源路徑，路徑不一致時不要進入 setup。
+
+<!-- Slide number: 2 -->
+# 先找到或安裝 Python 3.11
+這一步只找符合版本的 Python；找不到或版本不符就停止
+
+Linux／WSL 先檢查
+macOS 先檢查
+Windows PowerShell
+Windows Command Prompt
+command -v python3.11
+python3.11 --version
+找不到：sudo apt install -y curl
+再 uv python install 3.11
+command -v python3.11
+python3.11 --version
+沒有時：brew install python@3.11
+py -3.11 --version
+找不到：winget install --id=astral-sh.uv -e
+再 uv python install 3.11
+py -3.11 --version
+只讀版本結果
+沒有 3.11：回 PowerShell 安裝
+先檢查 → 缺少就安裝 uv／Python 3.11 → 再檢查；版本不對就停在這一頁
+PYTHON_BIN（Python 3.11 執行器）｜來源：README.zh-TW.md｜作用：選擇符合版本的 interpreter
+單位：path｜判讀：結果必須是 Python 3.11.x；不符合就停止，不建 venv
+
+### Notes:
+本頁目的只是找到可用的 Python 3.11.x，不建立 venv，也不修改 `/home/u24/lora-energy-lab/student_policy.py`。Linux／WSL 先執行 `command -v python3.11` 與 `python3.11 --version`；若找不到，依 README 執行 `sudo apt update`、`sudo apt install -y curl`、`curl -LsSf https://astral.sh/uv/install.sh | sh`、`export PATH="$HOME/.local/bin:$PATH"`、`uv python install 3.11`、`PYTHON_BIN="$(uv python find 3.11)"`，最後以 `"$PYTHON_BIN" --version` 重查。macOS 先同樣檢查；沒有時可執行 `brew install python@3.11`、`PYTHON_BIN="$(brew --prefix python@3.11)/bin/python3.11"`，或依 README 改走 uv。Windows PowerShell 先執行 `py -3.11 --version`，再以 `$python311 = (py -3.11 -c "import sys; print(sys.executable)").Trim()` 取得路徑；若找不到，執行 `winget install --id=astral-sh.uv -e`、`uv python install 3.11`、`$python311 = (uv python find 3.11).Trim()`、`& $python311 --version`。Command Prompt 只以 `py -3.11 --version` 檢查；缺少時回到 PowerShell 安裝，不在 CMD 混用 PowerShell 語法。預期輸出一律是 `Python 3.11.x`；若沒有，停止於本頁，不建立 `.venv`。
+
+<!-- Slide number: 3 -->
+# 確認 venv 可用並建立 .venv
+這一步先測 venv module，再建立隔離資料夾；失敗就停，不安裝套件
+
+Linux／WSL
+macOS
+Windows PowerShell
+Windows Command Prompt
+"$PYTHON_BIN" -m venv --help
+"$PYTHON_BIN" -m venv .venv
+成功：出現 .venv/
+"$PYTHON_BIN" -m venv --help
+"$PYTHON_BIN" -m venv .venv
+成功：出現 .venv/
+& $python311 -m venv --help
+& $python311 -m venv .venv
+成功：出現 .venv\
+py -3.11 -m venv --help
+py -3.11 -m venv .venv
+成功：出現 .venv\
+先測 venv module → 建立 .venv；出現 venv／ensurepip 錯誤就停，不執行 pip install
+.venv（隔離 Python 環境）｜來源：Python 3.11 venv module｜作用：建立 package-local 環境
+單位：directory｜判讀：看到 .venv/ 或 .venv\ 才進入啟用；失敗回到 Python 版本頁
+
+### Notes:
+本頁只做一件事：確認 Python 3.11 內建的 `venv` module 可用，並在 package root 建立 `.venv`；不啟用、不安裝 requirements、不修改 policy。Linux／WSL 與 macOS 執行 `"$PYTHON_BIN" -m venv --help`，再執行 `"$PYTHON_BIN" -m venv .venv`；PowerShell 執行 `& $python311 -m venv --help` 與 `& $python311 -m venv .venv`；Command Prompt 執行 `py -3.11 -m venv --help` 與 `py -3.11 -m venv .venv`。成功判斷是 package root 出現 `.venv` 目錄；若回報缺少 `venv` 或 `ensurepip`，停止、不使用 `pip install venv`，刪除未完成的 package-local `.venv` 後回到上一頁改用 uv-managed Python 再建立。
+
+<!-- Slide number: 4 -->
+# 啟用 .venv 並確認 Python 路徑
+這一步讓 python 指向隔離環境；版本或路徑不對就停
+
+Linux／WSL
+macOS
+Windows PowerShell
+Windows Command Prompt
+source .venv/bin/activate
+python --version
+`python -c 'import sys; assert sys.prefix != sys.base_prefix; print(sys.executable)'
+source .venv/bin/activate
+python --version
+`python -c 'import sys; assert sys.prefix != sys.base_prefix; print(sys.executable)'
+.\.venv\Scripts\Activate.ps1
+python --version
+python -c "import sys; assert sys.prefix != sys.base_prefix; print(sys.executable)"
+call .venv\Scripts\activate.bat
+python --version
+python -c "import sys; assert sys.prefix != sys.base_prefix; print(sys.executable)"
+啟用 → python 指向 .venv → 版本與 sys.prefix 通過；不通過就停在啟用頁
+sys.prefix（隔離環境判斷）｜來源：Python runtime｜作用：確認目前 shell 已啟用 .venv
+單位：path｜判讀：sys.prefix 不等於 sys.base_prefix，且執行檔位於 .venv；否則不安裝
+
+### Notes:
+本頁只啟用剛建立的 `.venv` 並確認 interpreter；不安裝 requirements、不執行 verify、不修改 policy。Linux／WSL 與 macOS 使用 `source .venv/bin/activate`；PowerShell 使用 `.\.venv\Scripts\Activate.ps1`；Command Prompt 使用 `call .venv\Scripts\activate.bat`。各 shell 接著執行 `python --version` 與 `python -c 'import sys; assert sys.prefix != sys.base_prefix; print(sys.executable)'`（Windows 使用雙引號版本）。成功輸出為 Python 3.11.x，且 executable path 在 `.venv` 內、`sys.prefix` 不等於 base prefix。若 PowerShell 的 `Activate.ps1` 被 execution policy 擋住，不放寬全系統 policy；停止並改在同一 package 的 Command Prompt 執行 `call .venv\Scripts\activate.bat`。版本或路徑不正確時不要進入 pip install。
+
+<!-- Slide number: 5 -->
+# 在 venv 安裝鎖定套件並驗證 READY
+四種 shell 都先安裝鎖定檔再驗證；看到 READY 才進案例，失敗就停
+
+Linux／WSL
+macOS
+Windows PowerShell
+Windows Command Prompt
+python -m pip install
+--require-hashes --no-deps
+-r requirements-lock.txt
+bash course.sh verify
+python -m pip install
+--require-hashes --no-deps
+-r requirements-lock.txt
+bash course.sh verify
+python -m pip install
+--require-hashes --no-deps
+-r .\requirements-lock.txt
+.\course.cmd verify
+python -m pip install
+--require-hashes --no-deps
+-r requirements-lock.txt
+course.cmd verify
+locked requirements → verify → status: READY；沒有 READY 就停止，不執行 lab
+verify-receipt.json（驗證收據檔）｜來源：course.sh／course.cmd verify｜作用：記錄 Python、scenario 與 policy contract gate
+單位：JSON artifact｜判讀：看到 status: READY 才能進案例；它不是 result.json
+
+### Notes:
+本頁只在已啟用的 `.venv` 內安裝 package 的 exact locked file `requirements-lock.txt`，不是自行猜測的 `requirements.txt`；不修改 `/home/u24/lora-energy-lab/student_policy.py`、marked blocks、runner 或 scenario。Linux／WSL 執行 `python -m pip install --disable-pip-version-check --require-hashes --no-deps -r requirements-lock.txt`，接著 `bash course.sh verify`；macOS 使用相同兩個命令。PowerShell 執行相同 pip 參數但使用 `-r .\requirements-lock.txt`，接著 ` .\course.cmd verify`；Command Prompt 使用 `-r requirements-lock.txt`，接著 `course.cmd verify`。預期產生 `artifacts/verify-receipt.json`，其中 `status` 是 `READY`、Python 是 3.11.x，並保留 scenario identity、policy API 與 claim boundary。requirements install 或 verify 任何一步失敗就停，不進入 lab；此收據不是案例的 `result.json`，案例結果要等後續 run。
+
+<!-- Slide number: 6 -->
+# 卡住時修復或保留來源
+這一步處理卡關：修得好就重跑，修不好也不冒充本機執行
+
+① 正常
+② 修復什麼
+③ 回復什麼
+④ 看什麼
+READY 後執行案例
+產生新結果
+只修 Python、root、lock
+不改 policy block
+同情境結果成對保存
+result.json／endpoint-replay.json
+讀 artifact_source
+判斷本機或回復
+修復不改策略；回復不冒充本機執行
+artifact_source（資料來源分類）｜來源：結果紀錄｜作用：標示本機執行或回復資料
+單位：來源值｜判讀：來源模式保持原值，不改寫成本機執行
+
+### Notes:
+setup 或 verify 受阻時，只修復 Python minor、package root、lock 或 policy boundary；不能把回復資料說成本機執行。下一步依 `artifact_source` 判斷是否可進 run；讀取同一 lab／case 的 `result.json` 與 `endpoint-replay.json` pair，再按 service → packet → state → endpoint J → efficiency 判讀。本頁不改 student_policy.py 或任何 marked block。
+
+<!-- Slide number: 7 -->
+# 只可修改三個標記區塊
+這一步畫出可編輯邊界：三個實驗區可改，其他程式只讀
+
+① 唯一檔案
+② 可改區段
+③ 保持不變
+④ 下一步／證據
+只在這裡做實驗
+student_policy.py
+A／B／C 三個標記
+marked block
+中文註解、函式、情境
+runner、schemas 不動
+只開目前 lab
+結果仍看 result／replay
+只開目前實驗區；其他檔案與輸出契約保持不變
+marked block（標記區段）｜來源：檔案標記｜作用：界定一個實驗的可編輯範圍
+單位：程式碼區段｜判讀：其他套件邊界維持唯讀
+
+### Notes:
+實際 `/home/u24/lora-energy-lab/student_policy.py` 現在包含中文註解；本頁只鏡像說明，不能把投影片文字貼回程式。UTF-8/LF bytes 參與 policy identity，outside-block 的註解、函式、runner、scenario、schemas 與輸出契約都不改；可編輯面只有 `lab-a-pace-rest`、`lab-b-enter-exit-hold`、`lab-c-batch-urgent`。下一步只改當前 block 的一個 value，再看成對 result／replay 證據。
+
+<!-- Slide number: 8 -->
+# 程式每次判斷會看什麼
+這一步先說清楚輸入：每個 step 只看目前／過去資料
+
+① 讀目前資料
+② 不讀未來
+③ 交給函式
+④ 下一步／證據
+窗口、急件、間隔、品質
+都是當下 snapshot
+不看結果摘要
+不回看 energy
+把目前資料交給 choose_action()
+再回一個合法動作
+回一個合法動作
+runner 再記 event／result
+當下觀察 → 合法動作；這一頁沒有程式值變更
+choose_action（策略函式）｜來源：student_policy.py｜作用：依當下觀察回傳一個合法動作
+單位：函式契約｜判讀：只讀目前／過去欄位，不讀未來結果
+
+### Notes:
+`observation` 是 runner 每個固定 step 提供的唯讀快照，實際使用窗口、急件、期限、距上次傳送步數、傳送模式、品質、穩定步數與佇列數。此頁是中文說明，不可貼回 `/home/u24/lora-energy-lab/student_policy.py`；沒有 file／block／value 變更。下一步由 `choose_action(observation)` 回傳合法 action，再從 result／replay 讀 state／event、packet／delivery、service 與 endpoint J。
+
+<!-- Slide number: 9 -->
+# 判斷順序如何產生動作
+這一步把合法動作順序翻成白話；鏡像可讀，不能貼回程式
+
+① 窗口關閉
+② 期限逼近
+③ 節奏／品質
+④ 佇列／保底
+不能送出，先休息
+SLEEP
+急件先送出
+SEND_URGENT
+間隔未到休息；品質未穩等待
+REST_DURING_GAP／WAIT
+夠量批次，否則單筆；無事等待
+FLUSH_BATCH／SEND_ONE／WAIT
+先看窗口，再看期限、間隔、品質與佇列；順序會改變動作
+action（合法動作）｜來源：policy API｜作用：把條件轉成 runner 可執行的動作
+單位：enum｜判讀：下一步從 state／packet／service／endpoint J 讀後果
+
+### Notes:
+這一頁是 `choose_action()` 的 read-only 中文註解鏡像，不可貼回程式。實際順序是窗口關閉回傳 `SLEEP`；urgent deadline 回傳 `SEND_URGENT`；pacing gap 回傳 `REST_DURING_GAP`；品質 hold 未滿足回傳 `WAIT`；quality ready 且 queue 足量回傳 `FLUSH_BATCH`，否則 `SEND_ONE`；所有條件都不要求傳送時回傳 `WAIT`。沒有 file／block／value 變更；下一步 run 後按 service → packet／delivery → state／event → endpoint J → efficiency 判讀。
+
+<!-- Slide number: 10 -->
+# Lab A：空檔休息與等待
+Lab A 的目的：比較空檔休息與清醒等待，找服務／能量取捨
+
+① 檔案／區段
+② Before（唯一變更）
+③ After（唯一變更）
+④ 固定／觀察
+student_policy.py
+lab-a-pace-rest
+空檔休息
+SLEEP
+清醒等待
+WAIT
+gap=2；A/B/C、runner 不動
+看 service／state／J
+只改空檔動作 → 改變休息／清醒／喚醒 → 影響服務與端點焦耳
+REST_DURING_GAP（空檔動作）｜來源：Lab A marked block｜作用：控制送出間隔中的狀態
+單位：action｜判讀：比較 SLEEP 與 WAIT 對狀態、服務、端點 J 的影響
+
+### Notes:
+Lab A 的 exact file 是 `/home/u24/lora-energy-lab/student_policy.py`，exact block 是 `lab-a-pace-rest`；mirror 顯示 Before `SLEEP`、After `WAIT`，只改一個 value。`PACE_GAP_STEPS = 2`、Lab B/C、runner、scenario、schemas、中文註解與函式都不變。機制是 action 改變 sleep／awake-idle／wake 分布。下一步 baseline → candidate with freeze → hidden frozen policy；每次保留 `result.json` + `endpoint-replay.json`，網站先看 service，再看 packet／state／endpoint J／efficiency。較低 J 但 service fail 仍是 trade-off。
+
+<!-- Slide number: 11 -->
+# Lab C：批次與期限餘裕
+Lab C 的目的：比較批次門檻與期限餘裕，找傳送時機代價
+
+① 檔案／區段
+② Before（唯一變更）
+③ Candidate／Revision
+④ 固定／觀察
+student_policy.py
+lab-c-batch-urgent
+期限餘裕
+20 秒
+候選 5 秒
+修訂 30 秒
+BATCH_SIZE=3；A/B、runner 不動
+看 service／deadline／delivery／J
+只改期限餘裕 → 改變緊急分支提早量 → 影響期限與送達
+URGENT_MARGIN_S（緊急餘裕秒數）｜來源：Lab C marked block｜作用：提供期限分支的比較值
+單位：秒｜判讀：觀察緊急動作、送達、期限與端點 J
+
+### Notes:
+Lab C 的 exact file 是 `/home/u24/lora-energy-lab/student_policy.py`，exact block 是 `lab-c-batch-urgent`；Before 20、candidate 5、revision 30，只有這個 value 變更。`BATCH_SIZE = 3`、frozen A/B、runner、scenario、schemas、中文註解與函式均不變。機制是 threshold 改變 `SEND_URGENT` 提前量。下一步 baseline → candidate → revision with freeze → withheld surprise；保存 result／replay pair，先看 service，再看 deadline／delivery／state／endpoint J／efficiency。
+
+<!-- Slide number: 12 -->
+# Lab B：穩定觀察如何影響動作
+這一步用 Lab B 示範品質條件：穩定次數會改變 action 何時出現
+
+① 檔案／區段
+② Before（唯一變更）
+③ After（唯一變更）
+④ 固定／觀察
+student_policy.py
+lab-b-enter-exit-hold
+穩定 2 步
+才保持
+穩定 1 步
+即可
+ENTER=2、EXIT=1；A/C、runner 不動
+看 transition／service／J
+只改穩定步數 → 改變可送模式出現時間 → 影響送達與服務
+STABLE_STEPS（穩定步數）｜來源：Lab B marked block｜作用：決定可送模式何時成立
+單位：steps｜判讀：比較 transition、送達、服務與端點 J
+
+### Notes:
+Lab B 的 exact file 是 `/home/u24/lora-energy-lab/student_policy.py`，exact block 是 `lab-b-enter-exit-hold`；Before `STABLE_STEPS = 2`，After 只改 1。`ENTER_QUALITY = 2`、`EXIT_QUALITY = 1`、frozen A/C、runner、scenario、schemas、中文註解與函式均不變。機制是 stable observations 改變 quality_ready，因而改變 send-ready transition timing。下一步 Trace A baseline → candidate with freeze → withheld Trace B；保留 result／replay pair，先看 service，再看 packet／state／endpoint J／efficiency。
+
+<!-- Slide number: 13 -->
+# 動作之後要讀哪些事件
+這一步把動作接到證據：先看到狀態事件，再判斷服務與成本
+
+① WAIT 後
+② SLEEP 後
+③ SEND 後
+④ 結果
+清醒閒置時間增加
+改看 awake-idle
+休息再喚醒
+改看 sleep／wake
+處理、發射、接收
+再看 packet 是否送達
+服務成敗與端點焦耳
+endpoint_energy_j
+動作 → 狀態／封包事件 → 服務結果 → 端點焦耳；不能倒過來
+endpoint_energy_j（端點能量）｜來源：端點無線與處理模型｜作用：累積狀態與轉換能量
+單位：焦耳｜判讀：只屬端點證據，不等於系統能量
+
+### Notes:
+`WAIT` 會留下 awake-idle，`SLEEP` 會留下 sleep 並在恢復時產生 wake；send action 沿 process、TX、RX 形成 attempt／retry／delivery／expiry。下一步依 service → packet → state → endpoint J → efficiency 讀取。`endpoint_energy_j` 只屬 endpoint layer，與 LEO／system／canonical energy 分開；較低 J 且 service fail 只能說明 trade-off。
+
+<!-- Slide number: 14 -->
+# 縮排與回傳決定程式走哪條路
+這一步只讀一小段程式：看縮排如何選分支，再把動作交回執行器
+
+① 先看意思
+② 縮排做什麼
+③ 先檢查
+④ 下一步／看什麼
+窗口關閉就不送
+if ...: return SLEEP
+把條件放進正確分支
+只修 active block
+執行 py_compile
+只檢查語法、不改檔
+通過後跑 baseline
+讀 result／replay pair
+縮排 → 分支 → 回傳 → runner 事件；語法檢查不改內容
+return（回傳）｜來源：policy function｜作用：把一個合法動作交給執行器
+單位：動作值｜判讀：語法通過後再看 result／replay 的實際事件
+
+### Notes:
+目前 `/home/u24/lora-energy-lab/student_policy.py` 的中文註解已說明每個 branch。這一頁只顯示小段可讀鏡像：窗口關閉時由 `if ...` 進入 `return SLEEP`；縮排決定 statement 屬於哪個條件。`.venv/bin/python -m py_compile student_policy.py` 只檢查語法，不改檔；若錯，只修目前 active marked block，中文註解、函式、runner、scenario 與 schemas 不動。下一步才執行 P027b baseline，讀成對 result／replay。
+
+<!-- Slide number: 15 -->
+# 先建立基準結果再比較
+這一步先保存沒有改動的基準，下一步才比較候選值
+
+① 固定輸入
+② 執行命令
+③ 產生結果
+④ 下一步／看什麼
+packaged policy＋固定情境
+不讀未來結果
+只跑 baseline
+bash course.sh run --lab A --case baseline
+兩個 JSON
+result.json／endpoint-replay.json
+原始程式不回寫
+確認 status: OK、路徑
+先 service，再成本
+先保存基準，再凍結規則，最後比較候選；結果不能回頭改 block
+result_path（結果檔路徑）｜來源：命令輸出｜作用：定位 result.json
+單位：路徑文字｜判讀：網站只匯入 result.json；endpoint replay 只做配對，runner 不是網站
+
+### Notes:
+POSIX exact command 是 `bash course.sh run --lab A --case baseline`；Windows 是 `course.cmd run --lab A --case baseline`。它讀 packaged `student_policy.py` 與 fixed scenario，只在 run directory 寫 `result.json`、`endpoint-replay.json`，不修改 policy source、marked blocks、runner、scenario 或 schemas。下一步確認 `status: OK`、run identity、`result_path`，網站先看 service，再看 packet／state／endpoint J／efficiency；Lab A／B／C 後續依各自 baseline → candidate → freeze → withheld 順序比較。

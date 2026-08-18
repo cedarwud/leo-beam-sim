@@ -1,0 +1,265 @@
+{
+  "schema_version": "core-speaker-notes-v1",
+  "matching_contract": "semantic_key + visible_title + visible_text_signature_sha256",
+  "deck_filename": "LoRaEnergySim-LEO-ALT-CORE-CLASSROOM-REVIEW.pptx",
+  "entries": [
+    {
+      "semantic_key": "opening.finite-battery-changing-service-window",
+      "visible_title": "有限電池 × 變動服務窗口",
+      "visible_text_signature_sha256": "fe9caf2ee1484da4f6468f5859cfe230eafa2113af80be4196cffba0432ad951",
+      "note": "本頁先界定固定情境：端點以有限電池運作，資料封包會產生並進入佇列，服務窗口則依固定軌跡開啟、關閉或縮短。先看可服務窗口，再看策略動作，最後依服務判定與端點能量解讀結果。scenario 的中文名稱是情境定義，來源為 course package，作用是固定端點、窗口與資料規則，單位為 identifier；判讀時確認相同輸入能否重跑同一條比較路徑。下一頁將說明把這條路徑放入 LoRaEnergySim 模型的方式。"
+    },
+    {
+      "semantic_key": "foundation.loraenergysim-model",
+      "visible_title": "LoRaEnergySim 是什麼",
+      "visible_text_signature_sha256": "e555f4f1f8013043e8c3bbdb429a56654149166e7daaea7f20e535e46dec955e",
+      "note": "本頁把 LoRaEnergySim 定義為端點能源決策的模型參照。端點產生資料並選擇動作，資料封包依序經過產生、佇列與傳送嘗試，閘道接收封包並留下送達、碰撞與重傳事件。simulator 的中文名稱是模擬器，來源為 course package 對 LoRaEnergySim 的參照，作用是在固定時鐘重播端點、封包與能量假設，單位為一次固定執行；判讀時用它產生可比較的事件與能量證據，不把結果說成實測。"
+    },
+    {
+      "semantic_key": "foundation.upstream-capabilities",
+      "visible_title": "原始上游套件已做什麼",
+      "visible_text_signature_sha256": "ef436581dfa2b4217c2288f08d883aefd2c995e2fc6c9333c09ef9e26fdf1b04",
+      "note": "本頁說明模型能力與課程封裝的分工。GillesC/LoRaEnergySim 提供休眠、處理、發射、接收，以及封包、碰撞、重傳與端點能量的研究語言；固定情境、LEO 服務窗口、案例順序、受控策略、結構化匯入與 Leo 重播則由課程另外組織。upstream_model 的中文名稱是上游模型能力，來源為指定的 LoRaEnergySim repository provenance，作用是提供狀態、封包與能量概念，單位為能力集合；判讀時只表示模型參照，不把本課 runner 說成上游程式本身。"
+    },
+    {
+      "semantic_key": "foundation.course-packaging",
+      "visible_title": "課程封裝補了什麼",
+      "visible_text_signature_sha256": "ff1c32d9833ecc91ae5379e66889989860237eaa0f06a88b7031517b3d168c3d",
+      "note": "本頁沿讀取順序說明課程封裝：先固定 scenario.json 與 scenario_id，再在 student_policy.py 的 marked block 中做受控決策，由 runner 依序產生 baseline、candidate 與 withheld，最後把 result.json 與 endpoint replay 帶到 Leo 進行驗證、重播與 Workbook 保存。runner 的中文名稱是課程執行器，來源為 course package，作用是讀固定情境、載入受控策略並輸出 result 與 replay，單位為 run artifact；判讀時代表一條可追溯的課程執行路徑。"
+    },
+    {
+      "semantic_key": "foundation.competition-relevance",
+      "visible_title": "為什麼競賽要用它",
+      "visible_text_signature_sha256": "dca050c08bc11c34241f6fa00427228ebaed86ae7c3f90170178f9419c945605",
+      "note": "本頁把競賽關聯落在可反駁的因果證據：固定 scenario、策略檔與 seed 讓事件路徑可重跑，單一受控區塊讓差異可以歸因，再將結果帶回 Leo 讀取。evidence 的中文名稱是證據，來源為 result.json 與 endpoint replay，作用是保存 policy、event、service 與端點 J 的連接，單位為 record；判讀時只支持 bounded comparison。這套件不提供即時、實測或整體 LEO 能量主張，轉移到智慧農業、暖通空調或物流時仍須重訂窗口、期限與能量邊界。"
+    },
+    {
+      "semantic_key": "workflow.run-produces-artifacts",
+      "visible_title": "只有 run case 才產生結果檔",
+      "visible_text_signature_sha256": "f43118f0243a8d617698c2811d9107885234d2c75f0e8623724a8b72396a9030",
+      "note": "本頁區分環境檢查與案例執行。setup 與 verify 只核對 package、scenario、policy 與 interpreter 條件，不代表案例已執行；只有 run case 由本機 runner 依固定輸入模擬，才會在 artifacts/<run_id>/ 寫入 result.json 與 endpoint-replay.json。run artifact 的中文名稱是執行產物，來源為本機 runner，作用是保存一次執行的結果與端點事件重播，單位為同一個 run 目錄；判讀時只有 run 產物可以承載本次案例的服務、封包、狀態與端點 J。"
+    },
+    {
+      "semantic_key": "workflow.course-import-boundary",
+      "visible_title": "課程頁 /course 只匯入結果檔",
+      "visible_text_signature_sha256": "2561c5d2bb511faf4e8666e91de8e73895cc58766098a5a80e548fae77c7e8e7",
+      "note": "本頁先讀本機責任，再讀 Leo 的工作。Linux／macOS 終端機或 WSL 的 Linux 指令由 runner 讀取 student_policy.py，依固定情境產生 result.json 與同目錄的 endpoint-replay.json；/course 只選 result.json，負責驗證身份與結構、具象化結果、建立重播並寫入 Workbook。course import 的中文名稱是課程匯入，來源為 /course 控制項，作用是驗證 result.json 並建立 replay 與 Workbook，單位為 JSON pair；判讀時保留同目錄配對檔，不把策略原始檔交給網站。"
+    },
+    {
+      "semantic_key": "workflow.baseline-candidate-withheld-reading-order",
+      "visible_title": "三次匯入，沿同一解讀順序",
+      "visible_text_signature_sha256": "052eb94f71de0f4ee21c24c24af2a5eabf446a976ec1cb22acb995244463c694",
+      "note": "本頁固定三次匯入與讀取順序。baseline 是基準，candidate 是受控候選，withheld 是保留反例；每次選該次 result.json，並讓同一 run 目錄的 endpoint-replay.json 保持配對。先讀 service，再讀 packet，再讀 state，最後讀 endpoint J；--freeze 產生的 receipt 與 checkpoint 只保存策略 lineage，不是一般上傳檔。import order 的中文名稱是匯入順序，來源為 /course 與配對 artifacts，作用是依序比較三次 JSON pair，單位為三次 JSON pair；判讀時不可用單一總數字取代事件順序。"
+    },
+    {
+      "semantic_key": "mechanism.action-service-energy",
+      "visible_title": "一次動作，同時改變服務與能量",
+      "visible_text_signature_sha256": "78c22371b48c5deed1b3758332144daa8a4ac11a613d679d1c75a03d999534c0",
+      "note": "本頁說明一次策略動作的三種後果路徑。SLEEP 進入低功耗休息，下一次傳送可能增加 WAKE；WAIT 保持清醒並持續累積 awake-idle 能量；SEND 類動作建立服務機會，並留下處理、發射、接收、碰撞或重試事件。action 的中文名稱是策略動作，來源為 policy API，作用是提供每次決策的唯一輸出，單位為 enum；判讀時先看它造成的狀態與封包轉移，再看服務和端點能量是否跟著變化。"
+    },
+    {
+      "semantic_key": "mechanism.event-supported-attribution",
+      "visible_title": "先讀中間事件，再讀最終結果",
+      "visible_text_signature_sha256": "3d456d6215767d94576e54371f9633a36609cce7355c05b3dbbbd2e0e69480db",
+      "note": "本頁建立歸因順序：先確認服務窗口，再看策略動作、無線狀態與封包事件，最後判讀服務與端點能量。窗口關閉時，傳輸類動作不會進入執行，安全分支為 SLEEP。radio_state 的中文名稱是無線狀態，來源為 runner event ledger，作用是表示每個狀態區間，單位為 state enum 加 duration；判讀時用它把端點能量拆回時間段。若中間事件沒有差異，最終數值就不能直接歸因於本次修改。"
+    },
+    {
+      "semantic_key": "workflow.four-step-operation-loop",
+      "visible_title": "固定情境中的四步操作閉環",
+      "visible_text_signature_sha256": "75a005749eea1e3d17ca00a3f0d912bc20f7bb8adc8c7dbd4b327d2136fc76fe",
+      "note": "本頁將操作閉環讀成四段：在 student_policy.py 的 marked block 只改一個受控常數，執行固定 case，讀取狀態、封包、服務與能量，再以動作到事件到結果的關係解釋。result.json 的中文名稱是結果資料檔，來源為 package runner，作用是保存 run identity、狀態、封包、服務與能量，單位為 JSON artifact；判讀時把它作為 replay 與 import 的輸入。預測與反例必須和結果一起保存，下一頁會說明中間事件如何支撐歸因。"
+    },
+    {
+      "semantic_key": "mechanism.event-bridge",
+      "visible_title": "中間事件是因果歸因的必要橋樑",
+      "visible_text_signature_sha256": "da8f2096df7a9a19f93f3dbd5fab73a1cc48979398ef7cee47ba88c1686a9015",
+      "note": "本頁比較相同觀測下的基準與候選。兩者先使用同一份觀測，差異由策略動作開始，接著沿各自的事件路徑抵達服務與端點能量；只有事件路徑出現可讀差異，才有基礎討論結果差異。packet_progress 的中文名稱是封包進度，來源為 result 或 replay artifact，作用是記錄產生、佇列、嘗試、重試、送達與逾期，單位為 event count 加 time；判讀時用它連接動作與服務結果。"
+    },
+    {
+      "semantic_key": "evidence.runner-claim-boundary",
+      "visible_title": "Runner 證據有明確邊界",
+      "visible_text_signature_sha256": "1735280ef8863553d801b55f6fd113cd11003755f21b71a62a39d756205380b1",
+      "note": "本頁標出 runner 可以支持的證據層級。固定 scenario、policy 與 seed 可以重跑端點狀態、封包事件、服務判定與端點 J，但不把這些結果延伸成 LEO 或 system energy、canonical efficiency、實測或即時 KPI。endpoint_energy_j 的中文名稱是端點能量，來源為 endpoint radio 與 processing model，作用是累積狀態能量，單位為 J；判讀時只把它放在 endpoint evidence layer，並與 Leo 的驗證、重播與 Workbook 記錄分開。"
+    },
+    {
+      "semantic_key": "context.leo-changing-service-window",
+      "visible_title": "LEO 是變動服務窗口的工作範例",
+      "visible_text_signature_sha256": "ff390fad8e1a3d0c8ba6a60ccabb20f40b51d0bbc0165deb4decda123f6fdda8",
+      "note": "本頁把 LEO 放在變動服務窗口的工作情境中：窗口開啟、品質下降、窗口關閉，再度開啟，會改變端點可服務的機會；主要控制仍是端點在等待、休息與送出之間做選擇。Leo 同時提供 result 驗證、endpoint replay 與 Workbook 的證據平台。service_window 的中文名稱是服務窗口，來源為 fixed scenario trace，作用是定義合法傳輸區間，單位為 trace time；判讀時先確認動作是否落在合法窗口，再解釋服務與端點 J，不能把情境輸入說成 live satellite data。"
+    },
+    {
+      "semantic_key": "workflow.prediction-to-result",
+      "visible_title": "從預測到結果，保留可反駁路徑",
+      "visible_text_signature_sha256": "4ecd7d70783825c3ccca413077a4bb3550e1cee64f9ecb3d35d43ba464c3ffc7",
+      "note": "本頁將實驗讀成四步：先在 Workbook 記錄狀態、封包、服務或端點能量的預測方向，再做一次一個常數的受控修改，依固定 case 執行，最後比較並保存結果、解釋與反例。prediction 的中文名稱是預測，來源為 workbook record，作用是指定可反駁的變化方向，單位為 statement；判讀時把它當作執行前的基準，不用事後結果倒推預測。withheld 維持 frozen policy，讓機制能在另一條固定情境中接受檢查。"
+    },
+    {
+      "semantic_key": "experiments.three-controlled-blocks",
+      "visible_title": "三個實驗到底改什麼",
+      "visible_text_signature_sha256": "55243b3aca78465a6b07d05fe1299a7afdf2b9a7eb01e5be31133c51177072b5",
+      "note": "本頁總覽三個受控變更。Lab A 在 student_policy.py 的 lab-a-pace-rest 把 REST_DURING_GAP 從 SLEEP 改為 WAIT，PACE_GAP_STEPS = 2 固定；Lab B 把 lab-b-enter-exit-hold 的 STABLE_STEPS 從 2 改為 1，ENTER_QUALITY=2 與 EXIT_QUALITY=1 固定；Lab C 在 lab-c-batch-urgent 依序把 URGENT_MARGIN_S 從 20 改為 5 再改為 30，BATCH_SIZE=3 固定。runner、scenario、schema 與其他區塊都不動，依 prediction、baseline、candidate、withheld 讀取服務、封包、狀態與 J。marked block 的中文名稱是受控區塊，來源為 student_policy.py，作用是限制最小決策面，單位為 one block；判讀時其餘檔案與行保持不變。"
+    },
+    {
+      "semantic_key": "foundation.loraenergysim-value",
+      "visible_title": "LoRaEnergySim 提供的三項價值",
+      "visible_text_signature_sha256": "f89a09e5afba1c70b83f39fc33f5db30862bbb71d7358fbefbf73b8f8ce9d908",
+      "note": "本頁正面說明 LoRaEnergySim 的三項價值。第一，提供端點狀態與能量語言，把休眠、處理、TX、RX 連到端點能量邊界；第二，提供封包、碰撞、重試與送達事件，讓策略後果能由中間證據解釋；第三，提供固定模型來源與版本，讓案例和結果可以依一致欄位比較。model_reference 的中文名稱是模型參考，來源為固定的 LoRaEnergySim repository 與版本，作用是提供端點狀態、封包事件與能量欄位的可追溯語言，單位為來源識別；判讀時沿同一模型語言比較不同策略的事件與結果。"
+    },
+    {
+      "semantic_key": "setup.move-release-into-linux",
+      "visible_title": "把下載資料搬進 Linux 課程資料夾",
+      "visible_text_signature_sha256": "933a7d04f832ec3f9223058415c40e0dec18aa24d62e6e0b9cc15ccf068ee4bd",
+      "note": "本頁只做路徑準備。先把 release 副本從 Windows Downloads 放入 Linux staging，再進入 lora-energy-lab/ 根目錄；這個動作不修改 Windows 原檔、student_policy.py 或任何 marked block。pwd 的中文名稱是目前目錄命令，來源為 Linux／macOS 終端機，WSL 也使用 Linux 指令，作用是確認目前位置，單位為路徑文字；判讀時輸出應位於 Linux home 的課程資料夾。路徑與根目錄不一致時先停在這一頁，不進入 setup。"
+    },
+    {
+      "semantic_key": "setup.create-venv-ready",
+      "visible_title": "建立環境並確認 READY",
+      "visible_text_signature_sha256": "6e1dab8076cbf1512d254cfb77d6d7a0fb1ede2993c8eb487af1d65901f0efd1",
+      "note": "本頁建立可重現的 package-local 環境。Linux／macOS 終端機與 WSL 先以 setup.sh 建立 .venv，再以 course.sh verify 核對 Python 3.11.x、scenario identity、policy 結構與 engine mode；Windows 使用對應啟動器。PYTHON_BIN 的中文名稱是 Python 執行器路徑變數，來源為命令工具設定，作用是指定建立環境時採用的版本，單位為路徑文字；判讀時只有看到 READY、版本與根目錄一致，才進入後續案例，這一步尚未產生 case result。"
+    },
+    {
+      "semantic_key": "setup.ready-is-not-case-result",
+      "visible_title": "READY 只代表環境可用",
+      "visible_text_signature_sha256": "1d2e4f15313cb3248dccdb7930d90786d13cacecd652d9075ba92ca2b4d375fa",
+      "note": "本頁只讀環境收據，不執行案例。verify-receipt.json 的中文名稱是驗證收據檔，來源為 setup／verify 的環境檢查命令，作用是記錄 interpreter、scenario 與契約關卡，單位為 JSON 檔案；判讀時它只表示環境可用，不能代替 result.json、endpoint replay 或服務結果。Linux 可用 sed 讀取，PowerShell 可用 Get-Content，Command Prompt 可用 type；這些讀取不改檔。下一步核對狀態、版本與身份後，才進入 run case。"
+    },
+    {
+      "semantic_key": "setup.verify-case-identity",
+      "visible_title": "確認環境與案例身份",
+      "visible_text_signature_sha256": "a671b3a412630c259ca0f4a135d0b85c46cbd727be539016c870998be9d0bb89",
+      "note": "本頁在案例前確認三個身份條件：status 必須顯示 READY，Python 必須是 3.11.x，scenario_id 必須指向固定案例情境；同時確認 policy API version 與 package root 沒有偏移。status 的中文名稱是狀態，來源為驗證收據，作用是表示環境與契約是否可進入案例，單位為狀態值；判讀時通過只表示準備完成，不宣稱服務或能量結果。這一頁沒有 file、block 或 value 變更，下一步執行後才讀 result.json 的 service、packet、state 與 endpoint J。"
+    },
+    {
+      "semantic_key": "provenance.claim-boundary",
+      "visible_title": "說清資料來源與主張邊界",
+      "visible_text_signature_sha256": "d5bf2baa96a707080360eae59dbddea75ad87305c794488208f50fe21a4e20f9",
+      "note": "本頁先標明資料怎麼產生，再決定能解讀到哪裡。engine_mode 的中文名稱是執行模式，來源為執行器紀錄，作用是分類資料產生方式，單位為模式值；固定值表示 coherent-course-simulated-adapter。upstream_execution 為 false，表示本課流程沒有執行上游研究程式；result 的 artifact_source 會再標示本機執行或同情境回復。判讀時保留 SIMULATED TEACHING DATA、NOT LIVE、NOT MEASURED、NOT CANONICAL-PARITY-VERIFIED 的邊界，不把模擬資料提升成即時、實測或整體系統指標。"
+    },
+    {
+      "semantic_key": "recovery.repair-or-preserve",
+      "visible_title": "卡住時修復或保留來源",
+      "visible_text_signature_sha256": "f3eb097dc42575da6c1a299ccf47b207f2db84e73b4bd91114971ed120468f0e",
+      "note": "本頁說明受阻時的安全路徑。正常狀態由 READY 進入 run case；若 setup 或 verify 受阻，只修復 Python、package root、lock 或 policy boundary，保持三個 marked block、runner、scenario 與 schema 不變。若使用同情境回復資料，result.json 與 endpoint-replay.json 仍須成對保存，不能把回復資料說成本機執行。artifact_source 的中文名稱是資料來源分類，來源為結果紀錄，作用是標示本機執行或回復資料，單位為來源值；判讀時先看 source，再按 service、packet、state、endpoint J、efficiency 讀取。"
+    },
+    {
+      "semantic_key": "policy.editable-blocks",
+      "visible_title": "只可修改三個標記區塊",
+      "visible_text_signature_sha256": "b72efeb1793fbaee533f16bd9bd23fccdb695b3550e6452c04d7f7478d40f41b",
+      "note": "本頁畫出唯一可編輯邊界：實際檔案是 student_policy.py，三個區塊是 lab-a-pace-rest、lab-b-enter-exit-hold 與 lab-c-batch-urgent；一次只開目前的 lab。中文註解、choose_action()、runner、scenario、schemas、輸出契約與其他區塊保持不變。marked block 的中文名稱是標記區段，來源為檔案中的編輯標記，作用是界定一個實驗的可修改範圍，單位為程式碼區段；判讀時只比較 active block 的 before／after，並以成對 result／replay 證據支持因果。"
+    },
+    {
+      "semantic_key": "policy.observation-inputs",
+      "visible_title": "程式每次判斷會看什麼",
+      "visible_text_signature_sha256": "60ebc20480b820dccd7e6cc11648bdf5a5573b8b42740c285c218b1e4693afa8",
+      "note": "本頁先說明 choose_action() 的輸入邊界。observation 的中文名稱是觀測快照，來源為 runner 在每個固定 step 提供的唯讀資料，作用是提供窗口、急件、期限、距上次傳送步數、傳送模式、品質、穩定步數與佇列數，單位依各欄位定義；判讀時只讀目前與過去資料，不讀未來結果或能量摘要。函式回傳一個合法 action，runner 再記錄 event 與 result。這一頁沒有 file、block 或 value 變更，下一頁讀固定的判斷順序。"
+    },
+    {
+      "semantic_key": "policy.decision-order",
+      "visible_title": "判斷順序如何產生動作",
+      "visible_text_signature_sha256": "799eeeda283bf08badf8a99180813772f062f40e035eedf8a422ee6b3f85b343",
+      "note": "本頁按程式由上而下朗讀決策順序：窗口關閉先回傳 SLEEP；窗口開啟且急件期限逼近時回傳 SEND_URGENT；pacing gap 尚未完成時回傳 REST_DURING_GAP；品質尚未達標時回傳 WAIT；品質可用且佇列達到 BATCH_SIZE 時回傳 FLUSH_BATCH，否則回傳 SEND_ONE，沒有可送資料時由 runner 安全處理為等待。action 的中文名稱是合法動作，來源為 policy API，作用是把條件轉成 runner 可執行的動作，單位為 enum；判讀時再從 state、packet、service 與 endpoint J 讀後果。"
+    },
+    {
+      "semantic_key": "policy.indentation-return",
+      "visible_title": "縮排與回傳決定程式走哪條路",
+      "visible_text_signature_sha256": "d9277a801ad10c2f1e3088e0c842fd45f309b0ac5df8a34c6663c9a4706b52b6",
+      "note": "本頁只讀窗口關閉的局部程式。if 條件的縮排決定 return SLEEP 屬於哪個分支，return 的中文名稱是回傳，來源為 policy function，作用是把一個合法動作交給執行器，單位為動作值；判讀時語法正確仍不等於服務成功，必須再讀 result／replay 的實際事件。下一個命令是 .venv/bin/python -m py_compile student_policy.py，只檢查語法、不改檔；通過後執行 baseline，按 service、packet／delivery、state／event、endpoint J 讀取。"
+    },
+    {
+      "semantic_key": "lab-a.baseline-command",
+      "visible_title": "先建立基準結果再比較",
+      "visible_text_signature_sha256": "0965378f5adcf70e0d07ce2455d68882b6a4e323cbfac973aa14514ea16d03b1",
+      "note": "本頁先保存未修改的 Lab A 基準。Linux、macOS 與 WSL 使用 bash course.sh run --lab A --case baseline；Windows 對應為 course.cmd run --lab A --case baseline。命令讀取 packaged student_policy.py 與 fixed scenario，只在 artifacts/<run_id>/ 寫入 result.json、endpoint-replay.json，不回寫策略檔、runner、scenario 或 schemas。result_path 的中文名稱是結果檔路徑，來源為命令輸出，作用是定位該次 result.json，單位為路徑文字；判讀時先核對 status、run identity 與 path，再讀 service，下一步才改候選值。"
+    },
+    {
+      "semantic_key": "lab-a.locate-marked-block",
+      "visible_title": "先找到唯一要改的地方",
+      "visible_text_signature_sha256": "a612cd3f6e066950dbe0631a69bd3bf7902bd551b039920cc1c3cc19da367bdb",
+      "note": "本頁定位 Lab A 的單一變更面。檔案是 student_policy.py，marked block 是 lab-a-pace-rest，唯一變數是 REST_DURING_GAP；PACE_GAP_STEPS = 2、Lab B/C 區塊、runner、scenario 與 schemas 都保持不變。REST_DURING_GAP 的中文名稱是空檔動作，來源為 student_policy.py 的 active block，作用是決定傳送間隔中的休息方式，單位為 action 設定值；判讀時先確認只改這一行。下一個檢查命令是 .venv/bin/python -m py_compile student_policy.py，通過後讀 Lab A 的 baseline／candidate／hidden 事件。"
+    },
+    {
+      "semantic_key": "lab-a.edit-sleep-to-wait",
+      "visible_title": "只改這一行：SLEEP → WAIT",
+      "visible_text_signature_sha256": "20782d891af517213db5b19fff4942dc14d8f2d031dfcdcab537ded2627560f7",
+      "note": "Lab A 只修改 /home/u24/lora-energy-lab/student_policy.py 的 lab-a-pace-rest block：before 是 REST_DURING_GAP = SLEEP，after 是 REST_DURING_GAP = WAIT。SLEEP 讓空檔進入低功耗休息，WAIT 讓端點保持清醒並累積 awake-idle；PACE_GAP_STEPS = 2、Lab B/C、runner、scenario、schemas 與其他行固定不變。下一個命令先執行 .venv/bin/python -m py_compile student_policy.py，再執行 bash course.sh run --lab A --case candidate --freeze。結果要讀 state duration、SLEEP／AWAKE_IDLE／WAKE、PROCESS／TX／RX、packet outcome、service 與 endpoint J，不能只看 J。"
+    },
+    {
+      "semantic_key": "lab-a.execute-sequence",
+      "visible_title": "為什麼 SLEEP → WAIT，接著怎麼執行",
+      "visible_text_signature_sha256": "81e0d7f7e921375e22e1dce3425f646019530f8e13a5c2e8066c3acc120b9c45",
+      "note": "Lab A 的機制是空檔動作改變狀態時間：SLEEP 可能降低休息能量，但再次傳送要支付 WAKE；WAIT 不支付同樣的喚醒路徑，卻會累積 awake-idle。固定檔案、block 與 before／after 仍是 REST_DURING_GAP：SLEEP → WAIT，PACE_GAP_STEPS = 2 與所有其他程式保持不變。依序執行 bash course.sh run --lab A --case baseline、bash course.sh run --lab A --case candidate --freeze、bash course.sh run --lab A --case hidden；Windows 只替換為 course.cmd。每次都讀 state duration、wake/process/TX/RX buckets、packet outcome、service 與 endpoint J，hidden 使用 frozen policy 檢查機制。"
+    },
+    {
+      "semantic_key": "lab-a.read-evidence",
+      "visible_title": "上傳後怎麼解讀",
+      "visible_text_signature_sha256": "a4b44a9b9854bf5db43f10c0aeec8406080c34cb15915bcf63706ce1bfd90f4b",
+      "note": "Lab A 每次完成後，依 stdout 的 result_path 找到該次 result.json，於 /course 只匯入這個檔案，並保留同一目錄的 endpoint-replay.json。先核對 scenario ID 與 run ID，再按 service、packet 的送達／重試／逾期、state 的休眠／清醒／傳送，最後讀 endpoint J；radio_state 的中文名稱是無線狀態，來源為 result／replay artifact，作用是支持本次機制判讀，單位依欄位定義。預期差異先出現在 sleep、awake-idle、wake 與相關狀態時間，再檢查封包與服務；若中間事件沒有差異，不能把最後的焦耳差異歸因於 WAIT。"
+    },
+    {
+      "semantic_key": "lab-b.locate-marked-block",
+      "visible_title": "先找到唯一要改的地方",
+      "visible_text_signature_sha256": "51a80f5e4b1680a162882f3d9c7337a77e7efea443a897107d76c5d9aa6fa426",
+      "note": "本頁定位 Lab B 的單一變更面。檔案是 student_policy.py，marked block 是 lab-b-enter-exit-hold，唯一變數是 STABLE_STEPS；ENTER_QUALITY = 2、EXIT_QUALITY = 1、Lab A/C 區塊、runner、scenario 與 schemas 保持不變。STABLE_STEPS 的中文名稱是穩定步數，來源為 student_policy.py 的 active block，作用是決定品質達標要連續維持幾個 step，單位為 steps；判讀時只比較 before／after 的進入時機與後續事件。下一個命令是 .venv/bin/python -m py_compile student_policy.py。"
+    },
+    {
+      "semantic_key": "lab-b.edit-stable-steps",
+      "visible_title": "只改這一行：2 → 1",
+      "visible_text_signature_sha256": "ef94aa9f084b06b68f1ce1680d8970662404635a8ed18c3703b548fed70cfe26",
+      "note": "Lab B 只修改 /home/u24/lora-energy-lab/student_policy.py 的 lab-b-enter-exit-hold block：before 是 STABLE_STEPS = 2，after 是 STABLE_STEPS = 1。原值要求連續兩個穩定觀察，新值在一個穩定觀察後即可讓 quality_ready 成立，因而可能提早出現 MODE_CHANGE；ENTER_QUALITY = 2、EXIT_QUALITY = 1、Lab A/C、runner、scenario、schemas 與其他行固定不變。下一個命令先執行 .venv/bin/python -m py_compile student_policy.py，再執行 bash course.sh run --lab B --case trace-a-candidate --freeze。證據要讀 transition timing、attempt、retry、delivery、service 與 endpoint J。"
+    },
+    {
+      "semantic_key": "lab-b.execute-sequence",
+      "visible_title": "為什麼 2 → 1，接著怎麼執行",
+      "visible_text_signature_sha256": "6dc4c14c3e9d31e7e78fc3d2e573acd3275e13a82426576af3803387f3dc8c6e",
+      "note": "Lab B 的機制是穩定觀察數改變進入可傳送模式的時間。固定檔案、block 與 before／after 是 STABLE_STEPS：2 → 1，ENTER_QUALITY = 2、EXIT_QUALITY = 1、Lab A/C、runner、scenario 與 schemas 都不變。依序執行 bash course.sh run --lab B --case trace-a-baseline、bash course.sh run --lab B --case trace-a-candidate --freeze、bash course.sh run --lab B --case trace-b；Windows 只替換為 course.cmd。Trace A 讀 quality_ready、MODE_CHANGE、attempt、retry、delivery、service 與 endpoint J；Trace B 保持 frozen policy，檢查較早進入是否仍能維持服務與代價。"
+    },
+    {
+      "semantic_key": "lab-b.read-evidence",
+      "visible_title": "上傳後怎麼解讀",
+      "visible_text_signature_sha256": "144eb58dfb67b0e92bc720d8232b7951b609d9666462ab2c590d17b613a8260b",
+      "note": "Lab B 每次完成後，依 result_path 找到 result.json，到 /course 逐次匯入，保留同一目錄的 endpoint-replay.json，並核對 scenario ID 與 run ID。先看 service，再看 packet 的 attempt、retry、delivery、expired，接著看 state 與 MODE_CHANGE，最後讀 endpoint J。MODE_CHANGE 的中文名稱是模式變更事件，來源為 result／replay artifact，作用是支持穩定門檻造成的進入時間判讀，單位依事件欄位定義。若 quality_ready 或 MODE_CHANGE 沒有預期差異，即使最後 J 不同，也不能直接歸因於 STABLE_STEPS。"
+    },
+    {
+      "semantic_key": "lab-c.locate-marked-block",
+      "visible_title": "先找到唯一要改的地方",
+      "visible_text_signature_sha256": "bfa80ff9bf9a49b5a9310e248855e9c482e8b3922f0f2ff14ea4800a2f9b2822",
+      "note": "本頁定位 Lab C 的單一變更面。檔案是 student_policy.py，marked block 是 lab-c-batch-urgent，唯一變數是 URGENT_MARGIN_S；BATCH_SIZE = 3、Lab A/B 區塊、runner、scenario 與 schemas 保持不變。URGENT_MARGIN_S 的中文名稱是急件提前量，來源為 student_policy.py 的 active block，作用是決定剩餘期限多早進入 SEND_URGENT 分支，單位為秒；判讀時先確認只改這一個門檻。下一個命令是 .venv/bin/python -m py_compile student_policy.py，通過後先執行 Lab C baseline。"
+    },
+    {
+      "semantic_key": "lab-c.baseline-margin-20",
+      "visible_title": "基準值｜Baseline：URGENT_MARGIN_S = 20",
+      "visible_text_signature_sha256": "dc5400b3bc46e8332b48d0e71dfcce622c04903e2cc7a11d9a2a05c6aed6b8b7",
+      "note": "Lab C 的基準值是 /home/u24/lora-energy-lab/student_policy.py 之 lab-c-batch-urgent block 的 URGENT_MARGIN_S = 20；此頁建立 before 基準，下一頁再以 5 作為 after candidate。門檻 20 表示緊急封包剩餘期限小於等於 20 秒時，策略可以進入 SEND_URGENT；BATCH_SIZE = 3、Lab A/B、runner、scenario、schemas 與其他行固定不變。下一個命令是 bash course.sh run --lab C --case baseline。證據要讀 urgent-action timing、packet attempt／delivery／expired、deadline、service 與 endpoint J，再與 candidate 比較。"
+    },
+    {
+      "semantic_key": "lab-c.candidate-margin-5",
+      "visible_title": "候選值｜Candidate：URGENT_MARGIN_S = 5",
+      "visible_text_signature_sha256": "89925e40fda18c96b724c8a93810bc0ae9b9506b89a4171c37c493a6ffdea833",
+      "note": "Lab C candidate 只修改 /home/u24/lora-energy-lab/student_policy.py 的 lab-c-batch-urgent block：before 是 URGENT_MARGIN_S = 20，after 是 URGENT_MARGIN_S = 5。門檻變小代表等待到更接近期限才走 SEND_URGENT，可能錯過服務窗口或期限；BATCH_SIZE = 3、Lab A/B 區塊、runner、scenario、schemas 與其他行保持不變。下一個命令是 bash course.sh run --lab C --case candidate。證據要讀 urgent-action timing、wake／PROCESS／TX／RX、attempt、delivery、expired、deadline、service 與 endpoint J；較低 J 不能掩蓋服務失敗。"
+    },
+    {
+      "semantic_key": "lab-c.revision-margin-30",
+      "visible_title": "修訂值｜Revision：URGENT_MARGIN_S = 30",
+      "visible_text_signature_sha256": "6edd30db625735fec6f829ecccb116cd1772bf7594530341bc4d2083273834d3",
+      "note": "Lab C revision 仍只修改 /home/u24/lora-energy-lab/student_policy.py 的 lab-c-batch-urgent block：before 是 candidate 的 URGENT_MARGIN_S = 5，after 是 revision 的 URGENT_MARGIN_S = 30。門檻變大代表較早進入 SEND_URGENT，可能恢復服務，也可能增加 wake、PROCESS、TX 或 RX 能量；BATCH_SIZE = 3、Lab A/B、runner、scenario、schemas 與其他行固定不變。下一個命令是 bash course.sh run --lab C --case revision --freeze。證據要讀 urgent timing、delivery、deadline、service 與 endpoint J，並把 freeze 身份帶入 surprise。"
+    },
+    {
+      "semantic_key": "lab-c.threshold-mechanism",
+      "visible_title": "為什麼 5 秒可能太晚，30 秒可能更早",
+      "visible_text_signature_sha256": "6d38928b8a8bee535ddcbeff40b0478d2a4779715dee94564eacb1e8305b0443",
+      "note": "本頁沿著 Lab C 的因果鏈朗讀：URGENT_MARGIN_S 的門檻改變 SEND_URGENT 時機，進而影響 wake、TX、delivery、deadline、service 與 endpoint J。20 秒是 baseline，5 秒讓策略更晚急送，30 秒讓策略更早急送；三者都在 student_policy.py 的 lab-c-batch-urgent block 中比較，BATCH_SIZE = 3、runner、scenario、schemas 與其他區塊固定。deadline_pass 的中文名稱是期限是否通過，來源為 result 的 service summary，作用是確認必要封包是否在期限內完成，單位為布林值；判讀時先看期限與服務，較低 J 但服務失敗不算改善。20 與 30 若無差異，也要保留為本案例的 null contrast。"
+    },
+    {
+      "semantic_key": "lab-c.execute-sequence",
+      "visible_title": "四次執行的固定順序",
+      "visible_text_signature_sha256": "03668fa49a8c7282d6e6efff7435382df0a23e69ea73a7e0717cbb09031e8baa",
+      "note": "Lab C 固定四次執行與策略 lineage。先以 URGENT_MARGIN_S = 20 執行 bash course.sh run --lab C --case baseline，再改為 5 執行 candidate，接著改為 30 執行 bash course.sh run --lab C --case revision --freeze，最後保持 frozen 30 執行 bash course.sh run --lab C --case surprise；Windows 只替換為 course.cmd。每次保存 stdout 的 result_path，並按 service、packet、state、endpoint J 讀取。freeze 的中文名稱是策略凍結，來源為 revision 的執行選項，作用是保存 surprise 使用的策略身份，單位為狀態；判讀時 freeze 缺失或身份不一致就停止 withheld 案例，不重新修改策略。"
+    },
+    {
+      "semantic_key": "lab-c.read-evidence",
+      "visible_title": "上傳後怎麼解讀",
+      "visible_text_signature_sha256": "70129415fc0ee71978d475d88d43bdece48ce55519bde41960c8a629d78765d3",
+      "note": "Lab C 每次完成後，依 result_path 找到該次 result.json，在 /course 匯入並保留同一目錄的 endpoint-replay.json，再核對 scenario ID 與 run ID。先確認 deadline 與 service，再看封包的送達、重試與逾期，接著讀急件動作時間和 wake／PROCESS／TX／RX 狀態，最後讀 endpoint J。deadline_pass 的中文名稱是期限是否通過，來源為 result／replay artifact 的 service 判定，作用是支持本次門檻機制判讀，單位為布林值；判讀時若 20 與 30 結果相同，保留此案例無差異，不補造改善。若預期中間事件沒有出現，最終 J 的差異也不能直接歸因於門檻修改。"
+    }
+  ]
+}

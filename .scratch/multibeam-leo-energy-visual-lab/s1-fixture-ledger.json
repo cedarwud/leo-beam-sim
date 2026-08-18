@@ -1,0 +1,460 @@
+{
+  "schemaVersion": "scientific-fixture-ledger-v1",
+  "status": "ACCEPTED",
+  "baseHead": "61d68ccd0cf8bf2315c114bced2739b80981dcea",
+  "authorityDigests": {
+    "docs/decisions/ADR-005-tle-and-canonical-ee-simulator-contract.md": "7c9e7959895aabf141067b2aa628d290cdcdbefb21245f0e645ffe2cc897f156",
+    "docs/decisions/ADR-006-tle-canonical-handover-trace.md": "70f30c36b64d69b2c4b2a6dcbaceda609725cdbb5398aac255599d2a3c9bb0d2",
+    "docs/decisions/ADR-007-scientific-experience-and-figure-mode.md": "f49be14b0455763056e12e75e13e9c9278b614e3067403396059749891a067cb",
+    "docs/sdd/SCIENTIFIC-NARRATIVE-VERTICAL-SLICE-SDD.md": "ef50ae09f6b4a45388ff8310f59f46dc07b48a83768a874c1b9848b9841b6c77",
+    "docs/sdd/MULTIBEAM-LEO-ENERGY-VISUAL-LAB-SDD.md": "164947d84a98d507685403a4ff652d27415b2f8735eae488e73dd567ff0ced20"
+  },
+  "discovery": {
+    "script": ".scratch/multibeam-leo-energy-visual-lab/s1-fixture-discovery.ts",
+    "scriptSha256": "25ebd92e7c8022bb5b9622ec3760baf003ee6d2acbe8e26f051064e80e16d5da",
+    "command": "node --import tsx/esm .scratch/multibeam-leo-energy-visual-lab/s1-fixture-discovery.ts",
+    "independentReplayAtUtc": "2026-08-14T13:07:38Z",
+    "verdict": "PASS"
+  },
+  "mainSourceSelection": {
+    "catalogUrl": "/tle-archive/oneweb/catalog.json",
+    "constellation": "oneweb",
+    "archiveId": "oneweb-20250727-20260812-0954fc6c0e90",
+    "archiveContentSha256": "0954fc6c0e90bb0cfa770661368f5452e1f37ce4481ea650609e54e9ea11dd1c",
+    "archiveDate": "20260807",
+    "snapshotPath": "/tle-archive/oneweb/oneweb_20260807.tle",
+    "selectedTleSha256": "a1137a105d277ee527b6498beacdac51c9826557408017b25c90fc3f91bfac00",
+    "requestedInstantUtc": "2026-08-07T23:59:59.000Z",
+    "sourceKind": "ARCHIVED_TLE",
+    "propagationModel": "SGP4"
+  },
+  "geometryRunId": "tle-run:oneweb-20250727-20260812-0954fc6c0e90:a1137a105d277ee527b6498beacdac51c9826557408017b25c90fc3f91bfac00:2026-08-07T23%3A59%3A59.000Z:7200:30:136d475e",
+  "parameterSets": {
+    "reference": {
+      "beamPowerCapW": 1.65,
+      "satellitePowerCapW": 19.952623149688797,
+      "etaMax": 0.35,
+      "backoffDb": 5,
+      "rfcPowerW": 0.338,
+      "basebandPerSatelliteW": 0.2,
+      "frequencyReuse": 3,
+      "antennaNoiseTemperatureK": 150,
+      "noiseFigureDb": 1.2,
+      "noiseReferenceTemperatureK": 290,
+      "g0Linear": 2000,
+      "theta3dbRad": 0.05794493116621174,
+      "channelGainScale": 1,
+      "carrierFrequencyGHz": 20,
+      "atmosphericZenithLossDb": 0.05,
+      "scintillationScaleDb": 0,
+      "shadowFadingMarginDb": 0,
+      "receiveGainDbi": 35,
+      "minimumRateBps": 1000000,
+      "systemBandwidthHz": 500000000
+    },
+    "angleProbe": {
+      "base": "reference",
+      "onlyOverride": {"theta3dbRad": 0.06981317007977318}
+    },
+    "serviceTargetProbe": {
+      "base": "reference",
+      "onlyOverride": {"minimumRateBps": 10000000}
+    }
+  },
+  "formatterPolicy": {
+    "theta3dbDegree": "fixed-2",
+    "thetaDegree": "fixed-6",
+    "linearGain": "fixed-3",
+    "rawH": "scientific-6-significant",
+    "gammaReqLinear": "fixed-8",
+    "powerW": "fixed-6-with-SI-display-alias",
+    "sinrDb": "fixed-6",
+    "representativeRateBps": "integer-bit-per-second",
+    "totalRateMbitPerSec": "fixed-3",
+    "systemPowerW": "fixed-3",
+    "eeMbitPerJ": "fixed-3",
+    "rule": "A raw numeric change may be labelled unchanged only when the exact raw values are equal; otherwise the selected formatter must expose distinct text."
+  },
+  "visualTransformPolicy": {
+    "minimumEncodedSeparationPx": 8,
+    "exactTextOnlyTermsMayOmitMagnitudeEncoding": true,
+    "pairDomainsAreFrozen": true,
+    "rawValuesRemainUnmodified": true,
+    "worldGeometryNeverUsesPresentationTransforms": true,
+    "requiredDisclosureZhHant": "畫面尺度；不代表實體波束範圍、天線孔徑或流量管徑。"
+  },
+  "entries": [
+    {
+      "fixtureId": "method-state-v1",
+      "purpose": "method",
+      "sourceSelection": "mainSourceSelection",
+      "geometryRunId": "tle-run:oneweb-20250727-20260812-0954fc6c0e90:a1137a105d277ee527b6498beacdac51c9826557408017b25c90fc3f91bfac00:2026-08-07T23%3A59%3A59.000Z:7200:30:136d475e",
+      "memberRunIds": ["analysis-run-03ef0a2a"],
+      "memberFrameIds": ["analysis-ee7fbeeb"],
+      "anchorIndices": [47],
+      "parameterDigests": ["sha256:59c3048c229803d5783f67dfd5380dbb6fb588ad1746f806abeea473400d2953"],
+      "declaredControl": null,
+      "capToleranceW": null,
+      "invariantChecks": {
+        "passPlanSelection": true,
+        "finiteNonZeroRate": true,
+        "activeServingBeam": true,
+        "representativeLinkV2LargestValidOffAxisAtAnchor": true,
+        "sourceBackedSatelliteIdentity": true
+      },
+      "observedTerms": [],
+      "handoverEventId": null,
+      "handoverEventKind": null,
+      "formatterResolutionChecks": {
+        "allRequiredMethodLabelsResolvable": true,
+        "rawHAndHDivDistinctlyNamed": true
+      },
+      "pixelSeparationChecks": {
+        "singleStateNoPairSeparationRequired": true
+      },
+      "visualTransformChecks": {
+        "rawThetaPreserved": true,
+        "worldGeometryUnmodified": true
+      },
+      "acceptedBy": "fresh-context:s1-semantic-review+s1-integration-review",
+      "acceptedAtUtc": "2026-08-14T13:07:38Z",
+      "details": {
+        "instantUtc": "2026-08-08T00:23:29.000Z",
+        "satelliteId": "55796",
+        "beamId": 1,
+        "userIndex": 29,
+        "userId": "ue-30",
+        "servingPassId": "pass-55796-d9149987",
+        "candidatePassId": "pass-49286-831f24be",
+        "selectedTleEpochUtc": "2026-08-07T19:57:49.333Z",
+        "thetaRad": 0.011240719179150774,
+        "thetaDeg": 0.6440457676570984,
+        "transmitGainLinear": 1807.121891561789,
+        "rawH": 5.666452889890504e-12,
+        "hDiv": 5.666452889890504e-12,
+        "pReqUserW": 0.0063335756717664456,
+        "actualBeamRfW": 0.0063335756717664456,
+        "sinrLinear": 0.0643687378670359,
+        "rateBps": 999978.2437959356,
+        "totalRateBps": 104343850.29633254,
+        "systemPowerW": 6.139252237548544,
+        "eeInstBitsPerJ": 16996182.313238513,
+        "evaluation": {
+          "evaluationBitsPerJ": 10106075.046823049,
+          "durationS": 7200,
+          "sampleCount": 240,
+          "aggregation": "ratio-of-sums",
+          "deliveredBits": 652062698599.6354,
+          "consumedEnergyJ": 64521.853991636264,
+          "zeroOverZero": false
+        }
+      }
+    },
+    {
+      "fixtureId": "angle-response-v1",
+      "purpose": "angle-response-v1",
+      "sourceSelection": "mainSourceSelection",
+      "geometryRunId": "tle-run:oneweb-20250727-20260812-0954fc6c0e90:a1137a105d277ee527b6498beacdac51c9826557408017b25c90fc3f91bfac00:2026-08-07T23%3A59%3A59.000Z:7200:30:136d475e",
+      "memberRunIds": ["analysis-run-03ef0a2a", "analysis-run-811f283d"],
+      "memberFrameIds": ["analysis-ee7fbeeb", "analysis-613fa1bf"],
+      "anchorIndices": [47, 47],
+      "parameterDigests": [
+        "sha256:59c3048c229803d5783f67dfd5380dbb6fb588ad1746f806abeea473400d2953",
+        "sha256:e87c0b75c20db25be040113c2484cc748ab1f7c13ccf20291a6bb09902dd8b29"
+      ],
+      "declaredControl": {
+        "parameterKey": "theta3dbRad",
+        "unit": "rad",
+        "referenceValue": 0.05794493116621174,
+        "probeValue": 0.06981317007977318
+      },
+      "capToleranceW": null,
+      "invariantChecks": {
+        "onlyTheta3dbRadChanged": true,
+        "fullHpbwStored": true,
+        "adapterDividesByTwoExactlyOnce": true,
+        "sameGeometryRun": true,
+        "sameTleFrame": true,
+        "sameInstant": true,
+        "sameSatelliteBeamUser": true,
+        "sameNonZeroOffAxisAngle": true,
+        "sameAll241ServingCandidateIdentitySequence": true,
+        "rawHFeedsSignalInterferenceRate": true,
+        "hDivUsedOnlyForRequestedPower": true
+      },
+      "observedTerms": [
+        {"term":"theta","unit":"rad","referenceValue":0.011240719179150774,"probeValue":0.011240719179150774,"signedDelta":0,"relativeDeltaRatio":0,"direction":"unchanged"},
+        {"term":"transmitGain","unit":"linear","referenceValue":1807.121891561789,"probeValue":1865.2235869334672,"signedDelta":58.10169537167826,"relativeDeltaRatio":0.032151508784758503,"direction":"increase"},
+        {"term":"rawH","unit":"linear","referenceValue":5.666452889890504e-12,"probeValue":5.848637899758239e-12,"signedDelta":1.821850098677348e-13,"relativeDeltaRatio":0.03215150878475851,"direction":"increase"},
+        {"term":"hDiv","unit":"linear","referenceValue":5.666452889890504e-12,"probeValue":5.848637899758239e-12,"signedDelta":1.821850098677348e-13,"relativeDeltaRatio":0.03215150878475851,"direction":"increase"},
+        {"term":"gammaReq","unit":"linear","referenceValue":0.06437018245335979,"probeValue":0.06437018245335979,"signedDelta":0,"relativeDeltaRatio":0,"direction":"unchanged"},
+        {"term":"pReqUser","unit":"W","referenceValue":0.0063335756717664456,"probeValue":0.006136284855334381,"signedDelta":-0.00019729081643206445,"relativeDeltaRatio":-0.03114998961985082,"direction":"decrease"},
+        {"term":"actualBeamRf","unit":"W","referenceValue":0.0063335756717664456,"probeValue":0.006136284855334381,"signedDelta":-0.00019729081643206445,"relativeDeltaRatio":-0.03114998961985082,"direction":"decrease"},
+        {"term":"sinr","unit":"linear","referenceValue":0.0643687378670359,"probeValue":0.06436853364858752,"signedDelta":-2.0421844837414938e-7,"relativeDeltaRatio":-0.0000031726340323154356,"direction":"decrease"},
+        {"term":"representativeRate","unit":"bit/s","referenceValue":999978.2437959356,"probeValue":999975.1681599532,"signedDelta":-3.07563598244451,"relativeDeltaRatio":-0.0000030757028980644014,"direction":"decrease"},
+        {"term":"totalRate","unit":"bit/s","referenceValue":104343850.29633254,"probeValue":102105993.40342464,"signedDelta":-2237856.8929079026,"relativeDeltaRatio":-0.021446945714121864,"direction":"decrease"},
+        {"term":"systemPower","unit":"W","referenceValue":6.139252237548544,"probeValue":6.083946197243504,"signedDelta":-0.05530604030504005,"relativeDeltaRatio":-0.009008595536567207,"direction":"decrease"},
+        {"term":"eeInst","unit":"bit/J","referenceValue":16996182.313238513,"probeValue":16782856.076157693,"signedDelta":-213326.2370808199,"relativeDeltaRatio":-0.012551420851414247,"direction":"decrease"}
+      ],
+      "handoverEventId": null,
+      "handoverEventKind": null,
+      "formatterResolutionChecks": {
+        "theta3dbDegreeDistinctAtFixed2": true,
+        "transmitGainDistinctAtFixed3": true,
+        "rawHDistinctAtScientific6": true,
+        "pReqDistinctAtFixed6W": true,
+        "sinrDistinctAtFixed6Db": true,
+        "representativeRateDistinctAtIntegerBps": true,
+        "totalRateDistinctAtFixed3MbitPerSec": true,
+        "systemPowerDistinctAtFixed3W": true,
+        "eeInstDistinctAtFixed3MbitPerJ": true
+      },
+      "pixelSeparationChecks": {
+        "theta3dbControlAtLeast8Px": true,
+        "gainMeterAtLeast8Px": true,
+        "requestedPowerBarAtLeast8Px": true,
+        "totalThroughputBarAtLeast8Px": true,
+        "sinrRateSystemPowerEeUseExactTextOnly": true
+      },
+      "visualTransformChecks": {
+        "theta3dbDegreeDomain3To4Point2Range240PxSeparation136Px": true,
+        "gainRatioToG0Domain0Point88To0Point95Range240PxSeparation99Point6Px": true,
+        "requestedPowerZeroDomain0To0Point007WRange320PxSeparation9Point02Px": true,
+        "totalThroughputZeroDomain0To110MbitPerSecRange400PxSeparation8Point14Px": true,
+        "worldThetaAndCameraRemainFixed": true,
+        "noDisplayTransformFeedsCanonicalData": true
+      },
+      "acceptedBy": "fresh-context:s1-semantic-review+s1-integration-review",
+      "acceptedAtUtc": "2026-08-14T13:07:38Z",
+      "details": {
+        "identity": {"satelliteId":"55796","beamId":1,"userIndex":29,"userId":"ue-30"},
+        "instantUtc": "2026-08-08T00:23:29.000Z",
+        "theta3dbReferenceDeg": 3.32,
+        "theta3dbProbeDeg": 4,
+        "eeEvalIncluded": false,
+        "eeEvalExclusionReason": "The first controlled-comparison story is frame-scoped; run-level evaluation remains available only in method-state evidence.",
+        "claimBoundary": "matched deterministic mechanism probe; not an energy-saving, measured, calibrated, or generalized result"
+      }
+    },
+    {
+      "fixtureId": "service-target-stress-v1",
+      "purpose": "service-target-stress-v1",
+      "sourceSelection": "mainSourceSelection",
+      "geometryRunId": "tle-run:oneweb-20250727-20260812-0954fc6c0e90:a1137a105d277ee527b6498beacdac51c9826557408017b25c90fc3f91bfac00:2026-08-07T23%3A59%3A59.000Z:7200:30:136d475e",
+      "memberRunIds": ["analysis-run-03ef0a2a", "analysis-run-7c50d6c0"],
+      "memberFrameIds": ["analysis-baff6517", "analysis-4945e173"],
+      "anchorIndices": [0, 0],
+      "parameterDigests": [
+        "sha256:59c3048c229803d5783f67dfd5380dbb6fb588ad1746f806abeea473400d2953",
+        "sha256:664622f18085e48bd64c23658c23e39fd8efb993c58e2fbdfa31b1412e451d8b"
+      ],
+      "declaredControl": {
+        "parameterKey": "minimumRateBps",
+        "unit": "bit/s",
+        "referenceValue": 1000000,
+        "probeValue": 10000000
+      },
+      "capToleranceW": 1e-9,
+      "invariantChecks": {
+        "onlyMinimumRateBpsChanged": true,
+        "sameGeometryRun": true,
+        "sameTleFrame": true,
+        "sameInstant": true,
+        "sameSatelliteBeamUser": true,
+        "sameGeometryGainLoadAndPaInputs": true,
+        "allSevenBeamCapsNonBindingReference": true,
+        "allSevenBeamCapsNonBindingProbe": true,
+        "satelliteCapNonBindingReference": true,
+        "satelliteCapNonBindingProbe": true,
+        "allSatelliteScalesOneBoth": true,
+        "all100UsersNotPowerLimitedBoth": true,
+        "full241ServingCandidateSequenceEqual": false,
+        "eeEvalExcluded": true
+      },
+      "observedTerms": [
+        {"term":"gammaReq","unit":"linear","referenceValue":0.06437018245335979,"probeValue":0.8660659830736148,"signedDelta":0.801695800620255,"relativeDeltaRatio":12.454459037787155,"direction":"increase"},
+        {"term":"pReqUser","unit":"W","referenceValue":0.008264628348766156,"probeValue":0.11119610358100875,"signedDelta":0.1029314752322426,"relativeDeltaRatio":12.454459037787156,"direction":"increase"},
+        {"term":"actualBeamRf","unit":"W","referenceValue":0.008264628348766156,"probeValue":0.11119610358100875,"signedDelta":0.1029314752322426,"relativeDeltaRatio":12.454459037787156,"direction":"increase"},
+        {"term":"sinr","unit":"linear","referenceValue":0.06100996275370267,"probeValue":0.5018368078131729,"signedDelta":0.4408268450594702,"relativeDeltaRatio":7.225489496512052,"direction":"increase"},
+        {"term":"representativeRate","unit":"bit/s","referenceValue":949313.367179494,"probeValue":6519200.618096798,"signedDelta":5569887.250917303,"relativeDeltaRatio":5.867279913550571,"direction":"increase"},
+        {"term":"totalRate","unit":"bit/s","referenceValue":102540809.3332609,"probeValue":916747032.0867406,"signedDelta":814206222.7534797,"relativeDeltaRatio":7.940313988621678,"direction":"increase"},
+        {"term":"systemPower","unit":"W","referenceValue":6.603336434654891,"probeValue":17.266420169959165,"signedDelta":10.663083735304273,"relativeDeltaRatio":1.6148024321982855,"direction":"increase"},
+        {"term":"eeInst","unit":"bit/J","referenceValue":15528636.220186766,"probeValue":53094215.42293609,"signedDelta":37565579.20274933,"relativeDeltaRatio":2.4191164420424243,"direction":"increase"}
+      ],
+      "handoverEventId": null,
+      "handoverEventKind": null,
+      "formatterResolutionChecks": {
+        "minimumRateDistinctAs1And10MbitPerSec": true,
+        "gammaReqDistinctAtFixed4": true,
+        "powerDistinctWithSiAliases": true,
+        "sinrDistinctAtFixed2Db": true,
+        "representativeRateDistinctAtFixed2MbitPerSec": true,
+        "totalRateDistinctAtIntegerMbitPerSec": true,
+        "systemPowerDistinctAtFixed1W": true,
+        "eeInstDistinctAtFixed1MbitPerJ": true
+      },
+      "pixelSeparationChecks": {
+        "allEncodedTermsAtLeast8Px": true
+      },
+      "visualTransformChecks": {
+        "gammaZeroDomain0To1Range240Px": true,
+        "requestedPowerZeroDomain0To0Point12WRange240Px": true,
+        "sinrZeroDomain0To0Point6Range240Px": true,
+        "representativeRateZeroDomain0To7MbitPerSecRange240Px": true,
+        "totalRateZeroDomain0To1GbitPerSecRange240Px": true,
+        "systemPowerZeroDomain0To20WRange240Px": true,
+        "eeZeroDomain0To60MbitPerJRange240Px": true,
+        "allDomainsFrozenAcrossPair": true,
+        "noDisplayTransformFeedsCanonicalData": true
+      },
+      "acceptedBy": "fresh-context:s1-semantic-review+s1-integration-review",
+      "acceptedAtUtc": "2026-08-14T13:07:38Z",
+      "details": {
+        "identity": {"satelliteId":"49283","beamId":0,"userIndex":14,"userId":"ue-15"},
+        "instantUtc": "2026-08-07T23:59:59.000Z",
+        "selectedTleEpochUtc": "2026-08-07T19:35:59.581Z",
+        "referenceMaxBeamRequestW": 0.008264628348766156,
+        "probeMaxBeamRequestW": 0.11119610358100875,
+        "referenceSatellitePreCapW": 0.054683762819578895,
+        "probeSatellitePreCapW": 0.7250625204023489,
+        "beamCapW": 1.65,
+        "satelliteCapW": 19.952623149688797,
+        "representativeQosMetReference": false,
+        "representativeQosMetProbe": false,
+        "claimBoundary": "10 Mbit/s stress diagnostic; not a primary scenario, energy-saving policy, measured, calibrated, or generalized result"
+      }
+    },
+    {
+      "fixtureId": "serving-change-v1",
+      "purpose": "handover",
+      "sourceSelection": "mainSourceSelection",
+      "geometryRunId": "tle-run:oneweb-20250727-20260812-0954fc6c0e90:a1137a105d277ee527b6498beacdac51c9826557408017b25c90fc3f91bfac00:2026-08-07T23%3A59%3A59.000Z:7200:30:136d475e",
+      "memberRunIds": ["analysis-run-03ef0a2a"],
+      "memberFrameIds": ["analysis-919d3246", "analysis-bda9b14d", "analysis-af29ef65"],
+      "anchorIndices": [21, 22, 23],
+      "parameterDigests": ["sha256:59c3048c229803d5783f67dfd5380dbb6fb588ad1746f806abeea473400d2953"],
+      "declaredControl": null,
+      "capToleranceW": null,
+      "invariantChecks": {
+        "completedNonInitialServingChange": true,
+        "validAfterAnchor": true,
+        "immutableEventIdentity": true,
+        "eventTraceDigestMatches": true,
+        "fromEqualsPreCommitServing": true,
+        "toEqualsPreCommitCandidate": true,
+        "toEqualsPostCommitServing": true,
+        "servingWasInvisible": true,
+        "targetWasVisible": true,
+        "targetSelectionIsPassPlan": true,
+        "targetPassCoversTrigger": true,
+        "notOffsetTtt": true
+      },
+      "observedTerms": [],
+      "handoverEventId": "tle-event-v1-e9303f64",
+      "handoverEventKind": "forced-continuity",
+      "formatterResolutionChecks": {
+        "allIdentityAndUtcLabelsDistinct": true,
+        "nullSinrRenderedUnavailableNotZero": true
+      },
+      "pixelSeparationChecks": {
+        "tripletUsesThreeDistinctFixedPanels": true
+      },
+      "visualTransformChecks": {
+        "noOffsetTttProgressEncoding": true,
+        "visibilityLossAndTargetCommitUseShapeAndLabel": true
+      },
+      "acceptedBy": "fresh-context:s1-semantic-review+s1-integration-review",
+      "acceptedAtUtc": "2026-08-14T13:07:38Z",
+      "details": {
+        "traceDigest": "tle-trace-v1-ffb9b40e",
+        "sourceEvent": "forced-continuity",
+        "fromSatelliteId": "49283",
+        "toSatelliteId": "49307",
+        "triggerAnchorIndex": 22,
+        "triggerInstantUtc": "2026-08-08T00:10:59.000Z",
+        "preCommit": {"servingVisible":false,"candidateVisible":true,"servingSinrDb":null,"candidateSinrDb":-12.191654907186905,"deltaDb":null},
+        "postCommit": {"servingSatelliteId":"49307","anchorIndex":22,"instantUtc":"2026-08-08T00:10:59.000Z"},
+        "targetSelection": {"selectionKind":"pass-plan","passId":"pass-49307-d95c1fd9","satelliteId":"49307","sourceLocator":"passPlan.passes[passId=pass-49307-d95c1fd9]"},
+        "continuityReasonCode": "serving-lost-visibility",
+        "reason": "serving TLE satellite 49283 left the NTPU horizon",
+        "qualificationAnchors": []
+      }
+    }
+  ],
+  "negativeCases": [
+    {
+      "fixtureId": "target-reset-no-event-v1",
+      "classification": "synthetic-mechanics-only",
+      "analysisRunId": "analysis-synthetic-target-reset-v1",
+      "geometryRunId": "geometry-synthetic-target-reset-v1",
+      "traceDigest": "tle-trace-v1-0799fa25",
+      "anchorIndices": [0, 1, 2, 3],
+      "states": ["attached", "pending", "pending", "attached"],
+      "candidates": [null, "B", "C", null],
+      "progressSec": [0, 0, 0, 0],
+      "cumulativeCounts": [0, 0, 0, 0],
+      "servingChangeEventCount": 0,
+      "invariantChecks": {
+        "candidateTargetChangeRestartsTtt": true,
+        "candidateOnlyCannotPublishEvent": true,
+        "candidateOnlyCannotCompleteStory": true,
+        "excludedFromThesisFigureEvidence": true
+      }
+    },
+    {
+      "fixtureId": "failed-rebuild-v1",
+      "classification": "source-backed-refusal",
+      "sourceSelection": "mainSourceSelection",
+      "attemptedControl": {"parameterKey":"minimumRateBps","value":0,"unit":"bit/s"},
+      "expectedError": "minimumRateBps must be finite and positive",
+      "retainedAnalysisRunId": "analysis-run-03ef0a2a",
+      "retainedFrameId": "analysis-ee7fbeeb",
+      "invariantChecks": {
+        "rebuildThrows": true,
+        "acceptedRunRemainsFrozen": true,
+        "acceptedFrameIdRemainsUnchanged": true,
+        "stalePublicationRefused": true,
+        "captureRefused": true
+      }
+    }
+  ],
+  "secondarySources": [
+    {
+      "fixtureId": "constellation-switch-starlink-v1",
+      "purpose": "constellation-switch-only-not-performance-comparison",
+      "catalogUrl": "/tle-archive/starlink/catalog.json",
+      "constellation": "starlink",
+      "archiveId": "starlink-20250727-20260812-20a059bc3e83",
+      "archiveContentSha256": "20a059bc3e8358e955728ce7c29948ff472ca9143f27e0f314ac0e50d40b3a81",
+      "archiveDate": "20260807",
+      "snapshotPath": "/tle-archive/starlink/starlink_20260807.tle",
+      "selectedTleSha256": "89e9f26999395fb549c9706deb73ad8ce83f57a92f17299073186b40c956ba40",
+      "requestedInstantUtc": "2026-08-07T23:59:59.000Z",
+      "selectedSatelliteId": "64385",
+      "selectedTleEpochUtc": "2026-08-06T22:43:02.525Z",
+      "tleFrameId": "tle-sgp4-f72a575c",
+      "singleFrameId": "analysis-9fe6ddad",
+      "geometryRunId": "tle-run:starlink-20250727-20260812-20a059bc3e83:89e9f26999395fb549c9706deb73ad8ce83f57a92f17299073186b40c956ba40:2026-08-07T23%3A59%3A59.000Z:7200:30:9b089349",
+      "analysisRunId": "analysis-run-c2163cd8",
+      "satelliteCount": 10760,
+      "passCount": 3510,
+      "unavailableAnchorCount": 0,
+      "invariantChecks": {
+        "catalogAndSnapshotResolve": true,
+        "full241AnchorRunCompletes": true,
+        "noUnavailableServingAnchor": true,
+        "sameCanonicalPipeline": true,
+        "crossConstellationPerformanceClaimForbidden": true
+      }
+    }
+  ],
+  "review": {
+    "acceptedBy": "fresh-context:s1-semantic-review+s1-integration-review",
+    "acceptedAtUtc": "2026-08-14T13:07:38Z",
+    "notes": [
+      "Semantic fixture audit PASS; no scientific or runtime blocker.",
+      "Integration fixture audit PASS after current-script replay and provenance checks.",
+      "Browser pixels and owner visual acceptance remain later implementation gates."
+    ]
+  }
+}

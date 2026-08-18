@@ -1,0 +1,14 @@
+{
+  "status": "DEFERRED",
+  "artifact": "../LoRaEnergySim-LEO-ALT-APPENDIX-V2-P098-P107-REVIEW.pptx",
+  "renderer_discovery": {
+    "soffice": false,
+    "libreoffice": false,
+    "lowriter": false,
+    "unoconv": false,
+    "onlyoffice": false
+  },
+  "visual_rendering": "controller_deferred",
+  "microsoft_powerpoint_reopen": "controller_deferred",
+  "note": "No visual pass is claimed in the server environment."
+}

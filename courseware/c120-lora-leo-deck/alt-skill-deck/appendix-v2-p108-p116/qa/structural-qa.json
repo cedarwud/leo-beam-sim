@@ -1,0 +1,112 @@
+{
+  "status": "PASS",
+  "pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/LoRaEnergySim-LEO-ALT-APPENDIX-V2-P108-P116-REVIEW.pptx",
+  "owned_root": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/appendix-v2-p108-p116",
+  "checks": {
+    "zip_integrity": true,
+    "recursive_xml_parse": true,
+    "slide_notes_symmetry": true,
+    "presentation_slide_ids": true,
+    "relationship_targets": true,
+    "all_slides_use_layout2": true,
+    "content_types": true,
+    "no_authored_slide_backgrounds": true,
+    "unique_cnvpr_ids_per_slide": true,
+    "unique_creation_ids": true,
+    "slide_shape_structure": true,
+    "notes_shape_structure": true,
+    "slide_titles": true,
+    "notes_are_substantive": true,
+    "forbidden_language_scan": true,
+    "authored_font_floor_16pt": true,
+    "shape_geometry_within_page": true,
+    "source_map_covers_p108_p116": true
+  },
+  "issues": [],
+  "warnings": [],
+  "file_size_bytes": 913175,
+  "xml_parts_checked": 71,
+  "slide_count": 9,
+  "notes_count": 9,
+  "presentation_slide_id_count": 9,
+  "relationship_count": 94,
+  "slide_layout_targets": {
+    "ppt/slideMasters/_rels/slideMaster1.xml.rels": [
+      "ppt/slideLayouts/slideLayout8.xml",
+      "ppt/slideLayouts/slideLayout3.xml",
+      "ppt/slideLayouts/slideLayout7.xml",
+      "ppt/slideLayouts/slideLayout2.xml",
+      "ppt/slideLayouts/slideLayout1.xml",
+      "ppt/slideLayouts/slideLayout6.xml",
+      "ppt/slideLayouts/slideLayout5.xml",
+      "ppt/slideLayouts/slideLayout10.xml",
+      "ppt/slideLayouts/slideLayout4.xml",
+      "ppt/slideLayouts/slideLayout9.xml"
+    ],
+    "ppt/slides/_rels/slide1.xml.rels": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ],
+    "ppt/slides/_rels/slide2.xml.rels": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ],
+    "ppt/slides/_rels/slide3.xml.rels": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ],
+    "ppt/slides/_rels/slide4.xml.rels": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ],
+    "ppt/slides/_rels/slide5.xml.rels": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ],
+    "ppt/slides/_rels/slide6.xml.rels": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ],
+    "ppt/slides/_rels/slide7.xml.rels": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ],
+    "ppt/slides/_rels/slide8.xml.rels": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ],
+    "ppt/slides/_rels/slide9.xml.rels": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ]
+  },
+  "content_type_override_count": 38,
+  "content_type_duplicate_overrides": [],
+  "content_type_missing_slide_note_overrides": [],
+  "authored_backgrounds": [],
+  "duplicate_cnvpr_ids": {},
+  "creation_id_count": 0,
+  "duplicate_creation_ids": [],
+  "notes_character_lengths": {
+    "ppt/notesSlides/notesSlide1.xml": 382,
+    "ppt/notesSlides/notesSlide2.xml": 506,
+    "ppt/notesSlides/notesSlide3.xml": 418,
+    "ppt/notesSlides/notesSlide4.xml": 461,
+    "ppt/notesSlides/notesSlide5.xml": 601,
+    "ppt/notesSlides/notesSlide6.xml": 532,
+    "ppt/notesSlides/notesSlide7.xml": 553,
+    "ppt/notesSlides/notesSlide8.xml": 406,
+    "ppt/notesSlides/notesSlide9.xml": 497
+  },
+  "forbidden_hits": {},
+  "font_size_hundredths_pt_min": 1600,
+  "font_size_hundredths_pt_max": 2400,
+  "font_faces": {
+    "標楷體": 876,
+    "Times New Roman": 933
+  },
+  "font_shapes_skipping_placeholders": 27,
+  "geometry_errors": [],
+  "source_map_keys": [
+    "P108",
+    "P109",
+    "P110",
+    "P111",
+    "P112",
+    "P113",
+    "P114",
+    "P115",
+    "P116"
+  ]
+}

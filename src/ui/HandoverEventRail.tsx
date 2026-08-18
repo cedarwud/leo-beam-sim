@@ -104,7 +104,7 @@ function sourceLabel(source: HandoverRailEventSource): string {
   if (source === 'artifact-replay') return 'artifact';
   if (source === 'modqn-replay') return 'producer trace';
   if (source === 'sinr-live-cell-truth') return 'SINR cell truth';
-  if (source === 'live-walker') return 'live Walker';
+  if (source === 'live-walker') return 'live scene';
   return 'observed';
 }
 

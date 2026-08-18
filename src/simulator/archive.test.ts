@@ -12,13 +12,20 @@ const fetchFromPublic = async (path: RequestInfo | URL): Promise<Response> => (
   new Response(await readFile(`public${String(path)}`), { status: 200 })
 );
 
+let observedCatalogCacheMode: RequestCache | undefined;
+await loadTleWebArchiveCatalog('/tle-archive/oneweb/catalog.json', async (path, init) => {
+  observedCatalogCacheMode = init?.cache;
+  return new Response(await readFile(`public${String(path)}`), { status: 200 });
+});
+assert.equal(observedCatalogCacheMode, 'no-cache', 'mutable catalog indexes must revalidate');
+
 const catalog = await loadTleWebArchiveCatalog('/tle-archive/oneweb/catalog.json', fetchFromPublic);
 assert.equal(catalog.constellation, 'oneweb');
 
 const starlinkCatalog = await loadTleWebArchiveCatalog('/tle-archive/starlink/catalog.json', fetchFromPublic);
 assert.equal(starlinkCatalog.constellation, 'starlink');
-assert.equal(starlinkCatalog.snapshotCount, 360);
-assert.equal(starlinkCatalog.sourceSnapshotCount, 361);
+assert.equal(starlinkCatalog.snapshotCount, 364);
+assert.equal(starlinkCatalog.sourceSnapshotCount, 365);
 assert.equal(starlinkCatalog.excludedSnapshots?.length, 1);
 const starlinkLatestMetadata = starlinkCatalog.snapshots[starlinkCatalog.snapshots.length - 1]!;
 const starlinkLatest = await loadTleSnapshot(starlinkLatestMetadata, fetchFromPublic);
@@ -44,6 +51,16 @@ const later = await loadTleSnapshotSelection(catalog, '2026-08-08T12:00:00.000Z'
 const satelliteId = later.manifest.entries[0]!.satelliteId;
 const resolved = resolveTleSnapshot(later.manifest, '2026-08-08T12:00:00.000Z', satelliteId);
 assert.equal(resolved.sourcePath, '/tle-archive/oneweb/oneweb_20260808.tle');
+
+// Every newly published daily snapshot remains selectable; the latest default
+// date is not a one-off special case.
+for (const currentCatalog of [catalog, starlinkCatalog]) {
+  for (const metadata of currentCatalog.snapshots.filter(snapshot => snapshot.archiveDate >= '20260809')) {
+    const selectableInstant = new Date(Date.parse(metadata.maxEpochUtc) + 1).toISOString();
+    const selected = await loadTleSnapshotSelection(currentCatalog, selectableInstant, fetchFromPublic);
+    assert.equal(selected.snapshot.metadata.archiveDate, metadata.archiveDate);
+  }
+}
 
 const malformedBounds = {
   ...catalog,

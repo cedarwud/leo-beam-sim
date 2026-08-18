@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ns0:coreProperties xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:ns0="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:ns2="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title>A Few-Shot Transfer Learning Approach Using Text-Label Embedding with Legal Attributes for Law Article Prediction</dc:title>
+  <dc:creator>Windows 使用者</dc:creator>
+  <ns0:lastModifiedBy>柏宏 吳</ns0:lastModifiedBy>
+  <ns0:revision>1493</ns0:revision>
+  <ns2:created xsi:type="dcterms:W3CDTF">2019-10-21T01:22:34Z</ns2:created>
+  <ns2:modified xsi:type="dcterms:W3CDTF">2025-12-10T11:42:30Z</ns2:modified>
+</ns0:coreProperties>

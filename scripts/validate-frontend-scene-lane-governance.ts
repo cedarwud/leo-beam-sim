@@ -654,11 +654,11 @@ assertContains(appSource, 'liveWalkerHandoverEventIndexToRailEvents(liveWalkerHa
 assertContains(railBuildersSource, 'function getModqnReplayVisualTimeline', 'handoverRailBuilders derives a slow-motion MODQN replay display axis (extracted from App)');
 assertContains(railBuildersSource, 'MODQN_REPLAY_VISUAL_MIN_DISPLAY_DURATION_SEC = 60', 'handoverRailBuilders stretches the short legacy producer trace into a readable display playback window');
 assertContains(appSource, 'producerTraceDisplayDurationSec', 'App separates MODQN producer source horizon from display-stretched rail duration');
-assertContains(timelineAuthoritySource, 'const producerSourceTimeline: TimelineSurfaceDescriptor', 'Timeline authority keeps producer source timeline separate from display-stretched rail axis');
+assertContains(timelineAuthoritySource, 'const producerSourceTimeline: LegacyTimelineSurfaceDescriptor', 'Timeline authority keeps producer source timeline separate from display-stretched rail axis while excluding the homepage archived-TLE owner from legacy lanes');
 assertContains(timelineAuthoritySource, "return { timeline: liveTimeline, rail: liveRail };", 'Timeline authority keeps MODQN live preview rail on the live Walker event index');
 assertContains(timelineAuthoritySource, "return { timeline: producerSourceTimeline, rail: producerTrace };", 'Timeline authority keeps MODQN replay proof bottom timeline on producer source time');
 assertContains(timelineAuthoritySource, 'horizonSec: producerDurationSec', 'Timeline authority keeps producer source horizon seconds separate from display duration');
-assertContains(appSource, 'horizonSec={timelineRailDescriptor.timeline.horizonSec}', 'App passes source horizon seconds to TimelineBar separately');
+assertContains(appSource, 'horizonSec={activeTimelineDescriptor.horizonSec}', 'App passes the active source horizon seconds to TimelineBar separately');
 assertContains(timelineAuthoritySource, "horizonKind: 'producer-trace'", 'Timeline authority models producer trace horizon explicitly');
 assertContains(timelineAuthoritySource, 'LEGACY_PRODUCER_TRACE_SOURCE_GAP', 'Timeline authority carries legacy producer trace source-gap copy');
 assertContains(appSource, 'const liveTimelineWindowStartSec = demoStartOffset;', 'App anchors live timeline display to the selected live Walker window');
@@ -677,7 +677,13 @@ assertContains(appSource, 'durationSec={timelineRailDescriptor.rail.durationSec}
 assertContains(appSource, 'sourceLabel={timelineRailDescriptor.rail.sourceLabel}', 'App handover rail uses descriptor-owned source label');
 assertContains(appSource, 'sourceOwner={timelineRailDescriptor.rail.sourceOwner}', 'App handover rail exposes descriptor source owner');
 assertContains(appSource, 'sourceGapReasons={timelineRailDescriptor.rail.sourceGapReasons}', 'App handover rail exposes descriptor source gaps');
-assertContains(appSource, 'const timelineDurationSec = timelineRailDescriptor.timeline.durationSec;', 'App timeline duration is descriptor-owned');
+assertContains(appSource, 'const timelineDurationSec = activeTimelineDescriptor.durationSec;', 'App timeline duration is active-descriptor-owned');
+assertContains(timelineAuthoritySource, "sourceOwner: 'archived-tle-run'", 'Homepage timeline declares the archived-TLE run as its source owner');
+assertContains(timelineAuthoritySource, "horizonKind: 'archived-tle-window'", 'Homepage timeline declares the archived-TLE two-hour window');
+assertContains(timelineAuthoritySource, "claimKind: 'tle-derived-run'", 'Homepage timeline labels its TLE-derived SGP4 claim');
+assertContains(appSource, "const activeTimelineDescriptor = sceneLane === 'sinr-live'", 'Homepage SINR lane selects the archived-TLE timeline descriptor');
+assertContains(appSource, 'homepageCanonicalAnalysis.selectTimelineTimeSec?.(target);', 'Homepage timeline seek selects a published TLE anchor');
+assertContains(appSource, "stepSec={sceneLane === 'sinr-live'", 'Homepage timeline uses the archived-TLE anchor step');
 assertNotContains(
   appSource,
   "const timelineDurationSec = sceneSource === 'artifact-replay'",
@@ -1386,7 +1392,11 @@ assertContains(appSource, "activeRightSidebarTab === 'artifact'", 'App artifact 
 // renders only once its window frame resolves, else the fail-closed placeholder shows.
 assertContains(appSource, '!recordedReplayActive || activeSceneFrame !== undefined', 'App recorded-replay scene fail-closed gate');
 assertContains(appSource, 'data-testid="artifact-scene-fail-closed"', 'App artifact scene fail-closed placeholder');
-assertContains(appSource, "if (sceneSource === 'artifact-replay') return;", 'App skips MODQN replay bundle startup fetch in artifact replay');
+assertContains(
+  appSource,
+  "if (sceneSource === 'artifact-replay' || appMode !== 'modqn-demo') return;",
+  'App skips MODQN replay bundle startup fetch outside the live MODQN workspace',
+);
 assertNotContains(appSource, 'modqnReplayFetchError', 'App must not retain the retired MODQN replay-fetch error banner state');
 tangleLockGroup('QUAR-S6-BUS', () => {
 assertContains(
@@ -2256,13 +2266,13 @@ assertContains(
 );
 assertContains(
   mainSceneSource,
-  '{showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory && (',
-  'MainScene gates the shared story layer by scene lane render plan and MODQN visual preset',
+  "{presentationPlan.visible['event-effects'] && showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory && (",
+  'MainScene gates the shared story layer by scene lane render plan, presentation stage, and MODQN visual preset',
 );
 assertContains(
   mainSceneSource,
-  '{showCellOverlay && modqnVisualLayers.beamCones && (',
-  'MainScene gates MODQN beam cones by visual preset',
+  "{presentationPlan.visible['serving-beams'] && showCellOverlay && modqnVisualLayers.beamCones && (",
+  'MainScene gates MODQN beam cones by lane, presentation stage, and visual preset',
 );
 assertContains(
   mainSceneSource,
@@ -2312,8 +2322,8 @@ assertContains(
 );
 assertContains(
   mainSceneSource,
-  '{showCellOverlay && modqnVisualLayers.handoverStory && showModqnServiceAllocation && (',
-  'MainScene gates the focused beam-load cylinder to the explain/debug handover surface',
+  "{presentationPlan.visible['load-overlays'] && showCellOverlay && modqnVisualLayers.handoverStory && showModqnServiceAllocation && (",
+  'MainScene gates the focused beam-load cylinder to the presentation-enabled explain/debug handover surface',
 );
 assertContains(
   mainSceneSource,
@@ -2784,10 +2794,10 @@ for (const [needle, label] of [
   // beam-stage ① #3: cell-truth footprint rings (gated with the serving cones) REPLACE
   // the retired steered AmbientFootprintRings — rings now sit at the earth-fixed cell
   // centres (aligned with the cones + UE membership), not the steered beam positions.
-  ['{showSinrLiveCellBeams && !manualHandoverActive && (\\n        <SinrLiveCellFootprintRings', 'cell-truth footprint rings'],
-  ['{showLiveSceneEffects && !manualHandoverActive && (\\n        <HandoverLinks', 'handover links'],
-  ['{showLiveSceneEffects && !manualHandoverActive && <IntraGroundShockwave', 'intra ground shockwave'],
-  ['{showHandoverToastOverlay && (\\n        <HandoverToastOverlay', 'handover toast overlay'],
+  ["{presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !manualHandoverActive && (\\n        <SinrLiveCellFootprintRings", 'cell-truth footprint rings'],
+  ["{presentationPlan.visible['event-effects'] && showLiveSceneEffects && !manualHandoverActive && (\\n        <HandoverLinks", 'handover links'],
+  ["{presentationPlan.visible['event-effects'] && showLiveSceneEffects && !manualHandoverActive && <IntraGroundShockwave", 'intra ground shockwave'],
+  ["{presentationPlan.visible['event-effects'] && showHandoverToastOverlay && (\\n        <HandoverToastOverlay", 'handover toast overlay'],
 ] as const) {
   assertContains(mainSceneSource, needle.replace('\\n', '\n'), `MainScene should source-gate ${label}`);
 }
@@ -2802,7 +2812,7 @@ for (const [needle, label] of [
 // gate + the board's `useReplaySceneTelemetry` / source-gap render-string pins were
 // removed with the clean-deleted board. The SimState-publisher artifact fail-closed
 // asserts below are unrelated to the board and stay.
-assertContains(mainSceneSource, "enabled: sceneFrame.sceneSource !== 'artifact-replay'", 'MainScene disables live SimState publisher for artifact replay');
+assertContains(mainSceneSource, "enabled: simSource === 'live' && sceneFrame.sceneSource !== 'artifact-replay'", 'MainScene disables live SimState publisher for archived TLE and artifact replay');
 assertContains(readRepoFile('src/scene/useSimStatePublisher.ts'), 'if (!enabled) return;', 'live SimState publisher supports artifact fail-closed disable');
 
 for (const [source, label] of [
@@ -2852,15 +2862,15 @@ assert.equal(
   0,
   'LaneExperienceBar is not mounted after the MODQN sub-nav consolidation',
 );
-assertContains(
+assertNotContains(
   appSource,
   "from './ui/ModqnViewToggle'",
-  'App imports the current MODQN view toggle for in-MODQN lane navigation',
+  'the canonical homepage must not import the retired Live / Proof navigation',
 );
-assertContains(
+assertNotContains(
   appSource,
   '<ModqnViewToggle',
-  'MODQN view toggle is mounted for in-MODQN lane navigation',
+  'the canonical homepage must not mount the retired Live / Proof navigation',
 );
 assertContains(
   appSource,
@@ -2904,13 +2914,9 @@ assertContains(
   'export function syncSceneSourceToUrl(mode: SceneSourceMode): void',
   'appPersistence exposes the display-only URL sync for the runtime lane switch',
 );
-// ── 4 lanes -> 2 nav segments (modqn-tab-consolidation-plan.md) ──
-// The top LaneExperienceBar collapsed from 4 segments to 2 (SINR / MODQN). It
-// offers ONLY the two primary lanes; the other two MODQN lanes
-// (modqn-replay-proof, artifact-replay) are NOT top tabs anymore — they are
-// reachable solely through the in-MODQN ModqnViewToggle sub-nav. This is the
-// nav != lane keystone (ADR-002) made literal: a non-injective map from 2 nav
-// segments onto 4 SceneLanes. The SceneLane enum itself stays 4 (Rule#4).
+// ── Retained lane-model donors ──
+// The historical navigation components remain auditable donors, but neither is
+// mounted by the canonical homepage. The SceneLane enum remains unchanged.
 for (const lane of [
   'sinr-live',
   'modqn-live-cell-preview',
@@ -2950,32 +2956,19 @@ assertNotContains(laneExperienceBarSource, '<Canvas', 'LaneExperienceBar must no
 assertNotContains(laneExperienceBarSource, '../scene/', 'LaneExperienceBar must not import scene runtime modules');
 assertNotContains(laneExperienceBarSource, '../viz/', 'LaneExperienceBar must not import viz modules');
 
-// ── In-MODQN ModqnViewToggle sub-nav (owns the 2 non-top MODQN lanes) ──
-// The two MODQN lanes the top bar dropped (modqn-replay-proof, artifact-replay)
-// are reachable ONLY through this in-MODQN sub-nav, alongside the default
-// modqn-live-cell-preview. It reuses App.handleExperienceChange (same
-// governance-safe transition as the top bar), is mounted gated to non-SINR
-// lanes, and is a Shared Surface (no 3D / scene / viz import).
+// ── Retired in-MODQN view navigation ──
+// Keep the component source isolated as a dormant donor, but make absence from
+// the homepage an explicit guard so Live / Proof cannot return accidentally.
 const modqnViewToggleSource = readRepoFile('src/ui/ModqnViewToggle.tsx');
-assertContains(
+assertNotContains(
   appSource,
   "from './ui/ModqnViewToggle'",
-  'App imports the in-MODQN ModqnViewToggle sub-nav',
+  'App must not import the retired in-MODQN view navigation',
 );
 assert.equal(
   countOccurrences(appSource, '<ModqnViewToggle'),
-  1,
-  'ModqnViewToggle is mounted exactly once',
-);
-assertContains(
-  appSource,
-  "{sceneLane !== 'sinr-live' && (",
-  'ModqnViewToggle sub-nav is mounted gated to MODQN lanes (hidden on the SINR experience)',
-);
-assertContains(
-  appSource,
-  'onChange={handleExperienceChange}',
-  'ModqnViewToggle reuses the governance-safe handleExperienceChange transition',
+  0,
+  'ModqnViewToggle must not be mounted on the canonical homepage',
 );
 for (const lane of [
   'modqn-live-cell-preview',

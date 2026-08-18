@@ -1,0 +1,13 @@
+{
+  "schema": "c120-part-b-v2-p028-p045-visual-qa-v1",
+  "status": "PENDING_RENDER",
+  "renderer": "/usr/bin/soffice",
+  "rendered_slides": 0,
+  "inspection": "renderer available; run original-size conversion and inspect every slide",
+  "fix_and_rerender_cycle": "required",
+  "evidence": [
+    "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/current-evidence/course-20260811/.playwright-cli/element-2026-08-11T03-06-45-152Z.png",
+    "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/current-evidence/course-20260811/.playwright-cli/element-2026-08-11T03-06-47-569Z.png",
+    "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/current-evidence/course-20260811/.playwright-cli/element-2026-08-11T03-06-50-920Z.png"
+  ]
+}

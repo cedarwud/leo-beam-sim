@@ -64,6 +64,29 @@ const COLORS = Object.freeze({
   white: "FFFFFF",
 });
 
+// Three-slide owner-review calibration palette. It borrows the first Phase-0
+// deck's visual mass and contrast, but keeps the edu master background unset.
+// The former bright amber is intentionally not reused.
+const CALIBRATION = Object.freeze({
+  ink: "17223B",
+  navy: "14213D",
+  sky: "28B8C7",
+  skySoft: "E5F5F6",
+  coral: "EA6A5A",
+  coralSoft: "FBE9E5",
+  green: "4EA978",
+  greenSoft: "E7F3EB",
+  violet: "9272C7",
+  violetSoft: "F0EAF8",
+  blueGray: "607E91",
+  blueSoft: "ECF2F5",
+  cream: "F5F1E8",
+  paper: "FFFDF7",
+  muted: "60708A",
+  line: "C9D2D8",
+  white: "FFFFFF",
+});
+
 const STAGES = Object.freeze([
   {
     kind: "claims",
@@ -1505,16 +1528,766 @@ function addTransferSlideV3(pptx, template, stage) {
   return slide;
 }
 
+function addCalibrationQuestionV4(pptx, slide, template, stage, prediction) {
+  addChipV3(
+    pptx,
+    slide,
+    template,
+    "核心問題",
+    { x: 0.82, y: 1.06, w: 1.08, h: 0.36 },
+    stage.accent,
+    { fontSize: 12.2, label: "v4 question chip" },
+  );
+  addBodyText(
+    slide,
+    template,
+    stage.question,
+    { x: 2.06, y: 1.05, w: 7.36, h: 0.44 },
+    { fontSize: 22, color: CALIBRATION.ink, bold: true, valign: "mid" },
+    "v4 driving question",
+  );
+  addBodyText(
+    slide,
+    template,
+    prediction,
+    { x: 9.55, y: 1.07, w: 3.27, h: 0.34 },
+    { fontSize: 14.5, color: stage.accent, bold: true, align: "right", valign: "mid" },
+    "v4 learner prediction",
+  );
+  addFlowLine(slide, template, pptx, 0.82, 1.49, 12.0, 0, stage.accent, 1.15, "v4 question rule");
+}
+
+function addClaimDockV4(pptx, slide, template, claims) {
+  const band = { x: 0.82, y: 5.82, w: 12.0, h: 0.67 };
+  addPanel(slide, template, pptx, band, CALIBRATION.paper, CALIBRATION.line, 0.95, "v4 claim dock");
+  const items = [
+    { x: 0.82, w: 3.32, label: "FACT", chipW: 0.72, color: CALIBRATION.green, value: claims.fact },
+    { x: 4.14, w: 4.38, label: "DESIGN INFERENCE", chipW: 1.55, color: CALIBRATION.violet, value: claims.inference },
+    { x: 8.52, w: 4.3, label: "UNKNOWN", chipW: 1.04, color: CALIBRATION.coral, value: claims.unknown },
+  ];
+  [4.14, 8.52].forEach((x) => {
+    addFlowLine(slide, template, pptx, x, 5.92, 0, 0.47, CALIBRATION.line, 0.85, "v4 claim dock divider");
+  });
+  items.forEach((item, index) => {
+    addChipV3(
+      pptx,
+      slide,
+      template,
+      item.label,
+      { x: item.x + 0.12, y: 5.99, w: item.chipW, h: 0.32 },
+      item.color,
+      { fontSize: 11.5, label: "v4 claim label " + (index + 1) },
+    );
+    addBodyText(
+      slide,
+      template,
+      item.value,
+      { x: item.x + item.chipW + 0.24, y: 5.94, w: item.w - item.chipW - 0.34, h: 0.43 },
+      { fontSize: 14.0, color: CALIBRATION.ink, bold: true, valign: "mid" },
+      "v4 claim value " + (index + 1),
+    );
+  });
+}
+
+function addCourseOutlineSlideV4(pptx, template) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addTitle(slide, template, "C-120 LEO 能源決策課程｜Phase 0 完整課程大綱");
+
+  addBodyText(
+    slide,
+    template,
+    "10 + 8 + 23 + 23 + 5 + 23 + 14 + 14 = 120",
+    { x: 0.82, y: 1.05, w: 12.0, h: 0.4 },
+    { fontSize: 30, bold: true, color: CALIBRATION.navy, align: "center" },
+    "v4 cadence equation",
+  );
+  addBodyText(
+    slide,
+    template,
+    "energy-first  →  LEO-as-index  →  同一份 Energy Decision Workbook",
+    { x: 0.92, y: 1.47, w: 11.8, h: 0.33 },
+    { fontSize: 19.5, bold: true, color: CALIBRATION.green, align: "center" },
+    "v4 course mainline",
+  );
+
+  const routeLabels = [
+    "主張判讀",
+    "TLE 資料錨點",
+    "Lab A｜同工異速",
+    "Lab B｜先行或等",
+    "回復與重整",
+    "Lab C｜分配焦耳",
+    "證據檢核",
+    "競賽轉移／離場",
+  ];
+  const minutes = [10, 8, 23, 23, 5, 23, 14, 14];
+  const accents = [
+    CALIBRATION.sky,
+    CALIBRATION.blueGray,
+    CALIBRATION.violet,
+    CALIBRATION.coral,
+    CALIBRATION.blueGray,
+    CALIBRATION.green,
+    CALIBRATION.violet,
+    CALIBRATION.sky,
+  ];
+  const routeXs = [0.82, 3.84, 6.86, 9.88];
+  const routeYs = [1.94, 2.61];
+
+  for (let col = 0; col < 3; col += 1) {
+    addArrowV3(pptx, slide, template, routeXs[col] + 2.73, routeYs[0] + 0.29, 0.26, 0, CALIBRATION.sky, { width: 1.8, label: "v4 route arrow top" });
+  }
+  addArrowV3(pptx, slide, template, 12.68, 2.29, 0, 0.23, CALIBRATION.violet, { width: 1.7, label: "v4 route turn" });
+  for (let col = 3; col > 0; col -= 1) {
+    addArrowV3(pptx, slide, template, routeXs[col], routeYs[1] + 0.29, -0.26, 0, CALIBRATION.sky, { width: 1.8, label: "v4 route arrow bottom" });
+  }
+
+  routeLabels.forEach((label, index) => {
+    const row = index < 4 ? 0 : 1;
+    const col = row === 0 ? index : 7 - index;
+    const x = routeXs[col];
+    const y = routeYs[row];
+    addPanel(slide, template, pptx, { x, y, w: 2.73, h: 0.56 }, CALIBRATION.paper, CALIBRATION.navy, 0.95, "v4 route card");
+    addChipV3(
+      pptx,
+      slide,
+      template,
+      String(minutes[index]),
+      { x: x + 0.1, y: y + 0.1, w: 0.54, h: 0.36 },
+      accents[index],
+      { fontSize: 17, label: "v4 route minutes" },
+    );
+    addBodyText(
+      slide,
+      template,
+      label,
+      { x: x + 0.76, y: y + 0.08, w: 1.83, h: 0.4 },
+      { fontSize: 14.4, color: CALIBRATION.ink, bold: true, align: "center", valign: "mid" },
+      "v4 route label",
+    );
+  });
+
+  addPanel(slide, template, pptx, { x: 0.82, y: 3.38, w: 12.0, h: 0.96 }, CALIBRATION.navy, CALIBRATION.navy, 1.0, "v4 reading backbone");
+  addChipV3(pptx, slide, template, "共同判讀骨架", { x: 1.0, y: 3.56, w: 1.48, h: 0.34 }, CALIBRATION.sky, { fontSize: 12.3, color: CALIBRATION.navy, label: "v4 backbone label" });
+  const backbone = [
+    { x: 2.82, term: "W", note: "當下功率" },
+    { x: 4.66, term: "時間", note: "累積多久" },
+    { x: 6.58, term: "J", note: "總能源" },
+    { x: 8.49, term: "服務", note: "是否合格" },
+    { x: 10.53, term: "bit/J", note: "邊界內效率" },
+  ];
+  backbone.forEach((item, index) => {
+    addBodyText(slide, template, item.term, { x: item.x, y: 3.48, w: 1.15, h: 0.36 }, { fontSize: 19, color: CALIBRATION.white, bold: true, align: "center" }, "v4 backbone term");
+    addBodyText(slide, template, item.note, { x: item.x - 0.08, y: 3.88, w: 1.31, h: 0.22 }, { fontSize: 11.8, color: "BFD4E0", bold: true, align: "center" }, "v4 backbone note");
+    if (index < backbone.length - 1) {
+      addArrowV3(pptx, slide, template, item.x + 1.18, 3.68, 0.47, 0, CALIBRATION.sky, { width: 1.7, label: "v4 backbone arrow" });
+    }
+  });
+
+  addPanel(slide, template, pptx, { x: 0.82, y: 4.51, w: 5.9, h: 0.61 }, CALIBRATION.greenSoft, CALIBRATION.green, 1.0, "v4 mission contract band");
+  addChipV3(pptx, slide, template, "MISSION CONTRACT", { x: 1.02, y: 4.66, w: 1.42, h: 0.32 }, CALIBRATION.green, { fontSize: 11.5, label: "v4 mission contract chip" });
+  addBodyText(slide, template, "service pass · freshness · deadline", { x: 2.62, y: 4.56, w: 3.82, h: 0.25 }, { fontSize: 14.2, color: CALIBRATION.ink, bold: true, align: "center" }, "v4 mission contract row one");
+  addBodyText(slide, template, "energy budget · window", { x: 2.62, y: 4.83, w: 3.82, h: 0.23 }, { fontSize: 14.2, color: CALIBRATION.ink, bold: true, align: "center" }, "v4 mission contract row two");
+
+  addPanel(slide, template, pptx, { x: 6.92, y: 4.51, w: 5.9, h: 0.61 }, CALIBRATION.violetSoft, CALIBRATION.violet, 1.0, "v4 distinctions band");
+  addChipV3(pptx, slide, template, "不互換", { x: 7.13, y: 4.66, w: 0.9, h: 0.32 }, CALIBRATION.violet, { fontSize: 11.5, label: "v4 distinctions chip" });
+  addBodyText(slide, template, "W ≠ J｜bit/s ≠ bit/J｜active time", { x: 8.13, y: 4.6, w: 4.48, h: 0.38 }, { fontSize: 16, color: CALIBRATION.ink, bold: true, align: "center" }, "v4 distinctions text");
+
+  addBodyText(
+    slide,
+    template,
+    "模擬教學資料、非即時、非量測、尚未通過 canonical parity 驗證。",
+    { x: 0.92, y: 5.28, w: 11.8, h: 0.28 },
+    { fontSize: 14.0, color: CALIBRATION.coral, bold: true, align: "center" },
+    "v4 claim ceiling",
+  );
+  addClaimDockV4(pptx, slide, template, {
+    fact: "EE＝delivered bits／consumed J",
+    inference: "9頁｜120分待實證",
+    unknown: "browser／classroom／parity",
+  });
+  return slide;
+}
+
+function addClaimsSlideV4(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addCalibrationQuestionV4(pptx, slide, template, stage, "先判｜A／Q／R＋信心");
+
+  const claims = [
+    { letter: "A", title: "平均 W 較低", note: "service_pass＋期限", color: CALIBRATION.sky },
+    { letter: "B", title: "較快完成", note: "active time＋完成時刻", color: CALIBRATION.green },
+    { letter: "C", title: "bit/J 高但漏 deadline", note: "逾期＝服務不合格", color: CALIBRATION.coral },
+  ];
+  claims.forEach((item, index) => {
+    const y = 1.73 + index * 0.88;
+    addPanel(slide, template, pptx, { x: 0.82, y, w: 3.28, h: 0.74 }, CALIBRATION.paper, item.color, 1.05, "v4 claim card");
+    addBodyShape(slide, template, pptx.ShapeType.ellipse, { x: 1.03, y: y + 0.13, w: 0.48, h: 0.48 }, { fill: { color: item.color }, line: { color: item.color, width: 0.6 } }, "v4 claim letter");
+    addBodyText(slide, template, item.letter, { x: 1.03, y: y + 0.13, w: 0.48, h: 0.48 }, { fontSize: 17, color: CALIBRATION.white, bold: true, align: "center" }, "v4 claim letter text");
+    addBodyText(slide, template, item.title, { x: 1.7, y: y + 0.1, w: 2.18, h: 0.29 }, { fontSize: 16.5, color: CALIBRATION.ink, bold: true }, "v4 claim title");
+    addBodyText(slide, template, item.note, { x: 1.7, y: y + 0.42, w: 2.18, h: 0.2 }, { fontSize: 12.5, color: CALIBRATION.muted, bold: true }, "v4 claim note");
+  });
+
+  addArrowV3(pptx, slide, template, 4.13, 3.0, 0.22, 0, CALIBRATION.sky, { width: 1.9, label: "v4 claim to contract" });
+  addPanel(slide, template, pptx, { x: 4.36, y: 1.73, w: 3.5, h: 2.85 }, CALIBRATION.navy, CALIBRATION.navy, 1.1, "v4 mission contract hub");
+  addChipV3(pptx, slide, template, "MISSION CONTRACT", { x: 5.01, y: 1.96, w: 2.2, h: 0.34 }, CALIBRATION.sky, { fontSize: 12.2, color: CALIBRATION.navy, label: "v4 mission contract hub chip" });
+  addBodyText(slide, template, "先固定可比邊界", { x: 4.72, y: 2.39, w: 2.78, h: 0.34 }, { fontSize: 19, color: CALIBRATION.white, bold: true, align: "center" }, "v4 mission contract hub title");
+  [
+    "工作量／payload",
+    "deadline／service_pass",
+    "idle／wakeup",
+    "單位／時間窗",
+  ].forEach((text, index) => {
+    addBodyText(slide, template, text, { x: 4.78, y: 2.83 + index * 0.29, w: 2.65, h: 0.24 }, { fontSize: 14.3, color: "D7E8EF", bold: true, align: "center" }, "v4 mission contract condition");
+  });
+  addChipV3(pptx, slide, template, "COMPARABLE?", { x: 5.12, y: 4.02, w: 1.98, h: 0.32 }, CALIBRATION.paper, { fontSize: 13.2, color: CALIBRATION.navy, label: "v4 comparable gate" });
+  addBodyText(slide, template, "條件不同＝INCOMPARABLE", { x: 4.68, y: 4.35, w: 2.86, h: 0.18 }, { fontSize: 12.5, color: CALIBRATION.coralSoft, bold: true, align: "center" }, "v4 incomparable warning");
+
+  addArrowV3(pptx, slide, template, 7.89, 3.0, 0.23, 0, CALIBRATION.sky, { width: 1.9, label: "v4 contract to verdict" });
+  addPanel(slide, template, pptx, { x: 8.13, y: 1.73, w: 4.69, h: 2.85 }, CALIBRATION.paper, stage.accent, 1.05, "v4 verdict board");
+  addChipV3(pptx, slide, template, "REVEAL → VERDICT", { x: 8.74, y: 1.96, w: 3.47, h: 0.36 }, stage.accent, { fontSize: 14, label: "v4 verdict heading" });
+  addBodyText(slide, template, "○ A　○ Q　○ R", { x: 8.74, y: 2.54, w: 3.47, h: 0.36 }, { fontSize: 22, color: stage.accent, bold: true, align: "center" }, "v4 verdict choices");
+  addBodyText(slide, template, "信心：低／中／高", { x: 8.74, y: 2.93, w: 3.47, h: 0.3 }, { fontSize: 16, color: CALIBRATION.muted, bold: true, align: "center" }, "v4 verdict confidence");
+  addFlowLine(slide, template, pptx, 8.58, 3.36, 3.79, 0, CALIBRATION.line, 0.9, "v4 verdict divider");
+  addBodyText(slide, template, "揭露：J／時間／service", { x: 8.54, y: 3.51, w: 3.87, h: 0.34 }, { fontSize: 16.5, color: CALIBRATION.ink, bold: true, align: "center" }, "v4 verdict reveal");
+  addBodyText(slide, template, "只允許改判 1 次", { x: 8.54, y: 4.02, w: 3.87, h: 0.34 }, { fontSize: 18, color: CALIBRATION.coral, bold: true, align: "center" }, "v4 verdict revision limit");
+
+  addPanel(slide, template, pptx, { x: 0.82, y: 4.79, w: 12.0, h: 0.7 }, CALIBRATION.cream, CALIBRATION.line, 0.95, "v4 claim summary");
+  addFlowLine(slide, template, pptx, 7.15, 4.9, 0, 0.48, CALIBRATION.line, 0.85, "v4 claim summary divider");
+  addChipV3(pptx, slide, template, "操作／證據", { x: 1.02, y: 4.98, w: 1.18, h: 0.32 }, stage.accent, { fontSize: 11.5, label: "v4 claim operation chip" });
+  addBodyText(slide, template, "初判 → 鎖定 → 揭露 → 改判一次", { x: 2.42, y: 4.91, w: 4.45, h: 0.39 }, { fontSize: 16, color: CALIBRATION.ink, bold: true, align: "center" }, "v4 claim operation summary");
+  addChipV3(pptx, slide, template, "意義／回復", { x: 7.37, y: 4.98, w: 1.18, h: 0.32 }, CALIBRATION.navy, { fontSize: 11.5, label: "v4 claim recovery chip" });
+  addBodyText(slide, template, "先固定服務邊界｜單位提示", { x: 8.78, y: 4.91, w: 3.78, h: 0.39 }, { fontSize: 15, color: CALIBRATION.ink, bold: true, align: "center" }, "v4 claim meaning recovery");
+
+  addClaimDockV4(pptx, slide, template, {
+    fact: "W≠J｜bit/s≠bit/J",
+    inference: "3–4頁＋1活動（設計估計）",
+    unknown: "cards／stakes／novice timing",
+  });
+  return slide;
+}
+
+function addLabASlideV4(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addCalibrationQuestionV4(pptx, slide, template, stage, "先選｜slow／balanced／fast");
+
+  addBodyText(slide, template, "固定比較｜同工作量・同 deadline・同系統邊界", { x: 0.82, y: 1.62, w: 6.5, h: 0.27 }, { fontSize: 14.5, color: CALIBRATION.muted, bold: true }, "v4 Lab A fixed comparison");
+  addBodyText(slide, template, "設計估計｜5 reference → 11 operation → 5 debrief → 2 transition", { x: 6.96, y: 1.63, w: 5.86, h: 0.24 }, { fontSize: 11.8, color: CALIBRATION.violet, bold: true, align: "right" }, "v4 Lab A timing estimate");
+  addFlowLine(slide, template, pptx, 0.82, 1.97, 12.0, 0, CALIBRATION.line, 0.9, "v4 Lab A metadata rule");
+
+  const strategies = [
+    { label: "慢速", detail: "低 W\n時間長", color: CALIBRATION.green },
+    { label: "平衡", detail: "中 W\n時間中", color: CALIBRATION.blueGray },
+    { label: "高速後休眠", detail: "高 W\n時間短", color: CALIBRATION.violet },
+  ];
+  strategies.forEach((item, index) => {
+    const y = 2.11 + index * 0.87;
+    addPanel(slide, template, pptx, { x: 0.82, y, w: 3.22, h: 0.72 }, CALIBRATION.paper, item.color, 1.05, "v4 Lab A strategy card");
+    addChipV3(pptx, slide, template, item.label, { x: 1.02, y: y + 0.19, w: 1.12, h: 0.34 }, item.color, { fontSize: 13.3, label: "v4 Lab A strategy label" });
+    addBodyText(slide, template, item.detail, { x: 2.34, y: y + 0.05, w: 1.47, h: 0.6 }, { fontSize: 16.2, color: CALIBRATION.ink, bold: true, align: "center", valign: "mid" }, "v4 Lab A strategy detail");
+  });
+
+  addArrowV3(pptx, slide, template, 4.07, 3.24, 0.25, 0, CALIBRATION.sky, { width: 1.9, label: "v4 Lab A strategy arrow" });
+  addPanel(slide, template, pptx, { x: 4.35, y: 2.11, w: 4.08, h: 2.55 }, CALIBRATION.navy, CALIBRATION.navy, 1.1, "v4 Lab A causal hub");
+  addChipV3(pptx, slide, template, "SAME JOB", { x: 5.62, y: 2.32, w: 1.55, h: 0.34 }, CALIBRATION.sky, { fontSize: 12.2, color: CALIBRATION.navy, label: "v4 Lab A same job chip" });
+  addBodyText(slide, template, "同工作量・同 deadline", { x: 4.7, y: 2.78, w: 3.38, h: 0.28 }, { fontSize: 16.5, color: CALIBRATION.white, bold: true, align: "center" }, "v4 Lab A fixed mission");
+  addBodyText(slide, template, "同一系統邊界", { x: 4.7, y: 3.05, w: 3.38, h: 0.25 }, { fontSize: 15, color: "BDD3DF", bold: true, align: "center" }, "v4 Lab A fixed boundary");
+  addBodyText(slide, template, "W × active time", { x: 4.74, y: 3.34, w: 3.3, h: 0.36 }, { fontSize: 23, color: CALIBRATION.white, bold: true, align: "center" }, "v4 Lab A power time");
+  addBodyText(slide, template, "→ consumed J", { x: 4.74, y: 3.72, w: 3.3, h: 0.32 }, { fontSize: 20, color: CALIBRATION.sky, bold: true, align: "center" }, "v4 Lab A consumed energy");
+  addChipV3(pptx, slide, template, "SERVICE PASS", { x: 5.49, y: 4.08, w: 1.82, h: 0.32 }, CALIBRATION.green, { fontSize: 12.3, label: "v4 Lab A service gate" });
+  addBodyText(slide, template, "鎖定策略 → hidden replay", { x: 4.68, y: 4.39, w: 3.42, h: 0.21 }, { fontSize: 14.5, color: "D7E8EF", bold: true, align: "center" }, "v4 Lab A hidden replay");
+
+  addArrowV3(pptx, slide, template, 8.46, 3.24, 0.23, 0, CALIBRATION.sky, { width: 1.9, label: "v4 Lab A ledger arrow" });
+  addPanel(slide, template, pptx, { x: 8.72, y: 2.11, w: 4.1, h: 2.55 }, CALIBRATION.paper, CALIBRATION.line, 1.05, "v4 Lab A ledger");
+  addChipV3(pptx, slide, template, "AUTO-LEDGER", { x: 9.32, y: 2.32, w: 2.9, h: 0.36 }, CALIBRATION.sky, { fontSize: 13.5, color: CALIBRATION.navy, label: "v4 Lab A ledger heading" });
+  addBodyText(slide, template, "回放後自動填入", { x: 9.08, y: 2.77, w: 3.38, h: 0.28 }, { fontSize: 16, color: CALIBRATION.ink, bold: true, align: "center" }, "v4 Lab A ledger description");
+  const ledger = [
+    { label: "SERVICE", value: "service_pass", color: CALIBRATION.green },
+    { label: "J", value: "consumed J", color: CALIBRATION.violet },
+    { label: "EE", value: "bit/J", color: CALIBRATION.sky },
+    { label: "TIME", value: "完成時刻", color: CALIBRATION.blueGray },
+  ];
+  ledger.forEach((item, index) => {
+    const y = 3.17 + index * 0.34;
+    addChipV3(pptx, slide, template, item.label, { x: 9.04, y, w: 0.86, h: 0.27 }, item.color, { fontSize: 11.5, label: "v4 Lab A ledger label" });
+    addBodyText(slide, template, item.value, { x: 10.11, y: y - 0.01, w: 2.26, h: 0.29 }, { fontSize: 14.5, color: CALIBRATION.ink, bold: true }, "v4 Lab A ledger value");
+  });
+
+  addPanel(slide, template, pptx, { x: 0.82, y: 4.91, w: 12.0, h: 0.62 }, CALIBRATION.cream, CALIBRATION.line, 0.95, "v4 Lab A summary");
+  addFlowLine(slide, template, pptx, 6.83, 5.01, 0, 0.42, CALIBRATION.line, 0.85, "v4 Lab A summary divider");
+  addChipV3(pptx, slide, template, "操作／證據", { x: 1.02, y: 5.06, w: 1.18, h: 0.32 }, CALIBRATION.violet, { fontSize: 11.5, label: "v4 Lab A operation chip" });
+  addBodyText(slide, template, "選策略 → hidden replay → ledger", { x: 2.42, y: 4.99, w: 4.12, h: 0.39 }, { fontSize: 15.5, color: CALIBRATION.ink, bold: true, align: "center" }, "v4 Lab A operation summary");
+  addChipV3(pptx, slide, template, "意義／回復", { x: 7.04, y: 5.06, w: 1.18, h: 0.32 }, CALIBRATION.navy, { fontSize: 11.5, label: "v4 Lab A recovery chip" });
+  addBodyText(slide, template, "排序可翻轉｜同 scenario 反例重設", { x: 8.44, y: 4.99, w: 4.12, h: 0.39 }, { fontSize: 15, color: CALIBRATION.ink, bold: true, align: "center" }, "v4 Lab A meaning recovery");
+
+  addClaimDockV4(pptx, slide, template, {
+    fact: "W≠J｜bit/s≠bit/J",
+    inference: "5–6頁＋1 lab（設計估計）",
+    unknown: "state change／反例未驗證",
+  });
+  return slide;
+}
+
+// V5 readability calibration follows the first Phase-0 donor's information
+// hierarchy: one large question, a small number of large visual groups, and two
+// large learning-outcome cards.  Small type is reserved for claim-boundary
+// metadata.  All authored panels use white or pale fills; dark colors remain
+// text, rules, and outlines only.
+function addLightLabelV5(pptx, slide, template, text, box, pale, accent, options = {}) {
+  addPanel(slide, template, pptx, box, pale, accent, options.lineWidth || 1.0, options.label || "v5 light label");
+  addBodyText(
+    slide,
+    template,
+    text,
+    { x: box.x + 0.08, y: box.y + 0.03, w: box.w - 0.16, h: box.h - 0.06 },
+    {
+      fontSize: options.fontSize || 14.5,
+      color: accent,
+      bold: options.bold !== false,
+      align: options.align || "center",
+      valign: "mid",
+    },
+    (options.label || "v5 light label") + " text",
+  );
+}
+
+function addQuestionV5(pptx, slide, template, stage, prediction) {
+  addLightLabelV5(
+    pptx,
+    slide,
+    template,
+    "核心問題",
+    { x: 0.82, y: 1.06, w: 1.25, h: 0.38 },
+    stage.pale,
+    stage.accent,
+    { fontSize: 14.5, label: "v5 question label" },
+  );
+  addBodyText(
+    slide,
+    template,
+    stage.question,
+    { x: 2.25, y: 1.05, w: 7.0, h: 0.44 },
+    { fontSize: 22, color: COLORS.body, bold: true, valign: "mid" },
+    "v5 driving question",
+  );
+  addBodyText(
+    slide,
+    template,
+    prediction,
+    { x: 9.42, y: 1.07, w: 3.4, h: 0.36 },
+    { fontSize: 15.5, color: stage.accent, bold: true, align: "right", valign: "mid" },
+    "v5 learner prediction",
+  );
+  addFlowLine(slide, template, pptx, 0.82, 1.51, 12.0, 0, stage.accent, 1.15, "v5 question rule");
+}
+
+function addOutcomeBandV5(pptx, slide, template, stage, left, right, y = 4.87) {
+  const cards = [
+    { x: 0.82, w: 5.9, label: "操作／證據", value: left, fill: stage.pale },
+    { x: 6.92, w: 5.9, label: "意義／回復", value: right, fill: COLORS.sand },
+  ];
+  cards.forEach((card, index) => {
+    addPanel(slide, template, pptx, { x: card.x, y, w: card.w, h: 0.72 }, card.fill, stage.accent, 1.0, "v5 outcome card");
+    addBodyText(slide, template, card.label, { x: card.x + 0.18, y: y + 0.1, w: 1.25, h: 0.22 }, { fontSize: 14.2, color: stage.accent, bold: true, align: "center" }, "v5 outcome label " + (index + 1));
+    addBodyText(slide, template, card.value, { x: card.x + 1.58, y: y + 0.08, w: card.w - 1.78, h: 0.52 }, { fontSize: 16, color: COLORS.body, bold: true, align: "center", valign: "mid" }, "v5 outcome value " + (index + 1));
+  });
+}
+
+function addClaimDockV5(pptx, slide, template, claims) {
+  const y = 5.77;
+  const items = [
+    { x: 0.82, w: 3.62, label: "FACT", value: claims.fact, color: COLORS.fact, fill: COLORS.mintSoft },
+    { x: 4.57, w: 4.28, label: "DESIGN INFERENCE", value: claims.inference, color: COLORS.inference, fill: COLORS.violetSoft },
+    { x: 8.98, w: 3.84, label: "UNKNOWN", value: claims.unknown, color: COLORS.unknown, fill: COLORS.coralSoft },
+  ];
+  items.forEach((item, index) => {
+    addPanel(slide, template, pptx, { x: item.x, y, w: item.w, h: 0.72 }, item.fill, item.color, 0.85, "v5 claim card");
+    addBodyText(slide, template, item.label, { x: item.x + 0.15, y: y + 0.06, w: item.w - 0.3, h: 0.2 }, { fontSize: 13.5, color: item.color, bold: true }, "v5 claim label " + (index + 1));
+    addBodyText(slide, template, item.value, { x: item.x + 0.15, y: y + 0.29, w: item.w - 0.3, h: 0.35 }, { fontSize: 14.2, color: item.color, bold: true, valign: "mid" }, "v5 claim value " + (index + 1));
+  });
+}
+
+function addCourseOutlineSlideV5(pptx, template) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addTitle(slide, template, "C-120 LEO 能源決策課程｜Phase 0 完整課程大綱");
+
+  addBodyText(slide, template, "10 + 8 + 23 + 23 + 5 + 23 + 14 + 14 = 120", { x: 0.82, y: 1.05, w: 12.0, h: 0.42 }, { fontSize: 30, color: COLORS.ink, bold: true, align: "center" }, "v5 cadence equation");
+  addBodyText(slide, template, "energy-first → LEO-as-index → 同一份 Energy Decision Workbook", { x: 0.92, y: 1.48, w: 11.8, h: 0.34 }, { fontSize: 20, color: COLORS.fact, bold: true, align: "center" }, "v5 course mainline");
+
+  const labels = ["主張判讀", "TLE 資料錨點", "Lab A｜同工異速", "Lab B｜先行或等", "回復與重整", "Lab C｜分配焦耳", "證據檢核", "競賽轉移／離場"];
+  const minutes = [10, 8, 23, 23, 5, 23, 14, 14];
+  const xs = [0.82, 3.84, 6.86, 9.88];
+  const ys = [1.94, 2.63];
+  STAGES.forEach((stage, index) => {
+    const row = index < 4 ? 0 : 1;
+    const col = row === 0 ? index : 7 - index;
+    const x = xs[col];
+    const y = ys[row];
+    addPanel(slide, template, pptx, { x, y, w: 2.73, h: 0.58 }, stage.pale, stage.accent, 1.0, "v5 route card");
+    addBodyText(slide, template, String(minutes[index]), { x: x + 0.12, y: y + 0.1, w: 0.55, h: 0.34 }, { fontSize: 18, color: stage.accent, bold: true, align: "center" }, "v5 route minutes");
+    addBodyText(slide, template, labels[index], { x: x + 0.75, y: y + 0.08, w: 1.82, h: 0.4 }, { fontSize: 15.5, color: COLORS.body, bold: true, align: "center", valign: "mid" }, "v5 route label");
+  });
+  for (let col = 0; col < 3; col += 1) {
+    addArrowV3(pptx, slide, template, xs[col] + 2.75, ys[0] + 0.29, 0.24, 0, COLORS.sky, { width: 1.6, label: "v5 route arrow top" });
+    addArrowV3(pptx, slide, template, xs[col + 1], ys[1] + 0.29, -0.24, 0, COLORS.sky, { width: 1.6, label: "v5 route arrow bottom" });
+  }
+  addArrowV3(pptx, slide, template, 12.68, 2.31, 0, 0.23, COLORS.violet, { width: 1.6, label: "v5 route turn" });
+
+  addPanel(slide, template, pptx, { x: 0.82, y: 3.39, w: 12.0, h: 0.84 }, COLORS.blueSoft, COLORS.blueGray, 1.0, "v5 reading backbone");
+  addBodyText(slide, template, "共同判讀骨架", { x: 1.02, y: 3.54, w: 1.5, h: 0.28 }, { fontSize: 15, color: COLORS.blueGray, bold: true, align: "center" }, "v5 backbone heading");
+  const backbone = [
+    { x: 2.85, term: "W", note: "當下功率" },
+    { x: 4.62, term: "active time", note: "累積多久" },
+    { x: 6.67, term: "J", note: "總能源" },
+    { x: 8.47, term: "service", note: "是否合格" },
+    { x: 10.48, term: "bit/J", note: "邊界內效率" },
+  ];
+  backbone.forEach((item, index) => {
+    addBodyText(slide, template, item.term, { x: item.x, y: 3.47, w: 1.24, h: 0.32 }, { fontSize: 19, color: COLORS.ink, bold: true, align: "center" }, "v5 backbone term");
+    addBodyText(slide, template, item.note, { x: item.x - 0.05, y: 3.83, w: 1.34, h: 0.24 }, { fontSize: 14.5, color: COLORS.blueGray, bold: true, align: "center" }, "v5 backbone note");
+    if (index < backbone.length - 1) {
+      addArrowV3(pptx, slide, template, item.x + 1.27, 3.67, 0.37, 0, COLORS.sky, { width: 1.6, label: "v5 backbone arrow" });
+    }
+  });
+
+  addPanel(slide, template, pptx, { x: 0.82, y: 4.43, w: 5.9, h: 0.68 }, COLORS.mintSoft, COLORS.fact, 1.0, "v5 mission contract");
+  addBodyText(slide, template, "MISSION CONTRACT", { x: 1.04, y: 4.53, w: 1.65, h: 0.22 }, { fontSize: 14.5, color: COLORS.fact, bold: true, align: "center" }, "v5 mission label");
+  addBodyText(slide, template, "service pass · freshness · deadline\nenergy budget · window", { x: 2.88, y: 4.47, w: 3.56, h: 0.52 }, { fontSize: 15.5, color: COLORS.body, bold: true, align: "center", valign: "mid" }, "v5 mission values");
+  addPanel(slide, template, pptx, { x: 6.92, y: 4.43, w: 5.9, h: 0.68 }, COLORS.violetSoft, COLORS.inference, 1.0, "v5 distinctions");
+  addBodyText(slide, template, "不能互換", { x: 7.15, y: 4.57, w: 1.16, h: 0.22 }, { fontSize: 14.5, color: COLORS.inference, bold: true, align: "center" }, "v5 distinctions label");
+  addBodyText(slide, template, "W ≠ J｜bit/s ≠ bit/J｜active time", { x: 8.48, y: 4.52, w: 4.08, h: 0.32 }, { fontSize: 16.5, color: COLORS.body, bold: true, align: "center" }, "v5 distinctions values");
+  addBodyText(slide, template, "模擬教學資料、非即時、非量測、尚未通過 canonical parity 驗證。", { x: 0.92, y: 5.27, w: 11.8, h: 0.28 }, { fontSize: 14.5, color: COLORS.unknown, bold: true, align: "center" }, "v5 claim ceiling");
+  addClaimDockV5(pptx, slide, template, {
+    fact: "EE＝delivered bits／consumed J",
+    inference: "9頁；120分鐘為設計估計",
+    unknown: "browser／classroom／parity 未驗證",
+  });
+  return slide;
+}
+
+function addClaimsSlideV5(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addQuestionV5(pptx, slide, template, stage, "先判｜A／Q／R＋信心");
+
+  const claims = [
+    { y: 1.76, letter: "A", title: "平均 W 較低", note: "service_pass＋deadline", fill: COLORS.skySoft, color: COLORS.sky },
+    { y: 2.64, letter: "B", title: "較快完成", note: "active time＋完成時刻", fill: COLORS.mintSoft, color: COLORS.mint },
+    { y: 3.52, letter: "C", title: "bit/J 高但漏 deadline", note: "逾期＝服務不合格", fill: COLORS.coralSoft, color: COLORS.coral },
+  ];
+  claims.forEach((item) => {
+    addPanel(slide, template, pptx, { x: 0.82, y: item.y, w: 3.42, h: 0.76 }, item.fill, item.color, 1.0, "v5 claim option");
+    addBodyShape(slide, template, pptx.ShapeType.ellipse, { x: 1.05, y: item.y + 0.15, w: 0.45, h: 0.45 }, { fill: { color: item.fill }, line: { color: item.color, width: 1.2 } }, "v5 claim letter");
+    addBodyText(slide, template, item.letter, { x: 1.05, y: item.y + 0.15, w: 0.45, h: 0.45 }, { fontSize: 17, color: item.color, bold: true, align: "center" }, "v5 claim letter text");
+    addBodyText(slide, template, item.title, { x: 1.62, y: item.y + 0.08, w: 2.42, h: 0.3 }, { fontSize: 17, color: COLORS.body, bold: true }, "v5 claim title");
+    addBodyText(slide, template, item.note, { x: 1.62, y: item.y + 0.41, w: 2.42, h: 0.25 }, { fontSize: 14.2, color: item.color, bold: true }, "v5 claim condition");
+  });
+
+  addArrowV3(pptx, slide, template, 4.27, 3.03, 0.24, 0, COLORS.sky, { width: 1.8, label: "v5 claim contract arrow" });
+  addPanel(slide, template, pptx, { x: 4.54, y: 1.76, w: 3.48, h: 2.52 }, COLORS.blueSoft, COLORS.blueGray, 1.1, "v5 mission contract hub");
+  addBodyText(slide, template, "先固定可比邊界", { x: 4.84, y: 1.99, w: 2.88, h: 0.34 }, { fontSize: 20, color: COLORS.ink, bold: true, align: "center" }, "v5 contract title");
+  ["工作量／payload", "deadline／service_pass", "idle／wakeup", "單位／時間窗"].forEach((text, index) => {
+    addBodyText(slide, template, text, { x: 4.88, y: 2.48 + index * 0.34, w: 2.8, h: 0.27 }, { fontSize: 15.5, color: COLORS.blueGray, bold: true, align: "center" }, "v5 contract condition");
+  });
+  addLightLabelV5(pptx, slide, template, "條件相同？", { x: 5.32, y: 3.89, w: 1.92, h: 0.34 }, COLORS.mintSoft, COLORS.fact, { fontSize: 16, label: "v5 comparable gate" });
+
+  addArrowV3(pptx, slide, template, 8.05, 3.03, 0.24, 0, COLORS.sky, { width: 1.8, label: "v5 verdict arrow" });
+  addPanel(slide, template, pptx, { x: 8.32, y: 1.76, w: 4.5, h: 2.52 }, COLORS.coralSoft, COLORS.coral, 1.1, "v5 verdict board");
+  addBodyText(slide, template, "揭露 → 判決", { x: 8.68, y: 1.99, w: 3.78, h: 0.34 }, { fontSize: 19, color: COLORS.coral, bold: true, align: "center" }, "v5 verdict title");
+  addBodyText(slide, template, "○ A　○ Q　○ R", { x: 8.68, y: 2.51, w: 3.78, h: 0.4 }, { fontSize: 23, color: COLORS.ink, bold: true, align: "center" }, "v5 verdict choices");
+  addBodyText(slide, template, "信心：低／中／高", { x: 8.68, y: 2.96, w: 3.78, h: 0.3 }, { fontSize: 16.5, color: COLORS.muted, bold: true, align: "center" }, "v5 verdict confidence");
+  addFlowLine(slide, template, pptx, 8.75, 3.38, 3.64, 0, COLORS.ceilingLine, 0.9, "v5 verdict divider");
+  addBodyText(slide, template, "揭露：J／時間／service", { x: 8.68, y: 3.5, w: 3.78, h: 0.3 }, { fontSize: 17, color: COLORS.body, bold: true, align: "center" }, "v5 verdict reveal");
+  addBodyText(slide, template, "只允許改判 1 次", { x: 8.68, y: 3.88, w: 3.78, h: 0.3 }, { fontSize: 18, color: COLORS.coral, bold: true, align: "center" }, "v5 verdict revision");
+
+  addOutcomeBandV5(pptx, slide, template, stage, "初判 → 鎖定條件 → 揭露 → 改判一次", "先固定服務邊界｜卡住時給單位／邊界提示", 4.78);
+  addClaimDockV5(pptx, slide, template, {
+    fact: "W≠J；bit/s≠bit/J",
+    inference: "3–4頁＋1活動（設計估計）",
+    unknown: "cards／stakes／novice timing 未驗證",
+  });
+  return slide;
+}
+
+function addTleSlideV5(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addQuestionV5(pptx, slide, template, stage, "先分類｜來源／模型／假設");
+  const nodes = [
+    { x: 0.82, w: 3.56, tag: "SOURCE", title: "pinned TLE", body: "epoch／identity", fill: COLORS.skySoft, color: COLORS.sky },
+    { x: 4.86, w: 3.56, tag: "MODEL-DERIVED", title: "NTPU service window", body: "可服務的時間區間", fill: COLORS.mintSoft, color: COLORS.mint },
+    { x: 8.9, w: 3.92, tag: "COURSE ASSUMPTION", title: "traffic／power", body: "freshness／deadline", fill: COLORS.violetSoft, color: COLORS.violet },
+  ];
+  nodes.forEach((node, index) => {
+    addPanel(slide, template, pptx, { x: node.x, y: 1.76, w: node.w, h: 1.28 }, node.fill, node.color, 1.05, "v5 lineage node");
+    addBodyText(slide, template, node.tag, { x: node.x + 0.2, y: 1.9, w: node.w - 0.4, h: 0.22 }, { fontSize: 14.2, color: node.color, bold: true, align: "center" }, "v5 lineage tag");
+    addBodyText(slide, template, node.title, { x: node.x + 0.2, y: 2.24, w: node.w - 0.4, h: 0.32 }, { fontSize: 19, color: COLORS.body, bold: true, align: "center" }, "v5 lineage title");
+    addBodyText(slide, template, node.body, { x: node.x + 0.2, y: 2.66, w: node.w - 0.4, h: 0.25 }, { fontSize: 15.5, color: node.color, bold: true, align: "center" }, "v5 lineage body");
+    if (index < nodes.length - 1) {
+      addArrowV3(pptx, slide, template, node.x + node.w + 0.04, 2.4, 0.36, 0, COLORS.sky, { width: 1.7, label: "v5 lineage arrow" });
+    }
+  });
+  addBodyText(slide, template, "same versioned scenario_id｜本頁只建立資料身分與行動合法性，不比較能源策略", { x: 0.9, y: 3.15, w: 11.84, h: 0.3 }, { fontSize: 16, color: stage.accent, bold: true, align: "center" }, "v5 TLE distinction");
+  addBodyShape(slide, template, pptx.ShapeType.rect, { x: 0.82, y: 3.58, w: 2.48, h: 0.68 }, { fill: { color: COLORS.quiet }, line: { color: COLORS.blueGray, width: 0.9 } }, "v5 outside left");
+  addBodyShape(slide, template, pptx.ShapeType.rect, { x: 3.3, y: 3.58, w: 5.62, h: 0.68 }, { fill: { color: COLORS.mintSoft }, line: { color: COLORS.mint, width: 1.2 } }, "v5 legal window");
+  addBodyShape(slide, template, pptx.ShapeType.rect, { x: 8.92, y: 3.58, w: 3.9, h: 0.68 }, { fill: { color: COLORS.quiet }, line: { color: COLORS.blueGray, width: 0.9 } }, "v5 outside right");
+  addBodyText(slide, template, "OUTSIDE", { x: 1.02, y: 3.78, w: 2.08, h: 0.26 }, { fontSize: 16, color: COLORS.muted, bold: true, align: "center" }, "v5 outside label left");
+  addBodyText(slide, template, "LEGAL WINDOW｜send／wait", { x: 3.55, y: 3.75, w: 5.12, h: 0.3 }, { fontSize: 18, color: COLORS.fact, bold: true, align: "center" }, "v5 legal window label");
+  addBodyText(slide, template, "OUTSIDE", { x: 9.14, y: 3.78, w: 3.46, h: 0.26 }, { fontSize: 16, color: COLORS.muted, bold: true, align: "center" }, "v5 outside label right");
+  addOutcomeBandV5(pptx, slide, template, stage, "排序 lineage → 確認 scenario_id＋合法窗口", "window 限制下一步行動｜resume／fallback", 4.69);
+  addClaimDockV5(pptx, slide, template, {
+    fact: "TLE 不含 power／traffic／energy",
+    inference: "3–4頁＋1資料排序（設計估計）",
+    unknown: "scenario seam／fallback 未驗證",
+  });
+  return slide;
+}
+
+function addLabASlideV5(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addQuestionV5(pptx, slide, template, stage, "先選｜slow／balanced／fast");
+  addBodyText(slide, template, "固定比較｜同工作量・同 deadline・同系統邊界　　設計估計｜5 reference → 11 operation → 5 debrief → 2 transition", { x: 0.82, y: 1.62, w: 12.0, h: 0.3 }, { fontSize: 14.2, color: stage.accent, bold: true, align: "center" }, "v5 Lab A metadata");
+
+  addPanel(slide, template, pptx, { x: 0.82, y: 2.02, w: 3.3, h: 2.57 }, COLORS.violetSoft, COLORS.violet, 1.05, "v5 Lab A strategies");
+  addBodyText(slide, template, "選一種節奏", { x: 1.08, y: 2.2, w: 2.78, h: 0.3 }, { fontSize: 19, color: COLORS.violet, bold: true, align: "center" }, "v5 Lab A strategy heading");
+  const strategies = [
+    { y: 2.67, title: "慢速", detail: "低 W・長", fill: COLORS.mintSoft, color: COLORS.mint },
+    { y: 3.28, title: "平衡", detail: "中 W・中", fill: COLORS.blueSoft, color: COLORS.blueGray },
+    { y: 3.89, title: "高速後休眠", detail: "高 W・短", fill: COLORS.violetSoft, color: COLORS.violet },
+  ];
+  strategies.forEach((item) => {
+    addPanel(slide, template, pptx, { x: 1.08, y: item.y, w: 2.78, h: 0.48 }, item.fill, item.color, 0.9, "v5 Lab A strategy");
+    addBodyText(slide, template, item.title, { x: 1.19, y: item.y + 0.09, w: 1.24, h: 0.26 }, { fontSize: 16.5, color: item.color, bold: true, align: "center" }, "v5 Lab A strategy title");
+    addBodyText(slide, template, item.detail, { x: 2.47, y: item.y + 0.08, w: 1.24, h: 0.28 }, { fontSize: 16, color: COLORS.body, bold: true, align: "center" }, "v5 Lab A strategy detail");
+  });
+
+  addArrowV3(pptx, slide, template, 4.15, 3.29, 0.24, 0, COLORS.violet, { width: 1.8, label: "v5 Lab A causal arrow" });
+  addPanel(slide, template, pptx, { x: 4.42, y: 2.02, w: 4.04, h: 2.57 }, COLORS.blueSoft, COLORS.blueGray, 1.05, "v5 Lab A causal hub");
+  addBodyText(slide, template, "同一份工作", { x: 4.75, y: 2.23, w: 3.38, h: 0.32 }, { fontSize: 19, color: COLORS.blueGray, bold: true, align: "center" }, "v5 Lab A fixed job");
+  addBodyText(slide, template, "同工作量・同 deadline\n同一系統邊界", { x: 4.75, y: 2.66, w: 3.38, h: 0.65 }, { fontSize: 16, color: COLORS.body, bold: true, align: "center", valign: "mid" }, "v5 Lab A fixed boundary");
+  addBodyText(slide, template, "W × active time", { x: 4.76, y: 3.42, w: 3.36, h: 0.38 }, { fontSize: 23, color: COLORS.ink, bold: true, align: "center" }, "v5 Lab A power time");
+  addBodyText(slide, template, "→ consumed J", { x: 4.76, y: 3.85, w: 3.36, h: 0.34 }, { fontSize: 20, color: COLORS.violet, bold: true, align: "center" }, "v5 Lab A consumed energy");
+  addLightLabelV5(pptx, slide, template, "SERVICE PASS", { x: 5.47, y: 4.25, w: 1.95, h: 0.34 }, COLORS.mintSoft, COLORS.fact, { fontSize: 15, label: "v5 Lab A service gate" });
+
+  addArrowV3(pptx, slide, template, 8.49, 3.29, 0.24, 0, COLORS.violet, { width: 1.8, label: "v5 Lab A ledger arrow" });
+  addPanel(slide, template, pptx, { x: 8.76, y: 2.02, w: 4.06, h: 2.57 }, COLORS.sand, COLORS.gold, 1.05, "v5 Lab A ledger");
+  addBodyText(slide, template, "hidden replay → 自動 ledger", { x: 9.02, y: 2.23, w: 3.54, h: 0.34 }, { fontSize: 18, color: COLORS.body, bold: true, align: "center" }, "v5 Lab A ledger title");
+  const ledger = [["SERVICE", "service_pass"], ["J", "consumed J"], ["EE", "bit/J"], ["TIME", "完成時刻"]];
+  ledger.forEach((item, index) => {
+    const y = 2.77 + index * 0.4;
+    addBodyText(slide, template, item[0], { x: 9.08, y, w: 1.02, h: 0.28 }, { fontSize: 14.5, color: COLORS.gold, bold: true, align: "center" }, "v5 Lab A ledger label");
+    addBodyText(slide, template, item[1], { x: 10.27, y, w: 2.15, h: 0.28 }, { fontSize: 16, color: COLORS.body, bold: true }, "v5 Lab A ledger value");
+  });
+  addOutcomeBandV5(pptx, slide, template, stage, "選策略 → hidden replay → 比較同一 ledger", "排序可能翻轉｜同 scenario 反例重設", 4.82);
+  addClaimDockV5(pptx, slide, template, {
+    fact: "W、J、bit/s、bit/J 分欄",
+    inference: "5–6頁＋1 lab（設計估計）",
+    unknown: "state change／反例未驗證",
+  });
+  return slide;
+}
+
+function addLabBSlideV5(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addQuestionV5(pptx, slide, template, stage, "先決定｜現在切換／等待／維持");
+  const panels = [
+    { x: 0.82, w: 3.34, fill: COLORS.skySoft, color: COLORS.sky, title: "1｜看目前狀態" },
+    { x: 4.5, w: 3.34, fill: COLORS.violetSoft, color: COLORS.violet, title: "2｜鎖定規則" },
+    { x: 8.18, w: 4.64, fill: COLORS.coralSoft, color: COLORS.coral, title: "3｜面對未知未來" },
+  ];
+  panels.forEach((item) => {
+    addPanel(slide, template, pptx, { x: item.x, y: 1.78, w: item.w, h: 2.82 }, item.fill, item.color, 1.05, "v5 Lab B panel");
+    addBodyText(slide, template, item.title, { x: item.x + 0.24, y: 2.02, w: item.w - 0.48, h: 0.34 }, { fontSize: 19, color: item.color, bold: true, align: "center" }, "v5 Lab B panel title");
+  });
+  ["現在切換", "等待穩定", "維持目前"].forEach((text, index) => {
+    addPanel(slide, template, pptx, { x: 1.12, y: 2.58 + index * 0.57, w: 2.74, h: 0.43 }, COLORS.white, COLORS.sky, 0.85, "v5 Lab B choice");
+    addBodyText(slide, template, text, { x: 1.28, y: 2.66 + index * 0.57, w: 2.42, h: 0.25 }, { fontSize: 16.5, color: COLORS.body, bold: true, align: "center" }, "v5 Lab B choice text");
+  });
+  addBodyText(slide, template, "Trace A", { x: 4.78, y: 2.6, w: 2.78, h: 0.32 }, { fontSize: 19, color: COLORS.body, bold: true, align: "center" }, "v5 Lab B Trace A");
+  addBodyText(slide, template, "選一次 → freeze", { x: 4.78, y: 3.06, w: 2.78, h: 0.34 }, { fontSize: 18, color: COLORS.violet, bold: true, align: "center" }, "v5 Lab B freeze");
+  addLightLabelV5(pptx, slide, template, "NO RETUNE", { x: 5.29, y: 3.63, w: 1.76, h: 0.4 }, COLORS.coralSoft, COLORS.coral, { fontSize: 16, label: "v5 Lab B no retune" });
+  addBodyText(slide, template, "同一規則，不因結果不好重調", { x: 4.78, y: 4.15, w: 2.78, h: 0.3 }, { fontSize: 15, color: COLORS.muted, bold: true, align: "center" }, "v5 Lab B no retune note");
+  addBodyText(slide, template, "Trace B｜withheld", { x: 8.53, y: 2.59, w: 3.94, h: 0.34 }, { fontSize: 20, color: COLORS.body, bold: true, align: "center" }, "v5 Lab B Trace B");
+  addBodyText(slide, template, "看見未公開的變化後\n仍用剛才的 rule replay", { x: 8.62, y: 3.03, w: 3.76, h: 0.75 }, { fontSize: 17, color: COLORS.coral, bold: true, align: "center", valign: "mid" }, "v5 Lab B replay");
+  addLightLabelV5(pptx, slide, template, "EVIDENCE｜state · service · J", { x: 8.85, y: 3.98, w: 3.3, h: 0.42 }, COLORS.mintSoft, COLORS.fact, { fontSize: 16, label: "v5 Lab B evidence" });
+  addArrowV3(pptx, slide, template, 4.18, 3.17, 0.28, 0, COLORS.sky, { width: 1.8, label: "v5 Lab B arrow 1" });
+  addArrowV3(pptx, slide, template, 7.86, 3.17, 0.28, 0, COLORS.violet, { width: 1.8, label: "v5 Lab B arrow 2" });
+  addOutcomeBandV5(pptx, slide, template, stage, "看狀態 → 選規則 → freeze → Trace B replay", "choice 改變 active time／service／J｜rewind", 4.84);
+  addClaimDockV5(pptx, slide, template, {
+    fact: "switch count 不是能耗項",
+    inference: "5–6頁＋1 lab（設計估計）",
+    unknown: "rule branch／withheld fairness 未驗證",
+  });
+  return slide;
+}
+
+function addRecoverySlideV5(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addQuestionV5(pptx, slide, template, stage, "閉卷決定｜缺哪一節就補哪一節");
+  const nodes = [
+    { x: 0.82, w: 2.25, title: "SAVE", body: "Workbook", fill: COLORS.blueSoft, color: COLORS.blueGray },
+    { x: 3.45, w: 2.78, title: "STATE＋ACTION", body: "當時狀態＋動作", fill: COLORS.skySoft, color: COLORS.sky },
+    { x: 6.61, w: 2.25, title: "PATH", body: "系統路徑", fill: COLORS.mintSoft, color: COLORS.mint },
+    { x: 9.24, w: 3.58, title: "SERVICE／J", body: "服務結果＋累積能量", fill: COLORS.violetSoft, color: COLORS.violet },
+  ];
+  nodes.forEach((node, index) => {
+    addPanel(slide, template, pptx, { x: node.x, y: 1.78, w: node.w, h: 1.18 }, node.fill, node.color, 1.0, "v5 recovery node");
+    addBodyText(slide, template, node.title, { x: node.x + 0.18, y: 2.0, w: node.w - 0.36, h: 0.3 }, { fontSize: 17.5, color: node.color, bold: true, align: "center" }, "v5 recovery node title");
+    addBodyText(slide, template, node.body, { x: node.x + 0.18, y: 2.43, w: node.w - 0.36, h: 0.28 }, { fontSize: 15.5, color: COLORS.body, bold: true, align: "center" }, "v5 recovery node body");
+    if (index < nodes.length - 1) {
+      addArrowV3(pptx, slide, template, node.x + node.w + 0.04, 2.37, 0.3, 0, COLORS.sky, { width: 1.6, label: "v5 recovery arrow" });
+    }
+  });
+  addBodyText(slide, template, "CHECK｜閉卷重建一條『狀態 → 動作 → 路徑 → service／J』因果句", { x: 0.9, y: 3.18, w: 11.84, h: 0.34 }, { fontSize: 18, color: COLORS.ink, bold: true, align: "center" }, "v5 recovery checkpoint");
+  addPanel(slide, template, pptx, { x: 0.82, y: 3.62, w: 5.68, h: 0.98 }, COLORS.blueSoft, COLORS.blueGray, 1.0, "v5 recovery help");
+  addBodyText(slide, template, "需要協助", { x: 1.12, y: 3.81, w: 1.42, h: 0.3 }, { fontSize: 18, color: COLORS.blueGray, bold: true, align: "center" }, "v5 recovery help title");
+  addBodyText(slide, template, "hint → reset → resume", { x: 2.78, y: 3.78, w: 3.35, h: 0.34 }, { fontSize: 18, color: COLORS.body, bold: true, align: "center" }, "v5 recovery help path");
+  addPanel(slide, template, pptx, { x: 6.84, y: 3.62, w: 5.98, h: 0.98 }, COLORS.mintSoft, COLORS.mint, 1.0, "v5 recovery ready");
+  addBodyText(slide, template, "已能重建", { x: 7.14, y: 3.81, w: 1.42, h: 0.3 }, { fontSize: 18, color: COLORS.mint, bold: true, align: "center" }, "v5 recovery ready title");
+  addBodyText(slide, template, "用 boundary 反例測試因果句", { x: 8.79, y: 3.76, w: 3.65, h: 0.4 }, { fontSize: 17, color: COLORS.body, bold: true, align: "center" }, "v5 recovery ready path");
+  addOutcomeBandV5(pptx, slide, template, stage, "保存 → 閉卷重建｜留下狀態＋因果句", "證據不中斷｜提示或延伸反例", 4.84);
+  addClaimDockV5(pptx, slide, template, {
+    fact: "同一 Workbook 可重開",
+    inference: "1–2頁＋1 checkpoint（設計估計）",
+    unknown: "20-seat resume 未驗證",
+  });
+  return slide;
+}
+
+function addLabCSlideV5(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addQuestionV5(pptx, slide, template, stage, "先排｜baseline → revise → freeze");
+  const columns = [
+    { x: 0.82, w: 3.35, fill: COLORS.coralSoft, color: COLORS.coral, title: "1｜三張任務卡" },
+    { x: 4.48, w: 4.45, fill: COLORS.blueSoft, color: COLORS.blueGray, title: "2｜六格 schedule" },
+    { x: 9.24, w: 3.58, fill: COLORS.violetSoft, color: COLORS.violet, title: "3｜withheld replay" },
+  ];
+  columns.forEach((col) => {
+    addPanel(slide, template, pptx, { x: col.x, y: 1.78, w: col.w, h: 2.82 }, col.fill, col.color, 1.05, "v5 Lab C column");
+    addBodyText(slide, template, col.title, { x: col.x + 0.22, y: 2.01, w: col.w - 0.44, h: 0.34 }, { fontSize: 19, color: col.color, bold: true, align: "center" }, "v5 Lab C column title");
+  });
+  const tasks = [["緊急警報", "短 deadline", COLORS.coral], ["環境資料", "保持 fresh", COLORS.mint], ["大量資料", "可延後", COLORS.sky]];
+  tasks.forEach((task, index) => {
+    const y = 2.58 + index * 0.58;
+    addPanel(slide, template, pptx, { x: 1.1, y, w: 2.8, h: 0.45 }, COLORS.white, task[2], 0.85, "v5 Lab C task");
+    addBodyText(slide, template, task[0], { x: 1.24, y: y + 0.08, w: 1.28, h: 0.27 }, { fontSize: 16, color: COLORS.body, bold: true, align: "center" }, "v5 Lab C task title");
+    addBodyText(slide, template, task[1], { x: 2.58, y: y + 0.08, w: 1.15, h: 0.27 }, { fontSize: 14.5, color: task[2], bold: true, align: "center" }, "v5 Lab C task constraint");
+  });
+  addBodyText(slide, template, "baseline → 選先送任務", { x: 1.08, y: 4.31, w: 2.84, h: 0.28 }, { fontSize: 15, color: COLORS.coral, bold: true, align: "center" }, "v5 Lab C baseline note");
+  addBodyText(slide, template, "1–2 fixed｜3–6 learner action", { x: 4.81, y: 2.53, w: 3.79, h: 0.28 }, { fontSize: 15.5, color: COLORS.blueGray, bold: true, align: "center" }, "v5 Lab C slot rule");
+  for (let i = 0; i < 6; i += 1) {
+    const x = 4.84 + i * 0.6;
+    const fill = i < 2 ? COLORS.violetSoft : COLORS.mintSoft;
+    const color = i < 2 ? COLORS.violet : COLORS.mint;
+    addBodyShape(slide, template, pptx.ShapeType.rect, { x, y: 3.03, w: 0.46, h: 0.62 }, { fill: { color: fill }, line: { color, width: 1.0 } }, "v5 Lab C slot");
+    addBodyText(slide, template, String(i + 1), { x, y: 3.2, w: 0.46, h: 0.25 }, { fontSize: 16, color, bold: true, align: "center" }, "v5 Lab C slot number");
+  }
+  addBodyText(slide, template, "send · batch · wait · sleep", { x: 4.82, y: 3.84, w: 3.77, h: 0.3 }, { fontSize: 17, color: COLORS.body, bold: true, align: "center" }, "v5 Lab C actions");
+  addLightLabelV5(pptx, slide, template, "revise → freeze", { x: 5.65, y: 4.22, w: 2.12, h: 0.34 }, COLORS.mintSoft, COLORS.fact, { fontSize: 16, label: "v5 Lab C freeze" });
+  addBodyText(slide, template, "shorter window＋urgent", { x: 9.55, y: 2.59, w: 2.96, h: 0.32 }, { fontSize: 17, color: COLORS.body, bold: true, align: "center" }, "v5 Lab C withheld event");
+  addBodyText(slide, template, "freeze 後 replay\n不重排剛才的策略", { x: 9.55, y: 3.03, w: 2.96, h: 0.67 }, { fontSize: 17, color: COLORS.violet, bold: true, align: "center", valign: "mid" }, "v5 Lab C withheld action");
+  addLightLabelV5(pptx, slide, template, "SERVICE · FRESH · J", { x: 9.67, y: 3.94, w: 2.72, h: 0.43 }, COLORS.mintSoft, COLORS.fact, { fontSize: 15.5, label: "v5 Lab C evidence" });
+  addArrowV3(pptx, slide, template, 4.2, 3.18, 0.24, 0, COLORS.mint, { width: 1.8, label: "v5 Lab C arrow 1" });
+  addArrowV3(pptx, slide, template, 8.96, 3.18, 0.24, 0, COLORS.mint, { width: 1.8, label: "v5 Lab C arrow 2" });
+  addOutcomeBandV5(pptx, slide, template, stage, "排程 → 執行 → 修正 → freeze｜比較三次 ledger", "service／freshness／J 分欄｜非法時槽自動補齊", 4.84);
+  addClaimDockV5(pptx, slide, template, {
+    fact: "service 與 freshness 分開",
+    inference: "6–7頁＋1 lab（設計估計）",
+    unknown: "schedule state／withheld 未驗證",
+  });
+  return slide;
+}
+
+function addClinicSlideV5(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addQuestionV5(pptx, slide, template, stage, "先判斷｜當下真正可用的特徵");
+  const phases = [
+    { x: 0.82, w: 3.56, title: "AVAILABLE", body: "load(t−2) · quality(t−1)", fill: COLORS.mintSoft, color: COLORS.mint },
+    { x: 4.86, w: 3.56, title: "CHECK", body: "看 timestamp 再決定", fill: COLORS.violetSoft, color: COLORS.violet },
+    { x: 8.9, w: 3.92, title: "LEAKAGE｜t+1", body: "行動後結果不可偷看", fill: COLORS.coralSoft, color: COLORS.coral },
+  ];
+  phases.forEach((phase, index) => {
+    addPanel(slide, template, pptx, { x: phase.x, y: 1.76, w: phase.w, h: 1.25 }, phase.fill, phase.color, 1.05, "v5 clinic phase");
+    addBodyText(slide, template, phase.title, { x: phase.x + 0.22, y: 1.99, w: phase.w - 0.44, h: 0.3 }, { fontSize: 18, color: phase.color, bold: true, align: "center" }, "v5 clinic phase title");
+    addBodyText(slide, template, phase.body, { x: phase.x + 0.22, y: 2.48, w: phase.w - 0.44, h: 0.3 }, { fontSize: 16.5, color: COLORS.body, bold: true, align: "center" }, "v5 clinic phase body");
+    if (index < phases.length - 1) {
+      addArrowV3(pptx, slide, template, phase.x + phase.w + 0.04, 2.38, 0.36, 0, COLORS.violet, { width: 1.7, label: "v5 clinic phase arrow" });
+    }
+  });
+  const actions = [
+    { x: 0.82, w: 2.6, text: "wait／send", fill: COLORS.mintSoft, color: COLORS.mint },
+    { x: 3.65, w: 2.6, text: "freeze once", fill: COLORS.violetSoft, color: COLORS.violet },
+    { x: 6.48, w: 2.8, text: "held-out replay", fill: COLORS.violetSoft, color: COLORS.violet },
+    { x: 9.51, w: 3.31, text: "score ∥ service／J", fill: COLORS.mintSoft, color: COLORS.fact },
+  ];
+  actions.forEach((action, index) => {
+    addPanel(slide, template, pptx, { x: action.x, y: 3.38, w: action.w, h: 0.66 }, action.fill, action.color, 0.95, "v5 clinic action");
+    addBodyText(slide, template, action.text, { x: action.x + 0.15, y: 3.56, w: action.w - 0.3, h: 0.28 }, { fontSize: 16.5, color: action.color, bold: true, align: "center" }, "v5 clinic action text");
+    if (index < actions.length - 1) {
+      addArrowV3(pptx, slide, template, action.x + action.w + 0.04, 3.71, 0.16, 0, COLORS.sky, { width: 1.5, label: "v5 clinic action arrow" });
+    }
+  });
+  addPanel(slide, template, pptx, { x: 3.65, y: 4.27, w: 5.63, h: 0.42 }, COLORS.sand, COLORS.gold, 1.0, "v5 clinic conclusion");
+  addBodyText(slide, template, "prediction ≠ saving", { x: 3.9, y: 4.34, w: 5.13, h: 0.28 }, { fontSize: 21, color: COLORS.ink, bold: true, align: "center" }, "v5 clinic conclusion text");
+  addOutcomeBandV5(pptx, slide, template, stage, "timestamp → freeze → replay｜score 與 service／J 並列", "預測不等於節能｜提示／誠實 fallback", 4.83);
+  addClaimDockV5(pptx, slide, template, {
+    fact: "模型分數不是能耗公式項",
+    inference: "4–5頁＋1 coherent case（設計估計）",
+    unknown: "timestamp／held-out action 未驗證",
+  });
+  return slide;
+}
+
+function addTransferSlideV5(pptx, template, stage) {
+  const slide = pptx.addSlide({ masterName: template.masters.content });
+  addStageTitle(pptx, slide, template, stage.title);
+  addQuestionV5(pptx, slide, template, stage, "決定｜new domain → falsifier");
+  addPanel(slide, template, pptx, { x: 0.82, y: 1.78, w: 3.2, h: 2.86 }, COLORS.violetSoft, COLORS.violet, 1.05, "v5 transfer mechanisms");
+  addBodyText(slide, template, "帶走的機制", { x: 1.08, y: 2.02, w: 2.68, h: 0.34 }, { fontSize: 20, color: COLORS.violet, bold: true, align: "center" }, "v5 transfer mechanism title");
+  ["Lab A｜pace", "Lab B｜policy", "Lab C｜schedule", "clinic｜claim"].forEach((text, index) => {
+    addPanel(slide, template, pptx, { x: 1.14, y: 2.55 + index * 0.47, w: 2.56, h: 0.36 }, COLORS.white, COLORS.violet, 0.8, "v5 transfer token");
+    addBodyText(slide, template, text, { x: 1.25, y: 2.62 + index * 0.47, w: 2.34, h: 0.22 }, { fontSize: 15.5, color: COLORS.body, bold: true, align: "center" }, "v5 transfer token text");
+  });
+  addArrowV3(pptx, slide, template, 4.05, 3.2, 0.3, 0, COLORS.sky, { width: 1.8, label: "v5 transfer arrow 1" });
+  addPanel(slide, template, pptx, { x: 4.38, y: 1.78, w: 3.0, h: 2.86 }, COLORS.skySoft, COLORS.sky, 1.05, "v5 unseen domain");
+  addBodyText(slide, template, "UNSEEN DOMAIN", { x: 4.65, y: 2.04, w: 2.46, h: 0.28 }, { fontSize: 15, color: COLORS.sky, bold: true, align: "center" }, "v5 unseen domain label");
+  addBodyText(slide, template, "SMART FARM", { x: 4.64, y: 2.54, w: 2.48, h: 0.38 }, { fontSize: 22, color: COLORS.body, bold: true, align: "center" }, "v5 unseen domain title");
+  addBodyText(slide, template, "moisture → irrigation", { x: 4.64, y: 3.15, w: 2.48, h: 0.32 }, { fontSize: 17, color: COLORS.sky, bold: true, align: "center" }, "v5 unseen domain mapping");
+  addBodyText(slide, template, "不搬衛星數值\n只搬因果與取捨", { x: 4.68, y: 3.65, w: 2.4, h: 0.62 }, { fontSize: 17, color: COLORS.body, bold: true, align: "center", valign: "mid" }, "v5 transfer boundary");
+  addArrowV3(pptx, slide, template, 7.41, 3.2, 0.3, 0, COLORS.sky, { width: 1.8, label: "v5 transfer arrow 2" });
+  addPanel(slide, template, pptx, { x: 7.74, y: 1.78, w: 5.08, h: 2.86 }, COLORS.mintSoft, COLORS.mint, 1.05, "v5 transfer causal chain");
+  addBodyText(slide, template, "可被推翻的控制鏈", { x: 8.04, y: 2.02, w: 4.48, h: 0.34 }, { fontSize: 20, color: COLORS.mint, bold: true, align: "center" }, "v5 transfer chain title");
+  const chain = ["data／time → control", "service → P×time → J", "measurement → falsifier"];
+  chain.forEach((text, index) => {
+    const y = 2.58 + index * 0.6;
+    addPanel(slide, template, pptx, { x: 8.16, y, w: 4.24, h: 0.46 }, COLORS.white, index === 2 ? COLORS.coral : COLORS.mint, 0.85, "v5 transfer chain step");
+    addBodyText(slide, template, text, { x: 8.32, y: y + 0.09, w: 3.92, h: 0.28 }, { fontSize: 17, color: index === 2 ? COLORS.coral : COLORS.body, bold: true, align: "center" }, "v5 transfer chain text");
+  });
+  addOutcomeBandV5(pptx, slide, template, stage, "映射 → hypothesis＋falsifier → what-if → export", "prediction → control → J｜hint／system what-if", 4.84);
+  addClaimDockV5(pptx, slide, template, {
+    fact: "分析／預測後才形成節能控制",
+    inference: "4–5頁＋1 transfer（設計估計）",
+    unknown: "causal transfer／novice timing 未驗證",
+  });
+  return slide;
+}
+
 function addOverviewSlide(pptx, template, stage) {
   const builders = {
-    claims: addClaimsSlideV3,
-    tle: addTleSlideV3,
-    labA: addLabASlideV3,
-    labB: addLabBSlideV3,
-    recovery: addRecoverySlideV3,
-    labC: addLabCSlideV3,
-    clinic: addClinicSlideV3,
-    transfer: addTransferSlideV3,
+    claims: addClaimsSlideV5,
+    tle: addTleSlideV5,
+    labA: addLabASlideV5,
+    labB: addLabBSlideV5,
+    recovery: addRecoverySlideV5,
+    labC: addLabCSlideV5,
+    clinic: addClinicSlideV5,
+    transfer: addTransferSlideV5,
   };
   const builder = builders[stage.kind];
   if (!builder) {
@@ -1698,7 +2471,7 @@ async function main() {
     throw new Error("unexpected edu typography floor");
   }
 
-  addCourseOutlineSlideV3(pptx, template);
+  addCourseOutlineSlideV5(pptx, template);
   for (const stage of STAGES) {
     addOverviewSlide(pptx, template, stage);
   }

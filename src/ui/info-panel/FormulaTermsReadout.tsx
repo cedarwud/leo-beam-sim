@@ -13,6 +13,7 @@ import {
 } from './formatters';
 import { PanelHelp, usePanelCopy } from './panelHelp';
 import { StatusBadge } from './StatusBadge';
+import { InlineFormulaFraction } from '../signal-tuning/FormulaHeader';
 
 // P1e (c) audit-list hook (PR-0.5 backfill): keep `channelMetricLabelForKind`
 // in scope so the SINR-derived terms (the card heading) can later branch to a
@@ -120,6 +121,7 @@ function FormulaTermRow({
         : tone === 'noise'
           ? UI_TOKENS.color.semantic.noise
           : UI_TOKENS.color.semantic.tuning;
+  const isSum = emphasis === 'sum';
 
   return (
     <div
@@ -127,9 +129,11 @@ function FormulaTermRow({
       data-formula-evidence-status={status}
       style={{
         order,
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: isSum ? '13px minmax(0, 1fr) auto' : '13px auto minmax(0, 1fr) auto',
         alignItems: 'center',
-        gap: 6,
+        columnGap: 6,
+        rowGap: isSum ? 3 : 0,
         minWidth: 0,
         padding: emphasis === 'sum' ? '6px 8px' : '3px 8px',
         borderRadius: UI_TOKENS.radius.md,
@@ -139,49 +143,98 @@ function FormulaTermRow({
     >
       <span aria-hidden="true" style={{
         width: 13,
-        flexShrink: 0,
+        gridColumn: 1,
+        gridRow: isSum ? '1 / span 2' : undefined,
         color: UI_TOKENS.color.text.muted,
         fontFamily: UI_TOKENS.type.family.math,
         fontSize: UI_TOKENS.type.size.tiny,
       }}>
         {op ?? ''}
       </span>
-      <span style={{
-        flexShrink: 0,
-        minWidth: 26,
-        fontFamily: UI_TOKENS.type.family.math,
-        fontSize: UI_TOKENS.type.size.small,
-        color: accent,
-        fontWeight: UI_TOKENS.type.weight.heavy,
-        whiteSpace: 'nowrap',
-      }}>
-        {symbol}
-      </span>
-      <span style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        flex: 1,
-        minWidth: 0,
-        color: emphasis === 'sum' ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
-        fontSize: UI_TOKENS.type.size.tiny,
-        fontWeight: emphasis === 'sum' ? UI_TOKENS.type.weight.heavy : UI_TOKENS.type.weight.strong,
-        lineHeight: 1.25,
-      }}>
-        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
-        {help}
-      </span>
-      <span style={{
-        flexShrink: 0,
-        color: status === 'current' ? accent : UI_TOKENS.color.text.faint,
-        fontSize: emphasis === 'sum' ? UI_TOKENS.type.size.body : UI_TOKENS.type.size.small,
-        fontWeight: UI_TOKENS.type.weight.heavy,
-        fontVariantNumeric: 'tabular-nums',
-        lineHeight: 1.2,
-        whiteSpace: 'nowrap',
-      }}>
-        {valueLabel}
-      </span>
+      {isSum ? (
+        <>
+          <span style={{
+            gridColumn: 2,
+            minWidth: 0,
+            fontFamily: UI_TOKENS.type.family.math,
+            fontSize: UI_TOKENS.type.size.small,
+            color: accent,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            lineHeight: 1.35,
+            overflowWrap: 'anywhere',
+          }}>
+            {symbol}
+          </span>
+          <span style={{
+            gridColumn: 2,
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 2,
+            minWidth: 0,
+            color: UI_TOKENS.color.text.primary,
+            fontSize: UI_TOKENS.type.size.tiny,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            lineHeight: 1.25,
+          }}>
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
+            {help}
+          </span>
+          <span style={{
+            gridColumn: 3,
+            gridRow: '1 / span 2',
+            alignSelf: 'center',
+            color: status === 'current' ? accent : UI_TOKENS.color.text.faint,
+            fontSize: UI_TOKENS.type.size.body,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+          }}>
+            {valueLabel}
+          </span>
+        </>
+      ) : (
+        <>
+          <span style={{
+            gridColumn: 2,
+            minWidth: 26,
+            fontFamily: UI_TOKENS.type.family.math,
+            fontSize: UI_TOKENS.type.size.small,
+            color: accent,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            whiteSpace: 'nowrap',
+          }}>
+            {symbol}
+          </span>
+          <span style={{
+            gridColumn: 3,
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 2,
+            minWidth: 0,
+            color: UI_TOKENS.color.text.secondary,
+            fontSize: UI_TOKENS.type.size.tiny,
+            fontWeight: UI_TOKENS.type.weight.strong,
+            lineHeight: 1.25,
+          }}>
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
+            {help}
+          </span>
+          <span style={{
+            gridColumn: 4,
+            color: status === 'current' ? accent : UI_TOKENS.color.text.faint,
+            fontSize: UI_TOKENS.type.size.small,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+          }}>
+            {valueLabel}
+          </span>
+        </>
+      )}
     </div>
   );
 }
@@ -442,7 +495,13 @@ export function FormulaTermsReadout({
                 helpId="panel.formulaTerms"
                 titleText={tx('panel.formulaTerms.numerator')}
                 bodyText={`${tx('panel.formulaTerms.numerator.help')} ${tx('panel.formulaTerms.help')}`}
-                formula={<>γ = S / (I<sup>a</sup> + I<sup>b</sup> + σ²)</>}
+                formula={(
+                  <>γ<sub>u,s,v</sub>(t, θ) = <InlineFormulaFraction
+                    numerator={<><i>p</i><sup>r</sup><sub>u,s,v</sub>(t, θ) · h<sub>u,s,v</sub>(t, θ)</>}
+                    denominator={<>I<sub>u,s,v</sub>(t, θ) + σ²</>}
+                    label="link power times effective channel divided by total interference plus noise"
+                  /></>
+                )}
                 meta={<>{t('formula.sinr.caption')}</>}
               />
             )}
@@ -453,7 +512,7 @@ export function FormulaTermsReadout({
               status={formulaEvidenceStatus}
               op="＝"
               order={1}
-              symbol={<>S</>}
+              symbol={<><i>p</i><sup>r</sup><sub>u,s,v</sub>(t, θ) · h<sub>u,s,v</sub>(t, θ)</>}
               label={tx('panel.formulaTerms.signalTotal.label')}
               help={(
                 <PanelHelp
@@ -470,7 +529,7 @@ export function FormulaTermsReadout({
             <FormulaTermRow
               dataTerm="effectiveTxPower"
               status={formulaEvidenceStatus}
-              symbol={<>P<sub>t</sub></>}
+              symbol={<>P<sup>o</sup><sub>s,v</sub>(t, θ)</>}
               label={tx('panel.formulaTerms.txPower.label')}
               help={(
                 <PanelHelp
@@ -505,7 +564,7 @@ export function FormulaTermsReadout({
               dataTerm="receiverGain"
               status={formulaEvidenceStatus}
               op="＋"
-              symbol={<>G<sup>R</sup></>}
+              symbol={null}
               label={tx('panel.formulaTerms.rxGain.label')}
               help={(
                 <PanelHelp
@@ -523,7 +582,7 @@ export function FormulaTermsReadout({
               dataTerm="pathLoss"
               status={formulaEvidenceStatus}
               op="－"
-              symbol={<>L</>}
+              symbol={null}
               label={tx('panel.formulaTerms.pathLoss.label')}
               help={(
                 <PanelHelp
@@ -541,7 +600,7 @@ export function FormulaTermsReadout({
               dataTerm="scanLoss"
               status={formulaEvidenceStatus}
               op="－"
-              symbol={<>L<sub>scan</sub></>}
+              symbol={null}
               label={tx('panel.formulaTerms.scanLoss.label')}
               help={(
                 <PanelHelp
@@ -565,7 +624,7 @@ export function FormulaTermsReadout({
                 helpId="panel.formulaTerms.denominator"
                 titleText={tx('panel.formulaTerms.denominator')}
                 bodyText={tx('panel.formulaTerms.denominator.help')}
-                formula={<>D = I<sup>a</sup> + I<sup>b</sup> + σ²</>}
+                formula={<>I<sub>u,s,v</sub>(t, θ) + σ²</>}
                 meta={<>{t('common.unit.dbm')}</>}
               />
             )}
@@ -573,7 +632,7 @@ export function FormulaTermsReadout({
             <FormulaTermRow
               dataTerm="intraInterference"
               status={formulaEvidenceStatus}
-              symbol={<>I<sup>a</sup></>}
+              symbol={<>I<sup>a</sup><sub>u,s,v</sub>(t, θ)</>}
               label={tx('panel.formulaTerms.intraInterference.label')}
               help={(
                 <PanelHelp
@@ -590,7 +649,7 @@ export function FormulaTermsReadout({
               dataTerm="interInterference"
               status={formulaEvidenceStatus}
               op="＋"
-              symbol={<>I<sup>b</sup></>}
+              symbol={<>I<sup>b</sup><sub>u,s,v</sub>(t, θ)</>}
               label={tx('panel.formulaTerms.interInterference.label')}
               help={(
                 <PanelHelp
@@ -624,7 +683,7 @@ export function FormulaTermsReadout({
               dataTerm="denominator"
               status={formulaEvidenceStatus}
               op="＝"
-              symbol={<>D</>}
+              symbol={<>I<sub>u,s,v</sub>(t, θ) + σ²</>}
               label={tx('panel.formulaTerms.denominatorTotal.label')}
               help={(
                 <PanelHelp

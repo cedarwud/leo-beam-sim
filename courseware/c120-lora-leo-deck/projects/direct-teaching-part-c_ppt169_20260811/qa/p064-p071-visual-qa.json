@@ -1,0 +1,5 @@
+{
+  "status": "BLOCKED",
+  "slides_rendered": 0,
+  "reason": "LibreOffice helper returned status 1 during direct headless PDF conversion; no PDF/PNG was produced."
+}

@@ -1,0 +1,162 @@
+{
+  "safe_bounds": {
+    "left": 0.718057,
+    "top": 1.05,
+    "right": 13.004168,
+    "bottom": 6.627083
+  },
+  "protected_logo_zones": [
+    [
+      10.79963,
+      0.0,
+      13.277154,
+      0.353933
+    ],
+    [
+      11.166667,
+      0.0,
+      13.333334,
+      0.309524
+    ]
+  ],
+  "slide_count": 15,
+  "slides": [
+    {
+      "slide": 1,
+      "title": "把下載資料搬進 Linux 課程資料夾",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 2,
+      "title": "先找到或安裝 Python 3.11",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 3,
+      "title": "確認 venv 可用並建立 .venv",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 4,
+      "title": "啟用 .venv 並確認 Python 路徑",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 5,
+      "title": "在 venv 安裝鎖定套件並驗證 READY",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 6,
+      "title": "卡住時修復或保留來源",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 7,
+      "title": "只可修改三個標記區塊",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 8,
+      "title": "程式每次判斷會看什麼",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 9,
+      "title": "判斷順序如何產生動作",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 10,
+      "title": "Lab A：空檔休息與等待",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 11,
+      "title": "Lab C：批次與期限餘裕",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 12,
+      "title": "Lab B：穩定觀察如何影響動作",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 13,
+      "title": "動作之後要讀哪些事件",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 14,
+      "title": "縮排與回傳決定程式走哪條路",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    },
+    {
+      "slide": 15,
+      "title": "先建立基準結果再比較",
+      "authored_shapes": 15,
+      "text_shapes": 11,
+      "visual_shapes": 4,
+      "out_of_bounds": [],
+      "logo_collisions": []
+    }
+  ],
+  "all_checks_pass": true,
+  "failures": []
+}

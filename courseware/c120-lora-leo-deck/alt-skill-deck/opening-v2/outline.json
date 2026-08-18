@@ -1,0 +1,225 @@
+{
+  "deck": "LoRaEnergySim-LEO-ALT-OPENING-V2-REVIEW",
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "shell": "source slide 2 / slideLayout2.xml only",
+  "background_author_fill": "unset",
+  "font_contract": {
+    "cjk": "標楷體",
+    "latin": "Times New Roman"
+  },
+  "title_pt": 28,
+  "body_baseline_pt": 24,
+  "minimum_authored_text_pt": 16,
+  "claim_boundary": "SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED",
+  "slides": [
+    {
+      "order": 1,
+      "page_id": "O001",
+      "title": "O001｜智慧節能 IoT：為何使用 LoRaEnergySim",
+      "notes": "智慧節能與物聯網應用的核心不是只把焦耳數壓低，而是在服務窗口與期限內完成必要資料，同時降低端點能量。LoRaEnergySim 把這個服務與能量的取捨轉成可重跑、可比較、可反駁的事件證據；Leo `/course` 則負責驗證、重播與保存。固定情境提供窗口、流量與單位；本機 package runner 讀取 bounded policy，依固定 scenario 與 seed 產生可重跑的事件資料；Leo `/course` 接收 result artifact，進行驗證、endpoint event replay 與 workbook 保存。`scenario_id` 是情境識別碼，來源為 fixed scenario package，作用是固定窗口、流量與單位，單位為字串識別碼；比較時必須使用相同情境與相同 policy identity。證據範圍集中在 endpoint queue、packet、radio state、service 與 endpoint J。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O001",
+        "source": "ADR-004; SDD §6; package README.zh-TW.md",
+        "role": "endpoint-first product boundary"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 2,
+      "page_id": "O002",
+      "title": "O002｜為何加入 LEO：服務窗口會改變",
+      "notes": "LEO 在本課提供 changing-service-window 的工作範例。固定 trace 依序呈現窗口開啟、品質變化、窗口關閉與再次開啟；端點策略在服務機會存在時選擇等待或送出，窗口關閉時進入合法的休息分支。服務窗口 `service_window` 的來源是 fixed scenario trace，作用是定義合法傳輸區間，單位為 trace time；判讀時確認 action 是否具有服務機會。這個機制也能轉移到閘道可用時段、低負載時段或回報機會，而 LEO 的作用限於提供 changing-service-window 的清楚例子。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O002",
+        "source": "course-story-contract.md; donor insertion map",
+        "role": "changing-service-window example"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 3,
+      "page_id": "O003",
+      "title": "O003｜封裝已完成什麼；實驗還要做什麼",
+      "notes": "課程 package 已經把設定、執行與證據保存分成固定層次。固定 scenario 與 case 提供可重跑輸入；POSIX 與 Windows setup script 建立套件本地 `.venv`，verify 產生 `READY` receipt。bounded `student_policy.py` 只使用合法 observation 與 action，deterministic runner 產生 `result.json`。配對的 `endpoint-replay.json` 保存同一次 run 的事件脈絡；identity、units 與 provenance gate 維持配對正確，環境或 runner 受阻時使用同情境 fallback pair。`.venv` 的來源是 setup script，作用是隔離 lock、policy、scenario 與 runner，單位為目錄路徑；判讀時確認兩個 launcher 都使用同一套 Python 3.11.x。因此實驗操作不需要重寫模擬器；工作集中在 active marked block 的單一修改、exact run、artifact 上傳，以及依事件證據完成解釋。全部資料維持 claim ceiling：SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O003",
+        "source": "package README.zh-TW.md; venv-platform-contract.md",
+        "role": "package capability inventory"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 4,
+      "page_id": "O004",
+      "title": "O004｜三個實驗：改什麼、為何改、看什麼",
+      "notes": "三個實驗都研究服務與端點能量的取捨。Lab A 將 `REST_DURING_GAP` 從 `SLEEP` 改為 `WAIT`，檢驗較少 wake 與較多 awake idle 的取捨。Lab B 將 `STABLE_STEPS` 從 2 改為 1，檢驗較早進入 send-ready 是否改善服務，或增加 mode transition。Lab C 將 `URGENT_MARGIN_S` 依序由 20 改為 5，再修訂為 30，檢驗急件介入時機、deadline 與 endpoint J。每個實驗先固定 scenario、seed、traffic 與 endpoint scope，在 workbook record 中保存 `prediction`，再只修改一個 marked constant，執行 exact case，使用 stdout result path 開啟 evidence，最後沿 action、event、service 與 endpoint J 完成 causal explanation。`prediction` 的來源是 workbook record，作用是指定可反駁的變化方向，單位為 statement；判讀時把執行前基準與執行後 evidence 對照。判讀規則的順序是 service gate、封包與狀態事件、endpoint J；單一 KPI 只作結果描述，不能取代事件證據。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O004",
+        "source": "course-story-contract.md; experiment-operation-contract.md",
+        "role": "prediction and causal evidence loop"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 5,
+      "page_id": "O005",
+      "title": "O004a｜開始前：環境建立的固定順序",
+      "notes": "環境建立遵循固定順序。先確認 Python 3.11.x；找不到時再依作業系統安裝精確版本。接著確認 Python standard library 的 venv module 可以建立環境，建立 package-local `.venv` 並啟用，再於該環境內安裝 locked requirements，最後執行 verify。`.venv` 的來源是 Python venv module，作用是隔離 interpreter 與 locked requirements，單位是目錄路徑；判讀時，啟用後的 Python executable 必須位於 package root 內的 `.venv`。手動流程與 setup script 是兩條等價路徑，只選一條。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O004a",
+        "source": "/home/u24/lora-energy-lab/README.zh-TW.md section 1; setup launcher tests",
+        "role": "cross-platform setup order"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 6,
+      "page_id": "O006",
+      "title": "O004b｜Windows：檢查、建立環境、安裝與驗證",
+      "notes": "Windows 先使用 Python Launcher 執行 `py -3.11 --version`。顯示 Python 3.11.x 時可直接建立環境；找不到時，使用 uv 安裝 Python 3.11，再由 `uv python find 3.11` 取得 executable path。`PYTHON_BIN` 是 Python 執行器路徑，來源是 Python Launcher 或 uv，作用是選定精確的 3.11 interpreter，單位是檔案路徑；判讀時必須先顯示 Python 3.11.x。建立 `.venv` 後在同一視窗啟用，再於環境內執行 locked install 與 `course.cmd verify`。PowerShell activation 受阻時，不放寬全系統設定；改用 Command Prompt 的 activate.bat 完成同一流程。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O004b",
+        "source": "/home/u24/lora-energy-lab/README.zh-TW.md Windows section; setup.cmd",
+        "role": "Windows manual setup"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 7,
+      "page_id": "O007",
+      "title": "O004c｜Linux／WSL：檢查 3.11，再建立 .venv",
+      "notes": "Linux 與 WSL 先以 `command -v python3.11` 和版本命令檢查精確 interpreter。找不到時使用 uv 安裝；Ubuntu 24.04 與 WSL Ubuntu 24.04 不再嘗試不存在於預設 repository 的 Python 3.11 套件。取得 interpreter 後建立 `.venv`，使用 `source .venv/bin/activate` 啟用。這個命令來源是 POSIX shell，作用是讓後續 Python 與 pip 指向 package-local environment，單位是 shell state；判讀時 `python --version` 必須顯示 Python 3.11.x。最後在已啟用環境內執行 locked install 與 verify。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O004c",
+        "source": "/home/u24/lora-energy-lab/README.zh-TW.md Linux section; setup.sh",
+        "role": "Linux and WSL manual setup"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 8,
+      "page_id": "O008",
+      "title": "O004d｜macOS：Homebrew 或 uv 取得 Python 3.11",
+      "notes": "macOS 先檢查 `python3.11` 是否存在，不以系統 `python3` 的名稱推定版本。缺少時可選擇 Homebrew 的 `python@3.11`，或使用 uv 安裝精確版本。`python@3.11` 是 Homebrew Python 套件，來源是 Homebrew formula，作用是提供維護中的 Python 3.11 interpreter，單位是安裝套件與 executable path；判讀時建立 `.venv` 前必須先顯示 Python 3.11.x。接著建立並啟用 package-local `.venv`，在環境內完成 locked install 與 `course.sh verify`。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O004d",
+        "source": "/home/u24/lora-energy-lab/README.zh-TW.md macOS section; setup.sh",
+        "role": "macOS manual setup"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 9,
+      "page_id": "O009",
+      "title": "O004e｜Verify 成功：看到 READY 才進入實驗",
+      "notes": "Verify 的成功標誌是輸出 JSON 中的 `status` 等於 READY，並寫入 `artifacts/verify-receipt.json`。`status` 是驗證狀態，來源是 `course.sh verify` 或 `course.cmd verify`，作用是表示環境與固定契約是否一致，單位是 enum；判讀時，只有 READY 才能進入 case。Verify 會核對 Python 3.11、scenario identity、baseline policy markers、locked requirements、policy API、engine mode 與 claim boundary。READY 不是 Lab result，也不表示 service 通過。成功後保持 `.venv` 啟用，只修改 active marked block，執行 exact case，從 stdout 保存 `result_path`，再把 result artifact 匯入 `/course`。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O004e",
+        "source": "/home/u24/lora-energy-lab/run_lab.py verify_setup; current verify receipt",
+        "role": "READY success and meaning"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 10,
+      "page_id": "O010",
+      "title": "O005｜release → exact run：五步操作",
+      "notes": "package-side workflow 由 release、setup、verify、inspect、edit 與 exact run 組成。release 固定 package root；setup 建立 package-local `.venv`；POSIX／WSL 使用 `setup.sh` 與 `course.sh`，Windows 使用 `setup.cmd` 與 `course.cmd`。verify 產生 `READY` receipt，確認 Python、lock、policy API 與 scenario；`READY` 的來源是兩個 course launcher 的 verify 命令，作用是環境與契約 gate，單位為 status，判讀時只表示可以進入 runner。scenario 與 `observation` contract 在 inspect 階段讀取，marked block 的受控修改與 exact case 執行在後續步驟完成。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O005",
+        "source": "package README.zh-TW.md; venv-platform-contract.md",
+        "role": "package-side setup/verify workflow"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 11,
+      "page_id": "O011",
+      "title": "O006｜result.json → /course：驗證、重播、保存",
+      "notes": "Leo-side workflow 以 runner stdout 的 `result_path` 為唯一 artifact 入口。`result_path` 的來源是 runner stdout，作用是定位同一次 run 的 `result.json` 與配對 replay，單位為檔案路徑；判讀時以 stdout path 開啟，並保留同一個 generated run directory。`/course`（http://120.126.151.102:3000/course）的責任是驗證 schema、identity、units 與 provenance，materialize endpoint replay，並把 baseline、candidate 與 withheld record 保存到 workbook。網站不執行 policy source；網站呈現已驗證的 endpoint evidence。比較完成後保存並重新開啟 workbook，identity 或 evidence 缺件時維持原狀態。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O006",
+        "source": "course-story-contract.md; part-c-visible-content.md P076–P080",
+        "role": "result import/replay/workbook workflow"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 12,
+      "page_id": "O012",
+      "title": "O007｜student_policy.py：observation → action",
+      "notes": "`student_policy.py` 的 decision surface 是一個 bounded function。`observation` 是 runner 每個 decision step 提供的決策觀測紀錄，來源是 runner，作用是提供合法的 current／past inputs，單位為 structured record；判讀時只使用允許欄位，future trace 與 result summary 不進入輸入。程式片段依序讀取 `contact_open`、`urgent_pending`、`urgent_due_in_s` 與 `queue_size`，每個欄位都在右側標示來源、作用、單位與判讀方式。`action` 是 policy API return 的策略動作，作用是選擇下一個 state／packet 路徑，單位為 enum；runner 將 SLEEP、WAIT、SEND_ONE、SEND_URGENT 或 FLUSH_BATCH 展開成 event ledger。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O007",
+        "source": "student_policy.py; SDD §8",
+        "role": "policy API anatomy"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 13,
+      "page_id": "O013",
+      "title": "O008｜可編輯面：active marked block",
+      "notes": "可編輯面限於 `student_policy.py` 的 active marked block。Lab A、Lab B、Lab C 各有一個 marker；每次只改一個 bounded constant 或 branch，並在執行前保存 prediction。scenario、quality trace、traffic、schemas、runner、energy model 與 generated result／replay JSON 均屬於 course contract 的保護範圍。`policy identity` 的來源是 runner receipt 與 result provenance，作用是連結本次 edit 與 predecessor，單位為 content identity；判讀時，hidden 與 surprise 必須沿用 frozen policy，結果差異由 withheld condition 解釋。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O008",
+        "source": "package README.zh-TW.md; SDD §8",
+        "role": "editable and protected surface"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 14,
+      "page_id": "O014",
+      "title": "O009｜exact run 產生可配對的 result 與 replay",
+      "notes": "exact run 在 package root 執行；POSIX／WSL 使用 `bash course.sh`，Windows 使用 `course.cmd`，兩者都呼叫 package-local runner。baseline 命令會依固定 case 產生 stdout payload。`run_id` 是執行識別碼，來源是 runner result identity，作用是配對 `result.json` 與 `endpoint-replay.json`，單位為 content identity；判讀時確認同一次 run 的 path、summary、events 與 replay 一致。預期 stdout 以 `status: OK` 和 `result_path` 指出 artifact；result path 直接取自 stdout，不以猜測的目錄名稱替代。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O009",
+        "source": "package README.zh-TW.md; SDD §9.3–9.5",
+        "role": "exact run and paired artifacts"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 15,
+      "page_id": "O015",
+      "title": "O010｜/course：artifact → endpoint evidence",
+      "notes": "current `/course` evidence 顯示 endpoint metrics、replay frame 與 execution ledger；畫面上的資料類型標示為同情境 fallback，fresh local runner receipt 狀態維持待取得。網站的三個工作是 validate／import、endpoint replay 與 ledger／workbook。`service` 是服務結果，來源為 imported result summary，作用是判斷 required delivery、deadline 與 freshness，單位為 pass／fail；判讀順序是服務 gate、replay context 與 endpoint energy。網站保留 endpoint radio／processing scope，LEO／system energy 維持獨立 evidence layer。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O010",
+        "source": "current-evidence/course-20260811 clean crops; SDD §10–11",
+        "role": "website responsibility and current evidence"
+      },
+      "current_evidence": "editable diagram / package contract"
+    },
+    {
+      "order": 16,
+      "page_id": "O016",
+      "title": "O011｜結果判讀：service → state → endpoint J",
+      "notes": "結果判讀固定沿三層進行。`service_pass` 是服務是否通過的布林結果，必須先讀 required delivery、deadline 與 freshness；packet 與 radio state 事件接著說明 action 如何造成 attempt、retry、delivery、expiry 與 state duration。`radio_state` 的來源是 runner events 與 endpoint replay，作用是說明每段 state duration 與 energy bucket，單位為 state enum 加 duration；判讀時把 action 連回 packet、service 與 `endpoint_energy_j`。`endpoint_energy_j` 只描述 endpoint radio／processing model 累積的 J。`endpoint bit/J` 的來源是 result summary，單位是 bit/J，作用是描述 delivered bits 與 endpoint J 的比值，判讀順序要求 service gate 通過後再解讀。LEO、system 與 canonical energy 維持獨立 evidence layer；所有資料保持 SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED。",
+      "layout": "slideLayout2.xml",
+      "source": {
+        "slide": "O011",
+        "source": "ADR-004; SDD §9.6; part-b-field-audit.md",
+        "role": "service-first endpoint evidence boundary"
+      },
+      "current_evidence": "editable diagram / package contract"
+    }
+  ]
+}

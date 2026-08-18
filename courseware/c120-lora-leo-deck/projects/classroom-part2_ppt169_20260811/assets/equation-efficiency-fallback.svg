@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="180" viewBox="0 0 720 180">
+  <rect width="720" height="180" fill="white" fill-opacity="0"/>
+  <text x="360" y="86" text-anchor="middle" fill="#35377F" font-family="Times New Roman, serif" font-size="58">
+    <tspan>η</tspan><tspan baseline-shift="sub" font-size="34">E</tspan><tspan baseline-shift="baseline" font-size="58"> = D</tspan><tspan baseline-shift="sub" font-size="34">delivered</tspan><tspan baseline-shift="baseline" font-size="58"> / E</tspan><tspan baseline-shift="sub" font-size="34">endpoint</tspan>
+  </text>
+  <line x1="182" y1="116" x2="538" y2="116" stroke="#35377F" stroke-width="3"/>
+</svg>

@@ -1,0 +1,320 @@
+@use 'sass:color';
+
+:root {
+  color-scheme: dark;
+  --explain-ink: #edf1eb;
+  --explain-muted: #98a69f;
+  --explain-line: rgba(190, 217, 204, 0.18);
+  --explain-cyan: #6fd4c0;
+  --explain-amber: #f4c871;
+  --explain-red: #d98072;
+  --explain-paper: #07100f;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+.scientific-explain {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: clamp(28px, 5vw, 76px);
+  color: var(--explain-ink);
+  background:
+    radial-gradient(circle at 50% 46%, rgba(49, 89, 79, 0.18), transparent 34%),
+    radial-gradient(circle at 78% 16%, rgba(244, 200, 113, 0.055), transparent 24%),
+    #050a0a;
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  isolation: isolate;
+}
+
+.scientific-explain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .16;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+.scientific-explain__loading-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.explain-primary-action {
+  min-height: 48px;
+  padding: 0 24px;
+  border: 1px solid rgba(244, 200, 113, .68);
+  border-radius: 2px;
+  color: #171207;
+  background: var(--explain-amber);
+  font: 650 .92rem/1 "Noto Sans TC", sans-serif;
+  letter-spacing: .04em;
+  cursor: pointer;
+  box-shadow: 0 12px 40px rgba(244, 200, 113, .12);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.explain-primary-action:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(244, 200, 113, .2); }
+.explain-primary-action:focus-visible { outline: 2px solid var(--explain-ink); outline-offset: 4px; }
+
+.explain-ledger {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: clamp(18px, 3vw, 34px);
+  translate: -50% 0;
+  width: min(1120px, calc(100% - 36px));
+  display: grid;
+  grid-template-columns: 1.05fr .95fr 1.8fr;
+  gap: 1px;
+  padding: 1px;
+  border: 1px solid var(--explain-line);
+  background: var(--explain-line);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .42);
+}
+
+.explain-ledger > * { background: rgba(6, 15, 14, .96); }
+.explain-ledger__source,
+.explain-ledger__identity { display: grid; gap: 7px; align-content: center; padding: 18px; min-width: 0; }
+.explain-ledger span,
+.explain-ledger dt { color: var(--explain-cyan); font: 650 .65rem/1.2 ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; }
+.explain-ledger strong { overflow-wrap: anywhere; font-size: .84rem; font-weight: 560; }
+.explain-ledger small { overflow-wrap: anywhere; color: var(--explain-muted); font: .64rem/1.4 ui-monospace, "SFMono-Regular", Consolas, monospace; }
+.explain-ledger__terms { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; }
+.explain-ledger__terms div { display: grid; align-content: center; gap: 8px; padding: 16px 12px; border-left: 1px solid var(--explain-line); }
+.explain-ledger__terms dt,
+.explain-ledger__terms dd { margin: 0; }
+.explain-ledger__terms dd { font: 620 .72rem/1.25 ui-monospace, "SFMono-Regular", Consolas, monospace; white-space: nowrap; }
+.explain-ledger__boundary { grid-column: 1 / -1; margin: 0; padding: 8px 16px; border-top: 1px solid var(--explain-line); color: var(--explain-muted); font-size: .68rem; text-align: center; }
+
+.explain-refusal { width: min(680px, 100%); padding: 18px; border: 1px solid rgba(217, 128, 114, .38); background: rgba(40, 15, 12, .34); }
+.explain-refusal strong { color: #f3c4bc; font-weight: 650; }
+.explain-refusal p { margin: 10px 0 18px; color: var(--explain-muted); font: .74rem/1.55 ui-monospace, "SFMono-Regular", Consolas, monospace; overflow-wrap: anywhere; }
+
+.scientific-explain--angle {
+  display: block;
+  padding: 0;
+  background: #020908;
+}
+
+.scientific-explain--angle::before { display: none; }
+
+.scientific-explain--orbit {
+  display: block;
+  padding: 0;
+  background: #030807;
+}
+
+.scientific-explain--orbit::before { z-index: 6; opacity: .1; }
+
+.explain-orbit-stage {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 620px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 58% 46%, rgba(38, 102, 91, .1), transparent 38%),
+    #030807;
+}
+
+.explain-orbit-stage__canvas { position: absolute; inset: 0; }
+.explain-orbit-stage__canvas canvas { cursor: grab; }
+.explain-orbit-stage__canvas canvas:active { cursor: grabbing; }
+.explain-orbit-stage__fallback { display: grid; height: 100%; place-items: center; color: var(--explain-muted); }
+
+.explain-orbit-stage__topbar {
+  position: absolute;
+  z-index: 4;
+  top: 24px;
+  left: 28px;
+  right: 190px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  pointer-events: none;
+}
+
+.explain-orbit-stage__back {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--explain-line);
+  border-radius: 2px;
+  color: var(--explain-ink);
+  background: rgba(5, 13, 12, .76);
+  font: 560 .78rem/1 "Noto Sans TC", sans-serif;
+  letter-spacing: .04em;
+  cursor: pointer;
+  backdrop-filter: blur(18px);
+  pointer-events: auto;
+}
+
+.explain-orbit-stage__back:hover { border-color: rgba(244, 200, 113, .7); color: var(--explain-amber); }
+.explain-orbit-stage__back:focus-visible { outline: 2px solid var(--explain-amber); outline-offset: 3px; }
+
+.explain-orbit-stage__source {
+  display: grid;
+  gap: 3px;
+  padding-left: 18px;
+  border-left: 1px solid var(--explain-line);
+}
+
+.explain-orbit-stage__source span,
+.explain-orbit-stage__chapter,
+.explain-orbit-stage__identity > span {
+  color: var(--explain-cyan);
+  font: 650 .64rem/1.2 ui-monospace, "SFMono-Regular", Consolas, monospace;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.explain-orbit-stage__source strong { color: var(--explain-ink); font: 560 .72rem/1.4 ui-monospace, "SFMono-Regular", Consolas, monospace; }
+
+.explain-orbit-stage__narrative {
+  position: absolute;
+  z-index: 3;
+  top: clamp(112px, 15vh, 156px);
+  left: clamp(28px, 5vw, 74px);
+  width: min(410px, 34vw);
+  pointer-events: none;
+}
+
+.explain-orbit-stage__narrative h2 {
+  max-width: 390px;
+  margin: 14px 0 16px;
+  font-family: "Iowan Old Style", "Baskerville", "Noto Serif TC", serif;
+  font-size: clamp(2rem, 3.25vw, 3.55rem);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -.04em;
+  text-wrap: balance;
+}
+
+.explain-orbit-stage__narrative p { max-width: 360px; margin: 0; color: #aebcb5; font-size: .86rem; line-height: 1.75; }
+
+.explain-orbit-stage__identity {
+  position: absolute;
+  z-index: 3;
+  top: clamp(116px, 16vh, 168px);
+  right: clamp(28px, 4vw, 64px);
+  width: min(300px, 27vw);
+  padding: 18px;
+  border: 1px solid var(--explain-line);
+  background: rgba(4, 12, 11, .72);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(18px);
+}
+
+.explain-orbit-stage__identity dl { display: grid; gap: 12px; margin: 16px 0 0; }
+.explain-orbit-stage__identity dl div { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 12px; }
+.explain-orbit-stage__identity dt { color: var(--explain-muted); font-size: .7rem; }
+.explain-orbit-stage__identity dd { margin: 0; overflow-wrap: anywhere; color: var(--explain-ink); font: 540 .7rem/1.4 ui-monospace, "SFMono-Regular", Consolas, monospace; }
+
+.explain-orbit-stage__legend {
+  position: absolute;
+  z-index: 3;
+  left: clamp(28px, 5vw, 74px);
+  bottom: 122px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  max-width: 420px;
+  color: var(--explain-muted);
+  font-size: .68rem;
+}
+
+.explain-orbit-stage__legend span { display: inline-flex; align-items: center; gap: 8px; }
+.explain-orbit-stage__legend i { display: inline-block; flex: 0 0 auto; width: 12px; height: 12px; }
+.explain-orbit-stage__legend .is-trajectory { width: 22px; height: 2px; background: var(--explain-cyan); }
+.explain-orbit-stage__legend .is-satellite { border: 2px solid var(--explain-amber); border-radius: 50%; }
+.explain-orbit-stage__legend .is-observer { background: #ff7d8f; transform: rotate(45deg); }
+.explain-orbit-stage__legend .is-context { border: 1px solid #8ab4c7; border-radius: 50%; }
+
+.explain-orbit-stage__chain {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 24px;
+  translate: -50% 0;
+  width: min(1120px, calc(100% - 56px));
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--explain-line);
+  background: rgba(4, 12, 11, .84);
+  list-style: none;
+  backdrop-filter: blur(18px);
+}
+
+.explain-orbit-stage__chain li { position: relative; display: grid; gap: 6px; min-height: 68px; align-content: center; padding: 11px 16px; border-left: 1px solid var(--explain-line); color: #64716b; }
+.explain-orbit-stage__chain li:first-child { border-left: 0; }
+.explain-orbit-stage__chain span { font: .58rem/1 ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: .14em; }
+.explain-orbit-stage__chain strong { font: 560 .72rem/1.25 ui-monospace, "SFMono-Regular", Consolas, monospace; }
+.explain-orbit-stage__chain .is-complete { color: var(--explain-cyan); }
+.explain-orbit-stage__chain .is-current { color: var(--explain-ink); background: rgba(244, 200, 113, .08); box-shadow: inset 0 2px 0 var(--explain-amber); }
+.explain-orbit-stage__chain .is-current span { color: var(--explain-amber); }
+
+.explain-orbit-evidence {
+  position: absolute;
+  z-index: 7;
+  top: 24px;
+  right: 28px;
+}
+
+.explain-orbit-evidence > summary {
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--explain-line);
+  border-radius: 2px;
+  color: var(--explain-muted);
+  background: rgba(5, 13, 12, .76);
+  font-size: .76rem;
+  cursor: pointer;
+  list-style: none;
+  backdrop-filter: blur(18px);
+}
+
+.explain-orbit-evidence > summary::-webkit-details-marker { display: none; }
+.explain-orbit-evidence[open] > summary { border-color: rgba(111, 212, 192, .55); color: var(--explain-cyan); }
+.explain-orbit-evidence .explain-ledger { position: absolute; top: 52px; right: 0; left: auto; bottom: auto; translate: none; width: min(1120px, calc(100vw - 56px)); }
+
+@media (max-width: 840px) {
+  .scientific-explain { align-items: start; overflow-y: auto; padding-top: 14vh; }
+  .scientific-explain--angle { padding: 0; }
+  .scientific-explain--orbit { padding: 0; }
+  .explain-ledger { position: relative; left: auto; bottom: auto; translate: none; grid-template-columns: 1fr; margin-top: 48px; }
+  .explain-ledger__terms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .explain-ledger__terms div { border-top: 1px solid var(--explain-line); }
+  .explain-orbit-stage { height: auto; min-height: 1040px; padding: 18px; }
+  .explain-orbit-stage__canvas { top: 170px; bottom: auto; height: 520px; }
+  .explain-orbit-stage__topbar { position: relative; top: auto; left: auto; right: auto; padding-right: 132px; }
+  .explain-orbit-stage__source { display: none; }
+  .explain-orbit-stage__narrative { position: relative; top: auto; left: auto; width: 100%; margin-top: 46px; }
+  .explain-orbit-stage__narrative h2 { max-width: 520px; font-size: clamp(2rem, 10vw, 3rem); }
+  .explain-orbit-stage__identity { position: relative; top: auto; right: auto; width: 100%; margin-top: 520px; }
+  .explain-orbit-stage__legend { position: relative; left: auto; bottom: auto; margin-top: 18px; }
+  .explain-orbit-stage__chain { position: relative; left: auto; bottom: auto; translate: none; width: 100%; grid-template-columns: 1fr; margin-top: 20px; }
+  .explain-orbit-stage__chain li { min-height: 48px; grid-template-columns: 34px 1fr; align-items: center; border-top: 1px solid var(--explain-line); border-left: 0; }
+  .explain-orbit-evidence { top: 18px; right: 18px; }
+  .explain-orbit-evidence .explain-ledger { position: fixed; top: 70px; right: 18px; width: calc(100vw - 36px); max-height: calc(100svh - 88px); overflow-y: auto; margin: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .explain-primary-action { transition: none; }
+}

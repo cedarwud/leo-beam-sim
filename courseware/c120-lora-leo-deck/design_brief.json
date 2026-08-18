@@ -1,0 +1,82 @@
+{
+  "topic": "C-120 course-packaged LoRaEnergySim + Leo opening checkpoint",
+  "content_maturity": "technical/educational",
+  "audience_posture": "students/learners and course owner",
+  "emotional_register": "trustworthy",
+  "format_promise": "深色 Leo evidence-lab；大字；每頁一個主視覺；先講 IoT endpoint energy，再講 LoRaEnergySim，最後才把 LEO 定位為 changing-service-window 範例。",
+  "anti_format": [
+    "重複 title + card grid",
+    "light warm classroom dashboard",
+    "tiny KPI wall",
+    "中英雙欄",
+    "未凍結 command/API/browser pixel 冒充現況"
+  ],
+  "canvas_and_grid": {
+    "aspect": "16:9",
+    "margin_x_in": 0.55,
+    "footer_reserve_in": 0.42,
+    "header_policy": "標題 34–40 pt；body 20–24 pt；caption/source 11–13 pt；wrapped title 完整保留垂直空間。"
+  },
+  "title_page_concept": {
+    "chosen_archetype": "command-center",
+    "dominant_element": "IoT endpoint 的 SLEEP / WAKE / WAIT / TX / RX 狀態帶，與一個移動中的 service window",
+    "supporting_element": "智慧節能與物聯網應用 + C-120 opening checkpoint",
+    "why_this_could_only_be_this_deck": "視覺先把 endpoint policy、packet/service、power-time 與 energy 串成一條可檢驗因果鏈；衛星只佔 service-window 的位置。"
+  },
+  "structure_strategy": {
+    "primary_scaffold": "一頁一個 evidence-first visual",
+    "repeated_elements": [
+      "左上 driving question",
+      "右下 evidence/claim boundary",
+      "固定 EDU branding 安全區",
+      "頁尾 source 與 provisional 狀態"
+    ],
+    "allowed_variations": [
+      "state ribbon",
+      "causal chain",
+      "comparison",
+      "two-layer authority diagram",
+      "course loop",
+      "Do/Why/Mechanism/Expect/Interpret operation card",
+      "clock bands",
+      "owner decision frame"
+    ],
+    "container_policy": "只在比較、evidence ledger 與 operation grammar 需要界線時使用矩形容器；不使用四等分卡牆。",
+    "rhythm_break_plan": "第 4 頁用 moving-window hero；第 9 頁用 owner gate 收束。"
+  },
+  "design_dna": "custom: dark command-center + lab evidence",
+  "renderer_treatments": {
+    "header_mode": "lab-clean",
+    "title_layout": "command-center",
+    "title_motif": "orbit",
+    "section_motif": "none",
+    "timeline_mode": "bands",
+    "matrix_mode": "open-quadrants",
+    "stats_mode": "feature-left",
+    "footer_mode": "source-line",
+    "summary_callout_mode": "lab-box"
+  },
+  "color_tokens": {
+    "background": "#020912",
+    "surface": "#081923",
+    "surface_soft": "#0C202B",
+    "surface_raised": "#102A36",
+    "text": "#EDFAFA",
+    "muted": "#B6CED3",
+    "line": "rgba(157, 202, 218, 0.24)",
+    "action": "#76EAD7",
+    "boundary": "#FFDA91",
+    "invalid": "#FF8C8C"
+  },
+  "template_integration": {
+    "requested_source": "/home/u24/ppt-master/template/educate.pptx",
+    "requested_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+    "native_fill_status": "BLOCKED_BY_LAYOUT_AND_THEME_MISMATCH",
+    "protected_elements_if_route_changes": [
+      "EDU logo area",
+      "footer branding area",
+      "16:9 upper/lower safe bounds"
+    ],
+    "decision_needed": "owner must choose native light fill or authorize a generated dark layout that preserves EDU branding"
+  }
+}

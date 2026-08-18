@@ -1,0 +1,31 @@
+[non-heavy] Outcome: turn P046-P063 into a beginner-readable Lab B teaching chunk where the presenter can explain exactly where to edit, what one line changes, why it changes behavior, which commands to run, and how to read the website result. Work in the current environment.
+
+You are not alone in this repository. Do not revert or overwrite edits outside your ownership. Do not commit or push.
+
+Ownership only:
+- courseware/c120-lora-leo-deck/alt-skill-deck/part-b-v2-p046-p063/**
+- courseware/c120-lora-leo-deck/alt-skill-deck/local-qa/part-b-p046-p063-final/**
+- courseware/c120-lora-leo-deck/alt-skill-deck/latest/LoRaEnergySim-LEO-ALT-PART-B-V2-P046-P063-REVIEW.pptx
+
+Before any edit, fully read:
+- courseware/c120-lora-leo-deck/ALT-SKILL-AUTHORING-HANDOFF.md
+- courseware/c120-lora-leo-deck/alt-skill-deck/shared/APPROVED-8-SLIDE-STYLE.md
+- courseware/c120-lora-leo-deck/alt-skill-deck/shared/LAB-EXPLANATION-ACCEPTANCE.md
+- /home/u24/.codex/skills/pptx-wrap/SKILL.md
+- /home/u24/.codex/skills/pptx/SKILL.md
+- current build source, slides.json, notes, and QA for P046-P063
+- /home/u24/lora-energy-lab/student_policy.py and README.zh-TW.md relevant Lab B sections
+
+Template contract: /home/u24/pptx-wrap/assets/templates/educate.pptx; source slide 2 / slideLayout2.xml body shell only; preserve template background/footer; no added background fill. Title 28 pt. Body target 24 pt, minimum 16. Chinese DFKai-SB/標楷體, Latin/numerals Times New Roman. Use editable native PPTX text/shapes/math. Formal speaker notes. No visible POSIX; use Linux/macOS terminal, WSL uses Linux commands, and Windows PowerShell/Command Prompt.
+
+The existing P046-P063 deck is structurally useful but visually too dense, especially the code edit around P055. Rebuild the Lab B edit sequence into at least these separate, large-text teaching steps (you may add suffix pages and increase slide count):
+1. Locate: student_policy.py, block lab-b-enter-exit-hold, and only STABLE_STEPS is editable for this Lab.
+2. Before: a 5-8 line maximum enlarged code excerpt with STABLE_STEPS = 2 highlighted. Fade fixed ENTER_QUALITY = 2 and EXIT_QUALITY = 1; explain them in plain Chinese outside the code.
+3. After: the same excerpt with only STABLE_STEPS = 1 highlighted. Show a one-line diff and explicitly say all other lines stay unchanged.
+4. Why: 2 stable observations versus 1 stable observation, with a visual two-step/one-step timing diagram leading to quality_ready/MODE_CHANGE; no unexplained arrow chain.
+5. Run: Trace A baseline, candidate --freeze, Trace B withheld. Show exact Linux/macOS/WSL and Windows commands on readable separate cards, not a wall.
+6. Interpret: import only result.json into /course; keep endpoint-replay.json paired; runner runs locally and website validates/materializes/replays/workbook. Read service, packet, state, endpoint J in that order. Explain what a PASS/FAIL or unexpected outcome means.
+
+Every slide must be understandable by a zero-background learner. Do not use a whole-function code wall. Code font should be 20-24 pt where feasible and never under 16. Add formal, directly readable speaker notes for every slide. Keep any current screenshots only where they support the exact explanation; never fabricate current pixels or KPI.
+
+Build and overwrite the same latest filename. Validate slide/notes count, layout2 relationships, forbidden visible terms, minimum font, and LibreOffice open/export without repair. Render every page at original size and inspect contact sheets. Report output path, slide count, QA paths, and remaining limitations. Do not merge the overall deck.

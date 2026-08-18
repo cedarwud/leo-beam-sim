@@ -1,0 +1,216 @@
+{
+  "deck": "LoRaEnergySim-LEO-ALT-PART-A-V2-PREVIEW",
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "shell": "source slide 2 / slideLayout2.xml only",
+  "background-author-fill": "unset",
+  "font-contract": {
+    "cjk": "標楷體",
+    "latin": "Times New Roman"
+  },
+  "title-pt": 28,
+  "body-baseline-pt": 24,
+  "minimum-body-pt": 16,
+  "current-evidence": "待補：deck contains no fabricated screenshot, KPI, or run result",
+  "slides": [
+    {
+      "order": 1,
+      "source-page": "P001",
+      "title": "",
+      "body": [
+        "有限電池\n端點",
+        "資料封包",
+        "產生 → 佇列 → 送出",
+        "會開、會關、品質會變",
+        "開啟",
+        "關閉",
+        "開啟",
+        "縮短",
+        "先看窗口，再看動作；最後讀服務與端點能量",
+        "scenario（情境定義）｜來源：course package｜作用：固定端點、窗口與資料規則\n單位：identifier｜判讀：相同輸入可重跑"
+      ],
+      "layout": "slideLayout2.xml",
+      "notes": "本頁建立課程的固定情境。環境感測端點以有限電池運作，服務窗口依固定軌跡開啟、關閉或縮短。情境定義 scenario 來自 course package，作用是固定端點、窗口與資料規則，單位為 identifier；相同輸入應產生可重跑的比較。後續判讀依序確認窗口、策略動作、服務結果與端點能量。",
+      "evidence-status": "待補：fresh runner receipt/current evidence not embedded in this preview",
+      "donor-source": {
+        "donor": "donor-insertion-map.md",
+        "slides": "e2 2, 4-6",
+        "mapping": "changing opportunity and visible service window; redraw reference only"
+      }
+    },
+    {
+      "order": 2,
+      "source-page": "P002",
+      "title": "",
+      "body": [
+        "同一個 action 會沿不同路徑留下可觀察後果",
+        "SLEEP｜低功耗休息",
+        "休息功率降低\n喚醒延遲與能量增加",
+        "WAIT｜清醒等待",
+        "反應能力保留\n清醒閒置能量累積",
+        "SEND｜送出封包",
+        "服務機會增加\n處理與無線事件增加",
+        "服務結果",
+        "端點能量（J）",
+        "action（策略動作）｜來源：policy API｜作用：每次決策的唯一輸出\n單位：enum｜判讀：觸發狀態與封包轉移"
+      ],
+      "layout": "slideLayout2.xml",
+      "notes": "本頁說明策略動作的三條主要路徑。SLEEP 降低休息功率，但必須支付喚醒延遲與喚醒能量；WAIT 保留反應能力，但會累積清醒閒置能量；SEND 類動作建立服務機會，也會增加處理、發射、接收或重試事件。策略動作 action 來自 policy API，作用是提供每次決策的唯一輸出，單位為 enum；判讀時以其觸發的狀態與封包轉移為準。",
+      "evidence-status": "待補：fresh runner receipt/current evidence not embedded in this preview",
+      "donor-source": {
+        "donor": "donor-insertion-map.md",
+        "slides": "e2 14, 16/17, 19-21",
+        "mapping": "state, packet, service, and endpoint-energy causal chain; redraw reference only"
+      }
+    },
+    {
+      "order": 3,
+      "source-page": "P003",
+      "title": "",
+      "body": [
+        "能量或服務差異，必須由中間事件支持",
+        "服務窗口",
+        "策略動作",
+        "無線狀態\n封包事件",
+        "服務判定",
+        "端點能量",
+        "窗口關閉 → 傳輸類動作不執行 → 安全分支為 SLEEP",
+        "若中間事件沒有差異，最後的數值變化不得歸因於本次修改。",
+        "radio_state（無線狀態）｜來源：runner event ledger｜作用：表示各狀態區間\n單位：state enum + duration｜判讀：提供端點能量的時間分段"
+      ],
+      "layout": "slideLayout2.xml",
+      "notes": "本頁建立結果歸因的順序。先確認服務窗口與策略動作，再讀取無線狀態和封包事件，最後判讀服務與端點能量。窗口關閉時，傳輸類動作不進入執行器，安全分支為 SLEEP。無線狀態 radio_state 來自 runner event ledger，作用是表示各狀態區間，單位為 state enum 加 duration；其判讀用途是提供端點能量的時間分段。",
+      "evidence-status": "待補：fresh runner receipt/current evidence not embedded in this preview",
+      "donor-source": null
+    },
+    {
+      "order": 4,
+      "source-page": "P004",
+      "title": "",
+      "body": [
+        "只改一個受控常數，再沿同一條證據路徑比較",
+        "01",
+        "修改",
+        "student_policy.py\nmarked block",
+        "02",
+        "執行",
+        "固定 case\n固定輸入",
+        "03",
+        "讀取",
+        "狀態、封包\n服務、能量",
+        "04",
+        "解釋",
+        "動作 → 事件\n→ 結果",
+        "預測與結果同時保存；反例保留為可檢驗證據。",
+        "result.json（結果資料檔）｜來源：package runner｜作用：保存 run identity、狀態、封包、服務與能量\n單位：JSON artifact｜判讀：作為 replay 與 import 的輸入"
+      ],
+      "layout": "slideLayout2.xml",
+      "notes": "本頁定義固定情境中的操作閉環。可編輯面限於 student_policy.py 的 marked block，且一次只修改一個受控常數。執行固定 case 後，依序讀取狀態、封包、服務與能量，再以動作、事件與結果的關係說明差異。結果資料檔 result.json 由 package runner 產生，作用是保存 run identity、狀態、封包、服務與能量，單位為 JSON artifact；其判讀用途是作為 replay 與 import 的輸入。",
+      "evidence-status": "待補：fresh runner receipt/current evidence not embedded in this preview",
+      "donor-source": null
+    },
+    {
+      "order": 5,
+      "source-page": "P005",
+      "title": "",
+      "body": [
+        "同一觀測下，比較基準與候選策略的事件路徑",
+        "同一觀測",
+        "同一觀測",
+        "基準策略\n動作 A",
+        "事件路徑 A",
+        "服務／能量 A",
+        "候選策略\n動作 B",
+        "事件路徑 B",
+        "服務／能量 B",
+        "先確認事件路徑不同，才比較服務與能量。",
+        "packet_progress（封包進度）｜來源：result／replay artifact｜作用：記錄產生、佇列、嘗試、重試、送達與逾期\n單位：event count + time｜判讀：連接策略動作與服務結果"
+      ],
+      "layout": "slideLayout2.xml",
+      "notes": "本頁將因果歸因具體化。基準策略與候選策略必須接收相同觀測，差異由策略動作開始，並經由不同的事件路徑傳到服務與端點能量。若事件路徑沒有差異，最終數值差異不得歸因於策略修改。封包進度 packet_progress 來自 result 或 replay artifact，作用是記錄產生、佇列、嘗試、重試、送達與逾期，單位為 event count 加 time；其判讀用途是連接策略動作與服務結果。",
+      "evidence-status": "待補：fresh runner receipt/current evidence not embedded in this preview",
+      "donor-source": {
+        "donor": "donor-insertion-map.md",
+        "slides": "e2 20, 36-37",
+        "mapping": "same-observation A/B comparison and attribution gate; redraw reference only"
+      }
+    },
+    {
+      "order": 6,
+      "source-page": "P006",
+      "title": "",
+      "body": [
+        "可重跑，不等於可以外推到所有能量層級",
+        "本套件可支持",
+        "固定 scenario／seed\n端點狀態與封包事件\n服務判定與端點 J",
+        "本套件不支持",
+        "LEO／system energy\ncanonical efficiency\n實測或即時 KPI",
+        "endpoint_energy_j（端點能量）｜來源：endpoint radio／processing model｜作用：累積狀態能量\n單位：J｜判讀：只屬於 endpoint evidence layer"
+      ],
+      "layout": "slideLayout2.xml",
+      "notes": "本頁界定執行器可支持的證據範圍。固定 scenario、policy 與 seed 可使事件順序重跑，並支持端點狀態、封包、服務與端點能量的比較。這些結果不等同於 LEO 或 system energy，也不等同於 canonical efficiency、實測或即時 KPI。端點能量 endpoint_energy_j 來自 endpoint radio 與 processing model，作用是累積狀態能量，單位為 J；判讀時只屬於 endpoint evidence layer。",
+      "evidence-status": "待補：fresh runner receipt/current evidence not embedded in this preview",
+      "donor-source": {
+        "donor": "donor-insertion-map.md",
+        "slides": "e2 14, 16/17, 19-21",
+        "mapping": "endpoint versus system/canonical evidence boundary; redraw reference only"
+      }
+    },
+    {
+      "order": 7,
+      "source-page": "P007",
+      "title": "",
+      "body": [
+        "LEO 改變可服務機會；主要控制仍在端點策略",
+        "低地球軌道\n服務機會",
+        "窗口開啟",
+        "品質下降",
+        "窗口關閉",
+        "再度開啟",
+        "等待／休息\n／送出",
+        "相同機制可以轉移；窗口、期限與能量邊界必須重新定義。",
+        "暖通空調｜低負載時段",
+        "邊緣閘道｜可連線時段",
+        "物流追蹤｜回報機會",
+        "service_window（服務窗口）｜來源：fixed scenario trace｜作用：定義合法傳輸區間\n單位：trace time｜判讀：決定動作是否具有服務機會"
+      ],
+      "layout": "slideLayout2.xml",
+      "notes": "本頁將低地球軌道視為變動服務窗口的工作範例。LEO 的作用是改變服務機會；主要控制仍是端點策略在等待、休息與送出之間做選擇。暖通空調、邊緣閘道與物流追蹤可以沿用相同機制，但各情境必須重新定義窗口、期限與能量邊界。服務窗口 service_window 來自 fixed scenario trace，作用是定義合法傳輸區間，單位為 trace time；判讀時決定動作是否具有服務機會。",
+      "evidence-status": "待補：fresh runner receipt/current evidence not embedded in this preview",
+      "donor-source": {
+        "donor": "donor-insertion-map.md",
+        "slides": "e2 2, 4, 19",
+        "mapping": "changing-window transfer to other IoT contexts; redraw reference only"
+      }
+    },
+    {
+      "order": 8,
+      "source-page": "P008",
+      "title": "",
+      "body": [
+        "先寫下方向，再執行；結果不符時保留反例",
+        "01",
+        "記錄預測",
+        "狀態／封包／服務／J",
+        "02",
+        "受控修改",
+        "一次一個常數",
+        "03",
+        "精確執行",
+        "固定 case 與輸入",
+        "04",
+        "比較與保存",
+        "結果、解釋、反例",
+        "保留條件案例維持 frozen policy，用來檢查機制是否可轉移。",
+        "prediction（預測）｜來源：workbook record｜作用：指定可反駁的變化方向\n單位：statement｜判讀：作為執行前的比較基準"
+      ],
+      "layout": "slideLayout2.xml",
+      "notes": "本頁把預測、執行與反例放在同一個證據脈絡。執行前先記錄狀態、封包、服務或端點能量的預期方向，再進行一次一個常數的受控修改與固定 case 執行。結果不符合預測時，反例仍須保存。預測 prediction 來自 workbook record，作用是指定可反駁的變化方向，單位為 statement；判讀時作為執行前的比較基準。",
+      "evidence-status": "待補：fresh runner receipt/current evidence not embedded in this preview",
+      "donor-source": {
+        "donor": "donor-insertion-map.md",
+        "slides": "e2 96-97, 113",
+        "mapping": "prediction, evidence, and claim classification; redraw reference only"
+      }
+    }
+  ]
+}

@@ -8,10 +8,12 @@ import {
   CANONICAL_EE_EVALUATION_FIXTURE,
   CanonicalEeAccumulator,
   CanonicalEeInputError,
+  DEFAULT_EPSILON_NUM,
   computeAdditiveSystemEe,
   computeCanonicalEe,
   computeCanonicalEvaluation,
 } from './index';
+import { selectCanonicalHDiagnostics } from './producer';
 
 const RTOL = 1e-12;
 const ATOL = 1e-15;
@@ -39,6 +41,27 @@ test('replays the frozen Python angle-aware closure vectors', () => {
     if (result.transmitGainUb.length > 1) {
       closeVector(result.transmitGainUb[1] ?? [], fixture.expected.transmitGainUb[1] ?? [], `${fixture.id}.gain[1]`);
     }
+    const pythonExpectedCompositeGainUb = fixture.input.frame.propagationGainUb.map((row, user) => (
+      row.map((propagationGain, beam) => (
+        propagationGain
+        * fixture.expected.transmitGainUb[user]![beam]!
+        * fixture.input.frame.receiveGainUb[user]![beam]!
+      ))
+    ));
+    closeMatrix(
+      result.compositeGainUb,
+      pythonExpectedCompositeGainUb,
+      `${fixture.id}.raw h from Python transmit-gain vector`,
+    );
+    result.compositeGainUb.forEach((row, user) => row.forEach((_rawH, beam) => {
+      const diagnostics = selectCanonicalHDiagnostics(result, user, beam);
+      close(diagnostics.rawH, pythonExpectedCompositeGainUb[user]![beam]!, `${fixture.id}.raw h[${user}][${beam}]`);
+      close(
+        diagnostics.hDiv,
+        Math.max(pythonExpectedCompositeGainUb[user]![beam]!, DEFAULT_EPSILON_NUM),
+        `${fixture.id}.h^div[${user}][${beam}]`,
+      );
+    }));
     closeMatrix(result.receivedPowerUbW, fixture.expected.receivedPowerUbW, `${fixture.id}.received power`);
     closeVector(result.gammaReqB, fixture.expected.gammaReqB, `${fixture.id}.gamma`);
     closeVector(result.pReqUW, fixture.expected.pReqUW, `${fixture.id}.p_req_u`);
@@ -47,6 +70,15 @@ test('replays the frozen Python angle-aware closure vectors', () => {
     closeVector(result.pDlActualBW, fixture.expected.pDlActualBW, `${fixture.id}.p_dl_actual`);
     closeVector(result.satelliteScaleB, fixture.expected.satelliteScaleB, `${fixture.id}.satellite scale`);
     closeVector(result.interferenceUW, fixture.expected.interferenceUW, `${fixture.id}.interference`);
+    result.interferenceUW.forEach((total, user) => {
+      assert.ok(
+        Math.abs(total - (
+          result.intraSatelliteInterferenceUW[user]!
+          + result.interSatelliteInterferenceUW[user]!
+        )) <= 1e-15,
+        `${fixture.id}.interference decomposition mismatch for user ${user}`,
+      );
+    });
     closeVector(result.sinrU, fixture.expected.sinrU, `${fixture.id}.sinr`);
     closeVector(result.rateUBps, fixture.expected.rateUBps, `${fixture.id}.rate`);
     closeVector(result.etaPaB, fixture.expected.etaPaB, `${fixture.id}.eta`);
@@ -149,6 +181,48 @@ test('raw h=0 uses the division floor only for p_req and keeps signal/rate at ze
   assert.equal(result.throughput.sinrU[0], 0);
   assert.equal(result.throughput.rateUBps[0], 0);
   assert.equal(result.throughput.totalRateBps, 0);
+});
+
+test('public H diagnostics expose raw h and h^div without changing the signal path', () => {
+  const input = CANONICAL_EE_CONFORMANCE_FIXTURES[0]!.input;
+  const reference = computeCanonicalEe(input);
+  const referenceH = selectCanonicalHDiagnostics(reference, 0, 0);
+
+  assert.ok(Object.isFrozen(referenceH));
+  assert.equal(referenceH.rawH, reference.compositeGainUb[0]![0]);
+  close(referenceH.hDiv, referenceH.rawH, 'non-zero h^div');
+  close(
+    reference.pReqUW[0]!,
+    reference.gammaReqB[0]!
+      * (reference.inputs.frame.laggedInterferenceUW[0]!
+        + reference.inputs.config.noisePowerW)
+      / referenceH.hDiv,
+    'requested-power denominator',
+  );
+  close(
+    reference.receivedPowerUbW[0]![0]!,
+    referenceH.rawH * reference.power.pDlActualBW[0]!,
+    'raw h signal path',
+  );
+
+  const zero = computeCanonicalEe({
+    ...input,
+    frame: {
+      ...input.frame,
+      propagationGainUb: [[0]],
+    },
+  });
+  const zeroH = selectCanonicalHDiagnostics(zero, 0, 0);
+
+  assert.equal(zeroH.rawH, 0);
+  assert.equal(zeroH.hDiv, DEFAULT_EPSILON_NUM);
+  close(
+    zero.pReqUW[0]!,
+    71.77346253629314,
+    'Python canonical zero-h requested power',
+  );
+  assert.equal(zero.throughput.signalUW[0], 0);
+  assert.equal(zero.throughput.rateUBps[0], 0);
 });
 
 test('evaluation and accumulator use unequal-duration ratio-of-sums', () => {

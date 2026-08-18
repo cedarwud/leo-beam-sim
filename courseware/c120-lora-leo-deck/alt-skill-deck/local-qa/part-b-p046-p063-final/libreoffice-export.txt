@@ -1,0 +1,8 @@
+# LibreOffice headless export attempt
+
+Input: /tmp/c120-style-b046-p063/LoRaEnergySim-LEO-ALT-PART-B-V2-P046-P063-REVIEW.pptx
+Command: libreoffice --headless --nologo --nodefault --nofirststartwizard --convert-to pdf
+Result: exit 1 in the current sandbox; no PDF was emitted.
+
+The template and generated package both pass ZIP integrity and structural OOXML checks.
+Original-size PDF/raster inspection remains a controller-environment gate.

@@ -6,6 +6,7 @@ import {
   getFormulaTabAccent,
   getFormulaTabLabelCopy,
   getFormulaTabShortLabel,
+  normalizeTuningTabKey,
   TUNING_TABS,
 } from './tuningConfig';
 import { formulaTextStyle, srOnlyStyle } from './styles';
@@ -38,7 +39,8 @@ export function FormulaTabList({
   // gate of its own.
   void appMode;
   const visibleTabs = TUNING_TABS;
-  const activeIndex = Math.max(visibleTabs.findIndex(tab => tab.key === activeTab), 0);
+  const normalizedActiveTab = normalizeTuningTabKey(activeTab);
+  const activeIndex = Math.max(visibleTabs.findIndex(tab => tab.key === normalizedActiveTab), 0);
 
   const focusFormulaTab = (tab: TuningTabKey) => {
     window.requestAnimationFrame(() => {
@@ -83,9 +85,9 @@ export function FormulaTabList({
     >
       <div style={{
         display: 'grid',
-        // Wraps onto two rows instead of scrolling sideways: a student should
-        // be able to see all seven groups at once on a narrow rail.
-        gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))',
+        // Keep all four groups visible in one row. σ² is a compact scalar, so
+        // give the three link terms the space needed for indexed notation.
+        gridTemplateColumns: 'repeat(3, minmax(0, 1fr)) minmax(40px, 0.45fr)',
         gap: 6,
       }}>
         {visibleTabs.map((tab, index) => {
@@ -140,6 +142,16 @@ export function FormulaTabList({
             </button>
           );
         })}
+      </div>
+      {/*
+        These non-rendered anchors keep old deep-link and provenance selectors
+        discoverable while the user-facing strip presents one effective-channel
+        tab instead of separate H / G^T / receiver tabs.
+      */}
+      <div aria-hidden="true" style={srOnlyStyle}>
+        {(['loss', 'beam', 'receiver-gain'] as const).map(tab => (
+          <span key={tab} id={`sinr-formula-tab-${tab}`} />
+        ))}
       </div>
     </div>
   );

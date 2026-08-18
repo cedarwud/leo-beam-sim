@@ -1,0 +1,14 @@
+{
+  "slide_count": 27,
+  "expected_slide_count": 27,
+  "forbidden_word_absent": true,
+  "minute_labels_absent": true,
+  "template_background_preserved": true,
+  "speaker_notes": 27,
+  "speaker_notes_expected": 27,
+  "title_min_pt": 28,
+  "body_min_pt": 24,
+  "command_min_pt": 18,
+  "windows_wsl_clean_run": "PENDING",
+  "course_screenshots_used": false
+}

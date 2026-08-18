@@ -1,0 +1,125 @@
+{
+  "schema": "ppt-master.template-execution-manifest.v1",
+  "replication_mode": "mirror",
+  "template_root": ".",
+  "template_count": 10,
+  "text_slots_schema": "ppt-master.template-text-slots.v2-min",
+  "execution_policy": "This manifest and its text_slots_path records are derived tool metadata, not page-authoring inputs. Retain the complete project Design Spec and lock once per valid uncompacted execution context; use page-context only for on-demand diagnostics or telemetry. Read the selected complete prototype once per valid context and again only after a known change or context invalidation. Choose semantic replacements and edit only existing visible text values; structured export validates text/tspan topology and attributes against the prototype.",
+  "source_import": {
+    "warning_count": 0,
+    "by_code": {},
+    "samples": {}
+  },
+  "templates": [
+    {
+      "prototype": "001_cover.svg",
+      "page_type": "cover",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_01",
+      "layout_name": "標題投影片",
+      "text_slot_count": 3,
+      "editable_text_slot_count": 2,
+      "text_slots_path": "template_execution/001_cover.text-slots.json"
+    },
+    {
+      "prototype": "002_ending.svg",
+      "page_type": "ending",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_02",
+      "layout_name": "標題及物件",
+      "text_slot_count": 4,
+      "editable_text_slot_count": 3,
+      "text_slots_path": "template_execution/002_ending.text-slots.json"
+    },
+    {
+      "prototype": "layout_layout_03.svg",
+      "page_type": "layout_03",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_03",
+      "layout_name": "兩項物件",
+      "text_slot_count": 12,
+      "editable_text_slot_count": 12,
+      "text_slots_path": "template_execution/layout_layout_03.text-slots.json"
+    },
+    {
+      "prototype": "layout_layout_04.svg",
+      "page_type": "layout_04",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_04",
+      "layout_name": "比對",
+      "text_slot_count": 14,
+      "editable_text_slot_count": 14,
+      "text_slots_path": "template_execution/layout_layout_04.text-slots.json"
+    },
+    {
+      "prototype": "layout_layout_05.svg",
+      "page_type": "layout_05",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_05",
+      "layout_name": "只有標題",
+      "text_slot_count": 2,
+      "editable_text_slot_count": 2,
+      "text_slots_path": "template_execution/layout_layout_05.text-slots.json"
+    },
+    {
+      "prototype": "layout_layout_06.svg",
+      "page_type": "layout_06",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_06",
+      "layout_name": "空白",
+      "text_slot_count": 1,
+      "editable_text_slot_count": 1,
+      "text_slots_path": "template_execution/layout_layout_06.text-slots.json"
+    },
+    {
+      "prototype": "layout_layout_07.svg",
+      "page_type": "layout_07",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_07",
+      "layout_name": "含標題的內容",
+      "text_slot_count": 8,
+      "editable_text_slot_count": 8,
+      "text_slots_path": "template_execution/layout_layout_07.text-slots.json"
+    },
+    {
+      "prototype": "layout_layout_08.svg",
+      "page_type": "layout_08",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_08",
+      "layout_name": "含標題的圖片",
+      "text_slot_count": 3,
+      "editable_text_slot_count": 3,
+      "text_slots_path": "template_execution/layout_layout_08.text-slots.json"
+    },
+    {
+      "prototype": "layout_layout_09.svg",
+      "page_type": "layout_09",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_09",
+      "layout_name": "標題及直排文字",
+      "text_slot_count": 3,
+      "editable_text_slot_count": 3,
+      "text_slots_path": "template_execution/layout_layout_09.text-slots.json"
+    },
+    {
+      "prototype": "layout_layout_10.svg",
+      "page_type": "layout_10",
+      "viewBox": "0 0 1280 720",
+      "master": "master_01",
+      "layout": "layout_10",
+      "layout_name": "直排標題及文字",
+      "text_slot_count": 35,
+      "editable_text_slot_count": 3,
+      "text_slots_path": "template_execution/layout_layout_10.text-slots.json"
+    }
+  ]
+}

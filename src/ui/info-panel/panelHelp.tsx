@@ -98,7 +98,7 @@ const LOCAL_ZH: Record<string, string> = {
   'panel.formulaTerms.interInterference.label': '跨衛星干擾',
   'panel.formulaTerms.interInterference.help': '其他衛星的同頻波束落在此接收端的功率總和，為分母的第二項。',
   'panel.formulaTerms.noise.label': '熱雜訊',
-  'panel.formulaTerms.noise.help': '接收機的熱雜訊功率 σ² ＝ 雜訊功率密度 N₀ × 頻寬 B，與干擾無關且恆定存在，為分母的第三項。',
+  'panel.formulaTerms.noise.help': '接收機的熱雜訊功率 σ² 與干擾無關，會和總干擾 I 一起形成 SINR 分母。',
   'panel.formulaTerms.denominatorTotal.label': '分母總和',
   'panel.formulaTerms.denominatorTotal.help': '同衛星干擾、跨衛星干擾與熱雜訊三項的功率總和，即 γ 的分母。',
 
@@ -167,7 +167,7 @@ const LOCAL_EN: Record<string, string> = {
   'panel.formulaTerms.interInterference.label': 'Inter-satellite interference',
   'panel.formulaTerms.interInterference.help': 'The combined power that co-channel beams on other satellites deliver to this receiver — the second term of the denominator.',
   'panel.formulaTerms.noise.label': 'Thermal noise',
-  'panel.formulaTerms.noise.help': 'Receiver thermal noise power σ² = noise power density N₀ × bandwidth B. It is present regardless of interference and is the third term of the denominator.',
+  'panel.formulaTerms.noise.help': 'Receiver thermal noise power σ² is independent of interference and joins total interference I in the SINR denominator.',
   'panel.formulaTerms.denominatorTotal.label': 'Denominator total',
   'panel.formulaTerms.denominatorTotal.help': 'The summed power of intra-satellite interference, inter-satellite interference and thermal noise — the denominator of γ.',
 

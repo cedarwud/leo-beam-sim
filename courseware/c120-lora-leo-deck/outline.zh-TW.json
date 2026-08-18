@@ -1,0 +1,203 @@
+{
+  "title": "C-120｜LoRaEnergySim × Leo",
+  "subtitle": "智慧節能與物聯網應用 opening checkpoint",
+  "deck_style": {
+    "font_pair": "clean_modern_v1",
+    "visual_density": "low",
+    "emoji_mode": "none",
+    "research_visual_mode": false,
+    "header_mode": "lab-clean",
+    "title_layout": "command-center",
+    "title_motif": "orbit",
+    "section_motif": "none",
+    "timeline_mode": "bands",
+    "matrix_mode": "open-quadrants",
+    "stats_mode": "feature-left",
+    "footer_mode": "source-line",
+    "summary_callout_mode": "lab-box",
+    "footer_page_numbers": true
+  },
+  "compliance": {
+    "require_attribution": false,
+    "auto_image_sources": false
+  },
+  "slides": [
+    {
+      "type": "title",
+      "slide_id": "S01",
+      "slide_intent": "message",
+      "visual_intent": "hero",
+      "title": "每一次 SEND、WAIT、SLEEP，都是能源決策",
+      "subtitle": "LoRaEnergySim × Leo｜智慧節能與物聯網應用 opening checkpoint",
+      "message": "先看 IoT endpoint；LEO 只是 changing-service-window 範例。",
+      "footer": "OPENING CHECKPOINT / OWNER REVIEW / NOT FINAL TEACHING EVIDENCE",
+      "sources": [
+        "ADR-004 lines 24–38",
+        "platform/intro.md lines 6–12"
+      ],
+      "notes": "這堂課先從 IoT endpoint 的能源決策開始，而不是從衛星術語開始。裝置選擇送、等或休眠時，同時改變封包服務與功率乘時間所累積的能量。LoRaEnergySim 讓這些 endpoint 後果可以被觀察；Leo 只提供一個會改變的服務窗口，幫我們看清取捨。"
+    },
+    {
+      "type": "content",
+      "slide_id": "S02",
+      "variant": "standard",
+      "slide_intent": "process",
+      "visual_intent": "flow",
+      "title": "節能不是一個數字；它是一條可檢驗因果鏈",
+      "message": "state/data → policy → packet/service → power × time → energy → evidence → transferable IoT idea",
+      "caption": "每一段都要留下可追溯 evidence；不能用漂亮動畫代替。",
+      "sources": ["C120 integration SDD lines 1082–1096"],
+      "notes": "請沿著因果鏈由左到右讀。資料與狀態先進入 policy，policy 產生送、等、休眠或批次行動，接著才有 packet 與 service 後果；功率經過時間才累積成焦耳。最後的證據必須能支持或推翻原先的預測，並把機制轉移到其他 IoT 場景。"
+    },
+    {
+      "type": "content",
+      "slide_id": "S03",
+      "variant": "comparison-2col",
+      "slide_intent": "evidence",
+      "visual_intent": "comparison",
+      "title": "為什麼是 LoRaEnergySim？因為它把 endpoint 後果露出來",
+      "left": {
+        "title": "可觀察",
+        "body": [
+          "sleep / awake idle / wake / process / TX / RX",
+          "packet attempt / retry / delivered / expired",
+          "queue、service、endpoint energy"
+        ]
+      },
+      "right": {
+        "title": "不能因此宣稱",
+        "body": [
+          "不是 live 或 measured energy",
+          "不是 canonical system consumed J",
+          "wrapper-added assumptions 必須分開標示"
+        ]
+      },
+      "verdict": "價值在可檢查 causal evidence，不在自動升級科學 claim。",
+      "sources": [
+        "ADR-004 lines 24–38",
+        "C120 integration SDD lines 883–907"
+      ],
+      "notes": "LoRaEnergySim 的直接價值，是讓 endpoint 的狀態、封包嘗試、重試、送達與能量結果成為可檢查的事件。課程 wrapper 加入的 awake-idle 或 wake 假設必須另外標示，不能說成 upstream 測量。更重要的是，endpoint energy 不能被改名成既有 C-120 的 canonical system energy。"
+    },
+    {
+      "type": "content",
+      "slide_id": "S04",
+      "variant": "standard",
+      "slide_intent": "message",
+      "visual_intent": "hero",
+      "title": "為什麼用 LEO？因為服務窗口會移動",
+      "caption": "Editable concept visual — no browser screenshot claimed",
+      "sidebar_sections": [
+        {
+          "title": "它帶來的問題",
+          "body": ["現在送、等一下、批次、休眠，哪個能守住 service？"]
+        },
+        {
+          "title": "它不是什麼",
+          "body": ["不是衛星專業課；不要求軌道、RF 或 link-budget 推導。"]
+        },
+        {
+          "title": "可轉移",
+          "body": ["smart farm / HVAC / edge / logistics 的 changing opportunity。"]
+        }
+      ],
+      "sources": ["C120 integration SDD lines 14–37 and 1082–1096"],
+      "notes": "LEO 在這裡只負責把服務機會變成一個會開、會關、品質會改變的時間窗。這讓學員必須在現在送、等一下、批次或休眠之間做決策，並同時檢查 service 與 energy。學到的是 changing opportunity 下的控制思維，而不是衛星工程專業。"
+    },
+    {
+      "type": "content",
+      "slide_id": "S05",
+      "variant": "comparison-2col",
+      "slide_intent": "evidence",
+      "visual_intent": "comparison",
+      "title": "同一 scenario、同一 clock；兩層 evidence 不互相冒充",
+      "left": {
+        "title": "既有 C120AuthoritativeReplay",
+        "body": [
+          "current Leo / system evidence",
+          "system power、consumed J、canonical bit/J",
+          "沿用既有 C-120 authority"
+        ]
+      },
+      "right": {
+        "title": "新 C120LoraEndpointReplay",
+        "body": [
+          "policy、queue、packet、radio-state",
+          "endpoint energy 與 endpoint service",
+          "不寫回 system/canonical fields"
+        ]
+      },
+      "verdict": "共享 scenario anchor、TLE source 與 clock；evidence scope 保持分離。",
+      "sources": ["C120 integration SDD lines 366–388"],
+      "notes": "兩層 replay 可以在同一個 scenario 與 clock 上一起呈現，但各自負責不同 evidence。既有 replay 保留 system 層欄位；新的 endpoint replay 只負責 policy、queue、packet、radio state 與 endpoint energy。這條界線讓課程可以前進，又不會把 endpoint 模型誤稱為 whole-system 真值。"
+    },
+    {
+      "type": "content",
+      "slide_id": "S06",
+      "variant": "standard",
+      "slide_intent": "process",
+      "visual_intent": "flow",
+      "title": "從預測到驗證",
+      "message": "Predict → edit marked policy → deterministic run → strict JSON import → Leo replay → withheld case → workbook",
+      "caption": "只編輯 student_policy.py marked region；不改 upstream、Leo、schema、formula 或 generated JSON。",
+      "sources": [
+        "ADR-004 lines 42–71",
+        "C120 integration SDD lines 14–31 and 287–295"
+      ],
+      "notes": "學員先留下對 queue、service、state time 與 endpoint energy 的預測，再只改 student_policy.py 的標記區域。Runner 產生 deterministic JSON，Leo 做 strict import 後呈現 replay；同一份凍結 policy 還要接受 withheld case。最後留下的是完整 evidence chain 與可 reopen 的 workbook，不是一次成功畫面。"
+    },
+    {
+      "type": "content",
+      "slide_id": "S07",
+      "variant": "standard",
+      "slide_intent": "mechanism",
+      "visual_intent": "comparison",
+      "title": "操作與修改的五問框架",
+      "body": "Do｜實際動作\nWhy｜為何需要\nMechanism｜改變哪個環境、policy、packet、state 或 energy 機制\nExpect｜執行前預期哪個 receipt 或 evidence 改變\nInterpret｜符合或意外結果代表什麼；失敗時最小 recovery 是什麼",
+      "summary_callout": "CURRENT EVIDENCE GAP — RELEASE URL / COMMAND / CASE / LINE NUMBERS NOT YET FROZEN",
+      "sources": [
+        "C120 integration SDD lines 273–295",
+        "C120 integration SDD lines 762–766"
+      ],
+      "notes": "這五欄不是附加說明，而是每一個 action 的教學契約。學員要知道自己做什麼、為什麼做、改變哪個機制、執行前期待看到什麼，以及意外結果該如何解讀與恢復。目前 release URL、commands、case names 與 line numbers 尚未凍結，所以本頁只展示 grammar，不冒充 final teaching page。"
+    },
+    {
+      "type": "content",
+      "slide_id": "S08",
+      "variant": "timeline",
+      "slide_intent": "process",
+      "visual_intent": "timeline",
+      "title": "120 分鐘：setup 與 labs",
+      "milestones": [
+        {"label": "00–21", "title": "Why + setup + model", "body": "5 + 8 + 8 min"},
+        {"label": "21–50", "title": "Anchor + Lab A", "body": "8 + 21 min"},
+        {"label": "50–76", "title": "Lab B + recovery", "body": "21 + 5 min"},
+        {"label": "76–120", "title": "Lab C + clinic + transfer", "body": "23 + 10 + 11 min"}
+      ],
+      "caption": "PROPOSED IN DRAFT SDD / OWNER REVIEW REQUIRED",
+      "sources": ["C120 integration SDD lines 115–170"],
+      "notes": "這是 draft SDD 提出的 exact-120 新時鐘，仍需要 owner 接受。Runner setup 從第五分鐘開始，最晚第十三分鐘切到同 scenario fallback，因此不能吞掉後面的三個 causal labs。任何 contingency branch 都必須在原本 protected clock 內回到 core path，課程仍在第一百二十分鐘結束。"
+    },
+    {
+      "type": "content",
+      "slide_id": "S09",
+      "variant": "standard",
+      "slide_intent": "decision",
+      "visual_intent": "comparison",
+      "title": "Opening checkpoint",
+      "bullets": [
+        "敘事：IoT endpoint first；LEO only as changing-window example",
+        "視覺：dark Leo evidence-lab；大字；一頁一個主視覺",
+        "邊界：endpoint evidence 與 system/canonical evidence 分離",
+        "模板：native light fill，或保留 EDU branding 後改走 dark generated layouts"
+      ],
+      "summary_callout": "STOP AFTER CHECKPOINT — no final teaching pages, commit, or push",
+      "footer": "Highest current claim: bounded novice validation; not classroom-ready/live/measured/canonical parity",
+      "sources": [
+        "C120 integration SDD lines 1321–1352",
+        "C120 integration SDD lines 1570–1585"
+      ],
+      "notes": "這一頁不是結論頁，而是 owner gate。請先裁決 opening narrative、dark evidence-lab 視覺、endpoint/system wording，以及 educate.pptx 的實際套用方式。未裁決前，我們不會進入 final setup、command、code、browser evidence 或完整 deck production。"
+    }
+  ]
+}

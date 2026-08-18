@@ -1,0 +1,156 @@
+{
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/build/c120-lora-leo-opening-checkpoint-zh-TW.pptx",
+  "style_preset": "midnight-neon",
+  "renderer_detected": "pptxgenjs",
+  "summary": {
+    "slide_count": 9,
+    "violation_count": 4,
+    "error_count": 1,
+    "warning_count": 3,
+    "density_score_by_slide": [
+      {
+        "slide_index": 0,
+        "density_score": 0.4801
+      },
+      {
+        "slide_index": 1,
+        "density_score": 0.543
+      },
+      {
+        "slide_index": 2,
+        "density_score": 0.9899
+      },
+      {
+        "slide_index": 3,
+        "density_score": 0.8079
+      },
+      {
+        "slide_index": 4,
+        "density_score": 0.8411
+      },
+      {
+        "slide_index": 5,
+        "density_score": 0.5675
+      },
+      {
+        "slide_index": 6,
+        "density_score": 0.7838
+      },
+      {
+        "slide_index": 7,
+        "density_score": 0.5347
+      },
+      {
+        "slide_index": 8,
+        "density_score": 0.7069
+      }
+    ]
+  },
+  "slides": [
+    {
+      "slide_index": 0,
+      "slide_type": "title",
+      "violations": [],
+      "density_score": 0.4801,
+      "empty_ratio": 0.5199
+    },
+    {
+      "slide_index": 1,
+      "slide_type": "content",
+      "violations": [],
+      "density_score": 0.543,
+      "empty_ratio": 0.457
+    },
+    {
+      "slide_index": 2,
+      "slide_type": "content",
+      "violations": [
+        {
+          "type": "density_too_high",
+          "shape_ids": [],
+          "severity": "warning",
+          "delta_inches": 0.1499,
+          "suggested_fix": "Reduce number/size of blocks or split content across slides.",
+          "slide_type": "content",
+          "visual_density_score": 0.9899
+        }
+      ],
+      "density_score": 0.9899,
+      "empty_ratio": 0.0101
+    },
+    {
+      "slide_index": 3,
+      "slide_type": "content",
+      "violations": [],
+      "density_score": 0.8079,
+      "empty_ratio": 0.1921
+    },
+    {
+      "slide_index": 4,
+      "slide_type": "content",
+      "violations": [
+        {
+          "type": "density_too_high",
+          "shape_ids": [],
+          "severity": "warning",
+          "delta_inches": 0.0011,
+          "suggested_fix": "Reduce number/size of blocks or split content across slides.",
+          "slide_type": "content",
+          "visual_density_score": 0.8411
+        }
+      ],
+      "density_score": 0.8411,
+      "empty_ratio": 0.1589
+    },
+    {
+      "slide_index": 5,
+      "slide_type": "content",
+      "violations": [],
+      "density_score": 0.5675,
+      "empty_ratio": 0.4325
+    },
+    {
+      "slide_index": 6,
+      "slide_type": "content",
+      "violations": [],
+      "density_score": 0.7838,
+      "empty_ratio": 0.2162
+    },
+    {
+      "slide_index": 7,
+      "slide_type": "content",
+      "violations": [
+        {
+          "type": "gutter_too_small",
+          "shape_ids": [
+            "shape-15",
+            "shape-17"
+          ],
+          "severity": "error",
+          "delta_inches": 0.3,
+          "suggested_fix": "Increase horizontal spacing to meet gutter token."
+        },
+        {
+          "type": "gutter_inconsistent",
+          "shape_ids": [
+            "shape-15",
+            "shape-17",
+            "shape-21"
+          ],
+          "severity": "warning",
+          "delta_inches": 0.5,
+          "suggested_fix": "Distribute cards evenly for consistent rhythm."
+        }
+      ],
+      "density_score": 0.5347,
+      "empty_ratio": 0.4653
+    },
+    {
+      "slide_index": 8,
+      "slide_type": "content",
+      "violations": [],
+      "density_score": 0.7069,
+      "empty_ratio": 0.2931
+    }
+  ]
+}

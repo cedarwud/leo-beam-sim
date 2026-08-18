@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:ns2="http://schemas.microsoft.com/office/drawing/2014/main" xmlns:ns3="http://schemas.microsoft.com/office/powerpoint/2010/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name="" />
+        <p:cNvGrpSpPr />
+        <p:nvPr />
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0" />
+          <a:ext cx="0" cy="0" />
+          <a:chOff x="0" y="0" />
+          <a:chExt cx="0" cy="0" />
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="標題 1">
+            <a:extLst>
+              <a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}">
+                <ns2:creationId id="{50D06974-0E38-4F3A-AEF8-48CE3E4FB605}" />
+              </a:ext>
+            </a:extLst>
+          </p:cNvPr>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1" />
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="title" />
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr />
+        <p:txBody>
+          <a:bodyPr />
+          <a:lstStyle />
+          <a:p>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" dirty="0" />
+              <a:t>上行 </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" dirty="0" />
+              <a:t>LEO </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" dirty="0" />
+              <a:t>衛星 </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" dirty="0" />
+              <a:t>BH </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" dirty="0" />
+              <a:t>系統</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="內容版面配置區 2">
+            <a:extLst>
+              <a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}">
+                <ns2:creationId id="{ACAD95C4-D973-4108-AFBD-3126EAB797A7}" />
+              </a:ext>
+            </a:extLst>
+          </p:cNvPr>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1" />
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph idx="1" />
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr />
+        <p:txBody>
+          <a:bodyPr />
+          <a:lstStyle />
+          <a:p>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" dirty="0" />
+              <a:t>位於受照射波束內的終端將會受到同頻跨波束干擾。</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="內容版面配置區 3">
+            <a:extLst>
+              <a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}">
+                <ns2:creationId id="{C877D301-1EC9-40FA-AB8E-FAE586FBE370}" />
+              </a:ext>
+            </a:extLst>
+          </p:cNvPr>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1" />
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph idx="10" />
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr />
+        <p:txBody>
+          <a:bodyPr />
+          <a:lstStyle />
+          <a:p>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" b="1" i="0" u="none" strike="noStrike" baseline="0" dirty="0" err="1">
+                <a:latin typeface="Times-Roman" />
+              </a:rPr>
+              <a:t>Songsong</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" b="1" i="0" u="none" strike="noStrike" baseline="0" dirty="0">
+                <a:latin typeface="Times-Roman" />
+              </a:rPr>
+              <a:t> Cai</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" b="1" i="0" u="none" strike="noStrike" baseline="0" dirty="0">
+                <a:latin typeface="Times-Roman" />
+              </a:rPr>
+              <a:t> </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" b="0" i="0" u="none" strike="noStrike" baseline="0" dirty="0">
+                <a:latin typeface="Times-Roman" />
+              </a:rPr>
+              <a:t>et al. &#x201C;Energy-Efficiency-Based Joint Uplink Resources</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" b="0" i="0" u="none" strike="noStrike" baseline="0" dirty="0">
+                <a:latin typeface="Times-Roman" />
+              </a:rPr>
+              <a:t> </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" b="0" i="0" u="none" strike="noStrike" baseline="0" dirty="0">
+                <a:latin typeface="Times-Roman" />
+              </a:rPr>
+              <a:t>Allocation for LEO Satellite Beam-Hopping System,&#x201D; IEEE Internet of Things, </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" i="0" u="none" strike="noStrike" baseline="0" dirty="0">
+                <a:latin typeface="Times-Roman" />
+              </a:rPr>
+              <a:t>2025</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" b="0" i="0" u="none" strike="noStrike" baseline="0" dirty="0">
+                <a:latin typeface="Times-Roman" />
+              </a:rPr>
+              <a:t>.</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" dirty="0" />
+          </a:p>
+          <a:p>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" dirty="0" />
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+    <p:extLst>
+      <p:ext uri="{BB962C8B-B14F-4D97-AF65-F5344CB8AC3E}">
+        <ns3:creationId val="1669816228" />
+      </p:ext>
+    </p:extLst>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping />
+  </p:clrMapOvr>
+</p:sld>

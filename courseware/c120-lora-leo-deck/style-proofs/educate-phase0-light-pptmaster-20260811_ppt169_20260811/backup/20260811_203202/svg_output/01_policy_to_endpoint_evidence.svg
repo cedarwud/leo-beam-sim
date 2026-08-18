@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1280" height="720" viewBox="0 0 1280 720" font-family="&quot;Times New Roman&quot;, DFKai-SB, &quot;標楷體&quot;, serif" data-pptx-master="master_01" data-pptx-master-name="slideMaster1" data-pptx-layout="layout_05" data-pptx-layout-name="只有標題" data-pptx-show-master-shapes="true" data-pptx-show-inherited-shapes="true">
+  <defs>
+    <marker id="arrow-navy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <polygon points="0,0 10,5 0,10" fill="#17223B"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" id="master-master_01-1-1" data-pptx-layer="master" data-pptx-editable="false"/>
+  <image href="../images/image1.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none" id="master-master_01-3-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r0"/>
+  <path d="M 44.67 26.5 L 44.67 99.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1028-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r14"/>
+  <path d="M 22 82.33 L 1258 82.33" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1029-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r12"/>
+  <path d="M 22 655.17 L 1258 655.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1030-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r11"/>
+  <image href="../images/image2.png" x="0" y="642.13" width="1280" height="22.7" preserveAspectRatio="none" id="master-master_01-2-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r2"/>
+  <image href="../images/image3.png" x="1072" y="0" width="208" height="29.71" preserveAspectRatio="none" id="master-master_01-4-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r6"/>
+  <image href="../images/image2.png" x="0" y="642.13" width="1280" height="22.7" preserveAspectRatio="none" id="layout-layout_05-4-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r2"/>
+
+  <g id="slot-layout_05-2" data-pptx-placeholder="title" data-pptx-bounds="57.78 15.83 1200.89 60">
+    <text x="67.38" y="58" text-anchor="start" xml:space="preserve" font-size="37.33" font-weight="bold" fill="#17223B" data-pptx-carrier="true">一個策略選擇，如何變成可核對的端點能量？</text>
+  </g>
+  <g id="slot-layout_05-3" data-pptx-placeholder="slide-number" data-pptx-bounds="1148 665.67 93.33 50" data-pptx-idx="10">
+    <text x="1234" y="700" text-anchor="end" font-family="&quot;Times New Roman&quot;, serif" font-size="14" fill="#35377F" data-pptx-carrier="true">01</text>
+  </g>
+
+  <g id="policy-anchor" data-pptx-bounds="69 112 250 408">
+    <rect x="69" y="112" width="250" height="408" rx="24" fill="#17223B"/>
+    <rect x="89" y="134" width="128" height="32" rx="16" fill="#28B8C7"/>
+    <text x="153" y="157" text-anchor="middle" font-family="&quot;Times New Roman&quot;, DFKai-SB, serif" font-size="20" font-weight="bold" fill="#FFFFFF">MECH · 01</text>
+    <text x="94" y="219" font-size="32" font-weight="bold" fill="#FFFFFF">只改一個地方</text>
+    <text x="94" y="258" font-family="&quot;Times New Roman&quot;, serif" font-size="18" font-weight="bold" fill="#A9EEF3">REST_DURING_GAP</text>
+    <line x1="94" y1="282" x2="294" y2="282" stroke="#60708A" stroke-width="2"/>
+    <rect x="89" y="309" width="96" height="62" rx="16" fill="#E9F7F8"/>
+    <text x="137" y="348" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="30" font-weight="bold" fill="#17223B">WAIT</text>
+    <rect x="199" y="309" width="96" height="62" rx="16" fill="#F2ECFA"/>
+    <text x="247" y="348" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="30" font-weight="bold" fill="#17223B">SLEEP</text>
+    <text x="94" y="414" font-size="20" fill="#FFFFFF">同一個情境、只換選擇</text>
+    <text x="94" y="447" font-size="20" fill="#A9BCD0">方向先當假設</text>
+    <text x="94" y="480" font-size="20" fill="#A9BCD0">證據決定結論</text>
+  </g>
+
+  <g id="causal-flow" data-pptx-bounds="339 112 887 353">
+    <text x="351" y="148" font-size="32" font-weight="bold" fill="#17223B">狀態與事件，是策略通往證據的橋</text>
+
+    <rect x="351" y="182" width="126" height="62" rx="18" fill="#E9F7F8" stroke="#28B8C7" stroke-width="2"/>
+    <text x="414" y="221" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="30" font-weight="bold" fill="#17223B">WAIT</text>
+    <rect x="351" y="268" width="126" height="62" rx="18" fill="#F2ECFA" stroke="#9B79D0" stroke-width="2"/>
+    <text x="414" y="307" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="30" font-weight="bold" fill="#17223B">SLEEP</text>
+
+    <line x1="477" y1="213" x2="514" y2="238" stroke="#17223B" stroke-width="3" marker-end="url(#arrow-navy)"/>
+    <line x1="477" y1="299" x2="514" y2="274" stroke="#17223B" stroke-width="3" marker-end="url(#arrow-navy)"/>
+
+    <rect x="524" y="205" width="174" height="104" rx="22" fill="#E9F7F8" stroke="#28B8C7" stroke-width="2"/>
+    <text x="611" y="251" text-anchor="middle" font-size="30" font-weight="bold" fill="#17223B">狀態時間</text>
+    <text x="611" y="282" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="20" fill="#60708A">+ WAKE ?</text>
+
+    <line x1="698" y1="257" x2="731" y2="257" stroke="#17223B" stroke-width="3" marker-end="url(#arrow-navy)"/>
+    <rect x="742" y="205" width="158" height="104" rx="22" fill="#FFF5D6" stroke="#F4B942" stroke-width="2"/>
+    <text x="821" y="263" text-anchor="middle" font-size="30" font-weight="bold" fill="#17223B">功率 × 時間</text>
+
+    <line x1="900" y1="257" x2="928" y2="257" stroke="#17223B" stroke-width="3" marker-end="url(#arrow-navy)"/>
+    <rect x="939" y="205" width="120" height="104" rx="22" fill="#FFF5D6" stroke="#F4B942" stroke-width="2"/>
+    <text x="999" y="244" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="20" fill="#876416">endpoint</text>
+    <text x="999" y="288" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="37.33" font-weight="bold" fill="#17223B">J</text>
+
+    <line x1="1059" y1="257" x2="1077" y2="257" stroke="#17223B" stroke-width="3" marker-end="url(#arrow-navy)"/>
+    <rect x="1088" y="205" width="128" height="104" rx="22" fill="#E9F6EF" stroke="#4EA978" stroke-width="2"/>
+    <text x="1152" y="250" text-anchor="middle" font-size="30" font-weight="bold" fill="#17223B">服務先判</text>
+    <text x="1152" y="281" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="20" fill="#387A56">verdict</text>
+
+    <text x="351" y="372" font-size="20" fill="#17223B"><tspan font-family="&quot;Times New Roman&quot;, serif" font-weight="bold">WAIT</tspan><tspan> = awake idle；下一次決策不需 WAKE</tspan></text>
+    <text x="351" y="407" font-size="20" fill="#17223B"><tspan font-family="&quot;Times New Roman&quot;, serif" font-weight="bold">SLEEP</tspan><tspan> = low-power rest；下一次 active 多 WAKE energy + latency</tspan></text>
+  </g>
+
+  <g id="service-first-rail" data-pptx-bounds="339 480 887 64">
+    <rect x="339" y="480" width="887" height="64" rx="18" fill="#E9F6EF"/>
+    <rect x="339" y="480" width="12" height="64" rx="6" fill="#4EA978"/>
+    <text x="372" y="520" font-size="22" font-weight="bold" fill="#17223B">判讀順序：service / deadline / freshness → endpoint energy</text>
+  </g>
+
+  <g id="consequential-gate-rail" data-pptx-bounds="69 558 1157 52">
+    <rect x="69" y="558" width="1157" height="52" rx="16" fill="#FCE9E6"/>
+    <circle cx="98" cy="584" r="10" fill="#EA6A5A"/>
+    <text x="122" y="591" font-family="&quot;Times New Roman&quot;, DFKai-SB, serif" font-size="20" font-weight="bold" fill="#9B3E35">Null evidence change = consequential gate FAIL</text>
+    <text x="730" y="591" font-size="20" fill="#17223B">只有動畫變化，不算策略造成後果</text>
+  </g>
+
+  <g id="claim-boundary" data-pptx-bounds="69 616 1157 20">
+    <text x="647.5" y="631" text-anchor="middle" font-family="&quot;Times New Roman&quot;, serif" font-size="14" font-weight="bold" fill="#60708A">SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED</text>
+  </g>
+</svg>

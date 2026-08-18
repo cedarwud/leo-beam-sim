@@ -1,0 +1,23 @@
+{
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/part-a-v2-p009-p018/build/LoRaEnergySim-LEO-ALT-PART-A-V2-P009-P018-REVIEW.pptx",
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "slide_count": 10,
+  "expected_slide_count": 10,
+  "notes_count": 10,
+  "expected_notes_count": 10,
+  "layout_targets": [
+    "../slideLayouts/slideLayout2.xml"
+  ],
+  "all_layout2": true,
+  "slide_background_count": 0,
+  "creation_id_count": 47,
+  "creation_ids_unique": true,
+  "minimum_authored_font_pt": 18.0,
+  "forbidden_hits": [],
+  "malformed_xml": [],
+  "relationship_errors": [],
+  "rendering": "DEFERRED: no LibreOffice or installed PPTX renderer discovered on server",
+  "microsoft_powerpoint_reopen": "DEFERRED: controller environment required",
+  "status": "PASS"
+}

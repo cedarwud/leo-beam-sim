@@ -1,0 +1,593 @@
+.vlab-story-rail {
+  --story-rail-background: var(--visual-lab-background, var(--vlab-bg, #08131b));
+  --story-rail-surface: var(--visual-lab-surface, var(--vlab-surface, #10212b));
+  --story-rail-raised: var(--visual-lab-surface-raised, var(--vlab-surface-raised, #172c36));
+  --story-rail-soft: var(--visual-lab-surface-soft, var(--vlab-surface-soft, #1a303a));
+  --story-rail-ink: var(--visual-lab-ink, var(--vlab-ink, #edf6f5));
+  --story-rail-muted: var(--visual-lab-muted, var(--vlab-muted, #a4b7b8));
+  --story-rail-dim: var(--visual-lab-dim, var(--vlab-dim, #7c9395));
+  --story-rail-line: var(--visual-lab-line, var(--vlab-line, rgba(153, 183, 188, 0.22)));
+  --story-rail-line-strong: var(--visual-lab-line-strong, var(--vlab-line-strong, rgba(153, 183, 188, 0.42)));
+  --story-rail-service: var(--visual-lab-service, var(--vlab-service, #ffd166));
+  --story-rail-candidate: var(--visual-lab-candidate, var(--vlab-candidate, #67b8f0));
+  --story-rail-energy: var(--visual-lab-energy, var(--vlab-energy, #f2a36f));
+  --story-rail-error: var(--visual-lab-error, var(--vlab-danger, #ff8a78));
+  --story-rail-service-soft: var(--visual-lab-service-soft, var(--vlab-service-soft, rgba(255, 209, 102, 0.14)));
+  --story-rail-candidate-soft: var(--visual-lab-candidate-soft, var(--vlab-candidate-soft, rgba(103, 184, 240, 0.14)));
+
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 20px;
+  color-scheme: dark;
+  color: var(--story-rail-ink);
+  background: var(--story-rail-background);
+  border: 1px solid var(--story-rail-line);
+  border-radius: 14px;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.vlab-story-rail--light {
+  --story-rail-background: var(--visual-lab-warm-background, var(--visual-lab-background, #f5efe4));
+  --story-rail-surface: var(--visual-lab-warm-surface, var(--visual-lab-surface, #fffaf1));
+  --story-rail-raised: var(--visual-lab-warm-raised, #fffdf8);
+  --story-rail-soft: var(--visual-lab-warm-soft, #f0e8dc);
+  --story-rail-ink: var(--visual-lab-warm-ink, var(--visual-lab-ink, #24343c));
+  --story-rail-muted: var(--visual-lab-warm-muted, #59666b);
+  /* Keep secondary 14px copy and the beat index above the AA contrast floor. */
+  --story-rail-dim: var(--visual-lab-warm-dim, #626d70);
+  --story-rail-line: var(--visual-lab-warm-line, #d6cabc);
+  --story-rail-line-strong: var(--visual-lab-warm-line-strong, #b6a99a);
+  /* The selected-state wash is warm; this darker accent keeps 14px labels and the index readable on it. */
+  --story-rail-service: var(--visual-lab-warm-service, #8f5c00);
+  --story-rail-candidate: var(--visual-lab-warm-candidate, #17628c);
+  --story-rail-energy: var(--visual-lab-warm-energy, #a64f1d);
+  --story-rail-error: var(--visual-lab-warm-error, #a33f3f);
+  --story-rail-service-soft: var(--visual-lab-warm-service-soft, rgba(143, 92, 0, 0.12));
+  --story-rail-candidate-soft: var(--visual-lab-warm-candidate-soft, rgba(23, 98, 140, 0.1));
+  color-scheme: light;
+}
+
+.vlab-story-rail *,
+.vlab-story-rail *::before,
+.vlab-story-rail *::after {
+  box-sizing: border-box;
+}
+
+.vlab-story-rail h2,
+.vlab-story-rail h3,
+.vlab-story-rail p,
+.vlab-story-rail dl {
+  margin: 0;
+}
+
+.vlab-story-rail button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--story-rail-line-strong);
+  border-radius: 8px;
+  color: inherit;
+  background: var(--story-rail-surface);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.vlab-story-rail button:hover:not(:disabled) {
+  border-color: var(--story-rail-service);
+  background: var(--story-rail-raised);
+}
+
+.vlab-story-rail button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.vlab-story-rail button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--story-rail-service) 70%, transparent);
+  outline-offset: 2px;
+}
+
+.vlab-story-rail button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.vlab-story-rail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--story-rail-line);
+}
+
+.vlab-story-rail__eyebrow,
+.vlab-story-rail__status,
+.vlab-story-rail__choice-status,
+.vlab-story-rail__beat-note,
+.vlab-story-rail__beat-source time,
+.vlab-story-rail__availability,
+.vlab-story-rail__inspect-label {
+  color: var(--story-rail-muted);
+  font-size: 14px;
+}
+
+.vlab-story-rail__eyebrow {
+  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vlab-story-rail__header h2 {
+  font-size: clamp(1.125rem, 2vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.vlab-story-rail__status {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid var(--story-rail-line-strong);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.vlab-story-rail__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px 0 0;
+}
+
+.vlab-story-rail__choice {
+  display: flex;
+  min-width: 0;
+  min-height: 92px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.vlab-story-rail__choice.is-selected {
+  border-color: var(--story-rail-service);
+  background: var(--story-rail-service-soft);
+  box-shadow: inset 3px 0 var(--story-rail-service);
+}
+
+.vlab-story-rail__choice.is-unavailable {
+  border-style: dashed;
+  color: var(--story-rail-muted);
+  background: transparent;
+}
+
+.vlab-story-rail__choice-heading {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+}
+
+.vlab-story-rail__choice-mark {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.vlab-story-rail__choice.is-selected .vlab-story-rail__choice-mark {
+  border-color: var(--story-rail-service);
+  background: var(--story-rail-service);
+}
+
+.vlab-story-rail__choice-identity {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--story-rail-candidate);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.vlab-story-rail__availability {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+}
+
+.vlab-story-rail__availability p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.vlab-story-rail__availability strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--story-rail-error);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.vlab-story-rail__availability span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--story-rail-dim);
+  font-size: 14px;
+}
+
+.vlab-story-rail__beats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 16px;
+}
+
+.vlab-story-rail__beat {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--story-rail-line);
+  border-radius: 10px;
+  background: var(--story-rail-surface);
+  scroll-snap-align: start;
+}
+
+.vlab-story-rail__beat.is-active {
+  border-color: var(--story-rail-service);
+  background: var(--story-rail-service-soft);
+}
+
+.vlab-story-rail__beat.is-empty {
+  border-style: dashed;
+}
+
+.vlab-story-rail__beat-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.vlab-story-rail__beat-heading h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.vlab-story-rail__beat-index {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--story-rail-background);
+  background: var(--story-rail-dim);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.vlab-story-rail__beat.is-active .vlab-story-rail__beat-index {
+  background: var(--story-rail-service);
+}
+
+.vlab-story-rail__active-label {
+  margin-left: auto;
+  color: var(--story-rail-service);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.vlab-story-rail__beat-source {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 0 10px;
+  border-bottom: 1px solid var(--story-rail-line);
+}
+
+.vlab-story-rail__beat-source > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--story-rail-candidate);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.vlab-story-rail__beat-source time {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.vlab-story-rail__beat-note {
+  padding-top: 8px;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.vlab-story-rail__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.vlab-story-rail__metric {
+  min-width: 0;
+}
+
+.vlab-story-rail__metric dt {
+  overflow-wrap: anywhere;
+  color: var(--story-rail-muted);
+  font-size: 14px;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+.vlab-story-rail__metric dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--story-rail-ink);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+.vlab-story-rail__metric[data-metric='energy-efficiency'] dd {
+  color: var(--story-rail-energy);
+}
+
+.vlab-story-rail__beat-empty {
+  min-height: 116px;
+  padding-top: 22px;
+  color: var(--story-rail-muted);
+  font-size: 16px;
+}
+
+.vlab-story-rail__transport {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.vlab-story-rail__transport-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 140px;
+  padding: 8px 12px;
+}
+
+.vlab-story-rail__transport-button--primary {
+  border-color: var(--story-rail-service);
+  background: var(--story-rail-service-soft);
+}
+
+.vlab-story-rail__footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+  padding-top: 16px;
+}
+
+.vlab-story-rail__inspect {
+  display: grid;
+  gap: 7px;
+}
+
+.vlab-story-rail__inspect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.vlab-story-rail__inspect-button {
+  padding: 6px 10px;
+  font-size: 16px;
+}
+
+.vlab-story-rail__fork {
+  padding: 8px 13px;
+  border-color: var(--story-rail-candidate);
+  background: var(--story-rail-candidate-soft);
+  white-space: nowrap;
+}
+
+/* The compact rail accompanies the in-scene cue. It keeps event selection,
+   all three source-backed beats, and transport controls without repeating the
+   active beat's four metrics below the scene. */
+.vlab-story-rail--compact {
+  display: grid;
+  grid-template-columns: minmax(230px, .72fr) minmax(0, 1.7fr) minmax(250px, .85fr);
+  align-items: stretch;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__header,
+.vlab-story-rail--compact .vlab-story-rail__footer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__choices {
+  grid-column: 1;
+  grid-row: 1;
+  gap: 8px;
+  padding: 0;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__choice {
+  min-height: 0;
+  justify-content: flex-start;
+  gap: 3px;
+  padding: 9px 11px;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__choice-status {
+  display: none;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__availability {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  padding: 0;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__availability:empty {
+  display: none;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__beats {
+  grid-column: 2;
+  grid-row: 1;
+  gap: 8px;
+  padding: 0;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__beat {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 9px 10px;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__beat-heading {
+  min-height: 24px;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__beat-index {
+  width: 23px;
+  height: 23px;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__active-label,
+.vlab-story-rail--compact .vlab-story-rail__beat-note,
+.vlab-story-rail--compact .vlab-story-rail__metrics {
+  display: none;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__beat-source {
+  display: block;
+  gap: 2px;
+  padding: 7px 0 0;
+  border: 0;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__beat-source > span {
+  display: none;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__beat-source time {
+  display: block;
+  color: var(--story-rail-muted);
+}
+
+.vlab-story-rail--compact .vlab-story-rail__beat-empty {
+  min-height: 0;
+  padding-top: 6px;
+  font-size: 14px;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__transport {
+  grid-column: 3;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+}
+
+.vlab-story-rail--compact .vlab-story-rail__transport-button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 9px;
+  font-size: 14px;
+}
+
+@media (max-width: 920px) {
+  .vlab-story-rail--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .vlab-story-rail--compact .vlab-story-rail__choices,
+  .vlab-story-rail--compact .vlab-story-rail__beats,
+  .vlab-story-rail--compact .vlab-story-rail__transport {
+    grid-column: 1;
+  }
+
+  .vlab-story-rail--compact .vlab-story-rail__choices { grid-row: 1; }
+  .vlab-story-rail--compact .vlab-story-rail__beats { grid-row: 2; }
+  .vlab-story-rail--compact .vlab-story-rail__transport { grid-row: 3; }
+  .vlab-story-rail--compact .vlab-story-rail__availability { grid-row: 4; }
+}
+
+@media (max-width: 760px) {
+  .vlab-story-rail {
+    padding: 16px;
+  }
+
+  .vlab-story-rail__beats {
+    display: flex;
+    overflow-x: auto;
+    margin-inline: -16px;
+    padding: 16px 16px 8px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+  }
+
+  .vlab-story-rail__beat {
+    flex: 0 0 min(84vw, 320px);
+  }
+
+  .vlab-story-rail__footer {
+    grid-template-columns: 1fr;
+  }
+
+  .vlab-story-rail__fork {
+    width: 100%;
+  }
+}
+
+@media (max-width: 500px) {
+  .vlab-story-rail__header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .vlab-story-rail__choices {
+    grid-template-columns: 1fr;
+  }
+
+  .vlab-story-rail__transport-button {
+    flex-basis: calc(50% - 4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vlab-story-rail button {
+    transition: none;
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "schema": "c120-part-b-p028-p045-final-qa-v2",
+  "status": "PASS_STRUCTURAL_SHARED",
+  "source_pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/latest/LoRaEnergySim-LEO-ALT-PART-B-V2-P028-P045-REVIEW.pptx",
+  "slides": 18,
+  "notes": {
+    "count": 18,
+    "nonempty": 18,
+    "updated_pages": [43, 45]
+  },
+  "evidence": {
+    "baseline_sleep": {
+      "service": false,
+      "deadline": false,
+      "delivered": "1/4",
+      "retries": 1,
+      "collisions": 1,
+      "expired": 3,
+      "wake": 2,
+      "endpoint_j": 6.92,
+      "bit_per_j": 693.641618
+    },
+    "candidate_wait": {
+      "service": false,
+      "deadline": false,
+      "delivered": "1/4",
+      "retries": 1,
+      "collisions": 1,
+      "expired": 3,
+      "wake": 1,
+      "endpoint_j": 8.86,
+      "bit_per_j": 541.760722
+    },
+    "hidden_frozen_wait": {
+      "service": false,
+      "deadline": false,
+      "delivered": "0/3",
+      "retries": 0,
+      "collisions": 0,
+      "expired": 3,
+      "wake": 0,
+      "endpoint_j": 3.61,
+      "bit_per_j": 0
+    },
+    "interpretation": [
+      "WAIT does not improve service and uses 1.94 J more than baseline.",
+      "Hidden low J is caused by zero delivery and is not an energy-saving success."
+    ]
+  },
+  "structural": {
+    "builder_qa_report": "../../part-b-v2-p028-p045/qa/qa_report.json",
+    "builder_status": "PASS",
+    "layout2_all_slides": true,
+    "authored_font_floor_pt": 16.0,
+    "formula_slides": [6, 7],
+    "template_owned_parts_preserved": true,
+    "relationship_target_errors": 0,
+    "recursive_xml_parse_errors": 0,
+    "forbidden_language_hits": 0,
+    "target_sha256": "764bdef1eb24c98af3627e173e086ee3585a8eca37cd59b7b09b8ecde2a69786"
+  },
+  "render": {
+    "status": "NOT_RUN_THIS_UPDATE",
+    "reason": "User requested structural/shared QA only and no costly render.",
+    "prior_png_pdf_assets": "retained as prior checkpoint; not used as current visual acceptance"
+  }
+}

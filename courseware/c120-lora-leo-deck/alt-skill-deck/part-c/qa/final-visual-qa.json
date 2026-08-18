@@ -1,0 +1,19 @@
+{
+  "status": "PASS_WITH_CONTROLLER_REVIEW_PENDING",
+  "deck": "../build/exports/c120-lora-leo-direct-teaching-part-c-editable_20260811.pptx",
+  "root_copy": "../../LoRaEnergySim-LEO-ALT-PART-C-REVIEW.pptx",
+  "render_pdf": "../build/renders/LoRaEnergySim-LEO-ALT-PART-C-REVIEW.pdf",
+  "slides_rendered": 34,
+  "render_dpi": 120,
+  "inspection": "full original-size PNG set and three contact sheets",
+  "fixes": [
+    "shortened P065 code and moved question/stamp to remove overflow",
+    "cropped current screenshots above run-identity strings",
+    "restored exact template-owned master/layout/theme/media/notesMaster parts",
+    "normalized authored CJK runs to 標楷體"
+  ],
+  "remaining_unknowns": [
+    "human PowerPoint reopen and acceptance remains controller-owned",
+    "LoRa runner fresh endpoint replay and KPI evidence remains 待補"
+  ]
+}

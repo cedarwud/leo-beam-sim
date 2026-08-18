@@ -1,0 +1,99 @@
+{
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/exports/c120-native-layout-proof_20260811_034902.pptx",
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/c120-native-layout-proof-fonted-pass1.pptx",
+  "font_contract": {
+    "latin": "Times New Roman",
+    "east_asia": "標楷體",
+    "title_size_pt": 28,
+    "body_size_pt": 24,
+    "default_italic": false,
+    "formula_italic": true
+  },
+  "background_policy": "unchanged native educate.pptx references; no fill added",
+  "slides": [
+    {
+      "slide": 8,
+      "formula_run_count": 0,
+      "variable_run_count": 0,
+      "explicit_paragraph_breaks": 0,
+      "title_shape_count": 1,
+      "styled_run_count": 2,
+      "body_paragraphs_without_bullets": 1,
+      "body_font_sizes_pt": [
+        24
+      ],
+      "background_nodes_unchanged": true
+    },
+    {
+      "slide": 9,
+      "formula_run_count": 0,
+      "variable_run_count": 0,
+      "explicit_paragraph_breaks": 4,
+      "title_shape_count": 1,
+      "styled_run_count": 6,
+      "body_paragraphs_without_bullets": 5,
+      "body_font_sizes_pt": [
+        24
+      ],
+      "background_nodes_unchanged": true
+    },
+    {
+      "slide": 10,
+      "formula_run_count": 0,
+      "variable_run_count": 0,
+      "explicit_paragraph_breaks": 8,
+      "title_shape_count": 1,
+      "styled_run_count": 9,
+      "body_paragraphs_without_bullets": 10,
+      "body_font_sizes_pt": [
+        24,
+        24
+      ],
+      "background_nodes_unchanged": true
+    },
+    {
+      "slide": 11,
+      "formula_run_count": 0,
+      "variable_run_count": 1,
+      "explicit_paragraph_breaks": 7,
+      "title_shape_count": 1,
+      "styled_run_count": 11,
+      "body_paragraphs_without_bullets": 11,
+      "body_font_sizes_pt": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "background_nodes_unchanged": true
+    },
+    {
+      "slide": 12,
+      "formula_run_count": 0,
+      "variable_run_count": 0,
+      "explicit_paragraph_breaks": 0,
+      "title_shape_count": 1,
+      "styled_run_count": 1,
+      "body_paragraphs_without_bullets": 0,
+      "body_font_sizes_pt": [],
+      "background_nodes_unchanged": true
+    },
+    {
+      "slide": 13,
+      "formula_run_count": 0,
+      "variable_run_count": 0,
+      "explicit_paragraph_breaks": 16,
+      "title_shape_count": 1,
+      "styled_run_count": 11,
+      "body_paragraphs_without_bullets": 18,
+      "body_font_sizes_pt": [
+        24,
+        24
+      ],
+      "background_nodes_unchanged": true
+    }
+  ],
+  "formula_runs_total": 0,
+  "variable_runs_total": 1,
+  "all_background_nodes_unchanged": true
+}

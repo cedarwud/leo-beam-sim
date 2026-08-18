@@ -3,6 +3,7 @@ import { MODQN_PAPER_FAITHFUL_OMEGA } from '../modqn/runtimeControls';
 import {
   APP_MODE_DEFAULT_PROFILE,
   APP_MODE_HANDOVER_MAP,
+  DEFAULT_APP_EXPERIENCE_MODE,
   readPersistedAppMode,
   readPersistedProfileByMode,
   resolveProfileForAppMode,
@@ -104,6 +105,27 @@ export function readInitialRuntimeState(): InitialRuntimeState {
     profileByMode,
   };
   return { ...defaultState, selectedProfileId };
+}
+
+/**
+ * The public Walker App surface is the canonical paper-formula workspace, not a
+ * persisted experience switch. Keep profile preferences, but never let a
+ * previous MODQN visit replace its parameter/result rails on the next launch.
+ */
+export function resolveHomepageInitialRuntimeState(
+  persisted: InitialRuntimeState,
+): InitialRuntimeState {
+  const appMode = DEFAULT_APP_EXPERIENCE_MODE;
+  return {
+    ...persisted,
+    appMode,
+    selectedProfileId: resolveProfileForAppMode(
+      appMode,
+      persisted.profileByMode,
+      isKnownProfileId,
+    ),
+    handoverMode: APP_MODE_HANDOVER_MAP[appMode],
+  };
 }
 
 export function getLeftSidebarTabsForMode(

@@ -9,6 +9,7 @@ import {
   type BooleanVector,
   type CanonicalEeConfig,
   type CanonicalEeFrameInput,
+  type CanonicalEeHDiagnostics,
   type CanonicalEeInput,
   type CanonicalEeResult,
   type NumberMatrix,
@@ -59,6 +60,10 @@ function cloneBooleanVector(values: readonly boolean[]): boolean[] {
 
 function cloneMatrix(values: readonly (readonly number[])[]): number[][] {
   return values.map(row => row.map(value => value));
+}
+
+function divisionSafeCompositeGain(rawH: number): number {
+  return Math.max(rawH, DEFAULT_EPSILON_NUM);
 }
 
 function assertFiniteDerived(value: number | readonly number[] | readonly (readonly number[])[], name: string): void {
@@ -411,7 +416,7 @@ export function computeCanonicalEe(input: CanonicalEeInput): CanonicalEeResult {
   for (let user = 0; user < userCount; user += 1) {
     const beam = servingBeamU[user]!;
     if (beam < 0) continue;
-    const denominator = Math.max(compositeGainUb[user]![beam]!, DEFAULT_EPSILON_NUM);
+    const denominator = divisionSafeCompositeGain(compositeGainUb[user]![beam]!);
     pReqUW[user] = gammaReqB[beam]! * (laggedInterferenceUW[user]! + config.noisePowerW) / denominator;
   }
 
@@ -444,16 +449,31 @@ export function computeCanonicalEe(input: CanonicalEeInput): CanonicalEeResult {
 
   const receivedPowerUbW = compositeGainUb.map(row => row.map((gain, beam) => gain * pDlActualBW[beam]!));
   const signalUW = Array.from({ length: userCount }, () => 0);
+  const intraSatelliteInterferenceUW = Array.from({ length: userCount }, () => 0);
+  const interSatelliteInterferenceUW = Array.from({ length: userCount }, () => 0);
   const interferenceUW = Array.from({ length: userCount }, () => 0);
   for (let user = 0; user < userCount; user += 1) {
     const serving = servingBeamU[user]!;
     if (serving < 0) continue;
     signalUW[user] = receivedPowerUbW[user]![serving]!;
-    let sum = 0;
+    let intra = 0;
+    let inter = 0;
     for (let beam = 0; beam < beamCount; beam += 1) {
-      if (beamActiveB[beam] && beamColorB[beam] === beamColorB[serving]) sum += receivedPowerUbW[user]![beam]!;
+      if (
+        beam === serving
+        || !beamActiveB[beam]
+        || beamColorB[beam] !== beamColorB[serving]
+      ) continue;
+      if (beamSatelliteB[beam] === beamSatelliteB[serving]) {
+        intra += receivedPowerUbW[user]![beam]!;
+      } else {
+        inter += receivedPowerUbW[user]![beam]!;
+      }
     }
-    interferenceUW[user] = Math.max(sum - signalUW[user]!, 0);
+    intraSatelliteInterferenceUW[user] = Math.max(intra, 0);
+    interSatelliteInterferenceUW[user] = Math.max(inter, 0);
+    interferenceUW[user] = intraSatelliteInterferenceUW[user]!
+      + interSatelliteInterferenceUW[user]!;
   }
   const sinrU = signalUW.map((signal, user) => (
     servingBeamU[user]! >= 0 ? signal / (interferenceUW[user]! + config.noisePowerW) : 0
@@ -511,6 +531,8 @@ export function computeCanonicalEe(input: CanonicalEeInput): CanonicalEeResult {
   assertFiniteDerived(pDlActualBW, 'pDlActualBW');
   assertFiniteDerived(receivedPowerUbW, 'receivedPowerUbW');
   assertFiniteDerived(signalUW, 'signalUW');
+  assertFiniteDerived(intraSatelliteInterferenceUW, 'intraSatelliteInterferenceUW');
+  assertFiniteDerived(interSatelliteInterferenceUW, 'interSatelliteInterferenceUW');
   assertFiniteDerived(interferenceUW, 'interferenceUW');
   assertFiniteDerived(sinrU, 'sinrU');
   assertFiniteDerived(rateUBps, 'rateUBps');
@@ -570,6 +592,8 @@ export function computeCanonicalEe(input: CanonicalEeInput): CanonicalEeResult {
     },
     throughput: {
       signalUW,
+      intraSatelliteInterferenceUW,
+      interSatelliteInterferenceUW,
       interferenceUW,
       sinrU,
       rateUBps,
@@ -593,12 +617,36 @@ export function computeCanonicalEe(input: CanonicalEeInput): CanonicalEeResult {
     etaPaB,
     pTotBW,
     signalUW,
+    intraSatelliteInterferenceUW,
+    interSatelliteInterferenceUW,
     interferenceUW,
     sinrU,
     rateUBps,
     r1UBitsPerJ: additive.r1,
   };
   return deepFreeze(result);
+}
+
+/**
+ * Select the source-owned raw and divisor-safe channel gain for one link.
+ * The divisor guard is intentionally not stored as another U x B matrix.
+ */
+export function selectCanonicalHDiagnostics(
+  result: CanonicalEeResult,
+  userIndex: number,
+  beamIndex: number,
+): CanonicalEeHDiagnostics {
+  if (!Number.isInteger(userIndex) || userIndex < 0) {
+    fail('INVALID_INPUT', 'userIndex must be a non-negative integer');
+  }
+  if (!Number.isInteger(beamIndex) || beamIndex < 0) {
+    fail('INVALID_INPUT', 'beamIndex must be a non-negative integer');
+  }
+  const rawH = result.compositeGainUb[userIndex]?.[beamIndex];
+  if (rawH === undefined || !Number.isFinite(rawH) || rawH < 0) {
+    fail('INVALID_INPUT', `canonical h is unavailable for user ${userIndex}, beam ${beamIndex}`);
+  }
+  return deepFreeze({ rawH, hDiv: divisionSafeCompositeGain(rawH) });
 }
 
 /** Formal instantaneous additive system EE helper, also useful for adapters. */

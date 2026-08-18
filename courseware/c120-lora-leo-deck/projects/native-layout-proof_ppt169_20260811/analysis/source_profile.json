@@ -1,0 +1,126 @@
+{
+  "schema": "pptx_intake_index.v1",
+  "deck_count": 1,
+  "decks": [
+    {
+      "schema": "pptx_intake_profile.v1",
+      "stem": "educate",
+      "source_pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/sources/educate.pptx",
+      "slide_count": 2,
+      "usage_contract": {
+        "standard_generation": "Use identity and slide-library fields as source facts and recommendation candidates only; do not preserve original page count, order, or coordinates unless the user selected the beautify profile or Fill Native PPTX route.",
+        "beautify": "Promote source text, page order, page count, colors, fonts, and font sizes into locked constraints after user confirmation.",
+        "template_fill": "Use slide slots, tables, charts, diagrams, and geometry as the native PPTX fill contract; diagrams are inventory-only and remain unchanged."
+      },
+      "artifacts": {
+        "identity": "educate.identity.json",
+        "slide_library": "educate.slide_library.json"
+      },
+      "canvas": {
+        "width_px": 1280,
+        "height_px": 720,
+        "aspect": 1.7778
+      },
+      "identity": {
+        "theme_palette": {
+          "background": "#FFFFFF",
+          "background_alt": "#B7C1EB",
+          "text": "#35377F",
+          "text_alt": "#660066",
+          "hyperlink": "#6F89F7",
+          "accent1": "#ECD882",
+          "accent2": "#B2B2B2",
+          "accent3": "#FFFFFF",
+          "accent4": "#353A77",
+          "accent5": "#F4E9C1",
+          "accent6": "#A1A1A1",
+          "primary": "#ECD882"
+        },
+        "theme_fonts": {
+          "title": {
+            "latin": "Times New Roman",
+            "ea": "標楷體"
+          },
+          "body": {
+            "latin": "Times New Roman",
+            "ea": "標楷體"
+          }
+        },
+        "theme_sizes": {
+          "title": 28.0,
+          "body": 24.0,
+          "body_levels": [
+            24.0,
+            20.0,
+            24.0,
+            16.0,
+            16.0,
+            16.0,
+            16.0,
+            16.0,
+            16.0
+          ]
+        },
+        "observed_colors": [],
+        "observed_fonts": {
+          "latin": [
+            {
+              "value": "Times-Roman",
+              "count": 14
+            }
+          ],
+          "ea": []
+        },
+        "observed_sizes_pt": [],
+        "layout_sizes_pt": [
+          {
+            "value": 14.0,
+            "count": 3
+          },
+          {
+            "value": 28.0,
+            "count": 2
+          }
+        ]
+      },
+      "structure": {
+        "canvas_px": {
+          "width": 1280,
+          "height": 720
+        },
+        "page_types": [
+          {
+            "slide_index": 1,
+            "page_type": "cover_candidate",
+            "slot_count": 2,
+            "diagram_count": 0
+          },
+          {
+            "slide_index": 2,
+            "page_type": "ending_candidate",
+            "slot_count": 3,
+            "diagram_count": 0
+          }
+        ]
+      },
+      "tables": {
+        "table_count": 0,
+        "tables": []
+      },
+      "charts": {
+        "chart_count": 0,
+        "series_count": 0,
+        "multi_plot_chart_count": 0,
+        "charts": []
+      },
+      "diagrams": {
+        "diagram_count": 0,
+        "text_item_count": 0,
+        "unreadable_count": 0,
+        "warning_count": 0,
+        "slides_with_diagrams": [],
+        "diagrams": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+## P081｜Transfer：智慧農場的 gate-first 讀法
+
+智慧農場把 LEO 的 changing-service-window trace 映射成閘道可用時段。queue age 來自排隊事件，單位是 elapsed time；它用來判讀批次等待與資料新鮮度。urgent margin 來自 policy constant，單位是秒；它決定告警何時取得優先送出機會。service gate 讀取 required delivery 與 freshness，endpoint J 只描述宣告的端點邊界。農場現場 KPI 待補，這裡保存的是可檢驗的 transfer hypothesis。
+
+## P082｜Transfer：HVAC 的 deadline 與批次
+
+HVAC 的低負載或可連線時段可作為 changing-service-window trace。normal telemetry 進入 queue 後可以等待 batch flush；urgent alarm 以 deadline 與 freshness 取得較早的 SEND_URGENT 機會。endpoint ledger 分解 awake idle、wake、process、TX、RX 與 sleep，單位是 J；service gate 先描述告警完成與 freshness，再描述能量取捨。HVAC 現場資料待補，畫面只保留機制映射。
+
+## P083｜Transfer：edge inference 的 freshness gate
+
+edge device 的 observation 讀取 queue、deadline、quality 與可用窗口，來源是 endpoint trace。policy action 是 enum，作用是選擇 WAIT、SLEEP、SEND_URGENT 或 FLUSH_BATCH。event ledger 以 state、packet 與 service event 連接 action 與 endpoint J；J 的單位是焦耳，只屬於宣告的 endpoint scope。轉移假說必須保留一個 held-out condition，例如窗口縮短或 traffic 增加，作為可推翻條件。
+
+## P084｜Transfer exit：把因果句帶回 workbook
+
+離開 Lab C 時保存的是可重跑、可回放、可比較的 policy hypothesis。workbook record 連結 condition、policy branch、event evidence、service gate、endpoint scope 與 claim boundary；每個欄位的來源與 identity 都要保留。transfer 的現場能量與服務 KPI 待補，不能把模擬結果外推成 live measurement。若需要 fresh run，先保存目前 lineage，再依核准流程建立新的 record。
+
+## P085｜/course：來源與匯入 gate
+
+current browser session 的 identifier-free metrics crop 可用來讀取 endpoint summary；source header crop 目前待補，因此來源身份以文字 record 明示。actual upload 與 same-scenario fallback 分開保存，case、role、service 與 source 是比較前的 identity 欄位。匯入 gate 讀取 schema、scenario identity、units、policy lineage 與 provenance；通過後才更新 replay 與 workbook。fallback 只作同情境教學資料，不能改寫本機 runner receipt。
+
+## P086｜/course：service-first summary
+
+這張 identifier-free metrics crop 目前顯示 service FAIL、endpoint energy 6.92 J、delivered data 4800 bit 與 endpoint bit/J 693.641618。服務欄位來自 accepted endpoint teaching record，FAIL 是 gate verdict；delivered data 的單位是 bit，描述資料完成量；endpoint energy 的單位是 J，描述端點邊界累積能量；bit/J 是 efficiency ratio。閱讀順序是 service、delivery、endpoint J、bit/J，因此較高的效率數字不能改寫服務失敗。
+
+## P087｜/course：frame selector 與八欄 replay
+
+identifier-free replay-frame crop 顯示 endpoint frame selector 與八個欄位。Radio 來自 endpoint state ledger，值是 state enum；Action 來自 policy API，值是 action enum；queue count 來自 frame queue，單位是 packet count；累積 endpoint energy 來自 endpoint ledger，單位是 J。Elapsed 來自 endpoint trace，單位是時間；Contact ID 是 contact trace 的字串識別碼；Contact 是 contact event 的開啟或關閉狀態；Quality 來自 runner quality trace，是 ordinal quality_band 分類，不換算成 dB。
+
+## P088｜/course：queue 與 packet event
+
+queue item 來自目前 endpoint frame，描述仍待處理的工作；packet event 來自 event ledger，描述該 frame 的事件類型與 identity。current clean crop 沒有包含 queue/event 區塊，因此該 panel 標示待補，事件讀法以可編輯 trace 呈現。沿生成、入列、attempt、retry、delivered 或 expired 的順序回到 service 與 deadline。queue 變空只是狀態變化，delivery 必須由 delivered event 或相應 service record 支持。
+
+## P089｜/course：timeline 對回 policy branch
+
+radio/contact timeline 的來源是 endpoint frame sequence；它用 elapsed、contact、quality、radio state 與 action 排列 transition。timeline 的格子描述事件順序，不描述連續功率。每個 transition 對回 student_policy.py 的 contact、urgent、pacing、batch 或 wait branch；Action 顯示當前 policy decision，Radio 顯示 state interval。current timeline crop 待補，畫面以可編輯 transition strip 與 branch map 保存判讀方法。
+
+## P090｜/course：ledger 與 strategy gate
+
+identifier-free ledger crop 顯示 experiment/case、display、role、service、endpoint energy J 與 source 六欄。experiment/case 來自 workbook record，role 是 baseline、candidate、revision 或 withheld 的分類；display 只表示目前選取狀態。service 是 gate verdict，endpoint energy 的單位是 J，source 區分 browser record 與 same-scenario fallback。公平比較要核對這些欄位與 run identity，best strategy 由 matched source 與 service gate 定義。
+
+## P091｜/course：provider／endpoint 證據邊界
+
+provider layer 的來源是 LEO scenario context，欄位包括 TLE source、provider time、contact status、cell、frequency 與 dB；它說明 service opportunity。endpoint layer 的來源是 imported result.json 與 endpoint-replay.json，欄位包括 source、run identity、summary、replay、ledger 與 endpoint scope。兩層各自保留 frame identity 與 provenance；provider context 不會重新計算 endpoint result，endpoint J 也不升格為 system 或 canonical energy。
+
+## P092｜/course：Workbook controls 的保存與重開
+
+workbook controls 的作用是保存與重開 evidence chain。建立 checkpoint 讀取 prediction、result/replay lineage、source 與 role，寫入可恢復狀態；restore 讀取已保存 checkpoint，成功後更新目前 record。reset/undo 讀寫 browser-local progress；export/reopen 讀寫 workbook lineage 與檔案狀態。驗證失敗時原 workbook 與 progress 維持；0/10 是完成段落計數，不是 service、J 或 bit/J。
+
+## P093｜/course：rejection 與 recovery
+
+rejection gate 依序處理 format/schema、identity/lineage 與 immutable duplicate。每個 gate 的來源是 import validator，失敗時原 session、workbook 與既有 record 保持。recovery 只回 matching artifact、release backup 或明示 same-scenario fallback，並保存 recovery note 與新的 result_path。current rejection screenshot 待補；畫面使用可編輯 fork 表達狀態邊界，不手改 JSON、不替換 case identity。
+
+## P094｜Prepare：READY 與 terminal receipt
+
+READY control 讀取 terminal 的 machine-readable receipt，寫入 browser-local setup status；成功後顯示已就緒，失敗時原 status 保持。記錄備用環境讀取 fallback choice，寫入 browser-local source。terminal runner 負責 setup、verify、run 與 result artifact；browser route 負責記錄狀態與匯入。current Prepare crop 待補，這裡以 editable state split 說明控制項的 read/write boundary。
+
+## P095｜導覽與 fallback loader
+
+導覽控制讀取 navigation state，寫入 focus、language 或 route。直接前往操作區與返回首頁只改 focus；繁中/EN 只改畫面語言；準備、實驗 A/B/C、證據與學習單只切換工作台。fallback loader 讀取 experiment order，寫入 selected fallback；成功後更新 selected source，identity 不符時原 result 保持。current navigation crop 待補，畫面用 editable navigation map 說明責任邊界。
+
+## P096｜Task lock 與證據按鈕
+
+task controls 讀取目前段落 evidence，寫入 completion 與 lock。Task 1–10 的勾選表示保存完成；檢查證據並繼續檢查該段要求，成功後保存並解鎖下一段；證據已鎖定顯示保存狀態。條件不足時原 task、原 evidence 與原 workbook 保持。current task-control crop 待補，editable staircase 保留可見的段落狀態與控制語義。
+
+## P097｜Provider replay：兩層 frame 識別
+
+provider replay controls 讀取 provider frame sequence，寫入 playback cursor；播放、暫停、slider、上一畫面與下一個畫面只改 provider cursor。endpoint selector 讀取 endpoint frame sequence，寫入 selected frame，成功後更新八個欄位、queue 與 event。兩層 frame identity 各自保存；provider frame 移動不會自動改寫 endpoint Action。current provider control crop 待補，identifier-free endpoint frame crop 用來示範獨立 selector。

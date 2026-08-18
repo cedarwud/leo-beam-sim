@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "slide_count": 16,
+  "render_dpi": 150,
+  "pdf": "courseware/c120-lora-leo-deck/alt-skill-deck/local-qa/part-a-p001-p008-expanded/render-fixed/LoRaEnergySim-LEO-ALT-PART-A-V2-P001-P008-REVIEW.pdf",
+  "images": "slide-*.png",
+  "contact_sheet": "contact-sheet.png",
+  "fix_applied": "opening artifact-boundary pages added; visible title IDs removed; P001C import card and upstream/policy boundary clarified; P008B policy wrap and P008D freeze card repaired",
+  "page_size_pt": "960.009 x 540",
+  "visual_scope": "all 16 pages rendered; contact sheet plus original-size inspection of opening additions"
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "template_fill_pptx_validate.v1",
+  "project": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/opening-checkpoint_ppt169_20260811",
+  "export": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/opening-checkpoint_ppt169_20260811/exports/c120-lora-leo-opening-native_20260811_024300.pptx",
+  "readback": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/opening-checkpoint_ppt169_20260811/validation/readback.md",
+  "summary": {
+    "ok": 36,
+    "warn": 0,
+    "error": 0
+  },
+  "results": []
+}

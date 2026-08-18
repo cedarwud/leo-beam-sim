@@ -4,6 +4,8 @@ export interface CinematicSeekFadeOverlayProps {
   /** Bumped to a new value each time a cinematic seek should be masked. null = idle. */
   readonly pulseKey: number | null;
   readonly reducedMotion: boolean;
+  /** Keep the seek callback while suppressing the black veil for inter presentation. */
+  readonly suppressVisual?: boolean;
   /** Fired ONCE at peak dim (or immediately under reduced motion) -- perform the seek here. */
   readonly onPeak: () => void;
 }
@@ -17,6 +19,7 @@ type FadePhase = 'idle' | 'dimming' | 'clearing';
 export function CinematicSeekFadeOverlay({
   pulseKey,
   reducedMotion,
+  suppressVisual = false,
   onPeak,
 }: CinematicSeekFadeOverlayProps) {
   const [opacity, setOpacity] = useState(0);
@@ -86,7 +89,7 @@ export function CinematicSeekFadeOverlay({
       aria-hidden="true"
       style={{
         pointerEvents: 'none',
-        backgroundColor: `rgba(0, 0, 0, ${opacity})`,
+        backgroundColor: `rgba(0, 0, 0, ${suppressVisual ? 0 : opacity})`,
         transition: `background-color ${transitionMs}ms ease`,
       }}
     />

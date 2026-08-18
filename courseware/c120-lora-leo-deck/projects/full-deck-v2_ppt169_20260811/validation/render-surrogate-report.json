@@ -1,0 +1,9 @@
+{
+  "schema": "c120-render-surrogate-v1",
+  "status": "PASS",
+  "authoritative_editable_deck": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/full-deck-v2_ppt169_20260811/exports/c120-lora-leo-classroom-v2-editable.pptx",
+  "surrogate": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/full-deck-v2_ppt169_20260811/validation/c120-lora-leo-classroom-v2-render-surrogate.pptx",
+  "mode": "fallback-only; native equation choices replaced only on logical slides 33 and 34",
+  "fallback_png": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/full-deck-v2_ppt169_20260811/assets/energy-equations-preview.png",
+  "reason": "LibreOffice preview path rejects or cannot render a14:m native choice; final editable PPTX remains authoritative."
+}

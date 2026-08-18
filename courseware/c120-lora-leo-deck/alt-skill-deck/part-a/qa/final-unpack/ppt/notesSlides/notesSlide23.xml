@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<p:notes xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Notes Placeholder 2"/>
+          <p:cNvSpPr/>
+          <p:nvPr>
+            <p:ph type="body" sz="quarter" idx="3"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr wrap="square"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l"/>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve">READY receipt </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>的前四個欄位描述</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> gate </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>狀態與</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> identity</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>。</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve">status </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>必須是</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> READY，python_version </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>必須是</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> 3.11.x；scenario_id </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>綁定固定情境</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve">，policy_api_version </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>綁定可用</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> observation </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>與</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> action </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="1800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>契約。</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" dirty="0"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr/>
+</p:notes>

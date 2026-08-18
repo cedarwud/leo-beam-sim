@@ -1,0 +1,974 @@
+[
+  {
+    "slide": 1,
+    "title": "每一次 SEND、WAIT、SLEEP 都是能源決策",
+    "visual": "cover",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "policy → state time → packet/service → endpoint energy"
+  },
+  {
+    "slide": 2,
+    "title": "節能是一條可檢驗的因果鏈",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "observation → policy → action → state / packet → service → J"
+  },
+  {
+    "slide": 3,
+    "title": "LoRaEnergySim 為什麼直接服務智慧節能與 IoT",
+    "visual": "causal",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 4,
+    "title": "LEO 只提供會改變的服務窗口",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "candidate",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "機會出現 → policy 選擇 → service / energy 取捨\nLEO = example"
+  },
+  {
+    "slide": 5,
+    "title": "兩層 evidence 不能互相冒充",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "endpoint layer：queue / packet / state / endpoint J；system layer：既有 C-120 authority。"
+  },
+  {
+    "slide": 6,
+    "title": "從預測走到可反駁的結果",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "withheld",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "先寫預測，再執行；withheld case 不准 retune。"
+  },
+  {
+    "slide": 7,
+    "title": "一個小改動，必須能追到一個機制",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "candidate",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "policy hash → result → replay"
+  },
+  {
+    "slide": 8,
+    "title": "今天的教學路徑",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "recovery",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "why → setup → endpoint model → anchor → A → B → recovery → C → evidence → transfer"
+  },
+  {
+    "slide": 9,
+    "title": "開場檢查點：先確認 claim 邊界",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "course-packaged simulated endpoint-energy lab"
+  },
+  {
+    "slide": 10,
+    "title": "套件根目錄是一條 provenance 邊界",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "setup.sh / setup.cmd\ncourse.sh / course.cmd\nstudent_policy.py"
+  },
+  {
+    "slide": 11,
+    "title": "下載指定 archive，先核對 identity",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "http://120.126.151.102:4192/c120-lora-energy-lab-v1.zip.sha256"
+  },
+  {
+    "slide": 12,
+    "title": "Windows 原生先確認 shell 與 launcher",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "py -3.11\n.\\setup.cmd"
+  },
+  {
+    "slide": 13,
+    "title": "沒有 Python 3.11 時的 Windows 安裝路徑",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "recovery",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "https://www.python.org/downloads/windows/\nPython 3.11.x / Windows installer (64-bit)\n安裝 Python Launcher\n重新開啟 shell → py --list"
+  },
+  {
+    "slide": 14,
+    "title": "uv 是 Python 3.11 的 recovery 工具",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "recovery",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "winget install --id=astral-sh.uv -e\nuv python install 3.11\nuv python find 3.11"
+  },
+  {
+    "slide": 15,
+    "title": "Windows 用 package-local `.venv`",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "system Python ≠ course .venv\n不要共享 WSL .venv"
+  },
+  {
+    "slide": 16,
+    "title": "Windows 執行 setup 與 verify",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "$env:PYTHON_BIN = \"py -3.11\"\n.\\setup.cmd\n.\\course.cmd verify"
+  },
+  {
+    "slide": 17,
+    "title": "WSL 先確認它真的是 Ubuntu shell",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "PowerShell (系統管理員)：wsl --install -d Ubuntu\nwsl -l -v\n不要混用 .venv"
+  },
+  {
+    "slide": 18,
+    "title": "WSL 安裝工具與 uv",
+    "visual": "operation",
+    "operation": false,
+    "operation_kind": null,
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": null
+  },
+  {
+    "slide": 19,
+    "title": "WSL 解壓與建立 `.venv`",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "PYTHON_BIN=\"$(uv python find 3.11)\"\nbash setup.sh\n.venv/bin/python"
+  },
+  {
+    "slide": 20,
+    "title": "POSIX runner 的最小入口",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "PYTHON_BIN=python3.11 bash setup.sh\nbash course.sh verify"
+  },
+  {
+    "slide": 21,
+    "title": "`READY` receipt 是下一步的入場券",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "Python 3.11.x\npolicy_api_version"
+  },
+  {
+    "slide": 22,
+    "title": "setup 失敗不等於 energy result",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "以唯讀方式開啟固定 scenario JSON"
+  },
+  {
+    "slide": 23,
+    "title": "可編輯檔案只有一個",
+    "visual": "policy",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "scenario / schemas / runner / generated JSON = read-only"
+  },
+  {
+    "slide": 24,
+    "title": "policy API 的輸入是現在能觀察到的事",
+    "visual": "policy",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "observation；choose_action(...)；WAIT / SLEEP / SEND_ONE / SEND_URGENT / FLUSH_BATCH。"
+  },
+  {
+    "slide": 25,
+    "title": "Python survival：常數是受控旋鈕",
+    "visual": "policy",
+    "operation": false,
+    "operation_kind": null,
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": null
+  },
+  {
+    "slide": 26,
+    "title": "Python survival：條件只處理當前 observation",
+    "visual": "policy",
+    "operation": false,
+    "operation_kind": null,
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": null
+  },
+  {
+    "slide": 27,
+    "title": "Python survival：縮排與 return",
+    "visual": "policy",
+    "operation": false,
+    "operation_kind": null,
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": null
+  },
+  {
+    "slide": 28,
+    "title": "endpoint 狀態：名稱要和機制對齊",
+    "visual": "state",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 29,
+    "title": "WAIT 是 awake idle，SLEEP 會帶來 wake 成本",
+    "visual": "state",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "WAIT = 保持清醒\nSLEEP = 低功耗 + wake latency/energy"
+  },
+  {
+    "slide": 30,
+    "title": "封包生命週期：送出不是交付",
+    "visual": "state",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 31,
+    "title": "service boundary 先於 energy 比較",
+    "visual": "state",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 32,
+    "title": "W 是速率，J 是累積結果",
+    "visual": "state",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "power = rate\nenergy = area under P(t)"
+  },
+  {
+    "slide": 33,
+    "title": "公式：endpoint energy 的範圍",
+    "visual": "formula",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "LaTeX source：E_{endpoint}=\\sum_{s\\in\\mathcal{S}}P_s t_s"
+  },
+  {
+    "slide": 34,
+    "title": "公式：服務效率的分子與分母",
+    "visual": "formula",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "LaTeX source：\\eta_E=\\frac{D_{delivered}}{E_{endpoint}}"
+  },
+  {
+    "slide": 35,
+    "title": "來源、模型、課程假設、結果",
+    "visual": "provenance",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "source → model → course assumption → result\nscenario_id / seed / policy hash"
+  },
+  {
+    "slide": 36,
+    "title": "一個 `scenario_id` 綁住整條鏈",
+    "visual": "provenance",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "scenario / anchor / policy / replay"
+  },
+  {
+    "slide": 37,
+    "title": "公平 baseline：固定 job、window、boundary",
+    "visual": "provenance",
+    "operation": true,
+    "operation_kind": "baseline",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "CONTROLLED：policy block"
+  },
+  {
+    "slide": 38,
+    "title": "LEO window：合法與不合法的 action",
+    "visual": "state",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 39,
+    "title": "Lab A：同一份工作，不同 pace",
+    "visual": "operation",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 40,
+    "title": "先讀 `PACE_GAP_STEPS`",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "gap 變大 → send opportunity 改變；line number：PLACEHOLDER。"
+  },
+  {
+    "slide": 41,
+    "title": "再讀 `REST_DURING_GAP`",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "REST_DURING_GAP = WAIT or SLEEP"
+  },
+  {
+    "slide": 42,
+    "title": "Lab A 的 prediction lock",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "before run"
+  },
+  {
+    "slide": 43,
+    "title": "A-01：跑 untouched baseline",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "baseline",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab A --case baseline\ncourse.cmd run --lab A --case baseline\nresult_path：PLACEHOLDER"
+  },
+  {
+    "slide": 44,
+    "title": "A-02：只改 A marked block 並 freeze",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "freeze",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab A --case candidate --freeze\ncourse.cmd run --lab A --case candidate --freeze\npolicy SHA：PLACEHOLDER"
+  },
+  {
+    "slide": 45,
+    "title": "A-03：匯入 candidate，先看同一個 boundary",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "candidate",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "以唯讀方式開啟固定 scenario JSON"
+  },
+  {
+    "slide": 46,
+    "title": "A-04：讀懂 state ledger",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "state duration；wake latency；TX/RX attempts；energy scope。"
+  },
+  {
+    "slide": 47,
+    "title": "A-05：把 packet 結果接回 service",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "attempt ≠ delivered；retry / expired；service verdict。"
+  },
+  {
+    "slide": 48,
+    "title": "A-06：檢查 A freeze lineage",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "freeze",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "policy SHA\nfreeze receipt"
+  },
+  {
+    "slide": 49,
+    "title": "A-07：用 hidden case 檢驗，不再 retune",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "withheld",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab A --case hidden\ncourse.cmd run --lab A --case hidden\npolicy SHA unchanged"
+  },
+  {
+    "slide": 50,
+    "title": "Lab A debrief：一條因果句就夠",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "withheld",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "result 顯示…"
+  },
+  {
+    "slide": 51,
+    "title": "Lab B：現在送，還是等到更穩定？",
+    "visual": "trace",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 52,
+    "title": "`ENTER_QUALITY`：何時進入 send-ready",
+    "visual": "trace",
+    "operation": false,
+    "operation_kind": null,
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": null
+  },
+  {
+    "slide": 53,
+    "title": "`EXIT_QUALITY`：為什麼不能只用一條線",
+    "visual": "trace",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 54,
+    "title": "`STABLE_STEPS`：拒絕短暫尖峰",
+    "visual": "trace",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "stable_count = STABLE_STEPS"
+  },
+  {
+    "slide": 55,
+    "title": "Lab B 的 Trace A prediction",
+    "visual": "trace",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 56,
+    "title": "B-01：Trace A baseline",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "baseline",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab B --case trace-a-baseline\ncourse.cmd run --lab B --case trace-a-baseline\nresult_path：PLACEHOLDER"
+  },
+  {
+    "slide": 57,
+    "title": "B-02：改 B marked block 並 freeze",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "freeze",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab B --case trace-a-candidate --freeze\ncourse.cmd run --lab B --case trace-a-candidate --freeze"
+  },
+  {
+    "slide": 58,
+    "title": "B-03：讀 transition 與 service，不只讀品質",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "quality trace；mode transition；attempt / retry；service；endpoint J。"
+  },
+  {
+    "slide": 59,
+    "title": "B-04：確認 freeze receipt 才能進 Trace B",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "withheld",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "policy SHA\npredecessor = A frozen"
+  },
+  {
+    "slide": 60,
+    "title": "B-05：Trace B 不 retune",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "withheld",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab B --case trace-b\ncourse.cmd run --lab B --case trace-b\npolicy SHA unchanged"
+  },
+  {
+    "slide": 61,
+    "title": "B-06：辨識 too-slow 與 ping-pong",
+    "visual": "trace",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "too-slow；ping-pong；service loss；保留 counterexample。"
+  },
+  {
+    "slide": 62,
+    "title": "Lab B debrief：hysteresis 是條件，不是保證",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "成立；被推翻；待查。"
+  },
+  {
+    "slide": 63,
+    "title": "Recovery checkpoint：保存 A/B lineage",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "recovery",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "workbook prediction + result"
+  },
+  {
+    "slide": 64,
+    "title": "Lab C：佇列、批次、休眠或 urgent send",
+    "visual": "operation",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 65,
+    "title": "queue、deadline、freshness 不是同一欄",
+    "visual": "operation",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 66,
+    "title": "`BATCH_SIZE`：少 activation 還是多等待",
+    "visual": "operation",
+    "operation": false,
+    "operation_kind": null,
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": null
+  },
+  {
+    "slide": 67,
+    "title": "`URGENT_MARGIN_S`：何時跳過一般節奏",
+    "visual": "operation",
+    "operation": false,
+    "operation_kind": null,
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": null
+  },
+  {
+    "slide": 68,
+    "title": "Lab C prediction：先寫 trade-off",
+    "visual": "operation",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 69,
+    "title": "C-01：跑 baseline",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "baseline",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab C --case baseline\ncourse.cmd run --lab C --case baseline"
+  },
+  {
+    "slide": 70,
+    "title": "C-02：只做一次 candidate edit",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "candidate",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab C --case candidate\ncourse.cmd run --lab C --case candidate"
+  },
+  {
+    "slide": 71,
+    "title": "C-03：讀 queue 與 packet ledger",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "queue age；attempt；retry；delivered；expired。"
+  },
+  {
+    "slide": 72,
+    "title": "C-04：讀 state 與 endpoint J",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "state duration；P_s × t_s；E_endpoint；service gate。"
+  },
+  {
+    "slide": 73,
+    "title": "C-05：根據 evidence 做唯一一次 revision",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "candidate",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "one reason；one marked-block change；no second revision。"
+  },
+  {
+    "slide": 74,
+    "title": "C-06：revision freeze",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "freeze",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab C --case revision --freeze\ncourse.cmd run --lab C --case revision --freeze\npolicy SHA"
+  },
+  {
+    "slide": 75,
+    "title": "C-07：surprise case 保持 frozen policy",
+    "visual": "compare",
+    "operation": true,
+    "operation_kind": "withheld",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "bash course.sh run --lab C --case surprise\ncourse.cmd run --lab C --case surprise\npolicy SHA unchanged"
+  },
+  {
+    "slide": 76,
+    "title": "Lab C debrief：用 packet、service、J 一起判讀",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "packet outcome；service；endpoint J；counterexample。"
+  },
+  {
+    "slide": 77,
+    "title": "先保存 result 與配對 replay",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "artifacts/<run_id>/result.json\nartifacts/<run_id>/endpoint-replay.json\nstdout result_path"
+  },
+  {
+    "slide": 78,
+    "title": "在 Leo 先記 setup mode",
+    "visual": "evidence",
+    "operation": true,
+    "operation_kind": "setup",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "以唯讀方式開啟固定 scenario JSON"
+  },
+  {
+    "slide": 79,
+    "title": "匯入 exact result，不上傳 policy source",
+    "visual": "evidence",
+    "operation": true,
+    "operation_kind": "import",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "匯入 result.json\nfresh：artifacts/<run_id>/..."
+  },
+  {
+    "slide": 80,
+    "title": "importer 逐層檢查 provenance",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "import",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "schema → identity → units → policy / seed → provenance → replay"
+  },
+  {
+    "slide": 81,
+    "title": "replay 把 result 變成可讀時間線",
+    "visual": "evidence",
+    "operation": false,
+    "operation_kind": null,
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": null
+  },
+  {
+    "slide": 82,
+    "title": "server preview 可以證明什麼",
+    "visual": "evidence",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "Server preview 已驗證；Windows native：PLACEHOLDER；endpoint KPI：PLACEHOLDER。"
+  },
+  {
+    "slide": 83,
+    "title": "匯出可重開的 Energy Decision Workbook",
+    "visual": "evidence",
+    "operation": true,
+    "operation_kind": "workbook",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "run ledger"
+  },
+  {
+    "slide": 84,
+    "title": "關閉再 reopen，驗證 provenance 仍在",
+    "visual": "evidence",
+    "operation": true,
+    "operation_kind": "workbook",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "export → close → reopen\nsame run / replay records"
+  },
+  {
+    "slide": 85,
+    "title": "mismatch 必須 fail closed",
+    "visual": "evidence",
+    "operation": true,
+    "operation_kind": "recovery",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "identity / unit / schema mismatch；session unchanged；REJECTED。"
+  },
+  {
+    "slide": 86,
+    "title": "fallback 是同一場景的可追溯復原",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "matching result + replay"
+  },
+  {
+    "slide": 87,
+    "title": "policy guard 失敗：只恢復 marked block",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "recovery",
+    "status": "IMPLEMENTED / NOT VERIFIED",
+    "exact_action": "policy guard"
+  },
+  {
+    "slide": 88,
+    "title": "一條完整的中斷復原路徑",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "recovery",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "保留錯誤 → 核對 identity → restore / fallback → import → reopen"
+  },
+  {
+    "slide": 89,
+    "title": "evidence clinic：決策時可取得什麼",
+    "visual": "causal",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 90,
+    "title": "leakage 會讓假說看起來很強",
+    "visual": "causal",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 91,
+    "title": "一筆 evidence record 要能自我說明",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "source；identity；mechanism；evidence；claim class。"
+  },
+  {
+    "slide": 92,
+    "title": "measured、derived、assumed、simulated",
+    "visual": "causal",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 93,
+    "title": "endpoint layer 與 system layer 的邊界",
+    "visual": "causal",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 94,
+    "title": "把同一機制轉到智慧農場",
+    "visual": "causal",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 95,
+    "title": "HVAC、edge、物流：機會變動仍是同一個問題",
+    "visual": "operation",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "opportunity → policy → service / energy"
+  },
+  {
+    "slide": 96,
+    "title": "寫一個可被推翻的競賽假說",
+    "visual": "causal",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 97,
+    "title": "Appendix：TLE 只負責提供時間與位置來源",
+    "visual": "appendix",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "LEO = changing window example"
+  },
+  {
+    "slide": 98,
+    "title": "Appendix：SGP4 與 contact window 的最小讀法",
+    "visual": "transfer",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 99,
+    "title": "Appendix：quality、dB 與 action context",
+    "visual": "appendix",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "quality observation ≠ service；dB / linear；不要求 link-budget 推導。"
+  },
+  {
+    "slide": 100,
+    "title": "Appendix：W、J、bit/s、delivered bits、bit/J",
+    "visual": "transfer",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "W = power rate\nJ = accumulated energy\nbit/s = rate\nbit/J = service per energy"
+  },
+  {
+    "slide": 101,
+    "title": "Appendix：source → model → assumption → result",
+    "visual": "appendix",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "course assumption\nresult\npolicy hash"
+  },
+  {
+    "slide": 102,
+    "title": "Appendix：`student_policy.py` 的 allowed API",
+    "visual": "transfer",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "allowed observations → WAIT / SLEEP / SEND_ONE / SEND_URGENT / FLUSH_BATCH；API version：PLACEHOLDER。"
+  },
+  {
+    "slide": 103,
+    "title": "Appendix：scenario、result、receipt、replay 的契約流",
+    "visual": "appendix",
+    "operation": true,
+    "operation_kind": "workbook",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "result.schema\nfreeze-receipt.schema"
+  },
+  {
+    "slide": 104,
+    "title": "Appendix：fail-closed validation ladder",
+    "visual": "transfer",
+    "operation": true,
+    "operation_kind": "policy",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "policy\nfail = no partial update"
+  },
+  {
+    "slide": 105,
+    "title": "Appendix：課程 wrapper 與 upstream license boundary",
+    "visual": "appendix",
+    "operation": true,
+    "operation_kind": "action",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "course wrapper"
+  },
+  {
+    "slide": 106,
+    "title": "Appendix：field glossary 與 claim ceiling",
+    "visual": "transfer",
+    "operation": false,
+    "operation_kind": null,
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": null
+  },
+  {
+    "slide": 107,
+    "title": "快速分支：同一 policy，新的 held-out 條件",
+    "visual": "appendix",
+    "operation": true,
+    "operation_kind": "freeze",
+    "status": "SOURCE-BOUND EVIDENCE",
+    "exact_action": "freeze policy\npredict → run → compare"
+  },
+  {
+    "slide": 108,
+    "title": "退出：留下可重開、可反駁的 evidence chain",
+    "visual": "transfer",
+    "operation": true,
+    "operation_kind": "workbook",
+    "status": "EVIDENCE PLACEHOLDER",
+    "exact_action": "reopen"
+  }
+]

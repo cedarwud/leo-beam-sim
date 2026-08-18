@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/latest/LoRaEnergySim-LEO-ALT-PART-C-V2-P064-P080-REVIEW.pptx",
+  "command": "libreoffice --headless --convert-to pdf --outdir /tmp <published-pptx>",
+  "pdf": "render-final/LoRaEnergySim-LEO-ALT-PART-C-V2-P064-P080-REVIEW.pdf",
+  "png_count": 18,
+  "png_dir": "render-final/png/",
+  "visual_review": "PASS; full-size review covered locate, baseline, commands, edits, results, timeline, surprise, website, replay, workbook, and reopen pages",
+  "latest_published": true,
+  "published_path": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/latest/LoRaEnergySim-LEO-ALT-PART-C-V2-P064-P080-REVIEW.pptx"
+}

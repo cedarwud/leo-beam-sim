@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ns0:Properties xmlns:ns0="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:ns1="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <ns0:Template>佈景主題1</ns0:Template>
+  <ns0:TotalTime>42739</ns0:TotalTime>
+  <ns0:Words>64</ns0:Words>
+  <ns0:Application>Microsoft Office PowerPoint</ns0:Application>
+  <ns0:PresentationFormat>寬螢幕</ns0:PresentationFormat>
+  <ns0:Paragraphs>5</ns0:Paragraphs>
+  <ns0:Slides>2</ns0:Slides>
+  <ns0:Notes>0</ns0:Notes>
+  <ns0:HiddenSlides>0</ns0:HiddenSlides>
+  <ns0:MMClips>0</ns0:MMClips>
+  <ns0:ScaleCrop>false</ns0:ScaleCrop>
+  <ns0:HeadingPairs>
+    <ns1:vector size="6" baseType="variant">
+      <ns1:variant>
+        <ns1:lpstr>使用字型</ns1:lpstr>
+      </ns1:variant>
+      <ns1:variant>
+        <ns1:i4>5</ns1:i4>
+      </ns1:variant>
+      <ns1:variant>
+        <ns1:lpstr>佈景主題</ns1:lpstr>
+      </ns1:variant>
+      <ns1:variant>
+        <ns1:i4>1</ns1:i4>
+      </ns1:variant>
+      <ns1:variant>
+        <ns1:lpstr>投影片標題</ns1:lpstr>
+      </ns1:variant>
+      <ns1:variant>
+        <ns1:i4>2</ns1:i4>
+      </ns1:variant>
+    </ns1:vector>
+  </ns0:HeadingPairs>
+  <ns0:TitlesOfParts>
+    <ns1:vector size="8" baseType="lpstr">
+      <ns1:lpstr>Times-Roman</ns1:lpstr>
+      <ns1:lpstr>Arial</ns1:lpstr>
+      <ns1:lpstr>Calibri</ns1:lpstr>
+      <ns1:lpstr>Symbol</ns1:lpstr>
+      <ns1:lpstr>Times New Roman</ns1:lpstr>
+      <ns1:lpstr>2_佈景主題1</ns1:lpstr>
+      <ns1:lpstr>Energy-Efficiency-Based Joint Uplink Resources Allocation for LEO Satellite Beam-Hopping System</ns1:lpstr>
+      <ns1:lpstr>上行 LEO 衛星 BH 系統</ns1:lpstr>
+    </ns1:vector>
+  </ns0:TitlesOfParts>
+  <ns0:Company />
+  <ns0:LinksUpToDate>false</ns0:LinksUpToDate>
+  <ns0:SharedDoc>false</ns0:SharedDoc>
+  <ns0:HyperlinksChanged>false</ns0:HyperlinksChanged>
+  <ns0:AppVersion>16.0000</ns0:AppVersion>
+</ns0:Properties>

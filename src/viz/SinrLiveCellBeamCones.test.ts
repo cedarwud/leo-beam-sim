@@ -33,6 +33,10 @@ import {
   resolveSinrLiveCellBeamConeSatelliteCount,
   resolveSinrLiveHandoverPulseConeItems,
   resolveTriggeredIntraConeItems,
+  resolveCinemaHandoverPairConeItems,
+  resolveCinemaInterServingFanConeItems,
+  resolveSinrLiveConeFog,
+  shouldDimSinrLiveConeRole,
   resolveSinrLiveConeRenderColor,
   resolveSinrLiveConeRole,
   resolveCandidateBeamConeItems,
@@ -40,9 +44,8 @@ import {
   resolveTopServingFocusSatIds,
   type SinrLiveCellBeamConeRenderItem,
   type SinrLiveCellPlacement,
+  type SinrLiveCinemaHandoverCandidate,
 } from './SinrLiveCellBeamCones';
-// (resolveSinrLiveCellHandoverPairConeItems + its test removed in C3 — the cinema
-//  pair cone layer collapsed into the always-on ambient pulse.)
 import type { SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
 import { MANUAL_HANDOVER_DISPLAY_MS } from '../scene/manualHandoverDemo';
 import {
@@ -371,13 +374,13 @@ check('S5-2 cone base == the TRUTH cell centre from buildSinrLiveCellLayout (no 
   approx(items[0].baseCenter.y, 0, 1e-9, 'cone base on the ground plane');
 });
 
-check('S5-2 style tokens (hybrid): ambient 0.45 < pulse 0.8, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
+check('S5-2 style tokens (hybrid): ambient 0.24 < pulse 0.8, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
   // 0.45 restored 2026-08-06: under NormalBlending a LOW ambient alpha lets the green
   // terrain dominate the composite, which is what made the whole field read green.
-  // 0.45 -> 0.55 -> 0.40 (FINAL owner spec 2026-08-06): the serving fan is neutral GREY
+  // 0.45 -> 0.55 -> 0.40 -> 0.32 -> 0.24: the serving fan is neutral GREY
   // context, so it has no hue to defend — only its place in the alpha ladder matters
-  // (0.80 coloured roles > 0.40 serving fan > 0.28 candidate fan > 0.18 background).
-  assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.4, 'serving-fan (grey context) opacity sits below the two coloured roles and above the other grey layers');
+  // (0.80 coloured roles > 0.24 serving fan > 0.20 candidate fan > 0.18 background).
+  assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.24, 'serving-fan (grey context) opacity sits below the two coloured roles and above the other grey layers');
   assert(SINR_LIVE_CONE_PULSE_PEAK_OPACITY > SINR_LIVE_CONE_AMBIENT_OPACITY, 'HYBRID: the handover pulse is brighter than the ambient field');
   assertEqual(SINR_LIVE_CONE_SEGMENTS, 32, 'oblique cone ring segment count');
   // Blending decision chain: 7fb5991 (2026-06-22) moved Additive→Normal for semantic
@@ -400,7 +403,7 @@ check('Tier-2 SinrLiveConeStyle resolver: layer→opacity + colour map to the lo
   // resolveSinrLiveConeLayerOpacity is the single CHOICE point for each cone
   // layer's opacity (was: ambient default in the renderer, pulse a bare const). It
   // must return the screenshot-locked values verbatim.
-  assertEqual(resolveSinrLiveConeLayerOpacity('ambient'), SINR_LIVE_CONE_AMBIENT_OPACITY, 'resolver ambient == 0.45 token');
+  assertEqual(resolveSinrLiveConeLayerOpacity('ambient'), SINR_LIVE_CONE_AMBIENT_OPACITY, 'resolver ambient == 0.24 token');
   assertEqual(resolveSinrLiveConeLayerOpacity('pulse'), SINR_LIVE_CONE_PULSE_PEAK_OPACITY, 'resolver pulse == 0.8 peak token');
   assertEqual(resolveSinrLiveConeLayerOpacity('nonServing'), SINR_LIVE_CONE_NONSERVING_OPACITY, 'resolver nonServing == 0.04 dim token');
   assert(
@@ -898,6 +901,23 @@ check('role DERIVATION: mount layer + hero identity → role (no implicit `cone.
   );
 });
 
+check('role → FOG: primary/event cones bypass spotlight fog, context fans remain fogged', () => {
+  for (const role of ['hero', 'candidatePrimary', 'pulse', 'triggered'] as const) {
+    assertEqual(resolveSinrLiveConeFog(role), false, `${role} event surface bypasses scene fog`);
+  }
+  for (const role of ['servingFan', 'candidateFan', 'background', 'nonServing'] as const) {
+    assertEqual(resolveSinrLiveConeFog(role), true, `${role} context surface remains fogged`);
+  }
+});
+
+check('candidate primary stays visually legible at shallow elevation without changing candidate truth', () => {
+  assertEqual(shouldDimSinrLiveConeRole('hero', true, true), false, 'hero remains exempt from shallow dimming');
+  assertEqual(shouldDimSinrLiveConeRole('candidatePrimary', true, true), false, 'primary blue candidate remains fully visible');
+  assertEqual(shouldDimSinrLiveConeRole('candidateFan', true, true), true, 'candidate fan remains atmospheric');
+  assertEqual(shouldDimSinrLiveConeRole('servingFan', true, true), true, 'serving fan retains shallow dimming');
+  assertEqual(shouldDimSinrLiveConeRole('candidatePrimary', false, true), false, 'disabled dimming stays disabled');
+});
+
 check('role → COLOUR + OPACITY table (defaults): every role resolves to its locked token', () => {
   const table: Record<string, { color: string; opacity: number }> = {
     hero: { color: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR, opacity: SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY },
@@ -1135,6 +1155,148 @@ check('candidate FAN: unchanged no-ops (no pending target / target IS the servin
   const single = resolveCandidateBeamConeItems({ ...args, pendingTargetSatId: 'sat-B', servingSatId: 'sat-A' });
   assertEqual(single.length, 1, 'no cell frame → the primary cone only (the pre-2026-08-06 shape)');
   assertEqual(single[0].role, 'candidatePrimary', 'and it is the primary role');
+});
+
+check('cinema inter source FAN: the old serving satellite keeps its other beams separate from the pair primary', () => {
+  const candidate: SinrLiveCinemaHandoverCandidate = {
+    eventId: 'cinema-inter-source-fan',
+    ueId: 'ue-0',
+    kind: 'inter',
+    sourceTimeSec: 450,
+    fromSatId: 'sat-A',
+    fromCellId: 0,
+    toSatId: 'sat-B',
+    toCellId: 2,
+  };
+  const cellFrame = frameOf([
+    beam('sat-A', 0, true),
+    beam('sat-A', 1, false),
+    beam('sat-A', 3, false),
+    beam('sat-B', 2, true),
+  ]);
+  const sourceFanPlacements = new Map<number, SinrLiveCellPlacement>(
+    [0, 1, 2, 3].map(id => [id, { cellId: id, worldX: 20 * (id + 1), worldZ: -15 * (id + 1), radiusWorld: 10 }]),
+  );
+  const items = resolveCinemaInterServingFanConeItems({
+    candidate,
+    opacity: 0.24,
+    placementByCellId: sourceFanPlacements,
+    satelliteWorldById,
+    frequencyReuse: PULSE_REUSE,
+    cellFrame,
+    maxFanCones: 4,
+  });
+  assert(items.length > 0, 'the source satellite owns visible fan cones');
+  assert(items.every(item => item.satId === 'sat-A'), 'source fan never pulls in the candidate satellite');
+  assert(items.every(item => item.role === 'servingFan'), 'source fan uses the serving-fan role');
+  assert(items.every(item => item.opacity === 0.24), 'source fan follows the presentation opacity passed by the inter envelope');
+  assert(items.every(item => item.cellId !== candidate.fromCellId), 'source fan leaves the primary service cone to the cinema pair');
+  assertEqual(resolveCinemaInterServingFanConeItems({
+    candidate,
+    opacity: 0,
+    placementByCellId: sourceFanPlacements,
+    satelliteWorldById,
+    frequencyReuse: PULSE_REUSE,
+    cellFrame,
+  }).length, 0, 'source fan is absent after the source side has fully released');
+});
+
+check('cinema inter pair: focused event resolves old + candidate cones for the handover story', () => {
+  const candidate: SinrLiveCinemaHandoverCandidate = {
+    eventId: 'cinema-inter-0001',
+    ueId: 'ue-0',
+    kind: 'inter',
+    sourceTimeSec: 450,
+    fromSatId: 'sat-A',
+    fromCellId: 0,
+    toSatId: 'sat-B',
+    toCellId: 2,
+  };
+  const items = resolveCinemaHandoverPairConeItems({
+    candidate,
+    fromOpacity: 0.8,
+    toOpacity: 0.8,
+    fromColor: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+    toColor: SINR_LIVE_CONE_CANDIDATE_COLOR,
+    placementByCellId,
+    satelliteWorldById,
+    frequencyReuse: PULSE_REUSE,
+  });
+  assertEqual(items.length, 2, 'cinema inter has both source and candidate cones');
+  assert(items.some(item => item.satId === 'sat-A' && item.cellId === 0), 'source satellite/cell is rendered');
+  assert(items.some(item => item.satId === 'sat-B' && item.cellId === 2), 'candidate satellite/cell is rendered');
+  assertEqual(new Set(items.map(item => item.renderKey)).size, 2, 'cinema pair keys are distinct');
+  const candidateItem = items.find(item => item.satId === 'sat-B');
+  assert(candidateItem !== undefined, 'candidate item is available for role styling');
+  assertEqual(
+    resolveSinrLiveConeRoleStyle('triggered', {}, candidateItem).color,
+    SINR_LIVE_CONE_CANDIDATE_COLOR,
+    'inter candidate keeps the candidate blue display role',
+  );
+});
+
+check('cinema inter pair: both cones can be anchored on the protagonist UE', () => {
+  const candidate: SinrLiveCinemaHandoverCandidate = {
+    eventId: 'cinema-inter-ue-anchor',
+    ueId: 'ue-0',
+    kind: 'inter',
+    sourceTimeSec: 450,
+    fromSatId: 'sat-A',
+    fromCellId: 0,
+    toSatId: 'sat-B',
+    toCellId: 2,
+  };
+  const target = new THREE.Vector3(4, 0, -7);
+  const items = resolveCinemaHandoverPairConeItems({
+    candidate,
+    fromOpacity: 0.8,
+    toOpacity: 0.8,
+    fromColor: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+    toColor: SINR_LIVE_CONE_CANDIDATE_COLOR,
+    placementByCellId,
+    satelliteWorldById,
+    frequencyReuse: PULSE_REUSE,
+    baseCenterOverride: target,
+    fromBaseRadiusScale: 0.84,
+    toBaseRadiusScale: 1,
+  });
+  assertEqual(items.length, 2, 'anchored cinema inter still has both cones');
+  for (const item of items) {
+    assertEqual(item.baseCenter.x, target.x, 'pair base uses the UE x anchor');
+    assertEqual(item.baseCenter.y, target.y, 'pair base stays on the ground plane');
+    assertEqual(item.baseCenter.z, target.z, 'pair base uses the UE z anchor');
+  }
+  const from = items.find(item => item.satId === 'sat-A');
+  const to = items.find(item => item.satId === 'sat-B');
+  assert(from !== undefined && to !== undefined, 'both anchored pair sides remain identifiable');
+  assert(from!.baseRadiusWorld < to!.baseRadiusWorld, 'nested source radius keeps both colours visible');
+});
+
+check('cinema inter pair: fail closed when the focused event has no cell geometry', () => {
+  const candidate: SinrLiveCinemaHandoverCandidate = {
+    eventId: 'cinema-inter-no-cell',
+    ueId: 'ue-0',
+    kind: 'inter',
+    sourceTimeSec: 450,
+    fromSatId: 'sat-A',
+    fromCellId: null,
+    toSatId: 'sat-B',
+    toCellId: null,
+  };
+  assertEqual(
+    resolveCinemaHandoverPairConeItems({
+      candidate,
+      fromOpacity: 0.8,
+      toOpacity: 0.8,
+      fromColor: SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+      toColor: SINR_LIVE_CONE_CANDIDATE_COLOR,
+      placementByCellId,
+      satelliteWorldById,
+      frequencyReuse: PULSE_REUSE,
+    }).length,
+    0,
+    'missing cell identity does not fabricate a cone',
+  );
 });
 
 console.log(`\nSinrLiveCellBeamCones resolver: ${passed} checks passed.`);

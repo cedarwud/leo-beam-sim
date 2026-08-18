@@ -98,6 +98,27 @@ time、W、bit/s 與 bit/J 各自呈現，不建立 `service/J`、`value/J`、`q
 
 ## 3. 九頁的 diagram-led architecture
 
+### Donor readability recalibration（CURRENT OWNER-REVIEW ROUND）
+
+Owner 已要求回到第一版 `phase-0-architecture` 的可讀性邏輯，並將修正套用到本 checkpoint
+全部 9 頁。本輪不是把既有版面等比例放大，而是重新建立資訊階層：一個大問題、一個 dominant
+diagram、兩張大結論卡，以及只承載 claim boundary 的精簡 footer。
+
+- 第一版只作資訊密度與視覺構圖 donor；現行 C-120 handoff、issue 11 與 canonical claim
+  boundary 仍決定語義。舊 conditional E3、C-90 cadence 與舊 claim 不回流。
+- donor 的核心可讀性不是所有字都大，而是學生必讀內容集中在 16–23 pt；小字只服務 footer／
+  狀態。上一版把同一語義重複拆進 header、four-part rail、claim dock 與 chips，文字框數量過多，
+  因而產生「看起來很小」的結果。
+- 白色 edu master、logo、divider、footer 與 unset author background 不變。所有 authored panel
+  只使用 white／paper／pale fill；深色只可作文字、線條、箭頭與外框，不使用深色填色，也不使用
+  亮橘色 box。
+- 全頁取消 universal four-part rail 與微型彩色 chips。operation／evidence 與 meaning／recovery
+  各整合為一張大結論卡；FACT、DESIGN INFERENCE、UNKNOWN 仍分開，但只作周邊 metadata。
+- 投影可讀階層：標題 28 pt；driving question 22 pt；主操作／證據 16–23 pt；次要說明
+  14.2–16 pt；claim label 12.5 pt、claim value 14.2 pt。低於 14 pt 的 authored text 不再承載
+  學生完成活動所必須理解的內容。
+- 此輪完成後仍只是 9 頁 Phase 0 owner-review checkpoint；不因風格重構而延伸成 full deck。
+
 ### Middle-canvas-first authoring resolution（OWNER-REVIEW）
 
 edu master 的有效設計畫布是 `x=0.718–13.004 in、y=1.05–6.627 in`，不是可任意縮放的
@@ -121,16 +142,16 @@ edu master 的有效設計畫布是 `x=0.718–13.004 in、y=1.05–6.627 in`，
 
 owner 指定比較的第一版已定位到
 `/home/u24/leo-satcom-lab/.scratch/90min-satellite-course/archive/deck/phase-0-architecture/`
-及其 `build_phase0.js`。本版只借用其視覺語法：彩色 stage／metric chips、route arrows、
-局部 navy decision hub、mission cards、replay traces、rule board 與 transfer chain；不帶回
+及其 `build_phase0.js`。本版只借用其視覺語法：短標籤、大型 route、mission cards、replay
+traces、rule board 與 transfer chain；不帶回
 90 分鐘路線、conditional E3、C-90 claim 或該 builder 的 source semantics。
 
 PptxGenJS 與 `pptx-wrap` 不是視覺單調的根因：第一版與本版均由 PptxGenJS authoring；
 `pptx-wrap` 在此只解析 edu master、safe bounds、fonts、protected zones 與 managed runtime。
 先前變得枯燥，是把八個不同活動轉成同一組大橫框／同一 footer boxes，並把全頁構圖縮進
-中間安全區。本版改為 snake route、claim adjudication、lineage gate、power-time footprints、
-beam decision＋two-trace replay、recovery fork、local navy task board、timestamp case 與
-U-shaped transfer chain，讓活動機制決定版面。
+中間安全區。本版改為 snake route、claim adjudication、lineage gate、power-time chain、
+rule freeze／withheld replay、recovery fork、light schedule board、timestamp case 與
+domain-to-falsifier transfer chain，讓活動機制決定版面；所有主 panel 均保持淺色。
 
 ### Slide 1｜一條 120 分鐘能源決策路線（00–120）
 

@@ -1,0 +1,199 @@
+{
+  "schema": "c120-direct-teaching-part-a-qa-v1",
+  "status": "PASS",
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/direct-teaching-part-a_ppt169_20260811/exports/c120-lora-leo-direct-teaching-part-a-editable_20260811.pptx",
+  "slide_count": 36,
+  "notes_count": 36,
+  "speaker_notes": {
+    "count": 36,
+    "min_chars": 371,
+    "max_chars": 861,
+    "required_sections": [
+      "本頁目的：",
+      "畫面指向：",
+      "可直接說：",
+      "必要操作：",
+      "預期畫面或結果：",
+      "失敗處理：",
+      "銜接下一頁：或本模組在此收束"
+    ],
+    "section_errors": []
+  },
+  "slide_level_background_nodes": 0,
+  "overflow_candidates": [],
+  "title_sizes_pt": [
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800,
+    2800
+  ],
+  "min_text_size_pt": 20.0,
+  "font_errors": [],
+  "layout_targets_by_slide": {
+    "1": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "2": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "3": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "4": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "5": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "6": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "7": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "8": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "9": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "10": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "11": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "12": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "13": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "14": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "15": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "16": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "17": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "18": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "19": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "20": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "21": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "22": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "23": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "24": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "25": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "26": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "27": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "28": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "29": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "30": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "31": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "32": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "33": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "34": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "35": [
+      "../slideLayouts/slideLayout2.xml"
+    ],
+    "36": [
+      "../slideLayouts/slideLayout2.xml"
+    ]
+  },
+  "content_term_hits": [],
+  "template_part_hashes": {
+    "ppt/slideMasters/slideMaster1.xml": "6cdc77f070e1cc1a568e13392542d72847b58069750087e057c0afea9b0df867",
+    "ppt/slideLayouts/slideLayout2.xml": "061b8e4192e3cedf39daf08bc14e99eb22006445c9ece5c80b6e4c587bf359a3",
+    "ppt/slideLayouts/slideLayout5.xml": "1e24e0de305ef89a18c139ed17b79a45272a64b7f5dd90c916028fe2a6ac67da",
+    "ppt/theme/theme1.xml": "c128da77426350f7cb31a0993c3e628f1027c0e5cc1afbeabe77a11e58480a46",
+    "ppt/media/image1.png": "348d35cd319c6dc64c6cd7678b7a2759c6e113ccdd390b3e7c431220f0879fe7",
+    "ppt/media/image2.png": "d8687d3449327ee2090abc4f811c6345f3060d8e1c977dab60cdb87697be7b14",
+    "ppt/media/image3.png": "f1d583f3297e11fbaac2a07ff9a81d9f11b4f64e1e5b79cab684b7a3a124b645"
+  },
+  "footer_contract": {
+    "line_and_text_media": "ppt/media/image2.png",
+    "logo_media": "ppt/media/image3.png",
+    "page_number_placeholder": "layout/master sldNum"
+  },
+  "errors": [],
+  "warnings": [],
+  "source_map": "analysis/beamshift-e2-source-map.md",
+  "limitations": [
+    "Microsoft PowerPoint open/reopen remains the controller-owned final gate.",
+    "Part A contains no formula; no equation image is used."
+  ]
+}

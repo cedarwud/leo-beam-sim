@@ -55,6 +55,8 @@ import {
 export interface SinrLiveCellFootprintRingsProps {
   /** The SERVING cone items (one hex per item). Empty off the cell-truth lanes. */
   readonly items: readonly SinrLiveCellBeamConeRenderItem[];
+  /** Presentation-only visibility gate; geometry and cell truth remain untouched. */
+  readonly visible?: boolean;
   /** Mirror the cone `coneWidthScale` so the hex tracks the rendered footprint. */
   readonly widthScale?: number;
   /**
@@ -86,6 +88,10 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
   useLayoutEffect(() => {
     const key = props.telemetryCountDatasetKey;
     if (!key) return;
+    if (props.visible === false || items.length === 0) {
+      gl.domElement.dataset[key] = '0';
+      return;
+    }
     const group = groupRef.current;
     if (!group) return;
     let count = 0;
@@ -99,9 +105,9 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
 
   useEffect(() => () => {
     if (props.telemetryCountDatasetKey) delete gl.domElement.dataset[props.telemetryCountDatasetKey];
-  }, [gl, props.telemetryCountDatasetKey]);
+  }, [gl, items.length, props.telemetryCountDatasetKey, props.visible]);
 
-  if (items.length === 0) return null;
+  if (props.visible === false || items.length === 0) return null;
 
   return (
     <group ref={groupRef} name="sinr-live-cell-footprint-rings" userData={{ ringCount: items.length }}>

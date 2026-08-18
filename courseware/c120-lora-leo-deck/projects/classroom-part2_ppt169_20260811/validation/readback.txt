@@ -1,0 +1,497 @@
+SLIDE 1
+endpoint 狀態：名稱要和機制對齊
+Context: local fallback result／endpoint boundary
+Run: python -m json.tool fallback_artifacts/baseline-A/result.json
+rg -n 'STATE_INTERVAL|state|duration' fallback_artifacts/baseline-A/result.json
+SLEEP
+WAKE
+PROCESS
+TX / RX
+WAIT
+每個 state 都留下 duration / power / event；endpoint J 是累積結果。
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 2
+WAIT 是 awake idle，SLEEP 會帶來 wake 成本
+Context: baseline-A endpoint replay；同一 job／window／energy boundary
+Run: rg -n '"state": "WAIT"|"state": "SLEEP"|"state": "WAKE"' fallback_artifacts/baseline-A/result.json
+WAIT
+awake idle → no wake event
+SLEEP
+sleep → WAKE → service
+先提出 WAIT 與 SLEEP 的方向性預測，再由 state ledger 驗證。 WAIT 保持清醒；SLEEP 可能降低 idle power，但後續 WAKE 會增加 latency／energy。
+
+SLIDE 3
+封包生命週期：送出不是交付
+Context: baseline-A endpoint replay；packet ledger
+Run: python -m json.tool fallback_artifacts/baseline-A/endpoint-replay.json
+queue
+attempt
+retry
+delivered
+expired
+attempted ≠ delivered
+retry / collision / expired 都要保留
+一次 SEND 是 decision；service 要看完整 packet outcome。
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 4
+service boundary 先於 energy 比較
+Context: paired baseline／candidate；同 scenario、job、window、endpoint scope
+Run: rg -n '"service_pass"|"deadline_pass"|"energy_scope"' fallback_artifacts/candidate-A/result.json
+SERVICE GATE
+same job
+same window
+delivered / deadline
+THEN COMPARE J
+endpoint scope
+state ledger
+energy breakdown
+先確認 job、window、delivery 與 deadline 可比，再談 J。 candidate 少送或多過期時，較低 J 不能直接升格為節能；service gate 先決定比較資格。
+
+SLIDE 5
+W 是速率，J 是累積結果
+Context: result JSON；energy scope = endpoint
+Run: rg -n '"endpoint_energy_j"|"power"|"energy_breakdown_j"' fallback_artifacts/candidate-A/result.json
+P(t) / W
+time / s
+曲線下的 area 是 endpoint J；低峰值拖得久，仍可能累積更多。
+
+SLIDE 6
+公式：endpoint energy 的範圍
+EDITABLE OFFICE MATH
+E_endpoint = Σ P_s t_s
+endpoint boundary ≠ whole system
+Office Math hook is editable；數字仍由 result artifact 提供，不自行補 KPI。
+
+SLIDE 7
+公式：服務效率的分子與分母
+EDITABLE OFFICE MATH
+η_E = D_delivered / E_endpoint
+bit ÷ J = bit/J
+Office Math hook is editable；數字仍由 result artifact 提供，不自行補 KPI。
+
+SLIDE 8
+來源、模型、課程假設、結果
+Context: result／replay／scenario lineage
+Run: rg -n 'scenario_id|seed|policy_sha256|artifact_source' fallback_artifacts/candidate-A/result.json
+source
+model
+course
+result
+ntpu-energy-decision-01  ·  seed 12001 / 12002  ·  policy SHA  ·  artifact_source
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 9
+一個 scenario_id 綁住整條鏈
+SOURCE
+repo
+https://github.com/cedarwud/lora-energy-lab
+
+commit
+32cc72309041…
+SCENARIO
+ntpu-energy-decision-01
+
+anchor
+sha256:cfe84682a71c0…
+
+lock
+sha256:f1d1fe3339137…
+RUN → REPLAY → WORKBOOK
+same scenario
+same units
+same seed role
+policy SHA
+fail closed on mismatch
+IDENTITY GATE｜scenario / anchor / policy / replay must agree
+
+SLIDE 10
+公平 baseline：固定 job、window、boundary
+Context: package root；baseline／candidate A-B pair
+Run: git diff -- student_policy.py
+python -m py_compile student_policy.py
+FIXED
+scenario / seed / job / window
+ONE EDIT
+current marked block
+OBSERVE
+queue / packet / service / state / J
+若 trace、scope、job 或 policy 偷換，這一組 A/B 就失去因果資格。
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 11
+LEO window：合法與不合法的 action
+Context: scenario quality/contact trace；same anchor
+Run: rg -n 'contact|window|quality_band_trace' scenarios/ntpu-energy-decision-01.json
+WINDOW OPEN
+SEND / WAIT legal context
+WINDOW CLOSED
+delayed action → service risk
+把 changing opportunity 接回 WAIT／SEND 的合法性。 窗口開啟時 action 可能服務；窗口關閉時延後可能變成 service loss；LEO 只作 changing-window example。
+
+SLIDE 12
+Lab A：同一份工作，不同 pace
+LAB A QUESTION
+same job
+different pace / rest
+先預測，再 baseline → candidate → withheld
+WATCH THE CHAIN
+policy edit
+→ state / transition
+→ packet / service
+→ endpoint J
+FALLBACK ARTIFACTS ARE SIMULATED
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 13
+先讀 PACE_GAP_STEPS
+Context: package root；student_policy.py 的 lab-a-pace-rest marked block
+Run: sed -n '1,80p' student_policy.py
+python -m py_compile student_policy.py
+# === LORA EDITABLE: lab-a-pace-rest ===
+PACE_GAP_STEPS = 2
+REST_DURING_GAP = SLEEP
+# === LORA END EDITABLE ===
+ONE BLOCK
+gap → send opportunity
+not direct energy
+read steps_since_send
+POLICY SURFACE｜marked block only｜syntax guard before run
+
+SLIDE 14
+再讀 REST_DURING_GAP
+Context: package root；student_policy.py 的 lab-a-pace-rest marked block
+Run: sed -n '10,24p' student_policy.py
+python -m py_compile student_policy.py
+# === LORA EDITABLE: lab-a-pace-rest ===
+PACE_GAP_STEPS = 2
+REST_DURING_GAP = SLEEP
+# === LORA END EDITABLE ===
+ONE BLOCK
+WAIT stays awake
+SLEEP may add wake cost
+read state + service
+POLICY SURFACE｜marked block only｜syntax guard before run
+
+SLIDE 15
+Lab A 的 prediction lock
+Context: package root；edit 前，保持 baseline policy
+Run: git diff -- student_policy.py
+python -m py_compile student_policy.py
+queue age
+↗ / ↘ / hold — write a reason before run
+service
+↗ / ↘ / hold — write a reason before run
+state time
+↗ / ↘ / hold — write a reason before run
+endpoint J
+↗ / ↘ / hold — write a reason before run
+在 run 前鎖定 queue、service、state time、J 的判讀句。 prediction 先於 result；withheld 不能 retune 來迎合答案。
+
+SLIDE 16
+A-01：跑 untouched baseline
+RUN THIS EXACTLY
+POSIX／WSL；package root lora-energy-lab/；baseline policy 不改
+bash course.sh run --lab A --case baseline
+# Windows: course.cmd run --lab A --case baseline
+Purpose: establish control.
+Mechanism: fixed scenario / seed → result lineage.
+READ THE RECEIPT
+fallback 可讀 run_id …ee6df44f、energy 6.92 J、delivered 4800 bit；fresh stdout/result path 仍待重跑。
+IF THE GATE IS RED
+保留 stdout/stderr；restore A checkpoint 或 matching fallback；不要再調參。
+VERIFIED LOCAL FALLBACK｜SIMULATED｜fresh receipt/path pending
+
+SLIDE 17
+A-02：只改 A marked block 並 freeze
+RUN THIS EXACTLY
+POSIX／WSL；lora-energy-lab/；只改 lab-a-pace-rest
+git diff -- student_policy.py
+bash course.sh run --lab A --case candidate --freeze
+# Windows: course.cmd run --lab A --case candidate --freeze
+Purpose: freeze one marked edit.
+Mechanism: policy SHA + predecessor + receipt.
+READ THE RECEIPT
+candidate policy 325cca4a…d73cf2f
+freeze 6cbaf9dc…e11626
+energy 8.86 J；fresh receipt pending
+IF THE GATE IS RED
+保留 stdout/stderr；restore A checkpoint 或 matching fallback；不要再調參。
+VERIFIED LOCAL FALLBACK｜SIMULATED｜fresh receipt/path pending
+
+SLIDE 18
+A-03：匯入 candidate，先看同一個 boundary
+Context: local fallback pair；result／endpoint-replay 同 scenario
+Run: python -m json.tool fallback_artifacts/candidate-A/result.json
+python -m json.tool fallback_artifacts/candidate-A/endpoint-replay.json
+BASELINE
+scenario ✓
+policy sha256:9917d2cde2e…
+energy 6.92 J  ·  delivered 4800 bit
+service_pass = false
+CANDIDATE
+scenario ✓
+policy sha256:325cca4a4be…
+energy 8.86 J  ·  delivered 4800 bit
+service_pass = false
+先確認同一 boundary；candidate 的 trade-off 再交給 state / packet / service ledger。
+
+SLIDE 19
+A-04：讀懂 state ledger
+Context: candidate-A result；state interval／energy breakdown
+Run: rg -n 'STATE_INTERVAL|awake_idle|sleep|wake|process|tx|rx' fallback_artifacts/candidate-A/result.json
+awake idle
+6.0 J
+sleep
+0.04 J
+wake
+0.02 J
+process
+0.16 J
+TX
+2.4 J
+RX
+0.24 J
+先讀 state duration，再問哪個 policy action 造成 consequential diff。
+
+SLIDE 20
+A-05：把 packet 結果接回 service
+Context: candidate-A result／endpoint replay；packet ledger
+Run: rg -n 'attempt|retry|delivered|expired|service_pass' fallback_artifacts/candidate-A/result.json
+A CANDIDATE PACKET LEDGER
+attempted 2
+retransmissions 1
+delivered 4800 bit
+expired 3
+energy 8.86 J
+SERVICE VERDICT
+service_pass = false
+deadline_pass = false
+先說 trade-off，不說節能。
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 21
+A-06：檢查 A freeze lineage
+Context: package root；A frozen receipt／checkpoint
+Run: python -m json.tool fallback_artifacts/receipts/a.json
+find artifacts/checkpoints -maxdepth 1 -type f -print
+baseline
+candidate
+lab-a-frozen
+policy SHA · predecessor · active_block_id · scenario · anchor · seed · receipt SHA
+FREEZE GATE｜missing receipt / checkpoint = stop before withheld
+
+SLIDE 22
+A-07：用 hidden case 檢驗，不再 retune
+Context: POSIX／WSL；A frozen policy active；same package root
+Run: bash course.sh run --lab A --case hidden
+# Windows: course.cmd run --lab A --case hidden
+FROZEN POLICY
+policy SHA unchanged
+no new freeze
+read result + replay
+HIDDEN TRACE
+new condition
+queue / service / state / J
+qualified verdict
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 23
+Lab A debrief：一條因果句就夠
+Context: A baseline／candidate／hidden fallback trio
+Run: python -m json.tool fallback_artifacts/hidden-A/result.json
+rg -n 'policy_sha256|service_pass|endpoint_energy_j' fallback_artifacts/{baseline-A,candidate-A,hidden-A}/result.json
+condition
+mechanism
+evidence
+verdict
+在 Trace A／primary…；在 Trace B／hidden…；因此這個結論成立、被推翻，或待查。
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 24
+Lab B：現在送，還是等到更穩定？
+LAB B QUESTION
+same job
+quality trace / stability
+先預測，再 baseline → candidate → withheld
+WATCH THE CHAIN
+policy edit
+→ state / transition
+→ packet / service
+→ endpoint J
+FALLBACK ARTIFACTS ARE SIMULATED
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 25
+ENTER_QUALITY：何時進入 send-ready
+Context: package root；student_policy.py 的 lab-b-enter-exit-hold marked block
+Run: sed -n '18,28p' student_policy.py
+python -m py_compile student_policy.py
+# === LORA EDITABLE: lab-b-enter-exit-hold ===
+ENTER_QUALITY = 2
+EXIT_QUALITY = 1
+STABLE_STEPS = 2
+# === LORA END EDITABLE ===
+ONE BLOCK
+quality + stable count
+→ send-ready transition
+not direct energy
+POLICY SURFACE｜marked block only｜syntax guard before run
+
+SLIDE 26
+EXIT_QUALITY：為什麼不能只用一條線
+Context: package root；student_policy.py 的 lab-b-enter-exit-hold marked block
+Run: sed -n '18,28p' student_policy.py
+python -m py_compile student_policy.py
+# === LORA EDITABLE: lab-b-enter-exit-hold ===
+ENTER_QUALITY = 2
+EXIT_QUALITY = 1
+STABLE_STEPS = 2
+# === LORA END EDITABLE ===
+ONE BLOCK
+Purpose: separate enter and exit.
+Mechanism: hysteresis limits ping-pong.
+POLICY SURFACE｜marked block only｜syntax guard before run
+
+SLIDE 27
+STABLE_STEPS：拒絕短暫尖峰
+Context: package root；student_policy.py 的 lab-b-enter-exit-hold marked block
+Run: sed -n '18,28p' student_policy.py
+python -m py_compile student_policy.py
+# === LORA EDITABLE: lab-b-enter-exit-hold ===
+ENTER_QUALITY = 2
+EXIT_QUALITY = 1
+STABLE_STEPS = 2
+# === LORA END EDITABLE ===
+ONE BLOCK
+count stable steps
+→ switch after hold
+short spike rejected
+POLICY SURFACE｜marked block only｜syntax guard before run
+
+SLIDE 28
+Lab B 的 Trace A prediction
+Context: package root；Trace A run 前；A frozen predecessor active
+Run: git diff -- student_policy.py
+python -m py_compile student_policy.py
+queue age
+↗ / ↘ / hold — write a reason before run
+service
+↗ / ↘ / hold — write a reason before run
+state time
+↗ / ↘ / hold — write a reason before run
+endpoint J
+↗ / ↘ / hold — write a reason before run
+在 Trace A run 前標出 enter、hold、exit 與 service/J 方向。 prediction 先於 baseline/candidate；policy 不能讀 future trace outcome。
+
+SLIDE 29
+B-01：Trace A baseline
+RUN THIS EXACTLY
+POSIX／WSL；A frozen predecessor active；package root
+bash course.sh run --lab B --case trace-a-baseline
+# Windows: course.cmd run --lab B --case trace-a-baseline
+Purpose: establish Trace A control.
+Mechanism: A frozen predecessor → B baseline.
+READ THE RECEIPT
+fallback run …b2603b79、energy 8.86 J、delivered 4800 bit；fresh path 待重跑。
+IF THE GATE IS RED
+保留錯誤；restore A/B checkpoint 或 matching fallback；不可 retune。
+VERIFIED LOCAL FALLBACK｜SIMULATED｜fresh receipt/path pending
+
+SLIDE 30
+B-02：改 B marked block 並 freeze
+RUN THIS EXACTLY
+POSIX／WSL；A frozen predecessor；只改 lab-b-enter-exit-hold
+git diff -- student_policy.py
+bash course.sh run --lab B --case trace-a-candidate --freeze
+# Windows: course.cmd run --lab B --case trace-a-candidate --freeze
+Purpose: freeze B candidate.
+Mechanism: B SHA + Trace A + predecessor.
+READ THE RECEIPT
+candidate policy c00ed808…78293718
+freeze 2a4167e2…171349e0e
+delivered 9600 bit；fresh receipt pending
+IF THE GATE IS RED
+保留錯誤；restore A/B checkpoint 或 matching fallback；不可 retune。
+VERIFIED LOCAL FALLBACK｜SIMULATED｜fresh receipt/path pending
+
+SLIDE 31
+B-03：讀 transition 與 service，不只讀品質
+Context: trace-a-candidate-B result／endpoint replay
+Run: rg -n 'quality_band|POLICY_DECISION|PACKET_ATTEMPT|delivered|expired|service_pass' fallback_artifacts/trace-a-candidate-B/result.json
+B CANDIDATE PACKET LEDGER
+attempted 4
+retransmissions 1
+delivered 9600 bit
+expired 1
+energy 10.66 J
+SERVICE VERDICT
+service_pass = false
+deadline_pass = false
+先說 trade-off，不說節能。
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 32
+B-04：確認 freeze receipt 才能進 Trace B
+Context: package root；B frozen receipt／checkpoint
+Run: python -m json.tool fallback_artifacts/receipts/b.json
+find artifacts/checkpoints -maxdepth 1 -type f -print
+baseline
+candidate
+lab-b-frozen
+policy SHA · predecessor · active_block_id · scenario · anchor · seed · receipt SHA
+FREEZE GATE｜missing receipt / checkpoint = stop before withheld
+
+SLIDE 33
+B-05：Trace B 不 retune
+Context: POSIX／WSL；B frozen policy active；package root
+Run: bash course.sh run --lab B --case trace-b
+# Windows: course.cmd run --lab B --case trace-b
+FROZEN POLICY
+policy SHA unchanged
+no new freeze
+read result + replay
+TRACE B TRACE
+new condition
+queue / service / state / J
+qualified verdict
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 34
+B-06：辨識 too-slow 與 ping-pong
+Context: trace-a-candidate-B vs trace-b-B；same B policy SHA
+Run: rg -n 'policy_sha256|service_pass|endpoint_energy_j|expired_packets' fallback_artifacts/trace-b-B/result.json
+python -m json.tool fallback_artifacts/trace-b-B/endpoint-replay.json
+TOO-SLOW
+hold 太久
+錯過 service window
+service loss
+PING-PONG
+enter ↔ exit 太近
+多次 transition / retry
+energy trade-off
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 35
+Lab B debrief：hysteresis 是條件，不是保證
+Context: Trace A／Trace B；B receipt／policy／result pair
+Run: python -m json.tool fallback_artifacts/trace-a-candidate-B/result.json
+python -m json.tool fallback_artifacts/trace-b-B/result.json
+condition
+mechanism
+evidence
+verdict
+在 Trace A／primary…；在 Trace B／hidden…；因此這個結論成立、被推翻，或待查。
+FALLBACK_ARTIFACT｜SIMULATED｜NOT LIVE / NOT MEASURED
+
+SLIDE 36
+Recovery checkpoint：保存 A/B lineage
+Context: package root；A/B receipt、checkpoint、result/replay pair
+Run: find artifacts/checkpoints artifacts/receipts -maxdepth 1 -type f -print
+find fallback_artifacts -maxdepth 2 -type f -name 'result.json' -print
+A frozen
+B frozen
+result ↔ replay
+prediction
+status → exact role → restore；不覆寫既有 artifact，不補假的 receipt。

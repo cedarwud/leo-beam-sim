@@ -1,0 +1,62 @@
+{
+  "output": "/home/sat/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/LoRaEnergySim-LEO-ALT-OPENING-V2-REVIEW.pptx",
+  "slides": [
+    {
+      "slide": 1,
+      "authored_shape_count": 10,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 2,
+      "authored_shape_count": 22,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 3,
+      "authored_shape_count": 33,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 4,
+      "authored_shape_count": 27,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 5,
+      "authored_shape_count": 31,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 6,
+      "authored_shape_count": 31,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 7,
+      "authored_shape_count": 31,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 8,
+      "authored_shape_count": 22,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 9,
+      "authored_shape_count": 11,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 10,
+      "authored_shape_count": 19,
+      "suspicious_noncontainment_overlaps": []
+    },
+    {
+      "slide": 11,
+      "authored_shape_count": 20,
+      "suspicious_noncontainment_overlaps": []
+    }
+  ],
+  "failures": [],
+  "status": "PASS"
+}

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1280" height="720" viewBox="0 0 1280 720" data-pptx-master="master_01" data-pptx-master-name="slideMaster1" data-pptx-layout="layout_01" data-pptx-layout-name="標題投影片" data-pptx-show-master-shapes="false" data-pptx-show-inherited-shapes="true"><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" id="master-master_01-1-1" data-pptx-layer="master" data-pptx-editable="false" />
+<image href="../images/image1.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none" id="master-master_01-3-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r0" />
+<path d="M 44.67 26.5 L 44.67 99.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1028-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r14" />
+
+
+<path d="M 22 82.33 L 1258 82.33" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1029-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r12" />
+
+
+<path d="M 22 655.17 L 1258 655.17" fill="none" stroke-width="2" stroke="#35377F" stroke-linejoin="miter" id="master-master_01-1030-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r11" />
+
+
+<image href="../images/image2.png" x="0" y="642.13" width="1280" height="22.7" preserveAspectRatio="none" id="master-master_01-2-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r2" />
+<image href="../images/image3.png" x="1072" y="0" width="208" height="29.71" preserveAspectRatio="none" id="master-master_01-4-1" data-pptx-layer="master" data-pptx-editable="false" data-pptx-native-ref="r6" />
+<image href="../images/image1.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none" id="layout-layout_01-13-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r0" />
+<path d="M 105.11 242.77 L 105.11 322.77" fill="none" stroke-width="4" stroke="#35377F" stroke-linejoin="miter" id="layout-layout_01-4-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r5" />
+
+
+<path d="M 71.78 298.6 L 1220.67 298.6" fill="none" stroke-width="4" stroke="#35377F" stroke-linejoin="miter" id="layout-layout_01-5-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r24" />
+
+
+<text x="1231.73" y="695.33" text-anchor="end" xml:space="preserve" font-family="&quot;Times New Roman&quot;, &quot;標楷體&quot;, sans-serif" font-size="18.67" fill="#35377F" id="layout-layout_01-10-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r7"><tspan fill="#35377F" font-family="&quot;Times New Roman&quot;, &quot;標楷體&quot;, sans-serif" font-size="18.67">‹#›</tspan></text>
+<image href="../images/image2.png" x="0" y="641.84" width="1280" height="22.7" preserveAspectRatio="none" id="layout-layout_01-11-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r1" />
+<image href="../images/image3.png" x="1036.76" y="0" width="237.84" height="33.98" preserveAspectRatio="none" id="layout-layout_01-12-1" data-pptx-layer="layout" data-pptx-editable="false" data-pptx-native-ref="r4" />
+<g id="slot-layout_01-149508" data-pptx-placeholder="title" data-pptx-bounds="118.89 166.01 1088 120"><text x="662.89" y="207.07" text-anchor="middle" xml:space="preserve" font-family="Times-Roman, &quot;標楷體&quot;, sans-serif" font-size="42.67" fill="#35377F" data-pptx-carrier="true" data-pptx-native-ref="r9"><tspan fill="#35377F" font-family="Times-Roman, &quot;標楷體&quot;, sans-serif" font-size="42.67" x="662.89" dy="0">Energy-Efficiency-Based Joint Uplink Resources</tspan><tspan fill="#35377F" font-family="Times-Roman, &quot;標楷體&quot;, sans-serif" font-size="42.67"> </tspan><tspan x="662.89" dy="51.2" fill="#35377F" font-family="Times-Roman, &quot;標楷體&quot;, sans-serif" font-size="42.67">Allocation for LEO Satellite Beam-Hopping System</tspan></text>
+</g><g id="slot-layout_01-149509" data-pptx-placeholder="subtitle" data-pptx-bounds="186.89 308.22 896 150.98" data-pptx-idx="1"><text x="634.89" y="344.75" text-anchor="middle" xml:space="preserve" font-family="Times-Roman, &quot;標楷體&quot;, sans-serif" font-size="37.33" fill="#000000" data-pptx-carrier="true" data-pptx-native-ref="r10"><tspan fill="#000000" font-family="Times-Roman, &quot;標楷體&quot;, sans-serif" font-size="37.33">IEEE Internet of Things, </tspan><tspan fill="#000000" font-family="Times-Roman, &quot;標楷體&quot;, sans-serif" font-size="37.33">2025</tspan><tspan fill="#000000" font-family="Times-Roman, &quot;標楷體&quot;, sans-serif" font-size="37.33">.</tspan></text>
+</g></svg>

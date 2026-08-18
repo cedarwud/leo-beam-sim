@@ -1,0 +1,4 @@
+slides=8
+status=PASS
+rendered=0
+output=/home/u24/demo/leo-beam-sim/courseware/LoRaEnergySim-LEO-Part-C-P064-P071-REWRITE-CHECKPOINT.pptx

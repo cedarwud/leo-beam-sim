@@ -1,6 +1,6 @@
-import { propagate, twoline2satrec } from 'satellite.js';
+import { eciToGeodetic, gstime, propagate, twoline2satrec } from 'satellite.js';
 
-import { tleFail } from './errors';
+import { isTleArchiveError, tleFail } from './errors';
 import { parseUtcInstant } from './time';
 import { resolveTleSnapshotsFromValidatedManifest } from './resolver';
 import { validateTleArchiveManifest } from './validation';
@@ -46,6 +46,31 @@ function finiteVector(value: unknown, label: string): Vector3 {
     tleFail('PROPAGATION_FAILED', `${label} contains a non-finite coordinate`);
   }
   return freeze({ x: x as number, y: y as number, z: z as number });
+}
+
+/**
+ * Derive the propagated satellite height above the WGS-84 ellipsoid.
+ *
+ * satellite.js exposes SGP4 positions in TEME/ECI coordinates.  The position
+ * must be paired with the requested instant when converting to geodetic
+ * coordinates; using a fixed orbit-height constant would make constellations
+ * with different altitudes share the same atmospheric-loss input.
+ */
+export function deriveSatelliteAltitudeKm(
+  positionTemeKm: Vector3,
+  requestedInstantUtc: UtcInstantInput,
+): number {
+  const requested = parseUtcInstant(requestedInstantUtc, 'requestedInstantUtc');
+  const position = finiteVector(positionTemeKm, 'SGP4 position');
+  const geodetic = eciToGeodetic(position, gstime(new Date(requested.ms)));
+  const heightKm = geodetic.height;
+  if (!Number.isFinite(heightKm) || heightKm <= 0) {
+    tleFail('PROPAGATION_FAILED', `SGP4 position has an invalid geodetic altitude at ${requested.value}`, {
+      requestedInstantUtc: requested.value,
+      heightKm,
+    });
+  }
+  return heightKm;
 }
 
 function frameHash(input: string): string {
@@ -145,6 +170,32 @@ function buildFrameProvenance(
   });
 }
 
+function buildPropagationFrame(
+  manifest: TleArchiveManifest,
+  requestedInstantUtc: string,
+  snapshots: readonly ResolvedTleSnapshot[],
+  satellites: readonly PropagatedSatelliteState[],
+): TlePropagationFrame {
+  const resolvedEpochsUtc: Record<string, string> = {};
+  for (const snapshot of snapshots) resolvedEpochsUtc[snapshot.satelliteId] = snapshot.epochUtc;
+  const sortedSnapshots = [...snapshots].sort((left, right) => left.satelliteId.localeCompare(right.satelliteId));
+  const identity = [
+    requestedInstantUtc,
+    ...sortedSnapshots.map(snapshotKey),
+  ].join('||');
+  const provenance = buildFrameProvenance(sortedSnapshots, manifest.archiveId);
+  const frame: TlePropagationFrame = {
+    frameId: `tle-sgp4-${frameHash(identity)}`,
+    requestedInstantUtc,
+    resolvedEpochsUtc: freeze(resolvedEpochsUtc),
+    sourceKind: TLE_SOURCE_KIND,
+    propagationModel: TLE_PROPAGATION_MODEL,
+    satellites: freeze(satellites),
+    provenance,
+  };
+  return deepFreeze(frame);
+}
+
 /**
  * Resolve and propagate an immutable TLE-derived frame.  A caller can pass a
  * manifest object or an injected entry array; arrays must supply an explicit
@@ -168,25 +219,65 @@ export function createTlePropagationFrame(
     options.satelliteIds,
     options,
   );
-  const satellites = freeze(snapshots.map((snapshot) => propagateTleSnapshot(snapshot, requested.value)));
-  const resolvedEpochsUtc: Record<string, string> = {};
-  for (const snapshot of snapshots) resolvedEpochsUtc[snapshot.satelliteId] = snapshot.epochUtc;
-  const sortedSnapshots = [...snapshots].sort((left, right) => left.satelliteId.localeCompare(right.satelliteId));
-  const identity = [
+  const satellites = snapshots.map((snapshot) => propagateTleSnapshot(snapshot, requested.value));
+  return buildPropagationFrame(manifest, requested.value, snapshots, satellites);
+}
+
+/**
+ * Build a same-instant frame while excluding only satellites whose own SGP4
+ * propagation fails.  The strict producer above intentionally remains
+ * fail-fast; this seam is for first-frame/state producers that must match the
+ * complete RunBundle's per-satellite exclusion policy without making a single
+ * bad record erase an otherwise valid catalog.
+ */
+export function createTlePropagationFrameWithSatelliteExclusions(
+  input: ManifestInput,
+  requestedInstantUtc: UtcInstantInput,
+  options: CreateTlePropagationFrameOptions = {},
+): TlePropagationFrame {
+  const manifest = Array.isArray(input)
+    ? validateTleArchiveManifest(input, {
+      maxPropagationAgeMs: options.maxPropagationAgeMs ?? options.maxAgeMs,
+    })
+    : validateTleArchiveManifest(input);
+  const requested = parseUtcInstant(requestedInstantUtc, 'requestedInstantUtc');
+  const snapshots = resolveTleSnapshotsFromValidatedManifest(
+    manifest,
     requested.value,
-    ...sortedSnapshots.map(snapshotKey),
-  ].join('||');
-  const provenance = buildFrameProvenance(sortedSnapshots, manifest.archiveId);
-  const frame: TlePropagationFrame = {
-    frameId: `tle-sgp4-${frameHash(identity)}`,
-    requestedInstantUtc: requested.value,
-    resolvedEpochsUtc: freeze(resolvedEpochsUtc),
-    sourceKind: TLE_SOURCE_KIND,
-    propagationModel: TLE_PROPAGATION_MODEL,
-    satellites,
-    provenance,
-  };
-  return deepFreeze(frame);
+    options.satelliteIds,
+    options,
+  );
+  const includedSnapshots: ResolvedTleSnapshot[] = [];
+  const satellites: PropagatedSatelliteState[] = [];
+  const exclusions: Array<Readonly<Record<string, unknown>>> = [];
+  for (const snapshot of snapshots) {
+    try {
+      satellites.push(propagateTleSnapshot(snapshot, requested.value));
+      includedSnapshots.push(snapshot);
+    } catch (error) {
+      // Resolution/validity failures are not silently converted into a
+      // smaller catalog. Only an individual SGP4 failure belongs to this
+      // per-satellite exclusion boundary.
+      if (!isTleArchiveError(error) || error.code !== 'PROPAGATION_FAILED') throw error;
+      exclusions.push(Object.freeze({
+        satelliteId: snapshot.satelliteId,
+        satelliteName: snapshot.satelliteName,
+        sourcePath: snapshot.sourcePath,
+        reason: error.code,
+        message: error.message,
+        ...(error.details === undefined ? {} : { details: error.details }),
+      }));
+    }
+  }
+  if (includedSnapshots.length === 0) {
+    tleFail('PROPAGATION_FAILED', 'no valid satellite remains after per-satellite SGP4 propagation', {
+      requestedInstantUtc: requested.value,
+      resolvedCount: snapshots.length,
+      excludedCount: exclusions.length,
+      exclusions,
+    });
+  }
+  return buildPropagationFrame(manifest, requested.value, includedSnapshots, satellites);
 }
 
 export const propagateArchivedTleFrame = createTlePropagationFrame;

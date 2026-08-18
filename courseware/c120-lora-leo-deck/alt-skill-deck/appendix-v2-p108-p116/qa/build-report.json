@@ -1,0 +1,18 @@
+{
+  "status": "INITIAL_EDITABLE_ROOT_EXPORT",
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/LoRaEnergySim-LEO-ALT-APPENDIX-V2-P108-P116-REVIEW.pptx",
+  "slide_count": 9,
+  "notes_count": 9,
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "selected_template": "edu / educate",
+  "construction_route": "managed PptxGenJS + compiled educate master + template part overlay + slideLayout2 relink",
+  "layout_contract": "all authored slides target ../slideLayouts/slideLayout2.xml",
+  "title_pt": 28,
+  "primary_teaching_pt": 24,
+  "authored_body_floor_pt": 18,
+  "background_author_fill": "unset",
+  "current_evidence": "P108 uses labelled same-scenario fallback metrics; P109 uses labelled ledger crop; missing identities are marked 待補",
+  "visual_rendering": "controller LibreOffice render completed; nine original-size pages inspected",
+  "powerpoint_reopen": "native PowerPoint reopen remains unavailable in this environment; office validate.py passed"
+}

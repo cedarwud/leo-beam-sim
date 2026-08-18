@@ -6,14 +6,20 @@ export type TimelineSurfaceSourceOwner =
   | 'live-walker'
   | 'sinr-live-cell-truth'
   | 'modqn-producer-trace'
-  | 'artifact-replay';
-export type TimelineSurfaceHorizonKind = 'live-walker-window' | 'producer-trace' | 'artifact-scenario';
+  | 'artifact-replay'
+  | 'archived-tle-run';
+export type TimelineSurfaceHorizonKind =
+  | 'live-walker-window'
+  | 'producer-trace'
+  | 'artifact-scenario'
+  | 'archived-tle-window';
 export type TimelineSurfaceClaimKind =
   | 'live-truth'
   | 'profile-derived-forecast'
   | 'overlay-demo'
   | 'producer-proof'
-  | 'artifact-proof';
+  | 'artifact-proof'
+  | 'tle-derived-run';
 export type TimelineSurfaceAxisKind = 'source-time' | 'display-stretched';
 
 export interface ModqnProducerTraceRange {
@@ -41,13 +47,69 @@ export interface TimelineSurfaceDescriptor {
   readonly axisCurrentTimeSec: number;
 }
 
+export type LegacyTimelineSurfaceDescriptor = Omit<
+  TimelineSurfaceDescriptor,
+  'sourceOwner' | 'horizonKind' | 'claimKind'
+> & {
+  readonly sourceOwner: Exclude<TimelineSurfaceSourceOwner, 'archived-tle-run'>;
+  readonly horizonKind: Exclude<TimelineSurfaceHorizonKind, 'archived-tle-window'>;
+  readonly claimKind: Exclude<TimelineSurfaceClaimKind, 'tle-derived-run'>;
+};
+
 export interface TimelineRailDescriptor {
-  readonly timeline: TimelineSurfaceDescriptor;
-  readonly rail: TimelineSurfaceDescriptor;
+  readonly timeline: LegacyTimelineSurfaceDescriptor;
+  readonly rail: LegacyTimelineSurfaceDescriptor;
+}
+
+export interface ArchivedTleRunTimelineInput {
+  /** True only after all archived TLE anchors have been calculated and published. */
+  readonly runReady: boolean;
+  readonly durationSec: number;
+  readonly currentTimeSec: number;
+  readonly stepSec: number;
+}
+
+/**
+ * Authority descriptor for the homepage's fully materialized archived-TLE run.
+ *
+ * This deliberately does not reuse the Walker/live descriptor: the two-hour
+ * surface is source-time over a frozen TLE publication and is seekable only
+ * after every 30-second SGP4 anchor has been calculated.
+ */
+export function createArchivedTleRunTimelineDescriptor(
+  input: ArchivedTleRunTimelineInput,
+): TimelineSurfaceDescriptor {
+  const durationSec = Number.isFinite(input.durationSec) && input.durationSec > 0
+    ? input.durationSec
+    : 7200;
+  const currentTimeSec = clampTimelineTime(input.currentTimeSec, durationSec);
+  const stepSec = Number.isFinite(input.stepSec) && input.stepSec > 0 ? input.stepSec : 30;
+  const sourceGapReasons = input.runReady
+    ? []
+    : ['The complete archived-TLE run is still computing; the timeline remains locked until all anchors are published.'];
+  const sourceLabel = `TLE-derived SGP4 · complete ${formatDurationLabel(durationSec)}`;
+
+  return {
+    sourceLabel,
+    sourceOwner: 'archived-tle-run',
+    horizonKind: 'archived-tle-window',
+    horizonLabel: sourceLabel,
+    horizonSec: durationSec,
+    claimKind: 'tle-derived-run',
+    durationSec,
+    currentTimeSec,
+    sourceStartSec: 0,
+    sourceEndSec: durationSec,
+    sourceGapReasons,
+    axisKind: 'source-time',
+    axisLabel: `archived TLE source-time axis (${formatShortSeconds(stepSec)} anchors)`,
+    axisDurationSec: durationSec,
+    axisCurrentTimeSec: currentTimeSec,
+  };
 }
 
 export const LEGACY_PRODUCER_TRACE_SOURCE_GAP =
-  'Source gap: this bundle exports only a 10-second producer trace. It does not export a 2-hour Walker handover timeline.';
+  'Source gap: this bundle exports only a 10-second producer trace. It does not export a 2-hour live-scene handover timeline.';
 
 const ARTIFACT_EVENT_INDEX_SOURCE_GAP =
   'Source gap: loaded artifact has no validated handover event index.';
@@ -126,7 +188,7 @@ export function resolveTimelineRailDescriptor(input: {
   readonly bundleProvenanceKind: 'paper-faithful' | 'user-trained';
   readonly liveWalkerHandoverEventIndexSourceGapReasons?: readonly string[];
 }): TimelineRailDescriptor {
-  const liveTimeline: TimelineSurfaceDescriptor = {
+  const liveTimeline: LegacyTimelineSurfaceDescriptor = {
     sourceLabel: input.sceneLane === 'modqn-live-cell-preview'
       ? 'MODQN overlay on live timeline - demo'
       : 'Live timeline',
@@ -147,7 +209,7 @@ export function resolveTimelineRailDescriptor(input: {
     axisDurationSec: input.liveDurationSec,
     axisCurrentTimeSec: input.liveCurrentTimeSec,
   };
-  const liveRail: TimelineSurfaceDescriptor = {
+  const liveRail: LegacyTimelineSurfaceDescriptor = {
     ...liveTimeline,
     sourceLabel: input.sceneLane === 'modqn-live-cell-preview'
       ? 'live event index - MODQN overlay'
@@ -164,7 +226,7 @@ export function resolveTimelineRailDescriptor(input: {
     sourceGapReasons: input.liveWalkerHandoverEventIndexSourceGapReasons ?? [],
   };
 
-  const artifactTimeline: TimelineSurfaceDescriptor = {
+  const artifactTimeline: LegacyTimelineSurfaceDescriptor = {
     sourceLabel: 'artifact replay',
     sourceOwner: 'artifact-replay',
     horizonKind: 'artifact-scenario',
@@ -181,7 +243,7 @@ export function resolveTimelineRailDescriptor(input: {
     axisDurationSec: input.artifactDurationSec,
     axisCurrentTimeSec: input.artifactCurrentTimeSec,
   };
-  const artifactRail: TimelineSurfaceDescriptor = {
+  const artifactRail: LegacyTimelineSurfaceDescriptor = {
     ...artifactTimeline,
     sourceLabel: input.artifactHandoverEventCount > 0
       ? 'artifact event index'
@@ -203,7 +265,7 @@ export function resolveTimelineRailDescriptor(input: {
     input.producerTraceDisplayCurrentTimeSec,
     producerAxisDurationSec,
   );
-  const producerTrace: TimelineSurfaceDescriptor = {
+  const producerTrace: LegacyTimelineSurfaceDescriptor = {
     sourceLabel: producerLabel,
     sourceOwner: 'modqn-producer-trace',
     horizonKind: 'producer-trace',
@@ -224,7 +286,7 @@ export function resolveTimelineRailDescriptor(input: {
     axisDurationSec: producerAxisDurationSec,
     axisCurrentTimeSec: producerAxisCurrentTimeSec,
   };
-  const producerSourceTimeline: TimelineSurfaceDescriptor = {
+  const producerSourceTimeline: LegacyTimelineSurfaceDescriptor = {
     ...producerTrace,
     sourceLabel: producerLabel,
     horizonLabel: input.producerTraceRange

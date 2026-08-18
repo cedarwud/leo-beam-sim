@@ -437,9 +437,9 @@ async function assertAppToggleAndUiContrast(
 
     const contrastRatio = await page.evaluate<number>(`
       (() => {
-        const element = document.querySelector('[data-testid="homepage-canonical-source-controls"]');
+        const element = document.querySelector('[data-testid="homepage-tle-scenario-disclosure"]');
         if (!(element instanceof HTMLElement)) {
-          throw new Error('canonical homepage source-control element was not found');
+          throw new Error('canonical homepage TLE scenario disclosure was not found');
         }
 
         function parseRgb(input) {

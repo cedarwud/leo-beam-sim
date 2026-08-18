@@ -1,0 +1,116 @@
+{
+  "schema": "vector_asset_inventory.v1",
+  "svg_dir": "/home/u24/demo/leo-beam-sim/.scratch/leo-energy-course-phase0-outline_template_import/authoring-svg",
+  "icons_dir": "/home/u24/demo/leo-beam-sim/.scratch/leo-energy-course-phase0-outline_template_import/icons",
+  "icon_namespace": "imported",
+  "rewritten_dir": null,
+  "reuse_inventory": null,
+  "min_drawables": 20,
+  "min_bytes": 3000,
+  "min_decoration_bytes": 3000,
+  "extracted_count": 3,
+  "reused_count": 0,
+  "asset_count": 3,
+  "stale_removed": [],
+  "assets": [
+    {
+      "svg": "slide_01.svg",
+      "id": "imported/layered_slide_01_ill01",
+      "icon": "imported/layered_slide_01_ill01",
+      "asset": "imported/layered_slide_01_ill01.svg",
+      "source": "extracted",
+      "source_sha256": "ceb7d0d7019b1f3ef0f2a0a695e940118a5d3b1b5b8ed18f61d65337b99d8b26",
+      "asset_sha256": "4dcd0e8c54faba6c0fcdcb7dfa1e0f61734f30de8b679a2cc44296452b81f8b6",
+      "drawable_count": 40,
+      "byte_count": 10798,
+      "source_refs": [
+        "slide:10",
+        "slide:11",
+        "slide:12",
+        "slide:13",
+        "slide:14",
+        "slide:15",
+        "slide:16",
+        "slide:17",
+        "slide:18",
+        "slide:19",
+        "slide:2",
+        "slide:20",
+        "slide:21",
+        "slide:22",
+        "slide:23",
+        "slide:24",
+        "slide:3",
+        "slide:4",
+        "slide:5",
+        "slide:6",
+        "slide:7",
+        "slide:8",
+        "slide:9"
+      ],
+      "dependencies": [],
+      "elements": {
+        "path": 39,
+        "rect": 1
+      }
+    },
+    {
+      "svg": "slide_04.svg",
+      "id": "imported/layered_slide_04_ill01",
+      "icon": "imported/layered_slide_04_ill01",
+      "asset": "imported/layered_slide_04_ill01.svg",
+      "source": "extracted",
+      "source_sha256": "ff7a669dbe0dd2adbdf752154077be78ff464779b57a0d81ee79779906490ff9",
+      "asset_sha256": "d69263457d7604682a5ae5ed3ad48103e238d9a7ed4185c579ab38eec5e15347",
+      "drawable_count": 13,
+      "byte_count": 3896,
+      "source_refs": [
+        "slide:11",
+        "slide:12",
+        "slide:13",
+        "slide:14",
+        "slide:15",
+        "slide:16",
+        "slide:17",
+        "slide:18",
+        "slide:19",
+        "slide:20",
+        "slide:21",
+        "slide:22",
+        "slide:23"
+      ],
+      "dependencies": [],
+      "elements": {
+        "path": 13
+      }
+    },
+    {
+      "svg": "slide_05.svg",
+      "id": "imported/layered_slide_05_ill01",
+      "icon": "imported/layered_slide_05_ill01",
+      "asset": "imported/layered_slide_05_ill01.svg",
+      "source": "extracted",
+      "source_sha256": "a3cdc4955e828603f684ffc99785fc193777a7be0595d15f98198fc1d5071a09",
+      "asset_sha256": "9abf0e106bcf89001e0159fb8da8cea8047f01650152eaae9839c2b501e18047",
+      "drawable_count": 13,
+      "byte_count": 4219,
+      "source_refs": [
+        "slide:10",
+        "slide:11",
+        "slide:2",
+        "slide:3",
+        "slide:4",
+        "slide:5",
+        "slide:6",
+        "slide:7",
+        "slide:8",
+        "slide:9"
+      ],
+      "dependencies": [],
+      "elements": {
+        "path": 12,
+        "rect": 1
+      }
+    }
+  ]
+}

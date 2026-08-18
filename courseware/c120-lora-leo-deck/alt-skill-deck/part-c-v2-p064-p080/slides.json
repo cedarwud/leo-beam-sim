@@ -1,0 +1,192 @@
+{
+  "schema": "c120-part-c-v2-p064-p080-source-v1",
+  "source_json": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/part-c/slides.json",
+  "template": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+  "template_shell": "source slide 2 / slideLayout2.xml only",
+  "font_contract": {
+    "cjk": "標楷體",
+    "latin": "Times New Roman"
+  },
+  "pages": [
+    {
+      "order": 1,
+      "source_page": "P064",
+      "title": "Lab C：急件應提前多久送出？",
+      "body": "急件期限問題、批次等待與服務窗口的機制總覽。",
+      "notes": "本頁建立 Lab C 的問題：批次等待可以減少傳送啟動，但有期限的急件不能無限期等待。後續只改動 `student_policy.py` 的 `lab-c-batch-urgent` 區塊；服務結果先於端點 J 解讀。`queue age` 是等待秒數，`deadline` 是完成期限，`endpoint J` 只描述宣告的端點範圍。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "Lab C：佇列要等批次，還是 urgent deadline 優先？",
+      "evidence_status": "同情境 deterministic fallback reference；fresh runner value 以 result_path 為準"
+    },
+    {
+      "order": 2,
+      "source_page": "P065A",
+      "title": "定位唯一可編輯區塊：檔案、標記、目標值",
+      "body": "檔案 → marked block → 唯一目標 `URGENT_MARGIN_S`；固定 `BATCH_SIZE = 3`。",
+      "notes": "先在 package 根目錄定位 `/home/u24/lora-energy-lab/student_policy.py`，再搜尋 `LORA EDITABLE: lab-c-batch-urgent`。本頁只確認檔案、標記與目標常數，不執行、不改值。`BATCH_SIZE = 3` 是固定批次門檻；本 Lab 唯一可改的是 `URGENT_MARGIN_S`。Lab A／B 區塊、runner、scenario、schema 與能量模型保持原樣。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "先讀原始 student_policy.py：原本的門檻怎麼工作？",
+      "evidence_status": "current source truth；定位頁"
+    },
+    {
+      "order": 3,
+      "source_page": "P065B",
+      "title": "基準原始值：20 秒代表什麼？",
+      "body": "基準程式碼放大顯示：`BATCH_SIZE = 3`、`URGENT_MARGIN_S = 20` 與急件條件。",
+      "notes": "原始檔案中的 `URGENT_MARGIN_S = 20` 表示：當仍有緊急封包，且最接近期限的剩餘時間小於或等於 20 秒，急件分支才回傳 `SEND_URGENT`。急件分支排在 pacing 與批次之前；窗口關閉時更前面的判斷仍會回傳 `SLEEP`。這頁只讀原始值，尚未修改。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "先讀原始 student_policy.py：原本的門檻怎麼工作？",
+      "evidence_status": "current source truth；read-only baseline"
+    },
+    {
+      "order": 4,
+      "source_page": "P066",
+      "title": "第一輪操作：基準 20，再執行候選 5",
+      "body": "第一輪 exact commands、stdout 收據、配對結果檔與匯入讀法。",
+      "notes": "先在未修改的 policy 上執行 baseline，保存 stdout 印出的 `result_path`。完成下一頁的單一修改與預測記錄後，再以同一個 package 根目錄執行 candidate。兩次都保留同一 run 目錄內配對的 `result.json` 與 `endpoint-replay.json`；不猜檔名。Linux／macOS 終端機與 WSL 使用 Linux 指令，Windows PowerShell／Command Prompt 使用 `course.cmd`。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "第一輪 compact run／receipt：baseline → candidate",
+      "evidence_status": "操作頁；stdout receipt 是 artifact 產生訊號"
+    },
+    {
+      "order": 5,
+      "source_page": "P067",
+      "title": "第一次修改：只把 20 改成 5",
+      "body": "20→5 的放大程式碼；只高亮唯一變更值。",
+      "notes": "只在 `/home/u24/lora-energy-lab/student_policy.py` 的 `lab-c-batch-urgent` marked block，把 `URGENT_MARGIN_S` 從 20 改成 5。5 表示剩餘時間更接近期限時才走 `SEND_URGENT`，所以急件介入可能較晚。`BATCH_SIZE = 3`、Lab A／B frozen blocks、runner、scenario、schema、其他常數、函式與檔案均保持原樣；本頁不放執行命令。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "第一次 exact edit：URGENT_MARGIN_S = 5",
+      "evidence_status": "same-scenario deterministic fallback reference；唯一 edit"
+    },
+    {
+      "order": 6,
+      "source_page": "P068",
+      "title": "候選執行前：先鎖定可反駁預測",
+      "body": "margin 5 的預測、反駁條件與要觀察的 evidence。",
+      "notes": "候選預測寫入 workbook：把門檻從 20 改成 5，急件 override 可能較晚觸發，早期 `WAKE`／`TX` 可能減少，但封包可能更接近期限甚至失去交付。驗證順序固定為 `service`、`deadline`、packet delivery／expiry、state ledger，最後才讀 `endpoint J` 與 bit/J。任一服務門檻失敗，都不能只用低 J 宣稱成功。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "candidate run 前的 prediction lock",
+      "evidence_status": "same-scenario deterministic fallback reference；執行前 prediction"
+    },
+    {
+      "order": 7,
+      "source_page": "P069",
+      "title": "候選結果怎麼讀：先匯入，再判服務",
+      "body": "baseline 20／candidate 5 的 gate-first 結果比較與匯入後欄位順序。",
+      "notes": "candidate 命令完成後，將 stdout 的 `result_path` 指向的 `result.json` 與同一 run 目錄的 `endpoint-replay.json` 一起保存。匯入後先讀 `service_pass` 與 `deadline_pass`，再讀 `delivered_packets`／`expired_packets`，最後回到 replay 的 state event 與 `endpoint_energy_j`。目前結果為 baseline 4/4、expired 0、10.66 J；candidate 3/4、expired 1、9.74 J。candidate 少 0.92 J 但兩個 gate 都 FAIL。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "第一次 before／after：candidate 的 bit/J 受 gate 約束",
+      "evidence_status": "CURRENT RUN EVIDENCE；fresh result path required"
+    },
+    {
+      "order": 8,
+      "source_page": "P070",
+      "title": "第二次修改：只把 5 改成 30",
+      "body": "5→30 的放大程式碼；只高亮唯一變更值。",
+      "notes": "保留 candidate 5 的結果後，只在同一個 marked block 把 `URGENT_MARGIN_S` 從 5 改成 30。30 表示期限尚有較多餘裕時就可回傳 `SEND_URGENT`，所以 action 可能較早，可能增加 `WAKE`／`TX`，也可能保住期限。`BATCH_SIZE = 3`、Lab A／B frozen blocks、runner、scenario、schema 與其他檔案都不變；本頁不放執行命令。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "第二次 exact edit：URGENT_MARGIN_S = 30",
+      "evidence_status": "same-scenario deterministic fallback reference；一次 allowed revision"
+    },
+    {
+      "order": 9,
+      "source_page": "P071",
+      "title": "修訂執行前：把較早介入寫成取捨預測",
+      "body": "margin 5／30 的觸發關係、修訂預測與 primary-case null contrast。",
+      "notes": "修訂預測寫入 workbook：把門檻從 5 改成 30，急件 action 可能較早，端點能量可能上升，但 required packet 可能在期限前完成。判讀必須同時對照 delivery、deadline、state ledger、retry／expiry 與 endpoint J。若固定 primary case 中 20 與 30 都在同一決策時點觸發，兩者結果可能相同；這是條件造成的 null contrast，不是模型失效。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "revision run 前：較早介入的可反駁預測",
+      "evidence_status": "same-scenario deterministic fallback reference；執行前 prediction"
+    },
+    {
+      "order": 10,
+      "source_page": "P072",
+      "title": "第二輪操作：revision 30 freeze，再跑 surprise",
+      "body": "revision `--freeze` 與 surprise exact commands、freeze receipt、配對檔案與固定順序。",
+      "notes": "先執行 revision 30 並建立 freeze receipt，再以完全相同的 policy bytes 執行 surprise withheld。兩個命令都以 stdout 新印出的 `result_path` 為準，並保存同一 run 目錄的 `result.json` 與 `endpoint-replay.json`。surprise 不新增 edit、不重新調參；它只檢查 frozen policy 在新 service condition 下的 claim boundary。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "第二輪 compact run／receipt：revision freeze → surprise",
+      "evidence_status": "操作頁；stdout receipt 是 artifact 產生訊號"
+    },
+    {
+      "order": 11,
+      "source_page": "P073",
+      "title": "20／5／30：沿同一條時間線讀三筆結果",
+      "body": "20／5／30 的觸發時間線、機制與 observed result 分層比較。",
+      "notes": "三筆結果共用相同 primary scenario 與 endpoint boundary。baseline 20 為 service／deadline true／true、delivered 4／4、expired 0、endpoint 10.66 J；candidate 5 為 false／false、delivered 3／4、expired 1、endpoint 9.74 J；revision 30 回到 true／true、4／4、expired 0、10.66 J。固定 primary case 在決策時剩 10 秒，因此 20 與 30 都觸發急件，兩者可能是 null contrast；不能把相同結果解讀成 30 永遠最佳。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "before／after／revision：三筆結果要沿同一條因果鏈讀",
+      "evidence_status": "SIMULATED TEACHING DATA；deterministic fallback reference only"
+    },
+    {
+      "order": 12,
+      "source_page": "P074",
+      "title": "Surprise：沿用 30，保留失敗邊界",
+      "body": "frozen revision 與 surprise evidence 的對照，以及不重調的 claim boundary。",
+      "notes": "surprise 沿用 frozen margin 30 policy，不建立第三次 edit。目前結果為 service false、deadline false、delivered 1／4、retries 3、collisions 2、expired 3、endpoint 5.41 J。低 J 不能覆蓋服務失敗；這筆 record 的用途是界定 margin 30 的適用範圍，並保留 result／replay provenance。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "surprise withheld：policy frozen，反例留存",
+      "evidence_status": "SIMULATED TEACHING DATA；same-scenario deterministic fallback reference"
+    },
+    {
+      "order": 13,
+      "source_page": "P075",
+      "title": "Lab C 結語：服務與期限先於端點 J",
+      "body": "service → deadline → delivery → endpoint J 的 gate-first 結論與 claim ceiling。",
+      "notes": "Lab C 支持的結論是：urgent margin 會改變 deadline／energy trade-off，效果依 service condition 而定。candidate 5 在參考情境少用 endpoint J 卻失去兩個 gate；revision 30 在固定 primary case 恢復 gate，但 surprise 顯示新窗口條件仍可能失敗。這個結論停留在宣告的 endpoint evidence layer，不延伸成全系統或所有窗口的保證。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "Lab C debrief：service／deadline gate 優先於 J",
+      "evidence_status": "SIMULATED TEACHING DATA；NOT LIVE；NOT MEASURED；NOT CANONICAL-PARITY-VERIFIED"
+    },
+    {
+      "order": 14,
+      "source_page": "P076",
+      "title": "網站責任：匯入、重播、保存比較",
+      "body": "本機 runner → JSON import → endpoint replay → workbook 的責任邊界。",
+      "notes": "本機 runner 讀取 `student_policy.py` 並產生 `result.json` 與配對 `endpoint-replay.json`；網站只接受已產生的 JSON artifact。網站驗證 schema、identity、units、policy lineage 與 provenance，再 materialize replay 並保存 workbook 比較；網站不執行本機 Python。匯入時選 stdout 指出的 `result.json`，不是 policy source。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "網站責任：驗證、重播、保存",
+      "evidence_status": "current browser record；endpoint runner parity 待取得"
+    },
+    {
+      "order": 15,
+      "source_page": "P077",
+      "title": "匯入檢查：identity、units、事件逐層驗證",
+      "body": "七層 validation ladder、來源欄位與 fail-closed session boundary。",
+      "notes": "匯入先檢查 JSON／schema、scenario identity、runner provenance、lab／case／seed、policy lineage、units／energy sum、event legality 與 claim boundary，通過後才 materialize replay。任一層失敗時，既有 session 與 workbook 維持原狀；保留錯誤與原始 path，修正來源後重新匯入。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "import gate：source／gates／identity 的讀取順序",
+      "evidence_status": "current browser record；contract validation result"
+    },
+    {
+      "order": 16,
+      "source_page": "P078",
+      "title": "事件重播：佇列 → 動作 → 狀態 → 封包 → J",
+      "body": "current endpoint replay frame 與 queue／action／state／packet／J 的讀法。",
+      "notes": "REPLAY 讀取已驗證的 `endpoint-replay.json` event ledger，不重新執行 policy，也不在瀏覽器推導新的科學數值。沿同一 frame 讀 `Queue`、`Action`、`Radio`／state、packet delivery／expiry 與累積 endpoint J，才能把程式分支對回服務結果。較低 J 若沒有 delivery 與 service 欄位，不能完成 Lab C 判讀。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "frame selector 與事件脈絡：回到 policy branch",
+      "evidence_status": "current browser record crop；runner endpoint pixels 待取得"
+    },
+    {
+      "order": 17,
+      "source_page": "P079",
+      "title": "Workbook：保存四個角色的來源鏈",
+      "body": "execution ledger、四個角色與 workbook lineage。",
+      "notes": "WORKBOOK 保存 baseline、candidate、revision 與 surprise 的 prediction、changed line、result_path、配對 replay、service／deadline、endpoint scope、recovery note 與 claim boundary。surprise 即使 FAIL 也保留原 record；必要 evidence 缺少時狀態維持 INCOMPLETE，不能用另一筆結果補寫。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "Workbook：prediction、result、replay、source、identity",
+      "evidence_status": "current browser record crop；endpoint runner parity 待取得"
+    },
+    {
+      "order": 18,
+      "source_page": "P080",
+      "title": "保存與重開：核對身份，不補造結果",
+      "body": "Save → Close → Open／rebind loop 與 COMPLETE／INCOMPLETE 狀態。",
+      "notes": "保存 workbook 後關閉頁面，再重新開啟並核對 scenario、anchor、policy／predecessor identity、endpoint scope、prediction、result 與 replay。重開只重新驗證身份與完成度，不執行 `student_policy.py`，也不把失敗 surprise 改寫為成功。缺件時維持 INCOMPLETE，沿 matching artifact 或 release backup recovery。",
+      "layout": "slideLayout2.xml",
+      "source_authority": "保存與重開：checkpoint 不會替缺失證據補答案",
+      "evidence_status": "current browser record；reopen validation evidence 待取得"
+    }
+  ]
+}

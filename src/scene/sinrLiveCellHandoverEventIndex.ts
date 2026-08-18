@@ -42,6 +42,7 @@ export interface BuildSinrLiveCellHandoverEventIndexInput {
   readonly ueDistributionRadiusKm?: number;
   readonly ueMobilityMode?: UeMobilityMode;
   readonly ueMobilityParams?: UeMobilityParams;
+  readonly beamCountBySatellite?: Readonly<Record<string, number>>;
 }
 
 interface UeServingSnapshot {
@@ -73,6 +74,15 @@ function formatScalar(value: string | number | undefined): string {
   return value ?? 'unset';
 }
 
+function formatBeamCountBySatellite(
+  beamCountBySatellite: Readonly<Record<string, number>> | undefined,
+): string {
+  return Object.entries(beamCountBySatellite ?? {})
+    .sort(([leftId], [rightId]) => leftId.localeCompare(rightId))
+    .map(([satelliteId, beamCount]) => `${satelliteId}:${formatScalar(beamCount)}`)
+    .join(',');
+}
+
 function buildHandoverPolicyKey(profile: Profile): string {
   const handover = profile.handover;
   return [
@@ -96,6 +106,7 @@ function buildCellTruthTopologyKey(input: {
   readonly ueDistributionScope: UeDistributionScope;
   readonly ueDistributionRadiusKm: number | undefined;
   readonly ueMobilityMode: UeMobilityMode;
+  readonly beamCountBySatellite?: Readonly<Record<string, number>>;
 }): string {
   const { profile } = input;
   return [
@@ -109,6 +120,7 @@ function buildCellTruthTopologyKey(input: {
     `ueDistributionScope=${input.ueDistributionScope}`,
     `ueDistributionRadiusKm=${formatScalar(input.ueDistributionRadiusKm)}`,
     `ueMobilityMode=${input.ueMobilityMode}`,
+    `beamCountBySatellite=${formatBeamCountBySatellite(input.beamCountBySatellite)}`,
   ].join('|');
 }
 
@@ -150,6 +162,7 @@ function createEmptySinrLiveCellIndex(
         ueDistributionScope,
         ueDistributionRadiusKm: input.ueDistributionRadiusKm,
         ueMobilityMode,
+        beamCountBySatellite: input.beamCountBySatellite,
       }),
       runtimeFramePath: 'stepRuntimeFrame+sinrLiveCells',
     },
@@ -299,12 +312,17 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     return terminalSinrLiveCellHandoverEventIndexBuilder({
       ...baseIndex,
       sourceGapReasons: [
-        `live Walker trajectory cache only spans ${maxTimeSec}s; expected ${LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC}s`,
+        `live satellite trajectory cache only spans ${maxTimeSec}s; expected ${LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC}s`,
       ],
     });
   }
 
-  const sinrLiveCellModel = createSinrLiveCellModel(input.profile, true, input.epochUtcMs);
+  const sinrLiveCellModel = createSinrLiveCellModel(
+    input.profile,
+    true,
+    input.epochUtcMs,
+    input.beamCountBySatellite,
+  );
   if (sinrLiveCellModel === null) {
     return terminalSinrLiveCellHandoverEventIndexBuilder({
       ...baseIndex,

@@ -1,0 +1,15 @@
+{
+  "schema": "c120-classroom-v3-qa-v1",
+  "status": "PASS",
+  "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/classroom-v3_ppt169_20260811/exports/c120-lora-leo-classroom-v3-editable.pptx",
+  "slide_count": 108,
+  "notes_count": 108,
+  "native_equation_hooks": 2,
+  "template_bytes_preserved": true,
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Native OMML insertion is intentionally deferred to the controller hook pass.",
+    "Rendered pixels still require original-size PDF/contact-sheet inspection."
+  ]
+}

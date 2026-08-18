@@ -1,6 +1,7 @@
 import {
   SCENE_TOPOLOGY_OVERRIDES_KEY,
   createSceneTopologyState,
+  normalizeBeamCountBySatellite,
   type SceneTopologyState,
 } from '../sceneTopology';
 import {
@@ -114,6 +115,7 @@ export function readSceneTopologyOverrides(): SceneTopologyState {
       beamCountPerSatellite: typeof record.beamCountPerSatellite === 'number'
         ? record.beamCountPerSatellite
         : null,
+      beamCountBySatellite: normalizeBeamCountBySatellite(record.beamCountBySatellite),
       cellServingCount: normalizePersistedModqnServingCount(record.cellServingCount),
       ueCount: typeof record.ueCount === 'number' ? record.ueCount : null,
       ueDistributionMode: record.ueDistributionMode === 'random'

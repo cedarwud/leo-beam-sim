@@ -1,0 +1,137 @@
+{
+  "schema": "ppt-master.svg-quality-report.v1",
+  "stage": "first-page",
+  "target": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/style-proofs/educate-phase0-light-pptmaster-20260811_ppt169_20260811",
+  "source_fingerprint": {
+    "algorithm": "sha256",
+    "digest": "354bb5e396ec6657978ad746f090a733f23bf7e5abf741471adaf91fe2a2d1a2",
+    "file_count": 1,
+    "files": [
+      {
+        "file": "01_policy_to_endpoint_evidence.svg",
+        "sha256": "780409797c7bded1e46487ac25c6031362bd1e6389ed9e0c3608117c8c787f4e"
+      }
+    ]
+  },
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "warnings": 1,
+    "errors": 0
+  },
+  "issue_types": {},
+  "categories": {
+    "blocking": {
+      "count": 0,
+      "issues": []
+    },
+    "introduced": {
+      "count": 1,
+      "issues": [
+        {
+          "file": "01_policy_to_endpoint_evidence.svg",
+          "message": "Cannot verify root viewBox bounds for visible text with unsupported or unresolved geometry: <text> (x=91, y=347; text='awake idle下一次不需 WAKE'), <text> (x=91, y=464; text='low-power rest之後多 WA…'); use supported explicit text positioning when page fit matters"
+        }
+      ]
+    },
+    "inherited": {
+      "count": 0,
+      "issues": []
+    },
+    "source-import": {
+      "count": 0,
+      "summary": {
+        "warning_count": 0,
+        "by_code": {},
+        "samples": {}
+      }
+    }
+  },
+  "drift": {
+    "colors": {
+      "#387A56": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "#60708A": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "#876416": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "#9B3E35": [
+        "01_policy_to_endpoint_evidence.svg"
+      ]
+    },
+    "fonts": {
+      "\"Times New Roman\", DFKai-SB, serif": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "\"Times New Roman\", serif": [
+        "01_policy_to_endpoint_evidence.svg"
+      ]
+    },
+    "sizes": {
+      "17": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "26": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "42": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "54": [
+        "01_policy_to_endpoint_evidence.svg"
+      ]
+    }
+  },
+  "project_issues": {
+    "template": [],
+    "animation": [],
+    "illustration": [],
+    "communication_trace": [],
+    "pptx_structure": []
+  },
+  "files": [
+    {
+      "file": "01_policy_to_endpoint_evidence.svg",
+      "path": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/style-proofs/educate-phase0-light-pptmaster-20260811_ppt169_20260811/svg_output/01_policy_to_endpoint_evidence.svg",
+      "exists": true,
+      "errors": [],
+      "warnings": [
+        "Cannot verify root viewBox bounds for visible text with unsupported or unresolved geometry: <text> (x=91, y=347; text='awake idle下一次不需 WAKE'), <text> (x=91, y=464; text='low-power rest之後多 WA…'); use supported explicit text positioning when page fit matters"
+      ],
+      "info": {
+        "native_payload_refs": 7,
+        "viewbox": "0 0 1280 720",
+        "fonts": [
+          "\"Times New Roman\", DFKai-SB, \"標楷體\", serif",
+          "\"Times New Roman\", DFKai-SB, serif",
+          "\"Times New Roman\", serif"
+        ],
+        "text_elements": 26,
+        "tspan_elements": 3,
+        "contextual_values": {
+          "colors": [
+            "#387A56",
+            "#60708A",
+            "#876416",
+            "#9B3E35"
+          ],
+          "font_families": [
+            "\"Times New Roman\", DFKai-SB, serif",
+            "\"Times New Roman\", serif"
+          ]
+        },
+        "sparse_typography_sizes": {
+          "17": 1,
+          "26": 1,
+          "42": 1,
+          "54": 1
+        }
+      },
+      "passed": true,
+      "source_sha256": "780409797c7bded1e46487ac25c6031362bd1e6389ed9e0c3608117c8c787f4e"
+    }
+  ]
+}

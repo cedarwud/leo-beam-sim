@@ -1,0 +1,7 @@
+你是 `/home/u24/demo/leo-beam-sim` 的 C-120 presentation controller。這是 non-heavy presentation work。
+
+依 repo instructions、`docs/decisions/ADR-004-c120-course-packaged-loraenergysim-leo.md`、`docs/sdd/C120-LORA-LEO-COURSE-INTEGRATION-SDD.md` 與 `docs/handoff/C120-LORA-LEO-NEXT-CONTROLLER-2026-08-10.md`，先製作 8–10 頁 opening checkpoint，讓 owner 決定視覺與敘事後再做完整簡報。使用 pptx/presentation skill，只寫新的 `courseware/c120-lora-leo-deck/**`，保留既有 dirty WIP、Leo source、authority 與 donor。
+
+先盤點並去重 BeamShift 的 `e2.pptx` 與 114 頁版本，交付 donor 採用／附錄／淘汰表及 98–116 頁 outline。開場說清楚 LoRaEnergySim 與「智慧節能與物聯網應用」的直接關係，LEO 只是 changing-service-window 範例；每個安裝、執行與 `student_policy.py` 修改都要解釋 Do / Why / Mechanism / Expect / Interpret。
+
+Checkpoint 採深色 Leo evidence-lab、大字、一頁一個主視覺；交付 editable PPTX、speaker notes、逐頁 renders、QA 與一次修正重驗。缺少 current evidence 就放明示 placeholder，不得捏造畫面或 KPI。完成 8–10 頁後停止等待 owner；API、commands 與 browser evidence 未凍結前不做最終教學頁。除非另有明確授權，不 commit/push。

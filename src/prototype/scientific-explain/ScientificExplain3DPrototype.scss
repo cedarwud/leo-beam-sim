@@ -1,0 +1,609 @@
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-width: 1180px;
+  background: #020908;
+}
+
+.se3d-prototype,
+.se3d-prototype * {
+  box-sizing: border-box;
+}
+
+.se3d-prototype {
+  --ink: #e9f3ee;
+  --muted: #87a49d;
+  --line: rgba(105, 181, 165, 0.24);
+  --panel: rgba(5, 20, 18, 0.88);
+  --panel-deep: rgba(2, 12, 11, 0.94);
+  --service: #f5bf4f;
+  --service-bright: #ffe27d;
+  --candidate: #43cbe8;
+  --aqua: #73e6d3;
+  min-height: 100vh;
+  padding: 18px 22px 12px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 51% 44%, rgba(21, 88, 70, 0.16), transparent 35%),
+    linear-gradient(rgba(64, 148, 130, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(64, 148, 130, 0.035) 1px, transparent 1px),
+    #020908;
+  background-size: auto, 24px 24px, 24px 24px, auto;
+  font-family: "IBM Plex Sans", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  overflow-x: auto;
+}
+
+.se3d-header {
+  min-height: 96px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.se3d-header > div > p,
+.se3d-panel-heading > span,
+.se3d-narrative > p {
+  margin: 0 0 7px;
+  color: var(--aqua);
+  font: 700 11px/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: 0.16em;
+}
+
+.se3d-header h1 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+  font-size: clamp(28px, 2.35vw, 42px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: 0.025em;
+}
+
+.se3d-header > div > span {
+  display: block;
+  margin-top: 8px;
+  color: #9bb9b1;
+  font-size: 13px;
+  letter-spacing: 0.025em;
+}
+
+.se3d-header > aside {
+  min-width: 220px;
+  padding: 13px 16px 12px;
+  border: 1px solid rgba(245, 191, 79, 0.64);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(67, 45, 11, 0.72), rgba(24, 19, 8, 0.82));
+  box-shadow: inset 0 1px rgba(255, 235, 167, 0.08), 0 16px 38px rgba(0, 0, 0, 0.18);
+}
+
+.se3d-header > aside strong,
+.se3d-header > aside span,
+.se3d-header > aside small {
+  display: block;
+}
+
+.se3d-header > aside strong {
+  color: var(--service-bright);
+  font: 700 10px/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: 0.13em;
+}
+
+.se3d-header > aside span {
+  margin-top: 4px;
+  color: #fff2c7;
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.se3d-header > aside small {
+  margin-top: 3px;
+  color: #bba86f;
+  font-size: 11px;
+}
+
+.se3d-stepper {
+  width: min(760px, 62vw);
+  margin: 2px auto 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.se3d-stepper button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: #91b4ac;
+  background: rgba(5, 21, 18, 0.72);
+  font: 650 14px/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+  letter-spacing: 0.025em;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.se3d-stepper button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(115, 230, 211, 0.45);
+  color: #cbe7df;
+}
+
+.se3d-stepper button span {
+  margin-right: 9px;
+  color: #628b82;
+  font: 700 10px/1 "IBM Plex Mono", monospace;
+}
+
+.se3d-stepper button.is-active {
+  border-color: rgba(245, 191, 79, 0.85);
+  color: #fff0bd;
+  background: linear-gradient(180deg, rgba(77, 54, 15, 0.74), rgba(35, 27, 11, 0.72));
+  box-shadow: inset 0 -2px 0 var(--service);
+}
+
+.se3d-stepper button.is-active span {
+  color: var(--service);
+}
+
+.se3d-workspace {
+  min-height: 660px;
+  height: calc(100vh - 188px);
+  display: grid;
+  grid-template-columns: 248px minmax(610px, 1fr) 278px;
+  gap: 12px;
+}
+
+.se3d-panel,
+.se3d-stage {
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--panel);
+  box-shadow: inset 0 1px rgba(171, 238, 225, 0.025), 0 22px 80px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.se3d-panel {
+  padding: 20px;
+}
+
+.se3d-panel-heading {
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(105, 181, 165, 0.22);
+}
+
+.se3d-panel-heading h2,
+.se3d-narrative h2 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+}
+
+.se3d-panel-heading h2 {
+  font-size: 20px;
+}
+
+.se3d-panel-heading p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.se3d-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.se3d-control {
+  display: block;
+  padding: 13px 12px 12px;
+  border: 1px solid rgba(87, 145, 133, 0.1);
+  border-radius: 13px;
+  background: rgba(11, 35, 31, 0.58);
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.se3d-control.is-emphasized {
+  border-color: rgba(245, 191, 79, 0.6);
+  background: linear-gradient(135deg, rgba(74, 52, 14, 0.62), rgba(15, 38, 32, 0.58));
+  box-shadow: inset 0 0 24px rgba(245, 191, 79, 0.035);
+}
+
+.se3d-control__heading {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.se3d-control__heading b {
+  color: #e9f2ee;
+  font-size: 12px;
+}
+
+.se3d-control__heading i {
+  color: #9ce0d3;
+  font-family: "Times New Roman", serif;
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.se3d-control__heading output {
+  justify-self: end;
+  color: var(--service-bright);
+  font: 700 12px/1.2 "IBM Plex Mono", monospace;
+}
+
+.se3d-control input[type="range"] {
+  width: 100%;
+  height: 5px;
+  margin: 16px 0 9px;
+  border-radius: 999px;
+  accent-color: var(--service);
+  cursor: pointer;
+}
+
+.se3d-control small {
+  display: block;
+  color: #72958d;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.se3d-reset {
+  min-height: 42px;
+  margin-top: auto;
+  border: 1px solid rgba(115, 230, 211, 0.42);
+  border-radius: 10px;
+  color: #c7ece4;
+  background: rgba(3, 16, 14, 0.55);
+  font: 600 13px/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+  cursor: pointer;
+}
+
+.se3d-reset:hover {
+  border-color: var(--aqua);
+  background: rgba(17, 60, 52, 0.48);
+}
+
+.se3d-stage {
+  position: relative;
+  background: #04100f;
+}
+
+.se3d-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(2, 9, 8, 0.82), transparent 24%, transparent 72%, rgba(2, 9, 8, 0.88)),
+    radial-gradient(circle at 50% 51%, transparent 42%, rgba(0, 0, 0, 0.25));
+}
+
+.se3d-narrative {
+  position: absolute;
+  z-index: 4;
+  top: 18px;
+  left: 22px;
+  width: min(480px, 60%);
+  pointer-events: none;
+}
+
+.se3d-narrative h2 {
+  font-size: clamp(20px, 1.65vw, 28px);
+}
+
+.se3d-narrative > span {
+  display: block;
+  margin-top: 8px;
+  color: #9ab6af;
+  font-size: 11px;
+  line-height: 1.58;
+}
+
+.se3d-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.se3d-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+}
+
+.se3d-world-label,
+.se3d-angle-label {
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.se3d-world-label span {
+  display: block;
+  padding: 4px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  color: #f7fff9;
+  background: rgba(2, 11, 10, 0.82);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.35);
+  font: 700 10px/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+  letter-spacing: 0.05em;
+}
+
+.se3d-world-label--ue span {
+  border-color: var(--service);
+  color: #fff0b7;
+}
+
+.se3d-angle-label {
+  display: grid;
+  gap: 2px;
+  color: #fff2bb;
+  text-align: left;
+  text-shadow: 0 2px 10px #000;
+}
+
+.se3d-angle-label strong {
+  font: 700 12px/1 "IBM Plex Mono", monospace;
+}
+
+.se3d-angle-label small {
+  color: #a38e54;
+  font-size: 9px;
+}
+
+.se3d-scene-key {
+  position: absolute;
+  z-index: 5;
+  top: 20px;
+  right: 20px;
+  display: grid;
+  gap: 7px;
+  padding: 9px 11px;
+  border: 1px solid rgba(98, 171, 156, 0.18);
+  border-radius: 9px;
+  background: rgba(2, 11, 10, 0.62);
+  backdrop-filter: blur(8px);
+}
+
+.se3d-scene-key span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #92aaa4;
+  font-size: 9px;
+}
+
+.se3d-scene-key i {
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.se3d-scene-key i.service { background: var(--service); }
+.se3d-scene-key i.candidate { background: var(--candidate); }
+.se3d-scene-key i.boresight { background: repeating-linear-gradient(90deg, #bca357 0 4px, transparent 4px 7px); }
+
+.se3d-causal {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 18px;
+  width: min(600px, calc(100% - 34px));
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(4, auto 13px) auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.se3d-causal > div {
+  min-width: 78px;
+  padding: 7px 8px;
+  border: 1px solid rgba(92, 158, 144, 0.3);
+  border-radius: 9px;
+  background: rgba(3, 17, 15, 0.88);
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
+.se3d-causal > div.is-active {
+  border-color: rgba(245, 191, 79, 0.78);
+  background: rgba(66, 46, 12, 0.88);
+}
+
+.se3d-causal span,
+.se3d-causal strong {
+  display: block;
+}
+
+.se3d-causal span {
+  color: #83a69e;
+  font: 500 9px/1.1 "Times New Roman", serif;
+}
+
+.se3d-causal strong {
+  margin-top: 3px;
+  color: #f2f7f4;
+  font: 700 10px/1.2 "IBM Plex Mono", monospace;
+}
+
+.se3d-causal > i {
+  color: #6aa898;
+  font-style: normal;
+  font-size: 13px;
+}
+
+.se3d-results {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(93, 151, 139, 0.55) transparent;
+}
+
+.se3d-status {
+  margin: 13px 0 12px;
+  padding: 11px 12px;
+  border: 1px solid;
+  border-radius: 12px;
+}
+
+.se3d-status span,
+.se3d-status strong,
+.se3d-status small {
+  display: block;
+}
+
+.se3d-status span {
+  font: 700 9px/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: 0.12em;
+}
+
+.se3d-status strong {
+  margin-top: 3px;
+  font-size: 17px;
+}
+
+.se3d-status small {
+  margin-top: 3px;
+  font-size: 10px;
+}
+
+.se3d-status.is-reachable {
+  border-color: rgba(73, 207, 157, 0.65);
+  color: #c4ffe1;
+  background: rgba(14, 65, 48, 0.48);
+}
+
+.se3d-status.is-limited {
+  border-color: rgba(238, 115, 68, 0.65);
+  color: #ffd1bd;
+  background: rgba(85, 35, 20, 0.52);
+}
+
+.se3d-ledger {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.se3d-ledger > div {
+  min-height: 72px;
+  padding: 9px 10px;
+  border: 1px solid rgba(93, 151, 139, 0.24);
+  border-radius: 10px;
+  background: rgba(7, 26, 23, 0.62);
+}
+
+.se3d-ledger dt,
+.se3d-ledger dd,
+.se3d-ledger small {
+  display: block;
+  margin: 0;
+}
+
+.se3d-ledger dt {
+  color: #779a92;
+  font-size: 9px;
+}
+
+.se3d-ledger dd {
+  margin-top: 4px;
+  color: #edf8f4;
+  font: 700 12px/1.2 "IBM Plex Mono", monospace;
+}
+
+.se3d-ledger small {
+  margin-top: 5px;
+  color: #61867e;
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.se3d-ee {
+  margin-top: 10px;
+  padding: 12px 13px;
+  border: 1px solid rgba(245, 191, 79, 0.38);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(60, 46, 14, 0.62), rgba(22, 25, 16, 0.62));
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.se3d-ee.is-emphasized {
+  border-color: var(--service);
+  box-shadow: 0 0 24px rgba(245, 191, 79, 0.12);
+}
+
+.se3d-ee > span {
+  display: block;
+  color: #bca45f;
+  font-size: 9px;
+}
+
+.se3d-ee > strong {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--service-bright);
+  font-family: "Iowan Old Style", Georgia, serif;
+  font-size: 30px;
+  font-weight: 500;
+}
+
+.se3d-ee > em {
+  margin-left: 6px;
+  color: #d6c37e;
+  font: 500 10px/1 "IBM Plex Mono", monospace;
+}
+
+.se3d-ee > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+  color: #a89b6b;
+  font: 500 9px/1.2 "IBM Plex Mono", monospace;
+}
+
+.se3d-ee > div i { font-style: normal; color: #6d775f; }
+
+.se3d-footer {
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #607f78;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+
+.se3d-footer strong {
+  color: #b7832c;
+  font: 700 9px/1 "IBM Plex Mono", monospace;
+  letter-spacing: 0.12em;
+}
+
+@media (max-height: 820px) {
+  .se3d-workspace { min-height: 600px; }
+  .se3d-control { padding-top: 10px; padding-bottom: 9px; }
+  .se3d-control input[type="range"] { margin-top: 12px; }
+  .se3d-ledger > div { min-height: 65px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .se3d-stepper button,
+  .se3d-control,
+  .se3d-ee {
+    transition: none;
+  }
+}

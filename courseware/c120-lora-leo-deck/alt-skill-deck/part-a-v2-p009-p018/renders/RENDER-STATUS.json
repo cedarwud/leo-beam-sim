@@ -1,0 +1,6 @@
+{
+  "status": "DEFERRED",
+  "reason": "No LibreOffice, soffice, unoconv, or other installed PPTX renderer was discovered on the server.",
+  "required_follow_up": "Render every page at original proportion and complete fresh-eyes visual inspection in the controller environment.",
+  "microsoft_powerpoint_reopen": "DEFERRED to the controller environment"
+}

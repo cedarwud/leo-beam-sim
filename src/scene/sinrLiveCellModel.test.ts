@@ -489,6 +489,30 @@ check('beam-hopping cap: one satellite lights at most the runtime-wired beamsPer
   assert(litCellsBySat <= SINR_LIVE_BEAMS_PER_SAT, `sat A lights ≤ ${SINR_LIVE_BEAMS_PER_SAT} cells (got ${litCellsBySat})`);
 });
 
+check('per-satellite beam budgets change the illuminated central field independently', () => {
+  const layout = testLayout(19);
+  const model = new SinrLiveCellModel({
+    profile,
+    cellLayout: layout,
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    beamsPerSat: SINR_LIVE_BEAMS_PER_SAT,
+    beamsPerSatById: { A: 1, B: 19 },
+    hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
+  });
+  const satA = makeSat({ id: 'A', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const satB = makeSat({ id: 'B', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const frame = model.step({ visibleSats: [satA, satB], ues: [], simTimeSec: 0, dtSec: 1 });
+  const illuminatedBySat = (satId: string) => frame.illuminatedBeams.filter(beam => beam.satId === satId).length;
+
+  assertEqual(illuminatedBySat('A'), 1, 'serving-role satellite override lights one beam');
+  assertEqual(illuminatedBySat('B'), 19, 'candidate-role satellite override lights nineteen beams');
+  assert(
+    illuminatedBySat('B') > illuminatedBySat('A'),
+    'the central illuminated field reflects the independent role budgets',
+  );
+});
+
 check('no cap by default (beamsPerSat = Infinity) → the overhead sat lights more cells than the cap', () => {
   const layout = testLayout(19);
   const m = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });

@@ -1,0 +1,382 @@
+[
+  {
+    "page": 71,
+    "title": "Setup 分支：回到主路徑",
+    "body": "正常路徑｜安裝 → 檢查 → READY receipt\n受阻訊號｜沒有 receipt，或只剩不可讀錯誤\n環境邊界｜隔離環境與鎖定套件保護 runner、scenario、policy\n恢復路徑｜同 scenario fallback；source_mode=fallback\n回到主線｜anchor → labs；不把安裝等待當節能證據\nEVIDENCE PLACEHOLDER｜啟動指令、receipt、artifact 尚未凍結",
+    "notes": "這一頁說明 setup 如何回到主路徑，不是冷啟動已通過的證明。正常路徑要留下 READY receipt；若環境只留下不可讀錯誤，就使用同 scenario fallback，並保留 source_mode 與 provenance。請引導學員先說出正常與恢復兩條路徑的共同 identity，再看現行收據。切換 fallback 是保持課程因果鏈的 recovery，不是 runner、live 或 canonical parity 的通過。",
+    "authority": "Authority｜ADR-004 §Course-authority amendment；SDD §4.1；owner direction 2026-08-11",
+    "state": "PLACEHOLDER",
+    "purpose": "說明 setup 正常路徑與同場景恢復路徑",
+    "action_contract": false
+  },
+  {
+    "page": 72,
+    "title": "確認釋出根目錄",
+    "body": "視覺：必需檔案｜混入檔案兩欄\nDO｜開啟 release root 與資料夾清單；路徑＝EVIDENCE PLACEHOLDER\nWHY｜先確認 reviewed package，避免把移動分支當成課程版本\nMECHANISM｜README、setup、lock、student_policy.py、runner、schemas 綁定同一 package identity\nEXPECT｜缺檔或混檔能被標記；完整清單＝EVIDENCE PLACEHOLDER\nINTERPRET｜不符合就回到 named release archive；不自行補檔或換 branch",
+    "notes": "把根目錄當成第一個 provenance 檢查，而不是檔案尋寶。SDD 的課程套件包含說明、跨作業系統 setup、鎖定依賴、policy、runner 與 schemas；這些角色要來自同一個 reviewed release。不要在課堂中補上看似相近的檔案，也不要把任意 branch 當成釋出版本。真正路徑與檔名尚未由 controller freeze，因此畫面必須保留 placeholder；缺檔時回到 named archive，並在 workbook 留下 recovery provenance。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §3.1、§5.2；action-code-explanation-matrix.md ACT-01",
+    "state": "PLACEHOLDER",
+    "purpose": "釋出完整性檢查",
+    "action_contract": true
+  },
+  {
+    "page": 73,
+    "title": "診斷環境與 lock",
+    "body": "視覺：環境 → lock → receipt 三段\nDO｜讀取 setup/verify 的失敗收據；目前收據＝EVIDENCE PLACEHOLDER\nWHY｜分辨作業環境故障與 energy result，避免錯把安裝狀態當實驗結果\nMECHANISM｜.venv 隔離 interpreter；hash-pinned lock 限定 dependency graph\nEXPECT｜錯誤定位到環境或 lock stage；實際欄位＝EVIDENCE PLACEHOLDER\nINTERPRET｜先依診斷或同 scenario fallback recovery；不得移除 pin",
+    "notes": "請先把故障放回它所屬的層次：環境、依賴 lock，或後續 runner。setup 失敗不是功率、能量或服務結果，也不應用來比較 policy。隔離 interpreter 的目的，是避免系統 Python 或另一個專案的套件污染課程 runner；hash-pinned lock 的目的，是保留 reviewed dependency graph。現行錯誤欄位與 hash 尚未凍結，不能填入猜測值；移除 pin 會破壞可追溯性，應改走診斷或同 scenario fallback。",
+    "authority": "Authority｜ADR-004 §Course-authority amendment；SDD §4.1、§5.3；action-code-explanation-matrix.md ACT-02、ACT-03",
+    "state": "PLACEHOLDER",
+    "purpose": "環境故障分層",
+    "action_contract": true
+  },
+  {
+    "page": 74,
+    "title": "讀一則 setup 錯誤",
+    "body": "視覺：error → meaning → smallest recovery\nDO｜挑一張可讀錯誤 receipt；原文＝EVIDENCE PLACEHOLDER\nWHY｜只修復阻塞 gate，不擴大到 framework debugging\nMECHANISM｜把錯誤詞對到 Python、lock、path 或 permission 類別\nEXPECT｜形成一個最小 recovery step；現行 error evidence＝EVIDENCE PLACEHOLDER\nINTERPRET｜若分類不明，保留 placeholder 並切 fallback；不假定 root cause",
+    "notes": "這一頁教的是錯誤閱讀的範圍控制。請讓學員指出錯誤發生在 runner 尚未開始之前，並用一個類別描述它；不要把課堂變成框架除錯課。最小 recovery step 可以是重新使用支援的啟動方式、確認釋出根目錄，或切到同 scenario artifact，但具體命令仍等待 release evidence。錯誤證據未凍結前不能寫出實際 traceback；若分類不明，保留不確定性並轉入 fallback。",
+    "authority": "Authority｜SDD §4.1；action-code-explanation-matrix.md ACT-04；ADR-004 §Decision",
+    "state": "PLACEHOLDER",
+    "purpose": "setup 錯誤閱讀",
+    "action_contract": true
+  },
+  {
+    "page": 75,
+    "title": "匯入同 scenario fallback",
+    "body": "視覺：runner（未通過）→ 同 scenario fixture（可繼續）\n匯入｜pinned fallback artifact；artifact ID＝EVIDENCE PLACEHOLDER\n目的｜保留完整課程因果鏈與相同學習問題\nidentity｜同一 scenario_id、後續 policy/replay；source_mode=fallback\n預期｜Leo 顯示可追溯 fallback provenance；receipt＝EVIDENCE PLACEHOLDER\n判讀｜fallback 是 recovery path，不是 runner 或 live/backend 證據",
+    "notes": "fallback 的關鍵是同一 scenario identity，而不是一張看起來相似的預設畫面。issue 11 要求後續 labs 消費學員產生的 scenario_id；若走 identical fallback，workbook 與全畫面都要標 source_mode=fallback。ADR-004 將 fixture 保留為 mandatory classroom recovery，且不把它冒充成 live backend。artifact ID、import receipt 與實際畫面目前都未凍結，請保留 placeholder 並讓 provenance 可在 reopen 時追溯。",
+    "authority": "Authority｜issue 11 §scenario_id 與 fallback；ADR-004 §Decision；SDD §4.1",
+    "state": "PLACEHOLDER",
+    "purpose": "同場景課程復原",
+    "action_contract": false
+  },
+  {
+    "page": 76,
+    "title": "Python 復原：縮排",
+    "body": "視覺：縮排階梯｜condition → action → return\nDO｜只修復標記區的縮排；釋出片段＝EVIDENCE PLACEHOLDER\nWHY｜讓合法分支真正回到 policy API，不改 runner 或公式\nMECHANISM｜Python block structure 決定條件、動作與 return 是否屬同一路徑\nEXPECT｜verify/run 指向同一 marked error；released line＝EVIDENCE PLACEHOLDER\nINTERPRET｜修復後才比較結果；若 syntax 仍紅，回到該行，不改其他區",
+    "notes": "這不是要求學員重寫 Python，而是把一個標記區的結構讀清楚。用縮排階梯說明條件、合法 action 與 return 必須在預期 block 內；不要在頁面上偽造釋出行號或實際程式片段。修復目標是恢復 policy API 的可執行路徑，並讓後續 runner event 能被觀察，不是更動科學公式或 upstream engine。若 syntax gate 仍紅，回到同一標記區；不要藉機修改其他區域。",
+    "authority": "Authority｜ADR-004 §Course-authority amendment；SDD §2.2；action-code-explanation-matrix.md ACT-09",
+    "state": "PLACEHOLDER",
+    "purpose": "限定程式修復",
+    "action_contract": true
+  },
+  {
+    "page": 77,
+    "title": "比較式與合法 action",
+    "body": "視覺：syntax split｜comparison → legal action\nDO｜讀 marked comparison 與 legal-action API；released text＝EVIDENCE PLACEHOLDER\nWHY｜語法正確不代表動作合法或能完成服務\nMECHANISM｜comparison 只看允許 observation；return 只發送 API 允許 action\nEXPECT｜非法 action 或版本差異由 receipt 指出；exact API＝EVIDENCE PLACEHOLDER\nINTERPRET｜先分 syntax／semantics；不可藉「能執行」宣稱公平或節能",
+    "notes": "請把 syntax 與 semantics 分成兩個判斷。比較式要使用當下允許的 observation，return 則只能選擇 pinned API 允許的 action；兩者都不能偷看未來結果或改寫 runner。實際 API 名稱、released text 與錯誤訊息尚未凍結，所以頁面只保留 EVIDENCE PLACEHOLDER。即使程式能執行，也只代表某個操作 gate 可能通過，不能直接推出公平比較或節能結果。",
+    "authority": "Authority｜SDD §2.2、§5.3；action-code-explanation-matrix.md ACT-06、ACT-09",
+    "state": "PLACEHOLDER",
+    "purpose": "語法與語義分離",
+    "action_contract": true
+  },
+  {
+    "page": 78,
+    "title": "只讀 traceback 標記區",
+    "body": "視覺：traceback → line pointer → marked block\nDO｜只讀標記的 traceback 行；實際 traceback＝EVIDENCE PLACEHOLDER\nWHY｜定位最小的 learner-owned issue，不把課程變成 framework debugging\nMECHANISM｜line pointer 對回 policy contract 與預期 action path\nEXPECT｜只產生一個 repair target；行號與錯誤文字＝EVIDENCE PLACEHOLDER\nINTERPRET｜若錯誤超出標記面，停止修改並用 fallback／講師 recovery",
+    "notes": "traceback 閱讀的目的，是找到最小可控的修復點，而不是追查整個 framework。先找標記行，再將它對回 policy contract；不要從模糊的錯誤文字臆測行號。現行 traceback、line pointer 與 error message 都是未凍結證據，必須原樣以 placeholder 佔位。若錯誤不屬於標記面，保護來源與 workbook，改用講師 recovery 或同 scenario fixture。",
+    "authority": "Authority｜SDD §2.2、§4.1；action-code-explanation-matrix.md ACT-06、ACT-09",
+    "state": "PLACEHOLDER",
+    "purpose": "traceback 範圍控制",
+    "action_contract": true
+  },
+  {
+    "page": 79,
+    "title": "修一行，接回機制",
+    "body": "視覺：one-line diff → policy action → evidence\nDO｜修改一個標記行並執行驗證；code／receipt＝EVIDENCE PLACEHOLDER\nWHY｜恢復 policy → action → evidence 的可追溯因果鏈\nMECHANISM｜單一 edit 改變 policy branch，再由 runner 留下事件與結果\nEXPECT｜出現小 diff、policy identity 與 consequential evidence；result＝EVIDENCE PLACEHOLDER\nINTERPRET｜null diff 代表 fixture gate 失敗，不代表成功；回到受影響 lab debrief",
+    "notes": "這一頁把程式修復重新接到課程的因果要求。學員只改一個標記行，然後確認 policy identity、runner event 與結果 artifact 是否仍能連起來；不要用畫面變色代替 consequential evidence。實際 code、receipt、hash 與 result 仍待 release freeze，因此畫面不能發明它們。若下游 queue、packet、state、service 或 endpoint energy 沒有變化，應判定 fixture gate 未成立，回到 lab debrief 或 recovery，而不是宣布成功。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §2.1、§4；action-code-explanation-matrix.md ACT-09、ACT-10A",
+    "state": "PLACEHOLDER",
+    "purpose": "修復後因果連接",
+    "action_contract": true
+  },
+  {
+    "page": 80,
+    "title": "快速分支：凍結 policy",
+    "body": "視覺：policy bytes → freeze receipt → withheld case\nDO｜凍結目前 accepted policy；freeze receipt＝EVIDENCE PLACEHOLDER\nWHY｜保護 withheld comparison 的公平性，不在看到新 trace 後調參\nMECHANISM｜policy bytes、scenario identity 與 receipt 綁定同一 replay\nEXPECT｜產生可重開的 frozen identity；schema／hash＝EVIDENCE PLACEHOLDER\nINTERPRET｜凍結後 bytes 改變即不算同一 policy；復原檔案與 receipt 或切 fallback",
+    "notes": "freeze 是 Lab B 或快速分支進入 withheld case 前的公平性閘門。先把 policy bytes、scenario identity 與 receipt 綁在一起，再看新 trace；這樣 counterexample 才能說明機制，而不是反映事後調參。精確 freeze schema、hash preimage、artifact ID 都由 controller freeze 後才能放入教材。若凍結後檔案被改動，必須回復同一檔案與 receipt，或重新走同 scenario recovery；不能把新 policy 冒充 frozen policy。",
+    "authority": "Authority｜issue 11 §Lab B；ADR-004 §Decision；action-code-explanation-matrix.md ACT-10B、ACT-12B",
+    "state": "PLACEHOLDER",
+    "purpose": "公平 withheld 閘門",
+    "action_contract": true
+  },
+  {
+    "page": 81,
+    "title": "預測公平 counterexample",
+    "body": "視覺：同一 policy｜新 trace｜同 boundary\n提出｜先預測 service、state time、endpoint J、delivered bits 的可能方向\n條件｜只改明示 trace／opportunity，不改 policy、job、window、boundary\n機制｜counterexample 測試 policy 是否依賴單一品質趨勢\n證據｜實際 trace／result＝EVIDENCE PLACEHOLDER\n判讀｜這是可被 withheld case 推翻的假說，不是 KPI 保證",
+    "notes": "快速分支不是多一個任意 slider，而是對同一 policy 提供一個公平的新條件。先固定 job、window、boundary 與 policy，再預測 opportunity 或 quality trace 改變時，service、state time、endpoint J、delivered bits 可能怎樣走。這些方向是待檢驗假說，不是保證的 KPI。實際 trace 與 result 未凍結時只顯示 placeholder；下一頁才執行 frozen policy replay。",
+    "authority": "Authority｜issue 11 §Fast learner branch、§Lab B；SDD §4.2",
+    "state": "AUTHORITY",
+    "purpose": "公平反例預測",
+    "action_contract": false
+  },
+  {
+    "page": 82,
+    "title": "不重調，直接跑新 case",
+    "body": "視覺：freeze receipt → withheld case → replay\nDO｜用 frozen policy 跑新 case；command／result＝EVIDENCE PLACEHOLDER\nWHY｜測試公平泛化，不把 withheld evidence 偷換成再調參\nMECHANISM｜固定 policy bytes，只有明示 scenario sub-trace 改變\nEXPECT｜保留 policy identity 並產生可比較 service／state／energy evidence；artifact＝EVIDENCE PLACEHOLDER\nINTERPRET｜若 ranking 變化，回到條件／機制解釋；不稱全面最佳",
+    "notes": "本頁的操作前提是上一頁的 freeze receipt 已存在。學員不修改 policy，只對明示的 withheld sub-trace 執行 replay；因此觀察到的變化可以回到 opportunity、queue、state 或服務條件。命令、case name、artifact 與結果目前都未 release-freeze，不能在教材中虛構。若 ranking 改變，描述「在此條件下」的機制；不要將單一 withheld verdict 擴大成全面最佳。",
+    "authority": "Authority｜issue 11 §Lab B、§Fast learner branch；action-code-explanation-matrix.md ACT-12B",
+    "state": "PLACEHOLDER",
+    "purpose": "固定 policy 的新案例",
+    "action_contract": true
+  },
+  {
+    "page": 83,
+    "title": "反思排名為何改變",
+    "body": "視覺：evidence ledger 四格\n問題｜何者改變：opportunity、queue、state time、service boundary？\n假說｜policy mechanism 應造成哪一條 causal link？\n證據｜baseline／candidate／withheld IDs 與數值＝EVIDENCE PLACEHOLDER\n判讀｜ranking changed ≠ regression；ranking held ≠ universal winner\n回點｜把一句機制解釋帶回受影響 lab；無 artifact 不宣稱結果",
+    "notes": "debrief 要把排名變化拆成可觀察的條件，而不是只問誰比較高。讓學員在 ledger 中標出 opportunity、queue、state time 或 service boundary 的差異，並說出 policy mechanism 期待改變哪條 causal link。baseline、candidate、withheld 的 ID 與數值仍是未凍結證據，所以這頁提供判讀框架而不提供答案。排名改變可能是公平反例；排名不變也不代表 policy 在所有條件都最好。",
+    "authority": "Authority｜issue 11 §Evidence and claim boundary、§Lab B；donor-inventory-dedup.md 36–39 概念重寫",
+    "state": "AUTHORITY",
+    "purpose": "反例因果解釋",
+    "action_contract": false
+  },
+  {
+    "page": 84,
+    "title": "Leo 匯入失敗：先看邊界",
+    "body": "視覺：schema → identity → units → provenance → import\nDO｜讀取 fail-closed receipt；current UI／error＝EVIDENCE PLACEHOLDER\nWHY｜防止不相干 scenario、單位或來源靜默進入 session\nMECHANISM｜比對 schema version、scenario_id、seed、policy hash、units、provenance\nEXPECT｜全有或全無 receipt；失敗時 session 不變；actual receipt＝EVIDENCE PLACEHOLDER\nINTERPRET｜修復 named artifact 或切同 scenario fallback；不得把 endpoint 值改填 system 欄",
+    "notes": "Leo importer 的核心行為是 fail closed：不相容 artifact 不應部分寫入 session。依 ADR-004／SDD，至少要保護 schema、scenario identity、seed、policy hash、units 與 provenance；這些欄位的實際名稱與 receipt 等待 contract freeze。請強調 endpoint replay 是自己的 evidence layer，不能把 endpoint energy 靜默改填既有 Leo/system consumed J。匯入失敗時 session 保持不變，修復命名 artifact 或切同 scenario fallback。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §2.1、§5.1；action-code-explanation-matrix.md ACT-11",
+    "state": "PLACEHOLDER",
+    "purpose": "匯入失敗復原",
+    "action_contract": true
+  },
+  {
+    "page": 85,
+    "title": "用 rendered artifact 繼續",
+    "body": "視覺：offline evidence packet → workbook checkpoint\nDO｜打開 rendered artifact evidence packet；目前 packet＝EVIDENCE PLACEHOLDER\nWHY｜runtime blocked 時維持 evidence clinic 的觀察，不捏造 browser PASS\nMECHANISM｜packet identity／source_mode 與 workbook checkpoint 綁定；不執行新 run\nEXPECT｜可讀 queue／packet／state／energy records；現行欄位＝EVIDENCE PLACEHOLDER\nINTERPRET｜offline packet 只支援 bounded discussion；未解 mismatch 路由至 fallback",
+    "notes": "離線 artifact packet 是「繼續學習」的證據包，不是把缺失的 runtime 或 browser evidence 藏起來。學員可讀已產出的 queue、packet、state、energy records，並把它們和 workbook checkpoint 綁定；此頁不執行新的 policy 或 run。packet path、receipt、browser pixels 與欄位尚未凍結，因此只能標示 placeholder。若 packet identity 或 source mode 不一致，停止使用並回到同 scenario fallback。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §4.1、§5.1；CURRENT-C120-HANDOFF.md §Remaining unknowns",
+    "state": "PLACEHOLDER",
+    "purpose": "離線證據復原",
+    "action_contract": true
+  },
+  {
+    "page": 86,
+    "title": "重建 queue 到 energy",
+    "body": "視覺：queue → policy action → radio state → endpoint J\nDO｜用 workbook／packet receipt 排回 queue→action→state→energy\nWHY｜恢復因果順序，避免只記一個最後數字\nMECHANISM｜每一箭頭對應事件、時間、packet outcome 或 energy field\nEXPECT｜每個箭頭都有 identity／unit evidence；current IDs＝EVIDENCE PLACEHOLDER\nINTERPRET｜缺任何欄位就停在 fail-closed；回到 lab debrief 或同 scenario fallback",
+    "notes": "復原時不要從最後的 J 值倒推故事；請沿著 queue、policy action、radio state、endpoint energy 的時間順序重建。每一條箭頭都需要對應事件、時間、packet outcome 或 energy field，並保留 scenario identity 與 units。若資料缺欄或 provenance 斷裂，不能以合理想像補足；停在 fail-closed，回到受影響 lab 或 fallback。這頁可作為 recovery reset 的口頭一句話骨架。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §2.1、§5.1；issue 11 §Recovery reset",
+    "state": "PLACEHOLDER",
+    "purpose": "因果鏈復原",
+    "action_contract": true
+  },
+  {
+    "page": 87,
+    "title": "低 W 不等於低 J",
+    "body": "視覺：低峰值／短時間 ↔ 低功率／長時間的 power-time area\n區分｜W 是瞬時功率；J 是 time-window 累積能量\nLaTeX：J = \\sum_t P(t)\\Delta t\n問題｜只看低 W 能否判定低 J？還要看 service、deadline、boundary\n證據｜實際 P(t)、J、服務資料＝EVIDENCE PLACEHOLDER\n邊界｜DONOR-REWRITE：只取 W/J 概念；不沿用 donor KPI 或場景",
+    "notes": "這是從 donor W/J 概念重寫的 deepening，不是搬用舊數值或舊場景。用兩個 power-time area 讓學員看到低峰值但很久，可能累積更多 J；相反地，短暫高峰也要放回 service 與 deadline 檢查。公式只表達累積關係，不提供本課的實測或模擬數字。比較時固定 job、window、boundary；現行 P(t)、J 與服務 artifact 尚未凍結，請保留 placeholder。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md 14、16/17；Authority｜issue 11 §Accepted decision、§Evidence and claim boundary",
+    "state": "DONOR-REWRITE",
+    "purpose": "功率與能量辨識",
+    "action_contract": false
+  },
+  {
+    "page": 88,
+    "title": "先定 service boundary",
+    "body": "視覺：合格 service gate → energy ledger → bit/J\n先問｜同一 job、time window、energy boundary 是否固定？\nLaTeX：EE_{\\mathrm{endpoint}} = \\frac{\\mathrm{unique\\ delivered\\ bits}}{J_{\\mathrm{endpoint}}}\nLaTeX：EE_{\\mathrm{canonical}} = \\frac{\\mathrm{unique\\ delivered\\ bits}}{J_{\\mathrm{system}}}\n分欄｜service_pass、freshness、deadline、J、delivered bits、bit/J 不互換\n判讀｜少做服務不算節能；endpoint bit/J 不得稱 canonical bit/J",
+    "notes": "此頁採用 donor 的 service gate 論證，但完全按 current C-120 authority 重寫。先固定工作、時間窗與 energy boundary，再把 endpoint ratio 與 system canonical ratio 分開：兩者的分子都使用 unique delivered bits，但分母分別是 endpoint J 與 system consumed J。service_pass、freshness、deadline、J 與 delivered bits 是分開的服務、限制與證據欄位。公式是可編輯的 raw LaTeX 語義提示，不代表本課已取得 KPI。若少做服務而 bit/J 看似上升，不能稱節能；endpoint bit/J 也不可稱 canonical bit/J。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md 19–21；Authority｜issue 11 §Accepted decision；ADR-004 §Decision",
+    "state": "DONOR-REWRITE",
+    "purpose": "服務閘門與 bit/J",
+    "action_contract": false
+  },
+  {
+    "page": 89,
+    "title": "兩層 energy authority",
+    "body": "視覺：endpoint replay ↔（不等同）↔ Leo／system replay\nendpoint 層｜sleep、process、TX/RX、packet、queue、endpoint energy\nsystem 層｜現有 C-120 authoritative replay 與 canonical fields\n規則｜兩層共享 scenario、clock、workbook；不把 endpoint J cast 成 system consumed J\n主張｜只能在明示 layer 與 boundary 內解讀結果\n證據｜current replay／adapter parity＝EVIDENCE PLACEHOLDER",
+    "notes": "這一頁是防止語義混用的 authority map。ADR-004 把 LoRa endpoint replay 與既有 C-120 Leo/system authoritative replay 分開；兩者可共享 scenario、clock 與 workbook，但 endpoint energy 不能自動變成 system consumed J。請要求學員先指出結果屬於哪一層，再描述 service 或 energy。adapter parity、current replay 與 browser evidence 尚未成立時，保留 placeholder，不以相似欄位宣稱等價。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §2.1；CURRENT-C120-HANDOFF.md §Binding course contract",
+    "state": "AUTHORITY",
+    "purpose": "雙層證據邊界",
+    "action_contract": false
+  },
+  {
+    "page": 90,
+    "title": "公平 baseline 與同窗口",
+    "body": "視覺：A baseline｜same job／window／boundary｜B candidate\n固定｜scenario_id、job、time window、service boundary、power model\n改動｜只改一個 policy block；其餘 provenance 保持\n觀察｜queue、packet、service、state time、J、delivered bits、bit/J 分列\n邊界｜DONOR-REWRITE：重寫 fair A/B；不引用 legacy browser screenshot\n判讀｜缺 identity／receipt 或超過一個 block，comparison 不成立",
+    "notes": "公平 A/B 是 donor 概念的 current rewrite。請把 scenario_id、job、時間窗、service boundary 與 power model 放在同一條 contract，再只改一個 policy block；其餘 provenance 保持。觀察欄要分列 queue、packet、service、state time、J、delivered bits 與 bit/J，避免用一個讀數遮住服務代價。缺 identity、receipt 或多改一個 block 時，comparison 不成立，應回到 baseline 或 recovery。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md 36–39；Authority｜issue 11 §Lab A/B；action-code-explanation-matrix.md ACT-08、ACT-09",
+    "state": "DONOR-REWRITE",
+    "purpose": "A/B 公平比較",
+    "action_contract": false
+  },
+  {
+    "page": 91,
+    "title": "把機制移到非 LEO",
+    "body": "視覺：LEO contact window → smart farm irrigation／HVAC occupancy\n抽象｜機會在時間上變動；policy 決定 send、wait、sleep、urgent\n不抽象｜場域的 service、deadline、power model 需重新定義\n操作｜把同一 mechanism token 映到一個 domain；不可搬運數值\n證據｜transfer card 與 falsifier＝EVIDENCE PLACEHOLDER\n判讀｜可移轉的是 decision structure，不是衛星 KPI 或 live claim",
+    "notes": "LEO 在本課只是清楚的 changing-opportunity 例子。轉移到智慧農場或 HVAC 時，可以保留「機會會變動、policy 選擇時機、能量與服務有取捨」這個 mechanism token，但必須重新定義場域的 service、deadline 與 power model。不要把 LEO 的數值、contact window 或 endpoint claim 直接搬過去。transfer card 與 falsifier 尚未有現行 artifact，請以 placeholder 讓學員提出可被推翻的競賽假說。",
+    "authority": "Authority｜issue 11 §Accepted decision、§Competition transfer；CURRENT-C120-HANDOFF.md §1",
+    "state": "AUTHORITY",
+    "purpose": "跨場域機制轉移",
+    "action_contract": false
+  },
+  {
+    "page": 92,
+    "title": "四種 claim 分類",
+    "body": "視覺：measured｜derived｜assumed｜simulated 四欄\nmeasured｜本課目前沒有可升級的 live／physical measurement\nderived｜由明示模型與輸入計算；需保留 lineage\nassumed｜course-added traffic／power／service boundary；必須標記\nsimulated｜teaching fixture output；不成為 measured KPI\n邊界｜DONOR-REWRITE：採分類框架，服從 current C-120 claim ceiling；不確定＝EVIDENCE PLACEHOLDER",
+    "notes": "這頁沿用 donor 的四欄分類，但把 claim ceiling 改成 current C-120 語境。measured、derived、assumed、simulated 不是品質排序，而是不同的來源與可宣稱範圍。course-added traffic、power 與 service boundary 必須標為 assumption；fixture 或 runner output 必須標為 simulated，不可升格 measured KPI。若 lineage 或分類不清，claim 留在 placeholder／INCOMPLETE，不能用漂亮畫面補強。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md 113；Authority｜issue 11 §Evidence and claim boundary；ADR-004 §Decision",
+    "state": "DONOR-REWRITE",
+    "purpose": "主張來源分類",
+    "action_contract": false
+  },
+  {
+    "page": 93,
+    "title": "LoRaEnergySim 的邊界",
+    "body": "視覺：C-120 scenario provider → endpoint model → JSON result\n可提供｜sleep、process、TX/RX 狀態、packet attempt、delivery／expiry、endpoint energy\n場景錨點｜frozen C-120 scenario anchor 由 provider 提供並驗證；runner 只回聲\n課程 wrapper｜只加入 course inputs 與 Leo JSON seam；不得合成或改名 scenario_id\n邊界｜endpoint replay 與 system replay 分層；不提供 live／canonical pass\n證據｜實際 provider／wrapper／result schema＝EVIDENCE PLACEHOLDER",
+    "notes": "LoRaEnergySim 的價值在 endpoint state、packet outcome 與 energy consequence 能連到 IoT 節能問題；它不是現成的 C-120 system energy producer。frozen C-120 scenario anchor 必須由 provider 提供並驗證，runner 只能驗證後回聲，不能合成或重新命名 scenario_id；course wrapper 只加入課程輸入與 Leo JSON seam。ADR-004 要求 endpoint replay 與 system replay 分層，且沒有 live telemetry 或 classroom pass 的自動推論。這頁的實際 provider、wrapper 與 result schema 尚未 release-freeze，請保留 placeholder。",
+    "authority": "Authority｜ADR-004 §Context、§Decision；SDD §1、§2.1",
+    "state": "AUTHORITY",
+    "purpose": "上游與課程邊界",
+    "action_contract": false
+  },
+  {
+    "page": 94,
+    "title": "上游 pin 與課程 wrapper",
+    "body": "視覺：upstream pin｜course-owned wrapper｜Leo JSON seam\n上游｜LoRaEnergySim pinned revision；精確 revision＝EVIDENCE PLACEHOLDER\nwrapper｜course-owned runner 綁定 scenario、seed、policy、result schema\n固定｜依賴、locations、run duration、serialization 凍結後才可談 reproducibility\n隔離｜Leo 以 versioned JSON 溝通，不 import／link Python modules\n證據｜pin、lock SHA、wrapper release receipt＝EVIDENCE PLACEHOLDER",
+    "notes": "這個 appendix page 要讓 provenance 的所有權一眼可見。上游 revision 與 license 屬來源；course-owned wrapper 將固定 scenario、seed、policy 與 result schema；Leo 只透過 versioned JSON 溝通，不把 upstream Python 直接 import 進 React。locations、run duration、serialization 與 lock 也要先凍結，才能討論 reproducibility。精確 revision、lock SHA 與 release receipt 尚未確認，禁止自行填值。",
+    "authority": "Authority｜ADR-004 §Decision、§Integration and licensing boundary；SDD §3.1、§5.2",
+    "state": "PLACEHOLDER",
+    "purpose": "來源與 wrapper 所有權",
+    "action_contract": false
+  },
+  {
+    "page": 95,
+    "title": "課程假設與未驗證主張",
+    "body": "視覺：upstream model｜course assumption｜LEO mapping｜result\n輸入類別｜state／packet model、traffic／energy assumptions、LEO window mapping 分欄\nassumption｜traffic、power parameter、service boundary、scenario sub-trace 都標來源\nunverified｜cold-start、browser import、fixture consequence、novice timing 仍待 gate\n禁止｜把 assumed／simulated 值寫成 measured、live、canonical\n證據｜source／version／assumption／result lineage＝EVIDENCE PLACEHOLDER",
+    "notes": "請把「上游提供什麼」和「課程新增什麼」拆開。traffic、power parameter、service boundary 與 scenario sub-trace 可能是課程假設；它們不是 upstream measurement。SDD 與 current handoff 都把 cold-start、browser import、fixture consequence、novice timing 列為尚待驗證的 gate。這頁不提供漂亮的通過數字；每個結果仍需帶 source、version、assumption 與 result lineage，否則只能降低 claim。",
+    "authority": "Authority｜ADR-004 §Costs and risks、§Required gates；SDD §2.2、§8；CURRENT-C120-HANDOFF.md §Remaining unknowns",
+    "state": "PLACEHOLDER",
+    "purpose": "假設與未知分層",
+    "action_contract": false
+  },
+  {
+    "page": 96,
+    "title": "student_policy.py 可用邊界",
+    "body": "視覺：observation（只讀）→ bounded action（可選）\nDO｜只開啟標記區與 API card；released lines／API＝EVIDENCE PLACEHOLDER\nWHY｜把 learner agency 限在可教、可審、可重播的 policy surface\nMECHANISM｜observation → legal action → runner event → result evidence\nEXPECT｜合法 action 會留下 policy／provenance；exact API＝EVIDENCE PLACEHOLDER\nINTERPRET｜future outcome、engine／schema／formula 都禁止；差異就回復 pinned policy",
+    "notes": "這張 API card 是操作邊界，不是完整 Python 教科書。學員只閱讀允許的 observation，並從 bounded action 中做選擇；不可讀 future outcome、改 upstream engine、schema 或 scientific formula。實際 released line numbers、API version 與合法 action 名稱由 controller freeze 後才可放入頁面，因此目前只用 placeholder。每個合法 action 都要能在 runner event 與結果 evidence 中被追溯，否則不算 consequential policy surface。",
+    "authority": "Authority｜ADR-004 §Course-authority amendment；SDD §2.2、§5.3；action-code-explanation-matrix.md ACT-06",
+    "state": "PLACEHOLDER",
+    "purpose": "限定 policy API",
+    "action_contract": true
+  },
+  {
+    "page": 97,
+    "title": "Scenario 到 result schema",
+    "body": "視覺：scenario package → runner → result.json\nDO｜以 fixed scenario package 供 runner；schema instance／command＝EVIDENCE PLACEHOLDER\nWHY｜同一 scenario_id 貫穿 TLE、Lab A/B/C、withheld、Leo、workbook\nMECHANISM｜scenario identity＋seed＋units＋policy hash → deterministic events → validated JSON\nEXPECT｜result 含 packet／queue／state／energy／service／provenance；實際欄位＝EVIDENCE PLACEHOLDER\nINTERPRET｜schema／identity／unit mismatch fail closed；不手動拼接結果",
+    "notes": "這頁是 contract flow：scenario package 先固定條件，runner 消費 policy，result writer 產生帶 provenance 的 JSON，Leo importer 再驗證。核心不是檔案格式本身，而是同一個 scenario_id、seed、units 與 policy hash 穿過 TLE、三個 labs、withheld、Leo 與 workbook。現行 schema instance、命令與欄位尚未凍結，不能自行命名或填入 hash。任何 mismatch 都必須 fail closed，不能靠手動拼接一個看似合理的 result。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §2.1、§3.1；action-code-explanation-matrix.md ACT-04、ACT-11",
+    "state": "PLACEHOLDER",
+    "purpose": "契約資料流",
+    "action_contract": true
+  },
+  {
+    "page": 98,
+    "title": "Fail-closed 驗證梯",
+    "body": "視覺：schema → identity → units → provenance → import\nDO｜執行 validation／import gate；current receipts／UI＝EVIDENCE PLACEHOLDER\nWHY｜防止不相干 scenario、單位或來源靜默進入 session\nMECHANISM｜比對 schema version、scenario_id、seed、policy hash、units、provenance\nEXPECT｜全有或全無 receipt；失敗時 session 不變；actual receipt＝EVIDENCE PLACEHOLDER\nINTERPRET｜修復 named artifact 或切同 scenario fallback；不得把 endpoint 值改填 system 欄",
+    "notes": "validation ladder 將資料信任拆成可教的幾個 gate。先看 schema，再看 identity、units、policy／seed 與 provenance；任何一項失敗都不能部分寫進 session。這個 fail-closed 行為同時保護 endpoint/system authority 邊界，避免把 endpoint 值轉寫成 system consumed J。現行 receipt 與 UI 尚未凍結，請在正式 release 前替換 placeholder，並保留 fallback 與 recovery provenance。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §2.1、§5.1；action-code-explanation-matrix.md ACT-11",
+    "state": "PLACEHOLDER",
+    "purpose": "嚴格匯入驗證",
+    "action_contract": true
+  },
+  {
+    "page": 99,
+    "title": "Radio state 與能量帳",
+    "body": "視覺：SLEEP → WAKE → PROCESS → TX／RX → WAIT 時間 ribbon\n區分｜WAIT 是 awake idle；SLEEP 是低功率休息並可能付 wake latency／energy\n事件｜PROCESS、TX、RX 各自留下 state time 與 packet context\nLaTeX：J_{\\mathrm{endpoint}} = \\sum_s P_s\\,\\Delta t_s + \\sum_k E_{\\mathrm{wake},k}\n邊界｜狀態能量只屬 endpoint replay；不自動等於 Leo／system consumed J\n證據｜state／energy event fields＝EVIDENCE PLACEHOLDER",
+    "notes": "這張 ribbon 讓學員把休眠、醒來、處理、傳送、接收與 awake idle 放回時間順序。WAIT 不是 SLEEP 的同義詞；WAIT 是醒著的 idle，SLEEP 可能降低功率但需要 wake latency 或 wake energy。公式把各狀態功率乘時間與每次 wake 的 lump-sum energy 一起列入帳，實際模型與欄位仍以 frozen contract 為準。所有 state energy 先標在 endpoint replay，不可自動改寫 Leo/system consumed J。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §1、§2.1；issue 11 §Lab A／Lab C",
+    "state": "AUTHORITY",
+    "purpose": "狀態與能量記帳",
+    "action_contract": false
+  },
+  {
+    "page": 100,
+    "title": "W、J、bit/s 與 bit/J",
+    "body": "視覺：W（瞬時功率）→ J（累積能量）＋ bit/s（資料率）→ unique delivered bits → bit/J\nLaTeX：J = \\sum_t P(t)\\Delta t\nLaTeX：EE_{\\mathrm{endpoint}} = \\frac{\\mathrm{unique\\ delivered\\ bits}}{J_{\\mathrm{endpoint}}}\nLaTeX：EE_{\\mathrm{canonical}} = \\frac{\\mathrm{unique\\ delivered\\ bits}}{J_{\\mathrm{system}}}\n分欄｜完成時間、service_pass、freshness、deadline、budget remaining 不互換\n判讀｜同 job／window／boundary 下才可比較；endpoint bit/J 不得稱 canonical bit/J",
+    "notes": "這一頁把 donor 的 W/J 與吞吐概念去重後放進同一條 unit ladder。W 是瞬時功率，J 是時間累積能量；bit/s 是資料率，unique delivered bits 是服務量。endpoint bit/J 使用 endpoint J，system canonical bit/J 使用 system consumed J，兩者不可互稱。完成時間、service_pass、freshness、deadline 與 budget remaining 仍是不同欄位，不能拿來互換。公式是語義視覺，不是新 metric；若 job、window 或 boundary 不同，先降低 claim。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md 14、16/17；Authority｜issue 11 §Accepted decision；SDD §2.1",
+    "state": "DONOR-REWRITE",
+    "purpose": "單位階梯",
+    "action_contract": false
+  },
+  {
+    "page": 101,
+    "title": "Endpoint 與 system energy",
+    "body": "視覺：endpoint state／packet／J｜JSON seam｜Leo／system evidence\nendpoint｜sleep、process、TX/RX、queue、delivery 與 endpoint energy\nsystem｜既有 C-120 authoritative replay、service fields 與 canonical consumed J\n共享｜scenario_id、clock、source_mode、workbook；不共享未宣告的數值語義\n規則｜任何 adapter mapping 都需 owner freeze 與 parity evidence\n證據｜current mapping／replay＝EVIDENCE PLACEHOLDER",
+    "notes": "這是 APP-09 對第 89 頁的 provenance 展開。endpoint layer 可以回答 packet、queue、radio state 與 endpoint energy 的問題；system layer 才承擔既有 C-120 authoritative replay 與 canonical fields。兩層共享 scenario、clock、source_mode 與 workbook，不代表所有 energy 欄位可互換。任何 adapter mapping 都需要 owner freeze 與 parity evidence；目前 mapping 與 replay 證據未凍結，保持 placeholder。",
+    "authority": "Authority｜ADR-004 §Decision、§Costs and risks；SDD §2.1；CURRENT-C120-HANDOFF.md §Binding course contract",
+    "state": "AUTHORITY",
+    "purpose": "能量權威分層",
+    "action_contract": false
+  },
+  {
+    "page": 102,
+    "title": "TLE 只錨定變動窗口",
+    "body": "視覺：pinned TLE → SGP4／model-derived position → NTPU service window\n來源｜TLE 是 source anchor；SGP4／position 是 model-derived；window mapping 是 course output\n不包含｜TLE 本身不含 traffic、power、handover policy、energy\n課程用法｜每位學員完成 glass-box anchor，再讓同 scenario_id 被後續 labs 消費\n證據｜source revision、position trace、window artifact＝EVIDENCE PLACEHOLDER\n判讀｜無後續 consumption 就是 onboarding，不能當節能證據",
+    "notes": "TLE-to-NTPU 是每位學員必做的短 glass-box anchor，但它不是節能實驗。請把 TLE、SGP4／position 與 course-added window mapping 分成 source、model-derived 與 course output；TLE 不自帶 traffic、power、handover policy 或 energy。真正的學習價值在同一 scenario_id 被後續 labs 消費，否則 TLE 只會是裝飾性 onboarding。source revision、position trace 與 window artifact 未凍結前，不要填入外部檔名或數值。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md 7–10、98–110；Authority｜issue 11 §LEO data anchor；CURRENT-C120-HANDOFF.md §Binding course contract",
+    "state": "DONOR-REWRITE",
+    "purpose": "TLE 窗口錨點",
+    "action_contract": false
+  },
+  {
+    "page": 103,
+    "title": "來源到結果的 lineage",
+    "body": "視覺：source → model → assumption → result provenance spine\nsource｜上游／檔案來源與版本＝EVIDENCE PLACEHOLDER\nmodel｜SGP4、endpoint state／packet 或 runner logic 的角色要分開\nassumption｜traffic、power、service boundary、fallback 等 course-owned inputs 明示\nresult｜simulated endpoint replay／derived fields 帶 identity、units、provenance\n判讀｜任何斷鏈都只能保留 bounded statement；不能升格 measured／canonical",
+    "notes": "lineage spine 的四個節點要在講解與 workbook 中保持一致。source 說明從哪裡來，model 說明如何轉換，assumption 說明課程加了什麼，result 說明產出屬於哪個 layer。donor 的 evidence clinic 概念在此重寫成 current provenance；不使用歷史 artifact、URL、hash 或 line number 代替現行證據。任何一節斷鏈時，主張只能維持 bounded teaching statement。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md 70–75；Authority｜ADR-004 §Decision；SDD §2.1",
+    "state": "DONOR-REWRITE",
+    "purpose": "證據血緣",
+    "action_contract": false
+  },
+  {
+    "page": 104,
+    "title": "SINR、dB 與 linear",
+    "body": "視覺：dB（對數表達）↔ linear（計算量）→ quality decision\nLaTeX：x_{\\mathrm{dB}} = 10\\log_{10}(x_{\\mathrm{linear}})\n用途｜只用來讀 quality／trace 概念；不要求推導 link budget\n邊界｜quality observation 不等於 delivered service、energy 或 bit/J\n證據｜本課實際 quality field／unit＝EVIDENCE PLACEHOLDER\n判讀｜source／model 未標單位就停止比較；不把 donor 公式移成 browser producer",
+    "notes": "這是 appendix vocabulary，不是要求非通訊背景學員推導 link budget。用一個 dB 與 linear 的轉換概念幫助閱讀 quality trace，但 quality observation 仍不等於 delivered service、energy 或 bit/J。公式是 donor 語義的最小重寫；不可把舊 donor 公式偷渡成 browser-side producer。實際 quality field 與 unit 尚未 release-freeze，未標單位就停止比較並保留 placeholder。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md 13、15、22–35、111–114；Authority｜SDD §2.1、§3.2",
+    "state": "DONOR-REWRITE",
+    "purpose": "品質單位詞彙",
+    "action_contract": false
+  },
+  {
+    "page": 105,
+    "title": "Angle、range 與 power boundary",
+    "body": "視覺：angle／range／RF quality → endpoint events → endpoint J（boundary mark）\nangle／range｜改變 opportunity／quality context；不直接給 traffic 或 power\nRF／model｜可形成 observation；producer、assumption、result 要分層\nconsumed power｜須說明 endpoint 或 system boundary；不可混用\n邊界｜DONOR-REWRITE：只取 appendix vocabulary；不移植 legacy EE／geometry claim\n證據｜實際 field mapping／parity＝EVIDENCE PLACEHOLDER",
+    "notes": "角度、距離與 RF quality 只能提供 opportunity 或 observation context，不能單獨決定 traffic、power 或服務。這頁保留 donor appendix 的詞彙，但刪除 legacy geometry 與 EE 主張；每個 producer、assumption、result 都要在 lineage 中分層。consumed power 必須先說明屬於 endpoint 還是 system boundary，不能因為名稱相近就合併。field mapping 與 parity 尚未凍結，故使用 placeholder。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md appendix-only；Authority｜ADR-004 §Decision；SDD §2.1",
+    "state": "DONOR-REWRITE",
+    "purpose": "幾何與功率邊界",
+    "action_contract": false
+  },
+  {
+    "page": 106,
+    "title": "四欄 claim classifier",
+    "body": "視覺：四欄 classification card｜measured／derived／assumed／simulated\nmeasured｜physical／instrument capture；本課未有升級條件\nderived｜由 frozen inputs／model 計算；保留 formula／lineage\nassumed｜課程設定 traffic／power／service／mission；需明示\nsimulated｜fixture／runner／endpoint replay output；不可標 measured\n邊界｜DONOR-REWRITE：沿用分類，服從 current claim ceiling；不確定＝EVIDENCE PLACEHOLDER",
+    "notes": "請把 classifier 當成 claim 的護欄。measured 需要實體或儀器證據；derived 需要 frozen inputs、model 與 lineage；assumed 是課程設定；simulated 是 fixture、runner 或 endpoint replay output。current C-120 的 simulated teaching ceiling 不會因為欄位很詳細就變成 measured。donor 的分類概念已重寫，正式 workbook、notes 與 deck 必須使用同一分類；不確定時保留 placeholder。",
+    "authority": "DONOR-REWRITE｜donor-inventory-dedup.md 113；Authority｜issue 11 §Evidence and claim boundary；ADR-004 §Decision",
+    "state": "DONOR-REWRITE",
+    "purpose": "主張分類卡",
+    "action_contract": false
+  },
+  {
+    "page": 107,
+    "title": "授權與修改邊界",
+    "body": "視覺：upstream license／source ledger｜course wrapper｜Leo JSON seam\n來源｜LoRaEnergySim GPL-3.0；upstream notices／citation＝EVIDENCE PLACEHOLDER\n可改｜course-owned wrapper、scaffolded policy surface、versioned JSON contract（依 owner freeze）\n不可改｜upstream internals、Leo scientific formulas、schema／produced artifacts\n溝通｜Leo 只透過 documented JSON，不 import／link upstream Python\n判讀｜license／provenance 未完成前不稱 release；contract 變更需重產 evidence",
+    "notes": "這張 source ledger 將授權與技術邊界放在同一個視覺中。ADR-004 記錄 LoRaEnergySim 為 GPL-3.0，並要求課程 wrapper 以可分開釋出的方式處理；Leo 透過 documented JSON 溝通，不直接 import 或 link upstream Python。可修改範圍限於 course-owned wrapper、scaffolded policy surface 與已凍結的 versioned contract；upstream internals、Leo scientific formulas、schemas 與產出 artifact 不在 learner edit surface。正式 notices、citation、release provenance 尚未凍結，不能宣稱 release。",
+    "authority": "Authority｜ADR-004 §Integration and licensing boundary；SDD §3.2、§5.2",
+    "state": "PLACEHOLDER",
+    "purpose": "授權與改動護欄",
+    "action_contract": false
+  },
+  {
+    "page": 108,
+    "title": "Glossary、claim 與 reopen",
+    "body": "視覺：glossary → claim ceiling → fallback → reopen\nDO｜用 glossary 對齊 scenario、source_mode、service_pass、consumed J、endpoint replay、workbook；artifact＝EVIDENCE PLACEHOLDER\nWHY｜讓 recovery 後仍保留同一 identity、boundary 與 evidence lineage\nMECHANISM｜missing／mismatch → fail closed → same-scenario fallback → export／reopen\nEXPECT｜workbook 標 COMPLETE 或 INCOMPLETE 並留下 provenance；reopen receipt＝EVIDENCE PLACEHOLDER\nINTERPRET｜最高 claim：SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED",
+    "notes": "最後一頁把 glossary、claim ceiling 與 recovery route 綁回同一個 reopenable workbook。請讓學員用固定詞彙說出 scenario、source_mode、service_pass、consumed J 與 endpoint replay 的邊界，再確認缺失或 mismatch 如何 fail closed、切同 scenario fallback、最後 export／reopen。COMPLETE 不是漂亮結果，而是 identity、prediction、receipt、result、recovery 與 provenance 都能重開；否則誠實標 INCOMPLETE。正式 artifact 與 reopen receipt 尚未凍結，且最高 claim 仍限於明示的 simulated teaching ceiling。",
+    "authority": "Authority｜ADR-004 §Decision；SDD §2.1、§4.1；issue 11 §Competition transfer and exit",
+    "state": "PLACEHOLDER",
+    "purpose": "詞彙與復原出口",
+    "action_contract": true
+  }
+]

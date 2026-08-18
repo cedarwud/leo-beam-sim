@@ -1,0 +1,18 @@
+{
+  "pdf": "courseware/c120-lora-leo-deck/alt-skill-deck/part-b/build/renders/LoRaEnergySim-LEO-ALT-PART-B-REVIEW.pdf",
+  "chosen_render_source": "courseware/c120-lora-leo-deck/alt-skill-deck/part-b/build/renders/LoRaEnergySim-LEO-ALT-PART-B-REVIEW.pdf",
+  "slides_rendered": 36,
+  "conversion": {
+    "returncode": 0,
+    "stdout": "LibreOffice conversion succeeded outside the sandbox",
+    "stderr": ""
+  },
+  "contact_sheets": [
+    "courseware/c120-lora-leo-deck/alt-skill-deck/part-b/build/renders/contact-sheets/contact-028-036.jpg",
+    "courseware/c120-lora-leo-deck/alt-skill-deck/part-b/build/renders/contact-sheets/contact-037-045.jpg",
+    "courseware/c120-lora-leo-deck/alt-skill-deck/part-b/build/renders/contact-sheets/contact-046-054.jpg",
+    "courseware/c120-lora-leo-deck/alt-skill-deck/part-b/build/renders/contact-sheets/contact-055-063.jpg"
+  ],
+  "page_by_page_human_inspection": "REPAIRED_SOURCE_PAGES_030_AND_036_INSPECTED_AT_ORIGINAL_RESOLUTION",
+  "fix_and_rerender_pass": "PASS: source P030 packet/service cards separated; source P036 provenance line breaks repaired; full 36-page render regenerated"
+}

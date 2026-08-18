@@ -1,0 +1,116 @@
+{
+  "topic": "C-120 LoRaEnergySim + Leo opening checkpoint",
+  "audience": "課程 owner；後續對象為 20 位非通訊背景 STEM 競賽學員",
+  "objective": "讓 owner 在完整 98–116 頁製作前，裁決開場敘事、視覺方向、endpoint/system boundary 與 placeholder policy。",
+  "thesis": "LoRaEnergySim 讓 IoT endpoint 的 policy 變更連到 packet/service 與 endpoint energy；LEO 只把 changing service window 變得清楚可見。",
+  "narrative_arc": [
+    {
+      "act": "direct relevance",
+      "purpose": "先回答為何它直接屬於智慧節能與物聯網應用",
+      "slides": ["S01", "S02", "S03"]
+    },
+    {
+      "act": "example and evidence boundary",
+      "purpose": "把 LEO 放回 worked-example 位置，並分開 endpoint 與 system authority",
+      "slides": ["S04", "S05"]
+    },
+    {
+      "act": "learner loop",
+      "purpose": "展示學生將做的 edit-run-import-observe loop，但不凍結未完成 API",
+      "slides": ["S06", "S07", "S08"]
+    },
+    {
+      "act": "owner gate",
+      "purpose": "在 full deck 前取得明確視覺與敘事裁決",
+      "slides": ["S09"]
+    }
+  ],
+  "slide_plan": [
+    {
+      "slide_id": "S01",
+      "role": "context",
+      "message": "IoT endpoint 每次 send、wait、sleep 都同時改變 service 與 energy。",
+      "variant": "title",
+      "visual_strategy": "editable state ribbon + moving service window",
+      "evidence_needs": ["EV-01", "EV-02"],
+      "asset_needs": ["shape:endpoint_state_ribbon"]
+    },
+    {
+      "slide_id": "S02",
+      "role": "mechanism",
+      "message": "節能主張必須沿著 state/data → policy → packet/service → power × time → energy → evidence。",
+      "variant": "standard",
+      "visual_strategy": "editable causal chain",
+      "evidence_needs": ["EV-03"],
+      "asset_needs": ["shape:causal_chain"]
+    },
+    {
+      "slide_id": "S03",
+      "role": "evidence",
+      "message": "LoRaEnergySim 的價值是讓 endpoint state、packet outcome、retry、delivery 與 energy 成為可檢查證據，而不是自動證明 canonical system energy。",
+      "variant": "comparison-2col",
+      "visual_strategy": "observes / does-not-prove comparison",
+      "evidence_needs": ["EV-02", "EV-04"],
+      "asset_needs": ["shape:scope_comparison"]
+    },
+    {
+      "slide_id": "S04",
+      "role": "context",
+      "message": "LEO 只是 changing-service-window 範例；學習物可轉移到 smart farm、HVAC、edge 與 logistics。",
+      "variant": "standard",
+      "visual_strategy": "moving-window hero built from editable shapes",
+      "evidence_needs": ["EV-05"],
+      "asset_needs": ["shape:moving_window_hero"]
+    },
+    {
+      "slide_id": "S05",
+      "role": "evidence",
+      "message": "Endpoint replay 與既有 C-120 system replay 共用 scenario anchor 與 clock，但 evidence scope 不互相冒充。",
+      "variant": "comparison-2col",
+      "visual_strategy": "two-layer authority diagram",
+      "evidence_needs": ["EV-06"],
+      "asset_needs": ["shape:two_layer_replay"]
+    },
+    {
+      "slide_id": "S06",
+      "role": "process",
+      "message": "學生的學習證據來自 predict → bounded edit → deterministic run → JSON import → replay → withheld case → workbook。",
+      "variant": "standard",
+      "visual_strategy": "course loop with four visible stages and secondary labels",
+      "evidence_needs": ["EV-07"],
+      "asset_needs": ["shape:learner_loop"]
+    },
+    {
+      "slide_id": "S07",
+      "role": "mechanism",
+      "message": "任何安裝、command 或 marked-line edit 都必須同時回答 Do / Why / Mechanism / Expect / Interpret。",
+      "variant": "standard",
+      "visual_strategy": "single operation card with five readable zones",
+      "evidence_needs": ["EV-08", "EV-09"],
+      "asset_needs": ["shape:operation_grammar"]
+    },
+    {
+      "slide_id": "S08",
+      "role": "process",
+      "message": "SDD 提議的十段 exact-120 clock 仍是 owner-review proposal；setup 不可吞掉三個 causal labs。",
+      "variant": "timeline",
+      "visual_strategy": "ten clock bands",
+      "evidence_needs": ["EV-10"],
+      "asset_needs": ["shape:exact_120_bands"]
+    },
+    {
+      "slide_id": "S09",
+      "role": "decision",
+      "message": "Owner 先裁決視覺、敘事、evidence wording 與 template route；未裁決前不進完整 teaching pages。",
+      "variant": "standard",
+      "visual_strategy": "owner decision frame",
+      "evidence_needs": ["EV-11", "EV-12"],
+      "asset_needs": ["shape:owner_gate"]
+    }
+  ],
+  "design_notes": {
+    "style_preset_reason": "Custom dark Leo evidence-lab is binding; the native educate template is retained as a branding/safe-bound reference pending owner route choice.",
+    "rhythm_break": "S04 moving-window hero and S09 owner gate",
+    "visual_motif": "endpoint state ribbon crossing a bounded service window"
+  }
+}

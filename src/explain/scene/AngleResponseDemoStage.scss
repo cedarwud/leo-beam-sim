@@ -1,0 +1,1155 @@
+.angle-demo,
+.angle-demo * {
+  box-sizing: border-box;
+}
+
+.angle-demo {
+  --ink: #edf7f2;
+  --muted: #89a59d;
+  --faint: #58766f;
+  --line: rgba(104, 175, 160, 0.23);
+  --panel: rgba(4, 19, 17, 0.91);
+  --panel-deep: rgba(2, 12, 11, 0.96);
+  --gold: #f6c85f;
+  --gold-soft: #ffe7a2;
+  --aqua: #6be2cf;
+  --cyan: #46c9dc;
+  width: 100%;
+  min-height: 100vh;
+  padding: 0 20px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 54% 46%, rgba(29, 106, 89, 0.14), transparent 34%),
+    linear-gradient(rgba(64, 148, 130, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(64, 148, 130, 0.028) 1px, transparent 1px),
+    #020908;
+  background-size: auto, 28px 28px, 28px 28px, auto;
+  font-family: "IBM Plex Sans", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  overflow: hidden;
+}
+
+.angle-demo__topbar {
+  height: 66px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.angle-demo__back {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(110, 180, 166, 0.34);
+  border-radius: 9px;
+  color: #d7e8e2;
+  background: rgba(2, 13, 12, 0.72);
+  font: 650 12px/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.angle-demo__back:hover {
+  transform: translateY(-1px);
+  border-color: var(--aqua);
+  background: rgba(15, 50, 44, 0.72);
+}
+
+.angle-demo__back span {
+  margin-right: 6px;
+  color: var(--aqua);
+}
+
+.angle-demo__source {
+  display: grid;
+  gap: 2px;
+  justify-self: start;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.angle-demo__source:hover,
+.angle-demo__source[aria-expanded="true"] {
+  border-color: rgba(107, 226, 207, 0.36);
+  background: rgba(8, 34, 29, 0.64);
+}
+
+.angle-demo__source:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+.angle-demo__source span,
+.angle-demo__eyebrow {
+  margin: 0;
+  color: var(--aqua);
+  font: 700 9px/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.angle-demo__source strong {
+  color: #c7d9d3;
+  font: 650 11px/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: 0.035em;
+}
+
+.angle-demo__source small {
+  color: #688f85;
+  font: 700 8px/1.2 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+}
+
+.angle-demo__identity {
+  padding: 8px 11px;
+  border: 1px solid rgba(246, 200, 95, 0.35);
+  border-radius: 8px;
+  color: #e8d69d;
+  background: rgba(43, 34, 10, 0.42);
+  font: 700 9px/1 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: 0.08em;
+}
+
+.angle-demo__chapter-nav {
+  width: min(800px, calc(100% - 40px));
+  height: 58px;
+  margin: 0 auto;
+  padding: 8px 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.angle-demo__chapter-nav button {
+  min-width: 0;
+  border: 1px solid rgba(92, 155, 143, 0.28);
+  border-radius: 10px;
+  color: #75938b;
+  background: rgba(4, 20, 18, 0.78);
+  font: 700 11px/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.angle-demo__chapter-nav button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(107, 226, 207, 0.58);
+  color: #d7eee8;
+}
+
+.angle-demo__chapter-nav button span {
+  margin-right: 8px;
+  color: #4f746b;
+  font: 700 8px/1 "IBM Plex Mono", monospace;
+}
+
+.angle-demo__chapter-nav button.is-active {
+  border-color: rgba(246, 200, 95, 0.82);
+  color: #fff0bf;
+  background: linear-gradient(180deg, rgba(75, 53, 13, 0.76), rgba(30, 25, 11, 0.72));
+  box-shadow: inset 0 -2px 0 var(--gold);
+}
+
+.angle-demo__chapter-nav button.is-active span {
+  color: var(--gold);
+}
+
+.angle-demo__workspace {
+  height: calc(100vh - 156px);
+  min-height: 620px;
+  padding: 6px 0 10px;
+  display: grid;
+  grid-template-columns: 248px minmax(590px, 1fr) 330px;
+  gap: 12px;
+}
+
+.angle-demo__control-panel,
+.angle-demo__stage,
+.angle-demo__results {
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: inset 0 1px rgba(204, 255, 244, 0.025), 0 24px 70px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.angle-demo__control-panel,
+.angle-demo__results {
+  padding: 20px;
+}
+
+.angle-demo__control-panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(92, 155, 143, 0.45) transparent;
+}
+
+.angle-demo__control-panel h1,
+.angle-demo__result-heading h2,
+.angle-demo__stage-copy h2 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+  font-weight: 520;
+  letter-spacing: 0.018em;
+}
+
+.angle-demo__scene-status {
+  position: absolute;
+  z-index: 6;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.angle-demo__scene-status strong,
+.angle-demo__scene-status span {
+  padding: 6px 9px;
+  border: 1px solid rgba(107, 226, 207, 0.34);
+  border-radius: 999px;
+  background: rgba(2, 13, 11, 0.86);
+  font: 700 8px/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+  backdrop-filter: blur(8px);
+}
+
+.angle-demo__scene-status strong.is-ok { color: #9af0d8; }
+.angle-demo__scene-status strong.is-warning { color: #ffd47d; border-color: rgba(246, 200, 95, 0.56); }
+.angle-demo__scene-status span { color: #9bb7b0; }
+
+.angle-demo__control-panel h1 {
+  margin-top: 8px;
+  font-size: 28px;
+  line-height: 1.08;
+}
+
+.angle-demo__lead {
+  margin: 12px 0 18px;
+  color: #9cb6af;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.angle-demo__switch {
+  display: grid;
+  gap: 8px;
+}
+
+.angle-demo__switch button {
+  min-height: 64px;
+  padding: 11px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(92, 155, 143, 0.24);
+  border-radius: 12px;
+  color: #91aca5;
+  background: rgba(7, 28, 25, 0.72);
+  cursor: pointer;
+  transition: border-color 180ms ease, color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.angle-demo__switch button:hover {
+  transform: translateX(2px);
+  border-color: rgba(107, 226, 207, 0.55);
+  color: #d7eee8;
+}
+
+.angle-demo__switch button.is-active {
+  border-color: rgba(246, 200, 95, 0.82);
+  color: #fff0bf;
+  background: linear-gradient(120deg, rgba(79, 57, 13, 0.75), rgba(18, 49, 41, 0.7));
+  box-shadow: inset 3px 0 0 var(--gold), 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.angle-demo__switch span {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.angle-demo__switch strong {
+  color: inherit;
+  font: 700 17px/1 "IBM Plex Mono", "Cascadia Mono", monospace;
+}
+
+.angle-demo__explore-control {
+  display: grid;
+  gap: 9px;
+}
+
+.angle-demo__control-row {
+  padding: 11px 12px;
+  border: 1px solid rgba(92, 155, 143, 0.2);
+  border-radius: 11px;
+  background: rgba(7, 28, 25, 0.68);
+}
+
+.angle-demo__control-row:first-child {
+  border-color: rgba(246, 200, 95, 0.58);
+  background: linear-gradient(135deg, rgba(70, 51, 13, 0.66), rgba(10, 35, 30, 0.68));
+}
+
+.angle-demo__explore-control-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.angle-demo__explore-control-heading label {
+  color: #bdd2cb;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.angle-demo__explore-control-heading > span {
+  color: #bdd2cb;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.angle-demo__explore-control-heading output {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  color: var(--gold-soft);
+  font: 700 13px/1 "IBM Plex Mono", monospace;
+}
+
+.angle-demo__explore-control-heading output small {
+  color: #a8c8c0;
+  font-size: 9px;
+}
+
+.angle-demo__explore-control input[type="range"] {
+  width: 100%;
+  height: 22px;
+  margin: 13px 0 2px;
+  accent-color: var(--gold);
+  cursor: ew-resize;
+}
+
+.angle-demo__explore-scale {
+  display: flex;
+  justify-content: space-between;
+  color: #6f8c84;
+  font-size: 7px;
+}
+
+.angle-demo__reuse-options {
+  margin-top: 9px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.angle-demo__reuse-options button {
+  min-height: 29px;
+  border: 1px solid rgba(107, 226, 207, 0.22);
+  border-radius: 7px;
+  color: #89a59d;
+  background: rgba(4, 22, 19, 0.68);
+  font: 700 10px/1 "IBM Plex Mono", monospace;
+  cursor: pointer;
+}
+
+.angle-demo__reuse-options button.is-active {
+  border-color: rgba(246, 200, 95, 0.8);
+  color: #fff0bf;
+  background: rgba(74, 54, 14, 0.78);
+}
+
+.angle-demo__reset {
+  width: 100%;
+  min-height: 34px;
+  margin-top: 12px;
+  border: 1px solid rgba(107, 226, 207, 0.34);
+  border-radius: 8px;
+  color: #b9d4cd;
+  background: rgba(4, 22, 19, 0.68);
+  font: 700 9px/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+  cursor: pointer;
+}
+
+.angle-demo__reset:hover {
+  border-color: var(--aqua);
+  color: #ecfaf6;
+}
+
+.angle-demo__handover-switch {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.angle-demo__handover-switch button {
+  min-height: 60px;
+  padding: 9px 5px;
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  border: 1px solid rgba(92, 155, 143, 0.24);
+  border-radius: 11px;
+  color: #809b94;
+  background: rgba(7, 28, 25, 0.72);
+  cursor: pointer;
+}
+
+.angle-demo__handover-switch button span {
+  color: #4b6c65;
+  font: 700 8px/1 "IBM Plex Mono", monospace;
+}
+
+.angle-demo__handover-switch button strong {
+  font-size: 10px;
+}
+
+.angle-demo__handover-switch button.is-active {
+  border-color: rgba(246, 200, 95, 0.82);
+  color: #fff0bf;
+  background: linear-gradient(135deg, rgba(77, 57, 14, 0.78), rgba(14, 47, 40, 0.74));
+  box-shadow: inset 0 -2px 0 var(--gold);
+}
+
+.angle-demo__fixed {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.angle-demo__fixed > span {
+  color: var(--faint);
+  font: 700 9px/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: 0.12em;
+}
+
+.angle-demo__fixed dl {
+  margin: 8px 0 0;
+}
+
+.angle-demo__fixed dl > div {
+  min-height: 31px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(96, 157, 145, 0.11);
+}
+
+.angle-demo__fixed dt,
+.angle-demo__fixed dd {
+  margin: 0;
+}
+
+.angle-demo__fixed dt {
+  color: #718f87;
+  font-size: 10px;
+}
+
+.angle-demo__fixed dd {
+  color: #dceae5;
+  font: 650 10px/1 "IBM Plex Mono", monospace;
+}
+
+.angle-demo__hint {
+  margin: auto 0 0;
+  padding: 12px;
+  border-left: 2px solid var(--aqua);
+  color: #72958c;
+  background: rgba(16, 55, 48, 0.28);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.angle-demo__stage {
+  position: relative;
+  background: #020b0a;
+}
+
+.angle-demo__stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(2, 9, 8, 0.84), transparent 22%, transparent 72%, rgba(2, 9, 8, 0.9)),
+    radial-gradient(circle at 51% 54%, transparent 38%, rgba(0, 0, 0, 0.27));
+}
+
+.angle-demo__stage-copy {
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  left: 20px;
+  max-width: 58%;
+  pointer-events: none;
+}
+
+.angle-demo__stage-copy p {
+  margin: 0 0 6px;
+  color: var(--aqua);
+  font: 700 9px/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: 0.14em;
+}
+
+.angle-demo__stage-copy h2 {
+  font-size: clamp(20px, 1.7vw, 28px);
+  line-height: 1.08;
+}
+
+.angle-demo__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.angle-demo__canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+}
+
+.angle-demo__fallback {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  color: #9eb8b1;
+  font-size: 12px;
+}
+
+.angle-demo-world-label,
+.angle-demo-theta-label,
+.angle-demo-link-readout,
+.angle-demo-visual-boundary {
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.angle-demo-link-readout,
+.angle-demo-visual-boundary {
+  display: grid;
+  gap: 3px;
+  min-width: 132px;
+  padding: 8px 10px;
+  border: 1px solid rgba(246, 200, 95, 0.45);
+  border-radius: 9px;
+  color: #eaf5f1;
+  background: rgba(2, 12, 11, 0.84);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
+}
+
+.angle-demo-link-readout span,
+.angle-demo-visual-boundary span { color: #91afa7; font-size: 8px; }
+.angle-demo-link-readout strong { color: #fff0b6; font: 700 11px/1 "IBM Plex Mono", monospace; }
+.angle-demo-link-readout small,
+.angle-demo-visual-boundary small { color: #6f8d85; font-size: 7px; }
+.angle-demo-visual-boundary { min-width: 154px; border-color: rgba(107, 226, 207, 0.44); text-align: center; }
+.angle-demo-visual-boundary span { color: #b8e8dc; font-weight: 700; }
+
+.angle-demo-world-label span {
+  display: block;
+  padding: 5px 9px;
+  border: 1px solid rgba(246, 200, 95, 0.58);
+  border-radius: 999px;
+  color: #f9f2d6;
+  background: rgba(2, 11, 10, 0.86);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.38);
+  font: 700 9px/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.angle-demo-world-label--ue span {
+  color: #fff0b2;
+  border-color: var(--gold);
+}
+
+.angle-demo-world-label.is-candidate span {
+  color: #b9efff;
+  border-color: rgba(88, 191, 224, 0.78);
+}
+
+.angle-demo-world-label.is-retired span {
+  color: #9bb0aa;
+  border-color: rgba(112, 129, 125, 0.5);
+}
+
+.angle-demo-theta-label {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  text-shadow: 0 2px 11px #000;
+}
+
+.angle-demo-theta-label strong {
+  color: #fff0b2;
+  font: 750 12px/1 "IBM Plex Mono", monospace;
+}
+
+.angle-demo-theta-label small {
+  color: #9c8c57;
+  font-size: 8px;
+}
+
+.angle-demo__legend {
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  gap: 7px;
+  padding: 9px 10px;
+  border: 1px solid rgba(91, 153, 141, 0.2);
+  border-radius: 9px;
+  background: rgba(2, 12, 11, 0.65);
+  backdrop-filter: blur(8px);
+}
+
+.angle-demo__legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #829e97;
+  font-size: 8px;
+}
+
+.angle-demo__legend i {
+  width: 18px;
+  height: 2px;
+  background: var(--gold);
+}
+
+.angle-demo__legend i.is-boresight {
+  background: repeating-linear-gradient(90deg, #b59b54 0 4px, transparent 4px 7px);
+}
+
+.angle-demo__legend i.is-link {
+  height: 3px;
+  background: #fff0a7;
+}
+
+.angle-demo__legend i.is-candidate {
+  background: repeating-linear-gradient(90deg, #58bfe0 0 5px, transparent 5px 8px);
+}
+
+.angle-demo__legend i.is-context {
+  background: #70817d;
+}
+
+.angle-demo__causal {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 17px;
+  width: calc(100% - 34px);
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.angle-demo__causal.is-explore {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.angle-demo__causal-item {
+  position: relative;
+  min-width: 0;
+  padding: 8px 7px;
+  border: 1px solid rgba(92, 155, 143, 0.3);
+  border-radius: 8px;
+  background: rgba(3, 17, 15, 0.9);
+  text-align: center;
+  backdrop-filter: blur(8px);
+  transition: border-color 220ms ease, background 220ms ease;
+}
+
+.angle-demo__handover-rail {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 17px;
+  width: calc(100% - 34px);
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.angle-demo__handover-rail button {
+  min-height: 54px;
+  padding: 7px 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(92, 155, 143, 0.3);
+  border-radius: 9px;
+  color: #9bb7b0;
+  background: rgba(3, 17, 15, 0.91);
+  text-align: left;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.angle-demo__handover-rail button span {
+  grid-row: 1 / 3;
+  color: #52786e;
+  font: 700 10px/1 "IBM Plex Mono", monospace;
+}
+
+.angle-demo__handover-rail button strong {
+  color: #e5f1ed;
+  font: 700 10px/1 "IBM Plex Mono", monospace;
+}
+
+.angle-demo__handover-rail button small {
+  color: #6e8d85;
+  font-size: 8px;
+}
+
+.angle-demo__handover-rail button.is-active {
+  border-color: rgba(246, 200, 95, 0.72);
+  background: linear-gradient(130deg, rgba(69, 51, 13, 0.85), rgba(7, 30, 26, 0.88));
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.angle-demo-handover-label {
+  display: grid;
+  gap: 4px;
+  min-width: 260px;
+  padding: 9px 13px;
+  border: 1px solid rgba(107, 226, 207, 0.35);
+  border-radius: 10px;
+  background: rgba(2, 12, 11, 0.84);
+  text-align: center;
+  pointer-events: none;
+}
+
+.angle-demo-handover-label strong {
+  color: #e9f6f1;
+  font: 700 10px/1.2 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+}
+
+.angle-demo-handover-label small {
+  color: #73968d;
+  font-size: 8px;
+}
+
+.is-probe .angle-demo__causal-item {
+  border-color: rgba(246, 200, 95, 0.5);
+  background: rgba(55, 41, 12, 0.84);
+}
+
+.angle-demo__causal-item span,
+.angle-demo__causal-item strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.angle-demo__causal-item span {
+  color: #86aaa1;
+  font: italic 500 11px/1.1 "Times New Roman", serif;
+}
+
+.angle-demo__causal-item strong {
+  margin-top: 3px;
+  color: #eef6f2;
+  font: 700 8px/1.2 "IBM Plex Mono", monospace;
+}
+
+.angle-demo__causal-item i {
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  z-index: 2;
+  transform: translateY(-50%);
+  color: var(--aqua);
+  font-style: normal;
+  font-size: 11px;
+}
+
+.angle-demo__results {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(92, 155, 143, 0.45) transparent;
+}
+
+.angle-demo__result-heading {
+  margin-top: 9px;
+  padding-bottom: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.angle-demo__result-heading span {
+  color: #76968e;
+  font-size: 9px;
+}
+
+.angle-demo__result-heading h2 {
+  margin-top: 4px;
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.angle-demo__result-heading > strong {
+  color: var(--gold-soft);
+  font: 720 23px/1 "IBM Plex Mono", monospace;
+}
+
+.angle-demo__metric-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.angle-demo__event-evidence {
+  margin-top: 12px;
+  border: 1px solid rgba(88, 191, 224, 0.28);
+  border-radius: 10px;
+  background: rgba(5, 25, 25, 0.7);
+}
+
+.angle-demo__event-evidence summary {
+  padding: 11px 12px;
+  color: #b8eefa;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.angle-demo__event-evidence dl {
+  margin: 0;
+  padding: 0 12px 10px;
+  display: grid;
+  gap: 0;
+}
+
+.angle-demo__event-evidence dl > div {
+  min-width: 0;
+  padding: 7px 0;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+  border-top: 1px solid rgba(88, 191, 224, 0.11);
+}
+
+.angle-demo__event-evidence dt,
+.angle-demo__event-evidence dd { margin: 0; }
+.angle-demo__event-evidence dt { color: #6f9189; font-size: 8px; }
+.angle-demo__event-evidence dd { overflow-wrap: anywhere; color: #d8ebe6; font: 650 8px/1.4 "IBM Plex Mono", monospace; }
+.angle-demo__event-evidence p { margin: 0; padding: 0 12px 12px; color: #78978f; font-size: 8px; line-height: 1.5; }
+
+.angle-demo-metric {
+  min-height: 72px;
+  padding: 9px 10px;
+  position: relative;
+  display: block;
+  border: 1px solid rgba(91, 153, 141, 0.2);
+  border-radius: 10px;
+  background: rgba(7, 27, 24, 0.62);
+  transition: border-color 200ms ease, background 200ms ease, transform 200ms ease;
+}
+
+.angle-demo-metric.is-changed {
+  transform: translateX(-2px);
+  border-color: rgba(246, 200, 95, 0.52);
+  background: linear-gradient(100deg, rgba(65, 48, 12, 0.62), rgba(8, 30, 26, 0.68));
+}
+
+.angle-demo-metric__symbol {
+  color: #a7d8cc;
+  font: italic 600 15px/1 "Times New Roman", serif;
+  text-align: left;
+}
+
+.angle-demo-metric > div {
+  min-width: 0;
+}
+
+.angle-demo-metric small,
+.angle-demo-metric strong {
+  display: block;
+}
+
+.angle-demo-metric small {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  max-width: calc(100% - 50px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6d8f87;
+  font-size: 8px;
+  text-align: right;
+}
+
+.angle-demo-metric strong {
+  margin-top: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #edf6f2;
+  font: 720 10px/1.2 "IBM Plex Mono", monospace;
+}
+
+.angle-demo-metric em {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  min-width: 0;
+  color: #8ba49e;
+  font: normal 700 8px/1.2 "IBM Plex Mono", monospace;
+  text-align: left;
+}
+
+.angle-demo-metric.is-changed em {
+  color: var(--gold-soft);
+}
+
+.angle-demo-metric--ee {
+  grid-column: 1 / -1;
+  min-height: 70px;
+  border-color: rgba(246, 200, 95, 0.37);
+}
+
+.angle-demo-metric--sinr {
+  border-color: rgba(88, 191, 224, 0.28);
+}
+
+.angle-demo-metric--ee strong {
+  color: var(--gold-soft);
+  font-family: "Iowan Old Style", Georgia, serif;
+  font-size: 20px;
+}
+
+.angle-demo__takeaway {
+  margin-top: 12px;
+  padding: 12px 13px;
+  border: 1px solid rgba(107, 226, 207, 0.28);
+  border-radius: 11px;
+  background: rgba(10, 43, 37, 0.44);
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+.angle-demo__takeaway.is-visible {
+  border-color: rgba(246, 200, 95, 0.6);
+  background: linear-gradient(135deg, rgba(69, 50, 12, 0.67), rgba(13, 42, 35, 0.58));
+}
+
+.angle-demo__takeaway span {
+  color: var(--aqua);
+  font: 700 8px/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: 0.11em;
+}
+
+.angle-demo__takeaway p {
+  margin: 6px 0 0;
+  color: #bdd1cb;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.angle-demo__boundary {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 17px;
+  color: #607d76;
+  font-size: 9px;
+}
+
+.angle-demo__boundary strong {
+  color: #dcc679;
+  font-weight: 700;
+}
+
+.angle-demo__boundary span + strong,
+.angle-demo__boundary strong + span {
+  position: relative;
+}
+
+.angle-demo__boundary span + strong::before,
+.angle-demo__boundary strong + span::before {
+  content: "·";
+  position: absolute;
+  left: -11px;
+  color: #39534d;
+}
+
+.angle-demo button:focus-visible {
+  outline: 2px solid var(--aqua);
+  outline-offset: 3px;
+}
+
+@media (max-width: 1120px) {
+  .angle-demo {
+    overflow: auto;
+  }
+
+  .angle-demo__workspace {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: 250px minmax(540px, 1fr);
+  }
+
+  .angle-demo__results {
+    grid-column: 1 / -1;
+  }
+
+  .angle-demo__metric-list {
+    grid-template-columns: repeat(5, minmax(150px, 1fr));
+    overflow-x: auto;
+  }
+
+  .angle-demo-metric--ee {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .angle-demo {
+    min-height: 100vh;
+    padding: 0 14px 18px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .angle-demo__topbar {
+    height: auto;
+    min-height: 72px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .angle-demo__source { justify-self: stretch; }
+  .angle-demo__identity { white-space: nowrap; }
+
+  .angle-demo__chapter-nav {
+    width: 100%;
+    height: 62px;
+  }
+
+  .angle-demo__workspace {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .angle-demo__control-panel,
+  .angle-demo__results {
+    overflow: visible;
+  }
+
+  .angle-demo__stage {
+    min-height: 620px;
+  }
+
+  .angle-demo__results { grid-column: auto; }
+
+  .angle-demo__metric-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .angle-demo__boundary {
+    min-height: 42px;
+    flex-wrap: wrap;
+    row-gap: 4px;
+    padding: 8px 4px;
+  }
+}
+
+@media (max-width: 560px) {
+  .angle-demo { padding-inline: 10px; }
+
+  .angle-demo__topbar {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 8px 0;
+  }
+
+  .angle-demo__back { min-height: 34px; padding-inline: 10px; }
+  .angle-demo__source { padding: 5px 7px; }
+  .angle-demo__source span { font-size: 7px; letter-spacing: 0.08em; }
+  .angle-demo__source strong { font-size: 8px; }
+  .angle-demo__identity { display: none; }
+
+  .angle-demo__chapter-nav {
+    height: auto;
+    padding: 8px 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .angle-demo__chapter-nav button { min-height: 40px; }
+  .angle-demo__control-panel,
+  .angle-demo__results { padding: 16px; }
+  .angle-demo__stage { min-height: 570px; }
+  .angle-demo__stage-copy { max-width: calc(100% - 118px); }
+  .angle-demo__stage-copy h2 { font-size: 17px; line-height: 1.16; }
+  .angle-demo__scene-status { top: 72px; right: 10px; display: grid; justify-items: end; }
+  .angle-demo__scene-status strong,
+  .angle-demo__scene-status span { font-size: 7px; }
+
+  .angle-demo__metric-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .angle-demo__causal,
+  .angle-demo__causal.is-explore { gap: 3px; width: calc(100% - 18px); }
+  .angle-demo__causal-item { padding-inline: 3px; }
+  .angle-demo__causal-item span { font-size: 9px; }
+  .angle-demo__causal-item strong { font-size: 6.5px; }
+  .angle-demo__legend { max-width: calc(100% - 18px); overflow-x: auto; }
+  .angle-demo__boundary { font-size: 7px; }
+}
+
+@media (max-height: 760px) and (min-width: 1121px) {
+  .angle-demo__workspace {
+    min-height: 570px;
+  }
+
+  .angle-demo__control-panel,
+  .angle-demo__results {
+    padding: 15px;
+  }
+
+  .angle-demo__lead {
+    margin-bottom: 12px;
+  }
+
+  .angle-demo__fixed {
+    margin-top: 12px;
+    padding-top: 11px;
+  }
+
+  .angle-demo-metric {
+    min-height: 58px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .angle-demo__back,
+  .angle-demo__chapter-nav button,
+  .angle-demo__switch button,
+  .angle-demo__handover-switch button,
+  .angle-demo__handover-rail button,
+  .angle-demo__causal-item,
+  .angle-demo-metric,
+  .angle-demo__takeaway {
+    transition: none;
+  }
+}

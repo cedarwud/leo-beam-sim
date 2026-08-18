@@ -1,0 +1,429 @@
+{
+  "schema": "c120-direct-teaching-part-c-teaching-rewrite-v1",
+  "pages": [
+    {
+      "label": "P064",
+      "title": "Lab C：資料等待、期限與耗能的取捨",
+      "kind": "rw64",
+      "notes": "Lab C 以同一個服務窗口串起佇列、批次、急件、完成期限與端點能量。判讀順序由工作是否完成、期限是否通過、送達資料與端點 J 組成。"
+    },
+    {
+      "label": "P065",
+      "title": "原始程式：完整 marked block",
+      "kind": "rw65",
+      "notes": "原始 student_policy.py 顯示完整 marked block、BATCH_SIZE = 3、URGENT_MARGIN_S = 20 與 marker 外分支入口。這頁只保留 code，避免 branch 卡片遮住 end marker。"
+    },
+    {
+      "label": "P065-B",
+      "title": "原始程式：marker 外 consumer branch 與後續分支",
+      "kind": "rw65branch",
+      "notes": "consumer branch 位於 marked block 外，逐字保留 observation.urgent_pending、observation.urgent_due_in_s 與 SEND_URGENT。窗口、pacing、batch、WAIT 只在 urgent 條件不成立時判讀。"
+    },
+    {
+      "label": "P066",
+      "title": "第一輪 run：baseline 與 candidate 的檔案收據",
+      "kind": "rw66",
+      "notes": "baseline 使用原始 policy 建立比較 control，candidate 使用 margin 5 的 policy 產生第二筆 result。每條命令都關聯 result.json、事件 replay 與下一階段的判讀位置。"
+    },
+    {
+      "label": "P067",
+      "title": "exact edit 1：急件門檻由 20 秒改為 5 秒",
+      "kind": "rw67",
+      "notes": "URGENT_MARGIN_S 定義急件距離期限的剩餘秒數門檻；唯一修改由 20 改為 5。修改前後的完整句、具體問題、action timing 與 service 欄位形成同一條因果鏈。"
+    },
+    {
+      "label": "P067-B",
+      "title": "exact edit 1：備份、編輯與語法檢查",
+      "kind": "rw67commands",
+      "notes": "在 lora-energy-lab/ 根目錄保存 before-C-edit 備份，分列 WSL／POSIX 與 Windows PowerShell 的編輯及 py_compile 命令。py_compile 只檢查語法，run、policy guard、result_path 與 endpoint-replay.json 才驗證行為。"
+    },
+    {
+      "label": "P068",
+      "title": "margin 5：四個可觀察欄位的預測",
+      "kind": "rw68",
+      "notes": "margin 5 的預測連接 action 時點、佇列與封包、服務／期限以及端點 J。每個欄位都標出來源、值型態或單位、作用與 run 後判讀。"
+    },
+    {
+      "label": "P069",
+      "title": "baseline 與 candidate：gate-first 的比較",
+      "kind": "rw69",
+      "notes": "兩筆 deterministic fallback 來自同一情境與固定 operation contract。服務、期限、送達資料、端點能量與效率都有中文欄名、單位、來源類型與判讀。"
+    },
+    {
+      "label": "P070",
+      "title": "exact edit 2：急件門檻由 5 秒修訂為 30 秒",
+      "kind": "rw70",
+      "notes": "revision 將門檻由 5 改為 30，保留 candidate 的失敗紀錄並改變 urgent action 的觸發時點。修改前後的完整句與問題連接 deadline、送達資料與端點 J。"
+    },
+    {
+      "label": "P070-B",
+      "title": "exact edit 2：修訂備份、編輯與語法檢查",
+      "kind": "rw70commands",
+      "notes": "在 lora-energy-lab/ 根目錄保存 distinct before-C-revision 備份，分列 WSL／POSIX 與 Windows PowerShell 命令。py_compile 只檢查語法，revision freeze run、policy guard、result_path 與 endpoint-replay.json 驗證行為。"
+    },
+    {
+      "label": "P071",
+      "title": "margin 30：修訂後的受控預測",
+      "kind": "rw71",
+      "notes": "margin 30 的預測描述較早 urgent action、required packet、deadline 與端點能量的方向。結果判讀以 service、delivery、state ledger 與 endpoint J 的共同 evidence 定義。"
+    },
+    {
+      "label": "P072",
+      "title": "第二輪 run：revision freeze 與 surprise",
+      "kind": "rw72",
+      "notes": "第二輪執行 revision 與 surprise；revision 的 policy bytes 維持固定，surprise 使用同一 policy 讀取新的 service condition。每個 result_path 與 replay 都保存為獨立 artifact。"
+    },
+    {
+      "label": "P073-A",
+      "title": "服務與期限結果：三筆案例的 gate",
+      "kind": "rw73gates",
+      "notes": "三筆 deterministic fallback 依 service、deadline、delivery 排列。這組 gate 結果提供策略判讀的條件，能量欄位放在下一頁。"
+    },
+    {
+      "label": "P073-B",
+      "title": "能量與效率結果：三筆案例的 endpoint ledger",
+      "kind": "rw73energy",
+      "notes": "endpoint J 與 bit/J 來自同一組固定條件。效率數值描述端點代價，不能替換三筆案例的 service／deadline 狀態。"
+    },
+    {
+      "label": "P073-C",
+      "title": "唯一修改如何改變 state 與 packet 事件",
+      "kind": "rw73causal",
+      "notes": "三筆結果回到同一條 event chain：門檻、action、state、packet、delivery 與 endpoint J。這頁將數值比較還原為可觀察機制。"
+    },
+    {
+      "label": "P074",
+      "title": "surprise：frozen policy 的適用邊界",
+      "kind": "rw74",
+      "notes": "surprise 保留 margin 30 的 frozen policy，並呈現新的 service condition。2,400 bit、5.41 J、3 次重傳與 3 張逾期封包形成條件式判讀。"
+    },
+    {
+      "label": "P075",
+      "title": "Lab C 結論：service／deadline gate 與 endpoint J",
+      "kind": "rw75",
+      "notes": "固定條件下，margin 5、30 與 surprise 的 gate 結果共同界定結論。endpoint J 的比較隨 delivery、deadline 與事件鏈一起解讀。"
+    },
+    {
+      "label": "P076",
+      "title": "執行器、結果檔、課程頁與進度備份",
+      "kind": "rw76",
+      "notes": "terminal runner 產生 result 與 replay，/course 讀取並驗證 identity，replay 顯示事件，進度備份只保存本機紀錄。READY 只寫 browser-local setup status。"
+    },
+    {
+      "label": "P077-A",
+      "title": "匯入一：result.json、欄位與單位",
+      "kind": "rw77format",
+      "notes": "14:12 live Lab A capture 顯示 result.json 選擇器與尚未匯入狀態。這張 crop 只記錄目前空狀態；尚未產生 accepted replay 或 endpoint artifact。"
+    },
+    {
+      "label": "P077-B",
+      "title": "匯入二：情境、run 與 policy lineage",
+      "kind": "rw77lineage",
+      "notes": "14:12 live Lab A 仍要求先選 result.json；目前沒有匯入紀錄。experiment、case、run identity 與 policy lineage 是待核對契約，identity 不配對時目前畫面保持。"
+    },
+    {
+      "label": "P078-A",
+      "title": "frame selector 一：選取畫面與目前 frame",
+      "kind": "rw78splitA",
+      "notes": "14:12 live Lab A 尚未匯入，故 frame selector 與 current frame 只作欄位契約說明。每欄標出來源、值、作用、成功變化與失敗不變項；沒有 sequence 就不補寫。"
+    },
+    {
+      "label": "P078-B",
+      "title": "frame selector 二：八欄與 queue／event 分工",
+      "kind": "rw78splitB",
+      "notes": "八個 replay fields 與 queue／event 的資料責任分開說明。14:12 live capture 沒有 current result，frame identity 或事件值待 result.json 匯入後核對。"
+    },
+    {
+      "label": "P079-A",
+      "title": "進度備份記錄一：匯入紀錄與本機存檔點",
+      "kind": "rw79splitA",
+      "notes": "14:12 live 進度備份 capture 顯示 A／B／C 匯入紀錄為 0、本機存檔點為 #0、備份格式為 JSON。這是本機進度紀錄，並不會重算 runner result。"
+    },
+    {
+      "label": "P079-A2",
+      "title": "進度備份記錄二：來源／角色與復原邊界",
+      "kind": "rw79splitB",
+      "notes": "來源／角色與復原邊界分開保留資料責任與本機處置。進度備份沒有已保存 runner result；identity 不符時目前紀錄保持。"
+    },
+    {
+      "label": "P079-B",
+      "title": "進度備份控制一：下載與從備份還原",
+      "kind": "rw79saveA",
+      "notes": "14:12 live 進度備份提供下載進度備份與從備份還原。成功才寫入本機紀錄；目前備份內容尚未下載。"
+    },
+    {
+      "label": "P079-B2",
+      "title": "進度備份控制二：建立／還原存檔點與重設",
+      "kind": "rw79saveB",
+      "notes": "14:12 live 進度備份提供建立本機存檔點、還原本機存檔點與重設本機進度。這些本機 controls 不重算 runner result。"
+    },
+    {
+      "label": "P080",
+      "title": "本機進度備份：建立、還原、重設的狀態機",
+      "kind": "rw80",
+      "notes": "建立與還原本機存檔點只讀寫進度備份；重設本機進度改變 local state。這些 controls 不改 runner artifact、service gate 或 replay result。"
+    },
+    {
+      "label": "P081",
+      "title": "轉移一：智慧農場的灌溉 service gate",
+      "kind": "rw81",
+      "notes": "智慧農場以水位、作物 freshness 與灌溉期限作為 service condition。pump endpoint J 只在服務條件明確後描述；目前未提供 live farm KPI。"
+    },
+    {
+      "label": "P082",
+      "title": "轉移二：HVAC 的舒適度與設備期限",
+      "kind": "rw82",
+      "notes": "HVAC 將 urgent branch 對應舒適度、設備保護與尖峰事件。fan／compressor endpoint J 以宣告 scope 保存，沒有現場量測宣稱。"
+    },
+    {
+      "label": "P083",
+      "title": "轉移三：edge inference 的 freshness gate",
+      "kind": "rw83",
+      "notes": "edge inference 將 packet delivery 改為任務 freshness 與完成狀態。edge endpoint Joule 仍跟在 service gate 之後，使用條件式推理。"
+    },
+    {
+      "label": "P084",
+      "title": "轉移出口：保留可重播的 policy hypothesis",
+      "kind": "rw84",
+      "notes": "transfer record 保留 condition、branch、event、service、energy scope 與 claim ceiling。workbook export／reopen 維持 lineage，另開 fresh run 需保持 identity。"
+    },
+    {
+      "label": "P085-A",
+      "title": "匯入資料：source 與 case",
+      "kind": "rw85splitA",
+      "notes": "14:12 live Lab A 以 source 與 experiment／case 兩欄說明資料責任與情境配對。目前仍是尚未匯入，不宣稱 accepted upload。"
+    },
+    {
+      "label": "P085-B",
+      "title": "匯入狀態與備用標籤",
+      "kind": "rw85splitB",
+      "notes": "14:12 live Lab A 的 import state 與 fallback label 分開說明。尚未匯入與同情境備用各自保留 identity 邊界。"
+    },
+    {
+      "label": "P086-A",
+      "title": "service 與 delivered bits",
+      "kind": "rw86splitA",
+      "notes": "14:12 live Lab A 沒有 current result。service 與 delivered bits 只說明待匯入欄位契約，值保持待 result.json。"
+    },
+    {
+      "label": "P086-B",
+      "title": "endpoint J 與 bit/J",
+      "kind": "rw86splitB",
+      "notes": "14:12 live Lab A 沒有 current result。endpoint J 與 bit/J 只說明 scope、單位與失敗邊界，不填入數值。"
+    },
+    {
+      "label": "P087-A",
+      "title": "replay fields 一至二",
+      "kind": "rw87splitA",
+      "notes": "14:12 live Lab A 尚未匯入。Radio 與 Action 是待 replay 欄位契約，不把列舉值當成目前 frame 結果。"
+    },
+    {
+      "label": "P087-B",
+      "title": "replay fields 三至四",
+      "kind": "rw87splitB",
+      "notes": "14:12 live Lab A 尚未匯入。Queue count 與累積 endpoint J 只說明來源、單位與 frame identity，待 result.json。"
+    },
+    {
+      "label": "P088-A",
+      "title": "queue 與事件一",
+      "kind": "rw88splitA",
+      "notes": "14:12 live Lab A 尚未匯入。queue item 與 event type 分開說明，事件值待 result.json，不補寫未見事件。"
+    },
+    {
+      "label": "P088-B",
+      "title": "queue 與事件二",
+      "kind": "rw88splitB",
+      "notes": "14:12 live Lab A 尚未匯入。packet identity 與 delivery state 只定義欄位責任，待配對後才連回 service 與 deadline。"
+    },
+    {
+      "label": "P089-A",
+      "title": "timeline 一：contact 與 quality",
+      "kind": "rw89splitA",
+      "notes": "14:12 live Lab A 的時間軸尚未載入 sequence。contact 與 quality 只作欄位契約，不捏造 transition。"
+    },
+    {
+      "label": "P089-B",
+      "title": "timeline 二：radio 與 policy branch",
+      "kind": "rw89splitB",
+      "notes": "14:12 live Lab A 尚未匯入。radio state 與 policy branch 待 frame sequence，未知值保持未知。"
+    },
+    {
+      "label": "P090-A",
+      "title": "execution ledger 一",
+      "kind": "rw90splitA",
+      "notes": "14:12 live Lab A 的 execution ledger 尚未建立。experiment／case 與 role 只說明配對契約，案例不符時停止更新。"
+    },
+    {
+      "label": "P090-B",
+      "title": "execution ledger 二",
+      "kind": "rw90splitB",
+      "notes": "14:12 live Lab A 尚未匯入。service／endpoint J 與 source／selected state 只說明 scope，沒有 current result 可升格。"
+    },
+    {
+      "label": "P091-A",
+      "title": "Evidence：Leo scene 與空 endpoint replay",
+      "kind": "rw91splitA",
+      "notes": "14:12 live Evidence capture 顯示真實 Leo scene，但 endpoint replay 區仍為空。scenario metadata 與 endpoint result 分開標示；沒有 replay 就不宣稱結果。"
+    },
+    {
+      "label": "P091-B",
+      "title": "Evidence：identity 與空 replay 邊界",
+      "kind": "rw91splitB",
+      "notes": "14:12 live Evidence capture 只提供 Leo scene 與空 endpoint replay。identity 尚待 result.json 配對；不宣稱 accepted result 或 provider PASS。"
+    },
+    {
+      "label": "P092-A1",
+      "title": "進度備份：下載與建立本機存檔點",
+      "kind": "rw92saveSplitA",
+      "notes": "14:12 live 進度備份的下載 JSON 與建立本機存檔點分開說明。#0、尚未下載保持誠實，成功才更新本機 record。"
+    },
+    {
+      "label": "P092-A2",
+      "title": "進度備份：從備份還原與目前紀錄",
+      "kind": "rw92saveSplitB",
+      "notes": "14:12 live 進度備份的從備份還原與目前紀錄分開說明。沒有備份檔時不宣稱可還原。"
+    },
+    {
+      "label": "P092-B1",
+      "title": "進度備份：建立與還原本機存檔點",
+      "kind": "rw92checkpointSplitA",
+      "notes": "14:12 live 進度備份的建立／還原本機存檔點分開說明。本機保存點與 runner artifact 分層。"
+    },
+    {
+      "label": "P092-B2",
+      "title": "進度備份：重設本機進度與結果邊界",
+      "kind": "rw92checkpointSplitB",
+      "notes": "14:12 live 進度備份的重設本機進度與 result boundary 分開說明。重設只改 local progress，不重算 endpoint result。"
+    },
+    {
+      "label": "P093-A",
+      "title": "empty-state／recovery：匯入狀態與配對結果",
+      "kind": "rw93splitA",
+      "notes": "14:12 live Lab C 是尚未匯入且沒有 replay 的 empty state。empty import state 與 matching artifact 分開說明，rejection result 尚未出現。"
+    },
+    {
+      "label": "P093-B",
+      "title": "empty-state／recovery：同情境備用",
+      "kind": "rw93splitB",
+      "notes": "14:12 live Lab C 的 same-scenario fallback 與 empty-state boundary 分開說明。未配對時保留原 session。"
+    },
+    {
+      "label": "P094-A",
+      "title": "Prepare：READY 與備用環境",
+      "kind": "rw94splitA",
+      "notes": "14:12 live Prepare capture 顯示目前狀態為尚未記錄；READY 與 fallback source 分開說明。兩個按鈕尚待操作，browser-local state 不等於 terminal receipt。"
+    },
+    {
+      "label": "P094-B",
+      "title": "Prepare：terminal receipt 與完成邊界",
+      "kind": "rw94splitB",
+      "notes": "14:12 live Prepare capture 沒有 terminal receipt。install、verify、run、upload 各由自身 receipt 定義，失敗時 browser-local status 保持。"
+    },
+    {
+      "label": "P095-A1",
+      "title": "導覽：global navigation 與語言",
+      "kind": "rw95navSplitA",
+      "notes": "14:12 live Lab A capture 的 global navigation 與 language controls 分開說明。按鈕只改 focus 或 language。"
+    },
+    {
+      "label": "P095-A2",
+      "title": "導覽：Lab tabs 與結果邊界",
+      "kind": "rw95navSplitB",
+      "notes": "14:12 live tabs 已改為準備、實驗 A／B／C、證據、進度備份。切頁不重寫 endpoint result。"
+    },
+    {
+      "label": "P095-B1",
+      "title": "fallback loader：選取與來源",
+      "kind": "rw95fallbackSplitA",
+      "notes": "14:12 live Lab B 是 empty state。fallback loader 與 selected source 分開說明，沒有從空白狀態宣稱 selected result。"
+    },
+    {
+      "label": "P095-B2",
+      "title": "fallback loader：identity 配對與空狀態",
+      "kind": "rw95fallbackSplitB",
+      "notes": "14:12 live Lab B 的 identity match 與 empty-state boundary 分開說明。未配對時原 result 保持。"
+    },
+    {
+      "label": "P096-A",
+      "title": "進度備份：下載與建立本機存檔點",
+      "kind": "rw96splitA",
+      "notes": "14:12 live 進度備份的下載進度備份與建立本機存檔點分開說明。#0、0 筆匯入紀錄保持為 browser-local record。"
+    },
+    {
+      "label": "P096-B",
+      "title": "進度備份：還原與重設本機進度",
+      "kind": "rw96splitB",
+      "notes": "14:12 live 進度備份的從備份還原與重設本機進度分開說明。條件不足時不執行 Python、不重算 replay。"
+    },
+    {
+      "label": "P097-A",
+      "title": "provider replay controls 一：播放與暫停",
+      "kind": "rw97splitA",
+      "notes": "14:12 live Evidence 有 Leo scene 但 endpoint replay 空白；play 與 pause 只作 replay controls 契約說明。provider cursor identity 保持獨立。"
+    },
+    {
+      "label": "P097-B",
+      "title": "provider replay controls 二：滑桿與端點 selector",
+      "kind": "rw97splitB",
+      "notes": "14:12 live Evidence 的 endpoint replay 尚未匯入；slider／鄰接畫面與 endpoint selector 分開說明。兩層 frame identity 不混讀。"
+    },
+    {
+      "label": "P098-A",
+      "title": "replay fields 五至六",
+      "kind": "rw98splitA",
+      "notes": "14:12 live Lab A 尚未匯入。Elapsed 與 Contact ID 是待 replay 欄位契約，未見 frame 不補值。"
+    },
+    {
+      "label": "P098-B",
+      "title": "replay fields 七至八",
+      "kind": "rw98splitB",
+      "notes": "14:12 live Lab A 尚未匯入。Contact 與 ordinal Quality 是待 replay 欄位契約，Quality 不宣稱 dB 量測。"
+    },
+    {
+      "label": "P099-A",
+      "title": "控制契約一：Prepare 與 Import",
+      "kind": "rw99prepare",
+      "notes": "Prepare 與 Import controls 讀取 terminal receipt、repository、source 與 identity，成功後更新 browser-local status 或 import state。驗證失敗時原 state 保持。"
+    },
+    {
+      "label": "P099-B",
+      "title": "控制契約二：Replay 與進度備份",
+      "kind": "rw99replay",
+      "notes": "Replay 與進度備份 controls 讀寫 selected frame、cursor、本機存檔點與 lineage。成功後更新對應畫面或 record，失敗時原值保留。"
+    },
+    {
+      "label": "P099-C",
+      "title": "控制契約三：Task 與證據狀態",
+      "kind": "rw99task",
+      "notes": "Task controls 讀取 evidence condition，寫入 completion 與 lock。進度備份只保存本機進度與 A／B／C 匯入紀錄，不執行 Python。"
+    }
+  ],
+  "template": "/home/u24/ppt-master/template/educate.pptx",
+  "source": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/teaching-rewrite/part-c-visible-content.md",
+  "field_contract": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/evidence/browser-field-inventory-20260811/field-interpretation.md",
+  "audit_contract": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/teaching-rewrite/part-c-teaching-readability-audit.md",
+  "outputs": [
+    "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/direct-teaching-part-c_ppt169_20260811/exports/c120-lora-leo-part-c-teaching-rewrite-review_20260811.pptx"
+  ],
+  "evidence_boundary": "simulated teaching data; not live; not measured",
+  "current_browser_evidence": {
+    "capture_date": "2026-08-11 14:12 Asia/Taipei",
+    "readme": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/current-browser-evidence/course-20260811-1412-live/README.md",
+    "files": [
+      "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/current-browser-evidence/course-20260811-1412-live/prepare.png",
+      "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/current-browser-evidence/course-20260811-1412-live/lab-a.png",
+      "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/current-browser-evidence/course-20260811-1412-live/lab-b.png",
+      "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/current-browser-evidence/course-20260811-1412-live/lab-c.png",
+      "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/current-browser-evidence/course-20260811-1412-live/evidence.png",
+      "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/current-browser-evidence/course-20260811-1412-live/progress-backup.png"
+    ],
+    "states": {
+      "Lab A": "empty import state; no result.json imported",
+      "Lab B": "empty import state; no result.json imported",
+      "Lab C": "empty import state; no result.json imported",
+      "Evidence": "Leo scene visible; endpoint replay area empty",
+      "Progress backup": "checkpoint #0; 0 A/B/C imports; JSON backup not downloaded",
+      "Prepare": "status not recorded; READY and fallback controls not operated"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "template_sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8",
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/LoRaEnergySim-LEO-ALT-PART-A-REVIEW.pptx",
+  "local_output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/part-a/build/LoRaEnergySim-LEO-ALT-PART-A-REVIEW.pptx",
+  "slide_count": 33,
+  "notes_count": 33,
+  "layout_restriction": "all slides reference slideLayout2.xml",
+  "parent_merge_source": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/part-a/slides.json"
+}

@@ -1,0 +1,3 @@
+
+STDERR:
+Analyzed 6 slides -> /home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/full-deck-v2_ppt169_20260811/analysis/educate-layout-sampler-v2.slide_library.json

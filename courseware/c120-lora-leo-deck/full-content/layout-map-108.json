@@ -1,0 +1,754 @@
+[
+  {
+    "page": 1,
+    "layout": "state_ribbon",
+    "visual_summary": "以狀態帶串起 SEND、WAIT、SLEEP 與變動服務窗口，先讓能源決策可見。",
+    "emphasis_tokens": ["SEND", "WAIT", "SLEEP", "能源決策"],
+    "steps": ["SEND", "WAIT", "SLEEP", "service window"]
+  },
+  {
+    "page": 2,
+    "layout": "causal_flow",
+    "visual_summary": "用單一路徑呈現 STATE／DATA 到 POLICY、PACKET／SERVICE，再到 P×t、J 與 evidence。",
+    "emphasis_tokens": ["STATE / DATA", "POLICY", "PACKET / SERVICE", "POWER × TIME", "ENDPOINT ENERGY", "EVIDENCE"],
+    "steps": ["STATE / DATA", "POLICY", "PACKET / SERVICE", "POWER × TIME", "ENDPOINT ENERGY", "EVIDENCE"]
+  },
+  {
+    "page": 3,
+    "layout": "split_compare",
+    "visual_summary": "左右對照 LoRa 可觀察的 endpoint evidence 與不能宣稱的 live、measured、system energy 邊界。",
+    "emphasis_tokens": ["可觀察", "不能宣稱", "endpoint evidence", "NOT LIVE", "NOT MEASURED", "NOT SYSTEM ENERGY"],
+    "columns": ["可觀察｜state、packet、queue、service、endpoint energy", "不能宣稱｜NOT LIVE、NOT MEASURED、NOT SYSTEM ENERGY"]
+  },
+  {
+    "page": 4,
+    "layout": "hero",
+    "visual_summary": "以 LEO 變動服務窗口作為主視覺，突出 OPEN、QUALITY SHIFTS、CLOSE 與可轉移的 IoT 控制機制。",
+    "emphasis_tokens": ["LEO", "CHANGING SERVICE WINDOW", "OPEN", "QUALITY SHIFTS", "CLOSE", "IoT 控制機制"]
+  },
+  {
+    "page": 5,
+    "layout": "split_compare",
+    "visual_summary": "以兩欄分開 SYSTEM 與 ENDPOINT evidence，標出共享 identity／clock 與不可混用的 consumed J。",
+    "emphasis_tokens": ["SYSTEM", "ENDPOINT", "SHARED", "endpoint J ≠ system J", "evidence scope"],
+    "columns": ["SYSTEM｜consumed J、canonical bit/J", "ENDPOINT｜policy、queue、packet、radio state、endpoint J、service"]
+  },
+  {
+    "page": 6,
+    "layout": "process_steps",
+    "visual_summary": "以操作流程呈現 prediction、bounded edit、run、import、LEO replay 到 withheld case 的可追溯迴圈。",
+    "emphasis_tokens": ["PREDICT", "EDIT", "RUN", "IMPORT", "LEO REPLAY", "WITHHELD CASE", "policy bytes"],
+    "steps": ["記錄 prediction", "edit marked region", "run", "import", "LEO replay", "withheld case"]
+  },
+  {
+    "page": 7,
+    "layout": "evidence_matrix",
+    "visual_summary": "用五問矩陣對齊每個 package action 或 policy edit 的 DO、WHY、MECHANISM、EXPECT、INTERPRET。",
+    "emphasis_tokens": ["DO", "WHY", "MECHANISM", "EXPECT", "INTERPRET", "learner agency"],
+    "columns": ["DO｜做什麼", "WHY｜為何需要", "MECHANISM｜改變什麼", "EXPECT｜哪個 evidence", "INTERPRET｜如何判讀"]
+  },
+  {
+    "page": 8,
+    "layout": "timeline",
+    "visual_summary": "以 120 分鐘時間軸保護 setup、model、anchor、三個 labs、recovery、clinic 與 transfer 的課堂節奏。",
+    "emphasis_tokens": ["120 分鐘", "SETUP 8", "LAB A 21", "LAB B 21", "LAB C 23", "RECOVERY 5"],
+    "steps": ["WHY 5", "SETUP 8", "MODEL 8", "ANCHOR 8", "LAB A 21", "LAB B 21", "RECOVERY 5", "LAB C 23", "CLINIC 10", "TRANSFER 11"]
+  },
+  {
+    "page": 9,
+    "layout": "decision_tree",
+    "visual_summary": "把 Opening checkpoint 的 owner authorization、IoT endpoint first、LEO example 與 placeholder discipline 組成入口判斷。",
+    "emphasis_tokens": ["OWNER AUTHORIZATION", "IoT endpoint first", "LEO", "TEMPLATE", "BOUNDARY", "EVIDENCE PLACEHOLDER"],
+    "steps": ["可繼續 full deck", "endpoint first", "分離兩層 evidence", "先教 prediction／機制", "證據凍結後替換 placeholder"]
+  },
+  {
+    "page": 10,
+    "layout": "transfer_map",
+    "visual_summary": "用資料夾與責任分區地圖呈現 release、launcher、lock、policy、runner、schemas 與 provenance。",
+    "emphasis_tokens": ["named release ZIP", "immutable tag", "wrapper", "policy API", "scenario", "schema", "license"],
+    "steps": ["named release", "README / launcher", "lock / policy", "runner / schemas", "缺檔或混版→停止"]
+  },
+  {
+    "page": 11,
+    "layout": "split_compare",
+    "visual_summary": "左右比較 Windows 與 macOS／WSL／Linux launcher，聚焦支援入口、環境建立與 cold-start receipt。",
+    "emphasis_tokens": ["OS launcher", "Windows", "macOS", "WSL/Linux", "supported入口", "cold-start"],
+    "columns": ["Windows｜相符 launcher、OS stage receipt", "macOS／WSL/Linux｜相符 launcher、OS stage receipt"]
+  },
+  {
+    "page": 12,
+    "layout": "split_compare",
+    "visual_summary": "以 system Python 與課程專用 .venv 對照，說明 interpreter、package location 與 runner 的隔離。",
+    "emphasis_tokens": [".venv", "system Python", "interpreter", "package location", "runner", "環境 stage receipt"],
+    "columns": ["system Python｜其他專案依賴與路徑", "課程 .venv｜獨立 interpreter、package location、runner"]
+  },
+  {
+    "page": 13,
+    "layout": "ledger",
+    "visual_summary": "用依賴帳本把 pinned lock、package versions、hashes、install stage 與 lock receipt 綁在一起。",
+    "emphasis_tokens": ["pinned dependency lock", "dependency graph", "package versions", "hashes", "lock SHA", "receipt"],
+    "columns": ["來源／版本", "hash／lock", "setup gate", "failure meaning"]
+  },
+  {
+    "page": 14,
+    "layout": "ledger",
+    "visual_summary": "以 provenance receipt 帳本核對 release、upstream、wrapper、lock 與 scenario identity，再開放 policy 編輯。",
+    "emphasis_tokens": ["provenance receipt", "release", "upstream", "wrapper", "lock", "scenario identity"],
+    "columns": ["來源 anchor", "wrapper／lock", "scenario identity", "一致→可改 policy；不一致→停止"]
+  },
+  {
+    "page": 15,
+    "layout": "evidence_matrix",
+    "visual_summary": "用 READY／failure receipt 矩陣分開 runtime、release、scenario、policy API 等 operational gate 與 energy claim。",
+    "emphasis_tokens": ["READY", "failure receipt", "runtime", "release", "scenario", "policy API", "energy claim"],
+    "columns": ["receipt 欄位", "READY 的意義", "非 READY 的 recovery", "不代表的 energy claim"]
+  },
+  {
+    "page": 16,
+    "layout": "decision_tree",
+    "visual_summary": "以第 10／13 分鐘分支判斷正常 setup 或同情境 fallback，守住 anchor 與三個 causal labs 時鐘。",
+    "emphasis_tokens": ["第 10／13 分鐘", "setup recovery gate", "同情境 fallback", "protected clock", "INCOMPLETE"],
+    "steps": ["00–10 setup", "10–13 recovery", "固定 scenario／seed／predecessor", "13 後回到 anchor／Lab A", "缺口→INCOMPLETE"]
+  },
+  {
+    "page": 17,
+    "layout": "evidence_matrix",
+    "visual_summary": "用三區矩陣分開 fixed、controlled、observed 變數，並保留 system consumed J／canonical bit/J 的界線。",
+    "emphasis_tokens": ["FIXED", "CONTROLLED", "OBSERVED", "scenario_id", "policy constants", "endpoint J", "canonical bit/J"],
+    "columns": ["FIXED｜scenario、seed、trace、traffic、units", "CONTROLLED｜marked policy constants／branch", "OBSERVED｜queue、service、state、packet、endpoint J"]
+  },
+  {
+    "page": 18,
+    "layout": "state_ribbon",
+    "visual_summary": "以 endpoint state ribbon 建立 SLEEP、WAIT、WAKE、PROCESS、TX、RX 的共用狀態詞彙。",
+    "emphasis_tokens": ["SLEEP", "WAIT", "WAKE", "PROCESS", "TX", "RX", "STATE TIME"],
+    "steps": ["SLEEP", "WAKE", "PROCESS", "TX / RX", "WAIT"]
+  },
+  {
+    "page": 19,
+    "layout": "split_compare",
+    "visual_summary": "左右對照 WAIT 的 awake idle 與 SLEEP 的低功率休息，突出 wake latency／energy 與 service／J 取捨。",
+    "emphasis_tokens": ["WAIT", "awake idle", "SLEEP", "wake latency", "wake energy", "endpoint J"],
+    "columns": ["WAIT｜維持醒著、不新增 wake transition", "SLEEP｜低功率休息、可能增加 latency 與 wake energy"]
+  },
+  {
+    "page": 20,
+    "layout": "process_steps",
+    "visual_summary": "以封包生命週期流程串起 queue 中的 GENERATED、ATTEMPT、RETRY 到 DELIVERED／EXPIRED。",
+    "emphasis_tokens": ["GENERATED", "ATTEMPT", "RETRY", "DELIVERED", "EXPIRED", "queue age", "service"],
+    "steps": ["GENERATED", "ATTEMPT", "RETRY", "DELIVERED / EXPIRED"]
+  },
+  {
+    "page": 21,
+    "layout": "decision_tree",
+    "visual_summary": "先由 service boundary 判斷 evaluation window、required packets、deadline／freshness，再決定 energy comparison 是否有效。",
+    "emphasis_tokens": ["service boundary", "evaluation window", "required packets", "deadline", "freshness", "SERVICE PASS", "INVALID A/B"],
+    "steps": ["固定 job／window／boundary", "檢查 SERVICE PASS", "另欄記錄 energy", "否則 INVALID A/B"]
+  },
+  {
+    "page": 22,
+    "layout": "code_focus",
+    "visual_summary": "以標記的常數程式碼為焦點，顯示 bounded control 如何只改 policy decision timing／branch。",
+    "emphasis_tokens": ["student_policy.py", "marked constant", "bounded controls", "policy bytes", "policy hash", "endpoint J"],
+    "columns": ["marked constant｜唯一可控制量", "engine／evidence｜保持不變", "可觀察後果｜queue、packet、state、J"]
+  },
+  {
+    "page": 23,
+    "layout": "decision_tree",
+    "visual_summary": "用 observation→condition→legal action 判斷 threshold／Boolean 條件如何導向 WAIT、SLEEP 或 SEND。",
+    "emphasis_tokens": ["observation", "comparison", "Boolean", "threshold", "WAIT", "SLEEP", "SEND"],
+    "steps": ["observation", "threshold／Boolean condition", "legal action", "mode／attempt／service evidence"]
+  },
+  {
+    "page": 24,
+    "layout": "code_focus",
+    "visual_summary": "放大 3–6 行 policy 與觀測輸入，標示縮排 scope、合法 observation 與 syntax／API gate。",
+    "emphasis_tokens": ["3–6 行", "policy", "觀測輸入", "縮排", "branch scope", "syntax / API gate"],
+    "columns": ["觀測輸入", "marked policy scope", "一個合法 action", "traceback→最小修復"]
+  },
+  {
+    "page": 25,
+    "layout": "process_steps",
+    "visual_summary": "以 API card 到 replay event 的流程呈現合法 return action，並在非法字串時 fail closed。",
+    "emphasis_tokens": ["合法 return actions", "API card", "observation", "action", "state", "packet consequence", "fail closed"],
+    "steps": ["讀 API card", "observation", "legal action", "state／packet consequence", "policy hash replay event"]
+  },
+  {
+    "page": 26,
+    "layout": "formula_focus",
+    "visual_summary": "以公式與單位階梯區分 W、J、bit/s、delivered bits 及 endpoint／canonical bit/J。",
+    "emphasis_tokens": ["W", "J", "bit/s", "delivered bits", "endpoint bit/J", "canonical bit/J", "E_endpoint"],
+    "columns": ["W｜瞬時功率", "J｜時間累積能量", "bit/s｜傳輸速率", "delivered bits｜有效服務量", "bit/J｜依 evidence boundary"]
+  },
+  {
+    "page": 27,
+    "layout": "split_compare",
+    "visual_summary": "以 fair baseline 的 A／B 對照固定 job、window、boundary，只容許一個 marked policy change。",
+    "emphasis_tokens": ["FIX THE JOB", "FIX THE WINDOW", "FIX THE BOUNDARY", "A", "B", "one marked policy change"],
+    "columns": ["A｜inherited policy、固定條件", "B｜one marked policy change、同一 boundary", "COMPARE｜service、bits、state time、endpoint J"]
+  },
+  {
+    "page": 28,
+    "layout": "transfer_map",
+    "visual_summary": "以 provenance chain 把 SOURCE、MODEL、ASSUMPTION 與 COURSE RESULT 接成一條 lineage。",
+    "emphasis_tokens": ["SOURCE", "MODEL", "ASSUMPTION", "COURSE RESULT", "scenario_id", "policy hash", "artifact provenance"],
+    "steps": ["pinned TLE／upstream model", "runner model", "wrapper assumptions", "policy action", "packet／service", "state time／endpoint J"]
+  },
+  {
+    "page": 29,
+    "layout": "process_steps",
+    "visual_summary": "沿 identity spine 連接 scenario package、runner、result JSON、Leo import、endpoint replay 與 workbook。",
+    "emphasis_tokens": ["scenario_id", "TLE anchor", "scenario package", "runner", "result JSON", "Leo import", "workbook"],
+    "steps": ["TLE anchor", "scenario package", "runner", "result JSON", "Leo import／endpoint replay", "Energy Decision Workbook"]
+  },
+  {
+    "page": 30,
+    "layout": "timeline",
+    "visual_summary": "以 NTPU window 時間軸標示 OPEN、QUALITY SHIFTS、CLOSE，並分出 legal 與 illegal decision interval。",
+    "emphasis_tokens": ["NTPU window", "OPEN", "QUALITY SHIFTS", "CLOSE", "LEGAL", "ILLEGAL", "future leakage"],
+    "steps": ["OPEN", "contact／policy action window", "QUALITY SHIFTS", "CLOSE"]
+  },
+  {
+    "page": 31,
+    "layout": "hero",
+    "visual_summary": "以 Lab A 的 driving question 作為主視覺：同一工作改變送出節奏後，觀察 service 與 endpoint J。",
+    "emphasis_tokens": ["Lab A", "同一工作", "不同節奏", "PACE_GAP_STEPS", "REST_DURING_GAP", "PREDICT FIRST"]
+  },
+  {
+    "page": 32,
+    "layout": "code_focus",
+    "visual_summary": "聚焦 PACE_GAP_STEPS marked block，對照 gap steps、clock distance 與 send／attempt／queue age 後果。",
+    "emphasis_tokens": ["PACE_GAP_STEPS", "marked block", "gap steps", "send time", "attempt", "queue age", "service"],
+    "columns": ["marked block｜PACE_GAP_STEPS", "機制｜兩次 send 間 clock distance", "證據｜attempt、queue age、state、service、J"]
+  },
+  {
+    "page": 33,
+    "layout": "decision_tree",
+    "visual_summary": "用 WAIT／SLEEP 分支呈現 REST_DURING_GAP 選擇如何改變 awake-idle、wake、delivery、deadline 與 J。",
+    "emphasis_tokens": ["REST_DURING_GAP", "WAIT", "SLEEP", "WAKE", "delivery", "deadline", "endpoint J"],
+    "steps": ["REST_DURING_GAP", "WAIT／awake idle", "SLEEP／wake", "delivery／deadline／J"]
+  },
+  {
+    "page": 34,
+    "layout": "state_ribbon",
+    "visual_summary": "用前後狀態帶表現 send spacing、WAIT／SLEEP、wake、packet outcome 與 power-time 的連鎖機制。",
+    "emphasis_tokens": ["SEND SPACING", "REST CHOICE", "WAIT", "SLEEP", "WAKE", "STATE → PACKET", "POWER × TIME"],
+    "steps": ["SEND SPACING", "WAIT / SLEEP", "WAKE", "PACKET outcome", "POWER × TIME"]
+  },
+  {
+    "page": 35,
+    "layout": "ledger",
+    "visual_summary": "以 prediction lock 帳本並列 queue、service、state time、endpoint J 的方向、條件與可否證 evidence。",
+    "emphasis_tokens": ["PREDICT", "queue", "service", "state time", "endpoint J", "baseline", "candidate"],
+    "columns": ["預測量", "機制理由", "baseline／candidate", "replay evidence", "符合或推翻"]
+  },
+  {
+    "page": 36,
+    "layout": "process_steps",
+    "visual_summary": "以單一 terminal action 與 receipt 流程呈現 untouched Lab A baseline，先取得可比較起點。",
+    "emphasis_tokens": ["Lab A", "基準線", "untouched baseline", "terminal action", "receipt", "EVIDENCE PLACEHOLDER"],
+    "steps": ["讀 prediction", "run untouched baseline", "取得 receipt", "保留 baseline ledger"]
+  },
+  {
+    "page": 37,
+    "layout": "code_focus",
+    "visual_summary": "以 source diff 與 policy hash 為焦點，限制 Lab A candidate 只改 marked block 後再執行。",
+    "emphasis_tokens": ["只改一個區塊", "marked block", "source diff", "candidate", "policy hash", "run"],
+    "columns": ["baseline source", "一個 marked diff", "policy identity／hash", "candidate receipt"]
+  },
+  {
+    "page": 38,
+    "layout": "evidence_matrix",
+    "visual_summary": "以同一 boundary 的 evidence matrix 對照 baseline 與 candidate，並連到 screenshot 與 interpretation。",
+    "emphasis_tokens": ["同一邊界", "baseline", "candidate", "queue", "service", "state", "endpoint J", "interpretation"],
+    "columns": ["identity／boundary", "baseline evidence", "candidate evidence", "差異與 interpretation"]
+  },
+  {
+    "page": 39,
+    "layout": "ledger",
+    "visual_summary": "用三欄 ledger 收束 Lab A 的 baseline、candidate、hidden condition 與 causal debrief。",
+    "emphasis_tokens": ["Lab A 因果回顧", "baseline", "candidate", "hidden condition", "causal", "ledger"],
+    "columns": ["baseline", "candidate", "hidden condition", "causal debrief"]
+  },
+  {
+    "page": 40,
+    "layout": "hero",
+    "visual_summary": "以 Lab B 的核心提問作為主視覺：面對 changing quality trace，現在送還是等？",
+    "emphasis_tokens": ["Lab B", "現在送還是等？", "changing quality trace", "PREDICT", "policy mechanism"]
+  },
+  {
+    "page": 41,
+    "layout": "decision_tree",
+    "visual_summary": "以 threshold crossing 決策樹標示何時成為 send-ready，連結 quality、enter threshold 與合法 action。",
+    "emphasis_tokens": ["Entry", "threshold", "send-ready", "quality", "condition crossing", "legal action"],
+    "steps": ["quality observation", "cross enter threshold", "send-ready", "WAIT／SEND action"]
+  },
+  {
+    "page": 42,
+    "layout": "split_compare",
+    "visual_summary": "左右比較 enter 與 exit threshold，說明 hysteresis 為何不應被一個 threshold 取代。",
+    "emphasis_tokens": ["Entry", "Exit", "threshold", "hysteresis", "enter band", "exit band"],
+    "columns": ["Entry｜何時成為 send-ready", "Exit｜何時離開 send-ready", "hysteresis｜避免單一 threshold ping-pong"]
+  },
+  {
+    "page": 43,
+    "layout": "process_steps",
+    "visual_summary": "以 hold-counter 流程展示 STABLE_STEPS 如何拒絕短暫 quality spike，再決定 mode change。",
+    "emphasis_tokens": ["STABLE_STEPS", "brief quality spikes", "hold counter", "mode change", "stability"],
+    "steps": ["觀察 quality", "累積 stable steps", "拒絕短暫 spike", "通過 hold counter", "改變 mode"]
+  },
+  {
+    "page": 44,
+    "layout": "timeline",
+    "visual_summary": "把 Trace A 的 entry、wait、service 與 endpoint J 預測疊在 changing quality trace 的時間軸上。",
+    "emphasis_tokens": ["Trace A", "entry", "waits", "service", "endpoint J", "prediction overlay"],
+    "steps": ["quality trace", "預測 entry", "預測 waits", "service outcome", "endpoint J"]
+  },
+  {
+    "page": 45,
+    "layout": "split_compare",
+    "visual_summary": "以兩欄 terminal receipt 對照 Trace A baseline 與 candidate，保留 policy identity 與結果邊界。",
+    "emphasis_tokens": ["Trace A", "基準", "候選", "terminal receipts", "baseline", "candidate"],
+    "columns": ["Trace A baseline｜receipt／結果", "Trace A candidate｜receipt／結果", "固定｜同一 trace、job、window、boundary"]
+  },
+  {
+    "page": 46,
+    "layout": "ledger",
+    "visual_summary": "用 freeze ledger 鎖住 policy bytes、schema instance 與 receipt，避免 withheld trace 後再調參。",
+    "emphasis_tokens": ["凍結 policy", "policy bytes", "freeze receipt", "schema instance", "withheld trace", "公平"],
+    "columns": ["policy bytes／hash", "scenario／schema", "freeze receipt", "凍結後規則"]
+  },
+  {
+    "page": 47,
+    "layout": "process_steps",
+    "visual_summary": "以 immutable policy 流程呈現 Trace B 的 withheld run，保留 frozen crossing 與新 trace 的比較。",
+    "emphasis_tokens": ["Trace B", "不准重調", "frozen policy", "new trace", "withheld", "command/result"],
+    "steps": ["freeze policy", "切換 Trace B", "不重調", "run", "比較 service／state／energy"]
+  },
+  {
+    "page": 48,
+    "layout": "evidence_matrix",
+    "visual_summary": "以 evidence-first 矩陣讀 mode changes、attempts、retries、service 與 endpoint J，而非只看總分。",
+    "emphasis_tokens": ["mode changes", "attempts", "retries", "service", "endpoint J", "evidence-first trace"],
+    "columns": ["mode changes", "attempt／retry", "service／delivery", "state／endpoint J", "interpretation"]
+  },
+  {
+    "page": 49,
+    "layout": "decision_tree",
+    "visual_summary": "以反例決策樹承認 too-slow、ping-pong 或 qualified verdict，回到機制而非追求必勝。",
+    "emphasis_tokens": ["Counterexample", "too-slow", "ping-pong", "qualified verdict", "Lab B debrief"],
+    "steps": ["service／trace evidence", "too-slow？", "ping-pong？", "qualified verdict", "回到 mechanism"]
+  },
+  {
+    "page": 50,
+    "layout": "process_steps",
+    "visual_summary": "以 workbook checkpoint 流程呈現 recovery 的 save、reopen 與 identity／artifact receipt。",
+    "emphasis_tokens": ["Recovery", "保存", "再開", "workbook", "checkpoint receipt", "artifact"],
+    "steps": ["save workbook", "保留 checkpoint receipt", "reopen", "核對 identity", "繼續或 recovery"]
+  },
+  {
+    "page": 51,
+    "layout": "causal_flow",
+    "visual_summary": "把同場景 fallback 的 provenance 接回 prediction、policy、action、state、service 與 energy 因果鏈。",
+    "emphasis_tokens": ["同場景 fallback", "fixed scenario", "provenance", "causal reconstruction", "service", "energy"],
+    "steps": ["同 scenario artifact", "fallback provenance", "policy／action", "queue／state", "service／energy", "causal debrief"]
+  },
+  {
+    "page": 52,
+    "layout": "hero",
+    "visual_summary": "以 Lab C 的 queue、batch、sleep、urgent send 四向選擇作為短窗口中的主問題。",
+    "emphasis_tokens": ["Lab C", "queue", "batch", "sleep", "urgent send", "short window", "J"]
+  },
+  {
+    "page": 53,
+    "layout": "split_compare",
+    "visual_summary": "以三欄拆開 queue、deadline、freshness，避免把任務順序、時間限制與資料新鮮度混成一件事。",
+    "emphasis_tokens": ["queue", "deadline", "freshness", "ordered message cards", "service", "mission"],
+    "columns": ["queue｜待處理資料", "deadline｜最晚完成時間", "freshness｜資料有效期限"]
+  },
+  {
+    "page": 54,
+    "layout": "process_steps",
+    "visual_summary": "以 queue-to-flush 序列呈現 batch size 如何用較少 activations 換取等待與 delay。",
+    "emphasis_tokens": ["Batch", "batch size", "activations", "delay", "queue", "flush"],
+    "steps": ["資料進入 queue", "累積 batch", "等待門檻", "一次 flush", "比較 activations／delay"]
+  },
+  {
+    "page": 55,
+    "layout": "timeline",
+    "visual_summary": "用 urgent countdown 時間軸顯示 urgent margin 如何提前介入正常 pacing。",
+    "emphasis_tokens": ["Urgent", "urgent margin", "countdown", "normal pacing", "提前介入", "deadline"],
+    "steps": ["normal pacing", "剩餘 deadline", "urgent margin", "urgent send"]
+  },
+  {
+    "page": 56,
+    "layout": "code_focus",
+    "visual_summary": "並列放大 Lab C 的 BATCH_SIZE 與 URGENT_MARGIN_S 標記線，連到 queue、deadline 與 action。",
+    "emphasis_tokens": ["BATCH_SIZE", "URGENT_MARGIN_S", "marked lines", "queue", "deadline", "urgent"],
+    "columns": ["BATCH_SIZE｜批次控制", "URGENT_MARGIN_S｜緊急門檻", "合法 action／後果｜queue、service、state、J"]
+  },
+  {
+    "page": 57,
+    "layout": "ledger",
+    "visual_summary": "用 pre-run prediction ledger 鎖定 queue、service、state 與 J 的預測，再進入 Lab C baseline。",
+    "emphasis_tokens": ["Lab C", "prediction", "queue", "service", "state", "J", "baseline"],
+    "columns": ["預測 queue／batch", "預測 service／deadline", "預測 state time", "預測 endpoint J", "baseline artifact"]
+  },
+  {
+    "page": 58,
+    "layout": "code_focus",
+    "visual_summary": "以一個 allowed code diff 與 run receipt 為焦點，限制 Lab C candidate 只改一次。",
+    "emphasis_tokens": ["Edit", "run", "candidate", "one allowed code diff", "receipt", "Lab C"],
+    "columns": ["marked code", "one allowed diff", "runner", "candidate receipt"]
+  },
+  {
+    "page": 59,
+    "layout": "ledger",
+    "visual_summary": "用 packet ledger 逐筆檢查 queue、attempt、retry、delivery、expiry，先不把結果壓成總分。",
+    "emphasis_tokens": ["packet", "queue", "attempt", "retry", "delivery", "expiry", "不看總分"],
+    "columns": ["queue／age", "attempt／retry", "delivered", "expired", "service／freshness"]
+  },
+  {
+    "page": 60,
+    "layout": "state_ribbon",
+    "visual_summary": "以 radio-state ribbon 串起 sleep、wake、process、TX、RX 與 endpoint J breakdown。",
+    "emphasis_tokens": ["sleep", "wake", "process", "TX", "RX", "endpoint J", "state"],
+    "steps": ["SLEEP", "WAKE", "PROCESS", "TX / RX", "WAIT", "J breakdown"]
+  },
+  {
+    "page": 61,
+    "layout": "process_steps",
+    "visual_summary": "用單次修正流程限制 candidate→一個 revised constant→run→evidence，保持 Lab C 可歸因。",
+    "emphasis_tokens": ["一次修正", "candidate", "revised constant", "run", "evidence", "causal"],
+    "steps": ["選一個 evidence gap", "改一個 constant", "run", "比較 ledger", "停止再調參"]
+  },
+  {
+    "page": 62,
+    "layout": "ledger",
+    "visual_summary": "以四格 ledger 收束 candidate、revision、surprise case 與 final Lab C debrief。",
+    "emphasis_tokens": ["Surprise case", "candidate", "revision", "final ledger", "Lab C debrief", "evidence"],
+    "columns": ["candidate", "一次 revision", "surprise case", "final causal debrief"]
+  },
+  {
+    "page": 63,
+    "layout": "evidence_matrix",
+    "visual_summary": "用 evidence clinic 矩陣分類 decision time 當下可取得的 evidence 與 action 後才可取得的結果。",
+    "emphasis_tokens": ["Evidence clinic", "decision time", "available-now", "post-action", "prediction", "replay"],
+    "columns": ["decision time 可用", "action 後可用", "prediction", "不能提前知道／避免 leakage"]
+  },
+  {
+    "page": 64,
+    "layout": "split_compare",
+    "visual_summary": "左右對照 prediction score 與 energy saving，指出 legal feature 與 leaky feature 的差別。",
+    "emphasis_tokens": ["Leakage", "prediction score", "energy saving", "legal feature", "leaky feature", "decision time"],
+    "columns": ["legal｜decision time 可取得的 observation", "leaky｜future quality、future energy、post-action outcome", "claim｜prediction ≠ saving"]
+  },
+  {
+    "page": 65,
+    "layout": "ledger",
+    "visual_summary": "以 evidence record 帳本標示 artifact provenance、hash、scope 與 measured／derived／assumed／simulated 分類。",
+    "emphasis_tokens": ["Artifact provenance", "hashes", "scopes", "measured", "derived", "assumed", "simulated"],
+    "columns": ["artifact／hash", "scope／identity", "claim class", "可支援主張", "不可升格主張"]
+  },
+  {
+    "page": 66,
+    "layout": "decision_tree",
+    "visual_summary": "用 claim ladder 判斷課程能說到哪一層，並保留 SIMULATED TEACHING DATA 等 claim ceiling。",
+    "emphasis_tokens": ["Claim 有上限", "claim ladder", "SIMULATED TEACHING DATA", "NOT LIVE", "NOT MEASURED", "NOT CANONICAL-PARITY-VERIFIED"],
+    "steps": ["evidence class", "scope／lineage", "bounded claim", "claim ceiling", "不可升格"]
+  },
+  {
+    "page": 67,
+    "layout": "transfer_map",
+    "visual_summary": "用 mechanism token remap 把 LEO 的 changing opportunity 轉到 smart farm、HVAC、edge、logistics。",
+    "emphasis_tokens": ["transfer", "smart farm", "HVAC", "edge", "logistics", "mechanism token", "changing opportunity"],
+    "steps": ["LEO opportunity", "send／wait／sleep／urgent", "smart farm", "HVAC", "edge", "logistics"]
+  },
+  {
+    "page": 68,
+    "layout": "process_steps",
+    "visual_summary": "以 hypothesis writing 流程從 mechanism、fixed condition、observed consequence 到可否證句子。",
+    "emphasis_tokens": ["falsifiable competition hypothesis", "mechanism", "fixed", "observed", "hypothesis stem", "claim"],
+    "steps": ["選 mechanism", "固定條件", "預測 consequence", "寫 hypothesis stem", "保留可否證性"]
+  },
+  {
+    "page": 69,
+    "layout": "decision_tree",
+    "visual_summary": "以 falsifier card 判斷哪個 held-out condition 足以推翻假設，連回 boundary 與 evidence。",
+    "emphasis_tokens": ["falsifier", "held-out condition", "overturn", "假設", "evidence", "boundary"],
+    "steps": ["寫假設", "指定 held-out condition", "跑 evidence", "符合或推翻", "修正 bounded claim"]
+  },
+  {
+    "page": 70,
+    "layout": "process_steps",
+    "visual_summary": "以 workbook 的 export、close、reopen loop 結束課程，留下 COMPLETE／INCOMPLETE 與 provenance。",
+    "emphasis_tokens": ["Export", "close", "reopen", "COMPLETE", "INCOMPLETE", "provenance", "workbook"],
+    "steps": ["export", "close", "reopen", "核對 identity／provenance", "COMPLETE 或 INCOMPLETE", "exit"]
+  },
+  {
+    "page": 71,
+    "layout": "timeline",
+    "visual_summary": "以八分鐘 setup branch 時鐘標示分支入口、recovery 窗口與 minute 13 回到 core page 17。",
+    "emphasis_tokens": ["Setup 分支", "八分鐘時鐘", "branch entry", "minute 13", "core page 17", "recovery"],
+    "steps": ["setup branch entry", "0–8 分鐘", "判斷是否 recovery", "minute 13", "return core page 17"]
+  },
+  {
+    "page": 72,
+    "layout": "split_compare",
+    "visual_summary": "以 missing／mixed file 對照確認釋出根目錄，將 named release path 與 placeholder evidence 分開。",
+    "emphasis_tokens": ["釋出根目錄", "missing file", "mixed file", "release path", "folder map", "PLACEHOLDER"],
+    "columns": ["正確 release root｜named path、完整 folder map", "missing／mixed｜停止、回到 release、保留 placeholder"]
+  },
+  {
+    "page": 73,
+    "layout": "process_steps",
+    "visual_summary": "以 staged receipt 流程診斷環境 isolation 與 lock failure，將 setup issue 與 energy result 分離。",
+    "emphasis_tokens": ["環境", "isolation", "lock failure", "staged receipt", "setup", "energy result"],
+    "steps": ["讀 staged receipt", "定位 environment／lock stage", "修復或 fallback", "重新驗證", "才進入 energy experiment"]
+  },
+  {
+    "page": 74,
+    "layout": "process_steps",
+    "visual_summary": "以 error→meaning→smallest recovery 流程讀一則 setup 錯誤，不把環境錯誤解讀為 energy evidence。",
+    "emphasis_tokens": ["setup 錯誤", "error", "meaning", "smallest recovery", "receipt", "energy evidence"],
+    "steps": ["讀 error", "判斷 meaning", "選 smallest recovery", "重新讀 receipt", "保留 INCOMPLETE／fallback"]
+  },
+  {
+    "page": 75,
+    "layout": "process_steps",
+    "visual_summary": "以同 scenario fallback 的 provenance 流程在 minute 13 前匯入預先驗證結果，回到 causal lab。",
+    "emphasis_tokens": ["同 scenario fallback", "import", "provenance", "minute 13", "artifact", "causal lab"],
+    "steps": ["核對 scenario／seed", "匯入 fallback", "核對 provenance receipt", "保留 artifact ID", "return affected lab"]
+  },
+  {
+    "page": 76,
+    "layout": "code_focus",
+    "visual_summary": "以前後 3 行程式碼聚焦 indentation recovery，連回條件、動作與 return 的同一路徑。",
+    "emphasis_tokens": ["Python 復原", "縮排", "3 行", "condition", "action", "return", "marked error"],
+    "columns": ["before｜錯誤 indentation", "after｜同一路徑 scope", "verify／run｜EVIDENCE PLACEHOLDER"]
+  },
+  {
+    "page": 77,
+    "layout": "decision_tree",
+    "visual_summary": "用 syntax→semantics 分支拆開 comparison 與 legal action，避免能執行就被誤稱為公平或節能。",
+    "emphasis_tokens": ["syntax", "semantics", "comparison", "legal action", "observation", "公平", "節能"],
+    "steps": ["comparison syntax", "允許 observation", "legal-action API", "runner receipt", "公平／節能 claim gate"]
+  },
+  {
+    "page": 78,
+    "layout": "process_steps",
+    "visual_summary": "以 traceback→line pointer→marked block 的最小流程限定 recovery 範圍，不 debug framework。",
+    "emphasis_tokens": ["traceback", "line pointer", "marked block", "repair target", "framework debugging", "fallback"],
+    "steps": ["讀標記行", "指向 line pointer", "對回 marked block", "產生一個 repair target", "超出範圍→fallback"]
+  },
+  {
+    "page": 79,
+    "layout": "causal_flow",
+    "visual_summary": "用 one-line diff→policy action→evidence 因果流把修復重新接回 runner event 與 result。",
+    "emphasis_tokens": ["one-line diff", "policy action", "evidence", "policy identity", "consequential evidence", "null diff"],
+    "steps": ["one-line diff", "policy branch", "runner event", "result evidence", "null diff→fixture gate failure"]
+  },
+  {
+    "page": 80,
+    "layout": "ledger",
+    "visual_summary": "以 freeze receipt ledger 綁定 policy bytes、scenario identity 與 withheld case，明確列出凍結後不可改動。",
+    "emphasis_tokens": ["凍結 policy", "policy bytes", "freeze receipt", "withheld case", "scenario identity", "同一 policy"],
+    "columns": ["policy bytes／hash", "scenario identity", "freeze receipt", "withheld case", "不可重調規則"]
+  },
+  {
+    "page": 81,
+    "layout": "split_compare",
+    "visual_summary": "以同一 policy、new trace、同 boundary 的對照卡預測公平 counterexample，而非保證 KPI。",
+    "emphasis_tokens": ["同一 policy", "新 trace", "同 boundary", "counterexample", "service", "state time", "endpoint J"],
+    "columns": ["固定｜policy、job、window、boundary", "改變｜明示 trace／opportunity", "預測｜service、state time、J、delivered bits"]
+  },
+  {
+    "page": 82,
+    "layout": "process_steps",
+    "visual_summary": "以 freeze receipt→withheld case→replay 流程執行新案例，維持 policy identity 且不重調。",
+    "emphasis_tokens": ["不重調", "frozen policy", "new case", "withheld", "policy identity", "replay"],
+    "steps": ["核對 freeze receipt", "載入 withheld case", "固定 policy bytes", "replay", "比較 service／state／energy"]
+  },
+  {
+    "page": 83,
+    "layout": "evidence_matrix",
+    "visual_summary": "用四格 evidence ledger 分析 opportunity、queue、state time、service boundary 改變與 ranking verdict。",
+    "emphasis_tokens": ["evidence ledger", "opportunity", "queue", "state time", "service boundary", "ranking changed", "ranking held"],
+    "columns": ["改變了什麼", "causal link", "baseline／candidate／withheld evidence", "bounded判讀"]
+  },
+  {
+    "page": 84,
+    "layout": "process_steps",
+    "visual_summary": "以 schema→identity→units→provenance→import 閘門處理 Leo 匯入失敗，失敗時 session 不變。",
+    "emphasis_tokens": ["Leo 匯入失敗", "schema", "identity", "units", "provenance", "fail-closed", "session 不變"],
+    "steps": ["schema version", "scenario_id／seed", "policy hash／units", "provenance", "全有或全無 import receipt"]
+  },
+  {
+    "page": 85,
+    "layout": "transfer_map",
+    "visual_summary": "把 offline evidence packet 轉接到 workbook checkpoint，runtime blocked 時仍維持 bounded discussion。",
+    "emphasis_tokens": ["rendered artifact", "offline evidence packet", "workbook checkpoint", "source_mode", "queue", "packet", "state", "energy"],
+    "steps": ["開啟 rendered artifact", "核對 packet identity／source_mode", "讀 queue／packet／state／energy", "寫入 workbook checkpoint", "不執行新 run"]
+  },
+  {
+    "page": 86,
+    "layout": "causal_flow",
+    "visual_summary": "以 queue→policy action→radio state→endpoint J 因果流重建每個事件、時間、packet outcome 與 energy field。",
+    "emphasis_tokens": ["queue", "policy action", "radio state", "endpoint J", "event", "time", "packet outcome"],
+    "steps": ["queue", "policy action", "radio state", "packet outcome", "endpoint J", "identity／unit evidence"]
+  },
+  {
+    "page": 87,
+    "layout": "split_compare",
+    "visual_summary": "以 power-time area 對照低峰值短時間與低功率長時間，說明低 W 不足以判定低 J。",
+    "emphasis_tokens": ["低 W", "低 J", "power-time area", "W", "J", "service", "deadline", "boundary"],
+    "columns": ["低峰值／短時間｜power-time area", "低功率／長時間｜power-time area", "判斷還需 service、deadline、boundary"]
+  },
+  {
+    "page": 88,
+    "layout": "formula_focus",
+    "visual_summary": "以 service gate 與兩條 bit/J 公式為焦點，分開 endpoint J、system J、unique delivered bits 與 service_pass。",
+    "emphasis_tokens": ["service boundary", "EE_endpoint", "EE_canonical", "unique delivered bits", "J_endpoint", "J_system", "service_pass"],
+    "columns": ["service gate｜job／window／boundary", "EE_endpoint｜unique bits／J_endpoint", "EE_canonical｜unique bits／J_system"]
+  },
+  {
+    "page": 89,
+    "layout": "split_compare",
+    "visual_summary": "左右對照 endpoint replay 與 Leo／system replay，明確標出 shared scenario／clock 與不等同的 energy authority。",
+    "emphasis_tokens": ["endpoint replay", "Leo / system replay", "endpoint energy", "canonical fields", "shared scenario", "不等同"],
+    "columns": ["endpoint layer｜sleep、process、TX/RX、packet、queue、endpoint energy", "system layer｜C-120 authoritative replay、canonical fields", "shared｜scenario、clock、workbook"]
+  },
+  {
+    "page": 90,
+    "layout": "split_compare",
+    "visual_summary": "用 A baseline／same job-window-boundary／B candidate 的版面重申 fair comparison 與單一 policy block。",
+    "emphasis_tokens": ["公平 baseline", "same job", "same window", "same boundary", "A baseline", "B candidate", "one policy block"],
+    "columns": ["A baseline｜固定 provenance 與 inherited policy", "same job／window／boundary｜比較契約", "B candidate｜只改一個 policy block"]
+  },
+  {
+    "page": 91,
+    "layout": "transfer_map",
+    "visual_summary": "以 transfer map 將 LEO contact window 的 decision structure 映到 smart farm irrigation 與 HVAC occupancy，不搬運數值。",
+    "emphasis_tokens": ["LEO contact window", "smart farm irrigation", "HVAC occupancy", "send", "wait", "sleep", "urgent", "decision structure"],
+    "steps": ["LEO contact window", "decision structure", "smart farm irrigation", "HVAC occupancy", "重新定義 service／deadline／power model"]
+  },
+  {
+    "page": 92,
+    "layout": "glossary_grid",
+    "visual_summary": "以四欄 glossary grid 分類 measured、derived、assumed、simulated，守住 current C-120 claim ceiling。",
+    "emphasis_tokens": ["measured", "derived", "assumed", "simulated", "claim ceiling", "SIMULATED TEACHING DATA", "EVIDENCE PLACEHOLDER"],
+    "columns": ["measured｜目前無 live／physical measurement", "derived｜明示模型與輸入計算", "assumed｜course-added inputs", "simulated｜teaching fixture output"]
+  },
+  {
+    "page": 93,
+    "layout": "causal_flow",
+    "visual_summary": "以 scenario provider→endpoint model→JSON result 的邊界流程呈現 LoRaEnergySim 可提供與 Leo seam。",
+    "emphasis_tokens": ["LoRaEnergySim", "scenario provider", "endpoint model", "JSON result", "endpoint replay", "system replay", "live"],
+    "steps": ["C-120 scenario provider", "endpoint model", "policy／course inputs", "JSON result", "Leo JSON seam", "不提供 live／canonical pass"]
+  },
+  {
+    "page": 94,
+    "layout": "split_compare",
+    "visual_summary": "以 upstream pin、course-owned wrapper、Leo JSON seam 三欄劃分來源、所有權、固定項目與隔離方式。",
+    "emphasis_tokens": ["upstream pin", "course-owned wrapper", "Leo JSON seam", "pinned revision", "lock SHA", "versioned JSON"],
+    "columns": ["upstream｜LoRaEnergySim pinned revision", "course wrapper｜scenario、seed、policy、result schema", "Leo seam｜versioned JSON、不連結 Python modules"]
+  },
+  {
+    "page": 95,
+    "layout": "evidence_matrix",
+    "visual_summary": "用矩陣分開 upstream model、course assumption、LEO mapping 與 result，並標示仍未驗證的 claims。",
+    "emphasis_tokens": ["upstream model", "course assumption", "LEO mapping", "result", "unverified", "measured", "live", "canonical"],
+    "columns": ["upstream model", "course assumption", "LEO mapping", "result", "unverified gate"]
+  },
+  {
+    "page": 96,
+    "layout": "code_focus",
+    "visual_summary": "以 observation（只讀）到 bounded action（可選）的 API surface 為焦點，禁止 future outcome、engine、schema、formula 編輯。",
+    "emphasis_tokens": ["student_policy.py", "observation", "bounded action", "API card", "runner event", "result evidence", "future outcome"],
+    "columns": ["observation｜只讀", "bounded action｜可選", "runner event／result evidence", "禁止｜future outcome、engine、schema、formula"]
+  },
+  {
+    "page": 97,
+    "layout": "causal_flow",
+    "visual_summary": "以 scenario package→runner→result.json 契約資料流連接 identity、seed、units、policy hash、deterministic events 與 validated JSON。",
+    "emphasis_tokens": ["scenario package", "runner", "result.json", "scenario_id", "seed", "units", "policy hash", "deterministic events"],
+    "steps": ["fixed scenario package", "identity／seed／units／policy hash", "runner", "deterministic events", "validated result.json", "provenance"]
+  },
+  {
+    "page": 98,
+    "layout": "process_steps",
+    "visual_summary": "以 fail-closed 驗證梯逐層檢查 schema、identity、units、provenance，再決定 import 或 fallback。",
+    "emphasis_tokens": ["Fail-closed", "schema", "identity", "units", "provenance", "import", "fallback", "session 不變"],
+    "steps": ["schema version", "scenario_id／seed", "policy hash／units", "provenance", "import pass 或 fail closed", "same-scenario fallback"]
+  },
+  {
+    "page": 99,
+    "layout": "state_ribbon",
+    "visual_summary": "以 radio state 與能量帳 ribbon 串起 SLEEP、WAKE、PROCESS、TX／RX、WAIT 的 state time 與 endpoint J。",
+    "emphasis_tokens": ["SLEEP", "WAKE", "PROCESS", "TX", "RX", "WAIT", "J_endpoint", "state time"],
+    "steps": ["SLEEP", "WAKE", "PROCESS", "TX / RX", "WAIT", "J_endpoint"]
+  },
+  {
+    "page": 100,
+    "layout": "formula_focus",
+    "visual_summary": "用單位階梯與三條公式連結 W、J、bit/s、unique delivered bits、endpoint bit/J 與 canonical bit/J。",
+    "emphasis_tokens": ["W", "J", "bit/s", "unique delivered bits", "EE_endpoint", "EE_canonical", "service_pass"],
+    "columns": ["W→J｜瞬時到累積", "bit/s→unique delivered bits｜資料率到服務量", "EE_endpoint｜J_endpoint", "EE_canonical｜J_system"]
+  },
+  {
+    "page": 101,
+    "layout": "split_compare",
+    "visual_summary": "以 endpoint 與 system energy 兩欄標出 JSON seam、共享欄位、adapter mapping 與 owner freeze。",
+    "emphasis_tokens": ["Endpoint", "system energy", "JSON seam", "scenario_id", "clock", "source_mode", "owner freeze", "parity"],
+    "columns": ["endpoint｜state、packet、queue、endpoint energy", "system｜authoritative replay、service、canonical consumed J", "共享｜scenario_id、clock、source_mode、workbook"]
+  },
+  {
+    "page": 102,
+    "layout": "causal_flow",
+    "visual_summary": "以 TLE→SGP4／model-derived position→NTPU service window 流程說明 TLE 只錨定 changing opportunity。",
+    "emphasis_tokens": ["TLE", "SGP4", "model-derived position", "NTPU service window", "source anchor", "course output", "traffic", "power"],
+    "steps": ["pinned TLE", "SGP4／position", "NTPU service window", "scenario anchor", "後續 labs consumption"]
+  },
+  {
+    "page": 103,
+    "layout": "transfer_map",
+    "visual_summary": "用 provenance spine 將 source、model、assumption、result 串成來源到結果的 bounded lineage。",
+    "emphasis_tokens": ["source", "model", "assumption", "result", "provenance", "identity", "units", "bounded statement"],
+    "steps": ["source／version", "model role", "course-owned assumption", "simulated／derived result", "identity／units／provenance", "bounded statement"]
+  },
+  {
+    "page": 104,
+    "layout": "formula_focus",
+    "visual_summary": "以 dB↔linear 轉換公式作為 quality vocabulary，並明確隔開 quality observation、service、energy 與 bit/J。",
+    "emphasis_tokens": ["SINR", "dB", "linear", "quality decision", "x_dB", "x_linear", "delivered service", "bit/J"],
+    "columns": ["dB｜對數表達", "linear｜計算量", "quality observation｜trace", "不等於｜service、energy、bit/J"]
+  },
+  {
+    "page": 105,
+    "layout": "causal_flow",
+    "visual_summary": "沿 angle／range／RF quality→endpoint events→endpoint J 流程標出 geometry、observation 與 consumed power boundary。",
+    "emphasis_tokens": ["angle", "range", "RF quality", "endpoint events", "endpoint J", "consumed power", "boundary"],
+    "steps": ["angle／range", "RF quality observation", "producer／assumption", "endpoint events", "endpoint J", "endpoint／system boundary"]
+  },
+  {
+    "page": 106,
+    "layout": "glossary_grid",
+    "visual_summary": "以四欄 classification card 重申 measured、derived、assumed、simulated 的分類與 current claim ceiling。",
+    "emphasis_tokens": ["measured", "derived", "assumed", "simulated", "physical／instrument", "frozen inputs", "fixture／runner", "claim ceiling"],
+    "columns": ["measured｜physical／instrument capture", "derived｜frozen inputs／model", "assumed｜traffic／power／service／mission", "simulated｜fixture／runner／endpoint replay"]
+  },
+  {
+    "page": 107,
+    "layout": "transfer_map",
+    "visual_summary": "用 source ledger、course wrapper、Leo JSON seam 的所有權地圖呈現可改與不可改的邊界。",
+    "emphasis_tokens": ["upstream license", "source ledger", "course wrapper", "Leo JSON seam", "可改", "不可改", "GPL-3.0"],
+    "steps": ["upstream license／notices", "course-owned wrapper", "scaffolded policy surface", "versioned JSON contract", "不可改 upstream internals／formula／schema"]
+  },
+  {
+    "page": 108,
+    "layout": "glossary_grid",
+    "visual_summary": "以 glossary、claim ceiling、fallback、reopen 四格收束 identity、boundary、provenance 與 COMPLETE／INCOMPLETE。",
+    "emphasis_tokens": ["glossary", "claim ceiling", "fallback", "reopen", "scenario", "source_mode", "service_pass", "consumed J", "endpoint replay", "workbook"],
+    "columns": ["glossary｜scenario、source_mode、service_pass、consumed J、endpoint replay", "claim ceiling｜SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED", "fallback／reopen｜fail closed→same-scenario fallback→export／reopen", "workbook｜COMPLETE 或 INCOMPLETE＋provenance"]
+  }
+]

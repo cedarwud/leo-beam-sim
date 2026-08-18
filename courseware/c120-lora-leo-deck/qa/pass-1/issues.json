@@ -1,0 +1,17 @@
+{
+  "slide-02": {
+    "shape-020": {
+      "name": "Text 17",
+      "text": "PACKET / SERVICE",
+      "bounds_in": {
+        "x": 4.86,
+        "y": 2.61,
+        "w": 1.52,
+        "h": 0.42
+      },
+      "overflow": {
+        "overflow_inches": 0.245
+      }
+    }
+  }
+}

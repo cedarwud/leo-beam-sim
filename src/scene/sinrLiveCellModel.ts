@@ -302,6 +302,8 @@ export interface SinrLiveCellModelConfig {
    * by SINR + the `HandoverManager` (B3 / codex BLOCK-3), never round-robin.
    */
   readonly beamsPerSat?: number;
+  /** Optional per-satellite beam budgets; entries override `beamsPerSat`. */
+  readonly beamsPerSatById?: Readonly<Record<string, number>>;
   /** Beam-hopping slot duration (s); the lit window advances each slot. Default 2.5. */
   readonly hopSlotSec?: number;
   /**
@@ -507,6 +509,7 @@ export class SinrLiveCellModel {
   private readonly minElevationDeg: number;
   private readonly epochUtcMs: number;
   private beamsPerSat: number;
+  private beamsPerSatById: Readonly<Record<string, number>>;
   private readonly hopSlotSec: number;
   private readonly beamwidthOverrideRad?: number;
   private readonly maxGainDbiOverrideDbi?: number;
@@ -546,6 +549,7 @@ export class SinrLiveCellModel {
     this.minElevationDeg = config.minElevationDeg ?? DEFAULT_MIN_ELEVATION_DEG;
     this.epochUtcMs = config.epochUtcMs;
     this.beamsPerSat = config.beamsPerSat ?? Infinity;
+    this.beamsPerSatById = config.beamsPerSatById ?? {};
     this.hopSlotSec = config.hopSlotSec && config.hopSlotSec > 0 ? config.hopSlotSec : 2.5;
     this.beamwidthOverrideRad = config.beamwidthOverrideRad;
     this.maxGainDbiOverrideDbi = config.maxGainDbiOverrideDbi;
@@ -584,9 +588,14 @@ export class SinrLiveCellModel {
    * beam budget is supplied by the runtime resolver so topology tuning follows
    * the same clamp/fail-closed policy as a newly-created model.
    */
-  updateRuntimeProfile(profile: Profile, beamsPerSat = this.beamsPerSat): void {
+  updateRuntimeProfile(
+    profile: Profile,
+    beamsPerSat = this.beamsPerSat,
+    beamsPerSatById = this.beamsPerSatById,
+  ): void {
     this.profile = profile;
     this.beamsPerSat = beamsPerSat;
+    this.beamsPerSatById = beamsPerSatById;
     this.antenna = this.resolveAntenna(profile);
   }
 
@@ -677,8 +686,9 @@ export class SinrLiveCellModel {
     candidatesByCell: Map<number, CellScanGeometry[]>,
     simTimeSec: number,
   ): void {
-    if (!Number.isFinite(this.beamsPerSat)) return; // no cap (pure-model default)
-    const beams = Math.max(1, Math.floor(this.beamsPerSat));
+    const hasFiniteBudget = Number.isFinite(this.beamsPerSat)
+      || Object.values(this.beamsPerSatById).some(value => Number.isFinite(value));
+    if (!hasFiniteBudget) return; // no cap (pure-model default)
 
     // Candidate cells per satellite.
     const cellsBySat = new Map<string, number[]>();
@@ -694,6 +704,12 @@ export class SinrLiveCellModel {
     const illuminated = new Set<string>();
     for (const [satId, cellIds] of cellsBySat) {
       const sorted = [...new Set(cellIds)].sort((a, b) => a - b);
+      const rawBeamBudget = this.beamsPerSatById[satId] ?? this.beamsPerSat;
+      if (!Number.isFinite(rawBeamBudget)) {
+        for (const cellId of sorted) illuminated.add(`${satId}#${cellId}`);
+        continue;
+      }
+      const beams = Math.max(1, Math.floor(rawBeamBudget));
       if (sorted.length <= beams) {
         for (const cellId of sorted) illuminated.add(`${satId}#${cellId}`);
         continue;

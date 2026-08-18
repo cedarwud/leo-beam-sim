@@ -1,0 +1,73 @@
+{
+  "source": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/opening-checkpoint_ppt169_20260811/sources/educate.pptx",
+  "slide_count": 2,
+  "canvas": {
+    "width_px": 1280,
+    "height_px": 720,
+    "aspect": 1.7778
+  },
+  "theme": {
+    "palette": {
+      "background": "#FFFFFF",
+      "background_alt": "#B7C1EB",
+      "text": "#35377F",
+      "text_alt": "#660066",
+      "hyperlink": "#6F89F7",
+      "accent1": "#ECD882",
+      "accent2": "#B2B2B2",
+      "accent3": "#FFFFFF",
+      "accent4": "#353A77",
+      "accent5": "#F4E9C1",
+      "accent6": "#A1A1A1",
+      "primary": "#ECD882"
+    },
+    "fonts": {
+      "title": {
+        "latin": "Times New Roman",
+        "ea": "標楷體"
+      },
+      "body": {
+        "latin": "Times New Roman",
+        "ea": "標楷體"
+      }
+    },
+    "sizes": {
+      "title": 28.0,
+      "body": 24.0,
+      "body_levels": [
+        24.0,
+        20.0,
+        24.0,
+        16.0,
+        16.0,
+        16.0,
+        16.0,
+        16.0,
+        16.0
+      ]
+    }
+  },
+  "observed": {
+    "fonts": {
+      "latin": [
+        {
+          "value": "Times-Roman",
+          "count": 14
+        }
+      ],
+      "ea": []
+    },
+    "sizes_pt": [],
+    "colors": []
+  },
+  "layout_sizes_pt": [
+    {
+      "value": 14.0,
+      "count": 3
+    },
+    {
+      "value": 28.0,
+      "count": 2
+    }
+  ]
+}

@@ -1,0 +1,910 @@
+{
+  "layouts": [
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "標題投影片",
+      "objects": [
+        {
+          "box": {
+            "h_emu": 762000,
+            "h_in": 0.8333,
+            "w_emu": 0,
+            "w_in": 0.0,
+            "x_emu": 1001184,
+            "x_in": 1.0949,
+            "y_emu": 2312353,
+            "y_in": 2.5288
+          },
+          "kind": "shape",
+          "name": "Line 12",
+          "placeholder_index": null,
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 0,
+            "h_in": 0.0,
+            "w_emu": 10943167,
+            "w_in": 11.9676,
+            "x_emu": 683685,
+            "x_in": 0.7477,
+            "y_emu": 2844165,
+            "y_in": 3.1104
+          },
+          "kind": "shape",
+          "name": "Line 13",
+          "placeholder_index": null,
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 1143000,
+            "h_in": 1.25,
+            "w_emu": 10363200,
+            "w_in": 11.3333,
+            "x_emu": 1132417,
+            "x_in": 1.2384,
+            "y_emu": 1581209,
+            "y_in": 1.7292
+          },
+          "kind": "shape",
+          "name": "Rectangle 4",
+          "placeholder_index": null,
+          "placeholder_type": "ctrTitle"
+        },
+        {
+          "box": {
+            "h_emu": 1438103,
+            "h_in": 1.5727,
+            "w_emu": 8534400,
+            "w_in": 9.3333,
+            "x_emu": 1780117,
+            "x_in": 1.9468,
+            "y_emu": 2935777,
+            "y_in": 3.2106
+          },
+          "kind": "shape",
+          "name": "Rectangle 5",
+          "placeholder_index": "1",
+          "placeholder_type": "subTitle"
+        },
+        {
+          "box": {
+            "h_emu": 476250,
+            "h_in": 0.5208,
+            "w_emu": 889000,
+            "w_in": 0.9722,
+            "x_emu": 10934700,
+            "x_in": 11.9583,
+            "y_emu": 6340475,
+            "y_in": 6.934
+          },
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": null,
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 6858000,
+            "h_in": 7.5,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 0,
+            "y_in": 0.0
+          },
+          "kind": "picture",
+          "name": "圖片 12"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6113509,
+            "y_in": 6.6858
+          },
+          "kind": "picture",
+          "name": "圖片 10"
+        },
+        {
+          "box": {
+            "h_emu": 323636,
+            "h_in": 0.3539,
+            "w_emu": 2265448,
+            "w_in": 2.4775,
+            "x_emu": 9875182,
+            "x_in": 10.7996,
+            "y_emu": 0,
+            "y_in": 0.0
+          },
+          "kind": "picture",
+          "name": "圖片 11"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout1.xml"
+    },
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "直排標題及文字",
+      "objects": [
+        {
+          "box": {
+            "h_emu": 5174192,
+            "h_in": 5.6586,
+            "w_emu": 2842683,
+            "w_in": 3.1088,
+            "x_emu": 9139063,
+            "x_in": 9.9946,
+            "y_emu": 931333,
+            "y_in": 1.0185
+          },
+          "kind": "shape",
+          "name": "直排標題 1",
+          "placeholder_index": null,
+          "placeholder_type": "title"
+        },
+        {
+          "box": {
+            "h_emu": 5174192,
+            "h_in": 5.6586,
+            "w_emu": 8329084,
+            "w_in": 9.1088,
+            "x_emu": 550334,
+            "x_in": 0.6019,
+            "y_emu": 931333,
+            "y_in": 1.0185
+          },
+          "kind": "shape",
+          "name": "直排文字版面配置區 2",
+          "placeholder_index": "1",
+          "placeholder_type": "body"
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": "10",
+          "placeholder_type": "sldNum"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6116283,
+            "y_in": 6.6888
+          },
+          "kind": "picture",
+          "name": "圖片 4"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout10.xml"
+    },
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "標題及物件",
+      "objects": [
+        {
+          "box": {
+            "h_emu": 476250,
+            "h_in": 0.5208,
+            "w_emu": 889000,
+            "w_in": 0.9722,
+            "x_emu": 10934700,
+            "x_in": 11.9583,
+            "y_emu": 6340475,
+            "y_in": 6.934
+          },
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": null,
+          "placeholder_type": null
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "標題 1",
+          "placeholder_index": null,
+          "placeholder_type": "title"
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "內容版面配置區 2",
+          "placeholder_index": "1",
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 350555,
+            "h_in": 0.3834,
+            "w_emu": 10705672,
+            "w_in": 11.7079,
+            "x_emu": 495728,
+            "x_in": 0.5421,
+            "y_emu": 6340475,
+            "y_in": 6.934
+          },
+          "kind": "shape",
+          "name": "內容版面配置區 2",
+          "placeholder_index": "10",
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6121662,
+            "y_in": 6.6947
+          },
+          "kind": "picture",
+          "name": "圖片 5"
+        },
+        {
+          "box": {
+            "h_emu": 283029,
+            "h_in": 0.3095,
+            "w_emu": 1981200,
+            "w_in": 2.1667,
+            "x_emu": 10210800,
+            "x_in": 11.1667,
+            "y_emu": 0,
+            "y_in": 0.0
+          },
+          "kind": "picture",
+          "name": "圖片 7"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout2.xml"
+    },
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "兩項物件",
+      "objects": [
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "標題 1",
+          "placeholder_index": null,
+          "placeholder_type": "title"
+        },
+        {
+          "box": {
+            "h_emu": 5191125,
+            "h_in": 5.6771,
+            "w_emu": 5556249,
+            "w_in": 6.0764,
+            "x_emu": 565152,
+            "x_in": 0.6181,
+            "y_emu": 914400,
+            "y_in": 1.0
+          },
+          "kind": "shape",
+          "name": "內容版面配置區 2",
+          "placeholder_index": "1",
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 5191125,
+            "h_in": 5.6771,
+            "w_emu": 5558367,
+            "w_in": 6.0787,
+            "x_emu": 6324601,
+            "x_in": 6.9167,
+            "y_emu": 914400,
+            "y_in": 1.0
+          },
+          "kind": "shape",
+          "name": "內容版面配置區 3",
+          "placeholder_index": "2",
+          "placeholder_type": null
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": "10",
+          "placeholder_type": "sldNum"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6116283,
+            "y_in": 6.6888
+          },
+          "kind": "picture",
+          "name": "圖片 5"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout3.xml"
+    },
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "比對",
+      "objects": [
+        {
+          "box": {
+            "h_emu": 575732,
+            "h_in": 0.6296,
+            "w_emu": 10972800,
+            "w_in": 12.0,
+            "x_emu": 609600,
+            "x_in": 0.6667,
+            "y_emu": 177801,
+            "y_in": 0.1944
+          },
+          "kind": "shape",
+          "name": "標題 1",
+          "placeholder_index": null,
+          "placeholder_type": "title"
+        },
+        {
+          "box": {
+            "h_emu": 639762,
+            "h_in": 0.6997,
+            "w_emu": 5386917,
+            "w_in": 5.8912,
+            "x_emu": 609600,
+            "x_in": 0.6667,
+            "y_emu": 1535113,
+            "y_in": 1.6788
+          },
+          "kind": "shape",
+          "name": "文字版面配置區 2",
+          "placeholder_index": "1",
+          "placeholder_type": "body"
+        },
+        {
+          "box": {
+            "h_emu": 3951288,
+            "h_in": 4.3212,
+            "w_emu": 5386917,
+            "w_in": 5.8912,
+            "x_emu": 609600,
+            "x_in": 0.6667,
+            "y_emu": 2174875,
+            "y_in": 2.3785
+          },
+          "kind": "shape",
+          "name": "內容版面配置區 3",
+          "placeholder_index": "2",
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 639762,
+            "h_in": 0.6997,
+            "w_emu": 5389033,
+            "w_in": 5.8935,
+            "x_emu": 6193368,
+            "x_in": 6.7731,
+            "y_emu": 1535113,
+            "y_in": 1.6788
+          },
+          "kind": "shape",
+          "name": "文字版面配置區 4",
+          "placeholder_index": "3",
+          "placeholder_type": "body"
+        },
+        {
+          "box": {
+            "h_emu": 3951288,
+            "h_in": 4.3212,
+            "w_emu": 5389033,
+            "w_in": 5.8935,
+            "x_emu": 6193368,
+            "x_in": 6.7731,
+            "y_emu": 2174875,
+            "y_in": 2.3785
+          },
+          "kind": "shape",
+          "name": "內容版面配置區 5",
+          "placeholder_index": "4",
+          "placeholder_type": null
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": "10",
+          "placeholder_type": "sldNum"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6116283,
+            "y_in": 6.6888
+          },
+          "kind": "picture",
+          "name": "圖片 7"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout4.xml"
+    },
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "只有標題",
+      "objects": [
+        {
+          "box": {
+            "h_emu": 571500,
+            "h_in": 0.625,
+            "w_emu": 11438467,
+            "w_in": 12.5093,
+            "x_emu": 550333,
+            "x_in": 0.6019,
+            "y_emu": 150813,
+            "y_in": 0.1649
+          },
+          "kind": "shape",
+          "name": "標題 1",
+          "placeholder_index": null,
+          "placeholder_type": "title"
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": "10",
+          "placeholder_type": "sldNum"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6116283,
+            "y_in": 6.6888
+          },
+          "kind": "picture",
+          "name": "圖片 3"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout5.xml"
+    },
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "空白",
+      "objects": [
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": "10",
+          "placeholder_type": "sldNum"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6116283,
+            "y_in": 6.6888
+          },
+          "kind": "picture",
+          "name": "圖片 2"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout6.xml"
+    },
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "含標題的內容",
+      "objects": [
+        {
+          "box": {
+            "h_emu": 505355,
+            "h_in": 0.5527,
+            "w_emu": 11356623,
+            "w_in": 12.4198,
+            "x_emu": 609599,
+            "x_in": 0.6667,
+            "y_emu": 228601,
+            "y_in": 0.25
+          },
+          "kind": "shape",
+          "name": "標題 1",
+          "placeholder_index": null,
+          "placeholder_type": "title"
+        },
+        {
+          "box": {
+            "h_emu": 5177896,
+            "h_in": 5.6626,
+            "w_emu": 7199488,
+            "w_in": 7.8735,
+            "x_emu": 4766733,
+            "x_in": 5.213,
+            "y_emu": 948267,
+            "y_in": 1.037
+          },
+          "kind": "shape",
+          "name": "內容版面配置區 2",
+          "placeholder_index": "1",
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 5177896,
+            "h_in": 5.6626,
+            "w_emu": 4011084,
+            "w_in": 4.3866,
+            "x_emu": 609601,
+            "x_in": 0.6667,
+            "y_emu": 948268,
+            "y_in": 1.037
+          },
+          "kind": "shape",
+          "name": "文字版面配置區 3",
+          "placeholder_index": "2",
+          "placeholder_type": "body"
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": "10",
+          "placeholder_type": "sldNum"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6116283,
+            "y_in": 6.6888
+          },
+          "kind": "picture",
+          "name": "圖片 5"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout7.xml"
+    },
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "含標題的圖片",
+      "objects": [
+        {
+          "box": {
+            "h_emu": 566738,
+            "h_in": 0.6198,
+            "w_emu": 11360151,
+            "w_in": 12.4236,
+            "x_emu": 594783,
+            "x_in": 0.6505,
+            "y_emu": 135466,
+            "y_in": 0.1481
+          },
+          "kind": "shape",
+          "name": "標題 1",
+          "placeholder_index": null,
+          "placeholder_type": "title"
+        },
+        {
+          "box": {
+            "h_emu": 3787775,
+            "h_in": 4.1424,
+            "w_emu": 7315200,
+            "w_in": 8.0,
+            "x_emu": 2389717,
+            "x_in": 2.6134,
+            "y_emu": 939800,
+            "y_in": 1.0278
+          },
+          "kind": "shape",
+          "name": "圖片版面配置區 2",
+          "placeholder_index": "1",
+          "placeholder_type": "pic"
+        },
+        {
+          "box": {
+            "h_emu": 804862,
+            "h_in": 0.8802,
+            "w_emu": 7315200,
+            "w_in": 8.0,
+            "x_emu": 2389717,
+            "x_in": 2.6134,
+            "y_emu": 5028672,
+            "y_in": 5.4994
+          },
+          "kind": "shape",
+          "name": "文字版面配置區 3",
+          "placeholder_index": "2",
+          "placeholder_type": "body"
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": "10",
+          "placeholder_type": "sldNum"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6116283,
+            "y_in": 6.6888
+          },
+          "kind": "picture",
+          "name": "圖片 5"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout8.xml"
+    },
+    {
+      "element": "layout",
+      "has_slide_background": false,
+      "name": "標題及直排文字",
+      "objects": [
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "標題 1",
+          "placeholder_index": null,
+          "placeholder_type": "title"
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "直排文字版面配置區 2",
+          "placeholder_index": "1",
+          "placeholder_type": "body"
+        },
+        {
+          "box": null,
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": "10",
+          "placeholder_type": "sldNum"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6116283,
+            "y_in": 6.6888
+          },
+          "kind": "picture",
+          "name": "圖片 4"
+        }
+      ],
+      "part": "ppt/slideLayouts/slideLayout9.xml"
+    }
+  ],
+  "masters": [
+    {
+      "element": "master",
+      "has_slide_background": true,
+      "name": null,
+      "objects": [
+        {
+          "box": {
+            "h_emu": 571500,
+            "h_in": 0.625,
+            "w_emu": 11417300,
+            "w_in": 12.4861,
+            "x_emu": 565151,
+            "x_in": 0.6181,
+            "y_emu": 141288,
+            "y_in": 0.1545
+          },
+          "kind": "shape",
+          "name": "Rectangle 4",
+          "placeholder_index": null,
+          "placeholder_type": "title"
+        },
+        {
+          "box": {
+            "h_emu": 5191125,
+            "h_in": 5.6771,
+            "w_emu": 11417300,
+            "w_in": 12.4861,
+            "x_emu": 565151,
+            "x_in": 0.6181,
+            "y_emu": 914400,
+            "y_in": 1.0
+          },
+          "kind": "shape",
+          "name": "Rectangle 5",
+          "placeholder_index": "1",
+          "placeholder_type": "body"
+        },
+        {
+          "box": {
+            "h_emu": 692150,
+            "h_in": 0.7569,
+            "w_emu": 0,
+            "w_in": 0.0,
+            "x_emu": 425451,
+            "x_in": 0.4653,
+            "y_emu": 252413,
+            "y_in": 0.276
+          },
+          "kind": "shape",
+          "name": "Line 22",
+          "placeholder_index": null,
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 0,
+            "h_in": 0.0,
+            "w_emu": 11772900,
+            "w_in": 12.875,
+            "x_emu": 209551,
+            "x_in": 0.2292,
+            "y_emu": 784225,
+            "y_in": 0.8576
+          },
+          "kind": "shape",
+          "name": "Line 24",
+          "placeholder_index": null,
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 0,
+            "h_in": 0.0,
+            "w_emu": 11772900,
+            "w_in": 12.875,
+            "x_emu": 209551,
+            "x_in": 0.2292,
+            "y_emu": 6240463,
+            "y_in": 6.8247
+          },
+          "kind": "shape",
+          "name": "Line 25",
+          "placeholder_index": null,
+          "placeholder_type": null
+        },
+        {
+          "box": {
+            "h_emu": 476250,
+            "h_in": 0.5208,
+            "w_emu": 889000,
+            "w_in": 0.9722,
+            "x_emu": 10934700,
+            "x_in": 11.9583,
+            "y_emu": 6340475,
+            "y_in": 6.934
+          },
+          "kind": "shape",
+          "name": "Rectangle 28",
+          "placeholder_index": "4",
+          "placeholder_type": "sldNum"
+        },
+        {
+          "box": {
+            "h_emu": 6858000,
+            "h_in": 7.5,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 0,
+            "y_in": 0.0
+          },
+          "kind": "picture",
+          "name": "圖片 2"
+        },
+        {
+          "box": {
+            "h_emu": 216208,
+            "h_in": 0.2364,
+            "w_emu": 12192000,
+            "w_in": 13.3333,
+            "x_emu": 0,
+            "x_in": 0.0,
+            "y_emu": 6116283,
+            "y_in": 6.6888
+          },
+          "kind": "picture",
+          "name": "圖片 1"
+        },
+        {
+          "box": {
+            "h_emu": 283029,
+            "h_in": 0.3095,
+            "w_emu": 1981200,
+            "w_in": 2.1667,
+            "x_emu": 10210800,
+            "x_in": 11.1667,
+            "y_emu": 0,
+            "y_in": 0.0
+          },
+          "kind": "picture",
+          "name": "圖片 3"
+        }
+      ],
+      "part": "ppt/slideMasters/slideMaster1.xml"
+    }
+  ],
+  "presentation": {
+    "aspect_ratio": 1.777778,
+    "height_emu": 6858000,
+    "height_in": 7.5,
+    "slide_count": 2,
+    "slide_layout_count": 10,
+    "slide_master_count": 1,
+    "width_emu": 12192000,
+    "width_in": 13.3333
+  },
+  "safe_bounds": {
+    "note": "Resolve from verified placeholders and original-size visual inspection before authoring.",
+    "status": "unresolved"
+  },
+  "schema": 1,
+  "source": {
+    "path": "/home/u24/pptx-wrap/assets/templates/educate.pptx",
+    "sha256": "3a90b0106c6587d720b5a46c653a31937ccd649b30890563c70a53c4cc5d25b8"
+  },
+  "themes": [
+    {
+      "major_east_asian": "標楷體",
+      "major_latin": "Times New Roman",
+      "minor_east_asian": "標楷體",
+      "minor_latin": "Times New Roman",
+      "name": "2_佈景主題1",
+      "part": "ppt/theme/theme1.xml"
+    },
+    {
+      "major_east_asian": "",
+      "major_latin": "Calibri Light",
+      "minor_east_asian": "",
+      "minor_latin": "Calibri",
+      "name": "Office 佈景主題",
+      "part": "ppt/theme/theme2.xml"
+    }
+  ]
+}

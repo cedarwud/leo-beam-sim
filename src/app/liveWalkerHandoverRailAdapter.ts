@@ -1,5 +1,22 @@
-import type { LiveWalkerHandoverEventIndex } from '../scene/liveWalkerHandoverEventIndex';
+import type {
+  LiveWalkerHandoverEvent,
+  LiveWalkerHandoverEventIndex,
+} from '../scene/liveWalkerHandoverEventIndex';
 import type { HandoverRailEvent } from '../ui/HandoverEventRail';
+
+/**
+ * Director focus is a single-UE teaching shot. The cell-truth index also carries
+ * aggregate events for the other UEs, so keep those on the rail but exclude them
+ * from the Director's next-event selector. Legacy live-Walker rows already have
+ * the primary-only scope and remain unchanged.
+ */
+export function selectDirectorHandoverEvents(
+  index: Pick<LiveWalkerHandoverEventIndex, 'sourceOwner' | 'primaryUeId'>,
+  events: readonly LiveWalkerHandoverEvent[],
+): readonly LiveWalkerHandoverEvent[] {
+  if (index.sourceOwner !== 'sinr-live-cell-truth') return events;
+  return events.filter(event => event.ueId === index.primaryUeId);
+}
 
 function formatLiveWalkerBeamLabel(satId: string, beamId: number | null): string {
   return `${satId} B${beamId}`;
@@ -13,7 +30,7 @@ function liveWalkerRailTitle(kind: HandoverRailEvent['kind'], sourceOwner: LiveW
   if (sourceOwner === 'sinr-live-cell-truth') {
     return kind === 'inter' ? 'SINR cell-truth satellite handover' : 'SINR cell-truth cell switch';
   }
-  return kind === 'inter' ? 'Live Walker satellite handover' : 'Live Walker beam switch';
+  return kind === 'inter' ? 'Live satellite handover' : 'Live beam switch';
 }
 
 export function liveWalkerHandoverEventIndexToRailEvents(

@@ -375,8 +375,8 @@ function assertV2Scenario(profile: Profile, rendered: RenderedScenario): void {
   );
   assert.equal(
     countOccurrences(rendered.markup, /data-testid="energy-efficiency-card"/g),
-    1,
-    `${rendered.scenario} must render one dedicated EE card`,
+    0,
+    `${rendered.scenario} must not restore the retired dedicated teaching EE card`,
   );
   assertNotContains(rendered.markup, 'paper-ee-readout');
   assertContains(rendered.markup, 'data-testid="info-panel-duel-center"');
@@ -838,7 +838,10 @@ async function assertLiveAppViewport(
   });
 
   try {
-    const panelBox = await page.locator('.leo-info-panel').boundingBox();
+    // The canonical homepage keeps the duel plus formula/result cards inside a
+    // deliberately scrollable right rail. Measure that viewport-owned rail,
+    // not the taller inner content stack.
+    const panelBox = await page.locator('.leo-shell-right').boundingBox();
     const cardBox = await page.locator('[data-testid="info-panel-duel-card"]').boundingBox();
     // ControlBar renders ONLY on the artifact-replay lane (`ControlBar.tsx:40`
     // early-returns null otherwise), so on the default sinr-live lane the element

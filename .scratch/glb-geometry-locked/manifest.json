@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "scope": "scratch-only candidate geometry lock; no production asset writes",
+  "textureOnlyCandidate": {
+    "status": "STOPPED",
+    "reason": "No already-installed local texture-only/lossless GLB tool was verified; no npx install or network operation is allowed in this lane."
+  },
+  "entries": [
+    {
+      "id": "ntpu-default",
+      "policy": "copy BeamShift optimized NTPU donor; geometry must match Leo default",
+      "candidate": "candidates/ntpu/NTPU.glb",
+      "baseline": "/home/u24/demo/leo-beam-sim/public/scenes/NTPU.glb",
+      "geometryDonor": "/home/u24/papers/beamshift/src/scene/assets/NTPU.glb"
+    },
+    {
+      "id": "ntpu-large",
+      "policy": "copy BeamShift optimized NTPU_v2 donor as NTPU_large candidate; geometry must match Leo large",
+      "candidate": "candidates/ntpu/NTPU_large.glb",
+      "baseline": "/home/u24/demo/leo-beam-sim/public/scenes/NTPU_large.glb",
+      "geometryDonor": "/home/u24/papers/beamshift/src/scene/assets/NTPU_v2.glb"
+    },
+    {
+      "id": "satellite-starlink",
+      "policy": "owner-adopted CC-BY-4.0 twin-array display model; geometry locked from adoption",
+      "candidate": "candidates/satellites/satellite-starlink.glb",
+      "baseline": "/home/u24/demo/leo-beam-sim/public/models/satellite-starlink.glb",
+      "geometryDonor": "/home/u24/papers/beamshift/src/scene/assets/satellite-twin-array.glb"
+    },
+    {
+      "id": "satellite-oneweb",
+      "policy": "owner-adopted CC-BY-4.0 front-dish display model; geometry locked from adoption",
+      "candidate": "candidates/satellites/satellite-oneweb.glb",
+      "baseline": "/home/u24/demo/leo-beam-sim/public/models/satellite-oneweb.glb",
+      "geometryDonor": "/home/u24/papers/beamshift/src/scene/assets/satellite-front-dish.glb"
+    },
+    {
+      "id": "uav-unchanged",
+      "policy": "unchanged current Leo UAV; no decimation and no model swap",
+      "candidate": "candidates/unchanged/uav.glb",
+      "baseline": "/home/u24/demo/leo-beam-sim/public/models/uav.glb",
+      "geometryDonor": "/home/u24/demo/leo-beam-sim/public/models/uav.glb"
+    }
+  ]
+}

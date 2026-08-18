@@ -23,9 +23,11 @@ import type { SinrLiveCellFrame, SinrLiveCellHandoverEvent } from './sinrLiveCel
 export const MANUAL_HANDOVER_DISPLAY_MS = 8000;
 
 /**
- * Build the two endpoints for the explicit top-bar demo cue from the current
- * cell snapshot. This is display-only: it never changes serving state or the
- * source-backed event index.
+ * Build the two endpoints for the explicit top-bar intra beam-switch cue from
+ * the current cell snapshot. This is display-only: it never changes serving
+ * state or the source-backed event index. Inter handovers are normally routed
+ * through the source-backed seek path; the inter branch remains fail-closed
+ * for any legacy caller that still reaches this resolver.
  */
 export function resolveManualHandoverDemoEvent(
   kind: 'intra' | 'inter',
@@ -55,16 +57,25 @@ export function resolveManualHandoverDemoEvent(
 
   if (kind === 'inter') {
     // Inter-satellite handover keeps the earth-fixed serving cell: only the
-    // apex satellite changes. Prefer a second satellite that is actually
-    // illuminating this same cell; fall back to a visible satellite so the
-    // independent demo remains drawable even in a sparse snapshot.
+    // apex satellite changes. Prefer the model's real pending / best candidate,
+    // then an actually illuminated same-cell satellite. Never fall back to an
+    // arbitrary visible satellite: that would make the display claim a link
+    // the model never selected.
     const sameCellCandidate = cellFrame.illuminatedBeams.find(beam => (
       beam.cellId === sourceCellId
       && beam.satId !== sourceSatId
     ));
-    const targetSatId = sameCellCandidate?.satId
-      ?? visibleSatelliteIds.find(satId => satId !== sourceSatId)
-      ?? null;
+    const visibleSatelliteIdSet = new Set(visibleSatelliteIds);
+    const targetSatId = [
+      primary?.pendingTargetSatId,
+      primary?.comparisonSatId,
+      sameCellCandidate?.satId,
+    ].find(satId => (
+      satId !== undefined
+      && satId !== null
+      && satId !== sourceSatId
+      && visibleSatelliteIdSet.has(satId)
+    )) ?? null;
     if (targetSatId === null) return null;
     return {
       ueId: primaryUeId ?? primary?.ueId ?? 'ue-0',
@@ -77,10 +88,20 @@ export function resolveManualHandoverDemoEvent(
     };
   }
 
-  const targetCell = cellFrame.cells.find(cell => (
-    cell.cellId !== sourceCellId
-    && cell.servingSatId === sourceSatId
-  )) ?? cellFrame.cells.find(cell => cell.cellId !== sourceCellId);
+  // A display-only intra switch must remain a same-satellite beam switch. Prefer
+  // a beam that this satellite is illuminating in the current frame, then fall
+  // back to a cell currently served by the same satellite. Do not invent a
+  // beam on another satellite merely to keep the cue drawable.
+  const illuminatedSameSatelliteBeam = cellFrame.illuminatedBeams.find(beam => (
+    beam.satId === sourceSatId
+    && beam.cellId !== sourceCellId
+  ));
+  const targetCell = illuminatedSameSatelliteBeam === undefined
+    ? cellFrame.cells.find(cell => (
+      cell.cellId !== sourceCellId
+      && cell.servingSatId === sourceSatId
+    ))
+    : cellFrame.cells.find(cell => cell.cellId === illuminatedSameSatelliteBeam.cellId);
   if (!targetCell) return null;
   const targetSatId = sourceSatId;
   if (targetSatId === null) return null;

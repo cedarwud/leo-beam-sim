@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const routeSource = readFileSync(new URL('./ScientificExplanationRoute.tsx', import.meta.url), 'utf8');
+const loaderSource = readFileSync(new URL('./route/scientificExplanationLoader.ts', import.meta.url), 'utf8');
+const artifactLoaderSource = readFileSync(new URL('./route/scientificExplanationArtifactLoader.ts', import.meta.url), 'utf8');
+const hookSource = readFileSync(new URL('./route/useScientificExplanationRun.ts', import.meta.url), 'utf8');
+const experienceSource = readFileSync(new URL('./route/scientificExplanationExperienceState.ts', import.meta.url), 'utf8');
+const entrySource = readFileSync(new URL('../main.tsx', import.meta.url), 'utf8');
+const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const styleSource = readFileSync(new URL('./ScientificExplanationRoute.scss', import.meta.url), 'utf8');
+
+assert.match(entrySource, /isUnifiedVisualLabRoute[\s\S]*window\.location\.pathname === '\/explain'/);
+assert.match(entrySource, /if \(isUnifiedVisualLabRoute\)[\s\S]{0,360}UnifiedVisualLabPrototype/);
+assert.doesNotMatch(entrySource, /import\('\.\/explain\/ScientificExplanationRoute'\)/);
+assert.doesNotMatch(appSource, /\/explain/);
+assert.match(routeSource, /data-evidence-state="pending"/);
+assert.match(routeSource, /data-evidence-state="available"/);
+assert.match(routeSource, /data-evidence-state="refused"/);
+assert.match(routeSource, /state\.status === 'pending'/);
+assert.match(routeSource, /state\.status === 'available'/);
+assert.match(routeSource, /不顯示舊值或替代結果/);
+assert.match(routeSource, /scientific-explain--loading/);
+assert.match(routeSource, /aria-busy="true"/);
+assert.doesNotMatch(routeSource, /一筆軌道資料，如何變成 NTPU 觀測點上空的一次可服務連線？/);
+assert.doesNotMatch(routeSource, /scientific-explain__field/);
+assert.doesNotMatch(routeSource, /explain-progress/);
+assert.match(routeSource, /AngleResponseDemoStage/);
+assert.match(routeSource, /if \(state\.status === 'available'\)/);
+assert.match(routeSource, /window\.history\.back\(\)/);
+assert.match(routeSource, /window\.location\.assign\('\/'\)/);
+assert.doesNotMatch(routeSource, /進入互動實驗/);
+assert.doesNotMatch(routeSource, /reveal-orientation/);
+assert.doesNotMatch(routeSource, /showingCausalLab/);
+assert.doesNotMatch(routeSource, /: '2026-08-07'/);
+assert.match(loaderSource, /resolveScientificStoryEvidence/);
+assert.match(loaderSource, /accepted TLE catalog digest/);
+assert.match(artifactLoaderSource, /accepted-scientific-demo-v1\.json/);
+assert.match(artifactLoaderSource, /cache: 'no-cache'/);
+assert.match(hookSource, /loadScientificExplanationArtifact/);
+assert.doesNotMatch(hookSource, /loadScientificExplanationRun|buildTleRunBundle|buildTleAnalysisRun|loadTleSnapshotSelection/);
+assert.match(experienceSource, /leo-beam-sim:\/explain\/:/);
+assert.match(experienceSource, /lesson:/);
+assert.match(experienceSource, /presentation:/);
+assert.match(experienceSource, /capture:/);
+assert.doesNotMatch(loaderSource, /SimulatorRoute|ScientificExplainPrototype/);
+assert.doesNotMatch(routeSource, /MainScene|Homepage|Sidebar|Dashboard/);
+assert.match(styleSource, /prefers-reduced-motion/);
+assert.match(styleSource, /:focus-visible/);
+
+console.log('Scientific explanation direct route contract tests passed');

@@ -1,0 +1,319 @@
+{
+  "schema": "visual-lab-bookmarks-v1",
+  "generatorVersion": "visual-lab-bookmarks-generator-v1",
+  "generatedAtUtc": "2026-08-12T08:34:27.164Z",
+  "timeZone": "Asia/Taipei",
+  "sourceCatalogs": [
+    {
+      "constellation": "oneweb",
+      "catalogUrl": "/tle-archive/oneweb/catalog.json",
+      "archiveId": "oneweb-20250727-20260812-0954fc6c0e90",
+      "archiveContentSha256": "0954fc6c0e90bb0cfa770661368f5452e1f37ce4481ea650609e54e9ea11dd1c",
+      "snapshotCount": 367,
+      "firstArchiveDate": "20250727",
+      "lastArchiveDate": "20260812",
+      "maxPropagationAgeMs": 604800000
+    },
+    {
+      "constellation": "starlink",
+      "catalogUrl": "/tle-archive/starlink/catalog.json",
+      "archiveId": "starlink-20250727-20260812-20a059bc3e83",
+      "archiveContentSha256": "20a059bc3e8358e955728ce7c29948ff472ca9143f27e0f314ac0e50d40b3a81",
+      "snapshotCount": 364,
+      "firstArchiveDate": "20250727",
+      "lastArchiveDate": "20260812",
+      "maxPropagationAgeMs": 604800000
+    }
+  ],
+  "selectionPolicy": {
+    "candidateInstantBasis": "snapshot-max-epoch-utc",
+    "candidateSnapshotsPerConstellation": 18,
+    "selectedPerConstellation": 3,
+    "descriptorDistance": [
+      "visibleSatelliteCount",
+      "selectedElevationDeg",
+      "elevationSpreadDeg",
+      "visibleAzimuthSpanDeg",
+      "selectedRangeKm",
+      "visibleRangeSpanKm"
+    ],
+    "measurementObserverId": "ntpu-wgs84-v1",
+    "measurementApi": "createTlePropagationFrameWithSatelliteExclusions+deriveObserverLinkGeometry"
+  },
+  "claimCeiling": {
+    "zh-Hant": "僅描述 archived-TLE／SGP4 在 NTPU 同一瞬間的幾何觀察；不表示即時遙測或服務品質。",
+    "en": "Describes archived-TLE/SGP4 geometry at one NTPU instant; it is not live telemetry or a service-quality measurement."
+  },
+  "bookmarks": [
+    {
+      "id": "oneweb-20260331-20260331065230128",
+      "selectionRank": 1,
+      "selectionRole": "max-visible-count-seed",
+      "constellation": "oneweb",
+      "instantUtc": "2026-03-31T06:52:30.128Z",
+      "instantTaipei": "2026-03-31T14:52:30.128",
+      "source": {
+        "catalogUrl": "/tle-archive/oneweb/catalog.json",
+        "archiveId": "oneweb-20250727-20260812-0954fc6c0e90",
+        "archiveContentSha256": "0954fc6c0e90bb0cfa770661368f5452e1f37ce4481ea650609e54e9ea11dd1c",
+        "archiveDate": "20260331",
+        "path": "/tle-archive/oneweb/oneweb_20260331.tle",
+        "sha256": "f8ceb63766924c9040c714dc4f598e7ea9a9aa04e07f82fed818d685a39aed3a",
+        "recordCount": 651,
+        "maxPropagationAgeMs": 604800000,
+        "sourceKind": "ARCHIVED_TLE",
+        "propagationModel": "SGP4",
+        "measuredFrameId": "tle-sgp4-1d486a01",
+        "propagatedSatelliteCount": 651,
+        "propagationExclusionCount": 0
+      },
+      "descriptors": {
+        "visibleSatelliteCount": 48,
+        "propagatedSatelliteCount": 651,
+        "selectedElevationDeg": 85.70596182689249,
+        "selectedRangeKm": 1226.4218929430656,
+        "selectedAzimuthDeg": 329.44622548888924,
+        "elevationSpreadDeg": 85.6492710460559,
+        "visibleAzimuthSpanDeg": 331.0675982880791,
+        "visibleRangeSpanKm": 2856.635550703213,
+        "selectedSatelliteId": "51623",
+        "comparisonSatelliteId": "51647"
+      },
+      "copy": {
+        "label": {
+          "zh-Hant": "可見 48 顆・最高仰角 85.7°",
+          "en": "48 visible · peak elevation 85.7°"
+        },
+        "caption": {
+          "zh-Hant": "NTPU 同一瞬間的 archived-TLE／SGP4 幾何觀察；選定衛星仰角 85.7°、斜距 1226 km、仰角展寬 85.6°。",
+          "en": "Archived-TLE/SGP4 geometry at one NTPU instant; selected elevation 85.7°, range 1226 km, elevation spread 85.6°."
+        }
+      }
+    },
+    {
+      "id": "oneweb-20250819-20250819054851154",
+      "selectionRank": 2,
+      "selectionRole": "descriptor-contrast",
+      "constellation": "oneweb",
+      "instantUtc": "2025-08-19T05:48:51.154Z",
+      "instantTaipei": "2025-08-19T13:48:51.154",
+      "source": {
+        "catalogUrl": "/tle-archive/oneweb/catalog.json",
+        "archiveId": "oneweb-20250727-20260812-0954fc6c0e90",
+        "archiveContentSha256": "0954fc6c0e90bb0cfa770661368f5452e1f37ce4481ea650609e54e9ea11dd1c",
+        "archiveDate": "20250819",
+        "path": "/tle-archive/oneweb/oneweb_20250819.tle",
+        "sha256": "410bcadfe8f24f21ff6d3aafc7042f0ab1919311b7c8dab18d920c52cc13c8ff",
+        "recordCount": 651,
+        "maxPropagationAgeMs": 604800000,
+        "sourceKind": "ARCHIVED_TLE",
+        "propagationModel": "SGP4",
+        "measuredFrameId": "tle-sgp4-525fa0f6",
+        "propagatedSatelliteCount": 651,
+        "propagationExclusionCount": 0
+      },
+      "descriptors": {
+        "visibleSatelliteCount": 30,
+        "propagatedSatelliteCount": 651,
+        "selectedElevationDeg": 50.87286517425194,
+        "selectedRangeKm": 1459.4644359500944,
+        "selectedAzimuthDeg": 73.74394491805305,
+        "elevationSpreadDeg": 50.235025299881855,
+        "visibleAzimuthSpanDeg": 329.63234500293754,
+        "visibleRangeSpanKm": 2545.8650755276158,
+        "selectedSatelliteId": "49302",
+        "comparisonSatelliteId": "55814"
+      },
+      "copy": {
+        "label": {
+          "zh-Hant": "可見 30 顆・最高仰角 50.9°",
+          "en": "30 visible · peak elevation 50.9°"
+        },
+        "caption": {
+          "zh-Hant": "NTPU 同一瞬間的 archived-TLE／SGP4 幾何觀察；選定衛星仰角 50.9°、斜距 1459 km、仰角展寬 50.2°。",
+          "en": "Archived-TLE/SGP4 geometry at one NTPU instant; selected elevation 50.9°, range 1459 km, elevation spread 50.2°."
+        }
+      }
+    },
+    {
+      "id": "oneweb-20250910-20250910140002000",
+      "selectionRank": 3,
+      "selectionRole": "descriptor-contrast",
+      "constellation": "oneweb",
+      "instantUtc": "2025-09-10T14:00:02.000Z",
+      "instantTaipei": "2025-09-10T22:00:02.000",
+      "source": {
+        "catalogUrl": "/tle-archive/oneweb/catalog.json",
+        "archiveId": "oneweb-20250727-20260812-0954fc6c0e90",
+        "archiveContentSha256": "0954fc6c0e90bb0cfa770661368f5452e1f37ce4481ea650609e54e9ea11dd1c",
+        "archiveDate": "20250910",
+        "path": "/tle-archive/oneweb/oneweb_20250910.tle",
+        "sha256": "c65a2a0216d493960acd8bd2ce2fe692c4cd1ef5cf8c6941f0bba892920ec16a",
+        "recordCount": 651,
+        "maxPropagationAgeMs": 604800000,
+        "sourceKind": "ARCHIVED_TLE",
+        "propagationModel": "SGP4",
+        "measuredFrameId": "tle-sgp4-4551664e",
+        "propagatedSatelliteCount": 651,
+        "propagationExclusionCount": 0
+      },
+      "descriptors": {
+        "visibleSatelliteCount": 40,
+        "propagatedSatelliteCount": 651,
+        "selectedElevationDeg": 61.86625947578066,
+        "selectedRangeKm": 1335.8805896643023,
+        "selectedAzimuthDeg": 277.0073145300331,
+        "elevationSpreadDeg": 61.696883808897496,
+        "visibleAzimuthSpanDeg": 329.4999801522762,
+        "visibleRangeSpanKm": 2713.40850990544,
+        "selectedSatelliteId": "48769",
+        "comparisonSatelliteId": "48794"
+      },
+      "copy": {
+        "label": {
+          "zh-Hant": "可見 40 顆・最高仰角 61.9°",
+          "en": "40 visible · peak elevation 61.9°"
+        },
+        "caption": {
+          "zh-Hant": "NTPU 同一瞬間的 archived-TLE／SGP4 幾何觀察；選定衛星仰角 61.9°、斜距 1336 km、仰角展寬 61.7°。",
+          "en": "Archived-TLE/SGP4 geometry at one NTPU instant; selected elevation 61.9°, range 1336 km, elevation spread 61.7°."
+        }
+      }
+    },
+    {
+      "id": "starlink-20260308-20260308133647272",
+      "selectionRank": 1,
+      "selectionRole": "max-visible-count-seed",
+      "constellation": "starlink",
+      "instantUtc": "2026-03-08T13:36:47.272Z",
+      "instantTaipei": "2026-03-08T21:36:47.272",
+      "source": {
+        "catalogUrl": "/tle-archive/starlink/catalog.json",
+        "archiveId": "starlink-20250727-20260812-20a059bc3e83",
+        "archiveContentSha256": "20a059bc3e8358e955728ce7c29948ff472ca9143f27e0f314ac0e50d40b3a81",
+        "archiveDate": "20260308",
+        "path": "/tle-archive/starlink/starlink_20260308.tle",
+        "sha256": "1d3a3b425339b3088c1e6b9245927da82d6314b88ef92b59646a176233481eec",
+        "recordCount": 9792,
+        "maxPropagationAgeMs": 604800000,
+        "sourceKind": "ARCHIVED_TLE",
+        "propagationModel": "SGP4",
+        "measuredFrameId": "tle-sgp4-78dca7c1",
+        "propagatedSatelliteCount": 9788,
+        "propagationExclusionCount": 2
+      },
+      "descriptors": {
+        "visibleSatelliteCount": 427,
+        "propagatedSatelliteCount": 9788,
+        "selectedElevationDeg": 70.1892294921511,
+        "selectedRangeKm": 511.64006773581116,
+        "selectedAzimuthDeg": 242.35509747941467,
+        "elevationSpreadDeg": 70.16483051155755,
+        "visibleAzimuthSpanDeg": 355.18624270164287,
+        "visibleRangeSpanKm": 2273.179785191719,
+        "selectedSatelliteId": "59936",
+        "comparisonSatelliteId": "55484"
+      },
+      "copy": {
+        "label": {
+          "zh-Hant": "可見 427 顆・最高仰角 70.2°",
+          "en": "427 visible · peak elevation 70.2°"
+        },
+        "caption": {
+          "zh-Hant": "NTPU 同一瞬間的 archived-TLE／SGP4 幾何觀察；選定衛星仰角 70.2°、斜距 512 km、仰角展寬 70.2°。",
+          "en": "Archived-TLE/SGP4 geometry at one NTPU instant; selected elevation 70.2°, range 512 km, elevation spread 70.2°."
+        }
+      }
+    },
+    {
+      "id": "starlink-20250819-20250819140002000",
+      "selectionRank": 2,
+      "selectionRole": "descriptor-contrast",
+      "constellation": "starlink",
+      "instantUtc": "2025-08-19T14:00:02.000Z",
+      "instantTaipei": "2025-08-19T22:00:02.000",
+      "source": {
+        "catalogUrl": "/tle-archive/starlink/catalog.json",
+        "archiveId": "starlink-20250727-20260812-20a059bc3e83",
+        "archiveContentSha256": "20a059bc3e8358e955728ce7c29948ff472ca9143f27e0f314ac0e50d40b3a81",
+        "archiveDate": "20250819",
+        "path": "/tle-archive/starlink/starlink_20250819.tle",
+        "sha256": "08ac78910f0ef431dee3261d0774ab381d4b0091bbc4d3312c7c9091eef64a00",
+        "recordCount": 8080,
+        "maxPropagationAgeMs": 604800000,
+        "sourceKind": "ARCHIVED_TLE",
+        "propagationModel": "SGP4",
+        "measuredFrameId": "tle-sgp4-0febbc86",
+        "propagatedSatelliteCount": 8079,
+        "propagationExclusionCount": 1
+      },
+      "descriptors": {
+        "visibleSatelliteCount": 346,
+        "propagatedSatelliteCount": 8079,
+        "selectedElevationDeg": 69.65188599123869,
+        "selectedRangeKm": 505.304065499893,
+        "selectedAzimuthDeg": 113.81395683102096,
+        "elevationSpreadDeg": 69.64402467845215,
+        "visibleAzimuthSpanDeg": 354.7278643774438,
+        "visibleRangeSpanKm": 2215.1914977195515,
+        "selectedSatelliteId": "58550",
+        "comparisonSatelliteId": "53906"
+      },
+      "copy": {
+        "label": {
+          "zh-Hant": "可見 346 顆・最高仰角 69.7°",
+          "en": "346 visible · peak elevation 69.7°"
+        },
+        "caption": {
+          "zh-Hant": "NTPU 同一瞬間的 archived-TLE／SGP4 幾何觀察；選定衛星仰角 69.7°、斜距 505 km、仰角展寬 69.6°。",
+          "en": "Archived-TLE/SGP4 geometry at one NTPU instant; selected elevation 69.7°, range 505 km, elevation spread 69.6°."
+        }
+      }
+    },
+    {
+      "id": "starlink-20260421-20260421041031178",
+      "selectionRank": 3,
+      "selectionRole": "descriptor-contrast",
+      "constellation": "starlink",
+      "instantUtc": "2026-04-21T04:10:31.178Z",
+      "instantTaipei": "2026-04-21T12:10:31.178",
+      "source": {
+        "catalogUrl": "/tle-archive/starlink/catalog.json",
+        "archiveId": "starlink-20250727-20260812-20a059bc3e83",
+        "archiveContentSha256": "20a059bc3e8358e955728ce7c29948ff472ca9143f27e0f314ac0e50d40b3a81",
+        "archiveDate": "20260421",
+        "path": "/tle-archive/starlink/starlink_20260421.tle",
+        "sha256": "234865f16c0df222cd081b5ae42a95f8c86f7b37632859fd5fc887357429c90f",
+        "recordCount": 10169,
+        "maxPropagationAgeMs": 604800000,
+        "sourceKind": "ARCHIVED_TLE",
+        "propagationModel": "SGP4",
+        "measuredFrameId": "tle-sgp4-6ec7e68e",
+        "propagatedSatelliteCount": 10169,
+        "propagationExclusionCount": 0
+      },
+      "descriptors": {
+        "visibleSatelliteCount": 384,
+        "propagatedSatelliteCount": 10169,
+        "selectedElevationDeg": 74.09673519493275,
+        "selectedRangeKm": 578.6091668898314,
+        "selectedAzimuthDeg": 204.38394339727176,
+        "elevationSpreadDeg": 74.06158879297806,
+        "visibleAzimuthSpanDeg": 353.87227701111135,
+        "visibleRangeSpanKm": 2388.410866754259,
+        "selectedSatelliteId": "57149",
+        "comparisonSatelliteId": "46168"
+      },
+      "copy": {
+        "label": {
+          "zh-Hant": "可見 384 顆・最高仰角 74.1°",
+          "en": "384 visible · peak elevation 74.1°"
+        },
+        "caption": {
+          "zh-Hant": "NTPU 同一瞬間的 archived-TLE／SGP4 幾何觀察；選定衛星仰角 74.1°、斜距 579 km、仰角展寬 74.1°。",
+          "en": "Archived-TLE/SGP4 geometry at one NTPU instant; selected elevation 74.1°, range 579 km, elevation spread 74.1°."
+        }
+      }
+    }
+  ]
+}

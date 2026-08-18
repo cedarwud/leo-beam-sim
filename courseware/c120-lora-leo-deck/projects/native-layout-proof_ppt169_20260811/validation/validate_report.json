@@ -1,0 +1,41 @@
+{
+  "schema": "template_fill_pptx_validate.v1",
+  "project": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811",
+  "export": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/exports/c120-native-layout-proof_20260811_034902.pptx",
+  "readback": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/readback.md",
+  "summary": {
+    "ok": 18,
+    "warn": 0,
+    "error": 4
+  },
+  "results": [
+    {
+      "status": "ERROR",
+      "code": "body_text_missing_in_readback",
+      "plan_slide": 2,
+      "message": "replacement text not found on the corresponding read-back slide",
+      "text": "policy 選擇\n↓\nradio state 停留時間\n↓\npower × time\n↓\nendpoint energy\n↓\nservice 判讀"
+    },
+    {
+      "status": "ERROR",
+      "code": "title_missing_in_readback",
+      "plan_slide": 6,
+      "message": "title not found on the corresponding read-back slide",
+      "text": "一筆 result，先看證據鏈"
+    },
+    {
+      "status": "ERROR",
+      "code": "title_missing_in_readback",
+      "plan_slide": 6,
+      "message": "title not found on the corresponding read-back slide",
+      "text": "身份 / lineage\n\n服務 / deadline / freshness\n\n機制 / queue / packet / state\n\n能量 / power × time\n\n判讀 / 支持、反駁、待查"
+    },
+    {
+      "status": "ERROR",
+      "code": "notes_missing_in_readback",
+      "plan_slide": 6,
+      "message": "planned speaker notes not found on the corresponding read-back slide",
+      "text": "這張畫面來自已驗證的 server preview 匯入流程；它證明目前的瀏覽器路徑能讀取同一份 result，但不代表 Windows 原生執行已通過。匯入之後先確認身份與 lineage，再檢查必要服務，接著用佇列、封包與狀態時間解釋能量差異。若身份不一致、服務證據缺失或機制沒有產生後果，結論就應保持證據不足。"
+    }
+  ]
+}

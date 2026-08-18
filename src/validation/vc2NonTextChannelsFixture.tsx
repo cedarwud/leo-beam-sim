@@ -206,6 +206,7 @@ function FixtureScene({ reducedMotion }: { reducedMotion: boolean }) {
                 label={`S${displayOrder + 1}`}
                 eventRole={fixture.codeRole}
                 satelliteTintColor={beam.satelliteTintColor}
+                constellation="starlink"
               />
             );
           })}

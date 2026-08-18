@@ -43,7 +43,7 @@ interface SinrLiveQuickControlsProps {
   readonly nextInterEnabled?: boolean;
   readonly nextIntraCount?: number;
   readonly nextInterCount?: number;
-  readonly nextIntraMode?: 'indexed' | 'real-trigger';
+  readonly nextIntraMode?: 'indexed' | 'real-trigger' | 'moving-beam-demo';
   readonly manualHandoverKind?: 'intra' | 'inter' | null;
   readonly onNextIntra?: () => void;
   readonly onNextInter?: () => void;
@@ -164,8 +164,10 @@ export function SinrLiveQuickControls({
             data-testid="director-intra-focus"
             disabled={!nextIntraEnabled}
             onClick={onNextIntra}
-            title={nextIntraMode === 'real-trigger' && nextIntraCount === undefined
-              ? 'Pause the timeline and show an independent intra handover demo'
+            title={nextIntraMode === 'moving-beam-demo'
+              ? 'Keep the timeline moving and show a same-satellite beam-switch demonstration'
+              : nextIntraMode === 'real-trigger' && nextIntraCount === undefined
+              ? 'Trigger a real same-satellite intra handover'
               : nextIntraMode === 'real-trigger'
                 ? 'Trigger the next real same-satellite intra handover'
               : 'Jump to the next indexed intra handover'}
@@ -179,7 +181,7 @@ export function SinrLiveQuickControls({
             disabled={!nextInterEnabled}
             onClick={onNextInter}
             title={nextInterCount === undefined
-              ? 'Pause the timeline and show an independent inter handover demo'
+              ? 'Seek to the next indexed inter handover and play the moving satellite pair'
               : 'Jump to the next indexed inter handover'}
           >
             Show Inter{typeof nextInterCount === 'number' ? ` · ${nextInterCount}` : ''}
@@ -209,7 +211,7 @@ export function SinrLiveQuickControls({
           data-testid="manual-handover-status"
           role="status"
         >
-          Showing {manualHandoverKind === 'intra' ? 'Intra' : 'Inter'} · Timeline paused
+          Showing {manualHandoverKind === 'intra' ? 'Intra' : 'Inter'} · Timeline running
         </span>
       )}
       {autoSlowApplied && (

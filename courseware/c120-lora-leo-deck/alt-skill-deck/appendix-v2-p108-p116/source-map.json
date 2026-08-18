@@ -1,0 +1,92 @@
+[
+  {
+    "slide": 1,
+    "page_id": "P108",
+    "route": "技術附錄",
+    "title": "節能判讀需要服務、工作量與能量",
+    "visible_current_evidence": "A / baseline；同情境備用資料；服務 FAIL；4800 bit；6.92 J；693.641618 bit/J",
+    "donor_source": "BeamShift e2 70–75；採用 evidence qualification 概念，重繪為 current endpoint record",
+    "authority": "ADR-004；C120 SDD；ALT handoff；current /course field-interpretation",
+    "evidence_status": "current fallback example labelled; no identifier exposed"
+  },
+  {
+    "slide": 2,
+    "page_id": "P109",
+    "route": "技術附錄",
+    "title": "可重建的證據紀錄",
+    "visible_current_evidence": "current record identity 待補；ledger source labelled 同情境備用資料",
+    "donor_source": "BeamShift e2 96–97；改寫為 current endpoint record",
+    "authority": "ADR-004；C120 SDD；ALT handoff；current /course field-interpretation",
+    "evidence_status": "missing current run identity marked 待補"
+  },
+  {
+    "slide": 3,
+    "page_id": "P110",
+    "route": "技術附錄",
+    "title": "證據來源分類",
+    "visible_current_evidence": "course endpoint result classified as simulated teaching data",
+    "donor_source": "BeamShift e2 113；保留 measured／derived／assumed／simulated classifier",
+    "authority": "ADR-004；C120 SDD；ALT handoff",
+    "evidence_status": "classification current; no measured value asserted"
+  },
+  {
+    "slide": 4,
+    "page_id": "P111",
+    "route": "技術附錄",
+    "title": "端點與系統能量邊界",
+    "visible_current_evidence": "endpoint result scope defined; system/canonical value 待補",
+    "donor_source": "BeamShift e2 19–21、28–29、32–33；以 current ADR／SDD authority 重寫",
+    "authority": "ADR-004；C120 SDD；ALT handoff",
+    "evidence_status": "endpoint layer defined; system layer remains separate"
+  },
+  {
+    "slide": 5,
+    "page_id": "P112",
+    "route": "技術附錄",
+    "title": "策略至 Leo 匯入的血緣",
+    "visible_current_evidence": "runner JSON seam defined; current import identity varies by run",
+    "donor_source": "BeamShift e2 96–97；以 current package contract 重寫 policy-to-import lineage",
+    "authority": "ADR-004；C120 SDD；ALT handoff；package README／schemas",
+    "evidence_status": "mechanism defined; per-run identity retained outside deck"
+  },
+  {
+    "slide": 6,
+    "page_id": "P113",
+    "route": "技術附錄",
+    "title": "情境至比較紀錄的契約鏈",
+    "visible_current_evidence": "scenario identity fixed; result/replay/workbook records require matching lineage",
+    "donor_source": "Current SDD 為主；BeamShift e2 70–75 提供 evidence qualification 概念",
+    "authority": "ADR-004；C120 SDD；ALT handoff；package schemas",
+    "evidence_status": "contract chain defined; missing nodes remain incomplete"
+  },
+  {
+    "slide": 7,
+    "page_id": "P114",
+    "route": "技術附錄",
+    "title": "來源、模型、假設與授權邊界",
+    "visible_current_evidence": "course wrapper and JSON seam defined; license metadata follows package boundary",
+    "donor_source": "BeamShift e2 113–114；依 ADR-004 trust boundary 重寫",
+    "authority": "ADR-004；C120 SDD；ALT handoff；package LICENSE／THIRD_PARTY_NOTICES",
+    "evidence_status": "boundary explanation; no license claim beyond repository metadata"
+  },
+  {
+    "slide": 8,
+    "page_id": "P115",
+    "route": "快速深化",
+    "title": "控制機制遷移至其他 IoT 場域",
+    "visible_current_evidence": "transfer mechanism only; target-domain values 待補",
+    "donor_source": "BeamShift e2 2、4、19；僅保留 changing-opportunity transfer mechanism",
+    "authority": "ADR-004；C120 SDD；ALT handoff",
+    "evidence_status": "hypothesis scaffold; no copied KPI or donor number"
+  },
+  {
+    "slide": 9,
+    "page_id": "P116",
+    "route": "交接紀錄",
+    "title": "可重開、可反駁、可追溯的交接紀錄",
+    "visible_current_evidence": "complete/incomplete gate defined; current record depends on artifact lineage",
+    "donor_source": "BeamShift e2 96–97、113–114 與 donor disposition map",
+    "authority": "ADR-004；C120 SDD；ALT handoff；donor insertion/disposition authority",
+    "evidence_status": "handoff rule defined; no live/measured/classroom-ready claim"
+  }
+]

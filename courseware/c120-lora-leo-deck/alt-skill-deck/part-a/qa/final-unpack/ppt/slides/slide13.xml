@@ -1,0 +1,683 @@
+<?xml version="1.0" encoding="utf-8"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="標題 1">
+            <a:extLst>
+              <a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}">
+                <a16:creationId xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main" id="{50D06974-0E38-4F3A-AEF8-48CE3E4FB605}"/>
+              </a:ext>
+            </a:extLst>
+          </p:cNvPr>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="title"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="ctr" lIns="0" rIns="0" tIns="0" bIns="0" rtlCol="0">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l" marL="0" indent="0">
+              <a:buNone/>
+              <a:lnSpc>
+                <a:spcPts val="2700"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="102A43"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve">P012｜Windows shell identity </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="2800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="102A43"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>與</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2800" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="102A43"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> Python 3.11</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" sz="2800" dirty="0"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="內容版面配置區 2">
+            <a:extLst>
+              <a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}">
+                <a16:creationId xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main" id="{ACAD95C4-D973-4108-AFBD-3126EAB797A7}"/>
+              </a:ext>
+            </a:extLst>
+          </p:cNvPr>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="658368" y="1005840"/>
+            <a:ext cx="5577840" cy="4498848"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="t" lIns="0" rIns="0" tIns="0" bIns="0" rtlCol="0">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l" marL="0" indent="0">
+              <a:buNone/>
+              <a:lnSpc>
+                <a:spcPts val="2200"/>
+              </a:lnSpc>
+              <a:spcAft>
+                <a:spcPts val="550"/>
+              </a:spcAft>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>CMD</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve">（Windows </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>命令提示字元</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve">）：source = Windows native shell；purpose = execute </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>.cmd</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> launcher；unit = shell type；interpretation = path uses </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>\</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>。</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0"/>
+          </a:p>
+          <a:p>
+            <a:pPr algn="l" marL="0" indent="0">
+              <a:buNone/>
+              <a:lnSpc>
+                <a:spcPts val="2200"/>
+              </a:lnSpc>
+              <a:spcAft>
+                <a:spcPts val="550"/>
+              </a:spcAft>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>PowerShell</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve">（Windows </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>管理命令殼</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve">）：source = Windows native shell；purpose = execute </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>.cmd</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> and inspect receipt；unit = shell type；interpretation = command syntax differs from CMD</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>。</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0"/>
+          </a:p>
+          <a:p>
+            <a:pPr algn="l" marL="0" indent="0">
+              <a:buNone/>
+              <a:lnSpc>
+                <a:spcPts val="2200"/>
+              </a:lnSpc>
+              <a:spcAft>
+                <a:spcPts val="550"/>
+              </a:spcAft>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>Python 3.11.x</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>（</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>固定直譯器版本</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve">）：source = runner frozen contract；purpose = create package-local </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>.venv</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>；unit = version；interpretation = version gate before setup</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>。</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0"/>
+          </a:p>
+          <a:p>
+            <a:pPr algn="l" marL="0" indent="0">
+              <a:buNone/>
+              <a:lnSpc>
+                <a:spcPts val="2200"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>Commands：</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>py --list</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>；</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>py -3.11 --version</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t xml:space="preserve"> → expected </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="2000" dirty="0" i="1">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>Python 3.11.x</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0">
+                <a:solidFill>
+                  <a:srgbClr val="243B53"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>。</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" sz="2000" dirty="0"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="430" name="Card 430"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6492240" y="2084832"/>
+            <a:ext cx="1554480" cy="1143000"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="D9F0EC"/>
+          </a:solidFill>
+          <a:ln w="12700">
+            <a:solidFill>
+              <a:srgbClr val="0F766E"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="431" name="Text 431"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6528816" y="2130552"/>
+            <a:ext cx="1481328" cy="1051560"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="ctr" lIns="72000" rIns="72000" tIns="36000" bIns="36000"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr"/>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1600" dirty="0" b="1">
+                <a:solidFill>
+                  <a:srgbClr val="102A43"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>CMD</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" sz="1600" dirty="0"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="432" name="Card 432"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="8193024" y="2084832"/>
+            <a:ext cx="1554480" cy="1143000"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="E6F0FA"/>
+          </a:solidFill>
+          <a:ln w="12700">
+            <a:solidFill>
+              <a:srgbClr val="5B4B8A"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="433" name="Text 433"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="8229600" y="2130552"/>
+            <a:ext cx="1481328" cy="1051560"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="ctr" lIns="72000" rIns="72000" tIns="36000" bIns="36000"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr"/>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1600" dirty="0" b="1">
+                <a:solidFill>
+                  <a:srgbClr val="102A43"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>PowerShell</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" sz="1600" dirty="0"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="434" name="Card 434"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9893808" y="2084832"/>
+            <a:ext cx="1554480" cy="1143000"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="ECE8F6"/>
+          </a:solidFill>
+          <a:ln w="12700">
+            <a:solidFill>
+              <a:srgbClr val="47759B"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="435" name="Text 435"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9930384" y="2130552"/>
+            <a:ext cx="1481328" cy="1051560"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="ctr" lIns="72000" rIns="72000" tIns="36000" bIns="36000"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr"/>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-TW" sz="1600" dirty="0" b="1">
+                <a:solidFill>
+                  <a:srgbClr val="102A43"/>
+                </a:solidFill>
+                <a:latin typeface="Times New Roman"/>
+                <a:ea typeface="標楷體"/>
+                <a:cs typeface="Times New Roman"/>
+              </a:rPr>
+              <a:t>Python 3.11.x</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-TW" altLang="en-US" sz="1600" dirty="0"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+    <p:extLst>
+      <p:ext uri="{BB962C8B-B14F-4D97-AF65-F5344CB8AC3E}">
+        <p14:creationId xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="1669816228"/>
+      </p:ext>
+    </p:extLst>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>

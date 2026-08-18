@@ -1,0 +1,173 @@
+{
+  "status": "CONTEXTUAL_REWRITE_SOURCE_BUILT",
+  "template": "/home/u24/ppt-master/template/educate.pptx",
+  "preview": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/ppt-master-projects/beamshift-appendix-contextual-rewrite_ppt169_20260811/exports/LoRaEnergySim-LEO-BeamShift-Appendix-CONTEXTUAL-PREVIEW.pptx",
+  "omml_source": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/ppt-master-projects/beamshift-appendix-contextual-rewrite_ppt169_20260811/exports/LoRaEnergySim-LEO-BeamShift-Appendix-CONTEXTUAL-OMML-SOURCE.pptx",
+  "slide_count": 19,
+  "layout_contract": "all slides use educate slideLayout2.xml",
+  "background_fill": "unset",
+  "title_pt": 28,
+  "body_pt_range": [
+    18,
+    24
+  ],
+  "speaker_notes": {
+    "count": 19,
+    "min_chars": 373,
+    "max_chars": 1195,
+    "required_sections": [
+      "本頁目的：",
+      "畫面指向：",
+      "可直接說：",
+      "必要操作：",
+      "預期畫面或結果：",
+      "失敗處理：",
+      "銜接下一頁："
+    ]
+  },
+  "native_equation_target": {
+    "logical_slide": 8,
+    "equation": "E_endpoint",
+    "latex": "E_{\\mathrm{endpoint}} = \\sum_{s \\in S} P_s t_s",
+    "font": "Times New Roman",
+    "picture_fallback": "absent",
+    "report": {
+      "schema_id": "c120-native-equations-report-v1",
+      "status": "PASS",
+      "tool": {
+        "script": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/insert-native-equations.py",
+        "mode": "OOXML-only",
+        "python_pptx_used": false,
+        "packages_installed": false,
+        "native_math_font": "Cambria Math",
+        "fallback_math_font": "Times-like SVG source (mathptmx in the supplied asset)"
+      },
+      "input": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/ppt-master-projects/beamshift-appendix-contextual-rewrite_ppt169_20260811/exports/LoRaEnergySim-LEO-BeamShift-Appendix-CONTEXTUAL-OMML-SOURCE.pptx",
+      "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/ppt-master-projects/beamshift-appendix-contextual-rewrite_ppt169_20260811/exports/LoRaEnergySim-LEO-BeamShift-Appendix-CONTEXTUAL-OMML-SOURCE.omml.pptx",
+      "logical_slide": 8,
+      "fallback_svg": null,
+      "equations": [
+        {
+          "key": "E_endpoint",
+          "latex": "E_{\\mathrm{endpoint}} = \\sum_{s \\in S} P_s t_s"
+        }
+      ],
+      "limitations": {
+        "powerpoint_edit_save_reopen": "not tested by this tool; Microsoft PowerPoint remains the authoritative native-editability check",
+        "native_math_font": "Cambria Math is used for the editable a14:m/OMML runs because PowerPoint's math zone reliably shapes sum, Greek eta, subscripts, and fractions with a math font; Times New Roman is not guaranteed to contain or shape all of those operators. The surrounding deck text remains untouched, and the supplied fallback SVG is Times-like.",
+        "libreoffice": "a14:m native-choice rendering is not claimed or tested; LibreOffice may ignore or flatten the native choice, so provide --fallback-svg for a preview fallback",
+        "visual_acceptance": "not claimed; render every page and inspect overlap, crop, overflow, and whitespace separately"
+      },
+      "slide_mapping": {
+        "logical_number": 8,
+        "physical_part": "ppt/slides/slide8.xml",
+        "relationship_id": "rId14",
+        "mapping_basis": "presentation.xml p:sldIdLst order"
+      },
+      "insertion_target": {
+        "kind": "p:cSld/p:spTree with title anchor",
+        "title_anchor_found": true,
+        "native_shapes_inserted": 1,
+        "fallback_wrapped_in_mc_AlternateContent": false
+      },
+      "geometry_emu": {
+        "slide_cx": 12192000,
+        "slide_cy": 6858000,
+        "x": 609600,
+        "first_y": 1714500,
+        "second_y": 2865664,
+        "width": 10972800,
+        "height": 979714,
+        "gap": 171450
+      },
+      "fallback": {
+        "embedded_media_part": null,
+        "content_type": null,
+        "choice_requires": null
+      },
+      "changed_parts": [
+        "ppt/slides/slide8.xml"
+      ],
+      "validation": {
+        "zip_valid": true,
+        "xml_parts_validated": 111,
+        "target_a14_m_count": 1,
+        "target_omath_count": 1,
+        "exact_latex_metadata_present": true,
+        "target_background_preserved": true,
+        "preservation": {
+          "required_unchanged_count": 64,
+          "required_unchanged_sha256": {
+            "ppt/notesMasters/_rels/notesMaster1.xml.rels": "c900da93a4de8bad9a582295b1dbcb892e6cfec52985354da973ebb3fab497c1",
+            "ppt/notesMasters/notesMaster1.xml": "ec44b08908b2c51532bc472b84108e3e015e57d867e46beb2cf2199c9c234fc4",
+            "ppt/notesSlides/_rels/notesSlide1.xml.rels": "c1e57cc916d3afda8a60f9a5ba41ad132fcb4cb5d0fe5a8cafac9905be15ab7f",
+            "ppt/notesSlides/_rels/notesSlide10.xml.rels": "50ff78b19235b84b28d278ab5547682820c5e94b370030fb5f30fef44d7ae84c",
+            "ppt/notesSlides/_rels/notesSlide11.xml.rels": "9b7c7959ad0f78c9f2702c07abb1b5e4756a862708e45e84d066b0fbdfe87093",
+            "ppt/notesSlides/_rels/notesSlide12.xml.rels": "5844cd66b13340774036179297febf9ac34f306b1ce0ae193dd3dbe77ce0ed5a",
+            "ppt/notesSlides/_rels/notesSlide13.xml.rels": "88665e4caa36aa273769f6d547e31161182ff6ce50f7814df49258eb7de70f13",
+            "ppt/notesSlides/_rels/notesSlide14.xml.rels": "33c1d9f2bf2684c5b4b97afdc2dd77ddc1dd266e5282306e4494d6502e949a4e",
+            "ppt/notesSlides/_rels/notesSlide15.xml.rels": "dcbb6a7cdc31c18c0d5e55bc3c3f6a5ab38d2f40d7d66a8e5c6e41fd62792d31",
+            "ppt/notesSlides/_rels/notesSlide16.xml.rels": "6c90281ad4aaa32507ea59477bf41195afd0626d1d5766bab1b4b47951d778ac",
+            "ppt/notesSlides/_rels/notesSlide17.xml.rels": "260ac6910248a82f0eba8c88b5d47529e56a6dbeacf099f064a155325365639a",
+            "ppt/notesSlides/_rels/notesSlide18.xml.rels": "66b3a72ef042392924c493db2cbf8a8596471f43038588b16feba74304a76c05",
+            "ppt/notesSlides/_rels/notesSlide19.xml.rels": "4694106f39e7505db413bc378e0c6fad637f93546051963f6069c1abb1cf6de9",
+            "ppt/notesSlides/_rels/notesSlide2.xml.rels": "55c9833a37d52b6fe9f23147c66a2bc3eed85077972a8d96845d079a65dcf131",
+            "ppt/notesSlides/_rels/notesSlide3.xml.rels": "4ac223d905d6a5f66aa435a2159b39d3bc750e331510712a5e5e5a7920991620",
+            "ppt/notesSlides/_rels/notesSlide4.xml.rels": "f470194d5dd2edcffb60fe860c39e689a467ab010340c4d9e986ec2770f4ba44",
+            "ppt/notesSlides/_rels/notesSlide5.xml.rels": "e3b315b6fe15666c738936b89595aba4c9076072b87ceba0691167d0895c0227",
+            "ppt/notesSlides/_rels/notesSlide6.xml.rels": "e09224abdc5296b9ac7618e6905a7087149d783fdc10d65182873140f17af2ba",
+            "ppt/notesSlides/_rels/notesSlide7.xml.rels": "0174450d6ac630cf08d6fb89df293ae281f107f54c8fc5d478cd630f1fd76543",
+            "ppt/notesSlides/_rels/notesSlide8.xml.rels": "f3125cf74b524d187a4fb1a2a3495508cb8fba9337489c81eabc87e680b5e2ae",
+            "ppt/notesSlides/_rels/notesSlide9.xml.rels": "1dd4550f7602a45f77a763f8c71c682432e72222dd29ffadcaef98715ea5604a",
+            "ppt/notesSlides/notesSlide1.xml": "a4779a56b79edcdc8159adef0157b111793460317a72a5ad0b93e1e5c6bb51ff",
+            "ppt/notesSlides/notesSlide10.xml": "ac7827a9de917cb20eab7c1ea2315eeb7761ae7fbfa7be7ce43273f1109addd3",
+            "ppt/notesSlides/notesSlide11.xml": "a62911e55e4891653984e144e808af239be5efbbcfcb1ec66fe90e848d224397",
+            "ppt/notesSlides/notesSlide12.xml": "835673464d5bf49657b9df88133bb4dfb2f39192bc5703ec684233a18452f011",
+            "ppt/notesSlides/notesSlide13.xml": "0df0e5880780b9f6b9d74c5a3843f9be6389333eacdf185ff03c6b09c14d85d6",
+            "ppt/notesSlides/notesSlide14.xml": "9c3b093963839be0ad859fd1538df93b767fa34552efd0f992decf07782aa749",
+            "ppt/notesSlides/notesSlide15.xml": "b939a32b767246bb09c9daba341d56893204625fa1eebecf834b304fb5743831",
+            "ppt/notesSlides/notesSlide16.xml": "9e97371baf108fcfb40bb9adb76ae3a4dc5c228d5b50e643cf1f21f1e797bf6e",
+            "ppt/notesSlides/notesSlide17.xml": "08156b706502e75268a72d843666d3be8265a4d447483c2d87b8f466811f8e82",
+            "ppt/notesSlides/notesSlide18.xml": "512b046b0052606697921b9e42f8c3d95be209e8d914051bf2c2c4f0aee222e3",
+            "ppt/notesSlides/notesSlide19.xml": "bc01ff03786e985d3784f8384b7c2dba63189b602153609d19ca33ea881bf17a",
+            "ppt/notesSlides/notesSlide2.xml": "aebd0c77727f30be6e6705b974084f3627f0726d1701ddfadf17ce468596c9c0",
+            "ppt/notesSlides/notesSlide3.xml": "f776d32738860ea314b4c51e9a36fb61ae57a34b49e2c629654d6629d4bdd1af",
+            "ppt/notesSlides/notesSlide4.xml": "4dac482bbc2a2a1c649f338a75926789795349e96cfb94b11ed805bf86ed603e",
+            "ppt/notesSlides/notesSlide5.xml": "5080d5c9cdba62eacf2ab41912f8ef2a941b2f6a4b458fab1f3259248be53bc9",
+            "ppt/notesSlides/notesSlide6.xml": "3478793fed260c8abec3b19f5a723a58a4bdfd1383a5b8560acc0298b6b8f321",
+            "ppt/notesSlides/notesSlide7.xml": "31ccf1130493ae3636add9ebe47105055c114be987d2adce945ec6356519f4da",
+            "ppt/notesSlides/notesSlide8.xml": "0533678ffe85de73f9a6bc41027e7025d9319d499e496809e975ec936b9f9188",
+            "ppt/notesSlides/notesSlide9.xml": "7018c00fadeb48700351177a61b7db655ec9ab46550cf52d55229634ef4e02f0",
+            "ppt/slideLayouts/_rels/slideLayout1.xml.rels": "86b03be6072fb223ff4dc3b914b941be9fefd54da97a68763ec27f3d6eddd060",
+            "ppt/slideLayouts/_rels/slideLayout10.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+            "ppt/slideLayouts/_rels/slideLayout2.xml.rels": "fe8968c4d1feafa048ae5178712964bfdb95c20631ff207a928aae39545c900e",
+            "ppt/slideLayouts/_rels/slideLayout3.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+            "ppt/slideLayouts/_rels/slideLayout4.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+            "ppt/slideLayouts/_rels/slideLayout5.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+            "ppt/slideLayouts/_rels/slideLayout6.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+            "ppt/slideLayouts/_rels/slideLayout7.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+            "ppt/slideLayouts/_rels/slideLayout8.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+            "ppt/slideLayouts/_rels/slideLayout9.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+            "ppt/slideLayouts/slideLayout1.xml": "ba43f02ed0fc5bdb112843a86386508ec57f59d0b095bc74fb1c60e5f9588e8c",
+            "ppt/slideLayouts/slideLayout10.xml": "53d991794c9e1bc3170547c0a229f375c6b000f1bf5a056a4a7b986933513c44",
+            "ppt/slideLayouts/slideLayout2.xml": "061b8e4192e3cedf39daf08bc14e99eb22006445c9ece5c80b6e4c587bf359a3",
+            "ppt/slideLayouts/slideLayout3.xml": "c10c72b218bdfe906d05e22de32e84bceeb530e4114d073166b8763e1fc5d2cc",
+            "ppt/slideLayouts/slideLayout4.xml": "0aabad39a9f7e1cfe5fae2ab9d27fff3f5baead0473a84fa87f374ae11c0f495",
+            "ppt/slideLayouts/slideLayout5.xml": "1e24e0de305ef89a18c139ed17b79a45272a64b7f5dd90c916028fe2a6ac67da",
+            "ppt/slideLayouts/slideLayout6.xml": "ac4a1b01b238fd179fac1b79e16b83634ee1618da40a116683606fdee3e56f30",
+            "ppt/slideLayouts/slideLayout7.xml": "cfac26a9756e678dae523a61cc48e1787b5cd13ce8c2bddef3cf4020f752e1a9",
+            "ppt/slideLayouts/slideLayout8.xml": "281e509ad4ab5f1347fdb20aa38629dfa3e225e401c8bac0b1773a37a5d1155d",
+            "ppt/slideLayouts/slideLayout9.xml": "d724f3ceda6a7c6955aab3ecc060c032d627ab3616edab1c705943ed2fef6bde",
+            "ppt/slideMasters/_rels/slideMaster1.xml.rels": "ed14dfadb2527d7488ee43bdb18969103d910e6c566492fa34895dc3e1698ea1",
+            "ppt/slideMasters/slideMaster1.xml": "6cdc77f070e1cc1a568e13392542d72847b58069750087e057c0afea9b0df867",
+            "ppt/theme/theme1.xml": "c128da77426350f7cb31a0993c3e628f1027c0e5cc1afbeabe77a11e58480a46",
+            "ppt/theme/theme2.xml": "f766d7b87d9c267ab3ddaf1a2e40a332821f625225f458dafb3fc0ff7f1483ff"
+          },
+          "violations": [],
+          "notes_preserved": true,
+          "masters_layouts_preserved": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "slide_count": 36,
+  "expected_slide_count": 36,
+  "page_range": "P028-P063",
+  "classroom_contract": {
+    "all_specs_nonempty": true,
+    "required_fields": [
+      "context",
+      "command",
+      "purpose",
+      "mechanism",
+      "expected",
+      "recovery",
+      "notes"
+    ],
+    "operation_slide_count": 36
+  },
+  "forbidden_word_absent": true,
+  "minute_labels_absent": true,
+  "speaker_notes": 36,
+  "speaker_notes_expected": 36,
+  "template_background_preserved": true,
+  "slide_level_background_fill": false,
+  "footer_reserve": "native template footer/page-number placeholder preserved",
+  "title_pt": 28,
+  "body_target_pt": 24,
+  "command_min_pt": 18,
+  "public_release": "RELEASE_ASSET_PENDING",
+  "local_artifact": "lora-energy-lab-v1.zip｜121139 bytes｜sha256:047e8459988d8bee59fbfdcc39189e00048f3697968901ce5b6e5363dc9e8c8c",
+  "fallback_evidence_used": true,
+  "windows_browser_evidence": "PENDING",
+  "course_screenshots_used": false,
+  "equation_hooks": [
+    "E_endpoint",
+    "eta_E"
+  ],
+  "equation_native_math_reports": [
+    {
+      "slide": 6,
+      "status": "PASS",
+      "omath": 1
+    },
+    {
+      "slide": 7,
+      "status": "PASS",
+      "omath": 1
+    }
+  ]
+}

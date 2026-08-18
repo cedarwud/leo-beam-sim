@@ -1,0 +1,39 @@
+[non-heavy] Outcome: enhance the sole current core deck so every slide has a formal, directly readable Traditional-Chinese speaker note, and install a repeatable notes QA gate for every future core merge. Work in the current environment.
+
+You are an additional worker because built-in sub-agent slots are full. You are not alone in the repository. Do not revert or overwrite unrelated edits. Do not commit or push.
+
+Exclusive ownership for this task:
+- courseware/c120-lora-leo-deck/alt-skill-deck/core-classroom/notes/**
+- courseware/c120-lora-leo-deck/alt-skill-deck/core-classroom/apply_core_notes.py
+- courseware/c120-lora-leo-deck/alt-skill-deck/core-classroom/audit_core_notes.py
+- courseware/c120-lora-leo-deck/alt-skill-deck/local-qa/core-speaker-notes/**
+- speaker-notes XML only inside courseware/c120-lora-leo-deck/alt-skill-deck/latest/LoRaEnergySim-LEO-ALT-CORE-CLASSROOM-REVIEW.pptx
+
+Do not change visible slide XML, layout, media, title text, shapes, template parts, background, footer, or slide order. The current core may later be replaced by root after validated chunks arrive; therefore store authoritative notes by a stable semantic key plus a visible-title/text signature, and make the apply/audit process safe to rerun after every merge.
+
+Before any edit, fully read:
+- courseware/c120-lora-leo-deck/ALT-SKILL-AUTHORING-HANDOFF.md
+- courseware/c120-lora-leo-deck/alt-skill-deck/shared/APPROVED-8-SLIDE-STYLE.md
+- courseware/c120-lora-leo-deck/alt-skill-deck/shared/LAB-EXPLANATION-ACCEPTANCE.md
+- /home/u24/.codex/skills/pptx-wrap/SKILL.md
+- /home/u24/.codex/skills/pptx/SKILL.md
+- the current 43-slide core PPTX, all existing notes, and the relevant /home/u24/lora-energy-lab README.zh-TW.md, student_policy.py, THIRD_PARTY_NOTICES.md, run_lab.py, contracts.py, and engine.py
+
+Speaker-note contract for every slide:
+- Formal Traditional Chinese that can be read aloud directly; normally 140-260 Chinese characters, longer only when a command/code/field page truly needs it.
+- Lead with the concrete teaching point, then explain the visible cards/flow/code in reading order, the mechanism, how to interpret evidence, and the transition to the next slide. Do not use a fixed labeled five-question framework.
+- For first English fields, explain Chinese name, source, purpose, unit, and interpretation in natural prose.
+- On Lab A/B/C edit slides, state exact file, block, before value, after value, what remains fixed, why behavior changes, exact next command, and what service/packet/state/endpoint-J evidence should be read.
+- Explain LoRaEnergySim positively as providing the endpoint-state/packet/retry/collision/energy model vocabulary and a reproducible reference framework. Do not use the phrases '為什麼仍然選' or discuss '簡化了什麼'. Preserve the honest execution boundary without turning it into the headline.
+- Explain Leo positively as the changing-service-window worked context and the validation/replay/workbook evidence platform. Do not claim live satellite data, direct upstream execution, measured energy, canonical parity, or whole-system energy.
+- Do not use 學生、老師、講師、你; student_policy.py is the only filename exception to the substring. Do not use 分鐘, SHA/checksum, ZIP test, production notes, casual slogans, or fabricated current screenshots/KPI.
+- Use source-backed statements only; missing current evidence remains 待補 or is described as an interpretation rule rather than an observed value.
+
+Implementation requirements:
+1. Extract presentation order, visible semantic title/text signature, and current note from the core.
+2. Write a reviewable UTF-8 notes source under core-classroom/notes/ with one entry per current slide. Do not use slide numbers as the durable key; visible titles have no numbering and slides may be spliced.
+3. Apply notes by editing only notes-slide XML within a temporary copy, then atomically replace the same core filename. Preserve visible slide parts byte-for-byte and verify that with hashes before/after for all ppt/slides/**, layouts, masters, media, theme, and presentation order. Hashes are QA artifacts only and must never appear in slide-visible text or speaker notes.
+4. Build audit_core_notes.py so future root merges fail if any slide has no matching note, a note below the meaningful-length threshold, forbidden language, a visible slide without notes, or an ambiguous semantic key. It should output a concise JSON/Markdown report under local-qa/core-speaker-notes/.
+5. LibreOffice-open/export the resulting core without repair, count pages and notes, and inspect readback. Do not alter visible layout.
+
+Report the fixed core path, notes count, QA report paths, byte-preservation result, LibreOffice/PDF result, and any unmatched slide that root must resolve. Stop after completing this owned task; do not merge any other deck.

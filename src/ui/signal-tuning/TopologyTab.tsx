@@ -345,11 +345,11 @@ export function TopologyTab({
             <SectionHeading
               title="Serving satellites (L)"
               titleText={copy('scene.servingCount.title', '服務衛星數 L', 'Serving satellites (L)')}
-              description="modqn-demo selector: serving candidates L from the 24x16 Walker pool. Each serving satellite contributes 7 MODQN beam actions; L=4 is the paper-faithful baseline and L=8 is the paper sweep max / rich demo."
+              description="modqn-demo selector: serving candidates L from the 24x16 synthetic constellation pool. Each serving satellite contributes 7 MODQN beam actions; L=4 is the paper-faithful baseline and L=8 is the paper sweep max / rich demo."
               descriptionText={copy(
                 'scene.servingCount.hint',
-                '自 24x16 Walker 星座中選取的服務候選衛星數 L。每顆服務衛星提供 7 個波束動作；L=4 為基準組態，L=8 為掃描上限。',
-                'The number of serving candidate satellites L drawn from the 24x16 Walker pool. Each serving satellite contributes 7 beam actions; L=4 is the baseline configuration and L=8 the sweep maximum.',
+                '自 24×16 合成衛星池中選取的服務候選衛星數 L。每顆服務衛星提供 7 個波束動作；L=4 為基準組態，L=8 為掃描上限。',
+                'The number of serving candidate satellites L drawn from the 24×16 synthetic constellation pool. Each serving satellite contributes 7 beam actions; L=4 is the baseline configuration and L=8 the sweep maximum.',
               )}
               badge={hasServingCountOverride ? undefined : `Default L=${MODQN_DEFAULT_SERVING_COUNT} rich demo`}
               value={formatServingCount(effectiveServingCount)}

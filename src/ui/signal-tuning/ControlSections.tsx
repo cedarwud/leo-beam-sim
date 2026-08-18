@@ -146,12 +146,14 @@ export function FormulaSideControlSection({
    * `validate:phase9h:coverage-audit-demotion` pins for the P_t tab.
    *
    * 'leading' is the σ² exception (owner request 2026-08-06). That section's
-   * formula IS the definition of the read-only value sitting inside the same
-   * section (σ² = N₀B, then B, N₀, then the computed noise floor), so reading it
-   * last inverts the explanation. No other tab uses it, so the pinned P_t order
-   * is untouched.
+   * formula defines the value shown inside the same section (σ² = B^wN₀, then the
+   * computed value, then B and N₀). No other tab uses it, so the pinned P_t
+   * order is untouched.
+   *
+   * 'hidden' keeps the provenance hook mounted while a compact parameter-value
+   * card is the visible content of a section.
    */
-  contextPlacement?: 'leading' | 'trailing';
+  contextPlacement?: 'leading' | 'trailing' | 'hidden';
 }) {
   const isNumerator = side === 'numerator';
   const sectionAccent = accentColor ?? (isNumerator ? UI_TOKENS.color.semantic.tuning : UI_TOKENS.color.semantic.noise);
@@ -220,6 +222,11 @@ export function FormulaSideControlSection({
       {contextPlacement === 'leading' && formulaContext}
       {children}
       {contextPlacement === 'trailing' && formulaContext}
+      {contextPlacement === 'hidden' && (
+        <div aria-hidden="true" style={srOnlyStyle}>
+          {formulaContext}
+        </div>
+      )}
     </section>
   );
 }
@@ -235,14 +242,14 @@ export function NoiseFloorReadout({
   const isEnglish = locale === 'en';
   const hasCurrentNoiseFloor = formulaBudget !== null && !isFormulaEvidenceStale;
   const canonicalStatusCopy = isFormulaEvidenceStale
-    ? 'Read-only σ² / noise floor evidence is stale after edit; waiting for the next recomputed frame.'
+    ? 'σ² / noise floor evidence is stale after edit; waiting for the next recomputed frame.'
     : hasCurrentNoiseFloor
-      ? 'Read-only computed σ² / noise floor from the current formula evidence.'
-      : 'Read-only σ² / noise floor appears after a selected formula frame is available.';
+      ? 'Computed σ² / noise floor from the current formula evidence.'
+      : 'σ² / noise floor appears after a selected formula frame is available.';
   const shortStatus = isFormulaEvidenceStale
     ? txBi(t, isEnglish, 'common.recomputing', '參數已變更，重新計算中…', 'Recomputing after the parameter change…')
     : hasCurrentNoiseFloor
-      ? txBi(t, isEnglish, 'common.computedReadOnly', '依目前參數計算之唯讀值', 'Read-only, computed from the current parameters')
+      ? txBi(t, isEnglish, 'common.computed', '依目前參數計算', 'Computed from the current parameters')
       : txBi(t, isEnglish, 'common.waitingFrame', '待第一個模擬影格產生後顯示', 'Shown once the first simulated frame is available');
   const label = txBi(t, isEnglish, 'kpi.noiseFloor.label', '雜訊底線', 'Noise floor');
 
@@ -284,13 +291,9 @@ export function NoiseFloorReadout({
           <HelpPopover
             helpId="kpi.noiseFloor"
             titleText={label}
-            bodyText={txBi(
-              t,
-              isEnglish,
-              'kpi.noiseFloor.help',
-              '雜訊底線 σ² = N₀ × B，為 SINR 分母中與干擾無關的常在項。此值由目前參數計算而得，不可直接編輯。',
-              'The noise floor σ² = N₀ × B is the interference-independent term of the SINR denominator. It is computed from the current parameters and cannot be edited directly.',
-            )}
+            bodyText={isEnglish
+              ? 'The noise floor σ² is the interference-independent term of the SINR denominator. It is computed from the current parameters and cannot be edited directly.'
+              : '雜訊底線 σ² 是 SINR 分母中與干擾無關的項目。此值由目前參數計算而得，不可直接編輯。'}
             placement="left"
           />
         </div>

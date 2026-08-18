@@ -1,0 +1,9 @@
+{
+  "output": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/latest/LoRaEnergySim-LEO-ALT-OPENING-V2-REVIEW.pptx",
+  "slide_count": 16,
+  "notes_count": 16,
+  "layout_targets": [
+    "../slideLayouts/slideLayout2.xml"
+  ],
+  "status": "EARLY_VALID"
+}

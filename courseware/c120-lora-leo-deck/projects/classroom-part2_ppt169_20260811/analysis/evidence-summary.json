@@ -1,0 +1,70 @@
+{
+  "source": "local fallback_artifacts/*.json",
+  "claim_boundary": "FALLBACK_ARTIFACT / SIMULATED_ADAPTER / UPSTREAM_EXECUTION_FALSE",
+  "records": {
+    "baseline-A": {
+      "run": "ee6df44f",
+      "policy": "sha256:9917d2cde2e8c0eae8339b7eea2e358bf8577b4eb6aaf1e928674f6b8964ef68",
+      "energy": 6.92,
+      "delivered": 4800,
+      "expired": 3,
+      "eff": 693.641618,
+      "wake": 2,
+      "service": false
+    },
+    "candidate-A": {
+      "run": "99988424",
+      "policy": "sha256:325cca4a4be339a9d69e2911123714556135859dc6089cac271c6e6d0d73cf2f",
+      "energy": 8.86,
+      "delivered": 4800,
+      "expired": 3,
+      "eff": 541.760722,
+      "wake": 1,
+      "service": false,
+      "freeze": "sha256:6cbaf9dccc812994bec08c0f898b8d21d68a3d84412137a9966de71667e11626"
+    },
+    "hidden-A": {
+      "run": "3fd8c85a",
+      "policy": "sha256:325cca4a4be339a9d69e2911123714556135859dc6089cac271c6e6d0d73cf2f",
+      "energy": 3.61,
+      "delivered": 0,
+      "expired": 3,
+      "eff": 0,
+      "wake": 0,
+      "service": false,
+      "freeze": "sha256:6cbaf9dccc812994bec08c0f898b8d21d68a3d84412137a9966de71667e11626"
+    },
+    "trace-a-baseline-B": {
+      "run": "b2603b79",
+      "policy": "sha256:325cca4a4be339a9d69e2911123714556135859dc6089cac271c6e6d0d73cf2f",
+      "energy": 8.86,
+      "delivered": 4800,
+      "expired": 3,
+      "eff": 541.760722,
+      "wake": 1,
+      "service": false
+    },
+    "trace-a-candidate-B": {
+      "run": "c39413ac",
+      "policy": "sha256:c00ed808d3a225abff99a19aee7426570c274b60b46231382be4407c78293718",
+      "energy": 10.66,
+      "delivered": 9600,
+      "expired": 1,
+      "eff": 900.562852,
+      "wake": 1,
+      "service": false,
+      "freeze": "sha256:2a4167e25699ec366687559d1ec7259d8b874f990b81653a5fbb45b171349e0e"
+    },
+    "trace-b-B": {
+      "run": "b73a1f59",
+      "policy": "sha256:c00ed808d3a225abff99a19aee7426570c274b60b46231382be4407c78293718",
+      "energy": 5.43,
+      "delivered": 4800,
+      "expired": 2,
+      "eff": 883.977901,
+      "wake": 1,
+      "service": false,
+      "freeze": "sha256:2a4167e25699ec366687559d1ec7259d8b874f990b81653a5fbb45b171349e0e"
+    }
+  }
+}

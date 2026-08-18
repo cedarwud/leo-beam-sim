@@ -1,0 +1,433 @@
+SLIDE 1
+每一次 SEND、WAIT、SLEEP 都是能源決策
+C-120｜LoRaEnergySim × 智慧節能與物聯網應用
+policy → state time → packet / service → endpoint energy
+觀察  →  決策  →  服務  →  endpoint J
+SIMULATED TEACHING DATA｜NOT LIVE｜NOT MEASURED｜NOT CANONICAL-PARITY-VERIFIED
+SERVICE WINDOW
+LEO = example, not measurement
+
+SLIDE 2
+節能是一條可檢驗的因果鏈
+SOURCE-BOUND EVIDENCE
+observation
+policy
+action
+state / packet
+service
+J
+先看什麼？
+只讀 action 當下允許的 observation；不要用最後的 J 反推一個不存在的 decision。
+最後怎麼判？
+每一段都要能回到 result／replay；只有動畫變化不算 evidence。
+
+SLIDE 3
+LoRaEnergySim 為什麼適合智慧節能與 IoT
+SOURCE-BOUND EVIDENCE
+工具價值來自可追溯的 endpoint mechanism，而不是名詞數量。
+LOW-POWER ENDPOINT
+SLEEP
+PROCESS
+TX / RX
+RETRY
+queue / packet / service / endpoint J
+TEACHING WRAPPER
+scenario
+action
+replay
+claim
+每個 action 都要留下可觀察的中間欄位。
+
+SLIDE 4
+LEO 只提供會改變的服務窗口
+SOURCE-BOUND EVIDENCE
+LEO 是 changing service window；控制問題仍然是 endpoint 的 send / wait / sleep。
+不可服務
+機會出現
+quality 變動
+窗口收窄
+關閉
+POLICY
+send now / wait / sleep
+SERVICE
+delivery / deadline / window
+ENERGY
+state time → endpoint J
+
+SLIDE 5
+兩層 evidence 不能互相冒充
+SOURCE-BOUND EVIDENCE
+ENDPOINT REPLAY
+queue
+packet
+state
+J
+可說：endpoint service、endpoint J、state duration。
+不可說：whole-system、wall-plug、canonical parity。
+C-120 SYSTEM REPLAY
+scenario
+service
+budget
+workbook
+可共享：scenario、clock、workbook lineage。
+不可互換：欄位語義與 energy boundary。
+
+SLIDE 6
+從預測走到可反駁的結果
+SOURCE-BOUND EVIDENCE
+PREDICT
+EDIT
+RUN
+REPLAY
+WITHHELD
+IMPORT
+同一 scenario
+policy hash 可追溯
+withheld 不准 retune；預測被推翻仍是有價值的 evidence。
+
+SLIDE 7
+一個小改動，必須追得到一個機制
+SOURCE-BOUND EVIDENCE
+CONTEXT / RUN
+package root；只讀 release 的 student_policy.py
+sed -n '1,180p' student_policy.py
+git diff -- student_policy.py
+目的／機制
+只看標記區塊，先辨認允許改的控制面。
+policy bytes 改變 action timing 或 branch；engine、scenario、schema 不變。
+預期可見輸出
+小 diff 可回溯到 policy hash，後續 result 才有因果資格。
+判讀／失敗回復
+非 marked 區域出現差異就停止編輯，回到 package identity 或 known-good copy。
+
+SLIDE 8
+今天的路徑：先把工具變成可回復的入口
+SOURCE-BOUND EVIDENCE
+WHY
+PACKAGE
+SHELL
+PY 3.11
+.venv
+VERIFY
+READY
+POLICY
+先取對 archive，讀 identity，再選 shell。
+每個 gate 都有輸出；失敗沿同一 package 回來。
+
+SLIDE 9
+開場檢查點：先確認 claim 邊界
+SOURCE-BOUND EVIDENCE
+COURSE-PACKAGED ｜ 有明示的 scenario 與 runner boundary
+SIMULATED ｜ 可重播，但不是 live telemetry
+NOT MEASURED ｜ 不把畫面或 KPI 說成量測
+NOT CANONICAL PARITY ｜ 未通過的 contract 不自行升級
+看到未凍結的 URL、畫面或數字：留 placeholder，不補成 evidence。
+
+SLIDE 10
+套件根目錄是 provenance 邊界
+SOURCE-BOUND EVIDENCE
+CONTEXT / RUN
+解壓後的父目錄（POSIX shell）
+find lora-energy-lab -maxdepth 1 -type f -print
+ls lora-energy-lab/lora_energy_lab lora-energy-lab/scenarios
+目的／機制
+先確認 runner、Python module、scenario、schema 和說明來自同一個根目錄。
+single root 讓 setup、course launcher、module、policy 與 scenario 綁在同一份 reviewed artifact。
+預期可見輸出
+看到 lora-energy-lab/；run_lab.py、setup.sh / setup.cmd、course.sh / course.cmd、lora_energy_lab/、scenarios/。
+判讀／失敗回復
+根目錄多一層、必要檔案缺失或檔案來自不同 source 時停止，重新取得同一份指定 artifact。
+single root / 65 files
+
+SLIDE 11
+取得目前 source，先核對 identity
+SOURCE-BOUND EVIDENCE
+source、local artifact、public release：三種狀態要分開寫。
+Purpose: 核對 source bytes 與 identity，再進入 setup；Mechanism: scenario／anchor／lock hash 綁定同一 runner。
+SOURCE REPO／LOCAL ARTIFACT
+https://github.com/cedarwud/lora-energy-lab
+root: lora-energy-lab
+module: lora_energy_lab
+
+VERIFIED LOCAL ARTIFACT
+lora-energy-lab-v1.zip｜121139 bytes
+sha256:047e8459988d8bee59fbfdcc39189e00048f3697968901ce5b6e5363dc9e8c8c
+SCENARIO／ANCHOR／LOCK／RELEASE
+scenario: ntpu-energy-decision-01
+sha256:c157c76ed283074cdd17c1b689b83e168022abd2ca6ef8d9c337e69ab31a6593
+anchor: sha256:cfe84682a71c0c0ea09c273d4cd033c32818da63cf1695ace4363b9d789c50f9
+lock: sha256:f1d1fe3339137d56e4e9ea9d141b764eaa183a8f40933bad597d734bbf310197
+policy: sha256:9917d2cde2e8c0eae8339b7eea2e358bf8577b4eb6aaf1e928674f6b8964ef68
+public release: RELEASE_ASSET_PENDING
+Expected: identity matches；public release remains pending。
+Context: POSIX shell；source parent 或 local artifact 目錄；不要猜 public release URL
+Run:
+git clone https://github.com/cedarwud/lora-energy-lab.git
+cd lora-energy-lab
+sha256sum scenarios/ntpu-energy-decision-01.json
+sha256sum requirements-lock.txt
+repo unavailable or local hashes mismatch: preserve output and stop; do not substitute another branch, archive, or guessed public URL.
+
+SLIDE 12
+Windows 原生：先確認 shell 與 launcher
+PENDING / NOT CLEAN-RUN VERIFIED
+Context: C:\...> 是 CMD；PS C:\...> 是 PowerShell；位於 package root
+Purpose: 先辨識 prompt，再辨識 interpreter；Run: py --list  /  py -3.11 --version
+CMD｜C:\...>
+py --list
+py -3.11 --version
+PowerShell｜PS C:\...>
+py --list
+py -3.11 --version
+預期：list 含 3.11，版本回傳 Python 3.11.x。失敗：保留輸出，走 Python installer 或 uv recovery；Windows clean-run：PENDING。
+
+SLIDE 13
+沒有 Python 3.11：官方 Windows 安裝路徑
+PENDING / NOT CLEAN-RUN VERIFIED
+Context: Windows 瀏覽器 → 官方下載頁；完成後重新開 CMD 或 PowerShell
+Purpose: 建立 runner 預期的 3.11；Mechanism: Python Launcher 綁定 interpreter。Run: py --list  /  py -3.11 --version
+1
+官方 Windows downloads
+https://www.python.org/downloads/windows/
+2
+Python 3.11.x / installer
+Windows installer (64-bit)
+保留 Python Launcher
+3
+重新開 shell
+py --list
+py -3.11 --version
+預期：3.11 可由 launcher 找到；若仍失敗，保留錯誤，走 uv recovery。clean install：PENDING。
+
+SLIDE 14
+uv：Python 3.11 的可追溯 recovery
+PENDING / NOT CLEAN-RUN VERIFIED
+Context: Windows PowerShell；位於 package root 或可寫的工具目錄
+Purpose: uv 解決 interpreter 取得，不是 dependency lock，也不是結果產生。Run: winget → uv python install 3.11 → uv python find 3.11
+INSTALL
+winget install --id=astral-sh.uv -e
+PIN
+uv python install 3.11
+LOCATE
+uv python find 3.11
+預期：最後一行回傳 interpreter path；Windows clean-run：PENDING。失敗就保留錯誤並 fallback。
+
+SLIDE 15
+Windows、WSL、系統 Python：三者不能共用 .venv
+SOURCE-BOUND EVIDENCE
+Context: Windows package root；另有獨立 WSL Linux package root
+Purpose: 不同 OS 不共用 interpreter bytes。Run: .\.venv\Scripts\python.exe --version  /  .venv/bin/python --version
+SYSTEM PYTHON
+可能服務其他專案
+不作 runner identity
+WINDOWS .venv
+.venv\Scripts\python.exe
+只在 Windows 使用
+WSL .venv
+.venv/bin/python
+只在 Linux 使用
+預期：兩個 path 都落在各自 package-local .venv；失敗：不要跨 OS 複製，停在 setup gate。
+
+SLIDE 16
+Windows：setup 後立刻 verify
+PENDING / NOT CLEAN-RUN VERIFIED
+CONTEXT / RUN
+PowerShell；Set-Location 到解壓後的 lora-energy-lab 根目錄
+$env:PYTHON_BIN = "py -3.11"
+.\setup.cmd
+.\course.cmd verify
+目的／機制
+setup 建立 venv 並依 lock 安裝；verify 檢查 interpreter、wrapper、policy API 與 scenario identity。
+同一個 package root 產生 machine-readable receipt，讓後續操作有固定入口。
+預期可見輸出
+預期看到 READY、Python version、scenario_id、lock／policy identity；Windows clean-run 仍 pending。
+判讀／失敗回復
+若版本、lock 或 identity 失敗，保留 receipt 和錯誤，先修目前 gate；不能用手改 JSON 偽造 READY。
+
+SLIDE 17
+WSL：先確認它真的是 Ubuntu shell
+PENDING / NOT CLEAN-RUN VERIFIED
+CONTEXT / RUN
+系統管理員 PowerShell → Ubuntu shell；不要把 CMD 指令貼進 Ubuntu
+wsl --install -d Ubuntu
+wsl -l -v
+pwd
+uname -a
+目的／機制
+辨認 Windows 管理指令與 Linux runner 的檔案／shell 邊界。
+看到 Linux home path 與 uname -a 後，才使用 setup.sh 和 .venv/bin/python。
+預期可見輸出
+Ubuntu distribution 狀態清楚，pwd 是 Linux path；WSL clean-run evidence 目前待補。
+判讀／失敗回復
+WSL 未啟用、distribution 不對或 path 混用時停在 shell gate；保留輸出，回到 Windows 或同 scenario fallback。
+
+SLIDE 18
+WSL：工具鏈只服務 setup，不產生結果
+PENDING / NOT CLEAN-RUN VERIFIED
+CONTEXT / RUN
+Ubuntu shell；位於可寫的 home 或 package parent
+sudo apt update
+sudo apt install -y curl unzip
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv python install 3.11
+目的／機制
+補上解壓、下載與 exact interpreter 工具，供後面的 package setup 使用。
+apt、curl、uv 只建立環境前提；它們不會填寫 energy result。
+預期可見輸出
+uv --version 和 uv python find 3.11 可回傳；WSL clean-run 仍 pending。
+判讀／失敗回復
+apt／installer 被網路或 policy 擋住時保留 stderr，走同 package fallback；不把 setup error 當 energy evidence。
+
+SLIDE 19
+WSL：從 Windows Downloads 到 Linux .venv
+PENDING / NOT CLEAN-RUN VERIFIED
+CONTEXT / RUN
+Ubuntu shell；local artifact 已位於 home 或 package parent；public release asset 尚未凍結
+cd /path/to/lora-energy-lab
+PYTHON_BIN="$(uv python find 3.11)" bash setup.sh
+bash course.sh verify
+目的／機制
+在 Linux package root 建立專屬 .venv，不攜入 Windows venv。
+setup、verify 都在同一個 Linux root 中；local artifact 只在明示 VERIFIED LOCAL ARTIFACT 時使用，receipt 可追到同一 source。
+預期可見輸出
+.venv/bin/python 存在，verify 預期回傳 READY；WSL clean-run 仍 pending。
+判讀／失敗回復
+解壓層級、path 或 interpreter 不符時停止，保留錯誤並回到 package identity；不要拷貝另一個 OS 的 venv。
+
+SLIDE 20
+POSIX runner：一組最小 setup／verify 入口
+PENDING / NOT CLEAN-RUN VERIFIED
+CONTEXT / RUN
+Linux 或 macOS POSIX shell；已位於 package root
+PYTHON_BIN=python3.11 bash setup.sh
+bash course.sh verify
+目的／機制
+用 POSIX shell 重現同一個 package-local environment gate。
+shell 不同，驗證語義不變：venv、lock、policy API、scenario 與 claim boundary 都要對齊。
+預期可見輸出
+verify 應寫出 READY receipt；目前沒有 fresh POSIX clean-run，保留 pending。
+判讀／失敗回復
+找不到 python3.11 或 verify 失敗時保留命令輸出，回到 interpreter／package gate，不補填 READY。
+
+SLIDE 21
+READY receipt 是下一步的入場券
+PENDING / NOT CLEAN-RUN VERIFIED
+CONTEXT / RUN
+package root；已完成 setup／verify 的 shell
+cat artifacts/verify-receipt.json
+# Windows: Get-Content artifacts\verify-receipt.json
+目的／機制
+讀 machine-readable receipt，而不是只看終端最後一行。
+status、Python、scenario、policy API、lock、engine mode 與 claim ceiling 必須同時成立。
+預期可見輸出
+看到 status: READY、Python 3.11.x、scenario_id: ntpu-energy-decision-01、policy_api_version: lora-energy-policy-v1、engine_mode；local artifact 已核對 19/19 tests，fresh receipt 仍待課堂重跑。
+判讀／失敗回復
+缺欄、版本不符或 scenario 不一致時，保留 receipt，回到對應 gate；不可手改成 READY。
+READY ≠ energy result
+
+SLIDE 22
+setup 失敗不等於 energy result
+SOURCE-BOUND EVIDENCE
+Context: 任何 shell；目前 gate 的錯誤輸出仍保留
+Run: 保存 stderr → 確認 Python / root / lock / scenario → 重跑目前 gate
+無法 READY → same-scenario fallback
+先保留錯誤，再判定能否回到 READY；不要用空值填平紅燈。
+ERROR
+讀 stderr
+確認 root／Python／lock
+重跑目前 gate
+不改 receipt
+READY
+可進入 runner
+same-scenario
+fallback
+兩條合法出口：新的 READY receipt，或明示 fallback；沒有第三條『看起來通過』。
+
+SLIDE 23
+可編輯檔案只有一個
+SOURCE-BOUND EVIDENCE
+CONTEXT / RUN
+package root；verify 已通過或已明示 fallback
+git status --short
+git diff -- student_policy.py
+# 只改 marked block
+目的／機制
+隔離一個可控制變因，保留 engine、scenario、schema、runner 和 generated JSON 不變。
+policy hash 與 predecessor 可以解釋 candidate；非 marked 變更會破壞公平比較。
+預期可見輸出
+diff 只落在 student_policy.py 的 marked block；下一步可計算 policy identity。
+判讀／失敗回復
+非 marked 檔案或區域出現差異，停止本次 run，回到 release identity 或 known-good copy。
+非 marked 區域：READ-ONLY
+
+SLIDE 24
+policy API 的輸入是現在能觀察到的事
+PENDING / NOT CLEAN-RUN VERIFIED
+Context: package root；開啟 student_policy.py 的 bounded function
+Run: rg -n "choose_action|WAIT|SLEEP|SEND_ONE|SEND_URGENT|FLUSH_BATCH" student_policy.py
+python -m py_compile student_policy.py
+OBSERVATION
+quality
+queue age
+remaining window
+choose_action(...) 
+只讀當下 observation
+不讀 future result
+不改 engine
+LEGAL ACTION
+WAIT
+SLEEP
+SEND_ONE
+SEND_URGENT / FLUSH_BATCH
+預期：合法 action token + syntax guard；失敗：只修 marked block，API mismatch 就回 package identity。
+
+SLIDE 25
+Python survival：常數是受控旋鈕
+PENDING / NOT CLEAN-RUN VERIFIED
+Context: package root；student_policy.py marked constants 區域
+Run: rg -n "PACE_GAP_STEPS|REST_DURING_GAP|BATCH_SIZE|URGENT_MARGIN_S" student_policy.py
+python -m py_compile student_policy.py
+student_policy.py｜marked constants
+PACE_GAP_STEPS = bounded
+REST_DURING_GAP = bounded
+BATCH_SIZE = bounded
+URGENT_MARGIN_S = bounded
+one control → one predicted mechanism
+先預測
+等待？wake？queue age？deadline？
+guard
+超出範圍就拒絕；不放寬 runner。
+預期：小 diff + syntax guard；失敗：值超界只修 marked line，不放寬 guard；receipt：PENDING。
+
+SLIDE 26
+Python survival：條件只處理當前 observation
+PENDING / NOT CLEAN-RUN VERIFIED
+Context: package root；marked choose_action(observation) 區域
+Run: sed -n '1,180p' student_policy.py
+python -m py_compile student_policy.py
+observation now
+condition A
+return WAIT
+condition B
+return SLEEP
+else
+return SEND_ONE
+預期：每個分支回傳合法 action；失敗：只修 marked block，非 marked traceback 保留並回 recovery。
+
+SLIDE 27
+Python survival：縮排與 return
+PENDING / NOT CLEAN-RUN VERIFIED
+Context: package root；syntax guard 以前的 marked function
+Run: python -m py_compile student_policy.py
+# guard 失敗：只修 marked line，重跑同一命令
+錯誤讀法：混在同一縮排
+if condition:
+return WAIT
+else:
+return SEND_ONE
+安全讀法：縮排對應 branch
+if condition:
+    return WAIT
+else:
+    return SEND_ONE
+預期：syntax guard 通過且 action 合法；失敗：只修 marked line，非 marked traceback 回 checkpoint / fallback。

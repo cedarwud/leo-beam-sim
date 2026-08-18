@@ -1,0 +1,352 @@
+[
+  {
+    "page": 1,
+    "title": "每一次 SEND、WAIT、SLEEP，都是能源決策",
+    "subtitle": "智慧節能與物聯網應用",
+    "notes": "這堂課先從 IoT endpoint 的能源決策開始，而不是從衛星術語開始。裝置選擇送、等或休眠時，同時改變封包服務與功率乘時間所累積的能量。LoRaEnergySim 讓這些 endpoint 後果可以被觀察；Leo 只提供一個會改變的服務窗口，幫我們看清取捨。請學員先說出一個可能同時改變服務與能量的 endpoint 動作。",
+    "authority": "Authority｜ADR-004 24–38；C120 integration SDD 14–37",
+    "state": "AUTHORITY",
+    "purpose": "先建立智慧節能與 IoT endpoint 的直接課程關聯",
+    "action_contract": false
+  },
+  {
+    "page": 2,
+    "title": "節能是一條可檢驗因果鏈",
+    "body": "STATE / DATA → POLICY → PACKET / SERVICE\nPOWER × TIME → ENDPOINT ENERGY → EVIDENCE\nLaTeX：E_{\\mathit{endpoint}}=\\sum_s P_s t_s\n每一箭都要有可檢查後果，不用動畫代替。\n服務先過 boundary，再比較能量與 delivered bits。\n可轉移：smart farm / HVAC / edge / logistics",
+    "notes": "請沿著因果鏈由左到右讀。資料與狀態先進入 policy，policy 產生送、等、休眠或批次行動，接著才有 packet 與 service 後果；功率經過時間才累積成焦耳。最後的 evidence 必須能支持或推翻原先的 prediction，並把機制轉移到其他 IoT 場景。請學員指出哪一段證據可以推翻一個節能說法。",
+    "authority": "Authority｜C120 integration SDD 1082–1096",
+    "state": "AUTHORITY",
+    "purpose": "用單一因果鏈鎖定全課的閱讀順序與 claim boundary",
+    "action_contract": false
+  },
+  {
+    "page": 3,
+    "title": "LoRa 證據邊界",
+    "body": "可觀察｜SLEEP / WAIT / WAKE / PROCESS / TX / RX\n可觀察｜packet attempt / retry / delivered / expired\n可觀察｜queue / service / endpoint energy\n不能宣稱｜NOT LIVE / NOT MEASURED / NOT SYSTEM ENERGY\nwrapper-added assumptions 必須與 upstream evidence 分開。\nClaim ceiling｜SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED",
+    "notes": "LoRaEnergySim 的直接價值，是讓 endpoint 的狀態、封包嘗試、重試、送達與能量結果成為可檢查的事件。課程 wrapper 加入的 awake-idle 或 wake 假設必須另外標示，不能說成 upstream 測量。endpoint energy 也不能被改名成既有 C-120 的 canonical system energy。請學員各指出一個可觀察事件與一個不能越過的 claim。",
+    "authority": "Authority｜ADR-004 24–38；C120 integration SDD 883–907",
+    "state": "AUTHORITY",
+    "purpose": "定義 LoRaEnergySim 可支援的 endpoint evidence 與 claim ceiling",
+    "action_contract": false
+  },
+  {
+    "page": 4,
+    "title": "LEO：變動服務窗口範例",
+    "body": "CHANGING SERVICE WINDOW\nOPEN → QUALITY SHIFTS → CLOSE\n現在送｜等待｜批次｜休眠\nLEO 讓 changing opportunity 更容易被看見。\n學到的是 IoT 控制機制，不是衛星專業。\n可轉移｜smart farm / HVAC / edge / logistics",
+    "notes": "LEO 在這裡只負責把服務機會變成一個會開、會關、品質會改變的時間窗。這讓學員必須在現在送、等一下、批次或休眠之間做決策，並同時檢查 service 與 energy。學到的是 changing opportunity 下的控制思維，而不是衛星工程專業。請學員把同一個取捨映射到智慧農業、HVAC、edge 或物流。",
+    "authority": "Authority｜C120 integration SDD 14–37, 1082–1096",
+    "state": "AUTHORITY",
+    "purpose": "把 LEO 放回 changing-service-window 的可轉移 worked example",
+    "action_contract": false
+  },
+  {
+    "page": 5,
+    "title": "兩層 evidence 不互相冒充",
+    "body": "SHARED｜scenario / TLE source / clock\nSYSTEM｜power / consumed J / canonical bit/J\nENDPOINT｜policy / queue / packet / radio state\nENDPOINT｜endpoint J / endpoint service\nNO ALIASING｜endpoint J ≠ system J\n相同單位不等於相同 evidence scope。",
+    "notes": "兩層 replay 可以在同一個 scenario 與 clock 上一起呈現，但各自負責不同 evidence。既有 replay 保留 system 層欄位；新的 endpoint replay 只負責 policy、queue、packet、radio state 與 endpoint energy。共享 anchor 有助於對齊，不代表可以把 endpoint 欄位寫回 system 或 canonical 欄位。請學員把 endpoint J 與 system consumed J 分到正確的一層。",
+    "authority": "Authority｜C120 integration SDD 366–388",
+    "state": "AUTHORITY",
+    "purpose": "建立 system 與 endpoint replay 的不可混用語義邊界",
+    "action_contract": false
+  },
+  {
+    "page": 6,
+    "title": "從預測到驗證",
+    "body": "起點｜先記錄 queue / service / state / endpoint energy prediction\n受限操作｜只改 marked region，再執行與匯入\n資料流｜policy bytes → deterministic JSON → strict replay\n驗證｜同一份 frozen policy 接受 withheld case\n判讀｜null diff 或 mismatch 指向 gate / fixture；採最小 recovery\nEVIDENCE PLACEHOLDER｜release / API / command / line / artifact 尚未凍結",
+    "notes": "學員先留下對 queue、service、state time 與 endpoint energy 的 prediction，再只改 student_policy.py 的 marked region。Runner 產生 deterministic JSON，Leo 做 strict import 後呈現 replay；同一份凍結 policy 還要接受 withheld case。最後留下的是完整 evidence chain 與可重新開啟的 workbook，不是一次成功畫面。此頁以因果流程呈現，不套固定問答清單，也不放尚未凍結的命令或畫面。",
+    "authority": "Authority｜ADR-004 42–71；C120 integration SDD 14–31, 287–295",
+    "state": "AUTHORITY",
+    "purpose": "展示由 prediction 經 bounded edit 到 replay 與 withheld case 的學習迴圈",
+    "action_contract": false
+  },
+  {
+    "page": 7,
+    "title": "操作要連回因果鏈",
+    "body": "操作不是 checklist；每一步都要能連到可觀察後果。\n命令或修改 → policy / packet / state / energy mechanism\n執行前先留下 prediction；執行後只讀相應 evidence\n符合、意外與失敗採不同判讀，不用同一答案套用。\n出錯時回到最小 recovery，不擴改 engine 或 schema。\nEVIDENCE PLACEHOLDER｜release / API / command / line 尚未凍結",
+    "notes": "操作說明不再套固定五問框架。不同頁面依內容使用動作到機制到證據、兩種選擇比較、預測到觀察到判讀，或錯誤到最小恢復等結構。學員仍要知道操作會改變哪個機制、執行前期待看到什麼，以及意外結果如何解讀，但畫面不重複同一套標籤。release URL、commands、case names 與 line numbers 尚未凍結，因此不冒充 final API。",
+    "authority": "Authority｜C120 integration SDD 273–295, 762–766",
+    "state": "PLACEHOLDER",
+    "purpose": "把操作連到因果機制與證據，而不套固定問答版型",
+    "action_contract": false
+  },
+  {
+    "page": 8,
+    "title": "課程路徑：setup 與 labs",
+    "body": "WHY → SETUP → MODEL → ANCHOR\nLAB A｜pace / rest 與 service-energy trade-off\nLAB B｜threshold / hold 與 changing window\nLAB C｜batch / urgent 與 queue consequence\nRECOVERY｜同 scenario fallback 回到主路徑\nCLINIC → TRANSFER｜證據分類與跨場域機制",
+    "notes": "這頁只呈現課程先後路徑，不顯示時間長度。setup 若受阻，fallback 仍要使用同一 scenario 回到主路徑，不把安裝等待當成 energy-learning evidence。三個 labs 依序處理 pace/rest、threshold/hold 與 batch/urgent，最後再做 evidence clinic 與跨場域 transfer。Owner 已授權 placeholder-safe full-deck production；release evidence 尚未凍結的項目仍保持 placeholder。",
+    "authority": "Course route｜C120 integration SDD 115–170；ADR-004 amendment；owner direction 2026-08-11",
+    "state": "OWNER",
+    "purpose": "呈現 setup、三個 labs、recovery、clinic 與 transfer 的課程先後路徑",
+    "action_contract": false
+  },
+  {
+    "page": 9,
+    "title": "今天要完成的因果鏈",
+    "body": "先說出 prediction，而不是先猜答案。\n只改允許的 policy surface，保留公平比較邊界。\n沿著 queue → packet → service → state time → endpoint energy 觀察。\n遇到反例或 null diff，也要保留 evidence。\nLEO 只提供 changing-service-window；機制要能搬到其他 IoT 場域。\n離場前能說清楚：改了什麼、換來什麼、犧牲什麼。",
+    "notes": "這頁直接告訴學員今天要完成什麼：先預測，只改允許的 policy surface，再沿著 queue、packet、service、state time 與 endpoint energy 讀出因果後果。反例與 null diff 都是有效證據，不需要把每次結果說成成功。LEO 只是一個 changing-service-window 的例子，最後要能把同一機制搬到其他 IoT 場域。",
+    "authority": "Authority｜ADR-004 42–71；C120 integration SDD 1321–1352",
+    "state": "AUTHORITY",
+    "purpose": "以學員可完成的因果敘事取代製作 checkpoint",
+    "action_contract": false
+  },
+  {
+    "page": 10,
+    "title": "課程包裡有什麼？",
+    "body": "DO｜取得 named release ZIP 或 immutable tag；URL EVIDENCE PLACEHOLDER\nWHY｜從審閱過的 course source 開始，不追 moving branch\nMECHANISM｜release 綁定 wrapper、policy API、scenario、schema、license\nEXPECT｜README / launcher / lock / policy / runner / schemas 齊全\nINTERPRET｜缺檔或版本混雜就停止；只回到 named release\nEVIDENCE PLACEHOLDER｜final filenames、tag、URL 與 receipt 未凍結",
+    "notes": "先把取得課程包本身當成第一個完整 action。學員只能使用 named release ZIP 或 immutable tag，因為 release 同時綁定 wrapper、policy API、scenario、schemas 與 license provenance；任意 branch 或混雜檔案會破壞後續比較。預期 package root 具備 README、launcher、lock、policy、runner 與 schemas。final filenames、tag、URL 和 receipt 尚未凍結，所以本頁保持 EVIDENCE PLACEHOLDER；缺檔時回到 named release，不自行拼裝課程包。",
+    "authority": "Authority｜ADR-004 Decision 1–5；C120 integration SDD 219–252",
+    "state": "PLACEHOLDER",
+    "purpose": "建立課程包的責任分區與 source/result provenance 心智模型",
+    "action_contract": true
+  },
+  {
+    "page": 11,
+    "title": "選擇支援的 OS launcher",
+    "body": "DO｜選擇相符的 OS launcher；實際命令 EVIDENCE PLACEHOLDER\nWHY｜讓 Windows / macOS / WSL/Linux 走可支援入口\nMECHANISM｜launcher 建立同一課程環境與 runner 啟動邊界\nEXPECT｜OS stage receipt 通過；cold-start 證據 EVIDENCE PLACEHOLDER\nINTERPRET｜入口或權限失敗是操作問題；改走診斷或同情境 fallback\nEVIDENCE PLACEHOLDER｜supported OS、命令、terminal/browser receipt 尚未凍結",
+    "notes": "講師先讓學員辨識自己使用的作業系統，再選對應的課程入口。此 action 的目的不是比較 OS，而是讓後續 runner 進入一致的環境邊界；權限或 launcher 失敗只能解讀為 operational gate。當前 supported minor、冷啟動命令與 receipt 尚未 release-freeze，所以畫面不展示猜測的 shell syntax。若 setup 受阻，保留同一 scenario 並走 recovery。",
+    "authority": "Authority｜ADR-004 Course-authority amendment；C120 integration SDD 255–272",
+    "state": "PLACEHOLDER",
+    "purpose": "把跨作業系統入口教成有目的、有預期、有 recovery 的第一個 package action",
+    "action_contract": true
+  },
+  {
+    "page": 12,
+    "title": "為什麼建立隔離的 .venv？",
+    "body": "DO｜建立課程專用 .venv；命令 EVIDENCE PLACEHOLDER\nWHY｜隔離 system Python 與其他專案依賴\nMECHANISM｜獨立 interpreter / package location 綁定 runner\nEXPECT｜環境 stage receipt 通過；版本與路徑 EVIDENCE PLACEHOLDER\nINTERPRET｜失敗只證明環境未就緒；不解讀為 energy result，改走 recovery\nEVIDENCE PLACEHOLDER｜Python minor、命令、冷啟動 receipt 尚未凍結",
+    "notes": "隔離環境的價值是可重現與可回復，不是能源實驗本身。講師可用 system Python 與 course .venv 的兩個框，說明 package location 如何避免其他專案污染 runner。學員要把 environment stage 與後續 energy evidence 分開記錄；建立失敗時先讀診斷或使用同情境 fallback，不移除隔離要求。Python minor、命令與路徑都仍是 placeholder。",
+    "authority": "Authority｜ADR-004 Course-authority amendment；C120 integration SDD 255–272, 303–304",
+    "state": "PLACEHOLDER",
+    "purpose": "說明環境隔離的可重現機制與非 energy evidence 的 recovery 邊界",
+    "action_contract": true
+  },
+  {
+    "page": 13,
+    "title": "為什麼安裝 pinned dependency lock？",
+    "body": "DO｜由 setup 安裝 hash-pinned dependency lock；命令 EVIDENCE PLACEHOLDER\nWHY｜重現審閱過的 dependency graph，不取 latest\nMECHANISM｜lock 限定 runner 可載入的 package versions / hashes\nEXPECT｜install stage 與 lock receipt 通過；lock SHA EVIDENCE PLACEHOLDER\nINTERPRET｜hash/version failure 停在 setup；不移除 pin，改走診斷或 fallback\nEVIDENCE PLACEHOLDER｜lock hash、命令、current receipt 未凍結",
+    "notes": "把 lock 視為實驗邊界的一部分：同一個 policy 在不同 dependency graph 上不一定代表同一個 runner。學員只需理解 lock 如何限制版本與 hash，不需拆解 upstream framework。hash 或版本失敗時，最小 recovery 是保留 pin、讀取診斷或切換同 scenario fallback；不可用 latest package 讓錯誤消失。當前 lock SHA 與安裝 receipt 沒有 frozen artifact，故只保留 placeholder。",
+    "authority": "Authority｜ADR-004 Decision 1；C120 integration SDD 255–272, 303–304",
+    "state": "PLACEHOLDER",
+    "purpose": "將依賴版本固定解釋為可追溯性與公平比較的前置條件",
+    "action_contract": true
+  },
+  {
+    "page": 14,
+    "title": "先驗證 provenance，再改 policy",
+    "body": "DO｜讀 release / upstream / wrapper / lock provenance receipt；欄位 EVIDENCE PLACEHOLDER\nWHY｜在 policy 編輯前確認來源與邊界一致\nMECHANISM｜anchor、wrapper、lock 與 policy API 綁成可追溯 lineage\nEXPECT｜來源欄位與同一 scenario identity 對齊；current receipt EVIDENCE PLACEHOLDER\nINTERPRET｜不一致即停止該次比較；使用 named release 或同情境 fallback\nEVIDENCE PLACEHOLDER｜release URL/tag、receipt、hash、line/browser evidence 未凍結",
+    "notes": "這一步把『我拿到什麼』與『我改了什麼』分開。講師可依序指向 release、upstream、wrapper、lock 與 policy API 的 lineage；學員先確認 scenario anchor 與版本邊界，再進入 marked policy。若 provenance 不一致，這次 run 不具備公平比較資格，應回到 named release 或同情境 fallback。所有現行 receipt、hash 與畫面都尚未凍結，不可自行填入。",
+    "authority": "Authority｜ADR-004 Decision 1–4；C120 integration SDD 390–491, 768–797",
+    "state": "PLACEHOLDER",
+    "purpose": "把來源、wrapper、lock 與 scenario identity 組成 policy 修改前的 provenance gate",
+    "action_contract": true
+  },
+  {
+    "page": 15,
+    "title": "讀懂 READY receipt",
+    "body": "DO｜讀 verify 的 READY／failure receipt；exact command EVIDENCE PLACEHOLDER\nWHY｜先確認 runtime、release、scenario、policy API 再改 policy\nMECHANISM｜receipt 把環境 gate 與實驗結果分離\nEXPECT｜READY 顯示可進入 prediction；欄位與 artifact ID EVIDENCE PLACEHOLDER\nINTERPRET｜非 READY 指向失敗 gate；修復或切同 scenario fallback，不產生 energy claim\nEVIDENCE PLACEHOLDER｜命令、receipt fields、artifact ID 未凍結",
+    "notes": "READY 不是 energy saving 的結果，而是允許進入 prediction 與 run 的環境門檻。講師帶學員區分 runtime、release、scenario、policy API 等 gate 欄位與稍後的 packet/service/state/energy evidence。若 receipt 不是 READY，先定位是哪個 gate 失敗；不要把等待安裝或修復的時間說成節能證據。因 exact command 與 receipt schema 尚未凍結，本頁刻意不捏造命令或 artifact ID。",
+    "authority": "Authority｜C120 integration SDD 297–320, 739–797",
+    "state": "PLACEHOLDER",
+    "purpose": "建立 READY 只是可開始實驗的 operational gate，而不是 energy claim 的理解",
+    "action_contract": true
+  },
+  {
+    "page": 16,
+    "title": "setup recovery gate",
+    "body": "觸發｜setup 無法產生可讀 READY receipt\n轉向｜切入同情境 fallback；artifact EVIDENCE PLACEHOLDER\n保持｜scenario / seed / predecessor 與後續 policy identity\n預期｜fallback provenance receipt；artifact ID EVIDENCE PLACEHOLDER\n判讀｜安裝等待不是 energy evidence；缺口保留為 INCOMPLETE\n回路｜fallback → anchor → Lab A；不更換學習問題",
+    "notes": "setup recovery 是課程路徑保護，不是另一個實驗。若環境無法產生可讀 READY receipt，改用同一 scenario、seed 與 predecessor 的 fixture result，並把 fallback provenance 留在 workbook。這樣仍能進入 anchor 與 Lab A，而不會把安裝等待誤當成 energy evidence。講師要明確說明 INCOMPLETE 是誠實狀態，不是需要補寫的成功數字。",
+    "authority": "Authority｜C120 integration SDD 172–199；ADR-004 Decision 7",
+    "state": "AUTHORITY",
+    "purpose": "把 setup 失敗轉成受控、同情境、可追溯的課堂 recovery",
+    "action_contract": false
+  },
+  {
+    "page": 17,
+    "title": "固定、控制、觀察的變數",
+    "body": "FIXED｜scenario_id、seed、contact/quality trace、traffic、units\nCONTROLLED｜marked policy constants / branch、同一 predecessor\nOBSERVED｜queue、service、state time、packet outcomes、endpoint J\nKEEP SEPARATE｜system consumed J / canonical bit/J 不由 endpoint replay 改寫\nBEFORE RUN｜留下 prediction，讓 evidence 可確認或推翻\nONE DOMINANT MAP｜fixed → controlled → observed",
+    "notes": "把實驗拆成三個區域，學員才知道什麼可以改、什麼必須維持、什麼是結果。scenario、seed、trace、traffic 與 units 是固定條件；marked policy 是受控變因；queue、service、state time、packet outcomes 與 endpoint J 是觀察欄位。system consumed J 與 canonical bit/J 留在另一個 evidence layer。請學員在 run 前先寫一個可被結果推翻的 prediction。",
+    "authority": "Authority｜C120 integration SDD 390–491, 612–688",
+    "state": "AUTHORITY",
+    "purpose": "建立公平實驗的 fixed／controlled／observed 分區",
+    "action_contract": false
+  },
+  {
+    "page": 18,
+    "title": "Endpoint state vocabulary",
+    "body": "SLEEP｜低功率休息；醒來需付 wake latency / energy\nWAIT｜醒著的 idle；不等於 SLEEP\nWAKE｜重新進入可行動狀態的轉換\nPROCESS｜處理資料；TX / RX｜傳輸 / 接收\nSTATE TIME｜每段時間分開記錄，再累積 endpoint J\nOBSERVE｜state sequence 與 packet result 一起看",
+    "notes": "先建立狀態詞彙，再進入 policy code。WAIT 是醒著的 idle，SLEEP 是低功率休息；兩者都可能影響時序，但只有 SLEEP 的回到工作狀態會引入明示的 wake latency 或 wake energy。PROCESS、TX、RX 也要各自保留 state time，最後才把各段的功率乘時間累積成 endpoint J。請學員用一條 state ribbon 說明一次傳送前後發生了什麼。",
+    "authority": "Authority｜C120 integration SDD 567–571, 711–737；C120 controller 2026-08-10",
+    "state": "AUTHORITY",
+    "purpose": "建立 Lab A–C 共用的 endpoint 狀態與能量語彙",
+    "action_contract": false
+  },
+  {
+    "page": 19,
+    "title": "WAIT 是 awake idle；SLEEP 有 wake 成本",
+    "body": "WAIT｜awake idle：維持反應，不新增 wake transition\nSLEEP｜低功率休息：醒來可能增加 latency 與 wake energy\n同一 rest duration 不代表相同 service 或 endpoint J\nLaTeX：E_{\\mathit{endpoint}}=\\sum_s P_s t_s+\\sum_k E_{\\mathit{wake},k}\n預測｜比較 state-time、wake、delivery、deadline 與 J\n解讀｜方向是待驗假說；以 replay ledger 判斷",
+    "notes": "這頁要拆掉『只要睡眠就一定省』的直覺。WAIT 保留醒著的反應能力，SLEEP 降低休息功率但可能在重新工作時付出 wake latency 與 wake energy；同一段 rest duration 也可能導致不同的 service 結果。公式只用來說明各 state 的功率乘時間與 wake 成本如何累積，方向仍是 prediction，必須由 replay ledger 的 state、delivery、deadline 與 J 來判定。",
+    "authority": "Authority｜C120 integration SDD 711–737；action matrix A-REST",
+    "state": "AUTHORITY",
+    "purpose": "以時間與狀態機制解釋 WAIT／SLEEP 的非等價取捨",
+    "action_contract": false
+  },
+  {
+    "page": 20,
+    "title": "Packet lifecycle",
+    "body": "GENERATED｜queue 裡形成待送資料\nATTEMPT｜policy 在可用窗口做一次傳送嘗試\nRETRY｜失敗後依規則再次嘗試\nDELIVERED / EXPIRED｜服務結果分開記錄\n觀察｜queue age、attempt、retry、delivery、expiry、service\n不要把 attempt 數或 rate 直接當成 delivered bits",
+    "notes": "把 packet 從生成到結果排成一條 lifecycle，學員可以沿著同一筆資料看 queue age、attempt、retry、delivered 或 expired。一次 attempt 不是一次 delivered；rate 也不能替代任務是否完成。講師可先讓學員預測某個 pacing 或 rest policy 會讓哪一段變長，再於後續 lab 對照 packet ledger。這一頁不放現行 run artifact 或 KPI。",
+    "authority": "Authority｜ADR-004 Decision 4–5；C120 integration SDD 817–907",
+    "state": "AUTHORITY",
+    "purpose": "建立從 queue 到 service outcome 的可觀察 packet lifecycle",
+    "action_contract": false
+  },
+  {
+    "page": 21,
+    "title": "先畫 service boundary，再比 energy",
+    "body": "先定義｜evaluation window、required packets / unique bits、deadline / freshness\nSERVICE PASS｜在邊界內完成任務；energy 另欄記錄\nINVALID A/B｜只比較 W、J 或 rate，卻換了 job / window / boundary\n同一 scenario / clock 讓 policy 變化可歸因\nprediction 與 replay 都要同時回答 service 與 energy\nEVIDENCE PLACEHOLDER｜current service receipt / browser artifact 未凍結",
+    "notes": "公平比較的第一個問題不是哪一組 J 較低，而是兩組是否完成同一個 job、在同一個 window 與 boundary 下被評估。required packets、unique delivered bits、deadline、freshness 與 evaluation end 要先固定；service pass 與 energy 另欄記錄。若只比較 W、J 或 rate 卻換了任務，就不能說是 saving。當前 service receipt 與 browser artifact 尚未凍結，這裡只教 boundary。",
+    "authority": "Authority｜C120 integration SDD 549–566, 883–907；DONOR-REWRITE 19–21",
+    "state": "DONOR-REWRITE",
+    "purpose": "把服務完成條件置於 energy comparison 之前",
+    "action_contract": false
+  },
+  {
+    "page": 22,
+    "title": "Python survival：常數是 bounded controls",
+    "body": "DO｜在 student_policy.py 只改 marked constant；line EVIDENCE PLACEHOLDER\nWHY｜隔離一個可控制量，保留 engine / evidence 不變\nMECHANISM｜常數改變 policy decision timing / branch\nEXPECT｜policy bytes / hash 改變；queue / packet / state / J 應有可檢查差異\nINTERPRET｜只有 label / animation 變化不算 consequential；restore marked block\nEVIDENCE PLACEHOLDER｜released code、line、命令、policy SHA 未凍結",
+    "notes": "Python survival bridge 只教學員讀懂一個 bounded control，不要求掌握 framework internals。先辨認常數所在的 marked region，再說明它如何改變 policy decision timing 或 branch；engine、scenario、schema 與 evidence writer 都不在可改範圍。預期不只看 policy hash 改變，還要看到 queue、packet、state 或 endpoint J 的可檢查後果。released code、line 與 SHA 尚未凍結，不放假畫面。",
+    "authority": "Authority｜C120 integration SDD 612–688；action matrix ACT-09",
+    "state": "PLACEHOLDER",
+    "purpose": "讓非程式背景學員辨識常數控制與 bounded edit 的責任範圍",
+    "action_contract": true
+  },
+  {
+    "page": 23,
+    "title": "Python survival：比較與 Boolean 條件",
+    "body": "DO｜讀 marked comparison / Boolean condition；line EVIDENCE PLACEHOLDER\nWHY｜辨識 observation → condition → legal action，避免 future leakage\nMECHANISM｜threshold / Boolean result 決定 WAIT、SLEEP 或 SEND\nEXPECT｜condition crossing 對應 mode、attempt、service、state evidence\nINTERPRET｜短暫 spike 不等於穩定訊號；意外時只修 marked block\nEVIDENCE PLACEHOLDER｜released code、line、API 與 browser receipt 未凍結",
+    "notes": "比較式與 Boolean 條件是 policy 的決策閘門。講師逐段問：輸入是哪個已發生的 observation？條件何時成立？成立後只允許哪個 legal action？這樣可避免學員偷看 future quality、future energy 或結果欄位。短暫 spike 不等於穩定訊號，後續 Lab B 會用 hold 與 hysteresis 延伸此概念；現行 code、line 與 browser receipt 仍是 placeholder。",
+    "authority": "Authority｜C120 integration SDD 619–653, 658–688；action matrix B-ENTER / B-EXIT / B-HOLD",
+    "state": "PLACEHOLDER",
+    "purpose": "建立 observation、condition 與 legal action 的最小讀碼路徑",
+    "action_contract": true
+  },
+  {
+    "page": 24,
+    "title": "Python survival：縮排與觀測輸入",
+    "body": "DO｜只讀 3–6 行 policy 與觀測輸入；line EVIDENCE PLACEHOLDER\nWHY｜縮排決定 branch scope；觀測欄位定義可用資訊\nMECHANISM｜同一 observation 在合法 scope 內產生一個 action\nEXPECT｜syntax / API gate 通過；runtime evidence 不應因排版以外改變\nINTERPRET｜traceback 指向 marked line 就最小修復；不 debug framework\nEVIDENCE PLACEHOLDER｜released code、line、error text、command 未凍結",
+    "notes": "這頁只保留 Python 閱讀所需的最小範圍：看縮排如何決定 branch scope，看 observation 如何進入一個 action。學員不需要修整個 framework；若 traceback 指向 marked line，採最小修復並重新連回 mechanism。若 error 來自未允許的 upstream 或 API 變更，保留 failure evidence、恢復 pinned policy，不能把修改擴大。錯誤文字與 line number 尚未 release-freeze。",
+    "authority": "Authority｜C120 integration SDD 619–653, 658–688；action matrix ACT-06",
+    "state": "PLACEHOLDER",
+    "purpose": "提供可讀、可恢復的最小 Python 結構理解，不把課程變成 framework debugging",
+    "action_contract": true
+  },
+  {
+    "page": 25,
+    "title": "Python survival：合法 return actions",
+    "body": "DO｜從 API card 讀合法 return action；exact API EVIDENCE PLACEHOLDER\nWHY｜讓每次 policy decision 落在 runner 可驗證的 action set\nMECHANISM｜observation → action → state / packet consequence；非法字串 fail closed\nEXPECT｜action receipt 與 replay event 可追溯到 policy hash\nINTERPRET｜非法 action 是 policy/API mismatch；恢復 pinned policy，不擴充 API\nEVIDENCE PLACEHOLDER｜API version、action names、line、receipt 未凍結",
+    "notes": "policy 的 return action 是一個受約束的決策介面，不是任意字串。講師將 API card 放在左側，把 observation、action 與 state/packet consequence 串起來；學員只在 legal action set 中選擇。非法 action 應 fail closed，並保留 mismatch 的 recovery 線索，而不是偷偷擴充 API 或改 runner。現行 API version、action names 與 receipts 都必須等 freeze 後再補。",
+    "authority": "Authority｜C120 integration SDD 619–653, 658–688；action matrix ACT-06",
+    "state": "PLACEHOLDER",
+    "purpose": "鎖定 bounded policy API 與 fail-closed 的合法 action 邊界",
+    "action_contract": true
+  },
+  {
+    "page": 26,
+    "title": "W 是功率；J 會隨時間累積",
+    "body": "W｜瞬時功率：某一狀態每秒消耗多少\nJ｜能量：功率在時間上的累積\nLaTeX：E_{\\mathit{endpoint}}=\\sum_s P_s t_s\nbit/s｜傳輸速率；delivered bits｜任務完成的有效量\nendpoint bit/J｜本 lab 的 derived field；不等同 canonical bit/J\ncanonical bit/J｜system layer 的 boundary-specific metric\n先確認 service，再比較 energy；不要用低 W 代替低 J",
+    "notes": "這頁把常被混用的 W、J、bit/s、delivered bits 與 bit/J 分開。W 是某一狀態的瞬時功率，J 是功率乘時間的累積；因此短暫低 W 不必然代表整個工作耗能較低。endpoint bit/J 只是在 endpoint energy scope 與固定 service boundary 下的 derived field，不能取代 system layer 的 canonical bit/J。請學員先問任務是否完成，再讀 energy。",
+    "authority": "Authority｜C120 integration SDD 711–737, 883–907；DONOR-REWRITE 14, 16–17",
+    "state": "DONOR-REWRITE",
+    "purpose": "建立功率、能量、服務量與兩層 bit/J 的單位與語義界線",
+    "action_contract": false
+  },
+  {
+    "page": 27,
+    "title": "公平 baseline 先固定 job、window、boundary",
+    "body": "FIX THE JOB｜同一 scenario、traffic、required delivery\nFIX THE WINDOW｜同一 evaluation end、contact / deadline / freshness\nFIX THE BOUNDARY｜同一 energy scope、units、aggregation\nA｜inherited policy；B｜one marked policy change\nCOMPARE｜service、delivered bits、state time、endpoint J 分欄\n不公平｜換 job / window / predecessor 後再宣稱 saving",
+    "notes": "A/B 比較的可信度來自邊界相同，而不是來自最後一張漂亮卡片。先固定 job、traffic、required delivery、evaluation window、contact、deadline、freshness 與 energy scope，再把 inherited policy 與一個 marked change 分成 A/B。結果欄位仍要分開記錄 service、delivered bits、state time 與 endpoint J。若換了 predecessor 或 window，應重新標記為不可比，不得補寫 saving claim。",
+    "authority": "Authority｜C120 integration SDD 549–566, 612–688；DONOR-REWRITE 36–39",
+    "state": "DONOR-REWRITE",
+    "purpose": "把 fair baseline 變成三個可檢查的固定條件與一個 bounded change",
+    "action_contract": false
+  },
+  {
+    "page": 28,
+    "title": "Source → model → course assumption",
+    "body": "SOURCE｜pinned TLE / upstream model / course authority\nMODEL｜runner transforms source into contact / quality / state / packet trace\nASSUMPTION｜wrapper-added awake-idle、wake、traffic、mission rule\nCOURSE RESULT｜policy action → packet/service → state time → endpoint J\nLINEAGE｜scenario_id、seed、policy hash、artifact provenance\n未證實的現行 receipt、KPI、browser pixels 一律 EVIDENCE PLACEHOLDER",
+    "notes": "不要把來源、模型轉換與課程假設壓成同一個數字。source 可以是 pinned TLE、upstream model 或課程 authority；model 將來源轉成 contact、quality、state 與 packet trace；wrapper 另外加入 awake-idle、wake、traffic 或 mission rule 等 assumptions。結果再由 policy action 走到 service、state time 與 endpoint J。學員要能沿著 scenario_id、seed、policy hash 與 artifact provenance 回溯；未凍結 evidence 一律保留 placeholder。",
+    "authority": "Authority｜C120 integration SDD 390–491, 689–737；DONOR-REWRITE 70–75",
+    "state": "DONOR-REWRITE",
+    "purpose": "建立 source、model、assumption 與 course result 的 provenance chain",
+    "action_contract": false
+  },
+  {
+    "page": 29,
+    "title": "一個 scenario_id 貫穿 runner、replay、workbook",
+    "body": "ONE ID｜TLE anchor → scenario package → runner → result JSON\nSAME ID｜Leo import / endpoint replay / Energy Decision Workbook\nCHECK｜scenario_id、anchor hash、seed、policy hash、units\nMISMATCH｜strict import fail closed；session 不被部分更新\nNO CAST｜endpoint fields 不寫入 C-120 system/canonical fields\nEVIDENCE PLACEHOLDER｜current hash / schema instance / import receipt 未凍結",
+    "notes": "scenario_id 是 identity spine，不只是檔名。從 TLE anchor、scenario package 到 runner、result JSON、Leo import、endpoint replay 與 workbook，都必須回聲同一個 scenario anchor；seed、policy hash、units 與 anchor hash 也要一起驗證。任何 mismatch 都要 fail closed，session 不接受部分更新。這頁不提供現行 hash 或 import receipt，因為 controller 尚未完成 evidence freeze。",
+    "authority": "Authority｜ADR-004 Decision 3–5；C120 integration SDD 390–491, 952–988",
+    "state": "AUTHORITY",
+    "purpose": "讓 identity、hash、units 與 replay/import/workbook 維持同一條 lineage",
+    "action_contract": false
+  },
+  {
+    "page": 30,
+    "title": "合法 interval 讓 LEO 限制 send／wait 選擇",
+    "body": "NTPU window｜服務機會 OPEN → QUALITY SHIFTS → CLOSE\nLEGAL｜只在 contact / policy action window 內做決策\nILLEGAL｜超出窗口或使用 future quality / future energy\nLEO 只提供 changing opportunity；policy 仍是 IoT 控制面\n預測｜send now、wait、batch、sleep 對 service 與 endpoint J 的方向\nEVIDENCE PLACEHOLDER｜TLE、contact trace、current map / browser artifact 未凍結",
+    "notes": "這頁將 LEO 壓縮成一個 legal interval 問題：服務窗口開啟、品質變化、窗口關閉，policy 必須在當下可用的 observation 上做選擇。超出 contact window 或偷看 future quality、future energy 都是不合法的比較。學員先預測 send now、wait、batch、sleep 如何影響 service 與 endpoint J，之後才在 Lab A 用同一個 boundary 檢查。TLE、trace 與畫面尚未凍結，不放數值。",
+    "authority": "Authority｜C120 integration SDD 390–491；DONOR-REWRITE 4–6",
+    "state": "DONOR-REWRITE",
+    "purpose": "用 changing service window 鎖定合法決策區間與避免 future leakage",
+    "action_contract": false
+  },
+  {
+    "page": 31,
+    "title": "Lab A：同一工作，不同節奏",
+    "body": "DRIVING QUESTION｜同一工作，改變送出節奏會怎樣？\nKEEP FIXED｜scenario、traffic、mission window、predecessor\nCHANGE ONE｜PACE_GAP_STEPS 或 REST_DURING_GAP 的 marked choice\nWATCH｜attempt timing、queue age、service、WAIT/SLEEP time、endpoint J\nPREDICT FIRST｜更大間隔可能改變 idle/rest 與 deadline 風險\nCLAIM｜方向待驗；以 baseline / candidate / hidden ledger 判定",
+    "notes": "Lab A 的 driving question 很窄：同一工作與同一窗口下，只改送出節奏或 gap 中的休息選擇。講師先讓學員寫 prediction，再確認 scenario、traffic、mission window 與 predecessor 固定；可觀察欄位包括 attempt timing、queue age、service、WAIT/SLEEP time 與 endpoint J。方向性預期不是答案，更大的間隔可能減少頻繁動作，也可能錯過 deadline，必須由 baseline、candidate 與 hidden ledger 判定。",
+    "authority": "Authority｜C120 integration SDD 612–688；full-deck outline Lab A 31–39",
+    "state": "AUTHORITY",
+    "purpose": "提出第一個 consequential lab 的單一 driving question 與觀察契約",
+    "action_contract": false
+  },
+  {
+    "page": 32,
+    "title": "讀 PACE_GAP_STEPS marked block",
+    "body": "DO｜逐行讀 PACE_GAP_STEPS marked block；line EVIDENCE PLACEHOLDER\nWHY｜把 pace decision 與其餘 runner / scenario 隔離\nMECHANISM｜gap steps 改變兩次 send 間的 clock distance\nEXPECT｜send time、attempt、queue age、state time、service / J 可出現差異\nINTERPRET｜無 evidence 差異代表 fixture 未造成後果；不以動畫補足\nEVIDENCE PLACEHOLDER｜released code、line numbers、API、command 未凍結",
+    "notes": "先不急著改數字，逐行辨識 PACE_GAP_STEPS 如何進入 send 間隔的 decision。講師要把 marked block 與 runner、scenario、result writer 分開，讓學員知道可改範圍與不可改範圍。預測應涵蓋 send time、attempt、queue age、state time、service 與 endpoint J；若 replay 沒有 consequential difference，就判定 fixture 或 policy path 未造成後果，不用動畫或標籤補救。released line、API 與命令仍是 placeholder。",
+    "authority": "Authority｜C120 integration SDD 612–688；action matrix A-PACE",
+    "state": "PLACEHOLDER",
+    "purpose": "以一個 bounded constant 示範從 code reading 到可否證 prediction",
+    "action_contract": true
+  },
+  {
+    "page": 33,
+    "title": "讀 REST_DURING_GAP：WAIT 或 SLEEP",
+    "body": "DO｜只在 marked REST_DURING_GAP 選 WAIT 或 SLEEP；API / line EVIDENCE PLACEHOLDER\nWHY｜比較 awake-idle 與低功率休息的代價\nMECHANISM｜WAIT 保持醒著；SLEEP 可能新增 WAKE latency / energy\nEXPECT｜state-time、wake、delivery、deadline、endpoint J 出現可追溯差異\nINTERPRET｜若 action 非法或差異為零，恢復 marked block 並保留 failure\nEVIDENCE PLACEHOLDER｜released code、line、action API、run/browser receipt 未凍結",
+    "notes": "這頁把 Lab A 的第二個 bounded choice 讀清楚：REST_DURING_GAP 只在 legal API 中選 WAIT 或 SLEEP。WAIT 是 awake idle，SLEEP 可能帶來較低休息功率但要付 wake latency 或 energy；因此 prediction 必須同時寫 state-time、wake、delivery、deadline 與 endpoint J。若 action 非法或 evidence 差異為零，保留 failure 並只恢復 marked block，不去改 runner。API、line 與 run/browser receipt 尚未凍結。",
+    "authority": "Authority｜C120 integration SDD 567–571, 711–737；action matrix A-REST",
+    "state": "PLACEHOLDER",
+    "purpose": "把 WAIT／SLEEP 的語義差異連到 policy edit 與 endpoint replay evidence",
+    "action_contract": true
+  },
+  {
+    "page": 34,
+    "title": "Mechanism：節奏、休息、服務與 J",
+    "body": "SEND SPACING｜間隔改變 queue age 與 contact remaining\nREST CHOICE｜WAIT / SLEEP 改變 awake-idle、sleep、wake\nWINDOW｜剩餘 service 可能使同一 pace 產生不同結果\nSTATE → PACKET｜mode sequence 影響 attempt / retry / delivery\nPOWER × TIME｜state duration 累積 endpoint J\n預測是方向性假說；replay ledger 才能判定",
+    "notes": "在實際 run 前，用這條 state ribbon 把 Lab A 的 mechanism 說完整：gap 先改變 send spacing，rest choice 再把時間放到 awake-idle 或 sleep，window 的剩餘長度決定服務是否仍可完成。mode sequence 影響 attempt、retry、delivery，最後各 state duration 才累積成 endpoint J。這頁不承諾方向性 KPI，只提供 prediction 所需的因果鏈與觀察欄位。",
+    "authority": "Authority｜C120 integration SDD 567–571, 711–737；full-deck outline 34",
+    "state": "AUTHORITY",
+    "purpose": "把 Lab A 的兩個控制量連成 state、packet、service 與 endpoint J 的機制鏈",
+    "action_contract": false
+  },
+  {
+    "page": 35,
+    "title": "先預測 queue、service、state time、J",
+    "body": "DO｜在 run 前鎖定 queue / service / state time / attempt / delivery / endpoint J 預測\nWHY｜讓 Lab A 結果可確認、推翻或留下 null diff\nMECHANISM｜prediction 先於 result ID；固定同一 scenario / window / traffic / predecessor\nEXPECT｜PACE_GAP_STEPS 與 WAIT/SLEEP 會改變哪一段 evidence？\nINTERPRET｜支持、推翻或無差異；每種結果都保留 causal clause\nEVIDENCE PLACEHOLDER｜current workbook / result ID / KPI artifact 尚未凍結",
+    "notes": "Lab A 的 prediction lock 要在 baseline 或 candidate run 之前完成。DO 是先寫 queue、service、state time、attempt/delivery 與 endpoint J 的方向；WHY 是讓結果可以確認、推翻或留下 null diff；MECHANISM 是 prediction 先於 result ID，並固定 scenario、window、traffic 與 predecessor；EXPECT 要指出 PACE_GAP_STEPS 與 WAIT/SLEEP 可能改變哪一段 evidence；INTERPRET 必須保留支持、推翻或無差異的 causal clause。workbook、result ID 與 KPI artifact 尚未凍結，故本頁只示範欄位與解讀方式。",
+    "authority": "Authority｜C120 integration SDD 297–320, 1039–1077；action matrix ACT-07",
+    "state": "AUTHORITY",
+    "purpose": "在 Lab A run 前鎖定可否證 prediction 與完整 evidence ledger",
+    "action_contract": true
+  }
+]

@@ -1,0 +1,8 @@
+output=/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/part-c-v2-p064-p080/build/LoRaEnergySim-LEO-ALT-PART-C-V2-P064-P080-REVIEW.pptx
+slides=18
+notes=18
+status=PASS
+layout=slideLayout2.xml only
+min_authored_font_pt=17.0
+visual_render=PASS: LibreOffice PDF rendered and 18 original-size PNGs reviewed
+powerpoint_reopen=PASS: python-pptx reopened published-equivalent output

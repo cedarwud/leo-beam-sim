@@ -27,7 +27,7 @@ import {
   openHelpPopover,
   subscribeHelpPopover,
 } from './helpPopoverStore';
-import { renderInlineFormula } from './inlineFormula';
+import { renderFormulaText } from './formulaText';
 
 export interface HelpPopoverProps {
   /** Stable id. Becomes data-testid="help-popover-trigger-<helpId>" / "help-popover-panel-<helpId>". */
@@ -163,9 +163,9 @@ export function HelpPopover(props: HelpPopoverProps): JSX.Element {
   // call site having to change. `formula` and `meta` are already ReactNode: the
   // caller hands us real JSX there, so they are passed through untouched.
   // `title` keeps its raw string form for aria-label / role=dialog naming.
-  const titleNode = renderInlineFormula(title);
-  const bodyNode = renderInlineFormula(body);
-  const effectNode = renderInlineFormula(effect);
+  const titleNode = renderFormulaText(title);
+  const bodyNode = renderFormulaText(body);
+  const effectNode = renderFormulaText(effect);
   const effectHeading = withFallback(t('common.helpEffectLabel'), 'common.helpEffectLabel', isEnglish,
     '調整後會怎樣', 'What changes if you adjust this');
   const closeLabel = withFallback(t('common.close'), 'common.close', isEnglish, '關閉', 'Close');

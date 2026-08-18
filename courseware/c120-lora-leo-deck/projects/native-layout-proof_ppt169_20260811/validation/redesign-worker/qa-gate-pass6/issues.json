@@ -1,0 +1,348 @@
+{
+  "slide-02": {
+    "shape-004": {
+      "name": "Causal node text 1",
+      "text": "policy\n\u9078\u64c7",
+      "bounds_in": {
+        "x": 0.82,
+        "y": 2.78,
+        "w": 1.72,
+        "h": 0.76
+      },
+      "overflow": {
+        "overflow_inches": 0.193
+      }
+    },
+    "shape-008": {
+      "name": "Causal node text 2",
+      "text": "radio state\n\u505c\u7559",
+      "bounds_in": {
+        "x": 3.28,
+        "y": 2.78,
+        "w": 1.72,
+        "h": 0.76
+      },
+      "overflow": {
+        "overflow_inches": 0.6
+      }
+    },
+    "shape-012": {
+      "name": "Causal node text 3",
+      "text": "power \u00d7 time",
+      "bounds_in": {
+        "x": 5.74,
+        "y": 2.78,
+        "w": 1.72,
+        "h": 0.76
+      },
+      "overflow": {
+        "overflow_inches": 0.193
+      }
+    },
+    "shape-016": {
+      "name": "Causal node text 4",
+      "text": "endpoint energy",
+      "bounds_in": {
+        "x": 8.2,
+        "y": 2.78,
+        "w": 1.72,
+        "h": 0.76
+      },
+      "overflow": {
+        "overflow_inches": 0.193
+      }
+    },
+    "shape-020": {
+      "name": "Causal node text 5",
+      "text": "service\n\u5224\u8b80",
+      "bounds_in": {
+        "x": 10.66,
+        "y": 2.78,
+        "w": 1.72,
+        "h": 0.76
+      },
+      "overflow": {
+        "overflow_inches": 0.193
+      }
+    }
+  },
+  "slide-03": {
+    "shape-007": {
+      "name": "Core row 1",
+      "text": "LoRa endpoint\n\u8cc7\u6599\u5f9e\u54ea\u88e1\u4f86",
+      "bounds_in": {
+        "x": 1.62,
+        "y": 2.65,
+        "w": 3.95,
+        "h": 0.62
+      },
+      "overflow": {
+        "overflow_inches": 0.333
+      }
+    },
+    "shape-009": {
+      "name": "Core row 2",
+      "text": "policy / queue\n\u600e\u9ebc\u6392\u9032\u670d\u52d9",
+      "bounds_in": {
+        "x": 1.62,
+        "y": 3.53,
+        "w": 3.95,
+        "h": 0.62
+      },
+      "overflow": {
+        "overflow_inches": 0.333
+      }
+    },
+    "shape-011": {
+      "name": "Core row 3",
+      "text": "radio state / energy\n\u7d50\u679c\u5982\u4f55\u7d2f\u7a4d",
+      "bounds_in": {
+        "x": 1.62,
+        "y": 4.41,
+        "w": 3.95,
+        "h": 0.62
+      },
+      "overflow": {
+        "overflow_inches": 0.333
+      }
+    },
+    "shape-021": {
+      "name": "Service consequence",
+      "text": "\u7a97\u53e3\u6703\u958b\u3001\u6703\u95dc\n\u54c1\u8cea\u6703\u6539\u8b8a\uff1b\u7b49\u5f85\u6703\u7522\u751f\u5f8c\u679c",
+      "bounds_in": {
+        "x": 7.42,
+        "y": 5.05,
+        "w": 4.45,
+        "h": 0.68
+      },
+      "overflow": {
+        "overflow_inches": 0.273
+      }
+    }
+  },
+  "slide-04": {
+    "shape-004": {
+      "name": "Runbook numeral 1",
+      "text": "\u2460",
+      "bounds_in": {
+        "x": 1.105,
+        "y": 1.97,
+        "w": 0.35,
+        "h": 0.25
+      },
+      "overflow": {
+        "overflow_inches": 0.229
+      }
+    },
+    "shape-005": {
+      "name": "Runbook heading 1",
+      "text": "\u9a57\u8b49\u74b0\u5883",
+      "bounds_in": {
+        "x": 1.72,
+        "y": 1.84,
+        "w": 3.18,
+        "h": 0.4
+      },
+      "overflow": {
+        "overflow_inches": 0.147
+      }
+    },
+    "shape-007": {
+      "name": "Runbook interpretation 1",
+      "text": "\u5148\u8b93\u5de5\u5177\u93c8\u53ef\u91cd\u73fe",
+      "bounds_in": {
+        "x": 1.72,
+        "y": 2.31,
+        "w": 3.18,
+        "h": 0.32
+      },
+      "overflow": {
+        "overflow_inches": 0.159
+      }
+    },
+    "shape-009": {
+      "name": "Runbook numeral 2",
+      "text": "\u2461",
+      "bounds_in": {
+        "x": 1.105,
+        "y": 3.25,
+        "w": 0.35,
+        "h": 0.25
+      },
+      "overflow": {
+        "overflow_inches": 0.229
+      }
+    },
+    "shape-010": {
+      "name": "Runbook heading 2",
+      "text": "\u4fdd\u5b58\u57fa\u6e96",
+      "bounds_in": {
+        "x": 1.72,
+        "y": 3.12,
+        "w": 3.18,
+        "h": 0.4
+      },
+      "overflow": {
+        "overflow_inches": 0.147
+      }
+    },
+    "shape-012": {
+      "name": "Runbook interpretation 2",
+      "text": "\u8a18\u4e0b\u672a\u6539 policy \u7684 result",
+      "bounds_in": {
+        "x": 1.72,
+        "y": 3.59,
+        "w": 3.18,
+        "h": 0.32
+      },
+      "overflow": {
+        "overflow_inches": 0.159
+      }
+    },
+    "shape-014": {
+      "name": "Runbook numeral 3",
+      "text": "\u2462",
+      "bounds_in": {
+        "x": 1.105,
+        "y": 4.53,
+        "w": 0.35,
+        "h": 0.25
+      },
+      "overflow": {
+        "overflow_inches": 0.229
+      }
+    },
+    "shape-015": {
+      "name": "Runbook heading 3",
+      "text": "\u53ea\u6539\u4e00\u500b\npolicy block",
+      "bounds_in": {
+        "x": 1.72,
+        "y": 4.4,
+        "w": 3.18,
+        "h": 0.78
+      },
+      "overflow": {
+        "overflow_inches": 0.173
+      }
+    },
+    "shape-017": {
+      "name": "Runbook interpretation 3",
+      "text": "\u6bd4\u8f03\u6642\u53ea\u6b78\u56e0\u5230\u9019\u4e00\u500b\u8b8a\u66f4",
+      "bounds_in": {
+        "x": 1.72,
+        "y": 5.24,
+        "w": 3.18,
+        "h": 0.32
+      },
+      "overflow": {
+        "overflow_inches": 0.125
+      }
+    },
+    "shape-018": {
+      "name": "Runbook recovery text",
+      "text": "verify \u5931\u6557 \u2192 \u4fee\u74b0\u5883",
+      "bounds_in": {
+        "x": 8.72,
+        "y": 5.72,
+        "w": 3.55,
+        "h": 0.28
+      },
+      "overflow": {
+        "overflow_inches": 0.165
+      }
+    }
+  },
+  "slide-06": {
+    "shape-004": {
+      "name": "Evidence label 1",
+      "text": "\u4f86\u6e90  /  lineage",
+      "bounds_in": {
+        "x": 1.68,
+        "y": 1.94,
+        "w": 3.0,
+        "h": 0.38
+      },
+      "overflow": {
+        "overflow_inches": 0.167
+      }
+    },
+    "shape-006": {
+      "name": "Evidence label 2",
+      "text": "\u670d\u52d9  /  deadline / freshness",
+      "bounds_in": {
+        "x": 1.68,
+        "y": 2.78,
+        "w": 3.0,
+        "h": 0.38
+      },
+      "overflow": {
+        "overflow_inches": 0.573
+      }
+    },
+    "shape-008": {
+      "name": "Evidence label 3",
+      "text": "\u6a5f\u5236  /  queue / packet / state",
+      "bounds_in": {
+        "x": 1.68,
+        "y": 3.62,
+        "w": 3.0,
+        "h": 0.38
+      },
+      "overflow": {
+        "overflow_inches": 0.573
+      }
+    },
+    "shape-010": {
+      "name": "Evidence label 4",
+      "text": "\u80fd\u91cf  /  power \u00d7 time",
+      "bounds_in": {
+        "x": 1.68,
+        "y": 4.46,
+        "w": 3.0,
+        "h": 0.38
+      },
+      "overflow": {
+        "overflow_inches": 0.167
+      }
+    },
+    "shape-012": {
+      "name": "Evidence interpretation",
+      "text": "\u5224\u8b80\n\u652f\u6301\u3001\u53cd\u99c1\u3001\u5f85\u67e5",
+      "bounds_in": {
+        "x": 3.72,
+        "y": 5.18,
+        "w": 1.55,
+        "h": 0.72
+      },
+      "overflow": {
+        "overflow_inches": 0.233
+      }
+    },
+    "shape-014": {
+      "name": "Evidence status",
+      "text": "\u4f3a\u670d\u5668 preview\uff1a\u5df2\u9a57\u8b49\nWindows native\uff1a\u5f85\u5be6\u6a5f",
+      "bounds_in": {
+        "x": 8.86,
+        "y": 1.49,
+        "w": 3.4,
+        "h": 0.42
+      },
+      "overflow": {
+        "overflow_inches": 0.33
+      }
+    },
+    "shape-015": {
+      "name": "Evidence caption",
+      "text": "endpoint replay evidence",
+      "bounds_in": {
+        "x": 5.12,
+        "y": 1.34,
+        "w": 3.15,
+        "h": 0.25
+      },
+      "overflow": {
+        "overflow_inches": 0.195
+      }
+    }
+  }
+}

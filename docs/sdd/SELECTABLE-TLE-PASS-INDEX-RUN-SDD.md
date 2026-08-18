@@ -275,6 +275,33 @@ those fields through caching and payload packing. A pass event is never created
 from a visual marker, a candidate-only frame, a snapshot switch, or a fake
 time offset.
 
+### 5.5 Time-local pool separation
+
+The two-hour union of every satellite that was visible at least once is an
+evidence set, not the per-anchor compute or render set. The producer keeps four
+different time-local pools:
+
+* `ServiceEligiblePool` applies the accepted service elevation mask, steering
+  feasibility, local footprint intersection, and a conservative maximum-power
+  link-closure bound. An uncertain bound over-includes; it does not silently
+  reject a satellite.
+* `DecisionPool` applies the existing real-pass overlap, remaining dwell,
+  continuation, TTT, and hysteresis contracts. It supplies serving and
+  candidate choices; it is not a hardcoded catalog top-N.
+* `InterferencePool` contains every co-channel satellite/beam whose coupling to
+  the local scenario cannot be proven negligible. It is independent of what is
+  visually rendered. The current one-owner seven-beam scenario continues to
+  derive `I_inter = 0`; a future multi-satellite interference experiment must
+  declare a new scenario contract instead of silently changing this pool.
+* `RenderPool` contains serving, candidate, and a bounded set of presentation
+  context objects. A display/LOD limit is allowed here because it cannot change
+  pass selection, SINR, power, Throughput, or EE.
+
+The exact samples are computed once and retained. Visibility, pass extraction,
+service planning, canonical analysis, and visual interpolation read the same
+sample identity. Pass extraction or rendering must not run SGP4 again for an
+already materialized `satelliteId + anchorUtc` sample.
+
 ## 6. NTPU exact analysis payload
 
 `NtpUCanonicalRun` consumes the exact visibility pool and pass/event index. It
@@ -462,6 +489,29 @@ observable as a different scientific result.
   new canonical analysis run unless they alter an identity-bearing model
   revision.
 
+### 11.1 Every date/time Apply is a request-time run
+
+Selectable TLE execution is not only a build-time preprocessing task. Every
+frontend constellation/date/time Apply creates or resolves a run. The latency
+path uses three independently reusable identities:
+
+1. `SnapshotIndexKey` caches validated catalog metadata, parsed TLE records,
+   orbital metadata, and source digests for one immutable snapshot.
+2. `PassIndexKey` caches observer-specific, absolute-UTC time chunks, exact
+   samples, and pass events. A nearby requested window may slice already
+   verified overlapping chunks; it must not relabel samples from another UTC.
+3. `analysisRunId` caches canonical frames for one parameter condition. A
+   SINR/power parameter change reuses geometry/pass evidence and does not rerun
+   SGP4.
+
+The default/bookmarked run may have a checked-in bootstrap and accepted
+artifact. An arbitrary cold request first computes a real anchor-0 frame in a
+Worker/server task, then continues the complete run with the public timeline
+locked. The browser main thread does not synchronously propagate a catalog or
+materialize a catalog-size-by-241 array. Cache misses remain functional and
+bounded; an optional annual server-built index accelerates them but is not a
+functional prerequisite.
+
 ## 12. Completion and performance gate
 
 The optimized index is not accepted on speed alone. The report must contain
@@ -503,6 +553,20 @@ key and populated cache. The report records host/Node/browser version, cache
 state, fixture digests, wall-clock method, and peak RSS method. No unmeasured
 performance claim is accepted; dense-baseline and optimized numbers are
 reported side by side.
+
+The initial request-time objectives on the declared reference host are:
+
+* cold Starlink snapshot-to-complete-run p95 at or below 3 seconds;
+* warm identical-key manifest/payload availability p95 at or below 300 ms;
+* a real bootstrap/anchor-0 paint at or below 500 ms when a valid compact
+  artifact or snapshot index is available; and
+* no browser-main-thread TLE long task that blocks interaction while the run is
+  pending.
+
+These are unverified objectives until a machine-readable cold/warm report
+records them. The optimized stage report must also prove that pass extraction,
+planning, and rendering reused retained exact samples rather than increasing
+the SGP4 propagation-attempt count.
 
 ### 12.3 Public behavior
 

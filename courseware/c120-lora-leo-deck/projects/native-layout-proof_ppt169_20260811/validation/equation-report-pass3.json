@@ -1,0 +1,115 @@
+{
+  "schema_id": "c120-native-equations-report-v1",
+  "status": "PASS",
+  "tool": {
+    "script": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/insert-native-equations.py",
+    "mode": "OOXML-only",
+    "python_pptx_used": false,
+    "packages_installed": false
+  },
+  "input": "courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/c120-native-layout-proof-fonted-pass3.pptx",
+  "output": "courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/validation/c120-native-layout-proof-equations-pass3.pptx",
+  "logical_slide": 5,
+  "fallback_svg": "courseware/c120-lora-leo-deck/projects/native-layout-proof_ppt169_20260811/assets/energy-equations.svg",
+  "equations": [
+    {
+      "key": "E_endpoint",
+      "latex": "E_{\\mathrm{endpoint}} = \\sum_{s \\in S} P_s t_s"
+    },
+    {
+      "key": "eta_E",
+      "latex": "\\eta_E = \\frac{D_{\\mathrm{delivered}}}{E_{\\mathrm{endpoint}}}"
+    }
+  ],
+  "limitations": {
+    "powerpoint_edit_save_reopen": "not tested by this tool; Microsoft PowerPoint remains the authoritative native-editability check",
+    "libreoffice": "a14:m native-choice rendering is not claimed or tested; LibreOffice may ignore or flatten the native choice, so provide --fallback-svg for a preview fallback",
+    "visual_acceptance": "not claimed; render every page and inspect overlap, crop, overflow, and whitespace separately"
+  },
+  "slide_mapping": {
+    "logical_number": 5,
+    "physical_part": "ppt/slides/slide12.xml",
+    "relationship_id": "rId13",
+    "mapping_basis": "presentation.xml p:sldIdLst order"
+  },
+  "insertion_target": {
+    "kind": "p:cSld/p:spTree with title anchor",
+    "title_anchor_found": true,
+    "native_shapes_inserted": 2,
+    "fallback_wrapped_in_mc_AlternateContent": true
+  },
+  "geometry_emu": {
+    "slide_cx": 12192000,
+    "slide_cy": 6858000,
+    "x": 609600,
+    "first_y": 1714500,
+    "second_y": 2865664,
+    "width": 10972800,
+    "height": 979714,
+    "gap": 171450
+  },
+  "fallback": {
+    "embedded_media_part": "ppt/media/native-equations-fallback.svg",
+    "content_type": "image/svg+xml",
+    "choice_requires": "a14"
+  },
+  "changed_parts": [
+    "[Content_Types].xml",
+    "ppt/slides/_rels/slide12.xml.rels",
+    "ppt/slides/slide12.xml"
+  ],
+  "validation": {
+    "zip_valid": true,
+    "xml_parts_validated": 59,
+    "target_a14_m_count": 2,
+    "target_omath_count": 2,
+    "exact_latex_metadata_present": true,
+    "target_background_preserved": true,
+    "preservation": {
+      "required_unchanged_count": 38,
+      "required_unchanged_sha256": {
+        "ppt/notesMasters/_rels/notesMaster1.xml.rels": "c900da93a4de8bad9a582295b1dbcb892e6cfec52985354da973ebb3fab497c1",
+        "ppt/notesMasters/notesMaster1.xml": "ec44b08908b2c51532bc472b84108e3e015e57d867e46beb2cf2199c9c234fc4",
+        "ppt/notesSlides/_rels/notesSlide10.xml.rels": "c299778c0d8be69d4731be1dc22b44a1237d1890fc734ce580fcd2832d4d30b8",
+        "ppt/notesSlides/_rels/notesSlide11.xml.rels": "aaa82bef17f6d0a7034651d963bf240140ad8b0a9ebe83c8b55838b9910c0f9f",
+        "ppt/notesSlides/_rels/notesSlide12.xml.rels": "c21f01f0829faf13279b1bf313acf18e96f4198c6cb11ba0cd74643015cc8098",
+        "ppt/notesSlides/_rels/notesSlide13.xml.rels": "9214f093fe5cee8c155bbec54daf8f6d2c222c5e134296f0388f7e63f450708a",
+        "ppt/notesSlides/_rels/notesSlide8.xml.rels": "bd404ae3441ffd0bf3e28053988324b2a1316da60e390e694f2f0a1efb77dafb",
+        "ppt/notesSlides/_rels/notesSlide9.xml.rels": "024b22099b526defa5ba24be46195cb33c4a62048de253c8a58fb9fc9a9e3493",
+        "ppt/notesSlides/notesSlide10.xml": "fc64343543a7c2b64aa4b4fc123fda859bd54f014665a3d536a3ca67ee6b7de5",
+        "ppt/notesSlides/notesSlide11.xml": "5f0688443878d91efe19206d9471c97c016ff93995b1fb55e7a27f951006d425",
+        "ppt/notesSlides/notesSlide12.xml": "949ea3d4b3dd4349bb89a8f3285e552831fe3628b79085085b5d7a6c93170052",
+        "ppt/notesSlides/notesSlide13.xml": "40c04718543a5f8efb109695dd6888534b891e2583daf8f833f09afdd951a8b7",
+        "ppt/notesSlides/notesSlide8.xml": "86b9a592755b31957ada00700a316571926fbf1309354b176ddc699a528870e8",
+        "ppt/notesSlides/notesSlide9.xml": "5e63d9bc3006910a490a4adb073144228f29a5693c192fae5fad122e9159f3f1",
+        "ppt/slideLayouts/_rels/slideLayout1.xml.rels": "86b03be6072fb223ff4dc3b914b941be9fefd54da97a68763ec27f3d6eddd060",
+        "ppt/slideLayouts/_rels/slideLayout10.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "ppt/slideLayouts/_rels/slideLayout2.xml.rels": "fe8968c4d1feafa048ae5178712964bfdb95c20631ff207a928aae39545c900e",
+        "ppt/slideLayouts/_rels/slideLayout3.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "ppt/slideLayouts/_rels/slideLayout4.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "ppt/slideLayouts/_rels/slideLayout5.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "ppt/slideLayouts/_rels/slideLayout6.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "ppt/slideLayouts/_rels/slideLayout7.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "ppt/slideLayouts/_rels/slideLayout8.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "ppt/slideLayouts/_rels/slideLayout9.xml.rels": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "ppt/slideLayouts/slideLayout1.xml": "ba43f02ed0fc5bdb112843a86386508ec57f59d0b095bc74fb1c60e5f9588e8c",
+        "ppt/slideLayouts/slideLayout10.xml": "53d991794c9e1bc3170547c0a229f375c6b000f1bf5a056a4a7b986933513c44",
+        "ppt/slideLayouts/slideLayout2.xml": "061b8e4192e3cedf39daf08bc14e99eb22006445c9ece5c80b6e4c587bf359a3",
+        "ppt/slideLayouts/slideLayout3.xml": "c10c72b218bdfe906d05e22de32e84bceeb530e4114d073166b8763e1fc5d2cc",
+        "ppt/slideLayouts/slideLayout4.xml": "0aabad39a9f7e1cfe5fae2ab9d27fff3f5baead0473a84fa87f374ae11c0f495",
+        "ppt/slideLayouts/slideLayout5.xml": "1e24e0de305ef89a18c139ed17b79a45272a64b7f5dd90c916028fe2a6ac67da",
+        "ppt/slideLayouts/slideLayout6.xml": "ac4a1b01b238fd179fac1b79e16b83634ee1618da40a116683606fdee3e56f30",
+        "ppt/slideLayouts/slideLayout7.xml": "cfac26a9756e678dae523a61cc48e1787b5cd13ce8c2bddef3cf4020f752e1a9",
+        "ppt/slideLayouts/slideLayout8.xml": "281e509ad4ab5f1347fdb20aa38629dfa3e225e401c8bac0b1773a37a5d1155d",
+        "ppt/slideLayouts/slideLayout9.xml": "d724f3ceda6a7c6955aab3ecc060c032d627ab3616edab1c705943ed2fef6bde",
+        "ppt/slideMasters/_rels/slideMaster1.xml.rels": "ed14dfadb2527d7488ee43bdb18969103d910e6c566492fa34895dc3e1698ea1",
+        "ppt/slideMasters/slideMaster1.xml": "4f3f13e37647d3218a5a747d013a6e5677e13f9ad7e006dd36cdc77128e2ec8c",
+        "ppt/theme/theme1.xml": "c128da77426350f7cb31a0993c3e628f1027c0e5cc1afbeabe77a11e58480a46",
+        "ppt/theme/theme2.xml": "f766d7b87d9c267ab3ddaf1a2e40a332821f625225f458dafb3fc0ff7f1483ff"
+      },
+      "violations": [],
+      "notes_preserved": true,
+      "masters_layouts_preserved": true
+    }
+  }
+}

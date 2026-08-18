@@ -49,6 +49,7 @@ export type DuelCardChannelMetricProp = {
 };
 
 export function DuelCard({
+  headerTitle,
   servingTitle,
   servingFriendlyTitle,
   servingCaption,
@@ -85,12 +86,15 @@ export function DuelCard({
   contextBadgeText = 'live context',
   contextBadgeTone = 'neutral',
   contextDetail,
+  hideHeaderTitle = false,
   deltaLabel,
   offsetLabel,
   triggerLabel,
   triggerAriaLabel,
   handoverCount,
+  decisionUnavailableReason,
 }: {
+  headerTitle?: string;
   servingTitle: string;
   /** Plain-language name for the serving column, shown above the role token. */
   servingFriendlyTitle: string;
@@ -120,20 +124,23 @@ export function DuelCard({
   comparisonRangeKm: number | null;
   comparisonTone: DuelSignalTone;
   sinrDeltaDb: number | null;
-  handoverOffsetDb: number;
-  handoverTriggerProgressSec: number;
-  handoverTriggerSec: number;
-  triggerRatio: number;
+  handoverOffsetDb: number | null;
+  handoverTriggerProgressSec: number | null;
+  handoverTriggerSec: number | null;
+  triggerRatio: number | null;
   stateLabel: string;
   stateTone: StatusBadgeTone;
   contextBadgeText?: string;
   contextBadgeTone?: StatusBadgeTone;
   contextDetail?: string;
+  /** The legacy right rail can keep the comparison body without its heading. */
+  hideHeaderTitle?: boolean;
   deltaLabel?: string;
   offsetLabel?: string;
   triggerLabel?: string;
   triggerAriaLabel?: string;
-  handoverCount?: number;
+  handoverCount?: number | null;
+  decisionUnavailableReason?: string;
 }) {
   const { tx } = usePanelCopy();
 
@@ -151,7 +158,7 @@ export function DuelCard({
         border: `1px solid ${UI_TOKENS.color.border.subtle}`,
       }}
     >
-      <div style={{
+      {!hideHeaderTitle ? <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         gap: 10,
@@ -166,15 +173,15 @@ export function DuelCard({
           fontSize: UI_TOKENS.type.size.caption,
           fontWeight: UI_TOKENS.type.weight.heavy,
         }}>
-          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{tx('panel.duel.title')}</span>
+          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{headerTitle ?? tx('panel.duel.title')}</span>
           <PanelHelp
             helpId="panel.duel"
-            titleText={tx('panel.duel.title')}
+            titleText={headerTitle ?? tx('panel.duel.title')}
             bodyText={tx('panel.duel.help')}
           />
         </div>
         <StatusBadge tone={contextBadgeTone}>{contextBadgeText}</StatusBadge>
-      </div>
+      </div> : null}
 
       {/* The card's explanatory paragraph lives behind the header "?" — the
           card face itself carries only labels, values, units and status chips. */}
@@ -232,6 +239,7 @@ export function DuelCard({
           offsetLabel={offsetLabel}
           triggerLabel={triggerLabel}
           triggerAriaLabel={triggerAriaLabel}
+          decisionUnavailableReason={decisionUnavailableReason}
         />
         <DuelSignalColumn
           testId="info-panel-comparison-sinr-status"

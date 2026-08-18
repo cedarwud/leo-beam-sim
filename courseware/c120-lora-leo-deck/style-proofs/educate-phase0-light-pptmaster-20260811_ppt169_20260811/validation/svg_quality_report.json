@@ -1,0 +1,256 @@
+{
+  "schema": "ppt-master.svg-quality-report.v1",
+  "stage": "final",
+  "target": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/style-proofs/educate-phase0-light-pptmaster-20260811_ppt169_20260811",
+  "source_fingerprint": {
+    "algorithm": "sha256",
+    "digest": "3042db7ed533e94854415f49313fc595cb003d724bd91e700ee414271f8deb74",
+    "file_count": 3,
+    "files": [
+      {
+        "file": "01_policy_to_endpoint_evidence.svg",
+        "sha256": "780409797c7bded1e46487ac25c6031362bd1e6389ed9e0c3608117c8c787f4e"
+      },
+      {
+        "file": "02_conditional_decision.svg",
+        "sha256": "eaa175453f9e994e86e5d2ecb4cee2871827df5b2d2a2694c85f0ef6b368b980"
+      },
+      {
+        "file": "03_bounded_interpretation.svg",
+        "sha256": "044ee98cc6d53b9cbcf04e1a7b56105ba29c321e29a5ef9406858c6a750f8ee8"
+      }
+    ]
+  },
+  "summary": {
+    "total": 3,
+    "passed": 1,
+    "warnings": 2,
+    "errors": 0
+  },
+  "issue_types": {},
+  "categories": {
+    "blocking": {
+      "count": 0,
+      "issues": []
+    },
+    "introduced": {
+      "count": 2,
+      "issues": [
+        {
+          "file": "01_policy_to_endpoint_evidence.svg",
+          "message": "Cannot verify root viewBox bounds for visible text with unsupported or unresolved geometry: <text> (x=91, y=347; text='awake idle下一次不需 WAKE'), <text> (x=91, y=464; text='low-power rest之後多 WA…'); use supported explicit text positioning when page fit matters"
+        },
+        {
+          "file": "02_conditional_decision.svg",
+          "message": "Cannot verify root viewBox bounds for visible text with unsupported or unresolved geometry: <text> (x=91, y=488; text='mission contract 不變只…'); use supported explicit text positioning when page fit matters"
+        }
+      ]
+    },
+    "inherited": {
+      "count": 0,
+      "issues": []
+    },
+    "source-import": {
+      "count": 0,
+      "summary": {
+        "warning_count": 0,
+        "by_code": {},
+        "samples": {}
+      }
+    }
+  },
+  "drift": {
+    "colors": {
+      "#177B85": [
+        "02_conditional_decision.svg",
+        "03_bounded_interpretation.svg"
+      ],
+      "#387A56": [
+        "01_policy_to_endpoint_evidence.svg",
+        "02_conditional_decision.svg",
+        "03_bounded_interpretation.svg"
+      ],
+      "#60708A": [
+        "01_policy_to_endpoint_evidence.svg",
+        "02_conditional_decision.svg",
+        "03_bounded_interpretation.svg"
+      ],
+      "#6D4C9B": [
+        "03_bounded_interpretation.svg"
+      ],
+      "#876416": [
+        "01_policy_to_endpoint_evidence.svg",
+        "02_conditional_decision.svg",
+        "03_bounded_interpretation.svg"
+      ],
+      "#9B3E35": [
+        "01_policy_to_endpoint_evidence.svg",
+        "02_conditional_decision.svg",
+        "03_bounded_interpretation.svg"
+      ],
+      "#CBBDE3": [
+        "02_conditional_decision.svg"
+      ]
+    },
+    "fonts": {
+      "\"Times New Roman\", DFKai-SB, serif": [
+        "01_policy_to_endpoint_evidence.svg",
+        "03_bounded_interpretation.svg"
+      ],
+      "\"Times New Roman\", serif": [
+        "01_policy_to_endpoint_evidence.svg",
+        "02_conditional_decision.svg",
+        "03_bounded_interpretation.svg"
+      ]
+    },
+    "sizes": {
+      "17": [
+        "01_policy_to_endpoint_evidence.svg",
+        "02_conditional_decision.svg"
+      ],
+      "24": [
+        "02_conditional_decision.svg"
+      ],
+      "26": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "42": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "52": [
+        "03_bounded_interpretation.svg"
+      ],
+      "54": [
+        "01_policy_to_endpoint_evidence.svg"
+      ],
+      "78": [
+        "03_bounded_interpretation.svg"
+      ]
+    }
+  },
+  "project_issues": {
+    "template": [],
+    "animation": [],
+    "illustration": [],
+    "communication_trace": [],
+    "pptx_structure": []
+  },
+  "files": [
+    {
+      "file": "01_policy_to_endpoint_evidence.svg",
+      "path": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/style-proofs/educate-phase0-light-pptmaster-20260811_ppt169_20260811/svg_output/01_policy_to_endpoint_evidence.svg",
+      "exists": true,
+      "errors": [],
+      "warnings": [
+        "Cannot verify root viewBox bounds for visible text with unsupported or unresolved geometry: <text> (x=91, y=347; text='awake idle下一次不需 WAKE'), <text> (x=91, y=464; text='low-power rest之後多 WA…'); use supported explicit text positioning when page fit matters"
+      ],
+      "info": {
+        "native_payload_refs": 7,
+        "viewbox": "0 0 1280 720",
+        "fonts": [
+          "\"Times New Roman\", DFKai-SB, \"標楷體\", serif",
+          "\"Times New Roman\", DFKai-SB, serif",
+          "\"Times New Roman\", serif"
+        ],
+        "text_elements": 26,
+        "tspan_elements": 3,
+        "contextual_values": {
+          "colors": [
+            "#387A56",
+            "#60708A",
+            "#876416",
+            "#9B3E35"
+          ],
+          "font_families": [
+            "\"Times New Roman\", DFKai-SB, serif",
+            "\"Times New Roman\", serif"
+          ]
+        },
+        "sparse_typography_sizes": {
+          "17": 2,
+          "26": 1,
+          "42": 1,
+          "54": 1
+        }
+      },
+      "passed": true,
+      "source_sha256": "780409797c7bded1e46487ac25c6031362bd1e6389ed9e0c3608117c8c787f4e"
+    },
+    {
+      "file": "02_conditional_decision.svg",
+      "path": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/style-proofs/educate-phase0-light-pptmaster-20260811_ppt169_20260811/svg_output/02_conditional_decision.svg",
+      "exists": true,
+      "errors": [],
+      "warnings": [
+        "Cannot verify root viewBox bounds for visible text with unsupported or unresolved geometry: <text> (x=91, y=488; text='mission contract 不變只…'); use supported explicit text positioning when page fit matters"
+      ],
+      "info": {
+        "native_payload_refs": 7,
+        "viewbox": "0 0 1280 720",
+        "fonts": [
+          "\"Times New Roman\", DFKai-SB, \"標楷體\", serif",
+          "\"Times New Roman\", serif"
+        ],
+        "text_elements": 41,
+        "tspan_elements": 1,
+        "contextual_values": {
+          "colors": [
+            "#177B85",
+            "#387A56",
+            "#60708A",
+            "#876416",
+            "#9B3E35",
+            "#CBBDE3"
+          ],
+          "font_families": [
+            "\"Times New Roman\", serif"
+          ]
+        },
+        "sparse_typography_sizes": {
+          "17": 2,
+          "24": 1
+        }
+      },
+      "passed": true,
+      "source_sha256": "eaa175453f9e994e86e5d2ecb4cee2871827df5b2d2a2694c85f0ef6b368b980"
+    },
+    {
+      "file": "03_bounded_interpretation.svg",
+      "path": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/style-proofs/educate-phase0-light-pptmaster-20260811_ppt169_20260811/svg_output/03_bounded_interpretation.svg",
+      "exists": true,
+      "errors": [],
+      "warnings": [],
+      "info": {
+        "native_payload_refs": 7,
+        "viewbox": "0 0 1280 720",
+        "fonts": [
+          "\"Times New Roman\", DFKai-SB, \"標楷體\", serif",
+          "\"Times New Roman\", DFKai-SB, serif",
+          "\"Times New Roman\", serif"
+        ],
+        "text_elements": 26,
+        "tspan_elements": 0,
+        "contextual_values": {
+          "colors": [
+            "#177B85",
+            "#387A56",
+            "#60708A",
+            "#6D4C9B",
+            "#876416",
+            "#9B3E35"
+          ],
+          "font_families": [
+            "\"Times New Roman\", DFKai-SB, serif",
+            "\"Times New Roman\", serif"
+          ]
+        },
+        "sparse_typography_sizes": {
+          "52": 2,
+          "78": 1
+        }
+      },
+      "passed": true,
+      "source_sha256": "044ee98cc6d53b9cbcf04e1a7b56105ba29c321e29a5ef9406858c6a750f8ee8"
+    }
+  ]
+}

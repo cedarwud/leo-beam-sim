@@ -226,6 +226,7 @@ export function createSinrLiveCellModel(
   profile: Profile,
   useEarthFixedCellTruth: boolean,
   epochUtcMs: number,
+  beamCountBySatellite: Readonly<Record<string, number>> = {},
 ): SinrLiveCellModel | null {
   if (!useEarthFixedCellTruth) return null;
   const cellLayout = buildSinrLiveCellLayout(profile);
@@ -242,6 +243,7 @@ export function createSinrLiveCellModel(
     // control reaches this lane; it falls back to SINR_LIVE_BEAMS_PER_SAT (7),
     // which is what every shipped profile carries.
     beamsPerSat: resolveSinrLiveBeamsPerSat(profile),
+    beamsPerSatById: beamCountBySatellite,
     hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
     // SINR-live-only antenna truth-input overrides (S-cells-4a). They are layered
     // over the profile antenna and never mutate it → the steered lane + baseline

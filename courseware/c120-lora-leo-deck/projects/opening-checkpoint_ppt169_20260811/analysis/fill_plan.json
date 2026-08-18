@@ -1,0 +1,240 @@
+{
+  "schema": "template_fill_pptx_plan.v1",
+  "status": "confirmed",
+  "source_pptx": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/projects/opening-checkpoint_ppt169_20260811/sources/educate.pptx",
+  "accepted_warnings": [
+    "s02_sh3 is a 12.486 by 5.677 inch body placeholder misclassified as label_candidate; its body-capacity warnings require render QA rather than rejection"
+  ],
+  "slides": [
+    {
+      "source_slide": 1,
+      "purpose": "opening checkpoint cover",
+      "layout_rationale": {
+        "layout_pattern": "native educate cover",
+        "why_fit": "Uses the original cover title and subtitle placeholders without adding any background fill.",
+        "risk": "Mixed Chinese and English runs require post-fill script-aware font normalization."
+      },
+      "replacements": [
+        {
+          "slot_id": "s01_sh2",
+          "text": "每一次 SEND、WAIT、SLEEP，都是能源決策"
+        },
+        {
+          "slot_id": "s01_sh3",
+          "text": "智慧節能與物聯網應用"
+        }
+      ],
+      "notes": "這堂課先從物聯網終端的能源決策開始，而不是從衛星術語開始。裝置選擇送、等或休眠時，同時改變封包服務與功率乘時間所累積的能量。LoRaEnergySim 讓這些終端後果可以被觀察；Leo 只提供一個會改變的服務窗口。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "direct relevance and causal chain",
+      "layout_rationale": {
+        "layout_pattern": "native educate title and body",
+        "why_fit": "The large original body placeholder carries a typographic causal chain while preserving the template background.",
+        "risk": "The causal relation is typographic rather than a newly drawn diagram because the native template has no diagram placeholder."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "節能是一條可檢驗因果鏈"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "STATE / DATA → POLICY → PACKET / SERVICE\n\nPOWER × TIME → ENDPOINT ENERGY → EVIDENCE\n\nLaTeX：E_{\\mathit{endpoint}}=\\sum_s P_s t_s"
+        },
+        {
+          "slot_id": "s02_sh4",
+          "text": "Authority｜C120 integration SDD 1082–1096"
+        }
+      ],
+      "notes": "請沿著因果鏈由左到右讀。資料與狀態先進入策略，策略產生送、等、休眠或批次行動，接著才有封包與服務後果；功率經過時間才累積成焦耳。最後的證據必須能支持或推翻原先的預測。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "LoRaEnergySim evidence scope",
+      "layout_rationale": {
+        "layout_pattern": "native educate title and body",
+        "why_fit": "A short observes-versus-does-not-prove contrast fits the original body placeholder.",
+        "risk": "No live screenshot is available; the page must remain conceptual."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "LoRa 證據邊界"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "可觀察\nSLEEP / IDLE / WAKE / PROCESS / TX / RX\npacket attempt / retry / delivered / expired\nqueue / service / endpoint energy\n\n不能宣稱\nNOT LIVE / NOT MEASURED / NOT SYSTEM ENERGY\nwrapper-added assumptions 必須分開標示"
+        },
+        {
+          "slot_id": "s02_sh4",
+          "text": "Authority｜ADR-004 24–38；C120 integration SDD 883–907"
+        }
+      ],
+      "notes": "LoRaEnergySim 的直接價值，是讓終端狀態、封包嘗試、重試、送達與能量結果成為可檢查事件。課程包裝層加入的假設必須另外標示，不能說成上游測量。終端能量也不能被改名成既有 C-120 的 canonical system energy。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "LEO as changing-window example only",
+      "layout_rationale": {
+        "layout_pattern": "native educate title and body",
+        "why_fit": "The central text block expresses one moving-window concept without replacing the template background.",
+        "risk": "This is a concept page, not browser evidence."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "LEO：變動服務窗口範例"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "CHANGING SERVICE WINDOW\nOPEN → QUALITY SHIFTS → CLOSE\n\n現在送｜等待｜批次｜休眠\n\nLEO 只讓取捨更容易看見；不是學習目標。\n可轉移：smart farm / HVAC / edge / logistics"
+        },
+        {
+          "slot_id": "s02_sh4",
+          "text": "Authority｜C120 integration SDD 14–37, 1082–1096"
+        }
+      ],
+      "notes": "LEO 在這裡只負責把服務機會變成會開、會關、品質會改變的時間窗。這讓學員必須在現在送、等一下、批次或休眠之間做決策，並同時檢查服務與能量。學到的是 changing opportunity 下的控制思維，而不是衛星工程專業。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "two evidence layers",
+      "layout_rationale": {
+        "layout_pattern": "native educate title and body",
+        "why_fit": "Two compact text groups fit the original large body placeholder.",
+        "risk": "Endpoint and system terminology must remain visibly separated."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "兩層 evidence 不互相冒充"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "同一 scenario / TLE source / clock\n\nCANONICAL SYSTEM\npower / consumed J / canonical bit/J\n\nLORA ENDPOINT\npolicy / queue / packet / state / endpoint J\n\nNO ALIASING｜endpoint J ≠ system J"
+        },
+        {
+          "slot_id": "s02_sh4",
+          "text": "Authority｜C120 integration SDD 366–388"
+        }
+      ],
+      "notes": "兩層 replay 可以在同一個情境與時鐘上一起呈現，但各自負責不同證據。既有 replay 保留系統層欄位；新的終端 replay 只負責策略、佇列、封包、無線狀態與終端能量。這條界線讓課程可以前進，又不會把終端模型誤稱為 whole-system 真值。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "learner evidence loop",
+      "layout_rationale": {
+        "layout_pattern": "native educate title and body",
+        "why_fit": "A compact arrow loop fits the original body placeholder and remains editable text.",
+        "risk": "Commands and browser receipts are not frozen and therefore are not shown."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "從預測到驗證"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "PREDICT → EDIT → RUN → IMPORT\n\nWITHHELD + WORKBOOK ← REPLAY\n\n只改 student_policy.py marked region。\nJSON strict import；同一 scenario / clock。\n凍結 policy 後再跑 withheld case。"
+        },
+        {
+          "slot_id": "s02_sh4",
+          "text": "Authority｜ADR-004 42–71；C120 integration SDD 287–295"
+        }
+      ],
+      "notes": "學員先留下對佇列、服務、狀態時間與終端能量的預測，再只改 student_policy.py 的標記區域。Runner 產生 deterministic JSON，Leo 做 strict import 後呈現 replay；同一份凍結策略還要接受 withheld case。最後留下的是完整 evidence chain 與可重新開啟的 workbook。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "Do Why Mechanism Expect Interpret contract",
+      "layout_rationale": {
+        "layout_pattern": "native educate title and body",
+        "why_fit": "Five short teaching-contract lines fit the original body placeholder.",
+        "risk": "Current commands and code line numbers are explicit evidence gaps."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "操作與修改的五問框架"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "DO｜做什麼\nWHY｜為何做\nMECHANISM｜改變哪個 policy / packet / state / energy\nEXPECT｜預期哪個 receipt / evidence 改變\nINTERPRET｜符合、意外、失敗、最小 recovery\n\nEVIDENCE GAP｜release / command / case / line 尚未凍結"
+        },
+        {
+          "slot_id": "s02_sh4",
+          "text": "Authority｜C120 integration SDD 273–295, 762–766"
+        }
+      ],
+      "notes": "這五欄不是附加說明，而是每一個操作的教學契約。學員要知道自己做什麼、為什麼做、改變哪個機制、執行前期待看到什麼，以及意外結果該如何解讀與恢復。目前 release URL、commands、case names 與 line numbers 尚未凍結，所以本頁只展示 grammar，不冒充 final teaching page。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "exact 120 proposal",
+      "layout_rationale": {
+        "layout_pattern": "native educate title and body",
+        "why_fit": "Ten compact timing bands are represented typographically inside the original body placeholder.",
+        "risk": "This timing remains a draft SDD proposal pending owner acceptance."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "120 分鐘：setup 與 labs"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "WHY 5｜SETUP 8｜MODEL 8｜ANCHOR 8\nLAB A 21｜LAB B 21｜RECOVERY 5\nLAB C 23｜CLINIC 10｜TRANSFER 11\n\n合計 120 分鐘\n保護：setup fallback；三個 causal labs 時鐘固定\n\nDRAFT｜OWNER REVIEW REQUIRED"
+        },
+        {
+          "slot_id": "s02_sh4",
+          "text": "Authority｜C120 integration SDD 115–170"
+        }
+      ],
+      "notes": "這是 draft SDD 提出的 exact-120 新時鐘，仍需要 owner 接受。Runner setup 從第五分鐘開始，最晚第十三分鐘切到同情境 fallback，因此不能吞掉後面的三個 causal labs。任何 contingency branch 都必須在原本 protected clock 內回到 core path。",
+      "table_edits": [],
+      "chart_edits": []
+    },
+    {
+      "source_slide": 2,
+      "purpose": "owner decision gate",
+      "layout_rationale": {
+        "layout_pattern": "native educate title and body",
+        "why_fit": "Four owner decisions and a stop condition fit the original body placeholder.",
+        "risk": "Production must stop after this checkpoint."
+      },
+      "replacements": [
+        {
+          "slot_id": "s02_sh2",
+          "text": "Opening checkpoint"
+        },
+        {
+          "slot_id": "s02_sh3",
+          "text": "01 敘事｜IoT endpoint first；LEO 只是 changing-window example\n02 視覺｜educate.pptx 原生背景與配色\n03 邊界｜endpoint ≠ system / canonical\n04 生產｜未凍結 evidence 只做明示 placeholder\n\nDECISION｜CONTINUE AUTHORIZED\nNEXT｜FULL DECK / NO COMMIT / NO PUSH"
+        },
+        {
+          "slot_id": "s02_sh4",
+          "text": "Authority｜C120 integration SDD 1321–1352, 1570–1585"
+        }
+      ],
+      "notes": "Owner 已在 2026-08-11 明確解除 checkpoint 後等待，授權直接繼續 full deck。原生 educate 模板、endpoint-first 敘事與 endpoint/system 邊界沿用；release、API、command、code line、browser 與 KPI 尚未凍結的頁面只能使用明示 placeholder。沒有另行授權時仍不 commit、不 push。",
+      "table_edits": [],
+      "chart_edits": []
+    }
+  ]
+}

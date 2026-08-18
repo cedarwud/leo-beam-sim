@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { UI_CLASSES, UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
 import { HelpPopover } from '../common/HelpPopover';
-import { renderInlineFormula } from '../common/inlineFormula';
+import { renderFormulaText } from './FormulaHeader';
 import { formatWithUnit } from './formatters';
 import { isSameLabel, tx, txBi, type Translate } from './labels';
 import { MathSymbol } from './MathSymbol';
@@ -71,21 +71,29 @@ function RangeMeta({
   unitLabel,
   minText,
   maxText,
+  source,
+  resetValue,
 }: {
   t: Translate;
   isEnglish: boolean;
   unitLabel: string;
   minText: string;
   maxText: string;
+  source?: string;
+  resetValue?: string;
 }) {
   // NOTE: `common.unitLabel`, not `common.unit` — `common.unit.*` is already the
   // unit-symbol namespace (common.unit.dbm, …) in the catalog.
   const rangeWord = txBi(t, isEnglish, 'common.rangeLabel', '可調範圍', 'Range');
   const unitWord = txBi(t, isEnglish, 'common.unitLabel', '單位', 'Unit');
+  const sourceWord = txBi(t, isEnglish, 'common.sourceLabel', '來源／依據', 'Source / provenance');
+  const resetWord = txBi(t, isEnglish, 'common.resetValueLabel', '重設值', 'Reset value');
   return (
     <>
       <div>{unitWord}: {unitLabel}</div>
       <div>{rangeWord}: {minText} – {maxText}</div>
+      {source ? <div>{sourceWord}: {renderFormulaText(source)}</div> : null}
+      {resetValue ? <div>{resetWord}: {renderFormulaText(resetValue)}</div> : null}
     </>
   );
 }
@@ -108,8 +116,14 @@ interface NumericControlProps {
   effect: string;
   accentColor?: string;
   disabled?: boolean;
+  /** Render the value and provenance without exposing an editable slider. */
+  readOnly?: boolean;
   inactiveReason?: string;
   formatValue?: (value: number) => string;
+  /** Human-readable authority or adapter mapping shown in the help popover. */
+  source?: string;
+  /** Human-readable value restored by the shared model reset action. */
+  resetValue?: string;
   testId?: string;
   onChange: (value: number) => void;
 }
@@ -130,8 +144,11 @@ export function NumericControl({
   helpEffectKey,
   accentColor = UI_TOKENS.color.semantic.tuning,
   disabled = false,
+  readOnly = false,
   inactiveReason,
   formatValue,
+  source,
+  resetValue,
   testId,
   onChange,
 }: NumericControlProps & ControlHelpProps) {
@@ -144,13 +161,18 @@ export function NumericControl({
   const displayLabel = tx(t, labelKey, label);
   const unitLabel = tx(t, unitKey, unit);
   const showCanonical = !isSameLabel(displayLabel, label);
+  const inactive = disabled || readOnly;
   const helpBody = tx(t, helpBodyKey, description);
-  const helpEffect = disabled && inactiveReason ? inactiveReason : tx(t, helpEffectKey, effect);
+  const helpEffect = inactive && inactiveReason ? inactiveReason : tx(t, helpEffectKey, effect);
+  const hasSymbol = symbol !== null && symbol !== undefined && symbol !== '';
 
   return (
     <div
       data-testid={testId}
-      data-control-active={disabled ? 'false' : 'true'}
+      data-control-active={readOnly ? undefined : inactive ? 'false' : 'true'}
+      data-readonly={readOnly ? 'true' : undefined}
+      data-source-provenance={source}
+      data-reset-value={resetValue}
       style={{
         display: 'grid',
         gap: 10,
@@ -162,19 +184,23 @@ export function NumericControl({
         borderLeft: disabled ? '4px solid rgba(132, 148, 163, 0.28)' : `4px solid ${accentColor}aa`,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-        <div style={{ minWidth: 0, display: 'grid', gap: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
-            <MathSymbol color={disabled ? UI_TOKENS.color.text.faint : accentColor}>{symbol}</MathSymbol>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'stretch' }}>
+        <div data-control-identity="true" style={{ minWidth: 0, display: 'grid', gap: 3, alignContent: 'space-between' }}>
+          <div data-control-label="true" style={{ display: 'grid', gap: 1, minWidth: 0 }}>
             <span style={{ ...controlLabelStyle, color: disabled ? UI_TOKENS.color.text.faint : controlLabelStyle.color }}>
-              {renderInlineFormula(displayLabel)}
+              {renderFormulaText(displayLabel)}
             </span>
+            {showCanonical && (
+              <span style={canonicalTermStyle}>{renderFormulaText(label)}</span>
+            )}
           </div>
-          {showCanonical && (
-            <span style={canonicalTermStyle}>{label}</span>
+          {hasSymbol && (
+            <span data-control-symbol="true" style={{ display: 'flex', alignItems: 'baseline', minWidth: 0 }}>
+              <MathSymbol color={disabled ? UI_TOKENS.color.text.faint : accentColor}>{symbol}</MathSymbol>
+            </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+        <div data-control-value="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
           <div style={{
             padding: '6px 10px',
             borderRadius: UI_TOKENS.radius.md,
@@ -200,25 +226,29 @@ export function NumericControl({
                   unitLabel={unitLabel}
                   minText={formatRangeEndpoint(min)}
                   maxText={formatRangeEndpoint(max)}
+                  source={source}
+                  resetValue={resetValue}
                 />
               )}
             />
           )}
         </div>
       </div>
-      <input
-        className={UI_CLASSES.range}
-        type="range"
-        aria-label={`${label} (${unit})`}
-        disabled={disabled}
-        aria-disabled={disabled}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={event => onChange(Number(event.target.value))}
-        style={{ width: '100%', accentColor, cursor: disabled ? 'not-allowed' : 'pointer' }}
-      />
+      {!readOnly && (
+        <input
+          className={UI_CLASSES.range}
+          type="range"
+          aria-label={`${label} (${unit})`}
+          disabled={disabled}
+          aria-disabled={disabled}
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={event => onChange(Number(event.target.value))}
+          style={{ width: '100%', accentColor, cursor: disabled ? 'not-allowed' : 'pointer' }}
+        />
+      )}
       <span
         aria-hidden="true"
         data-testid={testId ? `${testId}-range-endpoints` : undefined}
@@ -232,12 +262,25 @@ export function NumericControl({
         aria-hidden="true"
         style={srOnlyStyle}
       >
-        <span>{description}</span>
+        <span>{renderFormulaText(description)}</span>
         <span data-testid={testId ? `${testId}-effect` : undefined}>
-          {disabled && inactiveReason ? inactiveReason : effect}
+          {renderFormulaText(inactive && inactiveReason ? inactiveReason : effect)}
         </span>
       </div>
     </div>
+  );
+}
+
+/** A NumericControl-shaped readout for a derived value with no editable input. */
+export function ReadOnlyNumericControl({
+  ...props
+}: Omit<NumericControlProps & ControlHelpProps, 'onChange' | 'disabled' | 'readOnly'>) {
+  return (
+    <NumericControl
+      {...props}
+      readOnly
+      onChange={() => {}}
+    />
   );
 }
 
@@ -269,6 +312,7 @@ export function SelectControl({
   const activeOption = options.find(option => option.value === value);
   const displayLabel = tx(t, labelKey, label);
   const showCanonical = !isSameLabel(displayLabel, label);
+  const hasSymbol = symbol !== null && symbol !== undefined && symbol !== '';
 
   return (
     <div style={{
@@ -279,52 +323,59 @@ export function SelectControl({
       background: UI_TOKENS.color.surface.card,
       border: `1px solid ${UI_TOKENS.color.border.subtle}`,
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-        <div style={{ minWidth: 0, display: 'grid', gap: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
-            <MathSymbol color={accentColor}>{symbol}</MathSymbol>
-            <span style={controlLabelStyle}>{renderInlineFormula(displayLabel)}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(112px, 0.8fr)', gap: 10, alignItems: 'stretch' }}>
+        <div data-control-identity="true" style={{ minWidth: 0, display: 'grid', gap: 3, alignContent: 'space-between' }}>
+          <div data-control-label="true" style={{ display: 'grid', gap: 1, minWidth: 0 }}>
+            <span style={controlLabelStyle}>{renderFormulaText(displayLabel)}</span>
+            {showCanonical && <span style={canonicalTermStyle}>{renderFormulaText(label)}</span>}
           </div>
-          {showCanonical && <span style={canonicalTermStyle}>{label}</span>}
+          {hasSymbol && (
+            <span data-control-symbol="true" style={{ display: 'flex', alignItems: 'baseline', minWidth: 0 }}>
+              <MathSymbol color={accentColor}>{symbol}</MathSymbol>
+            </span>
+          )}
         </div>
-        {helpId && (
-          <ControlHelpButton
-            helpId={helpId}
-            title={displayLabel}
-            body={tx(t, helpBodyKey, description)}
-            effect={effect ? tx(t, helpEffectKey, effect) : undefined}
-          />
-        )}
+        <div data-control-value="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 2, minWidth: 0 }}>
+          <select
+            className={UI_CLASSES.select}
+            aria-label={label}
+            value={value}
+            onChange={event => onChange(event.target.value)}
+            style={{
+              cursor: 'pointer',
+              width: '100%',
+              minWidth: 0,
+              borderRadius: UI_TOKENS.radius.md,
+              border: `1px solid ${accentColor}33`,
+              background: UI_TOKENS.color.surface.field,
+              color: UI_TOKENS.color.text.primary,
+              padding: '10px 11px',
+              fontSize: UI_TOKENS.type.size.control,
+            }}
+          >
+            {options.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {helpId && (
+            <ControlHelpButton
+              helpId={helpId}
+              title={displayLabel}
+              body={tx(t, helpBodyKey, description)}
+              effect={effect ? tx(t, helpEffectKey, effect) : undefined}
+            />
+          )}
+        </div>
       </div>
-      <select
-        className={UI_CLASSES.select}
-        aria-label={label}
-        value={value}
-        onChange={event => onChange(event.target.value)}
-        style={{
-          cursor: 'pointer',
-          width: '100%',
-          borderRadius: UI_TOKENS.radius.md,
-          border: `1px solid ${accentColor}33`,
-          background: UI_TOKENS.color.surface.field,
-          color: UI_TOKENS.color.text.primary,
-          padding: '12px 13px',
-          fontSize: UI_TOKENS.type.size.control,
-        }}
-      >
-        {options.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
       {activeOption?.detail && (
         <div style={explanatoryTextStyle}>
-          {activeOption.detail}
+          {renderFormulaText(activeOption.detail)}
         </div>
       )}
       <div aria-hidden="true" data-prominence="canonical-copy" style={srOnlyStyle}>
-        {description}
+        {renderFormulaText(description)}
       </div>
     </div>
   );
@@ -416,19 +467,22 @@ export function PathLossTermControl({
         opacity: active ? 1 : 0.58,
       }}
     >
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gridTemplateRows: 'auto auto', alignItems: 'center', gap: 8 }}>
         <div
           title={detail}
-          style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}
+          data-control-identity="true"
+          style={{ display: 'grid', gap: 3, alignContent: 'space-between', minWidth: 0, gridRow: '1 / -1' }}
         >
-          <MathSymbol size={24} color={termAccent}>{symbol}</MathSymbol>
-          <span style={{
+          <span data-control-label="true" style={{
             fontSize: UI_TOKENS.type.size.bodyLg,
             color: primaryText,
             fontWeight: UI_TOKENS.type.weight.strong,
             lineHeight: 1.25,
           }}>
-            {renderInlineFormula(displayLabel)}
+            {renderFormulaText(displayLabel)}
+          </span>
+          <span data-control-symbol="true" style={{ display: 'flex', alignItems: 'baseline', minWidth: 0 }}>
+            <MathSymbol size={24} color={termAccent}>{symbol}</MathSymbol>
           </span>
         </div>
         <button
@@ -492,16 +546,36 @@ export function PathLossTermControl({
             )}
           />
         )}
+        <div
+          data-control-value="true"
+          style={{
+            gridColumn: '2 / -1',
+            gridRow: 2,
+            justifySelf: 'end',
+            minWidth: 84,
+            padding: '6px 9px',
+            borderRadius: UI_TOKENS.radius.md,
+            background: active ? 'rgba(255, 255, 255, 0.04)' : 'rgba(132, 148, 163, 0.05)',
+            border: active ? '1px solid rgba(218, 244, 255, 0.13)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
+            color: active ? UI_TOKENS.color.text.label : UI_TOKENS.color.text.faint,
+            fontSize: UI_TOKENS.type.size.bodyLg,
+            fontWeight: UI_TOKENS.type.weight.heavy,
+            textAlign: 'right',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {displayValue}
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', alignItems: 'center', gap: 12 }}>
         <label style={{ display: 'grid', gap: 7, minWidth: 0 }}>
           <span style={{
             color: primaryText,
             fontSize: UI_TOKENS.type.size.body,
             fontWeight: UI_TOKENS.type.weight.strong,
           }}>
-            {displayControlLabel}
+            {renderFormulaText(displayControlLabel)}
           </span>
           <input
             className={UI_CLASSES.range}
@@ -524,20 +598,6 @@ export function PathLossTermControl({
             Min {formatRangeEndpoint(min)} Max {formatRangeEndpoint(max)}
           </span>
         </label>
-        <div style={{
-          minWidth: 84,
-          padding: '6px 9px',
-          borderRadius: UI_TOKENS.radius.md,
-          background: active ? 'rgba(255, 255, 255, 0.04)' : 'rgba(132, 148, 163, 0.05)',
-          border: active ? '1px solid rgba(218, 244, 255, 0.13)' : `1px solid ${UI_TOKENS.color.border.subtle}`,
-          color: active ? UI_TOKENS.color.text.label : UI_TOKENS.color.text.faint,
-          fontSize: UI_TOKENS.type.size.bodyLg,
-          fontWeight: UI_TOKENS.type.weight.heavy,
-          textAlign: 'right',
-          whiteSpace: 'nowrap',
-        }}>
-          {displayValue}
-        </div>
       </div>
 
       <div
@@ -546,7 +606,7 @@ export function PathLossTermControl({
         aria-hidden="true"
         style={{ ...srOnlyStyle, color: secondaryText }}
       >
-        <span>{detail}</span>
+        <span>{renderFormulaText(detail)}</span>
       </div>
     </section>
   );

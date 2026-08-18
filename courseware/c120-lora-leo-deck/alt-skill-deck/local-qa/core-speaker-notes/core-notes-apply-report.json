@@ -1,0 +1,876 @@
+{
+  "status": "PASS",
+  "deck": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/latest/LoRaEnergySim-LEO-ALT-CORE-CLASSROOM-REVIEW.pptx",
+  "source": "/home/u24/demo/leo-beam-sim/courseware/c120-lora-leo-deck/alt-skill-deck/core-classroom/notes/core-speaker-notes.json",
+  "source_entries": 43,
+  "slides_matched": 43,
+  "notes_replaced": 43,
+  "preserved_groups": [
+    "ppt/slides/",
+    "ppt/slideLayouts/",
+    "ppt/slideMasters/",
+    "ppt/media/",
+    "ppt/theme/",
+    "ppt/presentation.xml",
+    "ppt/_rels/presentation.xml.rels"
+  ],
+  "byte_preservation": {
+    "status": "PASS",
+    "checked_parts": 115,
+    "hashes": {
+      "ppt/_rels/presentation.xml.rels": {
+        "before": "f36835390dce8f56beae21de3da6428c0ac1ee0c3ab1f46fb7bf8a0ec86ebdbb",
+        "after": "f36835390dce8f56beae21de3da6428c0ac1ee0c3ab1f46fb7bf8a0ec86ebdbb"
+      },
+      "ppt/media/image1.png": {
+        "before": "348d35cd319c6dc64c6cd7678b7a2759c6e113ccdd390b3e7c431220f0879fe7",
+        "after": "348d35cd319c6dc64c6cd7678b7a2759c6e113ccdd390b3e7c431220f0879fe7"
+      },
+      "ppt/media/image2.png": {
+        "before": "d8687d3449327ee2090abc4f811c6345f3060d8e1c977dab60cdb87697be7b14",
+        "after": "d8687d3449327ee2090abc4f811c6345f3060d8e1c977dab60cdb87697be7b14"
+      },
+      "ppt/media/image3.png": {
+        "before": "f1d583f3297e11fbaac2a07ff9a81d9f11b4f64e1e5b79cab684b7a3a124b645",
+        "after": "f1d583f3297e11fbaac2a07ff9a81d9f11b4f64e1e5b79cab684b7a3a124b645"
+      },
+      "ppt/presentation.xml": {
+        "before": "b7649b7056481afe2c034ad32c0d65e7c10ccfdfc20e91466a3cc9084e11ad26",
+        "after": "b7649b7056481afe2c034ad32c0d65e7c10ccfdfc20e91466a3cc9084e11ad26"
+      },
+      "ppt/slideLayouts/_rels/slideLayout1.xml.rels": {
+        "before": "86b03be6072fb223ff4dc3b914b941be9fefd54da97a68763ec27f3d6eddd060",
+        "after": "86b03be6072fb223ff4dc3b914b941be9fefd54da97a68763ec27f3d6eddd060"
+      },
+      "ppt/slideLayouts/_rels/slideLayout10.xml.rels": {
+        "before": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "after": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd"
+      },
+      "ppt/slideLayouts/_rels/slideLayout2.xml.rels": {
+        "before": "fe8968c4d1feafa048ae5178712964bfdb95c20631ff207a928aae39545c900e",
+        "after": "fe8968c4d1feafa048ae5178712964bfdb95c20631ff207a928aae39545c900e"
+      },
+      "ppt/slideLayouts/_rels/slideLayout3.xml.rels": {
+        "before": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "after": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd"
+      },
+      "ppt/slideLayouts/_rels/slideLayout4.xml.rels": {
+        "before": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "after": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd"
+      },
+      "ppt/slideLayouts/_rels/slideLayout5.xml.rels": {
+        "before": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "after": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd"
+      },
+      "ppt/slideLayouts/_rels/slideLayout6.xml.rels": {
+        "before": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "after": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd"
+      },
+      "ppt/slideLayouts/_rels/slideLayout7.xml.rels": {
+        "before": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "after": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd"
+      },
+      "ppt/slideLayouts/_rels/slideLayout8.xml.rels": {
+        "before": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "after": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd"
+      },
+      "ppt/slideLayouts/_rels/slideLayout9.xml.rels": {
+        "before": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd",
+        "after": "bb6a997eb3b56e2dd1e13c586a132d37055ad704844f19f07cc938477a5348fd"
+      },
+      "ppt/slideLayouts/slideLayout1.xml": {
+        "before": "ba43f02ed0fc5bdb112843a86386508ec57f59d0b095bc74fb1c60e5f9588e8c",
+        "after": "ba43f02ed0fc5bdb112843a86386508ec57f59d0b095bc74fb1c60e5f9588e8c"
+      },
+      "ppt/slideLayouts/slideLayout10.xml": {
+        "before": "53d991794c9e1bc3170547c0a229f375c6b000f1bf5a056a4a7b986933513c44",
+        "after": "53d991794c9e1bc3170547c0a229f375c6b000f1bf5a056a4a7b986933513c44"
+      },
+      "ppt/slideLayouts/slideLayout2.xml": {
+        "before": "061b8e4192e3cedf39daf08bc14e99eb22006445c9ece5c80b6e4c587bf359a3",
+        "after": "061b8e4192e3cedf39daf08bc14e99eb22006445c9ece5c80b6e4c587bf359a3"
+      },
+      "ppt/slideLayouts/slideLayout3.xml": {
+        "before": "c10c72b218bdfe906d05e22de32e84bceeb530e4114d073166b8763e1fc5d2cc",
+        "after": "c10c72b218bdfe906d05e22de32e84bceeb530e4114d073166b8763e1fc5d2cc"
+      },
+      "ppt/slideLayouts/slideLayout4.xml": {
+        "before": "0aabad39a9f7e1cfe5fae2ab9d27fff3f5baead0473a84fa87f374ae11c0f495",
+        "after": "0aabad39a9f7e1cfe5fae2ab9d27fff3f5baead0473a84fa87f374ae11c0f495"
+      },
+      "ppt/slideLayouts/slideLayout5.xml": {
+        "before": "1e24e0de305ef89a18c139ed17b79a45272a64b7f5dd90c916028fe2a6ac67da",
+        "after": "1e24e0de305ef89a18c139ed17b79a45272a64b7f5dd90c916028fe2a6ac67da"
+      },
+      "ppt/slideLayouts/slideLayout6.xml": {
+        "before": "ac4a1b01b238fd179fac1b79e16b83634ee1618da40a116683606fdee3e56f30",
+        "after": "ac4a1b01b238fd179fac1b79e16b83634ee1618da40a116683606fdee3e56f30"
+      },
+      "ppt/slideLayouts/slideLayout7.xml": {
+        "before": "cfac26a9756e678dae523a61cc48e1787b5cd13ce8c2bddef3cf4020f752e1a9",
+        "after": "cfac26a9756e678dae523a61cc48e1787b5cd13ce8c2bddef3cf4020f752e1a9"
+      },
+      "ppt/slideLayouts/slideLayout8.xml": {
+        "before": "281e509ad4ab5f1347fdb20aa38629dfa3e225e401c8bac0b1773a37a5d1155d",
+        "after": "281e509ad4ab5f1347fdb20aa38629dfa3e225e401c8bac0b1773a37a5d1155d"
+      },
+      "ppt/slideLayouts/slideLayout9.xml": {
+        "before": "d724f3ceda6a7c6955aab3ecc060c032d627ab3616edab1c705943ed2fef6bde",
+        "after": "d724f3ceda6a7c6955aab3ecc060c032d627ab3616edab1c705943ed2fef6bde"
+      },
+      "ppt/slideMasters/_rels/slideMaster1.xml.rels": {
+        "before": "ed14dfadb2527d7488ee43bdb18969103d910e6c566492fa34895dc3e1698ea1",
+        "after": "ed14dfadb2527d7488ee43bdb18969103d910e6c566492fa34895dc3e1698ea1"
+      },
+      "ppt/slideMasters/slideMaster1.xml": {
+        "before": "6cdc77f070e1cc1a568e13392542d72847b58069750087e057c0afea9b0df867",
+        "after": "6cdc77f070e1cc1a568e13392542d72847b58069750087e057c0afea9b0df867"
+      },
+      "ppt/slides/_rels/slide1.xml.rels": {
+        "before": "af9e695d618d4975408626c939bf0bcc1fc11a1123f8edf2ffc2deddf864d9c0",
+        "after": "af9e695d618d4975408626c939bf0bcc1fc11a1123f8edf2ffc2deddf864d9c0"
+      },
+      "ppt/slides/_rels/slide10.xml.rels": {
+        "before": "020400075b2f35ac3d98faa4e125eab1614c907ed01bd47cea2e3c3b0bdbd057",
+        "after": "020400075b2f35ac3d98faa4e125eab1614c907ed01bd47cea2e3c3b0bdbd057"
+      },
+      "ppt/slides/_rels/slide11.xml.rels": {
+        "before": "08d573a150af16fe64889929ed04c37397ed3e5c8e9849811dfe2e1d2d33fdef",
+        "after": "08d573a150af16fe64889929ed04c37397ed3e5c8e9849811dfe2e1d2d33fdef"
+      },
+      "ppt/slides/_rels/slide12.xml.rels": {
+        "before": "f8ce33fd758cce5a9cc2f66952e2c9714ae275f06144e4eaba561b5438607abb",
+        "after": "f8ce33fd758cce5a9cc2f66952e2c9714ae275f06144e4eaba561b5438607abb"
+      },
+      "ppt/slides/_rels/slide13.xml.rels": {
+        "before": "8186a718b5cdf0c7643fe473b2d93620293affbcda13e8af8d4687e2675e66ad",
+        "after": "8186a718b5cdf0c7643fe473b2d93620293affbcda13e8af8d4687e2675e66ad"
+      },
+      "ppt/slides/_rels/slide14.xml.rels": {
+        "before": "4769520b4c8751aa44d003f1f245c8ab621329639e52a867a7d05aa149fa656f",
+        "after": "4769520b4c8751aa44d003f1f245c8ab621329639e52a867a7d05aa149fa656f"
+      },
+      "ppt/slides/_rels/slide15.xml.rels": {
+        "before": "0eb8475590fd8b8acb5c5d0cc3b65bb60a1a4022a0834b29e658ba124b1f1d00",
+        "after": "0eb8475590fd8b8acb5c5d0cc3b65bb60a1a4022a0834b29e658ba124b1f1d00"
+      },
+      "ppt/slides/_rels/slide16.xml.rels": {
+        "before": "1787a4fa16bab4515be6412b3c68f8a19c6c0a1b79dabacea82f51a276c30ec1",
+        "after": "1787a4fa16bab4515be6412b3c68f8a19c6c0a1b79dabacea82f51a276c30ec1"
+      },
+      "ppt/slides/_rels/slide17.xml.rels": {
+        "before": "c6c4811966ce1fedbd3857490184c60acbc1b778261e6e994ac76cf1882df662",
+        "after": "c6c4811966ce1fedbd3857490184c60acbc1b778261e6e994ac76cf1882df662"
+      },
+      "ppt/slides/_rels/slide18.xml.rels": {
+        "before": "ae003e500934d67d9d00d12e6f5a6ba870e899a564ddc87e99ac46ff950c0377",
+        "after": "ae003e500934d67d9d00d12e6f5a6ba870e899a564ddc87e99ac46ff950c0377"
+      },
+      "ppt/slides/_rels/slide19.xml.rels": {
+        "before": "87df5eb859a03b3e2aa148aaeaf73c43a9daf4f2928b1da6e28dfd544b92cec9",
+        "after": "87df5eb859a03b3e2aa148aaeaf73c43a9daf4f2928b1da6e28dfd544b92cec9"
+      },
+      "ppt/slides/_rels/slide2.xml.rels": {
+        "before": "7c8877d499cca4b7571308ffe2176409b04f90b166698cc17d8d9e09c88dfa6b",
+        "after": "7c8877d499cca4b7571308ffe2176409b04f90b166698cc17d8d9e09c88dfa6b"
+      },
+      "ppt/slides/_rels/slide20.xml.rels": {
+        "before": "b3db3c2428f54974734faecc6f59ba67e37368eb32ac61844232ad4bd3260e9f",
+        "after": "b3db3c2428f54974734faecc6f59ba67e37368eb32ac61844232ad4bd3260e9f"
+      },
+      "ppt/slides/_rels/slide21.xml.rels": {
+        "before": "6fdd280557d71c1052fe6d7c04f0ad9c4d9cfce106f47badcef3521ba24395c5",
+        "after": "6fdd280557d71c1052fe6d7c04f0ad9c4d9cfce106f47badcef3521ba24395c5"
+      },
+      "ppt/slides/_rels/slide22.xml.rels": {
+        "before": "512c0b5d38dfd0886ed467410141b61a7f93a04638231a5d199e9533edaa843a",
+        "after": "512c0b5d38dfd0886ed467410141b61a7f93a04638231a5d199e9533edaa843a"
+      },
+      "ppt/slides/_rels/slide23.xml.rels": {
+        "before": "cc14fbce4c7568696eaf9ee634534ff97de7c8a45a8f10d74e6a4c388f9dcfb0",
+        "after": "cc14fbce4c7568696eaf9ee634534ff97de7c8a45a8f10d74e6a4c388f9dcfb0"
+      },
+      "ppt/slides/_rels/slide24.xml.rels": {
+        "before": "84dbb01b28ceff05940ddf4da91247901573e47f654d6d1b0ef98d6a129f0e61",
+        "after": "84dbb01b28ceff05940ddf4da91247901573e47f654d6d1b0ef98d6a129f0e61"
+      },
+      "ppt/slides/_rels/slide25.xml.rels": {
+        "before": "8b250ebeb3caadd235406a7c0e1b710f533e1df80d5afa54fda7c7cbc9d8ac1c",
+        "after": "8b250ebeb3caadd235406a7c0e1b710f533e1df80d5afa54fda7c7cbc9d8ac1c"
+      },
+      "ppt/slides/_rels/slide26.xml.rels": {
+        "before": "506168b77654cdac955aaa065fc27eff6801873888a0743a5268ae35bc43067d",
+        "after": "506168b77654cdac955aaa065fc27eff6801873888a0743a5268ae35bc43067d"
+      },
+      "ppt/slides/_rels/slide27.xml.rels": {
+        "before": "3364836f66bbbe437cca220874b5c0468bd0e1ff2e0a45ed83245ad60f2bb11e",
+        "after": "3364836f66bbbe437cca220874b5c0468bd0e1ff2e0a45ed83245ad60f2bb11e"
+      },
+      "ppt/slides/_rels/slide28.xml.rels": {
+        "before": "ed41ae3f9894c997941b0ab06a08580170f8e5760d0482d63742086a1d66961a",
+        "after": "ed41ae3f9894c997941b0ab06a08580170f8e5760d0482d63742086a1d66961a"
+      },
+      "ppt/slides/_rels/slide29.xml.rels": {
+        "before": "202d7ba42e9b50efaec1f58da8d429e1ae725de0b46c6816f6ff5b46d75d615a",
+        "after": "202d7ba42e9b50efaec1f58da8d429e1ae725de0b46c6816f6ff5b46d75d615a"
+      },
+      "ppt/slides/_rels/slide3.xml.rels": {
+        "before": "741c49f1bf316a1a4600b446a44c81c146df04ee7eef0efa688fe5b2f19da8e8",
+        "after": "741c49f1bf316a1a4600b446a44c81c146df04ee7eef0efa688fe5b2f19da8e8"
+      },
+      "ppt/slides/_rels/slide30.xml.rels": {
+        "before": "e242689afda23c7b34c6417c7e42f810c59a754d47912fb90af2c2a4e753adf9",
+        "after": "e242689afda23c7b34c6417c7e42f810c59a754d47912fb90af2c2a4e753adf9"
+      },
+      "ppt/slides/_rels/slide31.xml.rels": {
+        "before": "4da16c695a318336f121e398531b9f0214075415cc3649cb967deab0d8526e1a",
+        "after": "4da16c695a318336f121e398531b9f0214075415cc3649cb967deab0d8526e1a"
+      },
+      "ppt/slides/_rels/slide32.xml.rels": {
+        "before": "36c02c47edf1a48fe0d465a54a6dda5b18a25e504fb18aef29e4edfbccfd7833",
+        "after": "36c02c47edf1a48fe0d465a54a6dda5b18a25e504fb18aef29e4edfbccfd7833"
+      },
+      "ppt/slides/_rels/slide33.xml.rels": {
+        "before": "c0fabafee27b487cbb9f93d5507911b0c130a96f5fe8307737ae615401fa6d7f",
+        "after": "c0fabafee27b487cbb9f93d5507911b0c130a96f5fe8307737ae615401fa6d7f"
+      },
+      "ppt/slides/_rels/slide34.xml.rels": {
+        "before": "32338445bf5b4e3b7a9a716e0005465656e70d6244959eada7bebfe223c32d82",
+        "after": "32338445bf5b4e3b7a9a716e0005465656e70d6244959eada7bebfe223c32d82"
+      },
+      "ppt/slides/_rels/slide35.xml.rels": {
+        "before": "601e2ba5649423b416c2c5ff14ffd0906b266fc03dfe96c7b055efc961412903",
+        "after": "601e2ba5649423b416c2c5ff14ffd0906b266fc03dfe96c7b055efc961412903"
+      },
+      "ppt/slides/_rels/slide36.xml.rels": {
+        "before": "140ea7cc2a4a60be0251fea2f1dcb185d1a9b7337e67e2aa0e4a7004f4b24924",
+        "after": "140ea7cc2a4a60be0251fea2f1dcb185d1a9b7337e67e2aa0e4a7004f4b24924"
+      },
+      "ppt/slides/_rels/slide37.xml.rels": {
+        "before": "22f35fde801e0c550780305344b28c2ae0b821ac157600ece5e6321e010960bb",
+        "after": "22f35fde801e0c550780305344b28c2ae0b821ac157600ece5e6321e010960bb"
+      },
+      "ppt/slides/_rels/slide38.xml.rels": {
+        "before": "69b9e790471864843716a9f910957537c74399956bc07e20329a27570486e8d8",
+        "after": "69b9e790471864843716a9f910957537c74399956bc07e20329a27570486e8d8"
+      },
+      "ppt/slides/_rels/slide39.xml.rels": {
+        "before": "6d9ebfdb6986ee089038236dc477424e531574d83b201941175ce453308b1b89",
+        "after": "6d9ebfdb6986ee089038236dc477424e531574d83b201941175ce453308b1b89"
+      },
+      "ppt/slides/_rels/slide4.xml.rels": {
+        "before": "a909e71940ce9412a3972d07babedf7aa9b3e7d95ef542ca53b9736be0fb1855",
+        "after": "a909e71940ce9412a3972d07babedf7aa9b3e7d95ef542ca53b9736be0fb1855"
+      },
+      "ppt/slides/_rels/slide40.xml.rels": {
+        "before": "dc7fe6771f7b3b2423b1f92866b8f1b72024e3fb50fcf561f27fb1e4ba98e47b",
+        "after": "dc7fe6771f7b3b2423b1f92866b8f1b72024e3fb50fcf561f27fb1e4ba98e47b"
+      },
+      "ppt/slides/_rels/slide41.xml.rels": {
+        "before": "b050fc465f96b7e5a2d773f55dd647681564be76b0478a5c751fa30569fb993e",
+        "after": "b050fc465f96b7e5a2d773f55dd647681564be76b0478a5c751fa30569fb993e"
+      },
+      "ppt/slides/_rels/slide42.xml.rels": {
+        "before": "5ac2ef5eec6f640d099dd296e5d2c685dbea6ae049a6160b8dff2ed53f66b1f5",
+        "after": "5ac2ef5eec6f640d099dd296e5d2c685dbea6ae049a6160b8dff2ed53f66b1f5"
+      },
+      "ppt/slides/_rels/slide43.xml.rels": {
+        "before": "e33118964dae137a34dae84a62c7fd5cfa243af711c860b32dbbbc12491ea36e",
+        "after": "e33118964dae137a34dae84a62c7fd5cfa243af711c860b32dbbbc12491ea36e"
+      },
+      "ppt/slides/_rels/slide5.xml.rels": {
+        "before": "320d29265a5a9fccb5240476d9d5bd2817e283b73d72bde4239d4063e5b4b1a4",
+        "after": "320d29265a5a9fccb5240476d9d5bd2817e283b73d72bde4239d4063e5b4b1a4"
+      },
+      "ppt/slides/_rels/slide6.xml.rels": {
+        "before": "701277586b600031d2bb6a7db4c7b1786c8f53a6b4ac98d06899f4a2135cf8ad",
+        "after": "701277586b600031d2bb6a7db4c7b1786c8f53a6b4ac98d06899f4a2135cf8ad"
+      },
+      "ppt/slides/_rels/slide7.xml.rels": {
+        "before": "da42db2f65b53f820ef140f3278809e916ed7a38580a9035ae780449bc2f57a9",
+        "after": "da42db2f65b53f820ef140f3278809e916ed7a38580a9035ae780449bc2f57a9"
+      },
+      "ppt/slides/_rels/slide8.xml.rels": {
+        "before": "6709a87ba0bf3f5c74054c3474d17e393eae4527e7984f23f3616b7c233b8bbf",
+        "after": "6709a87ba0bf3f5c74054c3474d17e393eae4527e7984f23f3616b7c233b8bbf"
+      },
+      "ppt/slides/_rels/slide9.xml.rels": {
+        "before": "2e138039b90cba514884526d6da6780f1bd472facc2ac71b017bc530fc89d7e8",
+        "after": "2e138039b90cba514884526d6da6780f1bd472facc2ac71b017bc530fc89d7e8"
+      },
+      "ppt/slides/slide1.xml": {
+        "before": "83c2b11cef2d6ec5325a5fb54c30e3e9bc616d0e5f8ef445598dab91e42660da",
+        "after": "83c2b11cef2d6ec5325a5fb54c30e3e9bc616d0e5f8ef445598dab91e42660da"
+      },
+      "ppt/slides/slide10.xml": {
+        "before": "f714e6d8249b6de2f8b7dbc04fb663a15c9e5d8f7b54d7b19bb99f61eb127606",
+        "after": "f714e6d8249b6de2f8b7dbc04fb663a15c9e5d8f7b54d7b19bb99f61eb127606"
+      },
+      "ppt/slides/slide11.xml": {
+        "before": "8a5e26b2cf307c474a65c7f996b46254ce50e6faeeda3dcf1ef2b6d82bb8301d",
+        "after": "8a5e26b2cf307c474a65c7f996b46254ce50e6faeeda3dcf1ef2b6d82bb8301d"
+      },
+      "ppt/slides/slide12.xml": {
+        "before": "73c4b27e4e1fc6b774b6cc71e0e1ad83d35d7c5c092e869874b17e1a647ba2db",
+        "after": "73c4b27e4e1fc6b774b6cc71e0e1ad83d35d7c5c092e869874b17e1a647ba2db"
+      },
+      "ppt/slides/slide13.xml": {
+        "before": "aeeefa40fd70f012ab82af9695afc7af3d93280765f5d1c02aec0b7b5aced331",
+        "after": "aeeefa40fd70f012ab82af9695afc7af3d93280765f5d1c02aec0b7b5aced331"
+      },
+      "ppt/slides/slide14.xml": {
+        "before": "44f4beb6f7832d0d6c1299349debd5457415668e94ffb9a6faa4dcc9ecf79899",
+        "after": "44f4beb6f7832d0d6c1299349debd5457415668e94ffb9a6faa4dcc9ecf79899"
+      },
+      "ppt/slides/slide15.xml": {
+        "before": "4708d8f4273467ff642a0942ee77a64caf71411ea65e07381eb7b75bbcd8e6e7",
+        "after": "4708d8f4273467ff642a0942ee77a64caf71411ea65e07381eb7b75bbcd8e6e7"
+      },
+      "ppt/slides/slide16.xml": {
+        "before": "5ac3f4fc22afa4813297b0b412b7abcbd7db82edf1908fdad910f692f828c34f",
+        "after": "5ac3f4fc22afa4813297b0b412b7abcbd7db82edf1908fdad910f692f828c34f"
+      },
+      "ppt/slides/slide17.xml": {
+        "before": "5cd61ab22c029235b86bc38a774f506cd91c8d945aeb8b584c4fe0825b22cbf2",
+        "after": "5cd61ab22c029235b86bc38a774f506cd91c8d945aeb8b584c4fe0825b22cbf2"
+      },
+      "ppt/slides/slide18.xml": {
+        "before": "4cb65d7e2130284d22ac6d6882e6bb4fa16d1989dd844ef1c03d7ce091d8f141",
+        "after": "4cb65d7e2130284d22ac6d6882e6bb4fa16d1989dd844ef1c03d7ce091d8f141"
+      },
+      "ppt/slides/slide19.xml": {
+        "before": "4641aaa22c940d192e9bbdda07100f4d201ee88311feb6f88d1d388ca856f560",
+        "after": "4641aaa22c940d192e9bbdda07100f4d201ee88311feb6f88d1d388ca856f560"
+      },
+      "ppt/slides/slide2.xml": {
+        "before": "9c8b60f2b4cc18ca1b307f065bfd14d4077cad0cef9fa893ce86589a20f15c69",
+        "after": "9c8b60f2b4cc18ca1b307f065bfd14d4077cad0cef9fa893ce86589a20f15c69"
+      },
+      "ppt/slides/slide20.xml": {
+        "before": "bbd347c844e007c3f9e4d062e634aeeee632a1ecf5f4e0614f53c999cbf4d9b0",
+        "after": "bbd347c844e007c3f9e4d062e634aeeee632a1ecf5f4e0614f53c999cbf4d9b0"
+      },
+      "ppt/slides/slide21.xml": {
+        "before": "e843a8c3d6b48b36764d7fc570320a1a14840510708b4cbf3add51a6f4978f32",
+        "after": "e843a8c3d6b48b36764d7fc570320a1a14840510708b4cbf3add51a6f4978f32"
+      },
+      "ppt/slides/slide22.xml": {
+        "before": "b065f0b84eac1f3e1c28e35269caffae111a13b7b1a4625f27833e791e314003",
+        "after": "b065f0b84eac1f3e1c28e35269caffae111a13b7b1a4625f27833e791e314003"
+      },
+      "ppt/slides/slide23.xml": {
+        "before": "0aabcb199a3f84c631e1a68b28bdbc081394ca3d8e3ed609f09c682cce8f714b",
+        "after": "0aabcb199a3f84c631e1a68b28bdbc081394ca3d8e3ed609f09c682cce8f714b"
+      },
+      "ppt/slides/slide24.xml": {
+        "before": "39787ce23bb32d8de0d5c03a6c2f8fae35d65ca5e28160823afcdca403c66a3b",
+        "after": "39787ce23bb32d8de0d5c03a6c2f8fae35d65ca5e28160823afcdca403c66a3b"
+      },
+      "ppt/slides/slide25.xml": {
+        "before": "7eac091adf9ba54ebb41c94119cd515eadf40a645bfd2defe170d48c05e214d8",
+        "after": "7eac091adf9ba54ebb41c94119cd515eadf40a645bfd2defe170d48c05e214d8"
+      },
+      "ppt/slides/slide26.xml": {
+        "before": "762a28fd336a98761827f1d39a1e435cd47fe9ec603c14ad8cf27b88b7153034",
+        "after": "762a28fd336a98761827f1d39a1e435cd47fe9ec603c14ad8cf27b88b7153034"
+      },
+      "ppt/slides/slide27.xml": {
+        "before": "c1947c20db2c4f1238613432f81adc84cf7c2a071c8b86e2be65c5ec1382d9fd",
+        "after": "c1947c20db2c4f1238613432f81adc84cf7c2a071c8b86e2be65c5ec1382d9fd"
+      },
+      "ppt/slides/slide28.xml": {
+        "before": "89b445c13099732df501bf36b98728432f3e99f511abb02ef02727936a9ab0a9",
+        "after": "89b445c13099732df501bf36b98728432f3e99f511abb02ef02727936a9ab0a9"
+      },
+      "ppt/slides/slide29.xml": {
+        "before": "b3cae6f17217d7eff2868e038ac3c58d7802aa5c786eb0fb4d2858ec6735b7ea",
+        "after": "b3cae6f17217d7eff2868e038ac3c58d7802aa5c786eb0fb4d2858ec6735b7ea"
+      },
+      "ppt/slides/slide3.xml": {
+        "before": "1999ce24b80866ee90297b80955d50c9c9f6233c70b3936cee7014e939e7af11",
+        "after": "1999ce24b80866ee90297b80955d50c9c9f6233c70b3936cee7014e939e7af11"
+      },
+      "ppt/slides/slide30.xml": {
+        "before": "a55d900af5e5810b007eadfcae4c7dccf2c6607494019c197588367f012dabf6",
+        "after": "a55d900af5e5810b007eadfcae4c7dccf2c6607494019c197588367f012dabf6"
+      },
+      "ppt/slides/slide31.xml": {
+        "before": "b429c43c8b973a75e49db355b8b493ddfb9d523d1c29b90824f2230816883965",
+        "after": "b429c43c8b973a75e49db355b8b493ddfb9d523d1c29b90824f2230816883965"
+      },
+      "ppt/slides/slide32.xml": {
+        "before": "2edc648515e18628fb41088a2c31f71624b6f50685c676065c0e49e05e7bc3d7",
+        "after": "2edc648515e18628fb41088a2c31f71624b6f50685c676065c0e49e05e7bc3d7"
+      },
+      "ppt/slides/slide33.xml": {
+        "before": "9f7923f3116b7557a28c6b64bccfd95423b9260f1b561014dbb919cea416658d",
+        "after": "9f7923f3116b7557a28c6b64bccfd95423b9260f1b561014dbb919cea416658d"
+      },
+      "ppt/slides/slide34.xml": {
+        "before": "96af69ccbf694e33da3be42a67fcea7830a8aeccb01e286c7776d8c931752465",
+        "after": "96af69ccbf694e33da3be42a67fcea7830a8aeccb01e286c7776d8c931752465"
+      },
+      "ppt/slides/slide35.xml": {
+        "before": "b3a6dd9fab947cc2dd5cb8d58812ce3aea24bf741c1dae309ed94c0749ec1b1a",
+        "after": "b3a6dd9fab947cc2dd5cb8d58812ce3aea24bf741c1dae309ed94c0749ec1b1a"
+      },
+      "ppt/slides/slide36.xml": {
+        "before": "2e4ccb72f0fe313367d4176fb25ccd14de79ae975a5ba47b8e08fe4a9180d0e6",
+        "after": "2e4ccb72f0fe313367d4176fb25ccd14de79ae975a5ba47b8e08fe4a9180d0e6"
+      },
+      "ppt/slides/slide37.xml": {
+        "before": "5c021d1aadab63ba1b3537aa4f959cfdd3f30777832875d8f6c4306c8bc3dde4",
+        "after": "5c021d1aadab63ba1b3537aa4f959cfdd3f30777832875d8f6c4306c8bc3dde4"
+      },
+      "ppt/slides/slide38.xml": {
+        "before": "f896114db95fc5af828f6082e0578f5f9fae876e2ba98615e5d6ef63980ec4d2",
+        "after": "f896114db95fc5af828f6082e0578f5f9fae876e2ba98615e5d6ef63980ec4d2"
+      },
+      "ppt/slides/slide39.xml": {
+        "before": "dc8d7e2c5d255f885c656e4bf850cf9c2af00464b499d134a703be122034eb98",
+        "after": "dc8d7e2c5d255f885c656e4bf850cf9c2af00464b499d134a703be122034eb98"
+      },
+      "ppt/slides/slide4.xml": {
+        "before": "aea9ffd31eb6c819954507feaef6e888e0833b948bd71e8fbb9c203af5371d8b",
+        "after": "aea9ffd31eb6c819954507feaef6e888e0833b948bd71e8fbb9c203af5371d8b"
+      },
+      "ppt/slides/slide40.xml": {
+        "before": "2c60b3fbeefaca58336db8ac9a006823ffd1e316a4d748778c5f22db854d3e52",
+        "after": "2c60b3fbeefaca58336db8ac9a006823ffd1e316a4d748778c5f22db854d3e52"
+      },
+      "ppt/slides/slide41.xml": {
+        "before": "cfac560c45b912964460c3c7eb23b08598c42bab735318bdb15913819d5757d1",
+        "after": "cfac560c45b912964460c3c7eb23b08598c42bab735318bdb15913819d5757d1"
+      },
+      "ppt/slides/slide42.xml": {
+        "before": "6e9b77a2afa50d0cd5b1635c5056d5b93d1164a0547954630f1bd6b3a990f190",
+        "after": "6e9b77a2afa50d0cd5b1635c5056d5b93d1164a0547954630f1bd6b3a990f190"
+      },
+      "ppt/slides/slide43.xml": {
+        "before": "e5741845cae1c671b64e7b99d2c30c27231c2dd9fef45b5362fed924a8dc767c",
+        "after": "e5741845cae1c671b64e7b99d2c30c27231c2dd9fef45b5362fed924a8dc767c"
+      },
+      "ppt/slides/slide5.xml": {
+        "before": "6714bce7822194999687b6dc2e4977d9e77fe7b2135b541d3f9cb5b057039925",
+        "after": "6714bce7822194999687b6dc2e4977d9e77fe7b2135b541d3f9cb5b057039925"
+      },
+      "ppt/slides/slide6.xml": {
+        "before": "1b5983767f4aabcf5d7d24993a3d8675daeaaec0597144cf1987d8f84c086895",
+        "after": "1b5983767f4aabcf5d7d24993a3d8675daeaaec0597144cf1987d8f84c086895"
+      },
+      "ppt/slides/slide7.xml": {
+        "before": "1004686d848460012b5fe1f88dd8cfa9e243dc210df7ee6b734825658dd3ae1d",
+        "after": "1004686d848460012b5fe1f88dd8cfa9e243dc210df7ee6b734825658dd3ae1d"
+      },
+      "ppt/slides/slide8.xml": {
+        "before": "a52320498325eef06e1f4c901ab0879f85c81b8d837558f6ff775211a2744e78",
+        "after": "a52320498325eef06e1f4c901ab0879f85c81b8d837558f6ff775211a2744e78"
+      },
+      "ppt/slides/slide9.xml": {
+        "before": "ae7dded7a69db1110261fc5b91ced96c28f1fd484c213ae74fdd50020f2173e4",
+        "after": "ae7dded7a69db1110261fc5b91ced96c28f1fd484c213ae74fdd50020f2173e4"
+      },
+      "ppt/theme/theme1.xml": {
+        "before": "c128da77426350f7cb31a0993c3e628f1027c0e5cc1afbeabe77a11e58480a46",
+        "after": "c128da77426350f7cb31a0993c3e628f1027c0e5cc1afbeabe77a11e58480a46"
+      },
+      "ppt/theme/theme2.xml": {
+        "before": "f766d7b87d9c267ab3ddaf1a2e40a332821f625225f458dafb3fc0ff7f1483ff",
+        "after": "f766d7b87d9c267ab3ddaf1a2e40a332821f625225f458dafb3fc0ff7f1483ff"
+      }
+    },
+    "changed_parts": [
+      "ppt/notesSlides/notesSlide1.xml",
+      "ppt/notesSlides/notesSlide10.xml",
+      "ppt/notesSlides/notesSlide11.xml",
+      "ppt/notesSlides/notesSlide12.xml",
+      "ppt/notesSlides/notesSlide13.xml",
+      "ppt/notesSlides/notesSlide14.xml",
+      "ppt/notesSlides/notesSlide15.xml",
+      "ppt/notesSlides/notesSlide16.xml",
+      "ppt/notesSlides/notesSlide17.xml",
+      "ppt/notesSlides/notesSlide18.xml",
+      "ppt/notesSlides/notesSlide19.xml",
+      "ppt/notesSlides/notesSlide2.xml",
+      "ppt/notesSlides/notesSlide20.xml",
+      "ppt/notesSlides/notesSlide21.xml",
+      "ppt/notesSlides/notesSlide22.xml",
+      "ppt/notesSlides/notesSlide23.xml",
+      "ppt/notesSlides/notesSlide24.xml",
+      "ppt/notesSlides/notesSlide25.xml",
+      "ppt/notesSlides/notesSlide26.xml",
+      "ppt/notesSlides/notesSlide27.xml",
+      "ppt/notesSlides/notesSlide28.xml",
+      "ppt/notesSlides/notesSlide29.xml",
+      "ppt/notesSlides/notesSlide3.xml",
+      "ppt/notesSlides/notesSlide30.xml",
+      "ppt/notesSlides/notesSlide31.xml",
+      "ppt/notesSlides/notesSlide32.xml",
+      "ppt/notesSlides/notesSlide33.xml",
+      "ppt/notesSlides/notesSlide34.xml",
+      "ppt/notesSlides/notesSlide35.xml",
+      "ppt/notesSlides/notesSlide36.xml",
+      "ppt/notesSlides/notesSlide37.xml",
+      "ppt/notesSlides/notesSlide38.xml",
+      "ppt/notesSlides/notesSlide39.xml",
+      "ppt/notesSlides/notesSlide4.xml",
+      "ppt/notesSlides/notesSlide40.xml",
+      "ppt/notesSlides/notesSlide41.xml",
+      "ppt/notesSlides/notesSlide42.xml",
+      "ppt/notesSlides/notesSlide43.xml",
+      "ppt/notesSlides/notesSlide5.xml",
+      "ppt/notesSlides/notesSlide6.xml",
+      "ppt/notesSlides/notesSlide7.xml",
+      "ppt/notesSlides/notesSlide8.xml",
+      "ppt/notesSlides/notesSlide9.xml"
+    ]
+  },
+  "errors": [],
+  "atomic_replace": true,
+  "matches": [
+    {
+      "presentation_index": 1,
+      "slide_part": "ppt/slides/slide1.xml",
+      "notes_part": "ppt/notesSlides/notesSlide1.xml",
+      "semantic_key": "opening.finite-battery-changing-service-window",
+      "visible_title": "有限電池 × 變動服務窗口",
+      "visible_text_signature_sha256": "fe9caf2ee1484da4f6468f5859cfe230eafa2113af80be4196cffba0432ad951"
+    },
+    {
+      "presentation_index": 2,
+      "slide_part": "ppt/slides/slide2.xml",
+      "notes_part": "ppt/notesSlides/notesSlide2.xml",
+      "semantic_key": "foundation.loraenergysim-model",
+      "visible_title": "LoRaEnergySim 是什麼",
+      "visible_text_signature_sha256": "e555f4f1f8013043e8c3bbdb429a56654149166e7daaea7f20e535e46dec955e"
+    },
+    {
+      "presentation_index": 3,
+      "slide_part": "ppt/slides/slide3.xml",
+      "notes_part": "ppt/notesSlides/notesSlide3.xml",
+      "semantic_key": "foundation.upstream-capabilities",
+      "visible_title": "原始上游套件已做什麼",
+      "visible_text_signature_sha256": "ef436581dfa2b4217c2288f08d883aefd2c995e2fc6c9333c09ef9e26fdf1b04"
+    },
+    {
+      "presentation_index": 4,
+      "slide_part": "ppt/slides/slide4.xml",
+      "notes_part": "ppt/notesSlides/notesSlide4.xml",
+      "semantic_key": "foundation.course-packaging",
+      "visible_title": "課程封裝補了什麼",
+      "visible_text_signature_sha256": "ff1c32d9833ecc91ae5379e66889989860237eaa0f06a88b7031517b3d168c3d"
+    },
+    {
+      "presentation_index": 5,
+      "slide_part": "ppt/slides/slide5.xml",
+      "notes_part": "ppt/notesSlides/notesSlide5.xml",
+      "semantic_key": "foundation.competition-relevance",
+      "visible_title": "為什麼競賽要用它",
+      "visible_text_signature_sha256": "dca050c08bc11c34241f6fa00427228ebaed86ae7c3f90170178f9419c945605"
+    },
+    {
+      "presentation_index": 6,
+      "slide_part": "ppt/slides/slide6.xml",
+      "notes_part": "ppt/notesSlides/notesSlide6.xml",
+      "semantic_key": "workflow.run-produces-artifacts",
+      "visible_title": "只有 run case 才產生結果檔",
+      "visible_text_signature_sha256": "f43118f0243a8d617698c2811d9107885234d2c75f0e8623724a8b72396a9030"
+    },
+    {
+      "presentation_index": 7,
+      "slide_part": "ppt/slides/slide7.xml",
+      "notes_part": "ppt/notesSlides/notesSlide7.xml",
+      "semantic_key": "workflow.course-import-boundary",
+      "visible_title": "課程頁 /course 只匯入結果檔",
+      "visible_text_signature_sha256": "2561c5d2bb511faf4e8666e91de8e73895cc58766098a5a80e548fae77c7e8e7"
+    },
+    {
+      "presentation_index": 8,
+      "slide_part": "ppt/slides/slide8.xml",
+      "notes_part": "ppt/notesSlides/notesSlide8.xml",
+      "semantic_key": "workflow.baseline-candidate-withheld-reading-order",
+      "visible_title": "三次匯入，沿同一解讀順序",
+      "visible_text_signature_sha256": "052eb94f71de0f4ee21c24c24af2a5eabf446a976ec1cb22acb995244463c694"
+    },
+    {
+      "presentation_index": 9,
+      "slide_part": "ppt/slides/slide9.xml",
+      "notes_part": "ppt/notesSlides/notesSlide9.xml",
+      "semantic_key": "mechanism.action-service-energy",
+      "visible_title": "一次動作，同時改變服務與能量",
+      "visible_text_signature_sha256": "78c22371b48c5deed1b3758332144daa8a4ac11a613d679d1c75a03d999534c0"
+    },
+    {
+      "presentation_index": 10,
+      "slide_part": "ppt/slides/slide10.xml",
+      "notes_part": "ppt/notesSlides/notesSlide10.xml",
+      "semantic_key": "mechanism.event-supported-attribution",
+      "visible_title": "先讀中間事件，再讀最終結果",
+      "visible_text_signature_sha256": "3d456d6215767d94576e54371f9633a36609cce7355c05b3dbbbd2e0e69480db"
+    },
+    {
+      "presentation_index": 11,
+      "slide_part": "ppt/slides/slide11.xml",
+      "notes_part": "ppt/notesSlides/notesSlide11.xml",
+      "semantic_key": "workflow.four-step-operation-loop",
+      "visible_title": "固定情境中的四步操作閉環",
+      "visible_text_signature_sha256": "75a005749eea1e3d17ca00a3f0d912bc20f7bb8adc8c7dbd4b327d2136fc76fe"
+    },
+    {
+      "presentation_index": 12,
+      "slide_part": "ppt/slides/slide12.xml",
+      "notes_part": "ppt/notesSlides/notesSlide12.xml",
+      "semantic_key": "mechanism.event-bridge",
+      "visible_title": "中間事件是因果歸因的必要橋樑",
+      "visible_text_signature_sha256": "da8f2096df7a9a19f93f3dbd5fab73a1cc48979398ef7cee47ba88c1686a9015"
+    },
+    {
+      "presentation_index": 13,
+      "slide_part": "ppt/slides/slide13.xml",
+      "notes_part": "ppt/notesSlides/notesSlide13.xml",
+      "semantic_key": "evidence.runner-claim-boundary",
+      "visible_title": "Runner 證據有明確邊界",
+      "visible_text_signature_sha256": "1735280ef8863553d801b55f6fd113cd11003755f21b71a62a39d756205380b1"
+    },
+    {
+      "presentation_index": 14,
+      "slide_part": "ppt/slides/slide14.xml",
+      "notes_part": "ppt/notesSlides/notesSlide14.xml",
+      "semantic_key": "context.leo-changing-service-window",
+      "visible_title": "LEO 是變動服務窗口的工作範例",
+      "visible_text_signature_sha256": "ff390fad8e1a3d0c8ba6a60ccabb20f40b51d0bbc0165deb4decda123f6fdda8"
+    },
+    {
+      "presentation_index": 15,
+      "slide_part": "ppt/slides/slide15.xml",
+      "notes_part": "ppt/notesSlides/notesSlide15.xml",
+      "semantic_key": "workflow.prediction-to-result",
+      "visible_title": "從預測到結果，保留可反駁路徑",
+      "visible_text_signature_sha256": "4ecd7d70783825c3ccca413077a4bb3550e1cee64f9ecb3d35d43ba464c3ffc7"
+    },
+    {
+      "presentation_index": 16,
+      "slide_part": "ppt/slides/slide16.xml",
+      "notes_part": "ppt/notesSlides/notesSlide16.xml",
+      "semantic_key": "experiments.three-controlled-blocks",
+      "visible_title": "三個實驗到底改什麼",
+      "visible_text_signature_sha256": "55243b3aca78465a6b07d05fe1299a7afdf2b9a7eb01e5be31133c51177072b5"
+    },
+    {
+      "presentation_index": 17,
+      "slide_part": "ppt/slides/slide17.xml",
+      "notes_part": "ppt/notesSlides/notesSlide17.xml",
+      "semantic_key": "foundation.loraenergysim-value",
+      "visible_title": "LoRaEnergySim 提供的三項價值",
+      "visible_text_signature_sha256": "f89a09e5afba1c70b83f39fc33f5db30862bbb71d7358fbefbf73b8f8ce9d908"
+    },
+    {
+      "presentation_index": 18,
+      "slide_part": "ppt/slides/slide18.xml",
+      "notes_part": "ppt/notesSlides/notesSlide18.xml",
+      "semantic_key": "setup.move-release-into-linux",
+      "visible_title": "把下載資料搬進 Linux 課程資料夾",
+      "visible_text_signature_sha256": "933a7d04f832ec3f9223058415c40e0dec18aa24d62e6e0b9cc15ccf068ee4bd"
+    },
+    {
+      "presentation_index": 19,
+      "slide_part": "ppt/slides/slide19.xml",
+      "notes_part": "ppt/notesSlides/notesSlide19.xml",
+      "semantic_key": "setup.create-venv-ready",
+      "visible_title": "建立環境並確認 READY",
+      "visible_text_signature_sha256": "6e1dab8076cbf1512d254cfb77d6d7a0fb1ede2993c8eb487af1d65901f0efd1"
+    },
+    {
+      "presentation_index": 20,
+      "slide_part": "ppt/slides/slide20.xml",
+      "notes_part": "ppt/notesSlides/notesSlide20.xml",
+      "semantic_key": "setup.ready-is-not-case-result",
+      "visible_title": "READY 只代表環境可用",
+      "visible_text_signature_sha256": "1d2e4f15313cb3248dccdb7930d90786d13cacecd652d9075ba92ca2b4d375fa"
+    },
+    {
+      "presentation_index": 21,
+      "slide_part": "ppt/slides/slide21.xml",
+      "notes_part": "ppt/notesSlides/notesSlide21.xml",
+      "semantic_key": "setup.verify-case-identity",
+      "visible_title": "確認環境與案例身份",
+      "visible_text_signature_sha256": "a671b3a412630c259ca0f4a135d0b85c46cbd727be539016c870998be9d0bb89"
+    },
+    {
+      "presentation_index": 22,
+      "slide_part": "ppt/slides/slide22.xml",
+      "notes_part": "ppt/notesSlides/notesSlide22.xml",
+      "semantic_key": "provenance.claim-boundary",
+      "visible_title": "說清資料來源與主張邊界",
+      "visible_text_signature_sha256": "d5bf2baa96a707080360eae59dbddea75ad87305c794488208f50fe21a4e20f9"
+    },
+    {
+      "presentation_index": 23,
+      "slide_part": "ppt/slides/slide23.xml",
+      "notes_part": "ppt/notesSlides/notesSlide23.xml",
+      "semantic_key": "recovery.repair-or-preserve",
+      "visible_title": "卡住時修復或保留來源",
+      "visible_text_signature_sha256": "f3eb097dc42575da6c1a299ccf47b207f2db84e73b4bd91114971ed120468f0e"
+    },
+    {
+      "presentation_index": 24,
+      "slide_part": "ppt/slides/slide24.xml",
+      "notes_part": "ppt/notesSlides/notesSlide24.xml",
+      "semantic_key": "policy.editable-blocks",
+      "visible_title": "只可修改三個標記區塊",
+      "visible_text_signature_sha256": "b72efeb1793fbaee533f16bd9bd23fccdb695b3550e6452c04d7f7478d40f41b"
+    },
+    {
+      "presentation_index": 25,
+      "slide_part": "ppt/slides/slide25.xml",
+      "notes_part": "ppt/notesSlides/notesSlide25.xml",
+      "semantic_key": "policy.observation-inputs",
+      "visible_title": "程式每次判斷會看什麼",
+      "visible_text_signature_sha256": "60ebc20480b820dccd7e6cc11648bdf5a5573b8b42740c285c218b1e4693afa8"
+    },
+    {
+      "presentation_index": 26,
+      "slide_part": "ppt/slides/slide26.xml",
+      "notes_part": "ppt/notesSlides/notesSlide26.xml",
+      "semantic_key": "policy.decision-order",
+      "visible_title": "判斷順序如何產生動作",
+      "visible_text_signature_sha256": "799eeeda283bf08badf8a99180813772f062f40e035eedf8a422ee6b3f85b343"
+    },
+    {
+      "presentation_index": 27,
+      "slide_part": "ppt/slides/slide27.xml",
+      "notes_part": "ppt/notesSlides/notesSlide27.xml",
+      "semantic_key": "policy.indentation-return",
+      "visible_title": "縮排與回傳決定程式走哪條路",
+      "visible_text_signature_sha256": "d9277a801ad10c2f1e3088e0c842fd45f309b0ac5df8a34c6663c9a4706b52b6"
+    },
+    {
+      "presentation_index": 28,
+      "slide_part": "ppt/slides/slide28.xml",
+      "notes_part": "ppt/notesSlides/notesSlide28.xml",
+      "semantic_key": "lab-a.baseline-command",
+      "visible_title": "先建立基準結果再比較",
+      "visible_text_signature_sha256": "0965378f5adcf70e0d07ce2455d68882b6a4e323cbfac973aa14514ea16d03b1"
+    },
+    {
+      "presentation_index": 29,
+      "slide_part": "ppt/slides/slide29.xml",
+      "notes_part": "ppt/notesSlides/notesSlide29.xml",
+      "semantic_key": "lab-a.locate-marked-block",
+      "visible_title": "先找到唯一要改的地方",
+      "visible_text_signature_sha256": "a612cd3f6e066950dbe0631a69bd3bf7902bd551b039920cc1c3cc19da367bdb"
+    },
+    {
+      "presentation_index": 30,
+      "slide_part": "ppt/slides/slide30.xml",
+      "notes_part": "ppt/notesSlides/notesSlide30.xml",
+      "semantic_key": "lab-a.edit-sleep-to-wait",
+      "visible_title": "只改這一行：SLEEP → WAIT",
+      "visible_text_signature_sha256": "20782d891af517213db5b19fff4942dc14d8f2d031dfcdcab537ded2627560f7"
+    },
+    {
+      "presentation_index": 31,
+      "slide_part": "ppt/slides/slide31.xml",
+      "notes_part": "ppt/notesSlides/notesSlide31.xml",
+      "semantic_key": "lab-a.execute-sequence",
+      "visible_title": "為什麼 SLEEP → WAIT，接著怎麼執行",
+      "visible_text_signature_sha256": "81e0d7f7e921375e22e1dce3425f646019530f8e13a5c2e8066c3acc120b9c45"
+    },
+    {
+      "presentation_index": 32,
+      "slide_part": "ppt/slides/slide32.xml",
+      "notes_part": "ppt/notesSlides/notesSlide32.xml",
+      "semantic_key": "lab-a.read-evidence",
+      "visible_title": "上傳後怎麼解讀",
+      "visible_text_signature_sha256": "a4b44a9b9854bf5db43f10c0aeec8406080c34cb15915bcf63706ce1bfd90f4b"
+    },
+    {
+      "presentation_index": 33,
+      "slide_part": "ppt/slides/slide33.xml",
+      "notes_part": "ppt/notesSlides/notesSlide33.xml",
+      "semantic_key": "lab-b.locate-marked-block",
+      "visible_title": "先找到唯一要改的地方",
+      "visible_text_signature_sha256": "51a80f5e4b1680a162882f3d9c7337a77e7efea443a897107d76c5d9aa6fa426"
+    },
+    {
+      "presentation_index": 34,
+      "slide_part": "ppt/slides/slide34.xml",
+      "notes_part": "ppt/notesSlides/notesSlide34.xml",
+      "semantic_key": "lab-b.edit-stable-steps",
+      "visible_title": "只改這一行：2 → 1",
+      "visible_text_signature_sha256": "ef94aa9f084b06b68f1ce1680d8970662404635a8ed18c3703b548fed70cfe26"
+    },
+    {
+      "presentation_index": 35,
+      "slide_part": "ppt/slides/slide35.xml",
+      "notes_part": "ppt/notesSlides/notesSlide35.xml",
+      "semantic_key": "lab-b.execute-sequence",
+      "visible_title": "為什麼 2 → 1，接著怎麼執行",
+      "visible_text_signature_sha256": "6dc4c14c3e9d31e7e78fc3d2e573acd3275e13a82426576af3803387f3dc8c6e"
+    },
+    {
+      "presentation_index": 36,
+      "slide_part": "ppt/slides/slide36.xml",
+      "notes_part": "ppt/notesSlides/notesSlide36.xml",
+      "semantic_key": "lab-b.read-evidence",
+      "visible_title": "上傳後怎麼解讀",
+      "visible_text_signature_sha256": "144eb58dfb67b0e92bc720d8232b7951b609d9666462ab2c590d17b613a8260b"
+    },
+    {
+      "presentation_index": 37,
+      "slide_part": "ppt/slides/slide37.xml",
+      "notes_part": "ppt/notesSlides/notesSlide37.xml",
+      "semantic_key": "lab-c.locate-marked-block",
+      "visible_title": "先找到唯一要改的地方",
+      "visible_text_signature_sha256": "bfa80ff9bf9a49b5a9310e248855e9c482e8b3922f0f2ff14ea4800a2f9b2822"
+    },
+    {
+      "presentation_index": 38,
+      "slide_part": "ppt/slides/slide38.xml",
+      "notes_part": "ppt/notesSlides/notesSlide38.xml",
+      "semantic_key": "lab-c.baseline-margin-20",
+      "visible_title": "基準值｜Baseline：URGENT_MARGIN_S = 20",
+      "visible_text_signature_sha256": "dc5400b3bc46e8332b48d0e71dfcce622c04903e2cc7a11d9a2a05c6aed6b8b7"
+    },
+    {
+      "presentation_index": 39,
+      "slide_part": "ppt/slides/slide39.xml",
+      "notes_part": "ppt/notesSlides/notesSlide39.xml",
+      "semantic_key": "lab-c.candidate-margin-5",
+      "visible_title": "候選值｜Candidate：URGENT_MARGIN_S = 5",
+      "visible_text_signature_sha256": "89925e40fda18c96b724c8a93810bc0ae9b9506b89a4171c37c493a6ffdea833"
+    },
+    {
+      "presentation_index": 40,
+      "slide_part": "ppt/slides/slide40.xml",
+      "notes_part": "ppt/notesSlides/notesSlide40.xml",
+      "semantic_key": "lab-c.revision-margin-30",
+      "visible_title": "修訂值｜Revision：URGENT_MARGIN_S = 30",
+      "visible_text_signature_sha256": "6edd30db625735fec6f829ecccb116cd1772bf7594530341bc4d2083273834d3"
+    },
+    {
+      "presentation_index": 41,
+      "slide_part": "ppt/slides/slide41.xml",
+      "notes_part": "ppt/notesSlides/notesSlide41.xml",
+      "semantic_key": "lab-c.threshold-mechanism",
+      "visible_title": "為什麼 5 秒可能太晚，30 秒可能更早",
+      "visible_text_signature_sha256": "6d38928b8a8bee535ddcbeff40b0478d2a4779715dee94564eacb1e8305b0443"
+    },
+    {
+      "presentation_index": 42,
+      "slide_part": "ppt/slides/slide42.xml",
+      "notes_part": "ppt/notesSlides/notesSlide42.xml",
+      "semantic_key": "lab-c.execute-sequence",
+      "visible_title": "四次執行的固定順序",
+      "visible_text_signature_sha256": "03668fa49a8c7282d6e6efff7435382df0a23e69ea73a7e0717cbb09031e8baa"
+    },
+    {
+      "presentation_index": 43,
+      "slide_part": "ppt/slides/slide43.xml",
+      "notes_part": "ppt/notesSlides/notesSlide43.xml",
+      "semantic_key": "lab-c.read-evidence",
+      "visible_title": "上傳後怎麼解讀",
+      "visible_text_signature_sha256": "70129415fc0ee71978d475d88d43bdece48ce55519bde41960c8a629d78765d3"
+    }
+  ]
+}

@@ -1,0 +1,169 @@
+{
+  "schema": "ppt-master.native-structure.v1",
+  "source": {
+    "name": "leo-energy-course-phase0-outline.pptx",
+    "templateFile": "source_template.pptx",
+    "sha256": "c7e51671439b41c1e25f5ee52e4cba278e841ea7d1b3cdbb767c9688371453ee"
+  },
+  "slideSize": {
+    "width_emu": 12192000,
+    "height_emu": 6858000,
+    "width_px": 1280,
+    "height_px": 720
+  },
+  "strategy": {
+    "preservationEligible": true,
+    "reusableStructureDetected": false,
+    "recommendedMode": "template",
+    "recommendationScope": "source-structure-assessment",
+    "templateOutputMode": "template",
+    "downstreamTemplateAdherence": "strategist-confirmed-explicit-structure",
+    "hasMultipleMasters": false,
+    "reasonCodes": [
+      "source-structure-is-minimal"
+    ]
+  },
+  "masters": [
+    {
+      "key": "master_01",
+      "name": "slideMaster1",
+      "packagePart": "ppt/slideMasters/slideMaster1.xml",
+      "themePart": "ppt/theme/theme1.xml",
+      "theme": {
+        "colors": {
+          "dk1": "#000000",
+          "lt1": "#FFFFFF",
+          "dk2": "#44546A",
+          "lt2": "#E7E6E6",
+          "accent1": "#4472C4",
+          "accent2": "#ED7D31",
+          "accent3": "#A5A5A5",
+          "accent4": "#FFC000",
+          "accent5": "#5B9BD5",
+          "accent6": "#70AD47",
+          "hlink": "#0563C1",
+          "folHlink": "#954F72"
+        },
+        "fonts": {
+          "majorLatin": "Noto Sans TC",
+          "minorLatin": "Noto Sans TC"
+        }
+      },
+      "backgroundAsset": null,
+      "imageAssets": [],
+      "shapeImageAssets": [],
+      "drawableShapeCount": 0,
+      "layoutKeys": [
+        "layout_01"
+      ]
+    }
+  ],
+  "layouts": [
+    {
+      "key": "layout_01",
+      "name": "DEFAULT",
+      "type": null,
+      "packagePart": "ppt/slideLayouts/slideLayout1.xml",
+      "masterKey": "master_01",
+      "showMasterShapes": true,
+      "backgroundAsset": null,
+      "imageAssets": [],
+      "shapeImageAssets": [],
+      "drawableShapeCount": 0,
+      "placeholders": [],
+      "usedBySlides": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "svgFile": "layout_01_slideLayout1.svg"
+    }
+  ],
+  "slides": [
+    {
+      "index": 1,
+      "pageType": "cover_candidate",
+      "layoutKey": "layout_01",
+      "masterKey": "master_01",
+      "showInheritedShapes": true,
+      "placeholders": [],
+      "layeredSvgFile": "slide_01.svg",
+      "flatSvgFile": null
+    },
+    {
+      "index": 2,
+      "pageType": "content_candidate",
+      "layoutKey": "layout_01",
+      "masterKey": "master_01",
+      "showInheritedShapes": true,
+      "placeholders": [],
+      "layeredSvgFile": "slide_02.svg",
+      "flatSvgFile": null
+    },
+    {
+      "index": 3,
+      "pageType": "content_candidate",
+      "layoutKey": "layout_01",
+      "masterKey": "master_01",
+      "showInheritedShapes": true,
+      "placeholders": [],
+      "layeredSvgFile": "slide_03.svg",
+      "flatSvgFile": null
+    },
+    {
+      "index": 4,
+      "pageType": "content_candidate",
+      "layoutKey": "layout_01",
+      "masterKey": "master_01",
+      "showInheritedShapes": true,
+      "placeholders": [],
+      "layeredSvgFile": "slide_04.svg",
+      "flatSvgFile": null
+    },
+    {
+      "index": 5,
+      "pageType": "content_candidate",
+      "layoutKey": "layout_01",
+      "masterKey": "master_01",
+      "showInheritedShapes": true,
+      "placeholders": [],
+      "layeredSvgFile": "slide_05.svg",
+      "flatSvgFile": null
+    },
+    {
+      "index": 6,
+      "pageType": "content_candidate",
+      "layoutKey": "layout_01",
+      "masterKey": "master_01",
+      "showInheritedShapes": true,
+      "placeholders": [],
+      "layeredSvgFile": "slide_06.svg",
+      "flatSvgFile": null
+    },
+    {
+      "index": 7,
+      "pageType": "content_candidate",
+      "layoutKey": "layout_01",
+      "masterKey": "master_01",
+      "showInheritedShapes": true,
+      "placeholders": [],
+      "layeredSvgFile": "slide_07.svg",
+      "flatSvgFile": null
+    },
+    {
+      "index": 8,
+      "pageType": "ending_candidate",
+      "layoutKey": "layout_01",
+      "masterKey": "master_01",
+      "showInheritedShapes": true,
+      "placeholders": [],
+      "layeredSvgFile": "slide_08.svg",
+      "flatSvgFile": null
+    }
+  ]
+}

@@ -116,14 +116,24 @@ http://localhost:3000/simulator
 TLE-derived SGP4 軌跡，以及 SINR、EE、Power、Throughput 四個共享同一
 frame 的正式分頁。它不宣稱 live telemetry、節能成效或一期平台整合。
 
-首頁 `http://localhost:3000/` 保留原本的 Walker／handover 展示介面。
-左側導覽固定顯示 `SINR / EE / Power / Throughput`，並以原介面風格投影
-同一份明示的 archived-TLE canonical analysis frame。首頁不再提供可直接
+首頁 `http://localhost:3000/` 保留原本的三欄介面與校園中央場景，但中央
+衛星不再由 Walker runtime 產生。左側選定 OneWeb／Starlink 與
+Asia/Taipei 日期時間後，系統選取一份通過驗證的 archived-TLE snapshot，
+凍結該 publication 與每顆衛星的 TLE pair，接著以 SGP4 預先計算完整
+7,200 秒、30 秒間隔、共 241 個共同 UTC 時間錨點。完整幾何、真實 pass
+篩選與 240 區間 ratio-of-sums EE 都驗證成功後，才把同一份 immutable run
+同時交給中央場景、時間軸與右側計算。中央先把 TEME 轉成該時刻的
+Earth-fixed 座標，再以 NTPU 觀測點取得方位角與仰角後投影到既有校園
+sky-dome；不直接把 TEME 三軸當成校園 ENU，也不改成地球球體場景。
+
+左側導覽固定顯示 `SINR / EE / Power / Throughput`。首頁不再提供可直接
 覆寫實際發射功率的 `P_t`；Power 只調整 `P_beam_max`、`P_sat_max`、
-`eta_max`、`P_RFC`、`P_BB`，所有 `p_req`、`P_DL_actual`、SINR、rate、
-`P_sys` 與 EE 都是共用 producer 的唯讀衍生量。右側 Walker 場景仍是
-保留的既有視覺，不冒充該 analysis frame；具備相符 SGP4 場景與日期選擇的
-完整工作區仍位於 `/simulator`。兩個畫面目前沒有互相跳轉按鈕。
+`eta_max`、backoff、`P_RFC`、`P_BB`，所有 `p_req`、`P_DL_actual`、SINR、rate、
+`P_sys` 與 EE 都是共用 producer 的唯讀衍生量。切換日期時間或星系必須先
+完整建立並驗證新 run；計算期間時間軸鎖定，中央與右側共同保留上一筆
+accepted frame，完成後才原子切換；失敗時也保留上一筆結果。
+TLE 候選比較不是 handover 判定。具備地球球體與完整來源揭露的正式工作區
+仍位於 `/simulator`；兩個畫面目前沒有互相跳轉按鈕。
 
 Browser archive 包含 363 份 OneWeb snapshot，以及 360 份通過嚴格驗證的
 Starlink snapshot。Starlink 外部來源的 361 份中，`starlink_20260528.tle`

@@ -1,0 +1,185 @@
+{
+  "schema": "c120-part-b-field-explanation-audit-v1",
+  "pages": [
+    {
+      "page": "P028",
+      "unexplained_terms": "state、SLEEP、WAIT、WAKE、PROCESS、TX、RX",
+      "fix_or_split": "每個 state 卡加入中文名稱與作用；補上 interval → power × duration → J 機制；不拆頁。"
+    },
+    {
+      "page": "P029",
+      "unexplained_terms": "scenario、seed、traffic、window、endpoint boundary",
+      "fix_or_split": "改為 Lab A 機制總覽；固定條件、SLEEP／WAIT 成本與 service／energy 判讀集中於雙卡；不拆頁。"
+    },
+    {
+      "page": "P030",
+      "unexplained_terms": "generated、queue、attempt、retry、delivered、expired",
+      "fix_or_split": "事件卡補中文名稱、packet outcome 與 service verdict；不拆頁。"
+    },
+    {
+      "page": "P031",
+      "unexplained_terms": "service gate、delivered、deadline、freshness、service_pass",
+      "fix_or_split": "四段 gate 卡加入中文欄位定義與 endpoint J scope；不拆頁。"
+    },
+    {
+      "page": "P032",
+      "unexplained_terms": "power、W、time、s、state bucket",
+      "fix_or_split": "座標軸補中文名稱與單位；band 說明 duration 與 bucket 組成 J；不拆頁。"
+    },
+    {
+      "page": "P033",
+      "unexplained_terms": "E_endpoint、P_s、t_s、Σ",
+      "fix_or_split": "公式後補 P_s／t_s 的中文名稱、單位、scope 與 result artifact 來源；不拆頁。"
+    },
+    {
+      "page": "P034",
+      "unexplained_terms": "η_E、D_delivered、E_endpoint、bit/J",
+      "fix_or_split": "公式後補分子／分母中文名稱、來源、單位與 service gate 限制；不拆頁。"
+    },
+    {
+      "page": "P035",
+      "unexplained_terms": "SOURCE、MODEL、COURSE、RESULT、provenance",
+      "fix_or_split": "四層卡改為中文層名＋來源／作用；補 coherent simulated result 分類；不拆頁。"
+    },
+    {
+      "page": "P036",
+      "unexplained_terms": "scenario_id、RUN、REPLAY、WORKBOOK、run_id、units、provenance",
+      "fix_or_split": "依正式契約重做三卡與一致性 band；分別定義物件、輸入、輸出與限制；不拆頁。"
+    },
+    {
+      "page": "P037",
+      "unexplained_terms": "baseline、control、marked block、policy identity",
+      "fix_or_split": "三卡列固定條件、唯一修改與觀察輸出；改為正向 baseline 定義；不拆頁。"
+    },
+    {
+      "page": "P038",
+      "unexplained_terms": "changing-service-window、contact_open、quality_band、contact_remaining_s",
+      "fix_or_split": "lead 改為 trace 輸入定義；band 加中文名稱與 seconds 單位；不拆頁。"
+    },
+    {
+      "page": "P039",
+      "unexplained_terms": "REST_DURING_GAP、SLEEP、WAIT、WAKE、awake idle、PACE_GAP_STEPS",
+      "fix_or_split": "依正式契約改 Lab A 總覽；雙卡列固定條件與唯一修改；不拆頁。"
+    },
+    {
+      "page": "P040",
+      "unexplained_terms": "contact_open、steps_since_send、PACE_GAP_STEPS、REST_DURING_GAP",
+      "fix_or_split": "baseline decision 卡補中文欄位定義、值與分支作用；不拆頁。"
+    },
+    {
+      "page": "P041",
+      "unexplained_terms": "PACE_GAP_STEPS、REST_DURING_GAP、py_compile",
+      "fix_or_split": "程式卡改為中文名稱＋值；命令卡保留 exact edit／backup／syntax 用途；不拆頁。"
+    },
+    {
+      "page": "P042",
+      "unexplained_terms": "baseline、candidate、hidden、freeze、result_path、replay",
+      "fix_or_split": "三欄標題加入中文用途；top rule 定義 stdout result_path 與同 run replay；不拆頁。"
+    },
+    {
+      "page": "P043",
+      "unexplained_terms": "identity、result_path、endpoint-replay、claim boundary",
+      "fix_or_split": "比較卡列來源、數值／單位與 service；band 定義 identity／scope 比較條件；不拆頁。"
+    },
+    {
+      "page": "P044",
+      "unexplained_terms": "awake_idle、sleep、wake、process、tx、rx、energy_breakdown_j",
+      "fix_or_split": "每個 bucket label 加中文名稱；數值保留 J 單位並連接 REST_DURING_GAP 機制；不拆頁。"
+    },
+    {
+      "page": "P045",
+      "unexplained_terms": "attempted、retransmissions、delivered_bits、expired_packets、service_pass",
+      "fix_or_split": "packet／service 卡改為中文名稱＋值／單位；不以 SEND 次數代替交付；不拆頁。"
+    },
+    {
+      "page": "P046",
+      "unexplained_terms": "freeze、checkpoint、predecessor、active_block_id、receipt",
+      "fix_or_split": "freeze fields 加中文名稱與識別碼性質；移除 identity digest 教學；不拆頁。"
+    },
+    {
+      "page": "P047",
+      "unexplained_terms": "withheld、frozen policy、counterexample、claim ceiling",
+      "fix_or_split": "卡片補中文定義與 frozen policy 狀態；band 說明適用範圍；不拆頁。"
+    },
+    {
+      "page": "P048",
+      "unexplained_terms": "CONDITION、MECHANISM、EVIDENCE、CLAIM CEILING",
+      "fix_or_split": "四個流程節點加中文名稱；結論句連接 state、packet／service、J、適用條件；不拆頁。"
+    },
+    {
+      "page": "P049",
+      "unexplained_terms": "quality trace、enter、hold、exit、service window",
+      "fix_or_split": "改為 service-window transition 總覽；challenge visual 與 gate 卡提供中文定義；不拆頁。"
+    },
+    {
+      "page": "P050",
+      "unexplained_terms": "ENTER_QUALITY、STABLE_STEPS、send_mode_active、SEND_READY",
+      "fix_or_split": "閾值卡加入中文名稱、值、單位／值域與切換作用；不拆頁。"
+    },
+    {
+      "page": "P051",
+      "unexplained_terms": "EXIT_QUALITY、hysteresis、send-ready",
+      "fix_or_split": "雙閾值圖與卡片說明 enter／hold／exit 的條件與 mode 作用；不拆頁。"
+    },
+    {
+      "page": "P052",
+      "unexplained_terms": "quality band、STABLE_STEPS、send_mode_active、spike",
+      "fix_or_split": "兩卡補品質等級、穩定步數與布林 mode 變化；不拆頁。"
+    },
+    {
+      "page": "P053",
+      "unexplained_terms": "Trace A、enter、hold、exit、MODE_CHANGE",
+      "fix_or_split": "prediction band 加中文欄位解釋與填寫來源；不拆頁。"
+    },
+    {
+      "page": "P054",
+      "unexplained_terms": "A predecessor、B hold、Trace A、result_path",
+      "fix_or_split": "baseline decision 卡補固定項與切換條件；evidence 卡保留值／單位／來源；不拆頁。"
+    },
+    {
+      "page": "P055",
+      "unexplained_terms": "ENTER_QUALITY、EXIT_QUALITY、STABLE_STEPS、marked block、py_compile",
+      "fix_or_split": "程式卡補中文名稱與唯一修改；命令卡分列 backup／compile 用途；不拆頁。"
+    },
+    {
+      "page": "P056",
+      "unexplained_terms": "Trace A baseline、candidate、freeze、Trace B、result_path",
+      "fix_or_split": "三欄標題加入中文用途；top rule 與 receipt 定義 stdout path／replay；不拆頁。"
+    },
+    {
+      "page": "P057",
+      "unexplained_terms": "quality band、MODE_CHANGE、PACKET_ATTEMPT、service_pass",
+      "fix_or_split": "因果節點補中文名稱與作用；metrics 卡列值／單位／來源；不拆頁。"
+    },
+    {
+      "page": "P058",
+      "unexplained_terms": "A predecessor、B checkpoint、Trace B entry、receipt identity",
+      "fix_or_split": "沿用 P046 定義；freeze lineage 卡只呈現三者關係與 entry 條件；不拆頁。"
+    },
+    {
+      "page": "P059",
+      "unexplained_terms": "Trace B、frozen policy、withheld、expired_packets",
+      "fix_or_split": "卡片補 frozen policy 與 path 來源；result 卡列 expired／service／J 的值與單位；不拆頁。"
+    },
+    {
+      "page": "P060",
+      "unexplained_terms": "too-slow、ping-pong、MODE_CHANGE、retry、transition",
+      "fix_or_split": "兩種 failure mode 以中文事件序列解釋；band 指定 evidence 欄位；不拆頁。"
+    },
+    {
+      "page": "P061",
+      "unexplained_terms": "hysteresis、Trace A、Trace B、claim ceiling",
+      "fix_or_split": "流程節點加中文名稱；句型連接 transition、packet／service、J 與條件；不拆頁。"
+    },
+    {
+      "page": "P062",
+      "unexplained_terms": "policy lineage、checkpoint、py_compile、result_path、replay",
+      "fix_or_split": "復原 lead 與四步 band 改為資料變化敘述；命令卡保留 exact operation；不拆頁。"
+    },
+    {
+      "page": "P063",
+      "unexplained_terms": "RUNNER、VALIDATOR、REPLAY、WORKBOOK、schema、provenance",
+      "fix_or_split": "流程節點加中文名稱；import rule／band 說明輸入、驗證、回放、寫入與失敗不變資料；不拆頁。"
+    }
+  ]
+}
