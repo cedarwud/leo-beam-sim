@@ -312,14 +312,11 @@ function isVisibleSatelliteAtAnchor(
   if (satelliteIndex === undefined) return false;
   const state = run.readStateByIndex(anchorIndex, satelliteIndex);
   const geometry = deriveObserverLinkGeometry(state.positionTemeKm, state.requestedInstantUtc);
-  // The local/NTPU scene is a near-field presentation: once the serving
-  // satellite falls below the same service mask used by the pass planner, it
-  // is already outside the readable scene even though it remains mathematically
-  // above the geometric horizon.  Use the shared run policy here so the
-  // accepted trace commits to the real next pass before that low-elevation
-  // tail is rendered as a misleading long link.
-  return geometry.visible
-    && geometry.elevationDeg >= (DEFAULT_TLE_ANALYSIS_PASS_POLICY.minimumElevationDeg ?? 0);
+  // ADR-006 and the simulator SDD define trace visibility as real
+  // above-horizon geometry. The pass planner's 50-degree preference may choose
+  // an earlier high-elevation replacement, but it must not turn a physically
+  // visible continuity target into an internally contradictory forced switch.
+  return geometry.visible;
 }
 
 /**

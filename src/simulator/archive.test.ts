@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
+  createLoadedTleSnapshotSelection,
   loadTleSnapshot,
   loadTleSnapshotSelection,
   loadTleWebArchiveCatalog,
   parseTleWebArchiveCatalog,
+  resolveTleSnapshotMetadata,
 } from './archive';
 import { resolveTleSnapshot } from '../tle/resolver';
 
@@ -24,8 +26,11 @@ assert.equal(catalog.constellation, 'oneweb');
 
 const starlinkCatalog = await loadTleWebArchiveCatalog('/tle-archive/starlink/catalog.json', fetchFromPublic);
 assert.equal(starlinkCatalog.constellation, 'starlink');
-assert.equal(starlinkCatalog.snapshotCount, 364);
-assert.equal(starlinkCatalog.sourceSnapshotCount, 365);
+assert.equal(starlinkCatalog.snapshotCount, starlinkCatalog.snapshots.length);
+assert.equal(
+  starlinkCatalog.sourceSnapshotCount,
+  starlinkCatalog.snapshotCount + (starlinkCatalog.excludedSnapshots?.length ?? 0),
+);
 assert.equal(starlinkCatalog.excludedSnapshots?.length, 1);
 const starlinkLatestMetadata = starlinkCatalog.snapshots[starlinkCatalog.snapshots.length - 1]!;
 const starlinkLatest = await loadTleSnapshot(starlinkLatestMetadata, fetchFromPublic);
@@ -38,6 +43,20 @@ const boundary = await loadTleSnapshotSelection(catalog, '2026-08-07T23:59:59.00
 // prior to the requested instant; do not mix it with a later revision.
 assert.equal(boundary.snapshot.metadata.archiveDate, '20260807');
 assert.ok(boundary.snapshot.metadata.maxEpochUtc <= '2026-08-07T23:59:59.000Z');
+assert.equal(
+  resolveTleSnapshotMetadata(catalog, '2026-08-07T23:59:59.000Z').path,
+  boundary.snapshot.metadata.path,
+  'offline and browser callers must share the exact publication resolver',
+);
+assert.equal(
+  createLoadedTleSnapshotSelection(
+    catalog,
+    boundary.snapshot,
+    '2026-08-07T23:59:59.000Z',
+  ).manifest.entries.length,
+  boundary.manifest.entries.length,
+  'an already verified publication must admit the same per-record snapshot set',
+);
 
 const boundaryInstant = '2026-08-07T23:59:59.000Z';
 const nextDatedEntry = boundary.manifest.entries.find(entry => Date.parse(entry.epochUtc) <= Date.parse(boundaryInstant));

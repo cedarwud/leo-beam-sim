@@ -321,28 +321,52 @@ function snapshotsCoveringWindow(catalog: TleWebArchiveCatalog, requestedMs: num
   return Object.freeze(candidates);
 }
 
-/** Select and validate one atomic published snapshot for this request. */
-export async function loadTleSnapshotSelection(
+/**
+ * Resolve the one frozen atomic publication selected by ADR-005 for an
+ * instant. This pure seam is shared by browser loading and offline archive
+ * mining so filesystem tooling cannot drift to a second publication rule.
+ */
+export function resolveTleSnapshotMetadata(
   catalog: TleWebArchiveCatalog,
   requestedInstantUtc: string,
-  fetcher: Fetcher = browserFetcher,
-): Promise<LoadedTleSnapshotSelection> {
+): TleWebArchiveSnapshot {
   const requested = parseUtcInstant(requestedInstantUtc, 'requestedInstantUtc');
   const candidateMetadata = snapshotsCoveringWindow(catalog, requested.ms);
-  // Each source file is an atomic published catalog snapshot. Do not merge
-  // successive files: Starlink can legitimately revise element content while
-  // retaining an epoch, and cross-publication mixing would create a false
-  // identity+epoch conflict. Pick the newest overlapping publication, then
-  // admit only records whose own epochs are valid at the requested instant.
   const completePriorCandidates = candidateMetadata.filter(metadata => (
     parseUtcInstant(metadata.maxEpochUtc, `${metadata.archiveDate}.maxEpochUtc`).ms <= requested.ms
   ));
   const selectionPool = completePriorCandidates.length > 0 ? completePriorCandidates : candidateMetadata;
-  const selectedMetadata = [...selectionPool].sort((left, right) => (
+  return [...selectionPool].sort((left, right) => (
     right.archiveDate.localeCompare(left.archiveDate)
     || right.maxEpochUtc.localeCompare(left.maxEpochUtc)
   ))[0]!;
-  const snapshot = await loadTleSnapshot(selectedMetadata, fetcher);
+}
+
+/**
+ * Admit only records valid at the requested instant from an already verified
+ * atomic publication. Callers must obtain `snapshot` from
+ * `resolveTleSnapshotMetadata`; cross-publication merging is never accepted.
+ */
+export function createLoadedTleSnapshotSelection(
+  catalog: TleWebArchiveCatalog,
+  snapshot: LoadedTleSnapshot,
+  requestedInstantUtc: string,
+): LoadedTleSnapshotSelection {
+  const requested = parseUtcInstant(requestedInstantUtc, 'requestedInstantUtc');
+  const selectedMetadata = resolveTleSnapshotMetadata(catalog, requested.value);
+  if (
+    snapshot.metadata.path !== selectedMetadata.path
+    || snapshot.sha256 !== selectedMetadata.sha256
+    || snapshot.metadata.sha256 !== selectedMetadata.sha256
+  ) {
+    archiveFail('loaded snapshot does not match the frozen publication selected for the requested instant', {
+      requestedInstantUtc: requested.value,
+      expectedPath: selectedMetadata.path,
+      actualPath: snapshot.metadata.path,
+      expectedSha256: selectedMetadata.sha256,
+      actualSha256: snapshot.sha256,
+    });
+  }
   const lowerBoundMs = requested.ms - catalog.maxPropagationAgeMs;
   const validEntries = snapshot.entries.filter(entry => {
     const epochMs = parseUtcInstant(entry.epochUtc, `${entry.satelliteId}.epochUtc`).ms;
@@ -363,6 +387,22 @@ export async function loadTleSnapshotSelection(
     snapshot,
     manifest,
   });
+}
+
+/** Select and validate one atomic published snapshot for this request. */
+export async function loadTleSnapshotSelection(
+  catalog: TleWebArchiveCatalog,
+  requestedInstantUtc: string,
+  fetcher: Fetcher = browserFetcher,
+): Promise<LoadedTleSnapshotSelection> {
+  // Each source file is an atomic published catalog snapshot. Do not merge
+  // successive files: Starlink can legitimately revise element content while
+  // retaining an epoch, and cross-publication mixing would create a false
+  // identity+epoch conflict. Pick the newest overlapping publication, then
+  // admit only records whose own epochs are valid at the requested instant.
+  const selectedMetadata = resolveTleSnapshotMetadata(catalog, requestedInstantUtc);
+  const snapshot = await loadTleSnapshot(selectedMetadata, fetcher);
+  return createLoadedTleSnapshotSelection(catalog, snapshot, requestedInstantUtc);
 }
 
 export type { Fetcher as TleArchiveFetcher };
