@@ -33,6 +33,11 @@ export interface AggregateTleEventAtlasInput {
   readonly windows: readonly TleEventAtlasWindowReceipt[];
 }
 
+export interface TleEventAtlasLogicalSelection {
+  readonly logicalEvents: readonly TleEventAtlasLogicalEvent[];
+  readonly preferredEvents: readonly TleEventAtlasEventVariant[];
+}
+
 function parseUtc(value: string, label: string): number {
   const ms = Date.parse(value);
   if (!Number.isFinite(ms) || !value.endsWith('Z')) throw new Error(`${label} must be an ISO UTC instant`);
@@ -120,6 +125,41 @@ function compareTeachingRank(
     || right.quality.concurrentVisibleSatelliteCount - left.quality.concurrentVisibleSatelliteCount
     || left.triggerInstantUtc.localeCompare(right.triggerInstantUtc)
     || left.logicalEventKey.localeCompare(right.logicalEventKey);
+}
+
+/**
+ * Select one neutral source-backed variant for each overlapping logical event.
+ * Diagnostics and publication must use the same deduplication boundary.
+ */
+export function selectTleEventAtlasLogicalSelection(
+  eventVariants: readonly TleEventAtlasEventVariant[],
+): TleEventAtlasLogicalSelection {
+  const grouped = new Map<string, TleEventAtlasEventVariant[]>();
+  for (const variant of eventVariants) {
+    const bucket = grouped.get(variant.logicalEventKey) ?? [];
+    bucket.push(variant);
+    grouped.set(variant.logicalEventKey, bucket);
+  }
+  const logicalEvents = Object.freeze([...grouped.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([logicalEventKey, variants]): TleEventAtlasLogicalEvent => {
+      const ordered = [...variants].sort(compareVariantsForSameLogicalEvent);
+      const preferred = ordered[0]!;
+      return Object.freeze({
+        logicalEventKey,
+        sourceEvent: preferred.sourceEvent,
+        triggerInstantUtc: preferred.triggerInstantUtc,
+        fromSatelliteId: preferred.fromSatelliteId,
+        toSatelliteId: preferred.toSatelliteId,
+        preferredVariantId: preferred.variantId,
+        variantIds: Object.freeze(ordered.map(variant => variant.variantId)),
+      });
+    }));
+  const preferredById = new Map(eventVariants.map(event => [event.variantId, event]));
+  const preferredEvents = Object.freeze(logicalEvents.map(event => (
+    preferredById.get(event.preferredVariantId)!
+  )));
+  return Object.freeze({ logicalEvents, preferredEvents });
 }
 
 function quantile(sortedValues: readonly number[], fraction: number): number | null {
@@ -214,30 +254,10 @@ export function aggregateTleEventAtlas(
     || left.variantId.localeCompare(right.variantId)
   )));
 
-  const grouped = new Map<string, TleEventAtlasEventVariant[]>();
-  for (const variant of eventVariants) {
-    const bucket = grouped.get(variant.logicalEventKey) ?? [];
-    bucket.push(variant);
-    grouped.set(variant.logicalEventKey, bucket);
-  }
-  const logicalEvents = Object.freeze([...grouped.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([logicalEventKey, variants]): TleEventAtlasLogicalEvent => {
-      const ordered = [...variants].sort(compareVariantsForSameLogicalEvent);
-      const preferred = ordered[0]!;
-      return Object.freeze({
-        logicalEventKey,
-        sourceEvent: preferred.sourceEvent,
-        triggerInstantUtc: preferred.triggerInstantUtc,
-        fromSatelliteId: preferred.fromSatelliteId,
-        toSatelliteId: preferred.toSatelliteId,
-        preferredVariantId: preferred.variantId,
-        variantIds: Object.freeze(ordered.map(variant => variant.variantId)),
-      });
-    }));
+  const logicalSelection = selectTleEventAtlasLogicalSelection(eventVariants);
+  const logicalEvents = logicalSelection.logicalEvents;
   const preferredById = new Map(eventVariants.map(event => [event.variantId, event]));
-  const allPreferredEvents = logicalEvents
-    .map(event => preferredById.get(event.preferredVariantId)!)
+  const allPreferredEvents = [...logicalSelection.preferredEvents]
     .sort(compareTeachingRank);
   const rankedPreferredVariantIds = Object.freeze(allPreferredEvents.map(event => event.variantId));
   const retainedFullClipIds = new Set(rankedPreferredVariantIds.slice(0, TLE_EVENT_ATLAS_MAX_FULL_CLIPS));

@@ -95,15 +95,59 @@ sweep is approximately four hours single-process or about one hour on four
 similar shards. These are estimates; the run logs preserve measured wall time
 per window.
 
+## 90-day extension and diagnostics
+
+The recommended escalation after a 30-day sweep is a 90-day full-reference
+search. It reuses every compatible cached window and does not change the orbit,
+TLE, or handover policy. The 90-day grid contains 4,320 windows:
+
+```bash
+npm run mine:tle:event-atlas -- \
+  --source-root /home/sat/satellite/tle_data \
+  --constellation starlink \
+  --cache-dir /home/sat/tle-event-atlas-cache/20260818 \
+  --output-dir artifacts/tle-event-atlas/20260818-ntpu-90d \
+  --start-utc 2026-05-19T00:00:00Z \
+  --days 90 \
+  --propagation-mode full-reference \
+  --atlas-compression gzip \
+  --shard-count 16 \
+  --shard-index 0
+```
+
+Run shard indices 0 through 15 and repeat for OneWeb. After all shards finish,
+aggregate with `--aggregate-only --atlas-compression gzip`. Gzip is transport
+only; the JSON schema and source-backed contents are unchanged. The
+uncompressed 90-day atlas is intentionally not committed as one large Git
+object.
+
+After aggregation, create the read-only gate diagnostic from the same window
+cache. It reports candidate visibility, qualification ΔSINR, elevation,
+residual visibility, power limiting, and near-miss examples without rerunning
+any canonical calculation:
+
+```bash
+npm run diagnose:tle:event-atlas -- \
+  --cache-dir /home/sat/tle-event-atlas-cache/20260818 \
+  --constellation starlink \
+  --config-digest <config-digest-from-shard-log> \
+  --output-dir artifacts/tle-event-atlas/20260818-ntpu-90d \
+  --start-utc 2026-05-19T00:00:00Z \
+  --days 90
+```
+
 ## Compact outputs
 
 For each constellation the tracked output directory contains:
 
-- `<constellation>-atlas.json`: compact window receipts, source-backed event
-  variant receipts, de-duplicated logical events, ranking dimensions,
-  population summary, and at most 200 complete top-ranked teaching clips;
+- `<constellation>-atlas.json` or `<constellation>-atlas.json.gz`: compact
+  window receipts, source-backed event variant receipts, de-duplicated logical
+  events, ranking dimensions, population summary, and at most 200 complete
+  top-ranked teaching clips;
 - `<constellation>-summary.md`: short human-readable result and top events;
 - `<constellation>-run-manifest.json`: source/cache/config/provenance receipt.
+- `<constellation>-diagnostics.json` and `<constellation>-diagnostics.md`:
+  read-only gate diagnostics derived from accepted window receipts.
 
 The Git output does not contain full ephemeris arrays or per-anchor full
 constellation frames. Every retained event includes its publication SHA-256,

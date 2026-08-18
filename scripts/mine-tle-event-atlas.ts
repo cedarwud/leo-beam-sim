@@ -8,6 +8,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
+import { gzipSync } from 'node:zlib';
 
 import { NTPU_TLE_OBSERVER } from '../src/simulator/observer';
 import {
@@ -57,6 +58,7 @@ interface CliOptions {
   readonly endUtcExclusive: string | null;
   readonly days: number | null;
   readonly propagationMode: TleRunPropagationMode;
+  readonly atlasCompression: 'plain' | 'gzip';
   readonly windowStepSec: number;
   readonly shardCount: number;
   readonly shardIndex: number;
@@ -75,6 +77,7 @@ function usage(): never {
     '  --output-dir artifacts/tle-event-atlas/<run>',
     '  --start-utc 2026-08-10T00:00:00Z (--days 7 | --end-utc <UTC>)',
     '  [--propagation-mode full-reference|staged-coarse-to-fine]',
+    '  [--atlas-compression plain|gzip]',
     '  [--shard-count 4 --shard-index 0]',
     '  [--aggregate-only] [--prepare-catalog-only] [--rebuild-catalog] [--no-resume]',
   ].join('\n'));
@@ -101,6 +104,7 @@ function parseArgs(argv: readonly string[]): CliOptions {
   let endUtcExclusive: string | null = null;
   let days: number | null = null;
   let propagationMode: TleRunPropagationMode = 'full-reference';
+  let atlasCompression: 'plain' | 'gzip' = 'plain';
   let windowStepSec = 1_800;
   let shardCount = 1;
   let shardIndex = 0;
@@ -134,6 +138,10 @@ function parseArgs(argv: readonly string[]): CliOptions {
         throw new Error('--propagation-mode must be full-reference or staged-coarse-to-fine');
       }
       propagationMode = value;
+    } else if (token === '--atlas-compression') {
+      const value = take();
+      if (value !== 'plain' && value !== 'gzip') throw new Error('--atlas-compression must be plain or gzip');
+      atlasCompression = value;
     } else if (token === '--window-step-min') {
       windowStepSec = parsePositiveInteger(take(), '--window-step-min') * 60;
     } else if (token === '--shard-count') shardCount = parsePositiveInteger(take(), '--shard-count');
@@ -162,6 +170,7 @@ function parseArgs(argv: readonly string[]): CliOptions {
     endUtcExclusive,
     days,
     propagationMode,
+    atlasCompression,
     windowStepSec,
     shardCount,
     shardIndex,
@@ -237,6 +246,13 @@ async function atomicWriteJson(path: string, value: unknown): Promise<void> {
 
 async function atomicWriteCompactJson(path: string, value: unknown): Promise<void> {
   await atomicWrite(path, `${JSON.stringify(value)}\n`);
+}
+
+async function atomicWriteGzipJson(path: string, value: unknown): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  const temporaryPath = `${path}.tmp-${process.pid}`;
+  await writeFile(temporaryPath, gzipSync(Buffer.from(JSON.stringify(value), 'utf8')));
+  await rename(temporaryPath, path);
 }
 
 function safeInstant(instantUtc: string): string {
@@ -487,7 +503,14 @@ async function main(): Promise<void> {
     windows,
   });
   const outputDir = options.outputDir!;
-  await atomicWriteCompactJson(join(outputDir, `${options.constellation}-atlas.json`), atlas);
+  const atlasFileName = options.atlasCompression === 'gzip'
+    ? `${options.constellation}-atlas.json.gz`
+    : `${options.constellation}-atlas.json`;
+  if (options.atlasCompression === 'gzip') {
+    await atomicWriteGzipJson(join(outputDir, atlasFileName), atlas);
+  } else {
+    await atomicWriteCompactJson(join(outputDir, atlasFileName), atlas);
+  }
   await atomicWrite(join(outputDir, `${options.constellation}-summary.md`), summaryMarkdown(atlas));
   await atomicWriteJson(join(outputDir, `${options.constellation}-run-manifest.json`), {
     schema: 'tle-event-atlas-run-manifest-v1',
@@ -502,6 +525,7 @@ async function main(): Promise<void> {
     search,
     observer: NTPU_TLE_OBSERVER,
     propagationMode: options.propagationMode,
+    atlasCompression: options.atlasCompression,
     evidenceClass,
     canonicalParameterDigest,
     canonicalScenarioDigest,
@@ -510,7 +534,7 @@ async function main(): Promise<void> {
     exactSgp4Revision: atlas.exactSgp4Revision,
     windowCacheDirectory: join(options.cacheDir, 'windows', options.constellation, configDigest),
     outputFiles: [
-      `${options.constellation}-atlas.json`,
+      atlasFileName,
       `${options.constellation}-summary.md`,
       `${options.constellation}-run-manifest.json`,
     ],
