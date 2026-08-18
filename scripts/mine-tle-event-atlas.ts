@@ -235,6 +235,10 @@ async function atomicWriteJson(path: string, value: unknown): Promise<void> {
   await atomicWrite(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+async function atomicWriteCompactJson(path: string, value: unknown): Promise<void> {
+  await atomicWrite(path, `${JSON.stringify(value)}\n`);
+}
+
 function safeInstant(instantUtc: string): string {
   return instantUtc.replace(/[:.]/g, '-');
 }
@@ -484,7 +488,7 @@ async function main(): Promise<void> {
     windows,
   });
   const outputDir = options.outputDir!;
-  await atomicWriteJson(join(outputDir, `${options.constellation}-atlas.json`), atlas);
+  await atomicWriteCompactJson(join(outputDir, `${options.constellation}-atlas.json`), atlas);
   await atomicWrite(join(outputDir, `${options.constellation}-summary.md`), summaryMarkdown(atlas));
   await atomicWriteJson(join(outputDir, `${options.constellation}-run-manifest.json`), {
     schema: 'tle-event-atlas-run-manifest-v1',
