@@ -99,9 +99,9 @@ per window.
 
 For each constellation the tracked output directory contains:
 
-- `<constellation>-atlas.json`: complete window receipts, source-backed event
-  variants, de-duplicated logical events, ranking dimensions, and population
-  summary;
+- `<constellation>-atlas.json`: compact window receipts, source-backed event
+  variant receipts, de-duplicated logical events, ranking dimensions,
+  population summary, and at most 200 complete top-ranked teaching clips;
 - `<constellation>-summary.md`: short human-readable result and top events;
 - `<constellation>-run-manifest.json`: source/cache/config/provenance receipt.
 

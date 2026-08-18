@@ -7,6 +7,7 @@ export const TLE_EVENT_ATLAS_SCORING_VERSION = 'teaching-clip-lexicographic-v1' 
 export const TLE_EVENT_ATLAS_RESOLVER_REVISION = 'adr-005-frozen-publication-v1' as const;
 export const TLE_EVENT_ATLAS_VISIBILITY_REVISION = 'ntpu-exact-sgp4-horizon-v1' as const;
 export const TLE_EVENT_ATLAS_EXACT_SGP4_REVISION = 'satellite-js-sgp4-v1' as const;
+export const TLE_EVENT_ATLAS_MAX_FULL_CLIPS = 200 as const;
 
 export type TleEventAtlasEvidenceClass =
   | 'canonical-research'
@@ -227,6 +228,8 @@ export interface TleEventAtlasEventVariantReceipt {
   readonly traceDigest: string;
   readonly geometryRunId: string;
   readonly analysisRunId: string;
+  readonly preCommit: TleEventAtlasEventVariant['preCommit'];
+  readonly postCommit: TleEventAtlasEventVariant['postCommit'];
   readonly source: TleEventAtlasSourceReceipt;
   readonly quality: TleEventAtlasClipQuality;
 }
@@ -293,7 +296,7 @@ export interface CanonicalTleEventAtlas {
   readonly windows: readonly TleEventAtlasPublishedWindowReceipt[];
   /** Compact receipts for every overlapping source-backed variant. */
   readonly eventVariants: readonly TleEventAtlasEventVariantReceipt[];
-  /** One complete, neutrally selected clip per de-duplicated physical event. */
+  /** Complete clips retained for the highest-ranked teaching events. */
   readonly preferredEvents: readonly TleEventAtlasEventVariant[];
   readonly logicalEvents: readonly TleEventAtlasLogicalEvent[];
   readonly rankedPreferredVariantIds: readonly string[];

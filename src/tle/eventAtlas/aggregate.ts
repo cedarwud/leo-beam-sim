@@ -2,6 +2,7 @@ import type { SimulatorConstellation } from '../../simulator/types';
 import type { TleRunPropagationMode } from '../run';
 import {
   TLE_EVENT_ATLAS_EXACT_SGP4_REVISION,
+  TLE_EVENT_ATLAS_MAX_FULL_CLIPS,
   TLE_EVENT_ATLAS_RESOLVER_REVISION,
   TLE_EVENT_ATLAS_SCHEMA_VERSION,
   TLE_EVENT_ATLAS_VISIBILITY_REVISION,
@@ -235,13 +236,15 @@ export function aggregateTleEventAtlas(
       });
     }));
   const preferredById = new Map(eventVariants.map(event => [event.variantId, event]));
-  const preferredEvents = Object.freeze(logicalEvents
+  const allPreferredEvents = logicalEvents
     .map(event => preferredById.get(event.preferredVariantId)!)
+    .sort(compareTeachingRank);
+  const rankedPreferredVariantIds = Object.freeze(allPreferredEvents.map(event => event.variantId));
+  const retainedFullClipIds = new Set(rankedPreferredVariantIds.slice(0, TLE_EVENT_ATLAS_MAX_FULL_CLIPS));
+  const preferredEvents = Object.freeze(allPreferredEvents
+    .filter(event => retainedFullClipIds.has(event.variantId))
     .sort((left, right) => left.triggerInstantUtc.localeCompare(right.triggerInstantUtc)
       || left.logicalEventKey.localeCompare(right.logicalEventKey)));
-  const rankedPreferredVariantIds = Object.freeze([...preferredEvents]
-    .sort(compareTeachingRank)
-    .map(event => event.variantId));
   const publishedWindows = Object.freeze(windows.map(window => {
     if (window.status === 'rejected') return window;
     const { events, ...receipt } = window;
@@ -258,6 +261,8 @@ export function aggregateTleEventAtlas(
     traceDigest: event.traceDigest,
     geometryRunId: event.geometryRunId,
     analysisRunId: event.analysisRunId,
+    preCommit: event.preCommit,
+    postCommit: event.postCommit,
     source: event.source,
     quality: event.quality,
   })));

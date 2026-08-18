@@ -122,7 +122,7 @@ assert.equal(atlas.summary.acceptedWindowCount, 4);
 assert.equal(atlas.summary.coverageComplete, true);
 assert.equal(atlas.summary.populationClaimsAllowed, true);
 assert.ok(atlas.eventVariants.length >= atlas.logicalEvents.length);
-assert.equal(atlas.preferredEvents.length, atlas.logicalEvents.length);
+assert.equal(atlas.preferredEvents.length, Math.min(200, atlas.logicalEvents.length));
 assert.ok(atlas.logicalEvents.every(event => event.variantIds.length === 4));
 assert.equal(atlas.summary.uniqueServingChangeCount, atlas.logicalEvents.length);
 assert.equal(atlas.rankedPreferredVariantIds.length, atlas.logicalEvents.length);
