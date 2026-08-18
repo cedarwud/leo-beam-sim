@@ -339,7 +339,6 @@ function summaryMarkdown(atlas: CanonicalTleEventAtlas): string {
     ...(rows.length === 0 ? ['| - | - | - | - | - | - | - |'] : rows),
     '',
     'Ranking is a presentation-only lexicographic order. Handover validity remains the canonical 3 dB offset and 30 s TTT trace.',
-    '',
   ].join('\n')}\n`;
 }
 
