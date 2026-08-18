@@ -1,0 +1,38 @@
+{
+  "schema": "tle-event-atlas-run-manifest-v1",
+  "atlasId": "tle-event-atlas:3c1a0c145d350aa73be3f7569c1d776c707e7b7d3978119d72b68192f85a3f67",
+  "atlasSchema": "canonical-tle-event-atlas-v1",
+  "generatedAtUtc": "2026-08-18T12:19:35.071Z",
+  "sourceRoot": "/home/sat/satellite/tle_data",
+  "sourceDirectory": "/home/sat/satellite/tle_data/starlink/tle",
+  "sourceArchiveContentSha256": "de4821c12b17aa8d6479bc2b8d86ecd1e300580ba265b11d4f36f444c2ec1f00",
+  "catalogCachePath": "/home/sat/tle-event-atlas-cache/20260818/catalogs/starlink.json",
+  "configDigest": "055fd10fcc192592328e34b0ce99475b8c36512da50c39dbbf8e1626a70840e8",
+  "search": {
+    "startUtc": "2026-05-19T00:00:00.000Z",
+    "endUtcExclusive": "2026-08-17T00:00:00.000Z",
+    "windowStepSec": 1800,
+    "physicalDurationSec": 7776000
+  },
+  "observer": {
+    "id": "ntpu-wgs84-v1",
+    "label": "NTPU",
+    "latitudeDeg": 24.9441667,
+    "longitudeDeg": 121.3713889,
+    "heightKm": 0.05
+  },
+  "propagationMode": "full-reference",
+  "atlasCompression": "gzip",
+  "evidenceClass": "canonical-research",
+  "canonicalParameterDigest": "59c3048c229803d5783f67dfd5380dbb6fb588ad1746f806abeea473400d2953",
+  "canonicalScenarioDigest": "8e4608eec108cfeee5e0954e38ddcf554e9a91eb17278bee500868bd1eef5b93",
+  "resolverRevision": "adr-005-frozen-publication-v1",
+  "visibilityRevision": "ntpu-exact-sgp4-horizon-v1",
+  "exactSgp4Revision": "satellite-js-sgp4-v1",
+  "windowCacheDirectory": "/home/sat/tle-event-atlas-cache/20260818/windows/starlink/055fd10fcc192592328e34b0ce99475b8c36512da50c39dbbf8e1626a70840e8",
+  "outputFiles": [
+    "starlink-atlas.json.gz",
+    "starlink-summary.md",
+    "starlink-run-manifest.json"
+  ]
+}
