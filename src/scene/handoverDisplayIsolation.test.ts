@@ -6,6 +6,7 @@ import {
   resolveInterHandoverCinemaEnvelope,
   resolveInterCinemaFromAnchor,
   resolveInterCinemaPairAnchor,
+  selectHandoverEventsForDisplay,
   shouldSuppressInterSeekFade,
 } from './handoverDisplayIsolation';
 import { resolveDirectorFocusAutoExitMs } from '../useCameraControls';
@@ -18,6 +19,7 @@ function assertIsolated(input: Parameters<typeof resolveHandoverDisplayIsolation
   assert.equal(state.hideTimelinePulse, true);
   assert.equal(state.hideTimelineTriggered, true);
   assert.equal(state.hideTimelineEffects, true);
+  assert.equal(state.suppressNaturalHandoverLayers, true);
 }
 
 assertIsolated({ manualHandoverActive: true, cinemaCandidateActive: false });
@@ -31,6 +33,45 @@ const interCinema = resolveHandoverDisplayIsolation({
 assert.equal(interCinema.hideNormalBeamField, true, 'inter cinema hides the normal timeline beam field');
 assert.equal(interCinema.showCinemaCandidateFan, true, 'inter cinema restores the candidate satellite fan');
 
+const interCinemaPending = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  cinemaCandidateActive: false,
+  cinemaCandidateArmed: true,
+  cinemaCandidateReady: false,
+  cinemaCandidateKind: 'inter',
+  presentationSource: 'cinema',
+});
+assert.equal(interCinemaPending.active, false, 'a cinema seek arm does not claim a drawable handover before the frame lands');
+assert.equal(interCinemaPending.hidePrimaryServingBeam, false, 'the current serving beam remains visible during the seek arm');
+assert.equal(interCinemaPending.hideNormalBeamField, false, 'the normal serving field remains visible during the seek arm');
+assert.equal(interCinemaPending.hideCandidateFan, true, 'the stale live candidate fan is hidden during the seek arm');
+assert.equal(interCinemaPending.hideTimelinePulse, true, 'natural timeline pulses cannot leak into the cinema seek arm');
+assert.equal(interCinemaPending.suppressNaturalHandoverLayers, true, 'natural effects cannot leak into the cinema seek arm');
+
+const manualArmed = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  manualHandoverRequested: true,
+  cinemaCandidateActive: false,
+});
+assert.equal(manualArmed.active, false, 'an unresolved manual cue does not claim a drawable transition');
+assert.equal(manualArmed.suppressNaturalHandoverLayers, true, 'an unresolved manual cue still suppresses natural effects');
+
+const retainedEvents = [
+  { ueId: 'ue-other', sourceTimeSec: 12, marker: 'other' },
+  { ueId: 'ue-primary', sourceTimeSec: 10, marker: 'old-primary' },
+  { ueId: 'ue-primary', sourceTimeSec: 14, marker: 'latest-primary' },
+] as const;
+assert.deepEqual(
+  selectHandoverEventsForDisplay(retainedEvents, 'ue-primary', false),
+  [retainedEvents[2]],
+  'the default display owner paints only the latest protagonist handover',
+);
+assert.deepEqual(
+  selectHandoverEventsForDisplay(retainedEvents, 'ue-primary', true),
+  retainedEvents,
+  'the explicit other-UE display switch may widen the display set without changing truth',
+);
+
 const intraCinema = resolveHandoverDisplayIsolation({
   manualHandoverActive: false,
   cinemaCandidateActive: true,
@@ -38,6 +79,28 @@ const intraCinema = resolveHandoverDisplayIsolation({
 });
 assert.equal(intraCinema.hideNormalBeamField, false, 'intra keeps the existing beam field');
 assert.equal(intraCinema.showCinemaCandidateFan, false, 'intra does not add an inter candidate fan');
+
+const naturalWalkerEvent = resolveHandoverDisplayIsolation({
+  manualHandoverActive: true,
+  cinemaCandidateActive: true,
+  cinemaCandidateKind: 'inter',
+  presentationSource: 'walker',
+});
+assert.deepEqual(
+  naturalWalkerEvent,
+  {
+    active: false,
+    hidePrimaryServingBeam: false,
+    hideCandidateFan: false,
+    hideNormalBeamField: false,
+    showCinemaCandidateFan: false,
+    hideTimelinePulse: false,
+    hideTimelineTriggered: false,
+    hideTimelineEffects: false,
+    suppressNaturalHandoverLayers: false,
+  },
+  'a natural Walker event must not take ownership of the teaching isolation layer',
+);
 
 const capturedFrom = resolveInterCinemaFromAnchor({
   eventId: 'evt-inter',
@@ -100,6 +163,7 @@ assert.deepEqual(idle, {
   hideTimelinePulse: false,
   hideTimelineTriggered: false,
   hideTimelineEffects: false,
+  suppressNaturalHandoverLayers: false,
 });
 
 assert.equal(shouldSuppressInterSeekFade('inter'), true, 'inter seek keeps the callback but suppresses the black veil');
@@ -134,11 +198,11 @@ assert.equal(interBeforeCandidate.phase, 'serving', 'inter keeps the serving pha
 assert.equal(interBeforeCandidate.fromOpacity, interPeak, 'inter keeps the source beam fully visible before the candidate arrives');
 assert.equal(interBeforeCandidate.toOpacity, 0, 'inter does not show the candidate before the serving phase ends');
 
-const interOverlap = resolveInterHandoverCinemaEnvelope(0.39, interPeak);
+const interOverlap = resolveInterHandoverCinemaEnvelope(0.55, interPeak);
 assert(interOverlap.fromOpacity > 0 && interOverlap.toOpacity > 0, 'inter keeps both sides visible during the handover overlap');
 assert.equal(interOverlap.fromOpacity, interPeak, 'inter does not fade the source while the candidate is first appearing');
 
-const interReleasing = resolveInterHandoverCinemaEnvelope(0.76, interPeak);
+const interReleasing = resolveInterHandoverCinemaEnvelope(0.8, interPeak);
 assert.equal(interReleasing.phase, 'releasing', 'inter enters release only after the candidate has appeared');
 assert(interReleasing.fromOpacity > 0, 'inter source remains visible while it fades out');
 assert.equal(interReleasing.toOpacity, interPeak, 'inter candidate is fully visible while the source fades out');

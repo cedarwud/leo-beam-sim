@@ -27,6 +27,7 @@ import {
 } from './runtimeFrameStep';
 import {
   attachSinrLiveCellFrame,
+  buildSinrLiveCellLayout,
   createSinrLiveCellModel,
   resolveSinrLiveBeamsPerSat,
 } from './sinrLiveCellRuntime';
@@ -176,6 +177,9 @@ export function useSimulation(
   primaryJogEastKm: number = 0,
   primaryJogNorthKm: number = 0,
   beamCountBySatellite: Readonly<Record<string, number>> = {},
+  servingBeamCount?: number,
+  candidateBeamCount?: number,
+  beamHoppingEnabled = false,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -277,6 +281,17 @@ export function useSimulation(
   const hoManager = useMemo(() => new S3HandoverManager(profile.handover), [profile.handover]);
   const requestedUeCount = Math.trunc(ueCount ?? 1);
   const effectiveUeCount = Number.isFinite(requestedUeCount) ? Math.max(1, requestedUeCount) : 1;
+  const sevenCellUeDistribution = useMemo(() => {
+    if (!useEarthFixedCellTruth || ueDistributionMode !== 'seven-cell-asymmetric') return null;
+    const layout = buildSinrLiveCellLayout(profile);
+    return {
+      centers: layout.centers.map(center => ({
+        eastKm: center.localXKm,
+        northKm: center.localYKm,
+      })),
+      radiusKm: layout.cellRadiusKm,
+    };
+  }, [profile, ueDistributionMode, useEarthFixedCellTruth]);
   const secondaryHoManagers = useMemo(
     () => Array.from(
       { length: Math.max(0, effectiveUeCount - 1) },
@@ -309,8 +324,28 @@ export function useSimulation(
   // changes only for a structural scene/profile/epoch or handover-policy change.
   // Ordinary signal tuning refreshes the profile in place below, so the internal
   // cell HandoverManagers keep their serving/guard/event continuity.
+  const sinrLiveBeamRuntimeRef = useRef({
+    beamCountBySatellite,
+    servingBeamCount,
+    candidateBeamCount,
+    beamHoppingEnabled,
+  });
+  sinrLiveBeamRuntimeRef.current = {
+    beamCountBySatellite,
+    servingBeamCount,
+    candidateBeamCount,
+    beamHoppingEnabled,
+  };
   const sinrLiveCellModel = useMemo(
-    () => createSinrLiveCellModel(profile, useEarthFixedCellTruth, replay.epochUtcMs),
+    () => createSinrLiveCellModel(
+      profile,
+      useEarthFixedCellTruth,
+      replay.epochUtcMs,
+      sinrLiveBeamRuntimeRef.current.beamCountBySatellite,
+      sinrLiveBeamRuntimeRef.current.servingBeamCount,
+      sinrLiveBeamRuntimeRef.current.candidateBeamCount,
+      sinrLiveBeamRuntimeRef.current.beamHoppingEnabled,
+    ),
     [
       sinrLiveCellModelStructureKey,
       handoverResetKey,
@@ -323,8 +358,18 @@ export function useSimulation(
       profile,
       resolveSinrLiveBeamsPerSat(profile),
       beamCountBySatellite,
+      servingBeamCount,
+      candidateBeamCount,
+      beamHoppingEnabled,
     );
-  }, [beamCountBySatellite, profile, sinrLiveCellModel]);
+  }, [
+    beamCountBySatellite,
+    beamHoppingEnabled,
+    candidateBeamCount,
+    profile,
+    servingBeamCount,
+    sinrLiveCellModel,
+  ]);
   const effectiveUeMobilityParams = ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS;
   const ueDeterministicSeed = profile.ueDistribution?.seed ?? 42;
   const createCurrentMobilityStates = useCallback(() => (
@@ -475,6 +520,8 @@ export function useSimulation(
         ueMobilityParams: effectiveUeMobilityParams,
         ueDistributionScope,
         ueDistributionRadiusKm,
+        ueDistributionCellCentersKm: sevenCellUeDistribution?.centers,
+        ueDistributionCellRadiusKm: sevenCellUeDistribution?.radiusKm,
         mobilityStates: mobilityStatesRef.current,
         state: runtimeStateRef.current,
       });
@@ -541,6 +588,8 @@ export function useSimulation(
             ueMobilityParams: effectiveUeMobilityParams,
             ueDistributionScope,
             ueDistributionRadiusKm,
+            ueDistributionCellCentersKm: sevenCellUeDistribution?.centers,
+            ueDistributionCellRadiusKm: sevenCellUeDistribution?.radiusKm,
             mobilityStates: mobilityStatesRef.current,
             state: runtimeStateRef.current,
           });
@@ -593,6 +642,7 @@ export function useSimulation(
       effectiveUeMobilityParams,
       ueDistributionScope,
       ueDistributionRadiusKm,
+      sevenCellUeDistribution,
     ],
   );
 
@@ -678,9 +728,10 @@ export function useSimulation(
     effectiveUeCount,
     ueDistributionMode,
     uePrimaryAnchorMode,
-    ueDistributionScope,
-    ueDistributionRadiusKm,
-    ueMobilityMode,
+      ueDistributionScope,
+      ueDistributionRadiusKm,
+      sevenCellUeDistribution,
+      ueMobilityMode,
     effectiveUeMobilityParams,
     resetMobilityStates,
   ]);
@@ -752,6 +803,8 @@ export function useSimulation(
       ueMobilityParams: effectiveUeMobilityParams,
       ueDistributionScope,
       ueDistributionRadiusKm,
+      ueDistributionCellCentersKm: sevenCellUeDistribution?.centers,
+      ueDistributionCellRadiusKm: sevenCellUeDistribution?.radiusKm,
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });

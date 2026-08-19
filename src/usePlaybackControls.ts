@@ -26,30 +26,33 @@ export interface PlaybackControls {
   readonly resetAutoSlowDismissed: () => void;
 }
 
+export interface LegacyAutoSlowSignal {
+  /** Resolved by the scene presentation owner after both cone ends are drawable. */
+  readonly visibleHandoverActive: boolean;
+}
+
+/**
+ * Playback never infers a visual transition from a raw pending/TTT field.  The
+ * scene presentation owner is the only authority that can request HO Slow.
+ */
+export function resolveLegacyAutoSlowActive(signal: LegacyAutoSlowSignal): boolean {
+  return signal.visibleHandoverActive;
+}
+
 export function usePlaybackControls(
-  simState: SimState,
+  _simState: SimState,
   directorFocusActive = false,
+  visibleHandoverActive = false,
 ): PlaybackControls {
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(DEFAULT_BASE_SPEED);
   const [autoSlowEnabled, setAutoSlowEnabled] = useState(true);
   const [autoSlowDismissed, setAutoSlowDismissed] = useState(false);
 
-  // W7b-vis: also auto-slow while the cell-lane BEAM-DUEL is counting toward a handover
-  // (panelComparison.role === 'pending' = the displayed contender is beating serving by the
-  // offset). Without this the duel's time-to-trigger sweeps 0→3.5s SIM in ~0.7s WALL at 5×
-  // and is unreadable. Bounded to the count-up (progress < threshold) so it resumes once the
-  // countdown caps — it does not hold the scene slow indefinitely. Gated by the HO-Slow
-  // toggle (autoSlowEnabled) below, so the user can turn it off / Resume.
-  const cellDuelHandoverPending =
-    simState.panelComparison.role === 'pending'
-    && simState.handoverTriggerProgressSec < simState.handoverTriggerSec;
-  const autoSlowActive =
-    simState.pendingTargetSatId !== null
-    || simState.intraHandoverEvent !== null
-    || cellDuelHandoverPending;
+  const autoSlowActive = resolveLegacyAutoSlowActive({ visibleHandoverActive });
   const autoSlowApplied = autoSlowEnabled && autoSlowActive && !autoSlowDismissed;
-  const effectiveSpeed = directorFocusActive
+  const directorSlowActive = directorFocusActive && visibleHandoverActive;
+  const effectiveSpeed = directorSlowActive
     ? Math.min(speed, DIRECTOR_FOCUS_SPEED)
     : autoSlowApplied
       ? Math.min(speed, HANDOVER_FOCUS_SPEED)
@@ -84,7 +87,7 @@ export function usePlaybackControls(
       paused,
       speed,
       effectiveSpeed,
-      directorFocusActive,
+      directorSlowActive,
       autoSlowActive,
       autoSlowApplied,
       autoSlowEnabled,

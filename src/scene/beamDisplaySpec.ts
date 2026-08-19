@@ -111,7 +111,7 @@ export interface BeamDisplaySpec {
    * The hero (primary serving) cone keeps its own brighter opacity, and the
    * pair / pulse / non-serving layers keep their own style tokens — this is the
    * serving-field knob only (SDD §3.1 servingConeOpacity, distinct from
-   * primaryConeOpacity). Default = {@link SINR_LIVE_CONE_AMBIENT_OPACITY} (0.24 — the top
+   * primaryConeOpacity). Default = {@link SINR_LIVE_CONE_AMBIENT_OPACITY} (0.17 — the top
    * of the neutral-grey alpha ladder, below the two coloured roles at 0.80).
    */
   readonly servingConeOpacity: number;
@@ -188,7 +188,7 @@ export interface BeamDisplaySpec {
    * {@link candidateConeColor} (your next link); the rest of that satellite's beams take
    * neutral GREY (FINAL spec: only the beam about to serve YOU is blue — the candidate
    * satellite's other beams are context). Hierarchy across the grey layers is alpha alone:
-   * serving fan 0.24 > candidate fan 0.20 > background 0.18 > non-serving 0.12. {@link candidateFanMaxCones} bounds how many of that ONE satellite's
+   * serving fan 0.17 > candidate fan 0.13 > background 0.10 > non-serving 0.07. {@link candidateFanMaxCones} bounds how many of that ONE satellite's
    * beams are drawn (it can never pull in a second satellite). Prompt-control:
    * "候選扇形再多/再少幾根" = the max; "候選扇形再淡一點" = the opacity. Defaults = the
    * SINR_LIVE_CONE_CANDIDATE_FAN_* / SINR_LIVE_CANDIDATE_FAN_MAX_CONES tokens.
@@ -212,7 +212,7 @@ export interface BeamDisplaySpec {
    * site #4 — the non-serving layer ignored the only opacity field that existed). Dimmer
    * than the ambient serving field so co-channel beams read as faint background context.
    * Prompt-control: "其他/非服務波束明顯一點" = raise this. Default =
-   * {@link SINR_LIVE_CONE_NONSERVING_OPACITY} (0.12 — 0.04 was optically absent under
+   * {@link SINR_LIVE_CONE_NONSERVING_OPACITY} (0.07 — 0.04 was optically absent under
    * NormalBlending, so the opt-in toggle changed nothing visible). Display-only.
    */
   readonly nonServingConeOpacity: number;
@@ -345,4 +345,60 @@ export function resolveBeamFocusSatIds(
   const ids = new Set<string>();
   if (record?.servingSatId) ids.add(record.servingSatId);
   return ids;
+}
+
+export interface DisplayHeroRecord {
+  readonly servingSatId: string;
+  readonly cellId: number;
+}
+
+/**
+ * Pick the drawable serving beam that owns the visual HERO role.
+ *
+ * The primary UE remains the first choice. When that UE is temporarily unserved,
+ * the scene may still contain other valid serving beams; choosing only a fallback
+ * satellite left every one of those cones grey because no fallback cell identity
+ * was supplied to the role resolver. This display-only resolver chooses a complete
+ * `(satId, cellId)` pair from the beams the renderer can actually draw. It never
+ * changes UE attachment, serving truth, SINR, or handover state.
+ */
+export function resolveDisplayHeroRecord(
+  primary: {
+    readonly servingSatId?: string | null;
+    readonly cellId?: number | null;
+  } | null,
+  drawableServingBeams: readonly DisplayHeroRecord[],
+): DisplayHeroRecord | null {
+  if (
+    primary?.servingSatId
+    && primary.cellId !== null
+    && primary.cellId !== undefined
+    && drawableServingBeams.some(beam => (
+      beam.servingSatId === primary.servingSatId
+      && beam.cellId === primary.cellId
+    ))
+  ) {
+    return { servingSatId: primary.servingSatId, cellId: primary.cellId };
+  }
+
+  if (drawableServingBeams.length === 0) return null;
+
+  const countBySatellite = new Map<string, number>();
+  for (const beam of drawableServingBeams) {
+    countBySatellite.set(
+      beam.servingSatId,
+      (countBySatellite.get(beam.servingSatId) ?? 0) + 1,
+    );
+  }
+  const fallbackSatelliteId = [...countBySatellite.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
+  if (!fallbackSatelliteId) return null;
+
+  const fallbackCellId = drawableServingBeams
+    .filter(beam => beam.servingSatId === fallbackSatelliteId)
+    .map(beam => beam.cellId)
+    .sort((a, b) => a - b)[0];
+  return fallbackCellId === undefined
+    ? null
+    : { servingSatId: fallbackSatelliteId, cellId: fallbackCellId };
 }

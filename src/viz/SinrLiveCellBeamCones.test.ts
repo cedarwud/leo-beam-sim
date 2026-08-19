@@ -40,6 +40,7 @@ import {
   resolveSinrLiveConeRenderColor,
   resolveSinrLiveConeRole,
   resolveCandidateBeamConeItems,
+  resolveBudgetedSinrLiveBeamConeItems,
   sinrLiveHandoverPulseOpacity,
   resolveTopServingFocusSatIds,
   type SinrLiveCellBeamConeRenderItem,
@@ -374,13 +375,13 @@ check('S5-2 cone base == the TRUTH cell centre from buildSinrLiveCellLayout (no 
   approx(items[0].baseCenter.y, 0, 1e-9, 'cone base on the ground plane');
 });
 
-check('S5-2 style tokens (hybrid): ambient 0.24 < pulse 0.8, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
+check('S5-2 style tokens (hybrid): ambient 0.17 < pulse 0.8, 32 segments, NormalBlending (replaces the cone style/opacity/blending pins)', () => {
   // 0.45 restored 2026-08-06: under NormalBlending a LOW ambient alpha lets the green
   // terrain dominate the composite, which is what made the whole field read green.
-  // 0.45 -> 0.55 -> 0.40 -> 0.32 -> 0.24: the serving fan is neutral GREY
+  // The serving fan is neutral GREY
   // context, so it has no hue to defend — only its place in the alpha ladder matters
-  // (0.80 coloured roles > 0.24 serving fan > 0.20 candidate fan > 0.18 background).
-  assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.24, 'serving-fan (grey context) opacity sits below the two coloured roles and above the other grey layers');
+  // (0.80 coloured roles > 0.17 serving fan > 0.13 candidate fan > 0.10 background).
+  assertEqual(SINR_LIVE_CONE_AMBIENT_OPACITY, 0.17, 'serving-fan (grey context) opacity sits below the two coloured roles and above the other grey layers');
   assert(SINR_LIVE_CONE_PULSE_PEAK_OPACITY > SINR_LIVE_CONE_AMBIENT_OPACITY, 'HYBRID: the handover pulse is brighter than the ambient field');
   assertEqual(SINR_LIVE_CONE_SEGMENTS, 32, 'oblique cone ring segment count');
   // Blending decision chain: 7fb5991 (2026-06-22) moved Additive→Normal for semantic
@@ -403,9 +404,9 @@ check('Tier-2 SinrLiveConeStyle resolver: layer→opacity + colour map to the lo
   // resolveSinrLiveConeLayerOpacity is the single CHOICE point for each cone
   // layer's opacity (was: ambient default in the renderer, pulse a bare const). It
   // must return the screenshot-locked values verbatim.
-  assertEqual(resolveSinrLiveConeLayerOpacity('ambient'), SINR_LIVE_CONE_AMBIENT_OPACITY, 'resolver ambient == 0.24 token');
+  assertEqual(resolveSinrLiveConeLayerOpacity('ambient'), SINR_LIVE_CONE_AMBIENT_OPACITY, 'resolver ambient == 0.17 token');
   assertEqual(resolveSinrLiveConeLayerOpacity('pulse'), SINR_LIVE_CONE_PULSE_PEAK_OPACITY, 'resolver pulse == 0.8 peak token');
-  assertEqual(resolveSinrLiveConeLayerOpacity('nonServing'), SINR_LIVE_CONE_NONSERVING_OPACITY, 'resolver nonServing == 0.04 dim token');
+  assertEqual(resolveSinrLiveConeLayerOpacity('nonServing'), SINR_LIVE_CONE_NONSERVING_OPACITY, 'resolver nonServing == 0.07 dim token');
   assert(
     resolveSinrLiveConeLayerOpacity('pulse') > resolveSinrLiveConeLayerOpacity('ambient'),
     'HYBRID via resolver: the handover pulse is brighter than the ambient field',
@@ -569,6 +570,39 @@ check('pulse cones carry the truth event.kind (C2 / Bug H) so the render can pai
     placementByCellId, satelliteWorldById, focusSatIds: null,
   });
   assertEqual(ambient[0].kind, undefined, 'an ambient serving cone carries NO kind (only the pulse layer tags one)');
+});
+
+check('handover pulse roles keep the source serving-yellow and colour only the acquiring side', () => {
+  const inter = resolveSinrLiveHandoverPulseConeItems(pulseInput([
+    pulseEvent({ kind: 'inter', sourceTimeSec: 450 }),
+  ]));
+  const interSource = inter.find(item => item.role === 'handoverSource');
+  const interTarget = inter.find(item => item.role === 'handoverTarget');
+  assert(interSource !== undefined && interTarget !== undefined, 'inter pulse has one explicit source and target role');
+  if (interSource === undefined || interTarget === undefined) throw new Error('inter pulse role fixture is incomplete');
+  assertEqual(
+    resolveSinrLiveConeRoleStyle(interSource.role!, {}, interSource).color,
+    SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+    'inter source remains serving yellow',
+  );
+  assertEqual(
+    resolveSinrLiveConeRoleStyle(interTarget.role!, {}, interTarget).color,
+    SINR_LIVE_CONE_CANDIDATE_COLOR,
+    'inter target is the only blue pulse side',
+  );
+
+  const intra = resolveSinrLiveHandoverPulseConeItems(pulseInput([
+    pulseEvent({ kind: 'intra', fromSatId: 'sat-A', fromCellId: 0, toSatId: 'sat-A', toCellId: 1, sourceTimeSec: 450 }),
+  ]));
+  const intraSource = intra.find(item => item.role === 'handoverSource');
+  const intraTarget = intra.find(item => item.role === 'handoverTarget');
+  assert(intraSource !== undefined && intraTarget !== undefined, 'intra pulse has one explicit source and target role');
+  if (intraSource === undefined || intraTarget === undefined) throw new Error('intra pulse role fixture is incomplete');
+  assertEqual(
+    resolveSinrLiveConeRoleStyle(intraTarget.role!, {}, intraTarget).color,
+    INTRA_HANDOVER_TARGET_COLOR,
+    'intra target remains orange',
+  );
 });
 
 check('render-colour resolution (C2): hero > per-kind pulse > override > serving-identity', () => {
@@ -1003,13 +1037,13 @@ check('FINAL ALPHA LADDER: hierarchy is opacity alone, both coloured roles carry
   assert(s('candidateFan').opacity > s('background').opacity, 'the candidate fan reads above unrelated satellites');
   assert(s('background').opacity > s('nonServing').opacity, 'the opt-in non-serving layer is the faintest');
   // VISIBILITY FLOOR. The shallow-cone dim multiplies the serving + candidate mounts (the
-  // non-serving mount passes no dimShallowCones, so its 0.12 IS its effective alpha).
+  // non-serving mount passes no dimShallowCones, so its base alpha IS its effective alpha).
   // Nothing may land near the 0.023 "mathematically present, optically absent" level.
   for (const role of ['servingFan', 'background', 'candidatePrimary', 'candidateFan'] as const) {
     const effective = s(role).opacity * SINR_LIVE_CONE_DIM_MIN_FACTOR;
     assert(effective > 0.04, `${role} stays visible at the shallow-cone dim floor (effective ${effective.toFixed(4)})`);
   }
-  assert(resolveSinrLiveConeLayerOpacity('nonServing') > 0.1, 'the opt-in non-serving layer is actually visible when switched on (0.04 was 96% terrain)');
+  assert(resolveSinrLiveConeLayerOpacity('nonServing') > 0.06, 'the opt-in non-serving layer remains visible while staying behind the default context field');
 });
 
 check('HANDOVER FADE is pure alpha: the from/to cones keep their event-kind hue for the whole envelope', () => {
@@ -1138,6 +1172,50 @@ check('candidate FAN: the candidate satellite draws its own bounded multibeam fa
     0,
     'maxFanCones 0 draws nothing',
   );
+});
+
+check('display beam budget: serving fan clamps to 1 and fills the display-only 19-cell substrate', () => {
+  const displayPlacements = new Map<number, SinrLiveCellPlacement>(
+    Array.from({ length: 19 }, (_, cellId) => [cellId, {
+      cellId,
+      worldX: 20 * (cellId + 1),
+      worldZ: -15 * (cellId + 1),
+      radiusWorld: 10,
+    }]),
+  );
+  const rawItems = resolveSinrLiveCellBeamConeItems({
+    cellFrame: frameOf(Array.from({ length: 7 }, (_, cellId) => beam('sat-A', cellId, true))),
+    placementByCellId: displayPlacements,
+    satelliteWorldById,
+    focusSatIds: new Set(['sat-A']),
+  });
+  const one = resolveBudgetedSinrLiveBeamConeItems({
+    existingItems: rawItems,
+    satId: 'sat-A',
+    maxCones: 1,
+    placementByCellId: displayPlacements,
+    satelliteWorldById,
+    frequencyReuse: PULSE_REUSE,
+    role: 'servingFan',
+    renderKeyPrefix: 'test-serving',
+    preferredCellId: 0,
+  });
+  assertEqual(one.length, 1, 'serving budget 1 produces one visible cone');
+  assertEqual(one[0].cellId, 0, 'budget 1 preserves the preferred primary cell');
+
+  const nineteen = resolveBudgetedSinrLiveBeamConeItems({
+    existingItems: rawItems,
+    satId: 'sat-A',
+    maxCones: 19,
+    placementByCellId: displayPlacements,
+    satelliteWorldById,
+    frequencyReuse: PULSE_REUSE,
+    role: 'servingFan',
+    renderKeyPrefix: 'test-serving',
+  });
+  assertEqual(nineteen.length, 19, 'serving budget 19 fills the visible fan');
+  assert(nineteen.slice(7).every(item => item.role === 'servingFan'), 'supplemental beams are display fan items');
+  assert(nineteen.slice(7).every(item => item.cellId >= 7), 'supplemental beams do not replace the seven UE cells');
 });
 
 check('candidate FAN: unchanged no-ops (no pending target / target IS the serving sat / no cell frame)', () => {

@@ -66,13 +66,14 @@ import {
   resolveCinemaHandoverPairConeItems,
   resolveCinemaInterServingFanConeItems,
   resolveCandidateBeamConeItems,
-  resolveTopServingFocusSatIds,
+  resolveBudgetedSinrLiveBeamConeItems,
   type SinrLiveCellPlacement,
   type SinrLiveCinemaHandoverCandidate,
 } from '../viz/SinrLiveCellBeamCones';
 import {
   DEFAULT_BEAM_DISPLAY_SPEC,
   resolveBeamFocusSatIds,
+  resolveDisplayHeroRecord,
   resolveTriggeredHandoverTargetColor,
   type BeamDisplaySpec,
 } from './beamDisplaySpec';
@@ -84,6 +85,7 @@ import {
   resolveHandoverCinemaEnvelope,
   resolveHandoverDisplayIsolation,
   resolveInterCinemaPairAnchor,
+  selectHandoverEventsForDisplay,
   type InterCinemaPairAnchor,
   type InterCinemaApexWorld,
 } from './handoverDisplayIsolation';
@@ -92,9 +94,23 @@ import {
   filterOtherHandoverDisplayUes,
   selectOtherHandoverUeIds,
 } from './otherHandoverUeSelector';
-import { resolveRecentPrimaryIntraHandoverEvent } from './intraHandoverVisualState';
-import { resolveHandoverConeEnvelope } from '../constants/sinrLiveConeStyle';
-import { buildSinrLiveCellLayout, resolveSinrLiveBeamsPerSat } from './sinrLiveCellRuntime';
+import {
+  advanceHandoverPresentation,
+  createIdleHandoverPresentationView,
+  createHandoverPresentationState,
+  type HandoverPresentationEvent,
+  type HandoverPresentationView,
+} from './handoverPresentationOwner';
+import {
+  buildSinrLiveCellLayout,
+  resolveSinrLiveBeamsPerSat,
+  SINR_LIVE_BEAM_DISPLAY_CELL_COUNT,
+  SINR_LIVE_ARCHIVED_DISPLAY_CELL_COUNT,
+} from './sinrLiveCellRuntime';
+import {
+  createSinrLiveBeamDisplayFrame,
+  resolveSinrLiveConfiguredBeamCount,
+} from './sinrLiveBeamDisplayFrame';
 import { BeamLoadCylinder } from '../viz/BeamLoadCylinder';
 import { BeamLoadUploadParticles } from '../viz/BeamLoadUploadParticles';
 import { HandoverStoryLayer } from '../viz/HandoverStoryLayer';
@@ -199,6 +215,11 @@ interface SceneContentProps {
   beamDisplaySpec?: BeamDisplaySpec;
   /** Focused live handover-cinema candidate used only by the cone presentation layer. */
   handoverCinemaCandidate?: SinrLiveCinemaHandoverCandidate | null;
+  /** The cinema button owns the display while its requested frame is landing. */
+  handoverCinemaArmed?: boolean;
+  handoverCinemaKind?: 'intra' | 'inter' | null;
+  /** Downstream presentation status; never a handover-decision input. */
+  onHandoverPresentationChange?: (view: HandoverPresentationView) => void;
 }
 
 interface SceneRenderContentProps extends SceneContentProps {
@@ -226,13 +247,6 @@ interface ArtifactSceneContentProps {
 
 const CAMERA_TWEEN_DURATION_MS = 600;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
-/**
- * How many satellites the beam-cone focus falls back to when the protagonist has NO
- * serving satellite this slot (see the `sinrLiveTargetSatIds` F4 note). Bounded on
- * purpose: the point is "the viewport is never beamless", not "draw everything" —
- * 2 matches the ≤2 breadth the W9 display wiring already allows.
- */
-const SINR_LIVE_EMPTY_FOCUS_FALLBACK_SATS = 2;
 
 /**
  * How often the manual-handover demonstration republishes its wall clock (ms).
@@ -785,6 +799,16 @@ function ArtifactSceneContent({
         sinrLiveCellServedCount=""
         sinrLiveCellUeOffAxisMaxDeg=""
         sinrLiveHandoverPulseConeCount=""
+        handoverPresentationActive="0"
+        handoverPresentationSource=""
+        handoverPresentationKind=""
+        handoverPresentationPhase=""
+        handoverAutoSlowActive="0"
+        handoverDisplayIsolationActive="0"
+        beamBudgetGlobal=""
+        beamBudgetServing=""
+        beamBudgetCandidate=""
+        beamHoppingEnabled="0"
         modqnVisualLayerPreset=""
         modqnServiceMapEnabled="0"
         modqnServedUeCount={0}
@@ -892,6 +916,9 @@ function SceneContent(props: SceneContentProps) {
     runtime.primaryJogEastKm ?? 0,
     runtime.primaryJogNorthKm ?? 0,
     runtime.beamCountBySatellite,
+    runtime.servingBeamCount,
+    runtime.candidateBeamCount,
+    runtime.beamHoppingEnabled ?? false,
   );
 
   return <SceneRenderContent {...props} sim={sim} simSource="live" liveSeekLandedKey={liveSeekLandedKey} />;
@@ -925,7 +952,10 @@ function ArchivedTleSceneContent({
   );
   const archivedTlePlacement = useMemo<ArchivedTleSevenCellPlacement | null>(() => {
     if (frame === null) return null;
-    const layout = buildSinrLiveCellLayout(renderProps.profile);
+    const layout = buildSinrLiveCellLayout(
+      renderProps.profile,
+      SINR_LIVE_ARCHIVED_DISPLAY_CELL_COUNT,
+    );
     const sourceCells = ARCHIVED_TLE_DISPLAY_CELL_IDS.map(displayCellId => {
       const source = layout.centers.find(cell => cell.cellId === displayCellId);
       if (source === undefined) {
@@ -991,20 +1021,6 @@ function ArchivedTleSceneContent({
   );
 }
 
-function resolveDisplayedBeamBudget(
-  profile: Profile,
-  runtime: RuntimeConfig,
-  satelliteId: string | null | undefined,
-): number {
-  const perSatelliteOverride = satelliteId === null || satelliteId === undefined
-    ? undefined
-    : runtime.beamCountBySatellite?.[satelliteId];
-  if (typeof perSatelliteOverride === 'number' && Number.isFinite(perSatelliteOverride)) {
-    return Math.max(1, Math.floor(perSatelliteOverride));
-  }
-  return resolveSinrLiveBeamsPerSat(profile);
-}
-
 function SceneRenderContent({
   profile,
   paused,
@@ -1015,6 +1031,9 @@ function SceneRenderContent({
   sceneFrame: propSceneFrame,
   beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
   handoverCinemaCandidate = null,
+  handoverCinemaArmed = false,
+  handoverCinemaKind = null,
+  onHandoverPresentationChange,
   sim,
   simSource,
   canonicalScenario,
@@ -1198,12 +1217,20 @@ function SceneRenderContent({
         radiusWorld: cell.radiusKm * worldUnitsPerKm,
       }]));
     }
-    const layout = buildSinrLiveCellLayout(profile);
-    return new Map(layout.centers.map(center => [center.cellId, {
+    const activeLayout = buildSinrLiveCellLayout(profile);
+    const displayLayout = buildSinrLiveCellLayout(profile, SINR_LIVE_BEAM_DISPLAY_CELL_COUNT);
+    // Keep ids 0–6 on the asymmetric UE/SINR layout. The remaining display-only
+    // substrate cells have no UE membership or link-budget truth; they exist only
+    // so a selected 19-beam presentation can show the satellite's complete fan.
+    const centers = [
+      ...activeLayout.centers,
+      ...displayLayout.centers.filter(center => center.cellId >= activeLayout.centers.length),
+    ];
+    return new Map(centers.map(center => [center.cellId, {
       cellId: center.cellId,
       worldX: center.localXKm * worldUnitsPerKm,
       worldZ: -center.localYKm * worldUnitsPerKm,
-      radiusWorld: layout.cellRadiusKm * worldUnitsPerKm,
+      radiusWorld: activeLayout.cellRadiusKm * worldUnitsPerKm,
     }]));
   }, [archivedTlePlacement, canonicalScenario, useEarthFixedCellTruth, profile, worldUnitsPerKm]);
   const cellSchedule = useCellSchedule({
@@ -1415,6 +1442,9 @@ function SceneRenderContent({
     onSimUpdate,
     enabled: simSource === 'live' && sceneFrame.sceneSource !== 'artifact-replay',
     modqnCellServiceReadout,
+    beamCountBySatellite: runtime.beamCountBySatellite,
+    servingBeamCount: runtime.servingBeamCount,
+    candidateBeamCount: runtime.candidateBeamCount,
   });
   const handoverStoryModel = useMemo(
     () => showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory
@@ -1482,9 +1512,35 @@ function SceneRenderContent({
   const primaryServingRecord = sim.sinrLiveCells
     ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
     : null;
+  const displayHeroRecord = useMemo(() => resolveDisplayHeroRecord(
+    primaryServingRecord,
+    (sim.sinrLiveCells?.illuminatedBeams ?? [])
+      .filter(beam => (
+        beam.serving
+        && sinrLiveCellPlacementById.has(beam.cellId)
+        && viz.coneApexWorldById.has(beam.satId)
+      ))
+      .map(beam => ({ servingSatId: beam.satId, cellId: beam.cellId })),
+  ), [
+    primaryServingRecord,
+    sim.sinrLiveCells,
+    sinrLiveCellPlacementById,
+    viz.coneApexWorldById,
+  ]);
   const renderedCandidateSatelliteId = simSource === 'archived-tle'
     ? canonicalCandidateSatelliteId
     : primaryServingRecord?.pendingTargetSatId;
+  const sinrLiveBeamDisplayFrame = useMemo(() => createSinrLiveBeamDisplayFrame({
+    profile,
+    runtime,
+    servingSatelliteId: displayHeroRecord?.servingSatId,
+    candidateSatelliteId: renderedCandidateSatelliteId,
+  }), [
+    displayHeroRecord?.servingSatId,
+    profile,
+    renderedCandidateSatelliteId,
+    runtime,
+  ]);
   const candidateDisplayCellFrame = useMemo(() => {
     if (
       simSource !== 'archived-tle'
@@ -1515,10 +1571,22 @@ function SceneRenderContent({
         sim.sinrLiveCells,
         sim.perUePositions[0]?.id,
         [...viz.coneApexWorldById.keys()],
+        {
+          sourceSatId: runtime.manualHandoverSourceSatId,
+          sourceCellId: runtime.manualHandoverSourceCellId,
+          targetCellId: runtime.manualHandoverTargetCellId,
+          servingSinrDb: runtime.manualHandoverServingSinrDb,
+          candidateSinrDb: runtime.manualHandoverCandidateSinrDb,
+        },
       ),
     [
       runtime.manualHandoverRequestId,
       runtime.manualHandoverKind,
+      runtime.manualHandoverSourceSatId,
+      runtime.manualHandoverSourceCellId,
+      runtime.manualHandoverTargetCellId,
+      runtime.manualHandoverServingSinrDb,
+      runtime.manualHandoverCandidateSinrDb,
       sim.sinrLiveCells,
       sim.perUePositions,
       viz.coneApexWorldById,
@@ -1601,36 +1669,12 @@ function SceneRenderContent({
   // layers while preserving the dim beam context. When the event cannot resolve, the
   // cue is inactive and the normal scene remains available. No cycle:
   // `manualHandoverEvent` (above) does not read this flag.
-  const manualHandoverActive = runtime.manualHandoverRequestId !== undefined
+  const manualHandoverRequested = runtime.manualHandoverRequestId !== undefined
     && runtime.manualHandoverKind !== undefined
-    && manualHandoverEvent !== null
     && manualHandoverAgeMs <= MANUAL_HANDOVER_DISPLAY_MS;
+  const manualHandoverActive = manualHandoverRequested
+    && manualHandoverEvent !== null;
   const manualHandoverProgressSec = manualHandoverProgress.progressSec;
-  const cinemaHandoverTick = cinemaHandoverTickRef.current;
-  const cinemaHandoverDisplayMs = resolveHandoverCinemaDisplayMs(handoverCinemaCandidate?.kind ?? null);
-  const cinemaHandoverClockMs = cinemaHandoverNowMs
-    ?? (typeof performance === 'undefined' ? Date.now() : performance.now());
-  const cinemaHandoverStartedAtMs = handoverCinemaCandidate !== null
-    && cinemaHandoverTick?.eventId === handoverCinemaCandidate.eventId
-    && cinemaHandoverReady
-    && cinemaHandoverTick.ready
-    ? cinemaHandoverTick.startedAtMs
-    : cinemaHandoverClockMs;
-  const cinemaHandoverProgress = resolveManualHandoverProgress({
-    startedAtMs: handoverCinemaCandidate === null ? undefined : cinemaHandoverStartedAtMs,
-    nowMs: cinemaHandoverReady ? cinemaHandoverClockMs : cinemaHandoverStartedAtMs,
-    displayMs: cinemaHandoverDisplayMs,
-  });
-  const cinemaHandoverEnvelope = resolveHandoverCinemaEnvelope(
-    handoverCinemaCandidate?.kind ?? null,
-    cinemaHandoverProgress.progressRatio,
-    beamDisplaySpec.triggeredIntraPeakOpacity,
-  );
-  const handoverDisplayIsolation = resolveHandoverDisplayIsolation({
-    manualHandoverActive,
-    cinemaCandidateActive: handoverCinemaCandidate !== null,
-    cinemaCandidateKind: handoverCinemaCandidate?.kind ?? null,
-  });
   // The explicit demo is UE-centred, not cell-centred: both transition cones
   // must terminate at the red primary UE so the audience can see that the link
   // is changing for this UE rather than jumping between unrelated cells.
@@ -1640,8 +1684,6 @@ function SceneRenderContent({
       ? new THREE.Vector3(sim.ueGroundX, 0, sim.ueGroundZ)
       : new THREE.Vector3(worldPos[0], worldPos[1], worldPos[2]);
   }, [sceneFrame.ues, sim.ueGroundX, sim.ueGroundZ]);
-  const primaryUeId = sim.perUePositions[0]?.id ?? null;
-  const primaryUeCellRecord = sim.sinrLiveCells?.ues.find(ue => ue.ueId === primaryUeId) ?? null;
   // The live seek rebuilds the frame from a reset state. Keep the complete visible
   // pair from the instant the inter shot is armed, otherwise the pair can change to
   // the post-seek serving/pending record on a later render.
@@ -1649,27 +1691,11 @@ function SceneRenderContent({
   if (handoverCinemaCandidate?.kind !== 'inter') {
     cinemaInterPairAnchorRef.current = null;
   } else if (cinemaInterPairAnchorRef.current?.eventId !== handoverCinemaCandidate.eventId) {
-    // Prefer the actual pre-seek serving record only when it is not already the
-    // indexed target. If the first render lands after the seek, the event detail
-    // is the stable presentation fallback; adopting the post-seek record here
-    // would make the service beam jump before the story starts.
-    const currentServingSatId = primaryUeCellRecord?.servingSatId ?? null;
-    const currentCellId = primaryUeCellRecord?.cellId ?? null;
-    const currentRecordLooksPreSeek = currentServingSatId !== null
-      && currentServingSatId !== handoverCinemaCandidate.toSatId;
-    const fromSatId = currentRecordLooksPreSeek
-      ? currentServingSatId
-      : handoverCinemaCandidate.fromSatId;
-    const fromCellId = currentRecordLooksPreSeek
-      ? currentCellId
-      : handoverCinemaCandidate.fromCellId;
-    const pendingTargetSatId = primaryUeCellRecord?.pendingTargetSatId ?? null;
-    const toSatId = currentRecordLooksPreSeek
-      && pendingTargetSatId !== null
-      && pendingTargetSatId !== fromSatId
-      ? pendingTargetSatId
-      : handoverCinemaCandidate.toSatId;
-    const toCellId = handoverCinemaCandidate.toCellId ?? (currentRecordLooksPreSeek ? currentCellId : null);
+    // The indexed event is the handover story's immutable source of identity.
+    // The live frame is rebuilt by the seek and may already expose a different
+    // serving/pending record; reading it here makes the service beam jump before
+    // the story starts and can select a third satellite. Presentation must stay
+    // latched to this event pair until the story settles.
     const readApexWorld = (satId: string): InterCinemaApexWorld | undefined => {
       const world = viz.coneApexWorldById.get(satId);
       return world === undefined ? undefined : { x: world.x, y: world.y, z: world.z };
@@ -1678,12 +1704,12 @@ function SceneRenderContent({
       eventId: handoverCinemaCandidate.eventId,
       captured: null,
       fallback: {
-        fromSatId,
-        fromCellId,
-        toSatId,
-        toCellId,
-        fromApexWorld: readApexWorld(fromSatId),
-        toApexWorld: readApexWorld(toSatId),
+        fromSatId: handoverCinemaCandidate.fromSatId,
+        fromCellId: handoverCinemaCandidate.fromCellId,
+        toSatId: handoverCinemaCandidate.toSatId,
+        toCellId: handoverCinemaCandidate.toCellId,
+        fromApexWorld: readApexWorld(handoverCinemaCandidate.fromSatId),
+        toApexWorld: readApexWorld(handoverCinemaCandidate.toSatId),
       },
     });
   }
@@ -1716,16 +1742,218 @@ function SceneRenderContent({
     };
   }, [cinemaInterPairAnchor, handoverCinemaCandidate]);
 
+  const recentPrimaryHandoverEvent = useMemo<SinrLiveCellHandoverEvent | null>(() => {
+    const events = sim.sinrLiveCells?.recentHandoverEvents;
+    const currentSimTimeSec = sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec;
+    const protagonistUeId = sim.perUePositions[0]?.id;
+    if (!events || !protagonistUeId || !Number.isFinite(currentSimTimeSec)) return null;
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index];
+      if (
+        event.ueId !== protagonistUeId
+        || event.fromSatId === null
+        || event.fromCellId === null
+      ) continue;
+      const ageSec = currentSimTimeSec - event.sourceTimeSec;
+      if (ageSec >= 0 && ageSec < SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC) return event;
+    }
+    return null;
+  }, [sim.perUePositions, sim.simTimeSec, sim.sinrLiveCells]);
+
+  const handoverPresentationCandidate = useMemo<HandoverPresentationEvent | null>(() => {
+    const endpoint = (
+      satId: string | null,
+      cellId: number | null,
+      satelliteWorldById: ReadonlyMap<string, { readonly x: number; readonly y: number; readonly z: number }>,
+    ) => satId === null || cellId === null
+      ? null
+      : {
+        satId,
+        cellId,
+        drawable: sinrLiveCellPlacementById.has(cellId) && satelliteWorldById.has(satId),
+      };
+
+    if (manualHandoverActive && manualHandoverEvent !== null) {
+      const from = endpoint(manualHandoverEvent.fromSatId, manualHandoverEvent.fromCellId, viz.coneApexWorldById);
+      const to = endpoint(manualHandoverEvent.toSatId, manualHandoverEvent.toCellId, viz.coneApexWorldById);
+      if (from !== null && to !== null) {
+        return {
+          eventId: `manual:${runtime.manualHandoverRequestId ?? 'unknown'}`,
+          source: 'manual',
+          kind: manualHandoverEvent.kind,
+          ueId: manualHandoverEvent.ueId,
+          sourceTimeSec: manualHandoverEvent.sourceTimeSec,
+          from,
+          to,
+          durationMs: MANUAL_HANDOVER_DISPLAY_MS,
+          fromSinrDb: manualHandoverEvent.fromSinrDb,
+          toSinrDb: manualHandoverEvent.toSinrDb,
+          deltaDb: manualHandoverEvent.deltaDb,
+        };
+      }
+    }
+
+    // A manual request owns the viewport even if its endpoints fail the
+    // drawable check. Fail closed: suppress natural visual events instead of
+    // allowing an unrelated live handover to replace the requested story.
+    if (manualHandoverRequested) return null;
+
+    if (cinemaHandoverReady && cinemaPairCandidate !== null) {
+      const from = endpoint(
+        cinemaPairCandidate.fromSatId,
+        cinemaPairCandidate.fromCellId,
+        cinemaInterSatelliteWorldById,
+      );
+      const to = endpoint(
+        cinemaPairCandidate.toSatId,
+        cinemaPairCandidate.toCellId,
+        cinemaInterSatelliteWorldById,
+      );
+      if (from !== null && to !== null) {
+        return {
+          eventId: `cinema:${cinemaPairCandidate.eventId}`,
+          source: 'cinema',
+          kind: cinemaPairCandidate.kind,
+          ueId: cinemaPairCandidate.ueId,
+          sourceTimeSec: cinemaPairCandidate.sourceTimeSec,
+          from,
+          to,
+          durationMs: resolveHandoverCinemaDisplayMs(cinemaPairCandidate.kind),
+        };
+      }
+    }
+
+    // Once the director button is armed, the natural retention buffer is no
+    // longer allowed to become a second presentation owner. Until the exact
+    // cinema frame lands, keep the current serving field and suppress all
+    // stale handover overlays; after it lands, the cinema branch above owns it.
+    if (handoverCinemaArmed) return null;
+
+    if (recentPrimaryHandoverEvent !== null) {
+      const from = endpoint(
+        recentPrimaryHandoverEvent.fromSatId,
+        recentPrimaryHandoverEvent.fromCellId,
+        viz.coneApexWorldById,
+      );
+      const to = endpoint(
+        recentPrimaryHandoverEvent.toSatId,
+        recentPrimaryHandoverEvent.toCellId,
+        viz.coneApexWorldById,
+      );
+      if (from !== null && to !== null) {
+        return {
+          eventId: `${simSource}:${recentPrimaryHandoverEvent.ueId}:${recentPrimaryHandoverEvent.sourceTimeSec}:${recentPrimaryHandoverEvent.kind}`,
+          source: simSource === 'archived-tle' ? 'tle' : 'walker',
+          kind: recentPrimaryHandoverEvent.kind,
+          ueId: recentPrimaryHandoverEvent.ueId,
+          sourceTimeSec: recentPrimaryHandoverEvent.sourceTimeSec,
+          from,
+          to,
+          durationMs: beamDisplaySpec.triggeredIntraSustainMs,
+        };
+      }
+    }
+
+    return null;
+  }, [
+    beamDisplaySpec.triggeredIntraSustainMs,
+    cinemaHandoverReady,
+    cinemaInterSatelliteWorldById,
+    cinemaPairCandidate,
+    handoverCinemaArmed,
+    manualHandoverRequested,
+    manualHandoverActive,
+    manualHandoverEvent,
+    recentPrimaryHandoverEvent,
+    runtime.manualHandoverRequestId,
+    simSource,
+    sinrLiveCellPlacementById,
+    viz.coneApexWorldById,
+  ]);
+
+  const handoverPresentationStateRef = useRef(createHandoverPresentationState());
+  const handoverPresentationSourceRef = useRef(simSource);
+  if (handoverPresentationSourceRef.current !== simSource) {
+    handoverPresentationSourceRef.current = simSource;
+    handoverPresentationStateRef.current = createHandoverPresentationState();
+  }
+  const handoverPresentationNowMs = manualHandoverNowMs
+    ?? cinemaHandoverNowMs
+    ?? (typeof performance === 'undefined' ? Date.now() : performance.now());
+  const handoverPresentationStep = advanceHandoverPresentation(
+    handoverPresentationStateRef.current,
+    {
+      nowMs: handoverPresentationNowMs,
+      candidate: handoverPresentationCandidate,
+      owner: manualHandoverRequested
+        ? 'manual'
+        : handoverCinemaArmed ? 'cinema' : 'natural',
+    },
+  );
+  handoverPresentationStateRef.current = handoverPresentationStep.state;
+  const handoverPresentation = handoverPresentationStep.view;
+  const handoverPresentationSource = handoverPresentation.event?.source ?? null;
+  const presentedCinemaHandoverActive = handoverPresentation.active
+    && handoverPresentationSource === 'cinema';
+  const presentedInterHandoverActive = handoverPresentation.active
+    && (handoverPresentationSource === 'manual' || handoverPresentationSource === 'cinema')
+    && handoverPresentation.event?.kind === 'inter';
+  const presentationHandoverEnvelope = resolveHandoverCinemaEnvelope(
+    handoverPresentation.event?.kind ?? null,
+    handoverPresentation.progress01,
+    beamDisplaySpec.triggeredIntraPeakOpacity,
+  );
+  const handoverDisplayIsolation = resolveHandoverDisplayIsolation({
+    manualHandoverActive: handoverPresentation.active && handoverPresentationSource === 'manual',
+    manualHandoverRequested,
+    cinemaCandidateActive: handoverPresentation.active && handoverPresentationSource === 'cinema',
+    cinemaCandidateArmed: handoverCinemaArmed,
+    cinemaCandidateReady: cinemaHandoverReady,
+    cinemaCandidateKind: handoverPresentation.event?.kind ?? handoverCinemaKind,
+    presentationSource: handoverPresentationSource ?? (handoverCinemaArmed ? 'cinema' : undefined),
+  });
+
+  const presentedHandoverPairCandidate = useMemo<SinrLiveCinemaHandoverCandidate | null>(() => {
+    const event = handoverPresentation.event;
+    if (!handoverPresentation.active || event === null) return null;
+    return {
+      eventId: event.eventId,
+      ueId: event.ueId ?? null,
+      kind: event.kind,
+      sourceTimeSec: event.sourceTimeSec ?? sim.simTimeSec,
+      fromSatId: event.from.satId,
+      fromCellId: event.from.cellId,
+      toSatId: event.to.satId,
+      toCellId: event.to.cellId,
+    };
+  }, [handoverPresentation.active, handoverPresentation.event, sim.simTimeSec]);
+  const presentationSatelliteWorldById = presentedCinemaHandoverActive
+    ? cinemaInterSatelliteWorldById
+    : viz.coneApexWorldById;
+
+  useEffect(() => {
+    onHandoverPresentationChange?.(handoverPresentation);
+  }, [
+    handoverPresentation.active,
+    handoverPresentation.autoSlowActive,
+    handoverPresentation.event?.eventId,
+    handoverPresentation.phase,
+    onHandoverPresentationChange,
+  ]);
+  useEffect(() => () => {
+    onHandoverPresentationChange?.(createIdleHandoverPresentationView());
+  }, [onHandoverPresentationChange]);
+
   // The inter cinema is intentionally self-contained: after the live seek, rebuild a
   // display-only two-satellite fan frame from the already-published earth-fixed cells.
   // This keeps the anchored source satellite's other beams visible even when the live
   // frame has moved on to the target satellite. It is never passed back to the model.
   const cinemaInterDisplayCellFrame = useMemo(() => {
-    if (cinemaPairCandidate?.kind !== 'inter' || sim.sinrLiveCells === undefined) {
+    if (presentedHandoverPairCandidate?.kind !== 'inter' || sim.sinrLiveCells === undefined) {
       return sim.sinrLiveCells;
     }
-    const sourceSatId = cinemaPairCandidate.fromSatId;
-    const targetSatId = cinemaPairCandidate.toSatId;
+    const sourceSatId = presentedHandoverPairCandidate.fromSatId;
+    const targetSatId = presentedHandoverPairCandidate.toSatId;
     return {
       ...sim.sinrLiveCells,
       illuminatedBeams: sim.sinrLiveCells.cells.flatMap(cell => [
@@ -1743,7 +1971,7 @@ function SceneRenderContent({
         },
       ]),
     };
-  }, [cinemaPairCandidate, sim.sinrLiveCells]);
+  }, [presentedHandoverPairCandidate, sim.sinrLiveCells]);
 
   // SEMANTIC scene focus (docs/sinr-live-semantic-beam-colour-sdd.md): the broad serving
   // fan / non-serving / footprint / callout / pulse layers focus to the HERO serving
@@ -1759,34 +1987,12 @@ function SceneRenderContent({
   // `null` = 'allServing' breadth (no focus filter). Keyed on focusScope + the record's sat
   // ids so the Set identity (and the cone memos) stays stable across unrelated re-renders.
   //
-  // F4 (2026-08-06) — the EMPTY-FOCUS fallback. `resolveBeamFocusSatIds` returns an
-  // EMPTY set whenever the protagonist has no serving satellite this slot (beam
-  // hopping under K<N, a coverage gap, the first frames before warm-up). Every cone
-  // layer below then short-circuits to `[]` and the viewport goes completely BLACK —
-  // even while thirty-odd OTHER cells are being served right there. Owner: 「應該隨時
-  // 都要有波束才對」. So when the focus set comes back empty we fall back to the top
-  // SERVING satellites by served-cell count (`resolveTopServingFocusSatIds`, bounded
-  // to 2 — the same ≤2 breadth the W9 wiring lock allows), never to `null`, which
-  // would be the unbounded all-sat firehose the original comment warns against.
-  // Display-only (Rule#6): this picks what is DRAWN, it reads serving truth and
-  // changes none of it. An all-unserved frame still yields an empty set → still
-  // draws nothing, which is then honest rather than a bug.
-  // Identity note: the memo now also keys on the cell frame (the fallback needs it),
-  // so the Set identity is per-frame in fallback mode. Every consumer memo below
-  // already keys on `sim.sinrLiveCells`, so this adds no recompute.
+  // A temporarily unserved protagonist no longer turns a valid serving field into
+  // either a black scene or an all-grey scene. `displayHeroRecord` is a complete,
+  // drawable fallback pair; it changes only which existing cone gets the HERO style.
   const sinrLiveTargetSatIds = useMemo(
-    () => {
-      const focus = resolveBeamFocusSatIds(beamDisplaySpec.focusScope, primaryServingRecord);
-      if (focus !== null && focus.size === 0) {
-        return resolveTopServingFocusSatIds(sim.sinrLiveCells, SINR_LIVE_EMPTY_FOCUS_FALLBACK_SATS, null);
-      }
-      return focus;
-    },
-    [
-      beamDisplaySpec.focusScope,
-      primaryServingRecord?.servingSatId,
-      sim.sinrLiveCells,
-    ],
+    () => resolveBeamFocusSatIds(beamDisplaySpec.focusScope, displayHeroRecord),
+    [beamDisplaySpec.focusScope, displayHeroRecord],
   );
 
   // The ONE appearance palette for every cone + footprint mount (2026-08-06 consolidation).
@@ -1836,7 +2042,7 @@ function SceneRenderContent({
       // breadth). Default → focus to the HERO serving satellite ONLY. Empty target
       // set (no primary serving) draws nothing, never the unbounded all-sat firehose.
       if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds !== null && sinrLiveTargetSatIds.size === 0) return [];
-      const items = resolveSinrLiveCellBeamConeItems({
+      const rawItems = resolveSinrLiveCellBeamConeItems({
         cellFrame: sim.sinrLiveCells,
         placementByCellId: sinrLiveCellPlacementById,
         // S5-2: the serving-sat-COMPLETE cone-apex map (every projected sat, NOT the
@@ -1845,16 +2051,35 @@ function SceneRenderContent({
         satelliteWorldById: viz.coneApexWorldById,
         focusSatIds: beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds,
       });
+      const servingBeamBudget = resolveSinrLiveConfiguredBeamCount({
+        profile,
+        runtime,
+        satelliteId: displayHeroRecord?.servingSatId,
+        role: 'serving',
+      });
+      const items = beamDisplaySpec.showNonServingCones
+        ? rawItems
+        : resolveBudgetedSinrLiveBeamConeItems({
+          existingItems: rawItems,
+          satId: displayHeroRecord?.servingSatId,
+          maxCones: servingBeamBudget,
+          placementByCellId: sinrLiveCellPlacementById,
+          satelliteWorldById: viz.coneApexWorldById,
+          frequencyReuse: profile.beams.frequencyReuse,
+          role: 'servingFan',
+          renderKeyPrefix: 'serving-display-fan',
+          preferredCellId: displayHeroRecord?.cellId,
+        });
       if (
         !handoverDisplayIsolation.hidePrimaryServingBeam
-        || primaryServingRecord?.servingSatId == null
-        || primaryServingRecord.cellId == null
+        || displayHeroRecord?.servingSatId == null
+        || displayHeroRecord.cellId == null
       ) {
         return items;
       }
       return items.filter(item => (
-        item.satId !== primaryServingRecord.servingSatId
-        || item.cellId !== primaryServingRecord.cellId
+        item.satId !== displayHeroRecord.servingSatId
+        || item.cellId !== displayHeroRecord.cellId
       ));
     },
     [
@@ -1864,10 +2089,11 @@ function SceneRenderContent({
       viz.coneApexWorldById,
       beamDisplaySpec.showNonServingCones,
       sinrLiveTargetSatIds,
+      profile,
+      runtime,
       handoverDisplayIsolation.hideNormalBeamField,
       handoverDisplayIsolation.hidePrimaryServingBeam,
-      primaryServingRecord?.servingSatId,
-      primaryServingRecord?.cellId,
+      displayHeroRecord,
     ],
   );
   // SEMANTIC candidate cue: the imminent inter-handover TARGET sat (`pendingTargetSatId`)
@@ -1886,41 +2112,71 @@ function SceneRenderContent({
       }
       if (!showSinrLiveCellBeams) return [];
 
-      const isInterCinema = handoverDisplayIsolation.showCinemaCandidateFan
-        && cinemaPairCandidate?.kind === 'inter';
-      const pendingTargetSatId = isInterCinema
-        ? cinemaPairCandidate.toSatId
+      const isInterPresentation = handoverDisplayIsolation.showCinemaCandidateFan
+        && presentedHandoverPairCandidate?.kind === 'inter';
+      const pendingTargetSatId = isInterPresentation
+        ? presentedHandoverPairCandidate.toSatId
         : renderedCandidateSatelliteId;
-      const servingSatId = isInterCinema
-        ? cinemaPairCandidate.fromSatId
+      const servingSatId = isInterPresentation
+        ? presentedHandoverPairCandidate.fromSatId
         : primaryServingRecord?.servingSatId;
-      const primaryCellId = isInterCinema
-        ? cinemaPairCandidate.toCellId
+      const primaryCellId = isInterPresentation
+        ? presentedHandoverPairCandidate.toCellId
         : primaryServingRecord?.cellId;
-      const candidateBeamBudget = resolveDisplayedBeamBudget(profile, runtime, pendingTargetSatId);
-      const items = resolveCandidateBeamConeItems({
+      const candidateBeamBudget = resolveSinrLiveConfiguredBeamCount({
+        profile,
+        runtime,
+        satelliteId: pendingTargetSatId,
+        role: 'candidate',
+      });
+      const rawItems = resolveCandidateBeamConeItems({
         pendingTargetSatId,
         servingSatId,
         primaryCellId,
         placementByCellId: sinrLiveCellPlacementById,
-        satelliteWorldById: isInterCinema ? cinemaInterSatelliteWorldById : viz.coneApexWorldById,
+        satelliteWorldById: isInterPresentation ? presentationSatelliteWorldById : viz.coneApexWorldById,
         frequencyReuse: profile.beams.frequencyReuse,
-        cellFrame: isInterCinema ? cinemaInterDisplayCellFrame : candidateDisplayCellFrame,
+        cellFrame: isInterPresentation ? cinemaInterDisplayCellFrame : candidateDisplayCellFrame,
         maxFanCones: candidateBeamBudget,
       });
-      if (!isInterCinema) return items;
+      if (!isInterPresentation) {
+        return resolveBudgetedSinrLiveBeamConeItems({
+          existingItems: rawItems,
+          satId: pendingTargetSatId,
+          maxCones: candidateBeamBudget,
+          placementByCellId: sinrLiveCellPlacementById,
+          satelliteWorldById: viz.coneApexWorldById,
+          frequencyReuse: profile.beams.frequencyReuse,
+          role: 'candidateFan',
+          renderKeyPrefix: 'candidate-display-fan',
+        });
+      }
 
       // The exact candidate primary cone is owned by the cinema pair. Keep only
       // the target satellite's other beams here and let them follow its target
       // opacity, so the whole fan arrives and leaves as one handover actor.
-      const targetOpacity = cinemaHandoverEnvelope.phase === 'settled'
+      const targetOpacity = presentationHandoverEnvelope.phase === 'settled'
         ? beamDisplaySpec.triggeredIntraPeakOpacity
-        : cinemaHandoverEnvelope.toOpacity;
+        : presentationHandoverEnvelope.toOpacity;
       const candidateFanOpacity = beamDisplaySpec.candidateFanConeOpacity * targetOpacity;
       if (candidateFanOpacity <= 0) return [];
-      return items
-        .filter(item => item.role === 'candidateFan')
-        .map(item => ({ ...item, opacity: candidateFanOpacity }));
+      return resolveBudgetedSinrLiveBeamConeItems({
+        existingItems: rawItems.filter(item => item.role === 'candidateFan'),
+        satId: pendingTargetSatId,
+        // The cinema pair owns the target's primary cone, so the separate fan
+        // may occupy the remaining budget only.
+        maxCones: Math.max(0, candidateBeamBudget - 1),
+        placementByCellId: sinrLiveCellPlacementById,
+        satelliteWorldById: presentationSatelliteWorldById,
+        frequencyReuse: profile.beams.frequencyReuse,
+        role: 'candidateFan',
+        renderKeyPrefix: 'cinema-candidate-display-fan',
+      })
+        .map(item => ({
+          ...item,
+          role: handoverPresentation.targetRole === 'serving' ? 'servingFan' as const : item.role,
+          opacity: candidateFanOpacity,
+        }));
     },
     [
       showSinrLiveCellBeams,
@@ -1929,18 +2185,19 @@ function SceneRenderContent({
       renderedCandidateSatelliteId,
       primaryServingRecord?.servingSatId,
       primaryServingRecord?.cellId,
-      cinemaPairCandidate,
-      cinemaHandoverEnvelope,
+      presentedHandoverPairCandidate,
+      presentationHandoverEnvelope,
+      handoverPresentation.targetRole,
       beamDisplaySpec.candidateFanConeOpacity,
       beamDisplaySpec.triggeredIntraPeakOpacity,
       sinrLiveCellPlacementById,
       viz.coneApexWorldById,
-      cinemaInterSatelliteWorldById,
+      presentationSatelliteWorldById,
       profile.beams.frequencyReuse,
       candidateDisplayCellFrame,
       cinemaInterDisplayCellFrame,
       profile,
-      runtime.beamCountBySatellite,
+      runtime,
     ],
   );
 
@@ -1951,30 +2208,48 @@ function SceneRenderContent({
     if (
       !showSinrLiveCellBeams
       || !handoverDisplayIsolation.showCinemaCandidateFan
-      || cinemaPairCandidate?.kind !== 'inter'
+      || presentedHandoverPairCandidate?.kind !== 'inter'
     ) return [];
-    const sourceBeamBudget = resolveDisplayedBeamBudget(profile, runtime, cinemaPairCandidate.fromSatId);
-    return resolveCinemaInterServingFanConeItems({
-      candidate: cinemaPairCandidate,
-      opacity: beamDisplaySpec.servingConeOpacity * cinemaHandoverEnvelope.fromOpacity,
+    const sourceBeamBudget = resolveSinrLiveConfiguredBeamCount({
+      profile,
+      runtime,
+      satelliteId: presentedHandoverPairCandidate.fromSatId,
+      role: 'serving',
+    });
+    const sourceFanOpacity = beamDisplaySpec.servingConeOpacity * presentationHandoverEnvelope.fromOpacity;
+    const rawItems = resolveCinemaInterServingFanConeItems({
+      candidate: presentedHandoverPairCandidate,
+      opacity: sourceFanOpacity,
       placementByCellId: sinrLiveCellPlacementById,
-      satelliteWorldById: cinemaInterSatelliteWorldById,
+      satelliteWorldById: presentationSatelliteWorldById,
       frequencyReuse: profile.beams.frequencyReuse,
       cellFrame: cinemaInterDisplayCellFrame,
       maxFanCones: sourceBeamBudget,
     });
+    return resolveBudgetedSinrLiveBeamConeItems({
+      existingItems: rawItems,
+      satId: presentedHandoverPairCandidate.fromSatId,
+      // The cinema pair owns the source primary cone, so this fan uses the
+      // remaining serving-satellite budget.
+      maxCones: Math.max(0, sourceBeamBudget - 1),
+      placementByCellId: sinrLiveCellPlacementById,
+      satelliteWorldById: presentationSatelliteWorldById,
+      frequencyReuse: profile.beams.frequencyReuse,
+      role: 'servingFan',
+      renderKeyPrefix: 'cinema-serving-display-fan',
+    }).map(item => ({ ...item, opacity: sourceFanOpacity }));
   }, [
     showSinrLiveCellBeams,
     handoverDisplayIsolation.showCinemaCandidateFan,
-    cinemaPairCandidate,
+    presentedHandoverPairCandidate,
     beamDisplaySpec.servingConeOpacity,
-    cinemaHandoverEnvelope,
+    presentationHandoverEnvelope,
     sinrLiveCellPlacementById,
-    cinemaInterSatelliteWorldById,
+    presentationSatelliteWorldById,
     profile.beams.frequencyReuse,
     cinemaInterDisplayCellFrame,
     profile,
-    runtime.beamCountBySatellite,
+    runtime,
   ]);
   // W5 Beam-Info callouts: per-cell serving SINR (dB) keyed by cellId, for the
   // <Html> chips. Reads the cell model's own serving SINR — display-only.
@@ -2028,8 +2303,19 @@ function SceneRenderContent({
   // so a handover on any serving sat draws even beyond the display cap. Display-only
   // read-out of truth (Rule#6); the serving decision is unchanged.
   const sinrLiveCellPulseConeItems = useMemo(
-    () => (!handoverDisplayIsolation.hideTimelinePulse && showSinrLiveHandoverPulse
-      ? resolveSinrLiveHandoverPulseConeItems({
+    () => {
+      if (
+        handoverDisplayIsolation.hideTimelinePulse
+        || handoverDisplayIsolation.suppressNaturalHandoverLayers
+        || !showSinrLiveHandoverPulse
+      ) return [];
+      const selectedHandoverEvents = selectHandoverEventsForDisplay(
+        sim.sinrLiveCells?.recentHandoverEvents,
+        sim.perUePositions[0]?.id ?? null,
+        beamDisplaySpec.showOtherHandoverUes,
+      );
+      const selectedHandoverEventSet = new Set(selectedHandoverEvents);
+      return resolveSinrLiveHandoverPulseConeItems({
         // SEMANTIC scene rule: only the HERO serving satellite draws the broad beam
         // layers, so the ambient handover pulse is FOCUSED to it (`sinrLiveTargetSatIds`,
         // serving sat only) too — a handover on any OTHER satellite no longer flashes a
@@ -2037,6 +2323,8 @@ function SceneRenderContent({
         // beaming?" fix). The imminent-handover target is the separate blue candidate cone, not a pulse.
         // Display-only filter; the model's events are unchanged.
         recentHandoverEvents: (sim.sinrLiveCells?.recentHandoverEvents ?? []).filter(
+          event => selectedHandoverEventSet.has(event),
+        ).filter(
             e => sinrLiveTargetSatIds === null || !beamDisplaySpec.pulseFocusFollowsScope
               || sinrLiveTargetSatIds.has(e.toSatId)
               || (e.fromSatId !== null && sinrLiveTargetSatIds.has(e.fromSatId)),
@@ -2055,169 +2343,122 @@ function SceneRenderContent({
         // HO should show both ends — that is the story). Display-only (Rule#6).
         focusSatIds: beamDisplaySpec.pulseFocusFollowsScope ? sinrLiveTargetSatIds : null,
         protagonistUeId: sim.perUePositions[0]?.id ?? null,
-      })
-      : []),
-    [handoverDisplayIsolation.hideTimelinePulse, showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope],
-  );
-  // beam-stage ① #5: the TRIGGERED intra flash. The ambient pulse above fades over
-  // SIM-time (4 s retention → ~0.8 s wall-clock at the 5× demo speed → too brief to
-  // read). The DELIBERATE jog handover (the PROTAGONIST's, `ueId === perUePositions[0].id`)
-  // instead gets a WALL-CLOCK fade (`beamDisplaySpec.triggeredIntraSustainMs`) with a
-  // from(warm)/to(cool) colour split, so the handover DIRECTION is legible and it reads as
-  // DISTINCT from the ambient pulse. Since 2026-08-06 BOTH cues (this one and the MANUAL
-  // demonstration) walk the SAME five-phase `resolveHandoverConeEnvelope`; only the window
-  // differs (triggeredIntraSustainMs vs the longer MANUAL_HANDOVER_DISPLAY_MS). Latched
-  // by ref (a new primary handover re-arms the wall-clock start; cleared after the sustain);
-  // recomputed per frame on the same `sim.sinrLiveCells` cadence as the pulse, reading
-  // `performance.now()` for the wall-clock age. Display-only read-out of the model's own
-  // classified handover (Rule#6) — no truth touched.
-  const triggeredIntraLatchRef = useRef<{ event: SinrLiveCellHandoverEvent; startedAtMs: number } | null>(null);
-  const triggeredIntraConeItems = useMemo(() => {
-    if (!showSinrLiveHandoverPulse) { triggeredIntraLatchRef.current = null; return []; }
-    // Manual buttons use this same from/to renderer for BOTH kinds. It is an
-    // independent display cue, so it must not enter the model's recent-event log
-    // or compete with the ambient pulse layer.
-    if (manualHandoverActive && manualHandoverEvent) {
-      // FIVE-PHASE sequencing (2026-08-06). The manual cue used to hand BOTH cones one
-      // shared linear decay, so they appeared together and vanished together — the
-      // owner's 「2個同時連線，然後就結束了」. The envelope gives each cone its own alpha
-      // (serve → candidate fades in → both held → old fades out → settled), which is the
-      // actual shape of a handover. The REAL-handover branch below now walks the SAME
-      // envelope on its own shorter window, so the two cues read identically.
-      const envelope = resolveHandoverConeEnvelope(
-        manualHandoverProgressSec / (MANUAL_HANDOVER_DISPLAY_MS / 1000),
-        beamDisplaySpec.triggeredIntraPeakOpacity,
-      );
-      return resolveTriggeredIntraConeItems({
-        event: manualHandoverEvent,
-        fromOpacity: envelope.fromOpacity,
-        toOpacity: envelope.toOpacity,
-        fromColor: beamDisplaySpec.triggeredIntraFromColor,
-        toColor: resolveTriggeredHandoverTargetColor(manualHandoverEvent.kind, beamDisplaySpec),
-        placementByCellId: sinrLiveCellPlacementById,
-        satelliteWorldById: viz.coneApexWorldById,
-        frequencyReuse: profile.beams.frequencyReuse,
-        baseCenterOverride: manualHandoverGroundTarget,
-        fromBaseRadiusScale: 0.84,
-        toBaseRadiusScale: 1,
       });
-    }
-    if (handoverDisplayIsolation.hideTimelineTriggered) return [];
-    // CONCURRENCY, measured (2026-08-06) — why ONE latch is enough here. This layer is
-    // PROTAGONIST-ONLY: the filter below keeps `e.ueId === primaryUeId`, so the 99 other
-    // UEs handing over in the same frame never touch this ref (they are the ambient pulse
-    // layer's business, and that layer is per-event with its own keys). What CAN collide is
-    // the protagonist handing over twice inside one sustain window: the re-arm below then
-    // restarts the envelope at phase 1 and the first story is cut off mid-act.
-    //
-    // Measured (100 UEs, 240 x 5 s steps, four hobs profiles): the protagonist NEVER has
-    // more than ONE event in a single frame, so the selection below is never an arbitrary
-    // pick between rivals. Across profiles it re-arms 0–11 times per 1200 s; on three of
-    // the four the closest re-arm is 150 s+ of sim time and the window closes long first.
-    // hobs-2024-mobile-demo-aircraft is the outlier at a 5 s minimum gap, where above 1x
-    // playback a story WILL be cut off. The numbers live on the sustain const's doc comment
-    // in `src/constants/sinrLiveConeStyle.ts` (this file may not name that const:
-    // `validate:frontend:beam-display-spec-purity` holds MainScene to `beamDisplaySpec.*`).
-    //
-    // A MULTI-latch would not fix that and is deliberately NOT built: the protagonist has
-    // one link, so its back-to-back handovers are sequential, not concurrent — drawing two
-    // overlapping stories for one UE would be a lie. If the truncation ever needs fixing
-    // the honest shapes are a QUEUE (finish act 5, then start the next story) or simply
-    // accepting it, since a re-arm restarts at "one beam" and so degrades to "handovers are
-    // coming fast" rather than back to the lockstep blink this replaced.
-    const primaryUeId = sim.perUePositions[0]?.id;
-    const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
-    const primaryEvent = resolveRecentPrimaryIntraHandoverEvent({
-      events: sim.sinrLiveCells?.recentHandoverEvents,
-      primaryUeId,
-      simTimeSec: sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec,
-    });
-    const latched = triggeredIntraLatchRef.current;
-    if (primaryEvent && (!latched || latched.event.sourceTimeSec !== primaryEvent.sourceTimeSec)) {
-      triggeredIntraLatchRef.current = { event: primaryEvent, startedAtMs: nowMs };
-    }
-    const cur = triggeredIntraLatchRef.current;
-    if (!cur) return [];
-    const ageMs = nowMs - cur.startedAtMs;
-    if (ageMs > beamDisplaySpec.triggeredIntraSustainMs) { triggeredIntraLatchRef.current = null; return []; }
-    // REAL handover flash — the SAME five-phase envelope the manual demonstration walks
-    // (2026-08-06, owner: 「現在場上的 intra/inter handover 的呈現都要跟 show intra/inter 的
-    // 效果一樣，2個波束要呈現出兩個交接的效果」). It used to hand BOTH cones one shared linear
-    // decay (`fromOpacity: opacity, toOpacity: opacity`), so the two beams lit together and
-    // died together and there was no visible handOVER — just a synchronised blink under an
-    // "intra handover" badge. Now the old link holds while the new one fades in, both are
-    // held, then the old one releases: 單 → 雙 → 單.
-    //
-    // TIME HONESTY — this is a RETROSPECTIVE RE-ENACTMENT, not a live transmission. The
-    // cell model classifies a handover only AFTER it has happened, so `startedAtMs` is
-    // when the event was first OBSERVED, and the "candidate appears → trigger timer →
-    // switch" ordering is replayed forwards from that instant. The candidate really
-    // appeared BEFORE t=0, not at 19% of the animation. The ORDER is the teaching truth;
-    // the timing is not the wall-clock truth. Do not read this cue as a live timeline.
-    //
-    // Shape shared, length not: the manual demo spends MANUAL_HANDOVER_DISPLAY_MS (8 s,
-    // sim paused) on the envelope, this one spends the shorter
-    // `beamDisplaySpec.triggeredIntraSustainMs` (5 s) because it fires mid-playback and
-    // must finish before the protagonist's NEXT handover re-arms the latch below.
-    const envelope = resolveHandoverConeEnvelope(
-      ageMs / beamDisplaySpec.triggeredIntraSustainMs,
-      beamDisplaySpec.triggeredIntraPeakOpacity,
-    );
+    },
+    [handoverDisplayIsolation.hideTimelinePulse, handoverDisplayIsolation.suppressNaturalHandoverLayers, showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope, beamDisplaySpec.showOtherHandoverUes],
+  );
+  // Manual and naturally observed Walker/TLE events share the coordinator's
+  // single latched pair. Incoming events cannot restart this envelope; they are
+  // presentation-suppressed until the active story and cooldown have finished.
+  const triggeredIntraConeItems = useMemo(() => {
+    if (
+      !showSinrLiveCellBeams
+      || !handoverPresentation.active
+      || handoverPresentation.event?.source !== 'manual'
+      || presentedCinemaHandoverActive
+      || presentedHandoverPairCandidate === null
+      || presentedHandoverPairCandidate.fromCellId === null
+      || presentedHandoverPairCandidate.toCellId === null
+    ) return [];
+    const event: SinrLiveCellHandoverEvent = {
+      ueId: presentedHandoverPairCandidate.ueId ?? sim.perUePositions[0]?.id ?? 'ue-0',
+      kind: presentedHandoverPairCandidate.kind,
+      sourceTimeSec: presentedHandoverPairCandidate.sourceTimeSec,
+      fromSatId: presentedHandoverPairCandidate.fromSatId,
+      fromCellId: presentedHandoverPairCandidate.fromCellId,
+      toSatId: presentedHandoverPairCandidate.toSatId,
+      toCellId: presentedHandoverPairCandidate.toCellId,
+    };
+    const isManual = handoverPresentation.event?.source === 'manual';
     return resolveTriggeredIntraConeItems({
-      event: cur.event,
-      fromOpacity: envelope.fromOpacity,
-      toOpacity: envelope.toOpacity,
+      event,
+      fromOpacity: presentationHandoverEnvelope.fromOpacity,
+      toOpacity: presentationHandoverEnvelope.phase === 'settled'
+        ? beamDisplaySpec.triggeredIntraPeakOpacity
+        : presentationHandoverEnvelope.toOpacity,
       fromColor: beamDisplaySpec.triggeredIntraFromColor,
-      toColor: resolveTriggeredHandoverTargetColor(cur.event.kind, beamDisplaySpec),
+      toColor: handoverPresentation.targetRole === 'serving'
+        ? beamDisplaySpec.heroConeColor
+        : resolveTriggeredHandoverTargetColor(event.kind, beamDisplaySpec),
       placementByCellId: sinrLiveCellPlacementById,
-      satelliteWorldById: viz.coneApexWorldById,
+      satelliteWorldById: presentationSatelliteWorldById,
       frequencyReuse: profile.beams.frequencyReuse,
+      baseCenterOverride: isManual ? manualHandoverGroundTarget : undefined,
+      fromBaseRadiusScale: isManual ? 0.84 : undefined,
+      toBaseRadiusScale: isManual ? 1 : undefined,
     });
-  }, [showSinrLiveHandoverPulse, manualHandoverActive, manualHandoverEvent, handoverDisplayIsolation.hideTimelineTriggered, manualHandoverProgressSec, manualHandoverGroundTarget, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, beamDisplaySpec.triggeredIntraSustainMs, beamDisplaySpec.triggeredIntraPeakOpacity, beamDisplaySpec.triggeredIntraFromColor, beamDisplaySpec.triggeredIntraToColor, beamDisplaySpec.candidateConeColor]);
+  }, [
+    beamDisplaySpec.candidateConeColor,
+    beamDisplaySpec.heroConeColor,
+    beamDisplaySpec.triggeredIntraFromColor,
+    beamDisplaySpec.triggeredIntraPeakOpacity,
+    beamDisplaySpec.triggeredIntraToColor,
+    handoverPresentation.active,
+    handoverPresentation.event,
+    handoverPresentation.targetRole,
+    manualHandoverGroundTarget,
+    presentationHandoverEnvelope,
+    presentedCinemaHandoverActive,
+    presentedHandoverPairCandidate,
+    presentationSatelliteWorldById,
+    profile.beams.frequencyReuse,
+    showSinrLiveCellBeams,
+    sim.perUePositions,
+    sinrLiveCellPlacementById,
+  ]);
   // Focused cinema pair: the candidate detail is already resolved from the live
   // handover index, so draw its exact old/new cell cones above the ordinary field.
   // The acquired side stays visible after the narrated transition while the focus
   // remains armed; this keeps the final handover state readable instead of ending
   // on an empty viewport. Display-only; no simulation record is changed.
   const sinrLiveCinemaHandoverPairConeItems = useMemo(() => {
-    if (!showSinrLiveCellBeams || cinemaPairCandidate === null) return [];
+    if (!showSinrLiveCellBeams || !presentedCinemaHandoverActive || presentedHandoverPairCandidate === null) return [];
     return resolveCinemaHandoverPairConeItems({
-      candidate: cinemaPairCandidate,
-      fromOpacity: cinemaHandoverEnvelope.fromOpacity,
-      toOpacity: cinemaHandoverEnvelope.phase === 'settled'
+      candidate: presentedHandoverPairCandidate,
+      fromOpacity: presentationHandoverEnvelope.fromOpacity,
+      toOpacity: presentationHandoverEnvelope.phase === 'settled'
         ? beamDisplaySpec.triggeredIntraPeakOpacity
-        : cinemaHandoverEnvelope.toOpacity,
+        : presentationHandoverEnvelope.toOpacity,
       fromColor: beamDisplaySpec.triggeredIntraFromColor,
-      toColor: resolveTriggeredHandoverTargetColor(cinemaPairCandidate.kind, beamDisplaySpec),
+      toColor: handoverPresentation.targetRole === 'serving'
+        ? beamDisplaySpec.heroConeColor
+        : resolveTriggeredHandoverTargetColor(presentedHandoverPairCandidate.kind, beamDisplaySpec),
       placementByCellId: sinrLiveCellPlacementById,
-      satelliteWorldById: cinemaInterSatelliteWorldById,
+      satelliteWorldById: presentationSatelliteWorldById,
       frequencyReuse: profile.beams.frequencyReuse,
-      baseCenterOverride: cinemaPairCandidate.kind === 'inter' ? manualHandoverGroundTarget : undefined,
-      fromBaseRadiusScale: cinemaPairCandidate.kind === 'inter' ? 0.84 : undefined,
-      toBaseRadiusScale: cinemaPairCandidate.kind === 'inter' ? 1 : undefined,
+      baseCenterOverride: presentedHandoverPairCandidate.kind === 'inter' ? manualHandoverGroundTarget : undefined,
+      fromBaseRadiusScale: presentedHandoverPairCandidate.kind === 'inter' ? 0.84 : undefined,
+      toBaseRadiusScale: presentedHandoverPairCandidate.kind === 'inter' ? 1 : undefined,
     });
   }, [
     showSinrLiveCellBeams,
-    cinemaPairCandidate,
+    presentedCinemaHandoverActive,
+    presentedHandoverPairCandidate,
     manualHandoverGroundTarget,
-    cinemaHandoverEnvelope,
+    presentationHandoverEnvelope,
+    handoverPresentation.targetRole,
+    beamDisplaySpec.heroConeColor,
     beamDisplaySpec.triggeredIntraPeakOpacity,
     beamDisplaySpec.triggeredIntraFromColor,
     beamDisplaySpec.triggeredIntraToColor,
     beamDisplaySpec.candidateConeColor,
     sinrLiveCellPlacementById,
-    cinemaInterSatelliteWorldById,
+    presentationSatelliteWorldById,
     profile.beams.frequencyReuse,
   ]);
   // Keep the marker roles aligned with the anchored inter shot while the live
   // simulation is being rebuilt at the selected event lead-in. This is a
   // presentation identity only; the right rail and the published serving truth
   // continue to read the live frame unchanged.
-  const cinemaDisplayServingSatId = handoverCinemaCandidate?.kind === 'inter' && cinemaPairCandidate !== null
-    ? cinemaPairCandidate.fromSatId
+  const cinemaDisplayServingSatId = presentedInterHandoverActive && presentedHandoverPairCandidate !== null
+    ? handoverPresentation.targetRole === 'serving'
+      ? presentedHandoverPairCandidate.toSatId
+      : presentedHandoverPairCandidate.fromSatId
     : sceneFrame.metrics.servingSatelliteId;
-  const cinemaDisplayCandidateSatId = handoverCinemaCandidate?.kind === 'inter' && cinemaPairCandidate !== null
-    ? cinemaPairCandidate.toSatId
+  const cinemaDisplayCandidateSatId = presentedInterHandoverActive
+    ? presentedHandoverPairCandidate !== null && handoverPresentation.targetRole === 'candidate'
+      ? presentedHandoverPairCandidate.toSatId
+      : null
     : renderedCandidateSatelliteId;
   const sinrLiveCellServedCount = showSinrLiveCellBeams
     ? sim.sinrLiveCells?.servedCellCount ?? 0
@@ -2506,6 +2747,16 @@ function SceneRenderContent({
         sinrLiveCellServedCount={showSinrLiveCellBeams ? String(sinrLiveCellServedCount) : ''}
         sinrLiveCellUeOffAxisMaxDeg={showSinrLiveCellBeams ? sinrLiveCellUeOffAxisMaxDeg.toFixed(3) : ''}
         sinrLiveHandoverPulseConeCount={showSinrLiveHandoverPulse ? String(sinrLiveCellPulseConeItems.length) : ''}
+        handoverPresentationActive={handoverPresentation.active ? '1' : '0'}
+        handoverPresentationSource={handoverPresentationSource ?? ''}
+        handoverPresentationKind={handoverPresentation.event?.kind ?? ''}
+        handoverPresentationPhase={handoverPresentation.phase ?? ''}
+        handoverAutoSlowActive={handoverPresentation.autoSlowActive ? '1' : '0'}
+        handoverDisplayIsolationActive={handoverDisplayIsolation.active ? '1' : '0'}
+        beamBudgetGlobal={String(sinrLiveBeamDisplayFrame.globalBeamCount)}
+        beamBudgetServing={String(sinrLiveBeamDisplayFrame.serving.configuredBeamCount)}
+        beamBudgetCandidate={String(sinrLiveBeamDisplayFrame.candidate.configuredBeamCount)}
+        beamHoppingEnabled={sinrLiveBeamDisplayFrame.beamHoppingEnabled ? '1' : '0'}
         modqnVisualLayerPreset={showCellOverlay ? modqnVisualLayerPreset : ''}
         modqnServiceMapEnabled={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? '1' : '0'}
         modqnServedUeCount={showModqnServiceAllocation ? modqnServiceMap.servedUeCount : 0}
@@ -2637,7 +2888,11 @@ function SceneRenderContent({
           earth-fixed cell centres, so they were misaligned with the cones + UE membership (the
           lattice-phase ① shift widened the gap). The cell-truth footprint rings now render with
           the serving cones below (`SinrLiveCellFootprintRings`, gated showSinrLiveCellBeams). */}
-      {presentationPlan.visible['event-effects'] && showLiveSceneEffects && !handoverDisplayIsolation.hideTimelineEffects && (
+      {presentationPlan.visible['event-effects']
+        && showLiveSceneEffects
+        && !handoverDisplayIsolation.hideTimelineEffects
+        && !handoverDisplayIsolation.suppressNaturalHandoverLayers
+        && (
         <HandoverLinks
           satellites={viz.displaySats}
           eventRoles={viz.eventRoles}
@@ -2654,7 +2909,10 @@ function SceneRenderContent({
       {presentationPlan.visible['motion-guides'] && showSpineParticles && (
         <SpineParticles satellites={viz.displaySats} satBeams={viz.satBeams} />
       )}
-      {presentationPlan.visible['event-effects'] && showGroundRipple && (
+      {presentationPlan.visible['event-effects']
+        && showGroundRipple
+        && !handoverDisplayIsolation.suppressNaturalHandoverLayers
+        && (
         <ServingGroundRipple
           satBeams={viz.satBeams}
           footprintRadius={viz.footprintRadiusWorld}
@@ -2712,8 +2970,8 @@ function SceneRenderContent({
           elevationDimCeilDeg={beamDisplaySpec.elevationDimCeilDeg}
           elevationDimMinFactor={beamDisplaySpec.elevationDimMinFactor}
           heroExemptFromElevationDim={beamDisplaySpec.heroExemptFromElevationDim}
-          primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
-          primaryServingCellId={primaryServingRecord?.cellId ?? null}
+          primaryServingSatId={displayHeroRecord?.servingSatId ?? null}
+          primaryServingCellId={displayHeroRecord?.cellId ?? null}
         />
       )}
       {presentationPlan.visible['serving-beams'] && showSinrLiveCellBeams && sinrLiveCinemaInterServingFanConeItems.length > 0 && (
@@ -2752,15 +3010,15 @@ function SceneRenderContent({
           colour, so each beam reads as a distinct double-hex with its UEs scattered off-centre
           inside. Replaces the retired steered AmbientFootprintRings AND the persistent grey
           SinrLiveCellGrid (cells show only when served). */}
-      {presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !manualHandoverActive && (
+      {presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !handoverDisplayIsolation.active && (
         <SinrLiveCellFootprintRings
           items={sinrLiveCellBeamConeItems}
           visible={!handoverDisplayIsolation.hideNormalBeamField}
           layer="serving"
           palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
-          primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
-          primaryServingCellId={primaryServingRecord?.cellId ?? null}
+          primaryServingSatId={displayHeroRecord?.servingSatId ?? null}
+          primaryServingCellId={displayHeroRecord?.cellId ?? null}
           telemetryCountDatasetKey="sinrLiveCellFootprintRingRenderedCount"
         />
       )}
@@ -2782,10 +3040,12 @@ function SceneRenderContent({
           this cell-cone callout layer reads the same cell-truth items + per-cell SINR. */}
       {presentationPlan.visible.annotations && showBeamCallouts && sinrLiveCellBeamConeItems.length > 0 && (
         <SinrLiveCellBeamCallouts
-          items={sinrLiveCellBeamConeItems}
+          // Display-only 19-beam substrate cells have no UE/SINR record, so
+          // they show as geometry only and never receive a fabricated info chip.
+          items={sinrLiveCellBeamConeItems.filter(item => !item.displayOnly)}
           servingSinrByCellId={sinrLiveCellServingSinrByCellId}
-          primaryServingSatId={primaryServingRecord?.servingSatId ?? null}
-          primaryServingCellId={primaryServingRecord?.cellId ?? null}
+          primaryServingSatId={displayHeroRecord?.servingSatId ?? null}
+          primaryServingCellId={displayHeroRecord?.cellId ?? null}
           telemetryCountDatasetKey="sinrLiveCellBeamCalloutRenderedCount"
         />
       )}
@@ -2837,8 +3097,19 @@ function SceneRenderContent({
           beam render is the earth-fixed cell-truth cones above (SinrLiveCellBeamCones,
           gated by showSinrLiveCellBeams). The SatelliteBeams component survives only
           as the vc1c/vc2 validation-fixture subject — it is no longer mounted in-app. */}
-      {presentationPlan.visible['event-effects'] && showLiveSceneEffects && !handoverDisplayIsolation.hideTimelineEffects && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
-      {presentationPlan.visible['event-effects'] && showHandoverToastOverlay && (!handoverDisplayIsolation.hideTimelineEffects || manualHandoverActive) && (
+      {presentationPlan.visible['event-effects']
+        && showLiveSceneEffects
+        && !handoverDisplayIsolation.hideTimelineEffects
+        && !handoverDisplayIsolation.suppressNaturalHandoverLayers
+        && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
+      {presentationPlan.visible['event-effects']
+        && showHandoverToastOverlay
+        && (
+          (manualHandoverActive && manualHandoverEvent !== null)
+          || (!handoverDisplayIsolation.hideTimelineEffects
+            && !handoverDisplayIsolation.suppressNaturalHandoverLayers)
+        )
+        && (
         <HandoverToastOverlay
           frame={sceneFrame}
           interTriggerSec={profile.handover.triggerTimeSec}
@@ -2893,6 +3164,13 @@ interface MainSceneProps {
    * the pair and never feeds it back into the simulation.
    */
   handoverCinemaCandidate?: SinrLiveCinemaHandoverCandidate | null;
+  /** True while the handover director has claimed the legacy scene display. */
+  handoverCinemaArmed?: boolean;
+  handoverCinemaKind?: 'intra' | 'inter' | null;
+  /** Spacecraft family for the live legacy Walker presentation. */
+  constellation?: SimulatorConstellation;
+  /** Reports only a drawable, coordinator-owned visual story to playback. */
+  onHandoverPresentationChange?: (view: HandoverPresentationView) => void;
 }
 
 export const MainScene = memo(function MainScene({
@@ -2910,6 +3188,10 @@ export const MainScene = memo(function MainScene({
   canonicalVisualOffsetSec = 0,
   beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
   handoverCinemaCandidate = null,
+  handoverCinemaArmed = false,
+  handoverCinemaKind = null,
+  onHandoverPresentationChange,
+  constellation = DEFAULT_SATELLITE_CONSTELLATION,
 }: MainSceneProps) {
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
   const showUav = sceneLane === 'sinr-live';
@@ -3041,6 +3323,10 @@ export const MainScene = memo(function MainScene({
               onLiveSeekLanded={onLiveSeekLanded}
               beamDisplaySpec={beamDisplaySpec}
               handoverCinemaCandidate={handoverCinemaCandidate}
+              handoverCinemaArmed={handoverCinemaArmed}
+              handoverCinemaKind={handoverCinemaKind}
+              onHandoverPresentationChange={onHandoverPresentationChange}
+              constellation={constellation}
               presentationPlan={presentationPlan}
             />
           ) : sceneFrame?.sceneSource === 'artifact-replay' ? (
@@ -3064,6 +3350,10 @@ export const MainScene = memo(function MainScene({
               sceneFrame={sceneFrame}
               beamDisplaySpec={beamDisplaySpec}
               handoverCinemaCandidate={handoverCinemaCandidate}
+              handoverCinemaArmed={handoverCinemaArmed}
+              handoverCinemaKind={handoverCinemaKind}
+              onHandoverPresentationChange={onHandoverPresentationChange}
+              constellation={constellation}
               presentationPlan={presentationPlan}
             />
           )}

@@ -30,6 +30,7 @@ export function createInitialSimState(profile: Profile): SimState {
     physicalServing: emptyPhysicalServing,
     panelPrimary: { ...emptyPanelPrimary, role: 'none' },
     panelComparison: { ...emptyPanelComparison, role: 'none' },
+    intraHandoverPresentation: null,
     livePaperEnergyEfficiency: null,
     ch5DemoPaperEnergyEfficiency: null,
     canonicalEe: createPendingCanonicalEeSnapshot(),

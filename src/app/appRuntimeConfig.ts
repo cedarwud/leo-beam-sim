@@ -76,6 +76,11 @@ export interface AppRuntimeConfigInput {
   readonly manualHandoverRequestId?: number;
   readonly manualHandoverKind?: 'intra' | 'inter';
   readonly manualHandoverStartedAtMs?: number;
+  readonly manualHandoverSourceSatId?: string;
+  readonly manualHandoverSourceCellId?: number;
+  readonly manualHandoverTargetCellId?: number;
+  readonly manualHandoverServingSinrDb?: number;
+  readonly manualHandoverCandidateSinrDb?: number;
 }
 
 export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConfig {
@@ -104,6 +109,9 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     directorFocusCommand: input.directorFocusCommand,
     viewport: input.viewport,
     beamCountBySatellite: input.sceneTopology.beamCountBySatellite,
+    servingBeamCount: input.sceneTopology.servingBeamCount ?? undefined,
+    candidateBeamCount: input.sceneTopology.candidateBeamCount ?? undefined,
+    beamHoppingEnabled: input.sceneTopology.beamHoppingEnabled,
     ueCount: input.sceneTopology.ueCount
       ?? (input.appMode === 'sinr-experiment'
         ? SINR_LIVE_DEFAULT_UE_COUNT
@@ -113,7 +121,7 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
       : undefined,
     ueDistributionMode: input.sceneTopology.ueDistributionMode
       ?? (input.appMode === 'sinr-experiment'
-        ? 'random'
+        ? 'seven-cell-asymmetric'
         : trainingTopology.ueDistributionMode ?? 'random'),
     // MODQN consolidation: the MODQN live page reuses the SINR scene, so the primary
     // UE is the centred 'observer' protagonist on BOTH modes. The old 'distribution'
@@ -133,6 +141,11 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     manualHandoverRequestId: input.manualHandoverRequestId,
     manualHandoverKind: input.manualHandoverKind,
     manualHandoverStartedAtMs: input.manualHandoverStartedAtMs,
+    manualHandoverSourceSatId: input.manualHandoverSourceSatId,
+    manualHandoverSourceCellId: input.manualHandoverSourceCellId,
+    manualHandoverTargetCellId: input.manualHandoverTargetCellId,
+    manualHandoverServingSinrDb: input.manualHandoverServingSinrDb,
+    manualHandoverCandidateSinrDb: input.manualHandoverCandidateSinrDb,
     ueDistributionScope: input.appMode === 'modqn-demo' ? 'service-area' : 'beam-footprint',
     ueDistributionRadiusKm: input.appMode === 'modqn-demo'
       && input.selectedTrainingEnvAxes?.ueArea.distribution === 'uniform-circular'

@@ -239,6 +239,11 @@ check('CQ3 FIX: a UE off the cell centre keeps a real off-axis angle and is stil
   // four identities present + separated
   assertEqual(off.beamIdentity, 'over#cell0', 'beam identity = sat × cell');
   assertEqual(off.frequencyIndex, cellFrequencyIndex(0, profile.beams.frequencyReuse), 'freq identity = cellId%reuse');
+  assert(centre.intraCandidateCellId !== null && centre.intraCandidateCellId !== undefined, 'same-sat alternate cell is measured');
+  assert(centre.intraCandidateCellId !== centre.cellId, 'alternate candidate uses a different cell/beam');
+  assert(Number.isFinite(centre.intraCandidateSinrDb ?? NaN), 'same-sat alternate candidate has finite SINR');
+  assert(centre.intraCandidateLinkSample !== null && centre.intraCandidateLinkSample !== undefined, 'alternate candidate keeps its LinkSample');
+  assertEqual(centre.intraCandidateLinkSample?.sinrDb, centre.intraCandidateSinrDb, 'alternate SINR equals its LinkSample SINR');
 });
 
 check('cold attach is not a handover; UE crossing into a same-sat cell IS an intra-HO', () => {

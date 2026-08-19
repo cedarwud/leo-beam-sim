@@ -50,6 +50,15 @@ export const DISPERSED_SEVEN_CELL_AXIAL_COORDINATES = Object.freeze([
   Object.freeze({ id: 6 as const, q: 2, r: -2 }),
 ] as const);
 
+/**
+ * Deliberately uneven 100-UE population for the seven active cells.  Keeping
+ * this beside the shared cell topology makes the scenario and live display
+ * agree on both the active domain and its non-uniform load.
+ */
+export const DISPERSED_SEVEN_CELL_USER_COUNTS = Object.freeze([
+  18, 16, 15, 14, 13, 12, 12,
+] as const);
+
 export type DispersedSevenCellId =
   typeof DISPERSED_SEVEN_CELL_AXIAL_COORDINATES[number]['id'];
 

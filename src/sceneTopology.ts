@@ -1,6 +1,7 @@
 import type { Profile } from './profiles/types';
 import type { UeDistributionMode } from './engine/ue/multiUeState';
 import type { UeMobilityMode, UeMobilityParams } from './engine/ue/multiUeMobility';
+import type { SimulatorConstellation } from './simulator/types';
 import {
   isSupportedBeamLayoutCount,
   type SupportedBeamLayoutCount,
@@ -11,10 +12,17 @@ export const SCENE_TOPOLOGY_OVERRIDES_KEY = 'leo-beam-sim.scene-topology.v1';
 export type BeamCountBySatellite = Readonly<Record<string, SupportedBeamLayoutCount>>;
 
 export interface SceneTopologyState {
+  /** Legacy Walker presentation preset; canonical TLE frames keep their own provenance. */
+  constellation: SimulatorConstellation;
   satsPerPlane: number | null;
   beamCountPerSatellite: number | null;
   /** Optional per-satellite beam budgets; the global count remains the fallback. */
   beamCountBySatellite: BeamCountBySatellite;
+  /** Role-scoped budgets follow the current serving/candidate identities across a HO. */
+  servingBeamCount: SupportedBeamLayoutCount | null;
+  candidateBeamCount: SupportedBeamLayoutCount | null;
+  /** Internal switch; deliberately not exposed in the frontend yet. */
+  beamHoppingEnabled: boolean;
   cellServingCount: number | null;
   ueCount: number | null;
   ueDistributionMode: UeDistributionMode | null;
@@ -25,15 +33,47 @@ export interface SceneTopologyState {
 
 export function createSceneTopologyState(): SceneTopologyState {
   return {
+    constellation: 'starlink',
     satsPerPlane: null,
     beamCountPerSatellite: null,
     beamCountBySatellite: {},
+    servingBeamCount: null,
+    candidateBeamCount: null,
+    beamHoppingEnabled: false,
     cellServingCount: null,
     ueCount: null,
     ueDistributionMode: null,
     ueMobilityMode: null,
     ueMobilityParams: null,
     enableUeTrails: null,
+  };
+}
+
+/**
+ * Legacy Walker constellation adapter.  It changes only the synthetic orbit
+ * source supplied to the scene; canonical TLE/SGP4 frames never pass through
+ * this function.  OneWeb keeps the same deterministic Walker mechanics but at
+ * a higher shell with a smaller satellite pool.
+ */
+export function applyLegacyConstellationPreset(
+  profile: Profile,
+  constellation: SimulatorConstellation,
+): Profile {
+  if (constellation === 'starlink') return profile;
+  const inclinationOffsets = [-2.4, -1.2, 0, 1.2, 2.4] as const;
+  return {
+    ...profile,
+    orbit: {
+      ...profile.orbit,
+      shells: profile.orbit.shells.map((shell, index) => ({
+        ...shell,
+        id: `oneweb-${shell.id}`,
+        altitudeKm: 1200,
+        inclinationDeg: 87.9 + (inclinationOffsets[index] ?? 0),
+        planes: Math.max(1, Math.round(shell.planes * 0.5)),
+        satsPerPlane: Math.max(1, Math.round(shell.satsPerPlane * 0.6)),
+      })),
+    },
   };
 }
 
@@ -95,8 +135,12 @@ export function hasSceneTopologyOverrides(
   topology: SceneTopologyState,
 ): boolean {
   return topology.satsPerPlane !== null
+    || topology.constellation !== 'starlink'
     || topology.beamCountPerSatellite !== null
     || Object.keys(topology.beamCountBySatellite).length > 0
+    || topology.servingBeamCount !== null
+    || topology.candidateBeamCount !== null
+    || topology.beamHoppingEnabled
     || topology.ueCount !== null
     || (topology.ueDistributionMode !== null && topology.ueDistributionMode !== 'random')
     || (topology.ueMobilityMode !== null && topology.ueMobilityMode !== 'static')
@@ -108,9 +152,13 @@ export function getSceneTopologyResetKey(
   topology: SceneTopologyState,
 ): string {
   return [
+    topology.constellation,
     topology.satsPerPlane ?? 'base',
     topology.beamCountPerSatellite ?? 'base',
     serializeBeamCountBySatellite(topology.beamCountBySatellite),
+    topology.servingBeamCount ?? 'global',
+    topology.candidateBeamCount ?? 'global',
+    topology.beamHoppingEnabled ? 'hopping' : 'fixed',
     topology.ueCount ?? 'base',
     topology.ueDistributionMode ?? 'random',
     topology.ueMobilityMode ?? 'static',
@@ -125,9 +173,13 @@ export function getSceneTopologyEvidenceKey(
   topology: SceneTopologyState,
 ): string {
   return [
+    topology.constellation,
     topology.satsPerPlane ?? 'base',
     topology.beamCountPerSatellite ?? 'base',
     serializeBeamCountBySatellite(topology.beamCountBySatellite),
+    topology.servingBeamCount ?? 'global',
+    topology.candidateBeamCount ?? 'global',
+    topology.beamHoppingEnabled ? 'hopping' : 'fixed',
     topology.ueCount ?? 'base',
     topology.ueDistributionMode ?? 'random',
     topology.ueMobilityMode ?? 'static',

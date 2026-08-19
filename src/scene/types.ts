@@ -165,6 +165,11 @@ export interface RuntimeConfig {
   cellServingCount?: number;
   /** Per-satellite beam budgets for the live cell-truth scheduler. */
   beamCountBySatellite?: Readonly<Record<string, number>>;
+  /** Role budgets follow whichever identities currently serve/contend. */
+  servingBeamCount?: number;
+  candidateBeamCount?: number;
+  /** Presentation-scene scheduling switch; false keeps each sat's cell window fixed. */
+  beamHoppingEnabled?: boolean;
   ueDistributionMode?: UeDistributionMode;
   uePrimaryAnchorMode?: UePrimaryAnchorMode;
   ueDistributionScope?: UeDistributionScope;
@@ -178,6 +183,11 @@ export interface RuntimeConfig {
   manualHandoverRequestId?: number;
   manualHandoverKind?: 'intra' | 'inter';
   manualHandoverStartedAtMs?: number;
+  manualHandoverSourceSatId?: string;
+  manualHandoverSourceCellId?: number;
+  manualHandoverTargetCellId?: number;
+  manualHandoverServingSinrDb?: number;
+  manualHandoverCandidateSinrDb?: number;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   enableUeTrails?: boolean;
@@ -220,6 +230,24 @@ export interface PanelPrimaryState extends SignalSourceState {
 
 export interface PanelComparisonState extends SignalSourceState {
   role: 'pending' | 'candidate' | 'ho-target' | 'none';
+}
+
+/**
+ * Display-only evidence for the explicit same-satellite intra teaching story.
+ * The candidate is measured by the cell model at the primary UE position, but
+ * this snapshot never participates in serving selection or handover timing.
+ */
+export interface IntraHandoverPresentation {
+  readonly ueId: string;
+  readonly sourceSatId: string;
+  readonly sourceCellId: number;
+  readonly targetCellId: number;
+  readonly servingSinrDb: number;
+  readonly candidateSinrDb: number;
+  /** Candidate minus serving, in dB. */
+  readonly deltaSinrDb: number;
+  readonly elevationDeg: number | null;
+  readonly rangeKm: number | null;
 }
 
 export type VisualFrequencyDiagnosticsSource =
@@ -313,6 +341,8 @@ export interface SimState {
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;
+  /** Same-satellite candidate snapshot used only by the explicit intra story. */
+  intraHandoverPresentation?: IntraHandoverPresentation | null;
   visualFrequencyDiagnostics?: VisualFrequencyDiagnosticsState;
   /** Backward-compatible right-panel primary fields; prefer the explicit contract fields above. */
   servingSatId: string | null;
@@ -356,6 +386,9 @@ export interface SimState {
   beamHopEnabled: boolean;
   beamHopSlotIndex: number;
   beamHopSlotSec: number;
+  /** Display-only active beam counts from the SINR-live cell frame. */
+  beamDisplayServingActiveCount?: number;
+  beamDisplayCandidateActiveCount?: number;
   servingBeamActiveThisSlot: boolean | null;
   servingSatActiveBeamIds: number[];
   pendingTargetActiveBeamIds: number[];

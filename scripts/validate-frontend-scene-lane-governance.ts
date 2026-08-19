@@ -2794,12 +2794,12 @@ for (const [needle, label] of [
   // beam-stage ① #3: cell-truth footprint rings (gated with the serving cones) REPLACE
   // the retired steered AmbientFootprintRings — rings now sit at the earth-fixed cell
   // centres (aligned with the cones + UE membership), not the steered beam positions.
-  ["{presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !manualHandoverActive && (\\n        <SinrLiveCellFootprintRings", 'cell-truth footprint rings'],
-  ["{presentationPlan.visible['event-effects'] && showLiveSceneEffects && !manualHandoverActive && (\\n        <HandoverLinks", 'handover links'],
-  ["{presentationPlan.visible['event-effects'] && showLiveSceneEffects && !manualHandoverActive && <IntraGroundShockwave", 'intra ground shockwave'],
-  ["{presentationPlan.visible['event-effects'] && showHandoverToastOverlay && (\\n        <HandoverToastOverlay", 'handover toast overlay'],
+  ["{presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !handoverDisplayIsolation.active && (\\n        <SinrLiveCellFootprintRings", 'cell-truth footprint rings'],
+  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && (\\n        <HandoverLinks", 'handover links'],
+  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && <IntraGroundShockwave", 'intra ground shockwave'],
+  ["{presentationPlan.visible['event-effects']\\n        && showHandoverToastOverlay\\n        && (\\n          (manualHandoverActive && manualHandoverEvent !== null)", 'handover toast overlay'],
 ] as const) {
-  assertContains(mainSceneSource, needle.replace('\\n', '\n'), `MainScene should source-gate ${label}`);
+  assertContains(mainSceneSource, needle.replaceAll('\\n', '\n'), `MainScene should source-gate ${label}`);
 }
 
 for (const [needle, label] of [

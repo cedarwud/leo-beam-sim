@@ -74,6 +74,7 @@ import { ControlBar } from './ui/ControlBar';
 import { DirectorControls } from './ui/DirectorControls';
 import { useHandoverCinema } from './app/useHandoverCinema';
 import { shouldSuppressInterSeekFade } from './scene/handoverDisplayIsolation';
+import { createSinrLiveBeamDisplayFrame } from './scene/sinrLiveBeamDisplayFrame';
 import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
 import {
@@ -86,6 +87,7 @@ import { HomepageCanonicalControls } from './ui/signal-tuning/HomepageCanonicalC
 import { HomepageCanonicalServingComparison } from './ui/signal-tuning/HomepageCanonicalServingComparison';
 import { HomepageRightRail } from './ui/signal-tuning/HomepageRightRail';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
+import { WalkerResultsRail } from './ui/signal-tuning/WalkerResultsRail';
 import { useHomepageCanonicalAnalysis } from './ui/signal-tuning/useHomepageCanonicalAnalysis';
 import type { MainTabKey } from './ui/signal-tuning/types';
 import { SceneTopologyPanel } from './ui/SceneTopologyPanel';
@@ -120,6 +122,7 @@ import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
 import { SinrLiveQuickControls } from './ui/SinrLiveQuickControls';
 import { DEFAULT_BEAM_DISPLAY_SPEC } from './scene/beamDisplaySpec';
 import { MANUAL_HANDOVER_DISPLAY_MS } from './scene/manualHandoverDemo';
+import { buildNonOverlappingIntraPresentationSlots } from './scene/handoverPresentationSchedule';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,
@@ -226,6 +229,7 @@ import {
   selectReplayDisplayUes,
 } from './app/showcaseReplayState';
 import { usePlaybackControls } from './usePlaybackControls';
+import type { HandoverPresentationView } from './scene/handoverPresentationOwner';
 import { useCameraControls } from './useCameraControls';
 
 interface HandoverPolicyRuntimeState {
@@ -285,6 +289,8 @@ export function App() {
     readonly id: number;
     readonly kind: 'intra' | 'inter';
     readonly startedAtMs: number;
+    readonly origin: 'button' | 'scheduled';
+    readonly intraPresentation: SimState['intraHandoverPresentation'];
   } | null>(null);
   const manualHandoverWasPausedRef = useRef(false);
 
@@ -594,6 +600,11 @@ export function App() {
     manualHandoverRequestId: manualHandoverRequest?.id,
     manualHandoverKind: manualHandoverRequest?.kind,
     manualHandoverStartedAtMs: manualHandoverRequest?.startedAtMs,
+    manualHandoverSourceSatId: manualHandoverRequest?.intraPresentation?.sourceSatId,
+    manualHandoverSourceCellId: manualHandoverRequest?.intraPresentation?.sourceCellId,
+    manualHandoverTargetCellId: manualHandoverRequest?.intraPresentation?.targetCellId,
+    manualHandoverServingSinrDb: manualHandoverRequest?.intraPresentation?.servingSinrDb,
+    manualHandoverCandidateSinrDb: manualHandoverRequest?.intraPresentation?.candidateSinrDb,
   }), [
     appMode,
     primaryUeJogKm,
@@ -621,6 +632,18 @@ export function App() {
   );
 
   const [simState, setSimState] = useState<SimState>(() => createInitialSimState(baseProfile));
+  const walkerBeamDisplayFrame = useMemo(() => createSinrLiveBeamDisplayFrame({
+    profile: effectiveProfile,
+    runtime,
+    servingSatelliteId: simState.physicalServing.satId,
+    candidateSatelliteId: simState.pendingTargetSatId ?? simState.comparisonSatId,
+  }), [
+    effectiveProfile,
+    runtime,
+    simState.comparisonSatId,
+    simState.pendingTargetSatId,
+    simState.physicalServing.satId,
+  ]);
   // MODQN ω-Handover S2: replace the hard-coded shell model with a runtime
   // fetch of the producer's replay bundle. The fallback typed-reference is
   // used to keep the demo renderable when the dev server's static-file route
@@ -671,23 +694,62 @@ export function App() {
     omegaDisplayApplyVersion,
   ]);
   const [staleFormulaEvidenceKey, setStaleFormulaEvidenceKey] = useState<string | null>(null);
-  const playback = usePlaybackControls(simState, camera.directorFocusActive);
+  const [visibleHandover, setVisibleHandover] = useState<{
+    readonly active: boolean;
+    readonly kind: 'intra' | 'inter' | null;
+    readonly source: 'walker' | 'tle' | 'manual' | 'cinema' | null;
+  }>({ active: false, kind: null, source: null });
+  const visibleHandoverActive = visibleHandover.active;
+  const handleHandoverPresentationChange = useCallback((view: HandoverPresentationView) => {
+    setVisibleHandover(current => {
+      const next = {
+        active: view.active && view.autoSlowActive,
+        kind: view.event?.kind ?? null,
+        source: view.event?.source ?? null,
+      } as const;
+      return current.active === next.active
+        && current.kind === next.kind
+        && current.source === next.source
+        ? current
+        : next;
+    });
+  }, []);
+  const playback = usePlaybackControls(
+    simState,
+    camera.directorFocusActive,
+    visibleHandoverActive,
+  );
   const resetAnalysisWindow = useCallback(() => {
     setMeasurementResetEpoch(epoch => epoch + 1);
   }, []);
 
-  const requestMovingIntraDemo = useCallback(() => {
+  const requestMovingIntraDemo = useCallback((origin: 'button' | 'scheduled' = 'button'): boolean => {
+    const presentation = simState.intraHandoverPresentation;
+    if (
+      presentation === null
+      || presentation === undefined
+      || manualHandoverRequest !== null
+      || visibleHandover.active
+      || !Number.isFinite(presentation.servingSinrDb)
+      || !Number.isFinite(presentation.candidateSinrDb)
+    ) return false;
     manualHandoverWasPausedRef.current = playback.paused;
     // The display-only fallback must keep the source timeline running so the
     // source satellite and its beam apex continue to move during the cue.
     playback.setPaused(false);
+    setBeamDisplaySpec(current => current.beamCalloutsEnabled
+      ? { ...current, beamCalloutsEnabled: false }
+      : current);
     manualHandoverRequestSeqRef.current += 1;
     setManualHandoverRequest({
       id: manualHandoverRequestSeqRef.current,
       kind: 'intra',
       startedAtMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
+      origin,
+      intraPresentation: presentation,
     });
-  }, [playback]);
+    return true;
+  }, [manualHandoverRequest, playback, simState.intraHandoverPresentation, visibleHandover.active]);
 
   // The fallback is a display-only same-satellite beam-switch cue. It runs on the
   // moving source timeline, then returns to the exact pre-click playback state
@@ -1454,6 +1516,65 @@ export function App() {
       ),
     });
   }, [liveWalkerHandoverEventIndex]);
+  const automaticIntraPresentationSlots = useMemo(() => {
+    if (
+      !isLegacyWalkerRoute
+      || sceneSource !== 'live-sim'
+      || sceneLane !== 'sinr-live'
+      || liveWalkerHandoverEventIndex === null
+    ) return [];
+    return buildNonOverlappingIntraPresentationSlots({
+      interEventTimesSec: liveWalkerDirectorHandoverRailEvents
+        .filter(event => event.kind === 'inter')
+        .map(event => event.sourceTimeSec ?? event.timeSec),
+      // Leave a short quiet lead-in after the warm-start frame so the first
+      // automatic cue does not fire on the same render as scene entry.
+      startSec: demoStartOffset + 60,
+      endSec: LIVE_SIM_TIMELINE_DURATION_SEC,
+    });
+  }, [
+    demoStartOffset,
+    isLegacyWalkerRoute,
+    liveWalkerDirectorHandoverRailEvents,
+    liveWalkerHandoverEventIndex,
+    sceneLane,
+    sceneSource,
+  ]);
+  const automaticIntraScheduleRef = useRef<{ nextIndex: number; lastSimTimeSec: number | null }>({
+    nextIndex: 0,
+    lastSimTimeSec: null,
+  });
+  useEffect(() => {
+    const scheduleState = automaticIntraScheduleRef.current;
+    if (automaticIntraPresentationSlots.length === 0) {
+      scheduleState.nextIndex = 0;
+      scheduleState.lastSimTimeSec = null;
+      return;
+    }
+    const currentTimeSec = simState.simTimeSec;
+    if (
+      !Number.isFinite(currentTimeSec)
+      || (scheduleState.lastSimTimeSec !== null && currentTimeSec < scheduleState.lastSimTimeSec - 1)
+    ) {
+      scheduleState.nextIndex = 0;
+    }
+    while (
+      scheduleState.nextIndex < automaticIntraPresentationSlots.length
+      && automaticIntraPresentationSlots[scheduleState.nextIndex]!.endSec < currentTimeSec
+    ) {
+      scheduleState.nextIndex += 1;
+    }
+    const slot = automaticIntraPresentationSlots[scheduleState.nextIndex];
+    if (
+      slot !== undefined
+      && currentTimeSec >= slot.startSec
+      && currentTimeSec <= slot.endSec
+      && requestMovingIntraDemo('scheduled')
+    ) {
+      scheduleState.nextIndex += 1;
+    }
+    scheduleState.lastSimTimeSec = currentTimeSec;
+  }, [automaticIntraPresentationSlots, requestMovingIntraDemo, simState.simTimeSec]);
   const liveTimelineWindowStartSec = demoStartOffset;
   const liveTimelineElapsedSec = clampTimelineTime(
     simState.simTimeSec - liveTimelineWindowStartSec,
@@ -1857,6 +1978,60 @@ export function App() {
     hideBeamInfoForHandover();
     handoverCinema.armInter();
   }, [handoverCinema.armInter, hideBeamInfoForHandover]);
+
+  // While the explicit intra story is visible, latch the two measured links in
+  // the right rail as well. The scene keeps moving, so reading the live frame
+  // directly here would make the candidate card jump to a different cell before
+  // the animation ends. This is a presentation snapshot only; formula evidence
+  // and serving state remain the live model values.
+  const intraTeachingDisplayState = useMemo<SimState>(() => {
+    const presentation = manualHandoverRequest?.kind === 'intra'
+      ? manualHandoverRequest.intraPresentation
+      : null;
+    if (presentation === null || presentation === undefined) return simState;
+    return {
+      ...simState,
+      panelPrimary: {
+        ...simState.panelPrimary,
+        role: 'serving',
+        satId: presentation.sourceSatId,
+        beamId: null,
+        sinrDb: presentation.servingSinrDb,
+        elevationDeg: presentation.elevationDeg,
+        rangeKm: presentation.rangeKm,
+        status: 'live',
+      },
+      panelComparison: {
+        ...simState.panelComparison,
+        role: 'pending',
+        satId: presentation.sourceSatId,
+        beamId: null,
+        sinrDb: presentation.candidateSinrDb,
+        elevationDeg: presentation.elevationDeg,
+        rangeKm: presentation.rangeKm,
+        status: 'live',
+      },
+      servingSatId: presentation.sourceSatId,
+      servingBeamId: null,
+      servingCellId: presentation.sourceCellId,
+      servingElevationDeg: presentation.elevationDeg,
+      servingRangeKm: presentation.rangeKm,
+      pendingTargetSatId: presentation.sourceSatId,
+      pendingTargetBeamId: null,
+      pendingTargetSinrDb: presentation.candidateSinrDb,
+      comparisonSatId: presentation.sourceSatId,
+      comparisonBeamId: null,
+      comparisonElevationDeg: presentation.elevationDeg,
+      comparisonRangeKm: presentation.rangeKm,
+      comparisonSinrDb: presentation.candidateSinrDb,
+      comparisonKind: 'pending',
+      sinrDeltaDb: presentation.deltaSinrDb,
+      sinrDb: presentation.servingSinrDb,
+    };
+  }, [manualHandoverRequest, simState]);
+  const intraTeachingComparisonCellId = manualHandoverRequest?.kind === 'intra'
+    ? manualHandoverRequest.intraPresentation?.targetCellId ?? null
+    : null;
 
   // The top-level lane transition remains available to the internal MODQN/replay
   // proof surfaces, but the SINR launch surface intentionally does not mount the
@@ -2446,6 +2621,12 @@ export function App() {
                 : undefined}
               beamDisplaySpec={beamDisplaySpec}
               handoverCinemaCandidate={sceneLane === 'sinr-live' ? handoverCinema.focusedCandidate : null}
+              handoverCinemaArmed={sceneLane === 'sinr-live' && isLegacyWalkerRoute && handoverCinema.cinemaActive}
+              handoverCinemaKind={sceneLane === 'sinr-live' && isLegacyWalkerRoute && handoverCinema.armFilter !== 'off'
+                ? handoverCinema.armFilter
+                : null}
+              onHandoverPresentationChange={handleHandoverPresentationChange}
+              constellation={activeSceneTopology.constellation}
             />
           ) : (
             <div
@@ -2519,14 +2700,40 @@ export function App() {
               </section>
             ) : activeRightSidebarTab === 'live' ? (
               <section className="leo-live-status-stack" aria-label="Live status for current scene">
-                <InfoPanel
-                  {...simState}
-                  profile={effectiveProfile}
-                  handoverMode={handoverMode}
-                  showFormulaTerms
-                  isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                  channelMetricKind={activeSceneFrame?.channelMetricKind}
-                />
+                {sceneLane === 'sinr-live' && isLegacyWalkerRoute ? (
+                  <WalkerResultsRail
+                    profile={effectiveProfile}
+                    canonicalEe={simState.canonicalEe}
+                    livePaperEnergyEfficiency={simState.livePaperEnergyEfficiency}
+                    perUePositions={simState.perUePositions}
+                    physicalServing={simState.physicalServing}
+                    physicalServingBudget={simState.physicalServingBudget}
+                    servingCellId={simState.servingCellId}
+                    pendingTargetSatId={simState.pendingTargetSatId}
+                    simTimeSec={simState.simTimeSec}
+                    beamHopEnabled={walkerBeamDisplayFrame.beamHoppingEnabled}
+                    isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                  >
+                    <InfoPanel
+                      {...intraTeachingDisplayState}
+                      profile={effectiveProfile}
+                      handoverMode={handoverMode}
+                      comparisonCellId={intraTeachingComparisonCellId}
+                      isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                      channelMetricKind={activeSceneFrame?.channelMetricKind}
+                    />
+                  </WalkerResultsRail>
+                ) : (
+                  <InfoPanel
+                    {...intraTeachingDisplayState}
+                    profile={effectiveProfile}
+                    handoverMode={handoverMode}
+                    comparisonCellId={intraTeachingComparisonCellId}
+                    showFormulaTerms
+                    isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                    channelMetricKind={activeSceneFrame?.channelMetricKind}
+                  />
+                )}
               </section>
             ) : (
               <section

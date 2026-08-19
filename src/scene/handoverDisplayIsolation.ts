@@ -14,9 +14,49 @@ export interface HandoverDisplayIsolationState {
   readonly hideTimelinePulse: boolean;
   readonly hideTimelineTriggered: boolean;
   readonly hideTimelineEffects: boolean;
+  /** Natural pulse/link/ripple/toast layers must not paint through an explicit story. */
+  readonly suppressNaturalHandoverLayers: boolean;
 }
 
 export type HandoverCinemaArmFilter = 'off' | 'intra' | 'inter';
+
+/**
+ * The live cell model can expose a real handover while the teaching director
+ * is idle.  Those two streams share the same event shape, but only the
+ * explicit presentation owners may replace the normal beam field.
+ */
+export type HandoverDisplayPresentationSource = 'walker' | 'tle' | 'manual' | 'cinema';
+
+export interface HandoverDisplayEventRef {
+  readonly ueId: string;
+  readonly sourceTimeSec: number;
+}
+
+/**
+ * Select the event set the display owner is allowed to paint.
+ *
+ * The live model may retain several recent handovers at once because that is
+ * useful for truth/telemetry. The teaching viewport has one protagonist by
+ * default, so it must not let that retention buffer become a second scene
+ * owner. The optional breadth switch is an explicit display choice; it never
+ * changes the model event buffer.
+ */
+export function selectHandoverEventsForDisplay<T extends HandoverDisplayEventRef>(
+  events: readonly T[] | undefined,
+  protagonistUeId: string | null | undefined,
+  showOtherHandoverUes: boolean,
+): readonly T[] {
+  if (!events || events.length === 0) return [];
+  if (showOtherHandoverUes) return events;
+  if (protagonistUeId === null || protagonistUeId === undefined) return [];
+
+  let latest: T | null = null;
+  for (const event of events) {
+    if (event.ueId !== protagonistUeId) continue;
+    if (latest === null || event.sourceTimeSec > latest.sourceTimeSec) latest = event;
+  }
+  return latest === null ? [] : [latest];
+}
 
 /** Keep intra's existing 8 s teaching envelope unchanged. */
 export const INTRA_HANDOVER_CINEMA_DISPLAY_MS = 8000;
@@ -29,10 +69,10 @@ export const INTER_HANDOVER_CINEMA_DISPLAY_MS = 6000;
  * the shared envelope below unchanged.
  */
 export const INTER_HANDOVER_CINEMA_PHASE_END = {
-  serving: 0.28,
-  measuring: 0.5,
-  holding: 0.68,
-  releasing: 0.84,
+  serving: 0.45,
+  measuring: 0.62,
+  holding: 0.72,
+  releasing: 0.88,
 } as const;
 
 function interSmoothstep01(value: number): number {
@@ -107,21 +147,54 @@ export function resolveHandoverCinemaReady(input: {
 
 export function resolveHandoverDisplayIsolation(input: {
   readonly manualHandoverActive: boolean;
+  /** A manual request may be armed before its drawable endpoints resolve. */
+  readonly manualHandoverRequested?: boolean;
   readonly cinemaCandidateActive: boolean;
+  /** A cinema button has claimed the viewport, but its exact frame has not landed yet. */
+  readonly cinemaCandidateArmed?: boolean;
+  readonly cinemaCandidateReady?: boolean;
   readonly cinemaCandidateKind?: 'intra' | 'inter' | null;
+  /** Natural Walker/TLE events remain in the ordinary live field. */
+  readonly presentationSource?: HandoverDisplayPresentationSource;
 }): HandoverDisplayIsolationState {
-  const active = input.manualHandoverActive || input.cinemaCandidateActive;
-  const interCinemaActive = input.cinemaCandidateActive && input.cinemaCandidateKind === 'inter';
+  // Keep the old flag-only contract for existing pure callers/tests. Once a
+  // source is supplied, only an explicit manual/cinema story owns isolation;
+  // a natural Walker/TLE event is rendered by the normal serving/candidate and
+  // pulse layers instead of blanking the serving field.
+  const sourceOwnsPresentation = input.presentationSource === undefined
+    || input.presentationSource === 'manual'
+    || input.presentationSource === 'cinema';
+  const active = sourceOwnsPresentation
+    && (input.manualHandoverActive || input.cinemaCandidateActive);
+  const interCinemaActive = active && input.cinemaCandidateKind === 'inter';
+  const cinemaPending = sourceOwnsPresentation
+    && input.cinemaCandidateArmed === true
+    && input.cinemaCandidateReady !== true
+    && !input.manualHandoverActive;
+  // A natural Walker/TLE source never owns this policy by itself. A manual
+  // request, however, is an explicit claim even during the one render in
+  // which its pair is not drawable yet; otherwise the old natural pulse can
+  // leak through before the fail-closed manual story is resolved.
+  const manualClaimed = input.manualHandoverRequested === true
+    || (input.manualHandoverActive
+      && input.presentationSource !== 'walker'
+      && input.presentationSource !== 'tle');
+  const cinemaClaimed = input.cinemaCandidateArmed === true
+    || (input.cinemaCandidateActive
+      && input.presentationSource !== 'walker'
+      && input.presentationSource !== 'tle');
+  const suppressNaturalHandoverLayers = manualClaimed || cinemaClaimed;
 
   return {
     active,
     hidePrimaryServingBeam: active,
-    hideCandidateFan: active,
+    hideCandidateFan: active || cinemaPending,
     hideNormalBeamField: interCinemaActive,
     showCinemaCandidateFan: interCinemaActive,
-    hideTimelinePulse: active,
-    hideTimelineTriggered: active,
-    hideTimelineEffects: active,
+    hideTimelinePulse: active || cinemaPending || manualClaimed,
+    hideTimelineTriggered: active || cinemaPending || manualClaimed,
+    hideTimelineEffects: active || cinemaPending || manualClaimed,
+    suppressNaturalHandoverLayers,
   };
 }
 

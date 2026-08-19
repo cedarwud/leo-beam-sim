@@ -54,6 +54,7 @@ import {
 import { HandoverManager } from '../engine/handover/handover-manager';
 import type { Profile } from '../profiles/types';
 import { EARTH_KM_PER_DEG } from '../engine/orbit/earth-constants';
+import { resolveSinrLiveBeamBudget } from './sinrLiveBeamBudget';
 
 /**
  * Minimal satellite shape this pure model reads. The runtime's `VisibleSat`
@@ -172,6 +173,14 @@ export interface UeCellServingRecord {
   readonly comparisonSinrDb?: number | null;
   readonly pendingTargetSatId?: string | null;
   readonly triggerProgressSec?: number;
+  /**
+   * Display-only same-satellite beam candidate for the primary UE. This is
+   * measured at the UE position with the live link budget and is never fed
+   * back into the serving HandoverManager.
+   */
+  readonly intraCandidateCellId?: number | null;
+  readonly intraCandidateSinrDb?: number | null;
+  readonly intraCandidateLinkSample?: LinkSample | null;
 }
 
 /**
@@ -212,6 +221,11 @@ export interface SinrLiveCellHandoverEvent {
   /** New serving (the cell the UE handed ONTO) — always served on a real HO. */
   readonly toSatId: string;
   readonly toCellId: number;
+  /** Optional display evidence for an explicitly presented pair. */
+  readonly fromSinrDb?: number | null;
+  readonly toSinrDb?: number | null;
+  /** `toSinrDb - fromSinrDb`; never used by serving selection. */
+  readonly deltaDb?: number | null;
 }
 
 export interface SinrLiveCellFrame {
@@ -304,6 +318,11 @@ export interface SinrLiveCellModelConfig {
   readonly beamsPerSat?: number;
   /** Optional per-satellite beam budgets; entries override `beamsPerSat`. */
   readonly beamsPerSatById?: Readonly<Record<string, number>>;
+  /** Optional primary-UE role budgets; identity is resolved from this model's managers. */
+  readonly servingBeamsPerSat?: number;
+  readonly candidateBeamsPerSat?: number;
+  /** False freezes the spare-beam window; true advances it by hop slot. */
+  readonly beamHoppingEnabled?: boolean;
   /** Beam-hopping slot duration (s); the lit window advances each slot. Default 2.5. */
   readonly hopSlotSec?: number;
   /**
@@ -461,6 +480,18 @@ export function classifyServingTransition(
   return 'none';
 }
 
+/** Presentation-scene scheduler clock: fixed mode never advances the window. */
+export function resolveBeamWindowSlotIndex(
+  beamHoppingEnabled: boolean,
+  simTimeSec: number,
+  hopSlotSec: number,
+): number {
+  if (!beamHoppingEnabled) return 0;
+  const safeTimeSec = Number.isFinite(simTimeSec) ? Math.max(0, simTimeSec) : 0;
+  const safeSlotSec = Number.isFinite(hopSlotSec) && hopSlotSec > 0 ? hopSlotSec : 2.5;
+  return Math.floor(safeTimeSec / safeSlotSec);
+}
+
 // ---------------------------------------------------------------------------
 // Stateful per-frame driver.
 // ---------------------------------------------------------------------------
@@ -510,6 +541,9 @@ export class SinrLiveCellModel {
   private readonly epochUtcMs: number;
   private beamsPerSat: number;
   private beamsPerSatById: Readonly<Record<string, number>>;
+  private servingBeamsPerSat?: number;
+  private candidateBeamsPerSat?: number;
+  private beamHoppingEnabled: boolean;
   private readonly hopSlotSec: number;
   private readonly beamwidthOverrideRad?: number;
   private readonly maxGainDbiOverrideDbi?: number;
@@ -550,6 +584,9 @@ export class SinrLiveCellModel {
     this.epochUtcMs = config.epochUtcMs;
     this.beamsPerSat = config.beamsPerSat ?? Infinity;
     this.beamsPerSatById = config.beamsPerSatById ?? {};
+    this.servingBeamsPerSat = config.servingBeamsPerSat;
+    this.candidateBeamsPerSat = config.candidateBeamsPerSat;
+    this.beamHoppingEnabled = config.beamHoppingEnabled ?? true;
     this.hopSlotSec = config.hopSlotSec && config.hopSlotSec > 0 ? config.hopSlotSec : 2.5;
     this.beamwidthOverrideRad = config.beamwidthOverrideRad;
     this.maxGainDbiOverrideDbi = config.maxGainDbiOverrideDbi;
@@ -592,10 +629,16 @@ export class SinrLiveCellModel {
     profile: Profile,
     beamsPerSat = this.beamsPerSat,
     beamsPerSatById = this.beamsPerSatById,
+    servingBeamsPerSat = this.servingBeamsPerSat,
+    candidateBeamsPerSat = this.candidateBeamsPerSat,
+    beamHoppingEnabled = this.beamHoppingEnabled,
   ): void {
     this.profile = profile;
     this.beamsPerSat = beamsPerSat;
     this.beamsPerSatById = beamsPerSatById;
+    this.servingBeamsPerSat = servingBeamsPerSat;
+    this.candidateBeamsPerSat = candidateBeamsPerSat;
+    this.beamHoppingEnabled = beamHoppingEnabled;
     this.antenna = this.resolveAntenna(profile);
   }
 
@@ -685,6 +728,7 @@ export class SinrLiveCellModel {
   private applyBeamHoppingCap(
     candidatesByCell: Map<number, CellScanGeometry[]>,
     simTimeSec: number,
+    primaryCellId: number | null,
   ): void {
     const hasFiniteBudget = Number.isFinite(this.beamsPerSat)
       || Object.values(this.beamsPerSatById).some(value => Number.isFinite(value));
@@ -700,11 +744,32 @@ export class SinrLiveCellModel {
       }
     }
 
-    const slotIndex = Math.max(0, Math.floor((Number.isFinite(simTimeSec) ? simTimeSec : 0) / this.hopSlotSec));
+    const slotIndex = resolveBeamWindowSlotIndex(
+      this.beamHoppingEnabled,
+      simTimeSec,
+      this.hopSlotSec,
+    );
+    const primaryManager = primaryCellId === null ? undefined : this.cellManagers.get(primaryCellId);
+    const primaryServingSatId = primaryManager?.state.satId ?? null;
+    const primaryCandidateSatId = primaryManager?.state.pendingTarget?.satId ?? null;
     const illuminated = new Set<string>();
     for (const [satId, cellIds] of cellsBySat) {
       const sorted = [...new Set(cellIds)].sort((a, b) => a - b);
-      const rawBeamBudget = this.beamsPerSatById[satId] ?? this.beamsPerSat;
+      const role = satId === primaryServingSatId
+        ? 'serving'
+        : satId === primaryCandidateSatId
+          ? 'candidate'
+          : undefined;
+      const rawBeamBudget = resolveSinrLiveBeamBudget({
+        fallbackBeamCount: this.beamsPerSat,
+        satelliteId: satId,
+        roleBeamCount: role === 'serving'
+          ? this.servingBeamsPerSat
+          : role === 'candidate'
+            ? this.candidateBeamsPerSat
+            : undefined,
+        beamCountBySatellite: this.beamsPerSatById,
+      });
       if (!Number.isFinite(rawBeamBudget)) {
         for (const cellId of sorted) illuminated.add(`${satId}#${cellId}`);
         continue;
@@ -778,13 +843,20 @@ export class SinrLiveCellModel {
       );
     }
 
+    const allCandidatesByCell = new Map<number, CellScanGeometry[]>(
+      [...candidatesByCell.entries()].map(([cellId, geometries]) => [cellId, [...geometries]]),
+    );
+
     // 1b. Beam-hopping cap: a satellite forms only `beamsPerSat` simultaneous
     //     beams, so it can illuminate at most that many cells this slot; the lit
     //     window rotates over slots. This GATES which (sat, cell) pairs are even
     //     candidates — the serving sat of a lit cell is still chosen by SINR + the
     //     HandoverManager below (B3 / BLOCK-3), and an un-illuminated cell falls to
     //     idle (honest). No-op when `beamsPerSat` is Infinity (pure-model default).
-    this.applyBeamHoppingCap(candidatesByCell, simTimeSec);
+    const primaryCellId = ues[0] === undefined
+      ? null
+      : assignUeToNearestCell(ues[0], this.cellLayout).cellId;
+    this.applyBeamHoppingCap(candidatesByCell, simTimeSec, primaryCellId);
 
     // 2. Pre-decision lit field from each cell's PREVIOUS serving (mirrors the
     //    runtime pre/post two-pass). One lit beam per cell that still has a
@@ -915,6 +987,30 @@ export class SinrLiveCellModel {
     }
     const finalOptions = this.linkBudgetOptions(finalActive, simTimeSec);
 
+    // Display-only same-satellite candidate for the primary UE. The normal
+    // cell decision compares different satellites serving the same cell; the
+    // teaching intra story needs a different beam/cell on the SAME satellite.
+    // Measure it against the same final active field and keep it out of every
+    // serving decision so the canonical runtime remains untouched.
+    const primaryUeMembership = ues[0] === undefined
+      ? null
+      : assignUeToNearestCell(ues[0], this.cellLayout);
+    const primaryIntraCandidate = ues[0] === undefined || primaryUeMembership === null
+      ? null
+      : this.measureIntraCandidate(
+        ues[0],
+        primaryUeMembership.cellId,
+        primaryUeMembership.cellId === null
+          ? null
+          : finalServingByCell.get(primaryUeMembership.cellId) ?? null,
+        allCandidatesByCell,
+        satById,
+        finalLit,
+        finalActive,
+        finalOptions,
+        simTimeSec,
+      );
+
     // 4b. Illuminated beams: every post-hopping lit (sat, cell) pair — "where the
     //     beams point" (S-cells-4b). The render draws the FOCUSED sat's beams from
     //     this (not only served cells); a sat that illuminates a cell it does not
@@ -1017,6 +1113,9 @@ export class SinrLiveCellModel {
         comparisonSinrDb: ueComparison?.comparisonSinrDb ?? null,
         pendingTargetSatId: ueComparison?.pendingTargetSatId ?? null,
         triggerProgressSec: ueComparison?.triggerProgressSec ?? 0,
+        intraCandidateCellId: ue.id === primaryUeId ? primaryIntraCandidate?.cellId ?? null : null,
+        intraCandidateSinrDb: ue.id === primaryUeId ? primaryIntraCandidate?.sample.sinrDb ?? null : null,
+        intraCandidateLinkSample: ue.id === primaryUeId ? primaryIntraCandidate?.sample ?? null : null,
       });
     }
     this.prevUeServing = nextUeServing;
@@ -1093,5 +1192,56 @@ export class SinrLiveCellModel {
     const samples = computeLinkBudget(measurePoint, [...interferers, ...probes], options);
     // Keep only the candidate-probe samples for THIS cell (unique beamId).
     return samples.filter(sample => sample.beamId === beamId);
+  }
+
+  /**
+   * Measure the best alternate beam on the current serving satellite at the
+   * primary UE's actual position. The target beam is a currently illuminated
+   * `(sat, cell)` pair, so its SINR includes the same active serving field and
+   * the same interference-aware link-budget path as the displayed serving
+   * value. This is presentation evidence only; it never changes a manager.
+   */
+  private measureIntraCandidate(
+    ue: UeInput,
+    sourceCellId: number | null,
+    servingSatId: string | null,
+    candidatesByCell: ReadonlyMap<number, readonly CellScanGeometry[]>,
+    satById: ReadonlyMap<string, CellModelSat>,
+    finalLit: readonly SatelliteSnapshot[],
+    finalActive: readonly ActiveBeamAssignment[],
+    options: Parameters<typeof computeLinkBudget>[2],
+    simTimeSec: number,
+  ): { cellId: number; sample: LinkSample } | null {
+    if (sourceCellId === null || servingSatId === null) return null;
+    const uePos: UEPosition = {
+      latDeg: 0,
+      lonDeg: 0,
+      offsetEastKm: ue.eastKm,
+      offsetNorthKm: ue.northKm,
+    };
+    const candidates: Array<{ cellId: number; sample: LinkSample }> = [];
+    for (const [targetCellId, geoms] of candidatesByCell) {
+      if (targetCellId === sourceCellId) continue;
+      const geom = geoms.find(candidate => candidate.satId === servingSatId);
+      const targetCell = this.cellById.get(targetCellId);
+      const sat = satById.get(servingSatId);
+      if (!geom || !targetCell || !sat) continue;
+      const targetBeamId = cellLinkBudgetBeamId(targetCellId);
+      const targetKey = `${servingSatId}:${targetBeamId}`;
+      const targetAlreadyActive = finalActive.some(assignment => `${assignment.satId}:${assignment.beamId}` === targetKey);
+      const snapshots = targetAlreadyActive
+        ? [...finalLit]
+        : [...finalLit, buildCellBeamSnapshot(sat, targetCell, geom)];
+      const sample = computeLinkBudget(uePos, snapshots, {
+        ...options,
+        activeAssignments: [...finalActive],
+        simTimeSec,
+      }).find(entry => entry.satId === servingSatId && entry.beamId === targetBeamId);
+      if (sample !== undefined && Number.isFinite(sample.sinrDb)) {
+        candidates.push({ cellId: targetCellId, sample });
+      }
+    }
+    candidates.sort((a, b) => b.sample.sinrDb - a.sample.sinrDb || a.cellId - b.cellId);
+    return candidates[0] ?? null;
   }
 }

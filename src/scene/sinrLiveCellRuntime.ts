@@ -31,8 +31,14 @@
  * NOT MODQN/paper proof — leo's OWN live SINR-offset surface at 550 km (§7).
  */
 
-import { buildCellLayout, DEFAULT_MIN_ELEVATION_DEG, type CellLayout } from '../engine/cells/cellLayout';
+import {
+  buildCellLayout,
+  DEFAULT_MIN_ELEVATION_DEG,
+  localKmToLatLon,
+  type CellLayout,
+} from '../engine/cells/cellLayout';
 import type { Profile } from '../profiles/types';
+import { DISPERSED_SEVEN_CELL_AXIAL_COORDINATES } from '../topology/dispersedSevenCellTopology';
 import {
   SinrLiveCellModel,
   type CellModelSat,
@@ -50,7 +56,11 @@ import {
  * a coverage/served-continuity knob, not a clutter knob (19 vs 37 confirmed on
  * :3001 in S-cells-4e).
  */
-export const SINR_LIVE_CELL_COUNT = 37;
+export const SINR_LIVE_CELL_COUNT = 7;
+/** Maximum display-only ground-cell substrate used to visualize 1/7/19 beam layouts. */
+export const SINR_LIVE_BEAM_DISPLAY_CELL_COUNT = 19;
+/** Historical substrate retained only for archived-TLE display projection. */
+export const SINR_LIVE_ARCHIVED_DISPLAY_CELL_COUNT = 37;
 
 /**
  * Lattice PHASE offset (in cell radii) for the SINR-live earth-fixed grid — the
@@ -146,6 +156,20 @@ export const SINR_LIVE_BEAMS_PER_SAT = 7;
 export const SINR_LIVE_MAX_BEAMS_PER_SAT = SINR_LIVE_CELL_COUNT;
 
 /**
+ * Configured per-satellite capacity for the presentation surface. This is
+ * intentionally separate from the seven-cell active scheduler cap: the
+ * scene may expose a 1/7/19 beam layout while the live UE truth still has
+ * only seven fixed UE cells. The capacity is a display/configuration value;
+ * it never fabricates a serving decision or a link-budget term.
+ */
+export function resolveSinrLiveBeamCapacityPerSat(profile: Profile): number {
+  const raw = profile.beams?.maxActivePerSat ?? profile.beams?.perSatellite;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return SINR_LIVE_BEAMS_PER_SAT;
+  const floored = Math.floor(raw);
+  return Number.isFinite(floored) ? Math.max(1, floored) : SINR_LIVE_BEAMS_PER_SAT;
+}
+
+/**
  * Resolve how many cells one satellite may light per hop slot on the SINR-live
  * cell lane, from the LIVE profile — which is what makes the Topology tab's
  * "Beam count per satellite" control (7 / 19 / 37) actually reach this lane.
@@ -162,11 +186,10 @@ export const SINR_LIVE_MAX_BEAMS_PER_SAT = SINR_LIVE_CELL_COUNT;
  * can never exceed the cell tiling.
  */
 export function resolveSinrLiveBeamsPerSat(profile: Profile): number {
-  const raw = profile.beams?.maxActivePerSat ?? profile.beams?.perSatellite;
-  if (typeof raw !== 'number' || !Number.isFinite(raw)) return SINR_LIVE_BEAMS_PER_SAT;
-  const floored = Math.floor(raw);
-  if (!Number.isFinite(floored)) return SINR_LIVE_BEAMS_PER_SAT;
-  return Math.min(SINR_LIVE_MAX_BEAMS_PER_SAT, Math.max(1, floored));
+  return Math.min(
+    SINR_LIVE_MAX_BEAMS_PER_SAT,
+    resolveSinrLiveBeamCapacityPerSat(profile),
+  );
 }
 
 /** Beam-hopping slot duration (s): the lit cell window advances each slot. */
@@ -201,8 +224,38 @@ export interface CellTruthFrame {
 }
 
 /** Build the SINR-live cell layout from the live profile (§4). */
-export function buildSinrLiveCellLayout(profile: Profile): CellLayout {
-  return buildCellLayout({
+function applyDispersedSevenCellTopology(layout: CellLayout): CellLayout {
+  const phaseXKm = layout.cellRadiusKm * SINR_LIVE_CELL_PHASE_OFFSET_RADII.east;
+  const phaseYKm = layout.cellRadiusKm * SINR_LIVE_CELL_PHASE_OFFSET_RADII.north;
+  const centers = DISPERSED_SEVEN_CELL_AXIAL_COORDINATES.map(({ id, q, r }) => {
+    const localXKm = layout.cellRadiusKm * Math.sqrt(3) * (q + r / 2) + phaseXKm;
+    const localYKm = layout.cellRadiusKm * 1.5 * r + phaseYKm;
+    const latLon = localKmToLatLon(
+      layout.serviceArea.centerLatDeg,
+      layout.serviceArea.centerLonDeg,
+      localXKm,
+      localYKm,
+    );
+    return {
+      cellId: id,
+      latDeg: latLon.latDeg,
+      lonDeg: latLon.lonDeg,
+      localXKm,
+      localYKm,
+    };
+  });
+  return {
+    ...layout,
+    count: centers.length,
+    centers,
+  };
+}
+
+export function buildSinrLiveCellLayout(
+  profile: Profile,
+  cellCount = SINR_LIVE_CELL_COUNT,
+): CellLayout {
+  const layout = buildCellLayout({
     centerLatDeg: profile.orbit.observerLatDeg,
     centerLonDeg: profile.orbit.observerLonDeg,
     altitudeKm: profile.orbit.shells[0]?.altitudeKm ?? 550,
@@ -210,11 +263,14 @@ export function buildSinrLiveCellLayout(profile: Profile): CellLayout {
     // from the SAME beamwidth (one antenna) — see SINR_LIVE_CELL_BEAMWIDTH_RAD /
     // SINR_LIVE_CELL_MAX_GAIN_DBI.
     beamwidth3dBRad: SINR_LIVE_CELL_BEAMWIDTH_RAD,
-    cellCount: SINR_LIVE_CELL_COUNT,
+    cellCount,
     // Phase the lattice off the ENU origin so the protagonist UE is off-centre
     // (beam-stage ①). One knob; sinr-live + modqn-live both inherit it.
     phaseOffsetRadii: SINR_LIVE_CELL_PHASE_OFFSET_RADII,
   });
+  return cellCount === DISPERSED_SEVEN_CELL_AXIAL_COORDINATES.length
+    ? applyDispersedSevenCellTopology(layout)
+    : layout;
 }
 
 /**
@@ -227,6 +283,9 @@ export function createSinrLiveCellModel(
   useEarthFixedCellTruth: boolean,
   epochUtcMs: number,
   beamCountBySatellite: Readonly<Record<string, number>> = {},
+  servingBeamCount?: number,
+  candidateBeamCount?: number,
+  beamHoppingEnabled = true,
 ): SinrLiveCellModel | null {
   if (!useEarthFixedCellTruth) return null;
   const cellLayout = buildSinrLiveCellLayout(profile);
@@ -244,6 +303,9 @@ export function createSinrLiveCellModel(
     // which is what every shipped profile carries.
     beamsPerSat: resolveSinrLiveBeamsPerSat(profile),
     beamsPerSatById: beamCountBySatellite,
+    servingBeamsPerSat: servingBeamCount,
+    candidateBeamsPerSat: candidateBeamCount,
+    beamHoppingEnabled,
     hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
     // SINR-live-only antenna truth-input overrides (S-cells-4a). They are layered
     // over the profile antenna and never mutate it → the steered lane + baseline

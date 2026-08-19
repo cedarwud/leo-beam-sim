@@ -144,6 +144,22 @@ function hasVisualFrequencyDiagnosticsChanged(
     || hasVisualFrequencyDiagnosticsEntryChanged(previous.comparison, next.comparison);
 }
 
+function hasIntraHandoverPresentationChanged(
+  previous: SimState['intraHandoverPresentation'],
+  next: SimState['intraHandoverPresentation'],
+): boolean {
+  if (!previous || !next) return previous !== next;
+  return previous.ueId !== next.ueId
+    || previous.sourceSatId !== next.sourceSatId
+    || previous.sourceCellId !== next.sourceCellId
+    || previous.targetCellId !== next.targetCellId
+    || hasNumericDelta(previous.servingSinrDb, next.servingSinrDb)
+    || hasNumericDelta(previous.candidateSinrDb, next.candidateSinrDb)
+    || hasNumericDelta(previous.deltaSinrDb, next.deltaSinrDb)
+    || hasNumericDelta(previous.elevationDeg, next.elevationDeg)
+    || hasNumericDelta(previous.rangeKm, next.rangeKm);
+}
+
 function hasModqnCellServiceReadoutChanged(
   previous: SimState['modqnCellServiceReadout'],
   next: SimState['modqnCellServiceReadout'],
@@ -251,6 +267,10 @@ export function hasUiStateChanged(previous: SimState | null, next: SimState): bo
     || previous.panelPrimary.role !== next.panelPrimary.role
     || hasSignalSourceChanged(previous.panelComparison, next.panelComparison)
     || previous.panelComparison.role !== next.panelComparison.role
+    || hasIntraHandoverPresentationChanged(
+      previous.intraHandoverPresentation,
+      next.intraHandoverPresentation,
+    )
     || hasVisualFrequencyDiagnosticsChanged(
       previous.visualFrequencyDiagnostics,
       next.visualFrequencyDiagnostics,

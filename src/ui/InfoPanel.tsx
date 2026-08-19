@@ -25,6 +25,8 @@ type InfoPanelProps = SimState & {
   profile: Profile;
   handoverMode?: RuntimeHandoverMode;
   isFormulaEvidenceStale?: boolean;
+  /** Cell identity of a display-only same-satellite comparison beam. */
+  comparisonCellId?: number | null;
   /**
    * P1e (c) audit-list hook (PR-0.5 backfill): channel-metric kind the panel
    * should render. Live engine = `'sinr-with-interference'`; replay artifact
@@ -113,6 +115,7 @@ export function InfoPanel({
   servingCellId,
   servingElevationDeg,
   servingRangeKm,
+  comparisonCellId = null,
   comparisonSatId,
   comparisonBeamId,
   comparisonElevationDeg,
@@ -212,8 +215,8 @@ export function InfoPanel({
   // Cell lane (W7): the contender serves the SAME cell as serving (runner-up sat), so
   // format it as a cell identity via servingCellId — mirrors the serving branch above so
   // its F-token tracks the cone colour. Steered lane (comparisonBeamId set) is unchanged.
-  const comparisonIdentity = comparisonBeamId === null && comparisonSatId !== null && servingCellId !== null
-    ? formatCellServingIdentity(comparisonSatId, servingCellId, frequencyReuse, 'none')
+  const comparisonIdentity = comparisonBeamId === null && comparisonSatId !== null && (comparisonCellId ?? servingCellId) !== null
+    ? formatCellServingIdentity(comparisonSatId, comparisonCellId ?? servingCellId, frequencyReuse, 'none')
     : formatPanelBeamIdentity(comparisonSatId, comparisonBeamId, frequencyReuse, 'none');
   const servingGlyph = hasServingSignal ? glyphForSatId(servingSatId, satelliteVisualIdentityById) : null;
   const comparisonGlyph = hasComparisonSignal ? glyphForSatId(comparisonSatId, satelliteVisualIdentityById) : null;

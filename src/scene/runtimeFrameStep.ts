@@ -170,6 +170,8 @@ export interface RuntimeFrameStepInput {
   uePrimaryAnchorMode?: UePrimaryAnchorMode;
   ueDistributionScope?: UeDistributionScope;
   ueDistributionRadiusKm?: number;
+  ueDistributionCellCentersKm?: readonly { readonly eastKm: number; readonly northKm: number }[];
+  ueDistributionCellRadiusKm?: number;
   /** Demo intra-handover jog: ENU offset (km) applied to the PRIMARY UE only so it
    *  crosses into an adjacent same-sat beam cell and the engine does a real intra. */
   primaryJogEastKm?: number;
@@ -705,6 +707,8 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     rectangleAreaKm,
     mode: ueDistributionMode,
     primaryAnchorMode: uePrimaryAnchorMode,
+    cellCentersKm: input.ueDistributionCellCentersKm,
+    cellRadiusKm: input.ueDistributionCellRadiusKm,
   }).map(position => ({
     ...position,
     sinrDb: null,

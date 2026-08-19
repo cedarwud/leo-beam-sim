@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { LinkSample } from '../engine/signal/types';
 import {
   buildPublishedFormulaEvidence,
+  buildPublishedIntraHandoverPresentation,
   buildPublishedPrimaryServing,
   type PublishedFormulaEvidence,
   type PublishedPrimaryServing,
@@ -41,6 +42,9 @@ const primaryRecord: UeCellServingRecord = {
   comparisonSinrDb: null,
   pendingTargetSatId: null,
   triggerProgressSec: 0,
+  intraCandidateCellId: 4,
+  intraCandidateSinrDb: 8.75,
+  intraCandidateLinkSample: { ...sample, beamId: 5, sinrDb: 8.75 },
 };
 
 const cellFrame: SinrLiveCellFrame = {
@@ -129,6 +133,7 @@ const cellSim = { sinrLiveCells: cellFrame, perUePositions };
 
 const publishedPrimary = buildPublishedPrimaryServing(cellSim, steeredPrimary());
 const publishedFormula = buildPublishedFormulaEvidence(cellSim, steeredEvidence);
+const publishedIntra = buildPublishedIntraHandoverPresentation(cellSim, () => ({ elevationDeg: 61, rangeKm: 702 }));
 
 assert.equal(
   publishedPrimary.servingSinrDb,
@@ -137,6 +142,10 @@ assert.equal(
 );
 assert.equal(publishedFormula.source.satId, sample.satId, 'formula source uses the cell-truth serving satellite');
 assert.equal(publishedFormula.source.beamId, null, 'cell-truth source does not leak an internal steered beam id');
+assert.equal(publishedIntra?.sourceSatId, sample.satId, 'intra presentation keeps the serving satellite');
+assert.equal(publishedIntra?.targetCellId, 4, 'intra presentation keeps the measured target cell');
+assert.equal(publishedIntra?.candidateSinrDb, 8.75, 'intra presentation uses measured candidate SINR');
+assert.equal(publishedIntra?.deltaSinrDb, 2.5, 'intra presentation exposes candidate minus serving');
 
 for (const key of [
   'signalDbm',

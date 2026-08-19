@@ -1,3 +1,5 @@
+import { DISPERSED_SEVEN_CELL_USER_COUNTS } from '../../topology/dispersedSevenCellTopology';
+
 export interface UePosition {
   id: string;
   groundX: number;
@@ -6,12 +8,87 @@ export interface UePosition {
   northKm: number;
 }
 
-export type UeDistributionMode = 'random' | 'grid' | 'clustered';
+export type UeDistributionMode = 'random' | 'grid' | 'clustered' | 'seven-cell-asymmetric';
 export type UePrimaryAnchorMode = 'observer' | 'distribution';
 
 export interface UeRectangleAreaKm {
   widthKm: number;
   heightKm: number;
+}
+
+export interface UeDistributionCellCenterKm {
+  readonly eastKm: number;
+  readonly northKm: number;
+}
+
+const SEVEN_CELL_SCATTER = [
+  { east: 0.1, north: -0.08, stretchEast: 1, stretchNorth: 0.72, turn: 0.18 },
+  { east: -0.12, north: 0.05, stretchEast: 0.78, stretchNorth: 1, turn: 0.76 },
+  { east: 0.03, north: 0.13, stretchEast: 1, stretchNorth: 0.82, turn: 1.31 },
+  { east: 0.14, north: 0.02, stretchEast: 0.84, stretchNorth: 1, turn: 2.04 },
+  { east: -0.06, north: -0.14, stretchEast: 1, stretchNorth: 0.76, turn: 2.63 },
+  { east: -0.14, north: -0.03, stretchEast: 0.8, stretchNorth: 1, turn: 3.42 },
+  { east: 0.07, north: 0.1, stretchEast: 1, stretchNorth: 0.8, turn: 4.17 },
+] as const;
+
+function allocateWeightedUeCounts(ueCount: number): number[] {
+  const totalWeight = DISPERSED_SEVEN_CELL_USER_COUNTS.reduce((sum, weight) => sum + weight, 0);
+  const exact = DISPERSED_SEVEN_CELL_USER_COUNTS.map(weight => ueCount * weight / totalWeight);
+  const counts = exact.map(Math.floor);
+  let remaining = ueCount - counts.reduce((sum, value) => sum + value, 0);
+  const order = exact
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
+  for (let index = 0; remaining > 0; index = (index + 1) % order.length) {
+    counts[order[index].index] += 1;
+    remaining -= 1;
+  }
+  return counts;
+}
+
+function generateSevenCellAsymmetricUePositions(params: {
+  readonly ueCount: number;
+  readonly primary: UePosition;
+  readonly primaryAnchorMode: UePrimaryAnchorMode;
+  readonly cellCentersKm: readonly UeDistributionCellCenterKm[];
+  readonly cellRadiusKm: number;
+  readonly ueWorldScale: number;
+  readonly seed: number;
+}): UePosition[] | null {
+  if (params.cellCentersKm.length < 7 || !Number.isFinite(params.cellRadiusKm) || params.cellRadiusKm <= 0) {
+    return null;
+  }
+  const centers = params.cellCentersKm.slice(0, 7);
+  const counts = allocateWeightedUeCounts(params.ueCount);
+  const positions: UePosition[] = [];
+  const rng = createSeededRng(params.seed);
+  const anchorPrimary = params.primaryAnchorMode === 'observer';
+  if (anchorPrimary) {
+    positions.push(params.primary);
+    counts[0] = Math.max(0, counts[0] - 1);
+  }
+
+  for (let cellIndex = 0; cellIndex < centers.length; cellIndex += 1) {
+    const center = centers[cellIndex];
+    const shape = SEVEN_CELL_SCATTER[cellIndex];
+    const cosTurn = Math.cos(shape.turn);
+    const sinTurn = Math.sin(shape.turn);
+    for (let slot = 0; slot < counts[cellIndex]; slot += 1) {
+      const radius = Math.sqrt(rng()) * params.cellRadiusKm * 0.5;
+      const angle = rng() * 2 * Math.PI;
+      const localEast = radius * Math.cos(angle) * shape.stretchEast;
+      const localNorth = radius * Math.sin(angle) * shape.stretchNorth;
+      const rotatedEast = localEast * cosTurn - localNorth * sinTurn;
+      const rotatedNorth = localEast * sinTurn + localNorth * cosTurn;
+      positions.push(createUePosition(
+        positions.length,
+        center.eastKm + rotatedEast + shape.east * params.cellRadiusKm,
+        center.northKm + rotatedNorth + shape.north * params.cellRadiusKm,
+        params.ueWorldScale,
+      ));
+    }
+  }
+  return positions;
 }
 
 export function createSeededRng(seed: number): () => number {
@@ -357,6 +434,9 @@ export function generateUePositions(params: {
   mode?: UeDistributionMode;
   primaryAnchorMode?: UePrimaryAnchorMode;
   rectangleAreaKm?: UeRectangleAreaKm;
+  /** Exact scene-cell centres used only by the hidden seven-cell preset. */
+  cellCentersKm?: readonly UeDistributionCellCenterKm[];
+  cellRadiusKm?: number;
   /**
    * Demo intra-handover trigger: an ENU offset (km) applied ONLY to the primary
    * (index 0) UE — it slides to an adjacent beam cell so the engine genuinely does
@@ -378,6 +458,8 @@ export function generateUePositions(params: {
     rectangleAreaKm,
     primaryJogEastKm = 0,
     primaryJogNorthKm = 0,
+    cellCentersKm,
+    cellRadiusKm = primaryFootprintRadiusKm,
   } = params;
   const ueCount = Math.max(1, Math.trunc(params.ueCount));
   const primary = createUePosition(
@@ -389,6 +471,19 @@ export function generateUePositions(params: {
 
   if (ueCount === 1 && primaryAnchorMode === 'observer') {
     return [primary];
+  }
+
+  if (mode === 'seven-cell-asymmetric' && cellCentersKm !== undefined) {
+    const positions = generateSevenCellAsymmetricUePositions({
+      ueCount,
+      primary,
+      primaryAnchorMode,
+      cellCentersKm,
+      cellRadiusKm,
+      ueWorldScale,
+      seed,
+    });
+    if (positions !== null) return positions;
   }
 
   if (isValidRectangleArea(rectangleAreaKm)) {
@@ -423,6 +518,16 @@ export function generateUePositions(params: {
           ueWorldScale,
           seed,
         });
+      case 'seven-cell-asymmetric':
+        return generateClusteredRectangleUePositions({
+          ueCount,
+          primary,
+          centerEastKm: primaryEastKm,
+          centerNorthKm: primaryNorthKm,
+          area: rectangleAreaKm,
+          ueWorldScale,
+          seed,
+        });
     }
   }
 
@@ -451,6 +556,16 @@ export function generateUePositions(params: {
         ueCount,
         primary,
         primaryAnchorMode,
+        primaryEastKm,
+        primaryNorthKm,
+        primaryFootprintRadiusKm,
+        ueWorldScale,
+        seed,
+      });
+    case 'seven-cell-asymmetric':
+      return generateClusteredUePositions({
+        ueCount,
+        primary,
         primaryEastKm,
         primaryNorthKm,
         primaryFootprintRadiusKm,

@@ -137,6 +137,8 @@ export interface SinrLiveCellBeamConeRenderItem {
    * truth field — it selects colour/opacity only (Rule#6).
    */
   readonly role?: SinrLiveConeRole;
+  /** True for display-substrate beams that have no UE/SINR truth row. */
+  readonly displayOnly?: boolean;
 }
 
 /**
@@ -193,6 +195,8 @@ export function resolveSinrLiveConeFog(role: SinrLiveConeRole): boolean {
     case 'hero':
     case 'candidatePrimary':
     case 'pulse':
+    case 'handoverSource':
+    case 'handoverTarget':
     case 'triggered':
       return false;
     case 'servingFan':
@@ -220,6 +224,7 @@ export function shouldDimSinrLiveConeRole(
   if (!dimShallowCones) return false;
   if (role === 'candidatePrimary') return false;
   if (role === 'hero') return heroExemptFromElevationDim === false;
+  if (role === 'pulse' || role === 'handoverSource' || role === 'handoverTarget' || role === 'triggered') return false;
   return true;
 }
 
@@ -456,6 +461,65 @@ function buildCellConeItem(input: {
   };
 }
 
+/**
+ * Complete a bounded display fan from the fixed display substrate.
+ *
+ * The live cell model intentionally owns only the seven UE/SINR cells. The
+ * homepage can nevertheless present a 19-beam satellite layout, so this helper
+ * adds deterministic, unserved display-only cells after the model-backed items
+ * have been resolved. It never creates a serving record, SINR sample, candidate,
+ * or handover event; it only gives the renderer the requested geometric fan.
+ */
+export function resolveBudgetedSinrLiveBeamConeItems(input: {
+  readonly existingItems: readonly SinrLiveCellBeamConeRenderItem[];
+  readonly satId: string | null | undefined;
+  readonly maxCones: number;
+  readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
+  readonly satelliteWorldById: ReadonlyMap<string, WorldPoint>;
+  readonly frequencyReuse: number;
+  readonly role: 'servingFan' | 'candidateFan';
+  readonly renderKeyPrefix: string;
+  readonly preferredCellId?: number | null;
+}): readonly SinrLiveCellBeamConeRenderItem[] {
+  const maxCones = Number.isFinite(input.maxCones)
+    ? Math.max(0, Math.floor(input.maxCones))
+    : 0;
+  if (input.satId === null || input.satId === undefined || maxCones === 0) return [];
+
+  const existing = [...input.existingItems];
+  const ordered = input.preferredCellId === null || input.preferredCellId === undefined
+    ? existing
+    : [
+      ...existing.filter(item => item.cellId === input.preferredCellId),
+      ...existing.filter(item => item.cellId !== input.preferredCellId),
+    ];
+  const items = ordered.slice(0, maxCones);
+  if (items.length >= maxCones) return items;
+
+  const usedCellIds = new Set(items.map(item => item.cellId));
+  const substrateCellIds = [...input.placementByCellId.keys()].sort((left, right) => left - right);
+  for (const cellId of substrateCellIds) {
+    if (items.length >= maxCones) break;
+    if (usedCellIds.has(cellId)) continue;
+    const cone = buildCellConeItem({
+      satId: input.satId,
+      cellId,
+      frequencyIndex: cellFrequencyIndex(cellId, input.frequencyReuse),
+      placementByCellId: input.placementByCellId,
+      satelliteWorldById: input.satelliteWorldById,
+    });
+    if (!cone) continue;
+    usedCellIds.add(cellId);
+    items.push({
+      ...cone,
+      role: input.role,
+      displayOnly: true,
+      renderKey: `${input.renderKeyPrefix}-${input.satId}-${cellId}`,
+    });
+  }
+  return items;
+}
+
 
 /**
  * G2c live-pulse fade: a handover-pulse cone's opacity as a function of its age
@@ -568,7 +632,13 @@ export function resolveSinrLiveHandoverPulseConeItems(
         satelliteWorldById,
       })
       : null;
-    if (to) items.push({ ...to, opacity, renderKey: `${eventKey}-to`, kind: event.kind });
+    if (to) items.push({
+      ...to,
+      opacity,
+      renderKey: `${eventKey}-to`,
+      kind: event.kind,
+      role: 'handoverTarget',
+    });
     if (event.fromSatId !== null && event.fromCellId !== null && sideDraws(event, event.fromSatId)) {
       const from = buildCellConeItem({
         satId: event.fromSatId,
@@ -577,7 +647,13 @@ export function resolveSinrLiveHandoverPulseConeItems(
         placementByCellId,
         satelliteWorldById,
       });
-      if (from) items.push({ ...from, opacity, renderKey: `${eventKey}-from`, kind: event.kind });
+      if (from) items.push({
+        ...from,
+        opacity,
+        renderKey: `${eventKey}-from`,
+        kind: event.kind,
+        role: 'handoverSource',
+      });
     }
   }
   return items;

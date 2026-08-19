@@ -22,6 +22,15 @@ import type { SinrLiveCellFrame, SinrLiveCellHandoverEvent } from './sinrLiveCel
  */
 export const MANUAL_HANDOVER_DISPLAY_MS = 8000;
 
+export interface ManualHandoverDemoOptions {
+  /** Snapshot captured when the teaching cue is armed; prevents target drift. */
+  readonly sourceSatId?: string | null;
+  readonly sourceCellId?: number | null;
+  readonly targetCellId?: number | null;
+  readonly servingSinrDb?: number | null;
+  readonly candidateSinrDb?: number | null;
+}
+
 /**
  * Build the two endpoints for the explicit top-bar intra beam-switch cue from
  * the current cell snapshot. This is display-only: it never changes serving
@@ -34,26 +43,22 @@ export function resolveManualHandoverDemoEvent(
   cellFrame: SinrLiveCellFrame | undefined,
   primaryUeId: string | undefined,
   visibleSatelliteIds: readonly string[],
+  options: ManualHandoverDemoOptions = {},
 ): SinrLiveCellHandoverEvent | null {
   if (!cellFrame) return null;
   const primary = primaryUeId === undefined
     ? cellFrame.ues[0]
     : cellFrame.ues.find(ue => ue.ueId === primaryUeId);
-  // F2: the fallback used to fire only when the protagonist had NO cellId at all —
-  // but a UE almost always sits in some cell, so the real failure mode (the UE's cell
-  // is momentarily UNSERVED under K<N beam hopping) fell straight through to
-  // `return null` and the button drew nothing. Resolve the protagonist's own cell
-  // first, and fall back to ANY served cell only when that cell has no server, so the
-  // demonstration is always drawable while still preferring the protagonist's cell.
-  const primaryCell = primary?.cellId == null
-    ? undefined
-    : cellFrame.cells.find(cell => cell.cellId === primary.cellId);
-  const servingCell = primaryCell?.servingSatId != null
-    ? primaryCell
-    : cellFrame.cells.find(cell => cell.servingSatId !== null);
-  const sourceSatId = primary?.servingSatId ?? servingCell?.servingSatId ?? null;
-  const sourceCellId = primary?.cellId ?? servingCell?.cellId ?? null;
+  // A teaching cue must describe the protagonist's actual link. Falling back to
+  // another served cell makes the cones appear to target a different UE and was
+  // the source of the intermittent "wrong UE" story.
+  const sourceSatId = options.sourceSatId ?? primary?.servingSatId ?? null;
+  const sourceCellId = options.sourceCellId ?? primary?.cellId ?? null;
   if (sourceSatId === null || sourceCellId === null) return null;
+  if (!new Set(visibleSatelliteIds).has(sourceSatId)) return null;
+
+  const servingSinrDb = options.servingSinrDb ?? primary?.sinrDb ?? null;
+  const finiteServingSinrDb = Number.isFinite(servingSinrDb ?? NaN) ? servingSinrDb : null;
 
   if (kind === 'inter') {
     // Inter-satellite handover keeps the earth-fixed serving cell: only the
@@ -85,26 +90,27 @@ export function resolveManualHandoverDemoEvent(
       fromCellId: sourceCellId,
       toSatId: targetSatId,
       toCellId: sourceCellId,
+      fromSinrDb: finiteServingSinrDb,
+      toSinrDb: Number.isFinite(primary?.comparisonSinrDb ?? NaN) ? primary?.comparisonSinrDb ?? null : null,
+      deltaDb: Number.isFinite(primary?.comparisonSinrDb ?? NaN) && finiteServingSinrDb !== null
+        ? (primary?.comparisonSinrDb ?? 0) - finiteServingSinrDb
+        : null,
     };
   }
 
-  // A display-only intra switch must remain a same-satellite beam switch. Prefer
-  // a beam that this satellite is illuminating in the current frame, then fall
-  // back to a cell currently served by the same satellite. Do not invent a
-  // beam on another satellite merely to keep the cue drawable.
-  const illuminatedSameSatelliteBeam = cellFrame.illuminatedBeams.find(beam => (
-    beam.satId === sourceSatId
-    && beam.cellId !== sourceCellId
-  ));
-  const targetCell = illuminatedSameSatelliteBeam === undefined
-    ? cellFrame.cells.find(cell => (
-      cell.cellId !== sourceCellId
-      && cell.servingSatId === sourceSatId
-    ))
-    : cellFrame.cells.find(cell => cell.cellId === illuminatedSameSatelliteBeam.cellId);
-  if (!targetCell) return null;
-  const targetSatId = sourceSatId;
-  if (targetSatId === null) return null;
+  // Intra is a same-satellite beam switch. It is only drawable when the model
+  // measured a real alternate beam at this UE; no illuminated/served-cell
+  // fallback is allowed because that would fabricate the candidate SINR.
+  const targetCellId = options.targetCellId ?? primary?.intraCandidateCellId ?? null;
+  const candidateSinrDb = options.candidateSinrDb ?? primary?.intraCandidateSinrDb ?? null;
+  const finiteCandidateSinrDb = Number.isFinite(candidateSinrDb ?? NaN) ? candidateSinrDb : null;
+  if (
+    targetCellId === null
+    || targetCellId === sourceCellId
+    || !Number.isInteger(targetCellId)
+    || finiteCandidateSinrDb === null
+    || finiteServingSinrDb === null
+  ) return null;
 
   return {
     ueId: primaryUeId ?? primary?.ueId ?? 'ue-0',
@@ -112,7 +118,10 @@ export function resolveManualHandoverDemoEvent(
     sourceTimeSec: cellFrame.simTimeSec,
     fromSatId: sourceSatId,
     fromCellId: sourceCellId,
-    toSatId: targetSatId,
-    toCellId: targetCell.cellId,
+    toSatId: sourceSatId,
+    toCellId: targetCellId,
+    fromSinrDb: finiteServingSinrDb,
+    toSinrDb: finiteCandidateSinrDb,
+    deltaDb: finiteCandidateSinrDb - finiteServingSinrDb,
   };
 }

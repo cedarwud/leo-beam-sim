@@ -11,6 +11,7 @@ import type {
   SimState,
   CanonicalEeErrorCode,
   CanonicalEeSnapshot,
+  IntraHandoverPresentation,
   VisualFrequencyDiagnosticsState,
   VizFrame,
 } from './types';
@@ -28,6 +29,8 @@ import {
   resolveVisualFrequencyDiagnosticsEntry,
 } from './panelState';
 import { resolvePrimaryCellServingRecord } from './sinrLiveCellModel';
+import { resolveSinrLiveBeamBudget } from './sinrLiveBeamBudget';
+import { resolveSinrLiveBeamCapacityPerSat } from './sinrLiveCellRuntime';
 import { computePaperEnergyEfficiency } from '../utils/paperEnergyEfficiency';
 import { useLatchedSignals } from './useLatchedSignals';
 import { usePanelModeInference } from './usePanelModeInference';
@@ -532,7 +535,7 @@ export function buildPublishedPrimaryServing(
     ? 'none'
     : isPendingComparison ? 'pending' : 'candidate';
   const sinrDeltaDb = hasComparison && comparisonSinrDb !== null && isFinitePanelSinr(sinrDb)
-    ? sinrDb - comparisonSinrDb
+    ? comparisonSinrDb - sinrDb
     : null;
   return {
     servingSatId,
@@ -566,6 +569,49 @@ export function buildPublishedPrimaryServing(
       status: comparisonStatus,
     },
     sinrDeltaDb,
+  };
+}
+
+/**
+ * Publish the measured same-satellite alternate beam as a display-only
+ * snapshot. The cell model deliberately keeps this out of its serving manager;
+ * the snapshot is consumed only when the explicit intra teaching story is
+ * armed, so it cannot create a hidden handover or alter canonical SINR truth.
+ */
+export function buildPublishedIntraHandoverPresentation(
+  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions'>,
+  resolveServingGeo?: (satId: string) => { elevationDeg: number | null; rangeKm: number | null },
+): IntraHandoverPresentation | null {
+  const record = sim.sinrLiveCells
+    ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
+    : null;
+  const servingSinrDb = record?.sinrDb ?? null;
+  const candidateSinrDb = record?.intraCandidateSinrDb ?? null;
+  const finiteServingSinrDb = Number.isFinite(servingSinrDb ?? NaN) ? servingSinrDb : null;
+  const finiteCandidateSinrDb = Number.isFinite(candidateSinrDb ?? NaN) ? candidateSinrDb : null;
+  const targetCellId = record?.intraCandidateCellId ?? null;
+  if (
+    record === null
+    || record.ueId.length === 0
+    || record.servingSatId === null
+    || record.cellId === null
+    || targetCellId === null
+    || targetCellId === record.cellId
+    || finiteServingSinrDb === null
+    || finiteCandidateSinrDb === null
+  ) return null;
+
+  const geo = resolveServingGeo?.(record.servingSatId) ?? { elevationDeg: null, rangeKm: null };
+  return {
+    ueId: record.ueId,
+    sourceSatId: record.servingSatId,
+    sourceCellId: record.cellId,
+    targetCellId,
+    servingSinrDb: finiteServingSinrDb,
+    candidateSinrDb: finiteCandidateSinrDb,
+    deltaSinrDb: finiteCandidateSinrDb - finiteServingSinrDb,
+    elevationDeg: geo.elevationDeg,
+    rangeKm: geo.rangeKm,
   };
 }
 
@@ -643,6 +689,9 @@ export function useSimStatePublisher({
   onSimUpdate,
   enabled = true,
   modqnCellServiceReadout,
+  beamCountBySatellite = {},
+  servingBeamCount,
+  candidateBeamCount,
 }: {
   profile: Profile;
   sim: SimFrame;
@@ -656,6 +705,10 @@ export function useSimStatePublisher({
   onSimUpdate: (state: SimState) => void;
   enabled?: boolean;
   modqnCellServiceReadout?: SimState['modqnCellServiceReadout'];
+  /** Presentation-only beam configuration shared with the legacy result rail. */
+  beamCountBySatellite?: Readonly<Record<string, number>>;
+  servingBeamCount?: number;
+  candidateBeamCount?: number;
 }) {
   const latched = useLatchedSignals({
     signalResetKey,
@@ -833,6 +886,42 @@ export function useSimStatePublisher({
     const pendingTargetBeamHopState = sim.pendingTargetSatId
       ? sim.beamHopStatesBySatId.get(sim.pendingTargetSatId)
       : undefined;
+    const primaryCellRecord = sim.sinrLiveCells
+      ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
+      : null;
+    const displayServingSatId = primaryCellRecord?.servingSatId ?? null;
+    const displayCandidateSatId = primaryCellRecord?.pendingTargetSatId
+      ?? primaryCellRecord?.comparisonSatId
+      ?? null;
+    const displayBeamFallback = resolveSinrLiveBeamCapacityPerSat(profile);
+    const displayServingBeamBudget = resolveSinrLiveBeamBudget({
+      fallbackBeamCount: displayBeamFallback,
+      satelliteId: displayServingSatId,
+      roleBeamCount: servingBeamCount,
+      beamCountBySatellite,
+    });
+    const displayCandidateBeamBudget = resolveSinrLiveBeamBudget({
+      fallbackBeamCount: displayBeamFallback,
+      satelliteId: displayCandidateSatId,
+      roleBeamCount: candidateBeamCount,
+      beamCountBySatellite,
+    });
+    const beamDisplayServingActiveCount = sim.sinrLiveCells === undefined
+      ? undefined
+      : Math.min(
+        displayServingBeamBudget,
+        sim.sinrLiveCells.illuminatedBeams.filter(beam => (
+          beam.satId === displayServingSatId && beam.serving
+        )).length,
+      );
+    const beamDisplayCandidateActiveCount = sim.sinrLiveCells === undefined
+      ? undefined
+      : Math.min(
+        displayCandidateBeamBudget,
+        sim.sinrLiveCells.illuminatedBeams.filter(beam => (
+          beam.satId === displayCandidateSatId
+        )).length,
+      );
     const servingBeamActiveThisSlot =
       physicalServingSignal.satId && physicalServingSignal.beamId !== null
         ? servingSatBeamHopState?.activeBeamIds.includes(physicalServingSignal.beamId) ?? false
@@ -1038,6 +1127,16 @@ export function useSimStatePublisher({
         };
       },
     );
+    const publishedIntraHandoverPresentation = buildPublishedIntraHandoverPresentation(
+      sim,
+      (satId) => {
+        const topo = topoBySatId.get(satId);
+        return {
+          elevationDeg: topo?.elevationDeg ?? null,
+          rangeKm: sim.linkRangeKmBySatId.get(satId) ?? topo?.rangeKm ?? null,
+        };
+      },
+    );
 
     const nextIntraHandoverEvent = sim.intraHandoverEvent !== null && sim.intraHandoverWallClockStartMs !== null && sim.intraHandoverWallClockExpiresMs !== null
       ? {
@@ -1046,6 +1145,23 @@ export function useSimStatePublisher({
         wallClockExpiresMs: sim.intraHandoverWallClockExpiresMs,
       }
       : null;
+    // The homepage live cell lane owns the visible candidate identity. The
+    // legacy steered manager can compare a different satellite in parallel;
+    // publishing that pending id made the right rail appear to switch targets
+    // before the cell-truth TTT had actually started. Keep the steered value on
+    // the other lanes, but expose only the cell lane's real pending target here.
+    const publishedPendingTargetSatId = sim.sinrLiveCells
+      ? primaryCellRecord?.pendingTargetSatId ?? null
+      : sim.pendingTargetSatId;
+    const publishedPendingTargetBeamId = sim.sinrLiveCells
+      ? null
+      : sim.pendingTargetBeamId;
+    const publishedPendingTargetSinrDb = sim.sinrLiveCells
+      ? primaryCellRecord?.pendingTargetSatId === null
+        || primaryCellRecord?.pendingTargetSatId === undefined
+        ? null
+        : primaryCellRecord.comparisonSinrDb ?? null
+      : pendingTargetSinrDb;
 
     const nextState: SimState = {
       profileId: profile.id,
@@ -1054,6 +1170,7 @@ export function useSimStatePublisher({
       physicalServing: publishedFormulaEvidence.source,
       panelPrimary: publishedPrimaryServing.panelPrimary,
       panelComparison: publishedPrimaryServing.panelComparison,
+      intraHandoverPresentation: publishedIntraHandoverPresentation,
       visualFrequencyDiagnostics,
       perUePositions,
       modqnCellServiceReadout,
@@ -1065,9 +1182,9 @@ export function useSimStatePublisher({
       servingCellId: publishedPrimaryServing.servingCellId,
       servingElevationDeg: publishedPrimaryServing.servingElevationDeg,
       servingRangeKm: publishedPrimaryServing.servingRangeKm,
-      pendingTargetSatId: sim.pendingTargetSatId,
-      pendingTargetBeamId: sim.pendingTargetBeamId,
-      pendingTargetSinrDb,
+      pendingTargetSatId: publishedPendingTargetSatId,
+      pendingTargetBeamId: publishedPendingTargetBeamId,
+      pendingTargetSinrDb: publishedPendingTargetSinrDb,
       comparisonSatId: publishedPrimaryServing.comparisonSatId,
       comparisonBeamId: publishedPrimaryServing.comparisonBeamId,
       comparisonElevationDeg: publishedPrimaryServing.comparisonElevationDeg,
@@ -1103,6 +1220,8 @@ export function useSimStatePublisher({
       beamHopEnabled: sim.beamHopEnabled,
       beamHopSlotIndex: sim.beamHopSlotIndex,
       beamHopSlotSec: sim.beamHopSlotSec,
+      beamDisplayServingActiveCount,
+      beamDisplayCandidateActiveCount,
       servingBeamActiveThisSlot,
       servingSatActiveBeamIds: servingSatBeamHopState?.activeBeamIds ?? [],
       pendingTargetActiveBeamIds: pendingTargetBeamHopState?.activeBeamIds ?? [],
@@ -1146,6 +1265,9 @@ export function useSimStatePublisher({
     modqnCellServiceReadout,
     onSimUpdate,
     profile,
+    beamCountBySatellite,
+    candidateBeamCount,
+    servingBeamCount,
     seekRequestKey,
     signalResetKey,
     sim,
