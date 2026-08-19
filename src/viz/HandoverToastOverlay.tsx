@@ -11,6 +11,12 @@ import {
 interface Props {
   frame: NormalizedSceneFrame;
   interTriggerSec: number;
+  preferredKind?: 'intra' | 'inter' | null;
+  /** The normalized display owner is authoritative when the live frame has already committed. */
+  presentationHandover?: Pick<
+    HandoverToastState,
+    'kind' | 'sourceSatId' | 'sourceBeamId' | 'targetSatId' | 'targetBeamId' | 'progressSec' | 'targetSec'
+  > | null;
   manualHandover?: Pick<
     HandoverToastState,
     'kind' | 'sourceSatId' | 'sourceBeamId' | 'targetSatId' | 'targetBeamId' | 'progressSec' | 'targetSec'
@@ -29,7 +35,13 @@ function formatToastPath(state: HandoverToastState): string {
   return `${formatEndpoint(state.sourceSatId, state.sourceBeamId)} -> ${formatEndpoint(state.targetSatId, state.targetBeamId)}`;
 }
 
-export function HandoverToastOverlay({ frame, interTriggerSec, manualHandover = null }: Props) {
+export function HandoverToastOverlay({
+  frame,
+  interTriggerSec,
+  preferredKind = null,
+  presentationHandover = null,
+  manualHandover = null,
+}: Props) {
   const { gl } = useThree();
   const wallClockNowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
   const manualToast: HandoverToastState | null = manualHandover === null
@@ -38,7 +50,17 @@ export function HandoverToastOverlay({ frame, interTriggerSec, manualHandover = 
       ...manualHandover,
       progressRatio: Math.max(0, Math.min(1, manualHandover.progressSec / Math.max(manualHandover.targetSec, 1e-6))),
     };
-  const toast = manualToast ?? resolveHandoverToastState(frame, interTriggerSec, wallClockNowMs);
+  const presentationToast: HandoverToastState | null = presentationHandover === null || presentationHandover === undefined
+    ? null
+    : {
+      ...presentationHandover,
+      progressRatio: Math.max(0, Math.min(1, presentationHandover.progressSec / Math.max(presentationHandover.targetSec, 1e-6))),
+    };
+  const toast = manualToast ?? presentationToast ?? resolveHandoverToastState(
+    { ...frame, preferredKind },
+    interTriggerSec,
+    wallClockNowMs,
+  );
 
   useEffect(() => {
     const canvas = gl.domElement;

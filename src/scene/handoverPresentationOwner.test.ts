@@ -63,8 +63,8 @@ const manualStarted = advanceHandoverPresentation(started.state, {
   candidate: manualEvent,
   owner: 'manual',
 });
-assert.equal(manualStarted.view.event?.eventId, manualEvent.eventId, 'a manual teaching owner preempts a natural event immediately');
-assert.equal(manualStarted.view.event?.source, 'manual');
+assert.equal(manualStarted.view.event?.eventId, walkerEvent.eventId, 'a manual teaching owner cannot preempt a natural event');
+assert.equal(manualStarted.view.event?.source, 'walker');
 
 const cinemaCandidate: HandoverPresentationEvent = {
   ...walkerEvent,
@@ -76,13 +76,13 @@ const cinemaArm = advanceHandoverPresentation(started.state, {
   candidate: null,
   owner: 'cinema',
 });
-assert.equal(cinemaArm.view.active, false, 'an explicit cinema owner clears the natural visual owner before seek lands');
+assert.equal(cinemaArm.view.event?.eventId, walkerEvent.eventId, 'an explicit cinema arm cannot clear an active natural story');
 const cinemaStarted = advanceHandoverPresentation(cinemaArm.state, {
   nowMs: 2200,
   candidate: cinemaCandidate,
   owner: 'cinema',
 });
-assert.equal(cinemaStarted.view.event?.eventId, cinemaCandidate.eventId, 'the landed cinema candidate starts from a clean owner state');
+assert.equal(cinemaStarted.view.event?.eventId, walkerEvent.eventId, 'a landed cinema candidate waits for the active story to finish');
 
 const completed = advanceHandoverPresentation(notPreempted.state, {
   nowMs: 7100,
@@ -114,7 +114,8 @@ const tleStarted = advanceHandoverPresentation(staleAfterCooldown.state, {
 });
 assert.equal(tleStarted.view.active, true, 'the same source-neutral contract accepts a TLE event');
 
-assert.equal(resolveHandoverPresentationPhase('inter', 0.44), 'serving');
+assert.equal(resolveHandoverPresentationPhase('inter', 0.12), 'serving');
+assert.equal(resolveHandoverPresentationPhase('inter', 0.3), 'measuring');
 assert.equal(resolveHandoverPresentationPhase('inter', 0.9), 'settled');
 const settled = advanceHandoverPresentation(tleStarted.state, {
   nowMs: 9100 + 6000 * 0.9,

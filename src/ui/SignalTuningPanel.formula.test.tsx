@@ -35,10 +35,8 @@ const roleControlledMarkup = renderToStaticMarkup(
     tuning={createSignalTuningState(profile)}
     topology={{
       ...createSceneTopologyState(),
-      beamCountBySatellite: {
-        'sat-serving': 1,
-        'sat-candidate': 19,
-      },
+      servingBeamCount: 1,
+      candidateBeamCount: 19,
     }}
     sceneVisualScale={createSceneVisualScaleState()}
     hasOverrides
@@ -56,16 +54,18 @@ const roleControlledMarkup = renderToStaticMarkup(
 
 const topFormula = markup.match(/data-testid="sinr-formula-header"[\s\S]*?<\/section>/)?.[0] ?? '';
 
-assert.match(topFormula, /γ<sub>u,s,v<\/sub>\(t, θ\)/);
-assert.match(topFormula, /<i>p<\/i><sup>r<\/sup><sub>u,s,v<\/sub>\(t, θ\)/);
+assert.match(topFormula, /γ<sub>u,s,v<\/sub>/);
+assert.match(topFormula, /data-formula-symbol="system-angle-state"/);
 assert.match(topFormula, /h<sub>u,s,v<\/sub>\(t, θ\)/);
-assert.match(topFormula, /I<sub>u,s,v<\/sub>\(t, θ\)/);
+assert.match(topFormula, /<i>p<\/i><sub>u,s,v<\/sub>\(t,/);
+assert.match(topFormula, /I<sub>u,s,v<\/sub>/);
+assert.doesNotMatch(topFormula, /<i>p<\/i><sup>r<\/sup>|p<sup>r<\/sup>/);
 assert.doesNotMatch(topFormula, /γ<sub>u<\/sub>|h<sub>u<\/sub>|I<sub>u<\/sub>/);
 assert.doesNotMatch(topFormula, /ŝ|v̂/);
 assert.doesNotMatch(topFormula, /Θ|θ<sub>/);
-assert.match(markup, /id="sinr-formula-tab-signal-power"[\s\S]*<i>p<\/i><sup>r<\/sup><sub>u,s,v<\/sub>\(t, θ\)/);
-assert.match(markup, /id="sinr-formula-tab-channel"[\s\S]*h<sub>u,s,v<\/sub>\(t, θ\)/);
-assert.match(markup, /id="sinr-formula-tab-interference"[\s\S]*I<sub>u,s,v<\/sub>\(t, θ\)/);
+assert.match(markup, /id="sinr-formula-tab-signal-power"[\s\S]*<i>p<\/i><sub>u,s,v<\/sub>/);
+assert.match(markup, /id="sinr-formula-tab-channel"[\s\S]*h<sub>u,s,v<\/sub>[\s\S]*\(t, θ\)/);
+assert.match(markup, /id="sinr-formula-tab-interference"[\s\S]*I<sub>u,s,v<\/sub>/);
 
 const signalPower = renderPanel('signal-power');
 const channel = renderPanel('channel');
@@ -87,15 +87,12 @@ assert.match(roleControlledMarkup, /id="scenario-data-candidate-beam-layout-19"[
 assert.match(markup, /id="sinr-formula-tab-thermal-noise"[^>]*role="tab"/);
 assert.match(markup, /grid-template-columns:repeat\(3, minmax\(0, 1fr\)\) minmax\(40px, 0\.45fr\)/);
 assert.doesNotMatch(markup, /id="sinr-formula-tab-(loss|beam|receiver-gain)"[^>]*role="tab"/);
-assert.match(signalPowerControls, /<i>p<\/i><sup>r<\/sup><sub>u,s,v<\/sub>\(t, θ\)/);
-assert.match(signalPower, /data-testid="pt-signal-power-value"[\s\S]*font-size:22px/);
-assert.doesNotMatch(signalPowerControls, /P<sup>r<\/sup><sub>s,v<\/sub>|P<sup>o<\/sup><sub>s,v<\/sub>/);
+assert.match(signalPowerControls, /<i>p<\/i><sub>u,s,v<\/sub>\(t,[\s\S]*?θ/);
+assert.match(signalPowerControls, /data-testid="signal-power-output-formula"/);
+assert.doesNotMatch(signalPowerControls, /P<sup>o<\/sup>|P<sup>r<\/sup>|z<sub>s,v<\/sub>/);
 assert.doesNotMatch(signalPowerControls, /分子項|numerator term/);
 assert.doesNotMatch(signalPower, /P̃<sup>DL<\/sup>/);
-const actualRfReadout = signalPower.match(/<div[^>]*data-testid="pt-signal-power-control"[\s\S]*?<\/div>/)?.[0] ?? '';
-assert.match(actualRfReadout, /data-readonly="true"/);
-assert.doesNotMatch(actualRfReadout, /<input\b|\bdisabled(?:=|\s|>)/);
-assert.doesNotMatch(actualRfReadout, /唯讀|Read-only/i);
+assert.doesNotMatch(signalPower, /data-testid="pt-signal-power-(?:value|control)"/);
 assert.match(channel, /data-testid="receiver-gain-controls"/);
 assert.match(channel, /data-testid="loss-formula-controls"/);
 assert.match(channel, /data-testid="beam-gain-controls"/);
@@ -131,16 +128,16 @@ const beamGainControls = channel.match(
   /<section[^>]*data-testid="beam-gain-controls"[\s\S]*?<\/section>/,
 )?.[0] ?? '';
 assert.doesNotMatch(beamGainControls, /data-control-symbol="true"[\s\S]{0,140}G<sup>T<\/sup>\(θ\)/);
-assert.match(channel, /h<sub>u,s,v<\/sub>\(t, θ\)/);
-assert.match(loss, /h<sub>u,s,v<\/sub>\(t, θ\)/);
+assert.match(channel, /h<sub>u,s,v<\/sub>[\s\S]*\(t, θ\)/);
+assert.match(loss, /h<sub>u,s,v<\/sub>[\s\S]*\(t, θ\)/);
 assert.match(loss, /data-testid="loss-formula-controls-formula"[\s\S]*H<sub>u,s,v<\/sub>\(t\)/);
 assert.doesNotMatch(loss, /G<sup>T<\/sup>\(θ\) =/);
 assert.match(
   interferenceContext,
-  /I<sub>u,s,v<\/sub>\(t, θ\) = I<sup>a<\/sup><sub>u,s,v<\/sub>\(t, θ\) \+ I<sup>b<\/sup><sub>u,s,v<\/sub>\(t, θ\)/,
+  /I<sub>u,s,v<\/sub>\(t,[\s\S]*?θ/,
 );
-assert.doesNotMatch(interferenceContext, /γ<sub>|<i>p<\/i><sup>r<\/sup>|h<sub>u,s,v<\/sub>\(t, θ\) \+ σ²/);
-assert.doesNotMatch(interferenceContext, /I<sub>u,s,v<\/sub>\(t, θ\)\s*<\/div>[^]*γ<sub>/);
+assert.match(interferenceContext, /data-formula-symbol="system-angle-state"/);
+assert.doesNotMatch(interferenceContext, /γ<sub>|<i>p<\/i><sup>r<\/sup>|h<sub>u,s,v<\/sub>/);
 assert.match(interference, /data-testid="interference-frequency-swatch-1"[\s\S]*頻率 1/);
 assert.match(interference, /data-testid="interference-frequency-swatch-2"[\s\S]*頻率 2/);
 const thermalNoise = renderPanel('thermal-noise');
@@ -155,10 +152,11 @@ const thermalBandwidthControl = thermalNoiseSection.match(
   /data-testid="bandwidth-thermal-noise-control"[\s\S]*?data-testid="n0-thermal-noise-control"/,
 )?.[0] ?? '';
 assert.match(thermalBandwidthControl, /data-control-label="true"[\s\S]*data-control-symbol="true"[\s\S]*data-control-value="true"/);
-assert.match(receiver, /h<sub>u,s,v<\/sub>\(t, θ\)/);
+assert.match(receiver, /h<sub>u,s,v<\/sub>[\s\S]*\(t, θ\)/);
 assert.match(
   legacyInterference,
-  /data-testid="interference-controls-formula-context"[\s\S]*I<sub>u,s,v<\/sub>\(t, θ\) = I<sup>a<\/sup><sub>u,s,v<\/sub>\(t, θ\) \+ I<sup>b<\/sup><sub>u,s,v<\/sub>\(t, θ\)/,
+  /data-testid="interference-controls-formula-context"[\s\S]*I<sub>u,s,v<\/sub>\(t,[\s\S]*?θ/,
 );
+assert.doesNotMatch(markup, /P<sup>o<\/sup>|P<sup>r<\/sup>|I<sup>[ab]<\/sup>|η<sup>e<\/sup>/);
 
 console.log('SignalTuningPanel renders the four visible SINR groups with h and total I notation.');

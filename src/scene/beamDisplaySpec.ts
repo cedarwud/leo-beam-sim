@@ -353,14 +353,14 @@ export interface DisplayHeroRecord {
 }
 
 /**
- * Pick the drawable serving beam that owns the visual HERO role.
+ * Pick the `(satId, cellId)` identity that owns the visual HERO role.
  *
- * The primary UE remains the first choice. When that UE is temporarily unserved,
- * the scene may still contain other valid serving beams; choosing only a fallback
- * satellite left every one of those cones grey because no fallback cell identity
- * was supplied to the role resolver. This display-only resolver chooses a complete
- * `(satId, cellId)` pair from the beams the renderer can actually draw. It never
- * changes UE attachment, serving truth, SINR, or handover state.
+ * The primary UE is the only valid hero owner. A temporary missing drawable
+ * cone is a render-availability problem, not permission to relabel another
+ * UE's cell as the primary service. Returning the primary identity here keeps
+ * the camera, yellow role, and right-rail serving record aligned; the cone
+ * resolver may still return an empty/fan-only field until the source geometry
+ * is drawable again. This is display-only and never changes serving truth.
  */
 export function resolveDisplayHeroRecord(
   primary: {
@@ -369,36 +369,15 @@ export function resolveDisplayHeroRecord(
   } | null,
   drawableServingBeams: readonly DisplayHeroRecord[],
 ): DisplayHeroRecord | null {
+  // The drawable list remains part of the call contract for the beam resolver,
+  // but it is never allowed to relabel the primary UE when that pair is absent.
+  void drawableServingBeams;
   if (
     primary?.servingSatId
     && primary.cellId !== null
     && primary.cellId !== undefined
-    && drawableServingBeams.some(beam => (
-      beam.servingSatId === primary.servingSatId
-      && beam.cellId === primary.cellId
-    ))
   ) {
     return { servingSatId: primary.servingSatId, cellId: primary.cellId };
   }
-
-  if (drawableServingBeams.length === 0) return null;
-
-  const countBySatellite = new Map<string, number>();
-  for (const beam of drawableServingBeams) {
-    countBySatellite.set(
-      beam.servingSatId,
-      (countBySatellite.get(beam.servingSatId) ?? 0) + 1,
-    );
-  }
-  const fallbackSatelliteId = [...countBySatellite.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
-  if (!fallbackSatelliteId) return null;
-
-  const fallbackCellId = drawableServingBeams
-    .filter(beam => beam.servingSatId === fallbackSatelliteId)
-    .map(beam => beam.cellId)
-    .sort((a, b) => a - b)[0];
-  return fallbackCellId === undefined
-    ? null
-    : { servingSatId: fallbackSatelliteId, cellId: fallbackCellId };
+  return null;
 }

@@ -11,6 +11,7 @@ import {
   type VisualLabSceneAssetStatus,
   type VisualLabView,
 } from './VisualLabScene';
+import { createVisualLabBeamDisplayFrame } from './visualLabBeamDisplayFrame';
 import { VisualLabTimeline } from './VisualLabTimeline';
 import { useVisualLabSession } from '../../visualLab/session';
 import {
@@ -197,6 +198,10 @@ export function UnifiedVisualLabPrototype(): ReactElement {
   const globalSceneFrame = lab.globalScene;
   const localScene = lab.localScene;
   const inputs = lab.draft.parameters as VisualLabInputValues;
+  // Scene and result rail intentionally use the accepted frame options.  A
+  // pending draft may differ while the canonical worker rebuilds, but it must
+  // never make the old accepted metrics render with a new beam budget.
+  const acceptedFrameOptions = lab.accepted?.frameOptions ?? lab.draft.frameOptions;
   const acceptedBeamWidthRad = localScene?.render.beam.theta3dbRad ?? inputs.theta3dbRad;
   const beamWidthDraftScale = localScene !== null
     && Number.isFinite(acceptedBeamWidthRad)
@@ -369,6 +374,14 @@ export function UnifiedVisualLabPrototype(): ReactElement {
     && globalArtifactState.constellation === displayAcceptedSource.constellation
     ? globalArtifactState.artifact
     : null;
+  const beamFrame = useMemo(() => createVisualLabBeamDisplayFrame({
+    frameOptions: acceptedFrameOptions,
+    snapshot,
+    localScene,
+    globalSatelliteCount: globalSceneFrame?.propagatedSatelliteCount
+      ?? globalArtifact?.satelliteCount
+      ?? null,
+  }), [acceptedFrameOptions, globalArtifact, globalSceneFrame, localScene, snapshot]);
   // A full-run/parameter rebuild is a background publication transaction: the
   // accepted scene remains usable and controls must not be presented as
   // blocked.  Only a source/date transaction (applied draft differs from the
@@ -1546,6 +1559,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
                 causalCameraCue={guidedHandoverActive ? null : causalReplay.cameraCue}
                 storyDirectorEnabled={storyDirectorEnabled}
                 localScene={localScene}
+                beamFrame={beamFrame}
                 globalSceneFrame={globalSceneComplete ? globalSceneFrame : null}
                 globalArtifact={globalArtifact}
                 globalStatus={globalStatus}
@@ -1699,6 +1713,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
           className="vlab-panel vlab-progressive-result-dock"
           locale={lab.presentation.locale}
           snapshot={snapshot}
+          beamFrame={beamFrame}
           activeModule={activeModule}
           onFocus={handleResultFocus}
           comparison={lab.comparison}

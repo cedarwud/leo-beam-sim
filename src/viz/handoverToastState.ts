@@ -19,7 +19,10 @@ export interface HandoverToastState {
   progressRatio: number;
 }
 
-export type HandoverToastInput = Pick<NormalizedSceneFrame, 'transitionProgress'>;
+export type HandoverToastInput = Pick<NormalizedSceneFrame, 'transitionProgress'> & {
+  /** Shared presentation owner, when one has already claimed the viewport. */
+  readonly preferredKind?: HandoverToastKind | null;
+};
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -32,8 +35,11 @@ export function resolveHandoverToastState(
   _interTriggerSec: number,
   wallClockNowMs: number,
 ): HandoverToastState | null {
+  const preferredKind = input.preferredKind ?? null;
+  const allowIntra = preferredKind === null || preferredKind === 'intra';
+  const allowInter = preferredKind === null || preferredKind === 'inter';
   const intra = input.transitionProgress.intra;
-  if (intra && intra.kind === 'preview'
+  if (allowIntra && intra && intra.kind === 'preview'
     && intra.previewProgressSec !== undefined
     && intra.previewTargetSec !== undefined
   ) {
@@ -51,7 +57,8 @@ export function resolveHandoverToastState(
     };
   }
   if (
-    intra && intra.kind === 'committed'
+    allowIntra
+    && intra && intra.kind === 'committed'
     && intra.wallClockStartMs !== undefined
     && intra.wallClockExpiresMs !== undefined
     && wallClockNowMs <= intra.wallClockExpiresMs
@@ -73,7 +80,8 @@ export function resolveHandoverToastState(
     };
   }
   if (
-    intra && intra.kind === 'recent'
+    allowIntra
+    && intra && intra.kind === 'recent'
     && intra.recentProgressSec !== undefined
     && intra.recentTargetSec !== undefined
     && intra.recentProgressSec < Math.max(intra.recentTargetSec, 1e-6)
@@ -94,7 +102,8 @@ export function resolveHandoverToastState(
 
   const inter = input.transitionProgress.inter;
   if (
-    inter && inter.kind === 'pending'
+    allowInter
+    && inter && inter.kind === 'pending'
     && inter.pendingProgressSec !== undefined
     && inter.pendingTargetSec !== undefined
   ) {
@@ -112,7 +121,8 @@ export function resolveHandoverToastState(
     };
   }
   if (
-    inter && inter.kind === 'committed'
+    allowInter
+    && inter && inter.kind === 'committed'
     && inter.wallClockStartMs !== undefined
     && inter.wallClockExpiresMs !== undefined
     && wallClockNowMs <= inter.wallClockExpiresMs
@@ -134,7 +144,8 @@ export function resolveHandoverToastState(
     };
   }
   if (
-    inter && inter.kind === 'recent'
+    allowInter
+    && inter && inter.kind === 'recent'
     && inter.recentProgressSec !== undefined
     && inter.recentTargetSec !== undefined
     && inter.recentProgressSec < Math.max(inter.recentTargetSec, 1e-6)

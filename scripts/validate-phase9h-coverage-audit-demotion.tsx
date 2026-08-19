@@ -57,7 +57,10 @@ function createBudgetTerms(): LinkBudgetTerms {
   };
 }
 
-function renderPanel(initialActiveTab: 'signal-power' | 'loss' = 'signal-power') {
+function renderPanel(
+  initialActiveTab: 'signal-power' | 'loss' = 'signal-power',
+  initialMainTab: 'sinr' | 'power' = 'sinr',
+) {
   const profile = loadProfile(PROFILE_ID);
   const markup = renderToStaticMarkup(
     // Aligned to the CURRENT SignalTuningPanelProps: the removed legacy props
@@ -74,6 +77,7 @@ function renderPanel(initialActiveTab: 'signal-power' | 'loss' = 'signal-power')
       hasOverrides={false}
       formulaBudget={createBudgetTerms()}
       initialActiveTab={initialActiveTab}
+      initialMainTab={initialMainTab}
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
@@ -97,7 +101,7 @@ function assertCoverageSummaryIsRemovedFromPrimaryFlow(): void {
   assertTestIdOrder(markup, [
     'sinr-formula-tabs',
     'signal-power-controls',
-    'pt-signal-power-control',
+    'signal-power-output-formula',
     'signal-power-controls-formula-context',
   ], 'primary SINR tuning flow');
 
@@ -132,20 +136,15 @@ function assertEssentialContextRemainsInline(): void {
   );
   assertNotContainsTestId(signal.markup, 'signal-power-controls', 'gr-receiver-gain-control');
 
-  // Context is present and expanded on arrival, BELOW the primary editable control.
-  assertOpenByDefault(signal.markup, 'active-tab-formula-context');
-  assertOpenByDefault(signal.markup, 'sinr-overview-disclosure');
-  assertTestIdOrder(signal.markup, [
-    'pt-signal-power-control',
-    'active-tab-formula-context',
-    'sinr-overview-disclosure',
-  ], 'signal-power tab');
+  // The repeated formula-notes and old overview disclosures are removed.
+  assertNoTestId(signal.markup, 'active-tab-formula-context', 'signal-power tab');
+  assertNoTestId(signal.markup, 'sinr-overview-disclosure', 'signal-power tab');
 
-  // The parameter card keeps its own first-use context next to the slider: the
-  // explanation hook, the "what changes if I move it" hook, and the range.
-  assertContainsTestId(signal.markup, 'pt-signal-power-control', 'pt-signal-power-control-details');
-  assertContainsTestId(signal.markup, 'pt-signal-power-control', 'pt-signal-power-control-effect');
-  assertContainsTestId(signal.markup, 'pt-signal-power-control', 'pt-signal-power-control-range-endpoints');
+  // The genuine RF parameter card lives on Power and retains help/range hooks.
+  const power = renderPanel('signal-power', 'power');
+  assertContainsTestId(power.markup, 'walker-power-output-control', 'walker-power-output-control-details');
+  assertContainsTestId(power.markup, 'walker-power-output-control', 'walker-power-output-control-effect');
+  assertContainsTestId(power.markup, 'walker-power-output-control', 'walker-power-output-control-range-endpoints');
 
   assertNotContains(signal.text, 'HOBS paper parameter table');
   assertNotContains(signal.text, 'Research Override / teaching control');
@@ -185,14 +184,14 @@ function run(): void {
       placement: [
         'old sinr-coverage-audit test id is gone',
         'coverage / assumptions no longer remains as a separate disclosure in the primary SINR tuning flow',
-        'editable parameter cards appear before section-level formula context',
-        'parameter cards keep first-use formula context inline next to the slider, value, and range',
-        'active-tab formula notes and SINR overview are expanded by default below the primary controls',
+        'the P^o formula appears without a duplicate p^r parameter card',
+        'the actual RF parameter card keeps its help, effect, and range hooks on Power',
+        'the repeated active-tab formula notes and old SINR overview are absent',
       ],
       preserved: [
         'G^R remains discoverable as a separate Receiver Gain control',
         'path-loss sensitivity controls remain visible in the Loss control group',
-        'transmit-power effect and dynamic-power-control caveat remain visible without opening a details disclosure',
+        'actual RF output help remains available from the Power control',
       ],
     },
   }, null, 2));

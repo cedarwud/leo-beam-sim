@@ -182,6 +182,7 @@ export interface RuntimeConfig {
   /** One-shot explicit live demo cue; not a source-backed trajectory event. */
   manualHandoverRequestId?: number;
   manualHandoverKind?: 'intra' | 'inter';
+  manualHandoverOrigin?: 'button' | 'scheduled';
   manualHandoverStartedAtMs?: number;
   manualHandoverSourceSatId?: string;
   manualHandoverSourceCellId?: number;

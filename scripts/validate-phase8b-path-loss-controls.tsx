@@ -459,6 +459,7 @@ function assertPhase8DNlosClutterUx(): void {
 }
 
 function assertPlacementCopyAndStaleMarkup(): void {
+  const signalPanelSource = readFileSync(new URL('../src/ui/SignalTuningPanel.tsx', import.meta.url), 'utf8');
   const tuningSource = [
     '../src/ui/SignalTuningPanel.tsx',
     '../src/ui/signal-tuning/ControlSections.tsx',
@@ -482,8 +483,8 @@ function assertPlacementCopyAndStaleMarkup(): void {
   // without proving anything the test ids do not already prove.
   assertContains(tuningSource, 'testId="loss-formula-controls"');
   assertContains(tuningSource, 'testId="loss-sensitivity-controls"');
-  assertContains(tuningSource, 'data-testid="sinr-overview-disclosure"');
-  assertContains(tuningSource, 'data-testid="active-tab-formula-context"');
+  assertNotContains(signalPanelSource, 'SinrOverview');
+  assertNotContains(signalPanelSource, 'FormulaContextDisclosure');
   assertContains(tuningSource, 'data-testid={testId ? `${testId}-details` : undefined}');
   assertContains(tuningSource, 'data-testid={testId ? `${testId}-range-endpoints` : undefined}');
   assertContains(tuningSource, 'active={atmosphericEnabled}');
@@ -503,10 +504,10 @@ function assertPlacementCopyAndStaleMarkup(): void {
   assertNotContains(tuningSource, 'TR 38.811 environment selector');
   assertNotContains(tuningSource, 'beamPowerControl');
   assertContains(tokenSource, "loss: '#58bff0'");
-  assertContains(tokenSource, 'caption: 14');
-  assertContains(tokenSource, 'body: 17');
-  assertContains(tokenSource, 'bodyLg: 18');
-  assertContains(tokenSource, 'formula: 27');
+  assertContains(tokenSource, 'caption: 16');
+  assertContains(tokenSource, 'body: 19');
+  assertContains(tokenSource, 'bodyLg: 20');
+  assertContains(tokenSource, 'formula: 29');
 
   const profile = loadProfile('hobs-2024-paper-default');
   const defaultSwitchMarkup = renderLossPanelMarkup(profile);

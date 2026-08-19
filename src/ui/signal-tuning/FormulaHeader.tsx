@@ -231,12 +231,18 @@ export function FormulaFraction({
   denominator,
   numeratorAccent,
   denominatorAccent,
+  lhsFontSize = UI_TOKENS.type.size.formula,
+  termFontSize = UI_TOKENS.type.size.subheading,
 }: {
   lhs: ReactNode;
   numerator: ReactNode;
   denominator: ReactNode;
   numeratorAccent: string;
   denominatorAccent: string;
+  /** Optional narrow-rail size for a long indexed left-hand side. */
+  lhsFontSize?: number;
+  /** Optional narrow-rail size for unusually long numerator/denominator terms. */
+  termFontSize?: number;
 }) {
   return (
     // Horizontally centred: the whole expression is the subject of the tab, so
@@ -254,13 +260,13 @@ export function FormulaFraction({
       width: '100%',
       minWidth: 0,
     }}>
-      <span style={{ ...formulaTextStyle, fontSize: UI_TOKENS.type.size.formula, lineHeight: 1.1 }}>
+      <span style={{ ...formulaTextStyle, fontSize: lhsFontSize, lineHeight: 1.1 }}>
         {lhs} =
       </span>
       <span style={{ display: 'inline-grid', gap: 3, justifyItems: 'center', minWidth: 0 }}>
         <span style={{
           ...formulaTextStyle,
-          fontSize: UI_TOKENS.type.size.subheading,
+          fontSize: termFontSize,
           lineHeight: 1.2,
           color: numeratorAccent,
         }}>
@@ -274,7 +280,7 @@ export function FormulaFraction({
         }} />
         <span style={{
           ...formulaTextStyle,
-          fontSize: UI_TOKENS.type.size.subheading,
+          fontSize: termFontSize,
           lineHeight: 1.2,
           color: denominatorAccent,
         }}>

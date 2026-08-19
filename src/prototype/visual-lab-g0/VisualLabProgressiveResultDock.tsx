@@ -20,10 +20,12 @@ import {
 import type { VisualLabResultFocus } from './visualLabResultFocus';
 import type { ComparisonView } from '../../visualLab/comparison';
 import { VisualLabComparisonPanel } from '../../visualLab/ui/VisualLabComparisonPanel';
+import type { VisualLabBeamDisplayFrame, VisualLabBeamDisplayLane } from './visualLabBeamDisplayFrame';
 
 export interface VisualLabProgressiveResultDockProps {
   readonly locale: VisualLabLocale;
   readonly snapshot: VisualLabCanonicalSnapshot;
+  readonly beamFrame: VisualLabBeamDisplayFrame;
   readonly activeModule: VisualLabModuleKey | null;
   readonly onFocus?: (focus: VisualLabResultFocus) => void;
   readonly className?: string;
@@ -113,6 +115,11 @@ const COPY = Object.freeze({
   systemPowerMetric: localized('系統功率', 'System power'),
   systemThroughput: localized('系統吞吐量', 'System throughput'),
   systemEeMetric: localized('系統 EE', 'System EE'),
+  beamConfiguration: localized('波束配置', 'Beam configuration'),
+  globalBeams: localized('全域波束', 'Total beams'),
+  servingBeams: localized('服務波束', 'Serving beams'),
+  candidateBeams: localized('候選波束', 'Candidate beams'),
+  activeBeamsSuffix: localized('啟用', 'active'),
 } as const);
 
 function text(copy: LocalizedCopy, locale: VisualLabLocale): string {
@@ -146,6 +153,35 @@ function numberOrDash(value: number | null, digits = 2): string {
 
 function identityOrDash(value: string | number | null): string {
   return value === null ? '—' : String(value);
+}
+
+function beamLaneValue(lane: VisualLabBeamDisplayLane, locale: VisualLabLocale): string {
+  const active = `${lane.activeTargetCount} ${text(COPY.activeBeamsSuffix, locale)}`;
+  return `${lane.configuredLayoutCount} · ${active}`;
+}
+
+function BeamConfigurationSection({ beamFrame, locale }: {
+  readonly beamFrame: VisualLabBeamDisplayFrame;
+  readonly locale: VisualLabLocale;
+}): ReactElement {
+  return <details className="vlab-progressive-result-dock__section vlab-progressive-result-dock__beam-configuration" open>
+    <summary className="vlab-progressive-result-dock__summary">
+      <span className="vlab-progressive-result-dock__summary-name">
+        <span className="vlab-progressive-result-dock__marker vlab-progressive-result-dock__marker--sinr" aria-hidden="true">B</span>
+        <span>{text(COPY.beamConfiguration, locale)}</span>
+      </span>
+    </summary>
+    <div className="vlab-progressive-result-dock__section-body">
+      <dl className="vlab-progressive-result-dock__rows">
+        <ResultRow
+          label={text(COPY.globalBeams, locale)}
+          value={formatCompactUnit(beamFrame.globalBeamCount, locale === 'zh-Hant' ? '波束' : 'beams')}
+        />
+        <ResultRow label={`${text(COPY.servingBeams, locale)} · ${identityOrDash(beamFrame.serving.satelliteId)}`} value={beamLaneValue(beamFrame.serving, locale)} />
+        <ResultRow label={`${text(COPY.candidateBeams, locale)} · ${identityOrDash(beamFrame.candidate.visible ? beamFrame.candidate.satelliteId : null)}`} value={beamLaneValue(beamFrame.candidate, locale)} />
+      </dl>
+    </div>
+  </details>;
 }
 
 function focusFor(module: ResultModuleKey): VisualLabResultFocus {
@@ -389,6 +425,7 @@ function ModuleSection({
 export function VisualLabProgressiveResultDock({
   locale = 'zh-Hant',
   snapshot,
+  beamFrame,
   activeModule,
   onFocus,
   className,
@@ -411,14 +448,24 @@ export function VisualLabProgressiveResultDock({
   };
 
   return (
-    <aside id="vlab-results" className={classNames} aria-label={text(COPY.title, locale)} aria-disabled={interactionLocked || undefined} inert={interactionLocked || undefined} tabIndex={-1}>
+    <aside id="vlab-results" className={classNames} aria-label={text(COPY.title, locale)} aria-disabled={interactionLocked || undefined} inert={interactionLocked || undefined} tabIndex={-1}
+      data-beam-frame-id={beamFrame.sourceFrameId ?? undefined}
+      data-beam-global-layout-count={beamFrame.globalLayoutCount}
+      data-beam-global-count={beamFrame.globalBeamCount}
+      data-beam-global-satellite-count={beamFrame.globalSatelliteCount ?? undefined}
+      data-beam-serving-layout-count={beamFrame.serving.configuredLayoutCount}
+      data-beam-serving-active-count={beamFrame.serving.activeTargetCount}
+      data-beam-candidate-layout-count={beamFrame.candidate.configuredLayoutCount}
+      data-beam-candidate-active-count={beamFrame.candidate.activeTargetCount}
+      data-beam-illumination-mode={beamFrame.illuminationMode}
+    >
       <section className="vlab-progressive-result-dock__comparison" aria-label={text(COPY.comparison, locale)}>
         <div className="vlab-progressive-result-dock__identities">
           <button className="vlab-identity-chip vlab-identity-chip--serving" type="button" onClick={() => onFocus?.('serving-link')}>
             <span>{text(COPY.serving, locale)}</span><strong>{identityOrDash(snapshot.serving.satelliteId)}</strong>
           </button>
           <button className="vlab-identity-chip vlab-identity-chip--candidate" type="button" onClick={() => onFocus?.('candidate-link')}>
-            <span>{text(COPY.candidate, locale)}</span><strong>{identityOrDash(snapshot.candidate.satelliteId)}</strong>
+            <span>{text(COPY.candidate, locale)}</span><strong>{identityOrDash(beamFrame.candidate.visible ? snapshot.candidate.satelliteId : null)}</strong>
           </button>
         </div>
         <div className="vlab-progressive-result-dock__metrics">
@@ -430,6 +477,7 @@ export function VisualLabProgressiveResultDock({
       </section>
 
       <div className="vlab-progressive-result-dock__sections">
+        <BeamConfigurationSection beamFrame={beamFrame} locale={locale} />
         {DETAIL_MODULES.map((module) => (
           <ModuleSection
             key={module}

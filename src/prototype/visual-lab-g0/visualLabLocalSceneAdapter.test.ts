@@ -276,8 +276,14 @@ const heterogeneousFrame = buildSimulationAnalysisFrame(
 );
 const heterogeneousPlan = adaptSimulationAnalysisFrameToVisualLabLocalScene(heterogeneousFrame);
 assert.equal(heterogeneousPlan.substrate.cells.length, 19);
+assert.equal(heterogeneousPlan.configuredBeamTargets.targets.length, 19);
+assert.equal(
+  heterogeneousPlan.configuredBeamTargets.targets.filter(target => target.isLoaded).length,
+  heterogeneousPlan.activeBeamTargets.targets.length,
+);
 assert.equal(heterogeneousPlan.candidateBeamLayout.layoutCount, 1);
 assert.equal(heterogeneousPlan.candidateBeamLayout.targets.length, 1);
+assert.equal(heterogeneousPlan.candidateBeamLayout.displayTargets.length, 1);
 assert.equal(heterogeneousPlan.candidateBeamLayout.targets[0]?.satelliteId, candidateId);
 
 // Preserve a known candidate identity but fail closed when the accepted

@@ -5,34 +5,36 @@ import {
   SIMPLIFIED_EE_BEAM_INDEX,
   SIMPLIFIED_EE_LINK_INDEX,
 } from './simplifiedEeSymbols';
+import { InlineFormulaFraction } from './FormulaHeader';
+import { LinkAngle, SystemAngleState } from './FormulaSymbols';
 import type { TuningTab, TuningTabKey } from './types';
 
 export const TUNING_TABS: readonly TuningTab[] = [
   {
     key: 'signal-power',
-    symbol: <><i>p</i><sup>r</sup><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    symbol: <><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>,
     title: 'RF Output',
-    subtitle: 'Actual per-beam RF output.',
-    formula: <>P<sup>o</sup><sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t, θ) = z<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t)P<sup>r</sup><sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t, θ)</>,
-    formulaExpr: <>P<sup>o</sup><sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t, θ) = z<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t)P<sup>r</sup><sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t, θ)</>,
-    note: 'The actual RF output is shared by the signal, interference, rate, PA, and EE chain.',
+    subtitle: 'Angle-aware link RF power.',
+    formula: <><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) = <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t₀, θ⁰) · <InlineFormulaFraction numerator={<>G<sup>T</sup>(θ⁰)</>} denominator={<>G<sup>T</sup>(θ)</>} label="reference transmit gain divided by current transmit gain" /></>,
+    formulaExpr: <><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) = <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t₀, θ⁰) · <InlineFormulaFraction numerator={<>G<sup>T</sup>(θ⁰)</>} denominator={<>G<sup>T</sup>(θ)</>} label="reference transmit gain divided by current transmit gain" /></>,
+    note: 'The link power is the RF power used by the SINR and throughput chain.',
   },
   {
     key: 'channel',
-    symbol: <>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    symbol: <>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</>,
     title: 'Effective Channel',
     subtitle: 'Angle-aware effective channel used by the SINR numerator.',
-    formula: <>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
-    formulaExpr: <>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    formula: <>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</>,
+    formulaExpr: <>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</>,
     note: 'h_{u,s,v}(t,θ) is the effective channel used by the SINR numerator.',
   },
   {
     key: 'interference',
-    symbol: <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    symbol: <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>,
     title: 'Interf.',
     subtitle: 'Total co-channel interference used by the SINR denominator.',
-    formula: <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
-    formulaExpr: <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>,
+    formula: <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>,
+    formulaExpr: <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>,
     note: 'Frequency grouping determines the total co-channel interference I_{u,s,v}(t,θ).',
   },
   {
@@ -133,14 +135,14 @@ export function getFormulaTabNoteCopy(tabKey: TuningTabKey): {
     case 'signal-power':
       return {
         key: 'tab.sub.signalPower.note',
-        zh: '鏈路功率 p^r_{u,s,v}(t,θ) 先聚合為 P^r_{s,v}(t,θ)，再得到共享實際輸出 P^o_{s,v}(t,θ)。',
-        en: 'Link power p^r_{u,s,v}(t,θ) is aggregated into P^r_{s,v}(t,θ), then becomes shared actual output P^o_{s,v}(t,θ).',
+        zh: 'p_{u,s,v}(t,θ) 是 SINR 與速率使用的鏈路 RF 功率。',
+        en: 'p_{u,s,v}(t,θ) is the link RF power used by SINR and throughput.',
       };
     case 'channel':
       return {
         key: 'tab.sub.channel.note',
-        zh: '有效通道 h_{u,s,v}(t,θ) 收合傳播、接收端與角度相關因素。',
-        en: 'Effective channel h_{u,s,v}(t,θ) collects propagation, receive-side, and angle-dependent factors.',
+        zh: '有效通道 h_{u,s,v}(t,θ) 收合傳播、接收端與離軸角 θ。',
+        en: 'Effective channel h_{u,s,v}(t,θ) collects propagation, receive-side, and off-axis angle θ.',
       };
     case 'loss':
       return {

@@ -11,6 +11,7 @@ import {
 } from '../sceneVisualScale';
 import type { UeMobilityParams } from '../engine/ue/multiUeMobility';
 import { normalizePersistedModqnServingCount } from '../modqn/servingCount';
+import { isSupportedBeamLayoutCount } from '../core/beam/completeHexPresets';
 
 export type SceneSourceMode = 'live-sim' | 'artifact-replay';
 
@@ -111,16 +112,27 @@ export function readSceneTopologyOverrides(): SceneTopologyState {
           }
         : null;
     return {
+      constellation: record.constellation === 'oneweb' ? 'oneweb' : 'starlink',
       satsPerPlane: typeof record.satsPerPlane === 'number' ? record.satsPerPlane : null,
       beamCountPerSatellite: typeof record.beamCountPerSatellite === 'number'
         ? record.beamCountPerSatellite
         : null,
       beamCountBySatellite: normalizeBeamCountBySatellite(record.beamCountBySatellite),
+      servingBeamCount: typeof record.servingBeamCount === 'number'
+        && isSupportedBeamLayoutCount(record.servingBeamCount)
+        ? record.servingBeamCount
+        : null,
+      candidateBeamCount: typeof record.candidateBeamCount === 'number'
+        && isSupportedBeamLayoutCount(record.candidateBeamCount)
+        ? record.candidateBeamCount
+        : null,
+      beamHoppingEnabled: record.beamHoppingEnabled === true,
       cellServingCount: normalizePersistedModqnServingCount(record.cellServingCount),
       ueCount: typeof record.ueCount === 'number' ? record.ueCount : null,
       ueDistributionMode: record.ueDistributionMode === 'random'
         || record.ueDistributionMode === 'grid'
         || record.ueDistributionMode === 'clustered'
+        || record.ueDistributionMode === 'seven-cell-asymmetric'
         ? record.ueDistributionMode
         : null,
       ueMobilityMode: record.ueMobilityMode === 'static'

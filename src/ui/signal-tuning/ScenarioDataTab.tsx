@@ -19,6 +19,8 @@ const BEAM_LAYOUT_OPTIONS = SUPPORTED_BEAM_LAYOUT_COUNTS;
 export type BeamLayoutCount = SupportedBeamLayoutCount;
 
 export interface ScenarioDataTabProps {
+  readonly constellation?: SimulatorConstellation;
+  readonly onConstellationChange?: (next: SimulatorConstellation) => void;
   /** Optional controlled scene value. Without it the isolated tab keeps its local preview state. */
   readonly beamLayoutCount?: BeamLayoutCount;
   readonly onBeamLayoutCountChange?: (next: BeamLayoutCount) => void;
@@ -59,6 +61,8 @@ const timeOptionStyle = {
 };
 
 export function ScenarioDataTab({
+  constellation: controlledConstellation,
+  onConstellationChange,
   beamLayoutCount: controlledBeamLayoutCount,
   onBeamLayoutCountChange,
   servingBeamLayoutCount: controlledServingBeamLayoutCount,
@@ -70,7 +74,7 @@ export function ScenarioDataTab({
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
   const say = (key: string, zh: string, en: string) => txBi(t, isEnglish, key, zh, en);
-  const [constellation, setConstellation] = useState<SimulatorConstellation>('starlink');
+  const [localConstellation, setLocalConstellation] = useState<SimulatorConstellation>('starlink');
   const [scenarioDate, setScenarioDate] = useState(INITIAL_SCENARIO_DATE);
   const [scenarioTime, setScenarioTime] = useState(INITIAL_SCENARIO_TIME);
   const [localBeamLayoutCount, setLocalBeamLayoutCount] = useState<BeamLayoutCount>(DEFAULT_BEAM_LAYOUT_COUNT);
@@ -79,6 +83,8 @@ export function ScenarioDataTab({
   const beamLayoutCount = controlledBeamLayoutCount ?? localBeamLayoutCount;
   const servingBeamLayoutCount = controlledServingBeamLayoutCount ?? localServingBeamLayoutCount;
   const candidateBeamLayoutCount = controlledCandidateBeamLayoutCount ?? localCandidateBeamLayoutCount;
+  const constellation = controlledConstellation ?? localConstellation;
+  const setConstellation = onConstellationChange ?? setLocalConstellation;
   const setBeamLayoutCount = onBeamLayoutCountChange ?? setLocalBeamLayoutCount;
   const setServingBeamLayoutCount = onServingBeamLayoutCountChange ?? setLocalServingBeamLayoutCount;
   const setCandidateBeamLayoutCount = onCandidateBeamLayoutCountChange ?? setLocalCandidateBeamLayoutCount;

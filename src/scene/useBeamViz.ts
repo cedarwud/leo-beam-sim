@@ -718,7 +718,9 @@ export function useBeamViz(
       // pre-derived `transitionProgress.intra`. The renderer no longer re-
       // computes wallclock latches (those move into `deriveLiveSceneFields`).
       const intraTransition = frame.transitionProgress.intra;
-      const intraTransitionTargetsSat = intraTransition !== undefined
+      const interTransition = frame.transitionProgress.inter;
+      const intraTransitionTargetsSat = interTransition === undefined
+        && intraTransition !== undefined
         // Live derive sets intra.from/to to be sat-scoped via the beamHopState;
         // for this renderer, intra applies when the serving sat matches.
         && sat.id === servingSatId;
@@ -954,6 +956,8 @@ export function useBeamViz(
     let intraHandoverEvent: VizIntraHandoverEvent | null = null;
     const intraDerived = frame.transitionProgress.intra;
     if (
+      frame.transitionProgress.inter === undefined
+      &&
       intraDerived
       && intraDerived.satId !== undefined
       && intraDerived.wallClockStartMs !== undefined

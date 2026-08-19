@@ -27,7 +27,7 @@ assert.match(sceneSource, /name="visual-lab-multi-ue"/, 'multi-UE mode has a ded
 assert.match(sceneSource, /depthTest=\{false\}/, 'multi-UE points stay readable above the NTPU mesh');
 assert.match(routeSource, /positionForVisualLabUeOffAxisAngle/, 'off-axis control changes the draft UE geometry rather than a derived theta value');
 assert.doesNotMatch(routeSource, /vlab-ue-probe|代表 UE 位置/, 'the former central representative-UE overlay is removed');
-assert.match(sceneSource, /plan\.candidateBeamLayout\.targets/, 'candidate layout preview consumes the accepted per-satellite candidate scenario');
+assert.match(sceneSource, /beamFrame\.candidate\.targets/, 'candidate layout preview consumes the accepted per-satellite candidate scenario');
 assert.match(sceneSource, /data-local-candidate-beam-layout-count/, 'browser evidence exposes the candidate layout independently from the serving layout');
 assert.match(sceneSource, /reuseGroup=\{plan\.render\.reuse\.groupByCell\[cellOrder\]\}/, 'frequency reuse groups are projected onto the accepted cell order');
 assert.match(sceneSource, /showReuse=\{density !== 'clean' && focus === 'handover' && plan\.render\.reuse\.groups > 1\}/, 'the full/context modes reveal reuse groups without recoloring service/candidate beams');
@@ -43,7 +43,7 @@ assert.doesNotMatch(
 );
 assert.match(
   sceneSource,
-  /targets\.find\(target => target\.beamId === storyCurrentBeamId\)/,
+  /servingTargets\.find\(target => target\.beamId === storyCurrentBeamId\)/,
   'a source-backed intra story highlights its realized beam identity rather than the UE fixed cell',
 );
 assert.match(
@@ -100,13 +100,13 @@ assert.doesNotMatch(
 );
 assert.match(
   sceneSource,
-  /plan\.activeBeamTargets\.targets\.map/,
+  /servingTargets\.map/,
   'the visible serving fan follows the accepted active-beam mask',
 );
-assert.doesNotMatch(
+assert.match(
   sceneSource,
-  /candidateTargets\.map/,
-  'candidate beams are not a permanent always-on fan',
+  /directedHandoverAvailable[\s\S]{0,160}candidateTargets\.map/,
+  'candidate beams are only rendered from the candidate lane during a directed handover',
 );
 assert.match(
   routeSource,

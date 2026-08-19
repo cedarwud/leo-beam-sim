@@ -61,7 +61,8 @@ interface TopologyTabProps {
 }
 
 const BEAM_COUNT_OPTIONS = [7, 19, 37] as const;
-const UE_DISTRIBUTION_MODE_OPTIONS: readonly UeDistributionMode[] = ['random', 'grid', 'clustered'];
+type VisibleUeDistributionMode = Exclude<UeDistributionMode, 'seven-cell-asymmetric'>;
+const UE_DISTRIBUTION_MODE_OPTIONS: readonly VisibleUeDistributionMode[] = ['random', 'grid', 'clustered'];
 const DEFAULT_UE_COUNT = 100;
 
 type BeamCountOption = typeof BEAM_COUNT_OPTIONS[number];
@@ -82,7 +83,7 @@ const SERVING_COUNT_OPTION_TESTIDS: Record<ModqnServingCount, string> = {
   8: 'topology-tab-serving-count-option-8',
 };
 
-const UE_DISTRIBUTION_MODE_OPTION_TESTIDS: Record<UeDistributionMode, string> = {
+const UE_DISTRIBUTION_MODE_OPTION_TESTIDS: Record<VisibleUeDistributionMode, string> = {
   random: 'topology-tab-ue-distribution-option-random',
   grid: 'topology-tab-ue-distribution-option-grid',
   clustered: 'topology-tab-ue-distribution-option-clustered',
@@ -321,7 +322,7 @@ export function TopologyTab({
   const hasBeamOverride = topology.beamCountPerSatellite !== null;
   const effectiveUeCount = topology.ueCount ?? DEFAULT_UE_COUNT;
   const hasUeCountOverride = topology.ueCount !== null;
-  const effectiveUeDistributionMode = topology.ueDistributionMode ?? 'random';
+  const effectiveUeDistributionMode = topology.ueDistributionMode ?? 'seven-cell-asymmetric';
   const hasUeDistributionOverride = topology.ueDistributionMode !== null
     && topology.ueDistributionMode !== 'random';
   // No `effectiveUeMobility*` derivations here any more: the mobility controls
@@ -668,8 +669,12 @@ export function TopologyTab({
                   '次要使用者的擺放方式；主要使用者位置固定不變。',
                   'How the secondary users are placed. The primary user stays where it is.',
                 )}
-                badge={hasUeDistributionOverride ? undefined : 'Default random'}
-                badgeText={hasUeDistributionOverride ? undefined : copy('scene.badge.defaultRandom', '預設：隨機', 'Default: random')}
+                badge={hasUeDistributionOverride ? undefined : 'Default seven-cell asymmetric'}
+                badgeText={hasUeDistributionOverride ? undefined : copy(
+                  'scene.badge.defaultSevenCell',
+                  '預設：七格非對稱分布',
+                  'Default: asymmetric seven-cell distribution',
+                )}
               />
 
               <fieldset data-testid="topology-tab-ue-distribution-radio" style={topologyRadioFieldsetStyle(3)}>

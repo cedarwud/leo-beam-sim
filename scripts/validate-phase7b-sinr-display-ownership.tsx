@@ -190,7 +190,11 @@ function decodeHtmlText(markup: string): string {
     .trim();
 }
 
-function renderTuningPanel(profile: Profile, state: SimState) {
+function renderTuningPanel(
+  profile: Profile,
+  state: SimState,
+  initialMainTab: 'sinr' | 'power' = 'sinr',
+) {
   const markup = renderToStaticMarkup(
     // Aligned to the CURRENT SignalTuningPanelProps. The ownership point this
     // validator makes is now enforced structurally too: the panel interface no
@@ -206,6 +210,7 @@ function renderTuningPanel(profile: Profile, state: SimState) {
       appMode="sinr-experiment"
       hasOverrides
       formulaBudget={state.physicalServingBudget}
+      initialMainTab={initialMainTab}
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
@@ -287,7 +292,10 @@ function run(): void {
   // LEFT PANEL keeps the editable formula tabs and controls…
   const { markup: tuningMarkup, text: tuningText } = renderTuningPanel(profile, operationalState);
   assertTestId(tuningMarkup, 'sinr-formula-tabs');
-  assertContainsTestId(tuningMarkup, 'signal-power-controls', 'pt-signal-power-control');
+  assertContainsTestId(tuningMarkup, 'signal-power-controls', 'signal-power-output-formula');
+  assertNoTestId(tuningMarkup, 'walker-power-output-control', 'SINR formula page');
+  const powerMarkup = renderTuningPanel(profile, operationalState, 'power').markup;
+  assertContainsTestId(powerMarkup, 'walker-power-page', 'walker-power-output-control');
   // …and owns NO operational readout: no formula result, no term evidence, and
   // no element claiming either ownership role.
   assertNoTestId(tuningMarkup, 'formula-result-readout', 'left panel');
@@ -348,7 +356,7 @@ function run(): void {
         'Tuning-mode InfoPanel owns physical serving formula result and formula term evidence',
       ],
       leftPanel: [
-        'SignalTuningPanel keeps editable SINR formula tabs and controls',
+        'SignalTuningPanel keeps the P^o SINR formula term and places the live RF control on the Power page',
         'SignalTuningPanel no longer repeats operational serving/candidate or formula result readouts',
       ],
       recentHo: [

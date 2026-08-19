@@ -102,6 +102,69 @@ assert.deepEqual(
   'a natural Walker event must not take ownership of the teaching isolation layer',
 );
 
+const naturalPresentationBusy = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  cinemaCandidateActive: false,
+  cinemaCandidateArmed: true,
+  cinemaCandidateReady: false,
+  cinemaCandidateKind: 'inter',
+  presentationSource: 'walker',
+  presentationMode: 'presenting',
+});
+assert.equal(
+  naturalPresentationBusy.suppressNaturalHandoverLayers,
+  false,
+  'an armed cinema request cannot suppress the natural owner while it is presenting',
+);
+
+const naturalInterPresentation = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  cinemaCandidateActive: false,
+  presentationSource: 'walker',
+  naturalPresentationActive: true,
+  presentationKind: 'inter',
+  presentationMode: 'presenting',
+});
+assert.equal(naturalInterPresentation.active, true, 'the normalized natural inter owner claims the viewport');
+assert.equal(naturalInterPresentation.hideNormalBeamField, true, 'natural inter replaces the live beam field with its latched pair');
+assert.equal(naturalInterPresentation.showCinemaCandidateFan, true, 'natural inter paints the candidate satellite fan through the same owner');
+assert.equal(naturalInterPresentation.suppressNaturalHandoverLayers, true, 'natural inter suppresses competing timeline effects');
+
+const naturalInterCandidatePending = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  cinemaCandidateActive: false,
+  naturalInterCandidatePending: true,
+});
+assert.equal(naturalInterCandidatePending.active, false, 'a pending inter candidate does not claim the story before the event fires');
+assert.equal(naturalInterCandidatePending.hidePrimaryServingBeam, false, 'the serving beam remains visible during the pre-fire candidate window');
+assert.equal(naturalInterCandidatePending.hideCandidateFan, true, 'the pre-fire candidate cannot paint a competing ordinary fan');
+assert.equal(naturalInterCandidatePending.hideNormalBeamField, false, 'the normal serving field remains visible before the story owner starts');
+assert.equal(naturalInterCandidatePending.showCinemaCandidateFan, false, 'the normalized target fan is not shown before the story owner starts');
+
+const naturalIntraPresentation = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  cinemaCandidateActive: false,
+  presentationSource: 'walker',
+  naturalPresentationActive: true,
+  presentationKind: 'intra',
+  presentationMode: 'presenting',
+});
+assert.equal(naturalIntraPresentation.active, false, 'natural intra keeps the ordinary field and pulse path');
+
+const presentationCooldown = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  cinemaCandidateActive: false,
+  cinemaCandidateArmed: true,
+  cinemaCandidateReady: false,
+  cinemaCandidateKind: 'inter',
+  presentationMode: 'cooldown',
+});
+assert.equal(
+  presentationCooldown.suppressNaturalHandoverLayers,
+  false,
+  'the shared cooldown cannot be converted into a second cinema owner',
+);
+
 const capturedFrom = resolveInterCinemaFromAnchor({
   eventId: 'evt-inter',
   captured: null,
@@ -193,16 +256,16 @@ assert.equal(resolveDirectorFocusAutoExitMs('intra'), 20000, 'intra focus hold r
 assert.equal(resolveDirectorFocusAutoExitMs('inter'), 6500, 'inter focus hold is bounded separately');
 
 const interPeak = 0.95;
-const interBeforeCandidate = resolveInterHandoverCinemaEnvelope(0.24, interPeak);
+const interBeforeCandidate = resolveInterHandoverCinemaEnvelope(0.12, interPeak);
 assert.equal(interBeforeCandidate.phase, 'serving', 'inter keeps the serving phase before the candidate arrives');
 assert.equal(interBeforeCandidate.fromOpacity, interPeak, 'inter keeps the source beam fully visible before the candidate arrives');
 assert.equal(interBeforeCandidate.toOpacity, 0, 'inter does not show the candidate before the serving phase ends');
 
-const interOverlap = resolveInterHandoverCinemaEnvelope(0.55, interPeak);
+const interOverlap = resolveInterHandoverCinemaEnvelope(0.3, interPeak);
 assert(interOverlap.fromOpacity > 0 && interOverlap.toOpacity > 0, 'inter keeps both sides visible during the handover overlap');
 assert.equal(interOverlap.fromOpacity, interPeak, 'inter does not fade the source while the candidate is first appearing');
 
-const interReleasing = resolveInterHandoverCinemaEnvelope(0.8, interPeak);
+const interReleasing = resolveInterHandoverCinemaEnvelope(0.7, interPeak);
 assert.equal(interReleasing.phase, 'releasing', 'inter enters release only after the candidate has appeared');
 assert(interReleasing.fromOpacity > 0, 'inter source remains visible while it fades out');
 assert.equal(interReleasing.toOpacity, interPeak, 'inter candidate is fully visible while the source fades out');

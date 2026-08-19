@@ -19,9 +19,8 @@ import type { AppExperienceMode } from '../appMode';
  * The buttons carry ONLY the notation. The plain-language name and the
  * one-line description moved to the button's `title` (and to the "?" inside
  * each tab body) — on a narrow rail, seven captioned buttons read as a wall of
- * words above the formula they are supposed to index. The `aria-label` still
- * speaks the full name, so nothing is lost to a screen reader, and the hidden
- * canonical span still names the group for the provenance gates.
+ * words above the formula they are supposed to index. The hidden canonical
+ * span still names the group for the provenance gates.
  */
 export function FormulaTabList({
   activeTab,
@@ -73,7 +72,7 @@ export function FormulaTabList({
     <div
       data-testid="sinr-formula-tabs"
       role="tablist"
-      aria-label={txBi(t, isEnglish, 'tab.sub.ariaLabel', 'SINR 公式各項參數', 'SINR parameter groups')}
+      aria-label={txBi(t, isEnglish, 'tab.sub.ariaLabel', 'SINR', 'SINR')}
       aria-orientation="horizontal"
       style={{
         padding: 6,

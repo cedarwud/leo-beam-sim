@@ -7,6 +7,7 @@ import {
 import type { VisualLabCanonicalSnapshot } from './visualLabCanonicalSnapshotAdapter';
 import { VisualLabProgressiveControlDock, type VisualLabProgressiveControlDockProps } from './VisualLabProgressiveControlDock';
 import { VisualLabProgressiveResultDock } from './VisualLabProgressiveResultDock';
+import type { VisualLabBeamDisplayFrame } from './visualLabBeamDisplayFrame';
 
 const snapshot: VisualLabCanonicalSnapshot = {
   schemaVersion: 'visual-lab-canonical-snapshot-v1',
@@ -47,6 +48,17 @@ const snapshot: VisualLabCanonicalSnapshot = {
     servingSatelliteId: 'test-serving', candidateSatelliteId: 'test-candidate', deltaDb: 0.8,
     eventFromSatelliteId: null, eventToSatelliteId: null,
   },
+};
+
+const beamFrame: VisualLabBeamDisplayFrame = {
+  schemaVersion: 'visual-lab-beam-display-frame-v1',
+  sourceFrameId: 'test-frame',
+  globalLayoutCount: 7,
+  globalBeamCount: 7,
+  globalSatelliteCount: 1,
+  illuminationMode: 'fixed',
+  serving: { satelliteId: 'test-serving', visible: true, configuredLayoutCount: 7, activeTargetCount: 7, selectedBeamId: 1, targets: [] },
+  candidate: { satelliteId: 'test-candidate', visible: true, configuredLayoutCount: 7, activeTargetCount: 7, selectedBeamId: 1, targets: [] },
 };
 
 const source = { constellation: 'starlink' as const, localDateTime: '2026-08-12T20:00' };
@@ -108,14 +120,15 @@ for (const locale of ['zh-Hant', 'en'] as const) {
   assert.doesNotMatch(markup, /data-input-key="(?:throughput|ee|P_DL_actual|P_sys)"/, `${locale} keeps derived values out of controls`);
 }
 
-const zhResults = renderToStaticMarkup(<VisualLabProgressiveResultDock locale="zh-Hant" snapshot={snapshot} activeModule="scene" />);
-const enResults = renderToStaticMarkup(<VisualLabProgressiveResultDock locale="en" snapshot={snapshot} activeModule="scene" />);
+const zhResults = renderToStaticMarkup(<VisualLabProgressiveResultDock locale="zh-Hant" snapshot={snapshot} beamFrame={beamFrame} activeModule="scene" />);
+const enResults = renderToStaticMarkup(<VisualLabProgressiveResultDock locale="en" snapshot={snapshot} beamFrame={beamFrame} activeModule="scene" />);
 for (const markup of [zhResults, enResults]) {
   assert.match(markup, /SINR/);
   assert.match(markup, /Power|功率/);
   assert.match(markup, /Throughput|吞吐量/);
   assert.match(markup, /Energy efficiency|能源效率/);
   assert.match(markup, /Handover|換手/);
+  assert.match(markup, /Beam configuration|波束配置/);
   assert.doesNotMatch(markup, /data-mock|canonical|accepted frame|prototype/i, 'results have no implementation-status copy');
 }
 

@@ -75,6 +75,7 @@ export interface AppRuntimeConfigInput {
   /** One-shot explicit live demo cue; not a source-backed trajectory event. */
   readonly manualHandoverRequestId?: number;
   readonly manualHandoverKind?: 'intra' | 'inter';
+  readonly manualHandoverOrigin?: 'button' | 'scheduled';
   readonly manualHandoverStartedAtMs?: number;
   readonly manualHandoverSourceSatId?: string;
   readonly manualHandoverSourceCellId?: number;
@@ -140,6 +141,7 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     primaryJogNorthKm: input.primaryJogNorthKm ?? 0,
     manualHandoverRequestId: input.manualHandoverRequestId,
     manualHandoverKind: input.manualHandoverKind,
+    manualHandoverOrigin: input.manualHandoverOrigin,
     manualHandoverStartedAtMs: input.manualHandoverStartedAtMs,
     manualHandoverSourceSatId: input.manualHandoverSourceSatId,
     manualHandoverSourceCellId: input.manualHandoverSourceCellId,

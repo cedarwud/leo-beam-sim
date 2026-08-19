@@ -43,6 +43,11 @@ export interface BuildSinrLiveCellHandoverEventIndexInput {
   readonly ueMobilityMode?: UeMobilityMode;
   readonly ueMobilityParams?: UeMobilityParams;
   readonly beamCountBySatellite?: Readonly<Record<string, number>>;
+  /** Must match the live scene's role-specific display/scheduler budgets. */
+  readonly servingBeamCount?: number;
+  readonly candidateBeamCount?: number;
+  /** Must match the live scene; omitted keeps the model's historical default. */
+  readonly beamHoppingEnabled?: boolean;
 }
 
 interface UeServingSnapshot {
@@ -107,6 +112,9 @@ function buildCellTruthTopologyKey(input: {
   readonly ueDistributionRadiusKm: number | undefined;
   readonly ueMobilityMode: UeMobilityMode;
   readonly beamCountBySatellite?: Readonly<Record<string, number>>;
+  readonly servingBeamCount?: number;
+  readonly candidateBeamCount?: number;
+  readonly beamHoppingEnabled?: boolean;
 }): string {
   const { profile } = input;
   return [
@@ -121,6 +129,9 @@ function buildCellTruthTopologyKey(input: {
     `ueDistributionRadiusKm=${formatScalar(input.ueDistributionRadiusKm)}`,
     `ueMobilityMode=${input.ueMobilityMode}`,
     `beamCountBySatellite=${formatBeamCountBySatellite(input.beamCountBySatellite)}`,
+    `servingBeamCount=${formatScalar(input.servingBeamCount)}`,
+    `candidateBeamCount=${formatScalar(input.candidateBeamCount)}`,
+    `beamHoppingEnabled=${input.beamHoppingEnabled ?? 'unset'}`,
   ].join('|');
 }
 
@@ -163,6 +174,9 @@ function createEmptySinrLiveCellIndex(
         ueDistributionRadiusKm: input.ueDistributionRadiusKm,
         ueMobilityMode,
         beamCountBySatellite: input.beamCountBySatellite,
+        servingBeamCount: input.servingBeamCount,
+        candidateBeamCount: input.candidateBeamCount,
+        beamHoppingEnabled: input.beamHoppingEnabled,
       }),
       runtimeFramePath: 'stepRuntimeFrame+sinrLiveCells',
     },
@@ -322,6 +336,9 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     true,
     input.epochUtcMs,
     input.beamCountBySatellite,
+    input.servingBeamCount,
+    input.candidateBeamCount,
+    input.beamHoppingEnabled,
   );
   if (sinrLiveCellModel === null) {
     return terminalSinrLiveCellHandoverEventIndexBuilder({
@@ -330,7 +347,9 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     });
   }
 
-  const hoManager = new HandoverManager(input.profile.handover);
+  const hoManager = new HandoverManager(input.profile.handover, {
+    enforceSharedHandoverInterval: true,
+  });
   const secondaryHoManagers = Array.from(
     { length: Math.max(0, ueCount - 1) },
     () => new HandoverManager(input.profile.handover),

@@ -21,6 +21,7 @@ import type {
   VisualLabLocalPoint,
   VisualLabLocalScenePlan,
 } from './visualLabLocalSceneAdapter';
+import type { VisualLabBeamDisplayFrame } from './visualLabBeamDisplayFrame';
 import {
   VisualLabGlobalScene,
   type VisualLabGlobalSceneStatus,
@@ -105,6 +106,8 @@ export interface VisualLabSceneProps {
   readonly globalArtifact?: VisualLabGlobalConstellationArtifact | null;
   /** Closed NTPU render DTO from the same accepted canonical frame. */
   readonly localScene?: VisualLabLocalScenePlan | null;
+  /** One accepted-frame beam projection shared with the result rail. */
+  readonly beamFrame: VisualLabBeamDisplayFrame;
   /** Requested/published run identity; distinct from the current timeline anchor. */
   readonly globalSourceIdentity?: VisualLabGlobalSourceIdentity;
   readonly globalStatus?: VisualLabGlobalSceneStatus;
@@ -645,7 +648,7 @@ function CandidateMonitorTrace({ from, to, emphasis = false }: { readonly from: 
     opacity={emphasis ? .55 : .28}
   />;
 }
-function Service({ plan, density, focus, selected, onUeMove, storyBeamFocus, storyDirection, guidedReplayProgress, constellation, status, error, light, copy, showLabels, satelliteDisplayMode, ueDisplayMode, beamWidthDraftScale = 1, onAssetStatusChange }: { readonly plan: VisualLabLocalScenePlan | null; readonly density: VisualLabDensity; readonly focus: VisualLabFocus; readonly selected?: { readonly x: number; readonly z: number } | null; readonly onUeMove?: (x: number, z: number) => void; readonly storyBeamFocus?: VisualLabStoryBeamFocus | null; readonly storyDirection?: VisualLabStorySceneDirection | null; readonly guidedReplayProgress?: VisualLabGuidedReplayProgress; readonly constellation: SatelliteVariant; readonly status?: VisualLabGlobalSceneStatus; readonly error?: string | null; readonly light: boolean; readonly copy: SceneCopy; readonly showLabels: boolean; readonly satelliteDisplayMode: VisualLabSatelliteDisplayMode; readonly ueDisplayMode: VisualLabUeDisplayMode; readonly beamWidthDraftScale?: number; readonly onAssetStatusChange?: VisualLabSceneProps['onAssetStatusChange'] }) {
+function Service({ plan, beamFrame, density, focus, selected, onUeMove, storyBeamFocus, storyDirection, guidedReplayProgress, constellation, status, error, light, copy, showLabels, satelliteDisplayMode, ueDisplayMode, beamWidthDraftScale = 1, onAssetStatusChange }: { readonly plan: VisualLabLocalScenePlan | null; readonly beamFrame: VisualLabBeamDisplayFrame; readonly density: VisualLabDensity; readonly focus: VisualLabFocus; readonly selected?: { readonly x: number; readonly z: number } | null; readonly onUeMove?: (x: number, z: number) => void; readonly storyBeamFocus?: VisualLabStoryBeamFocus | null; readonly storyDirection?: VisualLabStorySceneDirection | null; readonly guidedReplayProgress?: VisualLabGuidedReplayProgress; readonly constellation: SatelliteVariant; readonly status?: VisualLabGlobalSceneStatus; readonly error?: string | null; readonly light: boolean; readonly copy: SceneCopy; readonly showLabels: boolean; readonly satelliteDisplayMode: VisualLabSatelliteDisplayMode; readonly ueDisplayMode: VisualLabUeDisplayMode; readonly beamWidthDraftScale?: number; readonly onAssetStatusChange?: VisualLabSceneProps['onAssetStatusChange'] }) {
   if (plan === null) return <EmptyLocalState status={status} error={error} copy={copy} />;
   const context = satelliteDisplayMode === 'multi';
   const full = density === 'full';
@@ -675,17 +678,18 @@ function Service({ plan, density, focus, selected, onUeMove, storyBeamFocus, sto
     ? point(plan.candidate.positionWorld)
     : null;
   const storyCurrentBeamId = storyBeamFocus?.currentBeamId ?? null;
+  const servingTargets = beamFrame.serving.targets;
+  const candidateTargets = beamFrame.candidate.targets;
   const activeBeamTarget = storyCurrentBeamId !== null
-    ? plan.activeBeamTargets.targets.find(target => target.beamId === storyCurrentBeamId) ?? null
+    ? servingTargets.find(target => target.beamId === storyCurrentBeamId) ?? null
     : focusedUser === null
       ? null
-      : plan.activeBeamTargets.targets.find(target => target.cellIndex === focusedUser.cellIndex) ?? null;
+      : servingTargets.find(target => target.cellIndex === focusedUser.cellIndex) ?? null;
   const activeCellIndex = activeBeamTarget?.cellIndex ?? focusedUser?.cellIndex ?? null;
   const intraTargetCellIndex = storyBeamFocus?.phase === 'decision' || storyBeamFocus?.phase === 'after'
-    ? cellIndexForBeamId(plan.activeBeamTargets.targets, storyBeamFocus.toBeamId)
+    ? cellIndexForBeamId(servingTargets, storyBeamFocus.toBeamId)
     : null;
-  const candidateSelectedBeamId = plan.candidateBeamLayout.selectedBeamId;
-  const candidateTargets = plan.candidateBeamLayout.targets;
+  const candidateSelectedBeamId = beamFrame.candidate.selectedBeamId;
   const demoInterHandover = storyDirection?.storyId.startsWith('demo:inter-handover') === true;
   const demoIntraHandover = storyDirection?.storyId.startsWith('demo:intra-handover') === true;
   const canonicalInterHandover = storyDirection === null || storyDirection === undefined
@@ -756,7 +760,7 @@ function Service({ plan, density, focus, selected, onUeMove, storyBeamFocus, sto
       {sourceBeamOpacity > .04 ? <Sat p={sourcePosition} color={C.yellow} label={`${copy.servingSatellite} · ${directedHandover.fromSatelliteId}`} showLabel={showLabels && sourceBeamOpacity > .08} tone="serving" opacity={sourceBeamOpacity} scale={.96} variant={constellation} onAssetStatusChange={onAssetStatusChange} /> : null}
       <Sat p={targetPosition!} color={targetIsCandidateTone ? C.blue : C.yellow} label={`${targetIsCandidateTone ? copy.candidateSatellite : copy.servingSatellite} · ${directedHandover.toSatelliteId}`} showLabel={showLabels} tone={targetIsCandidateTone ? 'candidate' : 'serving'} opacity={.9} scale={.9} variant={constellation} onAssetStatusChange={onAssetStatusChange} />
     </> : <Sat p={servingPosition} color={C.yellow} label={`${copy.servingSatellite} · ${plan.serving.satelliteId}`} showLabel={showLabels} tone="serving" scale={.96} variant={constellation} onAssetStatusChange={onAssetStatusChange} />}
-    {plan.activeBeamTargets.targets.map(target => {
+    {servingTargets.map(target => {
       const targetPoint: P = [target.targetPositionWorld[0], .075, target.targetPositionWorld[2]];
       const active = activeBeamTarget !== null && target.beamId === activeBeamTarget.beamId;
       const intraTarget = (storyBeamFocus?.phase === 'decision' || storyBeamFocus?.phase === 'after')
@@ -768,6 +772,7 @@ function Service({ plan, density, focus, selected, onUeMove, storyBeamFocus, sto
       const sourceStyle = intraTarget
         ? resolveSinrLiveConeRoleStyle('hero', {}, { opacity: .62 + .22 * plan.render.beam.intensity })
         : style;
+      const configuredIdle = !target.isLoaded;
       const metricColor = intraTarget ? C.coral : active ? C.yellow : C.grey;
       const beamRadius = (
         active || intraTarget
@@ -775,7 +780,7 @@ function Service({ plan, density, focus, selected, onUeMove, storyBeamFocus, sto
           : SERVICE_CONTEXT_BEAM_RADIUS_RATIO
       ) * (cellRadiusWorld / .8) * (intraTarget ? 1.18 : 1);
       return <group key={`${directedHandoverAvailable ? directedHandover.fromSatelliteId : plan.serving.satelliteId}:${target.beamId}`}>
-        <VisualLabBeamCone from={sourcePosition} to={targetPoint} radius={beamRadius} role={intraTarget ? 'hero' : role} opacity={sourceStyle.opacity * sourceBeamOpacity * (intraTarget ? 1 - intraTransitionFraction : 1)} />
+        <VisualLabBeamCone from={sourcePosition} to={targetPoint} radius={beamRadius} role={intraTarget ? 'hero' : role} opacity={sourceStyle.opacity * sourceBeamOpacity * (intraTarget ? 1 - intraTransitionFraction : 1) * (configuredIdle ? .32 : 1)} />
         {intraTarget && intraTransitionFraction > .001 ? <VisualLabBeamCone from={sourcePosition} to={targetPoint} radius={beamRadius * 1.12} role="pulse" kind="intra" opacity={style.opacity * intraTransitionFraction} /> : null}
         {active ? <PowerBoundary p={targetPoint} scale={plan.render.beam.capBoundaryScale} opacity={.18 + plan.render.beam.powerUtilization * .24} /> : null}
         {active ? <InterferenceHalo p={targetPoint} intensity={plan.render.interference.intensity} /> : null}
@@ -794,9 +799,10 @@ function Service({ plan, density, focus, selected, onUeMove, storyBeamFocus, sto
       role="candidatePrimary"
       opacity={.9 * targetCandidateOpacity}
     /> : null}
-    {directedHandoverAvailable && targetPosition !== null && targetServiceOpacity > .005 ? plan.activeBeamTargets.targets.map(target => {
+    {directedHandoverAvailable && targetPosition !== null && targetServiceOpacity > .005 ? candidateTargets.map(target => {
       const targetPoint: P = [target.targetPositionWorld[0], .075, target.targetPositionWorld[2]];
-      const active = activeBeamTarget !== null && target.beamId === activeBeamTarget.beamId;
+      const active = candidateSelectedBeamId !== null && target.beamId === candidateSelectedBeamId;
+      const configuredIdle = !target.isLoaded;
       // The direct inter-handover story keeps the acquired target blue after
       // the switch; it must not relabel the new candidate back to yellow.
       const role: SinrLiveConeRole = active
@@ -806,7 +812,7 @@ function Service({ plan, density, focus, selected, onUeMove, storyBeamFocus, sto
       const beamRadius = (active
         ? SERVICE_PRIMARY_BEAM_RADIUS_RATIO * plan.render.beam.coneWidthScale * beamWidthDraftScale
         : SERVICE_CONTEXT_BEAM_RADIUS_RATIO) * (cellRadiusWorld / .8);
-      return <VisualLabBeamCone key={`new-service-${directedHandover.toSatelliteId}:${target.beamId}`} from={targetPosition} to={targetPoint} radius={beamRadius} role={role} opacity={style.opacity * targetServiceOpacity} />;
+      return <VisualLabBeamCone key={`new-service-${directedHandover.toSatelliteId}:${target.beamId}`} from={targetPosition} to={targetPoint} radius={beamRadius} role={role} opacity={style.opacity * targetServiceOpacity * (configuredIdle ? .32 : 1)} />;
     }) : null}
     {focus === 'geometry' && !storyFocused && selected == null && acceptedUePoint !== null && activeBeamTarget !== null ? <OffAxisGeometry
       origin={servingPosition}
@@ -816,7 +822,7 @@ function Service({ plan, density, focus, selected, onUeMove, storyBeamFocus, sto
       copy={copy}
       showLabel={showLabels}
     /> : null}
-    {!directedHandoverAvailable && plan.candidate.availability === 'available' && candidatePosition !== null ? <>
+    {!directedHandoverAvailable && beamFrame.candidate.visible && plan.candidate.availability === 'available' && candidatePosition !== null ? <>
       <Sat p={candidatePosition} color={C.blue} label={`${copy.candidateSatellite} · ${plan.candidate.satelliteId}`} showLabel={showLabels} tone="candidate" opacity={focus === 'handover' ? 1 : .78} scale={.88} variant={constellation} onAssetStatusChange={onAssetStatusChange} />
     </> : null}
     {context ? plan.context.satellites
@@ -1038,7 +1044,7 @@ function StoryCameraDirector({
   return null;
 }
 
-function Scene({ view, density, focus, beamWidthDraftScale = 1, selectedUe, onUeMove, storyBeamFocus, storyDirection, guidedCandidateEngaged, guidedReplayProgress, storyReturnProgress, causalCameraCue, storyDirectorEnabled = true, constellation, globalFrame, globalSceneFrame, globalArtifact, localScene, globalSourceIdentity, globalStatus, globalError, theme = 'dark', locale = 'zh-Hant', satelliteDisplayMode = DEFAULT_VISUAL_LAB_SATELLITE_DISPLAY_MODE, ueDisplayMode = DEFAULT_VISUAL_LAB_UE_DISPLAY_MODE, showLabels = true, onAssetStatusChange }: VisualLabSceneProps) {
+function Scene({ view, beamFrame, density, focus, beamWidthDraftScale = 1, selectedUe, onUeMove, storyBeamFocus, storyDirection, guidedCandidateEngaged, guidedReplayProgress, storyReturnProgress, causalCameraCue, storyDirectorEnabled = true, constellation, globalFrame, globalSceneFrame, globalArtifact, localScene, globalSourceIdentity, globalStatus, globalError, theme = 'dark', locale = 'zh-Hant', satelliteDisplayMode = DEFAULT_VISUAL_LAB_SATELLITE_DISPLAY_MODE, ueDisplayMode = DEFAULT_VISUAL_LAB_UE_DISPLAY_MODE, showLabels = true, onAssetStatusChange }: VisualLabSceneProps) {
   const satelliteVariant = constellation ?? 'starlink';
   const light = theme === 'light';
   const copy = SCENE_COPY[locale];
@@ -1048,7 +1054,7 @@ function Scene({ view, density, focus, beamWidthDraftScale = 1, selectedUe, onUe
   const cameraPose = defaultCameraPose(view);
   const directorActive = ((storyDirection !== null && storyDirection !== undefined)
     || (causalCameraCue !== null && causalCameraCue !== undefined)) && storyDirectorEnabled;
-  return <><color attach="background" args={[background]} /><fog attach="fog" args={[background, 14, 32]} />{light ? null : <SpaceStars />}<ambientLight intensity={light ? .9 : .68} /><hemisphereLight args={[light ? '#fffaf0' : '#c8f3ff', light ? '#9f968a' : '#081820', light ? 1.05 : .72]} /><directionalLight position={[4, 8, 3]} intensity={light ? 2.5 : 2.1} color="#e5f8ff" /><pointLight position={[-4, 3, -4]} intensity={.8} distance={20} color={C.blue} /><OrbitControls ref={controlsRef} key={view} makeDefault enabled={!directorActive} enableDamping dampingFactor={.08} minDistance={5.2} maxDistance={20} minPolarAngle={orbitLimits.minPolarAngle} maxPolarAngle={orbitLimits.maxPolarAngle} target={[cameraPose.target.x, cameraPose.target.y, cameraPose.target.z]} /><StoryCameraDirector view={view} plan={localScene} direction={storyDirection} causalCue={causalCameraCue} returnProgress={storyReturnProgress} enabled={storyDirectorEnabled} controlsRef={controlsRef} />{view === 'earth' ? <Earth globalFrame={globalFrame} globalSceneFrame={globalSceneFrame} globalArtifact={globalArtifact} globalSourceIdentity={globalSourceIdentity} globalStatus={globalStatus} globalError={globalError} theme={theme} locale={locale} /> : null}{view === 'sky' ? <Sky plan={localScene ?? null} density={density} focus={focus} constellation={satelliteVariant} status={globalStatus} error={globalError} light={light} copy={copy} showLabels={showLabels} satelliteDisplayMode={satelliteDisplayMode} onAssetStatusChange={onAssetStatusChange} /> : null}{view === 'service' ? <Service plan={localScene ?? null} density={density} focus={focus} selected={selectedUe} onUeMove={onUeMove} storyBeamFocus={storyBeamFocus} storyDirection={storyDirection} guidedReplayProgress={guidedReplayProgress} constellation={satelliteVariant} status={globalStatus} error={globalError} light={light} copy={copy} showLabels={showLabels} satelliteDisplayMode={satelliteDisplayMode} ueDisplayMode={ueDisplayMode} beamWidthDraftScale={beamWidthDraftScale} onAssetStatusChange={onAssetStatusChange} /> : null}</>;
+  return <><color attach="background" args={[background]} /><fog attach="fog" args={[background, 14, 32]} />{light ? null : <SpaceStars />}<ambientLight intensity={light ? .9 : .68} /><hemisphereLight args={[light ? '#fffaf0' : '#c8f3ff', light ? '#9f968a' : '#081820', light ? 1.05 : .72]} /><directionalLight position={[4, 8, 3]} intensity={light ? 2.5 : 2.1} color="#e5f8ff" /><pointLight position={[-4, 3, -4]} intensity={.8} distance={20} color={C.blue} /><OrbitControls ref={controlsRef} key={view} makeDefault enabled={!directorActive} enableDamping dampingFactor={.08} minDistance={5.2} maxDistance={20} minPolarAngle={orbitLimits.minPolarAngle} maxPolarAngle={orbitLimits.maxPolarAngle} target={[cameraPose.target.x, cameraPose.target.y, cameraPose.target.z]} /><StoryCameraDirector view={view} plan={localScene} direction={storyDirection} causalCue={causalCameraCue} returnProgress={storyReturnProgress} enabled={storyDirectorEnabled} controlsRef={controlsRef} />{view === 'earth' ? <Earth globalFrame={globalFrame} globalSceneFrame={globalSceneFrame} globalArtifact={globalArtifact} globalSourceIdentity={globalSourceIdentity} globalStatus={globalStatus} globalError={globalError} theme={theme} locale={locale} /> : null}{view === 'sky' ? <Sky plan={localScene ?? null} density={density} focus={focus} constellation={satelliteVariant} status={globalStatus} error={globalError} light={light} copy={copy} showLabels={showLabels} satelliteDisplayMode={satelliteDisplayMode} onAssetStatusChange={onAssetStatusChange} /> : null}{view === 'service' ? <Service plan={localScene ?? null} beamFrame={beamFrame} density={density} focus={focus} selected={selectedUe} onUeMove={onUeMove} storyBeamFocus={storyBeamFocus} storyDirection={storyDirection} guidedReplayProgress={guidedReplayProgress} constellation={satelliteVariant} status={globalStatus} error={globalError} light={light} copy={copy} showLabels={showLabels} satelliteDisplayMode={satelliteDisplayMode} ueDisplayMode={ueDisplayMode} beamWidthDraftScale={beamWidthDraftScale} onAssetStatusChange={onAssetStatusChange} /> : null}</>;
 }
 
 function useVisualLabWebGlAvailability(): boolean | null {
@@ -1089,17 +1095,28 @@ export function VisualLabScene(props: VisualLabSceneProps) {
     data-global-artifact-satellite-count={props.globalArtifact?.satelliteCount ?? undefined}
     data-global-artifact-visible-count={props.globalArtifact?.ntpuVisibleSatelliteCount ?? undefined}
     data-local-frame-id={props.localScene?.frameId ?? undefined}
+    data-beam-frame-id={props.beamFrame.sourceFrameId ?? undefined}
+    data-beam-global-layout-count={props.beamFrame.globalLayoutCount}
+    data-beam-global-count={props.beamFrame.globalBeamCount}
+    data-beam-global-satellite-count={props.beamFrame.globalSatelliteCount ?? undefined}
+    data-beam-serving-satellite-id={props.beamFrame.serving.satelliteId ?? undefined}
+    data-beam-serving-layout-count={props.beamFrame.serving.configuredLayoutCount}
+    data-beam-serving-active-count={props.beamFrame.serving.activeTargetCount}
+    data-beam-candidate-satellite-id={props.beamFrame.candidate.satelliteId ?? undefined}
+    data-beam-candidate-layout-count={props.beamFrame.candidate.configuredLayoutCount}
+    data-beam-candidate-active-count={props.beamFrame.candidate.activeTargetCount}
+    data-beam-illumination-mode={props.beamFrame.illuminationMode}
     data-local-tle-frame-id={props.localScene?.tleFrameId ?? undefined}
     data-local-beam-width-scale={props.localScene?.render.beam.coneWidthScale ?? undefined}
     data-local-off-axis-angle-rad={props.localScene?.render.beam.offAxisAngleRad ?? undefined}
     data-local-beam-intensity={props.localScene?.render.beam.intensity ?? undefined}
     data-local-interference-intensity={props.localScene?.render.interference.intensity ?? undefined}
     data-local-reuse-groups={props.localScene?.render.reuse.groups ?? undefined}
-    data-local-beam-layout-count={props.localScene?.substrate.cells.length ?? undefined}
-    data-local-active-beam-count={props.localScene?.activeBeamTargets.targets.length ?? undefined}
-    data-local-candidate-beam-layout-count={props.localScene?.candidateBeamLayout.layoutCount ?? undefined}
-    data-local-candidate-active-beam-count={props.localScene?.candidateBeamLayout.targets.length ?? undefined}
-    data-local-candidate-selected-beam-id={props.localScene?.candidateBeamLayout.selectedBeamId ?? undefined}
+    data-local-beam-layout-count={props.beamFrame.serving.configuredLayoutCount}
+    data-local-active-beam-count={props.beamFrame.serving.activeTargetCount}
+    data-local-candidate-beam-layout-count={props.beamFrame.candidate.configuredLayoutCount}
+    data-local-candidate-active-beam-count={props.beamFrame.candidate.activeTargetCount}
+    data-local-candidate-selected-beam-id={props.beamFrame.candidate.selectedBeamId ?? undefined}
     data-local-beam-width-draft-scale={props.beamWidthDraftScale ?? 1}
     data-local-satellite-display-mode={props.satelliteDisplayMode ?? DEFAULT_VISUAL_LAB_SATELLITE_DISPLAY_MODE}
     data-local-ue-display-mode={props.ueDisplayMode ?? DEFAULT_VISUAL_LAB_UE_DISPLAY_MODE}

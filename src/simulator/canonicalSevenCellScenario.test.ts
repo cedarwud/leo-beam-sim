@@ -118,7 +118,7 @@ test('builds the fixed seven-cell, 100-UE canonical input from TLE link geometry
     }
   }
   assert.equal(adjacentActivePairs, 1, 'the irregular layout uses one minimal adjacency exception');
-  assert.deepEqual(input.frame.beamLoadB, [15, 15, 14, 14, 14, 14, 14]);
+  assert.deepEqual(input.frame.beamLoadB, [18, 16, 15, 14, 13, 12, 12]);
   assert.deepEqual(input.frame.beamActiveB, [true, true, true, true, true, true, true]);
   assert.deepEqual(input.frame.beamSatelliteB, [0, 0, 0, 0, 0, 0, 0]);
   assert.deepEqual(
@@ -127,8 +127,8 @@ test('builds the fixed seven-cell, 100-UE canonical input from TLE link geometry
     'all serving assignments reference one of the seven fixed beam IDs',
   );
   assert.equal(metadata.interSatelliteInterferenceW, 0);
-  assert.deepEqual(input.frame.servingBeamU.slice(0, 16), [
-    ...Array.from({ length: 15 }, () => 0),
+  assert.deepEqual(input.frame.servingBeamU.slice(0, 19), [
+    ...Array.from({ length: 18 }, () => 0),
     1,
   ]);
   assert.equal(input.frame.thetaRadUb.length, 100);
@@ -176,14 +176,21 @@ test('builds the fixed seven-cell, 100-UE canonical input from TLE link geometry
   assert.equal(canonical.throughput.rateUBps.length, 100);
 });
 
-test('builds complete 1, 7, and 19 beam layouts with matching canonical matrix dimensions', () => {
+test('builds complete 1 and 19 beam layouts while retaining dispersed seven-cell mode at 7', () => {
   for (const beamLayoutCount of [1, 7, 19] as const) {
     const scenario = buildCanonicalSevenCellScenario(request({ beamLayoutCount }));
-    assert.equal(scenario.metadata.scenarioId, 'canonical-complete-hex-layout-v1');
-    assert.equal(scenario.metadata.ueSubstrateId, CANONICAL_GROUND_UE_SUBSTRATE_ID);
-    assert.match(scenario.metadata.topology.description, /complete-hex-ring/);
+    const dispersedSeven = beamLayoutCount === 7;
+    assert.equal(
+      scenario.metadata.scenarioId,
+      dispersedSeven ? 'canonical-seven-cell-v1' : 'canonical-complete-hex-layout-v1',
+    );
+    assert.equal(
+      scenario.metadata.ueSubstrateId,
+      dispersedSeven ? 'legacy-dispersed-seven-generated-v1' : CANONICAL_GROUND_UE_SUBSTRATE_ID,
+    );
+    assert.match(scenario.metadata.topology.description, dispersedSeven ? /dispersed-seven-cell/ : /complete-hex-ring/);
     assert.equal(scenario.metadata.beamLayout.beamCount, beamLayoutCount);
-    assert.equal(scenario.metadata.beamLayout.ringCount, beamLayoutCount === 1 ? 0 : beamLayoutCount === 7 ? 1 : 2);
+    assert.equal(scenario.metadata.beamLayout.ringCount, dispersedSeven ? null : beamLayoutCount === 1 ? 0 : 2);
     assert.equal(scenario.metadata.cells.length, beamLayoutCount);
     assert.equal(scenario.metadata.users.length, CANONICAL_SEVEN_CELL_UE_COUNT);
     assert.equal(scenario.input.frame.beamLoadB.length, beamLayoutCount);
@@ -202,7 +209,7 @@ test('builds complete 1, 7, and 19 beam layouts with matching canonical matrix d
 });
 
 test('explicit complete-ring layouts share all fixed ground UE IDs and positions', () => {
-  const scenarios = ([1, 7, 19] as const).map(beamLayoutCount => (
+  const scenarios = ([1, 19] as const).map(beamLayoutCount => (
     buildCanonicalSevenCellScenario(request({ beamLayoutCount }))
   ));
   const reference = scenarios[0]!;
@@ -218,19 +225,14 @@ test('explicit complete-ring layouts share all fixed ground UE IDs and positions
       CANONICAL_GROUND_UE_SUBSTRATE.users.map(user => user.positionKm),
     );
   }
-  assert.deepEqual(
-    scenarios[1]!.metadata.users.map(user => user.positionKm),
-    CANONICAL_GROUND_UE_SUBSTRATE.users.map(user => user.positionKm),
-    'explicit 7 keeps the accepted complete-ring UE positions',
-  );
   assert.notDeepEqual(
     scenarios[0]!.input.frame.servingBeamU,
     scenarios[1]!.input.frame.servingBeamU,
     'changing the complete-ring layout may change serving beam IDs',
   );
   assert.notDeepEqual(
+    scenarios[0]!.input.frame.beamLoadB,
     scenarios[1]!.input.frame.beamLoadB,
-    scenarios[2]!.input.frame.beamLoadB,
     'changing the complete-ring layout may change realized loads',
   );
 });

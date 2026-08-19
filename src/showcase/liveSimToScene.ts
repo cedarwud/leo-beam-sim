@@ -259,10 +259,14 @@ export function liveSimToScene(
     const servingBeamIdStr = primaryServingRecord.beamIdentity ?? '';
     const servingSinrDb = primaryServingRecord.sinrDb ?? NaN;
 
-    // Find the latest handover event for the primary UE to determine recent HO status
-    const latestHoEvent = sim.sinrLiveCells?.recentHandoverEvents
-      ?.filter(e => e.ueId === primaryUeId)
-      .slice(-1)[0];
+    // Find the primary UE's recent handover. If an inter and an intra are both
+    // retained in the short window, inter remains authoritative until its
+    // presentation envelope releases; using only the array tail made the
+    // central scene switch to intra halfway through the inter story.
+    const primaryRecentEvents = sim.sinrLiveCells?.recentHandoverEvents
+      ?.filter(e => e.ueId === primaryUeId) ?? [];
+    const latestHoEvent = [...primaryRecentEvents].reverse().find(event => event.kind === 'inter')
+      ?? primaryRecentEvents[primaryRecentEvents.length - 1];
     const ageSec = latestHoEvent ? sim.simTimeSec - latestHoEvent.sourceTimeSec : Infinity;
     const isRecent = ageSec >= 0 && ageSec < 4; // SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC is 4
 

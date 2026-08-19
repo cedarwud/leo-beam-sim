@@ -11,7 +11,7 @@
  * The HYBRID look (D-STYLE A → hybrid, user-locked 2026-06-11; screenshot-tuned
  * on :3000):
  *  - AMBIENT: EVERY serving sat's cone, so every serving sat is beamed
- *    (the connected-sat-has-beam must-hold). Currently 0.24
+ *    (the connected-sat-has-beam must-hold). Currently 0.17
  *    ({@link SINR_LIVE_CONE_AMBIENT_OPACITY}); three de-tangling features keep the
  *    higher level legible — the apex→base alpha fade
  *    ({@link SINR_LIVE_CONE_BASE_ALPHA_FACTOR}), the near-horizon shallow-cone dim,
@@ -28,8 +28,8 @@
  * COLOUR MARKS ROLE, AND ONLY ROLE. 「只有服務波束是黃色，候選波束是藍色，其他都用灰色」 —
  * exactly two STEADY coloured roles (the beam serving you = YELLOW, the beam about to serve
  * you = BLUE, both bright and saturated at 0.80), and every other steady cone is neutral grey
- * separated by ALPHA alone: serving fan 0.24 > candidate fan 0.20 > background 0.18 > opt-in
- * non-serving 0.12. Event overlays add one deliberate distinction: an INTRA target is ORANGE
+ * separated by ALPHA alone: serving fan 0.17 > candidate fan 0.13 > background 0.10 > opt-in
+ * non-serving 0.07. Event overlays add one deliberate distinction: an INTRA target is ORANGE
  * (same satellite, still the serving family), while an INTER target is BLUE (another satellite).
  * This is an event colour, not a third steady role.
  *
@@ -63,24 +63,28 @@ import {
 /**
  * Ambient cone opacity - the SERVING-FAN role (your satellite's other beams, neutral grey).
  *
- * 0.45 -> 0.24 -> 0.45 -> 0.55 -> 0.40 -> 0.32 -> 0.24. The earlier 0.24 dip was a misdiagnosis (the "white/grey
+ * The grey fan is intentionally quieter than the two coloured roles. The earlier opacity
+ * iterations diagnosed colour wash and role hierarchy separately; the current value is tuned
+ * for a seven-beam fan over the aerial terrain.
+ *
+ * The earlier 0.24 dip was a misdiagnosis (the "white/grey
  * wash" came from the ADDITIVE blend saturating the terrain, not from the opacity); the
  * 0.55 spike belonged to a rejected design in which this fan was YELLOW and therefore had
  * to out-vote the green terrain to stay yellow.
  *
  * Under the FINAL spec this layer is neutral CONTEXT, so it has no hue to defend and the
- * only question is legibility ordering. 0.24 places it clearly below the two coloured roles
- * (0.80) and above the candidate fan (0.20) and the background (0.18), while
- * reducing the persistent grey fan's visual interference.
+ * only question is legibility ordering. 0.17 places it clearly below the two coloured roles
+ * (0.80) and above the candidate fan (0.13) and the background (0.10), while
+ * reducing the persistent seven-cone grey fan's visual interference.
  *
  * PIN NOTE: `src/viz/SinrLiveCellBeamCones.test.ts` VALUE-asserts this number. Change both
  * in the same commit (this pin rotted apart once already, P2 SN-1).
  */
-export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.24;
+export const SINR_LIVE_CONE_AMBIENT_OPACITY = 0.17;
 
 /**
  * Bright opacity for the PRIMARY serving satellite's beams (the sat serving the
- * focus/centre UE). The all-serving ambient field reads dimmer (0.24,
+ * focus/centre UE). The all-serving ambient field reads dimmer (0.17,
  * {@link SINR_LIVE_CONE_AMBIENT_OPACITY}), but the one satellite actually serving the
  * protagonist should read SATURATED + BRIGHT like the original steered serving cone
  * (BEAM_ROLE_TOKENS.serving was 0.58). It is exempt from the near-horizon dim so the
@@ -370,7 +374,7 @@ export const SINR_LIVE_CONE_BACKGROUND_COLOR = '#9ca3af';
  * serving you (yellow) and the beam about to serve you (blue) - and everything else is
  * neutral CONTEXT. A satellite's other beams are context, not a role, so this is an ALIAS
  * of {@link SINR_LIVE_CONE_BACKGROUND_COLOR}. Its presence is carried by ALPHA alone
- * ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} 0.24 - above the candidate fan, below the two
+ * ({@link SINR_LIVE_CONE_AMBIENT_OPACITY} 0.17 - above the candidate fan, below the two
  * coloured roles).
  *
  * TWO REJECTED ATTEMPTS, recorded so neither is retried:
@@ -392,12 +396,9 @@ export const SINR_LIVE_CONE_SERVING_FAN_COLOR = SINR_LIVE_CONE_BACKGROUND_COLOR;
  *
  * It used to share {@link SINR_LIVE_CONE_AMBIENT_OPACITY} with the serving fan, so "yours"
  * and "somebody else's" drew at the SAME strength. Every grey layer is now separated by
- * ALPHA alone: serving fan 0.24 > candidate fan 0.20 > this 0.18 > the opt-in non-serving
- * layer 0.12. Effective alpha 0.18 overhead, and 0.18 x
- * {@link SINR_LIVE_CONE_DIM_MIN_FACTOR} (0.25) = 0.045 for a shallow near-horizon cone:
- * clear of the 0.023 "mathematically present, optically absent" level the dim floor was
- * raised to escape, so this does not re-open that bug. This is the FAINTEST dim-eligible
- * layer, so 0.045 is the floor of the whole cone render.
+ * ALPHA alone: serving fan 0.17 > candidate fan 0.13 > this 0.10 > the opt-in non-serving
+ * layer 0.07. This layer is intentionally quiet enough to preserve scene readability;
+ * the hero and handover roles remain independently bright.
  *
  * Honest caveat, NOT fixable with alpha: this colour is neutral, so at ANY alpha it can
  * only dilute the green terrain, never oppose it - a faint grey cone over green imagery
@@ -405,7 +406,7 @@ export const SINR_LIVE_CONE_SERVING_FAN_COLOR = SINR_LIVE_CONE_BACKGROUND_COLOR;
  * {@link SINR_LIVE_CONE_BACKGROUND_COLOR}; closing it needs an owner call on the context
  * HUE, not another opacity tweak.
  */
-export const SINR_LIVE_CONE_BACKGROUND_OPACITY = 0.18;
+export const SINR_LIVE_CONE_BACKGROUND_OPACITY = 0.10;
 
 
 /**
@@ -464,7 +465,7 @@ export const SINR_LIVE_CONE_CANDIDATE_COLOR = '#3b82f6';
  * cell, because that is the ROLE ("the beam about to serve you"). The rest of that
  * satellite's beams are context, so the fan colour is an ALIAS of
  * {@link SINR_LIVE_CONE_BACKGROUND_COLOR}, separated from every other grey layer by alpha
- * (0.20: below the serving fan's 0.24, above the background's 0.18).
+ * (0.13: below the serving fan's 0.17, above the background's 0.10).
  *
  * The PRIMARY candidate cone is an EQUAL-WEIGHT role to the hero, not a subordinate one -
  * "your current link" and "your next link" are the two halves of the handover story, so it
@@ -475,7 +476,7 @@ export const SINR_LIVE_CONE_CANDIDATE_COLOR = '#3b82f6';
  * green and blue nearly tied - versus (62,128,208) at 0.80, an unambiguous blue.
  */
 export const SINR_LIVE_CONE_CANDIDATE_FAN_COLOR = SINR_LIVE_CONE_BACKGROUND_COLOR;
-export const SINR_LIVE_CONE_CANDIDATE_FAN_OPACITY = 0.20;
+export const SINR_LIVE_CONE_CANDIDATE_FAN_OPACITY = 0.13;
 export const SINR_LIVE_CONE_CANDIDATE_OPACITY = 0.8;
 
 /**
@@ -483,20 +484,20 @@ export const SINR_LIVE_CONE_CANDIDATE_OPACITY = 0.8;
  * `BeamDisplaySpec.showNonServingCones`, default OFF) - the co-channel / beam-hopping
  * beams that serve nobody.
  *
- * 0.04 -> 0.12 (2026-08-06). 0.04 under NormalBlending means the composite is 96% terrain:
+ * 0.04 -> 0.12 -> 0.07. 0.04 under NormalBlending means the composite is 96% terrain:
  * the layer was mounted, counted, and optically ABSENT - the same "mathematically present,
  * optically absent" failure the {@link SINR_LIVE_CONE_DIM_MIN_FACTOR} floor was raised to
  * escape. That is a real defect for an OPT-IN layer whose entire purpose is "show me the
  * beams you are not serving with": if turning it on changes nothing visible, the toggle
- * lies. (Note this mount passes NO `dimShallowCones`, so 0.12 is also the EFFECTIVE alpha
+ * lies. (Note this mount passes NO `dimShallowCones`, so 0.07 is also the EFFECTIVE alpha
  * - it is not multiplied down further.)
  *
  * It stays the FAINTEST steady layer, below the background context role
- * ({@link SINR_LIVE_CONE_BACKGROUND_OPACITY} 0.22), so "not serving anyone" still reads as
+ * ({@link SINR_LIVE_CONE_BACKGROUND_OPACITY} 0.10), so "not serving anyone" still reads as
  * the quietest thing on screen. Display-only (Rule#6): showing these cones reads
  * non-serving `illuminatedBeams` and changes no serving/SINR truth.
  */
-export const SINR_LIVE_CONE_NONSERVING_OPACITY = 0.12;
+export const SINR_LIVE_CONE_NONSERVING_OPACITY = 0.07;
 
 /** Segments around the flat ground footprint ring of each oblique cone. */
 export const SINR_LIVE_CONE_SEGMENTS = 32;
@@ -595,12 +596,13 @@ export const SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG = 42;
  * the old 0.05 a shallow ambient cone rendered at 0.45 × 0.05 = 0.023 effective alpha
  * — mathematically present, optically absent, which reads to a student as "the
  * connected satellite has no beam". The de-emphasis intent (a low-over-horizon beam
- * should recede, not dominate) is preserved at 0.25: a shallow cone still draws ~4×
- * fainter than an overhead one, but stays visible. Display-only — the s0
+ * should recede, not dominate) is preserved at 0.45: a shallow cone still draws less
+ * than half as strongly as an overhead one, but the newly lighter context ladder remains
+ * visible. Display-only — the s0
  * connected-sat-has-beam invariant counts MOUNTED meshes, so this changes no gate,
  * only whether a mounted mesh can actually be seen.
  */
-export const SINR_LIVE_CONE_DIM_MIN_FACTOR = 0.25;
+export const SINR_LIVE_CONE_DIM_MIN_FACTOR = 0.45;
 
 export function resolveSinrLiveConeElevationDimFactor(
   apparentElevationDeg: number,
@@ -650,6 +652,8 @@ export function resolveSinrLiveConeColor(frequencyIndex: number): string {
  *  - `candidateFan`     another beam of that same candidate satellite.
  *  - `nonServing`       the opt-in co-channel / beam-hopping layer (not serving anyone).
  *  - `pulse`            an age-faded live-handover flare (colour by the truth `event.kind`).
+ *  - `handoverSource`   the old serving side of one live-handover pulse (serving yellow).
+ *  - `handoverTarget`   the acquiring side of one live-handover pulse (intra orange / inter blue).
  *  - `triggered`        the wall-clock triggered/manual handover flash (explicit from/to colour).
  */
 export type SinrLiveConeRole =
@@ -660,6 +664,8 @@ export type SinrLiveConeRole =
   | 'candidateFan'
   | 'nonServing'
   | 'pulse'
+  | 'handoverSource'
+  | 'handoverTarget'
   | 'triggered';
 
 /**
@@ -772,6 +778,20 @@ export function resolveSinrLiveConeRoleStyle(
           : undefined;
       return {
         color: kindColor ?? cone.color ?? SINR_LIVE_CONE_BACKGROUND_COLOR,
+        opacity: cone.opacity ?? SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
+      };
+    }
+    case 'handoverSource':
+      return {
+        color: palette.heroColor ?? SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
+        opacity: cone.opacity ?? SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
+      };
+    case 'handoverTarget': {
+      const targetColor = cone.kind === 'intra'
+        ? palette.pulseIntraColor ?? SINR_LIVE_CONE_PULSE_INTRA_COLOR
+        : palette.pulseInterColor ?? SINR_LIVE_CONE_PULSE_INTER_COLOR;
+      return {
+        color: targetColor,
         opacity: cone.opacity ?? SINR_LIVE_CONE_PULSE_PEAK_OPACITY,
       };
     }

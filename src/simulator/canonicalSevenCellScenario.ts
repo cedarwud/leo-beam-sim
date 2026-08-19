@@ -9,7 +9,10 @@ import {
   deriveCanonicalChannelTerms,
   type CanonicalChannelTerms,
 } from './canonicalChannelAdapter';
-import { DISPERSED_SEVEN_CELL_AXIAL_COORDINATES } from '../topology/dispersedSevenCellTopology';
+import {
+  DISPERSED_SEVEN_CELL_AXIAL_COORDINATES,
+  DISPERSED_SEVEN_CELL_USER_COUNTS,
+} from '../topology/dispersedSevenCellTopology';
 import {
   assertSupportedBeamLayoutCount,
   createCompleteHexBeamLayout,
@@ -37,7 +40,7 @@ export const CANONICAL_SEVEN_CELL_COUNT = 7;
 export const CANONICAL_SEVEN_CELL_UE_COUNT = 100;
 export const CANONICAL_SEVEN_CELL_RADIUS_KM = 20;
 export const CANONICAL_SEVEN_CELL_USER_COUNTS = Object.freeze([
-  15, 15, 14, 14, 14, 14, 14,
+  ...DISPERSED_SEVEN_CELL_USER_COUNTS,
 ] as const);
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
@@ -233,7 +236,7 @@ function buildCells(
   readonly layout: CanonicalSevenCellScenarioMetadata['beamLayout'];
 } {
   const radius = CANONICAL_SEVEN_CELL_RADIUS_KM;
-  const completeLayout = beamLayoutCount === undefined
+  const completeLayout = beamLayoutCount === undefined || beamLayoutCount === CANONICAL_SEVEN_CELL_COUNT
     ? null
     : createCompleteHexBeamLayout({
         satelliteId: 'selected-satellite',
@@ -258,7 +261,9 @@ function buildCells(
       radius * 1.5 * r,
     ] as [number, number]),
     color: normalizeColor(q - r, frequencyReuse),
-    userCount: baseUsers + (index < extraUsers ? 1 : 0),
+    userCount: completeLayout === null
+      ? (DISPERSED_SEVEN_CELL_USER_COUNTS[index] ?? 0)
+      : baseUsers + (index < extraUsers ? 1 : 0),
   })));
   return freeze({
     cells,
@@ -580,7 +585,8 @@ export function buildCanonicalSevenCellScenario(
     illuminationSlotIndex,
   );
   const userPositionOverridesKm = normalizeUserPositionOverrides(request.userPositionOverridesKm);
-  const explicitCompleteRing = request.beamLayoutCount !== undefined;
+  const explicitCompleteRing = request.beamLayoutCount !== undefined
+    && request.beamLayoutCount !== CANONICAL_SEVEN_CELL_COUNT;
   if (!explicitCompleteRing) {
     // Keep the historical dispersed-seven path intact, including its
     // assigned-cell safety check and fixed loads.  Complete-ring comparisons
@@ -693,7 +699,7 @@ export function buildCanonicalSevenCellScenario(
     }),
   };
   const metadata: CanonicalSevenCellScenarioMetadata = {
-    scenarioId: request.beamLayoutCount === undefined
+    scenarioId: !explicitCompleteRing
       ? 'canonical-seven-cell-v1'
       : 'canonical-complete-hex-layout-v1',
     ueSubstrateId: explicitCompleteRing

@@ -645,7 +645,9 @@ export class SinrLiveCellModel {
   private managerForCell(cellId: number): HandoverManager {
     let manager = this.cellManagers.get(cellId);
     if (!manager) {
-      manager = new HandoverManager(this.profile.handover);
+      manager = new HandoverManager(this.profile.handover, {
+        enforceSharedHandoverInterval: true,
+      });
       this.cellManagers.set(cellId, manager);
     }
     return manager;

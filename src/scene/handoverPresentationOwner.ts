@@ -8,6 +8,8 @@
  * TTT, orbit propagation, or serving selection.
  */
 
+import { INTER_HANDOVER_CINEMA_PHASE_END } from './handoverDisplayIsolation';
+
 export type HandoverPresentationKind = 'intra' | 'inter';
 export type HandoverPresentationSource = 'walker' | 'tle' | 'manual' | 'cinema';
 export type HandoverPresentationOwner = 'natural' | 'manual' | 'cinema';
@@ -66,6 +68,16 @@ export interface HandoverPresentationAdvanceResult {
   readonly view: HandoverPresentationView;
 }
 
+/**
+ * Complete snapshot for controls outside the renderer. `view.active` is the
+ * visible envelope; `mode` also keeps the shared gate busy during cooldown.
+ */
+export interface HandoverPresentationSnapshot {
+  readonly view: HandoverPresentationView;
+  readonly mode: HandoverPresentationState['mode'];
+  readonly cooldownUntilMs: number;
+}
+
 export const HANDOVER_PRESENTATION_COOLDOWN_MS = 1500;
 
 export function createHandoverPresentationState(): HandoverPresentationState {
@@ -106,9 +118,9 @@ function clampProgress(value: number): number {
 }
 
 /**
- * The inter lead-in intentionally keeps the serving link alone for 45% of its
- * six-second story (about one second longer than the previous 28% envelope).
- * The settled candidate tail is bounded to the final 12%, so it cannot linger.
+ * The inter lead-in keeps the serving link alone for one second of its
+ * six-second story. The same shared phase boundaries drive the cone envelope,
+ * badge phase, and HO Slow state.
  */
 export function resolveHandoverPresentationPhase(
   kind: HandoverPresentationKind,
@@ -116,7 +128,7 @@ export function resolveHandoverPresentationPhase(
 ): HandoverPresentationPhase {
   const progress = clampProgress(progress01);
   const phases = kind === 'inter'
-    ? { serving: 0.45, measuring: 0.62, holding: 0.72, releasing: 0.88 }
+    ? INTER_HANDOVER_CINEMA_PHASE_END
     : { serving: 0.2, measuring: 0.4, holding: 0.6, releasing: 0.8 };
   if (progress < phases.serving) return 'serving';
   if (progress < phases.measuring) return 'measuring';
@@ -159,9 +171,10 @@ function activeView(
  * Advance one wall-clock presentation step.
  *
  * New events observed while another story or its cooldown owns the screen are
- * deliberately consumed but not queued.  Scientific event logs remain intact;
+ * deliberately consumed but not queued. Scientific event logs remain intact;
  * only their visual reenactment is suppressed, preventing rapid handovers from
- * interrupting or immediately following one another.
+ * interrupting or immediately following one another. Explicit manual/cinema
+ * requests use the same lock: they cannot preempt a story or bypass cooldown.
  */
 export function advanceHandoverPresentation(
   previous: HandoverPresentationState,
@@ -169,7 +182,7 @@ export function advanceHandoverPresentation(
     readonly nowMs: number;
     readonly candidate?: HandoverPresentationEvent | null;
     readonly cooldownMs?: number;
-    /** Explicit cinema claims replace a natural Walker/TLE visual owner. */
+    /** Owner hint for the source that requested the candidate; never preempts. */
     readonly owner?: HandoverPresentationOwner;
   },
 ): HandoverPresentationAdvanceResult {
@@ -180,35 +193,6 @@ export function advanceHandoverPresentation(
   const candidate = isDrawableHandoverPresentationEvent(input.candidate)
     ? input.candidate
     : null;
-
-  // The model may still retain a natural event while an explicit teaching
-  // command claims the viewport. That event remains valid truth, but it must
-  // stop owning the display immediately. Manual and cinema are both explicit
-  // owners; treating only cinema this way caused the intermittent overlap
-  // between a manual button story and an old natural blue event.
-  const explicitOwner = input.owner === 'manual' || input.owner === 'cinema';
-  const ownerChangedWhilePresenting = explicitOwner
-    && previous.active !== null
-    && previous.active.source !== input.owner;
-  const ownerStartsNewEventDuringCooldown = explicitOwner
-    && previous.mode === 'cooldown'
-    && candidate !== null
-    && candidate.source === input.owner
-    && candidate.eventId !== previous.lastObservedEventId;
-  if (ownerChangedWhilePresenting || ownerStartsNewEventDuringCooldown) {
-    previous = createHandoverPresentationState();
-  }
-
-  // A manual request has ended when the caller returns to the natural owner.
-  // Do not let the old manual envelope keep running for one extra render and
-  // collide with the next natural event.
-  if (
-    input.owner === 'natural'
-    && previous.active?.source === 'manual'
-    && candidate?.source !== 'manual'
-  ) {
-    previous = createHandoverPresentationState();
-  }
 
   if (previous.mode === 'presenting' && previous.active && previous.startedAtMs !== null) {
     const lastObservedEventId = candidate?.eventId ?? previous.lastObservedEventId;

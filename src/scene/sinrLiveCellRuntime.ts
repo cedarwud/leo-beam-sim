@@ -35,10 +35,10 @@ import {
   buildCellLayout,
   DEFAULT_MIN_ELEVATION_DEG,
   localKmToLatLon,
+  type CellCenter,
   type CellLayout,
 } from '../engine/cells/cellLayout';
 import type { Profile } from '../profiles/types';
-import { DISPERSED_SEVEN_CELL_AXIAL_COORDINATES } from '../topology/dispersedSevenCellTopology';
 import {
   SinrLiveCellModel,
   type CellModelSat,
@@ -82,6 +82,54 @@ export const SINR_LIVE_ARCHIVED_DISPLAY_CELL_COUNT = 37;
  * `useCellSchedule` geometry never passes a phase, so it is byte-identical.
  */
 export const SINR_LIVE_CELL_PHASE_OFFSET_RADII = { east: 0.15, north: 0.30 } as const;
+
+/**
+ * Homepage live-Walker ground geometry.  The canonical/TLE topology remains in
+ * `topology/dispersedSevenCellTopology.ts`; these coordinates are deliberately
+ * local to the live presentation so the homepage can show an irregular service
+ * footprint without changing the canonical experiment substrate.
+ *
+ * The seven cells are intentionally not a centre plus a regular six-ring: one
+ * cell sits on the inner ring while the other targets use an uneven selection
+ * of the outer ring.  UE generation receives these exact centres, so the UE
+ * population and the rendered active cells cannot drift apart.
+ */
+export const SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES = Object.freeze([
+  Object.freeze({ id: 0 as const, q: 0, r: 0 }),
+  Object.freeze({ id: 1 as const, q: -1, r: 1 }),
+  Object.freeze({ id: 2 as const, q: -2, r: 0 }),
+  Object.freeze({ id: 3 as const, q: 0, r: -2 }),
+  Object.freeze({ id: 4 as const, q: 0, r: 2 }),
+  Object.freeze({ id: 5 as const, q: 2, r: -2 }),
+  Object.freeze({ id: 6 as const, q: 2, r: 0 }),
+] as const);
+
+/**
+ * The live 19-beam display keeps the seven active cells above as IDs 0–6, but
+ * deliberately places display-only IDs 7–18 over a wider, asymmetric ground
+ * footprint.  These positions are expressed in cell-radius units rather than
+ * kilometres, so changing shell altitude still scales the presentation with
+ * the same physical cell radius.  They are display-only: the UE/SINR truth
+ * remains the seven-cell layout above.
+ *
+ * This is intentionally NOT the shared radius-two substrate.  A complete
+ * radius-two disk is too compact for the homepage's 200 × 90 km visual area;
+ * at a 19-beam budget it reads as one solid block in the middle of the scene.
+ */
+export const SINR_LIVE_NINETEEN_DISPLAY_CELL_POSITIONS = Object.freeze([
+  Object.freeze({ id: 7 as const, eastRadii: -4.85, northRadii: 1.30 }),
+  Object.freeze({ id: 8 as const, eastRadii: -4.15, northRadii: 2.75 }),
+  Object.freeze({ id: 9 as const, eastRadii: -4.65, northRadii: -0.85 }),
+  Object.freeze({ id: 10 as const, eastRadii: -3.55, northRadii: -2.55 }),
+  Object.freeze({ id: 11 as const, eastRadii: -0.55, northRadii: 3.85 }),
+  Object.freeze({ id: 12 as const, eastRadii: -2.35, northRadii: -1.05 }),
+  Object.freeze({ id: 13 as const, eastRadii: 0.85, northRadii: 2.55 }),
+  Object.freeze({ id: 14 as const, eastRadii: -0.10, northRadii: -3.05 }),
+  Object.freeze({ id: 15 as const, eastRadii: 2.95, northRadii: -1.15 }),
+  Object.freeze({ id: 16 as const, eastRadii: 3.25, northRadii: 2.35 }),
+  Object.freeze({ id: 17 as const, eastRadii: 5.05, northRadii: 1.40 }),
+  Object.freeze({ id: 18 as const, eastRadii: 4.45, northRadii: -0.90 }),
+] as const);
 
 /**
  * Link-budget / cell-layout 3 dB beamwidth for the SINR-live lane (rad ≈ 3.32°).
@@ -223,27 +271,42 @@ export interface CellTruthFrame {
   sinrLiveCells?: SinrLiveCellFrame;
 }
 
-/** Build the SINR-live cell layout from the live profile (§4). */
-function applyDispersedSevenCellTopology(layout: CellLayout): CellLayout {
+function buildLiveCellCenter(
+  layout: CellLayout,
+  id: number,
+  eastRadii: number,
+  northRadii: number,
+): CellCenter {
   const phaseXKm = layout.cellRadiusKm * SINR_LIVE_CELL_PHASE_OFFSET_RADII.east;
   const phaseYKm = layout.cellRadiusKm * SINR_LIVE_CELL_PHASE_OFFSET_RADII.north;
-  const centers = DISPERSED_SEVEN_CELL_AXIAL_COORDINATES.map(({ id, q, r }) => {
-    const localXKm = layout.cellRadiusKm * Math.sqrt(3) * (q + r / 2) + phaseXKm;
-    const localYKm = layout.cellRadiusKm * 1.5 * r + phaseYKm;
-    const latLon = localKmToLatLon(
-      layout.serviceArea.centerLatDeg,
-      layout.serviceArea.centerLonDeg,
-      localXKm,
-      localYKm,
-    );
-    return {
-      cellId: id,
-      latDeg: latLon.latDeg,
-      lonDeg: latLon.lonDeg,
-      localXKm,
-      localYKm,
-    };
-  });
+  const localXKm = layout.cellRadiusKm * eastRadii + phaseXKm;
+  const localYKm = layout.cellRadiusKm * northRadii + phaseYKm;
+  const latLon = localKmToLatLon(
+    layout.serviceArea.centerLatDeg,
+    layout.serviceArea.centerLonDeg,
+    localXKm,
+    localYKm,
+  );
+  return {
+    cellId: id,
+    latDeg: latLon.latDeg,
+    lonDeg: latLon.lonDeg,
+    localXKm,
+    localYKm,
+  };
+}
+
+/** Map a local axial arrangement onto the profile-derived cell footprint. */
+function applyLiveAxialTopology(
+  layout: CellLayout,
+  coordinates: readonly { readonly id: number; readonly q: number; readonly r: number }[],
+): CellLayout {
+  const centers = coordinates.map(({ id, q, r }) => buildLiveCellCenter(
+    layout,
+    id,
+    Math.sqrt(3) * (q + r / 2),
+    1.5 * r,
+  ));
   return {
     ...layout,
     count: centers.length,
@@ -268,9 +331,24 @@ export function buildSinrLiveCellLayout(
     // (beam-stage ①). One knob; sinr-live + modqn-live both inherit it.
     phaseOffsetRadii: SINR_LIVE_CELL_PHASE_OFFSET_RADII,
   });
-  return cellCount === DISPERSED_SEVEN_CELL_AXIAL_COORDINATES.length
-    ? applyDispersedSevenCellTopology(layout)
-    : layout;
+  if (cellCount === SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES.length) {
+    return applyLiveAxialTopology(layout, SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES);
+  }
+  if (cellCount === SINR_LIVE_BEAM_DISPLAY_CELL_COUNT) {
+    const activeCenters = applyLiveAxialTopology(
+      layout,
+      SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES,
+    ).centers;
+    const displayOnlyCenters = SINR_LIVE_NINETEEN_DISPLAY_CELL_POSITIONS.map(position => (
+      buildLiveCellCenter(layout, position.id, position.eastRadii, position.northRadii)
+    ));
+    return {
+      ...layout,
+      count: activeCenters.length + displayOnlyCenters.length,
+      centers: [...activeCenters, ...displayOnlyCenters],
+    };
+  }
+  return layout;
 }
 
 /**

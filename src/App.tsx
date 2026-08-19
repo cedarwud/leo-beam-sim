@@ -59,6 +59,7 @@ import {
 import {
   applySceneTopology,
   createSceneTopologyState,
+  applyLegacyConstellationPreset,
   getSceneTopologyResetKey,
   hasSceneTopologyOverrides,
   type SceneTopologyState,
@@ -229,7 +230,7 @@ import {
   selectReplayDisplayUes,
 } from './app/showcaseReplayState';
 import { usePlaybackControls } from './usePlaybackControls';
-import type { HandoverPresentationView } from './scene/handoverPresentationOwner';
+import type { HandoverPresentationSnapshot } from './scene/handoverPresentationOwner';
 import { useCameraControls } from './useCameraControls';
 
 interface HandoverPolicyRuntimeState {
@@ -292,6 +293,13 @@ export function App() {
     readonly origin: 'button' | 'scheduled';
     readonly intraPresentation: SimState['intraHandoverPresentation'];
   } | null>(null);
+  // The presentation owner is advanced inside MainScene's render, while the
+  // cinema/control state is owned by App. Keep their locks separate and derive
+  // one admission flag; a later App render must never overwrite the child
+  // owner's render-time lock with a stale `false`.
+  const handoverPresentationBusyRef = useRef(false);
+  const handoverControlBusyRef = useRef(false);
+  const handoverBusyRef = useRef(false);
   const manualHandoverWasPausedRef = useRef(false);
 
   const currentTimeSecRef = useRef(0);
@@ -483,7 +491,10 @@ export function App() {
     // Manual scene controls are the last live-sim layer, so changing a beam or
     // satellite count remains effective even when a training environment is
     // loaded. Artifact lanes pass an empty topology above.
-    return applySceneTopology(trainingProfile, activeSceneTopology);
+    return applySceneTopology(
+      applyLegacyConstellationPreset(trainingProfile, activeSceneTopology.constellation),
+      activeSceneTopology,
+    );
   }, [
     activeSceneTopology,
     baseProfile,
@@ -599,6 +610,7 @@ export function App() {
     primaryJogNorthKm: primaryUeJogKm.north,
     manualHandoverRequestId: manualHandoverRequest?.id,
     manualHandoverKind: manualHandoverRequest?.kind,
+    manualHandoverOrigin: manualHandoverRequest?.origin,
     manualHandoverStartedAtMs: manualHandoverRequest?.startedAtMs,
     manualHandoverSourceSatId: manualHandoverRequest?.intraPresentation?.sourceSatId,
     manualHandoverSourceCellId: manualHandoverRequest?.intraPresentation?.sourceCellId,
@@ -698,21 +710,42 @@ export function App() {
     readonly active: boolean;
     readonly kind: 'intra' | 'inter' | null;
     readonly source: 'walker' | 'tle' | 'manual' | 'cinema' | null;
-  }>({ active: false, kind: null, source: null });
+    readonly mode: 'idle' | 'presenting' | 'cooldown';
+    readonly cooldownUntilMs: number;
+  }>({ active: false, kind: null, source: null, mode: 'idle', cooldownUntilMs: 0 });
   const visibleHandoverActive = visibleHandover.active;
-  const handleHandoverPresentationChange = useCallback((view: HandoverPresentationView) => {
+  const visibleHandoverBusy = visibleHandover.mode === 'presenting'
+    || (visibleHandover.mode === 'cooldown'
+      && (typeof performance === 'undefined' ? Date.now() : performance.now()) < visibleHandover.cooldownUntilMs);
+  const visibleManualHandoverActive = visibleHandover.active && visibleHandover.source === 'manual';
+  const handleHandoverPresentationChange = useCallback((snapshot: HandoverPresentationSnapshot) => {
     setVisibleHandover(current => {
+      const { view } = snapshot;
       const next = {
-        active: view.active && view.autoSlowActive,
+        // Keep the full owner envelope active through the settled tail. HO
+        // Slow and the control lock must not release while the story is still
+        // visible, otherwise a high playback rate can outrun the inter latch.
+        active: view.active,
         kind: view.event?.kind ?? null,
         source: view.event?.source ?? null,
+        mode: snapshot.mode,
+        cooldownUntilMs: snapshot.cooldownUntilMs,
       } as const;
       return current.active === next.active
         && current.kind === next.kind
         && current.source === next.source
+        && current.mode === next.mode
+        && current.cooldownUntilMs === next.cooldownUntilMs
         ? current
-        : next;
+      : next;
     });
+  }, []);
+  const handleHandoverPresentationBusyChange = useCallback((busy: boolean) => {
+    // This is intentionally ref-only. MainScene invokes it during its render so
+    // the parent automatic-intra effect observes the same owner state without
+    // waiting for the child effect that mirrors the visible snapshot.
+    handoverPresentationBusyRef.current = busy;
+    handoverBusyRef.current = busy || handoverControlBusyRef.current;
   }, []);
   const playback = usePlaybackControls(
     simState,
@@ -730,6 +763,7 @@ export function App() {
       || presentation === undefined
       || manualHandoverRequest !== null
       || visibleHandover.active
+      || handoverBusyRef.current
       || !Number.isFinite(presentation.servingSinrDb)
       || !Number.isFinite(presentation.candidateSinrDb)
     ) return false;
@@ -1230,6 +1264,9 @@ export function App() {
             ueMobilityMode: runtime.ueMobilityMode,
             ueMobilityParams: runtime.ueMobilityParams,
             beamCountBySatellite: runtime.beamCountBySatellite,
+            servingBeamCount: runtime.servingBeamCount,
+            candidateBeamCount: runtime.candidateBeamCount,
+            beamHoppingEnabled: runtime.beamHoppingEnabled,
           });
         }
         if (builder.runSlice(STEP_BATCH)) {
@@ -1282,6 +1319,9 @@ export function App() {
     runtime.ueMobilityParams,
     runtime.uePrimaryAnchorMode,
     runtime.beamCountBySatellite,
+    runtime.servingBeamCount,
+    runtime.candidateBeamCount,
+    runtime.beamHoppingEnabled,
     sceneLane,
     sceneSource,
   ]);
@@ -1569,8 +1609,11 @@ export function App() {
       slot !== undefined
       && currentTimeSec >= slot.startSec
       && currentTimeSec <= slot.endSec
-      && requestMovingIntraDemo('scheduled')
+      && (requestMovingIntraDemo('scheduled') || handoverBusyRef.current)
     ) {
+      // A blocked slot is a stale teaching reservation, not a queue. Skipping
+      // it prevents an intra cue from being replayed immediately after an
+      // inter story releases the wall-clock owner.
       scheduleState.nextIndex += 1;
     }
     scheduleState.lastSimTimeSec = currentTimeSec;
@@ -1926,11 +1969,17 @@ export function App() {
   // candidate detail (beam ids + recorded live SINR) from the live Walker index.
   // It owns no truth — the detail is built ONLY from the real sinr-live index, no
   // producer dependency (docs/handover-cinema-sdd.md §3.2/§7).
+  const handoverControlBusy = visibleHandoverBusy
+    || manualHandoverRequest !== null
+    || camera.directorPhase !== 'idle'
+    || liveDirectorFocusEventId !== null
+    || liveDirectorFocusEventSec !== null;
   const handoverCinema = useHandoverCinema({
     sceneLane,
     handoverEventIndex: liveWalkerHandoverEventIndex,
     focusedEventId: liveDirectorFocusEventId,
     directorPhase: camera.directorPhase,
+    presentationBusy: handoverControlBusy,
     armIntraFocus: handleDirectorIntraFocus,
     armInterFocus: handleDirectorInterFocus,
     exitFocus: useCallback(() => {
@@ -1938,6 +1987,12 @@ export function App() {
       camera.exitDirectorFocus();
     }, [cancelPendingLiveFocus, camera]),
   });
+  // `requestMovingIntraDemo` is declared before the Director hook so the
+  // automatic timeline effect can use it. Merge the App-owned control lock with
+  // the MainScene render-time presentation lock; do not overwrite one with the
+  // other between React render/commit phases.
+  handoverControlBusyRef.current = handoverControlBusy;
+  handoverBusyRef.current = handoverControlBusy || handoverPresentationBusyRef.current;
 
   const hideBeamInfoForHandover = useCallback(() => {
     setBeamDisplaySpec(current => current.beamCalloutsEnabled
@@ -1946,12 +2001,14 @@ export function App() {
   }, []);
 
   const triggerPrimaryIntra = useCallback(() => {
+    if (handoverBusyRef.current) return;
     // Keep the real jog seek-free. A timeline seek rebases the model before it can
     // compare the old/new serving cells, which removes the very pulse this button
     // exists to make visible.
     setPrimaryUeJogKm(prev => (prev.east === 0 ? { east: 28, north: 0 } : { east: 0, north: 0 }));
   }, []);
   const handleDirectorNextIntra = useCallback(() => {
+    if (handoverBusyRef.current) return;
     hideBeamInfoForHandover();
     if (directorIntraIndexedEnabled) {
       handoverCinema.armIntra();
@@ -1963,6 +2020,7 @@ export function App() {
     if (sceneSource === 'live-sim') triggerPrimaryIntra();
   }, [directorIntraIndexedEnabled, handoverCinema.armIntra, hideBeamInfoForHandover, sceneSource, triggerPrimaryIntra]);
   const handleQuickIntra = useCallback(() => {
+    if (handoverBusyRef.current) return;
     hideBeamInfoForHandover();
     if (directorIntraIndexedEnabled) {
       handoverCinema.armIntra();
@@ -1971,10 +2029,12 @@ export function App() {
     if (sceneSource === 'live-sim') requestMovingIntraDemo();
   }, [directorIntraIndexedEnabled, handoverCinema.armIntra, hideBeamInfoForHandover, requestMovingIntraDemo, sceneSource]);
   const handleDirectorNextInter = useCallback(() => {
+    if (handoverBusyRef.current) return;
     hideBeamInfoForHandover();
     handoverCinema.armInter();
   }, [handoverCinema.armInter, hideBeamInfoForHandover]);
   const handleQuickInter = useCallback(() => {
+    if (handoverBusyRef.current) return;
     hideBeamInfoForHandover();
     handoverCinema.armInter();
   }, [handoverCinema.armInter, hideBeamInfoForHandover]);
@@ -1985,7 +2045,7 @@ export function App() {
   // the animation ends. This is a presentation snapshot only; formula evidence
   // and serving state remain the live model values.
   const intraTeachingDisplayState = useMemo<SimState>(() => {
-    const presentation = manualHandoverRequest?.kind === 'intra'
+    const presentation = visibleManualHandoverActive && manualHandoverRequest?.kind === 'intra'
       ? manualHandoverRequest.intraPresentation
       : null;
     if (presentation === null || presentation === undefined) return simState;
@@ -2028,8 +2088,8 @@ export function App() {
       sinrDeltaDb: presentation.deltaSinrDb,
       sinrDb: presentation.servingSinrDb,
     };
-  }, [manualHandoverRequest, simState]);
-  const intraTeachingComparisonCellId = manualHandoverRequest?.kind === 'intra'
+  }, [manualHandoverRequest, simState, visibleManualHandoverActive]);
+  const intraTeachingComparisonCellId = visibleManualHandoverActive && manualHandoverRequest?.kind === 'intra'
     ? manualHandoverRequest.intraPresentation?.targetCellId ?? null
     : null;
 
@@ -2392,10 +2452,12 @@ export function App() {
           && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')}
         nextIntraEnabled={manualHandoverRequest === null
           && directorNextIntraEnabled
-          && camera.directorPhase === 'idle'}
+          && camera.directorPhase === 'idle'
+          && !handoverControlBusy}
         nextInterEnabled={manualHandoverRequest === null
           && directorInterButtonEnabled
-          && camera.directorPhase === 'idle'}
+          && camera.directorPhase === 'idle'
+          && !handoverControlBusy}
         nextIntraCount={sceneSource === 'live-sim'
           ? undefined
           : handoverRailEvents.filter(event => event.kind === 'intra').length}
@@ -2549,12 +2611,25 @@ export function App() {
                     hasOverrides={hasSignalOverrides || hasTopologyOverrides || hasVisualScaleOverrides}
                     appMode={appMode}
                     formulaBudget={simState.physicalServingBudget}
-                    canonicalAnalysis={homepageCanonicalAnalysis}
                     isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                     onTuningChange={handleSignalTuningChange}
                     onTopologyChange={handleSceneTopologyChange}
                     servingSatelliteId={simState.servingSatId}
                     candidateSatelliteId={simState.pendingTargetSatId ?? simState.comparisonSatId}
+                    linkThroughputMbps={
+                      simState.canonicalEe?.perUserContributions?.find(
+                        contribution => contribution.ueId === simState.perUePositions?.[0]?.id,
+                      )?.rateMbps
+                      ?? simState.canonicalEe?.perUserContributions?.[0]?.rateMbps
+                      ?? null
+                    }
+                    linkEeMbitPerJ={
+                      simState.canonicalEe?.perUserContributions?.find(
+                        contribution => contribution.ueId === simState.perUePositions?.[0]?.id,
+                      )?.contributionMbitPerJ
+                      ?? simState.canonicalEe?.perUserContributions?.[0]?.contributionMbitPerJ
+                      ?? null
+                    }
                     onSceneVisualScaleChange={setSceneVisualScale}
                     onReset={handleResetSignalTuning}
                   />
@@ -2626,6 +2701,7 @@ export function App() {
                 ? handoverCinema.armFilter
                 : null}
               onHandoverPresentationChange={handleHandoverPresentationChange}
+              onHandoverPresentationBusyChange={handleHandoverPresentationBusyChange}
               constellation={activeSceneTopology.constellation}
             />
           ) : (

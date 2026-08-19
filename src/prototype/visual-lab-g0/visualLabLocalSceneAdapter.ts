@@ -258,6 +258,29 @@ export interface VisualLabLocalActiveBeamTargets {
   readonly reason: string | null;
 }
 
+export interface VisualLabLocalConfiguredBeamTarget {
+  readonly beamId: number;
+  readonly satelliteId: string;
+  readonly cellIndex: number;
+  readonly targetPositionWorld: VisualLabLocalPoint;
+  /** True when the accepted canonical frame assigns positive load to this configured beam. */
+  readonly isLoaded: boolean;
+  readonly source:
+    | 'frame.scenario.beamLayout + frame.inputs.frame.beamActiveB + frame.scenario.cells'
+    | 'frame.candidateScenario.beamLayout + frame.candidateScenario.beamActiveB + frame.candidateScenario.cells';
+  readonly metric: VisualLabLocalBeamMetric | null;
+}
+
+export interface VisualLabLocalConfiguredBeamTargets {
+  readonly availability: VisualLabLocalAvailability;
+  /** All beams in the accepted layout, including configured beams with no UE load. */
+  readonly targets: readonly VisualLabLocalConfiguredBeamTarget[];
+  readonly source:
+    | 'frame.scenario.beamLayout + frame.inputs.frame.beamActiveB + frame.scenario.cells'
+    | 'unavailable';
+  readonly reason: string | null;
+}
+
 export interface VisualLabLocalCandidateBeamTarget {
   readonly beamId: number;
   readonly satelliteId: string;
@@ -278,6 +301,8 @@ export interface VisualLabLocalCandidateBeamLayout {
   readonly layoutCount: number | null;
   readonly selectedBeamId: number | null;
   readonly targets: readonly VisualLabLocalCandidateBeamTarget[];
+  /** Complete configured candidate layout used only by the display projection. */
+  readonly displayTargets: readonly VisualLabLocalConfiguredBeamTarget[];
   readonly contributesToServingInterference: false;
   readonly source: 'frame.candidateScenario.beamActiveB + frame.candidateScenario.cells' | 'unavailable';
   readonly reason: string | null;
@@ -402,6 +427,7 @@ export interface VisualLabLocalScenePlan {
   readonly substrate: VisualLabLocalSubstrate;
   readonly representative: VisualLabLocalRepresentativeProjectionView;
   readonly activeBeamTargets: VisualLabLocalActiveBeamTargets;
+  readonly configuredBeamTargets: VisualLabLocalConfiguredBeamTargets;
   readonly candidateBeamLayout: VisualLabLocalCandidateBeamLayout;
   readonly render: VisualLabLocalRenderDto;
   readonly handover: VisualLabLocalHandover;
@@ -924,6 +950,59 @@ function mapActiveBeamTargets(
   });
 }
 
+function mapConfiguredBeamTargets(
+  frame: SimulationAnalysisFrame,
+  substrate: VisualLabLocalSubstrate,
+): VisualLabLocalConfiguredBeamTargets {
+  const activeMask = frame.inputs.frame.beamActiveB;
+  const source = 'frame.scenario.beamLayout + frame.inputs.frame.beamActiveB + frame.scenario.cells' as const;
+  if (activeMask.length !== frame.scenario.cells.length) {
+    return freeze({
+      availability: 'unavailable',
+      targets: freeze([]),
+      source: 'unavailable',
+      reason: 'canonical active-beam mask does not match the accepted scenario layout',
+    });
+  }
+  const targets: VisualLabLocalConfiguredBeamTarget[] = [];
+  for (const scenarioCell of frame.scenario.cells) {
+    const beamId = scenarioCell.index;
+    if (!Number.isInteger(beamId) || beamId < 0 || beamId >= activeMask.length) {
+      return freeze({
+        availability: 'unavailable',
+        targets: freeze([]),
+        source: 'unavailable',
+        reason: `configured beam ${beamId} is outside the accepted active-beam mask`,
+      });
+    }
+    const cell = substrate.cells.find(item => item.index === beamId);
+    if (cell === undefined) {
+      return freeze({
+        availability: 'unavailable',
+        targets: freeze([]),
+        source: 'unavailable',
+        reason: `configured beam ${beamId} has no accepted scenario target`,
+      });
+    }
+    const isLoaded = activeMask[beamId] === true;
+    targets.push(freeze({
+      beamId,
+      satelliteId: frame.selectedSatelliteId,
+      cellIndex: cell.index,
+      targetPositionWorld: cell.positionWorld,
+      isLoaded,
+      source,
+      metric: isLoaded ? mapBeamMetric(frame, frame.selectedSatelliteId, beamId) : null,
+    }));
+  }
+  return freeze({
+    availability: targets.length > 0 ? 'available' : 'unavailable',
+    targets: freeze(targets),
+    source: targets.length > 0 ? source : 'unavailable',
+    reason: targets.length > 0 ? null : 'accepted scenario has no configured beam target',
+  });
+}
+
 function meanFinite(values: readonly number[]): number | null {
   const finiteValues = values.filter(value => Number.isFinite(value));
   return finiteValues.length === 0
@@ -989,6 +1068,7 @@ function mapCandidateBeamLayout(
       layoutCount: scenario?.beamLayout.beamCount ?? null,
       selectedBeamId: link?.beamId ?? null,
       targets: freeze([]),
+      displayTargets: freeze([]),
       contributesToServingInterference: false,
       source: 'unavailable',
       reason,
@@ -1001,14 +1081,29 @@ function mapCandidateBeamLayout(
       layoutCount: scenario.beamLayout.beamCount,
       selectedBeamId: link.beamId,
       targets: freeze([]),
+      displayTargets: freeze([]),
       contributesToServingInterference: false,
       source: 'unavailable',
       reason: 'candidate active-beam mask does not match its accepted scenario layout',
     });
   }
   const targets: VisualLabLocalCandidateBeamTarget[] = [];
-  for (let beamId = 0; beamId < scenario.beamActiveB.length; beamId += 1) {
-    if (scenario.beamActiveB[beamId] !== true) continue;
+  const displayTargets: VisualLabLocalConfiguredBeamTarget[] = [];
+  const candidateDisplaySource = 'frame.candidateScenario.beamLayout + frame.candidateScenario.beamActiveB + frame.candidateScenario.cells' as const;
+  for (const scenarioCell of scenario.cells) {
+    const beamId = scenarioCell.index;
+    if (!Number.isInteger(beamId) || beamId < 0 || beamId >= scenario.beamActiveB.length) {
+      return freeze({
+        availability: 'unavailable',
+        layoutCount: scenario.beamLayout.beamCount,
+        selectedBeamId: link.beamId,
+        targets: freeze([]),
+        displayTargets: freeze([]),
+        contributesToServingInterference: false,
+        source: 'unavailable',
+        reason: `candidate beam ${beamId} is outside its accepted active-beam mask`,
+      });
+    }
     const cell = scenario.cells.find(item => item.index === beamId);
     if (cell === undefined) {
       return freeze({
@@ -1016,30 +1111,45 @@ function mapCandidateBeamLayout(
         layoutCount: scenario.beamLayout.beamCount,
         selectedBeamId: link.beamId,
         targets: freeze([]),
+        displayTargets: freeze([]),
         contributesToServingInterference: false,
         source: 'unavailable',
         reason: `candidate beam ${beamId} has no accepted scenario target`,
       });
     }
     const displayCell = substrate.cells.find(item => item.index === cell.index);
-    targets.push(freeze({
+    const targetPositionWorld = displayCell?.positionWorld
+      ?? localGroundWorldPosition(cell.centerKm, scale);
+    const isLoaded = scenario.beamActiveB[beamId] === true;
+    displayTargets.push(freeze({
       beamId,
       satelliteId: link.satelliteId,
       cellIndex: cell.index,
-      targetPositionWorld: displayCell?.positionWorld
-        ?? localGroundWorldPosition(cell.centerKm, scale),
-      source,
-      metric: beamMetricFromCandidateLink(link, beamId),
+      targetPositionWorld,
+      isLoaded,
+      source: candidateDisplaySource,
+      metric: isLoaded ? beamMetricFromCandidateLink(link, beamId) : null,
     }));
+    if (isLoaded) {
+      targets.push(freeze({
+        beamId,
+        satelliteId: link.satelliteId,
+        cellIndex: cell.index,
+        targetPositionWorld,
+        source,
+        metric: beamMetricFromCandidateLink(link, beamId),
+      }));
+    }
   }
   return freeze({
-    availability: targets.length > 0 ? 'available' : 'unavailable',
+    availability: displayTargets.length > 0 ? 'available' : 'unavailable',
     layoutCount: scenario.beamLayout.beamCount,
     selectedBeamId: link.beamId,
     targets: freeze(targets),
+    displayTargets: freeze(displayTargets),
     contributesToServingInterference: false,
-    source: targets.length > 0 ? source : 'unavailable',
-    reason: targets.length > 0 ? null : 'accepted candidate scenario has no illuminated beam target',
+    source: displayTargets.length > 0 ? source : 'unavailable',
+    reason: displayTargets.length > 0 ? null : 'accepted candidate scenario has no configured beam target',
   });
 }
 
@@ -1328,6 +1438,7 @@ export function adaptSimulationAnalysisFrameToVisualLabLocalScene(
     substrate,
     representative: mapRepresentative(frame, substrate),
     activeBeamTargets: mapActiveBeamTargets(frame, substrate),
+    configuredBeamTargets: mapConfiguredBeamTargets(frame, substrate),
     candidateBeamLayout: mapCandidateBeamLayout(frame, substrate, scale),
     render: mapRenderDto(frame),
     handover: mapHandover(handoverTrace, currentCandidateId, settledContinuation ? 'settled' : 'switch'),

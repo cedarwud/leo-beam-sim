@@ -278,7 +278,10 @@ export function useSimulation(
 
   // S3: use the subclass so stepRuntimeFrame picks up the override without
   // needing a frozen-file edit.
-  const hoManager = useMemo(() => new S3HandoverManager(profile.handover), [profile.handover]);
+  const hoManager = useMemo(
+    () => new S3HandoverManager(profile.handover, { enforceSharedHandoverInterval: true }),
+    [profile.handover],
+  );
   const requestedUeCount = Math.trunc(ueCount ?? 1);
   const effectiveUeCount = Number.isFinite(requestedUeCount) ? Math.max(1, requestedUeCount) : 1;
   const sevenCellUeDistribution = useMemo(() => {

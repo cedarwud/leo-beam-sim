@@ -305,7 +305,9 @@ export function buildLiveWalkerHandoverEventIndex(
     };
   }
 
-  const hoManager = new HandoverManager(input.profile.handover);
+  const hoManager = new HandoverManager(input.profile.handover, {
+    enforceSharedHandoverInterval: true,
+  });
   const state = createRuntimeFrameStepState(0);
   const beamLayoutsByShellId = createBeamLayoutsByShellId(input.profile);
   const replay = {

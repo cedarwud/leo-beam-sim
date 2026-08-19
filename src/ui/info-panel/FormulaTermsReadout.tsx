@@ -14,6 +14,7 @@ import {
 import { PanelHelp, usePanelCopy } from './panelHelp';
 import { StatusBadge } from './StatusBadge';
 import { InlineFormulaFraction } from '../signal-tuning/FormulaHeader';
+import { LinkAngle, SystemAngleState } from '../signal-tuning/FormulaSymbols';
 
 // P1e (c) audit-list hook (PR-0.5 backfill): keep `channelMetricLabelForKind`
 // in scope so the SINR-derived terms (the card heading) can later branch to a
@@ -297,6 +298,7 @@ export function FormulaTermsReadout({
   isFormulaEvidenceStale,
   frequencyReuse,
   servingCellId,
+  embedded = false,
 }: {
   source: SimState['physicalServing'];
   budget: SimState['physicalServingBudget'];
@@ -304,6 +306,8 @@ export function FormulaTermsReadout({
   frequencyReuse: number;
   /** Cell-truth serving unit on sinr-live; null on steered/replay lanes. */
   servingCellId: number | null;
+  /** Remove the outer card treatment when hosted by a result disclosure. */
+  embedded?: boolean;
 }) {
   const { t, tx } = usePanelCopy();
   const hasSteeredFormulaSource = source.satId !== null && source.beamId !== null;
@@ -364,30 +368,35 @@ export function FormulaTermsReadout({
     <div
       data-testid="formula-verification-card"
       data-formula-evidence-status={formulaEvidenceStatus}
+      data-embedded={embedded ? 'true' : 'false'}
       style={{
-        marginTop: 12,
+        marginTop: embedded ? 0 : 12,
         display: 'grid',
         gap: 10,
-        padding: '13px 14px',
+        padding: embedded ? 0 : '13px 14px',
         borderRadius: UI_TOKENS.radius.lg,
-        background: 'linear-gradient(180deg, rgba(8, 38, 44, 0.82), rgba(5, 15, 24, 0.72))',
-        border: '1px solid rgba(118, 234, 215, 0.2)',
+        background: embedded
+          ? 'transparent'
+          : 'linear-gradient(180deg, rgba(8, 38, 44, 0.82), rgba(5, 15, 24, 0.72))',
+        border: embedded ? 0 : '1px solid rgba(118, 234, 215, 0.2)',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{
-            color: UI_TOKENS.color.semantic.tuningSoft,
-            fontSize: UI_TOKENS.type.size.caption,
-            fontWeight: UI_TOKENS.type.weight.heavy,
-            letterSpacing: 0.6,
-            textTransform: 'uppercase',
-          }}>
-            {tx('panel.formulaTerms.title')}
-            {/* Canonical English heading, preserved for machine readers that
-                learned this surface before it was translated. */}
-            <span style={srOnlyStyle}> SINR Formula Terms</span>
-          </div>
+          {!embedded && (
+            <div style={{
+              color: UI_TOKENS.color.semantic.tuningSoft,
+              fontSize: UI_TOKENS.type.size.caption,
+              fontWeight: UI_TOKENS.type.weight.heavy,
+              letterSpacing: 0.6,
+              textTransform: 'uppercase',
+            }}>
+              {tx('panel.formulaTerms.title')}
+              {/* Canonical English heading, preserved for machine readers that
+                  learned this surface before it was translated. */}
+              <span style={srOnlyStyle}> SINR Formula Terms</span>
+            </div>
+          )}
           <div style={{
             marginTop: 5,
             color: UI_TOKENS.color.text.primary,
@@ -496,10 +505,10 @@ export function FormulaTermsReadout({
                 titleText={tx('panel.formulaTerms.numerator')}
                 bodyText={`${tx('panel.formulaTerms.numerator.help')} ${tx('panel.formulaTerms.help')}`}
                 formula={(
-                  <>γ<sub>u,s,v</sub>(t, θ) = <InlineFormulaFraction
-                    numerator={<><i>p</i><sup>r</sup><sub>u,s,v</sub>(t, θ) · h<sub>u,s,v</sub>(t, θ)</>}
-                    denominator={<>I<sub>u,s,v</sub>(t, θ) + σ²</>}
-                    label="link power times effective channel divided by total interference plus noise"
+                  <>γ<sub>u,s,v</sub>(t, <SystemAngleState />) = <InlineFormulaFraction
+                    numerator={<><i>p</i><sub>u,s,v</sub>(t, <LinkAngle />) · h<sub>u,s,v</sub>(t, <LinkAngle />)</>}
+                    denominator={<>I<sub>u,s,v</sub>(t, <SystemAngleState />) + σ²</>}
+                    label="effective channel times actual RF output divided by total interference plus noise"
                   /></>
                 )}
                 meta={<>{t('formula.sinr.caption')}</>}
@@ -512,7 +521,7 @@ export function FormulaTermsReadout({
               status={formulaEvidenceStatus}
               op="＝"
               order={1}
-              symbol={<><i>p</i><sup>r</sup><sub>u,s,v</sub>(t, θ) · h<sub>u,s,v</sub>(t, θ)</>}
+              symbol={<><i>p</i><sub>u,s,v</sub>(t, <LinkAngle />) · h<sub>u,s,v</sub>(t, <LinkAngle />)</>}
               label={tx('panel.formulaTerms.signalTotal.label')}
               help={(
                 <PanelHelp
@@ -529,7 +538,7 @@ export function FormulaTermsReadout({
             <FormulaTermRow
               dataTerm="effectiveTxPower"
               status={formulaEvidenceStatus}
-              symbol={<>P<sup>o</sup><sub>s,v</sub>(t, θ)</>}
+              symbol={<><i>p</i><sub>u,s,v</sub>(t, <LinkAngle />)</>}
               label={tx('panel.formulaTerms.txPower.label')}
               help={(
                 <PanelHelp
@@ -546,7 +555,7 @@ export function FormulaTermsReadout({
               dataTerm="transmitGain"
               status={formulaEvidenceStatus}
               op="＋"
-              symbol={<>G<sup>T</sup></>}
+              symbol={<>G<sup>T</sup>(<LinkAngle />)</>}
               label={tx('panel.formulaTerms.txGain.label')}
               help={(
                 <PanelHelp
@@ -624,7 +633,7 @@ export function FormulaTermsReadout({
                 helpId="panel.formulaTerms.denominator"
                 titleText={tx('panel.formulaTerms.denominator')}
                 bodyText={tx('panel.formulaTerms.denominator.help')}
-                formula={<>I<sub>u,s,v</sub>(t, θ) + σ²</>}
+                formula={<>I<sub>u,s,v</sub>(t, <SystemAngleState />) + σ²</>}
                 meta={<>{t('common.unit.dbm')}</>}
               />
             )}
@@ -632,7 +641,7 @@ export function FormulaTermsReadout({
             <FormulaTermRow
               dataTerm="intraInterference"
               status={formulaEvidenceStatus}
-              symbol={<>I<sup>a</sup><sub>u,s,v</sub>(t, θ)</>}
+              symbol={<>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>}
               label={tx('panel.formulaTerms.intraInterference.label')}
               help={(
                 <PanelHelp
@@ -649,7 +658,7 @@ export function FormulaTermsReadout({
               dataTerm="interInterference"
               status={formulaEvidenceStatus}
               op="＋"
-              symbol={<>I<sup>b</sup><sub>u,s,v</sub>(t, θ)</>}
+              symbol={<>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>}
               label={tx('panel.formulaTerms.interInterference.label')}
               help={(
                 <PanelHelp
@@ -683,7 +692,7 @@ export function FormulaTermsReadout({
               dataTerm="denominator"
               status={formulaEvidenceStatus}
               op="＝"
-              symbol={<>I<sub>u,s,v</sub>(t, θ) + σ²</>}
+              symbol={<>I<sub>u,s,v</sub>(t, <SystemAngleState />) + σ²</>}
               label={tx('panel.formulaTerms.denominatorTotal.label')}
               help={(
                 <PanelHelp

@@ -38,6 +38,18 @@ export type HandoverDecisionOverride = (
   input: HandoverDecisionOverrideInput,
 ) => { satId: string; beamId: number } | null;
 
+/**
+ * Runtime role options for one manager instance.
+ *
+ * The primary displayed UE uses the shared interval so intra/inter decisions
+ * cannot cross the visible handover story. Background UE managers retain the
+ * historical continuity-rescue behavior; their events are telemetry only and
+ * must not be allowed to change the primary scene's timing.
+ */
+export interface HandoverManagerOptions {
+  readonly enforceSharedHandoverInterval?: boolean;
+}
+
 function beamAssignmentKey(satId: string, beamId: number): string {
   return `${satId}:${beamId}`;
 }
@@ -54,6 +66,8 @@ function createServingState(): ServingState {
 
 export class HandoverManager {
   private static readonly REATTACH_THRESHOLD_RELAX_DB = 3;
+  /** Keep both handover kinds apart for the full visible handover envelope. */
+  private static readonly MIN_HANDOVER_INTERVAL_MS = 6000;
   private readonly sinrThresholdDb: number;
   private readonly offsetDb: number;
   private readonly triggerTimeSec: number;
@@ -62,6 +76,7 @@ export class HandoverManager {
   private readonly intraSwitchTimeSec: number;
   private readonly maxIntraSwitchesPerServingEpoch: number;
   private readonly sinrSmoothingSec: number;
+  private readonly enforceSharedHandoverInterval: boolean;
   private guardUntilMs = 0;
   private pendingSinceMs: number | null = null;
   private intraSwitchTarget: { beamId: number; triggerTimeSec: number } | null = null;
@@ -72,7 +87,7 @@ export class HandoverManager {
   state: ServingState = createServingState();
   eventLog: HandoverEvent[] = [];
 
-  constructor(config: Profile['handover']) {
+  constructor(config: Profile['handover'], options: HandoverManagerOptions = {}) {
     if (config.policy !== 'sinr-offset') {
       throw new Error(`Unknown handover policy: ${config.policy}`);
     }
@@ -88,6 +103,7 @@ export class HandoverManager {
       Math.floor(config.maxIntraSwitchesPerServingEpoch ?? 2),
     );
     this.sinrSmoothingSec = config.sinrSmoothingSec;
+    this.enforceSharedHandoverInterval = options.enforceSharedHandoverInterval ?? false;
   }
 
   reset(): void {
@@ -216,21 +232,28 @@ export class HandoverManager {
     const currentSinr = this.state.sinrDb;
     this.ensureServingEpoch();
 
+    // The primary displayed UE gives inter/intra one shared lock. This check
+    // deliberately comes before continuity rescue: a serving-beam drop must
+    // not let the rescue branch bypass the inter guard and commit an intra
+    // during the active story. Background managers keep the legacy rescue
+    // behavior because their events are not the viewport owner.
+    const guardActive = simTimeMs < this.guardUntilMs;
+    if (guardActive && this.enforceSharedHandoverInterval) {
+      this.clearPendingTarget();
+      this.clearIntraSwitch();
+      return { action: 'stay', reason: 'handover guard active' };
+    }
+
     // Continuity rescue (beam-floor, owner-approved continuity-override). When the
     // serving beam has LEFT the steering cone — it dropped out of this tick's
     // candidates, so currentSinr === -Infinity — the UE is about to be stranded:
     // the next slot the serving satellite can no longer schedule that beam. If a
     // still-steerable sibling beam on the SAME satellite can carry a real link
-    // (>= the serving floor), switch to it IMMEDIATELY, bypassing the post-inter-HO
-    // ping-pong guard, the intra-switch dwell, AND the serving-epoch no-revisit ban.
-    // Rationale (the truth-boundary design call): a ~16s service outage is worse for
-    // the demo than the ping-pong/dwell those guards prevent, and beam-refining
-    // within the SAME sat is not an inter-satellite ping-pong. Tightly scoped — it
-    // fires ONLY when the serving beam has actually fallen out of the cone AND a
-    // viable same-sat rescue exists, so normal-condition behaviour (guard, dwell,
-    // ban) is unchanged. If no same-sat beam can carry the link, the sat is
-    // genuinely leaving: inter-HO (if a successor is visible) or honest service loss
-    // takes over below.
+    // (>= the serving floor), switch to it. For the primary manager the shared
+    // guard above intentionally covers this rescue too; for background managers
+    // this preserves their prior continuity exception. If no same-sat beam can
+    // carry the link, the sat is genuinely leaving: inter-HO (if a successor is
+    // visible) or honest service loss takes over below.
     if (currentSinr === -Infinity) {
       const rescue = sorted.find(
         candidate =>
@@ -249,16 +272,15 @@ export class HandoverManager {
       }
     }
 
-    // Inter-HO owns the hard serving-satellite boundary. Keep its guard and
-    // TTT gate ahead of local same-satellite beam refinements so intra-HO
-    // cannot immediately shadow every inter-HO.
-    const guardActive = simTimeMs < this.guardUntilMs;
+    // Inter-HO owns the hard serving-satellite boundary. The primary shared
+    // guard remains ahead of local same-satellite beam refinements. The second
+    // guard below preserves the normal configured ping-pong behavior for the
+    // independent background managers.
     if (guardActive) {
       this.clearPendingTarget();
       this.clearIntraSwitch();
       return { action: 'stay', reason: 'handover guard active' };
     }
-
     const qualifiedTargets = sorted.filter(
       candidate => candidate.satId !== this.state.satId && candidate.sinrDb - this.offsetDb > currentSinr,
     );
@@ -534,11 +556,25 @@ export class HandoverManager {
 
     if (action === 'inter-handover') {
       this.startServingEpoch(target.satId, target.beamId);
-      this.guardUntilMs = simTimeMs + this.pingPongGuardMs;
     } else if (action === 'intra-switch') {
       if (fromBeamId !== null) this.servedBeamIdsForServingEpoch.add(fromBeamId);
       this.servedBeamIdsForServingEpoch.add(target.beamId);
       this.intraSwitchCountForServingEpoch += 1;
+    }
+
+    if (this.enforceSharedHandoverInterval) {
+      // Apply one minimum interval after either handover kind. The configured
+      // ping-pong guard remains the policy floor; the six-second presentation
+      // envelope wins when it is longer, so the next kind cannot start before
+      // the current story has released the viewport.
+      this.guardUntilMs = Math.max(
+        this.guardUntilMs,
+        simTimeMs + Math.max(this.pingPongGuardMs, HandoverManager.MIN_HANDOVER_INTERVAL_MS),
+      );
+    } else if (action === 'inter-handover') {
+      // Preserve the historical independent-manager contract for background
+      // UE telemetry: only inter-HO starts its configured ping-pong guard.
+      this.guardUntilMs = simTimeMs + this.pingPongGuardMs;
     }
 
     return {

@@ -123,6 +123,18 @@ const activeInter = project(10, [interEvent]).transitionProgress;
 assert.equal(activeInter.intra, undefined, 'recent inter event must not activate intra');
 assert.equal(activeInter.inter?.kind, 'recent', 'recent inter event remains an inter state');
 
+const interStillOwnsMixedWindow = project(10, [interEvent, intraEvent]).transitionProgress;
+assert.equal(
+  interStillOwnsMixedWindow.intra,
+  undefined,
+  'a retained intra event must not replace an active inter in the same primary-UE window',
+);
+assert.equal(
+  interStillOwnsMixedWindow.inter?.fromSatId,
+  'sat-a',
+  'the central scene keeps the source satellite from the active inter story',
+);
+
 assert.equal(
   resolveRecentPrimaryIntraHandoverEvent({
     events: [interEvent, intraEvent],
@@ -168,6 +180,38 @@ assert.equal(
   }, 2, 0),
   null,
   'a completed recent intra event must not remain an active toast',
+);
+
+const mixedTransitionToast = resolveHandoverToastState({
+  preferredKind: 'inter',
+  transitionProgress: {
+    intra: {
+      fromBeamId: '1',
+      toBeamId: '2',
+      progress01: 0.4,
+      expiresAtSec: 14,
+      kind: 'recent',
+      satId: 'sat-a',
+      recentProgressSec: 1,
+      recentTargetSec: 4,
+    },
+    inter: {
+      fromSatId: 'sat-a',
+      fromBeamId: '1',
+      toSatId: 'sat-b',
+      toBeamId: '1',
+      progress01: 0.4,
+      expiresAtSec: 14,
+      kind: 'recent',
+      recentProgressSec: 1,
+      recentTargetSec: 4,
+    },
+  },
+}, 2, 0);
+assert.equal(
+  mixedTransitionToast?.kind,
+  'inter',
+  'the active inter presentation owner wins when a stale intra latch is also present',
 );
 
 console.log('[liveSimToScene.intra-handover] regression checks passed');

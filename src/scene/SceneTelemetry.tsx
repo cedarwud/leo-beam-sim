@@ -71,6 +71,17 @@ export interface SceneTelemetryProps {
   sinrLiveCellUeOffAxisMaxDeg: string;
   /** G2c ambient live-pulse cones currently lit (real per-frame handovers, age-faded); empty off the sinr-live lane. */
   sinrLiveHandoverPulseConeCount: string;
+  /** One display-owner contract for diagnosing beam-layer precedence. */
+  handoverPresentationActive: string;
+  handoverPresentationSource: string;
+  handoverPresentationKind: string;
+  handoverPresentationPhase: string;
+  handoverAutoSlowActive: string;
+  handoverDisplayIsolationActive: string;
+  beamBudgetGlobal: string;
+  beamBudgetServing: string;
+  beamBudgetCandidate: string;
+  beamHoppingEnabled: string;
   modqnVisualLayerPreset: string;
   modqnServiceMapEnabled: string;
   modqnServedUeCount: string | number;
@@ -146,6 +157,16 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.sinrLiveCellServedCount = props.sinrLiveCellServedCount;
     el.dataset.sinrLiveCellUeOffAxisMaxDeg = props.sinrLiveCellUeOffAxisMaxDeg;
     el.dataset.sinrLiveHandoverPulseConeCount = props.sinrLiveHandoverPulseConeCount;
+    el.dataset.handoverPresentationActive = props.handoverPresentationActive;
+    el.dataset.handoverPresentationSource = props.handoverPresentationSource;
+    el.dataset.handoverPresentationKind = props.handoverPresentationKind;
+    el.dataset.handoverPresentationPhase = props.handoverPresentationPhase;
+    el.dataset.handoverAutoSlowActive = props.handoverAutoSlowActive;
+    el.dataset.handoverDisplayIsolationActive = props.handoverDisplayIsolationActive;
+    el.dataset.beamBudgetGlobal = props.beamBudgetGlobal;
+    el.dataset.beamBudgetServing = props.beamBudgetServing;
+    el.dataset.beamBudgetCandidate = props.beamBudgetCandidate;
+    el.dataset.beamHoppingEnabled = props.beamHoppingEnabled;
     el.dataset.modqnVisualLayerPreset = props.modqnVisualLayerPreset;
     el.dataset.modqnServiceMapEnabled = props.modqnServiceMapEnabled;
     el.dataset.modqnServedUeCount = String(props.modqnServedUeCount);
@@ -210,6 +231,16 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.sinrLiveCellServedCount,
     props.sinrLiveHandoverPulseConeCount,
     props.sinrLiveCellUeOffAxisMaxDeg,
+    props.handoverPresentationActive,
+    props.handoverPresentationSource,
+    props.handoverPresentationKind,
+    props.handoverPresentationPhase,
+    props.handoverAutoSlowActive,
+    props.handoverDisplayIsolationActive,
+    props.beamBudgetGlobal,
+    props.beamBudgetServing,
+    props.beamBudgetCandidate,
+    props.beamHoppingEnabled,
     props.modqnVisualLayerPreset,
     props.modqnServiceMapEnabled,
     props.modqnServedUeCount,

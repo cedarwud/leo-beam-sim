@@ -33,6 +33,8 @@ export interface UseHandoverCinemaParams {
   readonly focusedEventId: string | null;
   /** Camera FSM phase; non-idle (or an armed event) means the cinema is engaged. */
   readonly directorPhase: DirectorFocusPhase;
+  /** Shared presentation gate; natural/manual/cinema stories are mutually exclusive. */
+  readonly presentationBusy: boolean;
   /** Existing Director handlers — wrapped, never rewritten. */
   readonly armIntraFocus: () => void;
   readonly armInterFocus: () => void;
@@ -58,6 +60,7 @@ export function useHandoverCinema(params: UseHandoverCinemaParams): HandoverCine
     handoverEventIndex,
     focusedEventId,
     directorPhase,
+    presentationBusy,
     armIntraFocus,
     armInterFocus,
     exitFocus,
@@ -65,24 +68,26 @@ export function useHandoverCinema(params: UseHandoverCinemaParams): HandoverCine
 
   const [requestedFilter, setRequestedFilter] = useState<HandoverCinemaArmFilter>('off');
 
+  // A focus request is a claim, not a queue. Do not let a second button or
+  // scheduled cue replace a story that is already presenting or cooling down.
+  const cinemaActive = directorPhase !== 'idle' || focusedEventId !== null;
+
   const armIntra = useCallback(() => {
+    if (cinemaActive || presentationBusy) return;
     setRequestedFilter('intra');
     armIntraFocus();
-  }, [armIntraFocus]);
+  }, [armIntraFocus, cinemaActive, presentationBusy]);
 
   const armInter = useCallback(() => {
+    if (cinemaActive || presentationBusy) return;
     setRequestedFilter('inter');
     armInterFocus();
-  }, [armInterFocus]);
+  }, [armInterFocus, cinemaActive, presentationBusy]);
 
   const exit = useCallback(() => {
     setRequestedFilter('off');
     exitFocus();
   }, [exitFocus]);
-
-  // A focus is engaged while the FSM is non-idle OR an event is armed-but-unfired
-  // (the ~300ms fade + async seek-land window). This drives highlight + explainer.
-  const cinemaActive = directorPhase !== 'idle' || focusedEventId !== null;
 
   // Follow real state: external exits (Escape / viewport click / lane switch go
   // through the orchestration, not through this hook) clear the focus without

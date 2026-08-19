@@ -1,7 +1,8 @@
+import { type SupportedBeamLayoutCount } from '../core/beam/completeHexPresets';
 import {
-  createCompleteHexBeamLayout,
-  type SupportedBeamLayoutCount,
-} from '../core/beam/completeHexPresets';
+  DISPERSED_SEVEN_CELL_AXIAL_COORDINATES,
+  DISPERSED_SEVEN_CELL_USER_COUNTS,
+} from '../topology/dispersedSevenCellTopology';
 
 /**
  * Stable identity for the fixed ground population used by complete-ring
@@ -63,28 +64,16 @@ function centerForAxial(q: number, r: number): readonly [number, number] {
 }
 
 function createDefaultSubstrate(): CanonicalGroundUeSubstrate {
-  // The angular/axial order comes from the same complete-ring factory used by
-  // canonicalSevenCellScenario.  UV spacing is irrelevant to the local
-  // tangent-plane substrate; only the stable axial identities are needed.
-  const layout = createCompleteHexBeamLayout({
-    satelliteId: 'ground-ue-substrate',
-    beamCount: CANONICAL_GROUND_UE_SUBSTRATE_SOURCE_LAYOUT,
-    halfPowerBeamWidthDeg: 1,
-  });
-  const baseUsers = Math.floor(CANONICAL_GROUND_UE_COUNT / layout.beamCount);
-  const extraUsers = CANONICAL_GROUND_UE_COUNT % layout.beamCount;
   const users: CanonicalGroundUe[] = [];
 
-  for (const cell of layout.beamPositions) {
-    const centerKm = centerForAxial(cell.axialQ, cell.axialR);
-    const userCount = baseUsers + (cell.beamId < extraUsers ? 1 : 0);
+  for (const cell of DISPERSED_SEVEN_CELL_AXIAL_COORDINATES) {
+    const centerKm = centerForAxial(cell.q, cell.r);
+    const userCount = DISPERSED_SEVEN_CELL_USER_COUNTS[cell.id] ?? 0;
     for (let cellLocalIndex = 0; cellLocalIndex < userCount; cellLocalIndex += 1) {
-      // Keep this operation order aligned with the previously accepted
-      // explicit-7 scenario generator so its positions remain bit-identical.
       const radialFraction = cellLocalIndex === 0
         ? 0
         : LOCAL_USER_RADIUS_FRACTION * Math.sqrt(cellLocalIndex / userCount);
-      const angle = cellLocalIndex * GOLDEN_ANGLE_RADIANS + cell.beamId * 0.37;
+      const angle = cellLocalIndex * GOLDEN_ANGLE_RADIANS + cell.id * 0.37;
       const positionKm = freeze([
         centerKm[0] + CANONICAL_GROUND_UE_CELL_RADIUS_KM * radialFraction * Math.cos(angle),
         centerKm[1] + CANONICAL_GROUND_UE_CELL_RADIUS_KM * radialFraction * Math.sin(angle),
@@ -94,7 +83,7 @@ function createDefaultSubstrate(): CanonicalGroundUeSubstrate {
         index,
         userId: `ue-${index + 1}`,
         positionKm,
-        sourceCellIndex: cell.beamId,
+        sourceCellIndex: cell.id,
         sourceCellLocalIndex: cellLocalIndex,
       }));
     }

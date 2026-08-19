@@ -125,6 +125,8 @@ interface NumericControlProps {
   /** Human-readable value restored by the shared model reset action. */
   resetValue?: string;
   testId?: string;
+  /** Stack identity above value in exceptionally narrow formula rails. */
+  stackHeader?: boolean;
   onChange: (value: number) => void;
 }
 export function NumericControl({
@@ -150,6 +152,7 @@ export function NumericControl({
   source,
   resetValue,
   testId,
+  stackHeader = false,
   onChange,
 }: NumericControlProps & ControlHelpProps) {
   const { locale, t } = useLocale();
@@ -184,7 +187,9 @@ export function NumericControl({
         borderLeft: disabled ? '4px solid rgba(132, 148, 163, 0.28)' : `4px solid ${accentColor}aa`,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'stretch' }}>
+      <div style={stackHeader
+        ? { display: 'grid', gap: 8, alignItems: 'stretch' }
+        : { display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'stretch' }}>
         <div data-control-identity="true" style={{ minWidth: 0, display: 'grid', gap: 3, alignContent: 'space-between' }}>
           <div data-control-label="true" style={{ display: 'grid', gap: 1, minWidth: 0 }}>
             <span style={{ ...controlLabelStyle, color: disabled ? UI_TOKENS.color.text.faint : controlLabelStyle.color }}>
@@ -200,7 +205,13 @@ export function NumericControl({
             </span>
           )}
         </div>
-        <div data-control-value="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+        <div data-control-value="true" style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 2,
+          flexShrink: 0,
+          justifySelf: stackHeader ? 'end' : undefined,
+        }}>
           <div style={{
             padding: '6px 10px',
             borderRadius: UI_TOKENS.radius.md,

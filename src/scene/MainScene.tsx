@@ -99,7 +99,7 @@ import {
   createIdleHandoverPresentationView,
   createHandoverPresentationState,
   type HandoverPresentationEvent,
-  type HandoverPresentationView,
+  type HandoverPresentationSnapshot,
 } from './handoverPresentationOwner';
 import {
   buildSinrLiveCellLayout,
@@ -219,7 +219,9 @@ interface SceneContentProps {
   handoverCinemaArmed?: boolean;
   handoverCinemaKind?: 'intra' | 'inter' | null;
   /** Downstream presentation status; never a handover-decision input. */
-  onHandoverPresentationChange?: (view: HandoverPresentationView) => void;
+  onHandoverPresentationChange?: (snapshot: HandoverPresentationSnapshot) => void;
+  /** Imperative render-time gate; the callback must only update a ref. */
+  onHandoverPresentationBusyChange?: (busy: boolean) => void;
 }
 
 interface SceneRenderContentProps extends SceneContentProps {
@@ -1034,6 +1036,7 @@ function SceneRenderContent({
   handoverCinemaArmed = false,
   handoverCinemaKind = null,
   onHandoverPresentationChange,
+  onHandoverPresentationBusyChange,
   sim,
   simSource,
   canonicalScenario,
@@ -1747,6 +1750,7 @@ function SceneRenderContent({
     const currentSimTimeSec = sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec;
     const protagonistUeId = sim.perUePositions[0]?.id;
     if (!events || !protagonistUeId || !Number.isFinite(currentSimTimeSec)) return null;
+    let latestPrimaryEvent: SinrLiveCellHandoverEvent | null = null;
     for (let index = events.length - 1; index >= 0; index -= 1) {
       const event = events[index];
       if (
@@ -1755,10 +1759,38 @@ function SceneRenderContent({
         || event.fromCellId === null
       ) continue;
       const ageSec = currentSimTimeSec - event.sourceTimeSec;
-      if (ageSec >= 0 && ageSec < SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC) return event;
+      if (ageSec < 0 || ageSec >= SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC) continue;
+      // Keep an inter story authoritative for the whole retention window even
+      // if the classifier also reports a newer same-UE intra transition. The
+      // presentation owner is wall-clock paced, so allowing the latest array
+      // item to win would replace the visible inter pair mid-animation.
+      if (event.kind === 'inter') return event;
+      latestPrimaryEvent ??= event;
+    }
+    return latestPrimaryEvent;
+  }, [sim.perUePositions, sim.simTimeSec, sim.sinrLiveCells]);
+
+  // The model retains background-UE events for telemetry too. They do not own
+  // the protagonist's camera story, but a real inter event anywhere still
+  // blocks a new intra teaching request and suppresses an intra pulse so the
+  // viewport cannot show two handover kinds at once.
+  const recentAnyInterHandoverEvent = useMemo<SinrLiveCellHandoverEvent | null>(() => {
+    const events = sim.sinrLiveCells?.recentHandoverEvents;
+    const currentSimTimeSec = sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec;
+    if (!events || !Number.isFinite(currentSimTimeSec)) return null;
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index];
+      const ageSec = currentSimTimeSec - event.sourceTimeSec;
+      if (
+        event.kind === 'inter'
+        && event.fromSatId !== null
+        && event.fromCellId !== null
+        && ageSec >= 0
+        && ageSec < SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC
+      ) return event;
     }
     return null;
-  }, [sim.perUePositions, sim.simTimeSec, sim.sinrLiveCells]);
+  }, [sim.simTimeSec, sim.sinrLiveCells]);
 
   const handoverPresentationCandidate = useMemo<HandoverPresentationEvent | null>(() => {
     const endpoint = (
@@ -1772,6 +1804,46 @@ function SceneRenderContent({
         cellId,
         drawable: sinrLiveCellPlacementById.has(cellId) && satelliteWorldById.has(satId),
       };
+
+    const naturalCandidate = recentPrimaryHandoverEvent === null
+      ? null
+      : (() => {
+        const from = endpoint(
+          recentPrimaryHandoverEvent.fromSatId,
+          recentPrimaryHandoverEvent.fromCellId,
+          viz.coneApexWorldById,
+        );
+        const to = endpoint(
+          recentPrimaryHandoverEvent.toSatId,
+          recentPrimaryHandoverEvent.toCellId,
+          viz.coneApexWorldById,
+        );
+        if (from === null || to === null) return null;
+        return {
+          eventId: `${simSource}:${recentPrimaryHandoverEvent.ueId}:${recentPrimaryHandoverEvent.sourceTimeSec}:${recentPrimaryHandoverEvent.kind}`,
+          source: simSource === 'archived-tle' ? 'tle' : 'walker',
+          kind: recentPrimaryHandoverEvent.kind,
+          ueId: recentPrimaryHandoverEvent.ueId,
+          sourceTimeSec: recentPrimaryHandoverEvent.sourceTimeSec,
+          from,
+          to,
+          // The normalized owner uses the longer inter envelope for both the
+          // live Walker story and the explicit cinema story. This keeps the
+          // source beam visible until the candidate actually arrives.
+          durationMs: recentPrimaryHandoverEvent.kind === 'inter'
+            ? resolveHandoverCinemaDisplayMs('inter')
+            : beamDisplaySpec.triggeredIntraSustainMs,
+        } satisfies HandoverPresentationEvent;
+      })();
+
+    // An intra request is never allowed to replace a source-backed inter event,
+    // regardless of whether the request came from the automatic scheduler or a
+    // button. This is the render-time half of the shared admission gate; App's
+    // ref gate covers the parent-effect half.
+    if (
+      manualHandoverEvent?.kind === 'intra'
+      && naturalCandidate?.kind === 'inter'
+    ) return naturalCandidate;
 
     if (manualHandoverActive && manualHandoverEvent !== null) {
       const from = endpoint(manualHandoverEvent.fromSatId, manualHandoverEvent.fromCellId, viz.coneApexWorldById);
@@ -1829,32 +1901,13 @@ function SceneRenderContent({
     // stale handover overlays; after it lands, the cinema branch above owns it.
     if (handoverCinemaArmed) return null;
 
-    if (recentPrimaryHandoverEvent !== null) {
-      const from = endpoint(
-        recentPrimaryHandoverEvent.fromSatId,
-        recentPrimaryHandoverEvent.fromCellId,
-        viz.coneApexWorldById,
-      );
-      const to = endpoint(
-        recentPrimaryHandoverEvent.toSatId,
-        recentPrimaryHandoverEvent.toCellId,
-        viz.coneApexWorldById,
-      );
-      if (from !== null && to !== null) {
-        return {
-          eventId: `${simSource}:${recentPrimaryHandoverEvent.ueId}:${recentPrimaryHandoverEvent.sourceTimeSec}:${recentPrimaryHandoverEvent.kind}`,
-          source: simSource === 'archived-tle' ? 'tle' : 'walker',
-          kind: recentPrimaryHandoverEvent.kind,
-          ueId: recentPrimaryHandoverEvent.ueId,
-          sourceTimeSec: recentPrimaryHandoverEvent.sourceTimeSec,
-          from,
-          to,
-          durationMs: beamDisplaySpec.triggeredIntraSustainMs,
-        };
-      }
-    }
-
-    return null;
+    // A natural inter event is the first visible owner for this frame. This
+    // ordering matters on the warm-start frame: the parent automatic-intra
+    // effect must not turn a simultaneous natural intra cue into the owner
+    // before the inter pair has acquired the presentation lock. Once an owner
+    // is active, advanceHandoverPresentation still prevents any candidate from
+    // preempting it.
+    return naturalCandidate;
   }, [
     beamDisplaySpec.triggeredIntraSustainMs,
     cinemaHandoverReady,
@@ -1892,12 +1945,37 @@ function SceneRenderContent({
   );
   handoverPresentationStateRef.current = handoverPresentationStep.state;
   const handoverPresentation = handoverPresentationStep.view;
+  // App's automatic intra scheduler is a parent effect, while this owner lives
+  // inside the R3F render tree. Publish the lock during render (ref-only) so the
+  // parent cannot arm a competing intra between these two effect phases.
+  const handoverPresentationBusy = handoverPresentationStep.state.mode === 'presenting'
+    || (handoverPresentationStep.state.mode === 'cooldown'
+      && handoverPresentationNowMs < handoverPresentationStep.state.cooldownUntilMs);
+  onHandoverPresentationBusyChange?.(handoverPresentationBusy || recentAnyInterHandoverEvent !== null);
   const handoverPresentationSource = handoverPresentation.event?.source ?? null;
   const presentedCinemaHandoverActive = handoverPresentation.active
     && handoverPresentationSource === 'cinema';
   const presentedInterHandoverActive = handoverPresentation.active
-    && (handoverPresentationSource === 'manual' || handoverPresentationSource === 'cinema')
     && handoverPresentation.event?.kind === 'inter';
+  const manualHandoverPresentationActive = handoverPresentation.active
+    && handoverPresentationSource === 'manual'
+    && manualHandoverActive;
+  // A natural inter story owns the viewport until the shared presentation
+  // owner releases it. Direct runtime effects must not paint an intra cue over
+  // that owner even if an older frame still carries an intra latch.
+  const concurrentIntraVisualSuppressed = (
+    handoverPresentation.active
+    && handoverPresentation.event?.kind === 'inter'
+  ) || recentAnyInterHandoverEvent !== null;
+  // `pendingTargetSatId` is the live model's pre-fire inter candidate. It is
+  // intentionally not a second visual owner: the candidate fan must not paint
+  // here and then disappear when the normalized handover story acquires the
+  // viewport. The story owner below will paint the same target once, after its
+  // serving lead-in, together with the badge and ho-slow state.
+  const naturalInterCandidatePending = simSource === 'live'
+    && primaryServingRecord?.pendingTargetSatId !== null
+    && primaryServingRecord?.pendingTargetSatId !== undefined
+    && primaryServingRecord.pendingTargetSatId !== primaryServingRecord.servingSatId;
   const presentationHandoverEnvelope = resolveHandoverCinemaEnvelope(
     handoverPresentation.event?.kind ?? null,
     handoverPresentation.progress01,
@@ -1910,7 +1988,13 @@ function SceneRenderContent({
     cinemaCandidateArmed: handoverCinemaArmed,
     cinemaCandidateReady: cinemaHandoverReady,
     cinemaCandidateKind: handoverPresentation.event?.kind ?? handoverCinemaKind,
-    presentationSource: handoverPresentationSource ?? (handoverCinemaArmed ? 'cinema' : undefined),
+    presentationSource: handoverPresentationSource
+      ?? (handoverPresentationStep.state.mode === 'idle' && handoverCinemaArmed ? 'cinema' : undefined),
+    naturalPresentationActive: handoverPresentation.active
+      && (handoverPresentationSource === 'walker' || handoverPresentationSource === 'tle'),
+    naturalInterCandidatePending,
+    presentationKind: handoverPresentation.event?.kind ?? null,
+    presentationMode: handoverPresentationStep.state.mode,
   });
 
   const presentedHandoverPairCandidate = useMemo<SinrLiveCinemaHandoverCandidate | null>(() => {
@@ -1932,17 +2016,28 @@ function SceneRenderContent({
     : viz.coneApexWorldById;
 
   useEffect(() => {
-    onHandoverPresentationChange?.(handoverPresentation);
+    onHandoverPresentationChange?.({
+      view: handoverPresentation,
+      mode: handoverPresentationStep.state.mode,
+      cooldownUntilMs: handoverPresentationStep.state.cooldownUntilMs,
+    });
   }, [
     handoverPresentation.active,
     handoverPresentation.autoSlowActive,
     handoverPresentation.event?.eventId,
     handoverPresentation.phase,
+    handoverPresentationStep.state.cooldownUntilMs,
+    handoverPresentationStep.state.mode,
     onHandoverPresentationChange,
   ]);
   useEffect(() => () => {
-    onHandoverPresentationChange?.(createIdleHandoverPresentationView());
-  }, [onHandoverPresentationChange]);
+    onHandoverPresentationChange?.({
+      view: createIdleHandoverPresentationView(),
+      mode: 'idle',
+      cooldownUntilMs: 0,
+    });
+    onHandoverPresentationBusyChange?.(false);
+  }, [onHandoverPresentationBusyChange, onHandoverPresentationChange]);
 
   // The inter cinema is intentionally self-contained: after the live seek, rebuild a
   // display-only two-satellite fan frame from the already-published earth-fixed cells.
@@ -2325,6 +2420,8 @@ function SceneRenderContent({
         recentHandoverEvents: (sim.sinrLiveCells?.recentHandoverEvents ?? []).filter(
           event => selectedHandoverEventSet.has(event),
         ).filter(
+          event => !concurrentIntraVisualSuppressed || event.kind === 'inter',
+        ).filter(
             e => sinrLiveTargetSatIds === null || !beamDisplaySpec.pulseFocusFollowsScope
               || sinrLiveTargetSatIds.has(e.toSatId)
               || (e.fromSatId !== null && sinrLiveTargetSatIds.has(e.fromSatId)),
@@ -2345,7 +2442,7 @@ function SceneRenderContent({
         protagonistUeId: sim.perUePositions[0]?.id ?? null,
       });
     },
-    [handoverDisplayIsolation.hideTimelinePulse, handoverDisplayIsolation.suppressNaturalHandoverLayers, showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope, beamDisplaySpec.showOtherHandoverUes],
+    [handoverDisplayIsolation.hideTimelinePulse, handoverDisplayIsolation.suppressNaturalHandoverLayers, concurrentIntraVisualSuppressed, showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope, beamDisplaySpec.showOtherHandoverUes],
   );
   // Manual and naturally observed Walker/TLE events share the coordinator's
   // single latched pair. Incoming events cannot restart this envelope; they are
@@ -2355,6 +2452,7 @@ function SceneRenderContent({
       !showSinrLiveCellBeams
       || !handoverPresentation.active
       || handoverPresentation.event?.source !== 'manual'
+      || handoverPresentation.event?.kind !== 'intra'
       || presentedCinemaHandoverActive
       || presentedHandoverPairCandidate === null
       || presentedHandoverPairCandidate.fromCellId === null
@@ -2412,7 +2510,7 @@ function SceneRenderContent({
   // remains armed; this keeps the final handover state readable instead of ending
   // on an empty viewport. Display-only; no simulation record is changed.
   const sinrLiveCinemaHandoverPairConeItems = useMemo(() => {
-    if (!showSinrLiveCellBeams || !presentedCinemaHandoverActive || presentedHandoverPairCandidate === null) return [];
+    if (!showSinrLiveCellBeams || !presentedInterHandoverActive || presentedHandoverPairCandidate === null) return [];
     return resolveCinemaHandoverPairConeItems({
       candidate: presentedHandoverPairCandidate,
       fromOpacity: presentationHandoverEnvelope.fromOpacity,
@@ -2432,7 +2530,7 @@ function SceneRenderContent({
     });
   }, [
     showSinrLiveCellBeams,
-    presentedCinemaHandoverActive,
+    presentedInterHandoverActive,
     presentedHandoverPairCandidate,
     manualHandoverGroundTarget,
     presentationHandoverEnvelope,
@@ -3101,11 +3199,13 @@ function SceneRenderContent({
         && showLiveSceneEffects
         && !handoverDisplayIsolation.hideTimelineEffects
         && !handoverDisplayIsolation.suppressNaturalHandoverLayers
+        && !concurrentIntraVisualSuppressed
         && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
       {presentationPlan.visible['event-effects']
         && showHandoverToastOverlay
         && (
-          (manualHandoverActive && manualHandoverEvent !== null)
+          (manualHandoverPresentationActive && manualHandoverEvent !== null)
+          || (handoverPresentation.active && handoverPresentation.event !== null)
           || (!handoverDisplayIsolation.hideTimelineEffects
             && !handoverDisplayIsolation.suppressNaturalHandoverLayers)
         )
@@ -3113,7 +3213,21 @@ function SceneRenderContent({
         <HandoverToastOverlay
           frame={sceneFrame}
           interTriggerSec={profile.handover.triggerTimeSec}
-          manualHandover={manualHandoverActive && manualHandoverEvent
+          preferredKind={handoverPresentation.active
+            ? handoverPresentation.event?.kind ?? null
+            : null}
+          presentationHandover={handoverPresentation.active && handoverPresentation.event
+            ? {
+              kind: handoverPresentation.event.kind,
+              sourceSatId: handoverPresentation.event.from.satId,
+              sourceBeamId: handoverPresentation.event.from.cellId,
+              targetSatId: handoverPresentation.event.to.satId,
+              targetBeamId: handoverPresentation.event.to.cellId,
+              progressSec: handoverPresentation.progress01 * handoverPresentation.event.durationMs / 1000,
+              targetSec: handoverPresentation.event.durationMs / 1000,
+            }
+            : null}
+          manualHandover={manualHandoverPresentationActive && manualHandoverEvent
             ? {
               kind: manualHandoverEvent.kind,
               sourceSatId: manualHandoverEvent.fromSatId,
@@ -3170,7 +3284,9 @@ interface MainSceneProps {
   /** Spacecraft family for the live legacy Walker presentation. */
   constellation?: SimulatorConstellation;
   /** Reports only a drawable, coordinator-owned visual story to playback. */
-  onHandoverPresentationChange?: (view: HandoverPresentationView) => void;
+  onHandoverPresentationChange?: (snapshot: HandoverPresentationSnapshot) => void;
+  /** Imperative render-time gate; the callback must only update a ref. */
+  onHandoverPresentationBusyChange?: (busy: boolean) => void;
 }
 
 export const MainScene = memo(function MainScene({
@@ -3191,6 +3307,7 @@ export const MainScene = memo(function MainScene({
   handoverCinemaArmed = false,
   handoverCinemaKind = null,
   onHandoverPresentationChange,
+  onHandoverPresentationBusyChange,
   constellation = DEFAULT_SATELLITE_CONSTELLATION,
 }: MainSceneProps) {
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
@@ -3326,6 +3443,7 @@ export const MainScene = memo(function MainScene({
               handoverCinemaArmed={handoverCinemaArmed}
               handoverCinemaKind={handoverCinemaKind}
               onHandoverPresentationChange={onHandoverPresentationChange}
+              onHandoverPresentationBusyChange={onHandoverPresentationBusyChange}
               constellation={constellation}
               presentationPlan={presentationPlan}
             />
@@ -3353,6 +3471,7 @@ export const MainScene = memo(function MainScene({
               handoverCinemaArmed={handoverCinemaArmed}
               handoverCinemaKind={handoverCinemaKind}
               onHandoverPresentationChange={onHandoverPresentationChange}
+              onHandoverPresentationBusyChange={onHandoverPresentationBusyChange}
               constellation={constellation}
               presentationPlan={presentationPlan}
             />

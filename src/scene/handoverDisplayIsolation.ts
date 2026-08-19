@@ -60,19 +60,20 @@ export function selectHandoverEventsForDisplay<T extends HandoverDisplayEventRef
 
 /** Keep intra's existing 8 s teaching envelope unchanged. */
 export const INTRA_HANDOVER_CINEMA_DISPLAY_MS = 8000;
-/** Inter's pair stays on screen one second longer so the serving beam has time to read. */
+/** Inter's six-second story keeps a one-second serving-only lead-in. */
 export const INTER_HANDOVER_CINEMA_DISPLAY_MS = 6000;
 
 /**
- * Inter keeps the source link present through candidate arrival, then gives the
- * source a short release and the candidate a shorter settled tail. Intra keeps
- * the shared envelope below unchanged.
+ * Inter's six-second story is allocated as approximately 1.0 s serving-only,
+ * 1.55 s candidate arrival, 0.91 s overlap, 1.45 s source release, and 1.09 s
+ * settled. The time removed from the old 2.7 s lead-in is distributed across
+ * the later stages instead of shortening the handover story.
  */
 export const INTER_HANDOVER_CINEMA_PHASE_END = {
-  serving: 0.45,
-  measuring: 0.62,
-  holding: 0.72,
-  releasing: 0.88,
+  serving: 1 / 6,
+  measuring: 14 / 33,
+  holding: 19 / 33,
+  releasing: 9 / 11,
 } as const;
 
 function interSmoothstep01(value: number): number {
@@ -154,41 +155,68 @@ export function resolveHandoverDisplayIsolation(input: {
   readonly cinemaCandidateArmed?: boolean;
   readonly cinemaCandidateReady?: boolean;
   readonly cinemaCandidateKind?: 'intra' | 'inter' | null;
-  /** Natural Walker/TLE events remain in the ordinary live field. */
+  /** Source of the normalized presentation owner, when one is visible. */
   readonly presentationSource?: HandoverDisplayPresentationSource;
+  /** The normalized owner currently presents a natural Walker/TLE handover. */
+  readonly naturalPresentationActive?: boolean;
+  /**
+   * The live model has admitted a cross-satellite candidate, but has not fired
+   * the handover event yet. Keep that candidate out of the ordinary fan layer;
+   * it must enter through the same normalized inter story as the badge/pair.
+   */
+  readonly naturalInterCandidatePending?: boolean;
+  /** Kind of the normalized owner currently being presented. */
+  readonly presentationKind?: 'intra' | 'inter' | null;
+  /** Shared owner mode; cooldown is still occupied even when `active` is false. */
+  readonly presentationMode?: 'idle' | 'presenting' | 'cooldown';
 }): HandoverDisplayIsolationState {
-  // Keep the old flag-only contract for existing pure callers/tests. Once a
-  // source is supplied, only an explicit manual/cinema story owns isolation;
-  // a natural Walker/TLE event is rendered by the normal serving/candidate and
-  // pulse layers instead of blanking the serving field.
+  // Keep the old flag-only contract for existing pure callers/tests. A natural
+  // source claims the display only after the normalized presentation owner has
+  // acquired a drawable INTER story. Natural intra events keep their ordinary
+  // live field; only the inter pair needs an alternate source/target frame.
   const sourceOwnsPresentation = input.presentationSource === undefined
     || input.presentationSource === 'manual'
     || input.presentationSource === 'cinema';
-  const active = sourceOwnsPresentation
+  const presentationKind = input.presentationKind ?? input.cinemaCandidateKind ?? null;
+  const naturalInterPresentationActive = (
+    input.presentationSource === 'walker' || input.presentationSource === 'tle'
+  ) && input.naturalPresentationActive === true
+    && presentationKind === 'inter';
+  const explicitPresentationActive = sourceOwnsPresentation
     && (input.manualHandoverActive || input.cinemaCandidateActive);
-  const interCinemaActive = active && input.cinemaCandidateKind === 'inter';
+  const active = explicitPresentationActive || naturalInterPresentationActive;
+  const interCinemaActive = active && presentationKind === 'inter';
   const cinemaPending = sourceOwnsPresentation
     && input.cinemaCandidateArmed === true
     && input.cinemaCandidateReady !== true
     && !input.manualHandoverActive;
-  // A natural Walker/TLE source never owns this policy by itself. A manual
-  // request, however, is an explicit claim even during the one render in
+  const naturalPresentationOwns = input.presentationSource === 'walker'
+    || input.presentationSource === 'tle';
+  const explicitPresentationOwns = input.presentationSource === 'manual'
+    || input.presentationSource === 'cinema';
+  // A natural owner or its cooldown remains the only owner until it releases.
+  // The armed flags are requests, not a second permission to blank or replace
+  // that owner. With no active owner, an explicit request may claim the field.
+  const explicitClaimMayPaint = !naturalPresentationOwns
+    && (explicitPresentationOwns || input.presentationMode === undefined || input.presentationMode === 'idle');
+  // A natural Walker/TLE source owns this policy only through the normalized
+  // inter story above. A manual request, however, is an explicit claim even during the one render in
   // which its pair is not drawable yet; otherwise the old natural pulse can
   // leak through before the fail-closed manual story is resolved.
-  const manualClaimed = input.manualHandoverRequested === true
-    || (input.manualHandoverActive
-      && input.presentationSource !== 'walker'
-      && input.presentationSource !== 'tle');
-  const cinemaClaimed = input.cinemaCandidateArmed === true
-    || (input.cinemaCandidateActive
-      && input.presentationSource !== 'walker'
-      && input.presentationSource !== 'tle');
-  const suppressNaturalHandoverLayers = manualClaimed || cinemaClaimed;
+  const manualClaimed = explicitClaimMayPaint && (input.manualHandoverRequested === true
+    || input.manualHandoverActive);
+  const cinemaClaimed = explicitClaimMayPaint && (input.cinemaCandidateArmed === true
+    || input.cinemaCandidateActive);
+  const naturalInterCandidatePending = input.naturalInterCandidatePending === true
+    && !naturalInterPresentationActive
+    && !explicitPresentationActive
+    && !cinemaPending;
+  const suppressNaturalHandoverLayers = naturalInterPresentationActive || manualClaimed || cinemaClaimed;
 
   return {
     active,
     hidePrimaryServingBeam: active,
-    hideCandidateFan: active || cinemaPending,
+    hideCandidateFan: active || cinemaPending || naturalInterCandidatePending,
     hideNormalBeamField: interCinemaActive,
     showCinemaCandidateFan: interCinemaActive,
     hideTimelinePulse: active || cinemaPending || manualClaimed,

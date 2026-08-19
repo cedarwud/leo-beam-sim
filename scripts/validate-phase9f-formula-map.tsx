@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import {
   assertAttr,
   assertContainsTestId,
+  assertNoTestId,
   assertNoAttr,
   assertNotContainsTestId,
   assertTestIdAttr,
@@ -41,7 +42,10 @@ function createBudgetTerms(): LinkBudgetTerms {
 
 type TestTab = 'signal-power' | 'beam' | 'receiver-gain' | 'thermal-noise';
 
-function renderPanel(initialActiveTab: TestTab = 'signal-power') {
+function renderPanel(
+  initialActiveTab: TestTab = 'signal-power',
+  initialMainTab: 'sinr' | 'power' = 'sinr',
+) {
   const profile = loadProfile(PROFILE_ID);
   const tuning = {
     ...createSignalTuningState(profile),
@@ -63,6 +67,7 @@ function renderPanel(initialActiveTab: TestTab = 'signal-power') {
       formulaBudget={createBudgetTerms()}
       isFormulaEvidenceStale={false}
       initialActiveTab={initialActiveTab}
+      initialMainTab={initialMainTab}
       onTuningChange={() => {}}
       onTopologyChange={() => {}}
       onSceneVisualScaleChange={() => {}}
@@ -81,66 +86,14 @@ function renderPanel(initialActiveTab: TestTab = 'signal-power') {
  * "Co-channel interference") only ever tested the copy — and made the copy
  * un-translatable, which is how the un-earned regression got in.
  */
-const NUMERATOR_CHAIN = ['transmit-power', 'path-gain-loss', 'transmit-gain', 'receiver-gain'] as const;
-const DENOMINATOR_TERMS = ['interference', 'thermal-noise'] as const;
-
-function assertFormulaMapOwnership(): void {
+function assertSimplifiedFormulaOwnership(): void {
   const signal = renderPanel('signal-power');
-  const map = extractElementByTestId(signal.markup, 'sinr-formula-map', 'signal-power tab');
-
-  const numerator = extractElementByTestId(map, 'formula-map-numerator');
-  assertTestIdAttr(map, 'formula-map-numerator', 'data-formula-side', 'numerator');
-  assertContainsTestId(map, 'formula-map-numerator', 'formula-map-pt');
-  assertContainsTestId(map, 'formula-map-numerator', 'formula-map-hl');
-  assertContainsTestId(map, 'formula-map-numerator', 'formula-map-gt');
-  assertContainsTestId(map, 'formula-map-numerator', 'formula-map-gr');
-
-  // The signal path is an ORDERED chain P_t -> H/L -> G^T -> G^R. Asserting the
-  // sequence of term owners replaces the old pin on the rendered notation string
-  // and is strictly stronger: it fails on a reordering the notation pin allowed.
-  assert.deepEqual(
-    attrValuesIn(numerator, 'data-term-owner'),
-    [...NUMERATOR_CHAIN],
-    'numerator map must present the full signal chain, in signal-path order',
-  );
-  // Every numerator tile declares the numerator side on its own element, so a
-  // tile cannot be visually filed under the numerator while claiming otherwise.
-  for (const tile of ['formula-map-pt', 'formula-map-hl', 'formula-map-gt', 'formula-map-gr']) {
-    assertTestIdAttr(numerator, tile, 'data-formula-side', 'numerator');
-  }
-
-  const denominator = extractElementByTestId(map, 'formula-map-denominator');
-  assertTestIdAttr(map, 'formula-map-denominator', 'data-formula-side', 'denominator');
-  assertContainsTestId(map, 'formula-map-denominator', 'formula-map-interference');
-  assertContainsTestId(map, 'formula-map-denominator', 'formula-map-sigma');
-  assert.deepEqual(
-    attrValuesIn(denominator, 'data-term-owner'),
-    [...DENOMINATOR_TERMS],
-    'denominator map must present exactly the impairment terms',
-  );
-  assertTestIdAttr(denominator, 'formula-map-interference', 'data-formula-side', 'denominator');
-  assertTestIdAttr(denominator, 'formula-map-sigma', 'data-formula-side', 'denominator');
-
-  // G^R is a NUMERATOR term. It must not appear on the impairment side at all —
-  // neither as a tile nor as an owner claim.
-  assertNotContainsTestId(map, 'formula-map-denominator', 'formula-map-gr');
-  assertNoAttr(denominator, 'data-term-owner', 'receiver-gain', 'denominator map');
-  assertNotContains(decodeHtmlText(denominator), 'Research Override');
-
-  // G^R is an INDEPENDENT numerator tile: it owns receiver gain, and it is not
-  // nested inside (i.e. presented as a sub-property of) P_t or G^T.
-  assertTestIdAttr(numerator, 'formula-map-gr', 'data-term-owner', 'receiver-gain');
-  const grTile = extractElementByTestId(numerator, 'formula-map-gr');
-  assertNotContains(decodeHtmlText(grTile), 'Research Override');
-  for (const sibling of ['formula-map-pt', 'formula-map-gt', 'formula-map-hl']) {
-    assertNotContainsTestId(numerator, sibling, 'formula-map-gr');
-    assertNoAttr(
-      extractElementByTestId(numerator, sibling),
-      'data-term-owner',
-      'receiver-gain',
-      `${sibling} tile`,
-    );
-  }
+  assertNoTestId(signal.markup, 'sinr-formula-map', 'simplified SINR page');
+  assertContainsTestId(signal.markup, 'signal-power-controls', 'signal-power-output-formula');
+  assert.match(signal.markup, /P<sup>o<\/sup><sub>s,v<\/sub>/);
+  assert.match(signal.markup, /h<sub>u,s,v<\/sub>/);
+  assert.match(signal.markup, /I<sub>u,s,v<\/sub>/);
+  assertNotContains(signal.markup, 'formula-map-pt');
 }
 
 /**
@@ -149,14 +102,14 @@ function assertFormulaMapOwnership(): void {
  * a denominator control group, and vice versa.
  */
 const CONTROL_GROUPS = [
-  { tab: 'signal-power', section: 'signal-power-controls', side: 'numerator', own: 'pt-signal-power-control' },
+  { tab: 'signal-power', section: 'signal-power-controls', side: 'numerator', own: 'signal-power-output-formula' },
   { tab: 'beam', section: 'beam-gain-controls', side: 'numerator', own: 'gtmax-transmit-gain-control' },
   { tab: 'receiver-gain', section: 'receiver-gain-controls', side: 'numerator', own: 'gr-receiver-gain-control' },
   { tab: 'thermal-noise', section: 'thermal-noise-controls', side: 'denominator', own: 'bandwidth-thermal-noise-control' },
 ] as const;
 
 const ALL_TERM_CONTROLS = [
-  'pt-signal-power-control',
+  'walker-power-output-control',
   'gtmax-transmit-gain-control',
   'gr-receiver-gain-control',
   'bandwidth-thermal-noise-control',
@@ -181,35 +134,38 @@ function assertControlGroupingStillSeparated(): void {
     assertNotContains(decodeHtmlText(extractElementByTestId(markup, group.section)), 'Research Override');
   }
 
-  // The G^R control specifically is not a child of the P_t control.
+  // The G^R control specifically is not a child of the P^o formula section.
   const signal = renderPanel('signal-power');
-  assertNotContainsTestId(signal.markup, 'pt-signal-power-control', 'gr-receiver-gain-control');
+  assertNotContainsTestId(signal.markup, 'signal-power-controls', 'gr-receiver-gain-control');
+
+  const power = renderPanel('signal-power', 'power');
+  assertContainsTestId(power.markup, 'walker-power-page', 'walker-power-output-control');
 
   // The thermal-noise page keeps sigma^2 as a read-only derived readout beside
-  // its two editable inputs, and the denominator map there still excludes G^R.
+  // its two editable inputs; G^R remains absent from that denominator group.
   const noise = renderPanel('thermal-noise');
   assertContainsTestId(noise.markup, 'thermal-noise-controls', 'thermal-noise-floor-readout');
   assertContainsTestId(noise.markup, 'thermal-noise-controls', 'n0-thermal-noise-control');
-  assertNotContainsTestId(noise.markup, 'formula-map-denominator', 'formula-map-gr');
+  assertNotContainsTestId(noise.markup, 'thermal-noise-controls', 'gr-receiver-gain-control');
   assertAttr(noise.markup, 'data-readonly', 'true', 'thermal-noise page');
 }
 
 function run(): void {
-  assertFormulaMapOwnership();
+  assertSimplifiedFormulaOwnership();
   assertControlGroupingStillSeparated();
 
-  console.log('Phase 9F formula map / G^R placement validation passed.');
+  console.log('Phase 9F simplified formula ownership / G^R placement validation passed.');
   console.log(JSON.stringify({
     asserted: {
       formulaMap: [
-        'numerator map presents the ordered chain transmit-power -> path-gain-loss -> transmit-gain -> receiver-gain',
-        'denominator map presents exactly interference + thermal-noise, and never claims receiver-gain',
-        'every map tile declares its own data-formula-side and data-term-owner',
-        'G^R is not inside the P_t control group',
-        'G^R is not in the denominator map',
+        'the retired P_t/H/G^T/G^R formula map is absent',
+        'the visible SINR formula uses h, P^o, I, and sigma^2',
+        'G^R is not inside the P^o formula section',
+        'G^R is not in the denominator control group',
       ],
       preserved: [
-        'each control group declares the same formula side its map tile claims',
+        'each SINR group declares its formula side directly',
+        'the actual RF control is owned by the Power main page',
         'existing thermal-noise controls remain denominator-side controls',
       ],
     },
