@@ -232,6 +232,35 @@ import {
 import { usePlaybackControls } from './usePlaybackControls';
 import type { HandoverPresentationSnapshot } from './scene/handoverPresentationOwner';
 import { useCameraControls } from './useCameraControls';
+// --- /walker sandbox-only imports below. These power the temporary
+// /simulator-style left-sidebar reference column grafted in for the "/"
+// left-sidebar redesign; they are not used by the live App.tsx.
+import { useVisualLabSession } from './visualLab/session';
+import {
+  DEFAULT_VISUAL_LAB_INPUTS,
+  type VisualLabInputKey,
+  type VisualLabInputValues,
+} from './visualLab/experiment';
+import {
+  VisualLabProgressiveControlDock,
+  type VisualLabUeGeometryControls,
+} from './prototype/visual-lab-g0/VisualLabProgressiveControlDock';
+import {
+  VISUAL_LAB_MODULES,
+  moduleDefinition,
+  moduleShortLabel,
+  type VisualLabModuleKey,
+} from './prototype/visual-lab-g0/visualLabWorkspace';
+import type { VisualLabFocus, VisualLabView } from './prototype/visual-lab-g0/VisualLabScene';
+import {
+  degreesFromRadians,
+  offAxisAngleRadForVisualLabUe,
+  positionForVisualLabUeOffAxisAngle,
+  radiansFromDegrees,
+} from './prototype/visual-lab-g0/visualLabUeGeometry';
+import { focusForVisualLabInput } from './prototype/visual-lab-g0/visualLabInputFocus';
+import './prototype/visual-lab-g0/UnifiedVisualLabPrototype.scss';
+import './AppWalkerSandboxReskin.scss';
 
 interface HandoverPolicyRuntimeState {
   profileId: string;
@@ -258,7 +287,31 @@ const REPLAY_ARM_WINDOWS: Readonly<Record<ReplayArm, string>> = {
 };
 const REPLAY_ARM_DEFAULT: ReplayArm = 'a2';
 
-export function App() {
+// Sandbox-only: sidebar 2 keeps SignalTuningPanel's real "main tab" buttons
+// (they own the actual tab state -- SignalTuningPanel is uncontrolled), but
+// that native tab row is hidden (see AppWalkerSandboxReskin.scss) and
+// replaced by this icon nav in the same vlab-sidebar-modules layout as
+// sidebar 1. Selecting an icon here forwards a real click to the hidden
+// native button by id, so SignalTuningPanel's own state (and everything it
+// renders below) keeps working unmodified -- content is untouched, only the
+// switcher's presentation changes. Symbols reuse the exact glyphs
+// /simulator already assigns these concepts in visualLabWorkspace.ts
+// (VISUAL_LAB_MODULES + VISUAL_LAB_RESULT_MODULES: TLE / gamma / R / P / eta).
+type SandboxSidebar2Tab = 'scenario' | 'sinr' | 'throughput' | 'power' | 'energy';
+const SANDBOX_SIDEBAR2_MODULES: readonly { readonly key: SandboxSidebar2Tab; readonly symbol: string; readonly label: string }[] = [
+  { key: 'scenario', symbol: 'TLE', label: 'Scenario' },
+  { key: 'sinr', symbol: 'γ', label: 'SINR' },
+  { key: 'throughput', symbol: 'R', label: 'Throughput' },
+  { key: 'power', symbol: 'P', label: 'Power' },
+  { key: 'energy', symbol: 'η', label: 'EE' },
+];
+
+// Sandbox-only toggle: while comparing just the two left sidebars, drop the
+// center scene and right rail from the layout entirely. Flip back to false to
+// see the full four-column shell again.
+const SANDBOX_HIDE_CANVAS_AND_RIGHT_RAIL = true;
+
+export function AppWalkerSandbox() {
   // `/` is the original public Walker surface. `/legacy` and `/walker` remain
   // explicit aliases so old bookmarks and comparison screenshots keep working;
   // `/simulator` now serves the unified Visual Lab route.
@@ -2356,6 +2409,175 @@ export function App() {
     resetAutoSlowDismissedRef.current();
   }, [baseProfile]);
 
+
+  // === /walker sandbox-only: independent Visual Lab session ===============
+  // Powers the reference left-sidebar column below. Deliberately its own
+  // useVisualLabSession() instance -- it does not read or write any Walker
+  // state above, so it cannot disturb the live "/" page or its own
+  // still-in-flux left sidebar. Delete this whole block plus the
+  // `leo-walker-sandbox-vlab-reference` <aside> once the redesign lands.
+  const vlabRefSession = useVisualLabSession({ view: 'service', density: 'clean', focus: 'geometry' });
+  const vlabRefLab = vlabRefSession.snapshot();
+  const vlabRefInputs = vlabRefLab.draft.parameters as VisualLabInputValues;
+  const vlabRefSnapshot = vlabRefLab.canonical;
+  const vlabRefLocalScene = vlabRefLab.localScene;
+  const vlabRefDraftSource = {
+    constellation: vlabRefLab.draft.source.constellation,
+    localDateTime: vlabRefLab.draft.source.taipeiDateTime || '2026-08-12T20:00',
+  };
+  const vlabRefDisplayAcceptedSource = vlabRefLab.accepted !== null
+    ? {
+      constellation: vlabRefLab.accepted.identity.constellation,
+      localDateTime: vlabRefLab.accepted.identity.instantTaipei.slice(0, 16),
+    }
+    : { constellation: 'starlink' as const, localDateTime: '2026-08-12T20:00' };
+  const vlabRefAcceptedSourceMatchesDraft = vlabRefLab.accepted !== null
+    && vlabRefLab.accepted.identity.constellation === vlabRefLab.draft.source.constellation
+    && vlabRefLab.accepted.identity.instantTaipei.slice(0, 16) === vlabRefLab.draft.source.taipeiDateTime;
+  const vlabRefApplyingSource = vlabRefLab.draft.source.dirty === false
+    && vlabRefLab.accepted !== null
+    && !vlabRefAcceptedSourceMatchesDraft;
+  const vlabRefSourceDirty = vlabRefLab.draft.source.dirty;
+  const [vlabRefOpenModules, setVlabRefOpenModules] = useState<readonly VisualLabModuleKey[]>(['scene']);
+  const [vlabRefActiveModule, setVlabRefActiveModule] = useState<VisualLabModuleKey>('scene');
+  const [vlabRefSelectedUe, setVlabRefSelectedUe] = useState<{ readonly x: number; readonly z: number } | null>(null);
+  const vlabRefUeRecomputeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (vlabRefUeRecomputeTimerRef.current !== null) clearTimeout(vlabRefUeRecomputeTimerRef.current);
+  }, []);
+  const vlabRefSetView = useCallback((next: VisualLabView): void => {
+    void vlabRefSession.dispatch({ type: 'setView', view: next });
+  }, [vlabRefSession]);
+  const vlabRefSetFocus = useCallback((next: Exclude<VisualLabFocus, 'none'>): void => {
+    void vlabRefSession.dispatch({ type: 'setFocus', focus: next });
+  }, [vlabRefSession]);
+  const vlabRefOpenModule = useCallback((module: VisualLabModuleKey): void => {
+    setVlabRefOpenModules((current) => current.includes(module) ? current : [...current, module]);
+    setVlabRefActiveModule(module);
+    vlabRefSetFocus(moduleDefinition(module).focus);
+  }, [vlabRefSetFocus]);
+  const vlabRefUpdateInput = useCallback((key: VisualLabInputKey, value: number): void => {
+    void vlabRefSession.dispatch({ type: 'editCanonicalParameter', key, value });
+    vlabRefSetFocus(focusForVisualLabInput(key));
+  }, [vlabRefSession, vlabRefSetFocus]);
+  const vlabRefResetInput = useCallback((key: VisualLabInputKey): void => {
+    vlabRefUpdateInput(key, DEFAULT_VISUAL_LAB_INPUTS[key]);
+  }, [vlabRefUpdateInput]);
+  const vlabRefApplySource = useCallback((): void => {
+    void vlabRefSession.dispatch({ type: 'applySource' });
+  }, [vlabRefSession]);
+  const vlabRefScheduleUeRecompute = useCallback((userIndex: number, positionKm: readonly [number, number]): void => {
+    if (vlabRefUeRecomputeTimerRef.current !== null) clearTimeout(vlabRefUeRecomputeTimerRef.current);
+    vlabRefUeRecomputeTimerRef.current = setTimeout(() => {
+      vlabRefUeRecomputeTimerRef.current = null;
+      void vlabRefSession.dispatch({
+        type: 'applyRepresentativeUeFrameOptions',
+        frameOptions: {
+          representativeUserIndex: userIndex,
+          userPositionOverridesKm: [{ userIndex, positionKm }],
+        },
+      });
+    }, 180);
+  }, [vlabRefSession]);
+  const vlabRefResetUeProbe = useCallback((): void => {
+    if (vlabRefUeRecomputeTimerRef.current !== null) {
+      clearTimeout(vlabRefUeRecomputeTimerRef.current);
+      vlabRefUeRecomputeTimerRef.current = null;
+    }
+    setVlabRefSelectedUe(null);
+    void vlabRefSession.dispatch({ type: 'resetRepresentativeUeFrameOptions' });
+  }, [vlabRefSession]);
+  const vlabRefUeGeometryControls: VisualLabUeGeometryControls | null = useMemo(() => {
+    if (
+      vlabRefSnapshot === null
+      || vlabRefLocalScene?.representative.availability !== 'available'
+      || vlabRefLocalScene.representative.user === null
+      || vlabRefLocalScene.representative.cell === null
+      || vlabRefSnapshot.serving.distanceKm === null
+      || vlabRefSnapshot.serving.elevationDeg === null
+      || !Number.isFinite(vlabRefLocalScene.substrate.worldUnitsPerKm)
+      || vlabRefLocalScene.substrate.worldUnitsPerKm <= 0
+    ) return null;
+    const representative = vlabRefLocalScene.representative;
+    const scale = vlabRefLocalScene.substrate.worldUnitsPerKm;
+    const acceptedPositionKm = representative.user.positionKm;
+    const draftPositionKm: readonly [number, number] = vlabRefSelectedUe === null
+      ? acceptedPositionKm
+      : [vlabRefSelectedUe.x / scale, -vlabRefSelectedUe.z / scale];
+    const beamCenterKm = representative.cell.centerKm;
+    const maxRadiusKm = vlabRefLocalScene.substrate.cellRadiusKm * .96;
+    const directionVector = [
+      acceptedPositionKm[0] - beamCenterKm[0],
+      acceptedPositionKm[1] - beamCenterKm[1],
+    ] as const;
+    const directionLength = Math.hypot(directionVector[0], directionVector[1]);
+    const direction = directionLength > 1e-12
+      ? [directionVector[0] / directionLength, directionVector[1] / directionLength] as const
+      : undefined;
+    const angleInput = {
+      satelliteDistanceKm: vlabRefSnapshot.serving.distanceKm,
+      satelliteElevationDeg: vlabRefSnapshot.serving.elevationDeg,
+      beamCenterKm,
+      userPositionKm: draftPositionKm,
+      maxRadiusKm,
+      direction,
+    } as const;
+    const acceptedAngleRad = offAxisAngleRadForVisualLabUe({
+      satelliteDistanceKm: angleInput.satelliteDistanceKm,
+      satelliteElevationDeg: angleInput.satelliteElevationDeg,
+      beamCenterKm,
+      userPositionKm: acceptedPositionKm,
+    });
+    const draftAngleRad = offAxisAngleRadForVisualLabUe(angleInput);
+    const maxPositionKm = positionForVisualLabUeOffAxisAngle(angleInput, Math.PI);
+    const maxAngleRad = offAxisAngleRadForVisualLabUe({
+      satelliteDistanceKm: angleInput.satelliteDistanceKm,
+      satelliteElevationDeg: angleInput.satelliteElevationDeg,
+      beamCenterKm,
+      userPositionKm: maxPositionKm,
+    });
+    return {
+      acceptedAngleDeg: degreesFromRadians(acceptedAngleRad),
+      draftAngleDeg: degreesFromRadians(draftAngleRad),
+      maxAngleDeg: Math.max(degreesFromRadians(maxAngleRad), .01),
+      hasDraft: vlabRefSelectedUe !== null,
+      onAngleChange: (angleDeg: number): void => {
+        const positionKm = positionForVisualLabUeOffAxisAngle(angleInput, radiansFromDegrees(angleDeg));
+        setVlabRefSelectedUe({ x: positionKm[0] * scale, z: -positionKm[1] * scale });
+        vlabRefScheduleUeRecompute(representative.user.index, positionKm);
+        vlabRefSetFocus('geometry');
+      },
+      onReset: vlabRefResetUeProbe,
+    };
+  }, [vlabRefLocalScene, vlabRefResetUeProbe, vlabRefScheduleUeRecompute, vlabRefSelectedUe, vlabRefSetFocus, vlabRefSnapshot]);
+  const vlabRefUi = vlabRefLab.presentation.locale === 'zh-Hant' ? {
+    modulesAria: '可逐步加入的分析模組',
+    fieldAria: '場域切換',
+    ntpuField: 'NTPU 場域',
+    globalField: '全球軌道',
+    switchTheme: '切換主題',
+    building: '正在建立衛星軌道與鏈路結果',
+    buildingHint: '完整計算完成後即可調整參數。',
+  } : {
+    modulesAria: 'Progressive analysis modules',
+    fieldAria: 'Field switch',
+    ntpuField: 'NTPU field',
+    globalField: 'Global orbit',
+    switchTheme: 'Switch theme',
+    building: 'Building satellite orbits and link results',
+    buildingHint: 'Parameters become adjustable once the full computation lands.',
+  };
+
+  // Sandbox-only: mirrors SignalTuningPanel's own (uncontrolled) main-tab
+  // state so the icon nav below can show the right button as active. See the
+  // SANDBOX_SIDEBAR2_MODULES comment above for why this forwards a real
+  // click rather than driving SignalTuningPanel via a prop.
+  const [sandboxSidebar2ActiveTab, setSandboxSidebar2ActiveTab] = useState<SandboxSidebar2Tab>('sinr');
+  const sandboxSidebar2SelectTab = useCallback((key: SandboxSidebar2Tab) => {
+    setSandboxSidebar2ActiveTab(key);
+    document.getElementById(`signal-tuning-main-tab-${key}`)?.click();
+  }, []);
+
   return (
     // One global locale state for the whole shell: the left tuners, the centre
     // scene overlays, the right readout and every HelpPopover all consume the
@@ -2501,9 +2723,131 @@ export function App() {
       <div
         className="leo-shell-row"
         data-left-sidebar-collapsed={leftSidebarCollapsed ? 'true' : 'false'}
+        style={{
+          // Sandbox-only: center scene + right rail are hidden below (SANDBOX_HIDE_CANVAS_AND_RIGHT_RAIL)
+          // while only the two left sidebars are being compared, so the grid only needs two tracks.
+          gridTemplateAreas: SANDBOX_HIDE_CANVAS_AND_RIGHT_RAIL
+            ? '"vlabref left"'
+            : '"vlabref left canvas right"',
+          // Both columns get a floor they can't be squeezed below (previously
+          // column 2 was `minmax(0, ...)` -- a 0 floor -- so widening column
+          // 1's fixed 460px just ate column 2's space and made ITS content
+          // (e.g. the SINR term-chip labels) truncate worse than before.
+          gridTemplateColumns: SANDBOX_HIDE_CANVAS_AND_RIGHT_RAIL
+            ? 'minmax(420px, 1fr) minmax(520px, 1fr)'
+            : 'minmax(420px, 1fr) minmax(520px, 1fr) minmax(480px, 1fr) minmax(280px, var(--leo-right-drawer-width))',
+        }}
       >
+        {/* /walker sandbox-only reference column: the real /simulator left
+            sidebar, running its own Visual Lab session. Kept side-by-side
+            with the original leo-shell-left below while that one gets
+            reskinned to match. Remove this <aside> (and the vlabRef* state
+            block above) once the redesign is done. */}
         <aside
-          className="leo-shell-left"
+          className="leo-walker-sandbox-vlab-reference"
+          aria-label="Visual Lab left sidebar (reference, for redesign)"
+          data-testid="walker-sandbox-vlab-reference"
+          style={{ gridArea: 'vlabref', minWidth: 0, overflowY: 'auto' }}
+        >
+          <div className={`leo-walker-sandbox-vlab-vars${vlabRefLab.presentation.theme === 'light' ? ' leo-walker-sandbox-vlab-vars--light' : ''}`}>
+            <div className="vlab-left-control-stack">
+              <nav className="vlab-sidebar-modules" aria-label={vlabRefUi.modulesAria}>
+                {VISUAL_LAB_MODULES.map((module) => {
+                  const isOpen = vlabRefOpenModules.includes(module.key);
+                  const isActive = isOpen && vlabRefActiveModule === module.key;
+                  return (
+                    <button
+                      key={module.key}
+                      type="button"
+                      className={`vlab-sidebar-module vlab-sidebar-module--${module.tone}${isActive ? ' is-active' : ''}`}
+                      aria-pressed={isActive}
+                      onClick={() => vlabRefOpenModule(module.key)}
+                    >
+                      <span aria-hidden="true">{module.symbol}</span>
+                      <strong>{moduleShortLabel(module.key, vlabRefLab.presentation.locale)}</strong>
+                    </button>
+                  );
+                })}
+              </nav>
+              <div className="vlab-sidebar-utilities">
+                <button
+                  type="button"
+                  className="vlab-field-switch"
+                  role="switch"
+                  aria-checked={vlabRefLab.presentation.view !== 'earth'}
+                  aria-label={vlabRefUi.fieldAria}
+                  onClick={() => vlabRefSetView(vlabRefLab.presentation.view === 'earth' ? 'service' : 'earth')}
+                >
+                  <span>{vlabRefLab.presentation.view === 'earth' ? vlabRefUi.globalField : vlabRefUi.ntpuField}</span>
+                  <i aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={vlabRefUi.switchTheme}
+                  onClick={() => { void vlabRefSession.dispatch({ type: 'setTheme', theme: vlabRefLab.presentation.theme === 'dark' ? 'light' : 'dark' }); }}
+                >
+                  {vlabRefLab.presentation.theme === 'dark' ? '☀' : '☾'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { void vlabRefSession.dispatch({ type: 'setLocale', locale: vlabRefLab.presentation.locale === 'zh-Hant' ? 'en' : 'zh-Hant' }); }}
+                >
+                  {vlabRefLab.presentation.locale === 'zh-Hant' ? 'EN' : '繁中'}
+                </button>
+              </div>
+              {vlabRefOpenModules.includes(vlabRefActiveModule) && vlabRefSnapshot !== null ? (
+                <VisualLabProgressiveControlDock
+                  className="vlab-panel vlab-progressive-control-dock"
+                  locale={vlabRefLab.presentation.locale}
+                  activeModule={vlabRefActiveModule}
+                  inputs={vlabRefInputs}
+                  draftSource={vlabRefDraftSource}
+                  acceptedSource={vlabRefDisplayAcceptedSource}
+                  applyingSource={vlabRefApplyingSource}
+                  sourceDirty={vlabRefSourceDirty}
+                  beamLayoutCount={vlabRefLab.draft.frameOptions.beamLayoutCount}
+                  beamIlluminationMode={vlabRefLab.draft.frameOptions.beamIlluminationMode}
+                  ueGeometry={vlabRefUeGeometryControls}
+                  perSatelliteBeamLayoutCount={vlabRefLab.draft.frameOptions.perSatelliteBeamLayoutCount}
+                  snapshot={vlabRefSnapshot}
+                  onDraftSourceChange={(patch) => {
+                    void vlabRefSession.dispatch({ type: 'editSourceDraft', draft: {
+                      constellation: patch.constellation ?? vlabRefDraftSource.constellation,
+                      taipeiDateTime: patch.localDateTime ?? vlabRefDraftSource.localDateTime,
+                    } });
+                  }}
+                  onApplySource={vlabRefApplySource}
+                  onBeamLayoutCountChange={(beamCount) => {
+                    setVlabRefSelectedUe(null);
+                    void vlabRefSession.dispatch({ type: 'setBeamLayoutCount', beamCount });
+                  }}
+                  onBeamIlluminationModeChange={(mode) => {
+                    setVlabRefSelectedUe(null);
+                    void vlabRefSession.dispatch({ type: 'setBeamIlluminationMode', mode });
+                  }}
+                  onPerSatelliteBeamLayoutChange={(satelliteId, beamCount) => {
+                    setVlabRefSelectedUe(null);
+                    void vlabRefSession.dispatch({ type: 'setPerSatelliteBeamLayout', satelliteId, beamCount });
+                  }}
+                  onPerSatelliteBeamLayoutRemove={(satelliteId) => {
+                    setVlabRefSelectedUe(null);
+                    void vlabRefSession.dispatch({ type: 'removePerSatelliteBeamLayout', satelliteId });
+                  }}
+                  onInputChange={vlabRefUpdateInput}
+                  onResetInput={vlabRefResetInput}
+                  onResetAll={() => { void vlabRefSession.dispatch({ type: 'resetCanonicalParameters' }); }}
+                />
+              ) : vlabRefOpenModules.includes(vlabRefActiveModule) ? (
+                <aside className="vlab-panel vlab-progressive-control-dock vlab-data-pending" aria-busy="true">
+                  <strong>{vlabRefUi.building}</strong>
+                  <span>{vlabRefUi.buildingHint}</span>
+                </aside>
+              ) : null}
+            </div>
+          </div>
+        </aside>
+        <aside
+          className="leo-shell-left leo-walker-sandbox-vlab-reskin"
           data-left-sidebar-state={leftSidebarCollapsed ? 'collapsed' : 'expanded'}
           aria-label="Signal tuning panel slot"
         >
@@ -2596,6 +2940,33 @@ export function App() {
               onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}
             />
           )}
+          {/* /walker sandbox-only: icon module nav standing in for
+              SignalTuningPanel's own text-tab row (hidden by the reskin
+              stylesheet), same vlab-sidebar-modules structure as sidebar 1. */}
+          {sceneLane === 'sinr-live' && isLegacyWalkerRoute && (
+            <div className="leo-walker-sandbox-vlab-vars">
+              <nav
+                className="vlab-sidebar-modules leo-walker-sandbox-sidebar2-nav"
+                aria-label="Left sidebar module switch (mirrors /simulator)"
+              >
+                {SANDBOX_SIDEBAR2_MODULES.map((module) => {
+                  const isActive = sandboxSidebar2ActiveTab === module.key;
+                  return (
+                    <button
+                      key={module.key}
+                      type="button"
+                      className={`vlab-sidebar-module${isActive ? ' is-active' : ''}`}
+                      aria-pressed={isActive}
+                      onClick={() => sandboxSidebar2SelectTab(module.key)}
+                    >
+                      <span aria-hidden="true">{module.symbol}</span>
+                      <strong>{module.label}</strong>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          )}
           {/* Homepage input rail. It owns every editable or fixed calculation
               parameter; final values are rendered from the same accepted frame
               in the right rail. */}
@@ -2635,6 +3006,7 @@ export function App() {
         <main
           className="leo-shell-canvas"
           data-testid="leo-shell-canvas"
+          style={SANDBOX_HIDE_CANVAS_AND_RIGHT_RAIL ? { display: 'none' } : undefined}
           data-handover-criterion={
             handoverMode === 'decision-overlay-on-live-sinr' ? 'decision-overlay-on-live-sinr' : 'sinr-offset'
           }
@@ -2657,50 +3029,13 @@ export function App() {
             />
           )}
           {handoverMode === 'omega-heuristic' && sceneLane === 'modqn-live-cell-preview' && <HeuristicNotPaperBanner />}
-          {shouldRenderMainScene ? (
-            <MainScene
-              speed={playback.effectiveSpeed}
-              paused={playback.paused}
-              profile={effectiveProfile}
-              runtime={runtime}
-              visualScaleMultipliers={visualScaleMultipliers}
-              sceneLane={sceneLane}
-              onSimUpdate={handleSimUpdate}
-              onLiveSeekLanded={handleLiveSeekLandedWithAnalysisReset}
-              sceneFrame={activeSceneFrame}
-              canonicalAnalysisFrame={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
-                ? homepageCanonicalAnalysis.frame
-                : undefined}
-              canonicalAnalysisNextFrame={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
-                ? homepageCanonicalAnalysis.visualNextFrame
-                : undefined}
-              canonicalVisualOffsetSec={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
-                ? Math.max(
-                  0,
-                  timelineCurrentTimeSec
-                    - (homepageCanonicalAnalysis.frame?.runAnchor?.elapsedSec ?? timelineCurrentTimeSec),
-                )
-                : undefined}
-              beamDisplaySpec={beamDisplaySpec}
-              handoverCinemaCandidate={sceneLane === 'sinr-live' ? handoverCinema.focusedCandidate : null}
-              handoverCinemaArmed={sceneLane === 'sinr-live' && isLegacyWalkerRoute && handoverCinema.cinemaActive}
-              handoverCinemaKind={sceneLane === 'sinr-live' && isLegacyWalkerRoute && handoverCinema.armFilter !== 'off'
-                ? handoverCinema.armFilter
-                : null}
-              onHandoverPresentationChange={handleHandoverPresentationChange}
-              onHandoverPresentationBusyChange={handleHandoverPresentationBusyChange}
-              constellation={activeSceneTopology.constellation}
-            />
-          ) : (
-            <div
-              className="leo-scene-fail-closed"
-              data-testid="artifact-scene-fail-closed"
-              data-scene-lane={sceneLane}
-              data-artifact-loading={showcaseLoading ? 'true' : 'false'}
-            >
-              <strong>{showcaseError ?? 'Loading visual-showcase-v1 artifact'}</strong>
-            </div>
-          )}
+          <div
+            className="leo-walker-sandbox-scene-placeholder"
+            data-testid="walker-sandbox-scene-placeholder"
+          >
+            <strong>Main scene rendering is disabled in this /walker sandbox.</strong>
+            <span>This route exists to redesign the left sidebar against the /simulator reference column; the 3D canvas is intentionally skipped for now.</span>
+          </div>
           {sceneLane === 'artifact-replay' && replaySceneFrame && (
             <ArtifactSatelliteCompass satellites={replaySceneFrame.satellites} />
           )}
@@ -2714,7 +3049,11 @@ export function App() {
           )}
           {timelineBar}
         </main>
-        <aside className="leo-shell-right" aria-label="Calculated values panel">
+        <aside
+          className="leo-shell-right"
+          aria-label="Calculated values panel"
+          style={SANDBOX_HIDE_CANVAS_AND_RIGHT_RAIL ? { display: 'none' } : undefined}
+        >
           {sceneLane === 'sinr-live' && !isLegacyWalkerRoute ? (
             <HomepageRightRail
               analysis={homepageCanonicalAnalysis}

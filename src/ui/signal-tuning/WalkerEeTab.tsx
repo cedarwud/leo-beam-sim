@@ -1,22 +1,24 @@
 import { UI_TOKENS } from '../../constants/uiTokens';
+import type { AngleAwareFormulaFrame } from '../../engine/signal/types';
 import { useLocale } from '../../i18n';
 import { FormulaFraction, FormulaHeader, FormulaRow, InlineFormulaFraction } from './FormulaHeader';
-import { SystemAngleState } from './FormulaSymbols';
-import { formatEnergyEfficiency } from './formatters';
+import { SystemAngleState, SystemPowerSum } from './FormulaSymbols';
 import { txBi } from './labels';
-import { SIMPLIFIED_EE_BEAM_INDEX, SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
+import { SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
+import { FormulaSymbolGuide } from './FormulaSymbolGuide';
 import { pagePanelStyle } from './styles';
 
 const EE_ACCENT = UI_TOKENS.color.semantic.warning.accent;
 
 export function WalkerEeTab({
-  linkEeMbitPerJ = null,
+  formulaFrame = null,
 }: {
-  readonly linkEeMbitPerJ?: number | null;
+  readonly formulaFrame?: AngleAwareFormulaFrame | null;
 }) {
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
   const say = (key: string, zh: string, en: string) => txBi(t, isEnglish, key, zh, en);
+  void formulaFrame;
 
   return (
     <section
@@ -28,9 +30,10 @@ export function WalkerEeTab({
     >
       <FormulaHeader
         testId="walker-ee-formula-header"
-        title={say('walker.ee.heading', '能源效率公式', 'Energy-efficiency equation')}
+        title="EE"
         accent={EE_ACCENT}
         align="center"
+        variant="legacy"
       >
         <FormulaRow
           testId="walker-ee-formula-instantaneous"
@@ -47,63 +50,40 @@ export function WalkerEeTab({
               termFontSize={18}
             />
           )}
-        />
-        <FormulaRow
-          testId="walker-ee-value"
-          accent={EE_ACCENT}
-          expression={(
-            <span>
-              η<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) ={' '}
-              <strong>{formatEnergyEfficiency(typeof linkEeMbitPerJ === 'number' ? linkEeMbitPerJ * 1e6 : null)}</strong>
-            </span>
-          )}
-        />
-        <FormulaRow
-          testId="walker-ee-formula-x"
-          accent={UI_TOKENS.color.semantic.info}
-          expression={<>x<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) ∈ {'{'}0, 1{'}'}</>}
           source={say(
-            'walker.ee.x.source',
-            'x 表示固定 UE-link 是否在時間 t 被選用。',
-            'x indicates whether the fixed UE-link is selected at time t.',
+            'walker.ee.formulaExplanation',
+            'η 是選定 UE-link 的 throughput 除以共同系統總功率；右側顯示此幀的實際值。',
+            'η is the selected UE-link throughput divided by shared system total power; the right rail shows the live value for this frame.',
           )}
         />
-        <FormulaRow
-          testId="walker-ee-formula-rate"
-          accent={UI_TOKENS.color.semantic.info}
-          expression={(
-            <span style={{ display: 'grid', gap: 4, justifyItems: 'center' }}>
-              <span>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</span>
-              <span>= <InlineFormulaFraction
-                  numerator={<>B<sup>w</sup></>}
-                  denominator={<>U<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t)</>}
-                  label="beam bandwidth divided by serving users"
-                /></span>
-              <span>· log<sub>2</sub>(1 +</span>
-              <span>γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />))</span>
-            </span>
-          )}
-          source={say(
-            'walker.ee.rate.source',
-            'R 是固定 UE-link 的實際速率。',
-            'R is the realized rate of the fixed UE-link.',
-          )}
-        />
-        <FormulaRow
-          testId="walker-ee-formula-system-power"
-          accent={UI_TOKENS.color.semantic.good}
-          expression={(
-            <span style={{ display: 'grid', gap: 3, justifyItems: 'center' }}>
-              <span>P<sup>N</sup>(t, <SystemAngleState />)</span>
-              <span>= P<sup>f</sup>(t) +</span>
-              <span>Σ<sub>u′,s′,v′</sub> x<sub>u′,s′,v′</sub>(t) P<sup>p</sup><sub>u′,s′,v′</sub>(t, <SystemAngleState />)</span>
-            </span>
-          )}
-          source={say(
-            'walker.ee.systemPower.source',
-            'P^N 是全系統共同使用的總功率分母。',
-            'P^N is the shared total-system power denominator.',
-          )}
+        <FormulaSymbolGuide
+          title={say('walker.ee.symbolGuide', '符號說明', 'Symbol guide')}
+          rows={[
+            {
+              testId: 'walker-ee-symbol-x',
+              symbol: <>x<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)</>,
+              explanation: isEnglish
+                ? <>x<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) ∈ {'{'}0, 1{'}'}; it is 1 when the selected UE-link is served and 0 otherwise.</>
+                : <>x<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) ∈ {'{'}0, 1{'}'}；選定 UE-link 服務中為 1，否則為 0。</>,
+              accent: UI_TOKENS.color.semantic.tuning,
+            },
+            {
+              testId: 'walker-ee-symbol-rate',
+              symbol: <>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>,
+              explanation: isEnglish
+                ? <>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) = <InlineFormulaFraction numerator={<>B<sup>w</sup></>} denominator={<>U<sub>s,v</sub>(t)</>} label="beam bandwidth divided by serving users" /> · log<sub>2</sub>(1 + γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)).</>
+                : <>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) = <InlineFormulaFraction numerator={<>B<sup>w</sup></>} denominator={<>U<sub>s,v</sub>(t)</>} label="beam bandwidth divided by serving users" /> · log<sub>2</sub>(1 + γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />))；分子沿用同一條選定鏈路。</>,
+              accent: UI_TOKENS.color.semantic.info,
+            },
+            {
+              testId: 'walker-ee-symbol-system-power',
+              symbol: <>P<sup>N</sup>(t, <SystemAngleState />)</>,
+              explanation: isEnglish
+                ? <>P<sup>N</sup>(t, <SystemAngleState />) = P<sup>f</sup>(t) + <SystemPowerSum />; this is the shared system denominator.</>
+                : <>P<sup>N</sup>(t, <SystemAngleState />) = P<sup>f</sup>(t) + <SystemPowerSum />；這是所有作用中鏈路共用的系統分母。</>,
+              accent: UI_TOKENS.color.semantic.good,
+            },
+          ]}
         />
       </FormulaHeader>
     </section>

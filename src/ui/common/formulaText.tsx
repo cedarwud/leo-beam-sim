@@ -10,11 +10,11 @@ import { renderInlineFormula } from './inlineFormula';
  * spelling.
  */
 export function PreSatelliteCapDownlinkPower(): ReactNode {
-  return <span data-formula-symbol="p-dl-pre-satellite-cap" aria-label="P superscript r subscript s comma v">P<sup>r</sup><sub>s,v</sub></span>;
+  return <span data-formula-symbol="link-power" aria-label="p subscript u s v of t theta">p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</span>;
 }
 
 export function PostSatelliteCapDownlinkPower(): ReactNode {
-  return <span data-formula-symbol="p-dl-post-satellite-cap" aria-label="P superscript o subscript s comma v">P<sup>o</sup><sub>s,v</sub></span>;
+  return <span data-formula-symbol="pa-input-power" aria-label="P superscript p subscript u s v of t theta">P<sup>p</sup><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</span>;
 }
 
 /** Formula vocabulary that may appear inside localized prose. */
@@ -24,35 +24,35 @@ function renderFormulaIdentifier(identifier: string): ReactNode {
   switch (identifier) {
     case 'P_DL_tilde': return <PostSatelliteCapDownlinkPower />;
     case 'P_DL_pre_sat': return <PreSatelliteCapDownlinkPower />;
-    case 'P_beam,max': return <>beam RF cap</>;
-    case 'P_sat,max': return <>satellite RF cap</>;
-    case 'gamma_req': return <>γ<sup>r</sup></>;
-    case 'theta_3dB': return <>beamwidth</>;
-    case 'eta_PA': return <>η<sub>s,v</sub></>;
-    case 'eta_max': return <>η<sub>0</sub></>;
-    case 'P_event': return <>event energy</>;
-    case 'P_RFC': return <>P<sup>c</sup></>;
-    case 'P_BB': return <>P<sup>d</sup></>;
-    case 'P_PA': return <>P<sup>p</sup><sub>s,v</sub></>;
-    case 'P_sys': return <>P<sup>N</sup></>;
-    case 'p_req': return <><i>p</i><sup>r</sup><sub>u,s,v</sub></>;
-    case 'EE_eval': return <>η<sup>e</sup></>;
-    case 'EE_inst': return <>η<sup>e</sup></>;
-    case 'R_min_req': return <>R<sup>m</sup></>;
-    case 'R_min': return <>R<sup>m</sup></>;
-    case 'B_beam': return <>B<sup>w</sup></>;
-    case 'B_sys': return <>system bandwidth</>;
-    case 'K_FR': return <>reuse groups</>;
-    case 'T_sys': return <>system temperature</>;
-    case 'T_ant': return <>antenna temperature</>;
-    case 'T_ref': return <>reference temperature</>;
-    case 'I_intra': return <>I<sup>a</sup></>;
-    case 'I_inter': return <>I<sup>b</sup></>;
-    case 'P_t': return <>P<sup>o</sup><sub>s,v</sub></>;
-    case 'U_s,v': return <>U<sub>s,v</sub></>;
-    case 'U_b': return <>U<sub>b</sub></>;
-    case 'R_u': return <>R<sub>u,s,v</sub></>;
-    case 'SINR_u': return <>γ<sub>u,s,v</sub></>;
+    case 'P_beam,max':
+    case 'P_sat,max': return <>P<sup>N</sup>(t, <strong>θ</strong>)</>;
+    case 'gamma_req': return <>γ<sub>u,s,v</sub>(t, <strong>θ</strong>)</>;
+    case 'theta_3dB': return <>θ<sub>u,s,v</sub></>;
+    case 'eta_PA':
+    case 'eta_max': return <>ξ<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>;
+    case 'P_event':
+    case 'P_RFC':
+    case 'P_BB': return <>P<sup>f</sup>(t)</>;
+    case 'P_PA': return <PostSatelliteCapDownlinkPower />;
+    case 'P_sys': return <>P<sup>N</sup>(t, <strong>θ</strong>)</>;
+    case 'p_req':
+    case 'P_t': return <PreSatelliteCapDownlinkPower />;
+    case 'EE_eval':
+    case 'EE_inst': return <>η<sub>u,s,v</sub>(t, <strong>θ</strong>)</>;
+    case 'R_min_req':
+    case 'R_min': return <>R<sub>u,s,v</sub>(t, <strong>θ</strong>)</>;
+    case 'B_beam':
+    case 'B_sys': return <>B<sup>w</sup></>;
+    case 'K_FR': return <>I<sub>u,s,v</sub>(t, <strong>θ</strong>)</>;
+    case 'T_sys':
+    case 'T_ant':
+    case 'T_ref': return <>σ²</>;
+    case 'I_intra':
+    case 'I_inter': return <>I<sub>u,s,v</sub>(t, <strong>θ</strong>)</>;
+    case 'U_s,v':
+    case 'U_b': return <>U<sub>s,v</sub>(t)</>;
+    case 'R_u': return <>R<sub>u,s,v</sub>(t, <strong>θ</strong>)</>;
+    case 'SINR_u': return <>γ<sub>u,s,v</sub>(t, <strong>θ</strong>)</>;
     default: return identifier;
   }
 }

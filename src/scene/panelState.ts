@@ -74,6 +74,12 @@ function hasSignalSourceChanged(previous: SignalSourceState, next: SignalSourceS
     || hasNumericDelta(previous.rangeKm, next.rangeKm);
 }
 
+function hasSignalSourceIdentityChanged(previous: SignalSourceState, next: SignalSourceState): boolean {
+  return previous.satId !== next.satId
+    || previous.beamId !== next.beamId
+    || previous.status !== next.status;
+}
+
 // ============================================================================
 // Visual frequency diagnostics — frequency-reuse / provenance lookup keyed by
 // beam, plus change detection for the resolved entries.
@@ -257,11 +263,145 @@ function hasSatelliteVisualIdentityChanged(
   });
 }
 
+function hasAngleAwareFormulaChanged(
+  previous: SimState['angleAwareFormulaFrame'],
+  next: SimState['angleAwareFormulaFrame'],
+): boolean {
+  if (!previous || !next) return previous !== next;
+  const previousTerms = previous.terms;
+  const nextTerms = next.terms;
+  return previous.ueId !== next.ueId
+    || previous.satId !== next.satId
+    || previous.beamId !== next.beamId
+    || hasNumericDelta(previousTerms.thetaRad, nextTerms.thetaRad, 0.0005)
+    || hasNumericDelta(previousTerms.powerW, nextTerms.powerW, 1e-6)
+    || hasNumericDelta(previousTerms.desiredSignalW, nextTerms.desiredSignalW, 1e-12)
+    || hasNumericDelta(previousTerms.interferenceW, nextTerms.interferenceW, 1e-12)
+    || hasNumericDelta(previousTerms.noiseW, nextTerms.noiseW, 1e-15)
+    || hasNumericDelta(previousTerms.gammaDb, nextTerms.gammaDb, 0.05)
+    || hasNumericDelta(previousTerms.throughputBps, nextTerms.throughputBps, 1)
+    || hasNumericDelta(previousTerms.systemPowerW, nextTerms.systemPowerW, 1e-6)
+    || hasNumericDelta(
+      previousTerms.energyEfficiencyBitsPerJoule,
+      nextTerms.energyEfficiencyBitsPerJoule,
+      1,
+    );
+}
+
+function hasAngleAwareFormulaIdentityChanged(
+  previous: SimState['angleAwareFormulaFrame'],
+  next: SimState['angleAwareFormulaFrame'],
+): boolean {
+  if (!previous || !next) return previous !== next;
+  return previous.ueId !== next.ueId
+    || previous.satId !== next.satId
+    || previous.beamId !== next.beamId;
+}
+
+function hasIntraHandoverPresentationIdentityChanged(
+  previous: SimState['intraHandoverPresentation'],
+  next: SimState['intraHandoverPresentation'],
+): boolean {
+  if (!previous || !next) return previous !== next;
+  return previous.ueId !== next.ueId
+    || previous.sourceSatId !== next.sourceSatId
+    || previous.sourceCellId !== next.sourceCellId
+    || previous.targetCellId !== next.targetCellId;
+}
+
+function hasIntraHandoverEventIdentityChanged(
+  previous: SimState['intraHandoverEvent'],
+  next: SimState['intraHandoverEvent'],
+): boolean {
+  if (!previous || !next) return previous !== next;
+  return previous.satId !== next.satId
+    || previous.fromBeamId !== next.fromBeamId
+    || previous.toBeamId !== next.toBeamId
+    || previous.wallClockStartMs !== next.wallClockStartMs
+    || previous.wallClockExpiresMs !== next.wallClockExpiresMs;
+}
+
+function hasHandoverEventIdentityChanged(
+  previous: SimState['lastHoEvent'],
+  next: SimState['lastHoEvent'],
+): boolean {
+  if (!previous || !next) return previous !== next;
+  return previous.timeMs !== next.timeMs
+    || previous.action !== next.action
+    || previous.fromSatId !== next.fromSatId
+    || previous.fromBeamId !== next.fromBeamId
+    || previous.toSatId !== next.toSatId
+    || previous.toBeamId !== next.toBeamId;
+}
+
+/**
+ * Return only the discrete boundaries that must reach the right rail immediately.
+ * Numeric SINR/power/EE changes are intentionally excluded: those values are
+ * published by the shared UI cadence so the reader can follow the movement.
+ */
+export function hasUiStateBoundaryChanged(previous: SimState | null, next: SimState): boolean {
+  if (!previous) return true;
+  return previous.profileId !== next.profileId
+    || previous.formulaFamilyLabel !== next.formulaFamilyLabel
+    || hasSatelliteVisualIdentityChanged(previous.satelliteVisualIdentityById, next.satelliteVisualIdentityById)
+    || hasSignalSourceIdentityChanged(previous.physicalServing, next.physicalServing)
+    || hasSignalSourceIdentityChanged(previous.panelPrimary, next.panelPrimary)
+    || previous.panelPrimary.role !== next.panelPrimary.role
+    || hasSignalSourceIdentityChanged(previous.panelComparison, next.panelComparison)
+    || previous.panelComparison.role !== next.panelComparison.role
+    || hasIntraHandoverPresentationIdentityChanged(
+      previous.intraHandoverPresentation,
+      next.intraHandoverPresentation,
+    )
+    || hasAngleAwareFormulaIdentityChanged(previous.angleAwareFormulaFrame, next.angleAwareFormulaFrame)
+    || previous.visualFrequencyDiagnostics?.primary.satId !== next.visualFrequencyDiagnostics?.primary.satId
+    || previous.visualFrequencyDiagnostics?.primary.beamId !== next.visualFrequencyDiagnostics?.primary.beamId
+    || previous.visualFrequencyDiagnostics?.comparison.satId !== next.visualFrequencyDiagnostics?.comparison.satId
+    || previous.visualFrequencyDiagnostics?.comparison.beamId !== next.visualFrequencyDiagnostics?.comparison.beamId
+    || previous.servingSatId !== next.servingSatId
+    || previous.servingBeamId !== next.servingBeamId
+    || previous.servingCellId !== next.servingCellId
+    || previous.pendingTargetSatId !== next.pendingTargetSatId
+    || previous.pendingTargetBeamId !== next.pendingTargetBeamId
+    || previous.comparisonSatId !== next.comparisonSatId
+    || previous.comparisonBeamId !== next.comparisonBeamId
+    || previous.comparisonKind !== next.comparisonKind
+    || previous.recentHoSourceSatId !== next.recentHoSourceSatId
+    || previous.recentHoTargetSatId !== next.recentHoTargetSatId
+    || previous.recentHoSourceBeamId !== next.recentHoSourceBeamId
+    || previous.recentHoTargetBeamId !== next.recentHoTargetBeamId
+    || previous.hoCount !== next.hoCount
+    || previous.intraHoCount !== next.intraHoCount
+    || hasHandoverEventIdentityChanged(previous.lastHoEvent, next.lastHoEvent)
+    || hasIntraHandoverEventIdentityChanged(previous.intraHandoverEvent, next.intraHandoverEvent)
+    || (previous.physicalServingBudget === null) !== (next.physicalServingBudget === null)
+    || (previous.servingBudget === null) !== (next.servingBudget === null)
+    || previous.beamHopEnabled !== next.beamHopEnabled;
+}
+
+export interface UiStatePublishDecisionInput {
+  readonly previous: SimState | null;
+  readonly next: SimState;
+  readonly nowMs: number;
+  readonly lastUpdateAtMs: number;
+  readonly intervalMs: number;
+  readonly cursorReseat: boolean;
+}
+
+/** One shared cadence gate for all right-rail values. */
+export function shouldPublishUiState(input: UiStatePublishDecisionInput): boolean {
+  return input.previous === null
+    || input.cursorReseat
+    || hasUiStateBoundaryChanged(input.previous, input.next)
+    || input.nowMs - input.lastUpdateAtMs >= input.intervalMs;
+}
+
 export function hasUiStateChanged(previous: SimState | null, next: SimState): boolean {
   if (!previous) return true;
   return previous.profileId !== next.profileId
     || previous.formulaFamilyLabel !== next.formulaFamilyLabel
     || hasSatelliteVisualIdentityChanged(previous.satelliteVisualIdentityById, next.satelliteVisualIdentityById)
+    || hasAngleAwareFormulaChanged(previous.angleAwareFormulaFrame, next.angleAwareFormulaFrame)
     || hasSignalSourceChanged(previous.physicalServing, next.physicalServing)
     || hasSignalSourceChanged(previous.panelPrimary, next.panelPrimary)
     || previous.panelPrimary.role !== next.panelPrimary.role

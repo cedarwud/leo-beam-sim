@@ -1,14 +1,30 @@
 /**
  * Beam antenna gain (Bessel J1/J3 pattern).
- * Source: PAP-2024-HOBS Eq.(3), ITU-R S.672-4
+ * Source: PAP-2024-HOBS Eq.(3)
  */
 
 import type { GainModel } from '../../profiles/types';
 
 const GAIN_FLOOR_DB = -40;
+const EARTH_RADIUS_KM = 6371;
+const DEG_TO_RAD = Math.PI / 180;
 const ALPHA_3DB_BESSEL_J1 = 1.6137411963697343;
-const BESSEL_J1_J3_BORESIGHT_ENVELOPE = 1.75;
-const ALPHA_3DB_BESSEL_J1_J3 = 1.835239914925094;
+/**
+ * HOBS Eq.(3) angle argument: mu(theta) = 2.07123 · sin(theta) / sin(theta_3dB).
+ *
+ * The same 2.07123 appears verbatim in PAP-2024-HOBS Eq.(3), in the 2024-06
+ * mega-constellation handover paper and in sensors-22-09304: it is the standard
+ * multibeam-satellite reference argument, not a fitted constant.
+ *
+ * Until 2026-08-21 this file evaluated `2*J1(a)/a` — the 2 on the wrong side of
+ * the fraction — and then divided the envelope by a 1.75 "boresight" constant to
+ * push the peak back to 1, with the argument scale re-solved to 1.8352 so the
+ * -3 dB point still landed on theta_3dB. That was two corrections stacked on one
+ * transcription slip; neither constant appears in any paper, ITU-R text, or the
+ * vendored `src/core/channel/beam-gain.ts`. HOBS Eq.(3) as written is already
+ * unity at boresight (1/4 + 3/4) and needs no renormalization.
+ */
+const MU_3DB_BESSEL_J1_J3 = 2.07123;
 
 function besselJ1(x: number): number {
   const halfX = x / 2;
@@ -44,7 +60,7 @@ export function computeBeamGainDb(
 
   const sinTheta = Math.sin((offAxisDeg * Math.PI) / 180);
   const sin3dB = Math.sin((beamwidth3dBDeg * Math.PI) / 180);
-  const alphaScale = gainModel === 'bessel-j1' ? ALPHA_3DB_BESSEL_J1 : ALPHA_3DB_BESSEL_J1_J3;
+  const alphaScale = gainModel === 'bessel-j1' ? ALPHA_3DB_BESSEL_J1 : MU_3DB_BESSEL_J1_J3;
   const alpha = alphaScale * sinTheta / Math.max(sin3dB, 1e-12);
 
   if (alpha < 1e-9) return 0;
@@ -55,12 +71,16 @@ export function computeBeamGainDb(
 
   let normalizedPattern: number;
   if (gainModel === 'bessel-j1') {
+    // Uniform circular aperture [2·J1(u)/u]^2, already unity at boresight. This
+    // branch is a sensitivity-only model kept for older deep links; it is not on
+    // the public formula surface and keeps its own -3 dB argument scale.
     const envelope = 2 * besselJ1(alpha) / alpha;
     normalizedPattern = envelope * envelope;
   } else {
-    const term1 = 2 * besselJ1(alpha) / alpha;
+    // HOBS Eq.(3): [ J1(mu)/(2·mu) + 36·J3(mu)/mu^3 ]^2.
+    const term1 = besselJ1(alpha) / (2 * alpha);
     const term2 = 36 * besselJ3(alpha) / (alpha * alpha * alpha);
-    const envelope = (term1 + term2) / BESSEL_J1_J3_BORESIGHT_ENVELOPE;
+    const envelope = term1 + term2;
     normalizedPattern = envelope * envelope;
   }
 
@@ -71,6 +91,120 @@ export function computeBeamGainDb(
 export function computeOffAxisDeg(ueDistanceKm: number, altitudeKm: number): number {
   if (altitudeKm <= 0 || ueDistanceKm <= 0) return 0;
   return (Math.atan(ueDistanceKm / altitudeKm) * 180) / Math.PI;
+}
+
+/**
+ * Exact off-axis angle between a fixed-cell beam boresight and a UE line of
+ * sight. The flat distance/altitude approximation above is retained for older
+ * callers, while angle-aware live frames use this moving-satellite geometry
+ * whenever the snapshot carries geodetic beam metadata.
+ */
+export function computeGeometricOffAxisDeg(input: {
+  readonly satLatDeg: number;
+  readonly satLonDeg: number;
+  readonly satAltitudeKm: number;
+  readonly beamCenterLatDeg: number;
+  readonly beamCenterLonDeg: number;
+  readonly userLatDeg: number;
+  readonly userLonDeg: number;
+  /** Optional held/sample boresight direction in ECEF coordinates. */
+  readonly beamAxisEcefKm?: readonly [number, number, number];
+}): number {
+  const satellite = geodeticToEcefKm(input.satLatDeg, input.satLonDeg, input.satAltitudeKm);
+  const beamCenter = geodeticToEcefKm(input.beamCenterLatDeg, input.beamCenterLonDeg, 0);
+  const user = geodeticToEcefKm(input.userLatDeg, input.userLonDeg, 0);
+  const boresight = input.beamAxisEcefKm === undefined
+    ? subtract(beamCenter, satellite)
+    : {
+      x: input.beamAxisEcefKm[0],
+      y: input.beamAxisEcefKm[1],
+      z: input.beamAxisEcefKm[2],
+    };
+  const userLineOfSight = subtract(user, satellite);
+  const denominator = vectorNorm(boresight) * vectorNorm(userLineOfSight);
+  if (denominator <= 0) return 0;
+  return Math.acos(clamp(dot(boresight, userLineOfSight) / denominator, -1, 1)) / DEG_TO_RAD;
+}
+
+export interface GeometricLinkGeometry {
+  /** Exact spherical-Earth slant range from the UE to the satellite (km). */
+  readonly slantRangeKm: number;
+  /** UE-local elevation angle of the satellite (deg). */
+  readonly elevationDeg: number;
+}
+
+/**
+ * Exact per-UE link geometry for the angle-aware live path.
+ *
+ * A `SatelliteSnapshot.rangeKm` is a beam/cell-level fallback used by older
+ * callers. The live cell model must not reuse that value for every UE: users
+ * at different positions have different slant ranges and elevation angles,
+ * which feed the path-loss/LOS terms of H and therefore the same SINR → rate →
+ * EE chain. This helper is geometry only; it does not change any formula.
+ */
+export function computeGeometricLinkGeometry(input: {
+  readonly satLatDeg: number;
+  readonly satLonDeg: number;
+  readonly satAltitudeKm: number;
+  readonly userLatDeg: number;
+  readonly userLonDeg: number;
+}): GeometricLinkGeometry {
+  const satellite = geodeticToEcefKm(input.satLatDeg, input.satLonDeg, input.satAltitudeKm);
+  const user = geodeticToEcefKm(input.userLatDeg, input.userLonDeg, 0);
+  const satelliteToUser = subtract(satellite, user);
+  const slantRangeKm = vectorNorm(satelliteToUser);
+  if (slantRangeKm <= 0) return { slantRangeKm: 0, elevationDeg: 0 };
+
+  const userRadial = unit(user);
+  const sinElevation = dot(satelliteToUser, userRadial) / slantRangeKm;
+  return {
+    slantRangeKm,
+    elevationDeg: Math.asin(clamp(sinElevation, -1, 1)) / DEG_TO_RAD,
+  };
+}
+
+interface EcefKm {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+function geodeticToEcefKm(latDeg: number, lonDeg: number, altitudeKm: number): EcefKm {
+  const radiusKm = EARTH_RADIUS_KM + altitudeKm;
+  const latRad = latDeg * DEG_TO_RAD;
+  const lonRad = lonDeg * DEG_TO_RAD;
+  const cosLat = Math.cos(latRad);
+  return {
+    x: radiusKm * cosLat * Math.cos(lonRad),
+    y: radiusKm * cosLat * Math.sin(lonRad),
+    z: radiusKm * Math.sin(latRad),
+  };
+}
+
+function subtract(a: EcefKm, b: EcefKm): EcefKm {
+  return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+}
+
+function dot(a: EcefKm, b: EcefKm): number {
+  return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+}
+
+function vectorNorm(vector: EcefKm): number {
+  return Math.sqrt(dot(vector, vector));
+}
+
+function unit(vector: EcefKm): EcefKm {
+  const length = vectorNorm(vector);
+  if (length <= 0) return { x: 0, y: 0, z: 0 };
+  return {
+    x: vector.x / length,
+    y: vector.y / length,
+    z: vector.z / length,
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 /**
@@ -85,13 +219,12 @@ export const FULL_SPHERE_SQ_DEG = (180 / Math.PI) * (180 / Math.PI) * 4 * Math.P
  *
  * Peak gain and 3 dB beamwidth are NOT independent knobs for one aperture — a
  * wider beam spreads the same power over more solid angle, so it MUST have lower
- * peak gain. `link-budget.ts` adds `antenna.maxGainDbi` as a free constant
- * decoupled from `beamwidth3dBRad`, so a profile can silently encode a
- * physically-impossible (>100 % efficiency) pair (the candidate-rich profile's
- * 40 dBi @ 3.32° does exactly that). The SINR-live lane derives its peak-gain
- * override from this function and locks `|maxGainDbi − consistentPeakGainDbi| <
- * 0.5 dB` so the showcase antenna stays self-consistent. Returns `NaN` for a
- * non-positive beamwidth or efficiency.
+ * peak gain. The link-budget projection keeps the existing profile controls but
+ * exposes the product as `G^T(θ) = G0 · F(θ)` while retaining the same received
+ * power. The SINR-live lane derives its peak-gain override from this function
+ * and locks `|maxGainDbi − consistentPeakGainDbi| < 0.5 dB` so the showcase
+ * antenna stays self-consistent. Returns `NaN` for a non-positive beamwidth or
+ * efficiency.
  */
 export function consistentPeakGainDbi(beamwidth3dBRad: number, efficiency: number): number {
   const thetaDeg = (beamwidth3dBRad * 180) / Math.PI;

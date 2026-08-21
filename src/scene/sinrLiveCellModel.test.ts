@@ -19,6 +19,7 @@ import { buildCellLayout } from '../engine/cells/cellLayout';
 import { getBeamFrequencyIndex } from '../utils/beamFrequency';
 import { loadProfile } from '../profiles/index';
 import { applySignalTuning, createSignalTuningState } from '../signalTuning';
+import { ANGLE_AWARE_SEGMENT_START_POWER_W } from '../engine/signal/angle-aware-ee';
 // S4-3 (QUAR-S4-SERVING block #4 replacement): the hopping checks bind to the
 // RUNTIME-wired consts, so the behaviour the gate proves is the shipped config.
 import { SINR_LIVE_BEAMS_PER_SAT, SINR_LIVE_HOP_SLOT_SEC } from './sinrLiveCellRuntime';
@@ -244,6 +245,50 @@ check('CQ3 FIX: a UE off the cell centre keeps a real off-axis angle and is stil
   assert(Number.isFinite(centre.intraCandidateSinrDb ?? NaN), 'same-sat alternate candidate has finite SINR');
   assert(centre.intraCandidateLinkSample !== null && centre.intraCandidateLinkSample !== undefined, 'alternate candidate keeps its LinkSample');
   assertEqual(centre.intraCandidateLinkSample?.sinrDb, centre.intraCandidateSinrDb, 'alternate SINR equals its LinkSample SINR');
+});
+
+check('angle-aware power keeps the previous state across a transient missing serving sample', () => {
+  const layout = testLayout(1);
+  const model = new SinrLiveCellModel({
+    profile,
+    cellLayout: layout,
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    beamPointingMode: 'sampled-steering',
+    beamPointingUpdateSec: 1,
+  });
+  const movingSat = (lonDeg: number): CellModelSat => makeSat({
+    id: 'moving',
+    latDeg: 0,
+    lonDeg,
+    elevationDeg: 90,
+  });
+  const step = (
+    simTimeSec: number,
+    lonDeg: number,
+    eastKm: number,
+  ) => model.step({
+    visibleSats: [movingSat(lonDeg)],
+    ues: [{ id: 'u0', eastKm, northKm: 0 }],
+    simTimeSec,
+    dtSec: 0.1,
+  });
+
+  step(0, 0, 8);
+  const changed = step(0.5, 0.5, 8);
+  const changedPower = changed.ues[0].servingLinkSample?.angleAware?.powerW;
+  assert(changedPower !== undefined && changedPower > ANGLE_AWARE_SEGMENT_START_POWER_W, 'the live link has moved away from its 2 W segment start');
+
+  const gap = step(1, 1, 1000);
+  assertEqual(gap.ues[0].servingSatId, 'moving', 'serving identity remains attached during the sample gap');
+  assertEqual(gap.ues[0].servingLinkSample, null, 'the gap removes only the per-UE sample');
+
+  const recovered = step(2, 0, 8);
+  const recoveredTerms = recovered.ues[0].servingLinkSample?.angleAware;
+  assertEqual(recovered.ues[0].servingSatId, 'moving', 'the same satellite remains serving after the gap');
+  assertEqual(recoveredTerms?.previousPowerW, changedPower, 'the recovered same link uses the previous published power state');
+  assertEqual(recoveredTerms?.previousTimeSec, 0.5, 'the recovered same link keeps the previous published time');
+  assertEqual(recoveredTerms?.segmentStartPowerW, ANGLE_AWARE_SEGMENT_START_POWER_W, 'the recovered link keeps its original segment start');
 });
 
 check('cold attach is not a handover; UE crossing into a same-sat cell IS an intra-HO', () => {
@@ -597,6 +642,107 @@ check('signal-profile update preserves live cell handover continuity', () => {
   });
   assertEqual(after.ues[0].handoverKind, 'none', 'profile update does not cold-attach the UE');
   assertEqual(after.recentHandoverEvents.length, 1, 'profile update preserves the live-HO pulse window');
+  assertNear(after.angleAwareFormulaFrame?.terms.segmentStartPowerW ?? NaN, 2, 1e-12, 'profile update starts a fresh segment at 2 W');
+  assertNear(after.angleAwareFormulaFrame?.terms.powerW ?? NaN, 2, 1e-12, 'fresh segment RF power is 2 W');
+});
+
+check('profile antenna tuning reaches the selected-link SINR formula', () => {
+  const layout = testLayout(7);
+  const model = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
+  const overhead = makeSat({ id: 'over', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const before = model.step({
+    visibleSats: [overhead],
+    ues: [{ id: 'm', eastKm: 8, northKm: 0 }],
+    simTimeSec: 0,
+    dtSec: 0,
+  });
+  const beforeGamma = before.ues[0]?.servingLinkSample?.angleAware?.gammaDb ?? NaN;
+  assert(Number.isFinite(beforeGamma), 'baseline selected-link gamma is finite');
+
+  const tuning = createSignalTuningState(profile);
+  tuning.maxGainDbi -= 6;
+  model.updateRuntimeProfile(applySignalTuning(profile, tuning), 7);
+  const after = model.step({
+    visibleSats: [overhead],
+    ues: [{ id: 'm', eastKm: 8, northKm: 0 }],
+    simTimeSec: 1,
+    dtSec: 1,
+  });
+  const afterGamma = after.ues[0]?.servingLinkSample?.angleAware?.gammaDb ?? NaN;
+  assert(Number.isFinite(afterGamma), 'tuned selected-link gamma is finite');
+  assert(afterGamma < beforeGamma, 'max gain tuning changes the selected-link SINR');
+  assertNear(after.angleAwareFormulaFrame?.terms.powerW ?? NaN, 2, 1e-12, 'tuning starts a new 2 W segment without freezing gain response');
+});
+
+check('moving serving satellite changes the angle-aware power and EE frame', () => {
+  const layout = testLayout(7);
+  const model = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
+  const ue = { id: 'moving-ue', eastKm: 8, northKm: 0 };
+  const first = model.step({
+    visibleSats: [makeSat({ id: 'moving-sat', latDeg: 0, lonDeg: 0, elevationDeg: 90 })],
+    ues: [ue],
+    simTimeSec: 0,
+    dtSec: 0,
+  });
+  const second = model.step({
+    visibleSats: [makeSat({ id: 'moving-sat', latDeg: 0.03, lonDeg: 0.02, elevationDeg: 88 })],
+    ues: [ue],
+    simTimeSec: 1,
+    dtSec: 1,
+  });
+  const firstTerms = first.angleAwareFormulaFrame?.terms;
+  const secondTerms = second.angleAwareFormulaFrame?.terms;
+  if (firstTerms === undefined || secondTerms === undefined) {
+    throw new Error('FAIL: both moving-link frames publish formula terms');
+  }
+  assert(secondTerms.thetaRad !== firstTerms.thetaRad, 'satellite motion changes the served-link angle');
+  assert(secondTerms.powerW !== firstTerms.powerW, 'satellite motion changes RF power');
+  assert(secondTerms.systemPowerW !== firstTerms.systemPowerW, 'satellite motion changes system power');
+  assert(
+    secondTerms.energyEfficiencyBitsPerJoule !== firstTerms.energyEfficiencyBitsPerJoule,
+    'satellite motion changes the selected-link EE display value',
+  );
+});
+
+check('sampled steering drives theta and power without replacing the fixed cell display contract', () => {
+  const layout = testLayout(7);
+  const ue = { id: 'sampled-ue', eastKm: 8, northKm: 0 };
+  const firstSat = makeSat({ id: 'sampled-sat', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const secondSat = makeSat({ id: 'sampled-sat', latDeg: 0.03, lonDeg: 0.02, elevationDeg: 88 });
+  const fixed = new SinrLiveCellModel({
+    profile,
+    cellLayout: layout,
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    beamPointingMode: 'earth-fixed-cell',
+  });
+  const sampled = new SinrLiveCellModel({
+    profile,
+    cellLayout: layout,
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    beamPointingMode: 'sampled-steering',
+    beamPointingUpdateSec: 1,
+  });
+
+  const fixed0 = fixed.step({ visibleSats: [firstSat], ues: [ue], simTimeSec: 0, dtSec: 0 });
+  const fixed1 = fixed.step({ visibleSats: [secondSat], ues: [ue], simTimeSec: 0.5, dtSec: 0.5 });
+  const sampled0 = sampled.step({ visibleSats: [firstSat], ues: [ue], simTimeSec: 0, dtSec: 0 });
+  const sampled1 = sampled.step({ visibleSats: [secondSat], ues: [ue], simTimeSec: 0.5, dtSec: 0.5 });
+  const fixedPowerDelta = Math.abs(
+    (fixed1.angleAwareFormulaFrame?.terms.powerW ?? NaN)
+      - (fixed0.angleAwareFormulaFrame?.terms.powerW ?? NaN),
+  );
+  const sampledPowerDelta = Math.abs(
+    (sampled1.angleAwareFormulaFrame?.terms.powerW ?? NaN)
+      - (sampled0.angleAwareFormulaFrame?.terms.powerW ?? NaN),
+  );
+  assert(sampled1.illuminatedBeams.some(beam => beam.cellId === sampled1.ues[0]?.cellId), 'sampled frame still exposes the serving cell beam');
+  assert(sampledPowerDelta > fixedPowerDelta + 1e-6, 'sampled steering produces a larger real power response than perfect pointing');
+  assert(
+    sampled1.angleAwareFormulaFrame?.terms.thetaRad !== sampled0.angleAwareFormulaFrame?.terms.thetaRad,
+    'sampled steering changes the selected-link theta',
+  );
 });
 
 console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + serving continuity + idle honesty, live signal-profile continuity, illuminated-beam render surface)`);

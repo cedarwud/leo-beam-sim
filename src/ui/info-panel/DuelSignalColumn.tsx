@@ -13,6 +13,7 @@ import { PanelBeamIdentity } from './Identity';
 import { PanelHelp, usePanelCopy } from './panelHelp';
 import { StatusBadge, type StatusBadgeTone } from './StatusBadge';
 import { InlineFormulaFraction } from '../signal-tuning/FormulaHeader';
+import { LinkAngle, SystemAngleState } from '../signal-tuning/FormulaSymbols';
 
 // P1e (c) audit-list hook (PR-0.5 backfill): `channelMetricLabelForKind` is
 // imported so the bare numeric SINR readout below can later branch its label
@@ -405,9 +406,9 @@ export function DuelSignalColumn({
           titleKey={helpKeys.sinrTitleKey}
           bodyKey={helpKeys.sinrBodyKey}
           formula={(
-            <>γ<sub>u,s,v</sub>(t, θ) = <InlineFormulaFraction
-              numerator={<><i>p</i><sup>r</sup><sub>u,s,v</sub>(t, θ) · h<sub>u,s,v</sub>(t, θ)</>}
-              denominator={<>I<sub>u,s,v</sub>(t, θ) + σ²</>}
+            <>γ<sub>u,s,v</sub>(t, <SystemAngleState />) = <InlineFormulaFraction
+              numerator={<><i>p</i><sub>u,s,v</sub>(t, <LinkAngle />) · H<sub>u,s,v</sub>(t) · G<sup>T</sup>(<LinkAngle />)</>}
+              denominator={<>I<sub>u,s,v</sub>(t, <SystemAngleState />) + σ²</>}
               label="link power times effective channel divided by total interference plus noise"
             /></>
           )}

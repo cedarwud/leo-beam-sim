@@ -23,6 +23,7 @@ export function FormulaHeader({
   children,
   help,
   action,
+  variant = 'default',
   align = 'start',
 }: {
   testId: string;
@@ -45,6 +46,8 @@ export function FormulaHeader({
    * the block that used to host it further down the page is gone.
    */
   action?: ReactNode;
+  /** Visual-only variant used by the legacy Walker rail. Formula content is unchanged. */
+  variant?: 'default' | 'legacy';
   /**
    * `center` centres the whole header block — title, formula and caption — on
    * one vertical axis. It is used by the SINR tab, whose body is a single
@@ -59,21 +62,22 @@ export function FormulaHeader({
    * `start` (the default) keeps the original title-left / badge-right bar, used
    * by the energy tab, whose body is a stack of `FormulaRow`s that each carry
    * their own right-aligned unit and must stay full-width.
-   */
+  */
   align?: 'start' | 'center';
 }) {
   const centered = align === 'center';
+  const isLegacy = variant === 'legacy';
   return (
     <section
       data-testid={testId}
       style={{
         display: 'grid',
-        gap: 10,
-        padding: '14px 15px',
-        borderRadius: UI_TOKENS.radius.lg,
-        background: 'rgba(255, 255, 255, 0.055)',
-        border: `1px solid ${accent}44`,
-        borderLeft: `4px solid ${accent}`,
+        gap: isLegacy ? 14 : 10,
+        padding: isLegacy ? '18px 18px' : '14px 15px',
+        borderRadius: isLegacy ? UI_TOKENS.radius.panel : UI_TOKENS.radius.lg,
+        background: isLegacy ? UI_TOKENS.color.surface.cardSubtle : 'rgba(255, 255, 255, 0.055)',
+        border: isLegacy ? `1px solid ${UI_TOKENS.color.border.soft}` : `1px solid ${accent}44`,
+        borderLeft: isLegacy ? `3px solid ${accent}aa` : `4px solid ${accent}`,
       }}
     >
       <div
@@ -213,7 +217,7 @@ export function FormulaRow({
       </div>
       {source && (
         <div style={{
-          fontSize: UI_TOKENS.type.size.tiny,
+          fontSize: UI_TOKENS.type.size.caption,
           color: UI_TOKENS.color.text.secondary,
           lineHeight: 1.5,
         }}>

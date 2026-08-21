@@ -1,6 +1,9 @@
 /**
  * Path loss model per HOBS Eq.(1)-(2).
- * L = L_fs + L_g + L_sc + L_sf
+ * L = L_fs + L_g + L_sc + L_sf + L_N
+ *
+ * L_N is the optional NLoS clutter term; scan loss L_st is kept as a
+ * separate factor in H so the public H expansion matches the link budget.
  *
  * Source: PAP-2024-HOBS, ITU-R P.676-13
  */

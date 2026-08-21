@@ -37,14 +37,14 @@ export const ZH_TW = {
   'param.maxTxPowerDbm.label': '衛星發射功率',
   'param.maxTxPowerDbm.unit': 'dBm',
   'param.maxTxPowerDbm.help':
-    '衛星波束的 RF 輸出設定，以 dBm 表示；它會影響 SINR 分子使用的鏈路功率 p^r_{u,s,v}(t, θ)。',
+    '衛星波束的 RF 輸出設定，以 dBm 表示；它會影響 SINR 分子使用的鏈路功率 p_{u,s,v}(t, θ)。',
   'param.maxTxPowerDbm.effect':
     '調高：分子的接收訊號功率上升，SINR 提高，耗電同步增加。同頻的其他波束一併變強時，分母的干擾項也會變大，因此 SINR 的淨改善會被部分抵銷。',
 
   'param.ueAntennaMaxGainDbi.label': '地面接收天線增益',
   'param.ueAntennaMaxGainDbi.unit': 'dBi',
   'param.ueAntennaMaxGainDbi.help':
-    '使用者裝置的接收增益；此因素納入有效通道 h_{u,s,v}(t, θ)，不在簡化 SINR 主式中另列。',
+    '使用者裝置的接收增益；此因素納入非角度鏈路因子 H_{u,s,v}(t)，不在簡化 SINR 主式中另列。',
   'param.ueAntennaMaxGainDbi.effect':
     '調高：接收端訊號功率提高，serving 與 candidate 的 SINR 一起上升。衛星端的發射功率與波束間的干擾量維持不變。',
 
@@ -65,35 +65,35 @@ export const ZH_TW = {
   'param.frequencyGHz.label': '載波頻率',
   'param.frequencyGHz.unit': 'GHz',
   'param.frequencyGHz.help':
-    '訊號使用的載波頻率；頻率越高，複合有效通道 h_{u,s,v}(t, θ) 通常越弱。',
+    '訊號使用的載波頻率；頻率越高，非角度鏈路因子 H_{u,s,v}(t) 通常越弱。',
   'param.frequencyGHz.effect':
-    '調高：複合有效通道 h_{u,s,v}(t, θ) 可能降低，分子的訊號功率與 SINR 也會下降。',
+    '調高：非角度鏈路因子 H_{u,s,v}(t) 可能降低，分子的訊號功率與 SINR 也會下降。',
 
   'param.atmosphericZenithLossDb.label': '大氣吸收損耗（天頂值）',
   'param.atmosphericZenithLossDb.unit': 'dB',
   'param.atmosphericZenithLossDb.help':
-    '訊號穿越大氣層時的吸收損耗；它會被收進有效通道 h_{u,s,v}(t, θ)。',
+    '訊號穿越大氣層時的吸收損耗；它會被收進非角度鏈路因子 H_{u,s,v}(t)。',
   'param.atmosphericZenithLossDb.effect':
-    '調高：有效通道 h_{u,s,v}(t, θ) 變弱，分子的訊號功率與 SINR 隨之下降；低仰角連線通常更敏感。',
+    '調高：非角度鏈路因子 H_{u,s,v}(t) 變弱，分子的訊號功率與 SINR 隨之下降；低仰角連線通常更敏感。',
 
   'param.scintillationScaleDb.label': '閃爍衰落幅度',
   'param.scintillationScaleDb.unit': 'dB',
   'param.scintillationScaleDb.help':
-    '大氣亂流造成的訊號起伏；此因素會被收進有效通道 h_{u,s,v}(t, θ)。',
+    '大氣亂流造成的訊號起伏；此因素會被收進非角度鏈路因子 H_{u,s,v}(t)。',
   'param.scintillationScaleDb.effect':
-    '調高：有效通道 h_{u,s,v}(t, θ) 變弱，分子的訊號功率與 SINR 隨之下降，代表更不穩定的訊號環境。',
+    '調高：非角度鏈路因子 H_{u,s,v}(t) 變弱，分子的訊號功率與 SINR 隨之下降，代表更不穩定的訊號環境。',
 
   'param.shadowFadingMarginDb.label': '陰影衰落餘裕',
   'param.shadowFadingMarginDb.unit': 'dB',
   'param.shadowFadingMarginDb.help':
-    '訊號被建築物、地形等障礙物遮蔽而產生的額外損失；此因素會被收進有效通道 h_{u,s,v}(t, θ)。',
+    '訊號被建築物、地形等障礙物遮蔽而產生的額外損失；此因素會被收進非角度鏈路因子 H_{u,s,v}(t)。',
   'param.shadowFadingMarginDb.effect':
-    '調高：有效通道 h_{u,s,v}(t, θ) 變弱，分子的訊號功率與 SINR 隨之下降，代表遮蔽較嚴重的環境。',
+    '調高：非角度鏈路因子 H_{u,s,v}(t) 變弱，分子的訊號功率與 SINR 隨之下降，代表遮蔽較嚴重的環境。',
 
   'param.tr38811NlosClutterLossDb.label': '非視距雜波損耗（TR 38.811）',
   'param.tr38811NlosClutterLossDb.unit': 'dB',
   'param.tr38811NlosClutterLossDb.help':
-    '在非視距（NLoS）條件下，訊號被建築物、樹木等雜物額外吸收的損耗；它會被收進有效通道 h_{u,s,v}(t, θ)。',
+    '在非視距（NLoS）條件下，訊號被建築物、樹木等雜物額外吸收的損耗；它會被收進非角度鏈路因子 H_{u,s,v}(t)。',
   'param.tr38811NlosClutterLossDb.effect':
     '調高：被判定為 NLoS 的取樣點分子訊號功率下降、SINR 下降；判定為 LoS（視距）的取樣點維持原值。',
 
@@ -111,31 +111,11 @@ export const ZH_TW = {
   'param.beamwidth3dBDeg.effect':
     '調窄：波束中心增益提高、地面覆蓋範圍縮小；調寬則相反。變更後波束佈局會重新計算，進行中的換手倒數重新開始。',
 
-  'param.model.label': '波束增益模型',
-  'param.model.help':
-    '決定發射增益 G^T(θ) 隨離軸角 θ 變化的模型形狀。',
-  'param.model.effect':
-    '切換模型會改變離軸衰減的速率，影響波束邊緣使用者的 SINR；波束中心的最大增益維持不變。',
-
-  'param.maxSteeringAngleDeg.label': '最大波束轉向角',
-  'param.maxSteeringAngleDeg.unit': '度',
-  'param.maxSteeringAngleDeg.help':
-    '波束相對衛星星下點可偏轉的最大角度，決定它能服務到多遠的地面使用者。',
-  'param.maxSteeringAngleDeg.effect':
-    '調大：可用的候選波束增加，但偏轉角接近上限的波束承受更大的轉向損耗（scan loss）。',
-
-  'param.scanLossAtMaxSteeringDb.label': '最大轉向損耗',
-  'param.scanLossAtMaxSteeringDb.unit': 'dB',
-  'param.scanLossAtMaxSteeringDb.help':
-    '波束偏轉至最大角度時，因偏離天線最佳指向而額外產生的增益損失。',
-  'param.scanLossAtMaxSteeringDb.effect':
-    '調高：偏轉角越大的波束損失越多增益，原本排名較前的候選波束可能因此退出最佳選擇。',
-
   'param.frequencyReuse.label': '頻率重用群組數',
   'param.frequencyReuse.help':
     '將作用中的波束分成指定數量的頻率重用群組；同組波束才會形成同頻干擾。',
   'param.frequencyReuse.effect':
-    '調小：共享頻率的波束增加，總干擾 I_{u,s,v}(t, θ) 可能變大。調大：同頻干擾可能減少，但單一波束的 B^w 也會重新分配。',
+    '調小：共享頻率的波束增加，同頻干擾可能變大。調大：同頻干擾減少，但單一波束的可用頻寬也會重新分配。',
 
   // ---------------------------------------------------------------------
   // tab.* — top-level left-panel tabs and their panel headings.
@@ -155,7 +135,7 @@ export const ZH_TW = {
   'formula.sinr.fractionHint':
     '分子：服務波束送達的訊號功率。分母：同頻干擾功率與背景雜訊功率之和。',
   'formula.sinr.symbolHelp':
-    'γ_{u,s,v}(t, θ) 即 SINR。分子使用鏈路功率 p^r_{u,s,v}(t, θ) 與有效通道 h_{u,s,v}(t, θ)；分母使用總干擾 I_{u,s,v}(t, θ) 與接收雜訊 σ²。比值越大，訊號相對於干擾與雜訊越強。',
+    'γ_{u,s,v}(t, θ) 即 SINR。分子使用鏈路功率 p_{u,s,v}(t, θ)、非角度鏈路因子 H_{u,s,v}(t) 與發射增益 Gᵀ(θ)；分母使用總干擾 I_{u,s,v}(t, θ) 與接收雜訊 σ²。比值越大，訊號相對於干擾與雜訊越強。',
   // ---------------------------------------------------------------------
   // kpi.* — right-side info panel readouts (src/ui/InfoPanel.tsx,
   // src/ui/info-panel/DuelCard.tsx) and the read-only noise floor
@@ -234,6 +214,9 @@ export const ZH_TW = {
   'common.on': '開',
   'common.off': '關',
   'common.showOtherHandoverUes': '顯示其他換手中的 UE',
+  'common.scope.primaryUe': '主要 UE',
+  'common.scope.system': '系統',
+  'common.scope.beamAggregate': '波束聚合',
 
   'common.unit.dbm': 'dBm',
   'common.unit.dbi': 'dBi',
@@ -262,14 +245,14 @@ export const EN: Record<I18nKey, string> = {
   'param.maxTxPowerDbm.label': 'Satellite transmit power',
   'param.maxTxPowerDbm.unit': 'dBm',
   'param.maxTxPowerDbm.help':
-    'The satellite beam RF-output setting, in dBm; it affects the link power p^r_{u,s,v}(t, θ) shown in the SINR numerator.',
+    'The satellite beam RF-output setting, in dBm; it affects the link power p_{u,s,v}(t, θ) shown in the SINR numerator.',
   'param.maxTxPowerDbm.effect':
     'Raise it: received signal power in the numerator rises, SINR improves, and power draw rises with it. When other co-channel beams rise as well, the interference term in the denominator grows too, so part of the SINR gain is offset.',
 
   'param.ueAntennaMaxGainDbi.label': 'Ground receiver gain',
   'param.ueAntennaMaxGainDbi.unit': 'dBi',
   'param.ueAntennaMaxGainDbi.help':
-    'The user-device receive gain; it is included in the effective channel h_{u,s,v}(t, θ) and is not a separate factor in the simplified SINR formula.',
+    'The user-device receive gain; it is included in the non-angle channel factor H_{u,s,v}(t) and is not a separate factor in the simplified SINR formula.',
   'param.ueAntennaMaxGainDbi.effect':
     'Raise it: received signal power increases, so serving and candidate SINR rise together. Satellite transmit power and inter-beam interference are unchanged.',
 
@@ -290,35 +273,35 @@ export const EN: Record<I18nKey, string> = {
   'param.frequencyGHz.label': 'Carrier frequency',
   'param.frequencyGHz.unit': 'GHz',
   'param.frequencyGHz.help':
-    'The carrier frequency of the signal; increasing it usually weakens the effective channel h_{u,s,v}(t, θ).',
+    'The carrier frequency of the signal; increasing it usually weakens the non-angle channel factor H_{u,s,v}(t).',
   'param.frequencyGHz.effect':
-    'Raise it: the effective channel h_{u,s,v}(t, θ) may weaken, reducing numerator signal power and SINR.',
+    'Raise it: the non-angle channel factor H_{u,s,v}(t) may weaken, reducing numerator signal power and SINR.',
 
   'param.atmosphericZenithLossDb.label': 'Atmospheric absorption (zenith)',
   'param.atmosphericZenithLossDb.unit': 'dB',
   'param.atmosphericZenithLossDb.help':
-    'Signal absorption while crossing the atmosphere; it is included in the effective channel h_{u,s,v}(t, θ).',
+    'Signal absorption while crossing the atmosphere; it is included in the non-angle channel factor H_{u,s,v}(t).',
   'param.atmosphericZenithLossDb.effect':
-    'Raise it: the effective channel h_{u,s,v}(t, θ) weakens, reducing numerator signal power and SINR; low-elevation links are usually more sensitive.',
+    'Raise it: the non-angle channel factor H_{u,s,v}(t) weakens, reducing numerator signal power and SINR; low-elevation links are usually more sensitive.',
 
   'param.scintillationScaleDb.label': 'Scintillation fading margin',
   'param.scintillationScaleDb.unit': 'dB',
   'param.scintillationScaleDb.help':
-    'Signal fluctuation caused by atmospheric turbulence; it is included in the effective channel h_{u,s,v}(t, θ).',
+    'Signal fluctuation caused by atmospheric turbulence; it is included in the non-angle channel factor H_{u,s,v}(t).',
   'param.scintillationScaleDb.effect':
-    'Raise it: the effective channel h_{u,s,v}(t, θ) weakens, reducing numerator signal power and SINR and representing a less stable signal environment.',
+    'Raise it: the non-angle channel factor H_{u,s,v}(t) weakens, reducing numerator signal power and SINR and representing a less stable signal environment.',
 
   'param.shadowFadingMarginDb.label': 'Shadow fading margin',
   'param.shadowFadingMarginDb.unit': 'dB',
   'param.shadowFadingMarginDb.help':
-    'Additional loss when buildings, terrain, or similar obstacles block the path; it is included in the effective channel h_{u,s,v}(t, θ).',
+    'Additional loss when buildings, terrain, or similar obstacles block the path; it is included in the non-angle channel factor H_{u,s,v}(t).',
   'param.shadowFadingMarginDb.effect':
-    'Raise it: the effective channel h_{u,s,v}(t, θ) weakens, reducing numerator signal power and SINR and representing a more obstructed environment.',
+    'Raise it: the non-angle channel factor H_{u,s,v}(t) weakens, reducing numerator signal power and SINR and representing a more obstructed environment.',
 
   'param.tr38811NlosClutterLossDb.label': 'NLoS clutter loss (TR 38.811)',
   'param.tr38811NlosClutterLossDb.unit': 'dB',
   'param.tr38811NlosClutterLossDb.help':
-    'Additional loss from buildings, trees, and similar clutter under non-line-of-sight (NLoS) conditions; it is included in h_{u,s,v}(t, θ).',
+    'Additional loss from buildings, trees, and similar clutter under non-line-of-sight (NLoS) conditions; it is included in H_{u,s,v}(t).',
   'param.tr38811NlosClutterLossDb.effect':
     'Raise it: for samples classified NLoS, numerator signal power falls and SINR drops; samples classified LoS keep their existing values.',
 
@@ -336,31 +319,11 @@ export const EN: Record<I18nKey, string> = {
   'param.beamwidth3dBDeg.effect':
     'Narrow it: beam-center gain rises and the ground footprint shrinks; widen it and the reverse happens. Either change recomputes the beam layout and restarts any handover countdown in progress.',
 
-  'param.model.label': 'Beam gain model',
-  'param.model.help':
-    'Sets the model shape for the transmit gain G^T(θ) as the off-axis angle θ changes.',
-  'param.model.effect':
-    'Switching models changes the rate of off-axis roll-off, which affects SINR for users near the beam edge. Peak gain at beam center is unchanged.',
-
-  'param.maxSteeringAngleDeg.label': 'Max beam steering angle',
-  'param.maxSteeringAngleDeg.unit': 'degrees',
-  'param.maxSteeringAngleDeg.help':
-    "The largest angle a beam may steer away from the satellite's nadir point, which sets how distant a ground user it can serve.",
-  'param.maxSteeringAngleDeg.effect':
-    'Increase it: more candidate beams remain available, but beams steered near the limit pay a larger scan-loss penalty.',
-
-  'param.scanLossAtMaxSteeringDb.label': 'Max scan loss',
-  'param.scanLossAtMaxSteeringDb.unit': 'dB',
-  'param.scanLossAtMaxSteeringDb.help':
-    "The additional gain loss a beam incurs at maximum steering angle, from pointing away from the antenna's optimal direction.",
-  'param.scanLossAtMaxSteeringDb.effect':
-    'Raise it: beams at larger steering angles lose more gain, which can drop a previously top-ranked candidate beam out of contention.',
-
   'param.frequencyReuse.label': 'Frequency-reuse group count',
   'param.frequencyReuse.help':
     'Divides active beams into the selected number of frequency-reuse groups; only beams in the same group form co-channel interference.',
   'param.frequencyReuse.effect':
-    'Lower it: more beams share a frequency, so total interference I_{u,s,v}(t, θ) may rise. Raise it: co-channel interference may fall, while single-beam B^w is redistributed.',
+    'Lower it: more beams share a frequency, so co-channel interference may rise. Raise it: co-channel interference falls, while single-beam bandwidth is redistributed.',
 
   // ---------------------------------------------------------------------
   // tab.*
@@ -379,7 +342,7 @@ export const EN: Record<I18nKey, string> = {
   'formula.sinr.fractionHint':
     'Numerator: the signal power delivered by the serving beam. Denominator: co-channel interference power plus background noise power.',
   'formula.sinr.symbolHelp':
-    'γ_{u,s,v}(t, θ) is SINR. The numerator uses link power p^r_{u,s,v}(t, θ) and effective channel h_{u,s,v}(t, θ); the denominator uses total interference I_{u,s,v}(t, θ) and receiver noise σ². A larger ratio means a stronger signal relative to interference and noise.',
+    'γ_{u,s,v}(t, θ) is SINR. The numerator uses link power p_{u,s,v}(t, θ), non-angle channel factor H_{u,s,v}(t), and transmit gain Gᵀ(θ); the denominator uses total interference I_{u,s,v}(t, θ) and receiver noise σ². A larger ratio means a stronger signal relative to interference and noise.',
   // ---------------------------------------------------------------------
   // kpi.*
   // ---------------------------------------------------------------------
@@ -457,6 +420,9 @@ export const EN: Record<I18nKey, string> = {
   'common.on': 'ON',
   'common.off': 'OFF',
   'common.showOtherHandoverUes': 'Show other UEs in handover',
+  'common.scope.primaryUe': 'Primary UE',
+  'common.scope.system': 'System',
+  'common.scope.beamAggregate': 'Beam aggregate',
 
   'common.unit.dbm': 'dBm',
   'common.unit.dbi': 'dBi',

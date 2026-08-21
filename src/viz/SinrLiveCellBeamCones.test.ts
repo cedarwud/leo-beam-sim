@@ -13,13 +13,13 @@
  *      one wrong sat);
  *   3. `focusSatIds`, when non-empty, narrows to those sats (cinema handover pair);
  *      omitted/empty → all serving sats draw;
- *   4. cone base = the FIXED cell centre on the GROUND (y = 0), apex = serving sat;
+ *   4. cone base = the resolved cell/beam footprint centre on the GROUND (y = 0), apex = serving sat;
  *   5. colour = SERVING-IDENTITY colour (`colorForServingBeam(satId, cellId)`, the
  *      SAME authority the UE mosaic uses) — a serving cone is the same colour as the
  *      UE dots it serves (SDD §3.2, kills Bug E); the freq-reuse palette is retired
  *      from the live render (the style fn is retained for a future colour mode);
  *   6. a serving sat not rendered / a cell with no placement is skipped;
- *   7. the OBLIQUE geometry: the base ring lies FLAT on the ground plane.
+ *   7. the OBLIQUE geometry: the base ring lies FLAT on the ground plane and is elliptical when tilted.
  *
  * Run: `npm run validate:phase-c:sinr-live-cells:render`.
  */
@@ -48,6 +48,7 @@ import {
   type SinrLiveCinemaHandoverCandidate,
 } from './SinrLiveCellBeamCones';
 import type { SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
+import { computeSinrLiveBeamFootprintEllipse } from '../scene/sinrLiveBeamGeometry';
 import { MANUAL_HANDOVER_DISPLAY_MS } from '../scene/manualHandoverDemo';
 import {
   frequencyReuseColor,
@@ -272,6 +273,17 @@ check('cone base = FIXED cell centre on the GROUND (NOT the UE/origin), apex = s
   approx(c.apex.y, 900, 1e-9, 'apex at sat-A altitude');
 });
 
+check('sampled steering never makes the displayed ground footprint slide at re-point boundaries', () => {
+  const first = resolveSinrLiveCellBeamConeItems(base({ cellFrame: frameOf([beam('sat-A', 0, true)]) }));
+  const next = resolveSinrLiveCellBeamConeItems(base({ cellFrame: frameOf([beam('sat-A', 0, true)]) }));
+  assertEqual(first.length, 1, 'one serving cone at the first steering sample');
+  assertEqual(next.length, 1, 'one serving cone at the next steering sample');
+  approx(first[0].baseCenter.x, 30, 1e-9, 'first display footprint stays at the fixed cell east centre');
+  approx(first[0].baseCenter.z, -40, 1e-9, 'first display footprint stays at the fixed cell north centre');
+  approx(next[0].baseCenter.x, first[0].baseCenter.x, 1e-9, 'next display footprint does not slide east');
+  approx(next[0].baseCenter.z, first[0].baseCenter.z, 1e-9, 'next display footprint does not slide north');
+});
+
 check('colour = SERVING-IDENTITY colour (matches the UE mosaic for the same satId+cellId — Bug E kill)', () => {
   // The serving cone colours by colorForServingBeam(satId, cellId) — the SAME
   // authority buildSinrServingUeColorMapFromCells uses for the UE dots — so a cone
@@ -324,12 +336,13 @@ check('resolveTopServingFocusSatIds: top-K serving sats by served-cell count + p
   assertEqual(resolveTopServingFocusSatIds(frameWithCells([cellRec(0, null)]), 2, null).size, 0, 'no served cells → empty focus');
 });
 
-check('oblique geometry: base ring FLAT on the ground (y=0), every triangle apex = sat', () => {
+check('oblique geometry: elliptical base ring FLAT on the ground (y=0), every triangle apex = sat', () => {
   const apex = new THREE.Vector3(10, 900, -20);
   const baseCenter = new THREE.Vector3(40, 0, 60);
   const radius = 15;
   const segments = 8;
   const pos = buildObliqueBeamConePositions(apex, baseCenter, radius, segments);
+  const ellipse = computeSinrLiveBeamFootprintEllipse({ apex, baseCenter, radiusWorld: radius });
   assertEqual(pos.length, segments * 9, '3 verts × segments triangles');
   for (let i = 0; i < segments; i += 1) {
     const o = i * 9;
@@ -338,8 +351,15 @@ check('oblique geometry: base ring FLAT on the ground (y=0), every triangle apex
     approx(pos[o + 2], apex.z, 1e-6, `tri ${i} apex z`);
     approx(pos[o + 4], 0, 1e-9, `tri ${i} ring v1 on ground (y=0)`);
     approx(pos[o + 7], 0, 1e-9, `tri ${i} ring v2 on ground (y=0)`);
-    const r1 = Math.hypot(pos[o + 3] - baseCenter.x, pos[o + 5] - baseCenter.z);
-    approx(r1, radius, 1e-3, `tri ${i} ring v1 at footprint radius`);
+    const dx = pos[o + 3] - baseCenter.x;
+    const dz = pos[o + 5] - baseCenter.z;
+    const localLong = (dx * Math.cos(ellipse.longAxisAzimuthRad))
+      + (dz * Math.sin(ellipse.longAxisAzimuthRad));
+    const localShort = (-dx * Math.sin(ellipse.longAxisAzimuthRad))
+      + (dz * Math.cos(ellipse.longAxisAzimuthRad));
+    const ellipseEquation = (localLong * localLong) / (ellipse.longAxisWorld * ellipse.longAxisWorld)
+      + (localShort * localShort) / (ellipse.shortAxisWorld * ellipse.shortAxisWorld);
+    approx(ellipseEquation, 1, 1e-3, `tri ${i} ring v1 lies on the footprint ellipse`);
   }
 });
 

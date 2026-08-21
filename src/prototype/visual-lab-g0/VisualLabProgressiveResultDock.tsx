@@ -1,9 +1,7 @@
-import { useState, type ReactElement } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import {
-  formatBits,
   formatCompactUnit,
   formatDecimal,
-  formatEnergy,
   formatEnergyEfficiency as formatEe,
   formatPower,
   formatPowerParts,
@@ -72,42 +70,21 @@ const COPY = Object.freeze({
   offAxisAngle: localized('離軸角', 'Off-axis angle'),
   elevation: localized('仰角', 'Elevation'),
   distance: localized('斜距', 'Slant range'),
-  transmitGain: localized('發射增益', 'Transmit gain'),
-  compositeGain: localized('複合通道增益', 'Composite channel gain'),
-  signalPower: localized('接收端訊號功率 S', 'Received signal power S'),
-  intraInterference: localized('同衛星干擾', 'Intra-satellite interference'),
-  interInterference: localized('跨衛星干擾', 'Inter-satellite interference'),
-  totalInterference: localized('總干擾', 'Total interference'),
-  noisePower: localized('雜訊功率', 'Noise power'),
-  qos: localized('最低傳輸速率目標', 'Minimum throughput target'),
-  met: localized('達標', 'Met'),
-  notMet: localized('未達標', 'Not met'),
-  powerLimit: localized('功率上限', 'Power limit'),
-  limited: localized('受限', 'Limited'),
-  notLimited: localized('未受限', 'Not limited'),
-  systemPower: localized('系統功率', 'System power'),
-  requestedRf: localized('所需 RF 功率', 'Requested RF power'),
-  beforeSatelliteCap: localized('衛星上限前 RF', 'RF before satellite cap'),
-  servingRf: localized('服務 RF 輸出', 'Serving RF output'),
-  candidateRf: localized('候選 RF 輸出', 'Candidate RF output'),
-  paEfficiency: localized('PA 效率', 'PA efficiency'),
-  paInput: localized('PA 輸入功率', 'PA input power'),
-  rfcPower: localized('RF chain 功率', 'RF-chain power'),
-  basebandPower: localized('Baseband 功率', 'Baseband power'),
-  eventPower: localized('事件功率', 'Event power'),
-  servingBeamPower: localized('服務波束總功率', 'Serving-beam total power'),
-  activeBeams: localized('啟用波束', 'Active beams'),
-  activeSatellites: localized('啟用衛星', 'Active satellites'),
+  transmitGain: localized('Gᵀ(θᵤ,ₛ,ᵥ)', 'Gᵀ(θᵤ,ₛ,ᵥ)'),
+  compositeGain: localized('Hᵤ,ₛ,ᵥ(t)', 'Hᵤ,ₛ,ᵥ(t)'),
+  signalPower: localized('wanted-link 訊號', 'Wanted-link signal'),
+  totalInterference: localized('Iᵤ,ₛ,ᵥ(t, θ)', 'Iᵤ,ₛ,ᵥ(t, θ)'),
+  noisePower: localized('σ²', 'σ²'),
+  systemPower: localized('Pᴺ(t, θ)', 'Pᴺ(t, θ)'),
+  linkRfPower: localized('pᵤ,ₛ,ᵥ(t, θᵤ,ₛ,ᵥ)', 'pᵤ,ₛ,ᵥ(t, θᵤ,ₛ,ᵥ)'),
+  linkSupplyPower: localized('Pᵖᵤ,ₛ,ᵥ(t, θᵤ,ₛ,ᵥ)', 'Pᵖᵤ,ₛ,ᵥ(t, θᵤ,ₛ,ᵥ)'),
+  linkEfficiency: localized('ξᵤ,ₛ,ᵥ(t, θᵤ,ₛ,ᵥ)', 'ξᵤ,ₛ,ᵥ(t, θᵤ,ₛ,ᵥ)'),
+  fixedPower: localized('Pᶠ(t)', 'Pᶠ(t)'),
   totalThroughput: localized('總吞吐量', 'Total throughput'),
   servingRate: localized('代表服務鏈路速率', 'Representative serving-link rate'),
-  deliveredData: localized('累積資料', 'Accumulated data'),
-  minimumRate: localized('最低傳輸速率目標', 'Minimum throughput target'),
-  systemBandwidth: localized('系統頻寬', 'System bandwidth'),
-  beamBandwidth: localized('每波束頻寬', 'Per-beam bandwidth'),
-  reuseGroups: localized('頻率重用群組', 'Frequency-reuse groups'),
-  instantEe: localized('瞬時 EE', 'Instantaneous EE'),
-  cumulativeEe: localized('累積 EE', 'Accumulated EE'),
-  accumulatedEnergy: localized('累積能量', 'Accumulated energy'),
+  beamBandwidth: localized('Bʷ', 'Bʷ'),
+  linkEe: localized('ηᵤ,ₛ,ᵥ(t, θ)', 'ηᵤ,ₛ,ᵥ(t, θ)'),
+  rate: localized('Rᵤ,ₛ,ᵥ(t, θ)', 'Rᵤ,ₛ,ᵥ(t, θ)'),
   currentView: localized('目前檢視', 'Current view'),
   quantity: localized('量測項目', 'Quantity'),
   controlledComparison: localized('A／B 控制比較', 'Controlled A/B comparison'),
@@ -139,6 +116,11 @@ function linearGainDb(value: number | null | undefined): string {
 function powerDbw(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value) || value <= 0) return value === 0 ? '0 W' : '—';
   return `${formatDecimal(10 * Math.log10(value), 2)} dBW`;
+}
+
+function sumFinite(values: readonly (number | null | undefined)[]): number | null {
+  const finiteValues = values.filter((value): value is number => value !== null && value !== undefined && Number.isFinite(value));
+  return finiteValues.length === 0 ? null : finiteValues.reduce((sum, value) => sum + value, 0);
 }
 
 function progressPercent(snapshot: VisualLabCanonicalSnapshot): number {
@@ -239,26 +221,22 @@ function LinkComparisonTable({ snapshot, locale }: {
   readonly snapshot: VisualLabCanonicalSnapshot;
   readonly locale: VisualLabLocale;
 }): ReactElement {
-  const rows = [
+  const rows: readonly [ReactNode, string, string][] = [
     [text(COPY.offAxisAngle, locale), snapshot.serving.offAxisAngleRad == null ? '—' : `${formatDecimal(snapshot.serving.offAxisAngleRad * 180 / Math.PI, 2)}°`, snapshot.candidate.offAxisAngleRad == null ? '—' : `${formatDecimal(snapshot.candidate.offAxisAngleRad * 180 / Math.PI, 2)}°`],
     [text(COPY.elevation, locale), snapshot.serving.elevationDeg == null ? '—' : `${formatDecimal(snapshot.serving.elevationDeg, 2)}°`, snapshot.candidate.elevationDeg == null ? '—' : `${formatDecimal(snapshot.candidate.elevationDeg, 2)}°`],
     [text(COPY.distance, locale), snapshot.serving.distanceKm == null ? '—' : formatCompactUnit(snapshot.serving.distanceKm, 'km'), snapshot.candidate.distanceKm == null ? '—' : formatCompactUnit(snapshot.candidate.distanceKm, 'km')],
     [text(COPY.transmitGain, locale), linearGainDb(snapshot.serving.transmitGainLinear), linearGainDb(snapshot.candidate.transmitGainLinear)],
     [text(COPY.compositeGain, locale), linearGainDb(snapshot.serving.compositeGainLinear), linearGainDb(snapshot.candidate.compositeGainLinear)],
     [text(COPY.signalPower, locale), powerDbw(snapshot.serving.signalW), powerDbw(snapshot.candidate.signalW)],
-    [text(COPY.intraInterference, locale), powerDbw(snapshot.serving.intraSatelliteInterferenceW), powerDbw(snapshot.candidate.intraSatelliteInterferenceW)],
-    [text(COPY.interInterference, locale), powerDbw(snapshot.serving.interSatelliteInterferenceW), powerDbw(snapshot.candidate.interSatelliteInterferenceW)],
     [text(COPY.totalInterference, locale), powerDbw(snapshot.serving.interferenceW), powerDbw(snapshot.candidate.interferenceW)],
     [text(COPY.noisePower, locale), powerDbw(snapshot.serving.noiseW), powerDbw(snapshot.candidate.noiseW)],
-    [text(COPY.qos, locale), snapshot.serving.qosMet == null ? '—' : text(snapshot.serving.qosMet ? COPY.met : COPY.notMet, locale), snapshot.candidate.qosMet == null ? '—' : text(snapshot.candidate.qosMet ? COPY.met : COPY.notMet, locale)],
-    [text(COPY.powerLimit, locale), snapshot.serving.powerLimited == null ? '—' : text(snapshot.serving.powerLimited ? COPY.limited : COPY.notLimited, locale), snapshot.candidate.powerLimited == null ? '—' : text(snapshot.candidate.powerLimited ? COPY.limited : COPY.notLimited, locale)],
   ] as const;
   return (
     <table className="vlab-progressive-result-dock__comparison-table">
       <thead>
         <tr><th scope="col">{text(COPY.quantity, locale)}</th><th scope="col">{text(COPY.serving, locale)}</th><th scope="col">{text(COPY.candidate, locale)}</th></tr>
       </thead>
-      <tbody>{rows.map(([label, serving, candidate]) => <tr key={label}><th scope="row">{label}</th><td>{serving}</td><td>{candidate}</td></tr>)}</tbody>
+      <tbody>{rows.map(([label, serving, candidate], index) => <tr key={index}><th scope="row">{label}</th><td>{serving}</td><td>{candidate}</td></tr>)}</tbody>
     </table>
   );
 }
@@ -335,24 +313,21 @@ function SinrSection({ snapshot, locale, open, onOpenChange }: ResultSectionProp
 }
 
 function PowerSection({ snapshot, locale, open, onOpenChange }: ResultSectionProps): ReactElement {
+  const fixedPowerW = sumFinite([
+    snapshot.power.servingRfcPowerW,
+    snapshot.power.servingBasebandPowerW,
+    snapshot.power.servingEventPowerW,
+  ]);
   return (
     <details className="vlab-progressive-result-dock__section" open={open} onToggle={(event) => onOpenChange(event.currentTarget.open)}>
       <SectionSummary module="power" locale={locale} />
       <div className="vlab-progressive-result-dock__section-body">
         <dl className="vlab-progressive-result-dock__rows">
           <ResultRow label={text(COPY.systemPower, locale)} value={formatPower(snapshot.power.systemPowerW)} />
-          <ResultRow label={text(COPY.requestedRf, locale)} value={formatPower(snapshot.power.servingRequestedPowerW)} />
-          <ResultRow label={text(COPY.beforeSatelliteCap, locale)} value={formatPower(snapshot.power.servingBeforeSatelliteCapPowerW)} />
-          <ResultRow label={text(COPY.servingRf, locale)} value={formatPower(snapshot.power.servingActualPowerW)} />
-          <ResultRow label={text(COPY.candidateRf, locale)} value={formatPower(snapshot.power.candidateActualPowerW)} />
-          <ResultRow label={text(COPY.paEfficiency, locale)} value={snapshot.power.servingPaEfficiency == null ? '—' : `${formatDecimal(snapshot.power.servingPaEfficiency * 100, 1)}%`} />
-          <ResultRow label={text(COPY.paInput, locale)} value={formatPower(snapshot.power.servingPaInputPowerW)} />
-          <ResultRow label={text(COPY.rfcPower, locale)} value={formatPower(snapshot.power.servingRfcPowerW)} />
-          <ResultRow label={text(COPY.basebandPower, locale)} value={formatPower(snapshot.power.servingBasebandPowerW)} />
-          <ResultRow label={text(COPY.eventPower, locale)} value={formatPower(snapshot.power.servingEventPowerW)} />
-          <ResultRow label={text(COPY.servingBeamPower, locale)} value={formatPower(snapshot.power.servingTotalPowerW)} />
-          <ResultRow label={text(COPY.activeBeams, locale)} value={snapshot.power.activeBeamCount == null ? '—' : String(snapshot.power.activeBeamCount)} />
-          <ResultRow label={text(COPY.activeSatellites, locale)} value={snapshot.power.activeSatelliteCount == null ? '—' : String(snapshot.power.activeSatelliteCount)} />
+          <ResultRow label={text(COPY.linkRfPower, locale)} value={formatPower(snapshot.power.servingActualPowerW)} />
+          <ResultRow label={text(COPY.linkSupplyPower, locale)} value={formatPower(snapshot.power.servingPaInputPowerW)} />
+          <ResultRow label={text(COPY.linkEfficiency, locale)} value={snapshot.power.servingPaEfficiency == null ? '—' : `${formatDecimal(snapshot.power.servingPaEfficiency * 100, 1)}%`} />
+          <ResultRow label={text(COPY.fixedPower, locale)} value={formatPower(fixedPowerW)} />
         </dl>
       </div>
     </details>
@@ -367,11 +342,7 @@ function ThroughputSection({ snapshot, locale, open, onOpenChange }: ResultSecti
         <dl className="vlab-progressive-result-dock__rows">
           <ResultRow label={text(COPY.systemThroughput, locale)} value={formatRate(snapshot.throughput.totalRateBps)} />
           <ResultRow label={text(COPY.servingRate, locale)} value={formatRate(snapshot.throughput.servingRateBps)} />
-          <ResultRow label={text(COPY.deliveredData, locale)} value={formatBits(snapshot.throughput.cumulativeDeliveredBits)} />
-          <ResultRow label={text(COPY.minimumRate, locale)} value={formatRate(snapshot.throughput.minimumRateBps)} />
-          <ResultRow label={text(COPY.systemBandwidth, locale)} value={formatCompactUnit(snapshot.throughput.systemBandwidthHz, 'Hz')} />
           <ResultRow label={text(COPY.beamBandwidth, locale)} value={formatCompactUnit(snapshot.throughput.beamBandwidthHz, 'Hz')} />
-          <ResultRow label={text(COPY.reuseGroups, locale)} value={snapshot.throughput.frequencyReuse == null ? '—' : String(snapshot.throughput.frequencyReuse)} />
         </dl>
       </div>
     </details>
@@ -384,9 +355,9 @@ function EeSection({ snapshot, locale, open, onOpenChange }: ResultSectionProps)
       <SectionSummary module="ee" locale={locale} />
       <div className="vlab-progressive-result-dock__section-body">
         <dl className="vlab-progressive-result-dock__rows">
-          <ResultRow label={text(COPY.systemEeMetric, locale)} value={snapshot.ee.instantaneousBitsPerJ === null ? '—' : formatEe(snapshot.ee.instantaneousBitsPerJ)} />
-          <ResultRow label={text(COPY.cumulativeEe, locale)} value={snapshot.ee.cumulativeBitsPerJ === null ? '—' : formatEe(snapshot.ee.cumulativeBitsPerJ)} />
-          <ResultRow label={text(COPY.accumulatedEnergy, locale)} value={formatEnergy(snapshot.power.cumulativeConsumedEnergyJ)} />
+          <ResultRow label={text(COPY.linkEe, locale)} value={snapshot.ee.instantaneousBitsPerJ === null ? '—' : formatEe(snapshot.ee.instantaneousBitsPerJ)} />
+          <ResultRow label={text(COPY.rate, locale)} value={formatRate(snapshot.throughput.servingRateBps)} />
+          <ResultRow label={text(COPY.systemPower, locale)} value={formatPower(snapshot.power.systemPowerW)} />
         </dl>
       </div>
     </details>

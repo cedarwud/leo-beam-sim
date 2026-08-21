@@ -8,11 +8,11 @@ import {
 import { useLocale } from '../i18n';
 import {
   DEFAULT_TR38811_CHANNEL,
-  type GainModel,
   type PathLossComponent,
   type Profile,
 } from '../profiles/types';
 import type { LinkBudgetTerms } from '../scene/types';
+import type { AngleAwareFormulaFrame } from '../engine/signal/types';
 import {
   PATH_LOSS_COMPONENT_ORDER,
   type SignalTuningState,
@@ -25,11 +25,15 @@ import type { SceneVisualScaleState } from '../sceneVisualScale';
 import {
   FormulaSideControlSection,
   LossControlSection,
-  NoiseFloorReadout,
 } from './signal-tuning/ControlSections';
 import { HelpPopover } from './common/HelpPopover';
 import { NumericControl, PathLossTermControl, SelectControl } from './signal-tuning/Controls';
-import { FormulaFraction, FormulaHeader, FormulaRow, InlineFormulaFraction } from './signal-tuning/FormulaHeader';
+import {
+  FormulaFraction,
+  FormulaHeader,
+  InlineFormulaFraction,
+  FormulaRow,
+} from './signal-tuning/FormulaHeader';
 import { FormulaTabList } from './signal-tuning/FormulaTabList';
 import { MainTabList } from './signal-tuning/MainTabList';
 import { ScenarioDataTab } from './signal-tuning/ScenarioDataTab';
@@ -40,25 +44,21 @@ import { WalkerThroughputTab } from './signal-tuning/WalkerThroughputTab';
 import { tx, txBi } from './signal-tuning/labels';
 import {
   FREQUENCY_REUSE_OPTIONS,
-  GAIN_MODEL_OPTIONS,
   PATH_LOSS_LABELS,
   getFormulaTabAccent,
-  getGainModelDetailCopy,
 } from './signal-tuning/tuningConfig';
 import {
-  captionTextStyle,
   controlStackStyle,
   dividerStyle,
   drawerContentStyle,
+  explanatoryTextStyle,
   groupTitleStyle,
+  legacyPanelStyle,
+  legacyPagePanelStyle,
   pagePanelStyle,
-  panelStyle,
   srOnlyStyle,
 } from './signal-tuning/styles';
 import type { MainTabKey, TuningTabKey } from './signal-tuning/types';
-// The same grouping function the link budget interferes by, so the panel's
-// frequency row cannot drift from the engine.
-import { getBeamFrequencyIndex } from '../utils/beamFrequency';
 import { formatDbi } from './signal-tuning/formatters';
 import type { AppExperienceMode } from './appMode';
 import {
@@ -79,10 +79,9 @@ import { LinkAngle, SystemAngleState } from './signal-tuning/FormulaSymbols';
  * older deep links and validators; MainTabList does not expose them on the
  * canonical homepage.
  *
- * The visible SINR strip presents four formula terms (p, h, I, σ²). Legacy
- * loss / beam / receiver-gain keys remain non-rendered aliases so older deep
- * links and provenance selectors continue to resolve without adding extra
- * user-facing tabs.
+ * The visible SINR strip presents five formula terms (p, H, Gᵀ, I, σ²). Legacy
+ * loss / receiver-gain keys remain non-rendered aliases so older deep
+ * links and provenance selectors continue to resolve to the channel tab.
  */
 
 interface SignalTuningPanelProps {
@@ -102,9 +101,8 @@ interface SignalTuningPanelProps {
   readonly servingSatelliteId?: string | null;
   /** Current cell-truth comparison/pending satellite used by the legacy live scene. */
   readonly candidateSatelliteId?: string | null;
-  /** Current primary-link values projected from the same live canonical frame as the right rail. */
-  readonly linkThroughputMbps?: number | null;
-  readonly linkEeMbitPerJ?: number | null;
+  /** Shared C1-C9 selected-link frame from the live cell truth. */
+  readonly formulaFrame?: AngleAwareFormulaFrame | null;
   onSceneVisualScaleChange: (next: SceneVisualScaleState) => void;
   onReset: () => void;
   /**
@@ -131,8 +129,7 @@ export function SignalTuningPanel({
   onTopologyChange,
   servingSatelliteId,
   candidateSatelliteId,
-  linkThroughputMbps = null,
-  linkEeMbitPerJ = null,
+  formulaFrame = null,
   onSceneVisualScaleChange,
   onReset,
   handoverPolicySection,
@@ -148,22 +145,15 @@ export function SignalTuningPanel({
   // presentation/diagnostics collapse was driven by the now-removed UI-mode
   // switch, so the collapsed handle/styles are gone.
   const isTr38811Formula = baseProfile.formulaFamily === 'hobs-tr38811';
-  const showEffectiveChannelControls = activeTab === 'channel';
-  const showLossControls = showEffectiveChannelControls || activeTab === 'loss';
-  const showBeamControls = showEffectiveChannelControls || activeTab === 'beam';
-  const showReceiverControls = showEffectiveChannelControls || activeTab === 'receiver-gain';
+  const showChannelControls = activeTab === 'channel' || activeTab === 'loss' || activeTab === 'receiver-gain';
+  const showLossControls = showChannelControls;
+  const showBeamControls = activeTab === 'beam';
   const fsplEnabled = tuning.pathLossComponents.includes('fspl');
   const atmosphericEnabled = tuning.pathLossComponents.includes('atmospheric');
   const scintillationEnabled = tuning.pathLossComponents.includes('scintillation');
   const shadowFadingEnabled = tuning.pathLossComponents.includes('shadow-fading');
   const tr38811Environment = baseProfile.channel.tr38811?.environment ?? DEFAULT_TR38811_CHANNEL.environment;
 
-  // K's whole effect is HOW MANY beams end up co-channel, so the interference
-  // section states that count instead of leaving the student to derive it from
-  // the modulo. `link-budget.ts` groups by F(b) = (b-1) mod K over the beam id,
-  // so group g holds every b with (b-1) % K === g — sizes differ by at most one
-  // when K does not divide the beam count, hence the min/max pair rather than a
-  // single rounded number.
   const beamsPerSatellite = Math.max(1, Math.trunc(baseProfile.beams.perSatellite));
   const scenarioBeamLayoutCount: SupportedBeamLayoutCount = topology.beamCountPerSatellite !== null
     && isSupportedBeamLayoutCount(topology.beamCountPerSatellite)
@@ -171,19 +161,7 @@ export function SignalTuningPanel({
     : isSupportedBeamLayoutCount(beamsPerSatellite)
       ? beamsPerSatellite
       : DEFAULT_BEAM_LAYOUT_COUNT;
-  const reuseGroupCount = Math.max(1, Math.trunc(tuning.frequencyReuse));
   const frequencyLabel = say('section.interference.frequencyLabel', '頻率', 'Frequency');
-  const coChannelGroupMin = Math.floor(beamsPerSatellite / reuseGroupCount);
-  const coChannelGroupMax = Math.ceil(beamsPerSatellite / reuseGroupCount);
-  const formatGroupRange = (min: number, max: number) => (
-    min === max ? `${min}` : `${min}–${max}`
-  );
-  const coChannelPerSat = formatGroupRange(coChannelGroupMin, coChannelGroupMax);
-  // Same satellite: the serving beam itself is excluded from its own interference.
-  const intraInterfererCount = formatGroupRange(
-    Math.max(0, coChannelGroupMin - 1),
-    Math.max(0, coChannelGroupMax - 1),
-  );
 
   const update = (patch: Partial<SignalTuningState>) => {
     onTuningChange({ ...tuning, ...patch });
@@ -207,7 +185,7 @@ export function SignalTuningPanel({
       data-drawer-state="tuning"
       aria-label={say('panel.tuning.ariaLabel', '訊號與能源參數面板', 'Signal and energy tuning controls')}
       aria-expanded
-      style={panelStyle}
+      style={legacyPanelStyle}
     >
       <div
         className="leo-signal-tuning-content"
@@ -217,6 +195,7 @@ export function SignalTuningPanel({
         <MainTabList
           activeTab={mainTab}
           showHandoverTab={handoverPolicySection != null}
+          variant="legacy"
           onChange={setMainTab}
         />
 
@@ -244,17 +223,15 @@ export function SignalTuningPanel({
         )}
 
         {mainTab === 'energy' && (
-          <WalkerEeTab linkEeMbitPerJ={linkEeMbitPerJ} />
+          <WalkerEeTab formulaFrame={formulaFrame} />
         )}
         {mainTab === 'power' && (
           <WalkerPowerTab
-            baseProfile={baseProfile}
-            tuning={tuning}
-            onTuningChange={onTuningChange}
+            formulaFrame={formulaFrame}
           />
         )}
         {mainTab === 'throughput' && (
-          <WalkerThroughputTab linkThroughputMbps={linkThroughputMbps} />
+          <WalkerThroughputTab formulaFrame={formulaFrame} />
         )}
 
         <div>
@@ -265,7 +242,7 @@ export function SignalTuningPanel({
           data-testid="sinr-formula-page"
           role="tabpanel"
           aria-label={t('tab.sinr.label')}
-          style={pagePanelStyle}
+          style={legacyPagePanelStyle}
         >
           {/* The whole SINR expression, first thing on the tab. No prose sits
               under it: the "what does this mean" paragraph is served from the
@@ -279,15 +256,16 @@ export function SignalTuningPanel({
               helpId: 'formula.sinr',
               body: say(
                 'formula.sinr.presentationHelp',
-                'γ 使用鏈路 (u,s,v) 的 RF 功率 p 與有效通道 h 形成訊號，分母使用總干擾 I 與 σ²。',
-                'γ uses link RF power p and effective channel h for link (u,s,v), with total interference I and σ² in the denominator.',
+                'γ 使用 p、H 與 Gᵀ 形成 wanted-link 訊號，分母使用總干擾 I 與 σ²。',
+                'γ uses p, H, and Gᵀ for the wanted link, with total interference I and σ² in the denominator.',
               ),
               effect: say(
                 'formula.sinr.presentationEffect',
-                'h_{u,s,v}(t,θ) 與 p_{u,s,v}(t,θ) 使用同一條鏈路的角度參數。',
-                'h_{u,s,v}(t,θ) and p_{u,s,v}(t,θ) use the same link angle parameter.',
+                'p_{u,s,v}(t,θ_{u,s,v}) 與 Gᵀ(θ_{u,s,v}) 使用同一條鏈路的角度參數。',
+                'p_{u,s,v}(t,θ_{u,s,v}) and Gᵀ(θ_{u,s,v}) use the same link angle parameter.',
               ),
             }}
+            variant="legacy"
             // The only "reset the signal parameters" entry point in the panel.
             // It used to live inside the run-configuration block below, which is
             // no longer on screen, so it moves up here next to the formula it
@@ -326,24 +304,38 @@ export function SignalTuningPanel({
               read straight from `getFormulaTabAccent` so the two can never drift
               apart.
             */}
-            <FormulaFraction
-              lhs={<>γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
-              numerator={(
-                <>
-                  <span style={{ color: getFormulaTabAccent('signal-power') }}><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</span>
-                  {' · '}
-                  <span style={{ color: getFormulaTabAccent('loss') }}>h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</span>
-                </>
+            <FormulaRow
+              testId="sinr-main-formula-explanation"
+              accent={UI_TOKENS.color.semantic.tuning}
+              emphasis
+              expression={(
+                <FormulaFraction
+                  lhs={<>γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
+                  numerator={(
+                    <>
+                      <span style={{ color: getFormulaTabAccent('signal-power') }}><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</span>
+                      {' · '}
+                      <span style={{ color: getFormulaTabAccent('channel') }}>H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)</span>
+                      {' · '}
+                      <span style={{ color: getFormulaTabAccent('beam') }}>G<sup>T</sup>(<LinkAngle />)</span>
+                    </>
+                  )}
+                  denominator={(
+                    <>
+                      <span style={{ color: getFormulaTabAccent('interference') }}>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</span>
+                      {' + '}
+                      <span style={{ color: getFormulaTabAccent('thermal-noise') }}>σ²</span>
+                    </>
+                  )}
+                  numeratorAccent={UI_TOKENS.color.semantic.tuning}
+                  denominatorAccent={UI_TOKENS.color.semantic.noise}
+                />
               )}
-              denominator={(
-                <>
-                  <span style={{ color: getFormulaTabAccent('interference') }}>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</span>
-                  {' + '}
-                  <span style={{ color: getFormulaTabAccent('thermal-noise') }}>σ²</span>
-                </>
+              source={say(
+                'section.sinrTerms.explanation',
+                '分子是選定 UE-link 的 RF 功率、非角度鏈路因子與角度相關發射增益；分母是總同頻干擾加上接收端雜訊。',
+                'The numerator combines the selected UE-link RF power, non-angle channel factor, and angle-dependent transmit gain; the denominator is total co-channel interference plus receiver noise.',
               )}
-              numeratorAccent={UI_TOKENS.color.semantic.tuning}
-              denominatorAccent={UI_TOKENS.color.semantic.noise}
             />
           </FormulaHeader>
 
@@ -351,137 +343,35 @@ export function SignalTuningPanel({
             <div style={groupTitleStyle}>
               {say('section.sinrTerms.title', 'SINR', 'SINR')}
             </div>
-            <FormulaTabList activeTab={activeTab} appMode={appMode} onChange={setActiveTab} />
+            <FormulaTabList activeTab={activeTab} appMode={appMode} variant="legacy" onChange={setActiveTab} />
           </div>
-
-          {showEffectiveChannelControls && (
-            <div
-              data-testid="effective-channel-composition"
-              data-formula-term="channel"
-              style={{ display: 'grid', gap: 7 }}
-            >
-              <div style={groupTitleStyle}>
-                {say('section.effectiveChannelFormula.primaryTitle', '主要展開', 'Primary expansion')}
-              </div>
-              <FormulaRow
-                testId="effective-channel-composition-formula"
-                accent={UI_TOKENS.color.semantic.loss}
-                emphasis
-                expression={(
-                  <>
-                    h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />) = H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) · G<sup>T</sup>(<LinkAngle />)
-                  </>
-                )}
-                source={say(
-                  'section.effectiveChannelFormula.source',
-                  'H 收合傳播與接收端因素；G^T(θ) 將離軸角帶入有效通道。',
-                  'H collects propagation and receive-side factors; G^T(θ) carries the off-axis angle into the effective channel.',
-                )}
-              />
-              <div
-                data-testid="effective-channel-detail"
-                style={{ display: 'grid', gap: 4 }}
-              >
-                <div style={groupTitleStyle}>
-                  {say('section.effectiveChannelFormula.detailTitle', '細部展開', 'Detailed expansion')}
-                </div>
-                <FormulaRow
-                  testId="effective-channel-detail-formula"
-                  accent={UI_TOKENS.color.semantic.fixed}
-                  expression={(
-                    <>
-                      H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) = G<sup>LS</sup><sub>u,s</sub> · G<sup>R</sup><sub>u,s</sub> · g<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)
-                    </>
-                  )}
-                  source={say(
-                    'section.effectiveChannelFormula.detailSource',
-                    'H 由大尺度通道因素 G^LS、接收端增益 G^R 與小尺度因素 g 組成；因此下方控制項都有對應來源。',
-                    'H is composed of the large-scale factor G^LS, receive-side gain G^R, and small-scale factor g; the controls below now have an explicit source.',
-                  )}
-                />
-              </div>
-            </div>
-          )}
 
           {activeTab === 'signal-power' && (
             <div style={controlStackStyle}>
-              <FormulaSideControlSection
-                testId="signal-power-controls"
-                helpId="section.signalPower"
-                side="numerator"
-                title="RF output"
-                titleText={say('section.signalPower.title', '實際 RF 輸出', 'Actual RF output')}
-                formula={<><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
-                formulaExpr={(
-                  <>
-                    <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)
-                  </>
-                )}
-                subtitle="Actual RF output is shared by the signal and interference paths."
-                subtitleText={say(
-                  'section.signalPower.hint',
-                  'p_{u,s,v}(t,θ) 是訊號與干擾路徑共同使用的鏈路 RF 功率。',
-                  'p_{u,s,v}(t,θ) is the link RF power shared by the signal and interference paths.',
-                )}
-                contextPlacement="hidden"
+              <section
+                data-testid="signal-power-controls"
+                data-formula-side="numerator"
+                style={{
+                  display: 'grid',
+                  gap: 12,
+                  padding: '14px 15px',
+                  borderRadius: UI_TOKENS.radius.panel,
+                  border: `1px solid ${UI_TOKENS.color.border.soft}`,
+                  borderLeft: `3px solid ${getFormulaTabAccent('signal-power')}aa`,
+                  background: UI_TOKENS.color.surface.cardSubtle,
+                }}
               >
-                <FormulaRow
-                  testId="signal-power-output-formula"
-                  accent={getFormulaTabAccent('signal-power')}
-                  emphasis
-                  expression={(
-                    <span style={{ display: 'grid', gap: 3, justifyItems: 'center' }}>
-                      <span><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</span>
-                      <span>= <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t₀, θ⁰) · <InlineFormulaFraction
-                        numerator={<>G<sup>T</sup>(θ⁰)</>}
-                        denominator={<>G<sup>T</sup>(θ)</>}
-                        label="reference transmit gain divided by current transmit gain"
-                      /></span>
-                    </span>
+                <div style={{ ...groupTitleStyle, color: getFormulaTabAccent('signal-power') }}>
+                  {say('section.signalPower.title', '實際 RF 輸出', 'Actual RF output')}
+                </div>
+                <div style={explanatoryTextStyle}>
+                  {say(
+                    'section.signalPower.hint',
+                    '是選定 UE-link 的實際 RF 發射功率。',
+                    'is the actual RF transmit power of the selected UE-link.',
                   )}
-                />
-              </FormulaSideControlSection>
-            </div>
-          )}
-
-          {showReceiverControls && (
-            <div style={controlStackStyle}>
-              <FormulaSideControlSection
-                testId="receiver-gain-controls"
-                helpId="section.receiverGain"
-                side="numerator"
-                title="Receive-side gain"
-                titleText={say('section.receiverGain.title', '接收端增益', 'Receive-side gain')}
-                formula={<>G<sup>R</sup></>}
-                formulaExpr={<>G<sup>R</sup></>}
-                subtitle="G^R is the receive-side factor collected inside H."
-                subtitleText={say(
-                  'section.receiverGain.hint',
-                  'G^R 是收合在 H 中的接收端因素。',
-                  'G^R is the receive-side factor collected inside H.',
-                )}
-                contextPlacement={showEffectiveChannelControls ? 'hidden' : 'trailing'}
-                accentColor={UI_TOKENS.color.semantic.fixed}
-              >
-                <NumericControl
-                  testId="gr-receiver-gain-control"
-                  symbol={<>G<sup>R</sup></>}
-                  label="Receiver gain"
-                  labelKey="param.ueAntennaMaxGainDbi.label"
-                  unit="dBi"
-                  unitKey="param.ueAntennaMaxGainDbi.unit"
-                  value={tuning.ueAntennaMaxGainDbi}
-                  min={-10}
-                  max={20}
-                  step={0.5}
-                  description="Receive-side gain contribution included in the composite channel factor."
-                  effect="Adjusting it changes the effective channel factor used by the link."
-                  helpId="param.ueAntennaMaxGainDbi"
-                  accentColor={UI_TOKENS.color.semantic.fixed}
-                  formatValue={formatDbi}
-                  onChange={ueAntennaMaxGainDbi => update({ ueAntennaMaxGainDbi })}
-                />
-              </FormulaSideControlSection>
+                </div>
+              </section>
             </div>
           )}
 
@@ -496,20 +386,18 @@ export function SignalTuningPanel({
                 titleText={say('section.thermalNoise.title', '熱雜訊', 'Thermal noise')}
                 formula={<>σ² = B<sup>w</sup> · <i>N</i><sub>0</sub></>}
                 formulaExpr={<>σ² = B<sup>w</sup> · <i>N</i><sub>0</sub></>}
-                subtitle={<>σ² is formed by multiplying channel bandwidth B^w by noise density N₀.</>}
+                subtitle="σ² = B^w · N_0 is the receiver thermal noise power in the SINR denominator."
                 subtitleText={say(
                   'section.thermalNoise.hint',
-                  'σ² 由通道頻寬 B^w 與雜訊功率密度 N₀ 相乘得到。',
-                  'σ² is formed by multiplying channel bandwidth B^w by noise density N₀.',
+                  'σ² = B^w · N_0 是 SINR 分母中的接收端雜訊功率；下方控制可調整波束頻寬 B^w 與雜訊功率密度 N_0。',
+                  'σ² = B^w · N_0 is the receiver noise power in the SINR denominator; the controls below adjust beam bandwidth B^w and noise power spectral density N_0.',
                 )}
                 accentColor={UI_TOKENS.color.semantic.noise}
+                visualVariant="legacy"
               >
-                <NoiseFloorReadout
-                  formulaBudget={formulaBudget}
-                  isFormulaEvidenceStale={isFormulaEvidenceStale}
-                />
                 <NumericControl
                   testId="bandwidth-thermal-noise-control"
+                  visualVariant="legacy"
                   symbol={<>B<sup>w</sup></>}
                   label="Channel bandwidth"
                   labelKey="param.bandwidthMHz.label"
@@ -528,6 +416,7 @@ export function SignalTuningPanel({
                 />
                 <NumericControl
                   testId="n0-thermal-noise-control"
+                  visualVariant="legacy"
                   symbol={<><i>N</i><sub>0</sub></>}
                   label="Noise PSD"
                   labelKey="param.noisePsdDbmHz.label"
@@ -552,9 +441,7 @@ export function SignalTuningPanel({
               <LossControlSection
                 testId="loss-formula-controls"
                 title="Propagation factors"
-                titleText={showEffectiveChannelControls
-                  ? say('section.pathLoss.groupTitle', '傳播因素', 'Propagation factors')
-                  : say('section.pathLoss.title', '有效通道 H', 'Effective channel H')}
+                titleText={say('section.pathLoss.groupTitle', '傳播因素', 'Propagation factors')}
                 // The stack expression goes through `formulaExpr`, not
                 // `subtitle`: a subtitle renders in the prose caption box at
                 // `size.caption` (16px), which is why this formula read smaller
@@ -562,31 +449,57 @@ export function SignalTuningPanel({
                 // on the same rendering path as the numerator/denominator
                 // sections. `subtitle` keeps the identical canonical markup so
                 // the hidden provenance copy is unchanged.
-                // NOTATION RULE: this page's sliders are the L stack, while the
-                // simplified numerator term is h. The bridge belongs HERE, on the
-                // page that owns the sliders, so the visible tab remains the
-                // single effective-channel symbol h.
                 subtitle={<>H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)</>}
-                formulaExpr={showEffectiveChannelControls
-                  ? (
-                    <>
-                      G<sup>LS</sup><sub>u,s</sub> ← L<sup>FS</sup>(<i>f</i><sub>c</sub>, d<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)) + L<sup>atm</sup>(χ<sub>atm</sub>) + L<sup>sc</sup> + L<sup>sf</sup>
-                    </>
-                  )
-                  : <>H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)</>}
-                helpId={showEffectiveChannelControls ? 'section.pathLoss' : undefined}
-                subtitleText={showEffectiveChannelControls
-                  ? say(
-                    'section.effectiveChannelFormula.pathLossSource',
-                    'G^LS 收合自由空間、大氣、閃爍與陰影衰落因素；f_c 與 d 位於自由空間損耗的輸入中。',
-                    'G^LS collects free-space, atmospheric, scintillation, and shadow-fading factors; f_c and d are inputs to free-space loss.',
-                  )
-                  : undefined}
+                formulaExpr={(
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    <div>
+                      H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) = 10<sup>−</sup>
+                      <InlineFormulaFraction
+                        numerator={<>
+                          L<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)
+                        </>}
+                        denominator={10}
+                        label="total path loss divided by ten"
+                      />
+                      · <i>G</i><sup>R</sup><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)
+                    </div>
+                    <div>
+                      L<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) = L<sub>fs</sub>(d<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t), f<sub>c</sub>) + L<sub>g</sub>(α<sub>u,s</sub>(t)) + L<sub>sc</sub>(α<sub>u,s</sub>(t)) + L<sub>sf</sub>
+                    </div>
+                  </div>
+                )}
+                helpId="section.pathLoss"
+                subtitleText={say(
+                  'section.effectiveChannelFormula.pathLossSource',
+                  'H_{u,s,v}(t) 是不承載發射角度型樣的線性鏈路因子；公開展開層只到 L_fs、L_g、L_sc、L_sf 與 G^R，其餘實作層修正留在 H 之內，不列為公開符號。',
+                  'H_{u,s,v}(t) is the linear link factor that does not carry the transmit angular pattern; the public expansion stops at L_fs, L_g, L_sc, L_sf and G^R, and any further implementation-layer correction stays inside H rather than becoming a public symbol.',
+                )}
+                visualVariant="legacy"
               >
+                <NumericControl
+                  testId="gr-receiver-gain-control"
+                  visualVariant="legacy"
+                  symbol={<><i>G</i><sup>R</sup><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)</>}
+                  label="Receive-side factor"
+                  labelKey="param.ueAntennaMaxGainDbi.label"
+                  unit="dBi"
+                  unitKey="param.ueAntennaMaxGainDbi.unit"
+                  value={tuning.ueAntennaMaxGainDbi}
+                  min={-10}
+                  max={20}
+                  step={0.5}
+                  description="Receive-side gain G^R_{u,s,v}(t) in the expanded H factor."
+                  effect="Adjusting it changes H_{u,s,v}(t) and the selected-link SINR."
+                  helpId="param.ueAntennaMaxGainDbi"
+                  accentColor={UI_TOKENS.color.semantic.fixed}
+                  formatValue={formatDbi}
+                  onChange={ueAntennaMaxGainDbi => update({ ueAntennaMaxGainDbi })}
+                />
                 <PathLossTermControl
                   testId="path-loss-term-fspl"
+                  visualVariant="legacy"
                   active={fsplEnabled}
-                  symbol={<><i>f</i><sub>c</sub></>}
+                  symbol={PATH_LOSS_LABELS.fspl.symbol}
                   label="Free-space loss"
                   labelText={say('param.frequencyGHz.termLabel', '自由空間損耗', 'Free-space loss')}
                   detail={PATH_LOSS_LABELS.fspl.detail}
@@ -598,7 +511,7 @@ export function SignalTuningPanel({
                   min={10}
                   max={40}
                   step={0.5}
-                  effect="Higher frequency changes the composite channel factor."
+                  effect="Higher carrier frequency increases L_fs and lowers H_{u,s,v}(t)."
                   inactiveReason="Not contributing while this propagation term is off."
                   helpId="param.frequencyGHz"
                   accentColor={UI_TOKENS.color.semantic.loss}
@@ -608,8 +521,9 @@ export function SignalTuningPanel({
                 />
                 <PathLossTermControl
                   testId="path-loss-term-atmospheric"
+                  visualVariant="legacy"
                   active={atmosphericEnabled}
-                  symbol={<>χ<sub>atm</sub></>}
+                  symbol={PATH_LOSS_LABELS.atmospheric.symbol}
                   label="Gas absorption"
                   labelText={say('param.atmosphericZenithLossDb.termLabel', '大氣吸收', 'Gas absorption')}
                   detail={PATH_LOSS_LABELS.atmospheric.detail}
@@ -621,7 +535,7 @@ export function SignalTuningPanel({
                   min={0}
                   max={1}
                   step={0.01}
-                  effect="Enabling it changes the composite channel factor."
+                  effect="Enabling it adds L_g to L_{u,s,v}(t) and lowers H_{u,s,v}(t)."
                   inactiveReason="Not contributing while this propagation term is off."
                   helpId="param.atmosphericZenithLossDb"
                   accentColor={UI_TOKENS.color.semantic.loss}
@@ -631,8 +545,9 @@ export function SignalTuningPanel({
                 />
                 <PathLossTermControl
                   testId="path-loss-term-scintillation"
+                  visualVariant="legacy"
                   active={scintillationEnabled}
-                  symbol={<>L<sup>sc</sup></>}
+                  symbol={PATH_LOSS_LABELS.scintillation.symbol}
                   label="Scintillation"
                   labelText={say('param.scintillationScaleDb.termLabel', '閃爍衰落', 'Scintillation')}
                   detail={PATH_LOSS_LABELS.scintillation.detail}
@@ -644,7 +559,7 @@ export function SignalTuningPanel({
                   min={0}
                   max={1}
                   step={0.01}
-                  effect="Enabling it changes the composite channel factor."
+                  effect="Enabling it adds L_sc to L_{u,s,v}(t) and lowers H_{u,s,v}(t)."
                   inactiveReason="Not contributing while this propagation term is off."
                   helpId="param.scintillationScaleDb"
                   accentColor={UI_TOKENS.color.semantic.loss}
@@ -654,8 +569,9 @@ export function SignalTuningPanel({
                 />
                 <PathLossTermControl
                   testId="path-loss-term-shadow-fading"
+                  visualVariant="legacy"
                   active={shadowFadingEnabled}
-                  symbol={<>L<sup>sf</sup></>}
+                  symbol={PATH_LOSS_LABELS['shadow-fading'].symbol}
                   label="Shadow fading"
                   labelText={say('param.shadowFadingMarginDb.termLabel', '陰影衰落', 'Shadow fading')}
                   detail={PATH_LOSS_LABELS['shadow-fading'].detail}
@@ -667,7 +583,7 @@ export function SignalTuningPanel({
                   min={0}
                   max={10}
                   step={0.1}
-                  effect="Enabling it changes the composite channel factor."
+                  effect="Enabling it adds L_sf to L_{u,s,v}(t) and lowers H_{u,s,v}(t)."
                   inactiveReason="Not contributing while this propagation term is off."
                   helpId="param.shadowFadingMarginDb"
                   accentColor={UI_TOKENS.color.semantic.loss}
@@ -701,17 +617,19 @@ export function SignalTuningPanel({
                   titleText={say('section.tr38811.title', '進階：非視距（NLoS）情境', 'Advanced: non-line-of-sight (NLoS) cases')}
                   tone="research"
                   helpId="section.tr38811"
-                  subtitle="Advanced sensitivity controls for simulator constants. TR 38.811 NLoS sensitivity control; common loss terms are grouped above with their switches."
+                  subtitle="Implementation-layer TR 38.811 NLoS sensitivity control. It is not part of the public H expansion; the public propagation terms are grouped above with their switches."
                   subtitleText={say(
                     'section.tr38811.hint',
-                    '進階參數：僅套用於判定為非視距（NLoS）的取樣點，用於敏感度分析。一般傳播損耗項位於「路徑損耗」區塊。',
-                    'Advanced parameter: applies only to samples classified as non-line-of-sight (NLoS), for sensitivity analysis. The ordinary propagation-loss terms are in the path-loss section.',
+                    '實作層敏感度參數，不屬於公開 H 展開，也不是論文公式符號：僅套用於判定為非視距（NLoS）的取樣點，其效果併入 H_{u,s,v}(t)。公開的傳播損耗項位於「路徑損耗」區塊。',
+                    'Implementation-layer sensitivity parameter, outside the public H expansion and not a paper formula symbol: it applies only to samples classified as non-line-of-sight (NLoS), and its effect is absorbed into H_{u,s,v}(t). The public propagation-loss terms are in the path-loss section.',
                   )}
+                  visualVariant="legacy"
                 >
                   {isTr38811Formula && (
                     <NumericControl
                       testId="lcl-nlos-control"
-                      symbol={null}
+                      visualVariant="legacy"
+                      symbol={<><i>L</i><sub>N</sub>(t)</>}
                       label="NLoS clutter loss"
                       labelKey="param.tr38811NlosClutterLossDb.label"
                       unit="dB"
@@ -720,8 +638,8 @@ export function SignalTuningPanel({
                       min={0}
                       max={40}
                       step={0.5}
-                      description="TR 38.811 NLoS clutter sensitivity control for seeded NLoS samples only."
-                      effect="Editable in the TR 38.811 profile; changing it affects only seeded NLoS samples. Seeded LoS samples do not change."
+                      description="Implementation-layer TR 38.811 NLoS clutter sensitivity value absorbed into H_{u,s,v}(t); it is not a public formula symbol."
+                      effect="Editable in the TR 38.811 research profile only; it affects seeded NLoS samples. Seeded LoS samples do not change."
                       helpId="param.tr38811NlosClutterLossDb"
                       accentColor={UI_TOKENS.color.semantic.fixed}
                       onChange={tr38811NlosClutterLossDb => update({ tr38811NlosClutterLossDb })}
@@ -761,21 +679,51 @@ export function SignalTuningPanel({
               <FormulaSideControlSection
                 testId="beam-gain-controls"
                 helpId="section.beamGain"
-                contextPlacement={showEffectiveChannelControls ? 'hidden' : 'leading'}
+                contextPlacement="leading"
                 side="numerator"
                 title="Angle-dependent transmit gain"
                 titleText={say('section.beamGain.title', '角度相關發射增益', 'Angle-dependent transmit gain')}
                 formula={<>G<sup>T</sup>(<LinkAngle />)</>}
-                subtitle="G^T(θ) is the angle-dependent transmit-gain factor."
+                formulaExpr={(
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    <div>G<sup>T</sup>(<LinkAngle />) = G<sub>0</sub> F(<LinkAngle />, θ<sub>3dB</sub>)</div>
+                    <div>G<sup>T</sup>(0) = G<sub>0</sub>, &nbsp;F(0, θ<sub>3dB</sub>) = 1</div>
+                    <div>
+                      μ(<LinkAngle />) = 2.07123 ·
+                      <InlineFormulaFraction
+                        numerator={<>sin(<LinkAngle />)</>}
+                        denominator={<>sin(θ<sub>3dB</sub>)</>}
+                        label="sine of the off-axis angle divided by sine of the three dB beamwidth"
+                      />
+                    </div>
+                    <div>
+                      F(<LinkAngle />, θ<sub>3dB</sub>) = (
+                      <InlineFormulaFraction
+                        numerator={<>J<sub>1</sub>(μ)</>}
+                        denominator={<>2μ</>}
+                        label="Bessel J1 divided by twice its angle argument"
+                      /> +
+                      <InlineFormulaFraction
+                        numerator={<>36J<sub>3</sub>(μ)</>}
+                        denominator={<>μ<sup>3</sup></>}
+                        label="thirty six times Bessel J3 divided by the cubed angle argument"
+                      />
+                      )<sup>2</sup>
+                    </div>
+                  </div>
+                )}
+                subtitle="Gᵀ(θ_{u,s,v}) = G₀F(θ_{u,s,v}, θ_{3dB}) is the normalized angle-dependent transmit-gain factor."
                 subtitleText={say(
                   'section.beamGain.hint',
-                  'G^T(θ) 是有效通道中的發射增益因素。',
-                  'G^T(θ) is the transmit-gain factor inside the effective channel.',
+                  'Gᵀ(θ_{u,s,v}) = G₀F(θ_{u,s,v}, θ_{3dB})；F 是 HOBS 式 (3) 的 J₁/J₃ 角度型樣，在波束中心自然等於 1（1/4 + 3/4），不需額外正規化常數。2.07123 是該式的固定角度參數，不是可調參數。',
+                  'Gᵀ(θ_{u,s,v}) = G₀F(θ_{u,s,v}, θ_{3dB}); F is the J₁/J₃ angular pattern of HOBS Eq. (3), which is naturally unity at beam centre (1/4 + 3/4) and needs no extra normalization constant. 2.07123 is that equation\'s fixed angle argument, not a tunable parameter.',
                 )}
                 accentColor={UI_TOKENS.color.semantic.beam}
+                visualVariant="legacy"
               >
                 <NumericControl
                   testId="gtmax-transmit-gain-control"
+                  visualVariant="legacy"
                   symbol={<>G<sub>0</sub></>}
                   label="Max transmit gain"
                   labelKey="param.maxGainDbi.label"
@@ -793,6 +741,7 @@ export function SignalTuningPanel({
                 />
                 <NumericControl
                   testId="beamwidth3db-transmit-gain-control"
+                  visualVariant="legacy"
                   symbol={<>θ<sub>3dB</sub></>}
                   label="3 dB beamwidth"
                   labelKey="param.beamwidth3dBDeg.label"
@@ -802,60 +751,12 @@ export function SignalTuningPanel({
                   min={1}
                   max={8}
                   step={0.1}
-                  description="Beamwidth input used by the angle-dependent transmit factor."
-                  effect="Changing it changes the angle-dependent transmit factor."
+                  description="3 dB beamwidth θ_{3dB} used by the normalized pattern F."
+                  effect="Changing θ_{3dB} changes the angular argument μ and therefore F."
                   helpId="param.beamwidth3dBDeg"
                   accentColor={UI_TOKENS.color.semantic.beamSoft}
                   formatValue={value => `${value.toFixed(1)}°`}
                   onChange={beamwidth3dBDeg => update({ beamwidth3dBDeg })}
-                />
-                <SelectControl
-                  symbol={null}
-                  label="Beam gain model"
-                  labelKey="param.model.label"
-                  description="Angle-dependent gain model used by the transmit factor."
-                  effect="Switching the model changes the angle-dependent transmit factor."
-                  helpId="param.model"
-                  value={tuning.model}
-                  options={GAIN_MODEL_OPTIONS.map(option => {
-                    const detail = getGainModelDetailCopy(option.value);
-                    return { ...option, detail: say(detail.key, detail.zh, detail.en) };
-                  })}
-                  accentColor={UI_TOKENS.color.semantic.beamCool}
-                  onChange={model => update({ model: model as GainModel })}
-                />
-                <NumericControl
-                  symbol={<>θ</>}
-                  label="Max steering angle"
-                  labelKey="param.maxSteeringAngleDeg.label"
-                  unit="degrees"
-                  unitKey="param.maxSteeringAngleDeg.unit"
-                  value={tuning.maxSteeringAngleDeg}
-                  min={1}
-                  max={20}
-                  step={0.5}
-                  description="Steering-angle input used by the angle-dependent transmit factor."
-                  effect="Changing it changes the angle-dependent transmit factor."
-                  helpId="param.maxSteeringAngleDeg"
-                  accentColor={UI_TOKENS.color.semantic.beamCool}
-                  formatValue={value => `${value.toFixed(1)}°`}
-                  onChange={maxSteeringAngleDeg => update({ maxSteeringAngleDeg })}
-                />
-                <NumericControl
-                  symbol={null}
-                  label="Max scan loss"
-                  labelKey="param.scanLossAtMaxSteeringDb.label"
-                  unit="dB"
-                  unitKey="param.scanLossAtMaxSteeringDb.unit"
-                  value={tuning.scanLossAtMaxSteeringDb}
-                  min={0}
-                  max={10}
-                  step={0.25}
-                  description="Scan-loss input used by the angle-dependent transmit factor."
-                  effect="Changing it changes the angle-dependent transmit factor."
-                  helpId="param.scanLossAtMaxSteeringDb"
-                  accentColor={UI_TOKENS.color.semantic.beamLoss}
-                  onChange={scanLossAtMaxSteeringDb => update({ scanLossAtMaxSteeringDb })}
                 />
               </FormulaSideControlSection>
             </div>
@@ -873,32 +774,23 @@ export function SignalTuningPanel({
                 side="denominator"
                 title="Co-channel interference"
                 titleText={say('section.interference.title', '同頻干擾', 'Co-channel interference')}
-                formula={(
-                  <>
-                    I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)
-                  </>
-                )}
-                formulaExpr={(
-                  <>
-                    I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)
-                  </>
-                )}
-                // One line, not a paragraph. The colour row below carries the
-                // explanation — nobody reads three sentences of prose to find out
-                // what a slider does.
-                subtitle="The two co-channel interference sources add to I_{u,s,v}(t, θ)."
+                showFormula={false}
+                subtitle="Frequency-reuse groups determine which active beams share frequencies and affect interference; adjusting group count controls how co-channel beams are distributed."
                 subtitleText={say(
                   'section.interference.hint',
-                  '同頻干擾由同衛星與跨衛星來源共同形成 I_{u,s,v}(t,θ)；下方標籤只表示各來源使用的頻率。',
-                  'Same-satellite and cross-satellite sources form I_{u,s,v}(t,θ); the labels below identify their frequencies only.',
+                  '頻率重用群組會決定哪些作用中波束使用同頻並影響干擾；調整群組數可控制共用頻率的波束數量以抑制同頻干擾。',
+                  'Frequency-reuse groups determine which active beams share frequencies and affect interference; adjusting group count controls how co-channel beams are distributed.',
                 )}
                 accentColor={getFormulaTabAccent('interference')}
+                visualVariant="legacy"
               >
               <SelectControl
+                visualVariant="legacy"
                 symbol={frequencyLabel}
                 label="Number of frequency groups"
-                description="The selected number of frequency groups determines which active beams contribute to I_{u,s,v}(t, θ)."
-                effect="Fewer groups add more co-channel contributors to I_{u,s,v}(t, θ); more groups separate them."
+                labelKey="param.frequencyReuse.label"
+                description="The selected number of frequency groups determines which active beams share frequencies and contribute to interference."
+                effect="Fewer groups add more co-channel contributors; more groups separate them to reduce co-channel interference."
                 helpId="param.frequencyReuse"
                 value={String(tuning.frequencyReuse)}
                 options={FREQUENCY_REUSE_OPTIONS.map(value => ({
@@ -907,65 +799,10 @@ export function SignalTuningPanel({
                   // actually picks is HOW MANY FREQUENCIES the beams are split
                   // across, so the option says that.
                   label: say('param.frequencyReuse.option', `${value} 種頻率`, `${value} frequencies`),
-                  // No per-option prose. It restated in a sentence what the colour
-                  // row under this control shows at a glance.
                 }))}
                 accentColor={getFormulaTabAccent('interference')}
                 onChange={frequencyReuse => update({ frequencyReuse: Number(frequencyReuse) })}
               />
-              {/*
-                The whole explanation, in one row: one chip per beam of a
-                satellite, labelled with the frequency that beam lands on —
-                `getBeamFrequencyIndex(b, K)`, the SAME grouping the link budget
-                interferes by. Change K and the row regroups in front of you:
-                K=1 → F1 F1 F1 F1 F1 F1 F1 (everyone interferes), K=7 → F1…F7
-                (nobody does).
-
-                DELIBERATELY MONOCHROME (owner call 2026-08-06). The scene does not
-                encode frequency as beam colour — cones are painted by ROLE
-                (serving / pending / handover; `displayColor` in
-                SatelliteBeams.tsx), and the frequency palette survives there only
-                as a thin footprint edge ring. Tinting these chips per frequency
-                would teach a colour language the 3D view does not speak. The F
-                label carries the grouping on its own, and it stays exact at K=7,
-                where the six-entry BEAM_FREQUENCY_COLORS palette would have wrapped
-                two different frequencies onto one colour anyway.
-              */}
-              <div
-                data-testid="interference-frequency-groups"
-                // Sized so a 7-beam satellite still reads as ONE row in the narrow
-                // tuning rail (7 x 28 + 6 x 3 = 214px). `flexWrap` keeps a
-                // higher-beam-count profile graceful rather than clipped.
-                style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}
-              >
-                {Array.from({ length: beamsPerSatellite }, (_, index) => {
-                  const beamId = index + 1;
-                  const frequencyIndex = getBeamFrequencyIndex(beamId, reuseGroupCount);
-                  return (
-                    <span
-                      key={beamId}
-                      title={`${frequencyLabel} ${frequencyIndex + 1}`}
-                      data-testid={`interference-frequency-swatch-${beamId}`}
-                      data-frequency-index={frequencyIndex}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minWidth: 58,
-                        height: 26,
-                        borderRadius: UI_TOKENS.radius.sm,
-                        background: UI_TOKENS.color.surface.card,
-                        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                        color: UI_TOKENS.color.text.secondary,
-                        fontSize: UI_TOKENS.type.size.caption,
-                        fontWeight: UI_TOKENS.type.weight.heavy,
-                      }}
-                    >
-                      {frequencyLabel} {frequencyIndex + 1}
-                    </span>
-                  );
-                })}
-              </div>
               </FormulaSideControlSection>
             </div>
           )}
@@ -981,7 +818,7 @@ export function SignalTuningPanel({
           'sinr-experiment'`; Phase C then kept visual scale visible in both app
           modes. Neither placement was right: none of these fields — satellite
           count, beams per satellite, UE count and how those UEs move — appears
-          anywhere in γ = (P_t · H · G^T · G^R) / (I^a + I^b + σ²). Sitting them
+          anywhere in γ = p_{u,s,v} H_{u,s,v} Gᵀ(θ_{u,s,v}) / (I_{u,s,v} + σ²). Sitting them
           under a formula-term strip, behind an `N_sat` symbol, taught students
           that the satellite count was a factor of the fraction. It is not: it is
           the shape of the simulated world, and changing it restarts the run

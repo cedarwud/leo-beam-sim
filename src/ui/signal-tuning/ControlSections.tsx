@@ -111,12 +111,14 @@ export function FormulaSideControlSection({
   subtitleText,
   formula,
   formulaExpr,
+  showFormula = true,
   side,
   children,
   testId,
   accentColor,
   helpId,
   contextPlacement = 'trailing',
+  visualVariant = 'default',
 }: {
   /** Canonical English heading. Kept for the formula-side provenance gates. */
   title: string;
@@ -125,9 +127,11 @@ export function FormulaSideControlSection({
   subtitle: ReactNode;
   subtitleText?: string;
   /** Canonical description; may be a sentence. */
-  formula: ReactNode;
+  formula?: ReactNode;
   /** Notation-only form shown on screen in place of `formula`. */
   formulaExpr?: ReactNode;
+  /** Presentation toggle: when false, suppresses formulaExpr / formula rendering and canonical hidden formula copy. Defaults to true. */
+  showFormula?: boolean;
   side: 'numerator' | 'denominator';
   children: ReactNode;
   testId: string;
@@ -152,10 +156,13 @@ export function FormulaSideControlSection({
    *
    * 'hidden' keeps the provenance hook mounted while a compact parameter-value
    * card is the visible content of a section.
-   */
+  */
   contextPlacement?: 'leading' | 'trailing' | 'hidden';
+  /** Visual-only variant used by the legacy Walker rail. */
+  visualVariant?: 'default' | 'legacy';
 }) {
   const isNumerator = side === 'numerator';
+  const isLegacy = visualVariant === 'legacy';
   const sectionAccent = accentColor ?? (isNumerator ? UI_TOKENS.color.semantic.tuning : UI_TOKENS.color.semantic.noise);
 
   const displayTitle = titleText ?? title;
@@ -175,11 +182,12 @@ export function FormulaSideControlSection({
       data-prominence="secondary-context"
       style={{
         display: 'grid',
-        gap: 6,
-        padding: '10px 12px',
-        borderRadius: UI_TOKENS.radius.md,
-        border: `1px solid ${sectionAccent}44`,
-        borderLeft: `3px solid ${sectionAccent}88`,
+        gap: isLegacy ? 6 : 6,
+        padding: isLegacy ? '10px 12px' : '10px 12px',
+        borderRadius: isLegacy ? UI_TOKENS.radius.md : UI_TOKENS.radius.md,
+        background: isLegacy ? UI_TOKENS.color.surface.cardFaint : undefined,
+        border: isLegacy ? `1px solid ${UI_TOKENS.color.border.subtle}` : `1px solid ${sectionAccent}44`,
+        borderLeft: isLegacy ? undefined : `3px solid ${sectionAccent}88`,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -193,14 +201,16 @@ export function FormulaSideControlSection({
           />
         )}
       </div>
-      <div style={{ ...formulaTextStyle, fontSize: UI_TOKENS.type.size.subheading, lineHeight: 1.28, color: sectionAccent }}>
-        {formulaExpr ?? formula}
-      </div>
+      {showFormula && (formulaExpr ?? formula) ? (
+        <div style={{ ...formulaTextStyle, fontSize: UI_TOKENS.type.size.subheading, lineHeight: 1.28, color: sectionAccent }}>
+          {formulaExpr ?? formula}
+        </div>
+      ) : null}
       {!helpId && <div style={captionTextStyle}>{displaySubtitle}</div>}
-      {(titleText || subtitleText || formulaExpr) && (
+      {(titleText || subtitleText || (showFormula && formulaExpr)) && (
         <div aria-hidden="true" data-prominence="canonical-copy" style={srOnlyStyle}>
           {titleText ? <span>{title}</span> : null}
-          {formulaExpr ? <span>{formula}</span> : null}
+          {showFormula && formulaExpr ? <span>{formula}</span> : null}
           {subtitleText ? <span>{subtitle}</span> : null}
         </div>
       )}
@@ -213,10 +223,12 @@ export function FormulaSideControlSection({
       data-formula-side={side}
       style={{
         display: 'grid',
-        gap: 14,
-        padding: '14px 15px',
-        borderRadius: UI_TOKENS.radius.lg,
-        border: `1px solid ${sectionAccent}55`,
+        gap: isLegacy ? 12 : 14,
+        padding: isLegacy ? '14px 15px' : '14px 15px',
+        borderRadius: isLegacy ? UI_TOKENS.radius.panel : UI_TOKENS.radius.lg,
+        background: isLegacy ? UI_TOKENS.color.surface.cardSubtle : undefined,
+        border: isLegacy ? `1px solid ${UI_TOKENS.color.border.soft}` : `1px solid ${sectionAccent}55`,
+        borderLeft: isLegacy ? `3px solid ${sectionAccent}aa` : undefined,
       }}
     >
       {contextPlacement === 'leading' && formulaContext}
@@ -319,6 +331,7 @@ export function LossControlSection({
   testId,
   tone = 'formula',
   helpId,
+  visualVariant = 'default',
 }: {
   /** Canonical English heading, kept for the provenance gates. */
   title: string;
@@ -347,8 +360,11 @@ export function LossControlSection({
   testId: string;
   tone?: 'formula' | 'research';
   helpId?: string;
+  /** Visual-only variant used by the legacy Walker rail. */
+  visualVariant?: 'default' | 'legacy';
 }) {
   const isResearch = tone === 'research';
+  const isLegacy = visualVariant === 'legacy';
   const displayTitle = titleText ?? title;
   // Same two accents this section already borders itself with, so the formula
   // reads as belonging to its own block rather than as a foreign element.
@@ -363,10 +379,14 @@ export function LossControlSection({
       data-testid={testId}
       style={{
         display: 'grid',
-        gap: 14,
-        padding: '14px 15px',
-        borderRadius: UI_TOKENS.radius.lg,
-        border: isResearch ? '1px solid rgba(247, 217, 123, 0.22)' : '1px solid rgba(118, 234, 215, 0.2)',
+        gap: isLegacy ? 12 : 14,
+        padding: isLegacy ? '14px 15px' : '14px 15px',
+        borderRadius: isLegacy ? UI_TOKENS.radius.panel : UI_TOKENS.radius.lg,
+        background: isLegacy ? UI_TOKENS.color.surface.cardSubtle : undefined,
+        border: isLegacy
+          ? `1px solid ${UI_TOKENS.color.border.soft}`
+          : isResearch ? '1px solid rgba(247, 217, 123, 0.22)' : '1px solid rgba(118, 234, 215, 0.2)',
+        borderLeft: isLegacy ? `3px solid ${sectionAccent}aa` : undefined,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>

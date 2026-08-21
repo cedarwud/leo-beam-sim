@@ -3,6 +3,7 @@ import type { SimState } from '../../scene/types';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
 import { txBi } from './labels';
+import { SystemAngleState } from './FormulaSymbols';
 
 export type WalkerSceneMetricsProps = Pick<SimState, 'canonicalEe' | 'livePaperEnergyEfficiency'>;
 
@@ -131,19 +132,19 @@ export function WalkerSceneMetrics({
       >
         <Metric
           testId="walker-scene-ee"
-          label={<>η<sup>e</sup> / η<sup>e</sup>(t, θ)</>}
+          label={<>η<sub>u,s,v</sub>(t, <SystemAngleState />)</>}
           value={`${formatValue(canonicalEe?.eeEvalMbitPerJ, 'Mbit/J', 3)} · ${formatValue(canonicalEe?.eeInstMbitPerJ, 'Mbit/J', 3)}`}
           accent={UI_TOKENS.color.semantic.warning.accent}
         />
         <Metric
           testId="walker-scene-system-power"
-          label={<>P<sup>N</sup></>}
+          label={<>P<sup>N</sup>(t, <SystemAngleState />)</>}
           value={formatValue(canonicalEe?.systemPowerW, 'W', 3)}
           accent={UI_TOKENS.color.semantic.good}
         />
         <Metric
           testId="walker-scene-actual-rf"
-          label={<>Actual RF / P<sup>o</sup></>}
+          label={<>Power</>}
           value={formatValue(canonicalEe?.actualRfOutputW, 'W', 3)}
           accent={UI_TOKENS.color.semantic.tuning}
         />

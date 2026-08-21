@@ -26,8 +26,11 @@ const visibleText = markup.replace(/<[^>]+>/g, '');
 
 assert.match(markup, /data-testid="power-canonical-page"/);
 assert.doesNotMatch(visibleText, /[A-Za-z]+_[A-Za-z]/, 'rendered power copy must not expose raw underscore notation');
-assert.match(markup, /P<sup>r<\/sup><sub>s,v<\/sub>\(t, θ\) = max<sub>u:x<sub>u,s,v<\/sub>\(t\)=1<\/sub> p<sup>r<\/sup><sub>u,s,v<\/sub>\(t, θ\)/);
-assert.match(markup, /P<sup>N<\/sup>\(t, θ\)/);
+assert.match(markup, /data-testid="power-canonical-formula-row-system"[\s\S]*P<sup>N<\/sup>\(t,[\s\S]*θ[\s\S]*\)/);
+assert.match(markup, /P<sup>N<\/sup>\(t,[\s\S]*θ[\s\S]*\)/);
+assert.match(markup, /P<sup>p<\/sup><sub>u,s,v<\/sub>/);
+assert.match(markup, /data-testid="power-canonical-formula-row-segment-start"[\s\S]*2 W/);
+assert.match(markup, /data-testid="power-canonical-formula-row-recurrence"[\s\S]*t−1[\s\S]*G<sup>T<\/sup>/);
 assert.doesNotMatch(markup, /<strong>Θ<\/strong>|Θ<sub>|; <strong>/);
 assert.doesNotMatch(markup, /ŝ|v̂/);
 assert.doesNotMatch(markup, /max<sub>u served<\/sub>/);
@@ -43,36 +46,10 @@ assert.doesNotMatch(markup, /data-testid="power-tab-tx-power-control"/);
 assert.doesNotMatch(markup, /Per-beam transmit power/);
 assert.doesNotMatch(markup, /P_t/);
 
-// Power owns the two RF output caps. Energy-consumption inputs belong to EE.
-assert.match(markup, /data-testid="power-tab-beam-cap-control"/);
-assert.match(markup, /data-testid="power-tab-satellite-cap-control"/);
-assert.match(markup, /data-testid="power-tab-beam-cap-control"[\s\S]*data-control-symbol="true"[\s\S]*P<sup>r<\/sup><sub>s,v<\/sub>/);
-assert.match(markup, /data-testid="power-tab-satellite-cap-control"[\s\S]*data-control-symbol="true"[\s\S]*Σ<sub>v<\/sub>P<sup>r<\/sup><sub>s,v<\/sub>/);
-
-for (const testId of [
-  'power-tab-beam-cap-control',
-  'power-tab-satellite-cap-control',
-]) {
-  const controlTag = markup.match(new RegExp(`<div[^>]*data-testid="${testId}"[^>]*>`))?.[0];
-  assert.ok(controlTag, `${testId} should render an editable control`);
-  assert.doesNotMatch(controlTag, /data-source-provenance=/, `${testId} should not expose provenance copy`);
-  assert.ok(
-    controlTag.match(/data-reset-value="([^"]*\S[^"]*)"/)?.[1].trim(),
-    `${testId} should expose non-empty data-reset-value`,
-  );
-}
-for (const testId of [
-  'power-tab-eta-max-control',
-  'power-tab-backoff-control',
-  'power-tab-rfc-control',
-  'power-tab-bb-control',
-]) {
-  assert.doesNotMatch(markup, new RegExp(`data-testid="${testId}"`));
-}
-
-// Final computed values are owned by the right sidebar.  In particular, the
-// left Power tab must not duplicate the old result card or expose stale
-// result testids that make it look like a second producer.
+// Power is derived from the angle-aware recurrence; it exposes no editable
+// power-cap or amplifier controls on the presentation surface.
+assert.doesNotMatch(markup, /data-testid="power-tab-(?:beam-cap|satellite-cap|eta-max|backoff|rfc|bb)-control"/);
+// Final computed values are owned by the right sidebar.
 assert.doesNotMatch(markup, /data-testid="power-canonical-readout"/);
 for (const testId of [
   'power-tab-requested-power-readout',

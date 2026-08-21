@@ -18,7 +18,6 @@ import type {
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 import {
   extractBudgetTerms,
-  hasUiStateChanged,
   isFiniteBeamSinr,
   isFinitePanelSinr,
   normalizePanelSignal,
@@ -27,6 +26,7 @@ import {
   resolveLatchedTopo,
   resolveSignalStatus,
   resolveVisualFrequencyDiagnosticsEntry,
+  shouldPublishUiState,
 } from './panelState';
 import { resolvePrimaryCellServingRecord } from './sinrLiveCellModel';
 import { resolveSinrLiveBeamBudget } from './sinrLiveBeamBudget';
@@ -54,8 +54,11 @@ import {
 // diagnostics. TODO P2: collapse the two publishers behind the
 // NormalizedSceneFrame seam once the replay SimState shape stabilises.
 
-const UI_STABLE_UPDATE_INTERVAL_MS = 700;
-const UI_HANDOVER_UPDATE_INTERVAL_MS = 250;
+// The right rail is a teaching readout, not a frame-by-frame oscilloscope. Keep
+// one shared one-second cadence so SINR / Power / Throughput / EE values remain
+// readable while the scene and model continue at full speed.
+const UI_STABLE_UPDATE_INTERVAL_MS = 1000;
+const UI_HANDOVER_UPDATE_INTERVAL_MS = 1000;
 // A forward simTimeSec jump larger than any single normal-play per-frame advance
 // (even at the 5x base speed a frame steps well under 1 s) indicates a SEEK reseat,
 // not playback. Paired with the backward check below it identifies a cursor
@@ -1177,6 +1180,9 @@ export function useSimStatePublisher({
       livePaperEnergyEfficiency,
       ch5DemoPaperEnergyEfficiency,
       canonicalEe,
+      angleAwareFormulaFrame: sim.sinrLiveCells?.angleAwareFormulaFrame
+        ?? sim.angleAwareFormulaFrame
+        ?? null,
       servingSatId: publishedPrimaryServing.servingSatId,
       servingBeamId: publishedPrimaryServing.servingBeamId,
       servingCellId: publishedPrimaryServing.servingCellId,
@@ -1238,7 +1244,7 @@ export function useSimStatePublisher({
     // A live SEEK (or loop-wrap) reseats the cursor discontinuously: backward by any
     // amount (normal playback is monotonic-forward) or forward beyond any per-frame
     // advance. That reseat frame carries the EXACT post-seek simTimeSec the Director
-    // landing effect waits for, but within one serving epoch hasUiStateChanged is
+    // landing effect waits for, but within one serving epoch the boundary check is
     // false and the interval may not have elapsed, so the throttle would hide it —
     // stranding an armed intra-focus (small backward seek) at the bounded landing
     // band forever. Force-publish the reseat frame so the post-seek cursor always
@@ -1249,11 +1255,14 @@ export function useSimStatePublisher({
       && (sim.simTimeSec < prevSimTimeSec - 1e-3
         || sim.simTimeSec > prevSimTimeSec + SEEK_FORWARD_JUMP_SEC);
     prevSimTimeSecRef.current = sim.simTimeSec;
-    if (
-      cursorReseat
-      || hasUiStateChanged(lastUiStateRef.current, nextState)
-      || nowMs - lastUiUpdateAtRef.current >= uiIntervalMs
-    ) {
+    if (shouldPublishUiState({
+      previous: lastUiStateRef.current,
+      next: nextState,
+      nowMs,
+      lastUpdateAtMs: lastUiUpdateAtRef.current,
+      intervalMs: uiIntervalMs,
+      cursorReseat,
+    })) {
       lastUiStateRef.current = nextState;
       lastUiUpdateAtRef.current = nowMs;
       onSimUpdate(nextState);

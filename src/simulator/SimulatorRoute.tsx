@@ -12,6 +12,8 @@ import { parseTaipeiLocalDateTime, utcToAsiaTaipei } from '../tle/timezone';
 import { loadTleSnapshotSelection, loadTleWebArchiveCatalog } from './archive';
 import { buildSimulationAnalysisFrame, createSimulatorTleState, simulatorTaipeiDateTimeToUtc } from './analysis';
 import { SimulatorOrbitScene } from './SimulatorOrbitScene';
+import { FormulaFraction, InlineFormulaFraction } from '../ui/signal-tuning/FormulaHeader';
+import { SystemAngleState, SystemPowerSum } from '../ui/signal-tuning/FormulaSymbols';
 import {
   DEFAULT_SIMULATOR_PARAMETERS,
   SIMULATOR_CATALOG_URLS,
@@ -62,16 +64,7 @@ function catalogQualityNote(catalog: TleWebArchiveCatalog | null): string | null
   return `Catalog quality：${catalog.snapshotCount}/${catalog.sourceSnapshotCount} valid snapshots；${excludedCount} source snapshot${excludedCount === 1 ? '' : 's'} excluded。`;
 }
 
-function updateNumber(
-  event: ChangeEvent<HTMLInputElement>,
-  key: keyof SimulatorParameters,
-  setParameters: React.Dispatch<React.SetStateAction<SimulatorParameters>>,
-): void {
-  const value = Number(event.currentTarget.value);
-  if (!Number.isNaN(value)) setParameters(previous => ({ ...previous, [key]: value }));
-}
-
-function Metric({ label, value, unit, detail }: { readonly label: string; readonly value: string; readonly unit?: string; readonly detail?: string }) {
+function Metric({ label, value, unit, detail }: { readonly label: ReactNode; readonly value: string; readonly unit?: string; readonly detail?: string }) {
   return (
     <div className="simulator-metric">
       <span className="simulator-metric__label">{label}</span>
@@ -81,44 +74,11 @@ function Metric({ label, value, unit, detail }: { readonly label: string; readon
   );
 }
 
-function NumberField({
-  id,
-  label,
-  value,
-  unit,
-  min,
-  max,
-  step,
-  description,
-  source,
-  onChange,
-}: {
-  readonly id: string;
-  readonly label: string;
-  readonly value: number;
-  readonly unit: string;
-  readonly min?: number;
-  readonly max?: number;
-  readonly step?: number;
-  readonly description: string;
-  readonly source: string;
-  readonly onChange: (event: ChangeEvent<HTMLInputElement>) => void;
-}) {
-  return (
-    <label className="simulator-field" htmlFor={id}>
-      <span className="simulator-field__heading"><span>{label}</span><small>{unit}</small></span>
-      <input id={id} type="number" value={value} min={min} max={max} step={step} onChange={onChange} />
-      <span className="simulator-field__description">{description}</span>
-      <span className="simulator-field__source">來源／作用：{source}</span>
-    </label>
-  );
-}
-
-function ReadOnlyTable({ rows }: { readonly rows: readonly { readonly label: string; readonly value: string; readonly unit?: string; readonly note?: string }[] }) {
+function ReadOnlyTable({ rows }: { readonly rows: readonly { readonly label: ReactNode; readonly value: string; readonly unit?: string; readonly note?: string }[] }) {
   return (
     <dl className="simulator-ledger">
-      {rows.map(row => (
-        <div className="simulator-ledger__row" key={row.label}>
+      {rows.map((row, index) => (
+        <div className="simulator-ledger__row" key={index}>
           <dt>{row.label}</dt>
           <dd>{row.value}{row.unit && <small>{row.unit}</small>}{row.note && <span>{row.note}</span>}</dd>
         </div>
@@ -134,6 +94,21 @@ function Section({ title, subtitle, children }: { readonly title: string; readon
       {children}
     </section>
   );
+}
+
+function SimulatorFormula({ title, formula, explanation }: { readonly title: string; readonly formula: ReactNode; readonly explanation: string }) {
+  return (
+    <div className="simulator-formula-block">
+      <h3>{title}</h3>
+      <div className="simulator-formula-block__formula">{formula}</div>
+      <p>{explanation}</p>
+    </div>
+  );
+}
+
+function formatGain(value: number | null | undefined, unit: 'dB' | 'dBi'): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  return `${(10 * Math.log10(Math.max(value, 1e-30))).toFixed(2)} ${unit}`;
 }
 
 function ProvenanceStrip({
@@ -156,35 +131,34 @@ function ProvenanceStrip({
   );
 }
 
-function PowerPanel({ frame, parameters, setParameters }: {
-  readonly frame: SimulationAnalysisFrame;
-  readonly parameters: SimulatorParameters;
-  readonly setParameters: React.Dispatch<React.SetStateAction<SimulatorParameters>>;
-}) {
-  const update = (key: keyof SimulatorParameters) => (event: ChangeEvent<HTMLInputElement>) => updateNumber(event, key, setParameters);
+function PowerPanel({ frame }: { readonly frame: SimulationAnalysisFrame }) {
   const link = frame.links[0]!;
+  const fixedPowerW = (frame.power.pRfcBW[0] ?? 0) + (frame.power.pBbBW[0] ?? 0) + (frame.power.pEventBW[0] ?? 0);
   return (
     <div className="simulator-panel-grid">
-      <Section title="可編輯的 canonical power inputs" subtitle="這五個欄位是限制條件／功耗模型參數；P_DL_actual 與 PA 功率不是輸入欄位。">
-        <div className="simulator-form-grid">
-          <NumberField id="beam-power-cap" label="P_beam_max（beam 上限）" unit="W" value={parameters.beamPowerCapW} min={0.001} step={0.001} description="單一 beam 的 RF 輸出上限。" source="Power constraint；會限制 p_req。" onChange={update('beamPowerCapW')} />
-          <NumberField id="satellite-power-cap" label="P_sat_max（衛星上限）" unit="W" value={parameters.satellitePowerCapW} min={0.001} step={0.001} description="同一衛星所有 active beams 的 aggregate RF 上限。" source="Satellite cap；在 beam cap 後套用。" onChange={update('satellitePowerCapW')} />
-          <NumberField id="eta-max" label="eta_max（PA 上限）" unit="0–1" value={parameters.etaMax} min={0.001} max={1} step={0.01} description="canonical load-dependent PA 曲線的上界。" source="Amplifier model bound；實際 eta_PA 由結果推導。" onChange={update('etaMax')} />
-          <NumberField id="rfc-power" label="P_RFC（RF chain）" unit="W / active beam" value={parameters.rfcPowerW} min={0.001} step={0.001} description="每個 active beam 分攤的 RF-chain 功率。" source="Power ledger；隨 active beam 計入。" onChange={update('rfcPowerW')} />
-          <NumberField id="bb-power" label="P_BB（baseband）" unit="W / satellite" value={parameters.basebandPerSatelliteW} min={0.001} step={0.001} description="衛星 baseband 功率，按 active beam 分攤。" source="Power ledger；不是 RF output。" onChange={update('basebandPerSatelliteW')} />
-        </div>
-        <button className="simulator-secondary-button" type="button" onClick={() => setParameters(DEFAULT_SIMULATOR_PARAMETERS)}>重設 canonical power inputs</button>
-      </Section>
-      <Section title="同一 frame 的功率結果" subtitle="所有數值由 canonical producer 推導，不能在此直接改寫。">
+      <Section title="Power" subtitle="公式在上方；數值由同一個 frame 直接呈現。">
+        <SimulatorFormula
+          title="系統功率公式"
+          formula={(
+            <>
+              <div>P<sup>N</sup>(t, <SystemAngleState />) = P<sup>f</sup>(t) + <SystemPowerSum /></div>
+              <div>P<sup>p</sup><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>) = <InlineFormulaFraction numerator={<>p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>} denominator={<>ξ<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>} label="RF power divided by effective efficiency" /></div>
+              <div>p<sub>u,s,v</sub>(τ<sub>u,s,v</sub>, θ<sub>u,s,v</sub>(τ<sub>u,s,v</sub>)) = 2 W</div>
+              <div>p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>(t)) = p<sub>u,s,v</sub>(t−1, θ<sub>u,s,v</sub>(t−1)) · <InlineFormulaFraction numerator={<>G<sup>T</sup>(θ<sub>u,s,v</sub>(t−1))</>} denominator={<>G<sup>T</sup>(θ<sub>u,s,v</sub>(t))</>} label="previous-step transmit-gain ratio" /></div>
+            </>
+          )}
+          explanation="p 由初始鏈路功率與上一幀的發射增益比例遞推；Pᵖ 再依 ξ 換算，最後與固定功率 Pᶠ 形成 Pᴺ。"
+        />
         <ReadOnlyTable rows={[
-          { label: 'p_req（requested RF）', value: formatScientific(link.requestedPowerW), unit: ' W', note: 'cap 前需求' },
-          { label: 'P_DL_actual（actual RF）', value: formatScientific(link.actualPowerW), unit: ' W', note: link.powerLimited ? '受 cap 限制' : '未受 cap 限制' },
-          { label: 'eta_PA（實際效率）', value: formatScientific(frame.power.paEfficiencyB[0] ?? 0), note: 'derived，read-only' },
-          { label: 'P_PA', value: formatScientific(frame.power.pPaBW[0] ?? 0), unit: ' W' },
-          { label: 'P_RFC + P_BB + P_event', value: formatScientific((frame.power.pRfcBW[0] ?? 0) + (frame.power.pBbBW[0] ?? 0) + (frame.power.pEventBW[0] ?? 0)), unit: ' W' },
-          { label: 'P_sys（system power）', value: formatScientific(frame.power.systemPowerW), unit: ' W' },
+          { label: <>p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>, value: formatScientific(link.actualPowerW), unit: ' W', note: '代表鏈路 RF 功率' },
+          { label: <>P<sup>p</sup><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>, value: formatScientific(frame.power.pPaBW[0] ?? 0), unit: ' W', note: '由 p 與 ξ 換算' },
+          { label: <>ξ<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>, value: formatScientific(frame.power.paEfficiencyB[0] ?? 0), note: '有效轉換效率' },
+          { label: <>P<sup>f</sup>(t)</>, value: formatScientific(fixedPowerW), unit: ' W', note: '固定功率項' },
+          { label: <>P<sup>N</sup>(t, <SystemAngleState />)</>, value: formatScientific(frame.power.systemPowerW), unit: ' W', note: '系統總功率' },
         ]} />
-        <p className="simulator-note">Energy boundary：此處是 canonical payload-power boundary；目前不包含 bus、TT&amp;C、thermal 或其他衛星系統功耗。</p>
+      </Section>
+      <Section title="符號關係" subtitle="本頁不提供額外功率輸入。">
+        <div className="simulator-explanation"><p>角度改變時，G<sup>T</sup>(θ<sub>u,s,v</sub>) 會帶動 p 的下一幀值；Pᴺ 則聚合所有 x<sub>u,s,v</sub>(t)=1 的鏈路。</p></div>
       </Section>
     </div>
   );
@@ -192,55 +166,61 @@ function PowerPanel({ frame, parameters, setParameters }: {
 
 function SinrPanel({ frame }: { readonly frame: SimulationAnalysisFrame }) {
   const link = frame.links[0]!;
+  const channelGain = frame.inputs.frame.propagationGainUb[link.userIndex]?.[link.beamId];
+  const transmitGain = frame.canonical.transmitGainUb[link.userIndex]?.[link.beamId];
   return (
     <div className="simulator-panel-grid">
-      <Section title="Realized SINR" subtitle="SINR 只讀取同一個 P_DL_actual 與同一個 frame；沒有獨立的 P_t 控制。">
+      <Section title="SINR" subtitle="公式與下方值使用同一條代表鏈路。">
+        <SimulatorFormula
+          title="SINR 公式"
+          formula={<FormulaFraction lhs={<>γ<sub>u,s,v</sub>(t, <SystemAngleState />)</>} numerator={<>p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>) · H<sub>u,s,v</sub>(t) · G<sup>T</sup>(θ<sub>u,s,v</sub>)</>} denominator={<>I<sub>u,s,v</sub>(t, <SystemAngleState />) + σ²</>} numeratorAccent="#76ead7" denominatorAccent="#ffde85" />}
+          explanation="分子是代表 UE 的發射功率、有效通道與發射增益；分母是總同頻干擾 I 與熱雜訊 σ²。"
+        />
         <div className="simulator-metrics-grid simulator-metrics-grid--four">
-          <Metric label="Signal" value={formatScientific(link.signalW)} unit=" W" detail="received useful signal" />
-          <Metric label="Interference" value={formatScientific(link.interferenceW)} unit=" W" detail="同色 co-channel" />
-          <Metric label="Noise σ²" value={formatScientific(link.noiseW)} unit=" W" detail="canonical input" />
-          <Metric label="SINR" value={formatNumber(link.sinrDb, 2)} unit=" dB" detail={`${formatScientific(link.sinrLinear)} linear`} />
+          <Metric label={<>p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>} value={formatScientific(link.actualPowerW)} unit=" W" detail="RF transmit power" />
+          <Metric label={<>H<sub>u,s,v</sub>(t)</>} value={formatGain(channelGain, 'dB')} detail="effective channel" />
+          <Metric label={<>G<sup>T</sup>(θ<sub>u,s,v</sub>)</>} value={formatGain(transmitGain, 'dBi')} detail="transmit gain" />
+          <Metric label={<>γ<sub>u,s,v</sub>(t, <SystemAngleState />)</>} value={formatNumber(link.sinrDb, 2)} unit=" dB" detail={`${formatScientific(link.sinrLinear)} linear`} />
         </div>
         <ReadOnlyTable rows={[
-          { label: '共享的 P_DL_actual', value: formatScientific(link.actualPowerW), unit: ' W', note: '來自 Power projection' },
-          { label: 'off-axis θ', value: formatNumber(link.offAxisAngleRad, 5), unit: ' rad' },
+          { label: <>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>, value: formatScientific(link.interferenceW), unit: ' W', note: '總同頻干擾' },
+          { label: <>σ²</>, value: formatScientific(link.noiseW), unit: ' W', note: '熱雜訊' },
+          { label: <>θ<sub>u,s,v</sub></>, value: formatNumber(link.offAxisAngleRad, 5), unit: ' rad', note: '鏈路離軸角' },
           { label: 'Taipei link distance', value: formatNumber(link.distanceKm, 1), unit: ' km' },
           { label: 'elevation', value: formatNumber(link.elevationDeg, 1), unit: '°' },
         ]} />
       </Section>
-      <Section title="如何解讀" subtitle="先看 signal／interference／noise，再看 realized SINR；Power tab 的 cap 變更會沿同一鏈路傳到這裡。">
-        <div className="simulator-explanation"><strong>{link.qosMet ? '目前達到服務目標' : '目前未達服務目標'}</strong><p>服務目標由 Throughput 分頁的「每位使用者最低傳輸速率要求」決定。通道增益使用所選 TLE 幾何推導的路徑損耗 H = 10⁻ᴸ⁄¹⁰；大氣、閃爍、陰影裕度與接收增益仍是明示的實驗假設，不代表硬體量測或完整校準。</p></div>
+      <Section title="如何解讀" subtitle="先看分子，再看干擾與雜訊組成的分母。">
+        <div className="simulator-explanation"><p>H、G<sup>T</sup>、I 與 σ² 都是同一個 TLE frame 的結果；改變時間只會重新產生下一個 frame，不會在這裡另算一套 SINR。</p></div>
       </Section>
     </div>
   );
 }
 
-function ThroughputPanel({ frame, parameters, setParameters }: {
-  readonly frame: SimulationAnalysisFrame;
-  readonly parameters: SimulatorParameters;
-  readonly setParameters: React.Dispatch<React.SetStateAction<SimulatorParameters>>;
-}) {
-  const update = (key: keyof SimulatorParameters) => (event: ChangeEvent<HTMLInputElement>) => updateNumber(event, key, setParameters);
+function ThroughputPanel({ frame }: { readonly frame: SimulationAnalysisFrame }) {
   const link = frame.links[0]!;
+  const beamLoad = frame.scenario.beamLoadB[link.beamId] ?? 0;
   return (
     <div className="simulator-panel-grid">
-      <Section title="Throughput inputs" subtitle="服務目標與 bandwidth 只在這個 projection 編輯；SINR、rate 與 P_DL_actual 仍是 derived。">
-        <div className="simulator-form-grid">
-          <NumberField id="minimum-rate" label="R_min（service target）" unit="bit/s" value={parameters.minimumRateBps} min={1} step={1000} description="此 beam 要求的最低服務速率。" source="gamma_req；決定 requested power。" onChange={update('minimumRateBps')} />
-          <NumberField id="system-bandwidth" label="B_sys（system bandwidth）" unit="Hz" value={parameters.systemBandwidthHz} min={1} step={1000000} description="整個系統的可用頻寬；B_beam 由 B_sys / K_FR 推導。" source="Throughput formula；K_FR 由 SINR controls 提供。" onChange={update('systemBandwidthHz')} />
-        </div>
-      </Section>
-      <Section title="Realized throughput" subtitle="這裡直接投影 canonical throughput ledger，不另算 SINR 或 rate。">
+      <Section title="Throughput" subtitle="公式在上方；下方只顯示同一 frame 的數值。">
+        <SimulatorFormula
+          title="吞吐量公式"
+          formula={<div>R<sub>u,s,v</sub>(t, <SystemAngleState />) = <InlineFormulaFraction numerator={<>B<sup>w</sup></>} denominator={<>U<sub>s,v</sub>(t)</>} label="beam bandwidth divided by serving users" /> log<sub>2</sub>(1 + γ<sub>u,s,v</sub>(t, <SystemAngleState />))</div>}
+          explanation="單一服務鏈路的速率由波束頻寬、服務波束負載與同一條鏈路的 γ 決定。"
+        />
         <div className="simulator-metrics-grid simulator-metrics-grid--three">
-          <Metric label="User rate R_u" value={formatNumber(link.rateBps, 1)} unit=" bit/s" detail={link.qosMet ? 'QoS met' : 'QoS not met'} />
-          <Metric label="Total rate" value={formatNumber(frame.throughput.totalRateBps, 1)} unit=" bit/s" detail="service-set sum" />
-          <Metric label="Spectral efficiency" value={formatNumber(link.rateBps / Math.max(frame.scenario.derived.beamBandwidthHz, 1), 4)} unit=" bit/s/Hz" detail="derived from B_beam" />
+          <Metric label={<>R<sub>u,s,v</sub>(t, <SystemAngleState />)</>} value={formatNumber(link.rateBps, 1)} unit=" bit/s" detail="代表鏈路速率" />
+          <Metric label={<>B<sup>w</sup></>} value={formatNumber(frame.scenario.derived.beamBandwidthHz, 0)} unit=" Hz" detail="單一波束頻寬" />
+          <Metric label={<>U<sub>s,v</sub>(t)</>} value={formatNumber(beamLoad, 0)} unit=" UE" detail="服務波束負載" />
         </div>
         <ReadOnlyTable rows={[
-          { label: 'gamma_req', value: formatScientific(frame.canonical.gammaReqB[0] ?? 0), unit: ' linear', note: 'derived from R_min / B_beam' },
-          { label: 'p_req', value: formatScientific(link.requestedPowerW), unit: ' W', note: 'before caps' },
-          { label: 'P_DL_actual', value: formatScientific(link.actualPowerW), unit: ' W', note: 'shared downstream' },
+          { label: <>γ<sub>u,s,v</sub>(t, <SystemAngleState />)</>, value: formatScientific(link.sinrLinear), unit: ' linear', note: '來自 SINR 分頁' },
+          { label: <>R<sub>u,s,v</sub>(t, <SystemAngleState />)</>, value: formatNumber(link.rateBps, 1), unit: ' bit/s', note: '代表鏈路' },
+          { label: 'Total rate', value: formatNumber(frame.throughput.totalRateBps, 1), unit: ' bit/s', note: '服務鏈路總和' },
         ]} />
+      </Section>
+      <Section title="符號關係" subtitle="本頁沒有獨立的目標速率輸入。">
+        <div className="simulator-explanation"><p>U<sub>s,v</sub>(t) 是服務波束負載，γ 由 SINR 公式提供；兩者與 B<sup>w</sup> 一起決定 R。</p></div>
       </Section>
     </div>
   );
@@ -248,37 +228,39 @@ function ThroughputPanel({ frame, parameters, setParameters }: {
 
 function EePanel({ frame }: { readonly frame: SimulationAnalysisFrame }) {
   const acceptedConstellation = frame.tleState.catalog.constellation;
+  const link = frame.links[0]!;
   return (
     <div className="simulator-panel-grid">
-      <Section title="Energy efficiency" subtitle="本頁只投影 canonical numerator／denominator；不以不同公式重算。">
+      <Section title="EE" subtitle="公式在上方；下方顯示同一 frame 的 η、R 與 Pᴺ。">
+        <SimulatorFormula
+          title="能源效率公式"
+          formula={<FormulaFraction lhs={<>η<sub>u,s,v</sub>(t, <SystemAngleState />)</>} numerator={<>R<sub>u,s,v</sub>(t, <SystemAngleState />)</>} denominator={<>P<sup>N</sup>(t, <SystemAngleState />)</>} numeratorAccent="#ffde85" denominatorAccent="#76ead7" />}
+          explanation="EE 以代表鏈路速率除以同一 frame 的系統總功率；分子與分母都沿用前面分頁的結果。"
+        />
         <div className="simulator-metrics-grid simulator-metrics-grid--three">
-          <Metric label="Instantaneous EE" value={formatNumber(frame.ee.instantaneousBitsPerJ, 1)} unit=" bit/J" detail="這一個 frame" />
-          <Metric label="Evaluation EE" value={formatNumber(frame.ee.evaluationBitsPerJ, 1)} unit=" bit/J" detail="single-frame ratio-of-sums" />
-          <Metric label="P_sys" value={formatScientific(frame.power.systemPowerW)} unit=" W" detail="canonical denominator" />
+          <Metric label={<>η<sub>u,s,v</sub>(t, <SystemAngleState />)</>} value={formatNumber(frame.ee.instantaneousBitsPerJ, 1)} unit=" bit/J" detail="這一個 frame" />
+          <Metric label={<>R<sub>u,s,v</sub>(t, <SystemAngleState />)</>} value={formatNumber(link.rateBps, 1)} unit=" bit/s" detail="代表鏈路速率" />
+          <Metric label={<>P<sup>N</sup>(t, <SystemAngleState />)</>} value={formatScientific(frame.power.systemPowerW)} unit=" W" detail="系統總功率" />
         </div>
         <ReadOnlyTable rows={[
-          { label: 'delivered bits', value: formatNumber(frame.ee.deliveredBits, 1), unit: ' bit', note: 'duration = 1 s' },
-          { label: 'consumed energy', value: formatNumber(frame.ee.consumedEnergyJ, 4), unit: ' J' },
-          { label: 'aggregation', value: 'ratio-of-sums', note: '累積尚未啟用；目前只有單一 frame' },
-          { label: 'r1 user contribution', value: formatNumber(frame.canonical.ee.r1UBitsPerJ[0] ?? 0, 1), unit: ' bit/J' },
+          { label: <>R<sub>u,s,v</sub>(t, <SystemAngleState />)</>, value: formatNumber(link.rateBps, 1), unit: ' bit/s', note: 'EE 分子' },
+          { label: <>P<sup>N</sup>(t, <SystemAngleState />)</>, value: formatScientific(frame.power.systemPowerW), unit: ' W', note: 'EE 分母' },
+          { label: <>η<sub>u,s,v</sub>(t, <SystemAngleState />)</>, value: formatNumber(frame.ee.instantaneousBitsPerJ, 1), unit: ' bit/J', note: 'R / Pᴺ' },
         ]} />
-        <p className="simulator-note">目前 evaluation 只示範單一 frame 的 ratio-of-sums；不能解讀成跨時間累積，也不能解讀成節能比較或平台實測。</p>
       </Section>
       <Section title="能效邊界與來源" subtitle="保持物理量與證據邊界清楚。">
-        <div className="simulator-explanation"><p><strong>來源：</strong>{frame.provenance.archiveCatalogUrl} → {frame.provenance.selectedTlePath}</p><p><strong>接受 constellation：</strong>{constellationLabel(acceptedConstellation)}；<strong>模型：</strong>{frame.provenance.propagationModel}，TLE epoch {frame.tleEpochUtc}；時間切換是 snapshot selection，不是 handover，也不產生 event energy。</p><p><strong>情境：</strong>固定 NTPU ground terminal + TLE/SGP4 幾何 + H = 10⁻ᴸ⁄¹⁰ 的路徑損耗鏈。通道與硬體輸入仍是可重現的實驗假設，不宣稱為量測校準或完整論文場景重現。</p></div>
+        <div className="simulator-explanation"><p><strong>來源：</strong>{frame.provenance.archiveCatalogUrl} → {frame.provenance.selectedTlePath}</p><p><strong>星座：</strong>{constellationLabel(acceptedConstellation)}；<strong>模型：</strong>{frame.provenance.propagationModel}，TLE epoch {frame.tleEpochUtc}。</p><p>時間切換會重新選取 TLE frame；η、R 與 Pᴺ 都來自該 frame，不在右側重新建立另一套公式。</p></div>
       </Section>
     </div>
   );
 }
 
-function TabPanel({ activeTab, frame, parameters, setParameters }: {
+function TabPanel({ activeTab, frame }: {
   readonly activeTab: SimulatorTab;
   readonly frame: SimulationAnalysisFrame;
-  readonly parameters: SimulatorParameters;
-  readonly setParameters: React.Dispatch<React.SetStateAction<SimulatorParameters>>;
 }) {
-  if (activeTab === 'power') return <PowerPanel frame={frame} parameters={parameters} setParameters={setParameters} />;
-  if (activeTab === 'throughput') return <ThroughputPanel frame={frame} parameters={parameters} setParameters={setParameters} />;
+  if (activeTab === 'power') return <PowerPanel frame={frame} />;
+  if (activeTab === 'throughput') return <ThroughputPanel frame={frame} />;
   if (activeTab === 'ee') return <EePanel frame={frame} />;
   return <SinrPanel frame={frame} />;
 }
@@ -494,7 +476,7 @@ export function SimulatorRoute({
             </section>
             <section className="simulator-analysis-card" aria-label="Active canonical analysis projection">
               <div id={`simulator-panel-${activeTab}`} className="simulator-tabpanel" role="tabpanel" aria-labelledby={`simulator-tab-${activeTab}`} tabIndex={0}>
-                <TabPanel activeTab={activeTab} frame={frame} parameters={parameters} setParameters={setParameters} />
+                <TabPanel activeTab={activeTab} frame={frame} />
               </div>
             </section>
           </div>

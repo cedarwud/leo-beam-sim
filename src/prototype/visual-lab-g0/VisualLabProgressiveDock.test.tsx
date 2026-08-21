@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
-import {
-  DEFAULT_VISUAL_LAB_INPUTS,
-  VISUAL_LAB_INPUT_DEFINITIONS,
-} from '../../visualLab/experiment';
+import { DEFAULT_VISUAL_LAB_INPUTS } from '../../visualLab/experiment';
 import type { VisualLabCanonicalSnapshot } from './visualLabCanonicalSnapshotAdapter';
 import { VisualLabProgressiveControlDock, type VisualLabProgressiveControlDockProps } from './VisualLabProgressiveControlDock';
 import { VisualLabProgressiveResultDock } from './VisualLabProgressiveResultDock';
@@ -107,13 +104,10 @@ const enControls = controls('en');
 for (const locale of ['zh-Hant', 'en'] as const) {
   const markup = controls(locale);
   const keys = [...markup.matchAll(/data-input-key="([^"]+)"/g)].map((match) => match[1]!);
-  // SINR exposes the controls owned by its selected formula term; Power keeps
-  // its full ledger. The default selected term owns minimumRateBps.
-  const expectedVisibleKeys = new Set([
-    'minimumRateBps',
-    ...VISUAL_LAB_INPUT_DEFINITIONS.filter((definition) => definition.group === 'power').map((definition) => definition.key),
-  ]);
-  assert.equal(keys.length, expectedVisibleKeys.size, `${locale} renders the selected SINR term and Power controls`);
+  // The default SINR term is p and Power is derived; neither page exposes a
+  // legacy power/QoS control on this presentation surface.
+  const expectedVisibleKeys = new Set<string>();
+  assert.equal(keys.length, expectedVisibleKeys.size, locale + ' renders no retired SINR/Power inputs');
   for (const key of keys) assert.equal(expectedVisibleKeys.has(key), true, `${locale} only exposes owned controls`);
   for (const key of expectedVisibleKeys) assert.equal(keys.filter((renderedKey) => renderedKey === key).length, 1, `${locale} reaches ${key}`);
   assert.doesNotMatch(markup, /data-mock|canonical|accepted frame|prototype/i, `${locale} has no implementation-status copy`);
@@ -134,9 +128,9 @@ for (const markup of [zhResults, enResults]) {
 
 assert.match(enResults, /Computed results/);
 assert.match(zhResults, /計算結果/);
-assert.match(enControls, /Bandwidth and service demand/);
+assert.match(enControls, /Power formula|segment-start/i);
 assert.match(enControls, /Reset all/);
-assert.match(zhControls, /頻寬與服務需求/);
+assert.match(zhControls, /Power 公式|2 W/);
 
 const sceneControls = renderToStaticMarkup(
   <VisualLabProgressiveControlDock {...controlProps('zh-Hant', 'scene')} />,

@@ -24,6 +24,8 @@ import {
 } from './visualLabWorkspace';
 import type { VisualLabConstellation } from './VisualLabScene';
 import { renderFormulaText } from '../../ui/common/formulaText';
+import { InlineFormulaFraction } from '../../ui/signal-tuning/FormulaHeader';
+import { SystemAngleState, SystemPowerSum } from '../../ui/signal-tuning/FormulaSymbols';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import {
   SUPPORTED_BEAM_LAYOUT_COUNTS,
@@ -115,7 +117,7 @@ const BEAM_LAYOUT_OPTIONS: readonly { readonly id: SupportedBeamLayoutCount; rea
     ),
   }));
 
-type SinrFormulaSection = 'power' | 'channel' | 'beam' | 'receiver' | 'interference' | 'noise';
+type SinrFormulaSection = 'power' | 'channel' | 'beam' | 'interference' | 'noise';
 
 interface SinrFormulaSemantic {
   readonly className: string;
@@ -126,23 +128,18 @@ interface SinrFormulaSemantic {
 const SINR_FORMULA_SEMANTICS: Record<SinrFormulaSection, SinrFormulaSemantic> = {
   power: {
     className: 'vlab-sinr-formula-term--power',
-    dataSymbol: 'p-dl-post-satellite-cap',
+    dataSymbol: 'link-power',
     color: UI_TOKENS.color.semantic.tuning,
   },
   channel: {
     className: 'vlab-sinr-formula-term--channel',
-    dataSymbol: 'large-scale-gain',
+    dataSymbol: 'effective-channel',
     color: UI_TOKENS.color.semantic.loss,
   },
   beam: {
     className: 'vlab-sinr-formula-term--beam',
     dataSymbol: 'transmit-beam-gain',
     color: UI_TOKENS.color.semantic.beam,
-  },
-  receiver: {
-    className: 'vlab-sinr-formula-term--receiver',
-    dataSymbol: 'receive-gain',
-    color: UI_TOKENS.color.semantic.fixed,
   },
   interference: {
     className: 'vlab-sinr-formula-term--interference',
@@ -158,27 +155,25 @@ const SINR_FORMULA_SEMANTICS: Record<SinrFormulaSection, SinrFormulaSemantic> = 
 
 const SINR_SECTION_OPTIONS: readonly {
   readonly id: SinrFormulaSection;
-  readonly symbol: string;
+  readonly symbol: ReactNode;
   readonly label: LocalizedCopy;
   readonly semantic: SinrFormulaSemantic;
 }[] = [
-  { id: 'power', symbol: 'P̃ᵇᴰᴸ', label: localized('功率鏈', 'Power chain'), semantic: SINR_FORMULA_SEMANTICS.power },
-  { id: 'channel', symbol: 'Gᴸˢ', label: localized('大尺度傳播增益', 'Large-scale gain'), semantic: SINR_FORMULA_SEMANTICS.channel },
-  { id: 'beam', symbol: 'Gᵀ(θ)', label: localized('發射波束增益', 'Transmit beam gain'), semantic: SINR_FORMULA_SEMANTICS.beam },
-  { id: 'receiver', symbol: 'Gᴿ', label: localized('接收增益', 'Receive gain'), semantic: SINR_FORMULA_SEMANTICS.receiver },
-  { id: 'interference', symbol: 'I', label: localized('同頻干擾', 'Interference'), semantic: SINR_FORMULA_SEMANTICS.interference },
-  { id: 'noise', symbol: 'σ²', label: localized('背景雜訊', 'Noise'), semantic: SINR_FORMULA_SEMANTICS.noise },
+  { id: 'power', symbol: <><i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>, label: localized('鏈路功率', 'Link power'), semantic: SINR_FORMULA_SEMANTICS.power },
+  { id: 'channel', symbol: <>H<sub>u,s,v</sub>(t)</>, label: localized('有效通道', 'Effective channel'), semantic: SINR_FORMULA_SEMANTICS.channel },
+  { id: 'beam', symbol: <>G<sup>T</sup>(θ<sub>u,s,v</sub>)</>, label: localized('發射波束增益', 'Transmit beam gain'), semantic: SINR_FORMULA_SEMANTICS.beam },
+  { id: 'interference', symbol: <>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>, label: localized('同頻干擾', 'Interference'), semantic: SINR_FORMULA_SEMANTICS.interference },
+  { id: 'noise', symbol: <>σ²</>, label: localized('背景雜訊', 'Noise'), semantic: SINR_FORMULA_SEMANTICS.noise },
 ];
 
 /** Only the controls owned by the selected SINR term remain visible below
  * the fixed total equation.  Power-ledger controls stay on the Power tab. */
 const SINR_SECTION_INPUT_KEYS: Readonly<Record<SinrFormulaSection, readonly VisualLabInputKey[]>> = Object.freeze({
-  power: Object.freeze(['minimumRateBps'] as const),
+  power: Object.freeze([] as const),
   channel: Object.freeze(['carrierFrequencyGHz', 'atmosphericZenithLossDb'] as const),
   beam: Object.freeze(['g0Linear', 'theta3dbRad'] as const),
-  receiver: Object.freeze(['receiveGainDbi'] as const),
   interference: Object.freeze(['frequencyReuse'] as const),
-  noise: Object.freeze(['antennaNoiseTemperatureK', 'noiseFigureDb', 'noiseReferenceTemperatureK', 'systemBandwidthHz'] as const),
+  noise: Object.freeze(['systemBandwidthHz'] as const),
 });
 
 function text(copy: LocalizedCopy, locale: VisualLabLocale): string {
@@ -261,6 +256,21 @@ function moduleAccent(module: VisualLabModuleKey): string {
   return module === 'scene' ? 'scene' : module;
 }
 
+function sinrSectionFormula(section: SinrFormulaSection): ReactNode {
+  switch (section) {
+    case 'power':
+      return <><i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>;
+    case 'channel':
+      return <>H<sub>u,s,v</sub>(t)</>;
+    case 'beam':
+      return <>G<sup>T</sup>(θ<sub>u,s,v</sub>)</>;
+    case 'interference':
+      return <>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>;
+    case 'noise':
+      return <>σ² = B<sup>w</sup> · N<sub>0</sub></>;
+  }
+}
+
 export function VisualLabProgressiveControlDock({
   locale = 'zh-Hant',
   activeModule,
@@ -303,7 +313,7 @@ export function VisualLabProgressiveControlDock({
     : [];
   const visibleInputDefinitions = activeModule === 'sinr'
     ? inputDefinitions.filter((definition) => SINR_SECTION_INPUT_KEYS[activeSinrSection].includes(definition.key))
-    : inputDefinitions;
+    : activeModule === 'power' ? [] : inputDefinitions;
   const inputSubgroups = allInputSubgroups.filter((subgroup) => visibleInputDefinitions.some(definition => definition.subgroup === subgroup.key));
   const beamWidthDefinition = VISUAL_LAB_INPUT_DEFINITIONS.find(definition => definition.key === 'theta3dbRad');
   const selectedLabel = moduleLabel(activeModule, locale);
@@ -466,6 +476,7 @@ export function VisualLabProgressiveControlDock({
         ) : isInputModule(activeModule) ? (
           <div className="vlab-progressive-science-controls">
             {activeModule === 'sinr' ? <SinrFormulaGuide locale={locale} activeSection={activeSinrSection} onChange={setActiveSinrSection} /> : null}
+            {activeModule === 'power' ? <PowerFormulaGuide locale={locale} /> : null}
             <div className="vlab-progressive-input-list">
               {inputSubgroups.map((subgroup) => {
                 const subgroupDefinitions = visibleInputDefinitions
@@ -474,7 +485,7 @@ export function VisualLabProgressiveControlDock({
                 return (
                   <section key={subgroup.key} aria-labelledby={`vlab-progressive-subgroup-${subgroup.key}`}>
                     <p className="vlab-eyebrow" id={`vlab-progressive-subgroup-${subgroup.key}`}>{subgroup.label[locale]}</p>
-                    <p className="vlab-progressive-disclosure__source">{subgroup.description[locale]}</p>
+                    <p className="vlab-progressive-disclosure__source">{renderFormulaText(subgroup.description[locale])}</p>
                     {subgroupDefinitions.map((definition) => <ProgressiveInputCard key={definition.key} definition={definition} inputs={inputs} locale={locale} onChange={onInputChange} onResetInput={onResetInput} disabled={controlsDisabled} />)}
                   </section>
                 );
@@ -484,6 +495,45 @@ export function VisualLabProgressiveControlDock({
         ) : null}
       </section>
     </aside>
+  );
+}
+
+function PowerFormulaGuide({ locale }: { readonly locale: VisualLabLocale }): ReactElement {
+  const zh = locale === 'zh-Hant';
+  return (
+    <section className="vlab-sinr-formula-guide" data-testid="visual-lab-power-formula-guide" aria-label={zh ? 'Power 公式' : 'Power formula'}>
+      <div className="vlab-sinr-formula-guide__main" data-formula-term="power">
+        <span className="vlab-sinr-formula-guide__label">Power</span>
+        <span className="vlab-sinr-formula-guide__equation">
+          <span>P<sup>N</sup>(t, <SystemAngleState />) = P<sup>f</sup>(t) + <SystemPowerSum /></span>
+        </span>
+      </div>
+      <div className="vlab-sinr-formula-guide__detail" data-formula-term="power">
+        <strong>P<sup>p</sup><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>) = <InlineFormulaFraction
+          numerator={<>p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>}
+          denominator={<>ξ<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>}
+          label="link power divided by efficiency"
+        /></strong>
+        <span>{zh ? 'Pᵖ 將鏈路 RF 功率 p 依有效轉換效率 ξ 換算為電源端功率。' : 'Pᵖ converts link RF power p into supply-side power through the effective efficiency ξ.'}</span>
+      </div>
+      <div className="vlab-sinr-formula-guide__detail" data-formula-term="power-recurrence">
+        <strong>
+          p<sub>u,s,v</sub>(τ<sub>u,s,v</sub>, θ<sub>u,s,v</sub>(τ<sub>u,s,v</sub>)) = 2 W
+        </strong>
+        <span>{zh ? '每段 uninterrupted served physical link 都從 2 W 起始；同一鏈路連續服務時，才沿用上一幀遞推。' : 'Each uninterrupted served physical-link segment starts at 2 W; only a continuously served link carries the previous frame forward.'}</span>
+      </div>
+      <div className="vlab-sinr-formula-guide__detail" data-formula-term="power-recurrence">
+        <strong>
+          p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>(t)) = p<sub>u,s,v</sub>(t−1, θ<sub>u,s,v</sub>(t−1)) ·{' '}
+          <InlineFormulaFraction
+            numerator={<>G<sup>T</sup>(θ<sub>u,s,v</sub>(t−1))</>}
+            denominator={<>G<sup>T</sup>(θ<sub>u,s,v</sub>(t))</>}
+            label="previous/current transmit-gain ratio"
+          />
+        </strong>
+        <span>{zh ? '換手、中斷、未服務或重新進入服務時，segment 重新起算。' : 'Handover, outage, unserved time, or re-entry starts a new segment.'}</span>
+      </div>
+    </section>
   );
 }
 
@@ -508,13 +558,13 @@ function SinrFormulaGuide({
   };
   return <section className="vlab-sinr-formula-guide" data-testid="visual-lab-sinr-formula-guide" aria-label={zh ? 'SINR 公式與參數' : 'SINR formula and inputs'}>
     <div className="vlab-sinr-formula-guide__main" data-testid="visual-lab-sinr-top-formula" data-formula-term="sinr">
-      <span className="vlab-sinr-formula-guide__label">SINR</span>
+      <span className="vlab-sinr-formula-guide__label">γ<sub>u,s,v</sub>(t, <SystemAngleState />) =</span>
       <span className="vlab-sinr-formula-guide__equation">
         <span data-formula-side="numerator">
-          {formulaTerm('power', <>P̃<sub>b</sub><sup>DL</sup></>)} · {formulaTerm('channel', <>G<sup>LS</sup></>)} · {formulaTerm('beam', <>G<sup>T</sup>(θ)</>)} · {formulaTerm('receiver', <>G<sup>R</sup></>)}
+          {formulaTerm('power', <><i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>)} · {formulaTerm('channel', <>H<sub>u,s,v</sub>(t)</>)} · {formulaTerm('beam', <>G<sup>T</sup>(θ<sub>u,s,v</sub>)</>)}
         </span>
         <b data-formula-side="denominator">
-          {formulaTerm('interference', <>I</>)} + {formulaTerm('noise', <>σ²</>)}
+          {formulaTerm('interference', <>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>)} + {formulaTerm('noise', <>σ²</>)}
         </b>
       </span>
     </div>
@@ -547,7 +597,10 @@ function SinrFormulaGuide({
       data-formula-term={option.id}
       data-formula-symbol={option.semantic.dataSymbol}
       hidden={activeSection !== option.id}
-    />)}
+    >
+      <strong>{sinrSectionFormula(option.id)}</strong>
+      <span>{zh ? '此項直接對應上方 SINR 公式；下方輸入只保留會影響此項的場景條件。' : 'This term maps directly to the SINR equation above; the inputs below are the scene conditions that affect it.'}</span>
+    </div>)}
   </section>;
 }
 
@@ -570,7 +623,6 @@ function ProgressiveInputCard({
 }): ReactElement {
   const value = safeDisplayValue(definition, inputs[definition.key]);
   const id = inputId(definition.key);
-  const defaultValue = safeDisplayValue(definition, DEFAULT_VISUAL_LAB_INPUTS[definition.key]);
   const label = definition.label[locale];
   const unit = visibleUnit(definition, locale);
   return (

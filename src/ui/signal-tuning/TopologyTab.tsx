@@ -322,8 +322,11 @@ export function TopologyTab({
   const hasBeamOverride = topology.beamCountPerSatellite !== null;
   const effectiveUeCount = topology.ueCount ?? DEFAULT_UE_COUNT;
   const hasUeCountOverride = topology.ueCount !== null;
-  const effectiveUeDistributionMode = topology.ueDistributionMode ?? 'seven-cell-asymmetric';
-  const hasUeDistributionOverride = topology.ueDistributionMode !== null
+  const effectiveUeDistributionMode = appMode === 'sinr-experiment'
+    ? 'seven-cell-asymmetric'
+    : topology.ueDistributionMode ?? 'seven-cell-asymmetric';
+  const hasUeDistributionOverride = appMode !== 'sinr-experiment'
+    && topology.ueDistributionMode !== null
     && topology.ueDistributionMode !== 'random';
   // No `effectiveUeMobility*` derivations here any more: the mobility controls
   // were removed from this tab, so nothing on this surface reads or writes
@@ -677,42 +680,53 @@ export function TopologyTab({
                 )}
               />
 
-              <fieldset data-testid="topology-tab-ue-distribution-radio" style={topologyRadioFieldsetStyle(3)}>
-                <RadioLegend><T text={copy('scene.legend.ueDistribution', '使用者分布方式', 'UE distribution mode')} /><span aria-hidden="true" data-prominence="canonical-copy" style={srOnlyStyle}> UE distribution mode</span></RadioLegend>
-                {UE_DISTRIBUTION_MODE_OPTIONS.map(option => {
-                  const active = effectiveUeDistributionMode === option;
-                  return (
-                    <label key={option} style={topologyRadioLabelStyle(active, 'capitalize')}>
-                      <input
-                        data-testid={UE_DISTRIBUTION_MODE_OPTION_TESTIDS[option]}
-                        type="radio"
-                        name="topology-ue-distribution-mode"
-                        value={option}
-                        checked={active}
-                        onChange={() => onTopologyChange({
-                          ...topology,
-                          ueDistributionMode: option,
-                        })}
-                        style={topologyChoiceInputStyle}
-                      />
-                      <span>{option}</span>
-                    </label>
-                  );
-                })}
-              </fieldset>
+              {appMode === 'sinr-experiment' ? (
+                <EffectiveValue data-testid="topology-tab-ue-distribution-effective-value">
+                  <span>
+                    <T text={copy('scene.effective.ueDistribution', '目前使用者分布', 'Effective UE distribution')} />:{' '}
+                    <T text={copy('scene.value.sevenCell', '七格非對稱分布', 'Asymmetric seven-cell distribution')} />
+                  </span>
+                </EffectiveValue>
+              ) : (
+                <>
+                  <fieldset data-testid="topology-tab-ue-distribution-radio" style={topologyRadioFieldsetStyle(3)}>
+                    <RadioLegend><T text={copy('scene.legend.ueDistribution', '使用者分布方式', 'UE distribution mode')} /><span aria-hidden="true" data-prominence="canonical-copy" style={srOnlyStyle}> UE distribution mode</span></RadioLegend>
+                    {UE_DISTRIBUTION_MODE_OPTIONS.map(option => {
+                      const active = effectiveUeDistributionMode === option;
+                      return (
+                        <label key={option} style={topologyRadioLabelStyle(active, 'capitalize')}>
+                          <input
+                            data-testid={UE_DISTRIBUTION_MODE_OPTION_TESTIDS[option]}
+                            type="radio"
+                            name="topology-ue-distribution-mode"
+                            value={option}
+                            checked={active}
+                            onChange={() => onTopologyChange({
+                              ...topology,
+                              ueDistributionMode: option,
+                            })}
+                            style={topologyChoiceInputStyle}
+                          />
+                          <span>{option}</span>
+                        </label>
+                      );
+                    })}
+                  </fieldset>
 
-              <TopologyNotice
-                  canonical="Changing UE distribution restarts the simulation."
-                  text={copy('scene.notice.ueDistribution', '變更使用者分布方式後，模擬重新開始。', 'Changing the user distribution restarts the run.')}
-                />
+                  <TopologyNotice
+                    canonical="Changing UE distribution restarts the simulation."
+                    text={copy('scene.notice.ueDistribution', '變更使用者分布方式後，模擬重新開始。', 'Changing the user distribution restarts the run.')}
+                  />
 
-              <ActionRow>
-                <ResetButton
-                  data-testid="topology-tab-ue-distribution-reset"
-                  onClick={() => onTopologyChange({ ...topology, ueDistributionMode: null })}
-                  text={copy('scene.reset.ueDistribution', '重設分布方式', 'Reset distribution')}
-                />
-              </ActionRow>
+                  <ActionRow>
+                    <ResetButton
+                      data-testid="topology-tab-ue-distribution-reset"
+                      onClick={() => onTopologyChange({ ...topology, ueDistributionMode: null })}
+                      text={copy('scene.reset.ueDistribution', '重設分布方式', 'Reset distribution')}
+                    />
+                  </ActionRow>
+                </>
+              )}
             </TopologySection>
 
               <div style={dividerStyle} />

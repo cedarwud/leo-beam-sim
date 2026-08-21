@@ -9,52 +9,6 @@ const markup = renderToStaticMarkup(
   <LocaleProvider initialLocale="zh-TW">
     <WalkerResultsRail
       profile={profile}
-      canonicalEe={{
-        status: 'valid',
-        sumIdentity: true,
-        systemPowerW: 12.5,
-        eeInstMbitPerJ: 2.4,
-        contributionSumMbitPerJ: 2.4,
-        eeEvalMbitPerJ: 2.1,
-        evaluationSampleCount: 3,
-        frameSimTimeSec: 2,
-        actualRfOutputW: 1.25,
-        ratedRfOutputW: 2,
-        evaluationDataMbit: 42,
-        evaluationEnergyJ: 20,
-        evaluationWindowStartSec: 0,
-        evaluationWindowEndSec: 2,
-        servingBeamIdentity: 'sat-a#cell0',
-        perUserContributions: [
-          {
-            ueId: 'ue-primary',
-            assignedBeamLoad: 4,
-            allocatedBandwidthMHz: 25,
-            sinrDb: 8,
-            rateMbps: 30,
-            contributionMbitPerJ: 1.2,
-          },
-          {
-            ueId: 'ue-secondary',
-            assignedBeamLoad: 4,
-            allocatedBandwidthMHz: 25,
-            sinrDb: 6,
-            rateMbps: 20,
-            contributionMbitPerJ: 1.2,
-          },
-        ],
-        errorCode: null,
-      }}
-      livePaperEnergyEfficiency={null}
-      perUePositions={[
-        {
-          id: 'ue-primary',
-          servingSatId: 'sat-a',
-          servingBeamId: null,
-          servingCellId: 0,
-          sinrDb: 8,
-        },
-      ]}
       physicalServing={{
         satId: 'sat-a',
         beamId: null,
@@ -77,6 +31,42 @@ const markup = renderToStaticMarkup(
       }}
       servingCellId={0}
       pendingTargetSatId="sat-b"
+      angleAwareFormulaFrame={{
+        ueId: 'ue-primary',
+        satId: 'sat-a',
+        beamId: 1,
+        timeSec: 2,
+        selected: 1,
+        terms: {
+          timeSec: 2,
+          previousTimeSec: 1,
+          previousThetaRad: 0,
+          previousPowerW: 1.25,
+          previousTransmitGainLinear: 1,
+          segmentStartTimeSec: 0,
+          segmentStartThetaRad: 0,
+          segmentStartTransmitGainLinear: 1,
+          segmentStartPowerW: 2,
+          thetaRad: 0.02,
+          distanceM: 600_000,
+          powerW: 1.25,
+          transmitGainLinear: 1,
+          channelGainLinear: 1,
+          desiredSignalW: 0.5,
+          interferenceW: 0.05,
+          noiseW: 0.01,
+          gammaLinear: 8,
+          gammaDb: 9.03,
+          bandwidthHz: 25e6,
+          beamLoad: 4,
+          throughputBps: 30e6,
+          conversionEfficiency: 0.6,
+          powerConsumptionW: 2.083333,
+          fixedPowerW: 0,
+          systemPowerW: 12.5,
+          energyEfficiencyBitsPerJoule: 900,
+        },
+      }}
       simTimeSec={2}
       beamHopEnabled={false}
       isFormulaEvidenceStale={false}
@@ -104,22 +94,39 @@ assert.match(markup, /<strong>Power<\/strong>/);
 assert.doesNotMatch(markup, /SINR 公式各項|<strong>功率<\/strong>/);
 
 assert.match(markup, /data-testid="formula-verification-card"/);
+assert.match(markup, /class="leo-formula-verification-card"/);
+assert.match(markup, /class="leo-formula-verification-card__headline"/);
+assert.match(markup, /class="leo-formula-verification-card__identity"/);
 assert.match(markup, /data-embedded="true"/);
-assert.match(markup, /<i>p<\/i><sub>u,s,v<\/sub>\(t, θ\) · h<sub>u,s,v<\/sub>\(t, θ\)/);
+assert.doesNotMatch(markup, /data-testid="formula-frame-formula"/);
+assert.match(markup, /data-testid="formula-frame-distance"/);
+assert.match(markup, /data-testid="formula-frame-sinr"/);
+assert.doesNotMatch(markup, /h<sub>|I<sup>[ab]<\/sup>|dBm/);
 assert.doesNotMatch(markup, /P<sup>o<\/sup>|P<sup>r<\/sup>|I<sup>[ab]<\/sup>|η<sup>e<\/sup>/);
+const formulaTermsStart = markup.indexOf('data-testid="formula-frame-distance"');
+const powerSectionStart = markup.indexOf('data-testid="walker-result-section-power"');
+assert.ok(formulaTermsStart >= 0 && powerSectionStart > formulaTermsStart, 'SINR formula terms must render before the Power section');
+assert.doesNotMatch(
+  markup.slice(formulaTermsStart, powerSectionStart),
+  /leo-walker-result-row__scope-tag|主要 UE|Primary UE/,
+  'SINR formula symbols should not carry repeated scope badges',
+);
 
-assert.match(markup, /data-testid="walker-result-power-output"[\s\S]*<i>p<\/i><sub>u,s,v<\/sub>[\s\S]*1\.25 W/);
-assert.match(markup, /data-testid="walker-result-system-power"[\s\S]*P<sup>N<\/sup>[\s\S]*12\.5 W/);
-assert.match(markup, /data-testid="walker-result-power-signal"[\s\S]*<i>p<\/i><sub>u,s,v<\/sub>\(t,[\s\S]*?θ[\s\S]*h<sub>u,s,v<\/sub>[\s\S]*-90 dBm/);
-assert.match(markup, /data-testid="walker-result-power-intra-interference"[\s\S]*I<sub>u,s,v<\/sub>[\s\S]*-104 dBm/);
-assert.match(markup, /data-testid="walker-result-power-inter-interference"[\s\S]*I<sub>u,s,v<\/sub>[\s\S]*-106 dBm/);
-assert.match(markup, /data-testid="walker-result-power-noise"[\s\S]*σ²[\s\S]*-110 dBm/);
-assert.match(markup, /data-testid="walker-result-link-throughput"[\s\S]*R<sub>u,s,v<\/sub>[\s\S]*30 Mbit\/s/);
-assert.match(markup, /data-testid="walker-result-total-throughput"[\s\S]*50 Mbit\/s/);
-assert.match(markup, /data-testid="walker-result-beam-load"[\s\S]*U<sub>s,v<\/sub>[\s\S]*4/);
-assert.match(markup, /data-testid="walker-result-link-ee"[\s\S]*η<sub>u,s,v<\/sub>[\s\S]*1\.2 Mbit\/J/);
-assert.match(markup, /data-testid="walker-result-instantaneous-ee"[\s\S]*2\.4 Mbit\/J/);
-assert.match(markup, /data-testid="walker-result-evaluation-ee"[\s\S]*2\.1 Mbit\/J/);
+assert.match(markup, /data-testid="walker-result-power-output"[\s\S]*data-scope="primary-ue"[\s\S]*<i>p<\/i><sub>u,s,v<\/sub>[\s\S]*主要 UE[\s\S]*1\.25 W/);
+assert.match(markup, /data-testid="walker-result-system-power"[\s\S]*data-scope="system"[\s\S]*P<sup>N<\/sup>[\s\S]*系統[\s\S]*12\.5 W/);
+assert.match(markup, /data-testid="walker-result-power-signal"[\s\S]*data-scope="primary-ue"[\s\S]*H<sub>u,s,v<\/sub>[\s\S]*主要 UE[\s\S]*500 mW/);
+assert.match(markup, /data-testid="walker-result-power-interference"[\s\S]*data-scope="primary-ue"[\s\S]*I<sub>u,s,v<\/sub>[\s\S]*主要 UE[\s\S]*50 mW/);
+assert.doesNotMatch(markup, /walker-result-power-intra-interference|walker-result-power-inter-interference/);
+assert.match(markup, /data-testid="walker-result-power-noise"[\s\S]*data-scope="primary-ue"[\s\S]*σ²[\s\S]*主要 UE[\s\S]*10 mW/);
+assert.match(markup, /data-testid="walker-result-power-consumption"[\s\S]*data-scope="primary-ue"[\s\S]*P<sup>p<\/sup><sub>u,s,v<\/sub>[\s\S]*主要 UE/);
+assert.match(markup, /data-testid="walker-result-link-throughput"[\s\S]*data-scope="primary-ue"[\s\S]*R<sub>u,s,v<\/sub>[\s\S]*主要 UE[\s\S]*30 Mbit\/s/);
+assert.match(markup, /data-testid="walker-result-beam-bandwidth"[\s\S]*data-scope="beam-aggregate"[\s\S]*B<sup>w<\/sup>[\s\S]*波束聚合/);
+assert.match(markup, /data-testid="walker-result-beam-load"[\s\S]*data-scope="beam-aggregate"[\s\S]*U<sub>s,v<\/sub>[\s\S]*波束聚合[\s\S]*4/);
+assert.match(markup, /data-testid="walker-result-link-ee"[\s\S]*data-scope="primary-ue"[\s\S]*η<sub>u,s,v<\/sub>[\s\S]*主要 UE[\s\S]*900 bit\/J/);
+assert.match(markup, /data-testid="walker-result-instantaneous-ee"[\s\S]*data-scope="primary-ue"[\s\S]*R<sub>u,s,v<\/sub>[\s\S]*主要 UE[\s\S]*30 Mbit\/s/);
+assert.match(markup, /data-testid="walker-result-ee-system-power"[\s\S]*data-scope="system"[\s\S]*P<sup>N<\/sup>[\s\S]*系統[\s\S]*12\.5 W/);
+assert.match(markup, /data-testid="formula-frame-distance"[\s\S]*data-scope="primary-ue"/);
+assert.match(markup, /data-testid="formula-frame-sinr"[\s\S]*data-scope="primary-ue"/);
 
 const visibleText = markup.replace(/<[^>]+>/g, '');
 assert.doesNotMatch(visibleText, /唯讀|Read-only/i);

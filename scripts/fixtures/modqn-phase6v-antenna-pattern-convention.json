@@ -14,7 +14,7 @@
     "BLOCKED_BY_PATTERN_CONVENTION",
     "NEEDS_SOURCE_PROVENANCE"
   ],
-  "expectedPhase6VStatus": "BLOCKED_BY_PATTERN_CONVENTION",
+  "expectedPhase6VStatus": "NEEDS_SOURCE_PROVENANCE",
   "diagnosticPolicy": {
     "runtimeAdoption": "not-adopted",
     "formulaChanges": "forbidden",

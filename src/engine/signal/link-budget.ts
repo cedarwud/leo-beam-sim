@@ -1,9 +1,7 @@
 /**
- * SINR link budget per HOBS Eq.(4)-(6).
- *
- * γ = P·H·G^T·G^R / (I^a + I^b + σ²)
- *
- * Source: PAP-2024-HOBS
+ * Shared link budget. The active legacy homepage projection exposes the
+ * simplified angle-aware contract; the unconfigured path remains for older
+ * simulator consumers.
  */
 
 import {
@@ -13,15 +11,32 @@ import {
 } from '../../profiles/types';
 import type {
   ActiveBeamAssignment,
+  AngleAwarePowerState,
   BeamPowerOverrideDbmByKey,
   LinkSample,
   SatelliteSnapshot,
   UEPosition,
 } from './types';
-import { computeBeamGainDb, computeOffAxisDeg, BEAM_GAIN_FLOOR_DB } from './beam-gain';
+import {
+  computeBeamGainDb,
+  computeGeometricLinkGeometry,
+  computeGeometricOffAxisDeg,
+  computeOffAxisDeg,
+  BEAM_GAIN_FLOOR_DB,
+} from './beam-gain';
 import { computePathLossDb } from './path-loss';
 import { sampleLosStateTr38811 } from './los-probability';
 import { getBeamFrequencyIndex } from '../../utils/beamFrequency';
+import {
+  angleAwareBeamKey,
+  angleAwareLinkKey,
+  resolveAngleAwarePowerState,
+  computeAngleAwareEnergyEfficiency,
+  computeAngleAwareThroughputBps,
+  dbToLinear,
+  linearToDb,
+  wattsToDbm,
+} from './angle-aware-ee';
 
 function dbmToMw(dbm: number): number {
   return Math.pow(10, dbm / 10);
@@ -36,6 +51,26 @@ interface BeamEntry {
   sample: LinkSample;
   signalMw: number;
   interferenceMw: number;
+  angleAwareDraft?: {
+    state: AngleAwarePowerState;
+    previousState: AngleAwarePowerState | null;
+    thetaRad: number;
+    transmitGainLinear: number;
+    channelGainLinear: number;
+    powerW: number;
+    distanceM: number;
+  };
+}
+
+export interface AngleAwareLinkBudgetConfig {
+  /** Previous published-frame state, keyed by the public (u,s,v) link identity. */
+  previousStates: ReadonlyMap<string, AngleAwarePowerState>;
+  /** Positive effective RF-to-supply conversion efficiency xi. */
+  conversionEfficiency: number;
+  /** P^f(t), a scenario-level fixed overhead. */
+  fixedPowerW: number;
+  /** Optional U_(s,v)(t) values for C5. Defaults to one. */
+  beamLoadByKey?: ReadonlyMap<string, number>;
 }
 
 function computeSteeringLossDb(
@@ -71,6 +106,7 @@ export function computeLinkBudget(
     activeAssignments: ActiveBeamAssignment[];
     simTimeSec: number;
     beamPowerOverrideDbmByKey?: BeamPowerOverrideDbmByKey;
+    angleAware?: AngleAwareLinkBudgetConfig;
   },
 ): LinkSample[] {
   const {
@@ -82,6 +118,7 @@ export function computeLinkBudget(
     activeAssignments,
     simTimeSec,
     beamPowerOverrideDbmByKey,
+    angleAware,
   } = config;
   const usesTr38811Path = formulaFamily === 'hobs-tr38811';
   const receiverGainDbi = ueAntenna.maxGainDbi;
@@ -108,7 +145,35 @@ export function computeLinkBudget(
       const dNorth = ue.offsetNorthKm - beam.offsetNorthKm;
       const distKm = Math.hypot(dEast, dNorth);
 
-      const offAxisDeg = computeOffAxisDeg(distKm, sat.altitudeKm);
+      const flatOffAxisDeg = computeOffAxisDeg(distKm, sat.altitudeKm);
+      const hasGeometricMetadata = Number.isFinite(sat.latDeg)
+        && Number.isFinite(sat.lonDeg)
+        && Number.isFinite(ue.latDeg)
+        && Number.isFinite(ue.lonDeg);
+      const geometricLink = hasGeometricMetadata
+        ? computeGeometricLinkGeometry({
+          satLatDeg: sat.latDeg!,
+          satLonDeg: sat.lonDeg!,
+          satAltitudeKm: sat.altitudeKm,
+          userLatDeg: ue.latDeg,
+          userLonDeg: ue.lonDeg,
+        })
+        : null;
+      const hasBeamGeometricMetadata = hasGeometricMetadata
+        && Number.isFinite(beam.beamCenterLatDeg)
+        && Number.isFinite(beam.beamCenterLonDeg);
+      const offAxisDeg = hasBeamGeometricMetadata
+        ? computeGeometricOffAxisDeg({
+          satLatDeg: sat.latDeg!,
+          satLonDeg: sat.lonDeg!,
+          satAltitudeKm: sat.altitudeKm,
+          beamCenterLatDeg: beam.beamCenterLatDeg!,
+          beamCenterLonDeg: beam.beamCenterLonDeg!,
+          userLatDeg: ue.latDeg,
+          userLonDeg: ue.lonDeg,
+          beamAxisEcefKm: beam.beamAxisEcefKm,
+        })
+        : flatOffAxisDeg;
       const beamGainDb = computeBeamGainDb(offAxisDeg, beamwidth3dBDeg, antenna.model);
       if (beamGainDb <= BEAM_GAIN_FLOOR_DB) continue;
       const steeringLossDb = computeSteeringLossDb(
@@ -118,13 +183,19 @@ export function computeLinkBudget(
       );
       const losSeedKey = `${sat.id}|${beam.beamId}|${Math.floor(simTimeSec)}`;
       const isLos = usesTr38811Path
-        ? sampleLosStateTr38811(sat.elevationDeg, tr38811Environment, losSeedKey)
+        ? sampleLosStateTr38811(
+          geometricLink?.elevationDeg ?? sat.elevationDeg,
+          tr38811Environment,
+          losSeedKey,
+        )
         : true;
 
+      const linkRangeKm = geometricLink?.slantRangeKm ?? sat.rangeKm;
+      const linkElevationDeg = geometricLink?.elevationDeg ?? sat.elevationDeg;
       const pathLossDb = computePathLossDb(
-        sat.rangeKm,
+        linkRangeKm,
         channel.frequencyGHz,
-        sat.elevationDeg,
+        linkElevationDeg,
         channel.pathLossComponents,
         {
           isLos,
@@ -145,25 +216,76 @@ export function computeLinkBudget(
       // shifts desired signal power without rewriting interference terms.
       const rsrpDbm = linkSignalBeforeReceiverGainDbm + receiverGainDbi;
 
+      const thetaRad = (offAxisDeg * Math.PI) / 180;
+      // Factor the same received-power product into the public H · G^T
+      // contract: G^T now includes the boresight gain G0 and the normalized
+      // off-axis pattern, while H keeps path loss, scan loss, and receiver
+      // gain.  This is an algebraic projection of the existing dB sum; it
+      // does not change the received-power or SINR result.
+      const transmitGainLinear = dbToLinear(antenna.maxGainDbi + beamGainDb);
+      const linkKey = angleAwareLinkKey(ue.id, sat.id, beam.beamId);
+      const previousState = angleAware === undefined
+        ? undefined
+        : angleAware.previousStates.get(linkKey);
+      const angleAwareState = angleAware === undefined
+        ? null
+        : resolveAngleAwarePowerState(
+          previousState,
+          simTimeSec,
+          thetaRad,
+          transmitGainLinear,
+        );
+      const angleAwarePowerW = angleAwareState === null
+        ? null
+        : angleAwareState.powerW;
+      const effectiveTxPowerDbm = angleAwarePowerW === null
+        ? txPowerDbm
+        : wattsToDbm(angleAwarePowerW);
+      const effectiveHDb = -steeringLossDb - pathLossDb + receiverGainDbi;
+      const effectiveSignalW = angleAwarePowerW === null
+        ? dbmToMw(rsrpDbm) / 1e3
+        : angleAwarePowerW * dbToLinear(effectiveHDb) * transmitGainLinear;
+      const effectiveSignalDbm = wattsToDbm(effectiveSignalW);
+
       entries.push({
         sample: {
+          ueId: ue.id,
           satId: sat.id,
           beamId: beam.beamId,
-          rsrpDbm,
+          rsrpDbm: effectiveSignalDbm,
           sinrDb: -Infinity,
-          signalDbm: rsrpDbm,
+          signalDbm: effectiveSignalDbm,
           intraInterferenceDbm: -Infinity,
           interInterferenceDbm: -Infinity,
           noiseDbm,
           denominatorDbm: noiseDbm,
-          txPowerDbm,
+          txPowerDbm: effectiveTxPowerDbm,
           pathLossDb,
           beamGainDb,
           steeringLossDb,
           receiverGainDbi,
         },
-        signalMw: dbmToMw(rsrpDbm),
-        interferenceMw: dbmToMw(linkSignalBeforeReceiverGainDbm),
+        signalMw: effectiveSignalW * 1e3,
+        // Interference is received power in the same linear receiver domain as
+        // the wanted link.  The public formula exposes only the total I; the
+        // legacy intra/inter dB partition is filled after the same sum.
+        interferenceMw: angleAwarePowerW === null
+          ? dbmToMw(linkSignalBeforeReceiverGainDbm + receiverGainDbi)
+          : effectiveSignalW * 1e3,
+        angleAwareDraft: angleAwareState === null || angleAwarePowerW === null
+          ? undefined
+          : {
+            state: angleAwareState,
+            previousState: previousState !== undefined
+              && previousState.timeSec < simTimeSec
+              ? previousState
+              : null,
+            thetaRad,
+            transmitGainLinear,
+            channelGainLinear: dbToLinear(effectiveHDb),
+            powerW: angleAwarePowerW,
+            distanceM: Math.max(linkRangeKm, 0) * 1e3,
+          },
       });
     }
   }
@@ -174,6 +296,22 @@ export function computeLinkBudget(
   // Beam colors and interference use the same F1..Fn reuse index:
   // B1 -> F1, B2 -> F2, ..., wrapping after the configured reuse count.
   const reuseGroups = beamConfig.frequencyReuse;
+
+  const angleAwareSystemPowerW = angleAware === undefined
+    ? null
+    : angleAware.fixedPowerW + entries.reduce((sum, entry) => {
+      const key = angleAwareBeamKey(entry.sample.satId, entry.sample.beamId);
+      if (!activeBeamKeys.has(key) || entry.angleAwareDraft === undefined) return sum;
+      const efficiency = Number.isFinite(angleAware.conversionEfficiency)
+        && angleAware.conversionEfficiency > 0
+        ? angleAware.conversionEfficiency
+        : 1;
+      const configuredLoad = angleAware.beamLoadByKey?.get(key);
+      const beamLoad = Number.isFinite(configuredLoad) && (configuredLoad ?? 0) > 0
+        ? Math.max(1, Math.floor(configuredLoad ?? 1))
+        : 1;
+      return sum + (entry.angleAwareDraft.powerW / efficiency) * beamLoad;
+    }, 0);
 
   return entries.map((entry, idx) => {
     const servingSignalMw = entry.signalMw;
@@ -199,7 +337,7 @@ export function computeLinkBudget(
     const interferenceMw = intraSatInterferenceMw + interSatInterferenceMw;
     const denominatorMw = interferenceMw + noiseMw;
     const sinrDb = 10 * Math.log10(Math.max(servingSignalMw / denominatorMw, 1e-12));
-    return {
+    const nextSample: LinkSample = {
       ...entry.sample,
       sinrDb,
       intraInterferenceDbm: mwToDbm(intraSatInterferenceMw),
@@ -207,5 +345,60 @@ export function computeLinkBudget(
       noiseDbm,
       denominatorDbm: mwToDbm(denominatorMw),
     };
+
+    if (angleAware !== undefined && entry.angleAwareDraft !== undefined) {
+      const draft = entry.angleAwareDraft;
+      const interferenceW = interferenceMw / 1e3;
+      const noiseW = noiseMw / 1e3;
+      const gammaLinear = servingSignalMw / Math.max(denominatorMw, 1e-30);
+      const beamLoad = angleAware.beamLoadByKey?.get(
+        angleAwareBeamKey(entry.sample.satId, entry.sample.beamId),
+      ) ?? 1;
+      const throughputBps = computeAngleAwareThroughputBps(
+        bandwidthHz,
+        beamLoad,
+        gammaLinear,
+      );
+      const conversionEfficiency = Number.isFinite(angleAware.conversionEfficiency)
+        && angleAware.conversionEfficiency > 0
+        ? angleAware.conversionEfficiency
+        : 1;
+      const powerConsumptionW = draft.powerW / conversionEfficiency;
+      const systemPowerW = Math.max(angleAwareSystemPowerW ?? powerConsumptionW, 0);
+      nextSample.angleAware = {
+        timeSec: draft.state.timeSec,
+        previousTimeSec: draft.previousState?.timeSec ?? null,
+        previousThetaRad: draft.previousState?.thetaRad ?? null,
+        previousPowerW: draft.previousState?.powerW ?? null,
+        previousTransmitGainLinear: draft.previousState?.transmitGainLinear ?? null,
+        segmentStartTimeSec: draft.state.segmentStartTimeSec,
+        segmentStartThetaRad: draft.state.segmentStartThetaRad,
+        segmentStartPowerW: draft.state.segmentStartPowerW,
+        segmentStartTransmitGainLinear: draft.state.segmentStartTransmitGainLinear,
+        thetaRad: draft.thetaRad,
+        distanceM: draft.distanceM,
+        powerW: draft.powerW,
+        transmitGainLinear: draft.transmitGainLinear,
+        channelGainLinear: draft.channelGainLinear,
+        desiredSignalW: servingSignalMw / 1e3,
+        interferenceW,
+        noiseW,
+        gammaLinear,
+        gammaDb: linearToDb(gammaLinear),
+        bandwidthHz,
+        beamLoad,
+        throughputBps,
+        conversionEfficiency,
+        powerConsumptionW,
+        fixedPowerW: angleAware.fixedPowerW,
+        systemPowerW,
+        energyEfficiencyBitsPerJoule: computeAngleAwareEnergyEfficiency(
+          throughputBps,
+          systemPowerW,
+        ),
+      };
+    }
+
+    return nextSample;
   });
 }

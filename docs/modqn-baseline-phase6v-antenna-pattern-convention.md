@@ -1,7 +1,9 @@
 # MODQN Baseline Phase 6V Antenna-Pattern Convention
 
-**Date:** 2026-05-12
-**Status:** `BLOCKED_BY_PATTERN_CONVENTION`
+**Date:** 2026-05-12 (updated 2026-08-21)
+**Status:** `NEEDS_SOURCE_PROVENANCE` — was `BLOCKED_BY_PATTERN_CONVENTION`; the
+pattern-convention question is closed (see the 2026-08-21 resolution below), and
+the remaining residual is the independent diameter/beamwidth mapping.
 **Target repo:** `/home/u24/papers/project/leo-beam-sim`
 **Scope:** validator-only antenna-pattern convention resolution
 
@@ -28,11 +30,12 @@ or vendored `ntn-sim-core` source files.
 
 Phase 6V admits these provenance-backed comparisons:
 
-1. `leo-current-hobs-itu-normalized-j1j3`: current
-   `src/engine/signal/beam-gain.ts`, documented in-code as
-   `PAP-2024-HOBS Eq.(3)` / `ITU-R S.672-4`. It uses the Leo profile
-   `beamwidth3dBRad` directly, `alphaScale=1.835239914925094`,
-   boresight-envelope normalization `1.75`, and a `-40 dB` floor.
+1. `leo-current-hobs-itu-normalized-j1j3`: `src/engine/signal/beam-gain.ts` **as
+   it stood before 2026-08-21**, documented in-code as `PAP-2024-HOBS Eq.(3)` /
+   `ITU-R S.672-4`. It used the Leo profile `beamwidth3dBRad` directly,
+   `alphaScale=1.835239914925094`, boresight-envelope normalization `1.75`, and
+   a `-40 dB` floor. See the 2026-08-21 resolution below: this candidate was a
+   transcription error, and the engine now matches candidate 2's convention.
 2. `vendored-ntn-sim-core-j1j3-raw-diameter`: current
    `src/core/channel/beam-gain.ts`, vendored in Phase 6F after source-side
    validation. It derives `theta3db=atan(D/(2h))`, uses `u=2.07123`, and
@@ -47,9 +50,50 @@ No extra curve-fit candidate is admitted. A calibrated `u` scale or alternate
 envelope could reduce residuals, but Phase 6V found no source-map, paper, or
 vendored-code authority for treating that as an adapter-only fix.
 
+## 2026-08-21 resolution: the convention question is closed
+
+Phase 6V's "no source-map, paper, or vendored-code authority" finding was
+correct, and it had a simpler cause than a convention split: candidate 1 was a
+**transcription error**, not an alternative convention.
+
+`src/engine/signal/beam-gain.ts` evaluated `2*J1(a)/a` where HOBS Eq.(3) writes
+`J1(mu)/(2*mu)` — the 2 on the wrong side of the fraction. That lifted the
+boresight value from 1 to 1.75, which was patched out by dividing the envelope
+by `1.75`, which in turn moved the -3 dB point, which was patched out again by
+re-solving the argument scale to `1.835239914925094`. Two corrections stacked on
+one slip. Neither constant appears in any paper, in ITU-R text, or in the
+vendored helper; `2.07123` appears verbatim in PAP-2024-HOBS Eq.(3), in the
+2024-06 mega-constellation handover paper, and in sensors-22-09304.
+
+The engine now evaluates HOBS Eq.(3) as written (`J1(mu)/(2*mu) + 36*J3(mu)/mu^3`,
+`mu = 2.07123*sin(theta)/sin(theta_3dB)`, no renormalization — the pattern is
+already unity at boresight as `1/4 + 3/4`). Candidates 1 and 2 are therefore the
+same convention now, and `antenna-model-mismatch` reports `NOT_OBSERVED`.
+
+What remains is a **different, independent** issue: the diameter/beamwidth
+conversion, which Phase 6U still reports as `ROOT_CAUSE` (diameter-adapted mean
+`1.227325 dB`). Phase 6V status moves from `BLOCKED_BY_PATTERN_CONVENTION` to
+`NEEDS_SOURCE_PROVENANCE` — the remaining residual needs the diameter mapping
+resolved, not the pattern.
+
 ## Result
 
-Phase 6V status: `BLOCKED_BY_PATTERN_CONVENTION`.
+Phase 6V status: `NEEDS_SOURCE_PROVENANCE` (was `BLOCKED_BY_PATTERN_CONVENTION`
+before the 2026-08-21 transcription fix).
+
+Post-fix Phase 6U metrics (710 cases):
+
+| Metric | Raw core vs engine | Diameter-adapted core vs engine |
+| --- | ---: | ---: |
+| max absolute beam-gain difference | `49.897677 dB` | `2.541949 dB` |
+| mean absolute beam-gain difference | `17.103638 dB` | `1.227325 dB` |
+| p50 absolute beam-gain difference | `7.660872 dB` | `0.169960 dB` |
+
+The diameter-adapted p50 is now inside the `0.25 dB` adapter tolerance
+(`2.490353 dB` before the fix), and the max collapses from `51.839327 dB` to
+`2.541949 dB`.
+
+### Superseded pre-fix numbers
 
 Phase 6U full-window mismatch metrics remain the governing integration
 evidence:

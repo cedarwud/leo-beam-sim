@@ -48,6 +48,11 @@ S__*.jpeg
 # Local QA output (screenshots, browser runs)
 output/
 
+# Working scratch: ad-hoc analysis dumps, per-session investigation notes and
+# other-session WIP. Kept on disk, out of git (~73 MB and growing). Only the
+# explicitly tracked bundle below is an exception.
+.scratch/
+
 # C-120 superseded capture outputs. The active, content-addressed class bundle
 # is public/course/c120/real-data/703f0e3a...01421 and is tracked explicitly.
 .scratch/c120-real-data/captures/

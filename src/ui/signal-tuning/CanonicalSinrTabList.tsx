@@ -1,6 +1,7 @@
 import type { KeyboardEvent, ReactNode } from 'react';
 import { UI_CLASSES, UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
+import { SystemAngleState } from './FormulaSymbols';
 import { txBi } from './labels';
 import { formulaTextStyle } from './styles';
 
@@ -8,6 +9,7 @@ export type CanonicalSinrSectionKey =
   | 'power'
   | 'channel'
   | 'beam'
+  // Compatibility alias; it is normalized to channel and never rendered.
   | 'receiver'
   | 'interference'
   | 'noise';
@@ -19,11 +21,10 @@ const SECTIONS: readonly {
   readonly en: string;
   readonly accent: string;
 }[] = [
-  { key: 'power', symbol: <><i>p</i><sup>r</sup><sub>u,s,v</sub>(t, θ)</>, zh: '鏈路功率', en: 'Link power', accent: UI_TOKENS.color.semantic.tuning },
-  { key: 'channel', symbol: <>h<sub>u,s,v</sub>(t, θ)</>, zh: '有效通道', en: 'Effective channel', accent: UI_TOKENS.color.semantic.loss },
-  { key: 'beam', symbol: <>G<sup>T</sup>(θ)</>, zh: '發射波束增益', en: 'Transmit beam gain', accent: UI_TOKENS.color.semantic.beam },
-  { key: 'receiver', symbol: <>h<sub>u,s,v</sub>(t, θ)</>, zh: '接收增益（納入 h）', en: 'Receive gain (included in h)', accent: UI_TOKENS.color.semantic.fixed },
-  { key: 'interference', symbol: <>I<sub>u,s,v</sub>(t, θ)</>, zh: '同頻干擾', en: 'Interference', accent: '#ff8a6b' },
+  { key: 'power', symbol: <><i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>, zh: '鏈路功率', en: 'Link power', accent: UI_TOKENS.color.semantic.tuning },
+  { key: 'channel', symbol: <>H<sub>u,s,v</sub>(t)</>, zh: '有效通道', en: 'Effective channel', accent: UI_TOKENS.color.semantic.loss },
+  { key: 'beam', symbol: <>G<sup>T</sup>(θ<sub>u,s,v</sub>)</>, zh: '發射波束增益', en: 'Transmit beam gain', accent: UI_TOKENS.color.semantic.beam },
+  { key: 'interference', symbol: <>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>, zh: '同頻干擾', en: 'Interference', accent: '#ff8a6b' },
   { key: 'noise', symbol: <>σ²</>, zh: '背景雜訊', en: 'Noise', accent: UI_TOKENS.color.semantic.noise },
 ];
 

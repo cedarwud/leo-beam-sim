@@ -1,26 +1,16 @@
 import { useLocale } from '../../i18n';
-import { DEFAULT_SIMULATOR_PARAMETERS, type SimulatorParameters } from '../../simulator/types';
+import type { SimulatorParameters } from '../../simulator/types';
 import { UI_TOKENS } from '../../constants/uiTokens';
-import { NumericControl } from './Controls';
-import { FormulaHeader, FormulaRow, InlineFormulaFraction, renderFormulaText } from './FormulaHeader';
-import { formatPower } from './formatters';
+import { FormulaHeader, FormulaRow, InlineFormulaFraction } from './FormulaHeader';
+import { SystemAngleState, SystemPowerSum } from './FormulaSymbols';
 import { txBi } from './labels';
-import { SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
-import {
-  captionTextStyle,
-  controlStackStyle,
-  groupTitleStyle,
-  pagePanelStyle,
-} from './styles';
+import { pagePanelStyle } from './styles';
 
 const POWER_ACCENT = UI_TOKENS.color.semantic.good;
 
 /**
- * Canonical power inputs for the homepage's left rail.
- *
- * This component deliberately has no result projection. Changing one of the
- * two RF-cap inputs ask the shared producer to rebuild the immutable frame; the
- * derived P^r, P^o, P^p, and P^N values are owned by the shared analysis frame.
+ * Power is a derived quantity. This tab explains the recurrence and aggregation
+ * used by the model; live values belong to the result rail.
  */
 export function PowerTab({
   parameters,
@@ -32,6 +22,8 @@ export function PowerTab({
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
   const say = (key: string, zh: string, en: string) => txBi(t, isEnglish, key, zh, en);
+  void parameters;
+  void onParametersChange;
   return (
     <section
       id="tuning-page-panel-power"
@@ -44,17 +36,13 @@ export function PowerTab({
         testId="power-canonical-formula-header"
         title={say('panel.power.title', '功率模型', 'Power model')}
         accent={POWER_ACCENT}
-        caption={say(
-          'panel.power.scope',
-          '調整功率上限與功耗參數；需求功率、實際 RF 輸出、PA 效率、PA 輸入與系統功率由這些輸入計算。',
-          'Adjust power caps and consumption inputs; requested power, RF output, PA efficiency, PA input, and system power are calculated from them.',
-        )}
+        caption={say('panel.power.scope', 'Power 顯示角度感知遞推與系統總和。', 'Power shows the angle-aware recurrence and system total.')}
         help={{
           helpId: 'panel.power.canonicalHelp',
           body: say(
             'panel.power.help',
-            '先將每位使用者的需求功率聚合到波束，再依序套用波束上限與衛星上限；PA 效率、PA 輸入與系統功率使用套用上限後的 RF 輸出。',
-            'Aggregate user requests per beam, apply the beam and satellite caps in order, then use the post-cap RF output for PA efficiency, PA input, and system power.',
+            'Power 由同一時間步的鏈路功率與系統總和得到。',
+            'Power is formed from the link power and system total at the same time step.',
           ),
         }}
       >
@@ -62,93 +50,73 @@ export function PowerTab({
           testId="power-canonical-formula-row-system"
           accent={POWER_ACCENT}
           emphasis
-          expression={<>P<sup>N</sup>(t, θ) = P<sup>f</sup>(t) + Σ<sub>s,v</sub>P<sup>p</sup><sub>s,v</sub>(t, θ)</>}
+          expression={<>P<sup>N</sup>(t, <SystemAngleState />) = P<sup>f</sup>(t) + <SystemPowerSum /></>}
           note="W"
           source={say(
             'panel.power.formula.systemSource',
-            'P^f 是固定／circuit overhead 的總量；P^N 是系統總功率。',
-            'P^f is aggregate fixed/circuit overhead; P^N is total system power.',
-          )}
-        />
-        <FormulaRow
-          testId="power-canonical-formula-row-cap"
-          accent={POWER_ACCENT}
-          expression={<>P<sup>r</sup><sub>s,v</sub>(t, θ) = max<sub>u:x<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)=1</sub> p<sup>r</sup><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ)</>}
-          source={say(
-            'panel.power.formula.capSource',
-            'P^r 是同一波束內已服務使用者需求功率的最大值；空集合時為 0。',
-            'P^r is the maximum requested power among served users on one beam; it is 0 for an empty set.',
+            'P^f 是固定功率；P^N 是所有作用中鏈路的系統總功率。',
+            'P^f is fixed power; P^N is total system power across active links.',
           )}
         />
         <FormulaRow
           testId="power-canonical-formula-row-pa"
           accent={POWER_ACCENT}
+          expression={<>P<sup>p</sup><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>) = <InlineFormulaFraction
+            numerator={<>p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>}
+            denominator={<>ξ<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>}
+            label="link power divided by efficiency"
+          /></>}
+          source={say(
+            'panel.power.formula.paSource',
+            'P^p 是鏈路功率除以效率 ξ 後的 PA 輸入功率。',
+            'P^p is the PA input power obtained by dividing link power by efficiency ξ.',
+          )}
+        />
+        <FormulaRow
+          testId="power-canonical-formula-row-segment-start"
+          accent={POWER_ACCENT}
+          expression={<>p<sub>u,s,v</sub>(τ<sub>u,s,v</sub>, θ<sub>u,s,v</sub>(τ<sub>u,s,v</sub>)) = 2 W</>}
+          source={say(
+            'panel.power.formula.segmentStartSource',
+            '每個新的 served segment 從 2 W 開始；換手、中斷或重新進入服務時不沿用舊功率。',
+            'Every new served segment starts at 2 W; handover, outage, or re-entry does not reuse the old power.',
+          )}
+        />
+        <FormulaRow
+          testId="power-canonical-formula-row-recurrence"
+          accent={POWER_ACCENT}
           expression={(
             <>
-              P<sup>o</sup><sub>s,v</sub>(t, θ) = z<sub>s,v</sub>(t)P<sup>r</sup><sub>s,v</sub>(t, θ), P<sup>p</sup><sub>s,v</sub>(t, θ) = <InlineFormulaFraction
-                numerator={<>P<sup>o</sup><sub>s,v</sub>(t, θ)</>}
-                denominator={<>η<sub>s,v</sub>(t, θ)</>}
-                label="actual RF output divided by PA efficiency"
+              p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>(t)) = p<sub>u,s,v</sub>(t−1, θ<sub>u,s,v</sub>(t−1)) · <InlineFormulaFraction
+                numerator={<>G<sup>T</sup>(θ<sub>u,s,v</sub>(t−1))</>}
+                denominator={<>G<sup>T</sup>(θ<sub>u,s,v</sub>(t))</>}
+                label="previous transmit gain divided by current transmit gain"
               />
             </>
           )}
           source={say(
-            'panel.power.formula.paSource',
-            'P^o 是共用的實際 RF 輸出；P^p 由 PA 效率 η 推導。',
-            'P^o is the shared actual RF output; P^p is derived from PA efficiency η.',
+            'panel.power.formula.recurrenceSource',
+            '後續時間點沿用上一幀的 p，再依前後幀的 G^T 比例更新；初始區段從 2 W 開始。',
+            'Later time points carry forward the previous-frame p and update it by the transmit-gain ratio; the initial segment starts at 2 W.',
+          )}
+        />
+        <FormulaRow
+          testId="power-canonical-formula-row-closed"
+          accent={POWER_ACCENT}
+          expression={<>p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>(t)) = 2 W · <InlineFormulaFraction
+            numerator={<>G<sup>T</sup>(θ<sub>u,s,v</sub>(τ<sub>u,s,v</sub>))</>}
+            denominator={<>G<sup>T</sup>(θ<sub>u,s,v</sub>(t))</>}
+            label="segment-start to current transmit gain ratio"
+          /></>}
+          source={say(
+            'panel.power.formula.closedSource',
+            '這是同一 served segment 內由 2 W 起點展開的形式，不跨 handover、中斷或 episode reset。',
+            'This is the form expanded from the 2 W segment start; it does not cross handover, outage, or an episode reset.',
           )}
         />
       </FormulaHeader>
-
-      <div style={controlStackStyle}>
-        <div style={groupTitleStyle}>
-          {say('section.powerControls.title', '可調整的功率參數', 'Adjustable power inputs')}
-        </div>
-
-        <NumericControl
-          testId="power-tab-beam-cap-control"
-          symbol={<>P<sup>r</sup><sub>s,v</sub></>}
-          label={say('power.beamCap.label', '每個波束的 RF 輸出上限', 'Per-beam RF output cap')}
-          unit="W"
-          value={parameters.beamPowerCapW}
-          min={0.001}
-          max={20}
-          step={0.001}
-          description={say('power.beamCap.description', '每個作用中波束的射頻輸出上限。', 'RF output cap for each active beam.')}
-          effect={say('power.beamCap.effect', '調低後可能限制 RF 輸出，並連動 PA 效率、PA 輸入與 P^N。', 'Lowering it can cap RF output and change PA efficiency, PA input, and P^N.')}
-          helpId="param.canonicalPower.beamCap"
-          resetValue={formatPower(DEFAULT_SIMULATOR_PARAMETERS.beamPowerCapW)}
-          accentColor={POWER_ACCENT}
-          formatValue={formatPower}
-          onChange={beamPowerCapW => onParametersChange({ ...parameters, beamPowerCapW })}
-        />
-
-        <NumericControl
-          testId="power-tab-satellite-cap-control"
-          symbol={<>Σ<sub>v</sub>P<sup>r</sup><sub>s,v</sub></>}
-          label={say('power.satelliteCap.label', '衛星 RF 總上限', 'Aggregate satellite RF cap')}
-          unit="W"
-          value={parameters.satellitePowerCapW}
-          min={0.001}
-          max={40}
-          step={0.001}
-          description={say('power.satelliteCap.description', '單顆衛星所有作用中波束共用的射頻總上限。', 'Aggregate RF cap shared by all active beams on one satellite.')}
-          effect={say('power.satelliteCap.effect', '先套用波束上限，再用此值限制衛星射頻總輸出。', 'This cap limits aggregate satellite RF output after the per-beam cap.')}
-          helpId="param.canonicalPower.satelliteCap"
-          resetValue={formatPower(DEFAULT_SIMULATOR_PARAMETERS.satellitePowerCapW)}
-          accentColor={POWER_ACCENT}
-          formatValue={formatPower}
-          onChange={satellitePowerCapW => onParametersChange({ ...parameters, satellitePowerCapW })}
-        />
-
-      </div>
-
-      <p style={captionTextStyle}>
-        {renderFormulaText(say(
-          'section.power.resultLocation',
-          '套用波束與衛星上限得到實際 RF 輸出，再由 PA 效率與固定功耗形成 P^N。',
-          'Beam and satellite caps give the RF output; PA efficiency and fixed power terms then form P^N.',
-        ))}
+      <p style={{ margin: 0, color: 'rgba(255,255,255,0.68)', lineHeight: 1.55 }}>
+        {say('section.power.resultLocation', '實際 p、P^p 與 P^N 由右側同一個 accepted frame 顯示。', 'The actual p, P^p, and P^N values are shown on the right from the same accepted frame.')}
       </p>
     </section>
   );

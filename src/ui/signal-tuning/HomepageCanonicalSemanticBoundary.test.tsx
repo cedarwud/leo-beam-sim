@@ -88,19 +88,17 @@ const powerMarkup = renderToStaticMarkup(
   </LocaleProvider>,
 );
 
-assert.match(eeMarkup, /data-testid="ee-result-evaluation"[^>]*>[\s\S]*?<strong[^>]*>—<\/strong>/);
-assert.equal((eeMarkup.match(/η<sup>e<\/sup>\(t, θ\)/g) ?? []).length, 1);
+assert.match(eeMarkup, /data-testid="ee-result-evaluation"[^>]*>[\s\S]*?<strong[^>]*>[^<]+<\/strong>/);
+assert.match(eeMarkup, /η<sub>u,s,v<\/sub>\(t,[\s\S]*θ[\s\S]*\)/);
 assert.doesNotMatch(eeMarkup, /data-testid="ee-result-instantaneous"/);
-assert.match(eeMarkup, /data-testid="ee-canonical-formula-row"[\s\S]*?η<sup>e<\/sup>\(t, θ\)[\s\S]*?bit\/J/);
+assert.doesNotMatch(eeMarkup, /data-testid="ee-canonical-formula-row"/);
 assert.doesNotMatch(eeMarkup, /Σ<sub>u<\/sub>R<sub>u<\/sub> \/ P<sub>sys<\/sub>/);
-assert.match(eeMarkup, /data-testid="ee-result-evaluation"[\s\S]*?>[\s\S]*?累積能源效率|Accumulated energy efficiency/);
-assert.doesNotMatch(eeMarkup, /EE_eval|EE<sub>eval<\/sub>/);
+assert.match(eeMarkup, /Realized EE of the representative serving link/);
+assert.doesNotMatch(eeMarkup, /EE_eval|EE<sub>eval<\/sub>|Accumulated energy efficiency|累積能源效率/);
 assert.doesNotMatch(railMarkup, /data-active-result-tab=/);
 assert.match(railMarkup, /data-testid="ee-result-throughput"[^>]*>[\s\S]*?<strong[^>]*>[^<]+<\/strong>/);
 assert.match(railMarkup, /data-testid="ee-result-system-power"[^>]*>[\s\S]*?<strong[^>]*>[^<]+<\/strong>/);
 assert.match(railMarkup, /data-testid="ee-result-evaluation"/);
-assert.match(railMarkup, /data-testid="homepage-ee-evaluation-controls"[^>]*data-result-owner="right-rail"/);
-assert.match(railMarkup, /data-testid="homepage-ee-evaluation-reset"/);
 assert.match(railMarkup, /data-result-layout="persistent-collapsible"/);
 assert.match(railMarkup, /data-testid="homepage-result-section-sinr"/);
 assert.match(railMarkup, /data-testid="homepage-result-section-power"/);
@@ -110,7 +108,7 @@ assert.match(railMarkup, /data-testid="sinr-result-value"/);
 assert.match(railMarkup, /data-testid="power-result-system"/);
 assert.match(railMarkup, /data-testid="throughput-result-total-rate"/);
 assert.match(railMarkup, /data-testid="ee-result-evaluation"/);
-assert.match(sinrMarkup, /I<sub>u,s,v<\/sub>\(t, θ\)[\s\S]*Total co-channel interference/);
+assert.match(sinrMarkup, /I<sub>u,s,v<\/sub>\(t,[\s\S]*θ[\s\S]*\)[\s\S]*Total co-channel interference/);
 assert.doesNotMatch(sinrMarkup, /G<sup>LS<\/sup>|L<sub>(?:FS|atm|scan)<\/sub>|θ<sub>3dB<\/sub>|G<sup>R<\/sup>/);
 assert.doesNotMatch(sinrMarkup, /H<sub>u,b<\/sub>/);
 assert.match(emptyFrameEeMarkup, /data-testid="ee-result-evaluation"[\s\S]*?<strong[^>]*>—<\/strong>/);

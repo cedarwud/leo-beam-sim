@@ -921,6 +921,7 @@ function SceneContent(props: SceneContentProps) {
     runtime.servingBeamCount,
     runtime.candidateBeamCount,
     runtime.beamHoppingEnabled ?? false,
+    sceneLane === 'sinr-live' ? 'sampled-steering' : 'earth-fixed-cell',
   );
 
   return <SceneRenderContent {...props} sim={sim} simSource="live" liveSeekLandedKey={liveSeekLandedKey} />;
@@ -1204,6 +1205,11 @@ function SceneRenderContent({
     sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview',
   );
   const worldUnitsPerKm = 1 / (sceneGeometry.kmPerWorldUnit ?? paperUserArea.kmPerWorldUnit);
+  // The physical projection is nearly circular for the high-elevation hero link
+  // (e.g. 81° gives only a 1.02 axis ratio). Legacy `/` is the teaching surface,
+  // so exaggerate only the displayed tilt while keeping the model's real axis/theta
+  // and power recurrence untouched. `/simulator` and MODQN preview stay physical.
+  const sinrLiveEllipseTiltExaggeration = sceneLane === 'sinr-live' ? 3 : 1;
   // S-cells-3: ground placements of the FIXED earth-fixed cells for the cell-truth
   // beam cones. Built from the SAME `buildSinrLiveCellLayout(profile)` the runtime
   // cell truth uses (so cellIds match `sim.sinrLiveCells`) and the SAME
@@ -1218,6 +1224,7 @@ function SceneRenderContent({
         worldX: cell.centerKm[0] * worldUnitsPerKm,
         worldZ: -cell.centerKm[1] * worldUnitsPerKm,
         radiusWorld: cell.radiusKm * worldUnitsPerKm,
+        worldUnitsPerKm,
       }]));
     }
     const activeLayout = buildSinrLiveCellLayout(profile);
@@ -1234,6 +1241,7 @@ function SceneRenderContent({
       worldX: center.localXKm * worldUnitsPerKm,
       worldZ: -center.localYKm * worldUnitsPerKm,
       radiusWorld: activeLayout.cellRadiusKm * worldUnitsPerKm,
+      worldUnitsPerKm,
     }]));
   }, [archivedTlePlacement, canonicalScenario, useEarthFixedCellTruth, profile, worldUnitsPerKm]);
   const cellSchedule = useCellSchedule({
@@ -2980,7 +2988,9 @@ function SceneRenderContent({
           reducedMotion={runtime.reducedMotion}
         />
       )}
-      {/* S-cells-4d: EarthFixedCells 20-hex green-disc retired — cell-truth cones own the cell story. */}
+      {/* S-cells-4d: the old 20-hex green-disc paint is retired. The legacy SINR
+          ground reference is restored below as fixed six-sided cells, while the
+          satellite projection ellipses remain a separate moving-shape layer. */}
       {/* beam-stage ① #3: the legacy steered AmbientFootprintRings (rings at `viz.ambientRings`
           = steered beam ground positions) is RETIRED — those sat at the wrong geometry vs the
           earth-fixed cell centres, so they were misaligned with the cones + UE membership (the
@@ -3049,6 +3059,7 @@ function SceneRenderContent({
           layer="nonServing"
           palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
+          ellipseTiltExaggeration={sinrLiveEllipseTiltExaggeration}
           telemetryCountDatasetKey="sinrLiveCellNonServingConeRenderedCount"
         />
       )}
@@ -3063,6 +3074,7 @@ function SceneRenderContent({
           layer="serving"
           palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
+          ellipseTiltExaggeration={sinrLiveEllipseTiltExaggeration}
           dimShallowCones={beamDisplaySpec.elevationDimEnabled}
           elevationDimFloorDeg={beamDisplaySpec.elevationDimFloorDeg}
           elevationDimCeilDeg={beamDisplaySpec.elevationDimCeilDeg}
@@ -3078,6 +3090,7 @@ function SceneRenderContent({
           layer="serving"
           palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
+          ellipseTiltExaggeration={sinrLiveEllipseTiltExaggeration}
           dimShallowCones={beamDisplaySpec.elevationDimEnabled}
           elevationDimFloorDeg={beamDisplaySpec.elevationDimFloorDeg}
           elevationDimCeilDeg={beamDisplaySpec.elevationDimCeilDeg}
@@ -3096,6 +3109,7 @@ function SceneRenderContent({
           layer="candidate"
           palette={sinrLiveConePalette}
           widthScale={beamDisplaySpec.coneWidthScale}
+          ellipseTiltExaggeration={sinrLiveEllipseTiltExaggeration}
           dimShallowCones={beamDisplaySpec.elevationDimEnabled}
           elevationDimFloorDeg={beamDisplaySpec.elevationDimFloorDeg}
           elevationDimCeilDeg={beamDisplaySpec.elevationDimCeilDeg}
@@ -3158,6 +3172,7 @@ function SceneRenderContent({
           palette={sinrLiveConePalette}
           telemetryCountDatasetKey="sinrLiveHandoverPulseConeRenderedCount"
           widthScale={beamDisplaySpec.coneWidthScale}
+          ellipseTiltExaggeration={sinrLiveEllipseTiltExaggeration}
         />
       )}
       {/* beam-stage ① #5: the TRIGGERED intra flash — the protagonist jog handover held
@@ -3172,6 +3187,7 @@ function SceneRenderContent({
           palette={sinrLiveConePalette}
           telemetryCountDatasetKey="sinrLiveTriggeredIntraConeRenderedCount"
           widthScale={beamDisplaySpec.coneWidthScale}
+          ellipseTiltExaggeration={sinrLiveEllipseTiltExaggeration}
         />
       )}
       {/* Focused cinema pair: exact source/candidate cones from the indexed event.
@@ -3184,6 +3200,7 @@ function SceneRenderContent({
           palette={sinrLiveConePalette}
           telemetryCountDatasetKey="sinrLiveCinemaHandoverPairRenderedCount"
           widthScale={beamDisplaySpec.coneWidthScale}
+          ellipseTiltExaggeration={sinrLiveEllipseTiltExaggeration}
         />
       )}
       {/* Tier-2 dead-twin retirement: the legacy steered <SatelliteBeams> render

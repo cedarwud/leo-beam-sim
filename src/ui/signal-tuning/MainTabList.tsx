@@ -29,11 +29,14 @@ const PANEL_ID_BY_TAB: Partial<Record<MainTabKey, string>> = {
 export function MainTabList({
   activeTab,
   showHandoverTab = false,
+  variant = 'default',
   onChange,
 }: {
   activeTab: MainTabKey;
   /** The third topic only exists when the app supplies its controls. */
   showHandoverTab?: boolean;
+  /** The legacy Walker rail uses the Visual Lab navigation surface without changing copy. */
+  variant?: 'default' | 'legacy';
   onChange: (tab: MainTabKey) => void;
 }) {
   const { locale, t } = useLocale();
@@ -44,6 +47,7 @@ export function MainTabList({
   // not a visible main tab, and its runtime/state/component contract remains
   // in SignalTuningPanel for the Advanced drawer and Walker scene.
   void showHandoverTab;
+  const isLegacy = variant === 'legacy';
 
   const tabs: ReadonlyArray<{
     key: MainTabKey;
@@ -71,15 +75,21 @@ export function MainTabList({
       key: 'sinr',
       short: 'SINR',
       label: t('tab.sinr.label'),
-      hint: txBi(t, isEnglish, 'tab.sinr.hint', '由套用功率上限後的實際 RF 輸出計算訊號、干擾與雜訊', 'Signal, interference, and noise from post-cap RF output'),
+      hint: txBi(t, isEnglish, 'tab.sinr.hint', '由角度感知 RF 輸出計算訊號、干擾與雜訊', 'Signal, interference, and noise from angle-aware RF output'),
       accent: UI_TOKENS.color.semantic.tuning,
     },
     {
-      key: 'energy',
-      short: 'EE',
-      label: t('tab.energy.label'),
-      hint: txBi(t, isEnglish, 'tab.energy.hint', '查看固定 UE-link 對系統 EE 的貢獻公式；即時數值顯示在右側', 'View the fixed UE-link contribution to system EE; live values appear on the right'),
-      accent: '#c3a6ff',
+      key: 'throughput',
+      short: 'Throughput',
+      label: txBi(t, isEnglish, 'tab.throughput.label', '吞吐量', 'Throughput'),
+      hint: txBi(
+        t,
+        isEnglish,
+        'tab.throughput.hint',
+        '查看固定 UE-link 的吞吐量公式；即時數值顯示在右側',
+        'View the fixed UE-link throughput equation; live values appear on the right',
+      ),
+      accent: UI_TOKENS.color.semantic.info,
     },
     {
       key: 'power',
@@ -95,17 +105,11 @@ export function MainTabList({
       accent: UI_TOKENS.color.semantic.good,
     },
     {
-      key: 'throughput',
-      short: 'Throughput',
-      label: txBi(t, isEnglish, 'tab.throughput.label', '吞吐量', 'Throughput'),
-      hint: txBi(
-        t,
-        isEnglish,
-        'tab.throughput.hint',
-        '查看固定 UE-link 的吞吐量公式；即時數值顯示在右側',
-        'View the fixed UE-link throughput equation; live values appear on the right',
-      ),
-      accent: UI_TOKENS.color.semantic.info,
+      key: 'energy',
+      short: 'EE',
+      label: t('tab.energy.label'),
+      hint: txBi(t, isEnglish, 'tab.energy.hint', '查看固定 UE-link 對系統 EE 的貢獻公式；即時數值顯示在右側', 'View the fixed UE-link contribution to system EE; live values appear on the right'),
+      accent: '#c3a6ff',
     },
   ];
 
@@ -147,7 +151,12 @@ export function MainTabList({
         // layout keeps all five identifiers readable instead of squeezing
         // "Power" / "Throughput" into clipped single-row cells.
         gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-        gap: 8,
+        gap: isLegacy ? 6 : 8,
+        padding: isLegacy ? 6 : 0,
+        border: isLegacy ? `1px solid ${UI_TOKENS.color.border.soft}` : undefined,
+        borderRadius: isLegacy ? UI_TOKENS.radius.lg : undefined,
+        background: isLegacy ? UI_TOKENS.color.surface.cardFaint : undefined,
+        boxSizing: 'border-box',
       }}
     >
       {tabs.map((tab, index) => {
@@ -173,30 +182,30 @@ export function MainTabList({
               cursor: 'pointer',
               gridColumn: tab.key === 'scenario' ? '1 / -1' : undefined,
               display: 'grid',
-              gap: 3,
+              gap: 2,
               // Centred, like the formula sub-tab strip below it: the button is
               // now a single short token, not a label with a caption under it.
               justifyItems: 'center',
               alignContent: 'center',
               textAlign: 'center',
-              minHeight: 44,
-              padding: '8px 4px',
-              borderRadius: UI_TOKENS.radius.lg,
+              minHeight: isLegacy ? 44 : 44,
+              padding: isLegacy ? '7px 6px' : '8px 4px',
+              borderRadius: UI_TOKENS.radius.md,
               border: active ? `1px solid ${tab.accent}` : `1px solid ${UI_TOKENS.color.border.subtle}`,
               background: active
-                ? `linear-gradient(180deg, ${tab.accent}26, rgba(6, 18, 28, 0.82))`
-                : UI_TOKENS.color.surface.cardFaint,
+                ? `${tab.accent}1f`
+                : UI_TOKENS.color.surface.card,
               color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
               boxShadow: active ? `inset 0 -3px 0 ${tab.accent}` : 'none',
-              transition: 'background 140ms ease, border-color 140ms ease, color 140ms ease',
+              transition: 'background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease',
               boxSizing: 'border-box',
             }}
           >
             <span style={{
               fontFamily: UI_TOKENS.type.family.math,
-              fontSize: UI_TOKENS.type.size.tiny,
+              fontSize: isLegacy ? UI_TOKENS.type.size.small : UI_TOKENS.type.size.tiny,
               fontWeight: UI_TOKENS.type.weight.heavy,
-              letterSpacing: 0.2,
+              letterSpacing: 0.3,
               lineHeight: 1.2,
               color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
               whiteSpace: 'nowrap',

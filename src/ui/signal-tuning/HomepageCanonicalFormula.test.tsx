@@ -106,7 +106,6 @@ const handoverComparisonMarkup = renderToStaticMarkup(
 for (const testId of [
   'sinr-result-channel-gain',
   'sinr-result-beam-gain',
-  'sinr-result-receive-gain',
 ]) {
   const row = sinrMarkup.match(new RegExp(`data-testid="${testId}"[\\s\\S]*?</div>`))?.[0];
   assert.ok(row, `${testId} should be visible in the homepage SINR result`);
@@ -114,14 +113,14 @@ for (const testId of [
 }
 assert.doesNotMatch(sinrMarkup, /G<sup>LS<\/sup>|L<sub>(?:FS|atm|scan)<\/sub>|θ<sub>3dB<\/sub>/);
 assert.match(sinrMarkup, /data-testid="sinr-result-beam-bandwidth"[\s\S]*?(?:MHz|GHz)/);
-assert.match(sinrMarkup, /Large-scale propagation gain/);
-assert.match(sinrMarkup, /Transmit gain computed from θ, G₀, and beamwidth/);
-assert.match(sinrMarkup, /Receive-side gain included in effective channel h/);
+assert.match(sinrMarkup, /Non-angle effective-channel factor/);
+assert.match(sinrMarkup, /Transmit gain for the link off-axis angle/);
 assert.doesNotMatch(sinrMarkup, /H<sub>u,b<\/sub>|Propagation and fading gain/);
 assert.doesNotMatch(sinrMarkup, /data-testid="sinr-canonical-formula-header"/);
 assert.doesNotMatch(sinrMarkup, /data-testid="sinr-result-scope"/);
-assert.match(sinrMarkup, /data-testid="sinr-result-signal"[\s\S]*?>S<[\s\S]*?Signal power/);
-assert.doesNotMatch(sinrMarkup, /Received signal power/);
+assert.match(sinrMarkup, /data-testid="sinr-result-signal"[\s\S]*?>Received signal power[\s\S]*?Product of p, H, and G/);
+assert.match(sinrMarkup, /data-testid="sinr-result-interference"[\s\S]*?Total co-channel interference/);
+assert.match(sinrMarkup, /data-testid="sinr-result-noise"[\s\S]*?Noise power in the SINR denominator/);
 assert.doesNotMatch(sinrMarkup, /Useful signal|Useful received power|有用訊號/);
 assert.match(sinrMarkup, /data-testid="sinr-result-reuse-color"[\s\S]*?>1<\/strong>/);
 assert.doesNotMatch(sinrMarkup, /A higher SINR means|SINR 越高/);

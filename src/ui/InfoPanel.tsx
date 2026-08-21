@@ -124,6 +124,7 @@ export function InfoPanel({
   sinrDeltaDb,
   sinrDb,
   physicalServingBudget,
+  angleAwareFormulaFrame,
   handoverOffsetDb,
   handoverTriggerProgressSec,
   handoverTriggerSec,
@@ -295,6 +296,7 @@ export function InfoPanel({
           isFormulaEvidenceStale={isFormulaEvidenceStale}
           frequencyReuse={frequencyReuse}
           servingCellId={servingCellId}
+          formulaFrame={angleAwareFormulaFrame}
         />
       )}
     </div>

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
 
 const angleStateStyle: CSSProperties = {
   display: 'inline',
@@ -19,23 +20,22 @@ export function SystemAngleState() {
   );
 }
 
-/** Ordered angle-state trajectory used by the evaluation-window EE result. */
-export function SystemAngleTrajectory() {
-  return (
-    <span
-      aria-label="bold capital theta"
-      data-formula-symbol="system-angle-trajectory"
-      style={angleStateStyle}
-    >
-      Θ
-    </span>
-  );
-}
-
 /** Direct off-axis angle of one fixed user-satellite-beam link. */
 export function LinkAngle() {
-  // The homepage uses the short presentation form `(t, θ)` everywhere.  The
-  // link ownership remains on the formula's `u,s,v` symbol; repeating the
-  // ownership inside the angle argument made the display unnecessarily long.
-  return <>θ</>;
+  return <>θ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub></>;
+}
+
+/** Primed link index used by the system-power aggregation. */
+export function PrimedLinkIndex() {
+  return <>u′,s′,v′</>;
+}
+
+/** Explicit system-power aggregation used by the active presentation contract. */
+export function SystemPowerSum() {
+  return (
+    <>
+      Σ<sub>u′∈𝒰</sub>Σ<sub>s′∈𝒮</sub>Σ<sub>v′∈𝒱</sub>{' '}
+      x<sub>u′,s′,v′</sub>(t)P<sup>p</sup><sub>u′,s′,v′</sub>(t, θ<sub>u′,s′,v′</sub>)
+    </>
+  );
 }

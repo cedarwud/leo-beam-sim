@@ -3,16 +3,16 @@ import { UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
 import type { Profile } from '../../profiles/types';
 import type { SimState } from '../../scene/types';
+import type { AngleAwareFormulaFrame } from '../../engine/signal/types';
 import { FormulaTermsReadout } from '../info-panel/FormulaTermsReadout';
 import { SystemAngleState } from './FormulaSymbols';
+import { LinkAngle } from './FormulaSymbols';
 import { txBi } from './labels';
 import { SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
+import { formatPower } from './formatters';
 
 type WalkerResultsRailState = Pick<
   SimState,
-  | 'canonicalEe'
-  | 'livePaperEnergyEfficiency'
-  | 'perUePositions'
   | 'physicalServing'
   | 'physicalServingBudget'
   | 'servingCellId'
@@ -25,6 +25,7 @@ interface WalkerResultsRailProps extends WalkerResultsRailState {
   readonly profile: Profile;
   readonly isFormulaEvidenceStale: boolean;
   readonly children: ReactNode;
+  readonly angleAwareFormulaFrame?: AngleAwareFormulaFrame | null;
 }
 
 type ResultSection = 'sinr' | 'power' | 'throughput' | 'ee';
@@ -36,6 +37,7 @@ function formatValue(
   digits = 2,
 ): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  if (unit === 'W') return formatPower(value);
   const absolute = Math.abs(value);
   const scale = unit === 'W' || unit === 'J'
     ? absolute >= 1e9 ? { divisor: 1e9, suffix: unit === 'W' ? 'GW' : 'GJ' }
@@ -46,6 +48,11 @@ function formatValue(
       ? absolute >= 1e6 ? { divisor: 1e6, suffix: unit === 'Mbit/s' ? 'Tbit/s' : unit === 'Mbit' ? 'Tbit' : 'Tbit/J' }
         : absolute >= 1e3 ? { divisor: 1e3, suffix: unit === 'Mbit/s' ? 'Gbit/s' : unit === 'Mbit' ? 'Gbit' : 'Gbit/J' }
           : { divisor: 1, suffix: unit }
+      : unit === 'bit/J'
+        ? absolute >= 1e9 ? { divisor: 1e9, suffix: 'Gbit/J' }
+          : absolute >= 1e6 ? { divisor: 1e6, suffix: 'Mbit/J' }
+            : absolute >= 1e3 ? { divisor: 1e3, suffix: 'kbit/J' }
+              : { divisor: 1, suffix: 'bit/J' }
       : unit === 'MHz' && absolute >= 1e3
         ? { divisor: 1e3, suffix: 'GHz' }
         : { divisor: 1, suffix: unit };
@@ -55,21 +62,34 @@ function formatValue(
   return scale.suffix.length > 0 ? `${rendered} ${scale.suffix}` : rendered;
 }
 
+function formatEnergyEfficiencyValue(value: number | null | undefined, locale: string): string {
+  return formatValue(value, 'bit/J', locale);
+}
+
 function ResultRow({
   testId,
   symbol,
+  scope,
+  scopeLabel,
   note,
   value,
 }: {
   readonly testId: string;
   readonly symbol: ReactNode;
+  readonly scope: 'primary-ue' | 'system' | 'beam-aggregate';
+  readonly scopeLabel: string;
   readonly note: string;
   readonly value: string;
 }) {
   return (
-    <div className="leo-walker-result-row" data-testid={testId} data-readonly="true">
+    <div className="leo-walker-result-row" data-testid={testId} data-readonly="true" data-scope={scope}>
       <div className="leo-walker-result-row__identity">
-        <span className="leo-walker-result-row__symbol">{symbol}</span>
+        <div className="leo-walker-result-row__meta">
+          <span className="leo-walker-result-row__symbol">{symbol}</span>
+          <span className="leo-walker-result-row__scope-tag" data-scope={scope} aria-label={scopeLabel}>
+            {scopeLabel}
+          </span>
+        </div>
         <span className="leo-walker-result-row__note">{note}</span>
       </div>
       <strong className="leo-walker-result-row__value">{value}</strong>
@@ -120,13 +140,11 @@ function ResultDisclosure({
  */
 export function WalkerResultsRail({
   profile,
-  canonicalEe,
-  livePaperEnergyEfficiency,
-  perUePositions,
   physicalServing,
   physicalServingBudget,
   servingCellId,
   pendingTargetSatId,
+  angleAwareFormulaFrame = null,
   simTimeSec,
   beamHopEnabled,
   isFormulaEvidenceStale,
@@ -135,27 +153,22 @@ export function WalkerResultsRail({
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
   const say = (key: string, zh: string, en: string) => txBi(t, isEnglish, key, zh, en);
-  const primaryUeId = perUePositions?.[0]?.id ?? null;
-  const contributions = canonicalEe?.perUserContributions ?? [];
-  const primaryContribution = (
-    primaryUeId === null
-      ? contributions[0]
-      : contributions.find(entry => entry.ueId === primaryUeId) ?? contributions[0]
-  );
-  const totalRateMbps = contributions.length === 0
-    ? null
-    : contributions.reduce((sum, entry) => sum + (entry.rateMbps ?? 0), 0);
-  const beamBandwidthMHz = livePaperEnergyEfficiency === null
-    || livePaperEnergyEfficiency === undefined
-    ? null
-    : livePaperEnergyEfficiency.allocatedBandwidthHz / 1e6;
+  const terms = angleAwareFormulaFrame?.terms;
+  const liveSinrDb = terms?.gammaDb ?? null;
+  const liveSystemPowerW = terms?.systemPowerW ?? null;
+  const liveThroughputBps = terms?.throughputBps ?? null;
+  const liveEeBitsPerJoule = terms?.energyEfficiencyBitsPerJoule ?? null;
+
+  const scopePrimaryUe = say('common.scope.primaryUe', '主要 UE', 'Primary UE');
+  const scopeSystem = say('common.scope.system', '系統', 'System');
+  const scopeBeamAggregate = say('common.scope.beamAggregate', '波束聚合', 'Beam aggregate');
 
   return (
     <div
       className="leo-walker-results-rail"
       data-testid="walker-results-rail"
       data-right-rail-source="walker-live-scene-frame"
-      data-canonical-ee-status={canonicalEe?.status ?? 'pending'}
+      data-angle-aware-frame-status={terms === undefined ? 'waiting' : 'current'}
       data-sim-time-sec={Number.isFinite(simTimeSec) ? simTimeSec.toFixed(2) : ''}
       data-serving-satellite-id={physicalServing.satId ?? ''}
       data-candidate-satellite-id={pendingTargetSatId ?? ''}
@@ -169,7 +182,7 @@ export function WalkerResultsRail({
           accent={UI_TOKENS.color.semantic.tuning}
           marker={<>γ</>}
           title={say('walker.results.sinr.title', 'SINR', 'SINR')}
-          summaryValue={formatValue(physicalServing.sinrDb, 'dB', locale, 2)}
+          summaryValue={formatValue(liveSinrDb, 'dB', locale, 2)}
         >
           <FormulaTermsReadout
             source={physicalServing}
@@ -177,6 +190,7 @@ export function WalkerResultsRail({
             isFormulaEvidenceStale={isFormulaEvidenceStale}
             frequencyReuse={profile.beams.frequencyReuse}
             servingCellId={servingCellId}
+            formulaFrame={angleAwareFormulaFrame}
             embedded
           />
         </ResultDisclosure>
@@ -186,44 +200,78 @@ export function WalkerResultsRail({
           accent={UI_TOKENS.color.semantic.good}
           marker={<>P</>}
           title={say('walker.results.power.title', 'Power', 'Power')}
-          summaryValue={formatValue(canonicalEe?.systemPowerW, 'W', locale)}
+          summaryValue={formatValue(liveSystemPowerW, 'W', locale)}
         >
           <div className="leo-walker-result-rows">
             <ResultRow
               testId="walker-result-power-output"
-              symbol={<><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
-              note={say('walker.results.power.output', '主要 UE-link 的 RF 功率', 'RF power of the primary UE-link')}
-              value={formatValue(canonicalEe?.actualRfOutputW, 'W', locale)}
+              symbol={<><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</>}
+              scope="primary-ue"
+              scopeLabel={scopePrimaryUe}
+              note={say('walker.results.power.output', '選定 UE-link 的 RF 功率', 'RF power of the selected UE-link')}
+              value={formatValue(terms?.powerW, 'W', locale)}
             />
             <ResultRow
               testId="walker-result-system-power"
               symbol={<>P<sup>N</sup>(t, <SystemAngleState />)</>}
-              note={say('walker.results.power.system', '全系統總功率', 'Total system power')}
-              value={formatValue(canonicalEe?.systemPowerW, 'W', locale)}
+              scope="system"
+              scopeLabel={scopeSystem}
+              note={say('walker.results.power.system', '系統總功率', 'System total power')}
+              value={formatValue(liveSystemPowerW, 'W', locale)}
             />
             <ResultRow
               testId="walker-result-power-signal"
-              symbol={<><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) · h<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
-              note={say('walker.results.power.signal', '目前 UE 的接收訊號功率', 'Current received signal power of the UE')}
-              value={formatValue(physicalServingBudget?.signalDbm, 'dBm', locale)}
+              symbol={<><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />) H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) G<sup>T</sup>(<LinkAngle />)</>}
+              scope="primary-ue"
+              scopeLabel={scopePrimaryUe}
+              note={say('walker.results.power.signal', '選定鏈路的 wanted-link 訊號功率', 'Wanted-link signal power of the selected link')}
+              value={formatValue(terms?.desiredSignalW, 'W', locale)}
             />
             <ResultRow
-              testId="walker-result-power-intra-interference"
+              testId="walker-result-power-interference"
               symbol={<>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
-              note={say('walker.results.power.intra', '同一衛星的干擾功率', 'Same-satellite interference power')}
-              value={formatValue(physicalServingBudget?.intraInterferenceDbm, 'dBm', locale)}
-            />
-            <ResultRow
-              testId="walker-result-power-inter-interference"
-              symbol={<>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
-              note={say('walker.results.power.inter', '其他衛星的干擾功率', 'Cross-satellite interference power')}
-              value={formatValue(physicalServingBudget?.interInterferenceDbm, 'dBm', locale)}
+              scope="primary-ue"
+              scopeLabel={scopePrimaryUe}
+              note={say('walker.results.power.interference', '總同頻干擾功率', 'Total co-channel interference power')}
+              value={formatValue(terms?.interferenceW, 'W', locale)}
             />
             <ResultRow
               testId="walker-result-power-noise"
               symbol={<>σ²</>}
+              scope="primary-ue"
+              scopeLabel={scopePrimaryUe}
               note={say('walker.results.power.noise', '接收雜訊功率', 'Receiver noise power')}
-              value={formatValue(physicalServingBudget?.noiseDbm, 'dBm', locale)}
+              value={formatValue(terms?.noiseW, 'W', locale)}
+            />
+            <ResultRow
+              testId="walker-result-power-consumption"
+              symbol={<>P<sup>p</sup><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</>}
+              scope="primary-ue"
+              scopeLabel={scopePrimaryUe}
+              note={say('walker.results.power.consumption', '選定鏈路的電源端功率', 'Supply-side power of the selected link')}
+              value={formatValue(terms?.powerConsumptionW, 'W', locale)}
+            />
+            {/* xi and P^f are scenario constants, not tunable parameters: they carry
+                no control anywhere in the panel. They still appear as symbols in the
+                left Power formula (P^p = p / xi, P^N = P^f + sum), so the rail shows
+                their current values read-only, letting a student check the two
+                formulas by hand. Display only — both values come from the same
+                published frame the engine already produced. */}
+            <ResultRow
+              testId="walker-result-conversion-efficiency"
+              symbol={<>ξ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</>}
+              scope="primary-ue"
+              scopeLabel={scopePrimaryUe}
+              note={say('walker.results.power.efficiency', '有效功率轉換效率（情境常數，不可調）', 'Effective conversion efficiency (scenario constant, not tunable)')}
+              value={formatValue(terms?.conversionEfficiency, '', locale, 3)}
+            />
+            <ResultRow
+              testId="walker-result-fixed-power"
+              symbol={<>P<sup>f</sup>(t)</>}
+              scope="system"
+              scopeLabel={scopeSystem}
+              note={say('walker.results.power.fixed', '系統固定／circuit 功率（情境常數，不可調）', 'Fixed / circuit system power (scenario constant, not tunable)')}
+              value={formatValue(terms?.fixedPowerW, 'W', locale)}
             />
           </div>
         </ResultDisclosure>
@@ -233,32 +281,32 @@ export function WalkerResultsRail({
           accent={UI_TOKENS.color.semantic.info}
           marker={<>R</>}
           title={say('walker.results.throughput.title', '吞吐量', 'Throughput')}
-          summaryValue={formatValue(totalRateMbps, 'Mbit/s', locale)}
+            summaryValue={formatValue(liveThroughputBps === null ? null : liveThroughputBps / 1e6, 'Mbit/s', locale)}
         >
           <div className="leo-walker-result-rows">
             <ResultRow
               testId="walker-result-link-throughput"
               symbol={<>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
+              scope="primary-ue"
+              scopeLabel={scopePrimaryUe}
               note={say('walker.results.throughput.link', '主要 UE-link 的實際速率', 'Realized rate of the primary UE-link')}
-              value={formatValue(primaryContribution?.rateMbps, 'Mbit/s', locale)}
-            />
-            <ResultRow
-              testId="walker-result-total-throughput"
-              symbol={say('walker.results.throughput.totalSymbol', '總量', 'Total')}
-              note={say('walker.results.throughput.total', '所有使用者的總吞吐量', 'Total throughput of all users')}
-              value={formatValue(totalRateMbps, 'Mbit/s', locale)}
+              value={formatValue(liveThroughputBps === null ? null : liveThroughputBps / 1e6, 'Mbit/s', locale)}
             />
             <ResultRow
               testId="walker-result-beam-bandwidth"
               symbol={<>B<sup>w</sup></>}
+              scope="beam-aggregate"
+              scopeLabel={scopeBeamAggregate}
               note={say('walker.results.throughput.bandwidth', '單一重用群組的波束頻寬', 'Beam bandwidth of one reuse group')}
-              value={formatValue(beamBandwidthMHz, 'MHz', locale)}
+              value={formatValue(terms?.bandwidthHz === undefined ? null : terms.bandwidthHz / 1e6, 'MHz', locale)}
             />
             <ResultRow
               testId="walker-result-beam-load"
               symbol={<>U<sub>s,v</sub>(t)</>}
+              scope="beam-aggregate"
+              scopeLabel={scopeBeamAggregate}
               note={say('walker.results.throughput.load', '主要服務波束的使用者數', 'User count on the primary serving beam')}
-              value={formatValue(primaryContribution?.assignedBeamLoad, '', locale, 0)}
+              value={formatValue(terms?.beamLoad, '', locale, 0)}
             />
           </div>
         </ResultDisclosure>
@@ -268,38 +316,32 @@ export function WalkerResultsRail({
           accent={UI_TOKENS.color.semantic.warning.accent}
           marker={<>η</>}
           title={say('walker.results.ee.title', '能源效率', 'Energy efficiency')}
-          summaryValue={formatValue(canonicalEe?.eeInstMbitPerJ, 'Mbit/J', locale)}
+          summaryValue={formatEnergyEfficiencyValue(liveEeBitsPerJoule, locale)}
         >
           <div className="leo-walker-result-rows">
             <ResultRow
               testId="walker-result-link-ee"
               symbol={<>η<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
-              note={say('walker.results.ee.link', '主要 UE-link 對系統 EE 的當步貢獻', 'Current-step contribution of the primary UE-link to system EE')}
-              value={formatValue(primaryContribution?.contributionMbitPerJ, 'Mbit/J', locale)}
+              scope="primary-ue"
+              scopeLabel={scopePrimaryUe}
+              note={say('walker.results.ee.link', '選定 UE-link 的 EE 顯示量', 'EE display value of the selected UE-link')}
+              value={formatEnergyEfficiencyValue(liveEeBitsPerJoule, locale)}
             />
             <ResultRow
               testId="walker-result-instantaneous-ee"
-              symbol={say('walker.results.ee.instantaneousSymbol', '系統 EE', 'System EE')}
-              note={say('walker.results.ee.instantaneous', '當步系統能源效率', 'Current-step system energy efficiency')}
-              value={formatValue(canonicalEe?.eeInstMbitPerJ, 'Mbit/J', locale)}
+              symbol={<>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
+              scope="primary-ue"
+              scopeLabel={scopePrimaryUe}
+              note={say('walker.results.ee.rate', 'EE 分子中的 throughput', 'Throughput in the EE numerator')}
+              value={formatValue(liveThroughputBps === null ? null : liveThroughputBps / 1e6, 'Mbit/s', locale)}
             />
             <ResultRow
-              testId="walker-result-evaluation-ee"
-              symbol={say('walker.results.ee.evaluationSymbol', '評估 EE', 'Evaluation EE')}
-              note={say('walker.results.ee.evaluation', '目前評估區間的 ratio-of-sums', 'Ratio of sums over the current evaluation window')}
-              value={formatValue(canonicalEe?.eeEvalMbitPerJ, 'Mbit/J', locale)}
-            />
-            <ResultRow
-              testId="walker-result-evaluation-data"
-              symbol={say('walker.results.ee.dataSymbol', '資料量', 'Data')}
-              note={say('walker.results.ee.data', '評估區間累積傳輸資料量', 'Accumulated delivered data in the evaluation window')}
-              value={formatValue(canonicalEe?.evaluationDataMbit, 'Mbit', locale)}
-            />
-            <ResultRow
-              testId="walker-result-evaluation-energy"
-              symbol={say('walker.results.ee.energySymbol', '能量', 'Energy')}
-              note={say('walker.results.ee.energy', '評估區間累積消耗能量', 'Accumulated energy in the evaluation window')}
-              value={formatValue(canonicalEe?.evaluationEnergyJ, 'J', locale)}
+              testId="walker-result-ee-system-power"
+              symbol={<>P<sup>N</sup>(t, <SystemAngleState />)</>}
+              scope="system"
+              scopeLabel={scopeSystem}
+              note={say('walker.results.ee.systemPower', 'EE 分母中的系統總功率', 'System total power in the EE denominator')}
+              value={formatValue(liveSystemPowerW, 'W', locale)}
             />
           </div>
         </ResultDisclosure>

@@ -2061,10 +2061,21 @@ assertContains(
 // beamwidth self-consistency relation is also locked by
 // validate:phase-c:sinr-live-cells:runtime. The effective-steering assert below
 // + the profile-mutation ban stay PERMANENT (structure/behaviour, not text pins).
+// `maxSteer` was an inline const until the coverage guard wrapped it in a
+// `Math.max(..., coverageSteeringAngleDeg ?? 0)`, which broke the old
+// single-line text pin. What this guard actually protects is the SOURCE of the
+// steering limit — the EFFECTIVE `this.antenna` (which carries the SINR-live
+// overrides) and never the shared `profile.antenna` — so assert that, not the
+// surrounding expression shape.
 assertContains(
   sinrLiveCellModelSource,
-  'const maxSteer = this.antenna.maxSteeringAngleDeg',
+  'this.antenna.maxSteeringAngleDeg',
   'cell model filters candidates by the EFFECTIVE (overridden) steering limit, not profile.antenna',
+);
+assertNotContains(
+  sinrLiveCellModelSource,
+  'profile.antenna.maxSteeringAngleDeg',
+  'the candidate steering limit must never be read from the shared profile antenna',
 );
 // The truth-input is decoupled: the shared profile antenna is left untouched so
 // the steered lane + baseline KPI never drift. The override must NOT be written
@@ -2076,9 +2087,13 @@ assertNotContains(
 );
 // Self-consistency is the load-bearing guard against re-introducing the
 // >100%-efficiency pairing; the runtime gate locks it via consistentPeakGainDbi.
-const sinrLiveCellRuntimeTestSource = readRepoFile('src/scene/sinrLiveCellRuntime.test.ts');
+// The self-consistency check moved out of sinrLiveCellRuntime.test.ts and into
+// validate:s4:serving-equivalence section V (the same S4-3 migration the block
+// comment above describes); this pin follows it there rather than asserting on
+// the file it used to live in.
+const s4ServingEquivalenceSource = readRepoFile('scripts/validate-s4-serving-equivalence.tsx');
 assertContains(
-  sinrLiveCellRuntimeTestSource,
+  s4ServingEquivalenceSource,
   'consistentPeakGainDbi(SINR_LIVE_CELL_BEAMWIDTH_RAD, SINR_LIVE_CELL_ANTENNA_EFFICIENCY)',
   'runtime gate asserts gain↔beamwidth self-consistency (|maxGainDbi − consistentPeakGainDbi| < 0.5 dB)',
 );

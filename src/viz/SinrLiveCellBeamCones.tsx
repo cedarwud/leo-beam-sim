@@ -6,15 +6,16 @@
  * decisions A1 (no S0 unanchor) + B3 (hybrid serving truth). This is the visible
  * "UE off-centre" milestone: the SINR-live lane stops gluing a steered beam onto
  * the UE and instead draws one cone per SERVED earth-fixed cell — apex at the
- * serving satellite, base a FLAT footprint disc on the ground at the cell centre.
+ * serving satellite, base a FLAT elliptical footprint on the ground at the resolved
+ * beam centre.
  * UE markers stay at their true positions, so a UE sits visibly off-centre inside
  * its cell footprint = the real off-axis angle.
  *
  * GEOMETRY (S-cells-3b): the cone is OBLIQUE — apex at the (off-nadir) satellite,
- * base ring lying FLAT on the ground plane (y = 0) around the cell centre. This is
- * the physically faithful beam shape: the footprint a slanted beam paints on the
- * ground is a flat disc, not a cross-section disc tilted perpendicular to the beam
- * axis (which is what a right `coneGeometry` would draw). THREE's `coneGeometry`
+ * base ring lying FLAT on the ground plane (y = 0) around the resolved beam centre.
+ * This is the physically faithful beam shape: the footprint a slanted beam paints
+ * on the ground is a flat ellipse, not a cross-section disc tilted perpendicular
+ * to the beam axis (which is what a right `coneGeometry` would draw). THREE's `coneGeometry`
  * cannot do an oblique cone, so we build the side surface directly (apex → ground
  * ring fan). `meshBasicMaterial` is unlit, so no normals are needed.
  *
@@ -54,6 +55,7 @@ import {
 } from '../constants/sinrLiveConeStyle';
 import { colorForServingBeam } from '../constants/servingColour';
 import { cellFrequencyIndex, type SinrLiveCellFrame, type SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
+import { computeSinrLiveBeamFootprintEllipse } from '../scene/sinrLiveBeamGeometry';
 import type { WorldPoint } from './CellFootprints';
 
 /**
@@ -68,6 +70,8 @@ export interface SinrLiveCellPlacement {
   readonly worldX: number;
   readonly worldZ: number;
   readonly radiusWorld: number;
+  /** Same scale used to map local ENU km to scene world units. */
+  readonly worldUnitsPerKm?: number;
 }
 
 export interface SinrLiveCellBeamConesProps {
@@ -100,7 +104,7 @@ export interface SinrLiveCellBeamConeRenderItem {
   readonly serving: boolean;
   /** Cone apex = serving satellite world position. */
   readonly apex: THREE.Vector3;
-  /** Cone base centre = FIXED cell centre on the ground plane (y = 0). */
+  /** Cone base centre = the resolved beam footprint centre on the ground plane (y = 0). */
   readonly baseCenter: THREE.Vector3;
   readonly baseRadiusWorld: number;
   /**
@@ -139,6 +143,15 @@ export interface SinrLiveCellBeamConeRenderItem {
   readonly role?: SinrLiveConeRole;
   /** True for display-substrate beams that have no UE/SINR truth row. */
   readonly displayOnly?: boolean;
+}
+
+function resolveBeamBaseCenter(placement: SinrLiveCellPlacement): THREE.Vector3 {
+  const worldUnitsPerKm = placement.worldUnitsPerKm ?? 1;
+  return new THREE.Vector3(
+    placement.worldX,
+    0,
+    placement.worldZ,
+  );
 }
 
 /**
@@ -230,8 +243,8 @@ export function shouldDimSinrLiveConeRole(
 
 /**
  * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)
- * fanned to a flat ground ring (y = `baseCenter.y`, i.e. 0) of `radius` around the
- * cell centre. Returns a packed position `Float32Array` (3 verts × `segments`
+ * fanned to a flat elliptical ground ring (y = `baseCenter.y`, i.e. 0) derived from
+ * `radius` around the resolved beam centre. Returns a packed position `Float32Array` (3 verts × `segments`
  * triangles). `meshBasicMaterial` is unlit → no normals needed. Segment count +
  * cone opacity + blending live in `constants/sinrLiveConeStyle.ts` (S5-2 D-TOKEN).
  */
@@ -240,21 +253,40 @@ export function buildObliqueBeamConePositions(
   baseCenter: THREE.Vector3,
   radius: number,
   segments: number = SINR_LIVE_CONE_SEGMENTS,
+  ellipseTiltExaggeration = 1,
 ): Float32Array {
+  const ellipse = computeSinrLiveBeamFootprintEllipse({
+    apex,
+    baseCenter,
+    radiusWorld: radius,
+    tiltExaggeration: ellipseTiltExaggeration,
+  });
   const out = new Float32Array(segments * 9);
   for (let i = 0; i < segments; i += 1) {
     const a0 = (i / segments) * Math.PI * 2;
     const a1 = ((i + 1) / segments) * Math.PI * 2;
+    const pointOnEllipse = (angle: number): { x: number; z: number } => {
+      const localLong = Math.cos(angle) * ellipse.longAxisWorld;
+      const localShort = Math.sin(angle) * ellipse.shortAxisWorld;
+      return {
+        x: localLong * Math.cos(ellipse.longAxisAzimuthRad)
+          - localShort * Math.sin(ellipse.longAxisAzimuthRad),
+        z: localLong * Math.sin(ellipse.longAxisAzimuthRad)
+          + localShort * Math.cos(ellipse.longAxisAzimuthRad),
+      };
+    };
+    const p0 = pointOnEllipse(a0);
+    const p1 = pointOnEllipse(a1);
     const o = i * 9;
     out[o] = apex.x;
     out[o + 1] = apex.y;
     out[o + 2] = apex.z;
-    out[o + 3] = baseCenter.x + radius * Math.cos(a0);
+    out[o + 3] = baseCenter.x + p0.x;
     out[o + 4] = baseCenter.y;
-    out[o + 5] = baseCenter.z + radius * Math.sin(a0);
-    out[o + 6] = baseCenter.x + radius * Math.cos(a1);
+    out[o + 5] = baseCenter.z + p0.z;
+    out[o + 6] = baseCenter.x + p1.x;
     out[o + 7] = baseCenter.y;
-    out[o + 8] = baseCenter.z + radius * Math.sin(a1);
+    out[o + 8] = baseCenter.z + p1.z;
   }
   return out;
 }
@@ -354,7 +386,7 @@ export function resolveSinrLiveCellBeamConeItems(
     if (placement.radiusWorld <= 0) continue;
 
     const apex = new THREE.Vector3(satWorld.x, satWorld.y, satWorld.z);
-    const baseCenter = new THREE.Vector3(placement.worldX, 0, placement.worldZ);
+    const baseCenter = resolveBeamBaseCenter(placement);
     if (apex.distanceTo(baseCenter) <= 1e-6) continue;
 
     items.push({
@@ -409,7 +441,7 @@ export function resolveSinrLiveNonServingConeItems(
     if (placement.radiusWorld <= 0) continue;
 
     const apex = new THREE.Vector3(satWorld.x, satWorld.y, satWorld.z);
-    const baseCenter = new THREE.Vector3(placement.worldX, 0, placement.worldZ);
+    const baseCenter = resolveBeamBaseCenter(placement);
     if (apex.distanceTo(baseCenter) <= 1e-6) continue;
 
     items.push({
@@ -442,7 +474,7 @@ function buildCellConeItem(input: {
   if (!placement || !satWorld || placement.radiusWorld <= 0) return null;
 
   const apex = new THREE.Vector3(satWorld.x, satWorld.y, satWorld.z);
-  const baseCenter = new THREE.Vector3(placement.worldX, 0, placement.worldZ);
+  const baseCenter = resolveBeamBaseCenter(placement);
   if (apex.distanceTo(baseCenter) <= 1e-6) return null;
   const frequencyIndex = input.frequencyIndex ?? input.cellId;
   return {
@@ -1072,6 +1104,8 @@ export interface SinrLiveCellBeamConesRenderProps {
   readonly elevationDimCeilDeg?: number;
   readonly elevationDimMinFactor?: number;
   readonly heroExemptFromElevationDim?: boolean;
+  /** Display-only tilt exaggeration for the legacy teaching scene; 1 = physical projection. */
+  readonly ellipseTiltExaggeration?: number;
   /**
    * The focus/centre UE's serving (satId, cellId) — the HERO identity. On the `serving`
    * layer it splits the mount three ways: the matching (sat, cell) is the `hero` (bright,
@@ -1092,7 +1126,7 @@ export interface SinrLiveCellBeamConesRenderProps {
  * a new `args` array — that guarantees a persistent cone's apex TRACKS the moving
  * satellite instead of freezing at a stale position.
  */
-function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; fog: boolean; dimShallow?: boolean; dimFloorDeg?: number; dimCeilDeg?: number; dimMinFactor?: number; color?: string; widthScale?: number }): JSX.Element {
+function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; fog: boolean; dimShallow?: boolean; dimFloorDeg?: number; dimCeilDeg?: number; dimMinFactor?: number; color?: string; widthScale?: number; ellipseTiltExaggeration?: number }): JSX.Element {
   const { cone, opacity } = props;
   const color = props.color ?? cone.color;
   const geometryRef = useRef<THREE.BufferGeometry>(null);
@@ -1103,6 +1137,8 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
     cone.apex,
     cone.baseCenter,
     cone.baseRadiusWorld * (props.widthScale ?? 1),
+    SINR_LIVE_CONE_SEGMENTS,
+    props.ellipseTiltExaggeration ?? 1,
   );
   // a-cone: scale opacity by the cone's RENDERED elevation (apex→base angle). A
   // shallow cone (low-over-horizon serving sat) fades toward invisible; a steep
@@ -1231,6 +1267,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
             dimCeilDeg={props.elevationDimCeilDeg}
             dimMinFactor={props.elevationDimMinFactor}
             widthScale={props.widthScale}
+            ellipseTiltExaggeration={props.ellipseTiltExaggeration}
           />
         );
       })}

@@ -103,6 +103,11 @@
 .simulator-panel-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 1rem; }
 .simulator-section { min-width: 0; padding: 1rem; border: 1px solid rgba(157, 219, 214, .14); border-radius: .75rem; background: rgba(7, 19, 29, .48); }
 .simulator-section__heading { margin-bottom: .85rem; }.simulator-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.simulator-formula-block { display: grid; gap: .55rem; margin-bottom: .9rem; padding: .8rem .85rem; border-left: 3px solid var(--sim-accent); border-radius: .55rem; background: rgba(118, 234, 215, .06); }
+.simulator-formula-block h3 { margin: 0; color: var(--sim-accent); font-size: .8rem; letter-spacing: .04em; }
+.simulator-formula-block__formula { display: grid; gap: .42rem; min-width: 0; overflow-x: auto; color: var(--sim-text); font: 1.02rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.simulator-formula-block__formula > div { min-width: max-content; }
+.simulator-formula-block p { margin: 0; color: var(--sim-muted); font-size: .78rem; line-height: 1.5; }
 .simulator-field { display: grid; gap: .28rem; min-width: 0; padding: .7rem; border: 1px solid rgba(157, 219, 214, .13); border-radius: .6rem; background: rgba(14, 39, 53, .55); }
 .simulator-field__heading { display: flex; justify-content: space-between; gap: .5rem; font-size: .83rem; font-weight: 800; }.simulator-field__heading small { color: var(--sim-accent); font-size: .7rem; white-space: nowrap; }
 .simulator-field input { width: 100%; min-height: 2.35rem; color: var(--sim-text); background: #06141d; border: 1px solid rgba(157, 219, 214, .25); border-radius: .4rem; padding: .4rem .5rem; font: .94rem ui-monospace, SFMono-Regular, Menlo, monospace; color-scheme: dark; }

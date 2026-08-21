@@ -245,7 +245,11 @@ section('(d) App.tsx + MainScene.tsx runtime threading source grep', () => {
 
   check(appSource.includes('buildAppRuntimeConfig'), 'App.tsx delegates runtime config construction');
   check(appRuntimeConfigSource.includes('ueDistributionMode: input.appMode === \'sinr-experiment\''), 'appRuntimeConfig computes runtime.ueDistributionMode from app mode');
-  check(appRuntimeConfigSource.includes("input.sceneTopology.ueDistributionMode ?? 'random'"), 'appRuntimeConfig uses topology mode default random');
+  check(
+    appRuntimeConfigSource.includes("? 'seven-cell-asymmetric'")
+      && appRuntimeConfigSource.includes('Do not let a stale topology override'),
+    'legacy / pins the seven-cell distribution instead of accepting stale topology overrides',
+  );
   check(
     appRuntimeConfigSource.includes("trainingTopology.ueDistributionMode ?? 'random'"),
     'appRuntimeConfig modqn-demo branch defaults training topology distribution to random',
@@ -288,17 +292,18 @@ section('(g) showcaseArtifactToScene negative assertion', () => {
   check(!replaySource.includes('UeDistributionMode'), 'showcaseArtifactToScene.ts has no UeDistributionMode reference');
 });
 
-section('(h) TopologyTab SSR active grid option', () => {
-  const gridMarkup = renderTopologyTab('grid', 'sinr-experiment');
-  const gridText = textFromMarkup(gridMarkup);
-  for (const testId of distributionTestIds) {
-    check(gridMarkup.includes(`data-testid="${testId}"`), `sinr-experiment SSR renders ${testId}`);
-  }
+section('(h) TopologyTab SSR keeps legacy UE placement fixed', () => {
+  const legacyMarkup = renderTopologyTab('random', 'sinr-experiment');
+  const legacyText = textFromMarkup(legacyMarkup);
   check(
-    /data-testid="topology-tab-ue-distribution-option-grid"[^>]*checked=""/.test(gridMarkup),
-    'SSR marks grid distribution option active',
+    legacyMarkup.includes('data-testid="topology-tab-ue-distribution-effective-value"'),
+    'sinr-experiment SSR renders the effective seven-cell value',
   );
-  check(gridText.includes('Changing UE distribution restarts the simulation'), 'SSR includes distribution restart copy');
+  check(
+    !legacyMarkup.includes('data-testid="topology-tab-ue-distribution-radio"'),
+    'sinr-experiment SSR does not render a UE distribution switch',
+  );
+  check(legacyText.includes('七格非對稱分布') || legacyText.includes('Asymmetric seven-cell distribution'), 'SSR describes the fixed seven-cell placement');
 });
 
 console.log('\n---');

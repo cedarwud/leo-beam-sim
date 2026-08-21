@@ -15,12 +15,16 @@ const isC120Route = window.location.pathname === '/course/c120'
 const isC90Route = window.location.pathname === '/course/c90'
   || query.get('course') === 'c90';
 // Compatibility routes for the pre-canonical Walker shell. The homepage and the
-// explicit aliases deliberately fall through to App, where the route selects
+// explicit alias deliberately fall through to App, where the route selects
 // the legacy presentation layer; keeping them out of the canonical development
 // query avoids an accidental second simulator runtime on an old bookmark.
 const isLegacyWalkerRoute = window.location.pathname === '/'
-  || window.location.pathname === '/legacy'
-  || window.location.pathname === '/walker';
+  || window.location.pathname === '/legacy';
+// /walker is a working sandbox: a decoupled copy of the Walker shell (never
+// the live App.tsx, which is still being tuned) used to graft the
+// /simulator-style left sidebar in for comparison while "/" gets reskinned to
+// match it. See src/AppWalkerSandbox.tsx.
+const isWalkerSidebarSandboxRoute = window.location.pathname === '/walker';
 // The canonical simulator query remains an explicit development surface for
 // non-public paths. The public /simulator pathname is reserved for the unified
 // Visual Lab surface below.
@@ -114,6 +118,17 @@ async function bootstrap() {
     ReactDOM.createRoot(container).render(
       <StrictMode>
         <UnifiedVisualLabPrototype />
+      </StrictMode>
+    );
+    return;
+  }
+
+  if (isWalkerSidebarSandboxRoute) {
+    await import('./styles/main.scss');
+    const { AppWalkerSandbox } = await import('./AppWalkerSandbox');
+    ReactDOM.createRoot(container).render(
+      <StrictMode>
+        <AppWalkerSandbox />
       </StrictMode>
     );
     return;

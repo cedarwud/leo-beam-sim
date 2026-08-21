@@ -36,11 +36,20 @@
  * not the producer's 780 km / 2° baseline and not MODQN decisions (§7).
  */
 
-import { computeOffAxisDeg } from '../engine/signal/beam-gain';
+import { computeGeometricOffAxisDeg } from '../engine/signal/beam-gain';
+import { angleAwareLinkKey } from '../engine/signal/angle-aware-ee';
+import {
+  computeBoresightAxisEcefKm,
+  resolveBeamPointing,
+  type EcefVectorKm,
+} from '../engine/signal/beam-pointing';
 import { computeLinkBudget } from '../engine/signal/link-budget';
 import { computeTr38811SlantRangeKm } from '../engine/signal/slant-range';
+import type { Profile } from '../profiles/types';
 import type {
   ActiveBeamAssignment,
+  AngleAwareFormulaFrame,
+  AngleAwarePowerState,
   LinkSample,
   SatelliteSnapshot,
   UEPosition,
@@ -48,11 +57,11 @@ import type {
 import {
   DEFAULT_MIN_ELEVATION_DEG,
   elevationAngleRad,
+  localKmToLatLon,
   type CellCenter,
   type CellLayout,
 } from '../engine/cells/cellLayout';
 import { HandoverManager } from '../engine/handover/handover-manager';
-import type { Profile } from '../profiles/types';
 import { EARTH_KM_PER_DEG } from '../engine/orbit/earth-constants';
 import { resolveSinrLiveBeamBudget } from './sinrLiveBeamBudget';
 
@@ -85,6 +94,8 @@ const DEG_TO_RAD = Math.PI / 180;
 const CELL_BEAM_ID_OFFSET = 1;
 
 export type ServingTransitionKind = 'none' | 'intra' | 'inter' | 'attach' | 'drop';
+
+export type SinrLiveBeamPointingMode = 'earth-fixed-cell' | 'sampled-steering';
 
 /**
  * How long (sim-seconds) a fired handover is retained in
@@ -252,6 +263,8 @@ export interface SinrLiveCellFrame {
    */
   readonly cumulativeIntraHandoverCount: number;
   readonly cumulativeInterHandoverCount: number;
+  /** Selected-link C1-C9 terms shared by the legacy left rail, right rail and scene publisher. */
+  readonly angleAwareFormulaFrame?: AngleAwareFormulaFrame | null;
   /**
    * Real handovers that fired within the last
    * {@link SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC} of sim-time (this frame's plus
@@ -323,8 +336,25 @@ export interface SinrLiveCellModelConfig {
   readonly candidateBeamsPerSat?: number;
   /** False freezes the spare-beam window; true advances it by hop slot. */
   readonly beamHoppingEnabled?: boolean;
+  /**
+   * `earth-fixed-cell` keeps perfect electronic pointing at the assigned cell.
+   * `sampled-steering` holds the ECEF boresight between presentation steering
+   * updates; it is enabled only by the legacy `/` presentation and makes the
+   * projected ellipse and the angle-aware power response share one finite
+   * steering behaviour.
+   */
+  readonly beamPointingMode?: SinrLiveBeamPointingMode;
+  readonly beamPointingUpdateSec?: number;
   /** Beam-hopping slot duration (s); the lit window advances each slot. Default 2.5. */
   readonly hopSlotSec?: number;
+  /**
+   * Presentation coverage guard for the fixed seven-cell substrate. This is
+   * not an antenna parameter and is never passed to `computeLinkBudget`; it
+   * only keeps the demo substrate populated when a profile's narrow steering
+   * control would otherwise make every fixed cell unreachable. The profile
+   * antenna still owns scan loss and every reported formula term.
+   */
+  readonly coverageSteeringAngleDeg?: number;
   /**
    * Override the link-budget antenna 3 dB beamwidth (rad). The cell SIZE
    * (`cellLayout.cellRadiusKm`) and the antenna GAIN must come from the SAME
@@ -502,6 +532,15 @@ interface CellSnapshotBeam {
   readonly snapshot: SatelliteSnapshot;
 }
 
+interface ResolvedCellBeamPointing {
+  readonly axisEcefKm: EcefVectorKm;
+  readonly centerLatDeg: number;
+  readonly centerLonDeg: number;
+  readonly centerEastKm: number;
+  readonly centerNorthKm: number;
+  readonly scanAngleDeg: number;
+}
+
 /**
  * Pointing a single beam of `sat` at `cell`'s fixed centre. One snapshot per
  * (sat, cell) lit beam so per-cell slant range / elevation drive path loss
@@ -512,11 +551,14 @@ function buildCellBeamSnapshot(
   sat: CellModelSat,
   cell: CellCenter,
   geom: CellScanGeometry,
+  pointing: ResolvedCellBeamPointing,
 ): SatelliteSnapshot {
   return {
     id: sat.id,
     shellId: sat.shellId,
     altitudeKm: sat.altitudeKm,
+    latDeg: sat.latDeg,
+    lonDeg: sat.lonDeg,
     ecefKm: [0, 0, 0],
     rangeKm: geom.slantRangeKm,
     elevationDeg: geom.elevationDeg,
@@ -526,7 +568,10 @@ function buildCellBeamSnapshot(
         beamId: cellLinkBudgetBeamId(cell.cellId),
         offsetEastKm: cell.localXKm,
         offsetNorthKm: cell.localYKm,
-        scanAngleDeg: geom.scanAngleDeg,
+        scanAngleDeg: pointing.scanAngleDeg,
+        beamCenterLatDeg: pointing.centerLatDeg,
+        beamCenterLonDeg: pointing.centerLonDeg,
+        beamAxisEcefKm: pointing.axisEcefKm,
       },
     ],
   };
@@ -545,12 +590,18 @@ export class SinrLiveCellModel {
   private candidateBeamsPerSat?: number;
   private beamHoppingEnabled: boolean;
   private readonly hopSlotSec: number;
+  private readonly beamPointingMode: SinrLiveBeamPointingMode;
+  private readonly beamPointingUpdateSec: number;
+  private readonly beamPointingAnchors = new Map<string, { bucket: number; axisEcefKm: EcefVectorKm }>();
   private readonly beamwidthOverrideRad?: number;
   private readonly maxGainDbiOverrideDbi?: number;
   private readonly maxSteeringAngleOverrideDeg?: number;
   private readonly scanLossAtMaxSteeringOverrideDb?: number;
+  private readonly coverageSteeringAngleDeg?: number;
   private antenna: Profile['antenna'];
   private readonly cellManagers = new Map<number, HandoverManager>();
+  /** Previous published-frame power state for currently served (u,s,v) links only. */
+  private readonly angleAwarePowerStates = new Map<string, AngleAwarePowerState>();
   private prevUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
   // Rolling log of handovers fired within the last retention window (sim-time),
   // for the ambient live-handover pulse to fade by age. Pruned each step; cleared
@@ -588,6 +639,11 @@ export class SinrLiveCellModel {
     this.candidateBeamsPerSat = config.candidateBeamsPerSat;
     this.beamHoppingEnabled = config.beamHoppingEnabled ?? true;
     this.hopSlotSec = config.hopSlotSec && config.hopSlotSec > 0 ? config.hopSlotSec : 2.5;
+    this.beamPointingMode = config.beamPointingMode ?? 'earth-fixed-cell';
+    this.beamPointingUpdateSec = config.beamPointingUpdateSec && config.beamPointingUpdateSec > 0
+      ? config.beamPointingUpdateSec
+      : 1;
+    this.coverageSteeringAngleDeg = config.coverageSteeringAngleDeg;
     this.beamwidthOverrideRad = config.beamwidthOverrideRad;
     this.maxGainDbiOverrideDbi = config.maxGainDbiOverrideDbi;
     this.maxSteeringAngleOverrideDeg = config.maxSteeringAngleOverrideDeg;
@@ -611,6 +667,74 @@ export class SinrLiveCellModel {
       ...(this.scanLossAtMaxSteeringOverrideDb != null
         ? { scanLossAtMaxSteeringDb: this.scanLossAtMaxSteeringOverrideDb }
         : {}),
+    };
+  }
+
+  private uePosition(ue: UeInput): UEPosition {
+    const latLon = localKmToLatLon(
+      this.observer.latDeg,
+      this.observer.lonDeg,
+      ue.eastKm,
+      ue.northKm,
+    );
+    return {
+      id: ue.id,
+      latDeg: latLon.latDeg,
+      lonDeg: latLon.lonDeg,
+      offsetEastKm: ue.eastKm,
+      offsetNorthKm: ue.northKm,
+    };
+  }
+
+  private resolveCellBeamPointing(
+    sat: CellModelSat,
+    cell: CellCenter,
+    simTimeSec: number,
+  ): ResolvedCellBeamPointing {
+    const exactAxis = computeBoresightAxisEcefKm({
+      satLatDeg: sat.latDeg,
+      satLonDeg: sat.lonDeg,
+      satAltitudeKm: sat.altitudeKm,
+      targetLatDeg: cell.latDeg,
+      targetLonDeg: cell.lonDeg,
+    });
+    let axisEcefKm = exactAxis;
+    if (this.beamPointingMode === 'sampled-steering') {
+      const safeTimeSec = Number.isFinite(simTimeSec) ? simTimeSec : 0;
+      const bucket = Math.floor(safeTimeSec / this.beamPointingUpdateSec);
+      const key = `${sat.id}:${cell.cellId}`;
+      const previous = this.beamPointingAnchors.get(key);
+      if (previous?.bucket === bucket) {
+        axisEcefKm = previous.axisEcefKm;
+      } else {
+        this.beamPointingAnchors.set(key, { bucket, axisEcefKm: exactAxis });
+      }
+    }
+
+    const pointing = resolveBeamPointing({
+      satLatDeg: sat.latDeg,
+      satLonDeg: sat.lonDeg,
+      satAltitudeKm: sat.altitudeKm,
+      targetLatDeg: cell.latDeg,
+      targetLonDeg: cell.lonDeg,
+      observerLatDeg: this.observer.latDeg,
+      observerLonDeg: this.observer.lonDeg,
+      axisEcefKm,
+    });
+    const nadir = satNadirOffsetKm(sat, this.observer);
+    const scanAngleDeg = (Math.atan(
+      Math.hypot(
+        pointing.ground.eastKm - nadir.eastKm,
+        pointing.ground.northKm - nadir.northKm,
+      ) / Math.max(sat.altitudeKm, 1e-6),
+    ) * 180) / Math.PI;
+    return {
+      axisEcefKm: pointing.axisEcefKm,
+      centerLatDeg: pointing.ground.latDeg,
+      centerLonDeg: pointing.ground.lonDeg,
+      centerEastKm: pointing.ground.eastKm,
+      centerNorthKm: pointing.ground.northKm,
+      scanAngleDeg,
     };
   }
 
@@ -640,6 +764,10 @@ export class SinrLiveCellModel {
     this.candidateBeamsPerSat = candidateBeamsPerSat;
     this.beamHoppingEnabled = beamHoppingEnabled;
     this.antenna = this.resolveAntenna(profile);
+    // A signal-profile change starts a new formula continuity segment for C2/C3.
+    // Handover continuity remains owned by the managers above; the angle-aware
+    // power state is re-anchored to the new scenario parameters.
+    this.angleAwarePowerStates.clear();
   }
 
   private managerForCell(cellId: number): HandoverManager {
@@ -653,8 +781,12 @@ export class SinrLiveCellModel {
     return manager;
   }
 
-  private linkBudgetOptions(activeAssignments: ActiveBeamAssignment[], simTimeSec: number) {
-    return {
+  private linkBudgetOptions(
+    activeAssignments: ActiveBeamAssignment[],
+    simTimeSec: number,
+    includeAngleAwarePower = true,
+  ): Parameters<typeof computeLinkBudget>[2] {
+    const baseOptions = {
       formulaFamily: this.profile.formulaFamily,
       channel: this.profile.channel,
       antenna: this.antenna,
@@ -662,13 +794,24 @@ export class SinrLiveCellModel {
       beams: this.profile.beams,
       activeAssignments,
       simTimeSec,
-    } satisfies Parameters<typeof computeLinkBudget>[2];
+    } satisfies Omit<Parameters<typeof computeLinkBudget>[2], 'angleAware'>;
+    if (!includeAngleAwarePower) return baseOptions;
+    return {
+      ...baseOptions,
+      angleAware: {
+        previousStates: this.angleAwarePowerStates,
+        conversionEfficiency: this.profile.antenna.efficiency,
+        fixedPowerW: 0,
+      },
+    };
   }
 
   reset(): void {
     for (const manager of this.cellManagers.values()) manager.reset();
     this.prevUeServing = new Map();
     this.recentHandovers = [];
+    this.beamPointingAnchors.clear();
+    this.angleAwarePowerStates.clear();
     this.cumulativeIntraHandoverCount = 0;
     this.cumulativeInterHandoverCount = 0;
   }
@@ -702,6 +845,8 @@ export class SinrLiveCellModel {
     for (const manager of this.cellManagers.values()) manager.rebase(deltaMs);
     this.prevUeServing = new Map();
     this.recentHandovers = [];
+    this.beamPointingAnchors.clear();
+    this.angleAwarePowerStates.clear();
     // The cumulative ticker totals rebase to ZERO with the window: a backward seek
     // replays an already-counted span, so keeping the pre-seek totals would
     // DOUBLE-COUNT the replayed handovers. A seek opens a fresh continuity epoch —
@@ -833,7 +978,15 @@ export class SinrLiveCellModel {
     const satById = new Map(linkSats.map(sat => [sat.id, sat]));
     // Use the EFFECTIVE (possibly overridden) steering limit so the candidate
     // list matches the link-budget scan-loss ceiling (S-cells-4a).
-    const maxSteer = this.antenna.maxSteeringAngleDeg;
+    // The fixed presentation cells must remain populated even when the
+    // profile's narrow steering control is below the scene's coverage guard.
+    // The guard affects candidate visibility only; link-budget scan loss below
+    // still uses `this.antenna.maxSteeringAngleDeg`, so the left control changes
+    // the selected-link SINR and all published formula values.
+    const maxSteer = Math.max(
+      this.antenna.maxSteeringAngleDeg,
+      this.coverageSteeringAngleDeg ?? 0,
+    );
     const reuse = this.profile.beams.frequencyReuse;
 
     // 1. Per-cell candidate sats + geometry.
@@ -876,7 +1029,12 @@ export class SinrLiveCellModel {
       preLitByCell.set(cell.cellId, {
         cellId: cell.cellId,
         satId: servingSatId,
-        snapshot: buildCellBeamSnapshot(sat, cell, geom),
+        snapshot: buildCellBeamSnapshot(
+          sat,
+          cell,
+          geom,
+          this.resolveCellBeamPointing(sat, cell, simTimeSec),
+        ),
       });
     }
 
@@ -984,10 +1142,35 @@ export class SinrLiveCellModel {
       if (!cell || !sat) continue;
       const geom = candidatesByCell.get(cellId)?.find(candidate => candidate.satId === satId);
       if (!geom) continue;
-      finalLit.push(buildCellBeamSnapshot(sat, cell, geom));
+      finalLit.push(buildCellBeamSnapshot(
+        sat,
+        cell,
+        geom,
+        this.resolveCellBeamPointing(sat, cell, simTimeSec),
+      ));
       finalActive.push({ satId, beamId: cellLinkBudgetBeamId(cellId) });
     }
-    const finalOptions = this.linkBudgetOptions(finalActive, simTimeSec);
+    const beamLoadByKey = new Map<string, number>();
+    for (const ue of ues) {
+      const membership = assignUeToNearestCell(ue, this.cellLayout);
+      const cellId = membership.cellId;
+      const satId = cellId === null ? undefined : finalServingByCell.get(cellId);
+      if (satId === undefined || cellId === null) continue;
+      const key = `${satId}:${cellLinkBudgetBeamId(cellId)}`;
+      beamLoadByKey.set(key, (beamLoadByKey.get(key) ?? 0) + 1);
+    }
+    const finalOptionsBase = this.linkBudgetOptions(finalActive, simTimeSec);
+    const finalAngleAware = finalOptionsBase.angleAware;
+    if (finalAngleAware === undefined) {
+      throw new Error('angle-aware link-budget options are required for the selected frame');
+    }
+    const finalOptions = {
+      ...finalOptionsBase,
+      angleAware: {
+        ...finalAngleAware,
+        beamLoadByKey,
+      },
+    };
 
     // Display-only same-satellite candidate for the primary UE. The normal
     // cell decision compares different satellites serving the same cell; the
@@ -1036,7 +1219,7 @@ export class SinrLiveCellModel {
 
     // 5. Per-UE membership, serving (inherited from cell), off-axis SINR, and
     //    intra/inter classification from the UE's serving transition.
-    const ueRecords: UeCellServingRecord[] = [];
+    let ueRecords: UeCellServingRecord[] = [];
     const nextUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
     let intraHandoverCount = 0;
     let interHandoverCount = 0;
@@ -1048,26 +1231,29 @@ export class SinrLiveCellModel {
       const servingSatId = cellId === null ? null : finalServingByCell.get(cellId) ?? null;
       const sat = servingSatId === null ? undefined : satById.get(servingSatId);
 
-      const offAxisDeg = cell && sat
-        ? computeOffAxisDeg(
-          Math.hypot(ue.eastKm - cell.localXKm, ue.northKm - cell.localYKm),
-          sat.altitudeKm,
-        )
+      const uePos = this.uePosition(ue);
+      let offAxisDeg = cell && sat
+        ? computeGeometricOffAxisDeg({
+          satLatDeg: sat.latDeg,
+          satLonDeg: sat.lonDeg,
+          satAltitudeKm: sat.altitudeKm,
+          beamCenterLatDeg: cell.latDeg,
+          beamCenterLonDeg: cell.lonDeg,
+          userLatDeg: uePos.latDeg,
+          userLonDeg: uePos.lonDeg,
+        })
         : 0;
 
       let sinrDb: number | null = null;
       let servingLinkSample: LinkSample | null = null;
       if (cell && sat && servingSatId !== null) {
-        const uePos: UEPosition = {
-          latDeg: 0, // unused by computeLinkBudget (reads offsets only)
-          lonDeg: 0,
-          offsetEastKm: ue.eastKm,
-          offsetNorthKm: ue.northKm,
-        };
         const samples = computeLinkBudget(uePos, finalLit, finalOptions);
         const beamId = cellLinkBudgetBeamId(cell.cellId);
         servingLinkSample = samples.find(s => s.satId === servingSatId && s.beamId === beamId) ?? null;
         sinrDb = servingLinkSample?.sinrDb ?? null;
+        if (servingLinkSample?.angleAware !== undefined) {
+          offAxisDeg = (servingLinkSample.angleAware.thetaRad * 180) / Math.PI;
+        }
       }
 
       const next = { satId: servingSatId, cellId };
@@ -1120,6 +1306,90 @@ export class SinrLiveCellModel {
         intraCandidateLinkSample: ue.id === primaryUeId ? primaryIntraCandidate?.sample ?? null : null,
       });
     }
+    // C7 is a system-level sum over the selected (x=1) UE-links. The link
+    // budget computes each link before all UEs have been visited, so normalize
+    // P^N and eta once here and publish that same denominator everywhere.
+    const fixedPowerW = finalOptions.angleAware?.fixedPowerW ?? 0;
+    const systemPowerW = Math.max(fixedPowerW, 0) + ueRecords.reduce((sum, record) => {
+      const power = record.servingLinkSample?.angleAware?.powerConsumptionW;
+      return Number.isFinite(power) ? sum + (power ?? 0) : sum;
+    }, 0);
+    ueRecords = ueRecords.map(record => {
+      const sample = record.servingLinkSample;
+      const terms = sample?.angleAware;
+      if (sample === null || sample === undefined || terms === undefined) return record;
+      const normalizedTerms = {
+        ...terms,
+        systemPowerW,
+        energyEfficiencyBitsPerJoule: terms.throughputBps / Math.max(systemPowerW, 1e-30),
+      };
+      return {
+        ...record,
+        servingLinkSample: {
+          ...sample,
+          angleAware: normalizedTerms,
+        },
+      };
+    });
+    const primaryRecord = ueRecords.find(record => record.ueId === primaryUeId) ?? ueRecords[0];
+    const angleAwareFormulaFrame = primaryRecord?.servingLinkSample?.angleAware
+      && primaryRecord.servingSatId !== null
+      && primaryRecord.cellId !== null
+      ? {
+        ueId: primaryRecord.ueId,
+        satId: primaryRecord.servingSatId,
+        beamId: primaryRecord.servingLinkSample.beamId,
+        timeSec: simTimeSec,
+        selected: 1 as const,
+        terms: primaryRecord.servingLinkSample.angleAware,
+      }
+      : null;
+
+    // Roll the currently served link identities into the next previous-step
+    // state. Candidate/counterfactual probes never mutate this map.
+    //
+    // A serving identity and a per-UE LinkSample are deliberately separate
+    // facts: the cell manager may still hold the same (u,s,v) serving link for
+    // one frame while the final measurement is temporarily unavailable (for
+    // example, a beam-gain floor filters the sample during a presentation
+    // geometry update). That is not a handover or a new segment, so preserve
+    // the prior state for that exact key. A real drop or serving identity
+    // change has no matching current key and is therefore removed here; its
+    // next attachment starts from the 2 W segment-start condition.
+    const nextAngleAwarePowerStates = new Map<string, AngleAwarePowerState>();
+    for (const record of ueRecords) {
+      const sample = record.servingLinkSample;
+      if (
+        record.cellId === null
+        || record.servingSatId === null
+      ) {
+        continue;
+      }
+      const beamId = sample?.beamId ?? cellLinkBudgetBeamId(record.cellId);
+      const key = angleAwareLinkKey(record.ueId, record.servingSatId, beamId);
+      const terms = sample?.angleAware;
+      if (terms !== undefined) {
+        nextAngleAwarePowerStates.set(key, {
+          timeSec: terms.timeSec,
+          thetaRad: terms.thetaRad,
+          transmitGainLinear: terms.transmitGainLinear,
+          powerW: terms.powerW,
+          segmentStartTimeSec: terms.segmentStartTimeSec,
+          segmentStartThetaRad: terms.segmentStartThetaRad,
+          segmentStartTransmitGainLinear: terms.segmentStartTransmitGainLinear,
+          segmentStartPowerW: terms.segmentStartPowerW,
+        });
+        continue;
+      }
+
+      const previousState = this.angleAwarePowerStates.get(key);
+      if (previousState !== undefined) nextAngleAwarePowerStates.set(key, previousState);
+    }
+    this.angleAwarePowerStates.clear();
+    for (const [key, state] of nextAngleAwarePowerStates) {
+      this.angleAwarePowerStates.set(key, state);
+    }
+
     this.prevUeServing = nextUeServing;
     // Accumulate this frame's classified handovers into the monotonic epoch totals
     // (the throttle-proof source for the ticker HUD — see the field declaration).
@@ -1146,6 +1416,7 @@ export class SinrLiveCellModel {
       interHandoverCount,
       cumulativeIntraHandoverCount: this.cumulativeIntraHandoverCount,
       cumulativeInterHandoverCount: this.cumulativeInterHandoverCount,
+      angleAwareFormulaFrame,
       recentHandoverEvents: this.recentHandovers,
     };
   }
@@ -1181,13 +1452,24 @@ export class SinrLiveCellModel {
     for (const geom of candidates) {
       const sat = satById.get(geom.satId);
       if (!sat) continue;
-      probes.push(buildCellBeamSnapshot(sat, cell, geom));
+      probes.push(buildCellBeamSnapshot(
+        sat,
+        cell,
+        geom,
+        this.resolveCellBeamPointing(sat, cell, simTimeSec),
+      ));
     }
 
-    const options = this.linkBudgetOptions(activeAssignments, simTimeSec);
+    // Candidate links have x(t)=0 until the handover manager accepts one. The
+    // 2 W segment-start recurrence therefore belongs only to the selected
+    // served link, not to this admission/counterfactual measurement. Applying
+    // it here would reject otherwise valid candidates before any link can be
+    // selected, leaving the cell lane with no serving beam.
+    const options = this.linkBudgetOptions(activeAssignments, simTimeSec, false);
     const measurePoint: UEPosition = {
-      latDeg: 0,
-      lonDeg: 0,
+      id: `cell:${cell.cellId}`,
+      latDeg: cell.latDeg,
+      lonDeg: cell.lonDeg,
       offsetEastKm: cell.localXKm,
       offsetNorthKm: cell.localYKm,
     };
@@ -1215,12 +1497,7 @@ export class SinrLiveCellModel {
     simTimeSec: number,
   ): { cellId: number; sample: LinkSample } | null {
     if (sourceCellId === null || servingSatId === null) return null;
-    const uePos: UEPosition = {
-      latDeg: 0,
-      lonDeg: 0,
-      offsetEastKm: ue.eastKm,
-      offsetNorthKm: ue.northKm,
-    };
+    const uePos = this.uePosition(ue);
     const candidates: Array<{ cellId: number; sample: LinkSample }> = [];
     for (const [targetCellId, geoms] of candidatesByCell) {
       if (targetCellId === sourceCellId) continue;
@@ -1233,7 +1510,12 @@ export class SinrLiveCellModel {
       const targetAlreadyActive = finalActive.some(assignment => `${assignment.satId}:${assignment.beamId}` === targetKey);
       const snapshots = targetAlreadyActive
         ? [...finalLit]
-        : [...finalLit, buildCellBeamSnapshot(sat, targetCell, geom)];
+        : [...finalLit, buildCellBeamSnapshot(
+          sat,
+          targetCell,
+          geom,
+          this.resolveCellBeamPointing(sat, targetCell, simTimeSec),
+        )];
       const sample = computeLinkBudget(uePos, snapshots, {
         ...options,
         activeAssignments: [...finalActive],

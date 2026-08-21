@@ -23,6 +23,23 @@ export const panelStyle: CSSProperties = {
   display: 'grid',
   gap: 16,
 };
+
+/**
+ * The legacy Walker route keeps its own formula vocabulary, but its shell now
+ * follows the calmer Visual Lab surface: a slightly brighter rail, quieter
+ * borders, and more breathing room between the navigation and the active
+ * formula.  This is intentionally separate from `panelStyle` so the `/simulator`
+ * presentation does not drift while the legacy page is being refreshed.
+ */
+export const legacyPanelStyle: CSSProperties = {
+  ...panelStyle,
+  background: 'linear-gradient(180deg, rgba(14, 34, 46, 0.97), rgba(6, 20, 28, 0.96))',
+  border: `1px solid ${UI_TOKENS.color.border.soft}`,
+  borderRadius: UI_TOKENS.radius.panel,
+  boxShadow: '0 16px 36px rgba(0, 0, 0, 0.36)',
+  padding: 14,
+  gap: 14,
+};
 export const collapsedPanelStyle: CSSProperties = {
   ...panelStyle,
   display: 'flex',
@@ -48,12 +65,17 @@ export const dividerStyle: CSSProperties = {
 
 export const controlStackStyle: CSSProperties = {
   display: 'grid',
-  gap: 14,
+  gap: 12,
 };
 
 export const pagePanelStyle: CSSProperties = {
   display: 'grid',
-  gap: 15,
+  gap: 14,
+};
+
+export const legacyPagePanelStyle: CSSProperties = {
+  ...pagePanelStyle,
+  gap: 14,
 };
 
 export const symbolStyle: CSSProperties = {

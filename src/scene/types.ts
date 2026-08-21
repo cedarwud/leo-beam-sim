@@ -1,7 +1,11 @@
 import * as THREE from 'three';
 import type { BeamCodeRole } from '../constants/beamRoleTokens';
 import type { TopocentricPoint } from '../engine/orbit';
-import type { ActiveBeamAssignment, LinkSample } from '../engine/signal/types';
+import type {
+  ActiveBeamAssignment,
+  AngleAwareFormulaFrame,
+  LinkSample,
+} from '../engine/signal/types';
 import type { HandoverEvent, IntraSwitchPreview } from '../engine/handover/types';
 import type { BeamFrequencyIndexResolution } from '../utils/beamFrequency';
 import type { CoreLayoutFrequencyReuse, ReuseGroupSource } from './beam-layout';
@@ -339,6 +343,8 @@ export interface SimState {
   ch5DemoPaperEnergyEfficiency?: PaperEnergyEfficiency | null;
   /** Live ADR-003 projection; absent on producer-backed replay lanes. */
   canonicalEe?: CanonicalEeSnapshot | null;
+  /** Active C1-C9 selected-link frame shared by the legacy UI surfaces. */
+  angleAwareFormulaFrame?: AngleAwareFormulaFrame | null;
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;
@@ -497,6 +503,8 @@ export interface SimFrame {
    * does NOT read it until S-cells-3 — see the SDD/governance lane lock.
    */
   sinrLiveCells?: SinrLiveCellFrame;
+  /** Angle-aware frame for non-cell lanes; the live cell lane owns its nested frame. */
+  angleAwareFormulaFrame?: AngleAwareFormulaFrame | null;
 }
 
 export type EventRole = BeamCodeRole;

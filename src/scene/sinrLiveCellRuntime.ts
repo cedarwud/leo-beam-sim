@@ -42,6 +42,7 @@ import type { Profile } from '../profiles/types';
 import {
   SinrLiveCellModel,
   type CellModelSat,
+  type SinrLiveBeamPointingMode,
   type SinrLiveCellFrame,
   type UeInput,
 } from './sinrLiveCellModel';
@@ -132,48 +133,32 @@ export const SINR_LIVE_NINETEEN_DISPLAY_CELL_POSITIONS = Object.freeze([
 ] as const);
 
 /**
- * Link-budget / cell-layout 3 dB beamwidth for the SINR-live lane (rad ≈ 3.32°).
- * This now equals the profile antenna beamwidth — a realistic LEO value between
- * Starlink (~1.5–2°) and 3GPP TR 38.821 LEO-600 (~4.4°). Cell SIZE
- * (`altitude·tan(θ/2)`) AND the model's link-budget GAIN are derived from this
- * SAME beamwidth (one physical antenna): {@link SINR_LIVE_CELL_MAX_GAIN_DBI} is
- * `consistentPeakGainDbi(this, efficiency)`, so the antenna can never encode the
- * profile's >100 %-efficiency 40 dBi @ 3.32° bug. Coverage of the whole service
- * area is delivered by STEERING ({@link SINR_LIVE_CELL_MAX_STEERING_DEG}) + the
- * cell tiling, not by widening the lobe.
+ * Fallback beamwidth retained for older callers. The live legacy route reads
+ * `profile.antenna.beamwidth3dBRad` directly so the left beamwidth control
+ * changes both the fixed-cell geometry and the selected-link formula.
  */
 export const SINR_LIVE_CELL_BEAMWIDTH_RAD = 0.058;
 
 /**
- * Profile aperture efficiency used to derive the self-consistent peak gain.
- * Mirrors `hobs-2024-candidate-rich` antenna efficiency (η = 0.6).
+ * Historical constants retained for archived validation/probe imports. They do
+ * not override the active profile-backed antenna on `/`.
  */
 export const SINR_LIVE_CELL_ANTENNA_EFFICIENCY = 0.6;
 
 /**
- * SINR-live-only peak boresight gain (dBi), SELF-CONSISTENT with
- * {@link SINR_LIVE_CELL_BEAMWIDTH_RAD} at {@link SINR_LIVE_CELL_ANTENNA_EFFICIENCY}:
- * `consistentPeakGainDbi(0.058 rad, 0.6) ≈ 33.5 dBi`. This OVERRIDES the profile's
- * physically-impossible 40 dBi @ 3.32° (>100 % efficiency) for the showcase lane
- * ONLY — `profile.antenna.maxGainDbi` is left untouched so the steered lane +
- * baseline-KPI windows stay byte-identical (S-cells-4a is a decoupled
- * sinr-live-only truth-input, not an edit to the shared SINR oracle). The
- * `validate:phase-c:sinr-live-cells:runtime` gate locks
- * `|this − consistentPeakGainDbi| < 0.5 dB`.
+ * Historical showcase value retained for archived probes. The active route
+ * reads `profile.antenna.maxGainDbi`.
  */
 export const SINR_LIVE_CELL_MAX_GAIN_DBI = 33.5;
 
 /**
- * SINR-live-only max steering angle (deg). The profile's 12° lets only 1–3 of
- * the ~46 above-mask sats steer to the 200×90 area → coverage dropouts + only
- * 1–2 beams ever served; ~50° lets 6–8 serve continuously. Physically real: the
- * 15° elevation mask admits ~63° off-nadir; 3GPP plans ~60°, Starlink measures
- * 44–51°. Overrides `profile.antenna.maxSteeringAngleDeg` for the showcase lane
- * only (the steered lane + baselines keep 12°).
+ * Presentation coverage guard (deg). It is used only to keep the fixed seven
+ * cells populated; the profile max-steering value remains the link-budget
+ * parameter and still changes scan loss/SINR on the legacy route.
  */
 export const SINR_LIVE_CELL_MAX_STEERING_DEG = 50;
 
-/** SINR-live-only scan loss at max steering (dB); paired with the wider 50° steering. */
+/** Historical showcase scan-loss value retained for archived probe imports. */
 export const SINR_LIVE_CELL_SCAN_LOSS_DB = 4.5;
 
 /**
@@ -242,6 +227,14 @@ export function resolveSinrLiveBeamsPerSat(profile: Profile): number {
 
 /** Beam-hopping slot duration (s): the lit cell window advances each slot. */
 export const SINR_LIVE_HOP_SLOT_SEC = 2.5;
+
+/**
+ * Legacy `/` presentation steering hold (s). This is intentionally longer than
+ * the beam-hopping slot: the display keeps one ECEF boresight while the moving
+ * satellite travels, so theta and the previous-step power recurrence have a
+ * readable response before the next electronic re-pointing.
+ */
+export const SINR_LIVE_PRESENTATION_STEERING_HOLD_SEC = 6;
 
 /**
  * Elevation mask for the cell truth. Pinned to the cell-layout default (15°),
@@ -322,10 +315,10 @@ export function buildSinrLiveCellLayout(
     centerLatDeg: profile.orbit.observerLatDeg,
     centerLonDeg: profile.orbit.observerLonDeg,
     altitudeKm: profile.orbit.shells[0]?.altitudeKm ?? 550,
-    // Cell SIZE uses the SINR-live beamwidth; the model's link-budget GAIN derives
-    // from the SAME beamwidth (one antenna) — see SINR_LIVE_CELL_BEAMWIDTH_RAD /
-    // SINR_LIVE_CELL_MAX_GAIN_DBI.
-    beamwidth3dBRad: SINR_LIVE_CELL_BEAMWIDTH_RAD,
+    // Cell SIZE and link-budget gain both read the same profile-backed antenna
+    // width, so changing the left beamwidth control moves the UE/cell geometry
+    // and the selected-link formula together.
+    beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
     cellCount,
     // Phase the lattice off the ENU origin so the protagonist UE is off-centre
     // (beam-stage ①). One knob; sinr-live + modqn-live both inherit it.
@@ -364,6 +357,7 @@ export function createSinrLiveCellModel(
   servingBeamCount?: number,
   candidateBeamCount?: number,
   beamHoppingEnabled = true,
+  beamPointingMode: SinrLiveBeamPointingMode = 'earth-fixed-cell',
 ): SinrLiveCellModel | null {
   if (!useEarthFixedCellTruth) return null;
   const cellLayout = buildSinrLiveCellLayout(profile);
@@ -385,13 +379,14 @@ export function createSinrLiveCellModel(
     candidateBeamsPerSat: candidateBeamCount,
     beamHoppingEnabled,
     hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
-    // SINR-live-only antenna truth-input overrides (S-cells-4a). They are layered
-    // over the profile antenna and never mutate it → the steered lane + baseline
-    // KPI are byte-identical. Gain is self-consistent with the beamwidth.
-    beamwidthOverrideRad: SINR_LIVE_CELL_BEAMWIDTH_RAD,
-    maxGainDbiOverrideDbi: SINR_LIVE_CELL_MAX_GAIN_DBI,
-    maxSteeringAngleOverrideDeg: SINR_LIVE_CELL_MAX_STEERING_DEG,
-    scanLossAtMaxSteeringOverrideDb: SINR_LIVE_CELL_SCAN_LOSS_DB,
+    beamPointingMode,
+    beamPointingUpdateSec: beamPointingMode === 'sampled-steering'
+      ? SINR_LIVE_PRESENTATION_STEERING_HOLD_SEC
+      : SINR_LIVE_HOP_SLOT_SEC,
+    // Keep the seven-cell presentation populated as a display substrate. This
+    // guard is separate from the profile antenna, so it cannot make the
+    // displayed G^T(θ), scan loss, or SINR values lie about the user's controls.
+    coverageSteeringAngleDeg: SINR_LIVE_CELL_MAX_STEERING_DEG,
   });
 }
 

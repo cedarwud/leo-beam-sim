@@ -116,6 +116,8 @@ interface NumericControlProps {
   effect: string;
   accentColor?: string;
   disabled?: boolean;
+  /** Visual-only variant used by the legacy Walker rail. */
+  visualVariant?: 'default' | 'legacy';
   /** Render the value and provenance without exposing an editable slider. */
   readOnly?: boolean;
   inactiveReason?: string;
@@ -153,6 +155,7 @@ export function NumericControl({
   resetValue,
   testId,
   stackHeader = false,
+  visualVariant = 'default',
   onChange,
 }: NumericControlProps & ControlHelpProps) {
   const { locale, t } = useLocale();
@@ -168,6 +171,7 @@ export function NumericControl({
   const helpBody = tx(t, helpBodyKey, description);
   const helpEffect = inactive && inactiveReason ? inactiveReason : tx(t, helpEffectKey, effect);
   const hasSymbol = symbol !== null && symbol !== undefined && symbol !== '';
+  const isLegacy = visualVariant === 'legacy';
 
   return (
     <div
@@ -178,13 +182,19 @@ export function NumericControl({
       data-reset-value={resetValue}
       style={{
         display: 'grid',
-        gap: 10,
+        gap: isLegacy ? 8 : 10,
         opacity: disabled ? 0.58 : 1,
-        padding: '14px 15px',
-        borderRadius: UI_TOKENS.radius.lg,
-        background: disabled ? 'rgba(132, 148, 163, 0.06)' : 'rgba(255, 255, 255, 0.09)',
-        border: disabled ? `1px solid ${UI_TOKENS.color.border.subtle}` : '1px solid rgba(218, 244, 255, 0.18)',
-        borderLeft: disabled ? '4px solid rgba(132, 148, 163, 0.28)' : `4px solid ${accentColor}aa`,
+        padding: isLegacy ? '10px 12px' : '14px 15px',
+        borderRadius: isLegacy ? UI_TOKENS.radius.md : UI_TOKENS.radius.lg,
+        background: disabled
+          ? 'rgba(132, 148, 163, 0.06)'
+          : isLegacy ? UI_TOKENS.color.surface.cardFaint : 'rgba(255, 255, 255, 0.09)',
+        border: disabled
+          ? `1px solid ${UI_TOKENS.color.border.subtle}`
+          : isLegacy ? `1px solid ${UI_TOKENS.color.border.subtle}` : '1px solid rgba(218, 244, 255, 0.18)',
+        borderLeft: disabled
+          ? '3px solid rgba(132, 148, 163, 0.28)'
+          : isLegacy ? undefined : `3px solid ${accentColor}aa`,
       }}
     >
       <div style={stackHeader
@@ -192,7 +202,7 @@ export function NumericControl({
         : { display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'stretch' }}>
         <div data-control-identity="true" style={{ minWidth: 0, display: 'grid', gap: 3, alignContent: 'space-between' }}>
           <div data-control-label="true" style={{ display: 'grid', gap: 1, minWidth: 0 }}>
-            <span style={{ ...controlLabelStyle, color: disabled ? UI_TOKENS.color.text.faint : controlLabelStyle.color }}>
+            <span style={{ ...controlLabelStyle, fontSize: isLegacy ? UI_TOKENS.type.size.body : controlLabelStyle.fontSize, color: disabled ? UI_TOKENS.color.text.faint : controlLabelStyle.color }}>
               {renderFormulaText(displayLabel)}
             </span>
             {showCanonical && (
@@ -213,12 +223,12 @@ export function NumericControl({
           justifySelf: stackHeader ? 'end' : undefined,
         }}>
           <div style={{
-            padding: '6px 10px',
+            padding: isLegacy ? '5px 8px' : '6px 10px',
             borderRadius: UI_TOKENS.radius.md,
-            background: disabled ? 'rgba(132, 148, 163, 0.08)' : 'rgba(255, 255, 255, 0.055)',
+            background: disabled ? 'rgba(132, 148, 163, 0.08)' : UI_TOKENS.color.surface.card,
             border: disabled ? `1px solid ${UI_TOKENS.color.border.subtle}` : `1px solid ${accentColor}38`,
             color: disabled ? UI_TOKENS.color.text.faint : UI_TOKENS.color.text.primary,
-            fontSize: UI_TOKENS.type.size.bodyLg,
+            fontSize: isLegacy ? UI_TOKENS.type.size.body : UI_TOKENS.type.size.bodyLg,
             fontWeight: UI_TOKENS.type.weight.heavy,
             whiteSpace: 'nowrap',
           }}>
@@ -307,6 +317,8 @@ export function SelectControl({
   helpEffectKey,
   effect,
   accentColor = UI_TOKENS.color.semantic.tuning,
+  visualVariant = 'default',
+  testId,
   onChange,
 }: {
   symbol: ReactNode;
@@ -317,6 +329,9 @@ export function SelectControl({
   value: string;
   options: ReadonlyArray<{ value: string; label: string; detail?: string }>;
   accentColor?: string;
+  /** Visual-only variant used by the legacy Walker rail. */
+  visualVariant?: 'default' | 'legacy';
+  testId?: string;
   onChange: (value: string) => void;
 } & ControlHelpProps) {
   const { t } = useLocale();
@@ -324,25 +339,34 @@ export function SelectControl({
   const displayLabel = tx(t, labelKey, label);
   const showCanonical = !isSameLabel(displayLabel, label);
   const hasSymbol = symbol !== null && symbol !== undefined && symbol !== '';
+  const isLegacy = visualVariant === 'legacy';
 
   return (
-    <div style={{
-      display: 'grid',
-      gap: 10,
-      padding: '12px 13px',
-      borderRadius: UI_TOKENS.radius.lg,
-      background: UI_TOKENS.color.surface.card,
-      border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-    }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(112px, 0.8fr)', gap: 10, alignItems: 'stretch' }}>
+    <div
+      data-testid={testId}
+      style={{
+        display: 'grid',
+        gap: isLegacy ? 8 : 10,
+        padding: isLegacy ? '10px 12px' : '12px 13px',
+        borderRadius: isLegacy ? UI_TOKENS.radius.md : UI_TOKENS.radius.lg,
+        background: isLegacy ? UI_TOKENS.color.surface.cardFaint : UI_TOKENS.color.surface.card,
+        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+      }}
+    >
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isLegacy ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr) minmax(112px, 0.8fr)',
+        gap: 10,
+        alignItems: 'stretch',
+      }}>
         <div data-control-identity="true" style={{ minWidth: 0, display: 'grid', gap: 3, alignContent: 'space-between' }}>
           <div data-control-label="true" style={{ display: 'grid', gap: 1, minWidth: 0 }}>
-            <span style={controlLabelStyle}>{renderFormulaText(displayLabel)}</span>
+            <span style={{ ...controlLabelStyle, fontSize: isLegacy ? UI_TOKENS.type.size.body : controlLabelStyle.fontSize }}>{renderFormulaText(displayLabel)}</span>
             {showCanonical && <span style={canonicalTermStyle}>{renderFormulaText(label)}</span>}
           </div>
           {hasSymbol && (
             <span data-control-symbol="true" style={{ display: 'flex', alignItems: 'baseline', minWidth: 0 }}>
-              <MathSymbol color={accentColor}>{symbol}</MathSymbol>
+              <MathSymbol size={isLegacy ? UI_TOKENS.type.size.body : 24} color={accentColor}>{symbol}</MathSymbol>
             </span>
           )}
         </div>
@@ -355,13 +379,16 @@ export function SelectControl({
             style={{
               cursor: 'pointer',
               width: '100%',
-              minWidth: 0,
+              minWidth: isLegacy ? 90 : 0,
+              maxWidth: isLegacy ? 140 : undefined,
               borderRadius: UI_TOKENS.radius.md,
               border: `1px solid ${accentColor}33`,
               background: UI_TOKENS.color.surface.field,
               color: UI_TOKENS.color.text.primary,
-              padding: '10px 11px',
-              fontSize: UI_TOKENS.type.size.control,
+              padding: isLegacy ? '5px 8px' : '8px 10px',
+              fontSize: isLegacy ? UI_TOKENS.type.size.body : UI_TOKENS.type.size.control,
+              fontWeight: isLegacy ? UI_TOKENS.type.weight.heavy : undefined,
+              lineHeight: 1.25,
             }}
           >
             {options.map(option => (
@@ -414,6 +441,7 @@ export function PathLossTermControl({
   accentColor = UI_TOKENS.color.semantic.tuning,
   formatValue,
   testId,
+  visualVariant = 'default',
   onToggle,
   onChange,
 }: {
@@ -439,6 +467,8 @@ export function PathLossTermControl({
   accentColor?: string;
   formatValue?: (value: number) => string;
   testId?: string;
+  /** Visual-only variant used by the legacy Walker rail. */
+  visualVariant?: 'default' | 'legacy';
   onToggle: () => void;
   onChange: (value: number) => void;
 } & ControlHelpProps) {
@@ -452,6 +482,7 @@ export function PathLossTermControl({
   const primaryText = active ? UI_TOKENS.color.text.label : UI_TOKENS.color.text.faint;
   const secondaryText = active ? UI_TOKENS.color.text.muted : UI_TOKENS.color.text.faint;
   const termBackground = active ? 'rgba(255, 255, 255, 0.045)' : 'rgba(132, 148, 163, 0.04)';
+  const isLegacy = visualVariant === 'legacy';
 
   const displayLabel = labelText ?? label;
   const displayControlLabel = controlLabelText ?? controlLabel;
@@ -468,12 +499,14 @@ export function PathLossTermControl({
       data-path-loss-term-state={active ? 'on' : 'off'}
       style={{
         display: 'grid',
-        gap: 9,
-        padding: '12px 13px',
-        borderRadius: UI_TOKENS.radius.lg,
+        gap: isLegacy ? 8 : 9,
+        padding: isLegacy ? '10px 12px' : '12px 13px',
+        borderRadius: isLegacy ? UI_TOKENS.radius.md : UI_TOKENS.radius.lg,
         border: `1px solid ${active ? 'rgba(218, 244, 255, 0.14)' : UI_TOKENS.color.border.subtle}`,
-        borderLeft: `3px solid ${active ? `${accentColor}66` : 'rgba(132, 148, 163, 0.24)'}`,
-        background: termBackground,
+        borderLeft: isLegacy
+          ? active ? `2px solid ${accentColor}88` : '2px solid rgba(132, 148, 163, 0.24)'
+          : `3px solid ${active ? `${accentColor}66` : 'rgba(132, 148, 163, 0.24)'}`,
+        background: isLegacy ? UI_TOKENS.color.surface.cardFaint : termBackground,
         color: primaryText,
         opacity: active ? 1 : 0.58,
       }}
@@ -485,7 +518,7 @@ export function PathLossTermControl({
           style={{ display: 'grid', gap: 3, alignContent: 'space-between', minWidth: 0, gridRow: '1 / -1' }}
         >
           <span data-control-label="true" style={{
-            fontSize: UI_TOKENS.type.size.bodyLg,
+            fontSize: isLegacy ? UI_TOKENS.type.size.body : UI_TOKENS.type.size.bodyLg,
             color: primaryText,
             fontWeight: UI_TOKENS.type.weight.strong,
             lineHeight: 1.25,

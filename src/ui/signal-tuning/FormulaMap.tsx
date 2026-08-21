@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
-import { formatDbi } from './formatters';
 import { txBi } from './labels';
 import { MathSymbol } from './MathSymbol';
+import { SystemAngleState } from './FormulaSymbols';
 import { explanatoryTextStyle, formulaTextStyle, srOnlyStyle } from './styles';
 
 /**
@@ -106,7 +106,7 @@ function FormulaMapTile({
     </div>
   );
 }
-export function SinrFormulaMap({ receiverGainDbi }: { receiverGainDbi: number }) {
+export function SinrFormulaMap({ receiverGainDbi: _receiverGainDbi }: { receiverGainDbi: number }) {
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
   const say = (key: string, zh: string, en: string) => txBi(t, isEnglish, key, zh, en);
@@ -138,7 +138,7 @@ export function SinrFormulaMap({ receiverGainDbi }: { receiverGainDbi: number })
           fontSize: UI_TOKENS.type.size.subheading,
           color: UI_TOKENS.color.text.math,
         }}>
-          P<sub>t</sub> -&gt; H -&gt; G<sup>T</sup> -&gt; G<sup>R</sup>
+          <i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>) · H<sub>u,s,v</sub>(t) · G<sup>T</sup>(θ<sub>u,s,v</sub>)
         </div>
       </div>
 
@@ -171,50 +171,28 @@ export function SinrFormulaMap({ receiverGainDbi }: { receiverGainDbi: number })
             testId="formula-map-pt"
             side="numerator"
             term="transmit-power"
-            symbol={<>P<sub>t</sub></>}
+            symbol={<><i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>}
             title="Transmit power"
             titleText={say('section.formulaMap.pt', '發射功率', 'Transmit power')}
-            detail={say('section.formulaMap.pt.detail', '每波束發射功率，為分子鏈的起始項。', 'Per-beam transmit power is the first factor of the numerator.')}
+            detail={say('section.formulaMap.pt.detail', '單一使用者與波束的鏈路功率，是分子鏈的起始項。', 'Per-user, per-beam link power is the first factor of the numerator.')}
           />
           <FormulaMapTile
             testId="formula-map-hl"
             side="numerator"
             term="path-gain-loss"
-            symbol={<>H</>}
-            title="Channel gain / path loss"
-            titleText={say('section.formulaMap.hl', '通道增益與路徑損耗', 'Channel gain and path loss')}
-            detail={say('section.formulaMap.hl.detail', '載波頻率與各路徑損耗項決定分子的接收訊號功率（H 由 L 換算）。', 'Carrier frequency and the path-loss terms set the received signal power in the numerator; H is derived from L.')}
+            symbol={<>H<sub>u,s,v</sub>(t)</>}
+            title="Effective channel"
+            titleText={say('section.formulaMap.hl', '有效通道', 'Effective channel')}
+            detail={say('section.formulaMap.hl.detail', '非角度相關的通道因素收合在 H_{u,s,v}(t) 中。', 'Non-angle channel factors are collected in H_{u,s,v}(t).')}
           />
           <FormulaMapTile
             testId="formula-map-gt"
             side="numerator"
             term="transmit-gain"
-            symbol={<>G<sup>T</sup></>}
+            symbol={<>G<sup>T</sup>(θ<sub>u,s,v</sub>)</>}
             title="Satellite beam gain"
             titleText={say('section.formulaMap.gt', '衛星波束增益', 'Satellite beam gain')}
-            detail={say('section.formulaMap.gt.detail', '衛星天線增益圖樣、轉向角與轉向損耗共同構成 G^T 項。', 'Transmit antenna pattern, steering angle, and scan loss together form the G^T factor.')}
-          />
-          <FormulaMapTile
-            testId="formula-map-gr"
-            side="numerator"
-            term="receiver-gain"
-            symbol={<>G<sup>R</sup></>}
-            title="Receiver gain"
-            titleText={say('section.formulaMap.gr', '接收端增益', 'Receiver gain')}
-            badge="Sensitivity"
-            tone="research"
-            detail={
-              <>
-                {say(
-                  'section.formulaMap.gr.detail',
-                  `地面天線的增益 ${formatDbi(receiverGainDbi)}。它是分子裡獨立的一項，跟發射功率和衛星波束增益是分開的。`,
-                  `${formatDbi(receiverGainDbi)} of ground-antenna gain. It is its own term on the top of the fraction, separate from transmit power and satellite beam gain.`,
-                )}
-                <span aria-hidden="true" style={srOnlyStyle}>
-                  {formatDbi(receiverGainDbi)} receive-side gain. Independent numerator term; not transmit power or satellite beam gain.
-                </span>
-              </>
-            }
+            detail={say('section.formulaMap.gt.detail', '角度相關的發射增益構成 G^T(θ_{u,s,v})。', 'The angle-dependent transmit gain is G^T(θ_{u,s,v}).')}
           />
         </div>
       </div>
@@ -249,10 +227,10 @@ export function SinrFormulaMap({ receiverGainDbi }: { receiverGainDbi: number })
             side="denominator"
             term="interference"
             tone="denominator"
-            symbol={<>I<sup>a</sup> + I<sup>b</sup></>}
+            symbol={<>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>}
             title="Co-channel interference"
             titleText={say('section.formulaMap.interference', '同頻干擾', 'Co-channel interference')}
-            detail={say('section.formulaMap.interference.detail', '同衛星內與跨衛星的同頻干擾皆計入分母。', 'Intra-satellite and inter-satellite co-channel interference both belong to the denominator.')}
+            detail={say('section.formulaMap.interference.detail', '同衛星與異衛星的同頻干擾都收合為總干擾 I。', 'Same- and other-satellite co-channel interference are collected in total I.')}
           />
           <FormulaMapTile
             testId="formula-map-sigma"
@@ -264,8 +242,8 @@ export function SinrFormulaMap({ receiverGainDbi }: { receiverGainDbi: number })
             titleText={say('section.formulaMap.sigma', '背景雜訊底線', 'Thermal noise floor')}
             detail={say(
               'section.formulaMap.sigma.detail',
-              '頻寬 B 和雜訊密度 N₀ 決定分母的雜訊底線。',
-              'Bandwidth B and noise density N₀ define the denominator noise floor.',
+              '波束頻寬 B^w 影響分母的雜訊底線 σ²。',
+              'Beam bandwidth B^w affects the denominator noise floor σ².',
             )}
           />
         </div>

@@ -3,8 +3,8 @@ import { UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
 import type { CanonicalLinkResult, SimulationAnalysisFrame } from '../../simulator/types';
 import { DuelCard } from '../info-panel/DuelCard';
-import { PostSatelliteCapDownlinkPower } from '../common/formulaText';
 import { txBi } from './labels';
+import { SystemAngleState } from './FormulaSymbols';
 import { formatEnergyEfficiency, formatPower, formatRate } from './formatters';
 
 function CanonicalLinkPowerComparison({
@@ -25,7 +25,7 @@ function CanonicalLinkPowerComparison({
   }[] = [
     {
       id: 'actual-power',
-      label: <PostSatelliteCapDownlinkPower />,
+      label: <>Power</>,
       servingValue: formatPower(serving?.actualPowerW),
       candidateValue: formatPower(candidate?.actualPowerW),
     },
@@ -37,7 +37,7 @@ function CanonicalLinkPowerComparison({
     },
     {
       id: 'instantaneous-ee',
-      label: <>η<sup>e</sup></>,
+      label: <>η<sub>u,s,v</sub>(t, <SystemAngleState />)</>,
       servingValue: formatEnergyEfficiency(serving?.instantaneousEeBitsPerJ),
       candidateValue: formatEnergyEfficiency(candidate?.instantaneousEeBitsPerJ),
     },

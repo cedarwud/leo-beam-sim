@@ -20,7 +20,7 @@
     "ADAPTER_MAPPING_FIX_READY",
     "BLOCKED_BY_MODEL_DIFFERENCE"
   ],
-  "expectedPhase6UStatus": "BLOCKED_BY_MODEL_DIFFERENCE",
+  "expectedPhase6UStatus": "ADAPTER_MAPPING_FIX_READY",
   "diagnosticPolicy": {
     "runtimeAdoption": "not-adopted",
     "formulaChanges": "forbidden",

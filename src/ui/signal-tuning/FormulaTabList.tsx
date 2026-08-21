@@ -14,21 +14,24 @@ import type { TuningTabKey } from './types';
 import type { AppExperienceMode } from '../appMode';
 
 /**
- * Secondary tab strip: one button per term of the SINR expression.
+ * Secondary tab strip: one button per term of the SINR expression (p, H, Gᵀ, I, σ²).
  *
  * The buttons carry ONLY the notation. The plain-language name and the
  * one-line description moved to the button's `title` (and to the "?" inside
- * each tab body) — on a narrow rail, seven captioned buttons read as a wall of
+ * each tab body) — on a narrow rail, captioned buttons read as a wall of
  * words above the formula they are supposed to index. The hidden canonical
  * span still names the group for the provenance gates.
  */
 export function FormulaTabList({
   activeTab,
   appMode,
+  variant = 'default',
   onChange,
 }: {
   activeTab: TuningTabKey;
   appMode: AppExperienceMode;
+  /** The legacy Walker rail keeps the notation but uses the Visual Lab chip rhythm. */
+  variant?: 'default' | 'legacy';
   onChange: (tab: TuningTabKey) => void;
 }) {
   const { locale, t } = useLocale();
@@ -37,6 +40,7 @@ export function FormulaTabList({
   // topology is now a peer main tab, so this formula-term strip has no mode
   // gate of its own.
   void appMode;
+  const isLegacy = variant === 'legacy';
   const visibleTabs = TUNING_TABS;
   const normalizedActiveTab = normalizeTuningTabKey(activeTab);
   const activeIndex = Math.max(visibleTabs.findIndex(tab => tab.key === normalizedActiveTab), 0);
@@ -84,10 +88,12 @@ export function FormulaTabList({
     >
       <div style={{
         display: 'grid',
-        // Keep all four groups visible in one row. σ² is a compact scalar, so
-        // give the three link terms the space needed for indexed notation.
-        gridTemplateColumns: 'repeat(3, minmax(0, 1fr)) minmax(40px, 0.45fr)',
-        gap: 6,
+        // Keep all five groups visible in one row. σ² is a compact scalar, so
+        // give the four link terms the space needed for indexed notation.
+        gridTemplateColumns: isLegacy
+          ? 'minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.05fr) minmax(0, 1.1fr) minmax(0, 0.75fr)'
+          : 'repeat(4, minmax(0, 1fr)) minmax(40px, 0.45fr)',
+        gap: 5,
       }}>
         {visibleTabs.map((tab, index) => {
           const active = index === activeIndex;
@@ -111,25 +117,25 @@ export function FormulaTabList({
                 cursor: 'pointer',
                 height: 46,
                 minHeight: 46,
-                padding: '5px 6px',
+                padding: '5px 4px',
                 borderRadius: UI_TOKENS.radius.md,
                 border: active ? `1px solid ${accent}` : `1px solid ${UI_TOKENS.color.border.subtle}`,
-                background: active ? `linear-gradient(180deg, ${accent}1f, rgba(6, 18, 28, 0.82))` : UI_TOKENS.color.surface.card,
+                background: active ? `${accent}1f` : UI_TOKENS.color.surface.card,
                 color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
-                boxShadow: active ? `inset 0 -3px 0 ${accent}` : 'inset 0 -2px 0 rgba(218, 244, 255, 0.06)',
+                boxShadow: active ? `inset 0 -3px 0 ${accent}` : 'none',
                 display: 'grid',
                 gap: 2,
                 alignContent: 'center',
                 justifyItems: 'center',
                 textAlign: 'center',
-                transition: 'background 140ms ease, border-color 140ms ease, color 140ms ease',
+                transition: 'background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease',
                 boxSizing: 'border-box',
                 overflow: 'hidden',
               }}
             >
               {/* Notation never wraps: a symbol broken across two lines reads as
                   two terms, and the 46px chip clips the second line. */}
-              <span style={{ ...formulaTextStyle, fontSize: 22, color: accent, lineHeight: 1.04, whiteSpace: 'nowrap' }}>
+              <span style={{ ...formulaTextStyle, fontSize: 21, color: accent, lineHeight: 1.05, whiteSpace: 'nowrap' }}>
                 {tab.symbol}
               </span>
               {/* Canonical English term: kept in the DOM so the formula-side
@@ -144,11 +150,10 @@ export function FormulaTabList({
       </div>
       {/*
         These non-rendered anchors keep old deep-link and provenance selectors
-        discoverable while the user-facing strip presents one effective-channel
-        tab instead of separate H / G^T / receiver tabs.
+        discoverable for legacy loss and receiver-gain aliases.
       */}
       <div aria-hidden="true" style={srOnlyStyle}>
-        {(['loss', 'beam', 'receiver-gain'] as const).map(tab => (
+        {(['loss', 'receiver-gain'] as const).map(tab => (
           <span key={tab} id={`sinr-formula-tab-${tab}`} />
         ))}
       </div>

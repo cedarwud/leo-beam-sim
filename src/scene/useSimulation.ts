@@ -180,6 +180,7 @@ export function useSimulation(
   servingBeamCount?: number,
   candidateBeamCount?: number,
   beamHoppingEnabled = false,
+  beamPointingMode: 'earth-fixed-cell' | 'sampled-steering' = 'earth-fixed-cell',
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -312,6 +313,7 @@ export function useSimulation(
     profile.id,
     profile.orbit.observerLatDeg,
     profile.orbit.observerLonDeg,
+    profile.antenna.beamwidth3dBRad,
     profile.orbit.shells.map(shell => [
       shell.id,
       shell.altitudeKm,
@@ -348,12 +350,14 @@ export function useSimulation(
       sinrLiveBeamRuntimeRef.current.servingBeamCount,
       sinrLiveBeamRuntimeRef.current.candidateBeamCount,
       sinrLiveBeamRuntimeRef.current.beamHoppingEnabled,
+      beamPointingMode,
     ),
     [
       sinrLiveCellModelStructureKey,
       handoverResetKey,
       useEarthFixedCellTruth,
       replay.epochUtcMs,
+      beamPointingMode,
     ],
   );
   useEffect(() => {

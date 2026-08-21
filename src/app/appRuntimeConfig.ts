@@ -120,10 +120,15 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     cellServingCount: input.appMode === 'modqn-demo'
       ? normalizeRuntimeModqnServingCount(input.sceneTopology.cellServingCount)
       : undefined,
-    ueDistributionMode: input.sceneTopology.ueDistributionMode
-      ?? (input.appMode === 'sinr-experiment'
-        ? 'seven-cell-asymmetric'
-        : trainingTopology.ueDistributionMode ?? 'random'),
+    // The legacy homepage has one intentional UE substrate: 100 users spread
+    // across the same seven asymmetric earth-fixed cells used by the SINR
+    // truth model. Do not let a stale topology override from an earlier UI
+    // experiment silently switch `/` back to a map-wide random population.
+    // Other lanes retain their existing topology-controlled distribution.
+    ueDistributionMode: input.appMode === 'sinr-experiment'
+      ? 'seven-cell-asymmetric'
+      : input.sceneTopology.ueDistributionMode
+        ?? (trainingTopology.ueDistributionMode ?? 'random'),
     // MODQN consolidation: the MODQN live page reuses the SINR scene, so the primary
     // UE is the centred 'observer' protagonist on BOTH modes. The old 'distribution'
     // anchor (from the paper-faithful MODQN) placed the primary off-centre per the UE

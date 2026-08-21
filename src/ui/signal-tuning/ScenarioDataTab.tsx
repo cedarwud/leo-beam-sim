@@ -126,8 +126,8 @@ export function ScenarioDataTab({
         <div style={captionTextStyle}>
           {say(
             'scenarioData.description',
-            '設定星座與模擬時間；時間採 24 小時制，最小單位為分鐘。',
-            'Set the constellation and simulation time. Time uses a 24-hour clock with minute precision.',
+            '設定星座配置與展示日期時間；時間採 24 小時制，最小單位為分鐘。',
+            'Set the constellation configuration and display date/time. Time uses a 24-hour clock with minute precision.',
           )}
         </div>
       </div>
@@ -195,7 +195,7 @@ export function ScenarioDataTab({
         }}
       >
         <div style={groupTitleStyle}>
-          {say('scenarioData.time.title', '模擬日期與時間', 'Simulation date and time')}
+          {say('scenarioData.time.title', '展示日期與時間', 'Display date and time')}
         </div>
         <label htmlFor="scenario-data-date" style={captionTextStyle}>
           {say('scenarioData.date', '日期', 'Date')}

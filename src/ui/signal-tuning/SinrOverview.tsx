@@ -1,7 +1,6 @@
 import { UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
 import type { Profile } from '../../profiles/types';
-import { formatDbi } from './formatters';
 import { txBi } from './labels';
 import {
   compactSummaryStyle,
@@ -81,13 +80,13 @@ export function SinrOverview({
       */}
       <div style={{ display: 'grid', gap: 12, paddingTop: 10 }}>
         <div style={explanatoryTextStyle}>
-          {getOverviewProfileLabel(baseProfile)} · {getOverviewFormulaLabel(baseProfile)} · G<sup>R</sup> {formatDbi(receiverGainDbi)}
+          {getOverviewProfileLabel(baseProfile)} · {getOverviewFormulaLabel(baseProfile)} · H<sub>u,s,v</sub>(t)
         </div>
         <div data-prominence="canonical-copy">
           <span>SINR Formula Tuning</span>
-          <span>γ = (P_t · H · G^T · G^R) / (I^a + I^b + σ²)</span>
-          <span>Signal side P_t, H, G^T, G^R</span>
-          <span>Noise side I^a, I^b, σ²</span>
+          <span>γ<sub>u,s,v</sub>(t, <strong>θ</strong>) = p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>) · H<sub>u,s,v</sub>(t) · G<sup>T</sup>(θ<sub>u,s,v</sub>)</span>
+          <span>Signal side p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>), H<sub>u,s,v</sub>(t), G<sup>T</sup>(θ<sub>u,s,v</sub>)</span>
+          <span>Noise side I<sub>u,s,v</sub>(t, <strong>θ</strong>), σ²</span>
         </div>
       </div>
     </details>

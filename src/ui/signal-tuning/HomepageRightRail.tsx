@@ -1,10 +1,5 @@
 import { useState, type ReactNode } from 'react';
 import { UI_TOKENS } from '../../constants/uiTokens';
-import {
-  DEFAULT_BEAM_LAYOUT_COUNT,
-  isSupportedBeamLayoutCount,
-  type SupportedBeamLayoutCount,
-} from '../../core/beam/completeHexPresets';
 import { useLocale } from '../../i18n';
 import type { SimulatorTab } from '../../simulator/types';
 import { renderFormulaText } from '../common/formulaText';
@@ -96,20 +91,6 @@ function EvaluationWindowControls({ analysis }: { readonly analysis: HomepageCan
   );
 }
 
-function formatBeamCount(value: number, isEnglish: boolean): string {
-  if (!Number.isFinite(value)) return '—';
-  const absolute = Math.abs(value);
-  const scale = absolute >= 1e6
-    ? { divisor: 1e6, suffix: 'M' }
-    : absolute >= 1e3
-      ? { divisor: 1e3, suffix: 'k' }
-      : { divisor: 1, suffix: '' };
-  const rendered = (value / scale.divisor).toLocaleString(isEnglish ? 'en-US' : 'zh-TW', {
-    maximumFractionDigits: scale.divisor === 1 ? 0 : 1,
-  });
-  return `${rendered}${scale.suffix} ${isEnglish ? 'beams' : '波束'}`;
-}
-
 export interface HomepageRightRailProps {
   readonly analysis: HomepageCanonicalAnalysisState;
   /** Same-frame serving/candidate projection stays above appended calculations. */
@@ -191,79 +172,6 @@ function CollapsibleResultSection({
   );
 }
 
-function CanonicalBeamFrameStatus({
-  analysis,
-  say,
-  isEnglish,
-}: {
-  readonly analysis: HomepageCanonicalAnalysisState;
-  readonly say: (key: string, zh: string, en: string) => string;
-  readonly isEnglish: boolean;
-}) {
-  // A small fallback keeps the right rail renderable for the pre-frame loading
-  // fixture as well as the live canonical state.
-  const frameOptions = analysis.frameOptions ?? {};
-  const global = frameOptions.beamLayoutCount ?? DEFAULT_BEAM_LAYOUT_COUNT;
-  const overrides = frameOptions.perSatelliteBeamLayoutCount ?? {};
-  const satelliteCount = analysis.acceptedRun?.geometryRun.satelliteCount
-    ?? analysis.frame?.tleState.propagationFrame.satellites.length
-    ?? null;
-  const totalBeamCount = satelliteCount === null
-    ? global
-    : satelliteCount * global + Object.values(overrides).reduce(
-      (total, configuredCount) => total + configuredCount - global,
-      0,
-    );
-  const servingSatId = analysis.frame?.selectedSatelliteId ?? null;
-  const candidateSatId = analysis.frame?.candidateLink?.satelliteId ?? null;
-  const resolve = (satelliteId: string | null): SupportedBeamLayoutCount => {
-    const override = satelliteId === null ? undefined : overrides[satelliteId];
-    return override !== undefined && isSupportedBeamLayoutCount(override) ? override : global;
-  };
-
-  return (
-    <section
-      data-testid="homepage-beam-frame-status"
-      aria-label={say('homepage.rightRail.beamFrame.aria', '目前波束配置', 'Current beam configuration')}
-      style={{
-        display: 'grid',
-        gap: UI_TOKENS.space.sm,
-        padding: UI_TOKENS.space.md,
-        borderRadius: UI_TOKENS.radius.lg,
-        border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-        background: UI_TOKENS.color.surface.cardFaint,
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: UI_TOKENS.space.md, alignItems: 'baseline' }}>
-        <strong>{say('homepage.rightRail.beamFrame.title', '目前波束配置', 'Current beam configuration')}</strong>
-        <span style={{ ...captionTextStyle, margin: 0 }}>{analysis.frame?.instantTaipei ?? '—'}</span>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: UI_TOKENS.space.xs }}>
-        {[
-          ['global', say('homepage.rightRail.beamFrame.global', '全域波束', 'Total beams'), formatBeamCount(totalBeamCount, isEnglish)],
-          ['serving', say('homepage.rightRail.beamFrame.serving', '服務', 'Serving'), resolve(servingSatId)],
-          ['candidate', say('homepage.rightRail.beamFrame.candidate', '候選', 'Candidate'), resolve(candidateSatId)],
-        ].map(([key, label, value]) => (
-          <div
-            key={key}
-            data-testid={`homepage-beam-frame-${key}`}
-            style={{
-              display: 'grid',
-              gap: 2,
-              padding: `${UI_TOKENS.space.xs}px ${UI_TOKENS.space.sm}px`,
-              borderRadius: UI_TOKENS.radius.md,
-              background: UI_TOKENS.color.surface.card,
-            }}
-          >
-            <span style={captionTextStyle}>{label}</span>
-            <strong>{value}</strong>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 /**
  * Composite homepage right rail.
  *
@@ -339,8 +247,6 @@ export function HomepageRightRail({ analysis, children }: HomepageRightRailProps
           {children}
         </div>
       )}
-
-      <CanonicalBeamFrameStatus analysis={analysis} say={say} isEnglish={isEnglish} />
 
       <div data-testid="homepage-all-calculation-results" style={{ display: 'grid', gap: UI_TOKENS.space.md }}>
         {RESULT_SECTION_ORDER.map((section, index) => (

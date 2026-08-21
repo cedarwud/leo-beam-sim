@@ -1,0 +1,173 @@
+// /walker sandbox-only stylesheet. Reskins the ORIGINAL "/" left sidebar's
+// chrome (panel shell, boxed sub-panels, tab/button styling, corners, blur,
+// shadow) so it reads in the same flat, sharp-cornered, gold-accented visual
+// language as the /simulator left dock (see UnifiedVisualLabPrototype.scss
+// ".vlab-app" tokens: --vlab-surface #0b1216 / --vlab-surface-raised #101a1f
+// / --vlab-line rgba(153,183,188,.18) / --vlab-service #f1bd55).
+//
+// Every rule here is scoped under .leo-walker-sandbox-vlab-reskin (only
+// applied to the /walker sandbox's copy of the left aside) and every value
+// is `!important`, because the components underneath (SignalTuningPanel and
+// its children, shared with the live "/" page) render these as inline
+// styles from src/constants/uiTokens.ts. This file never edits that shared
+// token file or any shared component -- it only overrides what the browser
+// paints, and only inside this one scoped subtree. "/" is untouched.
+//
+// This is a deliberately blunt first pass (attribute-substring matching
+// stands in for per-component edits) -- it does NOT recolor the formula
+// term glyphs (p/H/G/I/sigma-squared), since those color codes are shared,
+// correct content already consistent with the /simulator formula rendering.
+// CSS-variables-only stand-in for the real ".vlab-app" class. The real class
+// also carries page-shell layout (width:100vw/height:100vh/display:grid/
+// min-height:720px -- see UnifiedVisualLabPrototype.scss ".vlab-app" and
+// ".vlab-app--progressive"), which is correct for a full-page <main> but
+// forces any small nested element wrapped in it to balloon to a full page's
+// height. This class exists so leo-walker-sandbox-sidebar2-nav can read the
+// same --vlab-* tokens .vlab-sidebar-module needs without inheriting that
+// page-shell sizing.
+.leo-walker-sandbox-vlab-vars {
+  --vlab-bg: #050a0d;
+  --vlab-surface: #0b1216;
+  --vlab-surface-raised: #101a1f;
+  --vlab-surface-soft: #142027;
+  --vlab-line: rgba(153, 183, 188, .18);
+  --vlab-line-strong: rgba(153, 183, 188, .34);
+  --vlab-ink: #edf4f2;
+  --vlab-muted: #9bafb0;
+  --vlab-dim: #6e8386;
+  --vlab-service: #f1bd55;
+  --vlab-service-soft: rgba(241, 189, 85, .14);
+  --vlab-candidate: #55c8e4;
+  --vlab-candidate-soft: rgba(85, 200, 228, .12);
+  --vlab-energy: #80d6aa;
+  --vlab-danger: #ed856d;
+  color: var(--vlab-ink);
+  font: 15px/1.45 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
+}
+
+// Mirrors UnifiedVisualLabPrototype.scss ".vlab-app--theme-light" tokens, so
+// the reference column's own theme toggle still does something.
+.leo-walker-sandbox-vlab-vars--light {
+  --vlab-bg: #eee7dc;
+  --vlab-surface: #fffaf1;
+  --vlab-surface-raised: #f7f0e5;
+  --vlab-surface-soft: #ede3d4;
+  --vlab-line: rgba(66, 72, 72, .2);
+  --vlab-line-strong: rgba(57, 65, 66, .42);
+  --vlab-ink: #24343c;
+  --vlab-muted: #586a70;
+  --vlab-dim: #6b787c;
+  --vlab-service: #b4740b;
+  --vlab-service-soft: rgba(180, 116, 11, .12);
+  --vlab-candidate: #1b709c;
+  --vlab-candidate-soft: rgba(27, 112, 156, .1);
+  --vlab-energy: #2e7c5b;
+  --vlab-danger: #a94e42;
+}
+
+.leo-walker-sandbox-vlab-reskin {
+  // The real SignalTuningPanel main-tab row stays mounted (it owns the real
+  // tab state) but is replaced, visually, by the vlab-style icon nav
+  // (leo-walker-sandbox-sidebar2-nav in AppWalkerSandbox.tsx) rendered just
+  // above it.
+  [data-testid="signal-tuning-main-tabs"] {
+    display: none !important;
+  }
+
+  .leo-walker-sandbox-sidebar2-nav {
+    // Clears .leo-left-sidebar-toggle, which is position:absolute at
+    // top:6px/right:40px over this same column.
+    margin-top: 40px;
+    margin-bottom: 8px;
+  }
+
+  // Sharp corners everywhere: vlab panels/buttons are boxy, not rounded.
+  [style*="border-radius"] {
+    border-radius: 0 !important;
+  }
+
+  // Flat panels: vlab never blurs behind its cards.
+  [style*="backdrop-filter"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  // Outer panel shell -- the single biggest visual signature (glass
+  // gradient + soft drop shadow -> flat surface, hairline border, no shadow).
+  .leo-signal-tuning-panel {
+    background: #0b1216 !important;
+    border: 1px solid rgba(153, 183, 188, .18) !important;
+    box-shadow: none !important;
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  }
+
+  // Every OTHER boxed sub-panel (formula header cards, control-group cards,
+  // tab trays, the constellation picker, the date/time disclosure row, the
+  // "current data" status line, the SINR/power callout boxes...) is styled
+  // by the SAME small set of UI_TOKENS.color.surface/.border literals
+  // (src/constants/uiTokens.ts), regardless of which testid it carries. So
+  // instead of chasing every testid, match those exact literal values --
+  // this is what actually reaches every card, not just the ones with
+  // "-header"/"-controls"/"-page" ids.
+  //
+  // surfaces -> flat vlab surfaces
+  [style*="background: rgba(255, 255, 255, 0.075)"],
+  [style*="background: rgba(255, 255, 255, 0.055)"],
+  [style*="background: rgba(255, 255, 255, 0.035)"],
+  [style*="background: rgba(8, 23, 32, 0.96)"],
+  [style*="background: rgba(12, 35, 44, 0.72)"],
+  [style*="background: rgba(118, 234, 215, 0.08)"],
+  [data-testid$="-header"],
+  [data-testid$="-controls"],
+  [data-testid$="-page"],
+  [role="tablist"] {
+    background: #101a1f !important;
+  }
+
+  // borders -> one hairline, regardless of which soft-blue/teal tone or
+  // variable per-side width (the 3px colored left accent) it started as.
+  [style*="border-color: rgba(218, 244, 255"],
+  [style*="border: 1px solid rgba(218, 244, 255"],
+  [style*="border: 1px solid rgba(137, 205, 255, 0.24)"],
+  [style*="border: 1px solid rgba(118, 234, 215, 0.28)"],
+  [style*="border: 1px solid rgba(118, 234, 215, 0.2)"],
+  [style*="border-width: 1px 1px 1px 3px"],
+  [data-testid$="-header"],
+  [data-testid$="-controls"],
+  [data-testid$="-page"],
+  [role="tablist"] {
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-color: rgba(153, 183, 188, .18) !important;
+  }
+
+  // Every other inline box-shadow (the panel/card soft glows) is gone; the
+  // selected-tab indicator below is scoped narrowly enough to still win.
+  [style*="box-shadow"] {
+    box-shadow: none !important;
+  }
+
+  // Tab / button chrome (.leo-ui-tab-button / .leo-ui-button are real
+  // classNames, not inline-only, so these are ordinary selectors).
+  .leo-ui-tab-button,
+  .leo-ui-button {
+    border-color: rgba(153, 183, 188, .18) !important;
+    background: rgba(8, 16, 20, .96) !important;
+  }
+
+  // Selected-tab indicator: same inset-bottom-bar pattern vlab's own module
+  // nav uses (.vlab-sidebar-module.is-active), recolored teal -> gold.
+  .leo-ui-tab-button[aria-selected="true"] {
+    border-color: #f1bd55 !important;
+    box-shadow: inset 0 -3px 0 #f1bd55 !important;
+    background: rgba(241, 189, 85, .12) !important;
+  }
+
+  // Tab / button captions: leo renders these in the math-serif font even
+  // for plain labels ("SINR", "Power"...); vlab uses its sans-serif body
+  // font for chrome text and reserves serif/monospace for actual formulas.
+  .leo-ui-tab-button span,
+  .leo-ui-button span {
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif !important;
+  }
+}

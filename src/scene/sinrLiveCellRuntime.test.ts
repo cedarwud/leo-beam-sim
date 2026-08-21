@@ -23,14 +23,10 @@
  * Run: `npm run validate:phase-c:sinr-live-cells:runtime`.
  */
 import { DEFAULT_MIN_ELEVATION_DEG } from '../engine/cells/cellLayout';
-import { consistentPeakGainDbi } from '../engine/signal/beam-gain';
 import { loadProfile } from '../profiles/index';
 import { SinrLiveCellModel, type CellModelSat } from './sinrLiveCellModel';
 import {
-  SINR_LIVE_CELL_ANTENNA_EFFICIENCY,
-  SINR_LIVE_CELL_BEAMWIDTH_RAD,
   SINR_LIVE_CELL_COUNT,
-  SINR_LIVE_CELL_MAX_GAIN_DBI,
   SINR_LIVE_CELL_MAX_STEERING_DEG,
   SINR_LIVE_CELL_MIN_ELEVATION_DEG,
   attachSinrLiveCellFrame,
@@ -137,38 +133,25 @@ check('cell layout is built from the live profile at the tunable cell count', ()
   assertEqual(layout.altitudeKm, profile.orbit.shells[0]!.altitudeKm, 'altitude from profile shell');
   // Cell size uses the SINR-live beamwidth (= profile antenna value); the model's
   // link-budget GAIN is derived from the SAME beamwidth (one antenna).
-  assertEqual(layout.beamwidth3dBRad, SINR_LIVE_CELL_BEAMWIDTH_RAD, 'beamwidth = sinr-live override');
+  assertEqual(layout.beamwidth3dBRad, profile.antenna.beamwidth3dBRad, 'beamwidth = profile antenna');
 });
 
-// --- antenna self-consistency (S-cells-4a truth-input) -----------------------
+// --- profile-backed antenna truth-input --------------------------------------
 
-check('antenna self-consistency: peak gain matches beamwidth (no >100% efficiency bug)', () => {
-  const consistent = consistentPeakGainDbi(SINR_LIVE_CELL_BEAMWIDTH_RAD, SINR_LIVE_CELL_ANTENNA_EFFICIENCY);
-  assert(Number.isFinite(consistent), 'consistent peak gain is finite');
-  assert(
-    Math.abs(SINR_LIVE_CELL_MAX_GAIN_DBI - consistent) < 0.5,
-    `gain self-consistent within 0.5 dB (override ${SINR_LIVE_CELL_MAX_GAIN_DBI} vs consistent ${consistent.toFixed(3)})`,
-  );
-  // The profile's 40 dBi @ 3.32° is the >100%-efficiency bug this override fixes:
-  // the showcase peak gain must sit BELOW the profile's impossible value.
-  assert(
-    SINR_LIVE_CELL_MAX_GAIN_DBI < profile.antenna.maxGainDbi - 3,
-    `override de-biases the profile peak gain (override ${SINR_LIVE_CELL_MAX_GAIN_DBI} << profile ${profile.antenna.maxGainDbi})`,
-  );
-  // The override must be strictly larger than the profile's 12° steering limit —
-  // the bottleneck the override lifts so the area is covered.
-  assert(
-    SINR_LIVE_CELL_MAX_STEERING_DEG > profile.antenna.maxSteeringAngleDeg,
-    `steering override widens the profile limit (override ${SINR_LIVE_CELL_MAX_STEERING_DEG}° > profile ${profile.antenna.maxSteeringAngleDeg}°)`,
-  );
-});
-
-check('S-cells-4a overrides reach the factory model: a sat at >12° (profile) but <50° scan now serves', () => {
+check('factory keeps the profile antenna values visible to the live cell truth', () => {
   const model = createSinrLiveCellModel(profile, true, EPOCH_MS)!;
-  // A sat whose nadir is ~320 km east of the observer → scan-to-centre ≈ 30°
-  // (beyond the profile's 12° steering limit, within the 50° override). If the
-  // steering override were NOT wired into the factory, the centre cell would have
-  // no candidate and stay idle.
+  const internals = model as unknown as { antenna: typeof profile.antenna };
+  assertEqual(internals.antenna.maxGainDbi, profile.antenna.maxGainDbi, 'peak gain comes from profile');
+  assertEqual(internals.antenna.beamwidth3dBRad, profile.antenna.beamwidth3dBRad, 'beamwidth comes from profile');
+  assertEqual(internals.antenna.maxSteeringAngleDeg, profile.antenna.maxSteeringAngleDeg, 'max steering comes from profile');
+  assertEqual(internals.antenna.scanLossAtMaxSteeringDb, profile.antenna.scanLossAtMaxSteeringDb, 'scan loss comes from profile');
+});
+
+check('the presentation coverage guard keeps a >12° cell reachable without changing formula antenna values', () => {
+  const model = createSinrLiveCellModel(profile, true, EPOCH_MS)!;
+  // A sat whose nadir is ~320 km east of the observer → scan-to-centre ≈ 30°.
+  // The coverage guard keeps the fixed presentation cell populated, while the
+  // model's antenna (asserted above) remains profile-backed for scan loss/SINR.
   const lonOffsetDeg = 320 / (111.32 * Math.cos((OBS_LAT * Math.PI) / 180));
   const offNadir = makeSat('offnadir', { latDeg: OBS_LAT, lonDeg: OBS_LON + lonOffsetDeg, elevationDeg: 55 });
   const frame = makeFrame({
@@ -178,7 +161,8 @@ check('S-cells-4a overrides reach the factory model: a sat at >12° (profile) bu
   });
   attachSinrLiveCellFrame(frame, model, 1);
   const cell0 = frame.sinrLiveCells!.cells.find(c => c.cellId === 0)!;
-  assertEqual(cell0.servingSatId, 'offnadir', 'centre cell served by the ~30°-scan off-nadir sat (steering override wired)');
+  assertEqual(cell0.servingSatId, 'offnadir', 'centre cell served by the presentation coverage guard');
+  assert(SINR_LIVE_CELL_MAX_STEERING_DEG > profile.antenna.maxSteeringAngleDeg, 'coverage guard is wider than the default profile control');
 });
 
 // --- the lane gate (other-lane zero-drift) -----------------------------------

@@ -19,18 +19,19 @@ export type MainTabKey =
   | 'scene';
 
 /**
- * The four visible terms of γ. The former loss/beam/receiver-gain keys remain
- * as compatibility aliases for older deep links and validation fixtures, but
- * they are represented by the single visible effective-channel tab.
+ * The five visible terms of γ: signal-power (p), channel (H), beam (Gᵀ),
+ * interference (I), and thermal-noise (σ²). The former loss and receiver-gain
+ * keys remain as compatibility aliases for older deep links and validation
+ * fixtures, mapping to the channel tab.
  */
 export type TuningTabKey =
   | 'signal-power'
   | 'channel'
+  | 'beam'
   | 'interference'
   | 'thermal-noise'
   // Compatibility aliases; not rendered in the visible tab strip.
   | 'loss'
-  | 'beam'
   | 'receiver-gain';
 
 export type SignalDrawerState = 'collapsed' | 'tuning' | 'diagnostics';
