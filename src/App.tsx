@@ -243,7 +243,7 @@ import {
   type SixActsTeachingMode,
 } from './course/sixActs/teachingMode';
 import {
-  adaptSixActsFrameFacts,
+  adaptHomepageSixActsFrameFacts,
   type SixActsFrameFacts,
 } from './course/sixActs/liveReplayBridge';
 import {
@@ -262,49 +262,6 @@ interface HandoverPolicyRuntimeState {
   draft: HandoverPolicyTuningState;
   applied: HandoverPolicyTuningState;
   version: number;
-}
-
-function adaptHomepageSixActsFrameFacts(state: SimState): SixActsFrameFacts | null {
-  const primaryUeId = state.primaryUeId;
-  const canonicalEe = state.canonicalEe;
-  if (
-    primaryUeId === null
-    || primaryUeId === undefined
-    || canonicalEe === null
-    || canonicalEe === undefined
-    || canonicalEe.systemPowerW === null
-    || canonicalEe.perUserContributions === null
-  ) return null;
-
-  return adaptSixActsFrameFacts(
-    {
-      simTimeSec: state.simTimeSec,
-      serving: {
-        satId: state.servingSatId,
-        sinrDb: Number.isFinite(state.sinrDb) ? state.sinrDb : 0,
-      },
-      pendingTargetSatId: state.pendingTargetSatId,
-      pendingTargetSinrDb: state.pendingTargetSinrDb,
-      handoverTriggerProgressSec: state.handoverTriggerProgressSec,
-      lastHoEvent: state.lastHoEvent === null ? null : {
-        timeMs: state.lastHoEvent.timeMs,
-        action: state.lastHoEvent.action,
-        fromSatId: state.lastHoEvent.fromSatId,
-        toSatId: state.lastHoEvent.toSatId,
-        deltaDb: state.lastHoEvent.deltaDb,
-      },
-    },
-    {
-      systemPowerW: canonicalEe.systemPowerW,
-      users: canonicalEe.perUserContributions.map(user => ({
-        ueId: user.ueId,
-        status: user.status ?? (user.satId !== null && user.sinrDb !== null ? 'served' : 'unserved'),
-        sinrDb: user.sinrDb ?? null,
-        rateMbps: user.rateMbps ?? 0,
-      })),
-    },
-    primaryUeId,
-  );
 }
 
 const MODQN_REPLAY_VISUAL_TICK_MS = 100;

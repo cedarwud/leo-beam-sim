@@ -247,6 +247,47 @@ export interface SixActsAdaptableEnergyFrame {
 }
 
 /**
+ * Homepage publisher state consumed by the teaching adapter.
+ *
+ * `canonicalEe` is preferred when its complete payload is available. The live
+ * homepage already publishes the selected-link `angleAwareFormulaFrame` to
+ * the teaching dock, though, and the teaching cinema needs a real frame even
+ * while the separate canonical accumulator is fail-closed. The fallback below
+ * carries only that focused link; it never fills missing aggregate users with
+ * invented values.
+ */
+export interface SixActsHomepageFrameState {
+  readonly simTimeSec: number;
+  readonly primaryUeId?: string | null;
+  readonly canonicalEe?: {
+    readonly systemPowerW: number | null;
+    readonly perUserContributions: readonly {
+      readonly ueId: string;
+      readonly status?: 'served' | 'outage' | 'unserved';
+      readonly satId?: string | null;
+      readonly sinrDb?: number | null;
+      readonly rateMbps?: number;
+    }[] | null;
+  } | null;
+  readonly angleAwareFormulaFrame?: {
+    readonly ueId: string;
+    readonly satId: string;
+    readonly selected: 0 | 1;
+    readonly terms: {
+      readonly gammaDb: number;
+      readonly throughputBps: number;
+      readonly systemPowerW: number;
+    };
+  } | null;
+  readonly servingSatId: string | null;
+  readonly sinrDb: number;
+  readonly pendingTargetSatId: string | null;
+  readonly pendingTargetSinrDb: number | null;
+  readonly handoverTriggerProgressSec: number;
+  readonly lastHoEvent: SixActsAdaptableSimFrame['lastHoEvent'];
+}
+
+/**
  * Maps one runtime frame plus its canonical EE frame onto the bridge's port.
  *
  * Attachment comes from the EE producer's per-UE status, not from the serving
@@ -281,4 +322,90 @@ export function adaptSixActsFrameFacts(
     ratesMbps: Object.freeze(energy.users.map(user => user.rateMbps)),
     systemPowerW: energy.systemPowerW,
   });
+}
+
+/**
+ * Adapt the live homepage without weakening the fail-closed canonical EE
+ * contract. The focused angle-aware formula frame is the same engine-backed
+ * source already used by the dock; it is the only honest fallback when the
+ * aggregate canonical publisher reports an unavailable/invalid payload.
+ */
+export function adaptHomepageSixActsFrameFacts(
+  state: SixActsHomepageFrameState,
+): SixActsFrameFacts | null {
+  const primaryUeId = state.primaryUeId;
+  const canonicalEe = state.canonicalEe;
+  if (
+    primaryUeId !== null
+    && primaryUeId !== undefined
+    && canonicalEe !== null
+    && canonicalEe !== undefined
+    && canonicalEe.systemPowerW !== null
+    && Number.isFinite(canonicalEe.systemPowerW)
+    && canonicalEe.perUserContributions !== null
+  ) {
+    return adaptSixActsFrameFacts(
+      {
+        simTimeSec: state.simTimeSec,
+        serving: {
+          satId: state.servingSatId,
+          sinrDb: Number.isFinite(state.sinrDb) ? state.sinrDb : 0,
+        },
+        pendingTargetSatId: state.pendingTargetSatId,
+        pendingTargetSinrDb: state.pendingTargetSinrDb,
+        handoverTriggerProgressSec: state.handoverTriggerProgressSec,
+        lastHoEvent: state.lastHoEvent,
+      },
+      {
+        systemPowerW: canonicalEe.systemPowerW,
+        users: canonicalEe.perUserContributions.map(user => ({
+          ueId: user.ueId,
+          status: user.status ?? (user.satId != null && user.sinrDb != null ? 'served' : 'unserved'),
+          sinrDb: user.sinrDb ?? null,
+          rateMbps: user.rateMbps ?? 0,
+        })),
+      },
+      primaryUeId,
+    );
+  }
+
+  const formulaFrame = state.angleAwareFormulaFrame;
+  const formulaTerms = formulaFrame?.terms;
+  if (
+    formulaFrame === null
+    || formulaFrame === undefined
+    || formulaFrame.selected !== 1
+    || formulaTerms === undefined
+    || !Number.isFinite(formulaTerms.gammaDb)
+    || !Number.isFinite(formulaTerms.throughputBps)
+    || !Number.isFinite(formulaTerms.systemPowerW)
+  ) return null;
+
+  return adaptSixActsFrameFacts(
+    {
+      simTimeSec: state.simTimeSec,
+      serving: {
+        // The formula frame is the selected-link authority for this fallback;
+        // keep the handover fields from the same homepage state alongside it.
+        satId: state.servingSatId ?? formulaFrame.satId,
+        sinrDb: formulaTerms.gammaDb,
+      },
+      pendingTargetSatId: state.pendingTargetSatId,
+      pendingTargetSinrDb: state.pendingTargetSinrDb,
+      handoverTriggerProgressSec: state.handoverTriggerProgressSec,
+      lastHoEvent: state.lastHoEvent,
+    },
+    {
+      systemPowerW: formulaTerms.systemPowerW,
+      // This fallback is intentionally a focused-link projection. Other UE
+      // rates are unavailable from this frame and are not fabricated.
+      users: [{
+        ueId: formulaFrame.ueId,
+        status: 'served',
+        sinrDb: formulaTerms.gammaDb,
+        rateMbps: formulaTerms.throughputBps / 1e6,
+      }],
+    },
+    formulaFrame.ueId,
+  );
 }

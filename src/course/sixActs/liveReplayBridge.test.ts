@@ -7,10 +7,12 @@ import type { BeamshiftCanonicalInstantaneousEe } from '../../teaching';
 import {
   SixActsBridgeError,
   SixActsReplayCollector,
+  adaptHomepageSixActsFrameFacts,
   adaptSixActsFrameFacts,
   type SixActsAdaptableEnergyFrame,
   type SixActsAdaptableSimFrame,
   type SixActsFrameFacts,
+  type SixActsHomepageFrameState,
 } from './liveReplayBridge';
 import { buildSixActsDirectorPlan } from './directorScript';
 import { declareSixActsCourseThreshold } from './taughtConstants';
@@ -268,4 +270,72 @@ test('an energy frame without the focused UE is a typed failure', () => {
     { systemPowerW: 1, users: [{ ueId: 'ue-0', status: 'served', sinrDb: -5, rateMbps: 1 }] },
     'ue-12',
   ));
+});
+
+function homepageState(
+  overrides: Partial<SixActsHomepageFrameState> = {},
+): SixActsHomepageFrameState {
+  return {
+    simTimeSec: 12,
+    primaryUeId: null,
+    canonicalEe: {
+      systemPowerW: null,
+      perUserContributions: null,
+    },
+    angleAwareFormulaFrame: {
+      ueId: 'ue-0',
+      satId: FROM,
+      selected: 1,
+      terms: {
+        gammaDb: -8.5,
+        throughputBps: 6.5e6,
+        systemPowerW: 3.25,
+      },
+    },
+    servingSatId: FROM,
+    sinrDb: -8.5,
+    pendingTargetSatId: TO,
+    pendingTargetSinrDb: -4.9,
+    handoverTriggerProgressSec: 4,
+    lastHoEvent: null,
+    ...overrides,
+  };
+}
+
+test('homepage adapter uses the live formula frame while canonical EE is invalid', () => {
+  const adapted = adaptHomepageSixActsFrameFacts(homepageState());
+
+  assert.ok(adapted);
+  assert.strictEqual(adapted.servingSatelliteId, FROM);
+  assert.strictEqual(adapted.servingSinrDb, -8.5);
+  assert.deepStrictEqual(adapted.ratesMbps, [6.5]);
+  assert.strictEqual(adapted.systemPowerW, 3.25);
+  assert.strictEqual(adapted.candidateSatelliteId, TO);
+});
+
+test('homepage adapter fails closed when neither complete EE nor formula frame is available', () => {
+  const adapted = adaptHomepageSixActsFrameFacts(homepageState({ angleAwareFormulaFrame: null }));
+
+  assert.strictEqual(adapted, null);
+});
+
+test('homepage adapter keeps the complete canonical payload as the preferred source', () => {
+  const adapted = adaptHomepageSixActsFrameFacts(homepageState({
+    primaryUeId: 'ue-canonical',
+    canonicalEe: {
+      systemPowerW: 11,
+      perUserContributions: [{
+        ueId: 'ue-canonical',
+        status: 'served',
+        satId: FROM,
+        sinrDb: -7,
+        rateMbps: 4,
+      }],
+    },
+  }));
+
+  assert.ok(adapted);
+  assert.strictEqual(adapted.systemPowerW, 11);
+  assert.deepStrictEqual(adapted.ratesMbps, [4]);
+  assert.strictEqual(adapted.servingSinrDb, -7);
 });
