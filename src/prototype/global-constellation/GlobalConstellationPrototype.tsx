@@ -221,7 +221,7 @@ function Act1Timeline({
               onClick={() => onSpeed(option.value)}>{option.label}</button>
           ))}
         </div>
-        <small>整個星座一起動。可見顆數會跟著跳——這就是為什麼需要換手。</small>
+        <small>整個星座持續運動，可見衛星數量隨時間變化，這正是換手機制的背景。</small>
       </div>
       <input
         type="range"
@@ -378,7 +378,7 @@ export function GlobalConstellationPrototype(): ReactElement {
       <header className="global-constellation__header">
         <div>
           <p className="global-constellation__kicker">GLOBAL CONSTELLATION · TLE / SGP4</p>
-          <h1>一顆地球，看見整個星座</h1>
+          <h1>地球觀測點與全球星座</h1>
           <p className="global-constellation__lede">切換 Starlink 或 OneWeb，直接比較全球衛星數量與軌道高度的差異。</p>
         </div>
         <aside className="global-constellation__badge" role="note">
@@ -393,7 +393,7 @@ export function GlobalConstellationPrototype(): ReactElement {
           <div className="global-constellation__panel-heading">
             <span>CONSTELLATION</span>
             <h2>選擇衛星系統</h2>
-            <p>兩組資料來自同一個封存時間點；切換後，地球周圍點雲數量會跟著改變。</p>
+            <p>兩組資料來自同一個封存時間點；切換後，地球周圍點雲數量隨星座資料集改變。</p>
           </div>
 
           <div className="global-constellation__selector" role="group" aria-label="選擇星座">
@@ -447,7 +447,7 @@ export function GlobalConstellationPrototype(): ReactElement {
           <div className="global-constellation__rule" />
           <p className="global-constellation__section-label">CURRENT VIEW</p>
           <p className="global-constellation__selection"><strong>{selectedLabel}</strong><span>全球整球視角</span></p>
-          <p className="global-constellation__note">這個 route 只負責展示星座規模；服務衛星、候選衛星、UE 與換手流程仍留在 3D 教學 route。</p>
+          <p className="global-constellation__note">此頁面負責展示星座規模；服務衛星、候選衛星、UE 與換手流程仍由 3D 教學首頁呈現。</p>
         </aside>
 
         <section className="global-constellation__stage" aria-label="全球衛星場景">

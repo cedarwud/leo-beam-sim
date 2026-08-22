@@ -109,8 +109,8 @@ export function EnergyLabRoute(): ReactElement {
       <SixActsNav currentHref="/course/energy-lab" />
       <header className="energy-lab__header">
         <p className="energy-lab__kicker">ACT 5 · 節能實驗　／　ACT 6 · 平台記錄</p>
-        <h1>「調小功率＝省電」是真的嗎？</h1>
-        <p className="energy-lab__lede">先押注，再掃描，最後把你量到的東西留下證據。</p>
+        <h1>降低發射功率是否必然提升能源效率？</h1>
+        <p className="energy-lab__lede">先提出可檢驗預測，再掃描功率，最後保留量測證據。</p>
               <p className="energy-lab__badge">
           <b>ξ = {ENERGY_LAB_PARAMS.xi}</b>（ADR-006 §29，常數）與
           <b> P^f = {energyLabFixedOverheadW().toFixed(3)} W</b>
@@ -163,7 +163,7 @@ export function EnergyLabRoute(): ReactElement {
           className="energy-lab__record"
           disabled={alreadyRecorded}
           onClick={() => setRecorded(previous => [...previous, { arm, beamPowerW }])}
-        >{alreadyRecorded ? '這個點已記錄' : '記錄一點'}</button>
+        >{alreadyRecorded ? '此功率點已記錄' : '記錄此功率點'}</button>
 
         <div className="energy-lab__chart">
           <svg viewBox="0 0 620 220" role="img" aria-label="能量效率對功率的曲線">
@@ -194,7 +194,7 @@ export function EnergyLabRoute(): ReactElement {
         <div className="energy-lab__reveal">
           <h3>3 · 揭示</h3>
           {segments.shape === 'insufficient-points'
-            ? <p className="energy-lab__hint">至少記錄三個點，形狀才說得準。目前 {curves[arm].length} 點。</p>
+            ? <p className="energy-lab__hint">至少記錄三個點，才能判定曲線形狀。目前 {curves[arm].length} 點。</p>
             : <>
               <p className="energy-lab__shape">
                 你的曲線是：<strong>{
@@ -202,24 +202,24 @@ export function EnergyLabRoute(): ReactElement {
                     : segments.shape === 'monotonic-increasing' ? '一路上升'
                       : '一路下降'
                 }</strong>
-                {segments.peak === null ? null : <>，甜蜜點在 <strong>{segments.peak.beamPowerW} W</strong></>}
+                {segments.peak === null ? null : <>，最佳能效點為 <strong>{segments.peak.beamPowerW} W</strong></>}
               </p>
               <ul className="energy-lab__segments">
                 <li><strong>左段（功率太小）</strong>
                   固定開銷 P^f = {energyLabFixedOverheadW().toFixed(2)} W 不會因為你調小而消失。
                   功率調到 0.02 W 時，七道波束總共才吃 {(7 * 0.02 / ENERGY_LAB_PARAMS.xi).toFixed(2)} W，
-                  也就是說**八成以上的電是花在什麼都沒傳的固定開銷上**——每 bit 的能量成本因此爆炸。</li>
-                <li><strong>中段</strong>甜蜜點。它是算出來的，不是猜的。</li>
+                  也就是說**超過 80% 的系統功耗來自未承載資料的固定開銷**——每 bit 的能量成本因此顯著上升。</li>
+                <li><strong>中段</strong>為最佳能效區間，由計算結果決定，而非主觀預測。</li>
                 <li><strong>右段（功率拉滿）</strong>
                   速率只有 <b>log</b> 成長，電源端功率卻是<b>線性</b>成長
                   （ξ = {ENERGY_LAB_PARAMS.xi} 是常數，所以 P^p = p/ξ 對 p 成正比），
                   多波束時干擾又同步上升讓速率提早飽和——報酬遞減。</li>
               </ul>
               <p className="energy-lab__trap">
-                <strong>第二層陷阱：</strong>
+                <strong>第二項效應：</strong>
                 功率太低時 LOW_SINR_RATIO 直接衝到 100%。噪聲不會跟著你變小，
                 絕對門檻（{live.summary.lowSinrThresholdDb} dB，這是<b>引擎的運作規則、不是論文值</b>）過不了，
-                UE 只能斷著等——停擺期間固定功耗照燒，J/bit 更慘。
+                UE 只能等待重新附著；停擺期間固定功耗仍持續消耗，使 J/bit 進一步惡化。
               </p>
             </>}
         </div>

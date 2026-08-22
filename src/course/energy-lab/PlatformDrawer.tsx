@@ -99,7 +99,7 @@ export function PlatformDrawer({ summary, armLabel }: {
   return (
     <section className="platform">
       <button type="button" className="platform__toggle" onClick={() => setOpen(value => !value)}>
-        {open ? '收起' : '打開'} Platform 抽屜 · ACT 6
+        {open ? '收合' : '展開'} Platform 面板 · ACT 6
       </button>
 
       {!open ? null : (
@@ -141,7 +141,7 @@ export function PlatformDrawer({ summary, armLabel }: {
               </select>
             </label>
             <button type="button" onClick={() => { void runOfflineUpload(); }}>
-              走一次上傳流程（離線）
+              執行一次離線上傳流程
             </button>
             <button type="button" onClick={() => download(
               'six-acts-payload.json', serializeSixActsPayloadAsJson(built.payload), 'application/json')}>
@@ -169,7 +169,7 @@ export function PlatformDrawer({ summary, armLabel }: {
 
           <h3>上傳台帳</h3>
           {ledger.length === 0
-            ? <p className="platform__hint">還沒有上傳紀錄。按上面那顆按鈕走一次完整流程。</p>
+            ? <p className="platform__hint">尚無上傳紀錄。執行離線流程以建立完整紀錄。</p>
             : <table className="platform__ledger">
               <thead><tr><th>#</th><th>動作</th><th>筆數</th><th>HTTP</th><th>結果</th><th>說明</th></tr></thead>
               <tbody>
@@ -200,7 +200,7 @@ export function PlatformDrawer({ summary, armLabel }: {
 
           <p className="platform__blocked">
             正式上傳需要 <code>SMARTFARM_EMAIL / SMARTFARM_PASSWORD / SMARTFARM_MAC</code>，
-            由講師端提供；瀏覽器不持有這些憑證，所以這個抽屜不提供「現在上傳」按鈕。
+            由講師端提供；瀏覽器不持有這些憑證，因此此面板不提供即時上傳按鈕。
           </p>
         </div>
       )}

@@ -43,8 +43,8 @@ export const SIX_ACTS_TAUGHT_CONSTANTS: readonly SixActsTaughtConstant[] = Objec
     provenance: 'ENGINE-OPERATING' as const,
     sourceRef: null,
     captionZhHant:
-      '這是本模擬器判定 UE 能不能掛上／重掛的運作門檻（六個 profile 一致）。'
-      + '沒有論文或標準出處——它是引擎的規則，不是論文值。',
+      '本模擬器以此運作門檻判定 UE 是否可附著或重新附著（六個 profile 一致）。'
+      + '沒有論文或標準出處；它是引擎規則，不是論文值。',
   }),
   Object.freeze({
     id: 'engine-reattach-relax-db',
@@ -53,7 +53,7 @@ export const SIX_ACTS_TAUGHT_CONSTANTS: readonly SixActsTaughtConstant[] = Objec
     provenance: 'ENGINE-OPERATING' as const,
     sourceRef: null,
     captionZhHant:
-      '斷線後重掛時，引擎把上面那個門檻放寬 3 dB。同樣沒有出處，是引擎的規則。',
+      '連線中斷後重新附著時，引擎將附著門檻放寬 3 dB。同樣沒有出處，是引擎規則。',
   }),
   Object.freeze({
     id: 'handover-offset-db',
@@ -61,7 +61,7 @@ export const SIX_ACTS_TAUGHT_CONSTANTS: readonly SixActsTaughtConstant[] = Objec
     unit: 'dB',
     provenance: 'STUDY-POLICY' as const,
     sourceRef: 'artifacts/tle-event-atlas/20260818-ntpu-90d — 圖集挖掘所用政策',
-    captionZhHant: '候選要比服務好這麼多才算數。這是本研究挑窗用的政策設定。',
+    captionZhHant: '候選 SINR 必須高於服務 SINR 3 dB 才符合條件。這是本研究挑窗使用的政策設定。',
   }),
   Object.freeze({
     id: 'handover-ttt-sec',
@@ -69,7 +69,7 @@ export const SIX_ACTS_TAUGHT_CONSTANTS: readonly SixActsTaughtConstant[] = Objec
     unit: 's',
     provenance: 'STUDY-POLICY' as const,
     sourceRef: 'artifacts/tle-event-atlas/20260818-ntpu-90d — 圖集挖掘所用政策',
-    captionZhHant: '上面的條件還要連續成立這麼久才換手。同樣是政策設定。',
+    captionZhHant: '上述條件須連續成立 30 s 才提交換手。同樣是政策設定。',
   }),
   Object.freeze({
     id: 'beam-power-cap-w',
@@ -93,7 +93,7 @@ export const SIX_ACTS_TAUGHT_CONSTANTS: readonly SixActsTaughtConstant[] = Objec
     unit: 'MHz',
     provenance: 'PAPER' as const,
     sourceRef: 'thesis-mc ch5 表 5-2（B^w = 166.667 MHz）；500 MHz 系統頻寬 / 3 色',
-    captionZhHant: '每道波束分到的頻寬 B^w。圖集用的就是這個值。',
+    captionZhHant: '每道波束分配的頻寬 B^w；圖集採用此值。',
   }),
   Object.freeze({
     id: 'atlas-visibility-elevation-deg',

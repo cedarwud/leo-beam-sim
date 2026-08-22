@@ -198,7 +198,7 @@ export class SixActsUploadSession {
         sampleCount: 0,
         httpStatus: 200,
         outcome: 'ok',
-        detail: `${SIX_ACTS_OFFLINE_MOCK_BADGE}：未連線，使用假 token`,
+        detail: `${SIX_ACTS_OFFLINE_MOCK_BADGE}：未連線，使用離線 mock token`,
       });
       return this.token;
     }

@@ -78,7 +78,7 @@ export const SIX_ACTS_PLATFORM_SERIES: readonly SixActsPlatformSeriesSpec[] = Ob
     cadence: 'one-hz',
     unit: 'dB',
     registrationStatus: 'CURRENT_UNVERIFIED',
-    whyUpload: '最佳候選衛星的品質——沒有它就看不出「為什麼該換」。',
+    whyUpload: '最佳候選衛星的品質——用於判定候選與服務鏈路的換手條件。',
     caveat: null,
   }),
   Object.freeze({
@@ -108,7 +108,7 @@ export const SIX_ACTS_PLATFORM_SERIES: readonly SixActsPlatformSeriesSpec[] = Ob
     cadence: 'run-end',
     unit: '%',
     registrationStatus: 'CURRENT_UNVERIFIED',
-    whyUpload: '整場連線的「不及格率」——低功率陷阱的證據。',
+    whyUpload: '整場連線的低 SINR 比例——低功率區間的量測證據。',
     caveat: '欄位規格是每場結束 1 筆；2026-05 的歷史腳本曾每秒上傳，課堂採規格版。',
   }),
 ]);

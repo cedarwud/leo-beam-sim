@@ -154,15 +154,15 @@ export const SIX_ACTS_TEACHING_VISIBLE_CONTROLS: readonly {
 }[] = Object.freeze([
   Object.freeze({
     id: 'handover-offset-db',
-    whyZhHant: 'Act 4 ping-pong 實驗的第一顆旋鈕：把 offset 調到 0 看會發生什麼。',
+    whyZhHant: 'Act 4 乒乓換手實驗的第一個旋鈕：將 offset 設為 0，以觀察無遲滯門檻時的行為。',
   }),
   Object.freeze({
     id: 'handover-ping-pong-guard',
-    whyZhHant: '第二顆旋鈕。防抖機制本身就是教材，藏起來這一課就沒了。',
+    whyZhHant: '第二個旋鈕。防抖機制本身是教材的一部分，隱藏後將無法呈現該決策效果。',
   }),
   Object.freeze({
     id: 'timeline-transport',
-    whyZhHant: '導演腳本會自動暫停，但講師要能倒帶重講。',
+    whyZhHant: '導演腳本會自動暫停；講師仍需保留時間軸回放與重述能力。',
   }),
 ]);
 

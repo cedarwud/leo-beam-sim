@@ -77,7 +77,7 @@ function stateFor(
     return Object.freeze({
       beat,
       eyebrow: '① SERVICE → ② DECLINE',
-      text: '服務連線仍在跑；此刻的 live frame 顯示訊號正在下滑。先看幾何與鏈路數值，不把下滑誤說成衛星故障。',
+      text: '服務連線仍在運行；目前 live frame 顯示訊號正在下滑。先檢視幾何與鏈路數值，不將下滑誤判為衛星故障。',
       tone: 'serving',
       rows: Object.freeze([
         ...baseRows(facts),
@@ -141,7 +141,7 @@ function stateFor(
     return Object.freeze({
       beat,
       eyebrow: '⑥ EXECUTE',
-      text: '跨衛星換手已由 live handover manager 提交；這一拍只呈現已發生的決策，不回寫任何模擬狀態。',
+      text: '跨衛星換手已由 live handover manager 提交；此 beat 只呈現已發生的決策，不回寫模擬狀態。',
       tone: 'source',
       rows: Object.freeze([
         { label: 'From', value: formatSatellite(commit?.fromSatelliteId ?? null) },
@@ -158,7 +158,7 @@ function stateFor(
     return Object.freeze({
       beat,
       eyebrow: '⑦ RECEIPT',
-      text: '收據拍記下這次已提交的 source、target 與 SINR 差值；完整事件收據在下一片接上。',
+      text: '收據欄位記錄已提交事件的 source、target 與 SINR 差值；完整事件資料由下一層面板呈現。',
       tone: 'candidate',
       rows: Object.freeze([
         { label: 'From', value: formatSatellite(commit?.fromSatelliteId ?? null) },
@@ -174,7 +174,7 @@ function stateFor(
     return Object.freeze({
       beat,
       eyebrow: '⑧ NEW NORMAL',
-      text: '新服務連線已接手。畫面回到正常播放，下一次幾何下滑仍會沿著同一條決策鏈重演。',
+      text: '新服務連線已接手。播放進入正常速率；下一次幾何下滑仍會沿著同一條決策鏈重演。',
       tone: 'serving',
       rows: baseRows(facts),
       startedAtSimTimeSec,

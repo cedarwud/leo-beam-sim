@@ -30,8 +30,8 @@ export const TLE_JOURNEY_STATIONS: readonly TleJourneyStation[] = Object.freeze(
     id: 'raw-record' as const,
     order: 1,
     titleZhHant: '拿到原始資料',
-    questionZhHant: '衛星的位置，最原始的來源長什麼樣子？',
-    handsOnZhHant: '看這三行字。整顆衛星未來幾天的位置，全部從這裡算出來。',
+    questionZhHant: '衛星位置的原始資料來源如何表示？',
+    handsOnZhHant: '讀取這三行資料；該衛星未來數日的位置皆由此計算。',
     provenance: 'SOURCE' as const,
   }),
   Object.freeze({
@@ -39,23 +39,23 @@ export const TLE_JOURNEY_STATIONS: readonly TleJourneyStation[] = Object.freeze(
     order: 2,
     titleZhHant: '逐欄解讀',
     questionZhHant: '這 69 個字元裡，哪些數字有意義？',
-    handsOnZhHant: '滑過每一欄看它是什麼；再改壞一位數字，看最後一欄的檢核碼怎麼抓到你。',
+    handsOnZhHant: '移動游標檢視欄位定義；修改一位數字，觀察檢核碼如何偵測資料變更。',
     provenance: 'SOURCE' as const,
   }),
   Object.freeze({
     id: 'sgp4-contract' as const,
     order: 3,
-    titleZhHant: 'SGP4 黑盒子',
-    questionZhHant: '從三行文字，怎麼變成天上的一個位置？',
-    handsOnZhHant: '拖時鐘。輸入是（TLE, 時間），輸出是位置與速度——這一站只教契約，不教推導。',
+    titleZhHant: 'SGP4 計算模型',
+    questionZhHant: '三行文字如何轉換為衛星位置？',
+    handsOnZhHant: '調整時間。輸入為（TLE, 時間），輸出為位置與速度；本節說明介面契約，不展開推導。',
     provenance: 'MODEL-DERIVED' as const,
   }),
   Object.freeze({
     id: 'ntpu-pass' as const,
     order: 4,
     titleZhHant: '從 NTPU 看它',
-    questionZhHant: '站在地面上，這顆衛星什麼時候在你頭上？',
-    handsOnZhHant: '拖出一次通過：升起 → 最高點 → 落下。讀讀看一次通過有多久。',
+    questionZhHant: '從地面觀測點看，該衛星何時通過可見區域？',
+    handsOnZhHant: '拖曳一次通過：升起 → 最高點 → 落下，讀取通過持續時間。',
     provenance: 'MODEL-DERIVED' as const,
   }),
   Object.freeze({
@@ -63,7 +63,7 @@ export const TLE_JOURNEY_STATIONS: readonly TleJourneyStation[] = Object.freeze(
     order: 5,
     titleZhHant: '成為模擬器燃料',
     questionZhHant: '這些位置接下來要拿去做什麼？',
-    handsOnZhHant: '按下去，這顆衛星就進入後面幾幕的模擬器。',
+    handsOnZhHant: '確認後，該衛星資料將供後續模擬器使用。',
     provenance: 'MODEL-DERIVED' as const,
   }),
 ]);
@@ -82,4 +82,4 @@ export function tleJourneyStationAt(order: number): TleJourneyStation {
  * page from offering a button that cannot work.
  */
 export const TLE_JOURNEY_SOURCE_NOTE_ZH_HANT =
-  '學生一律用封存快照。講師若要示範「現場抓一次」，走終端機／腳本——瀏覽器直接抓 CelesTrak 會撞 CORS，而且它的群組查詢有快取與流量政策。';
+  '學生一律使用封存快照。若需示範即時擷取，請使用終端機／腳本；瀏覽器直接擷取 CelesTrak 受 CORS、快取與流量政策限制。';

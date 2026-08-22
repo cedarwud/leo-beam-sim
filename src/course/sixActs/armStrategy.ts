@@ -43,7 +43,7 @@ export const SIX_ACTS_ARMS: readonly SixActsArmSpec[] = Object.freeze([
     rankBy: 'rate',
     formula: 'R_{u,s,v}',
     labelZhHant: '選速率最大的候選',
-    whyZhHant: '傳統作法：誰現在傳得快就選誰，不管這條鏈路要燒多少電。',
+    whyZhHant: 'baseline 規則：依即時速率 R 選擇候選，不將系統功耗納入排序。',
   }),
   Object.freeze({
     id: 'eco',

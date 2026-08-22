@@ -279,7 +279,7 @@ export function TleJourneyRoute(): ReactElement {
       <header className="tle-journey__header">
         <p className="tle-journey__kicker">ACT 2 · TLE 之旅</p>
         <h1>衛星位置是誰算出來的？</h1>
-        <p className="tle-journey__lede">五站，從三行純文字一路長成天上的一個點。</p>
+        <p className="tle-journey__lede">五站，從三行純文字逐步計算出衛星在空間中的位置。</p>
       </header>
 
       <nav className="tle-journey__steps" aria-label="五站">
@@ -380,7 +380,7 @@ export function TleJourneyRoute(): ReactElement {
           <div className="tle-journey__handoff">
             <MiniGlobe instantMs={cursorMs ?? Date.parse('2026-08-12T05:34:00.000Z')} />
             <button type="button" className="tle-journey__cta" onClick={() => setHandedOff(true)}>
-              把這顆衛星放進模擬器
+              將該衛星資料載入模擬器
             </button>
             {handedOff
               ? <p className="tle-journey__done">
