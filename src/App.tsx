@@ -430,6 +430,7 @@ export function App() {
   // memo bag), so a toggle re-renders without the invisible-dep-array tax.
   // (beamCalloutsEnabled moved in here from a dedicated useState — Tier-3.)
   const [beamDisplaySpec, setBeamDisplaySpec] = useState(DEFAULT_BEAM_DISPLAY_SPEC);
+  const [campusVisible, setCampusVisible] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
   const camera = useCameraControls();
@@ -2634,6 +2635,8 @@ export function App() {
               in the right rail. */}
           {sceneLane === 'sinr-live' && (
             <SinrLiveDisplayDrawer
+              campusVisible={campusVisible}
+              onCampusVisibleChange={() => setCampusVisible(current => !current)}
               parameterSection={
                 isLegacyWalkerRoute ? (
                   <SignalTuningPanel
@@ -2698,6 +2701,7 @@ export function App() {
               runtime={runtime}
               visualScaleMultipliers={visualScaleMultipliers}
               sceneLane={sceneLane}
+              campusVisible={campusVisible}
               onSimUpdate={handleSimUpdate}
               onLiveSeekLanded={handleLiveSeekLandedWithAnalysisReset}
               sceneFrame={activeSceneFrame}

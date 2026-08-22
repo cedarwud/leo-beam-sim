@@ -123,6 +123,7 @@ import {
 import { UAV } from '../components/scene/UAV';
 import { Starfield } from '../components/ui/Starfield';
 import { BaseSceneLayout } from './BaseSceneLayout';
+import { TeachingFloor } from './TeachingFloor';
 import { SceneTelemetry } from './SceneTelemetry';
 import {
   resolveCinematicSpotlightTargets,
@@ -158,7 +159,6 @@ import { LIVE_CINEMATIC_CAMERA_ENABLED } from '../app/appRuntimeConfig';
 import type { SimulationAnalysisFrame, SimulatorConstellation } from '../simulator/types';
 import { adaptSimulationAnalysisFrameToArchivedTleSimFrame } from './archivedTleSimFrameAdapter';
 import {
-  ARCHIVED_TLE_DISPLAY_CELL_IDS,
   buildArchivedTleSevenCellPlacement,
   type ArchivedTleSevenCellPlacement,
 } from './archivedTleSevenCellPlacement';
@@ -204,6 +204,8 @@ interface SceneContentProps {
   runtime: RuntimeConfig;
   visualScaleMultipliers: SceneVisualScaleMultipliers;
   sceneLane: SceneLane;
+  /** Display-only medium switch; never enters the simulation producer. */
+  campusVisible: boolean;
   onSimUpdate: (state: SimState) => void;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
@@ -243,6 +245,8 @@ interface ArtifactSceneContentProps {
   runtime: RuntimeConfig;
   visualScaleMultipliers: SceneVisualScaleMultipliers;
   sceneLane: SceneLane;
+  /** Display-only medium switch; never enters the simulation producer. */
+  campusVisible: boolean;
   sceneFrame: NormalizedSceneFrame;
   presentationPlan: ScenePresentationPlan;
 }
@@ -704,6 +708,7 @@ function ArtifactSceneContent({
   sceneLane,
   sceneFrame,
   presentationPlan,
+  campusVisible,
 }: ArtifactSceneContentProps) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const sceneConfig = useMemo(() => (
@@ -751,8 +756,9 @@ function ArtifactSceneContent({
     <BaseSceneLayout
       sceneConfig={sceneConfig}
       controlsRef={controlsRef}
-      campusVisible={presentationPlan.visible.campus}
+      campusVisible={campusVisible && presentationPlan.visible.campus}
     >
+      {!(campusVisible && presentationPlan.visible.campus) && <TeachingFloor />}
       <ScenePresentationCanvasTelemetry plan={presentationPlan} />
       <SceneTelemetry
         visibleSatelliteCount={visibleSatellites.length}
@@ -960,24 +966,13 @@ function ArchivedTleSceneContent({
       renderProps.profile,
       SINR_LIVE_ARCHIVED_DISPLAY_CELL_COUNT,
     );
-    const sourceCells = ARCHIVED_TLE_DISPLAY_CELL_IDS.map(displayCellId => {
-      const source = layout.centers.find(cell => cell.cellId === displayCellId);
-      if (source === undefined) {
-        throw new Error(`archived TLE display source cell ${displayCellId} is missing from the 37-cell layout`);
-      }
-      return {
-        displayCellId,
-        centerKm: [source.localXKm, source.localYKm] as const,
-      };
-    });
     return buildArchivedTleSevenCellPlacement({
       cells: frame.scenario.cells,
       sourceCellRadiusKm: layout.cellRadiusKm,
-      sourceCells,
-      // The 200 x 90 km paper rectangle is an inscribed analysis area.  The
-      // renderer's ground mesh is larger, so fit the historical source layout
+      // The 200 x 90 km paper rectangle is an inscribed analysis area. The
+      // renderer's ground mesh is larger, so fit the compact teaching cluster
       // against the actual configured scene bounds converted to the same km
-      // scale.  Keeping this mapping at fitScale=1 preserves the old phase and
+      // scale. Keeping this mapping at fitScale=1 preserves the prototype-like
       // spacing while still proving the selected footprints fit the scene.
       boundsKm: {
         widthKm: sceneConfig.scene.measuredBoundsWu.width
@@ -1047,6 +1042,7 @@ function SceneRenderContent({
   liveSeekLandedKey = null,
   constellation = DEFAULT_SATELLITE_CONSTELLATION,
   presentationPlan,
+  campusVisible,
 }: SceneRenderContentProps) {
   const camera = useThree(state => state.camera);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
@@ -2788,11 +2784,12 @@ function SceneRenderContent({
     <BaseSceneLayout
       sceneConfig={sceneConfig}
       controlsRef={controlsRef}
-      campusVisible={presentationPlan.visible.campus}
+      campusVisible={campusVisible && presentationPlan.visible.campus}
       cinematicSpotlightActive={cinematicSpotlightActive && presentationPlan.visible['event-effects']}
       effectiveCinematicMode={effectiveCinematicMode}
       cinematicSpotlightTargets={presentationPlan.visible['event-effects'] ? cinematicSpotlightTargets : []}
     >
+      {!(campusVisible && presentationPlan.visible.campus) && <TeachingFloor />}
       <ScenePresentationCanvasTelemetry plan={presentationPlan} />
       <SceneTelemetry
         visibleSatelliteCount={viz.displaySats.length}
@@ -3272,6 +3269,8 @@ interface MainSceneProps {
   runtime: RuntimeConfig;
   visualScaleMultipliers: SceneVisualScaleMultipliers;
   sceneLane: SceneLane;
+  /** Display-only scene-medium switch owned by the homepage shell. */
+  campusVisible: boolean;
   onSimUpdate: (state: SimState) => void;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
@@ -3316,6 +3315,7 @@ export const MainScene = memo(function MainScene({
   runtime,
   visualScaleMultipliers,
   sceneLane,
+  campusVisible,
   onSimUpdate,
   onLiveSeekLanded,
   sceneFrame,
@@ -3375,6 +3375,7 @@ export const MainScene = memo(function MainScene({
         data-manual-handover-kind={runtime.manualHandoverKind ?? ''}
         data-scene-source={homepageTleSceneActive ? 'archived-tle' : (sceneFrame?.sceneSource ?? 'live-simulation')}
         data-scene-presentation-stage={presentationPlan.stage}
+        data-campus-visible={campusVisible ? '1' : '0'}
         data-scene-presentation-visible-layers={Object.entries(presentationPlan.visible)
           .filter(([, visible]) => visible)
           .map(([layer]) => layer)
@@ -3456,6 +3457,7 @@ export const MainScene = memo(function MainScene({
               runtime={runtime}
               visualScaleMultipliers={visualScaleMultipliers}
               sceneLane={sceneLane}
+              campusVisible={campusVisible}
               onSimUpdate={onSimUpdate}
               onLiveSeekLanded={onLiveSeekLanded}
               beamDisplaySpec={beamDisplaySpec}
@@ -3472,6 +3474,7 @@ export const MainScene = memo(function MainScene({
               runtime={runtime}
               visualScaleMultipliers={visualScaleMultipliers}
               sceneLane={sceneLane}
+              campusVisible={campusVisible}
               sceneFrame={sceneFrame}
               presentationPlan={presentationPlan}
             />
@@ -3483,6 +3486,7 @@ export const MainScene = memo(function MainScene({
               runtime={runtime}
               visualScaleMultipliers={visualScaleMultipliers}
               sceneLane={sceneLane}
+              campusVisible={campusVisible}
               onSimUpdate={onSimUpdate}
               onLiveSeekLanded={onLiveSeekLanded}
               sceneFrame={sceneFrame}

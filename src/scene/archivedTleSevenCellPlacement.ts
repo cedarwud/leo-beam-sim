@@ -2,9 +2,10 @@
  * Display-only ground projection for the archived-TLE homepage centre.
  *
  * The canonical seven-cell frame keeps cell ids 0..6 and its local 20 km
- * experiment geometry for analysis.  The scene uses the older 37-cell axial
- * substrate as a compact, irregular display layout instead.  This module is
- * deliberately pure: it owns neither TLE state nor serving/handover truth.
+ * experiment geometry for analysis. The homepage display uses a compact,
+ * regular seven-cell teaching cluster instead of borrowing positions from the
+ * older 37-cell substrate. This module is deliberately pure: it owns neither
+ * TLE state nor serving/handover truth.
  */
 
 export const ARCHIVED_TLE_DISPLAY_CELL_IDS = Object.freeze([
@@ -15,14 +16,20 @@ export const ARCHIVED_TLE_CANONICAL_CELL_IDS = Object.freeze([
   0, 1, 2, 3, 4, 5, 6,
 ] as const);
 
+/**
+ * Slightly open the regular pointy-hex ring so the renderer's 1.04 outer rim
+ * has a visible gap instead of painting across a shared edge.
+ */
+export const ARCHIVED_TLE_DISPLAY_RING_SPACING = 1.05;
+
 export const ARCHIVED_TLE_DISPLAY_AXIAL_COORDINATES = Object.freeze([
   Object.freeze({ q: 0, r: 0 }),
-  Object.freeze({ q: 0, r: 1 }),
-  Object.freeze({ q: 2, r: 0 }),
-  Object.freeze({ q: -2, r: 0 }),
-  Object.freeze({ q: 2, r: -1 }),
-  Object.freeze({ q: -3, r: 1 }),
-  Object.freeze({ q: -2, r: -2 }),
+  Object.freeze({ q: -ARCHIVED_TLE_DISPLAY_RING_SPACING, r: ARCHIVED_TLE_DISPLAY_RING_SPACING }),
+  Object.freeze({ q: -ARCHIVED_TLE_DISPLAY_RING_SPACING, r: 0 }),
+  Object.freeze({ q: 0, r: -ARCHIVED_TLE_DISPLAY_RING_SPACING }),
+  Object.freeze({ q: ARCHIVED_TLE_DISPLAY_RING_SPACING, r: -ARCHIVED_TLE_DISPLAY_RING_SPACING }),
+  Object.freeze({ q: 0, r: ARCHIVED_TLE_DISPLAY_RING_SPACING }),
+  Object.freeze({ q: ARCHIVED_TLE_DISPLAY_RING_SPACING, r: 0 }),
 ] as const);
 
 export const ARCHIVED_TLE_NTPU_GROUND_BOUNDS_KM = Object.freeze({
@@ -47,13 +54,6 @@ export interface ArchivedTleCanonicalUserLike {
   readonly index: number;
   readonly cellIndex: number;
   readonly positionKm: readonly [number, number];
-}
-
-export interface ArchivedTleDisplaySourceCell {
-  /** ID in the existing 37-cell layout. */
-  readonly displayCellId: number;
-  /** The exact local ENU centre from the existing 37-cell layout. */
-  readonly centerKm: readonly [number, number];
 }
 
 export interface ArchivedTleDisplayCellPlacement {
@@ -83,8 +83,6 @@ export interface ArchivedTleSevenCellPlacement {
 export interface BuildArchivedTleSevenCellPlacementOptions {
   readonly cells: readonly ArchivedTleCanonicalCellLike[];
   readonly sourceCellRadiusKm: number;
-  /** Optional exact centres from `buildSinrLiveCellLayout(profile)`. */
-  readonly sourceCells?: readonly ArchivedTleDisplaySourceCell[];
   readonly boundsKm?: {
     readonly widthKm: number;
     readonly heightKm: number;
@@ -130,23 +128,6 @@ function validateCells(cells: readonly ArchivedTleCanonicalCellLike[]): void {
   }
 }
 
-function validateSourceCells(
-  sourceCells: readonly ArchivedTleDisplaySourceCell[] | undefined,
-): void {
-  if (sourceCells === undefined) return;
-  if (sourceCells.length !== ARCHIVED_TLE_DISPLAY_CELL_IDS.length) {
-    throw new RangeError(`archived TLE display placement requires ${ARCHIVED_TLE_DISPLAY_CELL_IDS.length} source cells`);
-  }
-  sourceCells.forEach((cell, index) => {
-    if (cell.displayCellId !== ARCHIVED_TLE_DISPLAY_CELL_IDS[index]) {
-      throw new RangeError('archived TLE display placement source cells must preserve the historical cell-id order');
-    }
-    if (!Number.isFinite(cell.centerKm[0]) || !Number.isFinite(cell.centerKm[1])) {
-      throw new RangeError(`archived TLE display placement source cell ${cell.displayCellId} center must be finite`);
-    }
-  });
-}
-
 /**
  * Build one immutable mapping shared by archived adapter beam targets, cell
  * cones/footprints, and display UE positions.
@@ -157,7 +138,6 @@ export function buildArchivedTleSevenCellPlacement(
   const boundsKm = options.boundsKm ?? ARCHIVED_TLE_NTPU_GROUND_BOUNDS_KM;
   const paddingKm = options.paddingKm ?? ARCHIVED_TLE_GROUND_PADDING_KM;
   validateCells(options.cells);
-  validateSourceCells(options.sourceCells);
   assertFinitePositive(options.sourceCellRadiusKm, 'sourceCellRadiusKm');
   assertFinitePositive(boundsKm.widthKm, 'boundsKm.widthKm');
   assertFinitePositive(boundsKm.heightKm, 'boundsKm.heightKm');
@@ -171,8 +151,7 @@ export function buildArchivedTleSevenCellPlacement(
   const rawCenters = ARCHIVED_TLE_DISPLAY_AXIAL_COORDINATES.map(({ q, r }, index) => ({
     q,
     r,
-    centerKm: options.sourceCells?.[index]?.centerKm
-      ?? axialCenterKm(q, r, options.sourceCellRadiusKm),
+    centerKm: axialCenterKm(q, r, options.sourceCellRadiusKm),
   }));
   const maxCenterAbsX = Math.max(...rawCenters.map(({ centerKm }) => Math.abs(centerKm[0])));
   const maxCenterAbsY = Math.max(...rawCenters.map(({ centerKm }) => Math.abs(centerKm[1])));

@@ -14,10 +14,12 @@ import {
 import {
   buildSinrLiveCellLayout,
   SINR_LIVE_BEAM_DISPLAY_CELL_COUNT,
+  SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES,
   resolveSinrLiveBeamCapacityPerSat,
   resolveSinrLiveBeamsPerSat,
   SINR_LIVE_CELL_COUNT,
 } from './sinrLiveCellRuntime';
+import { SINR_LIVE_FOOTPRINT_RING_OUTER_FACTOR } from '../constants/sinrLiveConeStyle';
 
 const starlink = loadProfile('hobs-2024-candidate-rich');
 const oneweb = applyLegacyConstellationPreset(starlink, 'oneweb');
@@ -33,6 +35,25 @@ assert.equal(applyLegacyConstellationPreset(starlink, 'starlink'), starlink);
 const layout = buildSinrLiveCellLayout(starlink);
 assert.equal(layout.centers.length, 7);
 assert.equal(SINR_LIVE_CELL_COUNT, 7);
+
+const liveCellRadiusKm = layout.cellRadiusKm;
+for (let i = 0; i < layout.centers.length; i += 1) {
+  for (let j = i + 1; j < layout.centers.length; j += 1) {
+    const left = layout.centers[i]!;
+    const right = layout.centers[j]!;
+    const distanceKm = Math.hypot(left.localXKm - right.localXKm, left.localYKm - right.localYKm);
+    assert.ok(
+      distanceKm >= Math.sqrt(3) * liveCellRadiusKm * SINR_LIVE_FOOTPRINT_RING_OUTER_FACTOR - 1e-9,
+      `live seven-cell footprint borders must not overlap: ${left.cellId}↔${right.cellId}`,
+    );
+  }
+}
+const maxLiveCellRadius = Math.max(...layout.centers.flatMap(center => [
+  Math.abs(center.localXKm) / liveCellRadiusKm,
+  Math.abs(center.localYKm) / liveCellRadiusKm,
+]));
+assert.ok(maxLiveCellRadius < 2.2, `live seven-cell cluster must stay compact; got ${maxLiveCellRadius}`);
+assert.equal(SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES.length, 7);
 const positions = generateUePositions({
   ueCount: 100,
   primaryEastKm: 0,
@@ -121,7 +142,7 @@ assert.deepEqual(
 const activeRadii = new Set(
   layout.centers.map(center => Math.hypot(center.localXKm, center.localYKm).toFixed(3)),
 );
-assert(activeRadii.size >= 4, 'seven active cells are not arranged on one symmetric ring');
+assert(activeRadii.size >= 3, 'the phase offset keeps the observer off the regular-ring centre');
 const displayRadii = new Set(
   displayLayout.centers.map(center => Math.hypot(center.localXKm, center.localYKm).toFixed(3)),
 );

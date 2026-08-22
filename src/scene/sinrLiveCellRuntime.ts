@@ -98,24 +98,25 @@ export function resolveSinrLiveSceneCellCount(
 export const SINR_LIVE_CELL_PHASE_OFFSET_RADII = { east: 0.15, north: 0.30 } as const;
 
 /**
- * Homepage live-Walker ground geometry.  The canonical/TLE topology remains in
+ * Homepage live-Walker ground geometry. The canonical/TLE topology remains in
  * `topology/dispersedSevenCellTopology.ts`; these coordinates are deliberately
- * local to the live presentation so the homepage can show an irregular service
- * footprint without changing the canonical experiment substrate.
+ * local to the live presentation so the homepage can show the compact regular
+ * seven-cell teaching cluster without changing the canonical experiment substrate.
  *
- * The seven cells are intentionally not a centre plus a regular six-ring: one
- * cell sits on the inner ring while the other targets use an uneven selection
- * of the outer ring.  UE generation receives these exact centres, so the UE
- * population and the rendered active cells cannot drift apart.
+ * The renderer paints a 1.04-radius outer rim around each hex, so open the
+ * regular axial ring by 15% of one cell radius. UE generation receives these
+ * exact centres, so the UE population, beam bases, labels, and cell borders
+ * cannot drift apart.
  */
+export const SINR_LIVE_CELL_RING_SPACING = 1.15;
 export const SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES = Object.freeze([
   Object.freeze({ id: 0 as const, q: 0, r: 0 }),
-  Object.freeze({ id: 1 as const, q: -1, r: 1 }),
-  Object.freeze({ id: 2 as const, q: -2, r: 0 }),
-  Object.freeze({ id: 3 as const, q: 0, r: -2 }),
-  Object.freeze({ id: 4 as const, q: 0, r: 2 }),
-  Object.freeze({ id: 5 as const, q: 2, r: -2 }),
-  Object.freeze({ id: 6 as const, q: 2, r: 0 }),
+  Object.freeze({ id: 1 as const, q: -SINR_LIVE_CELL_RING_SPACING, r: SINR_LIVE_CELL_RING_SPACING }),
+  Object.freeze({ id: 2 as const, q: -SINR_LIVE_CELL_RING_SPACING, r: 0 }),
+  Object.freeze({ id: 3 as const, q: 0, r: -SINR_LIVE_CELL_RING_SPACING }),
+  Object.freeze({ id: 4 as const, q: SINR_LIVE_CELL_RING_SPACING, r: -SINR_LIVE_CELL_RING_SPACING }),
+  Object.freeze({ id: 5 as const, q: 0, r: SINR_LIVE_CELL_RING_SPACING }),
+  Object.freeze({ id: 6 as const, q: SINR_LIVE_CELL_RING_SPACING, r: 0 }),
 ] as const);
 
 /**

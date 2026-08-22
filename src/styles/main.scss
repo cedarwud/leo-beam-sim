@@ -190,6 +190,74 @@ canvas {
   overflow: visible;
 }
 
+.leo-teaching-surface-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(118, 234, 215, 0.22);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(7, 29, 35, 0.94), rgba(4, 15, 23, 0.92));
+  color: #eaf7f5;
+}
+
+.leo-teaching-surface-control__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.leo-teaching-surface-control__eyebrow {
+  color: #76ead7;
+  font: 700 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.12em;
+}
+
+.leo-teaching-surface-control__copy strong {
+  color: #f1fbf8;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.leo-teaching-surface-control__copy small {
+  color: rgba(229, 244, 251, 0.66);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.leo-teaching-surface-control__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid rgba(118, 234, 215, 0.38);
+  border-radius: 8px;
+  color: #bceee5;
+  background: rgba(118, 234, 215, 0.08);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.leo-teaching-surface-control__toggle:hover {
+  border-color: rgba(118, 234, 215, 0.7);
+  background: rgba(118, 234, 215, 0.14);
+  color: #ffffff;
+}
+
+.leo-teaching-surface-control__toggle:focus-within {
+  outline: 2px solid var(--leo-focus-ring);
+  outline-offset: 2px;
+}
+
+.leo-teaching-surface-control__toggle input {
+  accent-color: #76ead7;
+}
+
 // Temporary MODQN declutter (先隱藏 for the visual overhaul): hide the in-scene
 // top-right preview/warning HUD only. The sidebars stay. This card renders only
 // in the modqn-live-cell-preview lane (App gate), so hiding the class hides it
