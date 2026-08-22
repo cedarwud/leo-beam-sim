@@ -657,35 +657,12 @@
         "perUeServing": [],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -1460,35 +1437,12 @@
         "perUeServing": [],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -2263,35 +2217,12 @@
         "perUeServing": [],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -3066,37 +2997,12 @@
         "perUeServing": [],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -3880,37 +3786,12 @@
         "perUeServing": [],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -4694,40 +4575,12 @@
         "perUeServing": [],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -5511,40 +5364,12 @@
         "perUeServing": [],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -6328,40 +6153,12 @@
         "perUeServing": [],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -6494,7 +6291,7 @@
         "serving": {
           "satId": "shell-pro-42-P11-S5",
           "beamId": 1,
-          "sinrDb": -1.565731
+          "sinrDb": -1.600387
         },
         "pendingTarget": {
           "satId": null,
@@ -7195,40 +6992,12 @@
         ],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -7407,7 +7176,7 @@
         "serving": {
           "satId": "shell-pro-42-P11-S5",
           "beamId": 1,
-          "sinrDb": -2.971055
+          "sinrDb": -2.993213
         },
         "pendingTarget": {
           "satId": null,
@@ -8119,7 +7888,7 @@
           "live-ue-91>shell-pro-42-P11-S5:5",
           "live-ue-93>shell-pro-42-P11-S5:6",
           "live-ue-95>shell-pro-42-P11-S5:3",
-          "live-ue-96>shell-pro-42-P11-S5:4",
+          "live-ue-96>shell-pro-42-P11-S5:3",
           "live-ue-97>shell-pro-42-P11-S5:5",
           "live-ue-98>shell-pro-42-P11-S5:2",
           "live-ue-99>shell-pro-42-P11-S5:7",
@@ -8127,40 +7896,12 @@
         ],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-polar-P4-S8:1",
+          "shell-polar-P4-S8:4",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -8369,7 +8110,7 @@
         "serving": {
           "satId": "shell-pro-42-P11-S5",
           "beamId": 1,
-          "sinrDb": -3.086682
+          "sinrDb": -3.105725
         },
         "pendingTarget": {
           "satId": null,
@@ -9084,7 +8825,7 @@
           "live-ue-91>shell-pro-42-P11-S5:5",
           "live-ue-93>shell-pro-42-P11-S5:6",
           "live-ue-95>shell-pro-42-P11-S5:3",
-          "live-ue-96>shell-pro-42-P11-S5:4",
+          "live-ue-96>shell-pro-42-P11-S5:3",
           "live-ue-97>shell-pro-42-P11-S5:5",
           "live-ue-98>shell-pro-42-P11-S5:2",
           "live-ue-99>shell-pro-42-P11-S5:7",
@@ -9092,40 +8833,12 @@
         ],
         "cellServing": [
           "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P13-S5:17",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P15-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -9334,7 +9047,7 @@
         "serving": {
           "satId": "shell-pro-42-P11-S5",
           "beamId": 1,
-          "sinrDb": -2.881863
+          "sinrDb": -2.902695
         },
         "pendingTarget": {
           "satId": null,
@@ -10055,48 +9768,20 @@
           "live-ue-93>shell-pro-42-P11-S5:6",
           "live-ue-94>shell-pro-42-P11-S5:4",
           "live-ue-95>shell-pro-42-P11-S5:3",
-          "live-ue-96>shell-pro-42-P11-S5:4",
+          "live-ue-96>shell-pro-42-P11-S5:3",
           "live-ue-97>shell-pro-42-P11-S5:5",
           "live-ue-98>shell-pro-42-P11-S5:2",
           "live-ue-99>shell-pro-42-P11-S5:7",
           "live-ue-9>shell-pro-42-P11-S5:7"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:7",
-          "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-polar-P22-S2:6",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P13-S5:18",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P15-S4:29",
-          "shell-pro-42-P15-S4:30",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -10215,6 +9900,21 @@
         ],
         "satBeams": [
           {
+            "satId": "shell-polar-P22-S2",
+            "beams": [
+              {
+                "beamId": 0,
+                "ground": [
+                  0,
+                  0
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#f2d7a0"
+              }
+            ]
+          },
+          {
             "satId": "shell-pro-42-P11-S5",
             "beams": [
               {
@@ -10258,16 +9958,6 @@
                 "satelliteTintColor": "#d9b6e8"
               },
               {
-                "beamId": 5,
-                "ground": [
-                  387.979381,
-                  -672
-                ],
-                "isServing": false,
-                "frequencyIndex": 2,
-                "satelliteTintColor": "#d9b6e8"
-              },
-              {
                 "beamId": 6,
                 "ground": [
                   0,
@@ -10291,7 +9981,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -10305,7 +9995,7 @@
         "serving": {
           "satId": "shell-pro-42-P11-S5",
           "beamId": 1,
-          "sinrDb": -2.86175
+          "sinrDb": -2.884957
         },
         "pendingTarget": {
           "satId": null,
@@ -11018,47 +10708,20 @@
           "live-ue-93>shell-pro-42-P11-S5:6",
           "live-ue-94>shell-pro-42-P11-S5:4",
           "live-ue-95>shell-pro-42-P11-S5:3",
-          "live-ue-96>shell-pro-42-P11-S5:4",
+          "live-ue-96>shell-pro-42-P11-S5:3",
           "live-ue-97>shell-pro-42-P11-S5:5",
           "live-ue-98>shell-pro-42-P11-S5:2",
           "live-ue-99>shell-pro-42-P11-S5:7",
           "live-ue-9>shell-pro-42-P11-S5:7"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:7",
-          "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P13-S5:19",
-          "shell-pro-42-P13-S5:20",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -11220,16 +10883,6 @@
                 "satelliteTintColor": "#d9b6e8"
               },
               {
-                "beamId": 5,
-                "ground": [
-                  387.979381,
-                  -672
-                ],
-                "isServing": false,
-                "frequencyIndex": 2,
-                "satelliteTintColor": "#d9b6e8"
-              },
-              {
                 "beamId": 6,
                 "ground": [
                   0,
@@ -11253,7 +10906,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -11267,7 +10920,7 @@
         "serving": {
           "satId": "shell-pro-42-P11-S5",
           "beamId": 1,
-          "sinrDb": -1.554437
+          "sinrDb": -1.590805
         },
         "pendingTarget": {
           "satId": null,
@@ -11980,47 +11633,20 @@
           "live-ue-93>shell-pro-42-P11-S5:6",
           "live-ue-94>shell-pro-42-P11-S5:4",
           "live-ue-95>shell-pro-42-P11-S5:3",
-          "live-ue-96>shell-pro-42-P11-S5:4",
+          "live-ue-96>shell-pro-42-P11-S5:3",
           "live-ue-97>shell-pro-42-P11-S5:5",
           "live-ue-98>shell-pro-42-P11-S5:2",
           "live-ue-99>shell-pro-42-P11-S5:7",
           "live-ue-9>shell-pro-42-P11-S5:7"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:7",
-          "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -12195,7 +11821,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -12209,7 +11835,7 @@
         "serving": {
           "satId": "shell-pro-42-P11-S5",
           "beamId": 1,
-          "sinrDb": -3.403418
+          "sinrDb": -3.438677
         },
         "pendingTarget": {
           "satId": null,
@@ -12846,18 +12472,18 @@
           "live-ue-12>shell-pro-42-P11-S5:2",
           "live-ue-13>shell-pro-42-P11-S5:2",
           "live-ue-14>shell-pro-42-P11-S5:1",
-          "live-ue-15>shell-pro-42-P11-S5:6",
+          "live-ue-15>shell-pro-42-P11-S5:1",
           "live-ue-16>shell-pro-42-P11-S5:1",
           "live-ue-17>shell-pro-42-P11-S5:5",
           "live-ue-18>shell-pro-42-P11-S5:5",
-          "live-ue-20>shell-pro-42-P11-S5:1",
+          "live-ue-20>shell-pro-42-P11-S5:3",
           "live-ue-21>shell-pro-42-P11-S5:2",
           "live-ue-22>shell-pro-42-P11-S5:1",
           "live-ue-23>shell-pro-42-P11-S5:1",
           "live-ue-24>shell-pro-42-P11-S5:6",
           "live-ue-25>shell-pro-42-P11-S5:4",
           "live-ue-26>shell-pro-42-P11-S5:1",
-          "live-ue-29>shell-pro-42-P11-S5:5",
+          "live-ue-29>shell-pro-42-P11-S5:6",
           "live-ue-2>shell-pro-42-P11-S5:4",
           "live-ue-30>shell-pro-42-P11-S5:2",
           "live-ue-31>shell-pro-42-P11-S5:5",
@@ -12884,16 +12510,16 @@
           "live-ue-52>shell-pro-42-P11-S5:6",
           "live-ue-53>shell-pro-42-P11-S5:5",
           "live-ue-54>shell-pro-42-P11-S5:5",
-          "live-ue-55>shell-pro-42-P11-S5:5",
+          "live-ue-55>shell-pro-42-P11-S5:6",
           "live-ue-56>shell-pro-42-P11-S5:1",
-          "live-ue-57>shell-pro-42-P11-S5:1",
+          "live-ue-57>shell-pro-42-P11-S5:3",
           "live-ue-58>shell-pro-42-P11-S5:6",
           "live-ue-59>shell-pro-42-P11-S5:4",
           "live-ue-5>shell-pro-42-P11-S5:1",
           "live-ue-60>shell-pro-42-P11-S5:5",
           "live-ue-61>shell-pro-42-P11-S5:5",
           "live-ue-62>shell-pro-42-P11-S5:4",
-          "live-ue-63>shell-pro-42-P11-S5:5",
+          "live-ue-63>shell-pro-42-P11-S5:6",
           "live-ue-64>shell-pro-42-P11-S5:4",
           "live-ue-65>shell-pro-42-P11-S5:5",
           "live-ue-66>shell-pro-42-P11-S5:1",
@@ -12901,7 +12527,7 @@
           "live-ue-68>shell-pro-42-P11-S5:1",
           "live-ue-6>shell-pro-42-P11-S5:2",
           "live-ue-71>shell-pro-42-P11-S5:1",
-          "live-ue-73>shell-pro-42-P11-S5:1",
+          "live-ue-73>shell-pro-42-P11-S5:3",
           "live-ue-74>shell-pro-42-P11-S5:1",
           "live-ue-75>shell-pro-42-P11-S5:1",
           "live-ue-76>shell-pro-42-P11-S5:4",
@@ -12913,7 +12539,7 @@
           "live-ue-82>shell-pro-42-P11-S5:4",
           "live-ue-83>shell-pro-42-P11-S5:4",
           "live-ue-84>shell-pro-42-P11-S5:6",
-          "live-ue-85>shell-pro-42-P11-S5:4",
+          "live-ue-85>shell-pro-42-P11-S5:1",
           "live-ue-86>shell-pro-42-P11-S5:1",
           "live-ue-87>shell-pro-42-P11-S5:6",
           "live-ue-88>shell-pro-42-P11-S5:3",
@@ -12925,49 +12551,20 @@
           "live-ue-93>shell-pro-42-P11-S5:1",
           "live-ue-94>shell-pro-42-P11-S5:4",
           "live-ue-95>shell-pro-42-P11-S5:3",
-          "live-ue-96>shell-pro-42-P11-S5:4",
+          "live-ue-96>shell-pro-42-P11-S5:3",
           "live-ue-97>shell-pro-42-P11-S5:5",
           "live-ue-98>shell-pro-42-P11-S5:2",
-          "live-ue-99>shell-pro-42-P11-S5:6",
+          "live-ue-99>shell-pro-42-P11-S5:1",
           "live-ue-9>shell-pro-42-P11-S5:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:7",
-          "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
+          "shell-polar-P22-S2:3",
+          "shell-polar-P22-S2:5",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:30",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -13142,7 +12739,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -13156,7 +12753,7 @@
         "serving": {
           "satId": "shell-pro-42-P11-S5",
           "beamId": 1,
-          "sinrDb": -11.814897
+          "sinrDb": -11.20715
         },
         "pendingTarget": {
           "satId": null,
@@ -13789,30 +13386,24 @@
         "perUeServing": [
           "live-ue-0>shell-pro-42-P11-S5:1",
           "live-ue-10>shell-pro-42-P11-S5:1",
-          "live-ue-11>shell-pro-42-P11-S5:6",
-          "live-ue-12>shell-pro-42-P11-S5:4",
-          "live-ue-13>shell-pro-42-P11-S5:5",
+          "live-ue-11>shell-pro-42-P11-S5:1",
           "live-ue-14>shell-pro-42-P11-S5:1",
-          "live-ue-15>shell-pro-42-P11-S5:6",
           "live-ue-16>shell-pro-42-P11-S5:6",
           "live-ue-17>shell-pro-42-P11-S5:6",
           "live-ue-18>shell-pro-42-P11-S5:6",
           "live-ue-19>shell-pro-42-P11-S5:3",
-          "live-ue-20>shell-pro-42-P11-S5:1",
-          "live-ue-21>shell-pro-42-P11-S5:3",
-          "live-ue-22>shell-pro-42-P11-S5:1",
+          "live-ue-21>shell-pro-42-P11-S5:6",
           "live-ue-23>shell-pro-42-P11-S5:1",
           "live-ue-24>shell-pro-42-P11-S5:6",
           "live-ue-25>shell-pro-42-P11-S5:1",
           "live-ue-26>shell-pro-42-P11-S5:1",
           "live-ue-28>shell-pro-42-P11-S5:3",
-          "live-ue-29>shell-pro-42-P11-S5:5",
+          "live-ue-29>shell-pro-42-P11-S5:6",
           "live-ue-2>shell-pro-42-P11-S5:4",
           "live-ue-30>shell-pro-42-P11-S5:1",
           "live-ue-31>shell-pro-42-P11-S5:6",
           "live-ue-32>shell-pro-42-P11-S5:1",
           "live-ue-33>shell-pro-42-P11-S5:6",
-          "live-ue-34>shell-pro-42-P11-S5:1",
           "live-ue-35>shell-pro-42-P11-S5:6",
           "live-ue-36>shell-pro-42-P11-S5:4",
           "live-ue-37>shell-pro-42-P11-S5:6",
@@ -13825,34 +13416,30 @@
           "live-ue-43>shell-pro-42-P11-S5:1",
           "live-ue-44>shell-pro-42-P11-S5:1",
           "live-ue-45>shell-pro-42-P11-S5:1",
-          "live-ue-46>shell-pro-42-P11-S5:6",
+          "live-ue-46>shell-pro-42-P11-S5:1",
           "live-ue-48>shell-pro-42-P11-S5:4",
           "live-ue-49>shell-pro-42-P11-S5:3",
-          "live-ue-4>shell-pro-42-P11-S5:4",
+          "live-ue-4>shell-pro-42-P11-S5:1",
           "live-ue-50>shell-pro-42-P11-S5:3",
           "live-ue-51>shell-pro-42-P11-S5:6",
           "live-ue-52>shell-pro-42-P11-S5:1",
           "live-ue-53>shell-pro-42-P11-S5:6",
           "live-ue-54>shell-pro-42-P11-S5:6",
-          "live-ue-55>shell-pro-42-P11-S5:5",
+          "live-ue-55>shell-pro-42-P11-S5:6",
           "live-ue-56>shell-pro-42-P11-S5:6",
-          "live-ue-57>shell-pro-42-P11-S5:1",
           "live-ue-58>shell-pro-42-P11-S5:6",
           "live-ue-59>shell-pro-42-P11-S5:4",
           "live-ue-5>shell-pro-42-P11-S5:1",
           "live-ue-60>shell-pro-42-P11-S5:6",
           "live-ue-61>shell-pro-42-P11-S5:6",
           "live-ue-62>shell-pro-42-P11-S5:4",
-          "live-ue-63>shell-pro-42-P11-S5:5",
+          "live-ue-63>shell-pro-42-P11-S5:6",
           "live-ue-64>shell-pro-42-P11-S5:5",
           "live-ue-65>shell-pro-42-P11-S5:5",
           "live-ue-66>shell-pro-42-P11-S5:6",
-          "live-ue-67>shell-pro-42-P11-S5:4",
           "live-ue-68>shell-pro-42-P11-S5:6",
-          "live-ue-6>shell-pro-42-P11-S5:4",
-          "live-ue-71>shell-pro-42-P11-S5:1",
+          "live-ue-6>shell-pro-42-P11-S5:1",
           "live-ue-72>shell-pro-42-P11-S5:3",
-          "live-ue-73>shell-pro-42-P11-S5:1",
           "live-ue-74>shell-pro-42-P11-S5:1",
           "live-ue-75>shell-pro-42-P11-S5:1",
           "live-ue-76>shell-pro-42-P11-S5:5",
@@ -13864,7 +13451,7 @@
           "live-ue-82>shell-pro-42-P11-S5:4",
           "live-ue-83>shell-pro-42-P11-S5:4",
           "live-ue-84>shell-pro-42-P11-S5:6",
-          "live-ue-85>shell-pro-42-P11-S5:4",
+          "live-ue-85>shell-pro-42-P11-S5:1",
           "live-ue-86>shell-pro-42-P11-S5:1",
           "live-ue-87>shell-pro-42-P11-S5:6",
           "live-ue-88>shell-pro-42-P11-S5:3",
@@ -13878,47 +13465,17 @@
           "live-ue-95>shell-pro-42-P11-S5:3",
           "live-ue-96>shell-pro-42-P11-S5:3",
           "live-ue-97>shell-pro-42-P11-S5:6",
-          "live-ue-98>shell-pro-42-P11-S5:3",
-          "live-ue-99>shell-pro-42-P11-S5:6",
+          "live-ue-98>shell-pro-42-P11-S5:5",
           "live-ue-9>shell-pro-42-P11-S5:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:7",
-          "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P22-S2:35",
-          "shell-polar-P22-S2:36",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:30",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:5",
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -14022,7 +13579,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-polar-P22-S2",
+          "shell-polar-P22-S1",
           "shell-pro-42-P11-S5"
         ],
         "eventSatIds": [
@@ -14093,7 +13650,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -14106,8 +13663,8 @@
         },
         "serving": {
           "satId": "shell-pro-42-P11-S5",
-          "beamId": 3,
-          "sinrDb": -25.340551
+          "beamId": 5,
+          "sinrDb": -32.238986
         },
         "pendingTarget": {
           "satId": null,
@@ -14747,32 +14304,22 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-42-P11-S5:3",
+          "live-ue-0>shell-pro-42-P11-S5:5",
           "live-ue-10>shell-pro-42-P11-S5:1",
-          "live-ue-11>shell-pro-42-P11-S5:5",
-          "live-ue-12>shell-pro-42-P11-S5:4",
-          "live-ue-13>shell-pro-42-P11-S5:5",
           "live-ue-14>shell-pro-42-P11-S5:1",
-          "live-ue-15>shell-pro-42-P11-S5:6",
           "live-ue-16>shell-pro-42-P11-S5:6",
           "live-ue-17>shell-pro-42-P11-S5:6",
           "live-ue-18>shell-pro-42-P11-S5:6",
           "live-ue-19>shell-pro-42-P11-S5:3",
-          "live-ue-20>shell-pro-42-P11-S5:1",
-          "live-ue-21>shell-pro-42-P11-S5:3",
-          "live-ue-22>shell-pro-42-P11-S5:1",
+          "live-ue-21>shell-pro-42-P11-S5:6",
           "live-ue-23>shell-pro-42-P11-S5:1",
           "live-ue-24>shell-pro-42-P11-S5:6",
           "live-ue-25>shell-pro-42-P11-S5:1",
-          "live-ue-26>shell-pro-42-P11-S5:1",
           "live-ue-28>shell-pro-42-P11-S5:3",
-          "live-ue-29>shell-pro-42-P11-S5:5",
           "live-ue-2>shell-pro-42-P11-S5:4",
-          "live-ue-30>shell-pro-42-P11-S5:1",
           "live-ue-31>shell-pro-42-P11-S5:6",
           "live-ue-32>shell-pro-42-P11-S5:1",
           "live-ue-33>shell-pro-42-P11-S5:6",
-          "live-ue-34>shell-pro-42-P11-S5:1",
           "live-ue-35>shell-pro-42-P11-S5:6",
           "live-ue-36>shell-pro-42-P11-S5:4",
           "live-ue-37>shell-pro-42-P11-S5:6",
@@ -14785,34 +14332,24 @@
           "live-ue-43>shell-pro-42-P11-S5:1",
           "live-ue-44>shell-pro-42-P11-S5:1",
           "live-ue-45>shell-pro-42-P11-S5:1",
-          "live-ue-46>shell-pro-42-P11-S5:6",
           "live-ue-48>shell-pro-42-P11-S5:4",
           "live-ue-49>shell-pro-42-P11-S5:3",
-          "live-ue-4>shell-pro-42-P11-S5:4",
+          "live-ue-4>shell-pro-42-P11-S5:1",
           "live-ue-50>shell-pro-42-P11-S5:3",
           "live-ue-51>shell-pro-42-P11-S5:6",
           "live-ue-52>shell-pro-42-P11-S5:1",
           "live-ue-53>shell-pro-42-P11-S5:6",
           "live-ue-54>shell-pro-42-P11-S5:6",
-          "live-ue-55>shell-pro-42-P11-S5:5",
           "live-ue-56>shell-pro-42-P11-S5:6",
-          "live-ue-57>shell-pro-42-P11-S5:1",
-          "live-ue-58>shell-pro-42-P11-S5:6",
           "live-ue-59>shell-pro-42-P11-S5:4",
           "live-ue-5>shell-pro-42-P11-S5:1",
           "live-ue-60>shell-pro-42-P11-S5:6",
           "live-ue-61>shell-pro-42-P11-S5:6",
           "live-ue-62>shell-pro-42-P11-S5:4",
-          "live-ue-63>shell-pro-42-P11-S5:5",
           "live-ue-64>shell-pro-42-P11-S5:5",
-          "live-ue-65>shell-pro-42-P11-S5:5",
           "live-ue-66>shell-pro-42-P11-S5:6",
-          "live-ue-67>shell-pro-42-P11-S5:4",
           "live-ue-68>shell-pro-42-P11-S5:6",
-          "live-ue-6>shell-pro-42-P11-S5:4",
-          "live-ue-71>shell-pro-42-P11-S5:1",
           "live-ue-72>shell-pro-42-P11-S5:3",
-          "live-ue-73>shell-pro-42-P11-S5:1",
           "live-ue-74>shell-pro-42-P11-S5:1",
           "live-ue-75>shell-pro-42-P11-S5:1",
           "live-ue-76>shell-pro-42-P11-S5:5",
@@ -14824,62 +14361,28 @@
           "live-ue-82>shell-pro-42-P11-S5:6",
           "live-ue-83>shell-pro-42-P11-S5:1",
           "live-ue-84>shell-pro-42-P11-S5:6",
-          "live-ue-85>shell-pro-42-P11-S5:4",
           "live-ue-86>shell-pro-42-P11-S5:1",
           "live-ue-87>shell-pro-42-P11-S5:1",
           "live-ue-88>shell-pro-42-P11-S5:3",
           "live-ue-89>shell-pro-42-P11-S5:1",
-          "live-ue-8>shell-pro-42-P11-S5:3",
           "live-ue-90>shell-pro-42-P11-S5:1",
           "live-ue-91>shell-pro-42-P11-S5:6",
           "live-ue-92>shell-pro-42-P11-S5:4",
           "live-ue-93>shell-pro-42-P11-S5:1",
           "live-ue-94>shell-pro-42-P11-S5:4",
           "live-ue-95>shell-pro-42-P11-S5:3",
-          "live-ue-96>shell-pro-42-P11-S5:3",
+          "live-ue-96>shell-pro-42-P11-S5:1",
           "live-ue-97>shell-pro-42-P11-S5:6",
-          "live-ue-98>shell-pro-42-P11-S5:3",
-          "live-ue-99>shell-pro-42-P11-S5:6",
-          "live-ue-9>shell-pro-42-P11-S5:1"
+          "live-ue-98>shell-pro-42-P11-S5:5"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:22",
-          "shell-polar-P4-S8:23",
-          "shell-polar-P4-S8:24",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:30",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:5",
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -14983,7 +14486,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-polar-P22-S2",
+          "shell-polar-P22-S1",
           "shell-pro-42-P11-S5"
         ],
         "eventSatIds": [
@@ -15054,7 +14557,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -15067,7 +14570,7 @@
         },
         "serving": {
           "satId": "shell-pro-42-P11-S5",
-          "beamId": 3,
+          "beamId": 5,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -15708,23 +15211,15 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-42-P11-S5:3",
-          "live-ue-10>shell-pro-42-P11-S5:1",
-          "live-ue-11>shell-pro-42-P11-S5:5",
+          "live-ue-0>shell-pro-42-P11-S5:5",
           "live-ue-14>shell-pro-42-P11-S5:1",
           "live-ue-16>shell-pro-42-P11-S5:6",
           "live-ue-17>shell-pro-42-P11-S5:6",
           "live-ue-18>shell-pro-42-P11-S5:6",
           "live-ue-19>shell-pro-42-P11-S5:3",
-          "live-ue-21>shell-pro-42-P11-S5:3",
-          "live-ue-23>shell-pro-42-P11-S5:1",
-          "live-ue-24>shell-pro-42-P11-S5:6",
           "live-ue-25>shell-pro-42-P11-S5:1",
-          "live-ue-26>shell-pro-42-P11-S5:1",
           "live-ue-28>shell-pro-42-P11-S5:3",
-          "live-ue-29>shell-pro-42-P11-S5:5",
           "live-ue-2>shell-pro-42-P11-S5:4",
-          "live-ue-30>shell-pro-42-P11-S5:1",
           "live-ue-31>shell-pro-42-P11-S5:6",
           "live-ue-32>shell-pro-42-P11-S5:1",
           "live-ue-33>shell-pro-42-P11-S5:6",
@@ -15738,33 +15233,22 @@
           "live-ue-41>shell-pro-42-P11-S5:1",
           "live-ue-42>shell-pro-42-P11-S5:5",
           "live-ue-43>shell-pro-42-P11-S5:1",
-          "live-ue-44>shell-pro-42-P11-S5:1",
           "live-ue-45>shell-pro-42-P11-S5:1",
-          "live-ue-46>shell-pro-42-P11-S5:6",
           "live-ue-48>shell-pro-42-P11-S5:1",
           "live-ue-49>shell-pro-42-P11-S5:3",
-          "live-ue-4>shell-pro-42-P11-S5:4",
           "live-ue-50>shell-pro-42-P11-S5:3",
           "live-ue-51>shell-pro-42-P11-S5:6",
-          "live-ue-52>shell-pro-42-P11-S5:1",
           "live-ue-53>shell-pro-42-P11-S5:6",
           "live-ue-54>shell-pro-42-P11-S5:6",
           "live-ue-56>shell-pro-42-P11-S5:6",
-          "live-ue-58>shell-pro-42-P11-S5:6",
           "live-ue-59>shell-pro-42-P11-S5:1",
           "live-ue-5>shell-pro-42-P11-S5:1",
           "live-ue-60>shell-pro-42-P11-S5:6",
           "live-ue-61>shell-pro-42-P11-S5:6",
           "live-ue-62>shell-pro-42-P11-S5:4",
-          "live-ue-63>shell-pro-42-P11-S5:5",
           "live-ue-64>shell-pro-42-P11-S5:5",
-          "live-ue-65>shell-pro-42-P11-S5:5",
-          "live-ue-66>shell-pro-42-P11-S5:6",
-          "live-ue-68>shell-pro-42-P11-S5:6",
-          "live-ue-6>shell-pro-42-P11-S5:4",
           "live-ue-72>shell-pro-42-P11-S5:3",
           "live-ue-74>shell-pro-42-P11-S5:1",
-          "live-ue-75>shell-pro-42-P11-S5:1",
           "live-ue-76>shell-pro-42-P11-S5:5",
           "live-ue-77>shell-pro-42-P11-S5:1",
           "live-ue-78>shell-pro-42-P11-S5:1",
@@ -15773,62 +15257,22 @@
           "live-ue-80>shell-pro-42-P11-S5:1",
           "live-ue-82>shell-pro-42-P11-S5:6",
           "live-ue-83>shell-pro-42-P11-S5:1",
-          "live-ue-84>shell-pro-42-P11-S5:5",
-          "live-ue-85>shell-pro-42-P11-S5:4",
-          "live-ue-86>shell-pro-42-P11-S5:1",
-          "live-ue-87>shell-pro-42-P11-S5:1",
           "live-ue-88>shell-pro-42-P11-S5:3",
-          "live-ue-89>shell-pro-42-P11-S5:1",
-          "live-ue-8>shell-pro-42-P11-S5:3",
-          "live-ue-90>shell-pro-42-P11-S5:1",
           "live-ue-91>shell-pro-42-P11-S5:6",
           "live-ue-92>shell-pro-42-P11-S5:1",
-          "live-ue-93>shell-pro-42-P11-S5:1",
           "live-ue-94>shell-pro-42-P11-S5:1",
           "live-ue-95>shell-pro-42-P11-S5:3",
-          "live-ue-96>shell-pro-42-P11-S5:3",
-          "live-ue-97>shell-pro-42-P11-S5:6",
-          "live-ue-98>shell-pro-42-P11-S5:3",
-          "live-ue-9>shell-pro-42-P11-S5:1"
+          "live-ue-96>shell-pro-42-P11-S5:1",
+          "live-ue-97>shell-pro-42-P11-S5:6"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-polar-P22-S2:0",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P22-S2:34",
-          "shell-polar-P4-S8:21",
-          "shell-polar-P4-S8:25",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:30",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:5",
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -15932,7 +15376,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-polar-P22-S2",
+          "shell-polar-P22-S1",
           "shell-pro-42-P11-S5"
         ],
         "eventSatIds": [
@@ -15993,7 +15437,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -16006,8 +15450,8 @@
         },
         "serving": {
           "satId": "shell-pro-42-P11-S5",
-          "beamId": 3,
-          "sinrDb": -29.931308
+          "beamId": 5,
+          "sinrDb": null
         },
         "pendingTarget": {
           "satId": null,
@@ -16647,108 +16091,47 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-42-P11-S5:3",
-          "live-ue-14>shell-pro-42-P11-S5:1",
-          "live-ue-16>shell-pro-42-P11-S5:6",
+          "live-ue-0>shell-pro-42-P11-S5:5",
           "live-ue-17>shell-pro-42-P11-S5:6",
-          "live-ue-18>shell-pro-42-P11-S5:6",
           "live-ue-19>shell-pro-42-P11-S5:3",
-          "live-ue-21>shell-pro-42-P11-S5:3",
-          "live-ue-23>shell-pro-42-P11-S5:1",
-          "live-ue-24>shell-pro-42-P11-S5:6",
           "live-ue-25>shell-pro-42-P11-S5:1",
           "live-ue-28>shell-pro-42-P11-S5:3",
           "live-ue-2>shell-pro-42-P11-S5:4",
           "live-ue-31>shell-pro-42-P11-S5:6",
-          "live-ue-32>shell-pro-42-P11-S5:1",
           "live-ue-33>shell-pro-42-P11-S5:6",
           "live-ue-35>shell-pro-42-P11-S5:6",
           "live-ue-36>shell-pro-42-P11-S5:1",
-          "live-ue-37>shell-pro-42-P11-S5:6",
           "live-ue-38>shell-pro-42-P11-S5:4",
           "live-ue-39>shell-pro-42-P11-S5:3",
-          "live-ue-3>shell-pro-42-P11-S5:3",
-          "live-ue-40>shell-pro-42-P11-S5:3",
           "live-ue-41>shell-pro-42-P11-S5:1",
           "live-ue-42>shell-pro-42-P11-S5:5",
-          "live-ue-43>shell-pro-42-P11-S5:1",
-          "live-ue-44>shell-pro-42-P11-S5:1",
           "live-ue-45>shell-pro-42-P11-S5:1",
           "live-ue-48>shell-pro-42-P11-S5:1",
-          "live-ue-49>shell-pro-42-P11-S5:4",
-          "live-ue-4>shell-pro-42-P11-S5:4",
-          "live-ue-50>shell-pro-42-P11-S5:3",
           "live-ue-51>shell-pro-42-P11-S5:6",
           "live-ue-53>shell-pro-42-P11-S5:6",
-          "live-ue-54>shell-pro-42-P11-S5:6",
-          "live-ue-56>shell-pro-42-P11-S5:6",
           "live-ue-59>shell-pro-42-P11-S5:1",
-          "live-ue-5>shell-pro-42-P11-S5:1",
           "live-ue-60>shell-pro-42-P11-S5:6",
-          "live-ue-61>shell-pro-42-P11-S5:6",
           "live-ue-62>shell-pro-42-P11-S5:4",
           "live-ue-64>shell-pro-42-P11-S5:5",
-          "live-ue-66>shell-pro-42-P11-S5:6",
-          "live-ue-68>shell-pro-42-P11-S5:6",
           "live-ue-72>shell-pro-42-P11-S5:3",
-          "live-ue-74>shell-pro-42-P11-S5:1",
-          "live-ue-75>shell-pro-42-P11-S5:1",
           "live-ue-76>shell-pro-42-P11-S5:5",
           "live-ue-77>shell-pro-42-P11-S5:1",
           "live-ue-78>shell-pro-42-P11-S5:1",
-          "live-ue-79>shell-pro-42-P11-S5:1",
           "live-ue-7>shell-pro-42-P11-S5:3",
-          "live-ue-80>shell-pro-42-P11-S5:1",
           "live-ue-82>shell-pro-42-P11-S5:6",
           "live-ue-83>shell-pro-42-P11-S5:1",
-          "live-ue-84>shell-pro-42-P11-S5:5",
-          "live-ue-86>shell-pro-42-P11-S5:1",
-          "live-ue-87>shell-pro-42-P11-S5:1",
-          "live-ue-88>shell-pro-42-P11-S5:3",
-          "live-ue-89>shell-pro-42-P11-S5:1",
-          "live-ue-91>shell-pro-42-P11-S5:6",
           "live-ue-92>shell-pro-42-P11-S5:1",
-          "live-ue-93>shell-pro-42-P11-S5:1",
           "live-ue-94>shell-pro-42-P11-S5:1",
-          "live-ue-95>shell-pro-42-P11-S5:4",
-          "live-ue-96>shell-pro-42-P11-S5:3",
-          "live-ue-97>shell-pro-42-P11-S5:6",
-          "live-ue-98>shell-pro-42-P11-S5:3"
+          "live-ue-96>shell-pro-42-P11-S5:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-polar-P22-S2:1",
-          "shell-polar-P22-S2:2",
-          "shell-polar-P22-S2:33",
-          "shell-polar-P4-S8:26",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:30",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:5",
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -16926,7 +16309,7 @@
         },
         "serving": {
           "satId": "shell-pro-42-P11-S5",
-          "beamId": 3,
+          "beamId": 5,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -17567,95 +16950,30 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-42-P11-S5:3",
-          "live-ue-14>shell-pro-42-P11-S5:1",
-          "live-ue-16>shell-pro-42-P11-S5:6",
-          "live-ue-17>shell-pro-42-P11-S5:6",
-          "live-ue-18>shell-pro-42-P11-S5:6",
-          "live-ue-19>shell-pro-42-P11-S5:3",
-          "live-ue-25>shell-pro-42-P11-S5:1",
+          "live-ue-0>shell-pro-42-P11-S5:5",
           "live-ue-28>shell-pro-42-P11-S5:3",
           "live-ue-2>shell-pro-42-P11-S5:4",
-          "live-ue-31>shell-pro-42-P11-S5:6",
-          "live-ue-32>shell-pro-42-P11-S5:1",
-          "live-ue-33>shell-pro-42-P11-S5:6",
-          "live-ue-35>shell-pro-42-P11-S5:6",
           "live-ue-36>shell-pro-42-P11-S5:1",
-          "live-ue-37>shell-pro-42-P11-S5:6",
           "live-ue-38>shell-pro-42-P11-S5:4",
-          "live-ue-39>shell-pro-42-P11-S5:3",
-          "live-ue-3>shell-pro-42-P11-S5:3",
-          "live-ue-40>shell-pro-42-P11-S5:3",
-          "live-ue-41>shell-pro-42-P11-S5:1",
-          "live-ue-42>shell-pro-42-P11-S5:5",
-          "live-ue-43>shell-pro-42-P11-S5:1",
-          "live-ue-45>shell-pro-42-P11-S5:1",
           "live-ue-48>shell-pro-42-P11-S5:1",
-          "live-ue-49>shell-pro-42-P11-S5:4",
-          "live-ue-50>shell-pro-42-P11-S5:3",
-          "live-ue-51>shell-pro-42-P11-S5:6",
-          "live-ue-53>shell-pro-42-P11-S5:6",
-          "live-ue-54>shell-pro-42-P11-S5:6",
-          "live-ue-56>shell-pro-42-P11-S5:6",
           "live-ue-59>shell-pro-42-P11-S5:1",
-          "live-ue-5>shell-pro-42-P11-S5:1",
-          "live-ue-60>shell-pro-42-P11-S5:6",
-          "live-ue-61>shell-pro-42-P11-S5:6",
           "live-ue-62>shell-pro-42-P11-S5:4",
           "live-ue-64>shell-pro-42-P11-S5:5",
           "live-ue-72>shell-pro-42-P11-S5:3",
-          "live-ue-74>shell-pro-42-P11-S5:1",
           "live-ue-76>shell-pro-42-P11-S5:5",
           "live-ue-77>shell-pro-42-P11-S5:1",
-          "live-ue-78>shell-pro-42-P11-S5:1",
-          "live-ue-79>shell-pro-42-P11-S5:1",
-          "live-ue-7>shell-pro-42-P11-S5:3",
-          "live-ue-80>shell-pro-42-P11-S5:1",
           "live-ue-82>shell-pro-42-P11-S5:6",
-          "live-ue-83>shell-pro-42-P11-S5:1",
-          "live-ue-88>shell-pro-42-P11-S5:3",
-          "live-ue-91>shell-pro-42-P11-S5:6",
           "live-ue-92>shell-pro-42-P11-S5:1",
-          "live-ue-94>shell-pro-42-P11-S5:1",
-          "live-ue-95>shell-pro-42-P11-S5:4",
-          "live-ue-96>shell-pro-42-P11-S5:3",
-          "live-ue-97>shell-pro-42-P11-S5:6"
+          "live-ue-94>shell-pro-42-P11-S5:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:34",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:30",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:5",
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -17833,7 +17151,7 @@
         },
         "serving": {
           "satId": "shell-pro-42-P11-S5",
-          "beamId": 3,
+          "beamId": 5,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -18483,76 +17801,20 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-42-P11-S5:3",
-          "live-ue-17>shell-pro-42-P11-S5:6",
-          "live-ue-19>shell-pro-42-P11-S5:3",
-          "live-ue-25>shell-pro-42-P11-S5:1",
-          "live-ue-28>shell-pro-42-P11-S5:3",
+          "live-ue-0>shell-pro-42-P11-S5:5",
           "live-ue-2>shell-pro-42-P11-S5:1",
-          "live-ue-31>shell-pro-42-P11-S5:6",
-          "live-ue-33>shell-pro-42-P11-S5:6",
           "live-ue-36>shell-pro-42-P11-S5:1",
-          "live-ue-38>shell-pro-42-P11-S5:4",
-          "live-ue-39>shell-pro-42-P11-S5:3",
-          "live-ue-41>shell-pro-42-P11-S5:1",
-          "live-ue-42>shell-pro-42-P11-S5:5",
-          "live-ue-45>shell-pro-42-P11-S5:1",
-          "live-ue-48>shell-pro-42-P11-S5:1",
-          "live-ue-51>shell-pro-42-P11-S5:6",
-          "live-ue-53>shell-pro-42-P11-S5:6",
-          "live-ue-59>shell-pro-42-P11-S5:1",
-          "live-ue-60>shell-pro-42-P11-S5:6",
-          "live-ue-62>shell-pro-42-P11-S5:4",
-          "live-ue-64>shell-pro-42-P11-S5:5",
-          "live-ue-72>shell-pro-42-P11-S5:3",
-          "live-ue-76>shell-pro-42-P11-S5:5",
-          "live-ue-77>shell-pro-42-P11-S5:1",
-          "live-ue-78>shell-pro-42-P11-S5:1",
-          "live-ue-7>shell-pro-42-P11-S5:3",
-          "live-ue-82>shell-pro-42-P11-S5:6",
-          "live-ue-83>shell-pro-42-P11-S5:1",
-          "live-ue-92>shell-pro-42-P11-S5:1",
-          "live-ue-94>shell-pro-42-P11-S5:1",
-          "live-ue-96>shell-pro-42-P11-S5:3"
+          "live-ue-38>shell-pro-42-P11-S5:1",
+          "live-ue-62>shell-pro-42-P11-S5:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-polar-P4-S8:27",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:34",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:30",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:5",
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -18657,7 +17919,7 @@
         "beamSatIds": [
           "shell-polar-P21-S1",
           "shell-polar-P22-S1",
-          "shell-polar-P3-S7"
+          "shell-pro-42-P11-S5"
         ],
         "eventSatIds": [
           "shell-polar-P21-S1",
@@ -18669,7 +17931,53 @@
           "shell-pro-42-P14-S4",
           "shell-pro-42-P16-S3"
         ],
-        "satBeams": [],
+        "satBeams": [
+          {
+            "satId": "shell-pro-42-P11-S5",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  2989.161781,
+                  -245.182573
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  3183.151472,
+                  90.817427
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  3377.141162,
+                  -245.182573
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  3183.151472,
+                  -581.182573
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#d9b6e8"
+              }
+            ]
+          }
+        ],
         "footprintRadiusWorld": 224,
         "sinrLabelCount": 1
       }
@@ -18684,7 +17992,7 @@
         },
         "serving": {
           "satId": "shell-pro-42-P11-S5",
-          "beamId": 3,
+          "beamId": 5,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -19334,7 +18642,7 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-42-P11-S5:3",
+          "live-ue-0>shell-pro-42-P11-S5:5",
           "live-ue-12>shell-pro-53-P18-S2:7",
           "live-ue-13>shell-pro-53-P18-S2:7",
           "live-ue-16>shell-pro-53-P18-S2:4",
@@ -19345,13 +18653,9 @@
           "live-ue-25>shell-pro-53-P18-S2:4",
           "live-ue-26>shell-pro-53-P18-S2:2",
           "live-ue-27>shell-pro-53-P18-S2:7",
-          "live-ue-28>shell-pro-42-P11-S5:3",
           "live-ue-29>shell-pro-53-P18-S2:7",
-          "live-ue-2>shell-pro-42-P11-S5:1",
           "live-ue-30>shell-pro-53-P18-S2:2",
           "live-ue-34>shell-pro-53-P18-S2:7",
-          "live-ue-36>shell-pro-42-P11-S5:1",
-          "live-ue-38>shell-pro-42-P11-S5:4",
           "live-ue-39>shell-pro-53-P18-S2:4",
           "live-ue-3>shell-pro-53-P18-S2:4",
           "live-ue-40>shell-pro-53-P18-S2:3",
@@ -19359,16 +18663,13 @@
           "live-ue-44>shell-pro-53-P18-S2:1",
           "live-ue-45>shell-pro-53-P18-S2:4",
           "live-ue-46>shell-pro-53-P18-S2:2",
-          "live-ue-48>shell-pro-42-P11-S5:1",
           "live-ue-49>shell-pro-53-P18-S2:3",
           "live-ue-4>shell-pro-53-P18-S2:3",
           "live-ue-50>shell-pro-53-P18-S2:4",
           "live-ue-56>shell-pro-53-P18-S2:4",
           "live-ue-57>shell-pro-53-P18-S2:7",
-          "live-ue-59>shell-pro-42-P11-S5:1",
           "live-ue-5>shell-pro-53-P18-S2:4",
           "live-ue-61>shell-pro-53-P18-S2:4",
-          "live-ue-62>shell-pro-42-P11-S5:4",
           "live-ue-63>shell-pro-53-P18-S2:7",
           "live-ue-65>shell-pro-53-P18-S2:7",
           "live-ue-66>shell-pro-53-P18-S2:1",
@@ -19377,65 +18678,32 @@
           "live-ue-69>shell-pro-53-P18-S2:7",
           "live-ue-6>shell-pro-53-P18-S2:2",
           "live-ue-70>shell-pro-53-P18-S2:7",
-          "live-ue-72>shell-pro-42-P11-S5:3",
           "live-ue-73>shell-pro-53-P18-S2:7",
+          "live-ue-74>shell-pro-53-P18-S2:1",
           "live-ue-75>shell-pro-53-P18-S2:2",
           "live-ue-78>shell-pro-53-P18-S2:4",
           "live-ue-79>shell-pro-53-P18-S2:3",
           "live-ue-7>shell-pro-53-P18-S2:4",
           "live-ue-81>shell-pro-53-P18-S2:7",
-          "live-ue-82>shell-pro-42-P11-S5:6",
           "live-ue-83>shell-pro-53-P18-S2:4",
           "live-ue-85>shell-pro-53-P18-S2:7",
           "live-ue-88>shell-pro-53-P18-S2:4",
           "live-ue-89>shell-pro-53-P18-S2:7",
           "live-ue-8>shell-pro-53-P18-S2:7",
-          "live-ue-92>shell-pro-42-P11-S5:1",
           "live-ue-93>shell-pro-53-P18-S2:1",
-          "live-ue-94>shell-pro-42-P11-S5:1",
           "live-ue-95>shell-pro-53-P18-S2:4",
           "live-ue-96>shell-pro-53-P18-S2:4",
           "live-ue-98>shell-pro-53-P18-S2:2",
           "live-ue-9>shell-pro-53-P18-S2:7"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:27",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:34",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P7-S7:11",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:30",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:5",
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -19539,7 +18807,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-polar-P22-S1",
+          "shell-pro-42-P11-S5",
           "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
@@ -19553,6 +18821,51 @@
           "shell-pro-53-P18-S2"
         ],
         "satBeams": [
+          {
+            "satId": "shell-pro-42-P11-S5",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  3434.415787,
+                  -178.738021
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  3628.405477,
+                  157.261979
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  3822.395168,
+                  -178.738021
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  3628.405477,
+                  -514.738021
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#d9b6e8"
+              }
+            ]
+          },
           {
             "satId": "shell-pro-53-P18-S2",
             "beams": [
@@ -19623,7 +18936,7 @@
         },
         "serving": {
           "satId": "shell-pro-42-P11-S5",
-          "beamId": 3,
+          "beamId": 5,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -20273,7 +19586,7 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-42-P11-S5:3",
+          "live-ue-0>shell-pro-42-P11-S5:5",
           "live-ue-12>shell-pro-53-P18-S2:7",
           "live-ue-13>shell-pro-53-P18-S2:7",
           "live-ue-14>shell-pro-53-P18-S2:1",
@@ -20287,11 +19600,9 @@
           "live-ue-27>shell-pro-53-P18-S2:7",
           "live-ue-28>shell-pro-53-P18-S2:4",
           "live-ue-29>shell-pro-53-P18-S2:7",
-          "live-ue-2>shell-pro-53-P18-S2:4",
           "live-ue-30>shell-pro-53-P18-S2:2",
           "live-ue-32>shell-pro-53-P18-S2:1",
           "live-ue-34>shell-pro-53-P18-S2:7",
-          "live-ue-38>shell-pro-42-P11-S5:4",
           "live-ue-39>shell-pro-53-P18-S2:4",
           "live-ue-3>shell-pro-53-P18-S2:4",
           "live-ue-40>shell-pro-53-P18-S2:3",
@@ -20333,48 +19644,20 @@
           "live-ue-8>shell-pro-53-P18-S2:7",
           "live-ue-92>shell-pro-53-P18-S2:4",
           "live-ue-93>shell-pro-53-P18-S2:1",
+          "live-ue-94>shell-pro-53-P18-S2:4",
           "live-ue-95>shell-pro-53-P18-S2:4",
           "live-ue-96>shell-pro-53-P18-S2:4",
           "live-ue-98>shell-pro-53-P18-S2:2",
           "live-ue-9>shell-pro-53-P18-S2:7"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:27",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:34",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:30",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:5",
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-42-P13-S4:2"
         ]
       },
       "display": {
@@ -20478,7 +19761,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-polar-P22-S1",
+          "shell-pro-42-P11-S5",
           "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
@@ -20492,6 +19775,51 @@
           "shell-pro-53-P18-S2"
         ],
         "satBeams": [
+          {
+            "satId": "shell-pro-42-P11-S5",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  3881.861243,
+                  -102.806304
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  4075.850934,
+                  233.193696
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  4269.840624,
+                  -102.806304
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  4075.850934,
+                  -438.806304
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#d9b6e8"
+              }
+            ]
+          },
           {
             "satId": "shell-pro-53-P18-S2",
             "beams": [
@@ -20562,7 +19890,7 @@
         },
         "serving": {
           "satId": "shell-pro-42-P11-S5",
-          "beamId": 3,
+          "beamId": 5,
           "sinrDb": null
         },
         "pendingTarget": {
@@ -21212,7 +20540,7 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-42-P11-S5:3",
+          "live-ue-0>shell-pro-42-P11-S5:5",
           "live-ue-12>shell-pro-53-P18-S2:7",
           "live-ue-13>shell-pro-53-P18-S2:7",
           "live-ue-14>shell-pro-53-P18-S2:1",
@@ -21229,7 +20557,6 @@
           "live-ue-27>shell-pro-53-P18-S2:7",
           "live-ue-28>shell-pro-53-P18-S2:4",
           "live-ue-29>shell-pro-53-P18-S2:7",
-          "live-ue-2>shell-pro-53-P18-S2:4",
           "live-ue-30>shell-pro-53-P18-S2:2",
           "live-ue-31>shell-pro-53-P18-S2:5",
           "live-ue-32>shell-pro-53-P18-S2:1",
@@ -21301,43 +20628,13 @@
           "live-ue-9>shell-pro-53-P18-S2:7"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:34",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P7-S7:29",
-          "shell-pro-53-P7-S7:5",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:5"
         ]
       },
       "display": {
@@ -21441,7 +20738,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-polar-P22-S1",
+          "shell-pro-42-P11-S5",
           "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
@@ -21455,6 +20752,51 @@
           "shell-pro-53-P18-S2"
         ],
         "satBeams": [
+          {
+            "satId": "shell-pro-42-P11-S5",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  4330.647227,
+                  -19.566262
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  4524.636917,
+                  316.433738
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  4718.626608,
+                  -19.566262
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#d9b6e8"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  4524.636917,
+                  -355.566262
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#d9b6e8"
+              }
+            ]
+          },
           {
             "satId": "shell-pro-53-P18-S2",
             "beams": [
@@ -21546,7 +20888,7 @@
         "serving": {
           "satId": "shell-pro-53-P18-S2",
           "beamId": 6,
-          "sinrDb": 1.490182
+          "sinrDb": 1.433165
         },
         "pendingTarget": {
           "satId": null,
@@ -22203,7 +21545,6 @@
           "live-ue-27>shell-pro-53-P18-S2:7",
           "live-ue-28>shell-pro-53-P18-S2:4",
           "live-ue-29>shell-pro-53-P18-S2:7",
-          "live-ue-2>shell-pro-53-P18-S2:4",
           "live-ue-30>shell-pro-53-P18-S2:2",
           "live-ue-31>shell-pro-53-P18-S2:5",
           "live-ue-32>shell-pro-53-P18-S2:1",
@@ -22275,41 +21616,13 @@
           "live-ue-9>shell-pro-53-P18-S2:7"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:34",
+          "shell-pro-42-P11-S5:0",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:13",
-          "shell-pro-42-P13-S4:14",
-          "shell-pro-42-P13-S4:15",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P7-S7:6"
+          "shell-pro-42-P11-S5:6",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:5"
         ]
       },
       "display": {
@@ -22413,7 +21726,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-polar-P22-S1",
+          "shell-pro-42-P11-S5",
           "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
@@ -22427,6 +21740,21 @@
           "shell-pro-53-P18-S2"
         ],
         "satBeams": [
+          {
+            "satId": "shell-pro-42-P11-S5",
+            "beams": [
+              {
+                "beamId": 5,
+                "ground": [
+                  4974.249753,
+                  -266.601813
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#d9b6e8"
+              }
+            ]
+          },
           {
             "satId": "shell-pro-53-P18-S2",
             "beams": [
@@ -22518,7 +21846,7 @@
         "serving": {
           "satId": "shell-pro-53-P18-S2",
           "beamId": 6,
-          "sinrDb": 1.361994
+          "sinrDb": 1.309174
         },
         "pendingTarget": {
           "satId": null,
@@ -23175,7 +22503,6 @@
           "live-ue-27>shell-pro-53-P18-S2:7",
           "live-ue-28>shell-pro-53-P18-S2:4",
           "live-ue-29>shell-pro-53-P18-S2:7",
-          "live-ue-2>shell-pro-53-P18-S2:4",
           "live-ue-30>shell-pro-53-P18-S2:2",
           "live-ue-31>shell-pro-53-P18-S2:5",
           "live-ue-32>shell-pro-53-P18-S2:1",
@@ -23247,39 +22574,13 @@
           "live-ue-9>shell-pro-53-P18-S2:7"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:34",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:16",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36"
+          "shell-pro-53-P18-S2:0",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -23383,7 +22684,7 @@
         ],
         "beamSatIds": [
           "shell-polar-P21-S1",
-          "shell-polar-P22-S1",
+          "shell-pro-42-P11-S5",
           "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
@@ -23397,6 +22698,21 @@
           "shell-pro-53-P18-S2"
         ],
         "satBeams": [
+          {
+            "satId": "shell-pro-42-P11-S5",
+            "beams": [
+              {
+                "beamId": 0,
+                "ground": [
+                  0,
+                  0
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#d9b6e8"
+              }
+            ]
+          },
           {
             "satId": "shell-pro-53-P18-S2",
             "beams": [
@@ -23418,16 +22734,6 @@
                 ],
                 "isServing": false,
                 "frequencyIndex": 1,
-                "satelliteTintColor": "#ffffff"
-              },
-              {
-                "beamId": 3,
-                "ground": [
-                  387.979381,
-                  672
-                ],
-                "isServing": false,
-                "frequencyIndex": 2,
                 "satelliteTintColor": "#ffffff"
               },
               {
@@ -23474,7 +22780,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -23488,7 +22794,7 @@
         "serving": {
           "satId": "shell-pro-53-P18-S2",
           "beamId": 6,
-          "sinrDb": -1.810873
+          "sinrDb": -1.851983
         },
         "pendingTarget": {
           "satId": null,
@@ -24219,39 +23525,13 @@
           "live-ue-9>shell-pro-53-P18-S2:7"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:34",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36"
+          "shell-pro-53-P18-S2:0",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -24403,16 +23683,6 @@
                 "satelliteTintColor": "#ffffff"
               },
               {
-                "beamId": 4,
-                "ground": [
-                  775.958762,
-                  0
-                ],
-                "isServing": false,
-                "frequencyIndex": 1,
-                "satelliteTintColor": "#ffffff"
-              },
-              {
                 "beamId": 5,
                 "ground": [
                   581.969071,
@@ -24446,7 +23716,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -24460,7 +23730,7 @@
         "serving": {
           "satId": "shell-pro-53-P18-S2",
           "beamId": 1,
-          "sinrDb": -1.391708
+          "sinrDb": -1.446831
         },
         "pendingTarget": {
           "satId": null,
@@ -25114,9 +24384,9 @@
           "live-ue-24>shell-pro-53-P18-S2:6",
           "live-ue-25>shell-pro-53-P18-S2:5",
           "live-ue-26>shell-pro-53-P18-S2:1",
-          "live-ue-27>shell-pro-53-P18-S2:1",
+          "live-ue-27>shell-pro-53-P18-S2:3",
           "live-ue-28>shell-pro-53-P18-S2:4",
-          "live-ue-29>shell-pro-53-P18-S2:5",
+          "live-ue-29>shell-pro-53-P18-S2:3",
           "live-ue-2>shell-pro-53-P18-S2:4",
           "live-ue-30>shell-pro-53-P18-S2:1",
           "live-ue-31>shell-pro-53-P18-S2:5",
@@ -25150,14 +24420,14 @@
           "live-ue-60>shell-pro-53-P18-S2:5",
           "live-ue-61>shell-pro-53-P18-S2:5",
           "live-ue-62>shell-pro-53-P18-S2:4",
-          "live-ue-63>shell-pro-53-P18-S2:4",
+          "live-ue-63>shell-pro-53-P18-S2:1",
           "live-ue-64>shell-pro-53-P18-S2:5",
           "live-ue-65>shell-pro-53-P18-S2:3",
           "live-ue-66>shell-pro-53-P18-S2:1",
           "live-ue-67>shell-pro-53-P18-S2:3",
           "live-ue-68>shell-pro-53-P18-S2:1",
           "live-ue-69>shell-pro-53-P18-S2:3",
-          "live-ue-6>shell-pro-53-P18-S2:4",
+          "live-ue-6>shell-pro-53-P18-S2:1",
           "live-ue-70>shell-pro-53-P18-S2:3",
           "live-ue-72>shell-pro-53-P18-S2:4",
           "live-ue-73>shell-pro-53-P18-S2:3",
@@ -25178,7 +24448,7 @@
           "live-ue-87>shell-pro-53-P18-S2:6",
           "live-ue-88>shell-pro-53-P18-S2:1",
           "live-ue-89>shell-pro-53-P18-S2:1",
-          "live-ue-8>shell-pro-53-P18-S2:3",
+          "live-ue-8>shell-pro-53-P18-S2:5",
           "live-ue-90>shell-pro-53-P18-S2:6",
           "live-ue-91>shell-pro-53-P18-S2:5",
           "live-ue-92>shell-pro-53-P18-S2:4",
@@ -25191,39 +24461,13 @@
           "live-ue-9>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:31",
-          "shell-pro-42-P11-S5:34",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P13-S4:8",
-          "shell-pro-42-P13-S4:9",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36"
+          "shell-pro-53-P18-S2:0",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -25388,7 +24632,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -25402,7 +24646,7 @@
         "serving": {
           "satId": "shell-pro-53-P18-S2",
           "beamId": 1,
-          "sinrDb": -5.667245
+          "sinrDb": -5.595875
         },
         "pendingTarget": {
           "satId": null,
@@ -26056,15 +25300,13 @@
           "live-ue-24>shell-pro-53-P18-S2:6",
           "live-ue-25>shell-pro-53-P18-S2:5",
           "live-ue-26>shell-pro-53-P18-S2:1",
-          "live-ue-27>shell-pro-53-P18-S2:1",
           "live-ue-28>shell-pro-53-P18-S2:3",
-          "live-ue-29>shell-pro-53-P18-S2:5",
+          "live-ue-29>shell-pro-53-P18-S2:3",
           "live-ue-2>shell-pro-53-P18-S2:4",
           "live-ue-30>shell-pro-53-P18-S2:1",
           "live-ue-31>shell-pro-53-P18-S2:5",
           "live-ue-32>shell-pro-53-P18-S2:1",
           "live-ue-33>shell-pro-53-P18-S2:5",
-          "live-ue-34>shell-pro-53-P18-S2:1",
           "live-ue-35>shell-pro-53-P18-S2:5",
           "live-ue-36>shell-pro-53-P18-S2:4",
           "live-ue-37>shell-pro-53-P18-S2:5",
@@ -26092,15 +25334,13 @@
           "live-ue-60>shell-pro-53-P18-S2:5",
           "live-ue-61>shell-pro-53-P18-S2:5",
           "live-ue-62>shell-pro-53-P18-S2:4",
-          "live-ue-63>shell-pro-53-P18-S2:4",
+          "live-ue-63>shell-pro-53-P18-S2:1",
           "live-ue-64>shell-pro-53-P18-S2:5",
           "live-ue-65>shell-pro-53-P18-S2:3",
           "live-ue-66>shell-pro-53-P18-S2:1",
           "live-ue-67>shell-pro-53-P18-S2:3",
           "live-ue-68>shell-pro-53-P18-S2:1",
-          "live-ue-69>shell-pro-53-P18-S2:3",
-          "live-ue-6>shell-pro-53-P18-S2:4",
-          "live-ue-70>shell-pro-53-P18-S2:3",
+          "live-ue-6>shell-pro-53-P18-S2:1",
           "live-ue-72>shell-pro-53-P18-S2:4",
           "live-ue-73>shell-pro-53-P18-S2:3",
           "live-ue-74>shell-pro-53-P18-S2:1",
@@ -26111,7 +25351,6 @@
           "live-ue-79>shell-pro-53-P18-S2:1",
           "live-ue-7>shell-pro-53-P18-S2:5",
           "live-ue-80>shell-pro-53-P18-S2:1",
-          "live-ue-81>shell-pro-53-P18-S2:1",
           "live-ue-82>shell-pro-53-P18-S2:5",
           "live-ue-83>shell-pro-53-P18-S2:3",
           "live-ue-84>shell-pro-53-P18-S2:6",
@@ -26120,7 +25359,7 @@
           "live-ue-87>shell-pro-53-P18-S2:6",
           "live-ue-88>shell-pro-53-P18-S2:1",
           "live-ue-89>shell-pro-53-P18-S2:1",
-          "live-ue-8>shell-pro-53-P18-S2:3",
+          "live-ue-8>shell-pro-53-P18-S2:5",
           "live-ue-90>shell-pro-53-P18-S2:6",
           "live-ue-91>shell-pro-53-P18-S2:5",
           "live-ue-92>shell-pro-53-P18-S2:3",
@@ -26133,37 +25372,13 @@
           "live-ue-9>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:34",
+          "shell-pro-42-P11-S5:1",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36"
+          "shell-pro-53-P18-S2:0",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -26328,7 +25543,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -26342,7 +25557,7 @@
         "serving": {
           "satId": "shell-pro-53-P18-S2",
           "beamId": 1,
-          "sinrDb": -23.359219
+          "sinrDb": -19.910822
         },
         "pendingTarget": {
           "satId": null,
@@ -26983,28 +26198,22 @@
         ],
         "perUeServing": [
           "live-ue-0>shell-pro-53-P18-S2:1",
-          "live-ue-12>shell-pro-53-P18-S2:3",
-          "live-ue-13>shell-pro-53-P18-S2:3",
           "live-ue-14>shell-pro-53-P18-S2:1",
           "live-ue-16>shell-pro-53-P18-S2:5",
           "live-ue-17>shell-pro-53-P18-S2:1",
           "live-ue-18>shell-pro-53-P18-S2:1",
           "live-ue-19>shell-pro-53-P18-S2:3",
-          "live-ue-20>shell-pro-53-P18-S2:3",
           "live-ue-21>shell-pro-53-P18-S2:3",
           "live-ue-23>shell-pro-53-P18-S2:1",
-          "live-ue-24>shell-pro-53-P18-S2:5",
+          "live-ue-24>shell-pro-53-P18-S2:4",
           "live-ue-25>shell-pro-53-P18-S2:5",
           "live-ue-26>shell-pro-53-P18-S2:1",
-          "live-ue-27>shell-pro-53-P18-S2:1",
           "live-ue-28>shell-pro-53-P18-S2:3",
-          "live-ue-29>shell-pro-53-P18-S2:5",
-          "live-ue-2>shell-pro-53-P18-S2:5",
+          "live-ue-2>shell-pro-53-P18-S2:4",
           "live-ue-30>shell-pro-53-P18-S2:1",
           "live-ue-31>shell-pro-53-P18-S2:1",
           "live-ue-32>shell-pro-53-P18-S2:1",
           "live-ue-33>shell-pro-53-P18-S2:1",
-          "live-ue-34>shell-pro-53-P18-S2:1",
           "live-ue-35>shell-pro-53-P18-S2:1",
           "live-ue-36>shell-pro-53-P18-S2:4",
           "live-ue-37>shell-pro-53-P18-S2:1",
@@ -27026,23 +26235,15 @@
           "live-ue-53>shell-pro-53-P18-S2:5",
           "live-ue-54>shell-pro-53-P18-S2:1",
           "live-ue-56>shell-pro-53-P18-S2:1",
-          "live-ue-57>shell-pro-53-P18-S2:3",
           "live-ue-59>shell-pro-53-P18-S2:5",
           "live-ue-5>shell-pro-53-P18-S2:5",
           "live-ue-60>shell-pro-53-P18-S2:1",
           "live-ue-61>shell-pro-53-P18-S2:5",
           "live-ue-62>shell-pro-53-P18-S2:3",
-          "live-ue-63>shell-pro-53-P18-S2:4",
           "live-ue-64>shell-pro-53-P18-S2:5",
-          "live-ue-65>shell-pro-53-P18-S2:3",
-          "live-ue-66>shell-pro-53-P18-S2:5",
-          "live-ue-67>shell-pro-53-P18-S2:3",
-          "live-ue-68>shell-pro-53-P18-S2:3",
-          "live-ue-69>shell-pro-53-P18-S2:3",
-          "live-ue-6>shell-pro-53-P18-S2:4",
-          "live-ue-70>shell-pro-53-P18-S2:3",
+          "live-ue-66>shell-pro-53-P18-S2:1",
+          "live-ue-68>shell-pro-53-P18-S2:5",
           "live-ue-72>shell-pro-53-P18-S2:3",
-          "live-ue-73>shell-pro-53-P18-S2:3",
           "live-ue-74>shell-pro-53-P18-S2:1",
           "live-ue-75>shell-pro-53-P18-S2:1",
           "live-ue-76>shell-pro-53-P18-S2:5",
@@ -27051,17 +26252,14 @@
           "live-ue-79>shell-pro-53-P18-S2:1",
           "live-ue-7>shell-pro-53-P18-S2:5",
           "live-ue-80>shell-pro-53-P18-S2:1",
-          "live-ue-81>shell-pro-53-P18-S2:1",
           "live-ue-82>shell-pro-53-P18-S2:5",
           "live-ue-83>shell-pro-53-P18-S2:3",
           "live-ue-84>shell-pro-53-P18-S2:1",
-          "live-ue-85>shell-pro-53-P18-S2:1",
           "live-ue-86>shell-pro-53-P18-S2:5",
           "live-ue-87>shell-pro-53-P18-S2:5",
           "live-ue-88>shell-pro-53-P18-S2:1",
           "live-ue-89>shell-pro-53-P18-S2:1",
-          "live-ue-8>shell-pro-53-P18-S2:3",
-          "live-ue-90>shell-pro-53-P18-S2:4",
+          "live-ue-90>shell-pro-53-P18-S2:1",
           "live-ue-91>shell-pro-53-P18-S2:1",
           "live-ue-92>shell-pro-53-P18-S2:3",
           "live-ue-93>shell-pro-53-P18-S2:5",
@@ -27073,39 +26271,13 @@
           "live-ue-9>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:12",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:34",
           "shell-pro-42-P11-S5:4",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-42-P9-S6:33",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:0",
+          "shell-pro-53-P18-S2:1",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -27270,7 +26442,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -27284,7 +26456,7 @@
         "serving": {
           "satId": "shell-pro-53-P18-S2",
           "beamId": 1,
-          "sinrDb": -26.182636
+          "sinrDb": -32.191728
         },
         "pendingTarget": {
           "satId": null,
@@ -27925,25 +27097,17 @@
         ],
         "perUeServing": [
           "live-ue-0>shell-pro-53-P18-S2:1",
-          "live-ue-12>shell-pro-53-P18-S2:3",
-          "live-ue-13>shell-pro-53-P18-S2:3",
-          "live-ue-14>shell-pro-53-P18-S2:1",
+          "live-ue-14>shell-pro-53-P18-S2:5",
           "live-ue-16>shell-pro-53-P18-S2:5",
           "live-ue-17>shell-pro-53-P18-S2:1",
           "live-ue-18>shell-pro-53-P18-S2:1",
           "live-ue-19>shell-pro-53-P18-S2:3",
-          "live-ue-20>shell-pro-53-P18-S2:3",
-          "live-ue-21>shell-pro-53-P18-S2:3",
-          "live-ue-23>shell-pro-53-P18-S2:4",
-          "live-ue-24>shell-pro-53-P18-S2:5",
+          "live-ue-24>shell-pro-53-P18-S2:4",
           "live-ue-25>shell-pro-53-P18-S2:5",
-          "live-ue-26>shell-pro-53-P18-S2:1",
           "live-ue-28>shell-pro-53-P18-S2:3",
-          "live-ue-29>shell-pro-53-P18-S2:5",
-          "live-ue-2>shell-pro-53-P18-S2:5",
-          "live-ue-30>shell-pro-53-P18-S2:1",
+          "live-ue-2>shell-pro-53-P18-S2:4",
           "live-ue-31>shell-pro-53-P18-S2:1",
-          "live-ue-32>shell-pro-53-P18-S2:1",
+          "live-ue-32>shell-pro-53-P18-S2:5",
           "live-ue-33>shell-pro-53-P18-S2:1",
           "live-ue-35>shell-pro-53-P18-S2:1",
           "live-ue-36>shell-pro-53-P18-S2:4",
@@ -27957,7 +27121,6 @@
           "live-ue-43>shell-pro-53-P18-S2:5",
           "live-ue-44>shell-pro-53-P18-S2:5",
           "live-ue-45>shell-pro-53-P18-S2:5",
-          "live-ue-46>shell-pro-53-P18-S2:1",
           "live-ue-48>shell-pro-53-P18-S2:4",
           "live-ue-49>shell-pro-53-P18-S2:3",
           "live-ue-4>shell-pro-53-P18-S2:1",
@@ -27966,86 +27129,42 @@
           "live-ue-53>shell-pro-53-P18-S2:5",
           "live-ue-54>shell-pro-53-P18-S2:1",
           "live-ue-56>shell-pro-53-P18-S2:1",
-          "live-ue-57>shell-pro-53-P18-S2:3",
           "live-ue-59>shell-pro-53-P18-S2:1",
           "live-ue-5>shell-pro-53-P18-S2:5",
           "live-ue-60>shell-pro-53-P18-S2:1",
           "live-ue-61>shell-pro-53-P18-S2:5",
           "live-ue-62>shell-pro-53-P18-S2:3",
-          "live-ue-63>shell-pro-53-P18-S2:4",
           "live-ue-64>shell-pro-53-P18-S2:1",
-          "live-ue-65>shell-pro-53-P18-S2:3",
-          "live-ue-66>shell-pro-53-P18-S2:5",
-          "live-ue-67>shell-pro-53-P18-S2:3",
-          "live-ue-68>shell-pro-53-P18-S2:3",
-          "live-ue-6>shell-pro-53-P18-S2:4",
+          "live-ue-66>shell-pro-53-P18-S2:1",
+          "live-ue-68>shell-pro-53-P18-S2:5",
           "live-ue-72>shell-pro-53-P18-S2:3",
-          "live-ue-73>shell-pro-53-P18-S2:3",
           "live-ue-74>shell-pro-53-P18-S2:1",
-          "live-ue-75>shell-pro-53-P18-S2:1",
           "live-ue-76>shell-pro-53-P18-S2:5",
           "live-ue-77>shell-pro-53-P18-S2:5",
           "live-ue-78>shell-pro-53-P18-S2:3",
           "live-ue-79>shell-pro-53-P18-S2:1",
           "live-ue-7>shell-pro-53-P18-S2:5",
-          "live-ue-80>shell-pro-53-P18-S2:1",
+          "live-ue-80>shell-pro-53-P18-S2:5",
           "live-ue-82>shell-pro-53-P18-S2:1",
           "live-ue-83>shell-pro-53-P18-S2:3",
-          "live-ue-84>shell-pro-53-P18-S2:1",
-          "live-ue-85>shell-pro-53-P18-S2:1",
           "live-ue-86>shell-pro-53-P18-S2:5",
-          "live-ue-87>shell-pro-53-P18-S2:5",
           "live-ue-88>shell-pro-53-P18-S2:1",
-          "live-ue-89>shell-pro-53-P18-S2:1",
-          "live-ue-8>shell-pro-53-P18-S2:3",
-          "live-ue-90>shell-pro-53-P18-S2:4",
           "live-ue-91>shell-pro-53-P18-S2:1",
           "live-ue-92>shell-pro-53-P18-S2:3",
           "live-ue-93>shell-pro-53-P18-S2:5",
           "live-ue-94>shell-pro-53-P18-S2:3",
           "live-ue-95>shell-pro-53-P18-S2:3",
           "live-ue-96>shell-pro-53-P18-S2:3",
-          "live-ue-97>shell-pro-53-P18-S2:1",
-          "live-ue-98>shell-pro-53-P18-S2:1",
-          "live-ue-9>shell-pro-53-P18-S2:1"
+          "live-ue-97>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P11-S5:10",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:3",
-          "shell-pro-42-P11-S5:34",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:0",
+          "shell-pro-53-P18-S2:1",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -28210,7 +27329,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -28224,7 +27343,7 @@
         "serving": {
           "satId": "shell-pro-53-P18-S2",
           "beamId": 1,
-          "sinrDb": -34.997547
+          "sinrDb": null
         },
         "pendingTarget": {
           "satId": null,
@@ -28865,114 +27984,59 @@
         ],
         "perUeServing": [
           "live-ue-0>shell-pro-53-P18-S2:1",
-          "live-ue-14>shell-pro-53-P18-S2:4",
+          "live-ue-14>shell-pro-53-P18-S2:5",
           "live-ue-16>shell-pro-53-P18-S2:5",
           "live-ue-17>shell-pro-53-P18-S2:1",
           "live-ue-18>shell-pro-53-P18-S2:1",
           "live-ue-19>shell-pro-53-P18-S2:3",
-          "live-ue-21>shell-pro-53-P18-S2:3",
-          "live-ue-23>shell-pro-53-P18-S2:4",
-          "live-ue-24>shell-pro-53-P18-S2:5",
           "live-ue-25>shell-pro-53-P18-S2:5",
-          "live-ue-26>shell-pro-53-P18-S2:1",
           "live-ue-28>shell-pro-53-P18-S2:3",
-          "live-ue-2>shell-pro-53-P18-S2:5",
+          "live-ue-2>shell-pro-53-P18-S2:4",
           "live-ue-31>shell-pro-53-P18-S2:1",
-          "live-ue-32>shell-pro-53-P18-S2:4",
+          "live-ue-32>shell-pro-53-P18-S2:5",
           "live-ue-33>shell-pro-53-P18-S2:1",
           "live-ue-35>shell-pro-53-P18-S2:1",
           "live-ue-36>shell-pro-53-P18-S2:4",
           "live-ue-37>shell-pro-53-P18-S2:1",
           "live-ue-38>shell-pro-53-P18-S2:3",
           "live-ue-39>shell-pro-53-P18-S2:3",
-          "live-ue-3>shell-pro-53-P18-S2:1",
-          "live-ue-40>shell-pro-53-P18-S2:1",
           "live-ue-41>shell-pro-53-P18-S2:5",
           "live-ue-42>shell-pro-53-P18-S2:1",
           "live-ue-43>shell-pro-53-P18-S2:5",
-          "live-ue-44>shell-pro-53-P18-S2:5",
           "live-ue-45>shell-pro-53-P18-S2:5",
-          "live-ue-46>shell-pro-53-P18-S2:1",
           "live-ue-48>shell-pro-53-P18-S2:4",
-          "live-ue-49>shell-pro-53-P18-S2:4",
-          "live-ue-4>shell-pro-53-P18-S2:1",
           "live-ue-50>shell-pro-53-P18-S2:5",
           "live-ue-51>shell-pro-53-P18-S2:1",
           "live-ue-53>shell-pro-53-P18-S2:5",
           "live-ue-54>shell-pro-53-P18-S2:1",
-          "live-ue-56>shell-pro-53-P18-S2:1",
           "live-ue-59>shell-pro-53-P18-S2:1",
           "live-ue-5>shell-pro-53-P18-S2:5",
           "live-ue-60>shell-pro-53-P18-S2:1",
           "live-ue-61>shell-pro-53-P18-S2:5",
           "live-ue-62>shell-pro-53-P18-S2:3",
-          "live-ue-63>shell-pro-53-P18-S2:4",
           "live-ue-64>shell-pro-53-P18-S2:1",
-          "live-ue-66>shell-pro-53-P18-S2:5",
-          "live-ue-68>shell-pro-53-P18-S2:3",
           "live-ue-72>shell-pro-53-P18-S2:3",
-          "live-ue-74>shell-pro-53-P18-S2:4",
-          "live-ue-75>shell-pro-53-P18-S2:1",
           "live-ue-76>shell-pro-53-P18-S2:5",
           "live-ue-77>shell-pro-53-P18-S2:5",
           "live-ue-78>shell-pro-53-P18-S2:3",
-          "live-ue-79>shell-pro-53-P18-S2:1",
           "live-ue-7>shell-pro-53-P18-S2:5",
-          "live-ue-80>shell-pro-53-P18-S2:4",
+          "live-ue-80>shell-pro-53-P18-S2:5",
           "live-ue-82>shell-pro-53-P18-S2:1",
           "live-ue-83>shell-pro-53-P18-S2:3",
-          "live-ue-84>shell-pro-53-P18-S2:1",
-          "live-ue-86>shell-pro-53-P18-S2:5",
-          "live-ue-87>shell-pro-53-P18-S2:5",
-          "live-ue-88>shell-pro-53-P18-S2:1",
-          "live-ue-89>shell-pro-53-P18-S2:1",
-          "live-ue-90>shell-pro-53-P18-S2:4",
           "live-ue-91>shell-pro-53-P18-S2:1",
           "live-ue-92>shell-pro-53-P18-S2:3",
-          "live-ue-93>shell-pro-53-P18-S2:5",
           "live-ue-94>shell-pro-53-P18-S2:3",
-          "live-ue-95>shell-pro-53-P18-S2:3",
           "live-ue-96>shell-pro-53-P18-S2:3",
-          "live-ue-97>shell-pro-53-P18-S2:1",
-          "live-ue-98>shell-pro-53-P18-S2:1",
-          "live-ue-9>shell-pro-53-P18-S2:1"
+          "live-ue-97>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P10-S5:10",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:34",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:0",
+          "shell-pro-53-P18-S2:1",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -29147,7 +28211,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -29161,7 +28225,7 @@
         "serving": {
           "satId": "shell-pro-53-P18-S2",
           "beamId": 1,
-          "sinrDb": -32.382831
+          "sinrDb": null
         },
         "pendingTarget": {
           "satId": null,
@@ -29802,103 +28866,36 @@
         ],
         "perUeServing": [
           "live-ue-0>shell-pro-53-P18-S2:1",
-          "live-ue-14>shell-pro-53-P18-S2:4",
-          "live-ue-16>shell-pro-53-P18-S2:5",
           "live-ue-17>shell-pro-53-P18-S2:1",
-          "live-ue-18>shell-pro-53-P18-S2:1",
-          "live-ue-19>shell-pro-53-P18-S2:3",
-          "live-ue-24>shell-pro-53-P18-S2:5",
-          "live-ue-25>shell-pro-53-P18-S2:5",
           "live-ue-28>shell-pro-53-P18-S2:3",
-          "live-ue-2>shell-pro-53-P18-S2:5",
+          "live-ue-2>shell-pro-53-P18-S2:1",
           "live-ue-31>shell-pro-53-P18-S2:1",
-          "live-ue-32>shell-pro-53-P18-S2:4",
-          "live-ue-33>shell-pro-53-P18-S2:1",
-          "live-ue-35>shell-pro-53-P18-S2:1",
           "live-ue-36>shell-pro-53-P18-S2:1",
-          "live-ue-37>shell-pro-53-P18-S2:1",
           "live-ue-38>shell-pro-53-P18-S2:3",
-          "live-ue-39>shell-pro-53-P18-S2:3",
-          "live-ue-3>shell-pro-53-P18-S2:1",
-          "live-ue-40>shell-pro-53-P18-S2:1",
-          "live-ue-41>shell-pro-53-P18-S2:5",
           "live-ue-42>shell-pro-53-P18-S2:1",
-          "live-ue-43>shell-pro-53-P18-S2:5",
-          "live-ue-44>shell-pro-53-P18-S2:5",
-          "live-ue-45>shell-pro-53-P18-S2:5",
           "live-ue-48>shell-pro-53-P18-S2:1",
-          "live-ue-49>shell-pro-53-P18-S2:4",
-          "live-ue-50>shell-pro-53-P18-S2:5",
           "live-ue-51>shell-pro-53-P18-S2:1",
-          "live-ue-53>shell-pro-53-P18-S2:5",
-          "live-ue-54>shell-pro-53-P18-S2:1",
-          "live-ue-56>shell-pro-53-P18-S2:1",
           "live-ue-59>shell-pro-53-P18-S2:1",
-          "live-ue-5>shell-pro-53-P18-S2:5",
           "live-ue-60>shell-pro-53-P18-S2:1",
-          "live-ue-61>shell-pro-53-P18-S2:5",
           "live-ue-62>shell-pro-53-P18-S2:3",
           "live-ue-64>shell-pro-53-P18-S2:1",
-          "live-ue-66>shell-pro-53-P18-S2:5",
-          "live-ue-68>shell-pro-53-P18-S2:3",
           "live-ue-72>shell-pro-53-P18-S2:3",
-          "live-ue-74>shell-pro-53-P18-S2:4",
           "live-ue-76>shell-pro-53-P18-S2:5",
           "live-ue-77>shell-pro-53-P18-S2:5",
           "live-ue-78>shell-pro-53-P18-S2:3",
-          "live-ue-79>shell-pro-53-P18-S2:1",
           "live-ue-7>shell-pro-53-P18-S2:5",
-          "live-ue-80>shell-pro-53-P18-S2:4",
           "live-ue-82>shell-pro-53-P18-S2:1",
-          "live-ue-83>shell-pro-53-P18-S2:3",
-          "live-ue-84>shell-pro-53-P18-S2:1",
-          "live-ue-86>shell-pro-53-P18-S2:5",
-          "live-ue-87>shell-pro-53-P18-S2:5",
-          "live-ue-88>shell-pro-53-P18-S2:1",
-          "live-ue-91>shell-pro-53-P18-S2:1",
           "live-ue-92>shell-pro-53-P18-S2:3",
-          "live-ue-93>shell-pro-53-P18-S2:5",
-          "live-ue-94>shell-pro-53-P18-S2:3",
-          "live-ue-95>shell-pro-53-P18-S2:3",
-          "live-ue-96>shell-pro-53-P18-S2:3",
-          "live-ue-97>shell-pro-53-P18-S2:1"
+          "live-ue-94>shell-pro-53-P18-S2:3"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:0",
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P10-S5:10",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P11-S5:27",
-          "shell-pro-42-P11-S5:34",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:0",
+          "shell-pro-53-P18-S2:1",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -30073,7 +29070,7 @@
           }
         ],
         "footprintRadiusWorld": 224,
-        "sinrLabelCount": 2
+        "sinrLabelCount": 1
       }
     },
     {
@@ -30728,85 +29725,19 @@
         ],
         "perUeServing": [
           "live-ue-0>shell-pro-53-P18-S2:1",
-          "live-ue-14>shell-pro-53-P18-S2:4",
-          "live-ue-17>shell-pro-53-P18-S2:1",
-          "live-ue-18>shell-pro-53-P18-S2:1",
-          "live-ue-19>shell-pro-53-P18-S2:3",
-          "live-ue-25>shell-pro-53-P18-S2:5",
-          "live-ue-28>shell-pro-53-P18-S2:3",
-          "live-ue-2>shell-pro-53-P18-S2:5",
-          "live-ue-31>shell-pro-53-P18-S2:1",
-          "live-ue-32>shell-pro-53-P18-S2:4",
-          "live-ue-33>shell-pro-53-P18-S2:1",
-          "live-ue-35>shell-pro-53-P18-S2:1",
+          "live-ue-2>shell-pro-53-P18-S2:1",
           "live-ue-36>shell-pro-53-P18-S2:1",
-          "live-ue-37>shell-pro-53-P18-S2:1",
           "live-ue-38>shell-pro-53-P18-S2:3",
-          "live-ue-39>shell-pro-53-P18-S2:3",
-          "live-ue-41>shell-pro-53-P18-S2:5",
-          "live-ue-42>shell-pro-53-P18-S2:1",
-          "live-ue-43>shell-pro-53-P18-S2:5",
-          "live-ue-45>shell-pro-53-P18-S2:5",
-          "live-ue-48>shell-pro-53-P18-S2:1",
-          "live-ue-50>shell-pro-53-P18-S2:5",
-          "live-ue-51>shell-pro-53-P18-S2:1",
-          "live-ue-53>shell-pro-53-P18-S2:5",
-          "live-ue-54>shell-pro-53-P18-S2:1",
-          "live-ue-59>shell-pro-53-P18-S2:1",
-          "live-ue-5>shell-pro-53-P18-S2:5",
-          "live-ue-60>shell-pro-53-P18-S2:1",
-          "live-ue-61>shell-pro-53-P18-S2:5",
-          "live-ue-62>shell-pro-53-P18-S2:3",
-          "live-ue-64>shell-pro-53-P18-S2:1",
-          "live-ue-72>shell-pro-53-P18-S2:3",
-          "live-ue-76>shell-pro-53-P18-S2:5",
-          "live-ue-77>shell-pro-53-P18-S2:5",
-          "live-ue-78>shell-pro-53-P18-S2:3",
-          "live-ue-7>shell-pro-53-P18-S2:5",
-          "live-ue-82>shell-pro-53-P18-S2:1",
-          "live-ue-83>shell-pro-53-P18-S2:3",
-          "live-ue-91>shell-pro-53-P18-S2:1",
-          "live-ue-92>shell-pro-53-P18-S2:3",
-          "live-ue-94>shell-pro-53-P18-S2:3",
-          "live-ue-96>shell-pro-53-P18-S2:3",
-          "live-ue-97>shell-pro-53-P18-S2:1"
+          "live-ue-48>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-polar-P22-S1:1",
-          "shell-polar-P22-S1:2",
-          "shell-polar-P22-S1:32",
-          "shell-polar-P22-S1:7",
-          "shell-pro-42-P10-S5:10",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P11-S5:34",
-          "shell-pro-42-P12-S4:0",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:27",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:0",
+          "shell-pro-53-P18-S2:1",
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -30911,7 +29842,7 @@
         "beamSatIds": [
           "shell-polar-P21-S1",
           "shell-polar-P22-S1",
-          "shell-pro-42-P12-S4"
+          "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
           "shell-polar-P21-S1",
@@ -30921,20 +29852,60 @@
           "shell-pro-42-P11-S5",
           "shell-pro-42-P12-S4",
           "shell-pro-42-P14-S4",
-          "shell-pro-42-P15-S3"
+          "shell-pro-53-P18-S2"
         ],
         "satBeams": [
           {
-            "satId": "shell-polar-P22-S1",
+            "satId": "shell-pro-53-P18-S2",
             "beams": [
               {
-                "beamId": 0,
+                "beamId": 1,
                 "ground": [
-                  0,
-                  0
+                  2666.358677,
+                  -1038.621674
                 ],
                 "isServing": false,
                 "frequencyIndex": 0,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  2860.348368,
+                  -702.621674
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  3054.338058,
+                  -1038.621674
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  2860.348368,
+                  -1374.621674
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 6,
+                "ground": [
+                  2472.368987,
+                  -1374.621674
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
                 "satelliteTintColor": "#ffffff"
               }
             ]
@@ -31595,60 +30566,16 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:1",
-          "live-ue-17>shell-pro-53-P18-S2:1",
-          "live-ue-28>shell-pro-53-P18-S2:3",
-          "live-ue-2>shell-pro-53-P18-S2:5",
-          "live-ue-36>shell-pro-53-P18-S2:1",
-          "live-ue-38>shell-pro-53-P18-S2:3",
-          "live-ue-42>shell-pro-53-P18-S2:1",
-          "live-ue-48>shell-pro-53-P18-S2:1",
-          "live-ue-51>shell-pro-53-P18-S2:1",
-          "live-ue-59>shell-pro-53-P18-S2:1",
-          "live-ue-62>shell-pro-53-P18-S2:3",
-          "live-ue-64>shell-pro-53-P18-S2:1",
-          "live-ue-72>shell-pro-53-P18-S2:3",
-          "live-ue-76>shell-pro-53-P18-S2:5",
-          "live-ue-77>shell-pro-53-P18-S2:5",
-          "live-ue-82>shell-pro-53-P18-S2:1",
-          "live-ue-92>shell-pro-53-P18-S2:3",
-          "live-ue-94>shell-pro-53-P18-S2:3"
+          "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-pro-42-P10-S5:10",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P10-S5:34",
-          "shell-pro-42-P12-S4:0",
-          "shell-pro-42-P12-S4:2",
-          "shell-pro-42-P12-S4:3",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
+          "shell-pro-53-P18-S2:0",
           "shell-pro-53-P18-S2:1",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:35",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:27",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -31753,7 +30680,7 @@
         "beamSatIds": [
           "shell-polar-P21-S1",
           "shell-polar-P22-S1",
-          "shell-pro-42-P12-S4"
+          "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
           "shell-polar-P21-S1",
@@ -31763,9 +30690,65 @@
           "shell-pro-42-P11-S5",
           "shell-pro-42-P12-S4",
           "shell-pro-42-P14-S4",
-          "shell-pro-42-P15-S3"
+          "shell-pro-53-P18-S2"
         ],
-        "satBeams": [],
+        "satBeams": [
+          {
+            "satId": "shell-pro-53-P18-S2",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  3055.974673,
+                  -1298.53077
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  3249.964364,
+                  -962.53077
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  3443.954054,
+                  -1298.53077
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  3249.964364,
+                  -1634.53077
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 6,
+                "ground": [
+                  2861.984983,
+                  -1634.53077
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              }
+            ]
+          }
+        ],
         "footprintRadiusWorld": 224,
         "sinrLabelCount": 1
       }
@@ -32421,47 +31404,16 @@
           }
         ],
         "perUeServing": [
-          "live-ue-0>shell-pro-53-P18-S2:1",
-          "live-ue-2>shell-pro-53-P18-S2:5",
-          "live-ue-36>shell-pro-53-P18-S2:1",
-          "live-ue-48>shell-pro-53-P18-S2:1"
+          "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-pro-42-P10-S5:10",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P10-S5:34",
-          "shell-pro-42-P10-S5:35",
-          "shell-pro-42-P12-S4:0",
-          "shell-pro-42-P12-S4:2",
-          "shell-pro-42-P12-S4:3",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:32",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
+          "shell-pro-53-P18-S2:0",
           "shell-pro-53-P18-S2:1",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:27",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -32566,7 +31518,7 @@
         "beamSatIds": [
           "shell-polar-P21-S1",
           "shell-polar-P22-S1",
-          "shell-pro-42-P12-S4"
+          "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
           "shell-polar-P21-S1",
@@ -32576,9 +31528,65 @@
           "shell-pro-42-P12-S4",
           "shell-pro-42-P14-S4",
           "shell-pro-42-P15-S3",
-          "shell-pro-42-P16-S3"
+          "shell-pro-53-P18-S2"
         ],
-        "satBeams": [],
+        "satBeams": [
+          {
+            "satId": "shell-pro-53-P18-S2",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  3443.135358,
+                  -1565.361877
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  3637.125048,
+                  -1229.361877
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  3831.114739,
+                  -1565.361877
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  3637.125048,
+                  -1901.361877
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 6,
+                "ground": [
+                  3249.145667,
+                  -1901.361877
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              }
+            ]
+          }
+        ],
         "footprintRadiusWorld": 224,
         "sinrLabelCount": 1
       }
@@ -33264,42 +32272,13 @@
           "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-pro-42-P10-S5:10",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P10-S5:34",
-          "shell-pro-42-P10-S5:35",
-          "shell-pro-42-P12-S4:0",
-          "shell-pro-42-P12-S4:2",
-          "shell-pro-42-P12-S4:3",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:32",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:25",
-          "shell-pro-42-P16-S3:26",
-          "shell-pro-42-P16-S3:30",
+          "shell-pro-53-P18-S2:0",
           "shell-pro-53-P18-S2:1",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:27",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:7",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -33404,7 +32383,7 @@
         "beamSatIds": [
           "shell-polar-P21-S1",
           "shell-polar-P22-S1",
-          "shell-pro-42-P12-S4"
+          "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
           "shell-polar-P21-S1",
@@ -33414,9 +32393,65 @@
           "shell-pro-42-P14-S4",
           "shell-pro-42-P15-S3",
           "shell-pro-42-P16-S3",
-          "shell-pro-53-P17-S2"
+          "shell-pro-53-P18-S2"
         ],
-        "satBeams": [],
+        "satBeams": [
+          {
+            "satId": "shell-pro-53-P18-S2",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  3828.300672,
+                  -1837.298031
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  4022.290362,
+                  -1501.298031
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  4216.280053,
+                  -1837.298031
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  4022.290362,
+                  -2173.298031
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 6,
+                "ground": [
+                  3634.310981,
+                  -2173.298031
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              }
+            ]
+          }
+        ],
         "footprintRadiusWorld": 224,
         "sinrLabelCount": 1
       }
@@ -34102,43 +33137,13 @@
           "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-pro-42-P10-S5:10",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P10-S5:29",
-          "shell-pro-42-P10-S5:34",
-          "shell-pro-42-P10-S5:35",
-          "shell-pro-42-P12-S4:0",
-          "shell-pro-42-P12-S4:2",
-          "shell-pro-42-P12-S4:26",
-          "shell-pro-42-P12-S4:3",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:32",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P15-S3:25",
-          "shell-pro-42-P16-S3:14",
-          "shell-pro-42-P16-S3:15",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:30",
+          "shell-pro-53-P18-S2:0",
           "shell-pro-53-P18-S2:1",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:27",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:7",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -34243,7 +33248,7 @@
         "beamSatIds": [
           "shell-polar-P21-S1",
           "shell-pro-42-P10-S5",
-          "shell-pro-42-P12-S4"
+          "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
           "shell-polar-P21-S1",
@@ -34255,7 +33260,63 @@
           "shell-pro-53-P17-S2",
           "shell-pro-53-P18-S2"
         ],
-        "satBeams": [],
+        "satBeams": [
+          {
+            "satId": "shell-pro-53-P18-S2",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  4219.866527,
+                  -2109.193918
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  4413.856218,
+                  -1773.193918
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  4607.845908,
+                  -2109.193918
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  4413.856218,
+                  -2445.193918
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 6,
+                "ground": [
+                  4025.876837,
+                  -2445.193918
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              }
+            ]
+          }
+        ],
         "footprintRadiusWorld": 224,
         "sinrLabelCount": 1
       }
@@ -34941,41 +34002,13 @@
           "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-pro-42-P10-S5:10",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P10-S5:29",
-          "shell-pro-42-P10-S5:34",
-          "shell-pro-42-P10-S5:35",
-          "shell-pro-42-P12-S4:0",
-          "shell-pro-42-P12-S4:2",
-          "shell-pro-42-P12-S4:26",
-          "shell-pro-42-P12-S4:3",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:32",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:24",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P15-S3:25",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:30",
+          "shell-pro-53-P18-S2:0",
           "shell-pro-53-P18-S2:1",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:27",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:7",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -35080,7 +34113,7 @@
         "beamSatIds": [
           "shell-pro-42-P10-S5",
           "shell-pro-42-P12-S4",
-          "shell-pro-42-P14-S4"
+          "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
           "shell-pro-42-P10-S5",
@@ -35092,7 +34125,63 @@
           "shell-pro-53-P17-S2",
           "shell-pro-53-P18-S2"
         ],
-        "satBeams": [],
+        "satBeams": [
+          {
+            "satId": "shell-pro-53-P18-S2",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  4610.216412,
+                  -2383.744041
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  4804.206103,
+                  -2047.744041
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  4998.195793,
+                  -2383.744041
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  4804.206103,
+                  -2719.744041
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 6,
+                "ground": [
+                  4416.226722,
+                  -2719.744041
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              }
+            ]
+          }
+        ],
         "footprintRadiusWorld": 224,
         "sinrLabelCount": 1
       }
@@ -35778,41 +34867,13 @@
           "live-ue-0>shell-pro-53-P18-S2:1"
         ],
         "cellServing": [
-          "shell-pro-42-P10-S5:10",
-          "shell-pro-42-P10-S5:12",
-          "shell-pro-42-P10-S5:29",
-          "shell-pro-42-P10-S5:34",
-          "shell-pro-42-P10-S5:35",
-          "shell-pro-42-P12-S4:0",
-          "shell-pro-42-P12-S4:2",
-          "shell-pro-42-P12-S4:26",
-          "shell-pro-42-P12-S4:3",
-          "shell-pro-42-P12-S4:31",
-          "shell-pro-42-P12-S4:32",
-          "shell-pro-42-P12-S4:33",
-          "shell-pro-42-P14-S4:11",
-          "shell-pro-42-P14-S4:22",
-          "shell-pro-42-P14-S4:23",
-          "shell-pro-42-P14-S4:28",
-          "shell-pro-42-P14-S4:5",
-          "shell-pro-42-P14-S4:6",
-          "shell-pro-42-P15-S3:15",
-          "shell-pro-42-P15-S3:25",
-          "shell-pro-42-P16-S3:17",
-          "shell-pro-42-P16-S3:18",
-          "shell-pro-42-P16-S3:30",
+          "shell-pro-53-P18-S2:0",
           "shell-pro-53-P18-S2:1",
-          "shell-pro-53-P18-S2:16",
-          "shell-pro-53-P18-S2:19",
-          "shell-pro-53-P18-S2:20",
-          "shell-pro-53-P18-S2:21",
-          "shell-pro-53-P18-S2:36",
-          "shell-pro-53-P8-S6:13",
-          "shell-pro-53-P8-S6:27",
-          "shell-pro-53-P8-S6:4",
-          "shell-pro-53-P8-S6:7",
-          "shell-pro-53-P8-S6:8",
-          "shell-pro-53-P8-S6:9"
+          "shell-pro-53-P18-S2:2",
+          "shell-pro-53-P18-S2:3",
+          "shell-pro-53-P18-S2:4",
+          "shell-pro-53-P18-S2:5",
+          "shell-pro-53-P18-S2:6"
         ]
       },
       "display": {
@@ -35917,7 +34978,7 @@
         "beamSatIds": [
           "shell-pro-42-P10-S5",
           "shell-pro-42-P12-S4",
-          "shell-pro-42-P14-S4"
+          "shell-pro-53-P18-S2"
         ],
         "eventSatIds": [
           "shell-pro-42-P10-S5",
@@ -35929,7 +34990,63 @@
           "shell-pro-53-P17-S2",
           "shell-pro-53-P18-S2"
         ],
-        "satBeams": [],
+        "satBeams": [
+          {
+            "satId": "shell-pro-53-P18-S2",
+            "beams": [
+              {
+                "beamId": 1,
+                "ground": [
+                  4999.566498,
+                  -2660.385008
+                ],
+                "isServing": false,
+                "frequencyIndex": 0,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 3,
+                "ground": [
+                  5193.556188,
+                  -2324.385008
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 4,
+                "ground": [
+                  5387.545878,
+                  -2660.385008
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 5,
+                "ground": [
+                  5193.556188,
+                  -2996.385008
+                ],
+                "isServing": false,
+                "frequencyIndex": 2,
+                "satelliteTintColor": "#ffffff"
+              },
+              {
+                "beamId": 6,
+                "ground": [
+                  4805.576807,
+                  -2996.385008
+                ],
+                "isServing": false,
+                "frequencyIndex": 1,
+                "satelliteTintColor": "#ffffff"
+              }
+            ]
+          }
+        ],
         "footprintRadiusWorld": 224,
         "sinrLabelCount": 1
       }
