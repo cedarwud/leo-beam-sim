@@ -401,6 +401,21 @@ canvas {
   border-color: rgba(123, 167, 255, 0.24);
 }
 
+.leo-six-acts-subtitle-overlay {
+  position: absolute;
+  z-index: 18;
+  right: 18px;
+  bottom: 94px;
+  left: 18px;
+  pointer-events: none;
+}
+
+.leo-six-acts-subtitle-overlay .sa-subtitle {
+  margin: 0 auto;
+  max-width: 1040px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+}
+
 // Temporary MODQN declutter (先隱藏 for the visual overhaul): hide the in-scene
 // top-right preview/warning HUD only. The sidebars stay. This card renders only
 // in the modqn-live-cell-preview lane (App gate), so hiding the class hides it

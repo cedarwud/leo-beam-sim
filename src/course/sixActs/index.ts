@@ -19,6 +19,7 @@ export * from './directorScript';
 export * from './armStrategy';
 export * from './powerSweep';
 export * from './liveReplayBridge';
+export * from './subtitleStateMachine';
 export * from './teachingMode';
 export * from './windowVisibility';
 export * from './act1Shells';

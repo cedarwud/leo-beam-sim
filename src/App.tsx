@@ -240,12 +240,65 @@ import {
   withSixActsTeachingMode,
   type SixActsTeachingMode,
 } from './course/sixActs/teachingMode';
+import {
+  adaptSixActsFrameFacts,
+  type SixActsFrameFacts,
+} from './course/sixActs/liveReplayBridge';
+import {
+  advanceSixActsSubtitleState,
+  createSixActsSubtitleState,
+  type SixActsSubtitleState,
+} from './course/sixActs/subtitleStateMachine';
+import { SixActsSubtitleBar } from './course/nav/SixActsAnnotation';
 
 interface HandoverPolicyRuntimeState {
   profileId: string;
   draft: HandoverPolicyTuningState;
   applied: HandoverPolicyTuningState;
   version: number;
+}
+
+function adaptHomepageSixActsFrameFacts(state: SimState): SixActsFrameFacts | null {
+  const primaryUeId = state.primaryUeId;
+  const canonicalEe = state.canonicalEe;
+  if (
+    primaryUeId === null
+    || primaryUeId === undefined
+    || canonicalEe === null
+    || canonicalEe === undefined
+    || canonicalEe.systemPowerW === null
+    || canonicalEe.perUserContributions === null
+  ) return null;
+
+  return adaptSixActsFrameFacts(
+    {
+      simTimeSec: state.simTimeSec,
+      serving: {
+        satId: state.servingSatId,
+        sinrDb: Number.isFinite(state.sinrDb) ? state.sinrDb : 0,
+      },
+      pendingTargetSatId: state.pendingTargetSatId,
+      pendingTargetSinrDb: state.pendingTargetSinrDb,
+      handoverTriggerProgressSec: state.handoverTriggerProgressSec,
+      lastHoEvent: state.lastHoEvent === null ? null : {
+        timeMs: state.lastHoEvent.timeMs,
+        action: state.lastHoEvent.action,
+        fromSatId: state.lastHoEvent.fromSatId,
+        toSatId: state.lastHoEvent.toSatId,
+        deltaDb: state.lastHoEvent.deltaDb,
+      },
+    },
+    {
+      systemPowerW: canonicalEe.systemPowerW,
+      users: canonicalEe.perUserContributions.map(user => ({
+        ueId: user.ueId,
+        status: user.status ?? (user.satId !== null && user.sinrDb !== null ? 'served' : 'unserved'),
+        sinrDb: user.sinrDb ?? null,
+        rateMbps: user.rateMbps ?? 0,
+      })),
+    },
+    primaryUeId,
+  );
 }
 
 const MODQN_REPLAY_VISUAL_TICK_MS = 100;
@@ -537,6 +590,8 @@ export function App() {
   }, [baseProfile]);
   const handleTeachingModeChange = useCallback((nextMode: SixActsTeachingMode) => {
     setTeachingMode(nextMode);
+    sixActsSubtitleRef.current = null;
+    setSixActsSubtitle(null);
     if (typeof window !== 'undefined') {
       window.history.replaceState(window.history.state, '', withSixActsTeachingMode(window.location.href, nextMode));
     }
@@ -715,6 +770,8 @@ export function App() {
   );
 
   const [simState, setSimState] = useState<SimState>(() => createInitialSimState(baseProfile));
+  const sixActsSubtitleRef = useRef<SixActsSubtitleState | null>(null);
+  const [sixActsSubtitle, setSixActsSubtitle] = useState<SixActsSubtitleState | null>(null);
   const teachingLinkSnapshot = useMemo<TeachingLinkSnapshot>(() => {
     const formulaFrame = simState.angleAwareFormulaFrame;
     const terms = formulaFrame?.terms;
@@ -890,6 +947,27 @@ export function App() {
     // focus resolver can read "now" without recreating its callback every frame.
     liveSimTimeSecRef.current = state.simTimeSec;
     setSimState(state);
+    if (teachingMode === 'teaching' && sceneLane === 'sinr-live') {
+      const facts = adaptHomepageSixActsFrameFacts(state);
+      if (facts === null) {
+        sixActsSubtitleRef.current = null;
+        setSixActsSubtitle(current => current === null ? current : null);
+      } else {
+        const policy = {
+          offsetDb: appliedHandoverPolicy.offsetDb,
+          tttSec: appliedHandoverPolicy.triggerTimeSec,
+        } as const;
+        const previous = sixActsSubtitleRef.current;
+        const next = previous === null
+          ? createSixActsSubtitleState(facts, policy)
+          : advanceSixActsSubtitleState(previous, facts, policy);
+        sixActsSubtitleRef.current = next;
+        setSixActsSubtitle(next);
+      }
+    } else if (sixActsSubtitleRef.current !== null) {
+      sixActsSubtitleRef.current = null;
+      setSixActsSubtitle(null);
+    }
     const observedEvent = liveObservedHandoverRailEventFromState(state);
     if (observedEvent !== null) {
       setLiveObservedHandoverRailEvents(current => {
@@ -900,7 +978,7 @@ export function App() {
     setStaleFormulaEvidenceKey(current => (
       current === signalEvidenceKey && state.physicalServingBudget !== null ? null : current
     ));
-  }, [signalEvidenceKey]);
+  }, [appliedHandoverPolicy.offsetDb, appliedHandoverPolicy.triggerTimeSec, sceneLane, signalEvidenceKey, teachingMode]);
 
   // Replay display-state callback. Required as architectural witness by
   //
@@ -2848,6 +2926,20 @@ export function App() {
               suppressVisual={shouldSuppressInterSeekFade(handoverCinema.armFilter)}
               onPeak={handleCinematicSeekPeak}
             />
+          )}
+          {teachingMode === 'teaching' && sceneLane === 'sinr-live' && sixActsSubtitle !== null && (
+            <div
+              className="leo-six-acts-subtitle-overlay"
+              data-testid="six-acts-subtitle-overlay"
+              data-six-acts-beat={sixActsSubtitle.beat}
+            >
+              <SixActsSubtitleBar
+                eyebrow={sixActsSubtitle.eyebrow}
+                text={sixActsSubtitle.text}
+                rows={sixActsSubtitle.rows}
+                tone={sixActsSubtitle.tone}
+              />
+            </div>
           )}
           {timelineBar}
         </main>
