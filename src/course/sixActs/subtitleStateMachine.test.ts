@@ -88,4 +88,13 @@ state = advanceSixActsSubtitleState(state, facts({
 }), policy);
 assert.equal(state.beat, 'new-normal');
 
+state = advanceSixActsSubtitleState(state, facts({
+  simTimeSec: 11,
+  servingSatelliteId: 'to',
+  servingSinrDb: 12,
+  candidateSatelliteId: 'next',
+  candidateSinrDb: 16,
+}), policy);
+assert.equal(state.beat, 'candidate');
+
 console.log('SixActs subtitle FSM covers service, decline, candidate, elimination, TTT, execute, receipt, and new-normal.');

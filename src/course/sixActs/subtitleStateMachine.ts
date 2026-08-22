@@ -234,10 +234,6 @@ export function advanceSixActsSubtitleState(
     return stateFor('new-normal', facts, facts.simTimeSec, previous.lastCommitTimeMs, policy);
   }
 
-  if (previous.beat === 'new-normal') {
-    return stateFor('new-normal', facts, previous.startedAtSimTimeSec, previous.lastCommitTimeMs, policy);
-  }
-
   const delta = deltaDb(facts);
   if (facts.candidateSatelliteId !== null && facts.triggerProgressSec > 0) {
     return stateFor('ttt', facts, previous.startedAtSimTimeSec, previous.lastCommitTimeMs, policy);
@@ -263,6 +259,10 @@ export function advanceSixActsSubtitleState(
     && facts.servingSatelliteId !== null
   ) {
     return stateFor('decline', facts, previous.startedAtSimTimeSec, previous.lastCommitTimeMs, policy);
+  }
+
+  if (previous.beat === 'new-normal') {
+    return stateFor('new-normal', facts, previous.startedAtSimTimeSec, previous.lastCommitTimeMs, policy);
   }
 
   return stateFor('service', facts, previous.startedAtSimTimeSec, previous.lastCommitTimeMs, policy);
