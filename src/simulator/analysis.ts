@@ -606,11 +606,11 @@ function selectRepresentativeUserIndex(
 }
 
 export interface SimulationAnalysisFrameBuildOptions {
-  /** Product scenario preset; not a canonical formula input and not thesis v_max. */
+  /** Product scenario preset; not a canonical formula input and not a legacy formula symbol. */
   readonly beamLayoutCount?: SupportedBeamLayoutCount;
   /** Stable satellite-specific complete-ring choices; global count remains the fallback. */
   readonly perSatelliteBeamLayoutCount?: PerSatelliteBeamLayoutCount;
-  /** Product scenario policy; not thesis v_max and not a canonical formula input. */
+  /** Product scenario policy; not a canonical formula input. */
   readonly beamIlluminationMode?: SimulatorBeamIlluminationMode;
   /** Move existing UEs in the canonical local tangent-plane scenario only. */
   readonly userPositionOverridesKm?: readonly CanonicalSevenCellUserPositionOverride[];

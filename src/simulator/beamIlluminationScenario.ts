@@ -14,7 +14,7 @@ export const DEFAULT_SIMULATOR_BEAM_ILLUMINATION_MODE: SimulatorBeamIllumination
  * Fixed illumination admits the complete selected layout. Beam Hopping admits
  * half of the layout (rounded up) and advances that window deterministically
  * at each accepted 30-second anchor. The explicit revision prevents this
- * teaching policy from being confused with thesis v_max or an operator policy.
+ * teaching policy from being confused with an operator policy.
  */
 export const VISUAL_LAB_BEAM_ILLUMINATION_POLICY_REVISION =
   'visual-lab-half-layout-round-robin-v1' as const;
