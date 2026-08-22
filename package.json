@@ -34,9 +34,9 @@
     "test:visual-lab": "node --import tsx/esm --test 'src/visualLab/**/*.test.ts' 'src/visualLab/**/*.test.tsx' 'src/prototype/visual-lab-g0/**/*.test.ts' 'src/prototype/visual-lab-g0/**/*.test.tsx'",
     "generate:visual-lab:global-first-frame": "node --import tsx/esm scripts/generate-visual-lab-global-first-frame.ts",
     "check:visual-lab:global-first-frame": "node --import tsx/esm scripts/generate-visual-lab-global-first-frame.ts --check",
-  "generate:visual-lab:default-full-run": "node --import tsx/esm scripts/generate-visual-lab-default-full-run-artifact.ts",
-  "check:visual-lab:default-full-run": "node --import tsx/esm scripts/generate-visual-lab-default-full-run-artifact.ts --check",
-  "test:visual-lab:default-full-run": "node --import tsx/esm src/ui/signal-tuning/defaultVisualLabFullRunArtifact.test.ts",
+    "generate:visual-lab:default-full-run": "node --import tsx/esm scripts/generate-visual-lab-default-full-run-artifact.ts",
+    "check:visual-lab:default-full-run": "node --import tsx/esm scripts/generate-visual-lab-default-full-run-artifact.ts --check",
+    "test:visual-lab:default-full-run": "node --import tsx/esm src/ui/signal-tuning/defaultVisualLabFullRunArtifact.test.ts",
     "test:active-simulator": "npm run check:tle-archive && npm run test:tle && npm run test:canonical-ee && npm run test:simulator",
     "typecheck:scripts": "tsc -p tsconfig.scripts.json",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
@@ -259,7 +259,14 @@
     "validate:phase-i:s7a-constellation-coverage": "node --import tsx/esm scripts/validate-phase-i-s7a-constellation-coverage.ts",
     "validate:phase-i:s7b-serving-count-selector": "node --import tsx/esm scripts/validate-phase-i-s7b-serving-count-selector.tsx",
     "benchmark:hobs-tr38811-phase1": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase1.ts",
-    "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts"
+    "benchmark:hobs-tr38811-phase2:dpc": "node --import tsx/esm scripts/benchmark-hobs-tr38811-phase2-dpc.ts",
+    "generate:six-acts:teaching-window": "node --import tsx/esm scripts/build-six-acts-teaching-window.ts",
+    "check:six-acts:teaching-window": "node --import tsx/esm scripts/build-six-acts-teaching-window.ts --check",
+    "test:six-acts": "node --import tsx/esm src/course/sixActs/teachingWindow.test.ts && node --import tsx/esm src/course/sixActs/runSummary.test.ts && node --import tsx/esm src/course/sixActs/platformUpload.test.ts && node --import tsx/esm src/course/sixActs/armStrategy.test.ts && node --import tsx/esm src/course/sixActs/directorScript.test.ts && node --import tsx/esm src/course/sixActs/powerSweep.test.ts && node --import tsx/esm src/course/sixActs/liveReplayBridge.test.ts && node --import tsx/esm src/course/sixActs/teachingMode.test.ts && node --import tsx/esm src/course/sixActs/windowVisibility.test.ts && node --import tsx/esm src/course/sixActs/act1Shells.test.ts && node --import tsx/esm src/course/sixActs/deletedSymbols.test.ts && npm run test:act1 && npm run test:act2 && npm run test:act3 && npm run test:six-acts-nav",
+    "test:act1": "node --import tsx/esm src/prototype/global-constellation/act1Frames.test.ts",
+    "test:act2": "node --import tsx/esm src/course/tle-journey/tleFields.test.ts",
+    "test:act3": "node --import tsx/esm src/course/angle-lab/anglePowerChain.test.ts",
+    "test:six-acts-nav": "node --import tsx/esm src/course/nav/sixActsRoutes.test.ts"
   },
   "keywords": [
     "3d",

@@ -1,0 +1,251 @@
+{
+  "schema": "six-acts-teaching-window-v1",
+  "beatCalibration": "live-replay-dt",
+  "boundary": "SOURCE-class atlas forecast at 30 s steps. Window identification only; not a beat timetable and not measured truth.",
+  "generationCommand": "npm run generate:six-acts:teaching-window",
+  "provenance": {
+    "atlasId": "tle-event-atlas:7d369b45969375ee4a7df555200ba124b8107850be16567f03f7d436ed522730",
+    "atlasSchema": "canonical-tle-event-atlas-v1",
+    "atlasGeneratedAtUtc": "2026-08-18T12:19:33.888Z",
+    "atlasArtifactPath": "artifacts/tle-event-atlas/20260818-ntpu-90d/oneweb-atlas.json.gz",
+    "atlasArtifactSha256": "00d14282000514efe58172a13b36c2aca9492bb1fff8ace87117a8641ce5d880",
+    "sourceArchiveContentSha256": "2c969249495c85159f812636bb69259052f002fe229d43eb888796356ba123c5",
+    "configDigest": "7a6b52071c6f7be327c996e43d972421c592113c8fe9d2e5767e191f64541e3e",
+    "canonicalParameterDigest": "59c3048c229803d5783f67dfd5380dbb6fb588ad1746f806abeea473400d2953",
+    "canonicalScenarioDigest": "8e4608eec108cfeee5e0954e38ddcf554e9a91eb17278bee500868bd1eef5b93",
+    "resolverRevision": "adr-005-frozen-publication-v1",
+    "visibilityRevision": "ntpu-exact-sgp4-horizon-v1",
+    "exactSgp4Revision": "satellite-js-sgp4-v1",
+    "propagationMode": "full-reference",
+    "evidenceClass": "canonical-research",
+    "observer": {
+      "id": "ntpu-wgs84-v1",
+      "label": "NTPU",
+      "latitudeDeg": 24.9441667,
+      "longitudeDeg": 121.3713889,
+      "heightKm": 0.05
+    },
+    "search": {
+      "startUtc": "2026-05-19T00:00:00.000Z",
+      "endUtcExclusive": "2026-08-17T00:00:00.000Z",
+      "windowStepSec": 1800,
+      "physicalDurationSec": 7776000
+    }
+  },
+  "selection": {
+    "rank": 1,
+    "variantId": "tle-event-variant-v1:d318ac8ff025cd120c11aed4927953ccc0be4b90a96230750dd56e5269ba0941:2026-08-10T15%3A00%3A00.000Z:inter-handover:2026-08-10T16%3A54%3A30.000Z:49194:55159:tle-event-v1-c18494dc",
+    "logicalEventKey": "oneweb|inter-handover|2026-08-10T16:54:30.000Z|49194|55159",
+    "sourceEvent": "inter-handover",
+    "traceDigest": "tle-trace-v1-3cf84c66",
+    "geometryRunId": "tle-run:oneweb-filesystem-archive-v1:d318ac8ff025cd120c11aed4927953ccc0be4b90a96230750dd56e5269ba0941:2026-08-10T15%3A00%3A00.000Z:7200:30:d4effea1",
+    "analysisRunId": "analysis-run-052eff82",
+    "rankingBasis": "presentation-only lexicographic order; handover validity remains the canonical 3 dB offset and 30 s TTT trace",
+    "populationContext": {
+      "validInterHandoverCount": 329,
+      "forcedContinuityCount": 24409,
+      "validInterHandoversPerPhysicalHour": 0.15231481481481482,
+      "validAtLeast45DegCount": 0
+    }
+  },
+  "window": {
+    "constellation": "oneweb",
+    "requestedT0Utc": "2026-08-10T15:00:00.000Z",
+    "triggerInstantUtc": "2026-08-10T16:54:30.000Z",
+    "triggerOffsetSec": 6870,
+    "handoverPolicy": {
+      "offsetDb": 3,
+      "tttSec": 30,
+      "anchorStepSec": 30
+    },
+    "evaluation": {
+      "evaluationBitsPerJ": 10375133.060313366,
+      "deliveredBits": 682975404699.8912,
+      "consumedEnergyJ": 65828.1104183991,
+      "durationS": 7200,
+      "sampleCount": 240
+    }
+  },
+  "pair": {
+    "from": {
+      "satelliteId": "49194",
+      "satelliteName": "ONEWEB-0325",
+      "epochUtc": "2026-08-10T13:00:32.431Z",
+      "sourcePath": "/tle-archive/oneweb/oneweb_20260810.tle",
+      "line1": "1 49194U 21083J   26222.54204203  .00000060  00000+0  11940-3 0  9998",
+      "line2": "2 49194  87.9202 324.6537 0001941 103.3463 256.7886 13.18683671237178"
+    },
+    "to": {
+      "satelliteId": "55159",
+      "satelliteName": "ONEWEB-0618",
+      "epochUtc": "2026-08-10T09:52:17.781Z",
+      "sourcePath": "/tle-archive/oneweb/oneweb_20260810.tle",
+      "line1": "1 55159U 23004V   26222.41131691  .00002913  00000+0  15992-3 0  9997",
+      "line2": "2 55159  86.9126 155.6193 0015255  91.3978 268.9010 15.13624305190460"
+    }
+  },
+  "qualification": {
+    "anchors": [
+      {
+        "anchorIndex": 228,
+        "instantUtc": "2026-08-10T16:54:00.000Z",
+        "deltaDb": 3.431544670980305,
+        "progressSec": 0
+      },
+      {
+        "anchorIndex": 229,
+        "instantUtc": "2026-08-10T16:54:30.000Z",
+        "deltaDb": 3.388380224547415,
+        "progressSec": 30
+      }
+    ],
+    "spanSec": 30,
+    "preCommit": {
+      "servingSatelliteId": "49194",
+      "candidateSatelliteId": "55159",
+      "servingSinrDb": -13.400373086785965,
+      "candidateSinrDb": -10.01199286223855,
+      "deltaDb": 3.388380224547415
+    },
+    "postCommit": {
+      "servingSatelliteId": "55159",
+      "instantUtc": "2026-08-10T16:54:30.000Z"
+    }
+  },
+  "atlasForecast": {
+    "note": "A 30 s coarse offline forecast. It identifies the window and nothing else — never use these instants as director beat times.",
+    "stepSec": 30,
+    "samples": [
+      {
+        "role": "before",
+        "anchorIndex": 227,
+        "instantUtc": "2026-08-10T16:53:30.000Z",
+        "state": "monitoring",
+        "event": "none",
+        "servingSatelliteId": "49194",
+        "candidateSatelliteId": "55159",
+        "deltaSinrDb": 2.5675028705966074,
+        "serving": {
+          "satelliteId": "49194",
+          "userId": "ue-12",
+          "userIndex": 11,
+          "beamId": 0,
+          "elevationDeg": 10.768870987220552,
+          "rangeKm": 3060.8126543971753,
+          "offAxisAngleRad": 0.003748073057641062,
+          "actualPowerW": 0.040271294505730394,
+          "sinrDb": -12.138249554663252,
+          "rateBps": 950958.0971258295,
+          "qosMet": false
+        },
+        "candidate": {
+          "satelliteId": "55159",
+          "userId": "ue-12",
+          "userIndex": 11,
+          "beamId": 0,
+          "elevationDeg": 67.20052701397128,
+          "rangeKm": 564.3990801014687,
+          "offAxisAngleRad": 0.021147471125033998,
+          "actualPowerW": 0.0020038323269742616,
+          "sinrDb": -11.511372031353051,
+          "rateBps": 1093692.0573824423,
+          "qosMet": true
+        },
+        "concurrentVisibleSatelliteCount": 32,
+        "systemPowerW": 11.306392267052324,
+        "totalRateBps": 96131059.0216677,
+        "instantaneousEeBitsPerJ": 8502363.685169568,
+        "evaluationEeBitsPerJ": 10375133.060313366
+      },
+      {
+        "role": "decision",
+        "anchorIndex": 229,
+        "instantUtc": "2026-08-10T16:54:30.000Z",
+        "state": "handover",
+        "event": "inter-handover",
+        "servingSatelliteId": "55159",
+        "candidateSatelliteId": "47276",
+        "deltaSinrDb": -0.2425378799548934,
+        "serving": {
+          "satelliteId": "55159",
+          "userId": "ue-15",
+          "userIndex": 14,
+          "beamId": 0,
+          "elevationDeg": 65.51215613703204,
+          "rangeKm": 571.2469519608711,
+          "offAxisAngleRad": 0.022861111870822733,
+          "actualPowerW": 0.00223249426384279,
+          "sinrDb": -11.490204120945322,
+          "rateBps": 1098856.771582189,
+          "qosMet": true
+        },
+        "candidate": {
+          "satelliteId": "47276",
+          "userId": "ue-15",
+          "userIndex": 14,
+          "beamId": 0,
+          "elevationDeg": 55.66380134801183,
+          "rangeKm": 1421.5671563002704,
+          "offAxisAngleRad": 0.008971877735290868,
+          "actualPowerW": 0.008689686539552195,
+          "sinrDb": -12.156457864744501,
+          "rateBps": 947094.6887416915,
+          "qosMet": false
+        },
+        "concurrentVisibleSatelliteCount": 34,
+        "systemPowerW": 4.633557135675354,
+        "totalRateBps": 133576664.50069517,
+        "instantaneousEeBitsPerJ": 28828103.461213928,
+        "evaluationEeBitsPerJ": 10375133.060313366
+      },
+      {
+        "role": "after",
+        "anchorIndex": 231,
+        "instantUtc": "2026-08-10T16:55:30.000Z",
+        "state": "monitoring",
+        "event": "none",
+        "servingSatelliteId": "55159",
+        "candidateSatelliteId": "47276",
+        "deltaSinrDb": -0.10632720408332297,
+        "serving": {
+          "satelliteId": "55159",
+          "userId": "ue-72",
+          "userIndex": 71,
+          "beamId": 4,
+          "elevationDeg": 35.29871133445852,
+          "rangeKm": 846.9211020788945,
+          "offAxisAngleRad": 0.01482849453332208,
+          "actualPowerW": 0.0035283617864017578,
+          "sinrDb": -12.299676022809098,
+          "rateBps": 982750.4153150998,
+          "qosMet": false
+        },
+        "candidate": {
+          "satelliteId": "47276",
+          "userId": "ue-72",
+          "userIndex": 71,
+          "beamId": 4,
+          "elevationDeg": 54.73852216146843,
+          "rangeKm": 1434.5402399312425,
+          "offAxisAngleRad": 0.009097379676228744,
+          "actualPowerW": 0.008538977138675206,
+          "sinrDb": -12.422580606638151,
+          "rateBps": 956077.6814318212,
+          "qosMet": false
+        },
+        "concurrentVisibleSatelliteCount": 31,
+        "systemPowerW": 5.178266314610945,
+        "totalRateBps": 111764435.51207659,
+        "instantaneousEeBitsPerJ": 21583369.552995596,
+        "evaluationEeBitsPerJ": 10375133.060313366
+      }
+    ]
+  },
+  "quality": {
+    "minimumEventElevationDeg": 6.656113593899684,
+    "deltaSinrDynamicRangeDb": 0.8640418003836974,
+    "candidateResidualVisibilitySec": 25.9767392613403,
+    "concurrentVisibleSatelliteCount": 34,
+    "complete": true
+  }
+}
