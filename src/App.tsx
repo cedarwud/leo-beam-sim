@@ -590,12 +590,15 @@ export function App() {
   }, [baseProfile]);
   const handleTeachingModeChange = useCallback((nextMode: SixActsTeachingMode) => {
     setTeachingMode(nextMode);
+    sixActsTeachingFactsRef.current = null;
+    sixActsAutoCameraKeyRef.current = null;
     sixActsSubtitleRef.current = null;
     setSixActsSubtitle(null);
+    if (nextMode === 'engineering') camera.exitDirectorFocus();
     if (typeof window !== 'undefined') {
       window.history.replaceState(window.history.state, '', withSixActsTeachingMode(window.location.href, nextMode));
     }
-  }, []);
+  }, [camera]);
   /**
    * Live scene topology overrides are shared by both live lanes. The recorded
    * artifact lanes deliberately get an empty topology so a local control never
@@ -771,6 +774,8 @@ export function App() {
 
   const [simState, setSimState] = useState<SimState>(() => createInitialSimState(baseProfile));
   const sixActsSubtitleRef = useRef<SixActsSubtitleState | null>(null);
+  const sixActsTeachingFactsRef = useRef<SixActsFrameFacts | null>(null);
+  const sixActsAutoCameraKeyRef = useRef<string | null>(null);
   const [sixActsSubtitle, setSixActsSubtitle] = useState<SixActsSubtitleState | null>(null);
   const teachingLinkSnapshot = useMemo<TeachingLinkSnapshot>(() => {
     const formulaFrame = simState.angleAwareFormulaFrame;
@@ -950,9 +955,11 @@ export function App() {
     if (teachingMode === 'teaching' && sceneLane === 'sinr-live') {
       const facts = adaptHomepageSixActsFrameFacts(state);
       if (facts === null) {
+        sixActsTeachingFactsRef.current = null;
         sixActsSubtitleRef.current = null;
         setSixActsSubtitle(current => current === null ? current : null);
       } else {
+        sixActsTeachingFactsRef.current = facts;
         const policy = {
           offsetDb: appliedHandoverPolicy.offsetDb,
           tttSec: appliedHandoverPolicy.triggerTimeSec,
@@ -965,6 +972,7 @@ export function App() {
         setSixActsSubtitle(next);
       }
     } else if (sixActsSubtitleRef.current !== null) {
+      sixActsTeachingFactsRef.current = null;
       sixActsSubtitleRef.current = null;
       setSixActsSubtitle(null);
     }
@@ -979,6 +987,42 @@ export function App() {
       current === signalEvidenceKey && state.physicalServingBudget !== null ? null : current
     ));
   }, [appliedHandoverPolicy.offsetDb, appliedHandoverPolicy.triggerTimeSec, sceneLane, signalEvidenceKey, teachingMode]);
+
+  useEffect(() => {
+    if (teachingMode !== 'teaching' || sceneLane !== 'sinr-live' || sixActsSubtitle === null) {
+      sixActsAutoCameraKeyRef.current = null;
+      return;
+    }
+
+    const facts = sixActsTeachingFactsRef.current;
+    if (facts === null) return;
+
+    const focusBeat = sixActsSubtitle.beat === 'candidate'
+      || sixActsSubtitle.beat === 'elimination'
+      || sixActsSubtitle.beat === 'ttt'
+      || sixActsSubtitle.beat === 'execute';
+    if (focusBeat && facts.candidateSatelliteId !== null) {
+      const focusKey = `${facts.servingSatelliteId ?? 'none'}->${facts.candidateSatelliteId}`;
+      if (sixActsAutoCameraKeyRef.current !== focusKey) {
+        sixActsAutoCameraKeyRef.current = focusKey;
+        camera.requestInterFocus({
+          fromSatId: facts.servingSatelliteId,
+          toSatId: facts.candidateSatelliteId,
+        });
+      }
+      return;
+    }
+
+    if (
+      (sixActsSubtitle.beat === 'service'
+        || sixActsSubtitle.beat === 'decline'
+        || sixActsSubtitle.beat === 'new-normal')
+      && sixActsAutoCameraKeyRef.current !== null
+    ) {
+      sixActsAutoCameraKeyRef.current = null;
+      camera.exitDirectorFocus();
+    }
+  }, [camera, sceneLane, sixActsSubtitle, teachingMode]);
 
   // Replay display-state callback. Required as architectural witness by
   //
