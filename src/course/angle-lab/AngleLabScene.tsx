@@ -2,7 +2,6 @@ import { useMemo, type ReactElement } from 'react';
 import { Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-import { SixActsSceneCard } from '../nav/SixActsAnnotation';
 
 /**
  * Act 3's geometry: one satellite, one UE, and the TWO angles the room keeps
@@ -177,30 +176,6 @@ export function AngleLabScene({
         <Html position={[satellite.x + 0.1, satellite.y - 0.62, 0]} center className="angle-lab__tag is-offaxis">
           θ = {geometry.offAxisDeg.toFixed(1)}°
         </Html>
-      </> : null}
-
-      {/* The two angles get a card each, pinned where they are measured. Values
-          alone leave the room to work out WHERE each apex sits; the cards say
-          it, and a screenshot of the frame carries the argument. */}
-      {showLabels ? <>
-        <SixActsSceneCard
-          position={[ue.x + 0.9, 0.75, 0]}
-          content={{
-            eyebrow: '仰角 ε',
-            title: `${geometry.elevationDeg.toFixed(1)}°`,
-            body: '頂點在你腳下，從地平面量到衛星。它只跟衛星在天上多高有關。',
-            tone: 'source',
-          }}
-        />
-        <SixActsSceneCard
-          position={[satellite.x + 1.05, satellite.y - 0.95, 0]}
-          content={{
-            eyebrow: '離軸角 θ',
-            title: `${geometry.offAxisDeg.toFixed(1)}°`,
-            body: '頂點在衛星，從波束中軸量到你。撥中軸它就變，仰角卻一動也不動。',
-            tone: 'candidate',
-          }}
-        />
       </> : null}
 
     </group>

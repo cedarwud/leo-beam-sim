@@ -779,10 +779,17 @@ body {
 }
 
 
-/* Larger type broke this: the long archive timestamp overflowed its box and
-   ran under the next heading. Wrap it and give the row real height. */
+/* These panels are flex columns, so every child defaults to flex-shrink: 1 and
+   gets squeezed to its min-height while its text overflows outside the box —
+   the next heading then lays out against the squeezed height and appears to sit
+   on top of it. Latent all along; readable type made it visible. */
+.global-constellation__controls > *,
+.global-constellation__insights > * {
+  flex: 0 0 auto;
+}
+
 .global-constellation__source-state {
+  min-height: 0;
   overflow-wrap: anywhere;
   line-height: 1.5;
 }
-.global-constellation__section-label { margin-top: 1rem; }

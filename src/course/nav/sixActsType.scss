@@ -9,6 +9,18 @@
  * One place sets the scale so no page drifts back down.
  */
 
+/**
+ * The six-acts routes do not import the app's main.scss, so nothing was
+ * painting the page ground: outside each `main` the browser default showed
+ * through as white bands down both sides.
+ */
+html,
+body {
+  margin: 0;
+  background: #020a10;
+  color-scheme: dark;
+}
+
 :root {
   --sa-base: 19px;
   --sa-lh: 1.62;
@@ -71,4 +83,14 @@
 
 .six-acts-bridge {
   font-size: var(--sa-body);
+}
+
+
+
+/* Content gets a reading measure; the SURFACE stays full bleed. Centring the
+   surface itself left the dark page floating inside white margins. */
+.six-acts > *,
+.energy-lab > * {
+  max-width: 82rem;
+  margin-inline: auto;
 }

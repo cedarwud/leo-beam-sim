@@ -18,7 +18,7 @@ import {
   type AngleLabCamera,
 } from './AngleLabScene';
 import { SIX_ACTS_BEAM_POWER_CAP_W } from '../sixActs/powerSweep';
-import { SixActsOverlayCard, SixActsOverlayStage } from '../nav/SixActsAnnotation';
+import { SixActsSubtitleBar } from '../nav/SixActsAnnotation';
 import { SixActsBridge, SixActsNav } from '../nav/SixActsNav';
 import {
   ANGLE_LAB_DEMOS,
@@ -195,7 +195,6 @@ export function AngleLabRoute(): ReactElement {
             )}
           </div>
 
-          <SixActsOverlayStage>
           <div className="angle-lab__canvas">
             <Canvas key={camera} camera={{ position: [...preset.position], fov: 38 }} dpr={[1, 1.5]}>
               <color attach="background" args={['#020a10']} />
@@ -205,27 +204,19 @@ export function AngleLabRoute(): ReactElement {
               <OrbitControls makeDefault enableDamping dampingFactor={0.09} target={[...preset.target]} />
             </Canvas>
           </div>
-          {/* The running commentary is a SUBTITLE, so it sits at the foot of the
-              frame rather than pinned in 3D where the camera can clip it. */}
           {demoState === null ? null : (
-            <SixActsOverlayCard
-              leftPercent={2}
-              topPercent={97}
-              anchor="bottom-left"
-              content={{
-                eyebrow: ANGLE_LAB_DEMOS.find(option => option.id === demo)?.labelZhHant ?? '',
-                title: ANGLE_LAB_DEMOS.find(option => option.id === demo)?.narrationZhHant ?? '',
-                rows: [
-                  { label: 'G^T(θ)/G₀', value: `${step.gainDb.toFixed(2)} dB` },
-                  { label: 'p(t)', value: step.atGainFloor ? '增益觸底' : `${step.powerW.toFixed(2)} W` },
-                  { label: demo === 'track-ue' ? 'steering' : 'θ',
-                    value: `${(demo === 'track-ue' ? effectiveSteeringDeg : geometry.offAxisDeg).toFixed(1)}°` },
-                ],
-                tone: step.overRatedCap || step.atGainFloor ? 'warn' : 'source',
-              }}
+            <SixActsSubtitleBar
+              eyebrow={ANGLE_LAB_DEMOS.find(option => option.id === demo)?.labelZhHant}
+              text={ANGLE_LAB_DEMOS.find(option => option.id === demo)?.narrationZhHant ?? ''}
+              rows={[
+                { label: 'G^T(θ)/G₀', value: `${step.gainDb.toFixed(2)} dB` },
+                { label: 'p(t)', value: step.atGainFloor ? '增益觸底' : `${step.powerW.toFixed(2)} W` },
+                { label: demo === 'track-ue' ? 'steering' : 'θ',
+                  value: `${(demo === 'track-ue' ? effectiveSteeringDeg : geometry.offAxisDeg).toFixed(1)}°` },
+              ]}
+              tone={step.overRatedCap || step.atGainFloor ? 'warn' : 'source'}
             />
           )}
-          </SixActsOverlayStage>
         </section>
 
         <aside className="angle-lab__panel">

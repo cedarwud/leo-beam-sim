@@ -1,9 +1,6 @@
 import type { ReactElement } from 'react';
 
-import {
-  SixActsOverlayCard,
-  SixActsOverlayStage,
-} from '../nav/SixActsAnnotation';
+import { SixActsSubtitleBar } from '../nav/SixActsAnnotation';
 import type { SixActsPhasePlan } from '../sixActs/directorScript';
 
 /**
@@ -49,14 +46,7 @@ export function HandoverTheatreStage({
   const conditionArmed = phase?.id === 'D-condition' || phase?.id === 'E-execute';
   const tttFraction = tttTotalSec === 0 ? 0 : tttProgressSec / tttTotalSec;
 
-  // Cards are positioned in percent of the stage box so they track the same
-  // satellites the SVG draws, which is what makes a screenshot self-explaining.
-  const percent = (x: number, y: number) => ({ left: (x / width) * 100, top: (y / height) * 100 });
-  const servingAt = percent(servingX, servingY);
-  const candidateAt = percent(candidateX, candidateY);
-
   return (
-    <SixActsOverlayStage>
     <div className="theatre__stage">
       <svg viewBox={`0 0 ${width} ${height}`} role="img"
         aria-label={`服務衛星仰角 ${servingElevationDeg.toFixed(1)} 度，候選 ${candidateElevationDeg.toFixed(1)} 度`}>
@@ -107,69 +97,24 @@ export function HandoverTheatreStage({
         ) : null}
       </svg>
 
-      {/* The narration lives ON the thing it is about, so a recording carries
-          its own subtitles and a slide screenshot arrives explained. */}
+      {/* One subtitle band UNDER the stage. The earlier version floated cards
+          over the middle of the scene and hid the geometry being narrated. */}
       {phase === null ? null : (
-        <SixActsOverlayCard
-          leftPercent={3}
-          topPercent={97}
-          anchor="bottom-left"
-          content={{
-            eyebrow: `PHASE ${phase.id.slice(0, 1)} · ${phase.titleZhHant}`,
-            title: phase.narrationZhHant,
-            badge: phase.autoPause ? '自動暫停' : undefined,
-            tone: phase.autoPause ? 'source' : 'neutral',
-          }}
-        />
-      )}
-
-      <SixActsOverlayCard
-        leftPercent={servingAt.left}
-        topPercent={servingAt.top < 34 ? servingAt.top + 14 : servingAt.top - 26}
-        content={{
-          eyebrow: committed ? '前服務衛星' : '服務衛星',
-          title: servingName,
-          rows: [
-            { label: '仰角', value: `${servingElevationDeg.toFixed(1)}°` },
-            { label: '狀態', value: committed ? '已交出連線' : servingElevationDeg < 10 ? '低仰角，正在下沉' : '服務中' },
-          ],
-          tone: committed ? 'warn' : 'serving',
-        }}
-      />
-
-      {!showCandidate ? null : (
-        <SixActsOverlayCard
-          leftPercent={candidateAt.left}
-          // Above the satellite when there is room, below it when the pass is
-          // near zenith — otherwise the card lands in the rule box.
-          topPercent={candidateAt.top < 34 ? candidateAt.top + 14 : candidateAt.top - 26}
-          anchor="top-right"
-          content={{
-            eyebrow: committed ? '新服務衛星' : '候選衛星',
-            title: candidateName,
-            rows: [
-              { label: '仰角', value: `${candidateElevationDeg.toFixed(1)}°` },
-              { label: 'ΔSINR', value: `+${deltaDb.toFixed(2)} dB` },
-            ],
-            tone: committed ? 'serving' : 'candidate',
-          }}
-        />
-      )}
-
-      {!conditionArmed || committed ? null : (
-        <SixActsOverlayCard
-          leftPercent={97}
-          topPercent={97}
-          anchor="bottom-right"
-          content={{
-            eyebrow: '換手條件',
-            title: `持續 ${tttProgressSec.toFixed(0)} / ${tttTotalSec} 秒`,
-            body: '兩個條件要同時成立：候選比服務好過門檻，而且這件事得撐滿整段 TTT。差一秒都不算。',
-            tone: 'source',
-          }}
+        <SixActsSubtitleBar
+          eyebrow={`PHASE ${phase.id.slice(0, 1)} · ${phase.titleZhHant}`}
+          text={phase.narrationZhHant}
+          rows={conditionArmed && !committed
+            ? [
+              { label: 'Δ', value: `${deltaDb.toFixed(2)} dB` },
+              { label: 'TTT', value: `${tttProgressSec.toFixed(0)} / ${tttTotalSec} s` },
+            ]
+            : [
+              { label: servingName, value: `${servingElevationDeg.toFixed(1)}°` },
+              { label: candidateName, value: `${candidateElevationDeg.toFixed(1)}°` },
+            ]}
+          tone={phase.autoPause ? 'source' : 'neutral'}
         />
       )}
     </div>
-    </SixActsOverlayStage>
   );
 }

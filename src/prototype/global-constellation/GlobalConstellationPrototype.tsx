@@ -266,7 +266,11 @@ export function GlobalConstellationPrototype(): ReactElement {
     return unsubscribe;
   }, [constellation]);
 
-  const [filter, setFilter] = useState<Act1ShellFilter>('main-53');
+  // Opens on the WHOLE constellation. Defaulting to the 53 deg shell showed only
+  // that shell's hard +/-53 deg latitude limit, which reads as a broken render
+  // rather than as the fact it is. The boundary is the teaching point once the
+  // room filters down to it, not the first impression.
+  const [filter, setFilter] = useState<Act1ShellFilter>('all');
   const [catalog, setCatalog] = useState<readonly Act1OrbitRecord[] | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
