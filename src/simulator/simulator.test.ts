@@ -169,10 +169,15 @@ assert.match(
   /if \(isStandaloneGlobalConstellationRoute\)[\s\S]{0,420}GlobalConstellationPrototype/,
   'the standalone global route must mount the constellation prototype',
 );
-assert.doesNotMatch(
+assert.match(
   entrySource,
-  /scientific-explain-legacy-2d|scientific-explain-2d|ScientificExplainPrototype/,
-  'the retired 2D scientific prototype must not remain routable',
+  /isStandaloneScientificExplain2DRoute = window\.location\.pathname === '\/prototype\/scientific-explain-legacy-2d'[\s\S]{0,180}scientific-explain-2d/,
+  'the standalone 2D scientific prototype must have explicit legacy locators',
+);
+assert.match(
+  entrySource,
+  /if \(isStandaloneScientificExplain2DRoute\)[\s\S]{0,360}ScientificExplainPrototype/,
+  'the standalone 2D route must mount the restored original 2D prototype',
 );
 assert.doesNotMatch(
   entrySource,

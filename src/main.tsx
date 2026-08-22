@@ -40,10 +40,12 @@ const isWalkerSidebarSandboxRoute = window.location.pathname === '/walker';
 const isCanonicalSimulatorDevelopmentRoute = window.location.pathname !== '/simulator'
   && !isLegacyWalkerRoute
   && query.get('simulator') === 'canonical';
-// The original 3D teaching prototype and the global constellation view remain
-// available under explicit standalone locators. Historical aliases below
-// intentionally continue to resolve to the unified Visual Lab surface.
+// The original 2D/3D teaching prototypes and the global constellation view
+// remain available under explicit standalone locators. Other historical
+// scientific aliases continue to resolve to the unified Visual Lab surface.
 const isStandaloneScientificExplain3DRoute = window.location.pathname === '/prototype/scientific-explain-legacy-3d';
+const isStandaloneScientificExplain2DRoute = window.location.pathname === '/prototype/scientific-explain-legacy-2d'
+  || window.location.pathname === '/prototype/scientific-explain-2d';
 const isStandaloneGlobalConstellationRoute = window.location.pathname === '/prototype/global-constellation';
 const isUnifiedVisualLabRoute = window.location.pathname === '/simulator'
   || window.location.pathname === '/visual-lab'
@@ -188,6 +190,16 @@ async function bootstrap() {
     ReactDOM.createRoot(container).render(
       <Shell>
         <ScientificExplain3DPrototype />
+      </Shell>,
+    );
+    return;
+  }
+
+  if (isStandaloneScientificExplain2DRoute) {
+    const { ScientificExplainPrototype } = await import('./prototype/scientific-explain/ScientificExplainPrototype');
+    ReactDOM.createRoot(container).render(
+      <Shell>
+        <ScientificExplainPrototype />
       </Shell>,
     );
     return;
