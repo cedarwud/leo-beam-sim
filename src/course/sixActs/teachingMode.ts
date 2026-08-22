@@ -21,6 +21,11 @@ export type SixActsTeachingMode = 'engineering' | 'teaching';
 
 /** `/?teaching=1`, the locator the operator kit already refers to. */
 export const SIX_ACTS_TEACHING_URL_PARAM = 'teaching' as const;
+/** The homepage preset that runs the handover teaching cinema. */
+export const SIX_ACTS_PRESET_URL_PARAM = 'preset' as const;
+export const SIX_ACTS_HANDOVER_PRESET = 'handover' as const;
+
+export type SixActsTeachingPreset = 'none' | typeof SIX_ACTS_HANDOVER_PRESET;
 
 /** Suffix appended to every persisted key while in teaching mode. */
 export const SIX_ACTS_TEACHING_STORAGE_SUFFIX = '.teaching' as const;
@@ -29,6 +34,13 @@ export function readSixActsTeachingModeFromSearch(search: string): SixActsTeachi
   const params = new URLSearchParams(search);
   const raw = params.get(SIX_ACTS_TEACHING_URL_PARAM);
   return raw === '1' || raw === 'true' ? 'teaching' : 'engineering';
+}
+
+export function readSixActsTeachingPresetFromSearch(search: string): SixActsTeachingPreset {
+  const params = new URLSearchParams(search);
+  return params.get(SIX_ACTS_PRESET_URL_PARAM) === SIX_ACTS_HANDOVER_PRESET
+    ? SIX_ACTS_HANDOVER_PRESET
+    : 'none';
 }
 
 /**
@@ -41,6 +53,7 @@ export function withSixActsTeachingMode(href: string, mode: SixActsTeachingMode)
     url.searchParams.set(SIX_ACTS_TEACHING_URL_PARAM, '1');
   } else {
     url.searchParams.delete(SIX_ACTS_TEACHING_URL_PARAM);
+    url.searchParams.delete(SIX_ACTS_PRESET_URL_PARAM);
   }
   return url.toString();
 }

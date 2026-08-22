@@ -237,6 +237,8 @@ import type { HandoverPresentationSnapshot } from './scene/handoverPresentationO
 import { useCameraControls } from './useCameraControls';
 import {
   readSixActsTeachingModeFromSearch,
+  readSixActsTeachingPresetFromSearch,
+  SIX_ACTS_HANDOVER_PRESET,
   withSixActsTeachingMode,
   type SixActsTeachingMode,
 } from './course/sixActs/teachingMode';
@@ -452,7 +454,10 @@ export function App() {
   const [teachingMode, setTeachingMode] = useState<SixActsTeachingMode>(() => (
     typeof window === 'undefined'
       ? 'engineering'
-      : readSixActsTeachingModeFromSearch(window.location.search)
+      : readSixActsTeachingModeFromSearch(window.location.search) === 'teaching'
+        || readSixActsTeachingPresetFromSearch(window.location.search) === SIX_ACTS_HANDOVER_PRESET
+        ? 'teaching'
+        : 'engineering'
   ));
   const homepageCanonicalAnalysis = useHomepageCanonicalAnalysis();
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);

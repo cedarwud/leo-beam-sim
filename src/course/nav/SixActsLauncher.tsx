@@ -46,7 +46,7 @@ export function SixActsLauncher(): ReactElement {
             ))}
           </ol>
           <p className="six-acts-launcher__note">
-            教學頁是獨立路由，不影響這頁的工程面板；每一幕都可以直接切回首頁。
+            六幕頁面各自保留閱讀動線；Act 3／4 會以首頁 handover preset 進入同一段教學動畫。
           </p>
         </div>
       )}

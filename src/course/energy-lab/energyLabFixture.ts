@@ -16,7 +16,7 @@
  *   P^p = p / ξ,   P^N = P^f + Σ P^p,   η = R / P^N
  */
 
-import { angleLabGainDb } from '../angle-lab/anglePowerChain';
+import { angleLabGainDb } from '../sixActs/anglePowerChain';
 
 export const ENERGY_LAB_FRAME_SET_DIGEST = 'demo-frames:energy-lab-v1' as const;
 export const ENERGY_LAB_SCENARIO_ID = 'energy-lab-demo-v1' as const;

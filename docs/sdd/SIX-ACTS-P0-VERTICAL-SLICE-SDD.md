@@ -125,23 +125,21 @@ evaluated, so a lesson never claims a difference the data does not show.
 ### Delivered teaching surfaces (2026-08-22)
 
 Owner direction: build the whole teaching UI / animation / flow first, and park
-the paper-dependent numbers. Six routes, all reachable from the running order:
+the paper-dependent numbers. The running order reaches four route surfaces plus
+the homepage teaching preset:
 
 | Route | Act | What a student does |
 |---|---|---|
 | `/course/six-acts` | 動線 | The running order, with each act's bridge to the next |
 | `/prototype/global-constellation` | 1 | Guess the count, filter shells, drag ±90 min, click a satellite |
 | `/course/tle-journey` | 2 | Walk 69 columns, break a digit, drag a pass curve |
-| `/course/angle-lab` | 3 | Three cameras, steer the beam axis, hit −3 dB |
-| `/course/handover-theatre` | 4 | Six phases, auto-pause at the condition, read the receipt |
+| `/?teaching=1&preset=handover` | 3 + 4 | Angle-aware link → six-beat handover cinema, auto-pause at the condition, read the live receipt |
 | `/course/energy-lab` | 5 + 6 | Bet, sweep, reveal, then tick fields and walk the upload |
 
-Deviation from the proposal, deliberate: Acts 4–6 are their own routes rather
-than panels bolted onto the 2,903-line homepage. The teaching content is
-identical and the homepage's engineering surface is untouched, which keeps this
-work off the heavy render-governance path entirely. Folding them back into the
-homepage's teaching mode remains open, and `teachingMode.ts` already holds the
-route flag and the persisted-state isolation it will need.
+The homepage preset is deliberate: Acts 3 and 4 share one mental model and one
+live frame, so the teaching dock, subtitle state machine, camera director, and
+decision overlays stay in one shell. The TLE journey and energy record remain
+separate pages because they change the medium or the evidence workflow.
 
 Act 5's numbers come from `energyLabFixture.ts`: the authority's formulas over a
 DEMO parameter set tuned so the EE peak lands mid-slider, badged as such on the

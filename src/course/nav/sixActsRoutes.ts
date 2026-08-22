@@ -20,6 +20,7 @@ export interface SixActsRouteEntry {
 }
 
 export const SIX_ACTS_INDEX_HREF = '/course/six-acts';
+export const SIX_ACTS_HANDOVER_PRESET_HREF = '/?teaching=1&preset=handover';
 
 export const SIX_ACTS_ROUTES: readonly SixActsRouteEntry[] = Object.freeze([
   Object.freeze({
@@ -45,7 +46,7 @@ export const SIX_ACTS_ROUTES: readonly SixActsRouteEntry[] = Object.freeze([
   Object.freeze({
     id: 'act3',
     actLabel: '3',
-    href: '/course/angle-lab',
+    href: SIX_ACTS_HANDOVER_PRESET_HREF,
     titleZhHant: '離軸角實驗室',
     questionZhHant: '離軸角和仰角差在哪？角度怎麼變成功率？',
     handsOnZhHant: '三鏡頭連切、撥波束中軸、把 θ 調到剛好掉 3 dB',
@@ -55,7 +56,7 @@ export const SIX_ACTS_ROUTES: readonly SixActsRouteEntry[] = Object.freeze([
   Object.freeze({
     id: 'act4',
     actLabel: '4',
-    href: '/course/handover-theatre',
+    href: SIX_ACTS_HANDOVER_PRESET_HREF,
     titleZhHant: '換手劇場',
     questionZhHant: '為何換手？何時換？換給誰？為何有時「被迫」換？',
     handsOnZhHant: '走六個 Phase、在條件成立那一秒自動暫停、讀換手收據',
@@ -78,15 +79,28 @@ export function sixActsRouteFor(href: string): SixActsRouteEntry | null {
   return SIX_ACTS_ROUTES.find(entry => entry.href === href) ?? null;
 }
 
+function firstRouteIndexFor(href: string): number {
+  return SIX_ACTS_ROUTES.findIndex(entry => entry.href === href);
+}
+
+function lastRouteIndexFor(href: string): number {
+  for (let index = SIX_ACTS_ROUTES.length - 1; index >= 0; index -= 1) {
+    if (SIX_ACTS_ROUTES[index]!.href === href) return index;
+  }
+  return -1;
+}
+
 /** The next act, for the "continue" affordance at the end of a page. */
 export function nextSixActsRoute(href: string): SixActsRouteEntry | null {
-  const index = SIX_ACTS_ROUTES.findIndex(entry => entry.href === href);
+  // Acts 3 and 4 are one homepage surface. Once on that surface, continue
+  // after the last alias so the same href cannot loop back to Act 4 forever.
+  const index = lastRouteIndexFor(href);
   if (index === -1 || index === SIX_ACTS_ROUTES.length - 1) return null;
   return SIX_ACTS_ROUTES[index + 1]!;
 }
 
 export function previousSixActsRoute(href: string): SixActsRouteEntry | null {
-  const index = SIX_ACTS_ROUTES.findIndex(entry => entry.href === href);
+  const index = firstRouteIndexFor(href);
   if (index <= 0) return null;
   return SIX_ACTS_ROUTES[index - 1]!;
 }

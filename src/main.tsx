@@ -20,8 +20,6 @@ const isC90Route = window.location.pathname === '/course/c90'
 // deliberately NOT a gated course shell (see tleJourneyStations.ts).
 const isSixActsIndexRoute = window.location.pathname === '/course/six-acts';
 const isTleJourneyRoute = window.location.pathname === '/course/tle-journey';
-const isAngleLabRoute = window.location.pathname === '/course/angle-lab';
-const isHandoverTheatreRoute = window.location.pathname === '/course/handover-theatre';
 const isEnergyLabRoute = window.location.pathname === '/course/energy-lab';
 // Compatibility routes for the pre-canonical Walker shell. The homepage and the
 // explicit alias deliberately fall through to App, where the route selects
@@ -68,8 +66,6 @@ const isUnifiedVisualLabRoute = window.location.pathname === '/simulator'
  */
 const isSixActsSurface = isSixActsIndexRoute
   || isTleJourneyRoute
-  || isAngleLabRoute
-  || isHandoverTheatreRoute
   || isEnergyLabRoute
   || isStandaloneGlobalConstellationRoute;
 
@@ -144,18 +140,6 @@ async function bootstrap() {
   if (isTleJourneyRoute) {
     const { TleJourneyRoute } = await import('./course/tle-journey/TleJourneyRoute');
     ReactDOM.createRoot(container).render(<Shell><TleJourneyRoute /></Shell>);
-    return;
-  }
-
-  if (isAngleLabRoute) {
-    const { AngleLabRoute } = await import('./course/angle-lab/AngleLabRoute');
-    ReactDOM.createRoot(container).render(<Shell><AngleLabRoute /></Shell>);
-    return;
-  }
-
-  if (isHandoverTheatreRoute) {
-    const { HandoverTheatreRoute } = await import('./course/handover-theatre/HandoverTheatreRoute');
-    ReactDOM.createRoot(container).render(<Shell><HandoverTheatreRoute /></Shell>);
     return;
   }
 

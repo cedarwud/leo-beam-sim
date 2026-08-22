@@ -7,9 +7,11 @@ import { SCENE_VISUAL_SCALE_OVERRIDES_KEY } from '../../sceneVisualScale';
 import {
   SIX_ACTS_TEACHING_HIDDEN_SURFACES,
   SIX_ACTS_TEACHING_VISIBLE_CONTROLS,
+  SIX_ACTS_HANDOVER_PRESET,
   SixActsScopedStore,
   isSixActsTeachingSurfaceHidden,
   readSixActsTeachingModeFromSearch,
+  readSixActsTeachingPresetFromSearch,
   sixActsScopedStorageKey,
   withSixActsTeachingMode,
   type SixActsKeyValueStore,
@@ -41,6 +43,21 @@ test('the flag round-trips through a URL without disturbing other params', () =>
   const back = withSixActsTeachingMode(teaching, 'engineering');
   assert.ok(!back.includes('teaching'));
   assert.match(back, /sceneSource=live-sim/);
+});
+
+test('the handover preset is a first-class teaching locator', () => {
+  assert.strictEqual(
+    readSixActsTeachingPresetFromSearch('?teaching=1&preset=handover'),
+    SIX_ACTS_HANDOVER_PRESET,
+  );
+  assert.strictEqual(readSixActsTeachingPresetFromSearch('?preset=other'), 'none');
+
+  const cleared = withSixActsTeachingMode(
+    'http://localhost:3000/?teaching=1&preset=handover',
+    'engineering',
+  );
+  assert.ok(!cleared.includes('teaching'));
+  assert.ok(!cleared.includes('preset'));
 });
 
 test('engineering keys are returned untouched so existing setups survive', () => {

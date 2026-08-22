@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  SIX_ACTS_HANDOVER_PRESET_HREF,
   SIX_ACTS_INDEX_HREF,
   SIX_ACTS_ROUTES,
   nextSixActsRoute,
@@ -20,7 +21,11 @@ test('every listed route is actually registered in the router', () => {
   // A nav entry pointing at an unrouted path is a dead link in a lecture.
   const main = readFileSync(join(REPO_ROOT, 'src/main.tsx'), 'utf8');
   for (const entry of SIX_ACTS_ROUTES) {
-    assert.ok(main.includes(`'${entry.href}'`), `${entry.href} is not routed in main.tsx`);
+    if (entry.href === SIX_ACTS_HANDOVER_PRESET_HREF) {
+      assert.ok(main.includes("window.location.pathname === '/'"), `${entry.href} is not routed to the homepage`);
+    } else {
+      assert.ok(main.includes(`'${entry.href}'`), `${entry.href} is not routed in main.tsx`);
+    }
   }
   assert.ok(main.includes(`'${SIX_ACTS_INDEX_HREF}'`));
 });
@@ -29,8 +34,6 @@ test('every act carries the nav strip, so no page is a dead end', () => {
   const files = [
     'src/prototype/global-constellation/GlobalConstellationPrototype.tsx',
     'src/course/tle-journey/TleJourneyRoute.tsx',
-    'src/course/angle-lab/AngleLabRoute.tsx',
-    'src/course/handover-theatre/HandoverTheatreRoute.tsx',
     'src/course/energy-lab/EnergyLabRoute.tsx',
     'src/course/six-acts-index/SixActsIndexRoute.tsx',
   ];
@@ -76,7 +79,11 @@ test('the six-acts surfaces suppress the launcher, having their own nav', () => 
   for (const entry of SIX_ACTS_ROUTES) {
     // Each act's route flag must feed the suppression check, or an act would
     // show both its nav strip and the corner launcher.
-    assert.ok(main.includes(`'${entry.href}'`));
+    if (entry.href === SIX_ACTS_HANDOVER_PRESET_HREF) {
+      assert.ok(main.includes("window.location.pathname === '/'"));
+    } else {
+      assert.ok(main.includes(`'${entry.href}'`));
+    }
   }
 });
 
@@ -96,7 +103,7 @@ test('the running order chains forwards and backwards', () => {
     cursor = next;
     visited += 1;
   }
-  assert.strictEqual(visited, SIX_ACTS_ROUTES.length);
+  assert.strictEqual(visited, new Set(SIX_ACTS_ROUTES.map(entry => entry.href)).size);
 });
 
 test('every act except the last hands off with a bridge', () => {
@@ -106,9 +113,9 @@ test('every act except the last hands off with a bridge', () => {
   });
 });
 
-test('hrefs are unique and resolvable', () => {
+test('hrefs resolve, with one shared homepage preset for Acts 3 and 4', () => {
   const hrefs = SIX_ACTS_ROUTES.map(entry => entry.href);
-  assert.strictEqual(new Set(hrefs).size, hrefs.length);
+  assert.strictEqual(new Set(hrefs).size, hrefs.length - 1, 'Act 3 and Act 4 intentionally share the preset surface');
   for (const href of hrefs) assert.strictEqual(sixActsRouteFor(href)?.href, href);
   assert.strictEqual(sixActsRouteFor('/nope'), null);
 });
