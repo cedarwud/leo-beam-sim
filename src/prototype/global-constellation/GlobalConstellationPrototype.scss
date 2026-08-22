@@ -1,3 +1,5 @@
+@use '../../course/nav/sixActsType';
+
 :root {
   color-scheme: dark;
 }
@@ -508,3 +510,279 @@ body {
     transition: none;
   }
 }
+
+/* Act 1 · orbital-shell filter -------------------------------------------- */
+
+.global-constellation__shells {
+  display: grid;
+  gap: .3rem;
+  margin-block: .55rem .7rem;
+
+  button {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: .55rem;
+    padding: .5rem .65rem;
+    min-height: 40px;
+    border: 1px solid rgba(118, 234, 215, .16);
+    border-radius: 7px;
+    background: rgba(6, 22, 30, .62);
+    color: #cfe9ef;
+    font: inherit;
+    font-size: .84rem;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .16s ease, background .16s ease;
+
+    &:hover:not(:disabled) { border-color: rgba(118, 234, 215, .42); }
+    &:disabled { opacity: .45; cursor: progress; }
+
+    &.is-active {
+      border-color: #76ead7;
+      background: rgba(118, 234, 215, .12);
+      color: #eafcff;
+    }
+
+    i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: block;
+
+      &.is-all {
+        background: linear-gradient(135deg, #4ee1c1 0%, #f2b134 33%, #7aa5ff 66%, #ff7ab8 100%);
+      }
+    }
+
+    em {
+      font-style: normal;
+      font-variant-numeric: tabular-nums;
+      font-size: .78rem;
+      color: #8fb6c0;
+    }
+
+    &.is-active em { color: #bff3ea; }
+  }
+}
+
+.global-constellation__shell-claim {
+  margin: 0 0 .35rem;
+  padding: .55rem .65rem;
+  border-left: 2px solid rgba(118, 234, 215, .5);
+  background: rgba(8, 26, 34, .55);
+  color: #a9cdd6;
+  font-size: .8rem;
+  line-height: 1.55;
+}
+
+.global-constellation__honesty {
+  display: grid;
+  gap: .3rem;
+  margin-top: .8rem;
+  padding: .7rem .75rem;
+  border: 1px solid rgba(255, 215, 138, .32);
+  border-radius: 8px;
+  background: rgba(42, 33, 16, .5);
+
+  span {
+    font-size: .68rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #ffd78a;
+  }
+
+  strong {
+    font-size: 1.02rem;
+    color: #ffe9bd;
+    font-variant-numeric: tabular-nums;
+  }
+
+  small {
+    color: #d6c39b;
+    font-size: .78rem;
+    line-height: 1.6;
+  }
+}
+
+/* Act 1 · time advance ---------------------------------------------------- */
+
+.global-constellation__timeline {
+  display: grid;
+  gap: .4rem;
+  margin-block: .5rem .7rem;
+  padding: .7rem .85rem;
+  border: 1px solid rgba(118, 234, 215, .18);
+  border-radius: 9px;
+  background: rgba(6, 22, 30, .58);
+}
+
+.global-constellation__timeline-head {
+  display: flex;
+  align-items: baseline;
+  gap: .7rem;
+  flex-wrap: wrap;
+
+  span {
+    font-size: .66rem;
+    letter-spacing: .13em;
+    color: #6f9aa4;
+  }
+
+  strong {
+    font-size: 1.02rem;
+    color: #eafcff;
+    font-variant-numeric: tabular-nums;
+    min-width: 6.5rem;
+  }
+
+  em {
+    font-style: normal;
+    font-size: .76rem;
+    color: #8fb6c0;
+    margin-left: auto;
+
+    &.is-error { color: #ff9a9a; }
+  }
+}
+
+.global-constellation__timeline input[type='range'] {
+  width: 100%;
+  accent-color: #76ead7;
+  cursor: grab;
+
+  &:disabled { cursor: progress; opacity: .5; }
+}
+
+.global-constellation__timeline-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: .68rem;
+  color: #6f9aa4;
+}
+
+.global-constellation__timeline-ready {
+  position: relative;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(118, 234, 215, .12);
+  overflow: hidden;
+
+  i {
+    position: absolute;
+    inset-block: 0;
+    left: 50%;
+    display: block;
+    background: rgba(118, 234, 215, .55);
+    transform: translateX(-50%);
+    transition: width .2s ease;
+  }
+}
+
+/* Act 1 · click to inspect ------------------------------------------------ */
+
+.global-constellation__pick-hint {
+  margin: .8rem 0 0;
+  padding: .6rem .7rem;
+  border: 1px dashed rgba(118, 234, 215, .28);
+  border-radius: 8px;
+  color: #7fa6b0;
+  font-size: .8rem;
+}
+
+.global-constellation__pick {
+  display: grid;
+  gap: .45rem;
+  margin-top: .8rem;
+  padding: .8rem .85rem;
+  border: 1px solid rgba(118, 234, 215, .4);
+  border-radius: 9px;
+  background: rgba(8, 32, 40, .78);
+
+  > span {
+    font-size: .66rem;
+    letter-spacing: .14em;
+    color: #76ead7;
+  }
+
+  > strong { font-size: 1.05rem; color: #eafcff; overflow-wrap: anywhere; }
+
+  dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .35rem .7rem;
+    margin: 0;
+
+    div { display: grid; gap: .1rem; }
+    dt { font-size: .68rem; color: #7fa6b0; }
+    dd { margin: 0; font-size: .9rem; color: #cfe9ef; font-variant-numeric: tabular-nums; }
+  }
+
+  small { color: #8fb6c0; font-size: .72rem; line-height: 1.55; }
+
+  button {
+    justify-self: start;
+    min-height: 34px;
+    padding: .35rem .9rem;
+    border: 1px solid rgba(118, 234, 215, .38);
+    border-radius: 7px;
+    background: transparent;
+    color: #a9dfe0;
+    font: inherit;
+    font-size: .78rem;
+    cursor: pointer;
+  }
+}
+
+/* Act 1 · transport ------------------------------------------------------- */
+
+.global-constellation__transport {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-bottom: .1rem;
+
+  small { color: #6f9aa4; font-size: .74rem; margin-left: auto; }
+}
+
+.global-constellation__play {
+  min-height: 36px;
+  padding: .35rem 1.2rem;
+  border: 1px solid #76ead7;
+  border-radius: 8px;
+  background: #76ead7;
+  color: #052027;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  &:disabled { opacity: .45; cursor: progress; }
+}
+
+.global-constellation__speeds {
+  display: flex;
+  gap: .2rem;
+
+  button {
+    min-height: 32px;
+    padding: .2rem .6rem;
+    border: 1px solid rgba(118, 234, 215, .26);
+    border-radius: 6px;
+    background: transparent;
+    color: #a9cdd6;
+    font: inherit;
+    font-size: .76rem;
+    cursor: pointer;
+    &.is-active { background: rgba(118, 234, 215, .18); border-color: #76ead7; color: #eafcff; }
+    &:disabled { opacity: .45; }
+  }
+}
+
+
+/* Larger type broke this: the long archive timestamp overflowed its box and
+   ran under the next heading. Wrap it and give the row real height. */
+.global-constellation__source-state {
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.global-constellation__section-label { margin-top: 1rem; }

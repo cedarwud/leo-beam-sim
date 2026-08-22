@@ -1,6 +1,36 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import {
+  describeSixActsShellHonesty,
+  tallySixActsShells,
+  type SixActsShellId,
+} from '../../course/sixActs/act1Shells';
+import {
+  ACT1_SHELL_OPTIONS,
+  Act1ConstellationPointCloud,
+  Act1NtpuMarker,
+  act1ShellClaim,
+  type Act1ShellFilter,
+} from './Act1ConstellationScene';
+import {
+  alignAct1ShellsToArtifact,
+  alignAct1VisibilityToArtifact,
+  computeAct1Elevations,
+  loadAct1OrbitCatalog,
+  type Act1OrbitRecord,
+} from './act1TleCatalog';
+import { SIX_ACTS_CLASSROOM_CONE_ELEVATION_DEG } from '../../course/sixActs/windowVisibility';
+import {
+  ACT1_FRAME_SPAN_SEC,
+  ACT1_FRAME_STEP_SEC,
+  useAct1FrameAt,
+  useAct1Frames,
+} from './useAct1Frames';
+import {
+  act1NtpuApexWorld,
+  act1NtpuCameraPosition,
+} from './act1NtpuGeometry';
 import type { SimulatorConstellation } from '../../simulator/types';
 import {
   visualLabGlobalConstellationStore,
@@ -8,9 +38,12 @@ import {
   type VisualLabGlobalConstellationFirstFrameState,
 } from '../../visualLab/globalConstellation';
 import {
+  EarthSphere,
+  GLOBAL_SCENE_PALETTES,
   VisualLabGlobalScene,
   type VisualLabGlobalSceneStatus,
 } from '../visual-lab-g0/VisualLabGlobalScene';
+import { SixActsBridge, SixActsNav } from '../../course/nav/SixActsNav';
 import './GlobalConstellationPrototype.scss';
 
 const CONSTELLATIONS: readonly {
@@ -57,7 +90,14 @@ function SourceState({ state }: { readonly state: VisualLabGlobalConstellationFi
   return <p className="global-constellation__source-state" role="status" aria-live="polite">等待全球衛星資料</p>;
 }
 
-function GlobalConstellationCanvas({ state }: { readonly state: VisualLabGlobalConstellationFirstFrameState }): ReactElement {
+function GlobalConstellationCanvas({ state, shells, filter, ntpuVisible, framePositions, frameShells }: {
+  readonly state: VisualLabGlobalConstellationFirstFrameState;
+  readonly shells: readonly (SixActsShellId | null)[] | null;
+  readonly filter: Act1ShellFilter;
+  readonly ntpuVisible: Uint8Array | null;
+  readonly framePositions: Float32Array | null;
+  readonly frameShells: readonly SixActsShellId[] | null;
+}): ReactElement {
   const artifact: VisualLabGlobalConstellationArtifact | null = state.status === 'ready' ? state.artifact : null;
   return (
     <div
@@ -69,7 +109,7 @@ function GlobalConstellationCanvas({ state }: { readonly state: VisualLabGlobalC
       aria-label={artifact ? `${constellationLabel(state.constellation)} 全球衛星點雲，${formatCount(artifact.satelliteCount)} 顆衛星` : '全球衛星點雲載入中'}
     >
       <Canvas
-        camera={{ position: [0, 0.2, 8.6], fov: 31 }}
+        camera={{ position: act1NtpuCameraPosition(8.6), fov: 31 }}
         dpr={[1, 1.5]}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
@@ -87,17 +127,126 @@ function GlobalConstellationCanvas({ state }: { readonly state: VisualLabGlobalC
           minPolarAngle={0.25}
           maxPolarAngle={Math.PI - 0.25}
         />
-        <VisualLabGlobalScene
-          frame={null}
-          artifact={artifact}
-          status={sceneStatus(state)}
-          error={state.status === 'error' ? state.error : null}
-          theme="dark"
-          locale="zh-Hant"
-          pointPresentation="constellation-compare"
-        />
+        {artifact === null
+          ? <VisualLabGlobalScene
+            frame={null}
+            artifact={null}
+            status={sceneStatus(state)}
+            error={state.status === 'error' ? state.error : null}
+            theme="dark"
+            locale="zh-Hant"
+            pointPresentation="constellation-compare"
+          />
+          : <>
+            <EarthSphere palette={GLOBAL_SCENE_PALETTES.dark} />
+            <Act1NtpuMarker apexWorld={act1NtpuApexWorld()} />
+            <Act1ConstellationPointCloud
+              artifact={artifact}
+              shells={shells}
+              filter={filter}
+              ntpuVisible={ntpuVisible}
+              framePositions={framePositions}
+              frameShells={frameShells}
+            />
+          </>}
       </Canvas>
       <div className="global-constellation__canvas-hint" aria-hidden="true">拖曳旋轉地球 · 滾輪縮放</div>
+    </div>
+  );
+}
+
+function formatOffset(offsetSec: number): string {
+  if (offsetSec === 0) return '封存時刻';
+  const sign = offsetSec > 0 ? '+' : '−';
+  const total = Math.abs(offsetSec);
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${sign}${minutes} 分${seconds === 0 ? '' : ` ${seconds} 秒`}`;
+}
+
+const ACT1_PLAY_SPEEDS: readonly { readonly value: number; readonly label: string }[] = Object.freeze([
+  Object.freeze({ value: 0.5, label: '慢動作 ×0.5' }),
+  Object.freeze({ value: 1, label: '×1' }),
+  Object.freeze({ value: 4, label: '×4' }),
+]);
+
+function Act1Timeline({
+  offsetSec, readySpanSec, spanSec, stepSec, status, frameCount, readyFrameCount, error, onChange,
+  playing, playSpeed, onPlayToggle, onSpeed,
+}: {
+  readonly offsetSec: number;
+  readonly readySpanSec: number;
+  readonly spanSec: number;
+  readonly stepSec: number;
+  readonly status: string;
+  readonly frameCount: number;
+  readonly readyFrameCount: number;
+  readonly error: string | null;
+  readonly onChange: (next: number) => void;
+  readonly playing: boolean;
+  readonly playSpeed: number;
+  readonly onPlayToggle: () => void;
+  readonly onSpeed: (next: number) => void;
+}): ReactElement {
+  const usable = readySpanSec > 0;
+  const progress = frameCount === 0 ? 0 : Math.min(1, readyFrameCount / frameCount);
+  return (
+    <div className="global-constellation__timeline" data-testid="act1-timeline">
+      <div className="global-constellation__timeline-head">
+        <span>TIME · SGP4</span>
+        <strong>{formatOffset(offsetSec)}</strong>
+        {error === null
+          ? <em>
+            {usable
+              // The label states the span that EXISTS, so a lecturer is never
+              // dragging into a range the worker has not reached.
+              ? `可拖 ±${Math.round(readySpanSec / 60)} 分（已算 ${Math.round(progress * 100)}%，最終 ±${Math.round(spanSec / 60)} 分）`
+              : '正在算軌道幀…'}
+          </em>
+          : <em className="is-error">時間推進失敗：{error}</em>}
+      </div>
+      <div className="global-constellation__transport">
+        <button
+          type="button"
+          className="global-constellation__play"
+          disabled={!usable}
+          aria-pressed={playing}
+          onClick={onPlayToggle}
+        >{playing ? '暫停' : '播放'}</button>
+        <div className="global-constellation__speeds" role="group" aria-label="播放速度">
+          {ACT1_PLAY_SPEEDS.map(option => (
+            <button key={option.value} type="button"
+              className={playSpeed === option.value ? 'is-active' : ''}
+              disabled={!usable}
+              onClick={() => onSpeed(option.value)}>{option.label}</button>
+          ))}
+        </div>
+        <small>整個星座一起動。可見顆數會跟著跳——這就是為什麼需要換手。</small>
+      </div>
+      <input
+        type="range"
+        min={-spanSec}
+        max={spanSec}
+        step={stepSec}
+        value={offsetSec}
+        disabled={!usable}
+        aria-label="時間推進"
+        aria-valuetext={formatOffset(offsetSec)}
+        onChange={event => {
+          const next = Number(event.target.value);
+          // Clamp to the computed span rather than letting the thumb run ahead
+          // of the data and freeze on a stale frame.
+          onChange(Math.max(-readySpanSec, Math.min(readySpanSec, next)));
+        }}
+      />
+      <div className="global-constellation__timeline-scale" aria-hidden="true">
+        <span>−{Math.round(spanSec / 60)} 分</span>
+        <span>封存時刻</span>
+        <span>+{Math.round(spanSec / 60)} 分</span>
+      </div>
+      <div className="global-constellation__timeline-ready" aria-hidden="true">
+        <i style={{ width: `${(readySpanSec / spanSec) * 100}%` }} />
+      </div>
     </div>
   );
 }
@@ -117,11 +266,111 @@ export function GlobalConstellationPrototype(): ReactElement {
     return unsubscribe;
   }, [constellation]);
 
+  const [filter, setFilter] = useState<Act1ShellFilter>('main-53');
+  const [catalog, setCatalog] = useState<readonly Act1OrbitRecord[] | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setCatalog(null);
+    setCatalogError(null);
+    loadAct1OrbitCatalog(constellation, controller.signal)
+      .then(records => { if (!controller.signal.aborted) setCatalog(records); })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setCatalogError(error instanceof Error ? error.message : '軌道傾角資料載入失敗');
+      });
+    return () => controller.abort();
+  }, [constellation]);
+
   const artifact = state.status === 'ready' ? state.artifact : null;
   const selectedLabel = constellationLabel(constellation);
 
+  const shells = useMemo(
+    () => (artifact === null || catalog === null
+      ? null
+      : alignAct1ShellsToArtifact(artifact.satelliteIds, catalog)),
+    [artifact, catalog],
+  );
+  // Tallied from the aligned array the buttons also count, so the panel and the
+  // caption can never report different totals for one fact.
+
+
+  const ntpuVisible = useMemo(() => {
+    if (artifact === null || catalog === null) return null;
+    const elevations = computeAct1Elevations(catalog, artifact.instantUtc);
+    return alignAct1VisibilityToArtifact(
+      artifact.satelliteIds,
+      catalog,
+      elevations,
+      SIX_ACTS_CLASSROOM_CONE_ELEVATION_DEG,
+    );
+  }, [artifact, catalog]);
+
+  const frameState = useAct1Frames(
+    constellation,
+    artifact?.instantUtc ?? null,
+    SIX_ACTS_CLASSROOM_CONE_ELEVATION_DEG,
+  );
+  const [offsetSec, setOffsetSec] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState(1);
+  const liveFrame = useAct1FrameAt(frameState, offsetSec);
+
+  // The scrubber only reaches where frames actually exist, so it can never
+  // present a gap as if it were data.
+  const readySpanSec = frameState.readySpanSec;
+
+  // Time advance. It steps whole frames rather than interpolating: every point
+  // on screen is then a real SGP4 position, not a tween between two of them.
+  useEffect(() => {
+    if (!playing || readySpanSec === 0) return undefined;
+    const timer = globalThis.setInterval(() => {
+      setOffsetSec(previous => {
+        const next = previous + ACT1_FRAME_STEP_SEC;
+        // Loop back to the start of the computed span so a lecturer can leave
+        // it running while talking.
+        return next > readySpanSec ? -readySpanSec : next;
+      });
+    }, 900 / playSpeed);
+    return () => globalThis.clearInterval(timer);
+  }, [playing, playSpeed, readySpanSec]);
+  useEffect(() => {
+    if (Math.abs(offsetSec) > readySpanSec) setOffsetSec(readySpanSec * Math.sign(offsetSec));
+  }, [readySpanSec, offsetSec]);
+  useEffect(() => { setOffsetSec(0); }, [constellation]);
+
+  // ONE shell array feeds the buttons, the tally and the render. The worker's
+  // catalogue supersedes the artifact-aligned one as soon as it lands, because
+  // the render switches to worker frames at the same moment; keeping two would
+  // put two counts for one fact back on screen.
+  const activeShells: readonly (SixActsShellId | null)[] | null =
+    frameState.shells.length > 0 ? frameState.shells : shells;
+
+  const census = useMemo(
+    () => (activeShells === null ? null : tallySixActsShells(activeShells)),
+    [activeShells],
+  );
+
+  const drawnCount = activeShells?.length ?? artifact?.satelliteCount ?? null;
+
+  const shellCount = activeShells === null
+    ? null
+    : (filter === 'all'
+      ? activeShells.length
+      : activeShells.reduce<number>((sum, shell) => sum + (shell === filter ? 1 : 0), 0));
+
+  const ntpuConeCount = useMemo(
+    () => (liveFrame !== null
+      ? liveFrame.visibleCount
+      : ntpuVisible === null ? null : ntpuVisible.reduce<number>((sum, value) => sum + value, 0)),
+    [ntpuVisible, liveFrame],
+  );
+
+
   return (
     <main className="global-constellation" lang="zh-Hant">
+      <SixActsNav currentHref="/prototype/global-constellation" />
       <header className="global-constellation__header">
         <div>
           <p className="global-constellation__kicker">GLOBAL CONSTELLATION · TLE / SGP4</p>
@@ -161,6 +410,37 @@ export function GlobalConstellationPrototype(): ReactElement {
           <SourceState state={state} />
 
           <div className="global-constellation__rule" />
+          <p className="global-constellation__section-label">ORBITAL SHELL</p>
+          <div className="global-constellation__shells" role="group" aria-label="選擇軌道殼層">
+            {ACT1_SHELL_OPTIONS.map(option => (
+              <button
+                key={option.id}
+                type="button"
+                className={filter === option.id ? 'is-active' : ''}
+                aria-pressed={filter === option.id}
+                disabled={activeShells === null}
+                onClick={() => setFilter(option.id)}
+              >
+                {option.colour === null
+                  ? <i className="is-all" aria-hidden="true" />
+                  : <i style={{ background: option.colour }} aria-hidden="true" />}
+                <span>{option.labelZhHant}</span>
+                <em>{activeShells === null
+                  ? '—'
+                  : formatCount(option.id === 'all'
+                    ? activeShells.length
+                    : activeShells.reduce<number>((sum, shell) => sum + (shell === option.id ? 1 : 0), 0))}</em>
+              </button>
+            ))}
+          </div>
+          <p className="global-constellation__shell-claim">{act1ShellClaim(filter)}</p>
+          {catalogError === null
+            ? activeShells === null
+              ? <p className="global-constellation__source-state" role="status" aria-live="polite">正在讀取逐顆軌道傾角…</p>
+              : null
+            : <p className="global-constellation__source-state is-error" role="alert">傾角資料載入失敗：{catalogError}</p>}
+
+          <div className="global-constellation__rule" />
           <p className="global-constellation__section-label">CURRENT VIEW</p>
           <p className="global-constellation__selection"><strong>{selectedLabel}</strong><span>全球整球視角</span></p>
           <p className="global-constellation__note">這個 route 只負責展示星座規模；服務衛星、候選衛星、UE 與換手流程仍留在 3D 教學 route。</p>
@@ -172,12 +452,34 @@ export function GlobalConstellationPrototype(): ReactElement {
               <span>EARTH SCALE</span>
               <h2>{selectedLabel} 全球衛星分布</h2>
             </div>
-            <p>{artifact ? `${formatCount(artifact.satelliteCount)} 顆衛星 · ${artifact.constellation === 'starlink' ? '高密度點雲' : '較低密度點雲'}` : '衛星資料準備中'}</p>
+            <p>{drawnCount === null ? '衛星資料準備中' : `${formatCount(drawnCount)} 顆衛星 · ${constellation === 'starlink' ? '高密度點雲' : '較低密度點雲'}`}</p>
           </div>
-          <GlobalConstellationCanvas state={state} />
+          <Act1Timeline
+            offsetSec={offsetSec}
+            readySpanSec={readySpanSec}
+            spanSec={ACT1_FRAME_SPAN_SEC}
+            stepSec={ACT1_FRAME_STEP_SEC}
+            status={frameState.status}
+            playing={playing}
+            playSpeed={playSpeed}
+            onPlayToggle={() => setPlaying(value => !value)}
+            onSpeed={setPlaySpeed}
+            frameCount={frameState.frameCount}
+            readyFrameCount={frameState.frames.size}
+            error={frameState.error}
+            onChange={next => { setPlaying(false); setOffsetSec(next); }}
+          />
+          <GlobalConstellationCanvas
+            state={state}
+            shells={shells}
+            filter={filter}
+            ntpuVisible={liveFrame === null ? ntpuVisible : liveFrame.visible}
+            framePositions={liveFrame?.positions ?? null}
+            frameShells={frameState.shells.length > 0 ? frameState.shells : null}
+          />
           <div className="global-constellation__legend" aria-label="場景圖例">
             <span><i className="is-satellite" />衛星點雲（每點 1 顆）</span>
-            <span><i className="is-visible" />NTPU 可見範圍</span>
+            <span><i className="is-visible" />NTPU 仰角 {SIX_ACTS_CLASSROOM_CONE_ELEVATION_DEG}° 可見圓錐</span>
             <span><i className="is-earth" />地球半徑基準</span>
           </div>
         </section>
@@ -189,11 +491,26 @@ export function GlobalConstellationPrototype(): ReactElement {
             <p>把全球規模和 NTPU 當下可見數量分開讀。</p>
           </div>
           <dl className="global-constellation__metrics">
-            <Metric label="全球衛星總數" value={artifact ? formatCount(artifact.satelliteCount) : '—'} note="完整封存集合" />
-            <Metric label="NTPU 可見" value={artifact ? formatCount(artifact.ntpuVisibleSatelliteCount) : '—'} note="仰角高於地平線" />
+            <Metric
+              label="全球衛星總數"
+              value={drawnCount === null ? '—' : formatCount(drawnCount)}
+              note={artifact === null || drawnCount === null || drawnCount === artifact.satelliteCount
+                ? '封存快照中的衛星'
+                // The two sets really differ: the published first-frame artifact
+                // drops records its propagation gate rejects. Saying so beats
+                // showing two totals and letting the room wonder which is real.
+                : `封存 ${formatCount(drawnCount)} 顆；已發佈 first-frame artifact 收錄 ${formatCount(artifact.satelliteCount)} 顆`}
+            />
+            <Metric label="NTPU 可見（地平線）" value={artifact ? formatCount(artifact.ntpuVisibleSatelliteCount) : '—'} note="仰角 0° 以上，含貼地平線那些" />
+            <Metric label={`NTPU 可見（${SIX_ACTS_CLASSROOM_CONE_ELEVATION_DEG}° 圓錐）`} value={ntpuConeCount === null ? '—' : formatCount(ntpuConeCount)} note="這一幕用的口徑；比地平線嚴格" />
             <Metric label="中位軌道高度" value={artifact ? `${Math.round(artifact.medianAltitudeKm).toLocaleString('en-US')} km` : '—'} note="同一時間點的統計" />
             <Metric label="資料時間" value={artifact ? artifact.instantUtc.slice(0, 10) : '—'} note="UTC archived TLE" />
           </dl>
+          {census ? <div className="global-constellation__honesty">
+            <span>誠實邊界</span>
+            <strong>{shellCount === null ? '—' : `${formatCount(shellCount)} 顆在目前殼層`}</strong>
+            <small>{describeSixActsShellHonesty(census, selectedLabel)}</small>
+          </div> : null}
           {artifact ? <div className="global-constellation__density-readout">
             <span>密集度讀法</span>
             <strong>{artifact.constellation === 'starlink' ? '高密度全球點雲' : '較低密度全球點雲'}</strong>
@@ -202,6 +519,8 @@ export function GlobalConstellationPrototype(): ReactElement {
           {artifact ? <p className="global-constellation__provenance">來源：{artifact.snapshotPath}<br />SHA-256：{artifact.snapshotSha256}</p> : null}
         </aside>
       </section>
+
+      <SixActsBridge currentHref="/prototype/global-constellation" />
 
       <footer className="global-constellation__footer">
         <span>全球顯示層</span>

@@ -54,7 +54,7 @@ export const VISUAL_LAB_GLOBAL_SCENE_COPY = Object.freeze({
   }),
 });
 
-type GlobalScenePalette = Readonly<{
+export type GlobalScenePalette = Readonly<{
   earth: string;
   atmosphere: string;
   graticule: string;
@@ -67,7 +67,7 @@ type GlobalScenePalette = Readonly<{
   labelBackground: string;
 }>;
 
-const GLOBAL_SCENE_PALETTES: Readonly<Record<VisualLabGlobalSceneTheme, GlobalScenePalette>> = Object.freeze({
+export const GLOBAL_SCENE_PALETTES: Readonly<Record<VisualLabGlobalSceneTheme, GlobalScenePalette>> = Object.freeze({
   dark: Object.freeze({
     earth: '#0d3346',
     atmosphere: '#59d4ee',
@@ -121,7 +121,13 @@ function point(value: VisualLabGlobalPoint): [number, number, number] {
   return [value[0], value[1], value[2]];
 }
 
-function EarthSphere({ palette }: { readonly palette: GlobalScenePalette }): ReactElement {
+/**
+ * The one Earth authority for every global view.
+ *
+ * Exported so a route that draws its own point cloud (Act 1's shell filter)
+ * reuses this sphere instead of modelling a second Earth beside it.
+ */
+export function EarthSphere({ palette }: { readonly palette: GlobalScenePalette }): ReactElement {
   return <group name="visual-lab-scientific-globe">
     <mesh>
       <sphereGeometry args={[VISUAL_LAB_EARTH_RADIUS, 48, 32]} />
