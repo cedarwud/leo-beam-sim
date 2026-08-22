@@ -6,10 +6,18 @@
 // homepage source/parameter surface. Walker handover policy is a separate
 // legacy runtime and must not be mixed into the archived-TLE analysis frame.
 import { type ReactElement, type ReactNode } from 'react';
+import type { SixActsTeachingMode } from '../course/sixActs/teachingMode';
+import { TeachingPanelDock, type TeachingLinkSnapshot } from './TeachingPanelDock';
 
 interface SinrLiveDisplayDrawerProps {
   /** Homepage source and calculation-parameter surface. */
   readonly parameterSection?: ReactNode;
+  /** Single engineering ⇄ teaching content switch for the homepage rail. */
+  readonly teachingMode?: SixActsTeachingMode;
+  readonly onTeachingModeChange?: (mode: SixActsTeachingMode) => void;
+  readonly teachingLinkSnapshot?: TeachingLinkSnapshot;
+  readonly teachingPolicySection?: ReactNode;
+  readonly teachingPlatformSection?: ReactNode;
   /** Display-only medium switch for the homepage scene floor. */
   readonly campusVisible?: boolean;
   readonly onCampusVisibleChange?: () => void;
@@ -17,6 +25,22 @@ interface SinrLiveDisplayDrawerProps {
 
 export function SinrLiveDisplayDrawer({
   parameterSection,
+  teachingMode = 'engineering',
+  onTeachingModeChange = () => undefined,
+  teachingLinkSnapshot = {
+    ueId: null,
+    servingSatelliteId: null,
+    candidateSatelliteId: null,
+    timeSec: null,
+    thetaDeg: null,
+    transmitGainLinear: null,
+    sinrDb: null,
+    throughputMbps: null,
+    systemPowerW: null,
+    energyEfficiencyBitsPerJoule: null,
+  },
+  teachingPolicySection,
+  teachingPlatformSection,
   campusVisible,
   onCampusVisibleChange,
 }: SinrLiveDisplayDrawerProps): ReactElement {
@@ -45,11 +69,18 @@ export function SinrLiveDisplayDrawer({
         </label>
       </section>
       )}
-      {parameterSection && (
-        <div className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-formula">
-          <div className="leo-sinr-advanced-body">{parameterSection}</div>
+      <div className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-formula">
+        <div className="leo-sinr-advanced-body">
+          <TeachingPanelDock
+            mode={teachingMode}
+            onModeChange={onTeachingModeChange}
+            engineeringContent={parameterSection}
+            linkSnapshot={teachingLinkSnapshot}
+            policyContent={teachingPolicySection}
+            platformContent={teachingPlatformSection}
+          />
         </div>
-      )}
+      </div>
     </section>
   );
 }

@@ -46,6 +46,7 @@ import {
   applyHandoverPolicyTuning,
   createHandoverPolicyTuningState,
   getHandoverPolicyResetKey,
+  sameHandoverPolicyTuning,
   type HandoverPolicyTuningState,
 } from './handoverPolicyTuning';
 import {
@@ -88,6 +89,8 @@ import { HomepageCanonicalControls } from './ui/signal-tuning/HomepageCanonicalC
 import { HomepageCanonicalServingComparison } from './ui/signal-tuning/HomepageCanonicalServingComparison';
 import { HomepageRightRail } from './ui/signal-tuning/HomepageRightRail';
 import { SignalTuningPanel } from './ui/SignalTuningPanel';
+import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
+import type { TeachingLinkSnapshot } from './ui/TeachingPanelDock';
 import { WalkerResultsRail } from './ui/signal-tuning/WalkerResultsRail';
 import { useHomepageCanonicalAnalysis } from './ui/signal-tuning/useHomepageCanonicalAnalysis';
 import type { MainTabKey } from './ui/signal-tuning/types';
@@ -232,6 +235,11 @@ import {
 import { usePlaybackControls } from './usePlaybackControls';
 import type { HandoverPresentationSnapshot } from './scene/handoverPresentationOwner';
 import { useCameraControls } from './useCameraControls';
+import {
+  readSixActsTeachingModeFromSearch,
+  withSixActsTeachingMode,
+  type SixActsTeachingMode,
+} from './course/sixActs/teachingMode';
 
 interface HandoverPolicyRuntimeState {
   profileId: string;
@@ -384,6 +392,11 @@ export function App() {
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
   const [homepageCanonicalTab, setHomepageCanonicalTab] = useState<MainTabKey>('sinr');
+  const [teachingMode, setTeachingMode] = useState<SixActsTeachingMode>(() => (
+    typeof window === 'undefined'
+      ? 'engineering'
+      : readSixActsTeachingModeFromSearch(window.location.search)
+  ));
   const homepageCanonicalAnalysis = useHomepageCanonicalAnalysis();
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
   const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
@@ -471,6 +484,63 @@ export function App() {
   const handoverPolicyVersion = handoverPolicyState.profileId === baseProfile.id
     ? handoverPolicyState.version
     : 0;
+  const handoverPolicyDraft = handoverPolicyState.profileId === baseProfile.id
+    ? handoverPolicyState.draft
+    : handoverPolicyDefaults;
+  const hasHandoverPolicyDraftChanges = !sameHandoverPolicyTuning(
+    handoverPolicyDraft,
+    appliedHandoverPolicy,
+  );
+  const hasHandoverPolicyOverrides = !sameHandoverPolicyTuning(
+    handoverPolicyDefaults,
+    appliedHandoverPolicy,
+  );
+  const handleHandoverPolicyDraftChange = useCallback((next: HandoverPolicyTuningState) => {
+    setHandoverPolicyState(current => {
+      const defaults = createHandoverPolicyTuningState(baseProfile);
+      const currentForProfile = current.profileId === baseProfile.id
+        ? current
+        : {
+          profileId: baseProfile.id,
+          draft: defaults,
+          applied: defaults,
+          version: current.version,
+        };
+      return {
+        ...currentForProfile,
+        draft: next,
+      };
+    });
+  }, [baseProfile]);
+  const handleApplyHandoverPolicy = useCallback(() => {
+    setHandoverPolicyState(current => {
+      const defaults = createHandoverPolicyTuningState(baseProfile);
+      const draft = current.profileId === baseProfile.id ? current.draft : defaults;
+      return {
+        profileId: baseProfile.id,
+        draft,
+        applied: draft,
+        version: current.version + 1,
+      };
+    });
+  }, [baseProfile]);
+  const handleResetHandoverPolicy = useCallback(() => {
+    setHandoverPolicyState(current => {
+      const defaults = createHandoverPolicyTuningState(baseProfile);
+      return {
+        profileId: baseProfile.id,
+        draft: defaults,
+        applied: defaults,
+        version: current.version + 1,
+      };
+    });
+  }, [baseProfile]);
+  const handleTeachingModeChange = useCallback((nextMode: SixActsTeachingMode) => {
+    setTeachingMode(nextMode);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(window.history.state, '', withSixActsTeachingMode(window.location.href, nextMode));
+    }
+  }, []);
   /**
    * Live scene topology overrides are shared by both live lanes. The recorded
    * artifact lanes deliberately get an empty topology so a local control never
@@ -645,6 +715,22 @@ export function App() {
   );
 
   const [simState, setSimState] = useState<SimState>(() => createInitialSimState(baseProfile));
+  const teachingLinkSnapshot = useMemo<TeachingLinkSnapshot>(() => {
+    const formulaFrame = simState.angleAwareFormulaFrame;
+    const terms = formulaFrame?.terms;
+    return {
+      ueId: formulaFrame?.ueId ?? simState.primaryUeId ?? null,
+      servingSatelliteId: simState.servingSatId,
+      candidateSatelliteId: simState.pendingTargetSatId ?? simState.comparisonSatId,
+      timeSec: terms?.timeSec ?? simState.simTimeSec,
+      thetaDeg: terms === undefined ? null : terms.thetaRad * (180 / Math.PI),
+      transmitGainLinear: terms?.transmitGainLinear ?? null,
+      sinrDb: terms?.gammaDb ?? simState.sinrDb,
+      throughputMbps: terms === undefined ? null : terms.throughputBps / 1e6,
+      systemPowerW: terms?.systemPowerW ?? null,
+      energyEfficiencyBitsPerJoule: terms?.energyEfficiencyBitsPerJoule ?? null,
+    };
+  }, [simState]);
   const walkerBeamDisplayFrame = useMemo(() => createSinrLiveBeamDisplayFrame({
     profile: effectiveProfile,
     runtime,
@@ -2637,6 +2723,20 @@ export function App() {
             <SinrLiveDisplayDrawer
               campusVisible={campusVisible}
               onCampusVisibleChange={() => setCampusVisible(current => !current)}
+              teachingMode={teachingMode}
+              onTeachingModeChange={handleTeachingModeChange}
+              teachingLinkSnapshot={teachingLinkSnapshot}
+              teachingPolicySection={(
+                <HandoverPolicyControls
+                  draft={handoverPolicyDraft}
+                  applied={appliedHandoverPolicy}
+                  hasDraftChanges={hasHandoverPolicyDraftChanges}
+                  hasOverrides={hasHandoverPolicyOverrides}
+                  onDraftChange={handleHandoverPolicyDraftChange}
+                  onApply={handleApplyHandoverPolicy}
+                  onReset={handleResetHandoverPolicy}
+                />
+              )}
               parameterSection={
                 isLegacyWalkerRoute ? (
                   <SignalTuningPanel
