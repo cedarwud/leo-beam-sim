@@ -155,12 +155,15 @@ export function SignalTuningPanel({
   const tr38811Environment = baseProfile.channel.tr38811?.environment ?? DEFAULT_TR38811_CHANNEL.environment;
 
   const beamsPerSatellite = Math.max(1, Math.trunc(baseProfile.beams.perSatellite));
-  const scenarioBeamLayoutCount: SupportedBeamLayoutCount = topology.beamCountPerSatellite !== null
-    && isSupportedBeamLayoutCount(topology.beamCountPerSatellite)
-    ? topology.beamCountPerSatellite
-    : isSupportedBeamLayoutCount(beamsPerSatellite)
-      ? beamsPerSatellite
-      : DEFAULT_BEAM_LAYOUT_COUNT;
+  // The live Scenario tab has one authoritative scene-cell control: serving
+  // satellite. Keep the old global field as a persisted/runtime compatibility
+  // fallback, so existing saved sessions migrate without losing their choice.
+  const scenarioBeamLayoutCount: SupportedBeamLayoutCount = topology.servingBeamCount
+    ?? (topology.beamCountPerSatellite !== null && isSupportedBeamLayoutCount(topology.beamCountPerSatellite)
+      ? topology.beamCountPerSatellite
+      : isSupportedBeamLayoutCount(beamsPerSatellite)
+        ? beamsPerSatellite
+        : DEFAULT_BEAM_LAYOUT_COUNT);
   const frequencyLabel = say('section.interference.frequencyLabel', '頻率', 'Frequency');
 
   const update = (patch: Partial<SignalTuningState>) => {
@@ -204,20 +207,27 @@ export function SignalTuningPanel({
             connection="live-scene"
             constellation={topology.constellation}
             onConstellationChange={constellation => onTopologyChange({ ...topology, constellation })}
-            beamLayoutCount={scenarioBeamLayoutCount}
-            onBeamLayoutCountChange={(next: SupportedBeamLayoutCount) => onTopologyChange({
-              ...topology,
-              beamCountPerSatellite: next,
-            })}
             servingBeamLayoutCount={topology.servingBeamCount ?? scenarioBeamLayoutCount}
             onServingBeamLayoutCountChange={(servingBeamCount: SupportedBeamLayoutCount) => onTopologyChange({
               ...topology,
+              beamCountPerSatellite: servingBeamCount,
               servingBeamCount,
+              focusCellId: null,
             })}
-            candidateBeamLayoutCount={topology.candidateBeamCount ?? scenarioBeamLayoutCount}
+            candidateBeamLayoutCount={topology.candidateBeamCount ?? topology.servingBeamCount ?? scenarioBeamLayoutCount}
             onCandidateBeamLayoutCountChange={(candidateBeamCount: SupportedBeamLayoutCount) => onTopologyChange({
               ...topology,
               candidateBeamCount,
+            })}
+            onCandidateBeamLayoutReset={() => onTopologyChange({
+              ...topology,
+              candidateBeamCount: null,
+            })}
+            focusCellId={topology.focusCellId}
+            focusCellCount={topology.servingBeamCount ?? scenarioBeamLayoutCount}
+            onFocusCellChange={(focusCellId: number | null) => onTopologyChange({
+              ...topology,
+              focusCellId,
             })}
           />
         )}

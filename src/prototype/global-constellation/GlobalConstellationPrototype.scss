@@ -1,0 +1,510 @@
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #020a10;
+}
+
+.global-constellation,
+.global-constellation * {
+  box-sizing: border-box;
+}
+
+.global-constellation {
+  --ink: #e8f4f4;
+  --muted: #8ca8aa;
+  --line: rgba(103, 180, 193, .24);
+  --panel: rgba(5, 19, 26, .92);
+  --panel-deep: rgba(2, 11, 17, .96);
+  --accent: #ffd166;
+  --accent-bright: #ffe39a;
+  --aqua: #72d7e3;
+  --visible: #82c4ce;
+  min-height: 100vh;
+  padding: clamp(16px, 2.2vw, 28px) clamp(16px, 2.8vw, 38px) 14px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 52% 42%, rgba(23, 98, 119, .16), transparent 34%),
+    linear-gradient(rgba(70, 154, 169, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(70, 154, 169, .035) 1px, transparent 1px),
+    #020a10;
+  background-size: auto, 26px 26px, 26px 26px, auto;
+  font-family: "IBM Plex Sans", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+.global-constellation__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+  max-width: 1720px;
+  margin: 0 auto 16px;
+}
+
+.global-constellation__kicker,
+.global-constellation__panel-heading > span,
+.global-constellation__stage-heading > div > span,
+.global-constellation__section-label {
+  margin: 0 0 7px;
+  color: var(--aqua);
+  font: 700 10px/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: .16em;
+}
+
+.global-constellation__header h1 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+  font-size: clamp(29px, 3vw, 50px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: .015em;
+}
+
+.global-constellation__lede {
+  margin: 9px 0 0;
+  color: #9eb7b9;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.global-constellation__badge {
+  min-width: 226px;
+  padding: 13px 16px 12px;
+  border: 1px solid rgba(114, 215, 227, .5);
+  border-radius: 12px;
+  background: rgba(5, 25, 31, .72);
+  box-shadow: inset 0 1px rgba(225, 253, 255, .06), 0 16px 38px rgba(0, 0, 0, .2);
+}
+
+.global-constellation__badge strong,
+.global-constellation__badge span,
+.global-constellation__badge small {
+  display: block;
+}
+
+.global-constellation__badge strong {
+  color: var(--aqua);
+  font: 700 10px/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: .13em;
+}
+
+.global-constellation__badge span {
+  margin-top: 5px;
+  color: #e8fbff;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.global-constellation__badge small {
+  margin-top: 3px;
+  color: #86aaae;
+  font-size: 11px;
+}
+
+.global-constellation__workspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 276px) minmax(0, 1fr) minmax(230px, 292px);
+  gap: 13px;
+  max-width: 1720px;
+  height: calc(100vh - 183px);
+  min-height: 580px;
+  margin: 0 auto;
+}
+
+.global-constellation__panel,
+.global-constellation__stage {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--panel);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
+  overflow: hidden;
+}
+
+.global-constellation__panel {
+  padding: 19px;
+}
+
+.global-constellation__controls,
+.global-constellation__insights {
+  display: flex;
+  flex-direction: column;
+}
+
+.global-constellation__panel-heading {
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(103, 180, 193, .18);
+}
+
+.global-constellation__panel-heading h2 {
+  margin: 0;
+  color: #e9f5f5;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.global-constellation__panel-heading p {
+  margin: 7px 0 0;
+  color: #7f9b9f;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.global-constellation__selector {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.global-constellation__selector button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 67px;
+  padding: 12px 13px;
+  border: 1px solid rgba(103, 180, 193, .23);
+  border-radius: 10px;
+  color: #9bb8bb;
+  background: rgba(5, 25, 32, .72);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.global-constellation__selector button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(114, 215, 227, .55);
+  color: #d8f1f2;
+}
+
+.global-constellation__selector button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.global-constellation__selector button.is-active {
+  border-color: rgba(255, 209, 102, .82);
+  color: var(--accent-bright);
+  background: linear-gradient(135deg, rgba(67, 51, 16, .76), rgba(10, 32, 37, .78));
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.global-constellation__selector strong {
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.global-constellation__selector small {
+  margin-top: 4px;
+  color: #759397;
+  font-size: 11px;
+}
+
+.global-constellation__selector button.is-active small {
+  color: #b2b39a;
+}
+
+.global-constellation__source-state {
+  min-height: 38px;
+  margin: 14px 0 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(103, 180, 193, .16);
+  border-radius: 8px;
+  color: #86a8ad;
+  background: rgba(2, 13, 19, .62);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.global-constellation__source-state.is-ready {
+  color: #9ee6d6;
+  border-color: rgba(114, 215, 190, .28);
+}
+
+.global-constellation__source-state.is-error {
+  color: #ffad91;
+  border-color: rgba(255, 135, 98, .4);
+}
+
+.global-constellation__rule {
+  height: 1px;
+  margin: 18px 0 17px;
+  background: rgba(103, 180, 193, .18);
+}
+
+.global-constellation__section-label {
+  color: #719397;
+  font-size: 9px;
+}
+
+.global-constellation__selection {
+  margin: 0;
+}
+
+.global-constellation__selection strong,
+.global-constellation__selection span {
+  display: block;
+}
+
+.global-constellation__selection strong {
+  color: var(--accent-bright);
+  font: 500 26px/1.1 "Iowan Old Style", Georgia, serif;
+}
+
+.global-constellation__selection span {
+  margin-top: 5px;
+  color: #86a8ad;
+  font-size: 11px;
+}
+
+.global-constellation__note {
+  margin: auto 0 0;
+  padding-top: 16px;
+  color: #779497;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.global-constellation__stage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--panel-deep);
+}
+
+.global-constellation__stage-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 21px 11px;
+}
+
+.global-constellation__stage-heading h2 {
+  margin: 0;
+  color: #effafa;
+  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+  font-size: 23px;
+  font-weight: 500;
+}
+
+.global-constellation__stage-heading p {
+  margin: 17px 0 0;
+  color: var(--accent-bright);
+  font: 700 11px/1.2 "IBM Plex Mono", monospace;
+  white-space: nowrap;
+}
+
+.global-constellation__canvas {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 49%, rgba(23, 96, 119, .18), transparent 42%);
+}
+
+.global-constellation__canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.global-constellation__canvas-hint {
+  position: absolute;
+  right: 16px;
+  bottom: 13px;
+  padding: 5px 8px;
+  border: 1px solid rgba(103, 180, 193, .22);
+  border-radius: 4px;
+  color: #6f969c;
+  background: rgba(2, 11, 17, .78);
+  font: 10px/1.2 "IBM Plex Mono", monospace;
+  pointer-events: none;
+}
+
+.global-constellation__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 21px 13px;
+  border-top: 1px solid rgba(103, 180, 193, .16);
+  color: #78979b;
+  font-size: 10px;
+}
+
+.global-constellation__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.global-constellation__legend i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.global-constellation__legend i.is-satellite { background: #2e4854; }
+.global-constellation__legend i.is-visible { background: var(--visible); }
+.global-constellation__legend i.is-earth { border: 1px solid #74cfdf; background: transparent; }
+
+.global-constellation__metrics {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+}
+
+.global-constellation__density-readout {
+  display: grid;
+  gap: 4px;
+  margin-top: 11px;
+  padding: 10px 11px;
+  border-left: 3px solid var(--accent);
+  background: rgba(53, 43, 18, .34);
+}
+
+.global-constellation__density-readout span,
+.global-constellation__density-readout strong,
+.global-constellation__density-readout small {
+  display: block;
+}
+
+.global-constellation__density-readout span {
+  color: #b7a46a;
+  font: 700 9px/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: .12em;
+}
+
+.global-constellation__density-readout strong {
+  color: var(--accent-bright);
+  font-size: 15px;
+}
+
+.global-constellation__density-readout small {
+  color: #9d9b7c;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.global-constellation__metric {
+  min-height: 76px;
+  padding: 10px 11px;
+  border: 1px solid rgba(103, 180, 193, .2);
+  border-radius: 9px;
+  background: rgba(4, 25, 32, .62);
+}
+
+.global-constellation__metric dt,
+.global-constellation__metric dd,
+.global-constellation__metric small {
+  display: block;
+  margin: 0;
+}
+
+.global-constellation__metric dt {
+  color: #78999d;
+  font-size: 10px;
+}
+
+.global-constellation__metric dd {
+  margin-top: 5px;
+  color: #edfafa;
+  font: 700 18px/1.1 "IBM Plex Mono", monospace;
+  overflow-wrap: anywhere;
+}
+
+.global-constellation__metric small {
+  margin-top: 5px;
+  color: #638488;
+  font-size: 9px;
+}
+
+.global-constellation__provenance {
+  margin: auto 0 0;
+  padding-top: 17px;
+  color: #65878c;
+  font: 9px/1.55 "IBM Plex Mono", monospace;
+  overflow-wrap: anywhere;
+}
+
+.global-constellation__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 28px;
+  max-width: 1720px;
+  margin: 0 auto;
+  color: #628187;
+  font-size: 9px;
+  letter-spacing: .03em;
+}
+
+.global-constellation__footer strong {
+  color: #a7dfe2;
+  font: 700 9px/1 "IBM Plex Mono", monospace;
+  letter-spacing: .12em;
+}
+
+@media (max-width: 1120px) {
+  .global-constellation__workspace {
+    grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
+    height: auto;
+    min-height: 0;
+  }
+
+  .global-constellation__stage {
+    min-height: 610px;
+  }
+
+  .global-constellation__insights {
+    grid-column: 1 / -1;
+  }
+
+  .global-constellation__metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .global-constellation__provenance {
+    margin-top: 15px;
+  }
+}
+
+@media (max-width: 720px) {
+  .global-constellation__header {
+    display: block;
+  }
+
+  .global-constellation__badge {
+    width: fit-content;
+    min-width: 0;
+    margin-top: 16px;
+  }
+
+  .global-constellation__workspace {
+    display: block;
+  }
+
+  .global-constellation__panel {
+    margin-bottom: 13px;
+  }
+
+  .global-constellation__stage {
+    min-height: 520px;
+  }
+
+  .global-constellation__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-constellation__selector button {
+    transition: none;
+  }
+}

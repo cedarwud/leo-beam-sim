@@ -126,7 +126,7 @@ assert.deepEqual(
 );
 assert.match(
   entrySource,
-  /isUnifiedVisualLabRoute = window\.location\.pathname === '\/simulator'[\s\S]*window\.location\.pathname === '\/visual-lab'[\s\S]*window\.location\.pathname === '\/explain'[\s\S]*window\.location\.pathname === '\/prototype\/scientific-explain'[\s\S]*window\.location\.pathname === '\/prototype\/scientific-explain-3d'[\s\S]*window\.location\.pathname === '\/prototype\/scientific-explain-2d'/,
+  /isUnifiedVisualLabRoute = window\.location\.pathname === '\/simulator'[\s\S]*window\.location\.pathname === '\/visual-lab'[\s\S]*window\.location\.pathname === '\/explain'[\s\S]*window\.location\.pathname === '\/prototype\/scientific-explain'[\s\S]*window\.location\.pathname === '\/prototype\/scientific-explain-3d'/,
   'the public simulator route and visual-lab aliases must select the unified visual-lab route',
 );
 assert.match(
@@ -149,10 +149,35 @@ assert.match(
   /if \(isCanonicalSimulatorDevelopmentRoute\)[\s\S]{0,220}SimulatorRoute/,
   'the canonical development query must retain its SimulatorRoute implementation',
 );
+assert.match(
+  entrySource,
+  /isStandaloneScientificExplain3DRoute = window\.location\.pathname === '\/prototype\/scientific-explain-legacy-3d'/,
+  'the standalone 3D scientific prototype must have an explicit route',
+);
+assert.match(
+  entrySource,
+  /if \(isStandaloneScientificExplain3DRoute\)[\s\S]{0,360}ScientificExplain3DPrototype/,
+  'the standalone 3D route must mount only the original 3D prototype',
+);
+assert.match(
+  entrySource,
+  /isStandaloneGlobalConstellationRoute = window\.location\.pathname === '\/prototype\/global-constellation'/,
+  'the standalone global constellation prototype must have an explicit route',
+);
+assert.match(
+  entrySource,
+  /if \(isStandaloneGlobalConstellationRoute\)[\s\S]{0,420}GlobalConstellationPrototype/,
+  'the standalone global route must mount the constellation prototype',
+);
 assert.doesNotMatch(
   entrySource,
-  /ScientificExplainPrototype|ScientificExplanationRoute/,
-  'active routes cannot mount a second explanation renderer or calculator',
+  /scientific-explain-legacy-2d|scientific-explain-2d|ScientificExplainPrototype/,
+  'the retired 2D scientific prototype must not remain routable',
+);
+assert.doesNotMatch(
+  entrySource,
+  /if \(isUnifiedVisualLabRoute\)[\s\S]{0,360}(?:ScientificExplainPrototype|ScientificExplain3DPrototype|ScientificExplanationRoute)/,
+  'the unified visual-lab route must not mount a second explanation renderer or calculator',
 );
 const homeAppSource = await readFile('src/App.tsx', 'utf8');
 const simulatorRouteSource = await readFile('src/simulator/SimulatorRoute.tsx', 'utf8');

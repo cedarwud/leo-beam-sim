@@ -31,9 +31,15 @@ const SEVEN_CELL_SCATTER = [
   { east: 0.07, north: 0.1, stretchEast: 1, stretchNorth: 0.8, turn: 4.17 },
 ] as const;
 
-function allocateWeightedUeCounts(ueCount: number): number[] {
-  const totalWeight = DISPERSED_SEVEN_CELL_USER_COUNTS.reduce((sum, weight) => sum + weight, 0);
-  const exact = DISPERSED_SEVEN_CELL_USER_COUNTS.map(weight => ueCount * weight / totalWeight);
+function allocateWeightedUeCounts(ueCount: number, cellCount: number): number[] {
+  // Preserve the established asymmetric seven-cell population. The 1-cell and
+  // 19-cell scene presets are intentionally even: the former concentrates all
+  // UEs into one cell, while the latter makes every scene cell visible.
+  const weights = cellCount === DISPERSED_SEVEN_CELL_USER_COUNTS.length
+    ? DISPERSED_SEVEN_CELL_USER_COUNTS
+    : Array.from({ length: cellCount }, () => 1);
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  const exact = weights.map(weight => ueCount * weight / totalWeight);
   const counts = exact.map(Math.floor);
   let remaining = ueCount - counts.reduce((sum, value) => sum + value, 0);
   const order = exact
@@ -46,7 +52,27 @@ function allocateWeightedUeCounts(ueCount: number): number[] {
   return counts;
 }
 
-function generateSevenCellAsymmetricUePositions(params: {
+function resolveCellScatterShape(cellIndex: number, cellCount: number): {
+  east: number;
+  north: number;
+  stretchEast: number;
+  stretchNorth: number;
+  turn: number;
+} {
+  if (cellCount === SEVEN_CELL_SCATTER.length) {
+    return SEVEN_CELL_SCATTER[cellIndex];
+  }
+  const turn = (cellIndex * Math.PI * (3 - Math.sqrt(5))) % (2 * Math.PI);
+  return {
+    east: 0,
+    north: 0,
+    stretchEast: 1,
+    stretchNorth: 1,
+    turn,
+  };
+}
+
+function generateCellDistributedUePositions(params: {
   readonly ueCount: number;
   readonly primary: UePosition;
   readonly primaryAnchorMode: UePrimaryAnchorMode;
@@ -55,11 +81,11 @@ function generateSevenCellAsymmetricUePositions(params: {
   readonly ueWorldScale: number;
   readonly seed: number;
 }): UePosition[] | null {
-  if (params.cellCentersKm.length < 7 || !Number.isFinite(params.cellRadiusKm) || params.cellRadiusKm <= 0) {
+  if (params.cellCentersKm.length === 0 || !Number.isFinite(params.cellRadiusKm) || params.cellRadiusKm <= 0) {
     return null;
   }
-  const centers = params.cellCentersKm.slice(0, 7);
-  const counts = allocateWeightedUeCounts(params.ueCount);
+  const allCenters = params.cellCentersKm;
+  const counts = allocateWeightedUeCounts(params.ueCount, allCenters.length);
   const positions: UePosition[] = [];
   const rng = createSeededRng(params.seed);
   const anchorPrimary = params.primaryAnchorMode === 'observer';
@@ -68,9 +94,9 @@ function generateSevenCellAsymmetricUePositions(params: {
     counts[0] = Math.max(0, counts[0] - 1);
   }
 
-  for (let cellIndex = 0; cellIndex < centers.length; cellIndex += 1) {
-    const center = centers[cellIndex];
-    const shape = SEVEN_CELL_SCATTER[cellIndex];
+  for (let cellIndex = 0; cellIndex < allCenters.length; cellIndex += 1) {
+    const center = allCenters[cellIndex];
+    const shape = resolveCellScatterShape(cellIndex, allCenters.length);
     const cosTurn = Math.cos(shape.turn);
     const sinTurn = Math.sin(shape.turn);
     for (let slot = 0; slot < counts[cellIndex]; slot += 1) {
@@ -424,7 +450,7 @@ function generateClusteredUePositions(params: {
   return positions;
 }
 
-export function generateUePositions(params: {
+function generateUePositionsForField(params: {
   ueCount: number;
   primaryEastKm: number;
   primaryNorthKm: number;
@@ -434,7 +460,7 @@ export function generateUePositions(params: {
   mode?: UeDistributionMode;
   primaryAnchorMode?: UePrimaryAnchorMode;
   rectangleAreaKm?: UeRectangleAreaKm;
-  /** Exact scene-cell centres used only by the hidden seven-cell preset. */
+  /** Exact scene-cell centres used by the live scene-cell distribution preset. */
   cellCentersKm?: readonly UeDistributionCellCenterKm[];
   cellRadiusKm?: number;
   /**
@@ -474,7 +500,7 @@ export function generateUePositions(params: {
   }
 
   if (mode === 'seven-cell-asymmetric' && cellCentersKm !== undefined) {
-    const positions = generateSevenCellAsymmetricUePositions({
+    const positions = generateCellDistributedUePositions({
       ueCount,
       primary,
       primaryAnchorMode,
@@ -573,4 +599,202 @@ export function generateUePositions(params: {
         seed,
       });
   }
+}
+
+
+/**
+ * THE cell→UE scan. Index of the UE nearest the centre of `focusCellId`, or
+ * `null` when no cell is focused, cell centres are unavailable, or the focused
+ * cell holds no UE.
+ *
+ * There used to be several verbatim copies of this loop (this one, the wrapper
+ * below, and an inline copy inside {@link generateUePositions} that picked the
+ * demo-jog target). Callers now differ only in what they do with "nobody found":
+ * {@link resolveFocusUeIndex} falls back to index 0, the jog gives up.
+ */
+export function findFocusCellUeIndex(
+  positions: readonly UePosition[],
+  cellCentersKm: readonly UeDistributionCellCenterKm[] | undefined,
+  focusCellId: number | null | undefined,
+): number | null {
+  if (focusCellId === null || focusCellId === undefined) return null;
+  if (cellCentersKm === undefined || cellCentersKm.length === 0) return null;
+  let bestIndex = -1;
+  let bestDistanceKm = Infinity;
+  for (let index = 0; index < positions.length; index += 1) {
+    const position = positions[index];
+    let nearestCellId = -1;
+    let nearestDistanceKm = Infinity;
+    for (let cellIndex = 0; cellIndex < cellCentersKm.length; cellIndex += 1) {
+      const centre = cellCentersKm[cellIndex];
+      const distanceKm = Math.hypot(
+        position.eastKm - centre.eastKm,
+        position.northKm - centre.northKm,
+      );
+      if (distanceKm < nearestDistanceKm) {
+        nearestDistanceKm = distanceKm;
+        nearestCellId = cellIndex;
+      }
+    }
+    if (nearestCellId !== focusCellId) continue;
+    if (nearestDistanceKm < bestDistanceKm) {
+      bestDistanceKm = nearestDistanceKm;
+      bestIndex = index;
+    }
+  }
+  return bestIndex < 0 ? null : bestIndex;
+}
+
+/**
+ * Index of the UE that represents `focusCellId` — the one nearest that cell's
+ * centre. Returns 0 (the historical protagonist) when no cell is focused, when
+ * cell centres are unavailable, or when the focused cell holds no UE.
+ *
+ * Positional FALLBACK only. `live-ue-N` ids are positional, so an index is a
+ * fragile way to name a UE and re-deriving one per frame lets the protagonist
+ * change hands as soon as anybody moves. Prefer {@link resolveProtagonistUeIndex}
+ * with the id that `SinrLiveCellModel` pinned at focus-change time; this scan is
+ * what answers the question the first time, before any pin exists.
+ */
+export function resolveFocusUeIndex(
+  positions: readonly UePosition[],
+  cellCentersKm: readonly UeDistributionCellCenterKm[] | undefined,
+  focusCellId: number | null | undefined,
+): number {
+  return findFocusCellUeIndex(positions, cellCentersKm, focusCellId) ?? 0;
+}
+
+/**
+ * THE protagonist oracle. One decision, consumed by every surface that has to
+ * agree on "who are we watching": the main `S3HandoverManager`'s UE, the scene
+ * ground anchor, the `applyPerTickUeMobility` primary, the demo-jog target, and
+ * — via `SinrLiveCellFrame.primaryUeId` — the panels, rail and cones.
+ *
+ * Resolution order, and why:
+ *
+ * 1. `focusUeId` — the id `SinrLiveCellModel.setFocusCell` PINNED when the focus
+ *    last changed. This is the authoritative answer. It is an **id**, not an
+ *    index, because `live-ue-N` ids are positional: an index taken on one
+ *    population names a different UE the moment the UE count changes, and a
+ *    per-frame nearest-to-centre scan hands the role to somebody else the moment
+ *    the protagonist walks out of the cell that selected it (which is exactly
+ *    what happens once the focused UE is the one drifting).
+ * 2. the nearest-to-focus-cell scan — the cold-start answer, used on the first
+ *    frame of a focus (before the model has stepped and taken a pin) and by
+ *    callers that have no cell model at all.
+ * 3. index 0 — the historical protagonist, when nothing is focused.
+ */
+export function resolveProtagonistUeIndex(
+  positions: readonly UePosition[],
+  cellCentersKm: readonly UeDistributionCellCenterKm[] | undefined,
+  focusCellId: number | null | undefined,
+  focusUeId?: string | null,
+): number {
+  if (focusUeId !== null && focusUeId !== undefined) {
+    const pinned = positions.findIndex(position => position.id === focusUeId);
+    if (pinned >= 0) return pinned;
+  }
+  return resolveFocusUeIndex(positions, cellCentersKm, focusCellId);
+}
+
+/**
+ * Public entry point. Generates the field, then applies the demo intra jog to
+ * the UE the panels are actually WATCHING.
+ *
+ * The jog exists to slide the protagonist into an adjacent beam cell so the
+ * engine performs a genuine intra handover. It used to be baked into the
+ * index-0 anchor, which meant the trigger always nudged the observer-anchored
+ * UE in cell 0 — so with a different cell focused, the panels followed one UE
+ * while the handover animation played on another. Applying it to the focused
+ * UE instead keeps "what I am watching" and "what just handed over" the same
+ * UE. With no focus set this resolves to index 0, i.e. the original behaviour.
+ */
+export function generateUePositions(params: Parameters<typeof generateUePositionsForField>[0] & {
+  /** Cell whose representative UE should receive the jog; null = index 0. */
+  readonly focusCellId?: number | null;
+  /**
+   * The pinned protagonist id (see {@link resolveProtagonistUeIndex}). When it
+   * names a UE of this field it wins over the nearest-to-centre scan, so the jog
+   * lands on exactly the UE the panels, the cones and the main HandoverManager
+   * are following — including after the protagonist has drifted out of the cell
+   * that originally selected it.
+   */
+  readonly focusUeId?: string | null;
+}): UePosition[] {
+  const jogEastKm = params.primaryJogEastKm ?? 0;
+  const jogNorthKm = params.primaryJogNorthKm ?? 0;
+  const focusCellId = params.focusCellId ?? null;
+  const centers = params.cellCentersKm;
+  const hasJog = jogEastKm !== 0 || jogNorthKm !== 0;
+
+  // No focus, or nothing to redirect: the original index-0 path, untouched.
+  if (!hasJog || focusCellId === null || centers === undefined) {
+    return generateUePositionsForField(params);
+  }
+
+  // Build the field WITHOUT the jog so cell membership reflects resting
+  // positions, then move only the focused cell's representative UE.
+  const positions = generateUePositionsForField({
+    ...params,
+    primaryJogEastKm: 0,
+    primaryJogNorthKm: 0,
+  });
+  const centre = centers[focusCellId];
+  if (centre === undefined) return positions;
+
+  // The ONE protagonist oracle, minus its index-0 fallback: a jog aimed at the
+  // default UE when the focused cell is empty would move somebody the panels are
+  // not watching, so give up instead (the pre-consolidation behaviour).
+  const pinnedIndex = params.focusUeId === null || params.focusUeId === undefined
+    ? -1
+    : positions.findIndex(position => position.id === params.focusUeId);
+  const jogIndex = pinnedIndex >= 0
+    ? pinnedIndex
+    : findFocusCellUeIndex(positions, centers, focusCellId) ?? -1;
+  if (jogIndex < 0) return positions;
+
+  // Aim the jog at the NEAREST NEIGHBOURING cell instead of keeping the raw
+  // east-west vector. The trigger's fixed +28 km east was tuned for cell 0; on
+  // other cells of the hex lattice the same vector can land back inside the
+  // cell it started in, so the demo silently produces no handover. Preserving
+  // the jog's MAGNITUDE but pointing it at a neighbour makes the button do the
+  // same thing from every cell.
+  let neighbourCellId = -1;
+  let neighbourDistanceKm = Infinity;
+  for (let cellIndex = 0; cellIndex < centers.length; cellIndex += 1) {
+    if (cellIndex === focusCellId) continue;
+    const candidate = centers[cellIndex];
+    const distanceKm = Math.hypot(candidate.eastKm - centre.eastKm, candidate.northKm - centre.northKm);
+    if (distanceKm < neighbourDistanceKm) {
+      neighbourDistanceKm = distanceKm;
+      neighbourCellId = cellIndex;
+    }
+  }
+
+  const target = positions[jogIndex];
+  const magnitudeKm = Math.hypot(jogEastKm, jogNorthKm);
+  let deltaEastKm = jogEastKm;
+  let deltaNorthKm = jogNorthKm;
+  if (neighbourCellId >= 0 && neighbourDistanceKm > 0) {
+    const neighbour = centers[neighbourCellId];
+    // Walk from the UE toward the neighbour's centre, far enough to clear the
+    // boundary: the neighbour centre itself is always inside the neighbour.
+    const towardEastKm = neighbour.eastKm - target.eastKm;
+    const towardNorthKm = neighbour.northKm - target.northKm;
+    const towardKm = Math.hypot(towardEastKm, towardNorthKm);
+    if (towardKm > 0) {
+      const stepKm = Math.max(magnitudeKm, towardKm);
+      deltaEastKm = (towardEastKm / towardKm) * stepKm;
+      deltaNorthKm = (towardNorthKm / towardKm) * stepKm;
+    }
+  }
+
+  const moved = positions.slice();
+  moved[jogIndex] = createUePosition(
+    jogIndex,
+    target.eastKm + deltaEastKm,
+    target.northKm + deltaNorthKm,
+    params.ueWorldScale,
+  );
+  return moved;
 }

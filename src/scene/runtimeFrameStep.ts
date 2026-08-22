@@ -8,7 +8,7 @@ import {
 import { computeTr38811SlantRangeKm } from '../engine/signal/slant-range';
 import { HandoverManager } from '../engine/handover/handover-manager';
 import type { ServingState } from '../engine/handover/types';
-import { generateUePositions } from '../engine/ue/multiUeState';
+import { generateUePositions, resolveProtagonistUeIndex } from '../engine/ue/multiUeState';
 import type { UeDistributionMode, UePrimaryAnchorMode } from '../engine/ue/multiUeState';
 import {
   DEFAULT_UE_MOBILITY_PARAMS,
@@ -123,6 +123,24 @@ export interface RuntimeFrameStepState {
   beamPowerControlRuntime: BeamPowerControlRuntime;
   secondaryRecomputeAccumulatorSec: number;
   secondaryServingCache: SecondaryServingSnapshot[] | null;
+  /** Cache identity must include the protagonist index; focus changes remap slots. */
+  secondaryServingCachePrimaryUeIndex: number | null;
+  /**
+   * ONE MOVER AT A TIME — the frozen ground-track offset (km, ENU) of every UE
+   * that has ever been the protagonist, keyed by UE id.
+   *
+   * `profile.ueMobility` is a single waypoint path, and it belongs to whoever is
+   * currently the protagonist (see the "protagonist drift" block in
+   * {@link stepRuntimeFrame}). The field itself is regenerated from scratch every
+   * frame, so without this map a UE that LOSES the protagonist role would snap
+   * back to its resting position — a teleport, which the cell model would then
+   * read as a handover. Keeping its last offset here is what "the previously
+   * focused UE stops where it is" means mechanically: it holds the ground it
+   * walked to, and only the new protagonist keeps moving.
+   *
+   * Cleared with the rest of the step state on a cold start.
+   */
+  protagonistDriftOffsetKmByUeId: Map<string, { eastKm: number; northKm: number }>;
 }
 
 interface LinkContext {
@@ -175,6 +193,17 @@ export interface RuntimeFrameStepInput {
   /** Demo intra-handover jog: ENU offset (km) applied to the PRIMARY UE only so it
    *  crosses into an adjacent same-sat beam cell and the engine does a real intra. */
   primaryJogEastKm?: number;
+  /** Cell whose UE the panels follow; routes the demo intra jog to that UE. */
+  focusCellId?: number | null;
+  /**
+   * The protagonist id `SinrLiveCellModel` pinned at focus-change time
+   * (`getPinnedPrimaryUeId()`). Supplying it makes this step CONSUME the cell
+   * model's decision rather than re-derive one: the main HandoverManager, the
+   * scene anchor, the mobility primary and the panels then all name the same UE.
+   * Omit it (or `null`) and the step falls back to its own nearest-to-focus-cell
+   * scan, which is what callers without a cell model get.
+   */
+  focusUeId?: string | null;
   primaryJogNorthKm?: number;
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
@@ -239,6 +268,8 @@ export function createRuntimeFrameStepState(simTimeSec: number): RuntimeFrameSte
     beamPowerControlRuntime: createEmptyBeamPowerControlRuntime(),
     secondaryRecomputeAccumulatorSec: 0,
     secondaryServingCache: null,
+    secondaryServingCachePrimaryUeIndex: null,
+    protagonistDriftOffsetKmByUeId: new Map(),
   };
 }
 
@@ -515,23 +546,28 @@ export function shouldRecomputeSecondary(
 
 function snapshotSecondaryServing(
   perUePositions: readonly RuntimePerUeSinrPosition[],
+  primaryUeIndex = 0,
 ): SecondaryServingSnapshot[] {
-  return perUePositions.slice(1).map(position => ({
+  return perUePositions.flatMap((position, index) => index === primaryUeIndex ? [] : [{
     sinrDb: position.sinrDb,
     servingSatId: position.servingSatId,
     servingBeamId: position.servingBeamId,
     pendingTargetSatId: position.pendingTargetSatId,
     pendingTargetBeamId: position.pendingTargetBeamId,
     triggerProgressSec: position.triggerProgressSec,
-  }));
+  }]);
 }
 
 function applySecondaryServingCache(
   perUePositions: RuntimePerUeSinrPosition[],
   cache: readonly SecondaryServingSnapshot[],
+  primaryUeIndex = 0,
 ): void {
-  for (let i = 1; i < perUePositions.length; i += 1) {
-    const cached = cache[i - 1];
+  let cacheIndex = 0;
+  for (let i = 0; i < perUePositions.length; i += 1) {
+    if (i === primaryUeIndex) continue;
+    const cached = cache[cacheIndex];
+    cacheIndex += 1;
     if (!cached) continue;
     perUePositions[i].sinrDb = cached.sinrDb;
     perUePositions[i].servingSatId = cached.servingSatId;
@@ -560,6 +596,8 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     ueDistributionScope = 'beam-footprint',
     ueDistributionRadiusKm: inputUeDistributionRadiusKm,
     primaryJogEastKm = 0,
+    focusCellId = null,
+    focusUeId = null,
     primaryJogNorthKm = 0,
     ueMobilityMode = 'static',
     ueMobilityParams = DEFAULT_UE_MOBILITY_PARAMS,
@@ -608,6 +646,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     state.beamPowerControlRuntime = createEmptyBeamPowerControlRuntime();
     state.secondaryRecomputeAccumulatorSec = 0;
     state.secondaryServingCache = null;
+    state.secondaryServingCachePrimaryUeIndex = null;
   }
 
   const nowWallClockMs = resolvedNowMs;
@@ -692,10 +731,35 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     primaryGeometry.footprintRadiusKm,
   );
   const rectangleAreaKm = resolveProfileRectangleAreaKm(profile);
+  // PROTAGONIST DRIFT — who walks the `profile.ueMobility` ground track.
+  //
+  // The track is a single path, so exactly ONE UE walks it: the protagonist.
+  // With no focused cell that is UE 0, and the path is folded into the field
+  // ANCHOR exactly as it always was — which is what keeps the `random` / `grid`
+  // / `clustered` presets translating the whole cloud with the observer.
+  //
+  // With a cell focused the anchor drops back to the resting observer position
+  // and the track is re-aimed at the focused UE below, because the focused UE is
+  // the one the panels, the cones and the main HandoverManager are watching, and
+  // a protagonist that never crosses a beam boundary can never produce the intra
+  // handover the focus feature exists to show. Under the shipped
+  // `seven-cell-asymmetric` distribution every non-anchor UE is pinned to an
+  // absolute cell centre, so before this the ONLY UE that could ever move was
+  // `live-ue-0` — and `resolvePrimaryUe(focusCellId)` never selects it.
+  //
+  // NOTE on the demo intra jog: `generateUePositions` aims it from the RESTING
+  // field, so with a focused cell it composes as (resting + jog + drift). The
+  // jog's "walk toward the neighbouring cell" vector is therefore computed from
+  // where the protagonist rests, not from where it has drifted to. Harmless
+  // today — no shipped profile on this lane carries a `ueMobility` track, so the
+  // drift term is zero — but the two protagonist-motion mechanisms are not
+  // composed geometrically, and a profile that carries both would need the jog
+  // to be re-aimed from the drifted position.
+  const anchorCarriesDrift = focusCellId === null;
   const perUePositions: RuntimePerUeSinrPosition[] = generateUePositions({
     ueCount,
-    primaryEastKm: ueEastKm,
-    primaryNorthKm: ueNorthKm,
+    primaryEastKm: anchorCarriesDrift ? ueEastKm : 0,
+    primaryNorthKm: anchorCarriesDrift ? ueNorthKm : 0,
     primaryJogEastKm,
     primaryJogNorthKm,
     primaryFootprintRadiusKm: ueDistributionRadiusKm,
@@ -709,6 +773,11 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     primaryAnchorMode: uePrimaryAnchorMode,
     cellCentersKm: input.ueDistributionCellCentersKm,
     cellRadiusKm: input.ueDistributionCellRadiusKm,
+    // Send the demo intra jog to the UE the panels are watching, so the
+    // handover animation happens on the focused cell rather than always on the
+    // observer-anchored UE in cell 0.
+    focusCellId,
+    focusUeId,
   }).map(position => ({
     ...position,
     sinrDb: null,
@@ -718,18 +787,63 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     pendingTargetBeamId: null,
     triggerProgressSec: 0,
   }));
+  // Resolve the protagonist before mobility and every per-UE helper, from the
+  // ONE oracle: the id the cell model pinned at focus-change time, falling back
+  // to the nearest-to-focus-cell scan only when no pin exists yet. This is the
+  // UE the main HandoverManager owns, the UE whose ground anchor the scene
+  // renders, the UE the mobility pass holds still — and, via
+  // `SinrLiveCellFrame.primaryUeId`, the UE the panels and rail follow.
+  const primaryUeIndex = resolveProtagonistUeIndex(
+    perUePositions,
+    input.ueDistributionCellCentersKm,
+    focusCellId,
+    focusUeId,
+  );
+  // ONE MOVER AT A TIME. The current protagonist takes this frame's track
+  // offset; every UE that held the role earlier keeps the offset it had when it
+  // lost it, so changing focus hands the walk over instead of teleporting the
+  // old protagonist back to its resting position mid-shot.
+  const driftOffsets = state.protagonistDriftOffsetKmByUeId;
+  if (!anchorCarriesDrift) {
+    const moverUeId = perUePositions[primaryUeIndex]?.id;
+    if (moverUeId !== undefined) {
+      driftOffsets.set(moverUeId, { eastKm: ueEastKm, northKm: ueNorthKm });
+    }
+  }
+  const frozenDriftUeIndices = new Set<number>();
+  if (driftOffsets.size > 0) {
+    for (let index = 0; index < perUePositions.length; index += 1) {
+      // When the anchor already carries the drift, UE 0 has it baked in; adding
+      // the held offset on top would double it.
+      if (anchorCarriesDrift && index === primaryUeIndex) continue;
+      const position = perUePositions[index];
+      const offset = driftOffsets.get(position.id);
+      if (offset === undefined) continue;
+      if (index !== primaryUeIndex) frozenDriftUeIndices.add(index);
+      position.eastKm += offset.eastKm;
+      position.northKm += offset.northKm;
+      position.groundX = position.eastKm * ueWorldScale;
+      position.groundZ = -position.northKm * ueWorldScale;
+    }
+  }
   applyPerTickUeMobility({
     perUePositions,
     mobilityStates,
+    primaryUeIndex,
+    // A retired protagonist stands where it stopped. Handing it back to the
+    // secondary mobility integrator would drag it off that spot from an origin
+    // it never walked, so hold it out of the pass entirely.
+    frozenUeIndices: frozenDriftUeIndices,
     ueMobilityMode,
     ueMobilityParams,
     deltaSec: paused ? 0 : deltaSec * speed,
     primaryFootprintRadiusKm: primaryGeometry.footprintRadiusKm,
     ueWorldScale,
   });
-  // Keep the demo jog on the real handover decision path. Without this bridge
-  // the marker moved, but HandoverManager continued evaluating the old waypoint.
-  const primaryPosition = perUePositions[0];
+  // The handover decision, scene marker, and serving-link anchor all use this
+  // same focused UE. Keeping that identity here prevents the panels from
+  // following one cell while the 3D view draws the handover at cell 0.
+  const primaryPosition = perUePositions[primaryUeIndex] ?? perUePositions[0];
   const observerCosLat = Math.cos(observer.latDeg * Math.PI / 180);
   const ueObserver: UeObserverPosition = {
     latDeg: observer.latDeg + primaryPosition.northKm / EARTH_KM_PER_DEG,
@@ -737,8 +851,8 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
       EARTH_KM_PER_DEG * Math.max(Math.abs(observerCosLat), 1e-6)
     ),
   };
-  const ueGroundX = perUePositions[0].groundX;
-  const ueGroundZ = perUePositions[0].groundZ;
+  const ueGroundX = primaryPosition.groundX;
+  const ueGroundZ = primaryPosition.groundZ;
   const preDecisionContext = buildLinkContext(
     input,
     linkSats,
@@ -876,28 +990,33 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     state.beamPowerControlRuntime.lastBucketSamples = postDecisionContext.linkSamples;
   }
 
+  // The main HandoverManager evaluated `primaryPosition`, so its result belongs
+  // to that same UE — write it back there, not to index 0.
   const primaryServingSinrDb = hoManager.state.sinrDb;
-  perUePositions[0].sinrDb = primaryServingSinrDb;
-  perUePositions[0].servingSatId = hoManager.state.satId;
-  perUePositions[0].servingBeamId = hoManager.state.beamId;
-  perUePositions[0].pendingTargetSatId = hoManager.state.pendingTarget?.satId ?? null;
-  perUePositions[0].pendingTargetBeamId = hoManager.state.pendingTarget?.beamId ?? null;
-  perUePositions[0].triggerProgressSec = hoManager.state.pendingTarget ? hoManager.state.triggerTimeSec : 0;
+  const primaryRecord = perUePositions[primaryUeIndex] ?? perUePositions[0];
+  primaryRecord.sinrDb = primaryServingSinrDb;
+  primaryRecord.servingSatId = hoManager.state.satId;
+  primaryRecord.servingBeamId = hoManager.state.beamId;
+  primaryRecord.pendingTargetSatId = hoManager.state.pendingTarget?.satId ?? null;
+  primaryRecord.pendingTargetBeamId = hoManager.state.pendingTarget?.beamId ?? null;
+  primaryRecord.triggerProgressSec = hoManager.state.pendingTarget ? hoManager.state.triggerTimeSec : 0;
 
   let secondaryRecomputedThisFrame = false;
   const secondaryUeCount = Math.max(0, perUePositions.length - 1);
   if (secondaryUeCount === 0) {
     state.secondaryRecomputeAccumulatorSec = 0;
     state.secondaryServingCache = null;
+    state.secondaryServingCachePrimaryUeIndex = null;
   } else {
     // Phase 3 S1 CPU gate invariants:
-    // - primary UE index 0 is recomputed every frame above and is untouched here.
+    // - the focused primary UE is recomputed every frame above and is untouched here.
     // - secondary managers receive accumulated sim-dt on recompute, so timer dt is sampled, not dropped.
     // - skipped frames copy the last real serving sample only; no interpolation or fabricated serving truth.
     state.secondaryRecomputeAccumulatorSec += paused ? 0 : deltaSec * speed;
     const cacheValid =
       state.secondaryServingCache !== null
-      && state.secondaryServingCache.length === secondaryUeCount;
+      && state.secondaryServingCache.length === secondaryUeCount
+      && state.secondaryServingCachePrimaryUeIndex === primaryUeIndex;
     const recomputeSecondary = shouldRecomputeSecondary(
       state.secondaryRecomputeAccumulatorSec,
       cacheValid,
@@ -911,12 +1030,13 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
           secondaryHoManagers,
           primaryLatDeg: ueObserver.latDeg,
           primaryLonDeg: ueObserver.lonDeg,
-          primaryEastKm: perUePositions[0].eastKm,
-          primaryNorthKm: perUePositions[0].northKm,
+          primaryEastKm: primaryPosition.eastKm,
+          primaryNorthKm: primaryPosition.northKm,
           snapshots: postDecisionContext.snapshots,
           linkBudgetOptions: postDecisionContext.linkBudgetOptions,
           dtSec: accumulatedDtSec,
           simTimeMs: replay.epochUtcMs + state.simTimeSec * 1000,
+          primaryUeIndex,
         });
       } else {
         fillPerUeServingSinr({
@@ -926,19 +1046,21 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
           primaryServingBeamId: hoManager.state.beamId,
           primaryLatDeg: ueObserver.latDeg,
           primaryLonDeg: ueObserver.lonDeg,
-          primaryEastKm: perUePositions[0].eastKm,
-          primaryNorthKm: perUePositions[0].northKm,
+          primaryEastKm: primaryPosition.eastKm,
+          primaryNorthKm: primaryPosition.northKm,
           snapshots: postDecisionContext.snapshots,
           linkBudgetOptions: postDecisionContext.linkBudgetOptions,
+          primaryUeIndex,
         });
       }
-      state.secondaryServingCache = snapshotSecondaryServing(perUePositions);
+      state.secondaryServingCache = snapshotSecondaryServing(perUePositions, primaryUeIndex);
+      state.secondaryServingCachePrimaryUeIndex = primaryUeIndex;
       // Reset to zero rather than carrying a fractional remainder: the full
       // accumulated dt has just been paid into secondary managers.
       state.secondaryRecomputeAccumulatorSec = 0;
       secondaryRecomputedThisFrame = true;
     } else if (state.secondaryServingCache) {
-      applySecondaryServingCache(perUePositions, state.secondaryServingCache);
+      applySecondaryServingCache(perUePositions, state.secondaryServingCache, primaryUeIndex);
     }
   }
 

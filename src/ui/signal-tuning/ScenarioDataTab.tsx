@@ -5,16 +5,22 @@ import {
   SUPPORTED_BEAM_LAYOUT_COUNTS,
   type SupportedBeamLayoutCount,
 } from '../../core/beam/completeHexPresets';
+import { SINR_LIVE_CELL_COUNT } from '../../scene/sinrLiveCellRuntime';
 import { useLocale } from '../../i18n';
 import { SIMULATOR_CONSTELLATIONS, SIMULATOR_TIME_ZONE, type SimulatorConstellation } from '../../simulator/types';
 import { txBi } from './labels';
-import { captionTextStyle, groupTitleStyle, pagePanelStyle } from './styles';
+import { captionTextStyle, groupTitleStyle, pagePanelStyle, srOnlyStyle } from './styles';
 
 const INITIAL_SCENARIO_DATE = '2026-08-12';
 const INITIAL_SCENARIO_TIME = '20:00';
 const SCENARIO_HOURS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
 const SCENARIO_MINUTES = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
 const BEAM_LAYOUT_OPTIONS = SUPPORTED_BEAM_LAYOUT_COUNTS;
+
+/** One default target plus exactly one entry for every live scene cell. */
+function focusCellOptions(cellCount: number): readonly (number | null)[] {
+  return [null, ...Array.from({ length: Math.max(0, cellCount) }, (_, index) => index)];
+}
 
 export type BeamLayoutCount = SupportedBeamLayoutCount;
 
@@ -30,6 +36,13 @@ export interface ScenarioDataTabProps {
   /** Optional controlled candidate-satellite override for the canonical frame surface. */
   readonly candidateBeamLayoutCount?: BeamLayoutCount;
   readonly onCandidateBeamLayoutCountChange?: (next: BeamLayoutCount) => void;
+  /** Clears the candidate override so it follows the serving-satellite setting. */
+  readonly onCandidateBeamLayoutReset?: () => void;
+  /** Which scene cell's UE the left formula panel and right readout follow. */
+  readonly focusCellId?: number | null;
+  readonly onFocusCellChange?: (next: number | null) => void;
+  /** How many earth-fixed truth cells the scene serves; sizes the focus grid. */
+  readonly focusCellCount?: number;
   /** Identifies which existing scene/frame owner receives the beam-layout edits. */
   readonly connection?: 'display-only' | 'canonical-analysis' | 'live-scene';
 }
@@ -69,6 +82,10 @@ export function ScenarioDataTab({
   onServingBeamLayoutCountChange,
   candidateBeamLayoutCount: controlledCandidateBeamLayoutCount,
   onCandidateBeamLayoutCountChange,
+  onCandidateBeamLayoutReset,
+  focusCellId = null,
+  onFocusCellChange,
+  focusCellCount = SINR_LIVE_CELL_COUNT,
   connection = 'display-only',
 }: ScenarioDataTabProps = {}) {
   const { locale, t } = useLocale();
@@ -82,7 +99,9 @@ export function ScenarioDataTab({
   const [localCandidateBeamLayoutCount, setLocalCandidateBeamLayoutCount] = useState<BeamLayoutCount>(DEFAULT_BEAM_LAYOUT_COUNT);
   const beamLayoutCount = controlledBeamLayoutCount ?? localBeamLayoutCount;
   const servingBeamLayoutCount = controlledServingBeamLayoutCount ?? localServingBeamLayoutCount;
-  const candidateBeamLayoutCount = controlledCandidateBeamLayoutCount ?? localCandidateBeamLayoutCount;
+  const candidateBeamLayoutCount = controlledCandidateBeamLayoutCount
+    ?? controlledServingBeamLayoutCount
+    ?? localCandidateBeamLayoutCount;
   const constellation = controlledConstellation ?? localConstellation;
   const setConstellation = onConstellationChange ?? setLocalConstellation;
   const setBeamLayoutCount = onBeamLayoutCountChange ?? setLocalBeamLayoutCount;
@@ -102,12 +121,14 @@ export function ScenarioDataTab({
       title: say('scenarioData.candidateSatellite', '候選衛星', 'Candidate satellite'),
       value: candidateBeamLayoutCount,
       onChange: setCandidateBeamLayoutCount,
+      onReset: onCandidateBeamLayoutReset,
     },
   ] satisfies ReadonlyArray<{
     key: 'serving' | 'candidate';
     title: string;
     value: BeamLayoutCount;
     onChange: (value: BeamLayoutCount) => void;
+    onReset?: () => void;
   }>;
 
   return (
@@ -266,45 +287,49 @@ export function ScenarioDataTab({
         <legend style={{ ...groupTitleStyle, padding: '0 4px' }}>
           {say('scenarioData.configuration', '場景配置', 'Scene configuration')}
         </legend>
-        <div style={captionTextStyle}>
-          {say('scenarioData.beamLayout', '每顆衛星波束配置', 'Beams per satellite')}
-        </div>
-        <div role="radiogroup" aria-label={say('scenarioData.beamLayout', '每顆衛星波束配置', 'Beams per satellite')} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-          {BEAM_LAYOUT_OPTIONS.map(option => {
-            const selected = option === beamLayoutCount;
-            return (
-              <label
-                key={option}
-                htmlFor={`scenario-data-beam-layout-${option}`}
-                style={{
-                  display: 'grid',
-                  justifyItems: 'center',
-                  gap: 3,
-                  minHeight: 48,
-                  padding: '7px 8px',
-                  borderRadius: UI_TOKENS.radius.md,
-                  border: selected
-                    ? `1px solid ${UI_TOKENS.color.semantic.info}`
-                    : `1px solid ${UI_TOKENS.color.border.subtle}`,
-                  background: selected ? 'rgba(142, 186, 255, 0.12)' : UI_TOKENS.color.surface.card,
-                  color: selected ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
-                  cursor: 'pointer',
-                  fontWeight: UI_TOKENS.type.weight.strong,
-                }}
-              >
-                <input
-                  id={`scenario-data-beam-layout-${option}`}
-                  type="radio"
-                  name="scenario-data-beam-layout"
-                  value={option}
-                  checked={selected}
-                  onChange={() => setBeamLayoutCount(option)}
-                />
-                <span>{option}</span>
-              </label>
-            );
-          })}
-        </div>
+        {connection !== 'live-scene' && (
+          <>
+            <div style={captionTextStyle}>
+              {say('scenarioData.beamLayout', '每顆衛星波束配置', 'Beams per satellite')}
+            </div>
+            <div role="radiogroup" aria-label={say('scenarioData.beamLayout', '每顆衛星波束配置', 'Beams per satellite')} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+              {BEAM_LAYOUT_OPTIONS.map(option => {
+                const selected = option === beamLayoutCount;
+                return (
+                  <label
+                    key={option}
+                    htmlFor={`scenario-data-beam-layout-${option}`}
+                    style={{
+                      display: 'grid',
+                      justifyItems: 'center',
+                      gap: 3,
+                      minHeight: 48,
+                      padding: '7px 8px',
+                      borderRadius: UI_TOKENS.radius.md,
+                      border: selected
+                        ? `1px solid ${UI_TOKENS.color.semantic.info}`
+                        : `1px solid ${UI_TOKENS.color.border.subtle}`,
+                      background: selected ? 'rgba(142, 186, 255, 0.12)' : UI_TOKENS.color.surface.card,
+                      color: selected ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
+                      cursor: 'pointer',
+                      fontWeight: UI_TOKENS.type.weight.strong,
+                    }}
+                  >
+                    <input
+                      id={`scenario-data-beam-layout-${option}`}
+                      type="radio"
+                      name="scenario-data-beam-layout"
+                      value={option}
+                      checked={selected}
+                      onChange={() => setBeamLayoutCount(option)}
+                    />
+                    <span>{option}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </>
+        )}
         <div style={{ display: 'grid', gap: 8, marginTop: 3 }}>
           {roleBeamConfigurations.map(configuration => (
             <div
@@ -358,10 +383,93 @@ export function ScenarioDataTab({
                   );
                 })}
               </div>
+              {configuration.key === 'candidate' && configuration.onReset !== undefined && (
+                <button
+                  type="button"
+                  data-testid="scenario-data-candidate-follow-serving"
+                  onClick={configuration.onReset}
+                  style={{
+                    justifySelf: 'start',
+                    minHeight: 30,
+                    padding: '5px 8px',
+                    borderRadius: UI_TOKENS.radius.md,
+                    border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+                    background: UI_TOKENS.color.surface.cardFaint,
+                    color: UI_TOKENS.color.text.secondary,
+                    cursor: 'pointer',
+                    fontSize: UI_TOKENS.type.size.caption,
+                  }}
+                >
+                  {say('scenarioData.candidate.followServing', '候選跟隨服務', 'Follow serving')}
+                </button>
+              )}
             </div>
           ))}
         </div>
       </fieldset>
+
+      {onFocusCellChange !== undefined && (
+        <fieldset
+          data-testid="scenario-data-focus-cell-control"
+          style={{
+            display: 'grid',
+            gap: 9,
+            margin: 0,
+            padding: 12,
+            borderRadius: UI_TOKENS.radius.lg,
+            border: `1px solid ${UI_TOKENS.color.border.subtle}`,
+            background: UI_TOKENS.color.surface.cardFaint,
+          }}
+        >
+          <legend style={{ ...groupTitleStyle, padding: '0 4px' }}>
+            {say('scenarioData.sceneCells', '場景 cells', 'Scene cells')}
+          </legend>
+          <div
+            role="radiogroup"
+            aria-label={say('scenarioData.sceneCells', '場景 cells', 'Scene cells')}
+            style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(8, focusCellCount + 1)}, minmax(0, 1fr))`, gap: 4 }}
+          >
+            {focusCellOptions(focusCellCount).map(option => {
+              const selected = option === focusCellId;
+              return (
+                <label
+                  key={option ?? 'default'}
+                  htmlFor={`scenario-data-focus-cell-${option ?? 'default'}`}
+                  title={option === null
+                    ? say('scenarioData.focusCell.default', '預設使用者', 'Default UE')
+                    : `cell ${option}`}
+                  style={{
+                    display: 'grid',
+                    justifyItems: 'center',
+                    alignContent: 'center',
+                    minHeight: 34,
+                    borderRadius: UI_TOKENS.radius.md,
+                    border: selected
+                      ? `1px solid ${UI_TOKENS.color.semantic.info}`
+                      : `1px solid ${UI_TOKENS.color.border.subtle}`,
+                    background: selected ? 'rgba(142, 186, 255, 0.16)' : UI_TOKENS.color.surface.card,
+                    color: selected ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
+                    cursor: 'pointer',
+                    fontSize: UI_TOKENS.type.size.caption,
+                    fontWeight: UI_TOKENS.type.weight.strong,
+                  }}
+                >
+                  <input
+                    id={`scenario-data-focus-cell-${option ?? 'default'}`}
+                    type="radio"
+                    name="scenario-data-focus-cell"
+                    value={option ?? 'default'}
+                    checked={selected}
+                    style={srOnlyStyle}
+                    onChange={() => onFocusCellChange(option)}
+                  />
+                  <span>{option === null ? '\u2014' : option}</span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
 
       <div
         data-testid="scenario-data-summary"

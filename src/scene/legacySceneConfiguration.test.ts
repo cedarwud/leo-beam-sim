@@ -63,6 +63,46 @@ assert.deepEqual(
   '100 UEs use a deterministic asymmetric seven-cell population',
 );
 
+const oneCellLayout = buildSinrLiveCellLayout(starlink, 1);
+const oneCellPositions = generateUePositions({
+  ueCount: 100,
+  primaryEastKm: 0,
+  primaryNorthKm: 0,
+  primaryFootprintRadiusKm: oneCellLayout.cellRadiusKm,
+  ueWorldScale: 1,
+  seed: 7,
+  mode: 'seven-cell-asymmetric',
+  primaryAnchorMode: 'observer',
+  cellCentersKm: oneCellLayout.centers.map(center => ({
+    eastKm: center.localXKm,
+    northKm: center.localYKm,
+  })),
+  cellRadiusKm: oneCellLayout.cellRadiusKm,
+});
+assert.equal(new Set(oneCellPositions.map(position => assignUeToNearestCell(position, oneCellLayout).cellId)).size, 1);
+
+const nineteenCellLayout = buildSinrLiveCellLayout(starlink, 19);
+const nineteenCellPositions = generateUePositions({
+  ueCount: 100,
+  primaryEastKm: 0,
+  primaryNorthKm: 0,
+  primaryFootprintRadiusKm: nineteenCellLayout.cellRadiusKm,
+  ueWorldScale: 1,
+  seed: 7,
+  mode: 'seven-cell-asymmetric',
+  primaryAnchorMode: 'observer',
+  cellCentersKm: nineteenCellLayout.centers.map(center => ({
+    eastKm: center.localXKm,
+    northKm: center.localYKm,
+  })),
+  cellRadiusKm: nineteenCellLayout.cellRadiusKm,
+});
+assert.equal(
+  new Set(nineteenCellPositions.map(position => assignUeToNearestCell(position, nineteenCellLayout).cellId)).size,
+  19,
+  '100 UEs cover every scene cell in the 19-cell layout',
+);
+
 const displayLayout = buildSinrLiveCellLayout(starlink, SINR_LIVE_BEAM_DISPLAY_CELL_COUNT);
 assert.equal(displayLayout.centers.length, 19);
 assert.deepEqual(
@@ -103,6 +143,15 @@ assert.equal(
   'seven target cells cap simultaneous active beams while retaining the 19-beam capacity selection',
 );
 assert.equal(resolveSinrLiveBeamCapacityPerSat(nineteenBeamProfile), 19);
+const servingMasterProfile = applySceneTopology(starlink, {
+  ...createSceneTopologyState(),
+  servingBeamCount: 19,
+});
+assert.equal(
+  resolveSinrLiveBeamCapacityPerSat(servingMasterProfile),
+  19,
+  'serving-satellite scene count is also the profile beam fallback',
+);
 assert.equal(resolveBeamWindowSlotIndex(false, 25, 2.5), 0);
 assert.equal(resolveBeamWindowSlotIndex(true, 25, 2.5), 10);
 

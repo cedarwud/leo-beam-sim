@@ -1553,9 +1553,11 @@ export function App() {
       events: selectDirectorHandoverEvents(
         liveWalkerHandoverEventIndex,
         liveWalkerHandoverEventIndex.events,
+        // Follow the focused UE, not the index's baked-in `live-ue-0`.
+        simState.primaryUeId,
       ),
     });
-  }, [liveWalkerHandoverEventIndex]);
+  }, [liveWalkerHandoverEventIndex, simState.primaryUeId]);
   const automaticIntraPresentationSlots = useMemo(() => {
     if (
       !isLegacyWalkerRoute
@@ -2022,11 +2024,20 @@ export function App() {
   const handleQuickIntra = useCallback(() => {
     if (handoverBusyRef.current) return;
     hideBeamInfoForHandover();
-    if (directorIntraIndexedEnabled) {
-      handoverCinema.armIntra();
-      return;
-    }
-    if (sceneSource === 'live-sim') requestMovingIntraDemo();
+    // Act on the cell that is being SERVED RIGHT NOW, not on a precomputed one.
+    //
+    // `requestMovingIntraDemo` reads `simState.intraHandoverPresentation`, which
+    // is derived from the focused UE's current serving cell and its best
+    // same-satellite neighbour — exactly what this button means. The indexed
+    // path instead seeks to an event recorded elsewhere on the timeline, and the
+    // index is built around one fixed UE, so taking it first pinned the button
+    // to that UE's cell no matter which cell the panels were focused on.
+    //
+    // The indexed seek stays as the fallback for when the focused UE has no
+    // same-satellite neighbour to switch to (returns false), so the control is
+    // never inert.
+    if (sceneSource === 'live-sim' && requestMovingIntraDemo()) return;
+    if (directorIntraIndexedEnabled) handoverCinema.armIntra();
   }, [directorIntraIndexedEnabled, handoverCinema.armIntra, hideBeamInfoForHandover, requestMovingIntraDemo, sceneSource]);
   const handleDirectorNextInter = useCallback(() => {
     if (handoverBusyRef.current) return;

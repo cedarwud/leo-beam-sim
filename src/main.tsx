@@ -31,12 +31,16 @@ const isWalkerSidebarSandboxRoute = window.location.pathname === '/walker';
 const isCanonicalSimulatorDevelopmentRoute = window.location.pathname !== '/simulator'
   && !isLegacyWalkerRoute
   && query.get('simulator') === 'canonical';
+// The original 3D teaching prototype and the global constellation view remain
+// available under explicit standalone locators. Historical aliases below
+// intentionally continue to resolve to the unified Visual Lab surface.
+const isStandaloneScientificExplain3DRoute = window.location.pathname === '/prototype/scientific-explain-legacy-3d';
+const isStandaloneGlobalConstellationRoute = window.location.pathname === '/prototype/global-constellation';
 const isUnifiedVisualLabRoute = window.location.pathname === '/simulator'
   || window.location.pathname === '/visual-lab'
   || window.location.pathname === '/explain'
   || window.location.pathname === '/prototype/scientific-explain'
   || window.location.pathname === '/prototype/scientific-explain-3d'
-  || window.location.pathname === '/prototype/scientific-explain-2d'
   // Keep the existing direct prototype locator available while it shares the
   // same runtime as the public aliases.
   || window.location.pathname === '/prototype/visual-lab-g0';
@@ -109,6 +113,26 @@ async function bootstrap() {
       <StrictMode>
         <SimulatorRoute />
       </StrictMode>
+    );
+    return;
+  }
+
+  if (isStandaloneScientificExplain3DRoute) {
+    const { ScientificExplain3DPrototype } = await import('./prototype/scientific-explain/ScientificExplain3DPrototype');
+    ReactDOM.createRoot(container).render(
+      <StrictMode>
+        <ScientificExplain3DPrototype />
+      </StrictMode>,
+    );
+    return;
+  }
+
+  if (isStandaloneGlobalConstellationRoute) {
+    const { GlobalConstellationPrototype } = await import('./prototype/global-constellation/GlobalConstellationPrototype');
+    ReactDOM.createRoot(container).render(
+      <StrictMode>
+        <GlobalConstellationPrototype />
+      </StrictMode>,
     );
     return;
   }

@@ -1,4 +1,5 @@
 import type { AppExperienceMode } from './appExperienceMode';
+import { isSupportedBeamLayoutCount } from '../core/beam/completeHexPresets';
 import { DEFAULT_UE_MOBILITY_PARAMS } from '../engine/ue/multiUeMobility';
 import type { EnvAxes } from '../modqn/training-trigger/types';
 import type { Profile } from '../profiles/types';
@@ -89,6 +90,18 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
   const modqnVisualLayerPreset = input.appMode === 'modqn-demo'
     ? input.modqnVisualLayerPreset ?? DEFAULT_MODQN_VISUAL_LAYER_PRESET
     : undefined;
+  const persistedGlobalBeamCount = input.sceneTopology.beamCountPerSatellite;
+  const profileBeamCount = Math.trunc(input.effectiveProfile.beams.perSatellite);
+  const fallbackSceneBeamCount = isSupportedBeamLayoutCount(profileBeamCount)
+    ? profileBeamCount
+    : undefined;
+  // Serving satellite is the live-scene authority. The legacy global field is
+  // retained only as a persisted-session fallback; candidate follows this
+  // effective scene count unless it has an explicit role override.
+  const effectiveSceneBeamCount = input.sceneTopology.servingBeamCount
+    ?? (typeof persistedGlobalBeamCount === 'number' && isSupportedBeamLayoutCount(persistedGlobalBeamCount)
+      ? persistedGlobalBeamCount
+      : fallbackSceneBeamCount);
   return {
     appMode: input.appMode,
     presentationMode: resolvePresentationMode(input.effectiveProfile),
@@ -110,9 +123,12 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     directorFocusCommand: input.directorFocusCommand,
     viewport: input.viewport,
     beamCountBySatellite: input.sceneTopology.beamCountBySatellite,
-    servingBeamCount: input.sceneTopology.servingBeamCount ?? undefined,
-    candidateBeamCount: input.sceneTopology.candidateBeamCount ?? undefined,
+    // The Scenario panel presents the serving-satellite layout as the scene
+    // authority. Candidate follows it unless explicitly overridden.
+    servingBeamCount: effectiveSceneBeamCount,
+    candidateBeamCount: input.sceneTopology.candidateBeamCount ?? effectiveSceneBeamCount,
     beamHoppingEnabled: input.sceneTopology.beamHoppingEnabled,
+    focusCellId: input.sceneTopology.focusCellId,
     ueCount: input.sceneTopology.ueCount
       ?? (input.appMode === 'sinr-experiment'
         ? SINR_LIVE_DEFAULT_UE_COUNT

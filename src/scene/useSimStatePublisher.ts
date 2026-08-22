@@ -1174,6 +1174,7 @@ export function useSimStatePublisher({
       panelPrimary: publishedPrimaryServing.panelPrimary,
       panelComparison: publishedPrimaryServing.panelComparison,
       intraHandoverPresentation: publishedIntraHandoverPresentation,
+      primaryUeId: sim.sinrLiveCells?.primaryUeId ?? null,
       visualFrequencyDiagnostics,
       perUePositions,
       modqnCellServiceReadout,

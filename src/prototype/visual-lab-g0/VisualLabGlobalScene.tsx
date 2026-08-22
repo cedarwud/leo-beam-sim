@@ -13,6 +13,7 @@ import type { VisualLabGlobalConstellationArtifact } from '../../visualLab/globa
 export type VisualLabGlobalSceneStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type VisualLabGlobalSceneTheme = 'dark' | 'light';
 export type VisualLabGlobalSceneLocale = 'zh-Hant' | 'en';
+export type VisualLabGlobalPointPresentation = 'default' | 'constellation-compare';
 
 export interface VisualLabGlobalSceneProps {
   /** A closed DTO produced from one accepted SimulationAnalysisFrame. */
@@ -24,6 +25,8 @@ export interface VisualLabGlobalSceneProps {
   /** Optional explicit presentation inputs; the scene host is the fallback. */
   readonly theme?: VisualLabGlobalSceneTheme;
   readonly locale?: VisualLabGlobalSceneLocale;
+  /** Display-only point styling for the standalone constellation comparison route. */
+  readonly pointPresentation?: VisualLabGlobalPointPresentation;
 }
 
 export const VISUAL_LAB_GLOBAL_LABEL_FONT_SIZE = 14;
@@ -108,6 +111,8 @@ function useGlobalScenePresentation(
 }
 
 function constellationLabel(constellation: string): string {
+  if (constellation.toLowerCase() === 'oneweb') return 'OneWeb';
+  if (constellation.toLowerCase() === 'starlink') return 'Starlink';
   if (constellation.length === 0) return constellation;
   return `${constellation[0]!.toUpperCase()}${constellation.slice(1).toLowerCase()}`;
 }
@@ -179,12 +184,19 @@ function GlobalPointCloud({ frame, palette }: { readonly frame: VisualLabGlobalS
   </points>;
 }
 
-function GlobalArtifactPointCloud({ artifact, palette }: { readonly artifact: VisualLabGlobalConstellationArtifact; readonly palette: GlobalScenePalette }): ReactElement {
+function GlobalArtifactPointCloud({ artifact, palette, pointPresentation = 'default' }: {
+  readonly artifact: VisualLabGlobalConstellationArtifact;
+  readonly palette: GlobalScenePalette;
+  readonly pointPresentation?: VisualLabGlobalPointPresentation;
+}): ReactElement {
+  const isConstellationComparison = pointPresentation === 'constellation-compare';
   const geometry = useMemo(() => {
     const positions = new Float32Array(artifact.positionsWorld);
     const colors = new Float32Array(artifact.positionsWorld.length);
-    const context = new THREE.Color(palette.context);
-    const visible = new THREE.Color(palette.visibleContext);
+    // The comparison route uses brighter, larger points for readability only.
+    // Positions, masks, counts, and the archived-TLE/SGP4 artifact are unchanged.
+    const context = new THREE.Color(isConstellationComparison ? '#4e7981' : palette.context);
+    const visible = new THREE.Color(isConstellationComparison ? '#b9f5f7' : palette.visibleContext);
     artifact.visibility.forEach((isVisible, index) => {
       const color = isVisible === 1 ? visible : context;
       const offset = index * 3;
@@ -193,13 +205,20 @@ function GlobalArtifactPointCloud({ artifact, palette }: { readonly artifact: Vi
       colors[offset + 2] = color.b;
     });
     return { positions, colors };
-  }, [artifact, palette]);
+  }, [artifact, isConstellationComparison, palette]);
   return <points name="real-tle-sgp4-global-artifact" frustumCulled={false}>
     <bufferGeometry>
       <bufferAttribute attach="attributes-position" args={[geometry.positions, 3]} />
       <bufferAttribute attach="attributes-color" args={[geometry.colors, 3]} />
     </bufferGeometry>
-    <pointsMaterial vertexColors size={.026} sizeAttenuation transparent opacity={.82} depthWrite={false} />
+    <pointsMaterial
+      vertexColors
+      size={isConstellationComparison ? .042 : .026}
+      sizeAttenuation
+      transparent
+      opacity={isConstellationComparison ? .92 : .82}
+      depthWrite={false}
+    />
   </points>;
 }
 
@@ -344,14 +363,14 @@ function GlobalAcceptedContent({ frame, palette, copy }: { readonly frame: Visua
   </>;
 }
 
-export function VisualLabGlobalScene({ frame, artifact = null, status, error, theme, locale }: VisualLabGlobalSceneProps): ReactElement {
+export function VisualLabGlobalScene({ frame, artifact = null, status, error, theme, locale, pointPresentation = 'default' }: VisualLabGlobalSceneProps): ReactElement {
   const presentation = useGlobalScenePresentation(theme, locale);
   const palette = GLOBAL_SCENE_PALETTES[presentation.theme];
   const copy = VISUAL_LAB_GLOBAL_SCENE_COPY[presentation.locale];
   return <group name="visual-lab-global-scene">
     <EarthSphere palette={palette} />
     {frame === null && artifact === null ? <EmptyGlobalState status={status} error={error} palette={palette} copy={copy} /> : frame === null && artifact !== null ? <>
-      <GlobalArtifactPointCloud artifact={artifact} palette={palette} />
+      <GlobalArtifactPointCloud artifact={artifact} palette={palette} pointPresentation={pointPresentation} />
       <GlobalArtifactSummary artifact={artifact} palette={palette} copy={copy} />
     </> : <GlobalAcceptedContent frame={frame!} palette={palette} copy={copy} />}
   </group>;

@@ -181,7 +181,7 @@ section('(d) SimFrame source contract', () => {
 section('(e) runtimeFrameStep.ts source wiring', () => {
   const runtimeSource = source('src/scene/runtimeFrameStep.ts');
   check(
-    runtimeSource.includes("import { generateUePositions } from '../engine/ue/multiUeState'"),
+    /import \{ generateUePositions(, \w+)? \} from '\.\.\/engine\/ue\/multiUeState'/.test(runtimeSource),
     'runtimeFrameStep imports generateUePositions from engine/ue',
   );
   check(runtimeSource.includes('ueCount?: number'), 'runtimeFrameStep input accepts optional ueCount');
@@ -189,23 +189,46 @@ section('(e) runtimeFrameStep.ts source wiring', () => {
   for (const expected of [
     'generateUePositions({',
     'ueCount,',
-    'primaryEastKm: ueEastKm',
-    'primaryNorthKm: ueNorthKm',
     'primaryFootprintRadiusKm: primaryGeometry.footprintRadiusKm',
     'ueWorldScale',
     'perUePositions,',
-    'const ueGroundX = perUePositions[0].groundX',
-    'const ueGroundZ = perUePositions[0].groundZ',
   ]) {
     check(runtimeSource.includes(expected), `runtimeFrameStep contains ${expected}`);
   }
+  // The waypoint ground track still reaches the field through the primary
+  // anchor — but only while it is the ANCHOR-carried protagonist (no focused
+  // cell). With a cell focused the track is re-aimed at the focused UE as a
+  // post-generation offset, so the anchor rests at the observer and the literal
+  // `primaryEastKm: ueEastKm` no longer appears. Pin the conditional form.
+  check(
+    /primaryEastKm:\s*(ueEastKm|anchorCarriesDrift \? ueEastKm : 0)/.test(runtimeSource),
+    'runtimeFrameStep feeds ueEastKm to the primary anchor',
+  );
+  check(
+    /primaryNorthKm:\s*(ueNorthKm|anchorCarriesDrift \? ueNorthKm : 0)/.test(runtimeSource),
+    'runtimeFrameStep feeds ueNorthKm to the primary anchor',
+  );
+  check(
+    runtimeSource.includes('const ueGroundX = perUePositions[0].groundX')
+      || runtimeSource.includes('const ueGroundX = primaryPosition.groundX'),
+    'runtimeFrameStep derives ueGroundX from the active primary UE',
+  );
+  check(
+    runtimeSource.includes('const ueGroundZ = perUePositions[0].groundZ')
+      || runtimeSource.includes('const ueGroundZ = primaryPosition.groundZ'),
+    'runtimeFrameStep derives ueGroundZ from the active primary UE',
+  );
 });
 
 section('(f) liveSimToScene.ts source wiring', () => {
   const liveSource = source('src/showcase/liveSimToScene.ts');
   check(liveSource.includes('live N variable'), 'liveSimToScene comment mentions live N variable');
   check(!liveSource.includes('live N=1 fixed'), 'liveSimToScene no longer contains live N=1 fixed');
-  check(liveSource.includes('sim.perUePositions') && liveSource.includes('.map((pos, i)'), 'liveSimToScene maps live UE positions');
+  check(
+    liveSource.includes('sim.perUePositions')
+      && (liveSource.includes('.map((pos, i)') || liveSource.includes('.map((pos)')),
+    'liveSimToScene maps live UE positions',
+  );
   check(liveSource.includes("const liveUeId = 'live-ue-0'"), 'liveSimToScene preserves primary live-ue-0 ID');
 });
 

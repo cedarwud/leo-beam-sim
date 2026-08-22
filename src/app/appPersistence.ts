@@ -113,6 +113,10 @@ export function readSceneTopologyOverrides(): SceneTopologyState {
         : null;
     return {
       constellation: record.constellation === 'oneweb' ? 'oneweb' : 'starlink',
+      // Focus is a viewpoint, not a scenario parameter: a reload starts back on
+      // the default protagonist rather than restoring a stale cell id that may
+      // not exist under a different beam layout.
+      focusCellId: null,
       satsPerPlane: typeof record.satsPerPlane === 'number' ? record.satsPerPlane : null,
       beamCountPerSatellite: typeof record.beamCountPerSatellite === 'number'
         ? record.beamCountPerSatellite

@@ -104,7 +104,7 @@ import {
 import {
   buildSinrLiveCellLayout,
   resolveSinrLiveBeamsPerSat,
-  SINR_LIVE_BEAM_DISPLAY_CELL_COUNT,
+  resolveSinrLiveSceneCellCount,
   SINR_LIVE_ARCHIVED_DISPLAY_CELL_COUNT,
 } from './sinrLiveCellRuntime';
 import {
@@ -922,6 +922,7 @@ function SceneContent(props: SceneContentProps) {
     runtime.candidateBeamCount,
     runtime.beamHoppingEnabled ?? false,
     sceneLane === 'sinr-live' ? 'sampled-steering' : 'earth-fixed-cell',
+    runtime.focusCellId ?? null,
   );
 
   return <SceneRenderContent {...props} sim={sim} simSource="live" liveSeekLandedKey={liveSeekLandedKey} />;
@@ -1227,23 +1228,25 @@ function SceneRenderContent({
         worldUnitsPerKm,
       }]));
     }
-    const activeLayout = buildSinrLiveCellLayout(profile);
-    const displayLayout = buildSinrLiveCellLayout(profile, SINR_LIVE_BEAM_DISPLAY_CELL_COUNT);
-    // Keep ids 0–6 on the asymmetric UE/SINR layout. The remaining display-only
-    // substrate cells have no UE membership or link-budget truth; they exist only
-    // so a selected 19-beam presentation can show the satellite's complete fan.
-    const centers = [
-      ...activeLayout.centers,
-      ...displayLayout.centers.filter(center => center.cellId >= activeLayout.centers.length),
-    ];
-    return new Map(centers.map(center => [center.cellId, {
+    const activeLayout = buildSinrLiveCellLayout(
+      profile,
+      resolveSinrLiveSceneCellCount(runtime.servingBeamCount),
+    );
+    return new Map(activeLayout.centers.map(center => [center.cellId, {
       cellId: center.cellId,
       worldX: center.localXKm * worldUnitsPerKm,
       worldZ: -center.localYKm * worldUnitsPerKm,
       radiusWorld: activeLayout.cellRadiusKm * worldUnitsPerKm,
       worldUnitsPerKm,
     }]));
-  }, [archivedTlePlacement, canonicalScenario, useEarthFixedCellTruth, profile, worldUnitsPerKm]);
+  }, [
+    archivedTlePlacement,
+    canonicalScenario,
+    runtime.servingBeamCount,
+    useEarthFixedCellTruth,
+    profile,
+    worldUnitsPerKm,
+  ]);
   const cellSchedule = useCellSchedule({
     simTimeSec: sceneFrame.tSec,
     altitudeKm: sceneGeometry.shellAltitudeKm,
@@ -1580,7 +1583,7 @@ function SceneRenderContent({
       : resolveManualHandoverDemoEvent(
         runtime.manualHandoverKind,
         sim.sinrLiveCells,
-        sim.perUePositions[0]?.id,
+        sceneFrame.ues[0]?.id,
         [...viz.coneApexWorldById.keys()],
         {
           sourceSatId: runtime.manualHandoverSourceSatId,
@@ -1599,7 +1602,7 @@ function SceneRenderContent({
       runtime.manualHandoverServingSinrDb,
       runtime.manualHandoverCandidateSinrDb,
       sim.sinrLiveCells,
-      sim.perUePositions,
+      sceneFrame.ues,
       viz.coneApexWorldById,
     ],
   );
@@ -1756,7 +1759,7 @@ function SceneRenderContent({
   const recentPrimaryHandoverEvent = useMemo<SinrLiveCellHandoverEvent | null>(() => {
     const events = sim.sinrLiveCells?.recentHandoverEvents;
     const currentSimTimeSec = sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec;
-    const protagonistUeId = sim.perUePositions[0]?.id;
+    const protagonistUeId = sceneFrame.ues[0]?.id;
     if (!events || !protagonistUeId || !Number.isFinite(currentSimTimeSec)) return null;
     let latestPrimaryEvent: SinrLiveCellHandoverEvent | null = null;
     for (let index = events.length - 1; index >= 0; index -= 1) {
@@ -1776,7 +1779,7 @@ function SceneRenderContent({
       latestPrimaryEvent ??= event;
     }
     return latestPrimaryEvent;
-  }, [sim.perUePositions, sim.simTimeSec, sim.sinrLiveCells]);
+  }, [sceneFrame.ues, sim.simTimeSec, sim.sinrLiveCells]);
 
   // The model retains background-UE events for telemetry too. They do not own
   // the protagonist's camera story, but a real inter event anywhere still
@@ -2414,7 +2417,7 @@ function SceneRenderContent({
       ) return [];
       const selectedHandoverEvents = selectHandoverEventsForDisplay(
         sim.sinrLiveCells?.recentHandoverEvents,
-        sim.perUePositions[0]?.id ?? null,
+        sceneFrame.ues[0]?.id ?? null,
         beamDisplaySpec.showOtherHandoverUes,
       );
       const selectedHandoverEventSet = new Set(selectedHandoverEvents);
@@ -2447,10 +2450,10 @@ function SceneRenderContent({
         // OWN satellite is focused, or when the handover is the protagonist's (whose inter
         // HO should show both ends — that is the story). Display-only (Rule#6).
         focusSatIds: beamDisplaySpec.pulseFocusFollowsScope ? sinrLiveTargetSatIds : null,
-        protagonistUeId: sim.perUePositions[0]?.id ?? null,
+        protagonistUeId: sceneFrame.ues[0]?.id ?? null,
       });
     },
-    [handoverDisplayIsolation.hideTimelinePulse, handoverDisplayIsolation.suppressNaturalHandoverLayers, concurrentIntraVisualSuppressed, showSinrLiveHandoverPulse, sim.sinrLiveCells, sim.perUePositions, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope, beamDisplaySpec.showOtherHandoverUes],
+    [handoverDisplayIsolation.hideTimelinePulse, handoverDisplayIsolation.suppressNaturalHandoverLayers, concurrentIntraVisualSuppressed, showSinrLiveHandoverPulse, sim.sinrLiveCells, sceneFrame.ues, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope, beamDisplaySpec.showOtherHandoverUes],
   );
   // Manual and naturally observed Walker/TLE events share the coordinator's
   // single latched pair. Incoming events cannot restart this envelope; they are
@@ -2467,7 +2470,7 @@ function SceneRenderContent({
       || presentedHandoverPairCandidate.toCellId === null
     ) return [];
     const event: SinrLiveCellHandoverEvent = {
-      ueId: presentedHandoverPairCandidate.ueId ?? sim.perUePositions[0]?.id ?? 'ue-0',
+      ueId: presentedHandoverPairCandidate.ueId ?? sceneFrame.ues[0]?.id ?? 'ue-0',
       kind: presentedHandoverPairCandidate.kind,
       sourceTimeSec: presentedHandoverPairCandidate.sourceTimeSec,
       fromSatId: presentedHandoverPairCandidate.fromSatId,
@@ -2509,7 +2512,7 @@ function SceneRenderContent({
     presentationSatelliteWorldById,
     profile.beams.frequencyReuse,
     showSinrLiveCellBeams,
-    sim.perUePositions,
+    sceneFrame.ues,
     sinrLiveCellPlacementById,
   ]);
   // Focused cinema pair: the candidate detail is already resolved from the live

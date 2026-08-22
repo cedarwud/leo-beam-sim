@@ -214,4 +214,48 @@ assert.equal(
   'the active inter presentation owner wins when a stale intra latch is also present',
 );
 
+// Focused-cell regression: the cell-truth model may nominate a non-zero UE as
+// primary. The scene adapter must carry that identity into the renderer's
+// first-UE convention, including its world anchor and serving truth.
+const focusedCellFrame = cellFrame(10, []);
+const focusedBaseFrame = baseFrame(10);
+const focusedScene = liveSimToScene({
+  ...focusedBaseFrame,
+  perUePositions: [
+    ...focusedBaseFrame.perUePositions,
+    {
+      id: 'live-ue-5',
+      groundX: 50,
+      groundZ: 60,
+      eastKm: 50,
+      northKm: -60,
+      sinrDb: -7,
+      servingSatId: 'sat-b',
+      servingBeamId: 5,
+      pendingTargetSatId: null,
+      pendingTargetBeamId: null,
+      triggerProgressSec: 0,
+    },
+  ],
+  sinrLiveCells: {
+    ...focusedCellFrame,
+    primaryUeId: 'live-ue-5',
+    ues: [
+      ...focusedCellFrame.ues,
+      {
+        ...focusedCellFrame.ues[0],
+        ueId: 'live-ue-5',
+        cellId: 5,
+        servingSatId: 'sat-b',
+        beamIdentity: 'sat-b#cell5',
+        frequencyIndex: 2,
+      },
+    ],
+  },
+}, geometry);
+assert.equal(focusedScene.ues[0]?.id, 'live-ue-5', 'focused UE is normalized to the renderer primary slot');
+assert.deepEqual(focusedScene.ues[0]?.worldPos, [50, 0, 60], 'focused UE keeps its scene anchor');
+assert.equal(focusedScene.metrics.servingSatelliteId, 'sat-b', 'focused cell serving truth reaches scene metrics');
+assert.equal(focusedScene.ues[0]?.servingBeamId, 'sat-b#cell5', 'focused cell serving truth reaches the UE marker');
+
 console.log('[liveSimToScene.intra-handover] regression checks passed');

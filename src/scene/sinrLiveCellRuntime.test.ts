@@ -32,6 +32,7 @@ import {
   attachSinrLiveCellFrame,
   buildSinrLiveCellLayout,
   createSinrLiveCellModel,
+  resolveSinrLiveSceneCellCount,
   type CellTruthFrame,
 } from './sinrLiveCellRuntime';
 
@@ -134,6 +135,18 @@ check('cell layout is built from the live profile at the tunable cell count', ()
   // Cell size uses the SINR-live beamwidth (= profile antenna value); the model's
   // link-budget GAIN is derived from the SAME beamwidth (one antenna).
   assertEqual(layout.beamwidth3dBRad, profile.antenna.beamwidth3dBRad, 'beamwidth = profile antenna');
+});
+
+check('serving-satellite layout selects matching 1/7/19 scene-cell truth', () => {
+  assertEqual(resolveSinrLiveSceneCellCount(1), 1, 'serving layout 1 → one scene cell');
+  assertEqual(resolveSinrLiveSceneCellCount(7), 7, 'serving layout 7 → seven scene cells');
+  assertEqual(resolveSinrLiveSceneCellCount(19), 19, 'serving layout 19 → nineteen scene cells');
+  assertEqual(resolveSinrLiveSceneCellCount(undefined), 7, 'missing serving layout → default seven cells');
+
+  const oneCellModel = createSinrLiveCellModel(profile, true, EPOCH_MS, {}, 1)!;
+  const nineteenCellModel = createSinrLiveCellModel(profile, true, EPOCH_MS, {}, 19)!;
+  assertEqual((oneCellModel as unknown as { cellLayout: { centers: readonly unknown[] } }).cellLayout.centers.length, 1, 'model layout 1');
+  assertEqual((nineteenCellModel as unknown as { cellLayout: { centers: readonly unknown[] } }).cellLayout.centers.length, 19, 'model layout 19');
 });
 
 // --- profile-backed antenna truth-input --------------------------------------

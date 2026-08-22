@@ -139,6 +139,17 @@ export interface BuildLiveWalkerHandoverEventIndexInput {
   readonly ueDistributionRadiusKm?: number;
   readonly ueMobilityMode?: UeMobilityMode;
   readonly ueMobilityParams?: UeMobilityParams;
+  /**
+   * ENU offset (km) that moves the index's single probe UE off the observer.
+   *
+   * The index scans with `ueCount: 1` anchored at the observer, so every event
+   * it records belongs to whichever cell sits at ENU (0,0). The Director's
+   * Show Intra / Show Inter seek into this index, which is why they always
+   * landed back on that cell no matter which cell the panels were focused on.
+   * Supplying the focused cell's offset re-runs the same scan for that cell's
+   * UE, so the cinematic seeks to a handover that actually belongs to it.
+   */
+  readonly probeOffsetKm?: { readonly eastKm: number; readonly northKm: number };
 }
 
 function finitePositiveOrFallback(value: number | undefined, fallback: number): number {
@@ -291,6 +302,7 @@ export function buildLiveWalkerHandoverEventIndex(
     input.simStepSec,
     LIVE_WALKER_HANDOVER_EVENT_INDEX_DEFAULT_STEP_SEC,
   );
+  const probeOffsetKm = input.probeOffsetKm;
   const baseIndex = createEmptyIndex(input, simStepSec, []);
   const observer = createObserverContext(input.profile.orbit.observerLatDeg, input.profile.orbit.observerLonDeg);
   const trajectoryCache = createTrajectoryCache(input.profile, observer, input.epochUtcMs);
@@ -345,6 +357,8 @@ export function buildLiveWalkerHandoverEventIndex(
     hoManager,
     state,
     ueCount: 1,
+    primaryJogEastKm: probeOffsetKm?.eastKm ?? 0,
+    primaryJogNorthKm: probeOffsetKm?.northKm ?? 0,
     ueDistributionMode,
     uePrimaryAnchorMode,
     ueDistributionScope,
@@ -371,6 +385,8 @@ export function buildLiveWalkerHandoverEventIndex(
       hoManager,
       state,
       ueCount: 1,
+      primaryJogEastKm: probeOffsetKm?.eastKm ?? 0,
+      primaryJogNorthKm: probeOffsetKm?.northKm ?? 0,
       ueDistributionMode,
       uePrimaryAnchorMode,
       ueDistributionScope,

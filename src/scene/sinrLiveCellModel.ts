@@ -243,6 +243,20 @@ export interface SinrLiveCellFrame {
   readonly simTimeSec: number;
   readonly cells: readonly CellServingRecord[];
   readonly ues: readonly UeCellServingRecord[];
+  /**
+   * The UE every panel-facing "primary" surface follows this frame. Normally
+   * `ues[0]`; when the scene carries a `focusCellId` it is the UE that cell was
+   * PINNED to at focus-change time (`SinrLiveCellModel.setFocusCell`) — pinned by
+   * id, so it names the same UE for the whole focus instead of being re-picked
+   * per frame and drifting to a neighbour as soon as UEs move. Published on the
+   * frame so the left rail, the right rail, the cones and the connected-sat
+   * invariant all resolve the SAME protagonist — resolving it independently from
+   * `perUePositions[0]` would leave those surfaces describing two different UEs.
+   *
+   * Optional so fixture/adapter-built frames stay valid; consumers fall back to
+   * `perUePositions[0]` exactly as before when it is absent.
+   */
+  readonly primaryUeId?: string | null;
   /** Lit (sat, cell) beams this slot (post beam-hopping) — the cone render surface. */
   readonly illuminatedBeams: readonly IlluminatedCellBeam[];
   readonly servedCellCount: number;
@@ -279,21 +293,23 @@ export interface SinrLiveCellFrame {
 
 /**
  * The cell-truth serving record for the PRIMARY UE (the observer anchor at
- * `perUePositions[0]`). The single source consumed by BOTH the
+ * `perUePositions[0]`, or the frame's focused `primaryUeId`). The single source consumed by BOTH the
  * connected-sat invariant (`collectConnectedClaims`, the rendered-beam oracle)
  * AND the InfoPanel publisher (`buildPublishedPrimaryServing`, S5-2b) so the
  * panel's ACTIVE SERVING label, the cones, and the must-hold invariant all read
- * ONE primary oracle — no drift. The primary UE sits at index 0 of
- * `perUePositions`; match it into the cell UE records by id (fall back to the
- * first cell UE only when there is no primary id at all, mirroring the original
- * inline resolution byte-for-byte).
+ * ONE primary oracle — no drift. Match it into the cell UE records by id
+ * (fall back to `perUePositions[0]` only when there is no primary id at all,
+ * mirroring the original inline resolution byte-for-byte).
  */
 export function resolvePrimaryCellServingRecord(
   cellFrame: SinrLiveCellFrame,
   perUePositions: ReadonlyArray<{ id: string }>,
 ): UeCellServingRecord | null {
-  const primaryUeId = perUePositions[0]?.id;
-  if (primaryUeId === undefined) return cellFrame.ues[0] ?? null;
+  // The frame's own primary id wins: it already accounts for a focused cell.
+  // `perUePositions[0]` stays as the fallback for frames built before the field
+  // existed, preserving the original byte-for-byte resolution.
+  const primaryUeId = cellFrame.primaryUeId ?? perUePositions[0]?.id;
+  if (primaryUeId === undefined || primaryUeId === null) return cellFrame.ues[0] ?? null;
   return cellFrame.ues.find(ue => ue.ueId === primaryUeId) ?? null;
 }
 
@@ -334,6 +350,13 @@ export interface SinrLiveCellModelConfig {
   /** Optional primary-UE role budgets; identity is resolved from this model's managers. */
   readonly servingBeamsPerSat?: number;
   readonly candidateBeamsPerSat?: number;
+  /**
+   * Which cell the panel-facing "primary" surfaces should follow. `null` /
+   * omitted keeps the historical `ues[0]` protagonist. See `resolvePrimaryUe`:
+   * this is a viewpoint selector, never a serving override, and the UE it
+   * resolves to is pinned by id rather than re-picked every frame.
+   */
+  readonly focusCellId?: number | null;
   /** False freezes the spare-beam window; true advances it by hop slot. */
   readonly beamHoppingEnabled?: boolean;
   /**
@@ -598,6 +621,30 @@ export class SinrLiveCellModel {
   private readonly maxSteeringAngleOverrideDeg?: number;
   private readonly scanLossAtMaxSteeringOverrideDb?: number;
   private readonly coverageSteeringAngleDeg?: number;
+  private focusCellId: number | null;
+  /**
+   * The protagonist UE id pinned at the last focus change — the entire "sticky by
+   * id" contract described on {@link resolvePrimaryUe}. `null` means nothing is
+   * pinned (no focused cell, or the focused cell held no UE when we last looked),
+   * which is what makes the next frame resolve again instead of freezing.
+   */
+  private pinnedPrimaryUeId: string | null = null;
+  /**
+   * UE-population size the pin was taken against. `live-ue-N` ids are POSITIONAL,
+   * so a UE-count change rebuilds the whole field and the same id can name a
+   * different UE standing somewhere else entirely — which is not the UE anyone
+   * pinned. A size mismatch therefore invalidates the pin even when the id still
+   * resolves. Always 0 while {@link pinnedPrimaryUeId} is null.
+   */
+  private pinnedPrimaryUePopulationSize = 0;
+  /**
+   * The UE population the most recent {@link step} ran with, so a focus change can
+   * resolve its protagonist THEN — at focus-change time, where that resolution
+   * belongs — instead of deferring it to the next frame. Empty until the first
+   * step: focusing a cell before any UE exists simply leaves the pin unset for
+   * {@link resolvePrimaryUe} to take on the first frame that carries a population.
+   */
+  private lastSteppedUes: readonly UeInput[] = [];
   private antenna: Profile['antenna'];
   private readonly cellManagers = new Map<number, HandoverManager>();
   /** Previous published-frame power state for currently served (u,s,v) links only. */
@@ -638,6 +685,7 @@ export class SinrLiveCellModel {
     this.servingBeamsPerSat = config.servingBeamsPerSat;
     this.candidateBeamsPerSat = config.candidateBeamsPerSat;
     this.beamHoppingEnabled = config.beamHoppingEnabled ?? true;
+    this.focusCellId = config.focusCellId ?? null;
     this.hopSlotSec = config.hopSlotSec && config.hopSlotSec > 0 ? config.hopSlotSec : 2.5;
     this.beamPointingMode = config.beamPointingMode ?? 'earth-fixed-cell';
     this.beamPointingUpdateSec = config.beamPointingUpdateSec && config.beamPointingUpdateSec > 0
@@ -668,6 +716,93 @@ export class SinrLiveCellModel {
         ? { scanLossAtMaxSteeringDb: this.scanLossAtMaxSteeringOverrideDb }
         : {}),
     };
+  }
+
+  /**
+   * Which UE the panel-facing "primary" surfaces follow.
+   *
+   * Default is `ues[0]`, the historical protagonist. When `focusCellId` is set
+   * the caller is asking to watch a DIFFERENT cell, so the protagonist becomes
+   * that cell's most representative UE — the one nearest its centre.
+   *
+   * That cell→UE question is asked ONCE, at focus-change time
+   * ({@link setFocusCell}), and the answer is pinned as a UE **id**; every later
+   * frame merely looks the pinned id up in the current population. Re-resolving
+   * per frame is MOBILITY-UNSAFE: as soon as UEs move (`ueMobilityMode` other
+   * than `'static'`), "nearest the focused cell's centre" changes hands whenever
+   * anyone crosses a cell boundary, so the protagonist role would silently jump
+   * to a different UE mid-shot — and the InfoPanel ACTIVE SERVING label, the beam
+   * cones and the connected-sat invariant would start describing whoever they
+   * happened to sample. That drift is precisely what the one published
+   * {@link SinrLiveCellFrame.primaryUeId} exists to prevent. Pinning by id keeps
+   * ONE protagonist for the whole focus: the beams and the cell boundaries sweep
+   * over the UE we are watching instead of swapping who we are watching. (With
+   * static UEs a pin and a per-frame pick agree frame-for-frame, so this is a
+   * behavioural no-op until mobility is switched on.)
+   *
+   * A pin is never returned stale. It is dropped and re-resolved when it can no
+   * longer name a real UE of THIS population — the id is absent, or the
+   * population SIZE changed (the UE-count slider rebuilds the field, and the ids
+   * are positional, so the surviving id names a different UE in a different
+   * place). Re-resolving there is also what the per-frame code did, so the
+   * slider behaves exactly as before.
+   *
+   * This selects a VIEWPOINT only. Serving and handover stay per-UE and SINR-
+   * driven for all 100 UEs, so switching focus reports a different UE's serving
+   * story rather than changing anyone's serving decision. If the focused cell
+   * holds no UE, fall back to the default rather than blanking the panel — and
+   * pin nothing, so a UE that later walks into the focused cell is picked up
+   * instead of the fallback silently becoming permanent.
+   */
+  private resolvePrimaryUe(ues: readonly UeInput[]): UeInput | undefined {
+    if (this.focusCellId === null || this.focusCellId === undefined) return ues[0];
+    if (this.pinnedPrimaryUeId !== null && ues.length === this.pinnedPrimaryUePopulationSize) {
+      const pinned = ues.find(ue => ue.id === this.pinnedPrimaryUeId);
+      if (pinned !== undefined) return pinned;
+    }
+    // Nothing usable is pinned: either the focus change landed before any UE
+    // existed, or the pinned id no longer names a UE of this population. Ask the
+    // cell→UE question again now and re-pin the answer.
+    return this.pinPrimaryUeForFocusCell(ues) ?? ues[0];
+  }
+
+  /**
+   * The focused cell's representative UE — the one nearest its centre — within a
+   * given population. A pure lookup: it reads no pinned state and writes none, so
+   * the focus-change pin and every re-pin ask the question exactly one way.
+   * `undefined` = no focused cell, or the focused cell holds no UE.
+   */
+  private findFocusCellRepresentativeUe(ues: readonly UeInput[]): UeInput | undefined {
+    if (this.focusCellId === null || this.focusCellId === undefined) return undefined;
+    let best: UeInput | undefined;
+    let bestDistanceKm = Infinity;
+    for (const ue of ues) {
+      const membership = assignUeToNearestCell(ue, this.cellLayout);
+      if (membership.cellId !== this.focusCellId) continue;
+      if (membership.distanceKm < bestDistanceKm) {
+        bestDistanceKm = membership.distanceKm;
+        best = ue;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Resolve the focused cell's protagonist within `ues` and PIN its id, together
+   * with the population size the pin was taken against.
+   *
+   * Resolving to nothing — an empty focused cell, or an empty population because
+   * focus was set before the first step — CLEARS the pin instead of pinning the
+   * `ues[0]` fallback. Pinning the fallback would freeze the panel onto the
+   * default UE for as long as the focus lasts, so a UE arriving in the focused
+   * cell later would never be picked up; leaving the pin clear makes the next
+   * frame retry, which under static UEs is the same answer every time.
+   */
+  private pinPrimaryUeForFocusCell(ues: readonly UeInput[]): UeInput | undefined {
+    const representative = this.findFocusCellRepresentativeUe(ues);
+    this.pinnedPrimaryUeId = representative?.id ?? null;
+    this.pinnedPrimaryUePopulationSize = representative === undefined ? 0 : ues.length;
+    return representative;
   }
 
   private uePosition(ue: UeInput): UEPosition {
@@ -768,6 +903,66 @@ export class SinrLiveCellModel {
     // Handover continuity remains owned by the managers above; the angle-aware
     // power state is re-anchored to the new scenario parameters.
     this.angleAwarePowerStates.clear();
+  }
+
+  /**
+   * Point the panel-facing "primary" surfaces at a different cell.
+   *
+   * Deliberately NOT part of `updateRuntimeProfile`, and deliberately not a
+   * constructor argument: both of those would disturb continuity that the focus
+   * change has no business touching. Rebuilding the model resets every cell's
+   * HandoverManager, which cold-attaches all UEs and fires a burst of spurious
+   * handovers; `updateRuntimeProfile` clears `angleAwarePowerStates`, which
+   * would snap every link's recurrence back to the 2 W segment start.
+   *
+   * A focus change is a viewpoint change, so it touches neither. Serving,
+   * handover and power continuity for all UEs — including the newly focused one,
+   * whose history has been maintained all along — carry straight through.
+   *
+   * This is also the ONE place the cell→UE question is asked. The protagonist is
+   * pinned here by UE **id**, against the population the last frame ran with, and
+   * every later frame reuses that id until the focus changes again — so the
+   * InfoPanel ACTIVE SERVING label, the beam cones and the connected-sat
+   * invariant keep describing the SAME UE even once UEs are moving across cell
+   * boundaries (the full argument is on {@link resolvePrimaryUe}). Re-focusing
+   * the cell that is already focused is a no-op, NOT a re-resolution: nothing
+   * about the viewpoint changed, so the protagonist must not be re-picked out
+   * from under the shot. Focusing before the first step leaves the pin unset —
+   * there is no population to resolve against yet — and the first populated frame
+   * takes it. Clearing focus to `null` drops the pin and returns the historical
+   * `ues[0]` protagonist.
+   */
+  setFocusCell(cellId: number | null): void {
+    if (cellId === this.focusCellId) return;
+    this.focusCellId = cellId;
+    if (cellId === null) {
+      this.pinnedPrimaryUeId = null;
+      this.pinnedPrimaryUePopulationSize = 0;
+      return;
+    }
+    this.pinPrimaryUeForFocusCell(this.lastSteppedUes);
+  }
+
+  /**
+   * The pinned protagonist id, published so the REST of the runtime can consume
+   * this model's decision instead of re-deriving its own.
+   *
+   * This is the id half of {@link SinrLiveCellFrame.primaryUeId}, readable
+   * BEFORE the frame is built. `stepRuntimeFrame` runs first — it owns the main
+   * `S3HandoverManager`, the scene ground anchor and the mobility primary — and
+   * without this it had to re-run the cell→UE scan by index every frame, which
+   * let it name a different UE than the panels were showing. The pin is taken at
+   * focus-change time and only re-taken when it stops naming a real UE, so
+   * reading it one frame "late" is not a race: it is the same answer this frame
+   * and every frame until the focus changes again.
+   *
+   * `null` = nothing focused (the historical `ues[0]` protagonist), or the focus
+   * changed before any UE population existed, in which case the caller's own
+   * nearest-to-focus-cell fallback answers for the first frame.
+   */
+  getPinnedPrimaryUeId(): string | null {
+    if (this.focusCellId === null || this.focusCellId === undefined) return null;
+    return this.pinnedPrimaryUeId;
   }
 
   private managerForCell(cellId: number): HandoverManager {
@@ -973,6 +1168,9 @@ export class SinrLiveCellModel {
 
   step(input: SinrLiveCellStepInput): SinrLiveCellFrame {
     const { visibleSats, ues, simTimeSec, dtSec } = input;
+    // Remember the population so a focus change arriving between frames can pin
+    // its protagonist at focus-change time (see `setFocusCell`).
+    this.lastSteppedUes = ues;
     const simTimeMs = this.epochUtcMs + simTimeSec * 1000;
     const linkSats = visibleSats.filter(sat => sat.topo.elevationDeg >= this.minElevationDeg);
     const satById = new Map(linkSats.map(sat => [sat.id, sat]));
@@ -1008,9 +1206,10 @@ export class SinrLiveCellModel {
     //     candidates — the serving sat of a lit cell is still chosen by SINR + the
     //     HandoverManager below (B3 / BLOCK-3), and an un-illuminated cell falls to
     //     idle (honest). No-op when `beamsPerSat` is Infinity (pure-model default).
-    const primaryCellId = ues[0] === undefined
+    const primaryUe = this.resolvePrimaryUe(ues);
+    const primaryCellId = primaryUe === undefined
       ? null
-      : assignUeToNearestCell(ues[0], this.cellLayout).cellId;
+      : assignUeToNearestCell(primaryUe, this.cellLayout).cellId;
     this.applyBeamHoppingCap(candidatesByCell, simTimeSec, primaryCellId);
 
     // 2. Pre-decision lit field from each cell's PREVIOUS serving (mirrors the
@@ -1081,15 +1280,15 @@ export class SinrLiveCellModel {
     // time-to-trigger + PENDING TARGET role are driven from THIS contender (below), not the
     // cell manager (whose trigger ~never moves for the primary cell — its lit set is usually
     // just the serving sat). One extra link-budget per frame (the primary cell only).
-    const primaryUeId = ues[0]?.id ?? null;
+    const primaryUeId = primaryUe?.id ?? null;
     let primaryComparison: {
       comparisonSatId: string | null;
       comparisonSinrDb: number | null;
       pendingTargetSatId: string | null;
       triggerProgressSec: number;
     } | null = null;
-    if (ues[0] !== undefined) {
-      const primaryCellId = assignUeToNearestCell(ues[0], this.cellLayout).cellId;
+    if (primaryUe !== undefined) {
+      const primaryCellId = assignUeToNearestCell(primaryUe, this.cellLayout).cellId;
       const primaryCell = primaryCellId === null ? undefined : this.cellById.get(primaryCellId);
       const primaryServingSat = primaryCellId === null ? null : finalServingByCell.get(primaryCellId) ?? null;
       if (primaryCell && primaryCellId !== null && primaryServingSat !== null) {
@@ -1177,13 +1376,13 @@ export class SinrLiveCellModel {
     // teaching intra story needs a different beam/cell on the SAME satellite.
     // Measure it against the same final active field and keep it out of every
     // serving decision so the canonical runtime remains untouched.
-    const primaryUeMembership = ues[0] === undefined
+    const primaryUeMembership = primaryUe === undefined
       ? null
-      : assignUeToNearestCell(ues[0], this.cellLayout);
-    const primaryIntraCandidate = ues[0] === undefined || primaryUeMembership === null
+      : assignUeToNearestCell(primaryUe, this.cellLayout);
+    const primaryIntraCandidate = primaryUe === undefined || primaryUeMembership === null
       ? null
       : this.measureIntraCandidate(
-        ues[0],
+        primaryUe,
         primaryUeMembership.cellId,
         primaryUeMembership.cellId === null
           ? null
@@ -1408,6 +1607,7 @@ export class SinrLiveCellModel {
       simTimeSec,
       cells: cellRecords,
       ues: ueRecords,
+      primaryUeId,
       illuminatedBeams,
       servedCellCount: finalServingByCell.size,
       servedUeCount: ueRecords.filter(ue => ue.servingSatId !== null).length,

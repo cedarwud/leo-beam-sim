@@ -38,6 +38,10 @@ import {
   type CellCenter,
   type CellLayout,
 } from '../engine/cells/cellLayout';
+import {
+  isSupportedBeamLayoutCount,
+  type SupportedBeamLayoutCount,
+} from '../core/beam/completeHexPresets';
 import type { Profile } from '../profiles/types';
 import {
   SinrLiveCellModel,
@@ -48,20 +52,29 @@ import {
 } from './sinrLiveCellModel';
 
 /**
- * Number of earth-fixed cells the SINR-live lane tiles. 37 (the producer hex
- * count) gives ~92/100 nearest-cell coverage of the 200×90 km / 100-UE
- * population at 550 km with a realistic 3.3° beam (S-cells-4 sweep). Cell SIZE
- * is fixed by the beam 3 dB width (`altitude·tan(θ/2)`), so cellCount only
- * widens the tiling, never shrinks the off-axis story. With the focus-scoped
- * cone render (S-cells-4b) on-screen clutter is bounded regardless, so this is
- * a coverage/served-continuity knob, not a clutter knob (19 vs 37 confirmed on
- * :3001 in S-cells-4e).
+ * Default number of earth-fixed cells the SINR-live lane tiles. The serving
+ * satellite control can select the supported 1/7/19 scene-cell layouts through
+ * `resolveSinrLiveSceneCellCount`; seven remains the historical default.
  */
 export const SINR_LIVE_CELL_COUNT = 7;
-/** Maximum display-only ground-cell substrate used to visualize 1/7/19 beam layouts. */
+/** Maximum scene-cell layout used by the supported 1/7/19 controls. */
 export const SINR_LIVE_BEAM_DISPLAY_CELL_COUNT = 19;
 /** Historical substrate retained only for archived-TLE display projection. */
 export const SINR_LIVE_ARCHIVED_DISPLAY_CELL_COUNT = 37;
+
+/**
+ * The serving-satellite layout control also selects the live scene cell field:
+ * one serving beam exposes one cell, the default seven exposes seven, and the
+ * 19-beam presentation exposes the complete 19-cell layout. Invalid or absent
+ * values keep the historical seven-cell default.
+ */
+export function resolveSinrLiveSceneCellCount(
+  servingBeamCount?: number,
+): SupportedBeamLayoutCount {
+  return typeof servingBeamCount === 'number' && isSupportedBeamLayoutCount(servingBeamCount)
+    ? servingBeamCount
+    : SINR_LIVE_CELL_COUNT;
+}
 
 /**
  * Lattice PHASE offset (in cell radii) for the SINR-live earth-fixed grid — the
@@ -106,18 +119,18 @@ export const SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES = Object.freeze([
 ] as const);
 
 /**
- * The live 19-beam display keeps the seven active cells above as IDs 0–6, but
- * deliberately places display-only IDs 7–18 over a wider, asymmetric ground
- * footprint.  These positions are expressed in cell-radius units rather than
- * kilometres, so changing shell altitude still scales the presentation with
- * the same physical cell radius.  They are display-only: the UE/SINR truth
- * remains the seven-cell layout above.
+ * The live 19-cell layout keeps the seven established cells above as IDs 0–6,
+ * then deliberately places IDs 7–18 over a wider, asymmetric ground footprint.
+ * These positions are expressed in cell-radius units rather than kilometres,
+ * so changing shell altitude still scales the scene with the same physical cell
+ * radius. When the serving-satellite control is 19, all 19 are live UE/SINR
+ * cells; the default seven-cell mode still uses only IDs 0–6.
  *
  * This is intentionally NOT the shared radius-two substrate.  A complete
  * radius-two disk is too compact for the homepage's 200 × 90 km visual area;
  * at a 19-beam budget it reads as one solid block in the middle of the scene.
  */
-export const SINR_LIVE_NINETEEN_DISPLAY_CELL_POSITIONS = Object.freeze([
+export const SINR_LIVE_NINETEEN_SCENE_CELL_POSITIONS = Object.freeze([
   Object.freeze({ id: 7 as const, eastRadii: -4.85, northRadii: 1.30 }),
   Object.freeze({ id: 8 as const, eastRadii: -4.15, northRadii: 2.75 }),
   Object.freeze({ id: 9 as const, eastRadii: -4.65, northRadii: -0.85 }),
@@ -131,6 +144,8 @@ export const SINR_LIVE_NINETEEN_DISPLAY_CELL_POSITIONS = Object.freeze([
   Object.freeze({ id: 17 as const, eastRadii: 5.05, northRadii: 1.40 }),
   Object.freeze({ id: 18 as const, eastRadii: 4.45, northRadii: -0.90 }),
 ] as const);
+/** @deprecated Use the scene-cell name; retained for older probes. */
+export const SINR_LIVE_NINETEEN_DISPLAY_CELL_POSITIONS = SINR_LIVE_NINETEEN_SCENE_CELL_POSITIONS;
 
 /**
  * Fallback beamwidth retained for older callers. The live legacy route reads
@@ -152,9 +167,9 @@ export const SINR_LIVE_CELL_ANTENNA_EFFICIENCY = 0.6;
 export const SINR_LIVE_CELL_MAX_GAIN_DBI = 33.5;
 
 /**
- * Presentation coverage guard (deg). It is used only to keep the fixed seven
- * cells populated; the profile max-steering value remains the link-budget
- * parameter and still changes scan loss/SINR on the legacy route.
+ * Presentation coverage guard (deg). It keeps the selected 1/7/19 scene cells
+ * populated; the profile max-steering value remains the link-budget parameter
+ * and still changes scan loss/SINR on the legacy route.
  */
 export const SINR_LIVE_CELL_MAX_STEERING_DEG = 50;
 
@@ -177,23 +192,17 @@ export const SINR_LIVE_BEAMS_PER_SAT = 7;
  * Hard upper bound on the resolved beams-per-satellite (see
  * {@link resolveSinrLiveBeamsPerSat}).
  *
- * Pinned to {@link SINR_LIVE_CELL_COUNT}: a satellite cannot simultaneously light
- * more earth-fixed cells than the tiling HAS, so anything above this is
- * unrepresentable rather than merely expensive. It also bounds the render: the
- * cone count is `Σ_sat (lit cells)`, so at the cap the ~6–9 qualifying sats of a
- * live frame resolve at most `37 × 9 ≈ 333` cones — the same order as today's
- * measured 30–37 and still inside the focus-scoped cone budget. Raising
- * SINR_LIVE_CELL_COUNT would raise this automatically; that is deliberate (one
- * tuning point, per the SINR_LIVE_CELL_COUNT doc).
+ * Pinned to the historical default scene-cell count: the global profile fallback
+ * remains seven. The serving-satellite role override can select the supported
+ * 19-cell scene and supplies its own serving budget.
  */
 export const SINR_LIVE_MAX_BEAMS_PER_SAT = SINR_LIVE_CELL_COUNT;
 
 /**
- * Configured per-satellite capacity for the presentation surface. This is
- * intentionally separate from the seven-cell active scheduler cap: the
- * scene may expose a 1/7/19 beam layout while the live UE truth still has
- * only seven fixed UE cells. The capacity is a display/configuration value;
- * it never fabricates a serving decision or a link-budget term.
+ * Configured per-satellite capacity for the presentation surface. The global
+ * profile capacity remains separate from the serving-satellite role override;
+ * the latter selects the live scene-cell layout as well as its illuminated
+ * serving budget, without fabricating a serving decision or link-budget term.
  */
 export function resolveSinrLiveBeamCapacityPerSat(profile: Profile): number {
   const raw = profile.beams?.maxActivePerSat ?? profile.beams?.perSatellite;
@@ -332,13 +341,13 @@ export function buildSinrLiveCellLayout(
       layout,
       SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES,
     ).centers;
-    const displayOnlyCenters = SINR_LIVE_NINETEEN_DISPLAY_CELL_POSITIONS.map(position => (
+    const extendedCenters = SINR_LIVE_NINETEEN_SCENE_CELL_POSITIONS.map(position => (
       buildLiveCellCenter(layout, position.id, position.eastRadii, position.northRadii)
     ));
     return {
       ...layout,
-      count: activeCenters.length + displayOnlyCenters.length,
-      centers: [...activeCenters, ...displayOnlyCenters],
+      count: activeCenters.length + extendedCenters.length,
+      centers: [...activeCenters, ...extendedCenters],
     };
   }
   return layout;
@@ -360,8 +369,20 @@ export function createSinrLiveCellModel(
   beamPointingMode: SinrLiveBeamPointingMode = 'earth-fixed-cell',
 ): SinrLiveCellModel | null {
   if (!useEarthFixedCellTruth) return null;
-  const cellLayout = buildSinrLiveCellLayout(profile);
+  const sceneCellCount = resolveSinrLiveSceneCellCount(servingBeamCount);
+  const cellLayout = buildSinrLiveCellLayout(
+    profile,
+    sceneCellCount,
+  );
   if (cellLayout.centers.length === 0) return null;
+  // Once the serving-satellite control is present, it is the live scene's
+  // global beam fallback as well as the serving-role override. This keeps
+  // unscoped satellites and a candidate without an explicit override on the
+  // same 1/7/19 budget; direct pure-model callers without that control retain
+  // the historical profile fallback.
+  const fallbackBeamsPerSat = servingBeamCount === undefined
+    ? resolveSinrLiveBeamsPerSat(profile)
+    : sceneCellCount;
   return new SinrLiveCellModel({
     profile,
     cellLayout,
@@ -373,7 +394,7 @@ export function createSinrLiveCellModel(
     // profile (`resolveSinrLiveBeamsPerSat`), so the Topology tab's beam-count
     // control reaches this lane; it falls back to SINR_LIVE_BEAMS_PER_SAT (7),
     // which is what every shipped profile carries.
-    beamsPerSat: resolveSinrLiveBeamsPerSat(profile),
+    beamsPerSat: fallbackBeamsPerSat,
     beamsPerSatById: beamCountBySatellite,
     servingBeamsPerSat: servingBeamCount,
     candidateBeamsPerSat: candidateBeamCount,
@@ -383,9 +404,9 @@ export function createSinrLiveCellModel(
     beamPointingUpdateSec: beamPointingMode === 'sampled-steering'
       ? SINR_LIVE_PRESENTATION_STEERING_HOLD_SEC
       : SINR_LIVE_HOP_SLOT_SEC,
-    // Keep the seven-cell presentation populated as a display substrate. This
-    // guard is separate from the profile antenna, so it cannot make the
-    // displayed G^T(θ), scan loss, or SINR values lie about the user's controls.
+    // Keep the selected scene cells populated. This guard is separate from the
+    // profile antenna, so it cannot make displayed G^T(θ), scan loss, or SINR
+    // values lie about the user's controls.
     coverageSteeringAngleDeg: SINR_LIVE_CELL_MAX_STEERING_DEG,
   });
 }

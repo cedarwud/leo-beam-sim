@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Html, Line } from '@react-three/drei';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Html, Line, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import './ScientificExplain3DPrototype.scss';
 
@@ -30,7 +30,7 @@ const FOCUS_COPY: Record<FocusStep, { index: string; title: string; body: string
   geometry: {
     index: '01 · GEOMETRY',
     title: '離軸角離開波束中心',
-    body: '固定鏡位保留深度感；黃色虛線是波束中心，實線連到代表 UE。角度在場景中放大，讀值仍是原始 θ。',
+    body: '鏡頭可拖曳旋轉；黃色虛線是波束中心，實線連到代表 UE。角度在場景中放大，讀值仍是原始 θ。',
   },
   power: {
     index: '02 · POWER',
@@ -86,16 +86,6 @@ function format(value: number, digits = 2) {
 
 function formatGainRatio(value: number) {
   return format(value, value < 0.001 ? 4 : 3);
-}
-
-function FixedCamera() {
-  const { camera } = useThree();
-
-  useFrame(() => {
-    camera.lookAt(0, 1.65, 0);
-  });
-
-  return null;
 }
 
 function Satellite({ position, color, label }: {
@@ -162,13 +152,16 @@ function EnergyParticles({ end, powerRatio }: {
   );
 }
 
-function ScientificScene({ thetaDeg, metrics, powerCapW, focus }: {
+function ScientificScene({ thetaDeg, beamWidthDeg, metrics, powerCapW, focus }: {
   readonly thetaDeg: number;
+  readonly beamWidthDeg: number;
   readonly metrics: DemoMetrics;
   readonly powerCapW: number;
   readonly focus: FocusStep;
 }) {
   const visualThetaRad = THREE.MathUtils.degToRad(thetaDeg * 4.2);
+  const beamHeight = 4.32;
+  const beamRadius = Math.min(3.4, Math.max(.48, Math.tan(THREE.MathUtils.degToRad(beamWidthDeg)) * beamHeight));
   const uePosition = useMemo<[number, number, number]>(() => [
     Math.tan(visualThetaRad) * 3.55,
     0.2,
@@ -182,7 +175,19 @@ function ScientificScene({ thetaDeg, metrics, powerCapW, focus }: {
 
   return (
     <>
-      <FixedCamera />
+      <OrbitControls
+        makeDefault
+        enableDamping
+        dampingFactor={.08}
+        enablePan={false}
+        rotateSpeed={.72}
+        zoomSpeed={.8}
+        minDistance={5.2}
+        maxDistance={14}
+        minPolarAngle={.35}
+        maxPolarAngle={1.5}
+        target={[0, 1.65, 0]}
+      />
       <color attach="background" args={['#04100f']} />
       <fog attach="fog" args={['#04100f', 8, 15]} />
       <ambientLight intensity={0.7} />
@@ -198,8 +203,8 @@ function ScientificScene({ thetaDeg, metrics, powerCapW, focus }: {
       <Satellite position={SERVICE_POSITION} color="#f5bf4f" label="服務衛星" />
       <Satellite position={CANDIDATE_POSITION} color="#43cbe8" label="候選衛星" />
 
-      <mesh position={[0, 2.18, 0]}>
-        <coneGeometry args={[2.65, 4.32, 64, 1, true]} />
+      <mesh position={[0, beamHeight / 2 + .02, 0]}>
+        <coneGeometry args={[beamRadius, beamHeight, 64, 1, true]} />
         <meshBasicMaterial
           color="#f5bf4f"
           transparent
@@ -210,7 +215,7 @@ function ScientificScene({ thetaDeg, metrics, powerCapW, focus }: {
         />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.035, 0]}>
-        <ringGeometry args={[2.48, 2.58, 72]} />
+        <ringGeometry args={[Math.max(.18, beamRadius - .1), beamRadius, 72]} />
         <meshBasicMaterial color="#f5bf4f" transparent opacity={0.28} side={THREE.DoubleSide} />
       </mesh>
 
@@ -287,6 +292,7 @@ function Control({ label, symbol, value, display, min, max, step, help, emphasiz
 
 export function ScientificExplain3DPrototype() {
   const [thetaDeg, setThetaDeg] = useState(2.4);
+  const [beamWidthDeg, setBeamWidthDeg] = useState(31.5);
   const [rateTargetMbps, setRateTargetMbps] = useState(6);
   const [powerCapW, setPowerCapW] = useState(0.8);
   const [focus, setFocus] = useState<FocusStep>('geometry');
@@ -298,6 +304,7 @@ export function ScientificExplain3DPrototype() {
 
   const reset = () => {
     setThetaDeg(2.4);
+    setBeamWidthDeg(31.5);
     setRateTargetMbps(6);
     setPowerCapW(0.8);
     setFocus('geometry');
@@ -309,7 +316,7 @@ export function ScientificExplain3DPrototype() {
         <div>
           <p>ANGLE-AWARE EE · CONTROLLED 3D PROTOTYPE</p>
           <h1>把空間關係放回公式裡</h1>
-          <span>固定鏡位保留可讀性，立體場景負責解釋離軸角、功率與服務結果如何連動。</span>
+          <span>拖曳鏡頭查看立體關係，調整波束大小觀察地面 footprint；場景負責解釋離軸角、功率與服務結果如何連動。</span>
         </div>
         <aside aria-label="Prototype status">
           <strong>3D FRONT-END DEMO</strong>
@@ -347,6 +354,18 @@ export function ScientificExplain3DPrototype() {
             onChange={setThetaDeg}
           />
           <Control
+            label="波束大小"
+            symbol={<>β</>}
+            value={beamWidthDeg}
+            display={`${format(beamWidthDeg, 1)}°`}
+            min={8}
+            max={36}
+            step={0.5}
+            help="示意波束半角；只改變地面 footprint，不改變數值鏈路"
+            emphasized={focus === 'geometry'}
+            onChange={setBeamWidthDeg}
+          />
+          <Control
             label="最低速率目標"
             symbol={<>R<sub>min</sub></>}
             value={rateTargetMbps}
@@ -379,7 +398,7 @@ export function ScientificExplain3DPrototype() {
             <h2>{FOCUS_COPY[focus].title}</h2>
             <span>{FOCUS_COPY[focus].body}</span>
           </div>
-          <div className="se3d-canvas" role="img" aria-label="衛星、波束、離軸角、代表 UE 與能量流的固定鏡位三維示意">
+          <div className="se3d-canvas" role="img" aria-label="衛星、波束、離軸角、代表 UE 與能量流的可旋轉三維示意">
             <Canvas
               camera={{ position: [6.1, 5.2, 7.2], fov: 38, near: 0.05, far: 30 }}
               dpr={[1, 1.25]}
@@ -387,8 +406,9 @@ export function ScientificExplain3DPrototype() {
               shadows={false}
               gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
             >
-              <ScientificScene thetaDeg={thetaDeg} metrics={metrics} powerCapW={powerCapW} focus={focus} />
+              <ScientificScene thetaDeg={thetaDeg} beamWidthDeg={beamWidthDeg} metrics={metrics} powerCapW={powerCapW} focus={focus} />
             </Canvas>
+            <div className="se3d-camera-hint" aria-hidden="true">拖曳旋轉 · 滾輪縮放</div>
           </div>
           <div className="se3d-scene-key" aria-label="場景圖例">
             <span><i className="service" />服務鏈路</span>

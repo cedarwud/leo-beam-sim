@@ -2811,8 +2811,8 @@ for (const [needle, label] of [
   // centres (aligned with the cones + UE membership), not the steered beam positions.
   ["{presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !handoverDisplayIsolation.active && (\\n        <SinrLiveCellFootprintRings", 'cell-truth footprint rings'],
   ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && (\\n        <HandoverLinks", 'handover links'],
-  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && <IntraGroundShockwave", 'intra ground shockwave'],
-  ["{presentationPlan.visible['event-effects']\\n        && showHandoverToastOverlay\\n        && (\\n          (manualHandoverActive && manualHandoverEvent !== null)", 'handover toast overlay'],
+  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && !concurrentIntraVisualSuppressed\\n        && <IntraGroundShockwave", 'intra ground shockwave'],
+  ["{presentationPlan.visible['event-effects']\\n        && showHandoverToastOverlay\\n        && (\\n          (manualHandoverPresentationActive && manualHandoverEvent !== null)", 'handover toast overlay'],
 ] as const) {
   assertContains(mainSceneSource, needle.replaceAll('\\n', '\n'), `MainScene should source-gate ${label}`);
 }

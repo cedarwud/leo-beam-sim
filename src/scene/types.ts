@@ -174,6 +174,33 @@ export interface RuntimeConfig {
   candidateBeamCount?: number;
   /** Presentation-scene scheduling switch; false keeps each sat's cell window fixed. */
   beamHoppingEnabled?: boolean;
+  /**
+   * Cell whose UE the left panel / right rail / serving highlight follow.
+   * `null` keeps the historical first UE.
+   *
+   * NOT viewpoint-only any more. This used to read "Viewpoint only — it does not
+   * change anyone's serving or handover decision", and that claim was false in
+   * the direction that mattered: under the shipped `seven-cell-asymmetric`
+   * distribution every UE except the observer anchor is pinned to an absolute
+   * cell centre, so the focused UE was always a STATIC one, and a static UE under
+   * earth-fixed cells essentially never changes serving beam. Focusing any cell
+   * therefore guaranteed zero intra handovers — the one thing the focus feature
+   * exists to show.
+   *
+   * Focus now also decides WHO WALKS `profile.ueMobility`'s ground track (see the
+   * protagonist-drift block in `stepRuntimeFrame`). One mover at a time: the
+   * focused UE moves, everyone else stands still, and on a focus change the new
+   * protagonist takes over the walk while the old one keeps the ground it
+   * reached. Because that UE now crosses beam boundaries, focus DOES change its
+   * serving and handover outcomes.
+   *
+   * What is still true — and is the invariant to protect — is that focus changes
+   * nothing about HOW any link is computed, and changes no OTHER UE's decisions:
+   * SINR, power, throughput, EE and the handover policy are identical for all
+   * UEs whatever is focused, and every non-protagonist UE's serving story is
+   * byte-identical to the unfocused run.
+   */
+  focusCellId?: number | null;
   ueDistributionMode?: UeDistributionMode;
   uePrimaryAnchorMode?: UePrimaryAnchorMode;
   ueDistributionScope?: UeDistributionScope;
@@ -309,6 +336,13 @@ export interface VizIntraHandoverEvent extends IntraHandoverEventWithWallClock {
 
 export interface SimState {
   profileId?: string;
+  /**
+   * The UE every panel-facing surface follows this frame (see
+   * SinrLiveCellFrame.primaryUeId). Republished here so the Director's handover
+   * rail can filter its event index to the FOCUSED UE instead of the hardcoded
+   * `live-ue-0`, which is what pinned Show Intra / Show Inter to cell 0.
+   */
+  primaryUeId?: string | null;
   formulaFamilyLabel?: string;
   satelliteVisualIdentityById: Record<string, SatelliteVisualIdentity>;
   perUePositions?: ReadonlyArray<{

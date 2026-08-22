@@ -26,6 +26,8 @@ export interface RuntimePerUeSinrPosition {
 
 export interface FillPerUeServingSinrParams {
   perUePositions: RuntimePerUeSinrPosition[];
+  /** The UE owned by the main HandoverManager; default keeps the old index 0 path. */
+  primaryUeIndex?: number;
   primaryServingSinrDb: number;
   primaryServingSatId: string | null;
   primaryServingBeamId: number | null;
@@ -48,11 +50,24 @@ export interface StepSecondaryUeHandoversParams {
   linkBudgetOptions: Parameters<typeof computeLinkBudget>[2];
   dtSec: number;
   simTimeMs: number;
+  /** The UE owned by the MAIN HandoverManager; this pass skips it. Default 0. */
+  primaryUeIndex?: number;
 }
 
 export interface ApplyPerTickUeMobilityParams {
   perUePositions: RuntimePerUeSinrPosition[];
   mobilityStates: UePerMobilityState[];
+  /** The UE that remains the protagonist while secondaries move around it. */
+  primaryUeIndex?: number;
+  /**
+   * Secondaries this pass must leave exactly where they are. Used for UEs that
+   * USED to be the protagonist and are holding the ground they walked to
+   * (`RuntimeFrameStepState.protagonistDriftOffsetKmByUeId`): their position is
+   * owned by that held offset, not by the mobility integrator, and letting both
+   * write it would drag them off the spot they stopped on. Empty by default, so
+   * callers that do not pass it are unchanged.
+   */
+  frozenUeIndices?: ReadonlySet<number>;
   ueMobilityMode: UeMobilityMode;
   ueMobilityParams: UeMobilityParams;
   deltaSec: number;
@@ -84,6 +99,7 @@ export function resolveProfileRectangleAreaKm(profile: Profile): { widthKm: numb
 export function fillPerUeServingSinr(params: FillPerUeServingSinrParams): RuntimePerUeSinrPosition[] {
   const {
     perUePositions,
+    primaryUeIndex = 0,
     primaryServingSinrDb,
     primaryServingSatId,
     primaryServingBeamId,
@@ -96,10 +112,13 @@ export function fillPerUeServingSinr(params: FillPerUeServingSinrParams): Runtim
   } = params;
 
   if (perUePositions.length === 0) return perUePositions;
-  perUePositions[0].sinrDb = primaryServingSinrDb;
+  const primary = perUePositions[primaryUeIndex] ?? perUePositions[0];
+  const resolvedPrimaryUeIndex = perUePositions[primaryUeIndex] === undefined ? 0 : primaryUeIndex;
+  primary.sinrDb = primaryServingSinrDb;
 
   if (primaryServingSatId === null || primaryServingBeamId === null) {
-    for (let i = 1; i < perUePositions.length; i += 1) {
+    for (let i = 0; i < perUePositions.length; i += 1) {
+      if (i === resolvedPrimaryUeIndex) continue;
       perUePositions[i].sinrDb = null;
     }
     return perUePositions;
@@ -108,7 +127,8 @@ export function fillPerUeServingSinr(params: FillPerUeServingSinrParams): Runtim
   const cosPrimaryLat = Math.cos((primaryLatDeg * Math.PI) / 180);
   const lonKmPerDeg = EARTH_KM_PER_DEG * Math.max(Math.abs(cosPrimaryLat), 1e-6);
 
-  for (let i = 1; i < perUePositions.length; i += 1) {
+  for (let i = 0; i < perUePositions.length; i += 1) {
+    if (i === resolvedPrimaryUeIndex) continue;
     const ueSecondary = perUePositions[i];
     const deltaEastKm = ueSecondary.eastKm - primaryEastKm;
     const deltaNorthKm = ueSecondary.northKm - primaryNorthKm;
@@ -145,6 +165,7 @@ export function stepSecondaryUeHandovers(
     linkBudgetOptions,
     dtSec,
     simTimeMs,
+    primaryUeIndex = 0,
   } = params;
 
   if (perUePositions.length <= 1 || secondaryHoManagers.length === 0) return perUePositions;
@@ -152,8 +173,15 @@ export function stepSecondaryUeHandovers(
   const cosPrimaryLat = Math.cos((primaryLatDeg * Math.PI) / 180);
   const lonKmPerDeg = EARTH_KM_PER_DEG * Math.max(Math.abs(cosPrimaryLat), 1e-6);
 
-  for (let i = 1; i < perUePositions.length; i += 1) {
-    const manager = secondaryHoManagers[i - 1];
+  // Walk every UE EXCEPT the protagonist, keeping the manager↔UE pairing stable
+  // by slot order. This used to assume the protagonist was index 0; with a
+  // focused cell it can be any index, and letting the secondary pass also touch
+  // it would have two managers writing the same UE's serving state.
+  let managerSlot = 0;
+  for (let i = 0; i < perUePositions.length; i += 1) {
+    if (i === primaryUeIndex) continue;
+    const manager = secondaryHoManagers[managerSlot];
+    managerSlot += 1;
     if (!manager) continue;
 
     const ueSecondary = perUePositions[i];
@@ -192,6 +220,8 @@ export function applyPerTickUeMobility(
   const {
     perUePositions,
     mobilityStates,
+    primaryUeIndex = 0,
+    frozenUeIndices,
     ueMobilityMode,
     ueMobilityParams,
     deltaSec,
@@ -200,8 +230,11 @@ export function applyPerTickUeMobility(
   } = params;
   if (ueMobilityMode === 'static' || perUePositions.length <= 1) return perUePositions;
 
-  const primary = perUePositions[0];
-  for (let i = 1; i < perUePositions.length; i += 1) {
+  const primary = perUePositions[primaryUeIndex] ?? perUePositions[0];
+  const resolvedPrimaryUeIndex = perUePositions[primaryUeIndex] === undefined ? 0 : primaryUeIndex;
+  for (let i = 0; i < perUePositions.length; i += 1) {
+    if (i === resolvedPrimaryUeIndex) continue;
+    if (frozenUeIndices?.has(i)) continue;
     const previous = perUePositions[i];
     const storedState = mobilityStates[i];
     if (!storedState) continue;
@@ -231,4 +264,3 @@ export function applyPerTickUeMobility(
 
   return perUePositions;
 }
-

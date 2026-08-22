@@ -13,9 +13,18 @@ import type { HandoverRailEvent } from '../ui/HandoverEventRail';
 export function selectDirectorHandoverEvents(
   index: Pick<LiveWalkerHandoverEventIndex, 'sourceOwner' | 'primaryUeId'>,
   events: readonly LiveWalkerHandoverEvent[],
+  /**
+   * The UE the panels are currently following. The cell-truth index records
+   * events for EVERY UE, but the Director shows only the protagonist's — and
+   * `index.primaryUeId` is baked to `live-ue-0` at build time, so without this
+   * override Show Intra / Show Inter always seek to cell 0's handovers no
+   * matter which cell is focused. Falls back to the index's own id.
+   */
+  focusedUeId?: string | null,
 ): readonly LiveWalkerHandoverEvent[] {
   if (index.sourceOwner !== 'sinr-live-cell-truth') return events;
-  return events.filter(event => event.ueId === index.primaryUeId);
+  const protagonistUeId = focusedUeId ?? index.primaryUeId;
+  return events.filter(event => event.ueId === protagonistUeId);
 }
 
 function formatLiveWalkerBeamLabel(satId: string, beamId: number | null): string {

@@ -157,10 +157,13 @@ export function liveSimToScene(
   // per (sat, beam) candidate; we attach the full link-budget breakdown for
   // downstream engineering panels (FormulaTermsReadout, DuelSignalColumn).
   const liveUeId = 'live-ue-0';
+  const primaryUeId = sim.sinrLiveCells?.primaryUeId
+    ?? sim.perUePositions?.[0]?.id
+    ?? liveUeId;
   const links: NormalizedLink[] = sim.linkSamples.map((sample) => ({
     id: `${sample.satId}:${sample.beamId}`,
     sourceId: sample.satId,
-    targetId: liveUeId,
+    targetId: primaryUeId,
     beamId: String(sample.beamId),
     role:
       eventRoleByBeamId.get(`${sample.satId}:${sample.beamId}`)
@@ -180,7 +183,8 @@ export function liveSimToScene(
     receiverGainDbi: sample.receiverGainDbi,
   }));
 
-  // R6 binding: live N variable, primary preserved at index 0 (live-ue-0).
+  // R6 binding: live N variable, with the focused protagonist normalized to
+  // index 0 for renderer consumers that intentionally use `sceneFrame.ues[0]`.
   // F-S2 secondaries carry SINR against the primary serving beam when available.
   const simUePositions = sim.perUePositions ?? [];
   const liveUePositions = simUePositions.length > 0
@@ -198,10 +202,10 @@ export function liveSimToScene(
       pendingTargetBeamId: sim.pendingTargetBeamId,
       triggerProgressSec: sim.handoverTriggerProgressSec,
     }];
-  const ues: NormalizedUe[] = liveUePositions.map((pos, i) => {
-    if (i === 0) {
+  const ues: NormalizedUe[] = liveUePositions.map((pos) => {
+    if (pos.id === primaryUeId) {
       return {
-        id: liveUeId,
+        id: pos.id,
         geo: { latDeg: 0, lonDeg: 0 },
         worldPos: [pos.groundX, 0, pos.groundZ] as const,
         servingSatelliteId: sim.serving.satId ?? '',
@@ -243,7 +247,6 @@ export function liveSimToScene(
 
   // If the cell-truth model is active, align the serving satellite and beam
   // for the primary UE (and the overall scene metrics) to the cell-truth serving satellite.
-  const primaryUeId = liveUePositions[0]?.id;
   const primaryServingRecord = sim.sinrLiveCells
     ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, liveUePositions)
     : null;
@@ -279,10 +282,11 @@ export function liveSimToScene(
       servingBeamId: servingBeamIdStr,
     };
 
-    // 2. Override primary UE's serving/target details
-    if (ues.length > 0) {
-      ues[0] = {
-        ...ues[0],
+    // 2. Override the focused UE's serving/target details
+    const primarySceneUeIndex = ues.findIndex(ue => ue.id === primaryUeId);
+    if (primarySceneUeIndex >= 0) {
+      ues[primarySceneUeIndex] = {
+        ...ues[primarySceneUeIndex],
         servingSatelliteId: servingSatId,
         servingBeamId: servingBeamIdStr,
         targetSatelliteId: null, // cell-truth model doesn't have prepared target
@@ -422,6 +426,10 @@ export function liveSimToScene(
     enabled: sim.beamHopEnabled,
     displayAssignmentsBySatId,
   };
+  const primarySceneUeIndex = ues.findIndex(ue => ue.id === primaryUeId);
+  const orderedUes = primarySceneUeIndex > 0
+    ? [ues[primarySceneUeIndex], ...ues.slice(0, primarySceneUeIndex), ...ues.slice(primarySceneUeIndex + 1)]
+    : ues;
 
   return {
     sceneSource: 'live-sim',
@@ -431,7 +439,7 @@ export function liveSimToScene(
     frameIndex: Math.floor(sim.simTimeSec),
     tSec: sim.simTimeSec,
     satellites,
-    ues,
+    ues: orderedUes,
     beams,
     links,
     eventRoles,

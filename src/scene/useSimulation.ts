@@ -30,6 +30,7 @@ import {
   buildSinrLiveCellLayout,
   createSinrLiveCellModel,
   resolveSinrLiveBeamsPerSat,
+  resolveSinrLiveSceneCellCount,
 } from './sinrLiveCellRuntime';
 import { planSeekSettle, SEEK_SETTLE_MAX_STEP_SEC } from './seekSettle';
 import { reScalarize } from '../modqn/replay-bundle/rescalarize';
@@ -181,6 +182,8 @@ export function useSimulation(
   candidateBeamCount?: number,
   beamHoppingEnabled = false,
   beamPointingMode: 'earth-fixed-cell' | 'sampled-steering' = 'earth-fixed-cell',
+  /** Cell whose UE the panels should follow; null keeps the default first UE. */
+  focusCellId: number | null = null,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -285,9 +288,13 @@ export function useSimulation(
   );
   const requestedUeCount = Math.trunc(ueCount ?? 1);
   const effectiveUeCount = Number.isFinite(requestedUeCount) ? Math.max(1, requestedUeCount) : 1;
-  const sevenCellUeDistribution = useMemo(() => {
+  const sceneCellCount = resolveSinrLiveSceneCellCount(servingBeamCount);
+  const sceneBeamFallbackCount = servingBeamCount === undefined
+    ? resolveSinrLiveBeamsPerSat(profile)
+    : sceneCellCount;
+  const sceneCellUeDistribution = useMemo(() => {
     if (!useEarthFixedCellTruth || ueDistributionMode !== 'seven-cell-asymmetric') return null;
-    const layout = buildSinrLiveCellLayout(profile);
+    const layout = buildSinrLiveCellLayout(profile, sceneCellCount);
     return {
       centers: layout.centers.map(center => ({
         eastKm: center.localXKm,
@@ -295,7 +302,7 @@ export function useSimulation(
       })),
       radiusKm: layout.cellRadiusKm,
     };
-  }, [profile, ueDistributionMode, useEarthFixedCellTruth]);
+  }, [profile, sceneCellCount, ueDistributionMode, useEarthFixedCellTruth]);
   const secondaryHoManagers = useMemo(
     () => Array.from(
       { length: Math.max(0, effectiveUeCount - 1) },
@@ -311,6 +318,7 @@ export function useSimulation(
   // model and erase its handover continuity.
   const sinrLiveCellModelStructureKey = [
     profile.id,
+    sceneCellCount,
     profile.orbit.observerLatDeg,
     profile.orbit.observerLonDeg,
     profile.antenna.beamwidth3dBRad,
@@ -360,10 +368,16 @@ export function useSimulation(
       beamPointingMode,
     ],
   );
+  // Focus is applied on its own, NOT folded into updateRuntimeProfile: that call
+  // clears the angle-aware power states, and a viewpoint change must not restart
+  // anyone's 2 W segment. See SinrLiveCellModel.setFocusCell.
+  useEffect(() => {
+    sinrLiveCellModel?.setFocusCell(focusCellId);
+  }, [focusCellId, sinrLiveCellModel]);
   useEffect(() => {
     sinrLiveCellModel?.updateRuntimeProfile(
       profile,
-      resolveSinrLiveBeamsPerSat(profile),
+      sceneBeamFallbackCount,
       beamCountBySatellite,
       servingBeamCount,
       candidateBeamCount,
@@ -374,6 +388,7 @@ export function useSimulation(
     beamHoppingEnabled,
     candidateBeamCount,
     profile,
+    sceneBeamFallbackCount,
     servingBeamCount,
     sinrLiveCellModel,
   ]);
@@ -521,14 +536,18 @@ export function useSimulation(
         ueCount: effectiveUeCount,
         ueDistributionMode,
         primaryJogEastKm,
+        focusCellId,
+        // Consume the cell model's pinned protagonist instead of letting the
+        // step re-derive one by index (see `getPinnedPrimaryUeId`).
+        focusUeId: sinrLiveCellModel?.getPinnedPrimaryUeId() ?? null,
         primaryJogNorthKm,
         uePrimaryAnchorMode,
         ueMobilityMode,
         ueMobilityParams: effectiveUeMobilityParams,
         ueDistributionScope,
         ueDistributionRadiusKm,
-        ueDistributionCellCentersKm: sevenCellUeDistribution?.centers,
-        ueDistributionCellRadiusKm: sevenCellUeDistribution?.radiusKm,
+        ueDistributionCellCentersKm: sceneCellUeDistribution?.centers,
+        ueDistributionCellRadiusKm: sceneCellUeDistribution?.radiusKm,
         mobilityStates: mobilityStatesRef.current,
         state: runtimeStateRef.current,
       });
@@ -589,14 +608,16 @@ export function useSimulation(
             ueCount: effectiveUeCount,
             ueDistributionMode,
             primaryJogEastKm,
+            focusCellId,
+            focusUeId: sinrLiveCellModel?.getPinnedPrimaryUeId() ?? null,
             primaryJogNorthKm,
             uePrimaryAnchorMode,
             ueMobilityMode,
             ueMobilityParams: effectiveUeMobilityParams,
             ueDistributionScope,
             ueDistributionRadiusKm,
-            ueDistributionCellCentersKm: sevenCellUeDistribution?.centers,
-            ueDistributionCellRadiusKm: sevenCellUeDistribution?.radiusKm,
+            ueDistributionCellCentersKm: sceneCellUeDistribution?.centers,
+            ueDistributionCellRadiusKm: sceneCellUeDistribution?.radiusKm,
             mobilityStates: mobilityStatesRef.current,
             state: runtimeStateRef.current,
           });
@@ -649,7 +670,9 @@ export function useSimulation(
       effectiveUeMobilityParams,
       ueDistributionScope,
       ueDistributionRadiusKm,
-      sevenCellUeDistribution,
+      sceneCellUeDistribution,
+      sceneCellCount,
+      focusCellId,
     ],
   );
 
@@ -727,6 +750,7 @@ export function useSimulation(
     // indefinitely. Invalidate it so the next frame recomputes against the
     // regenerated positions.
     runtimeStateRef.current.secondaryServingCache = null;
+    runtimeStateRef.current.secondaryServingCachePrimaryUeIndex = null;
     runtimeStateRef.current.secondaryRecomputeAccumulatorSec = 0;
     publishNextFrameRef.current = true;
     setVersion(v => v + 1);
@@ -737,7 +761,8 @@ export function useSimulation(
     uePrimaryAnchorMode,
       ueDistributionScope,
       ueDistributionRadiusKm,
-      sevenCellUeDistribution,
+      sceneCellUeDistribution,
+      sceneCellCount,
       ueMobilityMode,
     effectiveUeMobilityParams,
     resetMobilityStates,
@@ -804,14 +829,16 @@ export function useSimulation(
       ueCount: effectiveUeCount,
       ueDistributionMode,
       primaryJogEastKm,
+      focusCellId,
+      focusUeId: sinrLiveCellModel?.getPinnedPrimaryUeId() ?? null,
       primaryJogNorthKm,
       uePrimaryAnchorMode,
       ueMobilityMode,
       ueMobilityParams: effectiveUeMobilityParams,
       ueDistributionScope,
       ueDistributionRadiusKm,
-      ueDistributionCellCentersKm: sevenCellUeDistribution?.centers,
-      ueDistributionCellRadiusKm: sevenCellUeDistribution?.radiusKm,
+      ueDistributionCellCentersKm: sceneCellUeDistribution?.centers,
+      ueDistributionCellRadiusKm: sceneCellUeDistribution?.radiusKm,
       mobilityStates: mobilityStatesRef.current,
       state: runtimeStateRef.current,
     });

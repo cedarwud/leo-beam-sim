@@ -15,15 +15,18 @@ export interface SceneTopologyState {
   /** Legacy Walker presentation preset; canonical TLE frames keep their own provenance. */
   constellation: SimulatorConstellation;
   satsPerPlane: number | null;
+  /** Persisted compatibility fallback; live Scenario now drives this from servingBeamCount. */
   beamCountPerSatellite: number | null;
   /** Optional per-satellite beam budgets; the global count remains the fallback. */
   beamCountBySatellite: BeamCountBySatellite;
-  /** Role-scoped budgets follow the current serving/candidate identities across a HO. */
+  /** Serving is the live scene-cell authority; candidate may override it per role. */
   servingBeamCount: SupportedBeamLayoutCount | null;
   candidateBeamCount: SupportedBeamLayoutCount | null;
   /** Internal switch; deliberately not exposed in the frontend yet. */
   beamHoppingEnabled: boolean;
   cellServingCount: number | null;
+  /** Cell the panels follow (viewpoint only); null = default first UE. */
+  focusCellId: number | null;
   ueCount: number | null;
   ueDistributionMode: UeDistributionMode | null;
   ueMobilityMode: UeMobilityMode | null;
@@ -41,6 +44,7 @@ export function createSceneTopologyState(): SceneTopologyState {
     candidateBeamCount: null,
     beamHoppingEnabled: false,
     cellServingCount: null,
+    focusCellId: null,
     ueCount: null,
     ueDistributionMode: null,
     ueMobilityMode: null,
@@ -116,11 +120,12 @@ export function applySceneTopology(
       ]
     : profile.orbit.shells;
 
-  const overriddenBeams = topology.beamCountPerSatellite !== null
+  const effectiveBeamCount = topology.servingBeamCount ?? topology.beamCountPerSatellite;
+  const overriddenBeams = effectiveBeamCount !== null
     ? {
         ...profile.beams,
-        perSatellite: topology.beamCountPerSatellite,
-        maxActivePerSat: topology.beamCountPerSatellite,
+        perSatellite: effectiveBeamCount,
+        maxActivePerSat: effectiveBeamCount,
       }
     : profile.beams;
 

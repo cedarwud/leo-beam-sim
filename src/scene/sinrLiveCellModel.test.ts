@@ -745,4 +745,125 @@ check('sampled steering drives theta and power without replacing the fixed cell 
   );
 });
 
+// --- focused cell: viewpoint switch, not a serving override -------------------
+
+check('focus cell moves the panel protagonist without touching serving or continuity', () => {
+  const layout = testLayout(7);
+  const model = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
+  const overhead = makeSat({ id: 'over', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const homeCell = layout.centers[0];
+  const otherCell = layout.centers[3];
+  const ues = [
+    { id: 'ue-home', eastKm: homeCell.localXKm, northKm: homeCell.localYKm },
+    { id: 'ue-other', eastKm: otherCell.localXKm, northKm: otherCell.localYKm },
+  ];
+  const step = (simTimeSec: number) => model.step({ visibleSats: [overhead], ues, simTimeSec, dtSec: 1 });
+
+  const base = step(0);
+  assertEqual(base.primaryUeId, 'ue-home', 'default protagonist is the first UE');
+  const servingBefore = base.ues.map(ue => `${ue.ueId}:${ue.servingSatId}:${ue.cellId}`).join('|');
+  const otherPowerBefore = base.ues.find(ue => ue.ueId === 'ue-other')
+    ?.servingLinkSample?.angleAware?.powerW;
+
+  // A focus change is published on the very next frame and moves every
+  // panel-facing surface to the other cell's UE.
+  model.setFocusCell(3);
+  const focused = step(1);
+  assertEqual(focused.primaryUeId, 'ue-other', 'focus follows the requested cell');
+  assertEqual(focused.angleAwareFormulaFrame?.ueId ?? null, 'ue-other', 'formula frame follows the focus');
+
+  // Serving stayed SINR-driven for BOTH UEs: the focus change reports a
+  // different UE, it does not reassign anyone.
+  const servingAfter = focused.ues.map(ue => `${ue.ueId}:${ue.servingSatId}:${ue.cellId}`).join('|');
+  assertEqual(servingAfter, servingBefore, 'focus change leaves every UE serving identity untouched');
+  assert(
+    focused.ues.every(ue => ue.handoverKind !== 'inter' && ue.handoverKind !== 'intra'),
+    'focus change fires no handover for any UE',
+  );
+
+  // The newly focused UE's power recurrence was running all along, so it does
+  // NOT snap back to the 2 W segment start when it becomes the protagonist.
+  const otherPowerAfter = focused.ues.find(ue => ue.ueId === 'ue-other')
+    ?.servingLinkSample?.angleAware?.powerW;
+  assert(
+    otherPowerBefore !== undefined && otherPowerAfter !== undefined,
+    'the focused UE carries angle-aware terms before and after the switch',
+  );
+
+  // A cell with no UE falls back to the default protagonist rather than
+  // blanking the panel.
+  model.setFocusCell(6);
+  const empty = step(2);
+  assertEqual(empty.primaryUeId, 'ue-home', 'an empty focus cell falls back to the default UE');
+
+  model.setFocusCell(null);
+  assertEqual(step(3).primaryUeId, 'ue-home', 'clearing focus restores the default UE');
+});
+
+check('the focused protagonist is pinned by id and survives UEs crossing cell boundaries', () => {
+  const layout = testLayout(7);
+  const overhead = makeSat({ id: 'over', latDeg: 0, lonDeg: 0, elevationDeg: 90 });
+  const homeCell = layout.centers[0];
+  const focusCell = layout.centers[3];
+  const spareCell = layout.centers[5];
+  const at = (id: string, cell: { localXKm: number; localYKm: number }) => ({
+    id,
+    eastKm: cell.localXKm,
+    northKm: cell.localYKm,
+  });
+
+  // EDGE 1: focus is set BEFORE the model has ever seen a UE. There is nothing
+  // to resolve against yet, so the pin is taken on the first populated frame.
+  const model = new SinrLiveCellModel({ profile, cellLayout: layout, observer: OBSERVER, epochUtcMs: EPOCH_MS });
+  model.setFocusCell(focusCell.cellId);
+  const step = (
+    ues: ReadonlyArray<{ id: string; eastKm: number; northKm: number }>,
+    simTimeSec: number,
+  ) => model.step({ visibleSats: [overhead], ues, simTimeSec, dtSec: 1 });
+
+  const resting = [at('ue-home', homeCell), at('ue-focus', focusCell)];
+  assertEqual(step(resting, 0).primaryUeId, 'ue-focus', 'a focus set before any UE pins on the first populated frame');
+
+  // MOBILITY: the two UEs swap cells. Nearest-to-centre now answers 'ue-home',
+  // so a per-frame resolution would hand the protagonist role to the other UE
+  // mid-shot; the pin keeps the panel, the cones and the invariant on 'ue-focus'.
+  const swapped = [at('ue-home', focusCell), at('ue-focus', homeCell)];
+  assertEqual(
+    assignUeToNearestCell(swapped[0], layout).cellId,
+    focusCell.cellId,
+    'the other UE really did cross INTO the focused cell',
+  );
+  assert(
+    assignUeToNearestCell(swapped[1], layout).cellId !== focusCell.cellId,
+    'the pinned UE really did leave the focused cell',
+  );
+  const moved = step(swapped, 1);
+  assertEqual(moved.primaryUeId, 'ue-focus', 'the protagonist is pinned by id, not re-picked per frame');
+  assertEqual(moved.angleAwareFormulaFrame?.ueId ?? null, 'ue-focus', 'the formula frame follows the pinned protagonist');
+
+  // EDGE 2: the pinned id is gone from the population → re-resolve rather than
+  // publish a dangling id no consumer can match.
+  const dropped = [at('ue-home', focusCell)];
+  assertEqual(step(dropped, 2).primaryUeId, 'ue-home', 'a pin that no longer names a UE re-resolves');
+
+  // EDGE 3: the UE-count slider changes the population SIZE. `live-ue-N` ids are
+  // positional, so the surviving id names a different UE — re-resolve even
+  // though 'ue-home' is still present.
+  const grown = [at('ue-home', homeCell), at('ue-extra', focusCell)];
+  assertEqual(step(grown, 3).primaryUeId, 'ue-extra', 'a population-size change re-resolves the pin');
+
+  // EDGE 4: an empty focused cell falls back to ues[0] WITHOUT pinning it, so a
+  // UE that later walks in becomes the protagonist — and is then pinned itself.
+  model.setFocusCell(spareCell.cellId);
+  assertEqual(step(grown, 4).primaryUeId, 'ue-home', 'an empty focused cell falls back to the default UE');
+  const arrived = [at('ue-home', homeCell), at('ue-extra', spareCell)];
+  assertEqual(step(arrived, 5).primaryUeId, 'ue-extra', 'a UE arriving in the focused cell is picked up');
+  const departed = [at('ue-home', spareCell), at('ue-extra', homeCell)];
+  assertEqual(step(departed, 6).primaryUeId, 'ue-extra', 'and stays pinned once it walks out again');
+
+  // EDGE 5: clearing focus returns to the historical ues[0] protagonist.
+  model.setFocusCell(null);
+  assertEqual(step(departed, 7).primaryUeId, 'ue-home', 'clearing focus restores the ues[0] protagonist');
+});
+
 console.log(`\n[sinr-live-cells:model] PASS — ${passed} checks (membership, 4 identities, per-cell geometry, SINR+HandoverManager serving, co-channel + self-interference, intra/inter/drop, CQ3 off-axis rolloff, gain-floor + idle-cell honesty, beam-hopping cap + serving continuity + idle honesty, live signal-profile continuity, illuminated-beam render surface)`);

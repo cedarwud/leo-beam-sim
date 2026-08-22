@@ -10,7 +10,27 @@ const markup = renderToStaticMarkup(
 );
 const connectedMarkup = renderToStaticMarkup(
   <LocaleProvider initialLocale="en">
-    <ScenarioDataTab connection="live-scene" beamLayoutCount={1} />
+    <ScenarioDataTab connection="live-scene" servingBeamLayoutCount={1} />
+  </LocaleProvider>,
+);
+const oneCellMarkup = renderToStaticMarkup(
+  <LocaleProvider initialLocale="zh-TW">
+    <ScenarioDataTab
+      connection="live-scene"
+      servingBeamLayoutCount={1}
+      focusCellCount={1}
+      onFocusCellChange={() => undefined}
+    />
+  </LocaleProvider>,
+);
+const nineteenCellMarkup = renderToStaticMarkup(
+  <LocaleProvider initialLocale="zh-TW">
+    <ScenarioDataTab
+      connection="live-scene"
+      servingBeamLayoutCount={19}
+      focusCellCount={19}
+      onFocusCellChange={() => undefined}
+    />
   </LocaleProvider>,
 );
 
@@ -32,8 +52,8 @@ const timeControls = markup.match(/data-testid="scenario-data-time"[\s\S]*?data-
 assert.doesNotMatch(timeControls, /AM|PM|上午|下午|seconds|milliseconds|秒|毫秒/i);
 assert.match(markup, /data-testid="scenario-data-beam-configuration-control"/);
 assert.match(connectedMarkup, /data-scenario-connection="live-scene"/);
-assert.match(connectedMarkup, /id="scenario-data-beam-layout-1"[^>]*checked=""/);
-assert.doesNotMatch(connectedMarkup, /id="scenario-data-beam-layout-7"[^>]*checked=""/);
+assert.doesNotMatch(connectedMarkup, /id="scenario-data-beam-layout-1"/);
+assert.match(connectedMarkup, /id="scenario-data-serving-beam-layout-1"[^>]*checked=""/);
 assert.match(markup, /每顆衛星波束配置|Beams per satellite/);
 for (const beamCount of [1, 7, 19]) {
   assert.match(markup, new RegExp(`scenario-data-beam-layout-${beamCount}`));
@@ -42,5 +62,13 @@ assert.match(markup, /data-testid="scenario-data-serving-beam-configuration"/);
 assert.match(markup, /data-testid="scenario-data-candidate-beam-configuration"/);
 assert.match(markup, /Serving satellite/);
 assert.match(markup, /Candidate satellite/);
+assert.match(oneCellMarkup, /場景 cells/);
+assert.match(oneCellMarkup, /scenario-data-focus-cell-0/);
+assert.doesNotMatch(oneCellMarkup, /scenario-data-focus-cell-1/);
+assert.doesNotMatch(oneCellMarkup, /選擇左側公式與右側數值要跟隨哪一格的使用者/);
+for (const cellId of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]) {
+  assert.match(nineteenCellMarkup, new RegExp(`scenario-data-focus-cell-${cellId}(?:\\\"|')`));
+}
+assert.doesNotMatch(nineteenCellMarkup, /scenario-data-focus-cell-19/);
 
 console.log('ScenarioDataTab renders 24-hour controls and accepts a live scene beam-layout value.');
