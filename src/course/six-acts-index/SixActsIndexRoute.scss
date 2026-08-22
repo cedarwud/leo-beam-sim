@@ -1,0 +1,61 @@
+@use '../nav/sixActsType';
+
+.six-acts {
+  min-height: 100vh;
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: clamp(1.4rem, 4vw, 3rem);
+  color: #cfe9ef;
+  background: #020a10;
+  font: 16px/1.7 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+
+  &__kicker { margin: 0 0 .4rem; font-size: .74rem; letter-spacing: .2em; color: #76ead7; }
+  h1 { margin: 0 0 .6rem; font-size: clamp(1.8rem, 4vw, 2.7rem); color: #eafcff; }
+  &__lede { margin: 0 0 2rem; color: #8fb6c0; strong { color: #d8eef3; } }
+
+  &__list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+
+  &__card {
+    display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: start;
+    padding: 1rem 1.1rem;
+    border: 1px solid rgba(118, 234, 215, .18); border-radius: 12px;
+    background: rgba(6, 20, 27, .6);
+    color: inherit; text-decoration: none;
+    transition: border-color .16s ease, background .16s ease;
+    &:hover { border-color: #76ead7; background: rgba(118, 234, 215, .08); }
+
+    h2 {
+      display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap;
+      margin: 0 0 .3rem; font-size: 1.2rem; color: #eafcff;
+      em { font-style: normal; font-size: .74rem; color: #6f9aa4; }
+    }
+  }
+
+  &__order {
+    display: grid; place-items: center;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: rgba(118, 234, 215, .14); color: #76ead7;
+    font-size: 1.05rem; font-weight: 700;
+  }
+
+  &__question { margin: 0 0 .25rem; color: #d8eef3; font-size: .95rem; }
+  &__handson { margin: 0; color: #7fa6b0; font-size: .84rem; }
+
+  &__bridge {
+    margin: .35rem 0 .5rem 3.4rem;
+    padding-left: .8rem;
+    border-left: 2px solid rgba(255, 215, 138, .4);
+    color: #c3ab7d; font-size: .86rem;
+    span {
+      display: inline-block; margin-right: .5rem;
+      font-size: .66rem; letter-spacing: .14em; color: #ffd78a;
+    }
+  }
+
+  &__footer {
+    margin-top: 2rem; padding-top: 1rem;
+    border-top: 1px solid rgba(118, 234, 215, .14);
+    p { margin: 0; color: #7fa6b0; font-size: .82rem; }
+    b { color: #a9cdd6; font-weight: 600; }
+  }
+}

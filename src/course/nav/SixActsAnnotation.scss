@@ -1,0 +1,105 @@
+.sa-card {
+  width: max-content;
+  max-width: 17rem;
+  padding: .5rem .65rem;
+  border: 1px solid rgba(118, 234, 215, .45);
+  border-left-width: 3px;
+  border-radius: 9px;
+  background: rgba(3, 14, 20, .94);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .55);
+  color: #cfe9ef;
+  font: 13px/1.5 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  pointer-events: none;
+  text-align: left;
+
+  &.is-overlay { position: absolute; z-index: 12; }
+
+  &.is-serving { border-color: #76ead7; border-left-color: #76ead7; }
+  &.is-candidate { border-color: rgba(95, 227, 255, .55); border-left-color: #5fe3ff; }
+  &.is-warn { border-color: rgba(255, 154, 154, .5); border-left-color: #ff9a9a; }
+  &.is-source { border-color: rgba(255, 215, 138, .5); border-left-color: #ffd78a; }
+
+  &__eyebrow {
+    display: block;
+    margin-bottom: .1rem;
+    font-size: .64rem;
+    letter-spacing: .12em;
+    color: #76ead7;
+  }
+  &.is-candidate &__eyebrow { color: #5fe3ff; }
+  &.is-warn &__eyebrow { color: #ff9a9a; }
+  &.is-source &__eyebrow { color: #ffd78a; }
+
+  &__title { display: block; color: #eafcff; font-size: .92rem; }
+  &__body { margin: .25rem 0 0; color: #a9cdd6; font-size: .78rem; }
+
+  &__rows {
+    display: grid;
+    gap: .12rem;
+    margin: .35rem 0 0;
+
+    div { display: flex; justify-content: space-between; gap: .8rem; }
+    dt { color: #7fa6b0; font-size: .72rem; }
+    dd { margin: 0; color: #eafcff; font-size: .78rem; font-variant-numeric: tabular-nums; }
+  }
+
+  &__badge {
+    display: inline-block;
+    margin-top: .35rem;
+    padding: .06rem .35rem;
+    border-radius: 4px;
+    background: rgba(118, 234, 215, .16);
+    color: #76ead7;
+    font-style: normal;
+    font-size: .62rem;
+    letter-spacing: .08em;
+  }
+  &.is-source &__badge { background: rgba(255, 215, 138, .18); color: #ffd78a; }
+  &.is-warn &__badge { background: rgba(255, 154, 154, .18); color: #ff9a9a; }
+}
+
+.sa-overlay-stage { position: relative; }
+
+/* The subtitle band. Sits under the stage, never over it. */
+.sa-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  margin-top: .5rem;
+  padding: .6rem .85rem;
+  border-radius: 9px;
+  border-left: 3px solid #76ead7;
+  background: rgba(4, 18, 25, .92);
+  color: #cfe9ef;
+  font: 17px/1.55 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+
+  &.is-source { border-left-color: #ffd78a; }
+  &.is-candidate { border-left-color: #5fe3ff; }
+  &.is-warn { border-left-color: #ff9a9a; }
+
+  p { margin: 0; flex: 1 1 22rem; }
+
+  &__eyebrow {
+    display: inline-block;
+    margin-right: .6rem;
+    padding: .1rem .45rem;
+    border-radius: 5px;
+    background: rgba(118, 234, 215, .16);
+    color: #76ead7;
+    font-size: 13px;
+    letter-spacing: .06em;
+    vertical-align: 1px;
+  }
+
+  dl {
+    display: flex;
+    gap: 1.1rem;
+    margin: 0;
+    flex-wrap: wrap;
+
+    div { display: grid; gap: .05rem; }
+    dt { color: #7fa6b0; font-size: 13px; }
+    dd { margin: 0; color: #eafcff; font-size: 16px; font-variant-numeric: tabular-nums; }
+  }
+}

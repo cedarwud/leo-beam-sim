@@ -1,0 +1,74 @@
+/**
+ * Six-acts typography floor.
+ *
+ * These pages are read from a lecture projector at the back of a room, not from
+ * a laptop at arm's length. The first build used a 16 px base with a lot of
+ * .72–.86 rem detail text, i.e. 11.5–13.7 px — legible on a desk, unusable in a
+ * classroom, which is what review found.
+ *
+ * One place sets the scale so no page drifts back down.
+ */
+
+:root {
+  --sa-base: 19px;
+  --sa-lh: 1.62;
+  /* Nothing smaller than this ships: it is the back-of-the-room floor. */
+  --sa-min: 15px;
+  --sa-small: 15.5px;
+  --sa-body: 17px;
+  --sa-lead: 20px;
+  --sa-h2: 25px;
+  --sa-metric: 30px;
+  --sa-kicker: 13px;
+}
+
+/* Every six-acts surface inherits the base rather than restating it. */
+.six-acts,
+.tle-journey,
+.angle-lab,
+.theatre,
+.energy-lab,
+.global-constellation {
+  font-size: var(--sa-base);
+  line-height: var(--sa-lh);
+
+  /* A floor, applied where the old rules used sub-legible sizes. Anything the
+     page deliberately sets larger still wins; this only lifts the bottom. */
+  small,
+  em,
+  code,
+  dt,
+  figcaption,
+  .sa-card__body,
+  .sa-card__rows dt,
+  .sa-card__rows dd,
+  .sa-card__badge {
+    font-size: max(var(--sa-min), 1em);
+  }
+
+  p, li, dd, label, button, input, select, a {
+    font-size: max(var(--sa-min), 1em);
+  }
+}
+
+/* The floating narration cards are read at the same distance as the scene. */
+.sa-card {
+  max-width: 22rem;
+  font-size: var(--sa-body);
+
+  &__title { font-size: 1.12em; }
+  &__eyebrow { font-size: var(--sa-kicker); }
+  &__body { font-size: var(--sa-small); }
+  &__rows dt, &__rows dd { font-size: var(--sa-small); }
+  &__badge { font-size: 13px; }
+}
+
+.six-acts-nav {
+  font-size: 16px;
+  a { font-size: 16px; }
+  &__step a { font-size: 15.5px; }
+}
+
+.six-acts-bridge {
+  font-size: var(--sa-body);
+}

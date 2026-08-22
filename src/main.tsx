@@ -1,5 +1,7 @@
-import { StrictMode, useState, type CSSProperties } from 'react';
+import { StrictMode, useState, type CSSProperties, type ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
+
+import { SixActsLauncher } from './course/nav/SixActsLauncher';
 
 const root = document.getElementById('root');
 
@@ -14,6 +16,13 @@ const isC120Route = window.location.pathname === '/course/c120'
   || query.get('course') === 'c120';
 const isC90Route = window.location.pathname === '/course/c90'
   || query.get('course') === 'c90';
+// The six-acts teaching line. Act 2 is a linear five-station lecture surface,
+// deliberately NOT a gated course shell (see tleJourneyStations.ts).
+const isSixActsIndexRoute = window.location.pathname === '/course/six-acts';
+const isTleJourneyRoute = window.location.pathname === '/course/tle-journey';
+const isAngleLabRoute = window.location.pathname === '/course/angle-lab';
+const isHandoverTheatreRoute = window.location.pathname === '/course/handover-theatre';
+const isEnergyLabRoute = window.location.pathname === '/course/energy-lab';
 // Compatibility routes for the pre-canonical Walker shell. The homepage and the
 // explicit alias deliberately fall through to App, where the route selects
 // the legacy presentation layer; keeping them out of the canonical development
@@ -44,6 +53,33 @@ const isUnifiedVisualLabRoute = window.location.pathname === '/simulator'
   // Keep the existing direct prototype locator available while it shares the
   // same runtime as the public aliases.
   || window.location.pathname === '/prototype/visual-lab-g0';
+/**
+ * Every successful route render goes through here.
+ *
+ * The six-acts routes carry their own nav strip; every OTHER surface gets the
+ * corner launcher. Mounted at the router rather than inside a route component
+ * because five different root components serve "the app" (App,
+ * UnifiedVisualLabPrototype, AppWalkerSandbox and the two standalone
+ * prototypes) — putting the entry inside one of them left the other four with
+ * no way into the teaching line, which is the bug this replaces. A new route
+ * added later gets the launcher for free.
+ */
+const isSixActsSurface = isSixActsIndexRoute
+  || isTleJourneyRoute
+  || isAngleLabRoute
+  || isHandoverTheatreRoute
+  || isEnergyLabRoute
+  || isStandaloneGlobalConstellationRoute;
+
+function Shell({ children }: { readonly children: ReactNode }) {
+  return (
+    <StrictMode>
+      {children}
+      {isSixActsSurface ? null : <SixActsLauncher />}
+    </StrictMode>
+  );
+}
+
 const C120_BOOTSTRAP_CLAIM = 'SIMULATED TEACHING DATA / NOT LIVE / NOT MEASURED / NOT CANONICAL-PARITY-VERIFIED';
 
 function C120BootstrapFailure({ message }: { readonly message: string }) {
@@ -90,19 +126,49 @@ async function bootstrap() {
   if (isC120Route) {
     const { C120CourseRoute } = await import('./course/c120/C120CourseRoute');
     ReactDOM.createRoot(container).render(
-      <StrictMode>
+      <Shell>
         <C120CourseRoute />
-      </StrictMode>
+      </Shell>
     );
+    return;
+  }
+
+  if (isSixActsIndexRoute) {
+    const { SixActsIndexRoute } = await import('./course/six-acts-index/SixActsIndexRoute');
+    ReactDOM.createRoot(container).render(<Shell><SixActsIndexRoute /></Shell>);
+    return;
+  }
+
+  if (isTleJourneyRoute) {
+    const { TleJourneyRoute } = await import('./course/tle-journey/TleJourneyRoute');
+    ReactDOM.createRoot(container).render(<Shell><TleJourneyRoute /></Shell>);
+    return;
+  }
+
+  if (isAngleLabRoute) {
+    const { AngleLabRoute } = await import('./course/angle-lab/AngleLabRoute');
+    ReactDOM.createRoot(container).render(<Shell><AngleLabRoute /></Shell>);
+    return;
+  }
+
+  if (isHandoverTheatreRoute) {
+    const { HandoverTheatreRoute } = await import('./course/handover-theatre/HandoverTheatreRoute');
+    ReactDOM.createRoot(container).render(<Shell><HandoverTheatreRoute /></Shell>);
+    return;
+  }
+
+  if (isEnergyLabRoute) {
+    const { EnergyLabRoute } = await import('./course/energy-lab/EnergyLabRoute');
+    ReactDOM.createRoot(container).render(<Shell><EnergyLabRoute /></Shell>);
     return;
   }
 
   if (isC90Route) {
     const { C90CourseRoute } = await import('./course/C90CourseRoute');
     ReactDOM.createRoot(container).render(
-      <StrictMode>
+      <Shell>
         <C90CourseRoute />
-      </StrictMode>
+      </Shell>
     );
     return;
   }
@@ -110,9 +176,9 @@ async function bootstrap() {
   if (isCanonicalSimulatorDevelopmentRoute) {
     const { SimulatorRoute } = await import('./simulator/SimulatorRoute');
     ReactDOM.createRoot(container).render(
-      <StrictMode>
+      <Shell>
         <SimulatorRoute />
-      </StrictMode>
+      </Shell>
     );
     return;
   }
@@ -120,9 +186,9 @@ async function bootstrap() {
   if (isStandaloneScientificExplain3DRoute) {
     const { ScientificExplain3DPrototype } = await import('./prototype/scientific-explain/ScientificExplain3DPrototype');
     ReactDOM.createRoot(container).render(
-      <StrictMode>
+      <Shell>
         <ScientificExplain3DPrototype />
-      </StrictMode>,
+      </Shell>,
     );
     return;
   }
@@ -130,9 +196,9 @@ async function bootstrap() {
   if (isStandaloneGlobalConstellationRoute) {
     const { GlobalConstellationPrototype } = await import('./prototype/global-constellation/GlobalConstellationPrototype');
     ReactDOM.createRoot(container).render(
-      <StrictMode>
+      <Shell>
         <GlobalConstellationPrototype />
-      </StrictMode>,
+      </Shell>,
     );
     return;
   }
@@ -140,9 +206,9 @@ async function bootstrap() {
   if (isUnifiedVisualLabRoute) {
     const { UnifiedVisualLabPrototype } = await import('./prototype/visual-lab-g0/UnifiedVisualLabPrototype');
     ReactDOM.createRoot(container).render(
-      <StrictMode>
+      <Shell>
         <UnifiedVisualLabPrototype />
-      </StrictMode>
+      </Shell>
     );
     return;
   }
@@ -151,9 +217,9 @@ async function bootstrap() {
     await import('./styles/main.scss');
     const { AppWalkerSandbox } = await import('./AppWalkerSandbox');
     ReactDOM.createRoot(container).render(
-      <StrictMode>
+      <Shell>
         <AppWalkerSandbox />
-      </StrictMode>
+      </Shell>
     );
     return;
   }
@@ -161,9 +227,9 @@ async function bootstrap() {
   await import('./styles/main.scss');
   const { App } = await import('./App');
   ReactDOM.createRoot(container).render(
-    <StrictMode>
+    <Shell>
       <App />
-    </StrictMode>
+    </Shell>
   );
 }
 

@@ -2439,6 +2439,28 @@ export function App() {
           minWidth: 0,
         }}
       >
+      {/* Way into the six-acts teaching line, in the top band where the eye
+          lands. The corner launcher alone was too easy to miss on a full
+          engineering dashboard — which is exactly what happened. */}
+      <a
+        href="/course/six-acts"
+        data-testid="six-acts-top-entry"
+        style={{
+          flex: '0 0 auto',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          height: 34,
+          padding: '0 14px',
+          borderRadius: 8,
+          background: '#76ead7',
+          color: '#052027',
+          fontWeight: 700,
+          fontSize: 13,
+          textDecoration: 'none',
+          whiteSpace: 'nowrap',
+        }}
+      >◎ 六幕教學</a>
       <div style={{ flex: '1 1 auto', minWidth: 0 }}>
       {/* Global display controls remain available on the SINR/TLE homepage as
           well as the replay lanes. The current scene still consumes

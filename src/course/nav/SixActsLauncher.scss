@@ -1,0 +1,85 @@
+.six-acts-launcher {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 60;
+  font: 14px/1.45 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+
+  &__toggle {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    min-height: 46px;
+    padding: .5rem 1.15rem;
+    border: 1px solid #76ead7;
+    border-radius: 999px;
+    /* Solid, not outlined: the outlined version was dark-on-dark in the corner
+       of a dark dashboard and went unnoticed. */
+    background: #76ead7;
+    color: #052027;
+    font: inherit;
+    font-weight: 700;
+    font-size: .95rem;
+    cursor: pointer;
+    box-shadow: 0 6px 22px rgba(118, 234, 215, .35), 0 2px 10px rgba(0, 0, 0, .5);
+
+    &:hover { background: #8ff3e2; }
+    span { font-size: 1rem; }
+  }
+
+  &__menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + .5rem);
+    width: min(21rem, calc(100vw - 24px));
+    padding: .7rem;
+    border: 1px solid rgba(118, 234, 215, .3);
+    border-radius: 12px;
+    background: rgba(3, 13, 19, .97);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, .6);
+
+    ol { list-style: none; margin: .4rem 0 0; padding: 0; display: grid; gap: .2rem; }
+
+    a {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .45rem .55rem;
+      border-radius: 8px;
+      color: #a9cdd6;
+      text-decoration: none;
+      &:hover { background: rgba(118, 234, 215, .1); color: #eafcff; }
+    }
+
+    em {
+      font-style: normal;
+      display: grid;
+      place-items: center;
+      min-width: 22px; height: 22px;
+      padding: 0 .3rem;
+      border-radius: 999px;
+      background: rgba(118, 234, 215, .16);
+      color: #76ead7;
+      font-size: .72rem;
+    }
+
+    span { display: grid; gap: .08rem; min-width: 0; }
+    strong { color: #eafcff; font-size: .86rem; font-weight: 600; }
+    small { color: #7fa6b0; font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
+
+  &__index {
+    border: 1px solid rgba(255, 215, 138, .3);
+    strong { color: #ffd78a !important; }
+    display: grid !important;
+    gap: .1rem;
+  }
+
+  &__note {
+    margin: .55rem 0 0;
+    padding-top: .5rem;
+    border-top: 1px solid rgba(118, 234, 215, .14);
+    color: #6f9aa4;
+    font-size: .72rem;
+  }
+}
