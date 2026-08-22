@@ -250,6 +250,10 @@ import {
   type SixActsSubtitleState,
 } from './course/sixActs/subtitleStateMachine';
 import { SixActsSubtitleBar } from './course/nav/SixActsAnnotation';
+import {
+  SixActsTeachingOverlay,
+  type SixActsTeachingReceipt,
+} from './ui/SixActsTeachingOverlay';
 
 interface HandoverPolicyRuntimeState {
   profileId: string;
@@ -591,9 +595,12 @@ export function App() {
   const handleTeachingModeChange = useCallback((nextMode: SixActsTeachingMode) => {
     setTeachingMode(nextMode);
     sixActsTeachingFactsRef.current = null;
+    sixActsTeachingTraceRef.current = [];
+    sixActsTeachingReceiptRef.current = null;
     sixActsAutoCameraKeyRef.current = null;
     sixActsSubtitleRef.current = null;
     setSixActsSubtitle(null);
+    setSixActsTeachingReceipt(null);
     if (nextMode === 'engineering') camera.exitDirectorFocus();
     if (typeof window !== 'undefined') {
       window.history.replaceState(window.history.state, '', withSixActsTeachingMode(window.location.href, nextMode));
@@ -775,8 +782,11 @@ export function App() {
   const [simState, setSimState] = useState<SimState>(() => createInitialSimState(baseProfile));
   const sixActsSubtitleRef = useRef<SixActsSubtitleState | null>(null);
   const sixActsTeachingFactsRef = useRef<SixActsFrameFacts | null>(null);
+  const sixActsTeachingTraceRef = useRef<readonly SixActsFrameFacts[]>([]);
+  const sixActsTeachingReceiptRef = useRef<SixActsTeachingReceipt | null>(null);
   const sixActsAutoCameraKeyRef = useRef<string | null>(null);
   const [sixActsSubtitle, setSixActsSubtitle] = useState<SixActsSubtitleState | null>(null);
+  const [sixActsTeachingReceipt, setSixActsTeachingReceipt] = useState<SixActsTeachingReceipt | null>(null);
   const teachingLinkSnapshot = useMemo<TeachingLinkSnapshot>(() => {
     const formulaFrame = simState.angleAwareFormulaFrame;
     const terms = formulaFrame?.terms;
@@ -955,11 +965,40 @@ export function App() {
     if (teachingMode === 'teaching' && sceneLane === 'sinr-live') {
       const facts = adaptHomepageSixActsFrameFacts(state);
       if (facts === null) {
+        const hadSubtitle = sixActsSubtitleRef.current !== null;
+        const hadReceipt = sixActsTeachingReceiptRef.current !== null;
         sixActsTeachingFactsRef.current = null;
+        sixActsTeachingTraceRef.current = [];
+        sixActsTeachingReceiptRef.current = null;
         sixActsSubtitleRef.current = null;
-        setSixActsSubtitle(current => current === null ? current : null);
+        if (hadSubtitle) setSixActsSubtitle(null);
+        if (hadReceipt) setSixActsTeachingReceipt(null);
       } else {
         sixActsTeachingFactsRef.current = facts;
+        const previousTrace = sixActsTeachingTraceRef.current;
+        const previousPoint = previousTrace[previousTrace.length - 1];
+        const nextTrace = previousPoint !== undefined && facts.simTimeSec < previousPoint.simTimeSec
+          ? [facts]
+          : previousPoint === undefined || facts.simTimeSec > previousPoint.simTimeSec
+            ? [...previousTrace, facts]
+            : previousTrace;
+        sixActsTeachingTraceRef.current = nextTrace.slice(-96);
+        const commit = facts.lastCommittedHandover;
+        const previousReceipt = sixActsTeachingReceiptRef.current;
+        if (
+          commit !== null
+          && commit.action === 'inter-handover'
+          && commit.fromSatelliteId !== null
+          && previousReceipt?.commit.timeMs !== commit.timeMs
+        ) {
+          const nextReceipt = Object.freeze({
+            commit,
+            simTimeSec: facts.simTimeSec,
+            hoCount: state.hoCount,
+          });
+          sixActsTeachingReceiptRef.current = nextReceipt;
+          setSixActsTeachingReceipt(nextReceipt);
+        }
         const policy = {
           offsetDb: appliedHandoverPolicy.offsetDb,
           tttSec: appliedHandoverPolicy.triggerTimeSec,
@@ -971,10 +1010,15 @@ export function App() {
         sixActsSubtitleRef.current = next;
         setSixActsSubtitle(next);
       }
-    } else if (sixActsSubtitleRef.current !== null) {
+    } else {
+      const hadSubtitle = sixActsSubtitleRef.current !== null;
+      const hadReceipt = sixActsTeachingReceiptRef.current !== null;
       sixActsTeachingFactsRef.current = null;
+      sixActsTeachingTraceRef.current = [];
+      sixActsTeachingReceiptRef.current = null;
       sixActsSubtitleRef.current = null;
-      setSixActsSubtitle(null);
+      if (hadSubtitle) setSixActsSubtitle(null);
+      if (hadReceipt) setSixActsTeachingReceipt(null);
     }
     const observedEvent = liveObservedHandoverRailEventFromState(state);
     if (observedEvent !== null) {
@@ -2970,6 +3014,18 @@ export function App() {
               suppressVisual={shouldSuppressInterSeekFade(handoverCinema.armFilter)}
               onPeak={handleCinematicSeekPeak}
             />
+          )}
+          {teachingMode === 'teaching' && sceneLane === 'sinr-live' && sixActsSubtitle !== null && (
+            sixActsTeachingFactsRef.current === null ? null : (
+              <SixActsTeachingOverlay
+                beat={sixActsSubtitle.beat}
+                facts={sixActsTeachingFactsRef.current}
+                trace={sixActsTeachingTraceRef.current}
+                offsetDb={appliedHandoverPolicy.offsetDb}
+                tttSec={appliedHandoverPolicy.triggerTimeSec}
+                receipt={sixActsTeachingReceipt}
+              />
+            )
           )}
           {teachingMode === 'teaching' && sceneLane === 'sinr-live' && sixActsSubtitle !== null && (
             <div
