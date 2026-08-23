@@ -405,7 +405,7 @@ canvas {
   position: absolute;
   z-index: 18;
   right: 18px;
-  bottom: 94px;
+  bottom: 134px;
   left: 18px;
   pointer-events: none;
 }
@@ -414,6 +414,15 @@ canvas {
   margin: 0 auto;
   max-width: 1040px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+}
+
+// The compact timeline stacks clock, transport, speeds, and scrubber into
+// four rows at this breakpoint. Keep the teaching subtitle entirely above
+// that taller rail so its provenance badge and metric row remain readable.
+@media (max-width: 1680px) {
+  .leo-six-acts-subtitle-overlay {
+    bottom: 225px;
+  }
 }
 
 .leo-six-acts-cinema-overlay {

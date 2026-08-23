@@ -105,6 +105,9 @@
     color: #ffd4d4;
     font-size: 13px;
     line-height: 1.35;
+    pointer-events: auto;
+
+    > * { pointer-events: none; }
 
     strong {
       color: #ffb4b4;
