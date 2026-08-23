@@ -65,6 +65,7 @@ canvas {
   height: 100vh;
   min-width: 0;
   min-height: 0;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -73,23 +74,187 @@ canvas {
   background: #020912;
 }
 
+.leo-shell-top-chrome {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leo-global-top-row {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-right: 112px;
+}
+
+.leo-shell-chrome-controls {
+  position: absolute;
+  z-index: 120;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  justify-items: end;
+  font-size: 13px;
+}
+
+.leo-shell-chrome-controls__toggle,
+.leo-shell-chrome-controls__actions button {
+  min-height: 34px;
+  border: 1px solid rgba(118, 234, 215, 0.34);
+  border-radius: 8px;
+  background: rgba(3, 16, 25, 0.94);
+  color: #dffaf5;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.leo-shell-chrome-controls__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.24);
+}
+
+.leo-shell-chrome-controls__toggle:hover,
+.leo-shell-chrome-controls__toggle:focus-visible,
+.leo-shell-chrome-controls__actions button:hover,
+.leo-shell-chrome-controls__option:hover,
+.leo-shell-chrome-controls__option:focus-visible {
+  border-color: rgba(118, 234, 215, 0.72);
+  background: rgba(118, 234, 215, 0.14);
+}
+
+.leo-shell-chrome-controls__toggle:focus-visible,
+.leo-shell-chrome-controls__actions button:focus-visible,
+.leo-shell-chrome-controls__option:focus-visible {
+  outline: 2px solid var(--leo-focus-ring);
+  outline-offset: 2px;
+}
+
+.leo-shell-chrome-controls__panel {
+  width: min(280px, calc(100vw - 24px));
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid rgba(118, 234, 215, 0.28);
+  border-radius: 10px;
+  background: rgba(3, 13, 19, 0.98);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.46);
+}
+
+.leo-shell-chrome-controls__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 2px 8px;
+  color: #eefaf8;
+}
+
+.leo-shell-chrome-controls__heading span {
+  color: rgba(229, 244, 251, 0.58);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.leo-shell-chrome-controls__options {
+  display: grid;
+  gap: 4px;
+}
+
+.leo-shell-chrome-controls__option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #eefaf8;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.leo-shell-chrome-controls__option > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+.leo-shell-chrome-controls__option strong {
+  font-size: 13px;
+}
+
+.leo-shell-chrome-controls__option small {
+  color: rgba(229, 244, 251, 0.56);
+  font-size: 11px;
+}
+
+.leo-shell-chrome-controls__indicator {
+  color: rgba(229, 244, 251, 0.36);
+  font-size: 14px;
+  text-align: center;
+}
+
+.leo-shell-chrome-controls__option[aria-pressed="true"] .leo-shell-chrome-controls__indicator {
+  color: #76ead7;
+}
+
+.leo-shell-chrome-controls__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(218, 244, 255, 0.1);
+}
+
+.leo-shell-chrome-controls__actions button {
+  flex: 1 1 0;
+  min-height: 30px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
 .leo-shell-row {
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
   display: grid;
   --leo-left-rail-track-width: var(--leo-left-drawer-width);
+  --leo-right-rail-track-width: var(--leo-right-drawer-width);
+  --leo-right-rail-min-width: 280px;
   grid-template-areas: "left canvas right";
   grid-template-columns:
     minmax(0, var(--leo-left-rail-track-width))
     minmax(480px, 1fr)
-    minmax(280px, var(--leo-right-drawer-width));
+    minmax(var(--leo-right-rail-min-width), var(--leo-right-rail-track-width));
   gap: 12px;
   transition: grid-template-columns var(--leo-motion-slow) ease;
 }
 
 .leo-shell-row[data-left-sidebar-collapsed="true"] {
   --leo-left-rail-track-width: 44px;
+}
+
+.leo-shell-row[data-left-sidebar-hidden="true"] {
+  --leo-left-rail-track-width: 0px;
+}
+
+.leo-shell-row[data-right-sidebar-hidden="true"] {
+  --leo-right-rail-track-width: 0px;
+  --leo-right-rail-min-width: 0px;
+}
+
+.leo-shell-left[data-shell-visibility="hidden"],
+.leo-shell-right[data-shell-visibility="hidden"] {
+  display: none;
 }
 
 .leo-shell-left,
@@ -1987,4 +2152,62 @@ canvas {
     height: 100% !important;
   }
 
+}
+
+// When a rail is hidden on a narrower viewport, remove its grid row as well as
+// its panel. Otherwise the responsive two/three-row layout leaves a large blank
+// band where the hidden aside used to be.
+@media (max-width: 1180px) {
+  .leo-shell-row[data-left-sidebar-hidden="true"][data-right-sidebar-hidden="true"] {
+    grid-template-areas: "canvas";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(340px, 1fr);
+  }
+
+  .leo-shell-row[data-left-sidebar-hidden="true"][data-right-sidebar-hidden="false"],
+  .leo-shell-row[data-left-sidebar-hidden="false"][data-right-sidebar-hidden="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .leo-shell-row[data-left-sidebar-hidden="true"][data-right-sidebar-hidden="false"] {
+    grid-template-areas:
+      "canvas"
+      "right";
+    grid-template-rows: minmax(340px, 1fr) minmax(260px, 0.68fr);
+  }
+
+  .leo-shell-row[data-left-sidebar-hidden="false"][data-right-sidebar-hidden="true"] {
+    grid-template-areas:
+      "canvas"
+      "left";
+    grid-template-rows: minmax(340px, 1fr) minmax(260px, 0.68fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .leo-shell-row[data-left-sidebar-hidden="true"][data-right-sidebar-hidden="true"] {
+    grid-template-rows: minmax(300px, 1fr);
+  }
+
+  .leo-shell-row[data-left-sidebar-hidden="true"][data-right-sidebar-hidden="false"],
+  .leo-shell-row[data-left-sidebar-hidden="false"][data-right-sidebar-hidden="true"] {
+    grid-template-rows: minmax(300px, 1fr) minmax(196px, 0.42fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .leo-global-top-row {
+    gap: 8px;
+    padding-right: 96px;
+  }
+
+  .leo-shell-chrome-controls {
+    top: 10px;
+    right: 10px;
+  }
+
+  .leo-shell-chrome-controls__toggle {
+    min-height: 32px;
+    padding-inline: 8px;
+  }
 }

@@ -68,12 +68,14 @@ const isSixActsSurface = isSixActsIndexRoute
   || isTleJourneyRoute
   || isEnergyLabRoute
   || isStandaloneGlobalConstellationRoute;
+const isSixActsTeachingStage = query.get('teaching') === '1'
+  || query.get('preset') === 'handover';
 
 function Shell({ children }: { readonly children: ReactNode }) {
   return (
     <StrictMode>
       {children}
-      {isSixActsSurface ? null : <SixActsLauncher />}
+      {isSixActsSurface || isSixActsTeachingStage ? null : <SixActsLauncher />}
     </StrictMode>
   );
 }

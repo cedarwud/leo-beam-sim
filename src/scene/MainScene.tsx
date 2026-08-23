@@ -224,6 +224,8 @@ interface SceneContentProps {
   onHandoverPresentationChange?: (snapshot: HandoverPresentationSnapshot) => void;
   /** Imperative render-time gate; the callback must only update a ref. */
   onHandoverPresentationBusyChange?: (busy: boolean) => void;
+  /** Display-only switch for HTML/callout information over the stage. */
+  showSceneOverlays?: boolean;
 }
 
 interface SceneRenderContentProps extends SceneContentProps {
@@ -1029,6 +1031,7 @@ function SceneRenderContent({
   onSimUpdate,
   sceneFrame: propSceneFrame,
   beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
+  showSceneOverlays = true,
   handoverCinemaCandidate = null,
   handoverCinemaArmed = false,
   handoverCinemaKind = null,
@@ -3150,7 +3153,7 @@ function SceneRenderContent({
           rendered serving cones, gated by the Beam Info toggle (showBeamCallouts). The
           old BeamCalloutContent only mounted inside the retired steered SatelliteBeams;
           this cell-cone callout layer reads the same cell-truth items + per-cell SINR. */}
-      {presentationPlan.visible.annotations && showBeamCallouts && sinrLiveCellBeamConeItems.length > 0 && (
+      {presentationPlan.visible.annotations && showSceneOverlays && showBeamCallouts && sinrLiveCellBeamConeItems.length > 0 && (
         <SinrLiveCellBeamCallouts
           // Display-only 19-beam substrate cells have no UE/SINR record, so
           // they show as geometry only and never receive a fabricated info chip.
@@ -3218,6 +3221,8 @@ function SceneRenderContent({
         && !handoverDisplayIsolation.suppressNaturalHandoverLayers
         && !concurrentIntraVisualSuppressed
         && <IntraGroundShockwave vizFrame={viz} runtime={runtime} />}
+      {showSceneOverlays && (
+        <>
       {presentationPlan.visible['event-effects']
         && showHandoverToastOverlay
         && (
@@ -3256,6 +3261,8 @@ function SceneRenderContent({
             }
             : null}
         />
+      )}
+        </>
       )}
       {presentationPlan.visible.diagnostics && showArtifactFpsCounter && <FPSCounter />}
     </BaseSceneLayout>
@@ -3306,6 +3313,8 @@ interface MainSceneProps {
   onHandoverPresentationChange?: (snapshot: HandoverPresentationSnapshot) => void;
   /** Imperative render-time gate; the callback must only update a ref. */
   onHandoverPresentationBusyChange?: (busy: boolean) => void;
+  /** Display-only switch for HTML/callout information over the stage. */
+  showSceneOverlays?: boolean;
 }
 
 export const MainScene = memo(function MainScene({
@@ -3323,6 +3332,7 @@ export const MainScene = memo(function MainScene({
   canonicalAnalysisNextFrame,
   canonicalVisualOffsetSec = 0,
   beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
+  showSceneOverlays = true,
   handoverCinemaCandidate = null,
   handoverCinemaArmed = false,
   handoverCinemaKind = null,
@@ -3461,6 +3471,7 @@ export const MainScene = memo(function MainScene({
               onSimUpdate={onSimUpdate}
               onLiveSeekLanded={onLiveSeekLanded}
               beamDisplaySpec={beamDisplaySpec}
+              showSceneOverlays={showSceneOverlays}
               handoverCinemaCandidate={handoverCinemaCandidate}
               handoverCinemaArmed={handoverCinemaArmed}
               handoverCinemaKind={handoverCinemaKind}
@@ -3491,6 +3502,7 @@ export const MainScene = memo(function MainScene({
               onLiveSeekLanded={onLiveSeekLanded}
               sceneFrame={sceneFrame}
               beamDisplaySpec={beamDisplaySpec}
+              showSceneOverlays={showSceneOverlays}
               handoverCinemaCandidate={handoverCinemaCandidate}
               handoverCinemaArmed={handoverCinemaArmed}
               handoverCinemaKind={handoverCinemaKind}

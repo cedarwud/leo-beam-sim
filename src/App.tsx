@@ -253,6 +253,12 @@ import {
 } from './course/sixActs/subtitleStateMachine';
 import { SixActsSubtitleBar } from './course/nav/SixActsAnnotation';
 import {
+  DEFAULT_SHELL_CHROME_VISIBILITY,
+  ShellChromeControls,
+  type ShellChromeKey,
+  type ShellChromeVisibility,
+} from './ui/ShellChromeControls';
+import {
   SixActsTeachingOverlay,
   type SixActsTeachingReceipt,
 } from './ui/SixActsTeachingOverlay';
@@ -416,6 +422,24 @@ export function App() {
         ? 'teaching'
         : 'engineering'
   ));
+  const [shellChromeVisibility, setShellChromeVisibility] = useState<ShellChromeVisibility>(
+    DEFAULT_SHELL_CHROME_VISIBILITY,
+  );
+  const toggleShellChrome = useCallback((key: ShellChromeKey) => {
+    setShellChromeVisibility(current => ({ ...current, [key]: !current[key] }));
+  }, []);
+  const showAllShellChrome = useCallback(() => {
+    setShellChromeVisibility(DEFAULT_SHELL_CHROME_VISIBILITY);
+  }, []);
+  const hideAllShellChrome = useCallback(() => {
+    setShellChromeVisibility({
+      leftSidebar: false,
+      rightSidebar: false,
+      topControls: false,
+      timeline: false,
+      sceneOverlay: false,
+    });
+  }, []);
   const homepageCanonicalAnalysis = useHomepageCanonicalAnalysis();
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
   const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
@@ -2627,11 +2651,22 @@ export function App() {
       data-topology-overrides-active={hasTopologyOverrides ? 'true' : 'false'}
       data-visual-scale-overrides-active={hasVisualScaleOverrides ? 'true' : 'false'}
       data-visual-scale-key={sceneVisualScaleResetKey}
+      data-shell-left-sidebar-visible={shellChromeVisibility.leftSidebar ? 'true' : 'false'}
+      data-shell-right-sidebar-visible={shellChromeVisibility.rightSidebar ? 'true' : 'false'}
+      data-shell-top-controls-visible={shellChromeVisibility.topControls ? 'true' : 'false'}
+      data-shell-timeline-visible={shellChromeVisibility.timeline ? 'true' : 'false'}
+      data-shell-scene-overlay-visible={shellChromeVisibility.sceneOverlay ? 'true' : 'false'}
       className="leo-app-shell"
     >
       {sceneSource === 'artifact-replay' && (
         <ArtifactSourceBadge source={showcaseArtifactSource} />
       )}
+      <ShellChromeControls
+        visibility={shellChromeVisibility}
+        onToggle={toggleShellChrome}
+        onShowAll={showAllShellChrome}
+        onHideAll={hideAllShellChrome}
+      />
       {/* Top row: the global display controls on the left, the global zh/EN
           language switch pinned to the right.
 
@@ -2644,15 +2679,11 @@ export function App() {
           toast layer or the Advanced modal. `align-items: flex-start` keeps the
           switch parked at the top even when the control row wraps to two lines
           on a narrow viewport. */}
+      {shellChromeVisibility.topControls && (
+      <div className="leo-shell-top-chrome" data-testid="leo-shell-top-chrome">
       <div
+        className="leo-global-top-row"
         data-testid="leo-global-top-row"
-        style={{
-          flex: '0 0 auto',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 12,
-          minWidth: 0,
-        }}
       >
       {/* Way into the six-acts teaching line, in the top band where the eye
           lands. The corner launcher alone was too easy to miss on a full
@@ -2746,14 +2777,20 @@ export function App() {
         ueIds={showcaseArtifact?.timeline[0]?.ues.map(u => u.id) ?? []}
         onElevatedUeIdChange={setElevatedUeId}
       />
+      </div>
+      )}
       <div
         className="leo-shell-row"
         data-left-sidebar-collapsed={leftSidebarCollapsed ? 'true' : 'false'}
+        data-left-sidebar-hidden={shellChromeVisibility.leftSidebar ? 'false' : 'true'}
+        data-right-sidebar-hidden={shellChromeVisibility.rightSidebar ? 'false' : 'true'}
       >
         <aside
           className="leo-shell-left"
           data-left-sidebar-state={leftSidebarCollapsed ? 'collapsed' : 'expanded'}
+          data-shell-visibility={shellChromeVisibility.leftSidebar ? 'visible' : 'hidden'}
           aria-label="Signal tuning panel slot"
+          aria-hidden={!shellChromeVisibility.leftSidebar}
         >
           <button
             type="button"
@@ -2899,6 +2936,7 @@ export function App() {
         <main
           className="leo-shell-canvas"
           data-testid="leo-shell-canvas"
+          data-timeline-visibility={shellChromeVisibility.timeline ? 'visible' : 'hidden'}
           data-handover-criterion={
             handoverMode === 'decision-overlay-on-live-sinr' ? 'decision-overlay-on-live-sinr' : 'sinr-offset'
           }
@@ -2947,6 +2985,7 @@ export function App() {
                 )
                 : undefined}
               beamDisplaySpec={beamDisplaySpec}
+              showSceneOverlays={shellChromeVisibility.sceneOverlay}
               handoverCinemaCandidate={sceneLane === 'sinr-live' ? handoverCinema.focusedCandidate : null}
               handoverCinemaArmed={sceneLane === 'sinr-live' && isLegacyWalkerRoute && handoverCinema.cinemaActive}
               handoverCinemaKind={sceneLane === 'sinr-live' && isLegacyWalkerRoute && handoverCinema.armFilter !== 'off'
@@ -2977,37 +3016,46 @@ export function App() {
               onPeak={handleCinematicSeekPeak}
             />
           )}
-          {teachingMode === 'teaching' && sceneLane === 'sinr-live' && sixActsSubtitle !== null && (
-            sixActsTeachingFactsRef.current === null ? null : (
-              <SixActsTeachingOverlay
-                beat={sixActsSubtitle.beat}
-                facts={sixActsTeachingFactsRef.current}
-                trace={sixActsTeachingTraceRef.current}
-                offsetDb={appliedHandoverPolicy.offsetDb}
-                tttSec={appliedHandoverPolicy.triggerTimeSec}
-                receipt={sixActsTeachingReceipt}
-              />
-            )
+          {shellChromeVisibility.sceneOverlay && (
+            <>
+              {teachingMode === 'teaching' && sceneLane === 'sinr-live' && sixActsSubtitle !== null && (
+                sixActsTeachingFactsRef.current === null ? null : (
+                  <SixActsTeachingOverlay
+                    beat={sixActsSubtitle.beat}
+                    facts={sixActsTeachingFactsRef.current}
+                    trace={sixActsTeachingTraceRef.current}
+                    offsetDb={appliedHandoverPolicy.offsetDb}
+                    tttSec={appliedHandoverPolicy.triggerTimeSec}
+                    receipt={sixActsTeachingReceipt}
+                  />
+                )
+              )}
+              {teachingMode === 'teaching' && sceneLane === 'sinr-live' && sixActsSubtitle !== null && (
+                <div
+                  className="leo-six-acts-subtitle-overlay"
+                  data-testid="six-acts-subtitle-overlay"
+                  data-six-acts-beat={sixActsSubtitle.beat}
+                >
+                  <SixActsSubtitleBar
+                    eyebrow={sixActsSubtitle.eyebrow}
+                    text={sixActsSubtitle.text}
+                    rows={sixActsSubtitle.rows}
+                    tone={sixActsSubtitle.tone}
+                    provenance={sixActsTeachingFactsRef.current?.provenance}
+                    provenanceErrorCode={sixActsTeachingFactsRef.current?.provenanceErrorCode}
+                  />
+                </div>
+              )}
+            </>
           )}
-          {teachingMode === 'teaching' && sceneLane === 'sinr-live' && sixActsSubtitle !== null && (
-            <div
-              className="leo-six-acts-subtitle-overlay"
-              data-testid="six-acts-subtitle-overlay"
-              data-six-acts-beat={sixActsSubtitle.beat}
-            >
-              <SixActsSubtitleBar
-                eyebrow={sixActsSubtitle.eyebrow}
-                text={sixActsSubtitle.text}
-                rows={sixActsSubtitle.rows}
-                tone={sixActsSubtitle.tone}
-                provenance={sixActsTeachingFactsRef.current?.provenance}
-                provenanceErrorCode={sixActsTeachingFactsRef.current?.provenanceErrorCode}
-              />
-            </div>
-          )}
-          {timelineBar}
+          {shellChromeVisibility.timeline ? timelineBar : null}
         </main>
-        <aside className="leo-shell-right" aria-label="Calculated values panel">
+        <aside
+          className="leo-shell-right"
+          data-shell-visibility={shellChromeVisibility.rightSidebar ? 'visible' : 'hidden'}
+          aria-label="Calculated values panel"
+          aria-hidden={!shellChromeVisibility.rightSidebar}
+        >
           {sceneLane === 'sinr-live' && !isLegacyWalkerRoute ? (
             <HomepageRightRail
               analysis={homepageCanonicalAnalysis}
