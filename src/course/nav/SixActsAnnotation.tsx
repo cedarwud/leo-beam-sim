@@ -1,6 +1,8 @@
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { Html } from '@react-three/drei';
 
+import type { SixActsFrameProvenance } from '../sixActs/liveReplayBridge';
+import { resolveSixActsProvenanceBadge } from '../sixActs/provenanceBadge';
 import './SixActsAnnotation.scss';
 
 /**
@@ -115,13 +117,20 @@ export function SixActsOverlayStage({ children }: { readonly children: ReactNode
  * an obstruction. Values that must sit ON an object stay as small pinned tags.
  */
 export function SixActsSubtitleBar({
-  eyebrow, text, rows, tone = 'neutral',
+  eyebrow, text, rows, tone = 'neutral', provenance, provenanceErrorCode,
 }: {
   readonly eyebrow?: string;
   readonly text: string;
   readonly rows?: readonly { readonly label: string; readonly value: string }[];
   readonly tone?: SixActsCardTone;
+  readonly provenance?: SixActsFrameProvenance;
+  readonly provenanceErrorCode?: string | null;
 }): ReactElement {
+  const provenanceBadge = resolveSixActsProvenanceBadge({
+    provenance: provenance ?? 'canonical-aggregate',
+    provenanceErrorCode: provenanceErrorCode ?? null,
+  });
+  const errorCode = provenanceBadge?.canonicalErrorCode ?? 'not reported';
   return (
     <div className={`sa-subtitle is-${tone}`}>
       <p>
@@ -134,6 +143,20 @@ export function SixActsSubtitleBar({
             <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>
           ))}
         </dl>
+      )}
+      {provenanceBadge === null ? null : (
+        <span
+          className="sa-subtitle__provenance"
+          data-testid="six-acts-provenance-badge"
+          data-provenance={provenanceBadge.provenance}
+          data-canonical-error-code={provenanceBadge.canonicalErrorCode ?? ''}
+          role="status"
+          aria-label={`canonical aggregate unavailable; focused-link projection, not system aggregate; error code ${errorCode}`}
+        >
+          <strong>DATA PROVENANCE</strong>
+          <span>{provenanceBadge.message}</span>
+          <code>error code: {errorCode}</code>
+        </span>
       )}
     </div>
   );

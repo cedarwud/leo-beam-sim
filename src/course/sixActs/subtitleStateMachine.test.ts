@@ -19,6 +19,8 @@ function facts(overrides: Partial<SixActsFrameFacts> = {}): SixActsFrameFacts {
     lastCommittedHandover: null,
     ratesMbps: [10],
     systemPowerW: 40,
+    provenance: 'canonical-aggregate',
+    provenanceErrorCode: null,
     ...overrides,
   };
 }

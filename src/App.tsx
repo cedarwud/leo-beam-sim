@@ -3000,6 +3000,8 @@ export function App() {
                 text={sixActsSubtitle.text}
                 rows={sixActsSubtitle.rows}
                 tone={sixActsSubtitle.tone}
+                provenance={sixActsTeachingFactsRef.current?.provenance}
+                provenanceErrorCode={sixActsTeachingFactsRef.current?.provenanceErrorCode}
               />
             </div>
           )}

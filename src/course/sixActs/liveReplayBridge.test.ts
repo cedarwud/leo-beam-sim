@@ -47,6 +47,8 @@ function facts(overrides: Partial<SixActsFrameFacts> = {}): SixActsFrameFacts {
     lastCommittedHandover: null,
     ratesMbps: [10],
     systemPowerW: 2,
+    provenance: 'canonical-aggregate',
+    provenanceErrorCode: null,
     ...overrides,
   };
 }
@@ -280,6 +282,7 @@ function homepageState(
     primaryUeId: null,
     canonicalEe: {
       systemPowerW: null,
+      errorCode: 'LIVE_POWER_MISMATCH',
       perUserContributions: null,
     },
     angleAwareFormulaFrame: {
@@ -324,6 +327,7 @@ test('homepage adapter keeps the complete canonical payload as the preferred sou
     primaryUeId: 'ue-canonical',
     canonicalEe: {
       systemPowerW: 11,
+      errorCode: null,
       perUserContributions: [{
         ueId: 'ue-canonical',
         status: 'served',
@@ -338,4 +342,29 @@ test('homepage adapter keeps the complete canonical payload as the preferred sou
   assert.strictEqual(adapted.systemPowerW, 11);
   assert.deepStrictEqual(adapted.ratesMbps, [4]);
   assert.strictEqual(adapted.servingSinrDb, -7);
+});
+
+test('homepage adapter labels canonical aggregate and focused projection provenance', () => {
+  const fallback = adaptHomepageSixActsFrameFacts(homepageState());
+  const canonical = adaptHomepageSixActsFrameFacts(homepageState({
+    primaryUeId: 'ue-canonical',
+    canonicalEe: {
+      systemPowerW: 11,
+      errorCode: null,
+      perUserContributions: [{
+        ueId: 'ue-canonical',
+        status: 'served',
+        satId: FROM,
+        sinrDb: -7,
+        rateMbps: 4,
+      }],
+    },
+  }));
+
+  assert.ok(fallback);
+  assert.ok(canonical);
+  assert.equal(fallback.provenance, 'focused-link-projection');
+  assert.equal(fallback.provenanceErrorCode, 'LIVE_POWER_MISMATCH');
+  assert.equal(canonical.provenance, 'canonical-aggregate');
+  assert.equal(canonical.provenanceErrorCode, null);
 });

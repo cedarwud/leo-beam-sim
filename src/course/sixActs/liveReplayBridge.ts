@@ -53,6 +53,10 @@ export interface SixActsCommittedHandover {
   readonly deltaDb: number | null;
 }
 
+export type SixActsFrameProvenance =
+  | 'canonical-aggregate'
+  | 'focused-link-projection';
+
 /**
  * The narrow port the bridge consumes.
  *
@@ -74,6 +78,10 @@ export interface SixActsFrameFacts {
   readonly ratesMbps: readonly number[];
   /** The resolved system power P^N for the same frame, in W. */
   readonly systemPowerW: number;
+  /** Whether the numbers are aggregate canonical output or a focused-link projection. */
+  readonly provenance: SixActsFrameProvenance;
+  /** Canonical publisher error carried only when the focused-link fallback is active. */
+  readonly provenanceErrorCode: string | null;
 }
 
 export interface SixActsReplayCollectorOptions {
@@ -261,6 +269,7 @@ export interface SixActsHomepageFrameState {
   readonly primaryUeId?: string | null;
   readonly canonicalEe?: {
     readonly systemPowerW: number | null;
+    readonly errorCode?: string | null;
     readonly perUserContributions: readonly {
       readonly ueId: string;
       readonly status?: 'served' | 'outage' | 'unserved';
@@ -298,6 +307,8 @@ export function adaptSixActsFrameFacts(
   frame: SixActsAdaptableSimFrame,
   energy: SixActsAdaptableEnergyFrame,
   focusedUeId: string,
+  provenance: SixActsFrameProvenance = 'canonical-aggregate',
+  provenanceErrorCode: string | null = null,
 ): SixActsFrameFacts {
   const focused = energy.users.find(user => user.ueId === focusedUeId);
   if (focused === undefined) {
@@ -321,6 +332,8 @@ export function adaptSixActsFrameFacts(
     }),
     ratesMbps: Object.freeze(energy.users.map(user => user.rateMbps)),
     systemPowerW: energy.systemPowerW,
+    provenance,
+    provenanceErrorCode,
   });
 }
 
@@ -407,5 +420,7 @@ export function adaptHomepageSixActsFrameFacts(
       }],
     },
     formulaFrame.ueId,
+    'focused-link-projection',
+    canonicalEe?.errorCode ?? null,
   );
 }
