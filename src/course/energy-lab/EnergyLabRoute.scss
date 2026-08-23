@@ -35,7 +35,7 @@
   &__sweep.is-locked { opacity: .55; }
 
   &__bet-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .5rem; margin: .6rem 0; }
-  &__bet-options button, &__arms button, &__record, &__controls button {
+  &__bet-options button, &__arms button, &__load-buttons button, &__record, &__controls button {
     min-height: 46px; padding: .55rem .9rem;
     border: 1px solid rgba(118, 234, 215, .26); border-radius: 8px;
     background: rgba(8, 26, 34, .75); color: #cfe9ef; font: inherit; cursor: pointer;
@@ -48,6 +48,44 @@
     code { color: #ffd78a; font-size: .8rem; }
   }
   &__arm-why { margin: 0 0 .9rem; color: #8fb6c0; font-size: .84rem; min-height: 2.6em; }
+
+  &__load-control {
+    margin: .7rem 0 1rem;
+    padding: .75rem;
+    border: 1px solid rgba(255, 215, 138, .24);
+    border-radius: 9px;
+    background: rgba(42, 33, 16, .28);
+  }
+  &__load-heading {
+    display: flex;
+    align-items: baseline;
+    gap: .7rem;
+    flex-wrap: wrap;
+    strong { color: #ffe9bd; }
+    span { color: #a9c2c7; font-size: .78rem; }
+  }
+  &__load-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-top: .6rem;
+    button {
+      min-height: 38px;
+      padding: .35rem .65rem;
+      font-size: .8rem;
+      &.is-zero {
+        border-color: #ff9a9a;
+        background: rgba(255, 154, 154, .14);
+        color: #ffd4d4;
+      }
+    }
+  }
+  &__load-state {
+    margin: .5rem 0 0;
+    color: #ffd78a;
+    font: .75rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
 
   &__power { display: grid; gap: .3rem; margin-bottom: .8rem;
     span { color: #cfe9ef; font-size: .86rem; font-variant-numeric: tabular-nums; }

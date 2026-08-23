@@ -17,7 +17,7 @@ import {
   ENERGY_LAB_PARAMS,
   ENERGY_LAB_SCENARIO_ID,
   ENERGY_LAB_STOPS,
-  energyLabFixedOverheadW,
+  energyLabBeamUserCountsForZeroLoad,
   energyLabXi,
   energyLabPointForArm,
 } from './energyLabFixture';
@@ -35,9 +35,20 @@ import './EnergyLabRoute.scss';
  * classroom number of its own.
  */
 
+interface EnergyLabRecordedPoint {
+  readonly arm: SixActsArm;
+  readonly beamPowerW: number;
+  readonly zeroLoadBeamIndex: number | null;
+}
+
 /** A run summary built from one operating point, in the model layer's shape. */
-function summaryFor(beamPowerW: number, arm: SixActsArm) {
-  const point = energyLabPointForArm(beamPowerW, arm);
+function summaryFor(
+  beamPowerW: number,
+  arm: SixActsArm,
+  zeroLoadBeamIndex: number | null,
+) {
+  const beamUserCounts = energyLabBeamUserCountsForZeroLoad(zeroLoadBeamIndex);
+  const point = energyLabPointForArm(beamPowerW, arm, beamUserCounts);
   const durationSec = 120;
   const threshold = getSixActsAttachThreshold();
   return {
@@ -67,7 +78,12 @@ function summaryFor(beamPowerW: number, arm: SixActsArm) {
 export function EnergyLabRoute(): ReactElement {
   const [arm, setArm] = useState<SixActsArm>('baseline');
   const [beamPowerW, setBeamPowerW] = useState(0.35);
-  const [recorded, setRecorded] = useState<readonly { arm: SixActsArm; beamPowerW: number }[]>([]);
+  const [zeroLoadBeamIndex, setZeroLoadBeamIndex] = useState<number | null>(null);
+  const [recorded, setRecorded] = useState<readonly EnergyLabRecordedPoint[]>([]);
+  const beamUserCounts = useMemo(
+    () => energyLabBeamUserCountsForZeroLoad(zeroLoadBeamIndex),
+    [zeroLoadBeamIndex],
+  );
 
   const sweep = useMemo(() => {
     const instance = new SixActsPowerSweep({
@@ -75,16 +91,17 @@ export function EnergyLabRoute(): ReactElement {
       scenarioId: ENERGY_LAB_SCENARIO_ID,
     });
     for (const entry of recorded) {
+      if (entry.zeroLoadBeamIndex !== zeroLoadBeamIndex) continue;
       instance.record({
         arm: entry.arm,
         beamPowerW: entry.beamPowerW,
         frameSetDigest: ENERGY_LAB_FRAME_SET_DIGEST,
         beamPowerCapW: SIX_ACTS_BEAM_POWER_CAP_W,
-        summary: summaryFor(entry.beamPowerW, entry.arm).summary,
+        summary: summaryFor(entry.beamPowerW, entry.arm, entry.zeroLoadBeamIndex).summary,
       });
     }
     return instance;
-  }, [recorded]);
+  }, [recorded, zeroLoadBeamIndex]);
 
   const curves = useMemo(() => ({
     baseline: sweep.curveFor('baseline'),
@@ -96,9 +113,15 @@ export function EnergyLabRoute(): ReactElement {
     [curves, arm],
   );
 
-  const live = summaryFor(beamPowerW, arm);
+  const live = summaryFor(beamPowerW, arm, zeroLoadBeamIndex);
+  const lowPowerPoint = useMemo(
+    () => energyLabPointForArm(0.02, arm, beamUserCounts),
+    [arm, beamUserCounts],
+  );
   const alreadyRecorded = recorded.some(
-    entry => entry.arm === arm && entry.beamPowerW === beamPowerW,
+    entry => entry.arm === arm
+      && entry.beamPowerW === beamPowerW
+      && entry.zeroLoadBeamIndex === zeroLoadBeamIndex,
   );
   const maxEe = Math.max(
     1e-6,
@@ -117,9 +140,9 @@ export function EnergyLabRoute(): ReactElement {
           <b>ξ(p) = min&#123;ξ<sub>max</sub>, ξ<sub>max</sub>√(p/p<sub>sat</sub>)&#125;</b>
           （論文式 (3.15a)：ξ<sub>max</sub> = {ENERGY_LAB_PARAMS.xiMax}、p<sub>sat</sub> =
           {ENERGY_LAB_P_SAT_W.toFixed(3)} W）與
-          <b> P^f = {energyLabFixedOverheadW().toFixed(3)} W</b>
-          （ADR-006 公式：0.338×{ENERGY_LAB_PARAMS.activeBeamCount} beam ＋ 0.2×{ENERGY_LAB_PARAMS.activeSatelliteCount} sat）
-          已依論文釘定。<b>COURSE-ASSUMPTION</b>：通道基準與干擾耦合 κ = {ENERGY_LAB_PARAMS.interferenceCoupling}
+          <b> P^f = {live.point.fixedOverheadW.toFixed(3)} W</b>
+          （論文式 (3.16a)：0.338×N<sup>act</sup> ＋ 0.2×1&#123;N<sup>act</sup>&gt;0&#125;；目前
+          N<sup>act</sup> = {live.point.activeBeamCount}）<b>COURSE-ASSUMPTION</b>：通道基準與干擾耦合 κ = {ENERGY_LAB_PARAMS.interferenceCoupling}
            仍是課堂調校值，論文端尚無對應數值。
         </p>
         <p className="energy-lab__scope">
@@ -143,6 +166,35 @@ export function EnergyLabRoute(): ReactElement {
         </div>
         <p className="energy-lab__arm-why">{getSixActsArmSpec(arm).whyZhHant}</p>
 
+        <section className="energy-lab__load-control" aria-labelledby="energy-lab-load-heading">
+          <div className="energy-lab__load-heading">
+            <strong id="energy-lab-load-heading">每波束負載 U<sub>s,v</sub></strong>
+            <span>場景設定，不是量測；z<sub>s,v</sub> = 1 當且僅當 U<sub>s,v</sub> &gt; 0。</span>
+          </div>
+          <div className="energy-lab__load-buttons" role="group" aria-label="每波束場景負載">
+            <button
+              type="button"
+              className={zeroLoadBeamIndex === null ? 'is-active' : ''}
+              aria-pressed={zeroLoadBeamIndex === null}
+              data-testid="energy-lab-load-all"
+              onClick={() => setZeroLoadBeamIndex(null)}
+            >全部 {ENERGY_LAB_PARAMS.beamUserCounts.length} 束有負載</button>
+            {ENERGY_LAB_PARAMS.beamUserCounts.map((users, index) => (
+              <button
+                key={index}
+                type="button"
+                className={zeroLoadBeamIndex === index ? 'is-zero' : ''}
+                aria-pressed={zeroLoadBeamIndex === index}
+                data-testid={`energy-lab-zero-load-${index}`}
+                onClick={() => setZeroLoadBeamIndex(current => current === index ? null : index)}
+              >Beam {index + 1} → 0 UE</button>
+            ))}
+          </div>
+          <p className="energy-lab__load-state">
+            宣告負載：{beamUserCounts.map((users, index) => `B${index + 1}=${users}`).join(' · ')} UE
+          </p>
+        </section>
+
         <label className="energy-lab__power">
           <span>每波束發射功率 p　{beamPowerW.toFixed(2)} W（額定上限 {SIX_ACTS_BEAM_POWER_CAP_W} W）</span>
           <input
@@ -160,13 +212,16 @@ export function EnergyLabRoute(): ReactElement {
           <div><dt>P^N（系統功率）</dt><dd>{live.point.systemPowerW.toFixed(2)} W</dd></div>
           <div><dt>系統 EE（ratio-of-sums）</dt><dd>{live.point.eeMbitPerJ.toFixed(2)} Mbit/J</dd></div>
           <div><dt>LOW_SINR_RATIO</dt><dd>{live.summary.lowSinrRatioPercent}%</dd></div>
+          <div><dt>N<sup>act</sup>（啟用波束）</dt><dd>{live.point.activeBeamCount}</dd></div>
+          <div><dt>1&#123;N<sup>act</sup>&gt;0&#125;（啟用衛星）</dt><dd>{live.point.activeSatelliteCount}</dd></div>
+          <div><dt>P^f（固定功耗）</dt><dd>{live.point.fixedOverheadW.toFixed(3)} W</dd></div>
         </div>
 
         <button
           type="button"
           className="energy-lab__record"
           disabled={alreadyRecorded}
-          onClick={() => setRecorded(previous => [...previous, { arm, beamPowerW }])}
+          onClick={() => setRecorded(previous => [...previous, { arm, beamPowerW, zeroLoadBeamIndex }])}
         >{alreadyRecorded ? '此功率點已記錄' : '記錄此功率點'}</button>
 
         <div className="energy-lab__chart">
@@ -210,9 +265,11 @@ export function EnergyLabRoute(): ReactElement {
               </p>
               <ul className="energy-lab__segments">
                 <li><strong>左段（功率太小）</strong>
-                  固定開銷 P^f = {energyLabFixedOverheadW().toFixed(2)} W 不會因為你調小而消失。
-                  功率調到 0.02 W 時，七道波束總共才吃 {(7 * 0.02 / energyLabXi(0.02)).toFixed(2)} W，
-                  也就是說**超過 80% 的系統功耗來自未承載資料的固定開銷**——每 bit 的能量成本因此顯著上升。</li>
+                  固定開銷 P^f = {lowPowerPoint.fixedOverheadW.toFixed(2)} W 不會因為你調小而消失。
+                  功率調到 0.02 W 時，目前 {lowPowerPoint.activeBeamCount} 道啟用波束的 RF 抽取功率為
+                  {(lowPowerPoint.activeBeamCount * 0.02 / energyLabXi(0.02)).toFixed(2)} W；
+                  此時固定開銷佔系統功耗 {Math.round((lowPowerPoint.fixedOverheadW / lowPowerPoint.systemPowerW) * 100)}%，
+                  每 bit 的能量成本因此顯著上升。</li>
                 <li><strong>中段</strong>為最佳能效區間，由計算結果決定，而非主觀預測。</li>
                 <li><strong>右段（功率拉滿）</strong>
                   飽和點以下 ξ∝√p，因此 P<sup>p</sup>∝√p；輻射功率加倍，消耗僅 ×1.414。

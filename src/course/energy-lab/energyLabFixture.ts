@@ -34,11 +34,11 @@ export const ENERGY_LAB_PARAMS = Object.freeze({
   /** Users sharing one beam, U_{s,v}. */
   usersPerBeam: 4,
   /**
-   * Active beams and satellites, which is what P^f is a function of.
-   * ADR-008's fixture geometry: one satellite, seven beams.
+   * Per-beam load U_{s,v} for the one-satellite fixture.
+   * This is a scenario declaration, not a measurement. z_{s,v}=1 iff the
+   * corresponding entry is greater than zero.
    */
-  activeBeamCount: 7,
-  activeSatelliteCount: 1,
+  beamUserCounts: Object.freeze([4, 4, 4, 4, 4, 4, 4]),
   /** Paper Table II: per-active-RF-chain circuit power, W. */
   circuitPowerPerBeamW: 0.338,
   /** Paper Table II: per-active-satellite baseband power, W. */
@@ -72,6 +72,37 @@ export const ENERGY_LAB_PARAMS = Object.freeze({
   lowSinrThresholdDb: -5,
 });
 
+export type EnergyLabBeamUserCounts = readonly number[];
+
+/** Apply the classroom operation that makes one beam's declared load zero. */
+export function energyLabBeamUserCountsForZeroLoad(
+  zeroLoadBeamIndex: number | null,
+): EnergyLabBeamUserCounts {
+  if (zeroLoadBeamIndex === null) return ENERGY_LAB_PARAMS.beamUserCounts;
+  if (!Number.isInteger(zeroLoadBeamIndex)
+    || zeroLoadBeamIndex < 0
+    || zeroLoadBeamIndex >= ENERGY_LAB_PARAMS.beamUserCounts.length) {
+    throw new RangeError(`zero-load beam index ${zeroLoadBeamIndex} is outside the fixture`);
+  }
+  return Object.freeze(ENERGY_LAB_PARAMS.beamUserCounts.map((users, index) => (
+    index === zeroLoadBeamIndex ? 0 : users
+  )));
+}
+
+/** N^act_s(t) = Σ_v 1{U_{s,v}(t)>0} for the one-satellite fixture. */
+export function energyLabActiveBeamCount(
+  beamUserCounts: EnergyLabBeamUserCounts = ENERGY_LAB_PARAMS.beamUserCounts,
+): number {
+  return beamUserCounts.reduce((count, users) => count + (users > 0 ? 1 : 0), 0);
+}
+
+/** 1{N^act_s(t)>0}, the satellite term in paper (3.16a). */
+export function energyLabActiveSatelliteCount(
+  beamUserCounts: EnergyLabBeamUserCounts = ENERGY_LAB_PARAMS.beamUserCounts,
+): number {
+  return energyLabActiveBeamCount(beamUserCounts) > 0 ? 1 : 0;
+}
+
 /** p_sat = p_max · 10^(BO/10), as used by paper (3.15a). */
 export const ENERGY_LAB_P_SAT_W = ENERGY_LAB_PARAMS.pMaxW
   * 10 ** (ENERGY_LAB_PARAMS.powerBackoffDb / 10);
@@ -91,10 +122,12 @@ export function energyLabXi(beamPowerW: number): number {
  * Derived, not chosen: the earlier hand-picked 3 W happened to land near this,
  * which is exactly why a hand-picked constant is dangerous.
  */
-export function energyLabFixedOverheadW(): number {
+export function energyLabFixedOverheadW(
+  beamUserCounts: EnergyLabBeamUserCounts = ENERGY_LAB_PARAMS.beamUserCounts,
+): number {
   const params = ENERGY_LAB_PARAMS;
-  return params.circuitPowerPerBeamW * params.activeBeamCount
-    + params.basebandPowerPerSatelliteW * params.activeSatelliteCount;
+  return params.circuitPowerPerBeamW * energyLabActiveBeamCount(beamUserCounts)
+    + params.basebandPowerPerSatelliteW * energyLabActiveSatelliteCount(beamUserCounts);
 }
 
 /**
@@ -113,6 +146,9 @@ export function energyLabGamma(beamPowerW: number, thetaDeg: number): number {
 
 export interface EnergyLabPoint {
   readonly beamPowerW: number;
+  readonly activeBeamCount: number;
+  readonly activeSatelliteCount: number;
+  readonly fixedOverheadW: number;
   /** Σ_u R in Mbit/s. */
   readonly totalRateMbps: number;
   /** P^N in W. */
@@ -125,8 +161,14 @@ export interface EnergyLabPoint {
 }
 
 /** One operating point, from the canonical chain. */
-export function energyLabPoint(beamPowerW: number): EnergyLabPoint {
+export function energyLabPoint(
+  beamPowerW: number,
+  beamUserCounts: EnergyLabBeamUserCounts = ENERGY_LAB_PARAMS.beamUserCounts,
+): EnergyLabPoint {
   const params = ENERGY_LAB_PARAMS;
+  const activeBeamCount = energyLabActiveBeamCount(beamUserCounts);
+  const activeSatelliteCount = energyLabActiveSatelliteCount(beamUserCounts);
+  const fixedOverheadW = energyLabFixedOverheadW(beamUserCounts);
   const perUserBandwidthMHz = params.beamBandwidthMHz / params.usersPerBeam;
 
   let totalRateMbps = 0;
@@ -141,10 +183,13 @@ export function energyLabPoint(beamPowerW: number): EnergyLabPoint {
   const xi = energyLabXi(beamPowerW);
   // P^N = P^f + sum over served links of p/xi. Every active beam carries the
   // swept power, so the sum scales with the beam count.
-  const systemPowerW = energyLabFixedOverheadW() + (params.activeBeamCount * beamPowerW) / xi;
+  const systemPowerW = fixedOverheadW + (activeBeamCount * beamPowerW) / xi;
 
   return Object.freeze({
     beamPowerW,
+    activeBeamCount,
+    activeSatelliteCount,
+    fixedOverheadW,
     totalRateMbps,
     systemPowerW,
     eeMbitPerJ: totalRateMbps / systemPowerW,
@@ -161,11 +206,18 @@ export function energyLabPoint(beamPowerW: number): EnergyLabPoint {
  * slightly less at noticeably lower power. This is the SELECTION rule showing
  * up in the numbers, not a different physics.
  */
-export function energyLabPointForArm(beamPowerW: number, arm: 'baseline' | 'eco'): EnergyLabPoint {
-  const base = energyLabPoint(beamPowerW);
+export function energyLabPointForArm(
+  beamPowerW: number,
+  arm: 'baseline' | 'eco',
+  beamUserCounts: EnergyLabBeamUserCounts = ENERGY_LAB_PARAMS.beamUserCounts,
+): EnergyLabPoint {
+  const base = energyLabPoint(beamPowerW, beamUserCounts);
   if (arm === 'baseline') return base;
 
   const params = ENERGY_LAB_PARAMS;
+  const activeBeamCount = energyLabActiveBeamCount(beamUserCounts);
+  const activeSatelliteCount = energyLabActiveSatelliteCount(beamUserCounts);
+  const fixedOverheadW = energyLabFixedOverheadW(beamUserCounts);
   const perUserBandwidthMHz = params.beamBandwidthMHz / params.usersPerBeam;
   // Eco drops the single worst-angle user rather than paying for it.
   const kept = [...params.userOffAxisDeg].sort((left, right) => left - right).slice(0, -1);
@@ -179,12 +231,14 @@ export function energyLabPointForArm(beamPowerW: number, arm: 'baseline' | 'eco'
   }
 
   const xi = energyLabXi(beamPowerW);
-  // Eco serves one fewer link, so one fewer link draws p/xi.
-  const systemPowerW = energyLabFixedOverheadW()
-    + ((params.activeBeamCount - 1) * beamPowerW) / xi;
+  // Both arms use the same active-beam load; only the selected user set differs.
+  const systemPowerW = fixedOverheadW + (activeBeamCount * beamPowerW) / xi;
 
   return Object.freeze({
     beamPowerW,
+    activeBeamCount,
+    activeSatelliteCount,
+    fixedOverheadW,
     totalRateMbps,
     systemPowerW,
     eeMbitPerJ: totalRateMbps / systemPowerW,
