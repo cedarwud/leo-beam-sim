@@ -6,10 +6,10 @@
  * definitions over a pinned synthetic UE set: real formulas, stated parameters,
  * one deterministic frame set.
  *
- * Everything here is badged DEMO. The formulas are the authority's; the
- * PARAMETERS are classroom values chosen so the EE peak lands mid-slider, and
- * they are not the study's pinned set. Swapping them for pinned ones later
- * changes numbers, not structure.
+ * The channel fixture remains a classroom scenario, while the power terms
+ * below follow the paper-backed definitions cited by the teaching surface.
+ * Swapping the scenario values for a pinned study set changes numbers, not
+ * structure.
  *
  *   γ = p·H·G^T(θ) / (I + σ²)
  *   R = (B^w / U) · log₂(1 + γ)
@@ -24,10 +24,9 @@ export const ENERGY_LAB_SCENARIO_ID = 'energy-lab-demo-v1' as const;
 /**
  * Classroom parameters.
  *
- * ξ and P^f are NOT classroom choices any more: ADR-006 fixes both, and the
- * earlier power-dependent ξ this file used is the alternative that ADR is on
- * record rejecting. The remaining DEMO values are the channel/interference
- * terms, which the contract leaves as scenario quantities.
+ * ξ follows paper (3.15a), and P^f follows paper (3.16a). The channel terms
+ * remain scenario quantities because this fixture is not a calibrated RF link
+ * budget.
  */
 export const ENERGY_LAB_PARAMS = Object.freeze({
   /** Per-beam bandwidth B^w in MHz (500 MHz over 3-colour reuse). */
@@ -40,9 +39,9 @@ export const ENERGY_LAB_PARAMS = Object.freeze({
    */
   activeBeamCount: 7,
   activeSatelliteCount: 1,
-  /** ADR-006: per-active-RF-chain circuit assumption, W. */
+  /** Paper Table II: per-active-RF-chain circuit power, W. */
   circuitPowerPerBeamW: 0.338,
-  /** ADR-006: per-active-satellite baseband assumption, W. */
+  /** Paper Table II: per-active-satellite baseband power, W. */
   basebandPowerPerSatelliteW: 0.2,
   /** Half-power beamwidth in degrees. */
   theta3dbDeg: 3.32,
@@ -61,27 +60,33 @@ export const ENERGY_LAB_PARAMS = Object.freeze({
    * exactly the "報酬遞減" the act is about.
    */
   interferenceCoupling: 0.5,
-  /**
-   * ADR-006 §29: ξ = 0.35 for every served UE-link, CONSTANT.
-   *
-   * Not a function of p. ADR-006 lists the power-dependent form among its
-   * rejected alternatives, because it makes ξ depend on the cap semantics the
-   * single-SINR contract removed.
-   */
-  xi: 0.35,
+  /** Paper (3.15a): maximum effective RF-to-supply efficiency. */
+  xiMax: 0.35,
+  /** Paper (3.15a): rated RF power p_max, W. */
+  pMaxW: 1.65,
+  /** Paper (3.15a): power back-off used to define p_sat, dB. */
+  powerBackoffDb: 5,
   /** Off-axis angles of the served users, in degrees. */
   userOffAxisDeg: Object.freeze([0.2, 1.1, 2.4, 3.6]),
   /** Below this the link is treated as failing, matching the engine's rule. */
   lowSinrThresholdDb: -5,
 });
 
-/** ADR-006's constant effective RF-to-supply efficiency. */
-export function energyLabXi(): number {
-  return ENERGY_LAB_PARAMS.xi;
+/** p_sat = p_max · 10^(BO/10), as used by paper (3.15a). */
+export const ENERGY_LAB_P_SAT_W = ENERGY_LAB_PARAMS.pMaxW
+  * 10 ** (ENERGY_LAB_PARAMS.powerBackoffDb / 10);
+
+/** ξ = min{ξ_max, ξ_max · √(p / p_sat)}, paper (3.15a). */
+export function energyLabXi(beamPowerW: number): number {
+  const p = Math.max(0, beamPowerW);
+  return Math.min(
+    ENERGY_LAB_PARAMS.xiMax,
+    ENERGY_LAB_PARAMS.xiMax * Math.sqrt(p / ENERGY_LAB_P_SAT_W),
+  );
 }
 
 /**
- * P^f = 0.338 W x N_active_beam + 0.2 W x N_active_satellite  (ADR-006).
+ * P^f = 0.338 W x N_active_beam + 0.2 W x N_active_satellite  (paper 3.16a).
  *
  * Derived, not chosen: the earlier hand-picked 3 W happened to land near this,
  * which is exactly why a hand-picked constant is dangerous.
@@ -133,7 +138,7 @@ export function energyLabPoint(beamPowerW: number): EnergyLabPoint {
     totalRateMbps += perUserBandwidthMHz * Math.log2(1 + gamma);
   }
 
-  const xi = energyLabXi();
+  const xi = energyLabXi(beamPowerW);
   // P^N = P^f + sum over served links of p/xi. Every active beam carries the
   // swept power, so the sum scales with the beam count.
   const systemPowerW = energyLabFixedOverheadW() + (params.activeBeamCount * beamPowerW) / xi;
@@ -173,7 +178,7 @@ export function energyLabPointForArm(beamPowerW: number, arm: 'baseline' | 'eco'
     totalRateMbps += perUserBandwidthMHz * Math.log2(1 + gamma);
   }
 
-  const xi = energyLabXi();
+  const xi = energyLabXi(beamPowerW);
   // Eco serves one fewer link, so one fewer link draws p/xi.
   const systemPowerW = energyLabFixedOverheadW()
     + ((params.activeBeamCount - 1) * beamPowerW) / xi;

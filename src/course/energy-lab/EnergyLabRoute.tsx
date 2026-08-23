@@ -13,10 +13,12 @@ import {
 import { getSixActsAttachThreshold } from '../sixActs/taughtConstants';
 import {
   ENERGY_LAB_FRAME_SET_DIGEST,
+  ENERGY_LAB_P_SAT_W,
   ENERGY_LAB_PARAMS,
   ENERGY_LAB_SCENARIO_ID,
   ENERGY_LAB_STOPS,
   energyLabFixedOverheadW,
+  energyLabXi,
   energyLabPointForArm,
 } from './energyLabFixture';
 import { PlatformDrawer } from './PlatformDrawer';
@@ -111,8 +113,10 @@ export function EnergyLabRoute(): ReactElement {
         <p className="energy-lab__kicker">ACT 5 · 節能實驗　／　ACT 6 · 平台記錄</p>
         <h1>降低發射功率是否必然提升能源效率？</h1>
         <p className="energy-lab__lede">先提出可檢驗預測，再掃描功率，最後保留量測證據。</p>
-              <p className="energy-lab__badge">
-          <b>ξ = {ENERGY_LAB_PARAMS.xi}</b>（ADR-006 §29，常數）與
+        <p className="energy-lab__badge">
+          <b>ξ(p) = min&#123;ξ<sub>max</sub>, ξ<sub>max</sub>√(p/p<sub>sat</sub>)&#125;</b>
+          （論文式 (3.15a)：ξ<sub>max</sub> = {ENERGY_LAB_PARAMS.xiMax}、p<sub>sat</sub> =
+          {ENERGY_LAB_P_SAT_W.toFixed(3)} W）與
           <b> P^f = {energyLabFixedOverheadW().toFixed(3)} W</b>
           （ADR-006 公式：0.338×{ENERGY_LAB_PARAMS.activeBeamCount} beam ＋ 0.2×{ENERGY_LAB_PARAMS.activeSatelliteCount} sat）
           已依論文釘定。<b>COURSE-ASSUMPTION</b>：通道基準與干擾耦合 κ = {ENERGY_LAB_PARAMS.interferenceCoupling}
@@ -207,12 +211,11 @@ export function EnergyLabRoute(): ReactElement {
               <ul className="energy-lab__segments">
                 <li><strong>左段（功率太小）</strong>
                   固定開銷 P^f = {energyLabFixedOverheadW().toFixed(2)} W 不會因為你調小而消失。
-                  功率調到 0.02 W 時，七道波束總共才吃 {(7 * 0.02 / ENERGY_LAB_PARAMS.xi).toFixed(2)} W，
+                  功率調到 0.02 W 時，七道波束總共才吃 {(7 * 0.02 / energyLabXi(0.02)).toFixed(2)} W，
                   也就是說**超過 80% 的系統功耗來自未承載資料的固定開銷**——每 bit 的能量成本因此顯著上升。</li>
                 <li><strong>中段</strong>為最佳能效區間，由計算結果決定，而非主觀預測。</li>
                 <li><strong>右段（功率拉滿）</strong>
-                  速率只有 <b>log</b> 成長，電源端功率卻是<b>線性</b>成長
-                  （ξ = {ENERGY_LAB_PARAMS.xi} 是常數，所以 P^p = p/ξ 對 p 成正比），
+                  飽和點以下 ξ∝√p，因此 P<sup>p</sup>∝√p；輻射功率加倍，消耗僅 ×1.414。
                   多波束時干擾又同步上升讓速率提早飽和——報酬遞減。</li>
               </ul>
               <p className="energy-lab__trap">
