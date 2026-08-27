@@ -62,6 +62,16 @@ import {
   type CellLayout,
 } from '../engine/cells/cellLayout';
 import { HandoverManager } from '../engine/handover/handover-manager';
+import {
+  candidateLinkKey,
+  type CandidateGateResult,
+  type MetricEvidence,
+} from '../engine/handover/candidateDecisionContract';
+import {
+  produceCandidateOpportunitySet,
+  type CandidateLinkMeasurement,
+  type CandidateOpportunitySet,
+} from '../engine/handover/candidateOpportunityProducer';
 import { EARTH_KM_PER_DEG } from '../engine/orbit/earth-constants';
 import { resolveSinrLiveBeamBudget } from './sinrLiveBeamBudget';
 
@@ -257,6 +267,13 @@ export interface SinrLiveCellFrame {
    * `perUePositions[0]` exactly as before when it is absent.
    */
   readonly primaryUeId?: string | null;
+  /**
+   * S1 additive candidate truth for the primary UE. It preserves measured
+   * satellite-beam pairs without changing the legacy manager or visible UI.
+   * Forecast EE and remaining-service evidence intentionally stay unavailable
+   * until their separate activation gates pass.
+   */
+  readonly primaryCandidateOpportunities?: CandidateOpportunitySet | null;
   /** Lit (sat, cell) beams this slot (post beam-hopping) — the cone render surface. */
   readonly illuminatedBeams: readonly IlluminatedCellBeam[];
   readonly servedCellCount: number;
@@ -334,6 +351,8 @@ export interface SinrLiveCellModelConfig {
   readonly observer: { readonly latDeg: number; readonly lonDeg: number };
   readonly minElevationDeg?: number;
   readonly epochUtcMs: number;
+  /** Enable the additive S1 primary-UE candidate set. Off for legacy pure fixtures. */
+  readonly candidateOpportunityMeasurementEnabled?: boolean;
   /**
    * Max cells one satellite may ILLUMINATE per hopping slot (its beam budget).
    * A real multibeam satellite forms a fixed number of simultaneous beams (leo =
@@ -607,6 +626,7 @@ export class SinrLiveCellModel {
   private readonly observer: { latDeg: number; lonDeg: number };
   private readonly minElevationDeg: number;
   private readonly epochUtcMs: number;
+  private readonly candidateOpportunityMeasurementEnabled: boolean;
   private beamsPerSat: number;
   private beamsPerSatById: Readonly<Record<string, number>>;
   private servingBeamsPerSat?: number;
@@ -680,6 +700,7 @@ export class SinrLiveCellModel {
     this.observer = config.observer;
     this.minElevationDeg = config.minElevationDeg ?? DEFAULT_MIN_ELEVATION_DEG;
     this.epochUtcMs = config.epochUtcMs;
+    this.candidateOpportunityMeasurementEnabled = config.candidateOpportunityMeasurementEnabled ?? false;
     this.beamsPerSat = config.beamsPerSat ?? Infinity;
     this.beamsPerSatById = config.beamsPerSatById ?? {};
     this.servingBeamsPerSat = config.servingBeamsPerSat;
@@ -1395,6 +1416,24 @@ export class SinrLiveCellModel {
         simTimeSec,
       );
 
+    // Preserve the complete same-UE candidate measurement set before any
+    // presentation budget or future decision policy is applied. This does not
+    // feed the legacy HandoverManager yet, so current serving behavior remains
+    // unchanged during S1 parity work.
+    const candidateSourceFrameId = `walker:${this.epochUtcMs}:${simTimeMs.toFixed(3)}`;
+    const primaryCandidateOpportunities = primaryUe === undefined || !this.candidateOpportunityMeasurementEnabled
+      ? null
+      : this.measurePrimaryCandidateOpportunitySet(
+        primaryUe,
+        allCandidatesByCell,
+        candidatesByCell,
+        satById,
+        finalLit,
+        finalActive,
+        simTimeSec,
+        candidateSourceFrameId,
+      );
+
     // 4b. Illuminated beams: every post-hopping lit (sat, cell) pair — "where the
     //     beams point" (S-cells-4b). The render draws the FOCUSED sat's beams from
     //     this (not only served cells); a sat that illuminates a cell it does not
@@ -1608,6 +1647,7 @@ export class SinrLiveCellModel {
       cells: cellRecords,
       ues: ueRecords,
       primaryUeId,
+      primaryCandidateOpportunities,
       illuminatedBeams,
       servedCellCount: finalServingByCell.size,
       servedUeCount: ueRecords.filter(ue => ue.servingSatId !== null).length,
@@ -1619,6 +1659,140 @@ export class SinrLiveCellModel {
       angleAwareFormulaFrame,
       recentHandoverEvents: this.recentHandovers,
     };
+  }
+
+  /**
+   * S1 candidate measurement at the primary UE's real position. Candidate
+   * probes share one frame and one active interference field; they are never
+   * inserted into activeAssignments and therefore cannot create service or
+   * interfere with one another. The returned set is additive read-out only.
+   */
+  private measurePrimaryCandidateOpportunitySet(
+    ue: UeInput,
+    allCandidatesByCell: ReadonlyMap<number, readonly CellScanGeometry[]>,
+    scheduledCandidatesByCell: ReadonlyMap<number, readonly CellScanGeometry[]>,
+    satById: ReadonlyMap<string, CellModelSat>,
+    finalLit: readonly SatelliteSnapshot[],
+    finalActive: readonly ActiveBeamAssignment[],
+    simTimeSec: number,
+    sourceFrameId: string,
+  ): CandidateOpportunitySet {
+    const pairKey = (satId: string, beamId: number) => `${satId}:${beamId}`;
+    const scheduledKeys = new Set<string>();
+    for (const [cellId, geometries] of scheduledCandidatesByCell) {
+      const beamId = cellLinkBudgetBeamId(cellId);
+      for (const geometry of geometries) scheduledKeys.add(pairKey(geometry.satId, beamId));
+    }
+
+    const snapshotsByKey = new Map<string, SatelliteSnapshot>();
+    for (const snapshot of finalLit) {
+      for (const beam of snapshot.beamCellsKm) {
+        snapshotsByKey.set(pairKey(snapshot.id, beam.beamId), snapshot);
+      }
+    }
+
+    const measuredPairs: Array<{
+      readonly geometry: CellScanGeometry;
+      readonly pointing: ResolvedCellBeamPointing;
+    }> = [];
+    for (const [cellId, geometries] of allCandidatesByCell) {
+      const cell = this.cellById.get(cellId);
+      if (cell === undefined) continue;
+      for (const geometry of geometries) {
+        const satellite = satById.get(geometry.satId);
+        if (satellite === undefined) continue;
+        const pointing = this.resolveCellBeamPointing(satellite, cell, simTimeSec);
+        measuredPairs.push({ geometry, pointing });
+        const beamId = cellLinkBudgetBeamId(cellId);
+        const key = pairKey(geometry.satId, beamId);
+        if (!snapshotsByKey.has(key)) {
+          snapshotsByKey.set(key, buildCellBeamSnapshot(satellite, cell, geometry, pointing));
+        }
+      }
+    }
+
+    const uePosition = this.uePosition(ue);
+    const samples = computeLinkBudget(
+      uePosition,
+      [...snapshotsByKey.values()],
+      this.linkBudgetOptions([...finalActive], simTimeSec, false),
+    );
+    const sampleByKey = new Map(samples.map(sample => [pairKey(sample.satId, sample.beamId), sample]));
+    const availableMetric = (value: number, unit: string): MetricEvidence => ({
+      status: 'available',
+      value,
+      unit,
+      sourceFrameId,
+      reason: null,
+    });
+    const unavailableMetric = (unit: string, reason: string): MetricEvidence => ({
+      status: 'unavailable',
+      value: null,
+      unit,
+      sourceFrameId: null,
+      reason,
+    });
+
+    const measurements: CandidateLinkMeasurement[] = measuredPairs.map(({ geometry, pointing }) => {
+      const beamId = cellLinkBudgetBeamId(geometry.cellId);
+      const key = pairKey(geometry.satId, beamId);
+      const satellite = satById.get(geometry.satId)!;
+      const elevationDeg = (elevationAngleRad(
+        satellite.latDeg,
+        satellite.lonDeg,
+        satellite.altitudeKm,
+        uePosition.latDeg,
+        uePosition.lonDeg,
+      ) * 180) / Math.PI;
+      const sample = sampleByKey.get(key);
+      const scheduledAndIlluminated = scheduledKeys.has(key);
+      const scheduledGate: CandidateGateResult = {
+        code: 'scheduled-illumination',
+        category: 'hard-qos',
+        result: scheduledAndIlluminated ? 'pass' : 'fail',
+        measured: scheduledAndIlluminated ? 1 : 0,
+        threshold: 1,
+        unit: 'boolean',
+        reason: scheduledAndIlluminated ? null : 'beam is outside the current hopping slot',
+      };
+      return {
+        key: candidateLinkKey(geometry.satId, beamId),
+        primaryUeId: ue.id,
+        sourceFrameId,
+        beamIdentitySource: 'walker-cell-surrogate',
+        elevation: availableMetric(elevationDeg, 'deg'),
+        steering: availableMetric(pointing.scanAngleDeg, 'deg'),
+        range: availableMetric(
+          computeTr38811SlantRangeKm(elevationDeg, satellite.altitudeKm),
+          'km',
+        ),
+        sinr: sample !== undefined && Number.isFinite(sample.sinrDb)
+          ? availableMetric(sample.sinrDb, 'dB')
+          : unavailableMetric('dB', 'candidate beam is below the link-budget gain floor'),
+        predictedThroughput: unavailableMetric(
+          'bit/s',
+          'candidate-specific throughput counterfactual is not implemented in S1',
+        ),
+        remainingServiceTime: unavailableMetric(
+          's',
+          'Walker remaining-service prediction is not implemented in S1',
+        ),
+        scheduledIllumination: scheduledGate,
+      };
+    });
+
+    return produceCandidateOpportunitySet({
+      primaryUeId: ue.id,
+      sourceFrameId,
+      thresholds: {
+        minimumElevationDeg: this.minElevationDeg,
+        maximumSteeringDeg: this.antenna.maxSteeringAngleDeg,
+        minimumSinrDb: this.profile.handover.sinrThresholdDb,
+        minimumThroughputBps: null,
+        minimumRemainingServiceTimeSec: null,
+      },
+      measurements,
+    });
   }
 
   /**
