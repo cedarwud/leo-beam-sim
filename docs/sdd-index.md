@@ -1,6 +1,6 @@
 # SDD Index And Development Order
 
-**Status:** active index, 2026-06-09.
+**Status:** active index, updated 2026-08-27.
 **Purpose:** make the current MODQN / handover / 100-UE showcase work
 developable without reopening every historical SDD as a parallel workstream.
 
@@ -12,6 +12,7 @@ validators or preserve a boundary decision.
 
 | Order | Document | Role | Next use |
 |---|---|---|---|
+| H0 | [sdd/HOMEPAGE-MULTI-CANDIDATE-MULTIBEAM-EE-HANDOVER-SDD.md](./sdd/HOMEPAGE-MULTI-CANDIDATE-MULTIBEAM-EE-HANDOVER-SDD.md) + [decisions/ADR-014-multi-candidate-multibeam-handover.md](./decisions/ADR-014-multi-candidate-multibeam-handover.md) | Walker homepage multi-satellite/multi-beam candidate evaluation, forecast-EE policy, scene identity, and right-rail contract | Current entry point before changing homepage handover decision, candidate beams, colours, or upper right rail |
 | - | [modqn-showcase-requirements-todo.md](./modqn-showcase-requirements-todo.md) | End-to-end user requirement checklist | Use at the start and end of each controller run to audit completion |
 | 0 | [frontend-render-governance.md](./frontend-render-governance.md) + [frontend-mode-lane-separation-sdd.md](./frontend-mode-lane-separation-sdd.md) | Non-negotiable lane/render guardrails | Read before any `scene/`, `viz/`, `ui/`, or render-plan change |
 | 1 | [modqn-tab-consolidation-plan.md](./modqn-tab-consolidation-plan.md) + [modqn-ui-surface-simplification-sdd.md](./modqn-ui-surface-simplification-sdd.md) | Reduce MODQN tab/button/sidebar clutter | D1 / S5a complete; keep as the guardrail before adding visible controls |
