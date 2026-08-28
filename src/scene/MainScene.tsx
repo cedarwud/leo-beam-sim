@@ -32,6 +32,14 @@ import {
 import { sceneGeometryFromProfile } from './SceneGeometry';
 import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
+import { buildCandidatePresentationPlan } from '../engine/handover/candidatePresentationPlan';
+import type { HandoverVisualIdentityAllocation } from '../constants/handoverVisualIdentity';
+import { buildMultiCandidateScenePresentation } from './multiCandidateScenePresentation';
+import {
+  areMultiCandidateFocusPointsWithinSafeFrame,
+  resolveMultiCandidateCameraFit,
+} from './multiCandidateCameraFit';
+import { useCandidateInspectionSelection } from '../ui/handover-evaluation/candidateInspectionSelection';
 import { satelliteTint } from '../constants/beamRoleTokens';
 // S-cells-4d: the legacy 20-hex EarthFixedCells green-disc ground paint is retired
 // from the sinr-live lane (the cell-truth beam cones own the earth-fixed cell story
@@ -40,6 +48,7 @@ import { satelliteTint } from '../constants/beamRoleTokens';
 import { SinrLiveCellFootprintRings } from '../viz/SinrLiveCellFootprintRings';
 import { SinrLiveCellBeamCallouts } from '../viz/SinrLiveCellBeamCallouts';
 import { HandoverLinks } from '../viz/HandoverLinks';
+import { MultiCandidateBeamScene } from '../viz/MultiCandidateBeamScene';
 import { HandoverToastOverlay } from '../viz/HandoverToastOverlay';
 import { IntraGroundShockwave } from '../viz/IntraGroundShockwave';
 import { BeamPulseClock } from '../viz/SatelliteBeams';
@@ -77,7 +86,12 @@ import {
   resolveTriggeredHandoverTargetColor,
   type BeamDisplaySpec,
 } from './beamDisplaySpec';
-import { SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC, resolvePrimaryCellServingRecord, type SinrLiveCellHandoverEvent } from './sinrLiveCellModel';
+import {
+  SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
+  cellIdFromLinkBudgetBeamId,
+  resolvePrimaryCellServingRecord,
+  type SinrLiveCellHandoverEvent,
+} from './sinrLiveCellModel';
 import { MANUAL_HANDOVER_DISPLAY_MS, resolveManualHandoverDemoEvent } from './manualHandoverDemo';
 import {
   resolveHandoverCinemaDisplayMs,
@@ -257,7 +271,11 @@ interface ArtifactSceneContentProps {
 }
 
 const CAMERA_TWEEN_DURATION_MS = 600;
+const MULTI_CANDIDATE_REFRAME_DURATION_MS = 320;
 const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
+/** Display-only legibility lift for the narrow homepage centre stage. */
+const MULTI_CANDIDATE_SATELLITE_SCALE_MULTIPLIER = 6;
+const MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER = 1.55;
 
 /**
  * How often the manual-handover demonstration republishes its wall clock (ms).
@@ -360,12 +378,13 @@ export function resolveManualHandoverProgress(input: {
 
 interface CameraTweenState {
   preset: CameraPreset | null;
-  kind: 'preset' | 'director-acquire' | 'director-restore';
+  kind: 'preset' | 'director-acquire' | 'director-restore' | 'multi-candidate-refit';
   startedAtMs: number;
   fromPosition: THREE.Vector3;
   fromTarget: THREE.Vector3;
   toPosition: THREE.Vector3;
   toTarget: THREE.Vector3;
+  durationMs?: number;
 }
 
 function easeInOutCubic(value: number): number {
@@ -648,7 +667,10 @@ function useDirectorCameraFocus(params: {
       }
       return;
     }
-    const progress = Math.min(Math.max((nowMs - tween.startedAtMs) / CAMERA_TWEEN_DURATION_MS, 0), 1);
+    const progress = Math.min(Math.max(
+      (nowMs - tween.startedAtMs) / (tween.durationMs ?? CAMERA_TWEEN_DURATION_MS),
+      0,
+    ), 1);
     const eased = easeInOutCubic(progress);
     const controls = controlsRef.current;
 
@@ -1052,6 +1074,7 @@ function SceneRenderContent({
   campusVisible,
 }: SceneRenderContentProps) {
   const camera = useThree(state => state.camera);
+  const sceneViewportSize = useThree(state => state.size);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const cameraPresetRef = useRef<string | null>('manual');
   const cameraTransitionRef = useRef<'idle' | 'animating'>('idle');
@@ -1059,6 +1082,9 @@ function SceneRenderContent({
   const lastCameraCommandAtRef = useRef<number | null>(null);
   const lastCameraPresetRef = useRef<CameraPreset | null>(null);
   const lastDirectorCommandAtRef = useRef<number | null>(null);
+  const multiCandidateCameraFitKeyRef = useRef<string | null>(null);
+  const multiCandidateCameraEpisodeRef = useRef<string | null>(null);
+  const multiCandidateCameraUserControlledRef = useRef(false);
   const directorSnapshotRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const directorFocusOrbitRef = useRef<DirectorFocusOrbitState | null>(null);
   // MODQN consolidation: the MODQN live page reuses the SINR scene render directly, so
@@ -1546,6 +1572,181 @@ function SceneRenderContent({
   ]);
   const multiCandidateAuthorityActive = sim.handoverDecisionFrame !== null
     && sim.handoverDecisionFrame !== undefined;
+  const multiCandidateEpisodeId = sim.handoverDecisionFrame?.episodeId ?? 'inactive';
+  const {
+    pinnedKey: inspectedCandidateKey,
+    togglePinnedKey: toggleInspectedCandidateKey,
+  } = useCandidateInspectionSelection(multiCandidateEpisodeId);
+  const multiCandidateIdentityRef = useRef<{
+    readonly episodeId: string;
+    readonly allocation: HandoverVisualIdentityAllocation;
+  } | null>(null);
+  const handoverCandidatePresentationPlan = useMemo(() => {
+    const decision = sim.handoverDecisionFrame ?? null;
+    if (decision === null) return null;
+    const prior = multiCandidateIdentityRef.current;
+    return buildCandidatePresentationPlan(decision, undefined, {
+      pinnedKey: inspectedCandidateKey,
+      previousIdentityAllocation: prior?.episodeId === decision.episodeId
+        ? prior.allocation
+        : null,
+    });
+  }, [inspectedCandidateKey, sim.handoverDecisionFrame]);
+  useEffect(() => {
+    if (handoverCandidatePresentationPlan === null) {
+      multiCandidateIdentityRef.current = null;
+      return;
+    }
+    multiCandidateIdentityRef.current = {
+      episodeId: handoverCandidatePresentationPlan.decision.episodeId,
+      allocation: handoverCandidatePresentationPlan.identityAllocation,
+    };
+  }, [handoverCandidatePresentationPlan]);
+  const multiCandidateScenePresentation = useMemo(
+    () => handoverCandidatePresentationPlan === null
+      ? null
+      : buildMultiCandidateScenePresentation(handoverCandidatePresentationPlan),
+    [handoverCandidatePresentationPlan],
+  );
+  const renderedLiveSatelliteMarkers = useMemo<readonly {
+    readonly id: string;
+    readonly world: THREE.Vector3;
+    readonly satelliteTintColor?: string;
+  }[]>(() => {
+    if (multiCandidateScenePresentation === null) return viz.displaySats;
+    const displayedSatelliteIds = [...new Set(
+      multiCandidateScenePresentation.instructions
+        .filter(instruction => instruction.isServing || instruction.cone.visible || instruction.isPinned)
+        .map(instruction => instruction.satelliteId),
+    )];
+    const markers: {
+      id: string;
+      world: THREE.Vector3;
+      satelliteTintColor?: string;
+    }[] = [];
+    for (const satelliteId of displayedSatelliteIds) {
+      const existing = viz.displaySats.find(satellite => satellite.id === satelliteId);
+      if (existing !== undefined) {
+        markers.push(existing);
+        continue;
+      }
+      const apex = viz.coneApexWorldById.get(satelliteId);
+      if (apex === undefined) continue;
+      markers.push({
+        id: satelliteId,
+        world: new THREE.Vector3(apex.x, apex.y, apex.z),
+        satelliteTintColor: undefined,
+      });
+    }
+    return markers;
+  }, [multiCandidateScenePresentation, viz.coneApexWorldById, viz.displaySats]);
+  const multiCandidateCameraFitKey = multiCandidateScenePresentation === null
+    ? null
+    : [
+      multiCandidateScenePresentation.episodeId,
+      multiCandidateScenePresentation.serving?.pairKey ?? 'unattached',
+      `${Math.round(sceneViewportSize.width)}x${Math.round(sceneViewportSize.height)}`,
+      ...[...new Set(multiCandidateScenePresentation.instructions
+        .filter(instruction => instruction.isServing || instruction.cone.visible || instruction.isPinned)
+        .map(instruction => instruction.satelliteId))].sort(),
+    ].join('/');
+  useLayoutEffect(() => {
+    if (multiCandidateScenePresentation === null || multiCandidateCameraFitKey === null) {
+      multiCandidateCameraFitKeyRef.current = null;
+      multiCandidateCameraEpisodeRef.current = null;
+      multiCandidateCameraUserControlledRef.current = false;
+      return;
+    }
+    if (multiCandidateCameraEpisodeRef.current !== multiCandidateScenePresentation.episodeId) {
+      multiCandidateCameraEpisodeRef.current = multiCandidateScenePresentation.episodeId;
+      multiCandidateCameraUserControlledRef.current = false;
+    }
+    if (multiCandidateCameraUserControlledRef.current) return;
+    const controls = controlsRef.current;
+    if (!(camera instanceof THREE.PerspectiveCamera) || controls === null) return;
+
+    const fitPoints: [number, number, number][] = [];
+    const primaryUeWorld = sceneFrame.ues[0]?.worldPos;
+    if (primaryUeWorld !== undefined) fitPoints.push([...primaryUeWorld]);
+    for (const instruction of multiCandidateScenePresentation.instructions) {
+      if (instruction.isServing || instruction.cone.visible || instruction.isPinned) {
+        const apex = viz.coneApexWorldById.get(instruction.satelliteId);
+        if (apex !== undefined) fitPoints.push([apex.x, apex.y, apex.z]);
+      }
+      const placement = sinrLiveCellPlacementById.get(cellIdFromLinkBudgetBeamId(instruction.beamId));
+      if (placement !== undefined) fitPoints.push([placement.worldX, 0, placement.worldZ]);
+    }
+    const servingSatelliteWorld = multiCandidateScenePresentation.serving === null
+      ? undefined
+      : viz.coneApexWorldById.get(multiCandidateScenePresentation.serving.satelliteId);
+    const compositionChanged = multiCandidateCameraFitKeyRef.current !== multiCandidateCameraFitKey;
+    const focusPoints = [
+      primaryUeWorld,
+      servingSatelliteWorld === undefined
+        ? undefined
+        : [servingSatelliteWorld.x, servingSatelliteWorld.y, servingSatelliteWorld.z] as const,
+    ].filter((point): point is readonly [number, number, number] => point !== undefined);
+    const focusStillContained = focusPoints.length > 0
+      && areMultiCandidateFocusPointsWithinSafeFrame({
+        points: focusPoints,
+        position: [camera.position.x, camera.position.y, camera.position.z],
+        target: [controls.target.x, controls.target.y, controls.target.z],
+        verticalFovDeg: camera.fov,
+        aspect: sceneViewportSize.width / sceneViewportSize.height,
+      });
+    // Let orbital motion remain visible against a stationary camera. Reframe
+    // only after the real serving span approaches the padded edge; while a
+    // reframe tween is already running, do not restart it on every Walker frame.
+    if (!compositionChanged && focusStillContained) return;
+    if (!compositionChanged && cameraTweenRef.current !== null) return;
+    const fit = resolveMultiCandidateCameraFit({
+      points: fitPoints,
+      focusGroundPoint: primaryUeWorld,
+      focusElevatedPoint: servingSatelliteWorld === undefined
+        ? undefined
+        : [servingSatelliteWorld.x, servingSatelliteWorld.y, servingSatelliteWorld.z],
+      currentPosition: [camera.position.x, camera.position.y, camera.position.z],
+      currentTarget: [controls.target.x, controls.target.y, controls.target.z],
+      verticalFovDeg: camera.fov,
+      aspect: sceneViewportSize.width / sceneViewportSize.height,
+      minDistance: controls.minDistance,
+      maxDistance: Math.min(2850, controls.maxDistance),
+    });
+    if (fit === null) return;
+    directorFocusOrbitRef.current = null;
+    lastCameraPresetRef.current = null;
+    if (compositionChanged || runtime.reducedMotion) {
+      cameraTweenRef.current = null;
+      camera.position.set(...fit.position);
+      controls.target.set(...fit.target);
+      controls.update();
+      cameraTransitionRef.current = 'idle';
+    } else {
+      cameraTweenRef.current = {
+        preset: null,
+        kind: 'multi-candidate-refit',
+        startedAtMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
+        fromPosition: camera.position.clone(),
+        fromTarget: controls.target.clone(),
+        toPosition: new THREE.Vector3(...fit.position),
+        toTarget: new THREE.Vector3(...fit.target),
+        durationMs: MULTI_CANDIDATE_REFRAME_DURATION_MS,
+      };
+      cameraTransitionRef.current = 'animating';
+    }
+    cameraPresetRef.current = 'manual';
+    multiCandidateCameraFitKeyRef.current = multiCandidateCameraFitKey;
+  }, [
+    camera,
+    multiCandidateCameraFitKey,
+    multiCandidateScenePresentation,
+    runtime.reducedMotion,
+    sceneViewportSize.height,
+    sceneViewportSize.width,
+    sceneFrame.ues,
+    sinrLiveCellPlacementById,
+    viz.coneApexWorldById,
+  ]);
   const renderedCandidateSatelliteId = simSource === 'archived-tle'
     ? canonicalCandidateSatelliteId
     : multiCandidateAuthorityActive
@@ -2751,7 +2952,10 @@ function SceneRenderContent({
       return;
     }
 
-    const progress = Math.min(Math.max((nowMs - tween.startedAtMs) / CAMERA_TWEEN_DURATION_MS, 0), 1);
+    const progress = Math.min(Math.max(
+      (nowMs - tween.startedAtMs) / (tween.durationMs ?? CAMERA_TWEEN_DURATION_MS),
+      0,
+    ), 1);
     const eased = easeInOutCubic(progress);
     const controls = controlsRef.current;
 
@@ -2781,8 +2985,10 @@ function SceneRenderContent({
             startedAtMs: nowMs,
           };
         }
-      } else {
+      } else if (tween.kind === 'preset') {
         cameraPresetRef.current = tween.preset;
+      } else {
+        cameraPresetRef.current = 'manual';
       }
       cameraTransitionRef.current = 'idle';
       return;
@@ -2800,12 +3006,20 @@ function SceneRenderContent({
       cinematicSpotlightActive={cinematicSpotlightActive && presentationPlan.visible['event-effects']}
       effectiveCinematicMode={effectiveCinematicMode}
       cinematicSpotlightTargets={presentationPlan.visible['event-effects'] ? cinematicSpotlightTargets : []}
+      onControlsStart={() => {
+        if (multiCandidateAuthorityActive) {
+          multiCandidateCameraUserControlledRef.current = true;
+          cameraPresetRef.current = 'manual';
+        }
+      }}
     >
       {!(campusVisible && presentationPlan.visible.campus) && <TeachingFloor />}
       <ScenePresentationCanvasTelemetry plan={presentationPlan} />
       <SceneTelemetry
-        visibleSatelliteCount={viz.displaySats.length}
-        firstSatellitePosition={viz.displaySats[0] ? formatCameraVector(viz.displaySats[0].world) : ''}
+        visibleSatelliteCount={renderedLiveSatelliteMarkers.length}
+        firstSatellitePosition={renderedLiveSatelliteMarkers[0]
+          ? formatCameraVector(renderedLiveSatelliteMarkers[0].world)
+          : ''}
         servingSatelliteId={sceneFrame.metrics.servingSatelliteId}
         servingBeamId={sceneFrame.metrics.servingBeamId}
         beamCalloutsEnabled={showBeamCallouts ? '1' : '0'}
@@ -3010,6 +3224,7 @@ function SceneRenderContent({
           the serving cones below (`SinrLiveCellFootprintRings`, gated showSinrLiveCellBeams). */}
       {presentationPlan.visible['event-effects']
         && showLiveSceneEffects
+        && !multiCandidateAuthorityActive
         && !handoverDisplayIsolation.hideTimelineEffects
         && !handoverDisplayIsolation.suppressNaturalHandoverLayers
         && (
@@ -3023,14 +3238,15 @@ function SceneRenderContent({
         />
       )}
       <BeamPulseClock reducedMotion={runtime.reducedMotion} />
-      {presentationPlan.visible['motion-guides'] && showOrbitTrail && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['motion-guides'] && showOrbitTrail && (
         <OrbitTrail satellites={viz.displaySats} />
       )}
-      {presentationPlan.visible['motion-guides'] && showSpineParticles && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['motion-guides'] && showSpineParticles && (
         <SpineParticles satellites={viz.displaySats} satBeams={viz.satBeams} />
       )}
       {presentationPlan.visible['event-effects']
         && showGroundRipple
+        && !multiCandidateAuthorityActive
         && !handoverDisplayIsolation.suppressNaturalHandoverLayers
         && (
         <ServingGroundRipple
@@ -3044,28 +3260,48 @@ function SceneRenderContent({
         />
       )}
 
-      {showLiveSatelliteMarkers && viz.displaySats.map(sat => {
+      {showLiveSatelliteMarkers && renderedLiveSatelliteMarkers.map(sat => {
         const layer = sat.id === cinemaDisplayServingSatId
           ? 'selected-satellite'
           : sat.id === cinemaDisplayCandidateSatId
             ? 'candidate-satellite'
             : 'context-satellites';
-        if (!presentationPlan.visible[layer]) return null;
+        if (!multiCandidateAuthorityActive && !presentationPlan.visible[layer]) return null;
         return (
           <SatelliteMarker
             key={sat.id}
             position={sat.world}
             label={formatSatelliteLabel(sat.id)}
-            eventRole={viz.eventRoles.get(sat.id)}
-            satelliteTintColor={sat.satelliteTintColor}
+            eventRole={multiCandidateAuthorityActive ? undefined : viz.eventRoles.get(sat.id)}
+            satelliteTintColor={multiCandidateAuthorityActive ? undefined : sat.satelliteTintColor}
             constellation={constellation}
+            showLabel={!multiCandidateAuthorityActive}
+            scaleMultiplier={multiCandidateAuthorityActive
+              ? MULTI_CANDIDATE_SATELLITE_SCALE_MULTIPLIER
+              : 1}
           />
         );
       })}
+      {multiCandidateScenePresentation !== null
+        && sceneFrame.ues[0]?.worldPos !== undefined
+        && showSinrLiveCellBeams
+        && presentationPlan.visible['serving-beams']
+        && presentationPlan.visible['candidate-beams']
+        && (
+          <MultiCandidateBeamScene
+            presentation={multiCandidateScenePresentation}
+            placementByCellId={sinrLiveCellPlacementById}
+            satelliteWorldById={viz.coneApexWorldById}
+            primaryUeWorld={sceneFrame.ues[0].worldPos}
+            widthScale={beamDisplaySpec.coneWidthScale * MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER}
+            reducedMotion={runtime.reducedMotion}
+            onCandidateSelect={toggleInspectedCandidateKey}
+          />
+        )}
       {/* W9 step 3 dim beam-hopping cones — painted FIRST (behind) so the bright
           serving fan reads on top. Default = the hero serving satellite's hopping cells
           (on-UE vs hopping legibility); "Other beams" opens the full non-serving field. */}
-      {presentationPlan.visible['ambient-beams'] && sinrLiveCellNonServingConeItems.length > 0 && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['ambient-beams'] && sinrLiveCellNonServingConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellNonServingConeItems}
           layer="nonServing"
@@ -3075,7 +3311,7 @@ function SceneRenderContent({
           telemetryCountDatasetKey="sinrLiveCellNonServingConeRenderedCount"
         />
       )}
-      {presentationPlan.visible['serving-beams'] && showSinrLiveCellBeams && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['serving-beams'] && showSinrLiveCellBeams && (
         // a-cone: dim near-horizontal (low-elevation serving sat) cones so the
         // ambient field reads as beams coming DOWN, not shooting across the field.
         // The primary serving sat's beams render BRIGHT + saturated + dim-exempt
@@ -3096,7 +3332,7 @@ function SceneRenderContent({
           primaryServingCellId={displayHeroRecord?.cellId ?? null}
         />
       )}
-      {presentationPlan.visible['serving-beams'] && showSinrLiveCellBeams && sinrLiveCinemaInterServingFanConeItems.length > 0 && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['serving-beams'] && showSinrLiveCellBeams && sinrLiveCinemaInterServingFanConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCinemaInterServingFanConeItems}
           layer="serving"
@@ -3115,7 +3351,7 @@ function SceneRenderContent({
           candidate hue (coneColorOverride) so the handover target reads distinct from the
           protagonist's serving fan. Same opacity/dim as the serving field; display-only
           role colour — the resolver item.color stays serving-identity (colour-match green). */}
-      {presentationPlan.visible['candidate-beams'] && showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['candidate-beams'] && showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCandidateBeamConeItems}
           layer="candidate"
@@ -3134,7 +3370,7 @@ function SceneRenderContent({
           colour, so each beam reads as a distinct double-hex with its UEs scattered off-centre
           inside. Replaces the retired steered AmbientFootprintRings AND the persistent grey
           SinrLiveCellGrid (cells show only when served). */}
-      {presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !handoverDisplayIsolation.active && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !handoverDisplayIsolation.active && (
         <SinrLiveCellFootprintRings
           items={sinrLiveCellBeamConeItems}
           visible={!handoverDisplayIsolation.hideNormalBeamField}
@@ -3149,7 +3385,7 @@ function SceneRenderContent({
       {/* Candidate footprint hex: the contender / approach cells get the SAME 3-layer hex
           in the candidate BLUE (coneColorOverride), so a candidate cell reads blue like its
           cone — the footprint matches the beam. Display-only role colour (Rule#6). */}
-      {presentationPlan.visible['candidate-footprints'] && showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['candidate-footprints'] && showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0 && (
         <SinrLiveCellFootprintRings
           items={sinrLiveCandidateBeamConeItems}
           layer="candidate"
@@ -3162,7 +3398,7 @@ function SceneRenderContent({
           rendered serving cones, gated by the Beam Info toggle (showBeamCallouts). The
           old BeamCalloutContent only mounted inside the retired steered SatelliteBeams;
           this cell-cone callout layer reads the same cell-truth items + per-cell SINR. */}
-      {presentationPlan.visible.annotations && showSceneOverlays && showBeamCallouts && sinrLiveCellBeamConeItems.length > 0 && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible.annotations && showSceneOverlays && showBeamCallouts && sinrLiveCellBeamConeItems.length > 0 && (
         <SinrLiveCellBeamCallouts
           // Display-only 19-beam substrate cells have no UE/SINR record, so
           // they show as geometry only and never receive a fabricated info chip.
@@ -3177,7 +3413,7 @@ function SceneRenderContent({
           per-frame handover. Per-item opacity (the fade) is carried on each cone,
           so no group opacity is passed. Always-on on sinr-live, decoupled from the
           director cinema above. */}
-      {presentationPlan.visible['event-effects'] && sinrLiveCellPulseConeItems.length > 0 && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['event-effects'] && sinrLiveCellPulseConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCellPulseConeItems}
           layer="pulse"
@@ -3192,7 +3428,7 @@ function SceneRenderContent({
           per-item wall-clock opacity + explicit from/to colour, so NO group opacity and NO
           pulse-kind colour props are passed (the explicit item colour wins). Distinct from
           the ambient sim-time pulse above. */}
-      {presentationPlan.visible['event-effects'] && triggeredIntraConeItems.length > 0 && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['event-effects'] && triggeredIntraConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={triggeredIntraConeItems}
           layer="triggered"
@@ -3205,7 +3441,7 @@ function SceneRenderContent({
       {/* Focused cinema pair: exact source/candidate cones from the indexed event.
           The display-isolation policy suppresses the normal candidate fan and timeline
           event layers while this is active, leaving these two handover ends legible. */}
-      {presentationPlan.visible['event-effects'] && sinrLiveCinemaHandoverPairConeItems.length > 0 && (
+      {!multiCandidateAuthorityActive && presentationPlan.visible['event-effects'] && sinrLiveCinemaHandoverPairConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={sinrLiveCinemaHandoverPairConeItems}
           layer="triggered"
@@ -3226,6 +3462,7 @@ function SceneRenderContent({
           as the vc1c/vc2 validation-fixture subject — it is no longer mounted in-app. */}
       {presentationPlan.visible['event-effects']
         && showLiveSceneEffects
+        && !multiCandidateAuthorityActive
         && !handoverDisplayIsolation.hideTimelineEffects
         && !handoverDisplayIsolation.suppressNaturalHandoverLayers
         && !concurrentIntraVisualSuppressed
@@ -3234,6 +3471,7 @@ function SceneRenderContent({
         <>
       {presentationPlan.visible['event-effects']
         && showHandoverToastOverlay
+        && !multiCandidateAuthorityActive
         && (
           (manualHandoverPresentationActive && manualHandoverEvent !== null)
           || (handoverPresentation.active && handoverPresentation.event !== null)

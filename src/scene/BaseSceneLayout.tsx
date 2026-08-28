@@ -22,6 +22,7 @@ export interface BaseSceneLayoutProps {
   cinematicSpotlightActive?: boolean;
   effectiveCinematicMode?: CinematicMode;
   cinematicSpotlightTargets?: CinematicSpotlightTarget[];
+  onControlsStart?: () => void;
   children?: React.ReactNode;
 }
 
@@ -32,6 +33,7 @@ export function BaseSceneLayout({
   cinematicSpotlightActive = false,
   effectiveCinematicMode = 'off',
   cinematicSpotlightTargets = [],
+  onControlsStart,
   children,
 }: BaseSceneLayoutProps) {
   return (
@@ -51,6 +53,7 @@ export function BaseSceneLayout({
         panSpeed={0.3}
         minDistance={50}
         maxDistance={3000}
+        onStart={onControlsStart}
       />
 
       {cinematicSpotlightActive && (

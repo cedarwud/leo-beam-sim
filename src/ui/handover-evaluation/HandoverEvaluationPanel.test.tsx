@@ -18,9 +18,24 @@ import { loadProfile } from '../../profiles';
 import { createInitialSimState } from '../../scene/initialSimState';
 import { InfoPanel } from '../InfoPanel';
 import { CandidateSetPanel } from './CandidateSetPanel';
-import { HandoverEvaluationPanel } from './HandoverEvaluationPanel';
+import {
+  formatHandoverDecisionTime,
+  HandoverEvaluationPanel,
+} from './HandoverEvaluationPanel';
 
 const SOURCE_FRAME_ID = 'walker:fixture:12000.000';
+
+assert.deepEqual(
+  formatHandoverDecisionTime(Date.UTC(2026, 7, 25, 10, 30, 15)),
+  {
+    dateTime: '2026-08-25T10:30:15.000Z',
+    label: '2026-08-25 10:30:15 UTC',
+  },
+);
+assert.deepEqual(formatHandoverDecisionTime(12_000), {
+  dateTime: 'PT12S',
+  label: 't = 12.0 s',
+});
 
 function metric(value: number, unit: string) {
   return createMetricEvidence({
@@ -64,6 +79,14 @@ function opportunity(satelliteId: string, beamId: number, sinrDb: number, eligib
     primaryUeId: 'ue-ntpu',
     sourceFrameId: SOURCE_FRAME_ID,
     beamIdentitySource: 'walker-cell-surrogate',
+    sinrMeasurementContext: {
+      purpose: 'sinr-offset-admission',
+      powerModel: 'profile-rated-rf',
+      profileId: 'hobs-2024-candidate-rich',
+      epochToken: 'walker:fixture',
+      ratedTransmitPowerDbm: 50,
+      activeInterferenceKeys: ['STARLINK-101|1'],
+    },
     geometryClass: eligible ? 'service-eligible' : 'scheduled-and-illuminated',
     elevation: metric(42 - beamId, 'deg'),
     steering: metric(5 + beamId, 'deg'),
@@ -178,6 +201,8 @@ assert.match(zhMarkup, /同衛星波束候選/);
 assert.match(zhMarkup, /跨衛星候選/);
 assert.match(zhMarkup, /暫列第一/);
 assert.match(zhMarkup, /預測能源效率尚未啟用/);
+assert.match(zhMarkup, /Walker 同幀額定功率資格量測/);
+assert.match(zhMarkup, /資格 SINR/);
 assert.match(zhMarkup, /不是 TLE 提供的實體波束識別碼/);
 assert.match(zhMarkup, /data-active-data-link-count="1"/);
 assert.equal(zhMarkup.match(/data-active-data-link="true"/g)?.length, 1);
@@ -185,6 +210,10 @@ assert.ok((zhMarkup.match(/data-active-data-link="false"/g)?.length ?? 0) >= 1);
 assert.match(zhMarkup, /data-scientific-candidate-count="6"/);
 assert.match(zhMarkup, /檢視其餘 2 組/);
 assert.doesNotMatch(zhMarkup, />0 bit\/J</);
+assert.ok(
+  zhMarkup.indexOf('leo-handover-selection') < zhMarkup.indexOf('leo-handover-candidate-set'),
+  'event-state summary must remain visible before the long candidate list',
+);
 
 const enMarkup = renderToStaticMarkup(
   <LocaleProvider initialLocale="en">
@@ -196,6 +225,41 @@ assert.match(enMarkup, /Multi-candidate handover evaluation/);
 assert.match(enMarkup, /Leader confirmation/);
 assert.match(enMarkup, /Only active data link/);
 assert.match(enMarkup, /forecast EE is not active/i);
+assert.match(enMarkup, /rated-power RF admission/i);
+assert.match(enMarkup, /Admission SINR/);
+
+const committedTarget = candidateLinkKey('STARLINK-202', 1);
+const committedDecision = createHandoverDecisionFrame({
+  ...decision,
+  phase: 'guard',
+  serving: committedTarget,
+  provisionalLeader: null,
+  selectedTarget: null,
+  selectedKind: null,
+  selectionHoldSec: 0,
+  recentCommit: {
+    episodeId: decision.episodeId,
+    sourceFrameId: decision.sourceFrameId,
+    simTimeMs: decision.simTimeMs,
+    from: candidateLinkKey('STARLINK-101', 1),
+    to: committedTarget,
+    kind: 'inter-satellite',
+    mode: 'sinr-offset',
+    reason: 'fixed UI receipt fixture',
+    oldLinkEnded: true,
+    newLinkStarted: true,
+  },
+});
+const receiptMarkup = renderToStaticMarkup(
+  <LocaleProvider initialLocale="zh-TW">
+    <HandoverEvaluationPanel decision={committedDecision} />
+  </LocaleProvider>,
+);
+assert.match(receiptMarkup, /跨衛星換手完成/);
+assert.ok(
+  receiptMarkup.indexOf('leo-handover-receipt') < receiptMarkup.indexOf('leo-handover-candidate-set'),
+  'commit receipt must remain visible before the long candidate list',
+);
 
 const pinnedKey = candidateLinkKey('STARLINK-202', 1);
 const pinnedMarkup = renderToStaticMarkup(
@@ -209,19 +273,42 @@ const pinnedMarkup = renderToStaticMarkup(
 
 assert.match(pinnedMarkup, /預測吞吐量/);
 assert.match(pinnedMarkup, /預估剩餘服務時間/);
-assert.match(pinnedMarkup, /共同預測時域 H/);
-assert.match(pinnedMarkup, /預測傳輸資料量/);
-assert.match(pinnedMarkup, /預測耗能/);
-assert.match(pinnedMarkup, /維持目前連線基準/);
-assert.match(pinnedMarkup, /相對基準變化/);
-assert.match(pinnedMarkup, /模型版本/);
-assert.match(pinnedMarkup, /證據來源/);
+assert.doesNotMatch(pinnedMarkup, /共同預測時域 H/);
+assert.doesNotMatch(pinnedMarkup, /預測傳輸資料量/);
+assert.doesNotMatch(pinnedMarkup, /預測耗能/);
+assert.doesNotMatch(pinnedMarkup, /維持目前連線基準/);
+assert.doesNotMatch(pinnedMarkup, /相對基準變化/);
+assert.doesNotMatch(pinnedMarkup, /模型版本/);
+assert.doesNotMatch(pinnedMarkup, /證據識別/);
+assert.doesNotMatch(pinnedMarkup, new RegExp(SOURCE_FRAME_ID.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+assert.doesNotMatch(pinnedMarkup, /預測能源效率增益/);
 assert.match(pinnedMarkup, /量測/);
 assert.match(pinnedMarkup, /門檻/);
-assert.match(pinnedMarkup, /尚未計算/);
+assert.match(pinnedMarkup, /資格 SINR/);
+assert.doesNotMatch(pinnedMarkup, /尚未計算/);
 const controlledDetailsId = pinnedMarkup.match(/aria-controls="([^"]+)"/)?.[1];
 assert.ok(controlledDetailsId);
 assert.match(pinnedMarkup, new RegExp(`id="${controlledDetailsId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
+
+const eeModeDecision = createHandoverDecisionFrame({
+  ...decision,
+  mode: 'ee-optimization',
+});
+const eeModePinnedMarkup = renderToStaticMarkup(
+  <CandidateSetPanel
+    plan={buildCandidatePresentationPlan(eeModeDecision, undefined, pinnedKey)}
+    pinnedKey={pinnedKey}
+    onTogglePin={() => undefined}
+    copy={(zh) => zh}
+  />,
+);
+assert.match(eeModePinnedMarkup, /共同預測時域 H/);
+assert.match(eeModePinnedMarkup, /預測傳輸資料量/);
+assert.match(eeModePinnedMarkup, /預測耗能/);
+assert.match(eeModePinnedMarkup, /維持目前連線基準/);
+assert.match(eeModePinnedMarkup, /相對基準變化/);
+assert.match(eeModePinnedMarkup, /尚未計算/);
+assert.match(eeModePinnedMarkup, /預測能源效率增益/);
 
 const profile = loadProfile('hobs-2024-candidate-rich');
 const integratedMarkup = renderToStaticMarkup(

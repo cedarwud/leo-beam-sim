@@ -1,7 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 
 import {
-  candidateLinkKeyString,
   sameCandidateLinkKey,
   type CandidateLinkKey,
   type HandoverCommitReceipt,
@@ -15,11 +14,38 @@ import {
 import type { HandoverVisualIdentityAllocation } from '../../constants/handoverVisualIdentity';
 import { useLocale } from '../../i18n';
 import { CandidateSetPanel } from './CandidateSetPanel';
+import { useCandidateInspectionSelection } from './candidateInspectionSelection';
 
 const RECEIPT_VISIBLE_MS = 8_000;
 
 interface HandoverEvaluationPanelProps {
   readonly decision: HandoverDecisionFrame;
+}
+
+export interface HandoverDecisionTimeDisplay {
+  readonly dateTime: string;
+  readonly label: string;
+}
+
+/**
+ * Walker frames currently carry an absolute scenario epoch. Present that as a
+ * 24-hour UTC timestamp instead of an unreadable billion-second `t` value;
+ * deterministic fixtures and relative producers retain the compact `t = … s`
+ * form.
+ */
+export function formatHandoverDecisionTime(simTimeMs: number): HandoverDecisionTimeDisplay {
+  if (simTimeMs >= Date.UTC(2000, 0, 1)) {
+    const iso = new Date(simTimeMs).toISOString();
+    return {
+      dateTime: iso,
+      label: `${iso.slice(0, 19).replace('T', ' ')} UTC`,
+    };
+  }
+  const seconds = Math.max(0, simTimeMs / 1000);
+  return {
+    dateTime: `PT${seconds}S`,
+    label: `t = ${seconds.toFixed(1)} s`,
+  };
 }
 
 const PHASE_STEPS = ['monitoring', 'eligibility', 'qualification', 'selection', 'switching'] as const;
@@ -115,6 +141,7 @@ function ServingLink({ plan, copy }: {
 }) {
   const titleId = useId();
   const serving = plan.displayedLinks.find(link => link.isServing) ?? null;
+  const ratedAdmission = serving?.opportunity?.sinrMeasurementContext?.powerModel === 'profile-rated-rf';
   return (
     <section className="leo-handover-serving" aria-labelledby={titleId}>
       <header>
@@ -133,7 +160,9 @@ function ServingLink({ plan, copy }: {
           <span aria-hidden="true">{serving.beamIdentity?.glyph ?? serving.satelliteIdentity.glyph}</span>
           <strong>{formatLink(serving.key, plan.decision, copy)}</strong>
           <small>
-            SINR {serving.opportunity?.sinr.status === 'available' && serving.opportunity.sinr.value !== null
+            {ratedAdmission
+              ? copy('資格 SINR', 'Admission SINR')
+              : 'SINR'} {serving.opportunity?.sinr.status === 'available' && serving.opportunity.sinr.value !== null
               ? `${serving.opportunity.sinr.value.toFixed(1)} dB`
               : '—'}
           </small>
@@ -147,7 +176,7 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
   const { locale } = useLocale();
   const isEnglish = locale === 'en';
   const copy = (zh: string, en: string) => (isEnglish ? en : zh);
-  const [pinnedKey, setPinnedKey] = useState<CandidateLinkKey | null>(null);
+  const { pinnedKey, setPinnedKey, togglePinnedKey } = useCandidateInspectionSelection(decision.episodeId);
   const [receipt, setReceipt] = useState<HandoverCommitReceipt | null>(decision.recentCommit);
   const previousIdentityAllocation = useRef<HandoverVisualIdentityAllocation | null>(null);
   const receiptEpisodeId = useRef(decision.episodeId);
@@ -182,11 +211,12 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
 
   const currentStep = phaseStep(decision.phase);
   const currentStepIndex = PHASE_STEPS.indexOf(currentStep);
-  const togglePin = (key: CandidateLinkKey) => {
-    setPinnedKey(previous => previous !== null && candidateLinkKeyString(previous) === candidateLinkKeyString(key)
-      ? null
-      : key);
-  };
+  const togglePin = (key: CandidateLinkKey) => togglePinnedKey(key);
+  const decisionTime = formatHandoverDecisionTime(decision.simTimeMs);
+  const ratedAdmission = decision.opportunities.some(opportunity => (
+    opportunity.sinrMeasurementContext?.purpose === 'sinr-offset-admission'
+    && opportunity.sinrMeasurementContext.powerModel === 'profile-rated-rf'
+  ));
 
   return (
     <section
@@ -205,12 +235,14 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
           <h2>{phaseTitle(decision.phase, copy)}</h2>
           <small className="leo-handover-evaluation__source">
             {decision.opportunities.some(opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate')
-              ? copy('資料來源：Walker 模型同幀量測', 'Source: same-frame Walker model measurements')
+              ? ratedAdmission
+                ? copy('資料來源：Walker 同幀額定功率資格量測', 'Source: same-frame Walker rated-power admission')
+                : copy('資料來源：Walker 模型同幀量測', 'Source: same-frame Walker model measurements')
               : copy('資料來源：同幀候選量測', 'Source: same-frame candidate measurements')}
           </small>
         </div>
-        <time dateTime={`PT${Math.max(0, decision.simTimeMs / 1000)}S`}>
-          t = {(decision.simTimeMs / 1000).toFixed(1)} s
+        <time dateTime={decisionTime.dateTime}>
+          {decisionTime.label}
         </time>
       </header>
 
@@ -228,7 +260,14 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
       </ol>
 
       <ServingLink plan={plan} copy={copy} />
-      <CandidateSetPanel plan={plan} pinnedKey={effectivePin} onTogglePin={togglePin} copy={copy} />
+
+      {receipt !== null && (
+        <aside className="leo-handover-receipt" role="status" aria-live="polite">
+          <strong>{receiptTitle(receipt, copy)}</strong>
+          <span>{formatLink(receipt.from, decision, copy)} → {formatLink(receipt.to, decision, copy)}</span>
+          <p>{decisionBasis(receipt, copy)}</p>
+        </aside>
+      )}
 
       {(decision.provisionalLeader !== null || decision.selectedTarget !== null) && (
         <section className="leo-handover-selection" aria-label={copy('候選選定狀態', 'Candidate selection state')}>
@@ -242,18 +281,14 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
         </section>
       )}
 
-      {receipt !== null && (
-        <aside className="leo-handover-receipt" role="status" aria-live="polite">
-          <strong>{receiptTitle(receipt, copy)}</strong>
-          <span>{formatLink(receipt.from, decision, copy)} → {formatLink(receipt.to, decision, copy)}</span>
-          <p>{decisionBasis(receipt, copy)}</p>
-        </aside>
-      )}
+      <CandidateSetPanel plan={plan} pinnedKey={effectivePin} onTogglePin={togglePin} copy={copy} />
 
       <footer className="leo-handover-evaluation__footnote">
         <span>
-          {decision.mode === 'sinr-offset'
-            ? copy('目前依 SINR、門檻與時間條件評估；預測能源效率尚未啟用。', 'Current evaluation uses SINR, gates, and timing; forecast EE is not active.')
+          {ratedAdmission
+            ? copy('目前依額定功率 RF 資格量測、SINR 偏移量與持續時間評估；預測能源效率尚未啟用。', 'Current evaluation uses rated-power RF admission, SINR offset, and timing; forecast EE is not active.')
+            : decision.mode === 'sinr-offset'
+              ? copy('目前依 SINR、偏移量與持續時間評估；預測能源效率尚未啟用。', 'Current evaluation uses SINR, offset, and timing; forecast EE is not active.')
             : copy('所有候選均以相同預測時域與服務條件比較。', 'All candidates are compared over the same forecast horizon and service gates.')}
         </span>
         {decision.opportunities.some(opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate') && (

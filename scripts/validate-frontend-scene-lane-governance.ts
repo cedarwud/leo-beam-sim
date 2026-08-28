@@ -2809,13 +2809,24 @@ for (const [needle, label] of [
   // beam-stage ① #3: cell-truth footprint rings (gated with the serving cones) REPLACE
   // the retired steered AmbientFootprintRings — rings now sit at the earth-fixed cell
   // centres (aligned with the cones + UE membership), not the steered beam positions.
-  ["{presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !handoverDisplayIsolation.active && (\\n        <SinrLiveCellFootprintRings", 'cell-truth footprint rings'],
-  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && (\\n        <HandoverLinks", 'handover links'],
-  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && !concurrentIntraVisualSuppressed\\n        && <IntraGroundShockwave", 'intra ground shockwave'],
-  ["{presentationPlan.visible['event-effects']\\n        && showHandoverToastOverlay\\n        && (\\n          (manualHandoverPresentationActive && manualHandoverEvent !== null)", 'handover toast overlay'],
+  ["{!multiCandidateAuthorityActive && presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !handoverDisplayIsolation.active && (\\n        <SinrLiveCellFootprintRings", 'cell-truth footprint rings'],
+  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !multiCandidateAuthorityActive\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && (\\n        <HandoverLinks", 'handover links'],
+  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !multiCandidateAuthorityActive\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && !concurrentIntraVisualSuppressed\\n        && <IntraGroundShockwave", 'intra ground shockwave'],
+  ["{presentationPlan.visible['event-effects']\\n        && showHandoverToastOverlay\\n        && !multiCandidateAuthorityActive\\n        && (\\n          (manualHandoverPresentationActive && manualHandoverEvent !== null)", 'handover toast overlay'],
 ] as const) {
   assertContains(mainSceneSource, needle.replaceAll('\\n', '\n'), `MainScene should source-gate ${label}`);
 }
+
+assertContains(
+  mainSceneSource,
+  '<MultiCandidateBeamScene',
+  'MainScene mounts the dedicated multi-candidate beam scene',
+);
+assertContains(
+  mainSceneSource,
+  "{!multiCandidateAuthorityActive && presentationPlan.visible['candidate-footprints']",
+  'MainScene suppresses the legacy candidate footprint layer while multi-candidate authority is active',
+);
 
 for (const [needle, label] of [
   ['{cinematicSpotlightActive && (\\n        <fogExp2', 'cinematic fog'],

@@ -22,6 +22,7 @@ export interface CandidateLinkMeasurement {
   readonly primaryUeId: string;
   readonly sourceFrameId: string;
   readonly beamIdentitySource: CandidateOpportunity['beamIdentitySource'];
+  readonly sinrMeasurementContext?: CandidateOpportunity['sinrMeasurementContext'];
   readonly elevation: MetricEvidence;
   readonly steering: MetricEvidence;
   readonly range: MetricEvidence;
@@ -220,6 +221,7 @@ function produceOpportunity(
     primaryUeId: measurement.primaryUeId,
     sourceFrameId: measurement.sourceFrameId,
     beamIdentitySource: measurement.beamIdentitySource,
+    sinrMeasurementContext: measurement.sinrMeasurementContext,
     geometryClass: latestGeometryClass(gates),
     elevation: measurement.elevation,
     steering: measurement.steering,

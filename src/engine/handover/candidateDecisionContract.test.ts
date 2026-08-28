@@ -11,9 +11,11 @@ import {
   deriveHandoverKind,
   isForecastEeRankable,
   requiresDecisionReset,
+  validateCandidateOpportunity,
   type CandidateGateResult,
   type CandidateLinkKey,
   type CandidateOpportunity,
+  type CandidateSinrMeasurementContext,
   type DecisionClockContext,
   type EvidenceStatus,
   type ForecastEeEvidence,
@@ -108,6 +110,7 @@ function opportunity(
     readonly elevation?: MetricEvidence;
     readonly forecastEe?: ForecastEeEvidence | null;
     readonly includeEeGate?: boolean;
+    readonly sinrMeasurementContext?: CandidateSinrMeasurementContext;
   } = {},
 ): CandidateOpportunity {
   const sourceFrameId = options.sourceFrameId ?? FRAME;
@@ -123,6 +126,9 @@ function opportunity(
     primaryUeId: options.primaryUeId ?? UE,
     sourceFrameId,
     beamIdentitySource: 'walker-cell-surrogate',
+    ...(options.sinrMeasurementContext === undefined
+      ? {}
+      : { sinrMeasurementContext: options.sinrMeasurementContext }),
     geometryClass: 'service-eligible',
     elevation: options.elevation ?? available(35, 'deg'),
     steering: available(2, 'deg'),
@@ -159,6 +165,34 @@ function clock(overrides: Partial<DecisionClockContext> = {}): DecisionClockCont
 const satABeam1 = candidateLinkKey('SAT-A', 1);
 const satABeam2 = candidateLinkKey('SAT-A', 2);
 const satBBeam1 = candidateLinkKey('SAT-B', 1);
+
+const ratedAdmissionContext: CandidateSinrMeasurementContext = {
+  purpose: 'sinr-offset-admission',
+  powerModel: 'profile-rated-rf',
+  profileId: 'candidate-rich',
+  epochToken: 'walker-epoch-1',
+  ratedTransmitPowerDbm: 50,
+  activeInterferenceKeys: ['SAT-SERVING|0', 'SAT-B|1'],
+};
+
+validateCandidateOpportunity(opportunity(satABeam1, {
+  sinrMeasurementContext: ratedAdmissionContext,
+}));
+
+for (const [context, expected] of [
+  [{ ...ratedAdmissionContext, purpose: 'invalid-purpose' }, /SINR purpose is invalid/],
+  [{ ...ratedAdmissionContext, powerModel: 'invalid-model' }, /SINR power model is invalid/],
+  [{ ...ratedAdmissionContext, ratedTransmitPowerDbm: null }, /requires rated transmit power/],
+  [{ ...ratedAdmissionContext, activeInterferenceKeys: ['SAT-A|0', 'SAT-A|0'] }, /contains duplicate/],
+  [{ ...ratedAdmissionContext, activeInterferenceKeys: [''] }, /active interference key must be non-empty/],
+] as const) {
+  assert.throws(
+    () => validateCandidateOpportunity(opportunity(satABeam1, {
+      sinrMeasurementContext: context as CandidateSinrMeasurementContext,
+    })),
+    expected,
+  );
+}
 
 // The pair, not the satellite alone, is the identity used by every join.
 assert.equal(candidateLinkKeyString(candidateLinkKey('SAT-A', 1)), 'SAT-A|1');

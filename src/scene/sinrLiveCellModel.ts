@@ -2183,16 +2183,30 @@ export class SinrLiveCellModel {
     }
 
     const uePosition = this.uePosition(ue);
+    const sinrMeasurementContext = Object.freeze({
+      purpose: 'sinr-offset-admission' as const,
+      powerModel: 'profile-rated-rf' as const,
+      profileId: this.profile.id,
+      epochToken: `walker:${this.epochUtcMs}`,
+      ratedTransmitPowerDbm: this.profile.channel.maxTxPowerDbm ?? null,
+      activeInterferenceKeys: Object.freeze([...new Set(finalActive.map(
+        assignment => `${assignment.satId}|${assignment.beamId}`,
+      ))].sort()),
+    });
     const samples = computeLinkBudget(
       uePosition,
       [...snapshotsByKey.values()],
-      // Candidate SINR must use the same angle-aware transmit-power state as
-      // the selected serving sample. Disabling it here measured candidates at
-      // the profile's rated RF power, then published the committed link at its
-      // actual 2 W segment power under the same frame id (about a 17 dB split).
-      // The producer still leaves forecast EE unavailable; this only aligns
-      // the measured RF evidence used by the current SINR compatibility mode.
-      this.linkBudgetOptions([...finalActive], simTimeSec),
+      // The active compatibility policy is an RF-admission comparison, matching
+      // `measureCellCandidates`: every pair in this opportunity set (including
+      // the current serving pair) is measured at the profile-rated power against
+      // one common active-interference field. Candidate probes remain x(t)=0 and
+      // never become interferers. A committed link still starts its published
+      // angle-aware recurrence at 2 W in the final serving pass below.
+      //
+      // This seam is deliberately NOT forecast-EE evidence. EE activation still
+      // requires the SDD's per-target replacement counterfactual with explicit
+      // power recurrence, load, interference, and equal-horizon ratio-of-sums.
+      this.linkBudgetOptions([...finalActive], simTimeSec, false),
     );
     const sampleByKey = new Map(samples.map(sample => [pairKey(sample.satId, sample.beamId), sample]));
     const availableMetric = (value: number, unit: string): MetricEvidence => ({
@@ -2237,6 +2251,7 @@ export class SinrLiveCellModel {
         primaryUeId: ue.id,
         sourceFrameId,
         beamIdentitySource: 'walker-cell-surrogate',
+        sinrMeasurementContext,
         elevation: availableMetric(elevationDeg, 'deg'),
         steering: availableMetric(pointing.scanAngleDeg, 'deg'),
         range: availableMetric(

@@ -395,6 +395,22 @@ export function isForecastEeRankable(
 }
 
 export type BeamIdentitySource = 'physical-beam' | 'walker-cell-surrogate';
+export type CandidateSinrPowerModel = 'profile-rated-rf' | 'angle-aware-assignment';
+
+/**
+ * Provenance for the SINR value used by the candidate decision policy. The
+ * active Walker compatibility lane uses rated RF admission; this is not an
+ * active-link power sample and is never forecast-EE evidence.
+ */
+export interface CandidateSinrMeasurementContext {
+  readonly purpose: 'sinr-offset-admission' | 'forecast-ee-qos';
+  readonly powerModel: CandidateSinrPowerModel;
+  readonly profileId: string;
+  readonly epochToken: string;
+  readonly ratedTransmitPowerDbm: number | null;
+  readonly activeInterferenceKeys: readonly string[];
+}
+
 export type CandidateGeometryClass =
   | 'geometrically-reachable'
   | 'steering-valid'
@@ -406,6 +422,8 @@ export interface CandidateOpportunity {
   readonly primaryUeId: string;
   readonly sourceFrameId: string;
   readonly beamIdentitySource: BeamIdentitySource;
+  /** Optional only for older fixtures/producers; active candidate lanes publish it. */
+  readonly sinrMeasurementContext?: CandidateSinrMeasurementContext;
   readonly geometryClass: CandidateGeometryClass;
   readonly elevation: MetricEvidence;
   readonly steering: MetricEvidence;
@@ -435,6 +453,30 @@ export function validateCandidateOpportunity(opportunity: CandidateOpportunity):
   if (!(['physical-beam', 'walker-cell-surrogate'] as readonly BeamIdentitySource[])
     .includes(opportunity.beamIdentitySource)) {
     fail('candidate opportunity beamIdentitySource is invalid');
+  }
+  const sinrContext = opportunity.sinrMeasurementContext;
+  if (sinrContext !== undefined) {
+    if (!(['sinr-offset-admission', 'forecast-ee-qos'] as const).includes(sinrContext.purpose)) {
+      fail('candidate opportunity SINR purpose is invalid');
+    }
+    if (!(['profile-rated-rf', 'angle-aware-assignment'] as const).includes(sinrContext.powerModel)) {
+      fail('candidate opportunity SINR power model is invalid');
+    }
+    nonEmpty(sinrContext.profileId, 'candidate opportunity SINR profileId');
+    nonEmpty(sinrContext.epochToken, 'candidate opportunity SINR epochToken');
+    if (sinrContext.ratedTransmitPowerDbm !== null) {
+      finite(sinrContext.ratedTransmitPowerDbm, 'candidate opportunity rated transmit power');
+    }
+    if (!Array.isArray(sinrContext.activeInterferenceKeys)) {
+      fail('candidate opportunity active interference keys must be an array');
+    }
+    for (const key of sinrContext.activeInterferenceKeys) {
+      nonEmpty(key, 'candidate opportunity active interference key');
+    }
+    unique(sinrContext.activeInterferenceKeys, 'candidate opportunity active interference keys', key => key);
+    if (sinrContext.powerModel === 'profile-rated-rf' && sinrContext.ratedTransmitPowerDbm === null) {
+      fail('profile-rated RF admission requires rated transmit power');
+    }
   }
   if (!GEOMETRY_CLASSES.includes(opportunity.geometryClass)) fail('candidate opportunity geometryClass is invalid');
   const metrics: readonly [string, MetricEvidence][] = [
@@ -481,6 +523,12 @@ export function freezeCandidateOpportunity(opportunity: CandidateOpportunity): C
   return Object.freeze({
     ...opportunity,
     key: candidateLinkKey(opportunity.key.satelliteId, opportunity.key.beamId),
+    sinrMeasurementContext: opportunity.sinrMeasurementContext === undefined
+      ? undefined
+      : Object.freeze({
+        ...opportunity.sinrMeasurementContext,
+        activeInterferenceKeys: freezeArray(opportunity.sinrMeasurementContext.activeInterferenceKeys),
+      }),
     elevation: cloneMetricEvidence(opportunity.elevation),
     steering: cloneMetricEvidence(opportunity.steering),
     range: cloneMetricEvidence(opportunity.range),

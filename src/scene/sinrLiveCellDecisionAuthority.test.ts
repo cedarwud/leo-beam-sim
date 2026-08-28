@@ -109,11 +109,19 @@ test('primary multi-candidate authority commits one remeasured link without chan
     decision.serving !== null && sameCandidateLinkKey(opportunity.key, decision.serving)
   ));
   assert.equal(committedOpportunity?.sinr.status, 'available');
-  assert.ok(
-    Math.abs(
-      committedOpportunity!.sinr.value! - committedPrimary.servingLinkSample!.sinrDb,
-    ) < 1e-9,
-    'the published opportunity and serving sample must share the post-transaction RF state',
+  assert.deepEqual(committedOpportunity?.sinrMeasurementContext, {
+    purpose: 'sinr-offset-admission',
+    powerModel: 'profile-rated-rf',
+    profileId: profile.id,
+    epochToken: `walker:${EPOCH_MS}`,
+    ratedTransmitPowerDbm: profile.channel.maxTxPowerDbm ?? null,
+    activeInterferenceKeys: committedOpportunity?.sinrMeasurementContext?.activeInterferenceKeys,
+  });
+  assert.equal(committedPrimary.servingLinkSample?.angleAware?.powerW, 2);
+  assert.notEqual(
+    committedOpportunity!.sinr.value,
+    committedPrimary.servingLinkSample!.sinrDb,
+    'rated RF admission must remain distinct from the committed 2 W active-link sample',
   );
   assert.equal(
     committedFrame.ues.filter(item => item.ueId === ue.id && item.servingLinkSample !== null).length,

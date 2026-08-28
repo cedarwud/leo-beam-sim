@@ -254,7 +254,10 @@ function priorityFor(
   return PRESENTATION_ROLE_PRIORITY[role];
 }
 
-function styleFor(role: CandidatePresentationRole): CandidatePresentationVisualTreatment {
+function styleFor(
+  role: CandidatePresentationRole,
+  isPinned: boolean,
+): CandidatePresentationVisualTreatment {
   switch (role) {
     case 'serving':
       return Object.freeze({
@@ -297,7 +300,7 @@ function styleFor(role: CandidatePresentationRole): CandidatePresentationVisualT
         role,
         footprintStyle: 'dashed',
         coneStyle: 'wireframe',
-        dataLinkStyle: 'measurement-dashed',
+        dataLinkStyle: isPinned ? 'measurement-dashed' : 'none',
         isMeasurementOnly: true,
         isActiveDataLink: false,
       });
@@ -305,8 +308,8 @@ function styleFor(role: CandidatePresentationRole): CandidatePresentationVisualT
       return Object.freeze({
         role,
         footprintStyle: 'dotted',
-        coneStyle: 'hidden',
-        dataLinkStyle: 'none',
+        coneStyle: isPinned ? 'wireframe' : 'hidden',
+        dataLinkStyle: isPinned ? 'measurement-dashed' : 'none',
         isMeasurementOnly: true,
         isActiveDataLink: false,
       });
@@ -486,7 +489,8 @@ function buildLink(
     : opportunity === null || state === null
       ? 'observed'
       : roleFor(decision, opportunity, state);
-  const visual = styleFor(role);
+  const isPinned = pinnedKey !== null && sameKey(pinnedKey, key);
+  const visual = styleFor(role, isPinned);
   return Object.freeze({
     joinKey: stableJoinKey(decision.episodeId, key),
     sceneJoinKey: stableJoinKey(decision.episodeId, key),
@@ -499,7 +503,7 @@ function buildLink(
     role,
     isServing,
     isCandidate: !isServing,
-    isPinned: pinnedKey !== null && sameKey(pinnedKey, key),
+    isPinned,
     satelliteIdentity: identityFor(allocation, key.satelliteId),
     beamIdentity: beamIdentityFor(allocation, key),
     visual,

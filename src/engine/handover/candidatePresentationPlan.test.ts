@@ -186,6 +186,10 @@ test('groups mixed intra/inter pairs, preserves priority, and exposes one active
   assert.ok(candidates.every(link => !link.visual.isActiveDataLink));
   assert.equal(candidates.find(link => link.key.satelliteId === 'sat-b' && link.beamId === 1)?.role, 'selected-target');
   assert.equal(candidates.find(link => link.key.satelliteId === 'sat-a' && link.beamId === 2)?.role, 'qualified');
+  assert.equal(
+    candidates.find(link => link.key.satelliteId === 'sat-a' && link.beamId === 2)?.visual.dataLinkStyle,
+    'none',
+  );
   assert.equal(candidates.find(link => link.key.satelliteId === 'sat-d') ?? null, null);
 
   const satABeams = plan.groups[0]!.links.filter(link => link.isCandidate);
@@ -249,7 +253,10 @@ test('pinning a hidden pair swaps only the bounded display subset and reports th
   assert.equal(pinned.pinSwap?.wasHiddenBeforePin, true);
   assert.equal(pinned.pinSwap?.isVisibleAfterPin, true);
   assert.ok(pinned.pinSwap?.evictedKey);
-  assert.ok(pinned.displayedLinks.some(link => link.isPinned && link.key.satelliteId === 'sat-d'));
+  const pinnedLink = pinned.displayedLinks.find(link => link.isPinned && link.key.satelliteId === 'sat-d');
+  assert.ok(pinnedLink);
+  assert.equal(pinnedLink.visual.coneStyle, 'wireframe');
+  assert.equal(pinnedLink.visual.dataLinkStyle, 'measurement-dashed');
   assert.ok(!pinned.displayedLinks.some(link => link.key.satelliteId === pinned.pinSwap?.evictedKey?.satelliteId
     && link.beamId === pinned.pinSwap?.evictedKey?.beamId));
   assert.equal(pinned.activeDataLinkCount, 1);

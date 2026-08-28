@@ -1,4 +1,4 @@
-import { useId, type CSSProperties } from 'react';
+import { useId, useState, type CSSProperties } from 'react';
 
 import {
   candidateLinkKeyString,
@@ -132,12 +132,21 @@ function tttLabel(state: CandidateDecisionState | null, copy: Copy): string {
   return `${formatNumber(elapsed, 1)} / ${formatNumber(state.requiredTttSec, 1)} s`;
 }
 
-function CandidateDetails({ link, copy }: { readonly link: CandidatePresentationLink; readonly copy: Copy }) {
+function CandidateDetails({
+  link,
+  copy,
+  showForecastEe,
+}: {
+  readonly link: CandidatePresentationLink;
+  readonly copy: Copy;
+  readonly showForecastEe: boolean;
+}) {
   const opportunity = link.opportunity;
   if (opportunity === null) {
     return <p className="leo-handover-candidate__missing">{copy('本畫面尚無同幀量測資料', 'No same-frame measurement is available')}</p>;
   }
   const ee = opportunity.forecastEe;
+  const ratedAdmission = opportunity.sinrMeasurementContext?.powerModel === 'profile-rated-rf';
   const provenance = ee?.provenance;
   const relativeDelta = ee?.relativeDelta === null || ee?.relativeDelta === undefined
     ? '—'
@@ -145,24 +154,30 @@ function CandidateDetails({ link, copy }: { readonly link: CandidatePresentation
   return (
     <div className="leo-handover-candidate__details" data-testid="handover-candidate-details">
       <dl>
-        <div><dt>SINR</dt><dd>{formatMetric(opportunity.sinr, 2)}</dd></div>
+        <div><dt>{ratedAdmission ? copy('資格 SINR', 'Admission SINR') : 'SINR'}</dt><dd>{formatMetric(opportunity.sinr, 2)}</dd></div>
         <div><dt>{copy('仰角', 'Elevation')}</dt><dd>{formatMetric(opportunity.elevation, 1)}</dd></div>
         <div><dt>{copy('轉向角', 'Steering')}</dt><dd>{formatMetric(opportunity.steering, 1)}</dd></div>
         <div><dt>{copy('距離', 'Range')}</dt><dd>{formatMetric(opportunity.range, 0)}</dd></div>
         <div><dt>{copy('預測吞吐量', 'Predicted throughput')}</dt><dd>{formatEvidence(opportunity.predictedThroughput, 0, copy)}</dd></div>
         <div><dt>{copy('預估剩餘服務時間', 'Estimated remaining service time')}</dt><dd>{formatEvidence(opportunity.remainingServiceTime, 1, copy)}</dd></div>
-        <div><dt>{copy('預測 EE', 'Forecast EE')}</dt><dd>{forecastAvailability(ee, copy)}</dd></div>
-        <div><dt>{copy('共同預測時域 H', 'Common forecast horizon H')}</dt><dd>{formatOptionalValue(ee?.horizonSec, 's', 1)}</dd></div>
-        <div><dt>{copy('預測傳輸資料量', 'Forecast delivered data')}</dt><dd>{formatOptionalValue(ee?.deliveredBits, 'bit', 0)}</dd></div>
-        <div><dt>{copy('預測耗能', 'Forecast energy')}</dt><dd>{formatOptionalValue(ee?.consumedJoules, 'J', 2)}</dd></div>
-        <div><dt>{copy('維持目前連線基準', 'Keep-serving baseline')}</dt><dd>{formatOptionalValue(ee?.baselineEeBitPerJ, 'bit/J', 2)}</dd></div>
-        <div><dt>{copy('相對基準變化', 'Relative to baseline')}</dt><dd>{relativeDelta}</dd></div>
-        <div><dt>{copy('模型版本', 'Model version')}</dt><dd>{ee?.modelVersion ?? '—'}</dd></div>
-        <div><dt>{copy('證據來源', 'Evidence source')}</dt><dd>{provenance?.frameIdsOrDigest ?? opportunity.sourceFrameId}</dd></div>
+        {showForecastEe && <>
+          <div><dt>{copy('預測 EE', 'Forecast EE')}</dt><dd>{forecastAvailability(ee, copy)}</dd></div>
+          <div><dt>{copy('共同預測時域 H', 'Common forecast horizon H')}</dt><dd>{formatOptionalValue(ee?.horizonSec, 's', 1)}</dd></div>
+          <div><dt>{copy('預測傳輸資料量', 'Forecast delivered data')}</dt><dd>{formatOptionalValue(ee?.deliveredBits, 'bit', 0)}</dd></div>
+          <div><dt>{copy('預測耗能', 'Forecast energy')}</dt><dd>{formatOptionalValue(ee?.consumedJoules, 'J', 2)}</dd></div>
+          <div><dt>{copy('維持目前連線基準', 'Keep-serving baseline')}</dt><dd>{formatOptionalValue(ee?.baselineEeBitPerJ, 'bit/J', 2)}</dd></div>
+          <div><dt>{copy('相對基準變化', 'Relative to baseline')}</dt><dd>{relativeDelta}</dd></div>
+          {ee !== null && <div><dt>{copy('模型版本', 'Model version')}</dt><dd>{ee.modelVersion}</dd></div>}
+          {provenance != null && <div><dt>{copy('證據識別', 'Evidence receipt')}</dt><dd>{provenance.frameIdsOrDigest}</dd></div>}
+        </>}
       </dl>
       <div className="leo-handover-candidate__gates" aria-label={copy('候選條件', 'Candidate gates')}>
-        {opportunity.gates.map(gate => {
-          const [zh, en] = GATE_LABELS[gate.code];
+        {opportunity.gates
+          .filter(gate => showForecastEe || gate.code !== 'ee-advantage')
+          .map(gate => {
+          const [zh, en] = gate.code === 'sinr' && ratedAdmission
+            ? ['資格 SINR', 'admission SINR']
+            : GATE_LABELS[gate.code];
           const measurement = gate.measured === null
             ? null
             : gate.unit === 'boolean'
@@ -184,7 +199,7 @@ function CandidateDetails({ link, copy }: { readonly link: CandidatePresentation
               {threshold === null ? '' : copy(`；門檻 ${threshold}`, `; threshold ${threshold}`)}
             </span>
           );
-        })}
+          })}
       </div>
     </div>
   );
@@ -207,6 +222,7 @@ function CandidateRow({
 }) {
   const detailsId = useId();
   const state = link.state;
+  const ratedAdmission = link.opportunity?.sinrMeasurementContext?.powerModel === 'profile-rated-rf';
   const rejection = rejectionLabel(state, copy);
   const color = link.beamIdentity?.cssColor ?? link.satelliteIdentity.cssColor;
   return (
@@ -236,7 +252,7 @@ function CandidateRow({
         <span className="leo-handover-candidate__status">{roleLabel(link.role, state, copy)}</span>
       </button>
       <div className="leo-handover-candidate__metrics" data-forecast-ee={showForecastEe ? 'true' : 'false'}>
-        <span><small>SINR</small><strong>{formatMetric(link.opportunity?.sinr, 1)}</strong></span>
+        <span><small>{ratedAdmission ? copy('資格 SINR', 'Admission SINR') : 'SINR'}</small><strong>{formatMetric(link.opportunity?.sinr, 1)}</strong></span>
         <span><small>TTT</small><strong>{tttLabel(state, copy)}</strong></span>
         {showForecastEe && (
           <span><small>{copy('預測 EE', 'Forecast EE')}</small><strong>{forecastSummary(link.opportunity?.forecastEe ?? null, copy)}</strong></span>
@@ -244,7 +260,7 @@ function CandidateRow({
       </div>
       {rejection !== null && <p className="leo-handover-candidate__reason">{rejection}</p>}
       <div id={detailsId} hidden={!pinned}>
-        {pinned && <CandidateDetails link={link} copy={copy} />}
+        {pinned && <CandidateDetails link={link} copy={copy} showForecastEe={showForecastEe} />}
       </div>
     </article>
   );
@@ -259,6 +275,7 @@ function hiddenKeys(plan: CandidatePresentationPlan): readonly CandidateLinkKey[
 
 export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: CandidateSetPanelProps) {
   const titleId = useId();
+  const [overflowOpen, setOverflowOpen] = useState(false);
   const hidden = hiddenKeys(plan);
   return (
     <section className="leo-handover-candidate-set" aria-labelledby={titleId}>
@@ -313,9 +330,13 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
       )}
 
       {hidden.length > 0 && (
-        <details className="leo-handover-candidate-set__overflow">
+        <details
+          className="leo-handover-candidate-set__overflow"
+          open={overflowOpen}
+          onToggle={event => setOverflowOpen(event.currentTarget.open)}
+        >
           <summary>{copy(`檢視其餘 ${hidden.length} 組`, `Inspect ${hidden.length} more`)}</summary>
-          <div>
+          {overflowOpen && <div>
             {hidden.map(key => {
               const satellite = plan.identityAllocation.identitiesBySatelliteId[key.satelliteId];
               const beam = plan.identityAllocation.beamIdentitiesBySatelliteId[key.satelliteId]?.[String(key.beamId)];
@@ -333,7 +354,7 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
                 </button>
               );
             })}
-          </div>
+          </div>}
         </details>
       )}
     </section>
