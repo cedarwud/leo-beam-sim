@@ -1,9 +1,31 @@
 import assert from 'node:assert/strict';
+import type { HandoverDecisionFrame } from '../engine/handover/candidateDecisionContract';
 import type { SimState } from './types';
 import {
   hasUiStateBoundaryChanged,
   shouldPublishUiState,
 } from './panelState';
+
+const decisionFrame = {
+  episodeId: 'episode/1',
+  sourceFrameId: 'frame-1',
+  simTimeMs: 1_000,
+  phase: 'qualifying',
+  mode: 'sinr-offset',
+  serving: { satelliteId: 'sat-a', beamId: 1 },
+  opportunities: [{ key: { satelliteId: 'sat-b', beamId: 2 } }],
+  states: [{
+    key: { satelliteId: 'sat-b', beamId: 2 },
+    hardEligibility: 'eligible',
+    triggerStatus: 'satisfied',
+    qualificationSec: 1,
+    requiredTttSec: 3,
+    stable: false,
+  }],
+  provisionalLeader: null,
+  selectedTarget: null,
+  recentCommit: null,
+} as unknown as HandoverDecisionFrame;
 
 const baseState = {
   profileId: 'profile-a',
@@ -26,6 +48,7 @@ const baseState = {
   intraHandoverEvent: null,
   physicalServingBudget: null,
   angleAwareFormulaFrame: null,
+  handoverDecisionFrame: decisionFrame,
 } as unknown as SimState;
 
 const numericOnlyChange = {
@@ -39,6 +62,21 @@ const identityChange = {
   servingSatId: 'sat-c',
 } as SimState;
 
+const decisionNumericOnlyChange = {
+  ...baseState,
+  handoverDecisionFrame: {
+    ...decisionFrame,
+    sourceFrameId: 'frame-2',
+    simTimeMs: 1_100,
+    states: [{ ...decisionFrame.states[0]!, qualificationSec: 1.1 }],
+  },
+} as SimState;
+
+const decisionPhaseChange = {
+  ...baseState,
+  handoverDecisionFrame: { ...decisionFrame, phase: 'selection-hold' },
+} as SimState;
+
 assert.equal(
   hasUiStateBoundaryChanged(baseState, numericOnlyChange),
   false,
@@ -48,6 +86,16 @@ assert.equal(
   hasUiStateBoundaryChanged(baseState, identityChange),
   true,
   'serving identity changes remain immediate for handover readability',
+);
+assert.equal(
+  hasUiStateBoundaryChanged(baseState, decisionNumericOnlyChange),
+  false,
+  'decision-frame measurements retain the shared one-second teaching cadence',
+);
+assert.equal(
+  hasUiStateBoundaryChanged(baseState, decisionPhaseChange),
+  true,
+  'decision phase transitions publish immediately',
 );
 assert.equal(
   shouldPublishUiState({

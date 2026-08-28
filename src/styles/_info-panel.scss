@@ -239,6 +239,556 @@
   white-space: nowrap;
 }
 
+// Multi-candidate handover board. This replaces the Walker duel only when the
+// runtime publishes one immutable HandoverDecisionFrame; legacy consumers keep
+// their existing DuelCard. The rail owns scrolling, so this board deliberately
+// does not introduce a second scroll container.
+.leo-handover-evaluation {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid rgba(174, 219, 239, 0.18);
+  border-radius: 13px;
+  background:
+    linear-gradient(145deg, rgba(15, 34, 49, 0.97), rgba(5, 15, 25, 0.97)),
+    rgba(5, 15, 24, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: #f6fbff;
+  container-type: inline-size;
+}
+
+.leo-handover-evaluation__header {
+  min-width: 0;
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.leo-handover-evaluation__header > div {
+  min-width: 0;
+}
+
+.leo-handover-evaluation__header p,
+.leo-handover-evaluation__header h2,
+.leo-handover-serving h3,
+.leo-handover-candidate-set h3,
+.leo-handover-candidate p,
+.leo-handover-receipt p,
+.leo-handover-serving p {
+  margin: 0;
+}
+
+.leo-handover-evaluation__header p {
+  margin-bottom: 3px;
+  color: #82d8ee;
+  font-size: 13px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+}
+
+.leo-handover-evaluation__source {
+  display: block;
+  margin-top: 4px;
+  color: rgba(224, 241, 248, 0.58);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.leo-handover-evaluation__header h2 {
+  font-size: 21px;
+  line-height: 1.2;
+}
+
+.leo-handover-evaluation__header time {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: rgba(130, 216, 238, 0.1);
+  color: rgba(235, 249, 255, 0.82);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.leo-handover-phase-strip {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leo-handover-phase-strip li {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 6px 2px;
+  border-radius: 7px;
+  color: rgba(220, 237, 245, 0.48);
+  font-size: 11px;
+  font-weight: 720;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.leo-handover-phase-strip li span {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.leo-handover-phase-strip li[data-state="complete"] {
+  color: rgba(139, 217, 196, 0.8);
+}
+
+.leo-handover-phase-strip li[data-state="current"] {
+  background: rgba(130, 216, 238, 0.12);
+  color: #eafaff;
+}
+
+.leo-handover-phase-strip li[data-state="current"] span {
+  border-color: #82d8ee;
+  background: #82d8ee;
+  color: #07131e;
+}
+
+.leo-handover-serving,
+.leo-handover-candidate-set,
+.leo-handover-selection,
+.leo-handover-receipt {
+  min-width: 0;
+  border: 1px solid rgba(204, 236, 248, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.leo-handover-serving,
+.leo-handover-candidate-set {
+  padding: 10px;
+}
+
+.leo-handover-serving > header,
+.leo-handover-candidate-set__header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.leo-handover-serving h3,
+.leo-handover-candidate-set h3 {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.leo-handover-serving > header span,
+.leo-handover-candidate-set__header > span {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(130, 216, 238, 0.1);
+  color: #bceef8;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.leo-handover-serving > p {
+  color: rgba(226, 243, 250, 0.7);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.leo-handover-serving__link {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border-left: 4px solid var(--leo-handover-link-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--leo-handover-link-color) 9%, rgba(255, 255, 255, 0.03));
+}
+
+.leo-handover-serving__link > span {
+  color: var(--leo-handover-link-color);
+  font-size: 18px;
+}
+
+.leo-handover-serving__link strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
+
+.leo-handover-serving__link small {
+  color: rgba(235, 247, 252, 0.74);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.leo-handover-candidate-set__groups,
+.leo-handover-satellite-group__links {
+  display: grid;
+  gap: 7px;
+}
+
+.leo-handover-satellite-group {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.leo-handover-satellite-group + .leo-handover-satellite-group {
+  margin-top: 3px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(220, 242, 250, 0.09);
+}
+
+.leo-handover-satellite-group > header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--leo-handover-satellite-color);
+}
+
+.leo-handover-satellite-group > header strong {
+  min-width: 0;
+  color: #edf8fc;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.leo-handover-satellite-group > header small {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--leo-handover-satellite-color) 12%, transparent);
+  color: var(--leo-handover-satellite-color);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.leo-handover-candidate {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(220, 242, 250, 0.1);
+  border-left: 3px solid var(--leo-handover-link-color);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.leo-handover-candidate[data-role="provisional-leader"],
+.leo-handover-candidate[data-role="selected-target"] {
+  border-color: color-mix(in srgb, var(--leo-handover-link-color) 48%, transparent);
+  background: color-mix(in srgb, var(--leo-handover-link-color) 9%, rgba(255, 255, 255, 0.025));
+}
+
+.leo-handover-candidate__summary {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 9px 5px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.leo-handover-candidate__summary:focus-visible,
+.leo-handover-candidate-set__overflow button:focus-visible {
+  outline: 2px solid #82d8ee;
+  outline-offset: -2px;
+}
+
+.leo-handover-candidate__glyph {
+  color: var(--leo-handover-link-color);
+  font-size: 16px;
+}
+
+.leo-handover-candidate__identity {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.leo-handover-candidate__identity strong {
+  min-width: 0;
+  color: #f2f9fc;
+  font-size: 14px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.leo-handover-candidate__identity small {
+  color: rgba(225, 240, 247, 0.62);
+  font-size: 12px;
+}
+
+.leo-handover-candidate__status {
+  max-width: 112px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ddecf2;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.leo-handover-candidate[data-role="provisional-leader"] .leo-handover-candidate__status,
+.leo-handover-candidate[data-role="selected-target"] .leo-handover-candidate__status {
+  background: color-mix(in srgb, var(--leo-handover-link-color) 18%, transparent);
+  color: color-mix(in srgb, var(--leo-handover-link-color) 78%, white);
+}
+
+.leo-handover-candidate__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  padding: 0 9px 8px 33px;
+}
+
+.leo-handover-candidate__metrics > span {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.leo-handover-candidate__metrics small {
+  color: rgba(221, 238, 246, 0.56);
+  font-size: 11px;
+}
+
+.leo-handover-candidate__metrics strong {
+  min-width: 0;
+  color: #edf8fc;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.leo-handover-candidate__metrics[data-forecast-ee="true"] > span:last-child {
+  grid-column: 1 / -1;
+}
+
+.leo-handover-candidate__reason,
+.leo-handover-candidate__missing {
+  padding: 0 9px 8px 33px;
+  color: #f3c98b;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.leo-handover-candidate__details {
+  padding: 9px;
+  border-top: 1px solid rgba(220, 242, 250, 0.09);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.leo-handover-candidate__details dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 10px;
+  margin: 0;
+}
+
+.leo-handover-candidate__details dl > div {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.leo-handover-candidate__details dt,
+.leo-handover-candidate__details dd {
+  margin: 0;
+  font-size: 12px;
+}
+
+.leo-handover-candidate__details dt {
+  color: rgba(221, 238, 246, 0.58);
+}
+
+.leo-handover-candidate__details dd {
+  color: #edf8fc;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.leo-handover-candidate-set__empty {
+  margin: 0;
+  padding: 8px 0 2px;
+  color: rgba(226, 243, 250, 0.7);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.leo-handover-candidate__gates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.leo-handover-candidate__gates span {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(230, 244, 250, 0.7);
+  font-size: 11px;
+}
+
+.leo-handover-candidate__gates span[data-result="pass"] {
+  color: #8bd9c4;
+}
+
+.leo-handover-candidate__gates span[data-result="fail"] {
+  color: #f3c98b;
+}
+
+.leo-handover-satellite-group__overflow {
+  color: rgba(220, 238, 246, 0.52);
+  font-size: 11px;
+}
+
+.leo-handover-candidate-set__overflow {
+  margin-top: 8px;
+  border-top: 1px solid rgba(220, 242, 250, 0.09);
+  padding-top: 7px;
+}
+
+.leo-handover-candidate-set__overflow summary {
+  color: #bceef8;
+  font-size: 13px;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.leo-handover-candidate-set__overflow > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.leo-handover-candidate-set__overflow button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  border: 1px solid color-mix(in srgb, var(--leo-handover-link-color) 38%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--leo-handover-link-color) 8%, transparent);
+  color: #eaf6fa;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.leo-handover-candidate-set__overflow button span {
+  color: var(--leo-handover-link-color);
+}
+
+.leo-handover-selection,
+.leo-handover-receipt {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+}
+
+.leo-handover-selection {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.leo-handover-selection > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.leo-handover-selection small,
+.leo-handover-selection > span,
+.leo-handover-receipt p {
+  color: rgba(226, 242, 248, 0.66);
+  font-size: 12px;
+}
+
+.leo-handover-selection strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.leo-handover-selection > span {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.leo-handover-receipt {
+  border-color: rgba(139, 217, 196, 0.32);
+  background: rgba(139, 217, 196, 0.08);
+}
+
+.leo-handover-receipt strong {
+  color: #a7ead8;
+  font-size: 15px;
+}
+
+.leo-handover-receipt > span {
+  color: #f3fbfd;
+  font: 760 14px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.leo-handover-evaluation__footnote {
+  display: grid;
+  gap: 3px;
+  color: rgba(217, 236, 244, 0.58);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+@container (max-width: 390px) {
+  .leo-handover-evaluation {
+    padding: 10px;
+  }
+
+  .leo-handover-candidate__metrics,
+  .leo-handover-candidate__details dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .leo-handover-selection {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .leo-duel-card {
   container-type: inline-size;
 }

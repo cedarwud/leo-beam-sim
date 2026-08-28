@@ -8,6 +8,7 @@ import type {
   VisualFrequencyDiagnosticsEntry,
   VisualFrequencyDiagnosticsState,
 } from './types';
+import { handoverDecisionBoundaryKey } from './handoverDecisionPublication';
 
 // ============================================================================
 // Latched state types — refs held by useSimStatePublisher per signal-source.
@@ -354,6 +355,8 @@ export function hasUiStateBoundaryChanged(previous: SimState | null, next: SimSt
       next.intraHandoverPresentation,
     )
     || hasAngleAwareFormulaIdentityChanged(previous.angleAwareFormulaFrame, next.angleAwareFormulaFrame)
+    || handoverDecisionBoundaryKey(previous.handoverDecisionFrame)
+      !== handoverDecisionBoundaryKey(next.handoverDecisionFrame)
     || previous.visualFrequencyDiagnostics?.primary.satId !== next.visualFrequencyDiagnostics?.primary.satId
     || previous.visualFrequencyDiagnostics?.primary.beamId !== next.visualFrequencyDiagnostics?.primary.beamId
     || previous.visualFrequencyDiagnostics?.comparison.satId !== next.visualFrequencyDiagnostics?.comparison.satId
@@ -402,6 +405,7 @@ export function hasUiStateChanged(previous: SimState | null, next: SimState): bo
     || previous.formulaFamilyLabel !== next.formulaFamilyLabel
     || hasSatelliteVisualIdentityChanged(previous.satelliteVisualIdentityById, next.satelliteVisualIdentityById)
     || hasAngleAwareFormulaChanged(previous.angleAwareFormulaFrame, next.angleAwareFormulaFrame)
+    || previous.handoverDecisionFrame !== next.handoverDecisionFrame
     || hasSignalSourceChanged(previous.physicalServing, next.physicalServing)
     || hasSignalSourceChanged(previous.panelPrimary, next.panelPrimary)
     || previous.panelPrimary.role !== next.panelPrimary.role

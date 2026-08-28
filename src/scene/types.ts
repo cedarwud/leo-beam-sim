@@ -7,6 +7,7 @@ import type {
   LinkSample,
 } from '../engine/signal/types';
 import type { HandoverEvent, IntraSwitchPreview } from '../engine/handover/types';
+import type { HandoverDecisionFrame } from '../engine/handover/candidateDecisionContract';
 import type { BeamFrequencyIndexResolution } from '../utils/beamFrequency';
 import type { CoreLayoutFrequencyReuse, ReuseGroupSource } from './beam-layout';
 import type { UeDistributionMode, UePrimaryAnchorMode } from '../engine/ue/multiUeState';
@@ -379,6 +380,12 @@ export interface SimState {
   canonicalEe?: CanonicalEeSnapshot | null;
   /** Active C1-C9 selected-link frame shared by the legacy UI surfaces. */
   angleAwareFormulaFrame?: AngleAwareFormulaFrame | null;
+  /**
+   * Immutable multi-candidate decision frame for the primary UE. Optional
+   * until the sinr-live authority transaction is enabled; consumers must not
+   * synthesize a second decision from legacy scalar comparison fields.
+   */
+  handoverDecisionFrame?: HandoverDecisionFrame | null;
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;
@@ -537,6 +544,11 @@ export interface SimFrame {
    * does NOT read it until S-cells-3 — see the SDD/governance lane lock.
    */
   sinrLiveCells?: SinrLiveCellFrame;
+  /**
+   * The sole canonical primary-UE handover decision for scene and publisher
+   * joins. The nested cell frame deliberately does not carry a second copy.
+   */
+  handoverDecisionFrame?: HandoverDecisionFrame | null;
   /** Angle-aware frame for non-cell lanes; the live cell lane owns its nested frame. */
   angleAwareFormulaFrame?: AngleAwareFormulaFrame | null;
 }

@@ -1184,6 +1184,7 @@ export function useSimStatePublisher({
       angleAwareFormulaFrame: sim.sinrLiveCells?.angleAwareFormulaFrame
         ?? sim.angleAwareFormulaFrame
         ?? null,
+      handoverDecisionFrame: sim.handoverDecisionFrame ?? null,
       servingSatId: publishedPrimaryServing.servingSatId,
       servingBeamId: publishedPrimaryServing.servingBeamId,
       servingCellId: publishedPrimaryServing.servingCellId,

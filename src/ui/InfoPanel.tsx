@@ -13,6 +13,7 @@ import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
 import { usePanelCopy } from './info-panel/panelHelp';
 import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
 import { OVERRIDE_PRIMARY_UE_SCOPE_NOTE } from '../modqn/runtimeControls';
+import { HandoverEvaluationPanel } from './handover-evaluation/HandoverEvaluationPanel';
 
 type InfoPanelProps = SimState & {
   /**
@@ -125,6 +126,7 @@ export function InfoPanel({
   sinrDb,
   physicalServingBudget,
   angleAwareFormulaFrame,
+  handoverDecisionFrame = null,
   handoverOffsetDb,
   handoverTriggerProgressSec,
   handoverTriggerSec,
@@ -242,8 +244,11 @@ export function InfoPanel({
         {/* SIGNAL PROFILE + HANDOVER MODE cards removed (older-tuning right-sidebar
             restore): the right sidebar leads straight with the BEAM DUEL. Profile +
             formula family stay visible in the LEFT tuning panel. */}
-        <div role="status" aria-live="polite" aria-label="Serving and comparison beam status">
-        <DuelCard
+        {handoverDecisionFrame !== null ? (
+          <HandoverEvaluationPanel decision={handoverDecisionFrame} />
+        ) : (
+          <div role="status" aria-live="polite" aria-label="Serving and comparison beam status">
+          <DuelCard
           hideHeaderTitle
           servingTitle={servingTitle}
           servingFriendlyTitle={servingFriendlyTitle}
@@ -285,8 +290,9 @@ export function InfoPanel({
           triggerLabel={modeCopy.triggerLabel}
           triggerAriaLabel={modeCopy.triggerAriaLabel}
           handoverCount={hoCount}
-        />
-        </div>
+          />
+          </div>
+        )}
       </div>
 
       {formulaTermsVisible && (
