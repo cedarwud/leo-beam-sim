@@ -3,14 +3,160 @@
 ## Document state
 
 - **Status:** accepted for staged S0–S2 implementation; independent Opus design
-  gate passed; forecast-EE activation gate remains blocked
+  gate passed; **S3–S6 visual implementation is paused pending the 2026-08-28
+  recovery-amendment gate below**; forecast-EE activation gate remains blocked
 - **Date:** 2026-08-27
 - **Route:** `/` only
 - **Runtime source:** Starlink Walker by default, in accordance with ADR-013
 - **Decision record:** ADR-014
 - **Visual acceptance target:** the existing `http://127.0.0.1:3000/` session
-- **Review receipt:**
-  `docs/reviews/HOMEPAGE-MULTI-CANDIDATE-OPUS-GATE-2026-08-27.md`
+- **Review receipts:**
+  `docs/reviews/HOMEPAGE-MULTI-CANDIDATE-OPUS-GATE-2026-08-27.md` and
+  `docs/reviews/HOMEPAGE-MULTI-CANDIDATE-VISUAL-RECOVERY-OPUS-GATE-2026-08-28.md`
+
+## 0. 2026-08-28 visual-recovery amendment
+
+### 0.1 Why this amendment is required
+
+The 2026-08-27 independent review authorized only S0–S2. Later S3–S5 work
+introduced candidate identity and presentation, but it also allowed the
+presence of a `HandoverDecisionFrame` to suppress established homepage scene
+layers. The resulting scene could satisfy identity, colour, and one-solid-link
+assertions while losing the visible handover choreography that those new
+layers were meant to extend.
+
+This is a design and acceptance failure, not permission to revert the
+multi-candidate domain model. The scientific candidate set, shared inter/intra
+procedure, satellite-colour identity, and one-active-link rule remain in force.
+The repair changes how the presentation is composed: the central scene is an
+additive extension of the established handover carrier, not a replacement for
+it.
+
+For central-scene parity only, the visual reference is the homepage immediately
+before broad candidate-authority suppression was introduced: the parent of
+commit `16f46af` (`d66afbb`). This reference does not authorize a source-code
+rollback and does not supersede later scientific or state contracts.
+
+### 0.2 Non-negotiable additive scene contract
+
+Activating multi-candidate authority must not, by itself, hide the established:
+
+- current serving satellite, serving beam, footprint, and sole solid data link;
+- orbit/motion guides that are enabled by the current presentation plan;
+- handover focus, pulse/ripple, source-target transition cue, and camera
+  choreography;
+- UE, satellite, beam, and event callouts required to understand the event; or
+- readable completion receipt/toast.
+
+Candidate presentation is layered onto that carrier:
+
+| Phase | Required central-scene evidence |
+|---|---|
+| monitoring | Existing serving scene remains visually unchanged; candidate clutter is absent. |
+| evaluating | The serving link stays solid. At least two measured alternatives are visible when the same scientific frame contains them, using hollow endpoints and dotted/dashed guides rather than active-flow animation. |
+| qualifying / TTT | Each displayed qualified satellite-beam pair keeps its own visible progress cue; the existing serving and motion layers continue. |
+| selection-hold | The provisional leader is emphasized without hiding other still-qualified candidates or implying that it already serves data. |
+| switching | The established inter/intra handover choreography plays. The old solid link ends at the same commit boundary at which the new solid link begins; no frame implies DAPS. |
+| guard / receipt | The committed pair retains its episode identity colour, the normal serving animation continues, and the completion receipt remains long enough to read. |
+
+A single broad boolean such as `multiCandidateAuthorityActive` must not be used
+as a blanket negation around unrelated legacy layers. Compatibility adapters
+may change those layers' input from legacy scalar fields to the immutable
+decision frame, but a new adapter must reach visible parity before the old
+render path is removed.
+
+Visual ownership is phase- and layer-scoped. A decision frame proves that
+candidate facts exist; it does not prove that a replacement scene object was
+successfully rendered. An established layer may be retired only when its named
+replacement has valid geometry, is visible in the current phase, and passes
+the same-frame scene/rail join. If the candidate plan exists but produces zero
+renderable pairs or zero event cues, the established serving/event carrier
+remains visible.
+
+Missing `placementByCellId`, satellite-world position, or beam geometry must
+not be swallowed by a silent `return null`. The renderer publishes the exact
+unmapped satellite-beam-source-frame keys as telemetry and fails the matching
+browser fixture. A right-rail row cannot count as visually presented unless a
+scene object with that same key is rendered, except for honestly labelled
+overflow rows.
+
+When visual density exceeds the measured budget, reduce the displayed
+candidate subset, label honest overflow, or simplify candidate-only geometry.
+Do not recover capacity by removing the serving/event carrier.
+
+### 0.3 Right-rail readability contract
+
+The right rail may be structurally redesigned, but density is not allowed to
+make the decision unreadable. At desktop acceptance sizes:
+
+- primary headings and the current phase use a computed font size of at least
+  18 px;
+- candidate identity, status, key EE/quality value, and TTT text use at least
+  16 px;
+- secondary provenance may use 14 px, but it must not carry information needed
+  to understand why a target was selected;
+- at least three candidate rows are readable without nested scrolling at
+  1366 x 768, and four at 1920 x 1080;
+- progressive disclosure, not font shrinking, resolves overflow; and
+- no panel, tooltip, or receipt covers the primary UE, current footprint, or
+  selected target during its relevant phase.
+
+The rail and scene consume the same immutable frame and presentation plan.
+Passing identity equality or no-overlap assertions alone does not establish
+readability.
+
+### 0.4 Required gates before further S3–S6 implementation
+
+Implementation beyond documentation remains blocked until a fresh-context
+independent reviewer returns `VISUAL_RECOVERY_IMPLEMENTATION_GATE: PASS` after
+reviewing this amendment, ADR-014, the pre-authority carrier, and the current
+render suppression sites. The review must explicitly answer:
+
+1. Does the plan preserve the established carrier and add candidate evidence?
+2. Can every phase be understood without treating a candidate as active data
+   service?
+3. Are inter- and intra-satellite events covered by the same phase contract?
+4. Are density, typography, and overflow resolved without hiding central
+   evidence?
+5. Are automated invariants clearly separated from human visual acceptance?
+
+After implementation, a separate `VISUAL_RECOVERY_ACCEPTANCE_GATE: PASS`
+requires all of the following from port 3000:
+
+- matched before/after evidence at monitoring, evaluating, qualifying/TTT,
+  selection-hold, switching, and receipt;
+- one continuous inter-satellite recording and one continuous same-satellite
+  beam-switch recording, rather than isolated first-frame screenshots;
+- browser telemetry proving the visible candidate count, exact satellite-beam
+  keys, one solid data link, and synchronized rail/scene phase at the sampled
+  frames;
+- a red browser assertion when an event phase has zero candidate scene objects
+  and zero established event cues, or when the rail reports one active link
+  but the scene reports zero or more than one solid link;
+- explicit failure telemetry for every displayed pair that lacks cell
+  placement, satellite-world position, or beam geometry;
+- computed-font and obstruction assertions at 1920 x 1080, 1440 x 900, and
+  1366 x 768;
+- pixel review confirming that serving geometry, candidate guides, UE, and
+  event effects are visible against the scene; and
+- owner visual acceptance. Cross-model review and automated tests are advisory
+  evidence and cannot substitute for this final human gate.
+
+### 0.5 Recovery implementation order
+
+1. Freeze deterministic inter/intra phase fixtures and capture the
+   pre-authority carrier reference.
+2. Remove blanket render suppression and restore the established serving,
+   motion, event, and camera layers using decision-frame-compatible inputs.
+3. Layer the bounded candidate satellites, beam variants, guides, and progress
+   cues onto the restored carrier.
+4. Reflow and enlarge the decision rail without changing scientific authority.
+5. Run the complete acceptance gate in section 0.4 before declaring S3–S6
+   complete.
+
+No implementation commit may claim visual completion before both recovery
+gates pass. If parity cannot be reached within the rendering budget, stop and
+report the measured limitation rather than replacing the original behavior.
 
 ## 1. Outcome
 
