@@ -32,14 +32,13 @@ import {
 import { sceneGeometryFromProfile } from './SceneGeometry';
 import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
-import { buildCandidatePresentationPlan } from '../engine/handover/candidatePresentationPlan';
-import type { HandoverVisualIdentityAllocation } from '../constants/handoverVisualIdentity';
 import { buildMultiCandidateScenePresentation } from './multiCandidateScenePresentation';
 import {
   areMultiCandidateFocusPointsWithinSafeFrame,
   resolveMultiCandidateCameraFit,
 } from './multiCandidateCameraFit';
 import { useCandidateInspectionSelection } from '../ui/handover-evaluation/candidateInspectionSelection';
+import { useHomepageCandidatePresentationPlan } from '../ui/handover-evaluation/useHomepageCandidatePresentationPlan';
 import { satelliteTint } from '../constants/beamRoleTokens';
 // S-cells-4d: the legacy 20-hex EarthFixedCells green-disc ground paint is retired
 // from the sinr-live lane (the cell-truth beam cones own the earth-fixed cell story
@@ -1577,31 +1576,11 @@ function SceneRenderContent({
     pinnedKey: inspectedCandidateKey,
     togglePinnedKey: toggleInspectedCandidateKey,
   } = useCandidateInspectionSelection(multiCandidateEpisodeId);
-  const multiCandidateIdentityRef = useRef<{
-    readonly episodeId: string;
-    readonly allocation: HandoverVisualIdentityAllocation;
-  } | null>(null);
-  const handoverCandidatePresentationPlan = useMemo(() => {
-    const decision = sim.handoverDecisionFrame ?? null;
-    if (decision === null) return null;
-    const prior = multiCandidateIdentityRef.current;
-    return buildCandidatePresentationPlan(decision, undefined, {
-      pinnedKey: inspectedCandidateKey,
-      previousIdentityAllocation: prior?.episodeId === decision.episodeId
-        ? prior.allocation
-        : null,
-    });
-  }, [inspectedCandidateKey, sim.handoverDecisionFrame]);
-  useEffect(() => {
-    if (handoverCandidatePresentationPlan === null) {
-      multiCandidateIdentityRef.current = null;
-      return;
-    }
-    multiCandidateIdentityRef.current = {
-      episodeId: handoverCandidatePresentationPlan.decision.episodeId,
-      allocation: handoverCandidatePresentationPlan.identityAllocation,
-    };
-  }, [handoverCandidatePresentationPlan]);
+  const handoverCandidatePresentationPlan = useHomepageCandidatePresentationPlan(
+    'scene',
+    sim.handoverDecisionFrame ?? null,
+    inspectedCandidateKey,
+  );
   const multiCandidateScenePresentation = useMemo(
     () => handoverCandidatePresentationPlan === null
       ? null

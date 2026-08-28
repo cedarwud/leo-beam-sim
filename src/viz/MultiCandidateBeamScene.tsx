@@ -160,6 +160,7 @@ export const MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS = Object.freeze({
   instructionCount: 'multiCandidateSceneInstructionCount',
   renderedPairCount: 'multiCandidateSceneRenderedPairCount',
   satelliteCount: 'multiCandidateSceneSatelliteCount',
+  satelliteIdentityColors: 'multiCandidateSceneSatelliteIdentityColors',
   coneVolumeCount: 'multiCandidateSceneConeVolumeCount',
   solidDataLinkCount: 'multiCandidateSceneSolidDataLinkCount',
 });
@@ -926,6 +927,13 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
       = String(resolved.telemetry.renderedPairCount);
     dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteCount]
       = String(resolved.telemetry.renderedSatelliteCount);
+    dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteIdentityColors]
+      = JSON.stringify(Object.fromEntries(
+        [...new Map(resolved.instructions.map(instruction => [
+          instruction.satelliteId,
+          instruction.satelliteColor,
+        ])).entries()].sort((left, right) => left[0].localeCompare(right[0])),
+      ));
     dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.coneVolumeCount]
       = String(resolved.telemetry.visibleConeVolumeCount);
     dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.solidDataLinkCount]
@@ -934,6 +942,7 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.instructionCount];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.renderedPairCount];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteCount];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteIdentityColors];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.coneVolumeCount];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.solidDataLinkCount];
     };

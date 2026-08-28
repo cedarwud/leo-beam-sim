@@ -146,6 +146,12 @@ export interface AllocateHandoverVisualIdentitiesInput {
   readonly palette?: HandoverVisualPaletteInput;
   readonly normalDisplayBudget?: number;
   readonly previousAllocation?: HandoverVisualIdentityAllocation | null;
+  /**
+   * Optional active lease set. Previous assignments outside this set stop
+   * reserving finite palette and beam slots; omission preserves legacy sticky
+   * episode behavior for callers that need it.
+   */
+  readonly previousReservationSatelliteIds?: readonly string[];
 }
 
 interface NormalizedPaletteEntry {
@@ -574,6 +580,12 @@ function priorAssignmentsFor(
     return Object.freeze({});
   }
   const assignments = previous.assignments;
+  const retainedSatelliteIds = input.previousReservationSatelliteIds === undefined
+    ? null
+    : new Set(input.previousReservationSatelliteIds.map(
+      satelliteId => assertSatelliteId(satelliteId, 'previousReservationSatelliteIds'),
+    ));
+  const retainedAssignments: Record<string, HandoverVisualIdentityAssignment> = {};
   const usedPaletteSlots = new Set<number>();
   const usedOverflowSlots = new Set<number>();
   for (const [satelliteId, assignment] of Object.entries(assignments)) {
@@ -599,8 +611,17 @@ function priorAssignmentsFor(
       throw new Error(`palette changed during identity episode ${input.episodeId}`);
     }
     usedPaletteSlots.add(slot);
+    if (retainedSatelliteIds === null || retainedSatelliteIds.has(satelliteId)) {
+      retainedAssignments[satelliteId] = assignment;
+    }
   }
-  return assignments;
+  for (const [satelliteId, assignment] of Object.entries(assignments)) {
+    if (!assignment.isOverflow) continue;
+    if (retainedSatelliteIds === null || retainedSatelliteIds.has(satelliteId)) {
+      retainedAssignments[satelliteId] = assignment;
+    }
+  }
+  return Object.freeze(retainedAssignments);
 }
 
 function isPaletteAssignment(value: HandoverVisualIdentityAssignment): boolean {
@@ -851,11 +872,19 @@ export function allocateHandoverVisualIdentities(
   const beamAssignmentsBySatelliteId: Record<
     string,
     Readonly<Record<string, HandoverBeamVisualIdentity>>
-  > = {
-    ...(input.previousAllocation?.episodeId === input.episodeId
-      ? input.previousAllocation.beamAssignmentsBySatelliteId
-      : {}),
-  };
+  > = {};
+  if (input.previousAllocation?.episodeId === input.episodeId) {
+    const retainedSatelliteIds = input.previousReservationSatelliteIds === undefined
+      ? null
+      : new Set(input.previousReservationSatelliteIds);
+    for (const [satelliteId, beamAssignments] of Object.entries(
+      input.previousAllocation.beamAssignmentsBySatelliteId,
+    )) {
+      if (retainedSatelliteIds === null || retainedSatelliteIds.has(satelliteId)) {
+        beamAssignmentsBySatelliteId[satelliteId] = beamAssignments;
+      }
+    }
+  }
   for (const identity of identities) {
     const allocated = allocateBeamIdentityRecord(
       identity,

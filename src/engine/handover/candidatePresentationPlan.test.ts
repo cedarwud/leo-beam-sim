@@ -260,11 +260,19 @@ test('pinning a hidden pair swaps only the bounded display subset and reports th
   assert.ok(!pinned.displayedLinks.some(link => link.key.satelliteId === pinned.pinSwap?.evictedKey?.satelliteId
     && link.beamId === pinned.pinSwap?.evictedKey?.beamId));
   assert.equal(pinned.activeDataLinkCount, 1);
-  for (const satelliteId of ['sat-a', 'sat-b', 'sat-c']) {
+  const retainedSatelliteIds = baseline.groups
+    .map(group => group.satelliteId)
+    .filter(satelliteId => pinned.groups.some(group => group.satelliteId === satelliteId));
+  for (const satelliteId of retainedSatelliteIds) {
     assert.equal(
       pinned.identityAllocation.identitiesBySatelliteId[satelliteId]?.cssColor,
       baseline.identityAllocation.identitiesBySatelliteId[satelliteId]?.cssColor,
     );
+  }
+  const evictedSatelliteId = pinned.pinSwap?.evictedKey?.satelliteId;
+  if (evictedSatelliteId !== undefined
+    && !pinned.groups.some(group => group.satelliteId === evictedSatelliteId)) {
+    assert.equal(pinned.identityAllocation.assignments[evictedSatelliteId], undefined);
   }
   assert.deepEqual(decision.serving, candidateLinkKey('sat-a', 1));
   assert.equal(decision.opportunities.length, 7);
@@ -342,6 +350,62 @@ test('more than eight same-satellite beams remain scientific candidates while on
   assert.equal(plan.groups[0]?.links.filter(link => link.isCandidate).length, 2);
   assert.equal(
     Object.keys(plan.identityAllocation.beamAssignmentsBySatelliteId['sat-many-beams'] ?? {}).length,
-    11,
+    3,
   );
+});
+
+test('hidden scientific satellites cannot exhaust colours used by the bounded display set', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const hiddenSatelliteIds = Array.from(
+    { length: 10 },
+    (_, index) => `sat-${String.fromCharCode('a'.charCodeAt(0) + index)}`,
+  );
+  const candidateKeys = [
+    ...hiddenSatelliteIds.map(satelliteId => candidateLinkKey(satelliteId, 1)),
+    candidateLinkKey('sat-y', 1),
+    candidateLinkKey('sat-z', 1),
+  ];
+  const opportunities = [
+    opportunity(serving.satelliteId, serving.beamId),
+    ...candidateKeys.map(key => opportunity(key.satelliteId, key.beamId)),
+  ];
+  const decision = createHandoverDecisionFrame({
+    episodeId: 'display-palette-pressure-episode',
+    sourceFrameId: SOURCE_FRAME_ID,
+    simTimeMs: 50_000,
+    phase: 'selection-hold',
+    serving,
+    opportunities,
+    states: opportunities.map(item => state(item.key, {
+      stable: true,
+      rank: item.key.satelliteId === 'sat-z'
+        ? 1
+        : item.key.satelliteId === 'sat-y'
+          ? 2
+          : 20 + candidateKeys.findIndex(key => key.satelliteId === item.key.satelliteId),
+    })),
+    provisionalLeader: candidateLinkKey('sat-z', 1),
+    selectedTarget: candidateLinkKey('sat-z', 1),
+    selectedKind: 'inter-satellite',
+    selectionHoldSec: 1,
+    selectionHoldRequiredSec: 1,
+    mode: 'sinr-offset',
+    recentCommit: null,
+  });
+
+  const plan = buildCandidatePresentationPlan(decision);
+  const displayedIdentities = plan.groups.map(group => group.satelliteIdentity);
+
+  assert.deepEqual(plan.groups.map(group => group.satelliteId), [
+    'sat-serving',
+    'sat-z',
+    'sat-y',
+  ]);
+  assert.equal(new Set(displayedIdentities.map(identity => identity.cssColor)).size, plan.groups.length);
+  assert.ok(displayedIdentities.every(identity => !identity.isOverflow));
+  assert.deepEqual(
+    Object.keys(plan.identityAllocation.assignments).sort(),
+    plan.groups.map(group => group.satelliteId).sort(),
+  );
+  assert.equal(plan.scientificSatelliteGroupCount, 13);
 });

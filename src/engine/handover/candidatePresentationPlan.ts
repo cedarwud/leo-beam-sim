@@ -142,6 +142,11 @@ export interface CandidatePresentationPlan {
 export interface CandidatePresentationOptions {
   readonly pinnedKey?: CandidateLinkKey | null;
   readonly previousIdentityAllocation?: HandoverVisualIdentityAllocation | null;
+  /**
+   * Route-scoped allocation shared by the scene and right rail. It may contain
+   * the active union of both consumers, but it must cover every displayed key.
+   */
+  readonly identityAllocation?: HandoverVisualIdentityAllocation | null;
 }
 
 interface CandidateRecord {
@@ -514,11 +519,9 @@ function buildAllocation(
   decision: HandoverDecisionFrame,
   budget: CandidateDisplayBudget,
   options: CandidatePresentationOptions,
+  displayedKeys: readonly CandidateLinkKey[],
 ): HandoverVisualIdentityAllocation {
-  const keys = uniqueKeys([
-    ...(decision.serving === null ? [] : [decision.serving]),
-    ...decision.opportunities.map(opportunity => opportunity.key),
-  ]);
+  const keys = uniqueKeys(displayedKeys);
   const satelliteIds = uniqueSatelliteIds(
     keys.map(key => key.satelliteId),
     decision.serving?.satelliteId ?? null,
@@ -537,7 +540,27 @@ function buildAllocation(
     beamIdsBySatellite,
     normalDisplayBudget: budget.maxSatelliteGroups,
     previousAllocation: options.previousIdentityAllocation ?? null,
+    previousReservationSatelliteIds: satelliteIds,
   });
+}
+
+function assertAllocationCoversDisplayedKeys(
+  decision: HandoverDecisionFrame,
+  allocation: HandoverVisualIdentityAllocation,
+  displayedKeys: readonly CandidateLinkKey[],
+): HandoverVisualIdentityAllocation {
+  if (allocation.episodeId !== decision.episodeId) {
+    fail(`identity allocation episode ${allocation.episodeId ?? 'null'} does not match ${decision.episodeId}`);
+  }
+  for (const key of displayedKeys) {
+    if (allocation.identitiesBySatelliteId[key.satelliteId] === undefined) {
+      fail(`shared identity allocation is missing satellite ${key.satelliteId}`);
+    }
+    if (resolveHandoverBeamVisualIdentity(allocation, key.satelliteId, key.beamId) === null) {
+      fail(`shared identity allocation is missing beam ${keyFor(key)}`);
+    }
+  }
+  return allocation;
 }
 
 /**
@@ -568,9 +591,20 @@ export function buildCandidatePresentationPlan(
   const acceptedPin = requestedPin !== null && (opportunityForPin !== null || pinIsServing)
     ? requestedPin
     : null;
-  const allocation = buildAllocation(decision, normalizedBudget, normalizedOptions);
   const baselineSelection = selectDisplayRecords(decision, normalizedBudget, null);
   const selection = selectDisplayRecords(decision, normalizedBudget, acceptedPin);
+  const displayedKeys = uniqueKeys([
+    ...(decision.serving === null ? [] : [decision.serving]),
+    ...selection.records.map(record => record.opportunity.key),
+  ]);
+  const allocation = normalizedOptions.identityAllocation === undefined
+    || normalizedOptions.identityAllocation === null
+    ? buildAllocation(decision, normalizedBudget, normalizedOptions, displayedKeys)
+    : assertAllocationCoversDisplayedKeys(
+      decision,
+      normalizedOptions.identityAllocation,
+      displayedKeys,
+    );
   const baselineKeys = new Set(baselineSelection.records.map(record => keyFor(record.opportunity.key)));
   const displayedCandidateKeys = new Set(selection.records.map(record => keyFor(record.opportunity.key)));
   const pinnedWasHiddenBeforePin = acceptedPin !== null

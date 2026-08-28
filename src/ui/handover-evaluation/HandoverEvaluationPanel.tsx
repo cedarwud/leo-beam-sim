@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 
 import {
   sameCandidateLinkKey,
@@ -8,13 +8,12 @@ import {
   type HandoverPhase,
 } from '../../engine/handover/candidateDecisionContract';
 import {
-  buildCandidatePresentationPlan,
   type CandidatePresentationPlan,
 } from '../../engine/handover/candidatePresentationPlan';
-import type { HandoverVisualIdentityAllocation } from '../../constants/handoverVisualIdentity';
 import { useLocale } from '../../i18n';
 import { CandidateSetPanel } from './CandidateSetPanel';
 import { useCandidateInspectionSelection } from './candidateInspectionSelection';
+import { useHomepageCandidatePresentationPlan } from './useHomepageCandidatePresentationPlan';
 
 const RECEIPT_VISIBLE_MS = 8_000;
 
@@ -178,18 +177,10 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
   const copy = (zh: string, en: string) => (isEnglish ? en : zh);
   const { pinnedKey, setPinnedKey, togglePinnedKey } = useCandidateInspectionSelection(decision.episodeId);
   const [receipt, setReceipt] = useState<HandoverCommitReceipt | null>(decision.recentCommit);
-  const previousIdentityAllocation = useRef<HandoverVisualIdentityAllocation | null>(null);
   const receiptEpisodeId = useRef(decision.episodeId);
 
   const effectivePin = keyExists(decision, pinnedKey) ? pinnedKey : null;
-  const plan = useMemo(() => buildCandidatePresentationPlan(decision, undefined, {
-    pinnedKey: effectivePin,
-    previousIdentityAllocation: previousIdentityAllocation.current,
-  }), [decision, effectivePin]);
-
-  useEffect(() => {
-    previousIdentityAllocation.current = plan.identityAllocation;
-  }, [plan.identityAllocation]);
+  const plan = useHomepageCandidatePresentationPlan('rail', decision, effectivePin);
 
   useEffect(() => {
     if (pinnedKey !== null && !keyExists(decision, pinnedKey)) setPinnedKey(null);
@@ -226,6 +217,11 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
       data-decision-mode={decision.mode}
       data-active-data-link-count={plan.activeDataLinkCount}
       data-scientific-candidate-count={plan.scientificCandidatePairCount}
+      data-satellite-identity-colors={JSON.stringify(Object.fromEntries(
+        [...plan.groups]
+          .sort((left, right) => left.satelliteId.localeCompare(right.satelliteId))
+          .map(group => [group.satelliteId, group.satelliteIdentity.cssColor]),
+      ))}
       data-source-frame-id={decision.sourceFrameId}
       aria-label={copy('多候選換手評估', 'Multi-candidate handover evaluation')}
     >

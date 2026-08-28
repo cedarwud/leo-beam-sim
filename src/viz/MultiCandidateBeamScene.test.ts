@@ -19,12 +19,20 @@ import {
 import { buildMultiCandidateScenePresentation } from '../scene/multiCandidateScenePresentation';
 import type { SinrLiveCellPlacement } from './SinrLiveCellBeamCones';
 import {
+  MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS,
   MULTI_CANDIDATE_WIREFRAME_RIB_COUNT,
   buildSparseMultiCandidateConeRibs,
   groupMultiCandidateSatelliteIdentities,
   resolveMultiCandidateBeamScene,
   type MultiCandidateBeamSceneResolverInput,
 } from './MultiCandidateBeamScene';
+
+test('publishes a stable browser telemetry key for scene satellite identity colours', () => {
+  assert.equal(
+    MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteIdentityColors,
+    'multiCandidateSceneSatelliteIdentityColors',
+  );
+});
 
 const SOURCE_FRAME_ID = 'walker-frame-multi-candidate-scene-1';
 
