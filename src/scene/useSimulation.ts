@@ -184,6 +184,8 @@ export function useSimulation(
   beamPointingMode: 'earth-fixed-cell' | 'sampled-steering' = 'earth-fixed-cell',
   /** Cell whose UE the panels should follow; null keeps the default first UE. */
   focusCellId: number | null = null,
+  /** Homepage-only gate; preview/replay lanes retain their existing authority. */
+  multiCandidateDecisionEnabled = false,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -359,6 +361,7 @@ export function useSimulation(
       sinrLiveBeamRuntimeRef.current.candidateBeamCount,
       sinrLiveBeamRuntimeRef.current.beamHoppingEnabled,
       beamPointingMode,
+      multiCandidateDecisionEnabled,
     ),
     [
       sinrLiveCellModelStructureKey,
@@ -366,6 +369,7 @@ export function useSimulation(
       useEarthFixedCellTruth,
       replay.epochUtcMs,
       beamPointingMode,
+      multiCandidateDecisionEnabled,
     ],
   );
   // Focus is applied on its own, NOT folded into updateRuntimeProfile: that call

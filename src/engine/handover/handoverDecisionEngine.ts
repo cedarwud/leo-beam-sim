@@ -9,12 +9,14 @@ import {
   sameCandidateLinkKey,
   validateCandidateLinkKey,
   validateCandidateOpportunity,
+  validateHandoverCommitReceipt,
   type CandidateDecisionState,
   type CandidateLinkKey,
   type CandidateOpportunity,
   type DecisionClockContext,
   type GateCode,
   type HandoverDecisionFrame,
+  type HandoverCommitReceipt,
   type HandoverPhase,
 } from './candidateDecisionContract';
 import type { CandidateOpportunitySet } from './candidateOpportunityProducer';
@@ -39,6 +41,38 @@ interface CandidateTimer {
   readonly absentSec: number;
 }
 
+/**
+ * Serializable copy of one candidate timer kept by the stateful decision
+ * engine.  The candidate key is part of the snapshot instead of relying on a
+ * Map's iteration order so callers can persist or validate the checkpoint.
+ */
+export interface HandoverDecisionEngineTimerSnapshot {
+  readonly key: CandidateLinkKey;
+  readonly qualificationSec: number;
+  readonly absentSec: number;
+}
+
+/**
+ * Complete mutable decision state checkpoint.
+ *
+ * Configuration and policy are immutable constructor dependencies and are
+ * intentionally not included.  Every mutable field below is represented so
+ * an external transaction can restore the engine without losing elapsed
+ * clock, candidate TTT, leader/hold, guard, or episode continuity.
+ */
+export interface HandoverDecisionEngineSnapshot {
+  readonly serving: CandidateLinkKey | null;
+  readonly timers: readonly HandoverDecisionEngineTimerSnapshot[];
+  readonly provisionalLeader: CandidateLinkKey | null;
+  readonly armedTarget: CandidateLinkKey | null;
+  readonly selectionHoldSec: number;
+  readonly guardUntilSimTimeMs: number;
+  readonly previousSimTimeMs: number | null;
+  readonly previousEpochToken: string | null;
+  readonly episodeGeneration: number;
+  readonly currentEpisodeId: string;
+}
+
 function nonEmpty(value: string, label: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new TypeError(`${label} must be non-empty`);
@@ -59,6 +93,87 @@ function copyKey(key: CandidateLinkKey | null): CandidateLinkKey | null {
 
 function keyEquals(left: CandidateLinkKey | null, right: CandidateLinkKey | null): boolean {
   return left !== null && right !== null && sameCandidateLinkKey(left, right);
+}
+
+function parseTimerKey(key: string): CandidateLinkKey {
+  const delimiter = key.lastIndexOf('|');
+  if (delimiter <= 0 || delimiter === key.length - 1) {
+    throw new Error(`invalid internal candidate timer key ${key}`);
+  }
+  const satelliteId = key.slice(0, delimiter);
+  const beamId = Number(key.slice(delimiter + 1));
+  return candidateLinkKey(satelliteId, beamId);
+}
+
+function cloneEngineSnapshot(snapshot: HandoverDecisionEngineSnapshot): HandoverDecisionEngineSnapshot {
+  if (snapshot === null || typeof snapshot !== 'object') {
+    throw new TypeError('decision engine snapshot must be an object');
+  }
+  if (!Array.isArray(snapshot.timers)) {
+    throw new TypeError('decision engine snapshot timers must be an array');
+  }
+
+  const timerKeys = new Set<string>();
+  const timers: HandoverDecisionEngineTimerSnapshot[] = [];
+  for (const timer of snapshot.timers) {
+    if (timer === null || typeof timer !== 'object') {
+      throw new TypeError('decision engine timer snapshot must be an object');
+    }
+    validateCandidateLinkKey(timer.key);
+    const key = candidateLinkKey(timer.key.satelliteId, timer.key.beamId);
+    const keyString = candidateLinkKeyString(key);
+    if (timerKeys.has(keyString)) {
+      throw new Error(`decision engine snapshot contains duplicate timer ${keyString}`);
+    }
+    timerKeys.add(keyString);
+    timers.push(Object.freeze({
+      key,
+      qualificationSec: nonNegative(timer.qualificationSec, `qualificationSec for ${keyString}`),
+      absentSec: nonNegative(timer.absentSec, `absentSec for ${keyString}`),
+    }));
+  }
+
+  const serving = snapshot.serving === null
+    ? null
+    : (validateCandidateLinkKey(snapshot.serving), candidateLinkKey(
+      snapshot.serving.satelliteId,
+      snapshot.serving.beamId,
+    ));
+  const provisionalLeader = snapshot.provisionalLeader === null
+    ? null
+    : (validateCandidateLinkKey(snapshot.provisionalLeader), candidateLinkKey(
+      snapshot.provisionalLeader.satelliteId,
+      snapshot.provisionalLeader.beamId,
+    ));
+  const armedTarget = snapshot.armedTarget === null
+    ? null
+    : (validateCandidateLinkKey(snapshot.armedTarget), candidateLinkKey(
+      snapshot.armedTarget.satelliteId,
+      snapshot.armedTarget.beamId,
+    ));
+  const previousSimTimeMs = snapshot.previousSimTimeMs === null
+    ? null
+    : nonNegative(snapshot.previousSimTimeMs, 'previousSimTimeMs');
+  const previousEpochToken = snapshot.previousEpochToken === null
+    ? null
+    : nonEmpty(snapshot.previousEpochToken, 'previousEpochToken');
+  const episodeGeneration = nonNegative(snapshot.episodeGeneration, 'episodeGeneration');
+  if (!Number.isInteger(episodeGeneration)) {
+    throw new TypeError('episodeGeneration must be an integer');
+  }
+
+  return Object.freeze({
+    serving,
+    timers: Object.freeze(timers),
+    provisionalLeader,
+    armedTarget,
+    selectionHoldSec: nonNegative(snapshot.selectionHoldSec, 'selectionHoldSec'),
+    guardUntilSimTimeMs: nonNegative(snapshot.guardUntilSimTimeMs, 'guardUntilSimTimeMs'),
+    previousSimTimeMs,
+    previousEpochToken,
+    episodeGeneration,
+    currentEpisodeId: nonEmpty(snapshot.currentEpisodeId, 'currentEpisodeId'),
+  });
 }
 
 function failedGateCodes(opportunity: CandidateOpportunity): readonly GateCode[] {
@@ -183,6 +298,90 @@ export class HandoverDecisionEngine {
 
   get servingLink(): CandidateLinkKey | null {
     return copyKey(this.serving);
+  }
+
+  /**
+   * Capture every mutable field owned by the decision engine.
+   *
+   * The returned object is deeply copied and frozen at the key/record/array
+   * boundaries.  This makes it safe to hand to an external transaction while
+   * keeping the engine's internal Map and candidate keys private.
+   */
+  snapshot(): HandoverDecisionEngineSnapshot {
+    return cloneEngineSnapshot({
+      serving: this.serving,
+      timers: [...this.timers].map(([key, timer]) => ({
+        key: parseTimerKey(key),
+        qualificationSec: timer.qualificationSec,
+        absentSec: timer.absentSec,
+      })),
+      provisionalLeader: this.provisionalLeader,
+      armedTarget: this.armedTarget,
+      selectionHoldSec: this.selectionHoldSec,
+      guardUntilSimTimeMs: this.guardUntilSimTimeMs,
+      previousSimTimeMs: this.previousSimTimeMs,
+      previousEpochToken: this.previousEpochToken,
+      episodeGeneration: this.episodeGeneration,
+      currentEpisodeId: this.currentEpisodeId,
+    });
+  }
+
+  /**
+   * Restore a previously captured checkpoint without retaining aliases to its
+   * records or timer collection.  Validation completes before this instance
+   * is mutated, so malformed input cannot leave a partially restored engine.
+   */
+  restore(snapshot: HandoverDecisionEngineSnapshot): void {
+    const normalized = cloneEngineSnapshot(snapshot);
+    const timers = new Map<string, CandidateTimer>();
+    for (const timer of normalized.timers) {
+      timers.set(candidateLinkKeyString(timer.key), Object.freeze({
+        qualificationSec: timer.qualificationSec,
+        absentSec: timer.absentSec,
+      }));
+    }
+
+    this.serving = copyKey(normalized.serving);
+    this.timers.clear();
+    for (const [key, timer] of timers) this.timers.set(key, timer);
+    this.provisionalLeader = copyKey(normalized.provisionalLeader);
+    this.armedTarget = copyKey(normalized.armedTarget);
+    this.selectionHoldSec = normalized.selectionHoldSec;
+    this.guardUntilSimTimeMs = normalized.guardUntilSimTimeMs;
+    this.previousSimTimeMs = normalized.previousSimTimeMs;
+    this.previousEpochToken = normalized.previousEpochToken;
+    this.episodeGeneration = normalized.episodeGeneration;
+    this.currentEpisodeId = normalized.currentEpisodeId;
+  }
+
+  /**
+   * Synchronize an already measured and atomically accepted continuity commit.
+   * Normal TTT commits are owned by `step()` and must not call this method.
+   * The explicit safety lane uses it only after its external assignment/load/RF
+   * transaction succeeds, preserving this episode and applying the same guard
+   * interval as a normal commit.
+   */
+  acceptServiceContinuityCommit(receipt: HandoverCommitReceipt): void {
+    validateHandoverCommitReceipt(receipt);
+    if (receipt.mode !== 'service-continuity-protection') {
+      throw new Error('external engine synchronization accepts only service-continuity commits');
+    }
+    if (receipt.episodeId !== this.currentEpisodeId) {
+      throw new Error('service-continuity receipt belongs to a different decision episode');
+    }
+    if (this.previousSimTimeMs !== receipt.simTimeMs) {
+      throw new Error('service-continuity receipt must belong to the latest stepped simulation frame');
+    }
+    const sourceMatches = receipt.from === null
+      ? this.serving === null
+      : this.serving !== null && sameCandidateLinkKey(receipt.from, this.serving);
+    if (!sourceMatches) {
+      throw new Error('service-continuity receipt source does not match the active engine serving pair');
+    }
+
+    this.serving = copyKey(receipt.to);
+    this.clearCandidateSelection();
+    this.guardUntilSimTimeMs = receipt.simTimeMs + (this.config.guardSec * 1000);
   }
 
   /** Cold reset. Unlike a clock discontinuity, this may replace serving. */

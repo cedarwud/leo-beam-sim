@@ -5,6 +5,7 @@ import {
   candidateLinkKey,
   candidateLinkKeyString,
   createCandidateGateResult,
+  createHandoverCommitReceipt,
   createMetricEvidence,
   freezeCandidateOpportunity,
   type CandidateDecisionState,
@@ -13,7 +14,10 @@ import {
   type DecisionClockContext,
 } from './candidateDecisionContract';
 import type { CandidateOpportunitySet } from './candidateOpportunityProducer';
-import { HandoverDecisionEngine } from './handoverDecisionEngine';
+import {
+  HandoverDecisionEngine,
+  type HandoverDecisionEngineSnapshot,
+} from './handoverDecisionEngine';
 import { SinrOffsetPolicy } from './handoverSelectionPolicy';
 
 const UE = 'ue-primary';
@@ -392,4 +396,164 @@ test('a sparse post-guard frame credits only time after the guard expires', () =
   assert.equal(afterGuard.phase, 'qualifying');
   assert.equal(state(afterGuard, SERVING).qualificationSec, 1);
   assert.equal(afterGuard.recentCommit, null);
+});
+
+test('snapshot and restore rewind an emitted commit and reproduce the same next frame', () => {
+  const options = { tttSec: 1, selectionHoldSec: 1, guardSec: 2 } as const;
+  const target = candidateLinkKey('SAT-B', 1);
+  const values = [
+    { key: SERVING, sinrDb: 10 },
+    { key: target, sinrDb: 16 },
+  ];
+  const firstSet = set('snapshot-before', values);
+  const commitSet = set('snapshot-commit', values);
+  const firstClock = clock('snapshot-before', 1_000, 1);
+  const commitClock = clock('snapshot-commit', 2_000, 1);
+
+  const subject = engine(options);
+  subject.step(firstSet, firstClock);
+  const checkpoint = subject.snapshot();
+
+  assert.deepEqual(checkpoint.serving, SERVING);
+  assert.equal(checkpoint.timers.length, 1);
+  assert.equal(checkpoint.timers[0]?.qualificationSec, 1);
+  assert.deepEqual(checkpoint.provisionalLeader, target);
+  assert.deepEqual(checkpoint.armedTarget, target);
+  assert.equal(checkpoint.selectionHoldSec, 1);
+  assert.equal(checkpoint.previousSimTimeMs, 1_000);
+  assert.equal(Object.isFrozen(checkpoint), true);
+  assert.equal(Object.isFrozen(checkpoint.timers), true);
+  assert.equal(Object.isFrozen(checkpoint.timers[0]), true);
+
+  const reference = engine(options);
+  reference.step(firstSet, firstClock);
+  const expected = reference.step(commitSet, commitClock);
+
+  const mutated = subject.step(commitSet, commitClock);
+  assert.equal(mutated.recentCommit?.kind, 'inter-satellite');
+  assert.deepEqual(mutated.serving, target);
+
+  subject.restore(checkpoint);
+  const replayed = subject.step(commitSet, commitClock);
+
+  assert.deepEqual(replayed, expected);
+  assert.deepEqual(subject.snapshot(), reference.snapshot());
+});
+
+test('restore clones timer maps and key records instead of retaining checkpoint aliases', () => {
+  const target = candidateLinkKey('SAT-B', 1);
+  const subject = engine({ tttSec: 3 });
+  subject.step(set('alias-before', [
+    { key: SERVING, sinrDb: 10 },
+    { key: target, sinrDb: 16 },
+  ]), clock('alias-before', 1_000, 1));
+  const original = subject.snapshot();
+  const external = JSON.parse(JSON.stringify(original)) as HandoverDecisionEngineSnapshot & {
+    readonly [key: string]: unknown;
+  };
+
+  subject.restore(external);
+  const restored = subject.snapshot();
+  assert.notStrictEqual(restored, external);
+  assert.notStrictEqual(restored.timers, external.timers);
+  assert.notStrictEqual(restored.timers[0], external.timers[0]);
+  assert.notStrictEqual(restored.timers[0]?.key, external.timers[0]?.key);
+
+  const mutableExternal = external as any;
+  mutableExternal.serving.beamId = 99;
+  mutableExternal.timers[0].qualificationSec = 99;
+  mutableExternal.timers[0].key.beamId = 99;
+  mutableExternal.timers.push({
+    key: { satelliteId: 'SAT-X', beamId: 4 },
+    qualificationSec: 99,
+    absentSec: 0,
+  });
+
+  assert.deepEqual(subject.snapshot(), original);
+  assert.deepEqual(subject.servingLink, SERVING);
+});
+
+test('snapshot and restore preserve the policy mode boundary for EE evaluations', () => {
+  const target = candidateLinkKey('SAT-B', 1);
+  const eePolicy = {
+    evaluate(input: { readonly alternatives: readonly CandidateOpportunity[] }) {
+      return {
+        mode: 'ee-optimization' as const,
+        assessments: input.alternatives.map(candidate => ({
+          key: candidate.key,
+          hardEligibility: 'eligible' as const,
+          triggerStatus: 'satisfied' as const,
+          requiredTttSec: 1,
+          rejectionCodes: [],
+        })),
+      };
+    },
+  };
+  const options = {
+    episodeId: 'ee-snapshot-fixture',
+    policy: eePolicy,
+    selectionHoldSec: 1,
+    guardSec: 1,
+    initialServing: SERVING,
+  } as const;
+  const values = [
+    { key: SERVING, sinrDb: 10 },
+    { key: target, sinrDb: 16 },
+  ];
+  const firstSet = set('ee-snapshot-before', values);
+  const nextSet = set('ee-snapshot-next', values);
+  const firstClock = clock('ee-snapshot-before', 1_000, 1);
+  const nextClock = clock('ee-snapshot-next', 2_000, 1);
+  const subject = new HandoverDecisionEngine(options);
+  subject.step(firstSet, firstClock);
+  const checkpoint = subject.snapshot();
+  const changed = subject.step(nextSet, nextClock);
+  assert.equal(changed.mode, 'ee-optimization');
+
+  subject.restore(checkpoint);
+  const restored = subject.step(nextSet, nextClock);
+  assert.equal(restored.mode, 'ee-optimization');
+  assert.deepEqual(restored.states, changed.states);
+  assert.equal(restored.recentCommit?.reason.includes('forecast EE'), true);
+});
+
+test('an accepted service-continuity transaction preserves the episode and enters guard', () => {
+  const target = candidateLinkKey('SAT-B', 1);
+  const alternative = candidateLinkKey('SAT-C', 2);
+  const subject = engine({ tttSec: 1, selectionHoldSec: 1, guardSec: 2 });
+  const missingServingFrame = subject.step(set('continuity-frame', [
+    { key: target, sinrDb: 20 },
+    { key: alternative, sinrDb: 18 },
+  ]), clock('continuity-frame', 1_000, 1));
+  const receipt = createHandoverCommitReceipt({
+    episodeId: missingServingFrame.episodeId,
+    sourceFrameId: missingServingFrame.sourceFrameId,
+    simTimeMs: missingServingFrame.simTimeMs,
+    from: SERVING,
+    to: target,
+    kind: 'inter-satellite',
+    mode: 'service-continuity-protection',
+    reason: 'serving pair disappeared and the replacement passed final measurement',
+    oldLinkEnded: true,
+    newLinkStarted: true,
+  });
+
+  subject.acceptServiceContinuityCommit(receipt);
+  assert.deepEqual(subject.servingLink, target);
+  assert.equal(subject.snapshot().currentEpisodeId, missingServingFrame.episodeId);
+
+  const guarded = subject.step(set('continuity-guard', [
+    { key: target, sinrDb: 12 },
+    { key: alternative, sinrDb: 30 },
+  ]), clock('continuity-guard', 1_500, 0.5));
+  assert.equal(guarded.phase, 'guard');
+  assert.equal(guarded.recentCommit, null);
+  assert.equal(state(guarded, alternative).qualificationSec, 0);
+
+  const beforeRejectedDuplicate = subject.snapshot();
+  assert.throws(
+    () => subject.acceptServiceContinuityCommit(receipt),
+    /latest stepped simulation frame|source does not match/,
+  );
+  assert.deepEqual(subject.snapshot(), beforeRejectedDuplicate);
 });

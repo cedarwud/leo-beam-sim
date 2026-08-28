@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import type { LinkSample } from '../engine/signal/types';
+import type { HandoverDecisionFrame } from '../engine/handover/candidateDecisionContract';
 import {
   buildPublishedFormulaEvidence,
   buildPublishedIntraHandoverPresentation,
+  buildPublishedPerUePositions,
   buildPublishedPrimaryServing,
   type PublishedFormulaEvidence,
   type PublishedPrimaryServing,
@@ -146,6 +148,80 @@ assert.equal(publishedIntra?.sourceSatId, sample.satId, 'intra presentation keep
 assert.equal(publishedIntra?.targetCellId, 4, 'intra presentation keeps the measured target cell');
 assert.equal(publishedIntra?.candidateSinrDb, 8.75, 'intra presentation uses measured candidate SINR');
 assert.equal(publishedIntra?.deltaSinrDb, 2.5, 'intra presentation exposes candidate minus serving');
+
+const authoritativeDecision = {
+  serving: { satelliteId: sample.satId, beamId: sample.beamId },
+} as HandoverDecisionFrame;
+const authoritativeCellFrame: SinrLiveCellFrame = {
+  ...cellFrame,
+  ues: [
+    { ...primaryRecord, servingBeamId: sample.beamId },
+    { ...primaryRecord, ueId: 'ue-secondary', servingBeamId: null },
+  ],
+};
+const authoritativeSim = {
+  sinrLiveCells: authoritativeCellFrame,
+  perUePositions: [perUePositions[0]!, { ...perUePositions[0]!, id: 'ue-secondary' }],
+  handoverDecisionFrame: authoritativeDecision,
+};
+const authoritativePrimary = buildPublishedPrimaryServing(authoritativeSim, steeredPrimary());
+const authoritativeFormula = buildPublishedFormulaEvidence(authoritativeSim, steeredEvidence);
+const authoritativeUes = buildPublishedPerUePositions(authoritativeSim);
+assert.equal(authoritativePrimary.servingBeamId, sample.beamId);
+assert.equal(authoritativePrimary.panelPrimary.beamId, sample.beamId);
+assert.equal(authoritativeFormula.source.beamId, sample.beamId);
+assert.equal(authoritativeUes?.[0]?.servingBeamId, sample.beamId);
+
+const mixedAuthoritySim = {
+  ...authoritativeSim,
+  sinrLiveCells: {
+    ...authoritativeCellFrame,
+    ues: [
+      {
+        ...authoritativeCellFrame.ues[0]!,
+        servingSatId: 'stale-sat',
+        servingBeamId: 99,
+        servingLinkSample: { ...sample, satId: 'stale-sat', beamId: 99 },
+      },
+      authoritativeCellFrame.ues[1]!,
+    ],
+  },
+};
+const mixedPrimary = buildPublishedPrimaryServing(mixedAuthoritySim, steeredPrimary());
+const mixedFormula = buildPublishedFormulaEvidence(mixedAuthoritySim, steeredEvidence);
+const mixedUes = buildPublishedPerUePositions(mixedAuthoritySim);
+assert.equal(mixedPrimary.servingSatId, sample.satId, 'decision pair remains the published identity');
+assert.equal(mixedPrimary.servingBeamId, sample.beamId);
+assert.equal(mixedPrimary.servingSinrDb, null, 'mixed record evidence fails closed');
+assert.equal(mixedFormula.budget, null, 'mixed formula sample is never relabelled as decision evidence');
+assert.equal(mixedUes?.[0]?.servingSatId, sample.satId);
+assert.equal(mixedUes?.[0]?.servingBeamId, sample.beamId);
+assert.equal(mixedUes?.[0]?.sinrDb, null);
+
+const staleSampleOnlySim = {
+  ...authoritativeSim,
+  sinrLiveCells: {
+    ...authoritativeCellFrame,
+    ues: [
+      {
+        ...authoritativeCellFrame.ues[0]!,
+        sinrDb: -17,
+        servingLinkSample: { ...sample, satId: 'stale-sat', beamId: 99, sinrDb: -17 },
+      },
+      authoritativeCellFrame.ues[1]!,
+    ],
+  },
+};
+const staleSampleOnlyPrimary = buildPublishedPrimaryServing(staleSampleOnlySim, steeredPrimary());
+const staleSampleOnlyFormula = buildPublishedFormulaEvidence(staleSampleOnlySim, steeredEvidence);
+const staleSampleOnlyUes = buildPublishedPerUePositions(staleSampleOnlySim);
+assert.equal(
+  staleSampleOnlyPrimary.servingSinrDb,
+  null,
+  'a stale sample cannot be relabelled when the record identity still matches the decision',
+);
+assert.equal(staleSampleOnlyFormula.budget, null);
+assert.equal(staleSampleOnlyUes?.[0]?.sinrDb, null);
 
 for (const key of [
   'signalDbm',

@@ -130,7 +130,10 @@ import {
 } from './cinematicEffects';
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 import { FPSCounter } from './FPSCounter';
-import type { SceneLane } from '../app/sceneLane';
+import {
+  shouldEnableHomepageMultiCandidateAuthority,
+  type SceneLane,
+} from '../app/sceneLane';
 import {
   isSceneLaneSourceCompatible,
   resolveSceneLaneRenderPlan,
@@ -931,6 +934,7 @@ function SceneContent(props: SceneContentProps) {
     runtime.beamHoppingEnabled ?? false,
     sceneLane === 'sinr-live' ? 'sampled-steering' : 'earth-fixed-cell',
     runtime.focusCellId ?? null,
+    shouldEnableHomepageMultiCandidateAuthority(sceneLane),
   );
 
   return <SceneRenderContent {...props} sim={sim} simSource="live" liveSeekLandedKey={liveSeekLandedKey} />;
@@ -1540,9 +1544,13 @@ function SceneRenderContent({
     sinrLiveCellPlacementById,
     viz.coneApexWorldById,
   ]);
+  const multiCandidateAuthorityActive = sim.handoverDecisionFrame !== null
+    && sim.handoverDecisionFrame !== undefined;
   const renderedCandidateSatelliteId = simSource === 'archived-tle'
     ? canonicalCandidateSatelliteId
-    : primaryServingRecord?.pendingTargetSatId;
+    : multiCandidateAuthorityActive
+      ? null
+      : primaryServingRecord?.pendingTargetSatId;
   const sinrLiveBeamDisplayFrame = useMemo(() => createSinrLiveBeamDisplayFrame({
     profile,
     runtime,
@@ -1983,6 +1991,7 @@ function SceneRenderContent({
   // viewport. The story owner below will paint the same target once, after its
   // serving lead-in, together with the badge and ho-slow state.
   const naturalInterCandidatePending = simSource === 'live'
+    && !multiCandidateAuthorityActive
     && primaryServingRecord?.pendingTargetSatId !== null
     && primaryServingRecord?.pendingTargetSatId !== undefined
     && primaryServingRecord.pendingTargetSatId !== primaryServingRecord.servingSatId;

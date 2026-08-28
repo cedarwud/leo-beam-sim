@@ -11,8 +11,9 @@
  *   - builds the SINR-live cell layout from the live profile (§4),
  *   - constructs the pure `SinrLiveCellModel` (S-cells-1) when, and only when,
  *     the caller's lane gate `useEarthFixedCellTruth` is on (sinr-live only),
- *   - after each `stepRuntimeFrame`, attaches the model's per-frame output onto
- *     the live frame as the NEW optional field `frame.sinrLiveCells`.
+ *   - after each `stepRuntimeFrame`, attaches the model's per-frame cell output
+ *     and, only behind the explicit homepage gate, its sole primary decision
+ *     frame onto `frame.sinrLiveCells` / `frame.handoverDecisionFrame`.
  *
  * It is pure (no React / Three.js / `viz/`-`app/` symbol) and deliberately
  * imports neither `scene/types` nor `runtimeFrameStep` — it speaks to the frame
@@ -43,6 +44,7 @@ import {
   type SupportedBeamLayoutCount,
 } from '../core/beam/completeHexPresets';
 import type { Profile } from '../profiles/types';
+import type { HandoverDecisionFrame } from '../engine/handover/candidateDecisionContract';
 import {
   SinrLiveCellModel,
   type CellModelSat,
@@ -272,6 +274,7 @@ export interface CellTruthFrame {
   }>;
   readonly simTimeSec: number;
   sinrLiveCells?: SinrLiveCellFrame;
+  handoverDecisionFrame?: HandoverDecisionFrame | null;
 }
 
 function buildLiveCellCenter(
@@ -368,6 +371,7 @@ export function createSinrLiveCellModel(
   candidateBeamCount?: number,
   beamHoppingEnabled = true,
   beamPointingMode: SinrLiveBeamPointingMode = 'earth-fixed-cell',
+  multiCandidateDecisionEnabled = false,
 ): SinrLiveCellModel | null {
   if (!useEarthFixedCellTruth) return null;
   const sceneCellCount = resolveSinrLiveSceneCellCount(servingBeamCount);
@@ -390,6 +394,8 @@ export function createSinrLiveCellModel(
     observer: { latDeg: profile.orbit.observerLatDeg, lonDeg: profile.orbit.observerLonDeg },
     minElevationDeg: SINR_LIVE_CELL_MIN_ELEVATION_DEG,
     epochUtcMs,
+    candidateOpportunityMeasurementEnabled: multiCandidateDecisionEnabled,
+    multiCandidateDecisionEnabled,
     // Beam hopping: each satellite lights ≤N cells/slot, rotating; link-budget
     // beamwidth matches the cell layout (one antenna). N comes from the LIVE
     // profile (`resolveSinrLiveBeamsPerSat`), so the Topology tab's beam-count
@@ -420,9 +426,10 @@ function uesFromFrame(frame: CellTruthFrame): UeInput[] {
 /**
  * ADDITIVE attach: when `model` is non-null (sinr-live), run one cell-model step
  * over the frame's satellites + UE positions and hang the result on
- * `frame.sinrLiveCells`. When `model` is null (gate off) this is a no-op and the
- * frame is left byte-identical — the load-bearing zero-drift guarantee. Mutates
- * ONLY `frame.sinrLiveCells`; never any existing frame field.
+ * `frame.sinrLiveCells`. The optional authoritative primary decision is joined
+ * at the top-level `frame.handoverDecisionFrame`; the nested cell frame never
+ * carries a shadow copy. When `model` is null this remains a byte-identical
+ * no-op for every other lane.
  */
 export function attachSinrLiveCellFrame(
   frame: CellTruthFrame,
@@ -436,4 +443,5 @@ export function attachSinrLiveCellFrame(
     simTimeSec: frame.simTimeSec,
     dtSec: Number.isFinite(dtSec) && dtSec > 0 ? dtSec : 0,
   });
+  frame.handoverDecisionFrame = model.getHandoverDecisionFrame();
 }

@@ -28,7 +28,10 @@ import {
   resolveVisualFrequencyDiagnosticsEntry,
   shouldPublishUiState,
 } from './panelState';
-import { resolvePrimaryCellServingRecord } from './sinrLiveCellModel';
+import {
+  resolvePrimaryCellServingRecord,
+  type UeCellServingRecord,
+} from './sinrLiveCellModel';
 import { resolveSinrLiveBeamBudget } from './sinrLiveBeamBudget';
 import { resolveSinrLiveBeamCapacityPerSat } from './sinrLiveCellRuntime';
 import { computePaperEnergyEfficiency } from '../utils/paperEnergyEfficiency';
@@ -64,6 +67,29 @@ const UI_HANDOVER_UPDATE_INTERVAL_MS = 1000;
 // not playback. Paired with the backward check below it identifies a cursor
 // discontinuity that must be published immediately (see the gate).
 const SEEK_FORWARD_JUMP_SEC = 5;
+
+type PublishedServingPair = Readonly<{
+  satelliteId: string;
+  beamId: number;
+}>;
+
+/**
+ * Candidate-mode values may be published only when the decision identity,
+ * serving record, and measured LinkSample all name the same atomic pair.
+ * Keeping this join in one predicate prevents one UI surface from relabelling
+ * a stale sample while another correctly fails closed.
+ */
+function recordAndSampleJoinServingPair(
+  record: Pick<UeCellServingRecord, 'servingSatId' | 'servingBeamId' | 'servingLinkSample'> | null | undefined,
+  serving: PublishedServingPair | null,
+): boolean {
+  const sample = record?.servingLinkSample ?? null;
+  return serving !== null
+    && record?.servingSatId === serving.satelliteId
+    && (record.servingBeamId ?? null) === serving.beamId
+    && sample?.satId === serving.satelliteId
+    && sample.beamId === serving.beamId;
+}
 
 function dbmToWatts(dbm: number): number {
   return 10 ** ((dbm - 30) / 10);
@@ -357,10 +383,11 @@ export class CanonicalEePublisherSession {
  * S-cells-4c: on the sinr-live lane the published per-UE serving truth is the
  * EARTH-FIXED CELL model (`sim.sinrLiveCells`) so the aggregate HUD + per-UE
  * diagnostics agree with the cones — a UE is "served" only when its cell is lit
- * and served (servingSatId !== null). S4-2 pun retirement: the cell id is
- * published as the TYPED `servingCellId` and `servingBeamId` is null (there is
- * no steered beam under the cell model). Off that lane (no cell truth) the
- * steered per-UE serving is published unchanged with a null `servingCellId`.
+ * and served (servingSatId !== null). S4-2 pun retirement: the cell id remains
+ * the typed membership `servingCellId`; the multi-candidate lane additionally
+ * publishes its explicit Walker beam-surrogate id, while legacy cell-only
+ * frames retain `servingBeamId: null`. Off that lane (no cell truth) the steered
+ * per-UE serving is published unchanged with a null `servingCellId`.
  *
  * Exported as a pure function (S4-3) so the serving-equivalence gate drives the
  * REAL projection — the behavioural publisher-shape assert that replaces the
@@ -368,18 +395,33 @@ export class CanonicalEePublisherSession {
  * to source sweeps; only executing this code catches it).
  */
 export function buildPublishedPerUePositions(
-  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions'>,
+  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions' | 'handoverDecisionFrame'>,
 ): SimState['perUePositions'] {
   const cellTruthUes = sim.sinrLiveCells?.ues;
+  const publishesAuthoritativePair = sim.handoverDecisionFrame !== null
+    && sim.handoverDecisionFrame !== undefined;
+  const primaryUeId = sim.sinrLiveCells?.primaryUeId ?? cellTruthUes?.[0]?.ueId ?? null;
+  const authoritativeServing = publishesAuthoritativePair
+    ? sim.handoverDecisionFrame?.serving ?? null
+    : null;
   return cellTruthUes !== undefined
     ? (cellTruthUes.length > 1
-      ? cellTruthUes.map(ue => ({
-        id: ue.ueId,
-        servingSatId: ue.servingSatId,
-        servingBeamId: null,
-        servingCellId: ue.servingSatId === null ? null : ue.cellId,
-        sinrDb: ue.sinrDb,
-      }))
+      ? cellTruthUes.map(ue => {
+        const isPrimary = publishesAuthoritativePair && ue.ueId === primaryUeId;
+        const servingSatId = isPrimary ? authoritativeServing?.satelliteId ?? null : ue.servingSatId;
+        const servingBeamId = publishesAuthoritativePair
+          ? isPrimary ? authoritativeServing?.beamId ?? null : ue.servingBeamId ?? null
+          : null;
+        const recordJoinsDecision = !isPrimary
+          || recordAndSampleJoinServingPair(ue, authoritativeServing);
+        return {
+          id: ue.ueId,
+          servingSatId,
+          servingBeamId,
+          servingCellId: servingSatId === null ? null : ue.cellId,
+          sinrDb: recordJoinsDecision ? ue.sinrDb : null,
+        };
+      })
       : undefined)
     : (sim.perUePositions.length > 1
       ? sim.perUePositions.map(position => ({
@@ -477,7 +519,7 @@ const SUPPRESSED_COMPARISON: SuppressedComparison = {
 };
 
 export function buildPublishedPrimaryServing(
-  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions'>,
+  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions' | 'handoverDecisionFrame'>,
   steered: PublishedPrimaryServing,
   // W6: resolve the CELL serving sat's elevation/range (from topoBySatId +
   // linkRangeKmBySatId at the call site). Optional so the pure unit gate can omit it.
@@ -487,7 +529,15 @@ export function buildPublishedPrimaryServing(
   if (cellFrame === undefined) return steered; // off-lane: byte-identical steered passthrough.
 
   const record = resolvePrimaryCellServingRecord(cellFrame, sim.perUePositions);
-  if (record === null || record.servingSatId === null) {
+  const publishesAuthoritativePair = sim.handoverDecisionFrame !== null
+    && sim.handoverDecisionFrame !== undefined;
+  const authoritativeServing = publishesAuthoritativePair
+    ? sim.handoverDecisionFrame?.serving ?? null
+    : null;
+  if (
+    record === null
+    || (publishesAuthoritativePair ? authoritativeServing === null : record.servingSatId === null)
+  ) {
     // Cell lane, primary UE unserved: blank primary + suppressed comparison.
     return {
       servingSatId: null,
@@ -509,8 +559,15 @@ export function buildPublishedPrimaryServing(
     };
   }
 
-  const servingSatId = record.servingSatId;
-  const sinrDb = record.sinrDb;
+  const servingSatId = publishesAuthoritativePair
+    ? authoritativeServing!.satelliteId
+    : record.servingSatId!;
+  const servingBeamId = publishesAuthoritativePair
+    ? authoritativeServing!.beamId
+    : null;
+  const recordJoinsDecision = !publishesAuthoritativePair
+    || recordAndSampleJoinServingPair(record, authoritativeServing);
+  const sinrDb = recordJoinsDecision ? record.sinrDb : null;
   // Cell truth is the CURRENT per-frame off-axis SINR (never a stale latch): it
   // is 'live' when decodable, 'latched' only when below the beam-gain floor
   // (served-by-assignment, empirically never in the 37-cell config).
@@ -526,7 +583,10 @@ export function buildPublishedPrimaryServing(
   // the SERVED cell branch (the unserved branch stays suppressed). Display-only (Rule#6).
   const comparisonSatId = record.comparisonSatId ?? null;
   const comparisonSinrDb = record.comparisonSinrDb ?? null;
-  const hasComparison = comparisonSatId !== null && comparisonSinrDb !== null && Number.isFinite(comparisonSinrDb);
+  const hasComparison = !publishesAuthoritativePair
+    && comparisonSatId !== null
+    && comparisonSinrDb !== null
+    && Number.isFinite(comparisonSinrDb);
   const comparisonGeo = hasComparison && comparisonSatId !== null
     ? resolveServingGeo?.(comparisonSatId) ?? { elevationDeg: null, rangeKm: null }
     : { elevationDeg: null, rangeKm: null };
@@ -542,7 +602,7 @@ export function buildPublishedPrimaryServing(
     : null;
   return {
     servingSatId,
-    servingBeamId: null,
+    servingBeamId,
     servingCellId: record.cellId,
     servingSinrDb: sinrDb,
     servingElevationDeg: geo.elevationDeg,
@@ -550,7 +610,7 @@ export function buildPublishedPrimaryServing(
     panelPrimary: {
       role: 'serving',
       satId: servingSatId,
-      beamId: null,
+      beamId: servingBeamId,
       sinrDb,
       elevationDeg: geo.elevationDeg,
       rangeKm: geo.rangeKm,
@@ -634,7 +694,7 @@ export interface PublishedFormulaEvidence {
 }
 
 export function buildPublishedFormulaEvidence(
-  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions'>,
+  sim: Pick<SimFrame, 'sinrLiveCells' | 'perUePositions' | 'handoverDecisionFrame'>,
   steered: PublishedFormulaEvidence,
 ): PublishedFormulaEvidence {
   const cellFrame = sim.sinrLiveCells;
@@ -642,12 +702,20 @@ export function buildPublishedFormulaEvidence(
 
   const record = resolvePrimaryCellServingRecord(cellFrame, sim.perUePositions);
   const sample = record?.servingLinkSample ?? null;
+  const publishesAuthoritativePair = sim.handoverDecisionFrame !== null
+    && sim.handoverDecisionFrame !== undefined;
+  const authoritativeServing = publishesAuthoritativePair
+    ? sim.handoverDecisionFrame?.serving ?? null
+    : null;
+  const recordJoinsDecision = !publishesAuthoritativePair
+    || recordAndSampleJoinServingPair(record, authoritativeServing);
   if (
     record === null
     || record === undefined
-    || record.servingSatId === null
+    || (publishesAuthoritativePair ? authoritativeServing === null : record.servingSatId === null)
     || record.cellId === null
     || sample === null
+    || !recordJoinsDecision
   ) {
     return {
       source: {
@@ -663,13 +731,17 @@ export function buildPublishedFormulaEvidence(
   }
 
   const sinrDb = record.sinrDb;
+  const servingSatId = publishesAuthoritativePair
+    ? authoritativeServing!.satelliteId
+    : record.servingSatId;
+  const servingBeamId = publishesAuthoritativePair ? authoritativeServing!.beamId : null;
   return {
     source: {
-      // `beamId: null` is intentional: the cell id is the serving unit on
-      // this lane, while the internal cellLinkBudget beam id stays inside the
-      // LinkSample and is never presented as a steered beam identity.
-      satId: record.servingSatId,
-      beamId: null,
+      // A beam id is published only when the top-level decision frame makes the
+      // Walker cell surrogate an explicit, provenance-labelled handover key.
+      // Legacy cell-only frames retain null and therefore preserve zero drift.
+      satId: servingSatId,
+      beamId: servingBeamId,
       sinrDb,
       elevationDeg: null,
       rangeKm: null,

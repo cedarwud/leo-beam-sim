@@ -25,3 +25,12 @@ export function resolveSceneLane(input: SceneLaneInput): SceneLane {
 export function shouldRenderModqnReplayScene(lane: SceneLane): boolean {
   return lane === 'modqn-replay-proof';
 }
+
+/**
+ * The multi-candidate decision authority is a homepage Walker feature. The
+ * MODQN cell-preview lane may reuse earth-fixed cell geometry, but it must not
+ * inherit homepage decision state or replace its existing policy authority.
+ */
+export function shouldEnableHomepageMultiCandidateAuthority(lane: SceneLane): boolean {
+  return lane === 'sinr-live';
+}

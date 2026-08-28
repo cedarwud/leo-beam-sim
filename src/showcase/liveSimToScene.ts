@@ -70,6 +70,32 @@ import {
   deriveLiveSceneFields,
 } from './deriveLiveSceneFields';
 
+function projectLiveLink(
+  sample: SimFrame['linkSamples'][number],
+  targetId: string,
+  role: string,
+): NormalizedLink {
+  return {
+    id: `${sample.satId}:${sample.beamId}`,
+    sourceId: sample.satId,
+    targetId,
+    beamId: String(sample.beamId),
+    role,
+    channelMetric: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, sample.sinrDb),
+    rsrpDbm: sample.rsrpDbm,
+    signalDbm: sample.signalDbm,
+    intraInterferenceDbm: sample.intraInterferenceDbm,
+    interInterferenceDbm: sample.interInterferenceDbm,
+    noiseDbm: sample.noiseDbm,
+    denominatorDbm: sample.denominatorDbm,
+    txPowerDbm: sample.txPowerDbm,
+    pathLossDb: sample.pathLossDb,
+    beamGainDb: sample.beamGainDb,
+    steeringLossDb: sample.steeringLossDb,
+    receiverGainDbi: sample.receiverGainDbi,
+  };
+}
+
 /**
  * Project a live `SimFrame` into a `NormalizedSceneFrame`.
  *
@@ -160,28 +186,13 @@ export function liveSimToScene(
   const primaryUeId = sim.sinrLiveCells?.primaryUeId
     ?? sim.perUePositions?.[0]?.id
     ?? liveUeId;
-  const links: NormalizedLink[] = sim.linkSamples.map((sample) => ({
-    id: `${sample.satId}:${sample.beamId}`,
-    sourceId: sample.satId,
-    targetId: primaryUeId,
-    beamId: String(sample.beamId),
-    role:
+  let links: NormalizedLink[] = sim.linkSamples.map(sample => projectLiveLink(
+    sample,
+    primaryUeId,
       eventRoleByBeamId.get(`${sample.satId}:${sample.beamId}`)
       ?? eventRoleBySatId.get(sample.satId)
       ?? 'inactive',
-    channelMetric: makeChannelMetricValue(LIVE_CHANNEL_METRIC_KIND, sample.sinrDb),
-    rsrpDbm: sample.rsrpDbm,
-    signalDbm: sample.signalDbm,
-    intraInterferenceDbm: sample.intraInterferenceDbm,
-    interInterferenceDbm: sample.interInterferenceDbm,
-    noiseDbm: sample.noiseDbm,
-    denominatorDbm: sample.denominatorDbm,
-    txPowerDbm: sample.txPowerDbm,
-    pathLossDb: sample.pathLossDb,
-    beamGainDb: sample.beamGainDb,
-    steeringLossDb: sample.steeringLossDb,
-    receiverGainDbi: sample.receiverGainDbi,
-  }));
+  ));
 
   // R6 binding: live N variable, with the focused protagonist normalized to
   // index 0 for renderer consumers that intentionally use `sceneFrame.ues[0]`.
@@ -258,9 +269,31 @@ export function liveSimToScene(
   let eventRoles = derived.eventRoles;
 
   if (primaryServingRecord) {
-    const servingSatId = primaryServingRecord.servingSatId ?? '';
-    const servingBeamIdStr = primaryServingRecord.beamIdentity ?? '';
-    const servingSinrDb = primaryServingRecord.sinrDb ?? NaN;
+    const authoritativeDecision = sim.handoverDecisionFrame ?? null;
+    const recordServingBeamId = primaryServingRecord.servingBeamId
+      ?? primaryServingRecord.servingLinkSample?.beamId
+      ?? null;
+    const servingSatId = authoritativeDecision === null
+      ? primaryServingRecord.servingSatId ?? ''
+      : authoritativeDecision.serving?.satelliteId ?? '';
+    const servingBeamId = authoritativeDecision === null
+      ? recordServingBeamId
+      : authoritativeDecision.serving?.beamId ?? null;
+    // Legacy cell-truth fixtures retain their historic presentation identity.
+    // Once the multi-candidate frame is present, every scene join uses the
+    // authoritative numeric Walker beam surrogate instead of cell membership.
+    const servingBeamIdStr = authoritativeDecision === null
+      ? primaryServingRecord.beamIdentity ?? ''
+      : servingBeamId === null
+        ? ''
+        : String(servingBeamId);
+    const servingSample = primaryServingRecord.servingLinkSample;
+    const recordJoinsDecision = authoritativeDecision === null
+      || (primaryServingRecord.servingSatId === servingSatId
+        && recordServingBeamId === servingBeamId
+        && servingSample?.satId === servingSatId
+        && servingSample.beamId === servingBeamId);
+    const servingSinrDb = recordJoinsDecision ? primaryServingRecord.sinrDb ?? NaN : NaN;
 
     // Find the primary UE's recent handover. If an inter and an intra are both
     // retained in the short window, inter remains authoritative until its
@@ -272,6 +305,30 @@ export function liveSimToScene(
       ?? primaryRecentEvents[primaryRecentEvents.length - 1];
     const ageSec = latestHoEvent ? sim.simTimeSec - latestHoEvent.sourceTimeSec : Infinity;
     const isRecent = ageSec >= 0 && ageSec < 4; // SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC is 4
+
+    if (authoritativeDecision !== null) {
+      const servingRole: EventRole = authoritativeDecision.recentCommit === null
+        ? 'serving'
+        : 'post-ho';
+      // The legacy steered runtime may still publish its old source/candidate
+      // samples in `sim.linkSamples`. In candidate mode those are not primary
+      // authority: project exactly the selected post-transaction sample so the
+      // centre scene can never imply DAPS with two solid data links.
+      const sampleJoinsDecision = recordJoinsDecision
+        && servingSample !== null
+        && servingSample !== undefined;
+      links = !sampleJoinsDecision
+        ? []
+        : [projectLiveLink(servingSample, primaryUeId, servingRole)];
+      for (let index = 0; index < beams.length; index += 1) {
+        const beam = beams[index];
+        const isServingPair = beam.satelliteId === servingSatId && beam.id === servingBeamIdStr;
+        beams[index] = {
+          ...beam,
+          role: isServingPair ? servingRole : 'inactive',
+        };
+      }
+    }
 
     // 1. Override metrics
     metrics = {
