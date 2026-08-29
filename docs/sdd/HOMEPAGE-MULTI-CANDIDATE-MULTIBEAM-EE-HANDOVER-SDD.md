@@ -2260,8 +2260,17 @@ the same continuity receives new entry keys without clearing the whole cache.
 The mandatory `acceptedFrameLineageId` stays stable across those ordinary
 frames and changes when an accepted-frame stream is replaced, so replacement
 remains detectable even when both source-frame ID and UTC advance together.
-This is still a data-only contract: no executor/store or runtime EE activation
-is implied.
+`WalkerForecastExecutionCache` adds the bounded store/lease layer without
+activating runtime EE. A caller explicitly begins an accepted refresh (never a
+render frame), exact hits consume no computation budget, and cache misses must
+obtain a generation-scoped lease before computing. The configured maximum
+entry count, computations per refresh, and concurrent computations form a
+full-tuple `executionBudgetHash`; an exhausted budget returns typed unavailable
+instead of zero evidence. A new refresh invalidates unfinished leases, while
+the reset classifier clears stored evidence on seek, loop-wrap, source,
+profile, focus, policy, continuity, lineage or budget discontinuities. Normal
+refreshes retain only bounded full-key history, and a late computation from an
+older generation cannot publish.
 
 Candidate evaluation must remain visible long enough to understand. The
 presentation controller may reduce playback speed, but it may not change
