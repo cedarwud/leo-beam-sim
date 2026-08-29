@@ -144,6 +144,12 @@ export interface Profile {
 
   orbit: {
     type: 'walker';
+    /**
+     * Deterministic Walker phase-jitter seed. Shipped profiles must state this
+     * explicitly so accepted scientific frames never depend on the orbit
+     * generator's legacy omitted-seed fallback.
+     */
+    constellationSeed: number;
     shells: Shell[];
     observerLatDeg: number;
     observerLonDeg: number;

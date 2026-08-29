@@ -5,6 +5,7 @@
   "formulaFamily": "hobs-legacy",
   "orbit": {
     "type": "walker",
+    "constellationSeed": 0,
     "shells": [
       { "id": "shell-pro-53", "altitudeKm": 550, "inclinationDeg": 53, "planes": 36, "satsPerPlane": 20 },
       { "id": "shell-pro-42", "altitudeKm": 550, "inclinationDeg": 42, "planes": 36, "satsPerPlane": 20 },

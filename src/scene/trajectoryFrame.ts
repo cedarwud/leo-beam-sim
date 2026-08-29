@@ -3,6 +3,8 @@ import {
   createObserverContext,
   generateWalkerConstellation,
   propagateOrbitElement,
+  requireProfileWalkerConstellationSeed,
+  WALKER_CONSTELLATION_PHASE_MODEL_VERSION,
 } from '../engine/orbit';
 import type { Profile } from '../profiles/types';
 import type { VisibleSat } from './types';
@@ -45,7 +47,9 @@ function trajectoryCacheKey(
   epochUtcMs: number,
 ): string {
   return JSON.stringify({
+    phaseModelVersion: WALKER_CONSTELLATION_PHASE_MODEL_VERSION,
     shells: profile.orbit.shells,
+    constellationSeed: requireProfileWalkerConstellationSeed(profile),
     latDeg: observer.latDeg,
     lonDeg: observer.lonDeg,
     epochUtcMs,
@@ -80,6 +84,7 @@ export function computeTrajectoryCache(
     epochUtcMs,
     observerLatDeg: observer.latDeg,
     observerLonDeg: observer.lonDeg,
+    phaseSeed: requireProfileWalkerConstellationSeed(profile),
   });
   const steps = Math.ceil(SIM_DURATION_SEC / SIM_STEP_SEC) + 1;
   const cache: CachedSatState[][] = new Array(steps);

@@ -5,6 +5,7 @@
   "formulaFamily": "hobs-legacy",
   "orbit": {
     "type": "walker",
+    "constellationSeed": 0,
     "shells": [
       {
         "id": "modqn-1sat-shell",

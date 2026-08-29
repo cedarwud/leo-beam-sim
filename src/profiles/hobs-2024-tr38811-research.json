@@ -5,6 +5,7 @@
   "formulaFamily": "hobs-tr38811",
   "orbit": {
     "type": "walker",
+    "constellationSeed": 0,
     "shells": [
       {
         "id": "hobs-baseline",

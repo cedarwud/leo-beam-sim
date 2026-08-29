@@ -9,6 +9,8 @@ import {
   createObserverContext,
   generateWalkerConstellation,
   propagateOrbitElement,
+  requireProfileWalkerConstellationSeed,
+  WALKER_CONSTELLATION_PHASE_MODEL_VERSION,
 } from '../engine/orbit';
 import type { Profile } from '../profiles/types';
 
@@ -16,6 +18,19 @@ const RECOMMEND_DURATION_SEC = 3600;
 const RECOMMEND_STEP_SEC = 10; 
 const HIGH_ELEVATION_DEG = 45;
 const RAMP_LEAD_SEC = 45;
+
+export function createDemoReplayRecommendationCacheKey(
+  profile: Profile,
+  epochUtcMs: number,
+): string {
+  const constellationSeed = requireProfileWalkerConstellationSeed(profile);
+  const configSignature = JSON.stringify({
+    phaseModelVersion: WALKER_CONSTELLATION_PHASE_MODEL_VERSION,
+    shells: profile.orbit.shells,
+    constellationSeed,
+  });
+  return `demo_start_${profile.id}_${epochUtcMs}_${configSignature}`;
+}
 
 /**
  * Recommends a starting offset for the demo where satellite density is high.
@@ -32,8 +47,8 @@ export function recommendDemoReplayStartOffsetSec(
   }
 
   // 2. Second priority: Browser localStorage cache
-  const configSignature = JSON.stringify(profile.orbit.shells).length;
-  const cacheKey = `demo_start_${profile.id}_${epochUtcMs}_${configSignature}`;
+  const constellationSeed = requireProfileWalkerConstellationSeed(profile);
+  const cacheKey = createDemoReplayRecommendationCacheKey(profile, epochUtcMs);
   
   // Try to hit browser cache first
   const cached = typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null;
@@ -49,6 +64,7 @@ export function recommendDemoReplayStartOffsetSec(
     epochUtcMs,
     observerLatDeg: profile.orbit.observerLatDeg,
     observerLonDeg: profile.orbit.observerLonDeg,
+    phaseSeed: constellationSeed,
   });
 
   // Performance optimization: sample satellites for recommendation logic

@@ -21,7 +21,11 @@ const STEP_SEC = 1;
 const MAX_STEERING_EXTRA_RINGS = 3;
 const profile = loadProfile(PROFILE_ID);
 const observer = createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg);
-const elements = generateWalkerConstellation({ shells: profile.orbit.shells, epochUtcMs: EPOCH_UTC_MS });
+const elements = generateWalkerConstellation({
+  shells: profile.orbit.shells,
+  epochUtcMs: EPOCH_UTC_MS,
+  phaseSeed: profile.orbit.constellationSeed,
+});
 
 interface ShellBeamLayout {
   footprintRadiusKm: number;

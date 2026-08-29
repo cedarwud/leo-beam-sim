@@ -1,6 +1,21 @@
 import { clamp, degToRad, normalizeAngleRad } from './math';
 import type { OrbitElement } from './types';
-import type { Shell } from '../../profiles/types';
+import type { Profile, Shell } from '../../profiles/types';
+
+export const WALKER_CONSTELLATION_PHASE_MODEL_VERSION =
+  'walker-delta-f1-phase-jitter-v1' as const;
+
+export function requireProfileWalkerConstellationSeed(
+  profile: Pick<Profile, 'id' | 'orbit'>,
+): number {
+  const seed = profile.orbit.constellationSeed;
+  if (!Number.isSafeInteger(seed)) {
+    throw new RangeError(
+      `Profile ${profile.id} must declare orbit.constellationSeed as a safe integer`,
+    );
+  }
+  return seed;
+}
 
 const TWO_PI = Math.PI * 2;
 const DAY_SEC = 86400;
@@ -93,11 +108,14 @@ export function generateWalkerConstellation(config: {
   epochUtcMs: number;
   observerLatDeg?: number;
   observerLonDeg?: number;
-  /** Deterministic phase-jitter seed; omitted keeps the established seed 0 geometry. */
-  phaseSeed?: number;
+  /** Deterministic phase-jitter seed; callers must name the scientific input. */
+  phaseSeed: number;
 }): OrbitElement[] {
   const elements: OrbitElement[] = [];
-  const phaseSeed = Number.isFinite(config.phaseSeed) ? Math.trunc(config.phaseSeed ?? 0) : 0;
+  if (!Number.isSafeInteger(config.phaseSeed)) {
+    throw new RangeError('Walker constellation phaseSeed must be a safe integer');
+  }
+  const phaseSeed = config.phaseSeed;
 
   for (const shell of config.shells) {
     const semiMajorKm = EARTH_RADIUS_KM + shell.altitudeKm;

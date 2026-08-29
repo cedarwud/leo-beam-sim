@@ -203,12 +203,14 @@ const elements = generateWalkerConstellation({
   epochUtcMs: EPOCH_UTC_MS,
   observerLatDeg: profile.orbit.observerLatDeg,
   observerLonDeg: profile.orbit.observerLonDeg,
+  phaseSeed: profile.orbit.constellationSeed,
 });
 const secondGeneration = generateWalkerConstellation({
   shells: [shell],
   epochUtcMs: EPOCH_UTC_MS,
   observerLatDeg: profile.orbit.observerLatDeg,
   observerLonDeg: profile.orbit.observerLonDeg,
+  phaseSeed: profile.orbit.constellationSeed,
 });
 
 expect(profile.orbit.observerLatDeg === CENTER_LAT_DEG, 'service center latitude is 40 deg');

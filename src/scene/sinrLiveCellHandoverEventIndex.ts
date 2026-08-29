@@ -9,6 +9,10 @@ import type { UeDistributionMode, UePrimaryAnchorMode } from '../engine/ue/multi
 import { createObserverContext } from '../engine/orbit';
 import type { Profile } from '../profiles/types';
 import {
+  requireProfileWalkerConstellationSeed,
+  WALKER_CONSTELLATION_PHASE_MODEL_VERSION,
+} from '../engine/orbit';
+import {
   createSinrLiveCellModel,
   attachSinrLiveCellFrame,
 } from './sinrLiveCellRuntime';
@@ -122,6 +126,7 @@ function buildCellTruthTopologyKey(input: {
     `primaryUeId=${LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID}`,
     `ueCount=${input.ueCount}`,
     `orbitObserver=${profile.orbit.observerLatDeg},${profile.orbit.observerLonDeg}`,
+    `orbitPhase=${WALKER_CONSTELLATION_PHASE_MODEL_VERSION}:${requireProfileWalkerConstellationSeed(profile)}`,
     `orbitShells=${profile.orbit.shells.map(shell => `${shell.id}:${shell.planes}x${shell.satsPerPlane}`).join(',')}`,
     `ueDistributionMode=${input.ueDistributionMode}`,
     `uePrimaryAnchorMode=${input.uePrimaryAnchorMode}`,

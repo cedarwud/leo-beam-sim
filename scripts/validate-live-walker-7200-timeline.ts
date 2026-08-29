@@ -94,6 +94,7 @@ function validateOneSecondServingCoverage(): void {
     epochUtcMs: APP_EPOCH_MS,
     observerLatDeg: observer.latDeg,
     observerLonDeg: observer.lonDeg,
+    phaseSeed: profile.orbit.constellationSeed,
   });
   assert.equal(elements.length, EXPECTED_MODQN_POOL_SIZE, 'MODQN Walker pool remains P=384');
 

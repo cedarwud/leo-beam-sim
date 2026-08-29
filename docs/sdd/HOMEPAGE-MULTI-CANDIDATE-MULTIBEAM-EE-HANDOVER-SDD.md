@@ -1309,6 +1309,13 @@ from the anchor's profile shells, observer and epoch, then evaluate each
 requested absolute instant with `propagateOrbitElement`. Its returned ECEF
 position and geodetic latitude/longitude/altitude, together with
 `createObserverContext` / `computeTopocentricPoint`, are scientific geometry.
+Every shipped Walker profile explicitly declares `orbit.constellationSeed`;
+the live trajectory, replay recommendation and event-generation identities
+include it together with `walker-delta-f1-phase-jitter-v1`, and trajectory
+construction fails closed when the seed is omitted or invalid. Seed `0`
+preserves the established geometry but is no longer an implicit generator
+fallback: the generator API and every repository call site require an explicit
+safe-integer seed.
 `createTrajectoryCache` is only an existing runtime cache precedent: its
 20-second, elevation-filtered samples and `interpolateVisibleSats` output must
 not be treated as the 2.5-second forecast authority. In particular,
