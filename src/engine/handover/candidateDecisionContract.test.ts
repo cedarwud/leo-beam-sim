@@ -53,6 +53,7 @@ function gate(code: CandidateGateResult['code'], result: CandidateGateResult['re
 
 function provenance() {
   return {
+    epochUtcMs: 0,
     startSimTimeMs: 0,
     endSimTimeMs: 60_000,
     frameIdsOrDigest: 'frames:walker-frame-1..walker-frame-4',
@@ -61,7 +62,14 @@ function provenance() {
     canonicalInputHash: 'canonical-input-hash',
     assignmentStateHash: 'assignment-state-hash',
     powerStateHash: 'power-state-hash',
+    scenarioStateHash: 'scenario-state-hash',
+    geometryModelHash: 'geometry-model-hash',
     canonicalConfigHash: 'canonical-config-hash',
+    policyConfigHash: 'policy-config-hash',
+    switchEventAccountingMode: 'target-once-at-horizon-start' as const,
+    switchBoundarySimTimeMs: 0,
+    switchTargetBeamIndex: 1,
+    switchIndicatorDigest: 'fnv1a32-deadbeef',
   };
 }
 
@@ -73,6 +81,8 @@ function forecast(key: CandidateLinkKey, status: ForecastEeEvidence['status'] = 
       deliveredBits: 600,
       consumedJoules: 60,
       eeBitPerJ: 10,
+      baselineDeliveredBits: 480,
+      baselineConsumedJoules: 60,
       baselineEeBitPerJ: 8,
       relativeDelta: 0.25,
       action: {
@@ -93,6 +103,8 @@ function forecast(key: CandidateLinkKey, status: ForecastEeEvidence['status'] = 
     deliveredBits: status === 'stale' ? 600 : null,
     consumedJoules: status === 'stale' ? 60 : null,
     eeBitPerJ: null,
+    baselineDeliveredBits: status === 'stale' ? 480 : null,
+    baselineConsumedJoules: status === 'stale' ? 60 : null,
     baselineEeBitPerJ: status === 'stale' ? 8 : null,
     relativeDelta: null,
     action: null,
@@ -221,6 +233,27 @@ for (const status of ['stale', 'invalid'] as const) {
   assert.equal(state.triggerStatus, 'unavailable');
   assert.equal(state.stable, false);
 }
+
+assert.throws(
+  () => validateCandidateOpportunity(opportunity(satABeam2, {
+    forecastEe: {
+      ...forecast(satABeam2),
+      baselineEeBitPerJ: 0,
+      relativeDelta: null,
+    },
+  })),
+  /baseline must be positive/,
+);
+
+assert.throws(
+  () => validateCandidateOpportunity(opportunity(satABeam2, {
+    forecastEe: {
+      ...forecast(satABeam2),
+      baselineDeliveredBits: 481,
+    },
+  })),
+  /baselineDeliveredBits \/ baselineConsumedJoules/,
+);
 
 const good = opportunity(satABeam1);
 const goodState = deriveCandidateDecisionState(good, 3, 3, 1);

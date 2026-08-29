@@ -18,8 +18,16 @@ import {
 
 export interface CanonicalForecastEeSample {
   readonly sourceFrameId: string;
+  readonly epochUtcMs: number;
   readonly startSimTimeMs: number;
   readonly durationSec: number;
+  readonly policyConfigHash: string;
+  readonly scenarioStateHash: string;
+  readonly geometryModelHash: string;
+  readonly canonicalConfigHash: string;
+  readonly assignmentStateHash: string;
+  readonly canonicalPowerStateHash: string;
+  readonly protagonistUeId: string;
   /** Full keep-serving canonical input for this future sample. */
   readonly baselineInput: CanonicalEeInput;
   /** Full assignment-substitution canonical input for this future sample. */
@@ -34,7 +42,10 @@ export interface CanonicalForecastDigestBundle {
   readonly canonicalInputHash: string;
   readonly assignmentStateHash: string;
   readonly powerStateHash: string;
+  readonly scenarioStateHash: string;
+  readonly geometryModelHash: string;
   readonly canonicalConfigHash: string;
+  readonly policyConfigHash: string;
 }
 
 export interface BuildCanonicalForecastEeEvidenceInput {
@@ -45,7 +56,6 @@ export interface BuildCanonicalForecastEeEvidenceInput {
 }
 
 const CONFIG_EVENT_FIELDS = new Set<keyof CanonicalEeConfig>([
-  'trainingIndicatorByBeam',
   'switchIndicatorByBeam',
 ]);
 
@@ -63,8 +73,35 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
+function fnv1a32(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function digest(label: string, value: unknown): string {
+  return `${label}:fnv1a32-${fnv1a32(stableJson(value))}`;
+}
+
+export function buildCanonicalForecastConfigHash(config: CanonicalEeConfig): string {
+  return digest('walker-canonical-config', config);
+}
+
 function sameJson(left: unknown, right: unknown): boolean {
   return stableJson(left) === stableJson(right);
+}
+
+function sameFiniteVector(left: readonly number[], right: readonly number[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => {
+    const other = right[index];
+    if (!Number.isFinite(value) || other === undefined || !Number.isFinite(other)) return false;
+    const scale = Math.max(1, Math.abs(value), Math.abs(other));
+    return Math.abs(value - other) <= 1e-12 * scale;
+  });
 }
 
 function assertSamePhysicalConfig(baseline: CanonicalEeConfig, candidate: CanonicalEeConfig): void {
@@ -76,6 +113,19 @@ function assertSamePhysicalConfig(baseline: CanonicalEeConfig, candidate: Canoni
   );
   if (!sameJson(baselineCore, candidateCore)) {
     throw new Error('baseline and candidate must use the same non-event canonical configuration');
+  }
+}
+
+function assertSameHorizonPhysicalConfig(first: CanonicalEeConfig, current: CanonicalEeConfig): void {
+  const omitted = new Set<keyof CanonicalEeConfig>(['frameDurationS', 'switchIndicatorByBeam']);
+  const firstCore = Object.fromEntries(
+    Object.entries(first).filter(([key]) => !omitted.has(key as keyof CanonicalEeConfig)),
+  );
+  const currentCore = Object.fromEntries(
+    Object.entries(current).filter(([key]) => !omitted.has(key as keyof CanonicalEeConfig)),
+  );
+  if (!sameJson(firstCore, currentCore)) {
+    throw new Error('canonical physical configuration must remain stable across the forecast horizon');
   }
 }
 
@@ -144,21 +194,138 @@ function assertActionWitness(sample: CanonicalForecastEeSample, action: Candidat
   }
 }
 
+function binaryIndicatorVector(
+  value: CanonicalEeConfig['switchIndicatorByBeam'],
+  beamCount: number,
+  label: string,
+): readonly number[] {
+  const indicators = value === undefined
+    ? Array.from({ length: beamCount }, () => 0)
+    : typeof value === 'number'
+      ? Array.from({ length: beamCount }, () => value)
+      : [...value];
+  if (indicators.length !== beamCount) {
+    throw new Error(`${label} must cover every canonical beam`);
+  }
+  indicators.forEach((indicator, beamIndex) => {
+    if (!Number.isFinite(indicator) || (indicator !== 0 && indicator !== 1)) {
+      throw new Error(`${label}[${beamIndex}] must be binary`);
+    }
+  });
+  return indicators;
+}
+
+function assertExactlyOnceSwitchWitness(
+  samples: readonly CanonicalForecastEeSample[],
+  action: CandidateAssignmentDelta,
+): { readonly targetBeamIndex: number; readonly indicatorDigest: string } {
+  const indicatorWitness: Array<{
+    readonly baseline: readonly number[];
+    readonly candidate: readonly number[];
+  }> = [];
+  let firstTargetBeamIndex = -1;
+  for (let sampleIndex = 0; sampleIndex < samples.length; sampleIndex += 1) {
+    const sample = samples[sampleIndex]!;
+    const beamCount = sample.beamKeysByIndex.length;
+    const targetBeamIndex = indexOfKey(sample.beamKeysByIndex, action.to);
+    if (targetBeamIndex < 0) {
+      throw new Error('candidate target beam is missing from the switch-event witness');
+    }
+    if (sampleIndex === 0) firstTargetBeamIndex = targetBeamIndex;
+    if (targetBeamIndex !== firstTargetBeamIndex) {
+      throw new Error('candidate target beam index must remain stable across the forecast horizon');
+    }
+    const baselineIndicators = binaryIndicatorVector(
+      sample.baselineInput.config.switchIndicatorByBeam,
+      beamCount,
+      `samples[${sampleIndex}].baseline switchIndicatorByBeam`,
+    );
+    const candidateIndicators = binaryIndicatorVector(
+      sample.candidateInput.config.switchIndicatorByBeam,
+      beamCount,
+      `samples[${sampleIndex}].candidate switchIndicatorByBeam`,
+    );
+    for (let beamIndex = 0; beamIndex < beamCount; beamIndex += 1) {
+      if (baselineIndicators[beamIndex] !== 0) {
+        throw new Error('matched baseline must not contain a switch-event indicator');
+      }
+      const expectedCandidateIndicator = sampleIndex === 0 && beamIndex === targetBeamIndex ? 1 : 0;
+      if (candidateIndicators[beamIndex] !== expectedCandidateIndicator) {
+        throw new Error('candidate must contain exactly one target-beam switch event at the forecast boundary');
+      }
+    }
+    indicatorWitness.push({ baseline: baselineIndicators, candidate: candidateIndicators });
+  }
+  return {
+    targetBeamIndex: firstTargetBeamIndex,
+    indicatorDigest: `fnv1a32-${fnv1a32(stableJson(indicatorWitness))}`,
+  };
+}
+
 function validateSequence(
   samples: readonly CanonicalForecastEeSample[],
   action: CandidateAssignmentDelta,
-): { readonly startSimTimeMs: number; readonly endSimTimeMs: number; readonly horizonSec: number } {
+  expectedPolicyConfigHash: string,
+): {
+  readonly epochUtcMs: number;
+  readonly startSimTimeMs: number;
+  readonly endSimTimeMs: number;
+  readonly horizonSec: number;
+  readonly switchTargetBeamIndex: number;
+  readonly switchIndicatorDigest: string;
+} {
   if (samples.length === 0) throw new Error('forecast samples are unavailable');
+  nonEmpty(expectedPolicyConfigHash, 'digests.policyConfigHash');
   let expectedStartMs: number | null = null;
   let horizonSec = 0;
+  const first = samples[0]!;
+  const firstUeIds = first.ueIdsByIndex;
+  const firstBeamKeys = first.beamKeysByIndex.map(candidateLinkKeyString);
+  if (firstUeIds.length === 0 || new Set(firstUeIds).size !== firstUeIds.length
+    || firstUeIds.some(ueId => typeof ueId !== 'string' || ueId.trim().length === 0)) {
+    throw new Error('canonical UE index mapping must contain unique non-empty identities');
+  }
+  if (firstBeamKeys.length === 0 || new Set(firstBeamKeys).size !== firstBeamKeys.length) {
+    throw new Error('canonical beam index mapping must contain unique identities');
+  }
+  if (action.primaryUeId !== first.protagonistUeId) {
+    throw new Error('candidate action primary UE must match the forecast protagonist');
+  }
+  const sourceFrameIds = new Set<string>();
   for (let index = 0; index < samples.length; index += 1) {
     const sample = samples[index]!;
     nonEmpty(sample.sourceFrameId, `samples[${index}].sourceFrameId`);
-    if (!Number.isFinite(sample.startSimTimeMs) || sample.startSimTimeMs < 0) {
-      throw new Error(`samples[${index}].startSimTimeMs must be finite and non-negative`);
+    if (sourceFrameIds.has(sample.sourceFrameId)) throw new Error('forecast source-frame identities must be unique');
+    sourceFrameIds.add(sample.sourceFrameId);
+    nonEmpty(sample.policyConfigHash, `samples[${index}].policyConfigHash`);
+    nonEmpty(sample.scenarioStateHash, `samples[${index}].scenarioStateHash`);
+    nonEmpty(sample.geometryModelHash, `samples[${index}].geometryModelHash`);
+    nonEmpty(sample.canonicalConfigHash, `samples[${index}].canonicalConfigHash`);
+    nonEmpty(sample.assignmentStateHash, `samples[${index}].assignmentStateHash`);
+    nonEmpty(sample.canonicalPowerStateHash, `samples[${index}].canonicalPowerStateHash`);
+    nonEmpty(sample.protagonistUeId, `samples[${index}].protagonistUeId`);
+    if (sample.policyConfigHash !== expectedPolicyConfigHash) {
+      throw new Error('forecast sample policyConfigHash does not match the evidence digest bundle');
+    }
+    if (sample.epochUtcMs !== first.epochUtcMs
+      || sample.scenarioStateHash !== first.scenarioStateHash
+      || sample.geometryModelHash !== first.geometryModelHash
+      || sample.protagonistUeId !== first.protagonistUeId) {
+      throw new Error('forecast epoch, scenario, geometry, and protagonist must remain stable');
+    }
+    if (!sameJson(sample.ueIdsByIndex, firstUeIds)
+      || !sameJson(sample.beamKeysByIndex.map(candidateLinkKeyString), firstBeamKeys)) {
+      throw new Error('canonical UE and beam index mappings must remain stable across the forecast horizon');
+    }
+    if (!Number.isSafeInteger(sample.epochUtcMs) || sample.epochUtcMs < 0
+      || !Number.isSafeInteger(sample.startSimTimeMs) || sample.startSimTimeMs < sample.epochUtcMs) {
+      throw new Error(`samples[${index}] must use safe absolute UTC milliseconds at or after epochUtcMs`);
     }
     if (!Number.isFinite(sample.durationSec) || sample.durationSec <= 0) {
       throw new Error(`samples[${index}].durationSec must be finite and positive`);
+    }
+    if (!Number.isSafeInteger(sample.durationSec * 1000)) {
+      throw new Error(`samples[${index}].durationSec must resolve to whole milliseconds`);
     }
     if (expectedStartMs !== null && Math.abs(sample.startSimTimeMs - expectedStartMs) > 1e-6) {
       throw new Error('forecast samples must form one contiguous equal-horizon sequence');
@@ -168,25 +335,94 @@ function validateSequence(
       throw new Error('canonical frameDurationS must match the forecast sample duration');
     }
     assertSamePhysicalConfig(sample.baselineInput.config, sample.candidateInput.config);
+    assertSameHorizonPhysicalConfig(first.baselineInput.config, sample.baselineInput.config);
     assertSameGeometryAndOwnership(sample.baselineInput, sample.candidateInput);
     assertActionWitness(sample, action);
     expectedStartMs = sample.startSimTimeMs + sample.durationSec * 1000;
     horizonSec += sample.durationSec;
   }
+  const switchWitness = assertExactlyOnceSwitchWitness(samples, action);
   return {
-    startSimTimeMs: samples[0]!.startSimTimeMs,
+    epochUtcMs: first.epochUtcMs,
+    startSimTimeMs: first.startSimTimeMs,
     endSimTimeMs: expectedStartMs!,
     horizonSec,
+    switchTargetBeamIndex: switchWitness.targetBeamIndex,
+    switchIndicatorDigest: switchWitness.indicatorDigest,
   };
+}
+
+/** Rebuild every public evidence digest from the exact sample/action payload. */
+export function buildCanonicalForecastDigestBundle(
+  samples: readonly CanonicalForecastEeSample[],
+  action: CandidateAssignmentDelta,
+): CanonicalForecastDigestBundle {
+  if (samples.length === 0) throw new Error('cannot digest an empty canonical forecast');
+  validateCandidateAssignmentDelta(action);
+  const first = samples[0]!;
+  const computedCanonicalConfigHashes = samples.map((sample, index) => {
+    const computed = buildCanonicalForecastConfigHash(sample.baselineInput.config);
+    if (sample.canonicalConfigHash !== computed) {
+      throw new Error(`samples[${index}].canonicalConfigHash does not match its canonical baseline configuration`);
+    }
+    return computed;
+  });
+  return Object.freeze({
+    frameIdsOrDigest: digest('walker-forecast-frames', samples.map(sample => ({
+      sourceFrameId: sample.sourceFrameId,
+      epochUtcMs: sample.epochUtcMs,
+      scenarioStateHash: sample.scenarioStateHash,
+      geometryModelHash: sample.geometryModelHash,
+    }))),
+    sampleDurationsDigest: digest('walker-forecast-durations', samples.map(sample => ({
+      startSimTimeMs: sample.startSimTimeMs,
+      durationSec: sample.durationSec,
+    }))),
+    canonicalInputHash: digest('walker-canonical-inputs', samples.map(sample => ({
+      sourceFrameId: sample.sourceFrameId,
+      baselineInput: sample.baselineInput,
+      candidateInput: sample.candidateInput,
+    }))),
+    assignmentStateHash: digest('walker-forecast-assignments', {
+      source: samples.map(sample => sample.assignmentStateHash),
+      action,
+      baseline: samples.map(sample => ({
+        servingBeamU: sample.baselineInput.frame.servingBeamU,
+        beamActiveB: sample.baselineInput.frame.beamActiveB,
+        beamLoadB: sample.baselineInput.frame.beamLoadB,
+      })),
+      candidate: samples.map(sample => ({
+        servingBeamU: sample.candidateInput.frame.servingBeamU,
+        beamActiveB: sample.candidateInput.frame.beamActiveB,
+        beamLoadB: sample.candidateInput.frame.beamLoadB,
+      })),
+    }),
+    powerStateHash: digest('walker-forecast-power', {
+      source: samples.map(sample => sample.canonicalPowerStateHash),
+      baselineLagged: samples.map(sample => sample.baselineInput.frame.laggedInterferenceUW),
+      candidateLagged: samples.map(sample => sample.candidateInput.frame.laggedInterferenceUW),
+    }),
+    scenarioStateHash: first.scenarioStateHash,
+    geometryModelHash: first.geometryModelHash,
+    canonicalConfigHash: digest('walker-canonical-config-sequence', computedCanonicalConfigHashes),
+    policyConfigHash: first.policyConfigHash,
+  });
 }
 
 function buildProvenance(
   input: BuildCanonicalForecastEeEvidenceInput,
-  bounds: { readonly startSimTimeMs: number; readonly endSimTimeMs: number },
+  bounds: {
+    readonly epochUtcMs: number;
+    readonly startSimTimeMs: number;
+    readonly endSimTimeMs: number;
+    readonly switchTargetBeamIndex: number;
+    readonly switchIndicatorDigest: string;
+  },
 ): ForecastWindowProvenance {
   const digests = input.digests;
   for (const [key, value] of Object.entries(digests)) nonEmpty(value, `digests.${key}`);
   return Object.freeze({
+    epochUtcMs: bounds.epochUtcMs,
     startSimTimeMs: bounds.startSimTimeMs,
     endSimTimeMs: bounds.endSimTimeMs,
     frameIdsOrDigest: digests.frameIdsOrDigest,
@@ -195,7 +431,14 @@ function buildProvenance(
     canonicalInputHash: digests.canonicalInputHash,
     assignmentStateHash: digests.assignmentStateHash,
     powerStateHash: digests.powerStateHash,
+    scenarioStateHash: digests.scenarioStateHash,
+    geometryModelHash: digests.geometryModelHash,
     canonicalConfigHash: digests.canonicalConfigHash,
+    policyConfigHash: digests.policyConfigHash,
+    switchEventAccountingMode: 'target-once-at-horizon-start',
+    switchBoundarySimTimeMs: bounds.startSimTimeMs,
+    switchTargetBeamIndex: bounds.switchTargetBeamIndex,
+    switchIndicatorDigest: bounds.switchIndicatorDigest,
   });
 }
 
@@ -206,6 +449,8 @@ function unavailableEvidence(reason: string): ForecastEeEvidence {
     deliveredBits: null,
     consumedJoules: null,
     eeBitPerJ: null,
+    baselineDeliveredBits: null,
+    baselineConsumedJoules: null,
     baselineEeBitPerJ: null,
     relativeDelta: null,
     action: null,
@@ -231,6 +476,8 @@ export function buildCanonicalForecastEeEvidence(
       deliveredBits: null,
       consumedJoules: null,
       eeBitPerJ: null,
+      baselineDeliveredBits: null,
+      baselineConsumedJoules: null,
       baselineEeBitPerJ: null,
       relativeDelta: null,
       action: null,
@@ -243,14 +490,36 @@ export function buildCanonicalForecastEeEvidence(
   let horizonSec: number | null = null;
   let provenance: ForecastWindowProvenance | null = null;
   try {
-    const bounds = validateSequence(input.samples, input.action);
+    const bounds = validateSequence(input.samples, input.action, input.digests.policyConfigHash);
+    const expectedDigests = buildCanonicalForecastDigestBundle(input.samples, input.action);
+    for (const [key, expected] of Object.entries(expectedDigests)) {
+      if (input.digests[key as keyof CanonicalForecastDigestBundle] !== expected) {
+        throw new Error(`forecast digest ${key} does not match the canonical sample payload`);
+      }
+    }
     horizonSec = bounds.horizonSec;
     provenance = buildProvenance(input, bounds);
     const baselineSamples: CanonicalEeEvaluationSample[] = [];
     const candidateSamples: CanonicalEeEvaluationSample[] = [];
-    for (const sample of input.samples) {
+    let expectedBaselineLagged: readonly number[] | null = null;
+    let expectedCandidateLagged: readonly number[] | null = null;
+    for (let sampleIndex = 0; sampleIndex < input.samples.length; sampleIndex += 1) {
+      const sample = input.samples[sampleIndex]!;
+      const baselineLagged = sample.baselineInput.frame.laggedInterferenceUW;
+      const candidateLagged = sample.candidateInput.frame.laggedInterferenceUW;
+      if (sampleIndex === 0) {
+        if (!sameFiniteVector(baselineLagged, candidateLagged)) {
+          throw new Error('baseline and candidate must start from the same accepted lagged-interference state');
+        }
+      } else if (expectedBaselineLagged === null || expectedCandidateLagged === null
+        || !sameFiniteVector(baselineLagged, expectedBaselineLagged)
+        || !sameFiniteVector(candidateLagged, expectedCandidateLagged)) {
+        throw new Error('forecast lagged interference must follow each counterfactual previous canonical result');
+      }
       const baseline = computeCanonicalEe(sample.baselineInput);
       const candidate = computeCanonicalEe(sample.candidateInput);
+      expectedBaselineLagged = baseline.throughput.interferenceUW;
+      expectedCandidateLagged = candidate.throughput.interferenceUW;
       baselineSamples.push({
         totalRateBps: baseline.throughput.totalRateBps,
         systemPowerW: baseline.power.systemPowerW,
@@ -271,6 +540,8 @@ export function buildCanonicalForecastEeEvidence(
         deliveredBits: 0,
         consumedJoules: 0,
         eeBitPerJ: 0,
+        baselineDeliveredBits: baselineEvaluation.deliveredBits,
+        baselineConsumedJoules: baselineEvaluation.consumedEnergyJ,
         baselineEeBitPerJ: baselineEvaluation.energyEfficiencyBitsPerJ,
         relativeDelta: null,
         action: input.action,
@@ -280,16 +551,24 @@ export function buildCanonicalForecastEeEvidence(
       });
     }
     const baselineEe = baselineEvaluation.energyEfficiencyBitsPerJ;
+    if (baselineEvaluation.status !== 'valid' || !Number.isFinite(baselineEe) || baselineEe <= 0) {
+      throw new Error('keep-serving baseline EE must be finite and positive');
+    }
+    const candidateEe = candidateEvaluation.energyEfficiencyBitsPerJ;
+    const relativeDelta = candidateEe / baselineEe - 1;
+    if (!Number.isFinite(candidateEe) || !Number.isFinite(relativeDelta)) {
+      throw new Error('candidate EE and relativeDelta must be finite');
+    }
     return createForecastEeEvidence({
       status: 'valid',
       horizonSec,
       deliveredBits: candidateEvaluation.deliveredBits,
       consumedJoules: candidateEvaluation.consumedEnergyJ,
-      eeBitPerJ: candidateEvaluation.energyEfficiencyBitsPerJ,
+      eeBitPerJ: candidateEe,
+      baselineDeliveredBits: baselineEvaluation.deliveredBits,
+      baselineConsumedJoules: baselineEvaluation.consumedEnergyJ,
       baselineEeBitPerJ: baselineEe,
-      relativeDelta: baselineEe > 0
-        ? candidateEvaluation.energyEfficiencyBitsPerJ / baselineEe - 1
-        : null,
+      relativeDelta,
       action: input.action,
       provenance,
       modelVersion: input.modelVersion ?? CANONICAL_EE_CONTRACT_VERSION,
@@ -302,6 +581,8 @@ export function buildCanonicalForecastEeEvidence(
       deliveredBits: null,
       consumedJoules: null,
       eeBitPerJ: null,
+      baselineDeliveredBits: null,
+      baselineConsumedJoules: null,
       baselineEeBitPerJ: null,
       relativeDelta: null,
       action: input.action,

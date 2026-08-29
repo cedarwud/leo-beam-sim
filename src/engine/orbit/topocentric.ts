@@ -5,7 +5,8 @@ const EARTH_A_KM = 6378.137;
 const EARTH_F = 1 / 298.257223563;
 const EARTH_B_KM = EARTH_A_KM * (1 - EARTH_F);
 
-function geodeticToEcef(
+/** WGS84 geodetic position to Earth-centred, Earth-fixed kilometres. */
+export function geodeticToEcefKm(
   latDeg: number,
   lonDeg: number,
   altKm: number,
@@ -38,7 +39,7 @@ export function createObserverContext(
     lonDeg,
     latRad,
     lonRad,
-    ecefKm: geodeticToEcef(latDeg, lonDeg, altKm),
+    ecefKm: geodeticToEcefKm(latDeg, lonDeg, altKm),
     sinLat: Math.sin(latRad),
     cosLat: Math.cos(latRad),
     sinLon: Math.sin(lonRad),

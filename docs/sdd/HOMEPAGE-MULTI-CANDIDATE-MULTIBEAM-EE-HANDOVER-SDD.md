@@ -528,6 +528,7 @@ interface CandidateAssignmentDelta {
 }
 
 interface ForecastWindowProvenance {
+  epochUtcMs: number;
   startSimTimeMs: number;
   endSimTimeMs: number;
   frameIdsOrDigest: string;
@@ -536,8 +537,14 @@ interface ForecastWindowProvenance {
   canonicalInputHash: string;
   assignmentStateHash: string;
   powerStateHash: string;
+  scenarioStateHash: string;
+  geometryModelHash: string;
   canonicalConfigHash: string;
   policyConfigHash: string;
+  switchEventAccountingMode: 'target-once-at-horizon-start';
+  switchBoundarySimTimeMs: number;
+  switchTargetBeamIndex: number;
+  switchIndicatorDigest: string;
 }
 
 interface ForecastEeEvidence {
@@ -1372,6 +1379,9 @@ interface WalkerForecastFrame {
   absoluteUtcMs: number;
   observer: ObserverContext;
   geometryModels: WalkerForecastGeometryModels;
+  beamConfiguration: WalkerScenarioBeamConfiguration;
+  beamHopping: WalkerScenarioBeamHoppingConfiguration;
+  protagonistUeId: string;
   satellites: readonly WalkerForecastSatState[];
   ues: readonly WalkerForecastUeState[];
   beams: readonly WalkerForecastBeamState[];
@@ -1393,8 +1403,21 @@ non-finite direction, or absent ownership/reuse/load state invalidates the
 frame; no fallback to a cell centre, render-world coordinate, or `[0, 0, 0]`
 placeholder is permitted.
 
-The provider evaluates deterministic Walker positions, absolute-time hopping
-phase, UE positions, and immutable scenario/config state at the requested
+The current validation-only provider does not extrapolate one accepted ECEF
+axis across a multi-sample horizon. `accepted-sampled-axis` is therefore
+accepted only for a single-sample diagnostic until a complete per-sample
+axis/bucket sequence is available; the 7-sample Forecast-EE path requires
+earth-fixed targets or that future per-sample provenance. This fail-closed
+restriction is not an activation claim.
+
+Likewise, the validation-only provider currently accepts fixed illumination
+only. It rejects `beamHopping.enabled = true` rather than carrying frozen anchor
+loads through changing slots. Forecast-EE activation remains blocked until a
+separate scheduling action defines dark-slot assignment/load semantics and the
+matched recurrence is validated across the full hopping sequence.
+
+The provider evaluates deterministic Walker positions, fixed illumination
+state, UE positions, and immutable scenario/config state at the requested
 times. It must not mutate live assignments, manager state, decision timers,
 selection hold, guard, playback clock, or render state. Baseline and every
 one-action candidate receive the same frozen frame sequence; a forecast cannot
@@ -1409,8 +1432,15 @@ inventing a second vector vocabulary:
 ```ts
 interface WalkerCanonicalForecastSample {
   sourceFrameId: string;
+  epochUtcMs: number;
   startSimTimeMs: number;
   durationSec: number;
+  scenarioStateHash: string;
+  geometryModelHash: string;
+  canonicalConfigHash: string;
+  assignmentStateHash: string;
+  canonicalPowerStateHash: string;
+  protagonistUeId: string;
   ueIdsByIndex: readonly string[];
   beamKeysByIndex: readonly CandidateLinkKey[];
   baselineInput: CanonicalEeInput;

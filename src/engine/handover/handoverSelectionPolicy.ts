@@ -258,12 +258,16 @@ function forecastWindowSignature(candidate: CandidateOpportunity): string | null
     const provenance = evidence.provenance;
     return JSON.stringify([
       evidence.horizonSec,
+      provenance.epochUtcMs,
       provenance.startSimTimeMs,
       provenance.endSimTimeMs,
       provenance.frameIdsOrDigest,
       provenance.sampleDurationsDigest,
       provenance.baselineAssignmentKey,
+      provenance.scenarioStateHash,
+      provenance.geometryModelHash,
       provenance.canonicalConfigHash,
+      provenance.policyConfigHash,
       evidence.modelVersion,
     ]);
   } catch {

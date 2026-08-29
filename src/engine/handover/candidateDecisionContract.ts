@@ -264,6 +264,7 @@ function cloneAssignmentDelta(delta: CandidateAssignmentDelta): CandidateAssignm
 }
 
 export interface ForecastWindowProvenance {
+  readonly epochUtcMs: number;
   readonly startSimTimeMs: number;
   readonly endSimTimeMs: number;
   readonly frameIdsOrDigest: string;
@@ -272,12 +273,28 @@ export interface ForecastWindowProvenance {
   readonly canonicalInputHash: string;
   readonly assignmentStateHash: string;
   readonly powerStateHash: string;
+  readonly scenarioStateHash: string;
+  readonly geometryModelHash: string;
   readonly canonicalConfigHash: string;
+  readonly policyConfigHash: string;
+  readonly switchEventAccountingMode: 'target-once-at-horizon-start';
+  readonly switchBoundarySimTimeMs: number;
+  readonly switchTargetBeamIndex: number;
+  readonly switchIndicatorDigest: string;
 }
 
 export function validateForecastWindowProvenance(provenance: ForecastWindowProvenance): void {
   if (!isObject(provenance)) fail('forecast provenance must be an object');
+  nonNegative(provenance.epochUtcMs, 'forecast provenance epochUtcMs');
   nonNegative(provenance.startSimTimeMs, 'forecast provenance startSimTimeMs');
+  if (!Number.isSafeInteger(provenance.epochUtcMs)
+    || !Number.isSafeInteger(provenance.startSimTimeMs)
+    || !Number.isSafeInteger(provenance.endSimTimeMs)) {
+    fail('forecast provenance UTC timestamps must be safe integer milliseconds');
+  }
+  if (provenance.startSimTimeMs < provenance.epochUtcMs) {
+    fail('forecast provenance startSimTimeMs must not precede epochUtcMs');
+  }
   positive(provenance.endSimTimeMs - provenance.startSimTimeMs, 'forecast provenance duration');
   nonEmpty(provenance.frameIdsOrDigest, 'forecast provenance frameIdsOrDigest');
   nonEmpty(provenance.sampleDurationsDigest, 'forecast provenance sampleDurationsDigest');
@@ -287,7 +304,20 @@ export function validateForecastWindowProvenance(provenance: ForecastWindowProve
   nonEmpty(provenance.canonicalInputHash, 'forecast provenance canonicalInputHash');
   nonEmpty(provenance.assignmentStateHash, 'forecast provenance assignmentStateHash');
   nonEmpty(provenance.powerStateHash, 'forecast provenance powerStateHash');
+  nonEmpty(provenance.scenarioStateHash, 'forecast provenance scenarioStateHash');
+  nonEmpty(provenance.geometryModelHash, 'forecast provenance geometryModelHash');
   nonEmpty(provenance.canonicalConfigHash, 'forecast provenance canonicalConfigHash');
+  nonEmpty(provenance.policyConfigHash, 'forecast provenance policyConfigHash');
+  if (provenance.switchEventAccountingMode !== 'target-once-at-horizon-start') {
+    fail('forecast provenance switchEventAccountingMode is invalid');
+  }
+  if (provenance.switchBoundarySimTimeMs !== provenance.startSimTimeMs) {
+    fail('forecast provenance switch boundary must equal the forecast start');
+  }
+  if (!Number.isInteger(provenance.switchTargetBeamIndex) || provenance.switchTargetBeamIndex < 0) {
+    fail('forecast provenance switchTargetBeamIndex must be a non-negative integer');
+  }
+  nonEmpty(provenance.switchIndicatorDigest, 'forecast provenance switchIndicatorDigest');
 }
 
 export interface ForecastEeEvidence {
@@ -296,6 +326,8 @@ export interface ForecastEeEvidence {
   readonly deliveredBits: number | null;
   readonly consumedJoules: number | null;
   readonly eeBitPerJ: number | null;
+  readonly baselineDeliveredBits: number | null;
+  readonly baselineConsumedJoules: number | null;
   readonly baselineEeBitPerJ: number | null;
   readonly relativeDelta: number | null;
   readonly action: CandidateAssignmentDelta | null;
@@ -323,6 +355,8 @@ export function validateForecastEeEvidence(evidence: ForecastEeEvidence): void {
   optionalNonNegative(evidence.deliveredBits, 'forecast EE deliveredBits');
   optionalNonNegative(evidence.consumedJoules, 'forecast EE consumedJoules');
   optionalNonNegative(evidence.eeBitPerJ, 'forecast EE eeBitPerJ');
+  optionalNonNegative(evidence.baselineDeliveredBits, 'forecast EE baselineDeliveredBits');
+  optionalNonNegative(evidence.baselineConsumedJoules, 'forecast EE baselineConsumedJoules');
   optionalNonNegative(evidence.baselineEeBitPerJ, 'forecast EE baselineEeBitPerJ');
   if (evidence.relativeDelta !== null) finite(evidence.relativeDelta, 'forecast EE relativeDelta');
   if (evidence.action !== null) validateCandidateAssignmentDelta(evidence.action);
@@ -341,20 +375,38 @@ export function validateForecastEeEvidence(evidence: ForecastEeEvidence): void {
       fail('valid forecast EE must equal deliveredBits / consumedJoules');
     }
     if (evidence.baselineEeBitPerJ === null) {
+      if (evidence.action.from !== null) fail('handover forecast EE requires a positive baseline EE value');
+      if (evidence.baselineDeliveredBits !== null || evidence.baselineConsumedJoules !== null) {
+        fail('initial-attach forecast EE must not invent keep-serving activity');
+      }
       if (evidence.relativeDelta !== null) fail('relativeDelta requires a baseline EE value');
     } else if (evidence.baselineEeBitPerJ > 0) {
+      if (evidence.action.from === null) fail('initial-attach forecast EE cannot claim a keep-serving baseline');
+      if (evidence.baselineDeliveredBits === null || evidence.baselineConsumedJoules === null) {
+        fail('valid handover forecast EE requires complete baseline activity values');
+      }
+      if (evidence.baselineConsumedJoules <= 0) {
+        fail('valid handover forecast EE requires positive baseline consumed energy');
+      }
+      if (!approximatelyEqual(
+        evidence.baselineEeBitPerJ,
+        evidence.baselineDeliveredBits / evidence.baselineConsumedJoules,
+      )) {
+        fail('baseline forecast EE must equal baselineDeliveredBits / baselineConsumedJoules');
+      }
       if (evidence.relativeDelta === null
         || !approximatelyEqual(evidence.relativeDelta, evidence.eeBitPerJ / evidence.baselineEeBitPerJ - 1)) {
         fail('relativeDelta must match candidate and baseline EE');
       }
-    } else if (evidence.relativeDelta !== null) {
-      fail('relativeDelta is unavailable when baseline EE is zero');
+    } else {
+      fail('valid forecast EE baseline must be positive');
     }
   }
 
   if (evidence.status === 'zero-activity') {
     if (evidence.horizonSec === null || evidence.deliveredBits !== 0
-      || evidence.consumedJoules !== 0 || evidence.eeBitPerJ !== 0) {
+      || evidence.consumedJoules !== 0 || evidence.eeBitPerJ !== 0
+      || evidence.action === null || evidence.provenance === null || evidence.modelVersion === null) {
       fail('zero-activity forecast EE must have a positive horizon and zero activity values');
     }
     if (evidence.relativeDelta !== null) fail('zero-activity forecast EE cannot claim relative improvement');

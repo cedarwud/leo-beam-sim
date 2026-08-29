@@ -93,8 +93,11 @@ export function generateWalkerConstellation(config: {
   epochUtcMs: number;
   observerLatDeg?: number;
   observerLonDeg?: number;
+  /** Deterministic phase-jitter seed; omitted keeps the established seed 0 geometry. */
+  phaseSeed?: number;
 }): OrbitElement[] {
   const elements: OrbitElement[] = [];
+  const phaseSeed = Number.isFinite(config.phaseSeed) ? Math.trunc(config.phaseSeed ?? 0) : 0;
 
   for (const shell of config.shells) {
     const semiMajorKm = EARTH_RADIUS_KM + shell.altitudeKm;
@@ -134,7 +137,7 @@ export function generateWalkerConstellation(config: {
         // resolved_assumptions.orbit_layout.value.in_plane_spacing_deg = 90
         // (ASSUME-MODQN-REP-001). Paper-faithful profiles disable this
         // display-only clustering perturbation.
-        const seed = (p * 13 + s * 7) % 100;
+        const seed = ((p * 13 + s * 7 + phaseSeed * 17) % 100 + 100) % 100;
         const perturbation = shell.phasePerturbation === false
           ? 0
           : (seed / 100 - 0.5) * (TWO_PI / shell.satsPerPlane) * 0.8;

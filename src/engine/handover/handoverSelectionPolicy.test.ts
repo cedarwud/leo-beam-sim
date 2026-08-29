@@ -83,8 +83,10 @@ function forecast(key: CandidateLinkKey, eeBitPerJ: number): ForecastEeEvidence 
     deliveredBits: eeBitPerJ * 60,
     consumedJoules: 60,
     eeBitPerJ,
-    baselineEeBitPerJ: 80,
-    relativeDelta: eeBitPerJ / 80 - 1,
+    baselineDeliveredBits: isServing ? null : 4_800,
+    baselineConsumedJoules: isServing ? null : 60,
+    baselineEeBitPerJ: isServing ? null : 80,
+    relativeDelta: isServing ? null : eeBitPerJ / 80 - 1,
     action: {
       primaryUeId: UE,
       from: isServing ? null : SERVING,
@@ -93,6 +95,7 @@ function forecast(key: CandidateLinkKey, eeBitPerJ: number): ForecastEeEvidence 
       affectedBeamKeys: isServing ? [key] : [SERVING, key],
     },
     provenance: {
+      epochUtcMs: 0,
       startSimTimeMs: 0,
       endSimTimeMs: 60_000,
       frameIdsOrDigest: 'frames:1..60',
@@ -101,7 +104,14 @@ function forecast(key: CandidateLinkKey, eeBitPerJ: number): ForecastEeEvidence 
       canonicalInputHash: 'canonical-input',
       assignmentStateHash: 'assignment-state',
       powerStateHash: 'power-state',
+      scenarioStateHash: 'scenario-state',
+      geometryModelHash: 'geometry-model',
       canonicalConfigHash: 'canonical-config',
+      policyConfigHash: 'policy-config',
+      switchEventAccountingMode: 'target-once-at-horizon-start',
+      switchBoundarySimTimeMs: 0,
+      switchTargetBeamIndex: 1,
+      switchIndicatorDigest: 'fnv1a32-deadbeef',
     },
     modelVersion: 'canonical-walker-ee-v1',
     reason: null,
@@ -395,6 +405,49 @@ test('EE policy requires a positive keep-serving baseline and a common forecast 
     alternatives: [firstWindow, secondWindow],
   });
   assert.equal(mixedWindowResult.assessments.every(item => item.triggerStatus === 'unavailable'), true);
+
+  for (const provenanceOverride of [
+    { scenarioStateHash: 'scenario-state:other' },
+    { geometryModelHash: 'geometry-model:other' },
+  ]) {
+    const mismatchedSource = opportunity(candidateLinkKey('SAT-D', 1), { eeBitPerJ: 108 });
+    const mismatched = {
+      ...mismatchedSource,
+      forecastEe: {
+        ...mismatchedSource.forecastEe!,
+        provenance: {
+          ...mismatchedSource.forecastEe!.provenance!,
+          ...provenanceOverride,
+        },
+      },
+    };
+    const result = policy.evaluate({
+      serving: opportunity(SERVING, { eeBitPerJ: 80 }),
+      alternatives: [firstWindow, mismatched],
+    });
+    assert.equal(result.assessments.every(item => item.triggerStatus === 'unavailable'), true);
+  }
+
+  const epochA = opportunity(candidateLinkKey('SAT-E', 1), { eeBitPerJ: 106 });
+  const epochB = opportunity(candidateLinkKey('SAT-F', 1), { eeBitPerJ: 107 });
+  const withEpoch = (candidate: CandidateOpportunity, epochUtcMs: number): CandidateOpportunity => ({
+    ...candidate,
+    forecastEe: {
+      ...candidate.forecastEe!,
+      provenance: {
+        ...candidate.forecastEe!.provenance!,
+        epochUtcMs,
+        startSimTimeMs: 1_000,
+        endSimTimeMs: 61_000,
+        switchBoundarySimTimeMs: 1_000,
+      },
+    },
+  });
+  const mismatchedEpochResult = policy.evaluate({
+    serving: opportunity(SERVING, { eeBitPerJ: 80 }),
+    alternatives: [withEpoch(epochA, 0), withEpoch(epochB, 500)],
+  });
+  assert.equal(mismatchedEpochResult.assessments.every(item => item.triggerStatus === 'unavailable'), true);
 });
 
 test('EE policy can select an initial attachment without claiming improvement over a serving baseline', () => {
@@ -403,6 +456,8 @@ test('EE policy can select an initial attachment without claiming improvement ov
     ...source,
     forecastEe: {
       ...source.forecastEe!,
+      baselineDeliveredBits: null,
+      baselineConsumedJoules: null,
       baselineEeBitPerJ: null,
       relativeDelta: null,
       action: {
