@@ -604,10 +604,12 @@ or invalid and may not trigger, rank, advance TTT, select, or commit.
 `value = null` where appropriate and retain a typed `reason`, but they still
 identify the candidate-opportunity frame in which the measurement was
 requested. If no authoritative source frame exists, the producer must not
-invent a candidate row. The current nullable implementation is a migration
-gap: before an opportunity enters an accepted snapshot, its evidence must be
-normalized to the opportunity's non-empty `sourceFrameId` and validated against
-that same frame. A forecast may additionally retain its complete future-frame
+invent a candidate row. The shared nullable type remains a migration gap for
+older producers, but `CandidateOpportunityProducer` normalizes null non-available
+evidence to the opportunity's non-empty `sourceFrameId` and rejects any
+different non-null evidence frame before producing the scientific set. Every
+remaining producer must meet that same boundary before an opportunity enters an
+accepted snapshot. A forecast may additionally retain its complete future-frame
 sequence in `ForecastWindowProvenance`; that sequence does not replace the
 candidate row's anchor-frame join key.
 

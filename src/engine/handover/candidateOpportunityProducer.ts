@@ -136,20 +136,16 @@ function copyMeasurementEvidence(
   if (measurement.sourceFrameId !== expectedSourceFrameId) {
     throw new Error(`candidate ${candidateLinkKeyString(measurement.key)} belongs to a different source frame`);
   }
-  const metrics = [
-    measurement.elevation,
-    measurement.steering,
-    measurement.range,
-    measurement.sinr,
-    measurement.predictedThroughput,
-    measurement.remainingServiceTime,
-  ];
-  for (const metric of metrics) {
+  const normalizeMetric = (metric: MetricEvidence, name: string): MetricEvidence => {
     createMetricEvidence(metric);
-    if (metric.status === 'available' && metric.sourceFrameId !== expectedSourceFrameId) {
-      throw new Error(`candidate ${candidateLinkKeyString(measurement.key)} has mixed-frame evidence`);
+    if (metric.sourceFrameId !== null && metric.sourceFrameId !== expectedSourceFrameId) {
+      throw new Error(`candidate ${candidateLinkKeyString(measurement.key)} has mixed-frame ${name} evidence`);
     }
-  }
+    return createMetricEvidence({
+      ...metric,
+      sourceFrameId: expectedSourceFrameId,
+    });
+  };
   if (measurement.scheduledIllumination.code !== 'scheduled-illumination') {
     throw new Error('scheduledIllumination must use the scheduled-illumination gate code');
   }
@@ -161,7 +157,15 @@ function copyMeasurementEvidence(
     throw new Error('scheduledIllumination measured value must be 0 or 1');
   }
   createCandidateGateResult(measurement.scheduledIllumination);
-  return measurement;
+  return {
+    ...measurement,
+    elevation: normalizeMetric(measurement.elevation, 'elevation'),
+    steering: normalizeMetric(measurement.steering, 'steering'),
+    range: normalizeMetric(measurement.range, 'range'),
+    sinr: normalizeMetric(measurement.sinr, 'sinr'),
+    predictedThroughput: normalizeMetric(measurement.predictedThroughput, 'predicted-throughput'),
+    remainingServiceTime: normalizeMetric(measurement.remainingServiceTime, 'remaining-service-time'),
+  };
 }
 
 function latestGeometryClass(gates: readonly CandidateGateResult[]): CandidateOpportunity['geometryClass'] {

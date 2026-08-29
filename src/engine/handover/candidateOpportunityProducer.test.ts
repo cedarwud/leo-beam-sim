@@ -206,6 +206,7 @@ test('keeps unavailable remaining-service evidence unavailable rather than conve
   const opportunity = set.opportunities[0];
   assert.equal(opportunity?.remainingServiceTime.value, null);
   assert.equal(opportunity?.remainingServiceTime.status, 'unavailable');
+  assert.equal(opportunity?.remainingServiceTime.sourceFrameId, SOURCE_FRAME);
   assert.equal(opportunity?.geometryClass, 'scheduled-and-illuminated');
   assert.equal(
     opportunity?.gates.find(gate => gate.code === 'remaining-service-time')?.result,
@@ -226,6 +227,16 @@ test('rejects mixed UE, mixed frame, and duplicate-pair measurements', () => {
     thresholds,
     measurements: [measurement('SAT-A', 1, 5, { sourceFrameId: 'frame-other' })],
   }), /different source frame/);
+  const mixedUnavailableFrame = measurement('SAT-A', 1, 5);
+  assert.throws(() => produceCandidateOpportunitySet({
+    primaryUeId: PRIMARY_UE,
+    sourceFrameId: SOURCE_FRAME,
+    thresholds,
+    measurements: [{
+      ...mixedUnavailableFrame,
+      remainingServiceTime: metric(null, 's', 'unavailable', 'frame-other'),
+    }],
+  }), /mixed-frame remaining-service-time evidence/);
   assert.throws(() => produceCandidateOpportunitySet({
     primaryUeId: PRIMARY_UE,
     sourceFrameId: SOURCE_FRAME,
